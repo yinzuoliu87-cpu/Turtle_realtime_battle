@@ -260,32 +260,33 @@ const GAUNTLET_OUT := "out"            # 出局(≥3 负, 或打满配额仍未�
 static func gauntlet_label(w: int, l: int) -> String:
 	return "%d-%d" % [maxi(0, w), maxi(0, l)]
 
-## 提前晋级「省下的场次照发奖励」那一句(2026-10-26 用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」):
-##   玩家心里只有「4 胜晋级、3 负出局」, 「最多 6 场」这个上限他不知道 ⇒ 句子里先把上限说出来, 再说用了几场、省下几场。
-static func gauntlet_bonus_line(played: int, saved: int, coins: int, xp: int) -> String:
-	return "闯关赛最多 %d 场，你用 %d 场就晋级了，省下的 %d 场照发奖励：深海币 +%d、经验 +%d。" % [
-		GAUNTLET_QUOTA, played, saved, coins, xp]
+## 「提前晋级奖励」那一行(2026-10-26 用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」):
+##   玩家心里只有「4 胜晋级、3 负淘汰」, 不知道闯关赛共 6 场 ⇒ 括号里把规则说出来(共几场 / 未进行几场 / 按场发放)。
+##   ★写法照商业游戏: 名词标签 + 数值 + 括号规则(荒野乱斗「您的挑战获胜奖励：<REWARD>」), 不写「你用 4 场就晋级了 / 省下的 / 照发」这类口语。
+static func gauntlet_bonus_line(saved: int, coins: int, xp: int) -> String:
+	return "提前晋级奖励：深海币 +%d、经验 +%d（闯关赛共 %d 场，未进行的 %d 场按场发放）" % [
+		coins, xp, GAUNTLET_QUOTA, saved]
 
 
 ## 闯关赛结算屏那一句(2026-10-26 · 用户「文案你学习商业游戏的说法」, 参考 docs/plans/ref/20261026-周末文案参考.md):
 ##   先报战绩, 再说这一场之后的处境。关键节点换说法(荒野乱斗「再输一场，您就会被淘汰出局」/ 炉石「再赢得{0}场对战」)。
-##   出局那一句不写「出局 / 失败」, 写「到此结束」(商业游戏结果页的通行写法)。
+##   结束那一句不写「出局 / 失败」, 写「本周闯关赛已结束」(荒野乱斗 / 皇室战争结果页「挑战结束」)。
 static func gauntlet_settle_line(w: int, l: int) -> String:
 	var st: String = gauntlet_state(w, l)
 	var head: String = "闯关赛战绩 %s，" % gauntlet_label(w, l)
 	if st == GAUNTLET_IN:
-		return head + "你已晋级周日决赛日。"
+		return head + "已晋级周日决赛日。"
 	if st == GAUNTLET_OUT:
-		return head + "你本周的闯关赛到此结束。"
+		return head + "本周闯关赛已结束。"
 	var need_w: int = GAUNTLET_WINS_IN - maxi(0, w)
 	var need_l: int = GAUNTLET_LOSSES_OUT - maxi(0, l)
 	if need_w == 1 and need_l == 1:
-		return head + "下一场决定去留：胜则晋级决赛日，负则出局。"
+		return head + "下一场胜利即晋级决赛日，失败即淘汰。"
 	if need_w == 1:
-		return head + "再胜一场即可晋级决赛日。"
+		return head + "再胜 1 场即可晋级决赛日。"
 	if need_l == 1:
-		return head + "再负一场，本周闯关赛即结束。"
-	return head + "再胜 %d 场晋级决赛日，再负 %d 场出局。" % [need_w, need_l]
+		return head + "再负 1 场即淘汰。"
+	return head + "再胜 %d 场晋级决赛日，再负 %d 场淘汰。" % [need_w, need_l]
 
 
 ## 这个战绩现在是什么状态。
@@ -489,12 +490,12 @@ static func phase_uses_ranked_quota(phase: String) -> bool:
 static func finals_block_msg(entered: bool, eligible: bool) -> String:
 	if entered:
 		## 进了决赛日: 他今天**有比赛**, 只是不在这个按钮后面 —— 要指路, 不是干挡。
-		return "今天是决赛日，你的比赛在对阵图中进行。"
+		return "今日决赛日，比赛在对阵图中进行。"
 	if eligible:
 		## 打过闯关赛但没打进 —— **不能说「没晋级」**, 周一~五刚夸过他「你已晋级」。
-		return "今天是决赛日，你本周止步闯关赛，可以观看决赛日的比赛。新一轮积分赛下周二开始。"
+		return "今日决赛日。本周止步闯关赛，可观战。下一轮积分赛：下周二开始。"
 	## 连闯关赛资格都没拿到。说清**下一次机会在哪**, 别让人以为坏了。
-	return "今天是决赛日，你本周未晋级闯关赛，可以观看决赛日的比赛。新一轮积分赛下周二开始。"
+	return "今日决赛日。本周未晋级闯关赛，可观战。下一轮积分赛：下周二开始。"
 
 
 ## 这个阶段要不要在赛程条上挂一句"还没上线"? 返回空串 = 照常, 不用额外说明。

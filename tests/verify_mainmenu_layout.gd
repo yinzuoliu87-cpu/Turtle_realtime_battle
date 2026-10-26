@@ -933,14 +933,15 @@ func _ready() -> void:
 				"新增 %d 个子节点, 文字「%s」" % [new_kids.size(), toast_txt])
 			var want_msg: String = _menu._msg_eliminated() if case_name == "出局" \
 				else _menu._msg_quota_full()
+			## 卡片在句号处换行(WeekCloseCard.sentence_lines) ⇒ 比对时去掉换行
 			_ok("⑬d ★%s: 飘的就是 _msg_*() 那一句(两个入口不许各写一份)" % case_name,
-				toast_txt == want_msg, "飘出「%s」· 函数给「%s」" % [toast_txt, want_msg])
+				toast_txt.replace("\n", "") == want_msg, "飘出「%s」· 函数给「%s」" % [toast_txt, want_msg])
 			## ★★没晋级的人**不许**被告知「能参加」闯关赛(他周六根本打不了), 而且要说下一次机会在下周。
 			##   2026-10-26 改: 原来连「观战」都不许提(那时观赛入口一行都没有); 现在全场赛况已经有了,
 			##   「周六可以观看闯关赛」是真会发生的事 ⇒ 判据只卡「能参加」这一维。写死, 不问被测函数。
 			##   ⚠ 前提: 上面把 `promoted` 置成了 false, 见那一行的分母断言。
 			_ok("⑬d ★%s: 没晋级 → 不许说能参加闯关赛, 要说下周" % case_name,
-				toast_txt.find("可以参加") < 0 and toast_txt.find("继续参赛") < 0 and toast_txt.find("下周") >= 0, toast_txt)
+				toast_txt.find("可参加") < 0 and toast_txt.find("继续参赛") < 0 and toast_txt.find("下周") >= 0, toast_txt)
 			for ch_c in new_kids:
 				_menu.remove_child(ch_c)
 				ch_c.queue_free()

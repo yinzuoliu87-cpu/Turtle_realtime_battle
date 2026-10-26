@@ -2690,7 +2690,7 @@ func _battle_block_msg(now: int = 0) -> String:
 	## ★周一休赛(用户原稿: 周一 = 休赛期·发奖/终榜公示; 2026-10-05「周一哪来的比赛」)。
 	##   原来周一照常能打积分赛且计入本周场次 —— 实现漏洞, 不是设计。
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_REST:
-		return "今天休赛，积分赛周二开始。"
+		return "今日休赛。积分赛周二开始。"
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_GAUNTLET \
 			and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return _msg_gauntlet_block(ts)

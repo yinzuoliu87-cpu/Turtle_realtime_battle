@@ -280,7 +280,7 @@ func _t_real_settle() -> void:
 	_ok("③ ★★第 4 胜(4-0)当场发省下的 2 场: 钱包 = 这一场 + 2 × 每场", int(GameState.gauntlet_backfill_paid) == 2
 		and cb == int(scene._last_reward) + 2 * int(P2C.GAUNTLET_BACKFILL_COINS),
 		"已发 %d 场 / 钱包 +%d / 这一场 %d" % [int(GameState.gauntlet_backfill_paid), cb, int(scene._last_reward)])
-	_ok("③ ★结算屏那一行把上限与省下的场次说出来", str(scene._hud._result_detail(GameState)).find("省下的 2 场照发奖励") >= 0,
+	_ok("③ ★结算屏那一行给「提前晋级奖励」并说清未进行的场次", str(scene._hud._result_detail(GameState)).find("未进行的 2 场按场发放") >= 0,
 		str(scene._hud._result_detail(GameState)))
 	GameState.gauntlet_backfill_paid = 0
 	GameState.promoted = false
@@ -298,7 +298,7 @@ func _t_real_settle() -> void:
 	scene._settle_season(false)          # 1-2 → 输 → 1-3 出局
 	var sub2: String = scene._hud._result_subtitle(false, GameState)
 	## ★2026-10-26 文案改成完整句子(用户「文案你学习商业游戏的说法」): 结果页不写「出局」, 写「到此结束」(荒野乱斗 / 皇室战争「挑战结束」)。
-	_ok("③ ★★打到出局那场说「本周的闯关赛到此结束」并带战绩", sub2.find("到此结束") >= 0 and sub2.find("1-3") >= 0, sub2)
+	_ok("③ ★★打到出局那场说「本周闯关赛已结束」并带战绩", sub2.find("本周闯关赛已结束") >= 0 and sub2.find("1-3") >= 0, sub2)
 	## ★★2026-10-04: 周日结算屏副标题。决赛局按决赛日结算后, 原来会落到积分赛那句「消耗 1 点生命」。
 	GameState.week_phase = P2C.PHASE_FINALS
 	GameState.lane_results = {"top": "lost"}

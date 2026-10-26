@@ -1277,26 +1277,24 @@ func _result_headline(won: bool, sealed: bool, gs) -> String:
 
 
 ## 副标题下面那一行小字: 下一步去哪 / 什么时候(只有闯关赛有, 其余返回 "")。
-##   晋级: 周日几点开打(按设备时区, 用户 10-26「根据机子的时间去显示正确时间」)+ 没打的场次之后会化成什么;
-##   到此结束: 周日可以观战、下周二新一轮; 还在打: 闯关赛不消耗生命(周六输了以为掉命, 2026-10-03 实操 S3)。
+##   晋级: 周日几点开打(按设备时区, 用户 10-26「根据机子的时间去显示正确时间」)+ 提前晋级奖励;
+##   已结束: 决赛日开放观战、下周二新一轮; 还在打: 闯关赛不消耗生命(周六输了以为掉命, 2026-10-03 实操 S3)。
 func _result_detail(gs) -> String:
 	if gs == null or not battle._had_season or str(battle._last_settle_kind) != _P2C_HUD.SETTLE_GAUNTLET:
 		return ""
-	var w: int = int(gs.gauntlet_wins)
-	var l: int = int(gs.gauntlet_losses)
 	var st: String = str(gs.gauntlet_state())
 	if st == _P2C_HUD.GAUNTLET_IN:
 		var seat: int = _P2C_HUD.finals_seat_ts(_P2C_HUD.week_anchor_utc(int(_P2C_HUD.now_utc())))
-		var t: String = "决赛日%s %s 开始，你的比赛在对阵图中进行。" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
-		## 「省下的场次」第 4 胜当场就发了(GameState.gauntlet_promote_bonus) ⇒ 读已发的账, 把为什么有这几场说出来:
-		##   玩家心里只有「4 胜晋级 3 负出局」, 不知道最多 6 场(用户 10-26「他是不明白为什么会有未打完的2场的」)。
+		var t: String = "决赛日%s：%s 开始。" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
+		## 提前晋级奖励第 4 胜当场就发了(GameState.gauntlet_promote_bonus) ⇒ 读已发的账, 括号里说清这几场从哪来:
+		##   玩家心里只有「4 胜晋级 3 负淘汰」, 不知道闯关赛共 6 场(用户 10-26「他是不明白为什么会有未打完的2场的」)。
 		##   两句各占一行(窄屏 960 实拍: 连成一句会在「深海币」中间折断)。
 		var gb: Dictionary = gs.gauntlet_backfill_summary() if gs.has_method("gauntlet_backfill_summary") else {}
 		if int(gb.get("games", 0)) > 0:
-			t += "\n" + _P2C_HUD.gauntlet_bonus_line(w + l, int(gb["games"]), int(gb["coins"]), int(gb["xp"]))
+			t += "\n" + _P2C_HUD.gauntlet_bonus_line(int(gb["games"]), int(gb["coins"]), int(gb["xp"]))
 		return t
 	if st == _P2C_HUD.GAUNTLET_OUT:
-		return "周日决赛日可以观战，新一轮积分赛下周二开始。"
+		return "决赛日开放观战。下一轮积分赛：下周二开始。"
 	return "闯关赛不消耗生命。"
 
 

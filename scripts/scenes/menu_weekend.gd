@@ -227,14 +227,14 @@ func gauntlet_ahead() -> bool:
 ##   参考 docs/plans/ref/20261026-周末文案参考.md: 炉石「本次竞技模式即将结束，当前无法入场。」/
 ##   英雄联盟「这个战队目前没有参加冠军杯赛的资格。」—— 没有一家用「·」串短语)。
 ##   「下周一重置」→「新一轮积分赛下周二开始」: 周一是休赛日, 下一次能打的是周二。
-const MSG_NEXT_WEEK := "新一轮积分赛下周二开始。"
+const MSG_NEXT_WEEK := WeekCloseCard.TXT_NEXT_WEEK
 
 func ahead_tail() -> String:
 	if not gauntlet_ahead():
 		return ""
 	if GameState.gauntlet_eligible():
-		return "你已晋级周六闯关赛，周六可以继续参赛。"
-	return "胜场已过晋级线，可以参加周六闯关赛。"
+		return "已晋级闯关赛，周六可继续参赛。"
+	return "胜场已达晋级线，可参加周六闯关赛。"
 
 
 func msg_eliminated() -> String:
@@ -242,16 +242,16 @@ func msg_eliminated() -> String:
 	##   原稿的终榜排序是「胜场 > 余命 > 横扫」, 余命只是第二键, 不是门槛。
 	var tail: String = ahead_tail()
 	if tail != "":
-		return "你的积分赛生命已经用完，但%s" % tail
-	return "你本周的 %d 条生命已经用完，无法再参加积分赛。周六可以观看闯关赛，%s" % [int(_P2.HEARTS_MAX), MSG_NEXT_WEEK]
+		return "积分赛生命已耗尽。%s" % tail
+	return "生命已耗尽，本周无法参加积分赛。闯关赛周六开放观战。%s" % MSG_NEXT_WEEK
 
 
 func msg_quota_full() -> String:
 	var q: int = int(_P2.RANKED_QUOTA)
 	var tail: String = ahead_tail()
 	if tail != "":
-		return "本周积分赛的 %d 场已经全部打完。%s" % [q, tail]
-	return "本周积分赛的 %d 场已经全部打完，未能晋级闯关赛。周六可以观看闯关赛，%s" % [q, MSG_NEXT_WEEK]
+		return "本周积分赛 %d 场已全部完成。%s" % [q, tail]
+	return "本周积分赛 %d 场已全部完成，未晋级闯关赛。闯关赛周六开放观战。%s" % [q, MSG_NEXT_WEEK]
 
 
 ## 周六点「开打」被拦住时说什么。返回空串 = 没拦, 可以开。
@@ -271,16 +271,16 @@ func msg_gauntlet_block(ts: int = 0) -> String:
 		## ★2026-10-03 周六实操 S13: 14 胜 / 16 胜的人被告知「打够 11 胜就能来」——
 		##   晋级是「胜场过线 **且** 没淘汰」(gauntlet_line_reached), 这句原来不分是哪一条没过。
 		if GameState.is_eliminated() and int(GameState.season_wins) >= int(_P2.PROMOTE_WINS):
-			return "你本周的积分赛生命已经用完，未能晋级闯关赛。可以观看其他玩家的闯关赛，%s" % MSG_NEXT_WEEK
-		return "闯关赛只对积分赛 %d 胜晋级的玩家开放。你本周未晋级，可以观看其他玩家的闯关赛，%s" % [int(
+			return "积分赛生命已耗尽，本周未晋级闯关赛，可观战。%s" % MSG_NEXT_WEEK
+		return "闯关赛仅限积分赛 %d 胜晋级的玩家参加。本周未晋级，可观战。%s" % [int(
 			_P2.PROMOTE_WINS), MSG_NEXT_WEEK]
 	var st: String = GameState.gauntlet_state()
 	if st == _P2.GAUNTLET_IN:
 		## 明天(周日)几点开打: 按玩家设备时区说(用户 2026-10-26「根据机子的时间去显示正确时间」)。
-		return "你以 %s 晋级周日决赛日，闯关赛已经打完。决赛日%s %s 开始。" % [_P2.gauntlet_label(
+		return "已晋级决赛日（%s），闯关赛已完成。决赛日%s：%s 开始。" % [_P2.gauntlet_label(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)), _P2.STAGE_GROUP,
 			_P2.local_wd_hhmm(_P2.finals_seat_ts(_P2.week_anchor_utc(ts if ts > 0 else menu._now_ts())))]
 	if st == _P2.GAUNTLET_OUT:
-		return "你本周的闯关赛已经结束（%s）。周日决赛日可以观战，%s" % [_P2.gauntlet_label(
+		return "本周闯关赛已结束（%s）。决赛日开放观战。%s" % [_P2.gauntlet_label(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)), MSG_NEXT_WEEK]
 	return ""

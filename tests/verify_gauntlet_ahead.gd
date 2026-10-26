@@ -695,6 +695,6 @@ func _block_text(mm: Node) -> String:
 	return t
 
 
-## 这句话是不是在告诉他「周六能参加」(不是「可以观看」)。
+## 这句话是不是在告诉他「周六能参加」(不是「可观战」)。
 func _says_can_play(t: String) -> bool:
-	return t.find("可以参加") >= 0 or t.find("继续参赛") >= 0
+	return t.find("可参加") >= 0 or t.find("继续参赛") >= 0

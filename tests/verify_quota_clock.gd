@@ -280,7 +280,7 @@ func _ready() -> void:
 		var blk: String = str(scene._battle_block_msg(pin))
 		var want_block: bool = _gs.ranked_quota_full(pin)
 		_ok("② [%s] 「开始战斗」那句话提不提配额, 也跟同一天" % tag,
-			(blk.find("场已经全部打完") >= 0) == want_block,   # 2026-10-26 文案改完整句子:「本周积分赛的 N 场已经全部打完」
+			(blk.find("场已全部完成") >= 0) == want_block,   # 2026-10-26 文案:「本周积分赛 N 场已全部完成」
 			"拦=「%s」· 打满=%s" % [blk, str(want_block)])
 
 		# ── ④(续) 传了入参之后**一次都不许再读钟**

@@ -699,7 +699,7 @@ func _t_backfill_visible() -> void:
 	var d0: Dictionary = wcc.spec(wcc.KIND_RANKED_IN, _gs, sat)
 	var s0: String = "".join(PackedStringArray(d0["body"]))
 	_ok("⑪ ★★没化成过的人卡上**不许**出现这句话与奖励行(否则是恒真式 + 占位噪声)",
-		s0.find("照发") < 0 and int(d0["coins"]) == 0 and int(d0["xp"]) == 0, s0)
+		s0.find("未进行") < 0 and int(d0["coins"]) == 0 and int(d0["xp"]) == 0, s0)
 
 	## ── ①② 正题: 化成过 4 场的人, 卡上那三个数必须等于账本 ──
 	_gs.backfill_paid = 4
@@ -708,9 +708,9 @@ func _t_backfill_visible() -> void:
 		int(bf["games"]) == 4 and int(bf["coins"]) > 0 and int(bf["xp"]) > 0, str(bf))
 	var d1: Dictionary = wcc.spec(wcc.KIND_RANKED_IN, _gs, sat)
 	var s1: String = "".join(PackedStringArray(d1["body"]))
-	## ★2026-10-26 词从「化成」改成「照发奖励」, 并先说上限(用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」)
+	## ★2026-10-26 改成「未进行场次奖励（积分赛每周 16 场，未进行的 N 场按场发放）」(用户「他是不明白为什么会有未打完的2场的」+ 不许口语)
 	_ok("⑪ ★★★BACKFILL_VISIBLE: 卡上真有那句话(走产品自己拼的那张卡, 不是我拼的)",
-		s1.find("照发") >= 0 and s1.find("最多 %d 场" % int(_P2.RANKED_QUOTA)) >= 0, s1)
+		s1.find("未进行") >= 0 and s1.find("每周 %d 场" % int(_P2.RANKED_QUOTA)) >= 0, s1)
 	_ok("⑪ ★★★金额与账本同源: 场数在正文里、币/经验在奖励行且与 `backfill_summary()` 一致",
 		s1.find("%d 场" % int(bf["games"])) >= 0
 			and int(d1["coins"]) == int(bf["coins"])

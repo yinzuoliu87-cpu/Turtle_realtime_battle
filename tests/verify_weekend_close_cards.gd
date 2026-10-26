@@ -154,8 +154,8 @@ func _t_amounts() -> void:
 	var body: String = "".join(PackedStringArray(d["body"]))
 	_ok("② 正文报战绩(12 胜 1 负)与场数(4 场)", body.find("12 胜 1 负") >= 0 and body.find("4 场") >= 0, body)
 	## ★用户 10-26「玩家比如4-0，他是不明白为什么会有未打完的2场的」⇒ 句子里先把上限说出来
-	_ok("② ★正文把上限说出来(每周最多 %d 场), 才说没打的几场照发" % int(P2.RANKED_QUOTA),
-		body.find("最多 %d 场" % int(P2.RANKED_QUOTA)) >= 0 and body.find("照发") >= 0, body)
+	_ok("② ★正文把上限说出来(每周 %d 场), 再说未进行的几场按场发放" % int(P2.RANKED_QUOTA),
+		body.find("每周 %d 场" % int(P2.RANKED_QUOTA)) >= 0 and body.find("未进行的 4 场按场发放") >= 0, body)
 	_ok("② ★闯关赛截止时刻按设备时区说(local_wd_hhmm)", body.find(P2.local_wd_hhmm(P2.gauntlet_close_ts(MON))) >= 0, body)
 	_ok("② 有奖励 ⇒ 主按钮「领取」", str((d["primary"] as Array)[0]) == WCC.TXT_CLAIM)
 	## 打满 16 场的晋级者: 没有化成的场次 ⇒ 没有奖励行、按钮「好的」
@@ -191,7 +191,7 @@ func _t_amounts() -> void:
 	_ok("② 没晋级(胜场不够): 报战绩 + 还差几胜", o.find("9 胜 5 负") >= 0 and o.find("还差 %d 胜" % (int(P2.PROMOTE_WINS) - 9)) >= 0, o)
 	_fresh(false, 14, 8, 0)
 	var o2: String = "".join(PackedStringArray(WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)["body"]))
-	_ok("② 没晋级(命用完): 说生命已经用完", o2.find("生命已经用完") >= 0 and o2.find("8 胜 6 负") >= 0, o2)
+	_ok("② 没晋级(命用完): 说生命已耗尽", o2.find("生命已耗尽") >= 0 and o2.find("8 胜 6 负") >= 0, o2)
 	var od: Dictionary = WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)
 	_ok("② 没晋级的卡给「观战」(周六去全场赛况)", (od["primary"] as Array) == [WCC.TXT_WATCH, WCC.DOOR_BOARD], str(od["primary"]))
 
@@ -217,13 +217,13 @@ func _t_coinfly_pure() -> void:
 func _t_settle_copy() -> void:
 	print("── ⑤ 闯关赛结算屏 ──")
 	var cases := [
-		[0, 1, "再胜 4 场晋级决赛日，再负 2 场出局"],
-		[1, 1, "再胜 3 场晋级决赛日，再负 2 场出局"],
-		[3, 0, "再胜一场即可晋级决赛日"],
-		[2, 2, "再负一场，本周闯关赛即结束"],
-		[3, 2, "下一场决定去留"],
-		[4, 1, "你已晋级周日决赛日"],
-		[1, 3, "你本周的闯关赛到此结束"],
+		[0, 1, "再胜 4 场晋级决赛日，再负 2 场淘汰"],
+		[1, 1, "再胜 3 场晋级决赛日，再负 2 场淘汰"],
+		[3, 0, "再胜 1 场即可晋级决赛日"],
+		[2, 2, "再负 1 场即淘汰"],
+		[3, 2, "下一场胜利即晋级决赛日，失败即淘汰"],
+		[4, 1, "已晋级周日决赛日"],
+		[1, 3, "本周闯关赛已结束"],
 	]
 	var bad: Array = []
 	for c in cases:
@@ -242,12 +242,12 @@ func _t_settle_copy() -> void:
 	_ok("⑤ ★晋级那一局的小字说周日几点开打(设备时区)", str(hud._result_detail(GameState)).find(P2.STAGE_GROUP) >= 0
 		and str(hud._result_detail(GameState)).find(":") >= 0, str(hud._result_detail(GameState)))
 	var det: String = str(hud._result_detail(GameState))
-	_ok("⑤ ★★4-1 ⇒ 小字先说「最多 %d 场」, 再说用了 5 场、省下的 1 场照发(用户「他是不明白为什么会有未打完的2场的」)" % int(P2.GAUNTLET_QUOTA),
-		det.find("最多 %d 场" % int(P2.GAUNTLET_QUOTA)) >= 0 and det.find("用 5 场") >= 0 and det.find("省下的 1 场照发奖励") >= 0
+	_ok("⑤ ★★4-1 ⇒ 小字给「提前晋级奖励」并在括号里说清「共 %d 场 / 未进行的 1 场按场发放」(用户「他是不明白为什么会有未打完的2场的」)" % int(P2.GAUNTLET_QUOTA),
+		det.find("提前晋级奖励") >= 0 and det.find("共 %d 场" % int(P2.GAUNTLET_QUOTA)) >= 0 and det.find("未进行的 1 场按场发放") >= 0
 			and det.find("+%d" % int(P2.GAUNTLET_BACKFILL_COINS)) >= 0, det)
 	GameState.gauntlet_backfill_paid = 0
 	GameState.gauntlet_losses = 2
-	_ok("⑤ 对照: 4-2(6 场都打了)⇒ 没有省下的场次那一句", str(hud._result_detail(GameState)).find("省下") < 0, str(hud._result_detail(GameState)))
+	_ok("⑤ 对照: 4-2(6 场都打了)⇒ 没有提前晋级奖励那一句", str(hud._result_detail(GameState)).find("提前晋级奖励") < 0, str(hud._result_detail(GameState)))
 	GameState.gauntlet_losses = 1
 	GameState.gauntlet_wins = 3
 	GameState.gauntlet_losses = 1
@@ -312,12 +312,38 @@ func _t_copy_rules() -> void:
 	texts.append(P2.finals_block_msg(true, true))
 	texts.append(P2.finals_block_msg(false, true))
 	texts.append(P2.finals_block_msg(false, false))
+	## 结算句(七种战绩) + 提前晋级奖励那一行
+	for wl in [[0, 1], [1, 1], [3, 0], [2, 2], [3, 2], [4, 1], [1, 3]]:
+		texts.append(P2.gauntlet_settle_line(int(wl[0]), int(wl[1])))
+	texts.append(P2.gauntlet_bonus_line(2, 16, 4))
+	## 开始战斗 / 商店被拦那几句(主菜单那一层的真函数, 摆三种状态)
+	var mm = MENU.new()
+	GameState.hearts = 0
+	GameState.season_wins = 5
+	GameState.promoted = false
+	texts.append(str(mm._msg_eliminated()))
+	texts.append(str(mm._msg_quota_full()))
+	texts.append(str(mm._msg_gauntlet_block(MON + 5 * DAY)))
+	GameState.season_wins = 12
+	GameState.hearts = 3
+	GameState.promoted = true
+	texts.append(str(mm._msg_eliminated()))
+	texts.append(str(mm._msg_quota_full()))
+	GameState.gauntlet_wins = 4
+	texts.append(str(mm._msg_gauntlet_block(MON + 5 * DAY)))
+	GameState.gauntlet_wins = 1
+	GameState.gauntlet_losses = 3
+	texts.append(str(mm._msg_gauntlet_block(MON + 5 * DAY)))
+	mm.free()
+	## ★2026-10-26 用户「我还需要怎么强调商业游戏的描述和口语？」⇒ 口语词与「你 + 动词」一律不许(memory fb-no-colloquial-copy):
+	##   这一批里实拍过的口语: 你用 4 场就晋级了 / 省下的 / 照发 / 看看 / 没打的 / 已经用完 / 到此结束。
+	var banned := ["补发", "折算", "·", "您", "你", "照发", "省下", "看看", "打完", "没打", "已经用完", "到此结束", "还没打"]
 	var bad: Array = []
 	for t in texts:
-		for w in ["补发", "折算", "·", "您"]:
+		for w in banned:
 			if str(t).find(w) >= 0:
 				bad.append("「%s」含「%s」" % [t, w])
-	_ok("⑧ ★卡与拦截句不含「补发 / 折算 / · / 您」(分母 %d 句)" % texts.size(), bad.is_empty() and texts.size() >= 19, str(bad))
+	_ok("⑧ ★★收盘卡 / 拦截句 / 结算句不含口语词与「你」(分母 %d 句)" % texts.size(), bad.is_empty() and texts.size() >= 33, str(bad))
 
 
 # ③ ─────────────────────────────────────────────────────────────
@@ -445,7 +471,7 @@ func _t_block_card() -> void:
 	var bc: Node = mm.get_node_or_null(str(mm.BLOCK_CARD_NAME))
 	_ok("⑥ ★被拦 ⇒ 弹一张卡(不是飘字)", bc != null)
 	var body := bc.find_child("Body0", true, false) as Label if bc != null else null
-	_ok("⑥ ★卡上那句 == _battle_block_msg(同一处)", body != null and body.text == msg, body.text if body != null else "无")
+	_ok("⑥ ★卡上那句 == _battle_block_msg(同一处; 卡片在句号处换行, 比对时去掉换行)", body != null and body.text.replace("\n", "") == msg, body.text if body != null else "无")
 	var prim := bc.find_child("Primary", true, false) as Button if bc != null else null
 	_ok("⑥ ★周末没资格 ⇒ 主按钮「观战」", prim != null and prim.text == WCC.TXT_WATCH, prim.text if prim != null else "无")
 	_ok("⑥ ★模式卡锁着 ⇒ 第三格是去处「观看全场赛况」, 不是收盘倒计时", str(mm.mode_card_lines(sat)[2]) == str(mm.MODE_WATCH_BOARD), str(mm.mode_card_lines(sat)))

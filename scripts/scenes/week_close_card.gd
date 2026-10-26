@@ -9,7 +9,10 @@ class_name WeekCloseCard
 ##   闯关赛收盘(周日 17:30 UTC)后: 4 胜 ⇒ GAUNTLET_IN(决赛日几点; 省下的场次第 4 胜当场就发了) / 打过但没打完 ⇒ GAUNTLET_CUT
 ## ★文案照商业游戏中文原文的写法(docs/plans/ref/20261026-周末文案参考.md): 标题只说发生了什么,
 ##   正文第一句复述结果带数字、第二句说下一步去哪; 奖励单独一行「名称 +数量」; 不用「补发 / 折算」(那是运营词)。
-##   ★2026-10-26 用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」⇒ 把上限说出来:「每周最多 16 场，没打的 N 场照发奖励」。
+##   ★2026-10-26 用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」⇒ 把上限说出来(括号里: 每周 16 场, 未进行的 N 场按场发放)。
+##   ★★同日用户「我还需要怎么强调商业游戏的描述和口语？」⇒ 不用「你 + 口语动词」(「你用 4 场就晋级了」「省下的」「照发」「看看」「没打的」):
+##     标题只写状态; 正文是数据式短陈述(「本周积分赛战绩 12 胜 1 负，晋级周六闯关赛。」); 奖励给名词标签, 规则放括号里;
+##     下一步写成「下一轮积分赛：下周二开始。」(memory fb-no-colloquial-copy)。
 ## ★金额一个数都不自己算: 读 `backfill_summary()` —— 与真发钱那个函数同一份账。
 ## ★时刻一律按玩家设备时区说(用户「根据机子的时间去显示正确时间」): `phase2_config.local_wd_hhmm`。
 ## ★样子与教程选择框同一套(TutorialChoice): 压暗 + panel-frame 九宫格 + `UISkin.card_button`(卡片里不用木牌按钮)。
@@ -32,6 +35,8 @@ const TXT_OK := "好的"
 const TXT_CLOSE := "关闭"
 const TXT_WATCH := "观战"
 const TXT_BRACKET := "查看对阵图"
+## 下一次机会(周一休赛 ⇒ 下一轮积分赛是周二)。收盘卡与拦截提示共用这一句。
+const TXT_NEXT_WEEK := "下一轮积分赛：下周二开始。"
 const BODY_W := 640.0
 const BTN_SIZE := Vector2(168, 81)
 
@@ -87,12 +92,11 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			var bf: Dictionary = gs.backfill_summary()
 			var n: int = int(bf.get("games", 0))
 			d["title"] = "积分赛已晋级"
-			var p1: String = "恭喜，你在本周积分赛中取得 %d 胜 %d 负，晋级闯关赛。" % [r.x, r.y]
+			d["body"] = ["本周积分赛战绩 %d 胜 %d 负，晋级周六闯关赛。" % [r.x, r.y]]
 			if n > 0:
-				p1 += "积分赛每周最多 %d 场，没打的 %d 场照发奖励。" % [int(_P2.RANKED_QUOTA), n]
-			d["body"] = [p1]
+				(d["body"] as Array).append("未进行场次奖励（积分赛每周 %d 场，未进行的 %d 场按场发放）" % [int(_P2.RANKED_QUOTA), n])
 			if now < g_close:
-				(d["body"] as Array).append("闯关赛 %d 胜晋级决赛日、%d 负出局，%s 截止。" % [
+				(d["body"] as Array).append("闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。" % [
 					int(_P2.GAUNTLET_WINS_IN), int(_P2.GAUNTLET_LOSSES_OUT), _P2.local_wd_hhmm(g_close)])
 			if n > 0:
 				d["coins"] = int(bf.get("coins", 0))
@@ -102,34 +106,33 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			var r2 := ranked_record(gs)
 			d["title"] = "积分赛已结束"
 			if bool(gs.is_eliminated()):
-				d["body"] = ["本周积分赛你的 %d 条生命已经用完，最终战绩 %d 胜 %d 负，未能晋级闯关赛。" % [
-					int(_P2.HEARTS_MAX), r2.x, r2.y]]
+				d["body"] = ["本周积分赛战绩 %d 胜 %d 负，生命已耗尽，未晋级闯关赛。" % [r2.x, r2.y]]
 			else:
-				d["body"] = ["本周积分赛你取得 %d 胜 %d 负，距晋级线还差 %d 胜，未能晋级闯关赛。" % [
+				d["body"] = ["本周积分赛战绩 %d 胜 %d 负，距晋级还差 %d 胜，未晋级闯关赛。" % [
 					r2.x, r2.y, maxi(1, int(_P2.PROMOTE_WINS) - r2.x)]]
 			if now < g_close:
-				(d["body"] as Array).append("闯关赛和决赛日都可以观战，看看晋级的玩家怎样搭配阵容。新一轮积分赛下周二开始。")
+				(d["body"] as Array).append("闯关赛与决赛日开放观战。" + TXT_NEXT_WEEK)
 				d["primary"] = [TXT_WATCH, DOOR_BOARD]
 			else:
-				(d["body"] as Array).append("决赛日可以观战，看看晋级的玩家怎样搭配阵容。新一轮积分赛下周二开始。")
+				(d["body"] as Array).append("决赛日开放观战。" + TXT_NEXT_WEEK)
 				d["primary"] = [TXT_WATCH, DOOR_BRACKET]
 			d["secondary"] = [TXT_CLOSE, DOOR_NONE]
 		KIND_GAUNTLET_IN:
 			## ★2026-10-26 「省下的场次」在第 4 胜那一刻就发了、结算屏上说过(GameState.gauntlet_promote_bonus),
 			##   这张卡只提醒决赛日几点开始, 不再发奖励(否则同一笔钱领两遍的样子)。
 			d["title"] = "闯关赛已晋级"
-			d["body"] = ["恭喜，你以 %d 胜 %d 负晋级周日决赛日。" % [int(gs.gauntlet_wins), int(gs.gauntlet_losses)]]
+			d["body"] = ["闯关赛战绩 %d 胜 %d 负，晋级周日决赛日。" % [int(gs.gauntlet_wins), int(gs.gauntlet_losses)]]
 			if now < seat:
-				(d["body"] as Array).append("决赛日%s %s 开始，你的比赛在对阵图中进行。" % [_P2.STAGE_GROUP, _P2.local_wd_hhmm(seat)])
+				(d["body"] as Array).append("决赛日%s：%s 开始。" % [_P2.STAGE_GROUP, _P2.local_wd_hhmm(seat)])
 			else:
-				(d["body"] as Array).append("决赛日已经开始，你的比赛在对阵图中进行。")
+				(d["body"] as Array).append("决赛日已开始，比赛在对阵图中进行。")
 			d["primary"] = [TXT_BRACKET, DOOR_BRACKET]
 			d["secondary"] = [TXT_CLOSE, DOOR_NONE]
 		KIND_GAUNTLET_CUT:
 			d["title"] = "闯关赛已截止"
-			d["body"] = ["闯关赛已在 %s 截止，你的最终战绩 %d 胜 %d 负，未能晋级决赛日。" % [
+			d["body"] = ["闯关赛已于%s 截止，最终战绩 %d 胜 %d 负，未晋级决赛日。" % [
 				_P2.local_wd_hhmm(g_close), int(gs.gauntlet_wins), int(gs.gauntlet_losses)],
-				"决赛日可以观战，新一轮积分赛下周二开始。"]
+				"决赛日开放观战。" + TXT_NEXT_WEEK]
 			d["primary"] = [TXT_WATCH, DOOR_BRACKET]
 			d["secondary"] = [TXT_CLOSE, DOOR_NONE]
 	return d
@@ -176,12 +179,13 @@ static func open(host: Node, d: Dictionary, on_done: Callable) -> Control:
 		var l := Label.new()
 		l.name = "Body%d" % bi
 		bi += 1
-		l.text = str(para)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.add_theme_font_size_override("font_size", 22 if bi == 1 else 20)
 		l.add_theme_color_override("font_color", Color("#f2ead8") if bi == 1 else Color("#b9c4d2"))
-		l.custom_minimum_size = Vector2(balanced_w(l, str(para), 22 if bi == 1 else 20), 0)
+		var lay: Array = sentence_lines(l, str(para), 22 if bi == 1 else 20)
+		l.text = str(lay[0])
+		l.custom_minimum_size = Vector2(float(lay[1]), 0)
 		vb.add_child(l)
 	var coin_icon: Control = null
 	if int(d.get("coins", 0)) > 0 or int(d.get("xp", 0)) > 0:
@@ -247,17 +251,39 @@ static func open(host: Node, d: Dictionary, on_done: Callable) -> Control:
 	return ov
 
 
-## 正文宽度: 一行放得下就按一行的宽; 放不下就按「行数均分」的宽折(+ 两个字的余量),
-##   不让最后一行只剩一两个字(实拍:「未能晋级闯关 / 赛。」)。上限 BODY_W。
-static func balanced_w(l: Label, txt: String, fs: int) -> float:
+## 正文怎么折行: 返回 [要显示的字, 标签宽]。
+##   ① 一行放得下 ⇒ 一行;
+##   ② 放不下 ⇒ 在句号处换行(每句各占一行, 句子短的拼在一起), 不在词中间断开(实拍:「本周未晋 / 级」);
+##   ③ 某一句本身就放不下 ⇒ 按「行数均分」的宽交给引擎折(+ 两个字的余量), 不让最后一行只剩一两个字(实拍:「未能晋级闯关 / 赛。」)。上限 BODY_W。
+static func sentence_lines(l: Label, txt: String, fs: int) -> Array:
 	var f: Font = l.get_theme_font("font")
 	if f == null:
-		return BODY_W
+		return [txt, BODY_W]
 	var w: float = f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if w <= BODY_W:
-		return maxf(360.0, ceilf(w) + 4.0)
-	var n: int = int(ceil(w / BODY_W))
-	return minf(BODY_W, ceilf(w / float(n)) + fs * 2.0)
+		return [txt, maxf(360.0, ceilf(w) + 4.0)]
+	var parts: PackedStringArray = txt.split("。", false)
+	var sents: Array = []
+	for i in range(parts.size()):
+		sents.append(parts[i] + ("。" if i < parts.size() - 1 or txt.ends_with("。") else ""))
+	var lines: Array = []
+	var cur := ""
+	var widest := 0.0
+	for s in sents:
+		if f.get_string_size(str(s), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > BODY_W:
+			var n: int = int(ceil(w / BODY_W))
+			return [txt, minf(BODY_W, ceilf(w / float(n)) + fs * 2.0)]
+		var tryline: String = cur + str(s)
+		if cur != "" and f.get_string_size(tryline, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > BODY_W:
+			lines.append(cur)
+			cur = str(s)
+		else:
+			cur = tryline
+	if cur != "":
+		lines.append(cur)
+	for ln in lines:
+		widest = maxf(widest, f.get_string_size(str(ln), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+	return ["\n".join(PackedStringArray(lines)), maxf(360.0, ceilf(widest) + 4.0)]
 
 
 ## 奖励行一格: 名称(小字) 在上、数量(大字) 在下。
