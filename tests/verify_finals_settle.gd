@@ -266,6 +266,25 @@ func _t_real_settle() -> void:
 	scene._settle_season(true)
 	_ok("③ ★分母: 周日那一场不传周六快照", int(_BE.gauntlet_uploads) == u2)
 
+	## ★2026-10-26 第 4 胜当场发「省下的场次」—— 走真结算入口 `_settle_season`(用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」)
+	GameState.week_phase = P2C.PHASE_GAUNTLET
+	GameState.lane_results = {"top": "won"}
+	GameState.promoted = true
+	GameState.gauntlet_wins = 3
+	GameState.gauntlet_losses = 0
+	GameState.gauntlet_backfill_paid = 0
+	GameState.hearts = 3
+	var cb0: int = int(GameState.meta_deepsea_coins)
+	scene._settle_season(true)           # 3-0 → 赢 → 4-0
+	var cb: int = int(GameState.meta_deepsea_coins) - cb0
+	_ok("③ ★★第 4 胜(4-0)当场发省下的 2 场: 钱包 = 这一场 + 2 × 每场", int(GameState.gauntlet_backfill_paid) == 2
+		and cb == int(scene._last_reward) + 2 * int(P2C.GAUNTLET_BACKFILL_COINS),
+		"已发 %d 场 / 钱包 +%d / 这一场 %d" % [int(GameState.gauntlet_backfill_paid), cb, int(scene._last_reward)])
+	_ok("③ ★结算屏那一行把上限与省下的场次说出来", str(scene._hud._result_detail(GameState)).find("省下的 2 场照发奖励") >= 0,
+		str(scene._hud._result_detail(GameState)))
+	GameState.gauntlet_backfill_paid = 0
+	GameState.promoted = false
+
 	## ★2026-10-03 周六实操 S3/S17: 周六结算屏副标题。走真结算 → 真 HUD 函数。
 	GameState.week_phase = P2C.PHASE_GAUNTLET
 	GameState.lane_results = {"top": "lost"}

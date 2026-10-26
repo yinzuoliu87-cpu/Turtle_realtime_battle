@@ -141,6 +141,7 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	if int(st.get("gw", -1)) >= 0 and int(st.get("gl", -1)) >= 0:
 		gs.gauntlet_wins = int(st["gw"])
 		gs.gauntlet_losses = int(st["gl"])
+	gs.gauntlet_promote_bonus()   # 第 4 胜当场发「省下的场次」—— 放在服务端战绩覆盖之后(按定下来的战绩算, 不会多发)
 	if gs.is_eliminated():
 		reward = 0                        # 与 `_settle_season` 同一条: 出局那一局不发币(含战斗内铸币)
 	gs.meta_deepsea_coins += reward

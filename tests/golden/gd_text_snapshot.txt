@@ -418,6 +418,7 @@ scripts/gamedata/phase2_config.gd|lit|路人甲
 scripts/gamedata/phase2_config.gd|lit|进入决赛日
 scripts/gamedata/phase2_config.gd|lit|闯关赛
 scripts/gamedata/phase2_config.gd|lit|闯关赛战绩 %s，
+scripts/gamedata/phase2_config.gd|lit|闯关赛最多 %d 场，你用 %d 场就晋级了，省下的 %d 场照发奖励：深海币 +%d、经验 +%d。
 scripts/gamedata/phase2_config.gd|lit|龟
 scripts/gamedata/phase2_equip.gd|lit|双穿
 scripts/gamedata/phase2_equip.gd|lit|反伤
@@ -1340,7 +1341,6 @@ scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:关
 scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:开
 scripts/scenes/battle/battle_debug_arena.gd|text|选中: %s(%s)
 scripts/scenes/battle/battle_hud.gd|lit|%s · 不消耗生命 · 结果于下轮开播时公布
-scripts/scenes/battle/battle_hud.gd|lit|\n闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。
 scripts/scenes/battle/battle_hud.gd|lit|⏸ 编辑
 scripts/scenes/battle/battle_hud.gd|lit|▶ 开始
 scripts/scenes/battle/battle_hud.gd|lit|▼ 折叠
@@ -1990,11 +1990,11 @@ scripts/scenes/week_close_card.gd|lit|恭喜，你以 %d 胜 %d 负晋级周日�
 scripts/scenes/week_close_card.gd|lit|恭喜，你在本周积分赛中取得 %d 胜 %d 负，晋级闯关赛。
 scripts/scenes/week_close_card.gd|lit|本周积分赛你取得 %d 胜 %d 负，距晋级线还差 %d 胜，未能晋级闯关赛。
 scripts/scenes/week_close_card.gd|lit|本周积分赛你的 %d 条生命已经用完，最终战绩 %d 胜 %d 负，未能晋级闯关赛。
-scripts/scenes/week_close_card.gd|lit|本周还没打的 %d 场化成了下面的奖励。
 scripts/scenes/week_close_card.gd|lit|查看对阵图
 scripts/scenes/week_close_card.gd|lit|深海币
 scripts/scenes/week_close_card.gd|lit|积分赛已晋级
 scripts/scenes/week_close_card.gd|lit|积分赛已结束
+scripts/scenes/week_close_card.gd|lit|积分赛每周最多 %d 场，没打的 %d 场照发奖励。
 scripts/scenes/week_close_card.gd|lit|经验
 scripts/scenes/week_close_card.gd|lit|观战
 scripts/scenes/week_close_card.gd|lit|闯关赛 %d 胜晋级决赛日、%d 负出局，%s 截止。
@@ -2002,7 +2002,6 @@ scripts/scenes/week_close_card.gd|lit|闯关赛和决赛日都可以观战，看
 scripts/scenes/week_close_card.gd|lit|闯关赛已在 %s 截止，你的最终战绩 %d 胜 %d 负，未能晋级决赛日。
 scripts/scenes/week_close_card.gd|lit|闯关赛已截止
 scripts/scenes/week_close_card.gd|lit|闯关赛已晋级
-scripts/scenes/week_close_card.gd|lit|闯关赛还没打的 %d 场化成了下面的奖励。
 scripts/scenes/week_close_card.gd|lit|领取
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
 scripts/systems/equip/eq_blood_combo.gd|lit|护盾+

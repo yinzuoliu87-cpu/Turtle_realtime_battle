@@ -766,7 +766,7 @@ func backfill_gauntlet_quota() -> int:
 	return pay
 
 
-## 闯关赛「没打的场次化成了多少」—— 与 `backfill_summary()` 同构, 读 `backfill_gauntlet_quota()` 记下的同一份账。
+## 闯关赛「省下的场次照发了多少」—— 与 `backfill_summary()` 同构, 读 `backfill_gauntlet_quota()` 记下的同一份账。
 func gauntlet_backfill_summary() -> Dictionary:
 	var g: int = int(gauntlet_backfill_paid)
 	return {
@@ -776,7 +776,19 @@ func gauntlet_backfill_summary() -> Dictionary:
 	}
 
 
-## 闯关赛收盘(周日 17:30 UTC, 2026-10-26 前是周六 23:00)之后的惰性补算。返回实际补发场数。
+## 打出第 4 胜那一刻就发「提前晋级省下的场次」(2026-10-26 用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」)。
+## ★晋级之后不能再打闯关赛 ⇒ 这笔账在第 4 胜那一刻就定了, 没理由等到收盘:
+##   当场发 = 结算屏上就能把「闯关赛最多 6 场, 你用 4 场就晋级了, 省下的 2 场照发奖励」说清楚,
+##   周六就能拿去商店; 也顺带堵上「周日一次没开游戏就拿不到」那个口子(收盘那条惰性补算留作兜底)。
+## ★必须在战绩【定下来之后】调: 服务器裁判局会用服务端的 gw/gl 覆盖本地(`referee_watch`),
+##   在 `gauntlet_settle()` 里按本地战绩先发 ⇒ 本地 4-0 / 服务端 4-1 时多发一场且收不回。
+##   幂等(只补差额), 没晋级时是 0。返回这次发了几场。
+func gauntlet_promote_bonus() -> int:
+	return backfill_gauntlet_quota()
+
+
+## 闯关赛收盘(周日 17:30 UTC, 2026-10-26 前是周六 23:00)之后的惰性补算 —— 2026-10-26 起只是兜底
+## (正常在第 4 胜那一刻就由 `gauntlet_promote_bonus()` 发了)。返回实际补发场数。
 ## ★形态与 `settle_ranked_close()` 完全一样(下次打开游戏时补算) —— 离线版没有"收盘"这个事件。
 ## ★★有效窗口 = 周日 17:30 ~ 周日 23:59(**同一个自然周内**)。理由同积分赛那条:
 ##   周一换轮会清 `meta_deepsea_coins`, 跨周再补当场作废, 发了等于没发还让账对不上。

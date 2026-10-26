@@ -7370,6 +7370,7 @@ func _settle_season(won: bool) -> void:
 		##   ★整块记账写在 `GameState.gauntlet_settle()` 里(数据的主人那一层), 这里只调它并拿回币数 ——
 		##     理由同下面的 `dual_lane_was_sweep()` / `consume_ranked_quota()`。
 		_last_reward = gs.gauntlet_settle(won)
+		gs.gauntlet_promote_bonus()   # 第 4 胜当场发「省下的场次」(战绩此刻已定; 见 GameState 头注)
 		## ★★2026-10-03 这一块原来**错放在下面的 SETTLE_FINALS 分支里**(commit 969acf0a3 插入周日分支时把它挤过去了)
 		##   ⇒ 周六一份快照都没传过, 周六每一场都回落机器人(实操: 31 次拉取 31 次 0 份)。判据 verify_gauntlet_upload_branch。
 		## ★★E-A4 快照上传: **记完战绩之后**才传, 标签取的是打完这一场的新战绩 ——

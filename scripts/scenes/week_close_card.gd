@@ -6,10 +6,11 @@ class_name WeekCloseCard
 ##   「没晋级的你第一次进搞个弹窗？你设计一下」;「文案你学习商业游戏的说法」。
 ## 收盘之后第一次进主菜单弹, 每周每张各一次(存档 `close_card_ranked_wk` / `close_card_gauntlet_wk` 记弹过的那一周):
 ##   积分赛收盘(周五 23:00 UTC)后: 晋级 ⇒ RANKED_IN(没打的场次化成的奖励) / 没晋级且打过 ⇒ RANKED_OUT(去观战)
-##   闯关赛收盘(周日 17:30 UTC)后: 4 胜 ⇒ GAUNTLET_IN(化成的奖励 + 决赛日几点) / 打过但没打完 ⇒ GAUNTLET_CUT
+##   闯关赛收盘(周日 17:30 UTC)后: 4 胜 ⇒ GAUNTLET_IN(决赛日几点; 省下的场次第 4 胜当场就发了) / 打过但没打完 ⇒ GAUNTLET_CUT
 ## ★文案照商业游戏中文原文的写法(docs/plans/ref/20261026-周末文案参考.md): 标题只说发生了什么,
-##   正文第一句复述结果带数字、第二句说下一步去哪; 奖励单独一行「名称 +数量」; 不用「补发 / 折算」(那是运营词), 用游戏自己的「化成」。
-## ★金额一个数都不自己算: 积分赛读 `backfill_summary()`, 闯关赛读 `gauntlet_backfill_summary()` —— 与真发钱那两个函数同一份账。
+##   正文第一句复述结果带数字、第二句说下一步去哪; 奖励单独一行「名称 +数量」; 不用「补发 / 折算」(那是运营词)。
+##   ★2026-10-26 用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」⇒ 把上限说出来:「每周最多 16 场，没打的 N 场照发奖励」。
+## ★金额一个数都不自己算: 读 `backfill_summary()` —— 与真发钱那个函数同一份账。
 ## ★时刻一律按玩家设备时区说(用户「根据机子的时间去显示正确时间」): `phase2_config.local_wd_hhmm`。
 ## ★样子与教程选择框同一套(TutorialChoice): 压暗 + panel-frame 九宫格 + `UISkin.card_button`(卡片里不用木牌按钮)。
 
@@ -88,7 +89,7 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			d["title"] = "积分赛已晋级"
 			var p1: String = "恭喜，你在本周积分赛中取得 %d 胜 %d 负，晋级闯关赛。" % [r.x, r.y]
 			if n > 0:
-				p1 += "本周还没打的 %d 场化成了下面的奖励。" % n
+				p1 += "积分赛每周最多 %d 场，没打的 %d 场照发奖励。" % [int(_P2.RANKED_QUOTA), n]
 			d["body"] = [p1]
 			if now < g_close:
 				(d["body"] as Array).append("闯关赛 %d 胜晋级决赛日、%d 负出局，%s 截止。" % [
@@ -114,24 +115,16 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 				d["primary"] = [TXT_WATCH, DOOR_BRACKET]
 			d["secondary"] = [TXT_CLOSE, DOOR_NONE]
 		KIND_GAUNTLET_IN:
-			var gbf: Dictionary = gs.gauntlet_backfill_summary()
-			var gn: int = int(gbf.get("games", 0))
+			## ★2026-10-26 「省下的场次」在第 4 胜那一刻就发了、结算屏上说过(GameState.gauntlet_promote_bonus),
+			##   这张卡只提醒决赛日几点开始, 不再发奖励(否则同一笔钱领两遍的样子)。
 			d["title"] = "闯关赛已晋级"
-			var q1: String = "恭喜，你以 %d 胜 %d 负晋级周日决赛日。" % [int(gs.gauntlet_wins), int(gs.gauntlet_losses)]
-			if gn > 0:
-				q1 += "闯关赛还没打的 %d 场化成了下面的奖励。" % gn
-			d["body"] = [q1]
+			d["body"] = ["恭喜，你以 %d 胜 %d 负晋级周日决赛日。" % [int(gs.gauntlet_wins), int(gs.gauntlet_losses)]]
 			if now < seat:
 				(d["body"] as Array).append("决赛日%s %s 开始，你的比赛在对阵图中进行。" % [_P2.STAGE_GROUP, _P2.local_wd_hhmm(seat)])
 			else:
 				(d["body"] as Array).append("决赛日已经开始，你的比赛在对阵图中进行。")
-			if gn > 0:
-				d["coins"] = int(gbf.get("coins", 0))
-				d["xp"] = int(gbf.get("xp", 0))
-				d["primary"] = [TXT_CLAIM, DOOR_NONE]
-			else:
-				d["primary"] = [TXT_BRACKET, DOOR_BRACKET]
-				d["secondary"] = [TXT_CLOSE, DOOR_NONE]
+			d["primary"] = [TXT_BRACKET, DOOR_BRACKET]
+			d["secondary"] = [TXT_CLOSE, DOOR_NONE]
 		KIND_GAUNTLET_CUT:
 			d["title"] = "闯关赛已截止"
 			d["body"] = ["闯关赛已在 %s 截止，你的最终战绩 %d 胜 %d 负，未能晋级决赛日。" % [

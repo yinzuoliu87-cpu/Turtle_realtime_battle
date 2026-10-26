@@ -469,13 +469,16 @@ func _t_e() -> void:
 	_srv_won = true
 	_srv_gw = int(s0["gw"]) + 1
 	_srv_gl = int(s0["gl"])
+	## ★2026-10-26 打到第 4 胜那一场当场发「省下的场次」(GameState.gauntlet_promote_bonus, 按服务端战绩算) ⇒ 期望值里加上这一笔
+	var bonus0: int = int(_gs.gauntlet_backfill_paid)
+	var bonus_c: int = maxi(0, P2C.gauntlet_backfill_owed(_srv_gw, _srv_gl) - bonus0) * int(P2C.GAUNTLET_BACKFILL_COINS)
 	var got: Array = []
 	var sent: bool = RW.resume_if_any(func(v: Dictionary) -> void: got.append(v))
 	await _wait(func() -> bool: return not got.is_empty(), 5000)
 	_ok("E ★下次开主菜单: 查任务 ⇒ 补记一次(胜)", sent and got.size() == 1 and bool((got[0] as Dictionary).get("won", false)))
-	_ok("E 补记后战绩 = 服务器账本、币 +%d + 铸币 %d、单子清掉" % [P2C.GAUNTLET_COINS_PER_MATCH, _srv_coins], int(_gs.gauntlet_wins) == _srv_gw
-		and int(_gs.gauntlet_losses) == _srv_gl and int(_gs.meta_deepsea_coins) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH) + _srv_coins
-		and (_gs.referee_pending as Dictionary).is_empty())
+	_ok("E 补记后战绩 = 服务器账本、币 +%d + 铸币 %d + 晋级当场发 %d、单子清掉" % [P2C.GAUNTLET_COINS_PER_MATCH, _srv_coins, bonus_c], int(_gs.gauntlet_wins) == _srv_gw
+		and int(_gs.gauntlet_losses) == _srv_gl and int(_gs.meta_deepsea_coins) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH) + _srv_coins + bonus_c
+		and (_gs.referee_pending as Dictionary).is_empty(), "战绩 %d-%d / 钱包 %d" % [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses), int(_gs.meta_deepsea_coins)])
 	var s1 := _snap()
 	var again: bool = RW.resume_if_any(func(v: Dictionary) -> void: got.append(v))
 	await _frames(30)

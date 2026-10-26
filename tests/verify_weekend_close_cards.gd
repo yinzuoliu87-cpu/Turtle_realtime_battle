@@ -21,6 +21,7 @@ const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
 const HUD := preload("res://scripts/scenes/battle/battle_hud.gd")
 const WCC := preload("res://scripts/scenes/week_close_card.gd")
 const CF := preload("res://scripts/util/coin_fly.gd")
+const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 
 ## 2026-10-26 周一 00:00 UTC
 const MON := 1792972800
@@ -152,6 +153,9 @@ func _t_amounts() -> void:
 	_ok("② ★卡上经验 == backfill_summary 的经验", int(d["xp"]) == int(GameState.backfill_summary()["xp"]) and int(d["xp"]) == 4 * int(P2.RANKED_BACKFILL_XP))
 	var body: String = "".join(PackedStringArray(d["body"]))
 	_ok("② 正文报战绩(12 胜 1 负)与场数(4 场)", body.find("12 胜 1 负") >= 0 and body.find("4 场") >= 0, body)
+	## ★用户 10-26「玩家比如4-0，他是不明白为什么会有未打完的2场的」⇒ 句子里先把上限说出来
+	_ok("② ★正文把上限说出来(每周最多 %d 场), 才说没打的几场照发" % int(P2.RANKED_QUOTA),
+		body.find("最多 %d 场" % int(P2.RANKED_QUOTA)) >= 0 and body.find("照发") >= 0, body)
 	_ok("② ★闯关赛截止时刻按设备时区说(local_wd_hhmm)", body.find(P2.local_wd_hhmm(P2.gauntlet_close_ts(MON))) >= 0, body)
 	_ok("② 有奖励 ⇒ 主按钮「领取」", str((d["primary"] as Array)[0]) == WCC.TXT_CLAIM)
 	## 打满 16 场的晋级者: 没有化成的场次 ⇒ 没有奖励行、按钮「好的」
@@ -160,19 +164,27 @@ func _t_amounts() -> void:
 	var d2: Dictionary = WCC.spec(WCC.KIND_RANKED_IN, GameState, fri_post)
 	_ok("② 16 场打满的晋级者: 没有奖励、按钮「好的」、正文不提化成", int(d2["coins"]) == 0 and str((d2["primary"] as Array)[0]) == WCC.TXT_OK
 		and "".join(PackedStringArray(d2["body"])).find("化成") < 0, str(d2))
-	## 闯关 4-0 ⇒ 收盘后补 2 场
+	## 闯关 4-0 ⇒ 省下的 2 场在第 4 胜那一刻就发(2026-10-26), 收盘那条惰性补算不再重复发
 	var sun_post: int = P2.gauntlet_close_ts(MON) + 60
 	_fresh(true, 12, 16, 5)
 	GameState.gauntlet_wins = 4
 	GameState.gauntlet_losses = 0
 	GameState.meta_deepsea_coins = c0
+	var bp: int = GameState.gauntlet_promote_bonus()
+	_ok("② ★4-0 晋级当场发省下的 2 场", bp == 2 and int(GameState.meta_deepsea_coins) - c0 == 2 * int(P2.GAUNTLET_BACKFILL_COINS),
+		"发了 %d 场 / 钱包 +%d" % [bp, int(GameState.meta_deepsea_coins) - c0])
 	var gp: int = GameState.settle_gauntlet_close(sun_post)
+	_ok("② ★收盘时那条惰性补算不再重复发(幂等)", gp == 0 and int(GameState.meta_deepsea_coins) - c0 == 2 * int(P2.GAUNTLET_BACKFILL_COINS), "paid=%d" % gp)
 	var g: Dictionary = WCC.spec(WCC.KIND_GAUNTLET_IN, GameState, sun_post)
-	var ggot: int = int(GameState.meta_deepsea_coins) - c0
-	_ok("② 分母: 闯关收盘补算发了 2 场(4-0)", gp == 2, "paid=%d" % gp)
-	_ok("② ★闯关卡上的深海币 == 真进钱包的那一笔", int(g["coins"]) == ggot and ggot == 2 * int(P2.GAUNTLET_BACKFILL_COINS), "卡=%d 钱包多了=%d" % [int(g["coins"]), ggot])
-	_ok("② 闯关卡正文: 4 胜 0 负 + 2 场化成", "".join(PackedStringArray(g["body"])).find("4 胜 0 负") >= 0
-		and "".join(PackedStringArray(g["body"])).find("2 场") >= 0, str(g["body"]))
+	_ok("② ★闯关卡不再发奖励(当场就发过了, 不出「领取」)", int(g["coins"]) == 0 and int(g["xp"]) == 0
+		and str((g["primary"] as Array)[0]) == WCC.TXT_BRACKET, str(g))
+	_ok("② 闯关卡正文: 4 胜 0 负 + 决赛日几点", "".join(PackedStringArray(g["body"])).find("4 胜 0 负") >= 0
+		and "".join(PackedStringArray(g["body"])).find(P2.STAGE_GROUP) >= 0, str(g["body"]))
+	_ok("② 对照: 没晋级(3-0)时一场都不发", (func() -> bool:
+		GameState.gauntlet_wins = 3
+		GameState.gauntlet_backfill_paid = 0
+		return GameState.gauntlet_promote_bonus() == 0).call())
+	_t_referee_bonus(c0)
 	## 没晋级: 胜场不够 / 命用完 两种说法
 	_fresh(false, 16, 9, 1)
 	var o: String = "".join(PackedStringArray(WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)["body"]))
@@ -226,9 +238,17 @@ func _t_settle_copy() -> void:
 	GameState.gauntlet_wins = 4
 	GameState.gauntlet_losses = 1
 	_ok("⑤ ★第 4 胜那一局大字「已晋级！」", str(hud._result_headline(true, false, GameState)) == "已晋级！", str(hud._result_headline(true, false, GameState)))
+	GameState.gauntlet_backfill_paid = 1       # 4-1 晋级当场发了省下的 1 场(GameState.gauntlet_promote_bonus)
 	_ok("⑤ ★晋级那一局的小字说周日几点开打(设备时区)", str(hud._result_detail(GameState)).find(P2.STAGE_GROUP) >= 0
 		and str(hud._result_detail(GameState)).find(":") >= 0, str(hud._result_detail(GameState)))
-	_ok("⑤ 4-1 ⇒ 小字说还没打的 1 场之后会化成奖励", str(hud._result_detail(GameState)).find("1 场") >= 0, str(hud._result_detail(GameState)))
+	var det: String = str(hud._result_detail(GameState))
+	_ok("⑤ ★★4-1 ⇒ 小字先说「最多 %d 场」, 再说用了 5 场、省下的 1 场照发(用户「他是不明白为什么会有未打完的2场的」)" % int(P2.GAUNTLET_QUOTA),
+		det.find("最多 %d 场" % int(P2.GAUNTLET_QUOTA)) >= 0 and det.find("用 5 场") >= 0 and det.find("省下的 1 场照发奖励") >= 0
+			and det.find("+%d" % int(P2.GAUNTLET_BACKFILL_COINS)) >= 0, det)
+	GameState.gauntlet_backfill_paid = 0
+	GameState.gauntlet_losses = 2
+	_ok("⑤ 对照: 4-2(6 场都打了)⇒ 没有省下的场次那一句", str(hud._result_detail(GameState)).find("省下") < 0, str(hud._result_detail(GameState)))
+	GameState.gauntlet_losses = 1
 	GameState.gauntlet_wins = 3
 	GameState.gauntlet_losses = 1
 	_ok("⑤ 对照: 3-1 赢了 ⇒ 大字照旧「胜利」", str(hud._result_headline(true, false, GameState)) == "胜利")
@@ -250,6 +270,28 @@ func _t_settle_copy() -> void:
 	var i0: int = src.find("func _settle_buttons(")
 	var i1: int = src.find("\nfunc ", i0 + 10)
 	_ok("⑤ ★结算屏按钮没有「下一局」(分母: 找到了 _settle_buttons)", i0 >= 0 and src.substr(i0, i1 - i0).find("下一局") < 0)
+
+
+## ②b 服务器裁判局那条记账路(RefereeWatch.settle): 战绩以服务端为准, 晋级的那一场同样当场发、而且按服务端战绩算
+func _t_referee_bonus(c0: int) -> void:
+	var wk: int = P2.week_anchor_utc(int(P2.now_utc()))
+	for case in [[3, 0, 4, 0, 2], [3, 1, 4, 1, 1], [3, 0, 4, 1, 1], [2, 1, 3, 1, 0]]:
+		## [本地胜, 本地负, 服务端胜, 服务端负, 该发几场] —— 第三组: 本地以为 4-0, 服务端说 4-1 ⇒ 只能发 1 场
+		GameState.promoted = true
+		GameState.week_anchor_ts = wk
+		GameState.gauntlet_wins = int(case[0])
+		GameState.gauntlet_losses = int(case[1])
+		GameState.gauntlet_backfill_paid = 0
+		GameState.hearts = 5
+		GameState.meta_deepsea_coins = c0
+		GameState.referee_pending = {"job_id": 77, "match_id": "", "week": wk, "foe": [], "foe_name": ""}
+		var v: Dictionary = RW.settle(GameState, 77, {"won": 1, "gw": int(case[2]), "gl": int(case[3]), "coins": 0})
+		var want: int = int(case[4])
+		_ok("②b 服务器局 本地 %d-%d → 服务端 %d-%d ⇒ 当场发 %d 场" % [int(case[0]), int(case[1]), int(case[2]), int(case[3]), want],
+			not v.is_empty() and int(GameState.gauntlet_backfill_paid) == want
+				and int(GameState.meta_deepsea_coins) - c0 == int(P2.GAUNTLET_COINS_PER_MATCH) + want * int(P2.GAUNTLET_BACKFILL_COINS),
+			"发了 %d 场 / 钱包 +%d / view=%s" % [int(GameState.gauntlet_backfill_paid), int(GameState.meta_deepsea_coins) - c0, str(v)])
+	GameState.referee_pending = {}
 
 
 # ⑧ ─────────────────────────────────────────────────────────────

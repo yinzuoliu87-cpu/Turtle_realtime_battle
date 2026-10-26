@@ -260,6 +260,13 @@ const GAUNTLET_OUT := "out"            # 出局(≥3 负, 或打满配额仍未�
 static func gauntlet_label(w: int, l: int) -> String:
 	return "%d-%d" % [maxi(0, w), maxi(0, l)]
 
+## 提前晋级「省下的场次照发奖励」那一句(2026-10-26 用户「玩家比如4-0，他是不明白为什么会有未打完的2场的」):
+##   玩家心里只有「4 胜晋级、3 负出局」, 「最多 6 场」这个上限他不知道 ⇒ 句子里先把上限说出来, 再说用了几场、省下几场。
+static func gauntlet_bonus_line(played: int, saved: int, coins: int, xp: int) -> String:
+	return "闯关赛最多 %d 场，你用 %d 场就晋级了，省下的 %d 场照发奖励：深海币 +%d、经验 +%d。" % [
+		GAUNTLET_QUOTA, played, saved, coins, xp]
+
+
 ## 闯关赛结算屏那一句(2026-10-26 · 用户「文案你学习商业游戏的说法」, 参考 docs/plans/ref/20261026-周末文案参考.md):
 ##   先报战绩, 再说这一场之后的处境。关键节点换说法(荒野乱斗「再输一场，您就会被淘汰出局」/ 炉石「再赢得{0}场对战」)。
 ##   出局那一句不写「出局 / 失败」, 写「到此结束」(商业游戏结果页的通行写法)。

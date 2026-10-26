@@ -1288,11 +1288,12 @@ func _result_detail(gs) -> String:
 	if st == _P2C_HUD.GAUNTLET_IN:
 		var seat: int = _P2C_HUD.finals_seat_ts(_P2C_HUD.week_anchor_utc(int(_P2C_HUD.now_utc())))
 		var t: String = "决赛日%s %s 开始，你的比赛在对阵图中进行。" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
-		var owed: int = _P2C_HUD.gauntlet_backfill_owed(w, l)
-		if owed > 0:
-			## 两句各占一行(窄屏 960 实拍: 连成一句会在「深海币」中间折断)
-			t += "\n闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。" % [
-				owed, owed * int(_P2C_HUD.GAUNTLET_BACKFILL_COINS), owed * int(_P2C_HUD.GAUNTLET_BACKFILL_XP)]
+		## 「省下的场次」第 4 胜当场就发了(GameState.gauntlet_promote_bonus) ⇒ 读已发的账, 把为什么有这几场说出来:
+		##   玩家心里只有「4 胜晋级 3 负出局」, 不知道最多 6 场(用户 10-26「他是不明白为什么会有未打完的2场的」)。
+		##   两句各占一行(窄屏 960 实拍: 连成一句会在「深海币」中间折断)。
+		var gb: Dictionary = gs.gauntlet_backfill_summary() if gs.has_method("gauntlet_backfill_summary") else {}
+		if int(gb.get("games", 0)) > 0:
+			t += "\n" + _P2C_HUD.gauntlet_bonus_line(w + l, int(gb["games"]), int(gb["coins"]), int(gb["xp"]))
 		return t
 	if st == _P2C_HUD.GAUNTLET_OUT:
 		return "周日决赛日可以观战，新一轮积分赛下周二开始。"
