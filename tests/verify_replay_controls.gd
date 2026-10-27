@@ -21,6 +21,8 @@ extends Node
 ##      · 写入侧记下对手(三统领 + 名字), 卡上右边写的就是那个名字
 ##      · 回放时左上铭牌没了(不许有 ReplayPlate); 顶栏路名牌左边有「回放」小签
 ##      · 进度条每道刻度下面有路名(上路 / 下路 / 终极), 个数 = 录像里开打的路数
+##   ⑧ 2026-10-27 用户截图(铜管手铳说明断在「上限为 1」): 回放里从信息面板点开的装备小卡不许被底部操作条挡住
+##      —— 全部装备逐件 3 星开一遍; 放不下的长卡挪到比操作条更高的一层, 挪层之后关卡照样删干净
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
@@ -329,6 +331,7 @@ func _t_controls_and_card(base: Dictionary) -> void:
 		seen.append(spd.text)
 		spd.pressed.emit()
 	_ok("② 倍速轮换 1 → 2 → 4 → 1", seen == ["1 倍速", "2 倍速", "4 倍速"] and spd.text == "1 倍速", str(seen))
+	await _t_inspect_card_over_bar(b, bar)
 	## 4 倍速播完
 	spd.pressed.emit()
 	spd.pressed.emit()
@@ -392,6 +395,199 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	if back != null:
 		back.queue_free()
 	await _frames(3)
+
+
+# ⑧ ─────────────────────────────────────────────────────────────
+## 比整屏还高、放哪都装不下的卡(与操作条无关, 不在回放里也一样出屏幕底边)。★点名登记, 新冒出来的超长卡照样红。
+##   p2eq_096 小木斧: 2026-10-22 起说明把四个形态 + 四个造物全列出(skill_text._axe_full_src), 宽 300 时约 2000 px 高。
+const _TALL_KNOWN := ["p2eq_096"]
+
+
+## 信息面板从右滑入走真实时间(0.22 秒, battle_hud._show_unit_info_panel) ⇒ 按墙钟等它停稳, 不按帧数。
+func _wait_slide() -> void:
+	await _frames(2)
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 400:
+		await get_tree().process_frame
+
+
+func _canvas_layer_of(n: Node) -> CanvasLayer:
+	var p: Node = n.get_parent() if n != null else null
+	while p != null and not (p is CanvasLayer):
+		p = p.get_parent()
+	return p as CanvasLayer
+
+
+## 用户 2026-10-27 截图: 回放里点信息面板上的装备, 左边弹出的说明小卡(inspect_card.gd)下半截被底部操作条挡住 ——
+##   铜管手铳(p2eq_077, 3 星)的说明断在「上限为 1」。操作条在 _ui_layer 上面一层(ReplayLayer), 小卡挂在 _ui_layer。
+## ⇒ 从真信息面板的装备槽, 把【全部】装备逐件按 3 星开一遍: 每张要么整张收在操作条上沿之上,
+##   要么挪到了比 ReplayLayer 更高的层。★不只测铜管手铳: 长卡才会撞, 哪件最长会随文案变 ⇒ 全量过。
+## 分母: 件数 / 与操作条横向重叠的张数 / 按改前摆法会被挡的张数 / 最高那张多高。
+func _t_inspect_card_over_bar(b, bar: Node) -> void:
+	print("── ⑧ 回放中装备说明小卡不被操作条挡住 ──")
+	var strip := _named(bar, "ReplayStrip") as Control
+	var rl := b.get_node_or_null("ReplayLayer") as CanvasLayer
+	_ok("⑧ 分母: 操作条看得见、挂在 ReplayLayer(比 _ui_layer 高)", strip != null and strip.is_visible_in_tree()
+		and rl != null and rl.is_ancestor_of(strip) and rl.layer > int(b._ui_layer.layer))
+	if strip == null or rl == null:
+		return
+	var sr: Rect2 = strip.get_global_rect()
+	var vp: Vector2 = Vector2(b.get_viewport().get_visible_rect().size)
+	## 信息面板自己: 场上每个能点的单位(蛋不能点)逐个开面板, 面板里看得见的叶子控件(字 / 图标 / 槽)一个都不许压在操作条底下。
+	var covered: Array = []
+	var n_leaf := 0
+	var n_unit := 0
+	var low := 0.0
+	var low_who := ""
+	for x in b._units:
+		if not (x is Dictionary) or float(x.get("hp", 0.0)) <= 0.0 or InfoPanel.is_egg_unit(x):
+			continue
+		b._hud._show_unit_info_panel(x)
+		await _wait_slide()
+		var p0 := b._info_panel as Control
+		if p0 == null or not is_instance_valid(p0):
+			continue
+		n_unit += 1
+		var pr: Rect2 = p0.get_global_rect()
+		for c in p0.find_children("*", "Control", true, false):
+			var cc := c as Control
+			if cc == null or not cc.is_visible_in_tree() or cc.get_child_count() > 0 or cc.size.x <= 0.0 or cc.size.y <= 0.0:
+				continue
+			var cr: Rect2 = cc.get_global_rect().intersection(pr)     # 滚动容器裁掉的部分本来就看不见
+			if cr.size.x <= 0.0 or cr.size.y <= 0.0:
+				continue
+			n_leaf += 1
+			if cr.end.y > low:
+				low = cr.end.y
+				low_who = "%s 的 %s" % [str(x.get("id", "")), cc.name]
+			if cr.intersects(sr):
+				covered.append("%s:%s(%s)@y%d..%d" % [str(x.get("id", "")), cc.name, cc.get_class(), int(cr.position.y), int(cr.end.y)])
+		b._hud._close_info_panel()
+		await _frames(2)
+	print("    [⑧] 信息面板: 单位 %d 个 / 叶子控件 %d 个 / 最低的内容到 y=%d (%s) / 操作条 x %d..%d y≥%d" % [
+		n_unit, n_leaf, int(low), low_who, int(sr.position.x), int(sr.end.x), int(sr.position.y)])
+	_ok("⑧ ★信息面板里的内容没被操作条盖住(场上 %d 个单位逐个开, 叶子控件 %d 个)" % [n_unit, n_leaf],
+		n_unit >= 4 and n_leaf >= 40 and covered.is_empty(), "%d 个被盖: %s" % [covered.size(), str(covered.slice(0, 6))])
+	## 开小卡用的龟(不是召唤物 / 训龟师), 优先挑身上带装备的
+	var u: Dictionary = {}
+	for x in b._units:
+		if not (x is Dictionary) or float(x.get("hp", 0.0)) <= 0.0 or InfoPanel.is_egg_unit(x) \
+				or bool(x.get("is_summon", false)) or bool(x.get("is_trainer", false)):
+			continue
+		if u.is_empty() or ((u.get("equips", []) as Array).is_empty() and not (x.get("equips", []) as Array).is_empty()):
+			u = x
+	_ok("⑧ 分母: 场上有一只能点开信息面板的龟", not u.is_empty(), "%s 装备 %d 件" % [str(u.get("id", "")), (u.get("equips", []) as Array).size()])
+	if u.is_empty():
+		return
+	b._hud._show_unit_info_panel(u)
+	await _wait_slide()
+	var panel := b._info_panel as Control
+	var row: Node = panel.find_child("EquipRow", true, false) if panel != null and is_instance_valid(panel) else null
+	var anchor: Control = (row.get_child(0) as Control) if row != null and row.get_child_count() > 0 else null
+	_ok("⑧ 分母: 信息面板开着、装备槽在(小卡从这里开)", anchor != null and anchor.is_visible_in_tree(),
+		str(anchor.get_global_rect()) if anchor != null else "<无>")
+	if anchor == null:
+		return
+	## 全部装备逐件 3 星
+	var ids: Array = DataRegistry.phase2_equipment_by_id.keys()
+	ids.sort()
+	var ic = b._info_sys.card()
+	var not_open: Array = []
+	var bad: Array = []
+	var off: Array = []
+	var too_tall: Array = []
+	var raised_fit: Array = []
+	var n_ok := 0
+	var n_hov := 0
+	var n_raised := 0
+	var n_would_hit := 0
+	var leak := 0
+	var max_h := 0.0
+	var max_id := ""
+	var fit_h := 0.0
+	var fit_id := ""
+	var seen077 := false
+	var r077 := Rect2()
+	var ay: float = anchor.get_global_rect().position.y - 6.0
+	for e in ids:
+		var eid := str(e)
+		b._info_sys._open_equip_card(u, eid, 3, anchor)
+		await _frames(3)                   # 摆位会等一帧排完版再按真实高度收一次
+		var c: Control = ic.card
+		if c == null or not is_instance_valid(c) or str(ic.key) != "eq:" + eid:
+			not_open.append(eid)
+			continue
+		n_ok += 1
+		var r: Rect2 = c.get_global_rect()
+		var lay := _canvas_layer_of(c)
+		var raised: bool = lay != null and lay.layer > rl.layer
+		n_raised += 1 if raised else 0
+		if r.position.x < sr.end.x and r.end.x > sr.position.x:
+			n_hov += 1
+		## 改之前的摆法(顶边对齐装备槽, 只防出屏幕底边)会不会撞上操作条 —— 分母: 这条判据真有对象
+		if clampf(ay, 50.0, maxf(50.0, vp.y - r.size.y - 8.0)) + r.size.y > sr.position.y:
+			n_would_hit += 1
+		if not (r.end.y <= sr.position.y or raised):
+			bad.append("%s 底 %d > 条顶 %d" % [eid, int(r.end.y), int(sr.position.y)])
+		## 操作条上面放得下(条顶 − 8 − 顶边 50)的卡应当往上收, 不该挪层去压住操作条
+		if raised and r.size.y <= sr.position.y - 58.0:
+			raised_fit.append("%s(%d px)" % [eid, int(r.size.y)])
+		if r.size.y > vp.y - 58.0:
+			too_tall.append("%s(%d px)" % [eid, int(r.size.y)])
+			if not _TALL_KNOWN.has(eid):
+				off.append("%s 比整屏还高 %s" % [eid, str(r)])
+		elif r.position.y < 0.0 or r.position.x < 0.0 or r.end.y > vp.y or r.end.x > vp.x:
+			off.append("%s %s" % [eid, str(r)])
+		if r.size.y > max_h:
+			max_h = r.size.y
+			max_id = eid
+		if r.size.y <= vp.y - 58.0 and r.size.y > fit_h:
+			fit_h = r.size.y
+			fit_id = eid
+		if eid == "p2eq_077":
+			seen077 = true
+			r077 = r
+		ic.close()
+		await get_tree().process_frame
+		if is_instance_valid(c) or ic.card != null:
+			leak += 1
+	print("    [⑧] 装备 %d 件 / 开出 %d / 横向与操作条重叠 %d / 改前摆法会被挡 %d / 挪层 %d / 最高 %s %d px / 操作条 %s / 视口 %s" % [
+		ids.size(), n_ok, n_hov, n_would_hit, n_raised, max_id, int(max_h), str(sr), str(vp)])
+	_ok("⑧ 分母: 全部 %d 件装备都按 3 星开出了小卡, 且张张与操作条横向重叠(%d)" % [ids.size(), n_hov],
+		ids.size() >= 50 and n_ok == ids.size() and n_hov == n_ok, "没开出: %s" % str(not_open.slice(0, 6)))
+	_ok("⑧ 分母: 按改前的摆法会被操作条挡住的有 %d 张(判据真有对象)" % n_would_hit, n_would_hit >= 1)
+	_ok("⑧ ★每张小卡都收在操作条上沿之上(或挪到了比 ReplayLayer 更高的层)", n_ok > 0 and bad.is_empty(),
+		"%d 张被挡: %s" % [bad.size(), str(bad.slice(0, 6))])
+	_ok("⑧ ★操作条上面放得下的卡是往上收、不是挪层压住操作条", n_ok > 0 and raised_fit.is_empty(),
+		"%d 张挪了层: %s" % [raised_fit.size(), str(raised_fit.slice(0, 6))])
+	_ok("⑧ 每张装得下的小卡都整张在屏幕里(比整屏还高的 %d 张只许是点名登记的 %s)" % [too_tall.size(), str(_TALL_KNOWN)],
+		n_ok > 0 and off.is_empty(), str(off.slice(0, 4)))
+	if not too_tall.is_empty():
+		print("    [⑧ 另案] 比整屏(%d)还高、出屏幕底边的卡: %s —— 与操作条无关, 不在回放里也一样" % [int(vp.y), str(too_tall)])
+	_ok("⑧ ★铜管手铳 p2eq_077 (3 星, 用户截图那件) 测到了", seen077,
+		"y %d..%d 高 %d / 条顶 %d" % [int(r077.position.y), int(r077.end.y), int(r077.size.y), int(sr.position.y)])
+	_ok("⑧ 分母: 装得下的里最高的 %s 高 %d px ≥ 300(长卡真的被测到; 全部里最高 %s %d px)" % [fit_id, int(fit_h), max_id, int(max_h)],
+		fit_h >= 300.0)
+	_ok("⑧ 每张关掉都真删了(不残留)", n_ok > 0 and leak == 0 and b.find_children("InspectCard", "", true, false).is_empty(), "残留 %d" % leak)
+	## 操作条上面放不下的长卡 ⇒ 挪到比操作条更高的一层; 挪层之后 close() 照样删干净(它走的是新父节点)。
+	var lines := PackedStringArray()
+	for k in range(40):
+		lines.append("探针第 %d 行" % k)
+	ic.open("probe:tall", anchor, {"title": "探针长卡", "body": "\n".join(lines)})
+	await _frames(3)
+	var tc: Control = ic.card
+	var tl: CanvasLayer = _canvas_layer_of(tc) if tc != null and is_instance_valid(tc) else null
+	var th: float = tc.size.y if tc != null and is_instance_valid(tc) else 0.0
+	_ok("⑧ ★操作条上面放不下的长卡(高 %d > 可用 %d) ⇒ 挪到比 ReplayLayer 更高的一层" % [int(th), int(sr.position.y - 58.0)],
+		th > sr.position.y - 58.0 and tl != null and tl.layer > rl.layer and tl.name == "InspectTopLayer",
+		("%s layer %d" % [tl.name, tl.layer]) if tl != null else "<无层>")
+	var had_tc: bool = tc != null and is_instance_valid(tc)
+	ic.close()
+	await get_tree().process_frame
+	_ok("⑧ ★挪层之后 close() 照样把卡删掉", had_tc and not is_instance_valid(tc) and ic.card == null
+		and (tl == null or tl.get_child_count() == 0))
+	b._hud._close_info_panel()
+	await _frames(2)
 
 
 # ③ ─────────────────────────────────────────────────────────────

@@ -327,5 +327,49 @@ func _place_now(anchor: Control) -> void:
 	var y: float = 54.0
 	if anchor != null and is_instance_valid(anchor):
 		y = anchor.get_global_rect().position.y - 6.0
-	y = clampf(y, 50.0, maxf(50.0, vp.y - h - 8.0))
-	card.position = Vector2(pr.position.x - GAP - CARD_W, y)
+	## ★底边避开回放 / 观赛的底部操作条(2026-10-27 用户截图: 铜管手铳的说明下半截被进度条挡住, 文字断在「上限为 1」)。
+	##   操作条在 _ui_layer 上面一层(replay_controls.gd 为了压住血条), 卡挂在 _ui_layer ⇒ 先往上收; 收不下就挪到比操作条更高的一层。
+	var x: float = pr.position.x - GAP - CARD_W
+	var bottom: float = vp.y - 8.0
+	var bar_top: float = _bottom_bar_top(x, x + CARD_W)
+	if bar_top > 0.0:
+		bottom = minf(bottom, bar_top - 8.0)
+	y = clampf(y, 50.0, maxf(50.0, bottom - h))
+	card.position = Vector2(x, y)
+	if bar_top > 0.0 and y + h > bar_top:
+		_raise_over_bar()
+
+
+## 回放 / 观赛时底部操作条的上沿(只算与小卡横向 [x0, x1] 有重叠的那几块); 不在回放 / 都不重叠 = -1。
+##   回放 = 底部整条 ReplayStrip; 观赛 = 左下角一颗「退出」(老观赛叫 N_LIVE_EXIT, 逐帧直播叫 N_EXIT)。
+##   ★只算横向重叠的: 左下角那颗「退出」离小卡很远, 不该把小卡也往上顶。
+func _bottom_bar_top(x0: float, x1: float) -> float:
+	var hud = battle.get("_hud")
+	var rb = hud.get("_replay_bar") if hud != null else null
+	if rb == null or not is_instance_valid(rb) or not (rb as Control).is_visible_in_tree():
+		return -1.0
+	var top := -1.0
+	for nm in ["ReplayStrip", ReplayControls.N_EXIT, ReplayControls.N_LIVE_EXIT]:
+		var c := (rb as Node).find_child(nm, true, false) as Control
+		if c == null or not c.is_visible_in_tree():
+			continue
+		var r: Rect2 = c.get_global_rect()
+		if r.end.x <= x0 or r.position.x >= x1:
+			continue
+		top = r.position.y if top < 0.0 else minf(top, r.position.y)
+	return top
+
+
+## 卡在操作条上面放不下(说明特别长)⇒ 挪到比操作条更高的一层, 宁可压住操作条也不让字被挡。
+func _raise_over_bar() -> void:
+	var rl := battle.get_node_or_null("ReplayLayer") as CanvasLayer
+	if rl == null:
+		return
+	var top := battle.get_node_or_null("InspectTopLayer") as CanvasLayer
+	if top == null:
+		top = CanvasLayer.new()
+		top.name = "InspectTopLayer"
+		top.layer = rl.layer + 1
+		battle.add_child(top)
+	if card.get_parent() != top:
+		card.reparent(top)
