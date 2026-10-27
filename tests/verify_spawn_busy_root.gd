@@ -146,7 +146,8 @@ func _ready() -> void:
 	await _part_ef(tap)
 
 	print("-- D 全程")
-	_ok("D 引擎没报「Parent node is busy」", tap.busy == 0, "%d 条  %s" % [tap.busy, tap.first_busy])
+	## 断言名不写引擎原句: run-tests.sh 的致命正则含那句, 名字里写了会被当成报错。
+	_ok("D 引擎没报「根节点忙、挂树被拒」", tap.busy == 0, "%d 条  %s" % [tap.busy, tap.first_busy])
 	_ok("D 引擎没报「不在树上」", tap.tree == 0, "%d 条  %s" % [tap.tree, tap.first_other])
 	print("  (其余引擎报错 %d 条, 只打印不判: %s)" % [tap.other, tap.first_other])
 	print("  (用了 %d 帧)" % (Engine.get_process_frames() - f0))
