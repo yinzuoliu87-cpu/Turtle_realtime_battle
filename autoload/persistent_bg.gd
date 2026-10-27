@@ -4,6 +4,18 @@ extends CanvasLayer
 ##   消除"页面跳转黑屏闪一下"。各场景自带的不透明背景平时盖住本层, 仅切换空隙可见。
 ## autoload (root 子节点) 跨场景常驻, 不随 change_scene 销毁。
 
+const LiteTexLoader := preload("res://scripts/systems/sim/lite_tex_loader.gd")
+
+## 无头陪练号的大贴图占位加载器(没装 = null; 判据与原因见 lite_tex_loader.gd 头注)。
+var lite_tex: ResourceFormatLoader = null
+
+
+## ★必须在 _init 里装, 不能等 _ready: 本节点是第一个 autoload, _init 早于其余 autoload 脚本载入与任何场景;
+##   到 _ready 时别的 autoload 已经载过贴图, 那些仍是带像素的真贴图。
+func _init() -> void:
+	lite_tex = LiteTexLoader.install_if_bot(DisplayServer.get_name() == "headless", OS.get_environment("SIM_DRIVER"))
+
+
 func _ready() -> void:
 	layer = -100   # 顶到最底, 在所有场景/CanvasLayer 之后渲染
 	if DisplayServer.get_name() == "headless":

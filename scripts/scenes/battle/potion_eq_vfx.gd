@@ -421,6 +421,11 @@ static func _white_silhouette(tex: Texture2D) -> ImageTexture:
 	if _sil_cache.has(key):
 		return _sil_cache[key]
 	var img: Image = tex.get_image()
+	## 取不到像素: 无头陪练号的大贴图是不含像素的同尺寸占位(scripts/systems/sim/lite_tex_loader.gd)。
+	##   拿 1×1 透明图走同一条路, 建好后撑回源尺寸 ⇒ 帧切分 / 出处键 / 缓存与有像素时一致。
+	var no_px := img == null
+	if no_px:
+		img = Image.create_empty(1, 1, false, Image.FORMAT_RGBA8)
 	if img.is_compressed():
 		img.decompress()
 	img.convert(Image.FORMAT_RGBA8)
@@ -430,6 +435,8 @@ static func _white_silhouette(tex: Texture2D) -> ImageTexture:
 			if c.a > 0.01:
 				img.set_pixel(x, y, Color(1, 1, 1, c.a))
 	var out := ImageTexture.create_from_image(img)
+	if no_px:
+		out.set_size_override(Vector2i(tex.get_size()))
 	## 录流出处键: 源贴图有路径才挂(手机按路径 load 再白化一遍); 没路径的照旧(录流画占位)
 	if tex.resource_path != "":
 		VfxTex.tag(out, "gen_white_silhouette", [tex.resource_path], SRC)

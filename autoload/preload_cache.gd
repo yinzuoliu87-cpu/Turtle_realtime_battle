@@ -22,6 +22,9 @@ func menu_bg_tile_tex() -> ImageTexture:
 		if not ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
 			return null
 		var ti: Image = load("res://assets/sprites/menu/menu-bg-tile.png").get_image()
+		## 取不到像素: 无头陪练号的大贴图是不含像素的同尺寸占位(scripts/systems/sim/lite_tex_loader.gd) ⇒ 不铺花砖(无头本来就不画)。
+		if ti == null:
+			return null
 		ti.resize(512, 512, Image.INTERPOLATE_LANCZOS)
 		_menu_bg_tex = ImageTexture.create_from_image(ti)
 	return _menu_bg_tex
