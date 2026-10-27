@@ -146,7 +146,7 @@ func _mk_portrait(pos: Vector2, flip: bool) -> TextureRect:
 	bar.add_child(holder)
 	var bg := ColorRect.new()
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var team: Color = hud.PK_RED if flip else hud.PK_BLUE
+	var team: Color = hud._pk_side_col(not flip)   # 头像底色跟顶部条同一套队色(看的人是 B 时右边是我方绿)
 	bg.color = Color(0.06, 0.06, 0.08).lerp(team, 0.22)
 	bg.position = Vector2(6, 6)
 	bg.size = Vector2(PORT - 12, PORT - 12)
@@ -615,9 +615,9 @@ func _refresh_dots() -> void:
 		var who := str(res.get(lane, ""))
 		var core: TextureRect = dot_cores[i]
 		if who == "left":
-			core.modulate = hud.PK_BLUE
+			core.modulate = hud._pk_side_col(true)    # 这一路赢的那一侧的队色(我方赢 = 绿)
 		elif who == "right":
-			core.modulate = hud.PK_RED
+			core.modulate = hud._pk_side_col(false)
 		else:
 			core.modulate = Color(0.10, 0.11, 0.14, 1.0)
 

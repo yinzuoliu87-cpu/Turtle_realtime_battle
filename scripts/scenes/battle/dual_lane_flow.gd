@@ -747,12 +747,29 @@ func _dl_is_decider(wiped_side: String) -> bool:
 ##   顿帧 → 让"最后一个倒下"这一刻停住；震屏 → 冲击感；全屏闪 → 断章感；
 ##   大字 → 明确告诉玩家发生了什么(用 battle._vfx._float_text 的 label 模式, 决胜公告也是这么做的)。
 ## ★用裸 battle.create_tween 的地方见 _dl_enter_present 说明(跨路存活不能被 battle._sim_tweens 连坐清掉)。
+## 团灭 / 蛋破的全屏闪色(我方被团灭 / 我方蛋破 = 红; 我方赢 = 金 / 暖白)。逐帧直播里是按左方视角录的 ⇒ `side_swap_flash`。
+const FLASH_WIPE_LOST := Color(0.85, 0.12, 0.16)
+const FLASH_WIPE_WON := Color(1.0, 0.82, 0.30)
+const FLASH_EGG_LOST := Color(0.9, 0.1, 0.12)
+const FLASH_EGG_WON := Color(1.0, 0.95, 0.85)
+
+
+## 看的人是 B 时逐帧直播里那几道全屏闪换成另一边的(只认上面四个色; 别的闪原样)。
+static func side_swap_flash(col: Color) -> Color:
+	for pair in [[FLASH_WIPE_LOST, FLASH_WIPE_WON], [FLASH_EGG_LOST, FLASH_EGG_WON]]:
+		if col.is_equal_approx(pair[0]):
+			return pair[1]
+		if col.is_equal_approx(pair[1]):
+			return pair[0]
+	return col
+
+
 func _dl_wipe_dramatize(wiped_lr: String) -> void:
 	var we_lost: bool = (wiped_lr == ReplayRecorder.my_side(battle))   # 「我方」= 看的人那一侧(配对局 B ⇒ 右)
 	battle._add_hitstop(0.30)                     # 定格: 比普通击杀(0.05~0.12)长得多, 标记"这是一段的结束"
 	battle._shake(battle.JUICE_SHAKE_BIG)
 	# 全屏闪: 我方被团灭→暗红警示; 我方获胜→金色
-	var col: Color = Color(0.85, 0.12, 0.16) if we_lost else Color(1.0, 0.82, 0.30)
+	var col: Color = FLASH_WIPE_LOST if we_lost else FLASH_WIPE_WON
 	_dl_flash_screen(col, 0.34)
 	# 全场大字
 	var txt: String = "全军覆没" if we_lost else "敌军覆没"
@@ -770,7 +787,7 @@ func _dl_egg_break_dramatize(broken_side_lr: String) -> void:
 	var we_lost: bool = (broken_side_lr == ReplayRecorder.my_side(battle))   # 「我方」= 看的人那一侧(配对局 B ⇒ 右)
 	battle._add_hitstop(0.45)                    # 比团灭(0.30)更长 —— 这是整场结束
 	battle._shake(battle.JUICE_SHAKE_MAX)
-	_dl_flash_screen(Color(1.0, 0.95, 0.85) if not we_lost else Color(0.9, 0.1, 0.12), 0.55)
+	_dl_flash_screen(FLASH_EGG_WON if not we_lost else FLASH_EGG_LOST, 0.55)
 	# 在破掉的那颗蛋的位置炸冲击环
 	for u in battle._units:
 		if u.get("_isEgg", false) and str(u.get("egg_side_lr", "")) == broken_side_lr:

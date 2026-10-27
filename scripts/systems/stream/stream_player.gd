@@ -442,7 +442,11 @@ func _event(kind: String, a: Array) -> void:
 			if a.size() >= 1 and str(a[0]) == "light":
 				battle._vfx.screen_flash_light()
 			elif a.size() >= 3:
-				battle._dl_sys._dl_flash_screen(a[1], float(a[2]))
+				## 团灭 / 蛋破的全屏闪色是服务器按左方视角录的: 我是 B ⇒ 换成另一边的(DualLaneFlow.side_swap_flash)
+				var fcol = a[1]
+				if ReplayRecorder.viewer_side(battle) == "b" and fcol is Color:
+					fcol = DualLaneFlow.side_swap_flash(fcol)
+				battle._dl_sys._dl_flash_screen(fcol, float(a[2]))
 		"sfx":
 			var au = battle.get_node_or_null("/root/Audio")
 			if au != null and a.size() >= 3:

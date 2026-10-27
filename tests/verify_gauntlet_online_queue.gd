@@ -519,6 +519,45 @@ func _texts(n) -> Array:
 	return out
 
 
+## 节点下第一个以 prefix 开头的 Label 的字色(没有 ⇒ Color())。
+func _label_col(n, prefix: String) -> Color:
+	if n == null or not is_instance_valid(n):
+		return Color()
+	for c in (n as Node).find_children("*", "Label", true, false):
+		if str((c as Label).text).strip_edges().begins_with(prefix):
+			return (c as Label).get_theme_color("font_color")
+	return Color()
+
+
+## 顶部条一段填充的竖向渐变最上面那个色(= 队色提亮 0.22)。
+func _grad_top(fill) -> Color:
+	if fill is TextureRect and (fill as TextureRect).texture is GradientTexture2D:
+		return ((fill as TextureRect).texture as GradientTexture2D).gradient.get_color(0)
+	return Color()
+
+
+## 顶栏头像框里那块底色(头像 Face 的父节点下第一个 ColorRect)。
+func _port_bg(face) -> Color:
+	if face == null or not is_instance_valid(face) or (face as Node).get_parent() == null:
+		return Color()
+	for c in (face as Node).get_parent().get_children():
+		if c is ColorRect:
+			return (c as ColorRect).color
+	return Color()
+
+
+## 第 n0 个子节点之后新挂到 UI 层上的那块全屏闪(ColorRect)的颜色; 没有 ⇒ Color(0,0,0,0)。
+func _new_flash(b: Node, n0: int) -> Color:
+	var ui: Node = b._ui_layer
+	for i in range(n0, ui.get_child_count()):
+		var c := ui.get_child(i)
+		if c is ColorRect:
+			var col := (c as ColorRect).color
+			(c as ColorRect).queue_free()
+			return col
+	return Color(0, 0, 0, 0)
+
+
 ## 战绩页上录像号是 id 的那颗「观看」。
 func _watch_btn_of(rs: Node, id: String) -> Button:
 	if rs == null or not is_instance_valid(rs):
@@ -661,12 +700,71 @@ func _viewer_checks(b: Node, tag: String, me: String, my_name: String, foe_name:
 	if u_me != null and u_foe != null:
 		b._hud._show_unit_info_panel(u_me)
 		var a_ok := _texts(b._info_panel).any(func(x: String) -> bool: return x.begins_with("友军"))
+		var a_col := _label_col(b._info_panel, "友军")
 		b._hud._show_unit_info_panel(u_foe)
 		var f_ok := _texts(b._info_panel).any(func(x: String) -> bool: return x.begins_with("敌方"))
+		var f_col := _label_col(b._info_panel, "敌方")
 		b._hud._close_info_panel()
 		_ok("%s ★单位面板: 我这一侧的单位写「友军」、对面写「敌方」" % tag, a_ok and f_ok)
+		_ok("%s ★单位面板副标题色: 友军绿、敌方红" % tag, a_col == Color("#4ade80") and f_col == Color("#ff6b6b"), "%s / %s" % [str(a_col), str(f_col)])
 	else:
 		print("  (%s 场上剩下的单位不够两边各一只, 单位面板这一条不量)" % tag)
+	## ⑧ 颜色(全游戏「我方 = 绿」): 顶部条两段 / 回血带 / 头像底 / 各路点 / VS 光晕 / 团灭蛋破的全屏闪(本机重算与逐帧直播两条路)
+	var hud = b._hud
+	var my_l: bool = me == "left"
+	var lc := _grad_top(hud._pk_fill_l)
+	var rc := _grad_top(hud._pk_fill_r)
+	_ok("%s ★顶部条: 我这一侧(%s)那一段是我方绿、对面那一段是紫" % [tag, me], (lc if my_l else rc).is_equal_approx(hud.PK_BLUE.lightened(0.22))
+		and (rc if my_l else lc).is_equal_approx(hud.PK_RED.lightened(0.22)), "左 %s / 右 %s" % [str(lc), str(rc)])
+	var g_me: Color = (hud._pk_gain_l if my_l else hud._pk_gain_r).color
+	_ok("%s 顶部条回血带: 我这一侧是绿的提亮" % tag, g_me.is_equal_approx(hud.PK_BLUE.lightened(hud.PK_GAIN_LIGHTEN)), str(g_me))
+	var tbb = hud._topbar
+	var bl := _port_bg(tbb.port_l)
+	var br := _port_bg(tbb.port_r)
+	var base := Color(0.06, 0.06, 0.08)
+	_ok("%s ★顶栏头像底: 我这一侧带绿、对面带紫" % tag, (bl if my_l else br).is_equal_approx(base.lerp(hud.PK_BLUE, 0.22))
+		and (br if my_l else bl).is_equal_approx(base.lerp(hud.PK_RED, 0.22)), "左 %s / 右 %s" % [str(bl), str(br)])
+	tbb._refresh_dots()
+	var dot_bad: Array = []
+	var dot_n := 0
+	for i in range(tbb.LANES.size()):
+		var who := str(lrs.get(tbb.LANES[i], ""))
+		if who != "left" and who != "right":
+			continue
+		dot_n += 1
+		var want_c: Color = hud.PK_BLUE if who == me else hud.PK_RED
+		if not (tbb.dot_cores[i] as CanvasItem).modulate.is_equal_approx(want_c):
+			dot_bad.append("%s %s" % [tbb.LANES[i], str((tbb.dot_cores[i] as CanvasItem).modulate)])
+	_ok("%s ★顶栏各路点: 我赢的路绿、对面赢的路紫(分母 %d 路)" % [tag, dot_n], dot_n > 0 and dot_bad.is_empty(), str(dot_bad))
+	var st0: bool = b._settled
+	b._settled = false
+	hud._pk_shown_l = 0.95 if my_l else 0.05     # 我这一侧领先
+	hud._pk_shown_r = 0.05 if my_l else 0.95
+	hud._pk_vs_tick(0.0)
+	var gm: Color = hud._pk_vs_glow.modulate
+	b._settled = st0
+	_ok("%s ★VS 光晕: 我领先 ⇒ 染我方绿" % tag, Color(gm.r, gm.g, gm.b).is_equal_approx(hud.PK_BLUE), str(gm))
+	var want_flash: Color = DualLaneFlow.FLASH_WIPE_LOST if my_l else DualLaneFlow.FLASH_WIPE_WON
+	var n0: int = b._ui_layer.get_child_count()
+	b._dl_sys._dl_wipe_dramatize("left")       # 左方被团灭
+	var fl0 := _new_flash(b, n0)
+	_ok("%s ★左方被团灭(本机重算那条路)⇒ 全屏闪 %s" % [tag, "红(我方覆没)" if my_l else "金(敌军覆没)"],
+		Color(fl0.r, fl0.g, fl0.b).is_equal_approx(want_flash), str(fl0))
+	var sp := StreamPlayer.new(b, {})
+	n0 = b._ui_layer.get_child_count()
+	sp._event("flash", ["lane", DualLaneFlow.FLASH_WIPE_LOST, 0.34])   # 服务器按左方视角录的「左方被团灭」那一下
+	var fl1 := _new_flash(b, n0)
+	_ok("%s ★逐帧直播里「左方被团灭」那道闪 ⇒ %s" % [tag, "红" if my_l else "金(按看的人换)"],
+		Color(fl1.r, fl1.g, fl1.b).is_equal_approx(want_flash), str(fl1))
+	n0 = b._ui_layer.get_child_count()
+	sp._event("flash", ["lane", DualLaneFlow.FLASH_EGG_LOST, 0.55])
+	var fl2 := _new_flash(b, n0)
+	_ok("%s 逐帧直播里「左方蛋破」那道闪 ⇒ %s" % [tag, "红" if my_l else "暖白(按看的人换)"],
+		Color(fl2.r, fl2.g, fl2.b).is_equal_approx(DualLaneFlow.FLASH_EGG_LOST if my_l else DualLaneFlow.FLASH_EGG_WON), str(fl2))
+	n0 = b._ui_layer.get_child_count()
+	sp._event("flash", ["lane", Color(0.2, 0.4, 0.9), 0.2])           # 别的闪(不是团灭 / 蛋破)原样
+	var fl3 := _new_flash(b, n0)
+	_ok("%s 逐帧直播里别的闪色原样" % tag, Color(fl3.r, fl3.g, fl3.b).is_equal_approx(Color(0.2, 0.4, 0.9)), str(fl3))
 
 
 ## 门禁当服务器: 按交上来的快照, 由裁判程序真算一局(与裁判机同一套代码)。a / b = 左右两份快照。返回 A 赢了吗; 算不成 ⇒ null。

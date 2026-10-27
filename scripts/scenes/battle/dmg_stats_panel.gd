@@ -214,7 +214,7 @@ func make_row(u: Dictionary, side: String, col_max: int, rank: int = 0) -> Contr
 	nm.text = ("└ " if u.get("is_summon", false) else "") + str(u.get("name", u.get("id", "")))
 	## 头名字号大一档 —— 名次差异不能只挂在一个小角标上(玩家扫的是名字, 不是角标)。
 	nm.add_theme_font_size_override("font_size", 16 if rank == 1 else 15)
-	nm.add_theme_color_override("font_color", Color(UIPalette.SIDE_LEFT) if side == "left" else Color(UIPalette.SIDE_RIGHT))
+	nm.add_theme_color_override("font_color", Color(UIPalette.SIDE_LEFT) if side == _sides[0] else Color(UIPalette.SIDE_RIGHT))   # 我方那一列用我方色
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	## ★不许 clip_text: 它会把最小宽度压成 1px, 而同一行里有弹簧 ⇒ 名字被挤成一个像素
 	##   (字还在、一个像素都看不见)。同一个坑 `info_panel._info_resource_row` 栽过。
@@ -411,7 +411,7 @@ func build() -> void:
 		## ★队伍名牌, 不是一行裸标签 —— 裸标签压着一列数字就是表格的 `<th>` + 数据行,
 		##   也就是"Excel 感"的来源。签牌把它变成"这一队的牌子"。
 		colv.add_child(_plate(str(side_label[0]),
-			Color(UIPalette.SIDE_LEFT) if side_label[1] == "left" else Color(UIPalette.SIDE_RIGHT), 15))
+			Color(UIPalette.SIDE_LEFT) if side_label[1] == _sides[0] else Color(UIPalette.SIDE_RIGHT), 15))   # 「我方」那块牌用我方色
 		var rows := VBoxContainer.new()
 		rows.add_theme_constant_override("separation", 6)
 		colv.add_child(rows)

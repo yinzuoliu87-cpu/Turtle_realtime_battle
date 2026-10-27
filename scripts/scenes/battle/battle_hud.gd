@@ -306,6 +306,13 @@ const ICON_STATS := "res://assets/sprites/ui/hud-stats.png"
 ## 绿=生命 这层语义不算冲突: 这条本来就是血条, 单位血条也是绿的。
 const PK_BLUE := Color("#4ade80")   # 我方(绿)
 const PK_RED := Color("#a855f7")    # 敌方(紫)·比魔法伤害紫字 #c86bff 深一档以作区分
+
+
+## 顶部条左 / 右那一段的队色: 我方绿、对方紫(全游戏「我方 = 绿」)。
+##   看的人是 B(周六配对局, `ReplayRecorder.viewer_side`)⇒ 右边那一段是我方 ⇒ 右绿左紫; 其余与改之前相同(左绿右紫)。
+func _pk_side_col(left: bool) -> Color:
+	var mine: bool = left == (ReplayRecorder.my_side(battle) == "left")
+	return PK_BLUE if mine else PK_RED
 ## 副条=蛋壳色。★用【偏暖偏黄】的 #f5d29a 而不是低饱和的 #f2e2c4:
 ##   围栏未破时要把它压暗一档, 而低饱和色一压暗就直接塌成灰(实拍验证过两轮),
 ##   暖黄压暗后仍是暖色, 认得出是蛋壳。★不用队色 —— 用户: 原来和主条同色"像装饰下划线"。
@@ -424,9 +431,9 @@ func _build_pk_bar() -> void:
 	_pk_bar = bar
 
 	# ── 主条: 左右两段, 各自带边框 + 不透明暗底 ──
-	var res: Array = _pk_seg(bar, true, 0.0, PK_H, PK_BLUE)
+	var res: Array = _pk_seg(bar, true, 0.0, PK_H, _pk_side_col(true))
 	_pk_fill_l = res[0]; _pk_trail_l = res[1]; _pk_gain_l = res[2]
-	res = _pk_seg(bar, false, 0.0, PK_H, PK_RED)
+	res = _pk_seg(bar, false, 0.0, PK_H, _pk_side_col(false))
 	_pk_fill_r = res[0]; _pk_trail_r = res[1]; _pk_gain_r = res[2]
 
 	# ── 副条: 龟蛋(细), 同样左右分段 ──
@@ -984,7 +991,7 @@ func _pk_vs_tick(delta: float) -> void:
 	# ② 优势方染色 —— 染【光晕】不是染方框(方框已删)。
 	#   染色系数 ×1.4: 差 0.36 就吃满, 优势明显时一眼读得出偏哪边。
 	var adv: float = clampf(0.5 + (_pk_shown_l - _pk_shown_r) * 1.4, 0.0, 1.0)
-	var tint: Color = PK_RED.lerp(PK_BLUE, adv)
+	var tint: Color = _pk_side_col(false).lerp(_pk_side_col(true), adv)   # 偏左 ⇒ 左那一段的队色(看的人是 B 时左是紫)
 	if _pk_vs_glow != null and is_instance_valid(_pk_vs_glow):
 		# 光晕强度: 常态随呼吸微动; 掉血时炸亮一下
 		var amp: float = 0.20 + sin(_pk_phase * 2.4) * 0.04 + hit * 0.45   # ★基础强度也收一档
@@ -1921,8 +1928,8 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 		return
 	var id = str(u.get("id", ""))
 	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
-	var is_left = str(u.get("side", "")) == "left"
-	var side_col = Color("#4ade80") if is_left else Color("#ff6b6b")
+	## 副标题 / 生命条的队色: 我方绿、对方红(看的人是 B ⇒ 右队是我方; 其余与改之前相同)
+	var side_col = Color("#4ade80") if str(u.get("side", "")) == ReplayRecorder.my_side(battle) else Color("#ff6b6b")
 
 	# ── 侧边面板(右锚·不遮全场·无backdrop·用户2026-07-18「侧边不遮战场」) ──
 	## ★面板宽度【由槽反推】(用户 2026-08-16:「是整个大框变窄啊，图标肯定是正方的啊」):
