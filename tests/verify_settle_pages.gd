@@ -150,6 +150,17 @@ func _run(v: Vector2i) -> void:
 	var t1: Array = _texts(p1, true)
 	_ok("[%s] ① 第 1 页写着胜负「胜利」" % tag, t1.has("胜利"), str(t1).substr(0, 160))
 	_ok("[%s] ① 后果一句在" % tag, t1.has(sc._hud._result_subtitle(true, get_node("/root/GameState"))))
+	## ①b 胜负大字(像素标题字, 放在滑入槽里)占住一整行高, 不压下面那一句(2026-10-27 实拍: 槽高 0 ⇒ 大字压在「练习赛 · …」上)
+	var slot1 := p1.find_child("ResultSlot", true, false) as Control
+	var big1: Label = (slot1.get_child(0) as Label) if slot1 != null and slot1.get_child_count() > 0 else null
+	var nxt1: Control = null
+	if slot1 != null and slot1.get_index() + 1 < p1.get_child_count():
+		nxt1 = p1.get_child(slot1.get_index() + 1) as Control
+	var lh1: float = big1.get_theme_font("font").get_height(big1.get_theme_font_size("font_size")) if big1 != null else 0.0
+	_ok("[%s] ①b ★胜负大字的槽高 ≥ 行高、不压下一句" % tag, slot1 != null and big1 != null and nxt1 != null
+		and slot1.size.y >= lh1 - 0.5 and slot1.get_global_rect().end.y <= nxt1.get_global_rect().position.y + 0.5,
+		"槽 %s / 行高 %.0f / 下一句 %s" % [str(slot1.get_global_rect()) if slot1 != null else "null", lh1,
+			str(nxt1.get_global_rect()) if nxt1 != null else "null"])
 	var lanes: Node = p1.find_child("LaneResults", true, false)
 	_ok("[%s] ① 各路胜负: 两路两块牌" % tag, lanes != null and lanes.get_child_count() == 2)
 	var mvp: Node = p1.find_child("MvpRow", true, false)

@@ -515,6 +515,11 @@ func _end_card(won: bool, broken: bool) -> void:
 		var own := ReplayRecorder.play_names.is_empty()
 		col = (COL_GOLD if won else COL_LOSS) if own else COL_GOLD
 	var tl := _lbl(title, 44, col, HORIZONTAL_ALIGNMENT_CENTER)
+	## 固定文案(胜利 / 失败 / 回放中断 / 直播中断)用像素标题字 48 号; 「<昵称> 获胜」是玩家输入的字, 照旧正文字体 44 号
+	##   (docs/plans/20261027-UI美术规矩.md §4.1 硬规矩 2)。判据与 ReplayRecorder.end_caption 同一条: 有没有拿到名字。
+	var nick_title: bool = not broken and str(ReplayRecorder.play_names.get("l" if won else "r", "")) != ""
+	if not nick_title:
+		UISkin.title_label(tl, 48)
 	tl.name = "ReplayResult"
 	vb.add_child(tl)
 	var sub := ""

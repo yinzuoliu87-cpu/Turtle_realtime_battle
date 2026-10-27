@@ -49,6 +49,8 @@ const CHIP_MIN_W := 81.0     # 纯图标时的宽 = 触控下限
 const PAD_X := 18.0          # 薄片离屏幕边
 const GAP := 10.0            # 薄片与页名之间
 const ACT_GAP := 12.0        # 右侧动作之间
+## 页名字号: 像素标题字(UISkin.title_label), 只用 12 的倍数 —— 页名一级 = 36(docs/plans/20261027-UI美术规矩.md §4.1)。
+const TITLE_FS := 36
 
 ## 两套配色。★只是【取值不同】，结构完全一样 —— 这就是"统一规则不统一长相"。
 ##   bg/边/字 三个色 + 一个按下态。
@@ -165,7 +167,8 @@ func _init(host: Node, opts: Dictionary) -> void:
 	if title != "":
 		title_label = Label.new()
 		title_label.text = title
-		title_label.add_theme_font_size_override("font_size", 26)
+		title_label.add_theme_font_size_override("font_size", TITLE_FS)   # 标题字体缺失时的兜底字号
+		UISkin.title_label(title_label, TITLE_FS)
 		title_label.add_theme_color_override("font_color", _pal["text"])
 		title_label.position = Vector2(sl + back_btn.size.x + GAP, 0.0)
 		title_label.size = Vector2(520.0, BAR_H)
@@ -183,10 +186,11 @@ func _init(host: Node, opts: Dictionary) -> void:
 		##   第一版我按字符数算(中文 26 / 拉丁 14.3), 实拍出来
 		##   「商店」那枚薄片几乎贴在「背包」两字上。
 		##   本项目记过: **公式算出来的不算, 要量真实对象**。
+		## ★字体与字号都读标签自己的(2026-10-27 换像素标题字: 原来写死 26 号, 换字后量出来的宽是错的)。
 		var tf: Font = title_label.get_theme_font("font")
 		var tw: float = 0.0
 		if tf != null:
-			tw = tf.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
+			tw = tf.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_label.get_theme_font_size("font_size")).x
 		else:
 			tw = title_label.get_minimum_size().x
 		## ★页名框收到字宽(2026-10-21): 原来固定 520 宽, 框盖住了右边紧跟着的「商店」签

@@ -324,7 +324,7 @@ static func _ribbon(txt: String, which: String) -> Control:
 	UISkin.title_label(lab, 36)
 	lab.add_theme_color_override("font_color", Color("#fff6dc"))
 	lab.add_theme_color_override("font_outline_color", Color("#2a1406") if which == RIBBON_GOLD else Color("#0c1220"))
-	lab.add_theme_constant_override("outline_size", 7)
+	lab.add_theme_constant_override("outline_size", 12)   # 36 号: 每边 3px = 一个源像素(outline_size 每边约画 1/4, 见 stage_ceremony 大字那条)
 	var f: Font = lab.get_theme_font("font")
 	var tf: Font = UISkin.title_font() if UISkin.title_font() != null else f
 	var tw: float = tf.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, lab.get_theme_font_size("font_size")).x if tf != null else 200.0

@@ -187,7 +187,8 @@ func _dl_build_present_overlay(mode: String) -> void:
 	var lane_cn: Dictionary = battle._LANE_CN
 	var title = Label.new()
 	title.name = "PresentTitle"
-	title.add_theme_font_size_override("font_size", 42); title.add_theme_color_override("font_color", Color("#ffd93d"))
+	title.add_theme_font_size_override("font_size", 48); title.add_theme_color_override("font_color", Color("#ffd93d"))
+	UISkin.title_label(title, 48)   # 过场标题: 像素标题字 48 号(docs/plans/20261027-UI美术规矩.md §4.1)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 	if mode == "overview":
@@ -209,7 +210,8 @@ func _dl_build_present_overlay(mode: String) -> void:
 	elif mode == "lane_settle":
 		var win_lr = "right" if battle._dl_pending_loser == "left" else "left"
 		title.text = "%s  战果" % lane_cn.get(cur_lane, cur_lane)
-		var r = Label.new(); r.add_theme_font_size_override("font_size", 26)
+		var r = Label.new(); r.add_theme_font_size_override("font_size", 36)
+		UISkin.title_label(r, 36)   # 比上面的过场标题低一级
 		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == "left" else Color("#ff9b9b"))
 		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		r.text = "本战场胜利" if win_lr == "left" else "本战场失败"

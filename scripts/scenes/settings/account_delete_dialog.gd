@@ -70,7 +70,8 @@ static func open(host: Control, email: String, on_deleted: Callable) -> Control:
 	var ttl := Label.new()
 	ttl.name = TITLE
 	ttl.text = T_STEP1
-	ttl.add_theme_font_size_override("font_size", 26)
+	ttl.add_theme_font_size_override("font_size", 24)
+	UISkin.title_label(ttl, 24)        # 弹框标题统一 24 号像素标题字(原 26; docs/plans/20261027-UI美术规矩.md §4.1)
 	ttl.add_theme_color_override("font_color", Color("#ff5566"))
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)

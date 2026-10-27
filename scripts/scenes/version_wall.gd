@@ -106,7 +106,8 @@ func _build() -> void:
 	t.name = "Title"
 	t.text = TXT_TITLE
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_font_size_override("font_size", 40)
+	t.add_theme_font_size_override("font_size", 48)
+	UISkin.title_label(t, 48)          # 像素标题字 48 号(小整屏大字档, docs/plans/20261027-UI美术规矩.md §4.1)
 	t.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(t)
 	var b := Label.new()

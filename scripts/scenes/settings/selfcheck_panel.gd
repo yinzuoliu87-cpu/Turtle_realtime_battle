@@ -82,6 +82,7 @@ static func open(host: Control) -> Control:
 	dim.add_child(box)
 
 	var ttl := _label(box, TITLE, 24, Color("#cfe3ff"), Vector2(0, 18), Vector2(BOX.x, 32))
+	UISkin.title_label(ttl, 24)        # 弹框标题: 像素标题字 24 号(docs/plans/20261027-UI美术规矩.md §4.1)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var info := _label(box, "%s · %s · v%s" % [OS.get_name(), Engine.get_architecture_name(),
 		ReplayRecorder.client_version()], 14, C_DIM, Vector2(0, 54), Vector2(BOX.x, 22))

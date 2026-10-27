@@ -129,7 +129,8 @@ func _ready() -> void:
 				webby = f.border_width_left > 0 and f.border_width_right > 0 					and f.border_width_top > 0 and f.border_width_bottom > 0 and f.bg_color.a < 1.0
 			_ok("③ %s 返回键不是网页盒/圆角盒" % scn, not webby and not rounded,
 				"stylebox=%s 圆角=%s 网页盒=%s" % [sb.get_class(), str(rounded), str(webby)])
-		## ④ 顶栏里带汉字的键必须是【文字薄片】: 有底板、字号不大于页名(26)。
+		## ④ 顶栏里带汉字的键必须是【文字薄片】: 有底板、字号 ≤ 26(原页名字号)。
+		##   2026-10-27 页名换成 36 号像素标题字(TopBar.TITLE_FS), 上限不跟着放到 36: 键要比页名小一级, 不许读成第二个页名。
 		##   ★2026-10-20: 「≤2 字符=图标」把「商店」「站位」判成图标 ⇒ 零底板 + 38 号字,
 		##   背包顶栏读起来像「背包」「商店」两个页名(App Store 截图上发现)。
 		var tb_node: Node = inst.find_child("TopBar", true, false)

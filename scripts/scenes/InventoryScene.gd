@@ -1616,8 +1616,9 @@ func _show_lineup_help() -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.add_child(box)
 	var ttl := Label.new(); ttl.text = "阵容说明"
-	ttl.add_theme_font_size_override("font_size", 22); ttl.add_theme_color_override("font_color", Color("#ffd93d"))
-	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 30); box.add_child(ttl)
+	ttl.add_theme_font_size_override("font_size", 24); ttl.add_theme_color_override("font_color", Color("#ffd93d"))
+	UISkin.title_label(ttl, 24)        # 弹框标题: 像素标题字 24 号(原 22); 框高 32 = 行高
+	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 32); box.add_child(ttl)
 	var body := Label.new()
 	## ★原文每条都是「X = Y」的对照表式("点两个单位 = 互换它们的战场 / 位置"),
 	##   那是策划表的写法。改成直接对玩家说"你点了会怎样" —— 同样是六条, 一条不少。

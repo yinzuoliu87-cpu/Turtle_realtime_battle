@@ -492,15 +492,19 @@ func _build_searching() -> void:
 	## ★下面那句 `get_string_size(title.text)` 是**量真实字宽**再贴点点,
 	##   改文案不会错位 —— 它就是为了这一刻写的。
 	title.text = "匹配中"
-	title.size = Vector2(W, 56); title.position = Vector2(0, 300); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## 过场标题: 像素标题字 48 号(docs/plans/20261027-UI美术规矩.md §4.1), 行高 64 ⇒ 框高 64、上移 4(底沿仍在 364, 不压 366 那句)。
+	UISkin.title_label(title, 48)
+	title.size = Vector2(W, 64); title.position = Vector2(0, 296); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(title)
-	_dots_lbl = _font(40, Color("#ffd93d"))
+	_dots_lbl = _font(48, Color("#ffd93d"))
+	UISkin.title_label(_dots_lbl, 48)       # 点点跟标题同一种字, 才接得上
 	## ★点点的 x 原来写死 `W/2 + 96` —— 那是照着当时那条字的宽度目测出来的。
 	##   本轮换了字体回退链(见 _bold_font), 字宽跟着变, 写死的偏移就会离题。
 	##   改成【量标题实际字宽】再贴到它右边: 换字/改文案都不会错位。
-	var tw: float = _bold_font().get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
-	_dots_lbl.text = ""; _dots_lbl.size = Vector2(60, 56)
-	_dots_lbl.position = Vector2(W / 2.0 + tw / 2.0 + 6.0, 300)
+	## ★2026-10-27: 量的是【标题标签自己】的字体与字号(原来写死 _bold_font() 40 号, 换标题字后量出来是错的)。
+	var tw: float = title.get_theme_font("font").get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, title.get_theme_font_size("font_size")).x
+	_dots_lbl.text = ""; _dots_lbl.size = Vector2(60, 64)
+	_dots_lbl.position = Vector2(W / 2.0 + tw / 2.0 + 6.0, 296)
 	content_root.add_child(_dots_lbl)
 	var sub := _font(20, Color("#9fb6c9"))
 	sub.text = "正在匹配对手…"
@@ -534,9 +538,11 @@ func _build_vs(opp: Dictionary) -> void:
 	## ★2026-10-06 用户「已匹配到对手后下面几帧怎么再乱搞」: 原来 1 秒里绿闪+绿波+震屏、红闪+红波+大震叠两轮。
 	##   照荒野乱斗 / 皇室战争 / Disney Melee Mania 的 VS 页(Game UI Database · Versus Screen): 没有闪屏、没有扩散圈,
 	##   只有双方卡 + 一个 VS 落定。⇒ 去掉两次全屏闪色、两道扩散圈和震屏。
-	var found := _font(26, Color("#7fd98a"))
+	var found := _font(36, Color("#7fd98a"))
 	found.text = "匹配成功"
-	found.size = Vector2(W, 34); found.position = Vector2(0, FOUND_Y); found.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## 像素标题字 36 号(比「匹配中」低一级); 行高 48 ⇒ 框高 48(底沿 200, 卡顶 236)。
+	UISkin.title_label(found, 36)
+	found.size = Vector2(W, 48); found.position = Vector2(0, FOUND_Y); found.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(found)
 	## ★★2026-09-28「✓」→ 像素勾 `ui/icon-check.png`(32×32, 1x)。
 	##   这个勾是**状态**(找到了), 不是装饰 ⇒ 不能只删。
@@ -550,11 +556,12 @@ func _build_vs(opp: Dictionary) -> void:
 		ck.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ck.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		ck.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var _fw: float = _bold_font().get_string_size(found.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
+		## ★量【标签自己】的字体与字号(2026-10-27 换标题字: 原来写死 _bold_font() 26 号)。
+		var _fw: float = found.get_theme_font("font").get_string_size(found.text, HORIZONTAL_ALIGNMENT_LEFT, -1, found.get_theme_font_size("font_size")).x
 		ck.size = Vector2(ICON_PX, ICON_PX)
-		ck.position = Vector2(W / 2.0 - _fw / 2.0 - ICON_PX - 6.0, 1.0)
+		ck.position = Vector2(W / 2.0 - _fw / 2.0 - ICON_PX - 6.0, (found.size.y - ICON_PX) / 2.0)
 		found.add_child(ck)
-	found.pivot_offset = Vector2(W / 2.0, 17)
+	found.pivot_offset = Vector2(W / 2.0, found.size.y / 2.0)
 	found.scale = Vector2(1.8, 1.8); found.modulate.a = 0.0
 	var ftw := found.create_tween()
 	ftw.tween_property(found, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

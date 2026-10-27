@@ -306,6 +306,7 @@ static func _scroll_box(cols: Array, vert: bool, along: float) -> StyleBoxFlat:
 const TITLE_FONT_PATH := "res://assets/fonts/ark-pixel-12px-zh_hans.otf"
 const TITLE_PX := 12
 const TITLE_FALLBACK_PATH := "res://assets/fonts/NotoSansSC-Regular.otf"
+const TITLE_EMOJI_PATH := "res://assets/fonts/NotoEmoji-Regular.ttf"   # 与主题回退链同一份兜底(不挂 SystemFont: iOS 上只会刷报错)
 static var _title_font: FontFile = null
 static func title_font() -> FontFile:
 	if _title_font == null:
@@ -316,9 +317,12 @@ static func title_font() -> FontFile:
 		f.hinting = TextServer.HINTING_NONE
 		f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
 		## 方舟像素缺少游戏里用到的约 30 个字(奖 / 徽 / 热…, 2026-10-27 只读排查); 不设后备 ⇒ 手机上显示空方框。
-		var fb := load(TITLE_FALLBACK_PATH) as Font
-		if fb != null:
-			f.fallbacks = [fb]
+		var chain: Array[Font] = []
+		for p in [TITLE_FALLBACK_PATH, TITLE_EMOJI_PATH]:
+			var fb := load(p) as Font
+			if fb != null:
+				chain.append(fb)
+		f.fallbacks = chain
 		_title_font = f
 	return _title_font
 

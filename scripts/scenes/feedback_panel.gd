@@ -64,6 +64,7 @@ static func open(host: Control) -> Control:
 	var ttl := Label.new()
 	ttl.text = TITLE
 	ttl.add_theme_font_size_override("font_size", 24)
+	UISkin.title_label(ttl, 24)        # 弹框标题: 像素标题字 24 号(docs/plans/20261027-UI美术规矩.md §4.1)
 	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(BOX.x, 32)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -50,7 +50,8 @@ static func open(host: Node, first_launch: bool) -> Control:
 	t.name = "Title"
 	t.text = TXT_TITLE
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_font_size_override("font_size", 30); t.add_theme_color_override("font_color", Color("#ffd93d"))
+	t.add_theme_font_size_override("font_size", 36); t.add_theme_color_override("font_color", Color("#ffd93d"))
+	UISkin.title_label(t, 36)          # 像素标题字 36 号(docs/plans/20261027-UI美术规矩.md §4.1)
 	vb.add_child(t)
 	var bh := HBoxContainer.new()
 	bh.alignment = BoxContainer.ALIGNMENT_CENTER; bh.add_theme_constant_override("separation", 18)
