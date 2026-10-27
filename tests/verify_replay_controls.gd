@@ -22,7 +22,8 @@ extends Node
 ##      · 回放时左上铭牌没了(不许有 ReplayPlate); 顶栏路名牌左边有「回放」小签
 ##      · 进度条每道刻度下面有路名(上路 / 下路 / 终极), 个数 = 录像里开打的路数
 ##   ⑧ 2026-10-27 用户截图(铜管手铳说明断在「上限为 1」): 回放里从信息面板点开的装备小卡不许被底部操作条挡住
-##      —— 全部装备逐件 3 星开一遍; 放不下的长卡挪到比操作条更高的一层, 挪层之后关卡照样删干净
+##      —— 全部装备逐件 3 星开一遍, 张张整张在屏幕里、在操作条之上、不挪层; 操作条上面放不下的长卡(小木斧本来 1994 px)
+##      改成卡内上下滑动: 内容总高 > 可见高, 滚轮 / 手指拖动滚得动, 点卡不关卡, 滚到底看得到最后一行
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
@@ -398,11 +399,6 @@ func _t_controls_and_card(base: Dictionary) -> void:
 
 
 # ⑧ ─────────────────────────────────────────────────────────────
-## 比整屏还高、放哪都装不下的卡(与操作条无关, 不在回放里也一样出屏幕底边)。★点名登记, 新冒出来的超长卡照样红。
-##   p2eq_096 小木斧: 2026-10-22 起说明把四个形态 + 四个造物全列出(skill_text._axe_full_src), 宽 300 时约 2000 px 高。
-const _TALL_KNOWN := ["p2eq_096"]
-
-
 ## 信息面板从右滑入走真实时间(0.22 秒, battle_hud._show_unit_info_panel) ⇒ 按墙钟等它停稳, 不按帧数。
 func _wait_slide() -> void:
 	await _frames(2)
@@ -418,11 +414,56 @@ func _canvas_layer_of(n: Node) -> CanvasLayer:
 	return p as CanvasLayer
 
 
+## 小卡里的卡内滚动框(InspectCard.N_SCROLL); 没有 = null。
+func _card_scroll(c: Control) -> ScrollContainer:
+	if c == null or not is_instance_valid(c):
+		return null
+	return c.find_child(InspectCard.N_SCROLL, true, false) as ScrollContainer
+
+
+## 滚动框里内容的总高(里面那层 VBox 排完版的高)。
+func _scroll_content_h(sc: ScrollContainer) -> float:
+	if sc == null or sc.get_child_count() == 0:
+		return 0.0
+	return maxf((sc.get_child(0) as Control).size.y, (sc.get_child(0) as Control).get_combined_minimum_size().y)
+
+
+## 往视口里推真的鼠标事件(走 GUI → 没人吃才到战斗场 _unhandled_input, 与玩家点屏同一条路)。
+func _push_btn(p: Vector2, btn: MouseButton, down: bool) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = btn
+	e.pressed = down
+	e.factor = 1.0
+	e.position = p
+	e.global_position = p
+	if down and btn == MOUSE_BUTTON_LEFT:
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(e)
+
+
+func _push_move(p: Vector2, rel: Vector2) -> void:
+	var m := InputEventMouseMotion.new()
+	m.position = p
+	m.global_position = p
+	m.relative = rel
+	m.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(m)
+
+
+## 小卡 / 信息面板都还开着(点卡没有把它们关掉)。
+func _still_open(b, ic, k: String) -> bool:
+	return ic.card != null and is_instance_valid(ic.card) and str(ic.key) == k \
+		and b._info_panel != null and is_instance_valid(b._info_panel)
+
+
 ## 用户 2026-10-27 截图: 回放里点信息面板上的装备, 左边弹出的说明小卡(inspect_card.gd)下半截被底部操作条挡住 ——
 ##   铜管手铳(p2eq_077, 3 星)的说明断在「上限为 1」。操作条在 _ui_layer 上面一层(ReplayLayer), 小卡挂在 _ui_layer。
-## ⇒ 从真信息面板的装备槽, 把【全部】装备逐件按 3 星开一遍: 每张要么整张收在操作条上沿之上,
-##   要么挪到了比 ReplayLayer 更高的层。★不只测铜管手铳: 长卡才会撞, 哪件最长会随文案变 ⇒ 全量过。
-## 分母: 件数 / 与操作条横向重叠的张数 / 按改前摆法会被挡的张数 / 最高那张多高。
+## ⇒ 从真信息面板的装备槽, 把【全部】装备逐件按 3 星开一遍: 每张整张都在屏幕里、也在操作条上沿之上, 没有一张挪层。
+##   ★不只测铜管手铳: 长卡才会撞, 哪件最长会随文案变 ⇒ 全量过。
+## ★2026-10-27 第二轮: 小木斧(p2eq_096)3 星宽 300 时高 1994, 原来放哪都装不下(点名豁免 + 挪层压住「退出回放」)。
+##   内容不删(用户 10-22 定四个形态、四个造物全列)⇒ 放不下的卡改成卡内上下滑动: 卡头不动, 正文到「本局」在滚动框里;
+##   豁免删掉, 改成断言「超长的卡有滚动框, 内容总高 > 可见高」, 并真推滚轮 / 手指拖动 / 点卡, 量滚得动、卡不被关掉。
+## 分母: 件数 / 与操作条横向重叠的张数 / 按改前摆法会被挡的张数 / 本来最高那张多高 / 滚动的张数。
 func _t_inspect_card_over_bar(b, bar: Node) -> void:
 	print("── ⑧ 回放中装备说明小卡不被操作条挡住 ──")
 	var strip := _named(bar, "ReplayStrip") as Control
@@ -492,14 +533,17 @@ func _t_inspect_card_over_bar(b, bar: Node) -> void:
 	var ids: Array = DataRegistry.phase2_equipment_by_id.keys()
 	ids.sort()
 	var ic = b._info_sys.card()
+	var room: float = sr.position.y - InspectCard.EDGE - InspectCard.TOP_Y     # 卡能用的总高(卡顶 TOP_Y 到条顶 − EDGE)
 	var not_open: Array = []
 	var bad: Array = []
 	var off: Array = []
-	var too_tall: Array = []
-	var raised_fit: Array = []
+	var raised: Array = []
+	var idle_scroll: Array = []
+	var tall_flat: Array = []
+	var head_scrolls: Array = []
+	var scrolled: Array = []
 	var n_ok := 0
 	var n_hov := 0
-	var n_raised := 0
 	var n_would_hit := 0
 	var leak := 0
 	var max_h := 0.0
@@ -512,36 +556,43 @@ func _t_inspect_card_over_bar(b, bar: Node) -> void:
 	for e in ids:
 		var eid := str(e)
 		b._info_sys._open_equip_card(u, eid, 3, anchor)
-		await _frames(3)                   # 摆位会等一帧排完版再按真实高度收一次
+		await _frames(3)                   # 摆位等一帧排完版按真实高度收; 放不下的那帧装滚动框, 再一帧收到整行
 		var c: Control = ic.card
 		if c == null or not is_instance_valid(c) or str(ic.key) != "eq:" + eid:
 			not_open.append(eid)
 			continue
 		n_ok += 1
 		var r: Rect2 = c.get_global_rect()
-		var lay := _canvas_layer_of(c)
-		var raised: bool = lay != null and lay.layer > rl.layer
-		n_raised += 1 if raised else 0
+		if _canvas_layer_of(c) != b._ui_layer:
+			raised.append("%s → %s" % [eid, str(_canvas_layer_of(c).name) if _canvas_layer_of(c) != null else "<无层>"])
 		if r.position.x < sr.end.x and r.end.x > sr.position.x:
 			n_hov += 1
+		## 这张卡本来(不滚)有多高 = 卡高 − 滚动框可见高 + 滚动框里内容总高
+		var sc := _card_scroll(c)
+		var nat: float = r.size.y
+		if sc != null:
+			nat = r.size.y - sc.size.y + _scroll_content_h(sc)
+			scrolled.append(eid)
+			if _scroll_content_h(sc) <= sc.size.y + 0.5 or not sc.get_v_scroll_bar().is_visible_in_tree():
+				idle_scroll.append("%s 内容 %d ≤ 可见 %d 或没滚动条" % [eid, int(_scroll_content_h(sc)), int(sc.size.y)])
+			var tl := c.find_child("Title", true, false)
+			var srow := c.find_child("StatRow", true, false)
+			if (tl != null and sc.is_ancestor_of(tl)) or (srow != null and sc.is_ancestor_of(srow)) \
+					or not sc.is_ancestor_of(ic.live.get("body")):
+				head_scrolls.append(eid)
+		elif r.size.y > room + 0.5:
+			tall_flat.append("%s(%d px > 可用 %d)" % [eid, int(r.size.y), int(room)])
 		## 改之前的摆法(顶边对齐装备槽, 只防出屏幕底边)会不会撞上操作条 —— 分母: 这条判据真有对象
-		if clampf(ay, 50.0, maxf(50.0, vp.y - r.size.y - 8.0)) + r.size.y > sr.position.y:
+		if clampf(ay, 50.0, maxf(50.0, vp.y - nat - 8.0)) + nat > sr.position.y:
 			n_would_hit += 1
-		if not (r.end.y <= sr.position.y or raised):
+		if r.end.y > sr.position.y:
 			bad.append("%s 底 %d > 条顶 %d" % [eid, int(r.end.y), int(sr.position.y)])
-		## 操作条上面放得下(条顶 − 8 − 顶边 50)的卡应当往上收, 不该挪层去压住操作条
-		if raised and r.size.y <= sr.position.y - 58.0:
-			raised_fit.append("%s(%d px)" % [eid, int(r.size.y)])
-		if r.size.y > vp.y - 58.0:
-			too_tall.append("%s(%d px)" % [eid, int(r.size.y)])
-			if not _TALL_KNOWN.has(eid):
-				off.append("%s 比整屏还高 %s" % [eid, str(r)])
-		elif r.position.y < 0.0 or r.position.x < 0.0 or r.end.y > vp.y or r.end.x > vp.x:
+		if r.position.y < InspectCard.TOP_Y - 0.5 or r.position.x < 0.0 or r.end.y > vp.y or r.end.x > vp.x:
 			off.append("%s %s" % [eid, str(r)])
-		if r.size.y > max_h:
-			max_h = r.size.y
+		if nat > max_h:
+			max_h = nat
 			max_id = eid
-		if r.size.y <= vp.y - 58.0 and r.size.y > fit_h:
+		if sc == null and r.size.y > fit_h:
 			fit_h = r.size.y
 			fit_id = eid
 		if eid == "p2eq_077":
@@ -551,43 +602,121 @@ func _t_inspect_card_over_bar(b, bar: Node) -> void:
 		await get_tree().process_frame
 		if is_instance_valid(c) or ic.card != null:
 			leak += 1
-	print("    [⑧] 装备 %d 件 / 开出 %d / 横向与操作条重叠 %d / 改前摆法会被挡 %d / 挪层 %d / 最高 %s %d px / 操作条 %s / 视口 %s" % [
-		ids.size(), n_ok, n_hov, n_would_hit, n_raised, max_id, int(max_h), str(sr), str(vp)])
+	print("    [⑧] 装备 %d 件 / 开出 %d / 横向与操作条重叠 %d / 改前摆法会被挡 %d / 卡内滚动 %d 张 %s / 本来最高 %s %d px / 可用高 %d / 操作条 %s / 视口 %s" % [
+		ids.size(), n_ok, n_hov, n_would_hit, scrolled.size(), str(scrolled), max_id, int(max_h), int(room), str(sr), str(vp)])
 	_ok("⑧ 分母: 全部 %d 件装备都按 3 星开出了小卡, 且张张与操作条横向重叠(%d)" % [ids.size(), n_hov],
 		ids.size() >= 50 and n_ok == ids.size() and n_hov == n_ok, "没开出: %s" % str(not_open.slice(0, 6)))
 	_ok("⑧ 分母: 按改前的摆法会被操作条挡住的有 %d 张(判据真有对象)" % n_would_hit, n_would_hit >= 1)
-	_ok("⑧ ★每张小卡都收在操作条上沿之上(或挪到了比 ReplayLayer 更高的层)", n_ok > 0 and bad.is_empty(),
+	_ok("⑧ ★每张小卡都收在操作条上沿之上(%d 张, 不再有挪层豁免)" % n_ok, n_ok > 0 and bad.is_empty(),
 		"%d 张被挡: %s" % [bad.size(), str(bad.slice(0, 6))])
-	_ok("⑧ ★操作条上面放得下的卡是往上收、不是挪层压住操作条", n_ok > 0 and raised_fit.is_empty(),
-		"%d 张挪了层: %s" % [raised_fit.size(), str(raised_fit.slice(0, 6))])
-	_ok("⑧ 每张装得下的小卡都整张在屏幕里(比整屏还高的 %d 张只许是点名登记的 %s)" % [too_tall.size(), str(_TALL_KNOWN)],
-		n_ok > 0 and off.is_empty(), str(off.slice(0, 4)))
-	if not too_tall.is_empty():
-		print("    [⑧ 另案] 比整屏(%d)还高、出屏幕底边的卡: %s —— 与操作条无关, 不在回放里也一样" % [int(vp.y), str(too_tall)])
+	_ok("⑧ ★没有一张卡挪层去压操作条(张张都挂在 _ui_layer, 没有 InspectTopLayer)", n_ok > 0 and raised.is_empty()
+		and b.get_node_or_null("InspectTopLayer") == null, str(raised.slice(0, 6)))
+	_ok("⑧ ★每张小卡都整张在屏幕里(卡顶 ≥ %d、卡底 ≤ 视口底; 没有豁免)" % int(InspectCard.TOP_Y), n_ok > 0 and off.is_empty(),
+		str(off.slice(0, 4)))
+	_ok("⑧ ★超长的卡有卡内滚动框(本来比可用高 %d 高、却没滚动框的: 0 张)" % int(room), n_ok > 0 and tall_flat.is_empty(),
+		str(tall_flat.slice(0, 6)))
+	_ok("⑧ ★小木斧 p2eq_096 (3 星, 本来 %d px) 是卡内滚动" % int(max_h if max_id == "p2eq_096" else 0.0),
+		scrolled.has("p2eq_096") and max_id == "p2eq_096" and max_h > room, "滚动的: %s / 最高 %s" % [str(scrolled), max_id])
+	_ok("⑧ ★有滚动框的卡: 内容总高 > 可见高、滚动条看得见(%d 张)" % scrolled.size(), not scrolled.is_empty() and idle_scroll.is_empty(),
+		str(idle_scroll.slice(0, 4)))
+	_ok("⑧ ★卡头(名字 / 属性行)不滚、正文在滚动框里", not scrolled.is_empty() and head_scrolls.is_empty(), str(head_scrolls))
 	_ok("⑧ ★铜管手铳 p2eq_077 (3 星, 用户截图那件) 测到了", seen077,
 		"y %d..%d 高 %d / 条顶 %d" % [int(r077.position.y), int(r077.end.y), int(r077.size.y), int(sr.position.y)])
-	_ok("⑧ 分母: 装得下的里最高的 %s 高 %d px ≥ 300(长卡真的被测到; 全部里最高 %s %d px)" % [fit_id, int(fit_h), max_id, int(max_h)],
+	_ok("⑧ 分母: 不滚的卡里最高的 %s 高 %d px ≥ 300(长卡真的被测到; 本来最高 %s %d px)" % [fit_id, int(fit_h), max_id, int(max_h)],
 		fit_h >= 300.0)
 	_ok("⑧ 每张关掉都真删了(不残留)", n_ok > 0 and leak == 0 and b.find_children("InspectCard", "", true, false).is_empty(), "残留 %d" % leak)
-	## 操作条上面放不下的长卡 ⇒ 挪到比操作条更高的一层; 挪层之后 close() 照样删干净(它走的是新父节点)。
+	## 自造一张比可用高还高的探针长卡(与装备文案无关): 照样卡内滚动、留在 _ui_layer、收在操作条之上; close() 照样删干净。
 	var lines := PackedStringArray()
 	for k in range(40):
 		lines.append("探针第 %d 行" % k)
 	ic.open("probe:tall", anchor, {"title": "探针长卡", "body": "\n".join(lines)})
 	await _frames(3)
 	var tc: Control = ic.card
-	var tl: CanvasLayer = _canvas_layer_of(tc) if tc != null and is_instance_valid(tc) else null
-	var th: float = tc.size.y if tc != null and is_instance_valid(tc) else 0.0
-	_ok("⑧ ★操作条上面放不下的长卡(高 %d > 可用 %d) ⇒ 挪到比 ReplayLayer 更高的一层" % [int(th), int(sr.position.y - 58.0)],
-		th > sr.position.y - 58.0 and tl != null and tl.layer > rl.layer and tl.name == "InspectTopLayer",
-		("%s layer %d" % [tl.name, tl.layer]) if tl != null else "<无层>")
+	var tsc := _card_scroll(tc)
+	var tr: Rect2 = tc.get_global_rect() if tc != null and is_instance_valid(tc) else Rect2()
+	_ok("⑧ ★探针长卡(内容 %d > 可见 %d) ⇒ 卡内滚动、仍挂 _ui_layer、卡底 %d ≤ 条顶 %d" % [
+		int(_scroll_content_h(tsc)), int(tsc.size.y if tsc != null else 0.0), int(tr.end.y), int(sr.position.y)],
+		tsc != null and _scroll_content_h(tsc) > tsc.size.y and _canvas_layer_of(tc) == b._ui_layer
+		and tr.end.y <= sr.position.y and tr.position.y >= InspectCard.TOP_Y - 0.5)
 	var had_tc: bool = tc != null and is_instance_valid(tc)
 	ic.close()
 	await get_tree().process_frame
-	_ok("⑧ ★挪层之后 close() 照样把卡删掉", had_tc and not is_instance_valid(tc) and ic.card == null
-		and (tl == null or tl.get_child_count() == 0))
+	_ok("⑧ ★带滚动框的卡 close() 照样删掉", had_tc and not is_instance_valid(tc) and ic.card == null
+		and b.find_children("InspectCard", "", true, false).is_empty())
+	## 最后一段会点战场空白把面板关掉 ⇒ 放在最后
+	await _t_card_scroll_input(b, ic, u, anchor, sr)
 	b._hud._close_info_panel()
 	await _frames(2)
+
+
+## 小木斧那张: 滚动条看得见 / 滚到底看得到最后一行 / 鼠标滚轮滚得动 / 手机按住拖动滚得动 / 点卡不关卡;
+##   反面: 点战场空白照样关面板(证明点按真的走到了战斗场 _unhandled_input, 上面「不关」不是因为点击根本没送到)。
+func _t_card_scroll_input(b, ic, u: Dictionary, anchor: Control, sr: Rect2) -> void:
+	b._info_sys._open_equip_card(u, "p2eq_096", 3, anchor)
+	await _frames(3)
+	var c: Control = ic.card
+	var sc := _card_scroll(c)
+	_ok("⑧ 分母: 小木斧那张开着、有卡内滚动框", c != null and is_instance_valid(c) and sc != null)
+	if sc == null:
+		return
+	var k := str(ic.key)
+	var vbar := sc.get_v_scroll_bar()
+	var cr: Rect2 = c.get_global_rect()
+	var br: Rect2 = vbar.get_global_rect()
+	_ok("⑧ ★滚动条看得见、在卡里(条 %s / 卡 %s)" % [str(br), str(cr)], vbar.is_visible_in_tree() and br.size.y >= 60.0
+		and cr.encloses(br) and br.end.y <= sr.position.y)
+	## 滚到底: 最后一行(「本局」那一行)整行落在滚动框里看得见的那一段
+	sc.scroll_vertical = int(vbar.max_value)
+	await _frames(2)
+	var last := ic.live.get("extra") as Control
+	var vis: Rect2 = sc.get_global_rect()
+	var lr: Rect2 = last.get_global_rect() if last != null else Rect2()
+	_ok("⑧ ★滚到底看得到最后一行「本局」(行 y %d..%d / 可见 y %d..%d)" % [int(lr.position.y), int(lr.end.y), int(vis.position.y), int(vis.end.y)],
+		last != null and sc.scroll_vertical > 0 and lr.position.y >= vis.position.y - 0.5 and lr.end.y <= vis.end.y + 0.5)
+	sc.scroll_vertical = 0
+	await _frames(2)
+	var p: Vector2 = vis.get_center()
+	## 鼠标滚轮
+	_push_btn(p, MOUSE_BUTTON_WHEEL_DOWN, true)
+	_push_btn(p, MOUSE_BUTTON_WHEEL_DOWN, false)
+	await _frames(2)
+	var s_wheel: int = sc.scroll_vertical
+	_ok("⑧ ★鼠标滚轮往下滚得动(0 → %d), 卡和面板都还开着" % s_wheel, s_wheel > 0 and _still_open(b, ic, k))
+	## 手机按住拖动: Godot 的 ScrollContainer 只在有触屏时开拖动滚 ⇒ 无头里打开「鼠标模拟触屏」(手机上本来就是触屏)
+	var emu0: bool = Input.emulate_touch_from_mouse
+	Input.emulate_touch_from_mouse = true
+	_push_btn(p, MOUSE_BUTTON_LEFT, true)
+	await get_tree().process_frame
+	var q := p
+	for _i in range(6):
+		q += Vector2(0, -30)
+		_push_move(q, Vector2(0, -30))
+		await get_tree().process_frame
+	_push_btn(q, MOUSE_BUTTON_LEFT, false)
+	await _frames(3)
+	var s_drag: int = sc.scroll_vertical
+	Input.emulate_touch_from_mouse = emu0
+	_ok("⑧ ★手指按住往上拖 180 px 滚得动(%d → %d), 松手后卡和面板都还开着" % [s_wheel, s_drag],
+		DisplayServer.is_touchscreen_available() == emu0 and s_drag >= s_wheel + 100 and _still_open(b, ic, k),
+		"拖完 %d" % s_drag)
+	## 点一下卡头、点一下正文: 都不关卡、不关面板
+	var head := c.find_child("Title", true, false) as Control
+	for tp in [head.get_global_rect().get_center() if head != null else cr.position + Vector2(40, 20), vis.get_center()]:
+		_push_btn(tp, MOUSE_BUTTON_LEFT, true)
+		await get_tree().process_frame
+		_push_btn(tp, MOUSE_BUTTON_LEFT, false)
+		await _frames(2)
+	_ok("⑧ ★点卡头 / 点正文: 卡和面板都还开着", head != null and _still_open(b, ic, k))
+	## 反面: 同样的点法点在战场空白(卡左边) ⇒ 面板和卡都关了
+	var blank := Vector2(cr.position.x * 0.5, (sr.position.y + 50.0) * 0.5)
+	_push_btn(blank, MOUSE_BUTTON_LEFT, true)
+	await get_tree().process_frame
+	_push_btn(blank, MOUSE_BUTTON_LEFT, false)
+	await _frames(3)
+	_ok("⑧ 反面: 同样的点法点战场空白 %s ⇒ 面板和卡都关了(点按真的送到了战斗场)" % str(blank),
+		(b._info_panel == null or not is_instance_valid(b._info_panel)) and (ic.card == null or not is_instance_valid(ic.card)))
+	ic.close()
+	await get_tree().process_frame
 
 
 # ③ ─────────────────────────────────────────────────────────────

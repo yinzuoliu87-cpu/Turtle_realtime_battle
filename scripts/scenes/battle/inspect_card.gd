@@ -9,11 +9,26 @@ extends RefCounted
 ##   → 特殊段/脚注(灰斜体) → [技能] 细线 + 数值拆解表 / [装备] 细线 + 本局统计。
 ## ★面板本身不动 —— 小卡是挂在 _ui_layer 上的独立节点, 贴着面板左沿。
 ## ★一次只开一张; 再点同一个图标 = 收起; 面板关了小卡跟着关(见 close())。
+## ★卡比可用高度高(2026-10-27: 小木斧 3 星宽 300 时高 1994, 四个形态 + 四个造物全列、内容不删)⇒
+##   卡头(图标 / 名字 / 星级 / 属性行)不动, 正文到「本局」那一段改成卡内上下滑动(_fit), 卡总高收进可用高度:
+##   上边 TOP_Y; 下边 = 屏幕底边, 回放 / 观赛时 = 与小卡横向重叠的操作条上沿; 各留 EDGE。
 
 const HUD_TEX := "res://assets/sprites/battlehud/"
 const CARD_W := 300.0
 const GAP := 8.0                      # 小卡右沿与面板左沿的间距
 const ICON := 44.0                    # 头部图标边长
+const TOP_Y := 50.0                   # 卡顶最高到这(顶栏下沿)
+const EDGE := 8.0                     # 卡底与屏幕底边 / 操作条上沿留的缝
+## 卡内滚动框(正文那段放不下时才建)。门禁按名字找它。
+const N_SCROLL := "CardScroll"
+const N_FLOW := "CardFlow"
+const SCROLL_MIN_H := 60.0            # 滚动框最少露这么高(卡头再高也不压成一条缝)
+const SCROLL_GUTTER := UISkin.SCROLL_W + 4.0   # 正文给竖滚动条让出的宽(条宽跟皮走, 再留 4; 与商店 CardBodyScroll 同一个口径)
+const SCROLL_DEADZONE := 8            # 手指按下后挪过这么多像素才算拖动(点一下手抖不滚)
+const SNAP_MAX := 40.0                # 收整行时最多收这么多(切在大块非正文控件中间时不收)
+## 宿主摆位(商店 / 背包)时先让宿主自己收卡高 —— 商店 _refit_card 隔两帧把正文装进它的 CardBodyScroll、再隔一帧定位;
+##   这里再多等一帧才看还放不放得下, 放得下就什么都不做(不套第二层滚动)。
+const HOST_SETTLE_FRAMES := 4
 ## 装备属性名 → 属性图标(assets/sprites/stats/<x>-icon.png)。局内信息面板与商店小卡共用这一份。
 const EQ_STAT_ICON := {"攻击力": "atk", "最大生命值": "hp", "护甲": "def", "魔抗": "mr", "暴击率": "crit",
 	"暴击伤害": "crit-dmg", "护甲穿透": "armorpen", "魔法穿透": "magicpen", "生命偷取": "lifesteal",
@@ -43,6 +58,10 @@ var live: Dictionary = {}
 var _w: float = CARD_W
 ## 字号下限(商店手机版 2026-10-21 传 20 = 手机上约 11pt)。0 = 不设(局内信息面板照旧)。
 var _min_px: int = 0
+## open() 建的正文那一段(细线 / 正文 / 脚注 / 拆解表 / 本局), 卡放不下时整段挪进滚动框。
+##   卡头、属性行、宿主接在卡底的按钮(背包「卖出 / 详情」)不在里面 —— 它们不滚, 永远看得见。
+var _flow: Array = []
+var _scroll: ScrollContainer = null
 
 
 func _init(b) -> void:
@@ -62,6 +81,8 @@ func close() -> void:
 	card = null
 	key = ""
 	live = {}
+	_flow = []
+	_scroll = null
 
 
 ## 打开一张卡。spec:
@@ -100,6 +121,7 @@ func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 	var stats: Array = spec.get("stats", [])
 	if not stats.is_empty():
 		_stat_row(vb, stats)
+	var n_head := vb.get_child_count()
 	var body := str(spec.get("body", ""))
 	if body != "":
 		_line(vb)
@@ -120,6 +142,7 @@ func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 		ex.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		live["extra"] = ex
 		live["extra_title"] = et
+	_flow = vb.get_children().slice(n_head)
 	live["vbox"] = vb
 	_place(anchor)
 	return live
@@ -303,6 +326,7 @@ func _slot_box() -> StyleBox:
 
 ## 摆位: 右沿贴面板左沿(留 GAP), 顶边对齐被点的控件; 超出视口就往上收。
 ## ★高度要等一帧排完版才准(RichTextLabel fit_content) ⇒ 先摆一次, 下一帧再按真实高收一次。
+## ★收到顶还放不下 ⇒ 正文那段改成卡内上下滑动(_fit); 宿主摆位时等宿主自己收完再看(HOST_SETTLE_FRAMES)。
 func _place(anchor: Control) -> void:
 	_place_now(anchor)
 	var c := card
@@ -310,34 +334,51 @@ func _place(anchor: Control) -> void:
 	if not is_instance_valid(battle):
 		return
 	if c == card and is_instance_valid(c):
+		var a: Control = anchor if is_instance_valid(anchor) else null   # 被点的槽这一帧里可能已被重建掉
 		c.size = Vector2(_w, 0)              # 让容器按内容重算高度
-		_place_now(anchor)
+		_place_now(a)
+		_fit_after(c, a, HOST_SETTLE_FRAMES if battle.has_method("inspect_card_pos") else 0)
 
 
 func _place_now(anchor: Control) -> void:
 	if card == null or not is_instance_valid(card):
 		return
-	var h0: float = maxf(card.get_combined_minimum_size().y, card.size.y)
-	if battle.has_method("inspect_card_pos"):
-		card.position = battle.inspect_card_pos(card, h0)
-		return
-	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
-	var pr: Rect2 = (battle._info_panel as Control).get_global_rect()
 	var h: float = maxf(card.get_combined_minimum_size().y, card.size.y)
+	if battle.has_method("inspect_card_pos"):
+		card.position = battle.inspect_card_pos(card, h)
+		return
 	var y: float = 54.0
 	if anchor != null and is_instance_valid(anchor):
 		y = anchor.get_global_rect().position.y - 6.0
 	## ★底边避开回放 / 观赛的底部操作条(2026-10-27 用户截图: 铜管手铳的说明下半截被进度条挡住, 文字断在「上限为 1」)。
-	##   操作条在 _ui_layer 上面一层(replay_controls.gd 为了压住血条), 卡挂在 _ui_layer ⇒ 先往上收; 收不下就挪到比操作条更高的一层。
-	var x: float = pr.position.x - GAP - CARD_W
-	var bottom: float = vp.y - 8.0
+	##   操作条在 _ui_layer 上面一层(replay_controls.gd 为了压住血条), 卡挂在 _ui_layer ⇒ 往上收;
+	##   收到 TOP_Y 还放不下的长卡由 _fit 改成卡内滑动, 卡总高本身就收在操作条上沿之上 —— 不挪层、不压操作条。
+	var x: float = _card_x()
+	y = clampf(y, TOP_Y, maxf(TOP_Y, _bottom_y(x) - h))
+	card.position = Vector2(x, y)
+
+
+## 小卡左沿: 右沿贴信息面板左沿(留 GAP)。面板已经不在(这几帧里被关掉)⇒ 原地不动。
+func _card_x() -> float:
+	var ip = battle.get("_info_panel")
+	if ip != null and is_instance_valid(ip) and ip is Control:
+		return (ip as Control).get_global_rect().position.x - GAP - CARD_W
+	return card.position.x
+
+
+## 屏幕底边能用到的最低处: 视口底 − 底部手势条(SafeArea; 桌面 / 无头为 0) − EDGE。
+func _screen_bottom() -> float:
+	var vr: Rect2 = battle.get_viewport().get_visible_rect()
+	return vr.end.y - SafeArea.insets(vr.size).w - EDGE
+
+
+## 卡底能到的最低处(局内): 屏幕底边; 回放 / 观赛时与小卡横向重叠的那块操作条的上沿。各留 EDGE。
+func _bottom_y(x: float) -> float:
+	var bottom: float = _screen_bottom()
 	var bar_top: float = _bottom_bar_top(x, x + CARD_W)
 	if bar_top > 0.0:
-		bottom = minf(bottom, bar_top - 8.0)
-	y = clampf(y, 50.0, maxf(50.0, bottom - h))
-	card.position = Vector2(x, y)
-	if bar_top > 0.0 and y + h > bar_top:
-		_raise_over_bar()
+		bottom = minf(bottom, bar_top - EDGE)
+	return bottom
 
 
 ## 回放 / 观赛时底部操作条的上沿(只算与小卡横向 [x0, x1] 有重叠的那几块); 不在回放 / 都不重叠 = -1。
@@ -360,16 +401,125 @@ func _bottom_bar_top(x0: float, x1: float) -> float:
 	return top
 
 
-## 卡在操作条上面放不下(说明特别长)⇒ 挪到比操作条更高的一层, 宁可压住操作条也不让字被挡。
-func _raise_over_bar() -> void:
-	var rl := battle.get_node_or_null("ReplayLayer") as CanvasLayer
-	if rl == null:
+## 卡能用的总高。局内 = 从 TOP_Y 到 _bottom_y; 宿主摆位 = 从宿主给这张卡(按现在的高)的卡顶到 _screen_bottom,
+##   换算到卡的父节点坐标里量(背包 / 商店的卡可能被 UIFrame 收进居中的设计框)。
+func _room(h: float) -> float:
+	if not battle.has_method("inspect_card_pos"):
+		return _bottom_y(_card_x()) - TOP_Y
+	var top: float = (battle.inspect_card_pos(card, h) as Vector2).y
+	var bottom_g := Vector2(0.0, _screen_bottom())
+	var par := card.get_parent() as CanvasItem
+	var bottom: float = (par.get_global_transform().affine_inverse() * bottom_g).y if par != null else bottom_g.y
+	return bottom - top
+
+
+## 隔 frames 帧再 _fit。挂在树信号上的一次性回调, 不用 await —— 宿主在这几帧里没了(离开商店 / 门禁拆场)这条连接跟着断,
+##   不会在已释放的实例上恢复。★c / anchor 不标类型: 卡在这几帧里被关掉(商店整页重建)时绑着的是已释放的对象,
+##   标了 Control 会在调用这一刻报参数类型错; 先判 is_instance_valid 再用。
+func _fit_after(c, anchor, frames: int) -> void:
+	if not is_instance_valid(c) or c != card or not is_instance_valid(battle) or not battle.is_inside_tree():
 		return
-	var top := battle.get_node_or_null("InspectTopLayer") as CanvasLayer
-	if top == null:
-		top = CanvasLayer.new()
-		top.name = "InspectTopLayer"
-		top.layer = rl.layer + 1
-		battle.add_child(top)
-	if card.get_parent() != top:
-		card.reparent(top)
+	var a: Control = anchor as Control if is_instance_valid(anchor) else null
+	if frames > 0:
+		battle.get_tree().process_frame.connect(_fit_after.bind(c, a, frames - 1), CONNECT_ONE_SHOT)
+		return
+	if _fit(a):
+		## 正文按让出滚动条后的宽重排要等一帧; 排完把可见高收到整行, 再摆一次
+		battle.get_tree().process_frame.connect(_snap_after.bind(c, a), CONNECT_ONE_SHOT)
+
+
+func _snap_after(c, anchor) -> void:
+	if not is_instance_valid(c) or c != card or not is_instance_valid(battle):
+		return
+	_snap_flow()
+	(c as Control).size = Vector2(_w, 0)
+	_place_now(anchor as Control if is_instance_valid(anchor) else null)
+
+
+## 卡比可用高度高 ⇒ 正文那段装进卡内滚动框, 可见高 = 可用高 − 不滚的那部分(卡头 / 属性行 / 宿主按钮 / 边距), 卡总高 = 可用高。
+## 返回 true = 这次装了滚动框(调用方等一帧排版后收整行)。放得下 / 宿主已自己装了滚动框 ⇒ false, 什么都不动。
+func _fit(anchor: Control) -> bool:
+	if card == null or not is_instance_valid(card) or _scroll != null:
+		return false
+	card.size = Vector2(_w, 0)
+	var room: float = _room(card.get_combined_minimum_size().y)
+	if card.get_combined_minimum_size().y <= room + 0.5:
+		return false
+	## 宿主已经把正文装进它自己的滚动框(商店 CardBodyScroll)⇒ 卡高归宿主管, 不套第二层
+	if not card.find_children("*", "ScrollContainer", true, false).is_empty():
+		return false
+	if not _wrap_flow():
+		return false
+	_scroll.custom_minimum_size.y = 0.0
+	card.size = Vector2(_w, 0)
+	var fixed_h: float = card.get_combined_minimum_size().y
+	_scroll.custom_minimum_size.y = maxf(SCROLL_MIN_H, floorf(room - fixed_h))
+	card.size = Vector2(_w, 0)
+	_place_now(anchor)
+	return true
+
+
+## 把正文那段(_flow, 不含打头那道细线)原样挪进卡内滚动框, 滚动框放回它原来的位置。
+## ★滚动框 PASS、里面的字全 IGNORE ⇒ 按下落在滚动框上: 滚轮、手机按住拖动(Godot 有触屏时才开的拖动滚)都由它接,
+##   再往上交给卡(STOP)吃掉 —— 不会穿到战场 / 背包底去关面板、关卡。
+func _wrap_flow() -> bool:
+	var vb = live.get("vbox")
+	if vb == null or not is_instance_valid(vb):
+		return false
+	var nodes: Array = []
+	for n in _flow:
+		if is_instance_valid(n) and (n as Node).get_parent() == vb:
+			nodes.append(n)
+	## 卡头下面那道细线留在滚动框外: 滚动时正文从线下面滑过, 卡头和正文始终隔着它
+	while not nodes.is_empty() and nodes[0] is ColorRect:
+		nodes.pop_front()
+	if nodes.is_empty():
+		return false
+	var sc := ScrollContainer.new()
+	sc.name = N_SCROLL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	sc.follow_focus = false
+	sc.scroll_deadzone = SCROLL_DEADZONE
+	sc.mouse_filter = Control.MOUSE_FILTER_PASS
+	UISkin.scrollbar(sc)
+	var inner := VBoxContainer.new()
+	inner.name = N_FLOW
+	inner.add_theme_constant_override("separation", (vb as VBoxContainer).get_theme_constant("separation"))
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sc.add_child(inner)
+	var at: int = (nodes[0] as Node).get_index()
+	(vb as Node).add_child(sc)
+	(vb as Node).move_child(sc, at)
+	for n in nodes:
+		(vb as Node).remove_child(n)
+		inner.add_child(n)
+		if n is RichTextLabel and (n as Control).custom_minimum_size.x > 0.0:
+			(n as Control).custom_minimum_size.x = maxf(0.0, (n as Control).custom_minimum_size.x - SCROLL_GUTTER)
+	_scroll = sc
+	return true
+
+
+## 滚动框可见高收到【整行】: 按像素倒推的可见高常常切在某一行中间, 框底露出半行字头像一道脏线
+##   (与商店 _snap_card_body 2026-10-22 同一个由来)。只收不放 ⇒ 卡不会因此变高、仍在可用高度里。
+func _snap_flow() -> void:
+	if _scroll == null or not is_instance_valid(_scroll) or _scroll.get_child_count() == 0:
+		return
+	var inner := _scroll.get_child(0) as Control
+	var vis: float = _scroll.custom_minimum_size.y
+	for ch in inner.get_children():
+		var c := ch as Control
+		if c == null or not c.visible or c.position.y + c.size.y <= vis + 0.5:
+			continue
+		var keep: float = c.position.y
+		if c is RichTextLabel:
+			var rt := c as RichTextLabel
+			for i in range(1, rt.get_line_count()):
+				var lt: float = c.position.y + rt.get_line_offset(i)
+				if lt > vis + 0.5:
+					break
+				keep = lt
+		if keep >= SCROLL_MIN_H and keep < vis - 0.5 and vis - keep <= SNAP_MAX:
+			_scroll.custom_minimum_size.y = keep
+		return
