@@ -1865,8 +1865,11 @@ func _week_popup(paint_now: int) -> void:
 	hz.size = Vector2(W, WEEK_BAR_H - 3.0)
 	hz.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_week_pop.add_child(hz)
-	var head := _place_outlined("本周赛程", 30, Color("#ffe9a8"),
+	var head := _place_outlined("本周赛程", 36, Color("#ffe9a8"),
 		Vector2(WALL + ICON_TAP + 4.0, -1.0), Vector2(360.0, WEEK_BAR_H - 3.0))
+	## 页名用像素标题字 36 号(与顶栏页名同级, docs/plans/20261027-UI美术规矩.md §4.1); 描边 12 = 每边 3px = 一个源像素。
+	UISkin.title_label(head, 36)
+	head.add_theme_constant_override("outline_size", 12)
 	head.name = "WeekPopupTitle"
 	hz.add_child(head)
 	content_root.add_child(_week_pop)
@@ -2255,14 +2258,16 @@ func _week_card(info: Dictionary) -> Control:
 		tx += 36.0 + 14.0
 	## 三站徽章(2026-10-26 用户「赛程条这些要动」: 与周末弹窗 / 晋级仪式同一套正式标识), 抬头右侧、锁着压灰。
 	var bw: float = _wk().stage_badge(head, ph, locked, Vector2(sz.x - CARD_PAD, CARD_HEAD_H * 0.5))
-	var title := _place_outlined(str(info["title"]), 34, Color("#d8d2cc") if locked else Color("#fff4d6"),
-		Vector2(tx, 3.0), Vector2(sz.x - tx - CARD_PAD - bw, 44.0))
+	## 站名用像素标题字 36 号(卡片标题一级); 行高 = 36 × 4/3 = 48 ⇒ 框高 48, 副标题跟着下移到 50(原 44 高的框装不下, 会压副标题)。
+	var title := _place_outlined(str(info["title"]), 36, Color("#d8d2cc") if locked else Color("#fff4d6"),
+		Vector2(tx, 1.0), Vector2(sz.x - tx - CARD_PAD - bw, 48.0))
 	title.name = "CardTitle"
-	title.add_theme_constant_override("outline_size", 8)
+	UISkin.title_label(title, 36)
+	title.add_theme_constant_override("outline_size", 12)   # 每边 3px = 一个源像素
 	head.add_child(title)
 	var sub_txt: String = str(info["lock_text"]) if locked else str(info["days"])
 	var sub := _place_outlined(sub_txt, 19, Color("#ffe08a") if locked else Color("#ffe9c4"),
-		Vector2(tx, 47.0), Vector2(sz.x - tx - CARD_PAD - bw, 26.0))
+		Vector2(tx, 50.0), Vector2(sz.x - tx - CARD_PAD - bw, 26.0))
 	sub.name = "CardSub"
 	head.add_child(sub)
 	## ── 正文 ──

@@ -133,8 +133,10 @@ func open() -> void:
 	var x0: float = float(DESIGN_W) * 0.5 - w_all * 0.5
 	var ttl := Label.new(); ttl.name = "FormationTitle"
 	ttl.text = "站位"
-	ttl.add_theme_font_size_override("font_size", 26); ttl.add_theme_color_override("font_color", Color("#ffd93d"))
-	ttl.add_theme_color_override("font_outline_color", Color("#0b1018")); ttl.add_theme_constant_override("outline_size", 5)
+	## 像素标题字 24 号(弹框标题档, 原 26); 描边 8 = 每边 2px = 一个源像素(outline_size 每边约画 1/4, 实拍量过)。
+	ttl.add_theme_font_size_override("font_size", 24); ttl.add_theme_color_override("font_color", Color("#ffd93d"))
+	UISkin.title_label(ttl, 24)
+	ttl.add_theme_color_override("font_outline_color", Color("#0b1018")); ttl.add_theme_constant_override("outline_size", 8)
 	ttl.position = Vector2(x0, 8); ttl.size = Vector2(80, 36)
 	_body.add_child(ttl)
 	var sub := Label.new(); sub.name = "FormationHint"

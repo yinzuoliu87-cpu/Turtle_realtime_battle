@@ -31,10 +31,13 @@ const SPRITE_ROOT := "res://assets/sprites/"
 ## ── 尺寸表(逻辑 px)。手机横屏逻辑高恒为 720 ⇒ 1 逻辑 px = 390/720 = 0.542 pt ──
 ## ★这是这一屏字号的【唯一出处】, 门禁量的是渲染后 Label 的真实字号, 不读这张表。
 const PT_PER_PX := 390.0 / 720.0      # iPhone 横屏高 390pt ÷ 720(info_panel.gd「44pt = 81px」同一条线)
-const F_RESULT := 84       # 胜负大字            45.5pt
-const F_RAIL := 40         # 左栏顶上的胜负        21.7pt
+## ★F_RESULT / F_RAIL / F_TEAM / F_LANE 四个是【像素标题字】(UISkin.title_label), 只用 12 的倍数
+##   (docs/plans/20261027-UI美术规矩.md §4.1; 方舟像素 12px 只在整数倍字号上不糊)。
+const F_RESULT := 84       # 胜负大字            45.5pt  (标题字 12×7, 全游戏最大)
+const F_RAIL := 48         # 左栏顶上的胜负        26.0pt  (标题字)
 const F_TAB := 30          # 页签                16.3pt
-const F_TEAM := 34         # 我方 / 敌方 标题      18.4pt
+const F_TEAM := 36         # 我方 / 敌方 标题      19.5pt  (标题字)
+const F_MVP := 30          # MVP 那一行的名字与伤害 16.3pt  (正文 + 玩家龟名, 不用标题字; 原来借 F_TEAM - 4)
 const F_SUB := 24          # 后果一句            13.0pt
 const F_NAME := 22         # 表格名字            11.9pt (iOS 最小 11pt)
 const F_NUM := 24          # 表格数字            13.0pt
@@ -42,9 +45,10 @@ const F_HEAD := 20         # 表头                10.8pt (表头允许略小于
 const F_CAP := 18          # 标签 / 小注          9.8pt
 const F_SEG := 22          # 分路切换            11.9pt
 const F_REWARD := 34       # 奖励数值            18.4pt
-const F_LANE := 40         # 各路胜负            21.7pt
+const F_LANE := 48         # 各路胜负            26.0pt  (标题字)
 const F_BTN := 28          # 主按钮              15.2pt
 
+const SLIDE_IN := 240.0                # 胜负大字从左边滑进来的起点偏移(逻辑 px)
 const RAIL_W := 220.0
 const TAB_H := 88.0                    # ≥ 81 = 44pt 触控线
 const SEG_SIZE := Vector2(118, 81)
@@ -124,7 +128,8 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	hb.add_child(rail)
 	var word := _lbl("已封存" if sealed else ("胜利" if won else "失败"), F_RAIL,
 		COL_SUB if sealed else (COL_GOLD if won else COL_LOSS), HORIZONTAL_ALIGNMENT_CENTER)
-	word.custom_minimum_size = Vector2(0, 64)
+	UISkin.title_label(word, F_RAIL)
+	word.custom_minimum_size = Vector2(0, 64)          # = 48 × 4/3 行高
 	word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	rail.add_child(word)
 	for i in range(PAGE_NAMES.size()):
@@ -266,13 +271,24 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 	##   由对阵图在下一轮开播时揭晓(判据在 battle_hud._banner_sealed(), 这里只画)。
 	var big := _lbl(hud._result_headline(won, sealed, gs), F_RESULT,
 		COL_GOLD if won and not sealed else (COL_SUB if sealed else COL_LOSS), HORIZONTAL_ALIGNMENT_CENTER)
-	v.add_child(big)
+	UISkin.title_label(big, F_RESULT)
+	## ★入场 = 从左边滑进来(2026-10-27, docs/plans/20261027-UI美术规矩.md §4.5-2): 原来 1.25 → 1 缩放弹入,
+	##   像素字在非整数倍缩放下笔画粗细不匀。大字放进一个占位槽(槽在竖排里占住位置), 字在槽里横向滑。
+	var slot := Control.new()
+	slot.name = "ResultSlot"
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## ★槽高按字体行高算, 不量标签的最小尺寸: 标签还没进树时 get_combined_minimum_size() 是 0
+	##   (2026-10-27 实拍: 槽高 0 ⇒ 大字压在下面那句「练习赛 · 不计入赛季进度」上)。
+	var bf: Font = big.get_theme_font("font")
+	slot.custom_minimum_size = Vector2(0.0, ceilf(bf.get_height(F_RESULT)) if bf != null else float(F_RESULT) * 4.0 / 3.0)
+	v.add_child(slot)
+	slot.add_child(big)
+	big.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	big.modulate.a = 0.0
-	big.scale = Vector2(1.25, 1.25)
-	big.resized.connect(func() -> void: big.pivot_offset = big.size * 0.5)
+	big.position.x = -SLIDE_IN
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(big, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.12)
-	tw.tween_property(big, "modulate:a", 1.0, 0.30).set_delay(0.12)
+	tw.tween_property(big, "position:x", 0.0, UIPalette.T_BASE).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(UIPalette.T_TAP)
+	tw.tween_property(big, "modulate:a", 1.0, UIPalette.T_TAP).set_delay(UIPalette.T_TAP)
 	if sealed:
 		var ss := _lbl(battle.Phase2Cfg.finals_sealed_sub(), F_CAP + 2, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER)
 		ss.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -326,10 +342,10 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(tag)
 		mv.add_child(avatar(r, 64.0))
-		var nm := _lbl(battle._st_name(r), F_TEAM - 4, Color("#ffffff"))
+		var nm := _lbl(battle._st_name(r), F_MVP, Color("#ffffff"))
 		nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(nm)
-		var dl := _lbl("造成伤害 %d" % int(r.get("_st_dealt", 0)), F_TEAM - 4, COL_GOLD)
+		var dl := _lbl("造成伤害 %d" % int(r.get("_st_dealt", 0)), F_MVP, COL_GOLD)
 		dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(dl)
 		v.add_child(mv)
@@ -373,7 +389,9 @@ func _lane_plate(lane_cn: String, who: String) -> Control:
 	box.add_child(bv)
 	bv.add_child(_lbl(lane_cn, F_CAP + 2, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER))
 	var res := "胜" if who == "left" else ("负" if who == "right" else "平")
-	bv.add_child(_lbl(res, F_LANE, COL_GOLD if who == "left" else COL_LOSS, HORIZONTAL_ALIGNMENT_CENTER))
+	var rl := _lbl(res, F_LANE, COL_GOLD if who == "left" else COL_LOSS, HORIZONTAL_ALIGNMENT_CENTER)
+	UISkin.title_label(rl, F_LANE)
+	bv.add_child(rl)
 	return box
 
 
@@ -388,6 +406,7 @@ func _page_team(team: int, title: String, hc: Color, views: Array, side: String)
 	head.custom_minimum_size = Vector2(0, SEG_SIZE.y)
 	v.add_child(head)
 	var t := _lbl(title, F_TEAM, hc)
+	UISkin.title_label(t, F_TEAM)
 	t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(t)
 	var sp := Control.new()

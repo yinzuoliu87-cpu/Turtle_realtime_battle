@@ -108,11 +108,13 @@ static func play(host: Node, from_key: String, to_key: String, title: String, su
 		b_to.modulate.a = 0.0
 		holder.add_child(b_to)
 	## 大字是美术的一部分(参考的段位名: 超大、厚描边、落影), 不是一行说明。
-	var t := _lbl(title, 72, Color("#fff1c9"), 14)
+	## ★描边 / 落影落在像素格上(2026-10-27 实拍量): 72 号一个源像素 = 6px; Godot 的 outline_size 每边只画约 1/4
+	##   (outline 14 实拍每边 4~5px, 36 号 outline 7 实拍每边 2px) ⇒ 描边 24 = 每边 6px = 一个源像素, 落影 6 = 一个源像素。
+	var t := _lbl(title, 72, Color("#fff1c9"), 24)
 	UISkin.title_label(t, 72)
 	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.75))
 	t.add_theme_constant_override("shadow_offset_x", 0)
-	t.add_theme_constant_override("shadow_offset_y", 7)
+	t.add_theme_constant_override("shadow_offset_y", 6)
 	t.name = "Title"
 	t.modulate.a = 0.0
 	var slot := Control.new()

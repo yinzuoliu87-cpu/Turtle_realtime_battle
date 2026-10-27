@@ -142,10 +142,13 @@ func _build_caption() -> void:
 	_title.name = N_TITLE
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_title.add_theme_font_size_override("font_size", 64)
+	## 像素标题字 60 号(整屏主标题档, docs/plans/20261027-UI美术规矩.md §4.1); 行高 80 < 标题框高 90。
+	##   描边 20 = 每边 5px = 一个源像素(outline_size 每边约画 1/4, 实拍量过)。
+	_title.add_theme_font_size_override("font_size", 60)
+	UISkin.title_label(_title, 60)
 	_title.add_theme_color_override("font_color", Color("#ffd93d"))
 	_title.add_theme_color_override("font_outline_color", Color("#1a0d02"))
-	_title.add_theme_constant_override("outline_size", 14)
+	_title.add_theme_constant_override("outline_size", 20)
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(_title)
 	_plate = PanelContainer.new()
@@ -350,7 +353,8 @@ func open_naming() -> void:
 	var t := Label.new()
 	t.text = TXT_NAME_TITLE
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_font_size_override("font_size", 30)
+	t.add_theme_font_size_override("font_size", 36)
+	UISkin.title_label(t, 36)          # 弹框里的整屏流程标题: 像素标题字 36 号
 	t.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(t)
 	var rule := Label.new()

@@ -259,13 +259,16 @@ func _build_splash() -> void:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.add_theme_font_size_override("font_size", 78)
+	## 像素标题字 72 号(docs/plans/20261027-UI美术规矩.md §4.1 整屏主标题档); 一个源像素 = 6px:
+	##   描边 24(outline_size 每边约画 1/4 ⇒ 每边 6px)、落影 6 —— 都落在像素格上(实拍量过, 见 stage_ceremony 大字那条)。
+	l.add_theme_font_size_override("font_size", 72)
+	UISkin.title_label(l, 72)
 	l.add_theme_color_override("font_color", Color("#ffb03a"))
 	l.add_theme_color_override("font_outline_color", Color("#5c0c00"))
-	l.add_theme_constant_override("outline_size", 14)
+	l.add_theme_constant_override("outline_size", 24)
 	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
-	l.add_theme_constant_override("shadow_offset_x", 4)
-	l.add_theme_constant_override("shadow_offset_y", 5)
+	l.add_theme_constant_override("shadow_offset_x", 6)
+	l.add_theme_constant_override("shadow_offset_y", 6)
 	l.position = Vector2.ZERO
 	l.size = holder.size
 	l.pivot_offset = holder.size * 0.5

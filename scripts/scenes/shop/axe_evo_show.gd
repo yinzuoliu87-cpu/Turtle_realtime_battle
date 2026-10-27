@@ -38,6 +38,7 @@ const SWAP_FINAL := [0.2, 0.2, 0.16, 0.16, 0.12, 0.12, 0.09, 0.09, 0.07, 0.07, 0
 const T_FLASH_UP := 0.05
 const T_FLASH_DOWN := 0.25
 const FLASH_PEAK := 0.85
+const NAME_H := 64.0       # 形态名框高 = 48 号标题字行高(48 × 4/3)
 const T_NAME_DELAY := 0.3
 const T_NAME_IN := 0.15
 const T_HOLD := 1.0       # 揭晓后停多久
@@ -246,11 +247,14 @@ func _show(step: Dictionary) -> void:
 
 	_name = Label.new(); _name.name = "FormName"
 	_name.text = str(disp["name"])
-	_name.add_theme_font_size_override("font_size", 40)
+	## 形态名: 像素标题字 48 号(docs/plans/20261027-UI美术规矩.md §4.1); 行高 64 ⇒ 框高 64;
+	##   描边 16 = 每边 4px = 一个源像素(outline_size 每边约画 1/4, 实拍量过)。
+	_name.add_theme_font_size_override("font_size", 48)
+	UISkin.title_label(_name, 48)
 	_name.add_theme_color_override("font_color", Color("#ffd93d"))
-	_name.add_theme_color_override("font_outline_color", Color("#1a0e05")); _name.add_theme_constant_override("outline_size", 8)
+	_name.add_theme_color_override("font_outline_color", Color("#1a0e05")); _name.add_theme_constant_override("outline_size", 16)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_name.size = Vector2(vs.x, 56); _name.position = Vector2(0, _axe.position.y + asz.y + 10.0)
+	_name.size = Vector2(vs.x, NAME_H); _name.position = Vector2(0, _axe.position.y + asz.y + 10.0)
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_name)
 	_sub = Label.new(); _sub.name = "SubLine"
@@ -259,7 +263,7 @@ func _show(step: Dictionary) -> void:
 	_sub.add_theme_color_override("font_color", Color("#e8dcc4"))
 	_sub.add_theme_color_override("font_outline_color", Color("#1a0e05")); _sub.add_theme_constant_override("outline_size", 5)
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_sub.size = Vector2(vs.x, 34); _sub.position = Vector2(0, _name.position.y + 56.0)
+	_sub.size = Vector2(vs.x, 34); _sub.position = Vector2(0, _name.position.y + NAME_H)
 	_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_sub)
 

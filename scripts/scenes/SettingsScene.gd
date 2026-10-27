@@ -647,6 +647,7 @@ func _open_conflict_dialog() -> void:
 	var ttl := Label.new()
 	ttl.text = "存档冲突"
 	ttl.add_theme_font_size_override("font_size", 24)
+	UISkin.title_label(ttl, 24)        # 弹框标题: 像素标题字 24 号(docs/plans/20261027-UI美术规矩.md §4.1)
 	ttl.add_theme_color_override("font_color", Color("#ffb454"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(560, 32)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1157,6 +1158,7 @@ func _wall_title(box: Control, flow: String, standalone: bool) -> void:
 	ttl.text = (_P2C.login_wall_head() if standalone
 		else ("绑定邮箱" if flow == _SB_ACC.FLOW_BIND else "邮箱登录"))
 	ttl.add_theme_font_size_override("font_size", 24)
+	UISkin.title_label(ttl, 24)        # 弹框标题: 像素标题字 24 号
 	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(520, 32)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1613,7 +1615,8 @@ func _ask_reset() -> void:
 
 	var ttl := Label.new()
 	ttl.text = "重置存档？"
-	ttl.add_theme_font_size_override("font_size", 26)
+	ttl.add_theme_font_size_override("font_size", 24)
+	UISkin.title_label(ttl, 24)        # 弹框标题统一 24 号像素标题字(原 26)
 	ttl.add_theme_color_override("font_color", Color("#ff5566"))
 	ttl.position = Vector2(0, 20); ttl.size = Vector2(520, 36)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1941,6 +1944,7 @@ func _open_rename_dialog() -> void:
 	var ttl := Label.new()
 	ttl.text = RENAME_LABEL
 	ttl.add_theme_font_size_override("font_size", 24)
+	UISkin.title_label(ttl, 24)        # 弹框标题: 像素标题字 24 号
 	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(520, 32)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
