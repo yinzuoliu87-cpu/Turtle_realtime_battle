@@ -49,13 +49,31 @@ const F_LANE := 48         # 各路胜负            26.0pt  (标题字)
 const F_BTN := 28          # 主按钮              15.2pt
 
 const SLIDE_IN := 240.0                # 胜负大字从左边滑进来的起点偏移(逻辑 px)
+## 第 1 页各块(大字 / 说明 / 各路 / 奖励 / MVP)之间的间距: 页体有富余时取 GAP_MAX, 紧时往下收, 最小 GAP_MIN。
+##   ★由来(2026-10-27 用户 iPad 实机截图): 积分赛结算比练习赛多「消耗生命 / 阵容已上传 / 五格数据」,
+##   固定 16 的间距 + 按字体行高占位, 第 1 页要 536 而 iPad 窗口里页体只有 491 ⇒ MVP 那一行被按钮排切掉一半。
+##   门禁 verify_settle_fit 在四种视口 × 真机安全区下量每一件字与图都在可视区里。
+const GAP_MAX := 16
+const GAP_MIN := 6
+const TEXT_GAP := 4                    # 后果一句 / 下一步说明 这几行小字之间(它们是同一段话)
 const RAIL_W := 220.0
+## 左栏最窄: 最宽的那张左栏大字图「已封存」150。视口窄到我方 / 敌方那张表横向放不下时, 左栏先让(见 _fit_rail)。
+const RAIL_MIN := 150.0
+const RAIL_GAP := 16                   # 左栏与金属框之间
+## 四边留白 = max(安全区 + 6, 这个数)。没有安全区时与原来相同(左右 6+14 / 上下 6+10);
+##   有安全区时安全区本身就是留白, 不再往里叠 14 / 10 —— iPad 窗口模式左右各报 ~47、底 ~38(2026-10-27 用户截图量出),
+##   叠上去之后我方 / 敌方那张 8 列表横向放不下(击杀数一列和右上的分路切换被切掉)。
+const SIDE_AIR := 20.0
+const TOP_AIR := 16.0
 const TAB_H := 88.0                    # ≥ 81 = 44pt 触控线
 const SEG_SIZE := Vector2(118, 81)
 const BTN_SIZE := Vector2(240, 84)
 const ROW_H := 42.0                    # 头像 40 + 2px 呼吸(8 行 + 表头正好落在页体里, 见门禁 verify_settle_pages)
 const NAME_W := 228.0
-const NUM_W := 92.0                    # 7 个数值列(2026-10-04): 228 + 7×(92+8) = 928 ≤ 1280 宽时页体可视 936
+const NUM_W := 92.0                    # 7 个数值列(2026-10-04)。表宽 = 名字列(≥ NAME_W) + 7×(92 + COL_GAP); 窄屏放不下时左栏让(_fit_rail)
+## 表格列间距。2026-10-27 从 8 收到 6: iPad 窗口模式(左右各 ~47 安全区)下 8 列表要靠左栏让宽才放得下,
+##   这 7 × 2 = 14 是给左栏留的余量(数值列本身右对齐、各留 92 宽, 字与字之间仍有 ≥ 10 的空)。
+const COL_GAP := 6
 const SWIPE_MIN := 110.0               # 横向移动超过这么多(逻辑 px)才算翻页
 
 const PAGE_NAMES := ["战果", "我方", "敌方"]
@@ -79,6 +97,8 @@ var pages: Array = []                  # [Control] × 3
 var tab_btns: Array = []               # 左栏三个页签
 var btn_row: HBoxContainer             # 主按钮行 —— 由 battle_hud._settle_buttons() 往里放按钮
 var more_hint: Label
+var rail_word: Label                   # 左栏顶上的胜负(只在我方 / 敌方两页亮, 见 show_page)
+var _body: Control                     # 页体(裁剪区)
 var cur_page := 0
 var _scrolls: Array = [null, null]     # 我方/敌方 各一个滚动区
 var _grids: Array = [[], []]           # 我方/敌方 各自的分路表(合计/上路/下路…)
@@ -99,31 +119,39 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	var gs = battle.get_node_or_null("/root/GameState")
 	var views: Array = lane_views()
 
+	## ★底是【不透明】的(2026-10-27): 原来淡到 0.92, 战斗 HUD 透出 8% —— 用户 iPad 实拍里左上角的头像和名字
+	##   压在左栏「失败」底下、右边缘露出单位栏的半截卡片(方案书 20261004 根因 E「结算是浮层不是一屏」的尾巴)。
+	##   HUD 的件数会变, 一件件藏总会漏 ⇒ 整块盖住。淡入仍保留(0 → 1, 战场在这 0.35 秒里退下去)。
 	var dim := ColorRect.new()
+	dim.name = "SettleBackdrop"
 	dim.color = Color(0.02, 0.035, 0.06, 0.0)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
-	create_tween().tween_property(dim, "color:a", 0.92, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	create_tween().tween_property(dim, "color:a", 1.0, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 	var vp: Vector2 = get_viewport().get_visible_rect().size
 	var sm: Vector4 = SafeArea.margins(vp, 6.0)
+	var ml: float = maxf(sm.x, SIDE_AIR)
+	var mr: float = maxf(sm.z, SIDE_AIR)
 	var m := MarginContainer.new()
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## ★左右边距相等 ⇒ 左栏 + 正文这一整组在真实视口里居中(verify_ui_layout ⑥ 量的就是它)
-	m.add_theme_constant_override("margin_left", int(sm.x + 14))
-	m.add_theme_constant_override("margin_right", int(sm.z + 14))
-	m.add_theme_constant_override("margin_top", int(sm.y + 10))
-	m.add_theme_constant_override("margin_bottom", int(sm.w + 10))
+	m.add_theme_constant_override("margin_left", int(ml))
+	m.add_theme_constant_override("margin_right", int(mr))
+	m.add_theme_constant_override("margin_top", int(maxf(sm.y, TOP_AIR)))
+	m.add_theme_constant_override("margin_bottom", int(maxf(sm.w, TOP_AIR)))
 	add_child(m)
 	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 16)
+	hb.add_theme_constant_override("separation", RAIL_GAP)
 	m.add_child(hb)
+	var fstyle: StyleBox = frame_style()
 
 	## ── 左栏: 胜负 + 三个页签 + 翻页提示 ──
 	var rail := VBoxContainer.new()
-	rail.custom_minimum_size = Vector2(RAIL_W, 0)
+	rail.name = "SettleRail"
+	rail.custom_minimum_size = Vector2(RAIL_W, 0)              # 表建好之后 _fit_rail 按表的真实宽度再收
 	rail.add_theme_constant_override("separation", 12)
 	hb.add_child(rail)
 	var word := _lbl("已封存" if sealed else ("胜利" if won else "失败"), F_RAIL,
@@ -132,7 +160,11 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	word.custom_minimum_size = Vector2(0, 64)          # = 48 × 4/3 行高
 	BigTitle.apply(word, BigTitle.RAIL)
 	word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	word.name = "RailWord"
 	rail.add_child(word)
+	## ★只在我方 / 敌方两页亮(2026-10-27): 战果页正中已经有全屏最大的那个胜负, 左栏再写一遍就是同一屏两个「失败」;
+	##   而翻到我方 / 敌方, 正文只剩两张表, 这时左栏这一行是唯一说胜负的地方。透明而不是隐藏 —— 位置留着, 翻页时页签不跳。
+	rail_word = word
 	for i in range(PAGE_NAMES.size()):
 		var tb := _plank_btn(str(PAGE_NAMES[i]), Vector2(RAIL_W, TAB_H), F_TAB)
 		var idx := i
@@ -151,7 +183,7 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	var frame := PanelContainer.new()
 	frame.name = "SettleFrame"
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	frame.add_theme_stylebox_override("panel", frame_style())
+	frame.add_theme_stylebox_override("panel", fstyle)
 	hb.add_child(frame)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
@@ -160,9 +192,10 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	body.name = "SettleBody"
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.clip_contents = true          # 页内容万一比页体高也不许画到按钮上(门禁另量「放得下」)
+	body.clip_contents = true          # 页内容万一比页体高也不许画到按钮上(门禁 verify_settle_fit 量「放得下」)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(body)
+	_body = body
 	pages.append(_page_result(won, sealed, gs, views))
 	## 「我方」= 看的人那一侧(周六配对局我是 B ⇒ 右队; 其余左队, 与改之前相同)
 	pages.append(_page_team(0, "我方", Color("#7ec8ff"), views, ReplayRecorder.my_side(battle)))
@@ -170,16 +203,34 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	for p in pages:
 		(p as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		body.add_child(p)
+	_fit_rail(rail, vp.x - ml - mr - RAIL_GAP - fstyle.get_margin(SIDE_LEFT) - fstyle.get_margin(SIDE_RIGHT))   # 表进树之后才量得准
 
 	## ★按钮行在页体【外面】: 三页同一个位置, 内容再长也顶不走它(用户 2026-08-12「我手机是钮点不到」)
 	var foot := HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 20)
 	col.add_child(foot)
+	## 按钮左边 = 这一屏的状态行(竖排两行, 按钮行 84 高放得下): 「▼ 另有 N 个单位」(表放不下时) + 「阵容已上传」(回执到了才亮)。
+	##   ★「阵容已上传」原来插在战果页正中: 回执几秒后才到, 一亮整页往上跳一截; 积分赛那一页又本来就最挤。
+	##   它说的是"这一局之后的状态", 不是战果本身 ⇒ 放到状态行, 三页都看得见、不挤正文。
+	var status := VBoxContainer.new()
+	status.name = "SettleStatus"
+	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status.alignment = BoxContainer.ALIGNMENT_CENTER
+	status.add_theme_constant_override("separation", 2)
+	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	foot.add_child(status)
 	more_hint = _lbl("", F_CAP + 2, COL_GOLD)
 	more_hint.name = "SettleMoreHint"
-	more_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	more_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	foot.add_child(more_hint)
+	more_hint.visible = false
+	status.add_child(more_hint)
+	## 阵容上传成功的一次性提示(隐藏的 Label, 回执到了才亮)
+	hud._attach_upload_flash(status)
+	var fl: Control = status.get_child(status.get_child_count() - 1)
+	if fl is Label:
+		(fl as Label).name = "UploadFlash"
+		(fl as Label).add_theme_font_size_override("font_size", F_CAP + 2)
+		(fl as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn_row = HBoxContainer.new()
 	btn_row.name = "SettleButtons"
 	btn_row.add_theme_constant_override("separation", 20)
@@ -225,6 +276,8 @@ func show_page(i: int) -> void:
 	for k in range(pages.size()):
 		(pages[k] as Control).visible = (k == cur_page)
 	_mark(tab_btns, cur_page)
+	if rail_word != null and is_instance_valid(rail_word):
+		rail_word.modulate.a = 0.0 if cur_page == 0 else 1.0
 	_refresh_more.call_deferred()
 
 
@@ -267,7 +320,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 	var v := VBoxContainer.new()
 	v.name = "PageResult"
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 16)
+	v.add_theme_constant_override("separation", GAP_MAX)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## ① 胜负。★封存(周日决赛)时不宣布胜负 —— 两边各打对方快照, 两边都可能算出自己赢;
 	##   由对阵图在下一轮开播时揭晓(判据在 battle_hud._banner_sealed(), 这里只画)。
@@ -278,42 +331,36 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 	BigTitle.apply(big, BigTitle.BIG)
 	## ★入场 = 从左边滑进来(2026-10-27, docs/plans/20261027-UI美术规矩.md §4.5-2): 原来 1.25 → 1 缩放弹入,
 	##   像素字在非整数倍缩放下笔画粗细不匀。大字放进一个占位槽(槽在竖排里占住位置), 字在槽里横向滑。
-	var slot := Control.new()
-	slot.name = "ResultSlot"
-	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	## ★槽高按字体行高算, 不量标签的最小尺寸: 标签还没进树时 get_combined_minimum_size() 是 0
-	##   (2026-10-27 实拍: 槽高 0 ⇒ 大字压在下面那句「练习赛 · 不计入赛季进度」上)。
-	var bf: Font = big.get_theme_font("font")
-	slot.custom_minimum_size = Vector2(0.0, ceilf(bf.get_height(F_RESULT)) if bf != null else float(F_RESULT) * 4.0 / 3.0)
-	v.add_child(slot)
-	slot.add_child(big)
-	big.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	##   槽高 = 画出来的高(贴了图 = 图高), 见 art_slot。
+	v.add_child(art_slot(big, F_RESULT, "ResultSlot"))
 	big.modulate.a = 0.0
 	big.position.x = -SLIDE_IN
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(big, "position:x", 0.0, UIPalette.T_BASE).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(UIPalette.T_TAP)
 	tw.tween_property(big, "modulate:a", 1.0, UIPalette.T_TAP).set_delay(UIPalette.T_TAP)
+	## ② 大字下面那一段小字(封存说明 / 后果一句 / 下一步去哪)是同一段话 ⇒ 收成一块, 行间只隔 TEXT_GAP。
+	var txt := VBoxContainer.new()
+	txt.name = "ResultText"
+	txt.add_theme_constant_override("separation", TEXT_GAP)
+	txt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(txt)
 	if sealed:
 		var ss := _lbl(battle.Phase2Cfg.finals_sealed_sub(), F_CAP + 2, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER)
 		ss.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(ss)
-	## ② 后果一句
+		txt.add_child(ss)
+	## ②a 后果一句
 	var sub := _lbl(hud._result_subtitle(won, gs), F_SUB, Color("#93a4b8"), HORIZONTAL_ALIGNMENT_CENTER)
-	v.add_child(sub)
+	txt.add_child(sub)
 	hud._banner_fade_in(sub, 0.26)
-	## ②a 下一步去哪(闯关赛才有: 晋级 ⇒ 周日几点开打; 到此结束 ⇒ 周日可观战; 还在打 ⇒ 不消耗生命)
+	## ②b 下一步去哪(闯关赛才有: 晋级 ⇒ 周日几点开打; 到此结束 ⇒ 周日可观战; 还在打 ⇒ 不消耗生命)
 	var det_t: String = hud._result_detail(gs)
 	if det_t != "":
 		var det := _lbl(det_t, F_CAP + 2, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER)
 		det.name = "ResultDetail"
 		det.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(det)
+		txt.add_child(det)
 		hud._banner_fade_in(det, 0.30)
-	## ②b 阵容上传成功的一次性提示(隐藏的 Label, 回执到了才亮)
-	hud._attach_upload_flash(v)
-	var fl: Control = v.get_child(v.get_child_count() - 1)
-	if fl is Label:
-		(fl as Label).add_theme_font_size_override("font_size", F_CAP + 2)
+	## (「阵容已上传」不在这一页, 在按钮左边的状态行 —— 见 build)
 	## ③ 各路胜负, 一路一块槽框。★封存时不画: 各路胜负加起来就是总胜负。
 	var lr = gs.get("lane_results") if gs != null else null
 	if not sealed and battle._is_dual_lane_mode() and lr is Dictionary and not (lr as Dictionary).is_empty():
@@ -354,7 +401,77 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		mv.add_child(dl)
 		v.add_child(mv)
 		hud._banner_fade_in(mv, 0.50)
+	## 间距随页体高收放(见 GAP_MAX)。包 call_deferred: 两个信号都在排版中途发。
+	_body.resized.connect(func() -> void: _fit_gaps.call_deferred(v))
+	v.minimum_size_changed.connect(func() -> void: _fit_gaps.call_deferred(v))
 	return v
+
+
+## 左栏宽: 先让我方 / 敌方页横向放得下, 剩下的给左栏(最多 RAIL_W, 最少 RAIL_MIN)。宽屏上就是原来的 220。
+##   ★量的是【建好的表】的真实最小宽(名字格里「阵亡」「MVP」两个角标会把名字列撑过 NAME_W)+ 竖滚动条的宽
+##   (表放不下要滚时滚动条占一条宽) —— 手算常量会落后于表(2026-10-27 第一版按 228 + 7×100 算, 实际 938, 右边又被切)。
+##   `room` = 视口宽 − 两边留白 − 左栏与框的间距 − 框的左右内边距 = 左栏 + 页体 能分的宽。
+func _fit_rail(rail: Control, room: float) -> void:
+	var need := 0.0
+	for t in range(2):
+		var sc: ScrollContainer = _scrolls[t]
+		if sc == null:
+			continue
+		var bar_w: float = sc.get_v_scroll_bar().get_combined_minimum_size().x
+		for g in _grids[t]:
+			need = maxf(need, (g as Control).get_combined_minimum_size().x + bar_w)
+		need = maxf(need, (sc.get_parent().get_child(0) as Control).get_combined_minimum_size().x)   # 表头一行(标题 + 分路切换)
+	if not pages.is_empty():
+		need = maxf(need, (pages[0] as Control).get_combined_minimum_size().x)                      # 战果页(各路 / 数据 / MVP 那几排)
+	var w: float = clampf(room - need, RAIL_MIN, RAIL_W)
+	rail.custom_minimum_size.x = w
+	for b in tab_btns:
+		(b as Control).custom_minimum_size.x = w
+
+
+## 第 1 页的间距: 页体富余就 GAP_MAX, 紧就往下收到 GAP_MIN —— 只动块与块之间的空, 各块本身(字号 / 图 / 头像)一点不动。
+##   ★量的是各块自己的最小高(不含间距), 所以改完间距再触发一次也算出同一个数, 不会来回跳。
+func _fit_gaps(v: VBoxContainer) -> void:
+	if not is_instance_valid(v) or _body == null or not is_instance_valid(_body):
+		return
+	var need := 0.0
+	var n := 0
+	for c in v.get_children():
+		if c is Control and (c as Control).visible:
+			need += (c as Control).get_combined_minimum_size().y
+			n += 1
+	if n < 2:
+		return
+	var gap: int = clampi(int(floorf((_body.size.y - need) / float(n - 1))), GAP_MIN, GAP_MAX)
+	if v.get_theme_constant("separation") != gap:
+		v.add_theme_constant_override("separation", gap)
+
+
+## 贴了大格子美术字(BigTitle)的标签放进一个槽: 槽高 = 画出来的高(有图 = 图高; 没图 = 字体行高)。
+##   ★为什么不按行高: 标签自己的字是透明的(画的是图), 而像素标题字的行高比图高一截(84 号 123 / 图 99,
+##   48 号 70 / 图 60) —— 按行高占位, 每块就多一条看不见的空白; 积分赛第 1 页正是被这几条空白挤爆的。
+##   标签比槽高出的那截平分到上下(标签伸出槽外, 但透明), BigTitle 按标签尺寸居中 ⇒ 图正好落在槽里。
+##   ★行高取标签自己的最小高(进树前是 0, 那时用字体行高顶上), 字体 / 字号一变就重摆。
+static func art_slot(l: Label, fs: int, nm: String) -> Control:
+	var slot := Control.new()
+	slot.name = nm
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(l)
+	l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var fit := func() -> void:
+		if not is_instance_valid(l) or not is_instance_valid(slot):
+			return
+		var f: Font = l.get_theme_font("font")
+		var lh: float = ceilf(maxf(l.get_combined_minimum_size().y, f.get_height(fs) if f != null else float(fs) * 4.0 / 3.0))
+		var art := l.get_node_or_null(BigTitle.ART_NODE) as Control
+		var hh: float = minf(art.size.y, lh) if art != null else lh
+		var top: float = floorf((lh - hh) / 2.0)
+		l.offset_top = -top
+		l.offset_bottom = (lh - hh) - top
+		slot.custom_minimum_size = Vector2(art.size.x if art != null else 0.0, hh)
+	fit.call()
+	l.minimum_size_changed.connect(fit)
+	return slot
 
 
 ## 「深海币 +N」那一格从 0 数到 N、同时从 1.35 倍落回原大(2026-10-26 · 方案书 docs/plans/20261026b-周六流程.md §4 F)。
@@ -403,7 +520,7 @@ func _lane_plate(lane_cn: String, who: String) -> Control:
 	var rl := _lbl(res, F_LANE, COL_GOLD if who == "left" else COL_LOSS, HORIZONTAL_ALIGNMENT_CENTER)
 	UISkin.title_label(rl, F_LANE)
 	BigTitle.apply(rl, BigTitle.LANE)
-	bv.add_child(rl)
+	bv.add_child(art_slot(rl, F_LANE, "LaneWord"))       # 占位 = 图高 60, 不按 48 号行高 70(见 art_slot)
 	return box
 
 
@@ -465,7 +582,7 @@ func _page_team(team: int, title: String, hc: Color, views: Array, side: String)
 static func team_grid(b, h, rows: Array, header: String, hc: Color) -> GridContainer:
 	var grid := GridContainer.new()
 	grid.columns = 1 + COLS.size()
-	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("h_separation", COL_GAP)
 	grid.add_theme_constant_override("v_separation", 6)
 	var hdrs := [header] + COLS
 	for i in range(hdrs.size()):
@@ -676,6 +793,7 @@ func _refresh_more() -> void:
 				if ch is HBoxContainer and local_bottom(ch as Control, content) > fold + 0.5:
 					below += 1
 	more_hint.text = (MORE_FMT % below) if below > 0 else ""
+	more_hint.visible = below > 0          # 空着就不占状态行那一行(「阵容已上传」才能居中)
 
 
 ## 某一行的下沿在 content 坐标里的 y。
