@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://duoraw6si07ug"
-path="res://.godot/imported/ark-pixel-12px-zh_hans.otf-dd48a675cdb4f5a0adf042973b7ac20e.fontdata"
+uid="uid://cr46o3myqogh4"
+path="res://.godot/imported/fusion-pixel-12px-zh_hans.otf-a31259a47f10ebd9e80ebfa8c865a778.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/ark-pixel-12px-zh_hans.otf"
-dest_files=["res://.godot/imported/ark-pixel-12px-zh_hans.otf-dd48a675cdb4f5a0adf042973b7ac20e.fontdata"]
+source_file="res://assets/fonts/fusion-pixel-12px-zh_hans.otf"
+dest_files=["res://.godot/imported/fusion-pixel-12px-zh_hans.otf-a31259a47f10ebd9e80ebfa8c865a778.fontdata"]
 
 [params]
 

@@ -2202,6 +2202,14 @@ scripts/systems/stream/stream_source.gd|lit|404 %.0f 秒
 scripts/systems/stream/stream_source.gd|lit|end.json 没有块数
 scripts/systems/trainer/trainer_system.gd|lit|归顺
 scripts/systems/trainer/trainer_system.gd|lit|魔法石·共鸣 %s
+scripts/util/big_title.gd|lit|失败
+scripts/util/big_title.gd|lit|已封存
+scripts/util/big_title.gd|lit|已晋级！
+scripts/util/big_title.gd|lit|平
+scripts/util/big_title.gd|lit|结果已封存
+scripts/util/big_title.gd|lit|胜
+scripts/util/big_title.gd|lit|胜利
+scripts/util/big_title.gd|lit|负
 scripts/util/skill_text.gd|lit|(?:\\s*外加[^，。；\\n]{0,50}?)?)[^，。；\\n（]{0,4}?生命值)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
 scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)

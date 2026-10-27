@@ -1,5 +1,5 @@
 extends Node
-## verify_title_font.gd — 像素标题字(方舟像素 12px)用法门禁(2026-10-27)
+## verify_title_font.gd — 像素标题字(缝合像素 12px; 2026-10-27 前是方舟像素 12px)用法门禁(2026-10-27)
 ##
 ## 由来: 方案书 docs/plans/20261027-UI美术规矩.md(用户 2026-10-26「你为什么比不上商业的美术？」⇒ 标题换像素中文标题字)。
 ##   §3.2 把页名 / 弹框标题 / 整屏大字从「正文字体放大」换成 `UISkin.title_label`。像素字有三个只在实拍里才看得出的坑:
@@ -7,16 +7,18 @@ extends Node
 ##   · 描边不在像素格上 ⇒ 字边一圈半个源像素的黑边。★Godot 的 outline_size 每边只画约 1/4:
 ##     2026-10-27 实拍量(tests/_shot_title_font.gd + 逐行扫像素): 72 号 outline 14 → 每边 4~5px、outline 24 → 每边 6px;
 ##     36 号 outline 7 → 每边 2px、outline 12 → 每边 3px ⇒ 每边一个源像素(字号 / 12) = outline_size 取「字号 / 3」
-##   · 方舟像素缺项目文案里约 30 个汉字(「奖」「徽」「热」…) ⇒ 没后备就是豆腐块; iOS 上回退链里有 SystemFont 就刷报错
+##   · 标题字缺的字没后备就是豆腐块; iOS 上回退链里有 SystemFont 就刷报错。(原来的方舟像素缺项目文案里约 30 个汉字
+##     「奖」「徽」「热」…; 2026-10-27 换成缝合像素后汉字全有, 仍缺「≥」「≈」「✓」与 emoji 这类符号)
 ## 判据:
 ##   ① 回退链: title_font() 关抗锯齿; 后备里有 NotoSansSC 与 NotoEmoji(与主题链同), 没有 SystemFont
 ##   ② 屏幕文案快照里的每个字, 标题字 + 后备都画得出(任何一句文案将来拿去当标题都不缺字);
-##      尺子自检: 「奖」确实不在方舟像素里(否则「后备补字」这条量的是空)
+##      尺子自检: 「≥」确实不在标题字本身里(否则「后备补字」这条量的是空); 「奖」标题字本身就有(换缝合像素就为它)
 ##   ③ 静态: scripts/ 下每个 `UISkin.title_label(x, N)` 的 N(字面量或同文件常量)都是 12 的倍数;
 ##      分母: 调用点 ≥ MIN_CALLS, 方案书 §3.2 换过的文件个个都有调用点
 ##   ④ 实建(无头能建的那几屏): 挂着标题字的标签 —— 字号是 12 的倍数; 有描边的, 描边是「字号 / 3」的整数倍;
-##      有落影的, 落影偏移是「字号 / 12」的整数倍; 文字里每个字方舟像素本身都有(缺字由平滑的后备字补,
-##      混在像素标题里一眼看得出 —— 2026-10-27 实拍糖果罐「奖」); 分母: EXPECT 里每一句都真的挂着标题字被量到
+##      有落影的, 落影偏移是「字号 / 12」的整数倍; 文字里每个字标题字体本身都有(缺字由平滑的后备字补,
+##      混在像素标题里一眼看得出 —— 2026-10-27 实拍糖果罐「奖」, 当时的方舟像素没有; 换缝合像素后糖果罐标题 D11 换上了);
+##      分母: EXPECT 里每一句都真的挂着标题字被量到
 ##   ⑤ 尺子自检: 扫描器 / 实建判据各喂一个坏样本必须判红、好样本必须判过
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_title_font.tscn
@@ -51,6 +53,7 @@ const FILES := [
 	"res://scripts/scenes/feedback_panel.gd",
 	"res://scripts/scenes/InventoryScene.gd",
 	"res://scripts/scenes/inventory/formation_editor.gd",
+	"res://scripts/scenes/inventory/candy_jar.gd",
 	"res://scripts/scenes/stage_ceremony.gd",
 	"res://scripts/scenes/week_close_card.gd",
 ]
@@ -58,7 +61,7 @@ const MIN_CALLS := 30
 ## ④ 实建时必须挂着标题字被量到的文字
 const EXPECT := ["设置", "本周赛程", "积分赛", "闯关赛", "决赛日", "新手教程", "需要更新", "晋级闯关赛！", "积分赛战绩",
 	"存档冲突", "重置存档？", "修改昵称", "删除账号", "黑名单", "设备自检", "问题反馈",
-	"阵容说明", "站位", "欢迎来到斗龟场", "输入昵称"]
+	"阵容说明", "站位", "糖果罐 · 第 7 档奖励", "欢迎来到斗龟场", "输入昵称"]
 
 var _n := 0
 var _fail := 0
@@ -117,7 +120,7 @@ func _chain() -> void:
 # ═══════════════════════════════ ② 缺字有人补 ═══════════════════════════════
 
 ## ★`Font.has_char` 连后备一起查(引擎 `Font::_update_rids_fb` 把后备的 RID 都收进来)——
-##   第一版拿它判「方舟像素自己有没有」, 量出 1385 / 1387 种「自己有」, 「奖」也判成自己有, 尺子自检当场红。
+##   第一版拿它判「标题字(当时是方舟像素)自己有没有」, 量出 1385 / 1387 种「自己有」, 「奖」也判成自己有, 尺子自检当场红。
 ##   ⇒ 「自己有」走 TextServer 只问第 0 个 RID(字体本身); 「画得出」才用 has_char(= 渲染时真实走的整条链)。
 func _own(c: int) -> bool:
 	var rids: Array = _tf.get_rids()
@@ -157,13 +160,15 @@ func _coverage() -> void:
 			(sym if _symbol(int(c)) else miss).append(String.chr(int(c)))
 		elif int(c) >= 0x3400:
 			by_fb.append(String.chr(int(c)))
-	print("    [覆盖] 方舟像素自己有 %d / %d 种; 靠后备画的汉字 %d 个: %s" % [own, chars.size(), by_fb.size(), "".join(by_fb.slice(0, 40))])
+	print("    [覆盖] 标题字自己有 %d / %d 种; 靠后备画的 U+3400 以上(汉字 / emoji) %d 个: %s" % [own, chars.size(), by_fb.size(), "".join(by_fb.slice(0, 40))])
 	if not sym.is_empty():
 		print("    [符号区·不判] 标题链画不出、由主题链 m6x11 画的符号: %s" % "".join(sym))
 	_ok("② ★屏幕文案里每个字(符号区除外), 标题字 + 后备都画得出", miss.is_empty(), "缺 %d: %s" % [miss.size(), "".join(miss.slice(0, 20))])
-	var jiang: int = "奖".unicode_at(0)
-	_ok("② 尺子自检: 「奖」不在方舟像素本身里(后备补字这条不是空检查)、但整条链画得出", not _own(jiang) and _covered(jiang))
-	_ok("② 尺子自检: 「赛」方舟像素本身就有(「自己有」这把尺子不是恒假)", _own("赛".unicode_at(0)))
+	## 「≥」在屏幕文案里出现过(快照里有), 缝合像素本身没有, 由 NotoSansSC 补(2026-10-27 fontTools 实测)。
+	var ge: int = "≥".unicode_at(0)
+	_ok("② 尺子自检: 「≥」不在标题字本身里(后备补字这条不是空检查)、但整条链画得出", not _own(ge) and _covered(ge))
+	_ok("② 尺子自检: 「赛」标题字本身就有(「自己有」这把尺子不是恒假)", _own("赛".unicode_at(0)))
+	_ok("② 「奖」标题字本身就有(方舟像素没有它, 2026-10-27 为此换成缝合像素; 糖果罐标题 D11 靠它)", _own("奖".unicode_at(0)))
 	_ok("② 尺子自检: 未分配码位 U+0378 判成缺", not _covered(0x0378))
 
 
@@ -252,15 +257,16 @@ func bad_label(l: Label) -> String:
 	var fs: int = l.get_theme_font_size("font_size")
 	if fs <= 0 or fs % 12 != 0:
 		return "字号 %d 不是 12 的倍数" % fs
-	## ★标题里的字方舟像素本身得有: 缺的字由平滑的 NotoSansSC 补, 混在像素标题里一眼看得出
-	##   (2026-10-27 实拍: 糖果罐「第 N 档奖励」的「奖」—— 那一条因此没换, 见方案书 §8)。
+	## ★标题里的字标题字体本身得有: 缺的字由平滑的 NotoSansSC 补, 混在像素标题里一眼看得出
+	##   (2026-10-27 实拍: 糖果罐「第 N 档奖励」的「奖」方舟像素没有 —— 那一条因此先没换;
+	##   同日换成缝合像素后「奖」本身就有, D11 换上标题字, 见方案书 §8-4)。
 	var lack := ""
 	for ch in l.text:
 		var c: int = ch.unicode_at(0)
 		if c > 0x20 and not _own(c):
 			lack += ch
 	if lack != "":
-		return "「%s」方舟像素没有(会由平滑的后备字补, 混在像素标题里)" % lack
+		return "「%s」标题字体本身没有(会由平滑的后备字补, 混在像素标题里)" % lack
 	var ol: int = l.get_theme_constant("outline_size")
 	if ol > 0 and ol % (fs / 3) != 0:
 		return "%d 号描边 %d 不是 %d 的倍数(每边一个源像素 = 字号/12, outline_size 每边约画 1/4)" % [fs, ol, fs / 3]
@@ -407,9 +413,11 @@ func _self_check() -> void:
 	var bad_sh := bad_label(l) != ""
 	l.add_theme_constant_override("shadow_offset_y", 3)
 	var good_sh := bad_label(l) == ""
-	l.text = "第 7 档奖励"
+	l.text = "积分 ≥ 100"
 	var bad_lack := bad_label(l) != ""
+	l.text = "第 7 档奖励"
+	var good_jiang := bad_label(l) == ""
 	l.free()
-	_ok("⑤ 尺子自检: 实建判据把 30 号 / 36 号描边 7 / 36 号落影 4 / 含「奖」判红, 把 36 号描边 12 / 落影 3 判过",
-		good and bad_ol and good_ol and bad_fs and bad_sh and good_sh and bad_lack,
-		"good=%s bad_ol=%s good_ol=%s bad_fs=%s bad_sh=%s good_sh=%s bad_lack=%s" % [good, bad_ol, good_ol, bad_fs, bad_sh, good_sh, bad_lack])
+	_ok("⑤ 尺子自检: 实建判据把 30 号 / 36 号描边 7 / 36 号落影 4 / 含「≥」判红, 把 36 号描边 12 / 落影 3 / 含「奖」判过",
+		good and bad_ol and good_ol and bad_fs and bad_sh and good_sh and bad_lack and good_jiang,
+		"good=%s bad_ol=%s good_ol=%s bad_fs=%s bad_sh=%s good_sh=%s bad_lack=%s good_jiang=%s" % [good, bad_ol, good_ol, bad_fs, bad_sh, good_sh, bad_lack, good_jiang])

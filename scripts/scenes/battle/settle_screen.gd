@@ -32,7 +32,7 @@ const SPRITE_ROOT := "res://assets/sprites/"
 ## ★这是这一屏字号的【唯一出处】, 门禁量的是渲染后 Label 的真实字号, 不读这张表。
 const PT_PER_PX := 390.0 / 720.0      # iPhone 横屏高 390pt ÷ 720(info_panel.gd「44pt = 81px」同一条线)
 ## ★F_RESULT / F_RAIL / F_TEAM / F_LANE 四个是【像素标题字】(UISkin.title_label), 只用 12 的倍数
-##   (docs/plans/20261027-UI美术规矩.md §4.1; 方舟像素 12px 只在整数倍字号上不糊)。
+##   (docs/plans/20261027-UI美术规矩.md §4.1; 像素标题字 12px 只在整数倍字号上不糊)。胜负大字 / 左栏 / 各路另贴大格子美术字(BigTitle)。
 const F_RESULT := 84       # 胜负大字            45.5pt  (标题字 12×7, 全游戏最大)
 const F_RAIL := 48         # 左栏顶上的胜负        26.0pt  (标题字)
 const F_TAB := 30          # 页签                16.3pt
@@ -130,6 +130,7 @@ func build(b, h, won: bool, sealed: bool) -> void:
 		COL_SUB if sealed else (COL_GOLD if won else COL_LOSS), HORIZONTAL_ALIGNMENT_CENTER)
 	UISkin.title_label(word, F_RAIL)
 	word.custom_minimum_size = Vector2(0, 64)          # = 48 × 4/3 行高
+	BigTitle.apply(word, BigTitle.RAIL)
 	word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	rail.add_child(word)
 	for i in range(PAGE_NAMES.size()):
@@ -272,6 +273,8 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 	var big := _lbl(hud._result_headline(won, sealed, gs), F_RESULT,
 		COL_GOLD if won and not sealed else (COL_SUB if sealed else COL_LOSS), HORIZONTAL_ALIGNMENT_CENTER)
 	UISkin.title_label(big, F_RESULT)
+	## 胜负大字贴大格子像素美术字(2026-10-27 用户选方案 A; 由来见 scripts/util/big_title.gd)
+	BigTitle.apply(big, BigTitle.BIG)
 	## ★入场 = 从左边滑进来(2026-10-27, docs/plans/20261027-UI美术规矩.md §4.5-2): 原来 1.25 → 1 缩放弹入,
 	##   像素字在非整数倍缩放下笔画粗细不匀。大字放进一个占位槽(槽在竖排里占住位置), 字在槽里横向滑。
 	var slot := Control.new()
@@ -391,6 +394,7 @@ func _lane_plate(lane_cn: String, who: String) -> Control:
 	var res := "胜" if who == "left" else ("负" if who == "right" else "平")
 	var rl := _lbl(res, F_LANE, COL_GOLD if who == "left" else COL_LOSS, HORIZONTAL_ALIGNMENT_CENTER)
 	UISkin.title_label(rl, F_LANE)
+	BigTitle.apply(rl, BigTitle.LANE)
 	bv.add_child(rl)
 	return box
 

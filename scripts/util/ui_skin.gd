@@ -300,10 +300,11 @@ static func _scroll_box(cols: Array, vert: bool, along: float) -> StyleBoxFlat:
 	return sb
 
 
-## 【标题字体】像素中文标题字(方舟像素字体 12px · OFL 开源可商用, 协议原文 assets/fonts/ArkPixel-OFL.txt)。
+## 【标题字体】像素中文标题字(缝合像素字体 Fusion Pixel 12px · OFL 开源可商用, 协议原文 assets/fonts/FusionPixel-OFL.txt)。
 ##   2026-10-26 用户「你为什么比不上商业的美术？」⇒ 商业游戏的标题是专门的标题字体, 我们一直是正文字体放大。
 ##   ★像素字体只按 12 的整数倍字号用(TITLE_PX_SIZES), 并关掉抗锯齿 / 子像素定位, 否则会糊。
-const TITLE_FONT_PATH := "res://assets/fonts/ark-pixel-12px-zh_hans.otf"
+## 2026-10-27 从方舟像素 12px 换成缝合像素 12px(同一作者 TakWolf 的扩充版, 用户同意): 方舟缺代码字符串里出现的 42 个汉字(「奖」「徽」「热」…, 糖果罐标题因此一直没换), 缝合像素全有; 代码里出现的、两套都有的 1844 个字 12px 单色渲染逐像素相同(主会话实测) ⇒ 已换过的标题一个像素都不变。
+const TITLE_FONT_PATH := "res://assets/fonts/fusion-pixel-12px-zh_hans.otf"
 const TITLE_PX := 12
 const TITLE_FALLBACK_PATH := "res://assets/fonts/NotoSansSC-Regular.otf"
 const TITLE_EMOJI_PATH := "res://assets/fonts/NotoEmoji-Regular.ttf"   # 与主题回退链同一份兜底(不挂 SystemFont: iOS 上只会刷报错)
@@ -316,7 +317,7 @@ static func title_font() -> FontFile:
 		f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
 		f.hinting = TextServer.HINTING_NONE
 		f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
-		## 方舟像素缺少游戏里用到的约 30 个字(奖 / 徽 / 热…, 2026-10-27 只读排查); 不设后备 ⇒ 手机上显示空方框。
+		## 缝合像素仍缺屏幕文案里十几个符号(≥ ≈ ✓ 与 emoji, 2026-10-27 实测), 玩家输入的字更没准; 不设后备 ⇒ 手机上显示空方框。
 		var chain: Array[Font] = []
 		for p in [TITLE_FALLBACK_PATH, TITLE_EMOJI_PATH]:
 			var fb := load(p) as Font
