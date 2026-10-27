@@ -559,7 +559,7 @@ func _await_token() -> bool:
 	ensure_signed_in_async()
 	## 续期一结束(成功或失败)就判定 —— 不白等满 10 秒(失败时屏幕会一直转「正在连线」)。
 	for _i in range(600):
-		if not await _joined():
+		if not await TreeJoin.joined(self):
 			return false
 		await get_tree().process_frame
 		## ★2026-10-11 全项目通读(赛制第 7 条): 原来判 `_token != ""` ⇒ 攥着过期旧令牌时第一帧就放行
@@ -1529,53 +1529,21 @@ static func apply_status_response(ok: bool, code: int, body: String) -> String:
 ## cb 收 {"ok": bool, "code": int, "body": String}。
 var _transport: Callable = Callable()
 var _autofree := false
-## `_spawn` 建的、还在等推迟的那一下挂进树(见 `_spawn` 头注)。
-var _joining := false
 
 
-## ★★2026-10-27 挂树一律【推迟】(门禁 verify_spawn_busy_root)。
-##   由来: v0.22.1 内测服陪练号首次上线, 教程结束离开背包时 last.log 报
-##   「Parent node is busy setting up children, `add_child()` failed」(本函数原来的同步 `root.add_child(n)`),
-##   调用链 InventoryScene._exit_tree → FriendsNet.put_lineup → call_rpc → 这里 ⇒ 那次阵容没传上去(库里 0 行)。
-##   根因: Godot 4.4 起 `change_scene_to_*` 当场 `root.remove_child(旧场景)` ⇒ 旧场景的 `_exit_tree` 跑在 root「忙」的那一刻;
-##   同一类还有引擎下发切后台 / 回前台通知那一刻(GameState 10-23 注释)。挂不上 ⇒ 节点不在树上 ⇒ `_send` 回失败 ⇒ 请求被静默吞掉。
-##   (排行榜等屏注释里记过「新场景 `_ready` 里也挂不上」; 门禁 B 段在 4.6.3 上量过换场景进来的 `_ready` 是挂得上的, 一并守着。)
-##   这一类原来是在调用方一处处绕的(排行榜 / 赛况板 / 对阵图 `_ready`、GameState / ErrorReporter 的通知都各自 call_deferred),
-##   而离开背包这一处没人绕 ⇒ 口子在这里, 补在这里: 以后谁在什么时刻调 `_spawn`, 都不会因为挂不上树被吞。
-## ⇒ GDScript 读不到 root 忙不忙, 不猜: 一律推迟到消息队列刷新时挂(那时 root 不忙, 一般就在本帧之内)。
-##   推迟的调用挂在**节点自己**身上(`_join`): 节点在那之前已被 `_bye` 释放 ⇒ 引擎直接跳过, 不会拿已释放的节点去挂。
-##   要用到树的三处(`_send` 发 HTTPRequest / `_await_token` 等帧 / 看门狗 Timer)都先等进树(`_joined` / Timer.autostart)。
+## ★挂树一律推迟(换场景那一刻 root「忙」, 同步 add_child 被拒 ⇒ 请求被吞; 由来与做法见 `TreeJoin` 头注)。
 static func _spawn():
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
 		return null
 	var n = new()
 	n._autofree = true
-	n._joining = true
 	## ★只给门禁用: 让真入口(`ensure_signed_in_async` 等)自己 spawn 的节点也走注入的传输,
 	##   这样门禁量的是**真实发出去的请求**(方法/地址/请求头/正文), 不是我插的计数器。
 	if _transport_for_test.is_valid():
 		n._transport = _transport_for_test
-	n._join.call_deferred()
+	TreeJoin.join_deferred(n)
 	return n
-
-
-## `_spawn` 推迟的那一下: 挂到 root 上。已经 `_bye` 过(马上要释放)就不挂。
-func _join() -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	if is_inside_tree() or is_queued_for_deletion() or tree == null or tree.root == null:
-		return
-	tree.root.add_child(self)
-
-
-## 等本节点进树。true = 在树上了; false = 不会再进树了(不是 `_spawn` 建的又不在树上 / 进过树又离开了)。
-func _joined() -> bool:
-	if is_inside_tree():
-		return true
-	if not _joining or is_node_ready():
-		return false
-	await ready
-	return is_inside_tree()
 
 
 ## 周日购物窗内把当前阵容推上去(2026-10-12 统一结算 · 服务端 finals_update_snapshot)。发完就忘。
@@ -1771,7 +1739,7 @@ func _send(method: String, url: String, body: String, cb: Callable, extra: Strin
 		return
 	## ★HTTPRequest 不在树上时 `request()` 直接报错(旧后端那层踩过, 见 remote_pool 的同位置注释)。
 	##   `_spawn` 建的节点是推迟挂树的(见 `_spawn` 头注)⇒ 先等它进树; 等不到(不会再进树了)才当失败回。
-	if not await _joined():
+	if not await TreeJoin.joined(self):
 		cb.call({"ok": false, "code": 0, "body": ""})
 		return
 	var req := HTTPRequest.new()
@@ -2622,8 +2590,7 @@ func fetch_match(match_id: String, done: Callable) -> void:
 	var tm := Timer.new()
 	tm.one_shot = true
 	tm.wait_time = match_fetch_timeout_for_test if match_fetch_timeout_for_test > 0.0 else MATCH_FETCH_TIMEOUT_SEC
-	## ★autostart 而不是当场 start(): 本节点可能还没进树(`_spawn` 推迟挂), 不在树上的 Timer start() 会报错且不走;
-	##   autostart 在 Timer 进树那一刻自己起(本节点已在树上 ⇒ add_child 当场就起, 与原来一样)。
+	## ★autostart 而非 start(): 本节点可能还没进树(`_spawn` 推迟挂), 不在树上的 Timer start() 报错且不走。
 	tm.autostart = true
 	add_child(tm)
 	tm.timeout.connect(func() -> void: fin.call({"err": "timeout", "code": 0}))
