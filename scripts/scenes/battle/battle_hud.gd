@@ -1285,11 +1285,18 @@ func _result_headline(won: bool, sealed: bool, gs) -> String:
 ##   积分赛: 赢下这一局后赛季胜场恰好到晋级线 ⇒ 积分赛 → 闯关赛(到线之后再赢不再演);
 ##   闯关赛: 赢下这一局后战绩进入 GAUNTLET_IN(第 4 胜; 晋级后不能再打, 所以这一局就是那一局)⇒ 闯关赛 → 决赛日。
 func _promotion_moment(won: bool, sealed: bool, gs) -> Array:
-	if not won or sealed or gs == null or not battle._had_season:
+	if sealed or not battle._had_season:
 		return []
-	var sk := str(battle._last_settle_kind)
+	return promotion_for(str(battle._last_settle_kind), won, bool(battle._last_was_exhibition), gs)
+
+
+## 同一个判据给出不了结算屏的那两条路用(主菜单补记 / 匹配屏「已记账但播不了」, 2026-10-26 只读排查):
+##   那两处没有战斗场景, 只知道「这是闯关赛那一局、赢没赢」⇒ 判据拆成纯函数, 三处同一份。
+static func promotion_for(sk: String, won: bool, exhibition: bool, gs) -> Array:
+	if not won or gs == null:
+		return []
 	var anchor: int = _P2C_HUD.week_anchor_utc(int(_P2C_HUD.now_utc()))
-	if sk == _P2C_HUD.SETTLE_RANKED and not battle._last_was_exhibition \
+	if sk == _P2C_HUD.SETTLE_RANKED and not exhibition \
 			and int(gs.season_wins) == int(_P2C_HUD.PROMOTE_WINS) and not gs.is_eliminated():
 		return [_P2C_HUD.PHASE_RANKED, _P2C_HUD.PHASE_GAUNTLET, "晋级闯关赛！",
 			"闯关赛：%s 开始" % _P2C_HUD.local_wd_hhmm(_P2C_HUD.phase_window_utc(_P2C_HUD.PHASE_GAUNTLET, anchor).x)]

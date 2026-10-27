@@ -16,7 +16,13 @@ extends Node
 ##   E 交上去之后断网 ⇒「稍后自动记入战绩」、单子留着、匹配屏走主菜单那个出口(2026-10-22; 等到上限那一支见 verify_referee_wait_timeout);
 ##     杀进程(匹配屏没了)⇒ 下次开主菜单补记一次, 再来一次不重复记
 ##   F 开关关 ⇒ 老路: 走到「去战斗场」那一步、一次都不交
-## 每条判据都做过反向验证(改坏 → 红 → 逐字节还原), 见方案书「验收清单」那一行。
+## A~F 每条判据都做过反向验证(改坏 → 红 → 逐字节还原), 见方案书「验收清单」那一行。
+## ── 晋级仪式(2026-10-27 · 方案书 docs/plans/20261026c-周末弹窗美术.md; 只读排查路径 ⑤⑥: 这两条路第 4 胜原来一次仪式都不演) ──
+##   A / C 回归: 第 2 胜 / 第 3 胜(差一胜)那一局 ⇒ 结算屏上不演晋级仪式
+##   E2 ★E 补记的那一场正好是第 4 胜 ⇒ 真主菜单(current_scene)的 `_on_referee_resumed` 补演「闯关赛 → 决赛日」, 点掉再飘补记那句;
+##      再查一次不再演; 对照: 补记的是输 / 补记的胜局不是第 4 胜 ⇒ 不演、当场飘字
+##   G ★第 4 胜账已按服务器记、取录像失败(停在匹配屏「…录像无法在本设备播放」)⇒ 匹配屏补演、只演一次; 对照: 输了那一局 ⇒ 不演
+##   ⚠ 这一组写成时本机禁跑 Godot(蓝屏排查中), 还没跑过、也还没做反向验证 —— 解禁后先跑通, 再按上面的规矩逐条改坏验红。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
@@ -32,6 +38,9 @@ const MMK_SCENE := "res://scenes/Matchmaking.tscn"
 const ME := "11111111-2222-4333-8444-555555555555"
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
 const BP := preload("res://scripts/referee/bot_pool.gd")
+const SC := preload("res://scripts/scenes/stage_ceremony.gd")
+const WCC := preload("res://scripts/scenes/week_close_card.gd")
+const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
 const START := "referee_gauntlet_start"
 
 var _fail := 0
@@ -53,6 +62,8 @@ var _srv_coins := 0               # 服务器那一局的战斗内铸币(裁判�
 var _rec: Dictionary = {}
 var _a_won := false
 var _left_hook := 0
+var _offline_match := false       # 取录像(matches)断网: 账已记、录像取不到 ⇒ 匹配屏停在「…录像无法在本设备播放」(G 段)
+var _e_view: Dictionary = {}      # E 段主菜单补记回调拿到的那一份结果单(E2 段原样交给真主菜单)
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -101,7 +112,9 @@ func _ready() -> void:
 		await _t_c()
 	await _t_d()
 	await _t_e()
+	await _t_e2()
 	await _t_f()
+	await _t_g()
 	_cleanup()
 	_finish()
 
@@ -200,6 +213,9 @@ func _transport(m, u, _h, b, cb) -> void:
 			return
 	if str(m) == "GET" and url.find("/rest/v1/matches?") >= 0 and url.find("match_id=eq." + MID) >= 0:
 		_hits["matches_get"] = _hit("matches_get") + 1
+		if _offline_match:
+			cb.call({"ok": false, "code": 0, "body": ""})
+			return
 		cb.call({"ok": true, "code": 200, "body": JSON.stringify([{"match_id": MID, "replay": _rec_b64}])})
 		return
 	cb.call({"ok": true, "code": 200, "body": "[]"})
@@ -342,6 +358,61 @@ func _wait_settle(b: Node) -> bool:
 	return await _wait(func() -> bool: return is_instance_valid(b) and b.find_child("SettleScreen", true, false) != null, 5000)
 
 
+## host 下面直接挂着的整屏晋级仪式(`StageCeremony.play` 建的)。
+##   ★按名字 + meta "to" 两样认: 同一个父节点下再建第二层, 引擎会把它改名成 @ColorRect@N, 只按名字数会漏掉「叠了两层」。
+func _ceremonies(host: Node) -> Array:
+	var out: Array = []
+	if host == null or not is_instance_valid(host):
+		return out
+	for c in host.get_children():
+		if not (c as Node).is_queued_for_deletion() and (str(c.name) == SC.NODE_NAME or (c as Node).has_meta("to")):
+			out.append(c)
+	return out
+
+
+## 点一下(与 verify_weekend_close_cards ⑨ 同一个造法: 直接对仪式那一层发鼠标按下)。
+func _tap(n: Control) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	n.gui_input.emit(ev)
+
+
+## 主菜单上正飘着的那几行(`_toast` 建的: 直接挂在主菜单下的 Label; 同 verify_referee_wait_timeout `_toasts`)。
+func _menu_toasts(menu: Node) -> Array:
+	var out: Array = []
+	if menu == null or not is_instance_valid(menu):
+		return out
+	for c in menu.get_children():
+		if c is Label and not (c as Node).is_queued_for_deletion():
+			out.append(str((c as Label).text))
+	return out
+
+
+func _is_menu(n) -> bool:
+	return n != null and is_instance_valid(n) and n.get_script() == MENU
+
+
+## 真主菜单当 current_scene 建起来(收盘卡只在 current_scene == 主菜单时弹 —— 玩家真走到的那一屏)。
+func _open_menu() -> Node:
+	var old := get_tree().current_scene
+	if old != null and is_instance_valid(old) and old != self:
+		old.queue_free()
+	await _frames(2)
+	var mm: Node = (load(RW.MAIN_MENU) as PackedScene).instantiate()
+	get_tree().root.add_child(mm)
+	get_tree().current_scene = mm
+	return mm
+
+
+## 匹配屏上那一场(referee_run.gd)此刻的状态; 屏没了 / 还没建 = ""。
+func _run_state(m) -> String:
+	if m == null or not is_instance_valid(m):
+		return ""
+	var r = (m as Node).get("_ref_run")
+	return str(r.state) if r != null and is_instance_valid(r) else ""
+
+
 func _t_a() -> void:
 	print("── A 开关开 · 服务器与本机一致 ──")
 	_flags_body = "{\"finals_on\":false,\"gauntlet_on\":true}"
@@ -382,6 +453,11 @@ func _t_a() -> void:
 	var shown := await _wait_settle(b)
 	_ok("A ★放完走正常结算屏(不是回放收尾卡)", shown and b.find_child(RC.N_CARD, true, false) == null)
 	_ok("A ★结算屏胜负 = 服务器(%s)" % ("胜利" if _srv_won else "失败"), _settle_title(b) == ("胜利" if _srv_won else "失败"), _settle_title(b))
+	## 晋级仪式回归: 这一局走过结算屏的晋级判据(闯关赛口径)、而且是胜局 —— 只是没到第 4 胜(否则这条是空检查)
+	_ok("A 分母: 结算屏按闯关赛口径判过「是不是晋级那一局」(服务器判赢、%d-%d、还没到晋级线)" % [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)],
+		shown and bool(b._had_season) and str(b._last_settle_kind) == P2C.SETTLE_GAUNTLET and _srv_won
+		and str(_gs.gauntlet_state()) != P2C.GAUNTLET_IN, "kind=%s state=%s" % [str(b._last_settle_kind), str(_gs.gauntlet_state())])
+	_ok("A ★回归: 普通胜局(第 %d 胜)⇒ 结算屏上不演晋级仪式" % int(_gs.gauntlet_wins), b.find_child(SC.NODE_NAME, true, false) == null)
 	_ok("A 回放的「退出」/ 状态牌收起", b.find_child("ReplayControls", true, false) == null
 		or not (b.find_child("ReplayControls", true, false) as Control).visible)
 	_ok("A 账没有在结算屏再记一遍", int(_gs.gauntlet_wins) == _srv_gw and int(_gs.gauntlet_losses) == _srv_gl
@@ -421,6 +497,12 @@ func _t_c() -> void:
 	_ok("C ★结算屏照样出、胜负 = 服务器", _settle_title(b) == ("胜利" if _srv_won else "失败"), _settle_title(b))
 	var note := b.find_child("RefereeUnplayable", true, false) as Label
 	_ok("C ★结算屏上写「%s」" % RW.TXT_UNPLAYABLE, note != null and note.text == RW.TXT_UNPLAYABLE)
+	## 晋级仪式回归: 第 3 胜 = 差一胜晋级, 离判据边界最近的那一局
+	_ok("C 分母: 结算屏按闯关赛口径判过晋级(服务器判赢、%d-%d、差一胜)" % [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)],
+		b.find_child("SettleScreen", true, false) != null and bool(b._had_season) and str(b._last_settle_kind) == P2C.SETTLE_GAUNTLET
+		and _srv_won and int(_gs.gauntlet_wins) == int(P2C.GAUNTLET_WINS_IN) - 1 and str(_gs.gauntlet_state()) != P2C.GAUNTLET_IN,
+		"kind=%s %d-%d" % [str(b._last_settle_kind), int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)])
+	_ok("C ★回归: 第 %d 胜(还差一胜)⇒ 结算屏上不演晋级仪式" % int(_gs.gauntlet_wins), b.find_child(SC.NODE_NAME, true, false) == null)
 	_job += 1
 
 
@@ -479,6 +561,11 @@ func _t_e() -> void:
 	_ok("E 补记后战绩 = 服务器账本、币 +%d + 铸币 %d + 晋级当场发 %d、单子清掉" % [P2C.GAUNTLET_COINS_PER_MATCH, _srv_coins, bonus_c], int(_gs.gauntlet_wins) == _srv_gw
 		and int(_gs.gauntlet_losses) == _srv_gl and int(_gs.meta_deepsea_coins) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH) + _srv_coins + bonus_c
 		and (_gs.referee_pending as Dictionary).is_empty(), "战绩 %d-%d / 钱包 %d" % [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses), int(_gs.meta_deepsea_coins)])
+	## E2 段要的前提: 补记的这一场正好是第 4 胜(补记前 3 胜 ⇒ 补记后进入晋级 IN)。这一场没有结算屏, 仪式只能由补记那条路演。
+	_ok("E ★分母: 补记的这一场正好是第 %d 胜(%d-%d → %d-%d · 闯关赛已晋级)" % [int(P2C.GAUNTLET_WINS_IN), int(s0["gw"]), int(s0["gl"]),
+		int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)], int(s0["gw"]) == int(P2C.GAUNTLET_WINS_IN) - 1
+		and int(_gs.gauntlet_wins) == int(P2C.GAUNTLET_WINS_IN) and str(_gs.gauntlet_state()) == P2C.GAUNTLET_IN, str(_gs.gauntlet_state()))
+	_e_view = (got[0] as Dictionary).duplicate(true) if got.size() == 1 else {}
 	var s1 := _snap()
 	var again: bool = RW.resume_if_any(func(v: Dictionary) -> void: got.append(v))
 	await _frames(30)
@@ -496,6 +583,72 @@ func _t_e() -> void:
 	_job += 1
 
 
+## E2: E 补记的那一场正好是第 4 胜 ⇒ 主菜单补演晋级仪式(只读排查路径 ⑤: 原来 `_on_referee_resumed` 只飘一行字, 这次晋级永远看不到)。
+##   ★走真主菜单(current_scene)的真回调 `_on_referee_resumed`, 交给它的是 E 段补记回调真拿到的那一份结果单;
+##   补记本身(`resume_if_any` → `settle` → 回调)E 段量过, 主菜单开场 / 计时器接到这个回调见 verify_referee_wait_timeout B。
+func _t_e2() -> void:
+	print("── E2 主菜单补记的那一场正好是第 4 胜 ⇒ 补演晋级仪式, 点掉再飘补记那句 ──")
+	var v: Dictionary = _e_view
+	_ok("E2 分母: E 段补记回调拿到的结果单是胜、战绩已在晋级线上(%d-%d)、没有待记账单" % [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)],
+		bool(v.get("won", false)) and str(_gs.gauntlet_state()) == P2C.GAUNTLET_IN and (_gs.referee_pending as Dictionary).is_empty(), str(v))
+	if v.is_empty():
+		return
+	## 收盘卡(周五积分赛收盘后第一次进主菜单那一串)本周记成已弹: 它也是整屏, 晋级仪式会排队等它关掉 —— 这一段量的不是它
+	var anchor: int = P2C.week_anchor_utc(P2C.now_utc())
+	_gs.close_card_ranked_wk = anchor
+	_gs.close_card_gauntlet_wk = anchor
+	RW.notice = ""
+	var mm: Node = await _open_menu()
+	await _wait(func() -> bool: return is_instance_valid(mm) and mm.get("content_root") != null, 8000)
+	await _frames(10)
+	_ok("E2 分母: 真主菜单是 current_scene、建起来了、开场没有整屏仪式 / 收盘卡在场",
+		_is_menu(mm) and get_tree().current_scene == mm and mm.get("content_root") != null
+		and _ceremonies(mm).is_empty() and mm.get_node_or_null(WCC.NODE_NAME) == null, "仪式 %d 个" % _ceremonies(mm).size())
+	if not _is_menu(mm) or mm.get("content_root") == null:
+		return
+	mm._on_referee_resumed(v)
+	var cs: Array = _ceremonies(mm)
+	var to_k := str((cs[0] as Node).get_meta("to", "")) if cs.size() == 1 else ""
+	_ok("E2 ★补记的是第 %d 胜 ⇒ 主菜单上演晋级仪式(闯关赛 → 决赛日)" % int(P2C.GAUNTLET_WINS_IN), cs.size() == 1 and to_k == P2C.PHASE_FINALS,
+		"仪式 %d 个 · to=%s" % [cs.size(), to_k])
+	_ok("E2 演完再飘: 仪式开着时还没飘「%s」(一屏一件事)" % RW.TXT_RESUMED_WIN, not _menu_toasts(mm).has(RW.TXT_RESUMED_WIN), str(_menu_toasts(mm)))
+	## 再查一次(主菜单查任务的计时器到点 / 再开一次主菜单那一查): 单子已清 ⇒ 不发、不回调 ⇒ 不会再演一遍
+	var again: bool = RW.resume_if_any(Callable(mm, "_on_referee_resumed"))
+	mm._referee_resume_tick()
+	await _frames(10)
+	_ok("E2 ★再查一次不再演第二遍(单子已清 ⇒ 不回调; 仪式仍只有 1 个)", not again and _ceremonies(mm).size() == 1,
+		"发了=%s 仪式 %d 个" % [str(again), _ceremonies(mm).size()])
+	if cs.size() != 1:
+		mm.queue_free()
+		await _frames(3)
+		return
+	_tap(cs[0] as Control)
+	_ok("E2 ★点掉仪式 ⇒ 飘补记那句「%s」" % RW.TXT_RESUMED_WIN, _menu_toasts(mm).has(RW.TXT_RESUMED_WIN), str(_menu_toasts(mm)))
+	await _frames(10)
+	_ok("E2 仪式关掉了、之后没有再冒出一层", _ceremonies(mm).is_empty() and not is_instance_valid(cs[0]), "仪式 %d 个" % _ceremonies(mm).size())
+	## 对照 1: 补记的是输。战绩同样摆在晋级线上(IN), 与上面只差胜负这一维 —— 判据丢了「赢」这一条就会红。
+	var lose0: int = _menu_toasts(mm).count(RW.TXT_RESUMED_LOSE)
+	mm._on_referee_resumed({"won": false, "reward": 0, "coins": 0, "gw": int(_gs.gauntlet_wins), "gl": int(_gs.gauntlet_losses)})
+	_ok("E2 对照: 补记的是输(战绩同在晋级线上, 只差胜负)⇒ 不演、当场飘「%s」" % RW.TXT_RESUMED_LOSE,
+		_ceremonies(mm).is_empty() and _menu_toasts(mm).count(RW.TXT_RESUMED_LOSE) == lose0 + 1, str(_menu_toasts(mm)))
+	## 对照 2: 补记的胜局不是第 4 胜(补记后 3-1)。与上面只差「到没到晋级线」这一维 —— 判据丢了战绩那一条就会红。
+	var gw0 := int(_gs.gauntlet_wins)
+	var gl0 := int(_gs.gauntlet_losses)
+	_gs.gauntlet_wins = int(P2C.GAUNTLET_WINS_IN) - 1
+	_gs.gauntlet_losses = 1
+	var win0: int = _menu_toasts(mm).count(RW.TXT_RESUMED_WIN)
+	mm._on_referee_resumed({"won": true, "reward": 0, "coins": 0, "gw": int(_gs.gauntlet_wins), "gl": int(_gs.gauntlet_losses)})
+	_ok("E2 对照: 补记的胜局不是第 %d 胜(%d-%d)⇒ 不演、当场飘「%s」" % [int(P2C.GAUNTLET_WINS_IN), int(_gs.gauntlet_wins),
+		int(_gs.gauntlet_losses), RW.TXT_RESUMED_WIN], str(_gs.gauntlet_state()) != P2C.GAUNTLET_IN
+		and _ceremonies(mm).is_empty() and _menu_toasts(mm).count(RW.TXT_RESUMED_WIN) == win0 + 1, str(_menu_toasts(mm)))
+	_gs.gauntlet_wins = gw0
+	_gs.gauntlet_losses = gl0
+	await _frames(10)
+	_ok("E2 两个对照之后也没有排队冒出来的仪式", _ceremonies(mm).is_empty(), "仪式 %d 个" % _ceremonies(mm).size())
+	mm.queue_free()
+	await _frames(3)
+
+
 func _t_f() -> void:
 	print("── F 开关关 ⇒ 老路 ──")
 	_flags_body = "{\"finals_on\":false,\"gauntlet_on\":false}"
@@ -511,6 +664,85 @@ func _t_f() -> void:
 	_ok("F ★一次都没交给服务器、屏上没有裁判那一行", _hit(START) == subs0 and _status_text(m) == "")
 	MMK._may_leave_for_test = Callable()
 	m.queue_free()
+	await _frames(3)
+
+
+## 跑一场「账已记、录像取不到」: 匹配屏 → 交阵容 → VS 卡 → 服务器算完(won、账本 gw-gl)⇒ 记账 ⇒ 取录像断网
+##   ⇒ 停在匹配屏(ST_ERROR, 屏上「闯关 … · 录像无法在本设备播放」)。返回匹配屏; 等的都是墙钟(匹配屏有真计时器)。
+func _one_unplayable(won: bool, gw: int, gl: int) -> Node:
+	_done = false
+	_offline_match = false
+	_gs.referee_pending = {}
+	var subs0 := _hit(START)
+	var m: Node = await _open_mmk()
+	await _wait(func() -> bool: return _hit(START) > subs0)
+	await _wait(func() -> bool: return (_status_text(m) == RW.TXT_SETTLING
+		and int((_gs.referee_pending as Dictionary).get("job_id", -1)) == _job), 8000)
+	var nm := str((_srv_b.get("profile", {}) as Dictionary).get("name", ""))
+	await _wait(func() -> bool: return _has_label(m, nm), 8000)
+	_offline_match = true
+	_srv_won = won
+	_srv_gw = gw
+	_srv_gl = gl
+	_done = true
+	await _wait(func() -> bool: return _run_state(m) == RW.ST_ERROR, 15000)
+	_offline_match = false
+	_job += 1
+	return m
+
+
+## G: 第 4 胜账已按服务器记完、录像却取不到(停在匹配屏, 只有一行状态字)⇒ 匹配屏补演晋级仪式, 只演一次
+##   (只读排查路径 ⑥: 原来这一屏什么都不演, 周日收盘卡按设计也不再庆祝 ⇒ 这次晋级没有任何表示)。
+func _t_g() -> void:
+	print("── G 第 4 胜已记账、录像取不到 ⇒ 匹配屏补演晋级仪式(只演一次) ──")
+	_flags_body = "{\"finals_on\":false,\"gauntlet_on\":true}"
+	_gs.referee_flags = {RN.K_FINALS: false, RN.K_GAUNTLET: true}
+	var dests: Array = []
+	MMK._may_leave_for_test = func(dest: String) -> bool:
+		dests.append(dest)
+		return false
+	## ① 3-1 → 服务器判赢、账本 4-1(第 4 胜)→ 取录像断网
+	_gs.gauntlet_wins = int(P2C.GAUNTLET_WINS_IN) - 1
+	_gs.gauntlet_losses = 1
+	var subs0 := _hit(START)
+	var mg0 := _hit("matches_get")
+	var m: Node = await _one_unplayable(true, int(P2C.GAUNTLET_WINS_IN), 1)
+	var run = m.get("_ref_run") if is_instance_valid(m) else null
+	var view: Dictionary = (run.view as Dictionary) if run != null and is_instance_valid(run) else {}
+	_ok("G ★分母: 交了一场、服务器判赢、账已记成第 %d 胜(闯关赛已晋级)、单子清了" % int(P2C.GAUNTLET_WINS_IN),
+		_hit(START) == subs0 + 1 and bool(view.get("won", false)) and int(_gs.gauntlet_wins) == int(P2C.GAUNTLET_WINS_IN)
+		and str(_gs.gauntlet_state()) == P2C.GAUNTLET_IN and (_gs.referee_pending as Dictionary).is_empty(),
+		"view=%s %d-%d" % [str(view), int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)])
+	_ok("G ★分母: 真去取了录像、取不到 ⇒ 停在匹配屏「…%s」(没进战斗场)" % RW.TXT_UNPLAYABLE,
+		_hit("matches_get") > mg0 and _run_state(m) == RW.ST_ERROR and _status_text(m).ends_with(RW.TXT_UNPLAYABLE)
+		and get_tree().current_scene == m and not _is_battle(get_tree().current_scene), _status_text(m))
+	var cs: Array = _ceremonies(m)
+	var to_k := str((cs[0] as Node).get_meta("to", "")) if cs.size() == 1 else ""
+	_ok("G ★匹配屏上演晋级仪式(闯关赛 → 决赛日)", cs.size() == 1 and to_k == P2C.PHASE_FINALS, "仪式 %d 个 · to=%s" % [cs.size(), to_k])
+	## 只演一次: 同一个 ST_ERROR 再广播两次(状态行重画会走同一个回调)⇒ 不叠第二层
+	if run != null and is_instance_valid(run):
+		run.changed.emit()
+		run.changed.emit()
+	await _frames(5)
+	_ok("G ★只演一次(状态再广播两次, 仍只有 1 个)", _ceremonies(m).size() == 1, "仪式 %d 个" % _ceremonies(m).size())
+	_ok("G 停在匹配屏(没走「去战斗场」/「回主菜单」的出口)", dests.is_empty() and get_tree().current_scene == m, str(dests))
+	if is_instance_valid(m):
+		m.queue_free()
+	await _frames(3)
+	## ② 对照: 同样停在「账已记、播不了」, 账本同样落在晋级线上(4-2), 只差这一局是输 —— 判据丢了「赢」这一条就会红
+	_gs.gauntlet_wins = int(P2C.GAUNTLET_WINS_IN) - 1
+	_gs.gauntlet_losses = 1
+	var m2: Node = await _one_unplayable(false, int(P2C.GAUNTLET_WINS_IN), 2)
+	var run2 = m2.get("_ref_run") if is_instance_valid(m2) else null
+	var view2: Dictionary = (run2.view as Dictionary) if run2 != null and is_instance_valid(run2) else {}
+	_ok("G 对照 分母: 停在「…%s」、结果单是输、账本同在晋级线上(%d-%d)" % [RW.TXT_UNPLAYABLE, int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)],
+		_run_state(m2) == RW.ST_ERROR and not view2.is_empty() and not bool(view2.get("won", true))
+		and str(_gs.gauntlet_state()) == P2C.GAUNTLET_IN and _status_text(m2).ends_with(RW.TXT_UNPLAYABLE), "view=%s" % str(view2))
+	await _frames(5)
+	_ok("G ★对照: 输了的那一局 ⇒ 匹配屏不演", _ceremonies(m2).is_empty(), "仪式 %d 个" % _ceremonies(m2).size())
+	MMK._may_leave_for_test = Callable()
+	if is_instance_valid(m2):
+		m2.queue_free()
 	await _frames(3)
 
 

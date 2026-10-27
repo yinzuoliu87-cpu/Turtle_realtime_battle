@@ -2764,7 +2764,8 @@ func _on_referee_resumed(view: Dictionary) -> void:
 	for c in get_children():
 		if c is Label and str((c as Label).text) == str(rw.TXT_LATER):
 			c.queue_free()
-	_toast(rw.resume_text(view))
+	## 补记的正好是第 4 胜 ⇒ 这里补演晋级仪式, 演完再飘补记那句(这一局没有结算屏, 不演就永远看不到)。
+	_wk().play_promo(BattleHud.promotion_for(_P2C.SETTLE_GAUNTLET, bool(view.get("won", false)), false, GameState), rw.resume_text(view))
 	## 模式卡第二行是周六的战绩读数, 补记之后重画(与 `rebuild_week_page` 同一句)。
 	if is_instance_valid(_mode_box):
 		_mode_card(_strip_now())

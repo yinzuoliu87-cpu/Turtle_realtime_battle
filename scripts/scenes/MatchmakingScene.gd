@@ -246,6 +246,15 @@ func _on_referee_changed() -> void:
 	_ref_label()
 	if str(_ref_run.state) == _RW.ST_LATER:
 		_leave_later()
+	## 账已经记了、录像却播不了(停在这一屏, 只有一行状态字)⇒ 正好是第 4 胜就在这里补演晋级仪式,
+	##   否则这次晋级没有任何表示(周日收盘卡按设计不再庆祝)。只演一次。
+	if str(_ref_run.state) == _RW.ST_ERROR and not (_ref_run.view as Dictionary).is_empty() and not _promo_played:
+		_promo_played = true
+		var promo: Array = BattleHud.promotion_for(_P2C_MM.SETTLE_GAUNTLET, bool(_ref_run.view.get("won", false)), false, GameState)
+		if not promo.is_empty():
+			StageCeremony.play(self, str(promo[0]), str(promo[1]), str(promo[2]), str(promo[3]), false, func() -> void: pass)
+
+var _promo_played := false
 
 
 ## ★周六服务器局交上去了、这一屏等不到结果(裁判机排队超过上限 / 交上去之后断网)⇒ 不停在这一屏:

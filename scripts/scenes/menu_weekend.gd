@@ -324,3 +324,18 @@ func stage_badge(head: Control, ph: String, dim: bool, right_mid: Vector2) -> fl
 		r.material = mat
 	head.add_child(r)
 	return r.size.x + 12.0
+
+
+## 主菜单补记的那一局(周六服务器局排队超时 / 杀进程)正好是晋级那一局 ⇒ 补演整屏仪式, 演完再飘补记那句。
+##   promo 为空(不是晋级那一局)⇒ 只飘那句。收盘流程正在弹(同一种整屏 / 收盘卡)⇒ 等它弹完再演, 不叠两层。
+func play_promo(promo: Array, after_text: String) -> void:
+	if promo.is_empty():
+		menu._toast(after_text)
+		return
+	while is_instance_valid(menu) and menu.is_inside_tree() \
+			and (menu.get_node_or_null(StageCeremony.NODE_NAME) != null or menu.get_node_or_null(WeekCloseCard.NODE_NAME) != null):
+		await menu.get_tree().process_frame
+	if not is_instance_valid(menu) or not menu.is_inside_tree():
+		return
+	StageCeremony.play(menu, str(promo[0]), str(promo[1]), str(promo[2]), str(promo[3]), false,
+		func() -> void: menu._toast(after_text))
