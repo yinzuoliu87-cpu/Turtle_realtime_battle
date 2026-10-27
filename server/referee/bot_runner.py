@@ -21,9 +21,13 @@
   BOT_MODE         schedule(默认: 按 BOT_SCHEDULE 时间表) / queue(轮流打到底, 不要时间表; 正式服 10-27 起)
   BOT_COUNT        queue 模式的号数(不设 = bot_schedule.bot_count(REAL_LAST_WEEK))
   PER_HOUR         queue 模式积分赛每小时最多新开几个号(不设 = ceil(号数 / 88), 铺满周二~周五)
-  PER_HOUR_GAUNTLET  queue 模式闯关赛每小时几场(不设 = ceil(晋级号还可能打的场数 / 离收盘小时数), 每拍重算)
-  GAUNTLET_GAP_H   queue 模式同一个号两次闯关上线至少隔几小时(默认 2)
-  TURTLE_BACKEND / TURTLE_SUPABASE 等后端配置原样传给客户端(内测服 / 正式服各一份 env)
+                   ★queue 模式周六 / 周日一个号都不起: 闯关赛改在线瑞士轮(方案书 20261027b), 陪练号由
+                   gauntlet_bot_planner.py(常驻)按格子拉上线, 它调本文件的 launch。
+  BOT_JEMALLOC     设成 1 ⇒ 陪练客户端用 jemalloc(LD_PRELOAD): glibc 不把释放的内存还给系统, 一个号常驻约 0.75GB,
+                   换 jemalloc 后中位约 0.36GB(10-27 内存调查)。默认关。只作用于本文件拉起的客户端, 裁判不受影响。
+  BOT_JEMALLOC_LIB libjemalloc.so.2 的路径(默认 /usr/lib/x86_64-linux-gnu/libjemalloc.so.2; 文件不在就不设、打一行警告)
+  BOT_MALLOC_CONF  jemalloc 参数(默认 = 内存调查实验 sweep_lx.sh 用的 background_thread:true,dirty_decay_ms:2000,muzzy_decay_ms:0)
+  TURTLE_BACKEND / TURTLE_SUPABASE 等后端配置原样传给客户端(内测服 / 正式服各一份 env; SUPABASE_SERVICE_KEY 不传)
 用法:
   python3 bot_runner.py            # 定时器调用: 起该起的, 打印做了什么
   python3 bot_runner.py --dry      # 只打印会起哪些
@@ -93,10 +97,27 @@ def due_sessions(plan: dict, now: dt.datetime) -> list:
     return out
 
 
-def launch(slot: int, rounds: int) -> int:
+JEMALLOC_LIB_DEFAULT = '/usr/lib/x86_64-linux-gnu/libjemalloc.so.2'
+MALLOC_CONF_DEFAULT = 'background_thread:true,dirty_decay_ms:2000,muzzy_decay_ms:0'
+
+
+def alloc_env() -> dict:
+    """BOT_JEMALLOC=1 时给陪练客户端的 LD_PRELOAD / MALLOC_CONF(每次拉号时读环境; 默认关 = 空)。"""
+    if os.environ.get('BOT_JEMALLOC', '').strip().lower() not in ('1', 'true', 'yes', 'on'):
+        return {}
+    lib = os.environ.get('BOT_JEMALLOC_LIB', '').strip() or JEMALLOC_LIB_DEFAULT
+    if not os.path.isfile(lib):
+        print('WARN BOT_JEMALLOC=1 但 %s 不存在, 这次照旧用 glibc' % lib)
+        return {}
+    return {'LD_PRELOAD': lib, 'MALLOC_CONF': os.environ.get('BOT_MALLOC_CONF', '').strip() or MALLOC_CONF_DEFAULT}
+
+
+def launch(slot: int, rounds: int, extra_env: dict = None) -> int:
+    """extra_env: 额外的客户端参数(周末调度器 gauntlet_bot_planner.py 用; 积分赛不传)。"""
     d = os.path.join(ROOT, 'p%02d' % slot)
     os.makedirs(d, exist_ok=True)
     env = dict(os.environ)
+    env.pop('SUPABASE_SERVICE_KEY', None)          # 服务端密钥不给客户端(周末调度器的环境里有它)
     env.update({
         'XDG_DATA_HOME': d, 'APPDATA': d,          # user:// 落在这个号自己的目录(Linux 认 XDG, 两个都设见 CLAUDE.md §2)
         'SHIP': '1', 'QUIET': '1',
@@ -105,6 +126,8 @@ def launch(slot: int, rounds: int) -> int:
         'SIM_QUIT_WHEN_DONE': '1', 'SIM_TOUR': '0',
         'SIM_SHOT_DIR': os.path.join(d, 'shots'),
     })
+    env.update(alloc_env())
+    env.update(extra_env or {})
     log = open(os.path.join(d, 'last.log'), 'w', encoding='utf-8')
     kw = {}
     if os.name == 'posix':
@@ -145,25 +168,20 @@ def reap_overdue(state: dict, now: dt.datetime) -> int:
 ##   ⇒ 不要时间表: 积分赛开着的时候(周二 00:00 ~ 周五 22:30 UTC)一直保持几个号在打, 每个号一上线就打到底
 ##     (SIM_ROUNDS=16: 打满 16 场或命输光 ⇒ 主菜单被拦 ⇒ 自己退出), 退了换下一个; 每个号每周一次。
 ##   每小时最多新开 PER_HOUR 个号(默认 = ceil(号数 / 88)), 让一周的号铺满周二~周五, 不在头两天打完。
-## 周末(用户 10-27「只有在周五晋级的这个机器人号，你周六才可以去使用…每个小时你看多少个号去打，你得安排好呀」):
-##   赛程(phase2_config): 积分赛 11 胜(PROMOTE_WINS)才晋级; 闯关赛 周六 00:00 ~ 周日 17:30, 4 胜晋级 / 3 负出局 / 最多 6 场。
-##   服务端挑对手(schema.sql referee_gauntlet_pick): 先找【同战绩】真人快照、30 分钟内刚打过的优先, 没有才用机器人池。
-##   ⇒ ① 只起本周 11 胜以上的号(读它自己的存档); ② 每次上线只打 1 场(SIM_ROUNDS=1), 同一个号两次上线至少隔 GAUNTLET_GAP_H 小时;
-##     ③ 每小时开几场 = ceil(晋级号还可能打的场数之和 / 离收盘还剩的小时数), 每拍重算 ⇒ 周末每个小时都有号刚打过、各种战绩都有,
-##     收盘前打完。没晋级的号周末一个都不起。
+## 周末(用户 10-27「周六周日我们讲究是在线啊」): 闯关赛改在线瑞士轮(方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md),
+##   陪练号和真人走同一个排队、按格子先来先配; 拉哪个号上线由常驻的 gauntlet_bot_planner.py 按 12 个战绩格子决定
+##   (它调本文件的 launch)。⇒ 本文件 queue 模式周六 / 周日一个号都不起(以前的「晋级号每次上线打 1 场」作废)。
 ## 号数 = bot_schedule.bot_count(上周真人)(与排班模式同一个公式, 不另抄一份)。
 BOT_MODE = os.environ.get('BOT_MODE', 'schedule')
 QUEUE_STATE = os.path.join(ROOT, 'queue.json')     # {周一日期: {阶段: {pNN: {pid, at, rounds, killed?}}}}
 RANKED_ROUNDS = 16
-GAUNTLET_ROUNDS = 1           # 周末每次上线打 1 场, 打完下线过一阵再来(见上)
 PROMOTE_WINS = 11             # = phase2_config.PROMOTE_WINS(RANKED_QUOTA 16 − (HEARTS_MAX 6 − 1))
 GAUNTLET_WINS_IN, GAUNTLET_LOSSES_OUT, GAUNTLET_QUOTA = 4, 3, 6     # = phase2_config 同名常量
-GAUNTLET_GAP_H = float(os.environ.get('GAUNTLET_GAP_H', '2'))
 RANKED_SPAN_H = 88            # 周二 00:00 ~ 周五 22:30 约 94.5 小时, 留余量按 88 小时铺
 
 
 def queue_phase(now: dt.datetime) -> str:
-    """'ranked' / 'gauntlet' / ''(这一刻不起号: 周一休赛、周五 22:30 后、周日 17:20 后决赛日由服务器代打)。"""
+    """'ranked' / 'gauntlet'(周末: 本文件不起号, 由 gauntlet_bot_planner.py 拉) / ''(周一休赛、周五 22:30 后、周日 17:20 后)。"""
     wd, hm = now.weekday(), now.hour * 60 + now.minute
     if 1 <= wd <= 3 or (wd == 4 and hm < 22 * 60 + 30):
         return 'ranked'
@@ -194,12 +212,6 @@ def week_anchor_ts(now: dt.datetime) -> int:
     return int((now - dt.timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
 
 
-def gauntlet_close(now: dt.datetime) -> dt.datetime:
-    """本周不再起闯关号的时刻: 周日 17:20(17:30 收盘, 留 10 分钟打完)。"""
-    mon = now - dt.timedelta(days=now.weekday())
-    return mon.replace(hour=17, minute=20, second=0, microsecond=0) + dt.timedelta(days=6)
-
-
 def read_save(slot: int) -> dict:
     """这个号自己的存档(user:// = <BOT_ROOT>/pNN, Godot 再套 godot/app_userdata/<项目名>/)。读不到 = {}。"""
     d = os.path.join(ROOT, 'p%02d' % slot)
@@ -210,7 +222,7 @@ def read_save(slot: int) -> dict:
 
 
 def gauntlet_left(sv: dict, anchor: int) -> int:
-    """这个号本周闯关赛还可能打几场: 没晋级(或存档不是本周的) = 0; 晋级了 = min(配额剩余, 到 4 胜或 3 负最多还要几场)。"""
+    """这个号本周闯关赛还可能打几场(--status 的总量账): 没晋级(或存档不是本周的) = 0; 晋级了 = min(配额剩余, 到 4 胜或 3 负最多还要几场)。"""
     if int(sv.get('week_anchor_ts', 0) or 0) != anchor or int(sv.get('season_wins', 0) or 0) < PROMOTE_WINS:
         return 0
     gw, gl = int(sv.get('gauntlet_wins', 0) or 0), int(sv.get('gauntlet_losses', 0) or 0)
@@ -219,22 +231,17 @@ def gauntlet_left(sv: dict, anchor: int) -> int:
     return min(GAUNTLET_QUOTA - gw - gl, (GAUNTLET_WINS_IN - gw) + (GAUNTLET_LOSSES_OUT - gl) - 1)
 
 
-def gauntlet_per_hour(left_total: int, now: dt.datetime) -> int:
-    hours = max(1.0, (gauntlet_close(now) - now).total_seconds() / 3600.0)
-    v = os.environ.get('PER_HOUR_GAUNTLET', '').strip()
-    return int(v) if v else (max(1, -(-left_total // int(hours))) if left_total > 0 else 0)
-
-
 def queue_tick(state: dict, now: dt.datetime, n_bots: int, par: int, per_hour: int, launch_fn, alive_fn, save_fn=read_save) -> list:
     """一拍: 返回这一拍起了哪些号([(slot, rounds)]), 并就地更新 state。
-    纯逻辑(launch_fn / alive_fn / save_fn 注入, 门禁用假的)。积分赛用 per_hour; 闯关赛每小时几场自己按剩余场数算(per_hour 不用)。"""
+    纯逻辑(launch_fn / alive_fn / save_fn 注入, 门禁用假的)。只管积分赛(per_hour); 周末一个都不起(见上)。"""
     phase = queue_phase(now)
     if not phase:
         return []
+    if phase == 'gauntlet':
+        return []                                     # 周末: 在线瑞士轮, 由 gauntlet_bot_planner.py 按格子拉号
     wk = state.setdefault(week_key(now), {})
     done = wk.setdefault(phase, {})
     running = [v for ph in wk.values() for v in ph.values() if v.get('pid') and not v.get('killed') and alive_fn(int(v['pid']))]
-    running_keys = {k for ph in wk.values() for k, v in ph.items() if v.get('pid') and not v.get('killed') and alive_fn(int(v['pid']))}
     hour0 = now.replace(minute=0, second=0, microsecond=0)
     out = []
     if phase == 'ranked':
@@ -249,37 +256,7 @@ def queue_tick(state: dict, now: dt.datetime, n_bots: int, par: int, per_hour: i
             done[key] = {'pid': pid, 'at': now.isoformat(), 'rounds': RANKED_ROUNDS}
             out.append((slot, RANKED_ROUNDS))
         return out
-    ## 闯关赛: 只起晋级且还没打完的号; 每次 1 场; 同一号两次上线隔 GAUNTLET_GAP_H; 每小时场数按剩余量摊到收盘前
-    if now >= gauntlet_close(now):
-        return []
-    anchor = week_anchor_ts(now)
-    left = {}
-    for slot in range(1, n_bots + 1):
-        n = gauntlet_left(save_fn(slot), anchor)
-        if n > 0:
-            left[slot] = n
-    ph = gauntlet_per_hour(sum(left.values()), now)
-    this_hour = sum(1 for v in done.values() for t in v.get('ats', [v['at']]) if dt.datetime.fromisoformat(t) >= hour0)
-    gap = dt.timedelta(hours=GAUNTLET_GAP_H)
-    cand = []
-    for slot in left:
-        key = 'p%02d' % slot
-        last = done.get(key, {}).get('at')
-        if key in running_keys or (last and now - dt.datetime.fromisoformat(last) < gap):
-            continue
-        cand.append((last or '', slot))
-    cand.sort()                                       # 最久没打的先上(从没打过的 '' 排最前)
-    for _last, slot in cand:
-        if len(running) + len(out) >= par or this_hour + len(out) >= ph:
-            break
-        key = 'p%02d' % slot
-        pid = launch_fn(slot, GAUNTLET_ROUNDS)
-        v = done.setdefault(key, {'ats': []})
-        v.update({'pid': pid, 'at': now.isoformat(), 'rounds': GAUNTLET_ROUNDS})
-        v.pop('killed', None)
-        v.setdefault('ats', []).append(now.isoformat())
-        out.append((slot, GAUNTLET_ROUNDS))
-    return out
+    return out                                        # (到不了: 周末上面已返回)
 
 
 def queue_main(dry: bool, status: bool) -> None:
@@ -302,12 +279,10 @@ def queue_main(dry: bool, status: bool) -> None:
         left = {s: gauntlet_left(read_save(s), anchor) for s in range(1, n_bots + 1)}
         promoted = [s for s in range(1, n_bots + 1) if int(read_save(s).get('season_wins', 0) or 0) >= PROMOTE_WINS
                     and int(read_save(s).get('week_anchor_ts', 0) or 0) == anchor]
-        g = wk.get('gauntlet', {})
-        print('本周 %s 闯关赛: 晋级 %d 个号 · 还没打完 %d 个 · 还可能打 %d 场 · 已上线 %d 次' % (
-            week_key(now), len(promoted), sum(1 for v in left.values() if v > 0), sum(left.values()),
-            sum(len(v.get('ats', [])) for v in g.values())))
-        print('现在阶段: %s · 同时上限 %d · 积分赛每小时最多新开 %d · 闯关赛每小时 %d 场' % (
-            phase or '不起号', par, per_hour, gauntlet_per_hour(sum(left.values()), now) if phase == 'gauntlet' else 0))
+        print('本周 %s 闯关赛: 晋级 %d 个号 · 还没打完 %d 个 · 还可能打 %d 场(周末由 gauntlet_bot_planner.py 按格子拉号, 本文件不起)' % (
+            week_key(now), len(promoted), sum(1 for v in left.values() if v > 0), sum(left.values())))
+        print('现在阶段: %s · 同时上限 %d · 积分赛每小时最多新开 %d' % (
+            '周末(本文件不起号)' if phase == 'gauntlet' else (phase or '不起号'), par, per_hour))
         return
     if dry:
         fake = json.loads(json.dumps(state))

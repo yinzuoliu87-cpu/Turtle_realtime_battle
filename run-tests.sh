@@ -333,6 +333,8 @@ frames_for () {
     verify_finals_watch_only) echo 8000 ;;
     # 周六闯关交给服务器: 匹配屏真计时器 4.8 秒 × 6 次 + 裁判真算一局 + 播三局(两整局 + 一局到第 5 校验点停) + 轮询按墙钟等; 本地实测 5574 帧 / 59 秒(墙钟等待在快机器上帧数会涨)
     verify_gauntlet_via_referee) echo 60000 ;;
+    # 周六闯关在线排队(2026-10-27): 匹配屏真计时器(每 2 秒心跳 × 十几段) + 裁判真算两局 + 播两局 + 真 HTTP 一段 + 陪练号驱动整条流程(主菜单 → 选龟 → 排队 → 看完 → 商店 → 背包 → 再排 → 等满 7 秒取消); 本地实测 13627 帧 / 152 秒(全按墙钟等, 快机器上帧数会涨)
+    verify_gauntlet_online_queue) echo 200000 ;;
     # 周六服务器局铸币(2026-10-20): 裁判真算两局(100ms/帧) + 同一局本机复算到结算(40ms/帧); 本地实测 208 帧 / 19 秒
     verify_referee_coins) echo 8000 ;;
     verify_referee_chest) echo 8000 ;;   # 裁判一局 + 本机复算一局(同 verify_referee_coins)
@@ -422,8 +424,6 @@ frames_for () {
     verify_axe_batch10) echo 20000 ;;
     verify_settle_pages) echo 1500 ;;   # 两个视口 × 建 3 次结算屏 + 推鼠标点页签/滑动; 实测 342 帧
     verify_big_title) echo 1500 ;;   # 2026-10-27 结算屏大字美术字: 建 3 次结算屏(胜/负/封存)各等滑入落位 40 帧, 实测 ~200 帧
-    # 周六闯关在线排队(2026-10-27): 匹配屏真计时器(每 2 秒心跳 × 十几段) + 裁判真算两局 + 播两局 + 真 HTTP 一段 + 陪练号驱动整条流程(主菜单 → 选龟 → 排队 → 看完 → 商店 → 背包 → 再排 → 等满 7 秒取消); 本地实测 13627 帧 / 152 秒(全按墙钟等, 快机器上帧数会涨)
-    verify_gauntlet_online_queue) echo 200000 ;;
     verify_tutorial_flow_v3) echo 5000 ;;   # 新手教程 v3 整条(2026-10-20): v2 那条 + 战斗两句不阻塞提示(~8 秒真实时间) + 站位三步; 测试钉 60fps
     verify_first_tips) echo 5000 ;;   # 首次提示(2026-10-20): 「5 秒自己收起」按真实时间等; 测试钉 60fps。10-20 扩到 7 条(背包 / 商店 / 训龟大师页各开两次), 实测 <3000 帧
     verify_tutorial_battle_short) echo 50000 ;;   # 教程战斗(2026-10-20): 6 次真战斗从开场演出打到结算(每次 ~5500 帧) + 一场正式对局开打
@@ -1018,7 +1018,8 @@ run_audit "tools/nine_bracket_audit.py" "ALL PASS" "nine_bracket (9 档进度档
 run_audit "tools/freed_is_order_audit.py" "ALL OK" "freed_is_order (先 is_instance_valid 再 is·对已释放对象 is 会报错并中断函数)"
 run_audit "tools/gate_offline_audit.py" "ALL OK" "gate_offline (门禁里每个起 Godot 跑场景的命令都必须关掉后端·不许打生产库)"
 run_audit "tools/bot_schedule_audit.py" "ALL OK" "bot_schedule (陪练号排班表: 规模公式·每号≤16场·封盘前开打·周二晚同场次覆盖)"
-run_audit "tools/bot_runner_queue_audit.py" "ALL OK" "bot_runner_queue (陪练号轮流打到底: 每号每周积分赛/闯关赛各一次·并发与每小时上限·周五封盘前轮完)"
+run_audit "tools/bot_runner_queue_audit.py" "ALL OK" "bot_runner_queue (陪练号轮流打到底: 积分赛每号每周一次·并发与每小时上限·周五封盘前轮完·周末不起号·jemalloc 开关)"
+run_audit "tools/gauntlet_planner_audit.py" "ALL OK" "gauntlet_planner (周末在线闯关陪练号调度器推演: 12 格候场·真人等待≤120秒·开赛/平时/收尾·35 条输赢路线穷举)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

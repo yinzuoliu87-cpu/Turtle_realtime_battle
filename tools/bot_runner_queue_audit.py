@@ -2,18 +2,19 @@
 """bot_runner_queue_audit.py — 陪练号「轮流打到底」(bot_runner.py BOT_MODE=queue)按赛程的硬约束。
 
 用户 2026-10-27:「你为啥要排班呢？…凌晨可以打，每个小时都可以打呀，就打到底就好了呀，所有的命都打完了。」
-「只有在周五晋级的这个机器人号，你周六才可以去使用…每个小时你看多少个号去打，你得安排好呀。」
+「周六周日我们讲究是在线啊」(闯关赛改在线瑞士轮, 方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md):
+  周末的陪练号由常驻的 server/referee/gauntlet_bot_planner.py 按 12 个战绩格子拉上线(推演门禁 tools/gauntlet_planner_audit.py),
+  本文件 queue 模式周六 / 周日一个号都不起。
 量的是 bot_runner.queue_tick 本身(真函数; 起进程 / 查进程活没活 / 读存档换成假的): 假时钟从周一 00:00 起每 5 分钟一拍推一整周。
-假客户端: 积分赛 45 分钟、打完按 55% 胜率写本周胜场(实测 10-27 正式服陪练号 40 胜 32 负); 闯关赛 6 分钟一场、55% 胜、写回闯关胜负。
-赛程(phase2_config): 积分赛周二 ~ 周五 23:00, 11 胜晋级; 闯关赛周六 00:00 ~ 周日 17:30, 4 胜晋级 / 3 负出局 / 最多 6 场。
+假客户端: 积分赛 45 分钟、打完按 55% 胜率写本周胜场(实测 10-27 正式服陪练号 40 胜 32 负)。
+赛程(phase2_config): 积分赛周二 ~ 周五 23:00, 11 胜晋级; 闯关赛周六 00:00 ~ 周日 17:30(在线瑞士轮, 不归本文件)。
   ① 积分赛: 每个号恰好上线 1 次、SIM_ROUNDS=16; 每个钟点新开 ≤ PER_HOUR; 全部在周五 22:30 前轮到(30/150/300 三档 + 周二 15:00 才开始)
-  ② 闯关赛只起晋级(本周 ≥11 胜)的号; 没晋级的一次都不起
-  ③ 每个晋级号打到 4 胜 / 3 负 / 6 场就不再起; 收盘(周日 17:20)前全部打完
-  ④ 每次闯关上线 SIM_ROUNDS=1; 同一个号两次上线间隔 ≥ GAUNTLET_GAP_H
-  ⑤ 周六 00:00 ~ 周日 17:00 每个钟点都有号在打(真人闯关时有 30 分钟内刚打过的同战绩真号可配)
-  ⑥ 同时在跑 ≤ 上限(平日 MAX_PAR / 周末 MAX_PAR_WEEKEND); 周一 / 周五 22:30 后 / 周日 17:20 后不起号
-  ⑦ 尺子自检: ⑤ 的量法在「只有 1 个晋级号」时量得出空档; ② 的量法在「全员都当晋级」时量得出没晋级的也起了
-分母: 每档号数、晋级号数、积分赛 / 闯关赛上线次数、推演拍数。
+  ② 周六 / 周日一个号都不起(包括本周晋级的号; 在线闯关由 gauntlet_bot_planner.py 拉号)
+  ⑥ 同时在跑 ≤ 上限(平日 MAX_PAR); 周一 / 周五 22:30 后 / 周六 / 周日不起号
+  ⑦ 尺子自检: ② 的量法在「造一条周六的上线」时量得出来
+  ⑧ launch: BOT_JEMALLOC 没开 ⇒ 客户端环境里没有 LD_PRELOAD / MALLOC_CONF(积分赛照旧); 开了 ⇒ 两个都设(库不在就不设);
+     extra_env 原样传给客户端; SUPABASE_SERVICE_KEY 不传给客户端
+分母: 每档号数、晋级号数、积分赛上线次数、推演拍数。
 """
 import datetime as dt
 import importlib.util
@@ -102,36 +103,19 @@ def hour_counts(launches, phase):
 for n in (30, 150, 300):
     launches, max_run, ticks, saves = simulate(n, MON)
     ranked = [x for x in launches if x[1] == 'ranked']
-    gaunt = [x for x in launches if x[1] == 'gauntlet']
+    weekend = [x for x in launches if x[0].weekday() >= 5]
     promoted = {s for s, sv in saves.items() if sv['season_wins'] >= 11}
-    ok('分母 N=%d: 推演 %d 拍 · 晋级 %d 个号 · 积分赛 %d 次 / 闯关赛 %d 次上线' % (n, ticks, len(promoted), len(ranked), len(gaunt)),
-       ticks > 2000 and len(ranked) == n and len(promoted) > 0 and len(gaunt) > 0)
+    ok('分母 N=%d: 推演 %d 拍 · 晋级 %d 个号 · 积分赛 %d 次上线' % (n, ticks, len(promoted), len(ranked)),
+       ticks > 2000 and len(ranked) == n and len(promoted) > 0)
     ok('① N=%d 积分赛每号恰好 1 次、16 局' % n, sorted(x[2] for x in ranked) == list(range(1, n + 1)) and all(x[3] == 16 for x in ranked))
     pr = hour_counts(launches, 'ranked')
     ok('① N=%d 积分赛每个钟点新开 ≤ %d' % (n, br.per_hour_limit(n)), max(pr.values()) <= br.per_hour_limit(n), 'max=%d' % max(pr.values()))
     ok('① N=%d 积分赛全部在周五 22:30 前轮到' % n, max(t for t, *_ in ranked) < MON + dt.timedelta(days=4, hours=22, minutes=30))
-    ok('② N=%d 闯关赛只起晋级的号' % n, {x[2] for x in gaunt} <= promoted, '起了没晋级的 %s' % sorted({x[2] for x in gaunt} - promoted)[:5])
-    unfinished = [s for s in promoted if br.gauntlet_left(saves[s], int(MON.timestamp())) > 0]
-    over = [s for s in promoted if saves[s]['gauntlet_wins'] > 4 or saves[s]['gauntlet_losses'] > 3
-            or saves[s]['gauntlet_wins'] + saves[s]['gauntlet_losses'] > 6]
-    ok('③ N=%d 晋级号全部在收盘前打完(4 胜 / 3 负 / 6 场), 没有多打' % n, not unfinished and not over,
-       '没打完 %d · 多打 %d' % (len(unfinished), len(over)))
-    gap_bad = []
-    last = {}
-    for t, p, s, r in sorted(gaunt):
-        if s in last and t - last[s] < dt.timedelta(hours=br.GAUNTLET_GAP_H):
-            gap_bad.append((s, t.isoformat()))
-        last[s] = t
-    ok('④ N=%d 闯关每次 1 局、同一号两次上线隔 ≥ %g 小时' % (n, br.GAUNTLET_GAP_H), all(x[3] == 1 for x in gaunt) and not gap_bad, str(gap_bad[:3]))
-    pg = hour_counts(launches, 'gauntlet')
-    hours = [MON + dt.timedelta(days=5, hours=h) for h in range(41)]       # 周六 00:00 ~ 周日 16:00 起头的每个钟点
-    empty = [h.strftime('%a %H:00') for h in hours if pg.get(h, 0) == 0]
-    if len(promoted) >= 10:
-        ok('⑤ N=%d 周六 00:00 ~ 周日 17:00 每个钟点都有号在打(晋级 %d 个)' % (n, len(promoted)), not empty, '空档 %s' % empty[:6])
-    ok('⑥ N=%d 同时在跑 ≤ 上限(平日 %d / 周末 %d)' % (n, PAR, PAR_WEEKEND), max_run['weekday'] <= PAR and max_run['weekend'] <= PAR_WEEKEND, str(max_run))
+    ok('② N=%d 周六 / 周日一个号都不起(晋级 %d 个号也不起)' % (n, len(promoted)), not weekend, str([(t.isoformat(), s) for t, _p, s, _r in weekend[:3]]))
+    ok('⑥ N=%d 同时在跑 ≤ 上限(平日 %d; 周末没有本文件的号)' % (n, PAR), max_run['weekday'] <= PAR and max_run['weekend'] == 0, str(max_run))
     bad = [t for t, *_ in launches if t.weekday() == 0 or (t.weekday() == 4 and t.hour * 60 + t.minute >= 22 * 60 + 30)
-           or (t.weekday() == 6 and t.hour * 60 + t.minute >= 17 * 60 + 20)]
-    ok('⑥ N=%d 周一 / 周五 22:30 后 / 周日 17:20 后不起号' % n, not bad, str(bad[:3]))
+           or t.weekday() >= 5]
+    ok('⑥ N=%d 周一 / 周五 22:30 后 / 周六 / 周日不起号' % n, not bad, str(bad[:3]))
 
 ## ① 补跑: 周二 15:00 才开始(本周 10-27 就是这样)
 launches, _m, _t, _s = simulate(300, MON + dt.timedelta(days=1, hours=15))
@@ -139,33 +123,54 @@ ranked = [x for x in launches if x[1] == 'ranked']
 ok('① N=300 周二 15:00 才开始也在周五 22:30 前全部轮到', len(ranked) == 300 and max(t for t, *_ in ranked) < MON + dt.timedelta(days=4, hours=22, minutes=30),
    'n=%d last=%s' % (len(ranked), max(t for t, *_ in ranked).isoformat() if ranked else '-'))
 
-## ④ 间隔真起作用的场景: 只有 4 个号晋级、运维把每小时闯关场数调到 20 —— 没有间隔这条, 同一个号会一场接一场连着打
-os.environ['PER_HOUR_GAUNTLET'] = '20'
-launches, _m, _t, saves = simulate(300, MON, promote_only={11, 22, 33, 44})
-os.environ.pop('PER_HOUR_GAUNTLET')
-gaunt = sorted(x for x in launches if x[1] == 'gauntlet')
-gap_bad, last = [], {}
-for t, p, s, r in gaunt:
-    if s in last and t - last[s] < dt.timedelta(hours=br.GAUNTLET_GAP_H):
-        gap_bad.append((s, t.isoformat()))
-    last[s] = t
-left4 = [s for s in (11, 22, 33, 44) if br.gauntlet_left(saves[s], int(MON.timestamp())) > 0]
-ok('④ 只有 4 个晋级号、每小时 20 场: 同一号两次上线仍隔 ≥ %g 小时, 且都打完' % br.GAUNTLET_GAP_H,
-   len(gaunt) > 0 and not gap_bad and not left4 and {x[2] for x in gaunt} <= {11, 22, 33, 44},
-   '上线 %d 次 · 间隔不足 %s · 没打完 %s' % (len(gaunt), gap_bad[:3], left4))
+## ⑦ 尺子自检: ② 的量法在「造一条周六的上线」时量得出来
+fake = [(MON + dt.timedelta(days=5, hours=2), 'ranked', 7, 16)]
+ok('⑦ 尺子自检: 造一条周六的上线, ② 的量法量得出 1 条', len([x for x in fake if x[0].weekday() >= 5]) == 1)
 
-## ⑦ 尺子自检
-pg = {}
-for t, p, *_ in [x for x in [(MON + dt.timedelta(days=5, hours=2), 'gauntlet', 1, 1)]]:
-    pg[t.replace(minute=0)] = 1
-hours = [MON + dt.timedelta(days=5, hours=h) for h in range(41)]
-ok('⑦ 尺子自检: 只有 1 场闯关时 ⑤ 的量法量得出空档', sum(1 for h in hours if pg.get(h, 0) == 0) == 40)
-launches, _m, _t, saves = simulate(30, MON, promote_all=True)
-fake_promoted = {s for s in saves if s % 2 == 0}
-gaunt_slots = {x[2] for x in launches if x[1] == 'gauntlet'}
-ok('⑦ 尺子自检: 全员都当晋级时 ② 的量法量得出「起了没晋级的」', bool(gaunt_slots - fake_promoted), '多出 %d 个' % len(gaunt_slots - fake_promoted))
+## ⑧ launch 给客户端的环境(假 Popen 截下来; 不起真进程)
+import tempfile
+captured = []
+
+
+class FakePopen:
+    def __init__(self, cmd, env=None, **_kw):
+        captured.append(dict(env or {}))
+        self.pid = 4242
+
+
+root_saved, popen_saved = br.ROOT, br.subprocess.Popen
+tmp = tempfile.mkdtemp(prefix='botrun_audit_')
+lib = os.path.join(tmp, 'libjemalloc.so.2')
+open(lib, 'w').close()
+saved_env = {k: os.environ.get(k) for k in ('BOT_JEMALLOC', 'BOT_JEMALLOC_LIB', 'BOT_MALLOC_CONF', 'SUPABASE_SERVICE_KEY')}
+try:
+    br.ROOT = tmp
+    br.subprocess.Popen = FakePopen
+    os.environ['SUPABASE_SERVICE_KEY'] = 'secret-for-audit'
+    for k in ('BOT_JEMALLOC', 'BOT_JEMALLOC_LIB', 'BOT_MALLOC_CONF'):
+        os.environ.pop(k, None)
+    br.launch(1, 16)
+    os.environ.update({'BOT_JEMALLOC': '1', 'BOT_JEMALLOC_LIB': lib})
+    br.launch(2, 1, extra_env={'SIM_GAUNTLET_ONLINE': '1', 'SIM_ROUNDS': '3'})
+    os.environ['BOT_JEMALLOC_LIB'] = os.path.join(tmp, 'missing.so')
+    br.launch(3, 1)
+finally:
+    br.ROOT, br.subprocess.Popen = root_saved, popen_saved
+    for k, v in saved_env.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+e0, e1, e2 = captured
+ok('⑧ 分母: 截到 3 次拉号的环境', len(captured) == 3)
+ok('⑧ BOT_JEMALLOC 没开: 没有 LD_PRELOAD / MALLOC_CONF(积分赛照旧), SIM_ROUNDS=16', 'LD_PRELOAD' not in e0 and 'MALLOC_CONF' not in e0 and e0.get('SIM_ROUNDS') == '16')
+ok('⑧ BOT_JEMALLOC=1: LD_PRELOAD = 库路径、MALLOC_CONF = 内存调查那组参数', e1.get('LD_PRELOAD') == lib and e1.get('MALLOC_CONF') == br.MALLOC_CONF_DEFAULT,
+   '%s / %s' % (e1.get('LD_PRELOAD'), e1.get('MALLOC_CONF')))
+ok('⑧ extra_env 原样传给客户端(周末调度器的 SIM_GAUNTLET_ONLINE / SIM_ROUNDS 盖过默认)', e1.get('SIM_GAUNTLET_ONLINE') == '1' and e1.get('SIM_ROUNDS') == '3')
+ok('⑧ 库不在: 不设 LD_PRELOAD(照旧 glibc, 不让客户端起不来)', 'LD_PRELOAD' not in e2)
+ok('⑧ SUPABASE_SERVICE_KEY 一次都没传给客户端', all('SUPABASE_SERVICE_KEY' not in e for e in captured))
 
 if fails:
     print('FAILED: %d 条' % len(fails))
     sys.exit(1)
-print('ALL OK — 陪练号轮流打到底(按赛程)')
+print('ALL OK — 陪练号轮流打到底(积分赛按赛程; 周末不起号, 由在线闯关调度器拉)')

@@ -191,12 +191,67 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
 |---|---|
 | 脚本 | `/opt/turtle-bots-prod/bin/bot_runner.py`、`bot_schedule.py`（root 644；**不放 `/opt/turtle/` 下**，那一层子目录会被裁判当版本扫） |
 | 工程 | `/opt/turtle-bots-prod/v<ver>/`（发版时同「发新版」那条：拷 → checkout tag → 导两次 → 改 env） |
-| env | `/etc/turtle-referee/env-bots-prod`：`BOT_MODE=queue`（轮流打到底，不用时间表）、`TURTLE_SERVER=prod`、`TURTLE_SUPABASE`=正式服地址、`MAX_PAR=6`、`MAX_PAR_WEEKEND=4`、`BOT_SESSION_CAP_SEC=7200`、（周末：只起本周 ≥11 胜的号、每次 1 场、同号间隔 `GAUNTLET_GAP_H` 默认 2 小时、每小时场数按剩余量摊到周日 17:20，见方案书 §9.1）、`REAL_LAST_WEEK`（**每周一前手动改**） |
+| env | `/etc/turtle-referee/env-bots-prod`：`BOT_MODE=queue`（轮流打到底，不用时间表）、`TURTLE_SERVER=prod`、`TURTLE_SUPABASE`=正式服地址、`MAX_PAR=6`、`MAX_PAR_WEEKEND=4`、`BOT_SESSION_CAP_SEC=7200`、（周末：`bot_runner.py` 一个号都不起，改由下面「在线闯关赛调度器」拉号；`MAX_PAR_WEEKEND` 现在是调度器的同时在线上限）、`REAL_LAST_WEEK`（**每周一前手动改**） |
 | 单元 | `turtle-bot-runner-prod.*` / `turtle-bot-schedule-prod.*`（本目录）+ drop-in `limits.conf`：`CPUWeight=10`、`CPUQuota=300%`、`MemoryHigh=5000M`、`MemoryMax=5400M`、`bots-prod-off` 停用开关；排班定时器 `turtle-bot-schedule-prod.timer` 在 queue 模式下停用 |
 | 规模 | `clamp(300 − 上周真人, 30, 300)`（用户 10-27） |
 
 ★10-27 晚裁判机换 CPX32（4 核 8GB）：同时 6 个实测可用内存最低 3.16GB ⇒ 平日 6、周末 4。下面是 CPX22 时期的记录：并发 3 是 10-27 在 CPX22 上实测的（同时 3 个：可用内存最低 1.27GB；同时 4 个最低只剩 0.58GB —— **10-27 14:35 按 4 个跑时与一次 `--import` 叠在一起把整机挤爆**：负载 26、Caddy 几分钟无响应、内核 OOM 杀了一个陪练号，之后改回 3 个）。每个号约 0.75GB。★在这台机器上 `--import` 陪练号工程前，先 `touch bots-prod-off` **并等在跑的陪练号退完**，导完负载回落再删开关（别用 trap 自动删）。`MemoryMax` 必须跟着 `MAX_PAR` 走（runner 拉起的客户端都在这个 cgroup 里，超了整组里挑一个杀）。细节与容量推演见方案书 `docs/plans/20261026d-服务器常驻陪练号.md` §8。
-周末（10-27 内测服彩排通过后放开）：drop-in 只剩 `bots-prod-off` 一个条件；env `MAX_PAR_WEEKEND=2`（`bot_runner.py` `par_limit`：UTC 周六 / 周日用它）。理由（彩排实测）：空载可用约 3.3GB，裁判单局 RSS 约 0.5GB × 2 线程，陪练号每个约 0.75GB ⇒ 周末 2 个留约 0.8GB，4 个会 OOM。陪练号工程的 `scripts/systems/sim/` 要是 main 版（批量模式遇决赛日收工 + 闯关日匹配屏 STUCK 线 200 秒），发新版重建工程时一并覆盖。
+周末（10-27 内测服彩排通过后放开；**10-27 晚起作废**：闯关赛改在线瑞士轮，`bot_runner.py` 周末不起号，见下一节）：drop-in 只剩 `bots-prod-off` 一个条件；env `MAX_PAR_WEEKEND=2`（`bot_runner.py` `par_limit`：UTC 周六 / 周日用它）。理由（彩排实测）：空载可用约 3.3GB，裁判单局 RSS 约 0.5GB × 2 线程，陪练号每个约 0.75GB ⇒ 周末 2 个留约 0.8GB，4 个会 OOM。陪练号工程的 `scripts/systems/sim/` 要是 main 版（批量模式遇决赛日收工 + 闯关日匹配屏 STUCK 线 200 秒），发新版重建工程时一并覆盖。
+
+### 在线闯关赛调度器 · 周末陪练号（2026-10-27 · 方案书 [docs/plans/20261027b-闯关赛在线瑞士轮.md](../../docs/plans/20261027b-闯关赛在线瑞士轮.md) §4.3 · **只写了仓库文件，没部署**）
+
+用户 10-27「周六周日我们讲究是在线啊」「假如我在周六凌晨点击锁定…掉到零杠一或者一杠零，那我有人打吗？…所有的情况」。
+周末陪练号**真的上线**：和真人走同一个排队（锁阵容 → `gauntlet_queue_join` → 每 2 秒 poll），服务端按战绩格子先来先配（真人对陪练号、陪练号对陪练号一样）。
+`gauntlet_bot_planner.py` 只决定**拉哪个号上线、打几局**；配对、兜底（真人等满 90 秒退回机器人池）都在服务端（迁移 `server/supabase/migrations/20261027_gauntlet_online_queue.sql`）。
+
+| 件 | 位置 |
+|---|---|
+| 调度器 | `/opt/turtle-bots-prod/bin/gauntlet_bot_planner.py`（与 `bot_runner.py` 同目录：拉号直接调 `bot_runner.launch`、读号的存档用 `bot_runner.read_save`）；只用标准库 |
+| 单元 | `turtle-gauntlet-planner-prod.service`（本目录）：常驻，周六 00:00 ~ 周日 17:30 UTC 每 10 秒一拍，其余时间睡；`KillMode=process`（重启调度器不杀在打的号）；`MemoryMax` 跟着 `MAX_PAR_WEEKEND` 走 |
+| env | 读两份：`/etc/turtle-referee/env`（`SUPABASE_URL` / `SUPABASE_SERVICE_KEY`，**只给调度器自己用，`launch` 拉号前从环境里去掉**）+ `/etc/turtle-referee/env-bots-prod`（`GODOT_BIN` / `BOT_GAME_DIR` / `BOT_ROOT` / `TURTLE_*`） |
+| 记账 | `$BOT_ROOT/gauntlet_planner.json`（`PLANNER_STATE`）：本机拉起的客户端（pid / 用途 / 局数）+ 记忆（这个钟点「整段打完」开过几次、本周在 0-0 排过队的真人） |
+| 名单 | 启动时（和每小时）把每个号存档里的 `account_id` 写进 `bot_accounts`（PostgREST upsert，已有的跳过） |
+| 推演门禁 | `tools/gauntlet_planner_audit.py`（进 `run-tests.sh`）：拿真的 `decide` 推演整个周末，假服务器 / 假裁判 / 假客户端 |
+
+env 开关：`MAX_PAR_WEEKEND`（周末同时在线上限，默认 6 = 8GB 机器 × 每个 0.75GB；`BOT_JEMALLOC=1` 后每个约 0.35GB，可到 12）、
+`BOT_JEMALLOC` / `BOT_JEMALLOC_LIB`（默认 `/usr/lib/x86_64-linux-gnu/libjemalloc.so.2`，`apt install libjemalloc2`）/ `BOT_MALLOC_CONF`
+（默认 = 内存调查实验那组 `background_thread:true,dirty_decay_ms:2000,muzzy_decay_ms:0`；只作用于陪练客户端，裁判不受影响）、
+`PLANNER_R`（平时每格候场数，默认 2）/ `PLANNER_R_END`（收尾，默认 2）、`PLANNER_ALWAYS=1`（内测服彩排：不按本机钟睡，决定用服务端的钟 `now_ts`）/ `PLANNER_WEEK`（彩排拨钟到别的周时给那周周一 00:00 UTC 的 epoch）、`PLANNER_ROOT_SAFETY`（0-0 本钱线保险系数，默认 1.5）。
+★`BOT_GAME_DIR` 必须是**正式服当前发布版**的工程：服务端配对要求两边客户端版本相同。没设就不拉号（打一行日志）。
+
+**每拍的决定**（`decide`，纯函数；12 个格子 = 4 胜前、3 负前的全部战绩）：
+- A **真人在等**：同格子没有在线的可配对手 ⇒ 拉一个正停在这一格的空闲号（打 1 局）。并发满了让出一个没在打的低优先级号；永远给真人留 1 个并发位。
+- B **打到底的号没人可配** ⇒ 从同格子拉一个空闲号当对手（总量账有余量时可拉到这一格只剩 1 个；收尾且上一级补得上 / 已没有真人能走到这一格时可拉光）。
+- C **补格子**：先「每格 ≥1」，0-0 的本钱够再补到 R。缺口按「从上一级打一局送下来」求最省的打法（0-0 的号是整周末的本钱，先少花本钱再少打局），
+  同时拉两个同格子的号上线互打；补格子的号可连打（≤5 局、局间只稍停），走到不缺号的格子、或送走就会掏空这一格时就下线停在那里。
+  先铺真人马上要到的格子（在等 / 正在打的真人的下一格，开赛时按最快的真人 4 分钟一局推）。
+- D **整段打完**（平时）：每个钟点安排坐下（白天晚上多、深夜少），挑「超过 R 个」的格子里离打完近的、最久没打的多余号，打到 4 胜 / 3 负；
+  受总量账约束（空闲号剩余步数 − 预计以后真人要用的步数）。赛况板白天陆续有人晋级 / 出局。
+- E **收尾**（周日 12:00 起）：只给「收盘前还有真人能走到的格子」每格留 R_END 个，其余上过榜的多余号成对打到底（深格子先）。
+- 收盘前 10 分钟 + 拉起时长（60 秒）起不拉号；17:20 起让在线没在打的号下线。0-0 本钱线 = max(先验 0.25/h, 本周已来真人速率) × 离收盘小时数 × 1.5 + 3。
+
+**客户端（sim_driver）要支持的周末参数**（`weekend_env`，客户端那条线实现）：`SIM_GAUNTLET_ONLINE=1`（走 join / poll，不走旧的快照对局）、
+`SIM_ROUNDS`（这次上线最多打几局）、`SIM_QUEUE_GIVEUP_SEC`（排队等不到对手多久下线）、`SIM_SHOP_MIN_SEC` / `SIM_SHOP_MAX_SEC`（两局之间逛商店）、
+`SIM_EXPECT_CELL=gw-gl`（拉号时调度器看到的战绩，对不上就别排）、`SIM_SKIP_WATCH=1`（不坐着看完直播，并发位只花在排队和对局上）。
+
+**推演结论（10-27，门禁每次重算）**：
+- 配上真对手的等待全部 ≤ 90 秒（拉起 40~60 秒 + 一拍）；12 种「真人数 × 晋级号数」都在 120 秒上限内。
+- 开赛铺格子（0.75GB × 6）：没有真人时约 21 分钟铺满 12 格（每格 ≥1），最快的真人（5 分钟一局）约 25 分钟到 3-2，单个真人跑得过；
+  开赛同时有两个真人时深格子会落后，周六 00:00 进来的最快真人 35 条路线 189 步里约 25 步走兜底（3-0 / 3-1 / 3-2 那几场）。0.35GB × 12 时约 13 分钟铺满、兜底降到约 8 步。
+- 周六 03:00 进来：零兜底；周日 16:30 进来：57 个号时 6 / 189 步（两个真人同一分钟开打撞同一条路），80 个号时 0。
+- 晋级真人多时号不够是结构上的：真人赢陪练号 55% ⇒ 陪练号往「多输一场」的格子漂，每补一次「多赢一场」的格子（1-0 / 2-0 / 3-0 / 3-1）就多送一个号去输的那边，
+  实测每个晋级真人要花 0-0 的号 3~4 个。兜底占真人排队次数（57 / 80 个晋级号，各 3~4 个种子）：真人 5 个 ≈ 2%（只在开赛那段）· 8 个 ≈ 5% · 10~15 个 ≈ 10% · 20 个 ≈ 1/4 · 50 个 ≈ 6 成
+  （服务端退回机器人池，只记真人一边）。`PLANNER_ROOT_SAFETY=3.5` 时 10~15 个真人的兜底约减半，代价是 57 个号时周六上午赛况板上没有陪练号晋级。
+
+部署（第一次，**还没做**）：
+```bash
+scp server/referee/gauntlet_bot_planner.py server/referee/bot_runner.py root@<裁判机>:/opt/turtle-bots-prod/bin/
+scp server/referee/turtle-gauntlet-planner-prod.service root@<裁判机>:/etc/systemd/system/
+# 机器上: 确认 env-bots-prod 的 BOT_GAME_DIR = 正式服当前发布版; 要 jemalloc 就 apt install libjemalloc2 并在 env-bots-prod 加 BOT_JEMALLOC=1
+sudo -u turtle-referee env $(cat /etc/turtle-referee/env /etc/turtle-referee/env-bots-prod | xargs) python3 /opt/turtle-bots-prod/bin/gauntlet_bot_planner.py --status
+systemctl daemon-reload && systemctl enable --now turtle-gauntlet-planner-prod.service
+journalctl -u turtle-gauntlet-planner-prod -f
+```
 
 ### 常驻陪练号 · 内测服首次部署步骤
 

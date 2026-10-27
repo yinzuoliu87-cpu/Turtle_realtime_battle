@@ -1,0 +1,36 @@
+# 正式服 · 周末在线闯关赛的陪练号调度器(方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md §4.3; 部署见同目录 README.md「在线闯关赛调度器」)。
+# 放到 /etc/systemd/system/turtle-gauntlet-planner-prod.service。常驻: 只在周六 00:00 ~ 周日 17:30 UTC 干活(每 10 秒一拍), 其余时间睡;
+# 启动时(和每小时)把陪练号账号 id 写进 bot_accounts。拉起的陪练客户端(无头 Godot + sim_driver)留在本服务的 cgroup 里。
+# ★两份 env: /etc/turtle-referee/env = 正式服裁判那份(SUPABASE_URL / SUPABASE_SERVICE_KEY, 调度器自己用, 不传给客户端);
+#   /etc/turtle-referee/env-bots-prod = 陪练号那份(GODOT_BIN / BOT_GAME_DIR = 正式服当前发布版的工程 / BOT_ROOT / TURTLE_* /
+#   MAX_PAR_WEEKEND / BOT_JEMALLOC)。后读的覆盖先读的。
+# ★MemoryMax 要跟着 MAX_PAR_WEEKEND 走: glibc 每个号约 0.75GB × 6 ≈ 4.5GB; BOT_JEMALLOC=1 约 0.35GB × 12 ≈ 4.2GB。超了整组里挑一个杀。
+# ★积分赛那批(turtle-bot-runner-prod)周末一个号都不起; 周五晚的长会话若跨进周六, 调度器把它们算进同时在线数。
+[Unit]
+Description=Turtle PROD weekend gauntlet bot planner (launches bot clients into the online gauntlet queue)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env
+EnvironmentFile=/etc/turtle-referee/env-bots-prod
+ExecStart=/usr/bin/python3 /opt/turtle-bots-prod/bin/gauntlet_bot_planner.py
+Restart=always
+RestartSec=10
+# 重启调度器不杀正在打的陪练客户端(它们打完自己退; 调度器从 PLANNER_STATE 接着管)
+KillMode=process
+# 让着裁判(正式服裁判 Nice=5): 与 turtle-bot-runner-prod 同一个口径
+Nice=19
+CPUWeight=10
+IOWeight=10
+CPUQuota=300%
+MemoryHigh=5000M
+MemoryMax=5400M
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
