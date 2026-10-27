@@ -152,7 +152,7 @@ var _shop_visits := 0
 var _formed_season := -1      # 本进程里已经排过阵的大轮号(每个大轮排一次)
 var _econ_only := OS.get_environment("SIM_ECON_ONLY") == "1"   # 离线经济推演(见 _do_menu)
 var _acted_id := 0         # 已经处理过的场景实例(同一屏只做一次主动作, 防连点)
-var _cell_checked := false   # SIM_EXPECT_CELL 只查这个进程的第一局(第一次进队之后就不再查)
+var _cell_checked := false   # SIM_EXPECT_CELL 只查这个进程的第一局(第一次进匹配屏之后就不再查, 入队即配上也算; 见 _do_match_queue)
 
 
 ## 时钟偏移(2026-10-12 周日统一结算实跑): `SIM_CLOCK_OFFSET=秒` ⇒ 每帧把赛程钟钉在「真实时间 + 偏移」。
@@ -531,6 +531,13 @@ func _do_match_queue(mm: Node) -> void:
 	var quit_why := ""               # 按了「取消匹配」的原因: queue_timeout / cell_mismatch(出队成功就以它收工)
 	var err0 := -1
 	rw.skip_play = OS.get_environment("SIM_SKIP_WATCH").strip_edges() == "1"
+	## ★本进程第一次进匹配屏就算「格子查过了」(SIM_EXPECT_CELL 只管这个进程的第一局)。
+	##   2026-10-27 内测服彩排: 原来只在看到「排队中」那一刻才记查过 —— 入队那一刻就配上的一方(后进队的那个)从来看不到
+	##   「排队中」, 记不上 ⇒ 第 2 局开排前主菜单那道本机检查拿「已经打完一局」的战绩去比调度器给的旧格子 ⇒ 误报 cell_mismatch、
+	##   打 1 局就收工(彩排 7 次上线这样收工, 补格子说好的连打 5 局基本没发生)。
+	##   服务端格子那一查仍只在第一次看到「排队中」时做(入队即配上 = 已经开打, 出队也来不及)。
+	var first_cell_check := not _cell_checked
+	_cell_checked = true
 	## 配上那一刻按信号记(配上 → 取录像 → 换场可能在两次查看之间就走完了, 轮询会漏掉)。q0 = 开始排队的那一刻。
 	var box := {"hooked": false, "paired": false, "q0": -1}
 	while _alive(mm):
@@ -549,8 +556,8 @@ func _do_match_queue(mm: Node) -> void:
 				box["q0"] = Time.get_ticks_msec()
 				_ev("queue_wait", {"cell": [run.cell.x, run.cell.y], "giveup_s": giveup})
 				## 第一次进队: 服务端回的格子(账本)与调度器以为的对不上 ⇒ 出队、收工
-				if not _cell_checked:
-					_cell_checked = true
+				if first_cell_check:
+					first_cell_check = false
 					var want := expect_cell()
 					if want.x >= 0 and want != Vector2i(run.cell.x, run.cell.y):
 						quit_why = "cell_mismatch"

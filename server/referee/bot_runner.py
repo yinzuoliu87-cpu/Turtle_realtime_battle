@@ -38,6 +38,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
@@ -138,8 +139,97 @@ def launch(slot: int, rounds: int, extra_env: dict = None) -> int:
     return p.pid
 
 
+## ═══════════════ 杀一次上线(整棵进程树) ═══════════════
+## ★2026-10-27 内测服彩排实测: 原来 `os.killpg(包装脚本 pid, 9)` 杀不掉 godot。
+##   launch 用 start_new_session ⇒ 包装脚本(GODOT_BIN = godot-bot.sh)是会话首进程、进程组号 = 它的 pid;
+##   但包装脚本里的 GNU `timeout` 会自己 setpgid 另开一个进程组(没带 --foreground 时), godot 在 timeout 那一组里 ⇒
+##   killpg 只杀掉包装脚本, timeout + godot 照样把剩下的局打完(实测: 杀完 10 秒后 timeout / godot 都还在,
+##   sessions.log 也没记这一次 —— 记那一行的包装脚本先死了)。
+##   ⇒ 按「会话」杀: 会话号 = 包装脚本的 pid(start_new_session), 里面不管分了几个进程组都在同一个会话里。
+##   先杀会话里除包装脚本以外的全部进程(timeout / godot), 包装脚本的 `timeout` 立刻返回 137 ⇒ 它照常把这次上线记进
+##   sessions.log 再退出; KILL_GRACE_SEC 秒后会话里还有活的(包括包装脚本)⇒ 整会话再杀一遍。
+KILL_GRACE_SEC = 5.0
+
+
+def _proc_stat(pid: int):
+    """/proc/<pid>/stat ⇒ (状态, 父进程, 进程组, 会话); 读不到 = None。
+    进程名(第 2 列)可能带空格 / 括号 ⇒ 从最后一个 ')' 之后切。"""
+    try:
+        with open('/proc/%d/stat' % pid, 'rb') as f:
+            raw = f.read().decode('utf-8', 'replace')
+    except OSError:
+        return None
+    return parse_stat(raw)
+
+
+def parse_stat(raw: str):
+    """纯函数(门禁拿造出来的行量它): '/proc/<pid>/stat' 的一行 ⇒ (状态, 父进程, 进程组, 会话); 认不出 = None。"""
+    i = raw.rfind(')')
+    rest = raw[i + 2:].split() if i >= 0 else []
+    if len(rest) < 4:
+        return None
+    try:
+        return rest[0], int(rest[1]), int(rest[2]), int(rest[3])
+    except ValueError:
+        return None
+
+
+def session_procs(sid: int) -> list:
+    """会话 sid 里还活着的进程(僵尸不算)。没有 /proc(Windows 开发机)= []。"""
+    out = []
+    if not os.path.isdir('/proc'):
+        return out
+    for name in os.listdir('/proc'):
+        if not name.isdigit():
+            continue
+        st = _proc_stat(int(name))
+        if st is not None and st[3] == sid and not st[0].startswith('Z'):
+            out.append(int(name))
+    return out
+
+
+def _sigkill(pid: int) -> bool:
+    try:
+        os.kill(pid, 9)
+        return True
+    except OSError:
+        return False
+
+
+def _reap(pid: int) -> None:
+    """pid 是本进程的子进程(调度器拉起的)⇒ 收尸, 免得僵尸让 alive() 一直当它活着。不是子进程 ⇒ 什么都不做。"""
+    if hasattr(os, 'WNOHANG'):
+        try:
+            os.waitpid(pid, os.WNOHANG)
+        except (ChildProcessError, OSError):
+            pass
+
+
+def kill_tree(pid: int, grace: float = None) -> int:
+    """杀掉 launch 拉起的这一次上线(pid = 包装脚本 = 会话首进程)的整棵进程树。返回杀了几个进程。
+    调度器「停」和 reap_overdue 超时杀都走这一个。"""
+    grace = KILL_GRACE_SEC if grace is None else grace
+    if os.name != 'posix' or not os.path.isdir('/proc'):
+        return 1 if _sigkill(pid) else 0
+    members = session_procs(pid)
+    others = [p for p in members if p != pid]
+    n = sum(1 for p in others if _sigkill(p))
+    if not others:                                   # 没有包装脚本(GODOT_BIN 直接是 godot): 杀它自己
+        n += 1 if (pid in members and _sigkill(pid)) else 0
+    deadline = time.time() + grace
+    while time.time() < deadline:
+        _reap(pid)
+        if not session_procs(pid):
+            return n
+        time.sleep(0.1)
+    for p in session_procs(pid):                     # 过了宽限还有活的 ⇒ 整会话(含包装脚本)再杀一遍
+        n += 1 if _sigkill(p) else 0
+    _reap(pid)
+    return n
+
+
 def reap_overdue(state: dict, now: dt.datetime) -> int:
-    """跑超时的上线整组杀掉(start_new_session ⇒ pid 就是进程组号)。返回杀了几个。"""
+    """跑超时的上线杀掉整棵进程树(kill_tree: 按会话杀, godot 在 timeout 另开的进程组里也杀得到)。返回杀了几个上线。"""
     n = 0
     for k, v in state.items():
         if not (isinstance(v, dict) and v.get('pid') and not v.get('killed')):
@@ -150,13 +240,7 @@ def reap_overdue(state: dict, now: dt.datetime) -> int:
         started = dt.datetime.fromisoformat(v['at'])
         limit = dt.timedelta(minutes=int(v.get('rounds', 3)) * MIN_PER_ROUND + SLACK_MIN)
         if now - started > limit:
-            try:
-                if os.name == 'posix':
-                    os.killpg(pid, 9)
-                else:
-                    os.kill(pid, 9)
-            except OSError:
-                pass
+            kill_tree(pid)
             v['killed'] = now.isoformat()
             n += 1
             print('超时杀掉 %s(跑了 %d 分钟)' % (k, int((now - started).total_seconds() // 60)))

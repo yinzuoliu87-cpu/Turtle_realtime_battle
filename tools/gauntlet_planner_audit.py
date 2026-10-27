@@ -20,6 +20,8 @@
   ⑧ 收盘时「上过榜但没打完」的陪练号 ≤ UNFINISHED_CAP(n)(理由见 unfinished_cap); 0-0 没打过的不算(不进赛况板)
   ⑨ 穷举: 一个最快的真人在周六 00:00 / 周六 03:00 / 周日 16:30 进来, 全部 35 条输赢路线, 每一步的等待 ≤ WAIT_MAX 或兜底(打印最长那步)
   ⑩ 总量账: 晋级号的剩余步数(开赛 / 收盘)按场景打印
+  ⑪ 调度器让号下线(stop_client)= 杀整棵进程树(bot_runner.kill_tree), 包装脚本照常记 sessions.log(Linux 上真起进程量; 10-27 彩排查出旧写法杀不到 godot)
+  ⑫ 号少(12 个)· 只开调度器: 铺到数学上限(独立穷举: 12 个号最多 9 格)、0-0 全程留够 SCARCE_ROOT_KEEP 个; 打印 6~9 格各在第几分钟
 分母: 每个场景的真人排队次数、采样次数、拉号次数。
 """
 import copy
@@ -70,7 +72,7 @@ def hm(t):
 
 ## ═══════════════ 假世界 ═══════════════
 class World:
-    def __init__(self, n_bots, arrivals, cfg, seed, fast_ids=(), fast_post=FAST_POST_SEC):
+    def __init__(self, n_bots, arrivals, cfg, seed, fast_ids=(), fast_post=FAST_POST_SEC, sample_dt=300):
         self.cfg = dict(P.DEFAULTS)
         self.cfg.update(cfg)
         self.rng = random.Random(seed)
@@ -102,8 +104,9 @@ class World:
         for hid, at in arrivals:
             self.humans[hid] = {'cell': (0, 0), 'fin': False, 'opp': set(), 'games': 0, 'busy': False}
             self.push(at, 'hjoin', hid, 0)
+        self.sample_dt = sample_dt
         self.push(SAT0, 'tick')
-        self.push(SAT0 + 300, 'sample')
+        self.push(SAT0 + sample_dt, 'sample')
         self.push(CLOSE, 'close')
 
     def push(self, t, *a):
@@ -332,9 +335,168 @@ class World:
                     self.referee({'a': hid, 'b': None, 'cell': h['cell']})
             elif k == 'sample':
                 self.sample()
-                self.push(t + 300, 'sample')
+                self.push(t + self.sample_dt, 'sample')
             elif k == 'close':
                 self.unfinished_close = sum(1 for v in self.bots.values() if v['games'] >= 1 and not v['fin'])
+
+
+## ═══════════════ ⑪ 调度器「停」杀得干净 ═══════════════
+def kill_checks():
+    """⑪ 调度器让号下线(stop_client: 停 / 超时杀都走它)= 杀整棵进程树, 包装脚本照常记 sessions.log。
+    2026-10-27 内测服彩排: 原来 os.killpg(包装脚本 pid) —— 包装脚本(godot-bot.sh)里的 GNU timeout 另开进程组 ⇒ godot 活着
+    把剩下的局打完(p07 17:41:28 被停, 17:41:56 又进了队), 调度器却当它下线了。
+    各平台: stop_client 从进程表拿掉这一条、按包装脚本的 pid 调 bot_runner.kill_tree(假的, 截下参数); 源码里不再有 killpg。
+    Linux(/proc + GNU timeout = CI / 裁判机): 真起一个与 godot-bot.sh 同结构的包装脚本(子进程用 sleep 代替 godot), 停它 ⇒ 10 秒内整棵树没了、记了 rc=137。"""
+    import shutil
+    import subprocess
+    import tempfile
+    br = P._bot_runner()
+    src = open(os.path.join(REPO, 'server', 'referee', 'gauntlet_bot_planner.py'), encoding='utf-8').read()
+    ok('⑪ 调度器源码里不再直接 killpg(下线一律走 stop_client → bot_runner.kill_tree)', 'killpg(' not in src)
+    seen = []
+    saved = br.kill_tree
+    try:
+        br.kill_tree = lambda pid, grace=None: seen.append(pid) or 2
+        run = {'a': {'pid': 4242}, 'b': {'pid': 4343}}
+        n = P.stop_client(br, run, 'a')
+        n0 = P.stop_client(br, run, 'zz')
+    finally:
+        br.kill_tree = saved
+    ok('⑪ stop_client: 按包装脚本 pid 调 kill_tree、从进程表拿掉这一条(别的不动); 不在表里的号什么都不杀',
+       seen == [4242] and n == 2 and list(run) == ['b'] and n0 == 0, 'seen=%s run=%s' % (seen, list(run)))
+    live = os.name == 'posix' and os.path.isdir('/proc') and shutil.which('timeout') and shutil.which('ps') and shutil.which('bash')
+    if not live:
+        print('  [SKIP] ⑪ 活体: 这台机器没有 /proc / setsid / GNU timeout(Windows 开发机), 只在 Linux(CI / 裁判机)上量')
+        return
+
+    def ps_session(sid):
+        out = subprocess.run(['ps', '-o', 'pid=,stat=,comm=', '--sid', str(sid)], capture_output=True, text=True).stdout
+        return [ln.split()[2] for ln in out.splitlines() if len(ln.split()) >= 3 and not ln.split()[1].startswith('Z')]
+    tmp = tempfile.mkdtemp(prefix='planner_kill_')
+    wrap = os.path.join(tmp, 'godot-bot.sh')
+    with open(wrap, 'w') as f:
+        f.write('#!/bin/bash\ntimeout --kill-after=60 "${BOT_SESSION_CAP_SEC:-3600}" sleep 300\nrc=$?\n'
+                'echo "$(date -u +%FT%TZ) rc=$rc" >> "${XDG_DATA_HOME:-/tmp}/sessions.log"\nexit $rc\n')
+    os.chmod(wrap, 0o755)
+    saved = (br.ROOT, br.GODOT, br.GAME)
+    br.ROOT, br.GODOT, br.GAME = os.path.join(tmp, 'root'), wrap, tmp
+    pid = None
+    try:
+        pid = P.launch_bot(br, 5, 1, 'fill', (0, 0))
+        for _ in range(50):
+            if 'sleep' in ps_session(pid):
+                break
+            time.sleep(0.1)
+        before = ps_session(pid)
+        run = {'acct': {'pid': pid}}
+        P.stop_client(br, run, 'acct')
+        t0, gone = time.time(), None
+        while time.time() - t0 < 10:
+            br._reap(pid)
+            if not ps_session(pid):
+                gone = time.time() - t0
+                break
+            time.sleep(0.1)
+        lp = os.path.join(br.ROOT, 'p05', 'sessions.log')
+        lg = open(lp).read().splitlines() if os.path.exists(lp) else []
+        ok('⑪ 活体: 拉起(%s) → 停 ⇒ 10 秒内整棵树没了(%s 秒)、sessions.log 记了这一次(%s)' % (
+            before, '%.1f' % gone if gone is not None else '超时', lg[-1:] or '无'),
+            'sleep' in before and 'timeout' in before and gone is not None and len(lg) == 1 and 'rc=137' in lg[0])
+    finally:
+        for p in (br.session_procs(pid) if pid else []):
+            br._sigkill(p)
+        br.ROOT, br.GODOT, br.GAME = saved
+
+
+## ═══════════════ ⑫ 号少(12 个)· 只开调度器: 铺格子 ═══════════════
+def max_cover(n, keep_root):
+    """独立的尺子(不调被测的 cover_plan / fill_plan): n 个号全在 0-0, 0-0 至少留 keep_root 个, 最多能让几格同时 ≥1。
+    逐层(浅 → 深)枚举每格打几局 —— 每局固定从这一格拿走 2 个、两个下一格各进 1 个(进 4 胜 / 3 负 / 6 场的离场), 层内顺序无关。"""
+    cells_by_layer = [[c for c in spec_cells() if c[0] + c[1] == d] for d in range(6)]
+    live = set(spec_cells())
+
+    def go(d, counts):
+        if d == len(cells_by_layer):
+            return 0
+        cells = cells_by_layer[d]
+        best = -1
+
+        def rec(i, inflow, cov):
+            nonlocal best
+            if i == len(cells):
+                nxt = cells_by_layer[d + 1] if d + 1 < len(cells_by_layer) else []
+                best = max(best, cov + go(d + 1, {c: inflow.get(c, 0) for c in nxt}))
+                return
+            c = cells[i]
+            n_c = counts.get(c, 0)
+            for x in range(0, max(0, n_c - (keep_root if c == (0, 0) else 0)) // 2 + 1):
+                inf = dict(inflow)
+                for q in ((c[0] + 1, c[1]), (c[0], c[1] + 1)):
+                    if q in live:
+                        inf[q] = inf.get(q, 0) + x
+                rec(i + 1, inf, cov + (1 if n_c - 2 * x >= 1 else 0))
+        rec(0, {}, 0)
+        return best
+    return go(0, {(0, 0): n})
+
+
+def spec_cells():
+    """用户列的 12 个格子(与 ⑤ 的 spec12 同一份, 不从调度器拿)。"""
+    return [(0, 0), (1, 0), (0, 1), (2, 0), (1, 1), (0, 2), (3, 0), (2, 1), (1, 2), (3, 1), (2, 2), (3, 2)]
+
+
+def few_bots(args):
+    """12 个号、没有真人、只开调度器(= 10-27 内测服彩排那一段), 推演开赛后 2 小时, 每 30 秒采一次空闲号分布。"""
+    n_bots, par, seed = args
+    w = World(n_bots, [], {'MAX_PAR': par}, seed, sample_dt=30)
+    w.run(until=SAT0 + 2 * 3600)
+    first = {}
+    for t, idle, *_r in w.samples:
+        k = sum(1 for v in idle.values() if v >= 1)
+        for j in range(1, k + 1):
+            first.setdefault(j, t)
+    last = w.samples[-1][1]
+    return {'n': n_bots, 'par': par, 'first': first, 'final': sum(1 for v in last.values() if v >= 1),
+            'empty': [c for c, v in last.items() if v < 1], 'root_min': min(s[1][P.ROOT] for s in w.samples),
+            'fin': sum(1 for b in w.bots.values() if b['fin']), 'games': w.pairs, 'nviol': len(w.viol), 'viol': w.viol[:3],
+            'max_online': w.max_online, 'nsamples': len(w.samples)}
+
+
+def few_bots_checks():
+    keep = P.DEFAULTS['SCARCE_ROOT_KEEP']
+    print('== ⑫ 号少时铺格子(10-27 内测服彩排: 12 个号只开调度器, 铺到 7 格就停了 9 分钟) ==')
+    caps = {n: max_cover(n, keep) for n in range(8, 31)}
+    full_k = min([n for n in caps if caps[n] == 12] or [0])
+    full_1 = min([n for n in range(8, 31) if max_cover(n, 1) == 12] or [0])
+    print('   独立穷举(0-0 留 %d 个): %s' % (keep, ' '.join('%d号→%d格' % (n, caps[n]) for n in (8, 10, 12, 14, 16, 20, 23, 24, 30))))
+    ok('⑫ 尺子: 12 个号最多同时铺 %d 格(到 3-2 必经 3-1 / 2-2, 那两格每局送走一个打完的号); 铺满 12 格最少要 %d 个号(0-0 留 1)/ %d 个(留 %d)' % (
+        caps[12], full_1, full_k, keep), caps[12] == 9 and full_1 == 23 and full_k > 0)
+    bad = []
+    for n in range(8, 31):
+        xs = P.cover_plan({P.ROOT: n}, keep)
+        cnt = {c: 0 for c in P.CELLS}
+        cnt[P.ROOT] = n
+        for c in P.CELLS:
+            cnt[c] -= 2 * xs[c]
+            for q in ((c[0] + 1, c[1]), (c[0], c[1] + 1)):
+                if q in cnt:
+                    cnt[q] += xs[c]
+        if sum(1 for v in cnt.values() if v >= 1) != caps[n] or cnt[P.ROOT] < keep or min(cnt.values()) < 0:
+            bad.append((n, sum(1 for v in cnt.values() if v >= 1), caps[n], cnt[P.ROOT]))
+    ok('⑫ cover_plan 的打法 8~30 个号都铺到穷举上限、0-0 留够 %d 个、没有格子被打成负数' % keep, not bad, str(bad[:3]))
+    for par in (4, 6):
+        r = few_bots((12, par, 3))
+        mins = ' · '.join('%d 格 %s' % (k, ('第 %.1f 分钟' % ((r['first'][k] - SAT0) / 60.0)) if k in r['first'] else '没到')
+                          for k in range(6, caps[12] + 1))
+        print('   12 个号 · 并发 %d · 只开调度器: %s · 2 小时后 %d 格(空 %s)· 0-0 最少 %d 个 · 打了 %d 局 · 打完离场 %d 个 · 采样 %d 次' % (
+            par, mins, r['final'], ['%d-%d' % c for c in r['empty']], r['root_min'], r['games'], r['fin'], r['nsamples']))
+        reach = r['first'].get(caps[12])
+        ok('⑫ 12 个号 · 并发 %d · 只开调度器: 铺到数学上限 %d 格(第 %s 分钟)、2 小时后还在 %d 格' % (
+            par, caps[12], '%.1f' % ((reach - SAT0) / 60.0) if reach else '没到', r['final']),
+            reach is not None and reach - SAT0 <= 45 * 60 and r['final'] == caps[12])
+        ok('⑫ 12 个号 · 并发 %d: 0-0 全程 ≥ %d 个(本钱没一次花光)' % (par, keep), r['root_min'] >= keep, 'min=%d' % r['root_min'])
+        ok('⑫ 12 个号 · 并发 %d: 拉号 / 并发 / 配对合规(同时在线最多 %d)' % (par, r['max_online']),
+           r['nviol'] == 0 and r['max_online'] <= par, str(r['viol']))
 
 
 ## ═══════════════ 场景 ═══════════════
@@ -495,6 +657,10 @@ def main():
     w.t = SAT0 + 7 * 3600
     w.sample()
     ok('⑤ 造一个 7 小时没打的上榜号: ⑦ 的量法量得出 1 个', w.samples[-1][2] == 1, str(w.samples[-1][2]))
+
+    print('== ⑪ 调度器「停」杀得干净整棵进程树 ==')
+    kill_checks()
+    few_bots_checks()
 
     par = MEM_PROFILES[0][2]
     jobs_s = [(n, h, par, 1, None) for n in (30, 57, 80) for h in (0, 5, 20, 50)]

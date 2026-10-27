@@ -225,6 +225,9 @@ env 开关：`MAX_PAR_WEEKEND`（周末同时在线上限，默认 6 = 8GB 机�
 - C **补格子**：先「每格 ≥1」，0-0 的本钱够再补到 R。缺口按「从上一级打一局送下来」求最省的打法（0-0 的号是整周末的本钱，先少花本钱再少打局），
   同时拉两个同格子的号上线互打；补格子的号可连打（≤5 局、局间只稍停），走到不缺号的格子、或送走就会掏空这一格时就下线停在那里。
   先铺真人马上要到的格子（在等 / 正在打的真人的下一格，开赛时按最快的真人 4 分钟一局推）。
+  ★号结构上不够（本周晋级号 < 24 个，全放 0-0 也铺不满 12 格）时改按 `cover_plan` 铺到能铺的最多格：0-0 至少留 `SCARCE_ROOT_KEEP`(2) 个，别的格子按打法可以送空。
+  12 个号同时最多铺 9 格（到 3-2 必经 3-1 / 2-2，那两格每局送走一个打完的号；铺满 12 格最少 23 个号、0-0 留 2 时 24 个）。
+  推演门禁 ⑫：12 个号只开调度器，并发 4 第 17.5 分钟、并发 6 第 9.5 分钟铺到 9 格（10-27 内测服彩排旧打法停在 7 格）。号够的池子不走这一支（推演逐行不变）。
 - D **整段打完**（平时）：每个钟点安排坐下（白天晚上多、深夜少），挑「超过 R 个」的格子里离打完近的、最久没打的多余号，打到 4 胜 / 3 负；
   受总量账约束（空闲号剩余步数 − 预计以后真人要用的步数）。赛况板白天陆续有人晋级 / 出局。
 - E **收尾**（周日 12:00 起）：只给「收盘前还有真人能走到的格子」每格留 R_END 个，其余上过榜的多余号成对打到底（深格子先）。
@@ -323,7 +326,9 @@ journalctl -u turtle-gauntlet-planner-prod -f
    - `TURTLE_SUPABASE` 填 `project.godot` 里 `turtle/supabase_url.beta_server` 那个地址，是**防连错服的保险**：万一 `TURTLE_SERVER` 没生效，地址仍是内测服、key 却是正式服的 ⇒ 401 什么都写不进去，而不是悄悄在正式库里建 90 个号。
    - 一律**不写**：`SUPABASE_SERVICE_KEY` / `SUPABASE_URL`（`bot_runner.py:81` 把整份环境原样传给客户端）、`TURTLE_RELAY`、`TURTLE_BACKEND`、`SIM_CLOCK_OFFSET`、`TURTLE_FAKE_NOW`、`TURTLE_SEED`（会切成确定性每帧一步）、`ONBOARD`、`SIM_ACCOUNT_ONLY`、`SIM_TUTORIAL`（默认 play = 像新玩家一样走教程）。
    - 每个值不含空格、不引用别的变量：同一份文件既给 systemd `EnvironmentFile` 读，也给下面的 `botenv` 用 bash 读。
-   - 启动包装（`GODOT_BIN` 指向它）：单次上线墙钟上限 + 记每次上线的 CPU 秒（U3 要的数）。`bot_runner.py` 自 ccf103c7 起自己也有超时（`reap_overdue`：跑过「局数 × `MIN_PER_ROUND`(8) + `SLACK_MIN`(10) 分钟」整组 kill -9，但只在下一轮 timer 时检查），包装的 `timeout` 是第二道。
+   - 启动包装（`GODOT_BIN` 指向它）：单次上线墙钟上限 + 记每次上线的 CPU 秒（U3 要的数）。`bot_runner.py` 自 ccf103c7 起自己也有超时（`reap_overdue`：跑过「局数 × `MIN_PER_ROUND`(8) + `SLACK_MIN`(10) 分钟」杀掉，但只在下一轮 timer 时检查），包装的 `timeout` 是第二道。
+     ★10-27 内测服彩排查出：原来「整组 kill -9」（`killpg(包装脚本 pid)`）杀不到 godot —— 包装脚本里的 GNU `timeout` 自己另开进程组，杀完 10 秒后 timeout / godot 都还在、`sessions.log` 也不记。
+     现在超时杀与调度器「停」都走 `bot_runner.kill_tree`：按会话（= 包装脚本 pid）杀掉除包装脚本外的整棵树，包装脚本照常记一行 `rc=137` 再退（机器上实测 0.0~0.2 秒、门禁 `bot_runner_queue_audit` ⑨ / `gauntlet_planner_audit` ⑪）。包装脚本本身不用改。
    ```bash
    sudo tee /opt/turtle-bots-beta/godot-bot.sh >/dev/null <<'EOF'
    #!/bin/bash

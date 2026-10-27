@@ -128,6 +128,7 @@ DEFAULTS = {
     'HUMAN_STEP_COST': 2.0,      # 真人每打一局, 陪练号要花掉几「步」(陪它打的那一步 + 之后补格子的分摊)
     'FAST_STEP_SEC': 240,    # 最快的真人一局(排队 + 裁判 + 看直播 + 逛店)约 4 分钟 ⇒ 开赛第 t 分钟最深能到 t/4 场
     'FILL_STEP_SEC': 120,    # 补格子的号往下走一格约 2 分钟(连打: 裁判 + 结算 + 稍停)
+    'SCARCE_ROOT_KEEP': 2,   # 号不够铺满每格 ≥1 时(cover_plan)0-0 至少留几个。12 个号时留 1 / 留 2 都是最多 9 格, 留 3 只剩 8 格
 }
 SESSIONISH = ('session', 'end')     # 打到底的号: 不算格子里的候场号
 ## 每次上线等不到对手多久自己下线(客户端 SIM_QUEUE_GIVEUP_SEC)。按用途给: 为真人拉的号等真人, 别的号等搭档。
@@ -233,6 +234,96 @@ def fill_plan_raw(have: dict, r: int) -> tuple:
     deep = len(LAYERS) - 1
     cost, xs = solve(deep, tuple(need(c, 0) for c in LAYERS[deep]))
     return cost[0], {c: xs.get(c, 0) for c in CELLS}
+
+
+## ═══════════════ 号不够铺满每格 ≥1 时: 铺到能铺的最多格 ═══════════════
+## 2026-10-27 内测服彩排(12 个号, 只开调度器): 原来照 fill_plan 的「每格 ≥1」打法走, 但号不够时那份打法要从 0-0 支出不存在的号,
+##   执行时又规定「送走两个之后这一格自己还留得住 1 个」⇒ 每格只剩 ≤2 个时一局也开不了, 铺到 7 格就停了(17:47 ~ 17:56 一个号都没拉)。
+## ★12 个号同时铺满 12 格在数学上做不到: 每局固定从一格拿走 2 个、往两个下一格各送 1 个; 要有号停在 3-2 就得在 3-1 或 2-2 打一局,
+##   这两格的每一局都会送走一个打完(4 胜 / 3 负)的号。逐层穷举: 12 个号最多同时铺 9 格(0-0 留 1 或 2 个都是 9 格), 铺满 12 格最少要 23 个号。
+## ⇒ 号不够时(fill_plan 的 0-0 缺口 > 0)改用本函数: 现有的号(含在算的那局送下来的)怎么打能让最多的格子 ≥1;
+##   0-0 至少留 SCARCE_ROOT_KEEP 个(用户「上一级格子自己也要留够」/ 协调方「不能把 0-0 的本钱一次花光」: 0-0 没有格子能补回来);
+##   别的格子按打法可以送空(送空一格、两个下一格各多 1 个 = 多铺一格, 号不够时这是唯一多铺的办法)。
+## 目标(字典序): 铺到的格子数 → 浅格子优先(真人都从 0-0 往下走, 浅格子先有人来) → 少动 0-0 → 少打局。
+
+_COVER_CACHE = {}
+
+
+def cover_plan(cnt: dict, keep_root: int, want=None) -> dict:
+    """cnt[格子] = 现有的号(整数); want = 要算进「铺到」的格子(收尾时收盘前没真人能走到的不算, 默认全部)。
+    返回 {格子: 在这一格打几局}。逐层(浅 → 深)枚举每格打几局, 按层记忆化。"""
+    want = frozenset(CELLS if want is None else want)
+    key = (keep_root, tuple(int(cnt.get(c, 0)) for c in CELLS), tuple(sorted(want)))
+    if key in _COVER_CACHE:
+        return dict(_COVER_CACHE[key])
+    if len(_COVER_CACHE) > 20000:
+        _COVER_CACHE.clear()
+    base = {c: int(cnt.get(c, 0)) for c in CELLS}
+    memo = {}
+
+    def go(d, counts):
+        mk = (d, counts)
+        if mk in memo:
+            return memo[mk]
+        cells = LAYERS[d]
+        ranges = [range(0, max(0, n - (keep_root if c == ROOT else 0)) // 2 + 1) for c, n in zip(cells, counts)]
+        best = None
+
+        def rec(i, xs):
+            nonlocal best
+            if i < len(cells):
+                for x in ranges[i]:
+                    rec(i + 1, xs + (x,))
+                return
+            inflow = {}
+            cov = wt = 0
+            for c, n, x in zip(cells, counts, xs):
+                if c in want and n - 2 * x >= 1:
+                    cov += 1
+                    wt += len(LAYERS) - d
+                for q in ((c[0] + 1, c[1]), (c[0], c[1] + 1)):
+                    if q in CELLSET:
+                        inflow[q] = inflow.get(q, 0) + x
+            if d + 1 < len(LAYERS):
+                sc, plan = go(d + 1, tuple(base[q] + inflow.get(q, 0) for q in LAYERS[d + 1]))
+            else:
+                sc, plan = (0, 0, 0, 0), ()
+            root_used = 2 * xs[0] if d == 0 else 0
+            tot = (cov + sc[0], wt + sc[1], sc[2] - root_used, sc[3] - sum(xs))
+            if best is None or tot > best[0]:
+                best = (tot, tuple((c, x) for c, x in zip(cells, xs) if x) + plan)
+        rec(0, ())
+        memo[mk] = best
+        return best
+
+    _sc, plan = go(0, (base[ROOT],))
+    out = {c: 0 for c in CELLS}
+    out.update(dict(plan))
+    _COVER_CACHE[key] = out
+    return dict(out)
+
+
+def covered_after(cnt: dict, xs: dict) -> int:
+    """cnt 的号按 xs 的打法打完之后, 有几格 ≥1(打完 4 胜 / 3 负的离场)。"""
+    left = {c: int(cnt.get(c, 0)) for c in CELLS}
+    for c in CELLS:
+        x = int(xs.get(c, 0))
+        left[c] -= 2 * x
+        for q in ((c[0] + 1, c[1]), (c[0], c[1] + 1)):
+            if q in left:
+                left[q] += x
+    return sum(1 for v in left.values() if v >= 1)
+
+
+_FULL_MIN = {}
+
+
+def full_cover_min(keep_root: int) -> int:
+    """全部号都在 0-0、0-0 留 keep_root 个时, 至少要几个号才能同时铺满 12 格(留 1 = 23, 留 2 = 24)。"""
+    if keep_root not in _FULL_MIN:
+        _FULL_MIN[keep_root] = next(n for n in range(len(CELLS), 200)
+                                    if covered_after({ROOT: n}, cover_plan({ROOT: n}, keep_root)) == len(CELLS))
+    return _FULL_MIN[keep_root]
 
 
 ## ═══════════════ 决策(纯函数) ═══════════════
@@ -463,17 +554,35 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
             launch(cand, 1, 'partner', 'B %d-%d 打到底的号(%s)没人可配' % (cc[0], cc[1], purpose(x)))
 
     ## ── C 补格子: 先「每格 ≥1」, 0-0 本钱够再补到 r ──
-    have = {}
+    have, have0 = {}, {}
     for cc in CELLS:
         chain = sum(1 for x in online[cc] if x not in claimed and purpose(x) not in SESSIONISH)
-        have[cc] = len(avail(cc)) + exiting[cc] + chain + 0.5 * sum(moving[p] for p in parents(cc))
+        have0[cc] = have[cc] = len(avail(cc)) + exiting[cc] + chain + 0.5 * sum(moving[p] for p in parents(cc))
         if not reachable(cc):
             have[cc] = max(have[cc], float(r_top))     # 收盘前已经没有真人能走到 ⇒ 不补
     level = 1
     _short, xs = fill_plan(have, 1)
-    if not any(xs.values()) and r_top > 1 and have[ROOT] - r_top < root_reserve:
+    ## 号不够铺满「每格 ≥1」(0-0 缺口 > 0), 而且是结构上不够 —— 本周全部晋级号加起来都铺不满 12 格(< full_cover_min, 0-0 留 2 时 = 24 个):
+    ##   改按 cover_plan 铺到能铺的最多格(0-0 留 SCARCE_ROOT_KEEP 个, 别的格子按打法可以送空)。
+    ##   原来照「每格 ≥1」的打法走、执行时又要求上一级留得住 1 个 ⇒ 号少时一局都开不了(彩排 12 个号铺到 7 格就停)。
+    ##   ★号多(≥ 24 个晋级号)时周日号用掉一部分也会缺, 那时照旧不送空上一级: 推演(N=80 周日 16:30 穷举)送空浅格子兜底 0 → 8 步,
+    ##     真人都从浅格子往下走, 为多铺一个深格子送空一个浅格子不划算。
+    n_promoted = sum(1 for b in bots.values() if b.get('promoted', True))
+    scarce = _short > 0 and n_promoted < full_cover_min(c['SCARCE_ROOT_KEEP'])
+    if scarce:
+        xs = cover_plan({cc: int(math.floor(have0[cc] + 1e-9)) for cc in CELLS}, c['SCARCE_ROOT_KEEP'],
+                        [cc for cc in CELLS if reachable(cc)])
+        note('C 号不够铺满每格 ≥1(0-0 缺 %d 个): 按能铺的最多格打, 0-0 留 %d 个' % (_short, c['SCARCE_ROOT_KEEP']))
+
+    def keep_at(cc):
+        """在 cc 打一局之后这一格至少还得留几个: 平时 level 个(上一级格子自己也要留够); 号不够时按 cover_plan 的打法, 只有 0-0 留本钱。"""
+        if not scarce:
+            return level
+        return c['SCARCE_ROOT_KEEP'] if cc == ROOT else 0
+
+    if not scarce and not any(xs.values()) and r_top > 1 and have[ROOT] - r_top < root_reserve:
         note('C 不补到 %d: 0-0 只有 %.0f 个, 本钱线 %d' % (r_top, have[ROOT], root_reserve))
-    elif not any(xs.values()) and r_top > 1:
+    elif not scarce and not any(xs.values()) and r_top > 1:
         short2, xs2 = fill_plan(have, r_top)
         left_root = have[ROOT] - r_top - 2 * xs2[ROOT]
         if short2 == 0 and left_root >= root_reserve:
@@ -487,7 +596,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
     for cc in CELLS:
         ch = [x for x in online[cc] if x not in claimed and purpose(x) not in SESSIONISH]
         for i, a in enumerate(ch):
-            if a in claimed or xs.get(cc, 0) <= 0 or present[cc] - 2 < level:
+            if a in claimed or xs.get(cc, 0) <= 0 or present[cc] - 2 < keep_at(cc):
                 continue
             b = next((y for y in ch[i + 1:] if y not in claimed and not met(a, y)), None)
             if b is not None:
@@ -498,7 +607,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
         for a in ch:
             if a in claimed:
                 continue
-            if xs.get(cc, 0) > 0 and present[cc] - 2 >= level and not no_launch and nonserve_free() > 0:
+            if xs.get(cc, 0) > 0 and present[cc] - 2 >= keep_at(cc) and not no_launch and nonserve_free() > 0:
                 cand = take(cc, lambda y: not met(a, y))
                 if cand is not None:
                     plays_here(a, cc)
@@ -538,7 +647,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
         for pc in sorted((q for q in CELLS if xs.get(q, 0) > 0), key=urgency):
             while xs.get(pc, 0) > 0 and nonserve_free() >= 2:
                 av = avail(pc)
-                if present[pc] - 2 < level:
+                if present[pc] - 2 < keep_at(pc):
                     break
                 pair = None
                 for i, a in enumerate(av):
@@ -556,8 +665,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
                 xs[pc] -= 1
                 present[pc] -= 2
 
-    ## ── D 整段打完(平时) ──
-    n_promoted = sum(1 for b in bots.values() if b.get('promoted', True))
+    ## ── D 整段打完(平时; n_promoted 见 C 段开头) ──
     if not endgame and not no_launch:
         h0 = now - (now % 3600)
         due = sum(1 for t in sit_slots(h0, sat0, endgame_t, n_promoted, c) if t <= now)
@@ -722,14 +830,14 @@ def _reap_children() -> None:
             return
 
 
-def _kill(pid: int) -> None:
-    try:
-        if os.name == 'posix':
-            os.killpg(pid, 9)
-        else:
-            os.kill(pid, 9)
-    except OSError:
-        pass
+def stop_client(br, run: dict, bid: str) -> int:
+    """让本机拉起的一个陪练客户端下线: 杀整棵进程树(bot_runner.kill_tree), 从进程表里拿掉。返回杀了几个进程。
+    ★2026-10-27 内测服彩排: 原来按包装脚本的进程组 killpg 只杀掉包装脚本 —— 包装脚本里的 `timeout` 另开了进程组,
+      godot 照样把剩下的局打完(p07 17:41:28 被「停」, 17:41:56 又进了队、等满 180 秒才走), 调度器却以为它下线了。"""
+    v = run.pop(bid, None)
+    if not v or not v.get('pid'):
+        return 0
+    return br.kill_tree(int(v['pid']))
 
 
 def external_running(br) -> int:
@@ -769,9 +877,8 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
     run = {k: v for k, v in (ps.get('running') or {}).items() if br.alive(int(v.get('pid', 0) or 0))}
     for k, v in list(run.items()):                       # 卡住的客户端: 局数 × 10 分钟 + 10 分钟还没退 ⇒ 杀(本机钟)
         if time.time() - float(v.get('wall', v['since'])) > int(v.get('rounds', 1)) * 600 + 600:
-            _kill(int(v['pid']))
+            stop_client(br, run, k)
             log('超时杀掉 %s(%s)' % (k, v.get('purpose')))
-            run.pop(k)
     st['running'] = run
     st['memory'] = ps.get('memory') or {}
     st['external_running'] = external_running(br)
@@ -802,8 +909,7 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
             continue
         if op == 'stop':
             if bid in run:
-                _kill(int(run[bid]['pid']))
-                run.pop(bid)
+                stop_client(br, run, bid)
                 done.append((op, bid, rounds, purpose, why))
                 log('停 %s —— %s' % (bid, why))
             continue
