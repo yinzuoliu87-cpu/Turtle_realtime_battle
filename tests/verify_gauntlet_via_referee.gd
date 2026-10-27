@@ -348,8 +348,9 @@ func _settle_title(b: Node) -> String:
 	var pr: Node = b.find_child("PageResult", true, false)
 	if pr == null:
 		return ""
-	for c in pr.get_children():
-		if c is Label and (str((c as Label).text) == "胜利" or str((c as Label).text) == "失败"):
+	## 逐层找: 胜负大字 10-27 起套在 ResultSlot 里(像素标题从左滑入), 不再是 PageResult 的直接子节点。
+	for c in pr.find_children("*", "Label", true, false):
+		if str((c as Label).text) == "胜利" or str((c as Label).text) == "失败":
 			return (c as Label).text
 	return ""
 
