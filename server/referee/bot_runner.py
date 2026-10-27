@@ -18,6 +18,10 @@
   MAX_PAR          同时在跑的陪练客户端上限(默认 2)
   MAX_PAR_WEEKEND  UTC 周六 / 周日的上限(默认 = MAX_PAR)。周末正式服裁判要算闯关 / 决赛, 内存留给它(10-27 彩排实测)
   STALE_MIN        到点后多久还没起就作废(默认 30)
+  BOT_MODE         schedule(默认: 按 BOT_SCHEDULE 时间表) / queue(轮流打到底, 不要时间表; 正式服 10-27 起)
+  BOT_COUNT        queue 模式的号数(不设 = bot_schedule.bot_count(REAL_LAST_WEEK))
+  PER_HOUR         queue 模式积分赛每小时最多新开几个号(不设 = ceil(号数 / 88), 铺满周二~周五)
+  PER_HOUR_GAUNTLET  queue 模式闯关赛每小时最多新开几个号(不设 = ceil(号数 / 36))
   TURTLE_BACKEND / TURTLE_SUPABASE 等后端配置原样传给客户端(内测服 / 正式服各一份 env)
 用法:
   python3 bot_runner.py            # 定时器调用: 起该起的, 打印做了什么
@@ -135,9 +139,116 @@ def reap_overdue(state: dict, now: dt.datetime) -> int:
     return n
 
 
+## ═══════════════ 轮流打到底(BOT_MODE=queue, 2026-10-27 用户) ═══════════════
+## 用户 10-27:「你为啥要排班呢？…凌晨可以打，每个小时都可以打呀，就打到底就好了呀，所有的命都打完了。」
+##   ⇒ 不要时间表: 积分赛开着的时候(周二 00:00 ~ 周五 22:30 UTC)一直保持几个号在打, 每个号一上线就打到底
+##     (SIM_ROUNDS=16: 打满 16 场或命输光 ⇒ 主菜单被拦 ⇒ 自己退出), 退了换下一个; 每个号每周一次。
+##   闯关赛开着的时候(周六 00:00 ~ 周日 17:20)每个号再上线一次(SIM_ROUNDS=6), 没晋级的进主菜单就被拦、自己退出。
+##   每小时最多新开 PER_HOUR 个号(默认 = ceil(号数 / 88)), 让一周的号铺满周二~周五, 不在头两天打完。
+## 号数 = bot_schedule.bot_count(上周真人)(与排班模式同一个公式, 不另抄一份)。
+BOT_MODE = os.environ.get('BOT_MODE', 'schedule')
+QUEUE_STATE = os.path.join(ROOT, 'queue.json')     # {周一日期: {阶段: {pNN: {pid, at, rounds, killed?}}}}
+RANKED_ROUNDS = 16
+GAUNTLET_ROUNDS = 6
+RANKED_SPAN_H = 88            # 周二 00:00 ~ 周五 22:30 约 94.5 小时, 留余量按 88 小时铺
+GAUNTLET_SPAN_H = 36          # 周六 00:00 ~ 周日 17:20 约 41 小时; 没晋级的号一上线就被拦、几十秒就退 ⇒ 开得快些, 36 小时开完
+
+
+def queue_phase(now: dt.datetime) -> str:
+    """'ranked' / 'gauntlet' / ''(这一刻不起号: 周一休赛、周五 22:30 后、周日 17:20 后决赛日由服务器代打)。"""
+    wd, hm = now.weekday(), now.hour * 60 + now.minute
+    if 1 <= wd <= 3 or (wd == 4 and hm < 22 * 60 + 30):
+        return 'ranked'
+    if wd == 5 or (wd == 6 and hm < 17 * 60 + 20):
+        return 'gauntlet'
+    return ''
+
+
+def week_key(now: dt.datetime) -> str:
+    return (now - dt.timedelta(days=now.weekday())).date().isoformat()
+
+
+def queue_bot_count() -> int:
+    if os.environ.get('BOT_COUNT', '').strip():
+        return int(os.environ['BOT_COUNT'])
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import bot_schedule
+    return bot_schedule.bot_count(int(os.environ.get('REAL_LAST_WEEK', '0') or 0))
+
+
+def per_hour_limit(n_bots: int, phase: str = 'ranked') -> int:
+    """每小时最多新开几个号。积分赛按 RANKED_SPAN_H 铺满, 闯关赛按 GAUNTLET_SPAN_H 开完(门禁 bot_runner_queue_audit ① 量过开得完)。"""
+    v = os.environ.get('PER_HOUR' if phase == 'ranked' else 'PER_HOUR_GAUNTLET', '').strip()
+    span = RANKED_SPAN_H if phase == 'ranked' else GAUNTLET_SPAN_H
+    return int(v) if v else max(1, -(-n_bots // span))
+
+
+def queue_tick(state: dict, now: dt.datetime, n_bots: int, par: int, per_hour: int, launch_fn, alive_fn) -> list:
+    """一拍: 返回这一拍起了哪些号([(slot, rounds)]), 并就地更新 state。纯逻辑(launch_fn / alive_fn 注入, 门禁用假的)。"""
+    phase = queue_phase(now)
+    if not phase:
+        return []
+    wk = state.setdefault(week_key(now), {})
+    done = wk.setdefault(phase, {})
+    running = [v for ph in wk.values() for v in ph.values() if v.get('pid') and not v.get('killed') and alive_fn(int(v['pid']))]
+    hour0 = now.replace(minute=0, second=0, microsecond=0)
+    this_hour = sum(1 for v in done.values() if dt.datetime.fromisoformat(v['at']) >= hour0)
+    rounds = RANKED_ROUNDS if phase == 'ranked' else GAUNTLET_ROUNDS
+    out = []
+    for slot in range(1, n_bots + 1):
+        if len(running) + len(out) >= par or this_hour + len(out) >= per_hour:
+            break
+        key = 'p%02d' % slot
+        if key in done:
+            continue
+        pid = launch_fn(slot, rounds)
+        done[key] = {'pid': pid, 'at': now.isoformat(), 'rounds': rounds}
+        out.append((slot, rounds))
+    return out
+
+
+def queue_main(dry: bool, status: bool) -> None:
+    state = load_json(QUEUE_STATE, {})
+    now = now_utc()
+    n_bots, par = queue_bot_count(), par_limit(now)
+    phase = queue_phase(now)
+    per_hour = per_hour_limit(n_bots, phase or 'ranked')
+    wk = state.get(week_key(now), {})
+    killed = 0
+    if not (dry or status):
+        flat = {'%s|%s' % (ph, k): v for ph, d in wk.items() for k, v in d.items()}
+        killed = reap_overdue(flat, now)
+    if status:
+        for ph in ('ranked', 'gauntlet'):
+            d = wk.get(ph, {})
+            run = sum(1 for v in d.values() if v.get('pid') and not v.get('killed') and alive(int(v['pid'])))
+            print('本周 %s %s: 号 %d · 已上线 %d · 在跑 %d · 超时杀掉 %d · 还没轮到 %d' % (
+                week_key(now), ph, n_bots, len(d), run, sum(1 for v in d.values() if v.get('killed')), max(0, n_bots - len(d))))
+        print('现在阶段: %s · 同时上限 %d · 每小时最多新开 %d' % (phase or '不起号', par, per_hour))
+        return
+    if dry:
+        fake = json.loads(json.dumps(state))
+        for slot, r in queue_tick(fake, now, n_bots, par, per_hour, lambda s, r: 0, alive):
+            print('会起 p%02d %s %d 局' % (slot, phase, r))
+        return
+    if not GAME:
+        print('BOT_GAME_DIR 没设, 不起')
+        return
+    started = queue_tick(state, now, n_bots, par, per_hour, launch, alive)
+    for slot, r in started:
+        print('起 p%02d %s %d 局 pid=%s' % (slot, phase, r, state[week_key(now)][phase]['p%02d' % slot]['pid']))
+    os.makedirs(ROOT, exist_ok=True)
+    with open(QUEUE_STATE, 'w', encoding='utf-8') as f:
+        json.dump(state, f, ensure_ascii=False)
+    print('本轮(%s): 起 %d · 超时杀掉 %d · 同时上限 %d · 每小时上限 %d' % (phase or '不起号', len(started), killed, par, per_hour))
+
+
 def main() -> None:
     dry = '--dry' in sys.argv
     status = '--status' in sys.argv
+    if BOT_MODE == 'queue':
+        queue_main(dry, status)
+        return
     plan = load_json(SCHED, {})
     if not plan:
         print('没有时间表: %s(先跑 bot_schedule.py)' % SCHED)
