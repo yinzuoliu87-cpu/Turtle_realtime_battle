@@ -54,7 +54,7 @@ fi
 #   假阳性已量过: 这三个模式在干净的 166/166 全套日志与两份探针日志里命中 0/0/0。
 #   ★CLAUDE.md §2:「漏一个模式就等于把 bug 判成绿灯」—— 历史上 `Max recursion` 曾不在名单里,
 #     24 组压测全报"0 errors", 而真实对局每秒刷几百条错误。新报错形态一律往这条加。
-FATAL='Infinite loop detected|SCRIPT ERROR|Parse Error|Max recursion|freed instance|null instance|Cannot call|Invalid (get|set|call|index)|Trying to (assign|call)|Nonexistent|is out of bounds|Lambda capture|Condition ".*" is true'
+FATAL='Infinite loop detected|SCRIPT ERROR|Parse Error|Max recursion|freed instance|null instance|Cannot call|Invalid (get|set|call|index)|Trying to (assign|call)|Nonexistent|is out of bounds|Lambda capture|Condition ".*" is true|Parent node is busy'
 
 PASS=0; FAIL=0
 
