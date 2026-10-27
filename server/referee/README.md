@@ -191,7 +191,7 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
 |---|---|
 | 脚本 | `/opt/turtle-bots-prod/bin/bot_runner.py`、`bot_schedule.py`（root 644；**不放 `/opt/turtle/` 下**，那一层子目录会被裁判当版本扫） |
 | 工程 | `/opt/turtle-bots-prod/v<ver>/`（发版时同「发新版」那条：拷 → checkout tag → 导两次 → 改 env） |
-| env | `/etc/turtle-referee/env-bots-prod`：`BOT_MODE=queue`（轮流打到底，不用时间表）、`TURTLE_SERVER=prod`、`TURTLE_SUPABASE`=正式服地址、`MAX_PAR=6`、`MAX_PAR_WEEKEND=4`、`BOT_SESSION_CAP_SEC=7200`、`REAL_LAST_WEEK`（**每周一前手动改**） |
+| env | `/etc/turtle-referee/env-bots-prod`：`BOT_MODE=queue`（轮流打到底，不用时间表）、`TURTLE_SERVER=prod`、`TURTLE_SUPABASE`=正式服地址、`MAX_PAR=6`、`MAX_PAR_WEEKEND=4`、`BOT_SESSION_CAP_SEC=7200`、（周末：只起本周 ≥11 胜的号、每次 1 场、同号间隔 `GAUNTLET_GAP_H` 默认 2 小时、每小时场数按剩余量摊到周日 17:20，见方案书 §9.1）、`REAL_LAST_WEEK`（**每周一前手动改**） |
 | 单元 | `turtle-bot-runner-prod.*` / `turtle-bot-schedule-prod.*`（本目录）+ drop-in `limits.conf`：`CPUWeight=10`、`CPUQuota=300%`、`MemoryHigh=5000M`、`MemoryMax=5400M`、`bots-prod-off` 停用开关；排班定时器 `turtle-bot-schedule-prod.timer` 在 queue 模式下停用 |
 | 规模 | `clamp(300 − 上周真人, 30, 300)`（用户 10-27） |
 
