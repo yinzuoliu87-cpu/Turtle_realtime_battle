@@ -196,7 +196,7 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
 | 规模 | `clamp(300 − 上周真人, 30, 300)`（用户 10-27） |
 
 并发 4 是 10-27 在 CPX22 上实测的（同时 4 个：可用内存最低 0.58GB、CPU 忙约 49%、全部 rc=0）；每个号约 0.75GB，第 5 个放不下。`MemoryMax` 必须跟着 `MAX_PAR` 走（runner 拉起的客户端都在这个 cgroup 里，超了整组里挑一个杀）。细节与容量推演见方案书 `docs/plans/20261026d-服务器常驻陪练号.md` §8。
-⚠ 周末：drop-in 现在仍是 `date -u +%u ≤ 5`（周六周日不起）—— 违背方案书 §3，内测服彩排一局闯关后去掉（同时周末并发降到 2，给裁判留内存）。
+周末（10-27 内测服彩排通过后放开）：drop-in 只剩 `bots-prod-off` 一个条件；env `MAX_PAR_WEEKEND=2`（`bot_runner.py` `par_limit`：UTC 周六 / 周日用它）。理由（彩排实测）：空载可用约 3.3GB，裁判单局 RSS 约 0.5GB × 2 线程，陪练号每个约 0.75GB ⇒ 周末 2 个留约 0.8GB，4 个会 OOM。陪练号工程的 `scripts/systems/sim/` 要是 main 版（批量模式遇决赛日收工 + 闯关日匹配屏 STUCK 线 200 秒），发新版重建工程时一并覆盖。
 
 ### 常驻陪练号 · 内测服首次部署步骤
 

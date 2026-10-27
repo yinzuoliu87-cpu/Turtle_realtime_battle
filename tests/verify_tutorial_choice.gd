@@ -15,6 +15,7 @@ extends Node
 ##   ⑦ 框里所有字无口语词
 ##   ⑧ SIM 驱动(下周 120 个号要用): 新号 onboarded=false ⇒ 驱动在框里按「开始教程」(SIM_TUTORIAL=skip ⇒「跳过」);
 ##      没框(看过教程)⇒ 驱动不碰; 驱动只在选择框里找按钮, 绝不按教程外壳上那颗同名的「跳过教程」
+##   ⑨ SIM 驱动的卡死线: 闯关日匹配屏要等服务器裁判 ⇒ 线高过客户端自己的等待上限(180 秒); 积分赛日仍 45 秒; 别的屏不变
 
 const MENU := "res://scenes/MainMenu.tscn"
 const BANNED := ["啦", "吧", "呢", "哦", "咱", "我教你", "试试", "就行", "搞", "热身", "练练", "!", "！", "你", "等会儿", "开打"]
@@ -23,6 +24,7 @@ var _fail := 0
 var _n := 0
 const MIN_ASSERTS := 25
 const Drv := preload("res://scripts/systems/sim/sim_driver.gd")
+const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -127,6 +129,20 @@ func _ready() -> void:
 	_ok("★★⑧ 驱动只在选择框里找「SkipTutorial」(全文件只出现在 _press_tutorial_choice 里; 外壳那颗同名钮绝不碰)",
 		dsrc.count("\"SkipTutorial\"") == 1 and fn.contains("\"SkipTutorial\"") and fn.contains("get_node_or_null(\"TutorialChoice\")"))
 	_ok("★⑧ 驱动不再翻 tut_overlay 里的按钮(旧「下一站」逻辑会误按跳过钮)", not dsrc.contains("_press_tut_next"))
+
+	# ⑨ SIM 驱动的卡死线(2026-10-27 内测服彩排): 闯关日匹配屏要等服务器裁判, 线必须高过客户端自己的等待上限
+	var rw = load("res://scripts/systems/replay/referee_watch.gd")
+	var wait_cap: float = float(rw.POLL_SEC) * float(rw.poll_max())
+	var lim_g: float = Drv.stuck_limit(Drv.S_MATCH, _P2C.PHASE_GAUNTLET)
+	_ok("★★⑨ 闯关日匹配屏: 卡死线 > 客户端等裁判的上限(过了上限客户端自己退回主菜单, 再不退才算卡)",
+		wait_cap >= 60.0 and lim_g > wait_cap, "线 %.0f 秒 · 上限 %.0f 秒" % [lim_g, wait_cap])
+	_ok("★⑨ 积分赛日匹配屏仍是 45 秒(本机挑对手, 几秒就该进战斗)",
+		is_equal_approx(Drv.stuck_limit(Drv.S_MATCH, _P2C.PHASE_RANKED), 45.0))
+	_ok("★⑨ 别的屏不受影响: 战斗 600 / 主菜单 120(闯关日也一样)",
+		is_equal_approx(Drv.stuck_limit(Drv.S_BATTLE, _P2C.PHASE_GAUNTLET), 600.0)
+		and is_equal_approx(Drv.stuck_limit(Drv.S_MENU, _P2C.PHASE_GAUNTLET), 120.0))
+	_ok("★★⑨ 主循环真的按 stuck_limit 判(STUCK_SEC.get 只剩函数里那一处)",
+		dsrc.contains("_since() > stuck_limit(p, ") and dsrc.count("STUCK_SEC.get(") == 1)
 
 	# ⑤ 开始教程(放最后: 会换场到战斗) —— 由 SIM 驱动按(默认 play), 同时验驱动那一半
 	_fresh(false)

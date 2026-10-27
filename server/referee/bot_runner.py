@@ -16,6 +16,7 @@
   BOT_ROOT         每个号的存档根目录
   BOT_SCHEDULE     本周时间表 JSON
   MAX_PAR          同时在跑的陪练客户端上限(默认 2)
+  MAX_PAR_WEEKEND  UTC 周六 / 周日的上限(默认 = MAX_PAR)。周末正式服裁判要算闯关 / 决赛, 内存留给它(10-27 彩排实测)
   STALE_MIN        到点后多久还没起就作废(默认 30)
   TURTLE_BACKEND / TURTLE_SUPABASE 等后端配置原样传给客户端(内测服 / 正式服各一份 env)
 用法:
@@ -36,6 +37,12 @@ GAME = os.environ.get('BOT_GAME_DIR', '')
 ROOT = os.environ.get('BOT_ROOT', '/var/lib/turtle-bots')
 SCHED = os.environ.get('BOT_SCHEDULE', os.path.join(ROOT, 'schedule.json'))
 MAX_PAR = int(os.environ.get('MAX_PAR', '2'))
+MAX_PAR_WEEKEND = int(os.environ.get('MAX_PAR_WEEKEND', str(MAX_PAR)))
+
+
+def par_limit(now: dt.datetime) -> int:
+    """这一拍的并发上限: UTC 周六 / 周日用 MAX_PAR_WEEKEND, 其余 MAX_PAR。"""
+    return MAX_PAR_WEEKEND if now.weekday() >= 5 else MAX_PAR
 STALE_MIN = int(os.environ.get('STALE_MIN', '30'))
 ## 一次上线最多跑多久: 每局给 MIN_PER_ROUND 分钟 + 余量。超时 ⇒ 整个进程组杀掉、记 killed。
 ##   ★没有这条, 卡住的客户端永远不退、占死并发位(例: 0.22.1 把整个周日当决赛日, 驱动在决赛日不收工)。
@@ -140,6 +147,7 @@ def main() -> None:
     killed = 0 if (dry or status) else reap_overdue(state, now)
     running = [k for k, v in state.items() if isinstance(v, dict) and v.get('pid') and not v.get('killed') and alive(int(v['pid']))]
     started = skipped = 0
+    par = par_limit(now)
     for t, slot, s in due_sessions(plan, now):
         key = session_key(plan['week'], slot, s['at'])
         if key in state:
@@ -150,7 +158,7 @@ def main() -> None:
             continue
         if status:
             continue
-        if len(running) >= MAX_PAR:
+        if len(running) >= par:
             break                                      # 下一轮(5 分钟后)再起; 超过 STALE_MIN 就作废, 不堆积
         if dry:
             print('会起 p%02d %s %s 局(%s)' % (slot, s['mode'], s['rounds'], s['at']))
@@ -174,7 +182,7 @@ def main() -> None:
         os.makedirs(ROOT, exist_ok=True)
         with open(STATE, 'w', encoding='utf-8') as f:
             json.dump(state, f, ensure_ascii=False)
-        print('本轮: 起 %d · 作废 %d · 超时杀掉 %d · 在跑 %d / %d' % (started, skipped, killed, len(running), MAX_PAR))
+        print('本轮: 起 %d · 作废 %d · 超时杀掉 %d · 在跑 %d / %d' % (started, skipped, killed, len(running), par))
 
 
 if __name__ == '__main__':

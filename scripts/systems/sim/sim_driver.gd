@@ -59,6 +59,19 @@ const S_TRAINER := "res://scenes/TrainerConfig.tscn"
 ## 某一屏停留超过这么多秒没换场景 ⇒ 记一条 STUCK(只记一次)。战斗 3 路 + 决胜, 给足。
 const STUCK_SEC := {S_BATTLE: 600.0, S_MATCH: 45.0}
 const STUCK_DEFAULT := 120.0
+## ★闯关日(周六 00:00 ~ 周日 17:30)匹配屏要等服务器裁判算完(2026-10-27 内测服彩排):
+##   客户端自己在匹配屏最多等 RefereeWatch.POLL_SEC × poll_max()(180 秒)才退回主菜单(ST_LATER, 账单留着由主菜单补记)。
+##   按 45 秒记 STUCK ⇒ 裁判一排队就误报: 彩排那一局 37 秒(排队 2 + 裁判 33), 正式服裁判 journald 近一周单局 p90 104 秒。
+##   ⇒ 这一屏的线 = 客户端自己的等待上限 + 余量; 过了这条线还停在匹配屏 = 客户端没按设计退回, 才是真卡。
+const STUCK_MATCH_REFEREE_SLACK := 20.0
+
+
+## 这一屏停多久算卡住。`phase` 传 `_P2.phase_at_utc(...)` 的结果(门禁直接喂阶段, 不依赖今天星期几)。
+static func stuck_limit(p: String, phase: String) -> float:
+	if p == S_MATCH and phase == _P2.PHASE_GAUNTLET:
+		var rw = load("res://scripts/systems/replay/referee_watch.gd")
+		return float(rw.POLL_SEC) * float(rw.poll_max()) + STUCK_MATCH_REFEREE_SLACK
+	return float(STUCK_SEC.get(p, STUCK_DEFAULT))
 
 const TRAINER_SKILLS := ["magic_stone", "hook", "fury_potion", "whistle", "glacier", "hunt_order", "tame"]
 const TOUR_FLAG := "user://sim_tour_done.txt"
@@ -159,7 +172,7 @@ func _run() -> void:
 			_scene_path = p
 			_scene_since = Time.get_ticks_msec()
 			_stuck_noted = false
-		elif not _stuck_noted and _since() > float(STUCK_SEC.get(p, STUCK_DEFAULT)) and not (_done and p == S_MENU):
+		elif not _stuck_noted and _since() > stuck_limit(p, _P2.phase_at_utc(int(_P2.now_utc()))) and not (_done and p == S_MENU):
 			_stuck_noted = true
 			_ev("STUCK", {"scene": p, "stayed_s": _since()})
 			_shot("STUCK_" + p.get_file().get_basename())
