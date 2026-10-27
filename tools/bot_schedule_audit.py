@@ -3,8 +3,8 @@
 
 量的是 server/referee/bot_schedule.py 产出的真表(不是重抄一遍它的算法), 而且是**线上真会出的那些表**:
   种子 = 当周周一日期的序号(monday.toordinal(), 即 bot_schedule.main 不给 --seed 时的默认),
-  扫 2026-10-26 起 WEEKS 周 × N = 30 / 60 / 90(规模下限 / 中间 / 上限)。②~⑤ 逐份表量。
-  ① 规模公式: 上周真人 0 / 50 / 200 ⇒ 90 / 50 / 30(clamp(100 − 真人, 30, 90))
+  扫 2026-10-26 起 WEEKS 周 × N = 30 / 150 / 300(规模下限 / 中间 / 上限)。②~⑤ 逐份表量。
+  ① 规模公式: 上周真人 0 / 50 / 280 ⇒ 300 / 250 / 30(clamp(300 − 真人, 30, 300); 10-27 用户「不能300-上周真人数吗」, 原 100 / 90)
   ② 每个号本周积分赛 ≤ 16 场(RANKED_QUOTA), 认真 / 冲得快的恰好 16
   ③ 积分赛上线全在周二 00:00 ~ 周五 22:30 之间开打(22:50 封盘); 闯关赛在周六 00:00 ~ 周日 17:30
   ④ 冲得快的那批: 积分赛全在周二
@@ -38,7 +38,7 @@ spec.loader.exec_module(bs)
 MIN_COVER = 3
 START = dt.datetime(2026, 10, 26, tzinfo=dt.timezone.utc)    # 陪练号上线的第一周(周一)
 WEEKS = 52
-TIERS = (30, 60, 90)       # 与 ① 同一组: 规模下限 / 中间 / 上限
+TIERS = (30, 150, 300)     # 与 ① 同一组: 规模下限 / 中间 / 上限
 ROUND_MIN = 8              # ⑤b 每局按几分钟打完: bot_runner.py MIN_PER_ROUND 的默认值(那是超时预算, 偏保守)
 fails = []
 
@@ -71,8 +71,8 @@ def coverage(plan: dict, monday: dt.datetime, finish: bool) -> list:
     return cnt
 
 
-ok('① 规模公式 0/50/200 ⇒ 90/50/30', [bs.bot_count(0), bs.bot_count(50), bs.bot_count(200)] == [90, 50, 30],
-   str([bs.bot_count(0), bs.bot_count(50), bs.bot_count(200)]))
+ok('① 规模公式 0/50/280 ⇒ 300/250/30', [bs.bot_count(0), bs.bot_count(50), bs.bot_count(280)] == [300, 250, 30],
+   str([bs.bot_count(0), bs.bot_count(50), bs.bot_count(280)]))
 
 plans = {}
 for wk in range(WEEKS):
@@ -134,16 +134,16 @@ for label, finish in (('⑤a', False), ('⑤b', True)):
     if len(bad) > 12:
         print('        …… 另有 %d 份表不达标' % (len(bad) - 12))
 
-monday0, plan0 = plans[(0, 90)]
-ok('⑥ 同一种子两次生成逐字相同', bs.build(monday0, 90, monday0.toordinal()) == plan0)
+monday0, plan0 = plans[(0, bs.MAX_BOTS)]
+ok('⑥ 同一种子两次生成逐字相同', bs.build(monday0, bs.MAX_BOTS, monday0.toordinal()) == plan0)
 
 entry_bad = []
 with tempfile.TemporaryDirectory() as td:
     for wk in (0, 1):
-        monday, want = plans[(wk, 90)]
+        monday, want = plans[(wk, bs.MAX_BOTS)]
         for day in (monday, monday + dt.timedelta(days=1)):
             out = os.path.join(td, 'sched_%s.json' % day.date().isoformat())
-            r = subprocess.run([sys.executable, SCRIPT, '--week', day.date().isoformat(), '--bots', '90', '--out', out],
+            r = subprocess.run([sys.executable, SCRIPT, '--week', day.date().isoformat(), '--bots', str(bs.MAX_BOTS), '--out', out],
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             got = None
             if r.returncode == 0 and os.path.exists(out):

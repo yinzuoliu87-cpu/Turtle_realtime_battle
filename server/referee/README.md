@@ -183,6 +183,21 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
 ⚠ **同机还有正式服裁判**：`MAX_PAR` 先给 1，量完 CPU（每局陪练客户端占多少核秒、高峰时裁判排不排队）再调；不够就换机器配置（花钱，先问用户）。
 ⚠ 发新版后要重建 `BOT_GAME_DIR`（同裁判「发版时」那一节：拷目录 → checkout 新 tag → `--import`）。
 
+### 常驻陪练号 · 正式服（2026-10-27 上线，现行）
+
+用户 10-27「要」：内测服那套停新起（`/etc/turtle-referee/bots-beta-off` + 两个 beta 定时器 disable），照下面的内测服步骤搭了正式服那套：
+
+| 件 | 正式服 |
+|---|---|
+| 脚本 | `/opt/turtle-bots-prod/bin/bot_runner.py`、`bot_schedule.py`（root 644；**不放 `/opt/turtle/` 下**，那一层子目录会被裁判当版本扫） |
+| 工程 | `/opt/turtle-bots-prod/v<ver>/`（发版时同「发新版」那条：拷 → checkout tag → 导两次 → 改 env） |
+| env | `/etc/turtle-referee/env-bots-prod`：`TURTLE_SERVER=prod`、`TURTLE_SUPABASE`=正式服地址、`MAX_PAR=4`、`REAL_LAST_WEEK`（**每周一前手动改**） |
+| 单元 | `turtle-bot-runner-prod.*` / `turtle-bot-schedule-prod.*`（本目录）+ drop-in `limits.conf`：`CPUWeight=10`、`CPUQuota=160%`、`MemoryMax=3300M`、`bots-prod-off` 停用开关 |
+| 规模 | `clamp(300 − 上周真人, 30, 300)`（用户 10-27） |
+
+并发 4 是 10-27 在 CPX22 上实测的（同时 4 个：可用内存最低 0.58GB、CPU 忙约 49%、全部 rc=0）；每个号约 0.75GB，第 5 个放不下。`MemoryMax` 必须跟着 `MAX_PAR` 走（runner 拉起的客户端都在这个 cgroup 里，超了整组里挑一个杀）。细节与容量推演见方案书 `docs/plans/20261026d-服务器常驻陪练号.md` §8。
+⚠ 周末：drop-in 现在仍是 `date -u +%u ≤ 5`（周六周日不起）—— 违背方案书 §3，内测服彩排一局闯关后去掉（同时周末并发降到 2，给裁判留内存）。
+
 ### 常驻陪练号 · 内测服首次部署步骤
 
 > 2026-10-26 照仓库代码写成；**2026-10-27 已在机器上走完第 0~4 步（不含 `enable` 两个定时器）+ p01 冒烟 1 次**，与机器的出入已回填（标「★10-27 实测」）。

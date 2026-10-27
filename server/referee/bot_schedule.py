@@ -34,9 +34,9 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-TARGET = 100          # 「看起来有多少人在打」的目标(陪练号 + 真人)
+TARGET = 300          # 「看起来有多少人在打」的目标(陪练号 + 真人)。用户 2026-10-27「不能300-上周真人数吗」(原 100)
 MIN_BOTS = 30         # 真人再多也留这么多, 给高场次垫底
-MAX_BOTS = 90
+MAX_BOTS = 300        # 上限跟 TARGET 走(真人 0 ⇒ 300 个); 能不能都排上看并发, 见方案书 §6 容量推演
 QUOTA = 16            # 积分赛每周场数上限(phase2_config.RANKED_QUOTA)
 RANKED_CLOSE_H = 22   # 周五 22:50 封盘 ⇒ 周五最后一个可排的钟点是 22 点(且只排到 22:30 之前开始)
 FAST_SHARE = 0.15

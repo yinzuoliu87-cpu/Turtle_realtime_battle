@@ -143,6 +143,13 @@ func _run() -> void:
 		return
 	while is_inside_tree():
 		await _sleep(0.5)
+		## ★批量模式(SIM_QUIT_WHEN_DONE 非空 = 服务器常驻陪练号 / sim60 批量)到了决赛日就收工(2026-10-27):
+		##   决赛日只在 _do_menu 里 return 不 _finish, 而 SimFinalsPilot 无头下几帧就把主菜单带进对阵图 ⇒ 号一直挂着、占满并发位到超时被杀。
+		##   决赛由服务器拿快照代打, 陪练号不必在线。本机周日要号留着一轮轮打时 beta_daily.sh 会把 SIM_QUIT_WHEN_DONE 置空, 不走这里。
+		if not _done and _quit_when_done() and _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_FINALS:
+			_ev("finals_day", {"stats": _stats()})
+			await _finish("finals_day")
+			continue
 		var sc := get_tree().current_scene
 		if sc == null:
 			continue
@@ -351,9 +358,13 @@ func _press_tutorial_choice(m: Node) -> bool:
 func _finish(why: String) -> void:
 	_done = true
 	_ev("done", {"why": why, "stats": _stats()})
-	if OS.get_environment("SIM_QUIT_WHEN_DONE").strip_edges() != "":
+	if _quit_when_done():
 		await _sleep(3.0)
 		get_tree().quit()
+
+
+static func _quit_when_done() -> bool:
+	return OS.get_environment("SIM_QUIT_WHEN_DONE").strip_edges() != ""
 
 
 # ═══════════════════════════════ 选龟 ═══════════════════════════════

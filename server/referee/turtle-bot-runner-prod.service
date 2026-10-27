@@ -1,0 +1,16 @@
+# 正式服常驻陪练号: 按本周排班表到点拉起无头客户端(方案书 docs/plans/20261026d-服务器常驻陪练号.md)。
+# 由 turtle-bot-runner-prod.timer 每 5 分钟拉一次。正式服陪练号(2026-10-27 用户「要」: 内测服那套停掉、改上正式服); 同机还有正式服裁判 ⇒ 限额见机器上的 drop-in limits.conf。
+[Unit]
+Description=Turtle PROD bot accounts runner (launch scheduled sim sessions)
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env-bots-prod
+ExecStart=/usr/bin/python3 /opt/turtle-bots-prod/bin/bot_runner.py
+KillMode=process
+# 让着裁判(正式服裁判 Nice=5): 陪练客户端留在本服务的 cgroup 里, 按权重 10 分 CPU; 进程本身再 nice 19(bot_runner.py CHILD_NICE)。
+Nice=19
+CPUWeight=10
+IOWeight=10
