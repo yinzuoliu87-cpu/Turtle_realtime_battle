@@ -41,6 +41,8 @@ const RADAR_C := Vector2(640.0, 350.0)
 ## 雷达环最大半径: 圆心 y=350, 取 330 ⇒ 上沿 y=20 / 下沿 680, 不贴屏幕边。
 ## (原来是圆心 340 + 半径 340 = 上沿正好 y=0, 环压在屏幕顶边上。)
 const RADAR_R := 330.0
+## 雷达环起始半径: 这块字离圆心最远的是「匹配中」后面跳动的点点(右端距圆心约 150px) ⇒ 从 160 起跳, 环不压字。
+const RADAR_START_R := 160.0
 const FAKE_NAMES := [
 	"深海霸主", "龟界传说", "咸鱼翻身", "老司机带带我", "萌新龟龟", "海底捞月", "龟速前进", "一击三连",
 	"佛系养龟", "头号玩家", "水深危险", "乌龟跑得快", "退役龟皇", "龟龟不下班", "南极来的", "稳健型选手",
@@ -284,12 +286,14 @@ func _leave_later() -> void:
 # ---------------------------------------------------------------------------
 
 ## 冲击波圆环: 从 center 扩散并淡出 (纯 Control + draw, 不依赖贴图).
-func _shockwave(center: Vector2, col: Color, max_r: float, dur: float) -> void:
+## start_r: 起始半径。雷达环从文字块外沿起跳 —— 从 0 起步时 9px 粗的环就是一颗实心点, 正压在「匹配中」的「配」上。
+func _shockwave(center: Vector2, col: Color, max_r: float, dur: float, start_r: float = 0.0) -> void:
 	var ring := _RingFx.new()
 	ring.col = col
 	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ring.center = center
+	ring.radius = start_r
 	content_root.add_child(ring)
 	var tw := create_tween()
 	tw.tween_property(ring, "radius", max_r, dur).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -525,7 +529,7 @@ func _build_searching() -> void:
 func _radar_ping(delay: float) -> void:
 	await get_tree().create_timer(delay).timeout
 	while _searching and is_inside_tree() and not _cancelled and content_root != null:
-		_shockwave(RADAR_C, Color("#ffd93d"), RADAR_R, 1.5)
+		_shockwave(RADAR_C, Color("#ffd93d"), RADAR_R, 1.5, RADAR_START_R)
 		await get_tree().create_timer(1.5).timeout
 
 
