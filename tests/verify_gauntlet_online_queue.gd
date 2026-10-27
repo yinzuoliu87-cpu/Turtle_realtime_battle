@@ -519,6 +519,126 @@ func _texts(n) -> Array:
 	return out
 
 
+## ★单位头顶血条 + 两侧队伍头像栏边框(我方: 血条友军绿 / 框蓝; 对方: 血条敌方紫 / 框红)。
+##   对局进行中量(两边都有活着的单位); 驯服改阵营那一下在 sim 停着的时候改、量完还原(sim 一步都没多走)。
+func _bar_checks(b: Node, tag: String, me: String) -> void:
+	var foe := "left" if me == "right" else "right"
+	b.set_process(false)
+	var guard := 0
+	while guard < 3000 and not _both_sides_live(b, me) and not b._replay.finished:
+		b._process(0.13)
+		guard += 1
+		if guard % 6 == 0:
+			await get_tree().process_frame
+	_ok("%s 分母: 对局进行中、两边都有活着带血条和头像框的单位" % tag, _both_sides_live(b, me))
+	b._selected_unit = null
+	## ① 建条那一下(_make_status_bar: 开局 / 召唤 / 逐帧直播新单位都走它)
+	var bm: Dictionary = b._make_status_bar(me, 0)
+	var bf: Dictionary = b._make_status_bar(foe, 0)
+	_ok("%s ★建血条: 我这一侧(%s)是友军色、对面是敌方色" % [tag, me], bool(bm["hp_bar"].is_ally) and not bool(bf["hp_bar"].is_ally))
+	(bm["root"] as Node).free()
+	(bf["root"] as Node).free()
+	## ② 场上每一只: 故意设反, 每帧那条路(battle_render._update_overlay)按看的人改回来
+	var live: Array = []
+	for u in b._units:
+		if bool(u.get("alive", false)) and u.get("hp_bar") != null and is_instance_valid(u.get("hp_bar")):
+			live.append(u)
+	var n_me := 0
+	var n_foe := 0
+	var bad0: Array = []
+	for u in live:
+		var want: bool = b._eff_side(u) == me
+		if want:
+			n_me += 1
+		else:
+			n_foe += 1
+		if bool(u["hp_bar"].is_ally) != want:
+			bad0.append(str(u.get("id", "?")))
+		u["hp_bar"].is_ally = not want
+	b._render._update_overlay()
+	var bad1: Array = []
+	for u in live:
+		if bool(u["hp_bar"].is_ally) != (b._eff_side(u) == me):
+			bad1.append(str(u.get("id", "?")))
+	_ok("%s ★单位头顶血条: 我这一侧 %d 只是友军色、对面 %d 只是敌方色" % [tag, n_me, n_foe], n_me > 0 and n_foe > 0 and bad0.is_empty(), str(bad0))
+	_ok("%s ★每帧那条路: 设反之后按看的人改回来(分母 %d 只)" % [tag, live.size()], live.size() >= 2 and bad1.is_empty(), str(bad1))
+	## ③ 驯服改阵营: 对面一只活着的龟归到我这一边
+	var tamed = null
+	for u in live:
+		if b._eff_side(u) == foe and not bool(u.get("_isEgg", false)) and not bool(u.get("is_summon", false)) \
+				and not bool(u.get("is_trainer", false)) and u.get("panel_frame") != null and is_instance_valid(u.get("panel_frame")):
+			tamed = u
+			break
+	_ok("%s 分母: 对面有一只活着的龟可以拿来驯服" % tag, tamed != null)
+	if tamed != null:
+		var had: bool = (tamed as Dictionary).has("tamed_side")
+		var old_t = tamed.get("tamed_side", null)
+		tamed["tamed_side"] = me
+		b._render._update_overlay()
+		var ally_ok: bool = bool(tamed["hp_bar"].is_ally)
+		b._hud._build_team_panels()
+		b._info_sys._update_team_panels()
+		var my_col: Node = b._team_panel_left if me == "left" else b._team_panel_right
+		var fr = tamed.get("panel_frame")
+		var in_mine: bool = fr != null and is_instance_valid(fr) and my_col != null and my_col.is_ancestor_of(fr)
+		var acc_ok := _frame_accent_is(fr, Color("#3fa9ff")) and (tamed.get("panel_stylebox") as StyleBoxFlat).border_color.is_equal_approx(Color("#3fa9ff"))
+		if had:
+			tamed["tamed_side"] = old_t
+		else:
+			tamed.erase("tamed_side")
+		b._hud._build_team_panels()
+		b._render._update_overlay()
+		_ok("%s ★驯服后改阵营的那只(原在对面)⇒ 血条变友军色、头像框挪进我方栏、蓝框" % tag, ally_ok and in_mine and acc_ok,
+			"血条 %s / 进我方栏 %s / 蓝框 %s" % [str(ally_ok), str(in_mine), str(acc_ok)])
+	## ④ 两侧头像栏每一个框: 我方蓝、对方红(建框时的贴图色 + 每帧刷的那个框色)
+	b._info_sys._update_team_panels()
+	var fm := 0
+	var ff := 0
+	var fbad: Array = []
+	for u in b._units:
+		var fr2 = u.get("panel_frame")
+		if fr2 == null or not is_instance_valid(fr2) or (fr2 as Node).is_queued_for_deletion() or not (fr2 as Node).is_inside_tree():
+			continue
+		var mine: bool = b._eff_side(u) == me
+		var want_c := Color("#3fa9ff") if mine else Color("#ff5a5a")
+		if mine:
+			fm += 1
+		else:
+			ff += 1
+		var psb = u.get("panel_stylebox")
+		if not _frame_accent_is(fr2, want_c) or not (psb is StyleBoxFlat and (psb as StyleBoxFlat).border_color.is_equal_approx(want_c)):
+			fbad.append(str(u.get("id", "?")))
+	_ok("%s ★两侧头像栏: 我方 %d 个蓝框、对方 %d 个红框" % [tag, fm, ff], fm > 0 and ff > 0 and fbad.is_empty(), str(fbad))
+
+
+## 两边各有活着、带血条和头像框的单位吗。
+func _both_sides_live(b: Node, me: String) -> bool:
+	var nm := 0
+	var nf := 0
+	for u in b._units:
+		if not bool(u.get("alive", false)) or u.get("hp_bar") == null or not is_instance_valid(u.get("hp_bar")):
+			continue
+		if u.get("panel_frame") == null or not is_instance_valid(u.get("panel_frame")):
+			continue
+		if b._eff_side(u) == me:
+			nm += 1
+		else:
+			nf += 1
+	return nm > 0 and nf > 0
+
+
+## 头像框的颜色: 槽框贴图(StyleBoxTexture)看 modulate(= UISkin.tint_of(队色)); 贴图缺失时的 StyleBoxFlat 看描边。
+func _frame_accent_is(fr, accent: Color) -> bool:
+	if fr == null or not is_instance_valid(fr):
+		return false
+	var sb := (fr as Control).get_theme_stylebox("panel")
+	if sb is StyleBoxTexture:
+		return (sb as StyleBoxTexture).modulate_color.is_equal_approx(UISkin.tint_of(accent))
+	if sb is StyleBoxFlat:
+		return (sb as StyleBoxFlat).border_color.is_equal_approx(accent)
+	return false
+
+
 ## 节点下第一个以 prefix 开头的 Label 的字色(没有 ⇒ Color())。
 func _label_col(n, prefix: String) -> Color:
 	if n == null or not is_instance_valid(n):
@@ -1160,6 +1280,7 @@ func _t_a() -> void:
 	_ok("A 我是 a ⇒ 名字照旧(左 = 看的人自己, 不额外给名字)", ReplayRecorder.play_names.is_empty(), str(ReplayRecorder.play_names))
 	_ok("A ★账按服务器记(%d-%d)、单子清掉" % [_srv_gw, _srv_gl], int(_gs.gauntlet_wins) == _srv_gw and int(_gs.gauntlet_losses) == _srv_gl
 		and (_gs.referee_pending as Dictionary).is_empty())
+	await _bar_checks(b, "A", "left")
 	await _play_to_end(b)
 	await _wait(func() -> bool: return is_instance_valid(b) and b.find_child("SettleScreen", true, false) != null, 5000)
 	_ok("A 结算屏胜负 = 服务器(%s)" % ("胜利" if _srv_won else "失败"), _settle_title(b) == ("胜利" if _srv_won else "失败"), _settle_title(b))
@@ -1210,6 +1331,7 @@ func _t_b() -> void:
 	var row: Dictionary = (_gs.match_history as Array)[0]
 	_ok("B 战绩页那一行: 我在右边(side = b)、对手名、录像号", str(row.get("side", "")) == "b" and str(row.get("foe_name", "")) == nm
 		and str(row.get("replay_id", "")) == MID2, str(row))
+	await _bar_checks(b, "B", "right")
 	await _play_to_end(b)
 	await _wait(func() -> bool: return is_instance_valid(b) and b.find_child("SettleScreen", true, false) != null, 5000)
 	_ok("B ★结算屏胜负 = 服务端给 B 的那一个(%s)" % ("胜利" if _srv_won else "失败"), _settle_title(b) == ("胜利" if _srv_won else "失败"),

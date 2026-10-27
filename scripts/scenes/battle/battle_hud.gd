@@ -1672,7 +1672,8 @@ func _build_team_panels() -> void:
 
 func _make_team_frame(u: Dictionary) -> Control:
 	var side = battle._eff_side(u)   # ★有效阵营(驯服归顺的龟按新阵营配色), 不是原 side
-	var accent = Color("#3fa9ff") if side == "left" else Color("#ff5a5a")
+	## 我方那一栏蓝框、对方红框(看的人是 B ⇒ 右栏是我方; 其余与改之前相同)
+	var accent = Color("#3fa9ff") if side == ReplayRecorder.my_side(battle) else Color("#ff5a5a")
 	var frame = PanelContainer.new()
 	frame.name = "Frame_" + str(u.get("id", ""))
 	var sb = StyleBoxFlat.new()

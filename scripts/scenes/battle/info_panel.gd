@@ -113,7 +113,7 @@ func _update_team_panels() -> void:
 			#   左栏里就它一个红框。
 			#   ★这是同一形状的第三次(前两次: _dl_side_alive 手写阵营判断、_make_team_column 按原 side)
 			#     —— "同一个语义在两处各写各的", 而【每帧重刷的那一处】总是赢。
-			var base_accent = Color("#3fa9ff") if battle._eff_side(u) == "left" else Color("#ff5a5a")
+			var base_accent = Color("#3fa9ff") if battle._eff_side(u) == ReplayRecorder.my_side(battle) else Color("#ff5a5a")   # 我方蓝 / 对方红(看的人是 B ⇒ 右是我方)
 			(sb as StyleBoxFlat).border_color = (Color("#ffd93d") if selected else base_accent)
 		for cb in u.get("panel_charge_bars", []):   # 装备格充能进度条
 			var cf = cb.get("fill", null)

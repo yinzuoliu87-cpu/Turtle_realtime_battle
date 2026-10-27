@@ -2070,7 +2070,7 @@ func _make_status_bar(side: String, level: int = 0) -> Dictionary:
 		root.add_child(lv_badge)
 	# --- HpBar 组件 (Node2D, 自定义 _draw) ---
 	var hp_bar: HpBar = HpBarScene.new()
-	hp_bar.setup(side == "left", false)
+	hp_bar.setup(side == ReplayRecorder.my_side(self), false)   # 友军 = 看的人那一侧(周六配对局我是 B ⇒ 右; 其余左)
 	hp_bar.bar_w = BAR_W   # 实时缩小血条 (覆盖 turtle-hud 硬编码 88/5)
 	hp_bar.bar_h = BAR_H
 	hp_bar.position = Vector2(0, 8)   # 在 root 内下移, 给上方留头 (shadow/border 在 -border)

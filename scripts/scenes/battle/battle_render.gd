@@ -635,7 +635,8 @@ func _update_overlay() -> void:
 			#   于是被驯服归顺我方的龟, 血条【一直是敌方红】。逻辑上它已经是我方
 			#   (不打我方、打原队、进我方幸存名单), 唯独玩家看到的还是敌人色。
 			#   探针实测: tamed_side=left / _eff_side=left, 而 hp_bar.is_ally 仍是 false。
-			var _ally_now: bool = (battle._eff_side(u) == "left")
+			## 看的人是 B(周六配对局回放 / 直播)⇒ 「我方」是右边(ReplayRecorder.my_side); 其余与改之前相同(左)
+			var _ally_now: bool = (battle._eff_side(u) == ReplayRecorder.my_side(battle))
 			if hb.is_ally != _ally_now:
 				hb.is_ally = _ally_now
 				hb.queue_redraw()      # is_ally 只在 _draw 里读, 不主动重绘就要等下一次脏才变色
