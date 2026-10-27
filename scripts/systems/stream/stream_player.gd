@@ -427,7 +427,13 @@ func _event(kind: String, a: Array) -> void:
 	match kind:
 		"float":
 			if a.size() >= 7:
-				battle._vfx._float_text(a[0], str(a[1]), a[2], bool(a[3]), str(a[4]), str(a[5]), float(a[6]))
+				var ft := str(a[1])
+				var fc = a[2]
+				## 团灭 / 蛋破大字是服务器按左方视角录的: 我是 B(周六配对局)⇒ 换成右方视角那一句(DualLaneFlow.SIDE_SWAP_TEXT)
+				if ReplayRecorder.viewer_side(battle) == "b" and DualLaneFlow.SIDE_SWAP_TEXT.has(ft):
+					fc = DualLaneFlow.SIDE_SWAP_TEXT[ft][1]
+					ft = str(DualLaneFlow.SIDE_SWAP_TEXT[ft][0])
+				battle._vfx._float_text(a[0], ft, fc, bool(a[3]), str(a[4]), str(a[5]), float(a[6]))
 		"shake":
 			battle._shake(float(a[0]))
 		"hitstop":

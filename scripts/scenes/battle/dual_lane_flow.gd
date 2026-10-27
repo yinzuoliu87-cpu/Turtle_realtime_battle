@@ -209,21 +209,26 @@ func _dl_build_present_overlay(mode: String) -> void:
 		vb.add_child(_dl_matchup_row(cur_lane))
 	elif mode == "lane_settle":
 		var win_lr = "right" if battle._dl_pending_loser == "left" else "left"
+		## 「我方」= 录像里看的人那一侧(周六配对局我是 B ⇒ 右边; 其余一律左边, 与改之前相同)
+		var me_lr: String = ReplayRecorder.my_side(battle)
 		title.text = "%s  战果" % lane_cn.get(cur_lane, cur_lane)
 		var r = Label.new(); r.add_theme_font_size_override("font_size", 36)
 		UISkin.title_label(r, 36)   # 比上面的过场标题低一级
-		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == "left" else Color("#ff9b9b"))
+		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == me_lr else Color("#ff9b9b"))
 		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		r.text = "本战场胜利" if win_lr == "left" else "本战场失败"
+		r.name = "LaneSettleResult"
+		r.text = "本战场胜利" if win_lr == me_lr else "本战场失败"
 		vb.add_child(r)
 		var rec = Label.new(); rec.add_theme_font_size_override("font_size", 19); rec.add_theme_color_override("font_color", Color("#ffe9a8"))
 		rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rec.name = "LaneSettleRecord"
 		rec.text = _dl_record_line(cur_lane, win_lr)   # 带本路待记结果 → 赢上路即显1-0(record在5秒后才调)
 		vb.add_child(rec)
 		if GameState != null and GameState.egg_hp is Dictionary:
 			var e = Label.new(); e.add_theme_font_size_override("font_size", 16); e.add_theme_color_override("font_color", Color("#cfe6ff"))
 			e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			e.text = "龟蛋生命  我方 %d  ·  对方 %d" % [int(GameState.egg_hp.get("left", 0.0)), int(GameState.egg_hp.get("right", 0.0))]
+			e.name = "LaneSettleEggs"
+			e.text = "龟蛋生命  我方 %d  ·  对方 %d" % [int(GameState.egg_hp.get(me_lr, 0.0)), int(GameState.egg_hp.get(ReplayRecorder.foe_side(battle), 0.0))]
 			vb.add_child(e)
 	var hint = Label.new(); hint.add_theme_font_size_override("font_size", 13); hint.add_theme_color_override("font_color", Color("#7a8a96"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -292,13 +297,14 @@ func _dl_stagger_in(vb: VBoxContainer) -> void:
 func _dl_record_line(extra_lane: String = "", extra_winner: String = "") -> String:
 	var lw = 0; var rw = 0
 	var seen = {}
+	var me_lr: String = ReplayRecorder.my_side(battle)   # 「我方」那一侧(周六配对局我是 B ⇒ 右边; 其余左边)
 	if GameState != null and GameState.lane_results is Dictionary:
 		for k in GameState.lane_results.keys():
 			seen[k] = true
-			if str(GameState.lane_results[k]) == "left": lw += 1
+			if str(GameState.lane_results[k]) == me_lr: lw += 1
 			else: rw += 1
 	if extra_lane != "" and not seen.has(extra_lane):   # 补上本路待记结果(结算幕布用)
-		if extra_winner == "left": lw += 1
+		if extra_winner == me_lr: lw += 1
 		else: rw += 1
 	return "各路战果    我方 %d : %d 对方" % [lw, rw]   # ★"本场比分…-…"改成冒号比分, 与结算页口径一致
 
@@ -308,10 +314,12 @@ func _dl_matchup_row(lane: String) -> Control:
 	var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 44); row.alignment = BoxContainer.ALIGNMENT_CENTER
 	## 回放里看别人的录像时「我方」是录像方, 对看的人是错话 ⇒ 知道名字就写名字(ReplayRecorder.side_names)。
 	var hdr := _side_headers()
-	row.add_child(_dl_side_column(_dl_lane_specs(lane), true, str(hdr["l"]), Color("#9ae6b0")))
+	## 名字颜色跟「我方」走: 绿 = 我、红 = 对面(周六配对局我是 B ⇒ 右边那一列是绿; 其余与改之前相同)。只改字色, 卡片照旧按左右建。
+	var mine_l: bool = ReplayRecorder.my_side(battle) == "left"
+	row.add_child(_dl_side_column(_dl_lane_specs(lane), true, str(hdr["l"]), Color("#9ae6b0") if mine_l else Color("#ff9b9b")))
 	var vs = Label.new(); vs.text = "VS"; vs.add_theme_font_size_override("font_size", 56); vs.add_theme_color_override("font_color", Color("#ffd93d")); vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(vs)
-	row.add_child(_dl_side_column(_dl_foe_specs(lane), false, str(hdr["r"]), Color("#ff9b9b")))
+	row.add_child(_dl_side_column(_dl_foe_specs(lane), false, str(hdr["r"]), Color("#ff9b9b") if mine_l else Color("#9ae6b0")))
 	return row
 
 
@@ -740,7 +748,7 @@ func _dl_is_decider(wiped_side: String) -> bool:
 ##   大字 → 明确告诉玩家发生了什么(用 battle._vfx._float_text 的 label 模式, 决胜公告也是这么做的)。
 ## ★用裸 battle.create_tween 的地方见 _dl_enter_present 说明(跨路存活不能被 battle._sim_tweens 连坐清掉)。
 func _dl_wipe_dramatize(wiped_lr: String) -> void:
-	var we_lost: bool = (wiped_lr == "left")
+	var we_lost: bool = (wiped_lr == ReplayRecorder.my_side(battle))   # 「我方」= 看的人那一侧(配对局 B ⇒ 右)
 	battle._add_hitstop(0.30)                     # 定格: 比普通击杀(0.05~0.12)长得多, 标记"这是一段的结束"
 	battle._shake(battle.JUICE_SHAKE_BIG)
 	# 全屏闪: 我方被团灭→暗红警示; 我方获胜→金色
@@ -750,8 +758,8 @@ func _dl_wipe_dramatize(wiped_lr: String) -> void:
 	var txt: String = "全军覆没" if we_lost else "敌军覆没"
 	var tcol: Color = Color("#ff6b6b") if we_lost else Color("#ffd93d")
 	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -120.0), txt, tcol, true, "label")
-	# 幸存方每个单位身上冒一记火花, 强调"是他们打完的"
-	var survivor: String = "right" if we_lost else "left"
+	# 幸存方每个单位身上冒一记火花, 强调"是他们打完的"(按录像里真的那一侧, 与看的人无关)
+	var survivor: String = "right" if wiped_lr == "left" else "left"
 	for u in battle._units:
 		if u.get("alive", false) and str(u.get("side", "")) == survivor and not u.get("_isEgg", false):
 			battle._vfx._hit_spark(u)
@@ -759,7 +767,7 @@ func _dl_wipe_dramatize(wiped_lr: String) -> void:
 ## ★蛋破演出 —— 整场的最高潮, 原来却是【直接跳胜负横幅】, 零过场(横扫/终极路都走这条)。
 ## 比团灭更重: 更长的顿帧 + 最大震屏 + 蛋位置爆冲击环 + 全场大字。
 func _dl_egg_break_dramatize(broken_side_lr: String) -> void:
-	var we_lost: bool = (broken_side_lr == "left")
+	var we_lost: bool = (broken_side_lr == ReplayRecorder.my_side(battle))   # 「我方」= 看的人那一侧(配对局 B ⇒ 右)
 	battle._add_hitstop(0.45)                    # 比团灭(0.30)更长 —— 这是整场结束
 	battle._shake(battle.JUICE_SHAKE_MAX)
 	_dl_flash_screen(Color(1.0, 0.95, 0.85) if not we_lost else Color(0.9, 0.1, 0.12), 0.55)
@@ -774,6 +782,14 @@ func _dl_egg_break_dramatize(broken_side_lr: String) -> void:
 	var txt: String = "龟蛋破碎" if we_lost else "击碎敌蛋"
 	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -140.0), txt,
 		Color("#ff5c5c") if we_lost else Color("#ffe680"), true, "label")
+
+## 团灭 / 蛋破那几句全场大字的「我方 ↔ 对方」对照(逐帧直播里这几句是服务器按左方视角录的, 我是 B 时手机这边换过来)。
+##   [另一句, 另一句的颜色] —— 颜色与 `_dl_wipe_dramatize` / `_dl_egg_break_dramatize` 里同一句话的颜色相同。
+const SIDE_SWAP_TEXT := {
+	"全军覆没": ["敌军覆没", Color("#ffd93d")], "敌军覆没": ["全军覆没", Color("#ff6b6b")],
+	"龟蛋破碎": ["击碎敌蛋", Color("#ffe680")], "击碎敌蛋": ["龟蛋破碎", Color("#ff5c5c")],
+}
+
 
 ## 全屏一次性闪光(仿 _smolder_sys._smolder_flash 的写法; 用于段落切换)
 func _dl_flash_screen(col: Color, dur: float) -> void:

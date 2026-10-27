@@ -32,6 +32,13 @@ extends Node
 ##                        skip = 「跳过」)。没弹框(ONBOARD=0 / 已看过教程)时不起作用。
 ##   SIM_QUEUE_GIVEUP_SEC=N  闯关日(周六 00:00 ~ 周日 17:30)在线排队最多连续等多久(秒, 默认 300): 过了 ⇒ 按「取消匹配」、
 ##                        出队回主菜单后收工(`queue_timeout`)。积分赛日不看它。
+## ── 闯关日专用(2026-10-27 陪练号调度器 server/referee/gauntlet_bot_planner.py 拉号时传; 积分赛日一概不看)──
+##   SIM_SHOP_MIN_SEC / SIM_SHOP_MAX_SEC  两局之间在商店逛多久(秒, 区间里随机; 只给一个 ⇒ 两头相同; 都不给 ⇒ 买完就走)。
+##                        逛的时候照常按已有策略买(买完再凑够时间)。
+##   SIM_EXPECT_CELL=gw-gl  调度器以为这个号停在哪个战绩格子: 本机战绩(开排之前)或服务端回的格子(第一次进队)对不上 ⇒
+##                        不排 / 出队, 收工(`cell_mismatch`)。只查这个进程的第一局(之后格子本来就会变)。
+##   SIM_SKIP_WATCH=1       配上后不看直播 / 录像: 账一记完(服务器算完那一刻, 在取录像之前)就去商店(`RefereeWatch.skip_play`)。
+##   SIM_GAUNTLET_ONLINE=1  调度器会传; 本驱动按赛程阶段自动走排队(闯关日 = 排队), 不看它。
 ##
 ## ── 产物 ──
 ##   user://sim_events.jsonl   每件事一行(时间 / 类型 / 数据) —— 台账的原始依据
@@ -71,6 +78,29 @@ const STUCK_MATCH_REFEREE_SLACK := 20.0
 const QUEUE_GIVEUP_DEFAULT := 300.0
 ## 闯关日匹配屏停在报错那一行多久就按「←」(秒)。
 const ERROR_LEAVE_SEC := 5.0
+
+
+## 两局之间在商店逛多久的区间(秒): SIM_SHOP_MIN_SEC / SIM_SHOP_MAX_SEC; 只给一个 ⇒ 两头相同; 都没给 ⇒ (0, 0) = 不逛。
+static func shop_dwell_range() -> Vector2:
+	var a := OS.get_environment("SIM_SHOP_MIN_SEC").strip_edges()
+	var b := OS.get_environment("SIM_SHOP_MAX_SEC").strip_edges()
+	var lo: float = maxf(0.0, float(a)) if a.is_valid_float() else -1.0
+	var hi: float = maxf(0.0, float(b)) if b.is_valid_float() else -1.0
+	if lo < 0.0 and hi < 0.0:
+		return Vector2.ZERO
+	if lo < 0.0:
+		lo = hi
+	if hi < 0.0:
+		hi = lo
+	return Vector2(minf(lo, hi), maxf(lo, hi))
+
+
+## 调度器以为这个号停在的战绩格子(SIM_EXPECT_CELL=gw-gl); 没给 / 认不出 ⇒ (-1, -1) = 不查。
+static func expect_cell() -> Vector2i:
+	var p := OS.get_environment("SIM_EXPECT_CELL").strip_edges().split("-")
+	if p.size() != 2 or not p[0].is_valid_int() or not p[1].is_valid_int():
+		return Vector2i(-1, -1)
+	return Vector2i(int(p[0]), int(p[1]))
 
 
 ## 闯关日在线排队最多连续等多久(秒): SIM_QUEUE_GIVEUP_SEC, 没给 / 不是正数 ⇒ 300。
@@ -122,6 +152,7 @@ var _shop_visits := 0
 var _formed_season := -1      # 本进程里已经排过阵的大轮号(每个大轮排一次)
 var _econ_only := OS.get_environment("SIM_ECON_ONLY") == "1"   # 离线经济推演(见 _do_menu)
 var _acted_id := 0         # 已经处理过的场景实例(同一屏只做一次主动作, 防连点)
+var _cell_checked := false   # SIM_EXPECT_CELL 只查这个进程的第一局(第一次进队之后就不再查)
 
 
 ## 时钟偏移(2026-10-12 周日统一结算实跑): `SIM_CLOCK_OFFSET=秒` ⇒ 每帧把赛程钟钉在「真实时间 + 偏移」。
@@ -316,6 +347,11 @@ func _do_menu(m: Node) -> void:
 		_shot("menu_rounds_cap")
 		_finish("rounds_cap")
 		return
+	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET and not _cell_checked and not _local_cell_ok():
+		## 闯关日: 调度器以为这个号在 A 格子, 本机战绩却在 B 格子 ⇒ 别排(免得被拉去补 A 格子却排进 B 格子)
+		_ev("cell_mismatch", {"want": [expect_cell().x, expect_cell().y], "local": [int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)]})
+		_finish("cell_mismatch")
+		return
 	_rounds_started += 1
 	## ★SIM_ECON_ONLY=1(只给离线推演用, 用户 2026-10-12「检查加入给一个账号16轮的深海币量，看看几个机器人怎么买」):
 	##   第 1 场照常真打(要走选龟 / 锁阵容), 之后不打, 按真实结算公式记一场(RealtimeBattle3DScene 积分赛分支同一条式子),
@@ -462,6 +498,23 @@ func _do_match(mm: Node) -> void:
 		_shot("match_%02d" % (int(GameState.season_total_battles) + 1))
 
 
+## 本机闯关战绩与 SIM_EXPECT_CELL 对得上吗(没给 ⇒ 对得上)。
+func _local_cell_ok() -> bool:
+	var want := expect_cell()
+	return want.x < 0 or want == Vector2i(int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+
+
+## 闯关日两局之间在店里逛够 SIM_SHOP_MIN_SEC ~ MAX 秒(从进店算起; 买在这之前已经照常买完)。没给 ⇒ 不等。
+func _shop_dwell(s: Node) -> void:
+	var r := shop_dwell_range()
+	if r.y <= 0.0:
+		return
+	var want: float = _rng.randf_range(r.x, r.y)
+	_ev("shop_dwell", {"want_s": snappedf(want, 0.01), "range": [r.x, r.y], "spent_s": snappedf(_since(), 0.01)})
+	while _alive(s) and _since() < want:
+		await _sleep(minf(0.5, maxf(0.05, want - _since())))
+
+
 ## ★闯关日: 匹配屏 = 在线排队的等待界面(用户 10-27「周六周日我们讲究是在线啊」: 陪练号是真客户端在线, 与真人同一套排队)。
 ##   不点取消, 一直等到配上 —— 之后匹配屏自己翻 VS 卡、等裁判、播、记账(与真人同一条路), 驱动接着在战斗场按「前往商店」。
 ##   连续排队超过 SIM_QUEUE_GIVEUP_SEC ⇒ 按产品那颗「取消匹配」; 出队回主菜单 ⇒ 收工(`queue_timeout`);
@@ -475,7 +528,9 @@ func _do_match_queue(mm: Node) -> void:
 	var t0 := Time.get_ticks_msec()
 	var shot := false
 	var gave_up := false
+	var quit_why := ""               # 按了「取消匹配」的原因: queue_timeout / cell_mismatch(出队成功就以它收工)
 	var err0 := -1
+	rw.skip_play = OS.get_environment("SIM_SKIP_WATCH").strip_edges() == "1"
 	## 配上那一刻按信号记(配上 → 取录像 → 换场可能在两次查看之间就走完了, 轮询会漏掉)。q0 = 开始排队的那一刻。
 	var box := {"hooked": false, "paired": false, "q0": -1}
 	while _alive(mm):
@@ -493,13 +548,29 @@ func _do_match_queue(mm: Node) -> void:
 			if int(box["q0"]) < 0:
 				box["q0"] = Time.get_ticks_msec()
 				_ev("queue_wait", {"cell": [run.cell.x, run.cell.y], "giveup_s": giveup})
-			if (Time.get_ticks_msec() - int(box["q0"])) / 1000.0 > giveup:
-				gave_up = true
+				## 第一次进队: 服务端回的格子(账本)与调度器以为的对不上 ⇒ 出队、收工
+				if not _cell_checked:
+					_cell_checked = true
+					var want := expect_cell()
+					if want.x >= 0 and want != Vector2i(run.cell.x, run.cell.y):
+						quit_why = "cell_mismatch"
+						_ev("cell_mismatch", {"want": [want.x, want.y], "server": [run.cell.x, run.cell.y]})
+			if quit_why == "" and (Time.get_ticks_msec() - int(box["q0"])) / 1000.0 > giveup:
+				quit_why = "queue_timeout"
 				_ev("queue_timeout", {"waited_s": (Time.get_ticks_msec() - int(box["q0"])) / 1000.0, "cell": [run.cell.x, run.cell.y]})
 				_shot("queue_timeout")
+			if quit_why != "":
+				gave_up = true
 				var bt := mm.find_child("QueueCancel", true, false) as Button
 				if bt != null and not bt.disabled:
 					bt.emit_signal("pressed")
+		## 陪练号不看(SIM_SKIP_WATCH): 账一记完就停(`skip_play`)⇒ 去商店, 与结算屏「前往商店」同一句
+		if st == rw.ST_SKIPPED:
+			_ev("watch_skipped", {"won": bool((run.view as Dictionary).get("won", false)),
+				"gw": int(GameState.gauntlet_wins), "gl": int(GameState.gauntlet_losses)})
+			SceneNav.go(get_tree(), S_SHOP)
+			await _wait_scene(S_SHOP, 10.0)
+			return
 		## 停在原地的报错(拒收 / 断网 / 账已记但录像播不了): 真人会按「←」回去 ⇒ 停够 ERROR_LEAVE_SEC 秒就按。
 		##   账已经记了(录像播不了)或「战绩已同步，请重新开战」⇒ 回去接着排下一局; 别的(要更新 / 已结束 / 连不上服务器)⇒ 收工,
 		##   不在主菜单 ↔ 匹配屏之间空转。
@@ -525,8 +596,8 @@ func _do_match_queue(mm: Node) -> void:
 		await _sleep(0.5)
 	if gave_up and not bool(box["paired"]):
 		var sc := get_tree().current_scene
-		_ev("queue_left", {"to": sc.scene_file_path if sc != null else ""})
-		_finish("queue_timeout")
+		_ev("queue_left", {"to": sc.scene_file_path if sc != null else "", "why": quit_why})
+		_finish(quit_why)
 
 
 # ═══════════════════════════════ 战斗 / 结算 ═══════════════════════════════
@@ -730,6 +801,10 @@ func _do_shop(s: Node) -> void:
 		return
 	if _shop_visits <= 2:
 		_shot("shop_%02d_after" % _shop_visits)
+	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET:
+		await _shop_dwell(s)             # 闯关日: 两局之间在店里多逛一会儿(SIM_SHOP_MIN_SEC ~ MAX), 像真人一样不马上排下一局
+		if not _alive(s):
+			return
 	## 顶栏「🎒 背包」那颗钮绑的就是这一句(ShopScene.gd TopBar left_actions → _go_inventory;
 	##   教程里它先报「点击背包」那一步, 再走导演推进)。
 	s.call("_go_inventory")

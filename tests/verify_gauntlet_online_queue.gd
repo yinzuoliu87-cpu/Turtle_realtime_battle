@@ -21,7 +21,14 @@ extends Node
 ##      等待超时 ⇒ 按「取消匹配」⇒ 收工(queue_timeout), 全程不报 STUCK
 ##   R  ★积分赛一行不动: 积分赛走的函数与 84d2d853(改动前)逐字节相同(行尾归一); 周六专用的那几个只从闯关日分支可达
 ##   Q  服务端迁移在仓库里时: 三条 RPC 的形参与本机请求体对账(还没落盘 ⇒ 打 PEND, 不算通过)
-## 反向验证(改坏 → 红 → 逐字节还原): 去掉进队后的心跳 ⇒ A / E / W 红; B 方不按 side 摆名字 ⇒ B 红; B 方客户端再翻一次胜负 ⇒ B 红。
+##   V  ★看的人口径(2026-10-27 主会话「B 看到自己被写成『对方』, 必须改」): 我是 B 时对局顶栏 / 本战场胜负 / 各路战果 / 龟蛋生命 /
+##      结算屏「我方」「敌方」两页 / 各路胜负牌 / 我方 MVP / 战报两列 / 单位面板「友军」都是 B 自己; A 照旧(A 段同一组断言);
+##      战绩页回放我在右边那一行 ⇒ 按存下的 side 给名字; 开关只在「正在播 + 入口给了 side=b」时生效(假战场三种状态 + 静态: 谁能给 side=b)
+##   S 段另量陪练号周末参数: SIM_SHOP_MIN/MAX_SEC(两局之间逛店)/ SIM_SKIP_WATCH(账记完不看直播直接去商店)/
+##      SIM_EXPECT_CELL(本机 / 服务端格子对不上 ⇒ cell_mismatch 收工)
+## 反向验证(改坏 → 红 → 逐字节还原): 去掉进队后的心跳 ⇒ A / E / W 红; B 方不按 side 摆名字 ⇒ B 红; B 方客户端再翻一次胜负 ⇒ B 红;
+##   viewer_side 恒 "a" / 结算屏两页不按看的人 ⇒ V 红; 不逛店 / 不跳过观看 / 不查格子 ⇒ S 红。
+## GATE_ONLY=A,B,S(逗号分隔段名)⇒ 只跑这几段(反向验证省时间用; 门禁本身不设)。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const NR := preload("res://scripts/net/net_route.gd")
@@ -67,19 +74,19 @@ const RANKED := {
 		],
 	},
 	"scripts/systems/sim/sim_driver.gd": {
-		"digest": "96147e72cf1d2c27f388dd08d2336f1df46173e348fed72daa6c6d7c682a3e8e",
-		"views": {"stuck_limit": "249c0a8120123e0922fcd539dd090b34a6c7f3d0b40a590947a134823e5be79a", "_do_match": "ba0505964df1b434b7f0ec774d2371d9cb95b6869140166520e8a5b475f9676b"},
+		"digest": "82aa6b708927bca6f00a30f9ab2dd04ce88f9f4b578dd4ae4c45a08a86ecab5e",
+		"views": {"stuck_limit": "249c0a8120123e0922fcd539dd090b34a6c7f3d0b40a590947a134823e5be79a", "_do_match": "ba0505964df1b434b7f0ec774d2371d9cb95b6869140166520e8a5b475f9676b", "_do_menu": "da531d0881e93941022065cb369a014ec36d604d103fcd294dd15b768b6e6b21", "_do_shop": "366a597e0ab76a1d45f40d2532021528328e34c2555a7c6f64b58e4d06a805f6"},
 		"sat_only": [],
 		"units": [
 			"_account_only", "_alive", "_all_gear", "_arrange_lineup", "_back_to_menu", "_bench_gear_by_value", "_bench_gear_n",
 			"_best_bench_gear", "_buy_xp", "_core_types", "_cost_of", "_do_battle", "_do_codex", "_do_first_launch",
-			"_do_inventory", "_do_menu", "_do_shop", "_do_team", "_drain_guides", "_dup_budget", "_eff_val", "_ensure_en_nick",
-			"_equip_target", "_equipped_list", "_ev", "_finish", "_gear_side", "_gear_val", "_guide_text", "_is_core",
-			"_junk_bench_idx", "_lineup_record", "_n_star3", "_offer_score", "_open_singles", "_owned_gear_n",
-			"_press_tutorial_choice", "_process", "_quit_when_done", "_ready", "_refresh_floor", "_reserve", "_rolling_down",
-			"_run", "_shot", "_since", "_since_start", "_sleep", "_star_hist", "_stats", "_strategy", "_syn_gain",
-			"_target_level", "_tour", "_tour_extra", "_tour_wanted", "_unit_fits", "_unit_side", "_wait_scene",
-			"_wants_one_piece", "_worst_equipped", "_worst_owned_val", "attach", "enabled",
+			"_do_inventory", "_do_team", "_drain_guides", "_dup_budget", "_eff_val", "_ensure_en_nick", "_equip_target",
+			"_equipped_list", "_ev", "_finish", "_gear_side", "_gear_val", "_guide_text", "_is_core", "_junk_bench_idx",
+			"_lineup_record", "_n_star3", "_offer_score", "_open_singles", "_owned_gear_n", "_press_tutorial_choice",
+			"_process", "_quit_when_done", "_ready", "_refresh_floor", "_reserve", "_rolling_down", "_run", "_shot", "_since",
+			"_since_start", "_sleep", "_star_hist", "_stats", "_strategy", "_syn_gain", "_target_level", "_tour", "_tour_extra",
+			"_tour_wanted", "_unit_fits", "_unit_side", "_wait_scene", "_wants_one_piece", "_worst_equipped",
+			"_worst_owned_val", "attach", "enabled",
 		],
 	},
 	"scripts/net/backend.gd": {
@@ -140,6 +147,7 @@ var _srv_b: Dictionary = {}       # 对手快照(机器人池那一份; 真人 /
 var _rec_b64 := ""
 var _rec_mid := MID
 var _rec_a_b64 := ""         # A 段那一局的录像(S 段驱动再用一次)
+var _srv_auto := false        # true ⇒ 假服务器的账本 = 本机战绩 + 这一局赢(S 段驱动一个进程打好几局)
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -186,20 +194,40 @@ func _ready() -> void:
 	_net_fake()
 	_ok("分母: 时间钉在周六、闯关赛上线、开关开", P2C.phase_at_utc(P2C.now_utc()) == P2C.PHASE_GAUNTLET
 		and P2C.phase_mode_live(P2C.PHASE_GAUNTLET) and RW.gauntlet_on())
-	_t_r()
-	_t_q()
-	_t_p()
-	await _t_a()
-	await _t_b()
-	await _t_c()
-	await _t_d()
-	await _t_e()
-	await _t_f()
-	await _t_g()
-	await _t_w()
-	await _t_s()
+	if _seg("R"):
+		_t_r()
+	if _seg("Q"):
+		_t_q()
+	if _seg("P"):
+		_t_p()
+	if _seg("V"):
+		_t_v()
+	if _seg("A"):
+		await _t_a()
+	if _seg("B"):
+		await _t_b()
+	if _seg("C"):
+		await _t_c()
+	if _seg("D"):
+		await _t_d()
+	if _seg("E"):
+		await _t_e()
+	if _seg("F"):
+		await _t_f()
+	if _seg("G"):
+		await _t_g()
+	if _seg("W"):
+		await _t_w()
+	if _seg("S"):
+		await _t_s()
 	_cleanup()
 	_finish()
+
+
+## GATE_ONLY 没设 ⇒ 每段都跑。
+func _seg(name: String) -> bool:
+	var o := OS.get_environment("GATE_ONLY").strip_edges()
+	return o == "" or Array(o.split(",")).has(name)
 
 
 func _setup_gs() -> void:
@@ -265,6 +293,9 @@ func _cleanup() -> void:
 	MMK._may_leave_for_test = Callable()
 	LS.pending = {}
 	RW.notice = ""
+	RW.skip_play = false
+	for k in ["SIM_SLOT", "SIM_ROUNDS", "SIM_TOUR", "SIM_QUEUE_GIVEUP_SEC", "SIM_SHOP_MIN_SEC", "SIM_SHOP_MAX_SEC", "SIM_EXPECT_CELL", "SIM_SKIP_WATCH"]:
+		OS.set_environment(k, "")
 	_gs.referee_flags = {}
 	_gs.referee_pending = {}
 
@@ -299,7 +330,8 @@ func _paired_body() -> String:
 
 
 func _waiting_body() -> String:
-	return JSON.stringify({"ok": true, "status": "waiting", "gw": int(_gs.gauntlet_wins), "gl": int(_gs.gauntlet_losses),
+	var sc_cell: Array = _sc.get("srv_cell", [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)])   # srv_cell: 服务端账本上的格子与本机不同
+	return JSON.stringify({"ok": true, "status": "waiting", "gw": int(sc_cell[0]), "gl": int(sc_cell[1]),
 		"waited_sec": _sc_polls * 2})
 
 
@@ -374,8 +406,10 @@ func _transport(m, u, h, b, cb) -> void:
 			if not _done:
 				cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "pending", "match_id": _rec_mid})})
 				return
+			var dgw := int(_gs.gauntlet_wins) + 1 if _srv_auto else _srv_gw
+			var dgl := int(_gs.gauntlet_losses) if _srv_auto else _srv_gl
 			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "done", "match_id": _rec_mid,
-				"won": _srv_won, "score": 0, "gw": _srv_gw, "gl": _srv_gl, "coins": 0, "error": null})})
+				"won": true if _srv_auto else _srv_won, "score": 0, "gw": dgw, "gl": dgl, "coins": 0, "error": null})})
 			return
 	if str(m) == "GET" and url.find("/rest/v1/matches?") >= 0 and url.find("match_id=eq." + _rec_mid) >= 0:
 		_hits["matches_get"] = _hit("matches_get") + 1
@@ -473,6 +507,166 @@ func _settle_title(b: Node) -> String:
 		if str((c as Label).text) == "胜利" or str((c as Label).text) == "失败":
 			return (c as Label).text
 	return ""
+
+
+## 一个节点下面所有 Label 的字(去掉首尾空白)。
+func _texts(n) -> Array:
+	var out: Array = []
+	if n == null or not is_instance_valid(n):
+		return out
+	for c in (n as Node).find_children("*", "Label", true, false):
+		out.append(str((c as Label).text).strip_edges())
+	return out
+
+
+## 战绩页上录像号是 id 的那颗「观看」。
+func _watch_btn_of(rs: Node, id: String) -> Button:
+	if rs == null or not is_instance_valid(rs):
+		return null
+	for c in rs.find_children("*", "Button", true, false):
+		if str((c as Button).get_meta("replay_id", "")) == id and not (c as Button).disabled:
+			return c as Button
+	return null
+
+
+## ★看的人口径(对局放完、结算屏在场时量)。me = 录像里「我方」那一侧(我是 a ⇒ left / 我是 b ⇒ right)。
+func _viewer_checks(b: Node, tag: String, me: String, my_name: String, foe_name: String) -> void:
+	var foe := "left" if me == "right" else "right"
+	_ok("%s ★看的人那一侧 = %s(viewer_side %s)" % [tag, me, "b" if me == "right" else "a"],
+		ReplayRecorder.viewer_side(b) == ("b" if me == "right" else "a") and ReplayRecorder.my_side(b) == me and ReplayRecorder.foe_side(b) == foe)
+	## ① 对局顶栏: 我这一侧写我的名字
+	var tb = b._hud._topbar
+	var nl := str(tb.name_l.text).strip_edges() if tb != null and tb.name_l != null else "?"
+	var nr := str(tb.name_r.text).strip_edges() if tb != null and tb.name_r != null else "?"
+	_ok("%s ★对局顶栏: 我这一侧(%s)写我「%s」、对面写对手「%s」" % [tag, me, my_name, foe_name],
+		(nl if me == "left" else nr) == my_name and (nr if me == "left" else nl) == foe_name, "左 %s / 右 %s" % [nl, nr])
+	## ② 一路结束的幕布: 让左方输掉这一路 ⇒ 右方赢
+	b._dl_pending_loser = "left"
+	b._dl_sys._dl_build_present_overlay("lane_settle")
+	var root: Node = b._dl_present_root
+	var l_res := root.find_child("LaneSettleResult", true, false) as Label if root != null else null
+	var l_rec := root.find_child("LaneSettleRecord", true, false) as Label if root != null else null
+	var l_egg := root.find_child("LaneSettleEggs", true, false) as Label if root != null else null
+	var want_res := "本战场胜利" if me == "right" else "本战场失败"
+	_ok("%s ★本战场结果(左方输了这一路)⇒「%s」" % [tag, want_res], l_res != null and l_res.text == want_res, l_res.text if l_res != null else "无")
+	var lrs: Dictionary = GameState.lane_results if GameState.lane_results is Dictionary else {}
+	var mw := 0
+	var fw := 0
+	for k in lrs.keys():
+		if str(lrs[k]) == me:
+			mw += 1
+		else:
+			fw += 1
+	if not lrs.has(str(GameState.current_lane)):
+		if me == "right":
+			mw += 1
+		else:
+			fw += 1
+	var want_rec := "各路战果    我方 %d : %d 对方" % [mw, fw]
+	_ok("%s ★各路战果: 「我方」数的是我这一侧赢的路(分母 %d 路)" % [tag, mw + fw], l_rec != null and l_rec.text == want_rec and mw + fw >= 1,
+		"%s / 想要 %s" % [l_rec.text if l_rec != null else "无", want_rec])
+	var eh: Dictionary = GameState.egg_hp if GameState.egg_hp is Dictionary else {}
+	var want_egg := "龟蛋生命  我方 %d  ·  对方 %d" % [int(eh.get(me, 0.0)), int(eh.get(foe, 0.0))]
+	_ok("%s ★龟蛋生命: 「我方」是我这一侧的蛋(两颗蛋不同血: %s)" % [tag, str(int(eh.get(me, 0.0)) != int(eh.get(foe, 0.0)))],
+		l_egg != null and l_egg.text == want_egg, "%s / 想要 %s" % [l_egg.text if l_egg != null else "无", want_egg])
+	b._dl_sys._dl_clear_present_overlay()
+	## ②b 对阵幕布: 我的名字用「我方」的绿、对手用红(名字左右照实)
+	b._dl_sys._dl_build_present_overlay("preview")
+	var col_me := Color()
+	var col_foe := Color()
+	for c in (b._dl_present_root as Node).find_children("*", "Label", true, false) if b._dl_present_root != null else []:
+		## 看自己当 a 的局入口不给名字 ⇒ 写「我方 / 对方」(与改之前相同); 我是 b ⇒ 写两个人的名字
+		var tx := str((c as Label).text).strip_edges()
+		if tx == my_name or tx == "我方":
+			col_me = (c as Label).get_theme_color("font_color")
+		elif tx == foe_name or tx == "对方":
+			col_foe = (c as Label).get_theme_color("font_color")
+	_ok("%s ★对阵幕布: 我这一列(%s)的名字是我方的绿、对面是红" % [tag, me], col_me == Color("#9ae6b0") and col_foe == Color("#ff9b9b"),
+		"%s / %s" % [str(col_me), str(col_foe)])
+	b._dl_sys._dl_clear_present_overlay()
+	## ③ 结算屏「我方」「敌方」两页
+	var scr = b._hud._settle
+	if scr == null or not is_instance_valid(scr):
+		_ok("%s 分母: 结算屏在场" % tag, false)
+		return
+	var views: Array = scr.lane_views()
+	var mine_rows: Array = (views[0] as Dictionary)[me] if not views.is_empty() else []
+	var foe_rows: Array = (views[0] as Dictionary)[foe] if not views.is_empty() else []
+	var mn := {}
+	var fn := {}
+	for r in mine_rows:
+		mn[str(b._st_name(r))] = true
+	for r in foe_rows:
+		fn[str(b._st_name(r))] = true
+	var only_m: Array = []
+	var only_f: Array = []
+	for k in mn.keys():
+		if not fn.has(k):
+			only_m.append(k)
+	for k in fn.keys():
+		if not mn.has(k):
+			only_f.append(k)
+	## 召唤物那一行名字前面有「└ 」(挂在主人下面), 比名字时去掉
+	var t0: Array = (_texts(scr._grids[0][0]) if not (scr._grids[0] as Array).is_empty() else []).map(
+		func(x: String) -> String: return x.trim_prefix("└").strip_edges())
+	var t1: Array = (_texts(scr._grids[1][0]) if not (scr._grids[1] as Array).is_empty() else []).map(
+		func(x: String) -> String: return x.trim_prefix("└").strip_edges())
+	var bad0: Array = []
+	var bad1: Array = []
+	for k in only_m:
+		if not t0.has(k):
+			bad0.append("缺 " + str(k))
+		if t1.has(k):
+			bad1.append("多 " + str(k))
+	for k in only_f:
+		if t0.has(k):
+			bad0.append("多 " + str(k))
+		if not t1.has(k):
+			bad1.append("缺 " + str(k))
+	_ok("%s 分母: 两队各有对面没有的单位(我这一侧独有 %d / 对面独有 %d)" % [tag, only_m.size(), only_f.size()], only_m.size() > 0 and only_f.size() > 0)
+	_ok("%s ★结算屏「我方」页 = 我这一侧(%s)的单位" % [tag, me], bad0.is_empty() and only_m.size() > 0, str(bad0))
+	_ok("%s ★结算屏「敌方」页 = 对面那一侧的单位" % tag, bad1.is_empty() and only_f.size() > 0, str(bad1))
+	## ④ 各路胜负牌
+	var want_pl: Array = []
+	for ln in ["top", "bottom", "final"]:
+		if lrs.has(ln):
+			want_pl.append("胜" if str(lrs[ln]) == me else ("负" if str(lrs[ln]) == foe else "平"))
+	var got_pl: Array = []
+	for t in _texts(scr.find_child("LaneResults", true, false)):
+		if t == "胜" or t == "负" or t == "平":
+			got_pl.append(t)
+	_ok("%s ★各路胜负牌按我这一侧(%d 路)" % [tag, want_pl.size()], want_pl.size() > 0 and got_pl == want_pl, "%s / 想要 %s" % [str(got_pl), str(want_pl)])
+	## ⑤ 我方 MVP
+	var mi: int = b._hud._st_mvp_index(mine_rows)
+	if mi >= 0:
+		_ok("%s ★本场 MVP 是我这一侧的「%s」" % [tag, str(b._st_name(mine_rows[mi]))],
+			_texts(scr.find_child("MvpRow", true, false)).has(str(b._st_name(mine_rows[mi]))))
+	## ⑥ 战报浮层两列
+	b._on_dmg_stats_toggle()
+	var ds = b._dmg_stats
+	_ok("%s ★战报浮层: 「我方」那一列是 %s、「敌方」那一列是 %s" % [tag, me, foe], ds != null and ds._sides == [me, foe] and (ds._cols as Array).size() == 2,
+		str(ds._sides) if ds != null else "无")
+	if ds != null and ds.panel != null:
+		ds.panel.visible = false
+	## ⑦ 单位面板「友军 / 敌方」
+	var u_me = null
+	var u_foe = null
+	for u in b._units:
+		if bool(u.get("_isEgg", false)):
+			continue
+		if u_me == null and str(u.get("side", "")) == me:
+			u_me = u
+		if u_foe == null and str(u.get("side", "")) == foe:
+			u_foe = u
+	if u_me != null and u_foe != null:
+		b._hud._show_unit_info_panel(u_me)
+		var a_ok := _texts(b._info_panel).any(func(x: String) -> bool: return x.begins_with("友军"))
+		b._hud._show_unit_info_panel(u_foe)
+		var f_ok := _texts(b._info_panel).any(func(x: String) -> bool: return x.begins_with("敌方"))
+		b._hud._close_info_panel()
+		_ok("%s ★单位面板: 我这一侧的单位写「友军」、对面写「敌方」" % tag, a_ok and f_ok)
+	else:
+		print("  (%s 场上剩下的单位不够两边各一只, 单位面板这一条不量)" % tag)
 
 
 ## 门禁当服务器: 按交上来的快照, 由裁判程序真算一局(与裁判机同一套代码)。a / b = 左右两份快照。返回 A 赢了吗; 算不成 ⇒ null。
@@ -721,6 +915,50 @@ func _t_p() -> void:
 	_ok("P 等待界面文案不口语化、不用「你 + 动词」(UI 规矩)", banned.is_empty(), str(banned))
 
 
+# ───────────────────────────── V 看的人口径的开关 ─────────────────────────────
+func _t_v() -> void:
+	print("── V 看的人口径的开关只在「正在播 + side=b」时生效 ──")
+	var keep: Dictionary = ReplayRecorder.play_names.duplicate()
+	var rp := ReplayRecorder.new(null)     # 只用它的 mode / is_playing(构造只记下战场引用)
+	var fake := {"_replay": rp}
+	ReplayRecorder.play_names = {"l": "x", "r": "y", "side": "b"}
+	var got := {}
+	for md in ["", "play", "stream", "resume", "rec", "referee"]:
+		rp.mode = md
+		got[md] = ReplayRecorder.viewer_side(fake)
+	_ok("V ★入口给了 side=b: 只有正在播(play / stream)才是 b; 正常对局 / 录制 / 中途退出补打 / 裁判跑局一律 a", got == {"": "a", "play": "b",
+		"stream": "b", "resume": "a", "rec": "a", "referee": "a"}, str(got))
+	rp.mode = "play"
+	ReplayRecorder.play_names = {"l": "x", "r": "y"}
+	_ok("V 入口没给 side(看自己当 a 的局 / 看别人的局)⇒ a", ReplayRecorder.viewer_side(fake) == "a"
+		and ReplayRecorder.my_side(fake) == "left" and ReplayRecorder.foe_side(fake) == "right")
+	_ok("V 没有战场(null)⇒ a", ReplayRecorder.viewer_side(null) == "a")
+	ReplayRecorder.play_names = {"l": "x", "r": "y", "side": "b"}
+	ReplayRecorder.end_play()
+	_ok("V ★离场(end_play)清掉 side ⇒ 下一局不论哪条入口都从 a 起", not ReplayRecorder.play_names.has("side"), str(ReplayRecorder.play_names))
+	ReplayRecorder.play_names = keep
+	## 静态: 谁能给出 side = b —— 只有周六配对局那两处(RefereeWatch.watch_names / 战绩页按存下的 side 调它)
+	var hits: Array = []
+	_scan_lit("res://scripts", "\"side\": \"b\"", hits)
+	_scan_lit("res://autoload", "\"side\": \"b\"", hits)
+	hits.sort()
+	_ok("V ★静态: 代码里写出 side=b 的只有 referee_watch.gd(watch_names)与 RecordScene.gd(我在右边那一行)",
+		hits == ["res://scripts/scenes/RecordScene.gd", "res://scripts/systems/replay/referee_watch.gd"], str(hits))
+	var rw := FileAccess.get_file_as_string("res://scripts/systems/replay/referee_watch.gd")
+	_ok("V 静态: watch_names 只在 side == b 时给名字(其余 {} ⇒ 与改之前同一句 play)", rw.contains("if str(view.get(\"side\", \"a\")) != \"b\":\n\t\treturn {}"))
+
+
+func _scan_lit(dir: String, lit: String, hits: Array) -> void:
+	var d := DirAccess.open(dir)
+	if d == null:
+		return
+	for f in d.get_files():
+		if f.ends_with(".gd") and FileAccess.get_file_as_string(dir.path_join(f)).find(lit) >= 0:
+			hits.append(dir.path_join(f))
+	for sd in d.get_directories():
+		_scan_lit(dir.path_join(sd), lit, hits)
+
+
 # ───────────────────────────── A 我是 a ─────────────────────────────
 func _t_a() -> void:
 	print("── A join → waiting → 心跳 → paired(a) → 现有观看流程 ──")
@@ -827,6 +1065,9 @@ func _t_a() -> void:
 	await _play_to_end(b)
 	await _wait(func() -> bool: return is_instance_valid(b) and b.find_child("SettleScreen", true, false) != null, 5000)
 	_ok("A 结算屏胜负 = 服务器(%s)" % ("胜利" if _srv_won else "失败"), _settle_title(b) == ("胜利" if _srv_won else "失败"), _settle_title(b))
+	## 看的人口径: 我是 a ⇒ 一切照旧(我方 = 左)
+	await _viewer_checks(b, "A", "left", str(ReplayRecorder.viewer_name),
+		str((_srv_b.get("profile", {}) as Dictionary).get("name", "")))
 
 
 # ───────────────────────────── B 我是 b ─────────────────────────────
@@ -875,6 +1116,34 @@ func _t_b() -> void:
 	await _wait(func() -> bool: return is_instance_valid(b) and b.find_child("SettleScreen", true, false) != null, 5000)
 	_ok("B ★结算屏胜负 = 服务端给 B 的那一个(%s)" % ("胜利" if _srv_won else "失败"), _settle_title(b) == ("胜利" if _srv_won else "失败"),
 		_settle_title(b))
+	## ★看的人口径: 我是 b ⇒ 「我方」= 右边(B 自己的名字与数据)
+	await _viewer_checks(b, "B", "right", me, nm)
+	## 战绩页回放(我在右边那一行): 按存下的 side 给名字, 「我方」仍是右边
+	var old := get_tree().current_scene
+	if old != null and is_instance_valid(old) and old != self:
+		old.queue_free()
+	await _frames(3)
+	_ok("B ★离开那一局后开关清掉(side 不漏到下一局)", not ReplayRecorder.play_names.has("side"), str(ReplayRecorder.play_names))
+	var rs: Node = (load("res://scenes/Record.tscn") as PackedScene).instantiate()
+	get_tree().root.add_child(rs)
+	get_tree().current_scene = rs
+	await _wait(func() -> bool: return _watch_btn_of(rs, MID2) != null, 5000)
+	var wb := _watch_btn_of(rs, MID2)
+	_ok("B 分母: 战绩页那一行(我在右边)有「观看」", wb != null)
+	if wb != null:
+		wb.emit_signal("pressed")
+		got = await _wait(func() -> bool: return _is_battle(get_tree().current_scene), 15000)
+		var b2: Node = get_tree().current_scene if got else null
+		_ok("B ★战绩页回放: 名字左 = 对手「%s」、右 = 我「%s」、看的人 = b" % [nm, me], b2 != null
+			and str(ReplayRecorder.play_names.get("l", "")).strip_edges() == nm and str(ReplayRecorder.play_names.get("r", "")) == me
+			and ReplayRecorder.viewer_side(b2) == "b", str(ReplayRecorder.play_names))
+		if b2 != null:
+			await _frames(30)
+			var tb = b2._hud._topbar
+			_ok("B ★战绩页回放的对局顶栏: 右边写我「%s」" % me, tb != null and str(tb.name_r.text).strip_edges() == me
+				and str(tb.name_l.text).strip_edges() == nm, "%s / %s" % [str(tb.name_l.text) if tb != null else "?", str(tb.name_r.text) if tb != null else "?"])
+			b2.queue_free()
+			await _frames(3)
 	_rec_mid = MID
 
 
@@ -1129,39 +1398,35 @@ func _t_s() -> void:
 		and is_equal_approx(Drv.stuck_limit(Drv.S_MATCH, P2C.PHASE_GAUNTLET), 7.0 + cap + Drv.STUCK_MATCH_REFEREE_SLACK))
 	_ok("S 积分赛日匹配屏仍是 45 秒、别的屏不变", is_equal_approx(Drv.stuck_limit(Drv.S_MATCH, P2C.PHASE_RANKED), 45.0)
 		and is_equal_approx(Drv.stuck_limit(Drv.S_BATTLE, P2C.PHASE_GAUNTLET), 600.0))
-	## 真驱动整条流程: 主菜单 → 选龟 → 匹配屏(排队: 2 次心跳后配上)→ 看完 → 结算 → 商店 → … → 主菜单 → 再排(这次一直没人)
-	##   → 等到上限 ⇒ 按「取消匹配」⇒ 回主菜单 ⇒ 收工 queue_timeout。上限设 7 秒(门禁不真等 300 秒)。
-	_gs.gauntlet_wins = 1                 # 前面几段把战绩推到了晋级线上; 驱动这一段从 1-0 起(打一局 2-0 还能再排)
+	## 真驱动整条流程, 一个进程打三局(调度器拉号时传的那几个环境变量都给上):
+	##   第 1 局: 排队 2 次心跳后配上 → 看完 → 结算 → 商店(逛 SIM_SHOP_MIN~MAX 秒, 照常买)→ 背包 → 主菜单
+	##   第 2 局: SIM_SKIP_WATCH=1 ⇒ 配上、账一记完就去商店(不进战斗场)→ 逛够 → 背包 → 主菜单
+	##   第 3 局: 一直没人 ⇒ 等到上限(7 秒)按「取消匹配」⇒ 回主菜单 ⇒ 收工 queue_timeout
+	_gs.gauntlet_wins = 1                 # 前面几段把战绩推到了晋级线上; 驱动这一段从 1-0 起
 	_gs.gauntlet_losses = 0
 	_gs.referee_pending = {}
+	_gs.meta_deepsea_coins = 0            # 没什么钱可花 ⇒ 店里本来待不久, 「逛够 N 秒」才量得出来
 	_reset_sc({"pair_after": 2, "side": "a", "cancel": "cancelled"})
-	_srv_won = true
-	_srv_gw = int(_gs.gauntlet_wins) + 1
-	_srv_gl = int(_gs.gauntlet_losses)
+	_srv_auto = true
 	_rec_mid = MID
+	if _rec_a_b64 == "":                  # 只跑 S 段(GATE_ONLY)时 A 段没算过: 这里算一局给第 1 局播
+		await _referee(RW.my_snapshot(), _srv_b, MID)
+		_rec_a_b64 = _rec_b64
 	_rec_b64 = _rec_a_b64
 	var j0 := _hit(JOIN)
 	var c0 := _hit(CANCEL)
-	OS.set_environment("SIM_SLOT", "3")
-	OS.set_environment("SIM_ROUNDS", "3")
-	OS.set_environment("SIM_TOUR", "0")
-	var ev_path := ProjectSettings.globalize_path(Drv.EV_PATH)
-	var ev0 := FileAccess.get_file_as_bytes(Drv.EV_PATH).size() if FileAccess.file_exists(Drv.EV_PATH) else 0
-	var old := get_tree().current_scene
-	if old != null and is_instance_valid(old) and old != self:
-		old.queue_free()
-	await _frames(2)
-	var menu: Node = (load(MENU_SCENE) as PackedScene).instantiate()
-	get_tree().root.add_child(menu)
-	get_tree().current_scene = menu
-	var ts0 := Engine.time_scale
-	var d = Drv.new()
-	d.name = "SimDriverGate"
-	add_child(d)
-	var paired_once := false
+	var mh0: int = (_gs.match_history as Array).size()
+	var env := {"SIM_SLOT": "3", "SIM_ROUNDS": "3", "SIM_TOUR": "0", "SIM_QUEUE_GIVEUP_SEC": "7",
+		"SIM_SHOP_MIN_SEC": "18", "SIM_SHOP_MAX_SEC": "22", "SIM_EXPECT_CELL": "1-0", "SIM_SKIP_WATCH": ""}
+	for k in env.keys():
+		OS.set_environment(k, str(env[k]))
+	_ok("S 分母: 逛店区间 = [18, 22] 秒、调度器以为的格子 = 1-0", Drv.shop_dwell_range() == Vector2(18, 22) and Drv.expect_cell() == Vector2i(1, 0))
+	var ev0 := _ev_size()
+	var d = await _start_driver()
+	var stage := 0
 	var t_pair := -1
 	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 240000 and not bool(d.get("_done")):
+	while Time.get_ticks_msec() - t0 < 300000 and not bool(d.get("_done")):
 		## 观看那一局按 8 倍放(驱动的等待都按墙钟走, 不受影响); 别的屏照常
 		var cs := get_tree().current_scene
 		Engine.time_scale = 8.0 if _is_battle(cs) else 1.0
@@ -1170,38 +1435,125 @@ func _t_s() -> void:
 			t_pair = Time.get_ticks_msec()
 		if t_pair >= 0 and not _done and Time.get_ticks_msec() - t_pair > 3000:
 			_done = true
-		if _is_battle(cs) and not paired_once:
-			paired_once = true
-			_reset_sc_keep({"pair_after": -1, "cancel": "cancelled"})   # 第一局已配上开播: 之后再排就一直没人
+		if stage == 0 and _is_battle(cs):
+			stage = 1                     # 第 1 局开播: 第 2 局 1 次心跳后配上、不看
+			_reset_sc_keep({"pair_after": 1, "cancel": "cancelled"})
+			_done = false
+			t_pair = -1
+			OS.set_environment("SIM_SKIP_WATCH", "1")
+		elif stage == 1 and _paired_now and cs != null and str(cs.scene_file_path) == Drv.S_SHOP:
+			stage = 2                     # 第 2 局记完账进店了: 第 3 局一直没人
+			_reset_sc_keep({"pair_after": -1, "cancel": "cancelled"})
 		await get_tree().process_frame
-	Engine.time_scale = ts0
+	Engine.time_scale = 1.0
 	var evs := _sim_events(ev0)
 	var kinds: Array = []
 	for e in evs:
 		kinds.append(str((e as Dictionary).get("kind", "")))
-	var why := ""
-	for e in evs:
-		if str((e as Dictionary).get("kind", "")) == "done":
-			why = str(((e as Dictionary).get("data", {}) as Dictionary).get("why", ""))
 	print("    驱动事件 %d 条: %s" % [kinds.size(), " ".join(PackedStringArray(kinds))])
-	_ok("S 分母: 驱动记了事件(%s)" % ev_path, kinds.size() >= 10, str(kinds.size()))
-	_ok("S ★第一局: 排队等过(queue_wait)→ 配上(queue_paired)→ 看完到结算(result)", kinds.count("queue_wait") >= 1
-		and kinds.count("queue_paired") == 1 and kinds.count("result") >= 1)
-	var shop_seen := false
+	_ok("S 分母: 驱动记了事件(%s)" % ProjectSettings.globalize_path(Drv.EV_PATH), kinds.size() >= 10, str(kinds.size()))
+	_ok("S ★第 1 局: 排队等过 → 配上 → 看完到结算(result 1 次)", kinds.count("queue_wait") >= 1 and kinds.count("queue_paired") >= 1
+		and kinds.count("result") == 1, "result %d" % kinds.count("result"))
+	_ok("S ★第 2 局(SIM_SKIP_WATCH=1): 配上后不进战斗场、账记完直接去商店(watch_skipped 1 次; 全程只进过 1 次战斗场)",
+		kinds.count("watch_skipped") == 1 and kinds.count("queue_paired") == 2 and kinds.count("battle_enter") == 1,
+		"skipped %d / paired %d / battle %d" % [kinds.count("watch_skipped"), kinds.count("queue_paired"), kinds.count("battle_enter")])
+	_ok("S ★不看也照样记账: 两局都记进战绩(1-0 → %d-%d, 战绩页 +%d)" % [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses),
+		(_gs.match_history as Array).size() - mh0], int(_gs.gauntlet_wins) == 3 and (_gs.match_history as Array).size() - mh0 == 2)
+	## 逛店: 每一次 shop_dwell 想逛的秒数在区间里, 离店时在店里待的时间 ≥ 想逛的
+	var dw: Array = []
+	var stays: Array = []
 	for e in evs:
-		if str((e as Dictionary).get("kind", "")) == "scene" and str(((e as Dictionary).get("data", {}) as Dictionary).get("to", "")) == Drv.S_SHOP:
-			shop_seen = true
-	_ok("S ★看完去商店(按已有买法)", shop_seen)
-	_ok("S ★再排: 第二次进队(join %d 次)" % (_hit(JOIN) - j0), _hit(JOIN) - j0 == 2 and kinds.count("queue_wait") == 2)
-	_ok("S ★等到上限 ⇒ 按「取消匹配」(出队 1 次)⇒ 收工 queue_timeout", kinds.count("queue_timeout") == 1 and _hit(CANCEL) - c0 == 1
-		and why == "queue_timeout" and bool(d.get("_done")), "why=%s" % why)
+		var dd: Dictionary = (e as Dictionary).get("data", {})
+		if str((e as Dictionary).get("kind", "")) == "shop_dwell":
+			dw.append(float(dd.get("want_s", -1.0)))
+		elif str((e as Dictionary).get("kind", "")) == "scene" and str(dd.get("from", "")) == Drv.S_SHOP:
+			stays.append(float(dd.get("stayed_s", 0.0)))
+	var dw_ok := dw.size() == 2 and stays.size() == 2
+	for i in range(mini(dw.size(), stays.size())):
+		if float(dw[i]) < 18.0 or float(dw[i]) > 22.0 or float(stays[i]) + 0.3 < float(dw[i]):
+			dw_ok = false
+	_ok("S ★两局之间逛店: 想逛 %s 秒(都在 [18, 22] 里)、实际在店里 %s 秒(≥ 想逛的; 分母 %d 次进店)" % [str(dw), str(stays), stays.size()], dw_ok)
+	_ok("S ★第 3 局: 再排(join 共 %d 次)、等到上限 ⇒ 按「取消匹配」(出队 %d 次)⇒ 收工 queue_timeout" % [_hit(JOIN) - j0, _hit(CANCEL) - c0],
+		_hit(JOIN) - j0 == 3 and kinds.count("queue_timeout") == 1 and _hit(CANCEL) - c0 == 1 and _done_why(evs) == "queue_timeout"
+		and bool(d.get("_done")), "why=%s" % _done_why(evs))
 	_ok("S ★全程不报 STUCK", kinds.count("STUCK") == 0)
 	_ok("S 收工后停在主菜单", get_tree().current_scene != null and str(get_tree().current_scene.scene_file_path) == MENU_SCENE,
 		str(get_tree().current_scene.scene_file_path) if get_tree().current_scene != null else "")
 	d.queue_free()
-	for k in ["SIM_SLOT", "SIM_ROUNDS", "SIM_TOUR", "SIM_QUEUE_GIVEUP_SEC"]:
-		OS.set_environment(k, "")
 	await _frames(3)
+	## SIM_EXPECT_CELL ①: 本机战绩不在调度器以为的格子 ⇒ 不排, 收工 cell_mismatch
+	_gs.gauntlet_wins = 1
+	_gs.gauntlet_losses = 0
+	_reset_sc({"pair_after": -1, "cancel": "cancelled"})
+	OS.set_environment("SIM_ROUNDS", "1")
+	OS.set_environment("SIM_SKIP_WATCH", "")
+	OS.set_environment("SIM_EXPECT_CELL", "0-2")
+	j0 = _hit(JOIN)
+	ev0 = _ev_size()
+	d = await _start_driver()
+	t0 = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 30000 and not bool(d.get("_done")):
+		await get_tree().process_frame
+	evs = _sim_events(ev0)
+	_ok("S ★SIM_EXPECT_CELL=0-2、本机 1-0 ⇒ 不排(join 0 次)、收工 cell_mismatch", _done_why(evs) == "cell_mismatch" and _hit(JOIN) == j0
+		and _kind_count(evs, "cell_mismatch") == 1, "why=%s join+%d" % [_done_why(evs), _hit(JOIN) - j0])
+	d.queue_free()
+	await _frames(3)
+	## SIM_EXPECT_CELL ②: 本机对得上、服务端账本(进队回的格子)对不上 ⇒ 出队、收工 cell_mismatch
+	_reset_sc({"pair_after": -1, "cancel": "cancelled", "srv_cell": [0, 1]})
+	OS.set_environment("SIM_EXPECT_CELL", "1-0")
+	j0 = _hit(JOIN)
+	c0 = _hit(CANCEL)
+	ev0 = _ev_size()
+	d = await _start_driver()
+	t0 = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 40000 and not bool(d.get("_done")):
+		await get_tree().process_frame
+	evs = _sim_events(ev0)
+	_ok("S ★本机 1-0 对得上、服务端回 0-1 ⇒ 进队 1 次、马上出队 1 次、收工 cell_mismatch", _done_why(evs) == "cell_mismatch"
+		and _hit(JOIN) - j0 == 1 and _hit(CANCEL) - c0 == 1 and _kind_count(evs, "cell_mismatch") == 1,
+		"why=%s join+%d cancel+%d" % [_done_why(evs), _hit(JOIN) - j0, _hit(CANCEL) - c0])
+	d.queue_free()
+	await _frames(3)
+	_srv_auto = false
+	RW.skip_play = false
+	for k in env.keys():
+		OS.set_environment(k, "")
+
+
+## 起一个驱动(当前场景换成真主菜单, 驱动挂在门禁节点下; 环境变量调用方先设好)。
+func _start_driver():
+	var old := get_tree().current_scene
+	if old != null and is_instance_valid(old) and old != self:
+		old.queue_free()
+	await _frames(2)
+	var menu: Node = (load(MENU_SCENE) as PackedScene).instantiate()
+	get_tree().root.add_child(menu)
+	get_tree().current_scene = menu
+	var d = Drv.new()
+	d.name = "SimDriverGate"
+	add_child(d)
+	return d
+
+
+func _ev_size() -> int:
+	return FileAccess.get_file_as_bytes(Drv.EV_PATH).size() if FileAccess.file_exists(Drv.EV_PATH) else 0
+
+
+func _done_why(evs: Array) -> String:
+	var why := ""
+	for e in evs:
+		if str((e as Dictionary).get("kind", "")) == "done":
+			why = str(((e as Dictionary).get("data", {}) as Dictionary).get("why", ""))
+	return why
+
+
+func _kind_count(evs: Array, k: String) -> int:
+	var n := 0
+	for e in evs:
+		if str((e as Dictionary).get("kind", "")) == k:
+			n += 1
+	return n
 
 
 ## 换剧本但不换对手 / 任务号(驱动那一段: 第二次排队)。

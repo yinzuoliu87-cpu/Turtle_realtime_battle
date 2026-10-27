@@ -1333,6 +1333,9 @@ func _build_reward_chips(gs, cap_fs: int = 13, val_fs: int = 24) -> Control:
 	if not battle._had_season or gs == null:
 		return null
 	var lv: int = int(gs.get("season_level")) if gs.get("season_level") != null else 1
+	## 看的人是 B(周六配对局): 播放期间 GameState 的等级是录像左方(A)那一份, B 自己那一份在右方快照(dual_ghost)里
+	if ReplayRecorder.viewer_side(battle) == "b" and gs.get("dual_ghost") is Dictionary:
+		lv = int((gs.get("dual_ghost") as Dictionary).get("season_level", lv))
 	var items: Array = []
 	## ★出局那一局不发币(见 RealtimeBattle3DScene 结算), 结算屏也不放「深海币 +0」这一格。
 	if not (gs.has_method("is_eliminated") and gs.is_eliminated()):
@@ -1993,10 +1996,12 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var rar = str(pet.get("rarity", u.get("rarity", "C")))
 	nm.add_theme_color_override("font_color", battle._pet_rarity_color(rar)); hi.add_child(nm)
 	var sub = Label.new()
-	sub.text = "%s · %s · Lv %d" % ["友军" if is_left else "敌方", rar, int(u.get("level", 1))]
+	## 「友军」= 看的人那一侧(周六配对局我是 B ⇒ 右队; 其余左队, 与改之前相同)。颜色仍按场上左右(与血条一致)。
+	var is_mine: bool = str(u.get("side", "")) == ReplayRecorder.my_side(battle)
+	sub.text = "%s · %s · Lv %d" % ["友军" if is_mine else "敌方", rar, int(u.get("level", 1))]
 	## ★召唤物没有稀有度也没有等级(2026-10-22): 原来斧头显示「友军 · C · Lv 1」, 两项都是兜底值。
 	if u.get("is_summon", false):
-		sub.text = "友军" if is_left else "敌方"
+		sub.text = "友军" if is_mine else "敌方"
 	## ★副标题 12(与资源名/状态签/「装备：」同属"次要信息"这一档) —— 面板字号收成
 	##   21 标题 / 14 正文 / 12 次要 / 11 说明 / 10 角标 五档, 一档只表示一种角色。
 	sub.add_theme_font_size_override("font_size", UIPalette.F_SUB); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)

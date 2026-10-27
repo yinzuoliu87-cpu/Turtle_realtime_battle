@@ -297,6 +297,9 @@ func _on_status(res: Dictionary) -> void:
 				_later()                 # 裁判机排队 / 算得慢: 等到上限还没算完 ⇒ 不在这一屏干等
 
 func _fetch() -> void:
+	if RW.skip_play:
+		_to(RW.ST_SKIPPED, RW.result_line(view))   # 陪练号(SIM_SKIP_WATCH): 账已记完, 不取录像、不播
+		return
 	_to(RW.ST_FETCH, RW.TXT_SETTLING)
 	if not RW.SB.fetch_match_async(match_id, _on_match):
 		_to(RW.ST_ERROR, RW.result_line(view) + " · " + RW.TXT_UNPLAYABLE)

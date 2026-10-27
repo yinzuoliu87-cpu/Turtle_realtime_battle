@@ -44,6 +44,7 @@ const COL_LOSS_EDGE := Color("#4a1216")
 ## ══ 回放入口(跨设备回放 S3, docs/plans/20261003-跨设备回放.md) ══
 const ReplayFetcher := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const Backend := preload("res://scripts/net/backend.gd")
+const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const WATCH_LABEL := "观看"
 const WATCH_BUSY := "读取中"
 const LIST_TITLE := "最近对局"
@@ -302,7 +303,22 @@ func _on_replay_pressed(id: String) -> void:
 	if _list_title != null:
 		_list_title.text = LIST_TITLE
 		_list_title.add_theme_color_override("font_color", Color("#58d3ff"))
+	## 周六在线排队配上、我在右边(B)的那一局: 录像左方是对手 ⇒ 名字左右照实写、「我方」指右边(RefereeWatch.watch_names 同一份)。
+	##   别的行没有 side ⇒ 与改之前同一句调用。
+	var row := _row_of(id)
+	if str(row.get("side", "")) == "b":
+		ReplayFetcher.open(get_tree(), id, _on_replay_done, "",
+			_RW.watch_names({"side": "b", "foe_name": str(row.get("foe_name", ""))}))
+		return
 	ReplayFetcher.open(get_tree(), id, _on_replay_done)
+
+
+## 战绩里录像号是 `id` 的那一行(没有 ⇒ {})。
+func _row_of(id: String) -> Dictionary:
+	for m in GameState.match_history:
+		if m is Dictionary and str((m as Dictionary).get("replay_id", "")) == id:
+			return m
+	return {}
 
 
 ## `ReplayFetcher.open` 的回调, 恰好一次。code == "" ⇒ 已经换到战斗场了。

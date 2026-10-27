@@ -97,6 +97,12 @@ const ST_LATER := "later"       # 交上去了、结果没等到(等到上限 / 
 const ST_QUEUE := "queue"       # 阵容已锁定、在队里等同战绩的在线对手(每 QUEUE_POLL_SEC 秒心跳一次)
 const ST_CANCEL := "cancel"     # 排队中按了取消, 等服务端回话(回 paired ⇒ 照配上处理)
 const ST_LEFT := "left"         # 已出队(取消成功 / 服务端说不在队里了): 没有对局 ⇒ 调用方回主菜单, msg 非空就飘它
+const ST_SKIPPED := "skipped"   # 账已记完、不取录像不播(陪练号 SIM_SKIP_WATCH: `skip_play`)
+
+## 【陪练号驱动设】true ⇒ 配上的那一局账一记完就停在匹配屏(不取录像、不播): 陪练号没人看, 省时间和 CPU(SIM_SKIP_WATCH=1)。
+##   ★记账不依赖看完: referee_run `_on_status` 收到 done ⇒ 先 `settle`(战绩 / 币 / 战绩页 / 单子清掉)⇒ 再 `_fetch` 取录像;
+##     这个开关拦在 `_fetch` 第一行, 账已经记完。默认 false ⇒ 玩家路径一字不动。
+static var skip_play := false
 
 ## 排队心跳间隔(秒)。服务端 15 秒没心跳 ⇒ 过期(不会被配上)。
 const QUEUE_POLL_SEC := 2.0
@@ -292,7 +298,8 @@ static func play_settled(tree: SceneTree, rec: Dictionary, view: Dictionary) -> 
 ## 看自己那一场时左右两边的名字(`ReplayRecorder.play_names`)。
 ##   我是 a(录像方 = 左)⇒ {}(与改之前一样: 左 = 看的人自己, 右 = 录像里那份对手快照的名字)。
 ##   ★我是 b(在线排队配上的另一方, 2026-10-27)⇒ 录像左方是对手、右方才是我: 不给名字的话两边都会写成我自己
-##     (左 = 看的人, 右 = 录像里右方那份快照 = 我的阵容)。⇒ {l: 对手名, r: 我}。胜负由服务端按 B 的视角给(view.won), 不在这里翻。
+##     (左 = 看的人, 右 = 录像里右方那份快照 = 我的阵容)。⇒ {l: 对手名, r: 我, side: "b"}。胜负由服务端按 B 的视角给(view.won), 不在这里翻;
+##     `side` 让对局 / 结算屏的「我方」指右边(`ReplayRecorder.viewer_side`)。
 static func watch_names(view: Dictionary) -> Dictionary:
 	if str(view.get("side", "a")) != "b":
 		return {}
@@ -301,8 +308,8 @@ static func watch_names(view: Dictionary) -> Dictionary:
 	if foe == "" or me == "":
 		return {}
 	if foe == me:
-		return {"l": foe + " ", "r": me}       # 同名: side_names 要求两边不同才直接用(否则当成「不知道谁是谁」)
-	return {"l": foe, "r": me}
+		return {"l": foe + " ", "r": me, "side": "b"}       # 同名: side_names 要求两边不同才直接用(否则当成「不知道谁是谁」)
+	return {"l": foe, "r": me, "side": "b"}
 
 
 ## 同上, 但先过逐帧直播的分流口(S5)。`done.call(code, msg)` 恰好一次: "" = 已进战斗场。

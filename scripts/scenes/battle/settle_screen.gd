@@ -164,8 +164,9 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(body)
 	pages.append(_page_result(won, sealed, gs, views))
-	pages.append(_page_team(0, "我方", Color("#7ec8ff"), views, "left"))
-	pages.append(_page_team(1, "敌方", Color("#ff9a9a"), views, "right"))
+	## 「我方」= 看的人那一侧(周六配对局我是 B ⇒ 右队; 其余左队, 与改之前相同)
+	pages.append(_page_team(0, "我方", Color("#7ec8ff"), views, ReplayRecorder.my_side(battle)))
+	pages.append(_page_team(1, "敌方", Color("#ff9a9a"), views, ReplayRecorder.foe_side(battle)))
 	for p in pages:
 		(p as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		body.add_child(p)
@@ -322,7 +323,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		row.add_theme_constant_override("separation", 22)
 		for ln in ["top", "bottom", "final"]:
 			if (lr as Dictionary).has(ln):
-				row.add_child(_lane_plate(str(battle._LANE_CN.get(ln, ln)), str(lr[ln])))
+				row.add_child(_lane_plate(str(battle._LANE_CN.get(ln, ln)), _as_viewer(str(lr[ln]))))
 		v.add_child(row)
 		hud._banner_fade_in(row, 0.34)
 	## ④ 奖励块(产品自己的那一排, 只是字号放大)
@@ -333,7 +334,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		hud._banner_fade_in(chips, 0.42)
 		_pop_coin_chip(chips, tw, 0.42)
 	## ⑤ 我方 MVP: 头像 + 名字 + 打出(默认那份 = 合计 / 单路时的本场)
-	var mine: Array = (views[0] as Dictionary)["left"] if not views.is_empty() else []
+	var mine: Array = (views[0] as Dictionary)[ReplayRecorder.my_side(battle)] if not views.is_empty() else []
 	var mi: int = hud._st_mvp_index(mine)
 	if mi >= 0:
 		var r: Dictionary = mine[mi]
@@ -373,7 +374,14 @@ func _pop_coin_chip(chips: Control, tw: Tween, delay: float) -> void:
 		v.scale = Vector2.ONE * lerpf(1.35, 1.0, x / float(n)), 0.0, float(n), 0.45).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
-## 一路的胜负牌: 槽框 + 路名(小字) + 胜/负(大字)。
+## 录像里的胜方(left / right)⇒ 看的人口径(left = 我方赢): 看的人是 B 时左右对调, 其余原样。平局等别的值原样。
+func _as_viewer(who: String) -> String:
+	if ReplayRecorder.viewer_side(battle) != "b":
+		return who
+	return "right" if who == "left" else ("left" if who == "right" else who)
+
+
+## 一路的胜负牌: 槽框 + 路名(小字) + 胜/负(大字)。`who` = 看的人口径的胜方(left = 我方)。
 func _lane_plate(lane_cn: String, who: String) -> Control:
 	var box := PanelContainer.new()
 	var fb := StyleBoxFlat.new()

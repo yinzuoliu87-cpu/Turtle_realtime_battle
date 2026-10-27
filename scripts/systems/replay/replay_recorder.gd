@@ -869,6 +869,30 @@ static func exit_scene() -> String:
 	return return_scene if return_scene != "" else DEFAULT_EXIT_SCENE
 
 
+## ★看的人在这一局里是哪一边(2026-10-27 · 方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md): 周六在线排队配上的那一局,
+##   录像左方是 A、右方是 B; 我是 B 时入口给的 `play_names` 带 `side = "b"`(RefereeWatch.watch_names / 战绩页那一行带的 side)。
+##   ⇒ 对局里的「我方 / 对方」「本战场胜利」、结算屏「我方 / 敌方」两页、战报左右都按它翻(只翻文字与数字, 模拟 / 录像 / 站位一概不动)。
+##   ★只在「这一局正在播」时认(回放 play / 逐帧直播 stream); 正常对局 / 中途退出补打 / 裁判跑局永远 "a" ——
+##     积分赛与改之前逐字相同。入口没给 side(看自己当 a 的局 / 看别人的局)= "a"。离场时清掉(`end_play`), 不会漏到下一局。
+static func viewer_side(battle) -> String:
+	if battle == null or str(play_names.get("side", "")) != "b":
+		return "a"
+	var rp = battle.get("_replay")
+	if rp == null or not (rp.is_playing() or str(rp.mode) == "stream"):
+		return "a"
+	return "b"
+
+
+## 「我方」是录像里的哪一侧(left / right)。
+static func my_side(battle) -> String:
+	return "right" if viewer_side(battle) == "b" else "left"
+
+
+## 「对方」是录像里的哪一侧。
+static func foe_side(battle) -> String:
+	return "left" if viewer_side(battle) == "b" else "right"
+
+
 ## 回放结束那一句(收尾卡的大标题)。看别人的录像时「胜利」是录像方的视角, 对旁观者是错话 ⇒ 有名字就说谁赢了。
 static func end_caption(won: bool) -> String:
 	var who := str(play_names.get("l" if won else "r", ""))
@@ -956,6 +980,8 @@ static func begin_play(r: Dictionary) -> void:
 ## 退出回放(战斗场离树时一定会调): GameState 还原成播之前那一份。
 static func end_play() -> void:
 	pending_play = {}
+	if _again.is_empty():
+		play_names.erase("side")         # 看的人是 B 那一局播完了: 下一局(不论哪条入口)从 "a" 起; 「再看一遍」照旧是 B
 	if not _has_backup:
 		return
 	for n in _backup:

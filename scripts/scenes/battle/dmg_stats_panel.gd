@@ -76,7 +76,8 @@ const BAR_H := 16.0
 const VAL_W := 62.0
 
 var panel: Control = null                 # 浮层本体(默认隐)
-var _cols: Array = []                     # [左队 rows VBox, 右队 rows VBox]
+var _cols: Array = []                     # [我方 rows VBox, 敌方 rows VBox](我方 = 左队; 周六配对局我是 B ⇒ 右队)
+var _sides: Array = ["left", "right"]     # 两列各是录像里哪一侧(`_viewer_sides`, build 时定)
 var _tab: String = "dealt"                # 当前 Tab: dealt/taken/heal/shield
 var _tab_btns: Array = []
 var _ui_layer: CanvasLayer = null
@@ -302,6 +303,13 @@ func _plate(txt: String, tint: Color, fsize: int) -> Control:
 	return box
 
 
+## 两列各是哪一侧: [我方, 敌方]。看的人是 B(周六配对局回放 / 直播)⇒ 右队在「我方」那一列; 其余与改之前相同 [左, 右]。
+##   战场由 `_units_of` 那个回调的持有者(战斗场)给出 —— 本类不另持战斗场引用(拆分模板的约定)。
+func _viewer_sides() -> Array:
+	var b = _units_of.get_object() if _units_of.is_valid() else null
+	return ["right", "left"] if ReplayRecorder.viewer_side(b) == "b" else ["left", "right"]
+
+
 ## 浮层骨架: 金属框 + 名牌「战报」 + 4 个图标页签 / 双列 rows / 0.4s 自刷.
 func build() -> void:
 	panel = Panel.new()
@@ -395,7 +403,8 @@ func build() -> void:
 
 	vb.add_child(cols)
 	_cols = []
-	for side_label in [["我方", "left"], ["敌方", "right"]]:
+	_sides = _viewer_sides()
+	for side_label in [["我方", _sides[0]], ["敌方", _sides[1]]]:
 		var colv := VBoxContainer.new()
 		colv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		colv.add_theme_constant_override("separation", 4)
@@ -443,7 +452,7 @@ func render() -> void:
 		##   选中的那块是正常亮度 = "按下去的那块签牌"。
 		##   (不重新调 `UISkin.button` —— 那会每 0.4 秒重建 5 个 StyleBox 当垃圾。)
 		b.modulate = Color(1.0, 1.0, 1.0, 1.0) if active else Color(0.60, 0.65, 0.72, 1.0)
-	var sides := ["left", "right"]
+	var sides: Array = _sides
 	for ci in range(2):
 		var side: String = sides[ci]
 		var rows_vb: VBoxContainer = _cols[ci]
