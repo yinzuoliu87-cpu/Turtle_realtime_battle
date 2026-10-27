@@ -37,6 +37,15 @@ fi
 export GATE_APPDATA
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
+## 本机(Windows)的 python 不走商店别名(%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe):
+##   经别名每启动一次, 系统就建一次应用容器、加载一次包注册表; 本机 10-20 / 10-26 / 10-27 三次 0x50 蓝屏
+##   都崩在内核加载应用注册表那一步, 崩溃前唯一在这样启动的就是它(没确证, 见 memory project-machine-bsod-during-tests)。
+##   同一个解释器的本体在 %LOCALAPPDATA%\Python\bin(实测不建容器); 那里没有(CI / 别的机器)就照旧用 PATH 里的。
+if [ -n "${LOCALAPPDATA:-}" ] && command -v cygpath >/dev/null 2>&1; then
+  _PYBIN="$(cygpath -u "$LOCALAPPDATA")/Python/bin"
+  [ -x "$_PYBIN/python.exe" ] && export PATH="$_PYBIN:$PATH"
+fi
+
 if [ ! -f "$GODOT" ]; then
   echo "Godot not found at: $GODOT  (set GODOT env var)"
   exit 1
