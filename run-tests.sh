@@ -90,6 +90,9 @@ frames_for () {
     #   实测 791 帧才回调 —— 网络回调走的是 HTTPRequest 自己的轮询, 与游戏帧率无关,
     #   帧给少了就是"等不到回调 → 循环没退出 → 没打 ALL PASS", 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_remote_pool)       echo 4000 ;;
+    # 换场景那一刻的联网请求不许被吞(2026-10-27): 真 HTTPRequest 打本机假服务器 + 看门狗按真实时间等 0.5 秒, 全按墙钟等。
+    #   本机实测 106 帧; 无头帧率高的机器上 0.5 秒就能跑上千帧 ⇒ 给足, 免得半路被掐断(没打 ALL PASS)。
+    verify_spawn_busy_root)   echo 20000 ;;
     # 主菜单决赛日头衔(U1): 每一屏要等主菜单自己那颗 1 秒 Timer 拍到回包, 四屏合计 ~6 秒墙钟。
     #   无头帧率极高, 500 帧不到 1 秒就会被掐断 ⇒ 没打 ALL PASS(CLAUDE.md §2 那个坑)。
     verify_menu_finals_title) echo 100000 ;;

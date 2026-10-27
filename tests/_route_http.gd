@@ -12,6 +12,8 @@ extends Node
 var port := 0
 var mode := "ok"
 var delay_ms := 800
+## 非空 ⇒ 200 的 RPC(`/rest/v1/rpc/…`)回这段正文(默认空 = 照旧回 {})。verify_spawn_busy_root 用它回 {"ok":true}。
+var rpc_body := ""
 var reqs: Array = []
 var _srv := TCPServer.new()
 var _conns: Array = []
@@ -119,6 +121,8 @@ func _reply(cn: Dictionary, code: int) -> void:
 	var body := "{}"
 	if code == 200 and path.find("service_status") >= 0:
 		body = "[{\"id\":1,\"maintenance\":false,\"notice\":\"\",\"min_client_version\":\"\"}]"
+	elif code == 200 and rpc_body != "" and path.find("/rest/v1/rpc/") >= 0:
+		body = rpc_body
 	elif code == 426:
 		body = "{\"message\":\"update_required\"}"
 	elif code == 401:
