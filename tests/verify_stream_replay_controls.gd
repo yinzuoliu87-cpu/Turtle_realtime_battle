@@ -184,8 +184,8 @@ func _t_replay(rec: Dictionary, chunks: Array, meta: Dictionary) -> void:
 	var track := _named(b, RC.N_TRACK) as Control
 	var time_l := _named(b, RC.N_TIME) as Label
 	var exit_b := _named(b, RC.N_EXIT) as Button
-	_ok("① ★操作条都建了: 暂停 / 倍速 / 进度槽 / 时间 / 退出回放", pause_b != null and speed_b != null and track != null
-		and time_l != null and exit_b != null and exit_b.text == "退出回放")
+	_ok("① ★操作条都建了: 暂停 / 倍速 / 进度槽 / 时间 / 退出(键上图标: 暂停 / x1 / X)", pause_b != null and speed_b != null and track != null
+		and time_l != null and exit_b != null and PixelKey.icon_of(exit_b) == "exit" and PixelKey.icon_of(pause_b) == "pause")
 	if pause_b == null or speed_b == null or track == null or time_l == null:
 		await _leave(b)
 		return
@@ -205,8 +205,8 @@ func _t_replay(rec: Dictionary, chunks: Array, meta: Dictionary) -> void:
 		p.advance(2.0 * SIM_DT)
 	ui.refresh()
 	var tag := _named(b, RC.N_PAUSED) as Control
-	_ok("② ★点「暂停」⇒ 播放器停住(推 120 帧后应用步 %d → %d)、按钮写「继续」、「已暂停」签牌出现" % [a0, p.applied],
-		p.paused and p.applied == a0 and pause_b.text == "继续" and tag != null and tag.visible)
+	_ok("② ★点「暂停」⇒ 播放器停住(推 120 帧后应用步 %d → %d)、键上换成「播放」图标、「已暂停」签牌出现" % [a0, p.applied],
+		p.paused and p.applied == a0 and PixelKey.icon_of(pause_b) == "play" and tag != null and tag.visible)
 	pause_b.pressed.emit()
 	for _i in range(30):
 		p.advance(2.0 * SIM_DT)
@@ -216,7 +216,7 @@ func _t_replay(rec: Dictionary, chunks: Array, meta: Dictionary) -> void:
 	var sp0: float = float(b._replay.speed)
 	speed_b.pressed.emit()
 	_ok("③ ★点倍速 ⇒ 播放器 speed 跟着走(%.0f → %.0f, 回放倍速 %.0f)" % [sp0, p.speed, float(b._replay.speed)],
-		p.speed == float(b._replay.speed) and p.speed != sp0 and speed_b.text == "%d 倍速" % int(p.speed))
+		p.speed == float(b._replay.speed) and p.speed != sp0 and PixelKey.icon_of(speed_b) == "x%d" % int(p.speed))
 	while float(b._replay.speed) != 1.0:
 		speed_b.pressed.emit()
 	## ④ 进度条: 点 50%
@@ -270,7 +270,7 @@ func _t_watch(rec: Dictionary, chunks: Array, meta: Dictionary) -> void:
 	_ok("⑥ ★观赛没有操作条: 暂停 / 倍速 / 进度槽 / 时间 / 已暂停签牌一个都没有",
 		_named(b, RC.N_PAUSE) == null and _named(b, RC.N_SPEED) == null and _named(b, RC.N_TRACK) == null
 		and _named(b, RC.N_TIME) == null and _named(b, RC.N_PAUSED) == null and _named(b, "ReplayStrip") == null)
-	_ok("⑥ 只有左下角「退出」", exit_b != null and exit_b.text == "退出" and exit_b.is_visible_in_tree())
+	_ok("⑥ 只有左下角「退出」(红键 X)", exit_b != null and PixelKey.icon_of(exit_b) == "exit" and exit_b.is_visible_in_tree())
 	await _play_to_end(b, p, ui)
 	var ct := _card_text(ui)
 	_ok("⑥ ★观赛收尾卡揭晓胜方、不报全场时长", ui.card != null and ct.contains("获胜") and not ct.contains("全场"), ct)

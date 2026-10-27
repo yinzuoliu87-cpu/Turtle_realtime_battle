@@ -286,7 +286,10 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	var pb := _named(bar, RC.N_PAUSE) as Button
 	var spd := _named(bar, RC.N_SPEED) as Button
 	var ex := _named(bar, RC.N_EXIT) as Button
-	_ok("② 分母: 操作条上 暂停 / 倍速 / 退出回放 三颗钮都在", pb != null and spd != null and ex != null and ex.text == "退出回放")
+	_ok("② 分母: 操作条上 暂停 / 倍速 / 退出 三颗键都在(退出键上画的是 X)", pb != null and spd != null and ex != null
+		and PixelKey.icon_of(ex) == "exit")
+	if pb != null and spd != null and ex != null:
+		await _t_bar_look(b, bar, pb, spd, ex)
 	## ⑦ 左上铭牌删了(与顶栏重复、压开场牌子); 「回放」改成顶栏路名牌旁边的小签。
 	_ok("⑦ ★回放时整个战斗场里没有 ReplayPlate", b.find_child("ReplayPlate", true, false) == null)
 	var mark := b.find_child("ReplayMark", true, false) as Control
@@ -307,7 +310,7 @@ func _t_controls_and_card(base: Dictionary) -> void:
 		if tl != null:
 			tl_txt.append(tl.text)
 	_ok("⑦ ★进度条每道刻度下面有路名(个数 = 开打的路数 %d ≥ 2)" % nf,
-		nf >= 2 and tl_txt == (["上路", "下路", "终极"] as Array).slice(0, nf), str(tl_txt))
+		nf >= 2 and tl_txt == (["上路战场", "下路战场", "终极战场"] as Array).slice(0, nf), str(tl_txt))
 	_ok("② 时间读数「已播 / 全场」", _named(bar, RC.N_TIME) != null and (_named(bar, RC.N_TIME) as Label).text.contains(" / "))
 	if pb == null or spd == null:
 		return
@@ -319,19 +322,21 @@ func _t_controls_and_card(base: Dictionary) -> void:
 		await get_tree().process_frame
 	var s1 := int(b._sim_step_n)
 	_ok("② ★暂停: 喂 60 帧(各 0.1 秒) sim 一步都没走", s1 == s0 and b._replay.paused, "%d→%d" % [s0, s1])
-	_ok("② 暂停时按钮写「继续」、屏幕中间出「已暂停」", pb.text == "继续" and _named(bar, RC.N_PAUSED) != null
+	_ok("② ★暂停时键上换成「播放」图标、屏幕中间出「已暂停」", PixelKey.icon_of(pb) == "play" and _named(bar, RC.N_PAUSED) != null
 		and (_named(bar, RC.N_PAUSED) as Control).visible)
 	pb.pressed.emit()
 	for _k in range(10):
 		b._process(DT)
 		await get_tree().process_frame
 	_ok("② ★继续: sim 接着走", int(b._sim_step_n) > s1 and not b._replay.paused, "%d→%d" % [s1, int(b._sim_step_n)])
+	_ok("② 继续之后键上换回「暂停」图标、「已暂停」收起", PixelKey.icon_of(pb) == "pause"
+		and not (_named(bar, RC.N_PAUSED) as Control).visible)
 	## 倍速轮换
 	var seen: Array = []
 	for _k in range(3):
-		seen.append(spd.text)
+		seen.append(PixelKey.icon_of(spd))
 		spd.pressed.emit()
-	_ok("② 倍速轮换 1 → 2 → 4 → 1", seen == ["1 倍速", "2 倍速", "4 倍速"] and spd.text == "1 倍速", str(seen))
+	_ok("② 倍速轮换 1 → 2 → 4 → 1(键上图标 x1 → x2 → x4 → x1)", seen == ["x1", "x2", "x4"] and PixelKey.icon_of(spd) == "x1", str(seen))
 	await _t_inspect_card_over_bar(b, bar)
 	## 4 倍速播完
 	spd.pressed.emit()
@@ -385,8 +390,13 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	_ok("④ 重播没分叉", b2._replay.diverged_at < 0, b2._replay.diverge_why)
 	var ex2 := _named(b2._hud._replay_bar, RC.N_EXIT) as Button
 	ex2.pressed.emit()
+	await _frames(2)
+	var yes := _named(b2._hud._replay_bar, RC.N_EXIT_YES) as Button
+	_ok("④ 分母: 点退出先出确认框(还在回放里)", yes != null and is_instance_valid(b2) and _is_battle(get_tree().current_scene))
+	if yes != null:
+		yes.pressed.emit()
 	var back = await _wait_scene(_is_record)
-	_ok("④ ★退出回放 ⇒ 回到战绩页", back != null)
+	_ok("④ ★确认框里点「退出」⇒ 回到战绩页", back != null)
 	await _frames(3)
 	_ok("④ ★存档文件逐字节不变", FileAccess.get_file_as_bytes(_gs.SAVE_PATH) == base["save"])
 	_ok("④ ★GameState 还原", var_to_bytes(ReplayRecorder.capture_state()) == base["state"]
@@ -396,6 +406,84 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	if back != null:
 		back.queue_free()
 	await _frames(3)
+
+
+# ⑨ ─────────────────────────────────────────────────────────────
+## ★2026-10-27 回放条换成新画的像素图标键(docs/plans/20261027-UI美术规矩.md §4.6-6; 用户看了风格稿回「行吧」)。
+##   量需求本身, 不量我的钩子:
+##   · 三颗键的皮 = 新画键底座(assets/sprites/ui/replay_bar/key-*.png)最近邻 ×3 —— 贴图逐字节比, 不是商店卡片按钮 / 木牌
+##   · 整条没有不透明底板(底下不许有宽 ≥ 300、高 ≥ 30 的底色块 / 面板 / 框)
+##   · 右下两颗键不压法术圆盘(按 battle_hud._build_spell_disc 同一个公式算圆盘; 真有圆盘时再量一遍真圆盘)
+##   · 看起来 60、可点 84(用户 10-27 定)
+##   · 点退出先出确认框(还在回放里), 框里两颗按钮是 card_button; 点「继续观看」框收起、接着播
+## 反向验证: 退出键改回直连 _replay_exit / 键皮换成 card_button / 加回整条底板 / 倍速键挪进圆盘 ⇒ 这一段红。
+func _t_bar_look(b, bar: Node, pb: Button, spd: Button, ex: Button) -> void:
+	print("── ⑨ 回放条外观: 新画的像素图标键 · 没有底板 · 不压圆盘 · 退出先确认 ──")
+	var bad: Array = []
+	for pair in [[pb, RC.KEY_NEUTRAL], [spd, RC.KEY_NEUTRAL], [ex, RC.KEY_RED]]:
+		var k := pair[0] as Button
+		var sb := k.get_theme_stylebox("normal")
+		var tx: Texture2D = (sb as StyleBoxTexture).texture if sb is StyleBoxTexture else null
+		if tx == null or not _is_x3_of(tx, str(pair[1])) or k.size != Vector2(60, 60):
+			bad.append("%s %s %s" % [k.name, str(sb), str(k.size)])
+	_ok("⑨ ★三颗键的皮 = 新画键底座 ×3 最近邻(逐字节比), 键 60×60; 不是商店卡片按钮 / 木牌(分母 3 颗)", bad.is_empty(), str(bad))
+	var strip := _named(bar, "ReplayStrip") as Control
+	var plates: Array = []
+	if strip != null:
+		for c in [strip] + strip.find_children("*", "Control", true, false):
+			var cc := c as Control
+			var draws_bg: bool = cc is ColorRect or cc is Panel or cc is PanelContainer or cc is NinePatchRect or cc is TextureRect
+			if draws_bg and cc.is_visible_in_tree() and cc.size.x >= 300.0 and cc.size.y >= 30.0:
+				plates.append("%s %s" % [cc.name, str(cc.size)])
+	_ok("⑨ ★整条没有不透明底板(容器不是面板; 底下没有宽 ≥ 300 高 ≥ 30 的色块 / 框)", strip != null and not (strip is PanelContainer)
+		and not (strip is Panel) and plates.is_empty(), str(plates))
+	var vp: Vector2 = Vector2(b.get_viewport().get_visible_rect().size)
+	var m: Vector4 = SafeArea.margins(vp, 18.0)
+	var d2: float = SpellDisc.R * 2.0
+	var disc := Rect2(vp.x - d2 - m.z, vp.y - d2 - m.w, d2, d2)
+	var real_disc: Rect2 = (b._spell_disc as Control).get_global_rect() if b._spell_disc != null and is_instance_valid(b._spell_disc) else disc
+	var hit: Array = []
+	for k in [pb, spd]:
+		var r: Rect2 = (k as Control).get_global_rect()
+		if r.intersects(disc) or r.intersects(real_disc):
+			hit.append(str((k as Control).name))
+	_ok("⑨ ★右下两颗键不压法术圆盘(圆盘 %s; 倍速键右缘 %d < 圆盘左缘 %d)" % [str(disc), int(spd.get_global_rect().end.x), int(disc.position.x)],
+		hit.is_empty() and spd.get_global_rect().end.x <= disc.position.x - 12.0, str(hit))
+	_ok("⑨ ★看起来 60、可点 84(四周各多 12: 键外 11 像素点得到、13 像素点不到)", ex.size == Vector2(60, 60)
+		and ex._has_point(Vector2(-11, 30)) and ex._has_point(Vector2(71, 71)) and not ex._has_point(Vector2(-13, 30))
+		and not ex._has_point(Vector2(30, 73)))
+	ex.pressed.emit()
+	await _frames(2)
+	var ask := _named(bar, RC.N_EXIT_ASK) as Control
+	var yes := _named(bar, RC.N_EXIT_YES) as Button
+	var no := _named(bar, RC.N_EXIT_NO) as Button
+	_ok("⑨ ★点退出先出确认框, 没有直接走(还在回放里)", ask != null and ask.is_visible_in_tree() and yes != null and no != null
+		and _is_battle(get_tree().current_scene) and b._replay.is_playing())
+	_ok("⑨ 确认框里的两颗按钮是 card_button(属于弹框, §4.6-6)", yes != null and no != null and _is_card(yes) and _is_card(no))
+	if no != null:
+		no.pressed.emit()
+	await _frames(2)
+	var ask2 := _named(bar, RC.N_EXIT_ASK)
+	_ok("⑨ 点「继续观看」⇒ 确认框收起、接着播", (ask2 == null or ask2.is_queued_for_deletion()) and b._replay.is_playing())
+
+
+## 贴图是不是这张 1 倍源图按 ×3 最近邻放大来的(逐字节比)。
+func _is_x3_of(tx: Texture2D, path: String) -> bool:
+	var src := (load(path) as Texture2D).get_image()
+	if src == null or tx == null:
+		return false
+	var a := src.duplicate() as Image
+	a.convert(Image.FORMAT_RGBA8)
+	a.resize(a.get_width() * 3, a.get_height() * 3, Image.INTERPOLATE_NEAREST)
+	var bimg := tx.get_image().duplicate() as Image
+	bimg.convert(Image.FORMAT_RGBA8)
+	return a.get_size() == bimg.get_size() and a.get_data() == bimg.get_data()
+
+
+## card_button 的皮: 正常态是 StyleBoxFlat、底色 #6a3f1c(UISkin.card_button)
+func _is_card(bt: Button) -> bool:
+	var sb := bt.get_theme_stylebox("normal")
+	return sb is StyleBoxFlat and (sb as StyleBoxFlat).bg_color.is_equal_approx(Color("#6a3f1c"))
 
 
 # ⑧ ─────────────────────────────────────────────────────────────

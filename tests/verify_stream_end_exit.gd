@@ -106,8 +106,18 @@ func _case(tag: String, rec: Dictionary, chunks: Array, meta: Dictionary, sess: 
 	var ui = b._hud._replay_ui
 	var ex: Button = ui.exit_btn if ui != null else null
 	var ex_ok: bool = ex != null and is_instance_valid(ex) and ex.is_visible_in_tree() and str(ex.name) == RC.N_EXIT \
-		and ex.pressed.is_connected(b._hud._replay_exit)
-	_ok("★★%s 播放时有「退出」(%s, 可见, 连到 _replay_exit = 回放退出同一个)" % [tag, RC.N_EXIT], ex_ok)
+		and ex.pressed.is_connected(ui._ask_exit)
+	var yes_ok := false
+	if ex_ok:
+		ex.pressed.emit()                 # 退出先确认(2026-10-27): 框里的「退出」连到 _replay_exit, 「继续观看」收起
+		var yes := b.find_child(RC.N_EXIT_YES, true, false) as Button
+		var no := b.find_child(RC.N_EXIT_NO, true, false) as Button
+		yes_ok = yes != null and no != null and yes.pressed.is_connected(b._hud._replay_exit)
+		if no != null:
+			no.pressed.emit()
+		await get_tree().process_frame
+	_ok("★★%s 播放时有「退出」(%s, 可见; 点了先出确认框, 框里「退出」连到 _replay_exit = 回放退出同一个)" % [tag, RC.N_EXIT],
+		ex_ok and yes_ok)
 	var guard := 0
 	while p.state != "ended" and p.state != "error" and guard < 40000:
 		guard += 1

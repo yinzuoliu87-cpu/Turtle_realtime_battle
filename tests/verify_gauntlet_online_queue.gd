@@ -1201,40 +1201,72 @@ func _t_a() -> void:
 	var cell := _label(m, MMK.QUEUE_CELL)
 	var wl := _label(m, MMK.QUEUE_WAITED)
 	var bt := _cancel_btn(m)
-	_ok("A ★等待界面: 「正在寻找 1 胜 0 负的对手」", cell != null and cell.text == RW.queue_cell_text(1, 0), cell.text if cell != null else "无")
+	_ok("A ★等待界面: 对手空位写「正在寻找 1 胜 0 负的对手」", cell != null and cell.text == RW.queue_cell_text(1, 0), cell.text if cell != null else "无")
 	var w0 := wl.text if wl != null else ""
 	_ok("A ★等待界面: 已等待秒数「已等待 N 秒」", wl != null and w0.begins_with("已等待 ") and w0.ends_with(" 秒"), w0)
-	_ok("A ★等待界面: 有「取消匹配」按钮、是 card_button(不是木牌)", bt != null and bt.text == RW.TXT_QUEUE_CANCEL and _is_card_button(bt)
-		and not bt.disabled, bt.text if bt != null else "无")
+	## ★2026-10-27 等待屏重做(用户看了风格稿回「行吧」; docs/plans/20261027-UI美术规矩.md §4.6-6): 取消键 = 回放条那张红键底座 ×3,
+	##   不再是 card_button(这条原来断言「是 card_button」, 那是按旧样子写的, 现在反过来量)。
+	var qv := m.find_child(MMK.QUEUE_BOX, true, false) as QueueWaitView
+	var bsb: StyleBox = bt.get_theme_stylebox("normal") if bt != null else null
+	_ok("A ★等待界面: 有「取消匹配」键、皮是红键底座(StyleBoxTexture, 不是 card_button / 木牌)、可按", bt != null and bt.text == RW.TXT_QUEUE_CANCEL
+		and bsb is StyleBoxTexture and not _is_card_button(bt) and not bt.disabled and is_instance_valid(qv) and bt.is_visible_in_tree(),
+		bt.text if bt != null else "无")
 	var btns: Array = []
 	for c in m.find_children("*", "Button", true, false):
-		if (c as Button).visible and not (c as Node).is_queued_for_deletion():
+		if (c as Button).is_visible_in_tree() and not (c as Node).is_queued_for_deletion():
 			btns.append((c as Button).text)
-	_ok("A ★阵容锁定: 这一屏只有「←」与「取消匹配」两颗(没有去商店 / 背包的路)", btns.size() == 2 and btns.has(RW.TXT_QUEUE_CANCEL), str(btns))
-	## ★2026-10-27 实拍逮到: 格子战绩一度落进屏底那一行状态字(y 578), 4:3 上雷达环正好从字上划过 —— 原来那条只比文字的断言照样绿。
+	var back_btn = m.get("_cancel_btn")
+	_ok("A ★阵容锁定 + 没有「←」(用户 10-27 定): 这一屏只有「取消匹配」一颗看得见的按钮(没有去商店 / 背包的路)",
+		btns == [RW.TXT_QUEUE_CANCEL] and back_btn != null and not (back_btn as Button).is_visible_in_tree(), str(btns))
+	## 等待屏盖住找对手那一屏: 雷达环 / 「正在匹配对手…」收在下面, 屏底状态行空着(2026-10-27 实拍逮过格子战绩落进状态行)
 	var st_lb := _label(m, "RefereeStatus")
-	_ok("A ★格子战绩写在找对手那一屏的副标题上(不是屏底状态行): 屏上不再有「正在匹配对手…」、状态行空着",
-		cell != null and cell.position.y < MMK.QUEUE_WAITED_Y and not _has_label(m, "正在匹配对手…") and (st_lb == null or st_lb.text == ""),
-		"%s / %s" % [str(cell.position) if cell != null else "无", st_lb.text if st_lb != null else "无"])
-	var far: Array = []
-	for lb in [cell, wl]:
-		if lb == null:
-			continue
-		var tw: float = (lb as Label).get_theme_font("font").get_string_size((lb as Label).text, HORIZONTAL_ALIGNMENT_LEFT, -1,
-			(lb as Label).get_theme_font_size("font_size")).x
-		var cx: float = (lb as Label).position.x + (lb as Label).size.x / 2.0
-		var y0: float = (lb as Label).position.y
-		var y1: float = y0 + (lb as Label).size.y
-		for p in [Vector2(cx - tw / 2.0, y0), Vector2(cx + tw / 2.0, y0), Vector2(cx - tw / 2.0, y1), Vector2(cx + tw / 2.0, y1)]:
-			if (p as Vector2).distance_to(MMK.RADAR_C) > MMK.RADAR_START_R:
-				far.append("%s %s" % [(lb as Label).name, str(p)])
-	_ok("A ★等待界面两行字都在雷达环起跳半径 %.0f 以内(环不压字; 分母 2 行 × 4 角)" % MMK.RADAR_START_R, cell != null and wl != null and far.is_empty(), str(far))
+	var sub_vis := false
+	for c in m.find_children("*", "Label", true, false):
+		if (c as Label).text == "正在匹配对手…" and (c as Label).is_visible_in_tree():
+			sub_vis = true
+	_ok("A ★等待屏盖住找对手那一屏(「正在匹配对手…」看不见、状态行空着)", is_instance_valid(qv) and not sub_vis
+		and (st_lb == null or st_lb.text == "" or not st_lb.is_visible_in_tree()), st_lb.text if st_lb != null else "无")
+	## 阵容卡画的就是交上去的那份快照: 头像个数 = 快照里的单位数(统领按 lane_assign、小将按 minions, 这里独立数一遍)
+	var snap: Dictionary = _join_body.get("p_snapshot", {}) if _join_body.get("p_snapshot") is Dictionary else {}
+	var want := 0
+	for lane in ["top", "bottom"]:
+		want += ((snap.get("lane_assign", {}) as Dictionary).get(lane, []) as Array).size()
+		want += ((snap.get("minions", {}) as Dictionary).get(lane, []) as Array).size()
+	var avs: Array = []
+	if is_instance_valid(qv):
+		for c in qv.find_children(QueueWaitView.N_MY_UNIT + "*", "TextureRect", true, false):
+			if (c as TextureRect).texture != null and (c as TextureRect).is_visible_in_tree():
+				avs.append(str((c as TextureRect).get_meta("unit", "")))
+	_ok("A ★我锁定的阵容卡: 头像 %d 个 = 交上去的快照里的单位数 %d(分母 > 0)、每个都有图" % [avs.size(), want],
+		want > 0 and avs.size() == want and QueueWaitView.unit_count(snap) == want, str(avs))
+	var lit_w := 0
+	var lit_l := 0
+	var n_w := 0
+	var n_l := 0
+	if is_instance_valid(qv):
+		for c in qv.find_children(QueueWaitView.N_WIN + "*", "TextureRect", true, false):
+			n_w += 1
+			lit_w += 1 if bool((c as TextureRect).get_meta(QueueWaitView.META_ON, false)) else 0
+		for c in qv.find_children(QueueWaitView.N_LOSS + "*", "TextureRect", true, false):
+			n_l += 1
+			lit_l += 1 if bool((c as TextureRect).get_meta(QueueWaitView.META_ON, false)) else 0
+	_ok("A ★战绩格: 胜 %d 格亮 %d、负 %d 格亮 %d(= 1 胜 0 负; 格数 = 4 胜晋级 / 3 负出局)" % [n_w, lit_w, n_l, lit_l],
+		n_w == int(P2C.GAUNTLET_WINS_IN) and n_l == int(P2C.GAUNTLET_LOSSES_OUT) and lit_w == 1 and lit_l == 0)
+	var tl := _label(m, QueueWaitView.N_TITLE)
+	var lk := m.find_child(QueueWaitView.N_LOCK, true, false) as Control
+	_ok("A 标题「闯关赛  第 2 场」(= 胜 + 负 + 1)、阵容卡上有锁徽记", tl != null and tl.text == QueueWaitView.TXT_TITLE % 2
+		and lk != null and lk.is_visible_in_tree(), tl.text if tl != null else "无")
+	var sil0: Array = qv.sil_ids() if is_instance_valid(qv) else []
+	await _wait(func() -> bool: return is_instance_valid(qv) and qv.sil_ids() != sil0, 1500)
+	_ok("A ★对手空位在动: 6 个剪影换了一组(%s → %s)" % [str(sil0), str(qv.sil_ids() if is_instance_valid(qv) else [])],
+		sil0.size() == 6 and is_instance_valid(qv) and qv.sil_ids() != sil0)
 	if cell != null and wl != null and bt != null:
-		var r0 := Rect2(cell.position, cell.size)
-		var r1 := Rect2(wl.position, wl.size)
-		var r2 := Rect2(bt.position, bt.size)
-		_ok("A 等待界面三样不叠(格子战绩 / 已等待 / 取消匹配)", not r0.intersects(r1) and not r1.intersects(r2) and not r0.intersects(r2),
-			"%s %s %s" % [str(r0), str(r1), str(r2)])
+		var r0 := cell.get_global_rect()
+		var r1 := wl.get_global_rect()
+		var r2 := bt.get_global_rect()
+		var vr := Rect2(Vector2.ZERO, Vector2(m.get_viewport().get_visible_rect().size))
+		_ok("A 等待界面三样不叠、都在屏内(格子战绩 / 已等待 / 取消匹配)", not r0.intersects(r1) and not r1.intersects(r2) and not r0.intersects(r2)
+			and vr.encloses(r0) and vr.encloses(r1) and vr.encloses(r2), "%s %s %s" % [str(r0), str(r1), str(r2)])
 	_ok("A ★没配上之前不翻 VS 卡(没有「匹配成功」、没有对手卡)", not _has_label(m, "匹配成功") and (_gs.dual_opponent as Dictionary).is_empty())
 	_ok("A ★进队就落排队单(没有任务号; 排队时杀进程靠它补)", RW.is_queue_bill(_gs.referee_pending)
 		and int((_gs.referee_pending as Dictionary).get("week", 0)) == P2C.week_anchor_utc(P2C.now_utc()), str(_gs.referee_pending))
@@ -1733,6 +1765,52 @@ func _t_s() -> void:
 	_ok("S ★本机 1-0 对得上、服务端回 0-1 ⇒ 进队 1 次、马上出队 1 次、收工 cell_mismatch", _done_why(evs) == "cell_mismatch"
 		and _hit(JOIN) - j0 == 1 and _hit(CANCEL) - c0 == 1 and _kind_count(evs, "cell_mismatch") == 1,
 		"why=%s join+%d cancel+%d" % [_done_why(evs), _hit(JOIN) - j0, _hit(CANCEL) - c0])
+	d.queue_free()
+	await _frames(3)
+	## SIM_EXPECT_CELL ③(2026-10-27 内测服彩排): 第 1 局入队那一刻就配上(后进队的一方, 看不到「排队中」)也算查过格子 ⇒
+	##   第 2 局本机已经 2-0(≠ 调度器给的 1-0)照常排、照常打, 不许误报 cell_mismatch 打 1 局就收工
+	##   (彩排: p05 / p33 入队即配上, 第 2 局开排前 local [1,0] ≠ want [0,0] ⇒ cell_mismatch 收工; 7 次上线这样收工)。
+	_gs.gauntlet_wins = 1
+	_gs.gauntlet_losses = 0
+	_gs.referee_pending = {}
+	_reset_sc({"join": "paired", "side": "b", "cancel": "cancelled"})
+	OS.set_environment("SIM_ROUNDS", "2")
+	OS.set_environment("SIM_SKIP_WATCH", "1")
+	OS.set_environment("SIM_SHOP_MIN_SEC", "1")
+	OS.set_environment("SIM_SHOP_MAX_SEC", "1")
+	OS.set_environment("SIM_EXPECT_CELL", "1-0")
+	j0 = _hit(JOIN)
+	ev0 = _ev_size()
+	mh0 = (_gs.match_history as Array).size()
+	d = await _start_driver()
+	stage = 0
+	t_pair = -1
+	t0 = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 120000 and not bool(d.get("_done")):
+		var cs3 := get_tree().current_scene
+		if _paired_now and t_pair < 0:
+			t_pair = Time.get_ticks_msec()
+		if t_pair >= 0 and not _done and Time.get_ticks_msec() - t_pair > 1500:
+			_done = true                  # 裁判 1.5 秒后「算完」
+		if stage == 0 and _paired_now and cs3 != null and str(cs3.scene_file_path) == Drv.S_SHOP:
+			stage = 1                     # 第 1 局记完账进店了: 第 2 局正常排队, 1 次心跳后配上
+			_reset_sc_keep({"pair_after": 1, "cancel": "cancelled"})
+			_done = false
+			t_pair = -1
+		await get_tree().process_frame
+	evs = _sim_events(ev0)
+	var k3: Array = []
+	for e in evs:
+		k3.append(str((e as Dictionary).get("kind", "")))
+	print("    驱动事件(入队即配上) %d 条: %s" % [k3.size(), " ".join(PackedStringArray(k3))])
+	var first_pair := k3.find("queue_paired")
+	_ok("S 分母: 第 1 局是「入队即配上」—— 配上之前没看到过「排队中」(queue_wait 在第一次 queue_paired 之前出现 %d 次)" % (
+		k3.slice(0, maxi(first_pair, 0)).count("queue_wait")), first_pair >= 0 and k3.slice(0, first_pair).count("queue_wait") == 0)
+	_ok("S ★入队即配上 ⇒ 第 2 局照常排、照常打: join %d 次 · 配上 %d 次 · 记账 %d 次 · cell_mismatch %d 次 · 收工 %s · 战绩 1-0 → %d-%d" % [
+		_hit(JOIN) - j0, k3.count("queue_paired"), k3.count("watch_skipped"), k3.count("cell_mismatch"), _done_why(evs),
+		int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)],
+		_hit(JOIN) - j0 == 2 and k3.count("queue_paired") == 2 and k3.count("watch_skipped") == 2 and k3.count("cell_mismatch") == 0
+		and _done_why(evs) == "rounds_cap" and int(_gs.gauntlet_wins) == 3 and (_gs.match_history as Array).size() - mh0 == 2)
 	d.queue_free()
 	await _frames(3)
 	_srv_auto = false

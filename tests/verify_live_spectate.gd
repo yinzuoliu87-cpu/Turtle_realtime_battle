@@ -525,7 +525,7 @@ func _t_board_and_watch() -> void:
 			found.append(nm)
 	_ok("③ ★没有暂停 / 倍速 / 进度条 / 全场时长 / 已暂停 / 再看一遍", found.is_empty(), str(found))
 	var ex := b.find_child(RC.N_LIVE_EXIT, true, false) as Button
-	_ok("③ 有「退出」", ex != null and ex.is_visible_in_tree() and ex.text == "退出")
+	_ok("③ 有「退出」(左下角红键 X)", ex != null and ex.is_visible_in_tree() and PixelKey.icon_of(ex) == "exit")
 	## 跟播: 服务器按打的人的进度放行(观众每过一步真实时间, 打的人也多走一步)
 	var t0: int = int(js["row"]["horizon"])
 	var k := j

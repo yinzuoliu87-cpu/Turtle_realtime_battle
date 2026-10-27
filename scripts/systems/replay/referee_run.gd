@@ -28,6 +28,7 @@ var _inflight := false
 ##   start_queue: 进队(锁定的阵容)→ waiting ⇒ 落排队单, 每 QUEUE_POLL_SEC 秒心跳 → paired ⇒ `_on_submit`(与开战回包同一条路)。
 var side := "a"                   # 我在这一局是 a(左)还是 b(右); 只有在线排队配上的那一局可能是 b
 var cell := Vector2i(-1, -1)      # 排队的战绩格子(几胜几负; 服务端回包为准)
+var lineup: Dictionary = {}       # 进队时交上去的那份快照(= 锁定的阵容); 排队等待屏的阵容卡画的就是它
 var q_polls := 0                  # 心跳次数(门禁分母)
 var _q_wk := 0
 var _qtm: Timer = null
@@ -43,6 +44,7 @@ func start_queue() -> void:
 	_opp_tries = 0
 	_to(RW.ST_SUBMIT, RW.TXT_SUBMITTING)
 	var snap: Dictionary = RW.my_snapshot()
+	lineup = snap
 	if snap.is_empty():
 		_to(RW.ST_ERROR, RW.TXT_BAD_LINEUP)
 		return

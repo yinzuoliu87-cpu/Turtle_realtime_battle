@@ -1601,24 +1601,22 @@ scripts/scenes/battle/inspect_card.gd|lit|魔抗
 scripts/scenes/battle/inspect_card.gd|lit|魔法穿透
 scripts/scenes/battle/inspect_card.gd|lit|龟能充能速率
 scripts/scenes/battle/replay_controls.gd|lit|%s  对  %s
-scripts/scenes/battle/replay_controls.gd|lit|上路
-scripts/scenes/battle/replay_controls.gd|lit|下路
+scripts/scenes/battle/replay_controls.gd|lit|上路战场
+scripts/scenes/battle/replay_controls.gd|lit|下路战场
 scripts/scenes/battle/replay_controls.gd|lit|全场 
 scripts/scenes/battle/replay_controls.gd|lit|回放中断
 scripts/scenes/battle/replay_controls.gd|lit|回放异常，无法继续播放
 scripts/scenes/battle/replay_controls.gd|lit|已暂停
-scripts/scenes/battle/replay_controls.gd|lit|暂停
-scripts/scenes/battle/replay_controls.gd|lit|终极
+scripts/scenes/battle/replay_controls.gd|lit|终极战场
+scripts/scenes/battle/replay_controls.gd|lit|继续观看
 scripts/scenes/battle/replay_controls.gd|lit|返回
 scripts/scenes/battle/replay_controls.gd|lit|返回对阵图
 scripts/scenes/battle/replay_controls.gd|lit|返回战绩
 scripts/scenes/battle/replay_controls.gd|lit|返回赛况
 scripts/scenes/battle/replay_controls.gd|lit|退出
-scripts/scenes/battle/replay_controls.gd|lit|退出回放
-scripts/scenes/battle/replay_controls.gd|text|%d 倍速
+scripts/scenes/battle/replay_controls.gd|lit|退出回放？
+scripts/scenes/battle/replay_controls.gd|lit|退出观看？
 scripts/scenes/battle/replay_controls.gd|text|再看一遍
-scripts/scenes/battle/replay_controls.gd|text|暂停
-scripts/scenes/battle/replay_controls.gd|text|继续
 scripts/scenes/battle/review_console.gd|lit|◀装
 scripts/scenes/battle/review_console.gd|lit|◀龟
 scripts/scenes/battle/review_console.gd|lit|关
@@ -1872,6 +1870,12 @@ scripts/scenes/menu_weekend.gd|lit|胜场已达晋级线，可参加周六闯关
 scripts/scenes/menu_weekend.gd|lit|观看全场赛况 »
 scripts/scenes/menu_weekend.gd|lit|观看对阵图 »
 scripts/scenes/menu_weekend.gd|lit|闯关赛仅限积分赛 %d 胜晋级的玩家参加。本周未晋级，可观战。%s
+scripts/scenes/queue_wait_view.gd|lit|上路战场
+scripts/scenes/queue_wait_view.gd|lit|下路战场
+scripts/scenes/queue_wait_view.gd|lit|再赢 %d 场晋级决赛日
+scripts/scenes/queue_wait_view.gd|lit|再输 %d 场出局
+scripts/scenes/queue_wait_view.gd|lit|已锁定
+scripts/scenes/queue_wait_view.gd|lit|闯关赛  第 %d 场
 scripts/scenes/record/match_card.gd|lit|版本不同
 scripts/scenes/settings/account_delete_dialog.gd|lit|下一步
 scripts/scenes/settings/account_delete_dialog.gd|lit|删除中

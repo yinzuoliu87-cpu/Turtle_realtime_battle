@@ -220,14 +220,22 @@ func _watch(prefix: String) -> void:
 		if st == "fight" and fights == 1 and not shot_fight and int(b._sim_step_n) > fight_step + 240:
 			shot_fight = true
 			await _shot(prefix + "_03_fight")
-			var pb := _find_btn(b, ["暂停"])
+			## 2026-10-27 回放条换成像素图标键(没有字): 按节点名找键, 不按文字
+			var pb := b.find_child(ReplayControls.N_PAUSE, true, false) as Button
 			if pb != null:
 				pb.pressed.emit()
 				await _frames(10)
 				await _shot(prefix + "_03b_paused")
-				var cb := _find_btn(b, ["继续"])
-				if cb != null:
-					cb.pressed.emit()
+				var ek := b.find_child(ReplayControls.N_EXIT, true, false) as Button
+				if ek != null:
+					ek.pressed.emit()
+					await _frames(10)
+					await _shot(prefix + "_03c_exit_ask")
+					var no := b.find_child(ReplayControls.N_EXIT_NO, true, false) as Button
+					if no != null:
+						no.pressed.emit()
+						await _frames(2)
+				pb.pressed.emit()
 		if st == "fight" and fights == 1 and not shot_mid and int(b._sim_step_n) > fight_step + 900:
 			shot_mid = true
 			await _shot(prefix + "_04_mid")
@@ -243,9 +251,15 @@ func _watch(prefix: String) -> void:
 	while Time.get_ticks_msec() - tw < 2500:
 		await get_tree().process_frame
 	await _shot(prefix + "_06_end")
-	## 退出: 找回放条/收尾卡上的「退出」按钮(真入口)。
-	var ex := _find_btn(b, ["返回", "退出回放", "退出"])
-	_note("%s exit button=%s" % [prefix, ex.text if ex != null else "<none>"])
+	## 退出: 收尾卡上的「返回」, 没有就按回放条的退出键再在确认框里点「退出」(真入口)。
+	var ex := _find_btn(b, ["返回"])
+	if ex == null:
+		var ek2 := b.find_child(ReplayControls.N_EXIT, true, false) as Button
+		if ek2 != null and ek2.is_visible_in_tree():
+			ek2.pressed.emit()
+			await _frames(2)
+			ex = b.find_child(ReplayControls.N_EXIT_YES, true, false) as Button
+	_note("%s exit button=%s" % [prefix, (str(ex.name) + " " + ex.text) if ex != null else "<none>"])
 	if ex != null:
 		ex.pressed.emit()
 	else:
@@ -254,11 +268,11 @@ func _watch(prefix: String) -> void:
 
 func _press_speed(b, want: int) -> void:
 	for _k in range(4):
-		var sb := _find_btn(b, ["倍速", "×", "x"])
+		var sb := b.find_child(ReplayControls.N_SPEED, true, false) as Button
 		if sb == null:
 			_note("没有倍速钮")
 			return
-		if sb.text.find(str(want)) >= 0:
+		if PixelKey.icon_of(sb) == "x%d" % want:
 			return
 		sb.pressed.emit()
 		await _frames(2)

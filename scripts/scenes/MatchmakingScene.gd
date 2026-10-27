@@ -221,16 +221,16 @@ func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 
 
 # ─────────────────────────────── 周六在线排队: 等待界面 ───────────────────────────────
-## 等待界面挂在 self(不在 content_root): 雷达环一直往 content_root 里加, 挂在里面的话环会画在「取消匹配」上面。
-##   跟着设计框走(`_queue_center`, 与 `_center` 同一套坐标); 翻 VS 卡 / 离开排队时拆掉。
-const QUEUE_BOX := "QueueBox"
-const QUEUE_CELL := "QueueCell"          # 「正在寻找 X 胜 Y 负的对手」(找对手那一屏原来的副标题改字)
-const QUEUE_WAITED := "QueueWaited"
-const QUEUE_CANCEL := "QueueCancel"
-const QUEUE_BTN_W := 220.0
-const QUEUE_BTN_H := 56.0
-const QUEUE_WAITED_Y := 402.0            # 副标题 366 + 28 高 + 8
-const QUEUE_BTN_Y := 452.0
+## ★2026-10-27 第二版(用户看了方向稿与风格稿回「行吧」): 等待界面 = `QueueWaitView`(scripts/scenes/queue_wait_view.gd) ——
+##   标题 · 战绩格 · 我锁定的阵容卡(+ 锁)VS 对手空位(剪影轮换)· 已等待 · 红色取消键 · 水下底纹, 素材这一屏专门新画。
+##   它挂在 self 上、盖满整屏(压在雷达环那一屏与左上「←」上面); 设计框跟着 content_root 走(`_queue_center`)。
+##   用户 10-27 定: 排队时去掉左上「←」, 只留「取消」⇒ 等待界面在的时候「←」与雷达环那一屏收起, 拆掉时放回来
+##   (交不上 / 报错停在原屏时要靠「←」回去)。翻 VS 卡 / 离开排队时拆掉。
+const _QW := preload("res://scripts/scenes/queue_wait_view.gd")
+const QUEUE_BOX := _QW.N_BOX
+const QUEUE_CELL := _QW.N_CELL           # 「正在寻找 X 胜 Y 负的对手」(对手空位的名牌带)
+const QUEUE_WAITED := _QW.N_WAITED
+const QUEUE_CANCEL := _QW.N_CANCEL
 var _queue_box: Control = null
 
 
@@ -253,7 +253,7 @@ func _on_queue_back() -> void:
 	_on_cancel()
 
 
-## 建 / 刷新等待界面(排队中、正在退出时)。
+## 建 / 刷新等待界面(排队中、正在退出时)。战绩格子以服务端回包为准(`_ref_run.cell`), 心跳里变了就跟着变。
 func _queue_show() -> void:
 	if _ref_run == null or not is_instance_valid(_ref_run):
 		return
@@ -261,56 +261,30 @@ func _queue_show() -> void:
 		_ref_lb.text = ""                 # 「正在提交阵容」那一行让给等待界面
 	if _queue_box == null or not is_instance_valid(_queue_box):
 		_queue_build()
+	var v := _queue_box as QueueWaitView
 	var cell: Vector2i = _ref_run.cell
-	var sub := content_root.find_child(QUEUE_CELL, true, false) as Label
-	if sub == null:
-		## 找对手那一屏(`_build_searching`)最下面那一行字 = 副标题「正在匹配对手…」⇒ 改成格子战绩(不另建一行、不碰那个函数)。
-		##   ★不算屏底那一行状态字(`_ref_label` 建的, 也挂在 content_root、位置更低): 2026-10-27 实拍格子战绩落进了它, 4:3 上被雷达环压字。
-		for c in content_root.get_children():
-			if c is Label and c != _dots_lbl and c != _ref_lb and not str(c.name).begins_with("RefereeStatus") \
-					and not (c as Node).is_queued_for_deletion() and (sub == null or (c as Label).position.y > sub.position.y):
-				sub = c
-		if sub != null:
-			sub.name = QUEUE_CELL
-	if sub != null:
-		sub.text = _RW.queue_cell_text(cell.x, cell.y)
+	v.set_record(cell)
+	v.set_cell_text(_RW.queue_cell_text(cell.x, cell.y))
 	var cancelling := str(_ref_run.state) == _RW.ST_CANCEL
-	var bt := _queue_box.get_node_or_null(QUEUE_CANCEL) as Button
-	if bt != null:
-		bt.disabled = cancelling
-		bt.text = _RW.TXT_QUEUE_CANCELLING if cancelling else _RW.TXT_QUEUE_CANCEL
+	v.set_cancel(_RW.TXT_QUEUE_CANCELLING if cancelling else _RW.TXT_QUEUE_CANCEL, cancelling)
 	_queue_refresh()
 
 
 func _queue_build() -> void:
-	_queue_box = Control.new()
-	_queue_box.name = QUEUE_BOX
-	_queue_box.size = Vector2(W, H)
-	_queue_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_queue_box)
-	var wl := _font(20, Color("#c9d6e4"))
-	wl.name = QUEUE_WAITED
-	wl.size = Vector2(W, 28)
-	wl.position = Vector2(0, QUEUE_WAITED_Y)
-	wl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_queue_box.add_child(wl)
-	## 卡片 / 弹框里的按钮一律 `UISkin.card_button`(与商店「购买」同一种; 用户 10-22 定, 不用木牌)
-	var bt := Button.new()
-	bt.name = QUEUE_CANCEL
-	bt.text = _RW.TXT_QUEUE_CANCEL
-	bt.focus_mode = Control.FOCUS_NONE
-	bt.add_theme_font_size_override("font_size", 22)
-	UISkin.card_button(bt)
-	bt.size = Vector2(QUEUE_BTN_W, QUEUE_BTN_H)
-	bt.custom_minimum_size = bt.size
-	bt.position = Vector2((W - QUEUE_BTN_W) / 2.0, QUEUE_BTN_Y)
-	bt.pressed.connect(_on_queue_back)
-	_queue_box.add_child(bt)
+	var v: QueueWaitView = _QW.new()
+	add_child(v)
+	v.build(_ref_run.lineup, _ref_run.cell, int(_P2C_MM.GAUNTLET_WINS_IN), int(_P2C_MM.GAUNTLET_LOSSES_OUT))
+	v.cancel_btn.pressed.connect(_on_queue_back)
+	_queue_box = v
 	var tk := Timer.new()
 	tk.wait_time = 0.25
 	tk.autostart = true
 	tk.timeout.connect(_queue_refresh)
-	_queue_box.add_child(tk)
+	v.add_child(tk)
+	if _cancel_btn != null and is_instance_valid(_cancel_btn):
+		_cancel_btn.visible = false       # 「←」收起: 排队屏只留「取消」一个出口(用户 10-27)
+	if content_root != null:
+		content_root.visible = false      # 雷达环那一屏收在下面(拆掉等待界面时放回来)
 	if not get_viewport().size_changed.is_connected(_queue_center):
 		get_viewport().size_changed.connect(_queue_center)
 	_queue_center()
@@ -320,20 +294,24 @@ func _queue_build() -> void:
 func _queue_refresh() -> void:
 	if _queue_box == null or not is_instance_valid(_queue_box) or _ref_run == null or not is_instance_valid(_ref_run):
 		return
-	var wl := _queue_box.get_node_or_null(QUEUE_WAITED) as Label
+	var wl: Label = (_queue_box as QueueWaitView).waited_lb
 	if wl != null:
 		wl.text = _RW.queue_waited_text(int(_ref_run.waited_now()))
 
 
 func _queue_center() -> void:
 	if _queue_box != null and is_instance_valid(_queue_box) and content_root != null:
-		_queue_box.position = content_root.position
+		(_queue_box as QueueWaitView).relayout(get_viewport_rect().size, content_root.position)
 
 
 func _queue_box_free() -> void:
 	if _queue_box != null and is_instance_valid(_queue_box):
 		_queue_box.queue_free()
 	_queue_box = null
+	if _cancel_btn != null and is_instance_valid(_cancel_btn):
+		_cancel_btn.visible = true
+	if content_root != null:
+		content_root.visible = true
 
 
 ## VS 卡(或找对手那一屏)下面那一行字。`_build_vs` / `_build_searching` 会清掉 content_root ⇒ 每次用前确认还在。

@@ -479,9 +479,14 @@ func _play_and_exit(tag: String, full: bool) -> Dictionary:
 	## 2026-10-05 回放体验打磨: 回放条改成铭牌 + 底部操作条, 退出钮按节点名找(不按「第几个子节点」)。
 	if bar != null and is_instance_valid(bar):
 		exit_btn = (bar as Node).find_child(ReplayControls.N_EXIT, true, false) as Button
-	_ok("%s 分母: 回放条上有「退出回放」" % tag, exit_btn != null and exit_btn.text == "退出回放")
+	_ok("%s 分母: 回放条上有「退出」键(红键 X)" % tag, exit_btn != null and PixelKey.icon_of(exit_btn) == "exit")
 	if exit_btn != null:
-		exit_btn.pressed.emit()            # 真入口: 人按「退出回放」
+		exit_btn.pressed.emit()            # 真入口: 人按退出键 ⇒ 先出确认框, 再按框里的「退出」
+		await get_tree().process_frame
+		var yes := (bar as Node).find_child(ReplayControls.N_EXIT_YES, true, false) as Button
+		_ok("%s 分母: 点退出先出确认框" % tag, yes != null)
+		if yes != null:
+			yes.pressed.emit()
 	var rs = await _wait_scene(_is_record)
 	_ok("%s ★退出回放 ⇒ 回到战绩页" % tag, rs != null)
 	await _frames(3)
