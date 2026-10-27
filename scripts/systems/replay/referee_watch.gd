@@ -5,8 +5,15 @@ extends RefCounted
 ## ══════════════════════════════════════════════════════════════════════
 ##  周六闯关(开关 `gauntlet_on` 开着时; 关着时一字不变走老路 = 本机打、本机记)
 ## ══════════════════════════════════════════════════════════════════════
+##   ★2026-10-27 起先排队(方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md): 匹配屏 → `Run.start_queue`:
+##     进队 ── gauntlet_queue_join(锁定的阵容, 第几场) ──► waiting ⇒ 落「排队单」(queue_bill), 等待界面「正在寻找 X 胜 Y 负的对手 / 已等待 N 秒 / 取消匹配」
+##     心跳 ── 每 QUEUE_POLL_SEC 秒 gauntlet_queue_poll ──► paired(任务号 + 我是 a / b)⇒ 换成任务单, 接下面「等待」那一步(同一条路)
+##             expired / none ⇒「已退出排队」回主菜单; 取消 ⇒ gauntlet_queue_cancel(回「已配上」⇒ 照配上处理)
+##     我是 b ⇒ 服务端按 B 的视角回胜负 / 战绩 / 铸币; 播录像时左边写对手名、右边写我(`watch_names`)。
+##     服务端没有排队(404)⇒ 与断网同一句, 不退回旧入口(referee_gauntlet_start 周六客户端不再调)。
+##   (2026-10-27 之前的提交那一步: referee_gauntlet_start 当场配对手快照; 下面「等待」起两条路相同)
 ##   匹配屏(本机不挑对手)→ `Run`:
-##     提交 ── referee_gauntlet_start(我的快照, 第几场) ──► 服务端挑对手(同标签真人 → 机器人)、定种子、建任务
+##     提交 ── (旧)referee_gauntlet_start(我的快照, 第几场) ──► 服务端挑对手(同标签真人 → 机器人)、定种子、建任务
 ##             ⇒ 回任务号 + 对手卡片(匹配屏画 VS 卡) ⇒ 落「待记账单」(GameState.referee_pending, 进存档)
 ##     等待 ── 每 POLL_SEC 秒 referee_job_status ──► done ⇒ 按服务器的胜负 / 战绩 / 战斗内铸币记账(`settle`, 清单 + 存档同一刻)
 ##     播放 ── 按录像号取录像(matches)──► ReplayRecorder.play + 观赛会话 KIND_REFEREE:
@@ -86,6 +93,45 @@ const ST_PLAY := "play"
 const ST_LOCAL := "local"       # 服务端说开关已关 ⇒ 调用方走老路(本机打)
 const ST_ERROR := "error"       # 停在原地, msg 说清原因(没有本地成绩)
 const ST_LATER := "later"       # 交上去了、结果没等到(等到上限 / 问不到): 单子留着 ⇒ 调用方回主菜单, 主菜单补记
+## ── 在线排队(2026-10-27 · 方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md §4.4)──
+const ST_QUEUE := "queue"       # 阵容已锁定、在队里等同战绩的在线对手(每 QUEUE_POLL_SEC 秒心跳一次)
+const ST_CANCEL := "cancel"     # 排队中按了取消, 等服务端回话(回 paired ⇒ 照配上处理)
+const ST_LEFT := "left"         # 已出队(取消成功 / 服务端说不在队里了): 没有对局 ⇒ 调用方回主菜单, msg 非空就飘它
+
+## 排队心跳间隔(秒)。服务端 15 秒没心跳 ⇒ 过期(不会被配上)。
+const QUEUE_POLL_SEC := 2.0
+const TXT_QUEUE_CELL := "正在寻找 %d 胜 %d 负的对手"
+const TXT_QUEUE_WAITED := "已等待 %d 秒"
+const TXT_QUEUE_WAITED_MIN := "已等待 %d 分 %02d 秒"
+const TXT_QUEUE_CANCEL := "取消匹配"
+const TXT_QUEUE_CANCELLING := "正在退出排队"
+const TXT_QUEUE_LEFT := "已退出排队"
+const TXT_QUEUE_LOST := "连接中断，已退出排队"
+
+
+## 排队这几个状态(找对手那一屏一直停着, 不翻 VS 卡)。
+static func in_queue(st: String) -> bool:
+	return st == ST_SUBMIT or st == ST_QUEUE or st == ST_CANCEL
+
+
+## 等待界面那两行: 格子战绩 + 已等待多久。
+static func queue_cell_text(gw: int, gl: int) -> String:
+	return TXT_QUEUE_CELL % [maxi(0, gw), maxi(0, gl)]
+
+
+static func queue_waited_text(sec: int) -> String:
+	var s := maxi(0, sec)
+	return TXT_QUEUE_WAITED % s if s < 60 else TXT_QUEUE_WAITED_MIN % [s / 60, s % 60]
+
+
+## ★排队单(进队成功那一刻就落存档, 2026-10-27): 排队时杀进程 / 断网 ⇒ 配上的那一局下次开主菜单照样补得回来
+##   (`resume_if_any` 先问心跳: 配上了 ⇒ 换成任务单按任务号补记; 过期 / 不在队里 ⇒ 销单)。没有任务号, `settle` 认不到它。
+static func queue_bill(week: int, gw: int, gl: int) -> Dictionary:
+	return {"queue": true, "week": week, "gw": gw, "gl": gl}
+
+
+static func is_queue_bill(p) -> bool:
+	return p is Dictionary and bool((p as Dictionary).get("queue", false))
 
 
 ## 周六这一场交给服务器吗(调用方已判过「今天是周六且闯关赛上线」, 这里只看开关)。
@@ -105,14 +151,19 @@ static func my_snapshot() -> Dictionary:
 
 
 ## 交上去那一刻的待记账单。
-static func pending_for(job_id: int, match_id: String, week: int, foe: Dictionary) -> Dictionary:
+## `side` = 我在这一局是 a(左, 录像方)还是 b(右; 在线排队配上的另一方, 2026-10-27)。b ⇒ 单子上记一笔(战绩页那一行带着它);
+##   a ⇒ 与改之前逐字相同(不带这个键)。记账本身不看它: 服务端 `referee_job_status` 对 B 方回的就是 B 的胜负 / 战绩 / 铸币。
+static func pending_for(job_id: int, match_id: String, week: int, foe: Dictionary, side: String = "a") -> Dictionary:
 	var ldr: Array = []
 	for x in (foe.get("leaders", []) if foe.get("leaders", []) is Array else []):
 		if ldr.size() < 3:
 			ldr.append(str(x))
 	var pf = foe.get("profile", null)
-	return {"job_id": job_id, "match_id": match_id, "week": week, "foe": ldr,
+	var out := {"job_id": job_id, "match_id": match_id, "week": week, "foe": ldr,
 		"foe_name": str((pf as Dictionary).get("name", "")) if pf is Dictionary else ""}
+	if side == "b":
+		out["side"] = "b"
+	return out
 
 
 ## ★记账: 服务器算完的这一场(周六口径, 与 `_settle_season` 的闯关分支 + 收尾同一套)。
@@ -151,6 +202,8 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	if won:
 		gs.battles_won += 1
 	var mid := str(pd.get("match_id", ""))
+	if not SB.is_uuid(mid):
+		mid = str(st.get("match_id", ""))  # 排队配上时回包只给了任务号(2026-10-27): 录像号用任务状态里的那个
 	if SB.is_uuid(mid):
 		gs.replay_pending_id = mid        # 战绩页那一行挂上录像(服务器那一份)
 	var lineup: Array = (gs.season_leaders as Array).slice(0, 3) if gs.season_leaders is Array else []
@@ -164,6 +217,8 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 			row["foe"] = (pd["foe"] as Array).duplicate()
 		if str(pd.get("foe_name", "")) != "":
 			row["foe_name"] = str(pd["foe_name"])
+		if str(pd.get("side", "")) == "b":
+			row["side"] = "b"             # 这一局我在右边(录像左方是对手): 看录像时按它摆名字
 	gs.save()
 	## 快照池: 以服务器给的新战绩标签再传一份(服务端写回时挂进池的那份没有 gl_* 标签, 本机匹配层认不出)。
 	BE.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
@@ -228,17 +283,33 @@ static func adopt_ledger(gs, gw: int, gl: int) -> void:
 static func play_settled(tree: SceneTree, rec: Dictionary, view: Dictionary) -> String:
 	LS.pending = {"kind": LS.KIND_REFEREE, "id": str(rec.get("id", "")), "result": view.duplicate(),
 		"t_ms": Time.get_ticks_msec()}
-	var why := ReplayRecorder.play(tree, rec, MAIN_MENU, {})
+	var why := ReplayRecorder.play(tree, rec, MAIN_MENU, watch_names(view))
 	if why != "":
 		LS.pending = {}
 	return why
+
+
+## 看自己那一场时左右两边的名字(`ReplayRecorder.play_names`)。
+##   我是 a(录像方 = 左)⇒ {}(与改之前一样: 左 = 看的人自己, 右 = 录像里那份对手快照的名字)。
+##   ★我是 b(在线排队配上的另一方, 2026-10-27)⇒ 录像左方是对手、右方才是我: 不给名字的话两边都会写成我自己
+##     (左 = 看的人, 右 = 录像里右方那份快照 = 我的阵容)。⇒ {l: 对手名, r: 我}。胜负由服务端按 B 的视角给(view.won), 不在这里翻。
+static func watch_names(view: Dictionary) -> Dictionary:
+	if str(view.get("side", "a")) != "b":
+		return {}
+	var foe := str(view.get("foe_name", "")).strip_edges()
+	var me := str(BE.player_display_name()).strip_edges()
+	if foe == "" or me == "":
+		return {}
+	if foe == me:
+		return {"l": foe + " ", "r": me}       # 同名: side_names 要求两边不同才直接用(否则当成「不知道谁是谁」)
+	return {"l": foe, "r": me}
 
 
 ## 同上, 但先过逐帧直播的分流口(S5)。`done.call(code, msg)` 恰好一次: "" = 已进战斗场。
 ##   开关关 ⇒ 同步走 `play_settled`(与改之前逐字一致); 开 ⇒ 有流播流, 没有流 / 断网 / 版本过旧 ⇒ 不进场(绝不本机重算)。
 ##   ★这一场确知是服务器裁判局(`known`): 没有流时**不**退回重算。
 static func play_settled_route(tree: SceneTree, rec: Dictionary, view: Dictionary, done: Callable) -> void:
-	SW.route(tree, rec, MAIN_MENU, {}, true, func() -> String: return play_settled(tree, rec, view), done,
+	SW.route(tree, rec, MAIN_MENU, watch_names(view), true, func() -> String: return play_settled(tree, rec, view), done,
 		{"kind": SW.KIND_REFEREE, "result": view.duplicate()})
 
 
@@ -268,6 +339,8 @@ static func resume_if_any(done: Callable = Callable()) -> bool:
 	var p = GameState.get("referee_pending")
 	if not (p is Dictionary) or (p as Dictionary).is_empty():
 		return false
+	if is_queue_bill(p):
+		return _resume_queue(p as Dictionary, done)
 	var jid := int((p as Dictionary).get("job_id", -1))
 	if jid <= 0:
 		GameState.referee_pending = {}
@@ -289,6 +362,40 @@ static func _on_resume(jid: int, res: Dictionary, done: Callable) -> void:
 	var v := settle(GameState, jid, res)
 	if not v.is_empty() and done.is_valid():
 		done.call(v)
+
+
+## ★排队单(没有任务号; 排队时杀进程 / 断网 / 取消没等到回话)⇒ 先问心跳:
+##   配上了 ⇒ 换成任务单, 接着按任务号查(与上面同一条, 算完就补记);
+##   过期 / 不在队里 / 已取消 ⇒ 销单(没有对局);
+##   还在等(这一刻不在匹配屏, 却还在队里 —— 杀进程后十几秒内重开)⇒ 出队: 主菜单不是等待界面, 留在队里的话阵容锁着、人却能去改阵容。
+##     出队回「来不及, 已配上」⇒ 同「配上了」。
+##   问不到 ⇒ 单子留着下次。上一周的排队单 ⇒ 直接销(同 `settle` 的换周口径)。
+static func _resume_queue(p: Dictionary, done: Callable) -> bool:
+	var wk := int(p.get("week", 0))
+	if wk != P2C.week_anchor_utc(int(P2C.now_utc())):
+		GameState.referee_pending = {}
+		GameState.save()
+		return false
+	return RN.queue_poll_async(wk, func(res: Dictionary) -> void: _on_resume_queue(wk, res, done, false))
+
+
+static func _on_resume_queue(wk: int, res: Dictionary, done: Callable, cancelled: bool) -> void:
+	if not is_queue_bill(GameState.referee_pending) or int((GameState.referee_pending as Dictionary).get("week", 0)) != wk:
+		return                                # 单子已经被别的路换掉 / 销掉
+	if str(res.get("err", "")) != "":
+		return                                # 问不到: 留着下次
+	match str(res.get("status", "")):
+		RN.Q_PAIRED:
+			var jid := int(res.get("job_id", -1))
+			GameState.referee_pending = pending_for(jid, str(res.get("match_id", "")), wk, res.get("opp", {}), str(res.get("side", "a")))
+			GameState.save()
+			RN.job_status_async(jid, func(r2: Dictionary) -> void: _on_resume(jid, r2, done))
+		RN.Q_WAITING:
+			if not cancelled:
+				RN.queue_cancel_async(wk, func(r2: Dictionary) -> void: _on_resume_queue(wk, r2, done, true))
+		_:
+			GameState.referee_pending = {}    # 过期 / 不在队里 / 已取消: 没有对局
+			GameState.save()
 
 
 static func resume_text(view: Dictionary) -> String:

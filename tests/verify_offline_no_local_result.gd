@@ -8,6 +8,8 @@ extends Node
 ##   ③ 两种情况都: 不进战斗场、没有本地对局、战绩 / 币 / 场次 / 战绩页 / 待记账单一个都不动
 ##   ④ 分母: 同一套布置把网接上 ⇒ 真的交出去了(证明 ①② 不是因为根本没走到交阵容那一步)
 ## 每条判据都做过反向验证(改坏 → 红 → 逐字节还原), 见方案书「验收清单」那一行。
+## ── 2026-10-27 周六改在线排队: 交阵容那一步换成进队 gauntlet_queue_join(在线时假服务器让它当场配上)。
+##   量的需求(断网 ⇒ 不出本地成绩 / 不落单子)没变; 「交了」数的是进队那一条。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
@@ -88,10 +90,10 @@ func _ready() -> void:
 
 func _transport(_m, u, _h, _b, cb) -> void:
 	var url := str(u)
-	if url.find("/rpc/referee_gauntlet_start") >= 0:
+	if url.find("/rpc/gauntlet_queue_join") >= 0:
 		_submits += 1
 		if _mode == "online":
-			cb.call({"ok": true, "code": 200, "body": "{\"ok\":true,\"job_id\":5,\"match_id\":\"5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b\","
+			cb.call({"ok": true, "code": 200, "body": "{\"ok\":true,\"status\":\"paired\",\"side\":\"a\",\"job_id\":5,\"match_id\":\"5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b\","
 				+ "\"opp\":{\"profile\":{\"name\":\"kevin_99\",\"avatar\":\"ninja\",\"id\":\"g_x\",\"tag\":\"#ABCDEF\"},\"leaders\":[\"ninja\",\"dice\",\"pirate\"]}}"})
 			return
 	if _mode == "hang":

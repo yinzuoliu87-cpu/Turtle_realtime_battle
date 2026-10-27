@@ -12,6 +12,10 @@ extends Node
 ##      键名 / 顺序 = SQL 形参; 卡片解析只留 name / avatar / id / tag + 三统领; 回包形状不对 ⇒ server
 ##   S4 SQL 与客户端常量对账: 30 分钟新鲜窗 / gl_ts 60~1500 秒 / 池子上限 30 场 / 4-3-6 / coins 0..999 / 卡片键 / 权限 / 旧接口闸
 ##   S5 客户端已经没有任何一处调旧接口(referee_submit_gauntlet)
+## ── 2026-10-27 周六改在线排队(docs/plans/20261027b-闯关赛在线瑞士轮.md): 客户端交阵容换成 gauntlet_queue_join, 不再调
+##   referee_gauntlet_start(服务端线 10-27: 旧入口还开着, 周六客户端别再调它)。S3 量的需求不变(只交阵容 + 第几场,
+##   指定不了对手 / 种子; 回包卡片只留那几个键), 改量新那一条; S5 多一条「客户端里没有旧入口的请求」。S1 / S2 / S4 不动
+##   (机器人池仍是服务端 90 秒兜底那一支, 20261020c 迁移文件也没动)。
 
 const BE := preload("res://scripts/net/backend.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
@@ -24,6 +28,7 @@ const CHECK := "res://server/supabase/tests/20261020c_gauntlet_server_pick_and_c
 const MARK_BEGIN := "-- >>> BEGIN gauntlet_server_pick_and_coins 20261020c >>>"
 const MARK_END := "-- <<< END gauntlet_server_pick_and_coins 20261020c <<<"
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
+const MIG_Q := "res://server/supabase/migrations/20261027_gauntlet_online_queue.sql"
 
 var _fail := 0
 var _n := 0
@@ -243,30 +248,32 @@ func _minions_all_equipped(s: Dictionary) -> bool:
 
 # ─────────────────────────────── S3 请求体 / 回包 ───────────────────────────────
 func _t_request() -> void:
-	print("── S3 客户端交什么、认什么 ──")
-	var body := RN.start_body(1, {"leaders": []}, 3, "9.9.9", 1)
+	print("── S3 客户端交什么、认什么(2026-10-27 起: 进队 gauntlet_queue_join) ──")
+	var body := RN.queue_join_body(1, {"leaders": []}, 3)
 	var keys: Array = body.keys()
-	_ok("★S3 请求体恰好 5 个键: 周 / 阵容 / 第几场 / 版本 / 规则版本", keys == ["p_week", "p_snapshot", "p_match_no", "p_client_version", "p_rules_ver"], str(keys))
+	_ok("★S3 请求体恰好 3 个键: 周 / 阵容 / 第几场(版本 / 规则版本走请求头)", keys == ["p_week", "p_snapshot", "p_match_no"], str(keys))
 	var leak: Array = []
 	for k in keys:
 		if str(k).contains("opp") or str(k).contains("seed") or str(k).contains("coin"):
 			leak.append(k)
 	_ok("★S3 没有对手 / 种子 / 币数这一维", leak.is_empty(), str(leak))
-	var mig := FileAccess.get_file_as_string(MIG)
-	var sig := "referee_gauntlet_start(p_week bigint, p_snapshot jsonb, p_match_no int,\n    p_client_version text, p_rules_ver int)"
-	_ok("★S3 键名 / 顺序 = 服务端形参", mig.replace("\r\n", "\n").find(sig) >= 0)
+	var mig := FileAccess.get_file_as_string(MIG_Q).replace("\r\n", "\n")
+	var sig := "gauntlet_queue_join(p_week bigint, p_snapshot jsonb, p_match_no int,\n    p_client_version text default null, p_rules_ver int default null)"
+	_ok("★S3 键名 / 顺序 = 服务端前三个形参(后两个有默认值)", mig.find(sig) >= 0)
 	var opp := {"profile": {"name": "kevin_99", "avatar": "ninja", "id": "g_x", "tag": "#ABCDEF", "extra": 1}, "leaders": ["ninja", "dice", "pirate", "x"]}
-	var okb := JSON.stringify({"ok": true, "job_id": 9, "match_id": MID, "opp": opp, "gw": 2, "gl": 1})
-	var r := RN.parse_start(true, 200, okb)
-	_ok("S3 回包: 任务号 / 录像号 / 卡片(只留 name / avatar / id / tag、统领截到 3)/ 账本 2-1", str(r.get("err", "?")) == ""
+	var okb := JSON.stringify({"ok": true, "status": "paired", "job_id": 9, "side": "a", "match_id": MID, "opp": opp, "gw": 2, "gl": 1})
+	var r := RN.parse_queue(true, 200, okb)
+	_ok("S3 配上的回包: 任务号 / 录像号 / 卡片(只留 name / avatar / id / tag、统领截到 3)/ 账本 2-1", str(r.get("err", "?")) == ""
 		and int(r["job_id"]) == 9 and str(r["match_id"]) == MID and not ((r["opp"] as Dictionary)["profile"] as Dictionary).has("extra")
 		and ((r["opp"] as Dictionary)["leaders"] as Array).size() == 3 and int(r["gw"]) == 2 and int(r["gl"]) == 1, str(r))
-	_ok("S3 回包缺卡片 ⇒ server(不画一张空卡)", str(RN.parse_start(true, 200, JSON.stringify({"ok": true, "job_id": 9, "match_id": MID})).get("err", "")) == "server")
-	var st := RN.parse_start(true, 200, JSON.stringify({"ok": false, "reason": "stale", "gw": 3, "gl": 1}))
+	_ok("S3 配上却缺任务号 / 我是哪一方 ⇒ server(不认半截配对)",
+		str(RN.parse_queue(true, 200, JSON.stringify({"ok": true, "status": "paired", "side": "a", "match_id": MID})).get("err", "")) == "server"
+		and str(RN.parse_queue(true, 200, JSON.stringify({"ok": true, "status": "paired", "job_id": 9})).get("err", "")) == "server")
+	var st := RN.parse_queue(true, 200, JSON.stringify({"ok": false, "reason": "stale", "gw": 3, "gl": 1}))
 	_ok("S3 stale 带账本上的 gw / gl", str(st.get("err", "")) == "stale" and int(st["gw"]) == 3 and int(st["gl"]) == 1)
-	_ok("S3 断网 = offline / 404 = unavailable / no_opponent 原样", str(RN.parse_start(false, 0, "").get("err", "")) == "offline"
-		and str(RN.parse_start(true, 404, "").get("err", "")) == "unavailable"
-		and str(RN.parse_start(true, 200, "{\"ok\":false,\"reason\":\"no_opponent\"}").get("err", "")) == "no_opponent")
+	_ok("S3 断网 = offline / 404 = unavailable / finished 原样", str(RN.parse_queue(false, 0, "").get("err", "")) == "offline"
+		and str(RN.parse_queue(true, 404, "").get("err", "")) == "unavailable"
+		and str(RN.parse_queue(true, 200, "{\"ok\":false,\"reason\":\"finished\"}").get("err", "")) == "finished")
 
 
 # ─────────────────────────────── S4 SQL 对账 ───────────────────────────────
@@ -323,6 +330,10 @@ func _t_no_legacy() -> void:
 	var n := _scan("res://scripts", hits) + _scan("res://autoload", hits)
 	_ok("分母: 扫过的脚本 ≥ 150 个(%d)" % n, n >= 150)
 	_ok("★S5 scripts/ autoload/ 里没有 referee_submit_gauntlet / p_opponent", hits.is_empty(), str(hits))
+	var old_rpc: Array = []
+	_scan_lit("res://scripts", "rpc/referee_gauntlet_start", old_rpc)
+	_scan_lit("res://autoload", "rpc/referee_gauntlet_start", old_rpc)
+	_ok("★S5 客户端里没有旧入口 referee_gauntlet_start 的请求(2026-10-27 起周六只走排队)", old_rpc.is_empty(), str(old_rpc))
 	var mm := FileAccess.get_file_as_string("res://scripts/scenes/MatchmakingScene.gd")
 	var a := mm.find("if _gauntlet_now and _RW.gauntlet_on():")
 	var b := mm.find("_pick_gauntlet_local(exclude, _rng)")
@@ -347,6 +358,17 @@ func _t_stale() -> void:
 	gs.gauntlet_wins = k["gw"]
 	gs.gauntlet_losses = k["gl"]
 	gs.referee_pending = k["p"]
+
+
+func _scan_lit(dir: String, lit: String, hits: Array) -> void:
+	var d := DirAccess.open(dir)
+	if d == null:
+		return
+	for f in d.get_files():
+		if f.ends_with(".gd") and FileAccess.get_file_as_string(dir.path_join(f)).find(lit) >= 0:
+			hits.append(dir.path_join(f))
+	for sd in d.get_directories():
+		_scan_lit(dir.path_join(sd), lit, hits)
 
 
 func _scan(dir: String, hits: Array) -> int:

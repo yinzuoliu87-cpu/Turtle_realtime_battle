@@ -7,9 +7,10 @@ extends RefCounted
 ##
 ## 三条 RPC(服务端 `20261019_referee_jobs.sql` + `20261019b_referee_client_flags.sql`):
 ##   referee_flags()                     开关 {finals_on, gauntlet_on}(只读); 20261019c 起多两个: stream_on / stream_version(逐帧直播 S5)
-##   referee_gauntlet_start(...)         周六点开战: 交阵容 + 第几场 → 任务号 / 录像号 / 对手卡片(写; 对手与种子服务端定, 20261020c)
+##   referee_gauntlet_start(...)         (旧)周六点开战当场配一份对手快照(20261020c)。★2026-10-27 起客户端不再调(改走下面的在线排队)
 ##   referee_job_status(p_job_id)        查自己那一场算完没有(只读; 20261020c 起多回 coins = 这一局的战斗内铸币)
 ##   referee_finals_coins(...)           周日查我在这一场的战斗内铸币(只读; 20261020d, 翻面之前回 pending)
+##   gauntlet_queue_join / poll / cancel 周六在线排队(20261027, 见下面「在线排队」那一节): 锁阵容进队 → 心跳 → 配上 = 任务号 + 我是 a / b 哪一方
 ## 逐帧直播(20261020 迁移, 只写文件、未上生产; 没上 = 404 ⇒ 两条都当没有):
 ##   referee_live_gauntlet()             本周周六正在算的裁判局(赛况板「观赛」, 只读): match_id / 双方名字 / 开始时刻 / 种子 / 版本
 ##   referee_request_restream(p_match_id) 开流之前算的裁判局请求补流(排一份「重放录流」任务; 写)
@@ -31,7 +32,6 @@ const K_STREAM_VER := "stream_version"
 
 ## 观测量(门禁分母): 本进程问过几次开关 / 交过几次阵容 / 查过几次任务。
 static var flag_asks := 0
-static var submits := 0
 static var status_asks := 0
 static var live_asks := 0
 static var restream_asks := 0
@@ -118,17 +118,11 @@ static func note_flags(f: Dictionary) -> void:
 	GameState.save()
 
 
-# ─────────────────────────────── 周六: 开战(服务器挑对手) ───────────────────────────────
+# ─────────────────────────────── 周六: 对手卡片(服务端回包里那一份) ───────────────────────────────
 ## ★2026-10-20(方案书 docs/plans/20261019-服务器裁判.md 决策记录「10-20 用户授权自定：周六对手改服务器挑」):
 ##   客户端只交「我的阵容 + 我要打第 N 场」; 对手(同标签真人 → 机器人)、种子都由服务端 `referee_gauntlet_start` 定,
 ##   客户端**没有任何参数位**能指定对手或种子。回包里带对手卡片(名字 / 头像 / 号 / 三统领), 真人与机器人同一形状。
 ##   旧的交阵容接口(客户端连对手快照一起交, 20261019 那一版)在服务端开了 `gauntlet_server_pick` 之后一律回 update_required。
-
-## 纯函数: 请求体(键名 = 服务端形参)。`match_no` = 我认为这是本周第几场闯关(0 起 = gw + gl), 服务端拿它对账本防重交。
-static func start_body(week: int, snapshot: Dictionary, match_no: int, client_version: String, rules_ver: int) -> Dictionary:
-	return {"p_week": week, "p_snapshot": snapshot, "p_match_no": match_no,
-		"p_client_version": client_version, "p_rules_ver": rules_ver}
-
 
 ## 纯函数: 对手卡片(服务端回的 `opp`)⇒ 匹配屏 `_opponent_from_ghost` 吃的形状 {profile{name, avatar, id, tag}, leaders}。
 ##   只留这几个键(服务端也只回这几个); 形状不对 ⇒ {}。
@@ -152,11 +146,45 @@ static func card_of(opp) -> Dictionary:
 	return {"profile": pf, "leaders": ldr}
 
 
-## 纯函数: 开战的回包 → {"err": "" / 原因码, "job_id", "match_id", "opp"(卡片), "gw", "gl"}。
-##   原因码: offline(没发出去 / 没回来 / 被拦)· server · unavailable(404: 服务端没部署)·
-##           服务端 reason 原样(off / update_required / wrong_week / closed / bad_snapshot / finished / stale / no_opponent / not_signed_in)。
-##   ★stale = 我报的第 N 场与服务端账本对不上(本机战绩落后), 回包带账本上的 gw / gl。
-static func parse_start(ok: bool, code: int, body: String) -> Dictionary:
+# ─────────────────────────────── 周六: 在线排队(锁阵容 → 等同战绩的在线对手) ───────────────────────────────
+## ★2026-10-27(方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md §4.2 / §4.4; 用户「一定是要我这边匹配之后，我这个阵容处于锁定状态。
+##   …当我等到了另外一个对手也锁定了他的这个阵容…才互相匹配」):
+##   gauntlet_queue_join(p_week, p_snapshot, p_match_no)  交锁定的阵容进队 ⇒ waiting(等同战绩格子的在线对手)/ 当场 paired
+##   gauntlet_queue_poll(p_week)                          心跳(QUEUE_POLL_SEC 一次)⇒ waiting / paired / none / expired
+##   gauntlet_queue_cancel(p_week)                        出队 ⇒ cancelled; 来不及(已配上)⇒ {ok:false, reason:paired, job_id, side}
+##   配上 = 服务端只建一条裁判任务(A vs B), 之后与 `referee_gauntlet_start` 那一场同一条路: 查任务 → 记账 → 取录像 → 播。
+##   客户端版本走请求头 X-Client-Version(`SupabaseNet._headers` 每条都带), 不进请求体; 拒收原因与原来的开战接口同一套。
+## ★服务端还没有这三条(404 = 迁移没上)⇒ 与断网同一句「连接服务器后才能比赛」; 不退回旧入口 referee_gauntlet_start
+##   (服务端线 10-27: 旧入口还开着, 但周六客户端别再调它)。
+
+const Q_WAITING := "waiting"
+const Q_PAIRED := "paired"
+const Q_NONE := "none"
+const Q_EXPIRED := "expired"
+const Q_CANCELLED := "cancelled"
+
+## 观测量(门禁分母): 本进程进过几次队 / 心跳几次 / 取消几次。
+static var queue_joins := 0
+static var queue_polls := 0
+static var queue_cancels := 0
+
+
+## 纯函数: 进队请求体(键名 = 服务端形参)。
+static func queue_join_body(week: int, snapshot: Dictionary, match_no: int) -> Dictionary:
+	return {"p_week": week, "p_snapshot": snapshot, "p_match_no": match_no}
+
+
+## 纯函数: 心跳 / 取消的请求体。
+static func queue_week_body(week: int) -> Dictionary:
+	return {"p_week": week}
+
+
+## 纯函数: 三条排队 RPC 的回包 → {"err": "" / 原因码, "status", "gw", "gl", "waited"(秒), "job_id", "side", "match_id", "opp"}。
+##   原因码: offline · server · unavailable(404)· 服务端 reason 原样(update_required / finished / stale / closed / …)。
+##   status: waiting(带 waited)/ paired / none / expired / cancelled。
+##   ★paired 必须有任务号(> 0)与 side(a / b), 缺一个 ⇒ server; `match_id` / `opp` 可缺(取消回包只带任务号): 缺 = "" / {}。
+##   ★取消回 {ok:false, reason:paired} ⇒ 当 paired(来不及取消 = 已经配上, 这一局照样算)。
+static func parse_queue(ok: bool, code: int, body: String) -> Dictionary:
 	if not ok:
 		return {"err": "offline"}
 	if code == 404:
@@ -167,30 +195,76 @@ static func parse_start(ok: bool, code: int, body: String) -> Dictionary:
 	if j.parse(body) != OK or not (j.data is Dictionary):
 		return {"err": "server", "code": code}
 	var d: Dictionary = j.data
-	var gw := int(d.get("gw", -1)) if (d.get("gw", null) is float or d.get("gw", null) is int) else -1
-	var gl := int(d.get("gl", -1)) if (d.get("gl", null) is float or d.get("gl", null) is int) else -1
+	var gw := _nonneg(d.get("gw", null))
+	var gl := _nonneg(d.get("gl", null))
 	if not bool(d.get("ok", false)):
 		var why := str(d.get("reason", "server"))
+		if why == Q_PAIRED:
+			return _paired_of(d, gw, gl)
 		return {"err": why if why != "" else "server", "gw": gw, "gl": gl}
+	var st := str(d.get("status", ""))
+	match st:
+		Q_WAITING:
+			return {"err": "", "status": st, "gw": gw, "gl": gl, "waited": maxi(0, _nonneg(d.get("waited_sec", null)))}
+		Q_PAIRED:
+			return _paired_of(d, gw, gl)
+		Q_NONE, Q_EXPIRED, Q_CANCELLED:
+			## reason: closed(收盘)/ job_failed(配上的那一局算失败了, 重新排)/ ""
+			return {"err": "", "status": st, "gw": gw, "gl": gl, "reason": str(d.get("reason", "")) if d.get("reason", null) is String else ""}
+	return {"err": "server", "code": code}
+
+
+static func _paired_of(d: Dictionary, gw: int, gl: int) -> Dictionary:
 	var jid = d.get("job_id", null)
-	var mid := str(d.get("match_id", ""))
-	var card := card_of(d.get("opp", null))
-	if not (jid is int or jid is float) or int(jid) <= 0 or not SB.is_uuid(mid) or card.is_empty():
-		return {"err": "server", "code": code}
-	return {"err": "", "job_id": int(jid), "match_id": mid, "opp": card, "gw": gw, "gl": gl}
+	var sd := str(d.get("side", "")) if d.get("side", null) is String else ""
+	if not (jid is int or jid is float) or int(jid) <= 0 or (sd != "a" and sd != "b"):
+		return {"err": "server"}
+	var mid := str(d.get("match_id", "")) if d.get("match_id", null) is String else ""
+	return {"err": "", "status": Q_PAIRED, "job_id": int(jid), "side": sd, "match_id": mid if SB.is_uuid(mid) else "",
+		"opp": card_of(d.get("opp", null)), "gw": gw, "gl": gl}
 
 
-static func start_gauntlet_async(week: int, snapshot: Dictionary, match_no: int, done: Callable) -> bool:
+## 非负整数(JSON 数字)⇒ 它; 别的 ⇒ -1。
+static func _nonneg(v) -> int:
+	return int(v) if (v is int or v is float) and int(v) >= 0 else -1
+
+
+static func queue_join_async(week: int, snapshot: Dictionary, match_no: int, done: Callable) -> bool:
 	if not SB.enabled():
 		return false
 	var n = SB._spawn()
 	if n == null:
 		return false
-	submits += 1
-	n._get_once("/rest/v1/rpc/referee_gauntlet_start", "POST",
-		JSON.stringify(start_body(week, snapshot, match_no, ReplayRecorder.client_version(), int(P2C.RULES_VER))), done,
+	queue_joins += 1
+	n._get_once("/rest/v1/rpc/gauntlet_queue_join", "POST", JSON.stringify(queue_join_body(week, snapshot, match_no)), done,
 		func(res: Dictionary) -> Dictionary:
-			return parse_start(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+			return parse_queue(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+static func queue_poll_async(week: int, done: Callable) -> bool:
+	if not SB.enabled():
+		return false
+	var n = SB._spawn()
+	if n == null:
+		return false
+	queue_polls += 1
+	n._get_once("/rest/v1/rpc/gauntlet_queue_poll", "POST", JSON.stringify(queue_week_body(week)), done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_queue(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+static func queue_cancel_async(week: int, done: Callable) -> bool:
+	if not SB.enabled():
+		return false
+	var n = SB._spawn()
+	if n == null:
+		return false
+	queue_cancels += 1
+	n._get_once("/rest/v1/rpc/gauntlet_queue_cancel", "POST", JSON.stringify(queue_week_body(week)), done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_queue(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
 	return true
 
 

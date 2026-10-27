@@ -190,10 +190,14 @@ func _note_recent() -> void:
 		while GameState.recent_ghost_ids.size() > 8: GameState.recent_ghost_ids.pop_front()   # 3→8(用户2026-07-18): 配合档窗口~21候选, 循环过大半池才重复(防总撞同一支)
 
 
-## ★服务器裁判 · 周六(2026-10-20 起对手由服务端挑): 「找对手」动画与交阵容同时开始;
-##   动画至少放满 2.2 秒、且服务端回了包, 才翻到 VS 卡(卡片 = 服务端回的对手, 真人与机器人同一形状)。
+## ★服务器裁判 · 周六(2026-10-20 起对手由服务端挑; ★2026-10-27 起先在线排队): 「找对手」动画与进队同时开始。
+##   ★在线排队(方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md; 用户「一定是要我这边匹配之后，我这个阵容处于锁定状态。
+##     …当我等到了另外一个对手也锁定了他的这个阵容…才互相匹配」): 进队之后停在找对手这一屏 =「等待界面」
+##     (「正在寻找 X 胜 Y 负的对手」+ 已等待秒数 + 「取消匹配」; 阵容锁定: 这一屏除了取消没有别的去处),
+##     **配上了才翻 VS 卡**(原来动画 2.2 秒、服务端一回包就翻 —— 那时回包当场就是对手快照)。
 ##   交不上(断网 / 拒收)⇒ 停在找对手那一屏, 下面一行字说原因, 左上「←」回主菜单(没有本地成绩)。
 ##   服务端说开关已关(ST_LOCAL)⇒ `_on_referee_changed` 走老路: 本机挑、本机打。
+##   服务端还没有排队(404)⇒ 屏上「连接服务器后才能比赛」(旧入口 referee_gauntlet_start 周六不再调, 服务端线 10-27 定)。
 func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 	_local_args = [exclude, rng]
 	_build_searching()
@@ -201,17 +205,135 @@ func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 	_ref_run.name = "RefereeRun"
 	add_child(_ref_run)
 	_ref_run.changed.connect(_on_referee_changed)
-	_ref_run.start()
+	_queue_wire_back()
+	_ref_run.start_queue()
 	var t0 := Time.get_ticks_msec()
 	while not _cancelled and is_inside_tree() and _ref_run != null \
-			and (Time.get_ticks_msec() - t0 < 2200 or str(_ref_run.state) == _RW.ST_SUBMIT):
+			and (Time.get_ticks_msec() - t0 < 2200 or _RW.in_queue(str(_ref_run.state))):
 		await get_tree().process_frame
 	if _cancelled or not is_inside_tree() or _ref_run == null or (_ref_run.opp as Dictionary).is_empty():
 		return
+	_queue_box_free()
 	var card := _opponent_from_ghost(_ref_run.opp)
 	GameState.dual_opponent = card
 	_build_vs(card)
 	_ref_label()
+
+
+# ─────────────────────────────── 周六在线排队: 等待界面 ───────────────────────────────
+## 等待界面挂在 self(不在 content_root): 雷达环一直往 content_root 里加, 挂在里面的话环会画在「取消匹配」上面。
+##   跟着设计框走(`_queue_center`, 与 `_center` 同一套坐标); 翻 VS 卡 / 离开排队时拆掉。
+const QUEUE_BOX := "QueueBox"
+const QUEUE_CELL := "QueueCell"          # 「正在寻找 X 胜 Y 负的对手」(找对手那一屏原来的副标题改字)
+const QUEUE_WAITED := "QueueWaited"
+const QUEUE_CANCEL := "QueueCancel"
+const QUEUE_BTN_W := 220.0
+const QUEUE_BTN_H := 56.0
+const QUEUE_WAITED_Y := 402.0            # 副标题 366 + 28 高 + 8
+const QUEUE_BTN_Y := 452.0
+var _queue_box: Control = null
+
+
+## 「←」在排队中 = 出队(不能直接走: 服务端那一条还挂着, 而且可能正好配上)。只在周六这条分支里换线, 「←」的函数本身不动。
+func _queue_wire_back() -> void:
+	if _cancel_btn != null and is_instance_valid(_cancel_btn) and _cancel_btn.pressed.is_connected(_on_cancel):
+		_cancel_btn.pressed.disconnect(_on_cancel)
+		_cancel_btn.pressed.connect(_on_queue_back)
+
+
+## 「←」/「取消匹配」: 排队中 ⇒ 出队、等服务端回话(回「已配上」⇒ 照配上处理); 正在退出 ⇒ 不重复发; 别的时候 ⇒ 原来的「←」。
+func _on_queue_back() -> void:
+	if _ref_run != null and is_instance_valid(_ref_run):
+		var st := str(_ref_run.state)
+		if st == _RW.ST_QUEUE:
+			_ref_run.cancel_queue()
+			return
+		if st == _RW.ST_CANCEL:
+			return
+	_on_cancel()
+
+
+## 建 / 刷新等待界面(排队中、正在退出时)。
+func _queue_show() -> void:
+	if _ref_run == null or not is_instance_valid(_ref_run):
+		return
+	if _ref_lb != null and is_instance_valid(_ref_lb):
+		_ref_lb.text = ""                 # 「正在提交阵容」那一行让给等待界面
+	if _queue_box == null or not is_instance_valid(_queue_box):
+		_queue_build()
+	var cell: Vector2i = _ref_run.cell
+	var sub := content_root.find_child(QUEUE_CELL, true, false) as Label
+	if sub == null:
+		## 找对手那一屏(`_build_searching`)最下面那一行字 = 副标题「正在匹配对手…」⇒ 改成格子战绩(不另建一行、不碰那个函数)。
+		##   ★不算屏底那一行状态字(`_ref_label` 建的, 也挂在 content_root、位置更低): 2026-10-27 实拍格子战绩落进了它, 4:3 上被雷达环压字。
+		for c in content_root.get_children():
+			if c is Label and c != _dots_lbl and c != _ref_lb and not str(c.name).begins_with("RefereeStatus") \
+					and not (c as Node).is_queued_for_deletion() and (sub == null or (c as Label).position.y > sub.position.y):
+				sub = c
+		if sub != null:
+			sub.name = QUEUE_CELL
+	if sub != null:
+		sub.text = _RW.queue_cell_text(cell.x, cell.y)
+	var cancelling := str(_ref_run.state) == _RW.ST_CANCEL
+	var bt := _queue_box.get_node_or_null(QUEUE_CANCEL) as Button
+	if bt != null:
+		bt.disabled = cancelling
+		bt.text = _RW.TXT_QUEUE_CANCELLING if cancelling else _RW.TXT_QUEUE_CANCEL
+	_queue_refresh()
+
+
+func _queue_build() -> void:
+	_queue_box = Control.new()
+	_queue_box.name = QUEUE_BOX
+	_queue_box.size = Vector2(W, H)
+	_queue_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_queue_box)
+	var wl := _font(20, Color("#c9d6e4"))
+	wl.name = QUEUE_WAITED
+	wl.size = Vector2(W, 28)
+	wl.position = Vector2(0, QUEUE_WAITED_Y)
+	wl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_queue_box.add_child(wl)
+	## 卡片 / 弹框里的按钮一律 `UISkin.card_button`(与商店「购买」同一种; 用户 10-22 定, 不用木牌)
+	var bt := Button.new()
+	bt.name = QUEUE_CANCEL
+	bt.text = _RW.TXT_QUEUE_CANCEL
+	bt.focus_mode = Control.FOCUS_NONE
+	bt.add_theme_font_size_override("font_size", 22)
+	UISkin.card_button(bt)
+	bt.size = Vector2(QUEUE_BTN_W, QUEUE_BTN_H)
+	bt.custom_minimum_size = bt.size
+	bt.position = Vector2((W - QUEUE_BTN_W) / 2.0, QUEUE_BTN_Y)
+	bt.pressed.connect(_on_queue_back)
+	_queue_box.add_child(bt)
+	var tk := Timer.new()
+	tk.wait_time = 0.25
+	tk.autostart = true
+	tk.timeout.connect(_queue_refresh)
+	_queue_box.add_child(tk)
+	if not get_viewport().size_changed.is_connected(_queue_center):
+		get_viewport().size_changed.connect(_queue_center)
+	_queue_center()
+
+
+## 「已等待 N 秒」(服务端回的秒数 + 两次心跳之间按墙钟往上数)。
+func _queue_refresh() -> void:
+	if _queue_box == null or not is_instance_valid(_queue_box) or _ref_run == null or not is_instance_valid(_ref_run):
+		return
+	var wl := _queue_box.get_node_or_null(QUEUE_WAITED) as Label
+	if wl != null:
+		wl.text = _RW.queue_waited_text(int(_ref_run.waited_now()))
+
+
+func _queue_center() -> void:
+	if _queue_box != null and is_instance_valid(_queue_box) and content_root != null:
+		_queue_box.position = content_root.position
+
+
+func _queue_box_free() -> void:
+	if _queue_box != null and is_instance_valid(_queue_box):
+		_queue_box.queue_free()
+	_queue_box = null
 
 
 ## VS 卡(或找对手那一屏)下面那一行字。`_build_vs` / `_build_searching` 会清掉 content_root ⇒ 每次用前确认还在。
@@ -232,6 +354,14 @@ func _ref_label() -> Label:
 
 func _on_referee_changed() -> void:
 	if _ref_run == null or _cancelled or not is_inside_tree():
+		return
+	## 在线排队: 排队中 / 正在退出 ⇒ 等待界面; 出了这两个状态就拆掉它
+	if str(_ref_run.state) == _RW.ST_QUEUE or str(_ref_run.state) == _RW.ST_CANCEL:
+		_queue_show()
+		return
+	_queue_box_free()
+	if str(_ref_run.state) == _RW.ST_LEFT:
+		_leave_to_menu(str(_ref_run.msg))   # 已出队(取消成功 / 过期): 没有对局; 过期时主菜单飘「已退出排队」
 		return
 	if str(_ref_run.state) == _RW.ST_LOCAL:
 		## 服务端说开关已关 ⇒ 老路: 本机挑、本机打(与开关关着时同一条)。
@@ -265,13 +395,20 @@ var _promo_played := false
 var _leaving := false
 
 func _leave_later() -> void:
+	## 排队中连着问不到(ST_LATER, msg =「连接中断，已退出排队」)⇒ 飘它; 交上去之后等不到结果 ⇒ 原来那一句
+	_leave_to_menu(str(_ref_run.msg) if _ref_run != null and str(_ref_run.msg) == _RW.TXT_QUEUE_LOST else _RW.TXT_LATER)
+
+
+## 回主菜单(周六服务器局这一屏的两个出口共用: 等不到结果 / 已出队)。`note` 非空 ⇒ 主菜单飘它。
+func _leave_to_menu(note: String) -> void:
 	if _leaving or _cancelled or not is_inside_tree():
 		return
 	_leaving = true
+	if note != "":
+		_RW.notice = note
 	## 【门禁注入点】同 `_ready` 末尾那一处(见文件顶部长注释), 出口是 MENU_SCENE。
 	if _may_leave_for_test.is_valid() and not bool(_may_leave_for_test.call(MENU_SCENE)):
 		return
-	_RW.notice = _RW.TXT_LATER
 	await _fade_to_black(0.4)
 	if _cancelled or not is_inside_tree():
 		return

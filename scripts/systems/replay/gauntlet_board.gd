@@ -18,6 +18,11 @@ extends RefCounted
 ##   · 他被别人打到时快照上的标签(那一刻的战绩)也算一条证据。
 ##   ★★但只以对手身份出现过的人**不进榜**(2026-10-10): 机器人每场一个新号, 进榜就露馅。
 ##   三条对所有人是**同一条规则**, 不分真人机器人。
+## ★★在线排队配上的那一局(2026-10-27 · 方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md): 右边也是在场打的真账号(真人或陪练号),
+##   服务端在 `result` 里多写 `gw_b / gl_b`(右方打完这一局后的战绩)⇒ 右边那人也算这一局的主人(`rown`):
+##   进榜、战绩按 gw_b / gl_b、点他时列得出这一局、正在打时直播签也标他(直播行带 `paired = true`)。
+##   机器人池快照局(right_account 为空)没有 gw_b / gl_b ⇒ 与原来一样: 右边只是快照, 不进榜。
+##   ★判据只看 result 里有没有这两个数 —— 赛况板照旧不取账号列(`gauntlet_board_query` 不动)。
 ## ★状态 = `Phase2Config.gauntlet_state`(4 胜晋级 / 3 负出局); 周六收盘后还没定的算出局
 ##   (没打满就到收盘 = 没晋级, 与 `gauntlet_backfill_owed` 同一口径)。
 
@@ -83,8 +88,13 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 		var t := iso_to_unix(str(r.get("created_at", "")))
 		var lt := tag_of(r.get("lp", null))
 		var rt := tag_of(r.get("rp", null))
-		var g := {"id": str(r.get("match_id", "")), "t": t, "lw": lw, "ver": _ver(r),
+		var rown := right_owns(res)
+		var g := {"id": str(r.get("match_id", "")), "t": t, "lw": lw, "ver": _ver(r), "rown": rown,
 			"l": _side(r.get("lp", null), lt, r.get("la", null)), "r": _side(r.get("rp", null), rt, r.get("ra", null))}
+		if rown:
+			g["gw_b"] = maxi(0, int(res.get("gw_b", 0)))
+			g["gl_b"] = maxi(0, int(res.get("gl_b", 0)))
+			g["n_b"] = int(g["gw_b"]) + int(g["gl_b"])
 		## 录像方这一局打完后的战绩(gw/gl) ⇒ 这是他第几场(`n`) —— 点人时按它对账、补「无录像」那几行。
 		if res.has("gw") and res.has("gl"):
 			g["gw"] = maxi(0, int(res.get("gw", 0)))
@@ -103,7 +113,10 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 					p["cl"] = int(p["cl"]) + 1
 		if rt != "":
 			var q: Dictionary = _person(ppl, rt, r.get("rp", null), t)
-			if r.get("rw", null) != null and r.get("rl", null) != null:
+			if rown:
+				q["own"] = true               # 配上的那一局: 右边也在场打 ⇒ 他的战绩证据是这一局之后的 gw_b / gl_b
+				_offer(q, int(g["gw_b"]), int(g["gl_b"]), t)
+			elif r.get("rw", null) != null and r.get("rl", null) != null:
 				_offer(q, int(r.get("rw", 0)), int(r.get("rl", 0)), t)
 	var players: Array = []
 	for tg in ppl:
@@ -139,13 +152,20 @@ static func games_of(games: Array, tag: String) -> Array:
 	return out
 
 
-## 某个人**自己打的**那几场(录像方 = 他)。★别人挑战他的快照那几场不算他打的(他根本不在场)。
+## 某个人**自己打的**那几场(录像方 = 他, 或在线排队配上的那一局他在右边)。★别人挑战他的快照那几场不算他打的(他根本不在场)。
 static func own_games(games: Array, tag: String) -> Array:
 	var out: Array = []
 	for g in games:
-		if g is Dictionary and str(g["l"].get("tag", "")) == tag:
+		if g is Dictionary and (str(g["l"].get("tag", "")) == tag or (bool(g.get("rown", false)) and str(g["r"].get("tag", "")) == tag)):
 			out.append(g)
 	return out
+
+
+## 这一局右边是不是在场打的真账号(在线排队配上的那一局): 服务端在 result 里写了右方打完后的战绩 gw_b / gl_b。
+static func right_owns(res: Dictionary) -> bool:
+	var a = res.get("gw_b", null)
+	var b = res.get("gl_b", null)
+	return (a is int or a is float) and (b is int or b is float) and float(a) >= 0.0 and float(b) >= 0.0
 
 
 ## 点人之后右栏那一列: 他自己打的 + 战绩里有而录像没传上来的占位行(`missing = true`)。
@@ -164,13 +184,16 @@ static func player_games(games: Array, p: Dictionary) -> Array:
 	var st := {0: Vector2i(0, 0), total: Vector2i(int(p.get("w", 0)), int(p.get("l", 0)))}
 	var have := {}
 	for g in own:
-		if not (g as Dictionary).has("n"):
+		## 他在哪一边: 左 = 录像方(n / gw / gl / lw); 右 = 配上的那一局的 B(n_b / gw_b / gl_b, 赢 = 左边输)
+		var right: bool = str((g as Dictionary)["l"].get("tag", "")) != tag
+		if not (g as Dictionary).has("n_b" if right else "n"):
 			continue
-		var k := int(g["n"])
+		var k := int(g["n_b"] if right else g["n"])
 		have[k] = true
-		var a := Vector2i(int(g["gw"]), int(g["gl"]))
+		var a := Vector2i(int(g["gw_b"]), int(g["gl_b"])) if right else Vector2i(int(g["gw"]), int(g["gl"]))
+		var won: bool = (not bool(g.get("lw", false))) if right else bool(g.get("lw", false))
 		st[k] = a
-		st[k - 1] = a - (Vector2i(1, 0) if bool(g.get("lw", false)) else Vector2i(0, 1))
+		st[k - 1] = a - (Vector2i(1, 0) if won else Vector2i(0, 1))
 	var lack: int = maxi(0, total - own.size())
 	var out: Array = own.duplicate()
 	var me: Dictionary = {"tag": tag, "name": str(p.get("name", "?")), "avatar": str(p.get("avatar", "")), "lineup": []}
@@ -256,7 +279,9 @@ static func live_games(rows: Array, finished_ids: Array, now: int) -> Array:
 			"l": _side(r.get("lp", null), tag_of(r.get("lp", null)), r.get("la", null)),
 			"r": _side(r.get("rp", null), tag_of(r.get("rp", null)), r.get("ra", null)),
 			## 逐帧直播: 服务器正在算的裁判局(`referee_live_gauntlet` 那一行)⇒ 观赛走状态流(stream_watch.open_live), 种子选地图
-			"referee": bool(r.get("referee", false)), "seed": int(r.get("seed", 0))})
+			"referee": bool(r.get("referee", false)), "seed": int(r.get("seed", 0)),
+			## 在线排队配上的那一局: 右边也是在场打的人(`paired = true`, 2026-10-27)⇒ 直播签两边都标
+			"rown": bool(r.get("paired", false))})
 	out.sort_custom(func(a, b) -> bool:
 		if int(a["t"]) != int(b["t"]):
 			return int(a["t"]) > int(b["t"])
@@ -264,7 +289,7 @@ static func live_games(rows: Array, finished_ids: Array, now: int) -> Array:
 	return out
 
 
-## 战绩榜标「直播」: 正在打的那一方(录像方 = 左边; 右边是对手快照, 不是人在打)。
+## 战绩榜标「直播」: 正在打的那一方(录像方 = 左边; 右边是对手快照, 不是人在打 —— 在线排队配上的那一局除外, 两边都在打)。
 ##   榜上还没有他(这周第一场还没打完)⇒ 补一行 0-0「在打」。改 `data` 本身, 补完重新排序。
 static func mark_live(data: Dictionary, live: Array, my_tag: String) -> void:
 	var on := {}
@@ -272,6 +297,9 @@ static func mark_live(data: Dictionary, live: Array, my_tag: String) -> void:
 		var tg := str((g as Dictionary)["l"].get("tag", ""))
 		if tg != "":
 			on[tg] = g["l"]
+		var tr := str((g as Dictionary)["r"].get("tag", ""))
+		if tr != "" and bool((g as Dictionary).get("rown", false)):
+			on[tr] = g["r"]
 	var players: Array = data.get("players", [])
 	for p in players:
 		(p as Dictionary)["live"] = on.has(str(p["tag"]))

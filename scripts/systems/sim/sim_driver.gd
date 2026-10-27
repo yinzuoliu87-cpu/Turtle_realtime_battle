@@ -30,6 +30,8 @@ extends Node
 ##   SIM_SHOT_DIR         命名截图落在这里(与 sim_shot 的 latest.png 同目录); 没给就 user://sim_shots
 ##   SIM_TUTORIAL=play|skip  首启选择框按哪颗(默认 play = 「开始教程」, 与真新玩家一样走一遍教程;
 ##                        skip = 「跳过」)。没弹框(ONBOARD=0 / 已看过教程)时不起作用。
+##   SIM_QUEUE_GIVEUP_SEC=N  闯关日(周六 00:00 ~ 周日 17:30)在线排队最多连续等多久(秒, 默认 300): 过了 ⇒ 按「取消匹配」、
+##                        出队回主菜单后收工(`queue_timeout`)。积分赛日不看它。
 ##
 ## ── 产物 ──
 ##   user://sim_events.jsonl   每件事一行(时间 / 类型 / 数据) —— 台账的原始依据
@@ -64,13 +66,24 @@ const STUCK_DEFAULT := 120.0
 ##   按 45 秒记 STUCK ⇒ 裁判一排队就误报: 彩排那一局 37 秒(排队 2 + 裁判 33), 正式服裁判 journald 近一周单局 p90 104 秒。
 ##   ⇒ 这一屏的线 = 客户端自己的等待上限 + 余量; 过了这条线还停在匹配屏 = 客户端没按设计退回, 才是真卡。
 const STUCK_MATCH_REFEREE_SLACK := 20.0
+## ★2026-10-27 闯关赛改在线排队(方案书 docs/plans/20261027b-闯关赛在线瑞士轮.md): 匹配屏先是等待界面(等同战绩的在线对手),
+##   配上之后才是上面那段「等裁判」。⇒ 闯关日这一屏的线 = 排队上限(SIM_QUEUE_GIVEUP_SEC, 到了驱动自己按取消)+ 等裁判上限 + 余量。
+const QUEUE_GIVEUP_DEFAULT := 300.0
+## 闯关日匹配屏停在报错那一行多久就按「←」(秒)。
+const ERROR_LEAVE_SEC := 5.0
+
+
+## 闯关日在线排队最多连续等多久(秒): SIM_QUEUE_GIVEUP_SEC, 没给 / 不是正数 ⇒ 300。
+static func queue_giveup_sec() -> float:
+	var v := OS.get_environment("SIM_QUEUE_GIVEUP_SEC").strip_edges()
+	return float(v) if v.is_valid_float() and float(v) > 0.0 else QUEUE_GIVEUP_DEFAULT
 
 
 ## 这一屏停多久算卡住。`phase` 传 `_P2.phase_at_utc(...)` 的结果(门禁直接喂阶段, 不依赖今天星期几)。
 static func stuck_limit(p: String, phase: String) -> float:
 	if p == S_MATCH and phase == _P2.PHASE_GAUNTLET:
 		var rw = load("res://scripts/systems/replay/referee_watch.gd")
-		return float(rw.POLL_SEC) * float(rw.poll_max()) + STUCK_MATCH_REFEREE_SLACK
+		return queue_giveup_sec() + float(rw.POLL_SEC) * float(rw.poll_max()) + STUCK_MATCH_REFEREE_SLACK
 	return float(STUCK_SEC.get(p, STUCK_DEFAULT))
 
 const TRAINER_SKILLS := ["magic_stone", "hook", "fury_potion", "whistle", "glacier", "hunt_order", "tame"]
@@ -438,11 +451,82 @@ func _do_team(t: Node) -> void:
 
 ## 匹配屏自己 2.2 + 2.6 秒后换场(MatchmakingScene._ready), 这里只截一张「对手卡」——
 ## 用户 10-04「不能让玩家知道是机器人」⇒ 每一局的对手卡都要留证。
+## ★闯关日(2026-10-27 在线排队)走 `_do_match_queue`; 积分赛日下面这几行与改之前逐字相同。
 func _do_match(mm: Node) -> void:
+	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET:
+		await _do_match_queue(mm)
+		return
 	_acted_id = mm.get_instance_id()
 	await _sleep(3.2)
 	if _alive(mm):
 		_shot("match_%02d" % (int(GameState.season_total_battles) + 1))
+
+
+## ★闯关日: 匹配屏 = 在线排队的等待界面(用户 10-27「周六周日我们讲究是在线啊」: 陪练号是真客户端在线, 与真人同一套排队)。
+##   不点取消, 一直等到配上 —— 之后匹配屏自己翻 VS 卡、等裁判、播、记账(与真人同一条路), 驱动接着在战斗场按「前往商店」。
+##   连续排队超过 SIM_QUEUE_GIVEUP_SEC ⇒ 按产品那颗「取消匹配」; 出队回主菜单 ⇒ 收工(`queue_timeout`);
+##     按下去那一刻刚好配上(服务端回「已配上」)⇒ 这一局照样打, 不收工。
+##   本函数跑到匹配屏离场为止(主循环在这期间不判卡死)⇒ 卡死在这里判, 线 = stuck_limit(排队上限 + 等裁判上限 + 余量)。
+func _do_match_queue(mm: Node) -> void:
+	_acted_id = mm.get_instance_id()
+	var rw = load("res://scripts/systems/replay/referee_watch.gd")
+	var giveup := queue_giveup_sec()
+	var limit := stuck_limit(S_MATCH, _P2.PHASE_GAUNTLET)
+	var t0 := Time.get_ticks_msec()
+	var shot := false
+	var gave_up := false
+	var err0 := -1
+	## 配上那一刻按信号记(配上 → 取录像 → 换场可能在两次查看之间就走完了, 轮询会漏掉)。q0 = 开始排队的那一刻。
+	var box := {"hooked": false, "paired": false, "q0": -1}
+	while _alive(mm):
+		var run = mm.get("_ref_run")
+		var st := str(run.state) if run != null and is_instance_valid(run) else ""
+		if run != null and is_instance_valid(run) and not bool(box["hooked"]):
+			box["hooked"] = true
+			run.changed.connect(func() -> void:
+				if not bool(box["paired"]) and is_instance_valid(run) and int(run.job_id) > 0:
+					box["paired"] = true
+					var w0 := int(box["q0"])
+					_ev("queue_paired", {"waited_s": (Time.get_ticks_msec() - w0) / 1000.0 if w0 >= 0 else 0.0,
+						"side": str(run.side), "job_id": int(run.job_id)}))
+		if st == rw.ST_QUEUE and not gave_up:
+			if int(box["q0"]) < 0:
+				box["q0"] = Time.get_ticks_msec()
+				_ev("queue_wait", {"cell": [run.cell.x, run.cell.y], "giveup_s": giveup})
+			if (Time.get_ticks_msec() - int(box["q0"])) / 1000.0 > giveup:
+				gave_up = true
+				_ev("queue_timeout", {"waited_s": (Time.get_ticks_msec() - int(box["q0"])) / 1000.0, "cell": [run.cell.x, run.cell.y]})
+				_shot("queue_timeout")
+				var bt := mm.find_child("QueueCancel", true, false) as Button
+				if bt != null and not bt.disabled:
+					bt.emit_signal("pressed")
+		## 停在原地的报错(拒收 / 断网 / 账已记但录像播不了): 真人会按「←」回去 ⇒ 停够 ERROR_LEAVE_SEC 秒就按。
+		##   账已经记了(录像播不了)或「战绩已同步，请重新开战」⇒ 回去接着排下一局; 别的(要更新 / 已结束 / 连不上服务器)⇒ 收工,
+		##   不在主菜单 ↔ 匹配屏之间空转。
+		if st == rw.ST_ERROR:
+			if err0 < 0:
+				err0 = Time.get_ticks_msec()
+			elif (Time.get_ticks_msec() - err0) / 1000.0 > ERROR_LEAVE_SEC:
+				var again: bool = not (run.view as Dictionary).is_empty() or str(run.msg) == rw.TXT_STALE
+				_ev("match_error", {"msg": str(run.msg), "again": again})
+				_shot("match_error")
+				mm.call("_on_queue_back")
+				await _wait_scene(S_MENU, 10.0)
+				if not again:
+					_finish("match_error")
+				return
+		if not shot and (Time.get_ticks_msec() - t0) / 1000.0 > 3.2:
+			shot = true
+			_shot("match_%02d" % (int(GameState.season_total_battles) + 1))
+		if not _stuck_noted and (Time.get_ticks_msec() - t0) / 1000.0 > limit:
+			_stuck_noted = true
+			_ev("STUCK", {"scene": S_MATCH, "stayed_s": (Time.get_ticks_msec() - t0) / 1000.0, "state": st})
+			_shot("STUCK_match")
+		await _sleep(0.5)
+	if gave_up and not bool(box["paired"]):
+		var sc := get_tree().current_scene
+		_ev("queue_left", {"to": sc.scene_file_path if sc != null else ""})
+		_finish("queue_timeout")
 
 
 # ═══════════════════════════════ 战斗 / 结算 ═══════════════════════════════

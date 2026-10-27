@@ -147,7 +147,8 @@ func _ready() -> void:
 	_ok("★K4 已淘汰(0 命)⇒ 一枚不发(含铸币; 与 _settle_season 同一条 is_eliminated)", int(k4c["delta"]) == 0
 		and int((k4c["view"] as Dictionary).get("reward", -1)) == 0 and int((k4c["view"] as Dictionary).get("coins", -1)) == coins)
 	var src := FileAccess.get_file_as_string("res://scripts/net/referee_net.gd")
-	_ok("K4 交阵容的请求体里没有币数这一维(start_body 键)", not RN.start_body(1, {}, 0, "x", 1).has("p_coins")
+	## 2026-10-27 周六交阵容改成进队(gauntlet_queue_join, 旧的 start_body 已删): 量的需求不变 —— 请求体里没有币数这一维
+	_ok("K4 交阵容的请求体里没有币数这一维(进队 queue_join_body 键)", not RN.queue_join_body(1, {}, 0).has("p_coins")
 		and src.find("\"p_coins\"") < 0)
 
 	# ── K5 对照 ──

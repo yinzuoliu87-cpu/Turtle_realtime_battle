@@ -23,6 +23,11 @@ extends Node
 ##      再查一次不再演; 对照: 补记的是输 / 补记的胜局不是第 4 胜 ⇒ 不演、当场飘字
 ##   G ★第 4 胜账已按服务器记、取录像失败(停在匹配屏「…录像无法在本设备播放」)⇒ 匹配屏补演、只演一次; 对照: 输了那一局 ⇒ 不演
 ##   ⚠ 这一组写成时本机禁跑 Godot(蓝屏排查中), 还没跑过、也还没做反向验证 —— 解禁后先跑通, 再按上面的规矩逐条改坏验红。
+## ── 2026-10-27 周六改在线排队(docs/plans/20261027b-闯关赛在线瑞士轮.md)──
+##   交阵容那一步换成 `gauntlet_queue_join`(锁阵容进队); 本门禁的假服务器让它当场配上(我是 a、对手 = 机器人池那一份),
+##   之后的等结果 / 记账 / 播 / 补记一字不变 —— A~G 量的需求没变, 只是「交」的接口与形状变了:
+##   请求体从 5 个键变 3 个(周 / 阵容 / 第几场), 版本与规则版本改走请求头(X-Client-Version / X-Rules-Ver, 服务端两个形参有默认值)。
+##   排队本身(等待界面 / 心跳 / 取消 / 过期 / B 方)见 verify_gauntlet_online_queue。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
@@ -41,7 +46,8 @@ const BP := preload("res://scripts/referee/bot_pool.gd")
 const SC := preload("res://scripts/scenes/stage_ceremony.gd")
 const WCC := preload("res://scripts/scenes/week_close_card.gd")
 const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
-const START := "referee_gauntlet_start"
+## 交阵容的那一条 RPC: 2026-10-27 起是进队(在线排队), 原来是 referee_gauntlet_start(当场回对手快照; 现在只在服务端没有排队时退回)
+const START := "gauntlet_queue_join"
 
 var _fail := 0
 var _n := 0
@@ -49,6 +55,7 @@ var _gs
 var _flags_body := ""
 var _hits := {}
 var _submit_body: Dictionary = {}
+var _submit_hdr: Array = []       # 交阵容那一次的请求头(版本 / 规则版本 2026-10-27 起走这里)
 var _job := 100
 var _done := false
 var _srv_won := false
@@ -172,7 +179,7 @@ func _cleanup() -> void:
 	_gs.referee_pending = {}
 
 
-func _transport(m, u, _h, b, cb) -> void:
+func _transport(m, u, h, b, cb) -> void:
 	var url := str(u)
 	if url.find("/auth/v1/") >= 0:
 		cb.call({"ok": true, "code": 200, "body": JSON.stringify({
@@ -193,13 +200,14 @@ func _transport(m, u, _h, b, cb) -> void:
 				return
 			var j = JSON.parse_string(str(b))
 			_submit_body = j if j is Dictionary else {}
-			## 服务端挑对手: 本周这一格没有真人 ⇒ 机器人池(场次 = max(本大轮场次, gw + gl), 与 SQL referee_gauntlet_pick 同口径)
+			_submit_hdr = Array(h) if (h is PackedStringArray or h is Array) else []
+			## 进队当场配上(本格子有人在等 / 兜底到机器人池): 对手 = 机器人池那一份(场次 = max(本大轮场次, gw + gl), 与 SQL 同口径)
 			var gw := int(_gs.gauntlet_wins)
 			var gl := int(_gs.gauntlet_losses)
 			_srv_b = BP.one(maxi(int(_gs.season_total_battles), gw + gl), gw, gl, 0)
 			_srv_b["gl_ts"] = int(P2C.now_utc()) - 300
-			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "job_id": _job, "match_id": MID,
-				"opp": {"profile": _srv_b["profile"], "leaders": _srv_b["leaders"]}, "gw": gw, "gl": gl})})
+			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "paired", "job_id": _job, "match_id": MID,
+				"side": "a", "opp": {"profile": _srv_b["profile"], "leaders": _srv_b["leaders"]}, "gw": gw, "gl": gl})})
 			return
 		"referee_job_status":
 			if _offline_status:
@@ -225,21 +233,22 @@ func _transport(m, u, _h, b, cb) -> void:
 func _t_pure() -> void:
 	print("── 纯函数: 交阵容 / 查任务 回包 ──")
 	var opp := {"profile": {"name": "kevin_99", "avatar": "ninja", "id": "g_x", "tag": "#ABCDEF"}, "leaders": ["ninja", "dice", "pirate"]}
-	var s := RN.parse_start(true, 200, JSON.stringify({"ok": true, "job_id": 7, "match_id": MID, "opp": opp}))
+	## 2026-10-27 起交阵容 = 进队(gauntlet_queue_join), 当场配上时回包同形(多 status / side); 量的需求不变
+	var s := RN.parse_queue(true, 200, JSON.stringify({"ok": true, "status": "paired", "side": "a", "job_id": 7, "match_id": MID, "opp": opp}))
 	_ok("交阵容: 任务号 + 录像号 + 对手卡片", str(s.get("err", "?")) == "" and int(s.get("job_id", 0)) == 7 and str(s.get("match_id", "")) == MID
 		and str(((s.get("opp", {}) as Dictionary).get("profile", {}) as Dictionary).get("name", "")) == "kevin_99")
-	_ok("交阵容: 服务端 reason 原样(off / update_required / closed …)", str(RN.parse_start(true, 200, "{\"ok\":false,\"reason\":\"off\"}").get("err", "")) == "off"
-		and str(RN.parse_start(true, 200, "{\"ok\":false,\"reason\":\"closed\"}").get("err", "")) == "closed")
-	_ok("交阵容: 断网 = offline / 404 = unavailable / 回包缺任务号 = server", str(RN.parse_start(false, 0, "").get("err", "")) == "offline"
-		and str(RN.parse_start(true, 404, "").get("err", "")) == "unavailable"
-		and str(RN.parse_start(true, 200, "{\"ok\":true}").get("err", "")) == "server")
+	_ok("交阵容: 服务端 reason 原样(off / update_required / closed …)", str(RN.parse_queue(true, 200, "{\"ok\":false,\"reason\":\"off\"}").get("err", "")) == "off"
+		and str(RN.parse_queue(true, 200, "{\"ok\":false,\"reason\":\"closed\"}").get("err", "")) == "closed")
+	_ok("交阵容: 断网 = offline / 404 = unavailable / 回包缺状态 = server", str(RN.parse_queue(false, 0, "").get("err", "")) == "offline"
+		and str(RN.parse_queue(true, 404, "").get("err", "")) == "unavailable"
+		and str(RN.parse_queue(true, 200, "{\"ok\":true}").get("err", "")) == "server")
 	var st := RN.parse_status(true, 200, JSON.stringify({"ok": true, "status": "done", "match_id": MID, "won": false, "gw": 3, "gl": 2}))
 	_ok("查任务: done + 输 + 账本 3-2", str(st.get("status", "")) == "done" and int(st.get("won", -9)) == 0
 		and int(st.get("gw", -1)) == 3 and int(st.get("gl", -1)) == 2)
 	var st2 := RN.parse_status(true, 200, JSON.stringify({"ok": true, "status": "pending", "match_id": MID, "won": null}))
 	_ok("查任务: 还在算 ⇒ 胜负不明(-1)", str(st2.get("status", "")) == "pending" and int(st2.get("won", 0)) == -1)
-	var body := RN.start_body(1, {"a": 1}, 0, "9.9.9", 1)
-	_ok("请求体键名 = 服务端形参(没有对手 / 种子)", body.keys() == ["p_week", "p_snapshot", "p_match_no", "p_client_version", "p_rules_ver"], str(body.keys()))
+	var body := RN.queue_join_body(1, {"a": 1}, 0)
+	_ok("请求体键名 = 服务端形参(没有对手 / 种子; 版本走请求头)", body.keys() == ["p_week", "p_snapshot", "p_match_no"], str(body.keys()))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -302,7 +311,7 @@ func _one_match(srv_won_fn: Callable, tamper: bool = false) -> Node:
 	if _rec.is_empty():
 		## 第一次: 按客户端真交上来的两份快照, 由裁判程序真算(与裁判机同一套代码)
 		var job: Dictionary = JSON.parse_string(JSON.stringify({"v": 1, "job_id": _job, "match_id": MID, "mode": "gauntlet",
-			"key": {"week": 1}, "seed": 2000023, "client_version": str(_submit_body.get("p_client_version", "")),
+			"key": {"week": 1}, "seed": 2000023, "client_version": _hdr_version(),
 			"a": _submit_body.get("p_snapshot", {}), "b": _srv_b}))
 		var res: Dictionary = await RefereeRunner.run(self, job)
 		_rec_b64 = str(res.get("replay_b64", ""))
@@ -325,6 +334,21 @@ func _one_match(srv_won_fn: Callable, tamper: bool = false) -> Node:
 	_done = true
 	var ok := await _wait(func() -> bool: return _is_battle(get_tree().current_scene), 20000)
 	return get_tree().current_scene if ok else null
+
+
+## 交阵容那一次请求头里的版本(2026-10-27 起版本走请求头 X-Client-Version)。
+func _hdr_version() -> String:
+	for x in _submit_hdr:
+		if str(x).begins_with(SB.HDR_CLIENT_VERSION + ":"):
+			return str(x).substr(str(x).find(":") + 1).strip_edges()
+	return ""
+
+
+func _has_hdr(name: String, val: String) -> bool:
+	for x in _submit_hdr:
+		if str(x).begins_with(name + ":") and str(x).substr(str(x).find(":") + 1).strip_edges() == val:
+			return true
+	return false
 
 
 func _has_label(root: Node, text: String) -> bool:
@@ -419,14 +443,16 @@ func _t_a() -> void:
 	_flags_body = "{\"finals_on\":false,\"gauntlet_on\":true}"
 	var s0 := _snap()
 	var b: Node = await _one_match(func() -> bool: return _a_won)
-	_ok("A ★请求体: 本周 / 我的阵容(三统领)/ 第几场 = gw + gl / 本机版本 / 规则版本",
+	## ★2026-10-27 改断言(量的需求不变: 服务端认得出「本周 / 我的阵容 / 第几场 / 版本 / 规则版本」, 客户端指定不了对手与种子):
+	##   交阵容换成进队 gauntlet_queue_join(p_week, p_snapshot, p_match_no); 版本 / 规则版本从请求体挪到请求头。
+	_ok("A ★请求体: 本周 / 我的阵容(三统领)/ 第几场 = gw + gl; 请求头: 本机版本 / 规则版本",
 		int(_submit_body.get("p_week", 0)) == P2C.week_anchor_utc(P2C.now_utc())
 		and ((_submit_body.get("p_snapshot", {}) as Dictionary).get("leaders", []) as Array).size() == 3
 		and int(_submit_body.get("p_match_no", -1)) == int(s0["gw"]) + int(s0["gl"])
-		and str(_submit_body.get("p_client_version", "")) == ReplayRecorder.client_version()
-		and int(_submit_body.get("p_rules_ver", 0)) == int(P2C.RULES_VER), str(_submit_body.keys()))
+		and _has_hdr(SB.HDR_CLIENT_VERSION, ReplayRecorder.client_version())
+		and _has_hdr(SB.HDR_RULES_VER, str(int(P2C.RULES_VER))), "%s / %s" % [str(_submit_body.keys()), str(_submit_hdr)])
 	_ok("A ★请求体里没有对手 / 种子(客户端指定不了)", not _submit_body.has("p_opponent") and not _submit_body.has("p_seed")
-		and _submit_body.size() == 5, str(_submit_body.keys()))
+		and _submit_body.size() == 3, str(_submit_body.keys()))
 	_ok("A ★进了战斗场, 是「播」服务器那一份(裁判局), 不是本机打", b != null and b._replay.is_playing()
 		and b._replay.is_live() and str(b._replay.live.kind) == LS.KIND_REFEREE and str(b._replay.rec.get("id", "")) == MID)
 	if b == null:

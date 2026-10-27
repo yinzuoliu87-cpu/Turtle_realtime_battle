@@ -11,6 +11,8 @@ extends Node
 ##     ★主菜单开着时到点再查 ⇒ 服务器算完了当场补记(战绩 / 币 / 战绩页 = 服务器那一份), 飘结果、撤掉「稍后」那一句; 单子清了就不再查
 ##   C 还在等结果时按「←」⇒ 主菜单同样飘那一句(那一场照样记)
 ##   D 没有单子 ⇒ 主菜单不建查任务的计时器(不白发请求)
+## ── 2026-10-27 周六改在线排队: 交阵容换成进队 gauntlet_queue_join, 假服务器让它当场配上(我是 a), 之后一字不变。
+##   180 秒上限量的是「配上之后等裁判算完」那一段(POLL_SEC × POLL_MAX), 排队本身另有心跳 / 取消(verify_gauntlet_online_queue)。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
@@ -121,8 +123,8 @@ func _cleanup() -> void:
 
 func _transport(_m, u, _h, _b, cb) -> void:
 	var url := str(u)
-	if url.find("/rpc/referee_gauntlet_start") >= 0:
-		cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "job_id": _job, "match_id": MID,
+	if url.find("/rpc/gauntlet_queue_join") >= 0:
+		cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "paired", "side": "a", "job_id": _job, "match_id": MID,
 			"opp": {"profile": {"name": "kevin_99", "avatar": "ninja", "id": "g_x", "tag": "#ABCDEF"},
 				"leaders": ["ninja", "dice", "pirate"]},
 			"gw": int(_gs.gauntlet_wins), "gl": int(_gs.gauntlet_losses)})})
