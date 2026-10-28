@@ -1168,6 +1168,7 @@ scripts/scenes/SettingsScene.gd|lit|画面
 scripts/scenes/SettingsScene.gd|lit|登录已失效，请重新登录
 scripts/scenes/SettingsScene.gd|lit|确认
 scripts/scenes/SettingsScene.gd|lit|窗口
+scripts/scenes/SettingsScene.gd|lit|粘贴
 scripts/scenes/SettingsScene.gd|lit|绑定后可在其他设备恢复账号与进度（龟、装备、排名、战绩）。\n
 scripts/scenes/SettingsScene.gd|lit|绑定后同步云端进度
 scripts/scenes/SettingsScene.gd|lit|绑定邮箱
@@ -1814,12 +1815,15 @@ scripts/scenes/codex/synergy_view.gd|lit|激活 %s 件   ·   现有装备 %d �
 scripts/scenes/codex/synergy_view.gd|lit|羁绊效果
 scripts/scenes/feedback_panel.gd|lit|其他
 scripts/scenes/feedback_panel.gd|lit|已提交
+scripts/scenes/feedback_panel.gd|lit|提交
 scripts/scenes/feedback_panel.gd|lit|提交中
 scripts/scenes/feedback_panel.gd|lit|提交失败，请检查网络后重试
+scripts/scenes/feedback_panel.gd|lit|收起
 scripts/scenes/feedback_panel.gd|lit|玩法 / 数值
 scripts/scenes/feedback_panel.gd|lit|画面 / 显示
 scripts/scenes/feedback_panel.gd|lit|闪退 / 卡顿
 scripts/scenes/feedback_panel.gd|lit|问题反馈
+scripts/scenes/feedback_panel.gd|lit|问题描述
 scripts/scenes/feedback_panel.gd|lit|问题描述（必填，500 字以内）
 scripts/scenes/feedback_panel.gd|text|取消
 scripts/scenes/feedback_panel.gd|text|提交
@@ -2221,6 +2225,7 @@ scripts/util/big_title.gd|lit|结果已封存
 scripts/util/big_title.gd|lit|胜
 scripts/util/big_title.gd|lit|胜利
 scripts/util/big_title.gd|lit|负
+scripts/util/keyboard_bar.gd|lit|完成
 scripts/util/skill_text.gd|lit|(?:\\s*外加[^，。；\\n]{0,50}?)?)[^，。；\\n（]{0,4}?生命值)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
 scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)

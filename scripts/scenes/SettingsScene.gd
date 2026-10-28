@@ -1232,6 +1232,7 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 		_nick_edit.add_theme_font_size_override("font_size", 16)
 		_skin_edit(_nick_edit)
 		box.add_child(_nick_edit)
+		KeyboardBar.attach_nickname(_nick_edit)
 		_email_rows1.append(_nick_edit)
 		## ★★「换一个」—— 与昵称框**并排**, 不占新的一行。
 		##   占了就是四行(4×81 + 3×21 = 387), 中文键盘那一档(上限 330)当场破。
@@ -1250,11 +1251,21 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 	_email_edit.add_theme_font_size_override("font_size", 16)
 	_skin_edit(_email_edit)
 	box.add_child(_email_edit)
+	KeyboardBar.attach(_email_edit)
 	_email_rows1.append(_email_edit)
 
 	_email_send_btn = _wall_btn(box, "发送验证码", func():
 		_SB_ACC.send_code_async(_email_edit.text, flow))
 	_email_rows1.append(_email_send_btn)
+
+
+## 剪贴板里的验证码: 只留数字(邮件里复制来的常带空格 / 换行 / 前后的字)。纯函数, 门禁直接量。
+static func code_digits(raw: String) -> String:
+	var digits := ""
+	for ch in raw:
+		if ch >= "0" and ch <= "9":
+			digits += ch
+	return digits
 
 
 ## 第二步的三行: 验证码 / 确认 / 回上一步改邮箱。
@@ -1267,6 +1278,15 @@ func _wall_build_step2(box: Control, flow: String) -> void:
 	_code_edit.add_theme_font_size_override("font_size", 16)
 	_skin_edit(_code_edit)
 	box.add_child(_code_edit)
+	## 「粘贴」: iOS 上引擎不支持长按粘贴(godotengine/godot#60076), 验证码只能切去邮件记下来手打 ⇒ 条里给一颗粘贴键。
+	##   只取剪贴板里的数字(邮件里复制来的常带空格 / 换行)。
+	var paste := func(bar: KeyboardBar) -> void:
+		if not DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+			return
+		var digits := code_digits(DisplayServer.clipboard_get())
+		if digits != "":
+			bar.set_text(digits)
+	KeyboardBar.attach(_code_edit, {"extras": [["粘贴", paste]]})
 	_email_rows2.append(_code_edit)
 
 	_email_ok_btn = _wall_btn(box, "确认", func():
@@ -1446,6 +1466,9 @@ func _vkb_height_vp(av: Vector2) -> float:
 	if vkb_override_vp >= 0.0:
 		return vkb_override_vp
 	if not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		return 0.0
+	## 手机上字都打在输入条里(KeyboardBar), 原界面不挪 ⇒ 条开着时框不给键盘让位。
+	if KeyboardBar.is_open():
 		return 0.0
 	return _vkb_to_vp(float(DisplayServer.virtual_keyboard_get_height()),
 		av, Vector2(DisplayServer.window_get_size()))
@@ -1967,6 +1990,8 @@ func _open_rename_dialog() -> void:
 	_skin_edit(ed)
 	ed.position = Vector2(_W_PAD, 88); ed.size = Vector2(_W_MAIN_W, _W_ROW_H)
 	box.add_child(ed)
+	## 手机上弹框不动, 字打在键盘上方的输入条里(原来确认 / 取消都被键盘盖住)。
+	KeyboardBar.attach_nickname(ed)
 	## 「换一个」与名字框并排(同绑定屏)。`nickname_suggest(avoid)` 保证换出来的不是同一个。
 	var rr := Button.new()
 	rr.text = _P2C.NICK_REROLL

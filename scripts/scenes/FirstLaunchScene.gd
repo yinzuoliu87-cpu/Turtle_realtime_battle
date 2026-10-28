@@ -374,6 +374,8 @@ func open_naming() -> void:
 	ed.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ed.add_theme_font_size_override("font_size", 24)
 	row.add_child(ed)
+	## 手机上点名字框 ⇒ 键盘上方弹输入条(scripts/util/keyboard_bar.gd); 桌面照旧直接打。
+	KeyboardBar.attach_nickname(ed)
 	var rr := Button.new()
 	rr.name = N_NAME_REROLL
 	rr.text = _P2C.NICK_REROLL

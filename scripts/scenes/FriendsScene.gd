@@ -173,7 +173,11 @@ func _build_left(p: Control) -> void:
 		sb.content_margin_right = 14
 		_id_edit.add_theme_stylebox_override(st, sb)
 	_id_edit.text_submitted.connect(func(_t: String) -> void: _find())
+	## ID 只有字母和数字 ⇒ 给英文键盘(默认键盘在中文用户手上是拼音, 还多一条候选栏)。
+	_id_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
 	add.add_child(_id_edit)
+	## 手机上字打在键盘上方的输入条里; 条里的主键就是「查找」, 按下收键盘再查(原来点查找键盘不收, 结果出在键盘底下)。
+	KeyboardBar.attach(_id_edit, {"primary": TXT_FIND, "primary_cb": func(_t: String) -> void: _find()})
 	add.add_child(_btn(TXT_FIND, 110.0, _find, "FindBtn"))
 	_find_box = VBoxContainer.new()
 	_find_box.name = "FindResults"

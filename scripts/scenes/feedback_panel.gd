@@ -11,7 +11,9 @@ const NET := preload("res://scripts/net/feedback_net.gd")
 
 const W := 1280.0
 const H := 720.0
-const BOX := Vector2(600.0, 440.0)
+## 2026-10-28 按钮(类型四选一 / 取消 / 提交)从 56 加高到 81(本仓 TOUCH_MIN = 44pt), 框跟着从 440 加到 520。
+const BOX := Vector2(600.0, 520.0)
+const KEY_H := 81.0
 
 ## 【门禁按名字找的节点】
 const LAYER := "FeedbackLayer"
@@ -70,7 +72,7 @@ static func open(host: Control) -> Control:
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)
 
-	## 类型: 2×2 分段钮(264×56 —— 长边 ≥200 过触摸线, 与设置页 `_SEG_W` 同一条理由)。
+	## 类型: 2×2 分段钮(264×81)。
 	var sel := [0]
 	var tabs: Array = []
 	for i in range(KINDS.size()):
@@ -79,11 +81,11 @@ static func open(host: Control) -> Control:
 		b.text = str(KINDS[i][1])
 		b.add_theme_font_size_override("font_size", 17)
 		b.focus_mode = Control.FOCUS_NONE
-		var pos := Vector2(30.0 + float(i % 2) * 276.0, 64.0 + floorf(float(i) / 2.0) * 64.0)
-		b.position = pos; b.size = Vector2(264, 56)
+		var pos := Vector2(30.0 + float(i % 2) * 276.0, 64.0 + floorf(float(i) / 2.0) * (KEY_H + 12.0))
+		b.position = pos; b.size = Vector2(264, KEY_H)
 		UISkin.pixel_tab(b, i == 0)
 		box.add_child(b)
-		b.position = pos; b.size = Vector2(264, 56)
+		b.position = pos; b.size = Vector2(264, KEY_H)
 		tabs.append(b)
 	for i in range(tabs.size()):
 		var idx := i
@@ -99,21 +101,21 @@ static func open(host: Control) -> Control:
 	ed.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	ed.add_theme_font_size_override("font_size", 16)
 	_skin_edit(ed)
-	ed.position = Vector2(30, 196); ed.size = Vector2(540, 128)
+	ed.position = Vector2(30, 252); ed.size = Vector2(540, 128)
 	box.add_child(ed)
 
 	var st := Label.new()
 	st.name = STATUS
 	st.add_theme_font_size_override("font_size", 14)
 	st.add_theme_color_override("font_color", Color("#ff9a9a"))
-	st.position = Vector2(30, 330); st.size = Vector2(430, 24)
+	st.position = Vector2(30, 386); st.size = Vector2(430, 24)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	box.add_child(st)
 	var cnt := Label.new()
 	cnt.text = "0 / %d" % NET.MSG_MAX
 	cnt.add_theme_font_size_override("font_size", 13)
 	cnt.add_theme_color_override("font_color", Color("#7d93ac"))
-	cnt.position = Vector2(470, 330); cnt.size = Vector2(100, 24)
+	cnt.position = Vector2(470, 386); cnt.size = Vector2(100, 24)
 	cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	box.add_child(cnt)
 	## 字数上限: TextEdit 没有 max_length ⇒ 超了就截回去。
@@ -123,16 +125,29 @@ static func open(host: Control) -> Control:
 			ed.set_caret_line(ed.get_line_count() - 1)
 			ed.set_caret_column(ed.get_line(ed.get_line_count() - 1).length())
 		cnt.text = "%d / %d" % [ed.text.length(), NET.MSG_MAX])
-	## 手机上虚拟键盘会盖住下半屏 ⇒ 输入时把整块框往上提, 让输入框和两颗键露在上半屏。
-	if OS.has_feature("mobile"):
-		ed.focus_entered.connect(func() -> void: box.position = Vector2(home.x, 16.0 - 196.0))
-		ed.focus_exited.connect(func() -> void: box.position = home)
+	## 手机上: 框不动, 字打在键盘上方的多行输入条里(scripts/util/keyboard_bar.gd)。
+	##   原来是一聚焦就把整框挪到 y=-180, 标题和类型钮被顶出屏幕, 打字时看不到选的是哪类;
+	##   回车是换行, 也没有收键盘的键。条里左上小签显示当前类型, 右边「收起」「提交」。
+	var ok_ref: Array = []
+	var submit_cb := func(_t: String) -> void:
+		if not ok_ref.is_empty() and is_instance_valid(ok_ref[0]):
+			(ok_ref[0] as Button).pressed.emit()
+	KeyboardBar.attach(ed, {
+		"title": "问题描述",
+		"count_max": NET.MSG_MAX,
+		"max_length": NET.MSG_MAX,
+		"lines": 3,
+		"tag_fn": func() -> String: return str(KINDS[int(sel[0])][1]),
+		"extras": [["收起", func(bar: KeyboardBar) -> void: bar.close()]],
+		"primary": "提交",
+		"primary_cb": submit_cb,
+	})
 
 	var cancel := Button.new()
 	cancel.name = CANCEL
 	cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", 18)
-	cancel.position = Vector2(40, 362); cancel.size = Vector2(250, 56)
+	cancel.position = Vector2(40, 420); cancel.size = Vector2(250, KEY_H)
 	UISkin.pixel_button(cancel, UISkin.PX_SLATE, 4)
 	cancel.pressed.connect(func() -> void: dim.queue_free())
 	box.add_child(cancel)
@@ -141,7 +156,8 @@ static func open(host: Control) -> Control:
 	ok.name = SUBMIT
 	ok.text = "提交"
 	ok.add_theme_font_size_override("font_size", 18)
-	ok.position = Vector2(310, 362); ok.size = Vector2(250, 56)
+	ok.position = Vector2(310, 420); ok.size = Vector2(250, KEY_H)
+	ok_ref.append(ok)
 	UISkin.pixel_button(ok, UISkin.PX_GOLD, 4)
 	ok.pressed.connect(func() -> void:
 		var err: String = NET.check_message(ed.text)
