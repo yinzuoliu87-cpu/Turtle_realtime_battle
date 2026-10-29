@@ -38,6 +38,8 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 	gs.tutorial = false
 	gs.reset_dual_lane()
 	ReplayRecorder.apply_state(st)
+	if st.has("season_total_battles"):   # APPLY_SKIP 不写它(玩家记账字段); 裁判这份 GameState 是一次性的, 跑完按 backup 还原
+		gs.season_total_battles = int(st["season_total_battles"])
 	ReplayRecorder.pending_play = {}
 	ReplayRecorder.pending_referee = {"seed": RefereeJob.seed_of(job), "id": str(job.get("match_id", ""))}
 	if not stream.is_empty():

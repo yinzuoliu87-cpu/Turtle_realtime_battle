@@ -197,7 +197,7 @@ static func _apply(p: Dictionary) -> void:
 	var st: Dictionary = (p["rec"] as Dictionary).get("state", {})
 	for n in st:
 		var k := str(n)
-		if not k in ReplayRecorder.STATE_KEYS:
+		if not k in ReplayRecorder.STATE_KEYS or k in ReplayRecorder.APPLY_SKIP:
 			continue
 		var v = st[n]
 		if k == "persistent_equipped" and v is Dictionary and GameState.persistent_equipped is Dictionary:

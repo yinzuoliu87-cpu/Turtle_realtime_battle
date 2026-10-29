@@ -720,7 +720,7 @@ func _dl_survivor_specs(side_lr: String) -> Array:
 
 ## 这一方本周已打场数(援军小将每场 +4% 属性): 左 = 我的 season_total_battles; 右 = 对手快照里的, 没带就同左方(匹配本来就要求双方场数相同)。
 func _dl_side_battles(side_lr: String) -> int:
-	var mine: int = maxi(0, int(GameState.season_total_battles)) if GameState != null else 0
+	var mine: int = battle._replay.fight_battles() if battle._replay != null else (maxi(0, int(GameState.season_total_battles)) if GameState != null else 0)
 	if side_lr == "left":
 		return mine
 	var g = GameState.dual_ghost if GameState != null else null

@@ -90,6 +90,10 @@ const STATE_KEYS := [
 ##                             战斗场开局自己初始化(foe_loadouts 从 dual_ghost 取)
 ## ★门禁 `verify_replay_roundtrip` V3c 每次都**重新量**一遍「回放读了哪些」, 必须 ⊆ STATE_KEYS ∪ 本表 ——
 ##   以后谁在战斗里新读一个 GameState 变量, 门禁当场红, 逼着回答「它进不进录像」。
+## 录进录像、但**不写回** GameState 的键(2026-10-29): 它同时是玩家的记账字段(本周场数 ⇒ 装备槽 / 匹配场次),
+##   回放 / 补打时写回去会把看的人自己的账临时改成录像里的旧值(门禁 verify_gauntlet_via_referee 抓到: 播服务器那一局时场次被改回)。
+##   战斗里要用就走 `fight_battles()` 从录像里读; 裁判入口(referee_runner)在一次性的 GameState 上直接设。
+const APPLY_SKIP := ["season_total_battles"]
 const PLAY_READS_NOT_RECORDED := ["test_mode", "tutorial", "current_lane", "egg_hp", "lane_results",
 	"dual_survivors", "dual_ms_stacks", "foe_loadouts"]
 ## 其余约 100 个变量回放那一遍**一次都没读**(币/邮箱/昵称/账号/背包/装备池/赛季战绩/宝箱以外的进度……)。
@@ -301,6 +305,15 @@ static func version_differs(ver: String) -> bool:
 
 func is_playing() -> bool:
 	return mode == "play"
+
+
+## 这一场左方(录制者)开打时的本周场数(援军小将每场 +4% 用): 回放 / 补打读录像里那一份(APPLY_SKIP 不写回 GameState),
+##   现场打 / 裁判读 GameState。
+func fight_battles() -> int:
+	var st = rec.get("state") if rec is Dictionary else null
+	if (mode == "play" or mode == "resume") and st is Dictionary and (st as Dictionary).has("season_total_battles"):
+		return maxi(0, int((st as Dictionary)["season_total_battles"]))
+	return maxi(0, int(GameState.season_total_battles))
 
 
 ## 播放时 sim 推进倍率: 摆位阶段快进(那段只是录制者在想怎么摆, 对局结果与它无关 ——
@@ -782,7 +795,7 @@ static func capture_all() -> Dictionary:
 ## 只写 `STATE_KEYS` 里的(★录像是别人传上来的数据: 表外的键一律不认, 不让一份录像改写看的人的币/账号/背包)。
 static func apply_state(st: Dictionary) -> void:
 	for n in st:
-		if not str(n) in STATE_KEYS:
+		if not str(n) in STATE_KEYS or str(n) in APPLY_SKIP:
 			continue
 		var v = st[n]
 		GameState.set(str(n), v.duplicate(true) if (v is Array or v is Dictionary) else v)
