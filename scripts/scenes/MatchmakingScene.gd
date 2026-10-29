@@ -200,11 +200,15 @@ func _note_recent() -> void:
 ##   服务端还没有排队(404)⇒ 屏上「连接服务器后才能比赛」(旧入口 referee_gauntlet_start 周六不再调, 服务端线 10-27 定)。
 func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 	_local_args = [exclude, rng]
-	_build_searching()
 	## ★2026-10-29 排队中回过主页（会话挂在 root 上）⇒ 认领它，不重新进队；在别处配上的那一局在这里接回开战那条路
 	var act = _RUN.active
-	if act != null and is_instance_valid(act) and not (act as Node).is_queued_for_deletion() \
-			and (_RW.in_queue(str(act.state)) or bool(act.has_pair())):
+	var adopt: bool = act != null and is_instance_valid(act) and not (act as Node).is_queued_for_deletion() \
+			and (_RW.in_queue(str(act.state)) or bool(act.has_pair()))
+	## 已配上（玩家刚看过「匹配成功」遮罩）⇒ 不再演「匹配中 · 正在匹配对手」那段找对手动画，直接翻 VS 卡
+	var found: bool = adopt and bool(act.has_pair())
+	if not found:
+		_build_searching()
+	if adopt:
 		_ref_run = act
 		act.adopt(self)
 		_ref_run.changed.connect(_on_referee_changed)
@@ -218,7 +222,7 @@ func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 		_ref_run.changed.connect(_on_referee_changed)
 		_queue_wire_back()
 		_ref_run.start_queue()
-	var t0 := Time.get_ticks_msec()
+	var t0 := Time.get_ticks_msec() - (2200 if found else 0)
 	while not _cancelled and is_inside_tree() and _ref_run != null \
 			and (Time.get_ticks_msec() - t0 < 2200 or _RW.in_queue(str(_ref_run.state))):
 		await get_tree().process_frame

@@ -143,6 +143,8 @@ WHY = {
     "clock_hook_in_test": "时钟核对钩子的门禁开关(GameState.gd `_on_clock_confirmed`; 产品不走 test_mode, 钩子恒开; "
                           "门禁一律 test_mode ⇒ 默认关, 免得一条带 Date 头的假回包把别的门禁摆的局面滚掉。"
                           "verify_boot_season_clock 打开它量「偏移晚到 ⇒ 钩子补判、不清档、晋级算出来」那一支)",
+    "confirm_max_for_test": "跟播收尾「正在确认结果」等结果上限(秒)注入(referee_live.gd `confirm_max_sec()`; 产品恒用 120 秒, "
+                            "verify_referee_live_own T 段压短量「等满上限 ⇒ 回主菜单飘『稍后自动记入』、单子留着」那一支, 不用真等 2 分钟)",
     "poll_max_for_test": "周六裁判局等待上限(次)注入(referee_watch.gd `poll_max()`; 产品用 POLL_MAX 90 × POLL_SEC 2 = 180 秒, "
                          "verify_referee_wait_timeout 压到 3 次量「等到上限还没算完 ⇒ 回主菜单、主菜单开着时补记」那一支, 不用真等 3 分钟)",
     "force_anim": "小木斧进化演出在测试模式下也按真时长播的开关(axe_evo_show.gd `_instant()`; 产品不走 test_mode, 恒按真时长播; "

@@ -314,6 +314,7 @@ func _t_h4() -> void:
 	var run = await _queue_then_home()
 	_ok("H4 分母: 回了主页、会话在 root 上排队", _active() == run and str(run.state) == RW.ST_QUEUE)
 	_park()
+	_gs.dual_opponent = {}
 	_sc["pair"] = true
 	var found := await _wait(func() -> bool: return _active() != null and str(_active().state) == RW.ST_FOUND, 6000)
 	_ok("H4 配上那一刻 ⇒ 状态 found、锁仍在", found and RW.queue_locked(), str(run.state))
@@ -327,6 +328,14 @@ func _t_h4() -> void:
 	_ok("H4 换到匹配屏、认领同一个会话、这时才落任务单（任务号 = 服务端那一局）", ok,
 		"scene=%s bill=%s" % [str(cs.name) if cs != null else "-", str(_gs.referee_pending)])
 	_ok("H4 接回原来那条：查任务、状态 wait", _hit(STATUS) >= 1 and str(run.state) == RW.ST_WAIT, "%d / %s" % [_hit(STATUS), str(run.state)])
+	## 玩家刚看过「匹配成功」遮罩 ⇒ 匹配屏不再演「匹配中 · 正在匹配对手」找对手动画（那一幕与遮罩自相矛盾）
+	await _frames(3)
+	var searching := false
+	for l in cs.find_children("*", "Label", true, false):
+		if (l as Label).text == "匹配中" and (l as Label).is_visible_in_tree():
+			searching = true
+	_ok("H4 ★认领已配上的那一局 ⇒ 没有「匹配中」找对手那一幕、对手卡已备好（VS 卡）", not searching
+		and not (_gs.dual_opponent as Dictionary).is_empty(), "searching=%s opp=%s" % [str(searching), str(_gs.dual_opponent.keys())])
 	_ok("H4 锁解开（不在排队了）", not RW.queue_locked())
 	await _close(cs)
 	_gs.referee_pending = {}
