@@ -30,6 +30,19 @@ const Live := preload("res://scripts/systems/replay/live_spectate.gd")
 const SIM_DT := 1.0 / 60.0
 const START_STEPS := 180          # 开播前缓冲 3 秒
 const RESUME_STEPS := 60          # 卡在直播边沿后, 攒够 1 秒再接着播
+
+
+## 没有幕布时开场先跳过的那段: 三路总览 + 对阵预览, 各 DL_PRESENT_SEC 秒(sim 里幕布自己走; 见 `_skip_opening`)。
+const OPENING_PRESENTS := 2
+const RB_PATH := "res://scripts/scenes/RealtimeBattle3DScene.gd"
+
+
+## 周六跟播自己那一局进场前要攒几块(块 = F.CHUNK_STEPS 步): 开场那段(进场一帧跳过) + 开播缓冲 START_STEPS。
+##   会话在 VS 卡上先拉这么多块再进场(referee_run 进度条的最后一段) ⇒ 进场就是开打那一刻、接着就播,
+##   不再对着空场地(2026-10-29 录屏: 进场后对着空场地约 2 秒才开打)。
+static func live_start_chunks() -> int:
+	var steps := int(roundf(float(load(RB_PATH).DL_PRESENT_SEC) * OPENING_PRESENTS / SIM_DT)) + START_STEPS
+	return ceili(float(steps) / float(F.CHUNK_STEPS))
 ## 一帧推的步数不超过它时, 中间每个采样步补跑渲染步(_apply_paced); 超过 = 快进(15 帧手机 × 4 倍速 = 16 步)
 const PACED_MAX_STEPS := 16
 const TXT_ERROR := "画面无法播放"
@@ -95,6 +108,10 @@ var _no_curtain := false
 ##   追上服务器那一刻照旧停在缓冲尾部「同步中」，绝不本机补算。
 const GAP_FF := 10.0
 const GAP_STATES := ["overview", "preview", "lane_settle"]
+## ★2026-10-29 开场那段(三路总览 + 对阵预览)连 10 倍也不走: 一帧逐步应用到开打那一步(`_skip_opening`)。
+##   10 倍仍要 1 秒空场地, 而服务器还没录到那里时要停下来等 ⇒ 录屏里进场后对着空场地约 2 秒
+##   (用户 10-29「那段的时间为什么不能够融入这个进度条里面呢？」⇒ 等待归进 VS 卡上的进度条, 进场就是开打)。路间那几段照旧 10 倍。
+var opened := false
 
 
 ## 这一帧的推进倍率（纯函数，门禁直接调）：没有幕布且正处在幕布那几段 ⇒ GAP_FF；否则 1。
@@ -169,6 +186,11 @@ func _tick(rd: float) -> void:
 			state = "playing"
 		else:
 			return
+	if _no_curtain and not opened:
+		_skip_opening()
+		if not opened:
+			state = "stalled"        # 开场那段还没录完: 「同步中」等(绝不本机补算)
+			return
 	if paused:
 		return
 	var target := head + rd * 60.0 * speed * gap_mul(_no_curtain, str(battle._dl_state))
@@ -186,6 +208,26 @@ func _tick(rd: float) -> void:
 	if src.ended() and _next_seq >= src.available() and _steps.is_empty() and applied >= _last_step:
 		state = "ended"
 	_interp()
+
+
+## 没有幕布时跳过开场那段: 一步一步应用(事件照放、不跑渲染步), 应用到开打那一步(幕布状态之外的第一步)就停 —— 不越进开打;
+##   数据只到开场中间 ⇒ 停在已到的那一步, `opened` 仍为 false(调用方「同步中」等, 新块到了接着跳)。
+##   跳过的那一截不进这一帧的渲染时长(`_rh` 跟到播放头): 开打那一帧只渲染它自己。
+func _skip_opening() -> void:
+	while true:
+		var dl := str(battle._dl_state)
+		if not GAP_STATES.has(dl) and not (dl == "" and applied < first_step):
+			opened = true
+			break
+		if _steps.is_empty():
+			_pump(_last_step + F.CHUNK_STEPS)
+			if _steps.is_empty():
+				break
+		_apply_until(int(_steps[0][0]), true)
+	if applied >= 0 and float(applied) > head:
+		head = float(applied)
+		_rh = head
+		_interp()
 
 
 ## 把能解的块解出来, 直到已解码的步号 ≥ want(或者块来源暂时没有更多)。

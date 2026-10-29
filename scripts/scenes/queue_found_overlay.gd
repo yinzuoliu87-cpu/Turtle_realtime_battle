@@ -9,8 +9,11 @@ extends CanvasLayer
 ##
 ## ★样子按 docs/plans/20261027-UI美术规矩.md: 标题有底板(横贯全屏的深色横带 + 上下金线, 不借别屏的缎带图) /
 ##   标题字 72 号(12 的倍数)、描边 24(= 字号 ÷ 3)、落影 6 / 一屏一件事(只说「匹配成功」与下一步) /
-##   标题从左侧滑入(T_BASE · BACK 缓出), 不缩放弹入 / 横带下一条进度条随时间走满 = 「马上就进」, 不用倒数字。
+##   标题从左侧滑入(T_BASE · BACK 缓出), 不缩放弹入 / 横带下一条进度条, 不用倒数字。
 ##   全部是代码画的色块与字, 不用任何贴图 ⇒ 没有借用素材。
+## ★进度条有含义(2026-10-29 用户「你给它有含义啊…那段的时间为什么不能够融入这个进度条里面呢？」):
+##   会话传进来 `progress` / `caption` ⇒ 条 = 「进入对局」整条进度的开头一段(`EnterBar`, VS 卡下接着走的是同一个数),
+##   副标 = 当前阶段那句话。没传(会话没了)⇒ 退回按 HOLD_SEC 走满、副标 TXT_SUB。
 ## ★计时走墙钟(`Time.get_ticks_msec`), 不走 delta: 回放 / 观战可能改了 `Engine.time_scale`, 也可能把场景树停了
 ##   (process_mode = ALWAYS 只保证它会跑, 不保证 delta 是真时间)。
 ## ★挂在 root 上、layer 高于各屏 HUD(工作室开场 StudioIntro 9000 之下 —— 开场只在冷启动, 那时不可能有排队)。
@@ -26,8 +29,6 @@ const TXT_TITLE := "匹配成功"
 const TXT_SUB := "即将进入对局"
 
 const BAND_H := 236.0
-const BAR_W := 420.0
-const BAR_H := 12.0
 const COL_DIM := Color(0.02, 0.03, 0.06, 0.72)
 const COL_BAND := Color("#0f1a33")
 const COL_BAND_IN := Color("#16244a")
@@ -36,8 +37,6 @@ const COL_GOLD_SH := Color("#7a4a12")
 const COL_TITLE := Color("#fff6dc")
 const COL_INK := Color("#0c1220")
 const COL_SUB := Color("#c9d6e4")
-const COL_BAR_BG := Color("#070b16")
-const COL_BAR := Color("#ffd34a")
 
 ## 门禁读: 这一层调过几次 then(应恰好 1)。
 var calls := 0
@@ -48,12 +47,15 @@ var _root: Control = null
 var _band: Control = null
 var _title: Label = null
 var _sub: Label = null
-var _fill: ColorRect = null
+var _bar: EnterBar = null
 var _sfx: AudioStreamPlayer = null
+var _progress: Callable = Callable()
+var _caption: Callable = Callable()
 
 
 ## 会话配上时调: 盖一层, 约 HOLD_SEC 秒后调 `then`。已经盖着一层(同一帧配上两次之类)⇒ 不叠第二层, 回调挂到那一层上。
-static func show_then(tree: SceneTree, then: Callable) -> void:
+##   `progress` / `caption`: 会话的「进入对局」进度(0..1)与阶段那句话; 不传 ⇒ 按 HOLD_SEC 走满、副标 TXT_SUB。
+static func show_then(tree: SceneTree, then: Callable, progress: Callable = Callable(), caption: Callable = Callable()) -> void:
 	if tree == null or tree.root == null:
 		if then.is_valid():
 			then.call()
@@ -67,6 +69,8 @@ static func show_then(tree: SceneTree, then: Callable) -> void:
 	ov.layer = LAYER
 	ov.process_mode = Node.PROCESS_MODE_ALWAYS
 	ov._thens.append(then)
+	ov._progress = progress
+	ov._caption = caption
 	## 延后一拍挂: 调用方可能正在某个场景的 _ready / 信号回调里, root 那一刻不收孩子。
 	tree.root.add_child.call_deferred(ov)
 
@@ -74,6 +78,19 @@ static func show_then(tree: SceneTree, then: Callable) -> void:
 ## 从盖上到现在过了多少秒(墙钟)。
 func elapsed() -> float:
 	return float(Time.get_ticks_msec() - _t0) / 1000.0
+
+
+## 进度条读的数: 会话给的「进入对局」进度; 会话没了 ⇒ 按 HOLD_SEC 走满。
+func progress() -> float:
+	if _progress.is_valid():
+		return float(_progress.call())
+	return clampf(elapsed() / HOLD_SEC, 0.0, 1.0)
+
+
+## 副标那句话: 会话给的阶段; 没有 ⇒ TXT_SUB。
+func caption() -> String:
+	var c := str(_caption.call()) if _caption.is_valid() else ""
+	return c if c != "" else TXT_SUB
 
 
 func _ready() -> void:
@@ -142,7 +159,7 @@ func _build_band() -> void:
 	_band.add_child(_title)
 	_sub = Label.new()
 	_sub.name = "Sub"
-	_sub.text = TXT_SUB
+	_sub.text = caption()
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_sub.add_theme_font_size_override("font_size", 26)
@@ -151,16 +168,10 @@ func _build_band() -> void:
 	_sub.add_theme_constant_override("outline_size", 6)
 	_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_band.add_child(_sub)
-	var bar_bg := ColorRect.new()
-	bar_bg.name = "BarBg"
-	bar_bg.color = COL_BAR_BG
-	bar_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_band.add_child(bar_bg)
-	_fill = ColorRect.new()
-	_fill.name = "BarFill"
-	_fill.color = COL_BAR
-	_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_band.add_child(_fill)
+	_bar = EnterBar.new()
+	_bar.name = "Bar"
+	_band.add_child(_bar)
+	_bar.bind(progress)
 
 
 ## 按视口摆位(任何比例都横贯全宽、竖向居中)。
@@ -180,10 +191,7 @@ func _layout() -> void:
 	_title.size = Vector2(w, 96.0)
 	_sub.position = Vector2(0.0, 130.0)
 	_sub.size = Vector2(w, 40.0)
-	var bx := roundf((w - BAR_W) / 2.0)
-	_rect("BarBg", Rect2(bx - 3, 186.0 - 3, BAR_W + 6, BAR_H + 6))
-	_fill.position = Vector2(bx, 186.0)
-	_fill.size = Vector2(BAR_W * clampf(elapsed() / HOLD_SEC, 0.0, 1.0), BAR_H)
+	_bar.position = Vector2(roundf((w - _bar.size.x) / 2.0), 186.0 - EnterBar.PAD)
 
 
 func _rect(n: String, r: Rect2) -> void:
@@ -195,9 +203,8 @@ func _rect(n: String, r: Rect2) -> void:
 
 func _process(_delta: float) -> void:
 	var e := elapsed()
-	if _fill != null:
-		## 进度条按 3 像素一格走(像素台阶, 不是平滑拉长)
-		_fill.size.x = floorf(BAR_W * clampf(e / HOLD_SEC, 0.0, 1.0) / 3.0) * 3.0
+	if _sub != null and not _done:
+		_sub.text = caption()
 	if _done or e < HOLD_SEC:
 		return
 	_done = true

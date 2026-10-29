@@ -78,14 +78,15 @@ static func names_for(side: String, foe: Dictionary) -> Dictionary:
 
 
 ## 进战斗场跟播。返回 true = 已进(会话据此进 ST_LIVE); false = 没进(开关关 / 陪练号 / 种子或任务号不对 / 版本不同), 会话照旧等。
-static func enter(tree: SceneTree, run: Node, seed: int) -> bool:
+##   `src` = 会话在 VS 卡上已经拉了开播那几块的块来源(`SW.own_live_source`); null ⇒ 进场时现建。
+static func enter(tree: SceneTree, run: Node, seed: int, src: StreamSource.Http = null) -> bool:
 	if run == null or not is_instance_valid(run) or not wanted() or seed <= 0:
 		return false
 	var opp = run.get("opp")
 	var foe: Dictionary = (opp as Dictionary).duplicate(true) if opp is Dictionary else {}
 	var jid := int(run.get("job_id"))
 	var w := SW.enter_own_live(tree, {"id": str(run.get("match_id")), "seed": seed, "ver": ReplayRecorder.client_version(),
-		"job_id": jid, "foe": foe}, RW.MAIN_MENU, names_for(str(run.get("side")), foe))
+		"job_id": jid, "foe": foe, "src": src}, RW.MAIN_MENU, names_for(str(run.get("side")), foe))
 	if w != "":
 		return false
 	_bill = {}

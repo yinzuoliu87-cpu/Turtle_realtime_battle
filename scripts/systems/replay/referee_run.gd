@@ -36,6 +36,34 @@ var _was_paused := false           ## 切过后台还没回来（不拿时间戳
 var _rejoin_until := 0            ## 刚从后台回来（离开超过 RESUME_REJOIN_SEC）：这一刻（本机毫秒）之前心跳回「已过期」⇒ 自动重排
 ##   ★按时间窗、不按「下一次回包」：回前台时可能有一次切后台之前发出的心跳还没回来（回「仍在等待」），不能让它把这件事抹掉。
 
+## ══ 「进入对局」进度条（2026-10-29 · 方案书同上 §4.7）══
+##   用户 10-29「匹配成功，那里有个即将进入对局下面的进度条…现在目前是没有含义的吗？你给它有含义啊…后面又写等待服务器开始对局，
+##   那那段的时间为什么不能够融入这个进度条里面呢？」⇒ 配上 → 对局第一帧只有一条进度条：遮罩横带里、VS 卡下都是 `EnterBar`，
+##   读的都是 `enter_progress()`，按真实阶段走、只进不退（换屏接着走）。下面那句话 = `msg`（遮罩读 `enter_caption()`）：
+##     found   0.00~0.20  遮罩那 1.5 秒（换到匹配屏）            正在建立对局
+##     build   0.20~0.35  任务已落、第一次查任务还没回            正在建立对局
+##     pending 0.35~0.55  裁判机还在排队                        等待服务器开始对局
+##     claimed 0.55~0.65  裁判已开算、问种子                    正在载入对局
+##     buffer  0.65~1.00  VS 卡上先拉开播那几块（按已到块数）     正在载入对局   ← 原来进场后对着空场地「同步中」的那一段
+##     fetch   0.65~1.00  （跟播关着）算完了、取录像              正在结算
+##   不知道要多久的段（build / pending / claimed / fetch）在段内按 1 - e^(-t/EP_TAU) 逼近段尾、碰不到段尾 ⇒ 真到下一段才越过去，
+##   不会提前走满。显示值只增不减、每秒最多走 EP_RATE（段跳变是「走过去」不是瞬移）。块攒够 ⇒ done（目标 1）⇒ 条走满再进场。
+const EP_ORDER := ["found", "build", "pending", "claimed", "buffer", "fetch", "done"]
+const EP_SPAN := {"found": [0.0, 0.2], "build": [0.2, 0.35], "pending": [0.35, 0.55], "claimed": [0.55, 0.65],
+	"buffer": [0.65, 1.0], "fetch": [0.65, 1.0], "done": [1.0, 1.0]}
+const EP_TAU := 2.0
+const EP_RATE := 0.9
+const BUF_MAX_SEC := 8.0            ## VS 卡上拉开播那几块最多等多久；到点没攒够 ⇒ 照原来进场（战斗场里「同步中」接着等）
+const BUF_FULL_WAIT := 0.6          ## 块攒够之后等进度条走满的上限（秒）
+var _ep_stage := ""
+var _ep_at := 0
+var _ep_shown := 0.0
+var _ep_tick := 0
+var _buf_src: StreamSource.Http = null
+var _buf_seed := 0
+var _buf_ready_at := 0
+var _full_drawn := false
+
 signal changed
 var state := ""
 var msg := ""
@@ -66,6 +94,9 @@ func start_queue() -> void:
 	opp = {}
 	side = "a"
 	_opp_tries = 0
+	_ep_stage = ""
+	_ep_shown = 0.0
+	_ep_tick = 0
 	_to(RW.ST_SUBMIT, RW.TXT_SUBMITTING)
 	var snap: Dictionary = RW.my_snapshot()
 	lineup = snap
@@ -320,6 +351,7 @@ static func open_queue_screen(tree: SceneTree) -> void:
 
 ## 在 root 上配上：盖「匹配成功」遮罩（约 1.5 秒），然后换到匹配屏（打断正在看的回放 / 观战，U6）。
 func _found() -> void:
+	_ep_go("found")
 	_to(RW.ST_FOUND, "")
 	var tree := get_tree()
 	var go := func() -> void:
@@ -330,7 +362,7 @@ func _found() -> void:
 		open_queue_screen(tree)
 	var ov = load(OVERLAY) if ResourceLoader.exists(OVERLAY) else null
 	if ov != null:
-		ov.show_then(tree, go)
+		ov.show_then(tree, go, enter_progress, enter_caption)
 	else:
 		go.call()
 
@@ -345,7 +377,8 @@ func _on_submit(wk: int, res: Dictionary) -> void:
 			opp = (res.get("opp", {}) as Dictionary).duplicate(true)
 			GameState.referee_pending = RW.pending_for(job_id, match_id, wk, opp, side)
 			GameState.save()
-			_to(RW.ST_WAIT, RW.TXT_SETTLING)
+			_ep_go("build")
+			_to(RW.ST_WAIT, RW.TXT_ENTER_BUILD if RL.wanted() else RW.TXT_SETTLING)
 			_tm = Timer.new()
 			_tm.wait_time = RW.POLL_SEC
 			_tm.timeout.connect(_poll)
@@ -443,13 +476,17 @@ func _on_status(res: Dictionary) -> void:
 			_stop(RW.TXT_FAILED)
 		"claimed":
 			## ★2026-10-29 裁判已开算 ⇒ 像英雄联盟观战一样直接看这一局（用户「就跟lol观战一样呢」）；陪练号 / 开关关 ⇒ 照旧等算完
-			if msg != RW.TXT_SETTLING:
-				_to(RW.ST_WAIT, RW.TXT_SETTLING)
+			_ep_go("claimed")
+			var cap := RW.TXT_ENTER_LOAD if RL.wanted() else RW.TXT_SETTLING
+			if msg != cap:
+				_to(RW.ST_WAIT, cap)
 			if not _live_try and RL.wanted():
 				_try_live()
 			elif polls >= RW.poll_max():
 				_later()
 		_:
+			if str(res.get("status", "")) == "pending":
+				_ep_go("pending")
 			if str(res.get("status", "")) == "pending" and msg != RW.TXT_LIVE_PENDING and RL.wanted():
 				_to(RW.ST_WAIT, RW.TXT_LIVE_PENDING)   # 裁判机还在排队：VS 卡下写「等待服务器开始对局」
 			if polls >= RW.poll_max():
@@ -459,6 +496,7 @@ func _fetch() -> void:
 	if RW.skip_play:
 		_to(RW.ST_SKIPPED, RW.result_line(view))   # 陪练号(SIM_SKIP_WATCH): 账已记完, 不取录像、不播
 		return
+	_ep_go("fetch")
 	_to(RW.ST_FETCH, RW.TXT_SETTLING)
 	if not RW.SB.fetch_match_async(match_id, _on_match):
 		_to(RW.ST_ERROR, RW.result_line(view) + " · " + RW.TXT_UNPLAYABLE)
@@ -476,6 +514,7 @@ func _on_match(res: Dictionary) -> void:
 		_to(RW.ST_ERROR, RW.result_line(view) + " · " + RW.TXT_UNPLAYABLE)
 		return
 	RW.RF._cache(match_id, raw, true)      # 战绩页之后能在本机直接看(true = 服务器裁判局: 永不本机重算)
+	_ep_go("done")
 	_to(RW.ST_PLAY, "")
 	## 逐帧直播 S5: 开关关 ⇒ 同步走 `play_settled`(本机重算, 与改之前一样); 开 ⇒ 播服务器的状态流
 	RW.play_settled_route(get_tree(), rec, view, _on_routed)
@@ -489,7 +528,8 @@ func _on_routed(code: String, msg: String) -> void:
 	_to(RW.ST_ERROR, RW.result_line(view) + " · " + tail)
 
 
-## 裁判已开算：取种子 ⇒ 搬到 root ⇒ 进跟播。取不到 / 进不了 ⇒ 留在 ST_WAIT，下一次查任务再试（先算完就走原来那条：记账 → 从头播）。
+## 裁判已开算：取种子 ⇒ VS 卡上先拉开播那几块（`_buffer`）⇒ 搬到 root ⇒ 进跟播。
+##   取不到 / 进不了 ⇒ 留在 ST_WAIT，下一次查任务再试（先算完就走原来那条：记账 → 从头播）。
 func _try_live() -> void:
 	_live_try = true
 	RL.lookup_seed(match_id, func(seed: int) -> void:
@@ -498,12 +538,119 @@ func _try_live() -> void:
 		if seed < 0:
 			_live_try = false
 			return
-		_to_root()
-		if RL.enter(get_tree(), self, seed):
-			polls = 0
-			_to(RW.ST_LIVE, "")
-		else:
-			_live_try = false)
+		_buffer(seed))
+
+
+## 取到种子：先在 VS 卡上拉「开场总览 + 预览那段 + 开播缓冲」那几块（`StreamPlayer.live_start_chunks()` = 13 块，进度条最后一段按已到块数走），攒够再进场
+##   ⇒ 进场时播放器一帧跳过开场那段（`StreamPlayer._skip_opening`），进去就是开打，不再对着空场地（2026-10-29 录屏里约 2 秒）。
+##   块来源挂在 root 上（换场景不断），进场时原样交给播放器（`RL.enter(…, src)`），已拉到的块不重拉。
+func _buffer(seed: int) -> void:
+	if not RW.SB.is_uuid(match_id):
+		_go_live(seed, null)              # 录像号不对：交给 enter 判（它回 false ⇒ 下一次查任务再试）
+		return
+	_buf_seed = seed
+	_buf_src = SW.own_live_source(match_id)
+	_buf_ready_at = 0
+	_full_drawn = false
+	_ep_go("buffer")
+	set_process(true)
+
+
+func _process(_delta: float) -> void:
+	if _buf_src == null:
+		set_process(false)
+		return
+	if state != RW.ST_WAIT:               # 先算完了（记账 → 看录像那条）/ 出错：不进跟播，块来源放掉
+		_buf_src = null
+		set_process(false)
+		return
+	var now := Time.get_ticks_msec()
+	var st := _buf_src.state
+	if _ep_stage == "buffer" and (buf_frac() >= 1.0 or st == StreamSource.Http.ST_GONE or st == StreamSource.Http.ST_UPDATE
+			or now - _ep_at >= int(BUF_MAX_SEC * 1000.0)):
+		## 攒够了（或流没了 / 要更新 / 等到上限：进场后由播放器照原来那样说）⇒ 条走满再进
+		_ep_go("done")
+		_buf_ready_at = now
+	if _ep_stage != "done":
+		return
+	if enter_progress() < 0.999 and now - _buf_ready_at < int(BUF_FULL_WAIT * 1000.0):
+		return
+	## 满了之后再等一帧才进场：同一帧里进度条可能先于这里画（画的是上一帧的 98%），不等这一帧满格那一下就没画出来
+	##   （verify_referee_live_own E 量到进场前最后一帧 411 / 420 像素）
+	if not _full_drawn:
+		_full_drawn = true
+		return
+	var src := _buf_src
+	_buf_src = null
+	set_process(false)
+	_go_live(_buf_seed, src)
+
+
+func _go_live(seed: int, src: StreamSource.Http) -> void:
+	_to_root()
+	if RL.enter(get_tree(), self, seed, src):
+		polls = 0
+		_to(RW.ST_LIVE, "")
+	else:
+		_live_try = false
+
+
+## 进度条读的数（0..1，只增不减）；不在「进入对局」途中 ⇒ -1（进度条藏起来）。遮罩、VS 卡每帧都可以调（按墙钟走，调几次都一样）。
+func enter_progress() -> float:
+	if _ep_stage == "" or not entering():
+		return -1.0
+	var now := Time.get_ticks_msec()
+	var dt := float(maxi(0, now - _ep_tick)) / 1000.0 if _ep_tick > 0 else 0.0
+	_ep_tick = now
+	var tgt := ep_target()
+	if tgt > _ep_shown:
+		_ep_shown = minf(tgt, _ep_shown + EP_RATE * dt)
+	return _ep_shown
+
+
+## 遮罩副标读的那句话：当前阶段的话；遮罩那一段 msg 还是空的 ⇒「正在建立对局」（跟播关着 ⇒ "" ⇒ 遮罩用它自己的默认）。
+func enter_caption() -> String:
+	if msg != "":
+		return msg
+	return RW.TXT_ENTER_BUILD if RL.wanted() else ""
+
+
+## 当前阶段的目标值（只按阶段与墙钟算）。
+func ep_target() -> float:
+	var sp: Array = EP_SPAN.get(_ep_stage, [0.0, 0.0])
+	var lo := float(sp[0])
+	var hi := float(sp[1])
+	var t := float(Time.get_ticks_msec() - _ep_at) / 1000.0
+	match _ep_stage:
+		"found":
+			return lo + (hi - lo) * clampf(t / QueueFoundOverlay.HOLD_SEC, 0.0, 1.0)
+		"buffer":
+			return lo + (hi - lo) * buf_frac()
+		"done":
+			return 1.0
+	return lo + (hi - lo) * (1.0 - exp(-t / EP_TAU))
+
+
+## 开播那几块到了几成（0..1）；流已录完 ⇒ 1。
+func buf_frac() -> float:
+	if _buf_src == null:
+		return 0.0
+	if _buf_src.ended():
+		return 1.0
+	return clampf(float(_buf_src.fetched()) / float(StreamPlayer.live_start_chunks()), 0.0, 1.0)
+
+
+## 正在「进入对局」：配上之后、进场之前（遮罩 / VS 卡下等结果 / 取录像 / 正要播）。
+func entering() -> bool:
+	return state == RW.ST_FOUND or state == RW.ST_WAIT or state == RW.ST_FETCH or state == RW.ST_PLAY
+
+
+## 进到下一阶段：只往后走（同一阶段再进不重置计时，也不会退回前面的阶段）。
+func _ep_go(stage: String) -> void:
+	if EP_ORDER.find(stage) <= EP_ORDER.find(_ep_stage):
+		return
+	_ep_stage = stage
+	_ep_at = Time.get_ticks_msec()
 
 
 ## 跟播中查到的任务状态：done ⇒ 交给 referee_live 预演记账、填结果；failed / 没这一单 ⇒ 交给它结束播放回主菜单；别的 ⇒ 接着查。

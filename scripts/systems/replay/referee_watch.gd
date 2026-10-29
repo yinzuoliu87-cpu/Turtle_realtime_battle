@@ -66,6 +66,11 @@ const TXT_FINALS_COINS := "战斗内铸币 +%d"
 ##   裁判机还在排队(任务 pending)时 VS 卡下那一行 / 流已播完而服务器的结果还没到时收尾处那一行。
 const TXT_LIVE_PENDING := "等待服务器开始对局"
 const TXT_LIVE_CONFIRM := "正在确认结果"
+## 「进入对局」进度条下那句话(2026-10-29 用户「那段的时间为什么不能够融入这个进度条里面呢？」· 方案书同上 §4.7):
+##   配上 → 查到任务之前 / 裁判开算之后取对局、拉前几秒画面。中间裁判机排队那段是 TXT_LIVE_PENDING。
+##   只在跟播开着(`referee_live.wanted()`)时用; 关着时等的是整局算完, 仍是 TXT_SETTLING。
+const TXT_ENTER_BUILD := "正在建立对局"
+const TXT_ENTER_LOAD := "正在载入对局"
 const MAIN_MENU := "res://scenes/MainMenu.tscn"
 
 ## 查任务的间隔(秒)与上限(次): 合计 180 秒还没算完 ⇒ 不再干等(ST_LATER: 回主菜单, 待记账单留着由主菜单补记)。

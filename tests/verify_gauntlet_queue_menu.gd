@@ -230,6 +230,7 @@ func _ready() -> void:
 	await _part_appear_vanish()
 	await _part_open_doors()
 	await _part_overlay()
+	await _part_overlay_progress()
 	_finish()
 
 
@@ -579,6 +580,37 @@ func _part_overlay() -> void:
 	await _until(func() -> bool: return h2.size() >= 2, 3.0)
 	await _sleep(0.3)
 	_ok("⑥ 两个回调各调 1 次", h2.size() == 2 and h2.has(1) and h2.has(2), str(h2))
+	await _until(func() -> bool: return get_tree().root.get_node_or_null(QueueFoundOverlay.NODE) == null, 2.0)
+
+
+## ══ ⑥b 遮罩里的进度条有含义(2026-10-29 用户「你给它有含义啊…那段的时间为什么不能够融入这个进度条里面呢？」)══
+##   会话传进来的进度 / 阶段话 ⇒ 条画的是会话那个数(不是按 1.5 秒自己走满), 副标是会话那句话; 量的是画出来的像素宽。
+func _part_overlay_progress() -> void:
+	var pv := [0.1]
+	var cap := ["正在建立对局"]
+	var hit: Array = []
+	QueueFoundOverlay.show_then(get_tree(), func() -> void: hit.append(1),
+		func() -> float: return float(pv[0]), func() -> String: return str(cap[0]))
+	await _frames(3)
+	var ov := get_tree().root.get_node_or_null(QueueFoundOverlay.NODE) as QueueFoundOverlay
+	var bar := ov.find_child("Bar", true, false) as EnterBar if ov != null else null
+	var sub := ov.find_child("Sub", true, false) as Label if ov != null else null
+	_ok("⑥b 分母: 遮罩里有进度条(EnterBar, 与 VS 卡下那条同一个控件)", bar != null and sub != null)
+	if bar == null:
+		return
+	var px := func(v: float) -> float: return floorf(EnterBar.BAR_W * v / EnterBar.STEP) * EnterBar.STEP
+	_ok("⑥b ★条画的是会话给的数(0.1 ⇒ %.0f 像素), 副标是会话那句「%s」" % [px.call(0.1), cap[0]],
+		bar.fill_px() == px.call(0.1) and sub.text == "正在建立对局", "%.0f「%s」" % [bar.fill_px(), sub.text])
+	await _sleep(1.1)
+	_ok("⑥b ★1.1 秒后会话的数没动 ⇒ 条也不动(不再按时间自己走; 原来此刻该走到 %.0f 像素)" % px.call(1.1 / QueueFoundOverlay.HOLD_SEC),
+		bar.fill_px() == px.call(0.1), "%.0f" % bar.fill_px())
+	pv[0] = 0.2
+	cap[0] = RW.TXT_LIVE_PENDING
+	await _frames(3)
+	_ok("⑥b 会话的数 / 那句话变了 ⇒ 条与副标当帧跟着变", bar.fill_px() == px.call(0.2) and sub.text == RW.TXT_LIVE_PENDING,
+		"%.0f「%s」" % [bar.fill_px(), sub.text])
+	await _until(func() -> bool: return not hit.is_empty(), 3.0)
+	_ok("⑥b 照样约 1.5 秒后调回调(进度条只管显示, 不管什么时候换屏)", hit.size() == 1)
 	await _until(func() -> bool: return get_tree().root.get_node_or_null(QueueFoundOverlay.NODE) == null, 2.0)
 
 

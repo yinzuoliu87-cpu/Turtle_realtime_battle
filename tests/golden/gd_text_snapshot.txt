@@ -2123,9 +2123,11 @@ scripts/systems/replay/referee_watch.gd|lit|战斗内铸币 +%d
 scripts/systems/replay/referee_watch.gd|lit|战绩已同步，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
 scripts/systems/replay/referee_watch.gd|lit|正在寻找 %d 胜 %d 负的对手
+scripts/systems/replay/referee_watch.gd|lit|正在建立对局
 scripts/systems/replay/referee_watch.gd|lit|正在提交阵容
 scripts/systems/replay/referee_watch.gd|lit|正在确认结果
 scripts/systems/replay/referee_watch.gd|lit|正在结算
+scripts/systems/replay/referee_watch.gd|lit|正在载入对局
 scripts/systems/replay/referee_watch.gd|lit|正在退出排队
 scripts/systems/replay/referee_watch.gd|lit|等待服务器开始对局
 scripts/systems/replay/referee_watch.gd|lit|结算失败，请重新开战

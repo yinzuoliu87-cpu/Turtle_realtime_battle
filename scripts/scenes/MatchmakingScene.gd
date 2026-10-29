@@ -233,6 +233,7 @@ func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 	GameState.dual_opponent = card
 	_build_vs(card)
 	_ref_label()
+	_ref_bar_ensure()
 
 
 # ─────────────────────────────── 周六在线排队: 等待界面 ───────────────────────────────
@@ -361,6 +362,23 @@ func _ref_label() -> Label:
 	return _ref_lb
 
 
+## ★2026-10-29「进入对局」进度条(用户「你给它有含义啊…那段的时间为什么不能够融入这个进度条里面呢？」):
+##   VS 卡下那一行字 = 当前阶段, 它下面这条 = 会话的 `enter_progress()`(与「匹配成功」遮罩里那条同一个数, 换屏接着走);
+##   不在「进入对局」途中(排队 / 报错 / 等不到结果)⇒ 会话回 -1, 条自己藏起来。同 `_ref_lb`: 翻卡清屏后重建。
+##   ★只从周六分支调(`_server_pick` / `_on_referee_changed`), 不进 `_ref_label`: 积分赛走的函数逐字节不动(verify_gauntlet_online_queue R)。
+var _ref_bar: EnterBar = null
+
+func _ref_bar_ensure() -> void:
+	if _ref_bar != null and is_instance_valid(_ref_bar) and not _ref_bar.is_queued_for_deletion():
+		return
+	_ref_bar = EnterBar.new()
+	_ref_bar.name = "EnterBar"
+	_ref_bar.position = Vector2(roundf((W - _ref_bar.size.x) / 2.0), CARD_Y + CARD_H + 26.0 + 34.0 + 12.0)
+	content_root.add_child(_ref_bar)
+	_ref_bar.bind(func() -> float:
+		return float(_ref_run.enter_progress()) if _ref_run != null and is_instance_valid(_ref_run) else -1.0)
+
+
 func _on_referee_changed() -> void:
 	if _ref_run == null or _cancelled or not is_inside_tree():
 		return
@@ -385,6 +403,7 @@ func _on_referee_changed() -> void:
 		SceneNav.go(get_tree(), BATTLE_SCENE)
 		return
 	_ref_label()
+	_ref_bar_ensure()
 	if str(_ref_run.state) == _RW.ST_LATER:
 		_leave_later()
 	## 账已经记了、录像却播不了(停在这一屏, 只有一行状态字)⇒ 正好是第 4 胜就在这里补演晋级仪式,

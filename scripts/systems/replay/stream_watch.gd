@@ -269,8 +269,10 @@ static func enter_own_live(tree: SceneTree, g: Dictionary, back: String, names: 
 	var id := str(g.get("id", ""))
 	if not SB.is_uuid(id) or int(g.get("seed", 0)) <= 0 or int(g.get("job_id", 0)) <= 0:
 		return StreamPlayer.TXT_ERROR
-	var src := StreamSource.Http.new(base_url(), id, {"finished": false})
-	src.on_update_required = func() -> void: SB._note_update_signal({"code": 426})
+	## 会话在 VS 卡上已经先拉了开播那几块(`g.src`, 进度条最后一段)⇒ 接着用它; 没有 ⇒ 现建
+	var given = g.get("src", null)
+	var src: StreamSource.Http = given if given is StreamSource.Http and (given as StreamSource.Http).match_id == id \
+		else own_live_source(id)
 	load(LS_PATH).pending = {}
 	ReplayRecorder.return_scene = back
 	ReplayRecorder.play_names = names.duplicate()
@@ -288,6 +290,13 @@ static func enter_own_live(tree: SceneTree, g: Dictionary, back: String, names: 
 	if tree != null:
 		SceneNav.go(tree, ReplayRecorder.BATTLE_SCENE)
 	return ""
+
+
+## 跟播自己那一局的块来源(还在算 ⇒ finished = false: 404 只等不判没有)。会话在 VS 卡上先建它拉开播那几块, 进场时交给 `enter_own_live`。
+static func own_live_source(id: String) -> StreamSource.Http:
+	var src := StreamSource.Http.new(base_url(), id, {"finished": false})
+	src.on_update_required = func() -> void: SB._note_update_signal({"code": 426})
+	return src
 
 
 # ─────────────────────────────── 守卫 ───────────────────────────────

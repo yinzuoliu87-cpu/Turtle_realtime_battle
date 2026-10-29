@@ -20,6 +20,9 @@ extends Node
 ##   T 收尾等结果等满上限 ⇒ 回主菜单飘「稍后自动记入」、单子留着
 ##   S 陪练号(skip_play)⇒ claimed 也不进跟播; done ⇒ 旧路(先记账、不播)
 ##   O 列表里找不到这一局(种子没拿到)就已算完 ⇒ 旧路(当场记账, 没进跟播)
+##   E 「进入对局」进度条(用户 10-29「那段的时间为什么不能够融入这个进度条里面呢？」): pending 在走、走不满 → claimed 后 VS 卡上
+##     按已到块数走 → 块够开播那几块才进场、进场前条满、播放器接着用同一份来源、进去就开播; 全程只增不减
+##   E2 拿到种子后块一直不来 ⇒ 等到上限照原来进场(不卡在 VS 卡上)
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
@@ -49,6 +52,8 @@ const MID_F := "6a000000-0000-4000-8000-00000000000e"
 const MID_T := "6a000000-0000-4000-8000-00000000000f"
 const MID_S := "6a000000-0000-4000-8000-000000000010"
 const MID_O := "6a000000-0000-4000-8000-000000000011"
+const MID_E := "6a000000-0000-4000-8000-000000000012"
+const MID_E2 := "6a000000-0000-4000-8000-000000000013"
 
 var _fail := 0
 var _n := 0
@@ -148,6 +153,8 @@ func _ready() -> void:
 	await _t_t()
 	await _t_s()
 	await _t_o()
+	await _t_e()
+	await _t_e2()
 	await _leave()
 	_cleanup()
 	_finish()
@@ -362,7 +369,10 @@ func _card_of(b: Node):
 
 
 ## 进队 → 配上 → 查任务(门禁拨到 claimed)→ 进跟播。返回战斗场(没进 = null)。
-func _enter_live(jid: int, mid: String, served: int = 3, ended: bool = false) -> Node:
+##   served 默认 0 = 刚好够进场的块数(`StreamPlayer.live_start_chunks()`: 开场那段 + 开播缓冲; 会话在 VS 卡上攒够才进场, 不够要等满上限)。
+func _enter_live(jid: int, mid: String, served: int = 0, ended: bool = false) -> Node:
+	if served == 0:
+		served = StreamPlayer.live_start_chunks()
 	if served < 0:
 		_http.put(mid, _chunks, _meta)
 	else:
@@ -461,7 +471,7 @@ func _t_a() -> void:
 	RW.notice = ""
 	var jid := _new_job(MID_A, "a", true, 5)
 	var reward: int = int(P2C.GAUNTLET_COINS_PER_MATCH) + 5
-	_http.put(MID_A, _chunks, _meta, 3, false)
+	_http.put(MID_A, _chunks, _meta, StreamPlayer.live_start_chunks(), false)
 	_live_log.clear()
 	var s0 := _snap()
 	var e0: int = SW.own_enters
@@ -781,6 +791,140 @@ func _t_o() -> void:
 	_live_rows_on = true
 	await _frames(10)
 	await _leave()
+
+
+# E ─────────────────────────────────────────────────────────────
+## ★2026-10-29 用户「匹配成功，那里有个即将进入对局下面的进度条…你给它有含义啊…后面又写等待服务器开始对局，
+##   那那段的时间为什么不能够融入这个进度条里面呢？」⇒ 一条进度条从配上走到对局第一帧(方案书 20261029c §4.7)。
+##   量的是画出来的那一截(`EnterBar.fill_px` / `value`), 不是会话里的数。
+func _ebar(m) -> EnterBar:
+	if m == null or not is_instance_valid(m):
+		return null
+	var b = (m as Node).get("_ref_bar")
+	return b if b != null and is_instance_valid(b) and not (b as Node).is_queued_for_deletion() else null
+
+
+## VS 卡已翻、下面一行是「等待服务器开始对局」、进度条在显示。
+func _e_vs_pending(m) -> bool:
+	return _status_text(m) == RW.TXT_LIVE_PENDING and not bool(m.get("_searching")) and _ebar(m) != null and _ebar(m).visible
+
+
+## 进了战斗场之后收尾: 任务失败 ⇒ 跟播那一侧销单、回主菜单。
+func _e_close(jid: int) -> void:
+	_job(jid)["status"] = "failed"
+	await _wait(func() -> bool: return _menu_now() != null, 15000)
+	await _wait(func() -> bool: return _run() == null, 8000)
+	_gs.referee_pending = {}
+	RW.notice = ""
+	await _leave()
+
+
+func _t_e() -> void:
+	print("── E 进入对局进度条: pending 在走、走不满 → claimed 后按已到块数走 → 块够才进场、进场时条满、进去就开播 ──")
+	RW.notice = ""
+	var jid := _new_job(MID_E, "a", true, 0)
+	_http.put(MID_E, _chunks, _meta, 0, false)
+	var m: Node = await _open_mmk()
+	var pend := await _wait(func() -> bool: return _e_vs_pending(m), 20000)
+	_ok("分母 · E pending: VS 卡已翻、下面一行「%s」、下面有进度条在显示" % RW.TXT_LIVE_PENDING, pend, _status_text(m))
+	if not pend:
+		_job(jid)["status"] = "failed"
+		_gs.referee_pending = {}
+		await _leave()
+		return
+	var seq: PackedFloat32Array = []
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 3000 and _ebar(m) != null:
+		seq.append(_ebar(m).value)
+		await get_tree().process_frame
+	var v0: float = seq[0] if not seq.is_empty() else -1.0
+	var v1: float = seq[seq.size() - 1] if not seq.is_empty() else -1.0
+	_ok("E ★pending 3 秒: 条在走(%.3f → %.3f)、碰不到下一段起点 0.55, 更没走满" % [v0, v1],
+		seq.size() > 30 and v0 >= 0.2 and v1 > v0 + 0.02 and v1 < 0.55)
+	_job(jid)["status"] = "claimed"
+	var load_ok := await _wait(func() -> bool: return _status_text(m) == RW.TXT_ENTER_LOAD, 10000)
+	_ok("E claimed ⇒ VS 卡下那一行改成「%s」" % RW.TXT_ENTER_LOAD, load_ok, _status_text(m))
+	var r = _run()
+	await _wait(func() -> bool: return r != null and str(r.get("_ep_stage")) == "buffer", 8000)
+	var src_buf = r.get("_buf_src") if r != null else null
+	var t1 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t1 < 1500 and _ebar(m) != null:
+		seq.append(_ebar(m).value)
+		await get_tree().process_frame
+	var vb := _ebar(m).value if _ebar(m) != null else -1.0
+	_ok("E ★拿到种子、块一块都没到 ⇒ 1.5 秒里还在 VS 卡上(不对着空场地)、条停在载入段起点附近(%.3f < 0.7)" % vb,
+		src_buf is StreamSource.Http and _battle_now() == null and get_tree().current_scene == m and vb >= 0.55 and vb < 0.7)
+	## 块一块一块到(每 0.3 秒一块), 逐帧记条与已到块数, 直到进场
+	var served := 0
+	var tn := Time.get_ticks_msec()
+	var last_px := -1.0
+	var got_before := -1
+	var mid_seen := false
+	while _battle_now() == null and Time.get_ticks_msec() - t1 < 20000:
+		if Time.get_ticks_msec() - tn >= 300 and served < _chunks.size():
+			tn = Time.get_ticks_msec()
+			served += 1
+			_http.put(MID_E, _chunks, _meta, served, false)
+		var eb := _ebar(m)
+		if eb != null and get_tree().current_scene == m:
+			seq.append(eb.value)
+			last_px = eb.fill_px()
+			if eb.value > 0.7 and eb.value < 0.95:
+				mid_seen = true
+		if src_buf != null:
+			got_before = int(src_buf.fetched())
+		await get_tree().process_frame
+	var b: Node = _battle_now()
+	_ok("E ★块攒够开播那几块(%d)才进场(进场前已到 %d 块)" % [StreamPlayer.live_start_chunks(), got_before],
+		b != null and got_before >= StreamPlayer.live_start_chunks())
+	_ok("E ★块陆续到时条按块走(见过 0.7~0.95 之间的值), 进场前最后一帧条是满的(%.0f / %.0f 像素)" % [last_px, EnterBar.BAR_W],
+		mid_seen and last_px >= EnterBar.BAR_W)
+	var mono := true
+	for i in range(1, seq.size()):
+		if seq[i] < seq[i - 1] - 0.0001:
+			mono = false
+	_ok("E ★从 pending 到进场条只增不减(逐帧 %d 个采样)" % seq.size(), mono and seq.size() > 100)
+	if b == null:
+		_job(jid)["status"] = "failed"
+		_gs.referee_pending = {}
+		return
+	var p: StreamPlayer = b._replay.player
+	_ok("E ★播放器接着用 VS 卡上拉块的那一份来源(已到的块不重拉)", src_buf != null and p.src == src_buf)
+	var fr := 0
+	while fr < 30 and not (p.state == "playing" and str(b._dl_state) == "fight" and not (b._units as Array).is_empty()):
+		fr += 1
+		await get_tree().process_frame
+	_ok("E ★进场就是开打(%d 帧内: 在播、战场状态 fight、场上 %d 个单位; 原来先对着空场地「同步中」再走 10 秒总览 + 预览)"
+		% [fr, (b._units as Array).size()], fr <= 10 and p.state == "playing" and str(b._dl_state) == "fight"
+		and not (b._units as Array).is_empty(), "%s / %s" % [p.state, str(b._dl_state)])
+	_ok("E 开场那段是跳过去的、不是没有: 跳过时事件照放(开场之后才是第一路开打)、`opened` 立起", p.opened and p.applied > p.first_step + 300,
+		"applied %d / first %d" % [p.applied, p.first_step])
+	await _e_close(jid)
+
+
+## E2: 拿到种子后块一直不来(直播服务器出问题)⇒ 不卡在 VS 卡上: 等到上限照原来进场(战斗场里「同步中」接着等)。
+func _t_e2() -> void:
+	print("── E2 块一直不来 ⇒ 等到上限(%.0f 秒)照原来进场 ──" % float(load(RUN_PATH).BUF_MAX_SEC))
+	RW.notice = ""
+	var jid := _new_job(MID_E2, "a", true, 0, "claimed")
+	_http.put(MID_E2, _chunks, _meta, 0, false)
+	var m: Node = await _open_mmk()
+	await _wait(func() -> bool: return _run() != null and str(_run().get("_ep_stage")) == "buffer", 20000)
+	var r = _run()
+	var t0 := Time.get_ticks_msec()
+	_ok("分母 · E2 拿到种子、在 VS 卡上拉块", r != null and str(r.get("_ep_stage")) == "buffer")
+	var cap_ms := int(float(load(RUN_PATH).BUF_MAX_SEC) * 1000.0)
+	await _wait(func() -> bool: return _battle_now() != null, cap_ms - 1500)
+	_ok("E2 上限之前一直留在 VS 卡上(不提前放弃)", _battle_now() == null and get_tree().current_scene == m)
+	var got := await _wait(func() -> bool: return _battle_now() != null, 6000)
+	var dt := float(Time.get_ticks_msec() - t0) / 1000.0
+	_ok("E2 ★等到上限就进场(%.1f 秒), 战斗场里接着「同步中」等块" % dt, got and dt <= float(load(RUN_PATH).BUF_MAX_SEC) + 2.5
+		and _battle_now() != null and _battle_now()._replay.player.state != "playing")
+	if got:
+		await _e_close(jid)
+	else:
+		_job(jid)["status"] = "failed"
+		_gs.referee_pending = {}
 
 
 func _finish() -> void:

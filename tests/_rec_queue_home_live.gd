@@ -5,7 +5,8 @@ extends Node
 ##   流的内容 = 裁判程序在本进程真算一局录下的（同 verify_referee_live_own）。
 ## 时间线（[REC] 行打出视频秒数，开头算局那一段剪掉）：
 ##   匹配屏排队 4 秒 → 按「←」回主页 → 主页排队态 + 锁 3 秒 → 点背包弹被拦卡 3 秒 → 关卡 → 配上：「匹配成功」遮罩 →
-##   匹配屏 VS 卡「等待服务器开始对局」3 秒 → 裁判开算 ⇒ 进直播（1 倍 20 秒，之后 REC_FF 倍快进）→ 播完出结算屏 6 秒 → 退出。
+##   匹配屏 VS 卡「等待服务器开始对局」2.5 秒 → 裁判开算、块每 0.15 秒到一块「正在载入对局」（开场总览 + 预览那段也在这里拉完）→ 进度条走满进直播、进场就是开打
+##   （1 倍 20 秒，之后 REC_FF 倍快进）→ 播完出结算屏 6 秒 → 退出。遮罩到进场是同一条进度条（方案书 §4.7）。
 ## 跑法：
 ##   SHIP=1 QUIET=1 TURTLE_SUPABASE=" " TURTLE_BACKEND=" " APPDATA=<单独目录> XDG_DATA_HOME=<同一目录> \
 ##   <godot> --path . --rendering-driver opengl3 --audio-driver Dummy --resolution 1560x720 --position 2000,80 \
@@ -255,15 +256,22 @@ func _demo() -> void:
 	_pair = true
 	_log("⑤ 服务器配上对手")
 	await _until(func() -> bool: return _scene() != null and str(_scene().scene_file_path) == MMK_SCENE, 8.0)
-	_log("⑥ 匹配屏 VS 卡 · 等待服务器开始对局")
-	await _sec(3.5)
-	## ⑦ 裁判开算 ⇒ 边算边推流
+	_log("⑥ 匹配屏 VS 卡 · 等待服务器开始对局（进度条在这一段里慢慢走、不走满）")
+	await _sec(2.5)
+	## ⑦ 裁判开算 ⇒ 边算边推流：块一块一块到（每 0.15 秒一块），VS 卡上进度条最后一段按已到块数走，攒够开场那段 + 开播那几块才进场
 	var n := _chunks.size()
-	var served := mini(4, n)
+	var served := 0
 	_http.put(MID, _chunks, _meta, served, false)
 	_job_status = "claimed"
-	_log("⑦ 服务器开始算 ⇒ 进直播")
-	await _until(func() -> bool: return _is_battle(_scene()) and _scene()._replay.player != null, 15.0)
+	_log("⑦ 服务器开始算 ⇒ VS 卡上「正在载入对局」拉开播那几块")
+	var t_buf := 0.0
+	while not (_is_battle(_scene()) and _scene()._replay.player != null) and t_buf < 15.0:
+		await _sec(0.15)
+		t_buf += 0.15
+		if served < mini(StreamPlayer.live_start_chunks() + 2, n):
+			served += 1
+			_http.put(MID, _chunks, _meta, served, false)
+	_log("   进场（进场那一刻已到 %d 块）" % served)
 	var bt := _scene()
 	_log("⑧ 正在看直播（1 倍速）")
 	var t_live := 0.0
