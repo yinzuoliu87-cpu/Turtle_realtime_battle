@@ -418,6 +418,7 @@ const ACTION_ATTACK := {
 	"__minion_elite__": ["pets/animations/elite/attack.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/attack.png", 12.0],
 	"__minion_back__": ["pets/animations/ranged/attack.png", 12.0],
+	"__minion_reserve__": ["pets/animations/reserve/attack.png", 14.0],   # 援军小将(2026-10-29): 7 帧 / 0.5s 推掌放小气弹
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
 	"_summon_axe": ["vfx/eq096-axe-wood-attack.png", 16.0],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时装到单位 _act_rows)
 }
@@ -468,6 +469,7 @@ const ACTION_DEATH := {
 	"basic":  ["pets/animations/basic/death.png", 12.0],
 	"ghost":  ["pets/animations/ghost/death.png", 12.0],
 	"ninja":  ["pets/animations/ninja/death.png", 11.0],
+	"__minion_reserve__": ["pets/animations/reserve/death.png", 12.0],   # 12 帧(末帧 hold) = 1.0s ≥ 阵亡淡出 0.95s, 不会淡到一半站起来
 }
 # 走路动画表 (移动时循环播·有 run.png 的龟): ninja/ghost. 停下回 idle.
 const ACTION_RUN := {
@@ -477,6 +479,7 @@ const ACTION_RUN := {
 	"__minion_elite__": ["pets/animations/elite/run.png", 12.0],
 	"__minion_front__": ["pets/animations/melee/run.png", 12.0],
 	"__minion_back__": ["pets/animations/ranged/run.png", 12.0],
+	"__minion_reserve__": ["pets/animations/reserve/run.png", 12.0],
 	"_summon_wraith": ["pets/animations/wraith/run.png", 10.0],
 	# 训龟大师(2026-07-23): 走路循环。id 是 __trainer__, _anim_key 直接返回 id → 走到这里。
 	#   ★U2(2026-10-03 落地)之后大师不可移动 ⇒ 走路帧不会再被触发(按帧间位移切); 表项留着, 删了要连动画选帧一起改。
@@ -1908,6 +1911,8 @@ func _anim_key(u: Dictionary) -> String:
 	if id == "__minion__":
 		# ★三种小将共用 id, 造型完全不同(精英=紫黑持刃 / 前排=绿色三叉戟 / 后排=远程)。
 		#   2026-07-22 加前排后必须一并分流 —— 只分精英的话, 前排的三叉戟帧会套到后排远程身上。
+		if str(u.get("minion_role", "")) == "reserve":
+			return "__minion_reserve__"                 # 援军小将(2026-10-29): 自己一套形象, 不能落到远程小将的帧上
 		if u.get("is_elite", false):
 			return "__minion_elite__"
 		return "__minion_front__" if str(u.get("minion_role", "front")) == "front" else "__minion_back__"
@@ -1936,6 +1941,7 @@ const ANIM_NORM := {
 	##   (用户报过「站立的动作完全衔接不上」, 根因就是原来立绘取的是正面而动作图是侧面)。数值由门禁对账。
 	"__minion_back__": [52.0, 76.0, 52.0],   # 实测: 动作第0帧 本体52/脚底76; idle(侧面) 本体52
 	"_summon_wraith": [48.0, 76.0, 48.0],   # 亡魂: idle 也取侧面 ⇒ 与动作第0帧同形(不再有转身跳变)
+	"__minion_reserve__": [79.0, 96.0, 79.0],   # 援军小将(2026-10-29): 帧高112 本体79(含旗) 脚底96; 立绘 = 动作第0帧
 }
 
 
@@ -1958,6 +1964,8 @@ func _melee_anim(u: Dictionary, action: String) -> void:
 		_tbl = ACTION_MELEE
 	elif _k == "__minion_back__":
 		_tbl = MinionCodex.ACTION_RANGED
+	elif _k == "__minion_reserve__":
+		_tbl = ReserveSystem.ACTION_RESERVE
 	else:
 		return
 	if not is_instance_valid(u.get("sprite", null)):

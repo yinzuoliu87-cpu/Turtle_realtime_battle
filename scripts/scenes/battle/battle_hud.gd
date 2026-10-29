@@ -1634,6 +1634,7 @@ func _build_brush_bar() -> void:
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:front", "", "浪板"))
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:back", "", "火箭"))
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:elite", "", "精英"))
+	strip.add_child(battle._debug._edit_brush_cell("__minion__:reserve", "", "援军"))   # 援军小将(2026-10-29): 正式对局只在终极战场名单为空时出现, 调试场直接摆
 	strip.add_child(battle._debug._edit_brush_cell(battle.TRAINER_ID, battle.TRAINER_SPRITE, "大师"))
 	var hint = Label.new()
 	hint.text = "← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板"
@@ -1646,6 +1647,13 @@ func _build_brush_bar() -> void:
 	#   抬了个寂寞, 手机 home 手势条照样压着最后 3px。取 max 让底边严格落在安全区内。
 	bar.offset_top = -maxf(94.0, bar.get_combined_minimum_size().y) - _bsb
 	battle._debug._edit_refresh_brush_highlight()
+
+## 战斗界面里一个单位的头像(左右队头像框 / 信息面板 / 顶栏三处共用)。
+## 援军小将先取它自己的立绘(与图鉴、对阵幕布、结算表同一张 —— MinionCodex.portrait_path); 别的单位、
+##   以及援军小将的图还没交时, 走原来的取图链(avatars/<id>.png → 战场立绘首帧)。
+func unit_portrait(u: Dictionary) -> Texture2D:
+	var t: Texture2D = MinionCodex.reserve_portrait(u)
+	return t if t != null else battle._unit_portrait_texture(u)
 
 # ----------------------------------------------------------------------------
 #  1) 左右队头像框栏
@@ -1718,7 +1726,7 @@ func _make_team_frame(u: Dictionary) -> Control:
 
 	# 头像 (44x44)
 	var portrait = TextureRect.new()
-	portrait.texture = battle._unit_portrait_texture(u)
+	portrait.texture = unit_portrait(u)
 	portrait.custom_minimum_size = Vector2(44, 44)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -1737,7 +1745,8 @@ func _make_team_frame(u: Dictionary) -> Control:
 	top.add_theme_constant_override("separation", 4)
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(top)
-	var lv_badge = battle._make_mini_lv_badge(int(u.get("level", 1)))
+	## 援军小将不按等级成长(按本周场数, ReserveConsts)⇒ 不挂等级牌(挂了就是一个对属性毫无影响的数)。
+	var lv_badge = battle._make_mini_lv_badge(0 if MinionCodex.is_reserve(u) else int(u.get("level", 1)))
 	if lv_badge != null:
 		top.add_child(lv_badge)
 	u["panel_lv_badge"] = lv_badge
@@ -1821,7 +1830,7 @@ func _close_info_panel() -> void:
 ##   铆钉大小会不一样, 反而更不成体系。
 func _framed_portrait(u: Dictionary) -> Control:
 	var big := TextureRect.new()
-	big.texture = battle._unit_portrait_texture(u)
+	big.texture = unit_portrait(u)
 	## ★头像 56 不是 64(2026-08-16): 它只是"这是谁"的标识, 旁边就写着名字;
 	##   而面板最缺的是高度。头像不是可点元素, 不受触控尺寸约束 ——
 	##   ⚠ 槽位就受: 88px = 47.7pt, 触控最小 44pt = 81px, 所以【槽一格都不能缩】。
@@ -2010,6 +2019,8 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	## ★召唤物没有稀有度也没有等级(2026-10-22): 原来斧头显示「友军 · C · Lv 1」, 两项都是兜底值。
 	if u.get("is_summon", false):
 		sub.text = "友军" if is_mine else "敌方"
+	elif MinionCodex.is_reserve(u):   # 援军小将不按等级成长(按本周场数) ⇒ 不写等级
+		sub.text = "%s · %s" % ["友军" if is_mine else "敌方", rar]
 	## ★副标题 12(与资源名/状态签/「装备：」同属"次要信息"这一档) —— 面板字号收成
 	##   21 标题 / 14 正文 / 12 次要 / 11 说明 / 10 角标 五档, 一档只表示一种角色。
 	sub.add_theme_font_size_override("font_size", UIPalette.F_SUB); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)

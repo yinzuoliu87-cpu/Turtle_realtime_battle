@@ -342,7 +342,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 			st = [false, ReserveConsts.MOVE, ReserveConsts.ATK_INTERVAL, ReserveConsts.RANGE]   # 援军小将: 远程普攻
 		else:
 			st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
-		sd = battle._hiding_sys._minion_sprite_dict(_me, not _mf)
+		sd = battle._reserve_sys.sprite_dict() if _mres else battle._hiding_sys._minion_sprite_dict(_me, not _mf)
 	elif is_trainer:   # 训龟大师(U2): 不可移动/不可被打/没有血量/1攻/0双抗·射程2000·扔石头1物理
 		## ★hp=1 只是**名义值**(单位字典到处按 hp/maxHp 取比例, 缺键会崩); 它不进任何血量统计、不建血条,
 		##   受到的一切伤害在 `_mitigate_incoming` 里为 0, `_kill` 也直接拒绝 ⇒ 这个数永远不会变。

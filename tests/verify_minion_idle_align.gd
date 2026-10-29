@@ -16,6 +16,17 @@ const PAIRS := [
 		"res://assets/sprites/pets/animations/ranged/run.png"],
 	["亡魂", "res://assets/sprites/pets/wraith.png",
 		"res://assets/sprites/pets/animations/wraith/run.png"],
+	## 援军小将(2026-10-29 新画): 立绘/头像 = 每一张动作图的第 0 帧(含待机循环), 一张都不许差
+	["援军小将·移动", "res://assets/sprites/pets/minion-reserve.png",
+		"res://assets/sprites/pets/animations/reserve/run.png"],
+	["援军小将·待机", "res://assets/sprites/pets/minion-reserve.png",
+		"res://assets/sprites/pets/animations/reserve/idle.png"],
+	["援军小将·普攻", "res://assets/sprites/pets/minion-reserve.png",
+		"res://assets/sprites/pets/animations/reserve/attack.png"],
+	["援军小将·技能", "res://assets/sprites/pets/minion-reserve.png",
+		"res://assets/sprites/pets/animations/reserve/skill.png"],
+	["援军小将·阵亡", "res://assets/sprites/pets/minion-reserve.png",
+		"res://assets/sprites/pets/animations/reserve/death.png"],
 ]
 
 var _n := 0
@@ -86,6 +97,13 @@ func _ready() -> void:
 		{"minion": true, "role": "back"})
 	mn["energy"] = 999.0
 	scn._units.append(mn)
+	## 援军小将(2026-10-29)与远程小将同场: 自己一套形象, 待机是 7 帧呼吸循环(不是单帧)。
+	var rs: Dictionary = scn._spawn._make_unit("__minion__", "left", Vector2(cx - 300.0, cy + 90.0),
+		{"minion": true, "role": "reserve"})
+	## 技能走独立冷却(龟能×0.075 秒, 135 ⇒ 约 10 秒), `energy` 字段不管用; 用产品自己的
+	##   「初始龟能 → 开局减冷却」(_tick_skill_cd 懒初始化读 init_energy_bonus) 让它开局就放四面合围。
+	rs["init_energy_bonus"] = 999.0
+	scn._units.append(rs)
 	var dm: Dictionary = scn._spawn._make_unit("basic", "right", Vector2(cx + 200.0, cy))
 	dm["no_move"] = true
 	dm["no_basic"] = true
@@ -94,20 +112,56 @@ func _ready() -> void:
 	dm["hp"] = 99999.0
 	dm["deathfloor_until"] = 999999.0
 	scn._units.append(dm)
+	_ok("援军小将的动画键是 __minion_reserve__(不落到远程小将的帧上)",
+		str(scn._anim_key(rs)) == "__minion_reserve__", str(scn._anim_key(rs)))
 	var seen: Dictionary = {}
+	var rseen: Dictionary = {}
 	for _i in range(420):
 		await get_tree().process_frame
-		var sp = mn.get("sprite", null)
-		if sp == null or not is_instance_valid(sp):
-			continue
-		var tx = (sp as Sprite3D).texture
-		if tx == null:
-			continue
-		seen[str(tx.resource_path).get_file()] = [(sp as Sprite3D).offset.y,
-			(sp as Sprite3D).pixel_size, float(tx.get_height())]
-	print("     运行时看到的贴图: %s" % str(seen.keys()))
-	_ok("★分母: 待机与至少一个动作都出现过(否则下面是空的)", seen.size() >= 2,
+		_sample(mn, seen)
+		_sample(rs, rseen)
+	## 阵亡: 杀掉援军, 看阵亡帧也站在同一个锚点上(阵亡帧表的归一同样查 ANIM_NORM)
+	scn._kill(rs)
+	for _j in range(12):
+		await get_tree().process_frame
+		_sample(rs, rseen)
+	_anchor_check("远程小将", seen, ["minion-back.png"])
+	_anchor_check("援军小将", rseen, ["animations/reserve/idle.png", "animations/reserve/attack.png",
+		"animations/reserve/skill.png", "animations/reserve/death.png"])
+	var borrowed: Array = []
+	for k in rseen:
+		if not str(k).contains("/reserve/") and not str(k).ends_with("minion-reserve.png"):
+			borrowed.append(k)
+	_ok("★援军小将运行时用到的每一张贴图都是它自己的(不借别的单位的素材)", borrowed.is_empty() and rseen.size() > 0,
+		"借用: %s" % str(borrowed))
+	scn.queue_free()
+
+	print("%d passed, %d failed" % [_n - _fail, _fail])
+	print("ALL PASS — 立绘与动作第0帧同框" if _fail == 0 else "FAIL")
+	get_tree().quit(0 if _fail == 0 else 1)
+
+
+## 记下这一帧精灵用的贴图(按完整路径)及其竖直锚点/缩放
+func _sample(u: Dictionary, into: Dictionary) -> void:
+	var sp = u.get("sprite", null)
+	if sp == null or not is_instance_valid(sp):
+		return
+	var tx = (sp as Sprite3D).texture
+	if tx == null:
+		return
+	into[str(tx.resource_path)] = [(sp as Sprite3D).offset.y,
+		(sp as Sprite3D).pixel_size, float(tx.get_height())]
+
+
+func _anchor_check(nm: String, seen: Dictionary, must: Array) -> void:
+	print("     %s 运行时看到的贴图: %s" % [nm, str(seen.keys())])
+	_ok("★分母: %s 待机与至少一个动作都出现过(否则下面是空的)" % nm, seen.size() >= 2,
 		"只看到 %d 张" % seen.size())
+	for m in must:
+		var hit := false
+		for k in seen:
+			hit = hit or str(k).ends_with(str(m))
+		_ok("★分母: %s 运行时出现过 %s" % [nm, str(m)], hit)
 	var offs: Array = []
 	var pxs: Array = []
 	for k in seen:
@@ -125,12 +179,7 @@ func _ready() -> void:
 	for v2 in pxs:
 		pmin = minf(pmin, float(v2))
 		pmax = maxf(pmax, float(v2))
-	_ok("★★★运行时【竖直锚点】待机 == 动作(否则切换时上下跳)", absf(omax - omin) < 0.51,
+	_ok("★★★%s 运行时【竖直锚点】待机 == 动作(否则切换时上下跳)" % nm, absf(omax - omin) < 0.51,
 		"offset.y 跨度 %.1f 像素" % (omax - omin))
-	_ok("★★运行时【缩放】待机 == 动作(否则切换时大小跳)", absf(pmax - pmin) < 0.0005,
+	_ok("★★%s 运行时【缩放】待机 == 动作(否则切换时大小跳)" % nm, absf(pmax - pmin) < 0.0005,
 		"pixel_size 跨度 %.4f" % (pmax - pmin))
-	scn.queue_free()
-
-	print("%d passed, %d failed" % [_n - _fail, _fail])
-	print("ALL PASS — 立绘与动作第0帧同框" if _fail == 0 else "FAIL")
-	get_tree().quit(0 if _fail == 0 else 1)

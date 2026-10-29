@@ -599,7 +599,7 @@ func _refresh_portrait(side: String, tr: TextureRect) -> void:
 		var key := "%s|%s|%s" % [str(u.get("id", "")), str(u.get("name", "")), str(u.get("_isMinion", false))]
 		if key == str(_port_id[side]):
 			return
-		var tex: Texture2D = battle._unit_portrait_texture(u)
+		var tex: Texture2D = hud.unit_portrait(u)   # 援军小将取自己的立绘(见 battle_hud.unit_portrait)
 		if tex != null:
 			_port_id[side] = key
 			tr.texture = tex

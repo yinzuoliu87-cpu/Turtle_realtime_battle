@@ -131,6 +131,7 @@ func _dl_clear_present_overlay() -> void:
 func _dl_spec_name(spec) -> String:
 	if not (spec is Dictionary): return "?"
 	if str(spec.get("kind", "")) == "minion" or spec.has("role"):
+		if MinionCodex.is_reserve(spec): return ReserveConsts.NAME   # 终极战场名单为空时上的援军小将(2026-10-29)
 		return "精英小将" if bool(spec.get("elite", false)) else "小将"
 	var id = str(spec.get("id", spec.get("kind", "")))
 	return str(battle._data_by_id.get(id, {}).get("name", id))
@@ -384,7 +385,9 @@ func _dl_unit_card(spec, is_mine: bool) -> Control:
 	if GameState != null and GameState.season_level != null: lvl = maxi(1, int(GameState.season_level))
 	if not is_mine: lvl = _dl_foe_level(lvl)   # 对手卡写对手自己的等级(快照带; 旧快照 = 与我同级)
 	var lv = Label.new(); lv.text = "Lv.%d" % lvl; lv.add_theme_font_size_override("font_size", 17); lv.add_theme_color_override("font_color", Color("#ffd93d")); lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	nr.add_child(lv)
+	## 援军小将不按等级成长(按本周场数), 卡上不挂「Lv」(同信息面板 / 头像框的口径)
+	if str(spec.get("role", "")) != "reserve":
+		nr.add_child(lv)
 	var eqs = _dl_spec_equips(spec, is_mine)
 	if not eqs.is_empty():
 		var er = HBoxContainer.new(); er.add_theme_constant_override("separation", 4)
@@ -409,6 +412,9 @@ func _dl_avatar_node(spec, sz: int) -> Control:
 	bsb.border_color = Color("#8b949e") if is_minion else battle._pet_rarity_color(str(battle._data_by_id.get(id, {}).get("rarity", "C")))
 	box.add_theme_stylebox_override("panel", UISkin.slot(bsb, UISkin.tint_of(bsb.border_color)))   # 2026-10-05: 圆角色块 → 槽框(稀有度色走 modulate)
 	var path = (battle.SPRITE_DIR + "pets/minion.png") if is_minion else (battle.SPRITE_DIR + "avatars/" + id + ".png")
+	## 援军小将用它自己的立绘(MinionCodex 与图鉴同一张); 美术还没交 ⇒ 仍是通用小将图。
+	if is_minion and MinionCodex.is_reserve(spec) and MinionCodex.portrait_path("reserve") != "":
+		path = MinionCodex.portrait_path("reserve")
 	if not ResourceLoader.exists(path) and not is_minion:
 		path = battle.SPRITE_DIR + "pets/" + id + ".png"   # 无头像退回全身图
 	if ResourceLoader.exists(path):

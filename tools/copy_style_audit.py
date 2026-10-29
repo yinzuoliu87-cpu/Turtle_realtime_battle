@@ -87,6 +87,30 @@ def segments():
             elif isinstance(o, str) and len(o) >= 6 and p and TEXT_KEY.search(p[-1]):
                 out.append((tag, '/'.join(p), o))
         walk(data, [])
+    out.extend(gd_segments())
+    return out
+
+
+# ★2026-10-29 补扫小将文案(方案书 20261029-终极战场援军小将 D-3 / R10):
+#   原来只扫两份 json ⇒ 「X% 生命值必须写明是谁的」管不到 `MinionCodex.MINION_INFO` ——
+#   而新加的援军小将文案正好带「10% 最大生命值」。小将文案是 GDScript 常量表, 不是 json,
+#   按「键名是文案字段的字符串字面量」取(与 json 那边同一个 TEXT_KEY 判据; `skill_desc` 被 desc 命中)。
+#   注释行里的字面量不算(copy_lol_style_lint 同一取法)。
+GD_SOURCES = [('scripts/gamedata/minion_codex.gd', 'minion')]
+GD_KV = re.compile(r'"([A-Za-z_]+)"\s*:\s*"((?:[^"\\\n]|\\.)*)"')
+
+
+def gd_segments():
+    out = []
+    for path, tag in GD_SOURCES:
+        s = io.open(path, encoding='utf-8').read()
+        for m in GD_KV.finditer(s):
+            ls = s.rfind('\n', 0, m.start()) + 1
+            if s[ls:m.start()].lstrip().startswith('#'):
+                continue
+            k, v = m.group(1), m.group(2)
+            if len(v) >= 6 and TEXT_KEY.search(k):
+                out.append((tag, '%s:L%d/%s' % (path, s.count('\n', 0, m.start()) + 1, k), v))
     return out
 
 
@@ -106,7 +130,10 @@ def read_ledger():
 def main():
     segs = segments()
     n_eq = sum(1 for s in segs if s[0] == 'equip')
-    print('  [分母] 玩家文案段落 %d 段 (装备 %d / 龟 %d)' % (len(segs), n_eq, len(segs) - n_eq))
+    n_mn = sum(1 for s in segs if s[0] == 'minion')
+    print('  [分母] 玩家文案段落 %d 段 (装备 %d / 龟 %d / 小将 %d)' % (len(segs), n_eq, len(segs) - n_eq - n_mn, n_mn))
+    if n_mn < 4:
+        chk('★分母: 小将文案真的扫到了(%s)' % ', '.join(p for p, _ in GD_SOURCES), '只扫到 %d 段' % n_mn)
     if len(segs) < 300:
         chk('★分母: 真的扫到文案(扫到 0 段则下面全是空检查)', '只扫到 %d 段' % len(segs))
         print('FAILED: %d 处' % len(fails))

@@ -113,8 +113,10 @@ func _ready() -> void:
 				if r.position.x < prev_r - 0.5 or absf(r.position.y - (got[0] as ColorRect).position.y) > 0.5:
 					messy.append("%s.%s" % [tag, key])
 				prev_r = r.end.x
-	_ok("分母: 28 只龟 + 3 个小将都打开了", n_pet == 28 and n_min == 3, "龟 %d / 小将 %d" % [n_pet, n_min])
-	_ok("分母: 量到的属性行数 = 28×7 + 3×7 = 217", n_rows == 28 * 7 + 3 * 7, "%d 行 / %d 块" % [n_rows, n_blocks])
+	## 小将种类数从图鉴自己的种类表取(2026-10-29 加了援军小将 ⇒ 4 种), 不写死 3。
+	var n_kinds: int = MinionCodex.MINION_KINDS.size()
+	_ok("分母: 28 只龟 + %d 个小将都打开了" % n_kinds, n_pet == 28 and n_min == n_kinds and n_kinds >= 4, "龟 %d / 小将 %d" % [n_pet, n_min])
+	_ok("分母: 量到的属性行数 = 28×7 + %d×7 = %d" % [n_kinds, 28 * 7 + n_kinds * 7], n_rows == 28 * 7 + n_kinds * 7, "%d 行 / %d 块" % [n_rows, n_blocks])
 	_ok("★分母: 方块真画出来了(不是全 0 格)", n_blocks > n_rows * 3, "%d 块" % n_blocks)
 	_ok("每一行都有屏上数字", missing.is_empty(), ", ".join(missing))
 	_ok("★★★每行方块数 = floor(屏上数字 / 每格单位)(生命 100 · 攻击 6 · 双抗 2 · 移速 10 · 每秒攻击 0.1 · 射程 100)",

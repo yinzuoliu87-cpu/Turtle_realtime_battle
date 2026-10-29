@@ -347,12 +347,17 @@ scripts/gamedata/minion_codex.gd|lit|前排 · 近战
 scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
 scripts/gamedata/minion_codex.gd|lit|小将
+scripts/gamedata/minion_codex.gd|lit|援军
+scripts/gamedata/minion_codex.gd|lit|援军 · 远程
+scripts/gamedata/minion_codex.gd|lit|援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成 {C:ReserveConsts.ATK_COEF%}% 攻击力的物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
 scripts/gamedata/minion_codex.gd|lit|精英小将在目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间获得 95% 减伤。吞噬完成后回复相当于目标剩余生命值 2 倍的生命值，并获得 50% 攻击速度，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。
 scripts/gamedata/minion_codex.gd|lit|精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成 400% 攻击力的魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成 600% 攻击力的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|精英小将每 5 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 100% 攻击力的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|精英小将的攻击造成 100% 攻击力的物理伤害，每 5 次攻击附带旋刃。
+scripts/gamedata/minion_codex.gd|lit|终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。
 scripts/gamedata/minion_codex.gd|lit|近战小将
 scripts/gamedata/minion_codex.gd|lit|近战小将锁定一个敌人并跃起，起跳时回复 200% 攻击力的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 10% 目标最大生命值的物理伤害。之后踩着目标滑行，对其持续造成 200% 攻击力的物理伤害，并对沿途敌人造成 150% 攻击力的物理伤害并将其击退，最后跳下。
 scripts/gamedata/minion_codex.gd|lit|远程小将
@@ -1362,6 +1367,7 @@ scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
 scripts/scenes/battle/battle_hud.gd|lit|已晋级！
 scripts/scenes/battle/battle_hud.gd|lit|战报
 scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
+scripts/scenes/battle/battle_hud.gd|lit|援军
 scripts/scenes/battle/battle_hud.gd|lit|晋级决赛日！
 scripts/scenes/battle/battle_hud.gd|lit|晋级闯关赛！
 scripts/scenes/battle/battle_hud.gd|lit|本周场次

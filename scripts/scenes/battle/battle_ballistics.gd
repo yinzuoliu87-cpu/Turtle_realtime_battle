@@ -763,7 +763,7 @@ func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> vo
 const SKILLSHOT_STEP := 0.05
 
 func fire_skillshot(src: Dictionary, dir: Vector2, rng: float, speed: float, half_w: float,
-		tex_path: String, size_px: float, on_hit: Callable, from = null) -> void:
+		tex_path: String, size_px: float, on_hit: Callable, from = null, catchup: float = 0.0) -> void:
 	## `from`: 弹体起点(援军小将·四面合围的气波出现在目标四周, 不在施法者身上)。缺省 = 施法者脚下。
 	var p_start: Vector2 = from if from is Vector2 else src["pos"]
 	var spr: Sprite3D = _skillshot_sprite(tex_path, size_px, p_start, rng / maxf(1.0, speed))
@@ -775,7 +775,7 @@ func fire_skillshot(src: Dictionary, dir: Vector2, rng: float, speed: float, hal
 		var adv: float = minf(speed * SKILLSHOT_STEP, float(st["left"]))
 		var p0: Vector2 = st["pos"]
 		var p1: Vector2 = p0 + dir * adv
-		var hit = _first_on_segment(src, p0, dir, adv, half_w)
+		var hit = _first_on_segment(src, p0, dir, adv, half_w, catchup)
 		if hit != null:
 			_skillshot_move(node, p0, (hit as Dictionary)["pos"], SKILLSHOT_STEP)
 			_skillshot_free(node, SKILLSHOT_STEP)
@@ -792,7 +792,10 @@ func fire_skillshot(src: Dictionary, dir: Vector2, rng: float, speed: float, hal
 
 
 ## 线段 p0 → p0+dir*adv 上离 p0 最近的存活敌人/龟蛋(_enemies_of 天然含蛋不含友 ⇒ 我方不挡)
-func _first_on_segment(src: Dictionary, p0: Vector2, dir: Vector2, adv: float, half_w: float):
+## `catchup`: 往回补查的距离。每步只查「本步起点往前 adv」这一段, 敌人迎面走来时一步内的相对位移会超过 adv,
+##   恰好落在缝里的就被跨过去(2026-10-29 录援军小将时实测: 气波正面穿过竹叶龟没算命中)。
+##   缺省 0 = 原判定逐字不变(别的技能的现有对局结果不动); 援军小将的气波传 ReserveConsts.WAVE_CATCHUP。
+func _first_on_segment(src: Dictionary, p0: Vector2, dir: Vector2, adv: float, half_w: float, catchup: float = 0.0):
 	var best = null
 	var bestd: float = INF
 	for o in battle._targeting._enemies_of(src):
@@ -800,7 +803,7 @@ func _first_on_segment(src: Dictionary, p0: Vector2, dir: Vector2, adv: float, h
 			continue
 		var rel: Vector2 = o["pos"] - p0
 		var along: float = DetMath.dot(rel, dir)
-		if along < 0.0 or along > adv:
+		if along < -catchup or along > adv:
 			continue
 		if DetMath.vlen(rel - dir * along) > half_w:
 			continue

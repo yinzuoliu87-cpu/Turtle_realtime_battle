@@ -8,6 +8,7 @@ elite/whirl -41,1357,-613,560
 idle/minion -108
 idle/minion-back 289
 idle/minion-elite 54
+idle/minion-reserve -266
 idle/wraith -315
 melee/attack -621,309,-519,369
 melee/dive 30,-760,-115,-521
@@ -19,5 +20,10 @@ melee/throw -386,277,-611,417
 ranged/attack 289,357,633,689,611
 ranged/run 289,223,243,294,376,275,360
 ranged/skill 289,295,363,426,555,459,425
+reserve/attack -266,-274,-143,15,129,62,-185
+reserve/death -266,-311,-386,-507,-656,-776,-824,-738,-720,-720,-720,-720
+reserve/idle -266,-155,-90,-112,-76,-95,-147
+reserve/run -266,-221,-278,-295,-300,-272,-231,-176,-143
+reserve/skill -266,46,131,223,-460,-933,-713,-474
 wraith/attack -315,-310,-148,-276,-392
 wraith/run -315,-337,-342,-319,-260,-224,-248

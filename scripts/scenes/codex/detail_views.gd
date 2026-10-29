@@ -43,16 +43,19 @@ func _energy_of(pet: Dictionary, sk: Dictionary) -> int:
 ##   (被动条 → 普通攻击条 → 技能卡, 同一套截断与「查看全部」)。小将特有的两件事做成签牌。
 func _show_minion(kind: String) -> void:
 	host._clear_detail()
-	var mi: Dictionary = host.MINION_INFO.get(kind, {})
+	## ★读 MinionCodex.info(): 援军小将的文案带 {C:ReserveConsts.X} 占位符、数值是浮点常量, info() 负责展开与去「.0」。
+	var mi: Dictionary = MinionCodex.info(kind)
 	if mi.is_empty():
 		return
 	_rerender = _show_minion.bind(kind)
+	## 立绘不在(援军小将的图美术还没交)⇒ _add_image 自己跳过, 左栏只少一张图, 不崩。
 	host._add_image(95, 100, "res://assets/sprites/pets/%s" % mi["img"], 160, 160, true)
-	## 签牌: 站位(前排 / 后排 / 精英) + 不可编入 + 每级成长。「深海小将」不再单挂一块 —— 左栏列表的分组标题就是它。
+	## 签牌: 站位(前排 / 后排 / 精英 / 援军) + 不可编入 + 成长(三种小将每级 ×1.05; 援军小将每场 +4%)。
+	##   「深海小将」不再单挂一块 —— 左栏列表的分组标题就是它。
 	var _pos: String = str(mi["role"]).split(" · ")[0]
 	_left_header(str(mi["name"]), [{"kind": "tag", "text": _pos, "color": "#58d3ff"},
 		{"kind": "tag", "text": "不可编入", "color": "#9fb6c9"},
-		{"kind": "tag", "text": "每级 ×1.05", "color": "#ffd93d"}])
+		{"kind": "tag", "text": str(mi.get("growth_tag", "每级 ×1.05")), "color": "#ffd93d"}])
 	# 属性 7 行 (Lv1 值) —— 与龟页共用 _stat_rows, 不在这里另摆一套表格
 	var rows = [
 		{"key": "hp", "label": "生命", "disp": str(mi["hp"])},

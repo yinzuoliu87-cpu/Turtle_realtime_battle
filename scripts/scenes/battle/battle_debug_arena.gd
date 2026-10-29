@@ -76,6 +76,7 @@ func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 		var _elite: bool = (battle._edit_minion_role == "elite")
 		var _spec: Dictionary = {"minion": true, "elite": _elite, "level": _mlvl}
 		if not _elite: _spec["role"] = battle._edit_minion_role   # 精英不分前后排(独立造型)
+		if battle._edit_minion_role == "reserve": _spec["battles"] = _edit_reserve_battles()   # 援军小将按本周场数成长, 不按等级
 		u = battle._spawn._make_unit("__minion__", side, pos, _spec)
 		u["_edit_minion_role"] = battle._edit_minion_role   # 存角色/等级→⏸编辑重生/存盘时按此重建(否则小将退化成默认龟)
 		u["_edit_minion_lvl"] = _mlvl
@@ -94,7 +95,7 @@ func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 	battle._units.append(u)
 	var _pn: String = str(battle._data_by_id.get(id, {}).get("name", id))
 	if id == "__minion__":
-		_pn = {"front": "近战小将·浪板", "back": "远程小将·火箭", "elite": "精英小将"}.get(battle._edit_minion_role, "小将")
+		_pn = _edit_minion_name(battle._edit_minion_role)
 	_edit_set_status("摆放 %s (%s) · 共 %d 单位" % [_pn, ("友军" if side == "left" else "假人"), battle._units.size()])
 	return u
 
@@ -177,6 +178,7 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 		var _el: bool = (role == "elite")   # 精英小将(用户2026-07-24)
 		var _sp: Dictionary = {"minion": true, "elite": _el, "level": lvl}
 		if not _el: _sp["role"] = role
+		if role == "reserve": _sp["battles"] = _edit_reserve_battles()
 		u = battle._spawn._make_unit("__minion__", side, s.get("pos", Vector2()), _sp)
 		u["_edit_minion_role"] = role
 		u["_edit_minion_lvl"] = lvl
@@ -298,7 +300,7 @@ func _edit_current_brush_key() -> String:
 func _edit_set_brush(key: String) -> void:
 	if key.begins_with("__minion__:"):
 		battle._edit_pick_id = "__minion__"
-		battle._edit_minion_role = key.substr(11)   # front/back/elite
+		battle._edit_minion_role = key.substr(11)   # front/back/elite/reserve
 	else:
 		battle._edit_pick_id = key
 	_edit_refresh_brush_highlight()
@@ -308,8 +310,17 @@ func _edit_set_brush(key: String) -> void:
 func _edit_brush_name(key: String) -> String:
 	if key == battle.TRAINER_ID: return "训龟大师"
 	if key.begins_with("__minion__:"):
-		return {"front": "近战小将·浪板", "back": "远程小将·火箭", "elite": "精英小将"}.get(key.substr(11), "小将")
+		return _edit_minion_name(key.substr(11))
 	return str(battle._data_by_id.get(key, {}).get("name", key))
+
+## 小将笔刷的名字(摆放提示与笔刷提示共用一张表)。
+func _edit_minion_name(role: String) -> String:
+	return {"front": "近战小将·浪板", "back": "远程小将·火箭", "elite": "精英小将",
+		"reserve": ReserveConsts.NAME + "·" + ReserveConsts.SKILL_NAME}.get(role, "小将")
+
+## 调试场摆援军小将用玩家本周已打场数(正式对局里左方就按这个数成长, 摆出来的属性与真对局一致)。
+func _edit_reserve_battles() -> int:
+	return maxi(0, int(GameState.season_total_battles)) if GameState != null else 0
 
 func _edit_refresh_brush_highlight() -> void:
 	var cur = _edit_current_brush_key()

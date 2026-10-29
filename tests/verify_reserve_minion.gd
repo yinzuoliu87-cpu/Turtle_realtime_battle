@@ -213,6 +213,20 @@ func _run() -> void:
 				bt._reserve_sys.wave_hit(rv, tgt)
 				var drop: float = hp0 - (float(tgt["hp"]) + float(tgt.get("shield", 0.0)))
 				got["dmg"] = [drop, round(phys_exp) + round(mag_exp), float(tgt["maxHp"])]
+				## 追踪: 从目标右边 150 码发一道, 目标每步横着跑 8 码(直飞必然打空: 8 步横移 64 码 > 半宽 55)。
+				##   量援军小将造成的魔法伤害(只有气波会打魔法段)有没有涨 —— 只认这一道。
+				var dbt: Dictionary = rv.get("_st_dealt_by_type", {})
+				var mag0: int = int(dbt.get("mag", 0))
+				bt._reserve_sys.fly_wave(rv, tgt, (tgt["pos"] as Vector2) + Vector2(150.0, 0.0))
+				for _k in range(30):
+					tgt["pos"] = (tgt["pos"] as Vector2) + Vector2(0.0, 8.0)
+					bt._ballistics._step_pending_shots(bt._ballistics.SKILLSHOT_STEP)
+				got["homing"] = int((rv.get("_st_dealt_by_type", {}) as Dictionary).get("mag", 0)) > mag0
+				## 补查: 敌人在气波这一步起点后面 5 码(迎面走来、从两步之间跨过去的那种) —— 不开补查打不到, 开了打得到
+				var p0: Vector2 = (tgt["pos"] as Vector2) + Vector2(5.0, 0.0)
+				got["catch_off"] = bt._ballistics._first_on_segment(rv, p0, Vector2.RIGHT, 19.0, ReserveConsts.WAVE_HALF_W, 0.0)
+				got["catch_on"] = bt._ballistics._first_on_segment(rv, p0, Vector2.RIGHT, 19.0, ReserveConsts.WAVE_HALF_W, ReserveConsts.WAVE_CATCHUP)
+				got["catch_tgt"] = tgt
 				var before: int = bt._pending_shots.size()
 				bt._reserve_sys.cast(rv, tgt)
 				got["queued"] = bt._pending_shots.size() - before
@@ -232,6 +246,9 @@ func _run() -> void:
 	_ok("技能 ★一道 = 100% 攻击力物理 + 该敌人 10% 最大生命值魔法", absf(float(dm[0]) - float(dm[1])) <= 1.0, "实掉 %.0f 期望 %.0f (目标最大生命 %.0f)" % [float(dm[0]), float(dm[1]), float(dm[2])])
 	_ok("技能 出手一次排出 4 道气波(+1 解除定身)", int(got.get("queued", 0)) == ReserveConsts.WAVES + 1, str(got.get("queued")))
 	_ok("技能 两张表(_IMPL_SKILLS / _SKILL_CAST_RANGE)都登记了", bool(got.get("tables", false)))
+	_ok("技能 ★气波追踪: 目标横着跑开也追得上(直飞会打空)", bool(got.get("homing", false)))
+	_ok("技能 ★迎面走来的敌人不会从两步之间穿过去(补查)", got.get("catch_off") == null and got.get("catch_on") != null and is_same(got.get("catch_on"), got.get("catch_tgt")),
+		"不补查=%s 补查=%s" % [str(got.get("catch_off") != null), str(got.get("catch_on") != null)])
 
 	## S2
 	got = {}

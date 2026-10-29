@@ -1843,7 +1843,9 @@ func _info_ability_row(vb: VBoxContainer, u: Dictionary) -> void:
 				_open_skill_card(u, k, nm, role, cost, ent, slot))
 	## 小将多一格「前排 / 后排」(用户 2026-10-06: 小弟有前排后排)。不可点, 只是标识。
 	if u.has("minion_role"):
-		var front: bool = str(u.get("minion_role", "front")) == "front"
+		## 援军小将(minion_role = "reserve")是远程(ReserveConsts.RANGE)⇒ 后排。按种类显式判,
+		##   不靠「不是 front 就当远程」碰巧对(方案书 20261029-终极战场援军小将 D7)。
+		var front: bool = str(u.get("minion_role", "front")) == "front" and not MinionCodex.is_reserve(u)
 		var pc := _slot_cell(rowc, "", "站位", Color("#a99c88"))
 		var pl := Label.new()
 		pl.text = "前排" if front else "后排"

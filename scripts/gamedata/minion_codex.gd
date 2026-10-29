@@ -19,6 +19,7 @@ const TYPE_TO_KIND := {
 	"minionBodysurf": "front",
 	"minionRocket": "back",
 	"eliteHammer": "elite",
+	ReserveConsts.SKILL: "reserve",   # 援军小将·四面合围(2026-10-29)
 }
 
 
@@ -27,10 +28,72 @@ static func skill_desc(stype: String) -> Variant:
 	var k: String = str(TYPE_TO_KIND.get(stype, ""))
 	if k == "" or not MINION_INFO.has(k):
 		return null
-	var d: Dictionary = MINION_INFO[k]
+	var d: Dictionary = info(k)
 	## ★icon(2026-10-06): 信息面板技能格要图标 —— 原来小将两个技能没有图, 那一格是空的。
 	return {"name": str(d.get("skill_name", "")), "desc": str(d.get("skill_desc", "")),
 		"icon": str(d.get("skill_icon", ""))}
+
+
+## 一种小将的整条图鉴信息, 给屏幕用的版本(图鉴详情 / 信息面板都走这里):
+##   ① 文字里的 {C:类.常量} 展开 —— 援军小将的数字只写在 ReserveConsts, 这里不抄;
+##   ② 整数值去掉「.0」(表里直接引 ReserveConsts 的浮点常量, str(1000.0) 会显示成「1000.0」);
+##   ③ 技能图标文件还不在(美术没交)就给空串 —— 图鉴卡 / 信息面板技能格见空串就不画图, 不去 load 一个不存在的路径。
+static func info(kind: String) -> Dictionary:
+	var src: Variant = MINION_INFO.get(kind, null)
+	if not (src is Dictionary):
+		return {}
+	var d: Dictionary = (src as Dictionary).duplicate(true)
+	for k in ["skill_desc", "growth_tag"]:
+		if d.has(k):
+			d[k] = SkillText.render_consts(str(d[k]))
+	for pv in d.get("passives", []):
+		(pv as Dictionary)["desc"] = SkillText.render_consts(str((pv as Dictionary).get("desc", "")))
+	for k in ["hp", "atk", "def", "mr", "range", "spd", "skill_cost"]:
+		var v: Variant = d.get(k, null)
+		if v is float and is_equal_approx(float(v), roundf(float(v))):
+			d[k] = int(roundf(float(v)))
+	var ic := str(d.get("skill_icon", ""))
+	if ic != "" and not ResourceLoader.exists(SPRITE_ROOT + ic):
+		d["skill_icon"] = ""
+	return d
+
+
+const SPRITE_ROOT := "res://assets/sprites/"
+
+## 某种小将的立绘(图鉴列表 / 图鉴详情 / 对阵幕布 / 结算表 / 顶栏都用这一张)。文件还不在 ⇒ 空串, 调用方自己回落。
+static func portrait_path(kind: String) -> String:
+	var mi: Variant = MINION_INFO.get(kind, null)
+	if not (mi is Dictionary):
+		return ""
+	var p: String = SPRITE_ROOT + "pets/" + str((mi as Dictionary).get("img", ""))
+	return p if ResourceLoader.exists(p) else ""
+
+
+## 单位字典(minion_role / is_elite)或阵容 spec(role / elite)→ front / back / elite / reserve。
+## ★援军小将先判: 它的 role 是 "reserve", 走「是 front 否则远程」那种二分会被当成远程小将(方案书 D7)。
+static func kind_of(x: Dictionary) -> String:
+	var role := str(x.get("minion_role", x.get("role", "front")))
+	if role == "reserve":
+		return "reserve"
+	if bool(x.get("is_elite", x.get("elite", false))):
+		return "elite"
+	return "front" if role == "front" else "back"
+
+
+## 这个单位是不是援军小将(单位字典 / 阵容 spec / 结算快照行都认)。
+## 结算快照行是纯标量、不带 minion_role ⇒ 认 id + 名字(名字只在 ReserveConsts.NAME 一处)。
+static func is_reserve(x: Dictionary) -> bool:
+	if kind_of(x) == "reserve":
+		return true
+	return str(x.get("id", "")) == "__minion__" and str(x.get("name", "")) == ReserveConsts.NAME
+
+
+## 援军小将的头像贴图; 不是援军小将或图还没画好 ⇒ null(调用方走原来的取图链)。
+static func reserve_portrait(u: Dictionary) -> Texture2D:
+	if not is_reserve(u):
+		return null
+	var p := portrait_path("reserve")
+	return load(p) as Texture2D if p != "" else null
 
 
 # 深海小将 (虚拟图鉴条目 — 非龟, pets.json 里没有)
@@ -43,6 +106,7 @@ const MINION_KINDS := [
 	{"kind": "front", "name": "近战小将", "img": "minion.png"},
 	{"kind": "back",  "name": "远程小将", "img": "minion-back.png"},
 	{"kind": "elite", "name": "精英小将", "img": "minion-elite.png"},
+	{"kind": "reserve", "name": ReserveConsts.NAME, "img": "minion-reserve.png"},
 ]
 
 ## Lv1 数值 + 说明. hp/atk 随等级 ×1.05^(lv-1) 复利, 双抗定值(与 _make_unit 一致).
@@ -72,6 +136,21 @@ const MINION_INFO := {
 			{"name": "长手刃", "slot": "basic", "desc": "精英小将的攻击造成 100% 攻击力的物理伤害，每 5 次攻击附带旋刃。"},
 			{"name": "吞噬", "slot": "passive", "desc": "精英小将在目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间获得 95% 减伤。吞噬完成后回复相当于目标剩余生命值 2 倍的生命值，并获得 50% 攻击速度，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。"},
 			{"name": "铁锁", "slot": "skill", "desc": "精英小将每 5 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 100% 攻击力的魔法伤害。"},
+		],
+	},
+	## 援军小将(用户 2026-10-29, 方案书 docs/plans/20261029-终极战场援军小将.md):
+	##   终极战场里一方没有任何幸存单位时代替出战。不按等级、按所属玩家本周已打场数成长(每场 +4%, 生命 / 攻击 / 双抗都长)。
+	##   ★数字全部引 ReserveConsts(数值常量与 {C:ReserveConsts.X} 文案占位符), 本表不抄任何一个; 屏幕上读 info("reserve")。
+	##   `growth_tag` = 图鉴签牌那一格(其余三种小将是「每级 ×1.05」)。
+	"reserve": {
+		"name": ReserveConsts.NAME, "img": "minion-reserve.png", "role": "援军 · 远程",
+		"hp": ReserveConsts.HP, "atk": ReserveConsts.ATK, "def": ReserveConsts.DEF, "mr": ReserveConsts.MR,
+		"interval": ReserveConsts.ATK_INTERVAL, "range": ReserveConsts.RANGE, "spd": ReserveConsts.MOVE,
+		"skill_name": ReserveConsts.SKILL_NAME, "skill_cost": ReserveConsts.ENERGY, "skill_icon": "skills/reserve-converge.png",
+		"growth_tag": "每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%",
+		"skill_desc": "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成 {C:ReserveConsts.ATK_COEF%}% 攻击力的物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。",
+		"passives": [
+			{"name": "援军", "slot": "passive", "desc": "终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
 		],
 	},
 }

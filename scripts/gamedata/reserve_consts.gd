@@ -22,9 +22,11 @@ const ENERGY := 135.0
 
 const WAVES := 4
 const WAVE_RADIUS := 260.0          ## 气波出现在目标前后左右多远
-const WAVE_OVERSHOOT := 60.0        ## 飞过目标中心再走一段(目标走开时可能打到后面的人)
+const WAVE_MAX_FLY := 900.0         ## 追踪气波最多飞这么远(追不上就消散)
+const WAVE_OVERSHOOT := 60.0        ## (特效用)拖尾 / 预示线的长度参考: 出发半径之外再多画一段
 const WAVE_SPEED := 380.0
 const WAVE_HALF_W := 55.0
+const WAVE_CATCHUP := 20.0         ## 往回补查(防迎面走来的敌人从两步之间穿过去; 见 battle_ballistics._first_on_segment)
 const ATK_COEF := 1.0               ## 物理段: 100% 攻击力
 const MAXHP_PCT := 0.10             ## 魔法段: 该敌人 10% 最大生命值(真实 maxHp, 不除 HP_MULT —— CLAUDE.md §3.1)
 const CAST_RANGE := 600.0

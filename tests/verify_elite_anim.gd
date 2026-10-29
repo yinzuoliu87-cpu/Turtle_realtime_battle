@@ -33,11 +33,13 @@ const RBS := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 ##   换成读常量之后才暴露出来。
 const MinionCodexRef := preload("res://scripts/gamedata/minion_codex.gd")
 const ActionEliteRef := preload("res://scripts/gamedata/action_elite.gd")
+## 援军小将的技能动作表 ACTION_RESERVE 住在它自己的技能文件里(2026-10-29)
+const ReserveSysRef := preload("res://scripts/systems/skills/reserve_system.gd")
 
 static func _consts() -> Dictionary:
 	var out: Dictionary = (RBS as Script).get_script_constant_map().duplicate()
 	## 后并入的不覆盖主文件已有的同名键(主文件的 ACTION_ELITE 就是 ActionElite.TABLE 本身)
-	for src2 in [(MinionCodexRef as Script), (ActionEliteRef as Script)]:
+	for src2 in [(MinionCodexRef as Script), (ActionEliteRef as Script), (ReserveSysRef as Script)]:
 		for k in src2.get_script_constant_map():
 			if not out.has(k):
 				out[k] = src2.get_script_constant_map()[k]
@@ -63,7 +65,8 @@ func _ready() -> void:
 		"res://scripts/systems/skills/elite_system.gd",
 		"res://scripts/scenes/battle/battle_vfx.gd",
 		"res://scripts/scenes/battle/battle_render.gd",
-		"res://scripts/gamedata/minion_codex.gd"]:
+		"res://scripts/gamedata/minion_codex.gd",
+		"res://scripts/systems/skills/reserve_system.gd"]:
 		src += FileAccess.get_file_as_string(str(_sf)) + "\n"
 	if src == "":
 		_fail("读不到 %s" % SCENE_PATH)
@@ -75,6 +78,7 @@ func _ready() -> void:
 	_check_body_norm(src)
 	_check_facing()
 	_check_melee_timing(src)
+	_check_reserve_wiring(src)
 	_done()
 
 
@@ -110,6 +114,8 @@ func _check_melee_timing(src: String) -> void:
 	_check_timing_group(src, "melee", "ACTION_MELEE", MELEE_BEATS)
 	_check_timing_group(src, "ranged", "ACTION_RANGED", RANGED_BEATS)
 	_check_timing_group(src, "elite", "ACTION_ELITE", ELITE_BEATS)
+	## 援军小将(2026-10-29): 技能动画 == 施法定身 CAST_ROOT(直接读常量, 改了定身时长这里跟着要求)
+	_check_timing_group(src, "reserve", "ACTION_RESERVE", {"skill": ReserveConsts.CAST_ROOT})
 
 
 func _check_timing_group(src: String, dir_name: String, table: String, beats: Dictionary) -> void:
@@ -175,7 +181,7 @@ const FACING_GOLDEN_PATH := "res://tests/golden/minion_facing.txt"
 
 func _check_facing() -> void:
 	var cur: Array = []
-	for d in ["melee", "elite", "ranged", "wraith"]:
+	for d in ["melee", "elite", "ranged", "wraith", "reserve"]:
 		var dir := DirAccess.open("res://assets/sprites/pets/animations/%s" % d)
 		if dir == null:
 			continue
@@ -184,7 +190,7 @@ func _check_facing() -> void:
 				continue
 			cur.append("%s/%s %s" % [d, f.get_basename(),
 				_sil_fingerprint("res://assets/sprites/pets/animations/%s/%s" % [d, f])])
-	for n in ["minion", "minion-elite", "minion-back", "wraith"]:
+	for n in ["minion", "minion-elite", "minion-back", "wraith", "minion-reserve"]:
 		var ip := "res://assets/sprites/pets/%s.png" % n
 		if ResourceLoader.exists(ip):
 			cur.append("idle/%s %s" % [n, _sil_fingerprint(ip)])
@@ -334,6 +340,9 @@ func _check_body_norm(src: String) -> void:
 		##   所以它的朝向/归一/时长【从来没有人守过】。
 		"__minion_back__": {"dir": "ranged", "idle": "pets/minion-back.png",
 			"ref": "attack", "acts": ["attack", "run", "skill"]},
+		## 援军小将(2026-10-29 PixelLab 新画)。待机也是一条帧表(idle.png), 一并对账。
+		"__minion_reserve__": {"dir": "reserve", "idle": "pets/minion-reserve.png",
+			"ref": "attack", "acts": ["attack", "run", "skill", "death", "idle"]},
 	}
 	var checked := 0
 	for key in groups.keys():
@@ -507,6 +516,57 @@ func _func_body(src: String, fname: String) -> String:
 	if body.find("\nfunc ") >= 0:
 		_fail("_func_body(%s) 切歪了 —— 体内还有顶层 func" % fname)
 	return body
+
+
+## ⑦ 援军小将(2026-10-29 新画)接线: 整套形象真的接上了, 而且每一行都指向它自己的素材
+##   (项目规矩: 不许复用别的单位的素材 —— 它此前借的就是远程小将的立绘和帧)。
+func _check_reserve_wiring(src: String) -> void:
+	var cs := _consts()
+	var n := 0
+	for tbl in ["ACTION_ATTACK", "ACTION_RUN", "ACTION_DEATH"]:
+		var d = cs.get(tbl, null)
+		var e = (d as Dictionary).get("__minion_reserve__", null) if d is Dictionary else null
+		if not (e is Array):
+			_fail("%s 里没有 __minion_reserve__ —— 援军小将这个动作会静默不播" % tbl)
+			continue
+		var p := str((e as Array)[0])
+		if not p.begins_with("pets/animations/reserve/"):
+			_fail("%s 的援军行指向 %s —— 不是援军自己的素材" % [tbl, p])
+		if not ResourceLoader.exists("res://assets/sprites/" + p):
+			_fail("%s 的援军行登记了但文件不存在: %s" % [tbl, p])
+		n += 1
+	var ar = cs.get("ACTION_RESERVE", null)
+	if not (ar is Dictionary) or not (ar as Dictionary).has("skill"):
+		_fail("ACTION_RESERVE 里没有 skill —— 四面合围的施法动作没有帧表")
+	else:
+		n += 1
+		## 不打断白名单: _play_action 只放过 ELITE / MELEE / RANGED 三张表里的动作名。
+		##   援军的 skill 恰好与远程小将同名才被放过 —— 哪天改名就会被普攻秒换掉, 这里焊住。
+		for act in (ar as Dictionary):
+			var covered := _func_body(src, "_play_action").find("ACTION_RESERVE") >= 0
+			for t2 in ["ACTION_ELITE", "ACTION_MELEE", "ACTION_RANGED"]:
+				var d2 = cs.get(t2, null)
+				covered = covered or (d2 is Dictionary and (d2 as Dictionary).has(act))
+			if not covered:
+				_fail("援军动作 \"%s\" 不在 _play_action 的不打断白名单里 —— 刚播就会被普攻/受击换掉" % str(act))
+	var kb := _func_body(src, "_anim_key")
+	if kb.find("\"reserve\"") < 0 or kb.find("__minion_reserve__") < 0:
+		_fail("_anim_key 没有把 minion_role == \"reserve\" 分流到 __minion_reserve__ —— 援军会套远程小将的帧")
+	var mb := _func_body(src, "_melee_anim")
+	if mb.find("__minion_reserve__") < 0 or mb.find("ACTION_RESERVE") < 0:
+		_fail("_melee_anim 没有按 __minion_reserve__ 分派到 ACTION_RESERVE —— 四面合围的施法动作永不播")
+	if _func_body(src, "cast").find("_melee_anim(u, \"skill\")") < 0:
+		_fail("reserve_system.cast 没有调 _melee_anim(u, \"skill\") —— 施法时角色站着不动")
+	## 阵亡: _kill 里立绘等 UIPalette.T_SLOW 再用 0.4 秒淡完; 动作播完会切回待机 ⇒ 阵亡动画短于这段就会「淡到一半站起来」
+	var de = (cs.get("ACTION_DEATH", {}) as Dictionary).get("__minion_reserve__", null)
+	if de is Array and ResourceLoader.exists("res://assets/sprites/" + str(de[0])):
+		var dtex: Texture2D = load("res://assets/sprites/" + str(de[0]))
+		var ddur: float = float(dtex.get_width() / dtex.get_height()) / float(de[1])
+		if ddur < UIPalette.T_SLOW + 0.4 - 0.01:
+			_fail("援军阵亡动画 %.2fs < 淡出 %.2fs —— 淡出途中会切回站姿" % [ddur, UIPalette.T_SLOW + 0.4])
+	print("  [援军接线] 动作表 %d 行" % n)
+	if n < 4:
+		_fail("援军接线只校到 %d 行(应 4: 普攻/移动/阵亡/技能)" % n)
 
 
 func _fail(msg: String) -> void:
