@@ -1312,10 +1312,6 @@ func _card_drag(_at_pos: Vector2, source: Control, pet_id: String) -> Variant:
 func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 	if _roster_locked:
 		return   # 大轮锁定: 忽略任何落点(防拖放绕过)
-	## 拖放是一次完整的换位, 之前点选留下的「选中」作废(否则高亮按下标挂到换过来的龟上, 下次点击误换 / 误删)
-	if _selected_slot_idx != -1:
-		_selected_slot_idx = -1
-		_slots._refresh_slots()
 	var old_idx := team.find(pet_id)
 	var existing = team[slot_idx]
 	if existing == pet_id:

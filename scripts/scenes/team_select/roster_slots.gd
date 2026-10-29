@@ -318,6 +318,11 @@ func _slot_can_drop(_at_pos: Vector2, data: Variant) -> bool:
 ## drop 到槽 (drop_func; bind → (at_pos, data, idx))
 func _slot_drop(_at_pos: Vector2, data: Variant, idx: int) -> void:
 	if data is Dictionary and (data as Dictionary).has("pet_id"):
+		## 拖放是一次完整的换位, 之前点选留下的「选中」作废(否则高亮按下标挂到换过来的龟上, 下次点击误换 / 误删)。
+		##   放在这里而不是 host._on_drop_pet: 那个函数在积分赛逐字节守卫里(verify_gauntlet_online_queue R 段), 而选中本来就是槽位这边的状态。
+		if host._selected_slot_idx != -1:
+			host._selected_slot_idx = -1
+			_refresh_slots()
 		host._on_drop_pet(str((data as Dictionary)["pet_id"]), idx)
 
 
