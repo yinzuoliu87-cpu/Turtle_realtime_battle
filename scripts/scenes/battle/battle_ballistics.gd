@@ -763,11 +763,13 @@ func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> vo
 const SKILLSHOT_STEP := 0.05
 
 func fire_skillshot(src: Dictionary, dir: Vector2, rng: float, speed: float, half_w: float,
-		tex_path: String, size_px: float, on_hit: Callable) -> void:
-	var spr: Sprite3D = _skillshot_sprite(tex_path, size_px, src["pos"], rng / maxf(1.0, speed))
+		tex_path: String, size_px: float, on_hit: Callable, from = null) -> void:
+	## `from`: 弹体起点(援军小将·四面合围的气波出现在目标四周, 不在施法者身上)。缺省 = 施法者脚下。
+	var p_start: Vector2 = from if from is Vector2 else src["pos"]
+	var spr: Sprite3D = _skillshot_sprite(tex_path, size_px, p_start, rng / maxf(1.0, speed))
 	## ★弹体节点只存 instance_id, 不让 lambda 捕获节点本身 —— 节点先被收掉、回调后跑时
 	##   Godot 报「Lambda capture was freed」(门禁 tween_capture 守着这一类)。
-	var st := {"pos": src["pos"], "left": rng, "spr_id": spr.get_instance_id() if spr != null else 0}
+	var st := {"pos": p_start, "left": rng, "spr_id": spr.get_instance_id() if spr != null else 0}
 	st["step"] = func() -> void:
 		var node: Sprite3D = instance_from_id(int(st["spr_id"])) as Sprite3D if int(st["spr_id"]) != 0 else null
 		var adv: float = minf(speed * SKILLSHOT_STEP, float(st["left"]))

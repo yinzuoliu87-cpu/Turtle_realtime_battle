@@ -273,11 +273,18 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 		if str(u.get("kind", "")) == "leader":
 			made = _make_unit(str(u.get("id", "basic")), side, pos)
 		else:
+			var role: String = str(u.get("role", "front"))
 			var elite: bool = (lead_n == 0 and minion_seen == 0)
+			## ★终极战场的幸存名单(带 hp_frac 的就是)按它自己记下的精英标记生成 —— 只剩普通小将的一方
+			##   原来第一只会被「0 统领路首个小将 = 精英」这条开局规则升成精英(用户 2026-10-29「他不能是被生成这个精英小将」)。
+			if u.has("hp_frac"):
+				elite = bool(u.get("elite", false))
+			if role == "reserve":
+				elite = false                                   # 援军小将永远不是精英
 			minion_seen += 1
 			var mlv: int = lvl
 			if side == "left": mlv += int(u.get("temp_lv", 0))   # 临时等级器用在小将身上(糖果罐战利品·记在阵容格子上)
-			made = _make_unit("__minion__", side, pos, {"minion": true, "role": str(u.get("role", "front")), "elite": elite, "level": mlv})
+			made = _make_unit("__minion__", side, pos, {"minion": true, "role": role, "elite": elite, "level": mlv, "battles": int(u.get("battles", 0))})
 		if u.has("hp_frac"):   # 幸存带血进终极
 			made["hp"] = maxf(1.0, made["maxHp"] * clampf(float(u["hp_frac"]), 0.05, 1.0))
 		if u.has("equips") and u["equips"] is Array and not (u["equips"] as Array).is_empty():
@@ -325,10 +332,14 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	if is_minion:   # 深海小将: 非龟, 自带立绘/数值(750血·45攻·双抗7 ×1.05^级; 前排挥砍范围70/后排射击400), 无技能被动
 		var _mf: bool = str(spec.get("role", "front")) == "front"
 		var _me: bool = bool(spec.get("elite", false))
+		var _mres: bool = str(spec.get("role", "")) == "reserve"
 		## 底子(生命 / 攻击 / 双抗 · 等级复利)在 MinionCodex.base_stats —— 背包属性小卡读同一个(2026-10-22 原样抽出)。
-		d = MinionCodex.base_stats(_me, _mf, int(spec.get("level", 1)))
+		## 援军小将不按等级, 按这一方本周已打场数(每场 +4%) —— ReserveConsts.base_stats。
+		d = ReserveConsts.base_stats(int(spec.get("battles", 0))) if _mres else MinionCodex.base_stats(_me, _mf, int(spec.get("level", 1)))
 		if _me:
 			st = [true, 105.0, 1.0 / 0.65, 90.0]   # 精英(虐杀原形改造2026-07-16): 近战长手刃·攻速0.65次/s
+		elif _mres:
+			st = [false, ReserveConsts.MOVE, ReserveConsts.ATK_INTERVAL, ReserveConsts.RANGE]   # 援军小将: 远程普攻
 		else:
 			st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
 		sd = battle._hiding_sys._minion_sprite_dict(_me, not _mf)
@@ -524,6 +535,9 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 			u["_eb_n"] = 0
 			u["_hammer_n"] = 0
 			u["_whip_cd"] = 0.0
+		elif str(spec.get("role", "front")) == "reserve":   # 援军小将·四面合围(135 龟能·用户 2026-10-29)
+			u["active_skills"] = [ReserveConsts.SKILL]
+			u["energy_cost"][ReserveConsts.SKILL] = ReserveConsts.ENERGY
 		elif str(spec.get("role", "front")) == "front":   # 近战小将·人体浪板(120龟能·射程2000·用户2026-07-18)
 			u["active_skills"] = ["minionBodysurf"]
 			u["energy_cost"]["minionBodysurf"] = 120.0

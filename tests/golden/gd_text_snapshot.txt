@@ -509,6 +509,8 @@ scripts/gamedata/phase2_types.gd|lit|食物·增益
 scripts/gamedata/phase2_types.gd|lit|香火
 scripts/gamedata/phase2_types.gd|lit|香火·刻痕
 scripts/gamedata/phase2_types.gd|lit|香火石的携带者造成伤害时刻下刻痕。刻痕跨对局保留，每道刻痕永久提高全队的增伤与减伤。
+scripts/gamedata/reserve_consts.gd|lit|四面合围
+scripts/gamedata/reserve_consts.gd|lit|援军小将
 scripts/gamedata/skill_forms.gd|lit|u[\"_hammer_n\"] % 3 == 2 → 下一发是第3次 → 形态1(强化); 否则形态0(普通)
 scripts/gamedata/skill_forms.gd|lit|u[\"ship_summoned\"] 为假 → 形态0(冲锋召船); 为真 → 形态1(霰弹)
 scripts/gamedata/skill_forms.gd|lit|举拳蓄力后砸地, 对身前锥形范围造成魔法伤害

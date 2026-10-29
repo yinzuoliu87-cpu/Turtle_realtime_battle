@@ -701,12 +701,26 @@ func _dl_egg_hp(side_lr: String) -> float:
 
 # spawn 一路一侧: leaders 用 battle._spawn._make_unit(id); 小将用 minion spec; 0统领路首个小将=精英. 纵向排开.
 # 终极战场我方/敌方阵容 = 上下路累加的幸存(含小将+30%回血). 缺则兜底.
+## ★名单为空 ⇒ 援军小将(用户 2026-10-29)。会走到这里的三种情形(实测, 方案书 20261029-终极战场援军小将 §2.2):
+##   ① 上路战场赢了但一个活人都没有、下路又被团灭 ② 两边都没有幸存(两边各上一只) ③ 只剩召唤物赢下一路(快照不收召唤物)。
+##   原来这里顶一只完整小龟(注释写着「理论不会到」—— 错的), 左方那只还会带上背包里给小龟配的装备。
 func _dl_survivor_specs(side_lr: String) -> Array:
 	if GameState != null and GameState.dual_survivors is Dictionary:
 		var s: Array = GameState.dual_survivors.get(side_lr, [])
 		if not s.is_empty():
 			return s
-	return [{"kind": "leader", "id": "basic"}]   # 兜底(理论不会到)
+	return [{"kind": "minion", "role": "reserve", "battles": _dl_side_battles(side_lr)}]
+
+
+## 这一方本周已打场数(援军小将每场 +4% 属性): 左 = 我的 season_total_battles; 右 = 对手快照里的, 没带就同左方(匹配本来就要求双方场数相同)。
+func _dl_side_battles(side_lr: String) -> int:
+	var mine: int = maxi(0, int(GameState.season_total_battles)) if GameState != null else 0
+	if side_lr == "left":
+		return mine
+	var g = GameState.dual_ghost if GameState != null else null
+	if g is Dictionary and (g as Dictionary).get("season_total_battles") != null:
+		return maxi(0, int((g as Dictionary)["season_total_battles"]))
+	return mine
 
 func _dl_side_alive(side: String) -> int:   # 一侧存活非蛋·非惰性召唤 单位数(战斗型召唤算数·用户2026-07-11 #3)
 	var n = 0

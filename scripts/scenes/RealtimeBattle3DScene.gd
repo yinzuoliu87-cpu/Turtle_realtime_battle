@@ -746,6 +746,7 @@ var _rainbow_sys := RainbowSystem.new(self)   # 彩虹龟技能系统(2026-07-25
 var _chest_sys := ChestSystem.new(self)   # 宝箱龟技能系统(2026-07-25 抽出)
 var _gambler_sys := GamblerSystem.new(self)   # 赌徒龟技能系统(2026-07-25 抽出)
 var _lightning_sys := LightningSystem.new(self)   # 闪电龟技能系统(2026-07-25 抽出)
+var _reserve_sys := ReserveSystem.new(self)   # 援军小将·四面合围(2026-10-29)
 var _rocket_sys := RocketSystem.new(self)   # 小将火箭技能系统(2026-07-25 抽出)
 var _bubble_sys := BubbleSystem.new(self)   # 泡泡龟技能系统(2026-07-25 抽出)
 var _diamond_sys := DiamondSystem.new(self)   # 钻石龟技能系统(2026-07-25 抽出)
@@ -5059,7 +5060,7 @@ const _SELF_CAST_SKILLS := {
 }
 
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
-const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0, "chestStorm": 2000.0,
+const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0, "reserveConverge": ReserveConsts.CAST_RANGE, "chestStorm": 2000.0,
 	"fortuneAllIn": 2000.0,   # 财神·梭哈(用户 2026-07-31): 原来回落到攻击射程 70 → 得贴脸才撒币
 	"basicSlam": 400.0,       # 小龟·过肩摔(用户 2026-10-24「400吧」): 敌人进 400 码就放, 冲过去抱 —— 与 BasicConsts.SLAM_CAST_RANGE 同值(门禁 verify_basic_slam 对账)
 	# ══ 2026-08-01 一次性补齐(用户:「很多角色的技能为啥一定要贴脸才去放？有很大问题」) ══
@@ -5146,7 +5147,7 @@ const _IMPL_SKILLS := {
 	"fortuneDice": true, "crystalBarrier": true, "chestCount": true, "starWave": true,
 	"twoHeadStrike": true, "twoHeadDisrupt": true, "twoHeadFusion": true, "lavaSurge": true, "cyberBeam": true, "hidingDefend": true, "shellAbsorb": true,
 	"eliteHammer": true,   # 精英小将·铁锤(虐杀原形改造2026-07-16)
-	"minionBodysurf": true, "minionRocket": true,   # 近战小将·人体浪板 / 远程小将·追踪火箭筒(用户2026-07-18)
+	"minionBodysurf": true, "minionRocket": true, "reserveConverge": true,   # 近战小将·人体浪板 / 远程小将·追踪火箭筒(用户2026-07-18)
 	# ★装备换来的技能(2026-08-06·批④): 084 手半剑【近战携带】时把携带者的技能整个换成
 	#   80 龟能的【后撤十字斩】。这一行与下面 `_do_skill` 的分支**必须成对存在** ——
 	#   只加这一行会让引擎选中它、而 `_do_skill` 没分支 ⇒ 技能静默变哑(不报错、只是永远不发)。
@@ -5342,6 +5343,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		"eliteHammer":          _elite_sys._sk_elite_hammer(u, tgt)
 		"minionBodysurf":       _hiding_sys._sk_minion_bodysurf(u, tgt)
 		"minionRocket":         _hiding_sys._sk_minion_rocket(u, tgt)
+		"reserveConverge":      _reserve_sys.cast(u, tgt)
 		"starWave":             _star_sys._sk_star_wave(u)
 		"twoHeadStrike":        _two_head_sys._sk_two_head_strike(u, tgt)
 		"twoHeadDisrupt":       _two_head_sys._sk_two_head_disrupt(u, tgt)

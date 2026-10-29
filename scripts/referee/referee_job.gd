@@ -134,6 +134,10 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	st["tutorial_active"] = false
 	st["debug_level"] = 0
 	st["season_level"] = level_for(j)
+	## 援军小将按左方已打场数成长(2026-10-29): 录像那条路已带(STATE_KEYS); 按快照建的这条从 A 快照取。
+	if not st.has("season_total_battles"):
+		var a: Dictionary = j.get("a", {}) if j.get("a") is Dictionary else {}
+		st["season_total_battles"] = maxi(0, int(a.get("season_total_battles", 0)))
 	return st
 
 

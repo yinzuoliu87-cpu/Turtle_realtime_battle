@@ -58,6 +58,7 @@ const STATE_KEYS := [
 	"persistent_equipped",  # 必需(360): 统领身上的装备 ★只留上场统领那几把(见 _fielded_equips) —— 未上场的装备池不进录像
 	"loadouts",             # 必需(360): 每只龟选的技能(敌方复制技能时也按 id 查, 不按上场裁)
 	"season_level",         # 必需(360): 等级 ⇒ 属性
+	"season_total_battles", # 必需(2026-10-29): 终极战场援军小将按这一方已打场数成长(每场 +4%)
 	"candy_temp_levels",    # 必需(360): 糖果临时等级
 	"debug_level",          # 必需(360): >0 强制全体等级(正式版 0; 看的人那台若开着就会分叉)
 	"trainer_skill",        # 必需(480): 大师技能(U2 后自动放)
