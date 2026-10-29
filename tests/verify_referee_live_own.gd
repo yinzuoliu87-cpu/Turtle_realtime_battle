@@ -845,15 +845,22 @@ func _t_e() -> void:
 	var load_ok := await _wait(func() -> bool: return _status_text(m) == RW.TXT_ENTER_LOAD, 10000)
 	_ok("E claimed ⇒ VS 卡下那一行改成「%s」" % RW.TXT_ENTER_LOAD, load_ok, _status_text(m))
 	var r = _run()
-	await _wait(func() -> bool: return r != null and str(r.get("_ep_stage")) == "buffer", 8000)
+	await _wait(func() -> bool: return r != null and r.get("_buf_src") != null, 8000)
 	var src_buf = r.get("_buf_src") if r != null else null
 	var t1 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t1 < 1500 and _ebar(m) != null:
+	var va := _ebar(m).value if _ebar(m) != null else -1.0
+	while Time.get_ticks_msec() - t1 < 2500 and _ebar(m) != null:
 		seq.append(_ebar(m).value)
 		await get_tree().process_frame
 	var vb := _ebar(m).value if _ebar(m) != null else -1.0
-	_ok("E ★拿到种子、块一块都没到 ⇒ 1.5 秒里还在 VS 卡上(不对着空场地)、条停在载入段起点附近(%.3f < 0.7)" % vb,
-		src_buf is StreamSource.Http and _battle_now() == null and get_tree().current_scene == m and vb >= 0.55 and vb < 0.7)
+	_ok("E ★拿到种子、块一块都没到 ⇒ 2.5 秒里还在 VS 卡上(不对着空场地)、还在「开算」段(%s)、条碰不到按块走那段的起点 0.85(%.3f)"
+		% [str(r.get("_ep_stage")) if r != null else "-", vb], src_buf is StreamSource.Http and _battle_now() == null
+		and get_tree().current_scene == m and str(r.get("_ep_stage")) == "claimed" and vb > 0.55 and vb < 0.85)
+	## ★内测服彩排 2026-10-29：开算后第一块要 4~5 秒，原来条停在 0.650 一动不动 ⇒ 这一段也得在走
+	_ok("E ★第一块没到时条也在走、不定住(%.3f → %.3f)" % [va, vb], va >= 0.0 and vb > va + 0.03)
+	_ok("E ★跟播自己那一局的块来源重试间隔最多 %.0f 秒(这 2.5 秒里 404 重试 %d 次、最长等过 %.1f 秒; 原来会翻到 4 秒)"
+		% [SW.OWN_RETRY_MAX, int(src_buf.retries) if src_buf != null else -1, float(src_buf.max_backoff) if src_buf != null else -1.0],
+		src_buf != null and int(src_buf.retries) >= 3 and float(src_buf.max_backoff) <= SW.OWN_RETRY_MAX + 0.001)
 	## 块一块一块到(每 0.3 秒一块), 逐帧记条与已到块数, 直到进场
 	var served := 0
 	var tn := Time.get_ticks_msec()
@@ -869,7 +876,7 @@ func _t_e() -> void:
 		if eb != null and get_tree().current_scene == m:
 			seq.append(eb.value)
 			last_px = eb.fill_px()
-			if eb.value > 0.7 and eb.value < 0.95:
+			if eb.value > 0.86 and eb.value < 0.99:
 				mid_seen = true
 		if src_buf != null:
 			got_before = int(src_buf.fetched())
@@ -877,7 +884,7 @@ func _t_e() -> void:
 	var b: Node = _battle_now()
 	_ok("E ★块攒够开播那几块(%d)才进场(进场前已到 %d 块)" % [StreamPlayer.live_start_chunks(), got_before],
 		b != null and got_before >= StreamPlayer.live_start_chunks())
-	_ok("E ★块陆续到时条按块走(见过 0.7~0.95 之间的值), 进场前最后一帧条是满的(%.0f / %.0f 像素)" % [last_px, EnterBar.BAR_W],
+	_ok("E ★块陆续到时条按块走(见过 0.86~0.99 之间的值), 进场前最后一帧条是满的(%.0f / %.0f 像素)" % [last_px, EnterBar.BAR_W],
 		mid_seen and last_px >= EnterBar.BAR_W)
 	var mono := true
 	for i in range(1, seq.size()):
@@ -909,10 +916,10 @@ func _t_e2() -> void:
 	var jid := _new_job(MID_E2, "a", true, 0, "claimed")
 	_http.put(MID_E2, _chunks, _meta, 0, false)
 	var m: Node = await _open_mmk()
-	await _wait(func() -> bool: return _run() != null and str(_run().get("_ep_stage")) == "buffer", 20000)
+	await _wait(func() -> bool: return _run() != null and _run().get("_buf_src") != null, 20000)
 	var r = _run()
 	var t0 := Time.get_ticks_msec()
-	_ok("分母 · E2 拿到种子、在 VS 卡上拉块", r != null and str(r.get("_ep_stage")) == "buffer")
+	_ok("分母 · E2 拿到种子、在 VS 卡上拉块", r != null and r.get("_buf_src") != null)
 	var cap_ms := int(float(load(RUN_PATH).BUF_MAX_SEC) * 1000.0)
 	await _wait(func() -> bool: return _battle_now() != null, cap_ms - 1500)
 	_ok("E2 上限之前一直留在 VS 卡上(不提前放弃)", _battle_now() == null and get_tree().current_scene == m)

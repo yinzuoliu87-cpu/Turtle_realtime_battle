@@ -43,14 +43,16 @@ var _rejoin_until := 0            ## 刚从后台回来（离开超过 RESUME_RE
 ##     found   0.00~0.20  遮罩那 1.5 秒（换到匹配屏）            正在建立对局
 ##     build   0.20~0.35  任务已落、第一次查任务还没回            正在建立对局
 ##     pending 0.35~0.55  裁判机还在排队                        等待服务器开始对局
-##     claimed 0.55~0.65  裁判已开算、问种子                    正在载入对局
-##     buffer  0.65~1.00  VS 卡上先拉开播那几块（按已到块数）     正在载入对局   ← 原来进场后对着空场地「同步中」的那一段
-##     fetch   0.65~1.00  （跟播关着）算完了、取录像              正在结算
+##     claimed 0.55~0.85  裁判已开算：问种子、等第一块画面录出来   正在载入对局
+##     buffer  0.85~1.00  VS 卡上拉开播那几块（按已到块数）       正在载入对局   ← 原来进场后对着空场地「同步中」的那一段
+##     fetch   0.85~1.00  （跟播关着）算完了、取录像              正在结算
+##   ★claimed 管到第一块画面到为止（2026-10-29 内测服彩排实测：开算后第一块要 4~5 秒 —— 裁判机起这一局 + 404 退避；
+##     原来 claimed 只管问种子、第一块没到就停在 buffer 起点不动，条在 65% 一动不动 4~5 秒，像卡死）。
 ##   不知道要多久的段（build / pending / claimed / fetch）在段内按 1 - e^(-t/EP_TAU) 逼近段尾、碰不到段尾 ⇒ 真到下一段才越过去，
 ##   不会提前走满。显示值只增不减、每秒最多走 EP_RATE（段跳变是「走过去」不是瞬移）。块攒够 ⇒ done（目标 1）⇒ 条走满再进场。
 const EP_ORDER := ["found", "build", "pending", "claimed", "buffer", "fetch", "done"]
-const EP_SPAN := {"found": [0.0, 0.2], "build": [0.2, 0.35], "pending": [0.35, 0.55], "claimed": [0.55, 0.65],
-	"buffer": [0.65, 1.0], "fetch": [0.65, 1.0], "done": [1.0, 1.0]}
+const EP_SPAN := {"found": [0.0, 0.2], "build": [0.2, 0.35], "pending": [0.35, 0.55], "claimed": [0.55, 0.85],
+	"buffer": [0.85, 1.0], "fetch": [0.85, 1.0], "done": [1.0, 1.0]}
 const EP_TAU := 2.0
 const EP_RATE := 0.9
 const BUF_MAX_SEC := 8.0            ## VS 卡上拉开播那几块最多等多久；到点没攒够 ⇒ 照原来进场（战斗场里「同步中」接着等）
@@ -62,6 +64,7 @@ var _ep_tick := 0
 var _buf_src: StreamSource.Http = null
 var _buf_seed := 0
 var _buf_ready_at := 0
+var _buf_t0 := 0                    ## 开始拉块那一刻（BUF_MAX_SEC 从这里算：第一块没到时还在 claimed 段）
 var _full_drawn := false
 
 signal changed
@@ -551,8 +554,8 @@ func _buffer(seed: int) -> void:
 	_buf_seed = seed
 	_buf_src = SW.own_live_source(match_id)
 	_buf_ready_at = 0
+	_buf_t0 = Time.get_ticks_msec()
 	_full_drawn = false
-	_ep_go("buffer")
 	set_process(true)
 
 
@@ -566,8 +569,10 @@ func _process(_delta: float) -> void:
 		return
 	var now := Time.get_ticks_msec()
 	var st := _buf_src.state
-	if _ep_stage == "buffer" and (buf_frac() >= 1.0 or st == StreamSource.Http.ST_GONE or st == StreamSource.Http.ST_UPDATE
-			or now - _ep_at >= int(BUF_MAX_SEC * 1000.0)):
+	if _ep_stage == "claimed" and _buf_src.fetched() > 0:
+		_ep_go("buffer")                  # 第一块到了：之后按已到块数走
+	if (_ep_stage == "claimed" or _ep_stage == "buffer") and (buf_frac() >= 1.0 or st == StreamSource.Http.ST_GONE
+			or st == StreamSource.Http.ST_UPDATE or now - _buf_t0 >= int(BUF_MAX_SEC * 1000.0)):
 		## 攒够了（或流没了 / 要更新 / 等到上限：进场后由播放器照原来那样说）⇒ 条走满再进
 		_ep_go("done")
 		_buf_ready_at = now

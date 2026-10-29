@@ -105,6 +105,9 @@ class Http extends RefCounted:
 	var version := ""
 	var finished := false              # 调用方已知服务器那一局算完了 ⇒ 404 长时间不消失才可能判 gone
 	var giveup_sec := GIVEUP_SEC
+	## 重试间隔上限(秒)。默认 RETRY_MAX; 周六跟播自己那一局给 1 秒(`StreamWatch.own_live_source`):
+	##   开算后头几块还没录出来时一串 404 会把间隔翻到 4 秒, 块其实早到了还在干等(2026-10-29 内测服彩排: 进度条停在载入段起点 4~5 秒)。
+	var retry_max := RETRY_MAX
 	var on_update_required: Callable = Callable()
 	var state := ST_FETCHING
 	var why := ""
@@ -126,13 +129,14 @@ class Http extends RefCounted:
 	var _nf_since_ms := -1             # 这一串 404 从什么时候开始(墙钟; 拿到 200 清零)
 	var _want_end := false
 
-	## opts: version(请求头里的版本, 默认本机版本)/ finished / giveup_sec
+	## opts: version(请求头里的版本, 默认本机版本)/ finished / giveup_sec / retry_max
 	func _init(b: String, mid: String, opts: Dictionary = {}) -> void:
 		base = b.rstrip("/")
 		match_id = mid
 		version = str(opts.get("version", ProjectSettings.get_setting("application/config/version", "")))
 		finished = bool(opts.get("finished", false))
 		giveup_sec = float(opts.get("giveup_sec", GIVEUP_SEC))
+		retry_max = maxf(RETRY_MIN, float(opts.get("retry_max", RETRY_MAX)))
 		var tree := Engine.get_main_loop() as SceneTree
 		if tree == null or tree.root == null:
 			state = ST_GONE
@@ -250,7 +254,7 @@ class Http extends RefCounted:
 		retries += 1
 		_wait = _backoff
 		max_backoff = maxf(max_backoff, _backoff)
-		_backoff = minf(_backoff * 2.0, RETRY_MAX)
+		_backoff = minf(_backoff * 2.0, retry_max)
 
 	func _gone(w: String) -> void:
 		state = ST_GONE

@@ -293,8 +293,11 @@ static func enter_own_live(tree: SceneTree, g: Dictionary, back: String, names: 
 
 
 ## 跟播自己那一局的块来源(还在算 ⇒ finished = false: 404 只等不判没有)。会话在 VS 卡上先建它拉开播那几块, 进场时交给 `enter_own_live`。
+##   重试间隔最多 1 秒(OWN_RETRY_MAX): 开算后头几块没录出来时不把间隔翻到 4 秒(内测服彩排 2026-10-29)。
+const OWN_RETRY_MAX := 1.0
+
 static func own_live_source(id: String) -> StreamSource.Http:
-	var src := StreamSource.Http.new(base_url(), id, {"finished": false})
+	var src := StreamSource.Http.new(base_url(), id, {"finished": false, "retry_max": OWN_RETRY_MAX})
 	src.on_update_required = func() -> void: SB._note_update_signal({"code": 426})
 	return src
 
