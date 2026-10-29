@@ -772,14 +772,26 @@ func _pk_refresh() -> void:
 		_pk_gain_vr = 1.0
 		_pk_egg_sl = 1.0
 		_pk_egg_sr = 1.0
+		## 目标也回满、读数先清空：新一路的单位要是还没登场（下面分母 0 那一支不动它们），就停在满条、不挂上一路的旧读数。
+		_pk_target_l = 1.0
+		_pk_target_r = 1.0
+		_pk_lab_l.text = ""
+		_pk_lab_r.text = ""
+		_pk_lab_l2.text = ""
+		_pk_lab_r2.text = ""
 	_pk_base_l = l.y                    # 留着给门禁/调试看当前分母
 	_pk_base_r = r.y
-	_pk_target_l = 0.0 if l.y <= 0.0 else clampf(l.x / l.y, 0.0, 1.0)
-	_pk_target_r = 0.0 if r.y <= 0.0 else clampf(r.x / r.y, 0.0, 1.0)
-	_pk_lab_l.text = "%d%%" % int(round(_pk_target_l * 100.0))
-	_pk_lab_r.text = "%d%%" % int(round(_pk_target_r * 100.0))
-	_pk_lab_l2.text = _pk_num(l.x)
-	_pk_lab_r2.text = _pk_num(r.x)
+	## ★2026-10-29 这一侧一只计入主条的单位都没有（分母 0：开场还没登场 / 换路已清场、新一路还没登场）⇒ 条与读数原样不动。
+	##   原来直接写 0 ⇒ 跟播自己这一局（没有幕布盖着）开场血条「满 → 0% → 满」闪一下（用户看录屏「雷点很多」）。
+	##   死光是另一回事：死了的单位照样算进分母，分子 0 ⇒ 照旧掉到 0（门禁 verify_battle_hud_r1 ②③）。
+	if l.y > 0.0:
+		_pk_target_l = clampf(l.x / l.y, 0.0, 1.0)
+		_pk_lab_l.text = "%d%%" % int(round(_pk_target_l * 100.0))
+		_pk_lab_l2.text = _pk_num(l.x)
+	if r.y > 0.0:
+		_pk_target_r = clampf(r.x / r.y, 0.0, 1.0)
+		_pk_lab_r.text = "%d%%" % int(round(_pk_target_r * 100.0))
+		_pk_lab_r2.text = _pk_num(r.x)
 	## (右侧读数原来每次刷新按内容宽重贴右端 —— 读数挪到固定宽的斜牌里之后, 牌子定宽、字在牌里右对齐, 不用再贴。)
 	# ── 副条: 龟蛋 ──
 	var el := _pk_egg_sum("left")

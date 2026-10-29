@@ -365,7 +365,12 @@ func _t_h4() -> void:
 	_ok("H4 ★那一刻不落任务单（单子仍是排队单，没有任务号）", RW.is_queue_bill(_gs.referee_pending)
 		and int((_gs.referee_pending as Dictionary).get("job_id", -1)) <= 0, str(_gs.referee_pending))
 	## 遮罩约 1.5 秒后换到匹配屏（SceneNav.go 是 deferred 换场景）⇒ 匹配屏认领、落任务单、查任务
+	##   顺带逐帧记常驻背景藏没藏过（换场空隙不许透出绿瓷砖）
+	var pbg := get_node_or_null("/root/PersistentBg")
+	var hid := [false]
 	var ok := await _wait(func() -> bool:
+		if pbg != null and not bool(pbg.visible):
+			hid[0] = true
 		var cs := get_tree().current_scene
 		return cs != null and cs != _stub and _run_of(cs) == run and int((_gs.referee_pending as Dictionary).get("job_id", -1)) == _job, 9000)
 	var cs := get_tree().current_scene
@@ -381,6 +386,8 @@ func _t_h4() -> void:
 	_ok("H4 ★认领已配上的那一局 ⇒ 没有「匹配中」找对手那一幕、对手卡已备好（VS 卡）", not searching
 		and not (_gs.dual_opponent as Dictionary).is_empty(), "searching=%s opp=%s" % [str(searching), str(_gs.dual_opponent.keys())])
 	_ok("H4 锁解开（不在排队了）", not RW.queue_locked())
+	_ok("H4 ★遮罩换到匹配屏的空隙：常驻背景藏起过（不透出绿瓷砖）、匹配屏挂上后又恢复",
+		pbg != null and bool(hid[0]) and bool(pbg.visible), "pbg=%s hid=%s back=%s" % [str(pbg != null), str(hid[0]), str(pbg.visible) if pbg != null else "-"])
 	await _close(cs)
 	_gs.referee_pending = {}
 

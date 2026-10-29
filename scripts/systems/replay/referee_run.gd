@@ -322,7 +322,12 @@ static func open_queue_screen(tree: SceneTree) -> void:
 func _found() -> void:
 	_to(RW.ST_FOUND, "")
 	var tree := get_tree()
-	var go := func() -> void: open_queue_screen(tree)
+	var go := func() -> void:
+		## 换场空隙露黑底、不闪常驻背景的绿瓷砖：遮罩的暗幕是半透明的，换场那几帧绿底会透出来（2026-10-29 录屏逐帧量到；同 MatchmakingScene._leave_to_menu）
+		var pbg := tree.root.get_node_or_null("PersistentBg")
+		if pbg != null and pbg.has_method("dark_once"):
+			pbg.dark_once()
+		open_queue_screen(tree)
 	var ov = load(OVERLAY) if ResourceLoader.exists(OVERLAY) else null
 	if ov != null:
 		ov.show_then(tree, go)

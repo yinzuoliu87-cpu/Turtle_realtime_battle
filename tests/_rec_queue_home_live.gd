@@ -38,6 +38,12 @@ var _pair := false
 var _job_status := "pending"
 var _t0 := 0
 var _join_ms := 0                 ## 进队那一刻（假服务器回的「已等待」按它往上数，像真服务器）
+## 这一局真实录下的结果（假服务器的 referee_job_status 照它回）。原来写死「赢」⇒ 片子里终极战场我方团灭、蛋被打爆，结算屏却是「胜利」（2026-10-29 逐帧复查逮到）。
+var _a_won := false
+var _coins := 0
+var _score := 0
+var _wall0 := -1                  ## 墙钟限速的起点（微秒）；-1 = 还没开始（算局那一段不限速）
+var _wf0 := 0
 
 
 func _log(s: String) -> void:
@@ -70,6 +76,10 @@ func _ready() -> void:
 	_chunks = res.get("stream_chunks", [])
 	_meta = (res.get("stream", {}) as Dictionary).duplicate()
 	_seed = int(nat["seed"])
+	_a_won = bool(res.get("a_won", false))     # 我方 = A（配对回的 side = "a"）
+	_coins = int(res.get("coins", 0))
+	_score = int(res.get("score_code", 0))
+	print("[REC] 本局录下的结果: 我方%s · 各路 %s · 铸币 %d" % ["胜" if _a_won else "负", str(res.get("lane_results", {})), _coins])
 	if _chunks.is_empty():
 		print("REC FAIL: 没录到流")
 		get_tree().quit(1)
@@ -91,8 +101,21 @@ func _ready() -> void:
 	SB._token = "tok"
 	SB._expires_at = int(Time.get_unix_time_from_system()) + 3600
 	_t0 = Engine.get_process_frames()
+	_wall0 = Time.get_ticks_usec()
+	_wf0 = _t0
 	_log("START 演示开始（这之前是本进程算局录流，剪掉）")
 	await _demo()
+
+
+## 墙钟限速：Movie Maker 按固定 60 帧出片、菜单页渲染比真时间快 ⇒ 按墙钟走的「已等待」在片子里只走半速
+##   （片子第 4 秒还写「已等待 1 秒」，2026-10-29 逐帧复查逮到）。这里让墙钟不快于片子（只会等，不会追：渲染慢的那几段照旧）。
+func _process(_d: float) -> void:
+	if _wall0 < 0:
+		return
+	var due := _wall0 + int(float(Engine.get_process_frames() - _wf0) * 1000000.0 / FPS)
+	var now := Time.get_ticks_usec()
+	if due > now:
+		OS.delay_usec(due - now)
 
 
 func _setup_gs() -> void:
@@ -161,7 +184,8 @@ func _transport(m, u, _h, b, cb) -> void:
 		"referee_job_status":
 			if _job_status == "done":
 				cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "done", "match_id": MID,
-					"won": true, "score": 0, "gw": int(_gs.gauntlet_wins) + 1, "gl": int(_gs.gauntlet_losses), "coins": 6, "error": null})})
+					"won": _a_won, "score": _score, "gw": int(_gs.gauntlet_wins) + (1 if _a_won else 0),
+					"gl": int(_gs.gauntlet_losses) + (0 if _a_won else 1), "coins": _coins, "error": null})})
 			else:
 				cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": _job_status, "match_id": MID})})
 			return

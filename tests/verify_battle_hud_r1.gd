@@ -76,6 +76,7 @@ func _ready() -> void:
 	_scope(s)
 	_denominator(s)
 	_lane_reset(s)
+	_no_units(s)
 	_smooth_and_trail(s)
 	_readout(s)
 	_vs_badge(s)
@@ -242,6 +243,39 @@ func _lane_reset(s) -> void:
 	#   按单位数判换路会被【任何中途增减计数单位】误触发, 表现就是两条莫名满格。
 	#   现在按路 id 判, 所以这里改验"路 id 已记下"。
 	_ok("④ 换路后已记下当前路 id", s._hud._pk_lane != "", "lane=%s" % s._hud._pk_lane)
+
+
+## ④b 一只计入主条的单位都没有（分母 0）⇒ 条与读数原样不动（2026-10-29）
+##   由来：跟播自己这一局没有幕布盖着，开场单位还没登场那两秒血条「满 → 0% → 满」闪一下（用户看录屏「雷点很多」）。
+##   与「死光」不同：死人仍算分母，分子 0 ⇒ 照旧 0（② ③ 那两条守着）。
+func _no_units(s) -> void:
+	print("  ── ④b 没有单位（开场未登场 / 换路已清场）⇒ 条不动 ──")
+	var h = s._hud
+	GameState.current_lane = "top"
+	s._hud._pk_lane = ""
+	s._units.clear()
+	h._pk_refresh()
+	_ok("④b ★开场一只单位都没有 ⇒ 两侧目标仍是满（不是 0）、不挂「0%」",
+		absf(s._hud._pk_target_l - 1.0) < 0.0001 and absf(s._hud._pk_target_r - 1.0) < 0.0001
+		and s._hud._pk_lab_l.text != "0%" and s._hud._pk_lab_r.text != "0%",
+		"左 %.4f「%s」右 %.4f「%s」" % [s._hud._pk_target_l, s._hud._pk_lab_l.text, s._hud._pk_target_r, s._hud._pk_lab_r.text])
+	s._units.append(_mk("left", 600, 1000))
+	s._units.append(_mk("right", 300, 1000))
+	h._pk_refresh()
+	_ok("④b 分母: 单位登场后照常算（0.6 / 0.3、读数 60% / 30%）",
+		absf(s._hud._pk_target_l - 0.6) < 0.0001 and absf(s._hud._pk_target_r - 0.3) < 0.0001
+		and s._hud._pk_lab_l.text == "60%" and s._hud._pk_lab_r.text == "30%",
+		"左 %.4f「%s」右 %.4f「%s」" % [s._hud._pk_target_l, s._hud._pk_lab_l.text, s._hud._pk_target_r, s._hud._pk_lab_r.text])
+	s._units.clear()
+	h._pk_refresh()
+	_ok("④b ★这一路清场了、还没换路 ⇒ 停在这一路的终值（不掉成 0）",
+		absf(s._hud._pk_target_l - 0.6) < 0.0001 and absf(s._hud._pk_target_r - 0.3) < 0.0001
+		and s._hud._pk_lab_l.text == "60%", "左 %.4f 右 %.4f" % [s._hud._pk_target_l, s._hud._pk_target_r])
+	GameState.current_lane = "bottom"
+	h._pk_refresh()
+	_ok("④b ★换路了、新一路还没登场 ⇒ 目标回满、旧读数清掉（不从满条再掉回上一路的 0.3）",
+		absf(s._hud._pk_target_l - 1.0) < 0.0001 and absf(s._hud._pk_target_r - 1.0) < 0.0001
+		and s._hud._pk_lab_r.text == "", "左 %.4f 右 %.4f「%s」" % [s._hud._pk_target_l, s._hud._pk_target_r, s._hud._pk_lab_r.text])
 
 
 ## ⑤ 平滑 + damage trail
