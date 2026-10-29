@@ -50,6 +50,10 @@ FALLBACK_SEC = 180                     # 服务端兜底线(真人等这么久�
 ## 用户 10-29「可以多等啊，3分钟」⇒ 真人最多等 = 兜底线(原来 120 是按 90 秒兜底定的)。
 ##   ★单看它是恒真的(过了兜底线就兜底, 不会再「配上真对手」) ⇒ 另加 WAIT_FAST: 配上真对手的局 ≥ FAST_SHARE 在它以内(调度器反应没变慢)。
 WAIT_MAX = FALLBACK_SEC
+## 服务端 20261029c: 真人进队前 HUMAN_ONLY_SEC 秒只配在线真人(真人 × 陪练号要真人那边等满它; 收盘前 RUSH_SEC 起不设)。
+##   用户 10-29 选 C「前 1 分钟只配在线真人；1 分钟后拉陪练号；陪练号也没有再拿真人快照，最后是系统阵容」。
+HUMAN_ONLY_SEC = 60
+RUSH_SEC = 660                         # = gauntlet_queue_close_rush_sec
 WAIT_FAST = 90
 FAST_SHARE = 0.95
 THREADS = 2
@@ -136,17 +140,51 @@ class World:
             qq[:] = [e for e in qq if e['id'] != eid]
         q = self.queue[x['cell']]
         q[:] = [e for e in q if self.online(e) and not self.ent(e['id'])['busy'] and self.ent(e['id'])['cell'] == x['cell']]
-        for e in q:
-            if e['id'] not in x['opp'] and eid not in self.ent(e['id'])['opp']:
+        me = {'id': eid, 'bot': is_bot, 'joined': self.t, 'dead': None, 'tok': tok}
+        hold = self.human_hold(q)
+        nbot = sum(1 for e in q if e['bot'] and self.online(e) and not self.ent(e['id'])['busy'])
+        for e in sorted(q, key=lambda e: (e['bot'], e['joined'])):      # 服务端: 真人先于陪练号, 再先来先配
+            if is_bot and e['bot'] and nbot - 1 < hold:
+                continue                                  # 互配之后剩下的陪练号不够分给还没满 1 分钟的真人 ⇒ 先不互配(留给他们)
+            if e['id'] not in x['opp'] and eid not in self.ent(e['id'])['opp'] and self.can_pair(e, me):
                 q.remove(e)
-                self.pair(e, {'id': eid, 'bot': is_bot, 'joined': self.t})
+                self.pair(e, me)
                 return
-        e = {'id': eid, 'bot': is_bot, 'joined': self.t, 'dead': None, 'tok': tok}
-        q.append(e)
+        q.append(me)
         if is_bot:
             self.push(self.t + P.GIVEUP_SEC.get(self.clients[eid]['purpose'], 300), 'giveup', eid, tok)
         else:
+            self.push(self.t + HUMAN_ONLY_SEC, 'open', eid, tok)     # 等满 1 分钟: 再试配同格子在等的陪练号
             self.push(self.t + FALLBACK_SEC, 'fallback', eid, tok)
+
+    def human_hold(self, q):
+        """服务端 20261029c 同口径: 这一格在线、还没满 HUMAN_ONLY_SEC 的真人有几个(收盘前 RUSH_SEC 起 = 0)。"""
+        if self.t >= CLOSE - RUSH_SEC:
+            return 0
+        return sum(1 for e in q if not e['bot'] and self.online(e) and self.t - e['joined'] < HUMAN_ONLY_SEC)
+
+    def flush(self, cell):
+        """服务端每 2 秒 poll 都会重试配对; 推演只在事件点重试: 真人刚配走 / 刚满 1 分钟后, 这一格剩下的按同一规则再配一轮。"""
+        q = self.queue.get(cell, [])
+        while True:
+            live = sorted([e for e in q if self.online(e) and not self.ent(e['id'])['busy']], key=lambda e: (e['bot'], e['joined']))
+            hold = self.human_hold(q)
+            nbot = sum(1 for e in live if e['bot'])
+            pr = next(((a, b2) for i, a in enumerate(live) for b2 in live[i + 1:]
+                       if not (a['bot'] and b2['bot'] and nbot - 2 < hold) and a['id'] not in self.ent(b2['id'])['opp']
+                       and b2['id'] not in self.ent(a['id'])['opp'] and self.can_pair(a, b2)), None)
+            if pr is None:
+                return
+            q.remove(pr[0])
+            q.remove(pr[1])
+            self.pair(pr[0], pr[1])
+
+    def can_pair(self, a, b):
+        """服务端 20261029c 同口径: 真人 × 陪练号要真人那边进队满 HUMAN_ONLY_SEC(收盘前 RUSH_SEC 起不设)。"""
+        if a['bot'] == b['bot'] or self.t >= CLOSE - RUSH_SEC:
+            return True
+        h = a if not a['bot'] else b
+        return self.t - h['joined'] >= HUMAN_ONLY_SEC
 
     def pair(self, e1, e2):
         a, b = (e1, e2) if not e1['bot'] else (e2, e1)
@@ -327,6 +365,20 @@ class World:
                 cl = self.clients.get(a[1])
                 if cl and cl['tok'] == a[2]:
                     self.exit_client(a[1])
+            elif k == 'open':
+                hid = a[1]
+                q = self.queue.get(self.humans[hid]['cell'], [])
+                e = next((e for e in q if e['id'] == hid and e['tok'] == a[2]), None)
+                if e is not None:
+                    h = self.humans[hid]
+                    o = next((o for o in sorted(q, key=lambda o: o['joined']) if o is not e and self.online(o)
+                              and not self.ent(o['id'])['busy'] and o['id'] not in h['opp'] and hid not in self.ent(o['id'])['opp']
+                              and self.can_pair(o, e)), None)
+                    if o is not None:
+                        q.remove(e)
+                        q.remove(o)
+                        self.pair(o, e)
+                    self.flush(h['cell'])
             elif k == 'fallback':
                 hid = a[1]
                 q = self.queue.get(self.humans[hid]['cell'], [])
