@@ -30,4 +30,24 @@ HEADLESS="--headless"
 ## ★默认整层停用后端(2026-10-21: 单跑测试没带 TURTLE_BACKEND / TURTLE_SUPABASE ⇒ 默认连正式服, 一晚上 4 个匿名号进了正式库)。
 ##   调用方自己给了值就用调用方的(测试接假服务器等); 真要连服务器看效果: ONLINE=1。
 if [ -z "${ONLINE:-}" ]; then export TURTLE_BACKEND="${TURTLE_BACKEND- }" TURTLE_SUPABASE="${TURTLE_SUPABASE- }"; fi
+
+## ★默认给一份临时 user://(2026-10-29): 有 26 个测试会自己把 test_mode 关掉再 save(它们以为跑在隔离目录里),
+##   在本机真实目录里单跑 ⇒ verify_tutorial_flow_v3 把假账号 gate-acc-tut 写进了用户的真存档,
+##   桌面 exe 开局拿着这个账号去刷新令牌, 刷回来是别的号 ⇒ 好友页「网络异常」。run-tests.sh 每个测试各给一份, 这里原来没给。
+##   调用方自己给了 APPDATA / XDG_DATA_HOME(不是本机默认那个)就用调用方的; 真要用本机真实存档: REALUSER=1。
+##   Windows 的 user:// 看 APPDATA, Linux 看 XDG_DATA_HOME —— 两个都设(只设一个只在一个平台上算数)。
+##   不删目录(exec 之后 PID 就是 Godot, 按 PID 杀得到它); 每次顺手清掉一天前的旧目录。
+if [ -z "${REALUSER:-}" ]; then
+  _norm () { cygpath -u "$1" 2>/dev/null || printf '%s' "$1"; }
+  _custom=""
+  [ -n "${APPDATA:-}" ] && [ "$(_norm "$APPDATA")" != "$(_norm "${USERPROFILE:-$HOME}/AppData/Roaming")" ] && _custom=1
+  [ -n "${XDG_DATA_HOME:-}" ] && [ "$(_norm "$XDG_DATA_HOME")" != "$(_norm "$HOME/.local/share")" ] && _custom=1
+  if [ -z "$_custom" ]; then
+    _tmp="${TMPDIR:-/tmp}"
+    find "$_tmp" -maxdepth 1 -name 'godot-quiet-ud.*' -mtime +1 -exec rm -rf {} + 2>/dev/null
+    _ud="$(mktemp -d "$_tmp/godot-quiet-ud.XXXXXX")"
+    export XDG_DATA_HOME="$_ud" APPDATA="$(cygpath -w "$_ud" 2>/dev/null || printf '%s' "$_ud")"
+    echo "[godot-quiet] user:// 用临时目录 $APPDATA (要用本机真实存档: REALUSER=1)" >&2
+  fi
+fi
 exec env QUIET=1 "$GODOT" $HEADLESS --audio-driver Dummy --path "$DIR" "$@"
