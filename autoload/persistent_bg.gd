@@ -16,6 +16,21 @@ func _init() -> void:
 	lite_tex = LiteTexLoader.install_if_bot(DisplayServer.get_name() == "headless", OS.get_environment("SIM_DRIVER"))
 
 
+## 下一次换场景的空隙露黑底（默认清屏色）而不是绿瓷砖：上一屏是渐黑离场的 ⇒ 黑 → 绿闪 → 新页面那一下就没了（2026-10-29 录屏逐帧量到 3 帧）。
+##   新场景挂上并画过两帧后自己恢复；最多等 2 秒（换场失败也不会一直黑着）。
+func dark_once() -> void:
+	visible = false
+	var tree := get_tree()
+	var cs0 := tree.current_scene
+	var n := 0
+	while n < 120 and (tree.current_scene == cs0 or tree.current_scene == null):
+		await tree.process_frame
+		n += 1
+	await tree.process_frame
+	await tree.process_frame
+	visible = true
+
+
 func _ready() -> void:
 	layer = -100   # 顶到最底, 在所有场景/CanvasLayer 之后渲染
 	if DisplayServer.get_name() == "headless":

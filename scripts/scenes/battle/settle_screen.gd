@@ -371,6 +371,11 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		for ln in ["top", "bottom", "final"]:
 			if (lr as Dictionary).has(ln):
 				row.add_child(_lane_plate(str(battle._LANE_CN.get(ln, ln)), _as_viewer(str(lr[ln]))))
+			elif ln == "final" and final_implied(lr as Dictionary, str(gs.get("current_lane"))):
+				## 打到了终极战场（上下路一胜一负）⇒ 它的胜方就是整场胜方（`won` 已是看的人口径）。
+				##   ★直播流（跟播 / 看服务器那一局）在全场结束那一步不再发 HUD 全局量 ⇒ 播放端拿不到终极战场那一条，原来只画两块牌、
+				##   一胜一负却写「胜利」看着自相矛盾（用户 2026-10-29 看录屏）。
+				row.add_child(_lane_plate(str(battle._LANE_CN.get(ln, ln)), "left" if won else "right"))
 		v.add_child(row)
 		hud._banner_fade_in(row, 0.34)
 	## ④ 奖励块(产品自己的那一排, 只是字号放大)
@@ -492,6 +497,12 @@ func _pop_coin_chip(chips: Control, tw: Tween, delay: float) -> void:
 
 
 ## 录像里的胜方(left / right)⇒ 看的人口径(left = 我方赢): 看的人是 B 时左右对调, 其余原样。平局等别的值原样。
+## 各路结果里缺终极战场、但这一局确实打到了终极战场（当前路 = final，上下路一胜一负）。纯函数（门禁直接调）。
+##   ★只认「当前路 = final」：练习赛只有两路，一胜一负也不打终极战场，不许补。
+static func final_implied(lr: Dictionary, cur_lane: String) -> bool:
+	return cur_lane == "final" and not lr.has("final") and lr.has("top") and lr.has("bottom") 		and str(lr["top"]) != str(lr["bottom"])
+
+
 func _as_viewer(who: String) -> String:
 	if ReplayRecorder.viewer_side(battle) != "b":
 		return who

@@ -264,7 +264,7 @@ func _on_queue_home() -> void:
 		if _ref_run.changed.is_connected(_on_referee_changed):
 			_ref_run.changed.disconnect(_on_referee_changed)
 		_ref_run = null
-		_queue_box_free()
+		## ★等待界面留着一起渐黑（原来先拆掉它 ⇒ 渐黑那 0.4 秒露出底下「匹配中 · 正在匹配对手」那一屏，用户看录屏「雷点」）
 		_leave_to_menu("")
 		return
 	_on_queue_back()
@@ -423,6 +423,10 @@ func _leave_to_menu(note: String) -> void:
 		return
 	_cancelled = true                 # 之后 `_server_pick` / 雷达环那几条协程见到它就收手(同「←」)
 	GameState.mode = "single"         # 与「←」同一句: 离开双路 → 中性态
+	## 已经渐黑了: 换场空隙露黑底, 不闪常驻背景的绿瓷砖(黑 → 绿闪 3 帧 → 主菜单, 2026-10-29 录屏逐帧量到)
+	var pbg = get_node_or_null("/root/PersistentBg")
+	if pbg != null and pbg.has_method("dark_once"):
+		pbg.dark_once()
 	SceneNav.go(get_tree(), MENU_SCENE)
 
 

@@ -90,6 +90,16 @@ var wait_text := ""
 var fights: Array = []
 var total_hint := -1
 var _no_curtain := false
+## ★2026-10-29 没有幕布时（跟播自己这一局 / 赛况板观战：入口拿不到对手完整阵容），幕布那几段（对阵总览 5 秒 + 预览 5 秒 / 每路结算 5 秒）
+##   按这个倍数走过去：原来那几段画面是一片没有单位的空场地、两边血条 0%，开场一等就是 10 秒（用户看录屏「雷点很多」）。
+##   追上服务器那一刻照旧停在缓冲尾部「同步中」，绝不本机补算。
+const GAP_FF := 10.0
+const GAP_STATES := ["overview", "preview", "lane_settle"]
+
+
+## 这一帧的推进倍率（纯函数，门禁直接调）：没有幕布且正处在幕布那几段 ⇒ GAP_FF；否则 1。
+static func gap_mul(no_curtain: bool, dl: String) -> float:
+	return GAP_FF if no_curtain and dl in GAP_STATES else 1.0
 ## 上一次跑渲染步时的播放头(这一帧的渲染步只补「从那以后」的那一段时长)
 var _rh := -1.0
 ## 一帧推多步时, 在中间的采样步上补跑的渲染步次数(观测量)
@@ -161,7 +171,7 @@ func _tick(rd: float) -> void:
 			return
 	if paused:
 		return
-	var target := head + rd * 60.0 * speed
+	var target := head + rd * 60.0 * speed * gap_mul(_no_curtain, str(battle._dl_state))
 	if absf(target - roundf(target)) < 1.0e-6:
 		target = roundf(target)      # 2/60 × 60 在浮点里可能是 1.9999…: 别因此少应用一步
 	if target >= float(_last_step):

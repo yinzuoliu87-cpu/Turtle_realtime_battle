@@ -21,6 +21,7 @@ const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const MMK := preload("res://scripts/scenes/MatchmakingScene.gd")
 const BP := preload("res://scripts/referee/bot_pool.gd")
 const QW := preload("res://scripts/scenes/queue_wait_view.gd")
+const SETTLE := preload("res://scripts/scenes/battle/settle_screen.gd")
 const MMK_SCENE := "res://scenes/Matchmaking.tscn"
 const ME := "11111111-2222-4333-8444-555555555555"
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
@@ -86,6 +87,7 @@ func _ready() -> void:
 	MMK._may_leave_for_test = func(_to: String) -> bool: return false   # 「回主菜单」只量到出口，不真换场景
 	await _t_h1_h2_h3()
 	await _t_h4()
+	await _t_u()
 	await _t_h5()
 	await _t_h6()
 	_cleanup()
@@ -283,6 +285,12 @@ func _t_h1_h2_h3() -> void:
 		run != null and is_instance_valid(run) and run.get_parent() == get_tree().root and str(run.name) == RUN.ROOT_NAME
 		and _active() == run, str(run.get_parent()) if run != null and is_instance_valid(run) else "freed")
 	_ok("H1 匹配屏走到「回主菜单」出口、自己不再引用会话", m.get("_ref_run") == null)
+	var ring := false
+	for l in m.find_children("*", "Label", true, false):
+		if (l as Label).text == "匹配中" and (l as Label).is_visible_in_tree():
+			ring = true
+	_ok("U3 ★渐黑离场时等待界面还在、底下那一屏「匹配中」雷达环没露出来（录屏逐帧量到的那一闪）",
+		m.find_child(QW.N_BOX, true, false) != null and not ring, "ring=%s" % str(ring))
 	await _close(m)
 	var p0 := _hit(POLL)
 	await _wait(func() -> bool: return _hit(POLL) >= p0 + 2, 7000)
@@ -305,6 +313,42 @@ func _t_h1_h2_h3() -> void:
 	await _wait(func() -> bool: return _active() == null or str(run.state) == RW.ST_LEFT, 5000)
 	await _close(m2)
 	_ok("H3 收尾: 取消出队后 queue_locked() 为假", not RW.queue_locked())
+
+
+# ───────────────────────────── U 录屏逐帧量到的几处 ─────────────────────────────
+func _t_u() -> void:
+	print("── U 录屏逐帧量到的几处（跟播开场空场地 / 结算缺终极战场 / 换场闪绿）──")
+	_ok("U1 ★没有幕布时幕布那几段（总览 / 预览 / 路结算）按 %.0f 倍走过去；打仗时 / 有幕布时 1 倍" % StreamPlayer.GAP_FF,
+		StreamPlayer.gap_mul(true, "overview") == StreamPlayer.GAP_FF and StreamPlayer.gap_mul(true, "preview") == StreamPlayer.GAP_FF
+		and StreamPlayer.gap_mul(true, "lane_settle") == StreamPlayer.GAP_FF and StreamPlayer.GAP_FF >= 5.0
+		and StreamPlayer.gap_mul(true, "fight") == 1.0 and StreamPlayer.gap_mul(false, "preview") == 1.0)
+	_ok("U2 ★打到了终极战场、结果没传到 ⇒ 补画终极战场；练习赛（只两路）/ 同胜 / 已有 / 缺上下路 ⇒ 不补",
+		SETTLE.final_implied({"top": "left", "bottom": "right"}, "final")
+		and not SETTLE.final_implied({"top": "left", "bottom": "right"}, "bottom")
+		and not SETTLE.final_implied({"top": "left", "bottom": "right"}, "done")
+		and not SETTLE.final_implied({"top": "left", "bottom": "left"}, "final")
+		and not SETTLE.final_implied({"top": "left", "bottom": "right", "final": "left"}, "final")
+		and not SETTLE.final_implied({"top": "left"}, "final"))
+	var pbg = get_node_or_null("/root/PersistentBg")
+	_ok("U4 分母: 常驻背景在", pbg != null and pbg.has_method("dark_once"))
+	if pbg == null:
+		return
+	pbg.visible = true
+	pbg.dark_once()
+	var hid := not bool(pbg.visible)
+	var nx := Node.new()
+	nx.name = "NextScene"
+	get_tree().root.add_child(nx)
+	var old := get_tree().current_scene
+	get_tree().current_scene = nx
+	await _frames(1)
+	var still := not bool(pbg.visible)
+	await _wait(func() -> bool: return bool(pbg.visible), 3000)
+	_ok("U4 ★渐黑换场：常驻背景当场藏起（空隙露黑底不闪绿）、新场景画过两帧后恢复", hid and still and bool(pbg.visible),
+		"hid=%s still=%s back=%s" % [str(hid), str(still), str(pbg.visible)])
+	get_tree().current_scene = old if old != null and is_instance_valid(old) else _stub
+	nx.queue_free()
+	await _frames(2)
 
 
 # ───────────────────────────── H4 R2 ─────────────────────────────

@@ -77,6 +77,9 @@ func _ready() -> void:
 	_setup_gs()
 	P2C.now_override_ts = P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 5 * 86400 + 12 * 3600
 	_gs.week_anchor_ts = P2C.week_anchor_utc(P2C.now_utc())
+	## 真流程在选队那一步把开局阶段钉进存档（TeamSelectScene `week_phase = phase_at_utc(now)`）；录屏台跳过了选队，这里补上，
+	##   否则结算屏按「积分赛」多放一格「本周场次 0/16」（2026-10-29 逐帧复查逮到，是录屏台的漏洞不是游戏的）。
+	_gs.week_phase = P2C.phase_at_utc(P2C.now_utc())
 	_http = H.new()
 	add_child(_http)
 	_http.start()
@@ -112,6 +115,7 @@ func _setup_gs() -> void:
 	_gs.gauntlet_wins = 2
 	_gs.gauntlet_losses = 1
 	_gs.battles_total = 9
+	_gs.season_total_battles = 9      # 能打到周六闯关赛的人本大轮必然打过积分赛；不设则商店那一行写「首战后解锁」而不是「匹配中」
 	_gs.meta_deepsea_coins = 40
 	_gs.referee_pending = {}
 	_gs.replay_pending_id = ""
