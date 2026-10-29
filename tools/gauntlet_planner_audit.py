@@ -4,7 +4,7 @@
 用户 10-27:「假如我在周六凌晨点击锁定，那我是不是能在十分钟或者二十分钟之内匹配到一个对手…掉到零杠一或者一杠零，那我有人打吗？
 二杠零、零杠二、一杠一呢…三杠零、二杠一、一杠二…所有的情况」「我们自己的号都是零杠零开局的…到周日之后…三杠二这些号…怎么处理他们呢？」
 拿**真的 decide** 推演整个周末(周六 00:00 ~ 周日 17:30 UTC), 服务器 / 裁判 / 客户端是假的(事件驱动):
-  · 排队: 同格子先来先配、本周交过手的不配、15 秒没心跳的不配; 收盘前 10 分钟起不收新条目。真人等满 FALLBACK_SEC 由服务端退回机器人池(兜底, 计数)。
+  · 排队: 同格子先来先配、本周交过手的不配、15 秒没心跳的不配; 收盘前 10 分钟起不收新条目。真人等满 FALLBACK_SEC 由服务端兜底(先同格子真人快照、再机器人池; 计数)。
   · 裁判: THREADS 个线程、FIFO, 一局 25~45 秒; 真人对陪练号 / 兜底真人赢 55%, 号对号 50%。
   · 陪练客户端: 拉起到进排队 40~60 秒; 打完结算 20 秒, 还要打就逛商店 60~240 秒再排, 打完 / 局数到了就下线; 排队等满 GIVEUP 自己下线。
   · 真人: 到了就一口气打完(每局后 150~270 秒再排, 「最快的真人」150 秒); 收盘前 10 分钟 + 70 秒起不再排。
@@ -46,8 +46,12 @@ CLOSE = P.close_of_week(MON)
 SAT0 = P.saturday_of(CLOSE)
 LOCKOUT = CLOSE - P.DEFAULTS['LOCKOUT_SEC']
 HUMAN_CUTOFF = LOCKOUT - P.DEFAULTS['STARTUP_SEC'] - P.DEFAULTS['TICK_SEC']   # 真人最后能排的时刻(服务端 join 截止, 见回报)
-WAIT_MAX = 120
-FALLBACK_SEC = 90                      # 服务端兜底线(真人等这么久还没对手 ⇒ 机器人池)
+FALLBACK_SEC = 180                     # 服务端兜底线(真人等这么久还没对手 ⇒ 先真人快照、再机器人池; 20261029b 起 180 秒)
+## 用户 10-29「可以多等啊，3分钟」⇒ 真人最多等 = 兜底线(原来 120 是按 90 秒兜底定的)。
+##   ★单看它是恒真的(过了兜底线就兜底, 不会再「配上真对手」) ⇒ 另加 WAIT_FAST: 配上真对手的局 ≥ FAST_SHARE 在它以内(调度器反应没变慢)。
+WAIT_MAX = FALLBACK_SEC
+WAIT_FAST = 90
+FAST_SHARE = 0.95
 THREADS = 2
 P_HUMAN_WIN = 0.55
 STALE_SEC = 6 * 3600
@@ -688,6 +692,10 @@ def main():
             s = rs[('s', n, h, par, 1, ())]
             tag = 'N=%d H=%d' % (n, h)
             ok('① %s 配上真对手的等待都 ≤ %d 秒(%d 次)' % (tag, WAIT_MAX, s['real']), s['mx'][0] <= WAIT_MAX, 'max=%d' % s['mx'][0])
+            if s['real'] >= 20:
+                fast = sum(c for hi, c in zip((30, 60, 90, 120, 1e9), s['buckets']) if hi <= WAIT_FAST)   # 分档上沿 ≤ WAIT_FAST 的(30/60/90/120 之一)
+                ok('① %s 配上真对手的局 ≥ %d%% 在 %d 秒内(%d / %d)' % (tag, int(FAST_SHARE * 100), WAIT_FAST, fast, s['real']),
+                   fast >= FAST_SHARE * s['real'], '分布 %s' % str(s['buckets']))
             if n >= 57 and h <= 5:
                 late_fb = [x for x in s['fb'] if x[0] >= SAT0 + 1800]
                 ok('① %s 号够、真人少: 开赛 30 分钟之后零兜底(开赛那段见 ⑨)' % tag, not late_fb, str([(hm(t), g) for t, g, _c in late_fb[:3]]))

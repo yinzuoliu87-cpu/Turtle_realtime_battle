@@ -28,7 +28,7 @@ decide(state, now, rng) 是纯函数(门禁拿真函数推演), 每 10 秒一拍
   收盘前 10 分钟(CLOSE_LOCKOUT_SEC)+ STARTUP_SEC 起不拉号(拉起来也赶不上); 17:20 起让在线没在打的号下线。
   一个号同一时刻只在一个客户端里(在线 / 在算 / 排队条目还有效的都不拉)。0-0 本钱线见 DEFAULTS 的 HUMAN_PRIOR_PER_H / ROOT_SAFETY。
 
-兜底(不归本文件): 某格子的号用光、补也来不及时, 真人等满 90 秒由服务端在 poll 里退回机器人池(没有账号, 只记真人一边)。
+兜底(不归本文件): 某格子的号用光、补也来不及时, 真人等满 180 秒(20261029b)由服务端在 poll 里兜底: 先同格子真人快照, 再机器人池(都只记真人一边)。
 
 输入 state = 服务端 gauntlet_service_state(迁移 server/supabase/migrations/20261027_gauntlet_online_queue.sql, normalize 换成 epoch 秒)
   加本机的进程表 / 记忆:
