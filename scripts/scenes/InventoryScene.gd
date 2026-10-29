@@ -685,12 +685,27 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
 		tgl.position = Vector2((CARD_W - 104.0) * 0.5, NAME_Y - 2.0); tgl.size = Vector2(104, 40)
 		tgl.focus_mode = Control.FOCUS_NONE
-		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
-		## 热区 = 立绘窗下半截(44pt 达标); 立绘本来就不是别的操作的靶子
+		## ★签整块被下面的 TouchPad(它的子节点)盖着, 点击一直是 TouchPad 在收, 签自己的 pressed 从来收不到 ⇒ 不再接。
+		##   签用 PASS 而不是 STOP: 引擎找拖动源 / 落点时碰到 STOP 就停, 走不到卡片(见下)。
+		tgl.mouse_filter = Control.MOUSE_FILTER_PASS
+		## 热区 = 立绘窗下半截(44pt 达标)
+		## ★(2026-10-29 用户「拖不起来，你看这鼠标是不是有问题」) 原来是 STOP + 【按下就切】:
+		##   按下 → 存档 → 整页重建, 手底下这张卡当场没了; 引擎从按到的控件往上找拖动源 / 落点, 碰到 STOP 就停。
+		##   实测: 普通小将卡只有 143/234 个点拖得起、42/63 个点接得住, 按在立绘下半截还会偷偷切前后排。
+		##   改成 PASS(拖动 / 落点穿到卡片) + 松手且没怎么动才算点一下(与卡片自己的点击同一口径)。
+		##   守卫: tests/verify_inventory_minion_drag.gd
 		var pad := Control.new(); pad.name = "TouchPad"
 		pad.position = Vector2(-((CARD_W - 2.0 * CARD_BORDER) - 96.0) * 0.5, 38.0 - 81.0 + 2.0); pad.size = Vector2(CARD_W - 2.0 * CARD_BORDER, 81)
-		pad.mouse_filter = Control.MOUSE_FILTER_STOP
-		pad.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_toggle_role(lane, idx))
+		pad.mouse_filter = Control.MOUSE_FILTER_PASS
+		var _pad_press := {"p": Vector2.ZERO}
+		pad.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+				if ev.pressed:
+					_pad_press["p"] = ev.position
+				elif ev.position.distance_to(_pad_press["p"]) < 16.0:
+					## 这一下归签, 别再冒到卡片上被算成「选中这张卡」
+					pad.accept_event()
+					_dl_toggle_role(lane, idx))
 		tgl.add_child(pad)
 		box.add_child(tgl)
 	## 状态描边(选中 = 金 / 选了装备时可装 = 绿): 像素直边四条, 不靠给深色木框乘色(乘法提不亮)

@@ -52,10 +52,18 @@ func _build_slots() -> void:
 		# 空槽透明 (露出背景画好的 "+"); 填充后 _refresh_slots 换金边样式
 		panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 		# 整槽点击 → tap-swap
+		## ★松手且没怎么动才算点一下(2026-10-29 用户「拖不起来」): 原来【按下】就算, 而这个槽同时是拖动源 ——
+		##   拖一次后选中还挂着, 再按住同一格拖 = 「二次点同格 = 移除」, 龟在按下那一刻就被拿出阵容, 拖不起来;
+		##   选中别的格时按住拖 = 按下当场互换。拖动一旦开始, 松手送去落点, 这里收不到 ⇒ 拖和点不会叠。
+		##   守卫: tests/verify_team_slot_drag.gd
 		var idx = i
+		var press := {"p": Vector2.ZERO}
 		panel.gui_input.connect(func(ev: InputEvent) -> void:
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				_on_slot_click(idx))
+			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+				if ev.pressed:
+					press["p"] = ev.position
+				elif ev.position.distance_to(press["p"]) < 16.0:
+					_on_slot_click(idx))
 		# 拖放: 满槽可拖起 + 任意槽可作落点 (1:1 PoC slot draggable + drop)
 		panel.set_drag_forwarding(_slot_drag.bind(panel, idx), _slot_can_drop, _slot_drop.bind(idx))
 		# 内容容器

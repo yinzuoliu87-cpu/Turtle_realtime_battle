@@ -169,6 +169,8 @@ frames_for () {
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;
     verify_inventory_layout)  echo 4000 ;;
+    verify_team_slot_drag) echo 1000 ;;   # 2026-10-29 选统领页编队槽拖动 / 点选: 实测 175 帧, 给足余量
+    verify_inventory_minion_drag) echo 9000 ;;   # 2026-10-29 小将卡逐点按下横拖(9 张卡 × 63 点 × 8 帧) + 63 次整趟拖放; 实测 5875 帧 / 52 秒
     verify_codex_layout)      echo 6000 ;;
     verify_codex_equip_star)  echo 3000 ;;   # 96 件装备逐件打开两遍(简述不上屏 / ★2 正文无三档串), 实测 500 帧只跑到第 12 条
     verify_codex_skill_preview)  echo 5000 ;;   # 28 只龟逐页开被动 / 技能详情 / 火山形态(实测 3000 帧够; 默认 500 跑不完, 不打 ALL PASS)
