@@ -168,6 +168,9 @@ var _bg_tile: MenuArenaBackdrop   # 背景 = 擂台场景 (resize 时重新铺�
 
 
 func _ready() -> void:
+	## 冷启动第一屏: 工作室开场「灯鱼」盖在最上层播约 2.5 秒, 主菜单在下面照常搭(scripts/scenes/studio_intro.gd)。
+	##   无头 / 陪练号不播; 同一进程只播一次。
+	StudioIntro.play_once(get_tree())
 	## 首启的号这一屏马上要换去首启流程(见 _maybe_first_launch_tutorial): 从第一帧就藏着, 不闪一帧主菜单。
 	if _first_launch_wanted(false):
 		visible = false

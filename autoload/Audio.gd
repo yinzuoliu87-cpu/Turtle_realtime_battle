@@ -33,6 +33,10 @@ var bgm_volume: float = 0.45
 ## 上一局复算期间(快进, 遮罩盖着)不出音效: 一帧几百步, 每一击都生一个播放器会堆成几百个。
 ## 写的人: `AbandonedMatch.build_cover` / 撤遮罩时还原。不进存档(与 sfx_volume 那个玩家设置无关)。
 var mute_sfx := false
+## 开场标(scripts/scenes/studio_intro.gd)播着时压住背景音乐: play_bgm 照常换曲、起播, 但停在静音, 不淡入;
+##   开场结束调 release_bgm_hold() 再淡入。默认 false ⇒ 别的路径一字不变。
+var bgm_hold := false
+var _held_target_db: float = -80.0
 
 # SFX 播放器池 (一次性 spawn, 自动 free)
 var _sfx_cache: Dictionary = {}   # name → AudioStream
@@ -167,8 +171,21 @@ func play_bgm(name: String, fade_in_s: float = 1.0, base_vol: float = 0.45) -> v
 	# 淡入 (1:1 PoC battle BGM volume 0→target, Sine.easeIn)
 	var target_lin: float = base_vol * (bgm_volume / 0.45)
 	var target_db: float = linear_to_db(maxf(0.0001, target_lin))
+	if bgm_hold:
+		_held_target_db = target_db
+		return
 	var tween := create_tween()
 	tween.tween_property(_bgm_player, "volume_db", target_db, fade_in_s).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+
+## 开场标结束: 放开压着的背景音乐, 按 play_bgm 当时要的目标音量淡入。没压着 ⇒ 什么都不做。
+func release_bgm_hold(fade_in_s: float = 0.6) -> void:
+	if not bgm_hold:
+		return
+	bgm_hold = false
+	if _bgm_player != null and _bgm_player.playing and _current_bgm != "":
+		var tween := create_tween()
+		tween.tween_property(_bgm_player, "volume_db", _held_target_db, fade_in_s).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
 func stop_bgm(fade_out_s: float = 0.5) -> void:

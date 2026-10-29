@@ -117,6 +117,7 @@ WHY = {
     "clock_override_ts": "主菜单侧的同一条时间缝(截图台/门禁用)",
     "lockout_now_override": "选阵容屏的封盘时刻注入(同上, 门禁要钉住「现在」)",
     "strip_now_override": "主菜单赛程条的时刻注入(截图台/门禁用)",
+    "force_override": "工作室开场要不要播的门禁注入(无头下恒不播, verify_studio_intro 用它把开场造出来量; 产品只读)",
     "strip_finals_live_override": "把决赛日**手动**按成「没上线」(截图台/调试用)",
     "acct_override": "设置屏账号态注入 —— 登录墙那一屏只有靠它才建得出来(verify_ui_consistency 在用)",
     "display_row_override": "设置屏「当作手机建」注入 —— 无头门禁跑在桌面上, 手机那套右框排法(没有「画面」组、两组整块竖向居中)只能靠它真建出来量(verify_contact_email 在用)",
