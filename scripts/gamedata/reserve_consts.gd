@@ -21,10 +21,15 @@ const RANGE := 400.0                ## 远程普攻射程(同远程小将)
 const ENERGY := 135.0
 
 const WAVES := 4
-const WAVE_RADIUS := 260.0          ## 气波出现在目标前后左右多远
+## 用户 2026-10-29 看录屏:「这四个波的离角色距离还是有点近，可以远一点，然后移动速度还可以慢一点。还有的话，就这四个波至少是一次就是浮现，
+##   一次出现，然后顿一下…就在原地…动态个零点五秒左右，再开始移动」⇒ 半径 260 → 360、出现后原地停 WAVE_HOLD 秒、
+##   速度 380 → 210(★旧版标称 380 实际只有 285: 延时队列 0.05 秒一步要 4 个 1/60 秒 sim 步才到点; 现已按 sim 步对齐,
+##   标称 = 实际 ⇒ 210 比用户看到的旧速度慢约 1/4)。
+const WAVE_RADIUS := 360.0          ## 气波出现在目标前后左右多远
 const WAVE_MAX_FLY := 900.0         ## 追踪气波最多飞这么远(追不上就消散)
 const WAVE_OVERSHOOT := 60.0        ## (特效用)拖尾 / 预示线的长度参考: 出发半径之外再多画一段
-const WAVE_SPEED := 380.0
+const WAVE_SPEED := 210.0
+const WAVE_HOLD := 0.5              ## 四道同时出现后在原地停这么久(弹体照常动、转向跟着目标)再开始追; 停的时候不判命中
 const WAVE_HALF_W := 55.0
 const WAVE_CATCHUP := 20.0         ## 往回补查(防迎面走来的敌人从两步之间穿过去; 见 battle_ballistics._first_on_segment)
 const ATK_COEF := 1.0               ## 物理段: 100% 攻击力

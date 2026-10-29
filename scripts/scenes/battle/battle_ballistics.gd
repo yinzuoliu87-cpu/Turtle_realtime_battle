@@ -108,6 +108,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	var oriented = false
 	var card_spin = false
 	var th_bolt := false
+	var rs_bolt := false
 	if src is Dictionary and str(src.get("id", "")) == "two_head" and not bool(src.get("melee", false)):   # 变脸龟远程: 灵能弹(弹头朝前·2026-10-20)
 		var _ths: Sprite3D = battle._two_head_sys.vfx.sprite(TwoHeadVfx.BOLT, false)
 		if _ths != null:
@@ -115,7 +116,14 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 			p = _ths
 			oriented = true
 			th_bolt = true
-	if th_bolt:
+	if not th_bolt and src is Dictionary and str(src.get("minion_role", "")) == "reserve":   # 援军小将: 专属普攻气弹(弹头朝前·2026-10-29)
+		var _rss: Sprite3D = battle._reserve_sys.shot_sprite()
+		if _rss != null:
+			p.free()
+			p = _rss
+			oriented = true
+			rs_bolt = true
+	if th_bolt or rs_bolt:
 		pass
 	elif src is Dictionary and str(src.get("id", "")) == "gambler":   # 赌神: 甩旋转扑克牌(黑桃A)
 		p.texture = load("res://assets/sprites/vfx/gambler-card.png")

@@ -498,6 +498,49 @@ def wave_dir_sheet():
     return s
 
 
+# ═══════════════════════ ⑧ 普攻气弹(非立牌, 16×8 × 4 帧循环, 弹头朝 +X) ═══════════════════════
+# 用户 2026-10-29 看录屏问「他普攻有弹道吗？」—— 原来用的是全体远程共用的程序小光点(和远程小将同一颗), 看不见也不是它自己的。
+# 形状: 一颗压缩气弹 = 白热弹头 + 亮青外壳 + 身后两团逐帧缩小、往后飘的气泡(同气波一套色, 一眼看出是同一个人打的)。
+# 动起来靠: 弹头外壳逐帧胀缩 / 气泡逐帧往后挪 —— 4 帧循环。描一圈 INK。场上 SHOT_LEN 码 = 16 像素 × TEXEL(与演出同一像素密度)。
+SH_W, SH_H = 16, 8
+SH_FRAMES = 4
+
+
+def shot_frames():
+    out = []
+    pulse = [0.0, 0.4, 0.6, 0.3]
+    for f in range(SH_FRAMES):
+        c = Cell(SH_W)
+        cy = (SH_H - 1) / 2.0
+        ro = 2.9 + pulse[f]
+        for y in range(SH_H):
+            for x in range(SH_W):
+                d = math.hypot((x - 10.5) * 0.85, y - cy)
+                if d <= ro:
+                    edge = ro - d
+                    c.put(x, y, MID if edge < 0.8 else (HI if edge < 1.7 else CORE))
+        # 身后气泡: 两团, 每帧往后挪 2 像素、越往后越小
+        for j in range(2):
+            x = 6.0 - ((f * 2 + j * 4) % 7)
+            r = 1.6 - 0.35 * ((f * 2 + j * 4) % 7) / 2.0
+            for y in range(SH_H):
+                for xx in range(SH_W):
+                    if math.hypot(xx - x, y - cy + (0.5 if j else -0.5)) <= max(0.6, r):
+                        if c.get(xx, y)[3] == 0:
+                            c.put(xx, y, HI if j == 0 else MID)
+        c.outline(INK)
+        out.append(c)
+    return out
+
+
+def shot_sheet():
+    frames = shot_frames()
+    s = Image.new("RGBA", (SH_W * SH_FRAMES, SH_H), CLEAR)
+    for i, f in enumerate(frames):
+        s.paste(f.im.crop((0, 0, SH_W, SH_H)), (i * SH_W, 0))
+    return s
+
+
 SHEETS = {
     "reserve-gather.png": lambda: sheet([gather_frames()]),
     "reserve-ring.png": lambda: sheet([ring_frames()]),
@@ -506,6 +549,7 @@ SHEETS = {
     "reserve-fizzle.png": lambda: sheet([fizzle_frames()]),
     "reserve-hit.png": lambda: sheet([hit_frames(1), hit_frames(2)]),
     "reserve-wave-dir.png": wave_dir_sheet,
+    "reserve-shot.png": shot_sheet,
 }
 
 def _png_bytes(im):

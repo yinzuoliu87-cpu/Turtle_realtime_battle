@@ -6,7 +6,7 @@ extends RefCounted
 ## ★纯表现: 不读写任何单位字段、不用 _battle_rng、不往 _pending_shots 里塞东西 —— 只建 / 改 / 删自己挂进 battle._world 的节点,
 ##   节点名字都带 TAG, 全部由自己的 tween(battle._reg_tween, 按 sim 步喂)按时收掉。门禁 tests/verify_reserve_vfx.gd。
 ##
-## 分段表(t = 施法那一刻; 气波 WAVE_SPEED 码/秒从 WAVE_RADIUS 码外出发 ⇒ 名义 0.684 秒合拢):
+## 分段表(t = 施法那一刻; 气波出现后原地停 WAVE_HOLD 秒, 再以 WAVE_SPEED 码/秒从 WAVE_RADIUS 码外出发 ⇒ 名义合拢 = 停 + 半径 / 速度):
 ##   | 段     | 说什么                         | 时间            | 怎么画                                                              |
 ##   | 锁定   | 这个人被盯上了, 四道冲这儿合拢 | 0 ~ 合拢 + 0.14 | 贴地: 四角括号 + 四个朝内箭头(转到「施法者→目标」方向 = 正指四道来向), 箭头随气波逼近逐帧收拢, 合拢那帧括号收紧后散掉; lock_follow 每步跟目标 |
 ##   | 凝聚   | 气在这四个点凝成气团           | 0 ~ 0.20        | 立着(气团高度): 8 颗光点向内汇聚 → 白热团 + 十字尖芒 → 小环弹开碎掉 |
@@ -100,7 +100,7 @@ func lock_follow(pos: Vector2) -> void:
 
 ## (每步调)一道气波此刻在 `pos`、朝 `dir` 飞(弹体在场上长 `wave_len` 码): 在它尾焰末端留一团尾迹。附近 TRAIL_GAP 码内还有一团没散完的就不留
 ##   (飞着 ⇒ 间距均匀; 停着(顿帧 / 卡住)⇒ 一团散完才补一团, 不叠成一摞)。不认是哪道波: 四道离得远互不干扰。
-func wave_trail(pos: Vector2, dir: Vector2, wave_len: float = 72.0) -> void:
+func wave_trail(pos: Vector2, dir: Vector2, wave_len: float = 120.0) -> void:
 	if not _has_world():
 		return
 	var at2: Vector2 = pos - dir * (wave_len * WAVE_DIR_TAIL_FRAC)
@@ -144,10 +144,10 @@ func wave_fizzle(pos: Vector2) -> void:
 
 # ───────────────────────────── 时间表 / 朝向(门禁也读) ─────────────────────────────
 
-## 锁定 10 帧的时长: 帧 0 弹出 LOCK_POP; 帧 1~6 均分到名义合拢时刻(= 出发半径 / 速度) —— 箭头收拢与气波合拢同一刻;
+## 锁定 10 帧的时长: 帧 0 弹出 LOCK_POP; 帧 1~6 均分到名义合拢时刻(= 原地停 + 出发半径 / 速度) —— 箭头收拢与气波合拢同一刻;
 ##   帧 7 括号收紧, 帧 8~9 散掉。常量改了它自己跟着变。
 static func lock_durs() -> Array:
-	var arrive: float = ReserveConsts.WAVE_RADIUS / ReserveConsts.WAVE_SPEED
+	var arrive: float = ReserveConsts.WAVE_HOLD + ReserveConsts.WAVE_RADIUS / ReserveConsts.WAVE_SPEED
 	var step: float = maxf(0.02, (arrive - LOCK_POP) / 6.0)
 	return [LOCK_POP, step, step, step, step, step, step, 0.05, 0.05, 0.04]
 

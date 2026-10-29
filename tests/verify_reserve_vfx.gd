@@ -19,7 +19,7 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const RV := preload("res://scripts/systems/skills/reserve_vfx.gd")
 const WAVE_DIR := "res://assets/sprites/vfx/reserve-wave-dir.png"   ## 有方向弹体(归 ReserveSystem 加载; 这里只量素材)
 const WAVE_DIR_FRAMES := 6
-const WAVE_LEN := 72.0                 ## 喂给 wave_trail 的弹长(= ReserveSystem.WAVE_DIR_LEN 的现值)
+const WAVE_LEN := ReserveSystem.WAVE_DIR_LEN   ## 喂给 wave_trail 的弹长
 const ONCE := {
 	"res://assets/sprites/vfx/reserve-gather.png": "GATHER_DURS",
 	"res://assets/sprites/vfx/reserve-ring.png": "RING_DURS",
@@ -285,7 +285,7 @@ func _ready() -> void:
 	var t_ring := -1.0
 	var t_lock7 := -1.0
 	var t_lock_gone := -1.0
-	var t_arrive_nom: float = ReserveConsts.WAVE_RADIUS / ReserveConsts.WAVE_SPEED
+	var t_arrive_nom: float = ReserveConsts.WAVE_HOLD + ReserveConsts.WAVE_RADIUS / ReserveConsts.WAVE_SPEED
 	var lock_lag := 0.0
 	var puff_seen: Dictionary = {}
 	var puff_by_wave: Array = [[], [], [], []]
@@ -294,8 +294,8 @@ func _ready() -> void:
 	var hits: Array = []                 # [第几道, 命中那刻目标位置, 方向]
 	var hit_nodes: Dictionary = {}       # instance_id → [节点, 第一次看到那步, 最后一次看到那步, 位置]
 	var step := 0
-	var foe_v := Vector2(0.0, 40.0)            # 目标每秒往下走 40 码(气波要追)
-	while step < 120:
+	var foe_v := Vector2(0.0, 25.0)            # 目标每秒往下走 25 码(气波要追; 走太快四道会追成同一个来向)
+	while step < 240:
 		step += 1
 		var tt: float = float(step) * DT
 		foe["pos"] = (foe["pos"] as Vector2) + foe_v * DT
@@ -306,6 +306,8 @@ func _ready() -> void:
 			var to: Vector2 = tp - (wp[k] as Vector2)
 			var dk: Vector2 = DetMath.norm(to)
 			last_dir[k] = dk
+			if tt <= ReserveConsts.WAVE_HOLD + 0.0001:
+				continue                 # 同飞行逻辑: 出现后原地停 WAVE_HOLD 秒, 不动不留尾迹
 			var adv: float = ReserveConsts.WAVE_SPEED * DT
 			if DetMath.vlen(to) <= adv + 8.0:
 				alive[k] = false
@@ -469,11 +471,13 @@ func _ready() -> void:
 	foe["pos"] = c
 	caster["pos"] = c - Vector2(420, 0)
 	var hp_h0: float = float(foe["hp"])
+	## 停 + 飞到中心的名义时长折成步数, 再多给 40 步(气波数值改了它自己跟着变)
+	var n_fly: int = int(ceil((ReserveConsts.WAVE_HOLD + ReserveConsts.WAVE_RADIUS / ReserveConsts.WAVE_SPEED) / DT)) + 90
 	_s._reserve_sys.cast(caster, foe)
 	watch.call()
 	var lag_h := 0.0
 	var lock_steps := 0
-	for _k in range(90):
+	for _k in range(n_fly):
 		foe["pos"] = (foe["pos"] as Vector2) + Vector2(0.0, 40.0) * DT
 		_step()
 		watch.call()
@@ -499,7 +503,7 @@ func _ready() -> void:
 	foe["pos"] = c
 	_s._reserve_sys.cast(caster, foe)
 	foe["alive"] = false
-	for _k in range(90):
+	for _k in range(n_fly):
 		_step()
 		watch.call()
 	foe["alive"] = true
@@ -508,6 +512,47 @@ func _ready() -> void:
 	for _k in range(60):
 		_step()
 	_ok("H 真入口跑完全部收干净", _fx().is_empty(), "%d 个" % _fx().size())
+
+	# ═══ J 实际飞行速度 = 标称(按真实的 1/60 秒 sim 步推进; 旧版延时 0.05 秒要 4 步才到点 ⇒ 实际只有 3/4) ═══
+	print("--- J 实际速度 ---")
+	foe["alive"] = true
+	foe["hp"] = foe["maxHp"]
+	foe["pos"] = c
+	caster["pos"] = c - Vector2(420, 0)
+	var hp_j0: float = float(foe["hp"])
+	_s._reserve_sys.cast(caster, foe)
+	var j_steps := -1
+	for _k in range(600):
+		_step()
+		if j_steps < 0 and float(foe["hp"]) < hp_j0:
+			j_steps = _k + 1
+	var adv_j: float = ReserveConsts.WAVE_SPEED * float(_s._ballistics.SKILLSHOT_STEP)
+	var t_want: float = ReserveConsts.WAVE_HOLD + (ReserveConsts.WAVE_RADIUS - adv_j) / ReserveConsts.WAVE_SPEED
+	_ok("J ★站着不动的目标: 停 %.1f 秒 + 飞 %.0f 码(%.0f 码/秒)后打中 —— 实际时刻 = 标称(±2 个 0.05 秒步)" % [ReserveConsts.WAVE_HOLD, ReserveConsts.WAVE_RADIUS, ReserveConsts.WAVE_SPEED],
+		j_steps > 0 and absf(float(j_steps) * DT - t_want) <= 2.0 * float(_s._ballistics.SKILLSHOT_STEP) + 0.001,
+		"实测 %.3f 秒 / 标称 %.3f 秒" % [float(j_steps) * DT, t_want])
+
+	# ═══ I 普攻弹体: 援军小将走专属气弹(用户 2026-10-29「他普攻有弹道吗？」—— 原来是全体远程共用的程序小光点) ═══
+	print("--- I 普攻气弹 ---")
+	foe["alive"] = true
+	foe["hp"] = foe["maxHp"]
+	foe["pos"] = c
+	var rsv: Dictionary = _s._spawn._make_unit("__minion__", "left", c - Vector2(300, 0), {"minion": true, "role": "reserve", "battles": 0})
+	var np0: int = _s._projectiles.size()
+	_s._ballistics._fire_bolt_from(rsv, foe, 1, Color.WHITE, null, true)
+	var pr_ok := false
+	var pr_d := "没出弹(弹道表 %d → %d)" % [np0, _s._projectiles.size()]
+	if _s._projectiles.size() == np0 + 1:
+		var prd: Dictionary = _s._projectiles[np0]
+		var sp4: Sprite3D = prd["node"] as Sprite3D
+		var tpath: String = sp4.texture.resource_path if sp4 != null and sp4.texture != null else "(无贴图)"
+		pr_d = "贴图 %s · 朝向 %s · %d 帧 · pixel_size %.4f" % [tpath, str(prd.get("oriented", false)), sp4.hframes if sp4 != null else 0,
+			sp4.pixel_size if sp4 != null else 0.0]
+		pr_ok = tpath == ReserveSystem.SHOT_TEX and bool(prd.get("oriented", false)) and sp4.hframes == 4 			and is_equal_approx(sp4.pixel_size, ReserveSystem.SHOT_LEN * WS / 16.0)
+		_s._projectiles.remove_at(np0)
+		if sp4 != null:
+			sp4.queue_free()
+	_ok("I 援军小将普攻 = 专属气弹(reserve-shot · 4 帧 · 弹头朝飞行方向 · 场上 SHOT_LEN 码)", pr_ok, pr_d)
 
 	# ═══ G 不留残节点 ═══
 	for _k in range(120):

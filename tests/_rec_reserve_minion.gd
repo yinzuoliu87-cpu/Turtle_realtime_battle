@@ -8,9 +8,9 @@ extends Node
 ##          当场把对局状态改成「上路我方赢 / 下路对方赢 → 决胜」, 左方幸存名单为空, 右方是下路活下来的
 ##          两只龟 + 一只远程小将(带残血), 换成决胜那一幕对阵(左列 = 援军小将)。
 ##   3 s    点掉对阵幕(同玩家「点击继续」, 走 _dl_present_click 真入口) → 真建决胜战场、开打。
-##   开打   给援军小将满龟能(四面合围冷却清零 —— 录制专用, 正常要攒 135 龟能 ≈ 10 秒)。
+##   开打   龟能按真实规则从空攒起(135 龟能 ≈ 10 秒), 期间援军小将用普攻气弹打; REC_FULL_ENERGY=1 才开打即满(只用于快速自查)。
 ##   出手   四道气波在目标前后左右同时出现、往中间合围 → 命中飘字(红 = 物理段, 蓝 = 魔法段)。
-##   收尾   这一轮气波全部结算后再录 6 秒, 且总长不少于 14 秒、最多 25 秒, 然后自己 get_tree().quit()。
+##   收尾   这一轮气波全部结算后再录 6 秒, 且总长不少于 14 秒、最多 32 秒, 然后自己 get_tree().quit()。
 ##
 ## 跑法 —— 录视频(窗口只开右屏、静音):
 ##   SHIP=1 TURTLE_SUPABASE=" " TURTLE_BACKEND=" " APPDATA=<单独目录> XDG_DATA_HOME=<同一目录> \
@@ -34,7 +34,7 @@ const SEED := 20261029          ## 只用来定地图与随机数序列(两次�
 const LEVEL := 6
 const N_LEFT := 10              ## 左方本周已打场数 ⇒ 援军小将属性 ×(1 + 4% × 10) = 1400 血 / 70 攻
 const MIN_TOTAL := 14.0
-const MAX_TOTAL := 25.0
+const MAX_TOTAL := 32.0
 
 var _bt: Node = null
 var _el := 0.0                  ## 本台自己的钟: 累加 _process 的 delta(Movie Maker 下恰好是视频时间)
@@ -116,9 +116,9 @@ func _ready() -> void:
 	gs.lane_results = {"top": "left", "bottom": "right"}
 	var eqs: Array = _shop_ids()
 	gs.dual_survivors = {"left": [], "right": [
-		{"kind": "leader", "id": "stone", "hp_frac": 0.58, "equips": [{"id": str(eqs[1 % eqs.size()]), "star": 1}]},
-		{"kind": "leader", "id": "bamboo", "hp_frac": 0.46, "equips": [{"id": str(eqs[2 % eqs.size()]), "star": 1}]},
-		{"kind": "minion", "role": "back", "elite": false, "hp_frac": 0.71},
+		## 龟能按真实节奏攒(约 10 秒)⇒ 对面只留两只残血, 援军小将才活得到第一次出手(一打三满血会先被打死)
+		{"kind": "leader", "id": "bamboo", "hp_frac": 0.40, "equips": [{"id": str(eqs[2 % eqs.size()]), "star": 1}]},
+		{"kind": "minion", "role": "back", "elite": false, "hp_frac": 0.45},
 	]}
 	gs.egg_hp = {"left": 3300.0, "right": 3900.0}
 	var old = _bt._dl_present_root
@@ -237,13 +237,17 @@ func _process(delta: float) -> void:
 		_check_end()
 		return
 	_follow_cam(r)
-	## 满龟能: 四面合围冷却清零(只做一次; 非空字典 ⇒ _tick_skill_cd 不会再懒初始化成满冷却)
+	## 默认按真实规则攒龟能(用户 2026-10-29「为什么他开局就放技能呢？」—— 旧版录屏开打即满, 不是真实节奏)。
+	## REC_FULL_ENERGY=1: 四面合围冷却清零(只做一次; 非空字典 ⇒ _tick_skill_cd 不会再懒初始化成满冷却)
 	if not _cd_set and str(_bt._dl_state) == "fight":
 		_cd_set = true
-		var cds: Dictionary = r.get("skill_cd", {})
-		cds[ReserveConsts.SKILL] = 0.0
-		r["skill_cd"] = cds
-		print("[REC] %.2fs 援军小将满龟能(四面合围冷却清零)" % _el)
+		if _env_f("REC_FULL_ENERGY", 0.0) > 0.5:
+			var cds: Dictionary = r.get("skill_cd", {})
+			cds[ReserveConsts.SKILL] = 0.0
+			r["skill_cd"] = cds
+			print("[REC] %.2fs 援军小将满龟能(四面合围冷却清零)" % _el)
+		else:
+			print("[REC] %.2fs 龟能从空攒起(真实节奏)" % _el)
 	var cd: float = float((r.get("skill_cd", {}) as Dictionary).get(ReserveConsts.SKILL, -1.0))
 	if _cd_set and _cd_prev >= 0.0 and cd > _cd_prev + 1.0:
 		_casts += 1
@@ -322,7 +326,7 @@ func _check_end() -> void:
 	if _hits < 1:
 		why.append("气波没打中任何人(援军小将魔法伤害 0)")
 	if _el < 12.0 or _el > MAX_TOTAL + 0.5:
-		why.append("总长 %.1f 秒不在 12~25 秒" % _el)
+		why.append("总长 %.1f 秒不在 12~%d 秒" % [_el, int(MAX_TOTAL)])
 	var rv := _reserve()
 	print("[REC] 收尾 %.2fs · 出手 %d 次 · 同时气波最多 %d 道 · 命中事件 %d 次 · 首次出手 %.2fs · 结算 %.2fs · 援军小将 %s" % [
 		_el, _casts, _waves_max, _hits, _cast_at, _resolved_at,

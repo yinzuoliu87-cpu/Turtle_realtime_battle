@@ -10,7 +10,14 @@ const WAVE_TEX := "res://assets/sprites/vfx/reserve-wave.png"         ## 回落:
 const WAVE_PX := 48.0
 ## 有方向的动态气波(机头朝 +X, 横排多帧): 非公告板 Sprite3D, 每步按飞行方向转(同远程小将导弹的做法)。
 const WAVE_DIR_TEX := "res://assets/sprites/vfx/reserve-wave-dir.png"
-const WAVE_DIR_LEN := 72.0              ## 弹体在场上的长度(码)
+## 用户 2026-10-29 看录屏:「气波太小了，要大一点」⇒ 72 → 120(= 40 像素 × 3 码, 与演出素材同一像素密度)。
+const WAVE_DIR_LEN := 120.0             ## 弹体在场上的长度(码)
+## 每步重排的延时比 SKILLSHOT_STEP 短这么一点: 0.05 秒 = 3 个 1/60 秒 sim 步, 但浮点里 0.05 − 3 × (1/60) 略大于 0
+##   ⇒ 不减它要第 4 步才到点(实测速度只有标称的 3/4, 而且每 3 帧顿 1 帧)。只对援军气波生效, 共用的 fire_skillshot 不动。
+const STEP_EPS := 0.0001
+## 普攻气弹(用户 2026-10-29「他普攻有弹道吗？」—— 原来是全体远程共用的程序小光点): 弹头朝 +X、4 帧循环, 贴地按飞行方向转。
+const SHOT_TEX := "res://assets/sprites/vfx/reserve-shot.png"
+const SHOT_LEN := 48.0                  ## 普攻气弹在场上的长度(码) = 16 像素 × 3 码
 
 ## ══ 立绘与动作(2026-10-29 PixelLab 新画: 黄铜潜水盔 + 背负气瓶与橙色信号旗的深海援军兵) ══
 ## 全部 112×112 方帧、west 侧面(原图朝左, 同远程小将口径)。★各动作第 0 帧逐像素等于立绘
@@ -40,6 +47,21 @@ func sprite_dict() -> Dictionary:
 	var th: int = tex.get_height() if tex != null else 64
 	var n: int = maxi(1, tex.get_width() / th) if tex != null else 1
 	return {"tex": tex, "frames": n, "fps": IDLE_FPS, "frame_h": th, "hframes": n, "vframes": 1, "loop": true}
+
+
+## 普攻弹体(纯表现): battle_ballistics._fire_bolt_from 见到援军小将就来这里拿。贴图缺失 ⇒ null(回落通用光点)。
+func shot_sprite() -> Sprite3D:
+	if not ResourceLoader.exists(SHOT_TEX):
+		return null
+	var tex: Texture2D = load(SHOT_TEX)
+	if tex == null:
+		return null
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.hframes = maxi(1, int(tex.get_width() / (tex.get_height() * 2)))   # 单帧宽 = 2 × 高
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.pixel_size = (SHOT_LEN * battle.WS) / float(maxi(1, int(tex.get_width() / s.hframes)))
+	return s
 
 
 ## 四个出发点: 以「施法者 → 目标」定前后, 垂直方向定左右; 距目标 WAVE_RADIUS。纯向量运算(DetMath), 不用三角函数和随机数。
@@ -75,6 +97,7 @@ func fly_wave(u: Dictionary, t: Dictionary, from: Vector2) -> void:
 	var step: float = battle._ballistics.SKILLSHOT_STEP
 	var spr: Sprite3D = _wave_sprite(from)
 	var st := {"pos": from, "flown": 0.0, "aim": t["pos"], "dir": DetMath.norm((t["pos"] as Vector2) - from),
+		"hold": roundi(ReserveConsts.WAVE_HOLD / step),
 		"spr_id": spr.get_instance_id() if spr != null else 0}
 	var uu := u
 	var tt := t
@@ -86,6 +109,14 @@ func fly_wave(u: Dictionary, t: Dictionary, from: Vector2) -> void:
 		var to: Vector2 = (st["aim"] as Vector2) - p0
 		var dir: Vector2 = DetMath.norm(to) if DetMath.vlen(to) > 0.5 else (st["dir"] as Vector2)
 		st["dir"] = dir
+		## 出现后原地停 WAVE_HOLD 秒: 不动、不判命中, 弹体照常逐帧动并转向对准目标(按步数数, 不累加浮点)
+		if int(st["hold"]) > 0:
+			st["hold"] = int(st["hold"]) - 1
+			_wave_move(node, p0, p0, dir, step)
+			if tt.get("alive", false):
+				vfx.lock_follow(tt["pos"])
+			battle._pending_shots.append({"delay": step - STEP_EPS, "fn": st["step"], "src": uu})
+			return
 		var adv: float = ReserveConsts.WAVE_SPEED * step
 		var hit = battle._ballistics._first_on_segment(uu, p0, dir, adv, ReserveConsts.WAVE_HALF_W, ReserveConsts.WAVE_CATCHUP)
 		if hit != null:
@@ -106,14 +137,14 @@ func fly_wave(u: Dictionary, t: Dictionary, from: Vector2) -> void:
 			battle._ballistics._skillshot_free(node, step)
 			vfx.wave_fizzle(p1)
 			return
-		battle._pending_shots.append({"delay": step, "fn": st["step"], "src": uu})
+		battle._pending_shots.append({"delay": step - STEP_EPS, "fn": st["step"], "src": uu})
 	battle._pending_shots.append({"delay": 0.0, "fn": st["step"], "src": u})
 
 
 ## 气波弹体节点(纯表现)。有方向的那张在 ⇒ 非公告板, 按飞行方向转; 不在 ⇒ 回落公告板圆球。无头(裁判)没有 _world ⇒ null。
 func _wave_sprite(at: Vector2) -> Sprite3D:
 	if not ResourceLoader.exists(WAVE_DIR_TEX):
-		return battle._ballistics._skillshot_sprite(WAVE_TEX, WAVE_PX, at, ReserveConsts.WAVE_MAX_FLY / ReserveConsts.WAVE_SPEED)
+		return battle._ballistics._skillshot_sprite(WAVE_TEX, WAVE_PX, at, ReserveConsts.WAVE_HOLD + ReserveConsts.WAVE_MAX_FLY / ReserveConsts.WAVE_SPEED)
 	var tex: Texture2D = load(WAVE_DIR_TEX)
 	if tex == null or battle._world == null:
 		return null
@@ -131,7 +162,7 @@ func _wave_sprite(at: Vector2) -> Sprite3D:
 	## 兜底: 换路会清 _pending_shots ⇒ 满程时长后无论如何收掉(bind_node: 节点先没了 tween 自动作废)
 	var tw: Tween = battle._reg_tween()
 	tw.bind_node(s)
-	tw.tween_interval(ReserveConsts.WAVE_MAX_FLY / ReserveConsts.WAVE_SPEED + 0.5)
+	tw.tween_interval(ReserveConsts.WAVE_HOLD + ReserveConsts.WAVE_MAX_FLY / ReserveConsts.WAVE_SPEED + 0.5)
 	tw.tween_callback(s.queue_free)
 	return s
 
