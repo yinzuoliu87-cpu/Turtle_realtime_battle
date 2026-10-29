@@ -30,6 +30,7 @@ const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 ## 服务器裁判(2026-10-19): 周六看自己那一场 = 放完走正常结算屏(服务器的结果)。
 const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const StreamWatchS := preload("res://scripts/systems/replay/stream_watch.gd")   # 逐帧直播入口(会话 current: kind / 服务器结果)
+const _RL := preload("res://scripts/systems/replay/referee_live.gd")   # 跟播自己那一局(2026-10-29): 收尾等结果的上限 / 等不到时回主菜单
 ## 顶部栏的头像/名字/路点/计时牌/加时/团灭/蛋碎那一层(2026-10-07 拆出去: 本文件只留血条本体)
 const TopbarStatusS := preload("res://scripts/scenes/battle/topbar_status.gd")
 
@@ -2465,12 +2466,20 @@ func show_replay_end(won: bool) -> void:
 ##   · 周六看自己那一场(入口 stream_watch 给了服务器结果 `current.result`): 账在播之前已按服务器结果记完 ⇒ 走正常结算屏, 胜负以服务器为准
 ##     (与重算那条路 `referee_watch.dress_settle` 同一套口径)。
 ##   · 其余(周日 / 别人的局 / 战绩页): 回放收尾卡(「X 获胜」+「返回」), 胜负 = 流里服务器那一局 `_dl_finish` 的结果。
+##   · ★跟播自己那一局(2026-10-29, 会话 `own`): 结果算完才由 referee_live 原地填进 `result`。裁判机先发 end.json、后记 done(R11)
+##     ⇒ 流播完时结果可能还没到 ⇒ 停在收尾处显示「正在确认结果」, 到了再出结算屏(`_await_own_result`)。
 func show_stream_end(won: bool) -> void:
 	if battle == null or not is_instance_valid(battle) or not battle.is_inside_tree() or battle._settled:
 		return
 	var sess: Dictionary = StreamWatchS.current
 	var res = sess.get("result", {})
-	if str(sess.get("kind", "")) == StreamWatchS.KIND_REFEREE and res is Dictionary and not (res as Dictionary).is_empty():
+	var has_res: bool = res is Dictionary and not (res as Dictionary).is_empty()
+	if str(sess.get("kind", "")) == StreamWatchS.KIND_REFEREE and bool(sess.get("own", false)) and not has_res:
+		_await_own_result(won)
+		return
+	if str(sess.get("kind", "")) == StreamWatchS.KIND_REFEREE and has_res:
+		if bool(sess.get("own", false)):
+			sess["shown"] = true          # 看到了结算屏 ⇒ 离场真记账时主菜单不再飘「上一场闯关」那一句
 		battle._had_season = true
 		battle._last_settle_kind = _P2C_HUD.SETTLE_GAUNTLET
 		battle._last_was_exhibition = false
@@ -2481,6 +2490,55 @@ func show_stream_end(won: bool) -> void:
 		return
 	battle._settled = true
 	show_replay_end(won)
+
+
+## 跟播自己那一局、结果还没到: 收尾处一行「正在确认结果」+ 每 0.25 秒看一次会话的 `result`(计时器挂在战斗场上 ⇒ 离场跟着没)。
+##   到了 ⇒ 撤掉这一行、出结算屏; 等满 `referee_live.confirm_max_sec()` ⇒ 回主菜单(单子留着, 主菜单补记)。
+const N_LIVE_CONFIRM := "RefereeLiveConfirm"
+const N_LIVE_CONFIRM_TEXT := "RefereeLiveConfirmText"
+
+func _await_own_result(won: bool) -> void:
+	if battle.get_node_or_null(N_LIVE_CONFIRM) != null:
+		return
+	if battle._ui_layer != null:
+		var lb := Label.new()
+		lb.name = N_LIVE_CONFIRM_TEXT
+		lb.text = _RW.TXT_LIVE_CONFIRM
+		lb.set_anchors_preset(Control.PRESET_CENTER)
+		lb.position = Vector2(-200, -24)
+		lb.size = Vector2(400, 48)
+		lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lb.add_theme_font_size_override("font_size", 28)
+		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		lb.add_theme_constant_override("outline_size", 6)
+		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		battle._ui_layer.add_child(lb)
+	var t := Timer.new()
+	t.name = N_LIVE_CONFIRM
+	t.wait_time = 0.25
+	t.process_mode = Node.PROCESS_MODE_ALWAYS
+	battle.add_child(t)
+	t.timeout.connect(_own_result_tick.bind(won, Time.get_ticks_msec()))
+	t.start()
+
+
+func _own_result_tick(won: bool, t0: int) -> void:
+	if battle == null or not is_instance_valid(battle) or not battle.is_inside_tree() or battle._settled:
+		return
+	var res = StreamWatchS.current.get("result", {})
+	var got: bool = res is Dictionary and not (res as Dictionary).is_empty()
+	var late: bool = float(Time.get_ticks_msec() - t0) / 1000.0 >= _RL.confirm_max_sec()
+	if not got and not late:
+		return
+	for nm in [N_LIVE_CONFIRM, N_LIVE_CONFIRM_TEXT]:
+		var n: Node = battle.find_child(nm, true, false)
+		if n != null:
+			n.queue_free()
+	if got:
+		show_stream_end(won)
+	else:
+		_RL.confirm_timeout(battle.get_tree())
 
 
 ## 离场即还原 GameState(主场景 `_exit_tree` 里调 `ReplayRecorder.end_play()`), 这里只管换场景。

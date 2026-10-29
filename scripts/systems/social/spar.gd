@@ -48,6 +48,9 @@ static func my_side_check() -> String:
 		return "存档未就绪"
 	if bool(GameState.get("tutorial_active")):
 		return "教程中无法切磋"
+	## 2026-10-29 周六闯关赛排队中(阵容已锁定)不开切磋: 切磋会换上另一局的沙盒, 配上时还要把人带进对局(判据 MenuQueue.locked())。
+	if MenuQueue.locked():
+		return MenuQueue.TXT_SPAR
 	var ldr = GameState.get("season_leaders")
 	if not (ldr is Array) or (ldr as Array).size() < 3:
 		return "请先在选龟页选定本大轮的三只统领"

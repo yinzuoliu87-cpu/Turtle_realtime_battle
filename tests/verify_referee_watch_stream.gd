@@ -16,6 +16,9 @@ extends Node
 ## 反向验证见方案书 §4.1。
 ## ── 2026-10-27 周六改在线排队: 交阵容换成进队 gauntlet_queue_join, 假服务器让它当场配上(我是 a); 之后一字不变。
 ##   量的需求(播服务器那一份状态流、不本机重算)没变, 只改了「交」的接口; 版本从请求头取(请求体里不再有 p_client_version)。
+## ── 2026-10-29 配上即跟播(方案书 docs/plans/20261029c-闯关赛排队时可回主页.md B7): 任务一进 claimed 就进战斗场跟播,
+##   账改在离场之后记(verify_referee_live_own 量那一条)。本门禁的假服务器只回 pending → done、从不回 claimed ⇒ 量的是**旧路**
+##   (种子没拿到 / 来不及跟播就已算完): 「播之前账已记完」只对旧路成立, A 段先断言这一局确实走的是旧路(没进跟播), 旧路断言一条不改。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
@@ -237,7 +240,8 @@ func _submit_and_finish(m: Node) -> bool:
 	var got := await _wait(func() -> bool: return _hit("gauntlet_queue_join") > subs0)
 	if not got:
 		return false
-	await _wait(func() -> bool: return _status_text(m) == RW.TXT_SETTLING, 5000)
+	## 配上之后 VS 卡下那一行: 逐帧直播开着时任务 pending 写「等待服务器开始对局」(2026-10-29), 关着时「正在结算」
+	await _wait(func() -> bool: return _status_text(m) == RW.TXT_SETTLING or _status_text(m) == RW.TXT_LIVE_PENDING, 5000)
 	if _rec.is_empty():
 		var job: Dictionary = JSON.parse_string(JSON.stringify({"v": 1, "job_id": _job, "match_id": MID, "mode": "gauntlet",
 			"key": {"week": 1}, "seed": 2000023, "client_version": ReplayRecorder.client_version(),
@@ -275,6 +279,7 @@ func _t_a() -> void:
 	print("── A 周六闯关 · 开关开 ⇒ 播状态流 ──")
 	_http.reqs.clear()
 	var s0 := _snap()
+	var own0: int = SW.own_enters
 	var m: Node = await _open_mmk()
 	var sent := await _submit_and_finish(m)
 	_ok("分母: 匹配屏交了阵容", sent)
@@ -291,6 +296,8 @@ func _t_a() -> void:
 		and _http.count(200, "/" + MID + "/000000.bin") >= 0)
 	_ok("A 会话 = 裁判局 + 服务器结果(%s)" % ("胜" if _srv_won else "负"), str(SW.current.get("kind", "")) == SW.KIND_REFEREE
 		and bool((SW.current.get("result", {}) as Dictionary).get("won", not _srv_won)) == _srv_won and str(SW.current.get("id", "")) == MID)
+	_ok("A 分母: 这一局走的是旧路(任务从没 claimed ⇒ 没进跟播, 会话不是「自己那一局的直播」)", SW.own_enters == own0
+		and not bool(SW.current.get("own", false)))
 	var s1 := _snap()
 	_ok("A ★播之前账已按服务器记完(%d-%d、币、场次、战绩页)" % [_srv_gw, _srv_gl], int(s1["gw"]) == _srv_gw and int(s1["gl"]) == _srv_gl
 		and int(s1["coins"]) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH) and int(s1["bt"]) == int(s0["bt"]) + 1

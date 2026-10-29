@@ -201,12 +201,23 @@ func _note_recent() -> void:
 func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 	_local_args = [exclude, rng]
 	_build_searching()
-	_ref_run = _RUN.new()
-	_ref_run.name = "RefereeRun"
-	add_child(_ref_run)
-	_ref_run.changed.connect(_on_referee_changed)
-	_queue_wire_back()
-	_ref_run.start_queue()
+	## ★2026-10-29 排队中回过主页（会话挂在 root 上）⇒ 认领它，不重新进队；在别处配上的那一局在这里接回开战那条路
+	var act = _RUN.active
+	if act != null and is_instance_valid(act) and not (act as Node).is_queued_for_deletion() \
+			and (_RW.in_queue(str(act.state)) or bool(act.has_pair())):
+		_ref_run = act
+		act.adopt(self)
+		_ref_run.changed.connect(_on_referee_changed)
+		_queue_wire_back()
+		_on_referee_changed()
+		_ref_run.resume_paired()
+	else:
+		_ref_run = _RUN.new()
+		_ref_run.name = "RefereeRun"
+		add_child(_ref_run)
+		_ref_run.changed.connect(_on_referee_changed)
+		_queue_wire_back()
+		_ref_run.start_queue()
 	var t0 := Time.get_ticks_msec()
 	while not _cancelled and is_inside_tree() and _ref_run != null \
 			and (Time.get_ticks_msec() - t0 < 2200 or _RW.in_queue(str(_ref_run.state))):
@@ -234,11 +245,25 @@ const QUEUE_CANCEL := _QW.N_CANCEL
 var _queue_box: Control = null
 
 
-## 「←」在排队中 = 出队(不能直接走: 服务端那一条还挂着, 而且可能正好配上)。只在周六这条分支里换线, 「←」的函数本身不动。
+## 「←」在周六这条分支里换线(「←」的函数本身不动): ★2026-10-29 起排队中 = 回主页、继续匹配(`_on_queue_home`);
+##   别的时候(交不上 / 报错停在原屏、正在退出)照原来的 `_on_queue_back`。「取消匹配」键仍是 `_on_queue_back`(陪练号也按它出队)。
 func _queue_wire_back() -> void:
 	if _cancel_btn != null and is_instance_valid(_cancel_btn) and _cancel_btn.pressed.is_connected(_on_cancel):
 		_cancel_btn.pressed.disconnect(_on_cancel)
-		_cancel_btn.pressed.connect(_on_queue_back)
+		_cancel_btn.pressed.connect(_on_queue_home)
+
+
+## ★2026-10-29「←」排队中 = 回主页、继续匹配(用户「锁定了后，还是能回到主页的，只是不能动背包商店」):
+##   会话搬到 root(心跳不断), 主页主按钮显示排队态; 不在排队 ⇒ 原来的「←」。
+func _on_queue_home() -> void:
+	if _ref_run != null and is_instance_valid(_ref_run) and str(_ref_run.state) == _RW.ST_QUEUE and bool(_ref_run.detach()):
+		if _ref_run.changed.is_connected(_on_referee_changed):
+			_ref_run.changed.disconnect(_on_referee_changed)
+		_ref_run = null
+		_queue_box_free()
+		_leave_to_menu("")
+		return
+	_on_queue_back()
 
 
 ## 「←」/「取消匹配」: 排队中 ⇒ 出队、等服务端回话(回「已配上」⇒ 照配上处理); 正在退出 ⇒ 不重复发; 别的时候 ⇒ 原来的「←」。
@@ -281,8 +306,10 @@ func _queue_build() -> void:
 	tk.autostart = true
 	tk.timeout.connect(_queue_refresh)
 	v.add_child(tk)
-	if _cancel_btn != null and is_instance_valid(_cancel_btn):
-		_cancel_btn.visible = false       # 「←」收起: 排队屏只留「取消」一个出口(用户 10-27)
+	## ★2026-10-29「←」不再收起: 排队中它 = 回主页、继续匹配(`_on_queue_home`); 顶栏压在等待界面上面
+	if _cancel_btn != null and is_instance_valid(_cancel_btn) and _cancel_btn.get_parent() != null \
+			and _cancel_btn.get_parent().get_parent() == self:
+		move_child(v, _cancel_btn.get_parent().get_index())
 	if content_root != null:
 		content_root.visible = false      # 雷达环那一屏收在下面(拆掉等待界面时放回来)
 	if not get_viewport().size_changed.is_connected(_queue_center):

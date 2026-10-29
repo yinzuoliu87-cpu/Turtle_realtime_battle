@@ -1870,6 +1870,16 @@ scripts/scenes/map_editor.gd|text|清空
 scripts/scenes/map_editor.gd|text|重载
 scripts/scenes/map_editor.gd|text|💾保存
 scripts/scenes/map_editor.gd|text|🖌 地图编辑器 (左键刷格 · MAPEDIT)
+scripts/scenes/menu_queue.gd|lit|匹配中
+scripts/scenes/menu_queue.gd|lit|取消匹配后可使用商店。
+scripts/scenes/menu_queue.gd|lit|取消匹配后可使用背包。
+scripts/scenes/menu_queue.gd|lit|取消匹配后可使用邮箱登录。
+scripts/scenes/menu_queue.gd|lit|取消匹配后可删除账号。
+scripts/scenes/menu_queue.gd|lit|取消匹配后可开始新手教程。
+scripts/scenes/menu_queue.gd|lit|取消匹配后可设置训龟大师。
+scripts/scenes/menu_queue.gd|lit|正在匹配闯关赛对手，阵容已锁定。
+scripts/scenes/menu_queue.gd|lit|正在退出
+scripts/scenes/menu_queue.gd|lit|闯关赛匹配中，无法切磋
 scripts/scenes/menu_weekend.gd|lit|已晋级决赛日（%s），闯关赛已完成。决赛日%s：%s 开始。
 scripts/scenes/menu_weekend.gd|lit|已晋级闯关赛，周六可继续参赛。
 scripts/scenes/menu_weekend.gd|lit|本周积分赛 %d 场已全部完成。%s
@@ -1882,10 +1892,13 @@ scripts/scenes/menu_weekend.gd|lit|胜场已达晋级线，可参加周六闯关
 scripts/scenes/menu_weekend.gd|lit|观看全场赛况 »
 scripts/scenes/menu_weekend.gd|lit|观看对阵图 »
 scripts/scenes/menu_weekend.gd|lit|闯关赛仅限积分赛 %d 胜晋级的玩家参加。本周未晋级，可观战。%s
+scripts/scenes/queue_found_overlay.gd|lit|匹配成功
+scripts/scenes/queue_found_overlay.gd|lit|即将进入对局
 scripts/scenes/queue_wait_view.gd|lit|上路战场
 scripts/scenes/queue_wait_view.gd|lit|下路战场
 scripts/scenes/queue_wait_view.gd|lit|再赢 %d 场晋级决赛日
 scripts/scenes/queue_wait_view.gd|lit|再输 %d 场出局
+scripts/scenes/queue_wait_view.gd|lit|可返回主页，匹配成功后自动进入对局
 scripts/scenes/queue_wait_view.gd|lit|已锁定
 scripts/scenes/queue_wait_view.gd|lit|闯关赛  第 %d 场
 scripts/scenes/record/match_card.gd|lit|版本不同
@@ -2111,8 +2124,10 @@ scripts/systems/replay/referee_watch.gd|lit|战绩已同步，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
 scripts/systems/replay/referee_watch.gd|lit|正在寻找 %d 胜 %d 负的对手
 scripts/systems/replay/referee_watch.gd|lit|正在提交阵容
+scripts/systems/replay/referee_watch.gd|lit|正在确认结果
 scripts/systems/replay/referee_watch.gd|lit|正在结算
 scripts/systems/replay/referee_watch.gd|lit|正在退出排队
+scripts/systems/replay/referee_watch.gd|lit|等待服务器开始对局
 scripts/systems/replay/referee_watch.gd|lit|结算失败，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|胜利
 scripts/systems/replay/referee_watch.gd|lit|连接中断，已退出排队

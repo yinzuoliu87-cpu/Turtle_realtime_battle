@@ -234,6 +234,10 @@ func _ready() -> void:
 	##   周六交给服务器、还没记账的那一场(杀进程 / 断网)在这里查任务状态补记。判据全在 referee_watch.gd。
 	load("res://scripts/net/referee_net.gd").refresh_flags_async()
 	load("res://scripts/systems/replay/referee_watch.gd").resume_if_any(_on_referee_resumed)
+	var _rwv = load("res://scripts/systems/replay/referee_watch.gd")   # 跟播中算完、没看结算屏就退出: 账已记好, 这里补演仪式
+	if not (_rwv.resumed_view as Dictionary).is_empty():
+		_on_referee_resumed(_rwv.resumed_view)
+		_rwv.resumed_view = {}
 	_referee_resume_timer()   # 单子还挂着(裁判机还没算完)⇒ 主菜单开着时隔一会儿再查, 算完当场补记(2026-10-22)
 	## 周日服务器局的战斗内铸币: 待取单(杀进程 / 断网时没取到的)在这里补取。判据全在 referee_watch.gd; 没单子不发请求。
 	load("res://scripts/systems/replay/referee_watch.gd").claim_finals_coins()
@@ -549,8 +553,9 @@ func _build_page_buttons(now: int = 0) -> void:
 	var mic := "res://assets/sprites/menu/"
 	## ★2026-10-05 第四轮删掉第五颗「战绩」: 整张玩家卡就点进战绩页, 再单设一颗是同一个入口摆两遍
 	##   (用户:「点击整个卡那就不要战绩单独给按钮啊」)。
+	## ★2026-10-29 周六排队中回到主页: 背包 / 训龟大师锁住(画与门都读 MenuQueue.locked(); 商店那条并进 _shop_block_kind)。
 	var subs: Array = [
-		["背包", func(): _go("Inventory"), mic + "ic-bag.png", false],
+		["背包", func(): _mq().gate(MenuQueue.K_BAG, func(): _go("Inventory")), mic + "ic-bag.png", MenuQueue.locked()],
 		[SHOP_LABEL, func(): _open_shop(), mic + "ic-shop.png", shop_locked],
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png", false],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png", false],
@@ -564,7 +569,7 @@ func _build_page_buttons(now: int = 0) -> void:
 	var shop_reason := _shop_lock_reason(ts)
 	for i in range(subs.size()):
 		var sN: Array = subs[i]
-		var reason: String = shop_reason if str(sN[0]) == SHOP_LABEL else ""
+		var reason: String = shop_reason if str(sN[0]) == SHOP_LABEL else (MenuQueue.TXT_MATCHING if bool(sN[3]) else "")
 		var e := _square_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]), reason)
 		e.position = Vector2(SQ_X, _sq_y(i))
 		page_box.add_child(e)
@@ -572,13 +577,16 @@ func _build_page_buttons(now: int = 0) -> void:
 	# ── 训龟大师: 主 CTA 正上方、右沿同轴, 小一档、另一种皮 ──
 	#    它跟「开始战斗」是同一件事的两步(配大师 → 出战), 放一起讲得通。
 	## ★★2026-09-27 文字里不带 emoji(用户:「全是 ai 味和网页味」): 系统彩色 emoji 贴在像素木牌上是两种画法。
-	var tb := _plank_button("训龟大师", func(): _go("TrainerConfig"), TRAINER_SIZE)
+	var tb := _plank_button("训龟大师", func(): _mq().gate(MenuQueue.K_TRAINER, func(): _go("TrainerConfig")), TRAINER_SIZE)
 	## 有计数条的日子(吃命/配额)它让到计数条上面; 周六/周日没有计数条, 照旧贴着开始战斗。
 	tb.position = TRAINER_POS_UP if not today_counter_texts(ts).is_empty() else TRAINER_POS
 	page_box.add_child(tb)
+	_mq().dress_trainer(tb)
 	_slide_in(tb, 4)
 	# ── 开始战斗: 右下角主 CTA —— 全屏最大, 也是全屏唯一一块实心亮色 ──
 	#    横屏手机右手拇指的落点(荒野乱斗 / 使命召唤 / 刀塔霸业 三张参考同位)。
+	if _mq().build_hero():   # 周六排队中: 换成排队态(匹配中 + 已等待)+ 左侧取消键, 见 menu_queue.gd
+		return
 	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", battle_locked, true)
 	hero.position = HERO_POS
 	_hero_btn = hero
@@ -808,6 +816,7 @@ func _square_entry(label: String, cb: Callable, icon_path: String, locked: bool,
 
 ## 左栏键入场: 从屏外左侧滑入 + 淡入, 错峰 (保留原 PoC 好动画)
 func _slide_in_left(holder: Control, idx: int) -> void:
+	if _mq().quiet: return   # 排队态变了重建这一列: 不重播入场
 	var home_x := holder.position.x
 	holder.modulate.a = 0.0
 	holder.position.x = -560.0
@@ -1091,6 +1100,7 @@ func _right_column(now: int = 0) -> void:
 	_slide_in(set_tile, 1)
 	var help_tile := _icon_button("?", 30, Color("#ffd27a"), func(): _on_tutorial(), Vector2(help_x, uy))
 	content_root.add_child(help_tile)
+	_mq().dress_help(help_tile)   # 周六排队中压灰 + 锁(menu_queue.gd)
 	_slide_in(help_tile, 2)
 	## ★2026-10-06 照荒野乱斗主大厅右上角(interfaceingame brawl-stars-main-menu / -lobby):
 	##   所有货币挤在【同一条】深色长条里(图标 + 数字, 中间一道分隔), 长条右边紧挨着方形小键, 同高、底边对齐。
@@ -1238,6 +1248,15 @@ func _wk() -> MenuWeekend:
 	if _wk_obj == null:
 		_wk_obj = MenuWeekend.new(self)
 	return _wk_obj
+
+
+## 周六排队中回到主页: 主按钮排队态 / 取消键 / 锁 —— 调度在 scripts/scenes/menu_queue.gd(2026-10-29)。
+var _mq_obj: MenuQueue = null
+
+func _mq() -> MenuQueue:
+	if _mq_obj == null:
+		_mq_obj = MenuQueue.new(self)
+	return _mq_obj
 
 
 ## 货币图标: 线稿图标按 tint 染色(tint.a < 0 = 原色)。
@@ -1585,6 +1604,7 @@ func _today_counter(now: int) -> void:
 
 ## 右栏卡片入场: 从右(贴墙外)滑入 + 淡入. PoC delay 850+60*idx, dur420.
 func _slide_in(holder: Control, idx: int) -> void:
+	if _mq().quiet: return
 	var home_x := holder.position.x
 	holder.position.x = home_x + 60.0
 	holder.modulate.a = 0.0
@@ -2586,6 +2606,8 @@ func _shop_block_msg(ts: int) -> String:
 			return _msg_quota_full()
 		SHOP_LOCK_FIRST:
 			return "本大轮首战后解锁"
+		SHOP_LOCK_QUEUE:
+			return MenuQueue.why(MenuQueue.K_SHOP)
 	return ""
 
 
@@ -2594,6 +2616,7 @@ func _shop_block_msg(ts: int) -> String:
 const SHOP_LOCK_OUT := "out"
 const SHOP_LOCK_QUOTA := "quota"
 const SHOP_LOCK_FIRST := "first"
+const SHOP_LOCK_QUEUE := "queue"   # 2026-10-29 周六排队中(阵容已锁定; 判据 MenuQueue.locked()), 排最后: 前三条是更根本的原因
 
 
 ## 现在锁着的话是哪一条原因; 空串 = 放行。顺序与 `_battle_block_msg` 同(见上)。
@@ -2604,6 +2627,8 @@ func _shop_block_kind(ts: int) -> String:
 		return SHOP_LOCK_QUOTA
 	if int(GameState.season_total_battles) <= 0:
 		return SHOP_LOCK_FIRST
+	if MenuQueue.locked():
+		return SHOP_LOCK_QUEUE
 	return ""
 
 
@@ -2619,6 +2644,8 @@ func _shop_lock_reason(ts: int) -> String:
 			return "场次已用完"
 		SHOP_LOCK_FIRST:
 			return "首战后解锁"
+		SHOP_LOCK_QUEUE:
+			return MenuQueue.TXT_MATCHING
 	return ""
 
 
@@ -2831,6 +2858,7 @@ func _on_nickname_reset(hit: bool) -> void:
 
 
 func _on_tutorial() -> void:
+	if _mq().blocked(MenuQueue.K_TUTORIAL): return   # 周六排队中: 教程沙盒会换掉整份账号状态
 	TutorialChoice.open(self, false)
 
 

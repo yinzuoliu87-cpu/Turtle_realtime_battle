@@ -34,6 +34,9 @@ extends RefCounted
 ##     `controls_for`); 观赛(live 正在算 / referee 周六自己那一场 / premiere 周日开播)只有「退出」。
 ##   · 周六「观赛」正在算的裁判局(`open_live`, 20261020 迁移 `referee_live_gauntlet`): 边算边播(块没到就「同步中」等, 永不判没有)。
 ##     那一场还没有录像(matches 里没有这一行), 种子 / 名字 / 版本取自列表那一行; 没有阵容 ⇒ 不建换路幕布(`no_curtain`)。
+##   · 周六配上之后跟播**自己那一局**(`enter_own_live`, 2026-10-29 · 方案书 docs/plans/20261029c-闯关赛排队时可回主页.md §4.5):
+##     拉流同上(边算边播), 但会话 = 裁判局(收尾走结算屏)、`own` = true、`result` 先空着(算完由 referee_live 原地填);
+##     离场(`_left`, 沙盒已还原)之后由 referee_live 真记账 —— 沙盒里记的账离场会被还原(R2), 所以记账挪到这里。
 
 const RN := preload("res://scripts/net/referee_net.gd")
 const SB := preload("res://scripts/net/supabase.gd")
@@ -43,6 +46,8 @@ const NR := preload("res://scripts/net/net_route.gd")
 ## 运行期才 load(不 preload): replay_fetcher / live_spectate 都 preload 本文件, 反过来再 preload 就成环。
 const RF_PATH := "res://scripts/systems/replay/replay_fetcher.gd"
 const LS_PATH := "res://scripts/systems/replay/live_spectate.gd"
+## 同上(referee_live preload 本文件): 跟播自己那一局离场后的真记账在它那里。
+const RL_PATH := "res://scripts/systems/replay/referee_live.gd"
 
 ## 裁判机上的 Caddy(server/stream/README.md)。环境变量 TURTLE_STREAM_BASE 可改(门禁指到本进程起的 HTTP 服务)。
 ## ★没设环境变量时跟 API 走同一条入口(net_route.gd `stream_base`: 走中转 ⇒ 中转/streams, 2026-10-20 大陆中转)。
@@ -75,6 +80,7 @@ static var enters := 0
 static var probe_codes: Array = []
 static var restreams := 0
 static var live_enters := 0
+static var own_enters := 0
 
 
 static func base_url() -> String:
@@ -247,6 +253,43 @@ static func enter_live(tree: SceneTree, g: Dictionary, back: String, names: Dict
 	return ""
 
 
+# ─────────────────────────────── 周六: 跟播自己那一局 ───────────────────────────────
+
+## 配上之后裁判一开算(任务 claimed)就进战斗场看自己这一局(用户 10-29「就跟lol观战一样呢」; 入口 referee_live.enter)。
+##   `g` = {id: 录像号, seed, ver, job_id, foe: 对手卡 {profile, leaders}}; `names` 同 `ReplayRecorder.play_names`。
+##   与 `enter_live` 同一套拉流与沙盒(块没到就「同步中」、404 永不判没有; 首版不建换路幕布, U11); 不同的是:
+##     · 会话 kind = 裁判局 ⇒ 播完走正常结算屏(battle_hud.show_stream_end); `own` = true; `result` 先是 {}(算完原地填);
+##     · 开局状态多给 `dual_ghost` = 对手卡 ⇒ 右边的名字有了(没给 names 时 side_names 从它取, 与看录像那条同一个口径)。
+##   返回 "" = 已进场(tree 为 null 时只挂好待播)。
+static func enter_own_live(tree: SceneTree, g: Dictionary, back: String, names: Dictionary) -> String:
+	if not wanted():
+		return StreamPlayer.TXT_ERROR
+	if str(g.get("ver", "")) != ReplayRecorder.client_version():
+		return load(LS_PATH).TXT_VERSION     # 流格式绑版本(R7)
+	var id := str(g.get("id", ""))
+	if not SB.is_uuid(id) or int(g.get("seed", 0)) <= 0 or int(g.get("job_id", 0)) <= 0:
+		return StreamPlayer.TXT_ERROR
+	var src := StreamSource.Http.new(base_url(), id, {"finished": false})
+	src.on_update_required = func() -> void: SB._note_update_signal({"code": 426})
+	load(LS_PATH).pending = {}
+	ReplayRecorder.return_scene = back
+	ReplayRecorder.play_names = names.duplicate()
+	ReplayRecorder.viewer_name = BE.player_display_name()
+	var st := {"dual_active": true}
+	if g.get("foe", null) is Dictionary and not (g["foe"] as Dictionary).is_empty():
+		st["dual_ghost"] = (g["foe"] as Dictionary).duplicate(true)
+	ReplayRecorder.begin_play({"state": st})
+	ReplayRecorder.pending_play = {}
+	StreamPlayer.pending = {"source": src, "seed": int(g["seed"]), "controls": controls_for(KIND_REFEREE), "no_curtain": true}
+	current = {"kind": KIND_REFEREE, "own": true, "id": id, "job_id": int(g["job_id"]), "result": {}, "t_ms": Time.get_ticks_msec()}
+	enters += 1
+	own_enters += 1
+	_guard(tree)
+	if tree != null:
+		SceneNav.go(tree, ReplayRecorder.BATTLE_SCENE)
+	return ""
+
+
 # ─────────────────────────────── 守卫 ───────────────────────────────
 
 static func _guard(tree: SceneTree) -> void:
@@ -274,6 +317,10 @@ static func _left(player, sess: Dictionary) -> void:
 	ReplayRecorder.end_play()
 	if is_same(current, sess) or str(current.get("id", "")) == str(sess.get("id", "")):
 		current = {}
+	## 跟播自己那一局: 沙盒刚还原(上面的 end_play)⇒ 这时才真记账 / 落盘(结果没到就不动, 单子留给主菜单补记)。
+	##   挂在战斗场 tree_exiting 上 ⇒ 早于下一个场景的 _ready(结算屏点「前往商店」, 商店读到的已是记完账的钱)。
+	if bool(sess.get("own", false)):
+		load(RL_PATH).on_left(sess)
 
 
 ## 开播: 现在该到第几步(与 `live_spectate.target_step` 同一个口径: 翻面至今 × 60)。

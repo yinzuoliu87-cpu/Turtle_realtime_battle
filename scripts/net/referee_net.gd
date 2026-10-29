@@ -220,8 +220,11 @@ static func _paired_of(d: Dictionary, gw: int, gl: int) -> Dictionary:
 	if not (jid is int or jid is float) or int(jid) <= 0 or (sd != "a" and sd != "b"):
 		return {"err": "server"}
 	var mid := str(d.get("match_id", "")) if d.get("match_id", null) is String else ""
+	## ★job_status(2026-10-29 · 方案书 docs/plans/20261029c-闯关赛排队时可回主页.md B6): 配上那一刻裁判任务的状态
+	##   (pending / claimed / done / failed; 服务端 gauntlet_queue_view 回的 referee_jobs.status)⇒ 已开算就能马上进跟播。缺 / 不是字符串 ⇒ ""。
+	var js := str(d.get("job_status", "")) if d.get("job_status", null) is String else ""
 	return {"err": "", "status": Q_PAIRED, "job_id": int(jid), "side": sd, "match_id": mid if SB.is_uuid(mid) else "",
-		"opp": card_of(d.get("opp", null)), "gw": gw, "gl": gl}
+		"opp": card_of(d.get("opp", null)), "gw": gw, "gl": gl, "job_status": js}
 
 
 ## 非负整数(JSON 数字)⇒ 它; 别的 ⇒ -1。

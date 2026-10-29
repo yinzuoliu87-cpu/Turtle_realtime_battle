@@ -80,6 +80,8 @@ const N_BOX := "QueueBox"
 const N_CELL := "QueueCell"            # 「正在寻找 X 胜 Y 负的对手」(对手空位的名牌带)
 const N_WAITED := "QueueWaited"
 const N_CANCEL := "QueueCancel"
+const N_HOME_HINT := "QueueHomeHint"   # ★2026-10-29「可返回主页，匹配成功后自动进入对局」(左上「←」= 回主页、继续匹配)
+const TXT_HOME_HINT := "可返回主页，匹配成功后自动进入对局"
 const N_TITLE := "QueueTitle"
 const N_WIN := "QueueWin_"             # + 下标
 const N_LOSS := "QueueLoss_"
@@ -197,7 +199,16 @@ func build(lineup: Dictionary, cell: Vector2i, wins_in: int, losses_out: int) ->
 	waited_lb.size = Vector2(FW, 36)
 	waited_lb.position = Vector2(0, y)
 	frame.add_child(waited_lb)
-	y += 36 + 14
+	y += 36 + 4
+	var hint := _lbl(TXT_HOME_HINT, 20, Color("#8fa3b8"))
+	hint.name = N_HOME_HINT
+	hint.add_theme_color_override("font_outline_color", COL_INK)
+	hint.add_theme_constant_override("outline_size", 5)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.size = Vector2(FW, 28)
+	hint.position = Vector2(0, y)
+	frame.add_child(hint)
+	y += 28 + 12
 	## 取消键: 红键底座九宫格拉宽 + 小 X + 字(正文)。看起来 54 高, 可点 84 高。
 	var bt := PixelKey.HitButton.new()
 	bt.name = N_CANCEL

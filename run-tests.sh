@@ -344,6 +344,9 @@ frames_for () {
     verify_gauntlet_via_referee) echo 60000 ;;
     # 周六闯关在线排队(2026-10-27): 匹配屏真计时器(每 2 秒心跳 × 十几段) + 裁判真算两局 + 播两局 + 真 HTTP 一段 + 陪练号驱动整条流程(主菜单 → 选龟 → 排队 → 看完 → 商店 → 背包 → 再排 → 等满 7 秒取消); 本地实测 13627 帧 / 152 秒(全按墙钟等, 快机器上帧数会涨)
     verify_gauntlet_online_queue) echo 200000 ;;
+    verify_gauntlet_queue_home) echo 30000 ;;   # 2026-10-29 排队时可回主页: 等心跳 / 遮罩 1.5 秒 / 换场景按墙钟等(无头一帧极快)
+    verify_gauntlet_queue_menu) echo 1500 ;;
+    verify_referee_live_own) echo 40000 ;;      # 2026-10-29 配上即跟播: 本机一遍约 67 秒 / 5400 帧    # 2026-10-29 主菜单排队态: 真换 4 次场景(实测约 300 帧)
     # 周六服务器局铸币(2026-10-20): 裁判真算两局(100ms/帧) + 同一局本机复算到结算(40ms/帧); 本地实测 208 帧 / 19 秒
     verify_referee_coins) echo 8000 ;;
     verify_referee_chest) echo 8000 ;;   # 裁判一局 + 本机复算一局(同 verify_referee_coins)

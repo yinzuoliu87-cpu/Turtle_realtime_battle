@@ -34,6 +34,7 @@ const SB := preload("res://scripts/net/supabase.gd")
 const NR := preload("res://scripts/net/net_route.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")
+const RUN := preload("res://scripts/systems/replay/referee_run.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 const RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const LS := preload("res://scripts/systems/replay/live_spectate.gd")
@@ -1216,8 +1217,13 @@ func _t_a() -> void:
 		if (c as Button).is_visible_in_tree() and not (c as Node).is_queued_for_deletion():
 			btns.append((c as Button).text)
 	var back_btn = m.get("_cancel_btn")
-	_ok("A ★阵容锁定 + 没有「←」(用户 10-27 定): 这一屏只有「取消匹配」一颗看得见的按钮(没有去商店 / 背包的路)",
-		btns == [RW.TXT_QUEUE_CANCEL] and back_btn != null and not (back_btn as Button).is_visible_in_tree(), str(btns))
+	## ★2026-10-29 用户「锁定了后，还是能回到主页的」⇒ 左上「←」回来了(= 回主页、继续匹配, verify_gauntlet_queue_home 量它的行为)
+	var btns_s := btns.duplicate()
+	btns_s.sort()
+	var want_s := [RW.TXT_QUEUE_CANCEL, "←"]
+	want_s.sort()
+	_ok("A ★阵容锁定: 这一屏只有「取消匹配」与左上「←」(回主页、继续匹配)两颗看得见的按钮(没有去商店 / 背包的路)",
+		btns_s == want_s and back_btn != null and (back_btn as Button).is_visible_in_tree(), str(btns))
 	## 等待屏盖住找对手那一屏: 雷达环 / 「正在匹配对手…」收在下面, 屏底状态行空着(2026-10-27 实拍逮过格子战绩落进状态行)
 	var st_lb := _label(m, "RefereeStatus")
 	var sub_vis := false
@@ -1434,18 +1440,26 @@ func _t_c() -> void:
 	_ok("C ★排队单销掉、没有对局: 战绩 / 币 / 场次 / 战绩页都没动、没查过任务", (s1["pending"] as Dictionary).is_empty()
 		and s1["gw"] == s0["gw"] and s1["gl"] == s0["gl"] and s1["coins"] == s0["coins"] and s1["mh"] == s0["mh"])
 	await _close(m)
-	## C2: 排队中按左上「←」= 出队, 不是直接走
+	## C2: ★2026-10-29 起排队中按左上「←」= 回主页、继续匹配(用户「锁定了后，还是能回到主页的」): 不出队、单子留着、会话搬到 root
 	dests.clear()
 	_reset_sc({"pair_after": -1, "cancel": "cancelled"})
 	var c1 := _hit(CANCEL)
 	m = await _open_mmk()
 	await _wait(func() -> bool: return _state(m) == RW.ST_QUEUE, 10000)
+	var run_c2 = _run_of(m)
 	m.get("_cancel_btn").emit_signal("pressed")
 	await _wait(func() -> bool: return not dests.is_empty(), 5000)
-	_ok("C ★排队中按「←」⇒ 先出队(发 1 次取消), 回话之后才回主菜单", _hit(CANCEL) == c1 + 1 and dests == [MMK.MENU_SCENE]
-		and (_gs.referee_pending as Dictionary).is_empty(), str(dests))
+	_ok("C ★排队中按「←」⇒ 回主菜单(一次)、不出队(没发取消)、排队单留着、会话还活着(在 root 上)", _hit(CANCEL) == c1
+		and dests == [MMK.MENU_SCENE] and RW.is_queue_bill(_gs.referee_pending) and RUN.active == run_c2 and run_c2 != null
+		and is_instance_valid(run_c2) and run_c2.get_parent() == get_tree().root, str(dests))
 	MMK._may_leave_for_test = Callable()
 	await _close(m)
+	## 收尾: 从 root 上的会话出队(之后各段从干净状态开始)
+	if run_c2 != null and is_instance_valid(run_c2):
+		run_c2.call("cancel_queue")
+		await _wait(func() -> bool: return RUN.active == null, 5000)
+	RW.notice = ""
+	_gs.referee_pending = {}
 
 
 # ───────────────────────────── D 取消时已配上 ─────────────────────────────
@@ -1567,7 +1581,8 @@ func _t_g() -> void:
 	var c0 := _hit(CANCEL)
 	RW.resume_if_any()
 	await _wait(func() -> bool: return (_gs.referee_pending as Dictionary).is_empty(), 5000)
-	_ok("G3 ★排队单 + 还在队里 ⇒ 主菜单不是等待界面: 出队(1 次)、销单", (_gs.referee_pending as Dictionary).is_empty()
+	_ok("G3 ★排队单 + 还在队里 + 本机没有活着的会话(冷启动) ⇒ 主菜单不是等待界面: 出队(1 次)、销单"
+		+ "(有活会话时不出队由 verify_gauntlet_queue_home H2 量)", RUN.active == null and (_gs.referee_pending as Dictionary).is_empty()
 		and _hit(CANCEL) == c0 + 1)
 	## G4 上一周的排队单 ⇒ 直接销, 不发请求
 	_reset_sc({"pair_after": -1})

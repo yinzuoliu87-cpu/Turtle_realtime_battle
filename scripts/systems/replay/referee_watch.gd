@@ -18,7 +18,9 @@ extends RefCounted
 ##     等待 ── 每 POLL_SEC 秒 referee_job_status ──► done ⇒ 按服务器的胜负 / 战绩 / 战斗内铸币记账(`settle`, 清单 + 存档同一刻)
 ##     播放 ── 按录像号取录像(matches)──► ReplayRecorder.play + 观赛会话 KIND_REFEREE:
 ##             1 倍从头放、没有「回放」小签、没有播放控件; 放完走正常结算屏, 胜负 / 战绩 / 奖励都是服务器那一份
-##   ★账在播之前就记完: 播到一半杀进程 / 退出, 账也不会丢、不会记两次。
+##   ★账在播之前就记完（旧路：算完才播）: 播到一半杀进程 / 退出, 账也不会丢、不会记两次。
+##   ★2026-10-29 起配上后裁判一开算就跟播自己这一局（referee_live.gd，用户「就跟lol观战一样呢」）: 跟播在回放沙盒里,
+##     结果到了先在沙盒里预演（settle preview）, 离场还原之后才真记账; 没等到结果就离开 ⇒ 单子留给主菜单补记。
 ##   ★断网 / 超时 / 服务端拒收 ⇒ 屏上一句话, **不出本地成绩**(问题总表 B1)。
 ##     交上去之后才断网 / 等到上限还没算完(ST_LATER)⇒ 待记账单留着, 匹配屏自己回主菜单并飘「稍后自动记入」(`notice`);
 ##     主菜单开着时每 MENU_POLL_SEC 秒查一次任务状态补记(`resume_if_any`), 杀进程的话下次开主菜单补记。
@@ -60,6 +62,10 @@ const TXT_SHOP := "备战阶段 · 结束后开赛"
 const TXT_RESUMED_WIN := "上一场闯关：胜利"
 const TXT_RESUMED_LOSE := "上一场闯关：失败"
 const TXT_FINALS_COINS := "战斗内铸币 +%d"
+## 配上之后跟播自己这一局(2026-10-29 · 方案书 docs/plans/20261029c-闯关赛排队时可回主页.md §4.4 / R11):
+##   裁判机还在排队(任务 pending)时 VS 卡下那一行 / 流已播完而服务器的结果还没到时收尾处那一行。
+const TXT_LIVE_PENDING := "等待服务器开始对局"
+const TXT_LIVE_CONFIRM := "正在确认结果"
 const MAIN_MENU := "res://scenes/MainMenu.tscn"
 
 ## 查任务的间隔(秒)与上限(次): 合计 180 秒还没算完 ⇒ 不再干等(ST_LATER: 回主菜单, 待记账单留着由主菜单补记)。
@@ -178,7 +184,12 @@ static func pending_for(job_id: int, match_id: String, week: int, foe: Dictionar
 ##   ★战斗内铸币(奇械羁绊 / 035 齿轮)= 服务器那一局算出来的 `coins`(裁判写进账本), 与本机打完 `_settle_season`
 ##     同一个位置加进奖励、同一条「出局那一局不发」。客户端不重算、不自报(2026-10-20; 之前服务器局一枚都不发)。
 ##   返回结算屏要的 {won, reward, coins, gw, gl}; {} = 不是这一单 / 结果不明 / 已经记过。
-static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
+## ★`preview` = true(2026-10-29 · 跟播自己这一局, 方案书 docs/plans/20261029c-闯关赛排队时可回主页.md §4.5 / U10 / R2):
+##   在播放沙盒里**预演**一遍 —— 战绩 / 币 / 场次 / 经验 / 宝箱 / 香火石照记(沙盒里的 GameState 变成「打完之后」的样子,
+##   结算屏、晋级仪式照原来的读法就是对的数), 跳过所有沙盒还原撤不掉的写入: 销单、录像号(replay_pending_id)、
+##   战绩页那一行(record_match)、存盘、上传快照、补报决赛名单。离场还原之后 referee_live.on_left 以 preview = false 真记一次
+##   (单子还在 ⇒ 只记这一次)。默认 false ⇒ 与改之前逐字相同。
+static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Dictionary:
 	if gs == null:
 		return {}
 	var p = gs.get("referee_pending")
@@ -189,6 +200,8 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	if wi < 0:
 		return {}
 	if int(pd.get("week", 0)) != P2C.week_anchor_utc(int(P2C.now_utc())):
+		if preview:
+			return {}                     # 预演不销单(离场后真记那一遍销)
 		gs.referee_pending = {}           # 上一周交的: 不记进这一周(换周时 start_new_season 也会清)
 		gs.save()
 		return {}
@@ -207,6 +220,8 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
+	if preview:
+		return {"won": won, "reward": reward, "coins": coins, "gw": int(gs.gauntlet_wins), "gl": int(gs.gauntlet_losses)}
 	var mid := str(pd.get("match_id", ""))
 	if not SB.is_uuid(mid):
 		mid = str(st.get("match_id", ""))  # 排队配上时回包只给了任务号(2026-10-27): 录像号用任务状态里的那个
@@ -342,6 +357,9 @@ static func has_pending() -> bool:
 ## 返回 false = 没发(没有单子 / 没配后端)。
 static func resume_if_any(done: Callable = Callable()) -> bool:
 	if GameState == null:
+		return false
+	## ★2026-10-29 这一局的会话还活着（排队中回了主页 / 跟播中）⇒ 它自己管：不补查、不出队（原来这里会把回主页继续排队的人踢出队）
+	if session_alive():
 		return false
 	var p = GameState.get("referee_pending")
 	if not (p is Dictionary) or (p as Dictionary).is_empty():
@@ -582,3 +600,29 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 	if n >= 0:
 		claim_finals_coins(done)              # 接着问下一张
 	return n
+
+
+## ══ 2026-10-29 排队时可回主页（方案书 docs/plans/20261029c-闯关赛排队时可回主页.md §4.2）══
+const ST_FOUND := "found"       # 在 root 上配上了：「匹配成功」遮罩，等换到匹配屏再落任务单
+const ST_LIVE := "live"         # 跟播自己这一局中（裁判已开算；跟播期间照样每 2 秒查任务）
+const RUN_PATH := "res://scripts/systems/replay/referee_run.gd"
+## 跟播中算完、玩家没看到结算屏就退出：账已在离场那一刻记好（referee_live.on_left），这一份交给主菜单补演晋级仪式
+##   （与主菜单补记同一个 `_on_referee_resumed`；否则第 4 胜那一局的仪式永远看不到）。主菜单取走即清。
+static var resumed_view: Dictionary = {}
+
+
+## 这一局的会话（`referee_run.gd` 的 `active`）还活着。运行期 load（不 preload：两边互相引用）。
+static func session_alive() -> bool:
+	var scr = load(RUN_PATH)
+	var run = scr.active
+	return run != null and is_instance_valid(run) and not (run as Node).is_queued_for_deletion()
+
+
+## ★锁的唯一判据：会话在提交 / 排队 / 正在退出 / 已配上等进场 ⇒ 背包、商店、训龟大师、教程、切磋、删号、换号锁住，主按钮显示排队态。
+##   （吸取商店锁「锁画在那儿门却是开的」那次的教训：画锁与拦门读同一个函数。）
+static func queue_locked() -> bool:
+	if not session_alive():
+		return false
+	var scr = load(RUN_PATH)
+	var st := str(scr.active.state)
+	return in_queue(st) or st == ST_FOUND

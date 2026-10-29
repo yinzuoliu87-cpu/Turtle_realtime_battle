@@ -331,6 +331,8 @@ var after_delete_hook: Callable = Callable()
 
 
 func _open_account_delete() -> void:
+	## 2026-10-29 周六闯关赛排队中(阵容已锁定)不许删号: 会话还在为这个账号排队(判据 MenuQueue.locked(); 弹主菜单那张被拦卡)。
+	if MenuQueue.block_at(self, MenuQueue.K_DELETE): return
 	_ACCT_DEL.open(self, _acct_mail(), _after_account_deleted)
 
 
@@ -1043,6 +1045,8 @@ var _hidden_by_screen: Array = []
 
 func _open_email_dialog(flow: String, dismissible: bool = true,
 		standalone: bool = false) -> void:
+	## 2026-10-29 周六闯关赛排队中不许邮箱登录换号(整份账号会被换掉, 而会话还在为原账号排队); 绑定邮箱不换号, 照常。
+	if flow == _SB_ACC.FLOW_RECOVER and MenuQueue.block_at(self, MenuQueue.K_RECOVER): return
 	if _email_layer != null and is_instance_valid(_email_layer):
 		return
 	_email_standalone = standalone
