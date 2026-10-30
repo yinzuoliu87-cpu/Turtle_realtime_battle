@@ -1,7 +1,7 @@
 extends Node
 ## 自定义鼠标光标 — 1:1 PoC src/systems/cursor.ts (真正运行的那套, 非 index.html --glove 兜底)。
 ## PoC = 跟随式像素龟爪 div, 带动画: default POINT(爪尖朝上) / pointer 可点(放大1.12+青光+微浮bob)
-##   / press 按下(缩0.8) / grab·grabbing 换 FIST 卷爪(grabbing 缩0.9+青光) / disabled 红化。hotspot=(11,1)。
+##   / press 按下(缩0.8) / grab·grabbing 换 FIST 卷爪(grabbing 缩0.9+青光) / disabled 红化。点击点见下方 §HOT(2026-10-30 起斜指左上)。
 ## Godot 实现: 隐藏系统光标(MOUSE_MODE_HIDDEN) + 顶层 CanvasLayer 自绘跟随节点, 每帧测状态切贴图/缩放/青光。
 ##   尺寸 = **24 个设计像素**(与场上一切像素同比例缩放)。★这不是 PoC 的那条规矩, 见 §CURSOR_SCALE。
 ##
@@ -42,27 +42,37 @@ extends Node
 ##   这正是"一致"的定义; 而且非整数倍缩放时它与别的像素画**糊得一样**, 不再独一份地抖。
 ## ⇒ 门禁: `tests/verify_ui_consistency.gd` 的 `_test_cursor_scale`(搜 CURSOR_SCALE)。
 ## 状态测法: gui_get_hovered_control().get_cursor_shape() (覆盖所有 Control UI) + 全局鼠标键(press)
-##   + 外部 force_state (战斗 Area2D 拖拽/选目标无 Control hover, 由场景显式设)。
+##   + 正在拖东西(gui_is_dragging ⇒ 握拳) + 外部 force_state (战斗 Area2D 拖拽/选目标无 Control hover, 由场景显式设)。
+##
+## ═══ §HOT 点击点(2026-10-30 改, 用户「到底什么是鼠标的中心」→「商业游戏做法呢」→「改这个代码肯定要改」) ═══
+## 旧爪子三根爪一样长、朝正上, 点击点在中爪尖 (11,1), 而圆团身子的中心比它低 11.6 设计px ⇒ 三个「尖」, 看不出点在哪。
+## 照商业游戏: 英雄联盟护手 / Dota 2(官方规范: 点击点 = 默认箭头尖) / 星露谷 / 暗黑都是【斜指左上、只有一个尖】;
+##   拖东西时换握拳, 点击点在最前那颗指节(Chrome grabbing)。⇒ 中趾沿对角线伸向左上、奶白爪尖 = 点击点 HOT;
+##   两侧短趾; 握拳 = 三趾收短只露爪尖, 点击点 HOT_FIST = 最前那颗。画法沿用原来 2×2 大块、同色, 外描边加深(#0e2c1b)。
+## 缩放锚 = 当前点击点 ⇒ 按下缩小 / 悬停放大时爪尖不离开鼠标点。
+## 守卫: tests/verify_drag_lift.gd(画出来的爪尖像素 = 点击点; 拖动中是握拳)+ verify_ui_consistency CURSOR_SCALE(爪尖落在鼠标点)。
 
-# ── POINT (默认绿龟爪, 24×24, 爪尖朝上) — 色: 奶白爪尖/深绿描边/绿/高光 ──
-var _point_cols := [Color("#ffe9b0"), Color("#1f6b3f"), Color("#3cba6e"), Color("#7fe6a0")]
+# ── POINT (平时: 斜指左上, 24×24) — 色: 奶白爪尖 / 墨绿描边 / 绿 / 高光 ──
+var _point_cols := [Color("#ffe9b0"), Color("#0e2c1b"), Color("#3cba6e"), Color("#7fe6a0")]
 var _point_rects := PackedInt32Array([
-	0,4,0,2,4, 0,10,0,2,4, 0,16,0,2,4, 1,2,4,18,2, 1,2,6,2,2, 1,18,6,2,2, 1,0,8,4,2, 1,20,8,2,2, 1,0,10,2,2, 1,20,10,2,2,
-	1,0,12,2,2, 1,20,12,2,2, 1,0,14,2,2, 1,20,14,2,2, 1,2,16,2,2, 1,18,16,2,2, 1,2,18,2,2, 1,18,18,2,2, 1,4,20,2,2, 1,16,20,2,2,
-	1,6,22,10,2, 2,4,6,6,2, 2,12,6,6,2, 2,4,8,6,2, 2,12,8,8,2, 2,2,10,8,2, 2,12,10,8,2, 2,2,12,2,2, 2,8,12,12,2, 2,2,14,18,2,
-	2,4,16,14,2, 2,4,18,14,2, 2,6,20,10,2, 3,10,6,2,2, 3,10,8,2,2, 3,10,10,2,2, 3,4,12,4,2,
+	1,2,0,4,2, 1,0,2,2,2, 0,2,2,4,2, 1,6,2,2,2, 1,16,2,2,2, 1,0,4,2,2, 0,2,4,2,2, 2,4,4,4,2, 1,8,4,2,2, 1,14,4,2,2,
+	0,16,4,2,2, 1,18,4,2,2, 1,2,6,2,2, 2,4,6,6,2, 1,10,6,6,2, 2,16,6,2,2, 1,18,6,2,2, 1,4,8,2,2, 2,6,8,12,2, 1,18,8,2,2,
+	1,6,10,2,2, 2,8,10,2,2, 3,10,10,4,2, 2,14,10,6,2, 1,20,10,2,2, 1,6,12,2,2, 2,8,12,2,2, 3,10,12,2,2, 2,12,12,10,2, 1,22,12,2,2,
+	1,4,14,4,2, 2,8,14,14,2, 1,22,14,2,2, 1,2,16,2,2, 0,4,16,2,2, 2,6,16,16,2, 1,22,16,2,2, 1,4,18,6,2, 2,10,18,10,2, 1,20,18,2,2,
+	1,10,20,2,2, 2,12,20,6,2, 1,18,20,2,2, 1,12,22,6,2,
 ])
-# ── FIST (抓取卷爪, 24×22) ──
-var _fist_cols := [Color("#1f6b3f"), Color("#3cba6e"), Color("#7fe6a0")]
+# ── FIST (拖东西时: 三趾收短的握拳, 24×24) ──
+var _fist_cols := [Color("#ffe9b0"), Color("#0e2c1b"), Color("#3cba6e"), Color("#7fe6a0")]
 var _fist_rects := PackedInt32Array([
-	0,6,2,10,2, 0,2,4,4,2, 0,16,4,4,2, 0,0,6,2,2, 0,20,6,2,2, 0,0,8,2,2, 0,20,8,2,2, 0,0,10,2,2, 0,20,10,2,2, 0,0,12,2,2,
-	0,20,12,2,2, 0,2,14,2,2, 0,18,14,2,2, 0,4,16,2,2, 0,16,16,2,2, 0,6,18,10,2, 1,6,4,10,2, 1,2,6,18,2, 1,2,8,8,2, 1,12,8,8,2,
-	1,2,10,18,2, 1,2,12,18,2, 1,4,14,14,2, 1,6,16,10,2, 2,10,8,2,2, 2,4,6,4,2,
+	1,6,4,4,2, 1,16,4,2,2, 1,4,6,2,2, 0,6,6,4,2, 1,10,6,6,2, 0,16,6,2,2, 1,18,6,2,2, 1,4,8,2,2, 0,6,8,2,2, 2,8,8,10,2,
+	1,18,8,2,2, 1,6,10,2,2, 2,8,10,2,2, 3,10,10,4,2, 2,14,10,6,2, 1,20,10,2,2, 1,6,12,2,2, 2,8,12,2,2, 3,10,12,2,2, 2,12,12,10,2,
+	1,22,12,2,2, 1,6,14,2,2, 2,8,14,14,2, 1,22,14,2,2, 1,4,16,2,2, 0,6,16,2,2, 2,8,16,14,2, 1,22,16,2,2, 1,6,18,4,2, 2,10,18,10,2,
+	1,20,18,2,2, 1,10,20,2,2, 2,12,20,6,2, 1,18,20,2,2, 1,12,22,6,2,
 ])
 
-const ART := 24                      # 贴图美术宽 (热点基于 24×24 坐标)
-const HOT := Vector2(11, 1)          # PoC hotspot (中爪尖)
-const ORIGIN := Vector2(11.04, 1.44) # PoC transform-origin 46% 6% (×24) — 缩放锚
+const ART := 24                      # 贴图美术宽 (点击点基于 24×24 坐标)
+const HOT := Vector2(2, 2)           # 平时: 中趾奶白爪尖的左上角(见 §HOT)
+const HOT_FIST := Vector2(6, 6)      # 握拳: 最前那颗爪尖的左上角
 
 var _point_tex: ImageTexture
 var _fist_tex: ImageTexture
@@ -110,17 +120,17 @@ func _build_os_cursor() -> void:
 	_enabled = false
 	set_process(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	## 1 倍贴图 = 24 点, 与自绘那只同为 24 设计px(见 §CURSOR_SCALE); 热点同一个 HOT。
+	## 1 倍贴图 = 24 点, 与自绘那只同为 24 设计px(见 §CURSOR_SCALE); 点击点与自绘同一对 HOT / HOT_FIST。
 	var point := _build(1, _point_cols, _point_rects, 24, 24)
-	var fist := _build(1, _fist_cols, _fist_rects, 24, 22)
+	var fist := _build(1, _fist_cols, _fist_rects, 24, 24)
 	var red_cols: Array = []
 	for c in _point_cols:
 		red_cols.append(Color(c.r, c.g * 0.45, c.b * 0.4, c.a))
 	var forbidden := _build(1, red_cols, _point_rects, 24, 24)
 	Input.set_custom_mouse_cursor(point, Input.CURSOR_ARROW, HOT)
 	Input.set_custom_mouse_cursor(point, Input.CURSOR_POINTING_HAND, HOT)
-	Input.set_custom_mouse_cursor(fist, Input.CURSOR_DRAG, HOT)
-	Input.set_custom_mouse_cursor(fist, Input.CURSOR_CAN_DROP, HOT)
+	Input.set_custom_mouse_cursor(fist, Input.CURSOR_DRAG, HOT_FIST)
+	Input.set_custom_mouse_cursor(fist, Input.CURSOR_CAN_DROP, HOT_FIST)
 	Input.set_custom_mouse_cursor(forbidden, Input.CURSOR_FORBIDDEN, HOT)
 
 
@@ -130,7 +140,7 @@ func _build_os_cursor() -> void:
 ##   抽成函数后门禁调的是**产品自己这一份**, 只绕过平台早退那两行。
 func _build_cursor() -> void:
 	_point_tex = _build(2, _point_cols, _point_rects, 24, 24)
-	_fist_tex = _build(2, _fist_cols, _fist_rects, 24, 22)
+	_fist_tex = _build(2, _fist_cols, _fist_rects, 24, 24)
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	_layer = CanvasLayer.new()
 	_layer.layer = 4096   # 顶到最高 (盖一切 UI)
@@ -159,7 +169,7 @@ func _build_cursor() -> void:
 	_g.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_cur = Control.new()
 	_cur.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_cur.pivot_offset = ORIGIN
+	_cur.pivot_offset = HOT
 	_cur.add_child(_glow)
 	_cur.add_child(_g)
 	_layer.add_child(_cur)
@@ -196,6 +206,9 @@ func _process(_dt: float) -> void:
 					st = "grab"
 				Control.CURSOR_FORBIDDEN:
 					st = "disabled"
+		## 正在拖东西(背包 / 选统领拿起一张卡)⇒ 握拳。原来没有任何可拖控件把光标形状设成「抓取」, 卷爪从来没出现过。
+		if vp.gui_is_dragging():
+			st = "grabbing"
 	# press 优先 (grab 时按下→grabbing, 否则 default/pointer 都缩)
 	var grabbing := st == "grabbing" or (st == "grab" and pressed)
 	# ── 贴图 ──
@@ -226,8 +239,15 @@ func _process(_dt: float) -> void:
 	##   爪子恒 24 设计px, 和场上每个像素同比例 —— 相对 UI 的大小不再随窗口变四倍。
 	##   (旧写法: `base_scl / clampf(vp.get_screen_transform().get_scale().y, 0.5, 4.0)`)
 	_cur.scale = Vector2.ONE * base_scl
-	# pivot 在 ORIGIN, position = 鼠标 - 热点 → 热点恒落鼠标点; bob 叠加竖移
-	_cur.position = pos - HOT + Vector2(0, bob_y)
+	## 缩放锚 = 点击点, position = 鼠标 − 点击点 ⇒ 不论缩放, 爪尖恒落鼠标点; bob 叠加竖移
+	var hot := hot_for(use_fist)
+	_cur.pivot_offset = hot
+	_cur.position = pos - hot + Vector2(0, bob_y)
+
+
+## 这张贴图的点击点(握拳 / 平时)。实拍脚本与门禁也读它, 不另抄一份。
+func hot_for(fist: bool) -> Vector2:
+	return HOT_FIST if fist else HOT
 
 
 # 青光 shader: 采样自身 alpha 做小高斯外扩 → 青色 drop-shadow 近似 (PoC drop-shadow 0 0 5px cyan)

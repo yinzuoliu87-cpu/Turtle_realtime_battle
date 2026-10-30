@@ -103,8 +103,14 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	# 拖放: 卡片可拖入编队槽 (1:1 PoC .pet-card draggable=true)
 	# ★手机上必须关掉: Godot 原生 DnD 一旦启动就吃掉手指移动, 滚动永远抢不过它。
 	#   触屏改走"点卡片(上面的 _on_pick_pet) → 点槽位"两步。
+	## ★跟手那张换成统一的 DragLift(2026-10-30): host._card_drag 照旧判能不能拖、给拖动数据(它在积分赛逐字节守卫里, 一字不动),
+	##   它设的 56px 小头像随即被这里的整张卡替掉(引擎设第二张预览时先删第一张, viewport.cpp _gui_set_drag_preview)。
 	if not SafeArea.is_mobile():
-		card.set_drag_forwarding(host._card_drag.bind(card, pid), Callable(), Callable())
+		card.set_drag_forwarding(func(at: Vector2) -> Variant:
+			var d = host._card_drag(at, card, pid)
+			if d != null:
+				card.set_drag_preview(DragLift.make(card, null, at / card.size, true))
+			return d, Callable(), Callable())
 
 	# 内容: MarginContainer(满卡 + PoC padding:10px 8px 8px) → VBox(头像 → meta, 顶对齐自然流)
 	var pad_wrap = MarginContainer.new()

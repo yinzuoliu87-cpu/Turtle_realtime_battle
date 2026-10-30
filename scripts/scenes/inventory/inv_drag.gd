@@ -11,9 +11,8 @@ extends RefCounted
 const KIND_BENCH := "bench"     # 背包里的一件(bidx = persistent_bench 下标)
 const KIND_WORN := "worn"       # 单位身上的一件(lane / idx / cell = _unit_equips 的真实下标)
 const KIND_UNIT := "unit"       # 整张单位卡(拖到另一张 = 两张互换, 跨路 / 同路都行)
-const LIFT_SCALE := 1.12        # 拿起来的卡片放大一点(「从桌上拿起一张卡」)
-const LIFT_TILT := -0.08        # 微微歪着(弧度)
-const PREVIEW_PX := 104.0       # 跟手那张卡的边长
+## 跟手那张怎么摆(放大 / 摆正 / 投影 / 不跳 / 中心滑到鼠标下 / 手机抬到手指上方 / 原位虚影)全在 DragLift(2026-10-30 四处统一)
+const PREVIEW_PX := 104.0       # 拖装备时跟手那张卡的边长
 const DIR_RATIO := 1.2          # 背包要滚动时: 竖向位移 > 横向 × 此值 ⇒ 当作滑动列表, 不拖
 ## ★按住这么久再动 = 拿起来(长按拖)。由来: 装备是往上拖到卡上的 —— 那一下本来就是竖的,
 ##   只认「横着拖」的话主手势直接被滚动吃掉。背包不用滚动时(手机上 22 件两排放得下)任何方向都直接拖。
@@ -54,7 +53,7 @@ func wire_unit(box: Control, lane: String, idx: int, unit: Dictionary, worn_cell
 			for wc in worn_cells:
 				if (wc["rect"] as Rect2).has_point(at):
 					return _begin(box, at, {"kind": KIND_WORN, "lane": lane, "idx": idx,
-						"cell": int(wc["cell"]), "it": wc["it"], "unit": unit})
+						"cell": int(wc["cell"]), "it": wc["it"], "unit": unit, "rect": wc["rect"]})
 			return _begin(box, at, {"kind": KIND_UNIT, "lane": lane, "idx": idx, "unit": unit}),
 		func(_at: Vector2, data: Variant) -> bool:
 			return _can_take(lane, idx, unit, data),
@@ -81,31 +80,24 @@ func _begin(src: Control, at: Vector2, data: Dictionary) -> Variant:
 	dragging = data
 	_dropped = false
 	_src = src
-	if str(data.get("kind", "")) == KIND_UNIT:
-		src.set_drag_preview(_card_preview(src))
+	## 跟手那张交给 DragLift(四处统一): 拿起不跳 → 卡中心滑到鼠标下 / 手机抬到手指上方; 原位虚影由它管。
+	##   frac = 按下点在跟手那张上的相对位置 —— 整张卡就是 src 本身; 装备那张是 PREVIEW_PX 的小卡, 按格子里的相对位置换算。
+	var kind := str(data.get("kind", ""))
+	if kind == KIND_UNIT:
+		src.set_drag_preview(DragLift.make(src, null, at / src.size, true))
+	elif kind == KIND_WORN:
+		var r: Rect2 = data["rect"]
+		src.set_drag_preview(DragLift.make(src, _preview(data["it"]), (at - r.position) / r.size, false))
 	else:
-		src.set_drag_preview(_preview(data["it"]))
-	if str(data.get("kind", "")) != KIND_WORN:
-		src.modulate.a = 0.35     # 原位只剩个虚影 = 卡片被拿起来了
+		src.set_drag_preview(DragLift.make(src, _preview(data["it"]), at / src.size, true))
 	_mark_targets(data)
 	return data
 
 
-## 跟手的那张卡: 图标装在一块卡片底上, 放大一点、歪一点、带投影; 摆在手指上方(手指不挡住它)。
+## 拖装备时跟手的那张小卡: 图标装在一块卡片底上(放大 / 投影 / 摆位由 DragLift 统一做)。
 func _preview(it: Dictionary) -> Control:
-	var root := Control.new()
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var card := Control.new()
 	card.size = Vector2(PREVIEW_PX, PREVIEW_PX)
-	card.pivot_offset = card.size * 0.5
-	card.scale = Vector2.ONE * LIFT_SCALE
-	card.rotation = LIFT_TILT
-	card.position = Vector2(-PREVIEW_PX * 0.5, -PREVIEW_PX - 18.0)
-	root.add_child(card)
-	var sh := ColorRect.new()
-	sh.color = Color(0, 0, 0, 0.35)
-	sh.position = Vector2(6, 8); sh.size = card.size
-	card.add_child(sh)
 	var face := Panel.new()
 	face.size = card.size
 	face.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -122,21 +114,7 @@ func _preview(it: Dictionary) -> Control:
 	st.position = Vector2(0, 4); st.size = Vector2(PREVIEW_PX, 26)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(st)
-	return root
-
-
-## 整张单位卡跟手: 复制这张卡(不带信号 = 不会被点), 放大一点、歪一点; 手指在卡的中间偏下。
-func _card_preview(card: Control) -> Control:
-	var root := Control.new()
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var c: Control = card.duplicate(0) as Control
-	c.position = Vector2(-card.size.x * 0.5, -card.size.y * 0.6)
-	c.pivot_offset = card.size * 0.5
-	c.scale = Vector2.ONE * 1.06
-	c.rotation = LIFT_TILT
-	c.modulate = Color(1, 1, 1, 0.92)
-	root.add_child(c)
-	return root
+	return card
 
 
 # ─────────── 落点 ───────────
@@ -208,6 +186,9 @@ func _mark_targets(data: Dictionary) -> void:
 		if not is_instance_valid(b):
 			continue
 		b.modulate = LIT if can_hold(str(ub["lane"]), int(ub["idx"]), ub["unit"], data) else DIM
+	## 上面按能不能接整色覆盖了 modulate, 被拿起的那张卡要重新变回虚影(拿卡上一件装备时卡不虚)
+	if str(data.get("kind", "")) == KIND_UNIT and _src != null and is_instance_valid(_src):
+		_src.modulate.a = DragLift.GHOST_A
 	if host._bench_area != null and is_instance_valid(host._bench_area):
 		host._bench_area.modulate = LIT if str(data.get("kind", "")) == KIND_WORN else Color(1, 1, 1, 1)
 

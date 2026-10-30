@@ -136,6 +136,8 @@ WHY = {
                      "无头进程没有导出标签 ⇒ verify_beta_server_build 只能靠它把「内测服包」那一支真跑出来)",
     "offline_override": "测试包离线开关的门禁注入(supabase.gd `offline_dev()`; 产品走导出特性标签 offline_dev, "
                         "无头进程没有导出标签 ⇒ verify_offline_dev_build ① 只能靠它把「整层停用」那一支真跑出来)",
+    "force_touch": "拿起卡片摆法的平台注入(drag_lift.gd `is_touch()`; 产品按 SafeArea.is_mobile() 判手机 ⇒ 抬到手指上方, "
+                   "门禁跑在 Windows/Linux, verify_drag_lift D4 只能靠它把「手机」那一支真跑出来)",
     "platform_override": "平台注入: FontKit(iOS 不挂系统字体, verify_ios_no_system_font) 与 CursorTheme(Mac 改用系统光标, "
                          "verify_cursor_mac_os_cursor) 两处同名同义 —— 门禁跑在 Windows/Linux, 只能靠它走 iOS/macOS 那一支",
     "save_path_override": "多入口选路的存盘位置注入(net_route.gd `_path()`; 产品存 user://net_route.cfg, "

@@ -307,7 +307,8 @@ func _slot_drag(_at_pos: Vector2, panel: Control, idx: int) -> Variant:
 	var id = host.team[idx]
 	if id == null:
 		return null
-	panel.set_drag_preview(host._make_drag_preview(str(id)))
+	## 跟手的是整个槽(DragLift: 拿起不跳 → 中心滑到鼠标下, 原位虚影), 不再是挂在鼠标右下的小头像
+	panel.set_drag_preview(DragLift.make(panel, null, _at_pos / panel.size, true))
 	return {"pet_id": str(id)}
 
 
