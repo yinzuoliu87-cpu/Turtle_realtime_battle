@@ -4,6 +4,8 @@ extends Node
 ## 跑法: SHOT_OUT=<目录> WINDOW=1 bash godot-quiet.sh --position 2000,80 --resolution 1280x720 res://tests/_shot_cursor_grab.tscn
 ## ★根视口的 get_mouse_position() 读的是系统真鼠标, 推进去的假事件挪不动爪子 ⇒ 状态 / 贴图 / 点击点让产品自己的
 ##   CursorTheme._process 算, 只把位置按同一条公式(鼠标点 − 点击点)摆到假鼠标那儿。红十字 = 鼠标真正的点(SHOT_MARK=1 才画)。
+## 方向稿: SHOT_PAW_JSON=<json>(cols / point_rects / fist_rects / hot / hot_fist, rects 与 CursorTheme._build 同格式)
+##   换上候选贴图与点击点、拖动时不缩不发光 —— 用产品自己的光标节点画, 不改产品代码(10-30 浅色光标方向稿)。
 
 const INV := preload("res://scenes/Inventory.tscn")
 const TS := preload("res://scenes/TeamSelect.tscn")
@@ -11,6 +13,7 @@ const TS := preload("res://scenes/TeamSelect.tscn")
 var out := ""
 var ct
 var mark: Control
+var paw_over := {}
 
 
 func _ready() -> void:
@@ -22,6 +25,14 @@ func _ready() -> void:
 	ct = get_node_or_null("/root/CursorTheme")
 	if ct != null:
 		ct.set_process(false)
+	var pj := OS.get_environment("SHOT_PAW_JSON")
+	if pj != "" and ct != null and ct._cur != null:
+		paw_over = JSON.parse_string(FileAccess.get_file_as_string(pj))
+		var cols: Array = []
+		for c in paw_over["cols"]:
+			cols.append(Color(c))
+		ct._point_tex = ct._build(2, cols, PackedInt32Array(paw_over["point_rects"]), 24, 24)
+		ct._fist_tex = ct._build(2, cols, PackedInt32Array(paw_over["fist_rects"]), 24, 24)
 	var lay := CanvasLayer.new()
 	lay.layer = 4097
 	add_child(lay)
@@ -46,6 +57,13 @@ func _ready() -> void:
 		await get_tree().process_frame
 	var cell: Control = sc._tut_first_item
 	await _hover_shot(cell.get_global_rect().get_center() + Vector2(-20, -18), "0_hover")
+	var shop_btn: Control = null
+	for b in sc.find_children("*", "BaseButton", true, false):
+		if b is Button and (b as Button).text == "商店" and (b as Control).is_visible_in_tree():
+			shop_btn = b
+			break
+	if shop_btn != null:
+		await _hover_shot(shop_btn.get_global_rect().get_center(), "0b_hover_button")
 	await _grab_shot(cell.get_global_rect().position + cell.size * 0.3, Vector2(60, -70), "1_inv_equip", false)
 	var card: Control = sc.find_child("UnitCard_top_0", true, false)
 	await _grab_shot(card.get_global_rect().position + Vector2(60, 70), Vector2(150, 40), "2_inv_unit", true)
@@ -90,7 +108,15 @@ func _paw(p: Vector2) -> String:
 		return "no-cursor"
 	ct._process(0.0)
 	var fist: bool = ct._g.texture == ct._fist_tex
-	ct._cur.position = p - ct.hot_for(fist)
+	var hot: Vector2 = ct.hot_for(fist)
+	if not paw_over.is_empty():
+		var h: Array = paw_over["hot_fist"] if fist else paw_over["hot"]
+		hot = Vector2(h[0], h[1])
+		if fist:
+			ct._glow.visible = false
+			ct._cur.scale = Vector2.ONE
+		ct._cur.pivot_offset = hot
+	ct._cur.position = p - hot
 	return "握拳" if fist else "平时"
 
 

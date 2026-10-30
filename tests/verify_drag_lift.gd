@@ -5,9 +5,10 @@ extends Node
 ## 照商业做法: 光标斜指左上、只有一个尖、点击点 = 爪尖; 拖东西时握拳。拿起卡片: 按下那一点不跳 → 卡中心滑到鼠标下
 ##   (电脑) / 抬到手指上方(手机); 放大、摆正、投影; 原位虚影, 拖完复原。四处(背包装备 / 单位卡 / 卡上装备 / 选统领龟卡 / 编队槽)同一套。
 ## 段落(每条带分母):
-##   C1 平时爪子: 贴图里最靠左上的奶白爪尖像素 = 点击点 HOT; 中趾明显比两侧短趾伸得远(只有一个尖)
-##   C2 握拳: 爪尖 = HOT_FIST
-##   C3 ★真的拖起来时光标是握拳、点击点换成 HOT_FIST; 松手后回到平时
+##   C1 平时爪子: 贴图里最靠左上的爪尖像素 = 点击点 HOT; 中趾明显比两侧短趾伸得远(只有一个尖)
+##   C2 握拳: 最靠左上的那块实心(非描边)= 左上第一颗指节 = HOT_FIST
+##   C3 ★真的拖起来时光标是握拳、点击点换成 HOT_FIST、原大不发青光; 松手后回到平时
+##   C4 ★浅色填充 + 深描边(10-30 第二轮方向稿): 轮廓一圈全是近黑描边, 身是浅色 —— 绿身压在绿龟 / 绿装备格上看不见
 ##   D1 ★五个拖动源都用 DragLift, 且记下的按下点 = 真按下的那一点(卡内坐标, 差 ≤ 1px)
 ##   D2 ★拿起那一刻不跳: 按下点正好在鼠标点上
 ##   D3 ★电脑: 滑到位后卡中心离鼠标 ≤ 1px; 半途在两者之间(是滑过去不是瞬移)
@@ -70,7 +71,7 @@ func _release() -> void:
 		await get_tree().process_frame
 
 
-## [最靠左上的奶白像素(24 设计px 坐标), 每根爪(奶白连通块)离左上角最近那一点的 x+y(设计px, 升序)]
+## [最靠左上的爪尖色像素(24 设计px 坐标), 每根爪(爪尖色连通块)离左上角最近那一点的 x+y(设计px, 升序)]
 func _tips(tex: Texture2D, cream: Color) -> Array:
 	var img := tex.get_image()
 	var k := float(CT.ART) / float(img.get_width())
@@ -83,7 +84,7 @@ func _tips(tex: Texture2D, cream: Color) -> Array:
 		for x in range(w):
 			if seen.has(y * w + x) or not img.get_pixel(x, y).is_equal_approx(cream):
 				continue
-			## 一根爪 = 一块 4 邻连通的奶白
+			## 一根爪 = 一块 4 邻连通的爪尖色
 			var lo := x + y
 			var st: Array = [Vector2i(x, y)]
 			seen[y * w + x] = true
@@ -103,6 +104,57 @@ func _tips(tex: Texture2D, cream: Color) -> Array:
 	return [best * k, claws]
 
 
+func _lum(c: Color) -> float:
+	return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+
+
+## 最靠左上的那块实心(不透明且不是深描边)像素, 24 设计px 坐标; 找不到 ⇒ (-1,-1)
+func _first_fill(tex: Texture2D) -> Vector2:
+	var img := tex.get_image()
+	var best := Vector2(-1, -1)
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var c := img.get_pixel(x, y)
+			if c.a > 0.5 and _lum(c) > 0.3 and (best.x < 0.0 or x + y < int(best.x + best.y)):
+				best = Vector2(x, y)
+	return best * (float(CT.ART) / float(img.get_width())) if best.x >= 0.0 else best
+
+
+func _argmax(count: Dictionary, skip: String) -> String:
+	var best := ""
+	for k in count:
+		if k != skip and (best == "" or int(count[k]) > int(count[best])):
+			best = k
+	return best
+
+
+## [轮廓像素数(不透明且 4 邻有透明或出界), 其中最亮那颗的亮度, 身色]
+## 身色 = 除描边色(轮廓上最多的那种)以外最多的颜色 —— 指着的爪子很细, 描边像素比身还多, 不能直接取最多的。
+func _edge_and_body(tex: Texture2D) -> Array:
+	var img := tex.get_image()
+	var w := img.get_width()
+	var h := img.get_height()
+	var n_edge := 0
+	var edge_max := 0.0
+	var count := {}
+	var edge_count := {}
+	for y in range(h):
+		for x in range(w):
+			var c := img.get_pixel(x, y)
+			if c.a <= 0.5:
+				continue
+			count[c.to_html()] = int(count.get(c.to_html(), 0)) + 1
+			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var q: Vector2i = Vector2i(x, y) + dd
+				if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h or img.get_pixel(q.x, q.y).a <= 0.5:
+					n_edge += 1
+					edge_max = maxf(edge_max, _lum(c))
+					edge_count[c.to_html()] = int(edge_count.get(c.to_html(), 0)) + 1
+					break
+	var body := _argmax(count, _argmax(edge_count, ""))
+	return [n_edge, edge_max, Color(body) if body != "" else Color(0, 0, 0, 0)]
+
+
 func _ready() -> void:
 	await get_tree().process_frame
 	GameState.test_mode = true
@@ -114,13 +166,25 @@ func _ready() -> void:
 	# ── C1 / C2 ──
 	var tp: Array = _tips(ct._point_tex, ct._point_cols[0])
 	var cl: Array = tp[1]
-	_ok("C1 分母: 平时爪子里找得到奶白爪尖, 且有 3 根爪", (tp[0] as Vector2).x >= 0.0 and cl.size() == 3, "爪 %d 根 %s" % [cl.size(), str(cl)])
-	_ok("C1 ★爪尖(最靠左上的奶白像素) = 点击点 HOT", (tp[0] as Vector2).is_equal_approx(CT.HOT), "爪尖 %s · HOT %s" % [tp[0], CT.HOT])
+	_ok("C1 分母: 平时爪子里找得到爪尖, 且有 3 根爪", (tp[0] as Vector2).x >= 0.0 and cl.size() == 3, "爪 %d 根 %s" % [cl.size(), str(cl)])
+	_ok("C1 ★爪尖(最靠左上的爪尖色像素) = 点击点 HOT", (tp[0] as Vector2).is_equal_approx(CT.HOT), "爪尖 %s · HOT %s" % [tp[0], CT.HOT])
 	## 只有一个尖: 中趾(离左上最近的那根)比第二近的那根至少往左上多伸 8 设计px(旧爪子三根并排只差 6)
 	var gap: float = (float(cl[1]) - float(cl[0])) if cl.size() >= 2 else 0.0
 	_ok("C1 ★只有一个尖: 中趾比两侧短趾往左上多伸 ≥ 8 设计px", gap >= 8.0, "多伸 %.1f" % gap)
-	var tf: Array = _tips(ct._fist_tex, ct._fist_cols[0])
-	_ok("C2 ★握拳: 最前那颗爪尖 = HOT_FIST", (tf[0] as Vector2).is_equal_approx(CT.HOT_FIST), "爪尖 %s · HOT_FIST %s" % [tf[0], CT.HOT_FIST])
+	var ff: Vector2 = _first_fill(ct._fist_tex)
+	_ok("C2 分母: 握拳里找得到实心像素", ff.x >= 0.0, str(ff))
+	_ok("C2 ★握拳: 左上第一颗指节 = HOT_FIST", ff.is_equal_approx(CT.HOT_FIST), "指节 %s · HOT_FIST %s" % [ff, CT.HOT_FIST])
+	## 平时那只按同一把尺子量也得落在 HOT 上(爪尖就是最靠左上的实心) —— 两张图同一个规矩
+	_ok("C2 平时爪子按同一把尺子: 最靠左上的实心 = HOT", _first_fill(ct._point_tex).is_equal_approx(CT.HOT), str(_first_fill(ct._point_tex)))
+
+	# ── C4 浅色填充 + 深描边 ──
+	for pair in [["平时", ct._point_tex], ["握拳", ct._fist_tex]]:
+		var eb: Array = _edge_and_body(pair[1])
+		_ok("C4 分母: %s轮廓像素 ≥ 40" % pair[0], int(eb[0]) >= 40, "轮廓 %d" % int(eb[0]))
+		_ok("C4 ★%s: 轮廓一圈全是近黑描边(最亮 ≤ 0.15)" % pair[0], float(eb[1]) <= 0.15, "最亮 %.2f" % float(eb[1]))
+		var body: Color = eb[2]
+		_ok("C4 ★%s: 身是浅色(亮度 ≥ 0.8)、不是游戏主色绿" % pair[0], _lum(body) >= 0.8 and not (body.g > body.r + 0.1 and body.g > body.b + 0.1),
+			"身 %s 亮度 %.2f" % [body.to_html(false), _lum(body)])
 
 	# ── 背包(打了一周的号: 有装备、统领、小将) ──
 	load("res://tests/_setup_appstore.gd").run()
@@ -148,6 +212,8 @@ func _ready() -> void:
 			get_viewport().gui_get_hovered_control().name if get_viewport().gui_get_hovered_control() != null else "无"]
 		_ok("C3 ★拖动中光标是握拳", ct._g.texture == ct._fist_tex, scene)
 		_ok("C3 ★拖动中点击点换成 HOT_FIST", ct._cur.pivot_offset.is_equal_approx(CT.HOT_FIST), "%s · %s" % [ct._cur.pivot_offset, scene])
+		_ok("C3 ★拖动中握拳原大、不发青光", ct._cur.scale.is_equal_approx(Vector2.ONE) and not ct._glow.visible,
+			"scale %s 青光 %s · %s" % [ct._cur.scale, ct._glow.visible, scene])
 	await _release()
 	_ok("D5 背包装备: 拖动结束原位复原", is_equal_approx(cell.modulate.a, 1.0), "a=%.2f" % cell.modulate.a)
 	ct._process(0.016)

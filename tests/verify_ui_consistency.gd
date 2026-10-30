@@ -1996,7 +1996,7 @@ func _test_cursor_scale() -> void:
 		"_g.size=%s _glow.size=%s 贴图=%s" % [str((ct._g as Control).size),
 			str((ct._glow as Control).size), str((ct._g as TextureRect).texture.get_size())])
 	## ★热点: `HOT` 是 24 坐标系的, 控件框一胀大爪尖就不落在鼠标点上了。
-	##   量法: 爪尖(贴图里最靠左上的奶白爪尖像素, 从产品自己的贴图现找 —— 2026-10-30 换斜指左上的爪子后不再写死 (11,1))
+	##   量法: 爪尖(贴图里最靠左上的爪尖色像素 = 色号 0, 从产品自己的贴图现找 —— 2026-10-30 换斜指左上的爪子后不再写死 (11,1))
 	##   画在哪 vs 代码认为鼠标点在哪, 两者之差应为 0。
 	var _S: Vector2 = (ct._g as Control).size
 	var _img: Image = (ct._point_tex as ImageTexture).get_image()
@@ -2005,7 +2005,7 @@ func _test_cursor_scale() -> void:
 		for _px in range(_img.get_width()):
 			if _img.get_pixel(_px, _py).is_equal_approx(ct._point_cols[0]) and (_tip.x < 0.0 or _px + _py < _tip.x + _tip.y):
 				_tip = Vector2(_px, _py)
-	_ok("★分母 CURSOR_SCALE: 贴图里找得到奶白爪尖", _tip.x >= 0.0, str(_tip))
+	_ok("★分母 CURSOR_SCALE: 贴图里找得到爪尖", _tip.x >= 0.0, str(_tip))
 	_tip = _tip * float(ct.ART) / float(_img.get_width())
 	var _drawn: Vector2 = (ct._g as Control).get_global_transform() 		* Vector2(_tip.x * _S.x / ct.ART, _tip.y * _S.y / ct.ART)
 	var _assumed: Vector2 = (ct._cur as Control).get_global_transform() * ct.HOT
