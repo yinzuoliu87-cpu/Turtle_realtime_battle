@@ -1,10 +1,6 @@
 {
  "_why": "由 `python tools/asset_borrow_audit.py --update` 生成, 不要手改。第一道网(同屏内借别人的图)的存量, 只减不增。",
  "known": {
-  "battlehud/panel-frame.png": [
-   "scripts/scenes/battle/battle_hud.gd",
-   "scripts/scenes/battle/info_panel.gd"
-  ],
   "skills/lightning-3.png": [
    "scripts/scenes/RealtimeBattle3DScene.gd",
    "scripts/systems/skills/lightning_system.gd"
@@ -12,10 +8,6 @@
   "ui/icon-turtle.png": [
    "scripts/scenes/CodexScene.gd",
    "scripts/scenes/MatchmakingScene.gd"
-  ],
-  "vfx/boom-wave-anim.png": [
-   "scripts/scenes/RealtimeBattle3DScene.gd",
-   "scripts/scenes/battle/dual_lane_flow.gd"
   ],
   "vfx/candy-burst.png": [
    "scripts/scenes/RealtimeBattle3DScene.gd",

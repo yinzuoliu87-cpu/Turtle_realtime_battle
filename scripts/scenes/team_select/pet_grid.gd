@@ -1,6 +1,9 @@
 class_name PetGrid
 extends RefCounted
 ## 选龟页·龟卡片网格(填充/建卡·稀有度badge和立绘helper留主场景共享)
+## ★2026-10-30 选龟页重做(用户「你这还是一股浏览器的感觉啊」): 龟池卡 = 背包同款小卡(UnitCardArt) ——
+##   全身立绘 + 金饰框 + 稀有度色名字横幅 + 左上稀有度字母(与页签同字同色); 已上阵 = 立绘压暗 +「已上阵」;
+##   右栏正在看的那一只 = 卡外金边。原来是暖铜九宫格 + 半透明圆角稀有度小签 + 被动小圆标(一张 CSS 卡片)。
 ## 类内名不变;外部名加 battle.
 
 var host
@@ -11,6 +14,9 @@ func _init(b) -> void:
 func _refresh_grid() -> void:
 	for c in host._grid_flow.get_children():
 		c.queue_free()
+	## 锁定后不显示龟池(用户 10-30「锁定后的就不用去显示其他龟和稀有度了啊」)⇒ 不建卡
+	if host._roster_locked:
+		return
 	# active 稀有度按钮 (PoC .pg-rarity-btn.active = 金渐变填充 + 深字)
 	for rb in host._rarity_btns:
 		var b: Button = rb["btn"]
@@ -48,48 +54,17 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	var rarity: String = pet.get("rarity", "C")
 	var rcolor: Color = host.RARITY_COLOR.get(rarity, Color.WHITE)
 	var selected = pid in host.team
+	var focused: bool = pid == host.detail_pet_id
 
-	# PoC .pet-card 卡 = 纯 Control 叠层: 背景框(满) + 内容(padding内缩, 上→下 头像→meta) + badge(相对卡) + 被动(相对头像)
 	var card = Control.new()
 	card.set_meta("pet_id", pid)   # 教程手势指针找「第一只没上阵的龟」用(TeamSelectScene._tutorial_anchor)
-	# 宽=填满行均分(≥116, 1:1 PoC minmax(116,1fr) 卡拉伸); 高 ~116. 原固定116²方卡左packed留白=用户报"布局不同"
-	card.custom_minimum_size = Vector2(host._grid_card_w, host._sp(116))
+	var sz := Vector2(host._grid_card_w, host._grid_card_h)
+	card.custom_minimum_size = sz
+	card.size = sz
 	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var sb = StyleBoxFlat.new()
-	if selected:
-		sb.bg_color = Color(1, 216.0/255, 107.0/255, 0.1)
-		sb.border_color = Color("#ffd86b")
-	else:
-		sb.bg_color = Color(74.0/255, 40.0/255, 16.0/255, 0.4)
-		sb.border_color = Color(1, 216.0/255, 107.0/255, 0.2)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(host._sp(12))
-	# 28 张龟卡是选龟屏最大的一片「网页味」——半透底 + 2px 金边 + 12 圆角 = CSS 卡片。
-	# 换成和图鉴/背包/战斗面板同一张金属九宫格; 选中/hover 靠 modulate 提亮而不是换边框色
-	#   (StyleBoxTexture 没有 border_color, 下面 hover 那两个闭包必须一起改, 否则悄悄失效)。
-	# ★第一版用了战斗 HUD 的 panel-frame(深海军蓝 + 青内沿 + 四角铆钉), 实拍后否掉:
-	#   ① 选龟屏是**暖色木桌**世界, 冷蓝框读成"木头上贴了块黑板"——我把战斗面板做统一,
-	#      反而把这一屏做割裂了。
-	#   ② 卡片四角本来就挂着东西(左上稀有度角标·右上被动图标·底部名字行),
-	#      铆钉正好跟它们打架: 上面两颗被角标盖住、下面两颗夹着名字, 看着像缺角。
-	#   ⇒ 新生成一张暖铜细边、**无铆钉**的卡框(PixelLab, 512 出图降到 72x72, 边带 7px)。
-	var card_sb: StyleBox = UISkin.nine_if_big(host._grid_card_w, host._sp(116),
-		"teamselect/card-frame.png", 14, sb)
-	var card_tex: StyleBoxTexture = card_sb as StyleBoxTexture
-	var _mod_base := Color(1.28, 1.12, 0.78, 1.0) if selected else Color(0.86, 0.82, 0.76, 1.0)
-	if card_tex != null:
-		card_tex.modulate_color = _mod_base
-		card_tex.content_margin_left = 4; card_tex.content_margin_right = 4
-		card_tex.content_margin_top = 4; card_tex.content_margin_bottom = 4
-	# 背景框铺满卡 (Panel; 让 badge/被动可绝对叠在卡边而非被 padding 推偏)
-	var bg = Panel.new()
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.add_theme_stylebox_override("panel", card_sb)
-	card.add_child(bg)
 	# ★手机端滑动(用户2026-07-22「选龟页面也是」):
 	#   Control 默认 MOUSE_FILTER_STOP → GUI 事件不冒泡到外层 ScrollContainer, 龟池在触屏上滑不动。
-	#   而 :848 又把滚动条设成 SHOW_NEVER(注释还写着"滚动仍启用(手机拖)") → 手机上【完全没有滚动手段】。
+	#   而网格的滚动条设成 SHOW_NEVER(注释还写着"滚动仍启用(手机拖)") → 手机上【完全没有滚动手段】。
 	#   解法照抄项目已实机验证的模板 InventoryScene.gd:651: PASS + 按下/抬起位移阈值判点选。
 	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	var _press = {"p": Vector2.ZERO}
@@ -112,133 +87,101 @@ func _make_pet_card(pet: Dictionary) -> Control:
 				card.set_drag_preview(DragLift.make(card, null, at / card.size, true))
 			return d, Callable(), Callable())
 
-	# 内容: MarginContainer(满卡 + PoC padding:10px 8px 8px) → VBox(头像 → meta, 顶对齐自然流)
-	var pad_wrap = MarginContainer.new()
-	pad_wrap.set_anchors_preset(Control.PRESET_FULL_RECT)
-	## 左右也要让开边带: 卡框边带 7px 而 _sp(8)≈6px, 名字长的龟(「缩头乌龟」)会压上去。
-	pad_wrap.add_theme_constant_override("margin_left", host._sp(13))
-	pad_wrap.add_theme_constant_override("margin_right", host._sp(13))
-	pad_wrap.add_theme_constant_override("margin_top", host._sp(10))
-	# ★底边距从 8 提到 14: 卡框的金属边带实测 7px 厚, 而原来名字行离底只有 _sp(8)≈6px
-	#   ⇒ 「Lv.1 名字」正压在边带上(判据 13 量到超出 7px)。**换框不只是换花纹, 内容区变小了。**
-	pad_wrap.add_theme_constant_override("margin_bottom", host._sp(18))
-	pad_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_child(pad_wrap)
-	var vb = VBoxContainer.new()
-	vb.alignment = BoxContainer.ALIGNMENT_BEGIN   # 头像在上 meta 紧随 (PoC 自然流, 非垂直居中)
-	vb.add_theme_constant_override("separation", host._sp(4))   # PoC .pet-avatar margin-bottom:4
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pad_wrap.add_child(vb)
-
-	# 头像区 (PoC .pet-avatar min-height:76 position:relative → 被动相对它定位)
-	var av_area = Control.new()
-	## ★头像区 76→68: 卡高 116, 上留白 10 + 下留白 18 ⇒ 内容只剩 88;
-	##   而 76(头像) + 4(间距) + 15(名字行) = 95 > 88 ⇒ **名字被顶到卡底、压在金属边带上**
-	##   (探针实测: 名字底 673.4 而框内沿 671.4)。改边距没用 —— 内容本身就超了。
-	av_area.custom_minimum_size = Vector2(0, host._sp(68))
-	av_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	av_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(av_area)
-	# 72px 全身 idle 动画 (1:1 PoC buildPetImgHTML(pet,72); 默认 paused, hover/selected 才播)
-	var av = TextureRect.new()
-	av.set_anchors_preset(Control.PRESET_FULL_RECT)
-	av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host._apply_pet_idle_texture(av, pet, selected)
-	av_area.add_child(av)
-	# 被动图标 (PoC .pet-passive-icon: 相对**头像**右上探出 top:-8 right:-8)
-	var passive_raw = pet.get("passive")
-	if passive_raw is Dictionary and not (passive_raw as Dictionary).is_empty():
-		var pi_path: String = DataRegistry.passive_icons.get((passive_raw as Dictionary).get("type", ""), "")
-		if pi_path.ends_with(".png"):
-			var full = "res://assets/sprites/" + pi_path
-			if ResourceLoader.exists(full):
-				var pcirc = PanelContainer.new()
-				pcirc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				var pc_sb = StyleBoxFlat.new()
-				pc_sb.bg_color = Color(10.0/255, 14.0/255, 24.0/255, 1.0)
-				pc_sb.set_corner_radius_all(host._sp(17))
-				pc_sb.content_margin_left = host._sp(4); pc_sb.content_margin_right = host._sp(4)
-				pc_sb.content_margin_top = host._sp(4); pc_sb.content_margin_bottom = host._sp(4)
-				pcirc.add_theme_stylebox_override("panel", pc_sb)
-				var pic = TextureRect.new()
-				pic.texture = load(full)
-				pic.custom_minimum_size = Vector2(host._sp(26), host._sp(26))   # PoC img 26px
-				pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				pcirc.add_child(pic)
-				pcirc.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-				pcirc.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-				pcirc.grow_vertical = Control.GROW_DIRECTION_END
-				av_area.add_child(pcirc)
-				pcirc.position += Vector2(host._sp(8), -host._sp(8))   # 探出右上 right:-8 top:-8
-
-	# meta 行: Lv + 名 同一行 (PoC .pet-meta flex baseline center gap5)
-	var meta = HBoxContainer.new()
-	meta.alignment = BoxContainer.ALIGNMENT_CENTER
-	meta.add_theme_constant_override("separation", host._sp(5))
-	meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var lv = Label.new()
-	lv.text = "Lv.%d" % GameState.battle_level_for(pid)   # ★10-11: 实战等级(原读 get_pet_level, 真玩家恒为 1)
-	lv.add_theme_font_size_override("font_size", host._sf(11))
-	lv.add_theme_color_override("font_color", Color("#ffd86b"))   # PoC .pet-lv #ffd86b
+	## 卡面(背包同款小卡; 小卡没有装备托条 ⇒ 横幅压低到下沿上方): 窗口底 → 立绘 → (已上阵压暗) → 框 → 横幅 → 稀有度字母
+	var kx: float = sz.x / UnitCardArt.NATIVE.x
+	var ky: float = sz.y / UnitCardArt.NATIVE.y
+	var b: float = UnitCardArt.border_for(sz)
+	var bn := Rect2(9.0 * kx, 168.0 * ky, sz.x - 18.0 * kx, 44.0 * ky)
+	var pw := Rect2(b, b, sz.x - 2.0 * b, sz.y - 2.0 * b)
+	card.add_child(UnitCardArt.window(sz, b))
+	var body: Array = UnitCardArt.pet_body(pid)
+	if body[0] != null:
+		card.add_child(UnitCardArt.portrait(body[0], body[1], pw, bn.position.y + 10.0 * ky))
+	if selected:
+		var dim := ColorRect.new()
+		dim.name = "InTeamDim"
+		dim.color = Color(0.03, 0.02, 0.01, 0.55)
+		dim.position = pw.position; dim.size = Vector2(pw.size.x, bn.position.y - pw.position.y)
+		dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(dim)
+	var fr: Control = UnitCardArt.frame(sz)
+	card.add_child(fr)
+	card.add_child(UnitCardArt.banner(str(pet.get("name", "?")), rcolor, bn, maxi(13, int(roundf(bn.size.y * 0.6)))))
+	## 稀有度字母: 左上(窗口里), 与页签同一个字同一个色 —— 看页签就知道这张算哪一档
+	var rt := Label.new()
+	rt.name = "RarityTag"
+	rt.text = rarity
+	rt.add_theme_font_size_override("font_size", maxi(12, int(roundf(sz.y * 0.11))))
+	rt.add_theme_color_override("font_color", rcolor)
+	rt.add_theme_color_override("font_outline_color", Color("#0d0805"))
+	rt.add_theme_constant_override("outline_size", 5)
+	## 落在窗口里面、不压框的边带(第一版贴着边带放, verify_ui_consistency 量到越进边带 6px)
+	rt.position = Vector2(b + 10.0, b + 9.0)
+	rt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(rt)
+	## 等级: 右上(窗口里), 实战等级(★10-11: 原读 get_pet_level, 真玩家恒为 1)
+	var lv := Label.new()
+	lv.name = "Level"
+	lv.text = "Lv.%d" % GameState.battle_level_for(pid)
+	lv.add_theme_font_size_override("font_size", maxi(12, int(roundf(sz.y * 0.1))))
+	lv.add_theme_color_override("font_color", Color("#ffd86b"))
+	lv.add_theme_color_override("font_outline_color", Color("#0d0805"))
+	lv.add_theme_constant_override("outline_size", 5)
+	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	lv.position = Vector2(b + 10.0, b + 9.0)
+	lv.size = Vector2(sz.x - 2.0 * b - 20.0, float(maxi(12, int(roundf(sz.y * 0.1)))) * 1.5)
 	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	meta.add_child(lv)
-	var nm = Label.new()
-	nm.text = pet.get("name", "?")
-	nm.add_theme_font_size_override("font_size", host._sf(13))   # PoC .pet-name 13px (无色=浅色继承)
-	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	meta.add_child(nm)
-	vb.add_child(meta)
+	card.add_child(lv)
+	if selected:
+		var tag := Label.new()
+		tag.name = "InTeamTag"
+		tag.text = "已上阵"
+		tag.add_theme_font_size_override("font_size", maxi(13, int(roundf(sz.y * 0.12))))
+		tag.add_theme_color_override("font_color", Color("#ffd86b"))
+		tag.add_theme_color_override("font_outline_color", Color("#1a0e05"))
+		tag.add_theme_constant_override("outline_size", 5)
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tag.position = pw.position; tag.size = Vector2(pw.size.x, bn.position.y - pw.position.y)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(tag)
+	## 右栏正在看的这一只: 卡外一圈金边
+	if focused:
+		UnitCardArt.ring(card, sz, Color("#ffd86b"), 3.0)
 
-	# 稀有度 badge (PoC .pet-rarity-badge 相对**卡片** top:6 left:6) — 挂 card 绝对定位, 渲染最上层
-	var badge = host._make_rarity_badge(rarity, rcolor)
-	badge.position = Vector2(host._sp(6), host._sp(6))
-	card.add_child(badge)
-
-	# hover (1:1 PoC .pet-card:hover translateY(-2)+金边+柔光; 非选中 idle hover才播)
-	var base_border: Color = sb.border_color
+	# hover: 框提亮 + 往上抬一点(1:1 PoC .pet-card:hover translateY(-2))
 	card.mouse_entered.connect(func() -> void:
 		if not is_instance_valid(card): return
 		if card.get_meta("hovered", false): return
 		card.set_meta("hovered", true)
 		card.set_meta("rest_y", card.position.y)
-		if card_tex != null:
-			card_tex.modulate_color = Color(minf(_mod_base.r * 1.35, 1.0),
-				minf(_mod_base.g * 1.35, 1.0), minf(_mod_base.b * 1.35, 1.0), 1.0)
-		else:
-			sb.border_color = Color("#ffd86b")
-			sb.shadow_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.18)
-			sb.shadow_size = host._sp(6)
-			sb.shadow_offset = Vector2(0, host._sp(4))
-		var t = (av.get_meta("idle_tw") if av.has_meta("idle_tw") else null)
-		if t is Tween and (t as Tween).is_valid(): (t as Tween).play()
+		fr.modulate = Color(1.3, 1.22, 1.05)
 		var tw = card.create_tween()
 		tw.tween_property(card, "position:y", card.position.y - 2.0 * host._s(), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT))
 	card.mouse_exited.connect(func() -> void:
 		if not is_instance_valid(card): return
 		if not card.get_meta("hovered", false): return
 		card.set_meta("hovered", false)
-		if card_tex != null:
-			card_tex.modulate_color = _mod_base
-		else:
-			sb.border_color = base_border
-			sb.shadow_size = 0
-		if not selected:
-			var t = (av.get_meta("idle_tw") if av.has_meta("idle_tw") else null)
-			if t is Tween and (t as Tween).is_valid():
-				(t as Tween).pause()
-				if av.texture is AtlasTexture:
-					var at = av.texture as AtlasTexture
-					at.region = Rect2(0, 0, at.region.size.x, at.region.size.y)
+		fr.modulate = Color.WHITE
 		var rest_y: float = card.get_meta("rest_y", card.position.y)
 		var tw = card.create_tween()
 		tw.tween_property(card, "position:y", rest_y, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT))
 
 	return card
+
+
+## 右栏换了一只看 ⇒ 金边挪到那张卡上(只挪边, 不重建整个网格)。
+func mark_focus() -> void:
+	if host._grid_flow == null or not is_instance_valid(host._grid_flow):
+		return
+	for card in host._grid_flow.get_children():
+		if not (card is Control) or (card as Node).is_queued_for_deletion():
+			continue
+		for r in (card as Node).get_children():
+			if r.name == "Ring":
+				r.free()
+		if str((card as Control).get_meta("pet_id", "")) == host.detail_pet_id:
+			UnitCardArt.ring(card, (card as Control).size, Color("#ffd86b"), 3.0)
 
 
 ## 给 TextureRect 装龟的全身 idle 动画 (1:1 PoC buildPetImgHTML: pet.img 全身 sheet + sprite{} 帧).

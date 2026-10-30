@@ -1247,7 +1247,7 @@ scripts/scenes/TeamSelectScene.gd|lit|%s 不能被替换
 scripts/scenes/TeamSelectScene.gd|lit|%s 只能拖到空格
 scripts/scenes/TeamSelectScene.gd|lit|受到致命伤害时一次不死, 保留 1 点生命(每场 1 次)。这段较长描述用于测试自动换行与屏内夹取是否正常, 多写几个字确保会换到第二三行。
 scripts/scenes/TeamSelectScene.gd|lit|本大轮阵容已锁定
-scripts/scenes/TeamSelectScene.gd|lit|本大轮阵容已锁定 · 可更换技能
+scripts/scenes/TeamSelectScene.gd|lit|本大轮阵容已锁定 · 点统领卡查看详情、更换技能
 scripts/scenes/TeamSelectScene.gd|lit|水晶球位
 scripts/scenes/TeamSelectScene.gd|lit|测试被动·不屈
 scripts/scenes/TeamSelectScene.gd|lit|糖果炸弹位
@@ -1260,9 +1260,9 @@ scripts/scenes/TeamSelectScene.gd|text|已截止 · 截止前 %d 分钟停止匹
 scripts/scenes/TeamSelectScene.gd|text|撤下
 scripts/scenes/TeamSelectScene.gd|text|数据加载失败，请重启游戏
 scripts/scenes/TeamSelectScene.gd|text|暂无羁绊
+scripts/scenes/TeamSelectScene.gd|text|本大轮统领
 scripts/scenes/TeamSelectScene.gd|text|沿用上次
 scripts/scenes/TeamSelectScene.gd|text|羁绊
-scripts/scenes/TeamSelectScene.gd|text|返回
 scripts/scenes/TeamSelectScene.gd|text|还需 %d 只
 scripts/scenes/TeamSelectScene.gd|text|选择 3 只龟
 scripts/scenes/TeamSelectScene.gd|text|选择统领
@@ -1972,10 +1972,6 @@ scripts/scenes/social/player_menu.gd|lit|该玩家 ID 对应多位玩家，请�
 scripts/scenes/social/player_menu.gd|lit|黑名单已满
 scripts/scenes/social/player_menu.gd|text|玩家 ID %s
 scripts/scenes/stage_ceremony.gd|lit|点击任意处继续
-scripts/scenes/team_select/detail_panel.gd|lit|护甲
-scripts/scenes/team_select/detail_panel.gd|lit|攻击力
-scripts/scenes/team_select/detail_panel.gd|lit|生命值
-scripts/scenes/team_select/detail_panel.gd|lit|魔抗
 scripts/scenes/team_select/detail_panel.gd|text|被动
 scripts/scenes/team_select/detail_panel.gd|tooltip_text|被动
 scripts/scenes/team_select/layout_editor.gd|lit|\n===== 复制以下 RL (含你拖动后的坐标) =====\nconst RL := {\n
@@ -1987,9 +1983,11 @@ scripts/scenes/team_select/layout_editor.gd|lit|📋 已导出 RL 坐标到控�
 scripts/scenes/team_select/layout_editor.gd|lit|🔧 布局编辑开: 拖=移动 · 右下角=缩放 · F10导出坐标 · 再按F9关
 scripts/scenes/team_select/layout_editor.gd|text|布局编辑 · 拖绿框=移动 · 拖右下角黄块=缩放 · 拖完点右上「保存坐标」→
 scripts/scenes/team_select/layout_editor.gd|text|💾 保存坐标
+scripts/scenes/team_select/pet_grid.gd|text|已上阵
 scripts/scenes/team_select/roster_slots.gd|lit|%s 不能被替换
 scripts/scenes/team_select/roster_slots.gd|lit|水晶球
 scripts/scenes/team_select/roster_slots.gd|lit|糖果炸弹
+scripts/scenes/team_select/roster_slots.gd|lit|统领%d
 scripts/scenes/team_select/roster_slots.gd|lit|随从
 scripts/scenes/team_select/roster_slots.gd|text|放置
 scripts/scenes/team_select/roster_slots.gd|text|空位
@@ -2003,7 +2001,6 @@ scripts/scenes/team_select/skill_picker.gd|lit|攻击（自动释放）
 scripts/scenes/team_select/skill_picker.gd|lit|未解锁
 scripts/scenes/team_select/skill_picker.gd|text|技能
 scripts/scenes/team_select/skill_picker.gd|text|选择 1 个技能
-scripts/scenes/team_select/skill_picker.gd|text|选择 · %s
 scripts/scenes/team_select/skill_picker.gd|tooltip_text|未解锁
 scripts/scenes/trainer/trainer_page_skin.gd|lit|被动
 scripts/scenes/tutorial_choice.gd|lit|取消

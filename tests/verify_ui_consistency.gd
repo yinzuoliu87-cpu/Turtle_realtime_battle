@@ -117,7 +117,11 @@ const BASE: Dictionary = {
 	## ⚠ 剩下的 32 里 **28 个是被动图标的正圆底**(`pet_grid.gd:154`, 26x26 半径 13)。
 	##   正圆**不是**用户说的那味(他点名的是 border-radius 的圆角**矩形**), 刻意留着。
 	##   ⇒ 判据一个字没放宽 —— 宁可让它数着, 也不为了数字好看去改判据。
-	"TeamSelect": {"web": 0, "round": 32, "frame": 0, "tap": 1},
+	## ★2026-10-30 32 → 0: 选龟页重做后龟池卡换成背包同款小卡, 那 28 个被动小圆底和详情 / 技能的几处圆角都没了(两态实测 0)。
+	"TeamSelect": {"web": 0, "round": 0, "frame": 0, "tap": 1},
+	## ★2026-10-30 选龟页重做: 锁定后(本大轮统领已定)不建龟池与页签、三张统领卡放大(用户「锁定后的就不用去显示其他龟和稀有度了啊」)
+	##   ⇒ 两种状态长得不一样, 分开量: 「TeamSelect」= 全选版(有龟池), 「TeamSelect·锁定」= 锁定版。
+	"TeamSelect·锁定": {"web": 0, "round": 0, "frame": 0, "tap": 1},
 	# 商店货架随机 ⇒ 它这两格是**容差基线**(实测跨多次运行 0~3 网页盒 / 11~14 圆角盒)。
 	# 卡到实测上沿会偶发红; 而真回归是数量级的(31 vs 0), 容差 +1 挡不住的场面不存在。
 	## ★★2026-09-27 11 → 0: 门禁明细量出来 = **10 张货架卡的底板**(132x136)
@@ -272,6 +276,8 @@ const MIN_CTRL: Dictionary = {
 	"Matchmaking": 18,
 	## ★Record 下限从 10 提到 80: 10 是占位屏也能过的数, 等于分母没起作用。
 	"TeamSelect": 150, "Shop": 60, "Settings": 10, "Record": 80,
+	## 锁定版只有三张统领卡 + 右栏 + 羁绊纸, 没有龟池(全选版那 28 张卡不在) ⇒ 下限单独给
+	"TeamSelect·锁定": 60,
 	## 钉在别的星期几的同一屏, 下限与本屏相同(那一天长什么样由 `_pinned_day_ok` 另判)。
 	"MainMenu·周一": 20, "MainMenu·周六": 20, "MainMenu·周日": 20,
 	"Leaderboard·周一": 30, "Leaderboard·周六": 30, "Leaderboard·周日": 30,
@@ -1765,6 +1771,17 @@ func _ready() -> void:
 			var sc = load("res://tests/_setup_inv_demo.gd")
 			if sc != null and sc.has_method("run"):
 				sc.run()
+		## ★选龟页两态(2026-10-30): 原来不给它造数据, 量到哪一态全看前面那几屏留下的存档(背包种子会把统领定好 ⇒ 锁定版)。
+		##   ⇒ 显式钉: 全选版先清掉本大轮统领; 锁定版跑背包种子(统领已定、身上有装备 ⇒ 羁绊纸上有字)。
+		if scene_name == "TeamSelect":
+			if str(scn) == "TeamSelect·锁定":
+				var sc2 = load("res://tests/_setup_inv_demo.gd")
+				_ok("★分母 %s: 种子脚本 `_setup_inv_demo` 跑得起来(跑不起来 = 量的是全选版)" % str(scn),
+					sc2 != null and sc2.has_method("run"))
+				if sc2 != null and sc2.has_method("run"):
+					sc2.run()
+			else:
+				gs.season_leaders = []
 		## ★★商店有"本大轮没打过第一场就锁店"的分支(`_build_locked()` 直接 return)。
 		##   开没开店取决于**本机存档** ⇒ 我这台机器量的是真商店, CI 上是全新档量的是占位屏 ——
 		##   **两边根本不是同一块屏**, 棘轮数字自然对不上。(2026-08-19 在 _probe_webbox 上先撞到:
@@ -1819,6 +1836,10 @@ func _ready() -> void:
 			_mm_leave_path = ""
 			_MM._may_leave_for_test = _mm_may_leave
 		add_child(inst)
+		if scene_name == "TeamSelect":
+			var want_locked := str(scn) == "TeamSelect·锁定"
+			_ok("★分母 %s: 量的真是%s版(否则两项量的是同一块屏)" % [str(scn), "锁定" if want_locked else "全选"],
+				bool(inst._roster_locked) == want_locked, "_roster_locked=%s" % str(inst._roster_locked))
 		## ★用完立刻清掉池注入 —— `Backend.pool_override` 是 static, 活过场景切换,
 		##   留着会把后面每一屏都喂上这份假池。
 		if _lb_seed != null:

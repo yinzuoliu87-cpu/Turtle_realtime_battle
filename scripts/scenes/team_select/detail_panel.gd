@@ -7,6 +7,7 @@ extends RefCounted
 ## 不挂它就走 Godot 的系统 tooltip(纯 Label), 标记会原样印给玩家(2026-10-02 实拍)。
 ## ★用 preload 常量而不是靠 class_name: 这份脚本没有 class_name(有意的, 见它的头注)。
 const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
+const TurtleStats := preload("res://scripts/gamedata/turtle_stats.gd")   # 定位(ROLE): 与移速 / 攻速同一份事实源
 
 var host
 
@@ -14,6 +15,15 @@ func _init(b) -> void:
 	host = b
 
 func _build_detail_region() -> void:
+	## ★2026-10-30 选龟页重做: 右栏垫一整块说明卡底板(insp-card, 与商店 / 背包弹出的说明卡同一张)。
+	##   原来坐在背景烤死的上下两块深色格子上, 而内容没对准格子(技能那行掉出下格, 属性数字贴死在格子右边)。
+	var fr := Panel.new()
+	fr.name = "DetailFrame"
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.root.add_child(fr)
+	host._place(fr, "detailFrame")
+	fr.add_theme_stylebox_override("panel", _frame_box())
+	fr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 像素框不插值
 	# 上区: 立绘/名字/属性/被动 各自独立成块 (可拖可缩·用户2026-07-18); 内容由 _refresh_detail 填
 	host._dt_portrait = _make_detail_panel("dtPortrait")
 	host._dt_name = _make_detail_panel("dtName")
@@ -29,6 +39,21 @@ func _build_detail_region() -> void:
 	host._detail_bottom.alignment = BoxContainer.ALIGNMENT_CENTER   # PoC #poc-detail-bottom justify-center
 	host._detail_bottom.add_theme_constant_override("separation", host._sp(10))
 	bot_panel.add_child(host._detail_bottom)
+
+
+## 右栏底板: 说明卡同一张 insp-card(12px 九宫格); 贴图缺失退回不透明深底 + 黄铜细边(与说明卡的兜底同色)。
+func _frame_box() -> StyleBox:
+	var p := "res://assets/sprites/battlehud/insp-card.png"
+	if ResourceLoader.exists(p):
+		var tb := StyleBoxTexture.new()
+		tb.texture = load(p)
+		tb.set_texture_margin_all(12)
+		return tb
+	var f := StyleBoxFlat.new()
+	f.bg_color = Color("#120e0a")
+	f.set_border_width_all(2); f.border_color = Color("#a5751d")
+	f.set_corner_radius_all(0)
+	return f
 
 
 ## 建一个独立信息子块面板 (透明底·按 RL key 放置·登记进编辑器·不挡下层点击)
@@ -69,7 +94,7 @@ func _refresh_detail() -> void:
 	# PoC .dp-portrait: 高156 居中 + 底部 radial 金色辉光; 全身 idle 动画
 	# 立绘外包一层等高(156)壳, 壳内底部叠 radial 金辉光(behind) + 立绘(front), 不改 VBox 布局.
 	var portrait_wrap = Control.new()
-	portrait_wrap.custom_minimum_size = Vector2(0, host._sp(156))   # PoC .dp-portrait height:156
+	portrait_wrap.custom_minimum_size = Vector2(0, host._sp(164))   # 立绘块高(2026-10-30 重做: 156 → 164)
 	portrait_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	portrait_wrap.clip_contents = true
 	# 底部 radial 金色辉光 (PoC index.html:563: radial-gradient(ellipse at 50% 80%, rgba(255,216,107,.12), transparent 70%))
@@ -94,8 +119,9 @@ func _refresh_detail() -> void:
 	#   不撑满壳: 居中一个 124×150(×s) 盒, KEEP_ASPECT_CENTERED 不变形/不放大.
 	var portrait = TextureRect.new()
 	portrait.set_anchors_preset(Control.PRESET_CENTER)
-	var pw = float(host._sp(124))
-	var ph = float(host._sp(150))
+	## 2026-10-30 重做: 124×150 → 200×160(右栏比原来宽, 立绘是这一栏的主角)
+	var pw = float(host._sp(200))
+	var ph = float(host._sp(160))
 	portrait.size = Vector2(pw, ph)
 	portrait.position = Vector2(-pw * 0.5, -ph * 0.5)   # 居中 (anchor 中心 + 自身一半偏移)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -111,49 +137,51 @@ func _refresh_detail() -> void:
 	name_row.add_theme_constant_override("separation", host._sp(8))
 	var nm = Label.new()
 	nm.text = pet.get("name", "?")
-	nm.add_theme_font_size_override("font_size", host._sf(20))
+	nm.add_theme_font_size_override("font_size", host._sf(26))
 	nm.add_theme_color_override("font_color", rcolor)
+	nm.add_theme_color_override("font_outline_color", Color("#0d0805"))
+	nm.add_theme_constant_override("outline_size", 5)
 	name_row.add_child(nm)
 	name_row.add_child(host._make_rarity_badge(rarity, rcolor, 12))   # PoC .dp-rarity 填充底 font:12px
 	var lvl = Label.new()
 	lvl.text = "Lv.%d" % det_lv
-	lvl.add_theme_font_size_override("font_size", host._sf(13))
+	lvl.add_theme_font_size_override("font_size", host._sf(17))
 	lvl.add_theme_color_override("font_color", Color("#ffd86b"))
 	name_row.add_child(lvl)
 	host._dt_name.add_child(name_row)
 
-	# PoC .dp-stats: 2 列网格 (1fr 1fr)
-	var stats_grid = GridContainer.new()
-	stats_grid.columns = 2
-	stats_grid.add_theme_constant_override("h_separation", host._sp(12))
-	stats_grid.add_theme_constant_override("v_separation", host._sp(4))
-	stats_grid.add_child(_stat_row("res://assets/sprites/stats/hp-icon.png", "生命值", hp))
-	stats_grid.add_child(_stat_row("res://assets/sprites/stats/atk-icon.png", "攻击力", atk))
-	stats_grid.add_child(_stat_row("res://assets/sprites/stats/def-icon.png", "护甲", def_))
-	stats_grid.add_child(_stat_row("res://assets/sprites/stats/mr-icon.png", "魔抗", mr))
-	host._dt_stats.add_child(stats_grid)
+	## ★2026-10-30 选龟页重做: 四项属性数字拿掉(用户「右侧4个属性感觉不用显示，或者不能去这么显示吧」)。
+	##   同类「出战前选角色」界面 14 款(C:/tmp/ts_ref2/选角色参考.png)没有一款把属性数字常驻在编队页上:
+	##   5 款只给战力总数、5 款只给等级 / 星级 / 定位词, 用数字的 3 款都在点开的详情里。
+	##   ⇒ 这一格换成一行定位词(Dota Underlords 的做法), 取自 turtle_stats.ROLE(移速 / 攻速的同一份事实源)。
+	##   上面算的 hp / atk / def_ / mr 仍要留着: 被动描述里的公式按它们算数(见下面 fake_f)。
+	var role: String = str(TurtleStats.ROLE.get(host.detail_pet_id, ""))
+	var role_lbl := Label.new()
+	role_lbl.name = "Role"
+	role_lbl.text = ("%s · %s" % [role.substr(0, 2), role.substr(2)]) if role.length() >= 4 else role
+	role_lbl.add_theme_font_size_override("font_size", host._sf(24))
+	role_lbl.add_theme_color_override("font_color", Color("#e7c68a"))
+	role_lbl.add_theme_color_override("font_outline_color", Color("#0d0805"))
+	role_lbl.add_theme_constant_override("outline_size", 5)
+	role_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	role_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	role_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	host._dt_stats.add_child(role_lbl)
 
 	# 被动 chip (PoC .dp-passive-chip: 绿底圆角框 + 图标 + 名(#7dffb3) + "被动" pill)
 	var passive_raw = pet.get("passive")
 	if passive_raw is Dictionary and not (passive_raw as Dictionary).is_empty():
 		var passive: Dictionary = passive_raw
 		var chip = PanelContainer.new()
+		## 2026-10-30 重做: 不透明深底 + 直角绿边(与技能格 / 说明卡同一族)。原来是金属小框染绿 + 一枚绿色小药丸「被动」。
 		var chip_sb = StyleBoxFlat.new()
-		chip_sb.bg_color = Color(125.0/255, 1, 179.0/255, 0.08)
-		chip_sb.border_color = Color(125.0/255, 1, 179.0/255, 0.28)
-		chip_sb.set_border_width_all(1)
-		chip_sb.set_corner_radius_all(host._sp(8))
-		chip_sb.content_margin_left = host._sp(8); chip_sb.content_margin_right = host._sp(8)   # PoC .dp-passive-chip padding:5px 8px (L/R 8)
-		chip_sb.content_margin_top = host._sp(5); chip_sb.content_margin_bottom = host._sp(5)   # T/B 5
-		## 换成金属小框(和图鉴/背包的 chip 同一张), 绿色留在 modulate 里 —— 被动一眼还是绿的。
-		var chip_tex := UISkin.nine("chip-frame.png", 7, chip_sb)
-		if chip_tex is StyleBoxTexture:
-			(chip_tex as StyleBoxTexture).modulate_color = Color(0.62, 1.45, 0.92, 1.0)
-			(chip_tex as StyleBoxTexture).content_margin_left = host._sp(8)
-			(chip_tex as StyleBoxTexture).content_margin_right = host._sp(8)
-			(chip_tex as StyleBoxTexture).content_margin_top = host._sp(5)
-			(chip_tex as StyleBoxTexture).content_margin_bottom = host._sp(5)
-		chip.add_theme_stylebox_override("panel", chip_tex)
+		chip_sb.bg_color = Color("#0c120d")
+		chip_sb.border_color = Color("#5fbf8a")
+		chip_sb.set_border_width_all(2)
+		chip_sb.set_corner_radius_all(0)
+		chip_sb.content_margin_left = host._sp(8); chip_sb.content_margin_right = host._sp(8)
+		chip_sb.content_margin_top = host._sp(5); chip_sb.content_margin_bottom = host._sp(5)
+		chip.add_theme_stylebox_override("panel", chip_sb)
 		var prow = HBoxContainer.new()
 		prow.add_theme_constant_override("separation", host._sp(6))
 		var pi_path: String = DataRegistry.passive_icons.get(passive.get("type", ""), "")
@@ -168,7 +196,7 @@ func _refresh_detail() -> void:
 				prow.add_child(pic)
 		var pnm = Label.new()
 		pnm.text = passive.get("name", "被动")
-		pnm.add_theme_font_size_override("font_size", host._sf(17))   # 被动名调大(用户2026-07-18·原13)
+		pnm.add_theme_font_size_override("font_size", host._sf(20))   # 被动名(用户2026-07-18 13→17; 2026-10-30 重做 →20)
 		pnm.add_theme_color_override("font_color", Color("#7dffb3"))
 		pnm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prow.add_child(pnm)
@@ -181,16 +209,15 @@ func _refresh_detail() -> void:
 		##      实拍看就是"一块灰绿方块里塞了两个字"。SHRINK_CENTER 之后它才是一枚签。
 		var tag_pc = PanelContainer.new()
 		tag_pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		var tag_sb = StyleBoxFlat.new()
-		tag_sb.bg_color = Color(125.0/255, 1, 179.0/255, 0.18)
-		tag_sb.set_corner_radius_all(0)
+		## 2026-10-30 重做: 「被动」两个字不再套一块半透绿底(那是这一栏最后一枚网页签)
+		var tag_sb = StyleBoxEmpty.new()
 		tag_sb.content_margin_left = host._sp(5); tag_sb.content_margin_right = host._sp(5)
 		tag_sb.content_margin_top = host._sp(1); tag_sb.content_margin_bottom = host._sp(1)
 		tag_pc.add_theme_stylebox_override("panel", tag_sb)
 		var tag_lbl = Label.new()
 		tag_lbl.text = "被动"
-		tag_lbl.add_theme_font_size_override("font_size", host._sf(10))
-		tag_lbl.add_theme_color_override("font_color", Color("#7dffb3"))
+		tag_lbl.add_theme_font_size_override("font_size", host._sf(14))
+		tag_lbl.add_theme_color_override("font_color", Color("#5fbf8a"))
 		tag_pc.add_child(tag_lbl)
 		prow.add_child(tag_pc)
 		chip.add_child(prow)
@@ -220,32 +247,5 @@ func _refresh_detail() -> void:
 
 	# ── 下块: 技能 3选1 ──
 	host._skill_picker._build_skill_picker(pet)
-
-
-func _stat_row(icon_path: String, label: String, val: int) -> HBoxContainer:
-	# PoC .dp-stat: icon + 标签(灰,占满) + 值(白,右对齐)
-	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", host._sp(6))
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	if ResourceLoader.exists(icon_path):
-		var ic = TextureRect.new()
-		ic.texture = load(icon_path)
-		ic.custom_minimum_size = Vector2(host._sp(16), host._sp(16))
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.modulate = SkillText.stat_icon_color_of(icon_path)   # 纯白模板→按属性染色(2026-10-01)
-		row.add_child(ic)
-	var lbl = Label.new()
-	lbl.text = label
-	lbl.add_theme_font_size_override("font_size", host._sf(13))
-	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(lbl)
-	var v = Label.new()
-	v.text = str(val)
-	v.add_theme_font_size_override("font_size", host._sf(13))
-	v.add_theme_color_override("font_color", Color(1, 1, 1))
-	row.add_child(v)
-	return row
 
 

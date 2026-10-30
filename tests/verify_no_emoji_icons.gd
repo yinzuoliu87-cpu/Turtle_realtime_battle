@@ -97,6 +97,9 @@ const SCREEN_LEDGER: Dictionary = {
 	##   (`Label` → `RichTextLabel` + 行内 `[img=16x16]`)。这一屏已经一个 emoji 都没有。
 	##   ★0 是实测, 不是"应该为 0" —— 而登 0 的价值是**钉住**: 以后这屏再冒一个就红。
 	"TeamSelect": [0, ""],
+	## ★2026-10-30 选龟页重做: 锁定后不建龟池、只有三张放大的统领卡(用户「锁定后的就不用去显示其他龟和稀有度了啊」)
+	##   ⇒ 两态分开扫: 「TeamSelect」= 全选版(龟池 28 张卡), 「TeamSelect·锁定」= 锁定版(统领卡 + 羁绊纸上的类型图标)。
+	"TeamSelect·锁定": [0, ""],
 	"Record": [0, ""],
 	## 设置。⚠ 不计入(它在 NotoSansSC 里, 与正文同一套字);
 	## 🛠 调试场只在 `OS.is_debug_build()` 下建 —— 正式包玩家看不到, 不是玩家路径。
@@ -108,7 +111,7 @@ const SCREEN_LEDGER: Dictionary = {
 ## 每屏至少该扫到这么多【带字的可见控件】。少于它 = 屏没建起来, 下面的"0 emoji"全是假的。
 ## ★数字按实测定, 留了约 30% 余量(商店货架/图鉴选中项会让条数浮动)。
 const MIN_TEXTS: Dictionary = {
-	"Codex": 60, "Inventory": 60, "TeamSelect": 60,
+	"Codex": 60, "Inventory": 60, "TeamSelect": 60, "TeamSelect·锁定": 20,
 	"Record": 20, "Settings": 8, "TrainerConfig": 18, "Matchmaking": 6,
 }
 
@@ -636,7 +639,7 @@ func _ready() -> void:
 
 
 func _audit_screen(scn: String) -> void:
-	var path := "res://scenes/%s.tscn" % scn
+	var path := "res://scenes/%s.tscn" % scn.get_slice("·", 0)   # 「TeamSelect·锁定」= 同一场景的另一态
 	if not ResourceLoader.exists(path):
 		_ok("场景在位: %s" % scn, false, "找不到 %s" % path)
 		return
@@ -654,6 +657,10 @@ func _audit_screen(scn: String) -> void:
 	_acc_states = 0
 	_acc_raw_bb = {}
 	add_child(inst)
+	if scn.get_slice("·", 0) == "TeamSelect":
+		var want_locked := scn == "TeamSelect·锁定"
+		_ok("★分母 %s: 扫的真是%s版(否则两项扫的是同一块屏)" % [scn, "锁定" if want_locked else "全选"],
+			bool(inst._roster_locked) == want_locked, "_roster_locked=%s" % str(inst._roster_locked))
 	await _wait(24)
 	_absorb(inst)                       # 静止页先量一遍
 	await _coax(scn, inst)              # 里面每催出一个状态就 `_absorb` 一次
@@ -695,10 +702,13 @@ func _seed_for(scn: String) -> void:
 	if int(gs.season_total_battles) <= 0:
 		gs.season_total_battles = 3
 	match scn:
-		"Inventory", "TeamSelect", "Codex":
+		"Inventory", "TeamSelect", "TeamSelect·锁定", "Codex":
 			_run_setup("res://tests/_setup_inv_demo.gd")
-			if scn == "TeamSelect":
+			if scn.get_slice("·", 0) == "TeamSelect":
 				_run_setup("res://tests/_setup_syn_demo.gd")
+			## 全选版: 清掉本大轮统领(种子会把统领定好 ⇒ 不清就是锁定版, 龟池那 28 张卡扫不到)
+			if scn == "TeamSelect":
+				gs.season_leaders = []
 		"Record":
 			_run_setup("res://tests/_setup_record_demo.gd")
 

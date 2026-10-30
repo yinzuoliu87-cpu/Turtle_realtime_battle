@@ -736,103 +736,19 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 ##   全身 idle 图的第 0 帧(与图鉴同一张), 先去掉透明留边, 整只放进窗口(等比、不裁), 脚站在名字横幅上沿;
 ##   小图(≤ 120 高: 64px 动画帧 / 小将 80px)放大 2 倍以上时取整数倍, 像素不糊; 大图(500px 帧)按比例缩小、线性采样。
 ## ★留边按「贴图 + 帧」缓存: 4000×1500 的整张表每次重建都 get_image 一遍太贵。
-static var _used_cache: Dictionary = {}
-
+## 立绘 / 横幅 / 框 三件的画法在 UnitCardArt(scripts/util/unit_card_art.gd), 与选龟页共用一份(2026-10-30 选龟页重做)。
 func _card_portrait(tex: Texture2D, region: Rect2, pw: Rect2) -> Control:
-	var clip := Control.new(); clip.name = "Portrait"
-	clip.clip_contents = true
-	clip.position = pw.position; clip.size = pw.size
-	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var reg: Rect2 = region if region.size.x > 0.0 else Rect2(Vector2.ZERO, tex.get_size())
-	var key := "%s|%s" % [tex.resource_path, str(reg)]
-	var used: Rect2 = reg
-	if _used_cache.has(key):
-		used = _used_cache[key]
-	else:
-		var img := tex.get_image()
-		if img != null:
-			var ur: Rect2i = img.get_region(Rect2i(reg)).get_used_rect()
-			if ur.size.x > 0 and ur.size.y > 0:
-				used = Rect2(reg.position + Vector2(ur.position), Vector2(ur.size))
-		_used_cache[key] = used
-	var at := AtlasTexture.new()
-	at.atlas = tex
-	at.region = used
-	var a := TextureRect.new()
-	a.texture = at
-	a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	a.stretch_mode = TextureRect.STRETCH_SCALE
-	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var foot: float = PORTRAIT_FOOT_Y - pw.position.y
-	var k: float = minf((pw.size.x - 8.0) / used.size.x, (foot - 4.0) / used.size.y)
-	if used.size.y <= 120.0 and k >= 2.0:   # 放大不到 2 倍时取整会掉成 1 倍(变脸龟 71×75 只剩一半大)
-		k = floorf(k)
-	a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if k >= 1.0 else CanvasItem.TEXTURE_FILTER_LINEAR
-	var sz: Vector2 = used.size * k
-	a.size = sz
-	a.position = Vector2((pw.size.x - sz.x) * 0.5, foot - sz.y)
-	clip.add_child(a)
-	return clip
+	return UnitCardArt.portrait(tex, region, pw, PORTRAIT_FOOT_Y)
 
 
 ## 名字横幅: 压在立绘下沿, 两端伸出窗口压到边框上; 底色 / 边色 = 稀有度色(压暗 / 原色), 外面一圈黑描边(像素样)。
 func _name_banner(txt: String, col: Color) -> Control:
-	var root := Control.new(); root.name = "NameBanner"
-	root.position = Vector2(BANNER_X, BANNER_Y); root.size = Vector2(CARD_W - 2.0 * BANNER_X, BANNER_H)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var edge := ColorRect.new()
-	edge.color = Color("#0d0805")
-	edge.position = Vector2(-2, -2); edge.size = root.size + Vector2(4, 4)
-	edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(edge)
-	var p := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(col.r * 0.36, col.g * 0.36, col.b * 0.36, 1.0)
-	sb.border_color = col
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(0)
-	p.add_theme_stylebox_override("panel", sb)
-	p.size = root.size
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(p)
-	var l := Label.new(); l.name = "Name"
-	l.text = txt
-	l.add_theme_font_size_override("font_size", NAME_FS)
-	l.add_theme_color_override("font_color", Color("#fff4dc"))
-	l.add_theme_color_override("font_outline_color", Color("#1a0e05")); l.add_theme_constant_override("outline_size", 4)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.clip_text = true
-	l.position = Vector2(6, 0); l.size = root.size - Vector2(12, 0)
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(l)
-	return root
+	return UnitCardArt.banner(txt, col, Rect2(BANNER_X, BANNER_Y, CARD_W - 2.0 * BANNER_X, BANNER_H), NAME_FS)
 
 
 ## 单位卡的框(像素木框, 卡的上半截; 素材没到位时退回纯色框)。
 func _unit_card_frame(is_ph: bool, is_elite: bool, is_leader: bool) -> Control:
-	var path: String = UNIT_CARD_TEX_PATH if (is_leader or is_elite) else UNIT_CARD_MINION_TEX_PATH
-	if ResourceLoader.exists(path):
-		var fr := TextureRect.new(); fr.name = "CardFrame"
-		fr.texture = load(path)
-		fr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		fr.stretch_mode = TextureRect.STRETCH_SCALE
-		fr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		fr.size = Vector2(CARD_W, CARD_H)
-		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if is_ph:
-			fr.modulate = Color(0.62, 0.66, 0.74)
-		elif is_elite:
-			fr.modulate = Color(1.0, 0.9, 0.7)
-		return fr
-	var pnl := Panel.new(); pnl.name = "CardFrame"
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#22304a") if is_ph else Color("#16202c")
-	sb.border_color = Color("#c79a3a") if is_elite else Color("#7a5530")
-	sb.set_border_width_all(int(CARD_BORDER / 2.0))
-	pnl.add_theme_stylebox_override("panel", sb)
-	pnl.size = Vector2(CARD_W, CARD_H)
-	pnl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return pnl
+	return UnitCardArt.frame(Vector2(CARD_W, CARD_H), not (is_leader or is_elite), is_ph, is_elite)
 
 
 ## 卡片外圈一道像素直边(四条, 不用圆角盒)。

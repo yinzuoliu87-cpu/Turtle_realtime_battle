@@ -1,55 +1,27 @@
 class_name RosterSlots
 extends RefCounted
-## 选龟页·6阵容槽(前3后3·建/刷/拖放·_mark_label和_sync_special_slots跨区共享留主场景)
-## 类内名不变;外部名加 battle.
+## 选龟页·3 个统领位(建 / 刷 / 拖放·_mark_label 和 _sync_special_slots 跨区共享留主场景)
+## ★2026-10-30 选龟页重做(用户「你这还是一股浏览器的感觉啊」): 三格 = 背包同款大卡(UnitCardArt) ——
+##   全身立绘 + 稀有度色名字横幅 + 下沿木托(被动 + 选中的技能两枚图标); 空位 = 背包占位统领同一个样子(「?」+「统领N」)。
+##   原来先铺一块金边木托盘盖住背景烤死的 6 格 + 前/后排横幅, 再画 3 张橙边卡; 背景改成干净桌面后托盘不要了。
 
 var host
 
 func _init(b) -> void:
 	host = b
 
+const BANNER_EMPTY_COL := Color("#6c7a8c")    # 空位横幅(= 背包占位统领)
+const BANNER_ACTIVE_COL := Color("#c8a46a")   # 待填(点了空位, 下一只点的龟进这里)
+
+
 func _build_slots() -> void:
 	host._slot_nodes = []
-	# 暗托盘: 盖住背景图烤死的 6 格 + 前/后排横幅, 留出干净 3 格区 (木框边沿保留)
-	var tray = Panel.new()
-	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tb = StyleBoxFlat.new()
-	tb.bg_color = Color8(42, 28, 17)            # 木盘色(比格子亮), 格子是更暗的内陷
-	## ★直角(2026-09-28): 原来是 `_sp(10)` 圆角 —— 595x181 一整块平涂圆角矩形,
-	##   是这一屏剩下的最大一片网页味(`verify_ui_consistency` 的【圆角盒】判据数到的 4 个之一)。
-	tb.set_corner_radius_all(0)
-	tb.border_width_top = 2; tb.border_width_bottom = 2; tb.border_width_left = 2; tb.border_width_right = 2
-	tb.border_color = Color8(26, 17, 10)        # 内陷暗边, 给托盘一点深度
-	## ★★换本仓像素九宫格(`menu/frame-rect.png`, 666x161 的暖木板, 边带 27x28)。
-	##   挑它不是"哪张好看", 是**量出来的**(同 `UISkin.button` 的大框判据):
-	##   ① 托盘实测 595x181 —— 与源图 666x161 几乎 1:1, 中段只缩 0.88 / 拉 1.19,
-	##      木纹细节不会被拉平(匹配屏拿 64x64 的 portrait-frame 撑到 200 就是反例)。
-	##   ② 边带 27x2=54 < 595、28x2=56 < 181, 装得下(贴图有它的最小可用尺寸)。
-	##   ③ 中心实测不透明 (79,52,34) ⇒ 盖得住背景图烤死的 6 格 + 前/后排横幅。
-	##      `teamselect/card-frame.png` 也暖, 但它是**卡的形状**(四角包边), 当大底板会满屏包边。
-	##   ④ 木板比格子亮 —— 3 个格子这才读成"嵌在板子上的凹槽", 与原注释同一个意图。
-	##   贴图缺失自动退回上面那块直角纯色板(UISkin 的铁律①), 不会变空白。
-	var tsb: StyleBox = UISkin.nine_if_big(host._sp(766), host._sp(233),
-		"menu/frame-rect.png", 27, tb)
-	if tsb is StyleBoxTexture:
-		## 压暗一档: 源图是给"按钮"画的亮度, 当底板会比前面的龟卡还跳。
-		(tsb as StyleBoxTexture).modulate_color = Color(0.74, 0.70, 0.66, 1.0)
-		## ★★往外撑 6px —— 这条是实拍抓出来的, **不是保险起见**:
-		##   `frame-rect.png` 四周有一圈**全透明**的空白(量出来 左4 右3 上5 下4),
-		##   九宫格把它照画不误 ⇒ 托盘边上留出 4~5px 没盖住,
-		##   背景图烤死的绿/蓝「前排/后排」横幅从顶边**透出来一条**(第一版实拍就露了)。
-		##   往外撑 6 之后, 透明那圈落到控件矩形之外, 不透明部分正好盖满。
-		##   ⇒ 「换成贴图」不等于「盖住了」: 贴图自己的留白也是要量的。
-		(tsb as StyleBoxTexture).set_expand_margin_all(6.0)
-	tray.add_theme_stylebox_override("panel", tsb)
-	host.root.add_child(tray)
-	host._place(tray, "slotBay")
 	for i in range(3):
 		var panel = PanelContainer.new()
+		panel.name = "LeaderSlot%d" % i
 		panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		host.root.add_child(panel)
 		host._place(panel, "slot%d" % i)
-		# 空槽透明 (露出背景画好的 "+"); 填充后 _refresh_slots 换金边样式
 		panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 		# 整槽点击 → tap-swap
 		## ★松手且没怎么动才算点一下(2026-10-29 用户「拖不起来」): 原来【按下】就算, 而这个槽同时是拖动源 ——
@@ -66,126 +38,146 @@ func _build_slots() -> void:
 					_on_slot_click(idx))
 		# 拖放: 满槽可拖起 + 任意槽可作落点 (1:1 PoC slot draggable + drop)
 		panel.set_drag_forwarding(_slot_drag.bind(panel, idx), _slot_can_drop, _slot_drop.bind(idx))
-		# 内容容器
-		var vb = VBoxContainer.new()
-		vb.name = "Content"
-		vb.alignment = BoxContainer.ALIGNMENT_CENTER
-		vb.add_theme_constant_override("separation", host._sp(2))
-		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		panel.add_child(vb)
+		# 卡面容器(每次刷新整张重画)
+		var card := Control.new()
+		card.name = "Content"
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(card)
 		host._slot_nodes.append(panel)
+
+
+## 大卡的卡内几何, 按这一格的实际尺寸从背包大卡(192×252)等比换算:
+##   横幅 y146 高36 两端伸出 9 / 立绘脚底 y154 / 下沿木托 (6,186,180,62) / 名字 24 号。
+func _geo(sz: Vector2) -> Dictionary:
+	var kx: float = sz.x / UnitCardArt.NATIVE.x
+	var ky: float = sz.y / UnitCardArt.NATIVE.y
+	return {
+		"b": UnitCardArt.border_for(sz),
+		"banner": Rect2(9.0 * kx, 146.0 * ky, sz.x - 18.0 * kx, 36.0 * ky),
+		"foot": 154.0 * ky,
+		"strip": Rect2(6.0 * kx, 186.0 * ky, 180.0 * kx, 62.0 * ky),
+		"fs": maxi(14, int(roundf(24.0 * ky))),
+		"q_fs": maxi(28, int(roundf(58.0 * ky))),
+		"hint_fs": maxi(14, int(roundf(20.0 * ky))),
+		"hint_h": 30.0 * ky,
+	}
 
 
 func _refresh_slots() -> void:
 	for i in range(3):
 		var panel: PanelContainer = host._slot_nodes[i]
-		var vb: VBoxContainer = panel.get_node("Content")
-		for c in vb.get_children():
+		var card: Control = panel.get_node("Content")
+		## 先摘下再删: 只 queue_free 的话旧节点要到帧末才走, 同名新节点(CardFrame / NameBanner…)被引擎改成 @…@ 名, 按名字找不到
+		for c in card.get_children():
+			card.remove_child(c)
 			c.queue_free()
+		var sz: Vector2 = panel.size
+		var g := _geo(sz)
 		var id = host.team[i]
-		if id == null:
-			# 空槽: active(待填, 黄亮边)/ 否则暗格 (背景烤的 "+" 已被 slotBay 托盘盖住 → 代码画暗格 + "+")
-			var act: bool = i == host._active_slot_idx
-			panel.add_theme_stylebox_override("panel", _slot_box("active") if act else _slot_box("empty"))
-			## ★★空位与已上阵要**一眼分得出, 而且不能只靠颜色**(2026-09-28)。
-			##   实拍对照(`C:/tmp/tsshots/before/2_filled.png`): 空格和满格都是同一张
-			##   `card-frame` 卡框, 轮廓一模一样, 差别只有"框亮一点 / 里面有没有龟" ——
-			##   缩略图上根本读不出来, 色盲/暗屏就更读不出来。
-			##   ⇒ 三样一起换, 每一样都是**形态**:
-			##     ① 框: 已上阵才有卡框(四角包边的厚框), 空位是**没有框的凹槽**(见 `_slot_box`);
-			##     ② 记号: 空位画一个大号的 ＋(全角, 原来的半角 + 在 26px 字号下只有一根小十字);
-			##     ③ 字: 空位写「空位」/ 待填写「放置」—— 已上阵那格写的是龟名,
-			##        所以"有没有字"分不出, **写什么字**才分得出。
-			var plus = Label.new()
-			plus.text = "＋"
-			plus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			plus.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			plus.add_theme_font_size_override("font_size", host._sf(40))
-			plus.add_theme_color_override("font_color",
-				Color8(255, 236, 170) if act else Color8(120, 94, 64))
-			plus.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			vb.add_child(plus)
-			var hint = Label.new()
-			hint.text = "放置" if act else "空位"
-			hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			hint.add_theme_font_size_override("font_size", host._sf(11))
-			hint.add_theme_color_override("font_color",
-				Color8(255, 226, 140) if act else Color8(126, 100, 68))
-			hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			vb.add_child(hint)
-			continue
-		# 满槽/占位: selected(tap-swap 选中, PoC .fg-selected 金亮边)/ 否则普通 filled
-		panel.add_theme_stylebox_override("panel", _slot_box("selected" if i == host._selected_slot_idx else "filled"))
-		if host._is_special_mark(id):
+		var act: bool = id == null and i == host._active_slot_idx
+		var sel: bool = id != null and i == host._selected_slot_idx
+		var pet: Dictionary = {}
+		if id != null and not host._is_special_mark(id):
+			pet = DataRegistry.pet_by_id.get(str(id), {})
+		var b: float = g["b"]
+		var bn: Rect2 = g["banner"]
+		var strip: Rect2 = g["strip"]
+		## 叠放顺序与背包大卡相同: 窗口底 → 立绘 → 框 → 横幅 → 木托
+		card.add_child(UnitCardArt.window(sz, b))
+		var pw := Rect2(b, b, sz.x - 2.0 * b, strip.position.y - b)
+		if id != null and host._is_special_mark(id):
+			var vb := VBoxContainer.new()
+			vb.alignment = BoxContainer.ALIGNMENT_CENTER
+			vb.position = pw.position; vb.size = Vector2(pw.size.x, bn.position.y - pw.position.y)
+			vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(vb)
 			_fill_mark_slot(vb, id)
-			continue
-		var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
-		if pet.is_empty():
-			panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-			continue
-		# PoC .fg-turtle img width:70% — 槽宽(108*s)×0.7
-		var av = TextureRect.new()
-		var slot_av = host._sp(108 * 0.7)   # PoC img width:70% of slot (108 设计宽)
-		av.custom_minimum_size = Vector2(slot_av, slot_av)
-		av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		av.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var av_path = "res://assets/sprites/avatars/%s.png" % id
-		if ResourceLoader.exists(av_path):
-			av.texture = load(av_path)
-		vb.add_child(av)
-		# PoC .fg-name font-size:10px
-		var nm = Label.new()
-		nm.text = pet.get("name", "?")
-		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		nm.add_theme_font_size_override("font_size", host._sf(10))
-		nm.add_theme_color_override("font_color", host.RARITY_COLOR.get(pet.get("rarity", "C"), Color.WHITE))
-		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(nm)
+		elif not pet.is_empty():
+			var body: Array = UnitCardArt.pet_body(str(id))
+			if body[0] != null:
+				card.add_child(UnitCardArt.portrait(body[0], body[1], pw, g["foot"]))
+		else:
+			## 空位: 「?」+「空位 / 放置」—— 与背包页占位统领同一个样子; 待填那格字提亮
+			var q := Label.new()
+			q.text = "?"
+			q.add_theme_font_size_override("font_size", g["q_fs"])
+			q.add_theme_color_override("font_color", Color("#ffe8a8") if act else Color("#9fb2c8"))
+			q.position = pw.position
+			q.size = Vector2(pw.size.x, bn.position.y - pw.position.y - float(g["hint_h"]))
+			q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			q.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(q)
+			var hint := Label.new()
+			hint.text = "放置" if act else "空位"
+			hint.add_theme_font_size_override("font_size", g["hint_fs"])
+			hint.add_theme_color_override("font_color", Color("#ffe8a8") if act else Color("#9a8a70"))
+			hint.position = Vector2(b, bn.position.y - float(g["hint_h"]) - 4.0)
+			hint.size = Vector2(sz.x - 2.0 * b, float(g["hint_h"]))
+			hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(hint)
+		card.add_child(UnitCardArt.frame(sz, false, pet.is_empty() and not act))
+		var bn_txt: String
+		var bn_col: Color
+		if not pet.is_empty():
+			bn_txt = str(pet.get("name", "?"))
+			bn_col = host.RARITY_COLOR.get(str(pet.get("rarity", "C")), Color.WHITE)
+		elif id != null:
+			bn_txt = host._mark_label(id)
+			bn_col = BANNER_ACTIVE_COL
+		else:
+			bn_txt = "统领%d" % (i + 1)
+			bn_col = BANNER_ACTIVE_COL if act else BANNER_EMPTY_COL
+		card.add_child(UnitCardArt.banner(bn_txt, bn_col, bn, g["fs"]))
+		card.add_child(_strip(strip, pet))
+		## 选中(点了一下准备换位) / 待填 / 锁定版里正在看的那一张: 卡外一圈金边
+		var focus: bool = host._roster_locked and not pet.is_empty() and str(id) == host.detail_pet_id
+		if sel or act or focus:
+			UnitCardArt.ring(card, sz, Color("#ffd86b") if (sel or focus) else Color("#ffe8a8"), 3.0)
 
 
-## 槽样式 (1:1 PoC .fg-slot.filled/.fg-selected/.fg-active index.html:280-291)
-## 三个统领槽的框。原来是纯色圆角盒 + StyleBoxFlat 的外发光, 一眼网页味;
-## 现在跟 pet_grid 的龟卡用**同一张卡框**(84x121 本来就是卡的形状), 四个状态靠 modulate 分。
-## ★StyleBoxTexture 没有 shadow_* —— "选中"原本全靠外发光顶出来, 换框后只能靠**过曝**,
-##   所以选中态的 modulate 给到 2.2 而不是 1.5(HDR, >1 才是真的比周围亮一档)。
-## ★★2026-09-28 拆成**两种形态**, 不再是"同一张卡框调四档亮度":
-##   · 已上阵(filled/selected) = 卡框(四角包边的厚框) —— 有东西在上面, 就该有个"卡"。
-##   · 空位/待填(empty/active) = **没有卡框的凹槽**(直角实心 + 一圈内陷暗边) ——
-##     轮廓与已上阵那格完全不同, 缩略图/灰度下都读得出来, 这才叫"不只靠颜色"。
-##   ⚠ 凹槽这条分支**必须不透明**(alpha=1): `verify_ui_consistency` 的【网页盒】签名是
-##     "四边有边框 + 底半透明", 原来 active 分支写的 `Color(0,0,0,0)` 一旦真的被画出来
-##     就正好撞上那条判据(以前它永远被贴图顶掉, 所以从没露过脸)。
-func _slot_box(kind: String) -> StyleBox:
-	var sb = StyleBoxFlat.new()
-	sb.set_border_width_all(2)
-	## ★直角: 圆角矩形是用户点名的"网页味"。已上阵那档下面会被贴图整块顶掉,
-	##   空位那档是真画出来的, 所以这行对它是**实打实**生效的。
-	sb.set_corner_radius_all(0)
-	var tint := Color(1, 1, 1, 1)
-	if kind == "empty" or kind == "active":
-		## 凹槽: 暗底 + 内陷暗边, 直接返回(**不套卡框**)。
-		sb.bg_color = Color8(24, 17, 12)
-		sb.border_color = Color8(72, 50, 30)
-		if kind == "active":                          # 待填: 同一个凹槽形态, 边点亮 + 加粗
-			sb.bg_color = Color8(40, 30, 16)
-			sb.border_color = Color8(255, 216, 107)
-			sb.set_border_width_all(3)
-		return sb
-	if kind == "selected":   # PoC .fg-selected #ffcc00 + glow rgba(255,204,0,.55)
-		sb.bg_color = Color(1, 204.0/255, 0, 0.18)
-		sb.border_color = Color("#ffcc00")
-		sb.shadow_color = Color(1, 204.0/255, 0, 0.55); sb.shadow_size = host._sp(6)
-		tint = Color(2.2, 1.80, 0.55, 1.0)           # 选中: 过曝金(顶替原来的外发光)
-	else:   # filled: 金边半透底 + 外发光
-		sb.bg_color = Color(1, 216.0/255, 107.0/255, 0.1)
-		sb.border_color = Color(1, 216.0/255, 107.0/255, 0.7)
-		sb.shadow_color = Color(1, 216.0/255, 107.0/255, 0.3); sb.shadow_size = host._sp(4)
-		tint = Color(1.35, 1.16, 0.72, 1.0)          # 已就位: 温金
-	var tsb := UISkin.nine_if_big(host._sp(84), host._sp(116), "teamselect/card-frame.png", 14, sb)
-	if tsb is StyleBoxTexture:
-		(tsb as StyleBoxTexture).modulate_color = tint
-	return tsb
+## 大卡下沿木托(背包大卡装备托条同一张 shop-plank): 已上阵 = 被动 + 选中的那个技能两枚图标; 空位 = 两个空凹槽。
+func _strip(r: Rect2, pet: Dictionary) -> Control:
+	var np := NinePatchRect.new()
+	np.name = "LoadoutStrip"
+	np.texture = host.PLANK_TEX
+	np.patch_margin_left = 18; np.patch_margin_right = 18; np.patch_margin_top = 18; np.patch_margin_bottom = 18
+	np.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	np.position = r.position; np.size = r.size
+	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cell: float = r.size.y - 8.0
+	var gap := 8.0
+	var texs: Array = [null, null]
+	if not pet.is_empty():
+		texs[0] = host._skill_picker.passive_tex(pet)
+		var lo: Array = host._skill_picker._get_panel_loadout(str(pet.get("id", "")))
+		if not lo.is_empty():
+			texs[1] = host._skill_picker.skill_tex(pet, int(lo[0]))
+	var x0: float = (r.size.x - (2.0 * cell + gap)) * 0.5
+	for k in range(2):
+		var c := Panel.new()
+		c.name = "LoadoutCell%d" % k
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color("#0c0907")
+		sb.border_color = Color("#7a5a36") if texs[k] != null else Color("#3a2c1e")
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(0)
+		c.add_theme_stylebox_override("panel", sb)
+		c.position = Vector2(x0 + float(k) * (cell + gap), 4.0)
+		c.size = Vector2(cell, cell)
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if texs[k] != null:
+			var ic := TextureRect.new()
+			ic.texture = texs[k]
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ic.position = Vector2(4, 4); ic.size = Vector2(cell - 8.0, cell - 8.0)
+			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			c.add_child(ic)
+		np.add_child(c)
+	return np
 
 
 ## 渲染特殊占位槽内容 (1:1 PoC .fg-summon TeamSelectScene.ts:591-598): 随从?/水晶球img/糖果炸弹img + 彩色名

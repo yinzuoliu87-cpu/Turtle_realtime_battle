@@ -62,6 +62,11 @@ const SQL := "res://server/supabase/migrations/20261027_gauntlet_online_queue.sq
 ##   单元 = 第 0 列 `func` / `static func` / `class` 那一行起、到下一行顶格非空为止(行尾归一成 LF、去掉末尾空行);
 ##   digest = sha256(按名字排序的 「名字\n单元sha256\n」 串起来); views = 去掉「if … PHASE_GAUNTLET / _gauntlet_now …:」那一段之后的单元 sha256。
 ##   ★将来有意改积分赛的代码: 重新生成这张表并在提交里写明理由(这张表只证明「这一次」没动积分赛)。
+##   ★按文件的基线(spec["base"], 没写 = RANKED_BASE): 只把有意改过的那个文件钉到它改完的提交, 其余文件仍比 84d2d853 ——
+##     整张表一起挪基线, 另外几个文件里 84d2d853 之后加的周六函数就不再被当成「周六专用」去查泄漏, 判据会变松。
+##     第一次用: 2026-10-30 选龟页整页重做(用户「你这还是一股浏览器的感觉啊」「锁定后的就不用去显示其他龟和稀有度了啊」,
+##     方案书 docs/plans/20261030-选龟页重做.md)—— 只改选龟页的画法与版式, 积分赛流程(选人 / 存档 / 出战进匹配)一行没动;
+##     TeamSelectScene.gd 的基线换成那次提交, units = 那次提交里这个文件的全部函数。
 const RANKED_BASE := "84d2d853"
 const RANKED := {
 	"scripts/scenes/MatchmakingScene.gd": {
@@ -976,10 +981,11 @@ func _digest(us: Dictionary, names: Array) -> String:
 
 
 func _t_r() -> void:
-	print("── R 积分赛一行不动(与 %s 逐字节比, 行尾归一) ──" % RANKED_BASE)
-	var git_ok := _git_has_base()
+	print("── R 积分赛一行不动(与 %s 逐字节比, 行尾归一; 个别文件按自己的基线) ──" % RANKED_BASE)
 	for f in RANKED.keys():
 		var spec: Dictionary = RANKED[f]
+		var base_sha := str(spec.get("base", RANKED_BASE))
+		var git_ok := _git_has_base(base_sha)
 		var names: Array = spec["units"]
 		var cur := _units(FileAccess.get_file_as_string("res://" + str(f)))
 		var missing: Array = []
@@ -989,7 +995,7 @@ func _t_r() -> void:
 		var dg := _digest(cur, names)
 		var bad: Array = []
 		if dg != str(spec["digest"]) and git_ok:
-			var base := _units(_git_show(str(f)))
+			var base := _units(_git_show(str(f), base_sha))
 			for nm in names:
 				if str(base.get(nm, "")) != str(cur.get(nm, "?")):
 					bad.append(nm)
@@ -1002,7 +1008,7 @@ func _t_r() -> void:
 				cur.has(vn) and _ranked_view(str(cur[vn])).sha256_text() == str(views[vn]))
 		## 本次新加 / 改过的(周六专用)只从闯关日分支可达: 引用它的积分赛函数里, 去掉闯关日那一段就再也看不到它
 		if git_ok:
-			var base2 := _units(_git_show(str(f)))
+			var base2 := _units(_git_show(str(f), base_sha))
 			var sat: Array = (spec["sat_only"] as Array).duplicate()
 			for nm in cur.keys():
 				if not base2.has(nm):
@@ -1018,31 +1024,36 @@ func _t_r() -> void:
 			print("    %s 周六专用(改过 / 新加)%d 个: %s" % [f, sat.size(), ", ".join(PackedStringArray(sat))])
 			_ok("★R %s: 周六专用的 %d 个只从闯关日分支可达(积分赛函数去掉闯关日那一段后不再引用)" % [str(f).get_file(), sat.size()],
 				leak.is_empty(), str(leak))
-	if git_ok:
-		## 基线表就是 84d2d853 的: 从 git 现取一遍, 摘要一致(证明表不是照着改动后抄的)
-		var prov: Array = []
-		for f in RANKED.keys():
-			if _digest(_units(_git_show(str(f))), RANKED[f]["units"]) != str(RANKED[f]["digest"]):
-				prov.append(f)
-		_ok("★R 基线表 = git show %s 现算(出处可复核)" % RANKED_BASE, prov.is_empty(), str(prov))
-	else:
-		print("  [PEND] R 本机取不到 %s(浅克隆): 基线出处与「只从闯关日可达」两条没复核, 摘要比对照常" % RANKED_BASE)
+	## 基线表就是各自基线提交的: 从 git 现取一遍, 摘要一致(证明表不是照着改动后抄的)
+	var prov: Array = []
+	var miss: Array = []
+	for f in RANKED.keys():
+		var bs := str((RANKED[f] as Dictionary).get("base", RANKED_BASE))
+		if not _git_has_base(bs):
+			miss.append(bs)
+			continue
+		if _digest(_units(_git_show(str(f), bs)), RANKED[f]["units"]) != str(RANKED[f]["digest"]):
+			prov.append("%s@%s" % [f, bs])
+	if miss.size() < RANKED.size():
+		_ok("★R 基线表 = git show 各自基线现算(出处可复核)", prov.is_empty(), str(prov))
+	if not miss.is_empty():
+		print("  [PEND] R 本机取不到 %s(浅克隆): 基线出处与「只从闯关日可达」两条没复核, 摘要比对照常" % str(miss))
 		_pend += 1
 	var mm := FileAccess.get_file_as_string("res://scripts/scenes/MatchmakingScene.gd").replace("\r\n", "\n")
 	_ok("★R 匹配屏: 周六服务器那一支仍是「开关开 ⇒ _server_pick 后 return」(在积分赛挑对手之前)",
 		mm.find("if _gauntlet_now and _RW.gauntlet_on():\n\t\t_server_pick(exclude, _rng)\n\t\treturn") > 0)
 
 
-func _git_has_base() -> bool:
+func _git_has_base(sha: String = RANKED_BASE) -> bool:
 	var out: Array = []
-	var rc := OS.execute("git", ["-C", ProjectSettings.globalize_path("res://"), "cat-file", "-e", RANKED_BASE + "^{commit}"], out, true)
+	var rc := OS.execute("git", ["-C", ProjectSettings.globalize_path("res://"), "cat-file", "-e", sha + "^{commit}"], out, true)
 	return rc == 0
 
 
 ## ★读原始字节再按 UTF-8 解(OS.execute 在 Windows 上按本地代码页解 git 的输出, 中文注释全坏 ⇒ 摘要永远对不上)。
-func _git_show(f: String) -> String:
+func _git_show(f: String, sha: String = RANKED_BASE) -> String:
 	var d := OS.execute_with_pipe("git", PackedStringArray(["-C", ProjectSettings.globalize_path("res://"), "show",
-		"%s:%s" % [RANKED_BASE, f]]), true)
+		"%s:%s" % [sha, f]]), true)
 	var fa = d.get("stdio", null)
 	if not (fa is FileAccess):
 		return ""

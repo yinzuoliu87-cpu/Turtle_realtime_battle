@@ -726,8 +726,17 @@ func _full_pass() -> void:
 	var ts2 = load("res://scenes/TeamSelect.tscn").instantiate()
 	add_child(ts2)
 	await _frames(4)
-	var cnt: int = (ts2._grid_flow as Node).get_child_count()
-	_ok("★★X3: 教程后选龟屏是全部龟(不是教学 3 只)", cnt > 3, "%d 只" % cnt)
+	## ★2026-10-30 选龟页重做: 锁定后(本大轮统领已定)不建龟池(用户「锁定后的就不用去显示其他龟和稀有度了啊」)。
+	##   这个号进教程前统领就定了(_make_account) ⇒ 教程后是锁定版: 量「统领位是这个号自己的那三只, 不是教学固定队」;
+	##   没锁的号才量「龟池是全部龟」。两支都量「不在教学模式里」。
+	_ok("★X3 分母: 教程后选龟屏不在教学模式里", not bool(ts2._tut_on()))
+	if bool(ts2._roster_locked):
+		_ok("★★X3: 教程后选龟屏(锁定版)是这个号自己的三只统领(不是教学固定队)",
+			Array(ts2.team) == Array(GameState.season_leaders) and Array(ts2.team) != Array(td.FIXED_TEAM),
+			"阵容 %s · 本大轮统领 %s · 教学队 %s" % [str(ts2.team), str(GameState.season_leaders), str(td.FIXED_TEAM)])
+	else:
+		var cnt: int = (ts2._grid_flow as Node).get_child_count()
+		_ok("★★X3: 教程后选龟屏是全部龟(不是教学 3 只)", cnt == DataRegistry.launch_pets.size(), "%d 只" % cnt)
 	ts2.queue_free()
 	await _frames(2)
 

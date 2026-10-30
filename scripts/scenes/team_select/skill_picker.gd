@@ -21,7 +21,7 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	title_row.add_theme_constant_override("separation", host._sp(4))   # .dp-skill-count margin-left:4
 	var title = Label.new()
 	title.text = "技能"
-	title.add_theme_font_size_override("font_size", host._sf(14))
+	title.add_theme_font_size_override("font_size", host._sf(20))
 	title.add_theme_color_override("font_color", Color("#ffd86b"))
 	title_row.add_child(title)
 	var count_lbl = Label.new()
@@ -29,8 +29,8 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	##   括号里那句还等于没说(玩家点开就看得见是主动还是被动)。改成一句话讲清"挑一个带上场"。
 	## ★2026-10-08 去掉「（共 N 个）」: 玩家眼前就摆着那几张卡, 括号计数是说明书腔(用户「能不能把这种说法的都解决好」)。
 	count_lbl.text = "选择 1 个技能"
-	count_lbl.add_theme_font_size_override("font_size", host._sf(11))   # PoC .dp-skill-count 11px
-	count_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))   # rgba(255,255,255,.5)
+	count_lbl.add_theme_font_size_override("font_size", host._sf(15))   # 11 → 15(2026-10-30 重做: 手机上原来约 10px)
+	count_lbl.add_theme_color_override("font_color", Color("#c8b48e"))   # 暖灰(原白 50% 透明)
 	count_lbl.size_flags_vertical = Control.SIZE_SHRINK_END   # 底对齐近 baseline
 	title_row.add_child(count_lbl)
 	host._detail_bottom.add_child(title_row)
@@ -53,21 +53,9 @@ func _build_skill_picker(pet: Dictionary) -> void:
 		var ico = _make_skill_icon(pet, sk, i, is_fixed, is_sel)
 		icon_grid.add_child(ico)
 
-	# 已选技能名列表
-	## ★原来是 "✓ 打击" —— ✓ 是网页表单的对勾, 而且它就贴在那枚「上场」角标下面, 重复说同一件事。
-	##   改成一句话把"谁跟着上场"说完整。
-	var sel_names = ""
-	for i in selected:
-		if i >= 0 and i < pool.size():
-			sel_names += "%s  " % pool[i].get("name", "?")
-	sel_names = sel_names.strip_edges()
-	var sel_lbl = Label.new()
-	sel_lbl.text = ("选择 · %s" % sel_names) if sel_names != "" else ""
-	sel_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sel_lbl.add_theme_font_size_override("font_size", host._sf(12))
-	sel_lbl.add_theme_color_override("font_color", Color("#ffd86b"))
-	sel_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	host._detail_bottom.add_child(sel_lbl)
+	## ★2026-10-30 选龟页重做: 原来图标下面还有一行「选择 · 技能名」—— 与选中那格的「已选」角标说同一件事,
+	##   走查时它还掉出了右栏下格(落在格子和绿牌之间)。选了哪个现在另有两处看得见:
+	##   这格的金边 +「已选」角标、统领大卡下沿木托里的那枚技能图标 ⇒ 删掉这一行。
 
 
 func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool, is_sel: bool) -> Control:
@@ -82,20 +70,7 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	btn.custom_minimum_size = Vector2(81.0, 81.0)   # PoC .dp-skill-ico 64px → 触控下限抬到 81
 	btn.tooltip_text = _skill_tooltip(pet, sk, idx)
 	# 图标
-	var icon_rel: String = str(sk.get("icon", ""))
-	var tex: Texture2D = null
-	if icon_rel != "":
-		var full = "res://assets/sprites/" + icon_rel
-		if ResourceLoader.exists(full):
-			tex = load(full)
-	if tex == null:
-		var passive_raw = pet.get("passive")
-		if sk.get("enhancesPassive", false) and passive_raw is Dictionary:
-			var pi: String = DataRegistry.passive_icons.get((passive_raw as Dictionary).get("type", ""), "")
-			if pi.ends_with(".png"):
-				var pfull = "res://assets/sprites/" + pi
-				if ResourceLoader.exists(pfull):
-					tex = load(pfull)
+	var tex: Texture2D = skill_tex(pet, idx)
 	if tex != null:
 		btn.icon = tex
 		btn.expand_icon = true
@@ -103,55 +78,30 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 		btn.text = str(sk.get("name", "?")).substr(0, 2)
 		btn.add_theme_font_size_override("font_size", host._sf(10))
 
-	# 边框态: 选中=金#ffd86b+发光 / 锁=暗 / 基础(fixed)=绿rgba(125,255,179,.6) (PoC index.html:631-632)
+	## 边框态(2026-10-30 选龟页重做): 不透明深底 + 直角色边 —— 与说明卡 / 卡片按钮(「购买」)同一族。
+	##   原来是冷蓝金属槽框(slot-frame)靠 modulate 分三档, 放在暖色木桌上读成「木头上贴了块黑板」。
+	##   层级: 选中(金边 + 暖底) > 固有(绿边) > 普通(铜边) > 未解锁(暗边); 底一律不透明(半透 + 描边 = 网页盒签名)。
 	var sbn = StyleBoxFlat.new()
-	if is_sel:
-		# PoC .dp-skill-ico.selected: bg rgba(255,216,107,.14) + 金边 + glow (index.html:631)
-		sbn.bg_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.14)
+	sbn.bg_color = Color("#120d09")
+	sbn.set_corner_radius_all(0)
+	sbn.set_border_width_all(3)
+	if is_locked or dev_locked:
+		sbn.border_color = Color("#3a332c")
+	elif is_sel:
 		sbn.border_color = Color("#ffd86b")
-		sbn.shadow_color = Color8(0xff, 0xd8, 0x6b, 102)   # box-shadow 0 0 10px rgba(255,216,107,.4)
-		sbn.shadow_size = host._sp(8)
+		sbn.bg_color = Color("#2e2210")
 	elif is_fixed:
-		# PoC .dp-skill-ico.fixed: bg rgba(125,255,179,.08) + 绿边 (index.html:632)
-		sbn.bg_color = Color(125.0 / 255.0, 1.0, 179.0 / 255.0, 0.08)
-		sbn.border_color = Color8(125, 255, 179, 153)   # rgba(125,255,179,.6)
+		sbn.border_color = Color("#5fbf8a")
 	else:
-		# PoC .dp-skill-ico 基础: bg rgba(255,255,255,.04) + 边 rgba(255,255,255,.1) (index.html:605-607)
-		sbn.bg_color = Color(1, 1, 1, 0.04)
-		sbn.border_color = Color(1, 1, 1, 0.1)
-	sbn.set_border_width_all(2)
-	sbn.set_corner_radius_all(host._sp(12))
-	## ★换槽框(跨屏统一): 技能图标本来就是"一个格子", 与背包/图鉴的装备槽同一套语言。
-	##   三种状态(选中金 / 基础绿 / 普通灰)靠 modulate 传递, 不再靠半透底+1px 描边。
-	var ssb := UISkin.nine_if_big(81.0, 81.0, "slot-frame.png", 12, sbn)
-	if ssb is StyleBoxTexture:
-		## ★三档着色是**裁图实拍调出来的**, 别凭感觉改:
-		##   · 槽框的芯是半透深蓝灰 ⇒ modulate 一过 1.3 芯就跟着提亮, 整格糊成土黄
-		##     (第一版写 1.9, 实拍下来选中格比没选的还难看)。金要靠**压蓝**出来, 不靠加亮。
-		##   · 层级必须 选中 > 基础 > 普通。第一版基础绿(亮度 1.19)反而压过选中金(1.07) —— 反了。
-		var tint := Color(0.55, 0.55, 0.60, 1.0)   # 普通: 压暗, 给另外两档让出对比空间
-		if is_locked or dev_locked:
-			tint = Color(0.26, 0.27, 0.30, 1.0)   # 未解锁: 比普通再暗一半, 格子本身先"熔进背景"
-		elif is_sel:
-			tint = Color(1.35, 1.05, 0.40, 1.0)   # 选中: 压蓝出金(亮度 1.07 = 普通的 1.9 倍)
-		elif is_fixed:
-			tint = Color(0.55, 1.02, 0.72, 1.0)   # 基础: 绿, 亮度 0.90 —— 压在选中之下
-		(ssb as StyleBoxTexture).modulate_color = tint
-		sbn = ssb
+		sbn.border_color = Color("#7a5a36")
 	btn.add_theme_stylebox_override("normal", sbn)
-	# hover: 金边高亮 (PoC .dp-skill-ico:hover border #ffd86b.7); locked 不高亮
-	if is_locked:
-		btn.add_theme_stylebox_override("hover", sbn)
-	else:
-		## hover: 贴图态靠提亮(它没有 border_color 可改 —— 直接改会拿到 null)
-		var sbh = sbn.duplicate()
-		if sbh is StyleBoxTexture:
-			var hc: Color = (sbh as StyleBoxTexture).modulate_color
-			(sbh as StyleBoxTexture).modulate_color = Color(hc.r * 1.35, hc.g * 1.35, hc.b * 1.35, 1.0)
-		elif sbh is StyleBoxFlat:
-			(sbh as StyleBoxFlat).border_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.7)
-		btn.add_theme_stylebox_override("hover", sbh)
+	# hover: 边提亮一档; 未解锁不提亮
+	var sbh: StyleBoxFlat = sbn.duplicate()
+	if not (is_locked or dev_locked):
+		sbh.border_color = sbn.border_color.lerp(Color.WHITE, 0.3)
+	btn.add_theme_stylebox_override("hover", sbh)
 	btn.add_theme_stylebox_override("pressed", sbn)
+	btn.add_theme_stylebox_override("disabled", sbn)
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 	## ★★未解锁那格要**一眼看出是"不能点"而不是"还没点"**(2026-09-28)。
@@ -209,6 +159,36 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	if not btn.disabled:
 		btn.pressed.connect(func() -> void: host._show_detail_popup_from(_skinfo, Color("#ffd86b"), btn.get_global_rect()))
 	return btn
+
+
+## 技能 idx 的图标(skillPool[idx].icon; 没有而它强化被动 ⇒ 用被动图标)。技能格和统领大卡下沿的木托都读这一份。
+func skill_tex(pet: Dictionary, idx: int) -> Texture2D:
+	var pool: Array = pet.get("skillPool", [])
+	if idx < 0 or idx >= pool.size() or not (pool[idx] is Dictionary):
+		return null
+	var sk: Dictionary = pool[idx]
+	var icon_rel: String = str(sk.get("icon", ""))
+	if icon_rel != "":
+		var full = "res://assets/sprites/" + icon_rel
+		if ResourceLoader.exists(full):
+			return load(full)
+	var passive_raw = pet.get("passive")
+	if sk.get("enhancesPassive", false) and passive_raw is Dictionary:
+		return passive_tex(pet)
+	return null
+
+
+## 这只龟的被动图标(没有 ⇒ null)。
+func passive_tex(pet: Dictionary) -> Texture2D:
+	var passive_raw = pet.get("passive")
+	if not (passive_raw is Dictionary):
+		return null
+	var pi: String = DataRegistry.passive_icons.get((passive_raw as Dictionary).get("type", ""), "")
+	if pi.ends_with(".png"):
+		var pfull = "res://assets/sprites/" + pi
+		if ResourceLoader.exists(pfull):
+			return load(pfull)
+	return null
 
 
 ## PoC .ico-corner (index.html:634-641): 图标右下角小角标, 探出 6px (bottom:-6 right:-6)。

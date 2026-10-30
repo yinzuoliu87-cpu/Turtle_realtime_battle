@@ -21,45 +21,48 @@ const TopBar = preload("res://scripts/util/top_bar.gd")
 const POC_W := 1647.0
 const POC_H := 955.0
 const RL := {
-	"title":      {"x": 588,  "y": 78,  "w": 330, "h": 30},
-	# ★手机板触控热区。设计空间 1647 宽映射到视口 1280 = ×0.777 ⇒ **要 81 视口像素(44pt) 得写 105**。
-	#   2026-08-01 那轮只加到 58(=45px=24pt) 就停了 —— 因为当时是"往下长", 一长就压住 synergy/slotBay。
-	#   2026-08-19 改成**往上长**: 三个都提到 y≈10(头部本来就是空的), 105 高正好落在 115, 不碰 y=114/120 的下一块。
-	## ★★这几块的位置/大小【被背景图焊死】—— select-bg.png 上**烤着它们的底板**
-	##   (返回/清空/上次阵容的木牌、右侧详情面板的边框)。2026-08-19 实拍验证: 我把三个按钮
-	##   从 58 加高到 86 并上移, 结果**文字浮到了画好的板子上方**、立绘飘出了面板框 ——
-	##   问题不是尺寸算错, 是**动了有美术依赖的东西**。要真加大得先重画 select-bg.png。
-	##   ⇒ **但底板焊死的是"文字画在哪", 不是"热区多大"**。所以 RL 保持原值(文字位置不动),
-	##   热区在 `_grow_to_touch()` 里**按原始像素绕中心撑到 81**。
-	##   ★为什么不在 RL 里加大: RL 是设计空间, 实际像素 = 设计值 × 舞台缩放, 而缩放随比例变
-	##   (PC 16:9 是 0.777, iPhone 19.5:9 是 0.947) —— 同一个数在两端给出 67px 和 81px。
-	##   我试过写 86(照 iPhone 算), PC 上量出来只有 67 —— 触控下限是**像素**的硬指标, 得在像素上兜底。
-	## ★★另一条硬约束: `_stage_scale` = min(cover, fit_w, fit_h), fit_h = 720/内容带高。
-	##   带高超过 **760** 就掉到 cover 以下 ⇒ 舞台盖不满窗 ⇒ iPhone 左右露木条
-	##   (实测露 100px, 正是用户 2026-07-22 抱怨的"画布大小很奇怪")。现带高 = 783-63 = 720。
-	"back":       {"x": 431,  "y": 63,  "w": 96,  "h": 58},
-	"clear":      {"x": 1022, "y": 68,  "w": 78,  "h": 58},
-	"last":       {"x": 1110, "y": 67,  "w": 94,  "h": 58},
-	"synergy":    {"x": 183,  "y": 114, "w": 407, "h": 262},
-	# 实时 3v3：3 格阵容居中(去回合制 6 格前/后排, 实时自由走位定位无意义, 战斗只读 3 龟 id)
-	#   背景图 select-bg.png 烤了 6 格+前/后排横幅 → slotBay 暗托盘盖住它, 上面画 3 格 (代码绘, 居中对齐托盘)
-	"slotBay":    {"x": 433,  "y": 120, "w": 766, "h": 233},
-	"slot0":      {"x": 615,  "y": 172, "w": 108, "h": 156},
-	"slot1":      {"x": 766,  "y": 172, "w": 108, "h": 156},
-	"slot2":      {"x": 915,  "y": 172, "w": 108, "h": 156},
-	"grid":       {"x": 160,  "y": 375, "w": 1050,"h": 403},
-	# 右上信息区上部拆成 4 独立块(立绘/名字/属性/被动)—各自可拖可缩 (用户2026-07-18: 被动属性要能分开调大小)
-	"dtPortrait": {"x": 1252, "y": 144, "w": 233, "h": 156},
-	"dtName":     {"x": 1251, "y": 276, "w": 233, "h": 26},
-	"dtStats":    {"x": 1252, "y": 307, "w": 233, "h": 58},
-	"dtPassive":  {"x": 1251, "y": 390, "w": 230, "h": 56},
-	## ★唯一动过的一块(2026-08-19): 202 → 259。技能三选一的图标从 50 加到 **81 原始像素**(44pt),
-	##   排成 2x2 = 170 高, 加标题 17 + 已选名 14 = 201px。区域实高 = 设计值 x s, s 最小是 PC 的
-	##   0.777 ⇒ 要 259 设计单位。上移 5 是为了让底边正好停在 714, 不挤到 715 的 CTA。
-	##   带高不变(63..783) ⇒ 舞台缩放一点没动, 背景对位不受影响。
-	"detailBottom":{"x": 1251,"y": 455, "w": 229, "h": 259},
-	"start":      {"x": 1258, "y": 715, "w": 214, "h": 68},
+	## ★★2026-10-30 选龟页整页重做(方案书 docs/plans/20261030-选龟页重做.md)。用户原话:
+	##   「整个背景图，每个方正条条框框的地方，你都没有注意吗？」「你这还是一股浏览器的感觉啊，压根没有游戏的感觉」
+	##   原来 select-bg.png 烤着旧回合制版式(6 卡槽 + 前/后排横幅 / 龟池凹槽 / 右栏两格 / 绿牌 / 两块小木托),
+	##   界面一层层贴在上面, 8 块里 6 块对不上(网格伸出凹槽 45px、技能那行掉出右栏、顶栏方块盖住木托……)。
+	##   ⇒ 背景只留桌面和四周道具(tools/build_select_bg.py, 源图存 tools/art_src/), 框全部由代码按背包页那一套画:
+	##   统领 = 背包同款大卡(UnitCardArt) / 龟池 = 同款小卡 / 详情 = 说明卡底板 insp-card / 顶栏 = ← + 像素标题 + 木牌签。
+	##   下面就是这些框的位置(设计空间 1647×955, 与 _stage_to_screen 同一变换)。
+	## ★带高 = 778 − 62 = 716(原来 783 − 63 = 720)—— 别超 760(超了 fit_h 掉到 cover 以下, iPhone 左右露木条, 见 _stage_scale);
+	##   也别往下伸: 带底一低, iPhone 上出战键就压进底部手势条(verify_teamselect_start_on_plank ③, 第一版 785 时侵入 13px)。
+	"back":       {"x": 418,  "y": 62,  "w": 92,  "h": 60},
+	"title":      {"x": 514,  "y": 62,  "w": 380, "h": 60},
+	"clear":      {"x": 948,  "y": 66,  "w": 112, "h": 52},
+	"last":       {"x": 1072, "y": 66,  "w": 140, "h": 52},
+	"synergy":    {"x": 156,  "y": 96,  "w": 236, "h": 240},   # 左上羊皮纸(背景里留下的道具, 纸本身 x148..398), 羁绊写在纸上;
+	                                                             #   左沿 156 −  BAND_PAD 14 = 142 < 148 ⇒ iPad 上整张纸在内容带里不被切
+	"slotBay":    {"x": 418,  "y": 132, "w": 794, "h": 274},   # 三张统领大卡这一排(本身不画东西)
+	"slot0":      {"x": 466,  "y": 134, "w": 206, "h": 270},   # 206×270 = 背包大卡 192×252 的比例(手机上约 195×256 ≈ 原图 1 倍)
+	"slot1":      {"x": 712,  "y": 134, "w": 206, "h": 270},
+	"slot2":      {"x": 958,  "y": 134, "w": 206, "h": 270},
+	"grid":       {"x": 168,  "y": 418, "w": 1044,"h": 360},   # 页签一行 + 龟池小卡
+	"detailFrame":{"x": 1236, "y": 62,  "w": 264, "h": 636},   # 右栏底板(说明卡同一张 insp-card)
+	"dtPortrait": {"x": 1250, "y": 76,  "w": 236, "h": 170},
+	"dtName":     {"x": 1250, "y": 250, "w": 236, "h": 36},
+	"dtStats":    {"x": 1258, "y": 292, "w": 220, "h": 64},
+	"dtPassive":  {"x": 1250, "y": 364, "w": 236, "h": 56},
+	"detailBottom":{"x": 1250,"y": 428, "w": 236, "h": 264},
+	"start":      {"x": 1236, "y": 710, "w": 264, "h": 68},
 }
+## ★锁定后的版式(用户 2026-10-30「我感觉是第一次选龟和锁定后的选龟页不能一样啊，锁定后的就不用去显示其他龟和稀有度了啊」):
+##   本大轮统领已定 ⇒ 不建龟池和稀有度页签; 三张统领卡放大到龟池那一整片(308×404 = 背包大卡比例), 上方空处一枚常驻提示签。
+##   只覆盖这几格, 其余照 RL(_rect 先查这里)。都在内容带里面 ⇒ 舞台缩放与全选版一致。
+const RL_LOCKED := {
+	"slotBay":    {"x": 168,  "y": 352, "w": 1044,"h": 412},
+	"slot0":      {"x": 192,  "y": 356, "w": 308, "h": 404},   # 底边 760: 离内容带底 18(第一版 774, 手机上卡底离屏幕边只剩 2~3px)
+	"slot1":      {"x": 536,  "y": 356, "w": 308, "h": 404},
+	"slot2":      {"x": 880,  "y": 356, "w": 308, "h": 404},
+	"lockedHint": {"x": 420,  "y": 196, "w": 790, "h": 96},
+}
+const LOCKED_HINT := "本大轮阵容已锁定 · 点统领卡查看详情、更换技能"
+## 内容带两边各让出这么多(设计单位): iPad 4:3 上带宽卡死 fit_w, 右栏框边与数字原来正好贴在屏幕边上被切。
+const BAND_PAD := 14.0
+const PLANK_TEX := preload("res://assets/sprites/shop/shop-plank.png")
 
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 用(类型图标/档位阈值)
 ## 羁绊 chip 里【行内类型图标】的边长(px)。
@@ -118,6 +121,7 @@ var rng := RandomNumberGenerator.new()
 # 运行时建出的节点引用 (refresh 时更新)
 var _slot_nodes: Array = []          # 6 个槽 Panel
 var _grid_flow: GridContainer = null
+var _grid_card_h: float = 152.0      # 龟池小卡高 = 卡宽 × 252/192(背包大卡同比例; _build_grid_region 算)
 var _grid_card_w: float = 116.0      # 每卡宽 = 填满网格行(1:1 PoC .pet-grid minmax(116px,1fr) 卡拉伸铺满, 非固定116留白); _build_grid_region 算
 var _synergy_box: HFlowContainer = null
 var _dt_portrait: PanelContainer = null   # 右上信息区: 立绘块(独立可拖/缩)
@@ -193,8 +197,7 @@ func _ready() -> void:
 	_build_ui()
 	_load_team()
 	_refresh_all()
-	if _roster_locked:
-		_flash_status("本大轮阵容已锁定 · 可更换技能")
+	## 锁定版有常驻提示签(_build_locked_hint), 不再弹一条一闪而过的(2026-10-30)
 	# 新手引导: 教学模式挂分步引导(带高亮锚点)。导演按当前阶段选步骤集 + 是否 mandatory。
 	var _tdg = get_node_or_null("/root/TutorialDirector")
 	if _tdg != null and _tdg.is_active():
@@ -383,7 +386,8 @@ func _content_band() -> Rect2:
 		var y := float(r.get("y", 0))
 		lo.x = minf(lo.x, x); lo.y = minf(lo.y, y)
 		hi.x = maxf(hi.x, x + float(r.get("w", 0))); hi.y = maxf(hi.y, y + float(r.get("h", 0)))
-	return Rect2(lo, hi - lo)
+	## ★2026-10-30: 左右各让 BAND_PAD —— iPad 4:3 实拍右栏框边和「攻击力 40」被屏幕切掉半截(带宽正好 = 屏宽)。
+	return Rect2(lo - Vector2(BAND_PAD, 0.0), hi - lo + Vector2(BAND_PAD * 2.0, 0.0))
 
 
 func _stage_scale() -> float:
@@ -467,7 +471,11 @@ func _sf(px: float) -> int:
 
 
 func _rect(key: String) -> Rect2:
-	var r: Dictionary = _rl_override[key] if _rl_override.has(key) else RL[key]
+	var r: Dictionary = RL.get(key, {})
+	if _rl_override.has(key):
+		r = _rl_override[key]
+	elif _roster_locked and RL_LOCKED.has(key):
+		r = RL_LOCKED[key]
 	var s := _content_scale()
 	var top_left := _stage_to_screen(Vector2(float(r["x"]), float(r["y"])))
 	return Rect2(top_left, Vector2(float(r["w"]), float(r["h"])) * s)
@@ -682,12 +690,18 @@ func _build_ui() -> void:
 	# 标题 (PoC .ts-title: #ffe6b0 22px, letter-spacing 2px, 阴影)
 	var title := Label.new()
 	## ★教程(v5 B1「从这里选出 3 只龟组成你的队伍」): 页名与引导用同一个词 ——「统领」在教程里没有任何一句解释过。
-	title.text = TUT_TITLE if _tut_on() else "选择统领"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## 锁定后不是在「选」了 ⇒ 页名换成「本大轮统领」(2026-10-30)
+	title.text = TUT_TITLE if _tut_on() else ("本大轮统领" if _roster_locked else "选择统领")
+	## ★2026-10-30 重做: 页名 = 像素标题字(与其余各页顶栏 TopBar 同一种), 左对齐紧跟「←」。
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", _sf(22))
+	if _s() >= 0.85:
+		UISkin.title_label(title, 36)
+	else:
+		UISkin.title_label(title, 24)
 	title.add_theme_color_override("font_color", Color("#ffe6b0"))
-	_add_text_shadow(title, Vector2(0, 2), Color(0, 0, 0, 0.7))
+	title.add_theme_color_override("font_outline_color", Color("#1a0e05"))
+	title.add_theme_constant_override("outline_size", 6)
 	root.add_child(title)
 	_place(title, "title")
 	_ent_title = title
@@ -698,11 +712,9 @@ func _build_ui() -> void:
 	##   它纯粹是装饰 ⇒ **去掉**, 而不是换成 ← 或别的符号 ——
 	##   全项目的像素图标集正在另外做, 我在这里自己挑一个字符只会多出第 N 种长相。
 	##   (`verify_top_bar` 认 "返回"/←/‹ 任一, 纯汉字照样认得出来。)
-	back.text = "返回"
-	## ★薄片皮走全项目同一个函数(2026-09-19)。
-	##   原来这三个是 `_sf(13)` 的小字被 `_grow_to_touch` 撑到 81px 的框里 ——
-	##   实拍出来就是「78×85 的框里字只占中间一条」, 踩中 146 款参考里的第 ④ 条。
-	TopBar.apply_chip_skin(back, TopBar.WOOD)
+	## ★2026-10-30 重做: 「返回」→「←」零盒子 —— 其余各页顶栏(TopBar)都是这一枚, 只有这页是一块扁平方块。
+	back.text = "←"
+	TopBar.apply_chip_skin(back, TopBar.WOOD, true)
 	root.add_child(back)
 	_place_clamped(back, "back")
 	_grow_to_touch(back)
@@ -715,7 +727,7 @@ func _build_ui() -> void:
 	## ⚠ **只能两个字**: 三个顶栏键的位置被背景图烤死(RL 里写死的坐标),
 	##   实拍过 "全部撤下"(四字) —— 牌子被右边「沿用上次」那块盖住, "下" 字直接没了。
 	clear.text = "撤下"
-	TopBar.apply_chip_skin(clear, TopBar.WOOD)
+	_plank_chip(clear)
 	root.add_child(clear)
 	_place_clamped(clear, "clear")
 	_grow_to_touch(clear)
@@ -729,12 +741,14 @@ func _build_ui() -> void:
 	##   像素风里它比任何一个字都跳。前一代把 ↺ 换成 🔄 是为了避豆腐块,
 	##   而**不要图标**才是真的无豆腐块。
 	_last_btn.text = "沿用上次"
-	TopBar.apply_chip_skin(_last_btn, TopBar.WOOD)
+	_plank_chip(_last_btn)
 	root.add_child(_last_btn)
 	_place_clamped(_last_btn, "last")
 	_grow_to_touch(_last_btn)
 	_last_btn.pressed.connect(_on_restore_last)
 	_space_top_pair(clear, _last_btn)
+	_fit_plank(clear, "clear")
+	_fit_plank(_last_btn, "last")
 	_ent_top = [back, clear, _last_btn]
 	## ★教程里没有返回(用户 2026-10-07「教程里就不应该有返回键啊，要一直跟着教程走啊」);
 	##   「沿用上次」读的是账号的上次阵容文件 —— 教程是隔离沙盒, 不许碰账号的东西 ⇒ 一并藏起。
@@ -742,6 +756,10 @@ func _build_ui() -> void:
 		back.visible = false
 		_last_btn.visible = false
 		clear.visible = false   # v5 分镜「没教到的按钮不显示」: 教程里只按发光的龟依次上阵, 不教撤下
+	## 锁定后撤不下、也沿用不了 ⇒ 两块木牌不显示(2026-10-30; 原来是两块永远灰着的木牌)
+	if _roster_locked:
+		_last_btn.visible = false
+		clear.visible = false
 
 	# 实时 3v3：去掉回合制「前排/后排」标签 (自由走位下定位无意义)
 
@@ -754,32 +772,17 @@ func _build_ui() -> void:
 	_build_grid_region()
 	_detail._build_detail_region()
 
-	# 开始按钮 (PoC #poc-btn-confirm: 透明底, #eaffd0 18px 阴影, 坐画好的绿按钮上)
+	# 开始按钮(「出战」; 2026-10-30 起是像素金键, 不再是坐在背景绿牌上的透明按钮)
 	_start_btn = Button.new()
 	_start_btn.disabled = true
-	_start_btn.add_theme_font_size_override("font_size", _sf(18))
 	_start_btn.text = "选择 3 只龟"
-	_start_btn.add_theme_color_override("font_color", Color("#eaffd0"))
-	_start_btn.add_theme_color_override("font_hover_color", Color("#ffffff"))
-	## 按下压暗一档 —— 底板是画好的绿牌, 这是唯一不加盒子的按下反馈(见下方注释)。
-	_start_btn.add_theme_color_override("font_pressed_color", Color("#9fc47c"))
-	_start_btn.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.5))
-	_start_btn.add_theme_constant_override("shadow_offset_x", 0)
-	_start_btn.add_theme_constant_override("shadow_offset_y", 1)
-	_start_btn.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
-	## ★★2026-09-28 把 hover/pressed 那块【半透白圆角盒】整个删掉。
-	##   它是这一屏第 5 个圆角盒(门禁只数 panel/normal/background/fill 四槽, 所以台账上没有它,
-	##   但玩家一把鼠标放上去就看得见)。
-	## ★为什么不是"改成直角"也不是"换九宫格": CTA 的底板**烤在 select-bg.png 上**
-	##   (实拍裁出来是一块带金边和菱形铆钉的绿牌, 见 :718 注释)。
-	##   · 套九宫格 = 画好的绿牌上再压一层框, 两层边;
-	##   · 直角半透白 = 白方块四角溢出绿牌的斜切角, 比圆角还难看。
-	##   ⇒ 底板已经有美术的按钮, 反馈就该走**字**: hover 提白 / 按下压暗一档(下面的 font_*_color)。
-	for _st in ["normal", "hover", "pressed", "disabled", "focus"]:
-		_start_btn.add_theme_stylebox_override(_st, StyleBoxEmpty.new())
+	## ★2026-10-30 重做: 背景里那块烤死的绿牌去掉了 ⇒ 出战键自己有皮: 像素金键(与「观看 / 开始对战」同一档 PX_GOLD)。
+	##   原来是透明 Button 坐在画好的绿牌上、反馈只能走字色; 现在按下 / 悬停 / 不能点各有一格像素皮。
+	UISkin.pixel_button(_start_btn, UISkin.PX_GOLD, 4)
+	_start_btn.add_theme_font_size_override("font_size", _sf(30))
 	root.add_child(_start_btn)
-	## ★不走 _place_clamped / _grow_to_touch 的安全区夹(2026-10-13 内测): 绿牌烤在背景上, 字必须跟牌走;
-	##   夹进安全区只会把字推离绿牌。牌本身已由 _stage_to_screen 抬出手势条, 这里只保证不出屏。
+	## ★不走 _place_clamped / _grow_to_touch 的安全区夹(2026-10-13 内测「选龟页开始按钮偏移」): 键跟舞台走,
+	##   舞台已由 _stage_to_screen 抬出手势条, 这里只保证不出屏(守卫 tests/verify_teamselect_start_on_plank.gd)。
 	_place(_start_btn, "start")
 	_edge_btns.append(_start_btn)
 	var _need := Vector2(maxf(_start_btn.size.x, TOUCH_MIN), maxf(_start_btn.size.y, TOUCH_MIN))
@@ -792,6 +795,7 @@ func _build_ui() -> void:
 	_start_btn.pressed.connect(_on_start)
 
 	_raise_edge_btns()   # ★所有区域都建完了才提层 —— 早提会被后面的 slotBay/详情区盖回去
+	_place_status()
 
 	if not _did_entrance:   # 入场只播一次 (resize 重建不重播)
 		_did_entrance = true
@@ -852,6 +856,53 @@ var _syn_inner_w := 140.0   # 羁绊羊皮纸的可用宽(建区时按实测宽�
 const TOP_CHIP_PAD := 16.0
 
 
+## 顶栏木牌签: 与背包页顶栏「商店 / 背包 / 站位」同一张 shop-plank(2026-10-30 重做; 原来是只有这页用的扁平方块)。
+##   ★看得见的木牌 = 设计区那么高(手机约 49 / 电脑约 40px), 点击范围仍是撑到 81 的整个按钮 ——
+##     第一版直接拿木牌当按钮皮, 木牌跟着撑到 81 高, 电脑比例下压到第三张统领卡和右栏上沿(实拍)。
+##   悬停提亮 / 按下压暗 / 不能点整块压暗(原来只有字变灰, 底板一模一样, 看不出是禁用)。
+func _plank_chip(b: Button) -> void:
+	TopBar.apply_chip_skin(b, TopBar.WOOD)   # 只取字号 / 字色; 底板换成下面那块木牌
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	b.add_theme_color_override("font_disabled_color", Color(0.74, 0.68, 0.58, 0.85))
+	var np := NinePatchRect.new()
+	np.name = "Plank"
+	np.texture = PLANK_TEX
+	np.patch_margin_left = 18; np.patch_margin_right = 18; np.patch_margin_top = 18; np.patch_margin_bottom = 18
+	np.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	np.show_behind_parent = true
+	b.add_child(np)
+	## 按钮每次重画(悬停 / 按下 / 置灰都会重画)时同步木牌明暗
+	b.draw.connect(_plank_tint.bind(b))
+
+
+func _plank_tint(b: Button) -> void:
+	var np := b.get_node_or_null("Plank") as NinePatchRect
+	if np == null:
+		return
+	var m := 1.0
+	if b.disabled:
+		m = 0.46
+	elif b.button_pressed or b.get_draw_mode() == BaseButton.DRAW_PRESSED:
+		m = 0.8
+	elif b.get_draw_mode() == BaseButton.DRAW_HOVER:
+		m = 1.15
+	var c := Color(m, m, m, 1.0)
+	if not np.modulate.is_equal_approx(c):
+		np.modulate = c
+
+
+## 木牌落位: 宽 = 按钮宽(_space_top_pair 按字宽排好的), 高 = 设计区那一格的高, 竖向居中(字在木牌正中)。
+func _fit_plank(b: Button, key: String) -> void:
+	var np := b.get_node_or_null("Plank") as NinePatchRect
+	if np == null:
+		return
+	var h: float = minf(b.size.y, maxf(40.0, _rect(key).size.y))
+	np.size = Vector2(b.size.x, h)
+	np.position = Vector2(0.0, (b.size.y - h) * 0.5)
+
+
 func _space_top_pair(left: Button, right: Button) -> void:
 	for b in [left, right]:
 		var f: Font = b.get_theme_font("font")
@@ -877,11 +928,12 @@ func _build_synergy_region() -> void:
 	##   x≈303(panel 左缘 x≈142) ⇒ 可用宽仅约 161px。不收窄的话 chips 会溢出到木头背景上
 	##   (实拍确认过: 第三个 chip 掉在纸外)。取 0.50 ≈ 158px, 留一点边距。
 	##   —— 这是方案书 20260812-羁绊显示 §5 的风险 R1, 实拍后按实测值堵上。
-	panel.size.x = panel.size.x * 0.50
-	_syn_inner_w = panel.size.x - float(_sp(10)) * 2.0
+	## ★2026-10-30: 区域表直接按羊皮纸的实宽给(222 设计单位), 原来「宽度砍半」那行补丁去掉。
+	## 内边距让开纸角的图钉(2026-10-30 重做实拍: 「羁绊」两个字压在左上那颗图钉上)
+	_syn_inner_w = panel.size.x - float(_sp(28) + _sp(16))
 	var sb := StyleBoxEmpty.new()
-	sb.content_margin_left = _sp(10); sb.content_margin_right = _sp(10)
-	sb.content_margin_top = _sp(8); sb.content_margin_bottom = _sp(8)
+	sb.content_margin_left = _sp(28); sb.content_margin_right = _sp(16)
+	sb.content_margin_top = _sp(24); sb.content_margin_bottom = _sp(8)
 	panel.add_theme_stylebox_override("panel", sb)
 
 	var vb := VBoxContainer.new()
@@ -967,37 +1019,46 @@ func _refresh_synergy_chips() -> void:
 
 
 func _build_grid_region() -> void:
+	if _roster_locked:
+		_build_locked_hint()
+		## 不显示龟池与页签; 留一个不挂进树的空网格, _refresh_grid / 测试照常拿得到 _grid_flow
+		_rarity_btns = []
+		_grid_flow = GridContainer.new()
+		_grid_flow.visible = false
+		root.add_child(_grid_flow)
+		return
 	var rc := _rect("grid")
 	var s := _s()
-	# PoC #ts-rg-grid: flex-direction:row gap:10 (index.html:480) — rail(竖排)在区**内左缘**,
-	#   pet-grid 接右边. rail 宽 46 (.pg-rarity-btn width:46, index.html:485), rail gap 6 (483).
-	var rail_w := 46.0 * s
-	var row_gap := 10.0 * s         # #ts-rg-grid gap:10 (rail↔grid)
-	# 稀有度竖排导轨 — 放在 grid 区**内**左缘 (非旧版 grid.x-46 的区外)
-	## ★★2026-08-19 竖排 → 横排。
-	##   原因: 手机触控下限 44pt = 81px, 7 个按钮竖着排要 7×81 = **567px**,
-	##   而网格区实测只有 **313px 高** —— 竖排在这个版式里**装不下**, 怎么调都不够。
-	##   横过来: 7×81 = 567 ≤ 网格区宽 816, 装得下。代价是吃掉 81px 高(网格少一行, 本来就能滚)。
-	##   (顺带: PoC 里这东西本来就叫 `.pg-filter-bar` —— 一条【横】的过滤条。)
+	## ★★2026-10-30 重做: 稀有度筛选 = 一行文字页签(字用卡上横幅同一套稀有度色; 选中 = 提亮 + 下划线), 不再是 7 个方框。
+	##   用户「那个 SSS 到底需要这种什么正方形框吗？…别人的游戏是用什么框表示这种 SS 和这个过滤的呢？」——
+	##   看过约 110 张同类截图(C:/tmp/ts_ref), 没有一家把稀有度字母放进一个个方框当按钮; 横屏顶部多是文字页签
+	##   (Shadow Fight Arena / 明日方舟)。点击范围仍是 81 视口像素高(手机 44pt), 只是看得见的只有字。
 	var rail := HBoxContainer.new()
+	rail.name = "RarityTabs"
 	rail.position = rc.position
 	rail.add_theme_constant_override("separation", _sp(6))
 	root.add_child(rail)
 	_ent_rail = rail
 	_rarity_btns = []
+	var tab_fs := _sf(30)
 	for r in ["all", "SSS", "SS", "S", "A", "B", "C"]:
 		var b := Button.new()
 		b.text = "全部" if r == "all" else r
-		# ★手机板触控热区(用户2026-08-01「手机加pc」): 46×30 视口像素 = 手机上仅 25×16pt,
-		#   iOS HIG 最小 44pt / Material 48dp —— 这是全项目最小的一组可点元素, 手指基本点不中。
-		#   加到 52×52(28pt): 竖排 7 个共 400px, 网格区放得下; 再大就要重排整屏了。
-		## ★用实际像素不过 _sp —— 上次写 _sp(52) 缩放后只剩 40px, 等于没修到。
-		b.custom_minimum_size = Vector2(81.0, 81.0)
-		## ★2026-10-05: 13 号(手机上 ~6pt)+ 70% 透明白 ⇒ 81px 的格子里只有一粒小字, 几乎读不出。
-		##   ⇒ 22 号 + 带黑描边的实色字(与左右栏单位卡的字同一套处理)。
-		b.add_theme_font_size_override("font_size", _sf(22))
-		b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-		b.add_theme_constant_override("outline_size", 4)
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", tab_fs)
+		b.add_theme_color_override("font_outline_color", Color(0.06, 0.04, 0.02, 0.95))
+		b.add_theme_constant_override("outline_size", 6)
+		var f: Font = b.get_theme_font("font")
+		var tw: float = f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, tab_fs).x if f != null else 40.0
+		b.custom_minimum_size = Vector2(maxf(81.0, tw + 28.0), 81.0)
+		b.size = b.custom_minimum_size
+		## 下划线(只有选中那一项显示; 位置在字的下沿)
+		var ul := ColorRect.new()
+		ul.name = "Underline"
+		ul.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ul.size = Vector2(tw + 14.0, 5.0)
+		ul.position = Vector2((b.custom_minimum_size.x - ul.size.x) * 0.5, 40.5 + float(tab_fs) * 0.62)
+		b.add_child(ul)
 		_style_rarity_btn(b, false)
 		var key: String = r
 		b.pressed.connect(func() -> void:
@@ -1005,13 +1066,19 @@ func _build_grid_region() -> void:
 			_pet_grid._refresh_grid())
 		rail.add_child(b)
 		_rarity_btns.append({"btn": b, "key": r})
-
-	# 网格 (ScrollContainer + GridContainer) — 起点右移 (rail宽+row_gap), 宽减同量 (PoC pet-grid 接 rail 右)
-	## 过滤条横过来之后, 网格从它【下方】开始(不再右移让位)。
-	var bar_h := 81.0 + row_gap
-	## ★教程: 候选只有教程固定池 3 只, 按稀有度筛的那一排(SSS…C)筛不出东西, 只是一排空签 ⇒ 不显示, 网格顶上去。
+	var bar_h := 81.0 + float(_sp(6))
+	## 页签底下一道细分隔线(整行宽): 把页签和下面的卡分成两层, 不用再给每个字套框
+	var base := ColorRect.new()
+	base.name = "TabsBase"
+	base.color = Color(1.0, 0.86, 0.58, 0.18)
+	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	base.position = rc.position + Vector2(0.0, 40.5 + float(tab_fs) * 0.62 + 7.0)
+	base.size = Vector2(rc.size.x, 2.0)
+	root.add_child(base)
+	## ★教程: 候选只有教程固定池 3 只, 按稀有度筛的那一排筛不出东西 ⇒ 不显示, 网格顶上去。
 	if _tut_on():
 		rail.visible = false
+		base.visible = false
 		bar_h = 0.0
 	var scroll := ScrollContainer.new()
 	scroll.position = rc.position + Vector2(0.0, bar_h)
@@ -1020,21 +1087,55 @@ func _build_grid_region() -> void:
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # 隐藏滚动条(进度带)·滚动仍启用(手机拖·PC滚轮)·用户2026-07-18
 	root.add_child(scroll)
 	_ent_scroll = scroll
+	## 卡往上抬 2px 的悬停 / 选中金圈都会出卡边 ⇒ 网格四周留一点边, 别被滚动区裁掉
+	var pad := MarginContainer.new()
+	pad.name = "GridPad"
+	pad.add_theme_constant_override("margin_top", _sp(8))
+	pad.add_theme_constant_override("margin_left", _sp(4))
+	pad.add_theme_constant_override("margin_right", _sp(4))
+	pad.add_theme_constant_override("margin_bottom", _sp(40))
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(pad)
 	_grid_flow = GridContainer.new()
-	# PoC pet-grid: repeat(auto-fill, minmax(116px,1fr)) gap:12 padding:4 (index.html:381-382)。
-	#   卡片/间距/padding 都吃 stage scale → 列数 scale 无关 (W*s/(116*s)=W/116), 用缩放后宽与 116*s 算一致。
-	var card_w := 116.0 * s
-	var gap_s := 12.0 * s
-	var pad_s := 4.0 * s
-	var _grid_cols: int = maxi(1, int(floor((scroll.size.x - pad_s * 2.0 + gap_s) / (card_w + gap_s))))
+	## ★2026-10-30 重做: 龟池卡 = 背包同款小卡(框图 192×252 的比例)。列数按「卡宽不小于 100 设计单位」算(16:9 / 手机 / iPad 都是 9 列)。
+	var gap_s := float(_sp(12))
+	var inner_w: float = scroll.size.x - float(_sp(4)) * 2.0
+	var min_w := 100.0 * s
+	var _grid_cols: int = maxi(1, int(floor((inner_w + gap_s) / (min_w + gap_s))))
 	_grid_flow.columns = _grid_cols
-	# 每卡宽 = 网格行铺满后均分 (1:1 PoC minmax(116,1fr): 列数定后卡片拉伸填满整行, 不留右侧空白)
-	var grid_gap := float(_sp(12))
-	_grid_card_w = maxf(card_w, (scroll.size.x - float(_grid_cols - 1) * grid_gap) / float(_grid_cols))
-	_grid_flow.add_theme_constant_override("h_separation", _sp(12))
-	_grid_flow.add_theme_constant_override("v_separation", _sp(12))
+	_grid_card_w = floorf((inner_w - float(_grid_cols - 1) * gap_s) / float(_grid_cols))
+	_grid_card_h = roundf(_grid_card_w * UnitCardArt.NATIVE.y / UnitCardArt.NATIVE.x)
+	_grid_flow.add_theme_constant_override("h_separation", int(gap_s))
+	_grid_flow.add_theme_constant_override("v_separation", int(gap_s))
 	_grid_flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_grid_flow)
+	pad.add_child(_grid_flow)
+	## 底部渐隐: 最下一排原来被滚动区硬切成半截, 看不出下面还能滚 ⇒ 渐隐到桌面色
+	var g := Gradient.new()
+	g.set_color(0, Color(0.11, 0.07, 0.04, 0.0))
+	g.set_color(1, Color(0.11, 0.07, 0.04, 0.92))
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill_from = Vector2(0, 0)
+	gt.fill_to = Vector2(0, 1)
+	gt.width = 8
+	gt.height = 64
+	var fade := TextureRect.new()
+	fade.name = "GridFade"
+	fade.texture = gt
+	fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fade.stretch_mode = TextureRect.STRETCH_SCALE
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## 只占最下 28 设计单位(第一版 48 把最后一整排的名字也压暗了 —— iPad 上那一排其实整排都露着)
+	fade.position = scroll.position + Vector2(0.0, scroll.size.y - float(_sp(28)))
+	fade.size = Vector2(scroll.size.x, float(_sp(28)))
+	root.add_child(fade)
+	## 滚到底就收起(下面已经没东西了, 再暗着就是骗人)
+	var vbar := scroll.get_v_scroll_bar()
+	var upd := func() -> void:
+		if is_instance_valid(fade) and is_instance_valid(scroll) and is_instance_valid(pad):
+			fade.visible = float(scroll.scroll_vertical) + scroll.size.y < pad.get_combined_minimum_size().y - 4.0
+	vbar.changed.connect(upd)
+	vbar.value_changed.connect(func(_v: float) -> void: upd.call())
 
 
 func _add_text_shadow(lbl: Label, ofs: Vector2, col: Color) -> void:
@@ -1043,35 +1144,47 @@ func _add_text_shadow(lbl: Label, ofs: Vector2, col: Color) -> void:
 	lbl.add_theme_color_override("font_shadow_color", col)
 
 
-## PoC .pg-rarity-btn — 非激活: 金边半透; 激活: 金渐变填充 + 深字
-func _style_rarity_btn(b: Button, active: bool) -> void:
+## 锁定版常驻提示签(与右栏说明卡 / 提示条同一种: 不透明深底 + 黄铜边)
+func _build_locked_hint() -> void:
+	var l := Label.new()
+	l.name = "LockedHint"
+	l.text = LOCKED_HINT
 	var sb := StyleBoxFlat.new()
-	sb.set_corner_radius_all(_sp(7))   # PoC .pg-rarity-btn border-radius:7
-	if active:
-		sb.bg_color = Color("#e8a830")            # 金渐变近似实色
-		sb.border_color = Color("#6b3d10")
-		sb.set_border_width_all(1)
-		b.add_theme_color_override("font_color", Color("#2a1605"))
-		b.add_theme_color_override("font_hover_color", Color("#2a1605"))
-		b.add_theme_color_override("font_pressed_color", Color("#2a1605"))
-	else:
-		sb.bg_color = Color(1, 216.0/255, 107.0/255, 0.06)
-		sb.border_color = Color(1, 216.0/255, 107.0/255, 0.25)
-		sb.set_border_width_all(1)
-		b.add_theme_color_override("font_color", Color("#f1e4c4"))
-		b.add_theme_color_override("font_hover_color", Color("#ffd86b"))
-		b.add_theme_color_override("font_pressed_color", Color("#ffd86b"))
-	## ★换金属签牌(跨屏统一): 半透明底 + 1px 描边 + 圆角 = 典型"网页盒",
-	##   而这一屏是暖色木桌世界。选中态靠 modulate 过曝成金(和图鉴页签同一套),
-	##   未选中压暗 —— 明暗差比"底色换个颜色"更容易一眼看出当前筛的是哪档。
-	var rb := UISkin.nine_if_big(81.0, 81.0, "slot-frame.png", 12, sb)
-	if rb is StyleBoxTexture:
-		(rb as StyleBoxTexture).modulate_color = (Color(2.1, 1.72, 0.82, 1.0) if active
-			else Color(0.62, 0.60, 0.56, 1.0))
-	b.add_theme_stylebox_override("normal", rb)
-	b.add_theme_stylebox_override("hover", rb)
-	b.add_theme_stylebox_override("pressed", rb)
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	sb.bg_color = Color("#120d09")
+	sb.border_color = Color("#a5751d")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(0)
+	sb.content_margin_left = 20; sb.content_margin_right = 20
+	sb.content_margin_top = 8; sb.content_margin_bottom = 8
+	l.add_theme_stylebox_override("normal", sb)
+	l.add_theme_font_size_override("font_size", _sf(26))
+	l.add_theme_color_override("font_color", Color("#ffe6b0"))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(l)
+	var rc := _rect("lockedHint")
+	var h := float(_sf(26)) * 1.6 + 16.0
+	l.size = Vector2(rc.size.x, h)
+	l.position = Vector2(rc.position.x, rc.get_center().y - h * 0.5)
+
+
+## 稀有度页签(2026-10-30 重做): 无框, 字 = 稀有度色(与卡上横幅同一套 UIPalette.RARITY); 选中 = 提亮 + 下划线。
+func _style_rarity_btn(b: Button, active: bool) -> void:
+	var key: String = "all" if b.text == "全部" else b.text
+	var c: Color = Color("#ffe6b0") if key == "all" else RARITY_COLOR.get(key, Color.WHITE)
+	var idle: Color = Color("#c8b48e") if key == "all" else c
+	var on: Color = c if key == "all" else c.lerp(Color.WHITE, 0.3)
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	b.add_theme_color_override("font_color", on if active else idle)
+	b.add_theme_color_override("font_pressed_color", on)
+	b.add_theme_color_override("font_hover_color", on if active else idle.lerp(Color.WHITE, 0.25))
+	b.add_theme_color_override("font_focus_color", on if active else idle)
+	var ul := b.get_node_or_null("Underline") as ColorRect
+	if ul != null:
+		ul.visible = active
+		ul.color = Color("#ffd86b") if key == "all" else c
 
 
 func _dark_panel() -> StyleBoxEmpty:
@@ -1211,6 +1324,9 @@ func _refresh_confirm() -> void:
 func _set_detail_pet(pid: String) -> void:
 	detail_pet_id = pid
 	_detail._refresh_detail()
+	_pet_grid.mark_focus()   # 龟池里那张卡的金边跟着换(2026-10-30 重做)
+	if _roster_locked:
+		_slots._refresh_slots()   # 锁定版没有龟池: 金边画在正在看的那张统领卡上
 
 
 ## 点卡片: 有空槽则入队 (PoC onPickPet — 找首个空槽)
@@ -1576,6 +1692,31 @@ func _load_team() -> void:
 # ══════════════════════════════════════════════════════════════
 # 工具
 # ══════════════════════════════════════════════════════════════
+## 提示条(「本大轮阵容已锁定」「阵容已满」…): 不透明深底 + 黄铜边的一枚签, 居中压在统领卡下沿。
+## ★2026-10-30 重做: 原来是 .tscn 里钉在左下角的一行白字(没有底), 浮出来时正压在龟池卡的名字上(实拍)。
+func _place_status() -> void:
+	if status_bar == null:
+		return
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#120d09")
+	sb.border_color = Color("#a5751d")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(0)
+	sb.content_margin_left = 18; sb.content_margin_right = 18
+	sb.content_margin_top = 6; sb.content_margin_bottom = 6
+	status_bar.add_theme_stylebox_override("normal", sb)
+	status_bar.add_theme_font_size_override("font_size", _sf(22))
+	status_bar.add_theme_color_override("font_color", Color("#ffe6b0"))
+	status_bar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_bar.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	status_bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	var bay := _rect("slotBay")
+	var h := float(_sf(22)) * 1.6 + 12.0
+	status_bar.size = Vector2(bay.size.x * 0.62, h)
+	status_bar.position = Vector2(bay.get_center().x - status_bar.size.x * 0.5, bay.end.y - h * 0.5)
+	status_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 func _flash_status(msg: String) -> void:
 	status_bar.text = msg
 	# PoC showToast (TeamSelectScene.ts:1975): fade-in .2s → 显示 1.8s → fade-out .2s
