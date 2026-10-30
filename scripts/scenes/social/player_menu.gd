@@ -2,6 +2,8 @@ extends RefCounted
 ## player_menu.gd —— 玩家菜单「加好友 / 举报昵称 / 拉黑」(2026-10-20 · App Store 审核指南 1.2)。
 ## ★2026-10-24 加「加好友」(方案书 docs/plans/20261023-好友切磋.md §4.2: 点别人名字就能加, 不必回好友页输 ID)。
 ##   有账号(排行榜行带 account_id)⇒ 直接申请; 只有玩家 ID ⇒ 先按 ID 查人, ID 撞号时按昵称挑(`pick_person`)。
+## ★2026-10-30 排行榜上多一颗「切磋」(`offers_spar`; 方案书 docs/plans/20261030-排行榜切磋.md):
+##   好友 ⇒ 打他最新的背包阵容; 不是好友 ⇒ 打他在榜上那份积分赛阵容(`FriendsNet.fetch_for_spar`); 隔离同好友切磋(`Spar`)。
 ##
 ## ★全项目只有这一个菜单: 排行榜 / 周六赛况板 / 周日对阵图 / 对局顶栏点到别人, 弹的都是它(每屏只负责「点哪里打开」)。
 ##   参考: 皇室战争 / 荒野乱斗点排行榜上的人 ⇒ 一张小卡(名字 + 玩家 ID + 几颗操作键)。
@@ -18,12 +20,15 @@ const BL := preload("res://scripts/util/blocklist.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const BOX := Vector2(480.0, 284.0)
+## 多一颗「切磋」时多一行(切磋 | 加好友 / 举报昵称 | 拉黑 / 关闭)。
+const BOX_SPAR := Vector2(480.0, 354.0)
 
 ## 【门禁按名字找的节点】
 const LAYER := "PlayerMenuLayer"
 const TITLE := "PlayerMenuTitle"
 const STATUS := "PlayerMenuStatus"
 const BTN_FRIEND := "PlayerMenuFriend"
+const BTN_SPAR := "PlayerMenuSpar"
 const BTN_REPORT := "PlayerMenuReport"
 const BTN_BLOCK := "PlayerMenuBlock"
 const BTN_CLOSE := "PlayerMenuClose"
@@ -31,6 +36,8 @@ const BTN_CLOSE := "PlayerMenuClose"
 const ENTRY := "PlayerMenuEntry"
 
 const L_FRIEND := "加好友"
+const L_SPAR := "切磋"
+const MSG_SPAR_LOADING := "正在读取对方阵容"
 const L_REPORT := "举报昵称"
 const L_BLOCK := "拉黑"
 const L_UNBLOCK := "移出黑名单"
@@ -50,6 +57,15 @@ const MSG_FULL := "黑名单已满"
 const MSG_FRIEND_SENT := "已发送好友申请，等待对方同意"
 const MSG_FRIEND_DONE := "已成为好友"
 const MSG_FRIEND_AMBIG := "该玩家 ID 对应多位玩家，请前往好友页添加"
+
+## 开局(门禁换成记账的假的, 同 FriendsScene.spar_start)。
+static var spar_start: Callable = Spar.start
+
+
+## ★2026-10-30 排行榜上切磋(方案书 docs/plans/20261030-排行榜切磋.md): 宿主给了 `spar_week`(那张榜的周号)且有账号才给这颗键。
+##   只有排行榜给 ⇒ 对阵图 / 赛况板 / 对局顶栏的菜单不变(对局里切磋没有意义)。
+static func offers_spar(info: Dictionary) -> bool:
+	return str(info.get("account", "")) != "" and int(info.get("spar_week", 0)) > 0
 
 
 ## 这个人能不能打开菜单(合法玩家 ID、不是我自己)。
@@ -93,9 +109,11 @@ static func open(host: Node, info: Dictionary, on_change: Callable = Callable())
 		(rtex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#5aa0ff"))
 	box.add_theme_stylebox_override("panel", rtex)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP
+	var spar := offers_spar(info)
+	var bs: Vector2 = BOX_SPAR if spar else BOX
 	var vs: Vector2 = host.get_viewport().get_visible_rect().size
-	box.position = (vs - BOX) * 0.5
-	box.size = BOX
+	box.position = (vs - bs) * 0.5
+	box.size = bs
 	dim.add_child(box)
 
 	var ttl := Label.new()
@@ -125,10 +143,37 @@ static func open(host: Node, info: Dictionary, on_change: Callable = Callable())
 	box.add_child(st)
 	st.position = Vector2(24, 86); st.size = Vector2(BOX.x - 48.0, 24)
 
-	var fr := _btn(box, BTN_FRIEND, L_FRIEND, UISkin.PX_SLATE, Vector2(40, 122))
-	var rep := _btn(box, BTN_REPORT, L_REPORT, UISkin.PX_SLATE, Vector2(250, 122))
-	var blk := _btn(box, BTN_BLOCK, L_UNBLOCK if BL.is_blocked(tag) else L_BLOCK, UISkin.PX_SLATE, Vector2(40, 192))
-	var cl := _btn(box, BTN_CLOSE, L_CLOSE, UISkin.PX_SLATE, Vector2(250, 192))
+	## 有切磋: 切磋(金, 主操作) | 加好友 / 举报昵称 | 拉黑 / 关闭(居中); 没有: 原来的 2×2。
+	var row0 := 192.0 if spar else 122.0
+	var fr := _btn(box, BTN_FRIEND, L_FRIEND, UISkin.PX_SLATE, Vector2(250, 122) if spar else Vector2(40, 122))
+	var rep := _btn(box, BTN_REPORT, L_REPORT, UISkin.PX_SLATE, Vector2(40, row0) if spar else Vector2(250, 122))
+	var blk := _btn(box, BTN_BLOCK, L_UNBLOCK if BL.is_blocked(tag) else L_BLOCK, UISkin.PX_SLATE,
+		Vector2(250, row0) if spar else Vector2(40, 192))
+	var cl := _btn(box, BTN_CLOSE, L_CLOSE, UISkin.PX_SLATE, Vector2(145, 262) if spar else Vector2(250, 192))
+	if spar:
+		var sp := _btn(box, BTN_SPAR, L_SPAR, UISkin.PX_GOLD, Vector2(40, 122))
+		sp.pressed.connect(func() -> void:
+			## 我这边不能打(教程 / 闯关排队中 / 统领没选满)⇒ 不发请求, 状态行说原因。
+			var why := Spar.my_side_check()
+			if why != "":
+				st.text = why
+				return
+			sp.disabled = true
+			st.text = MSG_SPAR_LOADING
+			var tree := host.get_tree()
+			FN.fetch_for_spar(str(info.get("account", "")), int(info.get("spar_week", 0)), func(r: Dictionary) -> void:
+				if not is_instance_valid(st):
+					return
+				if not bool(r["ok"]):
+					st.text = FN.msg(str(r["reason"]))
+					sp.disabled = false
+					return
+				var err: String = spar_start.call(tree, (r["data"] as Dictionary).get("snapshot", {}), {
+					"account": str(info.get("account", "")), "name": name, "tag": tag,
+					"avatar": str(info.get("lead", "")), "back": Spar.LEADERBOARD_SCENE})
+				if err != "":
+					st.text = err
+					sp.disabled = false))
 	fr.pressed.connect(func() -> void:
 		fr.disabled = true
 		st.text = MSG_SENDING

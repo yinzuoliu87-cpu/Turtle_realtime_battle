@@ -1391,7 +1391,6 @@ scripts/scenes/battle/battle_hud.gd|lit|赛季等级
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
 scripts/scenes/battle/battle_hud.gd|lit|返回主菜单
-scripts/scenes/battle/battle_hud.gd|lit|返回好友
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
 scripts/scenes/battle/battle_hud.gd|lit|闯关战绩
 scripts/scenes/battle/battle_hud.gd|lit|闯关赛不消耗生命。
@@ -1957,6 +1956,7 @@ scripts/scenes/social/player_menu.gd|lit|举报失败，请检查网络后重试
 scripts/scenes/social/player_menu.gd|lit|举报昵称
 scripts/scenes/social/player_menu.gd|lit|今日举报次数已达上限
 scripts/scenes/social/player_menu.gd|lit|关闭
+scripts/scenes/social/player_menu.gd|lit|切磋
 scripts/scenes/social/player_menu.gd|lit|加好友
 scripts/scenes/social/player_menu.gd|lit|已举报
 scripts/scenes/social/player_menu.gd|lit|已发送好友申请，等待对方同意
@@ -1966,6 +1966,7 @@ scripts/scenes/social/player_menu.gd|lit|已移出黑名单
 scripts/scenes/social/player_menu.gd|lit|拉黑
 scripts/scenes/social/player_menu.gd|lit|提交中
 scripts/scenes/social/player_menu.gd|lit|无法举报自己
+scripts/scenes/social/player_menu.gd|lit|正在读取对方阵容
 scripts/scenes/social/player_menu.gd|lit|移出黑名单
 scripts/scenes/social/player_menu.gd|lit|该玩家 ID 对应多位玩家，请前往好友页添加
 scripts/scenes/social/player_menu.gd|lit|黑名单已满
@@ -2237,6 +2238,8 @@ scripts/systems/social/spar.gd|lit|存档未就绪
 scripts/systems/social/spar.gd|lit|对方阵容读取失败
 scripts/systems/social/spar.gd|lit|教程中无法切磋
 scripts/systems/social/spar.gd|lit|请先在选龟页选定本大轮的三只统领
+scripts/systems/social/spar.gd|lit|返回好友
+scripts/systems/social/spar.gd|lit|返回排行榜
 scripts/systems/stream/stream_player.gd|lit|画面无法播放
 scripts/systems/stream/stream_source.gd|lit|404 %.0f 秒
 scripts/systems/stream/stream_source.gd|lit|end.json 没有块数

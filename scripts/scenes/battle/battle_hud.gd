@@ -1231,14 +1231,16 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 			return TutorialGuide.vis_rect(tb) if nm == "settle_shop" else Rect2())
 		return
 	## ★好友切磋: 「再来一局」(同一份对方快照) +「返回好友」。不给商店 —— 切磋不发奖, 也不是「打 → 买」那一环。
+	##   2026-10-30 排行榜上也能切磋 ⇒ 这颗键回发起的那一页(`Spar.back_scene` / `back_label`: 「返回排行榜」/「返回好友」)。
 	if Spar.is_active():
 		var ab: Button = battle._make_result_btn("再来一局", shop_tint, shop_fc,
 			func() -> void: Spar.again(battle.get_tree()))
 		ab.name = "SparAgain"
 		SettleScreenS.dress_btn(ab, shop_fc)
 		btn_row.add_child(ab)
-		var fb: Button = battle._make_result_btn("返回好友", menu_tint, menu_fc,
-			func() -> void: SceneNav.go(battle.get_tree(), Spar.FRIENDS_SCENE))
+		var back := Spar.back_scene()
+		var fb: Button = battle._make_result_btn(Spar.back_label(), menu_tint, menu_fc,
+			func() -> void: SceneNav.go(battle.get_tree(), back))
 		fb.name = "SparBack"
 		SettleScreenS.dress_btn(fb, menu_fc)
 		btn_row.add_child(fb)

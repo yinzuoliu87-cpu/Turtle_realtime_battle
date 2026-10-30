@@ -23,11 +23,13 @@ extends RefCounted
 
 const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
 const FRIENDS_SCENE := "res://scenes/Friends.tscn"
+## 2026-10-30 排行榜上也能切磋(方案书 docs/plans/20261030-排行榜切磋.md): 对方信息带 `back` ⇒ 结算屏回那一页。
+const LEADERBOARD_SCENE := "res://scenes/Leaderboard.tscn"
 const SUBTITLE := "切磋 · 不计入赛季进度"
 
 ## 正在切磋(从 `begin` 到离开战斗场)。
 static var active := false
-## 对方: {"account", "name", "tag", "avatar"}(结算屏 / 再来一局用)。
+## 对方: {"account", "name", "tag", "avatar", "back"(可省, 默认好友页)}(结算屏 / 再来一局用)。
 static var friend: Dictionary = {}
 static var _ghost: Dictionary = {}
 static var _backup: Dictionary = {}
@@ -40,6 +42,15 @@ static var _pending_cloud: Array = []
 
 static func is_active() -> bool:
 	return active
+
+
+## 结算屏那颗「返回」回哪一页 / 叫什么(从哪儿发起的切磋就回哪儿)。
+static func back_scene() -> String:
+	return LEADERBOARD_SCENE if str(friend.get("back", "")) == LEADERBOARD_SCENE else FRIENDS_SCENE
+
+
+static func back_label() -> String:
+	return "返回排行榜" if back_scene() == LEADERBOARD_SCENE else "返回好友"
 
 
 ## 我这边能不能开打: "" = 能; 否则是屏上那句原因。

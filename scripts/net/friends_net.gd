@@ -186,3 +186,75 @@ static func fetch_lineup(account: String, done: Callable) -> void:
 			done.call({"ok": false, "reason": why, "data": r["data"]})
 			return
 		done.call(r))
+
+
+# ─────────────────────────── 排行榜上切磋(2026-10-30) ───────────────────────────
+## 方案书 docs/plans/20261030-排行榜切磋.md。用户「点击这个玩家之后，除了加好友选项，那还应该有这个切磋选项」。
+## 排行榜上大多数人不是好友, 而 `friend_lineup` 只认好友 ⇒ 非好友打**他在榜上那份**阵容:
+##   `ghosts` 里这个人这一周的积分赛快照(所有登录玩家可读, 匹配拉对手就是这么读的), 不改服务器。
+
+## 查询串: 这个人这一周的快照, 场次 / 上传时刻倒序(与 week_leaderboard_page 的 latest 同序)。账号不像 uuid ⇒ ""。
+static func board_query(account: String, week: int) -> String:
+	var re := RegEx.create_from_string("^[0-9a-fA-F-]{32,36}$")
+	if re.search(account) == null or week <= 0:
+		return ""
+	return "select=snapshot,rules_ver,battles,uploaded_at&account_id=eq.%s&season_week=eq.%d&order=battles.desc,uploaded_at.desc&limit=20" % [account, week]
+
+
+## 纯判据: 一页 ghosts 行里挑排行榜算的那一行(与 week_leaderboard_page 的 latest 同一套筛选:
+##   去 `seed_` / 机器人 / 闯关行(gl_w 或 gl_l 不为 0), 取第一行)。挑不出 ⇒ {}。
+static func pick_board_row(rows) -> Dictionary:
+	if not (rows is Array):
+		return {}
+	for r in rows:
+		if not (r is Dictionary) or not ((r as Dictionary).get("snapshot") is Dictionary):
+			continue
+		var s: Dictionary = r["snapshot"]
+		if str(s.get("ghost_id", "")).begins_with("seed_") or str(s.get("is_bot", "false")) == "true":
+			continue
+		if int(s.get("gl_w", 0)) != 0 or int(s.get("gl_l", 0)) != 0:
+			continue
+		return r
+	return {}
+
+
+## 取这个人在榜上的那份阵容。`done(r)` 一定调一次; r 形状同 `fetch_lineup`(data.source = "board")。
+static func fetch_board_lineup(account: String, week: int, done: Callable) -> void:
+	var q := board_query(account, week)
+	if q == "":
+		done.call({"ok": false, "reason": "no_lineup", "data": {}})
+		return
+	if not SB.enabled():
+		done.call({"ok": false, "reason": "off", "data": {}})
+		return
+	var n = SB._spawn()
+	if n == null:
+		done.call({"ok": false, "reason": "net", "data": {}})
+		return
+	if not await n._await_token():
+		n._bye()
+		done.call({"ok": false, "reason": "not_signed_in" if SB.session_lost() else "net", "data": {}})
+		return
+	posts["ghosts"] = int(posts.get("ghosts", 0)) + 1
+	n._http("GET", SB.base_url().rstrip("/") + "/rest/v1/ghosts?" + q, "", func(res: Dictionary) -> void:
+		n._bye()
+		var code := int(res.get("code", 0))
+		if bool(res.get("blocked", false)) or not bool(res.get("ok", false)) or code < 200 or code >= 300:
+			done.call({"ok": false, "reason": "net", "data": {}})
+			return
+		var row := pick_board_row(JSON.parse_string(str(res.get("body", ""))))
+		if row.is_empty():
+			done.call({"ok": false, "reason": "no_lineup", "data": {}})
+			return
+		var d := {"source": "board", "snapshot": row["snapshot"], "rules_ver": int(row.get("rules_ver", 0))}
+		var why := lineup_check(d)
+		done.call({"ok": why == "", "reason": why, "data": d}))
+
+
+## 排行榜上的切磋: 是好友 ⇒ 他最新的背包阵容(与好友页一致); 不是好友 ⇒ 他在榜上那份(`fetch_board_lineup`)。
+static func fetch_for_spar(account: String, week: int, done: Callable) -> void:
+	fetch_lineup(account, func(r: Dictionary) -> void:
+		if not bool(r["ok"]) and str(r["reason"]) == "not_friends":
+			fetch_board_lineup(account, week, done)
+			return
+		done.call(r))

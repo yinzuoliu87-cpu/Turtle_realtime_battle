@@ -1073,7 +1073,8 @@ func _draw_row(parent: Control, idx: int, r: Dictionary) -> void:
 	if not is_self:
 		_PM.hotspot(parent, Rect2(AV_X, 0.0, SLOT_X - 4.0 - AV_X, CARD_H),
 			{"name": _BL.raw_name(r), "tag": tag_s, "ctx": _RPT.CTX_LEADERBOARD,
-				"account": str(r.get("account_id", ""))}, _rerender)   # 账号: 菜单里「加好友」直接申请, 不必按 ID 查人
+				"account": str(r.get("account_id", "")),   # 账号: 菜单里「加好友」直接申请, 不必按 ID 查人
+				"spar_week": board_week_ts, "lead": str(r.get("lead", ""))}, _rerender)   # 有周号 ⇒ 菜单多一颗「切磋」(方案书 20261030-排行榜切磋)
 	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩槽上。
 	nm.clip_text = true
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
