@@ -202,7 +202,7 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
 
 用户 10-27「周六周日我们讲究是在线啊」「假如我在周六凌晨点击锁定…掉到零杠一或者一杠零，那我有人打吗？…所有的情况」。
 周末陪练号**真的上线**：和真人走同一个排队（锁阵容 → `gauntlet_queue_join` → 每 2 秒 poll），服务端按战绩格子先来先配（真人对陪练号、陪练号对陪练号一样）。
-`gauntlet_bot_planner.py` 只决定**拉哪个号上线、打几局**；配对、兜底（真人等满 90 秒退回机器人池）都在服务端（迁移 `server/supabase/migrations/20261027_gauntlet_online_queue.sql`）。
+`gauntlet_bot_planner.py` 只决定**拉哪个号上线、打几局**；配对、兜底（真人等满 180 秒先同格子真人快照、再机器人池 —— 20261029b；确定没有陪练号能来时满 1 分钟 —— 20261031）都在服务端（迁移 `server/supabase/migrations/20261027_gauntlet_online_queue.sql` 起）。
 
 | 件 | 位置 |
 |---|---|
@@ -216,11 +216,15 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
 env 开关：`MAX_PAR_WEEKEND`（周末同时在线上限，默认 6 = 8GB 机器 × 每个 0.75GB；`BOT_JEMALLOC=1` 后每个约 0.35GB，可到 12）、
 `BOT_JEMALLOC` / `BOT_JEMALLOC_LIB`（默认 `/usr/lib/x86_64-linux-gnu/libjemalloc.so.2`，`apt install libjemalloc2`）/ `BOT_MALLOC_CONF`
 （默认 = 内存调查实验那组 `background_thread:true,dirty_decay_ms:2000,muzzy_decay_ms:0`；只作用于陪练客户端，裁判不受影响）、
-`PLANNER_R`（平时每格候场数，默认 2）/ `PLANNER_R_END`（收尾，默认 2）、`PLANNER_ALWAYS=1`（内测服彩排：不按本机钟睡，决定用服务端的钟 `now_ts`）/ `PLANNER_WEEK`（彩排拨钟到别的周时给那周周一 00:00 UTC 的 epoch）、`PLANNER_ROOT_SAFETY`（0-0 本钱线保险系数，默认 1.5）。
+`PLANNER_R`（平时每格候场数，默认 2）/ `PLANNER_R_END`（收尾，默认 2）、`PLANNER_ALWAYS=1`（内测服彩排：不按本机钟睡，决定用服务端的钟 `now_ts`）/ `PLANNER_WEEK`（彩排拨钟到别的周时给那周周一 00:00 UTC 的 epoch）、`PLANNER_ROOT_SAFETY`（0-0 本钱线保险系数，默认 1.5）、
+`PLANNER_OPENING_SEC`（开赛头多久把真人位借给补格子，默认 3600；0 = 不借）/ `MAX_PAR_OPENING`（开赛头那段的并发上限，默认不设 = 与 `MAX_PAR_WEEKEND` 相同；**设之前问用户**，见方案书 [20261031b](../../docs/plans/20261031b-闯关赛开局铺号与早兜底.md) U2）。
 ★`BOT_GAME_DIR` 必须是**正式服当前发布版**的工程：服务端配对要求两边客户端版本相同。没设就不拉号（打一行日志）。
+★改了 env 文件要 `systemctl restart turtle-gauntlet-planner-prod`，再读进程环境确认（10-31 周六改了 `BOT_GAME_DIR` 没重启，陪练号还跑 0.22.5）。
 
 **每拍的决定**（`decide`，纯函数；12 个格子 = 4 胜前、3 负前的全部战绩）：
-- A **真人在等**：同格子没有在线的可配对手 ⇒ 拉一个正停在这一格的空闲号（打 1 局）。并发满了让出一个没在打的低优先级号；永远给真人留 1 个并发位。
+- A **真人在等**：同格子没有在线的可配对手 ⇒ 拉一个正停在这一格的空闲号（打 1 局）。并发满了让出一个没在打的低优先级号；给真人留 1 个并发位（开赛头一小时、晋级号够铺满 12 格时借给补格子）。
+  ★2026-10-31（迁移 `20261031_gauntlet_no_bot_early_fallback.sql`）：每拍把**没有陪练号能来**的真人报给服务端（`gauntlet_planner_mark`，顺带心跳）——
+  他的客户端版本 ≠ 陪练号版本，或这一格和上一级都没有跟他没交过手的号；服务端让他们进队满 1 分钟就兜底（调度器报过到、心跳却断了 60 秒也一样）。服务端没上这份迁移时只记一行日志。
 - B **打到底的号没人可配** ⇒ 从同格子拉一个空闲号当对手（总量账有余量时可拉到这一格只剩 1 个；收尾且上一级补得上 / 已没有真人能走到这一格时可拉光）。
 - C **补格子**：先「每格 ≥1」，0-0 的本钱够再补到 R。缺口按「从上一级打一局送下来」求最省的打法（0-0 的号是整周末的本钱，先少花本钱再少打局），
   同时拉两个同格子的号上线互打；补格子的号可连打（≤5 局、局间只稍停），走到不缺号的格子、或送走就会掏空这一格时就下线停在那里。

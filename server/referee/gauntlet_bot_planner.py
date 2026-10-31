@@ -29,6 +29,9 @@ decide(state, now, rng) 是纯函数(门禁拿真函数推演), 每 10 秒一拍
   一个号同一时刻只在一个客户端里(在线 / 在算 / 排队条目还有效的都不拉)。0-0 本钱线见 DEFAULTS 的 HUMAN_PRIOR_PER_H / ROOT_SAFETY。
 
 兜底(不归本文件): 某格子的号用光、补也来不及时, 真人等满 180 秒(20261029b)由服务端在 poll 里兜底: 先同格子真人快照, 再机器人池(都只记真人一边)。
+  ★2026-10-31(迁移 20261031, 方案书 docs/plans/20261031b-闯关赛开局铺号与早兜底.md): 本文件每拍把「没有陪练号能来」的真人报给服务端
+  (gauntlet_planner_mark, 顺带当心跳) —— 陪练号版本与他不同 / 这一格和上一级都没有跟他没交过手的号; 服务端让他们进队满 1 分钟就兜底。
+  调度器报过到、心跳却断了 60 秒, 服务端也一样处理。开赛头一小时(OPENING_SEC)给真人留的并发位借给补格子。
 
 输入 state = 服务端 gauntlet_service_state(迁移 server/supabase/migrations/20261027_gauntlet_online_queue.sql, normalize 换成 epoch 秒)
   加本机的进程表 / 记忆:
@@ -129,6 +132,8 @@ DEFAULTS = {
     'FAST_STEP_SEC': 240,    # 最快的真人一局(排队 + 裁判 + 看直播 + 逛店)约 4 分钟 ⇒ 开赛第 t 分钟最深能到 t/4 场
     'FILL_STEP_SEC': 120,    # 补格子的号往下走一格约 2 分钟(连打: 裁判 + 结算 + 稍停)
     'SCARCE_ROOT_KEEP': 2,   # 号不够铺满每格 ≥1 时(cover_plan)0-0 至少留几个。12 个号时留 1 / 留 2 都是最多 9 格, 留 3 只剩 8 格
+    'OPENING_SEC': 3600,     # 开赛头多久把真人位借给补格子(decide 里 free 那一段有实测); 0 = 不借
+    'OPENING_MAX_PAR': None, # 开赛头 OPENING_SEC 的并发上限(env MAX_PAR_OPENING); None = 与 MAX_PAR 相同
 }
 SESSIONISH = ('session', 'end')     # 打到底的号: 不算格子里的候场号
 ## 每次上线等不到对手多久自己下线(客户端 SIM_QUEUE_GIVEUP_SEC)。按用途给: 为真人拉的号等真人, 别的号等搭档。
@@ -434,7 +439,16 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
             humans[cc].append(wt)
             opp.setdefault(aid, set()).update(wt.get('opponents') or ())
 
-    free = c['MAX_PAR'] - len(running) - int(state.get('external_running', 0) or 0)
+    ## ★2026-10-31 开赛头一小时(OPENING_SEC): 给真人留的那个并发位也借给补格子(nonserve_free), 真人来了 A 照样让位 / 等下一个空位。
+    ##   正式服 10-31 实测: 周末并发 4 扣掉真人位只剩 3 个 ⇒ 同时只起得了 1 对补格子号, 头一小时 4 个位平均只用了 2 个;
+    ##   最快的真人 00:00 开打, 第 4~6 场(3-0 / 2-1 / 1-2 / 3-1 / 2-2 / 3-2)多半赶上格子还空着。推演 108 个号 × 6 个种子 × 35 条路线:
+    ##   并发 4 兜底 312 → 209 / 1134 步、并发 6 85 → 43(方案书 20261031b §2)。
+    ##   OPENING_MAX_PAR(env MAX_PAR_OPENING, 默认不设 = MAX_PAR): 头一小时另给一个并发上限 —— 要用户点头才设(同机内存余量)。
+    ##   号结构上不够铺满 12 格(cover_plan 那一支, < full_cover_min 个晋级号)时不借: 那时卡在号数不在并发, 推演 ⑫(12 个号)借了反而少铺一格。
+    opening = now < sat0 + c['OPENING_SEC'] and \
+        sum(1 for b in bots.values() if b.get('promoted', True)) >= full_cover_min(c['SCARCE_ROOT_KEEP'])
+    par = int(c.get('OPENING_MAX_PAR') or c['MAX_PAR']) if opening else c['MAX_PAR']
+    free = par - len(running) - int(state.get('external_running', 0) or 0)
     claimed, taken, stopped = set(), set(), set()
 
     def avail(cc):
@@ -453,13 +467,18 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
         free -= 1
 
     def stop(bid, why):
+        """★2026-10-31: 一拍里同一个号只停一次 —— 原来 A 让位停掉的号, C 还会把它当在线的补格子号再停一次
+        (free 多加 1 ⇒ 多拉一个、超并发上限; 推演借位之后 N=80 开赛那段量出来的)。各段挑「在线号」时也跳过已停的(stopped)。
+        ★不记 claimed: 停掉的号会停在这一格候场, C 算「这一格有几个」时要算上它(记成 claimed 推演量出 0-0 本钱 2 小时被补格子花光)。"""
         nonlocal free
+        if bid in stopped:
+            return
         cmds.append(('stop', bid, 0, 'stop', why))
         stopped.add(bid)
         free += 1
 
     def nonserve_free():
-        return free - c['HUMAN_RESERVE']
+        return free - (0 if opening else c['HUMAN_RESERVE'])
 
     def preempt():
         cand = []
@@ -478,6 +497,18 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
             moving[cc] += 1
 
     ## ── A 真人在等 ⇒ 同格子在线的号 / 拉一个停在这一格的号 ──
+    ## ★2026-10-31 每个没着落的真人还要判「确定没有陪练号能来」(no_bot, 函数末尾报给服务端 ⇒ 进队满 1 分钟就兜底, 迁移 20261031):
+    ##   ① 版本不同: 服务端只配同版本, 而陪练号一律跑 BOT_GAME_DIR 那一版(state['bot_version']) ——
+    ##      正式服 10-31 周六 00:02 ~ 00:48 测试号 7 局全等满 180 秒就是这个(陪练号 0.22.5、真人 0.22.6)
+    ##   ② 这一格没有跟他没交过手的空闲号、在线号, 上一级也没有正要送下来的(在打 / 在线还要打 / 这拍刚拉的)—— 在函数末尾判(C 拉的也算)
+    bot_ver = str(state.get('bot_version') or '')
+    no_bot = {}                                    # 真人 → 为什么
+    unserved = []                                  # (真人, 格子): 这一格没有可拉的号, 末尾再看上一级有没有在路上的
+
+    def same_ver(a, b):
+        va, vb = str(a.get('client_version') or ''), str(b.get('client_version') or '')
+        return not va or not vb or va == vb
+
     for cc in sorted(CELLS, key=lambda x: -max([float(h.get('waited_sec', 0) or 0) for h in humans[x]] or [-1])):
         hs = sorted(humans[cc], key=lambda h: -float(h.get('waited_sec', 0) or 0))
         paired = set()
@@ -485,14 +516,18 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
             if h['account_id'] in paired:
                 continue
             for h2 in hs[i + 1:]:
-                if h2['account_id'] not in paired and not met(h['account_id'], h2['account_id']):
+                if h2['account_id'] not in paired and not met(h['account_id'], h2['account_id']) and same_ver(h, h2):
                     paired.update((h['account_id'], h2['account_id']))
                     break
         for h in hs:
             hid = h['account_id']
             if hid in paired:
                 continue
-            ob = next((x for x in online[cc] if x not in claimed and not met(x, hid)), None)
+            hv = str(h.get('client_version') or '')
+            if bot_ver and hv and hv != bot_ver:
+                no_bot[hid] = '%d-%d 真人 %s ≠ 陪练号 %s(服务端只配同版本)' % (cc[0], cc[1], hv, bot_ver)
+                continue
+            ob = next((x for x in online[cc] if x not in claimed and x not in stopped and not met(x, hid)), None)
             if ob is not None:
                 plays_here(ob, cc)
                 continue
@@ -501,6 +536,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
             cand = take(cc, lambda x: not met(x, hid))
             if cand is None:
                 note('A %d-%d 有真人在等但这一格没有空闲号(C 优先补; 等到上限服务端兜底)' % cc)
+                unserved.append((hid, cc))
                 continue
             if free <= 0:
                 victim = preempt()
@@ -532,9 +568,9 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
 
     for cc in CELLS:
         for x in online[cc]:
-            if x in claimed or purpose(x) not in SESSIONISH:
+            if x in claimed or x in stopped or purpose(x) not in SESSIONISH:
                 continue
-            mate = next((y for y in online[cc] if y != x and y not in claimed and not met(x, y)), None)
+            mate = next((y for y in online[cc] if y != x and y not in claimed and y not in stopped and not met(x, y)), None)
             if mate is not None:
                 claimed.add(x)
                 plays_here(mate, cc)
@@ -594,7 +630,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
     present = {cc: len(avail(cc)) + exiting[cc] + sum(1 for x in online[cc] if x not in claimed and purpose(x) not in SESSIONISH)
                for cc in CELLS}
     for cc in CELLS:
-        ch = [x for x in online[cc] if x not in claimed and purpose(x) not in SESSIONISH]
+        ch = [x for x in online[cc] if x not in claimed and x not in stopped and purpose(x) not in SESSIONISH]
         for i, a in enumerate(ch):
             if a in claimed or xs.get(cc, 0) <= 0 or present[cc] - 2 < keep_at(cc):
                 continue
@@ -712,6 +748,15 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
                 for y in (a, b):
                     claimed.add(y)
                     launch(y, c['SESSION_ROUNDS'], 'end', 'E 收尾: %d-%d 多出来的候场号成对打到底%s' % (cc + ('' if keep else '(收盘前已没有真人能走到这一格)',)))
+
+    ## ── 没有陪练号能来的真人(见 A 段开头 ②): 上一级格子里有没交过手、正要在那里打一局的号 ⇒ 还可能送下来, 不判 ──
+    for hid, cc in unserved:
+        coming = [x for x, pc in cell_of.items() if pc in parents(cc) and not met(x, hid)
+                  and (in_job(bots[x]) or x in taken or x in queued or (x in running and rounds_left(x) > 0))]
+        if not coming:
+            no_bot[hid] = '%d-%d 这一格和上一级都没有跟他没交过手的号' % cc
+    for hid in sorted(no_bot):
+        cmds.append(('nobot', hid, 0, 'nobot', no_bot[hid]))
     return cmds
 
 
@@ -862,6 +907,10 @@ def cfg_from_env() -> dict:
         c['ROOT_SAFETY'] = float(os.environ['PLANNER_ROOT_SAFETY'])
     if os.environ.get('TICK_SEC'):
         c['TICK_SEC'] = int(os.environ['TICK_SEC'])
+    if os.environ.get('PLANNER_OPENING_SEC'):
+        c['OPENING_SEC'] = int(os.environ['PLANNER_OPENING_SEC'])
+    if os.environ.get('MAX_PAR_OPENING'):
+        c['OPENING_MAX_PAR'] = int(os.environ['MAX_PAR_OPENING'])
     return c
 
 
@@ -882,6 +931,7 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
     st['running'] = run
     st['memory'] = ps.get('memory') or {}
     st['external_running'] = external_running(br)
+    st['bot_version'] = game_version(br.GAME)
     if status:
         cnt = {cc: [0, 0, 0] for cc in CELLS}
         for b in st['bots']:
@@ -897,6 +947,9 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
             len(run), st['external_running'], cfg.get('MAX_PAR', DEFAULTS['MAX_PAR'])))
         return
     cmds = decide(st, now, rng, cfg)
+    nobot = [x for x in cmds if x[0] == 'nobot']
+    cmds = [x for x in cmds if x[0] != 'nobot']
+    report_no_bot(week, nobot, st['bot_version'], dry)
     if not br.GAME and not dry:
         cmds = [x for x in cmds if x[0] != 'launch']
         log('BOT_GAME_DIR 没设(应 = 正式服当前发布版的工程, 配对要求客户端版本相同), 这拍不拉号')
@@ -926,6 +979,46 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
     if not dry:
         ps['running'] = run
         ps['memory'] = remember(ps.get('memory') or {}, done, now, st)
+
+
+_VER_RE = None
+_MARK_MISSING = [False]
+
+
+def game_version(game_dir: str):
+    """陪练号工程(BOT_GAME_DIR)的 project.godot 里的 config/version; 读不到 = None(decide 就不按版本判)。"""
+    global _VER_RE
+    if not game_dir:
+        return None
+    if _VER_RE is None:
+        import re
+        _VER_RE = re.compile(r'^\s*config/version\s*=\s*"([^"]+)"', re.M)
+    try:
+        with open(os.path.join(game_dir, 'project.godot'), encoding='utf-8') as f:
+            m = _VER_RE.search(f.read())
+        return m.group(1) if m else None
+    except OSError:
+        return None
+
+
+def report_no_bot(week: int, nobot: list, bot_version, dry: bool) -> None:
+    """每拍报一次(迁移 20261031 gauntlet_planner_mark): 写调度器心跳 + 「没有陪练号能来」的真人名单(空 = 全清)。
+    服务端据此让名单里的真人进队满 1 分钟就兜底; 心跳断了 60 秒也一样(只在报过到之后)。
+    服务端还没上这份迁移(404)⇒ 只记一行日志, 不影响拉号(行为与以前相同)。"""
+    if dry:
+        for _op, hid, _r, _p, why in nobot:
+            print('会报 没有陪练号能来 %s —— %s' % (hid, why))
+        return
+    try:
+        rpc('gauntlet_planner_mark', {'p_week': week, 'p_no_bot': [x[1] for x in nobot], 'p_bot_version': bot_version})
+        for _op, hid, _r, _p, why in nobot:
+            log('没有陪练号能来 %s —— %s' % (hid[:8], why))
+    except urllib.error.HTTPError as e:
+        if e.code == 404 and not _MARK_MISSING[0]:
+            log('服务端没有 gauntlet_planner_mark(迁移 20261031 还没上), 照旧等 180 秒兜底')
+            _MARK_MISSING[0] = True
+        elif e.code != 404:
+            log('报「没有陪练号能来」出错: HTTP %s %s' % (e.code, e.reason))
 
 
 def launch_bot(br, slot: int, rounds: int, purpose: str, cell: tuple) -> int:

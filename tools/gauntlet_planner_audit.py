@@ -22,6 +22,12 @@
   ⑩ 总量账: 晋级号的剩余步数(开赛 / 收盘)按场景打印
   ⑪ 调度器让号下线(stop_client)= 杀整棵进程树(bot_runner.kill_tree), 包装脚本照常记 sessions.log(Linux 上真起进程量; 10-27 彩排查出旧写法杀不到 godot)
   ⑫ 号少(12 个)· 只开调度器: 铺到数学上限(独立穷举: 12 个号最多 9 格)、0-0 全程留够 SCARCE_ROOT_KEEP 个; 打印 6~9 格各在第几分钟
+  ★2026-10-31(方案书 docs/plans/20261031b-闯关赛开局铺号与早兜底.md; 服务端迁移 20261031 同口径建模: 只配同版本;
+    调度器判「没有陪练号能来」的真人进队满 HUMAN_ONLY_SEC 就兜底):
+  ⑬ 开赛头一小时(108 个晋级号 = 正式服那周实数, 并发 4 = 正式服周末 env / 6 = 服务单元 MemoryMax 设计值): 最快的真人第 4~6 场进队那一刻,
+     这一格有没有他没交过手的空闲号 —— 现行 ≥ 头一小时不借真人位(OPENING_SEC=0)时的 1.1 倍; 并发 6 ≥ 75%
+  ⑭ 陪练号版本 ≠ 真人版本(10-31 正式服 00:00 ~ 00:54 那一小时): 对照组(服务端照旧)兜底都等满 180 秒; 现行一局不白拉、兜底都在 1 分钟
+  ⑮ 「没有陪练号能来」判得准: 服务端照旧时, 满 1 分钟被判没号的排队后来等来陪练号的 ≤ 2%(等来真人不算 —— 调度器预料不到)
 分母: 每个场景的真人排队次数、采样次数、拉号次数。
 """
 import copy
@@ -80,9 +86,19 @@ def hm(t):
 
 ## ═══════════════ 假世界 ═══════════════
 class World:
-    def __init__(self, n_bots, arrivals, cfg, seed, fast_ids=(), fast_post=FAST_POST_SEC, sample_dt=300):
+    def __init__(self, n_bots, arrivals, cfg, seed, fast_ids=(), fast_post=FAST_POST_SEC, sample_dt=300,
+                 ver_h='v1', ver_b='v1', early=True):
         self.cfg = dict(P.DEFAULTS)
         self.cfg.update(cfg)
+        ## ★20261031: 服务端只配同版本(真人 ver_h / 陪练号 ver_b); early = 服务端迁移 20261031 那条线
+        ##   (调度器判「没有陪练号能来」的真人进队满 HUMAN_ONLY_SEC 就兜底)。early=False = 20261029c 原样(推演对照用)。
+        self.ver_h, self.ver_b, self.early = ver_h, ver_b, early
+        self.nobot = set()                     # 调度器最近一拍报的「没有陪练号能来」
+        self.early_fb = 0
+        self.marked = set()                    # ⑮ (人, 进队时刻): 进队满 HUMAN_ONLY_SEC 时被判没号的那次排队
+        self.mark_real = self.mark_fb = 0      # ⑮ 那几次排队最后是配上真对手 / 兜底
+        self.mark_bot = 0                      # ⑮ 其中配上的是陪练号的
+        self.probe_joins = []                  # 最快真人(probe)每次进队: (第几场, 格子, 那一刻这一格没交过手的空闲号数, 时刻)
         self.rng = random.Random(seed)
         self.prng = random.Random(seed + 7)
         self.t = SAT0
@@ -141,6 +157,10 @@ class World:
         q = self.queue[x['cell']]
         q[:] = [e for e in q if self.online(e) and not self.ent(e['id'])['busy'] and self.ent(e['id'])['cell'] == x['cell']]
         me = {'id': eid, 'bot': is_bot, 'joined': self.t, 'dead': None, 'tok': tok}
+        if eid == 'probe':
+            idle = [b for b, v in self.bots.items() if v['cell'] == x['cell'] and not v['fin'] and not v['busy']
+                    and b not in x['opp'] and eid not in v['opp']]
+            self.probe_joins.append((x['games'] + 1, x['cell'], len(idle), self.t))
         hold = self.human_hold(q)
         nbot = sum(1 for e in q if e['bot'] and self.online(e) and not self.ent(e['id'])['busy'])
         for e in sorted(q, key=lambda e: (e['bot'], e['joined'])):      # 服务端: 真人先于陪练号, 再先来先配
@@ -180,7 +200,9 @@ class World:
             self.pair(pr[0], pr[1])
 
     def can_pair(self, a, b):
-        """服务端 20261029c 同口径: 真人 × 陪练号要真人那边进队满 HUMAN_ONLY_SEC(收盘前 RUSH_SEC 起不设)。"""
+        """服务端 20261029c 同口径: 真人 × 陪练号要真人那边进队满 HUMAN_ONLY_SEC(收盘前 RUSH_SEC 起不设)。两边版本不同不配。"""
+        if (self.ver_b if a['bot'] else self.ver_h) != (self.ver_b if b['bot'] else self.ver_h):
+            return False
         if a['bot'] == b['bot'] or self.t >= CLOSE - RUSH_SEC:
             return True
         h = a if not a['bot'] else b
@@ -195,6 +217,11 @@ class World:
             if not e['bot']:
                 h = self.ent(e['id'])
                 self.waits.append((e['id'], h['games'] + 1, h['cell'], self.t - e['joined'], False, e['joined']))
+        for e, other in ((a, b), (b, a)):
+            if not e['bot'] and (e['id'], e['joined']) in self.marked:
+                self.mark_real += 1
+                if other['bot']:
+                    self.mark_bot += 1                 # ⑮ 判了没号, 结果陪练号来了 = 判错(抢了陪练号的局)
         if not a['bot'] and not b['bot']:
             self.hh_pairs += 1
         xa['busy'] = xb['busy'] = True
@@ -272,7 +299,7 @@ class World:
                     queued.add(e['id'])
                     waiting.append({'account_id': e['id'], 'gw': c[0], 'gl': c[1], 'waited_sec': self.t - e['joined'],
                                     'seen_sec': 0.0 if e['dead'] is None else self.t - e['dead'], 'is_bot': e['bot'],
-                                    'opponents': x['opp']})
+                                    'opponents': x['opp'], 'client_version': self.ver_b if e['bot'] else self.ver_h})
         bots = [{'account_id': k, 'gw': v['cell'][0], 'gl': v['cell'][1], 'in_job': v['busy'], 'waiting': k in queued,
                  'busy': v['busy'] or k in queued, 'finished': v['fin'], 'promoted': True, 'last_played_at': v['last'],
                  'opponents': v['opp']} for k, v in self.bots.items()]
@@ -280,14 +307,46 @@ class World:
         playing = [{'account_id': j[k], 'gw': j['cell'][0], 'gl': j['cell'][1], 'is_bot': j[k] in self.bots}
                    for j in self.jobs_live for k in ('a', 'b') if j[k] is not None]
         return {'close_at': CLOSE, 'now': self.t, 'waiting': waiting, 'bots': bots, 'running': running,
-                'memory': self.memory, 'playing': playing}
+                'memory': self.memory, 'playing': playing, 'bot_version': self.ver_b}
+
+    def fallback_now(self, hid, e, early):
+        """服务端兜底(同格子真人快照 / 机器人池): 只记真人一边。"""
+        q = self.queue.get(self.humans[hid]['cell'], [])
+        q.remove(e)
+        h = self.humans[hid]
+        self.waits.append((hid, h['games'] + 1, h['cell'], self.t - e['joined'], True, e['joined']))
+        if early:
+            self.early_fb += 1
+        if (hid, e['joined']) in self.marked:
+            self.mark_fb += 1
+        h['busy'] = True
+        self.referee({'a': hid, 'b': None, 'cell': h['cell']})
+
+    def early_sweep(self):
+        """服务端 20261031: 调度器判「没有陪练号能来」的真人, 进队满 HUMAN_ONLY_SEC 且这一刻还没配上 ⇒ 当场兜底(服务端每 2 秒 poll; 推演在事件点判)。"""
+        for q in self.queue.values():
+            for e in q:
+                if not e['bot'] and e['id'] in self.nobot and self.t - e['joined'] >= HUMAN_ONLY_SEC:
+                    self.marked.add((e['id'], e['joined']))
+        if not self.early:
+            return
+        for c, q in self.queue.items():
+            for e in list(q):
+                if not e['bot'] and e['id'] in self.nobot and self.online(e) and self.t - e['joined'] >= HUMAN_ONLY_SEC \
+                        and not self.humans[e['id']]['busy']:
+                    self.fallback_now(e['id'], e, True)
 
     def tick(self):
         st = self.state()
         cmds = P.decide(st, self.t, self.prng, self.cfg)
         applied = []
         fill_now = []
+        self.nobot = {bid for op, bid, *_r in cmds if op == 'nobot'}
         for op, bid, rounds, purpose, why in cmds:
+            if op == 'nobot':
+                if bid in self.bots:
+                    self.viol.append('把陪练号报成「没有陪练号能来」%s' % hm(self.t))
+                continue
             if op == 'stop':
                 if bid in self.clients and not self.bots[bid]['busy']:
                     self.exit_client(bid)
@@ -318,6 +377,7 @@ class World:
                 self.viol.append('补格子成对拉的两个号交过手 / 不同格子 %s' % hm(self.t))
         self.memory = P.remember(self.memory, applied, self.t, st)
         self.max_online = max(self.max_online, len(self.clients))
+        self.early_sweep()
 
     def sample(self):
         idle = {c: 0 for c in P.CELLS}
@@ -378,17 +438,17 @@ class World:
                         q.remove(e)
                         q.remove(o)
                         self.pair(o, e)
+                    elif hid in self.nobot and self.online(e):
+                        self.marked.add((hid, e['joined']))     # ⑮ 满 1 分钟这一刻被判没号(服务端 20261031 就在这一刻兜底)
+                        if self.early:
+                            self.fallback_now(hid, e, True)   # 服务端 20261031: 调度器报了没号 ⇒ 满 1 分钟当场兜底
                     self.flush(h['cell'])
             elif k == 'fallback':
                 hid = a[1]
                 q = self.queue.get(self.humans[hid]['cell'], [])
                 e = next((e for e in q if e['id'] == hid), None)
                 if e is not None and t - e['joined'] >= FALLBACK_SEC:
-                    q.remove(e)
-                    h = self.humans[hid]
-                    self.waits.append((hid, h['games'] + 1, h['cell'], t - e['joined'], True, e['joined']))
-                    h['busy'] = True
-                    self.referee({'a': hid, 'b': None, 'cell': h['cell']})
+                    self.fallback_now(hid, e, False)
             elif k == 'sample':
                 self.sample()
                 self.push(t + self.sample_dt, 'sample')
@@ -686,6 +746,60 @@ def probe(args):
     return {'n': n_bots, 'par': par, 'start': start, 'post': fast_post, 'worst': worst, 'nfb': nfb, 'steps': steps, 'broken': broken}
 
 
+## ═══════════════ ⑬ 开赛头一小时: 深格子有没交过手的号 ═══════════════
+OPEN_N = 108                           # = 正式服 2026-10-31 那周的晋级陪练号数(sb_ro 实查)
+OPEN_SEEDS = (3, 4, 5)
+
+
+def probe_open(args):
+    """⑬: 背景 5 个真人, 加一个最快的真人周六 00:00 进来按 35 条路线打完(同 ⑨ 的 probe), cfg 可改。
+    量的是需求本身 —— 他第 4~6 场(3-0 / 2-1 / 1-2 / 3-1 / 2-2 / 3-2)在开赛头一小时进队那一刻, 这一格有没有跟他没交过手的空闲号。"""
+    n_bots, par, seed, cfg = args
+    c = {'MAX_PAR': par}
+    c.update(cfg)
+    base = World(n_bots, arrivals_for(5, seed), c, seed * 1000 + n_bots)
+    base.run(until=SAT0 - 1e-6)
+    deep = have = nfb = steps = 0
+    for path in all_paths():
+        w = copy.deepcopy(base)
+        w.humans['probe'] = {'cell': (0, 0), 'fin': False, 'opp': set(), 'games': 0, 'busy': False}
+        w.forced['probe'] = path
+        w.fast.add('probe')
+        w.push(SAT0, 'hjoin', 'probe', 0)
+        w.run(until=SAT0 + 3 * 3600, stop_when=lambda ww: ww.humans['probe']['fin'])
+        for g, _cell, k, t in w.probe_joins:
+            if g >= 4 and t < SAT0 + 3600:
+                deep += 1
+                have += 1 if k >= 1 else 0
+        mine = [x for x in w.waits if x[0] == 'probe']
+        steps += len(mine)
+        nfb += sum(1 for x in mine if x[4])
+    return {'n': n_bots, 'par': par, 'seed': seed, 'cfg': cfg, 'deep': deep, 'have': have, 'nfb': nfb, 'steps': steps}
+
+
+def version_run(args):
+    """⑭ 陪练号跑的版本与真人不同(正式服 2026-10-31 周六 00:00 ~ 00:54: 陪练号 0.22.5、真人 0.22.6, 测试号 7 局全等满 180 秒)。
+    early=True = 服务端 20261031; early=False = 20261029c 原样(尺子对照)。"""
+    n_bots, n_h, par, seed, early = args
+    w = World(n_bots, arrivals_for(n_h, seed * 31 + n_h), {'MAX_PAR': par}, seed * 1000 + n_bots + n_h,
+              ver_h='0.22.6', ver_b='0.22.5', early=early)
+    w.run(until=SAT0 + 24 * 3600)
+    fb = [x[3] for x in w.waits if x[4]]
+    real = sum(1 for x in w.waits if not x[4])
+    return {'early': early, 'n': len(w.waits), 'fb': len(fb), 'hb': real - 2 * w.hh_pairs, 'hh': w.hh_pairs,
+            'fb_min': min(fb or [0]), 'fb_max': max(fb or [0]), 'early_fb': w.early_fb,
+            'serve': sum(1 for _t, _b, p in w.launches if p == 'serve')}
+
+
+def precision_run(args):
+    """⑮ 「没有陪练号能来」判得准不准: 服务端照旧(early=False), 记下进队满 1 分钟时被判没号的那些排队, 看它们最后配上真对手还是兜底。"""
+    n_bots, n_h, par, seed = args
+    w = World(n_bots, arrivals_for(n_h, seed * 31 + n_h), {'MAX_PAR': par}, seed * 1000 + n_bots + n_h, early=False)
+    w.run()
+    return {'n': n_bots, 'h': n_h, 'par': par, 'marked': len(w.marked), 'real': w.mark_real, 'bot': w.mark_bot, 'fb': w.mark_fb,
+            'nviol': len(w.viol), 'viol': w.viol[:3]}
+
+
 def main():
     t0 = time.time()
     print('== 对账: 调度器的赛程常量 == phase2_config.gd ==')
@@ -726,12 +840,21 @@ def main():
     jobs_p = [(n, par, st, FAST_POST_SEC, 3) for n in (30, 57, 80) for _l, st in starts]
     jobs_p += [(n, MEM_PROFILES[1][2], SAT0, FAST_POST_SEC, 3) for n in (30, 57, 80)]
     jobs_p += [(n, p2, SAT0, STRICT_POST_SEC, 3) for n in (57,) for p2 in (par, MEM_PROFILES[1][2])]
+    jobs_o = [(OPEN_N, p, s, cfg) for p in (4, 6) for s in OPEN_SEEDS for cfg in ({}, {'OPENING_SEC': 0})]
+    jobs_v = [(57, 20, par, 1, e) for e in (True, False)]
+    jobs_q = [(n, h, par, 1) for n in (57, OPEN_N) for h in (20, 50)]
     workers = max(1, min(8, (os.cpu_count() or 2)))
     with ProcessPoolExecutor(workers) as ex:
+        fo = [ex.submit(probe_open, j) for j in jobs_o]        # 最慢的先交
         fs = {('s',) + j[:4] + (tuple(sorted((j[4] or {}).items())),): ex.submit(scenario, j) for j in jobs_s}
         fp = {('p',) + j: ex.submit(probe, j) for j in jobs_p}
+        fv = [ex.submit(version_run, j) for j in jobs_v]
+        fq = [ex.submit(precision_run, j) for j in jobs_q]
         rs = {k: f.result() for k, f in fs.items()}
         rp = {k: f.result() for k, f in fp.items()}
+        ro = [f.result() for f in fo]
+        rv = [f.result() for f in fv]
+        rq = [f.result() for f in fq]
 
     print('== 场景(主线 %s) ==' % MEM_PROFILES[0][0])
     for n in (30, 57, 80):
@@ -792,6 +915,50 @@ def main():
     for p in (par, p2):
         r = rp[('p', 57, p, SAT0, STRICT_POST_SEC, 3)]
         print('   (参考)每局 4 分钟的更快真人 N=57 并发 %d 周六 00:00 进来: 兜底 %d / %d 步 · 最长等待 %d 秒' % (p, r['nfb'], r['steps'], r['worst'][0]))
+
+    print('== ⑬ 开赛头一小时: 最快的真人第 4~6 场进队时, 深格子有没有他没交过手的空闲号(%d 个晋级号 · 种子 %s · 35 条路线) ==' % (
+        OPEN_N, list(OPEN_SEEDS)))
+    for p in (4, 6):
+        cur = [r for r in ro if r['par'] == p and not r['cfg']]
+        off = [r for r in ro if r['par'] == p and r['cfg']]
+        hc, dc = sum(r['have'] for r in cur), sum(r['deep'] for r in cur)
+        ho, do = sum(r['have'] for r in off), sum(r['deep'] for r in off)
+        print('   并发 %d: 现行 %d / %d(%.0f%%)· 兜底 %d / %d 步 | 头一小时不借真人位 %d / %d(%.0f%%)· 兜底 %d / %d 步' % (
+            p, hc, dc, 100.0 * hc / max(1, dc), sum(r['nfb'] for r in cur), sum(r['steps'] for r in cur),
+            ho, do, 100.0 * ho / max(1, do), sum(r['nfb'] for r in off), sum(r['steps'] for r in off)))
+        ok('⑬ 并发 %d: 分母 —— 深格子进队采到 ≥ 150 次(%d)' % (p, dc), dc >= 150 and do >= 150)
+        ## 判据 = 现行比「头一小时不借真人位」多出 ≥ 10% 的深格子进队有号可配(实测并发 4 +22%、并发 6 +15%; 改坏借位 ⇒ 两边相等 ⇒ 红)
+        ok('⑬ 并发 %d: 开赛头一小时借真人位补格子 ⇒ 深格子有没交过手的号的次数 ≥ 不借时的 1.1 倍(%d vs %d)' % (p, hc, ho),
+           hc >= 1.1 * ho)
+    hc6 = sum(r['have'] for r in ro if r['par'] == 6 and not r['cfg'])
+    dc6 = sum(r['deep'] for r in ro if r['par'] == 6 and not r['cfg'])
+    ok('⑬ 并发 6(服务单元 MemoryMax 的设计值): 深格子进队 ≥ 75%% 有没交过手的空闲号(%d / %d)' % (hc6, dc6), hc6 >= 0.75 * dc6)
+
+    print('== ⑭ 陪练号版本 ≠ 真人版本(10-31 正式服那一小时) ==')
+    ve = next(r for r in rv if r['early'])
+    vo = next(r for r in rv if not r['early'])
+    print('   服务端 20261031: 真人排队 %d 次 · 真人×陪练号 %d · 真人×真人 %d · 1 分钟兜底 %d · 兜底最长等 %d 秒 · 为真人拉号 %d 次' % (
+        ve['n'], ve['hb'], ve['hh'], ve['early_fb'], ve['fb_max'], ve['serve']))
+    print('   服务端照旧(对照): 真人排队 %d 次 · 真人×陪练号 %d · 兜底最短等 %d 秒' % (vo['n'], vo['hb'], vo['fb_min']))
+    lim = HUMAN_ONLY_SEC + P.DEFAULTS['TICK_SEC'] + 2
+    ## 真人 × 真人(同版本)照样随时配, 不在这两条里; 只看「真人 × 陪练号」与兜底的等待
+    ok('⑭ 尺子: 服务端照旧时没有一局真人 × 陪练号, 兜底都等满 %d 秒(兜底 %d 次, 最短 %d)' % (FALLBACK_SEC, vo['fb'], vo['fb_min']),
+       vo['fb'] >= 20 and vo['hb'] == 0 and vo['fb_min'] >= FALLBACK_SEC)
+    ok('⑭ ★版本不同 ⇒ 调度器判没号、不白拉号, 兜底都在进队满 1 分钟时(兜底 %d 次, 最长 %d 秒 ≤ %d)' % (ve['fb'], ve['fb_max'], lim),
+       ve['fb'] >= 20 and ve['hb'] == 0 and ve['early_fb'] == ve['fb'] and ve['fb_max'] <= lim and ve['serve'] == 0)
+
+    print('== ⑮ 「没有陪练号能来」判得准: 服务端照旧时, 满 1 分钟被判没号的排队后来怎样 ==')
+    mk = sum(r['marked'] for r in rq)
+    mr = sum(r['real'] for r in rq)
+    mb = sum(r['bot'] for r in rq)
+    for r in rq:
+        print('   N=%d H=%d: 判没号 %d 次 → 后来配上真对手 %d(其中陪练号 %d)· 兜底 %d' % (
+            r['n'], r['h'], r['marked'], r['real'], r['bot'], r['fb']))
+        ok('⑮ N=%d H=%d 拉号 / 配对合规' % (r['n'], r['h']), r['nviol'] == 0, str(r['viol']))
+    ## 判完之后配上真人 = 同格子又来了一个真人(服务端真人 × 真人随时配), 调度器预料不到, 不算判错;
+    ## 判完之后配上陪练号 = 判错了(服务端 20261031 下这一局会被提前兜底抢走)。
+    ok('⑮ ★分母 %d 次; 判没号之后其实等来了陪练号的 ≤ 2%%(%d · 配上真人 %d 不算)' % (mk, mb, mr - mb),
+       mk >= 100 and mb <= 0.02 * mk)
 
     print('== ⑤ 尺子自检(反向) ==')
     s = rs[('s', 80, 5, par, 1, (('R', 4),))]
