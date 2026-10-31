@@ -660,13 +660,26 @@ for f in "$DIR"/tests/verify_*.gd; do
 done
 DISCOVERED=${#NAMES[@]}
 if [ "$SHARD_N" -gt 1 ]; then
-  mapfile -t _ALL < <(for _n in "${NAMES[@]}"; do printf '%s %s\n' "$(frames_for "$_n")" "$_n"; done \
-    | sort -k1,1rn -k2,2 | awk '{print $2}')
-  NAMES=()
-  for _i in "${!_ALL[@]}"; do
-    [ $(( SHARD_N - _i % SHARD_N )) -eq "$SHARD_K" ] && NAMES+=("${_ALL[$_i]}")   # 倒着发: 最重那份落在最后一片, 第 1 片还要跑审计器与冒烟
-  done
-  mapfile -t NAMES < <(printf '%s\n' "${NAMES[@]}" | sort)   # 判定段按名字顺序, 与不分片时同一个序
+  ## ★2026-10-31 按【实测耗时】分片(用户「两个都做」: 4 → 8 片 + 按实测分): 原来按帧预算轮流发,
+  ##   上一轮 4 片实际 10 / 11 / 14 / 17 分钟 —— 帧预算不是耗时, 总时长由最慢那片决定。
+  ##   ⇒ 读 tests/golden/test_seconds.tsv(CI 每轮实测, 汇总推到 ci-timings 分支, 刷新命令见那份文件头),
+  ##   从最重的开始, 每条放进当前总量最小的那一片(LPT); 表里没有的新测试按表里的 #default(中位数)算。
+  ##   第 1 片另跑冒烟 + 审计器 + 三方对账 ⇒ 先给它记上 #shard1_extra 秒。判据一个字没动, 只是谁跑哪几条。
+  _TF="$DIR/tests/golden/test_seconds.tsv"
+  ##   表还没有(或读不到)⇒ 退回按帧预算当权重(与原来同一个依据), 第 1 片不预留。
+  mapfile -t NAMES < <(for _n in "${NAMES[@]}"; do printf '%s\t%s\n' "$_n" "$(frames_for "$_n")"; done \
+    | awk -F'\t' -v tf="$_TF" 'BEGIN { def = 30; cnt = 0
+        while ((getline l < tf) > 0) { split(l, a, "\t")
+          if (a[1] == "#default") def = a[2] + 0
+          else if (a[1] !~ /^#/ && a[2] != "") { s[a[1]] = a[2] + 0; cnt++ } } }
+        { w = cnt > 0 ? (($1 in s) ? s[$1] : def) : $2 + 0; printf "%.3f\t%s\n", w, $1 }' \
+    | sort -t"$(printf '\t')" -k1,1rn -k2,2 \
+    | awk -F'\t' -v k="$SHARD_K" -v n="$SHARD_N" -v tf="$_TF" 'BEGIN { ext = 0
+        while ((getline l < tf) > 0) { split(l, a, "\t"); if (a[1] == "#shard1_extra") ext = a[2] + 0 }
+        for (i = 1; i <= n; i++) L[i] = 0; L[1] = ext }
+        { b = 1; for (i = 2; i <= n; i++) if (L[i] < L[b]) b = i; L[b] += $1; if (b == k) print $2 }' \
+    | sort)   # 判定段按名字顺序, 与不分片时同一个序
+  if [ "${SHARD_LIST_ONLY:-}" = "1" ]; then printf '%s\n' "${NAMES[@]}"; exit 0; fi   # 只看分到哪几条(核对分片用)
   echo "  分片 $SHARD_K/$SHARD_N: 全套 $DISCOVERED 个里跑这 ${#NAMES[@]} 个"
   DISCOVERED=${#NAMES[@]}
 fi
@@ -736,6 +749,14 @@ if [ "$TOTAL_MS" -gt 0 ]; then
   echo "  平均 $(( TOTAL_MS / DISCOVERED ))ms/个 · 最慢 12 个:"
   printf '%s' "$SLOW_LIST" | sort -rn | head -12 | while read -r ms name; do
     printf '    %6sms  %s\n' "$ms" "$name"
+  done
+fi
+# ★2026-10-31 每条测试的实测秒数落盘(CI 汇总成 tests/golden/test_seconds.tsv 的来源, 分片按它分)。
+if [ -n "${GATE_TIMES_OUT:-}" ]; then
+  : > "$GATE_TIMES_OUT"
+  for t in "${NAMES[@]}"; do
+    [ -f "$RAW/$t.ms" ] || continue
+    printf '%s\t%s\n' "$t" "$(awk -v m="$(cat "$RAW/$t.ms")" 'BEGIN { printf "%.1f", m / 1000 }')" >> "$GATE_TIMES_OUT"
   done
 fi
 # ★审计器也要上表 —— 2026-09-23 查出门禁真正的大头在这儿, 不在测试池。

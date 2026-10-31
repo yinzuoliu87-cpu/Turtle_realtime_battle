@@ -29,6 +29,9 @@ JOBS=8 bash run-tests.sh   # 想更快(默认 4, 见下)
 
 **★门禁约 3 分钟跑完（2026-10-01 实测，411 项 / JOBS=16）。**
 
+**★★CI 改成 8 台、按实测耗时分（2026-10-31，用户「CI 为什么这么慢」→「两个都做」）**：4 台时实测 10 / 11 / 14 / 17 分钟，最慢那台定总长。现在 `tests.yml` 是 `shard` ×8（`SHARD=k/8`），分片按 `tests/golden/test_seconds.tsv` 做最长优先分配（表缺失时退回按帧预算）；每轮 CI 把八片实测秒数汇总推到 `ci-timings` 分支，刷新这份表：`git fetch -f origin +refs/heads/ci-timings:refs/remotes/origin/ci-timings && git show origin/ci-timings:test_seconds.tsv > tests/golden/test_seconds.tsv`。`SHARD=k/N SHARD_LIST_ONLY=1 bash run-tests.sh` 只打印这一片分到哪几条（k≥2 时不起冒烟）。
+**★推送前本机跑完整门禁（默认 JOBS，约 10 分钟）全过再推，不拿 CI 试错**（2026-10-31「怎么可以这样浪费时间」）；手动跑单条测试一律 `APPDATA=$U XDG_DATA_HOME=$U` 隔离存档。
+
 **★CI 拆成 4 台并行（2026-10-23，用户「提速」）**：单台 4 核 runner 跑全套 565 项要 ~42 分钟（最慢 `verify_stream_parity` 单条 36 分钟）。
 现在 `tests.yml` 是 `shard` ×4（各跑 `SHARD=k/4 JOBS=4 bash run-tests.sh`）+ `report`（拼日志、出注解、推 `ci-logs`）。
 分片规则在 `run-tests.sh`「分片」一节：按帧预算排序后轮流发，冒烟 / 三方对账 / 审计器只在第 1 片。**本机不设 `SHARD` = 全套，与原来逐字相同。**
