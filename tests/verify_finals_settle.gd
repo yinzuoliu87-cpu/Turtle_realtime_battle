@@ -274,9 +274,17 @@ func _t_real_settle() -> void:
 	GameState.gauntlet_losses = 0
 	GameState.gauntlet_backfill_paid = 0
 	GameState.hearts = 3
+	## ★★2026-10-31 这条每周五 23:00 ~ 周日红(钱包 +234 = 这一场 8 + 2×8 + **积分赛补发 15×14**):
+	##   `_settle_season` 里会走到 `settle_ranked_close()`, 它读的是真实时钟 ——
+	##   真实时钟过了积分赛收盘、又刚把 promoted 设成 true ⇒ 积分赛「没打的场次化成币」也进了同一个钱包。
+	##   ⇒ 时钟钉在本周周六(闯关赛那天, 与上面 week_phase 一致), 并先按真机开局那样把积分赛补发结清
+	##   (周六打开游戏时 `ensure_season()` 早已补过) —— 这样一周七天量的都是同一个东西。
+	P2C.now_override_ts = P2C.ranked_close_ts(int(GameState.week_anchor_ts)) + 3600
+	GameState.settle_ranked_close()
 	var cb0: int = int(GameState.meta_deepsea_coins)
 	scene._settle_season(true)           # 3-0 → 赢 → 4-0
 	var cb: int = int(GameState.meta_deepsea_coins) - cb0
+	P2C.now_override_ts = 0
 	_ok("③ ★★第 4 胜(4-0)当场发省下的 2 场: 钱包 = 这一场 + 2 × 每场", int(GameState.gauntlet_backfill_paid) == 2
 		and cb == int(scene._last_reward) + 2 * int(P2C.GAUNTLET_BACKFILL_COINS),
 		"已发 %d 场 / 钱包 +%d / 这一场 %d" % [int(GameState.gauntlet_backfill_paid), cb, int(scene._last_reward)])
