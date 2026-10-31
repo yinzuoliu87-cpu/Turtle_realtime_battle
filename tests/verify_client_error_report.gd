@@ -71,6 +71,21 @@ func _ready() -> void:
 		_ok("平台", str(row["p_platform"]) == OS.get_name())
 		_ok("场景", str(row["p_scene"]) == "SomeScene.tscn")
 		_ok("★详情带调用栈(找得到出事的测试函数)", str(row["p_detail"]).find("_emit_probe") >= 0, str(row["p_detail"]).left(200))
+	## ②a ★2026-10-31 陪练号(SIM_DRIVER=1)的平台带「/bot」—— 一周 179 条 unclean_exit 全是调度器停号, 淹没真人闪退
+	_ok("②a 纯函数: 真人 = 原平台名", ER.platform_of("iOS", false) == "iOS")
+	_ok("②a 纯函数: 陪练号 = 平台名/bot", ER.platform_of("Linux", true) == "Linux/bot")
+	var sd0 := OS.get_environment("SIM_DRIVER")
+	OS.set_environment("SIM_DRIVER", "1")
+	ER.report("probe_bot", "bot probe", "", "platform-bot-probe")
+	var rows_b: Array = r.drain("SomeScene.tscn")
+	if sd0 == "":
+		OS.unset_environment("SIM_DRIVER")
+	else:
+		OS.set_environment("SIM_DRIVER", sd0)
+	_ok("②a ★分母: 取出 1 行", rows_b.size() == 1, str(rows_b.size()))
+	_ok("②a ★★陪练号进程上报的那一行平台 = %s/bot" % OS.get_name(),
+		rows_b.size() == 1 and str(rows_b[0]["p_platform"]) == OS.get_name() + "/bot",
+		str(rows_b[0]["p_platform"]) if rows_b.size() == 1 else "-")
 
 	## ②b ★2026-10-19 回放对不上 = 唯一上报的警告(服务器裁判: 每看一次录像都是一次真机核对)
 	var qw: int = ER.queued_total

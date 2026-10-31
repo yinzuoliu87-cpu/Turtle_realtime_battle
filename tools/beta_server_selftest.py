@@ -166,6 +166,53 @@ for _dow in range(1, 8):
 ok("⑦ 高峰停起: 周六、周日全天停（含周日 00:00~17:30 闯关赛），周一~周五一刻都不停",
    not _bad and _on == 2 * 24 * 2, "不对的时刻 %d 个: %s" % (len(_bad), _bad[:4]))
 
+# ★2026-10-31: 周末内测服裁判被上面停掉之后, 健康检查照样每 5 分钟报「心跳: 没有裁判在线」(全是误报)。
+#   健康检查的 ExecCondition 调 `beta_peak_guard.sh --should-run`; 这里**真跑那个脚本**(假 date / systemctl 放 PATH 最前),
+#   不是读字面量 —— 判据量的是「该跳过的时刻跳过、该查的时刻照查」。
+hu = read("server/referee/turtle-referee-beta-health.service")
+ok("⑦ 内测服健康检查: ExecCondition 走 beta_peak_guard.sh --should-run",
+   "ExecCondition=/bin/sh /opt/turtle-beta/referee/beta_peak_guard.sh --should-run" in hu)
+import shutil, subprocess, tempfile
+_sh = shutil.which("sh")
+
+
+def _guard_rc(dow: int, active: bool, up_sec: int, beta_off: bool) -> int:
+    """假时钟 / 假 systemctl 下跑一次 --should-run, 返回退出码。"""
+    with tempfile.TemporaryDirectory() as d:
+        now = 1_800_000_000
+        with open(os.path.join(d, "date"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('#!/bin/sh\ncase "$*" in\n'
+                    '  *+%%u*) echo %d ;;\n  *+%%H%%M*) echo 1200 ;;\n'
+                    '  *-d*) echo %d ;;\n  *+%%s*) echo %d ;;\nesac\n' % (dow, now - up_sec, now))
+        with open(os.path.join(d, "systemctl"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('#!/bin/sh\ncase "$1" in\n  is-active) exit %d ;;\n  show) echo since ;;\nesac\nexit 0\n'
+                    % (0 if active else 3))
+        os.chmod(os.path.join(d, "date"), 0o755)
+        os.chmod(os.path.join(d, "systemctl"), 0o755)
+        g2 = g if not beta_off else g.replace("[ -e /etc/turtle-referee/beta-off ] && off=1", "off=1")
+        with open(os.path.join(d, "guard.sh"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(g2)
+        env = dict(os.environ, PATH=d + os.pathsep + os.environ.get("PATH", ""))
+        return subprocess.run([_sh, os.path.join(d, "guard.sh"), "--should-run"], env=env,
+                              capture_output=True, timeout=30).returncode
+
+
+if _sh is None:
+    ok("⑦ 内测服健康检查: 本机有 sh 才能真跑 beta_peak_guard.sh", False, "找不到 sh")
+else:
+    _cases = [  # (说明, 周几, 在岗, 起来几秒, beta-off, 期望退出码: 0 = 照查, 1 = 跳过)
+        ("周六 停着", 6, False, 0, False, 1),
+        ("周日 停着", 7, False, 0, False, 1),
+        ("周三 beta-off 停着", 3, False, 0, True, 1),
+        ("周一 刚起来 30 秒", 1, True, 30, False, 1),
+        ("周三 在岗 1 小时", 3, True, 3600, False, 0),
+        ("周三 该在岗却没起来(真问题, 必须照报)", 3, False, 0, False, 0),
+    ]
+    _got = [(c[0], _guard_rc(c[1], c[2], c[3], c[4]), c[5]) for c in _cases]
+    _wrong = [x for x in _got if x[1] != x[2]]
+    ok("⑦ 内测服健康检查: 周末 / beta-off / 刚起来 ⇒ 跳过; 平日在岗或该在岗没起来 ⇒ 照查（%d 种情形）" % len(_cases),
+       not _wrong, "不对: %s" % _wrong)
+
 # ⑧ Caddyfile
 c = read("server/stream/Caddyfile")
 ok("⑧ Caddyfile: /beta/streams 块与 end.json 两段 + 第二个版本闸片段",

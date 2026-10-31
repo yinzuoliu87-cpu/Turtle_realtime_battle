@@ -160,7 +160,7 @@
 | 代码 | `/opt/turtle-beta/referee/referee_poller.py`（自己一份，root 644；内测服先试新轮询器）· `/opt/turtle-beta/stream/stream_ops.py` |
 | 工程版本 | `/opt/turtle-beta/v<版本>/`（2026-10-21：v0.21.3 = 正式那份的拷贝、v0.21.4 = 拷贝后 checkout tag 再 `--import`；det_cross 37/37、job_roundtrip 65 ALL PASS）|
 | 高峰停起 | `turtle-referee-beta-peak.timer`（每 5 分钟）→ `beta_peak_guard.sh`：周六、周日全天 UTC（2026-10-26 起；原为周日 17:30 起） 停，其余起；`/etc/turtle-referee/beta-off` 存在 ⇒ 一直停 |
-| 健康检查 | `turtle-referee-beta-health.timer`（每 5 分钟，只进 journald，不进正式服报警口径）|
+| 健康检查 | `turtle-referee-beta-health.timer`（每 5 分钟，只进 journald，不进正式服报警口径）· `ExecCondition` 调 `beta_peak_guard.sh --should-run`：内测服裁判被故意停着（周末 / beta-off）或刚起来不到 3 分钟 ⇒ 这一次跳过不算失败（2026-10-31 起；之前周末每 5 分钟误报「心跳: 没有裁判在线」）|
 | 直播 | Caddy 同一站点 `/beta/streams/*` → `/var/lib/turtle-referee-beta/streams`；版本闸片段 `/etc/caddy/turtle-min-version-beta.caddy`（`turtle-stream-minver-beta.timer`，匹配器 `@stream_old_beta`）；清理 `turtle-stream-purge-beta.timer`（每小时 :07）|
 | 机器人池 | `python tools/beta_ops.py seed-bots`（ssh 跑内测服那份 `--bot-pool`）|
 

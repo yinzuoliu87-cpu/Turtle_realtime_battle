@@ -86,6 +86,14 @@ static func kind_of(error_type: int) -> String:
 			return KIND_ERROR
 
 
+## 纯函数: 上报的平台字段。陪练号(服务器上 `SIM_DRIVER=1` 的真账号)后面加「/bot」。
+## ★2026-10-31: 正式服一周 179 条 unclean_exit 全是调度器正常停陪练号(直接杀进程 ⇒ 标记没删),
+##   把真人闪退淹没了。分开之后查真人只看不带 /bot 的; 陪练号自己的报错照样在, 照样能查。
+## ★不改服务端: platform 本来就是文本列(`report_client_errors` 只截 32 字)。
+static func platform_of(os_name: String, is_bot: bool) -> String:
+	return os_name + ("/bot" if is_bot else "")
+
+
 ## 纯函数: 这条警告是不是「回放对不上」(唯一上报的警告)。
 static func is_replay_mismatch(code: String, rationale: String) -> bool:
 	return code.begins_with(REPLAY_MISMATCH_TAG) or rationale.begins_with(REPLAY_MISMATCH_TAG)
@@ -173,9 +181,10 @@ func drain(scene: String) -> Array:
 	_queue.clear()
 	_mx.unlock()
 	var ver := str(ProjectSettings.get_setting("application/config/version", ""))
+	var plat := platform_of(OS.get_name(), OS.get_environment("SIM_DRIVER") == "1")
 	for r in rows:
 		r["p_version"] = ver
-		r["p_platform"] = OS.get_name()
+		r["p_platform"] = plat
 		if not r.has("p_scene"):
 			r["p_scene"] = scene
 	return rows

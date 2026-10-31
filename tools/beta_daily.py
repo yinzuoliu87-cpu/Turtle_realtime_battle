@@ -144,8 +144,10 @@ def main():
     if not q("select to_regclass('public.client_errors') is not null ok")[0]["ok"]:
         print("  [没有 client_errors 表] 迁移 20261011b_client_errors.sql 还没上生产")
         return feedback_section(t0, t1)
+    ##   ★2026-10-31 起陪练号(SIM_DRIVER=1)上报的平台带「/bot」(error_reporter.platform_of)⇒ 不算进「其他人」, 次数单列
     er = q("select sig, kind, max(message) msg, max(detail) det, sum(count) n, count(distinct account_id) people, "
-           "count(distinct account_id) filter (where account_id::text not in %s) others, "
+           "count(distinct account_id) filter (where account_id::text not in %s and platform not like '%%/bot') others, "
+           "coalesce(sum(count) filter (where platform like '%%/bot'), 0) bot_n, "
            "string_agg(distinct version, ',') vers, string_agg(distinct platform, ',') plats, "
            "string_agg(distinct scene, ',') scenes "
            "from public.client_errors where day = '%s' group by sig, kind order by others desc, n desc limit 40"
@@ -153,8 +155,8 @@ def main():
     tot = sum(int(x["n"]) for x in er)
     print("  N=%d 种 · 合计 %d 次" % (len(er), tot) + ("" if er else " —— 当天一条都没有"))
     for x in er:
-        print("  [%s] %s 次 · %s 人(其他人 %s) · %s · %s · 界面 %s" % (
-            x["kind"], x["n"], x["people"], x["others"], x["vers"], x["plats"], x["scenes"] or "-"))
+        print("  [%s] %s 次(其中陪练号 %s) · %s 人(其他人 %s) · %s · %s · 界面 %s" % (
+            x["kind"], x["n"], x["bot_n"], x["people"], x["others"], x["vers"], x["plats"], x["scenes"] or "-"))
         print("      %s" % str(x["msg"]).replace("\n", " ")[:160])
         ## 详情第 1 行是引擎报的出处(push_error 一律是 variant_utility.cpp), 第 2 行起是脚本调用栈 ⇒ 优先看栈顶
         lines = str(x["det"]).split("\n")

@@ -27,7 +27,7 @@ const R_AUTH := "auth"        # 登录失效(绑了邮箱的号会话死了) / �
 const R_BLOCKED := "blocked"  # 写请求被出口拦下(开发包时间穿越 / 版本过旧)
 
 ## 删号成功后要删掉的本机文件(存档本体由 GameState.save() 重写, `.bak` 里是旧身份, 单独删)。
-const WIPE_FILES := ["user://savegame.json.bak", "user://ghost_pool.json", "user://lastLineup.json",
+const WIPE_FILES := ["user://savegame.json.bak", "user://ghost_pool.json", "user://ghost_pool.json.tmp", "user://lastLineup.json",
 	"user://team_draft.json", "user://pending_match.bin", "user://last_errors.txt"]
 ## 删号后保留的存档键: 这台设备的偏好, 与账号无关。
 const KEEP_KEYS := ["bgm_volume", "sfx_volume", "fullscreen"]

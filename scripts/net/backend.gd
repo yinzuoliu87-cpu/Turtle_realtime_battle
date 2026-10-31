@@ -1197,13 +1197,26 @@ static func wipe_week_snapshots(path: String = POOL_PATH) -> int:
 	return n
 
 
+## ★2026-10-31 先写 `.tmp` 再改名(与 `GameState.save` 同一个做法)。原来是先 `open(WRITE)`(当场清空)
+##   再拼 JSON ⇒ 拼的那段时间盘上是空文件, 进程这时被杀就留下空的 / 半截的池:
+##   正式服 client_errors 实测 4 次 JSON 解析失败, 全是陪练号(调度器停号 = 直接杀进程)。
+##   改名是原子的 ⇒ 任何时刻被杀, 盘上要么是旧的完整一份、要么是新的完整一份。
+## ★改名不成就回落成直接写 —— 理由同 `GameState.save`: 原子写是"更好", 不是"唯一"。
 static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
 	if path == POOL_PATH and GameState != null and bool(GameState.test_mode):
 		return
-	var f := FileAccess.open(path, FileAccess.WRITE)
+	var txt := JSON.stringify(pool, "  ")
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f != null:
+		f.store_string(txt); f.close()
+		var da := DirAccess.open(path.get_base_dir())
+		if da != null and da.rename(tmp.get_file(), path.get_file()) == OK:
+			return
+	f = FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return
-	f.store_string(JSON.stringify(pool, "  ")); f.close()
+	f.store_string(txt); f.close()
 
 # ─── 高层 orchestration (gameplay 调这俩) ───
 ## 匹配用的【单一受控 PRNG】(Riot 确定性做法: 一个隔离的、可种子化的随机源)。
