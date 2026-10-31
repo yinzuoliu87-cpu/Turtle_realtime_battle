@@ -19,8 +19,8 @@ func _ready() -> void:
 	for _i in range(20):
 		await get_tree().process_frame
 	lb._render([
-		{"rank": 1, "name": "我自己", "tag": PM.my_tag(), "wins": 5, "hearts": 7, "sweeps": 1, "battles": 6, "is_self": true, "lead": "basic"},
-		{"rank": 2, "name": "海风", "tag": P2C.player_tag(OTHER), "wins": 4, "hearts": 6, "sweeps": 0, "battles": 6,
+		{"rank": 1, "name": "我自己", "tag": PM.my_tag(), "wins": 5, "hearts": P2C.HEARTS_MAX, "sweeps": 1, "battles": 6, "is_self": true, "lead": "basic"},
+		{"rank": 2, "name": "海风", "tag": P2C.player_tag(OTHER), "wins": 4, "hearts": P2C.HEARTS_MAX - 1, "sweeps": 0, "battles": 6,
 			"account_id": OTHER, "lead": "lava"},
 	], lb.SRC_SERVER, 2)
 	for _i in range(10):
