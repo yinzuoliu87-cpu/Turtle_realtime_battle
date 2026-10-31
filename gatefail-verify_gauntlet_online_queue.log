@@ -1,0 +1,355 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 25 status
+[Audio] QUIET=1 ⇒ 主总线已静音(mute=true, -80 dB)
+  [PASS] ★分母: 拿到 GameState
+  [PASS] 分母: 时间钉在周六、闯关赛上线、开关开
+── R 积分赛一行不动(与 84d2d853 逐字节比, 行尾归一; 个别文件按自己的基线) ──
+    scripts/scenes/MatchmakingScene.gd 比了 21 个: _bg, _bold_font, _build_cancel_btn, _build_card, _build_searching, _build_vs, _center, _display_id, _fade_to_black, _font, _note_recent, _on_cancel, _opponent_from_ghost, _pick_gauntlet_local, _player_profile, _radar_ping, _ready, _ref_label, _shockwave, card_id_text, class _RingFx
+  [PASS] ★R MatchmakingScene.gd: 积分赛走的 21 个函数与改动前逐字节相同   缺 [] · 变了 []
+    scripts/systems/sim/sim_driver.gd 比了 62 个: _account_only, _alive, _all_gear, _arrange_lineup, _back_to_menu, _bench_gear_by_value, _bench_gear_n, _best_bench_gear, _buy_xp, _core_types, _cost_of, _do_battle, _do_codex, _do_first_launch, _do_inventory, _do_team, _drain_guides, _dup_budget, _eff_val, _ensure_en_nick, _equip_target, _equipped_list, _ev, _finish, _gear_side, _gear_val, _guide_text, _is_core, _junk_bench_idx, _lineup_record, _n_star3, _offer_score, _open_singles, _owned_gear_n, _press_tutorial_choice, _process, _quit_when_done, _ready, _refresh_floor, _reserve, _rolling_down, _run, _shot, _since, _since_start, _sleep, _star_hist, _stats, _strategy, _syn_gain, _target_level, _tour, _tour_extra, _tour_wanted, _unit_fits, _unit_side, _wait_scene, _wants_one_piece, _worst_equipped, _worst_owned_val, attach, enabled
+  [PASS] ★R sim_driver.gd: 积分赛走的 62 个函数与改动前逐字节相同   缺 [] · 变了 []
+  [PASS] ★R sim_driver.gd::stuck_limit 去掉闯关日那一段后与改动前逐字节相同(积分赛日走的那几行一字没动)
+  [PASS] ★R sim_driver.gd::_do_match 去掉闯关日那一段后与改动前逐字节相同(积分赛日走的那几行一字没动)
+  [PASS] ★R sim_driver.gd::_do_menu 去掉闯关日那一段后与改动前逐字节相同(积分赛日走的那几行一字没动)
+  [PASS] ★R sim_driver.gd::_do_shop 去掉闯关日那一段后与改动前逐字节相同(积分赛日走的那几行一字没动)
+    scripts/net/backend.gd 比了 55 个: _bot_season_record, _bot_trainer_skill, _drop_stale_schema, _ensure_seeded, _is_self_ghost, _load_seed, _migrate_brackets_to_battles, _seed_level, _seed_record, _seed_season_id, _shuffle, _tally, _tally_exact, build_ghost_snapshot, drop_week_snapshots, ensure_finals_entry, ensure_gauntlet_entry_snapshot, fake_person_tag, finals_push_snapshot, find_gauntlet_opponent, find_opponent, gauntlet_bot_battles, gauntlet_pool_find, ghost_lanes_broken, ghost_level, ghost_owner_tag, is_sparring, lead_of, leaderboard, load_pool, make_bot, make_match_rng, my_tag, owner_tag_of_id, person_key, player_display_name, player_ghost_id, pool_add, pool_find_battles, pool_reach, prefetch_gauntlet_pool, profile_tag, reach_of, report_finals_entry, report_finals_if_any, report_finals_result, retry_finals_report, save_pool, seed_as_human, seed_person_of, self_prefix, self_season_prefix, upload_gauntlet_ghost, upload_ghost, wipe_week_snapshots
+  [FAIL] ★R backend.gd: 积分赛走的 55 个函数与改动前逐字节相同   缺 [] · 变了 []
+    scripts/scenes/TeamSelectScene.gd 比了 72 个: _add_text_shadow, _apply_pet_idle_texture, _build_grid_region, _build_locked_hint, _build_synergy_region, _build_ui, _card_drag, _close_detail_popup, _content_band, _content_scale, _dark_panel, _demo_popup, _ensure_letterbox, _ensure_menu_bg, _fit_background, _fit_plank, _flash_status, _grow_to_touch, _input, _is_special_mark, _load_team, _lockout_toast, _make_drag_preview, _make_rarity_badge, _mark_label, _on_back, _on_clear_all, _on_drop_pet, _on_pick_pet, _on_resize, _on_restore_last, _on_start, _place, _place_clamped, _place_status, _plank_chip, _plank_tint, _play_entrance, _raise_edge_btns, _read_last_lineup, _ready, _rect, _refresh_after_team, _refresh_all, _refresh_confirm, _refresh_synergy_chips, _rl_line, _rl_val, _s, _save_team, _season_roster_ready, _set_detail_pet, _sf, _show_detail_popup, _show_detail_popup_from, _skill_energy, _sp, _space_top_pair, _stage_scale, _stage_to_screen, _style_rarity_btn, _sync_special_slots, _tut_next_pet, _tut_notify, _tut_notify_team_filled, _tut_on, _tut_union_rect, _tutorial_anchor, _unhandled_key_input, _vp, _write_last_lineup, tut_text_vars
+  [PASS] ★R TeamSelectScene.gd: 积分赛走的 72 个函数与改动前逐字节相同   缺 [] · 变了 []
+  [PEND] R 本机取不到 ["84d2d853", "84d2d853", "84d2d853", "1f8baa93"](浅克隆): 基线出处与「只从闯关日可达」两条没复核, 摘要比对照常
+  [PASS] ★R 匹配屏: 周六服务器那一支仍是「开关开 ⇒ _server_pick 后 return」(在积分赛挑对手之前)
+── Q 服务端迁移的形参 = 本机请求体 ──
+  [PASS] ★Q gauntlet_queue_join(p_week, p_snapshot, p_match_no, p_client_version, p_rules_ver): 本机交的键 = 前 3 个形参, 其余都有默认值   p_week bigint, p_snapshot jsonb, p_match_no int,     p_client_version text default null, p_rules_ver int default null
+  [PASS] ★Q gauntlet_queue_poll(p_week): 本机交的键 = 前 1 个形参, 其余都有默认值   p_week bigint
+  [PASS] ★Q gauntlet_queue_cancel(p_week): 本机交的键 = 前 1 个形参, 其余都有默认值   p_week bigint
+  [PASS] Q 服务端 B 方查任务回 B 的视角(胜负取反、战绩取 gw_b / gl_b)⇒ 客户端记账不翻
+  [PASS] Q 配对局 matches.result 带 gw_b / gl_b(赛况板据此认右边也是主人)
+── P 请求体 / 回包解析 ──
+  [PASS] P 进队请求体恰好 3 个键: 周 / 锁定的阵容 / 第几场(没有对手 / 种子; 版本走请求头)
+  [PASS] P 心跳 / 取消请求体恰好 1 个键: 周
+  [PASS] P waiting: 格子 2-1、已等 37 秒   { "err": "", "status": "waiting", "gw": 2, "gl": 1, "waited": 37 }
+  [PASS] P paired: 任务号 / 我是 b / 录像号 / 对手卡片   { "err": "", "status": "paired", "job_id": 9, "side": "b", "match_id": "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b", "opp": { "profile": { "name": "kevin_99", "avatar": "ninja", "id": "g_x", "tag": "#ABCDEF" }, "leaders": ["ninja", "dice", "pirate"] }, "gw": -1, "gl": -1, "job_status": "" }
+  [PASS] P paired 缺 side / 任务号 ⇒ server(不认半截配对)
+  [PASS] P ★取消回「来不及, 已配上」⇒ 当 paired(这一局照样算), 没卡片 / 录像号 = 空   { "err": "", "status": "paired", "job_id": 11, "side": "a", "match_id": "", "opp": {  }, "gw": -1, "gl": -1, "job_status": "" }
+  [PASS] P 拒收原因原样(update_required / finished / stale / closed)   ["update_required", "finished", "stale", "closed"]
+  [PASS] P stale 带账本战绩
+  [PASS] P none 带 reason(job_failed / closed 原样带出)   { "err": "", "status": "none", "gw": -1, "gl": -1, "reason": "job_failed" }
+  [PASS] P expired / none / cancelled 状态原样
+  [PASS] P 断网 = offline / 404 = unavailable / 认不出的状态 = server
+  [PASS] P 等待界面文案: 「正在寻找 2 胜 1 负的对手」/「已等待 37 秒」/「已等待 1 分 05 秒」
+  [PASS] P 等待界面文案不口语化、不用「你 + 动词」(UI 规矩)   []
+── V 看的人口径的开关只在「正在播 + side=b」时生效 ──
+  [PASS] V ★入口给了 side=b: 只有正在播(play / stream)才是 b; 正常对局 / 录制 / 中途退出补打 / 裁判跑局一律 a   { "": "a", "play": "b", "stream": "b", "resume": "a", "rec": "a", "referee": "a" }
+  [PASS] V 入口没给 side(看自己当 a 的局 / 看别人的局)⇒ a
+  [PASS] V 没有战场(null)⇒ a
+  [PASS] V ★离场(end_play)清掉 side ⇒ 下一局不论哪条入口都从 a 起   { "l": "x", "r": "y" }
+  [PASS] V ★静态: 代码里写出 side=b 的只有 referee_watch.gd(watch_names)与 RecordScene.gd(我在右边那一行)   ["res://scripts/scenes/RecordScene.gd", "res://scripts/systems/replay/referee_watch.gd"]
+  [PASS] V 静态: watch_names 只在 side == b 时给名字(其余 {} ⇒ 与改之前同一句 play)
+── A join → waiting → 心跳 → paired(a) → 现有观看流程 ──
+  [PASS] A 分母: 进了队(join 1 次)、状态 = 排队中   queue / 1
+  [PASS] A ★进队请求体 = 周 / 锁定的阵容(三统领)/ 第几场 = gw + gl   ["p_match_no", "p_snapshot", "p_week"]
+  [PASS] A 版本走请求头 X-Client-Version(服务端版本闸靠它)   ["apikey: referee-anon-key", "Authorization: Bearer tok", "Accept: application/json", "X-Client-Version: 0.22.6", "X-Rules-Ver: 1", "Content-Type: application/json"]
+  [PASS] A ★等待界面: 对手空位写「正在寻找 1 胜 0 负的对手」   正在寻找 1 胜 0 负的对手
+  [PASS] A ★等待界面: 已等待秒数「已等待 N 秒」   已等待 0 秒
+  [PASS] A ★等待界面: 有「取消匹配」键、皮是红键底座(StyleBoxTexture, 不是 card_button / 木牌)、可按   取消匹配
+  [PASS] A ★阵容锁定: 这一屏只有「取消匹配」与左上「←」(回主页、继续匹配)两颗看得见的按钮(没有去商店 / 背包的路)   ["取消匹配", "←"]
+  [PASS] A ★等待屏盖住找对手那一屏(「正在匹配对手…」看不见、状态行空着)
+  [PASS] A ★我锁定的阵容卡: 头像 5 个 = 交上去的快照里的单位数 5(分母 > 0)、每个都有图   ["leader:basic", "minion:", "leader:stone", "leader:bamboo", "minion:"]
+  [PASS] A ★战绩格: 胜 4 格亮 1、负 3 格亮 0(= 1 胜 0 负; 格数 = 4 胜晋级 / 3 负出局)
+  [PASS] A 标题「闯关赛  第 2 场」(= 胜 + 负 + 1)、阵容卡上有锁徽记   闯关赛  第 2 场
+  [PASS] A ★对手空位在动: 6 个剪影换了一组(["candy", "angel", "basic", "stone", "crystal", "hunter"] → ["rainbow", "fortune", "stone", "lightning", "diamond", "hiding"])
+  [PASS] A 等待界面三样不叠、都在屏内(格子战绩 / 已等待 / 取消匹配)   [P: (774.0, 259.0), S: (303.0, 39.0)] [P: (0.0, 527.0), S: (1280.0, 39.0)] [P: (555.0, 607.0), S: (165.0, 54.0)]
+  [PASS] A ★没配上之前不翻 VS 卡(没有「匹配成功」、没有对手卡)
+  [PASS] A ★进队就落排队单(没有任务号; 排队时杀进程靠它补)   { "queue": true, "week": 1792972800, "gw": 1, "gl": 0 }
+  [PASS] A 已等待秒数在走(已等待 0 秒 → 已等待 2 秒)
+  [PASS] A ★心跳 4 次后配上(前 3 次 waiting), 才翻 VS 卡「zm16」   心跳 4 次
+  [PASS] A ★心跳每 2 秒一次(间隔 [2001, 2001, 2001] 毫秒, 分母 3)
+  [PASS] A 配上后等待界面拆掉
+  [PASS] A ★排队单换成任务单(任务号 301、录像号、我是 a ⇒ 不带 side 键, 与改之前同形)   { "job_id": 301, "match_id": "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b", "week": 1792972800, "foe": ["rainbow", "diamond", "space"], "foe_name": "zm16" }
+  [PASS] A 屏上「正在结算」(接回现有等结果那一步)   正在结算
+  [PASS] A ★一次都没走「当场回对手快照」那条(referee_gauntlet_start)
+  [PASS] 分母: 裁判按交上来的两份快照真算完一局(a = 我)
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+  [PASS] A ★进了现有观看流程: 战斗场在播服务器那一份(裁判局)
+  [PASS] A 我是 a ⇒ 名字照旧(左 = 看的人自己, 不额外给名字)   {  }
+  [PASS] A ★账按服务器记(2-0)、单子清掉
+  [PASS] A 分母: 对局进行中、两边都有活着带血条和头像框的单位
+  [PASS] A ★建血条: 我这一侧(left)是友军色、对面是敌方色
+  [PASS] A ★单位头顶血条: 我这一侧 4 只是友军色、对面 4 只是敌方色   []
+  [PASS] A ★每帧那条路: 设反之后按看的人改回来(分母 8 只)   []
+  [PASS] A 分母: 对面有一只活着的龟可以拿来驯服
+  [PASS] A ★驯服后改阵营的那只(原在对面)⇒ 血条变友军色、头像框挪进我方栏、蓝框   血条 true / 进我方栏 true / 蓝框 true
+  [PASS] A ★两侧头像栏: 我方 3 个蓝框、对方 3 个红框   []
+  [PASS] A 结算屏胜负 = 服务器(胜利)   胜利
+  [PASS] A ★看的人那一侧 = left(viewer_side a)
+  [PASS] A ★对局顶栏: 我这一侧(left)写我「杠精本精丶」、对面写对手「zm16」   左 杠精本精丶 / 右 zm16
+  [PASS] A ★本战场结果(左方输了这一路)⇒「本战场失败」   本战场失败
+  [PASS] A ★各路战果: 「我方」数的是我这一侧赢的路(分母 3 路)   各路战果    我方 2 : 1 对方 / 想要 各路战果    我方 2 : 1 对方
+  [PASS] A ★龟蛋生命: 「我方」是我这一侧的蛋(两颗蛋不同血: true)   龟蛋生命  我方 2802  ·  对方 0 / 想要 龟蛋生命  我方 2802  ·  对方 0
+  [PASS] A ★对阵幕布: 我这一列(left)的名字是我方的绿、对面是红   (0.6039, 0.902, 0.6902, 1.0) / (1.0, 0.6078, 0.6078, 1.0)
+  [PASS] A 分母: 两队各有对面没有的单位(我这一侧独有 3 / 对面独有 3)
+  [PASS] A ★结算屏「我方」页 = 我这一侧(left)的单位   []
+  [PASS] A ★结算屏「敌方」页 = 对面那一侧的单位   []
+  [PASS] A ★各路胜负牌按我这一侧(3 路)   ["负", "胜", "胜"] / 想要 ["负", "胜", "胜"]
+  [PASS] A ★本场 MVP 是我这一侧的「竹叶龟」
+  [PASS] A ★战报浮层: 「我方」那一列是 left、「敌方」那一列是 right   ["left", "right"]
+  [PASS] A ★单位面板: 我这一侧的单位写「友军」、对面写「敌方」
+  [PASS] A ★单位面板副标题色: 友军绿、敌方红   (0.2902, 0.8706, 0.502, 1.0) / (1.0, 0.4196, 0.4196, 1.0)
+  [PASS] A ★顶部条: 我这一侧(left)那一段是我方绿、对面那一段是紫   左 (0.4464, 0.8991, 0.6115, 1.0) / 右 (0.7339, 0.48, 0.9755, 1.0)
+  [PASS] A 顶部条回血带: 我这一侧是绿的提亮   (0.6806, 0.9418, 0.7759, 1.0)
+  [PASS] A ★顶栏头像底: 我这一侧带绿、对面带紫   左 (0.1106, 0.2383, 0.1728, 1.0) / 右 (0.1917, 0.1201, 0.2755, 1.0)
+  [PASS] A ★顶栏各路点: 我赢的路绿、对面赢的路紫(分母 3 路)   []
+  [PASS] A ★VS 光晕: 我领先 ⇒ 染我方绿   (0.2902, 0.8706, 0.502, 0.2119)
+  [PASS] A ★左方被团灭(本机重算那条路)⇒ 全屏闪 红(我方覆没)   (0.85, 0.12, 0.16, 0.0)
+  [PASS] A ★逐帧直播里「左方被团灭」那道闪 ⇒ 红   (0.85, 0.12, 0.16, 0.0)
+  [PASS] A 逐帧直播里「左方蛋破」那道闪 ⇒ 红   (0.9, 0.1, 0.12, 0.0)
+  [PASS] A 逐帧直播里别的闪色原样   (0.2, 0.4, 0.9, 0.0)
+── B 同样一份但我是 b ──
+  [PASS] B 分母: 心跳 1 次后配上(我是 b)、VS 卡是对手「小娜」   心跳 2 次
+  [PASS] B 任务单带 side = b; 配上回包没给录像号 ⇒ 用任务状态里的那个补上   { "job_id": 302, "match_id": "6c3d3b4c-5e6f-4071-9b8c-0d1e2f3a4b5c", "week": 1792972800, "foe": ["stone", "cyber", "line"], "foe_name": "小娜", "side": "b" }
+  [PASS] 分母: 裁判真算完一局(a = 对手, b = 我)
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+  [PASS] B 分母: 进了观看流程(录像号用任务状态里的那个)
+  [PASS] B ★名字换边: 左 = 对手「小娜」、右 = 我「杠精本精丶」(录像左方是 a)   { "l": "小娜", "r": "杠精本精丶", "side": "b" } / { "l": "小娜", "r": "杠精本精丶" }
+  [PASS] B ★胜负按服务端给的 B 视角记(胜; 客户端不再翻)
+  [PASS] B 战绩页那一行: 我在右边(side = b)、对手名、录像号   { "result": "win", "lineup": ["basic", "stone", "bamboo"], "mode": "实时", "turn": 0, "replay_id": "6c3d3b4c-5e6f-4071-9b8c-0d1e2f3a4b5c", "client_version": "0.22.6", "ts": 1793463157, "foe": ["stone", "cyber", "line"], "foe_name": "小娜", "side": "b" }
+  [PASS] B 分母: 对局进行中、两边都有活着带血条和头像框的单位
+  [PASS] B ★建血条: 我这一侧(right)是友军色、对面是敌方色
+  [PASS] B ★单位头顶血条: 我这一侧 4 只是友军色、对面 4 只是敌方色   []
+  [PASS] B ★每帧那条路: 设反之后按看的人改回来(分母 8 只)   []
+  [PASS] B 分母: 对面有一只活着的龟可以拿来驯服
+  [PASS] B ★驯服后改阵营的那只(原在对面)⇒ 血条变友军色、头像框挪进我方栏、蓝框   血条 true / 进我方栏 true / 蓝框 true
+  [PASS] B ★两侧头像栏: 我方 3 个蓝框、对方 3 个红框   []
+  [PASS] B ★结算屏胜负 = 服务端给 B 的那一个(胜利)   胜利
+  [PASS] B ★看的人那一侧 = right(viewer_side b)
+  [PASS] B ★对局顶栏: 我这一侧(right)写我「杠精本精丶」、对面写对手「小娜」   左 小娜 / 右 杠精本精丶
+  [PASS] B ★本战场结果(左方输了这一路)⇒「本战场胜利」   本战场胜利
+  [PASS] B ★各路战果: 「我方」数的是我这一侧赢的路(分母 3 路)   各路战果    我方 2 : 1 对方 / 想要 各路战果    我方 2 : 1 对方
+  [PASS] B ★龟蛋生命: 「我方」是我这一侧的蛋(两颗蛋不同血: true)   龟蛋生命  我方 3020  ·  对方 0 / 想要 龟蛋生命  我方 3020  ·  对方 0
+  [PASS] B ★对阵幕布: 我这一列(right)的名字是我方的绿、对面是红   (0.6039, 0.902, 0.6902, 1.0) / (1.0, 0.6078, 0.6078, 1.0)
+  [PASS] B 分母: 两队各有对面没有的单位(我这一侧独有 2 / 对面独有 3)
+  [PASS] B ★结算屏「我方」页 = 我这一侧(right)的单位   []
+  [PASS] B ★结算屏「敌方」页 = 对面那一侧的单位   []
+  [PASS] B ★各路胜负牌按我这一侧(3 路)   ["负", "胜", "胜"] / 想要 ["负", "胜", "胜"]
+  [PASS] B ★本场 MVP 是我这一侧的「竹叶龟」
+  [PASS] B ★战报浮层: 「我方」那一列是 right、「敌方」那一列是 left   ["right", "left"]
+  [PASS] B ★单位面板: 我这一侧的单位写「友军」、对面写「敌方」
+  [PASS] B ★单位面板副标题色: 友军绿、敌方红   (0.2902, 0.8706, 0.502, 1.0) / (1.0, 0.4196, 0.4196, 1.0)
+  [PASS] B ★顶部条: 我这一侧(right)那一段是我方绿、对面那一段是紫   左 (0.7339, 0.48, 0.9755, 1.0) / 右 (0.4464, 0.8991, 0.6115, 1.0)
+  [PASS] B 顶部条回血带: 我这一侧是绿的提亮   (0.6806, 0.9418, 0.7759, 1.0)
+  [PASS] B ★顶栏头像底: 我这一侧带绿、对面带紫   左 (0.1917, 0.1201, 0.2755, 1.0) / 右 (0.1106, 0.2383, 0.1728, 1.0)
+  [PASS] B ★顶栏各路点: 我赢的路绿、对面赢的路紫(分母 3 路)   []
+  [PASS] B ★VS 光晕: 我领先 ⇒ 染我方绿   (0.2902, 0.8706, 0.502, 0.2932)
+  [PASS] B ★左方被团灭(本机重算那条路)⇒ 全屏闪 金(敌军覆没)   (1.0, 0.82, 0.3, 0.0)
+  [PASS] B ★逐帧直播里「左方被团灭」那道闪 ⇒ 金(按看的人换)   (1.0, 0.82, 0.3, 0.0)
+  [PASS] B 逐帧直播里「左方蛋破」那道闪 ⇒ 暖白(按看的人换)   (1.0, 0.95, 0.85, 0.0)
+  [PASS] B 逐帧直播里别的闪色原样   (0.2, 0.4, 0.9, 0.0)
+  [PASS] B ★离开那一局后开关清掉(side 不漏到下一局)   { "l": "小娜", "r": "杠精本精丶" }
+  [PASS] B 分母: 战绩页那一行(我在右边)有「观看」
+  [PASS] B ★战绩页回放: 名字左 = 对手「小娜」、右 = 我「杠精本精丶」、看的人 = b   { "l": "小娜", "r": "杠精本精丶", "side": "b" }
+  [PASS] B ★战绩页回放的对局顶栏: 右边写我「杠精本精丶」   小娜 / 杠精本精丶
+── C 等待中取消 ──
+  [PASS] C 分母: 排队中、有「取消匹配」
+  [PASS] C ★按下 ⇒ 发出队(1 次)、正在退出: 按钮灰「正在退出排队」
+  [PASS] C 正在退出时再按「←」不重复发、也不先走
+  [PASS] C ★服务端回「已取消」⇒ 回主菜单(一次)、主菜单不飘字   ["res://scenes/MainMenu.tscn"]
+  [PASS] C ★排队单销掉、没有对局: 战绩 / 币 / 场次 / 战绩页都没动、没查过任务
+  [PASS] C ★排队中按「←」⇒ 回主菜单(一次)、不出队(没发取消)、排队单留着、会话还活着(在 root 上)   ["res://scenes/MainMenu.tscn"]
+── D 点取消的一瞬间刚好配上 ──
+  [PASS] D ★取消回「已配上」⇒ 再心跳一次拿对手卡片 ⇒ 翻 VS 卡「Mr_Meng」(照配上处理)
+  [PASS] D ★接回等结果那一步、任务单(任务号 305)、没回主菜单   wait []
+── E 心跳回 expired / none ⇒ 已退出排队 ──
+  [PASS] E ★expired: 心跳 2 次后回主菜单、主菜单飘「已退出排队」   ["res://scenes/MainMenu.tscn"] / 已退出排队
+  [PASS] E expired: 排队单销掉、战绩没动
+  [PASS] E ★none: 心跳 2 次后回主菜单、主菜单飘「已退出排队」   ["res://scenes/MainMenu.tscn"] / 已退出排队
+  [PASS] E none: 排队单销掉、战绩没动
+  [PASS] E ★expired · closed: 心跳 2 次后回主菜单、主菜单飘「当前不在闯关赛时段」   ["res://scenes/MainMenu.tscn"] / 当前不在闯关赛时段
+  [PASS] E expired · closed: 排队单销掉、战绩没动
+  [PASS] E ★none · job_failed: 心跳 2 次后回主菜单、主菜单飘「结算失败，请重新开战」   ["res://scenes/MainMenu.tscn"] / 结算失败，请重新开战
+  [PASS] E none · job_failed: 排队单销掉、战绩没动
+── F join 拒收 ──
+  [PASS] F ★finished ⇒ 屏上「本周闯关已结束」   本周闯关已结束
+  [PASS] F finished ⇒ 不排队: 没心跳、没有等待界面、没有排队单 / 任务单、不翻 VS 卡
+  [PASS] F ★stale ⇒ 屏上「战绩已同步，请重新开战」   战绩已同步，请重新开战
+  [PASS] F stale ⇒ 不排队: 没心跳、没有等待界面、没有排队单 / 任务单、不翻 VS 卡
+  [PASS] F stale ⇒ 本机战绩对齐到账本 2-1(3-0 → 2-1)
+[SupabaseNet] 服务端要求更新客户端(本机 0.22.6)
+[VersionWall] 客户端版本 0.22.6 低于最低版本 , 挡住
+  [PASS] F ★update_required ⇒ 屏上「版本过旧，请更新」   版本过旧，请更新
+  [PASS] F update_required ⇒ 不排队: 没心跳、没有等待界面、没有排队单 / 任务单、不翻 VS 卡
+  [PASS] F update_required ⇒ 本机网络层记下「服务端要更新」(挡墙同一条判据)
+  [PASS] F ★服务端还没有排队(404)⇒「连接服务器后才能比赛」, 不退回旧入口(一次都没调 referee_gauntlet_start)、不排队、没有单子   连接服务器后才能比赛
+── G 杀进程 / 断网后主菜单补查排队单 ──
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+  [PASS] G1 ★排队单 + 已配上 ⇒ 心跳 → 换任务单 → 查任务 → 补记一次(胜)
+  [PASS] G1 补记后: 战绩 = 服务端给 B 的账本 4-0、单子清掉、战绩页那一行 side = b
+  [PASS] G2 ★排队单 + 已过期 ⇒ 销单、没查任务
+  [PASS] G3 ★排队单 + 还在队里 + 本机没有活着的会话(冷启动) ⇒ 主菜单不是等待界面: 出队(1 次)、销单(有活会话时不出队由 verify_gauntlet_queue_home H2 量)
+  [PASS] G4 上周的排队单 ⇒ 销单、不发请求
+  [PASS] G5 问不到 ⇒ 排队单留着下次
+  [PASS] G 排队单没有任务号 ⇒ settle 认不到它(不会凭空记一场)
+── W 真走网(本机假服务器, 服务器那边数) ──
+  [PASS] W 分母: 本机假服务器起来了   19471
+  [PASS] W 分母: 后端指到本机假服务器   http://127.0.0.1:19471
+  [PASS] W ★进队真发到服务器(POST gauntlet_queue_join 1 次)、排队中   queue
+  [PASS] W ★心跳真发到服务器(5 秒内 ≥ 2 次 POST gauntlet_queue_poll)   2
+  [PASS] W ★取消真发到服务器(POST gauntlet_queue_cancel 1 次)⇒ 回主菜单   ["res://scenes/MainMenu.tscn"]
+── S 陪练号(sim_driver)走排队 ──
+  [PASS] S ★闯关日匹配屏卡死线 = 排队上限 300 + 等裁判上限 180 + 余量 20   500.0
+  [PASS] S SIM_QUEUE_GIVEUP_SEC=7 ⇒ 排队上限 7、卡死线跟着 7 + 180 + 20
+  [PASS] S 积分赛日匹配屏仍是 45 秒、别的屏不变
+  [PASS] S 分母: 逛店区间 = [18, 22] 秒、调度器以为的格子 = 1-0
+[SIMDRV] {"data":{"rounds_cap":3,"seed":23757,"slot":3,"user_dir":"/tmp/gate_appdata/verify_gauntlet_online_queue/godot/app_userdata/斗龟场 实时版","version":"0.22.6"},"kind":"start","slot":3,"t":"2026-10-31T16:13:15"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"pets":["dice","cyber","ice"],"skills":[2,1,2],"slot":3},"kind":"roster","slot":3,"t":"2026-10-31T16:13:17"}
+[SIMDRV] {"data":{"from":"","stayed_s":0.0,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:13:18"}
+[SIMDRV] {"data":{"n":1,"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":3,"coins":0,"hearts":6,"leaders":["basic","stone","bamboo"],"level":3,"ranked_used":0,"wins":3}},"kind":"start_battle","slot":3,"t":"2026-10-31T16:13:19"}
+[SIMDRV] {"data":{"from":"res://scenes/MainMenu.tscn","stayed_s":2.008,"to":"res://scenes/TeamSelect.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:13:20"}
+[SIMDRV] {"data":{"loadouts":{},"locked":true,"start_text":"出战","team":["basic","stone","bamboo"],"tutorial":false},"kind":"team","slot":3,"t":"2026-10-31T16:13:22"}
+[SIMDRV] {"data":{"from":"res://scenes/TeamSelect.tscn","stayed_s":2.306,"to":"res://scenes/Matchmaking.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:13:22"}
+[SIMDRV] {"data":{"cell":[1,0],"giveup_s":7.0},"kind":"queue_wait","slot":3,"t":"2026-10-31T16:13:22"}
+[SIMDRV] {"data":{"job_id":319,"side":"a","waited_s":5.507},"kind":"queue_paired","slot":3,"t":"2026-10-31T16:13:28"}
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"from":"res://scenes/Matchmaking.tscn","stayed_s":10.813,"to":"res://scenes/RealtimeBattle3D.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:13:33"}
+[SIMDRV] {"data":{"my_battles":4,"opp_battles":1.0,"opp_ghost":"","opp_id":"g_b93bfdf67151_1_diamond-rainbow-space_g1-0","opp_is_bot":false,"opp_leaders":["rainbow","diamond","space"],"opp_name":"zm16","tutorial":false,"week_phase":"gauntlet"},"kind":"battle_enter","slot":3,"t":"2026-10-31T16:13:33"}
+[SIMDRV] {"data":{"n":1,"scene":"res://scenes/RealtimeBattle3D.tscn","text":"两个战场各赢一个，比分 1 : 1，进入【终极战场】决胜。"},"kind":"guide_step","slot":3,"t":"2026-10-31T16:13:45"}
+[SIMDRV] {"data":{"n":1,"secs":17.582,"settle_kind":"gauntlet","stats":{"account":"11111111-2222-4333-8444-555555555555","battles":4,"coins":8,"hearts":6,"leaders":["basic","stone","bamboo"],"level":1,"ranked_used":0,"wins":4},"tutorial":false},"kind":"result","slot":3,"t":"2026-10-31T16:13:51"}
+[SIMDRV] {"data":{"buttons":["前往商店","返回主菜单"],"press":"前往商店"},"kind":"result_buttons","slot":3,"t":"2026-10-31T16:13:52"}
+[SIMDRV] {"data":{"from":"res://scenes/RealtimeBattle3D.tscn","stayed_s":20.704,"to":"res://scenes/Shop.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:13:54"}
+[SIMDRV] {"data":{"best":146.0,"coins":2},"kind":"shop_refresh","slot":3,"t":"2026-10-31T16:13:56"}
+[SIMDRV] {"data":{"axe":[0,0,""],"battles":4,"bench_n":0,"bought":[],"coins_after":2,"coins_before":8,"level":[3,3],"refreshes":1,"stars":{"1":0,"2":6,"3":0},"strategy":"低费追三星","style":0,"tutorial":false,"visit":1,"xp_buys":1},"kind":"shop","slot":3,"t":"2026-10-31T16:13:56"}
+[SIMDRV] {"data":{"range":[18.0,22.0],"spent_s":3.15,"want_s":18.17},"kind":"shop_dwell","slot":3,"t":"2026-10-31T16:13:57"}
+[SIMDRV] {"data":{"from":"res://scenes/Shop.tscn","stayed_s":18.733,"to":"res://scenes/Inventory.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:13"}
+[SIMDRV] {"data":{"minion_roles":["bottom1=back","bottom2=back"],"pair":["basic","stone"],"pair_lane":"top","solo":"bamboo","swaps":3,"template":1},"kind":"formation","slot":3,"t":"2026-10-31T16:14:16"}
+[SIMDRV] {"data":{"battles":4,"bench_n":0,"core":["剑","遗物"],"equipped":[],"formation":{"minion_roles":["bottom1=back","bottom2=back"],"pair":["basic","stone"],"pair_lane":"top","solo":"bamboo","swaps":3,"template":1},"level":3,"lineup":{"bench":[],"units":[{"gear":["p2eq_001★2","p2eq_002★2"],"id":"basic","kind":"leader","lane":"top","pos":0,"role":""},{"gear":["p2eq_003★2","p2eq_004★2"],"id":"stone","kind":"leader","lane":"top","pos":1,"role":""},{"gear":["p2eq_005★2","p2eq_006★2"],"id":"bamboo","kind":"leader","lane":"bottom","pos":0,"role":""},{"gear":[],"id":"","kind":"minion","lane":"bottom","pos":1,"role":"back"},{"gear":[],"id":"","kind":"minion","lane":"bottom","pos":2,"role":"back"}]},"sold":[],"stars":{"1":0,"2":6,"3":0},"swaps":[],"synergy":[{"n":4,"need":2,"t":"剑","tier":1,"tiers_n":3},{"n":1,"need":1,"t":"遗物","tier":0,"tiers_n":4},{"n":1,"need":2,"t":"食物","tier":0,"tiers_n":3}],"team_cap":4,"team_equipped":6,"tutorial":false},"kind":"inventory","slot":3,"t":"2026-10-31T16:14:16"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SIMDRV] {"data":{"from":"res://scenes/Inventory.tscn","stayed_s":4.82,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:17"}
+[SIMDRV] {"data":{"n":2,"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":4,"coins":2,"hearts":6,"leaders":["basic","stone","bamboo"],"level":3,"ranked_used":0,"wins":4}},"kind":"start_battle","slot":3,"t":"2026-10-31T16:14:19"}
+[SIMDRV] {"data":{"from":"res://scenes/MainMenu.tscn","stayed_s":2.004,"to":"res://scenes/TeamSelect.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:19"}
+[SIMDRV] {"data":{"loadouts":{},"locked":true,"start_text":"出战","team":["basic","stone","bamboo"],"tutorial":false},"kind":"team","slot":3,"t":"2026-10-31T16:14:21"}
+[SIMDRV] {"data":{"from":"res://scenes/TeamSelect.tscn","stayed_s":2.306,"to":"res://scenes/Matchmaking.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:22"}
+[SIMDRV] {"data":{"cell":[2,0],"giveup_s":7.0},"kind":"queue_wait","slot":3,"t":"2026-10-31T16:14:22"}
+[SIMDRV] {"data":{"job_id":319,"side":"a","waited_s":3.512},"kind":"queue_paired","slot":3,"t":"2026-10-31T16:14:25"}
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"gl":0,"gw":3,"won":true},"kind":"watch_skipped","slot":3,"t":"2026-10-31T16:14:30"}
+[SIMDRV] {"data":{"from":"res://scenes/Matchmaking.tscn","stayed_s":8.539,"to":"res://scenes/Shop.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:30"}
+[SIMDRV] {"data":{"best":146.0,"coins":4},"kind":"shop_refresh","slot":3,"t":"2026-10-31T16:14:32"}
+[SIMDRV] {"data":{"axe":[0,0,""],"battles":5,"bench_n":0,"bought":[],"coins_after":4,"coins_before":10,"level":[4,4],"refreshes":1,"stars":{"1":0,"2":6,"3":0},"strategy":"低费追三星","style":0,"tutorial":false,"visit":2,"xp_buys":1},"kind":"shop","slot":3,"t":"2026-10-31T16:14:33"}
+[SIMDRV] {"data":{"range":[18.0,22.0],"spent_s":3.16,"want_s":20.5},"kind":"shop_dwell","slot":3,"t":"2026-10-31T16:14:33"}
+[SIMDRV] {"data":{"from":"res://scenes/Shop.tscn","stayed_s":21.014,"to":"res://scenes/Inventory.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:51"}
+[SIMDRV] {"data":{"battles":5,"bench_n":0,"core":["剑","遗物"],"equipped":[],"formation":{},"level":4,"lineup":{"bench":[],"units":[{"gear":["p2eq_001★2","p2eq_002★2"],"id":"basic","kind":"leader","lane":"top","pos":0,"role":""},{"gear":["p2eq_003★2","p2eq_004★2"],"id":"stone","kind":"leader","lane":"top","pos":1,"role":""},{"gear":["p2eq_005★2","p2eq_006★2"],"id":"bamboo","kind":"leader","lane":"bottom","pos":0,"role":""},{"gear":[],"id":"","kind":"minion","lane":"bottom","pos":1,"role":"back"},{"gear":[],"id":"","kind":"minion","lane":"bottom","pos":2,"role":"back"}]},"sold":[],"stars":{"1":0,"2":6,"3":0},"swaps":[],"synergy":[{"n":4,"need":2,"t":"剑","tier":1,"tiers_n":3},{"n":1,"need":1,"t":"遗物","tier":0,"tiers_n":4},{"n":1,"need":2,"t":"食物","tier":0,"tiers_n":3}],"team_cap":6,"team_equipped":6,"tutorial":false},"kind":"inventory","slot":3,"t":"2026-10-31T16:14:53"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SIMDRV] {"data":{"from":"res://scenes/Inventory.tscn","stayed_s":2.817,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:54"}
+[SIMDRV] {"data":{"n":3,"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":5,"coins":4,"hearts":6,"leaders":["basic","stone","bamboo"],"level":4,"ranked_used":0,"wins":5}},"kind":"start_battle","slot":3,"t":"2026-10-31T16:14:56"}
+[SIMDRV] {"data":{"from":"res://scenes/MainMenu.tscn","stayed_s":2.007,"to":"res://scenes/TeamSelect.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:56"}
+[SIMDRV] {"data":{"loadouts":{},"locked":true,"start_text":"出战","team":["basic","stone","bamboo"],"tutorial":false},"kind":"team","slot":3,"t":"2026-10-31T16:14:58"}
+[SIMDRV] {"data":{"from":"res://scenes/TeamSelect.tscn","stayed_s":2.303,"to":"res://scenes/Matchmaking.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:14:58"}
+[SIMDRV] {"data":{"cell":[3,0],"giveup_s":7.0},"kind":"queue_wait","slot":3,"t":"2026-10-31T16:14:58"}
+[SIMDRV] {"data":{"cell":[3,0],"waited_s":7.052},"kind":"queue_timeout","slot":3,"t":"2026-10-31T16:15:05"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"to":"res://scenes/MainMenu.tscn","why":"queue_timeout"},"kind":"queue_left","slot":3,"t":"2026-10-31T16:15:06"}
+[SIMDRV] {"data":{"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":5,"coins":4,"hearts":6,"leaders":["basic","stone","bamboo"],"level":4,"ranked_used":0,"wins":5},"why":"queue_timeout"},"kind":"done","slot":3,"t":"2026-10-31T16:15:06"}
+    驱动事件 44 条: start roster scene start_battle scene team scene queue_wait queue_paired scene battle_enter guide_step result result_buttons scene shop_refresh shop shop_dwell scene formation inventory scene start_battle scene team scene queue_wait queue_paired watch_skipped scene shop_refresh shop shop_dwell scene inventory scene start_battle scene team scene queue_wait queue_timeout queue_left done
+  [PASS] S 分母: 驱动记了事件(/tmp/gate_appdata/verify_gauntlet_online_queue/godot/app_userdata/斗龟场 实时版/sim_events.jsonl)   44
+  [PASS] S ★第 1 局: 排队等过 → 配上 → 看完到结算(result 1 次)   result 1
+  [PASS] S ★第 2 局(SIM_SKIP_WATCH=1): 配上后不进战斗场、账记完直接去商店(watch_skipped 1 次; 全程只进过 1 次战斗场)   skipped 1 / paired 2 / battle 1
+  [PASS] S ★不看也照样记账: 两局都记进战绩(1-0 → 3-0, 战绩页 +2)
+  [PASS] S ★两局之间逛店: 想逛 [18.17, 20.5] 秒(都在 [18, 22] 里)、实际在店里 [18.733, 21.014] 秒(≥ 想逛的; 分母 2 次进店)
+  [PASS] S ★第 3 局: 再排(join 共 3 次)、等到上限 ⇒ 按「取消匹配」(出队 1 次)⇒ 收工 queue_timeout   why=queue_timeout
+  [PASS] S ★全程不报 STUCK
+  [PASS] S 收工后停在主菜单   res://scenes/MainMenu.tscn
+[SIMDRV] {"data":{"rounds_cap":1,"seed":23757,"slot":3,"user_dir":"/tmp/gate_appdata/verify_gauntlet_online_queue/godot/app_userdata/斗龟场 实时版","version":"0.22.6"},"kind":"start","slot":3,"t":"2026-10-31T16:15:06"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"pets":["dice","cyber","ice"],"skills":[2,1,2],"slot":3},"kind":"roster","slot":3,"t":"2026-10-31T16:15:08"}
+[SIMDRV] {"data":{"from":"","stayed_s":0.0,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:09"}
+[SIMDRV] {"data":{"local":[1,0],"want":[0,2]},"kind":"cell_mismatch","slot":3,"t":"2026-10-31T16:15:10"}
+[SIMDRV] {"data":{"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":5,"coins":4,"hearts":6,"leaders":["basic","stone","bamboo"],"level":4,"ranked_used":0,"wins":5},"why":"cell_mismatch"},"kind":"done","slot":3,"t":"2026-10-31T16:15:10"}
+  [PASS] S ★SIM_EXPECT_CELL=0-2、本机 1-0 ⇒ 不排(join 0 次)、收工 cell_mismatch   why=cell_mismatch join+0
+[SIMDRV] {"data":{"rounds_cap":1,"seed":23757,"slot":3,"user_dir":"/tmp/gate_appdata/verify_gauntlet_online_queue/godot/app_userdata/斗龟场 实时版","version":"0.22.6"},"kind":"start","slot":3,"t":"2026-10-31T16:15:10"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"pets":["dice","cyber","ice"],"skills":[2,1,2],"slot":3},"kind":"roster","slot":3,"t":"2026-10-31T16:15:12"}
+[SIMDRV] {"data":{"from":"","stayed_s":0.0,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:13"}
+[SIMDRV] {"data":{"n":1,"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":5,"coins":4,"hearts":6,"leaders":["basic","stone","bamboo"],"level":4,"ranked_used":0,"wins":5}},"kind":"start_battle","slot":3,"t":"2026-10-31T16:15:14"}
+[SIMDRV] {"data":{"from":"res://scenes/MainMenu.tscn","stayed_s":2.007,"to":"res://scenes/TeamSelect.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:15"}
+[SIMDRV] {"data":{"loadouts":{},"locked":true,"start_text":"出战","team":["basic","stone","bamboo"],"tutorial":false},"kind":"team","slot":3,"t":"2026-10-31T16:15:16"}
+[SIMDRV] {"data":{"from":"res://scenes/TeamSelect.tscn","stayed_s":2.302,"to":"res://scenes/Matchmaking.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:17"}
+[SIMDRV] {"data":{"cell":[0,1],"giveup_s":7.0},"kind":"queue_wait","slot":3,"t":"2026-10-31T16:15:17"}
+[SIMDRV] {"data":{"server":[0,1],"want":[1,0]},"kind":"cell_mismatch","slot":3,"t":"2026-10-31T16:15:17"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SIMDRV] {"data":{"to":"res://scenes/MainMenu.tscn","why":"cell_mismatch"},"kind":"queue_left","slot":3,"t":"2026-10-31T16:15:18"}
+[SIMDRV] {"data":{"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":5,"coins":4,"hearts":6,"leaders":["basic","stone","bamboo"],"level":4,"ranked_used":0,"wins":5},"why":"cell_mismatch"},"kind":"done","slot":3,"t":"2026-10-31T16:15:18"}
+  [PASS] S ★本机 1-0 对得上、服务端回 0-1 ⇒ 进队 1 次、马上出队 1 次、收工 cell_mismatch   why=cell_mismatch join+1 cancel+1
+[SIMDRV] {"data":{"rounds_cap":2,"seed":23757,"slot":3,"user_dir":"/tmp/gate_appdata/verify_gauntlet_online_queue/godot/app_userdata/斗龟场 实时版","version":"0.22.6"},"kind":"start","slot":3,"t":"2026-10-31T16:15:18"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"pets":["dice","cyber","ice"],"skills":[2,1,2],"slot":3},"kind":"roster","slot":3,"t":"2026-10-31T16:15:20"}
+[SIMDRV] {"data":{"from":"","stayed_s":0.0,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:20"}
+[SIMDRV] {"data":{"n":1,"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":5,"coins":4,"hearts":6,"leaders":["basic","stone","bamboo"],"level":4,"ranked_used":0,"wins":5}},"kind":"start_battle","slot":3,"t":"2026-10-31T16:15:22"}
+[SIMDRV] {"data":{"from":"res://scenes/MainMenu.tscn","stayed_s":2.01,"to":"res://scenes/TeamSelect.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:22"}
+[SIMDRV] {"data":{"loadouts":{},"locked":true,"start_text":"出战","team":["basic","stone","bamboo"],"tutorial":false},"kind":"team","slot":3,"t":"2026-10-31T16:15:24"}
+[SIMDRV] {"data":{"from":"res://scenes/TeamSelect.tscn","stayed_s":2.305,"to":"res://scenes/Matchmaking.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:25"}
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"job_id":322,"side":"b","waited_s":0.0},"kind":"queue_paired","slot":3,"t":"2026-10-31T16:15:26"}
+[SIMDRV] {"data":{"gl":0,"gw":2,"won":true},"kind":"watch_skipped","slot":3,"t":"2026-10-31T16:15:26"}
+[SIMDRV] {"data":{"from":"res://scenes/Matchmaking.tscn","stayed_s":2.502,"to":"res://scenes/Shop.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:27"}
+[SIMDRV] {"data":{"best":146.0,"coins":2},"kind":"shop_refresh","slot":3,"t":"2026-10-31T16:15:29"}
+[SIMDRV] {"data":{"axe":[0,0,""],"battles":6,"bench_n":0,"bought":[],"coins_after":2,"coins_before":12,"level":[4,4],"refreshes":1,"stars":{"1":0,"2":6,"3":0},"strategy":"低费追三星","style":0,"tutorial":false,"visit":1,"xp_buys":2},"kind":"shop","slot":3,"t":"2026-10-31T16:15:30"}
+[SIMDRV] {"data":{"range":[1.0,1.0],"spent_s":3.45,"want_s":1.0},"kind":"shop_dwell","slot":3,"t":"2026-10-31T16:15:30"}
+[SIMDRV] {"data":{"from":"res://scenes/Shop.tscn","stayed_s":3.953,"to":"res://scenes/Inventory.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:31"}
+[SIMDRV] {"data":{"minion_roles":["bottom1=back","bottom2=back"],"pair":["basic","stone"],"pair_lane":"top","solo":"bamboo","swaps":1,"template":1},"kind":"formation","slot":3,"t":"2026-10-31T16:15:33"}
+[SIMDRV] {"data":{"battles":6,"bench_n":0,"core":["剑","遗物"],"equipped":[],"formation":{"minion_roles":["bottom1=back","bottom2=back"],"pair":["basic","stone"],"pair_lane":"top","solo":"bamboo","swaps":1,"template":1},"level":4,"lineup":{"bench":[],"units":[{"gear":["p2eq_001★2","p2eq_002★2"],"id":"basic","kind":"leader","lane":"top","pos":0,"role":""},{"gear":["p2eq_003★2","p2eq_004★2"],"id":"stone","kind":"leader","lane":"top","pos":1,"role":""},{"gear":["p2eq_005★2","p2eq_006★2"],"id":"bamboo","kind":"leader","lane":"bottom","pos":0,"role":""},{"gear":[],"id":"","kind":"minion","lane":"bottom","pos":1,"role":"back"},{"gear":[],"id":"","kind":"minion","lane":"bottom","pos":2,"role":"back"}]},"sold":[],"stars":{"1":0,"2":6,"3":0},"swaps":[],"synergy":[{"n":4,"need":2,"t":"剑","tier":1,"tiers_n":3},{"n":1,"need":1,"t":"遗物","tier":0,"tiers_n":4},{"n":1,"need":2,"t":"食物","tier":0,"tiers_n":3}],"team_cap":6,"team_equipped":6,"tutorial":false},"kind":"inventory","slot":3,"t":"2026-10-31T16:15:33"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"from":"res://scenes/Inventory.tscn","stayed_s":3.41,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:34"}
+[SIMDRV] {"data":{"n":2,"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":6,"coins":2,"hearts":6,"leaders":["basic","stone","bamboo"],"level":4,"ranked_used":0,"wins":6}},"kind":"start_battle","slot":3,"t":"2026-10-31T16:15:36"}
+[SIMDRV] {"data":{"from":"res://scenes/MainMenu.tscn","stayed_s":2.011,"to":"res://scenes/TeamSelect.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:36"}
+[SIMDRV] {"data":{"loadouts":{},"locked":true,"start_text":"出战","team":["basic","stone","bamboo"],"tutorial":false},"kind":"team","slot":3,"t":"2026-10-31T16:15:38"}
+[SIMDRV] {"data":{"from":"res://scenes/TeamSelect.tscn","stayed_s":2.302,"to":"res://scenes/Matchmaking.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:39"}
+[SIMDRV] {"data":{"cell":[2,0],"giveup_s":7.0},"kind":"queue_wait","slot":3,"t":"2026-10-31T16:15:39"}
+[SIMDRV] {"data":{"job_id":322,"side":"a","waited_s":3.513},"kind":"queue_paired","slot":3,"t":"2026-10-31T16:15:42"}
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SIMDRV] {"data":{"gl":0,"gw":3,"won":true},"kind":"watch_skipped","slot":3,"t":"2026-10-31T16:15:45"}
+[SIMDRV] {"data":{"from":"res://scenes/Matchmaking.tscn","stayed_s":6.591,"to":"res://scenes/Shop.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:45"}
+[SIMDRV] {"data":{"best":146.0,"coins":4},"kind":"shop_refresh","slot":3,"t":"2026-10-31T16:15:47"}
+[SIMDRV] {"data":{"axe":[0,0,""],"battles":7,"bench_n":2,"bought":[{"id":"p2eq_005","paid":2,"score":390},{"id":"p2eq_088","paid":1,"score":110}],"coins_after":1,"coins_before":10,"level":[4,5],"refreshes":1,"stars":{"1":2,"2":6,"3":0},"strategy":"低费追三星","style":0,"tutorial":false,"visit":2,"xp_buys":1},"kind":"shop","slot":3,"t":"2026-10-31T16:15:49"}
+[SIMDRV] {"data":{"range":[1.0,1.0],"spent_s":4.82,"want_s":1.0},"kind":"shop_dwell","slot":3,"t":"2026-10-31T16:15:50"}
+[SIMDRV] {"data":{"from":"res://scenes/Shop.tscn","stayed_s":5.32,"to":"res://scenes/Inventory.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:51"}
+[SIMDRV] {"data":{"battles":7,"bench_n":0,"core":["剑","遗物"],"equipped":[{"ok":true,"to":{"id":"","idx":1,"kind":"minion","lane":"bottom"}},{"ok":true,"to":{"id":"basic","idx":0,"kind":"leader","lane":"top"}}],"formation":{},"level":5,"lineup":{"bench":[],"units":[{"gear":["p2eq_001★2","p2eq_002★2","p2eq_088★1"],"id":"basic","kind":"leader","lane":"top","pos":0,"role":""},{"gear":["p2eq_003★2","p2eq_004★2"],"id":"stone","kind":"leader","lane":"top","pos":1,"role":""},{"gear":["p2eq_005★2","p2eq_006★2"],"id":"bamboo","kind":"leader","lane":"bottom","pos":0,"role":""},{"gear":["p2eq_005★1"],"id":"","kind":"minion","lane":"bottom","pos":1,"role":"back"},{"gear":[],"id":"","kind":"minion","lane":"bottom","pos":2,"role":"back"}]},"sold":[],"stars":{"1":2,"2":6,"3":0},"swaps":[],"synergy":[{"n":4,"need":2,"t":"剑","tier":1,"tiers_n":3},{"n":1,"need":1,"t":"法器","tier":0,"tiers_n":4},{"n":1,"need":1,"t":"遗物","tier":0,"tiers_n":4}],"team_cap":8,"team_equipped":8,"tutorial":false},"kind":"inventory","slot":3,"t":"2026-10-31T16:15:54"}
+[SupabaseNet] 拉回 0 份, 入池 0, 拒 0 []
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SupabaseNet] 快照回读不到(gauntlet_ghosts) code=200
+[SIMDRV] {"data":{"from":"res://scenes/Inventory.tscn","stayed_s":4.518,"to":"res://scenes/MainMenu.tscn"},"kind":"scene","slot":3,"t":"2026-10-31T16:15:55"}
+[SIMDRV] {"data":{"n":2},"kind":"rounds_cap","slot":3,"t":"2026-10-31T16:15:57"}
+[SIMDRV] {"data":{"stats":{"account":"11111111-2222-4333-8444-555555555555","battles":7,"coins":1,"hearts":6,"leaders":["basic","stone","bamboo"],"level":5,"ranked_used":0,"wins":7},"why":"rounds_cap"},"kind":"done","slot":3,"t":"2026-10-31T16:15:57"}
+    驱动事件(入队即配上) 33 条: start roster scene start_battle scene team scene queue_paired watch_skipped scene shop_refresh shop shop_dwell scene formation inventory scene start_battle scene team scene queue_wait queue_paired watch_skipped scene shop_refresh shop shop_dwell scene inventory scene rounds_cap done
+  [PASS] S 分母: 第 1 局是「入队即配上」—— 配上之前没看到过「排队中」(queue_wait 在第一次 queue_paired 之前出现 0 次)
+  [PASS] S ★入队即配上 ⇒ 第 2 局照常排、照常打: join 2 次 · 配上 2 次 · 记账 2 次 · cell_mismatch 0 次 · 收工 rounds_cap · 战绩 1-0 → 3-0
+
+  (共 187 条断言 · 待合并 1 处 · 28285 帧 · 251.9 秒)
+FAIL x1 (断言 187 条)
+WARNING: 23 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2692)
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2663)
+ERROR: 69 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)
+ERROR: 141 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 36 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+ERROR: 58 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 5 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+ERROR: 88 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 5 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.

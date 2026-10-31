@@ -1,0 +1,6 @@
+231:  FAIL  text_golden (玩家文案快照对账·483 段)
+233:        [FAIL] .gd 屏幕文案变了: 改 0 · 新增 1 · 删除 0
+259:FAIL x1  (PASS 221)
+667:  FAIL  verify_gauntlet_online_queue  (rc=1, 致命报错=0)
+668:          [FAIL] ★R backend.gd: 积分赛走的 55 个函数与改动前逐字节相同   缺 [] · 变了 []
+778:FAIL x1  (PASS 150)
