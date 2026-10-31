@@ -597,7 +597,11 @@ func _tick_rains(delta: float) -> void:
 		while float(r["t_next"]) <= 0.0 and int(r["hops_left"]) > 0:
 			r["hops_left"] = int(r["hops_left"]) - 1
 			r["t_next"] = float(r["t_next"]) + RAIN_HOP_IV
+			## ④ 装备统计: 箭雨在全局在途表里推进(没有任何装备上下文) ⇒ 每跳切到「携带者 · 075」, 同 _tick_volleys。
+			##   原来不切: 箭雨伤害与它挂的流血一分都没进 075 的账(10-31 逐笔对账: 实发 5650 + 流血 1912, 记 0)。
+			var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_075")
 			rain_hop(src, int(r["si"]), r["center"])
+			battle._equip_sys.tally.pop(_tp)
 		if int(r["hops_left"]) > 0:
 			keep.append(r)
 	_rains = keep

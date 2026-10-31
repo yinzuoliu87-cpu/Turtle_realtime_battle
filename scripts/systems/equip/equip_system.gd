@@ -1577,7 +1577,9 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 					if battle._vfx != null and battle._vfx._syn != null: battle._vfx._syn.execution(tgt["pos"], SynergyVfx.COL_EXEC_FANG)
 					battle._vfx._float_text(tgt["pos"], "-999999", battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")   # 处决=固定跳-999999真伤大字(实际伤害=剩余血, 用户)
 					tgt["hp"] = 0.0
+					var _tk: Array = tally.push(null, "")   # ④ 击杀引出的反应(羁绊收殓等)不算 004; 004 自己的处决回血由 _eq_on_kill 自己切
 					if was: battle._kill(tgt, src)
+					tally.pop(_tk)
 			"p2eq_038":   # 信号放大器(用户2026-07-30 效果重做): 每次普攻叠一层放大; 每满 5 层放一道弧形电磁波
 				if not basic: continue   # ★规格是【普攻】—— 技能不触发(2026-08-11)
 				# ★整套(层数/增伤/攻速/发波/张角递增/魔抗穿透)在 SignalWaveSystem。
@@ -2488,6 +2490,7 @@ func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
 	for e in killer.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		if battle._stress or battle._wd_on: battle._dbg_op = "eqkill:%s:%d:%d" % [iid, si, 1 if victim.get("alive", false) else 0]   # 卡死猎手: 定位是哪件装备on-kill卡住(同 _eq_on_cast)
+		var _tp: Array = tally.push(killer, iid)   # ④ 装备统计: 处决回血是这件的; 原来借用击杀那一下的上下文(普攻杀的就漏记)
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决后回20龟能 (无龟能单位改回40血)
 				if battle._has_energy_system(killer):
@@ -2498,6 +2501,7 @@ func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
 			#   是全表用滥的模板(远古之力/战利品/旧092 同形状), 用户点名作废。
 			#   新效果落在【受伤充能 + 每 12 秒释放】上, on-kill 不再有它。
 			#   ⚠ 这里原来有一个 `var victim` 的唯一使用点; 参数保留是因为 004 之外将来还会用到。
+		tally.pop(_tp)
 
 # ============================================================================
 #  on-death (阵亡者视角) — 复活海螺 / 黄铜齿轮 (+ 左轮052 敌亡补弹)

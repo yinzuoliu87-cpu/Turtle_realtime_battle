@@ -388,7 +388,9 @@ func steal_shield(ax: Dictionary, tgt: Dictionary) -> float:
 	var holy: float = float(tgt.get("_holyShieldVal", 0.0))
 	if holy > 0.0:
 		tgt["_holyShieldVal"] = minf(holy, float(tgt["shield"]))   # 标记不许超过池子
+	var _tp: Array = battle._equip_sys.tally.push(ax.get("_eq_owner", ax.get("summon_owner", null)), "p2eq_096")   # ④ 偷来的盾记给「携带者 · 096」(普攻钩子里没有装备上下文)
 	battle._damage._grant_shield(ax, take)
+	battle._equip_sys.tally.pop(_tp)
 	return take
 
 

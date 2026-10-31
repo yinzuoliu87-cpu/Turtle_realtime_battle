@@ -257,6 +257,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	_record_buckets(src, u, dmg, bucket, false)
 	_record_extra_true(src, u, int(round(_cor_true_dot)))   # 腐蚀转的真伤也进账(D3)
 	battle._equip_sys.tally.dot_mode = false
+	var _tl_re: Array = battle._equip_sys.tally.push(null, "")   # ④ 记完账之后的反应(钩子/击杀)不算这一段的装备, 同 _apply_damage_from(§3.3), 函数末尾还原
 	## 宝箱龟财宝值: 持续伤害也算(用户 2026-10-22「算」)。另一半在 _apply_damage_from 的 dmg_dealt 那一行旁边(§3.3)。
 	if src is Dictionary and str((src as Dictionary).get("id", "")) == "chest" and not is_self and not is_same(src, u):
 		battle._chest_sys.note_damage(src, dmg)
@@ -335,6 +336,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		# ★带上 src: 原为 battle._kill(u) 无凶手 → DOT 击杀【不算击杀数】, 且暴君之牙处决回血这类
 		#   on-kill 装备钩子全不触发(对比另一条路 battle._kill(u, src))。2026-07-22 修。
 		battle._kill(u, src if src is Dictionary else null)
+	battle._equip_sys.tally.pop(_tl_re)
 
 # 来源已知的伤害: 闪避 / 吸血 / 伤害统计 / 累积条(怒气/星能/储能) / 受伤被动. extra_ls=技能额外吸血%; raw=真伤穿盾
 # 来源已知的伤害: 闪避 / 吸血 / 伤害统计 / 累积条(怒气/星能/储能) / 受伤被动. extra_ls=技能额外吸血%; raw=真伤穿盾
@@ -506,6 +508,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		_record_extra_true(src, u, _iv)
 	## ★金弹·火控与腐蚀的额外真伤进账(D3): 同 `dmg` 记名义值(金弹那份在盾前加、腐蚀在盾后加), 只补账不跳字。
 	_record_extra_true(src, u, int(round(_gold_true + _cor_true)))
+	## ④ 这一段到此记完账; 下面是它引出的反应(吸血/受击钩子/羁绊/击杀), 不算打出它的那件装备(装备钩子各自切自己的件), 函数末尾还原。
+	var _tl_re: Array = battle._equip_sys.tally.push(null, "")
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if battle._t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))
@@ -596,6 +600,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	if ((_lethal and int(u.get("_kill_n", 0)) == _kill_n0) or u["hp"] <= 0.0) and u["alive"]:
 		u["hp"] = 0.0
 		battle._kill(u, src)
+	battle._equip_sys.tally.pop(_tl_re)
 
 
 ## 【一段伤害落地之后的装备事件钩子】(2026-09-15 从 `_apply_damage_from` 原样抽出, 调用顺序不变)。
@@ -878,7 +883,11 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	if _osc > 0.0:
 		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出
 		if _ovf > 0.0 and u["shield"] < _osc:
+			var _osb: float = float(u["shield"])
 			u["shield"] = minf(_osc, u["shield"] + _ovf)   # 静默累积(吸血高频不刷飘字), 由携带者护盾条显示
+			## ④ 只补账(结算不变): 这份盾不走 _grant_shield, 原来「获得护盾」与 011 的装备统计都漏记它
+			u["_st_shield"] = float(u.get("_st_shield", 0)) + (float(u["shield"]) - _osb)
+			battle._equip_sys.tally.credit(u, "p2eq_011", "shield", float(u["shield"]) - _osb)
 	_holy_convert(u, float(u["hp"] - hb))   # 盾羁绊9档: 盾类装备给的治疗, 额外 20% 转圣光护盾
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
 	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
@@ -887,7 +896,9 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	#   不再需要"把回血分给友军"。原来的 `_kelp_share` 守卫恒不成立、`_eq_kelp_share` 零调用者,
 	#   两边一起删掉(实装那路如实报了这条死码, 并指出调用点在本文件、要主会话连着收)。
 	#   ⚠ 留着这段注释是因为**钩子位置本身有价值**: 以后再有"受到治疗时"的装备, 挂这里。
+	var _tl_syn: Array = battle._equip_sys.tally.push(null, "")   # ④ 余韵的盾是羁绊给的, 不记到这次治疗的装备头上
 	battle._staff_syn.on_healed(u, _act)   # 法器【余韵】: 受到治疗时额外获得治疗量 N% 的护盾
+	battle._equip_sys.tally.pop(_tl_syn)
 	if _act > 0.0:                          # LoL式治疗累加器: 高频/多段/多源回血攒进累加, 短窗后合并成一个绿字(见_heal_flush)
 		u["_heal_acc"] = float(u.get("_heal_acc", 0.0)) + _act
 		u["_heal_acc_t"] = battle._t

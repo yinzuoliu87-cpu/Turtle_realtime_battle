@@ -810,7 +810,9 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 			t["_golden_pct"] = keep, t, "", Callable(), fly)
 	var low = lowest_ally(t)
 	if low is Dictionary:
+		var _tp: Array = battle._equip_sys.tally.push(_tower_owner(t), "p2eq_079")   # ④ 炮台的治疗记给「携带者 · 079」(炮台打的伤害靠召唤物标; 治疗只认上下文)
 		battle._damage._heal(low, heal * (2.0 if golden else 1.0))
+		battle._equip_sys.tally.pop(_tp)
 		# 束的两端各按自己的立绘取身体中段 —— 旧版两端都写死 1.2 米
 		vfx.heal_beam(Vector2(t["pos"]), Vector2(low["pos"]), COL_HEAL, golden,
 			GunEqVfx.sprite_h(t, TOWER_MUZZLE_FRAC), GunEqVfx.body_mid_h(low))

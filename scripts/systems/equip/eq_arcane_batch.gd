@@ -682,6 +682,8 @@ func pestle_slam(sl: Dictionary) -> void:
 	var r2: float = PESTLE_RADIUS * PESTLE_RADIUS
 	var base: float = float((u as Dictionary).get("atk", 0.0)) * PESTLE_ATK_SCALE + float(sl["flat"])
 	var n: int = 0
+	## ④ 装备统计: 砸落由落地事件 / 全局倒计时触发, 都不在 090 的上下文里 ⇒ 这里自己切(10-31 逐笔对账: 实发 11 万记 3 千)。
+	var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_090")
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
@@ -691,6 +693,7 @@ func pestle_slam(sl: Dictionary) -> void:
 		battle._damage._stun(o, float(sl["stun"]), "p2eq_090")
 		_knock_for(u, o, PESTLE_KB_SEC)
 		n += 1
+	battle._equip_sys.tally.pop(_tp)
 	var stt: Dictionary = (u as Dictionary)["eq_state"].get("p2eq_090", {})
 	stt["pestle_slams"] = int(stt.get("pestle_slams", 0)) + 1
 	stt["pestle_slam_hit"] = n
