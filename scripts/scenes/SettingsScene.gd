@@ -682,10 +682,13 @@ func _open_conflict_dialog() -> void:
 		## ★★原来是裸 `Button.new()` = Godot 默认皮(圆角灰板)。弹框里的动作钮 = `UISkin.card_button`(与商店「购买」同一种)。
 		UISkin.card_button(b)
 		var cb: Callable = o[2]
+		## ★重开本页走 SceneNav.go, 不用 `reload_current_scene()`(2026-10-31): 后者就是同步 `change_scene_to_file(当前场景)`,
+		##   设置页连同这颗按钮**当场离树**, 而同一下触摸抬起紧跟着还要派给它 ⇒ iOS 报
+		##   `!is_inside_tree() @ can_process (node.cpp:902)`。门禁: tests/verify_touch_detach_on_release.gd ③④
 		b.pressed.connect(func():
 			cb.call()
 			dim.queue_free(); _confirm_layer = null
-			get_tree().reload_current_scene())
+			SceneNav.go(get_tree(), scene_file_path))
 		box.add_child(b)
 		var cost := Label.new()
 		cost.text = str(o[1])
