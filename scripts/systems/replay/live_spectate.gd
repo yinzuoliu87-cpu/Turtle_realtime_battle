@@ -46,6 +46,9 @@ const TXT_SYNC := "同步中"
 const TXT_BROKEN := "直播中断"
 const TXT_STALL := "信号中断"
 const TXT_VERSION := "版本不同，无法观赛"
+## 周日开播(状态流): 进场后到画面动起来之前屏上那句(第一块还没到 / 守卫按住等块拉到「翻面至今」那一步)。
+##   ★2026-10-31 周日彩排 P14: 原来这段时间播放器是「已暂停 + playing」⇒ 一个字都没有, 实拍 15~30 秒空场地(方案书 20261031c §4.1 D)。
+const TXT_CONNECTING := "正在连接…"
 const BTN_WATCH := "观赛"
 
 ## 观众每隔几秒问一次服务端(内测规模可接受; 上量后换 Supabase Realtime 推送, 见方案书风险 2)。

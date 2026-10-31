@@ -2448,7 +2448,7 @@ func _on_poll() -> void:
 	##   **同一轮里陆续出结果**(一个桶里那几场不是同时结束的) ⇒ 半张图要等到下一轮才亮。
 	var sig := "%d/%d/%d" % [int(v.get("size", 0)), int(v.get("round", 0)),
 		(v.get("done", {}) as Dictionary).size()] + week_sig(_SB.finals_week_cached()) + "|p%d" % premiere_count() \
-		+ cup_sig(_SB.finals_cup_cached())
+		+ cup_sig(_SB.finals_cup_cached()) + feed_sig(_SB.finals_tried(), v)
 	## ★空了也要重画(比如服务端说「你没报名」) —— 只在"有数据且变了"时重画,
 	##   就会把开屏那句「正在连线」永远留在屏幕上。
 	if sig != _last_sig:
@@ -2463,6 +2463,14 @@ func _on_poll() -> void:
 		## 周末看回放: 有场次刚翻面 ⇒ 我那一场的录像(揭晓前压着没传)现在可以传了。
 		_RU.retry()
 	_sync_tip()
+
+
+## 「问名册」走到哪一步的指纹: 回没回音 / 回的是什么(还没分组 / 人太少 / 连不上 / 没有我这一组 = 空)。
+## ★2026-10-31 周日彩排 P13: 原来指纹只看 size / round / done ⇒「还没回音」({})与「回音是 size 0 的那几种」指纹相同,
+##   观赛那份先到、先重画过一次之后, finals_view 回来就再也不重画 ⇒ 屏停在「正在查询分组」
+##   (探针 tests/_probe_bracket_wait.gd: 回包 661 ms 就到了, 屏 65 秒不换)。门禁 tests/verify_bracket_first_answer.gd。
+static func feed_sig(tried: bool, v: Dictionary) -> String:
+	return "|f%d:%s:%d" % [1 if tried else 0, str(v.get("reason", "")), int(v.get("entered", 0))]
 
 
 ## 观赛那份数据的指纹: 组数 / 各组轮次 / 已翻面场数 / 收盘数。★任何一组翻面都要重画。

@@ -204,9 +204,11 @@ static func enter(tree: SceneTree, rec: Dictionary, back: String, names: Diction
 	for e in rec.get("events", []):
 		if e is Dictionary and str((e as Dictionary).get("k", "")) == "fight":
 			fights.append(int((e as Dictionary).get("s", 0)))
+	## 第一块到之前屏上那句: 补流 =「画面生成中」; 周日开播 =「正在连接直播…」(P14); 其余照旧「同步中」。
+	var wt := TXT_GENERATING if restream else (str(ls.TXT_CONNECTING) if str(s["kind"]) == KIND_PREMIERE else "")
 	StreamPlayer.pending = {"source": src, "seed": int(rec.get("seed", 0)), "controls": controls_for(str(s["kind"])),
 		"speed": ReplayRecorder._pref_speed if controls_for(str(s["kind"])) else 1.0,
-		"wait_text": TXT_GENERATING if restream else "", "fights": fights,
+		"wait_text": wt, "fights": fights,
 		"total": int((rec.get("end", {}) as Dictionary).get("s", -1)) if rec.get("end", null) is Dictionary else -1}
 	current = s
 	enters += 1
@@ -372,6 +374,8 @@ class Guard extends Node:
 				if str(sess.get("kind", "")) == "premiere":
 					_prem_pending = true
 					player.paused = true
+					## 按住的这段屏上要有字(P14): 播放器此刻是「playing + 已暂停」, 它自己那句是空的
+					player.hold_text = str(load(LS_PATH).TXT_CONNECTING)
 			elif Time.get_ticks_msec() - t0 > GUARD_TTL_MS:
 				_finish(null)
 			return
@@ -379,29 +383,35 @@ class Guard extends Node:
 			_premiere_step()
 
 	## 开播迟到入场: 块拉到目标步之后跳过去; 目标已过全场 ⇒ 从头当回放放。
+	## ★2026-10-31 周日彩排 P14(探针 tests/_probe_premiere_wait.gd, 内测服真流 9e27c7c7 · 81 块 / 4820 步):
+	##   「目标已过全场」原来只认 end.json(`src.ended()`) ⇒ 要把**整场块按顺序一块一块拉完**才知道全场多长;
+	##   开播窗口 240 秒而一场常常只有 80 秒 ⇒ 翻面 80 秒后才点进来的人(常见)先对着按住的空场地等整场下载完:
+	##   实测 LATE=100 秒进场 ⇒ 按住 15.5 秒(81 块 × ~0.19 秒/块)、再放 10 秒开场 ⇒ 28.5 秒才见到单位(录屏 27 秒「0:01」)。
+	##   ⇒ 全场多长改问播放器 `total_steps()`: end.json 到了按它, 没到按入口给的录像结算那一步(进场前就拿到了录像)。
 	func _premiere_step() -> void:
 		var p: Dictionary = sess.get("premiere", {})
 		var tgt: int = (load("res://scripts/systems/replay/stream_watch.gd") as GDScript).premiere_target(p)
 		var src = player.src
 		if src == null or str(player.state) == "error":
-			_prem_pending = false
-			player.paused = false
+			_release()
 			return
-		var last := int((src.end_meta() as Dictionary).get("last_step", -1)) if src.ended() else -1
+		var last: int = int(player.total_steps())
 		if last >= 0 and tgt >= last:
-			_prem_pending = false
-			player.paused = false
+			_release()
 			return
 		if int(player.first_step) < 0:
 			return
 		var have: int = int(player.first_step) + int(src.available()) * F.CHUNK_STEPS
 		if tgt <= int(player.first_step) + F.CHUNK_STEPS:
-			_prem_pending = false
-			player.paused = false
+			_release()
 		elif have > tgt + F.CHUNK_STEPS or src.ended():
 			player.seek(tgt)
-			_prem_pending = false
-			player.paused = false
+			_release()
+
+	func _release() -> void:
+		_prem_pending = false
+		player.paused = false
+		player.hold_text = ""
 
 	func _on_exit() -> void:
 		_finish(player)

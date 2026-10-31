@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tests/verify_premiere_join_wait.gd" id="1"]
+[node name="VerifyPremiereJoinWait" type="Node"]
+script = ExtResource("1")
