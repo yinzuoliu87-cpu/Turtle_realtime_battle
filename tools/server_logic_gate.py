@@ -119,7 +119,13 @@ def run_one(host):
             return True, ['%s: %s' % (host['name'], b) for b in bad]
         return True, []
     finally:
+        ## ★2026-10-31 Windows 上 `deno` 解析成 npm 的 `deno.CMD` ⇒ proc 是 cmd.exe, 真正的 deno.exe 是它的子进程。
+        ##   只 terminate 掉 cmd.exe ⇒ deno.exe 成了孤儿一直活着(本机 10-29 起攒了 31 个·945 MB, 还占着启动目录删不掉)。
+        ##   ⇒ Windows 上按 PID 连子进程一起关(/T); Linux 上 which 拿到的就是真程序, 照旧 terminate。
         try:
+            if os.name == 'nt':
+                subprocess.run(['taskkill', '/T', '/F', '/PID', str(proc.pid)],
+                               capture_output=True, timeout=30)
             proc.terminate()
             proc.wait(timeout=10)
         except Exception:
