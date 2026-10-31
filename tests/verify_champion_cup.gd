@@ -690,7 +690,7 @@ func _t_group_solo() -> void:
 		"%s / %s" % [str(m._bucket_kind()), str(m._view)])
 	_ok("⑧b ★★页签「小组赛 · 直接晋级」", str((m._tabs.get_child(0) as Button).text) == "小组赛 · 直接晋级",
 		str((m._tabs.get_child(0) as Button).text))
-	_ok("⑧b ★★正文说清去向: 「第 1 组仅 1 人 · 直接晋级冠军杯赛」+ 开赛时刻", et.begins_with("第 1 组仅 1 人 · 直接晋级冠军杯赛")
+	_ok("⑧b ★★正文说清去向: 「A 组仅 1 人 · 直接晋级冠军杯赛」+ 开赛时刻", et.begins_with("A 组仅 1 人 · 直接晋级冠军杯赛")
 		and et.find("开赛") >= 0 and m._empty_lb.visible, et)
 	_ok("⑧b ★★★1 人组的那一位 ⇒【组冠军】(不设门槛)", P2C.title_has(GameState.titles, P2C.TITLE_GROUP_CHAMPION, _wk),
 		str(GameState.titles))

@@ -161,11 +161,12 @@ func _ready() -> void:
 		## 今天那张的时间 == 模式卡第三行(同一个 `_mode_countdown`)
 		## ★2026-10-26 周末没资格(模式卡锁着)时第三格不是倒计时, 是去处(「观看全场赛况 »」/「观看对阵图 »」, 点卡直达)
 		##   ⇒ 锁着时量「去处 == `_mode_locked_door` 那一扇」; 没锁时照旧量「== 今天那张的时间」。
+		## ★2026-10-31(方案书 20261031c P18): 决赛日锁着的卡也回去数倒计时 / 当前阶段(观战去处挪到主按钮「观看决赛日」
+		##   与第二行右边的链接) ⇒ 只有周六锁着时第三格是去处; 周日锁不锁都量「== 今天那张的时间」。
 		var tinfo: Dictionary = mm.week_card_info(want_today, ts)
 		var l3: String = str(mm.mode_card_lines(ts)[2])
-		if mm.mode_card_locked(ts) and str(mm._mode_locked_door(ts)) != "":
-			var want_door: String = str(mm.MODE_WATCH_BOARD) if str(mm._mode_locked_door(ts)) == str(mm.WEEK_DOOR_BOARD) else str(mm.MODE_WATCH_BRACKET)
-			_ok("%s ★模式卡锁着 ⇒ 第三格是观战去处(与 `_mode_locked_door` 同一扇)" % tag, l3 == want_door, "%s / %s" % [l3, want_door])
+		if mm.mode_card_locked(ts) and str(mm._mode_locked_door(ts)) == str(mm.WEEK_DOOR_BOARD):
+			_ok("%s ★模式卡锁着 ⇒ 第三格是观战去处(与 `_mode_locked_door` 同一扇)" % tag, l3 == str(mm.MODE_WATCH_BOARD), "%s / %s" % [l3, mm.MODE_WATCH_BOARD])
 		else:
 			_ok("%s ★今天那张的时间 == 模式卡倒计时那一行" % tag, str(tinfo["time"]) == l3, "%s / %s" % [tinfo["time"], l3])
 		if iso == 6:

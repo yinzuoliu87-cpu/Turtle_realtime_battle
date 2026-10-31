@@ -363,8 +363,9 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	var ag := _named(card, RC.N_AGAIN) as Button
 	var bk := _named(card, RC.N_BACK) as Button
 	var title := _named(card, "ReplayResult") as Label
+	## 2026-10-31 收尾卡重做(方案书 20261031c P1): 自己那一场输了写「惜败」(原来「失败」); 赢了仍是「胜利」(普通结算那张美术字)
 	_ok("④ 卡上: 胜负 + 「再看一遍」+「返回战绩」", ag != null and bk != null and bk.text == "返回战绩"
-		and title != null and (title.text == "胜利" or title.text == "失败"), title.text if title != null else "")
+		and title != null and (title.text == "胜利" or title.text == "惜败"), title.text if title != null else "")
 	_ok("④ 结算屏没出来(回放不走结算)", b.find_child("SettleScreen", true, false) == null)
 	_ok("④ 分母: 操作条收起", not (_named(bar, "ReplayStrip") as Control).visible)
 	## 再看一遍

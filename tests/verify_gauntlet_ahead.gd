@@ -389,16 +389,19 @@ func _t_sunday_row() -> void:
 		"「%s」/「%s」/「%s」" % [s_in, s_try, s_no])
 	_ok("③ ★三态两两不同(有一对一样 = 那一维白分了)",
 		s_in != s_try and s_try != s_no and s_in != s_no)
-	## 指路那一句住在同一张模式卡的倒计时行(「查看对阵图 »」), 读数这一行只说「已晋级」—— 一张卡上不说两遍。
+	## 读数这一行只说「已晋级」; 指路不在这一行。
+	## ★2026-10-31(方案书 20261031c P17 / P18 / P19 · 块 M): 周日主菜单换成「今天的事」卡 + 主按钮「我的比赛」, 两处都直达对阵图
+	##   (点了去哪由 verify_menu_finals_hero ② 量); 模式卡倒计时那一格回去数倒计时 / 当前阶段。
 	_gs.promoted = true
 	_gs.gauntlet_wins = 4
 	_gs.gauntlet_losses = 1
 	var sun_card: String = " | ".join(PackedStringArray(m.mode_card_lines(SUN + SUN_EVE_H)))
+	var door: bool = m._wk().fd.hero_on(SUN + SUN_EVE_H)
 	_gs.promoted = false
 	_gs.gauntlet_wins = 0
 	_gs.gauntlet_losses = 0
-	_ok("③ ★进了决赛日的人要**指路**(模式卡上有对阵图的去处, 不在「开始战斗」后)",
-		s_in.find("已晋级") >= 0 and sun_card.find("对阵图") >= 0, "%s / %s" % [s_in, sun_card])
+	_ok("③ ★进了决赛日的人要**指路**(周日主菜单换成决赛日卡 + 「我的比赛」, 不是锁住的「开始战斗」)",
+		s_in.find("已晋级") >= 0 and door, "%s / %s / 换没换: %s" % [s_in, sun_card, str(door)])
 	_ok("③ ★★打过闯关赛没打进的人: **不许说他「没晋级」**(周一~五刚夸过他已过晋级线) —— " \
 			+ "与 `finals_block_msg(false, true)` 同一个口径",
 		s_try.find("未晋级") < 0, s_try)

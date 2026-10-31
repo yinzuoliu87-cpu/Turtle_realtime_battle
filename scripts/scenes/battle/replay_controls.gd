@@ -42,8 +42,18 @@ extends RefCounted
 ##   暂停 / 倍速改的是播放器(StreamPlayer.paused / speed), 进度条**可以拖**: 松手那一刻 `StreamPlayer.seek`(从最近的 keyframe 解,
 ##   不重算; 播放模式本来就没有 sim)。观赛(正在算 / 周六自己那一场 / 周日开播)照旧只有左下角「退出」。
 ##   「再看一遍」仍然没有(收尾卡那一条不变)。
+##
+## ★★2026-10-31 周日决赛日重做(docs/plans/20261031c-周日赛事界面重做.md C 块, 用户「比如这个框，这是商业游戏吗」):
+##   收尾改成三拍(finals_end_beats.gd); 周日开播多了开场 VS(finals_vs_intro.gd)与观战页那几样(finals_watch_hud.gd);
+##   「这一场是谁 / 哪一轮 / 下一场」的字全在 finals_ctx.gd。本文件只接线。
 
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
+## 周日决赛日: 每场结束分三拍 / 开场 VS / 观战页那几样(方案书 20261031c C 块; 这里只接线)
+const EndBeatsS := preload("res://scripts/scenes/battle/finals_end_beats.gd")
+const VsIntroS := preload("res://scripts/scenes/battle/finals_vs_intro.gd")
+const WatchHudS := preload("res://scripts/scenes/battle/finals_watch_hud.gd")
+const CtxS := preload("res://scripts/scenes/battle/finals_ctx.gd")
+const StreamWatchS := preload("res://scripts/systems/replay/stream_watch.gd")
 
 const COL_GOLD := Color("#ffd93d")
 const COL_LOSS := Color("#ff6b6b")
@@ -88,9 +98,9 @@ const TXT_ASK_LEAVE := "退出"
 const N_PAUSE := "ReplayPause"
 const N_SPEED := "ReplaySpeed"
 const N_EXIT := "ReplayExit"
-const N_AGAIN := "ReplayAgain"
-const N_BACK := "ReplayBack"
-const N_CARD := "ReplayEndCard"
+const N_AGAIN := EndBeatsS.N_AGAIN
+const N_BACK := EndBeatsS.N_BACK
+const N_CARD := EndBeatsS.N_CARD
 const N_PAUSED := "ReplayPausedTag"
 const N_TIME := "ReplayTime"
 const N_TICK_LBL := "ReplayTickLabel"   # + 下标 0/1/2(上路/下路/终极)
@@ -161,11 +171,13 @@ func build() -> Control:
 		_names = {"l": str(pair[0]), "r": str(pair[1])}
 	if _stream and not _stream_ctl():
 		_build_stream_exit(vp, m)
+		_build_finals(vp, m)           # 周日开播: 观战页那几样 + 按时进来的先看开场 VS(C 块)
 	elif _stream:
 		_build_strip(vp, m)            # 起播倍速由入口挂进 pending(StreamWatch.enter: 沿用上一次选的), 这里不改 —— 建条比播放晚一帧, 改了会盖掉已经在播的倍速
 		_build_paused_tag(vp)
 	elif battle._replay.is_live():
 		_build_live(vp, m)
+		_build_finals(vp, m)
 	else:
 		_build_strip(vp, m)
 		_build_paused_tag(vp)
@@ -371,10 +383,14 @@ func _sync_live() -> void:
 	var m: Vector4 = SafeArea.margins(vp, 18.0)
 	var sz := live_status.get_combined_minimum_size()
 	live_status.size = sz
+	## 观战页底部有「下一场」条(finals_watch_hud)⇒ 状态牌叠在它上面, 不压住它
+	var lift: float = 0.0
+	if hud != null and hud._n.has("next"):
+		lift = (hud._n["next"] as Control).size.y + 8.0
 	if shade:
 		live_status.position = Vector2((vp.x - sz.x) * 0.5, (vp.y - sz.y) * 0.5)
 	else:
-		live_status.position = Vector2((vp.x - sz.x) * 0.5, vp.y - m.w - sz.y - 6.0)
+		live_status.position = Vector2((vp.x - sz.x) * 0.5, vp.y - m.w - sz.y - 6.0 - lift)
 
 
 ## 暂停时屏幕中间「已暂停」: 像素标题字 48 号 + 描边(没有底板, 不再借结算屏的金属框)。
@@ -514,6 +530,8 @@ func refresh() -> void:
 		return
 	var rp = battle._replay
 	var sctl := _stream_ctl()
+	if hud != null:
+		hud.refresh()
 	if str(rp.mode) == "stream" and not sctl:
 		return
 	if rp.is_live():
@@ -591,6 +609,8 @@ func show_mismatch() -> void:
 	if strip != null:
 		strip.visible = false
 	_end_card(false, true)
+	if beats != null:
+		beats.skip_all()                   # 中断: 当场出全(只有一拍, 不放入场)
 
 
 ## 观赛中断(打的人断线 / 数据对不上): 当场出卡, 只有「返回」。
@@ -600,90 +620,133 @@ func show_broken() -> void:
 	if live_status != null:
 		live_status.visible = false
 	_end_card(false, true)
+	if beats != null:
+		beats.skip_all()
+
+
+# ─────────────────────────────── 收尾(2026-10-31 重做: 分三拍) ───────────────────────────────
+## 方案书 docs/plans/20261031c-周日赛事界面重做.md P1 / C 块 ②③④⑧(用户「比如这个框，这是商业游戏吗」):
+##   原来是一块金属框里三行字, 三种情况同一张卡。现在每场结束分三拍(标语 → 双方结果 → 我的处境与奖励),
+##   全部在 `finals_end_beats.gd`; 这里只接线。节点名沿用(`card` = ReplayEndCard 那一层)。
+
+## 收尾那一层(finals_end_beats 实例)
+var beats = null
 
 
 func _end_card(won: bool, broken: bool) -> void:
 	if card != null or root == null or not is_instance_valid(root):
 		return
-	_close_ask()                           # 收尾卡上有「返回」, 退出确认框不再留着
+	_close_ask()                           # 收尾上有「返回」, 退出确认框不再留着
+	if vs != null:
+		vs.finish()                        # 开场那一拍还没走完就结束了(极短的局 / 跳转): 先收掉
 	if battle._dmg_stats != null and battle._dmg_stats.panel != null and is_instance_valid(battle._dmg_stats.panel):
 		battle._dmg_stats.panel.visible = false
 	if live_exit != null:
-		live_exit.visible = false          # 收尾卡上有「返回」, 左下角那颗不再留着
-	var stream: bool = str(battle._replay.mode) == "stream"
-	if stream and exit_btn != null:
+		live_exit.visible = false          # 收尾上有「返回」, 左下角那颗不再留着
+	if str(battle._replay.mode) == "stream" and exit_btn != null:
 		exit_btn.visible = false
 	if live_shade != null:
 		live_shade.visible = false
-	var dim := ColorRect.new()
-	dim.name = N_CARD
-	dim.color = Color(0, 0, 0, 0.55)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(dim)
-	card = dim
-	var cc := CenterContainer.new()
-	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
-	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dim.add_child(cc)
-	var pc := PanelContainer.new()
-	pc.add_theme_stylebox_override("panel", SettleScreenS.frame_style())
-	pc.custom_minimum_size = Vector2(560, 0)
-	cc.add_child(pc)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 14)
-	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	pc.add_child(vb)
-	var title: String
-	var col: Color
+	beats = EndBeatsS.new(battle)
+	var info: Dictionary = beats.end_info(won, broken, _names, str(battle._replay.mode) == "stream", _stream_ctl())
+	card = beats.build(root, info, _vp())
+	if hud != null:
+		hud.refresh()
+	CtxS.bar_nudge()
+
+
+# ─────────────────────────────── 开场 VS / 观战页(周日开播) ───────────────────────────────
+
+## 开场 VS(finals_vs_intro)与观战页那几样(finals_watch_hud)
+var vs = null
+var hud = null
+
+
+## 观赛(周日开播)吗: 状态流开播会话, 或重算那条路的开播会话。
+func _premiere() -> bool:
+	var cur: Dictionary = StreamWatchS.current
+	if str(battle._replay.mode) == "stream":
+		return str(cur.get("kind", "")) == "premiere"
 	var lv = battle._replay.live if battle._replay.is_live() else null
-	if broken:
-		title = "回放中断"
-		if lv != null:
-			title = str(lv.broken_why) if str(lv.broken_why) != "" else lv.TXT_BROKEN
-		col = COL_LOSS
-	else:
-		title = ReplayRecorder.end_caption(won)
-		var own := ReplayRecorder.play_names.is_empty()
-		col = (COL_GOLD if won else COL_LOSS) if own else COL_GOLD
-	var tl := _lbl(title, 44, col, HORIZONTAL_ALIGNMENT_CENTER)
-	## 固定文案(胜利 / 失败 / 回放中断 / 直播中断)用像素标题字 48 号; 「<昵称> 获胜」是玩家输入的字, 照旧正文字体 44 号
-	##   (docs/plans/20261027-UI美术规矩.md §4.1 硬规矩 2)。判据与 ReplayRecorder.end_caption 同一条: 有没有拿到名字。
-	var nick_title: bool = not broken and str(ReplayRecorder.play_names.get("l" if won else "r", "")) != ""
-	if not nick_title:
-		UISkin.title_label(tl, 48)
-	tl.name = "ReplayResult"
-	vb.add_child(tl)
+	return lv != null and str(lv.kind) == "premiere"
+
+
+## 周日开播(决赛日那一场)才建观战页那几样; 按时进来的人先看开场 VS(迟到的直接看实时, G17)。
+func _build_finals(vp: Vector2, m: Vector4) -> void:
+	if not WatchHudS.wanted(ReplayRecorder.play_names) or not _premiere():
+		return
+	hud = WatchHudS.new(battle, self)
+	hud.build(root, vp, m, _names)
+	if not hud.late:
+		start_vs()
+
+
+## 开场 VS 的内容(纯数据): 轮次 / 名牌 / 双方锁定阵容(录像开局状态)/ 迷你对阵。
+func intro_info() -> Dictionary:
+	var pn: Dictionary = ReplayRecorder.play_names
+	var st := CtxS.stage_of(pn)
 	var sub := ""
-	if broken:
-		sub = "回放异常，无法继续播放" if lv == null else ""
-	else:
-		var l := str(_names.get("l", ""))
-		var r := str(_names.get("r", ""))
-		if l != "" and r != "":
-			sub = "%s  对  %s" % [l, r]
-		var tot: int = battle._replay.total_steps()
-		if tot > 0 and lv == null and (not stream or _stream_ctl()):       # 观赛不报全场时长(状态流只有回放报)
-			sub += ("  ·  " if sub != "" else "") + "全场 " + clock(tot)
-	if sub != "":
-		vb.add_child(_lbl(sub, 20, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER))
-	var hb := HBoxContainer.new()
-	hb.alignment = BoxContainer.ALIGNMENT_CENTER
-	hb.add_theme_constant_override("separation", 18)
-	vb.add_child(hb)
-	if not broken and lv == null and not stream:          # 「再看一遍」只有回放有(状态流没有输入录像, 再看一遍会变成本机重算)
-		var ag := Button.new()
-		ag.name = N_AGAIN
-		ag.text = "再看一遍"
-		SettleScreenS.dress_btn(ag, Color("#ffe7a0"))
-		ag.pressed.connect(func() -> void: ReplayRecorder.play_again(battle.get_tree(), battle._replay.rec))
-		hb.add_child(ag)
-	var bk := Button.new()
-	bk.name = N_BACK
-	bk.text = back_label()
-	SettleScreenS.dress_btn(bk, Color("#e8f0f6"))
-	bk.pressed.connect(battle._hud._replay_exit)
-	hb.add_child(bk)
+	if int(st.get("match_i", 0)) >= 1 and int(st.get("match_n", 0)) > 1:
+		sub = "第 %d / %d 场" % [int(st["match_i"]), int(st["match_n"])]
+	var ghost: Dictionary = GameState.dual_ghost if GameState != null and GameState.dual_ghost is Dictionary else {}
+	var ld: Array = GameState.season_leaders if GameState != null and GameState.season_leaders is Array else []
+	var lu: Dictionary = GameState.dual_lineup if GameState != null and GameState.dual_lineup is Dictionary else {}
+	var lead: Dictionary = EndBeatsS.leaders_of(lu, ld, ghost)
+	var cards := CtxS.side_cards(pn, _names)
+	var out := {"title": CtxS.round_title(st), "sub": sub, "gold": CtxS.is_cup_final(st), "note": CtxS.TXT_LOCKED,
+		"mini": pn.get("mini", {}) if pn.get("mini", {}) is Dictionary else {}, "cards": {}, "lineups": {}}
+	if str(out["title"]) == "":
+		out["title"] = "决赛日"
+	for side in ["left", "right"]:
+		var cd: Dictionary = cards[side]
+		var pids: Array = lead[side]
+		out["cards"][side] = {"name": str(_names.get("l" if side == "left" else "r", "")),
+			"pid": str(pids[0]) if not pids.is_empty() else "", "origin": CtxS.origin_of(cd, st),
+			"record": str(cd.get("record", "")), "title": str(cd.get("title", ""))}
+	out["lineups"]["left"] = _lane_rows(lu, ld, true)
+	out["lineups"]["right"] = _lane_rows(ghost, [], false)
+	return out
+
+
+## 一边按路的阵容行 [[路, [{pid, minion}]]]: 左 = 录像方分路阵容(slot → season_leaders), 右 = 对手快照(老结构 dg[路] / lane_assign + minions)。
+static func _lane_rows(src: Dictionary, leaders: Array, mine: bool) -> Array:
+	var rows: Array = []
+	for ln in ["top", "bottom"]:
+		var specs: Array = []
+		var arr = src.get(ln, null)
+		if arr is Array and not (arr as Array).is_empty():
+			for sp in arr:
+				if not (sp is Dictionary):
+					continue
+				var d: Dictionary = (sp as Dictionary).duplicate()
+				if mine and str(d.get("kind", "")) == "leader" and str(d.get("id", "")) == "":
+					var sl := int(d.get("slot", -1))
+					d["id"] = str(leaders[sl]) if sl >= 0 and sl < leaders.size() else ""
+				specs.append(d)
+		elif not mine and src.get("lane_assign", {}) is Dictionary:
+			for pid in (src["lane_assign"] as Dictionary).get(ln, []):
+				specs.append({"kind": "leader", "id": str(pid)})
+			var mn = src.get("minions", {})
+			if mn is Dictionary:
+				for mi in (mn as Dictionary).get(ln, []):
+					specs.append({"kind": "minion", "role": str((mi as Dictionary).get("role", "")) if mi is Dictionary else ""})
+		rows.append([ln, CtxS.lineup_pids(specs)])
+	return rows
+
+
+## 放开场 VS(门禁也直接调)。
+func start_vs() -> void:
+	if vs != null or root == null or not is_instance_valid(root):
+		return
+	vs = VsIntroS.new()
+	vs.on_done = func() -> void:
+		vs = null
+		if hud != null:
+			hud.refresh()
+		CtxS.bar_nudge()
+	vs.build(root, intro_info(), _vp())
+	if hud != null:
+		hud.refresh()                      # 观战页那一块停靠位当场收起(开场 VS 有自己的), 全局小条不在两块之间来回跳
 
 
 ## 「返回」按钮说清回哪一页。

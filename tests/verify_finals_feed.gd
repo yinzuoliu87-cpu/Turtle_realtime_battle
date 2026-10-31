@@ -679,6 +679,12 @@ func _t_empty() -> void:
 			_tw = _fnt.get_string_size(_tb.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 				_tb.get_theme_font_size("font_size")).x
 		var _bw: float = maxf(_tb.size.x, _tb.custom_minimum_size.x)
+		## ★2026-10-31 对阵图整页重做: 页签 = 81 高的透明热区 + 底下一块牌子(`Plate`, 2px 描边 + 底);
+		##   字压没压边, 量的是那块看得见的牌子(边带 = 描边 2px), 不是热区。
+		var _plate: Control = _tb.get_node_or_null("Plate")
+		if not (_sbx is StyleBoxTexture) and _plate != null:
+			_band = 2.0
+			_bw = _plate.size.x
 		_ok("⑥ ★★★页签「%s」的字没压在木边带上" % _tb.text,
 			_band > 0.0 and _tw > 0.0 and _tw + _band * 2.0 <= _bw,
 			"字宽 %.0f + 边带 %.0f×2 = %.0f ≤ 按钮宽 %.0f" % [_tw, _band, _tw + _band * 2.0, _bw])

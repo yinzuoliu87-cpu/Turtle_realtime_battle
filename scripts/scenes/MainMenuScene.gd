@@ -317,6 +317,7 @@ func _ready() -> void:
 		_rwn.notice = ""
 	## 入账动画 + 周末收盘卡(2026-10-26)。有卡时「第一次遇到」那条提示等卡关完再出(一次一件事)。
 	_wk().run()
+	_wk().fd.start(paint_ts)   # 周日: 上周冠军挂门面 + 收盘后没守到最后的人补看(menu_finals_day.gd)
 	if _wk().queue.is_empty() and not _first_week():
 		_first_tip(paint_ts)
 
@@ -586,6 +587,8 @@ func _build_page_buttons(now: int = 0) -> void:
 	# ── 开始战斗: 右下角主 CTA —— 全屏最大, 也是全屏唯一一块实心亮色 ──
 	#    横屏手机右手拇指的落点(荒野乱斗 / 使命召唤 / 刀塔霸业 三张参考同位)。
 	if _mq().build_hero():   # 周六排队中: 换成排队态(匹配中 + 已等待)+ 左侧取消键, 见 menu_queue.gd
+		return
+	if _wk().fd.build_hero(ts):   # 周日: 「今天的事」卡 + 「我的比赛 / 观看直播」(menu_finals_day.gd; 周一~周六不建)
 		return
 	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", battle_locked, true)
 	hero.position = HERO_POS
@@ -1342,7 +1345,7 @@ func _finals_status_line(now: int = 0) -> String:
 	if not _P2C.phase_mode_live(_P2C.PHASE_FINALS):
 		return ""
 	if GameState.gauntlet_state() == _P2C.GAUNTLET_IN:
-		return "决赛日 · 已晋级"
+		return "决赛日 · %s" % _wk().fd.entered_word(ts)   # 已晋级 / 已晋级冠军杯赛 / 已止步 / 本周冠军(跟着赛果走)
 	var lab: String = _P2C.gauntlet_label(
 		int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if GameState.gauntlet_eligible():
@@ -1660,8 +1663,8 @@ func _mode_countdown(now: int) -> String:
 		BK_CLOSED_TODAY:
 			return "今日已截止"
 		BK_BRACKET_DOOR:
-			## 决赛日那一场在对阵图里, 门在本周赛程里 —— 这一行就是指路。
-			return "查看对阵图 »"
+			## 2026-10-31 P18: 17:30 收盘后也是倒计时 / 当前阶段; 对阵图的门在决赛日卡与主按钮上(menu_finals_day.gd)。
+			return _wk().fd.band_text(now)
 	var nxt: int = _next_phase_start(now)
 	return "距%s开始 %s" % [str(_P2C.PHASE_LABEL.get(_P2C.phase_at_utc(nxt), "")), _left_text(nxt - now)]
 
@@ -1679,13 +1682,11 @@ func mode_card_lines(now: int) -> Array:
 	var st: String = _phase_status_line(now)
 	if st != "":
 		second = _strip_phase_head(st, title)
-	## ★2026-10-26 周末没资格的人: 收盘倒计时与他无关(原来锁着的卡上还写「距截止 11 小时」),
+	## ★2026-10-26 周六没资格的人: 收盘倒计时与他无关(原来锁着的卡上还写「距截止 11 小时」),
 	##   这一格换成去处 —— 点卡直达观战(`_on_mode_tap`), 不必先开赛程页再找那扇门。
-	var door: String = _mode_locked_door(now)
-	if door == WEEK_DOOR_BOARD:
+	##   决赛日(2026-10-31 P18)人人都留倒计时 / 当前阶段, 去处在决赛日卡与主按钮上(menu_finals_day.gd)。
+	if _mode_locked_door(now) == WEEK_DOOR_BOARD:
 		return [title, second, MODE_WATCH_BOARD]
-	if door == WEEK_DOOR_BRACKET:
-		return [title, second, MODE_WATCH_BRACKET]
 	return [title, second, _mode_countdown(now)]
 
 
@@ -1994,10 +1995,12 @@ func _sb_poll() -> void:
 	_conflict_nudge_sync()
 	## (E15 那句「发现新版本」飘字 2026-10-19 撤掉: 低于最低版本现在由 GameState 下的整屏挡墙 VersionWall 接管。)
 	var s: String = _SB.service_state()
+	var now: int = _strip_now()
+	_wk().fd.tick(now)   # 周日主按钮: 副标跟着时刻 / 赛果走, 阶段一变闪一下(menu_finals_day.gd)
 	## ★★2026-10-03 周六实操 S16: 原来**只在服务状态变了才重画** ⇒ 倒计时停在打开主菜单那一刻
 	##   (22:36 与 22:49 两张截图都写「距收盘 24 分 18 秒」), 22:50 的「已封盘」也永远出不来。
 	##   ⇒ 右侧那一块要显示的东西(档位 + 剩余时间文字)变了也重画。
-	if s == _sb_state_shown and _close_key(_strip_now()) == _close_key_shown:
+	if s == _sb_state_shown and _close_key(now) == _close_key_shown:
 		return
 	rebuild_week_page()
 

@@ -442,14 +442,21 @@ func _t_watch() -> void:
 	##   换成像素按钮表 `UISkin.PIXEL_BTN`; 观赛 = 红那一行, 关闭 = 石板那一行(表的行号见 ui_skin.gd)。
 	##   量的是**按钮真拿到的那张 StyleBox**, 不是调用方传了什么参数。
 	var cl := m.find_child(BMS.N_POPUP_CLOSE, true, false) as Button
-	for pair in [[go, 0, "观赛=红"], [cl, 2, "关闭=石板"]]:
+	## ★★2026-10-31 对阵图整页重做(20261031c 块 B): 卡片 / 弹框里的按钮一律 `UISkin.card_button`(用户 10-22「说了无数遍」,
+	##   与商店「购买」同一种; memory fb-no-wood-sign-buttons)。量的仍是**按钮真拿到的那张 StyleBox**: 与现做一颗 card_button 的逐项相同,
+	##   且不是木牌贴图(`menu/frame-rect.png`)。
+	var ref := Button.new()
+	UISkin.card_button(ref)
+	var rsb := ref.get_theme_stylebox("normal") as StyleBoxFlat
+	for pair in [[go, "观赛"], [cl, "关闭"]]:
 		var pb := pair[0] as Button
 		var psb = pb.get_theme_stylebox("normal") if pb != null else null
 		var ppath := str((psb as StyleBoxTexture).texture.resource_path) if psb is StyleBoxTexture else ""
-		var prow := int((psb as StyleBoxTexture).region_rect.position.y / UISkin.PX_CELL.y) if psb is StyleBoxTexture else -1
-		_ok("⑤ ★弹卡按钮(%s)用像素按钮皮, 不是木牌" % str(pair[2]),
-			ppath == UISkin.PIXEL_BTN and prow == int(pair[1]) and ppath.find("frame-rect") < 0,
-			"贴图 %s 行 %d" % [ppath, prow])
+		var same: bool = psb is StyleBoxFlat and rsb != null and (psb as StyleBoxFlat).bg_color == rsb.bg_color \
+			and (psb as StyleBoxFlat).border_color == rsb.border_color and (psb as StyleBoxFlat).border_width_top == rsb.border_width_top
+		_ok("⑤ ★弹卡按钮(%s)用卡片按钮皮(card_button), 不是木牌" % str(pair[1]), same and ppath.find("frame-rect") < 0,
+			"%s %s" % [psb.get_class() if psb != null else "无", ppath])
+	ref.free()
 	go.pressed.emit()
 	var b = await _wait_scene(_is_battle)
 	_ok("⑤ ★进了战斗场、是观赛(开播)", b != null and b._replay.is_live() and str(b._replay.live.kind) == LS.KIND_PREMIERE,

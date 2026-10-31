@@ -43,6 +43,7 @@ PreloadCache="*res://autoload/preload_cache.gd"
 ShotDiff="*res://autoload/shot_diff.gd"
 CursorTheme="*res://autoload/CursorTheme.gd"
 TutorialDirector="*res://autoload/tutorial_director.gd"
+FinalsDay="*res://scripts/ui/finals_day_layer.gd"
 
 [debug]
 

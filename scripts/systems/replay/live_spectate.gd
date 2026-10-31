@@ -31,6 +31,8 @@ const RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
 const SW := preload("res://scripts/systems/replay/stream_watch.gd")
+## 2026-11-01 一场接一场: 组里带 seq(服务端 20261101 迁移)⇒ 窗口按场走它; 没有 ⇒ 下面的老窗口(同一轮同一刻开播)。
+const PS := preload("res://scripts/systems/replay/premiere_schedule.gd")
 
 const KIND_LIVE := "live"
 const KIND_PREMIERE := "premiere"
@@ -421,9 +423,9 @@ static func _fallback_replay(tree: SceneTree, id: String, done: Callable, back: 
 ## 对阵图一组(`SupabaseNet._bucket_from` 的形状)。
 
 ## 最近一次翻面的是第几轮(0 = 还没翻过)。没收盘: 当前轮的上一轮; 收盘: 最后一轮。
+## ★唯一实现在 PremiereSchedule.flipped_round(dup_primitive_audit 守), 这里只转调。
 static func premiere_round(b: Dictionary) -> int:
-	var rnd := int(b.get("round", 1))
-	return rnd if bool(b.get("closed", false)) else rnd - 1
+	return PS.flipped_round(b)
 
 
 ## 那一次翻面的时刻(服务端 unix 秒; 0 = 不知道 ⇒ 不开播、直接揭晓)。
@@ -452,7 +454,10 @@ static func premiere_end(flip: int, steps: int) -> int:
 
 ## ★判据中心: 这一场此刻是不是在开播窗口里(⇒ 不许显示胜负)。`now` = 服务端时钟。
 ##   只管「已翻面的那一轮」: 更早的轮一轮至少 8 分钟(`finals_round_sec`), 窗口早过了。
+## ★2026-11-01 一场接一场(组里有 seq): 即将开播 + 开播中都藏, 按每场自己的档期(`premiere_schedule.state`)。
 static func premiere_hidden(b: Dictionary, r: int, m: int, now: int) -> bool:
+	if PS.is_seq(b):
+		return PS.hidden(b, r, m, now, watched.has(premiere_key(b, r, m)))
 	if not (b.get("done", {}) as Dictionary).has("%d-%d" % [r, m]):
 		return false
 	if r < 1 or r != premiere_round(b):
@@ -466,7 +471,25 @@ static func premiere_hidden(b: Dictionary, r: int, m: int, now: int) -> bool:
 	return now < premiere_end(ft, int(known_len.get(k, 0)))
 
 
+## 2026-11-01 一场接一场: 这一场已翻面、但还没轮到它开播(不许显示胜负, 也不能点开)。老规则恒 false。
+static func premiere_upcoming(b: Dictionary, r: int, m: int, now: int) -> bool:
+	return PS.state(b, r, m, now, watched.has(premiere_key(b, r, m))) == PS.S_UPCOMING
+
+
+## 2026-11-01 一场接一场: 对阵图顶上那一行(「第 1 场开播中 · 第 2 场 2 分 30 秒后开播」); "" = 老规则 / 不在开播段。
+##   这台设备看完了的那一场按已揭晓算(与 `premiere_hidden` 同一份 watched)。
+static func premiere_round_line(b: Dictionary, now: int, fmt: Callable) -> String:
+	var seen: Dictionary = {}
+	var r := PS.flipped_round(b)
+	for it in PS.lineup(b, r):
+		if watched.has(premiere_key(b, r, int(it[0]))):
+			seen[int(it[0])] = true
+	return PS.round_line(b, now, fmt, seen)
+
+
 ## 点「观赛」之前挂上的会话。`now` = 服务端此刻。
+## ★2026-11-01 一场接一场: 起点 = 这一场自己的开播时刻(不是整轮的翻面时刻), 跟播「该到第几步」从它算。
 static func premiere_session(b: Dictionary, r: int, m: int, now: int) -> Dictionary:
-	return {"kind": KIND_PREMIERE, "flip_ts": flip_ts_of(b), "srv_now": now,
+	var st := PS.start_of(b, r, m)
+	return {"kind": KIND_PREMIERE, "flip_ts": st if st > 0 else flip_ts_of(b), "srv_now": now,
 		"t_ms": Time.get_ticks_msec(), "key": premiere_key(b, r, m)}

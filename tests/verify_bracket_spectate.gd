@@ -330,7 +330,8 @@ func _t_spectate() -> void:
 		str(m._shop_row.text) if m._shop_row != null else "")
 	m._spec_step(1)
 	await get_tree().process_frame
-	_ok("③ 换到下一组(2 人)", int(m.cur().get("size", 0)) == 2 and str(m._spec_lb.text).find("第 2 组") >= 0,
+	## 组名「A 组 / B 组」(主会话 10-31 定, 唯一来源 ChampionData.group_name)
+	_ok("③ 换到下一组(2 人)", int(m.cur().get("size", 0)) == 2 and str(m._spec_lb.text).find("B 组") >= 0,
 		str(m._spec_lb.text))
 	_ok("③ ★★★第二组当前轮的决赛结果也没漏", (m.cur().get("done", {}) as Dictionary).is_empty()
 		and _count_ticks(m._canvas) == 0, str(m.cur().get("done", {})))

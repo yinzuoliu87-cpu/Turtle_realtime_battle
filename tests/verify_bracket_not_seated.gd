@@ -58,6 +58,11 @@ func _ready() -> void:
 	var _i0 := _src.find("func _sync_tip")
 	var _i1 := _src.find("\nfunc ", _i0 + 10)
 	var _body := _src.substr(_i0, (_i1 if _i1 > 0 else _src.length()) - _i0)
+	## ★2026-10-31 对阵图整页重做: 那一行的字抽到 `tip_text()`(固定件排版也要先知道它在不在) ⇒ 连它一起量。
+	var _k0 := _src.find("func tip_text")
+	if _k0 >= 0:
+		var _k1 := _src.find("\nfunc ", _k0 + 10)
+		_body += _src.substr(_k0, (_k1 if _k1 > 0 else _src.length()) - _k0)
 	_ok("★分母: 找到 _sync_tip", _i0 >= 0 and _body.length() > 50)
 	## ★2026-10-11 那行字抽成纯函数 `round_tip`(最后一轮说「决赛」), `_sync_tip` 调它 ⇒ 两段一起量。
 	var _j0 := _src.find("static func round_tip")

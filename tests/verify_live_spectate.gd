@@ -588,7 +588,9 @@ func _t_board_and_watch() -> void:
 	var card: Node = b.find_child(RC.N_CARD, true, false)
 	var won := bool((_final_rec["end"] as Dictionary).get("won", false))
 	var foe_nm := str(((_final_rec["state"]["dual_ghost"] as Dictionary).get("profile", {}) as Dictionary).get("name", "~"))
-	var want := "%s 获胜" % (str(my_lp.get("name", "")) if won else foe_nm)
+	## 2026-10-31 收尾卡重做(方案书 20261031c P1): 这一场打的人就是本机账号(见 ②)⇒ 是「自己那一场」,
+	##   大标题按自己赢 / 输写「胜利」/「惜败」, 不再写「X 获胜」(那是看别人时的写法, verify_replay_end_card 量)。
+	var want := "胜利" if won else "惜败"
 	var res := card.find_child("ReplayResult", true, false) as Label if card != null else null
 	_ok("④ ★收尾卡揭晓谁赢:「%s」" % want, res != null and res.text == want, res.text if res != null else "<无卡>")
 	_ok("④ ★收尾卡没有「再看一遍」、有「返回赛况」", card != null and card.find_child(RC.N_AGAIN, true, false) == null

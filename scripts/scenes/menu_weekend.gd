@@ -9,6 +9,7 @@ class_name MenuWeekend
 ## 用户 10-26:「获得深海币有动画吗，看看商业游戏」「没晋级的你第一次进搞个弹窗？你设计一下，其他你都设计一下」。
 
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const _FD := preload("res://scripts/scenes/menu_finals_day.gd")
 
 ## 被拦时那张卡的节点名; 正文在 Body0(门禁按名字读屏上那句话)。
 const BLOCK_CARD_NAME := "BlockCard"
@@ -25,10 +26,13 @@ var menu                       # MainMenuScene
 var fly_settle := 0
 var fly_cards := 0
 var queue: Array = []          # 待弹的收盘卡(WeekCloseCard.KIND_*), 按先后
+## 周日决赛日的主按钮 / 模式卡那一格(menu_finals_day.gd; 2026-10-31 方案书 20261031c 块 C)。主菜单经 `_wk().fd` 转调。
+var fd
 
 
 func _init(m) -> void:
 	menu = m
+	fd = _FD.new(m)
 
 
 ## 收盘卡只在玩家真走到的那一屏弹: 门禁 / 冒烟把主菜单挂成子节点时不弹(同首次提示那条); 教程沙盒里不弹。

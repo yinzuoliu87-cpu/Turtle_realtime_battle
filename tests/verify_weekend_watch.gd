@@ -281,7 +281,9 @@ func _t_bracket() -> void:
 			if str(m.match_state(r, mm)) == MAP.ST_DONE:
 				done_n += 1
 				## 审图第三版: 整格就是热区(盖满这一格、短边 ≥ 81)、右沿一枚 ▶; 对阵图上没有「观看」字样的按钮
-				var nr: Rect2 = L.node_rect(n, r, mm)
+				## ★2026-10-31 对阵图整页重做(2~8 人的图走对阵卡): 「整格热区」量的是按钮盖满它所在那张卡(卡的大小由新版式定,
+				##   不再是 bracket_layout 的横条)。
+				var nr: Rect2 = Rect2(Vector2.ZERO, (holder as Control).size) if holder is Control else L.node_rect(n, r, mm)
 				if bt == null or not pm or _short(bt) < TOUCH or not bt.visible or str(bt.text) != "" 						or absf(bt.size.x - nr.size.x) > 1.0 or absf(bt.size.y - nr.size.y) > 1.0:
 					bad.append("%d-%d %s" % [r, mm, ("btn %s ▶=%s" % [str(bt.size), pm]) if bt != null else "无按钮"])
 			else:
@@ -328,6 +330,7 @@ func _t_bracket() -> void:
 	var por_bad := 0
 	var tex_n := 0
 	var letter_n := 0
+	var default_n := 0
 	for h in m._canvas.get_children():
 		var ps: Array = _portraits(h, false)
 		if ps.is_empty():
@@ -336,14 +339,19 @@ func _t_bracket() -> void:
 		if ps.size() != 2:
 			por_bad += 1
 		for p in ps:
+			if str((p as Node).get_meta("Portrait", "")) == "default":
+				default_n += 1
 			for k in (p as Node).get_children():
 				if k is TextureRect and (k as TextureRect).texture != null:
 					tex_n += 1
-				elif k is Label and str((k as Label).text) != "":
+				elif k is Label and str((k as Label).text) != "" and str((k as Label).text) != "?":
 					letter_n += 1
 	_ok("② ★每一格两侧各一个头像节点(7 格)", holders == 7 and por_bad == 0, "%d 格 / %d 格不对" % [holders, por_bad])
-	## 第一轮 8 个人全在 + 第二轮 4 个人(胜者) ⇒ 12 个有人的坑; 庚(6)/辛(7)没喂头像 ⇒ 写首字。
-	_ok("② ★喂了头像的人画龟, 没喂的写名字首字(不编造)", tex_n >= 8 and letter_n >= 2, "龟 %d / 首字 %d" % [tex_n, letter_n])
+	## 第一轮 8 个人全在 + 第二轮 4 个人(胜者) ⇒ 12 个有人的坑; 庚(6)/辛(7)没喂头像。
+	## ★2026-10-31 对阵图整页重做(20261031c ⑨ · 彩排 P7「头像一半是名字首字」): 对不上的人画默认龟头像, 不再写首字;
+	##   决赛那一格两侧都还没产生 ⇒ 问号(不是首字, 不计)。
+	_ok("② ★喂了头像的人画他的头像, 没喂的画默认龟头像(不写首字)", tex_n >= 12 and letter_n == 0 and default_n >= 2,
+		"有图 %d / 默认龟 %d / 首字 %d" % [tex_n, default_n, letter_n])
 	m.queue_free()
 	await _frames(2)
 	## 我这一场(当前轮、对手已定): 格子上金色 ▶ +「对战」小签; 点了弹卡, 主按钮「开始对战」

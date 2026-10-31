@@ -525,7 +525,8 @@ func _t_other_groups() -> void:
 	await _frames(2)
 	_ok("⑥ ★★下一组 ⇒ 画的是第 2 组(别人那一组), 我不在里面", int(m.cur().get("bucket", -1)) == 1 and int(m.cur().get("me", 0)) == -1,
 		"bucket=%d me=%d" % [int(m.cur().get("bucket", -1)), int(m.cur().get("me", 0))])
-	_ok("⑥ 那一行说「观战 · 第 2 组」", str(m._spec_lb.text).find("观战") >= 0 and str(m._spec_lb.text).find("第 2 组") >= 0, str(m._spec_lb.text))
+	## 组名「A 组 / B 组」(主会话 10-31 定, 唯一来源 ChampionData.group_name)
+	_ok("⑥ 那一行说「观战 · B 组」", str(m._spec_lb.text).find("观战") >= 0 and str(m._spec_lb.text).find("B 组") >= 0, str(m._spec_lb.text))
 	var fetch := false
 	for r in range(1, 3):
 		for mm in range(2 if r == 1 else 1):

@@ -2228,8 +2228,8 @@ static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dic
 		##   （与上面 `left` 同一条纪律：本机时钟偏了也不影响，只要它走得不快不慢）。
 		"round_at": int(d.get("round_at", 0)), "srv_now": int(d.get("now", 0)),
 		## ★2026-10-07 实时观赛: 最近一次翻面的时刻(服务端 20261007 迁移起下发; 没有 = 0 ⇒ 客户端退回 round_at)。
-		##   开播窗口按它算(`live_spectate.premiere_hidden`)。JSON null 也当 0。
-		"revealed_at": int(d.get("revealed_at", 0)) if d.get("revealed_at", null) != null else 0}
+		##   开播窗口按它算(`live_spectate.premiere_hidden`)。JSON null 也当 0。`seq` = 20261101 一场接一场的档期: 原样带过去, 解析只在 premiere_schedule.gd。
+		"revealed_at": int(d.get("revealed_at", 0)) if d.get("revealed_at", null) != null else 0, "seq": d.get("seq", null)}
 
 
 # ─────────────────────────────────────────────────────────────
