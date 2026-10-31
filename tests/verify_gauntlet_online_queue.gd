@@ -114,9 +114,12 @@ const RANKED := {
 	},
 	## ★2026-10-30 选龟页整页重做: 这一页的画法 / 版式是用户点名要改的(选人 / 存档 / 出战进匹配的流程一行没动),
 	##   基线单独钉到那次提交 b55450a2(其余文件仍比 84d2d853); units = 那次提交里这个文件的全部 72 个函数。
+	## ★2026-10-31 选龟页动效(用户 10-30「他们游戏是动态的」; 方案书同上 §4.9 / §4.10)再钉到 1f8baa93:
+	##   只动了 _build_ui(接上 _motion.setup)、_play_entrance(交给 TsMotion)、_build_grid_region(iPad 龟池长到屏底)三处画法;
+	##   选人 / 存档 / 出战进匹配的函数逐字未动(1f8baa93 与 b55450a2 比, 其余 69 个函数单元 sha256 相同)。
 	"scripts/scenes/TeamSelectScene.gd": {
-		"base": "b55450a2",
-		"digest": "97726bfcfd3c42dcf21e86a9541e3c94cbdc62f81e6a1d8e8c0f076e00884ef4",
+		"base": "1f8baa93",
+		"digest": "da5ef1b1373fb8610ba227e8e1083ca4243612dd5f6688afa41069ad5c269271",
 		"views": {},
 		"sat_only": [],
 		"units": [
