@@ -897,15 +897,21 @@ func _t_e() -> void:
 		return
 	var p: StreamPlayer = b._replay.player
 	_ok("E ★播放器接着用 VS 卡上拉块的那一份来源(已到的块不重拉)", src_buf != null and p.src == src_buf)
+	## ★2026-10-31 改判据(用户「就开始匹配的时候就直接两队就开打了，什么都不显示…上半场打完之后马上就清窗」):
+	##   原来这里钉的是 10-29 的「进场就是开打」(没有幕布 ⇒ 开场一帧跳过)。现在流里带开局状态(rs)⇒ 有幕布,
+	##   进场看到的是对阵总览幕布、按 1 倍走(不是空场地, 也不是直接开打)。
 	var fr := 0
-	while fr < 30 and not (p.state == "playing" and str(b._dl_state) == "fight" and not (b._units as Array).is_empty()):
+	var pr_ok := func() -> bool:
+		var pr = b.get("_dl_present_root")
+		return pr != null and is_instance_valid(pr) and (pr as CanvasItem).is_visible_in_tree()
+	while fr < 30 and not (p.state == "playing" and str(b._dl_state) in ["overview", "preview"] and pr_ok.call()):
 		fr += 1
 		await get_tree().process_frame
-	_ok("E ★进场就是开打(%d 帧内: 在播、战场状态 fight、场上 %d 个单位; 原来先对着空场地「同步中」再走 10 秒总览 + 预览)"
-		% [fr, (b._units as Array).size()], fr <= 10 and p.state == "playing" and str(b._dl_state) == "fight"
-		and not (b._units as Array).is_empty(), "%s / %s" % [p.state, str(b._dl_state)])
-	_ok("E 开场那段是跳过去的、不是没有: 跳过时事件照放(开场之后才是第一路开打)、`opened` 立起", p.opened and p.applied > p.first_step + 300,
-		"applied %d / first %d" % [p.applied, p.first_step])
+	_ok("E ★进场先看到对阵幕布(%d 帧内: 在播、战场状态 %s、幕布在场; 不是空场地, 也不是直接开打)" % [fr, str(b._dl_state)],
+		fr <= 10 and p.state == "playing" and str(b._dl_state) in ["overview", "preview"] and pr_ok.call(),
+		"%s / %s" % [p.state, str(b._dl_state)])
+	_ok("E ★开局状态是流里带来的、开场没被跳过(applied %d 离首步 %d 不到 2 秒)" % [p.applied, p.first_step],
+		p.state_from_stream and not p._no_curtain and p.applied < p.first_step + 120)
 	await _e_close(jid)
 
 

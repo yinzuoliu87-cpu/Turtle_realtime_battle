@@ -307,6 +307,7 @@ frames_for () {
     #   本地实测 parity 2357 帧 / 220 秒、seek 1904 帧、no_sim 512 帧(2026-10-19); 慢机器每帧步数少、帧数涨 ⇒ 都给 20000
     verify_stream_parity) echo 30000 ;;   # 2026-10-20 +低帧率(一帧 1/3/4 步)两局各三遍
     verify_stream_hud_parity) echo 20000 ;;   # 播放端 HUD(2026-10-19): 同 parity 两局裁判局, 每 30 步让一帧
+    verify_stream_curtain_stats) echo 20000 ;;   # 2026-10-31 跟播 / 观赛幕布与统计: 录一局 + 按跟播入口播一遍到结尾
     verify_stream_end_exit) echo 20000 ;;
     verify_stream_replay_controls) echo 20000 ;;   # 状态流回放操作条(2026-10-20): 录一局 + 播两遍到结尾   # 播放端收尾与退出(2026-10-19): 录一局 + 播两遍到结尾, 实测约 1000 帧
     verify_stream_no_sim) echo 20000 ;;

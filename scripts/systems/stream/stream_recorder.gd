@@ -84,6 +84,11 @@ const UKEYS_S2 := ["bar_head_h", "hp_w", "maxEnergy", "active_skills", "energy_c
 	## 渲染步算立绘变换 / 呼吸 / 形变要的(单位外观节点主人活着时不镜像, 见 `_samp`)
 	"bob_phase", "spr_base_scale", "shadow_base_scale", "contact_base_scale", "airborne", "vy",
 	"hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_lunge_dir", "_lunge_dur"]
+## ★2026-10-31 伤害统计(用户「所有数据都没有统计啊」): 战中 📊 面板与结算屏读的就是单位身上这几项,
+##   原来一项都不在流里 ⇒ 播状态流时全是 0(探针 tests/_probe_stream_stats.gd: 本机跑合计 1.65 万、流里 0)。
+##   `_st_dealt_by_type` / `_st_taken_by_type` / `_st_eq` 是纯值字典(按类型 / 按装备分桶); `rarity` 给结算行的头像框配色。
+const UKEYS_ST := ["_st_dealt", "_st_taken", "_st_heal", "_st_shield", "_st_kills", "_st_crit", "_st_multi",
+	"_st_dealt_by_type", "_st_taken_by_type", "_st_eq", "rarity"]
 ## 允许整份发的数组键(纯值数组; 其余数组键里装的是单位字典 / 节点, 一律不发)。
 const UARR := {"active_skills": true}
 ## 单位外观节点: 单位第一次出现时(不论是不是 sim 步里建的)整体收进节点层; 单位字段 `@n` 告诉手机「哪个镜像节点是这个单位的哪一件」。
@@ -183,7 +188,11 @@ var _ucur: Array = []         # 上一步 battle._units 的顺序
 var _ucur_idx := PackedInt32Array()
 var _ucur_set := {}           # 当前在 battle._units 里的单位 idx
 var _gcache := {}
-var _ukeys_all: Array = UKEYS_STEP + UKEYS + UKEYS_S2
+var _ukeys_all: Array = UKEYS_STEP + UKEYS + UKEYS_S2 + UKEYS_ST
+## 非采样步也比的键: 离散量 + 统计(终结那一击常落在非采样步上, 之后流就收尾了 ⇒ 只在采样步比会丢最后一笔; 2026-10-31 门禁抓到龟蛋承伤差 240)
+var _ukeys_step: Array = UKEYS_STEP + UKEYS_ST
+## 已发出的「各路战报」份数(`slh`; keyframe 清缓存后整份重发)
+var _slh_n := -1
 ## 采样完(含渲染步对齐)回调一次: 门禁拿它在同一时刻拍「原生」快照(播放端在同一步对照)。
 var on_sampled: Callable = Callable()
 var _cur_id := 0
@@ -446,10 +455,34 @@ func _globals(cont: bool) -> void:
 		var hg: Dictionary = StreamHud.glob(battle)   # 播放端 HUD(羁绊 / 路点 / 计时牌 / 幕布), 见 stream_hud.gd; 逐项比、变了才发
 		for hk in hg:
 			n += _g("h." + str(hk), hg[hk])
+	## ★2026-10-31 开局状态 `rs`(= 录像里那份 `state`: 两边阵容 / 分路 / 等级 / 技能 …): 手机看服务器正在算的局时
+	##   (跟播自己这一局 / 赛况板观赛)入口拿不到对手完整阵容 ⇒ 原来不建换路幕布, 开场与路间一闪而过
+	##   (用户「两队就开打了，什么都不显示…上半场打完之后马上就清窗」)。每个 keyframe 发一次(缓存清了才发), 中途进来的观众也拿得到。
+	if not _gcache.has("rs"):
+		var rs = _rec_state()
+		if rs is Dictionary and not (rs as Dictionary).is_empty():
+			n += _g("rs", rs)
+	## ★2026-10-31 各路战报 `slh`(= `_st_lane_hist`, 打完一路冻一份): 结算屏翻页看前面那几路; 多了一份或 keyframe 才整份发。
+	var hist = battle.get("_st_lane_hist")
+	if hist is Array and (not _gcache.has("slh") or _slh_n != (hist as Array).size()):
+		_slh_n = (hist as Array).size()
+		_gcache.erase("slh")
+		n += _g("slh", (hist as Array).duplicate(true))
 	if n == 0:
 		enc.rewind(p0)
 	else:
 		enc.patch_u8(pc, n)
+
+
+## 录像里那份开局状态(裁判开局时 `ReplayRecorder._start_referee` 抓的 `capture_state()`); 没有 ⇒ {}。
+func _rec_state() -> Dictionary:
+	var rr = battle.get("_replay")
+	if rr == null:
+		return {}
+	var rec = rr.get("rec")
+	if rec is Dictionary and (rec as Dictionary).get("state") is Dictionary:
+		return (rec as Dictionary)["state"]
+	return {}
 
 
 func _g(k: String, v) -> int:
@@ -572,7 +605,7 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 	var c: Dictionary = _ucache[idx]
 	var n := 0
 	var pc := 0
-	for k in (_ukeys_all if cont else UKEYS_STEP):
+	for k in (_ukeys_all if cont else _ukeys_step):
 		var v = u.get(k)
 		var t := typeof(v)
 		var old = c.get(k)
@@ -580,7 +613,9 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 			continue
 		if t == TYPE_OBJECT or t == TYPE_CALLABLE or (t == TYPE_ARRAY and not UARR.has(k)):
 			continue
-		c[k] = v.duplicate() if (t == TYPE_DICTIONARY or t == TYPE_ARRAY) else v
+		## ★深拷贝(2026-10-31): `_st_eq` 是两层字典, 浅拷贝的缓存里层与原件同一个对象 ⇒ 里层变了比不出来、不重发
+		##   (门禁 verify_stream_curtain_stats 抓到: 石头龟一件装备的物理伤害本机 66 / 流 51)
+		c[k] = v.duplicate(true) if (t == TYPE_DICTIONARY or t == TYPE_ARRAY) else v
 		if n == 0:
 			enc.u8(F.OP_UNIT_SET)
 			enc.vu(idx)

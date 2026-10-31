@@ -112,6 +112,10 @@ const GAP_STATES := ["overview", "preview", "lane_settle"]
 ##   10 倍仍要 1 秒空场地, 而服务器还没录到那里时要停下来等 ⇒ 录屏里进场后对着空场地约 2 秒
 ##   (用户 10-29「那段的时间为什么不能够融入这个进度条里面呢？」⇒ 等待归进 VS 卡上的进度条, 进场就是开打)。路间那几段照旧 10 倍。
 var opened := false
+## 开局状态是流里带来的(`rs`; 门禁读)
+var state_from_stream := false
+## 正在应用的这一步里有没有「幕布进场」事件(`_take_state` 判要不要补幕布)
+var _cur_ops_curtain := false
 
 
 ## 这一帧的推进倍率（纯函数，门禁直接调）：没有幕布且正处在幕布那几段 ⇒ GAP_FF；否则 1。
@@ -215,6 +219,9 @@ func _tick(rd: float) -> void:
 ##   跳过的那一截不进这一帧的渲染时长(`_rh` 跟到播放头): 开打那一帧只渲染它自己。
 func _skip_opening() -> void:
 	while true:
+		if not _no_curtain:
+			opened = true            # 流里带来了开局状态(`rs`): 有幕布了 ⇒ 开场照常 1 倍放(2026-10-31)
+			break
 		var dl := str(battle._dl_state)
 		if not GAP_STATES.has(dl) and not (dl == "" and applied < first_step):
 			opened = true
@@ -315,6 +322,12 @@ func _apply_step(st: Array, fire: bool) -> void:
 		_in_kf = true
 		_kf_units = {}
 		mirror.kf_begin()
+	_cur_ops_curtain = false
+	if fire:
+		for op in (st[2] as Array):
+			if int(op[0]) == F.OP_EVENT and str(op[1]) == "curtain_in":
+				_cur_ops_curtain = true
+				break
 	for op in (st[2] as Array):
 		match int(op[0]):
 			F.OP_GLOBAL:
@@ -378,6 +391,37 @@ func _globals(g: Dictionary) -> void:
 			"lane":
 				if gs_sandboxed():
 					battle.get_node_or_null("/root/GameState").current_lane = str(v)
+			"rs":
+				_take_state(v)
+			"slh":
+				if v is Array:
+					battle._st_lane_hist = (v as Array).duplicate(true)   # 结算屏翻页看前面那几路(2026-10-31)
+
+
+## 流里带来的开局状态(`rs`, 2026-10-31): 入口没有阵容(no_curtain)而 GameState 已沙盒(begin_play 备份过、退出还原)⇒
+##   按录像同一份状态摆上, 从此照常建换路幕布(对阵总览 / 预览 / 每路战报), 开场与路间按 1 倍走。
+##   已经停在幕布中间(中途进来的观众)⇒ 补上这一块幕布。
+func _take_state(v) -> void:
+	if not (v is Dictionary) or (v as Dictionary).is_empty() or not _no_curtain or not gs_sandboxed():
+		return
+	## 对手的名字 / 头像以入口那张对手卡为准(VS 卡上显示的那一份): 看的人是 A ⇒ 右边名字取自 dual_ghost.profile,
+	##   开局状态里的 dual_ghost 是阵容来源, 不该顺手换掉入口给的身份。B 的名字由入口显式给(play_names l / r), 不碰。
+	var gs = battle.get_node_or_null("/root/GameState")
+	var entry_prof = null
+	if ReplayRecorder.viewer_side(battle) != "b" and gs.dual_ghost is Dictionary:
+		entry_prof = (gs.dual_ghost as Dictionary).get("profile")
+	ReplayRecorder.apply_state(v)
+	if entry_prof is Dictionary and not (entry_prof as Dictionary).is_empty() and gs.dual_ghost is Dictionary:
+		gs.dual_ghost["profile"] = (entry_prof as Dictionary).duplicate(true)
+	_no_curtain = false
+	state_from_stream = true
+	if not firing_curtain_in():
+		_restore_curtain()
+
+
+## 这一步有没有「幕布进场」事件要放(有 ⇒ 由事件建幕布, 不在这里补, 免得建两层)。
+func firing_curtain_in() -> bool:
+	return _cur_ops_curtain
 
 
 # ── 单位代理 ──

@@ -470,6 +470,11 @@ func _player_row(p: Dictionary, rank: int) -> Control:
 	var pc := PanelContainer.new()
 	pc.name = "PlayerRow"
 	pc.set_meta("tag", str(p["tag"]))
+	## ★★手机上滑不动的真根因(用户 2026-10-10 / 2026-10-31 两次报「左边滑不动」): PanelContainer 默认就是 STOP。
+	##   10-10 只把盖在上面的按钮改成 PASS, 而事件冒泡到这一层就停了 ⇒ ScrollContainer 一个事件都收不到。
+	##   探针实测(tests/verify_board_touch_scroll.gd 的前身): 手指按在行上拖 200px, 原样 ScrollContainer 收到 0 个事件、
+	##   滚动 0; 只把这一层改掉 ⇒ 收到全部事件、滚了几百像素。右栏三种卡本来就是 IGNORE, 这里照它。
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pc.add_theme_stylebox_override("panel", MatchCard.card_style(STATE_TINT.get(st, Color.WHITE), 12, 6))
 	pc.custom_minimum_size = Vector2(LEFT_W - 12.0, ROW_H)
 	var hb := HBoxContainer.new()
@@ -655,7 +660,10 @@ func _hit(pc: PanelContainer, nm: String, key: String, cb: Callable) -> void:
 	## ★★手机上滑不动(用户 2026-10-10「左侧滑动我在手机端很难操作啊」): 这颗按钮盖满整行, 默认 STOP 把触摸吃掉,
 	##   ScrollContainer 收不到拖动 ⇒ 只有行与行之间那几像素能滑。⇒ PASS 透传(同图鉴 / 背包 07-18 的做法)。
 	##   代价是滑完松手可能顺带算一次点 ⇒ 按下时记滚动位置, 松手时列表动过就不算点。
-	_tap_or_scroll(bt, cb)
+	##   ⚠ 光这一颗 PASS 不够: 往上到 ScrollContainer 的每一层都不能是 STOP(10-10 漏了行框那一层, 见 `_player_row`)。
+	## ★点一下要重画整榜(这一行连同这颗按钮被摘下) ⇒ 推迟到这一帧末尾再做: 手指点按时引擎先发模拟鼠标松手(⇒ 走到这里),
+	##   紧接着把触摸松手也发给同一颗按钮 —— 当场摘掉 ⇒ 引擎报 `can_process: Condition "!is_inside_tree()"`。
+	_tap_or_scroll(bt, func() -> void: cb.call_deferred())
 	pc.add_child(bt)
 
 

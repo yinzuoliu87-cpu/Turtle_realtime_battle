@@ -291,6 +291,14 @@ func _demo() -> void:
 			bt._replay.player.speed = ff
 			_log("   ⏩ 之后 %.0f 倍速快进（演示用；玩家看到的是 1 倍）" % ff)
 	_log("⑨ 播完 ⇒ 结算屏")
-	await _sec(7.0)
+	await _sec(5.0)
+	## 2026-10-31 翻到我方 / 敌方两页(伤害统计: 原来播状态流时这两页全是 0)
+	var hd = bt.get("_hud") if is_instance_valid(bt) else null
+	var scr = hd.get("_settle") if hd != null else null
+	if scr != null and is_instance_valid(scr):
+		for pg in [1, 2]:
+			scr.show_page(pg)
+			_log("   结算屏第 %d 页" % (pg + 1))
+			await _sec(4.0)
 	_log("END")
 	get_tree().quit(0)
