@@ -215,24 +215,35 @@ def word_layout():
     return xs, x - LETTER_GAP
 
 
-def zh_img(text="灯鱼游戏", spacing=6):
+def zh_img(text="灯鱼游戏", spacing=6, margin=1):
+    ## ★2026-10-31 用户「商标下面那个灯鱼游戏怎么被遮住了一部分」: 原来每个字画在 (0,0)、只拷 12×13,
+    ##   而这款字体 12 号的字形从第 3 行画到第 15 行、个别字超出 12 宽 ⇒ 底部 3 行与左右边被裁。
+    ##   改成: 画进足够大的格子 → 量全部字的实际墨迹范围(纵向取并集, 横向每字取自己的) → 按墨迹拼, 四周留 margin。
     f = ImageFont.truetype(F_ZH, 12)
+    pad = 8
     parts = []
     for ch in text:
-        m = Image.new("L", (16, 16), 0)
+        m = Image.new("L", (12 + 2 * pad, 12 + 2 * pad), 0)
         d = ImageDraw.Draw(m)
         d.fontmode = "1"
-        d.text((0, 0), ch, font=f, fill=255)
-        parts.append(m)
-    w = 12 * len(text) + spacing * (len(text) - 1)
-    im = Image.new("RGBA", (w, 13), T)
+        d.text((pad, pad), ch, font=f, fill=255)
+        bb = m.point(lambda v: 255 if v > 127 else 0).getbbox()
+        parts.append((m, bb))
+    top = min(bb[1] for _, bb in parts)
+    bottom = max(bb[3] for _, bb in parts)
+    widths = [bb[2] - bb[0] for _, bb in parts]
+    cell = max(widths)
+    w = margin * 2 + cell * len(text) + spacing * (len(text) - 1)
+    h = margin * 2 + (bottom - top)
+    im = Image.new("RGBA", (w, h), T)
     px = im.load()
-    for i, m in enumerate(parts):
+    for i, (m, bb) in enumerate(parts):
         mp = m.load()
-        for y in range(13):
-            for x in range(12):
+        ox = margin + i * (cell + spacing) + (cell - widths[i]) // 2
+        for y in range(top, bottom):
+            for x in range(bb[0], bb[2]):
                 if mp[x, y] > 127:
-                    px[i * (12 + spacing) + x, y] = ZH_COL + (255,)
+                    px[ox + x - bb[0], margin + y - top] = ZH_COL + (255,)
     return im
 
 

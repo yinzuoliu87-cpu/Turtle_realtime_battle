@@ -224,6 +224,15 @@ func _t_parity() -> void:
 					semi += 1
 	_ok("⑦ 素材 %d 张都在" % names.size(), missing.is_empty(), str(missing))
 	_ok("⑦ ★零半透明", semi == 0, "%d 个半透明像素" % semi)
+	## ⑦ 副标「灯鱼游戏」字形完整: 墨迹四边都不贴图边(2026-10-31 用户「商标下面那个灯鱼游戏怎么被遮住了一部分」——
+	##   原图 66×13 墨迹 x 0..65 / y 3..13, 左右底三边都贴边 = 字被裁)。量源 png, 不量导入后的贴图。
+	var zimg := Image.load_from_file(ProjectSettings.globalize_path(StudioIntro.DIR + "zh.png"))
+	var zbb := Rect2i()
+	if zimg != null:
+		zbb = zimg.get_used_rect()
+	_ok("⑦ ★副标墨迹四边留白(不被裁)", zimg != null and zbb.size.x > 0 and zbb.position.x >= 1 and zbb.position.y >= 1
+		and zbb.end.x <= zimg.get_width() - 1 and zbb.end.y <= zimg.get_height() - 1,
+		"图 %s 墨迹 %s" % [str(Vector2i(zimg.get_width(), zimg.get_height())) if zimg != null else "无", str(zbb)])
 	var wav := load(StudioIntro.SFX) as AudioStream if ResourceLoader.exists(StudioIntro.SFX) else null
 	_ok("⑦ 音效长度 = 时间轴总长", wav != null and absf(wav.get_length() - float(StudioIntro.TIMING["end"])) < 0.02,
 		"%.3f" % (wav.get_length() if wav != null else -1.0))
