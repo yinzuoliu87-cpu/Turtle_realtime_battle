@@ -162,7 +162,7 @@ func tick() -> void:
 	var at := int(mn.get("at", 0))
 	if str(mn.get("k", "")) in [_M.K_WAIT, _M.K_UPCOMING, _M.K_NEXT] and at > 0 and at - now <= 40:
 		_next_poll = mini(_next_poll, now + POLL_FAST_SEC)
-	line = bar_line(now, ent, group, cup, groups, mn, scene_key(host()) == BATTLE)
+	line = bar_line(now, group, cup, groups, mn, scene_key(host()) == BATTLE)
 	_target = line.get("target", {})
 	bar.paint(line)
 	_hit.visible = bool(line.get("tap", false))
@@ -174,7 +174,7 @@ func tick() -> void:
 
 ## 条上那一行: {"head", "live", "body", "cd", "tap", "target"}。纯函数(门禁穷举)。
 ## `in_battle` = 正在观战页: 点条不跳走(会把正在看的那一场关掉)。
-static func bar_line(now: int, ent: bool, group: Dictionary, cup: Dictionary, groups: Array, mn: Dictionary,
+static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array, mn: Dictionary,
 		in_battle: bool = false) -> Dictionary:
 	var ph := _M.phase(now, groups, cup)
 	## 条头一律「决赛日」(哪一段写在正文里, 不在条头再说一遍)

@@ -425,7 +425,7 @@ func build(parent: Control, inf: Dictionary, vp: Vector2) -> Control:
 	else:
 		_build_sides(body, lay)
 		_build_score(body, cx)
-		_build_third(body, lay, cx)
+		_build_third(body, lay)
 	Ctx.bar_avoid([_n.get("kicker"), _n.get("head"), _n.get("side_left"), _n.get("side_right"), _n.get("btnrow"), _n.get("reward"),
 		_n.get("out"), _n.get("rank"), _n.get("next")])
 	t = 0.0
@@ -658,7 +658,7 @@ func _build_score(dim: Control, cx: float) -> void:
 
 
 ## ③ 第三拍: 自己赢 = 晋级 + 奖励; 自己输 = 出局卡; 看别人 = 下一场条。底下是按钮。
-func _build_third(dim: Control, vp: Vector2, cx: float) -> void:
+func _build_third(dim: Control, vp: Vector2) -> void:
 	var cs := str(info["case"])
 	var y := 420.0
 	var st: Dictionary = info.get("stage", {})

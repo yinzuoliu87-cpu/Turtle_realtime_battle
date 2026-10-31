@@ -196,7 +196,7 @@ func paint(now: int, ent: bool, f: Dictionary) -> void:
 	_paint_sub(_subs["g"], _M.group_state(now, groups), _M.seat_ts(now), now)
 	_paint_sub(_subs["c"], _M.cup_state(now, cup), _M.cup_ts(now), now)
 	cells = _M.path_cells(ent, group, cup, groups, now)
-	_paint_path(ent, groups, cup, spectator_lines(now, groups, cup) if not ent else [])
+	_paint_path(ent, spectator_lines(now, groups, cup) if not ent else [])
 	## 冠军杯赛决出(已揭晓)⇒ 这一行换成这一届的冠军杯赛冠军 + 「冠军墙」入口; 之前挂上周冠军
 	var sd := _M.champion_visible(cup, now)
 	if sd >= 0 and now >= _M.cup_ts(now):
@@ -249,7 +249,7 @@ func _paint_sub(s: Dictionary, st: String, at: int, now: int) -> void:
 
 
 ## 「我这一路」。格子数 / 段不变就只换状态(结果到了那一格翻牌); 变了重排。
-func _paint_path(ent: bool, groups: Array, cup: Dictionary, spect: Array) -> void:
+func _paint_path(ent: bool, spect: Array) -> void:
 	var sig := ""
 	for c in cells:
 		sig += "%s/%s;" % [str(c["sec"]), str(c["label"])]

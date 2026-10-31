@@ -138,7 +138,7 @@ func _line(ts: int, kind: String) -> Dictionary:
 	_who(kind)
 	var f: Dictionary = fx.feeds(ts)
 	var mn: Dictionary = M.my_next(kind != "plain", f["group"], f["cup"], ts)
-	return L.bar_line(ts, kind != "plain", f["group"], f["cup"], f["groups"], mn)
+	return L.bar_line(ts, f["group"], f["cup"], f["groups"], mn)
 
 
 func _t_lines() -> void:
@@ -180,7 +180,7 @@ func _t_lines() -> void:
 			"cd=%d live=%s 去=%d" % [int(ln["cd"]), str(ln["live"]), tb])
 	_who("in")
 	var f: Dictionary = fx.feeds(seat + 10 * MI)
-	var lb := L.bar_line(seat + 10 * MI, true, f["group"], f["cup"], f["groups"], M.my_next(true, f["group"], f["cup"], seat + 10 * MI), true)
+	var lb := L.bar_line(seat + 10 * MI, f["group"], f["cup"], f["groups"], M.my_next(true, f["group"], f["cup"], seat + 10 * MI), true)
 	_ok("B 观战页上点条不跳走(会把正在看的那一场关掉), 也就不写「· 观看」", not bool(lb["tap"]) and str(lb["body"]) == "你的%s开播中" % r1, str(lb["body"]))
 
 

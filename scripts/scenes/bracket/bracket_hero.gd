@@ -248,7 +248,7 @@ func build(canvas: Control, n: int, vp: Vector2, top: float, bottom: float, safe
 	var sheet := "%d|%d" % [int(s.cur().get("bucket", -1)), int(s.feed_week())]
 	_round_titles(canvas, n, total, lay)
 	_links(canvas, n, total, lay)
-	_center(canvas, n, total, lay, anim, podium, promo)
+	_center(canvas, total, lay, anim, podium, promo)
 	var order := 0
 	var reveals: Array = []
 	for r in range(1, total + 1):
@@ -270,7 +270,7 @@ func build(canvas: Control, n: int, vp: Vector2, top: float, bottom: float, safe
 	for it in reveals:
 		_stamp_loser(it[3], it[2], 0.45 + float(k) * 0.35)
 		if int(it[0]) < total:
-			_travel_dot(canvas, lay, n, int(it[0]), int(it[1]), 0.75 + float(k) * 0.35)
+			_travel_dot(canvas, lay, int(it[0]), int(it[1]), 0.75 + float(k) * 0.35)
 		k += 1
 	return lay
 
@@ -373,7 +373,7 @@ static func round_name(n: int, r: int) -> String:
 func _links(canvas: Control, n: int, total: int, lay: Dictionary) -> void:
 	for r in range(1, total):
 		for m in range(_B.matches_in_round(n, r)):
-			var pts := link_points(lay, n, r, m)
+			var pts := link_points(lay, r, m)
 			if pts.is_empty():
 				continue
 			var ws: int = s.winner_side(r, m)
@@ -390,7 +390,7 @@ func _links(canvas: Control, n: int, total: int, lay: Dictionary) -> void:
 
 
 ## 一场 → 下一格的折线三点(横 → 竖 → 横)。
-static func link_points(lay: Dictionary, n: int, r: int, m: int) -> Array:
+static func link_points(lay: Dictionary, r: int, m: int) -> Array:
 	if not lay.has("%d-%d" % [r, m]) or not lay.has("%d-%d" % [r + 1, m / 2]):
 		return []
 	var src: Rect2 = lay["%d-%d" % [r, m]]
@@ -412,8 +412,8 @@ func _seg(canvas: Control, a: Vector2, b: Vector2, w: float, col: Color) -> void
 
 
 ## 光点沿连线走到下一格(G9): 一枚发光方块, 走完在落点闪一下。
-func _travel_dot(canvas: Control, lay: Dictionary, n: int, r: int, m: int, delay: float) -> void:
-	var pts := link_points(lay, n, r, m)
+func _travel_dot(canvas: Control, lay: Dictionary, r: int, m: int, delay: float) -> void:
+	var pts := link_points(lay, r, m)
 	if pts.is_empty():
 		return
 	var dot := ColorRect.new()
@@ -464,7 +464,7 @@ func _stamp_loser(card: Control, ws: int, delay: float) -> void:
 
 
 # ── 正中: [晋级冠军杯赛牌 + 箭头] / [奖杯 | 领奖台] + 冠军缎带 + 奖励一行 ──
-func _center(canvas: Control, n: int, total: int, lay: Dictionary, anim: bool, podium: bool, promo: bool) -> void:
+func _center(canvas: Control, total: int, lay: Dictionary, anim: bool, podium: bool, promo: bool) -> void:
 	var cen: Dictionary = lay["center"]
 	var fr: Rect2 = lay["final"]
 	var cx := fr.get_center().x
@@ -496,7 +496,7 @@ func _center(canvas: Control, n: int, total: int, lay: Dictionary, anim: bool, p
 			for i in range(4):
 				_box(canvas, Rect2(cx - float(i) * 2.0 - 1.0, ay0 + float(i) * 2.0, float(i) * 4.0 + 2.0, 2.0), acol)
 	if podium:
-		_podium(canvas, crown, total, anim)
+		_podium(canvas, crown, anim)
 	else:
 		## 决出冠军: 奖杯后面一圈金光 + 一直冒的小闪光(Dota A02 冠军格发光)
 		var tsz := clampf(crown.size.y, 56.0, 104.0)
@@ -588,7 +588,7 @@ func _sparkles(canvas: Control, c: Vector2, radius: float) -> void:
 
 
 ## 收盘领奖台(⑰ · G22 · Lichess 3-5): 冠军站中间最高, 亚军左, 两位四强右; 头像站在台上, 名字在头像下。
-func _podium(canvas: Control, crown: Rect2, total: int, anim: bool) -> void:
+func _podium(canvas: Control, crown: Rect2, anim: bool) -> void:
 	var cx := crown.get_center().x
 	var fr_w: float = s._hero_final_w
 	var pw := clampf(crown.size.y * 1.9, 220.0, minf(360.0, fr_w * 1.08))
