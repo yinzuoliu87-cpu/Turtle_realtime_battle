@@ -134,10 +134,17 @@ static func _fill(list: VBoxContainer, empty: Label) -> void:
 		rb.focus_mode = Control.FOCUS_NONE
 		rb.add_theme_font_size_override("font_size", 16)
 		rb.custom_minimum_size = Vector2(200, 52)
+		## 按在「移出」上起手也要能滑(2026-10-31 verify_scroll_touch_sweep 实测: 这颗占行宽三分之一, STOP 时那里起手 Δ=0)。
+		##   滑过的那一下不算点: 滚动框一开始拖就广播 SCROLL_BEGIN, 引擎自己把按下作废。
+		rb.mouse_filter = Control.MOUSE_FILTER_PASS
 		UISkin.pixel_button(rb, UISkin.PX_SLATE, 3)
 		row.add_child(rb)
 		var tag := str(e["tag"])
 		rb.pressed.connect(func() -> void:
 			BL.remove(tag)
-			_fill(list, empty))
+			## 推迟到这一帧末尾再重画(同闯关赛况板 `_hit`): 手指点按时引擎先发模拟鼠标松手(⇒ 走到这里), 紧接着把触摸松手
+			##   也派给同一颗按钮 —— 当场重画会把它连行一起摘下树 ⇒ 引擎报 `Condition "!is_inside_tree()"`(verify_scroll_touch_sweep 手指点实测)。
+			(func() -> void:
+				if is_instance_valid(list):
+					_fill(list, empty)).call_deferred())
 		i += 1

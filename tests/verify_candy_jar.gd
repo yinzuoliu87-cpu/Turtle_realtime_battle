@@ -248,8 +248,11 @@ func _ready() -> void:
 	_ok("★★★`_sel_jar` 不占 `_sel_bench`(后者直接索引 persistent_bench, 占了就索引错位)",
 		src_inv.find("var _sel_jar: bool = false") >= 0
 		and src_inv.find("_sel_bench = -1                              # 选糖果罐") >= 0)
+	## ★2026-10-31 判点换成 TapSlop(按画布全局坐标量, 中途挪远过也不算): 原来量格子自己的局部坐标,
+	##   格子跟着手指一起滚 ⇒ 快甩时被当成点(verify_scroll_touch_sweep 实测糖果罐被一甩选中)。判据跟着换写法, 意思不变。
 	_ok("★★滑列表不误触: 位移 ≥16px 不算点击(与装备卡同一套)",
-		src_inv.find("if ev.position.distance_to(_press_pos) >= 16.0:") >= 0)
+		src_inv.find("if not _bench_tap.is_tap(jbox, ev):") >= 0
+		and src_inv.find("const BENCH_TAP_SLOP := 16.0") >= 0)
 	_ok("★★选装备与选糖果罐【互斥】",
 		src_inv.find("_sel_jar = false                       # 选装备") >= 0)
 	_ok("★★已删掉过度设计的确认弹窗(_confirm_smash_jar 不再存在)",

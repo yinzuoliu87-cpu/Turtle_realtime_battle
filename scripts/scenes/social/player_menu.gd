@@ -301,5 +301,8 @@ static func entry_button(info: Dictionary, on_change: Callable = Callable(), siz
 	UISkin.pixel_button(b, UISkin.PX_SLATE, 3)
 	b.custom_minimum_size = size
 	b.size = size
+	## 透传(2026-10-31): 赛况板右栏把它放在滚动列表最上面, STOP 时手指按在它上面起手滑不动(verify_scroll_touch_sweep 实测 Δ=0)。
+	##   滑过的那一下不算点(滚动框开始拖时引擎自己作废按下)。对阵图弹窗里它往上冒到卡片(STOP)就停, 碰不到点暗幕关弹窗那一层。
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
 	b.pressed.connect(func() -> void: open(host_of(b), info, on_change))
 	return b

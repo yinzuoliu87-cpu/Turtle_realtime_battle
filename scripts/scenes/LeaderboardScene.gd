@@ -300,6 +300,8 @@ var _failed: Dictionary = {}
 var _legacy: bool = false
 ## 现在建着的行: 名次 → 节点。
 var _row_nodes: Dictionary = {}
+## 手指(或鼠标左键)正按在列表上: 这期间滚出窗口的行先不拆(见 `_refresh_window`)。
+var _held := false
 ## 本屏发出去的页请求(offset 列表, 门禁分母)。
 var page_offsets: Array = []
 
@@ -796,6 +798,13 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 	_list.custom_minimum_size = Vector2(PANEL_W, float(list_len) * ROW_H)
 	_scroll.add_child(_list)
 	_scroll.get_v_scroll_bar().value_changed.connect(_on_scrolled)
+	## 按下 / 松手都会冒到滚动框(行是 IGNORE、名字热区与列表层是 PASS): 记住手指按着没有(见 `_refresh_window`)。
+	_held = false
+	_scroll.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			_held = (ev as InputEventMouseButton).pressed
+			if not _held:
+				_refresh_window.call_deferred())
 
 	## ── 钉住「我」那一行(列表下沿, 中间一条分隔线) ──
 	var psep := ColorRect.new()
@@ -870,6 +879,11 @@ func _refresh_window() -> void:
 	for rk in _row_nodes.keys():
 		var i: int = int(rk) - 1
 		if i < w.x or i > w.y:
+			## ★手指按着的时候不拆(2026-10-31): 手指按下的那一行就是引擎认的「按住的控件」, 后面的拖动事件都先派给它、
+			##   再冒到滚动框。它一滚出窗口就被拆掉 ⇒ 拖动当场断掉: 从第 1 行起手、手指拖 300px, 列表只滚了 60px、松手也没有惯性
+			##   (探针实测; 从第 8 行起手同样拖 300px ⇒ 滚 300、惯性滑到 1202)。松手后下一次滚动(惯性那一段)再拆。
+			if _held:
+				continue
 			_drop_row(_row_nodes[rk])
 			_row_nodes.erase(rk)
 	for i in range(w.x, w.y + 1):
@@ -890,7 +904,11 @@ func _refresh_window() -> void:
 
 func _drop_row(nd) -> void:
 	if is_instance_valid(nd) and nd is Node:
-		(nd as Node).get_parent().remove_child(nd)
+		## ★2026-10-31 不当场摘下树(原来 remove_child): 手指按着的那一行一滚出窗口就被摘掉, 而引擎这一帧
+		##   还要把同一下触摸(ScreenDrag, 跟在模拟鼠标后面)派给它 ⇒ 每拖过一行报一次 `Condition "!is_inside_tree()"`
+		##   (verify_scroll_touch_sweep 手指拖排行榜实测)。⇒ 留在树上到帧尾再删(它已在可视窗口外, 被滚动框裁掉);
+		##   先改名, 同一帧重建同名次的行不撞名(`LbRow_<名次>` 是门禁按名找行的识别位)。
+		(nd as Node).name = "LbRowDropped"
 		(nd as Node).queue_free()
 
 

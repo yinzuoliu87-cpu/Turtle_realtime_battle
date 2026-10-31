@@ -24,6 +24,7 @@ const TILE_ICON := 44.0
 const CELL_W := 100.0            # 一格的占宽(名字最长 6 个字 × 14px = 84)
 const CELL_H := 96.0
 const NAME_PX := 14
+const _TapSlop := preload("res://scripts/util/tap_slop.gd")
 
 var host
 var _view_ref: WeakRef   # CodexDetail(拿 _type_members); 弱引用 —— 它反过来持有本对象, 强引用会成环泄漏
@@ -192,16 +193,11 @@ func _member_tile(m: Dictionary, cx: float, top: float) -> void:
 	var nm = host._add_text(cx, top + TILE + 14.0, str(m.get("name", "?")), NAME_PX, "#cdd6e0", 0.5, 0.5)
 	if nm != null:
 		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	## 点选判定与左栏列表行同一套: 按下记位置, 松开位移 < 14 才算点(大位移 = 在滑动)。
-	var press := [Vector2.ZERO]
+	## 点选判定与左栏列表行同一套(TapSlop): 松手且手指没挪远才算点(大位移 = 在滑动)。
+	## ★2026-10-31 位移按画布全局坐标量: 原来量格子自己的局部坐标, 格子跟着手指一起滚 ⇒ 快甩时被当成点。
+	var tap_st := _TapSlop.new()
 	tile.gui_input.connect(func(ev: InputEvent) -> void:
-		var down: bool = (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) \
-			or (ev is InputEventScreenTouch and ev.pressed)
-		var up: bool = (ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) \
-			or (ev is InputEventScreenTouch and not ev.pressed)
-		if down:
-			press[0] = ev.position
-		elif up and ev.position.distance_to(press[0]) < 14.0:
+		if tap_st.is_tap(tile, ev):
 			open_equip(eid))
 	tile.mouse_entered.connect(func() -> void:
 		var sb = tile.get_theme_stylebox("panel")

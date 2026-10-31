@@ -6,6 +6,8 @@ extends RefCounted
 ##   右栏正在看的那一只 = 卡外金边。原来是暖铜九宫格 + 半透明圆角稀有度小签 + 被动小圆标(一张 CSS 卡片)。
 ## 类内名不变;外部名加 battle.
 
+const _TapSlop := preload("res://scripts/util/tap_slop.gd")
+
 var host
 
 func _init(b) -> void:
@@ -67,14 +69,14 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	#   而网格的滚动条设成 SHOW_NEVER(注释还写着"滚动仍启用(手机拖)") → 手机上【完全没有滚动手段】。
 	#   解法照抄项目已实机验证的模板 InventoryScene.gd:651: PASS + 按下/抬起位移阈值判点选。
 	card.mouse_filter = Control.MOUSE_FILTER_PASS
-	var _press = {"p": Vector2.ZERO}
+	## 松手且手指没挪出 16px 才算点选, 否则那是在滑列表。
+	## ★2026-10-31 位移改按画布全局坐标量(TapSlop): 原来量卡片自己的局部坐标 —— 卡片跟着手指一起滚,
+	##   手机上手指按在卡上往上滑 160px, 松手时相对卡片只挪了 15.7px ⇒ 这只龟被点进了阵容(verify_scroll_touch_sweep 实测)。
+	var tap := _TapSlop.new(16.0)
 	card.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
-			if ev.pressed:
-				_press["p"] = ev.position
-			elif ev.position.distance_to(_press["p"]) < 16.0:   # 位移小才算点选, 否则那是在滑列表
-				host._set_detail_pet(pid)
-				host._on_pick_pet(pid))
+		if tap.is_tap(card, ev):
+			host._set_detail_pet(pid)
+			host._on_pick_pet(pid))
 	# 拖放: 卡片可拖入编队槽 (1:1 PoC .pet-card draggable=true)
 	# ★手机上必须关掉: Godot 原生 DnD 一旦启动就吃掉手指移动, 滚动永远抢不过它。
 	#   触屏改走"点卡片(上面的 _on_pick_pet) → 点槽位"两步。

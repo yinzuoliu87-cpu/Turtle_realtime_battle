@@ -291,6 +291,9 @@ func _info_line(m: Dictionary) -> String:
 func _watch_btn(id: String) -> Button:
 	var bt := MatchCard.big_btn(WATCH_LABEL, N_WATCH)
 	bt.set_meta("replay_id", id)
+	## 按在「观看」上起手也要能滑列表(2026-10-31 verify_scroll_touch_sweep 实测: STOP 时那里起手 Δ=0, 每张卡右边一大块)。
+	##   滑过的那一下不算点: 滚动框一开始拖就广播 SCROLL_BEGIN, 引擎自己把按下作废(门禁「快甩」验过)。
+	bt.mouse_filter = Control.MOUSE_FILTER_PASS
 	bt.pressed.connect(_on_replay_pressed.bind(id))
 	return bt
 

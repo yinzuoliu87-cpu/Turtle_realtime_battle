@@ -129,10 +129,12 @@ func _ready() -> void:
 		t1.substr(t1.find("造成"), 30))
 	var hit3: Control = _star_node("EqStarHit3")
 	if hit3 != null:
-		var ev := InputEventMouseButton.new()
-		ev.button_index = MOUSE_BUTTON_LEFT
-		ev.pressed = true
-		hit3.gui_input.emit(ev)   # 与玩家点签牌同一条路(信号 → _set_eq_star → 重画)
+		for down in [true, false]:   # 一次点按 = 按下 + 松开(2026-10-31 起签牌松手才算点, 见 CodexDetail._tap_hit)
+			var ev := InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_LEFT
+			ev.pressed = down
+			ev.position = hit3.size * 0.5
+			hit3.gui_input.emit(ev)   # 与玩家点签牌同一条路(信号 → _set_eq_star → 重画)
 		await _settle(3)
 	var e3 := _rtl_with("codex_eq_effect")
 	var t3: String = _plain(e3.text) if e3 != null else ""

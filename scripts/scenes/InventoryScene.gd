@@ -174,7 +174,12 @@ var _sel_worn: Dictionary = {}
 var _inv_synergy := InvSynergy.new(self)   # 背包·类型羁绊面板+详情弹框(2026-07-25 抽出)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
-var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位移小才算点选(可滑动列表·2026-07-18)
+## 背包格「点 vs 滑」(可滑动列表): 松手且手指没挪出 16px 才算点选。
+## ★2026-10-31 改按画布全局坐标量(TapSlop): 原来量格子自己的局部坐标 —— 格子跟着手指一起滚,
+##   快甩时松手那一刻相对格子只挪了 4px ⇒ 一甩就选中了起手那一格(verify_scroll_touch_sweep「快甩」实测: 糖果罐被选中)。
+const TapSlop = preload("res://scripts/util/tap_slop.gd")
+const BENCH_TAP_SLOP := 16.0
+var _bench_tap := TapSlop.new(BENCH_TAP_SLOP)
 var _press_ms := 0               # 背包格按下的时刻(按住 ≥ InvDrag.HOLD_MS 再动 = 拿起来拖)
 
 func _ready() -> void:
@@ -1987,12 +1992,10 @@ func _stat_block(eid: String, star: int) -> String:
 func _wire_bench_tap(box: Control, idx: int) -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_PASS
 	box.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
-			if ev.pressed:
-				_press_pos = ev.position
-				_press_ms = Time.get_ticks_msec()
-			elif ev.position.distance_to(_press_pos) < 16.0:
-				_on_bench_click(idx))
+		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and ev.pressed:
+			_press_ms = Time.get_ticks_msec()
+		if _bench_tap.is_tap(box, ev):
+			_on_bench_click(idx))
 
 # ─── 交互: 点背包装备选中 → 点龟装上 (再点已选=取消; 点龟身无选中=卸最后一件回背包) ───
 func _on_bench_click(idx: int) -> void:
@@ -2240,13 +2243,8 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	##     `GameState.persistent_bench`, 而糖果罐不在里面(占了就是索引错位)。
 	jbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	jbox.gui_input.connect(func(ev: InputEvent) -> void:
-		if not (ev is InputEventMouseButton) or ev.button_index != MOUSE_BUTTON_LEFT:
-			return
-		if ev.pressed:
-			_press_pos = ev.position
-			return
-		if ev.position.distance_to(_press_pos) >= 16.0:
-			return                                   # 位移过大 = 在滑列表, 不是点它
+		if not _bench_tap.is_tap(jbox, ev):
+			return                                   # 不是松手 / 手指挪远过(= 在滑列表) ⇒ 不是点它
 		_sel_jar = not _sel_jar
 		_sel_bench = -1                              # 选糖果罐 ⇒ 取消装备选中(互斥)
 		_rebuild())

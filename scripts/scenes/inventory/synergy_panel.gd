@@ -2,6 +2,7 @@ class_name InvSynergy
 extends RefCounted
 const _AxeEvo = preload("res://scripts/gamedata/axe_evolution.gd")
 const _AxePanel = preload("res://scripts/scenes/shop/axe_panel.gd")
+const _TapSlop = preload("res://scripts/util/tap_slop.gd")
 ## 背包·类型羁绊面板+详情弹框
 ## 类内名不变;外部名加 battle.
 
@@ -336,7 +337,13 @@ func _build_synergy_panel(_leaders: Array) -> void:
 				(_cst as StyleBoxTexture).modulate_color = base_mod
 			arw.modulate = base_arw
 			arw.position.x = arw_x)
-		chip.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _show_synergy_popup(typ, tier))
+		## ★2026-10-31 PASS + 松手且手指没挪远才算点(TapSlop): 原来 Panel 默认 STOP + 按下就弹 ——
+		##   羁绊多了这一条横着滑(SCROLL_MODE_SHOW_NEVER), 手指按在任何一块上起手都滑不动, 按下那一刻还弹了详情。
+		chip.mouse_filter = Control.MOUSE_FILTER_PASS
+		var tap_st := _TapSlop.new()
+		chip.gui_input.connect(func(ev: InputEvent) -> void:
+			if tap_st.is_tap(chip, ev):
+				_show_synergy_popup(typ, tier))
 		y += SYN_ROW_H + 10.0
 		xx += w + 2.0
 

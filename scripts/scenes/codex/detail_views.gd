@@ -18,6 +18,21 @@ func _init(b) -> void:
 ## 当前这一页怎么重画(龟页 / 小将页共用同一套右栏, 点被动条 / 技能卡 / 形态钮之后都靠它回到同一页)。
 var _rerender: Callable = Callable()
 
+const _TapSlop := preload("res://scripts/util/tap_slop.gd")
+var _hit_tap := _TapSlop.new()   # 详情热区「点 vs 滑」(同一时刻只有一根手指, 全详情共用一个)
+
+
+## 详情里一块「点一下」的热区(被动条 / 技能卡 / 普攻条 / 形态钮 / 返回 / 选档签牌)。
+## ★2026-10-31 原来是 STOP + **按下就触发**: 详情超高要滚时(长技能龟、小木斧), 手指按在这些热区上起手
+##   ① 滚动框一个事件都收不到(verify_scroll_touch_sweep 实测 Δ=0), ② 按下那一刻已经换页了。
+##   ⇒ PASS(拖动照样冒到详情滚动框) + 松手且手指没挪远才算点(TapSlop: 按画布全局坐标量, 详情跟着手指滚也不误判)。
+func _tap_hit(hit: Control, cb: Callable) -> void:
+	hit.mouse_filter = Control.MOUSE_FILTER_PASS
+	hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	hit.gui_input.connect(func(ev: InputEvent) -> void:
+		if _hit_tap.is_tap(hit, ev):
+			cb.call())
+
 func _redraw() -> void:
 	if _rerender.is_valid():
 		_rerender.call()
@@ -117,6 +132,7 @@ func _plaque(x: float, y: float, w: float, h: float, col: String, bg: String = "
 	p.position = Vector2(x, y)
 	p.custom_minimum_size = Vector2(w, h)
 	p.size = p.custom_minimum_size
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 纯画牌子; 可点的是另盖的热区(见 _tap_hit)。默认 STOP 会挡住手指拖详情
 	var fb := StyleBoxFlat.new()
 	fb.bg_color = Color(bg) if bg != "" else Color(0.071, 0.125, 0.165, 1.0)
 	fb.bg_color.a = 1.0
@@ -431,13 +447,10 @@ func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 		var p_hit = Control.new()
 		p_hit.position = Vector2(RCOL_X, passive_y)
 		p_hit.size = Vector2(rw, PASSIVE_BAR_H)
-		p_hit.mouse_filter = Control.MOUSE_FILTER_STOP
-		p_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		p_hit.gui_input.connect(func(ev: InputEvent) -> void:
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				host._codex_skill_detail = {}
-				host._codex_passive_view = not host._codex_passive_view
-				_redraw())
+		_tap_hit(p_hit, func() -> void:
+			host._codex_skill_detail = {}
+			host._codex_passive_view = not host._codex_passive_view
+			_redraw())
 		host.detail.add_child(p_hit)
 		_row_rule(passive_y + PASSIVE_BAR_H + 3.0)
 		cards_y = passive_y + PASSIVE_BAR_H + 8.0
@@ -703,13 +716,10 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		var hit = Control.new()
 		hit.position = Vector2(cx, cy0)
 		hit.size = Vector2(card_w, card_h)
-		hit.mouse_filter = Control.MOUSE_FILTER_STOP
-		hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var sk_ref: Dictionary = sk
-		hit.gui_input.connect(func(ev: InputEvent) -> void:
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				host._codex_skill_detail = sk_ref
-				_redraw())
+		_tap_hit(hit, func() -> void:
+			host._codex_skill_detail = sk_ref
+			_redraw())
 		host.detail.add_child(hit)
 		parts.append({"panel": card_panel, "rt": rt, "hit": hit, "nodes": nodes, "y0": cy0})
 	_fit_skill_cards(parts, start_y, card_max_h)
@@ -758,14 +768,11 @@ func _basic_attack_bar(ctx: Dictionary, bsk: Dictionary, start_y: float) -> floa
 	var b_hit := Control.new()
 	b_hit.position = Vector2(RCOL_X, start_y)
 	b_hit.size = Vector2(rw, bar_h)
-	b_hit.mouse_filter = Control.MOUSE_FILTER_STOP
-	b_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var bsk_ref: Dictionary = bsk
-	b_hit.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			host._codex_passive_view = false
-			host._codex_skill_detail = bsk_ref
-			_redraw())
+	_tap_hit(b_hit, func() -> void:
+		host._codex_passive_view = false
+		host._codex_skill_detail = bsk_ref
+		_redraw())
 	host.detail.add_child(b_hit)
 	_row_rule(start_y + bar_h + 3.0)
 	return bar_h
@@ -833,12 +840,9 @@ func _form_switch_button(center_y: float, is_melee_form: bool) -> void:
 	var hitb = Control.new()
 	hitb.position = Vector2(btn_x - btn_w / 2.0, btn_y - btn_h / 2.0)
 	hitb.size = Vector2(btn_w, btn_h)
-	hitb.mouse_filter = Control.MOUSE_FILTER_STOP
-	hitb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	hitb.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			host._codex_form_view = not host._codex_form_view
-			_redraw())
+	_tap_hit(hitb, func() -> void:
+		host._codex_form_view = not host._codex_form_view
+		_redraw())
 	host.detail.add_child(hitb)
 
 
@@ -940,12 +944,9 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	var bhit = Control.new()
 	bhit.position = Vector2(RCOL_X, top)
 	bhit.size = Vector2(100, 34)
-	bhit.mouse_filter = Control.MOUSE_FILTER_STOP
-	bhit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	bhit.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			host._codex_skill_detail = {}
-			_redraw())   # host._codex_form_view 保留 → 返回到形态/普通列表 (PoC isForm?'form-list':'skill-list')
+	_tap_hit(bhit, func() -> void:
+		host._codex_skill_detail = {}
+		_redraw())   # host._codex_form_view 保留 → 返回到形态/普通列表 (PoC isForm?'form-list':'skill-list')
 	host.detail.add_child(bhit)
 	# 标题行 (PoC L552-558 addDomHTML(160,283) origin(0,0)): 图标40 inline + ★(默认绿) + 名32px#ffd93d + CD chip 20px#06d6a0
 	# 默认技能判定: 形态视图不算默认 (PoC isDefault = !isForm && defaultSkills.includes(idx))
@@ -1243,13 +1244,9 @@ func _star_selector(eq: Dictionary) -> void:
 		## 点击区比签牌大一圈: 手机上手指的最小热区 44(verify_ui_consistency「热区不足」同一个数), 签牌只画 36 高。
 		hit.position = Vector2(x - 4.0, cy - STAR_HIT_H / 2.0)
 		hit.size = Vector2(STAR_CHIP_W + 8.0, STAR_HIT_H)
-		hit.mouse_filter = Control.MOUSE_FILTER_STOP
-		hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var eq_ref: Dictionary = eq
 		var s_ref: int = s
-		hit.gui_input.connect(func(ev: InputEvent) -> void:
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				_set_eq_star(eq_ref, s_ref))
+		_tap_hit(hit, func() -> void: _set_eq_star(eq_ref, s_ref))
 		host.detail.add_child(hit)
 
 

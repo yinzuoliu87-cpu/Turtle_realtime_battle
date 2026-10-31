@@ -11,7 +11,8 @@ var _top_bar = null
 @onready var list_bg: ColorRect = $UI/ListBg
 @onready var list_scroll: ScrollContainer = $UI/ListScroll
 @onready var list_vbox: VBoxContainer = $UI/ListScroll/ListVBox
-var _row_press_pos := Vector2.ZERO   # 触屏点选/滑动判定: 记按下位置, 松开位移小才算点选(手机2026-07-18)
+const TapSlop = preload("res://scripts/util/tap_slop.gd")
+var _row_tap := TapSlop.new()   # 列表行「点 vs 滑」(同一时刻只有一根手指, 全列表共用一个)
 var _codex_list := CodexList.new(self)   # 图鉴·左栏列表行构建(龟/装备/状态/分组头/简单行·back_button和共享_add_text/image/portrait/rect留主场景)(2026-07-25 抽出)
 var _codex_detail := CodexDetail.new(self)   # 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/小将)(2026-07-25 抽出)
 @onready var detail_bg: ColorRect = $UI/DetailBg
@@ -547,15 +548,11 @@ func _connect_row(p: Panel, idx: int, stroke: Color) -> void:
 	var wrap := p.get_parent()
 	if wrap is Control: (wrap as Control).mouse_filter = Control.MOUSE_FILTER_PASS
 	_row_passthrough(p)                          # 行内子控件不吞触摸
+	## 松手且手指没挪远才算点选(位移大 = 在滑列表 → 不选)。
+	## ★2026-10-31 位移改按画布全局坐标量(TapSlop): 原来量行自己的局部坐标 —— 行跟着手指一起滚,
+	##   快甩时松手那一刻相对行只挪了 4px ⇒ 一甩就把起手那一行选上了(verify_scroll_touch_sweep「快甩」实测)。
 	p.gui_input.connect(func(ev: InputEvent):
-		# 触屏: 按下记位置, 松开时位移小才算"点选"(位移大=在滑动列表→不选). 鼠标左键同理.
-		var down: bool = (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) \
-			or (ev is InputEventScreenTouch and ev.pressed)
-		var up: bool = (ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) \
-			or (ev is InputEventScreenTouch and not ev.pressed)
-		if down:
-			_row_press_pos = ev.position
-		elif up and ev.position.distance_to(_row_press_pos) < 14.0:
+		if _row_tap.is_tap(p, ev):
 			_select(idx))
 	# ★hover 高亮必须跟着"这一行现在是什么样式"走。
 	#   原来写死 `var sb: StyleBoxFlat = p.get_theme_stylebox("panel")` —— 行换成九宫格
@@ -790,6 +787,8 @@ func _add_rect(cx: float, cy: float, w: float, h: float, color: String, a: float
 	var p := Panel.new()
 	p.position = Vector2(cx - w / 2.0, cy - h / 2.0)
 	p.custom_minimum_size = Vector2(w, h); p.size = Vector2(w, h)
+	## 纯画框, 不收点击: Panel 默认 STOP ⇒ 手指按在图标框 / 卡片底上拖, 详情滚动框收不到(2026-10-31 verify_scroll_touch_sweep 实测 Δ=0)。
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(color); sb.bg_color.a = a
 	if stroke != "":

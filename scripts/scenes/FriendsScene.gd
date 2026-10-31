@@ -317,7 +317,9 @@ func _remove(c: Dictionary) -> void:
 	if _del_armed != acc or now - _del_armed_at > 3000:
 		_del_armed = acc
 		_del_armed_at = now
-		_render_list(data)
+		## 推迟到这一帧末尾再重画(同闯关赛况板 `_hit`): 手指点按时引擎先发模拟鼠标松手(⇒ 走到这里), 紧接着把触摸松手
+		##   也派给同一颗按钮 —— 当场重画会把它连行一起摘下树 ⇒ 引擎报 `Condition "!is_inside_tree()"`(verify_scroll_touch_sweep 手指点实测)。
+		_render_list.call_deferred(data)
 		return
 	_del_armed = ""
 	_act(func(done: Callable) -> void: FN.remove(acc, done),
@@ -386,6 +388,10 @@ func _person_row(c: Dictionary, btns: Array, sub: String, narrow: bool = false) 
 		(sb as StyleBoxTexture).content_margin_bottom = 8
 	card.add_theme_stylebox_override("panel", sb)
 	card.custom_minimum_size = Vector2(0, ROW_H)
+	## ★★手机上好友 / 申请列表滑不动(2026-10-31 verify_scroll_touch_sweep 实测: 手指按在行上拖 160px, 滚动框收到 0 个事件、Δ=0;
+	##   一屏可按的地方 90% 以上是行卡和行里的按钮): PanelContainer 默认 STOP, 事件到行卡就停了。
+	##   行卡只是画框, 不收点击 ⇒ IGNORE; 行里的按钮 PASS(见下), 与闯关赛况板行框同一个修法。
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 12)
 	card.add_child(h)
@@ -408,7 +414,11 @@ func _person_row(c: Dictionary, btns: Array, sub: String, narrow: bool = false) 
 		info.add_child(s)
 	for b in btns:
 		var w: float = float(b[3]) if b.size() > 3 else (92.0 if narrow else 120.0)
-		h.add_child(_btn(str(b[0]), w, b[1], str(b[2]), int(b[4]) if b.size() > 4 else 0))
+		var rb := _btn(str(b[0]), w, b[1], str(b[2]), int(b[4]) if b.size() > 4 else 0)
+		## 按在「切磋 / 删除 / 同意…」上起手也要能滑: PASS 让拖动冒到滚动框;
+		##   滑过的那一下不算点 —— 滚动框一开始拖就广播 SCROLL_BEGIN, 引擎自己把这颗按钮的按下作废(门禁「快甩」验过)。
+		rb.mouse_filter = Control.MOUSE_FILTER_PASS
+		h.add_child(rb)
 	return card
 
 
