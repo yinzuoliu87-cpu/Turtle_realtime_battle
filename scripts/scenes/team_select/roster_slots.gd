@@ -13,6 +13,12 @@ func _init(b) -> void:
 const BANNER_EMPTY_COL := Color("#6c7a8c")    # 空位横幅(= 背包占位统领)
 const BANNER_ACTIVE_COL := Color("#c8a46a")   # 待填(点了空位, 下一只点的龟进这里)
 
+## 上一次刷新时三格里是谁(对比出「刚放上的」⇒ 飞入 / 弹; 第一次刷新只记不弹, 入场动画管第一眼)
+var _last_ids: Array = [null, null, null]
+var _primed := false
+## 这次刷新是拖放触发的(手已经把卡带到格子上了 ⇒ 不再飞, 只弹)
+var _dropping := false
+
 
 func _build_slots() -> void:
 	host._slot_nodes = []
@@ -43,6 +49,19 @@ func _build_slots() -> void:
 		card.name = "Content"
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(card)
+		## 悬停: 卡往上抬 6px + 提亮(2026-10-30 动效; 只动内层 Content, 槽位本身不动)
+		panel.mouse_entered.connect(func() -> void:
+			var c: Control = panel.get_node_or_null("Content")
+			if c != null:
+				var tw := c.create_tween().set_parallel(true)
+				tw.tween_property(c, "position:y", -6.0, UIPalette.T_TAP).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+				tw.tween_property(c, "modulate", Color(1.15, 1.12, 1.05, 1.0), UIPalette.T_TAP))
+		panel.mouse_exited.connect(func() -> void:
+			var c: Control = panel.get_node_or_null("Content")
+			if c != null:
+				var tw := c.create_tween().set_parallel(true)
+				tw.tween_property(c, "position:y", 0.0, UIPalette.T_TAP).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+				tw.tween_property(c, "modulate", Color(1, 1, 1, 1), UIPalette.T_TAP))
 		host._slot_nodes.append(panel)
 
 
@@ -93,9 +112,10 @@ func _refresh_slots() -> void:
 			card.add_child(vb)
 			_fill_mark_slot(vb, id)
 		elif not pet.is_empty():
-			var body: Array = UnitCardArt.pet_body(str(id))
-			if body[0] != null:
-				card.add_child(UnitCardArt.portrait(body[0], body[1], pw, g["foot"]))
+			## 待机动画(2026-10-30 用户「他们游戏是动态的」): 统领卡上的龟一直在动
+			var por: Control = UnitCardArt.portrait_anim(str(id), pw, g["foot"], true)
+			if por != null:
+				card.add_child(por)
 		else:
 			## 空位: 「?」+「空位 / 放置」—— 与背包页占位统领同一个样子; 待填那格字提亮
 			var q := Label.new()
@@ -134,7 +154,29 @@ func _refresh_slots() -> void:
 		## 选中(点了一下准备换位) / 待填 / 锁定版里正在看的那一张: 卡外一圈金边
 		var focus: bool = host._roster_locked and not pet.is_empty() and str(id) == host.detail_pet_id
 		if sel or act or focus:
-			UnitCardArt.ring(card, sz, Color("#ffd86b") if (sel or focus) else Color("#ffe8a8"), 3.0)
+			TsMotion.breathe(UnitCardArt.ring(card, sz, Color("#ffd86b") if (sel or focus) else Color("#ffe8a8"), 3.0))
+	## 刚放上的: 新上阵 ⇒ 从龟池那张卡飞过来; 只是挪了格子 / 拖进来的 ⇒ 原地弹一下
+	if _primed and host.get("_motion") != null:
+		for i in range(3):
+			var nid = host.team[i]
+			if nid == null or (_last_ids[i] != null and str(_last_ids[i]) == str(nid)):
+				continue
+			var src: Control = null
+			if not _dropping and not (str(nid) in _last_ids.map(func(v): return str(v) if v != null else "")):
+				src = _grid_card(str(nid))
+			host._motion.place(i, src)
+	_primed = true
+	_last_ids = (host.team as Array).duplicate()
+
+
+## 龟池里这只的那张卡(飞入的起点); 没有 ⇒ null
+func _grid_card(pid: String) -> Control:
+	if host._grid_flow == null or not is_instance_valid(host._grid_flow):
+		return null
+	for c in (host._grid_flow as Node).get_children():
+		if c is Control and str((c as Control).get_meta("pet_id", "")) == pid and not (c as Node).is_queued_for_deletion():
+			return c
+	return null
 
 
 ## 大卡下沿木托(背包大卡装备托条同一张 shop-plank): 已上阵 = 被动 + 选中的那个技能两枚图标; 空位 = 两个空凹槽。
@@ -316,7 +358,9 @@ func _slot_drop(_at_pos: Vector2, data: Variant, idx: int) -> void:
 		if host._selected_slot_idx != -1:
 			host._selected_slot_idx = -1
 			_refresh_slots()
+		_dropping = true
 		host._on_drop_pet(str((data as Dictionary)["pet_id"]), idx)
+		_dropping = false
 
 
 ## 拖放落点处理 (1:1 PoC onDropPet TeamSelectScene.ts:1160)

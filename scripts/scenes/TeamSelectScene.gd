@@ -145,6 +145,7 @@ var _layout_editor := LayoutEditor.new(self)   # 选龟页·F9布局编辑器(de
 var _detail := DetailPanel.new(self)   # 选龟页·右栏详情面板渲染(立绘/属性/被动·_set_detail_pet协调器留主场景)(2026-07-25 抽出)
 var _slots := RosterSlots.new(self)   # 选龟页·6阵容槽(前3后3·建/刷/拖放·_mark_label和_sync_special_slots跨区共享留主场景)(2026-07-25 抽出)
 var _pet_grid := PetGrid.new(self)   # 选龟页·龟卡片网格(填充/建卡·稀有度badge和立绘helper留主场景共享)(2026-07-25 抽出)
+var _motion := TsMotion.new(self)   # 选龟页·动效(入场 / 上阵飞入 / 呼吸 / 扫光 / 出战光 / 氛围; 2026-10-30 用户「他们游戏是动态的」)
 var _skill_picker := SkillPicker.new(self)   # 选龟页·技能【普攻固定 + 3选1 主动】选择器(2026-07-25 抽出; 2026-07-28 正名: 原注"3选1"与实现不符)
 var _edit_layer: Control = null
 var _edit_handles: Dictionary = {}    # key → {handle:Panel, label:Label}
@@ -796,6 +797,7 @@ func _build_ui() -> void:
 
 	_raise_edge_btns()   # ★所有区域都建完了才提层 —— 早提会被后面的 slotBay/详情区盖回去
 	_place_status()
+	_motion.setup()   # 桌面氛围 + 出战键就绪光(resize 重建时随 root 一起重建)
 
 	if not _did_entrance:   # 入场只播一次 (resize 重建不重播)
 		_did_entrance = true
@@ -839,11 +841,9 @@ func _on_resize() -> void:
 func _play_entrance() -> void:
 	# 原入场: 龟池先空白0.62s→再上浮20px+缩放0.98→1+淡入0.45s (用户2026-07-18「浮现特效很烂」:
 	#   空白等待+漂浮缩放=卡顿廉价感)。改成 无延迟·无上浮·无缩放·纯快速淡入0.14s → 干净利落即显。
-	if _ent_scroll == null or not is_instance_valid(_ent_scroll):
-		return
-	_ent_scroll.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(_ent_scroll, "modulate:a", 1.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	## ★2026-10-30 用户「他们游戏是动态的，并不是你看到这么静态的」⇒ 入场交给 TsMotion: 统领卡依次落下、右栏 / 顶栏淡入;
+	##   龟池卡在第一次建网格时浮上来。仍守 07-18 那条: 没有开头的空白等待, 整套半秒内走完。
+	_motion.entrance()
 
 
 ## ★2026-10-05(主会话实玩): 「撤下」「沿用上次」两块牌子贴在一起、字快顶到牌边 ——
@@ -1082,7 +1082,10 @@ func _build_grid_region() -> void:
 		bar_h = 0.0
 	var scroll := ScrollContainer.new()
 	scroll.position = rc.position + Vector2(0.0, bar_h)
-	scroll.size = Vector2(rc.size.x, maxf(120.0, rc.size.y - bar_h))
+	## ★2026-10-31 iPad 4:3 录屏: 舞台按内容带宽收住, 下面空出约四分之一屏的桌面, 龟池却只露两排
+	##   ⇒ 屏幕比设计稿高时龟池往下长到屏底(留 16 设计单位), 多露几排; 手机 / 16:9 没有多余高度, 不变。
+	var room: float = _vp().y - float(_sp(16)) - scroll.position.y
+	scroll.size = Vector2(rc.size.x, maxf(maxf(120.0, rc.size.y - bar_h), room))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # 隐藏滚动条(进度带)·滚动仍启用(手机拖·PC滚轮)·用户2026-07-18
 	root.add_child(scroll)

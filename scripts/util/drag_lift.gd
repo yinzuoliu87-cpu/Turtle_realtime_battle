@@ -55,7 +55,7 @@ static func make(src: Control, face: Control, frac: Vector2, ghost: bool = true)
 	f.rotation = 0.0
 	f.scale = Vector2.ONE
 	f.modulate = Color(1, 1, 1, 1)
-	_ignore_mouse(f)
+	ignore_mouse_tree(f)
 	d._body = Control.new()
 	d._body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	d._body.size = sz
@@ -86,11 +86,12 @@ static func make(src: Control, face: Control, frac: Vector2, ghost: bool = true)
 	return d
 
 
-static func _ignore_mouse(n: Node) -> void:
+## 整棵子树都不接鼠标(拿起来的那张 / 飞行中的复制品不能挡住底下的放置目标)。选龟页飞入动效也用它。
+static func ignore_mouse_tree(n: Node) -> void:
 	if n is Control:
 		(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for c in n.get_children():
-		_ignore_mouse(c)
+		ignore_mouse_tree(c)
 
 
 func _process(dt: float) -> void:

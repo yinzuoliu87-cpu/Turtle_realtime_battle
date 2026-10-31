@@ -9,6 +9,8 @@ extends RefCounted
 const _TapSlop := preload("res://scripts/util/tap_slop.gd")
 
 var host
+## 上次建网格时的筛选(""= 还没建过): 第一次建 / 换了页签 ⇒ 卡片一排排浮上来(2026-10-30 动效)
+var _last_filter := ""
 
 func _init(b) -> void:
 	host = b
@@ -45,8 +47,27 @@ func _refresh_grid() -> void:
 	# sort by rarity (PoC default)
 	pets.sort_custom(func(a, b): return host.RARITY_ORDER.find(a.get("rarity", "C")) < host.RARITY_ORDER.find(b.get("rarity", "C")))
 
+	var sheen_k := 0
 	for pet in pets:
-		host._grid_flow.add_child(_make_pet_card(pet))
+		var c := _make_pet_card(pet)
+		host._grid_flow.add_child(c)
+		## SSS / SS 卡隔几秒扫过一道光(像抽卡游戏里的闪卡), 各张错开
+		if str(pet.get("rarity", "")) in ["SSS", "SS"]:
+			var b: float = UnitCardArt.border_for(c.custom_minimum_size)
+			TsMotion.sheen(c, Rect2(b, b, c.custom_minimum_size.x - 2.0 * b, c.custom_minimum_size.y - 2.0 * b), 0.4 + 0.9 * float(sheen_k % 3))
+			sheen_k += 1
+	## 第一次建 / 换了页签 ⇒ 卡片一排排浮上来; 换页签时下划线从中间长出来
+	if host.get("_motion") != null and host.filter_rarity != _last_filter:
+		host._motion.cascade_roster(0.0)
+		if _last_filter != "":
+			for rb in host._rarity_btns:
+				if rb["key"] == host.filter_rarity:
+					var ul := (rb["btn"] as Node).get_node_or_null("Underline") as Control
+					if ul != null:
+						ul.pivot_offset = ul.size * 0.5
+						ul.scale = Vector2(0.0, 1.0)
+						ul.create_tween().tween_property(ul, "scale", Vector2.ONE, UIPalette.T_BASE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_last_filter = host.filter_rarity
 	# 锁定态: 候选池灰显(去强调) — 表明本大轮不能改阵容; 卡片仍可点=查看详情/调技能, 只是不入队.
 	host._grid_flow.modulate = Color(1, 1, 1, 0.55) if host._roster_locked else Color(1, 1, 1, 1)
 
@@ -96,9 +117,13 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	var bn := Rect2(9.0 * kx, 168.0 * ky, sz.x - 18.0 * kx, 44.0 * ky)
 	var pw := Rect2(b, b, sz.x - 2.0 * b, sz.y - 2.0 * b)
 	card.add_child(UnitCardArt.window(sz, b))
-	var body: Array = UnitCardArt.pet_body(pid)
-	if body[0] != null:
-		card.add_child(UnitCardArt.portrait(body[0], body[1], pw, bn.position.y + 10.0 * ky))
+	## 待机动画: 平时停在第 0 帧, 悬停才动(28 张一起动太花; 下面 hover 里 play / pause)
+	var por: Control = UnitCardArt.portrait_anim(pid, pw, bn.position.y + 10.0 * ky, false)
+	if por != null:
+		card.add_child(por)
+	var idle_tw: Tween = null
+	if por != null and por.get_node_or_null("Body") != null and (por.get_node("Body") as Node).has_meta("idle_tw"):
+		idle_tw = (por.get_node("Body") as Node).get_meta("idle_tw")
 	if selected:
 		var dim := ColorRect.new()
 		dim.name = "InTeamDim"
@@ -149,15 +174,17 @@ func _make_pet_card(pet: Dictionary) -> Control:
 		card.add_child(tag)
 	## 右栏正在看的这一只: 卡外一圈金边
 	if focused:
-		UnitCardArt.ring(card, sz, Color("#ffd86b"), 3.0)
+		TsMotion.breathe(UnitCardArt.ring(card, sz, Color("#ffd86b"), 3.0))
 
-	# hover: 框提亮 + 往上抬一点(1:1 PoC .pet-card:hover translateY(-2))
+	# hover: 框提亮 + 往上抬一点(1:1 PoC .pet-card:hover translateY(-2)) + 龟动起来
 	card.mouse_entered.connect(func() -> void:
 		if not is_instance_valid(card): return
 		if card.get_meta("hovered", false): return
 		card.set_meta("hovered", true)
 		card.set_meta("rest_y", card.position.y)
 		fr.modulate = Color(1.3, 1.22, 1.05)
+		if idle_tw != null and idle_tw.is_valid():
+			idle_tw.play()
 		var tw = card.create_tween()
 		tw.tween_property(card, "position:y", card.position.y - 2.0 * host._s(), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT))
 	card.mouse_exited.connect(func() -> void:
@@ -165,6 +192,8 @@ func _make_pet_card(pet: Dictionary) -> Control:
 		if not card.get_meta("hovered", false): return
 		card.set_meta("hovered", false)
 		fr.modulate = Color.WHITE
+		if idle_tw != null and idle_tw.is_valid():
+			idle_tw.pause()
 		var rest_y: float = card.get_meta("rest_y", card.position.y)
 		var tw = card.create_tween()
 		tw.tween_property(card, "position:y", rest_y, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT))
@@ -183,7 +212,7 @@ func mark_focus() -> void:
 			if r.name == "Ring":
 				r.free()
 		if str((card as Control).get_meta("pet_id", "")) == host.detail_pet_id:
-			UnitCardArt.ring(card, (card as Control).size, Color("#ffd86b"), 3.0)
+			TsMotion.breathe(UnitCardArt.ring(card, (card as Control).size, Color("#ffd86b"), 3.0))
 
 
 ## 给 TextureRect 装龟的全身 idle 动画 (1:1 PoC buildPetImgHTML: pet.img 全身 sheet + sprite{} 帧).

@@ -10,6 +10,8 @@ const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
 const TurtleStats := preload("res://scripts/gamedata/turtle_stats.gd")   # 定位(ROLE): 与移速 / 攻速同一份事实源
 
 var host
+## 上一次显示的是谁(换了一只 ⇒ 立绘弹进来; 2026-10-30 动效)
+var _last_pid := ""
 
 func _init(b) -> void:
 	host = b
@@ -130,6 +132,21 @@ func _refresh_detail() -> void:
 	host._apply_pet_idle_texture(portrait, pet)
 	portrait_wrap.add_child(portrait)            # 立绘在辉光之上
 	host._dt_portrait.add_child(portrait_wrap)
+	## 没有逐帧待机图的龟(没挂 idle_tw): 立绘「呼吸」, 与统领卡同一种(UnitCardArt.breathe_idle; 2026-10-31 录屏量出 11 只一动不动)
+	var still: bool = not portrait.has_meta("idle_tw")
+	## 换了一只看 ⇒ 立绘从小弹到原大 + 淡入(2026-10-30 用户「他们游戏是动态的」); 弹完再开始呼吸(两条都动缩放, 不能同时)
+	if _last_pid != "" and _last_pid != host.detail_pet_id:
+		portrait.pivot_offset = portrait.size * 0.5
+		portrait.scale = Vector2.ONE * 0.8
+		portrait.modulate.a = 0.0
+		var ptw := portrait.create_tween().set_parallel(true)
+		ptw.tween_property(portrait, "scale", Vector2.ONE, UIPalette.T_TRANS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		ptw.tween_property(portrait, "modulate:a", 1.0, UIPalette.T_BASE)
+		if still:
+			ptw.chain().tween_callback(func() -> void: UnitCardArt.breathe_idle(portrait))
+	elif still:
+		UnitCardArt.breathe_idle(portrait)
+	_last_pid = host.detail_pet_id
 
 	# PoC .dp-name-row: 居中, 名 + 填充稀有 badge + Lv
 	var name_row = HBoxContainer.new()

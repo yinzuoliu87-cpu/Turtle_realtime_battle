@@ -5,6 +5,8 @@ const SkillChoice := preload("res://scripts/gamedata/skill_choice.gd")
 ## 类内名不变;外部名加 battle.
 
 var host
+## 刚点选的那一格(建图标时弹一下; 2026-10-30 动效)
+var _just_pick := -1
 
 func _init(b) -> void:
 	host = b
@@ -53,6 +55,7 @@ func _build_skill_picker(pet: Dictionary) -> void:
 		var ico = _make_skill_icon(pet, sk, i, is_fixed, is_sel)
 		icon_grid.add_child(ico)
 
+	_just_pick = -1
 	## ★2026-10-30 选龟页重做: 原来图标下面还有一行「选择 · 技能名」—— 与选中那格的「已选」角标说同一件事,
 	##   走查时它还掉出了右栏下格(落在格子和绿牌之间)。选了哪个现在另有两处看得见:
 	##   这格的金边 +「已选」角标、统领大卡下沿木托里的那枚技能图标 ⇒ 删掉这一行。
@@ -158,6 +161,11 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	var _skinfo: String = _skill_tooltip(pet, sk, idx)
 	if not btn.disabled:
 		btn.pressed.connect(func() -> void: host._show_detail_popup_from(_skinfo, Color("#ffd86b"), btn.get_global_rect()))
+	## 刚点选的这一格弹一下(绕中心, 不挪位置)
+	if idx == _just_pick:
+		btn.pivot_offset = btn.custom_minimum_size * 0.5
+		btn.scale = Vector2.ONE * 1.25
+		btn.create_tween().tween_property(btn, "scale", Vector2.ONE, UIPalette.T_TRANS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	return btn
 
 
@@ -344,6 +352,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 		host._flash_status("未解锁")   # 与按钮层 dev_locked 同一句
 		return
 	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个
+	_just_pick = idx
 	if host.has_method("_tut_notify"):
 		host._tut_notify("skill_picked")                # 教程 v5 B2: 选了一个技能才前进
 	# ★这三行的调用目标在上帝文件拆分时搬过家: _refresh_slots 去了 roster_slots.gd,
