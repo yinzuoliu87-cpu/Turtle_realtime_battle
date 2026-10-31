@@ -30,6 +30,7 @@ const BMS := preload("res://scripts/scenes/BracketMapScene.gd")
 const LB := preload("res://scripts/scenes/LeaderboardScene.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 const Backend := preload("res://scripts/net/backend.gd")
+const RN := preload("res://scripts/net/referee_net.gd")
 const MIGRATION := "res://server/supabase/migrations/20261007b_champion_cup.sql"
 const SCHEMA := "res://server/supabase/schema.sql"
 const MARK_BEGIN := "-- >>> BEGIN champion_cup 20261007b >>>"
@@ -39,7 +40,7 @@ const KEYS := ["titles", "ranked_used", "promoted", "week_anchor_ts", "account_i
 	"finals_deepest_round", "finals_rounds_total", "finals_champion", "finals_runner_up",
 	"finals_pending_reveal", "finals_report_pending", "finals_match", "week_phase", "battle_seed",
 	"finals_cup_deepest", "finals_cup_total", "finals_cup_champion", "finals_cup_runner_up",
-	"gauntlet_wins", "gauntlet_losses", "test_mode"]
+	"gauntlet_wins", "gauntlet_losses", "test_mode", "referee_flags"]
 
 var _n := 0
 var _fail := 0
@@ -159,6 +160,12 @@ func _seg(t: String) -> String:
 	return t.substr(a, b2 + MARK_END.length() - a) if a >= 0 and b2 > a else ""
 
 
+## t 里【最后一次】出现 key 起的 n 个字(没有 = "")。量「线上生效的那份」用。
+func _last_after(t: String, key: String, n: int) -> String:
+	var a := t.rfind(key)
+	return t.substr(a, n) if a >= 0 else ""
+
+
 func _fn(t: String, name: String) -> String:
 	var a := t.find("create or replace function public.%s(" % name)
 	if a < 0:
@@ -248,8 +255,11 @@ func _t_sql() -> void:
 	_ok("② ★schema.sql 里同一段逐字相同(只出现一次)", sch.count(MARK_BEGIN) == 1 and _seg(sch) == seg)
 	_ok("② ★★保留组号 = 客户端常量", seg.find("as $$ select %d $$" % P2C.FINALS_CUP_BUCKET) >= 0
 		and _fn(seg, "finals_cup_no").find("select %d" % P2C.FINALS_CUP_BUCKET) >= 0, str(P2C.FINALS_CUP_BUCKET))
-	_ok("② ★★开赛钟点(UTC) = 客户端常量", _fn(seg, "finals_cup_hour").find("select %d" % P2C.FINALS_START_HOUR_UTC) >= 0,
-		str(P2C.FINALS_START_HOUR_UTC))
+	## ★开赛钟点量 schema.sql 里【最后一份】定义(= 线上生效的那份): 2026-10-31 由 20 改 19(迁移 20261101c),
+	##   原 20261007b 那段保留原样(历史迁移不改), 只量它会让改时刻的迁移永远对不上账。
+	var hr_def := _last_after(sch, "create or replace function public.finals_cup_hour(", 120)
+	_ok("② ★★开赛钟点(UTC) = 客户端常量(schema 最后一份定义)", hr_def.find("select %d $$" % P2C.FINALS_START_HOUR_UTC) >= 0,
+		"%d · %s" % [P2C.FINALS_START_HOUR_UTC, hr_def.strip_edges().replace(char(10), " ")])
 	var sat := _fn(seg, "finals_seed_at_seat")
 	_ok("② ★★座次构造与 bracket.gd 同一公式(x 与 2·sz−1−x 交错)",
 		sat.find("nxt := array_append(nxt, x);") >= 0 and sat.find("nxt := array_append(nxt, sz * 2 - 1 - x);") >= 0
@@ -302,8 +312,9 @@ func _t_sql() -> void:
 			"entrants": [_ent(0, "丙", "c"), _ent(1, "丁", "d")]}]}), "", 1)
 	_ok("② ★★组列表里混进杯 ⇒ 客户端再筛掉(只剩 1 组)", (leak.get("buckets", []) as Array).size() == 1
 		and not leak.has("cup"), str((leak.get("buckets", []) as Array).size()))
-	_ok("② 定时任务: 周日 20:00 起每 5 分钟、可重复执行", seg.find("cron.unschedule(jobid) from cron.job where jobname = 'finals_cup_seat'") >= 0
-		and seg.find("'*/5 %d-23 * * 0'" % P2C.FINALS_START_HOUR_UTC) >= 0)
+	var cron_def := _last_after(sch, "cron.schedule('finals_cup_seat'", 60)
+	_ok("② 定时任务: 周日开赛钟点起每 5 分钟、可重复执行(schema 最后一份)", seg.find("cron.unschedule(jobid) from cron.job where jobname = 'finals_cup_seat'") >= 0
+		and cron_def.find("'*/5 %d-23 * * 0'" % P2C.FINALS_START_HOUR_UTC) >= 0, cron_def)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -400,6 +411,9 @@ func _all(n: Node) -> Array:
 
 
 func _reset_gs() -> void:
+	## ★2026-10-31: 本测量的是「服务器裁判关」那条老路(本机打、本机报)。开关落在存档里(GameState.referee_flags),
+	##   不钉住的话, 拿开发机的真存档跑(正式服 finals_on = 开)会走「只看不打」, ④ 三条假红。
+	GameState.referee_flags = {}
 	GameState.titles = []
 	GameState.week_anchor_ts = _wk
 	GameState.ranked_used = 0
@@ -420,12 +434,13 @@ func _t_flow() -> void:
 	_wk = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
 	_reset_gs()
 	## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日 12:00 是闯关赛、对阵图还没开门。
-	##   「冠军杯赛开赛前」改钉 19:00(18:00 分组之后、20:00 冠军杯赛之前), 并先断言那一刻是决赛日。
-	var eve := _wk + 6 * 86400 + 19 * 3600
-	var t1 := _wk + 6 * 86400 + 20 * 3600 + 5 * 60
+	##   「冠军杯赛开赛前」钉开赛前 40 分钟(2026-10-31 冠军杯赛改 19:00 ⇒ 18:20: 18:00 分组 + 15 分刷新之后), 并先断言那一刻是决赛日。
+	var cup_at := _wk + 6 * 86400 + int(P2C.FINALS_START_HOUR_UTC) * 3600
+	var eve := cup_at - 40 * 60
+	var t1 := cup_at + 5 * 60
 
-	print("── ③ 开赛前(周日 19:00 UTC) ──")
-	_ok("③ ★分母: 钉的那一刻是决赛日(周日 19:00 UTC)", P2C.phase_at_utc(eve) == P2C.PHASE_FINALS, P2C.phase_at_utc(eve))
+	print("── ③ 开赛前(冠军杯赛开赛前 40 分钟) ──")
+	_ok("③ ★分母: 钉的那一刻是决赛日(冠军杯赛开赛前 40 分钟)", P2C.phase_at_utc(eve) == P2C.PHASE_FINALS, P2C.phase_at_utc(eve))
 	P2C.now_override_ts = eve
 	_set_bodies(eve, null)
 	_reqs.clear()
@@ -436,13 +451,13 @@ func _t_flow() -> void:
 	await _frames(2)
 	_ok("③ ★分母: 真的发了 finals_view 与 finals_week_view", _reqs_to("/finals_view").size() >= 1
 		and _reqs_to("/finals_week_view").size() >= 1, "%d 条请求" % _reqs.size())
-	_ok("③ 19:00(冠军杯赛开赛前)默认看小组赛", str(m._view) == L.VIEW_BUCKET, str(m._view))
+	_ok("③ 冠军杯赛开赛前默认看小组赛", str(m._view) == L.VIEW_BUCKET, str(m._view))
 	m.pick_view(L.VIEW_FINALS)
 	await _frames(1)
 	var et := str(m._empty_lb.text)
 	print("    冠军杯赛页: 「%s」" % et.replace("\n", " / "))
 	_ok("③ ★★分类 = 开赛前", str(m._empty_kind()) == BMS.EK_FINALS_SOON, str(m._empty_kind()))
-	_ok("③ ★★倒计时数到 20:00 UTC(1 小时 0 分)", et.begins_with("冠军杯赛 1 小时 0 分后开赛"), et)
+	_ok("③ ★★倒计时数到开赛钟点(40 分)", et.begins_with("冠军杯赛 40 分后开赛"), et)
 	_ok("③ ★★列出两名组冠军(进冠军杯赛的人)", et.find("我龟") >= 0 and et.find("丁龟") >= 0
 		and et.find("乙龟") < 0 and et.find("丙龟") < 0, et)
 	_ok("③ 页签「冠军杯赛 · 未开赛」", str((m._tabs.get_child(1) as Button).text) == "冠军杯赛 · 未开赛",
@@ -470,6 +485,7 @@ func _t_flow() -> void:
 		and int(m.cur().get("bucket", -1)) == P2C.FINALS_CUP_BUCKET and int(m.cur().get("me", -9)) == 0, str(m.cur().get("bucket")))
 	_ok("④ 页签「冠军杯赛」", str((m._tabs.get_child(1) as Button).text) == "冠军杯赛")
 	_ok("④ ★分母: 我那一场的对手是 1 号种子", m.my_opponent_seed(1, 0) == 1)
+	_ok("④ ★前提: 服务器裁判关(量的是本机打的老路)", not RN.finals_on(), str(GameState.referee_flags))
 	## 购物窗那一行每拍算一次(轮询 0.5 秒一拍); 杯那一张是上一拍才到手的。
 	## ★收包时刻对齐到钉住的钟: 剩余秒数 = 服务端钟 + (本屏的「现在」− 收包时刻), 而收包时刻是真实系统钟,
 	##   门禁把「现在」钉在周日 ⇒ 不对齐的话差出好几天(产品里两者是同一个钟, 差不出来)。
@@ -603,7 +619,7 @@ func _t_flow() -> void:
 func _t_solo() -> void:
 	print("── ⑧ 1 人冠军杯赛 ──")
 	_reset_gs()
-	var t := _wk + 6 * 86400 + 20 * 3600 + 10 * 60
+	var t := _wk + 6 * 86400 + int(P2C.FINALS_START_HOUR_UTC) * 3600 + 10 * 60
 	P2C.now_override_ts = t
 	## 一个 4 人组: 我(决赛输)⇒ 组冠军是别人; 冠军杯赛只有他 1 人
 	var done := {"1-0": 0, "1-1": 0, "2-0": 0}
@@ -665,8 +681,8 @@ func _t_solo() -> void:
 func _t_group_solo() -> void:
 	print("── ⑧b 1 人组 ──")
 	_reset_gs()
-	## ★2026-10-26 周日 12:00 已是闯关赛 ⇒ 钉 19:00(分组 18:00 之后、冠军杯赛 20:00 之前)
-	var eve := _wk + 6 * 86400 + 19 * 3600
+	## ★2026-10-26 周日 12:00 已是闯关赛 ⇒ 钉冠军杯赛开赛前 40 分钟(分组 18:00 之后; 10-31 冠军杯赛改 19:00)
+	var eve := _wk + 6 * 86400 + int(P2C.FINALS_START_HOUR_UTC) * 3600 - 40 * 60
 	P2C.now_override_ts = eve
 	var gs: Array = []
 	var nm := ["我龟", "乙龟", "丙龟"]

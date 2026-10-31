@@ -2,7 +2,7 @@ class_name BracketCeremony
 extends RefCounted
 ## bracket_ceremony.gd —— 对阵图上接 D 的三样仪式(2026-10-31 · 方案书 docs/plans/20261031c-周日赛事界面重做.md 块 D / G7 G10 G12)
 ##
-##   · 冠军决出那一刻 ⇒ `ChampionShow`(冠军杯: 收盘总流程; 组: 缩短版「晋级冠军杯赛 · 20:00 开赛」); 冠军本人看 ⇒ 带奖励链
+##   · 冠军决出那一刻 ⇒ `ChampionShow`(冠军杯: 收盘总流程; 组: 缩短版「晋级冠军杯赛 · HH:MM 开赛」(钟点读常量)); 冠军本人看 ⇒ 带奖励链
 ##   · 冠军杯第 1 场开播前 / 第一次进冠军杯页时第 1 场还没开播 ⇒ `ChampionIntro`(组冠军依次亮相, 上届冠军标「卫冕」)
 ##   · 「冠军墙」入口 ⇒ `ChampionWall`(往届, 最近 8 届)
 ## ★同一周同一张图只演一次 —— 看直播看到决赛结束的人, 冠军杯收盘已经由 `ChampionHook.on_cup_final_end`(观战那一侧)演过了,
@@ -16,6 +16,7 @@ const _CW := preload("res://scripts/scenes/bracket/champion_wall.gd")
 const _CH := preload("res://scripts/scenes/bracket/champion_hook.gd")
 const _B := preload("res://scripts/gamedata/bracket.gd")
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const _SB := preload("res://scripts/net/supabase.gd")
 ## M 的「没守到最后的人下次开机补看」(G21): 冠军杯收盘这里演过了 ⇒ 记成看过, 下次开机不再补演。
 ##   ★用到时才 load(不 preload): 那是 M 的文件, 它改到一半编译不过时不连带对阵图整屏编译失败。
 const RECAP_PATH := "res://scripts/ui/finals_day_recap.gd"
@@ -23,6 +24,17 @@ const RECAP_PATH := "res://scripts/ui/finals_day_recap.gd"
 ## 演过的(「cup|周」/「group|组号|周」)与开场亮相演过的周。★静态: 看完回放回来(新场景实例)不重演。
 static var played: Dictionary = {}
 static var intro_played: Dictionary = {}
+## 上一届冠军杯冠军(⑦「卫冕」)。来源 = **上周**的 finals_week_view(冠军墙 `ChampionWall.load_weeks` 同一个读接口
+##   `SupabaseNet.fetch_finals_week_cb`), 认人用 `ChampionData.defending_acc_of`。
+##   · 只在本周的冠军杯赛**成表之后**问(没成表就没人可标; 也不和进场那两份抢首屏), 每周只问一次(跨进出页缓存)。
+##   · 拿不到(连不上 / 没部署 / 没登录 / 超时)⇒ 留空不显示, 本页不再问(下次进页再问)。
+##   · 开场亮相等这一问回来再演(最多等 SupabaseNet 看门狗 15 秒), 否则先演了就再也标不上「卫冕」。
+const DEF_IDLE := 0
+const DEF_ASKING := 1
+const DEF_DONE := 2
+static var defending_by_week: Dictionary = {}     # 上周的周锚 → 上届冠军账号("" = 那一周没有冠军杯冠军)
+static var defending_asks := 0                     # 观测量(门禁分母): 本进程真的问过几次
+var def_state := DEF_IDLE
 
 var s
 var last_show = null          # 最近一次打开的 ChampionShow(门禁读)
@@ -95,6 +107,8 @@ func play_champion(data: Dictionary):
 func maybe_intro() -> void:
 	if str(s._view) != "finals" or not bool(s.ceremony_on):
 		return
+	if def_state == DEF_ASKING:
+		return                              # 上一届冠军还在问(回来那一拍 `_on_defending` 再叫一次)
 	var c: Dictionary = s._finals
 	var n := int(c.get("size", 0))
 	if n < 2:
@@ -113,6 +127,44 @@ func maybe_intro() -> void:
 		return
 	intro_played[wk] = true
 	last_intro = _CI.open(s, d)
+
+
+## 每拍(对阵图轮询)调一次: 本周冠军杯赛成表了、还没问过 ⇒ 问上周那一份。门禁喂数据(set_data / set_week)那条路不问。
+func poll_defending() -> void:
+	if def_state != DEF_IDLE or bool(s._injected):
+		return
+	if not (s._week_view().get("cup", null) is Dictionary):
+		return
+	var prev := int(s.feed_week()) - _CD.WEEK_SEC
+	if prev < _CD.CUP_FIRST_WEEK:
+		def_state = DEF_DONE                # 第一届: 没有上一届
+		return
+	if defending_by_week.has(prev):
+		def_state = DEF_DONE
+		s.defending_acc = str(defending_by_week[prev])
+		return
+	## ★先记「在问」再发: 传输可能当场回话(回调先于 fetch 返回), 后记会把回调写的 DONE 盖回 ASKING ⇒ 开场永远在等
+	def_state = DEF_ASKING
+	if _SB.fetch_finals_week_cb(prev, _on_defending.bind(prev)):
+		defending_asks += 1
+	else:
+		def_state = DEF_DONE                # 没配后端: 不标
+
+
+func _on_defending(res: Dictionary, prev: int) -> void:
+	def_state = DEF_DONE
+	if s == null or not is_instance_valid(s) or not s.is_inside_tree():
+		return
+	if res.has("reason") or res.has("err"):
+		maybe_intro()                       # 拿不到 ⇒ 不标「卫冕」, 开场照演
+		return
+	var acc := _CD.defending_acc_of(res)
+	defending_by_week[prev] = acc
+	if acc != str(s.defending_acc):
+		s.defending_acc = acc
+		s._rebuild()                        # 来历标签 / 亮相带上「卫冕」(重画里会再叫 maybe_intro)
+	else:
+		maybe_intro()
 
 
 ## 冠军墙(G12): 往届最近 8 届。

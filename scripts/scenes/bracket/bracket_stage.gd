@@ -5,7 +5,7 @@ extends RefCounted
 ##   · 本轮名牌墙(⑭ · G4 · Fall Guys 2-5 / Trackmania 5-1): 本轮所有人的名牌一排 → 输家逐个盖红叉 → 晋级者亮起抬高 → 揭晓下一轮对阵
 ##   · 3 分钟备战屏(⑮ · G5 · Chess.com 3-4 / 金铲铲 W-6): 大倒计时 + 本轮进度 + 下一轮谁对谁与一句利害 + 一排在动的选手卡
 ##   · 全部组宫格(⑲ · G23 · 9-7): 每格 组号 / 正在播谁 / 比分 / 组冠军, 点哪格进哪组
-##   · 开赛前大倒计时(⑫ · P12): 18:00 分组前 / 20:00 冠军杯赛前, 大字倒计时 + 已报名人数
+##   · 开赛前大倒计时(⑫ · P12): 分组前 / 冠军杯赛开赛前(钟点都读常量), 大字倒计时 + 已报名人数
 ##   · 即将开播那一格的说明卡(S 分身清单第 7 条): 只写「X 后开播」
 ## ★这些全不在 `_canvas` 里(③「画布里真按钮数 == 可点场次数」); 字一律不以「✓」开头(①的分母只数对阵卡)。
 ## ★过场里不判任何东西: 谁输谁赢 / 下一轮谁对谁 / 还剩几秒, 全由场景算好喂进来(`BracketMapScene.wall_data()` 等)。
@@ -204,7 +204,7 @@ func preshow(vp: Vector2, band: Dictionary, d: Dictionary) -> float:
 	if end_ts > 0:
 		box.modulate.a = 0.0
 		var tw := box.create_tween()
-		tw.tween_property(box, "modulate:a", 1.0, 0.3)
+		tw.tween_property(box, "modulate:a", 1.0, UIPalette.T_TRANS)
 	return r.end.y + 18.0
 
 
@@ -273,8 +273,8 @@ func name_wall(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 		var tw := plate.create_tween()
 		tw.tween_interval(0.05 + float(i) * 0.06)
 		tw.set_parallel(true)
-		tw.tween_property(plate, "modulate:a", 1.0, 0.18)
-		tw.tween_property(plate, "position:y", y0, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(plate, "modulate:a", 1.0, UIPalette.T_BASE)
+		tw.tween_property(plate, "position:y", y0, UIPalette.T_TRANS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.set_parallel(false)
 		if bool(it.get("lost", false)):
 			## 输家: 依次盖红叉 + 整块压暗(压暗那层垫在红叉下面)
@@ -288,11 +288,11 @@ func name_wall(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 			var tx := xm.create_tween()
 			tx.tween_interval(at)
 			tx.set_parallel(true)
-			tx.tween_property(xm, "modulate:a", 1.0, 0.08)
-			tx.tween_property(xm, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			tx.tween_property(xm, "modulate:a", 1.0, UIPalette.T_TAP)
+			tx.tween_property(xm, "scale", Vector2.ONE, UIPalette.T_BASE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 			var td := plate.create_tween()
 			td.tween_interval(at + 0.12)
-			td.tween_property(shade, "color:a", 0.5, 0.2)
+			td.tween_property(shade, "color:a", 0.5, UIPalette.T_BASE)
 			var out := _lb("出局", 14, Color.WHITE, true)
 			out.position = Vector2(0, ph - 26.0)
 			out.size = Vector2(pw, 20)
@@ -301,7 +301,7 @@ func name_wall(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 			plate.add_child(out)
 			var to := out.create_tween()
 			to.tween_interval(at + 0.1)
-			to.tween_property(out, "modulate:a", 1.0, 0.15)
+			to.tween_property(out, "modulate:a", 1.0, UIPalette.T_TAP)
 		else:
 			## 晋级者: 打叉之后亮起、抬高(G4「晋级者亮起」)
 			var glow := Control.new()
@@ -326,9 +326,9 @@ func name_wall(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 			var tg := plate.create_tween()
 			tg.tween_interval(rise)
 			tg.set_parallel(true)
-			tg.tween_property(plate, "position:y", y0 - 14.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			tg.tween_property(glow, "modulate:a", 1.0, 0.25)
-			tg.tween_property(tagbox, "modulate:a", 1.0, 0.2)
+			tg.tween_property(plate, "position:y", y0 - 14.0, UIPalette.T_TRANS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tg.tween_property(glow, "modulate:a", 1.0, UIPalette.T_TRANS)
+			tg.tween_property(tagbox, "modulate:a", 1.0, UIPalette.T_BASE)
 	## 揭晓下一轮对阵
 	var reveal_at := t_stamp + 0.28 * float(_count_lost(seats)) + 1.0
 	var nx := Control.new()
@@ -357,19 +357,25 @@ func name_wall(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 	var tn := nx.create_tween()
 	tn.tween_interval(reveal_at)
 	tn.set_parallel(true)
-	tn.tween_property(nx, "modulate:a", 1.0, 0.2)
-	tn.tween_property(nx, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tn.tween_property(nx, "modulate:a", 1.0, UIPalette.T_BASE)
+	tn.tween_property(nx, "scale", Vector2.ONE, UIPalette.T_TRANS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	## 收尾: 整块淡出(点一下 = 直接淡出)
 	var tf := wall.create_tween()
 	tf.tween_interval(WALL_SEC)
-	tf.tween_property(wall, "modulate:a", 0.0, 0.4)
+	tf.tween_property(wall, "modulate:a", 0.0, UIPalette.T_TRANS)
 	tf.tween_callback(wall.queue_free)
-	wall.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed and is_instance_valid(wall):
-			wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var tq := wall.create_tween()
-			tq.tween_property(wall, "modulate:a", 0.0, 0.25)
-			tq.tween_callback(wall.queue_free))
+	## 点一下 = 直接淡出。用方法 + bind 而不是 lambda 捕获墙(tween_capture_audit: 演出 lambda 不捕获会被释放的节点);
+	##   信号连在墙自己身上, 墙一释放连接就断, 回调不会拿到已释放的墙。
+	wall.gui_input.connect(_skip_wall.bind(wall))
+
+
+## 名牌墙被点了一下: 直接淡出自删(不等 WALL_SEC 放完)。
+func _skip_wall(ev: InputEvent, w: Control) -> void:
+	if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed and is_instance_valid(w):
+		w.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tq := w.create_tween()
+		tq.tween_property(w, "modulate:a", 0.0, UIPalette.T_BASE)
+		tq.tween_callback(w.queue_free)
 
 
 func _count_lost(seats: Array) -> int:
@@ -530,7 +536,7 @@ func prep(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 	pnl.add_child(bt)
 	pnl.modulate.a = 0.0
 	var tw := pnl.create_tween()
-	tw.tween_property(pnl, "modulate:a", 1.0, 0.25)
+	tw.tween_property(pnl, "modulate:a", 1.0, UIPalette.T_TRANS)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -658,7 +664,7 @@ func grid(vp: Vector2, band: Dictionary, cells: Array) -> void:
 		bt.modulate.a = 0.0
 		var tw := bt.create_tween()
 		tw.tween_interval(0.04 * float(i))
-		tw.tween_property(bt, "modulate:a", 1.0, 0.18)
+		tw.tween_property(bt, "modulate:a", 1.0, UIPalette.T_BASE)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -751,7 +757,7 @@ func upcoming_card(vp: Vector2, title: String, a: Dictionary, b: Dictionary, lef
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  ⑫ 空态整页: 顶上固定件 + 开赛前大倒计时(18:00 分组 / 20:00 冠军杯赛)+ 已报名人数 + 一整晚四站; 说明框接在下面
+#  ⑫ 空态整页: 顶上固定件 + 开赛前大倒计时(分组 / 冠军杯赛, 钟点读常量)+ 已报名人数 + 一整晚四站; 说明框接在下面
 # ═══════════════════════════════════════════════════════════════════
 func empty_preshow(vp0: Vector2, bw: float, bh: float) -> void:
 	s._hero_on = true

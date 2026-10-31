@@ -22,11 +22,12 @@ const CD := preload("res://scripts/scenes/bracket/champion_data.gd")
 const CER := preload("res://scripts/scenes/bracket/bracket_ceremony.gd")
 const CS := preload("res://scripts/scenes/bracket/champion_show.gd")
 const CHK := preload("res://scripts/scenes/bracket/champion_hook.gd")
+const SB := preload("res://scripts/net/supabase.gd")
 
 const WEEK := 1792972800
 const SUN := WEEK + 6 * 86400
 const F := SUN + 18 * 3600 + 8 * 60
-const C := SUN + 20 * 3600 + 2 * 60
+const C := SUN + P2C.FINALS_START_HOUR_UTC * 3600 + 2 * 60     # 冠军杯赛开赛后 2 分钟(钟点从常量推, 10-31 挪到 19:00)
 const GN := [["吃货一枚", "小辉同学", "afei23", "huihui"], ["jyz11", "阿丽呀", "max5452", "阿芳"],
 	["头发多多", "ykx1314", "kris520", "海盗龟王"], ["石头统领", "彩虹大师", "fish31", "haohao"]]
 
@@ -167,6 +168,7 @@ func _ready() -> void:
 	await _t_closing()
 	await _t_preshow()
 	await _t_popup_and_forfeit()
+	await _t_defending()
 	_finish()
 
 
@@ -577,11 +579,11 @@ func _t_grid_peek() -> void:
 # 冠军杯收盘(G22 · ⑰)+ 冠军决出那一刻的挂点
 # ─────────────────────────────────────────────────────────────
 func _t_closing() -> void:
-	var grp := _closed_groups(SUN + 21 * 3600)
+	var grp := _closed_groups(SUN + (P2C.FINALS_START_HOUR_UTC + 1) * 3600)
 	## 先看见决赛还在播(那一刻之前), 再看见收盘 ⇒ 挂点只报一次
 	var done := {"1-0": 0, "1-1": 0, "1-2": 0, "1-3": 0, "2-0": 0, "2-1": 1, "3-0": 0}
 	var sc := {"1-1": 1, "1-3": 0, "2-0": 1, "2-1": 0, "3-0": 1}
-	var t0 := SUN + 20 * 3600 + 40 * 60
+	var t0 := SUN + P2C.FINALS_START_HOUR_UTC * 3600 + 40 * 60
 	var playing := _cup(3, done, sc, true, 0, t0, {"revealed_at": t0 - 30})
 	await _open(grp[0], playing, {"buckets": grp, "cup": playing}, t0, true)
 	_ok("挂点 分母: 决赛开播中(冠军还没揭晓)", str(_m.match_state(3, 0)) == BMS.ST_PREMIERE and _m.last_champion_data.is_empty())
@@ -792,6 +794,162 @@ func _t_popup_and_forfeit() -> void:
 		and origins == ["阵容无效 · 判负"], "%s / %s" % [str((c11.find_child("CardHead", true, false) as Label).text) if c11 else "", str(origins)])
 	var c10 := _card_at(1, 0)
 	_ok("S10 对照: 有档期的那一场照常「已结束」", c10 != null and str((c10.find_child("CardHead", true, false) as Label).text) == "已结束")
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑦「卫冕」的数据源(2026-10-31 write_orphan: 原来 defending_acc 产品侧没人写)
+#   走真入口: 后端打开 + 注入传输(不碰网络), 场景自己问本周两份; 本周冠军杯成表后它再问**上周**那一份,
+#   上周冠军杯冠军 = 本周 A 组冠军 ⇒ 冠军杯来历标签「卫冕 · A 组冠军」、开场亮相那一位标「卫冕」。
+# ─────────────────────────────────────────────────────────────
+var _def_reqs: Array = []
+var _def_prev_body := ""
+var _def_week_body := ""
+var _def_mine_body := ""
+
+
+func _def_spy(_method, url, _headers, body, cb) -> void:
+	var u := str(url)
+	_def_reqs.append({"url": u, "body": str(body)})
+	if u.ends_with("/finals_week_view"):
+		var j = JSON.parse_string(str(body))
+		var wk := int((j as Dictionary).get("p_week", 0)) if j is Dictionary else 0
+		if wk == WEEK - CD.WEEK_SEC:
+			if _def_prev_body == "":
+				cb.call({"ok": false, "code": 0, "body": ""})        # 连不上
+			else:
+				cb.call({"ok": true, "code": 200, "body": _def_prev_body})
+		else:
+			cb.call({"ok": true, "code": 200, "body": _def_week_body})
+	elif u.ends_with("/finals_view"):
+		cb.call({"ok": true, "code": 200, "body": _def_mine_body})
+	else:
+		cb.call({"ok": false, "code": 0, "body": ""})
+
+
+func _def_ent(seed: int, name: String, acc: String) -> Dictionary:
+	return {"seed": seed, "name": name, "account_id": acc}
+
+
+func _def_prev_asks() -> int:
+	var n := 0
+	for r in _def_reqs:
+		if str(r["url"]).ends_with("/finals_week_view"):
+			var j = JSON.parse_string(str(r["body"]))
+			if j is Dictionary and int((j as Dictionary).get("p_week", 0)) == WEEK - CD.WEEK_SEC:
+				n += 1
+	return n
+
+
+## 进对阵图(真入口: 不 set_data), 一拍一拍地调场景自己的轮询。
+func _def_enter() -> void:
+	if _m != null and is_instance_valid(_m):
+		_m.queue_free()
+		await _frames(2)
+	SB.finals_clear()
+	SB.finals_week_clear()
+	_m = BMS.new()
+	get_tree().root.add_child(_m)
+	_m._poll.stop()
+	for _i in range(4):
+		await _frames(2)
+		_m._on_poll()
+
+
+func _def_origins() -> Array:
+	var out: Array = []
+	for o in _meta(_m._canvas, "bk", "seat_origin"):
+		if not (o as Node).is_queued_for_deletion():
+			out.append(str((o as Label).text))
+	return out
+
+
+func _def_intro_flags() -> Dictionary:
+	var it = _m._ceremony.last_intro
+	var out := {}
+	if it == null or not is_instance_valid(it):
+		return out
+	for e in (it.get("data").get("entrants", []) as Array):
+		out[str((e as Dictionary).get("name", ""))] = bool((e as Dictionary).get("defending", false))
+	return out
+
+
+func _t_defending() -> void:
+	var gs = get_node_or_null("/root/GameState")
+	var acc0 = gs.get("account_id") if gs != null else ""
+	var env0 := OS.get_environment(SB.ENV_URL)
+	var key0 = ProjectSettings.get_setting(SB.SETTING_KEY, "")
+	OS.set_environment(SB.ENV_URL, "http://gate.local")
+	ProjectSettings.set_setting(SB.SETTING_KEY, "gate-anon-key")
+	SB._token = "gate-token"
+	SB._transport_for_test = _def_spy
+	if gs != null:
+		gs.set("account_id", "uid-new")
+	var cup_at := SUN + int(P2C.FINALS_START_HOUR_UTC) * 3600
+	var now := cup_at + 60                        # 冠军杯赛刚成表、第 1 场还在备战(开场亮相那一刻)
+	P2C.now_override_ts = now
+	## 本周: A 组冠军「老冠军」、B 组冠军「新人」(我); 冠军杯 2 人、第 1 轮备战中
+	var ga := {"bucket": 0, "n": 2, "round": 1, "closed": true, "round_at": cup_at - 3600, "revealed_at": cup_at - 3000,
+		"done": {"1-0": 0}, "entrants": [_def_ent(0, "老冠军", "uid-def"), _def_ent(1, "路人甲", "uid-a")]}
+	var gb := {"bucket": 1, "n": 2, "round": 1, "closed": true, "round_at": cup_at - 3600, "revealed_at": cup_at - 3000,
+		"done": {"1-0": 0}, "entrants": [_def_ent(0, "新人", "uid-new"), _def_ent(1, "路人乙", "uid-b")]}
+	var cup := {"bucket": P2C.FINALS_CUP_BUCKET, "n": 2, "round": 1, "closed": false, "round_at": cup_at, "revealed_at": 0,
+		"done": {}, "entrants": [_def_ent(0, "老冠军", "uid-def"), _def_ent(1, "新人", "uid-new")]}
+	var mine := gb.duplicate(true)
+	mine["ok"] = true
+	mine["now"] = now
+	_def_mine_body = JSON.stringify(mine)
+	_def_week_body = JSON.stringify({"ok": true, "week": WEEK, "now": now, "buckets": [ga, gb], "cup": cup})
+	## 上周: 冠军杯冠军 = uid-def
+	var pcup := {"bucket": P2C.FINALS_CUP_BUCKET, "n": 2, "round": 1, "closed": true, "round_at": cup_at - 7 * 86400,
+		"revealed_at": cup_at - 7 * 86400 + 600, "done": {"1-0": 0},
+		"entrants": [_def_ent(0, "老冠军", "uid-def"), _def_ent(1, "上周亚军", "uid-old2")]}
+	_def_prev_body = JSON.stringify({"ok": true, "week": WEEK - CD.WEEK_SEC, "now": now, "buckets": [], "cup": pcup})
+	CER.defending_by_week.clear()
+	CER.intro_played.clear()
+	_def_reqs.clear()
+	var asks0: int = CER.defending_asks
+	await _def_enter()
+	var want := "卫冕 · %s冠军" % CD.group_name(0)
+	var org := _def_origins()
+	_ok("卫冕 分母: 走的是真入口(没喂数据) · 冠军杯那一张 2 人", not bool(_m._injected) and str(_m._view) == L.VIEW_FINALS
+		and int(_m.cur().get("size", 0)) == 2, "%s %s" % [str(_m._view), str(_m.cur().get("size", 0))])
+	_ok("卫冕 ★分母: 真的问了上周那一份(冠军墙同一个读接口), 恰好一次", _def_prev_asks() == 1
+		and CER.defending_asks - asks0 == 1, "%d 次" % _def_prev_asks())
+	_ok("卫冕 ★★产品写进了 defending_acc(上周冠军杯冠军)", str(_m.defending_acc) == "uid-def", str(_m.defending_acc))
+	_ok("卫冕 ★★★冠军杯来历标签「%s」(对照: 新人只写「%s冠军」)" % [want, CD.group_name(1)],
+		org.has(want) and org.has("%s冠军" % CD.group_name(1)), str(org))
+	var fl := _def_intro_flags()
+	_ok("卫冕 ★★★开场亮相: 老冠军标「卫冕」、新人不标", fl.get("老冠军", false) == true and fl.get("新人", true) == false, str(fl))
+	## 只取一次: 退出再进(新场景实例)不再问
+	await _def_enter()
+	_ok("卫冕 ★只取一次: 再进对阵图不再问上周(缓存), 标签照样在", _def_prev_asks() == 1 and _def_origins().has(want),
+		"%d 次 / %s" % [_def_prev_asks(), str(_def_origins())])
+	## 拿不到(连不上)⇒ 留空不显示, 开场照演
+	_def_prev_body = ""
+	CER.defending_by_week.clear()
+	CER.intro_played.clear()
+	_def_reqs.clear()
+	await _def_enter()
+	var org2 := _def_origins()
+	var fl2 := _def_intro_flags()
+	_ok("卫冕 ★拿不到上周 ⇒ 不标「卫冕」(分母: 真的问了 %d 次)" % _def_prev_asks(), _def_prev_asks() == 1
+		and str(_m.defending_acc) == "" and org2.has("%s冠军" % CD.group_name(0)) and not str(org2).contains("卫冕"), str(org2))
+	_ok("卫冕 ★拿不到上周 ⇒ 开场亮相照演(没卡在等)", fl2.size() == 2 and not fl2.values().has(true), str(fl2))
+	## 收尾
+	if _m != null and is_instance_valid(_m):
+		_m.queue_free()
+		await _frames(2)
+	_m = null
+	SB._transport_for_test = Callable()
+	SB._token = ""
+	SB.finals_clear()
+	SB.finals_week_clear()
+	OS.set_environment(SB.ENV_URL, env0)
+	ProjectSettings.set_setting(SB.SETTING_KEY, key0)
+	P2C.now_override_ts = 0
+	CER.defending_by_week.clear()
+	if gs != null:
+		gs.set("account_id", acc0)
 
 
 func _finish() -> void:

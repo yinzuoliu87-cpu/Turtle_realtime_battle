@@ -104,6 +104,7 @@ var _plates: Array = []
 var _btns: Array = []
 var _champ_called := false
 var _left := false                # 已经离场(按了按钮 / 自动)
+var _ticker = null                # 每帧钟(Ctx.start_ticker); 不标类型: 根释放后这里是失效实例
 
 
 func _init(b) -> void:
@@ -429,9 +430,8 @@ func build(parent: Control, inf: Dictionary, vp: Vector2) -> Control:
 		_n.get("out"), _n.get("rank"), _n.get("next")])
 	t = 0.0
 	pose(0.0)
-	var tree := dim.get_tree()
-	if tree != null and not tree.process_frame.is_connected(_tick):
-		tree.process_frame.connect(_tick)
+	_disconnect()                      # 同一个对象再搭一次(换比例)⇒ 钟跟着挂到新根上
+	_ticker = Ctx.start_ticker(dim, self)
 	return dim
 
 
@@ -1025,11 +1025,11 @@ func _go_when_text() -> String:
 	return (TXT_NEXT_AT % Ctx.span_text(at - now)) if at > now else "开播中"
 
 
-func _tick() -> void:
+func _tick(dt: float) -> void:
 	if root == null or not is_instance_valid(root) or finished:
 		_disconnect()
 		return
-	t += root.get_process_delta_time()
+	t += dt
 	pose(t)
 	_check_auto()
 
@@ -1050,9 +1050,8 @@ func _check_auto() -> void:
 
 
 func _disconnect() -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree != null and tree.process_frame.is_connected(_tick):
-		tree.process_frame.disconnect(_tick)
+	Ctx.stop_ticker(_ticker)
+	_ticker = null
 
 
 ## 点一下(暗处 / 还没淡出来的按钮位置): 跳到这一拍的终态。

@@ -45,14 +45,14 @@ extends Control
 ##  ★★周日是【两场】不是一场（用户 2026-09-23 指出，我原来糊成了一张图）
 ## ══════════════════════════════════════════════════════════════════════
 ##   · **上午·小组赛**：自己那一组，5 轮 → 产生**组冠军**
-##   · **晚上·冠军杯赛**：20:00 UTC 开赛，**全部组冠军**进一张新图，单败打到决赛
+##   · **晚上·冠军杯赛**：`FINALS_START_HOUR_UTC`(10-31 起 19:00 UTC)开赛，**全部组冠军**进一张新图，单败打到决赛
 ##   （用户 2026-10-07「那么上午就叫小组赛啊，晚上叫冠军杯赛」；方案书 `docs/plans/20261007-冠军杯赛.md`。
 ##    冠军杯赛在服务端是保留组号 `FINALS_CUP_BUCKET` 的一张图 ⇒ 布局 / 弹卡 / 开播 / 观赛 / 回放 / 开打全部同一套。）
 ##
 ## 两者对同一个玩家的意义完全不同：**上午你是选手，晚上你多半是观众**
 ## （只有桶冠军进得去）。所以：
 ##   ★顶上两个 Tab，随时能切 —— 桶里输了就想看别人的，晚上也想回看自己桶里的路；
-##   ★**默认看哪张跟着时刻走**（20:00 之后默认冠军赛），不让人每次自己找；
+##   ★**默认看哪张跟着时刻走**（冠军杯赛开赛钟点之后默认冠军赛），不让人每次自己找；
 ##   ★签表**上午还没形成** ⇒ 那时候切过去要说人话（等各桶决出冠军 + 倒计时），
 ##     不是画一张空图。
 
@@ -105,7 +105,7 @@ var _hero_on := false
 var _cta: Button = null
 ## 「全部组」宫格(⑲)开着吗。
 var _grid_on := false
-## 上周冠军杯冠军的账号(⑦「卫冕」)。★客户端现在拿不到上周那份(只问本周), 由主会话 / D 那边喂; 空 = 不标。
+## 上周冠军杯冠军的账号(⑦「卫冕」)。产品由 `_ceremony.poll_defending()` 问上周的 finals_week_view 写进来; 空 = 不标。
 var defending_acc := ""
 ## 倒计时 / 备战两行的 y(固定件按「组页签有没有、备战行有没有」排, 版面会收 —— S 清单第 6 条)。
 var _hero_line0_y := 104.0
@@ -472,7 +472,7 @@ func _on_finals_coins(n: int) -> void:
 		_show_replay_msg(_RW.TXT_FINALS_COINS % n, ACCENT)
 
 
-## 这一刻默认该看哪一张。★20:00 UTC 之后看冠军杯赛(`default_view`); 但冠军杯赛还没成表就退回小组赛 ——
+## 这一刻默认该看哪一张。★冠军杯赛开赛钟点(FINALS_START_HOUR_UTC)之后看冠军杯赛(`default_view`); 但冠军杯赛还没成表就退回小组赛 ——
 ##   别让人开屏就看到一张空图(1 人表不算空: 那一页写着谁直接夺冠)。
 func _pick_default_view() -> String:
 	## 周一看上周: 整个周日都打完了 ⇒ 与周日晚上一样先看冠军杯赛(没成表照旧退回小组赛)。
@@ -625,7 +625,7 @@ func _viewing_past() -> bool:
 	return _P2C.weekend_view_is_past(_clock())
 
 
-## 冠军杯赛开赛的绝对时刻。周日当天 = 当天 20:00 UTC(与原来逐字节相同); 周一看上周 ⇒ 上周日那一刻(早就过了)。
+## 冠军杯赛开赛的绝对时刻。周日当天 = 当天 FINALS_START_HOUR_UTC 点 UTC; 周一看上周 ⇒ 上周日那一刻(早就过了)。
 func _cup_start_ts() -> int:
 	if _viewing_past():
 		return feed_week() + 6 * 86400 + int(_P2C.FINALS_START_HOUR_UTC) * 3600
@@ -1547,7 +1547,7 @@ func _empty_text() -> String:
 	return "未晋级 · 需通过周六闯关赛"
 
 
-## 冠军杯赛开赛倒计时那一行。`left` = 距 20:00 UTC 还有几秒。
+## 冠军杯赛开赛倒计时那一行。`left` = 距冠军杯赛开赛(FINALS_START_HOUR_UTC)还有几秒。
 static func cup_soon_head(left: int) -> String:
 	if left <= 0:
 		return "%s · 等待开赛" % _P2C.STAGE_CUP
@@ -2819,6 +2819,7 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 func _on_poll() -> void:
 	_check_referee_watch()
 	_check_follow()
+	_ceremony.poll_defending()
 	## ★★E-B6: 对手快照回来了就开打。放在轮询里而不是接回调 —— 理由同下面那段:
 	##   回调在网络那一侧, 接过来就得自己处理"场景已经被切掉了"。
 	##   `_try_start_match()` 自己会判"到底能不能开"; 开了就换场景, 这一拍不用再往下走。

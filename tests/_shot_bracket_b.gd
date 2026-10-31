@@ -99,7 +99,7 @@ func _ready() -> void:
 	## ⑤ 组决赛后组冠军(我那组, 我夺冠)
 	if only == "" or only == "5":
 		var b5 := _grp(0, 2, {"1-0": 0, "1-1": 1, "2-0": 0}, {"1-0": 1, "1-1": 0, "2-0": 1}, true, 0)
-		await _shot("5_组冠军", b5, {}, _week([b5] + _closed_groups().slice(1)), SUN + 18 * 3600 + 40 * 60, false, 110)
+		await _shot("5_组冠军", b5, {}, _week([b5] + _closed_groups().slice(1)), SUN + P2C.FINALS_SEAT_HOUR_UTC * 3600 + 40 * 60, false, 110)
 	## ⑥ 全部组宫格(各组状态不一)
 	if only == "" or only == "6":
 		var wk6: Array = [b3]
@@ -110,7 +110,7 @@ func _ready() -> void:
 		wk6.append(_grp(5, 1, {}, {}, false, -1, {"round_at": F - 400}))
 		await _shot("6_全部组宫格", b3, {}, _week(wk6), F + 40, false, 110, "all")
 	## ⑦ 冠军杯 8 强(含轮空)开播中: 6 人 8 签, 1/4 决赛第 1 场开播、第 2 场即将开播
-	var C := SUN + 20 * 3600 + 2 * 60
+	var C := SUN + P2C.FINALS_START_HOUR_UTC * 3600 + 2 * 60     # 冠军杯赛开赛后 2 分钟(钟点从常量推)
 	var cseq := {"v": 1, "until": C + 320, "p": {"1-1": [C, C + 135], "1-3": [C + 160, C + 295]}}
 	var cup7 := _cup(2, {"1-0": 0, "1-1": 0, "1-2": 0, "1-3": 0}, {"1-1": 1, "1-3": 0}, false, 0,
 		{"revealed_at": C, "round_at": C + 320, "seq": cseq})
@@ -120,7 +120,7 @@ func _ready() -> void:
 	if only == "" or only == "8":
 		var cup8 := _cup(3, {"1-0": 0, "1-1": 0, "1-2": 0, "1-3": 0, "2-0": 0, "2-1": 1, "3-0": 0},
 			{"1-1": 1, "1-3": 0, "2-0": 1, "2-1": 0, "3-0": 1}, true, 0)
-		await _shot("8_冠军杯收盘", _closed_groups()[0], cup8, _week(_closed_groups(), cup8), SUN + 21 * 3600, true, 150)
+		await _shot("8_冠军杯收盘", _closed_groups()[0], cup8, _week(_closed_groups(), cup8), SUN + (P2C.FINALS_START_HOUR_UTC + 1) * 3600, true, 150)
 	## ⑨ 冠军杯备战(半决赛 3 分钟备战屏)
 	if only == "" or only == "9":
 		var cup9 := _cup(2, {"1-0": 0, "1-1": 0, "1-2": 0, "1-3": 0}, {"1-1": 1, "1-3": 0}, false, 0,
@@ -129,7 +129,7 @@ func _ready() -> void:
 	## ⑩ 对局卡(组决赛, 我赢): 点开那一格
 	if only == "" or only == "10":
 		var b10 := _grp(0, 2, {"1-0": 0, "1-1": 1, "2-0": 0}, {"1-0": 1, "1-1": 0, "2-0": 1}, true, 0)
-		await _shot("10_对局卡", b10, {}, _week([b10] + _closed_groups().slice(1)), SUN + 18 * 3600 + 40 * 60, false, 40, "", Vector2i(1, 1))
+		await _shot("10_对局卡", b10, {}, _week([b10] + _closed_groups().slice(1)), SUN + P2C.FINALS_SEAT_HOUR_UTC * 3600 + 40 * 60, false, 40, "", Vector2i(1, 1))
 	print("SHOTS DONE")
 	get_tree().quit(0)
 

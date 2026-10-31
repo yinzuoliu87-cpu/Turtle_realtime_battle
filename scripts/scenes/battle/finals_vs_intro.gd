@@ -77,6 +77,7 @@ var _chips: Array = []              # [Control, 翻出时刻, 白闪层]
 var _vp := Vector2.ZERO
 var _av := AVATAR
 var _cp := CHIP
+var _ticker = null                  # 每帧钟(Ctx.start_ticker); 不标类型: 根释放后这里是失效实例
 
 
 ## `info` = {title, sub, gold, cards: {left: {name, pid, origin, record, title}, right}, lineups: {left: [[路, [{pid, minion}]]], right},
@@ -199,9 +200,8 @@ func build(parent: Control, inf: Dictionary, vp: Vector2) -> Control:
 	_n["go"] = go
 	t = 0.0
 	pose(0.0)
-	var tree := root.get_tree()
-	if tree != null and not tree.process_frame.is_connected(_tick):
-		tree.process_frame.connect(_tick)
+	_disconnect()                        # 同一个对象再搭一次(换比例)⇒ 钟跟着挂到新根上
+	_ticker = Ctx.start_ticker(root, self)
 	return root
 
 
@@ -404,11 +404,11 @@ func pose(x: float) -> void:
 	go.modulate.a = pg
 
 
-func _tick() -> void:
+func _tick(dt: float) -> void:
 	if done or root == null or not is_instance_valid(root):
 		_disconnect()
 		return
-	t += root.get_process_delta_time()
+	t += dt
 	pose(t)
 	if t >= DUR:
 		finish()
@@ -430,9 +430,8 @@ func finish() -> void:
 
 
 func _disconnect() -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree != null and tree.process_frame.is_connected(_tick):
-		tree.process_frame.disconnect(_tick)
+	Ctx.stop_ticker(_ticker)
+	_ticker = null
 
 
 # ─────────────────────────────── 画 ───────────────────────────────

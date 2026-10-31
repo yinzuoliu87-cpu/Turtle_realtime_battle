@@ -22,7 +22,6 @@ const _BAR := preload("res://scripts/ui/finals_day_bar.gd")
 const _POP := preload("res://scripts/ui/finals_day_popup.gd")
 const _MQ := preload("res://scripts/ui/finals_day_marquee.gd")
 const _RC := preload("res://scripts/ui/finals_day_recap.gd")
-const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
 
 const LAYER := 80
 const POLL_SEC := 30

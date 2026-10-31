@@ -337,7 +337,8 @@ func _path_strip(r: Rect2, path: Dictionary) -> void:
 	var cw := clampf((r.size.x - 44.0 - 10.0) / float(maxi(1, cells.size())) - 6.0, 30.0, 44.0)
 	var x := 0.0
 	var cy := 22.0
-	var title := s._hero._label("我这一路", 13, _H.TXT_DIM, true) as Label
+	## 屏上写「我的晋级路线」: 「这一路」上不了屏(codex_text_lint 路名纪律 —— 「路」在屏上专指上路 / 下路 / 终极战场)
+	var title := s._hero._label("我的晋级路线", 13, _H.TXT_DIM, true) as Label
 	title.position = Vector2(0, 0)
 	title.size = Vector2(120, 18)
 	box.add_child(title)

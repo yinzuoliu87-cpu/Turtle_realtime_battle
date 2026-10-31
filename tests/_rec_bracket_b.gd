@@ -225,8 +225,8 @@ func _seg_grid() -> void:
 
 
 func _seg_cup_intro() -> void:
-	## 冠军杯 20:00 成表、第 1 轮还在备战 ⇒ 组冠军依次亮相(上届冠军标「卫冕」)
-	var C0 := SH.SUN + 20 * 3600
+	## 冠军杯开赛钟点成表、第 1 轮还在备战 ⇒ 组冠军依次亮相(上届冠军标「卫冕」)
+	var C0 := SH.SUN + P2C.FINALS_START_HOUR_UTC * 3600
 	var cup: Dictionary = H._cup(1, {}, {}, false, 0, {"round_at": C0})
 	var grp: Array = H._closed_groups()
 	await _open(grp[0], cup, H._week(grp, cup), C0 + 20, true)
@@ -238,7 +238,7 @@ func _seg_cup_intro() -> void:
 
 
 func _seg_cup_live() -> void:
-	var C := SH.SUN + 20 * 3600 + 2 * 60
+	var C := SH.SUN + P2C.FINALS_START_HOUR_UTC * 3600 + 2 * 60
 	var cseq := {"v": 1, "until": C + 320, "p": {"1-1": [C, C + 135], "1-3": [C + 160, C + 295]}}
 	var cup: Dictionary = H._cup(2, {"1-0": 0, "1-1": 0, "1-2": 0, "1-3": 0}, {"1-1": 1, "1-3": 0}, false, 0,
 		{"revealed_at": C, "round_at": C + 320, "seq": cseq})
@@ -255,7 +255,7 @@ func _cup_closed(extra: Dictionary = {}) -> Dictionary:
 
 func _seg_cup_champion() -> void:
 	## 决赛开播中 → 揭晓那一刻 ⇒ ChampionShow 冠军杯版(冠军本人: 领奖)→ 关掉 ⇒ 领奖台收盘
-	var t0 := SH.SUN + 20 * 3600 + 40 * 60
+	var t0 := SH.SUN + P2C.FINALS_START_HOUR_UTC * 3600 + 40 * 60
 	var cup: Dictionary = _cup_closed({"revealed_at": t0 - 30})
 	var grp: Array = H._closed_groups()
 	await _open(grp[0], cup, H._week(grp, cup), t0, true)
@@ -289,7 +289,7 @@ func _seg_cup_champion() -> void:
 func _seg_podium_static() -> void:
 	var grp: Array = H._closed_groups()
 	var cup: Dictionary = _cup_closed()
-	await _open(grp[0], cup, H._week(grp, cup), SH.SUN + 21 * 3600, true)
+	await _open(grp[0], cup, H._week(grp, cup), SH.SUN + (P2C.FINALS_START_HOUR_UTC + 1) * 3600, true)
 	await _hold(5.0)
 
 

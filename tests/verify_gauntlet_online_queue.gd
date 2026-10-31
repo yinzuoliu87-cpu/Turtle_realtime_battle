@@ -95,8 +95,15 @@ const RANKED := {
 			"_worst_owned_val", "attach", "enabled",
 		],
 	},
+	## ★2026-10-31 快照池缓存原子写(提交 d2d21816, 本周修复): save_pool 改成先写 .tmp 再改名(同 GameState.save)。
+	##   原来先 open(WRITE) 清空再拼 JSON, 陪练号被调度器停号时正好在写 ⇒ 正式服「Parse JSON failed line 0」;
+	##   守卫是 tests/verify_pool_atomic_write.gd(真起子进程不停写、随机时刻硬杀再读盘)。写进盘的内容一字没变,
+	##   积分赛读池 / 挑对手的流程不受影响。基线单独钉到 d2d21816(其余文件仍比 84d2d853):
+	##   84d2d853→d2d21816 这 55 个函数里只变了 save_pool 一个, 且这次没有新增函数 ⇒「周六专用只从闯关日可达」那条查的集合不变。
+	##   旧摘要用同一口径复算 84d2d853 得 354eb647…, 与原表一致; 新摘要从 git show d2d21816 现算。
 	"scripts/net/backend.gd": {
-		"digest": "354eb64780f65dcf9f1995d989c585468fa99b59e3b4fa95394eb419fd82756e",
+		"base": "d2d21816",
+		"digest": "f8d6af675f7e1b9d809ded1d835624f34bff155e7647988c1e82c50da0afe52c",
 		"views": {},
 		"sat_only": [],
 		"units": [

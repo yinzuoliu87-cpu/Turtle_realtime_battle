@@ -2,7 +2,7 @@ extends RefCounted
 ## 周日决赛日的「服务端此刻会回什么」(门禁 + 实拍共用; 不是测试本身)。
 ## 照服务端 20261101 的开播排法造数据(finals_advance + finals_premiere_plan):
 ##   第 r 轮 round_at → 3 分钟备战 → round_at + 480 翻面 → 小组赛: 本轮所有场同时开播(用户 10-31 纠正); 冠军杯赛: 一场接一场
-##   (每场 = 210 秒 + 场间 25 秒)→ 本轮全部播完 + 25 秒 = 下一轮 round_at。冠军杯赛 20:00 开赛, 6 位组冠军进 8 签(2 个轮空)。
+##   (每场 = 210 秒 + 场间 25 秒)→ 本轮全部播完 + 25 秒 = 下一轮 round_at。冠军杯赛 FINALS_START_HOUR_UTC 开赛(10-31 起 19:00), 6 位组冠军进 8 签(2 个轮空)。
 ## 形状 = SupabaseNet._bucket_from 的产物(size / round / done / names / tags / accs / me / closed / left / recv_at / bucket /
 ##   round_at / srv_now / revealed_at / seq)。`now` = 服务端此刻; 收包时刻 = now(时间差为 0)。
 
@@ -48,7 +48,7 @@ func seat() -> int:
 
 
 func cup_start() -> int:
-	return sun() + 20 * 3600
+	return sun() + int(_P2.FINALS_START_HOUR_UTC) * 3600
 
 
 ## 一张图在 start 开赛时的整条时间线: [{"round_at", "flip", "slots": {"r-m": [开播, 揭晓]}, "until"}, ...](每轮一项)。
@@ -146,7 +146,7 @@ func group_champ_seed(g: int) -> int:
 	return _B.champion_seed(4, b["done"])
 
 
-## 冠军杯赛(6 位组冠军进 8 签); 20:00 之前 ⇒ {}。
+## 冠军杯赛(6 位组冠军进 8 签); 开赛之前 ⇒ {}。
 func cup(now: int) -> Dictionary:
 	var names: Array = []
 	var ids: Array = []

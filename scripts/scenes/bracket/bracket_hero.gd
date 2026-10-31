@@ -287,8 +287,8 @@ func _pop_in(c: Control, delay: float) -> void:
 	var tw := c.create_tween()
 	tw.tween_interval(delay)
 	tw.set_parallel(true)
-	tw.tween_property(c, "modulate:a", 1.0, 0.18)
-	tw.tween_property(c, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c, "modulate:a", 1.0, UIPalette.T_BASE)
+	tw.tween_property(c, "scale", Vector2.ONE, UIPalette.T_TRANS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## 每帧: 奖杯呼吸 + 开播红框呼吸 + 即将开播的签慢闪(场景 `_process` 调)
@@ -318,8 +318,8 @@ func flash_live(canvas: Control) -> void:
 		card.pivot_offset = card.size * 0.5
 		var tw := card.create_tween()
 		for _i in range(3):
-			tw.tween_property(card, "scale", Vector2(1.07, 1.07), 0.12).set_trans(Tween.TRANS_SINE)
-			tw.tween_property(card, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_SINE)
+			tw.tween_property(card, "scale", Vector2(1.07, 1.07), UIPalette.T_TAP).set_trans(Tween.TRANS_SINE)
+			tw.tween_property(card, "scale", Vector2.ONE, UIPalette.T_BASE).set_trans(Tween.TRANS_SINE)
 
 
 ## 每秒刷新那几行倒计时(场景 `_process` 里按 0.5 秒一拍调)。
@@ -432,33 +432,34 @@ func _travel_dot(canvas: Control, lay: Dictionary, n: int, r: int, m: int, delay
 	dot.add_child(halo)
 	var tw := dot.create_tween()
 	tw.tween_interval(delay)
-	tw.tween_property(dot, "modulate:a", 1.0, 0.08)
+	tw.tween_property(dot, "modulate:a", 1.0, UIPalette.T_TAP)
 	for i in range(1, pts.size()):
 		var seg_len: float = ((pts[i] as Vector2) - (pts[i - 1] as Vector2)).length()
 		tw.tween_property(dot, "position", (pts[i] as Vector2) - Vector2(5, 5), maxf(0.06, seg_len / 520.0))
-	tw.tween_property(dot, "scale", Vector2(2.4, 2.4), 0.16)
-	tw.parallel().tween_property(dot, "modulate:a", 0.0, 0.22)
+	tw.tween_property(dot, "scale", Vector2(2.4, 2.4), UIPalette.T_BASE)
+	tw.parallel().tween_property(dot, "modulate:a", 0.0, UIPalette.T_BASE)
 	tw.tween_callback(dot.queue_free)
 
 
 ## 输家盖红叉(G9): 从大到小砸下来, 带一下震。
 func _stamp_loser(card: Control, ws: int, delay: float) -> void:
-	var tgt: Control = card.get_meta("loser_mark", null) if card.has_meta("loser_mark") else null
-	if tgt == null or not is_instance_valid(tgt):
+	var mk = card.get_meta("loser_mark") if card.has_meta("loser_mark") else null
+	if not is_instance_valid(mk) or not (mk is Control):
 		return
+	var tgt: Control = mk
 	tgt.pivot_offset = tgt.size * 0.5
 	tgt.scale = Vector2(2.2, 2.2)
 	tgt.modulate.a = 0.0
 	var tw := tgt.create_tween()
 	tw.tween_interval(delay)
 	tw.set_parallel(true)
-	tw.tween_property(tgt, "modulate:a", 1.0, 0.10)
-	tw.tween_property(tgt, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(tgt, "modulate:a", 1.0, UIPalette.T_TAP)
+	tw.tween_property(tgt, "scale", Vector2.ONE, UIPalette.T_BASE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.set_parallel(false)
 	var p0 := card.position
-	tw.tween_property(card, "position", p0 + Vector2(3, 2), 0.04)
-	tw.tween_property(card, "position", p0 - Vector2(2, 1), 0.04)
-	tw.tween_property(card, "position", p0, 0.04)
+	tw.tween_property(card, "position", p0 + Vector2(3, 2), UIPalette.T_TAP / 3.0)
+	tw.tween_property(card, "position", p0 - Vector2(2, 1), UIPalette.T_TAP / 3.0)
+	tw.tween_property(card, "position", p0, UIPalette.T_TAP / 3.0)
 	var _u := ws
 
 
@@ -519,10 +520,12 @@ func _center(canvas: Control, n: int, total: int, lay: Dictionary, anim: bool, p
 			canvas.add_child(tr)
 			_trophy = tr
 			if anim:
-				tr.pivot_offset = tr.size * 0.5
-				tr.scale = Vector2(0.6, 0.6)
+				## 入场只淡入、不缩放: 奖杯是硬边像素图, 连续缩放(非整数倍)会把像素网格打烂(vfx_discipline_audit A 条)。
+				##   淡的是 self_modulate: modulate 每帧被 tick() 的呼吸光写回 alpha 1, position 每帧被上下浮动写着。
+				var a1 := tr.self_modulate.a
+				tr.self_modulate.a = 0.0
 				var tw := tr.create_tween()
-				tw.tween_property(tr, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tw.tween_property(tr, "self_modulate:a", a1, UIPalette.T_SLOW)
 	## 冠军缎带: 未决出 =「冠军」/「A 组冠军」, 决出 = 名字(冠军位未决出前是空的 —— 对标 C20)
 	var rib: Rect2 = cen["ribbon"]
 	var who := str(s._info.champion_title())
@@ -664,7 +667,7 @@ func _podium(canvas: Control, crown: Rect2, total: int, anim: bool) -> void:
 				hold.modulate.a = 0.0
 				var tw := hold.create_tween()
 				tw.tween_interval(0.25 + float(3 - place) * 0.25 + float(order) * 0.05)
-				tw.tween_property(hold, "modulate:a", 1.0, 0.25)
+				tw.tween_property(hold, "modulate:a", 1.0, UIPalette.T_TRANS)
 			order += 1
 
 

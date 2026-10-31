@@ -78,6 +78,7 @@ var late := false
 var from_start := false
 var _vp := Vector2.ZERO
 var _anchors: Dictionary = {}       # 顶栏节点(三路点 / 路名牌 / 两端名字), 第一次找到就记住
+var _ticker = null                  # 每帧钟(Ctx.start_ticker); 不标类型: 根释放后这里是失效实例
 
 
 func _init(b, c) -> void:
@@ -278,9 +279,8 @@ func build(parent: Control, vp: Vector2, m: Vector4, names: Dictionary) -> Contr
 	## 自己这几样不是按钮, 全局决赛日小条量不出来 ⇒ 登记让路
 	Ctx.bar_avoid([tag, _n["dg_left"], _n["dg_right"], _n["tug"], _n.get("origin_left"), _n.get("origin_right"), _n.get("next"),
 		_n["cheer_key"], _n["cheers"], _n.get("from_start")])
-	var tree := root.get_tree()
-	if tree != null and not tree.process_frame.is_connected(_tick):
-		tree.process_frame.connect(_tick)
+	_disconnect()                        # 同一个对象再搭一次(换比例)⇒ 钟跟着挂到新根上
+	_ticker = Ctx.start_ticker(root, self)
 	refresh()
 	return root
 
@@ -533,11 +533,10 @@ func refresh() -> void:
 
 
 ## 每帧: 拔河条平滑追到此刻的比例; 助威飘字往上飘。
-func _tick() -> void:
+func _tick(dt: float) -> void:
 	if root == null or not is_instance_valid(root):
 		_disconnect()
 		return
-	var dt := root.get_process_delta_time()
 	_clock += dt
 	(_n["live_dot"] as CanvasItem).modulate.a = 0.35 + 0.65 * Ctx.wave(_clock * 0.8)     # 「开播中」那个点一明一暗
 	var units: Array = battle.get("_units") if battle.get("_units") is Array else []
@@ -565,9 +564,8 @@ func _tick() -> void:
 
 
 func _disconnect() -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree != null and tree.process_frame.is_connected(_tick):
-		tree.process_frame.disconnect(_tick)
+	Ctx.stop_ticker(_ticker)
+	_ticker = null
 
 
 # ─────────────────────────────── 助威 ───────────────────────────────

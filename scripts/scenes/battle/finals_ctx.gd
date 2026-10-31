@@ -473,8 +473,43 @@ static func bar_nudge() -> void:
 
 static func bar_avoid(nodes: Array) -> void:
 	for n in nodes:
-		if n is Node and is_instance_valid(n) and not (n as Node).is_in_group(BAR_AVOID):
+		if is_instance_valid(n) and n is Node and not (n as Node).is_in_group(BAR_AVOID):
 			(n as Node).add_to_group(BAR_AVOID)
+
+
+## ── 叠层的每帧钟: 开场 VS / 收尾三拍 / 观战页那几样都是 RefCounted, 没有自己的 _process ——
+##   在叠层根节点下挂一个只管转发的节点, 每帧把 `_process(delta)` 的 delta 交给 `obj._tick(dt)`(做法同 stream_source._Pump)。
+##   ★不读 get_process_delta_time(): verify_determinism_b ⑧ 的静态棘轮扫整个 scripts/scenes/battle/(对局模拟路径),
+##     演出要真实 delta 就从 _process 的参数拿。数值与原来一样(_process 的 delta 就是那个值), 暂停 / 录屏定帧率下也一样。
+##   挂成内部子节点 ⇒ get_children / find_child 看不到它, 不打乱各屏的子节点顺序; 根一释放它跟着走; 叠层对象没了它自己退。
+const TICKER_NODE := "FinalsTicker"
+
+
+class Ticker extends Node:
+	var obj: WeakRef = null
+
+	func _process(dt: float) -> void:
+		var o = obj.get_ref() if obj != null else null
+		if o == null:
+			queue_free()
+			return
+		o._tick(dt)
+
+
+static func start_ticker(host: Node, obj: Object) -> Node:
+	var tk := Ticker.new()
+	tk.name = TICKER_NODE
+	tk.obj = weakref(obj)
+	tk.process_mode = Node.PROCESS_MODE_ALWAYS
+	host.add_child(tk, false, Node.INTERNAL_MODE_BACK)
+	return tk
+
+
+## 停钟: 当场不再转发(这一帧里也不再调 _tick), 节点随后释放。形参不标类型: 根已释放时传进来的是失效实例。
+static func stop_ticker(tk) -> void:
+	if is_instance_valid(tk) and tk is Node:
+		(tk as Node).set_process(false)
+		(tk as Node).queue_free()
 
 
 ## 秒数 → 「1 分 05 秒」/「42 秒」。

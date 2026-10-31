@@ -828,7 +828,7 @@ func entrants_text() -> String:
 
 
 ## 冠军决出那一刻: 只认「亲眼等到揭晓」的那一下(本次运行里**刚刚**见过这张图的决赛还没揭晓), 每张图只报一次 ⇒ 场景的挂点。
-## ★「刚刚」= 上一次看见它没揭晓距此刻不超过 CHAMP_FRESH_SEC: 18:10 看过小组、20:00 才回来看冠军杯的人,
+## ★「刚刚」= 上一次看见它没揭晓距此刻不超过 CHAMP_FRESH_SEC: 18:10 看过小组、冠军杯赛开赛后才回来看的人,
 ##   不该在冠军杯页上突然被弹一段 A 组冠军仪式(录屏自查抓到的; 错过的补看归 M 的 finals_day_recap)。
 const CHAMP_FRESH_SEC := 900
 func check_champion_moment() -> void:

@@ -1,7 +1,7 @@
 extends Node
 ## verify_finals_day_global.gd — 周日决赛日全局层(方案书 docs/plans/20261031c-周日赛事界面重做.md 块 M ④⑤⑥⑨ · G16 / J-2 / J-3 / 8-1 / 9-1)
 ##
-## 由来(2026-10-31 彩排 + 百款调研): 开赛提醒只在主菜单开着时跨 18:00 / 20:00 飘一句, 人在对阵图 / 商店 / 观战页收不到, 没晋级的人直接 return;
+## 由来(2026-10-31 彩排 + 百款调研): 开赛提醒只在主菜单开着时跨 18:00 / 冠军杯赛开赛 飘一句, 人在对阵图 / 商店 / 观战页收不到, 没晋级的人直接 return;
 ##   商业游戏(LoL Clash 右上角赛程小卡 / MCC 每页顶栏倒计时 / HB2·8BP「轮到你」/ 梦幻西游全服广播)的共同做法:
 ##   倒计时每一页都看得到; 轮到我时不论在哪页都弹; 开播时刻 / 结果走全服跑马灯。改法: autoload `FinalsDay`(scripts/ui/finals_day_layer.gd)。
 ##
@@ -144,7 +144,7 @@ func _line(ts: int, kind: String) -> Dictionary:
 func _t_lines() -> void:
 	print("--- B 条上那一行(一整晚逐时刻) ---")
 	var seat := SUN + 18 * H
-	var cup := SUN + 20 * H
+	var cup := SUN + int(P2.FINALS_START_HOUR_UTC) * H
 	var r1 := M.round_name(4, 1)
 	var r2 := M.round_name(4, 2)
 	var t_mine: int = int(fx.timeline(4, seat, {"1-1": 1, "2-0": 1}, true)[0]["slots"]["1-1"][0])
@@ -164,9 +164,9 @@ func _t_lines() -> void:
 		["18:13 决赛备战中(⑨)", seat + 13 * MI, "in", "备战中 · %s" % M.TXT_KEEP_LINEUP, r2_at + 180 - seat - 13 * MI, true, -1],
 		["18:10 观众(6 组 × 2 场同时开播)", seat + 10 * MI, "plain", "%s 12 场开播中 · 观看" % P2.STAGE_GROUP, -1, true, 0],
 		["18:10 第 1 轮就输的人(结果还没揭晓)", seat + 10 * MI, "out", "你的%s开播中 · 观看" % r1, -1, true, FX.MY_GROUP],
-		["19:00 第 1 轮就输了", SUN + 19 * H, "out", "%s %s 开赛" % [P2.STAGE_CUP, P2.local_hhmm(cup)], H, false, -1],
-		["19:00 观众", SUN + 19 * H, "plain", "%s %s 开赛" % [P2.STAGE_CUP, P2.local_hhmm(cup)], H, false, -1],
-		["20:09 观众", cup + 9 * MI, "plain", "%s开播中 · 观看" % cup_live, -1, true, int(P2.FINALS_CUP_BUCKET)],
+		["18:40 第 1 轮就输了(等冠军杯赛)", SUN + 18 * H + 40 * MI, "out", "%s %s 开赛" % [P2.STAGE_CUP, P2.local_hhmm(cup)], cup - SUN - 18 * H - 40 * MI, false, -1],
+		["18:40 观众(等冠军杯赛)", SUN + 18 * H + 40 * MI, "plain", "%s %s 开赛" % [P2.STAGE_CUP, P2.local_hhmm(cup)], cup - SUN - 18 * H - 40 * MI, false, -1],
+		["冠军杯赛 +9 分 观众", cup + 9 * MI, "plain", "%s开播中 · 观看" % cup_live, -1, true, int(P2.FINALS_CUP_BUCKET)],
 		["22:00 观众", SUN + 22 * H, "plain", "冠军杯赛冠军 小辉同学", -1, false, -1],
 	]
 	for r in rows:
@@ -522,7 +522,7 @@ func _t_marquee() -> void:
 		all == ["%s %s开播 · 6 组同时进行" % [P2.STAGE_GROUP, M.round_name(4, 1)]], str(all))
 	## 冠军杯赛: 排进档期就播开播时刻
 	_mq_reset()
-	var cup := SUN + 20 * H
+	var cup := SUN + int(P2.FINALS_START_HOUR_UTC) * H
 	_at(cup + 8 * MI - 2, "plain")
 	_at(cup + 8 * MI + 1)
 	all = (fd.marquee.played as Array) + (fd.marquee.queue as Array)
@@ -546,7 +546,7 @@ func _t_marquee() -> void:
 
 func _t_recap_mark() -> void:
 	print("--- F 在场守到冠军杯赛决出 ⇒ 记「看过了」 ---")
-	var cup := SUN + 20 * H
+	var cup := SUN + int(P2.FINALS_START_HOUR_UTC) * H
 	var final_end: int = int(fx.timeline(6, cup, {})[2]["slots"]["3-0"][1])
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(RC.SEEN_PATH))
 	fd._cup_open_seen = false

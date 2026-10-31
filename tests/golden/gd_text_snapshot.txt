@@ -1727,7 +1727,7 @@ scripts/scenes/battle/topbar_status.gd|lit|团灭
 scripts/scenes/bracket/bracket_ceremony.gd|lit|晋级%s · %s 开赛
 scripts/scenes/bracket/bracket_chrome.gd|lit|下一场
 scripts/scenes/bracket/bracket_chrome.gd|lit|你
-scripts/scenes/bracket/bracket_chrome.gd|lit|我这一路
+scripts/scenes/bracket/bracket_chrome.gd|lit|我的晋级路线
 scripts/scenes/bracket/bracket_chrome.gd|text|冠军墙
 scripts/scenes/bracket/bracket_hero.gd|lit|1/%d 决赛
 scripts/scenes/bracket/bracket_hero.gd|lit|1/4 决赛

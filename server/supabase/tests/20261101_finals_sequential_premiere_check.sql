@@ -246,8 +246,8 @@ select pg_temp.ck('C1 收盘后 seq.p 含三场（决赛 [T2, T2+180]）、settl
   and (select count(*) from jsonb_object_keys((pg_temp.view(0))->'seq'->'p')) = 3
   and ((pg_temp.view(0))->'seq'->>'settle_at')::bigint = 0);
 
--- K1 冠军杯赛成表（20:00 + 30 秒）。再加两个 1 人组（坐下即收盘）⇒ 杯 4 人、第 1 轮两场真实对局（验「杯内一场接一场」）
-select pg_temp.at(2 * 3600 + 30);
+-- K1 冠军杯赛成表（开赛钟点 + 30 秒；时刻一律从 finals_cup_hour() 推，10-31 冠军杯赛 20:00 → 19:00 时这里写死 2 小时出过错）。再加两个 1 人组（坐下即收盘）⇒ 杯 4 人、第 1 轮两场真实对局（验「杯内一场接一场」）
+select pg_temp.at((public.finals_cup_hour() - 18) * 3600 + 30);
 insert into _ppl (i, id) values (101, gen_random_uuid()), (102, gen_random_uuid());
 insert into auth.users (id, aud, role, is_anonymous, created_at)
   select id, 'authenticated', 'authenticated', true, now() from _ppl where i in (101, 102);
@@ -264,11 +264,11 @@ select pg_temp.ck('K1 ★有组收盘了但组内决赛还在开播 ⇒ 冠军�
 update public.finals_buckets set premiere_until = public.app_now() - interval '1 minute'
  where season_week = pg_temp.wk() and bucket_no = 0;
 select pg_temp.ck('K1 对照: 播完了 ⇒ 成表 4 人（两个组冠军 + 两个 1 人组）', public.finals_cup_seat(pg_temp.wk()) = 4);
-select pg_temp.at(2 * 3600 + 30 + 200);
+select pg_temp.at((public.finals_cup_hour() - 18) * 3600 + 30 + 200);
 select public.finals_advance(pg_temp.wk());
 select pg_temp.ck('K1 杯第 1 轮两场写回 ok',
   pg_temp.finish(public.finals_cup_no(), 1, 0, 3000) = 'true' and pg_temp.finish(public.finals_cup_no(), 1, 1, 4000) = 'true');
-select pg_temp.at(2 * 3600 + 30 + 241);
+select pg_temp.at((public.finals_cup_hour() - 18) * 3600 + 30 + 241);
 select public.finals_advance(pg_temp.wk());
 select pg_temp.mark('TC', (pg_temp.bk(public.finals_cup_no())).revealed_at);
 select pg_temp.ck('K1 ★杯内一场接一场: 第 1 场 = 翻面、时长 80; 第 2 场 = 第 1 场结束 + 25 = 翻面 + 105、时长 97; round_at = 翻面 + 227',
@@ -285,10 +285,10 @@ select pg_temp.ck('K1 week_view.cup.seq.p = [TC, TC+80] / [TC+105, TC+202]',
   and ((pg_temp.wview())->'cup'->'seq'->'p'->'1-1') = jsonb_build_array(pg_temp.e(pg_temp.t('TC')) + 105, pg_temp.e(pg_temp.t('TC')) + 202),
   (pg_temp.wview()->'cup'->'seq')::text);
 -- 杯决赛（打完收盘，免得它在后面几段的推进里插一脚）
-select pg_temp.at(2 * 3600 + 30 + 241 + 227 + 200);
+select pg_temp.at((public.finals_cup_hour() - 18) * 3600 + 30 + 241 + 227 + 200);
 select public.finals_advance(pg_temp.wk());
 select pg_temp.ck('K1 杯决赛写回 ok', pg_temp.finish(public.finals_cup_no(), 2, 0, 3000) = 'true');
-select pg_temp.at(2 * 3600 + 30 + 241 + 227 + 241);
+select pg_temp.at((public.finals_cup_hour() - 18) * 3600 + 30 + 241 + 227 + 241);
 select public.finals_advance(pg_temp.wk());
 select pg_temp.ck('K1 杯收盘、决赛也排档期（时长 80）', (pg_temp.bk(public.finals_cup_no())).closed
   and (pg_temp.res(public.finals_cup_no(), 2, 0)).premiere_sec = 80);
@@ -296,18 +296,18 @@ select pg_temp.ck('K1 杯收盘、决赛也排档期（时长 80）', (pg_temp.b
 -- O1 开关关 ⇒ 老规则
 update public.referee_config set finals_sequential = false where id = 1;
 select pg_temp.ck('O1 分母: finals_sequential_on() = false', not public.finals_sequential_on());
-select pg_temp.at(3 * 3600);
+select pg_temp.at((public.finals_cup_hour() - 17) * 3600);
 select pg_temp.bucket(2, 4, 9);
-select pg_temp.at(3 * 3600 + 200);
+select pg_temp.at((public.finals_cup_hour() - 17) * 3600 + 200);
 select public.finals_advance(pg_temp.wk());
 select pg_temp.ck('O1 写回两场', pg_temp.finish(2, 1, 0, 6000) = 'true' and pg_temp.finish(2, 1, 1, 6000) = 'true');
-select pg_temp.at(3 * 3600 + 241);
+select pg_temp.at((public.finals_cup_hour() - 17) * 3600 + 241);
 select pg_temp.ck('O1 ★老规则: 结果齐了、过了备战结束 + 60 也不翻（要等 480）', public.finals_advance(pg_temp.wk()) = 0
   and (pg_temp.bk(2)).round = 1);
 select pg_temp.ck('O1 老规则: next_at = round_at + 480、seq = null（这一组没排过档期）',
   ((pg_temp.view(2))->>'next_at')::bigint - ((pg_temp.view(2))->>'round_at')::bigint = 480
   and jsonb_typeof((pg_temp.view(2))->'seq') = 'null');
-select pg_temp.at(3 * 3600 + 481);
+select pg_temp.at((public.finals_cup_hour() - 17) * 3600 + 481);
 select public.finals_advance(pg_temp.wk());
 select pg_temp.ck('O1 ★老规则: 翻面即开下一轮（round_at = revealed_at = 此刻）、premiere_until = null、两场都没有档期',
   (pg_temp.bk(2)).round = 2 and (pg_temp.bk(2)).round_at = public.app_now() and (pg_temp.bk(2)).revealed_at = public.app_now()

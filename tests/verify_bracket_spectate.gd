@@ -20,7 +20,7 @@ const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
 const SUN0 := 1789862400                 # 2026-09-20 周日 00:00 UTC
 const SUN_EARLY := SUN0 + 7 * 3600       # 分组(08:00 UTC)之前
-const SUN_NOON := SUN0 + 12 * 3600       # 分组之后、冠军签表(20:00)之前
+const SUN_NOON := SUN0 + 12 * 3600       # 冠军杯赛开赛(FINALS_START_HOUR_UTC)之前
 
 ## 用 `TopBar` 原语的枢纽屏(与 verify_top_bar 同源; 阵容屏只借薄片皮、没有整条栏; 匹配屏是过场, 理由见 verify_top_bar)
 const SCREENS := ["Record", "Settings", "Leaderboard", "Inventory", "Codex", "Shop"]

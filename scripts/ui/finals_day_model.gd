@@ -18,7 +18,7 @@ const _PS := preload("res://scripts/systems/replay/premiere_schedule.gd")
 ## 今天走到哪一段(按时刻 + 已揭晓的赛果)。
 const PH_PRE := "pre"        # 18:00 分组之前
 const PH_GROUP := "group"    # 小组赛进行中
-const PH_INTER := "inter"    # 各组都决出了, 等 20:00 冠军杯赛
+const PH_INTER := "inter"    # 各组都决出了, 等冠军杯赛开赛(FINALS_START_HOUR_UTC)
 const PH_CUP := "cup"        # 冠军杯赛进行中
 const PH_DONE := "done"      # 冠军杯赛已决出(已揭晓)
 

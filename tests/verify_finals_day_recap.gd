@@ -6,7 +6,7 @@ extends Node
 ##   没守到最后的人下次打开先补那一刻 —— 冠军 → 最终名次(前三 + 你排第几)→ 我的几轮(可重看); 只弹一次。
 ##   改法: scripts/ui/finals_day_recap.gd(主菜单开屏 `MenuFinalsDay.start` → `maybe_show`)。
 ##
-## ① 窗口: 周日冠军杯赛开赛之后补本周、周一补上周; 周日 20:00 前 / 周二起不补。
+## ① 窗口: 周日冠军杯赛开赛(FINALS_START_HOUR_UTC)之后补本周、周一补上周; 开赛前 / 周二起不补。
 ## ② 冠军杯赛还没决出(决赛还在开播 = 结果已在服务端也不算)⇒ 不弹(不剧透)。
 ## ③ 全屏三拍(竞技场背景压暗 + 光束, 与冠军仪式一套): 冠军(奖杯砸下 + 头像放大进冠军框 +「冠军杯赛冠军」大字盖章 + 金缎带名字)
 ##    → 最终名次(领奖台 3 → 2 → 1 依次落下头像与名字 + 「你的名次」高亮、数字滚到位) → 我的比赛(每轮一张横条牌: 轮次 · 对手头像与名字 ·
@@ -80,10 +80,11 @@ func _txt(root: Node, nm: String) -> String:
 
 func _t_window() -> void:
 	print("--- ① 窗口 / ② 不剧透 ---")
-	for c in [["周日 19:00", SUN + 19 * H, 0], ["周日 20:30", SUN + 20 * H + 1800, MON], ["周日 23:00", SUN + 23 * H, MON],
+	var cup := SUN + int(P2.FINALS_START_HOUR_UTC) * H
+	for c in [["周日 冠军杯赛开赛前 1 小时", cup - H, 0], ["周日 冠军杯赛开赛后半小时", cup + 1800, MON], ["周日 23:00", SUN + 23 * H, MON],
 			["周一 09:00", SUN + 86400 + 9 * H, MON], ["周二 09:00", SUN + 2 * 86400 + 9 * H, 0], ["周六 12:00", MON + 5 * 86400 + 12 * H, 0]]:
 		_ok("① [%s] 补看窗口 = %s" % [c[0], "本周" if int(c[2]) > 0 else "不补"], RC.window_week(int(c[1])) == int(c[2]), str(RC.window_week(int(c[1]))))
-	var final_slot: Array = fx.timeline(6, SUN + 20 * H, {})[2]["slots"]["3-0"]
+	var final_slot: Array = fx.timeline(6, cup, {})[2]["slots"]["3-0"]
 	var t_live: int = int(final_slot[0]) + 30
 	F.override = fx.feeds(t_live)
 	_ok("② ★分母: 决赛开播中, 服务端回包里决赛结果已经在 done 里", ((F.override["cup"] as Dictionary).get("done", {}) as Dictionary).has("3-0"))

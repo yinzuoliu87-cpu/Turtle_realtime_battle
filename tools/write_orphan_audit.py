@@ -152,6 +152,16 @@ WHY = {
     "force_anim": "小木斧进化演出在测试模式下也按真时长播的开关(axe_evo_show.gd `_instant()`; 产品不走 test_mode, 恒按真时长播; "
                   "门禁一律 test_mode ⇒ 默认瞬播, 免得每个经过商店 / 背包的门禁都多等 2~4 秒。"
                   "verify_axe_evo_show 打开它, 才能在演出开着时量横幅文字、点一下跳过、整页重建后演出还在)",
+    "test_host": "全局决赛日层(autoload FinalsDay)「这一屏」的门禁注入(finals_day_layer.gd `host()` / `active_at()`; "
+                 "产品取 current_scene, 且无头进程(陪练号 / 裁判机 / 门禁)、后端没配、屏名不在 SCENES 里都不挂层 ⇒ "
+                 "门禁进程永远走不到「挂上」那一支。verify_finals_day_global / verify_bracket_redo / verify_finals_watch / "
+                 "verify_replay_end_card 把搭出来的屏塞进来, 量小条停靠 / 弹窗 / 跑马灯; 2026-10-31 周日决赛日重做 9dd8444d 加)",
+    "feed_override": "主菜单决赛日卡的数据注入(menu_finals_day.gd `feeds()`: 非空就用它, 空 = 读 Supabase 缓存 = 玩家路径); "
+                     "门禁不连后端, verify_menu_finals_hero 经 tests/_finals_day_fixture.gd 喂「我那一组 / 冠军杯赛 / 本周各组」"
+                     "三份, 量卡的三态 / 子卡倒计时 / 我的晋级路线格子; 2026-10-31 周日决赛日重做 9dd8444d 加",
+    "override": "全局决赛日层的数据注入(finals_day_feed.gd static `feeds()`: 非空就用它, 空 = 读 Supabase 本周缓存 = 玩家路径); "
+                "门禁不连后端, verify_finals_day_global / verify_finals_day_recap 把 fixture 的 feeds(某一刻) 写进来, "
+                "量开播前弹窗 / 小条每一阶段 / 收盘补看; 每段开头写回 {} 清场。2026-10-31 周日决赛日重做 9dd8444d 加",
     ## ⚠ 这张表**只写核对过出处的理由** —— 一条实测教训, 留一句免得重犯:
     ##   2026-09-28 我顺手给 `_info_passive_lbl` / `_info_passive_tpl` 编了两条理由,
     ##   一查全错: 它们当时已经被删掉了, 而"tests 在写它"其实是判据把
