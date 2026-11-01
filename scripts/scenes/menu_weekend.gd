@@ -178,6 +178,26 @@ func block_card(msg: String, door: Array) -> void:
 
 
 ## 锁着的模式卡点下去去哪: 闯关赛 ⇒ 全场赛况; 决赛日(玩法上线) ⇒ 对阵图; 没锁 / 别的阶段 ⇒ ""(照旧开赛程页)。
+## 玩家今天这个赛制是不是已经出局了(积分赛生命耗尽 / 闯关赛负满)。模式卡第二行换色用:
+##   出局不用绿字 —— 绿 = 正向读数, 出局写成绿的读着像好消息(2026-11-01 实拍)。
+func mode_out(now: int) -> bool:
+	var ph: String = _P2.phase_at_utc(now)
+	if ph == _P2.PHASE_RANKED:
+		return GameState.is_eliminated()
+	if ph == _P2.PHASE_GAUNTLET:
+		return str(GameState.gauntlet_state()) == _P2.GAUNTLET_OUT
+	return false
+
+
+## 积分赛收盘前 CLOSE_LOCKOUT_SEC 起到当天结束开不了新局(选队「开打」那一下同一个判据拦, TeamSelectScene)。
+##   原来主菜单不拦: 模式卡写着「已截止」, 开始战斗却亮着, 选完阵容点开打才被拦回来(2026-11-01 实拍)。
+## 空串 = 不拦。`_battle_block_msg` 的最后一条。
+func msg_ranked_closed(ts: int) -> String:
+	if _P2.phase_at_utc(ts) != _P2.PHASE_RANKED or _P2.can_start_match_utc(ts):
+		return ""
+	return "本周积分赛已截止。闯关赛周六开始。" if GameState.gauntlet_eligible() else "本周积分赛已截止。下周二开始新一轮。"
+
+
 func locked_door(now: int) -> String:
 	var ph: String = _P2.phase_at_utc(now)
 	## 闯关赛已出局: 这周已经没有可打的了, 收盘倒计时与他无关(原来写「距截止 1 天 5 小时」)⇒ 与没资格的人同一个去处

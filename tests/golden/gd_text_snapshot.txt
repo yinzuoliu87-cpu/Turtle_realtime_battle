@@ -1022,8 +1022,6 @@ scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|晋级者参加周日决赛日
 scripts/scenes/MainMenuScene.gd|lit|晋级闯关赛
 scripts/scenes/MainMenuScene.gd|lit|本周对战 %d/%d
-scripts/scenes/MainMenuScene.gd|lit|本周积分赛已截止。下周二开始新一轮。
-scripts/scenes/MainMenuScene.gd|lit|本周积分赛已截止。闯关赛周六开始。
 scripts/scenes/MainMenuScene.gd|lit|本周赛程
 scripts/scenes/MainMenuScene.gd|lit|本大轮已出局
 scripts/scenes/MainMenuScene.gd|lit|本大轮首战后解锁
@@ -2138,6 +2136,8 @@ scripts/scenes/menu_weekend.gd|lit|已晋级决赛日（%s），闯关赛已完�
 scripts/scenes/menu_weekend.gd|lit|已晋级闯关赛，周六可继续参赛。
 scripts/scenes/menu_weekend.gd|lit|本周积分赛 %d 场已全部完成。%s
 scripts/scenes/menu_weekend.gd|lit|本周积分赛 %d 场已全部完成，未晋级闯关赛。闯关赛周六开放观战。%s
+scripts/scenes/menu_weekend.gd|lit|本周积分赛已截止。下周二开始新一轮。
+scripts/scenes/menu_weekend.gd|lit|本周积分赛已截止。闯关赛周六开始。
 scripts/scenes/menu_weekend.gd|lit|本周闯关赛已结束（%s）。决赛日开放观战。%s
 scripts/scenes/menu_weekend.gd|lit|生命已耗尽，本周无法参加积分赛。闯关赛周六开放观战。%s
 scripts/scenes/menu_weekend.gd|lit|积分赛生命已耗尽。%s

@@ -1373,8 +1373,7 @@ func _phase_status_line(now: int = 0) -> String:
 		return _gauntlet_status_line(ts)
 	if ph == _P2C.PHASE_FINALS:
 		return _finals_status_line(ts)
-	## 积分赛生命耗尽: 模式卡第二行原来照旧写「第 N 大轮」(绿字), 只有商店角标写着已出局 ⇒ 卡上直接说
-	if ph == _P2C.PHASE_RANKED and GameState.is_eliminated():
+	if ph == _P2C.PHASE_RANKED and GameState.is_eliminated():   # 生命耗尽: 卡上直接说(原来照旧写「第 N 大轮」绿字)
 		return "本大轮已出局"
 	return ""
 
@@ -1716,16 +1715,6 @@ static func _strip_phase_head(line: String, title: String) -> String:
 	return s if s != "" else line
 
 
-## 玩家今天这个赛制是不是已经出局了(积分赛生命耗尽 / 闯关赛负满)。模式卡第二行换色用。
-func mode_out(now: int) -> bool:
-	var ph: String = _P2C.phase_at_utc(now)
-	if ph == _P2C.PHASE_RANKED:
-		return GameState.is_eliminated()
-	if ph == _P2C.PHASE_GAUNTLET:
-		return str(GameState.gauntlet_state()) == _P2C.GAUNTLET_OUT
-	return false
-
-
 ## 周末(闯关赛 / 决赛日)没资格的人: 模式卡压灰 + 像素锁。
 ## ★判据不另写: 今天那张赛程卡锁着(`week_card_info` 的锁 = gauntlet_eligible / gauntlet_line_reached / gauntlet_state)
 ##   **且** 开始战斗那扇门真的拦着(`_battle_block_msg`)。平日不走这一支(平日的锁画在开始战斗上)。
@@ -1796,8 +1785,7 @@ func _mode_card(now: int) -> void:
 		Vector2(tx, 36.0), Vector2(MODE_SIZE.x - 18.0 - tx, 40.0))
 	title.name = "ModeTitle"
 	holder.add_child(title)
-	## 出局(积分赛生命耗尽 / 闯关赛 3 负)不用绿字: 绿 = 正向读数, 出局写成绿的读着像好消息
-	var rule_col := Color("#b9b2a6") if locked else (Color("#ff9a84") if mode_out(now) else Color("#a8e06a"))
+	var rule_col := Color("#b9b2a6") if locked else (Color("#ff9a84") if _wk().mode_out(now) else Color("#a8e06a"))
 	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT + 1, rule_col, Vector2(18.0, 76.0), Vector2(rule_w, 24.0 + grow))
 	rule.name = "ModeRule"
 	if extra_rows > 0:
@@ -2771,11 +2759,7 @@ func _battle_block_msg(now: int = 0) -> String:
 		return _msg_eliminated()
 	if GameState.ranked_quota_full(ts):
 		return _msg_quota_full()
-	## 积分赛收盘前 CLOSE_LOCKOUT_SEC 起到当天结束开不了新局(选队「开打」那一下同一个判据拦, TeamSelectScene)。
-	##   原来主菜单这里不拦: 模式卡写着「已截止」, 开始战斗却亮着, 选完阵容点开打才被拦回来(2026-11-01 实拍)。
-	if _P2C.phase_at_utc(ts) == _P2C.PHASE_RANKED and not _P2C.can_start_match_utc(ts):
-		return "本周积分赛已截止。闯关赛周六开始。" if GameState.gauntlet_eligible() else "本周积分赛已截止。下周二开始新一轮。"
-	return ""
+	return _wk().msg_ranked_closed(ts)
 
 
 ## ★★★门禁用的「现在是哪一刻」注入口。**0 = 用真实时钟**(玩家路径一字不动)。
