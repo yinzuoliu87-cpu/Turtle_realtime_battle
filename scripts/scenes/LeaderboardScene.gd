@@ -261,6 +261,8 @@ const HINT_ONLY_YOU_OFF := "（暂无其他玩家）"
 const SRC_SERVER := "server"
 const SRC_LOCAL := "local"
 const SRC_LOADING := "loading"
+## 正式包问不到服务端榜(2026-11-01 游戏必须联网): 一行都不画, 只有「无法连接服务器」框。
+const SRC_OFFLINE := "offline"
 const FALLBACK_MARK := "本地记录 · 非实时排名"
 const LOADING_TEXT := "正在读取本周排行…"
 const SB := preload("res://scripts/net/supabase.gd")
@@ -386,9 +388,9 @@ func _ready() -> void:
 	sep.position = Vector2(PAD, LIST_Y - 6.0); sep.size = Vector2(PANEL_W - PAD * 2.0, 2)
 	panel.add_child(sep)
 
-	## ★先问服务端; 连节点都没建(没配后端)⇒ 当场画本机那一路(带「本机记录」)。
+	## ★先问服务端; 连节点都没建(没配后端)⇒ `_fallback()`(正式包: 「无法连接服务器」; 开发缝: 本机那一路)。
 	if not _ask_server():
-		_render(_local_rows(), SRC_LOCAL, -1)
+		_fallback()
 	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
 	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
 	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
@@ -546,7 +548,7 @@ func _fetch_now() -> void:
 		SB.fetch_finals_week_cb(board_week_ts, _on_finals_week)
 	## ★先问按页取的新函数(第 1 页); 它没部署(404)再退回旧函数; 都问不到才退回本机。
 	if not _request_page(0, true):
-		_render(_local_rows(), SRC_LOCAL, -1)
+		_fallback()
 
 
 ## 发一页请求(第 page 页 = 名次 page*WEEK_LB_PAGE+1 起)。`first` = 开屏那一页, 回包决定走哪一路。
@@ -579,8 +581,8 @@ func _on_server_page(res: Dictionary, page: int, first: bool) -> void:
 			_legacy = true
 			if SB.fetch_week_leaderboard_async(board_week_ts, SB.WEEK_LB_LEGACY_LIMIT, _on_server_lb):
 				return
-		print("[LB] 服务端榜没拿到(%s) ⇒ 退回本机记录" % str(res.get("err", res.get("reason", "?"))))
-		_render(_local_rows(), SRC_LOCAL, -1)
+		print("[LB] 服务端榜没拿到(%s)" % str(res.get("err", res.get("reason", "?"))))
+		_fallback()
 		return
 	if source != SRC_SERVER:
 		return
@@ -605,8 +607,30 @@ func _on_server_lb(res: Dictionary) -> void:
 		var rows: Array = res["rows"]
 		_render(rows, SRC_SERVER, int(res.get("total", 0)), _me_of(res), _contiguous(rows))
 		return
-	print("[LB] 服务端榜没拿到(%s) ⇒ 退回本机记录" % str(res.get("err", res.get("reason", "?"))))
-	_render(_local_rows(), SRC_LOCAL, -1)
+	print("[LB] 服务端榜没拿到(%s)" % str(res.get("err", res.get("reason", "?"))))
+	_fallback()
+
+
+## 服务端榜问不到(没配后端 / 断网 / 超时 / 服务端没部署)之后画什么 —— 全屏唯一出口。
+## ★游戏必须联网(2026-11-01 用户「我们不应该有什么这种本地排名」): 正式包**不许**拿本机快照池排名次,
+##   一律「无法连接服务器」+ 重试(`OnlineWall`, 返回 = 回主菜单)。本机那一路只剩开发缝(`OnlineGate.dev_offline_ok()`:
+##   调试构建 / 离线测试包 —— 门禁 `TURTLE_SUPABASE=" "` 量版面就靠它), 正式包走不到。门禁 verify_online_only。
+func _fallback() -> void:
+	if OnlineGate.dev_offline_ok():
+		_render(_local_rows(), SRC_LOCAL, -1)
+		return
+	print("[LB] 正式包: 服务端榜问不到 ⇒ 无法连接服务器")
+	_render([], SRC_OFFLINE, -1)
+	OnlineWall.open(self, OnlineGate.WHAT_RANK, _retry_server,
+		func() -> void: SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"), false)
+
+
+## 「无法连接服务器」框里按「重试」且问到连得上之后: 重新问服务端榜。
+func _retry_server() -> void:
+	if not is_inside_tree():
+		return
+	if not _ask_server():
+		_fallback()
 
 
 ## rows 里从第 1 名起连续有几名(旧函数把「我」也可能塞在 rows 末尾, 那一行不算进列表长度)。
@@ -724,8 +748,8 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 	##   (2026-10-06 之前「本机记录」占右半边 [380, 732], 正好压在列名上 ⇒ verify_ui_consistency 报字叠字。)
 	var cap_line := Label.new()
 	cap_line.name = "LbCapLine"
-	cap_line.text = LOADING_TEXT if src == SRC_LOADING else (("上周共 %d 人上榜" if day_phase == _P2C.PHASE_REST
-		else "本周共 %d 人上榜") % n_on_board)
+	cap_line.text = LOADING_TEXT if src == SRC_LOADING else (OnlineWall.TXT_TITLE if src == SRC_OFFLINE
+		else (("上周共 %d 人上榜" if day_phase == _P2C.PHASE_REST else "本周共 %d 人上榜") % n_on_board))
 	cap_line.add_theme_font_size_override("font_size", 17)
 	cap_line.add_theme_color_override("font_color", Color("#c9b58a"))
 	cap_line.position = Vector2(PAD + 6.0, HEAD_Y)
@@ -733,7 +757,7 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 	cap_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	panel.add_child(cap_line)
 	## 列名(照 使命召唤手游 / 英雄联盟手游: 表头纯文字, 与下面的数字**右沿对齐**)。
-	if src != SRC_LOADING:
+	if src != SRC_LOADING and src != SRC_OFFLINE:
 		for ci in range(COL_HEADS.size()):
 			var ch := Label.new()
 			ch.name = "LbColHead%d" % ci
@@ -757,7 +781,7 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		panel.add_child(mark)
-	if src == SRC_LOADING:
+	if src == SRC_LOADING or src == SRC_OFFLINE:
 		list_len = 0
 		me_row = {}
 		_update_jump()

@@ -1150,8 +1150,19 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	return SkillText.highlight_star(raw, star)
 
 
+## 游戏必须联网(2026-11-01): 正式包里花深海币的三件事(买装备 / 买经验 / 换一批)先过 `OnlineGate` ——
+##   连不上 ⇒ 弹「无法连接服务器」, 一个币都不动; 重试连上了接着买。教程沙盒不拦(进教程那一下已经过了这一道, 沙盒存档离场还原)。
+func _online_or_wait(resume: Callable) -> bool:
+	var td = get_node_or_null("/root/TutorialDirector")
+	if td != null and td.is_active():
+		return true
+	return OnlineGate.check(self, OnlineGate.WHAT_BUY, resume)
+
+
 func _on_buy(idx: int) -> void:
 	if idx < 0 or idx >= _offer.size() or _offer[idx] == null:
+		return
+	if not _online_or_wait(_on_buy.bind(idx)):
 		return
 	var edef: Dictionary = _deco(_offer[idx])
 	var price := _price(edef)
@@ -1367,6 +1378,8 @@ func _build_level_row(btn_pos: Vector2) -> void:
 
 
 func _on_buy_xp() -> void:
+	if not _online_or_wait(_on_buy_xp):
+		return
 	var _lv0: int = int(GameState.season_level)
 	if GameState.buy_season_xp():
 		_rebuild()
@@ -1491,6 +1504,8 @@ func _on_toggle_lock() -> void:
 
 
 func _on_refresh() -> void:
+	if not _online_or_wait(_on_refresh):
+		return
 	if int(GameState.meta_deepsea_coins) < REFRESH_COST:
 		## ★同 `_on_buy`: 原来是裸 return。而「换一批」那颗按钮**一直是亮的**
 		##   (实测 coins=0 时 `disabled=false`) ⇒ 玩家点得下去、什么也不发生。

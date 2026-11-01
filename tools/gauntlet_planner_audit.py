@@ -85,6 +85,9 @@ MEM_PROFILES = (('glibc 0.75GB × 6', 0.75, 6), ('jemalloc 0.35GB × 12', 0.35, 
 BOT_STARTUP = (11, 13)
 BOT_STARTUP_SLOW = (40, 60)
 REF_SEC = (17, 42)
+## ★2026-11-01 U3: 客户端带 SIM_EXIT_ON_PAIR=1(调度器 weekend_env 只给补格子的号)⇒ 配上对手后 _finish 等 3 秒再正常退出
+##   (sim_driver.gd `_do_match_queue` → `_finish`; 驱动每 0.5 秒看一次)⇒ 配上后 3.5 秒并发位腾出来, 算完不再回来排队。
+EXIT_ON_PAIR_SEC = 3.5
 fails = []
 
 
@@ -120,6 +123,7 @@ class World:
         ##   他这一格和上一级格子里没有一个跟他没交过手、还没打完的同版本陪练号(不论空闲 / 在线 / 在算), 这一格也没有能跟他配的在线真人。
         ##   值 = None(还没结局)/ ('fb', 等待秒) / ('pair', 等待秒)
         self.gt_none = {}
+        self.exit_on_pair_n = 0                # U3: 配上就下线的次数(⑲ 分母)
         self.rng = random.Random(seed)
         self.prng = random.Random(seed + 7)
         self.t = SAT0
@@ -250,6 +254,11 @@ class World:
             self.hh_pairs += 1
         xa['busy'] = xb['busy'] = True
         self.pairs += 1
+        for e in (a, b):                       # U3: 配上就下线的客户端(调度器传了 SIM_EXIT_ON_PAIR)
+            cl = self.clients.get(e['id']) if e['bot'] else None
+            if cl and cl.get('exit_on_pair'):
+                self.exit_on_pair_n += 1
+                self.push(self.t + EXIT_ON_PAIR_SEC, 'bexit', e['id'], cl['tok'])
         self.referee({'a': a['id'], 'b': b['id'], 'cell': xa['cell']})
 
     def referee(self, job):
@@ -410,7 +419,12 @@ class World:
                 fill_now.append(bid)
             self.tokn += 1
             tok = self.tokn
-            self.clients[bid] = {'tok': tok, 'since': self.t, 'rounds': rounds, 'purpose': purpose, 'g0': b['games']}
+            ## 客户端拿到的环境变量 = 调度器真传的那一份(weekend_env); 配上就下线只认它
+            ##   (U3 之前的调度器没有 fill_exit_on_pair ⇒ 当作不下线: 反向验证拿旧版跑时红在判据上, 不崩)
+            cenv = P.weekend_env(rounds, purpose, b['cell'], P.fill_exit_on_pair(self.cfg, self.t, CLOSE)) \
+                if hasattr(P, 'fill_exit_on_pair') else P.weekend_env(rounds, purpose, b['cell'])
+            self.clients[bid] = {'tok': tok, 'since': self.t, 'rounds': rounds, 'purpose': purpose, 'g0': b['games'],
+                                 'exit_on_pair': cenv.get('SIM_EXIT_ON_PAIR') == '1'}
             self.push(self.t + self.rng.uniform(*self.startup), 'bjoin', bid, tok)
             self.launches.append((self.t, bid, purpose))
             applied.append((op, bid, rounds, purpose, why))
@@ -623,8 +637,30 @@ def few_bots(args):
             'max_online': w.max_online, 'nsamples': len(w.samples)}
 
 
+def dead_pair_point_check():
+    """⑫b 定点: 2026-11-01 校准时长后 ⑫ 撞出来的死结 —— 12 个号, 2-1 只剩两个在 1-0 交过手的号, 别的格子还有能打的。
+    打法要是只数个数(不看凑对上限), 会一直要在 2-1 开局、执行时又配不上 ⇒ 一拍什么都不做(铺不到 9 格)。
+    含 U3 之后 ⑫ 的推演轨迹变了、不一定再撞上这个形状 ⇒ 直接造出来。返回 (这一拍拉的号, 有没有往 2-1 拉)。"""
+    now = SAT0 + 2 * 3600
+    layout = {(0, 0): ['r1', 'r2'], (1, 0): ['a1'], (0, 1): ['c1', 'c2', 'c3'], (1, 1): ['d1'], (0, 2): ['e1'],
+              (3, 0): ['f1'], (2, 1): ['g1', 'g2'], (1, 2): ['h1']}
+    opp = {'g1': ['g2'], 'g2': ['g1']}
+    bots = [{'account_id': b, 'gw': c[0], 'gl': c[1], 'in_job': False, 'waiting': False, 'busy': False, 'finished': False,
+             'promoted': True, 'last_played_at': None if c == (0, 0) else now - 600, 'opponents': opp.get(b, [])}
+            for c, ids in layout.items() for b in ids]
+    st = {'close_at': CLOSE, 'now': now, 'waiting': [], 'bots': bots, 'running': {}, 'memory': {}, 'playing': [],
+          'bot_version': 'v', 'external_running': 0}
+    cmds = P.decide(st, now, random.Random(1), {'MAX_PAR': 6})
+    cell = {b: c for c, ids in layout.items() for b in ids}
+    launched = [b for op, b, *_r in cmds if op == 'launch']
+    return launched, any(cell.get(b) == (2, 1) for b in launched)
+
+
 def few_bots_checks():
     keep = P.DEFAULTS['SCARCE_ROOT_KEEP']
+    launched, at21 = dead_pair_point_check()
+    ok('⑫b 定点: 2-1 只剩两个交过手的号、别的格子还能打 ⇒ 这一拍照样往前铺(拉了 %s)、不往 2-1 拉对' % launched,
+       len(launched) >= 2 and not at21)
     print('== ⑫ 号少时铺格子(10-27 内测服彩排: 12 个号只开调度器, 铺到 7 格就停了 9 分钟) ==')
     caps = {n: max_cover(n, keep) for n in range(8, 31)}
     full_k = min([n for n in caps if caps[n] == 12] or [0])
@@ -850,6 +886,12 @@ def precision_run(args):
 ## 正式服 10-31(那一版调度器 = 不借真人位、并发 4、108 个晋级号): 「每格 ≥1」铺满在 00:28 —— 调度器日志 00:28:11 起改补「每格 ≥2」,
 ##   3-2 第一个号 00:28:03 到(gauntlet_queue × referee_jobs 只读实查)。⑯ 拿它标定假世界的时长。
 PROD_1031_FULL1_MIN = 28
+## ⑯ / ⑲ 的几种配置。U3(补格子的号配上就下线)要 0.22.7 起的客户端; 旧客户端 = FILL_EXIT_ON_PAIR 关的那一行。
+NO_U3 = {'FILL_EXIT_ON_PAIR': False}
+NO_U3_NO_FRONT = {'FILL_EXIT_ON_PAIR': False, 'OPENING_FRONT': False}
+OLD_1031 = {'OPENING_SEC': 0, 'FILL_EXIT_ON_PAIR': False}      # = 10-31 正式服那一版: 不借真人位、补格子号打完才走
+OPEN_COVER_CFGS = ((4, {}, BOT_STARTUP), (4, NO_U3, BOT_STARTUP), (4, OLD_1031, BOT_STARTUP), (6, {}, BOT_STARTUP),
+                   (4, {}, BOT_STARTUP_SLOW), (4, OLD_1031, BOT_STARTUP_SLOW))
 OPEN_MINUTES = (5, 10, 15, 20, 30)
 ## 最快的真人(实测): 正式服 10-31 测试号每局打完到再排队隔 115 / 168 / 115 / 142 / 286 秒(看完录像 + 逛店)⇒ 取 140。
 ##   ⑨ 的 FAST_POST_SEC(210, 协调方给的「一局 4~5 分钟」)比这慢; 开局那几条(⑰ ⑱)用实测的。
@@ -885,7 +927,7 @@ def probe_open2(args):
     base = World(n_bots, arrivals_for(5, seed), c, seed * 1000 + n_bots, fast_post=post)
     base.run(until=SAT0 - 1e-6)
     out = {'n': n_bots, 'par': par, 'seed': seed, 'cfg': cfg, 'post': post, 'empty': [0, 0], 'met': [0, 0], 'ok': [0, 0],
-           'gt': [], 'nviol': 0, 'viol': []}
+           'gt': [], 'nviol': 0, 'viol': [], 'steps': 0, 'nfb': 0, 'eop': 0, 'max_online': 0}
     for path in all_paths():
         w = copy.deepcopy(base)
         w.humans['probe'] = {'cell': (0, 0), 'fin': False, 'opp': set(), 'games': 0, 'busy': False}
@@ -902,6 +944,10 @@ def probe_open2(args):
         out['gt'] += gt_done(w, 'probe')
         out['nviol'] += len(w.viol)
         out['viol'] += w.viol[:1]
+        out['steps'] += len(mine)
+        out['nfb'] += sum(1 for x in mine if x[4])
+        out['eop'] += w.exit_on_pair_n
+        out['max_online'] = max(out['max_online'], w.max_online)
     return out
 
 
@@ -987,11 +1033,11 @@ def main():
     jobs_p += [(n, MEM_PROFILES[1][2], SAT0, FAST_POST_SEC, 3) for n in (30, 57, 80)]
     jobs_p += [(n, p2, SAT0, STRICT_POST_SEC, 3) for n in (57,) for p2 in (par, MEM_PROFILES[1][2])]
     jobs_o = [(OPEN_N, p, s, cfg) for p in (4, 6) for s in OPEN_SEEDS for cfg in ({}, {'OPENING_SEC': 0})]
-    jobs_o2 = [(OPEN_N, 6, s, cfg, FAST_POST_REAL) for s in OPEN_SEEDS for cfg in ({}, {'OPENING_FRONT': False})]
-    jobs_o2 += [(OPEN_N, 4, s, cfg, FAST_POST_REAL) for s in OPEN_SEEDS for cfg in ({}, {'OPENING_FRONT': False})]
-    jobs_c = [(OPEN_N, p, s, cfg, su) for s in OPEN_SEEDS
-              for p, cfg, su in ((4, {}, BOT_STARTUP), (4, {'OPENING_SEC': 0}, BOT_STARTUP), (6, {}, BOT_STARTUP),
-                                 (4, {}, BOT_STARTUP_SLOW), (4, {'OPENING_SEC': 0}, BOT_STARTUP_SLOW))]
+    jobs_o += [(OPEN_N, 4, s, cfg) for s in OPEN_SEEDS for cfg in (NO_U3, dict(NO_U3, OPENING_SEC=0))]
+    ## ⑱ / ⑱b 在旧客户端(没有 U3)下量「下一格不算交过手的号」: 含 U3 时深格子已经 100% 有号, 那一条量不出东西(判据会恒真)
+    jobs_o2 = [(OPEN_N, 6, s, cfg, FAST_POST_REAL) for s in OPEN_SEEDS for cfg in (NO_U3, NO_U3_NO_FRONT)]
+    jobs_o2 += [(OPEN_N, 4, s, cfg, FAST_POST_REAL) for s in OPEN_SEEDS for cfg in ({}, NO_U3, NO_U3_NO_FRONT)]
+    jobs_c = [(OPEN_N, p, s, cfg, su) for s in OPEN_SEEDS for p, cfg, su in OPEN_COVER_CFGS]
     jobs_g = [(n, h, par, s) for n, h in ((12, 20), (30, 50)) for s in (1, 2)]
     jobs_v = [(57, 20, par, 1, e) for e in (True, False)]
     jobs_q = [(n, h, par, 1) for n in (57, OPEN_N) for h in (20, 50)]
@@ -1083,21 +1129,23 @@ def main():
 
     print('== ⑬ 开赛头一小时: 最快的真人第 4~6 场进队时, 深格子有没有他没交过手的空闲号(%d 个晋级号 · 种子 %s · 35 条路线) ==' % (
         OPEN_N, list(OPEN_SEEDS)))
-    for p in (4, 6):
-        cur = [r for r in ro if r['par'] == p and not r['cfg']]
-        off = [r for r in ro if r['par'] == p and r['cfg']]
+    for p, base in ((4, NO_U3), (4, {}), (6, {})):
+        cur = [r for r in ro if r['par'] == p and r['cfg'] == base]
+        off = [r for r in ro if r['par'] == p and r['cfg'] == dict(base, OPENING_SEC=0)]
+        lab_u3 = '没有 U3(旧客户端)' if base else '含 U3'
         hc, dc = sum(r['have'] for r in cur), sum(r['deep'] for r in cur)
         ho, do = sum(r['have'] for r in off), sum(r['deep'] for r in off)
-        print('   并发 %d: 现行 %d / %d(%.0f%%)· 兜底 %d / %d 步 | 头一小时不借真人位 %d / %d(%.0f%%)· 兜底 %d / %d 步' % (
-            p, hc, dc, 100.0 * hc / max(1, dc), sum(r['nfb'] for r in cur), sum(r['steps'] for r in cur),
+        print('   并发 %d · %s: 现行 %d / %d(%.0f%%)· 兜底 %d / %d 步 | 头一小时不借真人位 %d / %d(%.0f%%)· 兜底 %d / %d 步' % (
+            p, lab_u3, hc, dc, 100.0 * hc / max(1, dc), sum(r['nfb'] for r in cur), sum(r['steps'] for r in cur),
             ho, do, 100.0 * ho / max(1, do), sum(r['nfb'] for r in off), sum(r['steps'] for r in off)))
-        ok('⑬ 并发 %d: 分母 —— 深格子进队采到 ≥ 150 次(%d)' % (p, dc), dc >= 150 and do >= 150)
+        ok('⑬ 并发 %d · %s: 分母 —— 深格子进队采到 ≥ 150 次(%d)' % (p, lab_u3, dc), dc >= 150 and do >= 150)
         ## 判据 = 现行比「头一小时不借真人位」多出 ≥ 10% 的深格子进队有号可配(改坏借位 ⇒ 两边相等 ⇒ 红)。
         ##   ★11-01 按正式服实测时长: 并发 4 +64%(207 vs 126); 并发 6 两边差不多(236 vs 232)—— 拉起只要 12 秒, 6 个位不卡并发,
         ##   借位只在并发卡住时有用 ⇒ 并发 6 只判「不比不借差」(旧时长下是 +15%, 那是拉起 40~60 秒占位占出来的)。
-        need = 1.1 if p == 4 else 0.97
-        ok('⑬ 并发 %d: 开赛头一小时借真人位补格子 ⇒ 深格子有没交过手的号的次数 ≥ 不借时的 %.2f 倍(%d vs %d)' % (p, need, hc, ho),
-           hc >= need * ho)
+        ##   ★11-01 U3: 配上就下线后并发位不再卡(同并发 6), 含 U3 也只判不比不借差; 借位机制本身由「没有 U3 · 并发 4」那一行守着。
+        need = 1.1 if (p == 4 and base) else 0.97
+        ok('⑬ 并发 %d · %s: 开赛头一小时借真人位补格子 ⇒ 深格子有没交过手的号的次数 ≥ 不借时的 %.2f 倍(%d vs %d)' % (
+            p, lab_u3, need, hc, ho), hc >= need * ho)
     hc6 = sum(r['have'] for r in ro if r['par'] == 6 and not r['cfg'])
     dc6 = sum(r['deep'] for r in ro if r['par'] == 6 and not r['cfg'])
     ok('⑬ 并发 6(服务单元 MemoryMax 的设计值): 深格子进队 ≥ 75%% 有没交过手的空闲号(%d / %d)' % (hc6, dc6), hc6 >= 0.75 * dc6)
@@ -1135,11 +1183,12 @@ def main():
 
     def fm(v):
         return '%.1f' % (v / 60.0) if v is not None else '没到'
-    for lab, p, cfg, su in (('现行 · 并发 4(正式服周末 env)', 4, {}, BOT_STARTUP),
-                            ('不借真人位 · 并发 4(= 10-31 那一版)', 4, {'OPENING_SEC': 0}, BOT_STARTUP),
-                            ('现行 · 并发 6', 6, {}, BOT_STARTUP),
-                            ('现行 · 并发 4 · 拉起 40~60 秒', 4, {}, BOT_STARTUP_SLOW),
-                            ('不借真人位 · 并发 4 · 拉起 40~60 秒', 4, {'OPENING_SEC': 0}, BOT_STARTUP_SLOW)):
+    for lab, p, cfg, su in (('现行(含 U3 配上就下线)· 并发 4(正式服周末 env)', 4, {}, BOT_STARTUP),
+                            ('现行 · 旧客户端(没有 U3)· 并发 4', 4, NO_U3, BOT_STARTUP),
+                            ('10-31 那一版(不借真人位、打完才走)· 并发 4', 4, OLD_1031, BOT_STARTUP),
+                            ('现行(含 U3)· 并发 6', 6, {}, BOT_STARTUP),
+                            ('现行(含 U3)· 并发 4 · 拉起 40~60 秒', 4, {}, BOT_STARTUP_SLOW),
+                            ('10-31 那一版 · 并发 4 · 拉起 40~60 秒', 4, OLD_1031, BOT_STARTUP_SLOW)):
         rr = pick(p, cfg, su)
         print('   %s: 每格 ≥1 第 %s 分钟 · 每格 ≥2 第 %s 分钟(逐种子)' % (
             lab, ' / '.join(fm(r['first1']) for r in rr), ' / '.join(fm(r['first2']) for r in rr)))
@@ -1148,29 +1197,37 @@ def main():
             print('      第 %2d 分钟(种子 %d): %s · ≥1 的 %d 格 / ≥2 的 %d 格' % (
                 m, r0['seed'], ' '.join('%d-%d:%d' % (c[0], c[1], r0['at'][m].get(c, 0)) for c in spec_cells()),
                 sum(1 for c in spec_cells() if r0['at'][m].get(c, 0) >= 1), sum(1 for c in spec_cells() if r0['at'][m].get(c, 0) >= 2)))
-    old = pick(4, {'OPENING_SEC': 0}, BOT_STARTUP)
+    old = pick(4, OLD_1031, BOT_STARTUP)
     cur = pick(4, {}, BOT_STARTUP)
-    ok('⑯ 分母: %d 个种子 × 5 种配置都跑完、每次采样 ≥ 100 次、拉号 / 并发合规' % len(OPEN_SEEDS),
-       len(rc) == 5 * len(OPEN_SEEDS) and all(r['nsamples'] >= 100 and r['nviol'] == 0 and r['max_online'] <= r['par'] for r in rc),
+    cur0 = pick(4, NO_U3, BOT_STARTUP)
+    ok('⑯ 分母: %d 个种子 × %d 种配置都跑完、每次采样 ≥ 100 次、拉号 / 并发合规' % (len(OPEN_SEEDS), len(OPEN_COVER_CFGS)),
+       len(rc) == len(OPEN_COVER_CFGS) * len(OPEN_SEEDS) and all(r['nsamples'] >= 100 and r['nviol'] == 0 and r['max_online'] <= r['par'] for r in rc),
        str([r['viol'] for r in rc if r['nviol']][:2]))
     ## 标定: 10-31 那一版(不借真人位、并发 4)在假世界里「每格 ≥1」铺满的时刻要落在正式服实测 00:28 ± 4 分钟 —— 尺子的时长对不上就红
     ok('⑯ ★标定: 不借真人位 · 并发 4 的「每格 ≥1」铺满 = 正式服 10-31 实测第 %d 分钟 ± 4(%s)' % (
         PROD_1031_FULL1_MIN, ' / '.join(fm(r['first1']) for r in old)),
        all(r['first1'] is not None and abs(r['first1'] / 60.0 - PROD_1031_FULL1_MIN) <= 4 for r in old))
-    ok('⑯ ★现行 · 并发 4: 每格 ≥1 在第 18 分钟内铺满(10-31 是第 28 分钟)、每格 ≥2 在第 40 分钟内(%s / %s)' % (
+    ok('⑯ ★现行 · 旧客户端(没有 U3)· 并发 4: 每格 ≥1 在第 18 分钟内铺满(10-31 是第 28 分钟)、每格 ≥2 在第 40 分钟内(%s / %s)' % (
+        ' / '.join(fm(r['first1']) for r in cur0), ' / '.join(fm(r['first2']) for r in cur0)),
+       all(r['first1'] is not None and r['first1'] <= 18 * 60 and r['first2'] is not None and r['first2'] <= 40 * 60 for r in cur0))
+    ## U3: 实测 7.5~8.5 / 13~15 分钟(6 个种子)⇒ 判 ≤ 10 / ≤ 18
+    ok('⑯ ★现行(含 U3)· 并发 4: 每格 ≥1 在第 10 分钟内铺满、每格 ≥2 在第 18 分钟内(%s / %s)' % (
         ' / '.join(fm(r['first1']) for r in cur), ' / '.join(fm(r['first2']) for r in cur)),
-       all(r['first1'] is not None and r['first1'] <= 18 * 60 and r['first2'] is not None and r['first2'] <= 40 * 60 for r in cur))
-    so, sc = pick(4, {'OPENING_SEC': 0}, BOT_STARTUP_SLOW), pick(4, {}, BOT_STARTUP_SLOW)
-    ok('⑯ 稳健: 拉起慢到 40~60 秒时现行仍比不借真人位快(每格 ≥1: %s vs %s)' % (
+       all(r['first1'] is not None and r['first1'] <= 10 * 60 and r['first2'] is not None and r['first2'] <= 18 * 60 for r in cur))
+    so, sc = pick(4, OLD_1031, BOT_STARTUP_SLOW), pick(4, {}, BOT_STARTUP_SLOW)
+    ok('⑯ 稳健: 拉起慢到 40~60 秒时现行仍比 10-31 那一版快(每格 ≥1: %s vs %s)' % (
         ' / '.join(fm(r['first1']) for r in sc), ' / '.join(fm(r['first1']) for r in so)),
        sum(r['first1'] or 3600 for r in sc) < sum(r['first1'] or 3600 for r in so))
 
     print('== ⑰ 确定没有陪练号能来 ⇒ 进队满 1 分钟就兜底(假世界自己判「确定没号」, 不调被测函数) ==')
     lim17 = HUMAN_ONLY_SEC + P.DEFAULTS['TICK_SEC'] + 2
-    gts = [(lab, x) for lab, rr in (('开赛最快真人 · 并发 6', [r for r in ro2 if r['par'] == 6 and not r['cfg']]),
-                                    ('开赛最快真人 · 并发 4', [r for r in ro2 if r['par'] == 4 and not r['cfg']])) for r in rr for x in r['gt']]
+    gts = [(lab, x) for lab, rr in (('开赛最快真人 · 并发 6 · 旧客户端', [r for r in ro2 if r['par'] == 6 and r['cfg'] == NO_U3]),
+                                    ('开赛最快真人 · 并发 4 · 含 U3', [r for r in ro2 if r['par'] == 4 and not r['cfg']]),
+                                    ('开赛最快真人 · 并发 4 · 旧客户端', [r for r in ro2 if r['par'] == 4 and r['cfg'] == NO_U3]))
+           for r in rr for x in r['gt']]
     gts += [('%d 个号 · %d 个真人 · 整个周末' % (r['n'], r['h']), x) for r in rg for x in r['gt']]
-    by = {lab: {'fb': [], 'pair': []} for lab in ('开赛最快真人 · 并发 6', '开赛最快真人 · 并发 4')}
+    by = {lab: {'fb': [], 'pair': []} for lab in ('开赛最快真人 · 并发 6 · 旧客户端', '开赛最快真人 · 并发 4 · 含 U3',
+                                                  '开赛最快真人 · 并发 4 · 旧客户端')}
     for lab, (kind, wt) in gts:
         d = by.setdefault(lab, {'fb': [], 'pair': []})
         d[kind].append(wt)
@@ -1188,16 +1245,16 @@ def main():
     ok('⑰b 定点: 刚下线、排队条目还有效(15 秒内服务端照样能配)的没交过手的号 ⇒ 不报没号', not nb17['queued'], str(nb17['queued']))
     ok('⑰b 定点(尺子): 同一个号交过手 / 这一格一个号都没有 ⇒ 报没号', nb17['met'] and nb17['none'], str(nb17))
 
-    print('== ⑱ 开赛头一小时: 真人下一格他交过手的号不算数(%d 个号 · 并发 6 · 最快真人每局后 %d 秒 = 实测 · 种子 %s) ==' % (
+    print('== ⑱ 开赛头一小时: 真人下一格他交过手的号不算数(旧客户端 = 没有 U3 时量; %d 个号 · 并发 6 · 最快真人每局后 %d 秒 = 实测 · 种子 %s) ==' % (
         OPEN_N, FAST_POST_REAL, list(OPEN_SEEDS)))
-    on = [r for r in ro2 if r['par'] == 6 and not r['cfg']]
-    off = [r for r in ro2 if r['par'] == 6 and r['cfg']]
+    on = [r for r in ro2 if r['par'] == 6 and r['cfg'] == NO_U3]
+    off = [r for r in ro2 if r['par'] == 6 and r['cfg'] == NO_U3_NO_FRONT]
 
     def agg(rr, k):
         return sum(r[k][0] for r in rr), sum(r[k][1] for r in rr)
-    on4 = [r for r in ro2 if r['par'] == 4 and not r['cfg']]
-    off4 = [r for r in ro2 if r['par'] == 4 and r['cfg']]
-    for lab, rr in (('现行', on), ('关掉(OPENING_FRONT=0)', off), ('现行 · 并发 4', on4), ('关掉 · 并发 4', off4)):
+    on4 = [r for r in ro2 if r['par'] == 4 and r['cfg'] == NO_U3]
+    off4 = [r for r in ro2 if r['par'] == 4 and r['cfg'] == NO_U3_NO_FRONT]
+    for lab, rr in (('旧客户端 · 现行', on), ('旧客户端 · 关掉(OPENING_FRONT=0)', off), ('旧客户端 · 并发 4', on4), ('旧客户端 · 关掉 · 并发 4', off4)):
         (e0, e1), (m0, m1), (k0, _k1) = agg(rr, 'empty'), agg(rr, 'met'), agg(rr, 'ok')
         print('   %s: 第 4~6 场进队 %d 次 —— 格子空 %d(兜底 %d)· 有号但都交过手 %d(兜底 %d)· 有没交过手的 %d' % (
             lab, e0 + m0 + k0, e0, e1, m0, m1, k0))
@@ -1214,6 +1271,41 @@ def main():
     fb4_on, fb4_off = (sum(agg(rr, k)[1] for k in ('empty', 'met', 'ok')) for rr in (on4, off4))
     ok('⑱b 并发 4: 这一条不比关掉时差(深格子有没交过手的号 %d vs %d · 兜底 %d vs %d)' % (ok4_on, ok4_off, fb4_on, fb4_off),
        ok4_on >= ok4_off and fb4_on <= fb4_off)
+
+    print('== ⑲ U3 补格子的号配上就下线(%d 个号 · 并发 4 = 正式服周末 env · 最快真人每局后 %d 秒 = 实测 · 种子 %s) ==' % (
+        OPEN_N, FAST_POST_REAL, list(OPEN_SEEDS)))
+    u3 = [r for r in ro2 if r['par'] == 4 and not r['cfg']]
+    nu3 = [r for r in ro2 if r['par'] == 4 and r['cfg'] == NO_U3]
+    stat = {}
+    for lab, rr in (('含 U3', u3), ('没有 U3(旧客户端)', nu3)):
+        tot = sum(agg(rr, k)[0] for k in ('empty', 'met', 'ok'))
+        okk = agg(rr, 'ok')[0]
+        st, fb = sum(r['steps'] for r in rr), sum(r['nfb'] for r in rr)
+        stat[lab] = (okk, tot, fb, st, sum(r['eop'] for r in rr), max([r['max_online'] for r in rr] or [0]))
+        print('   %s: 第 4~6 场深格子进队 %d 次里有没交过手的空闲号 %d(%.0f%%)· 他全程兜底 %d / %d 步(%.1f%%)· 配上就下线 %d 次 · 同时在线最多 %d' % (
+            lab, tot, okk, 100.0 * okk / max(1, tot), fb, st, 100.0 * fb / max(1, st), stat[lab][4], stat[lab][5]))
+    a_ok, a_tot, a_fb, a_st, a_eop, a_mx = stat['含 U3']
+    b_ok, b_tot, b_fb, b_st, b_eop, _b_mx = stat['没有 U3(旧客户端)']
+    ok('⑲ 分母: 深格子进队 ≥ 150 次、全程 ≥ 500 步、含 U3 那组真有号配上就下线(%d 次)、旧客户端那组一次都没有(%d)' % (a_eop, b_eop),
+       a_tot >= 150 and a_st >= 500 and a_eop >= 100 and b_eop == 0)
+    ## 上一轮(scratchpad bench2, 6 个种子)估: 97% / 兜底 0%; 判 ≥ 90% / ≤ 2%。没有 U3 实测 36% / 17% ⇒ 同一把尺子量得出红
+    ok('⑲ ★含 U3: 深格子有没交过手的号 ≥ 90%%(%d / %d)、最快真人全程兜底 ≤ 2%% 的步(%d / %d)' % (a_ok, a_tot, a_fb, a_st),
+       a_ok >= 0.9 * a_tot and a_fb <= 0.02 * a_st)
+    ok('⑲ 尺子: 没有 U3(旧客户端)时同一把尺子量得出差 —— 深格子有号 < 60%%(%d / %d)、兜底 > 5%%(%d / %d)' % (b_ok, b_tot, b_fb, b_st),
+       b_ok < 0.6 * b_tot and b_fb > 0.05 * b_st)
+    ## ⑲b 定点: 标记只给补格子的号、只在开赛后 FILL_EXIT_ON_PAIR_SEC 秒内、开关关了一律不给
+    has_u3 = hasattr(P, 'fill_exit_on_pair')
+    win = P.DEFAULTS.get('FILL_EXIT_ON_PAIR_SEC', 0)
+    tagged = sorted(pp for pp in P.PURPOSE_RANK if pp != 'exit' and has_u3
+                    and P.weekend_env(1, pp, (0, 0), True).get('SIM_EXIT_ON_PAIR') == '1')
+    ok('⑲b 定点: 只有补格子的号(fill)带 SIM_EXIT_ON_PAIR(带的: %s); 不开就谁都不带' % tagged,
+       has_u3 and tagged == ['fill'] and 'SIM_EXIT_ON_PAIR' not in P.weekend_env(5, 'fill', (0, 0), False))
+    ok('⑲b 定点: 开赛后 %d 秒内拉的补格子号配上就下线、之后不、开关关了不' % win, has_u3 and
+       P.fill_exit_on_pair({}, SAT0 + win - 1, CLOSE) and not P.fill_exit_on_pair({}, SAT0 + win + 1, CLOSE)
+       and not P.fill_exit_on_pair({'FILL_EXIT_ON_PAIR': False}, SAT0 + 10, CLOSE)
+       and P.fill_exit_on_pair({'FILL_EXIT_ON_PAIR_SEC': -1}, CLOSE - 60, CLOSE))
+    ok('⑲ 配上就下线不超并发(同时在线最多 %d ≤ 4)、拉号 / 配对合规' % a_mx,
+       a_mx <= 4 and all(r['nviol'] == 0 for r in u3 + nu3), str([r['viol'] for r in u3 + nu3 if r['nviol']][:2]))
 
     print('== ⑤ 尺子自检(反向) ==')
     s = rs[('s', 80, 5, par, 1, (('R', 4),))]

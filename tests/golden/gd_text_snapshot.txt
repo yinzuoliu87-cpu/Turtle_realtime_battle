@@ -701,6 +701,11 @@ scripts/net/friends_net.gd|lit|玩家 ID 格式不正确
 scripts/net/friends_net.gd|lit|网络异常，请稍后再试
 scripts/net/friends_net.gd|lit|账号未登录，请稍后再试
 scripts/net/friends_net.gd|lit|这是你自己的玩家 ID
+scripts/net/online_gate.gd|lit|切磋
+scripts/net/online_gate.gd|lit|对战
+scripts/net/online_gate.gd|lit|排行榜
+scripts/net/online_gate.gd|lit|新手教程
+scripts/net/online_gate.gd|lit|购买
 scripts/net/remote_pool.gd|lit|%s 带了 %d 件装备(上限 %d)
 scripts/net/remote_pool.gd|lit|%s 的 equipped 不是 Array
 scripts/net/remote_pool.gd|lit|%s 等级 %d 越界(1~%d)
@@ -987,6 +992,7 @@ scripts/scenes/InventoryScene.gd|tooltip_text|临时等级器\n指定单位本�
 scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已达上限 %d/%d
 scripts/scenes/InventoryScene.gd|tooltip_text|切换站位：前排近战 / 后排远程
 scripts/scenes/InventoryScene.gd|tooltip_text|单位装备上限 %d 件\n全队上限由赛季等级决定（当前 Lv%d：%d 件）%s
+scripts/scenes/LeaderboardScene.gd|lit|上周共 %d 人上榜
 scripts/scenes/LeaderboardScene.gd|lit|上周终榜
 scripts/scenes/LeaderboardScene.gd|lit|剩余生命
 scripts/scenes/LeaderboardScene.gd|lit|周日对阵图
@@ -1005,7 +1011,6 @@ scripts/scenes/LeaderboardScene.gd|lit|（无法连接服务器）
 scripts/scenes/LeaderboardScene.gd|lit|（暂无其他玩家 · 对战后更新）
 scripts/scenes/LeaderboardScene.gd|lit|（暂无其他玩家）
 scripts/scenes/LeaderboardScene.gd|lit|（暂无对手数据）
-scripts/scenes/LeaderboardScene.gd|text|上周共 %d 人上榜
 scripts/scenes/LeaderboardScene.gd|text|你
 scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
@@ -2590,6 +2595,15 @@ scripts/ui/finals_day_recap.gd|lit|胜
 scripts/ui/finals_day_recap.gd|lit|负
 scripts/ui/finals_day_recap.gd|lit|重看
 scripts/ui/finals_day_recap.gd|text|你的名次：%s
+scripts/ui/online_wall.gd|lit|%s需要连接服务器。请检查网络后重试。
+scripts/ui/online_wall.gd|lit|无法连接服务器
+scripts/ui/online_wall.gd|lit|服务器正在维护，请稍后再试。
+scripts/ui/online_wall.gd|lit|服务器维护中
+scripts/ui/online_wall.gd|lit|正在连接服务器…
+scripts/ui/online_wall.gd|lit|登录已失效
+scripts/ui/online_wall.gd|lit|请在设置页用邮箱重新登录。
+scripts/ui/online_wall.gd|lit|返回
+scripts/ui/online_wall.gd|lit|重试
 scripts/util/big_title.gd|lit|失败
 scripts/util/big_title.gd|lit|已封存
 scripts/util/big_title.gd|lit|已晋级！

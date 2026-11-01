@@ -71,11 +71,10 @@ static func open(host: Node, first_launch: bool) -> Control:
 	UISkin.card_button(other)
 	other.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	bh.add_child(other)
+	## 游戏必须联网(2026-11-01): 正式包连不上服务器 ⇒ 这一框留着, 上面盖「无法连接服务器」; 重试连上了才进教程。
 	start_btn.pressed.connect(func() -> void:
-		ov.queue_free()
-		var td = host.get_node_or_null("/root/TutorialDirector")
-		if td != null:
-			td.enter(host))
+		if OnlineGate.check(host, OnlineGate.WHAT_TUTORIAL, func() -> void: _start(ov, host)):
+			_start(ov, host))
 	other.pressed.connect(func() -> void:
 		ov.queue_free()
 		if first_launch:
@@ -87,3 +86,12 @@ static func open(host: Node, first_launch: bool) -> Control:
 				host.call("first_tip_now"))
 	host.add_child(ov)
 	return ov
+
+
+## 「开始教程」: 关框 → TutorialDirector.enter()。
+static func _start(ov: Control, host: Node) -> void:
+	if is_instance_valid(ov):
+		ov.queue_free()
+	var td = host.get_node_or_null("/root/TutorialDirector")
+	if td != null:
+		td.enter(host)

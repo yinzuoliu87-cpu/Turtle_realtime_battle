@@ -39,6 +39,10 @@ extends Node
 ##                        不排 / 出队, 收工(`cell_mismatch`)。只查这个进程的第一局(之后格子本来就会变)。
 ##   SIM_SKIP_WATCH=1       配上后不看直播 / 录像: 账一记完(服务器算完那一刻, 在取录像之前)就去商店(`RefereeWatch.skip_play`)。
 ##   SIM_GAUNTLET_ONLINE=1  调度器会传; 本驱动按赛程阶段自动走排队(闯关日 = 排队), 不看它。
+##   SIM_EXIT_ON_PAIR=1     (2026-11-01 U3, 调度器只给「补格子」拉起的号传)配上对手、服务端已接手算局(带任务号的待记账单已在存档里)
+##                        ⇒ 收工下线(`exit_on_pair`), 不在裁判算局那 ~30 秒里占着并发位。那一局服务端照算、两边照记(与「杀进程不作废」
+##                        同一条路); 本机这一局的账下次上线时主菜单按任务号补记(`resume_if_any`), 补完才查 SIM_EXPECT_CELL。
+##                        要配 SIM_QUIT_WHEN_DONE 才真退出(同其他收工)。方案书 docs/plans/20261031b-闯关赛开局铺号与早兜底.md §10。
 ##
 ## ── 产物 ──
 ##   user://sim_events.jsonl   每件事一行(时间 / 类型 / 数据) —— 台账的原始依据
@@ -101,6 +105,17 @@ static func expect_cell() -> Vector2i:
 	if p.size() != 2 or not p[0].is_valid_int() or not p[1].is_valid_int():
 		return Vector2i(-1, -1)
 	return Vector2i(int(p[0]), int(p[1]))
+
+
+## 调度器为补格子拉起的号(SIM_EXIT_ON_PAIR=1): 配上对手就下线。只认调度器传的这个标记, 不按别的猜。
+static func exit_on_pair() -> bool:
+	return OS.get_environment("SIM_EXIT_ON_PAIR").strip_edges() == "1"
+
+
+## 闯关日主菜单: 挂着的待记账单最多等多久让主菜单补记完(秒), 再拿本机战绩去对 SIM_EXPECT_CELL。
+##   主菜单 _ready 当场查一次、之后每 MENU_POLL_SEC(10 秒)查一次; 这里每 SETTLE_ASK_SEC 秒自己再问一次, 不干等那一拍。
+const SETTLE_WAIT_SEC := 25.0
+const SETTLE_ASK_SEC := 3.0
 
 
 ## 闯关日在线排队最多连续等多久(秒): SIM_QUEUE_GIVEUP_SEC, 没给 / 不是正数 ⇒ 300。
@@ -348,6 +363,12 @@ func _do_menu(m: Node) -> void:
 		_finish("rounds_cap")
 		return
 	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET and not _cell_checked and not _local_cell_ok():
+		## ★2026-11-01 U3: 上一次上线配上就下线了(SIM_EXIT_ON_PAIR)⇒ 那一局的账还挂着, 本机战绩停在配上之前;
+		##   调度器给的 SIM_EXPECT_CELL 是服务端账本上打完之后的格子。先等主菜单按任务号补记完, 再往下查(见 _settle_pending_first)。
+		await _settle_pending_first()
+		if not _alive(m):
+			return
+	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET and not _cell_checked and not _local_cell_ok():
 		## 闯关日: 调度器以为这个号在 A 格子, 本机战绩却在 B 格子 ⇒ 别排(免得被拉去补 A 格子却排进 B 格子)
 		_ev("cell_mismatch", {"want": [expect_cell().x, expect_cell().y], "local": [int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)]})
 		_finish("cell_mismatch")
@@ -498,6 +519,29 @@ func _do_match(mm: Node) -> void:
 		_shot("match_%02d" % (int(GameState.season_total_battles) + 1))
 
 
+## ★2026-11-01 U3: 闯关日主菜单还挂着待记账单(上次配上就下线 / 被停号时那一局还在算)⇒ 等主菜单补记完再查格子。
+##   补记 = RefereeWatch.resume_if_any(按任务号问服务端结果 → settle: 战绩换成服务端账本那一份、币 / 宝箱 / 战绩页照记)。
+##   主菜单 _ready 已问过一次, 之后它每 MENU_POLL_SEC 秒问; 这里每 SETTLE_ASK_SEC 秒自己再问一次(重复问是安全的:
+##   settle 只认单子上那个任务号, 记完单子就清, 第二个回包什么都不做)。等满 SETTLE_WAIT_SEC 还挂着(断网 / 结果没出)
+##   ⇒ 返回, 调用方照旧按「对不上」收工, 不硬排。没挂单子 ⇒ 立刻返回。
+func _settle_pending_first() -> void:
+	var rw = load("res://scripts/systems/replay/referee_watch.gd")
+	if not rw.has_pending():
+		return
+	var t0 := Time.get_ticks_msec()
+	var asked := -1
+	_ev("settle_wait", {"job_id": int((GameState.referee_pending as Dictionary).get("job_id", -1)),
+		"queue_bill": rw.is_queue_bill(GameState.referee_pending),
+		"local": [int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)], "want": [expect_cell().x, expect_cell().y]})
+	while rw.has_pending() and (Time.get_ticks_msec() - t0) / 1000.0 < SETTLE_WAIT_SEC:
+		if asked < 0 or Time.get_ticks_msec() - asked >= int(SETTLE_ASK_SEC * 1000.0):
+			asked = Time.get_ticks_msec()
+			rw.resume_if_any()
+		await _sleep(0.5)
+	_ev("settle_done", {"settled": not rw.has_pending(), "waited_s": (Time.get_ticks_msec() - t0) / 1000.0,
+		"local": [int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)]})
+
+
 ## 本机闯关战绩与 SIM_EXPECT_CELL 对得上吗(没给 ⇒ 对得上)。
 func _local_cell_ok() -> bool:
 	var want := expect_cell()
@@ -571,6 +615,25 @@ func _do_match_queue(mm: Node) -> void:
 				var bt := mm.find_child("QueueCancel", true, false) as Button
 				if bt != null and not bt.disabled:
 					bt.emit_signal("pressed")
+		## ★2026-11-01 U3: 调度器为补格子拉起的号(SIM_EXIT_ON_PAIR=1)配上就下线, 不在裁判算局那 ~30 秒里占着并发位。
+		##   服务端配对那一刻(gauntlet_queue_advance 同一事务)就建好了裁判任务, 算完由裁判机调 referee_complete 两边都记账,
+		##   不看客户端在不在; 排队心跳 / 过期只管 waiting 那一行; 配上之后连「取消」都回「那一局照样算、照样记」
+		##   (迁移 20261027_gauntlet_online_queue.sql gauntlet_queue_cancel / referee_complete)。
+		##   ⇒ 只要带这个任务号的待记账单已在存档里(referee_run `_on_submit` 先写单子、存盘, 再发 changed), 下次上线主菜单
+		##   按任务号补记, 账一笔不丢。单子对不上 ⇒ 不走, 照原路等结果(记一条 ANOMALY)。退出走 _finish(正常退出, 清掉闪退标记)。
+		if bool(box["paired"]) and exit_on_pair() and run != null and is_instance_valid(run) and int(run.job_id) > 0:
+			var bill = GameState.referee_pending
+			if bill is Dictionary and int((bill as Dictionary).get("job_id", -1)) == int(run.job_id):
+				GameState.save()
+				_ev("exit_on_pair", {"job_id": int(run.job_id), "side": str(run.side), "cell": [run.cell.x, run.cell.y],
+					"state": st, "paired_s": _since()})
+				_finish("exit_on_pair")
+				return
+			if not bool(box.get("bill_bad", false)):
+				## 配上了但待记账单不是这一局 ⇒ 不下线、照原路等结果(事件只给调度器 / 台账看, 用代码串)
+				box["bill_bad"] = true
+				_ev("ANOMALY", {"where": "exit_on_pair", "what": "bill_not_this_job",
+					"job_id": int(run.job_id), "bill": str(bill)})
 		## 陪练号不看(SIM_SKIP_WATCH): 账一记完就停(`skip_play`)⇒ 去商店, 与结算屏「前往商店」同一句
 		if st == rw.ST_SKIPPED:
 			_ev("watch_skipped", {"won": bool((run.view as Dictionary).get("won", false)),

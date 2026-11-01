@@ -26,6 +26,7 @@ extends Node
 ##      战绩页回放我在右边那一行 ⇒ 按存下的 side 给名字; 开关只在「正在播 + 入口给了 side=b」时生效(假战场三种状态 + 静态: 谁能给 side=b)
 ##   S 段另量陪练号周末参数: SIM_SHOP_MIN/MAX_SEC(两局之间逛店)/ SIM_SKIP_WATCH(账记完不看直播直接去商店)/
 ##      SIM_EXPECT_CELL(本机 / 服务端格子对不上 ⇒ cell_mismatch 收工)
+##   U  ★补格子的陪练号配上就下线(SIM_EXIT_ON_PAIR, 2026-11-01 U3): 配上就走、不发取消、单子留着; 下次上线先补记再查格子; 不给标记 ⇒ 不走
 ## 反向验证(改坏 → 红 → 逐字节还原): 去掉进队后的心跳 ⇒ A / E / W 红; B 方不按 side 摆名字 ⇒ B 红; B 方客户端再翻一次胜负 ⇒ B 红;
 ##   viewer_side 恒 "a" / 结算屏两页不按看的人 ⇒ V 红; 不逛店 / 不跳过观看 / 不查格子 ⇒ S 红。
 ## GATE_ONLY=A,B,S(逗号分隔段名)⇒ 只跑这几段(反向验证省时间用; 门禁本身不设)。
@@ -240,6 +241,8 @@ func _ready() -> void:
 		await _t_w()
 	if _seg("S"):
 		await _t_s()
+	if _seg("U"):
+		await _t_u()
 	_cleanup()
 	_finish()
 
@@ -314,7 +317,8 @@ func _cleanup() -> void:
 	LS.pending = {}
 	RW.notice = ""
 	RW.skip_play = false
-	for k in ["SIM_SLOT", "SIM_ROUNDS", "SIM_TOUR", "SIM_QUEUE_GIVEUP_SEC", "SIM_SHOP_MIN_SEC", "SIM_SHOP_MAX_SEC", "SIM_EXPECT_CELL", "SIM_SKIP_WATCH"]:
+	for k in ["SIM_SLOT", "SIM_ROUNDS", "SIM_TOUR", "SIM_QUEUE_GIVEUP_SEC", "SIM_SHOP_MIN_SEC", "SIM_SHOP_MAX_SEC", "SIM_EXPECT_CELL", "SIM_SKIP_WATCH",
+			"SIM_EXIT_ON_PAIR"]:
 		OS.set_environment(k, "")
 	_gs.referee_flags = {}
 	_gs.referee_pending = {}
@@ -428,8 +432,14 @@ func _transport(m, u, h, b, cb) -> void:
 				return
 			var dgw := int(_gs.gauntlet_wins) + 1 if _srv_auto else _srv_gw
 			var dgl := int(_gs.gauntlet_losses) if _srv_auto else _srv_gl
-			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "done", "match_id": _rec_mid,
-				"won": true if _srv_auto else _srv_won, "score": 0, "gw": dgw, "gl": dgl, "coins": 0, "error": null})})
+			var st_reply := {"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "done", "match_id": _rec_mid,
+				"won": true if _srv_auto else _srv_won, "score": 0, "gw": dgw, "gl": dgl, "coins": 0, "error": null})}
+			## U 段: 结果回得慢(主菜单补记比驱动查格子晚到)
+			var delay := int(_sc.get("status_delay_ms", 0))
+			if delay > 0:
+				get_tree().create_timer(delay / 1000.0).timeout.connect(func() -> void: cb.call(st_reply))
+				return
+			cb.call(st_reply)
 			return
 	if str(m) == "GET" and url.find("/rest/v1/matches?") >= 0 and url.find("match_id=eq." + _rec_mid) >= 0:
 		_hits["matches_get"] = _hit("matches_get") + 1
@@ -1851,6 +1861,103 @@ func _t_s() -> void:
 		int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)],
 		_hit(JOIN) - j0 == 2 and k3.count("queue_paired") == 2 and k3.count("watch_skipped") == 2 and k3.count("cell_mismatch") == 0
 		and _done_why(evs) == "rounds_cap" and int(_gs.gauntlet_wins) == 3 and (_gs.match_history as Array).size() - mh0 == 2)
+	d.queue_free()
+	await _frames(3)
+	_srv_auto = false
+	RW.skip_play = false
+	for k in env.keys():
+		OS.set_environment(k, "")
+
+
+## ── U 补格子的陪练号配上就下线(SIM_EXIT_ON_PAIR=1, 2026-11-01 U3 · 方案书 20261031b §10)──
+##   ① 配上(我是 b)⇒ 服务端那一局还没算完(任务一直 pending)就收工 exit_on_pair; 不发取消、只进队 1 次;
+##      待记账单就是这一局(任务号对得上)、本机战绩 / 战绩页不动(账留给下次上线补记)
+##   ② 下次上线(服务端已算完、结果回包慢 5 秒 —— 比驱动开机后查格子的 ~3.5 秒晚):调度器按服务端账本给 SIM_EXPECT_CELL=2-0、本机还停在 1-0
+##      ⇒ 先等主菜单补记完(本机 → 2-0、战绩页 +1、单子清掉)再查 ⇒ 不报 cell_mismatch, 照常进队(进队那一刻是第 3 场)
+##   ③ 对照: 不给 SIM_EXIT_ON_PAIR ⇒ 配上之后不走, 等到算完照常记账(watch_skipped)
+##   反向验证: exit_on_pair() 恒 false ⇒ ① 红; 去掉 _do_menu 里「先等补记」那一段 ⇒ ② 红(cell_mismatch)。
+func _t_u() -> void:
+	print("── U 补格子的陪练号配上就下线(SIM_EXIT_ON_PAIR) ──")
+	_gs.gauntlet_wins = 1
+	_gs.gauntlet_losses = 0
+	_gs.referee_pending = {}
+	_reset_sc({"pair_after": 1, "side": "b", "cancel": "cancelled"})
+	_srv_auto = true
+	var env := {"SIM_SLOT": "4", "SIM_ROUNDS": "5", "SIM_TOUR": "0", "SIM_QUEUE_GIVEUP_SEC": "180", "SIM_SHOP_MIN_SEC": "1",
+		"SIM_SHOP_MAX_SEC": "1", "SIM_EXPECT_CELL": "1-0", "SIM_SKIP_WATCH": "1", "SIM_EXIT_ON_PAIR": "1"}
+	for k in env.keys():
+		OS.set_environment(k, str(env[k]))
+	_ok("U 分母: 调度器的标记读得到(SIM_EXIT_ON_PAIR=1)", Drv.exit_on_pair())
+	var j0 := _hit(JOIN)
+	var c0 := _hit(CANCEL)
+	var mh0: int = (_gs.match_history as Array).size()
+	var ev0 := _ev_size()
+	var d = await _start_driver()
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 30000 and not bool(d.get("_done")):
+		await get_tree().process_frame             # 裁判一直没算完(_done 不动)
+	var evs := _sim_events(ev0)
+	var ex: Array = evs.filter(func(e) -> bool: return str((e as Dictionary).get("kind", "")) == "exit_on_pair")
+	var ex_job := int(((ex[0] as Dictionary).get("data", {}) as Dictionary).get("job_id", -1)) if ex.size() == 1 else -1
+	var bill: Dictionary = _gs.referee_pending if _gs.referee_pending is Dictionary else {}
+	_ok("U ★① 配上就收工: done = exit_on_pair、exit_on_pair 1 次、带的任务号 = 这一局(%d / %d)" % [ex_job, _job],
+		_done_why(evs) == "exit_on_pair" and ex.size() == 1 and ex_job == _job and bool(d.get("_done")), "why=%s" % _done_why(evs))
+	_ok("U ★① 服务端那一局还没算完就走(任务一直 pending): 没记账(watch_skipped %d)、本机战绩仍 1-0、战绩页不动" % _kind_count(evs, "watch_skipped"),
+		not _done and _kind_count(evs, "watch_skipped") == 0 and int(_gs.gauntlet_wins) == 1 and int(_gs.gauntlet_losses) == 0
+		and (_gs.match_history as Array).size() == mh0)
+	_ok("U ★① 待记账单就是这一局(任务号 %d、side b)⇒ 下次上线补记得回来" % int(bill.get("job_id", -1)),
+		int(bill.get("job_id", -1)) == _job and str(bill.get("side", "")) == "b", str(bill))
+	_ok("U ★① 下线不发取消(cancel +%d)、只进队 1 次(join +%d)—— 服务端不会当他弃赛" % [_hit(CANCEL) - c0, _hit(JOIN) - j0],
+		_hit(CANCEL) - c0 == 0 and _hit(JOIN) - j0 == 1)
+	_ok("U ① 不报 STUCK / ANOMALY", _kind_count(evs, "STUCK") == 0 and _kind_count(evs, "ANOMALY") == 0)
+	d.queue_free()
+	await _frames(3)
+	## ② 下次上线: 服务端早算完了(_done), 结果回包慢 5 秒; 调度器按账本给 2-0
+	_done = true
+	_reset_sc_keep({"pair_after": -1, "cancel": "cancelled", "status_delay_ms": 5000})
+	OS.set_environment("SIM_EXPECT_CELL", "2-0")
+	OS.set_environment("SIM_QUEUE_GIVEUP_SEC", "3")
+	j0 = _hit(JOIN)
+	ev0 = _ev_size()
+	d = await _start_driver()
+	t0 = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 60000 and not bool(d.get("_done")):
+		await get_tree().process_frame
+	evs = _sim_events(ev0)
+	var sd: Array = evs.filter(func(e) -> bool: return str((e as Dictionary).get("kind", "")) == "settle_done")
+	var settled := sd.size() == 1 and bool(((sd[0] as Dictionary).get("data", {}) as Dictionary).get("settled", false))
+	var sw_s := float(((sd[0] as Dictionary).get("data", {}) as Dictionary).get("waited_s", -1.0)) if sd.size() == 1 else -1.0
+	_ok("U ★② 下次上线先等主菜单补记(驱动查格子时单子还挂着, 等了 %.1f 秒): 本机 1-0 → %d-%d、战绩页 +%d、单子清掉" % [
+		sw_s, int(_gs.gauntlet_wins), int(_gs.gauntlet_losses), (_gs.match_history as Array).size() - mh0],
+		_kind_count(evs, "settle_wait") == 1 and settled and sw_s >= 0.5 and int(_gs.gauntlet_wins) == 2 and int(_gs.gauntlet_losses) == 0
+		and (_gs.match_history as Array).size() - mh0 == 1 and not RW.has_pending())
+	_ok("U ★② 补完对得上调度器给的 2-0 ⇒ 不报 cell_mismatch、照常进队(join +%d, 第 %s 场)" % [
+		_hit(JOIN) - j0, str(_join_body.get("p_match_no", "?"))],
+		_kind_count(evs, "cell_mismatch") == 0 and _hit(JOIN) - j0 == 1 and int(_join_body.get("p_match_no", -1)) == 2
+		and _done_why(evs) == "queue_timeout", "why=%s body=%s" % [_done_why(evs), str(_join_body)])
+	d.queue_free()
+	await _frames(3)
+	## ③ 对照: 不给标记 ⇒ 配上之后不走
+	OS.set_environment("SIM_EXIT_ON_PAIR", "")
+	OS.set_environment("SIM_ROUNDS", "1")
+	OS.set_environment("SIM_QUEUE_GIVEUP_SEC", "180")
+	_reset_sc({"pair_after": 1, "side": "a", "cancel": "cancelled"})
+	ev0 = _ev_size()
+	d = await _start_driver()
+	var t_pair := -1
+	var waited_ok := false
+	t0 = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 90000 and not bool(d.get("_done")):
+		if _paired_now and t_pair < 0:
+			t_pair = Time.get_ticks_msec()
+		if t_pair >= 0 and not _done and Time.get_ticks_msec() - t_pair > 4000:
+			waited_ok = not bool(d.get("_done"))   # 配上 4 秒、裁判还没算完: 驱动还在等
+			_done = true
+		await get_tree().process_frame
+	evs = _sim_events(ev0)
+	_ok("U ③ 对照(不给 SIM_EXIT_ON_PAIR): 配上后不走、等到算完照常记账(exit_on_pair %d 次 · watch_skipped %d 次 · 收工 %s)" % [
+		_kind_count(evs, "exit_on_pair"), _kind_count(evs, "watch_skipped"), _done_why(evs)],
+		waited_ok and _kind_count(evs, "exit_on_pair") == 0 and _kind_count(evs, "watch_skipped") == 1 and _done_why(evs) == "rounds_cap")
 	d.queue_free()
 	await _frames(3)
 	_srv_auto = false

@@ -118,7 +118,8 @@ DEFAULTS = {
     'STARTUP_SEC': 60,       # 拉起到进排队的上限(Godot 启动 + 登录 + 主菜单 + 选龟 + 入队, 估 40~60 秒)
     'ENDGAME_SEC': 5.5 * 3600,   # 收盘前多久进收尾(17:30 − 5.5h = 周日 12:00)
     'SESSION_ROUNDS': GAUNTLET_QUOTA,   # 整段 / 收尾: 打到 4 胜 / 3 负为止
-    'FILL_ROUNDS': 5,        # 补格子的号一次上线最多连打几局(到了不缺号的格子就让它下线停在那)
+    'FILL_ROUNDS': 5,        # 补格子的号一次上线最多连打几局(到了不缺号的格子就让它下线停在那)。★U3 起(FILL_EXIT_ON_PAIR)新客户端
+                             #   配上第一局就下线, 连打只剩旧客户端会走; 下一局由 C 段按需再拉(拉起 11~13 秒, 比连打逛店 30~60 秒还快)
     'SESSION_SHARE': 0.6,    # 平时「整段打完」的总次数目标 = 晋级号数 × 这个比例(每个钟点至少 1 次; 没有余量的那拍跳过)
     'HUMAN_PRIOR_PER_H': 0.25,   # 0-0 是整周末的本钱(没有格子能补进 0-0, 每个新来的真人第 1 局要用掉一个):
                                  # 本钱线 = 预计以后还会来的真人数 = max(这个先验, 本周已来真人的速率(开赛 3 小时起算)) × 离收盘的小时数 × ROOT_SAFETY + R_END + 1。
@@ -135,6 +136,10 @@ DEFAULTS = {
     'OPENING_SEC': 3600,     # 开赛头多久把真人位借给补格子(decide 里 free 那一段有实测); 0 = 不借
     'OPENING_MAX_PAR': None, # 开赛头 OPENING_SEC 的并发上限(env MAX_PAR_OPENING); None = 与 MAX_PAR 相同
     'OPENING_FRONT': True,   # 开赛头 OPENING_SEC: 真人马上要进的格子里他交过手的号不算数(decide C 段 front); env PLANNER_OPENING_FRONT=0 关
+    'FILL_EXIT_ON_PAIR': True,   # 补格子的号配上对手就下线(客户端 SIM_EXIT_ON_PAIR, 2026-11-01 U3); env PLANNER_FILL_EXIT_ON_PAIR=0 关
+    'FILL_EXIT_ON_PAIR_SEC': 3600,   # U3 只在开赛后这么多秒内拉起的补格子号上用(env PLANNER_FILL_EXIT_ON_PAIR_SEC; < 0 = 全周末)。
+                                     # 推演 16 个种子: 全周末都用 ⇒ 50 个真人时整周末兜底多 ~13%(补格子太便宜, 号花在号对号上);
+                                     # 只用头一小时 ⇒ 开局一样(⑲ 深格子 100% 有号), 重负载持平或更好(fill_exit_on_pair)
 }
 SESSIONISH = ('session', 'end')     # 打到底的号: 不算格子里的候场号
 ## 每次上线等不到对手多久自己下线(客户端 SIM_QUEUE_GIVEUP_SEC)。按用途给: 为真人拉的号等真人, 别的号等搭档。
@@ -844,9 +849,15 @@ def remember(memory: dict, cmds: list, now: float, state: dict = None) -> dict:
     return {'session_starts': starts, 'humans': humans}
 
 
-def weekend_env(rounds: int, purpose: str, cell: tuple) -> dict:
-    """拉号时给客户端的周末参数(sim_driver 周末在线闯关; 客户端那条线实现)。"""
-    return {
+def weekend_env(rounds: int, purpose: str, cell: tuple, exit_on_pair: bool = False) -> dict:
+    """拉号时给客户端的周末参数(sim_driver 周末在线闯关; 客户端那条线实现)。
+    ★2026-11-01 U3(方案书 20261031b §10): exit_on_pair(= fill_exit_on_pair: 开关开、开赛后 FILL_EXIT_ON_PAIR_SEC 秒内)
+      且用途是补格子 ⇒ SIM_EXIT_ON_PAIR=1:
+      客户端配上对手、带任务号的待记账单落了存档就正常退出; 服务端照算、两边照记(referee_complete 不看客户端在不在),
+      本机那一局的账下次上线时主菜单按任务号补记、补完才查 SIM_EXPECT_CELL。并发位不在裁判算局那 ~30 秒里白占:
+      推演(正式服实测时长, 108 个号, 并发 4)每格 ≥1 第 14~15 → 第 8 分钟, 最快真人深格子有号 36% → 97%(⑲)。
+      旧客户端不认这个变量 ⇒ 照旧打完再走(行为与不传相同)。只给补格子的号: 为真人拉的(serve)/ 打到底的 / 搭档照旧。"""
+    env = {
         'SIM_GAUNTLET_ONLINE': '1',                       # 走在线排队(join / poll), 不走旧的快照对局
         'SIM_ROUNDS': str(rounds),                        # 这次上线最多打几局(打到 4 胜 / 3 负也停)
         'SIM_QUIT_WHEN_DONE': '1',
@@ -855,6 +866,9 @@ def weekend_env(rounds: int, purpose: str, cell: tuple) -> dict:
         'SIM_EXPECT_CELL': '%d-%d' % cell,                # 拉号时调度器看到的战绩; 对不上就别排(存档 / 服务端不同步)
         'SIM_SKIP_WATCH': '1',                            # 不坐着看完直播(并发位只花在排队和对局上)
     }
+    if exit_on_pair and purpose == 'fill':
+        env['SIM_EXIT_ON_PAIR'] = '1'                     # 配上对手就下线(U3)
+    return env
 
 
 ## ═══════════════ IO 层(薄) ═══════════════
@@ -982,6 +996,10 @@ def cfg_from_env() -> dict:
         c['OPENING_MAX_PAR'] = int(os.environ['MAX_PAR_OPENING'])
     if os.environ.get('PLANNER_OPENING_FRONT', '') == '0':
         c['OPENING_FRONT'] = False
+    if os.environ.get('PLANNER_FILL_EXIT_ON_PAIR', '') == '0':
+        c['FILL_EXIT_ON_PAIR'] = False
+    if os.environ.get('PLANNER_FILL_EXIT_ON_PAIR_SEC'):
+        c['FILL_EXIT_ON_PAIR_SEC'] = int(os.environ['PLANNER_FILL_EXIT_ON_PAIR_SEC'])
     return c
 
 
@@ -1042,7 +1060,7 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
             continue
         b = bots.get(bid, {})
         cell = (int(b.get('gw', 0) or 0), int(b.get('gl', 0) or 0))
-        pid = launch_bot(br, slots[bid], rounds, purpose, cell)
+        pid = launch_bot(br, slots[bid], rounds, purpose, cell, fill_exit_on_pair(cfg, now, st['close_at']))
         run[bid] = {'pid': pid, 'since': now, 'wall': time.time(), 'rounds': rounds, 'purpose': purpose,
                     'g0': cell[0] + cell[1], 'slot': slots[bid]}
         done.append((op, bid, rounds, purpose, why))
@@ -1092,9 +1110,20 @@ def report_no_bot(week: int, nobot: list, bot_version, dry: bool) -> None:
             log('报「没有陪练号能来」出错: HTTP %s %s' % (e.code, e.reason))
 
 
-def launch_bot(br, slot: int, rounds: int, purpose: str, cell: tuple) -> int:
+def fill_exit_on_pair(cfg: dict, now: float, close_at: float) -> bool:
+    """U3: 这一拍拉起的补格子号要不要「配上就下线」—— 开关开、且在开赛后 FILL_EXIT_ON_PAIR_SEC 秒内(< 0 / None = 全周末)。
+    IO 层拉号与推演门禁的假世界都用它(一份判定)。依据见 DEFAULTS 那两行(16 个种子全周末推演)。"""
+    c = dict(DEFAULTS)
+    c.update(cfg or {})
+    if not c['FILL_EXIT_ON_PAIR']:
+        return False
+    win = c['FILL_EXIT_ON_PAIR_SEC']
+    return win is None or win < 0 or now < saturday_of(close_at) + float(win)
+
+
+def launch_bot(br, slot: int, rounds: int, purpose: str, cell: tuple, exit_on_pair: bool = False) -> int:
     """bot_runner.launch 同一套拉法 + 周末参数; 服务端密钥不传给客户端。"""
-    return br.launch(slot, rounds, extra_env=weekend_env(rounds, purpose, cell))
+    return br.launch(slot, rounds, extra_env=weekend_env(rounds, purpose, cell, exit_on_pair))
 
 
 def main() -> int:

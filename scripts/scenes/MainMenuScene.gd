@@ -2844,6 +2844,9 @@ func _start_battle_flow() -> void:
 	if block != "":
 		_wk().block_card(block, _wk().block_door(ts))
 		return
+	## 游戏必须联网(2026-11-01): 正式包连不上服务器 ⇒ 弹「无法连接服务器」, 重试连上了再接着走(OnlineGate)。
+	if not OnlineGate.check(self, OnlineGate.WHAT_MATCH, _start_battle_flow):
+		return
 	GameState.mode = "single"
 	GameState.tutorial = false
 	GameState.dual_ghost = {}

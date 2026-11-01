@@ -106,8 +106,12 @@ static func start(tree: SceneTree, ghost: Dictionary, info: Dictionary) -> Strin
 
 
 ## 结算屏「再来一局」。
+## ★游戏必须联网(2026-11-01): 开打那一下先从服务端取对方阵容(取不到就开不了), 而「再来一局」用的是手里那一份 ——
+##   正式包断网时它是唯一还能开打的切磋入口 ⇒ 先过 `OnlineGate`, 连不上就弹「无法连接服务器」。
 static func again(tree: SceneTree) -> void:
 	if not active:
+		return
+	if tree != null and not OnlineGate.check(tree.current_scene, OnlineGate.WHAT_SPAR, func() -> void: again(tree)):
 		return
 	_again = true
 	SceneNav.go(tree, BATTLE_SCENE)

@@ -7,13 +7,29 @@
 ##          `_process` 里调 go() 时, 延后队列要到这一帧末尾才清, 同一帧里排在它后面的旧场景节点还会再跑一次
 ##          (回放 / 复算这类先挂好静态状态再切的, 旧战斗场多跑的那一下会去动给新场准备的状态);
 ##       ② 换屏本身延后到这一帧输入分发完。
-## 门禁: tests/verify_scene_change_on_release.gd
+## ★2026-11-01 游戏必须联网(方案书 docs/plans/20261101b-游戏必须联网.md): 去匹配屏要先过 `OnlineGate`。
+##   匹配屏是积分赛 / 闯关赛进对局的唯一一扇门(选龟页「出战」、周六排队回匹配屏都从这里走), 在这里拦一次 ⇒
+##   正式包断网时到不了「本机挑对手、本机开打」那一步。连不上 ⇒ 当前屏上弹「无法连接服务器」, 重试连上了再走。
+## 门禁: tests/verify_scene_change_on_release.gd · tests/verify_online_only.gd
 class_name SceneNav
 extends RefCounted
+
+## 要先联网才能去的屏。
+const ONLINE_ONLY := ["res://scenes/Matchmaking.tscn"]
+
+## 【门禁注入点】有效 ⇒ 过了联网那一道之后不真换屏, 改调它(入参 = 目标路径)。默认无效 ⇒ 玩家路径一字不动。
+## ⚠ static, 用完必须还原。
+static var nav_for_test: Callable = Callable()
 
 
 static func go(tree: SceneTree, path: String) -> void:
 	if tree == null:
+		return
+	if path in ONLINE_ONLY and not OnlineGate.check(tree.current_scene, OnlineGate.WHAT_MATCH,
+			func() -> void: go(tree, path)):
+		return
+	if nav_for_test.is_valid():
+		nav_for_test.call(path)
 		return
 	var cur := tree.current_scene
 	if cur != null:
