@@ -69,11 +69,18 @@ def main():
     t1 = t0 + 86400
     wk = MONDAY0 + ((t0 - MONDAY0) // WEEK_SEC) * WEEK_SEC
     sims = sim_ids(a.sim_root)
-    S = in_list(sims)
+    ## ★2026-11-01: 陪练号 10-27 起搬到裁判机(286 个号), 本机模拟存档里早就没有它们 ⇒ 原来全算进「其他人」
+    ##   (⑥ 那 179 次 unclean_exit 就是这么淹没真人闪退的)。服务端名单 bot_accounts 是准的(10-31 实测:
+    ##   正式服 Linux 平台上报的 97 个账号全在名单里, 名单外一个都没有), 并进来; 0.22.6 及更早的陪练号客户端
+    ##   上报时不带「/bot」, 只有这份名单认得出。
+    bots = set()
+    if q("select to_regclass('public.bot_accounts') is not null ok")[0]["ok"]:
+        bots = {str(x["a"]) for x in q("select account_id::text a from public.bot_accounts")}
+    S = in_list(sims | bots)
     day = "to_timestamp(%d) and to_timestamp(%d)" % (t0, t1)
     print("══ 内测每日数据 · %s (UTC) · 周锚点 %d ══" % (a.day, wk))
-    print("模拟号: 本机读到 %d 个 account_id(%s)%s" % (len(sims), a.sim_root,
-          "" if sims else " ⚠ 一个都没读到 ⇒ 下面全算「其他人」"))
+    print("模拟号: 本机读到 %d 个 account_id(%s) + 服务端陪练号名单 %d 个%s" % (len(sims), a.sim_root, len(bots),
+          "" if (sims or bots) else " ⚠ 一个都没读到 ⇒ 下面全算「其他人」"))
 
     ## ① 账号
     r = q("select count(*) filter (where created_at between %s) new_all, "
@@ -145,13 +152,14 @@ def main():
         print("  [没有 client_errors 表] 迁移 20261011b_client_errors.sql 还没上生产")
         return feedback_section(t0, t1)
     ##   ★2026-10-31 起陪练号(SIM_DRIVER=1)上报的平台带「/bot」(error_reporter.platform_of)⇒ 不算进「其他人」, 次数单列
+    ##   ★2026-11-01 陪练号次数也认服务端名单(S 里并了 bot_accounts): 0.22.6 及更早的陪练号客户端不带「/bot」
     er = q("select sig, kind, max(message) msg, max(detail) det, sum(count) n, count(distinct account_id) people, "
            "count(distinct account_id) filter (where account_id::text not in %s and platform not like '%%/bot') others, "
-           "coalesce(sum(count) filter (where platform like '%%/bot'), 0) bot_n, "
+           "coalesce(sum(count) filter (where platform like '%%/bot' or account_id::text in %s), 0) bot_n, "
            "string_agg(distinct version, ',') vers, string_agg(distinct platform, ',') plats, "
            "string_agg(distinct scene, ',') scenes "
            "from public.client_errors where day = '%s' group by sig, kind order by others desc, n desc limit 40"
-           % (S, a.day))
+           % (S, S, a.day))
     tot = sum(int(x["n"]) for x in er)
     print("  N=%d 种 · 合计 %d 次" % (len(er), tot) + ("" if er else " —— 当天一条都没有"))
     for x in er:

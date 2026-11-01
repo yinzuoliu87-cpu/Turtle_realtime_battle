@@ -50,6 +50,7 @@ func _ready() -> void:
 		return
 	_ok("运行标记在(闪退判据的前提)", FileAccess.file_exists(ER.FLAG_PATH))
 	r.drain("")   # 清掉开机时可能排进来的
+	await get_tree().process_frame   # 上报器每帧在 _process 里记当前场景(② 量「报错那一刻的场景」), 先让它跑一帧
 
 	## ② 一条
 	var cap0: int = ER.captured_total
@@ -69,7 +70,9 @@ func _ready() -> void:
 		_ok("类型合法", [ER.KIND_ERROR, ER.KIND_SCRIPT, ER.KIND_SHADER].has(str(row["p_kind"])), str(row["p_kind"]))
 		_ok("版本 = project.godot", str(row["p_version"]) == str(ProjectSettings.get_setting("application/config/version")))
 		_ok("平台", str(row["p_platform"]) == OS.get_name())
-		_ok("场景", str(row["p_scene"]) == "SomeScene.tscn")
+		## ★2026-11-01 场景改记报错那一刻的(原来是清队列那一刻的, 最多晚 10 秒 —— 人可能已换屏, 正式服「选龟屏」那几条就是这么被引错的)
+		var here := str(scene_file_path).get_file()
+		_ok("★场景 = 报错那一刻的(%s), 不是清队列时传进来的 SomeScene.tscn" % here, str(row["p_scene"]) == here and here != "", str(row["p_scene"]))
 		_ok("★详情带调用栈(找得到出事的测试函数)", str(row["p_detail"]).find("_emit_probe") >= 0, str(row["p_detail"]).left(200))
 	## ②a ★2026-10-31 陪练号(SIM_DRIVER=1)的平台带「/bot」—— 一周 179 条 unclean_exit 全是调度器停号, 淹没真人闪退
 	_ok("②a 纯函数: 真人 = 原平台名", ER.platform_of("iOS", false) == "iOS")

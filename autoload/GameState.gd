@@ -1481,6 +1481,9 @@ func _ready() -> void:
 	SimShot.attach(self)   # 模拟窗口自拍(只在 SIM_SHOT_DIR 设了时; 见 sim_shot.gd 头注)
 	## 客户端报错上报(2026-10-11): 越早装越好 —— 读档时的报错也要接住。
 	ErrorReporter.install(self)
+	## 快照池缓存开机自愈(2026-11-01): 上次被杀在写缓存的半中间留下的坏文件挪走 ⇒ 之后读池不再报「Parse JSON failed」。
+	##   用 load 不用 preload: 同 wipe_week_snapshots 那一处(backend.gd 反过来读 GameState)。见 backend.gd heal_pool_cache。
+	load("res://scripts/net/backend.gd").heal_pool_cache()
 	## ★这一句必须在 `_load()` / `ensure_season()` 之前 —— 2026-09-19 探针实证:
 	##   全新空 user:// 下, **场景脚本拿到控制权时 `savegame.json` 已经写出来了**
 	##   (`ensure_season()` 滚赛季会 `save()`), 所以任何台子在自己 `_ready` 里置

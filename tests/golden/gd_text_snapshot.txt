@@ -676,12 +676,15 @@ scripts/gamedata/vfxlab_cases.gd|lit|远程→近战: 视觉上主要是'贴脸�
 scripts/gamedata/vfxlab_cases.gd|lit|遗物
 scripts/gamedata/vfxlab_cases.gd|lit|靠命中触发 ⇒ attacker 必开。★★2026-09-14 订正三处: ①`ui` → `bars` —— `ui: true` 会把**飘字连同整层 UI 一起关掉**, 而这件「满 20 层转真实伤害」的读法**正是飘字变色**(蓝→白), 配 ui 等于把要看的东西关了(第四批栽过同一个坑)。②`dur` 12 → 24 + `aspd` 2.0: 每击叠 2 层, 12 秒攒不到 20 层, **满层转真伤那一下一帧都拍不到**。③敌人 40 万血, 不然它先被打死。
 scripts/gamedata/vfxlab_cases.gd|lit|食物
+scripts/net/backend.gd|lit|已删掉
+scripts/net/backend.gd|lit|已挪到 
 scripts/net/backend.gd|lit|玩家阵容
 scripts/net/error_reporter.gd|lit|[Replay] 第 
 scripts/net/error_reporter.gd|lit|\n最近报错: 无
 scripts/net/error_reporter.gd|lit|\n最近报错:\n
 scripts/net/error_reporter.gd|lit|上次启动: 
 scripts/net/error_reporter.gd|lit|上次运行没有正常退出(闪退 / 卡死被结束 / 前台被系统杀)
+scripts/net/error_reporter.gd|lit|手指按下的控件(抬起或拖动时已离树): 
 scripts/net/feedback_net.gd|lit|请填写问题描述
 scripts/net/friends_net.gd|lit|今日好友申请次数已达上限
 scripts/net/friends_net.gd|lit|双方尚未成为好友

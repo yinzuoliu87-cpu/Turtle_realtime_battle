@@ -29,8 +29,18 @@ const KIND_ERROR := "error"
 const KIND_SCRIPT := "script"
 const KIND_SHADER := "shader"
 const KIND_UNCLEAN := "unclean_exit"
+## 「按下那颗已离树」那条报错详情里附的一行的开头(门禁 / 查库按它找)。
+const TOUCH_TAG := "手指按下的控件(抬起或拖动时已离树): "
 
 static var _inst: ErrorReporter = null
+## 报错那一刻的场景(主线程 `_Watch._process` 每帧对一次; 报错可能来自任意线程 ⇒ 只在锁里读写)。
+## ★2026-11-01: 原来行里的场景是**清队列**那一刻的(每 FLUSH_SEC 秒一次)——正式服「!is_inside_tree() @ can_process」
+##   那几条「选龟屏」, 有两条是新号建号后 18 / 26 秒报上来的: 报错时人可能还在上一屏, 场景字段把人引到了错的屏。
+static var _scene_now: String = ""
+## 手指按下的那一颗控件, 抬起 / 拖动到达时已离树但没释放(= 引擎紧接着在同一个调用栈里报
+##   `!is_inside_tree() @ can_process` 的前提, 见 tests/verify_touch_detach_on_release.gd 头注):
+##   它**按下那一刻**的路径。`_Watch._input` 写、`_log_error` 读 —— 那条引擎报错没有脚本栈, 不附这个就只知道「有一处」。
+static var _touch_gone: String = ""
 ## 观测量 / 门禁分母
 static var captured_total: int = 0     # 收到的报错条数(含重复签名)
 static var queued_total: int = 0       # 进了上传队列的条数(去重后)
@@ -94,6 +104,35 @@ static func platform_of(os_name: String, is_bot: bool) -> String:
 	return os_name + ("/bot" if is_bot else "")
 
 
+## 纯函数: 这条是不是「手指抬起 / 拖动时按下的那颗已离树」那条引擎报错(scene/main/node.cpp `can_process` 第一行)。
+static func is_touch_detach(function: String, code: String) -> bool:
+	return function == "can_process" and code.find("is_inside_tree") >= 0
+
+
+## 纯函数: 控件路径 → 上报用的文字。引擎自动起的名字(`@Button@1234`)序号每个进程都不同 ⇒ 抹掉, 同一处才落到同一个签名。
+static func path_text(p: String) -> String:
+	var re := RegEx.new()
+	re.compile("@(\\d+)")
+	return re.sub(p, "@#", true)
+
+
+## 主线程记: 当前场景(`_Watch._process`)/ 按下那颗已离树(`_Watch._input`)。没装上报器 ⇒ 什么都不做。
+static func _note_scene(s: String) -> void:
+	if _inst == null:
+		return
+	_inst._mx.lock()
+	_scene_now = s
+	_inst._mx.unlock()
+
+
+static func _note_touch_gone(p: String) -> void:
+	if _inst == null:
+		return
+	_inst._mx.lock()
+	_touch_gone = p
+	_inst._mx.unlock()
+
+
 ## 纯函数: 这条警告是不是「回放对不上」(唯一上报的警告)。
 static func is_replay_mismatch(code: String, rationale: String) -> bool:
 	return code.begins_with(REPLAY_MISMATCH_TAG) or rationale.begins_with(REPLAY_MISMATCH_TAG)
@@ -146,7 +185,12 @@ func _log_error(function: String, file: String, line: int, code: String, rationa
 		for i in range(mini(b.get_frame_count(), BT_FRAMES)):
 			bt += "%s:%d @ %s\n" % [b.get_frame_file(i), b.get_frame_line(i), b.get_frame_function(i)]
 	bt = bt.strip_edges()
-	var sig := sig_of(file, line, code, top_frame_of(bt))
+	_mx.lock()
+	var touch: String = _touch_gone if is_touch_detach(function, code) else ""
+	var scene_now: String = _scene_now
+	_mx.unlock()
+	## 这条引擎报错没有脚本栈 ⇒ 签名改按「按下的那一颗」算: 不同出处各占一行(同一处仍只报一次)
+	var sig := sig_of(file, line, code, top_frame_of(bt) if bt != "" else touch)
 	_mx.lock()
 	captured_total += 1
 	if _seen.has(sig) or _seen.size() >= MAX_SIGS:
@@ -155,6 +199,11 @@ func _log_error(function: String, file: String, line: int, code: String, rationa
 	_seen[sig] = true
 	_mx.unlock()
 	var row := row_of(function, file, line, code, rationale, error_type, bt)
+	if touch != "":
+		row["p_sig"] = sig
+		row["p_detail"] = (str(row["p_detail"]) + "\n" + TOUCH_TAG + touch).left(DETAIL_MAX)
+	if scene_now != "":
+		row["p_scene"] = scene_now
 	_mx.lock()
 	_queue.append(row)
 	queued_total += 1
@@ -233,11 +282,45 @@ static func _clear_flag() -> void:
 ## 主线程那一半: 定时清队列 + 收前后台 / 退出通知。
 class _Watch extends Node:
 	var _acc := 0.0
+	var _scene_id := -1
+	## 触摸序号 → [按下那一颗的 instance id, 按下那一刻的路径文字]
+	var _press: Dictionary = {}
 
 	func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 
+	## 手指: 按下时记下命中的那一颗(引擎这时已派完模拟鼠标左键, 悬停 = 手指下那一颗); 抬起 / 拖动到达时它若已离树
+	##   (还没释放)⇒ 记给 `_log_error` —— 输入先过 `_input` 再进 GUI, 引擎那条报错紧跟在这之后。
+	## ★只读不吞: 不 set_input_as_handled, 玩家路径上一个事件都不改。挂在自动加载底下 ⇒ 各屏自己的 `_input` 先跑。
+	func _input(ev: InputEvent) -> void:
+		if ev is InputEventScreenTouch:
+			var st := ev as InputEventScreenTouch
+			if st.pressed:
+				var h: Control = get_viewport().gui_get_hovered_control() if is_inside_tree() else null
+				_press[st.index] = [h.get_instance_id() if h != null else 0,
+					ErrorReporter.path_text(str(h.get_path())) if h != null and h.is_inside_tree() else ""]
+				ErrorReporter._note_touch_gone("")
+			else:
+				_check_touch(st.index)
+				_press.erase(st.index)
+		elif ev is InputEventScreenDrag:
+			_check_touch((ev as InputEventScreenDrag).index)
+
+	func _check_touch(idx: int) -> void:
+		var p = _press.get(idx)
+		var gone := ""
+		if p is Array:
+			var o: Object = instance_from_id(int(p[0])) if int(p[0]) != 0 else null
+			if is_instance_valid(o) and o is Control and not (o as Control).is_inside_tree():
+				gone = str(p[1])
+		ErrorReporter._note_touch_gone(gone)
+
 	func _process(delta: float) -> void:
+		var cs := get_tree().current_scene if is_inside_tree() else null
+		var sid := cs.get_instance_id() if cs != null else 0
+		if sid != _scene_id:
+			_scene_id = sid
+			ErrorReporter._note_scene(cs.scene_file_path.get_file() if cs != null else "")
 		_acc += delta
 		if _acc < ErrorReporter.FLUSH_SEC:
 			return

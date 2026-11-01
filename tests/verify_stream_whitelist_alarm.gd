@@ -77,6 +77,11 @@ func _ready() -> void:
 	var c4: Dictionary = await _run_det(sc0, "material_override")
 	_ok("★正对照 · sim 步里换 MeshInstance3D.material_override ⇒ 不报警、流里录到恰 1 次", int(c4.get("alarm", -1)) == 0
 		and int(c4.get("mo_sets", 0)) == 1, "alarm=%s %s mo_sets=%d" % [str(c4.get("alarm")), str(c4.get("alarm_props")), int(c4.get("mo_sets", 0))])
+	## 2026-11-01(方案书 20261031e R7, 直播样本种子 2000038): 破蛋 `_play_egg_shatter` 在 sim 步里把蛋立绘的接地材质摘掉(= null)
+	##   换裂纹图 —— Sprite3D 的 material_override 原来不在白名单, 那一局报警 1 次、手机上的蛋一直挂着接地材质。同形正对照:
+	var c5: Dictionary = await _run_det(sc0, "sprite_material_override")
+	_ok("★正对照 · sim 步里摘掉 Sprite3D.material_override(破蛋同形) ⇒ 不报警、流里录到恰 1 次", int(c5.get("alarm", -1)) == 0
+		and int(c5.get("smo_sets", 0)) == 1, "alarm=%s %s smo_sets=%d" % [str(c5.get("alarm")), str(c5.get("alarm_props")), int(c5.get("smo_sets", 0))])
 
 	print("=== DetScenarios 全部场景 ===")
 	var tot := {"alarm": 0, "nodes_new": 0, "alarm_checked": 0, "steps": 0}
@@ -163,6 +168,10 @@ func _run_det(sc: Dictionary, control: String) -> Dictionary:
 					var sp := Sprite3D.new()
 					sp.texture = PlaceholderTexture2D.new()
 					sp.hframes = 2
+					if control == "sprite_material_override":
+						var ms := StandardMaterial3D.new()
+						ms.albedo_color = Color(0, 1, 0)
+						sp.material_override = ms
 					probe = sp
 				s._world.add_child(probe)
 			elif i == 20 and is_instance_valid(probe):
@@ -175,6 +184,8 @@ func _run_det(sc: Dictionary, control: String) -> Dictionary:
 						var m1 := StandardMaterial3D.new()
 						m1.albedo_color = Color(0, 0, 1)
 						(probe as MeshInstance3D).material_override = m1
+					"sprite_material_override":
+						(probe as Sprite3D).material_override = null
 					_:
 						(probe as Sprite3D).modulate = Color(0.2, 0.4, 0.6, 0.5)
 			elif i == 30 and is_instance_valid(probe):

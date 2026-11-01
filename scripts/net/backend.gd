@@ -860,6 +860,41 @@ static func load_pool(path: String = POOL_PATH) -> Dictionary:
 	return pool
 
 
+## 开机自愈快照池缓存(GameState._ready 调一次; 2026-11-01)。返回 true = 盘上那份是坏的、已挪走。
+## 由来: 陪练号被调度器停号时正好在写这份缓存 ⇒ 盘上留下空的 / 半截的(正式服 client_errors 5 条「Parse JSON failed」,
+##   全是陪练号)。写入端已改原子写(save_pool, d2d21816); 这里兜的是**旧版本已经留在盘上**的坏文件 / 别的原因弄坏的:
+##   原来坏文件会一直留着 —— `load_pool` 用 `JSON.parse_string` 每读一次引擎报一条, 而拉回的对手一个都没入池时
+##   不会重写, 坏文件就一直在。
+## ★放在开机这一步、不改 `load_pool`: `load_pool` 在积分赛读池 / 挑对手的路上, 被积分赛守卫(verify_gauntlet_online_queue R 段)
+##   逐字节钉着(用户「积分赛不许动」); 开机先把坏文件挪走 ⇒ 之后它读到的要么是完整的、要么没有文件(= 原来的空池那一支)。
+## 实例解析(`JSON.new().parse`)不报引擎错; 合法 JSON 但不是字典(那一支 `load_pool` 也当空池)同样算坏。
+static func heal_pool_cache(path: String = POOL_PATH) -> bool:
+	if not FileAccess.file_exists(path):
+		return false
+	var txt := FileAccess.get_file_as_string(path)
+	var j := JSON.new()
+	if j.parse(txt) == OK and j.data is Dictionary:
+		return false
+	_set_aside_bad_pool(path, txt.length(), j.get_error_line(), j.get_error_message())
+	return true
+
+
+## 坏的池缓存: 挪到 `<path>.bad`(只留最近一份)⇒ 下次读不再碰它; 挪不动就删。
+## 只 print 不 push_error: 坏缓存的后果只是这次按空池(+ 内置种子)走, 不值得占上报器名额。
+static func _set_aside_bad_pool(path: String, n_chars: int, err_line: int, err_msg: String) -> void:
+	var bad := path + ".bad"
+	var da := DirAccess.open(path.get_base_dir())
+	var moved := false
+	if da != null:
+		if da.file_exists(bad.get_file()):
+			da.remove(bad.get_file())
+		moved = da.rename(path.get_file(), bad.get_file()) == OK
+		if not moved:
+			da.remove(path.get_file())
+	print("[Backend] 快照池缓存读不出来(%d 字, 第 %d 行: %s)⇒ %s, 这次按空池" % [
+		n_chars, err_line, err_msg, ("已挪到 " + bad) if moved else "已删掉"])
+
+
 ## 老存档迁移: `{"brackets": {"<档>": [...]}}` → `{"by_battles": {"<场次>": [...]}}`。
 ##
 ## ★★为什么做迁移而不是像 `_drop_stale_schema` 那样整批丢: 丢的理由一向是

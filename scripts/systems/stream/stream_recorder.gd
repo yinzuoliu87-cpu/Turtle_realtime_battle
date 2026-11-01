@@ -50,8 +50,9 @@ const K_LABEL := 5
 ## 2026-10-20(v0.21.0 生产冒烟局: 两份上周决赛真人快照, alarm 38 次): + Sprite3D.vframes、MeshInstance3D.material_override。
 ##   ★格式不升: 改属性操作本来就是「属性名 + 值(资源引用 / 普通值)」, 手机端按名字 set(StreamMirror._apply_node_props),
 ##   v3 播放器(v0.21.0)照样认 —— 新录流器录出的流老播放器能播, 老录流器的流新播放器也能播(只是少了这两项变化)。
+## 2026-11-01(直播样本种子 2000038, 方案书 20261031e R7): + Sprite3D.material_override(破蛋摘掉接地材质换裂纹图), 同上不升格式。
 const TRACKED := {
-	"Sprite3D": ["frame", "texture", "hframes", "vframes", "region_enabled", "flip_h", "flip_v", "modulate", "region_rect", "offset", "pixel_size"],
+	"Sprite3D": ["frame", "texture", "hframes", "vframes", "region_enabled", "flip_h", "flip_v", "modulate", "region_rect", "offset", "pixel_size", "material_override"],
 	"Label3D": ["modulate", "text"],
 	"MeshInstance3D": ["mesh", "transparency", "material_override"],
 	"GPUParticles3D": ["emitting", "speed_scale"],
@@ -194,6 +195,13 @@ var _ucur_idx := PackedInt32Array()
 var _ucur_set := {}           # 当前在 battle._units 里的单位 idx
 var _gcache := {}
 var _ukeys_all: Array = UKEYS_STEP + UKEYS + UKEYS_S2 + UKEYS_ST
+## ★2026-11-01 时刻键按双精度发(方案书 20261031e R7): 名字以 `_until` / `_t0` 结尾的是「游戏钟上的某一刻」, 手机渲染步拿它跟 `_t` 比
+##   (真火 / 冰寒 / 电弧 / 涨潮 / 锁定标记 … 到点收特效)。float32 会把「差几个 ulp」抹平, 跟双精度的 `_t` 比就可能早 / 晚一个渲染步。
+##   按名字定规则、不手列 ⇒ 以后新加的 `xxx_until` 自动是双精度。改动很少(状态开始 / 结束各一次), 体积可忽略。
+var _uf64 := {}
+## ★2026-11-01 采样中间那一步的位置(方案书 20261031e R7, 直播样本种子 2000028 / 2000038): 单位 idx → [位置, 录到的步(_step_n)]。
+##   非采样步记下; 下一个采样步若它离「手机会插出来的中点」> StreamFormat.MID_TOL 就发 `@mp`(见 `_unit_fields`)。
+var _mid := {}
 ## 非采样步也比的键: 离散量 + 统计(终结那一击常落在非采样步上, 之后流就收尾了 ⇒ 只在采样步比会丢最后一笔; 2026-10-31 门禁抓到龟蛋承伤差 240)
 var _ukeys_step: Array = UKEYS_STEP + UKEYS_ST
 ## 已发出的「各路战报」份数(`slh`; keyframe 清缓存后整份重发)
@@ -202,6 +210,9 @@ var _slh_n := -1
 var on_sampled: Callable = Callable()
 var _cur_id := 0
 var _cur_key := false
+var _step_id0 := 1            # 这一步开始时的 `_next_id`: id 比它小的节点 = 这一步之前手机就已经有了(keyframe 先补这一步的改动, 见 `_keyframe_nodes`)
+var _kf_gone := {}            # keyframe 步: 单位 idx → 这一步里刚变成 null 的键(清缓存整份重发时 null 不发 ⇒ 单独补, 见 `_units`)
+var _kf_pre := false          # keyframe 先补这一步改动的那一遍(`_samp` 不比热参数: 整份重发里本来就全量)。用成员不用参数: 门禁有子类覆写 `_samp`
 var _lc_pos := PackedVector3Array()   # S2: 换路建场时删掉的地图摆件位置(累计)
 var _lane_clears := 0                 # S2: 换路清场次数(全局 lcn; 跳转时手机据此决定地图前景带还在不在)
 ## 事件
@@ -218,6 +229,9 @@ func _init(b: Node, opts: Dictionary = {}) -> void:
 	battle = b
 	out_dir = str(opts.get("dir", ""))
 	keep = bool(opts.get("keep", false))
+	for k in _ukeys_all:
+		if str(k).ends_with("_until") or str(k).ends_with("_t0"):
+			_uf64[k] = true
 	meta = {"format": F.VERSION, "hz": F.HZ, "chunk_steps": F.CHUNK_STEPS, "key_steps": F.KEY_STEPS,
 		"chunks": 0, "steps": 0, "first_step": -1, "last_step": -1, "raw_bytes": 0, "z_bytes": 0, "max_chunk_bytes": 0,
 		"nodes_new": 0, "nodes_del": 0, "nodes_peak": 0, "node_sets": 0, "res_defs": {}, "events": {},
@@ -306,6 +320,12 @@ func ev(kind: String, args: Array) -> void:
 		_lane_clears += 1
 	if kind == "layout_clear" and not args.is_empty():
 		_lc_pos.append_array(args[0])     # 地图状态: 进全局 `lc`, keyframe 也带(跳进来的手机照样删)
+	if kind == "float":
+		## ★2026-11-01(方案书 20261031e R7, 直播样本种子 2000028): 飘字合并 / 排行窗按**冒字那一刻**的 `_t` 判, 而同一步里有的飘字冒在
+		##   `_t` 推进之前(单位 tick 里)、有的在之后。手机原来一律拿这一步末尾的 `_t` ⇒ 步 3391「42」(服务器记 t=39.266667)
+		##   与步 3393「77」(39.316667)服务器差 0.05 不合并, 手机差 0.0333 并成「119」, 少一条飘字。
+		##   这里先记下冒字时的 `_t`(第 8 个参数); 与步末一样的在 `_events` 里去掉(大多数), 不一样的按双精度发。
+		args = args + [float(battle._t)]
 	_evs.append([kind, args])
 
 
@@ -335,6 +355,7 @@ func _on_added(n: Node) -> void:
 func _sample_pre(step_n: int) -> bool:
 	var cont := (_step_n % F.CONT_EVERY) == 0
 	var key := false
+	_step_id0 = _next_id
 	if _chunk_steps == 0:
 		_chunk_first = step_n
 		_chunk_key = (_seq % F.KEY_CHUNKS) == 0
@@ -452,7 +473,11 @@ func _globals(cont: bool) -> void:
 	n += _g("lc", _lc_pos)                          # S2: 已删的地图摆件(见 battle_world_builder._clear_layout_on_obstacles)
 	n += _g("lcn", _lane_clears)
 	if cont or not _evs.is_empty():
-		n += _g("t", float(battle._t))   # S2: 有事件的步也发 —— 飘字合并 / 排行窗按 _t 判(差一步就合并错)
+		## S2: 有事件的步也发 —— 飘字合并 / 排行窗按 _t 判(差一步就合并错)。
+		## ★2026-11-01 双精度(方案书 20261031e R7, 直播样本种子 2000028): 渲染步拿 `_t` 跟单位身上的时刻比(电击眩晕电弧 `_tick_follow_vfx`
+		##   `_t >= baton_zap_until`), 原来按 float32 发 ⇒ 服务器 `_t` = 93.2499999…(逐步累加)< 93.25 留着电弧,
+		##   手机拿到的是 93.25 ⇒ 早一个渲染步收掉(步 8760 _world 里 Sprite3D 差 1)。T_F64 v3 起播放器都认, 格式不升。
+		n += _g("t", float(battle._t), true)
 	if cont:
 		n += _g("hs", float(battle._hitstop))
 	if cont or StreamHud.wants_glob(_evs):
@@ -489,13 +514,16 @@ func _rec_state() -> Dictionary:
 	return {}
 
 
-func _g(k: String, v) -> int:
+func _g(k: String, v, exact: bool = false) -> int:
 	var old = _gcache.get(k)
 	if old != null and typeof(old) == typeof(v) and old == v:
 		return 0
 	_gcache[k] = v.duplicate() if v is PackedVector3Array else v   # ★缓存要拷贝: 累计数组原地 append 会让缓存跟着变 ⇒ 永远「没变」
 	enc.s(k)
-	enc.val(v)
+	if exact:
+		enc.gval(v)
+	else:
+		enc.val(v)
 	return 1
 
 
@@ -520,6 +548,14 @@ func _units(cont: bool, key: bool) -> void:
 				_unit_new(idx, u)
 				_adopt_appearance(u, idx, key)
 			elif key:
+				## keyframe 清缓存整份重发只发非 null 的键 ⇒ 恰在这一步变成 null(被 erase / 置空)的键正在看的手机收不到, 单独补一个 null
+				var gone: Array = []
+				var oc: Dictionary = _ucache[idx]
+				for k0 in _ukeys_all:          # 只看单位字典里的真键(缓存里还有 @dot / @n / HUD 合成键, 单位上本来就没有)
+					if oc.get(k0) != null and u.get(k0) == null:
+						gone.append(k0)
+				if not gone.is_empty():
+					_kf_gone[idx] = gone
 				_ucache[idx] = {}
 				_unit_new(idx, u)
 			nidx.append(idx)
@@ -610,6 +646,18 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 	var c: Dictionary = _ucache[idx]
 	var n := 0
 	var pc := 0
+	var p_prev = c.get("pos") if cont else null     # 手机手上的位置真值(上一次发出去的); 下面的循环会把它换成这一步的
+	if not _kf_gone.is_empty() and _kf_gone.has(idx):
+		for k in (_kf_gone[idx] as Array):
+			if n == 0:
+				enc.u8(F.OP_UNIT_SET)
+				enc.vu(idx)
+				pc = enc.pos()
+				enc.u8(0)
+			enc.s(str(k))
+			enc.val(null)
+			n += 1
+		_kf_gone.erase(idx)
 	for k in (_ukeys_all if cont else _ukeys_step):
 		var v = u.get(k)
 		var t := typeof(v)
@@ -627,7 +675,10 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 			pc = enc.pos()
 			enc.u8(0)
 		enc.s(k)
-		enc.val(v)
+		if t == TYPE_FLOAT and _uf64.has(k):
+			enc.gval(v)
+		else:
+			enc.val(v)
 		n += 1
 	if cont:
 		## S2 `@dot`: 三个 DOT 桶此刻是否还在(就是渲染步判「常驻 DOT 数字该不该飞走」的那个函数算的); 手机代理没有 dot_stacks / dots。
@@ -709,6 +760,31 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 				enc.s(hk)
 				enc.val(hv)
 				n += 1
+		## ★2026-11-01 `@mp` = 两次采样中间那一步的真位置(只在它离直线中点 > MID_TOL 时发)。
+		##   手机在两次采样之间按直线插(`StreamPlayer._interp`), 起步 / 急停 / 冲刺 / 击退 / 闪现落在采样步上时直线插不出来:
+		##   实测小将冲撞 `_slam` 从静止一步就 29.4 像素/步(种子 2000028 步 6782 起冲), 中间那一步服务器还在原地,
+		##   手机插在半路 ⇒ 差 14.71 像素(门禁硬顶 12)。带上 `@mp` 手机就照「真值 → 中间步 → 下一采样」两段插, 中间那一步与服务器相同。
+		##   只有两次采样恰隔 2 步(中间那步是录到的非采样步)才有意义; keyframe 前后隔 1 步的不发。
+		var mm = _mid.get(idx)
+		if mm != null and int(mm[1]) == _step_n - 1:
+			var pn = u.get("pos")
+			if pn is Vector2:
+				var lin: Vector2 = DetMath.vlerp(p_prev as Vector2, pn as Vector2, 0.5) if p_prev is Vector2 else (pn as Vector2)
+				if DetMath.vlen((mm[0] as Vector2) - lin) > F.MID_TOL:
+					if n == 0:
+						enc.u8(F.OP_UNIT_SET)
+						enc.vu(idx)
+						pc = enc.pos()
+						enc.u8(0)
+					enc.s("@mp")
+					enc.val(mm[0])
+					n += 1
+					meta["mid_pos"] = int(meta.get("mid_pos", 0)) + 1
+		_mid.erase(idx)
+	else:
+		var pz = u.get("pos")
+		if pz is Vector2:
+			_mid[idx] = [pz, _step_n]
 	if n > 0:
 		enc.patch_u8(pc, n)
 
@@ -796,6 +872,17 @@ func _keyframe_nodes() -> void:
 		j += 1
 	_tn.resize(j)
 	_prune_res()
+	## ★2026-11-01(方案书 20261031e R7, 直播样本种子 2000029): 整份重发只写「与类默认值不同」的属性, 手机对已有的节点是**合并**
+	##   (StreamMirror.node_new 见到已在的 id 只把给的属性设一遍), 而 keyframe 步不走逐步比对(`_nodes`)
+	##   ⇒ 恰在 keyframe 那一步变回默认值的属性(显隐 → true、帧号 → 0、颜色 → 白 …)正在看的手机永远收不到。
+	##   实测: 触手预警带 TentacleWarn 在 keyframe 步 9001 由隐变显, 手机一直停在隐(步 9060 采样 显隐 true/false)。
+	##   ⇒ 先按平常那样把这一步的改动发给已经有这个节点的手机(这一步之前就建好的; 跳进来的手机没有它, 改动照规矩丢弃),
+	##     再整份重发。材质跟踪属性同理(手机 `res_set` 在 keyframe 里找上一段的同一个对象)。热参数整份重发本来就不按默认值省, 不用补。
+	_kf_pre = true
+	for t in _tn:
+		if (t as TN).id < _step_id0:
+			_samp(t as TN, true)
+	_kf_pre = false
 	for t in _tn:
 		_node_new(t as TN)
 
@@ -835,8 +922,10 @@ func _samp(t: TN, cont: bool) -> void:
 				t.mats = _collect_mats(t.n)
 				t.sp = _sp_rids(t.mats)
 	var mo_rid := -1
-	if t.kind == K_MESH:
-		var mo0 = (t.n as MeshInstance3D).material_override
+	## 2026-11-01(R7 种子 2000038): Sprite3D 也走这条 —— 破蛋 `_play_egg_shatter` 在 sim 步里把蛋立绘的接地材质摘掉(= null)
+	##   换裂纹图, 原来不在白名单: 手机上那颗蛋一直挂着接地材质, 裂纹图画不出来(报警 Sprite3D.material_override 1 次)。
+	if t.kind == K_MESH or t.kind == K_SPRITE:
+		var mo0 = (t.n as GeometryInstance3D).material_override
 		if mo0 != t.mo:
 			## 换了覆盖材质(sim 步里给特效换一张材质): 离散量, 逐步发; 新材质先定义, 它的跟踪属性从此按 t.mats 核
 			t.mo = mo0
@@ -923,6 +1012,10 @@ func _samp(t: TN, cont: bool) -> void:
 			if tex_rid >= 0:
 				_k(&"texture")
 				enc.res(tex_rid)
+			if mo_rid >= 0:
+				_k(&"material_override")
+				enc.res(mo_rid)
+				meta["smo_sets"] = int(meta.get("smo_sets", 0)) + 1
 			if sp.frame != t.fr:
 				t.fr = sp.frame
 				_k(&"frame")
@@ -1007,6 +1100,8 @@ func _samp(t: TN, cont: bool) -> void:
 		for rid in t.mats:
 			if _res_ck[rid] != _step_n:
 				_res_check(rid)
+	if _kf_pre:
+		return
 	for rid in t.sp:
 		_sp_check(rid, cont)
 
@@ -1036,6 +1131,7 @@ func _cache_tracked(t: TN) -> void:
 		K_SPRITE:
 			var sp: Sprite3D = t.n
 			t.tex = sp.texture
+			t.mo = sp.material_override
 			t.fr = sp.frame
 			t.hf = sp.hframes
 			t.vf = sp.vframes
@@ -1795,10 +1891,21 @@ func _events() -> void:
 		var args: Array = e[1]
 		if (e as Array).size() > 2:
 			args = [_uidx(e[2])] + args
+		var exact_from := args.size()
+		if kind == "float" and args.size() > F.FLOAT_T_ARG:
+			## 冒字时的 `_t`(见 `ev`): 与步末相同 ⇒ 不发(手机就用这一步的 `t`); 不同 ⇒ 双精度发
+			if float(args[F.FLOAT_T_ARG]) == float(battle._t):
+				args = args.slice(0, F.FLOAT_T_ARG)
+			else:
+				exact_from = F.FLOAT_T_ARG
+				meta["float_t_early"] = int(meta.get("float_t_early", 0)) + 1
 		ec[kind] = int(ec.get(kind, 0)) + 1
 		enc.u8(F.OP_EVENT)
 		enc.s(kind)
 		enc.vu(args.size())
-		for a in args:
-			enc.val(a)
+		for ai in range(args.size()):
+			if ai >= exact_from:
+				enc.gval(args[ai])
+			else:
+				enc.val(args[ai])
 	_evs.clear()

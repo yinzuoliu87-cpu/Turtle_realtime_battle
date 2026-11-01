@@ -31,7 +31,11 @@ const TOL_UNIT := 0.01            # 单位字段 float32 往返(位置是像素�
 ## 插值容差(两次采样中间那一步, 单位位置与原生 sim 的差; 像素坐标)。剖面见方案书 §2.3:
 ##   两局 + det 15 场景中位 0、p99 ≤ 3.6、最大 10.0(det ⑨ 骰子龟冲刺, 两次采样之间走了 ≈ 20 像素的弧线, 线性插值差半段)。
 ##   判据是「≤ 半段位移 + 0.5」(线性插值的形状), 外加一道最大 12 像素的硬顶。
-const TOL_INTERP := 12.0
+## ★2026-11-01 硬顶 12 → StreamFormat.MID_TOL(1 像素)+ float32 余量, 采样间隔内瞬移也照量(方案书 20261031e R7 回填):
+##   换样本种子时 2000028 / 2000038 量到 14.71 / 14.37 —— 小将冲撞从静止一步就 29~36 像素/步, 起冲恰落在采样步上,
+##   中间那一步服务器还在原地、手机插在半路。录流器现在在中间步偏离直线中点 > MID_TOL 时发 `@mp`(中间步真位置), 手机两段插
+##   ⇒ 中间步与服务器差 ≤ MID_TOL, 冲刺 / 击退 / 闪现也不例外。修后实测: 三个种子 + 本门禁全部样本最大 0.99。
+const TOL_INTERP := StreamFormat.MID_TOL + 0.01
 const TELEPORT_PX := 40.0           # 2 步(1/30 秒)里走 40 像素 = 1200 像素/秒, 远超任何移速 ⇒ 只可能是闪现 / 冲刺 / 击退
 const TOL_MID := 0.01
 const DET_N := 15
@@ -156,7 +160,8 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	il.sort()
 	var p99: float = float(il[int(il.size() * 0.99)]) if not il.is_empty() else 0.0
 	var p50: float = float(il[int(il.size() * 0.5)]) if not il.is_empty() else 0.0
-	print("  [量] %s 插值剖面(采样中间一步, 单位位置差, 像素): 点 %d 中位 %.3f p99 %.3f 最大 %.3f · 采样间隔内瞬移(不量) %d" % [tag, il.size(), p50, p99, float(st["i_max"]), int(st.get("i_tp", 0))])
+	print("  [量] %s 插值剖面(采样中间一步, 单位位置差, 像素): 点 %d 中位 %.3f p99 %.3f 最大 %.3f · 采样间隔内瞬移 %d 点(照量, 最大 %.3f) · 流里中间步位置 @mp %s 次" % [tag, il.size(), p50, p99, float(st["i_max"]),
+		int(st.get("i_tp", 0)), float(st.get("i_tp_max", 0.0)), str(meta.get("mid_pos", 0))])
 	var steps := int(meta.get("steps", 0))
 	_ok("分母 · %s 播放端解了全部块、应用了全部步(%d / %d)、播到结尾" % [tag, p.steps_applied, steps],
 		p.chunks_decoded == chunks.size() and p.steps_applied == steps and p.state == "ended", "%s %s" % [p.state, p.err])
@@ -463,12 +468,12 @@ func _cmp_interp(a0: Dictionary, a: Dictionary, a2: Dictionary, b: Dictionary, s
 	for idx in ua:
 		if not ub.has(idx) or not bool(ua[idx][4]):
 			continue
-		## ★采样间隔(2 步)里位移超过 TELEPORT_PX 的是闪现 / 冲刺 / 击退: 线性插值本来就补不出中间那一步的真位置
-		##   (手机在 1/30 秒里把它补过去, 肉眼看不出), 不拿 12 像素的尺子量, 单独计数打印。
-		##   2026-10-22 抓到: 钻石龟一步之内闪 224 像素, 中间那步离中点 112 —— 以前只是恰好没落在采样中间。
+		## 采样间隔(2 步)里位移超过 TELEPORT_PX 的是闪现 / 冲刺 / 击退(2026-10-22 抓到: 钻石龟一步之内闪 224 像素, 中间那步离中点 112)。
+		##   原来不量、单独计数; 2026-11-01 起录流器发中间步真位置 `@mp`, 它们也照同一把尺子量(这里只额外计数 + 记最大值)。
 		if u0.has(idx) and u2.has(idx) and (u0[idx][0] as Vector2).distance_to(u2[idx][0]) > TELEPORT_PX:
-			st["i_tp"] = int(st.get("i_tp", 0)) + 1
-			continue
+			st["i_tp"] = int(st.get("i_tp", 0)) + 1   # 2026-11-01 起照量(`@mp` 让中间步也对得上), 只计数
+			var dtp: float = (ua[idx][0] as Vector2).distance_to(ub[idx][0])
+			st["i_tp_max"] = maxf(float(st.get("i_tp_max", 0.0)), dtp)
 		var d: float = (ua[idx][0] as Vector2).distance_to(ub[idx][0])
 		(st["i_list"] as Array).append(d)
 		if u0.has(idx) and u2.has(idx) and bool(u0[idx][4]) and bool(u2[idx][4]):

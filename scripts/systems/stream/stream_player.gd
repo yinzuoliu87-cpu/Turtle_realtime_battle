@@ -459,8 +459,15 @@ func _unit_set(idx: int, kv: Dictionary) -> void:
 		if ks == "@eq" or ks == "@hud":
 			hud.apply_unit(d, ks, v)
 			continue
+		if ks == "@mp":
+			continue                  # 采样中间那一步的真位置: 只给插值用(`_interp` 从待应用的下一步里读), 不进代理
 		if ks == "@mv":
 			d["vel"] = Vector2(BattleVfx.BOB_STILL_SPD * 2.0, 0.0) if bool(v) else Vector2.ZERO   # 渲染步只拿 vel 判「走着不呼吸」
+			continue
+		if v == null:
+			## 服务器那边这个键被清掉了(erase / 置空; 录流器发 null): 代理也清掉, 不留一个 null ——
+			##   渲染步按 `float(u.get(键, 0.0))` 读, 键在而值是 null 会直接报错(Nonexistent 'float' constructor)。
+			d.erase(ks)
 			continue
 		d[ks] = v
 	if kv.has("pos") or kv.has("height"):
@@ -533,7 +540,12 @@ func _event(kind: String, a: Array) -> void:
 				if ReplayRecorder.viewer_side(battle) == "b" and DualLaneFlow.SIDE_SWAP_TEXT.has(ft):
 					fc = DualLaneFlow.SIDE_SWAP_TEXT[ft][1]
 					ft = str(DualLaneFlow.SIDE_SWAP_TEXT[ft][0])
+				## 冒字那一刻服务器的 `_t`(合并 / 排行窗按它判; 见 StreamRecorder.ev): 流里带了就照它放, 没带 = 与这一步末尾相同
+				var t_end: float = battle._t
+				if a.size() > F.FLOAT_T_ARG:
+					battle._t = float(a[F.FLOAT_T_ARG])
 				battle._vfx._float_text(a[0], ft, fc, bool(a[3]), str(a[4]), str(a[5]), float(a[6]))
+				battle._t = t_end
 		"shake":
 			battle._shake(float(a[0]))
 		"hitstop":
@@ -680,9 +692,15 @@ func _interp() -> void:
 				F.OP_UNIT_SET:
 					var u2 = units.get(int(op[1]))
 					var kv: Dictionary = op[2]
+					## `@mp`(2026-11-01): 中间那一步的真位置(StreamRecorder 只在直线中点偏得多时发) ⇒ 两段插: 真值 → @mp → 下一采样
+					var mp = kv.get("@mp") if s - _last_cont == F.CONT_EVERY else null
 					if u2 is Dictionary and _utruth.has(int(op[1])):
 						var tr2: Array = _utruth[int(op[1])]
-						if kv.has("pos") and kv["pos"] is Vector2:
+						if mp is Vector2:
+							var endp: Vector2 = kv["pos"] if (kv.has("pos") and kv["pos"] is Vector2) else (tr2[0] as Vector2)
+							u2["pos"] = DetMath.vlerp(tr2[0] as Vector2, mp, k * 2.0) if k <= 0.5 else DetMath.vlerp(mp, endp, (k - 0.5) * 2.0)
+							u2["_prev_pos"] = u2["pos"]
+						elif kv.has("pos") and kv["pos"] is Vector2:
 							u2["pos"] = DetMath.vlerp(tr2[0] as Vector2, kv["pos"], k)
 							u2["_prev_pos"] = u2["pos"]
 						if kv.has("height"):
@@ -692,7 +710,10 @@ func _interp() -> void:
 						## ★两个采样点之间新出生的单位(召唤物): 它还没有真值, 代理停在 _unit_new 给的 (0,0) ——
 						##   手机上会在地图左上角闪一下再飞过去(2026-10-22 verify_stream_parity 抓到: 蛋糕礼盒 / 亡魂)。
 						##   没有起点可插 ⇒ 直接放到下一个采样点给的位置。
-						if kv.has("pos") and kv["pos"] is Vector2:
+						if mp is Vector2 and k <= 0.5:
+							u2["pos"] = mp       # 中间那一步它已经在场上了: 放在服务器那一步的真位置
+							u2["_prev_pos"] = u2["pos"]
+						elif kv.has("pos") and kv["pos"] is Vector2:
 							u2["pos"] = kv["pos"]
 							u2["_prev_pos"] = u2["pos"]
 						if kv.has("height"):

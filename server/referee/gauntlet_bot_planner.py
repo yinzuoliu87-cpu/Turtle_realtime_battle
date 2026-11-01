@@ -134,6 +134,7 @@ DEFAULTS = {
     'SCARCE_ROOT_KEEP': 2,   # 号不够铺满每格 ≥1 时(cover_plan)0-0 至少留几个。12 个号时留 1 / 留 2 都是最多 9 格, 留 3 只剩 8 格
     'OPENING_SEC': 3600,     # 开赛头多久把真人位借给补格子(decide 里 free 那一段有实测); 0 = 不借
     'OPENING_MAX_PAR': None, # 开赛头 OPENING_SEC 的并发上限(env MAX_PAR_OPENING); None = 与 MAX_PAR 相同
+    'OPENING_FRONT': True,   # 开赛头 OPENING_SEC: 真人马上要进的格子里他交过手的号不算数(decide C 段 front); env PLANNER_OPENING_FRONT=0 关
 }
 SESSIONISH = ('session', 'end')     # 打到底的号: 不算格子里的候场号
 ## 每次上线等不到对手多久自己下线(客户端 SIM_QUEUE_GIVEUP_SEC)。按用途给: 为真人拉的号等真人, 别的号等搭档。
@@ -172,26 +173,37 @@ def close_of_week(week: int) -> float:
 _PLAN_CACHE = {}
 
 
-def fill_plan(have: dict, r: int) -> tuple:
+def _caps_key(caps) -> tuple:
+    return tuple(-1 if not caps or c not in caps else int(caps[c]) for c in CELLS)
+
+
+def fill_plan(have: dict, r: int, caps: dict = None) -> tuple:
     """fill_plan_raw 的记忆化外壳(同样的输入每拍都一样的时候不重算; 输入按 0.5 取整, 结果一样)。"""
-    key = (r,) + tuple(round(2.0 * have.get(c, 0.0)) for c in CELLS)
+    key = (r,) + tuple(round(2.0 * have.get(c, 0.0)) for c in CELLS) + _caps_key(caps)
     if key not in _PLAN_CACHE:
         if len(_PLAN_CACHE) > 20000:
             _PLAN_CACHE.clear()
-        _PLAN_CACHE[key] = fill_plan_raw({c: key[1 + i] / 2.0 for i, c in enumerate(CELLS)}, r)
+        _PLAN_CACHE[key] = fill_plan_raw({c: key[1 + i] / 2.0 for i, c in enumerate(CELLS)}, r,
+                                         {c: v for c, v in zip(CELLS, key[1 + len(CELLS):]) if v >= 0})
     short, xs = _PLAN_CACHE[key]
     return short, dict(xs)
 
 
-def fill_plan_raw(have: dict, r: int) -> tuple:
+def fill_plan_raw(have: dict, r: int, caps: dict = None) -> tuple:
     """每格要 ≥ r 个空闲号; have[c] = 现有空闲 + 已在路上的(浮点, 一局两边各 0.5 计)。
     返回 (0-0 缺口, {格子: 要在这一格打几局})。一局在 P 打 = P 出两个号、两个下一格各进一个。
     从最深一层往上逐层定: 每层只枚举「同时喂两个孩子」的那几格, 其余取最小; 按层记忆化。
-    目标(字典序): 0-0 缺口最小 → 动用 0-0 的号最少(本钱) → 总局数最少。"""
+    目标(字典序): 0-0 缺口最小 → 动用 0-0 的号最少(本钱) → 总局数最少。
+    caps[c](可选, 由 decide C 段按「互相没交过手」贪心配对算)= 这一格现有的号最多凑得出几对没交过手的; 要在 c 打的局数超过它, 多出来的每一局
+    都得先从上一级送一个新号进来(新号跟这一格的号没交过手)。没给的格子不限。"""
     memo = {}
+    caps = caps or {}
 
     def need(c, x):
-        return max(0, int(math.ceil(r + 2 * x - have.get(c, 0.0) - 1e-9)))
+        n = max(0, int(math.ceil(r + 2 * x - have.get(c, 0.0) - 1e-9)))
+        if c in caps:
+            n = max(n, x - int(caps[c]))
+        return n
 
     def solve(d, needs):
         key = (d, needs)
@@ -208,6 +220,8 @@ def fill_plan_raw(have: dict, r: int) -> tuple:
                         return
                 if d - 1 == 0:
                     raw = r + 2 * xs[ROOT] - have.get(ROOT, 0.0)
+                    if ROOT in caps:                      # 0-0 没有上一级: 凑不出对的局只能算缺口
+                        raw = max(raw, xs[ROOT] - caps[ROOT])
                     sub = ((max(0, int(math.ceil(raw - 1e-9))), xs[ROOT], 0), {})
                 else:
                     sub = solve(d - 1, tuple(need(p, xs[p]) for p in ps))
@@ -254,11 +268,13 @@ def fill_plan_raw(have: dict, r: int) -> tuple:
 _COVER_CACHE = {}
 
 
-def cover_plan(cnt: dict, keep_root: int, want=None) -> dict:
+def cover_plan(cnt: dict, keep_root: int, want=None, caps: dict = None) -> dict:
     """cnt[格子] = 现有的号(整数); want = 要算进「铺到」的格子(收尾时收盘前没真人能走到的不算, 默认全部)。
+    caps[c](可选, 由 decide C 段按「互相没交过手」贪心配对算)= 这一格现有的号最多凑得出几对没交过手的; 一格打的局数 ≤ caps[c] + 打法里送进来的新号数。
     返回 {格子: 在这一格打几局}。逐层(浅 → 深)枚举每格打几局, 按层记忆化。"""
     want = frozenset(CELLS if want is None else want)
-    key = (keep_root, tuple(int(cnt.get(c, 0)) for c in CELLS), tuple(sorted(want)))
+    caps = caps or {}
+    key = (keep_root, tuple(int(cnt.get(c, 0)) for c in CELLS), tuple(sorted(want)), _caps_key(caps))
     if key in _COVER_CACHE:
         return dict(_COVER_CACHE[key])
     if len(_COVER_CACHE) > 20000:
@@ -271,7 +287,8 @@ def cover_plan(cnt: dict, keep_root: int, want=None) -> dict:
         if mk in memo:
             return memo[mk]
         cells = LAYERS[d]
-        ranges = [range(0, max(0, n - (keep_root if c == ROOT else 0)) // 2 + 1) for c, n in zip(cells, counts)]
+        ranges = [range(0, min(max(0, n - (keep_root if c == ROOT else 0)) // 2,
+                               caps[c] + n - base[c] if c in caps else 1 << 20) + 1) for c, n in zip(cells, counts)]
         best = None
 
         def rec(i, xs):
@@ -410,6 +427,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
     parked = {cc: [] for cc in CELLS}        # 空闲、不在线、排队里也没有它的有效条目: 可拉
     online = {cc: [] for cc in CELLS}        # 在线、没在打、还要打: 会在这一格排队
     exiting = {cc: 0 for cc in CELLS}        # 在线但打完了(马上下线 ⇒ 停在这一格)
+    exiting_ids = {cc: [] for cc in CELLS}   # 同上, 是哪几个号(判「没有陪练号能来」/ 凑对上限要知道是谁)
     moving = {cc: 0 for cc in CELLS}         # 在这一格打完这局 / 下一局就成候场号的(各 0.5 进两个下一格)
     for bid, cc in cell_of.items():
         b = bots[bid]
@@ -420,6 +438,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
                     moving[cc] += 1
             elif left <= 0:
                 exiting[cc] += 1
+                exiting_ids[cc].append(bid)
             else:
                 online[cc].append(bid)
         elif in_job(b) or bid in queued:           # 刚下线的号 15 秒内排队条目还有效、可能被配上 ⇒ 当作在打
@@ -596,8 +615,51 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
         have0[cc] = have[cc] = len(avail(cc)) + exiting[cc] + chain + 0.5 * sum(moving[p] for p in parents(cc))
         if not reachable(cc):
             have[cc] = max(have[cc], float(r_top))     # 收盘前已经没有真人能走到 ⇒ 不补
+    ## 这一格此刻停着的号(空闲没被这拍拉走 / 在线连打的补格子号 / 打完马上停下的): 凑对上限、真人交过手的都按它们算
+    here = {cc: avail(cc) + [x for x in online[cc] if x not in claimed and purpose(x) not in SESSIONISH] + exiting_ids[cc]
+            for cc in CELLS}
+    ## ★2026-11-01 凑对上限: 一格里的号互相交过手就凑不出对。打法(fill_plan / cover_plan)原来只数个数, 会一直要在
+    ##   凑不出对的格子开局、执行时又配不上 ⇒ 每拍空转、再也铺不上(推演按正式服实测时长 ⑫: 12 个号停在 8 格 ——
+    ##   2-1 只剩两个在 1-0 交过手的号)。贪心配对数个数(可能比最大配对少 ⇒ 多要一个新号, 偏保守、不会卡死);
+    ##   在路上的那局送进来的号算新号(跟这一格的号没交过手)。只在凑对数 < 个数 / 2 的格子上限制。
+    caps = {}
+    for cc in CELLS:
+        ids, used, m = here[cc], set(), 0
+        for i, a in enumerate(ids):
+            if a in used:
+                continue
+            b = next((y for y in ids[i + 1:] if y not in used and not met(a, y)), None)
+            if b is not None:
+                used.update((a, b))
+                m += 1
+        m += int(0.5 * sum(moving[p] for p in parents(cc)))
+        if m < int(have0[cc]) // 2:
+            caps[cc] = m
+    ## ★2026-11-01 开赛头一小时(opening, 与借真人位同一个条件): 真人马上要进的格子(在等的真人这一格没着落的 /
+    ##   在等或正在打的真人的两个下一格)里他交过手的号不算数。原来补格子只数个数 ⇒ 格子里明明只剩他交过手的号,
+    ##   调度器以为够了不补, 他进队就只能兜底(推演门禁 ⑱, 按正式服实测时长, 108 个号 · 并发 6 · 最快真人每局后 140 秒:
+    ##   头一小时第 4~6 场进队兜底 48 → 34 次)。并发 4 时缺口主要是格子还空着, 这一条量不出收益(下面「先保每格 ≥1」让它不添乱)。
+    ##   ★只在头一小时: 开赛一小时之后每格都有 R 个候场, 量不出收益(周六 03:00 进来的最快真人改前改后都是零兜底)。
+    ##     代价: 多补的几局从 0-0 出号, 57 个号的紧号池到周日 16:30 0-0 平均 6.0 → 5.4 个, 108 个号不变(推演 16 个种子)。
+    ##     env PLANNER_OPENING_FRONT=0 关。
+    unserved_h = {hid for hid, _cc in unserved}
+    front = {}
+    live_people = [(h['account_id'], cc, h['account_id'] in unserved_h) for cc in CELLS for h in humans[cc]]
+    live_people += [(pl.get('account_id'), (int(pl.get('gw', 0) or 0), int(pl.get('gl', 0) or 0)), False)
+                    for pl in state.get('playing') or [] if not pl.get('is_bot') and pl.get('account_id') not in bots]
+    for hid, hc, need_here in live_people:
+        for q in ([hc] if need_here else []) + [q for q in ((hc[0] + 1, hc[1]), (hc[0], hc[1] + 1)) if q in CELLSET]:
+            k = sum(1 for x in here.get(q, ()) if met(x, hid))
+            if k:
+                front[q] = max(front.get(q, 0), k)
     level = 1
-    _short, xs = fill_plan(have, 1)
+    _short, xs = fill_plan(have, 1, caps)
+    ## 先保「每格 ≥1」: 这一拍全局还缺号(打法里还有局要打)时不扣 —— 并发卡住时把位子分给某个真人「交过手」的格子,
+    ##   会挤掉全局铺格子(推演: 并发 4 时一直扣, 最快真人深格子有号 36% → 33%、兜底 16.9% → 18.0%)。
+    if front and opening and c['OPENING_FRONT'] and not any(xs.values()):
+        for q, k in front.items():
+            have[q] = max(0.0, have[q] - k)
+        _short, xs = fill_plan(have, 1, caps)
     ## 号不够铺满「每格 ≥1」(0-0 缺口 > 0), 而且是结构上不够 —— 本周全部晋级号加起来都铺不满 12 格(< full_cover_min, 0-0 留 2 时 = 24 个):
     ##   改按 cover_plan 铺到能铺的最多格(0-0 留 SCARCE_ROOT_KEEP 个, 别的格子按打法可以送空)。
     ##   原来照「每格 ≥1」的打法走、执行时又要求上一级留得住 1 个 ⇒ 号少时一局都开不了(彩排 12 个号铺到 7 格就停)。
@@ -607,7 +669,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
     scarce = _short > 0 and n_promoted < full_cover_min(c['SCARCE_ROOT_KEEP'])
     if scarce:
         xs = cover_plan({cc: int(math.floor(have0[cc] + 1e-9)) for cc in CELLS}, c['SCARCE_ROOT_KEEP'],
-                        [cc for cc in CELLS if reachable(cc)])
+                        [cc for cc in CELLS if reachable(cc)], caps)
         note('C 号不够铺满每格 ≥1(0-0 缺 %d 个): 按能铺的最多格打, 0-0 留 %d 个' % (_short, c['SCARCE_ROOT_KEEP']))
 
     def keep_at(cc):
@@ -619,7 +681,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
     if not scarce and not any(xs.values()) and r_top > 1 and have[ROOT] - r_top < root_reserve:
         note('C 不补到 %d: 0-0 只有 %.0f 个, 本钱线 %d' % (r_top, have[ROOT], root_reserve))
     elif not scarce and not any(xs.values()) and r_top > 1:
-        short2, xs2 = fill_plan(have, r_top)
+        short2, xs2 = fill_plan(have, r_top, caps)
         left_root = have[ROOT] - r_top - 2 * xs2[ROOT]
         if short2 == 0 and left_root >= root_reserve:
             level, xs = r_top, xs2
@@ -750,10 +812,17 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
                     launch(y, c['SESSION_ROUNDS'], 'end', 'E 收尾: %d-%d 多出来的候场号成对打到底%s' % (cc + ('' if keep else '(收盘前已没有真人能走到这一格)',)))
 
     ## ── 没有陪练号能来的真人(见 A 段开头 ②): 上一级格子里有没交过手、正要在那里打一局的号 ⇒ 还可能送下来, 不判 ──
+    ## ★2026-11-01 这一格里没交过手、马上就停下来的号也不判: 打完这局正要下线的(exiting, 结算完 ~20 秒就停在这一格)/
+    ##   刚下线但排队条目还有效的(15 秒内服务端照样能配上)。原来只看空闲号 ⇒ 这 ~20 秒的窗口里会判成「没号」, 真人恰好
+    ##   这时满 1 分钟就被提前兜底, 其实再过半分钟 A 就能把它拉上来(违背「确定没号才提前」)。少见: 全周末推演改前改后
+    ##   兜底数一样; 由推演门禁 ⑰b 定点守着。
     for hid, cc in unserved:
         coming = [x for x, pc in cell_of.items() if pc in parents(cc) and not met(x, hid)
                   and (in_job(bots[x]) or x in taken or x in queued or (x in running and rounds_left(x) > 0))]
-        if not coming:
+        soon = [x for x in exiting_ids[cc] if not met(x, hid)] + \
+               [x for x, pc in cell_of.items() if pc == cc and x in queued and x not in running and not in_job(bots[x])
+                and not met(x, hid)]
+        if not coming and not soon:
             no_bot[hid] = '%d-%d 这一格和上一级都没有跟他没交过手的号' % cc
     for hid in sorted(no_bot):
         cmds.append(('nobot', hid, 0, 'nobot', no_bot[hid]))
@@ -911,6 +980,8 @@ def cfg_from_env() -> dict:
         c['OPENING_SEC'] = int(os.environ['PLANNER_OPENING_SEC'])
     if os.environ.get('MAX_PAR_OPENING'):
         c['OPENING_MAX_PAR'] = int(os.environ['MAX_PAR_OPENING'])
+    if os.environ.get('PLANNER_OPENING_FRONT', '') == '0':
+        c['OPENING_FRONT'] = False
     return c
 
 

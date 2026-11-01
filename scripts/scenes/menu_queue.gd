@@ -317,7 +317,7 @@ func _on_cancel() -> void:
 ## 主按钮排队态: 回排队屏(不经过选龟)。点下去那一刻**再判一次**会话还在排队(R7: 刚好收盘 / 刚好出队)。
 func _on_hero_tap() -> void:
 	if not locked():
-		refresh()
+		_refresh_soon()
 		return
 	opens += 1
 	open_queue.call(menu.get_tree())
@@ -349,7 +349,20 @@ func _bind() -> void:
 
 
 func _on_changed() -> void:
-	refresh()
+	_refresh_soon()
+
+
+## 锁态一变 = page_box 整排 remove_child 重建, 而取消键 / 主按钮排队态就在 page_box 里。
+## ★不许在按钮回调里同步重建(2026-11-01): 会话发不出取消请求时 `cancel_queue` 当场 `_to(ST_LEFT)` 发 changed ——
+##   同步重建会把手指还按着的取消键摘下树(帧末才释放), 紧跟着的触摸抬起在 iOS 上报
+##   「!is_inside_tree() @ can_process」(tests/verify_touch_detach_on_release.gd ⑥a)。
+##   ⇒ 推到下一帧开头(process_frame), 那时这一帧的输入早已派完; 同一帧里响几次也只重画一次。
+func _refresh_soon() -> void:
+	if not is_instance_valid(menu) or not menu.is_inside_tree():
+		return
+	var tr: SceneTree = menu.get_tree()
+	if not tr.process_frame.is_connected(refresh):
+		tr.process_frame.connect(refresh, CONNECT_ONE_SHOT)
 
 
 func _on_tick() -> void:

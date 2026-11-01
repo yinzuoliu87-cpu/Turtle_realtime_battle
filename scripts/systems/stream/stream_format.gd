@@ -70,6 +70,9 @@ const RES_OTHER := 5              # 其它无路径资源: + 类名
 const RES_GEN := 6
 ## S3: 伪节点类名(NODE_NEW 的类名是它 ⇒ 不是引擎类, 手机按它开对应的全屏演出; 见 StreamRecorder._screen_fx)
 const FX_TS_SCREEN := "@ts_screen"
+## 2026-11-01: 「float」事件第 8 个参数(下标 7)= 冒字那一刻的 `_t`(双精度; 与这一步的全局 `t` 相同时不带)。
+##   老播放器只读前 7 个, 新播放器读到老流(没有它)就用这一步的 `t` —— 两头兼容, 格式不升。见 StreamRecorder.ev / StreamPlayer._event。
+const FLOAT_T_ARG := 7
 const GEN_META := &"stream_gen"
 const GEN_FULL := 1
 const GEN_DELTA := 2
@@ -107,6 +110,9 @@ const T_F1Q := 22                 # v4: 浮点数组整份 —— varint 个数 
 const T_F1QD := 23                # v4: 浮点数组差分 —— 每个元素「线性外推 + 残差」的残差串(`f1_encode` / `f1_decode`, 死区同点数组)
 
 const Q_POS := 128.0
+## 2026-11-01: 单位字段 `@mp`(两次采样中间那一步的真位置)只在它离直线中点超过这么多像素时才发 —— 门禁 verify_stream_parity
+##   拿它当插值硬顶(手机中间步与服务器差 ≤ MID_TOL)。老播放器不认 `@mp`(当一个没人读的代理键), 照旧直线插, 格式不升。
+const MID_TOL := 1.0
 const Q_ROT := 1024.0
 const Q_SCALE := 4096.0
 const Q_COL := 255.0

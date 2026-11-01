@@ -125,6 +125,9 @@ func res_def(rid: int, kind: int, a, b, c) -> void:
 
 func res_set(rid: int, props: Array) -> void:
 	var r = res.get(rid)
+	if r == null:
+		## keyframe 里: 录流器先补这一步的改动、再整份重定义(见 StreamRecorder._keyframe_nodes) ⇒ 这时它还在上一段的表里
+		r = _res_prev.get(rid)
 	if r != null:
 		_apply_props(r as Object, props, rid)
 
