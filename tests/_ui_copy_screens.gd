@@ -119,6 +119,8 @@ static func _backend(on: bool, st: String) -> void:
 	if _key0 == null:
 		_key0 = ProjectSettings.get_setting(SB.SETTING_KEY, "")
 	SB._session_lost = false
+	## 存档冲突是进程级状态: 「设置·冲突」那屏造出来之后, 后面每一屏(含另一比例的主菜单)都会挂着冲突提示 ⇒ 每屏重置
+	SB._save_conflict_rev = -1
 	if on:
 		OS.set_environment(SB.ENV_URL, "https://example.invalid")
 		ProjectSettings.set_setting(SB.SETTING_KEY, "sb_publishable_forshot")
@@ -153,10 +155,12 @@ static func make(name: String) -> Node:
 static func post(name: String, n: Node) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	match name:
+		## ★页签 id 是 CodexScene.TABS 里那个(equips / synergies) —— 原来写成 equip / synergy, 图鉴照单清空列表、
+		##   一行都不加 ⇒ 这两屏一直拍的是空列表, 文案门禁在这两页是空跑(2026-11-01 实拍才看出来)。
 		"codex_equip":
-			n._switch_tab("equip")
+			n._switch_tab("equips")
 		"codex_synergy":
-			n._switch_tab("synergy")
+			n._switch_tab("synergies")
 		"codex_status":
 			n._switch_tab("status")
 		"settings_delete":
@@ -215,13 +219,23 @@ static func layout_issues(root: Node, items: Array, vp: Rect2) -> Array:
 				continue
 			if scope != "" and not (pa.begins_with(scope) and pb.begins_with(scope)):
 				continue
-			## RichTextLabel 的排版在绘制时才定(无头不绘制), 量不准 ⇒ 不进重叠比对(字照样过文案判据); 版面留给实拍
-			if str(items[i]["cls"]) == "RichTextLabel" or str(items[j]["cls"]) == "RichTextLabel":
+			## RichTextLabel: 只有 fit_content 的才进比对 —— 它的框跟着内容走(进树即按内容定高), 框就是字占的范围;
+			##   不撑高的那种框是外面给的, 量不出字到哪 ⇒ 仍跳过(字照样过文案判据)。
+			## ★2026-11-01 之前一律跳过 ⇒ 图鉴状态页「两行说明压住『来源』」量到了两个矩形却没报(实拍才看出来)。
+			if not (_rtl_measurable(items[i]) and _rtl_measurable(items[j])):
 				continue
 			var ov := (ext[i] as Rect2).intersection(ext[j] as Rect2)
 			if ov.size.x > 1.5 and ov.size.y > 1.5:   # 窄字形(「i」只有 3px 宽)也要算
 				out.append("重叠 「%s」×「%s」" % [_one(str(items[i]["text"])).left(30), _one(str(items[j]["text"])).left(30)])
 	return out
+
+
+## 一句字能不能拿框比重叠: Label / Button 恒能(text_extent 量字形); RichTextLabel 只有 fit_content 的能。
+static func _rtl_measurable(it: Dictionary) -> bool:
+	if str(it["cls"]) != "RichTextLabel":
+		return true
+	var c = (Engine.get_main_loop() as SceneTree).root.get_node_or_null(NodePath(str(it["path"])))
+	return c is RichTextLabel and (c as RichTextLabel).fit_content
 
 
 ## 一句字在屏上真正占的矩形(Label / Button: 量字宽 + 字号高 + 对齐; RichTextLabel: 内容宽高; 其余: 控件框)。

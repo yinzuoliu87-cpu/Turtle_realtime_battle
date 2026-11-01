@@ -1507,7 +1507,7 @@ func _empty_text() -> String:
 		EK_WAIT:
 			return "正在载入"
 		EK_UNREACHABLE:
-			return "无法连接服务器\n请检查网络连接"
+			return "无法连接服务器。\n请检查网络连接后重试。"
 		EK_NOT_SEATED:
 			return "%s 公布分组" % _P2C.local_hhmm(feed_week() + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
@@ -2802,7 +2802,7 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 		"update_required":
 			return "当前版本过低，请更新游戏"
 		"net", "bad_body":
-			return "无法连接服务器，请稍后重试"
+			return "无法连接服务器。请检查网络连接后重试。"
 	return "对手阵容加载失败，请稍后重试"
 
 

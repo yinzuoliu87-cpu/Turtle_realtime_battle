@@ -787,8 +787,8 @@ scripts/scenes/BracketMapScene.gd|lit|已产生的组冠军（%d/%d）
 scripts/scenes/BracketMapScene.gd|lit|开始对战
 scripts/scenes/BracketMapScene.gd|lit|当前版本过低，请更新游戏
 scripts/scenes/BracketMapScene.gd|lit|待定
-scripts/scenes/BracketMapScene.gd|lit|无法连接服务器\n请检查网络连接
-scripts/scenes/BracketMapScene.gd|lit|无法连接服务器，请稍后重试
+scripts/scenes/BracketMapScene.gd|lit|无法连接服务器。\n请检查网络连接后重试。
+scripts/scenes/BracketMapScene.gd|lit|无法连接服务器。请检查网络连接后重试。
 scripts/scenes/BracketMapScene.gd|lit|本周仅 1 名组冠军，直接夺冠\n%s
 scripts/scenes/BracketMapScene.gd|lit|本周决赛日取消\n晋级人数不足（%d 人），晋级记录保留
 scripts/scenes/BracketMapScene.gd|lit|本周未晋级决赛日
@@ -1022,7 +1022,10 @@ scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|晋级者参加周日决赛日
 scripts/scenes/MainMenuScene.gd|lit|晋级闯关赛
 scripts/scenes/MainMenuScene.gd|lit|本周对战 %d/%d
+scripts/scenes/MainMenuScene.gd|lit|本周积分赛已截止。下周二开始新一轮。
+scripts/scenes/MainMenuScene.gd|lit|本周积分赛已截止。闯关赛周六开始。
 scripts/scenes/MainMenuScene.gd|lit|本周赛程
+scripts/scenes/MainMenuScene.gd|lit|本大轮已出局
 scripts/scenes/MainMenuScene.gd|lit|本大轮首战后解锁
 scripts/scenes/MainMenuScene.gd|lit|条生命
 scripts/scenes/MainMenuScene.gd|lit|查看对阵图
@@ -1129,7 +1132,7 @@ scripts/scenes/RecordScene.gd|lit|负
 scripts/scenes/RecordScene.gd|lit|载入中
 scripts/scenes/RecordScene.gd|lit|野生
 scripts/scenes/RecordScene.gd|lit|首领
-scripts/scenes/RecordScene.gd|text|暂无对局记录
+scripts/scenes/RecordScene.gd|text|完成一场对战后，记录会显示在这里。
 scripts/scenes/RecordScene.gd|text|暂无战绩
 scripts/scenes/RecordScene.gd|text|胜
 scripts/scenes/RecordScene.gd|text|负
@@ -2048,7 +2051,8 @@ scripts/scenes/codex/status_sources.gd|lit|霰弹贝古053
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备
-scripts/scenes/codex/synergy_view.gd|lit|激活 %s 件   ·   现有装备 %d 件
+scripts/scenes/codex/synergy_view.gd|lit|激活：%s 件
+scripts/scenes/codex/synergy_view.gd|lit|现有装备：%d 件
 scripts/scenes/codex/synergy_view.gd|lit|羁绊效果
 scripts/scenes/feedback_panel.gd|lit|其他
 scripts/scenes/feedback_panel.gd|lit|已提交
@@ -2610,6 +2614,7 @@ scripts/util/keyboard_bar.gd|lit|完成
 scripts/util/skill_text.gd|lit|(?:\\s*外加[^，。；\\n]{0,50}?)?)[^，。；\\n（]{0,4}?生命值)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
 scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)(?:圣光)?护盾(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:治疗效果提升|受到的治疗)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:魔法穿透|魔抗穿透|法穿)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:龟能充能|充能速度)(?!<)
@@ -2631,7 +2636,6 @@ scripts/util/skill_text.gd|lit|(?<!\">)射程(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)恐惧(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)护甲(?!穿透|<)
 scripts/util/skill_text.gd|lit|(?<!\">)护甲穿透(?!<)
-scripts/util/skill_text.gd|lit|(?<!\">)护盾(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)攻击力(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)攻击速度(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)时停(?!止|<)

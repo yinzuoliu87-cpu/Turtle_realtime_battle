@@ -125,7 +125,7 @@ func _t_opponent_gate() -> void:
 		t_used.find("3") >= 0 and t_used.find("每轮仅可查看") >= 0, t_used)
 	var t_net := SCENE.opponent_tip({"ok": false, "reason": "net"}, true)
 	_ok("⑥ 连不上 ⇒ 让他再点一次(可恢复的要说得出怎么恢复)",
-		t_net.find("稍后重试") >= 0, t_net)
+		t_net.find("后重试") >= 0, t_net)
 	var t_out := SCENE.opponent_tip({"ok": false, "reason": "not_in_bucket"}, true)
 	_ok("⑥ ★四种 reason 说的不是同一句话(混成「取不到」等于没说)",
 		t_used != t_net and t_net != t_out and t_used != t_out,

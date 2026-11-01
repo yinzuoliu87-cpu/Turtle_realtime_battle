@@ -165,7 +165,8 @@ func _ready() -> void:
 		##   与第二行右边的链接) ⇒ 只有周六锁着时第三格是去处; 周日锁不锁都量「== 今天那张的时间」。
 		var tinfo: Dictionary = mm.week_card_info(want_today, ts)
 		var l3: String = str(mm.mode_card_lines(ts)[2])
-		if mm.mode_card_locked(ts) and str(mm._mode_locked_door(ts)) == str(mm.WEEK_DOOR_BOARD):
+		## ★2026-11-01 闯关赛已出局(卡不锁)也指观战去处 ⇒ 量「去处是不是看赛况那扇」, 不再要求卡锁着
+		if str(mm._mode_locked_door(ts)) == str(mm.WEEK_DOOR_BOARD):
 			_ok("%s ★模式卡锁着 ⇒ 第三格是观战去处(与 `_mode_locked_door` 同一扇)" % tag, l3 == str(mm.MODE_WATCH_BOARD), "%s / %s" % [l3, mm.MODE_WATCH_BOARD])
 		else:
 			_ok("%s ★今天那张的时间 == 模式卡倒计时那一行" % tag, str(tinfo["time"]) == l3, "%s / %s" % [tinfo["time"], l3])

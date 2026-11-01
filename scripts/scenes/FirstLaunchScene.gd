@@ -54,6 +54,8 @@ const TXT_NAME_TITLE := "输入昵称"
 const TXT_NAME_OK := "确认"
 ## 节点名(门禁 / 模拟号驱动按名字找, 不抄文案)。
 const N_SKIP := "SkipIntro"
+## 背后那场战斗的顶栏(血条 + 名字头像 + 网络格)底边约 112 ⇒ 「跳过」从它下面开始
+const SKIP_TOP := 118.0
 const N_CAPTION := "Caption"
 const N_TITLE := "IntroTitle"
 const N_NAME_BOX := "NamingBox"
@@ -123,6 +125,17 @@ func _ready() -> void:
 		_show_page(0, true)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
+
+
+## 背景截图在窄屏上整张显示时, 上下各留多高的暗边(宽屏铺满 = 0)。
+func _letterbox_band(vp: Vector2) -> float:
+	var t: TextureRect = _bg_a
+	if t == null or t.texture == null:
+		return 0.0
+	var ta: float = float(t.texture.get_width()) / maxf(1.0, float(t.texture.get_height()))
+	if vp.x / maxf(1.0, vp.y) >= ta - 0.01:
+		return 0.0
+	return (vp.y - vp.x / ta) * 0.5
 
 
 func _mk_bg() -> TextureRect:
@@ -195,8 +208,19 @@ func _layout() -> void:
 	var vp: Vector2 = get_viewport_rect().size
 	var sm: Vector4 = SafeArea.margins(vp, 16.0)
 	## 「跳过」右上, 吃 44pt 触摸线(81 视口像素)。
+	## ★放在战斗顶栏下面(SKIP_TOP): 贴屏顶时压住对面的名字 / 头像 / 血条尾(2026-11-01 实拍两比例都压)。
 	_skip.size = SKIP_SIZE
-	_skip.position = Vector2(vp.x - sm.z - _skip.size.x, sm.y)
+	_skip.position = Vector2(vp.x - sm.z - _skip.size.x, maxf(sm.y, SKIP_TOP))
+	## 窄屏(背景上下留暗边, 见下)⇒ 上面那条暗边放得下就放进去, 不压截图
+	var band: float = _letterbox_band(vp)
+	if band >= sm.y + SKIP_SIZE.y:
+		_skip.position.y = sm.y
+	## 背景是手机比例(1560×720)的真实画面截图: 屏比它窄(4:3 iPad)时「铺满」会裁掉左右, 截图里的血条 / 两侧单位卡
+	##   只剩半截, 像画面坏了(2026-11-01 实拍)⇒ 窄屏改成整张完整显示、上下留暗边; 宽屏照旧铺满。
+	for t in [_bg_a, _bg_b]:
+		if t != null and t.texture != null:
+			var ta: float = float(t.texture.get_width()) / maxf(1.0, float(t.texture.get_height()))
+			t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED if vp.x / maxf(1.0, vp.y) < ta - 0.01 else TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_shade.size = Vector2(vp.x, vp.y * 0.42)
 	_shade.position = Vector2(0.0, vp.y * 0.58)
 	_title.size = Vector2(vp.x, 90.0)

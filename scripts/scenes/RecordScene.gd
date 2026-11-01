@@ -121,7 +121,8 @@ func _ready() -> void:
 		e1.add_theme_color_override("font_color", Color("#c7b489"))
 		eb.add_child(e1)
 		var e2 := Label.new()
-		e2.text = "暂无对局记录"
+		## 第二行原来是「暂无对局记录」, 与上一行说的是同一件事 ⇒ 改成说什么时候会有
+		e2.text = "完成一场对战后，记录会显示在这里。"
 		e2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		e2.add_theme_font_size_override("font_size", 12)
 		e2.add_theme_color_override("font_color", Color("#77889a"))

@@ -65,9 +65,13 @@ func show(st: Dictionary) -> void:
 	col.add_theme_constant_override("separation", 8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.detail.add_child(col)
-	rt.resized.connect(func() -> void:
+	## ★正文进树那一刻就按内容定了高(两行说明 = 60px), 之后不会再 resized ⇒ 只挂信号的话「来源」块永远停在一行的位置,
+	##   压在第二行上(2026-11-01 实拍: 灼烧「…降到 0 层时 / 消失。」与「来源」叠在一起)。先按当前高度摆一次, 再挂信号跟后续变化。
+	var place := func() -> void:
 		if is_instance_valid(col) and is_instance_valid(rt):
-			col.position.y = rt.position.y + rt.size.y + 20.0)
+			col.position.y = rt.position.y + rt.size.y + 20.0
+	place.call()
+	rt.resized.connect(place)
 
 	var srcs: Array = StatusSources.sources_of(str(st.get("id", "")))
 	_section(col, "来源")

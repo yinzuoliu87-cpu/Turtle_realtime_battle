@@ -102,7 +102,9 @@ func show(item: Dictionary) -> void:
 	var thresh := ""
 	for i in range(tiers.size()):
 		thresh += ("" if i == 0 else " / ") + str(int(tiers[i]))
-	host._add_text(130, 88, "激活 %s 件   ·   现有装备 %d 件" % [thresh, members.size()], 16, color, 0.0, 0.5, true)
+	## 两件事各占一行(文案规则 2: 不拿「·」把两个读数拼成一行)
+	host._add_text(130, 80, "激活：%s 件" % thresh, 16, color, 0.0, 0.5, true)
+	host._add_text(130, 104, "现有装备：%d 件" % members.size(), 16, color, 0.0, 0.5, true)
 
 	## 逐档: 左列「N 件」, 右列一条一行。
 	var y := 132.0

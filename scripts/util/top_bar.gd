@@ -107,6 +107,11 @@ func _fit_to_viewport() -> void:
 	var px: float = (p as Control).global_position.x if p is Control else 0.0
 	bar.position.x = -px
 	bar.size.x = w
+	## ★2026-11-01 竖直方向也贴屏顶(只在父节点是 UIFrame 设计框时): 4:3(iPad)上设计框整体下移 120,
+	##   栏跟着下移 ⇒ 栏上面露出一条背景, 像页面没铺好(实拍排行榜 / 战绩 / 设置 / 好友 / 赛况 / 训龟大师六屏都这样)。
+	##   商业手游的标题栏一律贴顶, 只有下面的内容居中。16:9 / 更宽的屏上框的竖直偏移是 0 ⇒ 逐字节不变。
+	if p is UIFrame:
+		bar.position.y = -(p as Control).global_position.y
 	for i in range(mini(action_btns.size(), _right_off.size())):
 		if float(_right_off[i]) <= 0.0 or not is_instance_valid(action_btns[i]):
 			continue

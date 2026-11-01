@@ -38,7 +38,6 @@ const ALLOW_DOT := [
 	["^\\S+ · (技能|被动|攻击)$", "图鉴状态页来源: 技能名 · 技能类别"],
 	["^版本 v\\S+ · 玩家 ID \\S+$", "设置页底栏: 版本与玩家 ID 两个并列字段"],
 	["^当前版本 \\S+　·　最低版本 \\S+$", "版本墙: 两个并列字段"],
-	["^激活 \\S+ 件\\s+·\\s+现有装备 \\d+ 件$", "羁绊页: 两个并列读数"],
 ]
 
 ## 源码字面量里允许带「·」的(文件|原文 → 理由)。只认这些; 新加一句带「·」的要在这里写理由。
@@ -64,7 +63,6 @@ const ALLOW_DOT_LIT := {
 	"scripts/scenes/codex/detail_views.gd|被动 · %s": "技能类别 · 名字",
 	"scripts/scenes/codex/status_page.gd|%s · 技能": "来源: 龟名 · 技能类别",
 	"scripts/scenes/codex/status_page.gd|%s · 被动": "来源: 龟名 · 技能类别",
-	"scripts/scenes/codex/synergy_view.gd|激活 %s 件   ·   现有装备 %d 件": "两个并列读数",
 	"scripts/scenes/version_wall.gd|当前版本 %s　·　最低版本 %s": "两个并列字段",
 }
 
@@ -193,7 +191,8 @@ func _t_screens() -> void:
 			add_child(n)
 			await SC.settle(1.6)
 			await SC.post(str(nm), n)
-			await SC.settle(0.5)
+			## 切页签会重播列表 / 详情滑入(延迟 0.25 + 0.42 秒, 带回弹): 等 0.5 秒量到的是回弹到一半的位置
+			await SC.settle(1.2)
 			var vp := Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)
 			var items := TP.collect(get_tree().root, vp)
 			var tag := "%s/%s" % [nm, sz[0]]

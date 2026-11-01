@@ -179,9 +179,12 @@ func block_card(msg: String, door: Array) -> void:
 
 ## 锁着的模式卡点下去去哪: 闯关赛 ⇒ 全场赛况; 决赛日(玩法上线) ⇒ 对阵图; 没锁 / 别的阶段 ⇒ ""(照旧开赛程页)。
 func locked_door(now: int) -> String:
+	var ph: String = _P2.phase_at_utc(now)
+	## 闯关赛已出局: 这周已经没有可打的了, 收盘倒计时与他无关(原来写「距截止 1 天 5 小时」)⇒ 与没资格的人同一个去处
+	if ph == _P2.PHASE_GAUNTLET and str(GameState.gauntlet_state()) == _P2.GAUNTLET_OUT:
+		return menu.WEEK_DOOR_BOARD
 	if not menu.mode_card_locked(now):
 		return ""
-	var ph: String = _P2.phase_at_utc(now)
 	if ph == _P2.PHASE_GAUNTLET:
 		return menu.WEEK_DOOR_BOARD
 	if ph == _P2.PHASE_FINALS and menu._finals_live():

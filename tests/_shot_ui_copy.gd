@@ -34,7 +34,8 @@ func _ready() -> void:
 			add_child(n)
 			await SC.settle(1.6)
 			await SC.post(str(nm), n)
-			await SC.settle(0.5)
+			## 切页签会重播列表 / 详情滑入(延迟 0.25 + 0.42 秒, 带回弹): 等 0.5 秒量到的是回弹到一半的位置
+			await SC.settle(1.2)
 			var vp := Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)
 			var items := TP.collect(get_tree().root, vp)
 			var lay := SC.layout_issues(get_tree().root, items, vp)
