@@ -1306,7 +1306,7 @@ func _gauntlet_status_line(now: int = 0) -> String:
 	if not _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return ""
 	if not GameState.gauntlet_eligible():
-		return "闯关赛 · 未晋级"
+		return "闯关赛未晋级"
 	var w: int = int(GameState.gauntlet_wins)
 	var l: int = int(GameState.gauntlet_losses)
 	var lab: String = _P2C.gauntlet_label(w, l)
@@ -1315,11 +1315,11 @@ func _gauntlet_status_line(now: int = 0) -> String:
 	##   模式卡这一行定宽, 那条长尾折行后中间一段被裁掉(实拍两比例都读不全), 而且「折算」是运营词。
 	##   ⇒ 这件事改由积分赛收盘后第一次进主菜单弹的那张卡说(WeekCloseCard.KIND_RANKED_IN), 这一行只留战绩读数。
 	if st == _P2C.GAUNTLET_IN:
-		return "闯关赛 %s · 已晋级决赛日" % lab
+		return "闯关赛已晋级决赛日（%s）" % lab
 	if st == _P2C.GAUNTLET_OUT:
-		return "闯关赛 %s · 已出局" % lab
-	return "闯关赛 %s · 晋级还需 %d 胜 / 剩余 %d 负" % [
-		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l)]
+		return "闯关赛已出局（%s）" % lab
+	return "闯关赛胜场 %d/%d　负场 %d/%d" % [
+		w, int(_P2C.GAUNTLET_WINS_IN), l, int(_P2C.GAUNTLET_LOSSES_OUT)]
 
 
 ## 周日那一行读数。返回**空串 = 今天不是决赛日**。
@@ -1346,14 +1346,14 @@ func _finals_status_line(now: int = 0) -> String:
 	if not _P2C.phase_mode_live(_P2C.PHASE_FINALS):
 		return ""
 	if GameState.gauntlet_state() == _P2C.GAUNTLET_IN:
-		return "决赛日 · %s" % _wk().fd.entered_word(ts)   # 已晋级 / 已晋级冠军杯赛 / 已止步 / 本周冠军(跟着赛果走)
+		return "决赛日 %s" % _wk().fd.entered_word(ts)   # 已晋级 / 已晋级冠军杯赛 / 已止步 / 本周冠军(跟着赛果走)
 	var lab: String = _P2C.gauntlet_label(
 		int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if GameState.gauntlet_eligible():
 		## ★打过闯关赛但没打进 —— **不许说他「没晋级」**(周一~五刚夸过他已过晋级线),
 		##   与 `finals_block_msg(false, true)` 同一个口径。
-		return "决赛日 · 闯关赛止步 %s" % lab
-	return "决赛日 · 未晋级"
+		return "决赛日 闯关赛止步 %s" % lab
+	return "决赛日 未晋级"
 
 
 ## 今天这一天该在状态行里显示哪一段。空串 = 照旧显示积分赛那一行(命 + 本周配额)。
@@ -1660,7 +1660,7 @@ func _mode_countdown(now: int) -> String:
 		BK_COUNTDOWN:
 			return "距截止 %s" % _left_text(left)
 		BK_LOCKED:
-			return "已截止 · 停止匹配"
+			return "已截止"
 		BK_CLOSED_TODAY:
 			return "今日已截止"
 		BK_BRACKET_DOOR:
@@ -2188,13 +2188,13 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 			_P2C.PHASE_RANKED:
 				if GameState.is_eliminated():
 					info["locked"] = true
-					info["lock_text"] = "生命已耗尽 · 下周二可参加"
+					info["lock_text"] = "生命已耗尽，下周二可参加"
 			_P2C.PHASE_GAUNTLET:
 				if live and not (GameState.gauntlet_eligible() or GameState.gauntlet_line_reached()):
 					info["locked"] = true
 					## 胜场够了但生命耗尽(2026-10-03 S13: 14 胜的人被告知「打够 11 胜就能来」)
 					if GameState.is_eliminated() and int(GameState.season_wins) >= int(_P2C.PROMOTE_WINS):
-						info["lock_text"] = "积分赛生命耗尽 · 本周无法参加"
+						info["lock_text"] = "积分赛生命耗尽，本周无法参加"
 					else:
 						info["lock_text"] = "积分赛 %d 胜可参加" % int(_P2C.PROMOTE_WINS)
 			_P2C.PHASE_FINALS:

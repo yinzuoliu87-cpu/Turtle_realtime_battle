@@ -230,16 +230,16 @@ func _account_panel(x: float, w: float) -> void:
 		primary = "BtnConflict"
 	elif mail != "":
 		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
-		status = "已绑定 · %s" % mail
+		status = "已绑定：%s" % mail
 		status_col = "#7fe0b0"
-		note = "云端同步已开启 · 可在其他设备登录恢复进度"
+		note = "云端同步已开启，可在其他设备登录恢复进度"
 	else:
 		## ★匿名号**不**同步(隐私政策承诺过只有绑定者才上传) ⇒ 两种状态说的话不一样。
 		## ★★「存档」两个字不许出现在这里(2026-09-21): 匿名态绑邮箱之前什么都没上云,
 		##   承诺「取回存档」是一件做不到的事(`verify_account` ④ FALSE_PROMISE 守着)。
-		status = "未绑定邮箱 · 更换设备后无法恢复进度"
+		status = "未绑定邮箱"
 		status_col = "#ffb454"
-		note = "绑定后同步云端进度"
+		note = "更换设备后无法恢复进度"
 		primary = "BtnBind"
 
 	var p := _frame_panel(x, _TOP, w, _BOT - _TOP)
@@ -1217,7 +1217,7 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 		## ★★昵称(只有绑定流程要填)。用户 2026-09-24:「这个在创建账号应该一起吧」——
 		##   这个项目里玩家感知得到的「创建账号」只有这一处(首启建匈名号是**静默**的)。
 		##   取回流程不填: 那个号已经有昵称了, 跟着账号一起回来。
-		_email_hint1 = "设置昵称（%d~%d 个字）· 显示于排行榜，可随时修改" % [
+		_email_hint1 = "设置昵称（%d~%d 个字）。昵称显示于排行榜，可随时修改。" % [
 			_P2C.NICK_MIN, _P2C.NICK_MAX]
 		_nick_edit = LineEdit.new()
 		_nick_edit.placeholder_text = "输入昵称"
@@ -1656,7 +1656,7 @@ func _ask_reset() -> void:
 	## ★★原文案里**带着字面量 `**`**(`**此操作不可撤销。**`) —— 那是 Markdown 的粗体语法,
 	##   Label 不解析它, 屏幕上就是四个星号。写文案的人当时在写文档不是在写 UI。
 	## ★「此操作不可撤销」是条款腔; 玩家要听的是「清了就拿不回来」。
-	msg.text = ("会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n"
+	msg.text = ("将清空：深海币、背包装备、出战统领、赛季进度（生命、等级、胜场）、糖果罐、布阵。\n"
 		+ "此操作不可撤销。音量、画面设置不受影响。")
 	msg.add_theme_font_size_override("font_size", 15)
 	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
@@ -1980,7 +1980,7 @@ func _open_rename_dialog() -> void:
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)
 	var rule := Label.new()
-	rule.text = "%d~%d 个字 · 显示于排行榜" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
+	rule.text = "%d~%d 个字，显示于排行榜" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
 	rule.add_theme_font_size_override("font_size", 13)
 	rule.add_theme_color_override("font_color", Color("#9fb4c8"))
 	rule.position = Vector2(0, 56); rule.size = Vector2(520, 22)

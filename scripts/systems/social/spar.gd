@@ -25,7 +25,7 @@ const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
 const FRIENDS_SCENE := "res://scenes/Friends.tscn"
 ## 2026-10-30 排行榜上也能切磋(方案书 docs/plans/20261030-排行榜切磋.md): 对方信息带 `back` ⇒ 结算屏回那一页。
 const LEADERBOARD_SCENE := "res://scenes/Leaderboard.tscn"
-const SUBTITLE := "切磋 · 不计入赛季进度"
+const SUBTITLE := "切磋不计入赛季进度。"
 
 ## 正在切磋(从 `begin` 到离开战斗场)。
 static var active := false

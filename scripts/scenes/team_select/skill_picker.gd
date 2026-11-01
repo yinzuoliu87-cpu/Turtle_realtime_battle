@@ -152,7 +152,7 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 		if is_fixed:
 			btn.disabled = false
 			var pi2 = pid
-			btn.pressed.connect(func() -> void: host._flash_status("固有技能 · 不可更换"))
+			btn.pressed.connect(func() -> void: host._flash_status("固有技能不可更换"))
 		elif dev_locked:
 			btn.disabled = false
 			## ★与 tooltip / 角标同一句口径(上面 dev_locked 那支有为什么不提"开发中/打磨"的说明)。

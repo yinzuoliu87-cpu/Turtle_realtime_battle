@@ -27,7 +27,7 @@ const TITLE := "问题反馈"
 const PLACEHOLDER := "问题描述（必填，500 字以内）"
 const MSG_SENDING := "提交中"
 const MSG_OK := "已提交"
-const MSG_FAIL := "提交失败，请检查网络后重试"
+const MSG_FAIL := "提交失败。请检查网络连接后重试。"
 ## [代码, 界面文字]
 const KINDS := [
 	[NET.KIND_CRASH, "闪退 / 卡顿"],

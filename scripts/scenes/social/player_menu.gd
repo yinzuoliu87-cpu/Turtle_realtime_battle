@@ -37,7 +37,7 @@ const ENTRY := "PlayerMenuEntry"
 
 const L_FRIEND := "加好友"
 const L_SPAR := "切磋"
-const MSG_SPAR_LOADING := "正在读取对方阵容"
+const MSG_SPAR_LOADING := "正在载入对方阵容"
 const L_REPORT := "举报昵称"
 const L_BLOCK := "拉黑"
 const L_UNBLOCK := "移出黑名单"
@@ -49,9 +49,9 @@ const MSG := {
 	RPT.R_DUP: "24 小时内已举报过该玩家",
 	RPT.R_LIMIT: "今日举报次数已达上限",
 	RPT.R_SELF: "无法举报自己",
-	RPT.R_FAIL: "举报失败，请检查网络后重试",
+	RPT.R_FAIL: "举报失败。请检查网络连接后重试。",
 }
-const MSG_BLOCKED := "已拉黑 · 昵称显示为默认昵称"
+const MSG_BLOCKED := "已拉黑，该玩家昵称显示为默认昵称"
 const MSG_UNBLOCKED := "已移出黑名单"
 const MSG_FULL := "黑名单已满"
 const MSG_FRIEND_SENT := "已发送好友申请，等待对方同意"

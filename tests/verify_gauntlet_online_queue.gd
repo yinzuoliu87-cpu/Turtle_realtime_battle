@@ -133,16 +133,19 @@ const RANKED := {
 	## ★2026-10-31 选龟页动效(用户 10-30「他们游戏是动态的」; 方案书同上 §4.9 / §4.10)再钉到 1f8baa93:
 	##   只动了 _build_ui(接上 _motion.setup)、_play_entrance(交给 TsMotion)、_build_grid_region(iPad 龟池长到屏底)三处画法;
 	##   选人 / 存档 / 出战进匹配的函数逐字未动(1f8baa93 与 b55450a2 比, 其余 69 个函数单元 sha256 相同)。
+	## ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md): 锁定提示改两行、截止提示去掉「·」——
+	##   `_build_locked_hint`(画锁定提示签)与 `_lockout_toast`(弹截止提示)只管画字, 不在选人 / 存档 / 出战进匹配的流程上,
+	##   从 units 里拿掉(70 个); 基线不动(1f8baa93), 摘要按同一口径从那次提交现算(72 → 70 个, da5ef1b1… → a5a3820f…)。
 	"scripts/scenes/TeamSelectScene.gd": {
 		"base": "1f8baa93",
-		"digest": "da5ef1b1373fb8610ba227e8e1083ca4243612dd5f6688afa41069ad5c269271",
+		"digest": "a5a3820f0e9daa30e41ad1240272506ecbd3ec87578ebbca75d759ae361e5e96",
 		"views": {},
 		"sat_only": [],
 		"units": [
-			"_add_text_shadow", "_apply_pet_idle_texture", "_build_grid_region", "_build_locked_hint", "_build_synergy_region",
+			"_add_text_shadow", "_apply_pet_idle_texture", "_build_grid_region", "_build_synergy_region",
 			"_build_ui", "_card_drag", "_close_detail_popup", "_content_band", "_content_scale", "_dark_panel", "_demo_popup",
 			"_ensure_letterbox", "_ensure_menu_bg", "_fit_background", "_fit_plank", "_flash_status", "_grow_to_touch",
-			"_input", "_is_special_mark", "_load_team", "_lockout_toast", "_make_drag_preview", "_make_rarity_badge",
+			"_input", "_is_special_mark", "_load_team", "_make_drag_preview", "_make_rarity_badge",
 			"_mark_label", "_on_back", "_on_clear_all", "_on_drop_pet", "_on_pick_pet", "_on_resize", "_on_restore_last",
 			"_on_start", "_place", "_place_clamped", "_place_status", "_plank_chip", "_plank_tint", "_play_entrance",
 			"_raise_edge_btns", "_read_last_lineup", "_ready", "_rect", "_refresh_after_team", "_refresh_all",

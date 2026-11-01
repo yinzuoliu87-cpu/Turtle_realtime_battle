@@ -25,10 +25,10 @@ const MAX_RESIM_TRIES := 2
 
 const TXT_RUNNING := "上一局结算中"
 const TXT_DONE := "上一局已结算"
-const TXT_LOSS_VERSION := "上一局判负 · 版本已更新"
-const TXT_LOSS_CRASH := "上一局判负 · 结算异常"
-const TXT_VOID_WEEK := "上一局已作废 · 已换周"
-const TXT_VOID_CRASH := "上一局已作废 · 结算异常"
+const TXT_LOSS_VERSION := "版本已更新，上一局判负"
+const TXT_LOSS_CRASH := "结算异常，上一局判负"
+const TXT_VOID_WEEK := "已进入新的一周，上一局已作废"
+const TXT_VOID_CRASH := "结算异常，上一局已作废"
 
 ## 主菜单 → 战斗场: 待复算的那一份(`ReplayRecorder.start` 取走)。{"rec", "loss", "text"}
 static var pending_resume: Dictionary = {}

@@ -322,7 +322,7 @@ func _t_b() -> void:
 	var m: Node = await _open_mmk()
 	var sent := await _submit_and_finish(m)
 	_ok("分母: 交了阵容、服务器算完", sent)
-	var tail := " · " + StreamPlayer.TXT_ERROR
+	var tail := "\n" + StreamPlayer.TXT_ERROR   # ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md): 结果一行、原因另起一行(原「结果 · 画面无法播放」)
 	await _wait(func() -> bool: return _status_text(m).ends_with(tail) or _is_battle(get_tree().current_scene), 20000)
 	_ok("B ★屏上「%s」、没进战斗场(没有本机重算)" % (RW.result_line({"won": _srv_won, "gw": _srv_gw, "gl": _srv_gl}) + tail),
 		_status_text(m) == RW.result_line({"won": _srv_won, "gw": _srv_gw, "gl": _srv_gl}) + tail

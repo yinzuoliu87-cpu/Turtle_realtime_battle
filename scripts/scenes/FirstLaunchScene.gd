@@ -358,7 +358,7 @@ func open_naming() -> void:
 	t.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(t)
 	var rule := Label.new()
-	rule.text = "%d~%d 个字 · 显示于排行榜" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
+	rule.text = "%d~%d 个字，显示于排行榜" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
 	rule.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rule.add_theme_font_size_override("font_size", 16)
 	rule.add_theme_color_override("font_color", Color("#9fb4c8"))

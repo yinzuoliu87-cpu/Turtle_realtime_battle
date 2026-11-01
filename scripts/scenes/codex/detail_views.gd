@@ -38,6 +38,11 @@ func _redraw() -> void:
 		_rerender.call()
 
 ## 形态拆出来的技能(FormVariants.pool)与小将页的合成技能, 角色 / 龟能 / 默认技都按 pets.json 里那一条认。
+## 普通攻击那一条的标题: 「攻击 · 龟派气波」; 攻击名本身就叫「攻击」时只写一次(原来出「攻击 · 攻击」, 2026-11-01 走查)。
+static func attack_head(nm: String) -> String:
+	return "攻击" if nm == "攻击" or nm == "" else "攻击 · %s" % nm
+
+
 static func _base_of(sk: Dictionary) -> Dictionary:
 	var b: Variant = sk.get("_base", null)
 	return b if b is Dictionary else sk
@@ -753,7 +758,7 @@ func _basic_attack_bar(ctx: Dictionary, bsk: Dictionary, start_y: float) -> floa
 		host._add_image(RCOL_X + 30.0, bmid, "res://assets/sprites/%s" % bic, 28, 28)
 		btx = RCOL_X + ROW_TEXT_X
 	## 「普通攻击」全称(用户 2026-10-06, 战斗信息面板 info_panel.gd 同一个词); 2026-10-08 图鉴这里漏改, 用户实拍追问。
-	host._add_text(btx, bmid, "攻击 · %s" % str(bsk.get("name", "?")), 17, "#58d3ff", 0.0, 0.5, true)
+	host._add_text(btx, bmid, attack_head(str(bsk.get("name", "?"))), 17, "#58d3ff", 0.0, 0.5, true)
 	## ★★2026-10-02: 普攻简述用 `RichTextLabel` + `render_bbcode`(与被动条/三选一卡同一种上色)。
 	## 名字 17px 的 Label 下沿在 start_y + 33(中线 19 + 估高的一半); 简述从 35 起, 不相交(门禁 F 量过 0.95px 的重叠)。
 	var brt2 := _one_line_preview(start_y + 35.0)

@@ -61,8 +61,8 @@ const CARD_GAP := 132.0            # 两张卡之间(放 VS)
 const SCAN_ROWS := [24, 39, 54, 69]
 
 const TXT_TITLE := "闯关赛  第 %d 场"
-const TXT_WIN_LEFT := "再赢 %d 场晋级决赛日"
-const TXT_LOSS_LEFT := "再输 %d 场出局"
+const TXT_WIN_LEFT := "再胜 %d 场晋级决赛日"
+const TXT_LOSS_LEFT := "再负 %d 场出局"
 const TXT_LOCKED := "已锁定"
 const TXT_TOP := "上路战场"
 const TXT_BOTTOM := "下路战场"

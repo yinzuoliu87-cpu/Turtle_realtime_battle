@@ -1126,7 +1126,7 @@ func _check_buy_feedback() -> void:
 		await get_tree().process_frame
 	var msg1 := ""
 	for l in _labels_in(sc3):
-		if str((l as Label).text).find("深海币不足 · ") >= 0:
+		if str((l as Label).text).find("深海币不足，") >= 0:   # ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md)
 			msg1 = str((l as Label).text)
 	print("     买不起(币 %d / 价 %d, 差 %d): 屏上「%s」 币 %d→%d 背包 %d→%d"
 		% [coin0, price, gap0, msg1, coin0, int(GameState.meta_deepsea_coins),

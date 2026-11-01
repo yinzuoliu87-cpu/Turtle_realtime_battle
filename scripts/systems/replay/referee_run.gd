@@ -568,7 +568,7 @@ func _fetch() -> void:
 	_ep_go("fetch")
 	_to(RW.ST_FETCH, RW.TXT_SETTLING)
 	if not RW.SB.fetch_match_async(match_id, _on_match):
-		_to(RW.ST_ERROR, RW.result_line(view) + " · " + RW.TXT_UNPLAYABLE)
+		_to(RW.ST_ERROR, RW.result_line(view) + "\n" + RW.TXT_UNPLAYABLE)
 
 func _on_match(res: Dictionary) -> void:
 	if not is_inside_tree():
@@ -580,7 +580,7 @@ func _on_match(res: Dictionary) -> void:
 		rec = ReplayRecorder.decode(raw) if not raw.is_empty() else {}
 	if rec.is_empty() or str(rec.get("id", "")) != match_id or not (rec.get("events", null) is Array) \
 			or not (rec.get("cps", null) is Array) or not (rec.get("end", null) is Dictionary):
-		_to(RW.ST_ERROR, RW.result_line(view) + " · " + RW.TXT_UNPLAYABLE)
+		_to(RW.ST_ERROR, RW.result_line(view) + "\n" + RW.TXT_UNPLAYABLE)
 		return
 	RW.RF._cache(match_id, raw, true)      # 战绩页之后能在本机直接看(true = 服务器裁判局: 永不本机重算)
 	_ep_go("done")
@@ -594,7 +594,7 @@ func _on_routed(code: String, msg: String) -> void:
 	if code == "":
 		return
 	var tail := msg if (code == "update_required" or code == "offline" or code == "no_stream") else RW.TXT_UNPLAYABLE
-	_to(RW.ST_ERROR, RW.result_line(view) + " · " + tail)
+	_to(RW.ST_ERROR, RW.result_line(view) + "\n" + tail)
 
 
 ## 裁判已开算：取种子 ⇒ VS 卡上先拉开播那几块（`_buffer`）⇒ 搬到 root ⇒ 进跟播。

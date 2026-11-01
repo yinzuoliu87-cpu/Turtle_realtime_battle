@@ -520,9 +520,12 @@ func _t_menu_gate() -> void:
 	var l_sat: String = str(menu._gauntlet_status_line(SAT + 3600))
 	var l_thu: String = str(menu._gauntlet_status_line(THU + 3600))
 	_ok("⑦ ★分母: 周四返回空串(读数只在周六接管)", l_thu == "", "「%s」" % l_thu)
-	_ok("⑦ 周六 2-1 → 带战绩标签", l_sat.find("2-1") >= 0, "「%s」" % l_sat)
-	_ok("⑦ ★★带**还差几场**(再赢 2 / 再输 2) —— 光有「2-1」不告诉玩家还剩多少机会",
-		l_sat.find("晋级还需 2 胜") >= 0 and l_sat.find("剩余 2 负") >= 0, "「%s」" % l_sat)
+	## ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md): 原「2-1 · 晋级还需 2 胜 / 剩余 2 负」用「·」拼了两件事,
+	##   改成皇室战争挑战那种「已有/门槛」读数「胜场 2/4　负场 1/3」—— 战绩与还差几场同一个数里读得出来。
+	_ok("⑦ 周六 2-1 → 带战绩(胜场 2 / 负场 1)", l_sat.find("胜场 2/") >= 0 and l_sat.find("负场 1/") >= 0, "「%s」" % l_sat)
+	_ok("⑦ ★★带**门槛**(4 胜晋级 / 3 负出局) —— 光有「2-1」不告诉玩家还剩多少机会",
+		l_sat.find("胜场 2/%d" % int(P2.GAUNTLET_WINS_IN)) >= 0 and l_sat.find("负场 1/%d" % int(P2.GAUNTLET_LOSSES_OUT)) >= 0
+		and l_sat.find("·") < 0, "「%s」" % l_sat)
 	_gs.gauntlet_wins = 4
 	_gs.gauntlet_losses = 1
 	var l_in: String = str(menu._gauntlet_status_line(SAT + 3600))

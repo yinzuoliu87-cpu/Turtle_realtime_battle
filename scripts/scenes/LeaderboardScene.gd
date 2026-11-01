@@ -245,7 +245,7 @@ const COL_INK := Color(0.04, 0.05, 0.08, 0.85)
 ##   · OFF     没配后端 ⇒ **一句承诺都不给, 也不挂"离线"角标**
 ##     (`SettingsScene.gd:103` / `remote_pool.gd:182`: 常驻的"离线"标记是反的 ——
 ##      它等于告诉玩家"你是残缺状态, 去修"。所以这一档只陈述事实, 不解释原因。)
-const HINT_ONLY_YOU_OK := "（暂无其他玩家 · 对战后更新）"
+const HINT_ONLY_YOU_OK := "（暂无其他玩家，对战后更新）"
 const HINT_ONLY_YOU_FAIL := "（无法连接服务器）"
 const HINT_ONLY_YOU_UNKNOWN := "（暂无对手数据）"
 const HINT_ONLY_YOU_OFF := "（暂无其他玩家）"
@@ -263,8 +263,8 @@ const SRC_LOCAL := "local"
 const SRC_LOADING := "loading"
 ## 正式包问不到服务端榜(2026-11-01 游戏必须联网): 一行都不画, 只有「无法连接服务器」框。
 const SRC_OFFLINE := "offline"
-const FALLBACK_MARK := "本地记录 · 非实时排名"
-const LOADING_TEXT := "正在读取本周排行…"
+const FALLBACK_MARK := "本地记录，非实时排名"
+const LOADING_TEXT := "正在载入…"
 const SB := preload("res://scripts/net/supabase.gd")
 ## 当前画的是哪一路 / 哪几行(门禁读它当分母; 屏幕上的字才是判据)。
 var source: String = ""

@@ -437,7 +437,7 @@ const PHASE_MODE_LIVE := {
 ##   ⇒ 这里只留**陈述现状**的话。两句的后半句故意一字不差
 ##     (「按积分赛的规矩打」), 那是两天共同的那条信息。
 const PHASE_PENDING_NOTE := {
-	PHASE_REST: "休赛日 · 不开放对战",
+	PHASE_REST: "休赛日不开放对战",
 	PHASE_FINALS: "规则同积分赛",
 }
 
@@ -1201,7 +1201,7 @@ const TITLE_ORDER := [TITLE_CHAMPION, TITLE_RUNNER_UP, TITLE_SEMIFINAL, TITLE_GR
 ## ★不承诺具体秒数: 揭晓时刻由服务端的轮次推进决定(`finals_round_sec`),
 ##   客户端说死一个数就会变成"说了做不到的事"。
 static func finals_sealed_sub() -> String:
-	return "双方同时开赛 · 结果于本轮开播时公布\n可在对阵图查看"
+	return "双方同时开赛，结果于本轮开播时公布。\n可在对阵图查看。"
 
 
 ## 这一档现在拿得到吗。★冠军/四强要周日玩法上线 —— 与门那一套同一条闸。
@@ -1737,18 +1737,18 @@ static func login_wall_on(backend_on: bool, email: String) -> bool:
 ## ★不许退回成拦路: 它就是主菜单上一个可点元素, 点了去绑定屏, 不点照常玩。
 ## ★字**只在这一处**, 主菜单不自己拼 —— 抄一次永远落后一次。
 static func save_conflict_nudge_text() -> String:
-	return "处理存档冲突 · 云端同步已暂停"   # 与设置页那颗键「处理存档冲突」同一个说法
+	return "云端同步已暂停，请处理存档冲突"   # 与设置页那颗键「处理存档冲突」同一个说法
 
 
 static func bind_nudge_text() -> String:
-	return "绑定账号 · 保存进度"   # 2026-10-06 原「进度没备份 · 绑定邮箱」口语; 照使命召唤手游「LINK TO SOCIAL ACCOUNT」
+	return "绑定账号，保存进度"   # 2026-10-06 原「进度没备份 · 绑定邮箱」口语; 照使命召唤手游「LINK TO SOCIAL ACCOUNT」
 
 
 ## 绑定屏第一屏说什么。
 ## ★★★ 2026-09-29 换掉「绑定邮箱才能开始」—— **那句话本身就是假的**:
 ##   不绑也能开始(见本节头注那三道闸)。现在标题只说**绑了买到什么**。
 static func login_wall_head() -> String:
-	return "绑定邮箱 · 跨设备同步进度"
+	return "绑定邮箱，跨设备同步进度"
 
 
 ## 绑定屏上那段话。★**一行一句、按步分发**: 第一步印前面那些, 最后一句留给第二步

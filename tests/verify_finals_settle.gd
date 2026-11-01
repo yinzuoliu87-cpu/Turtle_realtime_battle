@@ -318,11 +318,11 @@ func _t_real_settle() -> void:
 	## ★2026-10-07 用户「那么上午就叫小组赛啊，晚上叫冠军杯赛」: 副标题说是哪一段(组号在待揭晓那一单上)。
 	_ok("③ ★★周日输了(连 0 命的晋级者)不写「消耗 1 点生命」/「生命已耗尽」/「赛季胜场」, 写小组赛",
 		sub3.find("生命已耗尽") < 0 and sub3.find("消耗 1 点生命") < 0 and sub3.find("赛季胜场") < 0
-			and sub3.begins_with(P2C.STAGE_GROUP + " · "), sub3)
+			and sub3.begins_with(P2C.STAGE_GROUP) and sub3.find("·") < 0, sub3)   # ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md): 整句, 不用「·」拼
 	var _pr0 = GameState.finals_pending_reveal
 	GameState.finals_pending_reveal = {"round": 1, "match": 0, "bucket": P2C.FINALS_CUP_BUCKET}
 	var sub4: String = scene._hud._result_subtitle(false, GameState)
-	_ok("③ ★★冠军杯赛那一场 ⇒ 副标题写「冠军杯赛」", sub4.begins_with(P2C.STAGE_CUP + " · "), sub4)
+	_ok("③ ★★冠军杯赛那一场 ⇒ 副标题写「冠军杯赛」", sub4.begins_with(P2C.STAGE_CUP) and sub4.find("·") < 0, sub4)
 	GameState.finals_pending_reveal = _pr0
 	GameState.week_phase = P2C.PHASE_RANKED
 	GameState.hearts = 5

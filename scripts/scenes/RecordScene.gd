@@ -46,7 +46,7 @@ const ReplayFetcher := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const Backend := preload("res://scripts/net/backend.gd")
 const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const WATCH_LABEL := "观看"
-const WATCH_BUSY := "读取中"
+const WATCH_BUSY := "载入中"
 const LIST_TITLE := "最近对局"
 ## 节点名 —— 门禁按名字找。
 const N_CARD := "RecordCard"       # + 下标

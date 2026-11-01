@@ -109,7 +109,7 @@ func build(parent: Node, x: float, y: float, w: float, compact: bool = false) ->
 		## ★★全角括号那一句改成平白的后缀(2026-09-28 去 ai 味)。
 		##   ⚠ 前半段「砍伐经验 %d/%d」**一个字都不能动** —— `verify_axe_shop_codex`
 		##     断言的就是屏幕上有「砍伐经验 40/80」这串(它是"玩家真的看得见进度"的分母)。
-		lbl.text = ("砍伐经验 %d/%d · 可最终进化" % [bar, need]) if ready \
+		lbl.text = ("砍伐经验 %d/%d（可最终进化）" % [bar, need]) if ready \
 			else ("砍伐经验 %d/%d" % [bar, need])
 		lbl.add_theme_font_size_override("font_size", fpx)
 		lbl.add_theme_color_override("font_color", Color(BAR_FULL if ready else "#9fb4c8"))

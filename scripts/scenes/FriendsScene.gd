@@ -58,9 +58,9 @@ const TXT_CANCEL := "撤回"
 const TXT_SPAR := "切磋"
 const TXT_DEL := "删除"
 const TXT_DEL_SURE := "确认删除"
-const TXT_EMPTY_FRIENDS := "暂无好友。可将玩家 ID 发给朋友，或在左侧输入对方的玩家 ID 添加。"
+const TXT_EMPTY_FRIENDS := "暂无好友"
 const TXT_EMPTY_REQS := "暂无好友申请"
-const TXT_LOADING := "正在读取…"
+const TXT_LOADING := "正在载入…"
 const TXT_NO_LINEUP := "尚未配置阵容"
 
 var _top_bar = null
@@ -351,7 +351,7 @@ func _spar(c: Dictionary) -> void:
 		_say(why)
 		return
 	_busy += 1
-	_say("正在读取对方阵容…")
+	_say("正在载入对方阵容…")
 	FN.fetch_lineup(str(c.get("account", "")), func(r: Dictionary) -> void:
 		_busy -= 1
 		if not is_inside_tree():

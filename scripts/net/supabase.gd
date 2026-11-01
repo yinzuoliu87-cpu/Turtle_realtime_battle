@@ -946,7 +946,7 @@ static func send_code_result(ok: bool, code: int, body: String) -> Dictionary:
 	if j.parse(body) == OK and j.data is Dictionary:
 		ec = str((j.data as Dictionary).get("error_code", ""))
 	if code == 0:
-		return {"ok": false, "reason": "无法连接服务器，请检查网络"}
+		return {"ok": false, "reason": "无法连接服务器。请检查网络连接后重试。"}
 	if ec == "validation_failed":
 		return {"ok": false, "reason": "邮箱格式错误"}
 	## ★发信服务还没接上时服务端回这个(官方错误码表原文: 默认发信服务只能发给组织成员)。
@@ -978,7 +978,7 @@ static func verify_code_result(ok: bool, code: int, body: String) -> Dictionary:
 	if j.parse(body) == OK and j.data is Dictionary:
 		ec = str((j.data as Dictionary).get("error_code", ""))
 	if code == 0:
-		return {"ok": false, "reason": "无法连接服务器，请检查网络", "account_id": ""}
+		return {"ok": false, "reason": "无法连接服务器。请检查网络连接后重试。", "account_id": ""}
 	if ec == "otp_expired" or code == 403:
 		return {"ok": false, "reason": "验证码错误或已过期", "account_id": ""}
 	return {"ok": false, "reason": "验证失败（%d）" % code, "account_id": ""}

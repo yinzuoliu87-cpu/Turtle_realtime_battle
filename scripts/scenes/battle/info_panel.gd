@@ -710,7 +710,7 @@ func _resource_bars(u: Dictionary) -> Array:
 			"name": "储能", "cur": se, "cap": mhp * 0.50,
 			## ★半角冒号换 `·` —— 同一块面板里两条资源的结论句必须一个写法(泡泡那条同日改),
 			##   一条带冒号一条不带, 就是"同一件事两种写法"那类不一致。
-			"hint": "释放 · 冲击波 %d + 护盾 %d" % [int(se * ShellSystem.RELEASE_DMG_PCT), int(se * ShellSystem.RELEASE_SHIELD_PCT)],   # ★10-11: 读常量(原写死 0.40, 常量 8-29 已改 0.60)
+			"hint": "释放：冲击波 %d，护盾 %d" % [int(se * ShellSystem.RELEASE_DMG_PCT), int(se * ShellSystem.RELEASE_SHIELD_PCT)],   # ★10-11: 读常量(原写死 0.40, 常量 8-29 已改 0.60)
 			"color": Color("#ffd93d"),
 		})
 
@@ -724,7 +724,7 @@ func _resource_bars(u: Dictionary) -> Array:
 			##   ①「结算」是后台词(它在这个项目里还专指战斗结束那一屏 ⇒ 一个词两个意思);
 			##     泡泡到点做的事就是**炸开**(回血 + 溅最近的敌人), 说它在干什么比说"结算"准。
 			##   ② 半角冒号换 `·`, 与上面储能那条同一个写法。
-			"hint": "%.1f 秒后爆炸 · 治疗 %d · 伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
+			"hint": "%.1f 秒后爆炸：治疗 %d，伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
 			"color": Color("#aef1ff"),
 		})
 
@@ -752,7 +752,7 @@ func _resource_bars(u: Dictionary) -> Array:
 		if opened < th.size():
 			out.append({
 				"name": "财宝", "cur": float(tp["value"]), "cap": float(th[opened]),
-				"hint": "已开 %d/%d · 距第 %d 箱" % [opened, th.size(), opened + 1], "color": Color("#ffcf6b"),
+				"hint": "已开 %d/%d，下一箱：第 %d 箱" % [opened, th.size(), opened + 1], "color": Color("#ffcf6b"),
 			})
 	return out
 
@@ -785,10 +785,10 @@ func _skill_status_line(u: Dictionary, sk) -> String:
 	var es: Array = _energy_state(u, stype)
 	var head := "龟能 %d / %d" % [int(es[0]), int(es[1])]
 	if battle._t < float(u.get("energy_lock_until", 0.0)):
-		return head + "  ·  龟能锁定 %.1f 秒\n" % (float(u.get("energy_lock_until", 0.0)) - battle._t)
+		return head + "，锁定 %.1f 秒\n" % (float(u.get("energy_lock_until", 0.0)) - battle._t)
 	if float(es[2]) <= 0.001:
-		return head + "  ·  已就绪\n"
-	return head + "  ·  剩余 %.1f 秒\n" % float(es[2])
+		return head + "，已就绪\n"
+	return head + "，剩余 %.1f 秒\n" % float(es[2])
 
 
 ## 技能描述框里印的那一段字 —— 【建面板 / 点开 / 每帧刷新】三处同源(2026-09-28)。
@@ -817,17 +817,17 @@ func _form_chip(u: Dictionary) -> Array:
 		"lava":
 			if bool(u.get("volcano", false)):
 				var left: float = maxf(0.0, float(u.get("volcano_until", 0.0)) - battle._t)
-				return ["火山形态 · 还剩 %.1f 秒" % left, "#ff7a3d"]
+				return ["火山形态：剩余 %.1f 秒" % left, "#ff7a3d"]
 			## ★这里【不再写"攒满怒气变火山"】(2026-08-17 实拍): 怒气条自己带着这句
 			##   「攒满变火山形态」, 而怒气条【恰好只在非火山形态时出现】—— 也就是说
 			##   这个 chip 和那句提示【永远同屏】, 同一件事在一屏上说了两遍。
 			##   chip 的职责是"我现在是什么形态", 条的职责是"攒满会怎样", 各说各的。
 			return ["熔岩形态", "#9bb0c4"]
 		"two_head":
-			return ["近战形态 · 锤击", "#ffb37a"] if str(u.get("two_form", "ranged")) == "melee" else ["远程形态 · 灵能弹", "#b28bff"]
+			return ["近战形态：锤击", "#ffb37a"] if str(u.get("two_form", "ranged")) == "melee" else ["远程形态：灵能弹", "#b28bff"]
 		"shell":
 			if bool(u.get("shell_stealth", false)):
-				return ["潜伏中 · 不会被选为目标", "#8be0c0"]
+				return ["潜伏中：无法被选为目标", "#8be0c0"]
 	return []
 
 

@@ -45,7 +45,7 @@ const PINNED := {
 	"in/3": "7684fd62415b9f4592757c71405090de04b504e327ea9135abe368677b926c53",
 	"in/4": "b5219aa606f2bdb5242d36985def0019956d4e1625c56b1b5e4056eb9f2f4ed8",
 	"in/5": "05a27a627234b85d177a16cd16f98e712b040d481fc62c94b5603e4126c6ef59",
-	"in/6": "5edf0c58e2dddb52ff5fd8e797fe0a8c1c3958357e5b625292969dc0e44191f7",
+	"in/6": "ad582841d771e8d0f0ebc6dcb1b3650fde05117b6bf94025ca4ace6bc091f1e2",   # 2026-11-01 改字后(见 _intended)
 }
 
 const KEYS := ["hearts", "ranked_used", "season_total_battles", "season_id", "season_wins", "promoted",
@@ -172,6 +172,16 @@ func _feed(m, ts: int, who: String) -> void:
 
 # ───────────────────────────── 签名 ─────────────────────────────
 
+## ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md): 周六已晋级那一格(in/6)的模式卡第二行
+##   有意改字 —— 「4-0 · 已晋级决赛日」(「·」拼两件事)→「已晋级决赛日（4-0）」。比对前把改动前那份签名里的这一句换成新写法
+##   (只换这一处字, 其余节点 / 位置 / 颜色照旧逐个比); 摘要表 in/6 = 换过之后那份的摘要。其余 11 格一个字没动。
+func _intended(key: String, s: String) -> String:
+	if key != "in/6":
+		return s
+	var lab: String = P2.gauntlet_label(int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+	return s.replace("text=%s · 已晋级决赛日 " % lab, "text=已晋级决赛日（%s） " % lab)
+
+
 func _sig(n: Node) -> String:
 	if n == null or not is_instance_valid(n):
 		return "<null>"
@@ -270,7 +280,7 @@ func _t_weekdays(mm, om) -> void:
 				start_n += 1
 			if om != null:
 				_rebuild(om, ts)
-				var s_old: String = _sig(om._hero_btn) + "\n#\n" + _sig(om._mode_box)
+				var s_old: String = _intended(key, _sig(om._hero_btn) + "\n#\n" + _sig(om._mode_box))
 				cmp += 1
 				if s_old == s_new:
 					same += 1
@@ -279,7 +289,7 @@ func _t_weekdays(mm, om) -> void:
 				if PINNED.has(key) and str(PINNED[key]) != s_old.sha256_text():
 					prov_bad.append(key)
 			if PINNED.has(key) and str(PINNED[key]) != dg:
-				bad_pin.append(key)
+				bad_pin.append("%s(现 %s)" % [key, dg])
 	_ok("① ★平日主按钮全是「开始战斗」、没有决赛日那一颗 / 没有决赛日卡(12 格)", start_n == 12, "%d / 12" % start_n)
 	if om != null:
 		_ok("① ★★周一~周六 × 两种人: 主按钮 + 模式卡与改动前逐节点相同(分母 12)", cmp == 12 and same == 12, "%d / %d · %s" % [same, cmp, str(bad)])

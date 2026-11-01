@@ -1267,7 +1267,7 @@ func _result_subtitle(won: bool, gs) -> String:
 	if Spar.is_active():
 		return Spar.SUBTITLE
 	if not battle._had_season or gs == null:
-		return "练习赛 · 不计入赛季进度"
+		return "练习赛不计入赛季进度。"
 	## ★★2026-10-03 周六实操 S3/S17: 周六输了写着「消耗 1 点生命」(周六根本不掉命), 出局那场也不说出局。
 	##   周六这一支必须排在「生命已耗尽」前面: 0 命但已晋级的人周六照常打闯关赛。
 	## ★2026-10-26 改成完整句子: 战绩 + 这一场之后的处境(再胜几场 / 再负几场 / 已晋级 / 到此结束), 句子在 phase2_config 一处。
@@ -1280,11 +1280,11 @@ func _result_subtitle(won: bool, gs) -> String:
 		## ★2026-10-07: 说清是哪一段(小组赛 / 冠军杯赛) —— 组号在待揭晓那一单上(结算时 finals_match 已清)。
 		var _pr = gs.get("finals_pending_reveal")
 		var _bk: int = int((_pr as Dictionary).get("bucket", -1)) if _pr is Dictionary else -1
-		return "%s · 不消耗生命 · 结果于下轮开播时公布" % _P2C_HUD.finals_stage_name(_bk)
+		return "%s不消耗生命，结果于下轮开播时公布。" % _P2C_HUD.finals_stage_name(_bk)
 	if gs.is_eliminated():
-		return "生命已耗尽 · 本大轮已出局"   # 2026-10-06 与主菜单「本大轮已出局」同一个词(60 人实操台账)
+		return "生命已耗尽，本大轮已出局。"   # 2026-10-06 与主菜单「本大轮已出局」同一个词(60 人实操台账)
 	if battle._last_was_exhibition:
-		return "表演赛 · 不消耗生命"
+		return "表演赛不消耗生命。"
 	## ★2026-10-26 积分赛晋级那一局(第 11 胜): 说清已经晋级(原来只写「赛季胜场 +1」, 晋级这件事一个字没有)。
 	if not _promotion_moment(won, false, gs).is_empty():
 		return "积分赛 %d 胜，已晋级周六闯关赛。" % int(gs.season_wins)
@@ -1728,7 +1728,7 @@ func _make_team_frame(u: Dictionary) -> Control:
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉点击 (别穿到战场)
 	## ★2026-09-28「点击看详情」→「点开细看」: "点击…" 是网页的 call-to-action 句式
 	##   (Click for details 的直译), 而且"详情"和面板里的"详细"是两个词指一件事。
-	frame.tooltip_text = "%s · 点开细看" % str(u.get("name", u.get("id", "")))
+	frame.tooltip_text = "%s\n点击查看详情" % str(u.get("name", u.get("id", "")))
 
 	var main_col = VBoxContainer.new()   # 头像行 + 装备格行
 	main_col.add_theme_constant_override("separation", 5)
@@ -2267,7 +2267,7 @@ func make_synergy_chip_row(side: String) -> Control:
 		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
 		lb.add_theme_constant_override("outline_size", 4)
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lb.tooltip_text = "%s · %d 档" % [str(t), tier]
+		lb.tooltip_text = "%s：第 %d 档" % [str(t), tier]
 		## ★★`HBoxContainer` 里必须自己给宽: `RichTextLabel` 最小宽 **0**(Label 自带文字宽)
 		##   ⇒ 不给就全挤成一条竖线。拿控件自己的主题字体量, 不硬编码。
 		var _lf: Font = lb.get_theme_font("normal_font")

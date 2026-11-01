@@ -897,7 +897,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		gcell.add_child(corner)
 		## 原文"羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回": 括号注解 + "掉档"这种表述。
-		gcell.tooltip_text = "%s · 盾羁绊赠送 · 不占装备位 · 羁绊失效时移除" % str(gdef.get("name", ""))
+		gcell.tooltip_text = "%s\n盾羁绊赠送，不占装备位，羁绊失效时移除" % str(gdef.get("name", ""))
 		## ★2026-10-21: 徽章同装备格, 不单独当靶子(30px = 16pt) —— 点它 = 点这张单位卡。
 		gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(gcell)
@@ -1737,7 +1737,7 @@ func _build_op_bar() -> void:
 	##   是状态机说明书的口气。换成直接跟玩家说下一步做什么。
 	## ★2026-09-28 去掉句首的 🔼 —— 纯装饰(这条提示自己把话说全了),
 	##   而它左边那张卡上就画着临时等级器。
-	var l := Label.new(); l.text = "选择单位 · 本大轮等级 +1"
+	var l := Label.new(); l.text = "选择单位：本大轮等级 +1"
 	l.add_theme_font_size_override("font_size", MIN_FONT_PX); l.add_theme_color_override("font_color", Color("#e6d8ff"))
 	l.position = Vector2(16, 36); l.size = Vector2(bw - 32, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 	var cancel := Button.new(); cancel.text = "取消"

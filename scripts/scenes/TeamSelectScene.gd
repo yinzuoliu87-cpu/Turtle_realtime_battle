@@ -59,7 +59,7 @@ const RL_LOCKED := {
 	"slot2":      {"x": 880,  "y": 356, "w": 308, "h": 404},
 	"lockedHint": {"x": 420,  "y": 196, "w": 790, "h": 96},
 }
-const LOCKED_HINT := "本大轮阵容已锁定 · 点统领卡查看详情、更换技能"
+const LOCKED_HINT := "本大轮阵容已锁定\n点击统领卡可查看详情、更换技能"
 ## 内容带两边各让出这么多(设计单位): iPad 4:3 上带宽卡死 fit_w, 右栏框边与数字原来正好贴在屏幕边上被切。
 const BAND_PAD := 14.0
 const PLANK_TEX := preload("res://assets/sprites/shop/shop-plank.png")
@@ -1167,7 +1167,9 @@ func _build_locked_hint() -> void:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(l)
 	var rc := _rect("lockedHint")
-	var h := float(_sf(26)) * 1.6 + 16.0
+	## 2026-11-01 两行(状态一行、说明一行, 方案书 20261101f): 高度按行数算, 落在 lockedHint 框(高 96)里。
+	var _rows := LOCKED_HINT.count("\n") + 1
+	var h := float(_sf(26)) * (1.6 if _rows == 1 else 1.35 * float(_rows)) + 16.0
 	l.size = Vector2(rc.size.x, h)
 	l.position = Vector2(rc.position.x, rc.get_center().y - h * 0.5)
 
@@ -1600,7 +1602,7 @@ func _lockout_toast() -> void:
 	lab.name = "LockoutToast"
 	## ★去掉 ⏳ —— 它在打包字体里是彩色 emoji, 与黄字黑描边的 toast 不是一套语言。
 	##   「已封盘/收盘」是本项目的固定说法(主菜单赛程条同词), 这两个词不动。
-	lab.text = "已截止 · 截止前 %d 分钟停止匹配" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
+	lab.text = "已截止：截止前 %d 分钟停止匹配" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
 	lab.add_theme_font_size_override("font_size", 24)
 	lab.add_theme_color_override("font_color", Color("#ffd93d"))
 	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))

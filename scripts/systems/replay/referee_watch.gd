@@ -68,7 +68,7 @@ const TXT_BAD_LINEUP := "阵容无效，请检查背包"
 const TXT_UNPLAYABLE := "录像无法在本设备播放"
 const TXT_STALE := "战绩已同步，请重新开战"
 const TXT_NO_MATCH := "匹配失败，请稍后重试"
-const TXT_SHOP := "备战阶段 · 结束后开赛"
+const TXT_SHOP := "备战阶段结束后开赛"
 const TXT_RESUMED_WIN := "上一场闯关：胜利"
 const TXT_RESUMED_LOSE := "上一场闯关：失败"
 ## 积分赛服务器局(2026-11-01): 匹配屏那一行 / 主菜单补记那一句。
@@ -363,9 +363,9 @@ static func play_settled_route(tree: SceneTree, rec: Dictionary, view: Dictionar
 ## 结算之后的一句话(播不了录像时屏上写它)。
 static func result_line(view: Dictionary) -> String:
 	if str(view.get("kind", "")) == KIND_RANKED:
-		return "积分赛 · %s" % ("胜利" if bool(view.get("won", false)) else "失败")
+		return "积分赛：%s" % ("胜利" if bool(view.get("won", false)) else "失败")
 	var gl := P2C.gauntlet_label(int(view.get("gw", 0)), int(view.get("gl", 0)))
-	return "闯关 %s · %s" % [gl, "胜利" if bool(view.get("won", false)) else "失败"]
+	return "闯关赛 %s：%s" % [gl, "胜利" if bool(view.get("won", false)) else "失败"]
 
 
 # ─────────────────────────────── 主菜单补记 ───────────────────────────────

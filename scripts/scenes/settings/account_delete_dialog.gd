@@ -24,7 +24,7 @@ const BTN_CONFIRM := "AccountDeleteConfirm"
 
 const T_STEP1 := "删除账号"
 const T_STEP2 := "确认删除账号"
-const BODY_STEP1 := ("删除内容：账号与玩家 ID · 云端存档 · 阵容快照\n排行榜与赛事记录 · 举报与反馈记录 · 本机存档。\n"
+const BODY_STEP1 := ("删除内容：账号与玩家 ID、云端存档、阵容快照、\n排行榜与赛事记录、举报与反馈记录、本机存档。\n"
 	+ "已完成对局的录像保留，其中的昵称与头像显示为「已注销玩家」。\n"
 	+ "删除后无法恢复。")
 const BODY_STEP2 := "账号删除后无法恢复，进度不可找回。"
@@ -35,10 +35,10 @@ const L_CONFIRM := "确认删除"
 const MSG_SENDING := "删除中"
 const MSG_OK := "账号已删除"   # devnote-ok: 玩家删号成功的结果提示(说的是玩家自己的账号, 不是开发状态)
 const MSG := {
-	NET.R_NET: "删除失败：网络不可用，账号未删除",
+	NET.R_NET: "删除失败：无法连接服务器，账号未删除",
 	NET.R_AUTH: "登录已失效，请先通过「邮箱登录」重新登录",
 	NET.R_BLOCKED: "删除失败：当前版本不可提交，请更新后重试",
-	NET.R_OFF: "删除失败：未连接服务器",
+	NET.R_OFF: "删除失败：无法连接服务器",
 }
 
 

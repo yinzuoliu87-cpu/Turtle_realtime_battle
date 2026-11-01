@@ -1173,7 +1173,7 @@ func _on_buy(idx: int) -> void:
 	##     按钮文案与这里各算一遍价钱, 两边一漂(或按钮被程序触发)这里就是唯一的出口 ——
 	##     满级那颗买经验按钮的 else 分支就是为同一个理由补的。
 	if int(GameState.meta_deepsea_coins) < price:
-		_toast("深海币不足 · 「%s」需要 %d，还差 %d" % [_nm, price, price - int(GameState.meta_deepsea_coins)])
+		_toast("深海币不足，购买「%s」还差 %d" % [_nm, price - int(GameState.meta_deepsea_coins)])
 		return   # 买不起
 	# ★私人池: 先扣张再扣钱 —— 扣不到张就整笔不成交(货架是异步持久化的, 极端情况下
 	#   可能出现"货架上还挂着、池子已被别的路径抽空"; 那时宁可这一次点击无效, 也不能凭空造张)。
@@ -1181,7 +1181,7 @@ func _on_buy(idx: int) -> void:
 	if not GameState.pool_take(_eid, 1):
 		## ★这一条**不是**到不了的分支: 货架是异步持久化的, 同一件被别的路径抽空时
 		##   摊上那张卡还挂着。玩家点下去钱没扣、货没来, 必须有人告诉他为什么。
-		_toast("「%s」已失效 · 请刷新" % _nm)
+		_toast("「%s」已失效，请刷新商店" % _nm)
 		return
 	GameState.meta_deepsea_coins -= price
 	## ★096 小木斧(方案书未决点 ⑧, 用户 2026-08-31 亲自纠正过我): **只能拥有一把**。
@@ -1219,14 +1219,14 @@ func _on_buy(idx: int) -> void:
 	##   ★三种成交各有各的话: 合成到 ★N / 小木斧重复买(化成砍伐经验) / 普通进背包。
 	##     合成那条最要紧 —— 卡片消失了而背包里【多出来的是另一件东西】, 不说就是"我的钱去哪了"。
 	if _will_star >= 2:
-		_toast("购买成功 · 「%s」合成 ★%d" % [_nm, _will_star])
+		_toast("购买成功，「%s」合成为 ★%d" % [_nm, _will_star])
 		## 首次提示「3 件同名同星装备自动合成升星」, 圈左下宝箱里升星的那一格(教程中不出)。
 		##   ★不圈顶栏「背包」: 那里提示条只能放进顶栏, 压住深海币读数(10-20 实拍)。宝箱放不下那一件(溢出)时才退回顶栏。
 		FirstTips.show(self, FirstTips.FIRST_MERGE, merge_tip_target(_eid, _will_star))
 	elif _axe_dup:
-		_toast("已拥有「%s」· 转化为砍伐经验 +%d" % [_nm, int(AxeEvo.EXP_ON_BUY)])
+		_toast("已拥有「%s」，转化为砍伐经验 +%d" % [_nm, int(AxeEvo.EXP_ON_BUY)])
 	else:
-		_toast("购买成功 · 「%s」已放入背包" % _nm)
+		_toast("购买成功，「%s」已放入背包" % _nm)
 	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
 	if _axe_evolved:
 		## ★还没补放的(结算 / 战斗里攒出来的)排在前面一起播 —— 否则先在这里看到 2→3, 进背包才补 1→2, 顺序反了。
@@ -1289,7 +1289,7 @@ func _build_lock_button(pos: Vector2, h: float) -> void:
 	## 锁着: 合上的锁 + 金色「已锁定」; 没锁: 开着的锁 + 普通字 —— 靠图案和字分两态。
 	var lb := _icon_button("ShopLockBtn", LOCK_CLOSED_ICON if locked else LOCK_OPEN_ICON,
 		"已锁定" if locked else "锁定", pos, Vector2(LOCK_W, h))
-	lb.tooltip_text = "已锁定 · 点击解锁" if locked else "锁定商品：下场战斗后不刷新"
+	lb.tooltip_text = "已锁定：下场战斗后不刷新" if locked else "锁定商品：下场战斗后不刷新"
 	## 两态靠图案区分(开着的锁 / 合上的锁), 不压暗 —— 压暗看着像点不了
 	lb.add_theme_color_override("font_color", Color("#ffe27a") if locked else Color("#e8dcc4"))
 	lb.pressed.connect(_on_toggle_lock)
@@ -1345,7 +1345,7 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	var _cap_now: int = int(P2.team_equip_cap(int(GameState.season_level)))
 	capn.text = "可装备 %d 件" % _cap_now
 	if not _maxed:
-		capn.text += "  ·  Lv%d 可装备 %d 件" % [int(GameState.season_level) + 1, int(P2.team_equip_cap(int(GameState.season_level) + 1))]
+		capn.text += "（Lv%d：%d 件）" % [int(GameState.season_level) + 1, int(P2.team_equip_cap(int(GameState.season_level) + 1))]
 	capn.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	capn.add_theme_color_override("font_color", Color("#ffb454") if _cap_now == 0 else Color("#e8dcc4"))
 	capn.add_theme_color_override("font_outline_color", Color("#1a0e05")); capn.add_theme_constant_override("outline_size", 6)
@@ -1500,7 +1500,7 @@ func _on_toggle_lock() -> void:
 	GameState.meta_shop_battles = int(GameState.season_total_battles)
 	GameState.save()
 	_rebuild()   # ★先重建再提示 —— _rebuild 会清掉全部子节点(提示也在其中)
-	_toast("已锁定 · 下场战斗后不刷新" if GameState.meta_shop_locked else "已解锁 · 下场战斗后刷新")
+	_toast("已锁定商品，下场战斗后不刷新" if GameState.meta_shop_locked else "已解锁商品，下场战斗后刷新")
 
 
 func _on_refresh() -> void:

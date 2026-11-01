@@ -179,7 +179,7 @@ func _t_board() -> void:
 		n_in += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_IN else 0
 		n_out += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_OUT else 0
 	var st_txt := str((bs.get("_status") as Label).text)
-	_ok("① 顶上那行写出「晋级 %d · 出局 %d」(与榜上状态对得上)" % [n_in, n_out], st_txt.contains("晋级 %d · 出局 %d" % [n_in, n_out]), st_txt)
+	_ok("① 顶上那行写出「晋级 %d 人，出局 %d 人」(与榜上状态对得上)" % [n_in, n_out], st_txt.contains("晋级 %d 人，出局 %d 人" % [n_in, n_out]), st_txt)   # ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md): 顶行改整句
 	_ok("③ 有数据 ⇒ 提示框收起", np != null and not np.visible)
 	var games: Array = bs.data.get("games", [])
 	var cards: Array = bs.find_children("GameCard*", "PanelContainer", true, false)

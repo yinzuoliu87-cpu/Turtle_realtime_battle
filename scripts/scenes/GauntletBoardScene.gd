@@ -50,7 +50,7 @@ const ROW_AVATAR := 48.0
 const CARD_AVATAR := 52.0
 const REFRESH_SEC := 30.0
 const WATCH_LABEL := "观看"
-const WATCH_BUSY := "读取中"
+const WATCH_BUSY := "载入中"
 const ALL_GAMES := "最近对局"
 ## 顶上那一行的开头: 周一看的是上周(刚结束的那个周末)。
 const WEEK_NOW := "本周闯关赛"
@@ -285,7 +285,7 @@ func _set_status(code: String) -> void:
 	var icon := "icon-quota"
 	match code:
 		"loading":
-			t = "读取中…"
+			t = "正在载入…"
 			c = Color("#9fb0c4")
 		"ok":
 			var pn: int = (data.get("players", []) as Array).size()
@@ -302,15 +302,18 @@ func _set_status(code: String) -> void:
 				for pp in data.get("players", []):
 					n_in += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_IN else 0
 					n_out += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_OUT else 0
-				var tail := ""
+				## ★2026-11-01(方案书 20261101f): 原来一行用「·」拼七段(「本周闯关赛 · 24 人 · 30 场 · 晋级 5 · 出局 3 · 已截止 · 周日 18:00 小组赛开赛」)。
+				##   改成整句: 先说赛事处境, 再说人数, 截止后再说下一站几点开赛(对照表 §8 第 2、5、6 条)。
 				var past: bool = P2C.weekend_view_is_past(P2C.now_utc())
-				if past:
-					tail = " · 已结束"
-				elif _closed:
+				var head: String = WEEK_PAST if past else WEEK_NOW
+				var st: String = "已结束" if past else ("已截止" if _closed else "进行中")
+				t = "%s%s。%d 人参赛，共 %d 场对局，晋级 %d 人，出局 %d 人" % [head, st, pn, gn, n_in, n_out]
+				if ln > 0 and not past:
+					t += "，%d 场正在进行" % ln
+				t += "。"
+				if _closed and not past:
 					var seat: int = P2C.weekend_view_week(P2C.now_utc()) + 6 * 86400 + int(P2C.FINALS_SEAT_HOUR_UTC) * 3600
-					tail = " · 已截止 · 周日 %s %s开赛" % [P2C.local_hhmm(seat), P2C.STAGE_GROUP]
-				t = "%s · %d 人 · %d 场 · 晋级 %d · 出局 %d%s%s" % [WEEK_PAST if past else WEEK_NOW, pn, gn, n_in, n_out,
-					(" · 进行中 %d 场" % ln) if ln > 0 else "", tail]
+					t += "%s周日 %s 开赛。" % [P2C.STAGE_GROUP, P2C.local_hhmm(seat)]
 			c = Color("#9fb0c4")
 		"unavailable":
 			t = "赛况暂无"
@@ -320,7 +323,7 @@ func _set_status(code: String) -> void:
 			icon = "icon-lock"
 		_:
 			t = ReplayFetcher.message(code)
-			sub = "每 %d 秒自动刷新" % int(REFRESH_SEC)
+			sub = ""
 	_status.text = t
 	_status.add_theme_color_override("font_color", c)
 	## 有内容就留在顶上那一行; 一点内容都没有 ⇒ 整页只剩这一句, 放进正中的提示框里说。

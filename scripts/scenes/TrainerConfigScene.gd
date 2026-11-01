@@ -219,7 +219,7 @@ func _build_skills() -> void:
 	var p := _panel(R_X, TOP, R_W, BOTTOM - TOP)
 	## ★这一行被 `tests/verify_trainer_skill_count.gd` 钉着: 以「技能」开头、含「选」、
 	##   第一串阿拉伯数字 == SKILLS.size()(数字现算, 不手写)。
-	_section_head(p, "技能 · %d 选 1" % SKILLS.size(), 14.0, R_W)
+	_section_head(p, "技能（%d 选 1）" % SKILLS.size(), 14.0, R_W)
 	var rule_hint := TPSkin.label("被动与主动只能装配其一", 16, TPSkin.TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
 	rule_hint.position = Vector2(R_W - PAD - 360.0, 18.0)
 	rule_hint.size = Vector2(360, 26)
