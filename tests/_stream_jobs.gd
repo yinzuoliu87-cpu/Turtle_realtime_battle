@@ -1,7 +1,8 @@
 extends RefCounted
 ## 逐帧直播 S1 门禁共用的任务单(下划线开头: 不是门禁, 被 verify_stream_* 三个门禁 preload)。
 ##   · mirror: 与 verify_referee_job_roundtrip `_snap_a(gs, false)` 同一份(镜像阵容, 种子 2000023 打满三路)
-##   · heavy:  tests/golden/stream_heavy_pair.json(真实快照池两份打满赛季的快照, S0 的「裁判局②」, 种子 2000023)
+##   · heavy:  tests/golden/stream_heavy_pair.json(真实快照池两份打满赛季的快照, S0 的「裁判局②」; 种子在 json 里:
+##            原 2000023, 2026-10-31 训龟大师不受影响之后那一局变 2:0, 换成同一对三路打满的 2000032, 理由写在 json 的 _doc)
 
 const Backend := preload("res://scripts/net/backend.gd")
 const HEAVY := "res://tests/golden/stream_heavy_pair.json"

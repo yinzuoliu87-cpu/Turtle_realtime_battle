@@ -146,8 +146,9 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	print("  [量] %s 播放: 解块 %d / 应用 %d 步 / 镜像建 %d 删 %d 改 %d · 占位 程序贴图 %d 程序网格 %d 其它 %d · 父兜底 %d · 事件 %s · 状态 %s %s" % [tag,
 		p.chunks_decoded, p.steps_applied, p.mirror.built, p.mirror.deleted, p.mirror.sets, p.mirror.ph_gen_tex, p.mirror.ph_proc_mesh,
 		p.mirror.ph_other, p.mirror.parent_fallback, str(p.events), p.state, p.err])
-	print("  [量] %s 换父节点 %d 次 · keyframe 兜底删 %d · 时停全屏层 开过 %d 次(流里 %d 次)、在时停里的采样点 %d · 出处键参数别名 %d" % [tag,
-		p.mirror.reparents, p.mirror.kf_dropped, p.mirror.fx_built, int(meta.get("ts_screen", 0)), int(st.get("ts_n", 0)), p.mirror.gen_alias])
+	print("  [量] %s 换父节点 %d 次 · keyframe 兜底删 %d · 时停全屏层 开过 %d 次(流里 %d 次)、在时停里的采样点 %d · 出处键参数差分 %d · 着色器热参数 %d(差分缺上一份 %d)" % [tag,
+		p.mirror.reparents, p.mirror.kf_dropped, p.mirror.fx_built, int(meta.get("ts_screen", 0)), int(st.get("ts_n", 0)), p.mirror.gen_delta,
+		p.mirror.sp_sets, p.mirror.sp_miss])
 	print("  [量] %s 采样点 %d · 单位·点 %d · 节点·点 %d · 误差上限 位置 %.5f 旋转 %.6f 缩放 %.6f 颜色 %.5f 单位 %.5f · 程序贴图 节点·点 %d / 程序网格 节点·点 %d(S3 起逐个比内容)" % [tag,
 		int(st["cmp"]), int(st["u_n"]), int(st["n_n"]), float(st["pos_max"]), float(st["rot_max"]), float(st["scl_max"]), float(st["col_max"]),
 		float(st["ux_max"]), int(st["tex_gen"]), int(st["mesh_proc"])])

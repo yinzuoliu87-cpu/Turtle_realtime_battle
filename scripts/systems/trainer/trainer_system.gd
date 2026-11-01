@@ -314,7 +314,7 @@ func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
 	var side: String = str(trainer.get("side", ""))
 	var n: int = 0
 	for o in battle._units:
-		if not o.get("alive", false) or o.get("is_trainer", false):
+		if not o.get("alive", false) or battle._is_untouchable(o):   # §UNTOUCHABLE: 药水不给大师(含自己)上 buff
 			continue
 		if str(o.get("side", "")) != side:
 			continue
@@ -657,7 +657,7 @@ func _tick_glaciers(_delta: float) -> void:
 		var zlen: float = float(z["len"])
 		var half_w: float = float(z["width"]) * 0.5
 		for o in battle._units:
-			if not o.get("alive", false) or o.get("is_trainer", false):
+			if not o.get("alive", false) or battle._is_untouchable(o):   # §UNTOUCHABLE
 				continue
 			if str(o.get("side", "")) == str(z["side"]):
 				continue   # 只冻【敌方】
@@ -1156,7 +1156,7 @@ func _tick_hunt_taunt(_delta: float) -> void:
 		if not (by is Dictionary):
 			continue
 		for o in battle._units:
-			if not o.get("alive", false) or o.get("is_trainer", false):
+			if not o.get("alive", false) or battle._is_untouchable(o):   # §UNTOUCHABLE
 				continue
 			if not battle._is_ally(o, by):        # 只嘲讽【下令方】的友军
 				continue

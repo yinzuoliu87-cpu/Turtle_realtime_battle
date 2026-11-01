@@ -130,7 +130,7 @@ func _key_of(u: Dictionary, seen: Dictionary) -> String:
 func restore() -> void:
 	var seen: Dictionary = {}
 	for u in battle._units:
-		if not (u is Dictionary) or u.get("_isEgg", false) or u.get("is_trainer", false):
+		if not (u is Dictionary) or u.get("_isEgg", false) or battle._is_untouchable(u):
 			continue
 		var k: String = _key_of(u, seen)
 		u["_food_key"] = k

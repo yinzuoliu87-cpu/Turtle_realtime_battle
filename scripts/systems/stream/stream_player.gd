@@ -17,7 +17,8 @@ extends RefCounted
 ##      飘字按**本机相机**换算屏幕位置(流里记的是世界坐标)。
 ##
 ## 插值(30 Hz 采样之间): 连续量(单位 pos / height, 节点 position / rotation / scale / modulate, 全局 t)在「当前值」和
-##   「下一个采样值」之间线性插, 角度 lerp_angle; 离散量(帧号 / 显隐 / 贴图 / 存活 / 动作)不插, 到步就换。
+##   「下一个采样值」之间线性插, 角度 lerp_angle; v4 起着色器热参数里的点数组(触手控制点)也插(`StreamMirror.res_lerp_to`);
+##   离散量(帧号 / 显隐 / 贴图 / 存活 / 动作)与热参数里的标量(命中白闪)不插, 到步就换。
 ## 缓冲: 开播前攒够 START_STEPS 步(3 秒)或服务器已录完; 播到直播边沿停住显示「同步中」, 新块到了接着播。
 ## 跳转: `seek(步号)` 从最近的 keyframe 块重解(清空全部镜像状态 → 快进不放事件、不跑渲染 → 到目标步)。
 ## ★出错(版本不符 / 块坏 / 解不开): 停在「无法播放」, **绝不改成本机重算**。
@@ -674,6 +675,8 @@ func _interp() -> void:
 			match int(op[0]):
 				F.OP_NODE_SET:
 					mirror.lerp_to(int(op[1]), op[2] as Array, k)
+				F.OP_RES_SET:
+					mirror.res_lerp_to(int(op[1]), op[2] as Array, k)   # v4 着色器热参数里的点数组(触手控制点)
 				F.OP_UNIT_SET:
 					var u2 = units.get(int(op[1]))
 					var kv: Dictionary = op[2]

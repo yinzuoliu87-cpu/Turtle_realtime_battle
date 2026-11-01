@@ -831,7 +831,7 @@ func lowest_ally(t: Dictionary):
 	for o in battle._targeting._allies_of(t, true):
 		if not o.get("alive", false):
 			continue
-		if o.get("_isEgg", false) or o.get("is_trainer", false):
+		if o.get("_isEgg", false) or battle._is_untouchable(o):
 			continue
 		var r: float = float(o.get("hp", 0.0)) / maxf(1.0, float(o.get("maxHp", 1.0)))
 		if r < bv:

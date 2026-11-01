@@ -138,7 +138,7 @@ func _hb_can_grab(o: Dictionary) -> bool:
 func _hb_can_bomb(o: Dictionary) -> bool:
 	if not (o is Dictionary) or not o.get("alive", false):
 		return false
-	if o.get("is_trainer", false):
+	if battle._is_untouchable(o):
 		return false
 	if o.get("_isEgg", false) or o.get("egg", false) or o.get("_eggImmune", false):
 		return false

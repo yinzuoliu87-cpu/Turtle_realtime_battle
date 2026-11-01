@@ -133,7 +133,7 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 				_candy_shell_drop(land, func() -> void:          # 糖弹落地: 大糖爆+落点120码局部结算
 					battle._burst_vfx("res://assets/sprites/vfx/candy-burst.png", land, 185.0, 0.3)
 					for o in battle._units:
-						if not o.get("alive", false): continue
+						if not o.get("alive", false) or battle._is_untouchable(o): continue   # §UNTOUCHABLE: 「不敌对 ⇒ 给盾」这一支会把训龟大师当友军
 						if DetMath.dist(o["pos"], land) > 120.0: continue
 						if not battle._is_hostile(uu, o):
 							battle._damage._grant_shield(o, uu["maxHp"] * BARRAGE_SHIELD_PCT, BARRAGE_SHIELD_SEC)   # 友军护盾 2%→1.5% 自身最大生命/跳(用户2026-07-30 第六轮)

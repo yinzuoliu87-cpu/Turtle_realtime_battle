@@ -269,7 +269,7 @@ func stele_count() -> int:
 func aura_si_for(o: Dictionary) -> int:
 	if not (o is Dictionary) or not o.get("alive", false):
 		return -1
-	if o.get("_isEgg", false) or o.get("is_trainer", false):
+	if o.get("_isEgg", false) or battle._is_untouchable(o):
 		return -1                                  # 排除龟蛋与训龟大师
 	var best := -1
 	for st in _steles:

@@ -21,8 +21,8 @@ func _nearest_enemy_for_trainer(u: Dictionary):
 	for o in battle._units:
 		if not o.get("alive", false) or not battle._is_hostile(u, o):
 			continue
-		if o.get("is_trainer", false):
-			continue   # 训龟大师之间不互殴(都是场外监视者)
+		if battle._is_untouchable(o):
+			continue   # 训龟大师之间不互殴(§UNTOUCHABLE; `_is_hostile` 已先排, 这行是显式写给读的人)
 		if battle._is_untargetable(o):
 			continue
 		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
@@ -50,7 +50,7 @@ func _farthest_enemy(u: Dictionary):
 			continue
 		if o.get("_egg_fence", false):            # 龟蛋围栏未破 → 不可被主动索敌
 			continue
-		if o.get("is_trainer", false):            # 训龟大师: 不被【主动索敌】(AoE 仍能波及)
+		if battle._is_untouchable(o):             # 训龟大师: 装饰单位, 任何东西都不选它(§UNTOUCHABLE·用户 2026-10-31)
 			continue
 		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
 		if dd > best_d:
@@ -101,9 +101,9 @@ func _nearest_enemy(u: Dictionary):
 			continue
 		if o.get("_egg_fence", false):   # 龟蛋围栏未破 → 不可被主动索敌(但AoE/增益穿栏, 走_enemies_of不受此限)
 			continue
-		if o.get("is_trainer", false):   # 训龟大师: 不被【主动索敌】(用户2026-07-22)
-			# ★只挡这一条路 —— AoE 走 _enemies_of, 那里【故意不跳过】它, 所以照样吃到范围伤害。
-			#   两条路天然分离, 正好对上"不会被主动索敌但会吃到aoe伤害"。
+		if battle._is_untouchable(o):   # 训龟大师: 装饰单位(§UNTOUCHABLE)
+			# ★2026-10-31 口径变了: 原来这里只挡「主动索敌」, AoE 走 _enemies_of 故意不跳过它(「吃 AOE 波及」)。
+			#   用户 2026-10-31「训龟大师不应该受到任何影响，就是个装饰的地位」⇒ _enemies_of 现在也排它, 这里与之一致。
 			continue
 		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
 		if dd < best_d:
@@ -117,7 +117,7 @@ func _nearest_enemy(u: Dictionary):
 ##   `_nearest_enemy(u)` 用不了 ⇒ 当时就地手写了一段循环, 只判了 敌对/存活/龟蛋围栏,
 ##   把「大师不被主动索敌」和「黑洞期不可选」两条规则漏了 ⇒ 浮游炮锁上了训龟大师。
 ##   ★根因是【手写选靶】这件事本身: 排除规则会随需求增加, 抄一次就永远落后一次。
-##   凡是"挑一个目标瞄准"一律走这里; 按半径结算的 AOE 不走(大师照吃 AOE, 那是设计)。
+##   凡是"挑一个目标瞄准"一律走这里; 按半径结算的 AOE 走 `_enemies_of`(2026-10-31 起它也不含大师)。
 func _nearest_enemy_from(u: Dictionary, from_pos: Vector2):
 	var best = null
 	var best_d = INF
@@ -128,8 +128,8 @@ func _nearest_enemy_from(u: Dictionary, from_pos: Vector2):
 			continue
 		if o.get("_egg_fence", false):
 			continue
-		if o.get("is_trainer", false):
-			continue   # 训龟大师: 不被【主动索敌】(用户2026-07-22) —— AOE 仍然照吃
+		if battle._is_untouchable(o):
+			continue   # 训龟大师: 装饰单位(§UNTOUCHABLE·用户 2026-10-31)
 		var dd: float = DetMath.dist2((o["pos"] as Vector2), from_pos)
 		if dd < best_d:
 			best_d = dd; best = o
@@ -137,25 +137,27 @@ func _nearest_enemy_from(u: Dictionary, from_pos: Vector2):
 
 
 # 每单位每帧: DoT 落血 / buff 到期清理 / 层数DoT结算 / 召唤体周期特殊技 / 周期被动 (1:1 2D _tick_effects)
+## ★2026-10-31 起【不含训龟大师】(§UNTOUCHABLE·用户「训龟大师不应该受到任何影响，就是个装饰的地位」):
+##   原来它故意含大师(「只吃 AOE 波及」), 于是范围伤害 / 范围减益 / 链式 / 「数一数范围里有几个敌人」都落到大师身上。
+##   `battle._is_hostile(u, 大师)` 已恒 false, 这里再显式写一遍给读的人。
 func _enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
 	for o in battle._units:
 		if battle._is_hostile(u, o) and o["alive"]:   # ★原为 o["side"] != u["side"], 见 §HOSTILE
 			if o.get("_egg_fence", false): continue   # 围栏未破的蛋: 单体+AoE都不锁(用户2026-07-12: 珊瑚刺等别锁蛋)
+			if battle._is_untouchable(o): continue    # 训龟大师: 装饰单位(§UNTOUCHABLE)
 			out.append(o)
 	return out
 
 ## §PICK-TARGET 集中"可被定向选取"的敌人闸门(用户2026-07-23 点4)。
-## = _enemies_of 再排除【训龟大师(场外监视者: 只吃 AOE 波及、不被单体/定向锁)】+【不可选中(含机甲 5 秒组装期 untargetable_until/_assembling)】。
+## = _enemies_of 再排除【不可选中(含机甲 5 秒组装期 untargetable_until/_assembling)】。
+##   (训龟大师 2026-10-31 起在 _enemies_of 里就已排掉 —— §UNTOUCHABLE, 不再是"只挡定向、AOE 照吃"。)
 ## ★用法铁律: 凡"随机挑一个 / 最近一个 / 单体指向"的技能选目标都走【这个】;
-##   真 AOE(龟派气波、激光竖劈 _equip_sys._eq_laser_chop、扇形波及等"范围扫到谁算谁")仍用 _enemies_of —— 那才是"大师只吃 AOE 溅射"的语义。
-## ★非伤害效果(处决/击飞/位移/驱散)也必须走这个 —— 光挡伤害不够(大师"伤害降为1"挡不住处决/击飞)。
-## 机甲死亡激光那类"选一个敌人朝它拉一条线"的定向技: 用这个选目标(不选大师), 但线扫过大师仍在 _apply_damage 里结算(吃1)。
+##   真 AOE(龟派气波、激光竖劈 _equip_sys._eq_laser_chop、扇形波及等"范围扫到谁算谁")仍用 _enemies_of。
+## ★非伤害效果(处决/击飞/位移/驱散)也必须走这个 —— 光挡伤害不够。
 func _pick_enemies_of(u: Dictionary) -> Array:
 	var out: Array = []
 	for o in _enemies_of(u):
-		if o.get("is_trainer", false):
-			continue
 		if battle._is_untargetable(o):
 			continue
 		out.append(o)
@@ -164,8 +166,8 @@ func _pick_enemies_of(u: Dictionary) -> Array:
 ## §PICK-TARGET 的【按阵营】重载 —— 给"逻辑实体"用: 触手、炮台这些**不是单位**的东西
 ## 拿不到 `_pick_enemies_of(u)` 需要的那个 u, 以前就各自手写一份敌表, 于是
 ## ①没走 `_is_hostile`(归顺的龟被判错阵营) ②没排大师 ③没排不可选中 —— 三样全漏。
-## ⚠ 语义同 `_pick_enemies_of`: 只给「挑一个/最近一个/单体指向」用;
-##   真 AOE 的结算名单仍该用原始表(大师只吃 AOE 波及是设计, 不是漏)。
+## ⚠ 语义同 `_pick_enemies_of`: 只给「挑一个/最近一个/单体指向」用。
+##   (训龟大师 2026-10-31 起任何名单都不含它 —— §UNTOUCHABLE。)
 func _pick_enemies_of_side(side: String) -> Array:
 	var out: Array = []
 	for o in battle._units:
@@ -175,8 +177,8 @@ func _pick_enemies_of_side(side: String) -> Array:
 			continue                              # ★按【有效阵营】: 归顺的龟算它现在这边
 		if o.get("_egg_fence", false):
 			continue                              # 围栏未破的蛋: 单体不锁(同 _enemies_of)
-		if o.get("is_trainer", false):
-			continue                              # 训龟大师: 场外监视者, 只吃 AOE 波及
+		if battle._is_untouchable(o):
+			continue                              # 训龟大师: 装饰单位(§UNTOUCHABLE)
 		if battle._is_untargetable(o):
 			continue
 		out.append(o)
@@ -184,15 +186,13 @@ func _pick_enemies_of_side(side: String) -> Array:
 
 
 ## 均分型护盾/团队份额的受益名单: 排除【训龟大师】与【龟蛋】——
-##   两者都是"占着人头却把盾摊薄"的非战斗单位: 大师是场外监视者、龟蛋不动不攻击且已自带围栏 200 双抗。
+##   两者都是"占着人头却把盾摊薄"的非战斗单位: 大师是装饰单位(2026-10-31 起 `_allies_of` 本身就不含它)、龟蛋不动不攻击且已自带围栏 200 双抗。
 ## ★只给【均分/按人头分摊】的效果用(铁壁盾 016、温泉蛋孵化盾 036); "给全队罩个盾"之类无所谓不用换。
 ## 用户 2026-07-23 点4 先排了大师; 2026-08-01 补排龟蛋(原话:「铁壁盾分摊不应该包括龟蛋和训龟大师，温泉蛋也是」)。
 ## ★改名自 _allies_no_trainer: 名字得说实话 —— 现在排的不只大师, 叫 no_trainer 会误导下一个改它的人。
 func _allies_share_pool(u: Dictionary) -> Array:
 	var out: Array = []
 	for o in _allies_of(u):
-		if o.get("is_trainer", false):
-			continue
 		if o.get("_isEgg", false):
 			continue
 		out.append(o)
@@ -204,8 +204,7 @@ func _targetable_enemies(u: Dictionary) -> Array:
 		if not o.get("alive", false): continue
 		if o.get("_egg_fence", false): continue
 		if battle._is_untargetable(o): continue
-		if o.get("is_trainer", false): continue   # ★大师不可主动锁(用户2026-07-23 点4: 只吃AOE波及)
-		out.append(o)
+		out.append(o)   # (训龟大师已在 _enemies_of 里排掉 —— §UNTOUCHABLE)
 	return out
 
 ## 当前【输出最高】的友军 —— 输出以 攻击力 ÷ 攻击间隔 (=每秒攻击力) 排, 不是裸攻击力:
@@ -233,6 +232,8 @@ func _allies_of(u: Dictionary, include_self: bool = true) -> Array:
 		#   赛博方不会给它加治疗/护盾, 它也不给赛博方加。见 §HOSTILE
 		if not o["alive"]:
 			continue
+		if battle._is_untouchable(o):
+			continue               # §UNTOUCHABLE: 训龟大师不当任何人的友军(连它自己也不算 —— 它不吃任何增益)
 		if is_same(o, u):          # is_same: 单位字典互引成环, ==/!= 会深比较→卡死(同053教训)
 			if include_self:
 				out.append(o)

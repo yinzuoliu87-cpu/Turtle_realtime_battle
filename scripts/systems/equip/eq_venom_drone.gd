@@ -359,6 +359,8 @@ func _decay_vslow() -> void:
 func add_vslow(u: Dictionary, n: int) -> void:
 	if not u.get("alive", false) or n <= 0:
 		return
+	if battle._untouch_block(u, "venom_slow"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	u["_vslow_touch"] = _beat_n
 	u["_vslow_idle"] = 0.0
 	_set_vslow(u, int(u.get("_vslow_n", 0)) + n)

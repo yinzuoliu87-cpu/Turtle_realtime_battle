@@ -157,7 +157,7 @@ func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·�
 	## 队友 = 场上的龟(不含训龟大师、龟蛋、召唤物): 原来它们都算 ⇒ 大师永远在场, 「无队友」那一档从来触发不了(10-16)。
 	var allies: Array = []
 	for o in battle._targeting._allies_of(u, false):
-		if not o.get("is_trainer", false) and not o.get("_isEgg", false) and not o.get("is_summon", false):
+		if not battle._is_untouchable(o) and not o.get("_isEgg", false) and not o.get("is_summon", false):
 			allies.append(o)
 	battle._vfx._play_heal_glow(u["pos"])
 	if allies.is_empty():

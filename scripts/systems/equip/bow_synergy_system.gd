@@ -117,7 +117,7 @@ func tick(delta: float) -> void:
 	if side_tier.is_empty():
 		return
 	for u in battle._units:
-		if not (u is Dictionary) or not u.get("alive", false):
+		if not (u is Dictionary) or not u.get("alive", false) or battle._is_untouchable(u):   # §UNTOUCHABLE: 腐蚀不叠到训龟大师身上
 			continue
 		var side: String = str(u.get("side", ""))
 		# 对面的弓箭档位（多方混战时取最高的那个）

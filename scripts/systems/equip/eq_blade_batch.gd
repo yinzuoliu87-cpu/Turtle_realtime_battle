@@ -456,6 +456,8 @@ func _damaged082(u: Dictionary, src) -> void:
 	u["eq_state"]["p2eq_082"] = st
 	if not (src is Dictionary) or not src.get("alive", false) or is_same(src, u):
 		return                                   # is_same: 单位字典互引成环, == 会深比较→卡死
+	if battle._is_untouchable(src):
+		return                                   # §UNTOUCHABLE: 攻击者是训龟大师 ⇒ 不反伤(它不被任何东西选作目标)
 	var sx: int = int(u.get("_b82_si", 0))
 	var d: int = battle._resolve_dmg(u, [3.0, 5.0, 8.0][sx], src, true)   # 魔法 ⇒ 吃对方魔抗
 	# ★from_equip = true: 不回钩 on-hit; 对方身上的 082 由 `_refl082_depth` 挡住(用户拍板: 反伤不触发反伤)

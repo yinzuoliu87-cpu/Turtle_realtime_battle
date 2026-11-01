@@ -4,7 +4,9 @@ extends Node
 ##
 ## 用户逐字规格:
 ##   「500生命值，1ATK，0双抗的训龟大师，对面就是人机控制的训龟大师」
-##   「在场上不会被主动索敌但会吃到aoe伤害」
+##   「在场上不会被主动索敌但会吃到aoe伤害」 ← ★2026-10-31 被新拍板覆盖:
+##     「训龟大师不应该受到任何影响，就是个装饰的地位，丢点技能」⇒ AOE 也不吃(方案书 20261031e-训龟大师不受影响,
+##     运行时哨兵 verify_trainer_untouchable)。下面 ③ 的 AOE 那条随之反过来。
 ##   「被动是受到的所有类型的伤害降低为1，包括真实伤害」
 ##   「射程2000，普攻为扔出石头造成1物理伤害」
 ##   「训龟大师不算(团灭)，其实就是个场外监视者」
@@ -86,7 +88,7 @@ func _ready() -> void:
 		print("  [对照] 普通单位 %s 受 999 → %.1f" % [str(ov.get("name", "?")), og])
 		_ok("★★对照组: 普通单位不受此封顶(否则是把全场伤害都改坏了)", og > 1.0, "%.4f" % og)
 
-	# ── ③ 不被主动索敌, 但吃 AOE ──
+	# ── ③ 不被主动索敌, AOE 也不吃(2026-10-31 起) ──
 	var foe: Dictionary = {}
 	for o in others:
 		if o.get("alive", false) and str(o.get("side", "")) != str(tr.get("side", "")):
@@ -135,14 +137,15 @@ func _ready() -> void:
 			foes.append(u)') < 0)
 		_ok("③b ★灵物触手走按阵营闸(不再手写敌表)",
 			src_spr.find("_pick_enemies_of_side(side)") >= 0)
-		# AoE 走 _enemies_of —— 那条路必须【能】拿到它
+		# AoE 走 _enemies_of —— 2026-10-31 起这条路也【拿不到】它(用户「训龟大师不应该受到任何影响」)
 		var aoe: Array = s._targeting._enemies_of(foe)
 		var in_aoe := false
 		for o in aoe:
 			if o.get("is_trainer", false):
 				in_aoe = true
-		_ok("★但 AoE 打得到(_enemies_of 故意不跳过它)", in_aoe,
-			"_enemies_of 返回 %d 个, 不含训龟大师" % aoe.size())
+		_ok("★分母: AoE 名单 _enemies_of 拿得到别的敌人(空名单就是空检查)", aoe.size() >= 1, "%d 个" % aoe.size())
+		_ok("★AoE 也打不到(_enemies_of 不含训龟大师·2026-10-31)", not in_aoe,
+			"_enemies_of 返回 %d 个, %s训龟大师" % [aoe.size(), "含" if in_aoe else "不含"])
 		tr["pos"] = saved_pos
 
 	# ── ④ 不计团灭/胜负 ──

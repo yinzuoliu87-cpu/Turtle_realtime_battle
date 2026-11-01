@@ -167,6 +167,8 @@ func _record_extra_true(src, u: Dictionary, amt: int) -> void:
 ##   所以这次一改完就加下划线，让 `verify_dead_params` 棘轮不再把它当新增欠债。
 ##   （那条棘轮当场就抓到了这次新增，本注释是照它的规矩处置的。）
 func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: String = "dot", is_self: bool = false, dot_accum: bool = false, mute_sfx: bool = false) -> void:
+	if battle._untouch_block(u, "apply_damage"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	if u.get("_assembling", false):
 		return   # 机甲组装期免疫一切伤害。★这条路径(DoT/真伤)原先没有这个闸, 只有 _apply_damage_from 有 → DoT 能打穿组装免疫(2026-07-19)
 	if battle._sd_stacks > 0:
@@ -373,6 +375,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 			printerr("[GUARD] _apply_damage_from 一帧调用超2万→截断防卡死 (last=%s src=%s)" % [str(u.get("id", "?")), str(src.get("id", "?"))])
 		return
 	if battle._stress or battle._wd_on: battle._dbg_op2 = str(u.get("id", "?"))   # 卡死猎手诊断: 最后经手的受伤单位
+	if battle._untouch_block(u, "apply_damage_from"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	# pre_crit=true: 该 raw 段的暴击已在上游算进 dmg(如手里剑真伤段=暴击总伤的一部分)→ 此处不再掷真伤暴击(防二次暴击)
 	if u.get("_assembling", false):   # 机甲组装期免疫一切攻击(用户2026-07-16)
 		return
@@ -529,17 +533,20 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		u["rock_layers"] = int(u.get("rock_layers", 0)) + 1   # 岩层(岩石之躯被动·选此才有): 每受伤+1层上限30
 		u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + StoneSystem.ROCK_DR_PER_LAYER   # 每层 1% 并入【减伤】属性(2026-10-15, 同嘲讽)
 		u["size_mult"] = 1.0 + StoneSystem.ROCK_SIZE_PER_LAYER * float(u["rock_layers"])   # +2%体型/层(回合制 rockShockwave.rockSizePctPerLayer=2·满30层=+60%)
-	if _refl_pct > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
+	## ★§UNTOUCHABLE: 下面三种「打回攻击者」(通用反伤 / 凤凰熔岩盾 / 闪电雷盾)在攻击者是训龟大师时一律不发 ——
+	##   它扔石头 / 放技能打到人, 反伤会选它当目标(2026-10-31 哨兵 verify_trainer_untouchable 实测抓到)。
+	var _src_hittable: bool = not battle._is_untouchable(src)
+	if _refl_pct > 0.0 and _src_hittable and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		var _refl = int(dmg * _refl_pct)
 		if _refl > 0:
 			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, true, true, true)   # pre_crit=true: 反伤不暴击(用户 2026-10-07「改为不能吧」)
 			ThornCut.on_reflect(u, src, battle._t)   # 带 015 的单位: 任何来源的反伤都削目标 3 秒治疗强度/护盾强度(没带=空操作)
 	# 凤凰熔岩盾: 持盾窗口内对每段攻击反击 LAVA_RETALIATE×ATK 魔法 (from_equip守卫防循环)
 	# ★注释原写"5秒"是过期的 —— 真值是 PhoenixSystem.LAVA_SHIELD_SEC(4 秒·与护盾同步)。
-	if u["id"] == "phoenix" and battle._t < float(u.get("lava_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
+	if u["id"] == "phoenix" and _src_hittable and battle._t < float(u.get("lava_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		_apply_damage_from(u, src, battle._atk_dmg(u, PhoenixSystem.LAVA_RETALIATE, src, true), Color("#ff7a3c"), 0.0, false, true)
 	# 闪电雷盾: 盾在时对每段攻击反击 0.3×ATK 魔法(用户2026-07-29 平衡四轮: 0.1→0.3) + 给攻击者叠1层电击
-	if u["id"] == "lightning" and battle._t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
+	if u["id"] == "lightning" and _src_hittable and battle._t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		_apply_damage_from(u, src, battle._atk_dmg(u, LightningSystem.SHIELD_RETALIATE, src, true), Color("#4dabf7"), 0.0, false, true)
 		if src.get("alive", false):
 			battle._lightning_sys._lightning_electric(u, src)   # ★走 _lightning_electric(满层即引爆)·10-16: 原来直接 _add_stack 只截断不引爆, 叠满 8 层后多出的层作废
@@ -660,6 +667,8 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 ##   这比没有参数更坑。保留形参是为了不动那 25 处(GDScript 参数个数不匹配是**运行时**才炸, 批量改风险大),
 ##   但名字改成自说明的, 并且删掉了那个假装能调距离的 `DART_KNOCKUP_DIST` 常量。
 func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
+	if battle._untouch_block(tgt, "knockback"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	## ★★三道守卫必须与 `_knock_up` 完全一致 —— 它们是同一件事(让单位飞起来)的两条路。
 	##   2026-09-04 彻查发现这里**少了 `alive`**: 调用点普遍是「先 `_apply_damage_from`
 	##   再 `_knockback`」, 那一发要是打死了目标, 就会作用在**尸体**上(尸体飞天)。
@@ -784,6 +793,8 @@ static func shield_strength(u: Dictionary, t: float) -> float:
 
 func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if amt <= 0.0: return
+	if battle._untouch_block(u, "grant_shield"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	_holy_convert(u, amt, dur)      # 盾羁绊9档: 盾类装备给的护盾, 额外 20% 转成圣光护盾(★时长跟随母次)
 	amt *= battle._copy_fx_mult                          # 龟壳复制期: 护盾也按60%(封板"以60%效果释放")
 	amt *= shield_strength(u, battle._t)   # 护盾强度(受到方,所有来源) = (1 + shield_amp) × (1 − 015 反伤削弱)
@@ -835,6 +846,8 @@ var _holy_busy := false
 func _holy_convert(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if _holy_busy or amt <= 0.0:
 		return
+	if battle._untouch_block(u, "holy_convert"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	var iid: String = str(battle._cur_eq_item)
 	if iid == "" or battle.Phase2Types.type_of(iid) != "盾":
 		return                                  # 只认【盾类装备】给的
@@ -855,6 +868,8 @@ func _holy_convert(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 
 func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回【实际】回血(满血=0·溢出转盾不计·用户2026-07-19"按实际治疗算")
 	if amt <= 0.0: return 0.0
+	if battle._untouch_block(u, "heal"):
+		return 0.0   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	amt *= battle._copy_fx_mult                        # 龟壳复制期: 治疗也按60%
 	amt *= heal_strength(u, battle._t)   # 治疗强度(受到方,所有来源) = (1 + heal_amp) × (1 − 015 反伤削弱)
 	amt *= battle._sd_heal_mult()                       # §SUDDEN 决胜期治疗 ×50%
@@ -962,6 +977,8 @@ func channel(u: Dictionary, sec: float) -> void:
 
 
 func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false) -> void:
+	if battle._untouch_block(u, "stun"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	# ★免控窗口(2026-07-28): 单位在 cc_immune_until 之前免疫一切眩晕/冻结。
 	#   加在【唯一入口】而不是各技能自己判 —— 财神梭哈投币期免控是第一个用例, 但这是通用能力,
 	#   写进技能里就等于下一个要用的人再写一遍(眩晕收口前正是 17 处各写各的)。
@@ -980,11 +997,15 @@ func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false
 	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), battle._t + d)
 
 func _buff(u: Dictionary, stat: String, amount: float, pct: bool, sec: float = battle.BUFF_SEC) -> void:
+	if battle._untouch_block(u, "buff"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	u["buffs"].append({"stat": stat, "amount": amount, "pct": pct, "until": battle._t + sec})
 	battle._recalc_stats(u)
 
 ## 同一来源(tag)只留一条、再次施加只刷新时长(2026-10-16 十只龟核查: 糖果拳减攻原来每拳 append 一条, 5 秒内叠 3~4 层到 -45%~-60%)。
 func _buff_refresh(u: Dictionary, stat: String, amount: float, pct: bool, tag: String, sec: float = battle.BUFF_SEC) -> void:
+	if battle._untouch_block(u, "buff_refresh"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	for b in u["buffs"]:
 		if str((b as Dictionary).get("tag", "")) == tag:
 			b["until"] = battle._t + sec
@@ -999,6 +1020,8 @@ func _buff_refresh(u: Dictionary, stat: String, amount: float, pct: bool, tag: S
 ##   ⇒ 冰寒仍生效时各项取更强(更小)的那个, 时长取更晚的那个; 已过期就从头写。
 ## 只管减益: 增益(凤凰迅捷 / 熔岩暴走)走 move_buff_mult 与 haste_mult, 不进这里。
 func apply_chill(o: Dictionary, move_mult: float, aspd_mult: float, sec: float) -> void:
+	if battle._untouch_block(o, "chill"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	if battle._t < float(o.get("spd_dbf_until", 0.0)):
 		o["spd_move_mult"] = minf(float(o.get("spd_move_mult", 1.0)), move_mult)
 		o["spd_aspd_mult"] = minf(float(o.get("spd_aspd_mult", 1.0)), aspd_mult)
@@ -1024,6 +1047,8 @@ const CURSE_HP_PCT := 0.05
 ## ★放在本类: 诅咒是【跨龟的全局状态效果】(幽灵/无头/彩虹共用), 不属于任何单只龟的系统;
 ##   本文件头自陈"DoT机制", _apply_dot_stacks 也在这里 —— 同层同家。
 func _add_curse(tgt: Dictionary, sec: float, src = null) -> void:
+	if battle._untouch_block(tgt, "curse"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	var dps: float = float(tgt.get("maxHp", 0.0)) * CURSE_HP_PCT
 	for d in tgt.get("dots", []):
 		if str(d.get("tag", "")) == "curse":
@@ -1037,6 +1062,8 @@ func _add_curse(tgt: Dictionary, sec: float, src = null) -> void:
 
 
 func _apply_dot_stacks(u: Dictionary, type: String, stacks: int, src = null) -> void:
+	if battle._untouch_block(u, "dot_stacks"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	if u == null or not u.get("alive", false) or stacks <= 0:
 		return
 	if battle._copy_fx_mult != 1.0:

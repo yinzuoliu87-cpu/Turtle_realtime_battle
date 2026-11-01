@@ -68,6 +68,16 @@ const REAP_PCT := 0.30
 ## 收殓（敌亡给盾）从 6 档起（用户 2026-08-03：「6档时获得第二个圣光护盾且有敌人死亡给盾」）
 const REAP_TIER := 2
 
+## ★★正在结算的冲击波【[放波者, 挨波者]】栈(2026-11-01 修双方互弹无限递归)。
+##   冲击波这一段伤害走 `_apply_damage_from`(from_equip 缺省 false), 会回调挨打方的 `on_damaged`;
+##   挨打方也有盾羁绊、而一发 ≥ 400(顶档 8% × 最大生命 ≥ 5000)时, 原来对面挨一发就回敬一发,
+##   而阵亡要等 `_apply_damage_from` 末尾的 `_kill` 才落地 ⇒ 嵌套里血 0 的单位还算活着, 链永不停,
+##   实测 1v1 一下普攻引出 350 发、嵌套 292 层后 `Stack overflow`(探针 tests/_probe_shield_wave_recursion.gd)。
+##   ⇒ 冲击波打出去的那一段【不给挨打方攒怒气】(反击照旧), 与「反伤不触发反伤」、反击 from_equip=true 同一口径。
+##   ⚠ 不改成 from_equip=true: 那会连带关掉携带者的 on-hit 装备链与挨打方的 on-target 链, 单边时的数值也会变。
+##   ⚠ 用栈不用一个布尔: 冲击波结算中途若别的钩子又引出一发冲击波, 内层出栈后外层这一对仍在栈顶。
+var _wave_hits: Array = []
+
 
 func _init(b) -> void:
 	battle = b
@@ -84,8 +94,17 @@ func on_damaged(u: Dictionary, src, dmg: int) -> void:
 	var tier: int = int(battle._synergy.tier_for(u, "盾"))
 	if tier <= 0:
 		return
-	_rage(u, tier, float(dmg))
+	if not _is_wave_hit(u, src):
+		_rage(u, tier, float(dmg))   # ★冲击波打来的这一段不攒怒气(见 _wave_hits 头注: 双方互弹无限递归)
 	_riposte(u, src)          # ★反击的条件 = "圣光护盾【值】>0"(与持有球罩同源), 与档位/装备无关
+
+
+## 这一段是不是【正在结算的那发冲击波】打到 u 身上(栈顶那一对 = 放波者 src → 挨波者 u)。
+func _is_wave_hit(u: Dictionary, src) -> bool:
+	if _wave_hits.is_empty() or not (src is Dictionary):
+		return false
+	var top: Array = _wave_hits[_wave_hits.size() - 1]
+	return is_same(top[0], src) and is_same(top[1], u)
 
 
 ## 怒气：累计伤害到阈值 → 冲击波。
@@ -126,7 +145,9 @@ func _shockwave(u: Dictionary, tier: int):
 		return null               # ★没打出去就没有护盾 —— 护盾现在是【伤害的副产品】(见下)
 	# ★不除 HP_MULT: "自身 X% 最大生命" 就是屏幕上那个 maxHp 的 X%(用户 2026-10-04「肯定是代码去掉除以3啊」)
 	var dmg: int = maxi(1, int(float(u.get("maxHp", 0.0)) * pct))
+	_wave_hits.append([u, t])   # ★入栈: 这一段打到 t 不给 t 攒怒气(防双方互弹无限递归, 见 _wave_hits 头注)
 	battle._damage._apply_damage_from(u, t, dmg, Color("#ffd93d"), 0.0, true)   # raw=true → 真实伤害
+	_wave_hits.pop_back()
 	# ★★2026-08-03 用户改: 护盾从「等量最大生命百分比」改成【冲击波伤害的 20%】。
 	#   原写法 `maxHp × pct` 与伤害 `maxHp / HP_MULT × pct` 差了整整 HP_MULT(=3) 倍 ——
 	#   文案说"等量"、实际护盾是伤害的 3 倍, 而玩家【完全看不出来】(刻度差造成的, 不是笔误)。
@@ -147,6 +168,8 @@ func _shockwave(u: Dictionary, tier: int):
 func _riposte(u: Dictionary, src) -> void:
 	if not (src is Dictionary) or not (src as Dictionary).get("alive", false):
 		return
+	if battle._is_untouchable(src):
+		return   # §UNTOUCHABLE: 攻击者是训龟大师 ⇒ 不反击(光弹不选它当目标)
 	## ★★判据 = 【圣光护盾值 > 0】, 不看身上装没装 095
 	##   (2026-08-12 用户:「反击也是只要有圣光护盾就反击, 不一定要装备啊」)。
 	##   规格原文是「**圣光护盾存在时**反击」—— 说的是这份护盾在不在, 不是这件装备在不在。
@@ -290,6 +313,7 @@ func on_enemy_died(victim: Dictionary) -> void:
 func clear() -> void:
 	## ★圣盾 3 秒计时是全局的(第十批 E14): 不归零的话上一路攒下的零头带进下一路, 换路清场后 0.2 秒就出首盾。
 	_t_holy = 0.0
+	_wave_hits.clear()   # 正常总是成对出入栈; 换路时再清一次, 不让任何残留跨路
 	for u in battle._units:
 		if u is Dictionary:
 			u["_shield_rage"] = 0.0

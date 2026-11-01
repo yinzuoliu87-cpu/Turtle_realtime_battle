@@ -83,7 +83,9 @@ func _ready() -> void:
 	var foe_trainer: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(3000, 0), {"trainer": true})   # 场外大师·永远最远
 	scene._units.clear()
 	scene._units.append(caster); scene._units.append(real_foe); scene._units.append(foe_trainer)
-	_ok("★_enemies_of 含训龟大师(真AOE仍会溅到它·吃1)", scene._arr_has_unit(scene._targeting._enemies_of(caster), foe_trainer))
+	## ★2026-10-31 口径反过来: 「训龟大师不应该受到任何影响，就是个装饰的地位」⇒ 真 AOE 名单也不含它(方案书 20261031e)
+	_ok("★_enemies_of 也不含训龟大师(装饰单位·2026-10-31)", not scene._arr_has_unit(scene._targeting._enemies_of(caster), foe_trainer))
+	_ok("★_enemies_of 仍含真敌(非空检查)", scene._arr_has_unit(scene._targeting._enemies_of(caster), real_foe))
 	_ok("★_pick_enemies_of 排除训龟大师(单体定向不锁)", not scene._arr_has_unit(scene._targeting._pick_enemies_of(caster), foe_trainer))
 	_ok("★_pick_enemies_of 仍含真敌(非空检查·断言非恒真)", scene._arr_has_unit(scene._targeting._pick_enemies_of(caster), real_foe))
 	# 端到端: 竹击(钩全场最远)→ 应钩近处真敌、不碰场外大师(远)。改回 _enemies_of 则相反 → 本条转红。

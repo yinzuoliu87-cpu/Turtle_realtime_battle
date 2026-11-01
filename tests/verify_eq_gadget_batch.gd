@@ -420,7 +420,8 @@ func _t_dispatch() -> void:
 	##   这恰好说明它是个弱判据: **行为变好了, 判据却红**。
 	##   真正验行为的是 `tests/verify_target_paths_agree.gd`(走真函数, 造一个该被排除的
 	##   单位, 问六条路各自选不选得中)。本条保留只是当"别退回手抄副本"的廉价哨兵。
-	var gates: Array = ["_is_untargetable", "is_trainer", "_is_hostile"]
+	## ★2026-10-31 大师那道闸改成走统一入口 `_is_untouchable`(方案书 20261031e-训龟大师不受影响), 不再各写一遍 is_trainer。
+	var gates: Array = ["_is_untargetable", "_is_untouchable", "_is_hostile"]
 	var miss_far: Array = []
 	var miss_near: Array = []
 	var diff_g: Array = []

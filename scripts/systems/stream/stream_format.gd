@@ -13,7 +13,13 @@ extends RefCounted
 ##   v1 的流里没有单位外观, v2 的播放器播不出单位, 所以算格式变更。
 ## v3(S3, 2026-10-19): 资源种类加 `RES_GEN`(程序贴图 / 程序网格带「出处键」= 生成函数 + 参数, 手机调同一个函数现生成);
 ##   值标签加 `T_F64` / `T_COLF`(出处键的参数要逐位相同: 双精度浮点 / 不量化的颜色)。v2 播放器不认这两样 ⇒ 格式变更。
-const VERSION := 3
+## v4(2026-10-31, 灵物触手重做 · 方案书 docs/plans/20261031d-灵物触手重做.md §4.2): 值标签加 `T_V3Q` / `T_V3QD` ——
+##   「着色器热参数」(节点 meta `stream_shader_params` 列出的 uniform)里的点数组(触手控制点)按 1/1024 量化、
+##   先相邻点相减再与上一次发的相减。只出现在 RES_DEF(参数型资源)/ RES_SET 的属性值里。v3 播放器不认这两个标签 ⇒ 格式变更。
+##   同版本(2026-11-01, 还没发过版)再加 `T_F1Q` / `T_F1QD`: 热参数里的浮点数组(每个控制点的管子半径 `ctrl_r` 一类)同一套量化 + 预测。
+##   ★旧客户端不会解到 v4 的块: 流绑版本(R7), 每个入口先比录像版本 == 本机版本(stream_watch `check` / `enter_live` /
+##   `enter_own_live`)才去拉块; 万一解到了(补流), `parse_chunk` 报「version 4 != 3」⇒ 播放器停在「画面无法播放」, 不崩。
+const VERSION := 4
 const MAGIC := "TSTR"
 const HEADER_BYTES := 21          # magic 4 + 版本 u16 + 块序号 u32 + 首步 u32 + 步数 u16 + 标志 u8 + 原始长度 u32 —— 不含后面的 ZSTD 负载
 
@@ -55,18 +61,25 @@ const RES_SHADER := 4             # 内联 shader: + 源码
 const RES_OTHER := 5              # 其它无路径资源: + 类名
 ## S3: 带出处键的程序资源(贴图 / 网格): + 类名 + 出处(「res://脚本路径:静态函数名」) + 上一版 rid(0 = 无; 原地重建的网格换代时手机释放旧的)
 ##   + 方式 + …: GEN_FULL = n + [参数]×n(资源参数写 T_RES, 子资源先定义; 其余 `Enc.gval` 逐位精确写);
-##   GEN_ALIAS = rid(参数与本 keyframe 段里那个 rid 的完全相同: 触手本体与外发光壳共用一份);
-##   GEN_DELTA = 参照 rid + n + [参数]×n, 参数可以写 T_SAME(= 参照那一个) / T_BXOR(与参照的等长字节数组逐字节异或)
-##     / T_IDIFF(与参照的等长整数数组逐个相减)
+##   GEN_DELTA = 参照 rid + n + [参数]×n, 参数可以写 T_SAME(= 参照那一个)
+##   ★v4 退役(2026-10-31 灵物触手重做, 旧触手每步重建的网格没了 ⇒ 零生产者): 方式 0「参数别名」(触手本体与外发光壳共用一份参数)、
+##     差分里的 T_BXOR(字节数组异或)/ T_IDIFF(整数数组相减, 触手中心点)。编号 0 / 18 / 19 留空不复用; 流绑版本(R7),
+##     v4 播放器不会拿到 v3 的块。
 ##   —— 每步重建的网格(触手 / 触须 / 水带)多半只有一两个参数在变。参照必须在本 keyframe 段里定义过。
 ##   出处键由生成方在资源上挂 meta `stream_gen` = [脚本路径, 函数名, 参数 Array](见 VfxTex.tag); 手机按白名单(StreamMirror.gen_ok)调同一个函数。
 const RES_GEN := 6
 ## S3: 伪节点类名(NODE_NEW 的类名是它 ⇒ 不是引擎类, 手机按它开对应的全屏演出; 见 StreamRecorder._screen_fx)
 const FX_TS_SCREEN := "@ts_screen"
 const GEN_META := &"stream_gen"
-const GEN_ALIAS := 0
 const GEN_FULL := 1
 const GEN_DELTA := 2
+## v4: 着色器热参数。节点 meta `stream_shader_params` = PackedStringArray(每步会变的 uniform 名, 不带 `shader_parameter/` 前缀),
+##   录流器对这个节点的 ShaderMaterial(覆盖材质 / 叠加材质 / 面材质 / next_pass 链)里这几项:
+##   · float / int / bool 逐步比(命中白闪只亮 1 步也录得到);
+##   · 点数组(PackedVector3Array, 控制点)与其余类型按连续量 30 Hz 比; 点数组走 T_V3Q / T_V3QD(见下)。
+##   没列出的 uniform 照旧按连续量比(不丢), 但每变一次记进元数据 `sp_unlisted`(门禁要求为 0: 只有列出来的才许变)。
+##   网格本身与材质按原来的资源路径只发一次(网格开局建好之后不换 ⇒ 不再有每步一代的出处键)。
+const SP_META := &"stream_shader_params"
 
 ## 值标签(每个值前一个字节)
 const T_NIL := 0
@@ -87,13 +100,157 @@ const T_SCALE := 14               # Vector3 缩放: 3 × zigzag varint, 量化 1
 const T_F64 := 15                 # S3: float64 原样(出处键参数)
 const T_COLF := 16                # S3: 颜色 4 × float32 原样(出处键参数; T_COLOR 是 1/255 量化的)
 const T_SAME := 17                # S3: 出处键差分 —— 与参照的同一位参数相同(无负载)
-const T_BXOR := 18                # S3: 出处键差分 —— varint 长度 + 与参照字节数组逐字节异或
-const T_IDIFF := 19               # S3: 出处键差分 —— varint 个数 + 与参照等长 PackedInt32Array 逐个相减(zigzag varint; 触手中心点)
+## 18 / 19(T_BXOR / T_IDIFF): v4 退役, 留空不复用(见上 RES_GEN 那段)
+const T_V3Q := 20                 # v4: 点数组整份 —— varint 点数 + 每点 3 × zigzag varint(量化 1/Q_PTS; 第 0 点绝对, 其余与前一点之差 = `sdiff`)
+const T_V3QD := 21                # v4: 点数组差分 —— 逐点「预测 + 残差」的残差串(`pts_encode` / `pts_decode`; 点数相同才用; 播放端按 rid + 参数名记着前两份)
+const T_F1Q := 22                 # v4: 浮点数组整份 —— varint 个数 + 每个 zigzag varint(绝对, 量化 1/Q_F1)
+const T_F1QD := 23                # v4: 浮点数组差分 —— 每个元素「线性外推 + 残差」的残差串(`f1_encode` / `f1_decode`, 死区同点数组)
 
 const Q_POS := 128.0
 const Q_ROT := 1024.0
 const Q_SCALE := 4096.0
 const Q_COL := 255.0
+## v4 点数组: 1/128 米 —— 与节点位置 Q_POS 同一档(死区 1 格 ⇒ 与本机差 ≤ 7.8 毫米 ≈ 0.35 像素)。
+##   ★11-01 从 1/1024 改来: 第一路恢复 8 月链式模拟动作后, 控制点每步的加速度噪声大、预测残差压不下去,
+##   最重那局触手把整局推到 3.45 MB > 预算 3.32 MB(协调: 不许放宽预算, 把触手录流量压下来); 1/1024 是我当初定的「≤ 1 毫米」,
+##   比流里其它所有节点位置(1/128)细 8 倍, 没有画面上的理由。|坐标| < 131072 米时 q/Q 在 float32 里精确。
+const Q_PTS := 128.0
+## v4 浮点数组(每点半径 ctrl_r 一类): 1/1024 米 —— 半径小(梢端 3.5 厘米), 1/128 会差出两成; 半径随姿态慢变, 这一档几乎不占体积
+const Q_F1 := 1024.0
+
+
+## ── v4 点数组(着色器热参数里的控制点)的量化与差分 ──────────────────────────────
+## 两边(录流器 / 播放端)都只在「发了一份」时记下它的**绝对整数串**(每点 3 个, 单位 1/Q_PTS 米), 记最近两份:
+##   · 整份 T_V3Q: 发 `sdiff(绝对)`(第 0 点绝对、其余与前一点之差); 记下这一份, 清掉上上份。
+##   · 差分 T_V3QD: 沿点序逐点「预测 + 残差」(`pts_encode` / `pts_decode`, 两边同一个预测):
+##       预测第 i 点 = 刚解出来的第 i−1 点 + 这一段(第 i−1 → i 点)的线性外推 2·上一份那段 − 上上份那段
+##       (第 0 点: 它自己的线性外推)。触手是一串首尾相接的段, 整体摆动 = 每段在慢慢转 ⇒ 段向量外推几乎没有误差,
+##       而按绝对坐标外推, 梢端那几点的加速度一采样就有 2~3 毫米(实测压缩后反而更大)。
+##   ★录流器挑「这一点」时带一个死区: 真值离预测不超过 PTS_DZ 个单位就直接取预测(残差 0)。只按 1/1024 四舍五入的话,
+##     二阶差里全是 ±1 / ±2 的舍入噪声(实测残差为 0 的只占三分之一, ZSTD 压不动); 逐点、以已解出的前一点为基准,
+##     所以误差不沿点序累积: 每个坐标与本机真值差 ≤ PTS_DZ / Q_PTS(1/128 米 ≈ 0.35 像素)。
+const PTS_DZ := 1.0
+
+
+## 每点 roundi(× Q_PTS)(绝对整数串, 3 × 点数)
+static func q_abs(v: PackedVector3Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(v.size() * 3)
+	for i in range(v.size()):
+		var p: Vector3 = v[i]
+		out[i * 3] = roundi(clampf(p.x, -1.0e5, 1.0e5) * Q_PTS)
+		out[i * 3 + 1] = roundi(clampf(p.y, -1.0e5, 1.0e5) * Q_PTS)
+		out[i * 3 + 2] = roundi(clampf(p.z, -1.0e5, 1.0e5) * Q_PTS)
+	return out
+
+
+## 绝对 → 第 0 点绝对、其余与前一点之差(整份发这个: 相邻控制点离得近, 数小)
+static func sdiff(a: PackedInt32Array) -> PackedInt32Array:
+	var out := PackedInt32Array(a)
+	for j in range(out.size() - 1, 2, -1):
+		out[j] = a[j] - a[j - 3]
+	return out
+
+
+## `sdiff` 的逆(前缀和)
+static func ssum(d: PackedInt32Array) -> PackedInt32Array:
+	var out := PackedInt32Array(d)
+	for j in range(3, out.size()):
+		out[j] = out[j] + out[j - 3]
+	return out
+
+
+## 段向量的线性外推: 有上上份(点数相同)⇒ 2·上一份的段 − 上上份的段, 否则 = 上一份的段(段 0 = 第 0 点本身)
+static func _seg_pred(a1: PackedInt32Array, a2: Variant) -> PackedInt32Array:
+	var s1 := sdiff(a1)
+	if a2 is PackedInt32Array and (a2 as PackedInt32Array).size() == a1.size():
+		var s2 := sdiff(a2)
+		for j in range(s1.size()):
+			s1[j] = 2 * s1[j] - s2[j]
+	return s1
+
+
+## 录流器: 这一份真值 v 相对上一份 a1 / 上上份 a2(可为 null)编成残差 ⇒ [残差串, 手机将解出的绝对串]
+static func pts_encode(v: PackedVector3Array, a1: PackedInt32Array, a2: Variant) -> Array:
+	var sp := _seg_pred(a1, a2)
+	var r := PackedInt32Array()
+	r.resize(sp.size())
+	var a := PackedInt32Array()
+	a.resize(sp.size())
+	for i in range(v.size()):
+		var p: Vector3 = v[i]
+		for c in range(3):
+			var j: int = i * 3 + c
+			var pred: int = sp[j] + (a[j - 3] if i > 0 else 0)
+			var e: float = clampf(p[c], -1.0e5, 1.0e5) * Q_PTS - float(pred)
+			r[j] = 0 if absf(e) <= PTS_DZ else roundi(e)
+			a[j] = pred + r[j]
+	return [r, a]
+
+
+## 播放端: 残差 r + 上一份 / 上上份 ⇒ 绝对串(与 pts_encode 里 a 的算法逐位相同)
+static func pts_decode(r: PackedInt32Array, a1: PackedInt32Array, a2: Variant) -> PackedInt32Array:
+	var sp := _seg_pred(a1, a2)
+	var a := PackedInt32Array()
+	a.resize(sp.size())
+	for j in range(a.size()):
+		a[j] = sp[j] + (a[j - 3] if j >= 3 else 0) + r[j]
+	return a
+
+
+## ── v4 浮点数组(每个控制点的半径 `ctrl_r` 一类): 与点数组同一套 —— 量化 1/Q_F1、记最近两份绝对整数串、
+##   差分发「这一份 − 线性外推(2·上一份 − 上上份)」的残差, 录流器带同一个死区(误差 ≤ PTS_DZ / Q_F1)。没有点序, 逐个元素外推。
+static func f1_abs(v: PackedFloat32Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(v.size())
+	for i in range(v.size()):
+		out[i] = roundi(clampf(v[i], -1.0e5, 1.0e5) * Q_F1)
+	return out
+
+
+static func _f1_pred(a1: PackedInt32Array, a2: Variant) -> PackedInt32Array:
+	var out := PackedInt32Array(a1)
+	if a2 is PackedInt32Array and (a2 as PackedInt32Array).size() == a1.size():
+		for j in range(out.size()):
+			out[j] = 2 * a1[j] - (a2 as PackedInt32Array)[j]
+	return out
+
+
+## 录流器: [残差串, 手机将解出的绝对串]
+static func f1_encode(v: PackedFloat32Array, a1: PackedInt32Array, a2: Variant) -> Array:
+	var a := _f1_pred(a1, a2)
+	var r := PackedInt32Array()
+	r.resize(a.size())
+	for j in range(a.size()):
+		var e: float = clampf(v[j], -1.0e5, 1.0e5) * Q_F1 - float(a[j])
+		r[j] = 0 if absf(e) <= PTS_DZ else roundi(e)
+		a[j] = a[j] + r[j]
+	return [r, a]
+
+
+## 播放端: 残差 + 上一份 / 上上份 ⇒ 绝对串(与 f1_encode 里 a 的算法逐位相同)
+static func f1_decode(r: PackedInt32Array, a1: PackedInt32Array, a2: Variant) -> PackedInt32Array:
+	var a := _f1_pred(a1, a2)
+	for j in range(mini(a.size(), r.size())):
+		a[j] = a[j] + r[j]
+	return a
+
+
+static func f1_of(a: PackedInt32Array) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(a.size())
+	for i in range(a.size()):
+		out[i] = float(a[i]) / Q_F1
+	return out
+
+
+## 绝对整数串 → 点(÷ Q_PTS)。录流器与播放端对同一串整数解出逐位相同的点。
+static func pts_of(a: PackedInt32Array) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	out.resize(a.size() / 3)
+	for i in range(out.size()):
+		out[i] = Vector3(float(a[i * 3]) / Q_PTS, float(a[i * 3 + 1]) / Q_PTS, float(a[i * 3 + 2]) / Q_PTS)
+	return out
 
 
 ## ═══════════════════════════════════════════════════════════════════════
@@ -216,6 +373,20 @@ class Enc extends RefCounted:
 		buf.put_u8(T_RES)
 		vu(rid)
 
+	## v4 点数组: `tag` = T_V3Q(q = sdiff(绝对))或 T_V3QD(q = pts_encode 的残差串); 写点数 + 3 × 点数个 zigzag varint。
+	func pts(tag: int, q: PackedInt32Array) -> void:
+		buf.put_u8(tag)
+		vu(q.size() / 3)
+		for x in q:
+			vi(x)
+
+	## v4 浮点数组: `tag` = T_F1Q(绝对)或 T_F1QD(f1_encode 的残差串); 写个数 + 每个 zigzag varint。
+	func ints(tag: int, q: PackedInt32Array) -> void:
+		buf.put_u8(tag)
+		vu(q.size())
+		for x in q:
+			vi(x)
+
 	## S3 出处键参数: 逐位精确(手机拿它调同一个生成函数, 差一位网格 / 贴图就不是同一份)。
 	##   float → 双精度; 颜色 → 4 × float32(不量化); 整数 / 布尔 / 字符串 / Vector2 / Vector3 同 val(本来就无损);
 	##   其余(Packed 数组 / Array / Dictionary …)走 var_to_bytes。资源由调用方先换成 rid 写 `res()`。
@@ -332,8 +503,8 @@ static func decode_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictiona
 						r.s()
 						r.vu()
 						var gmode := r.vu()
-						if gmode == GEN_ALIAS:
-							r.vu()
+						if gmode != GEN_FULL and gmode != GEN_DELTA:
+							r.err = "gen mode %d" % gmode
 						else:
 							if gmode == GEN_DELTA:
 								r.vu()
@@ -466,25 +637,23 @@ static func parse_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictionar
 						var c4 := r.s()
 						_push(cur, [op, rid, kind, c4, r.vu(), null], r)
 					RES_GEN:
-						## [op, rid, 种类, 类名, 出处, [上一版 rid, 参数表 或 null(别名), 别名 / 差分参照 rid, 方式]]
-						##   参数表 = [[值, 是否资源 rid, 0 原样 / 1 同参照 / 2 与参照异或 / 3 与参照相减], …]
+						## [op, rid, 种类, 类名, 出处, [上一版 rid, 参数表, 差分参照 rid, 方式]]
+						##   参数表 = [[值, 是否资源 rid, 0 原样 / 1 同参照], …]
 						var c5 := r.s()
 						var gid := r.s()
 						var prev := r.vu()
 						var gmode := r.vu()
 						var gref := 0
-						var gargs = null
-						if gmode == GEN_ALIAS:
-							gref = r.vu()
+						var gargs: Array = []
+						if gmode != GEN_FULL and gmode != GEN_DELTA:
+							r.err = "gen mode %d" % gmode
 						else:
 							if gmode == GEN_DELTA:
 								gref = r.vu()
-							gargs = []
 							var gn := r.vu()
 							for _g in range(gn):
 								var gv = r.val()
-								var gop := 1 if r.last_tag == T_SAME else (2 if r.last_tag == T_BXOR else (3 if r.last_tag == T_IDIFF else 0))
-								(gargs as Array).append([gv, r.last_tag == T_RES, gop])
+								gargs.append([gv, r.last_tag == T_RES, 1 if r.last_tag == T_SAME else 0])
 						_push(cur, [op, rid, kind, c5, gid, [prev, gargs, gref, gmode]], r)
 					_:
 						r.err = "res kind %d" % kind
@@ -617,22 +786,23 @@ class Rd extends RefCounted:
 				return Color(f32(), f32(), f32(), f32())
 			T_SAME:
 				return null
-			T_BXOR:
-				var nb := vu()
-				if p + nb > b.size():
-					err = "eof bxor @%d" % p
-					return null
-				var xb := b.slice(p, p + nb)
-				p += nb
-				return xb
-			T_IDIFF:
-				var ni := vu()
-				var dv := PackedInt32Array()
-				for _k in range(ni):
-					dv.append(vi())
+			T_V3Q, T_V3QD:
+				## v4 点数组: 返回整数串(整份 / 差分由 last_tag 区分); 还原成点要看上一份, 由播放端(StreamMirror)做
+				var np := vu()
+				var qv := PackedInt32Array()
+				for _k in range(np * 3):
+					qv.append(vi())
 					if err != "":
 						return null
-				return dv
+				return qv
+			T_F1Q, T_F1QD:
+				var nf := vu()
+				var qf := PackedInt32Array()
+				for _k in range(nf):
+					qf.append(vi())
+					if err != "":
+						return null
+				return qf
 			T_RECT:
 				return Rect2(f32(), f32(), f32(), f32())
 			T_STR:
@@ -659,6 +829,7 @@ class Rd extends RefCounted:
 				return
 
 	## 播放端: [[名, 值, 是否资源 rid], …]
+	##   v4 点数组 / 浮点数组多一项: [名, null, false, [0 整份 / 1 差分, 整数串, 0 点数组 / 1 浮点数组]](还原要按 rid + 名取上一份, 见 StreamMirror._pts_of)
 	func plist() -> Array:
 		var out: Array = []
 		var n := vu()
@@ -667,7 +838,12 @@ class Rd extends RefCounted:
 			var v = val()
 			if err != "":
 				return out
-			out.append([k, v, last_tag == T_RES])
+			if last_tag == T_V3Q or last_tag == T_V3QD:
+				out.append([k, null, false, [1 if last_tag == T_V3QD else 0, v, 0]])
+			elif last_tag == T_F1Q or last_tag == T_F1QD:
+				out.append([k, null, false, [1 if last_tag == T_F1QD else 0, v, 1]])
+			else:
+				out.append([k, v, last_tag == T_RES])
 		return out
 
 	## 播放端: {名: 值}(全局 / 单位字段: 没有资源值)

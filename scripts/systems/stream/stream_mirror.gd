@@ -10,7 +10,7 @@ extends RefCounted
 ##   门禁 verify_stream_parity 把它们列为已知例外并打印数量, S3 清零。
 ##
 ## 连续量插值: 每个镜像节点记一份「真值」(最近一次流里给的 position / rotation / scale / modulate)。
-##   播放器在两次采样之间用下一个采样值插(`lerp_to`), 插出来的值只写节点、不写真值; 下一帧先 `restore()` 回真值再插。
+##   播放器在两次采样之间用下一个采样值插(`lerp_to`; v4 热参数点数组 `res_lerp_to`), 插出来的值只写节点 / 材质、不写真值; 下一帧先 `restore()` 回真值再插。
 
 const F := preload("res://scripts/systems/stream/stream_format.gd")
 
@@ -36,13 +36,17 @@ var gen_fail := 0             # 出处键不在白名单 / 函数不存在 / 返
 var gen_fail_ids := {}        # 出处 → 次数(诊断)
 var _gen_cache := {}          # 没有资源参数的出处键(贴图为主) → 资源: 服务器每次 new 一张同参数的贴图, 手机只生成一次
 var _gen_sig := {}            # rid → 出处键签名(同 rid 的 keyframe 重发对得上就复用)
-var _gen_raw := {}            # rid → 原始参数表(参数别名查它; keyframe 清零)
-var gen_alias := 0            # 参数别名次数
+var _gen_raw := {}            # rid → 原始参数表(参数差分查它; keyframe 清零)
 var gen_delta := 0            # 参数差分次数
 var parent_fallback := 0      # 父节点找不到、挂到 _world 的
 var reparents := 0            # 跟着服务器换过父节点的次数
 var kf_dropped := 0           # keyframe 里没出现、被兜底删掉的(顺播时应为 0)
 var unit_parent: Callable = Callable()   # (单位 idx, 键名) → Node; 播放器注入
+## v4 着色器热参数(StreamFormat.SP_META): 点数组按 rid + 参数名记着上一份量化整数串(差分 T_V3QD 对它做), 以及插值用的真值
+var _pts_q := {}              # rid → {参数名: [上一份, 上上份(或 null)]}(绝对整数串; 差分按 StreamFormat.pts_decode 还原)
+var _res_lerped := {}         # rid → {参数名: 真值}(这一帧插过的; restore 回真值)
+var sp_sets := 0              # 应用过的热参数点数组次数(门禁分母)
+var sp_miss := 0              # 差分找不到上一份 / 点数对不上(门禁要求为 0)
 ## S3 伪节点(全屏演出, 见 StreamRecorder._screen_fx): id → ScreenFx。不进 `nodes`(不是镜像节点、不在 `_world` 里)。
 var fx_nodes := {}
 var fx_built := 0             # 开过几次全屏演出(门禁分母)
@@ -89,7 +93,7 @@ func res_def(rid: int, kind: int, a, b, c) -> void:
 		## 同一个 rid 已经有对象(顺播经过 keyframe): 复用, 只把参数再设一遍
 		res[rid] = old
 		if kind == F.RES_PARAM:
-			_apply_props(old as Object, b as Array)
+			_apply_props(old as Object, b as Array, rid)
 		return
 	var r: Resource = null
 	match kind:
@@ -100,7 +104,7 @@ func res_def(rid: int, kind: int, a, b, c) -> void:
 			if ClassDB.can_instantiate(str(a)):
 				r = ClassDB.instantiate(str(a)) as Resource
 				if r != null:
-					_apply_props(r, b as Array)
+					_apply_props(r, b as Array, rid)
 		F.RES_GEN_TEX:
 			ph_gen_tex += 1
 			if old != null:
@@ -122,7 +126,7 @@ func res_def(rid: int, kind: int, a, b, c) -> void:
 func res_set(rid: int, props: Array) -> void:
 	var r = res.get(rid)
 	if r != null:
-		_apply_props(r as Object, props)
+		_apply_props(r as Object, props, rid)
 
 
 ## S3: 出处键 → 调同一个静态生成函数。`pa` = [上一代 rid, [[参数, 是否资源 rid], …]]。
@@ -131,10 +135,7 @@ func _gen_def(rid: int, cls: String, gid: String, pa: Array) -> void:
 	var mode := int(pa[3]) if pa.size() > 3 else F.GEN_FULL
 	var gref := int(pa[2]) if pa.size() > 2 else 0
 	var raw: Array = []
-	if mode == F.GEN_ALIAS:
-		raw = _gen_raw.get(gref, [])            # 参数别名: 与本段那个 rid 同一份参数
-		gen_alias += 1
-	elif mode == F.GEN_DELTA:
+	if mode == F.GEN_DELTA:
 		var base: Array = _gen_raw.get(gref, [])   # 参数差分: 照参照那一代补全
 		gen_delta += 1
 		var lst: Array = pa[1]
@@ -142,18 +143,6 @@ func _gen_def(rid: int, cls: String, gid: String, pa: Array) -> void:
 			var e: Array = lst[i]
 			if int(e[2]) == 1 and i < base.size():
 				raw.append(base[i])
-			elif int(e[2]) == 2 and i < base.size() and base[i][0] is PackedByteArray:
-				var x := PackedByteArray(e[0])
-				var bb: PackedByteArray = base[i][0]
-				for j in range(mini(x.size(), bb.size())):
-					x[j] = x[j] ^ bb[j]
-				raw.append([x, false])
-			elif int(e[2]) == 3 and i < base.size() and base[i][0] is PackedInt32Array:
-				var y := PackedInt32Array(base[i][0])
-				var dv: PackedInt32Array = e[0]
-				for j in range(mini(y.size(), dv.size())):
-					y[j] = y[j] + dv[j]
-				raw.append([y, false])
 			else:
 				raw.append([e[0], e[1]])
 	else:
@@ -351,6 +340,8 @@ func clear() -> void:
 	_res_prev = {}
 	_gen_sig = {}
 	_gen_raw = {}
+	_pts_q = {}
+	_res_lerped = {}
 
 
 # ── S3 伪节点: 全屏演出 ──
@@ -426,17 +417,57 @@ func _apply_node_props(n: Node, id: int, props: Array) -> void:
 	_lerped.erase(id)
 
 
-func _apply_props(o: Object, props: Array) -> void:
+func _apply_props(o: Object, props: Array, rid: int = 0) -> void:
 	for e in props:
 		var v = e[1]
+		if (e as Array).size() > 3:
+			## v4 点数组(热参数): 整份 / 与上一份的差 → 整数串 → 点; 记下这一份给下一次差分
+			var q = _pts_of(rid, str(e[0]), e[3] as Array)
+			if q == null:
+				continue
+			var pd: Dictionary = _pts_q.get_or_add(rid, {})
+			var old = pd.get(str(e[0]))
+			pd[str(e[0])] = [q, (old as Array)[0] if int((e[3] as Array)[0]) == 1 and old is Array else null]
+			sp_sets += 1
+			o.set(str(e[0]), _arr_of(q, e[3] as Array))
+			continue
 		if bool(e[2]):
 			v = res.get(int(v))
 		o.set(str(e[0]), v)
 
 
+## v4: plist 里点数组那一项的 [0 整份(sdiff) / 1 差分(对前两份的线性外推), 整数串] → 绝对整数串(不改记录; 插值预看下一个采样点也用它)。
+##   差分找不到上一份或点数对不上 ⇒ null + 计数(录流器只在本段发过整份之后才发差分, 顺播 / 跳转都不该发生)。
+func _pts_of(rid: int, nm: String, mq: Array) -> Variant:
+	var q: PackedInt32Array = mq[1]
+	var f1: bool = mq.size() > 2 and int(mq[2]) == 1      # 浮点数组(每点半径)
+	if int(mq[0]) == 0:
+		return q if f1 else F.ssum(q)
+	var pr = (_pts_q.get(rid, {}) as Dictionary).get(nm)
+	if not (pr is Array) or not ((pr as Array)[0] is PackedInt32Array) or ((pr as Array)[0] as PackedInt32Array).size() != q.size():
+		sp_miss += 1
+		return null
+	if f1:
+		return F.f1_decode(q, (pr as Array)[0], (pr as Array)[1])
+	return F.pts_decode(q, (pr as Array)[0], (pr as Array)[1])
+
+
+## 绝对整数串 → 材质要的值(点数组 / 浮点数组)
+static func _arr_of(q: PackedInt32Array, mq: Array) -> Variant:
+	return F.f1_of(q) if mq.size() > 2 and int(mq[2]) == 1 else F.pts_of(q)
+
+
 # ── 插值 ──
 ## 上一帧插过值的节点先回到真值(这一帧可能没有下一个采样了)。
 func restore() -> void:
+	for rid in _res_lerped:
+		var r = res.get(rid)
+		if r == null:
+			continue
+		var tv: Dictionary = _res_lerped[rid]
+		for nm in tv:
+			(r as Object).set(str(nm), tv[nm])
+	_res_lerped.clear()
 	for id in _lerped:
 		var n = nodes.get(id)
 		var tr = _truth.get(id)
@@ -484,6 +515,37 @@ func lerp_to(id: int, props: Array, k: float) -> void:
 	if any:
 		_write(n as Node, out)
 		_lerped[id] = done
+
+
+## v4 热参数点数组 / 浮点数组(触手控制点 / 每点半径)的插值: 当前真值(材质上此刻的值)与下一个采样点之间逐个线性插; 标量到步就换。
+func res_lerp_to(rid: int, props: Array, k: float) -> void:
+	var r = res.get(rid)
+	if r == null:
+		return
+	for e in props:
+		if (e as Array).size() <= 3:
+			continue
+		var nm := str(e[0])
+		var q = _pts_of(rid, nm, e[3] as Array)
+		if q == null:
+			continue
+		var a = (r as Object).get(nm)
+		var b = _arr_of(q, e[3] as Array)
+		if typeof(a) != typeof(b) or a.size() != b.size():
+			continue
+		var tv: Dictionary = _res_lerped.get_or_add(rid, {})
+		if not tv.has(nm):
+			tv[nm] = a
+		if b is PackedFloat32Array:
+			var outf := PackedFloat32Array(a)
+			for j in range(outf.size()):
+				outf[j] = DetMath.flerp((a as PackedFloat32Array)[j], (b as PackedFloat32Array)[j], k)
+			(r as Object).set(nm, outf)
+			continue
+		var out := PackedVector3Array(a)
+		for j in range(out.size()):
+			out[j] = (a as PackedVector3Array)[j].lerp((b as PackedVector3Array)[j], k)
+		(r as Object).set(nm, out)
 
 
 func _write(n: Node, v: Array) -> void:

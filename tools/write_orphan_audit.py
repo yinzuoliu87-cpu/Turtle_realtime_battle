@@ -121,6 +121,10 @@ WHY = {
     "strip_finals_live_override": "把决赛日**手动**按成「没上线」(截图台/调试用)",
     "acct_override": "设置屏账号态注入 —— 登录墙那一屏只有靠它才建得出来(verify_ui_consistency 在用)",
     "display_row_override": "设置屏「当作手机建」注入 —— 无头门禁跑在桌面上, 手机那套右框排法(没有「画面」组、两组整块竖向居中)只能靠它真建出来量(verify_contact_email 在用)",
+    "_pts_q": "直播镜像的控制点缓存(stream_mirror.gd:46): 产品侧用 `_pts_q.get_or_add(rid, {})` 拿到内层字典后写 `pd[nm] = …`(:428), "
+              "本扫描只认 `X[...] = ` / `X.op(` 形态, 认不出「先 get_or_add 再写内层」—— 不是没人写",
+    "_res_lerped": "直播镜像插值前的真值备份(stream_mirror.gd:47): `_res_lerped.get_or_add(rid, {})` 后写内层 `tv[nm] = a`(:536), "
+                   "restore 时读回(:463); 同上, 写在内层字典上",
     "release_override": "设置屏「当作正式包建」注入 —— 无头门禁跑不出 release 模板, 调试场不漏给玩家这条只能靠它把正式包那一页真建出来量(verify_settings 3c 在用)",
     ## ★★洞⑥ 的容器网一开就露出来的一条: 它**本来就在本文件头注的测试缝名单里**
     ##   (「`pool_override` / `now_override_ts` / `_transport_for_test`」),

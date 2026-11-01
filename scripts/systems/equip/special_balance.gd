@@ -60,6 +60,8 @@ var _next_uid: int = 1
 func grant(u: Dictionary, key: String, amount: float, opts: Dictionary = {}) -> void:
 	if amount <= 0.0 or not u.get("alive", false):
 		return
+	if battle._untouch_block(u, "spec_grant"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	var uid: String = _uid(u)
 	if not _bal.has(uid):
 		_bal[uid] = {}

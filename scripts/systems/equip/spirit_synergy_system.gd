@@ -303,7 +303,7 @@ func _slap(side: String, idx: int, share: float) -> int:
 func _band_foes(side: String, origin: Vector2, dir: Vector2, rng: float) -> Array:
 	var out: Array = []
 	for u in battle._units:
-		if not (u is Dictionary) or not u.get("alive", false):
+		if not (u is Dictionary) or not u.get("alive", false) or battle._is_untouchable(u):   # §UNTOUCHABLE: 触手扫不到训龟大师
 			continue
 		if str(u.get("side", "")) == side:
 			continue
@@ -338,7 +338,7 @@ func _slap_source(side: String):
 	if c is Dictionary:
 		return c
 	for u in battle._units:
-		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) == side:
+		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) == side and not battle._is_untouchable(u):   # §UNTOUCHABLE: 不拿大师当伤害来源
 			return u
 	return null
 

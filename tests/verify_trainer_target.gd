@@ -1,7 +1,8 @@
 extends Node
 
 ## verify_trainer_target.gd — 点4: 训龟大师防误锁 集中闸门 (用户 2026-07-23)
-## 规则: 定向/单取技能【不选】大师(和组装期机甲), 但真 AOE 循环【仍波及】大师(吃1)。
+## 规则: 定向/单取技能【不选】大师(和组装期机甲); 真 AOE 循环 2026-10-31 起【也不含】大师
+##   (用户「训龟大师不应该受到任何影响，就是个装饰的地位，丢点技能」·方案书 20261031e-训龟大师不受影响)。
 ## 直接 .new() 战斗脚本, 测三个目标原语(不起 3D 场景)。
 
 const Battle := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -33,10 +34,14 @@ func _ready() -> void:
 	_ok("★定向不选训龟大师(点4核心)", not _has(pick, "tr"), str(pick.size()))
 	_ok("★定向不选组装期机甲(点4: 忍者被动等不锁它)", not _has(pick, "mech"))
 
-	# ② _enemies_of: 真 AOE —— 仍然波及大师(吃1)+ 机甲
+	# ② _enemies_of: 真 AOE —— 波及普通敌 / 组装期机甲, 但 2026-10-31 起【不含】大师
 	var enem: Array = b._targeting._enemies_of(att)
 	_ok("AOE 仍波及普通敌", _has(enem, "en"))
-	_ok("★AOE 仍波及训龟大师(龟派气波等溅射·点4)", _has(enem, "tr"))
+	_ok("★AOE 不再波及训龟大师(装饰单位·2026-10-31)", not _has(enem, "tr"))
+	# ②b 友军名单同样不含大师(光环 / 范围治疗护盾 / 「最高输出友军」都从这里取)
+	var allies_all: Array = b._targeting._allies_of(att)
+	_ok("友军名单含普通友军", _has(allies_all, "ally"))
+	_ok("★友军名单不含训龟大师(不吃任何增益·2026-10-31)", not _has(allies_all, "trAlly"))
 
 	# ③ _allies_share_pool: 护盾均分 —— 排除大师与龟蛋、含自己/普通友军
 	var al: Array = b._targeting._allies_share_pool(att)

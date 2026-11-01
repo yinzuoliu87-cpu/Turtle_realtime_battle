@@ -118,8 +118,9 @@ func _one(tag: String, job: Dictionary, dir: String) -> void:
 	var parts := PackedStringArray()
 	for opk in obs:
 		parts.append("%s %d" % [str(opn.get(int(opk), str(opk))), int(obs[opk])])
-	print("  [量] %s 原始字节按操作: %s · 其中出处键定义 %d B(释放上一代 %d 次、参数别名 %d 次) · 资源定义次数按种类 %s" % [tag, ", ".join(parts),
-		int(m.get("gen_bytes", 0)), int(m.get("gen_release", 0)), int(m.get("gen_alias", 0)), str(m.get("res_defs", {}))])
+	print("  [量] %s 原始字节按操作: %s · 其中出处键定义 %d B(释放上一代 %d 次) · 着色器热参数 %d B(%d 项, 没列出的变了 %d 次) · 资源定义次数按种类 %s" % [tag, ", ".join(parts),
+		int(m.get("gen_bytes", 0)), int(m.get("gen_release", 0)), int(m.get("sp_bytes", 0)), int(m.get("sp_sets", 0)), int(m.get("sp_unlisted", 0)),
+		str(m.get("res_defs", {}))])
 	var gby: Dictionary = m.get("gen_by", {})
 	var gl: Array = gby.keys()
 	gl.sort_custom(func(x, y): return int(gby[x][1]) > int(gby[y][1]))

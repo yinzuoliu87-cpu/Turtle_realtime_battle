@@ -132,6 +132,7 @@ class TN extends RefCounted:
 	var mats := PackedInt32Array()
 	var base: Array = []      # 报警基线: 与类规格逐项对齐的原值(只核白名单外那些项)
 	var base_x := {}          # 报警基线: 规格外的伪属性(MeshInstance3D 的 surface_material_override/i)
+	var sp := PackedInt32Array()   # v4: 它身上带着色器热参数的材质 rid(节点 meta `stream_shader_params`, 见 `_sp_reg`)
 
 
 var battle: Node
@@ -176,8 +177,12 @@ var _res_base := {}           # rid → Dictionary(白名单外属性 → 比较
 var _gen_ref := 0             # S3: 本次定义可以拿来做参数差分的上一代 rid(_samp 换网格时设, 用完清零)
 var _gen_fn_of := {}          # S3: rid → 出处(脚本:函数)(本 keyframe 段)
 var _gen_args_of := {}        # S3: rid → 参数 Array(本 keyframe 段; 只记不含资源的)
-var _gen_recent: Array = []    # S3: 本 keyframe 段最近发过的几份出处键参数 [参数 Array, rid](参数别名用; keyframe 清零)
 var _gen_prev := {}           # S3: rid → 上一代 rid(每步重建的网格换代、旧的已释放; 第一次发定义时带上, 手机释放旧的)
+## v4 着色器热参数(StreamFormat.SP_META): 材质 iid → 列出的 uniform 名(由带 meta 的节点登记, 必须早于材质第一次定义);
+##   rid → [属性名表(带 shader_parameter/ 前缀), 上次比对的原值, 点数组上次发出的绝对整数串(其余类型为 null), 最近一次比对的步,
+##          点数组上上次发出的(差分预测用, 见 StreamFormat.pts_encode)]
+var _sp_of := {}
+var _sp_st := {}
 ## 规格缓存
 var _specs := {}              # 类名 → Array[[StringName, 类型, 跟踪?]]
 var _defs := {}               # 类名 → Array(默认值)
@@ -337,7 +342,6 @@ func _sample_pre(step_n: int) -> bool:
 			key = true
 			enc.strs.clear()
 			_res_sent.clear()
-			_gen_recent.clear()
 			_gen_fn_of.clear()
 			_gen_args_of.clear()
 	if int(meta["first_step"]) < 0:
@@ -557,6 +561,7 @@ func _make_tn(nd: Node) -> TN:
 	t.id = _next_id
 	_next_id += 1
 	t.cls = nd.get_class()
+	_sp_reg(nd)
 	match t.cls:
 		"Sprite3D": t.kind = K_SPRITE
 		"MeshInstance3D": t.kind = K_MESH
@@ -810,10 +815,9 @@ func _samp(t: TN, cont: bool) -> void:
 		var m0 = mi0.mesh
 		if m0 != t.mesh:
 			var g0 = _gen_meta(m0)
-			## S3: 生成网格换成另一份生成网格(每步重建一次的触手 / 触须 / 水带)⇒ 与变换同频(30 Hz)发, 不逐步发;
-			##   出处键可以自己带「每几步发一代」(meta 第 4 项, 见 VfxTex.tag 的 every: 触手待机 / 预警 / 收回 15 Hz)
-			var gev: int = int((g0 as Array)[3]) if g0 != null and (g0 as Array).size() > 3 else F.CONT_EVERY
-			if (_step_n % maxi(1, gev)) == 0 or g0 == null or t.gm == null:
+			## S3: 生成网格换成另一份生成网格(每步重建一次的触须 / 水带)⇒ 与变换同频(30 Hz)发, 不逐步发
+			##   (v4 起没有「每几步发一代」的出处键了: 那是旧触手待机 15 Hz 用的, 新触手是固定网格 + 着色器热参数)
+			if (_step_n % F.CONT_EVERY) == 0 or g0 == null or t.gm == null:
 				var old_rid := 0
 				if t.gm != null and t.mesh != null and is_instance_valid(t.mesh):
 					old_rid = int(_rid_of.get((t.mesh as Object).get_instance_id(), 0))
@@ -825,18 +829,22 @@ func _samp(t: TN, cont: bool) -> void:
 					_gen_prev[mesh_rid] = old_rid
 					meta["gen_release"] = int(meta.get("gen_release", 0)) + 1
 				_gen_ref = old_rid if _res_sent.has(old_rid) else 0
+				_sp_reg(t.n)
 				_ensure(mesh_rid)
 				_gen_ref = 0
 				t.mats = _collect_mats(t.n)
+				t.sp = _sp_rids(t.mats)
 	var mo_rid := -1
 	if t.kind == K_MESH:
 		var mo0 = (t.n as MeshInstance3D).material_override
 		if mo0 != t.mo:
 			## 换了覆盖材质(sim 步里给特效换一张材质): 离散量, 逐步发; 新材质先定义, 它的跟踪属性从此按 t.mats 核
 			t.mo = mo0
+			_sp_reg(t.n)
 			mo_rid = _rid(mo0)
 			_ensure(mo_rid)
 			t.mats = _collect_mats(t.n)
+			t.sp = _sp_rids(t.mats)
 	_cur_id = t.id
 	_sn = 0
 	## S2: 换了父节点(特效常见的「父节点要删, 先把粒子挪到世界上让它放完」)⇒ 发 `@par` + 当场的变换(本地坐标跟着父节点变了)
@@ -999,6 +1007,8 @@ func _samp(t: TN, cont: bool) -> void:
 		for rid in t.mats:
 			if _res_ck[rid] != _step_n:
 				_res_check(rid)
+	for rid in t.sp:
+		_sp_check(rid, cont)
 
 
 ## 写一个属性名; 本节点这一步的第一个变化才写「改属性」操作头(没变的节点零开销)。属性 < 128 项 ⇒ 计数一字节、事后回填。
@@ -1084,6 +1094,7 @@ func _node_new(t: TN) -> void:
 				vals.append([nm, null, rid2])
 	_cache_tracked(t)
 	t.mats = _collect_mats(n)
+	t.sp = _sp_rids(t.mats)
 	## 父引用(先算好: 可能要写字符串)
 	var par: Node = n.get_parent()
 	t.par = par.get_instance_id() if par != null else 0
@@ -1171,6 +1182,9 @@ func _add_mat(out: PackedInt32Array, m: Material) -> void:
 	_ensure(rid)
 	if rid > 0 and not out.has(rid):
 		out.append(rid)
+	## v4: next_pass 链(描边外壳那一类第二遍)也是这个节点的材质 —— 它的参数同样要比(原来只进报警基线, 手机上没有第二遍)
+	if m.next_pass != null and not out.has(_rid(m.next_pass)):
+		_add_mat(out, m.next_pass)
 
 
 # ── 资源 ──
@@ -1221,6 +1235,9 @@ func _ensure(rid: int) -> void:
 	var kind := int(_res_kind[rid])
 	if o == null:
 		kind = F.RES_OTHER
+	elif kind == F.RES_PATH and o is ShaderMaterial and _sp_of.has((o as Object).get_instance_id()):
+		kind = F.RES_PARAM        # v4: 带热参数的着色器材质即使存过盘也按参数型发(路径型资源手机直接 load, 参数不比)
+		_res_kind[rid] = kind
 	elif kind != F.RES_GEN and (o as Object).has_meta(F.GEN_META):
 		kind = F.RES_GEN          # S3: 先见到、后挂出处键的(建好再打标签)
 		_res_kind[rid] = kind
@@ -1243,6 +1260,10 @@ func _ensure(rid: int) -> void:
 				enc.s(str(e[0]))
 				if int(e[2]) >= 0:
 					enc.res(int(e[2]))
+				elif int(e[2]) == -2:
+					enc.pts(F.T_V3Q, e[1])     # v4 热参数里的点数组: 整份量化(播放端记下这一份, 之后的差分对它做)
+				elif int(e[2]) == -4:
+					enc.ints(F.T_F1Q, e[1])    # v4 热参数里的浮点数组(每点半径): 整份量化
 				else:
 					enc.val(e[1])
 		F.RES_GEN_TEX:
@@ -1296,22 +1317,12 @@ func _ensure_gen(rid: int, o: Object) -> void:
 	_gen_prev.erase(rid)
 	var gid := "%s:%s" % [str(gm[0]), str(gm[1])]
 	var plain := rids.count(-1) == rids.size()      # 参数里没有资源(才记下来给后面做差分)
-	## 参数别名: 同一个参数 Array 对象这一段里刚发过(触手本体与外发光壳共用一份)⇒ 只写「同 rid X」
-	var alias := 0
-	for e in _gen_recent:
-		if is_same(e[0], gargs):
-			alias = int(e[1])
-			break
-	## 参数差分: 这个节点上一代网格(每步重建的触手 / 触须 / 水带)本段发过、同一个生成函数、参数个数相同
-	##   ⇒ 没变的参数写一个字节 T_SAME, 等长字节数组写异或(大半是 0, ZSTD 压得很小), 其余照写
+	## 参数差分: 这个节点上一代网格(每步重建的触须 / 水带)本段发过、同一个生成函数、参数个数相同
+	##   ⇒ 没变的参数写一个字节 T_SAME, 其余照写(v4 退役了字节数组异或 / 整数数组相减: 只有旧触手用过)
 	var ref := _gen_ref
-	var delta: bool = alias == 0 and plain and ref > 0 and str(_gen_fn_of.get(ref, "")) == gid \
+	var delta: bool = plain and ref > 0 and str(_gen_fn_of.get(ref, "")) == gid \
 		and _gen_args_of.has(ref) and (_gen_args_of[ref] as Array).size() == gargs.size()
-	if alias > 0:
-		enc.vu(F.GEN_ALIAS)
-		enc.vu(alias)
-		meta["gen_alias"] = int(meta.get("gen_alias", 0)) + 1
-	elif delta:
+	if delta:
 		var base: Array = _gen_args_of[ref]
 		enc.vu(F.GEN_DELTA)
 		enc.vu(ref)
@@ -1321,21 +1332,6 @@ func _ensure_gen(rid: int, o: Object) -> void:
 			var b = base[i]
 			if typeof(a) == typeof(b) and a == b:
 				enc.u8(F.T_SAME)
-			elif a is PackedByteArray and b is PackedByteArray and (a as PackedByteArray).size() == (b as PackedByteArray).size():
-				var x := PackedByteArray(a)
-				var bb: PackedByteArray = b
-				for j in range(x.size()):
-					x[j] = x[j] ^ bb[j]
-				enc.u8(F.T_BXOR)
-				enc.vu(x.size())
-				enc.buf.put_data(x)
-			elif a is PackedInt32Array and b is PackedInt32Array and (a as PackedInt32Array).size() == (b as PackedInt32Array).size():
-				var ia: PackedInt32Array = a
-				var ib: PackedInt32Array = b
-				enc.u8(F.T_IDIFF)
-				enc.vu(ia.size())
-				for j in range(ia.size()):
-					enc.vi(ia[j] - ib[j])
 			else:
 				enc.gval(a)
 		meta["gen_delta"] = int(meta.get("gen_delta", 0)) + 1
@@ -1347,10 +1343,6 @@ func _ensure_gen(rid: int, o: Object) -> void:
 				enc.res(rids[i])
 			else:
 				enc.gval(gargs[i])
-	if alias == 0:
-		_gen_recent.push_front([gargs, rid])
-		if _gen_recent.size() > 4:
-			_gen_recent.pop_back()
 	_gen_fn_of[rid] = gid
 	if plain:
 		_gen_args_of[rid] = gargs
@@ -1384,17 +1376,54 @@ func _res_param_vals(rid: int, o: Object) -> Array:
 		_ensure(srid)
 		if srid > 0:
 			vals.append(["shader", null, srid])
+		## v4: 第二遍 / 绘制先后也发(原来只进报警基线 ⇒ 手机上的着色器材质没有 next_pass、先后恒 0)
+		if sm.next_pass != null:
+			var nrid := _rid(sm.next_pass)
+			_ensure(nrid)
+			if nrid > 0:
+				vals.append(["next_pass", null, nrid])
+		if sm.render_priority != 0:
+			vals.append(["render_priority", sm.render_priority, -1])
 		bx[&"shader"] = sm.shader
 		bx[&"render_priority"] = sm.render_priority
 		bx[&"next_pass"] = sm.next_pass
+		## v4 热参数(节点 meta 列出的): 不进通用的 30 Hz 跟踪表, 由 `_sp_check` 比(标量逐步、点数组量化差分)
+		var hot = _sp_of.get(sm.get_instance_id())
+		var hs := {}
+		if hot != null:
+			for h in (hot as PackedStringArray):
+				hs["shader_parameter/" + h] = true
+		var sp_names := PackedStringArray()
+		var sp_last: Array = []
+		var sp_q: Array = []
+		var sp_q2: Array = []
 		for p in sm.get_property_list():
 			var nm: String = str((p as Dictionary)["name"])
 			if not nm.begins_with("shader_parameter/"):
 				continue
 			var v = sm.get(nm)
+			if hs.has(nm) and sp_names.size() < 127:
+				sp_names.append(nm)
+				sp_last.append(v)
+				sp_q2.append(null)
+				if v is PackedVector3Array:
+					var qa := F.q_abs(v)
+					sp_q.append(qa)
+					vals.append([nm, F.sdiff(qa), -2])
+				elif v is PackedFloat32Array:
+					var qf := F.f1_abs(v)
+					sp_q.append(qf)
+					vals.append([nm, qf, -4])
+				else:
+					sp_q.append(null)
+					_push_val(vals, nm, v)
+				continue
 			track.append(nm)
 			last.append(v)
 			_push_val(vals, nm, v)
+		if hot != null:
+			_sp_st[rid] = [sp_names, sp_last, sp_q, -1, sp_q2]
+			meta["sp_mats"] = int(meta.get("sp_mats", 0)) + 1
 	else:
 		var spec: Array = _spec(cls, false)
 		var defs: Array = _defs[cls]
@@ -1450,6 +1479,12 @@ func _res_check(rid: int) -> void:
 		_push_val(ch, names[i], v)
 	if ch.is_empty():
 		return
+	if _sp_st.has(rid):
+		meta["sp_unlisted"] = int(meta.get("sp_unlisted", 0)) + ch.size()
+		var un: Dictionary = meta.get("sp_unlisted_names", {})
+		for e in ch:
+			un[str(e[0])] = int(un.get(str(e[0]), 0)) + 1
+		meta["sp_unlisted_names"] = un
 	enc.u8(F.OP_RES_SET)
 	enc.vu(rid)
 	enc.vu(ch.size())
@@ -1461,6 +1496,133 @@ func _res_check(rid: int) -> void:
 			enc.col(e[1])
 		else:
 			enc.val(e[1])
+
+
+## ═══ v4 着色器热参数 ═══
+## 节点带 meta `stream_shader_params`(StreamFormat.SP_META)⇒ 它身上的 ShaderMaterial(覆盖 / 叠加 / 面材质 / next_pass 链)
+##   按材质 iid 登记那几个 uniform 名。必须在材质第一次定义(`_ensure` → `_res_param_vals`)之前登记 ⇒ `_make_tn`(建节点前)
+##   与换网格 / 换覆盖材质那两处调。登记晚了(材质先被别的节点定义过)只是退回通用的 30 Hz 跟踪, 下一个 keyframe 起生效。
+func _sp_reg(n: Node) -> void:
+	if not n.has_meta(F.SP_META):
+		return
+	var names := PackedStringArray(n.get_meta(F.SP_META))
+	if names.is_empty():
+		return
+	var ms: Array = []
+	if n is GeometryInstance3D:
+		ms.append((n as GeometryInstance3D).material_override)
+		ms.append((n as GeometryInstance3D).material_overlay)
+	if n is MeshInstance3D:
+		var mi: MeshInstance3D = n
+		for si in range(mi.get_surface_override_material_count()):
+			ms.append(mi.get_surface_override_material(si))
+		if mi.mesh != null:
+			for si in range(mi.mesh.get_surface_count()):
+				ms.append(mi.mesh.surface_get_material(si))
+	for m in ms:
+		var mm = m
+		var guard := 0
+		while mm is Material and guard < 4:
+			if mm is ShaderMaterial:
+				_sp_of[(mm as Object).get_instance_id()] = names
+			mm = (mm as Material).next_pass
+			guard += 1
+
+
+func _sp_rids(mats: PackedInt32Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for rid in mats:
+		if _sp_st.has(rid):
+			out.append(rid)
+	return out
+
+
+## 列出的 uniform 变了才发: float / int / bool 逐步比(命中白闪只亮 1 步也录得到), 其余按连续量 30 Hz 比;
+##   点数组(控制点)按前两次发出的做段向量外推、发残差(带死区, 见 StreamFormat.pts_encode; T_V3QD), 点数变了发整份 T_V3Q;
+##   手机那一份不会变(静止)就不发。
+##   同一份材质一步只比一次(两个节点共用一份材质时)。
+func _sp_check(rid: int, cont: bool) -> void:
+	var st = _sp_st.get(rid)
+	if st == null or int(st[3]) == _step_n:
+		return
+	st[3] = _step_n
+	var o = (_res_ref[rid] as WeakRef).get_ref()
+	if o == null:
+		return
+	var names: PackedStringArray = st[0]
+	var last: Array = st[1]
+	var qs: Array = st[2]
+	var q2s: Array = st[4]
+	var ch: Array = []            # [名, 值, 子 rid / -1 / -2 点数组整份 / -3 点数组差分 / -4 浮点数组整份 / -5 浮点数组差分]
+	for i in range(names.size()):
+		var v = (o as Object).get(names[i])
+		var old = last[i]
+		var t := typeof(v)
+		if t == typeof(old) and v == old:
+			continue
+		if not cont and t != TYPE_FLOAT and t != TYPE_INT and t != TYPE_BOOL:
+			continue              # 非标量等下一个采样步(连续量 30 Hz)
+		last[i] = v
+		if t == TYPE_PACKED_VECTOR3_ARRAY:
+			var prev = qs[i]
+			if prev is PackedInt32Array and (prev as PackedInt32Array).size() == (v as PackedVector3Array).size() * 3:
+				## 差分: 逐点「已解出的前一点 + 段向量外推」+ 残差(带死区, 见 StreamFormat.pts_encode); 手机按同一个预测加回来
+				var enc2: Array = F.pts_encode(v, prev, q2s[i])
+				var d: PackedInt32Array = enc2[0]
+				var qa: PackedInt32Array = enc2[1]
+				if qa == prev and (not (q2s[i] is PackedInt32Array) or qa == q2s[i]):
+					continue      # 手机手上那一份已经就是它, 而且下一次的预测也不会变(静止)
+				ch.append([names[i], d, -3])
+				q2s[i] = prev
+				qs[i] = qa
+			else:
+				var qa2 := F.q_abs(v)
+				ch.append([names[i], F.sdiff(qa2), -2])
+				q2s[i] = null
+				qs[i] = qa2
+		elif t == TYPE_PACKED_FLOAT32_ARRAY:
+			## 浮点数组(每点半径): 逐个元素线性外推 + 残差(带死区, StreamFormat.f1_encode)
+			var pf = qs[i]
+			if pf is PackedInt32Array and (pf as PackedInt32Array).size() == (v as PackedFloat32Array).size():
+				var ef: Array = F.f1_encode(v, pf, q2s[i])
+				var qf: PackedInt32Array = ef[1]
+				if qf == pf and (not (q2s[i] is PackedInt32Array) or qf == q2s[i]):
+					continue
+				ch.append([names[i], ef[0], -5])
+				q2s[i] = pf
+				qs[i] = qf
+			else:
+				var qf2 := F.f1_abs(v)
+				ch.append([names[i], qf2, -4])
+				q2s[i] = null
+				qs[i] = qf2
+		else:
+			_push_val(ch, names[i], v)
+	if ch.is_empty():
+		return
+	var p0 := enc.pos()
+	enc.u8(F.OP_RES_SET)
+	enc.vu(rid)
+	enc.vu(ch.size())
+	for e in ch:
+		enc.s(str(e[0]))
+		var k := int(e[2])
+		if k >= 0:
+			enc.res(k)
+		elif k == -2:
+			enc.pts(F.T_V3Q, e[1])
+		elif k == -3:
+			enc.pts(F.T_V3QD, e[1])
+		elif k == -4:
+			enc.ints(F.T_F1Q, e[1])
+		elif k == -5:
+			enc.ints(F.T_F1QD, e[1])
+		elif typeof(e[1]) == TYPE_COLOR:
+			enc.col(e[1])
+		else:
+			enc.val(e[1])
+	meta["sp_sets"] = int(meta.get("sp_sets", 0)) + ch.size()
+	meta["sp_bytes"] = int(meta.get("sp_bytes", 0)) + enc.pos() - p0
 
 
 ## 报警: 白名单外属性和基线不同 ⇒ 计数 + 记哪一类的哪个属性(基线跟着更新, 同一次变化只报一次)。
@@ -1548,7 +1710,7 @@ func _alarm_hit(key: String) -> void:
 
 ## keyframe 时丢掉已被引擎释放的资源的缓存(特效节点各带一份材质, 不清会一直涨)。
 func _prune_res() -> void:
-	for d in [_res_base, _res_track, _res_last]:
+	for d in [_res_base, _res_track, _res_last, _sp_st]:
 		var dead: Array = []
 		for rid in (d as Dictionary):
 			if (_res_ref[int(rid)] as WeakRef).get_ref() == null:

@@ -126,7 +126,7 @@ func on_death(dead) -> void:
 			continue
 		var lit: Array = []      # 分到这份战利品的人 —— 只喂演出, 不参与任何结算
 		for u in battle._units:
-			if not (u is Dictionary) or str(u.get("side", "")) != str(side):
+			if not (u is Dictionary) or str(u.get("side", "")) != str(side) or battle._is_untouchable(u):   # §UNTOUCHABLE: 收割不加给训龟大师
 				continue
 			# ★写 base_atk 而不是挂 buff: 规格是"永久"(本场累积), buff 有时限会掉。
 			u["base_atk"] = float(u.get("base_atk", 0.0)) + add
@@ -168,6 +168,8 @@ func tick(delta: float) -> void:
 				continue
 			if str(u.get("side", "")) == s:
 				continue
+			if battle._is_untouchable(u):
+				continue          # §UNTOUCHABLE: 训龟大师不当猎物
 			if u.get("_isEgg", false):
 				continue          # 龟蛋不当猎物: 它是胜负判定的容器, 标它等于把增伤全砸在结算物上
 			var hp: float = float(u.get("hp", 0.0))
@@ -191,7 +193,7 @@ func tick(delta: float) -> void:
 ## ★必须在装备/羁绊管线跑完之后 —— 否则会被后来的属性重算冲掉。
 func restore() -> void:
 	for u in battle._units:
-		if not (u is Dictionary) or u.get("_isEgg", false) or u.get("is_trainer", false):
+		if not (u is Dictionary) or u.get("_isEgg", false) or battle._is_untouchable(u):
 			continue
 		if u.get("_harvest_restored", false):
 			continue                              # 同一路里 apply 多次不叠

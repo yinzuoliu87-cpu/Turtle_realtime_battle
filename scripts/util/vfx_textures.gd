@@ -13,13 +13,10 @@ const SELF := "res://scripts/util/vfx_textures.gd"
 
 
 ## 给资源挂出处键(已挂过的不再挂: 缓存的贴图每次调用都会经过这里)。`src` 缺省 = 本文件。返回原资源, 方便 `return tag(…)`。
-## `every` > 0: 每步重建的网格在录流里**每几步发一代**(缺省 = 与变换同频的 2 步 / 30 Hz)。只影响流, 不影响本机画面。
-static func tag(r, fn: String, args: Array = [], src: String = SELF, every: int = 0):
+## (2026-10-31 拿掉了第 5 个参数 `every`「每几步发一代」: 只有旧触手待机 15 Hz 用过, 新触手是固定网格, 零调用者。)
+static func tag(r, fn: String, args: Array = [], src: String = SELF):
 	if r is Resource and not (r as Resource).has_meta(&"stream_gen"):
-		var m: Array = [src, fn, args]
-		if every > 0:
-			m.append(every)
-		(r as Resource).set_meta(&"stream_gen", m)
+		(r as Resource).set_meta(&"stream_gen", [src, fn, args])
 	return r
 
 

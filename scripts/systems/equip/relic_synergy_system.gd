@@ -215,7 +215,7 @@ func tick(delta: float) -> void:
 			#   数值上面 _bump_all 已经结算完了, 下面这行只画不算。
 			_awaken_vfx(s)
 		for u in battle._units:
-			if not (u is Dictionary) or str(u.get("side", "")) != s:
+			if not (u is Dictionary) or str(u.get("side", "")) != s or battle._is_untouchable(u):   # §UNTOUCHABLE: 训龟大师不攒远古之力
 				continue
 			var cur: float = float(u.get("_ancient", 0.0))
 			if cur >= cap:
@@ -249,7 +249,7 @@ func _awaken_vfx(side: String) -> int:
 		return 0
 	var lit: Array = []
 	for u in battle._units:
-		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) == side:
+		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) == side and not battle._is_untouchable(u):   # §UNTOUCHABLE: 大师不吃觉醒, 也不在它身上亮
 			lit.append(Vector2(u.get("pos", Vector2.ZERO)))
 	if lit.is_empty():
 		return 0
@@ -302,7 +302,7 @@ func _bump_all(side: String, pct: float, cap: float) -> void:
 ## 换路重建单位【之后】调：把本场已累计的远古之力重放到新的一批单位上。
 func restore() -> void:
 	for u in battle._units:
-		if not (u is Dictionary) or u.get("_ancient_restored", false):
+		if not (u is Dictionary) or u.get("_ancient_restored", false) or battle._is_untouchable(u):   # §UNTOUCHABLE
 			continue
 		var had: float = float(_ancient_total.get(str(u.get("side", "")), 0.0))
 		if had <= 0.0:

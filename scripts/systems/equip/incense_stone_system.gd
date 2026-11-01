@@ -305,7 +305,7 @@ func _reapply(side: String) -> void:
 		if str(o.get("side", "")) != side:
 			continue
 		# ★"友军"一律排除龟蛋与训龟大师(用户 2026-08-06 定的全表通用口径)
-		if o.get("_isEgg", false) or o.get("is_trainer", false):
+		if o.get("_isEgg", false) or battle._is_untouchable(o):
 			continue
 		var amp: float = TEAM_AMP * m
 		var dr: float = TEAM_DR * m
@@ -443,7 +443,7 @@ func tick(_delta: float) -> void:
 			continue
 		var n := 0
 		for o in battle._units:
-			if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) == side:
+			if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) == side and not battle._is_untouchable(o):   # §UNTOUCHABLE: 不计人头
 				n += 1
 		if n != int(_roster_n.get(side, -1)):
 			_roster_n[side] = n

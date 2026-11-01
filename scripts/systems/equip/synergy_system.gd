@@ -81,7 +81,7 @@ func apply_all() -> void:
 			_by_side[side] = _calc_tiers(side)
 	tier_of = _by_side["left"]        # 面板/门禁默认看我方
 	for u in battle._units:
-		if not (u is Dictionary) or u.get("_isEgg", false):
+		if not (u is Dictionary) or u.get("_isEgg", false) or battle._is_untouchable(u):   # §UNTOUCHABLE: 训龟大师不吃羁绊加成
 			continue
 		_apply_to(u, _by_side.get(str(u.get("side", "left")), {}))
 
@@ -146,7 +146,7 @@ func _calc_tiers(side: String) -> Dictionary:
 			break                 # ★有全阵容名单就以它为准, 不再补场上的(否则两套口径混着数)
 		if not (u is Dictionary) or str(u.get("side", "")) != side:
 			continue
-		if u.get("_isEgg", false) or u.get("is_trainer", false):
+		if u.get("_isEgg", false) or battle._is_untouchable(u):
 			continue          # 龟蛋与训龟大师不带装备, 也不该被算进羁绊
 		for e in u.get("equips", []):
 			if not (e is Dictionary):
@@ -225,7 +225,11 @@ func _apply_to(u: Dictionary, tiers: Dictionary) -> void:
 
 
 ## 某只单位所属阵营的某类型激活档（0 = 未激活）。给别的系统查档位用。
+## ★训龟大师恒为 0(§UNTOUCHABLE·用户 2026-10-31): 各类型羁绊的「全队收益」都按这个函数问"这只吃几档",
+##   原来大师跟着本方档位吃(弓箭穿透 / 遗物攻击 / 食物学院血量 / 法器灵泉治疗 …)。
 func tier_for(u: Dictionary, t: String) -> int:
+	if battle._is_untouchable(u):
+		return 0
 	var tiers: Dictionary = _by_side.get(str(u.get("side", "left")), {})
 	return int(tiers.get(t, 0))
 
@@ -320,7 +324,7 @@ func _blood_rite_vfx(delta: float) -> void:
 ## ★回复的是【已损失】不是【最大】—— 满血时回 0，`_heal` 返回实际回血量。
 func _pulse() -> void:
 	for u in battle._units:
-		if not (u is Dictionary) or not u.get("alive", false):
+		if not (u is Dictionary) or not u.get("alive", false) or battle._is_untouchable(u):   # §UNTOUCHABLE
 			continue
 		var tiers: Dictionary = _by_side.get(str(u.get("side", "left")), {})
 		var pct := 0.0

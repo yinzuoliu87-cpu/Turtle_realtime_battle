@@ -1490,6 +1490,12 @@ func _drop_scene() -> void:
 
 func _t_open_path() -> void:
 	print("── ⑧ 真入口: 一个绑定控件都不碰, 走得到一局吗 ──")
+	## ★★2026-11-01 周日实跑红: 这一节排在 `_ready` 收尾「全局时钟还原」(`now_override_ts = 0`)之后,
+	##   只在主菜单建好后补钉了 `clock_override_ts` —— 而周日重做(10-31)之后, 决赛日的主按钮在**建的那一刻**就换成
+	##   「我的比赛 / 观看直播」(menu_finals_day.gd `build_hero`), 补钉太晚: 点下去进的是对阵图, 等不到选龟屏, 帧预算耗尽、
+	##   没打 ALL PASS。(周六那天主按钮仍是「开始战斗」、只在点的时候被拦, 补钉来得及 —— 所以以前没出事。)
+	##   ⇒ 本节自己从头钉全局时钟, 收尾还原。
+	P2C.now_override_ts = WEEKDAY_TS
 	var vp0 := get_tree().root.size
 	get_tree().root.size = Vector2i(1280, 720)
 	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
@@ -1677,6 +1683,7 @@ func _t_open_path() -> void:
 	GameState.tutorial = false
 	GameState.tutorial_active = false
 	get_tree().root.size = vp0
+	P2C.now_override_ts = 0
 	await _wf(2)
 ## `hot` 里有哪些控件的下沿越过了 `line`(= 键盘上沿)。
 func _under(hot: Array, line: float) -> Array:

@@ -589,7 +589,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	var pass_fn = func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
 		if not uu.get("alive", false): return                  # 施法者已阵亡: 触须不再伸出(10-16)
 		for o in battle._units:
-			if not o.get("alive", false) or is_same(o, uu): continue
+			if not o.get("alive", false) or is_same(o, uu) or battle._is_untouchable(o): continue   # §UNTOUCHABLE: 无差别触须也不缠训龟大师
 			if DetMath.dist((o["pos"] as Vector2), center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = TENDRIL_PASS_FOE if battle._is_hostile(uu, o) else TENDRIL_PASS_ALLY
 			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), TENDRIL_LIFESTEAL)
@@ -604,7 +604,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 		battle._shake(0.12)
 		var caster_alive: bool = uu.get("alive", false)          # 施法者中途阵亡: 不再撕扯造成伤害, 只放开被缠住的人(10-16)
 		for o in battle._units:
-			if not o.get("alive", false) or is_same(o, uu): continue
+			if not o.get("alive", false) or is_same(o, uu) or battle._is_untouchable(o): continue   # §UNTOUCHABLE
 			if not caster_alive:
 				if o.get("_tendril_stun", false):
 					o["_tendril_stun"] = false

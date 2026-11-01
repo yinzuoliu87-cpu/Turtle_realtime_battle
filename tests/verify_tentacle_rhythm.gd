@@ -1,22 +1,22 @@
 extends Node
-## verify_tentacle_rhythm.gd — 触手拍击的**节奏**（2026-08-04）
+## verify_tentacle_rhythm.gd — 触手【做法纪律】: 粗细不逐帧变 + 命中白闪与伤害同一帧
+## (2026-08-04 立「拍击节奏」· 2026-10-31 随灵物触手重做改写, 方案书 docs/plans/20261031d-灵物触手重做.md §4.3)
 ##
-## ★为什么要单独一条：
-##   用户 2026-08-04：「我回来验收要看到所有节奏和每个时间点的形状和视频里的一模一样」。
-##   逐帧量官方 `wfull` 之后发现我当时的动画有三个**方向性**错误，而
-##   `verify_tentacle_vfx` 全绿 —— 它守的是"状态机流转 / 长度上限 / 面数"，
-##   **一个字都没守到节奏**。三个错误分别是：
-##     ① 拍击 +2~+9 帧【完全定格】（覆盖恒定 9.06、臂长恒定 0.521），官方一帧都没停
-##     ② 前摇在【缩小】（覆盖 1.52→1.17），官方在【长大】（1.55→2.73，+76%）
-##     ③ 带宽【起点最粗一路细】，官方是【甩出去时细 → 鼓起来 → 再收细】
+## 2026-08 那版守的是逐帧对齐俄洛伊的扁带网格(弧长包络 / 带宽先细后鼓 / 卷曲余振), 那套网格整个删了。
+## 10-31 第一版改写时这里还守过按参考定的尺子(高约龟 1~1.7 倍 / 宽约 1 只龟 / 拍下 1~4 帧到底 / 拍痕 0.3~0.4 秒 /
+##   预警期露出 46%→100%) —— 用户否了第一版成品(「效果差，这是3d吗」「甚至不如旧版，你完全不知道怎么动的」),
+##   第一路改成「动作以旧版中心线计算为起点原样恢复、只修抽搐那一处; 尺寸照旧版」⇒ 那几把按参考定的尺子撤掉;
+##   动作好不好的阈值等第一路交回「抽搐修复」的数值再定(方案书 §5 U11, 量法已在 verify_tentacle_continuity 打印)。
 ##
-## ★判据全部落在**真实网格几何**上（沿曲线积弧长 / 量截面半径），
-##   不是读 `SLAM_LEN_CURVE` 那张表 —— 读表就是恒真式（CLAUDE.md §2）。
-##   四条各自都做过反向验证（见每条末尾的注释）。
+## 留下的是**做法层面**的(与动作长什么样无关, 新旧动作都该守):
+##   ⑤ ★粗细不逐帧变(用户 10-31「一直闪光」的嫌疑之一是旧版 `r *= 1 + 0.055 sin(…)`): 建材质时设的半径 / 长度这类
+##      uniform 整套动作(出土 → 待机 → 预警 → 前摇 → 拍击 → 收回)一次都没变, 而且不在逐帧直播的「每步会变」名单里
+##   ③ ★命中白闪(着色器有 `flash` 且列在「每步会变」名单里时)第一帧 = 伤害结算那一帧 —— 人没到地先炸 / 打完才闪都算错
+## ★全部读着色器拿到的 uniform(tests/_tentacle_geo.gd), 走真路径(strike → 逐帧 tick), 不手改状态。
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_tentacle_rhythm.tscn
 
-const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const G := preload("res://tests/_tentacle_geo.gd")
 const TV := preload("res://scripts/systems/equip/tentacle_vfx.gd")
 
 var _n := 0
@@ -34,207 +34,148 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 		print("  [FAIL] ", name, "  ", detail)
 
 
-## 把触手摆到指定状态的指定 ts，重建网格，量【真实几何】
-func _sample(st: int, ts: float) -> Dictionary:
-	var t: Dictionary = _v._tents["left|0"]
-	t["state"] = st
-	t["ts"] = ts
-	t["share"] = 1.0
-	t["aim"] = _v.root_pos("left", 0) + Vector2(520.0, 60.0)
-	## ★★★2026-08-22 换成链式模拟之后, 原来的 `_sample` **失效了**:
-	##   它直接改 `state`/`ts` 再 `tick(0.0)` —— delta=0 时模拟一步都不推进,
-	##   读到的是**上一次采样残留的链条状态** ⇒ 下面几条量的全是垃圾数。
-	##   (模拟是有历史的: 位置由前一帧演化而来, 不能"瞬移到某个时刻"。)
-	## ⇒ 改成: 复位链条到该状态的起始姿态(速度归零), 再**按固定步长真的推到 ts**。
-	t["acc"] = 99.0                       # 绕过待机降频
-	t["ts"] = 0.0
-	t["sim_reset"] = true
-	t["dt"] = 0.0
-	_v.tick(0.0)                          # 触发复位
-	var _h: float = 1.0 / 120.0
-	var _n: int = int(ts / _h)
-	for _i in range(_n):
-		t["state"] = st                   # 只在本状态内采样, 不让它自己转走
-		_v.tick(_h)
-	t["state"] = st
-	t["ts"] = ts
-	_v.tick(0.0)
-	var mi: MeshInstance3D = t["mi"]
-	var m: ArrayMesh = mi.mesh
-	if m.get_surface_count() == 0:
-		return {"len": 0.0, "w": 0.0}
-	var arr: Array = m.surface_get_arrays(0)
-	var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
-	# ★★顶点布局：三角带是**非索引化**的 —— 每段 (RING-1) 个 quad × 6 个顶点，
-	#   一个 quad 的 6 个顶点依次是 prev[k], prev[k+1], ring[k], prev[k+1], ring[k+1], ring[k]。
-	#   （我第一版按 RING 步长切片当成"一个截面"，切出来根本不是截面，
-	#     ①②③ 三条量到的全是垃圾数 —— 门禁自己把这个读法错误抓出来了。）
-	var QPS: int = (TV.RING - 1) * 6          # 每段的顶点数
-	var segs: int = vs.size() / QPS
-	var mids: Array = []
-	var widths: Array = []
-	for j in range(segs):
-		var base: int = j * QPS
-		var c := Vector3.ZERO
-		for k in range(QPS):
-			c += vs[base + k]
-		mids.append(c / float(QPS))
-		# 带宽 = 同一截面【第 0 列】到【最后一列】的距离
-		var last: int = base + (TV.RING - 2) * 6 + 1     # 最后一个 quad 的 prev[k+1]
-		if last < vs.size():
-			widths.append((vs[base] - vs[last]).length())
-	var L := 0.0
-	for j2 in range(1, mids.size()):
-		L += (mids[j2] - mids[j2 - 1]).length()
-	# ★★2026-08-05：本文件原来全部拿【弧长】当节奏的载体。
-	#   用户："拍击应该以 idle 的模型来拍，像一个鞭子一样高高抬起然后打下去" ⇒
-	#   弧长改成**恒定**（鞭子不会变长），投影长度靠卷曲量变。
-	#   于是"弧长在变"这个判据整个失效（三条一起红）——
-	#   **判据要换成【端点到根部的直线距离】**：那才是鞭子甩出去/收回来的量。
-	var tip: float = 0.0
-	if mids.size() >= 2:
-		tip = (mids[mids.size() - 1] - mids[0]).length()
-	# 取中段带宽（根/梢是锥形两端，不代表整体）
-	var w := 0.0
-	if widths.size() > 4:
-		w = float(widths[int(widths.size() * 0.45)])
-	# ★梢端高度（世界 Y）—— "拍下去"的正确度量
-	var tip_h: float = float(mids[mids.size() - 1].y) if mids.size() >= 1 else 0.0
-	return {"len": L, "w": w, "tip": tip, "tip_h": tip_h}
+## 材质上「不在每步会变名单里」的全部 uniform 的当前值
+func _fixed(mi: MeshInstance3D, hot: PackedStringArray) -> Dictionary:
+	var out := {}
+	var m := G.mat_of(mi)
+	if m == null:
+		return out
+	for p in m.get_property_list():
+		var nm: String = str((p as Dictionary)["name"])
+		if not nm.begins_with("shader_parameter/"):
+			continue
+		var bare := nm.substr(17)
+		if hot.has(bare):
+			continue
+		out[bare] = m.get(nm)
+	return out
 
 
 func _ready() -> void:
 	await get_tree().process_frame
-	print("=== 灵物触手: 拍击节奏(逐帧对齐官方) ===")
+	print("=== 灵物触手: 做法纪律(粗细不逐帧变 / 白闪与伤害同帧) ===")
+	var RB = load("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	RB.DEBUG_EDIT = true
-	_s = RB.new()
+	_s = (load("res://scenes/RealtimeBattle3D.tscn") as PackedScene).instantiate()
 	add_child(_s)
+	_s.set_process(false)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_s._debug._edit_clear()
 	_v = _s._tentacle_vfx
 	_v.clear()
 	_v.ensure("left", 1)
-	_v.tick(2.1)                                   # 走完出土
+	var mi := G.node_of(_v, "left", 0)
+	_ok("分母: 触手节点与着色器材质都在、带「每步会变」名单", mi != null and G.mat_of(mi) != null and mi.has_meta(&"stream_shader_params"))
+	if mi == null or G.mat_of(mi) == null:
+		_done()
+		return
+	var hot := PackedStringArray(mi.get_meta(&"stream_shader_params", PackedStringArray()))
+	var fixed0 := _fixed(mi, hot)
+	var set_n := 0
+	for k in fixed0:
+		if fixed0[k] != null:
+			set_n += 1
 
-	# ── ① 拍击期间【不许定格】────────────────────────────────
-	#   官方 +2~+9 每帧都在变（覆盖 8.53→4.11）。我当时恒定 8 帧。
-	#   判据：把 0~T_SLAM 均匀采 12 点，相邻弧长【任意连续 3 点完全相等】即判定格。
-	#   ★反向验证：把 `arc` 改成常数 `reach_arc` 后本条立刻 FAIL（实测）。
-	var lens: Array = []
-	for i in range(12):
-		lens.append(float(_sample(3, TV.T_SLAM * float(i) / 11.0)["tip"]))
-	var frozen := 0
-	var run := 1
-	for i in range(1, lens.size()):
-		if absf(float(lens[i]) - float(lens[i - 1])) < 0.01:
-			run += 1
-			frozen = maxi(frozen, run)
+	## ── 出土 → 待机 → 一整套正常拍击 → 回到待机, 逐帧核 ──
+	var touch_step := [-1]
+	var rows: Array = []          # [状态, 白闪]
+	## 名单里的「粗细」类(半径 / 宽度; 恢复版是每个控制点一个半径 `ctrl_r`): 允许跟着姿态慢慢变(8 月那版粗细随抻直度,
+	##   待机呼吸 3.6 秒一个来回), 但**不许逐帧起伏** —— 方案书 §2.2 嫌疑③ 的形状是叠在姿态上的高频起伏。
+	##   判据: 待机稳态(进待机 0.5 秒以后)每个元素的变化方向每秒最多换 2 次(呼吸是 0.56 次; 逐帧起伏是几十次)。
+	var radius_like: Array = []
+	for nm0 in hot:
+		var lw := str(nm0).to_lower()
+		if lw.contains("rad") or lw.ends_with("_r") or lw.contains("width") or lw.contains("thick"):
+			radius_like.append(nm0)
+	var idle_t := 0.0
+	var idle_series := {}         # 参数名 → [每帧的值](待机稳态)
+	var bad: Array = []
+	var seen := {}
+	## 待机先站 4 秒(稳态 3.5 秒, 够一个呼吸周期 3.6 秒左右) —— 太短的话换向次数按秒折算是噪声(第一版只站 0.47 秒, 2 次换向折成 4.3 次/秒)
+	var total := int((TV.T_EMERGE + 4.2 + TV.T_WARN + TV.T_REAR + TV.T_SLAM + TV.T_RECOVER + 0.5) / G.SIM_DT)
+	var struck := false
+	for _i in range(total):
+		if not struck and int(_v.state_of("left", 0)) == 1 and rows.size() > int((TV.T_EMERGE + 4.0) / G.SIM_DT):
+			_v.strike("left", 0, _v.root_pos("left", 0) + Vector2(400.0, 30.0), 1.0, func() -> void: touch_step[0] = rows.size())
+			struck = true
+		G.step(_v)
+		seen[int(_v.state_of("left", 0))] = true
+		var fl = G.uni(mi, "flash")
+		rows.append([int(_v.state_of("left", 0)), float(fl) if fl != null else 0.0])
+		if int(_v.state_of("left", 0)) == 1:
+			idle_t += G.SIM_DT
+			if idle_t > 0.5:
+				for rn in radius_like:
+					(idle_series.get_or_add(rn, []) as Array).append(G.uni(mi, rn))
 		else:
-			run = 1
-	# ★★2026-08-05【判据范围收窄，并诚实记录未达标】
-	#   原判据要求**整个拍击期**没有连续 3 个采样点端点不变。
-	#   前段（抽出去那 0.2 秒）我是做到的；**后段确实比官方平约 8 倍**
-	#   （我相邻采样差 0.07%，官方最小 0.6%）。
-	#   根因：我用**整条一个卷曲量**这一个标量去还原官方的投影包络，表达力不够 ——
-	#   动态范围大 ⇒ 用户看到"拍下去两次"；范围小 ⇒ 后段太静。两者当前不可兼得。
-	#   ⇒ 判据限定在**前段**（抽出去那一段，占 T_SLAM 的前 45%），
-	#     它守的是"甩出去的过程不许定格"这件真事。
-	#   ⚠ 后段未达标已写进 CHANGELOG 的已知差距，不是绿灯造假。
-	var head_n: int = int(lens.size() * 0.45)
-	var frozen_head := 0
-	var rh := 1
-	for i2 in range(1, head_n):
-		if absf(float(lens[i2]) - float(lens[i2 - 1])) < 0.01:
-			rh += 1
-			frozen_head = maxi(frozen_head, rh)
-		else:
-			rh = 1
-	_ok("① ★甩出去的过程【不许定格】(前 45%%; 我曾整段恒定 8 帧)",
-		frozen_head < 3,
-		"前段最长连续 %d 点不变 / 全段 %d 点 · %s" % [frozen_head, frozen, str(lens.slice(0, 5))])
+			idle_t = 0.0
+		var cur := _fixed(mi, hot)
+		for k2 in fixed0:
+			if cur.get(k2) != fixed0[k2] and bad.size() < 4:
+				bad.append("%s 第 %d 帧 %s → %s" % [str(k2), rows.size(), str(fixed0[k2]), str(cur.get(k2))])
 
-	# ── ② 长度包络有【二次峰】(鞭子余振) ────────────────────
-	#   官方 +0 0.435 → +1 0.354 → +2 **0.417**(回弹)。任何单调缓动都做不出来。
-	#   判据：0~0.12s 内存在 a>b<c 的谷（先降后升）。
-	#   ★反向验证：把 SLAM_LEN_CURVE 换成单调递减序列后本条 FAIL。
-	# ★★2026-08-05【判据下沉一层，并诚实记录未达标】
-	#   官方投影臂长有 18% 的余振二次峰（0.435→0.354→0.417）。
-	#   我的**卷曲量上余振是真实存在的**（实测 12° → 42° → 17°，量出来的），
-	#   但传到【端点距离】时被 `cfrom` 的反向作用抵消了：
-	#   卷曲变大 ⇒ 参与卷曲的段更多 ⇒ 投影反而更短，正好抵掉回弹。
-	#   ⇒ 判据改成守**确实做到的那一层**（卷曲量的余振）。
-	#   ⚠ 端点上的余振**仍未达标**，这不是绿灯造假 —— 已写进 CHANGELOG 的已知差距，
-	#     正确解法要重新推导 `cfrom` 与卷曲量的耦合，不是调参能解决的。
-	var c0: float = TV._slam_curl_of(TV._env(TV.SLAM_LEN_CURVE, 0.005))
-	var c1: float = TV._slam_curl_of(TV._env(TV.SLAM_LEN_CURVE, 0.040))
-	var c2: float = TV._slam_curl_of(TV._env(TV.SLAM_LEN_CURVE, 0.075))
-	_ok("② ★甩出去有【余振】(卷曲量先松再回卷再松; 官方投影 0.435→0.354→0.417)",
-		c1 > c0 * 1.5 and c2 < c1 * 0.75,
-		"卷曲 %.1f° → %.1f° → %.1f°" % [c0, c1, c2])
+	# ══ ⑤ 粗细不逐帧变 ═══════════════════════════════════════
+	var tex_like: Array = []
+	for nm in hot:
+		var low := str(nm).to_lower()
+		if low.contains("uv") or low.contains("scroll") or low.contains("offset"):
+			tex_like.append(nm)
+	print("     「每步会变」名单 %s · 其余 uniform %d 个(建材质时设过值的 %d 个) · 走过的状态 %s" % [str(hot), fixed0.size(), set_n, str(seen.keys())])
+	_ok("⑤ 分母: 走过出土 / 待机 / 预警 / 前摇 / 拍击 / 收回、名单外有 ≥ 3 个 uniform(其中 ≥ 1 个建材质时设过值)",
+		seen.has(0) and seen.has(1) and seen.has(6) and seen.has(2) and seen.has(3) and seen.has(4) and fixed0.size() >= 3 and set_n >= 1, str(seen.keys()))
+	_ok("⑤ ★★名单外的 uniform(半径 / 长度 / 颜色 / 吸盘 …)整套动作里一次都没变(%d 帧)" % rows.size(), bad.is_empty() and rows.size() > 200, str(bad))
+	_ok("⑤ ★「每步会变」名单里没有贴图坐标 / 滚动这一类(不滚纹理)", tex_like.is_empty() and hot.size() > 0, str(tex_like))
+	## 每个元素的变化方向换向次数 / 秒(取最大的那个元素), 以及每帧最大相对变化
+	var worst_rev := 0.0
+	var worst_rel := 0.0
+	var frames := 0
+	for rn2 in idle_series:
+		var ser: Array = idle_series[rn2]
+		frames = maxi(frames, ser.size())
+		if ser.size() < 3:
+			continue
+		var n_el: int = (ser[0] as PackedFloat32Array).size() if ser[0] is PackedFloat32Array else 1
+		for el in range(n_el):
+			var rev := 0
+			var lastd := 0.0
+			for f in range(1, ser.size()):
+				var a: float = float((ser[f - 1] as PackedFloat32Array)[el]) if ser[f - 1] is PackedFloat32Array else float(ser[f - 1])
+				var b: float = float((ser[f] as PackedFloat32Array)[el]) if ser[f] is PackedFloat32Array else float(ser[f])
+				var d := b - a
+				worst_rel = maxf(worst_rel, absf(d) / maxf(absf(a), 0.01))
+				if absf(d) > 1.0e-7:
+					if lastd != 0.0 and signf(d) != signf(lastd):
+						rev += 1
+					lastd = d
+			worst_rev = maxf(worst_rev, float(rev) / maxf(float(ser.size()) * G.SIM_DT, 0.01))
+	print("     名单里的粗细类 %s · 待机稳态 %d 帧 · 单个元素变化方向每秒最多换 %.2f 次 · 每帧最大相对变化 %.4f" % [str(radius_like), frames, worst_rev, worst_rel])
+	_ok("⑤ ★★不逐帧改粗细: 待机稳态里半径类 uniform 的变化方向每秒最多换 2 次(%.2f; 名单里没有半径类则只守名单外不变)" % worst_rev,
+		radius_like.is_empty() or (frames > 150 and worst_rev <= 2.0))
 
-	# ── ③ 前摇是【长大】不是缩小 ────────────────────────────
-	#   官方前摇 5 帧覆盖 +76%、投影臂长 0.097→0.167。我曾是 1.52→1.17（反的）。
-	#   ★反向验证：把 REAR 的 arc 改回 ARC_LEN 常数后本条 FAIL。
-	# ★★2026-08-05 判据改了阶段：动作重新设计后（用户："先高高举起并有点后仰
-	#   然后直接拍下去"），**抬起发生在【预警期】**，前摇只是举到位之后再压一点点。
-	#   原判据量前摇的端点变化 ⇒ 现在本来就不该变远，是判据过时不是实现退步。
-	var r0: float = float(_sample(6, 0.005)["tip"])
-	var r1: float = float(_sample(6, TV.T_WARN * 0.6)["tip"])
-	_ok("③ ★【预警期】把触手抬起来(端点拉远; 前摇只是举到位后再压一点)",
-		r1 > r0 * 1.18, "预警端点 %.2f → %.2f (×%.2f)" % [r0, r1, r1 / maxf(r0, 0.01)])
+	# ══ ③ 白闪与伤害同帧 ══════════════════════════════════════
+	var fl_first := -1
+	var fl_n := 0
+	for k8 in range(rows.size()):
+		if float(rows[k8][1]) > 0.0:
+			fl_n += 1
+			if fl_first < 0:
+				fl_first = k8
+	print("     伤害回调在第 %d 帧; 着色器白闪 %s, 亮 %d 帧, 第一帧是第 %d 帧" % [int(touch_step[0]),
+		"在名单里" if hot.has("flash") else "没有(不判)", fl_n, fl_first])
+	_ok("③ 分母: 这一击真的结算了伤害(第 %d 帧)" % int(touch_step[0]), int(touch_step[0]) > 0)
+	if hot.has("flash"):
+		_ok("③ ★★命中白闪第一帧 = 伤害结算那一帧(白闪第 %d 帧 / 伤害第 %d 帧)" % [fl_first, int(touch_step[0])],
+			fl_n > 0 and fl_first == int(touch_step[0]))
+	_done()
 
-	# ── ④ 带宽：甩出去时【细】→ 鼓起来 → 再收细 ──────────────
-	#   官方 +0 0.0396 → +2 **0.0508(峰)** → +6 0.0296。我曾是起点最粗一路细。
-	#   ★反向验证：把 SLAM_W_CURVE[0] 改成 1.2 后本条 FAIL。
-	var w0: float = float(_sample(3, 0.005)["w"])
-	var wp: float = float(_sample(3, 0.070)["w"])
-	var w6: float = float(_sample(3, 0.210)["w"])
-	_ok("④ ★带宽先细后鼓再收(官方 .0396→.0508→.0296; 我曾是起点最粗一路细)",
-		w0 < wp * 0.92 and w6 < wp * 0.80,
-		"甩出 %.3f → 峰 %.3f → 收 %.3f" % [w0, wp, w6])
 
-	# ── ④b ★弧长【恒定】—— 鞭子不会变长 ─────────────────────
-	#   ★反向验证：把 `_arc_for` 的 ST_SLAM 改回 `reach*_env(...)` 后本条 FAIL。
-	## ══ ④b【弧长恒定】已搬到 `verify_tentacle_soft` ══════════════
-	## 2026-08-22 换成链式模拟后, 这条在**本文件的 stub 环境里量不准**:
-	##   同一份代码, stub 环境报 8.80~11.88, 而**真战斗场景**只有 9.53~9.94(±4%)。
-	##   查过并排除的: `_arc_for` 全状态恒返回 ARC_LEN(ds 是常数)、出土未完成(已加等待)。
-	##   ⇒ 不在量不准的地方留一条会误报的判据, 也不放宽阈值糊过去 ——
-	##     **把不变式搬到能量准的门禁**(那里建的是真 RealtimeBattle3D 场景)。
-	##   ⚠ 我没查到 stub 与真场景差在哪, 这是**已知未查清项**, 显式登记在此。
-
-	# ── ④c ★【梢端高度】：举起 → 拍下，各一次 ────────────────
-	#   ★★★2026-08-05 用户："你这自己骗自己吗，明明我看到了两次拍击"——他是对的。
-	#     我之前拿【投影臂长】当尺子，全程报"0 次回涨"；
-	#     但那把尺子**根本测不到"拍下去"**：触手抻直时臂长最长，与高度无关。
-	#     换成【梢端高度】一量，真相是 0.840 → 0.657 → **0.767** → 0.714
-	#     = 拍下、抬起、又拍下 —— 确确实实两次。
-	#   ⇒ 这条守的就是"拍下去的过程里梢端不许回抬"。
-	#   ★反向验证：把 `_curvature` 的行波条件改回 `SLAM or RECOVER` 后本条 FAIL
-	#     （脉冲经过中段会把梢端顶高，实测 0.681 → 0.771）。
-	var hs: Array = []
-	for i4 in range(10):
-		var d4: Dictionary = _sample(3, TV.T_SLAM * (0.06 + 0.9 * float(i4) / 9.0))
-		hs.append(float(d4["tip_h"]))
-	var rebound := 0
-	for i5 in range(1, hs.size()):
-		if float(hs[i5]) > float(hs[i5 - 1]) + 0.06:
-			rebound += 1
-	_ok("④c ★拍下去的过程中梢端【不许回抬】(回抬 = 第二次拍击)",
-		rebound == 0, "回抬 %d 次: %s" % [rebound, str(hs.slice(0, 6))])
-
-	# ── ⑤ 分母自证：上面四条量到的是【真实几何】不是 0 ─────────
-	_ok("⑤ ★分母: 量到的弧长/带宽都是真数(不是空网格)",
-		c0 > 0.0 and wp > 0.05 and lens.size() == 12,
-		"c0=%.1f wp=%.3f n=%d" % [c0, wp, lens.size()])
-
-	# ── ⑥ 包络表本身没被改坏（表是官方逐帧量出来的事实源）────
-	_ok("⑥ 包络表长度一致且首帧带宽 < 峰值(官方: 甩出去那帧是细的)",
-		TV.SLAM_LEN_CURVE.size() == TV.SLAM_W_CURVE.size()
-			and float(TV.SLAM_W_CURVE[0]) < 0.9,
-		"len=%d w[0]=%.3f" % [TV.SLAM_LEN_CURVE.size(), float(TV.SLAM_W_CURVE[0])])
-
+func _done() -> void:
+	if _v != null:
+		_v.clear()
+	var RB = load("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	RB.DEBUG_EDIT = false
 	print("")
 	print("  (共 %d 条断言)" % _n)
-	print("ALL PASS — 触手拍击节奏" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 触手做法纪律" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

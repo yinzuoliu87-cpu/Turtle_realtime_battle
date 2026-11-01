@@ -191,7 +191,7 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 			# ★★汲取【排除训龟大师与屏障里的龟蛋】(用户 2026-07-30)。
 			#   大师是"场外监视者"(不计团灭·见 _dl_side_alive), 拿它当汲取目标既能白嫖回血、
 			#   又会把伤害打在一个本不该参战的单位上; 蛋在屏障里更不该被隔空汲。
-			if o.get("is_trainer", false):
+			if battle._is_untouchable(o):   # §UNTOUCHABLE(2026-10-31 收进统一入口)
 				continue
 			if o.get("_isEgg", false) or o.get("_eggImmune", false):
 				continue
@@ -927,6 +927,8 @@ var _pulls: Array = []
 func pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> void:
 	if not o.get("alive", false):
 		return
+	if battle._untouch_block(o, "pull_airborne"):
+		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	var to_o: Vector2 = origin - (o["pos"] as Vector2)
 	var d0: float = DetMath.vlen(to_o)
 	if d0 < 1.0:

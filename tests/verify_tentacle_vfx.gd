@@ -15,7 +15,7 @@ extends Node
 ##   ② ★状态机六个态按官方时长流转（出土 2s / 蓄势 0.25s / 拍击 0.5s / 回位 0.35s）
 ##   ③ ★追击走【点刺】：不经蓄势直接拍，且时长更短
 ##   ④ ★出土/撤场期间**不接拍击指令**（还没站稳就挥是穿帮）
-##   ⑤ ★网格真的建出来了且**长度守恒**（固定弧长 —— 这是"它是根实体"的几何保证）
+##   ⑤ ★固定网格(整局一份、不重建) + 攻击长度固定 + 拍下那一下弧长不变（2026-10-31 重做后改量着色器拿到的控制点）
 ##   ⑥ ★接线：spirit 系统每帧 ensure、拍击走 strike、换路 clear
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_tentacle_vfx.tscn
@@ -23,6 +23,7 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const TV := preload("res://scripts/systems/equip/tentacle_vfx.gd")
+const G := preload("res://tests/_tentacle_geo.gd")
 
 const NAMES := ["EMERGE", "IDLE", "REAR", "SLAM", "RECOVER", "RETRACT", "WARN"]
 
@@ -48,43 +49,6 @@ func _node_count() -> int:
 		if str(c.name).begins_with("Tentacle_"):
 			n += 1
 	return n
-
-
-## 沿中线积真实弧长。★顶点布局：三角带**非索引化**，每段 (RING-1)×6 个顶点。
-##   （按 RING 切片当截面是错的 —— verify_tentacle_rhythm 里踩过一次。）
-func _arc_len(m: ArrayMesh) -> float:
-	if m.get_surface_count() == 0:
-		return 0.0
-	var vs: PackedVector3Array = m.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var qps: int = (TV.RING - 1) * 6
-	var mids: Array = []
-	for j in range(vs.size() / qps):
-		var c := Vector3.ZERO
-		for kk in range(qps):
-			c += vs[j * qps + kk]
-		mids.append(c / float(qps))
-	var L := 0.0
-	for j2 in range(1, mids.size()):
-		L += (mids[j2] - mids[j2 - 1]).length()
-	return L
-
-
-## 端点到根部的【直线距离】。★这才是"甩直"的判据 ——
-##   弧长恒定的鞭子，卷起来端点近、甩直了端点远。
-func _tip_dist(m: ArrayMesh) -> float:
-	if m.get_surface_count() == 0:
-		return 0.0
-	var vs: PackedVector3Array = m.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var qps: int = (TV.RING - 1) * 6
-	var segs: int = vs.size() / qps
-	if segs < 2:
-		return 0.0
-	var a := Vector3.ZERO
-	var b := Vector3.ZERO
-	for kk in range(qps):
-		a += vs[kk]
-		b += vs[(segs - 1) * qps + kk]
-	return (b / float(qps) - a / float(qps)).length()
 
 
 func _nm(i: int) -> String:
@@ -177,82 +141,72 @@ func _ready() -> void:
 	_v.strike("left", 0, Vector2(900, 300), 1.0)
 	_ok("④ ★撤场途中也不接", _v.state_of("left", 0) == 5, _nm(_v.state_of("left", 0)))
 
-	# ══ ⑤ 网格真的建出来了 + 长度守恒 ═══════════════════════════
+	# ══ ⑤ 固定网格 + 攻击长度固定 ═══════════════════════════════
+	# ★★2026-10-31 灵物触手重做(方案书 docs/plans/20261031d-灵物触手重做.md): 外观换成「一份开局建好的固定网格 +
+	#   顶点着色器沿 24 个控制点弯曲」。原来这一组量的是每帧重建的扁带网格(SEG × (RING-1) 段的顶点、包围盒),
+	#   那套几何整个没了 ⇒ 改量**着色器拿到的控制点**(材质 uniform = GPU 弯曲用的那一份, 见 tests/_tentacle_geo.gd)。
+	#   姿态一律走真路径(strike → tick 推状态机), 不再手改 state / ts。
 	_v.clear()
 	_v.ensure("left", 1)
-	_v.tick(2.1)                              # 到待机
-	var lens: Array = []
-	var tips: Array = []
-	var tris: Array = []
-	for st in [1, 2, 3]:                      # IDLE / REAR / SLAM 三个姿态
-		var t: Dictionary = _v._tents["left|0"]
-		t["state"] = st
-		t["ts"] = 0.02
-		t["aim"] = Vector2(900, 300)
-		t["acc"] = 99.0                       # 绕过待机降频，强制重建
-		_v.tick(0.001)
-		var mi: MeshInstance3D = t["mi"]
-		var m: ArrayMesh = mi.mesh
-		if m.get_surface_count() == 0:
-			lens.append(-1.0); tips.append(-1.0); tris.append(0); continue
-		# ★★2026-08-04 修脏判据：这里【注释说的和代码做的不是一回事】——
-		#   注释写"沿曲线量真实弧长"，代码却是 `bb.size.length()` = **包围盒对角**，
-		#   它把触手的【粗细】(R_BASE)也算进去了：IDLE 弧长 4.0 但对角 4.3，
-		#   于是加粗触手就会让长度门禁莫名其妙地红。改成真的沿中线积弧长。
-		lens.append(_arc_len(m))
-		tips.append(_tip_dist(m))
-		tris.append(m.surface_get_array_len(0) / 3)
-	_ok("⑤ ★三个姿态都建出网格(面数 %s)" % str(tris),
-		tris[0] > 100 and tris[1] > 100 and tris[2] > 100, str(tris))
-	# ★★2026-08-04：截面从【闭合圆环管】改成【朝向相机的开放扁带】——
-	#   开放带不回绕，每段三角数 = (RING-1) × 2 而不是 RING × 2。
-	#   这条断言守的是"恒定"（不随姿态变），常数本身随几何走。
-	var want: int = TV.SEG * (TV.RING - 1) * 2
-	_ok("⑤ ★面数恒定(开放扁带 = SEG × (RING-1) × 2 = %d) —— 不随姿态变" % want,
-		tris[0] == tris[1] and tris[1] == tris[2] and tris[0] == want, str(tris))
-	# ★长度守恒 —— 口径 2026-08-04 修正：
-	#   逐帧看官方 W 技能后，攻击那一下触手会**大幅伸长**（扑出去够到目标），
-	#   所以"任何姿态都撑不出 ARC_LEN"这条**不再成立**，而且它不该成立 ——
-	#   门禁挡住的会是一个【我有意加的、参考里就有的】行为。
-	#   ⇒ 改成：待机/蓄势守 ARC_LEN；攻击守 ARC_LEN × REACH_MULT。
-	#   （这不是放宽标准 —— 上限仍然存在，只是分状态。没有上限才是真的没守。）
-	var over: Array = []
-	# 攻击时按【到目标的真实距离】伸长（不再是固定倍率），上限是 REACH_MAX
-	# ★★2026-08-04：REAR 上限从 ARC_LEN 提到 ARC_LEN × REAR_GROW ——
-	#   逐帧对齐官方后，前摇改成【长大 + 立起】（官方那 5 帧面积涨 76%），
-	#   旧上限挡住的是一个**参考里就有、我有意加的**行为。量的仍是真实弧长。
-	var caps := [TV.ARC_LEN, TV.ARC_LEN * TV.REAR_GROW, TV.ATTACK_LEN * 1.1]   # IDLE / REAR / SLAM
-	for i2 in range(lens.size()):
-		if float(lens[i2]) > float(caps[i2]) * 1.06:
-			over.append("姿态%d 包围盒对角 %.1fm > 上限 %.1fm" % [i2, float(lens[i2]), float(caps[i2])])
-	_ok("⑤ ★攻击长度是【固定】的 ≤%.1fm(用户: 不随目标距离改动 —— 有固定范围才有安全距离)"
-		% TV.ATTACK_LEN, over.is_empty(), str(over))
-	# ★★2026-08-05 判据换了：以前量【弧长】"攻击比待机长"，
-	#   但弧长恒定是**有意为之**（用户："像一个鞭子一样"——绳子长度不变，
-	#   卷起来端点近、甩直了端点远）。旧判据挡住的是我要的行为。
-	#   ⇒ 改量【端点到根部的直线距离】：甩直后必须显著变远，否则"甩"没生效。
-	#   （弧长恒定另有一条守：⑤ 的 caps 上限。）
-	_ok("⑤ ★弧长【恒定】—— 鞭子不会变长(待机 %.1fm / 攻击 %.1fm)"
-		% [float(lens[0]), float(lens[2])],
-		absf(float(lens[2]) - float(lens[0])) < float(lens[0]) * 0.12,
-		"差了 %.1fm" % absf(float(lens[2]) - float(lens[0])))
-	_ok("⑤ ★但【端点距离】要显著变远(甩直了才够得到目标)",
-		float(tips[2]) > float(tips[0]) * 1.6,
-		"待机端点 %.1fm → 攻击端点 %.1fm" % [float(tips[0]), float(tips[2])])
+	## ★逐步推(1/60 秒一步)到待机再站 1 秒: 一次 tick(2.1) 会让出土动画一帧都没画, 待机从「出土第 0 帧」(露出 0)起混
+	G.until_state(_v, "left", 0, 1)
+	G.step(_v, 60)
+	var mi5: MeshInstance3D = G.node_of(_v, "left", 0)
+	_ok("⑤ ★分母: 触手节点在、材质是着色器材质", mi5 != null and G.mat_of(mi5) != null)
+	if mi5 != null and G.mat_of(mi5) != null:
+		var r3: Vector3 = mi5.position
+		var p_idle: PackedVector3Array = G.world_pts(mi5)
+		var m_idle = mi5.mesh
+		_v.strike("left", 0, _v.root_pos("left", 0) + Vector2(400.0, 0.0), 1.0)
+		G.until_state(_v, "left", 0, 2)           # 前摇
+		var m_rear = mi5.mesh
+		G.until_state(_v, "left", 0, 3)           # 拍击
+		## 悬停末(砸下前最后一帧) 与 贴地后 0.05 秒
+		var hang_n: int = int(floor((TV.T_TOUCH - TV.SNAP_T) / G.SIM_DT))
+		G.step(_v, maxi(0, hang_n - 1))
+		var p_hang: PackedVector3Array = G.world_pts(mi5)
+		G.step(_v, int(ceil(TV.SNAP_T / G.SIM_DT)) + 3)
+		var p_slam: PackedVector3Array = G.world_pts(mi5)
+		var m_slam = mi5.mesh
+		var a_idle: float = G.arc(p_idle)
+		var a_hang: float = G.arc(p_hang)
+		var a_slam: float = G.arc(p_slam)
+		var tip_idle: float = (p_idle[p_idle.size() - 1] - r3).length() if not p_idle.is_empty() else 0.0
+		var tip_slam: float = (p_slam[p_slam.size() - 1] - r3).length() if not p_slam.is_empty() else 0.0
+		print("     控制点 %d 个 · 弧长 待机 %.2f / 悬停末 %.2f / 贴地 %.2f 米(攻击长度 %.1f) · 端点距根 待机 %.2f → 贴地 %.2f" % [
+			p_idle.size(), a_idle, a_hang, a_slam, TV.ATTACK_LEN, tip_idle, tip_slam])
+		_ok("⑤ ★三个姿态的控制点个数相同且够画一根(≥ 8; 着色器 ctrl_pts[N])",
+			p_idle.size() >= 8 and p_hang.size() == p_idle.size() and p_slam.size() == p_idle.size(), "%d/%d/%d" % [p_idle.size(), p_hang.size(), p_slam.size()])
+		var tri_n: int = (m_idle as ArrayMesh).surface_get_array_index_len(0) / 3 if m_idle is ArrayMesh else 0
+		_ok("⑤ ★固定网格: 待机 / 前摇 / 拍击是【同一份】网格对象(= 全部触手共用的那份, %d 个三角形), 不随姿态重建" % tri_n,
+			m_idle != null and is_same(m_idle, m_rear) and is_same(m_rear, m_slam) and is_same(m_idle, TentacleMeshVfx.shared_mesh()) and tri_n > 1000)
+		## 攻击长度固定(用户 08-04: 有固定范围才有安全距离)—— 上限沿用旧门禁: ATTACK_LEN × 1.1, 再留 6% 量法余量
+		##   (10-31 用户否了第一版, 第一路以旧版中心线为起点恢复 ⇒ 尺子回到旧版验收过的那一把)
+		_ok("⑤ ★攻击长度是【固定】的 ≤ %.2f 米(贴地时弧长 %.2f)" % [TV.ATTACK_LEN * 1.1 * 1.06, a_slam], a_slam > 1.0 and a_slam <= TV.ATTACK_LEN * 1.1 * 1.06)
+		## 拍下去弧长基本不变(用户 08-05「戳出去」= 拍击中途变长)—— 容差沿用旧门禁「弧长恒定」的 12%
+		_ok("⑤ ★拍下那一下弧长不变(悬停末 %.2f → 贴地 %.2f, 差 ≤ 12%%) —— 不许「戳出去」" % [a_hang, a_slam],
+			absf(a_slam - a_hang) <= a_hang * 0.12 and a_hang > 1.0)
+		## 2026-11-01 用户「初始状态下…太弯了，得把它搞直一点」⇒ 待机拉直, 端点距根本来就远了(实测 6.60 米), 倍数 1.6 → 1.25
+		_ok("⑤ ★端点距离甩直了显著变远(待机 %.2f → 贴地 %.2f 米, ≥ 1.25 倍)" % [tip_idle, tip_slam],
+			tip_slam > tip_idle * 1.25 and tip_slam > 2.0)
 
 	# ★★攻击长度【不随目标距离变】—— 用户 2026-08-04 点名纠正的（我中途做过一版
 	#   "按到目标的实际距离伸长"，那样就没有"安全距离"这条规则了）。
 	var lens_by_dist: Array = []
+	## ★两次从同一个战斗时钟起跑: 待机摆动与链式模拟有历史, 时钟不同 ⇒ 出手时的样子不同(那不是「长度随目标变」)
+	var t_run: float = float(_s._t)
 	for far in [400.0, 1400.0]:
+		_s._t = t_run
 		_v.clear(); _v.ensure("left", 1); _v.tick(2.1)
-		var tt: Dictionary = _v._tents["left|0"]
-		tt["state"] = 3; tt["ts"] = 0.30; tt["share"] = 1.0; tt["acc"] = 99.0
-		tt["aim"] = _v.root_pos("left", 0) + Vector2(far, 0.0)
-		_v.tick(0.001)
-		lens_by_dist.append((tt["mi"] as MeshInstance3D).mesh.get_aabb().size.length())
-	_ok("★攻击长度固定: 目标 400 码 vs 1400 码，触手长度一样(%.1f vs %.1f)"
+		var mif: MeshInstance3D = G.node_of(_v, "left", 0)
+		_v.strike("left", 0, _v.root_pos("left", 0) + Vector2(far, 0.0), 1.0)
+		G.until_state(_v, "left", 0, 3)
+		G.step(_v, int(ceil(TV.T_TOUCH / G.SIM_DT)) + 3)
+		var pf: PackedVector3Array = G.world_pts(mif) if mif != null else PackedVector3Array()
+		lens_by_dist.append((pf[pf.size() - 1] - mif.position).length() if pf.size() > 0 else -1.0)
+	_ok("★攻击长度固定: 目标 400 码 vs 1400 码，触手伸出去一样远(%.2f vs %.2f 米)"
 		% [float(lens_by_dist[0]), float(lens_by_dist[1])],
-		absf(float(lens_by_dist[0]) - float(lens_by_dist[1])) < 0.6, str(lens_by_dist))
+		float(lens_by_dist[0]) > 1.0 and absf(float(lens_by_dist[0]) - float(lens_by_dist[1])) < 0.05, str(lens_by_dist))
 
 	# ══ ⑤b ★预警区 与 命中特效【真的建出节点】═══════════════════
 	# 用户 2026-08-04 点名的三件（预警区 / 直线命中范围 / 命中特效）——
@@ -330,8 +284,12 @@ func _ready() -> void:
 		"提前多了 %d 个节点" % (n_mid - n1))
 	_v.tick(TV.T_TOUCH * 0.5 + 0.03)              # 越过 T_TOUCH → 落地 → 命中特效
 	var n2: int = _s._world.get_child_count()
-	_ok("⑤b ★命中特效真的建出节点(爆闪 + 环 + 粒子 + 直线)", n2 - n1 >= 4,
-		"只多了 %d 个节点" % (n2 - n1))
+	## ★★2026-10-31 重做: 命中演出至少有贴地爆闪 + 粒子(≥ 3 个节点); 着色器里的本体白闪 / 拍痕(有的话)只打印 ——
+	##   第一版删了「直线命中范围」bolt_line 与几圈环(方案书 §5 U7), 第一路恢复旧版时可能再改, 节点数只守下限。
+	var mi_b: MeshInstance3D = G.node_of(_v, "left", 0)
+	print("     命中那一刻: 新节点 %d 个 · 本体白闪 %s · 拍痕 %s" % [n2 - n1, str(G.uni(mi_b, "flash")) if mi_b != null else "-",
+		str(G.uni(mi_b, "trail")) if mi_b != null else "-"])
+	_ok("⑤b ★命中特效真的建出节点(贴地爆闪 + 粒子 …, +%d ≥ 3)" % (n2 - n1), n2 - n1 >= 3)
 
 	# ══ ⑥ 接线：真的挂在战斗上 ═════════════════════════════════
 	var src_sp: String = FileAccess.get_file_as_string("res://scripts/systems/equip/spirit_synergy_system.gd")

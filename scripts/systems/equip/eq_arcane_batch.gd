@@ -423,7 +423,7 @@ func _stele_aura() -> void:
 		if not (o is Dictionary):
 			continue
 		var want: float = 0.0
-		if o.get("alive", false) and not o.get("is_trainer", false) and not o.get("_isEgg", false):
+		if o.get("alive", false) and not battle._is_untouchable(o) and not o.get("_isEgg", false):
 			for st in _steles:
 				var src = (st as Dictionary).get("src", null)
 				if not (src is Dictionary):

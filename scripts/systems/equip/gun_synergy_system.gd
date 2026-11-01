@@ -235,7 +235,7 @@ func _turret_two(side: String) -> void:
 	var allies: Array = []
 	var foes: Array = []
 	for u in battle._units:
-		if not (u is Dictionary) or not u.get("alive", false):
+		if not (u is Dictionary) or not u.get("alive", false) or battle._is_untouchable(u):   # §UNTOUCHABLE: 训龟大师既不是友也不是敌
 			continue
 		if str(u.get("side", "")) == side:
 			allies.append(u)
@@ -320,7 +320,7 @@ func _lowest_ally(side: String):
 	var best = null
 	var bv := INF
 	for u in battle._units:
-		if not (u is Dictionary) or not u.get("alive", false) or str(u.get("side", "")) != side:
+		if not (u is Dictionary) or not u.get("alive", false) or str(u.get("side", "")) != side or battle._is_untouchable(u):   # §UNTOUCHABLE
 			continue
 		var r: float = float(u.get("hp", 0.0)) / maxf(1.0, float(u.get("maxHp", 1.0)))
 		if r < bv:

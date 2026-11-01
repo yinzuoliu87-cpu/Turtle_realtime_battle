@@ -733,8 +733,8 @@ func _dl_side_alive(side: String) -> int:   # 一侧存活非蛋·非惰性召�
 	for u in battle._units:
 		if not u.get("alive", false) or u.get("_isEgg", false) or (u.get("is_summon", false) and battle._DL_INERT_SUMMON.has(str(u.get("summon_kind", "")))):
 			continue
-		if u.get("is_trainer", false):
-			continue   # 训龟大师不计团灭(用户: "训龟大师不算, 其实就是个场外监视者")
+		if battle._is_untouchable(u):
+			continue   # 训龟大师不计团灭(用户: "训龟大师不算, 其实就是个场外监视者"; §UNTOUCHABLE 统一入口)
 		# ★★用【有效阵营】而不是原 side —— battle._eff_side 已经把两种语义都办了:
 		#   · 赛博侵入(hijacked): 按【原阵营】计(临时倒戈不算赛博方, 也别把原阵营"抹空"→防提前判胜负)
 		#   · 驯服(tamed_side)  : 按【新阵营】计(真·换队, 原队就该少这一个人)
@@ -798,7 +798,7 @@ func _dl_wipe_dramatize(wiped_lr: String) -> void:
 	# 幸存方每个单位身上冒一记火花, 强调"是他们打完的"(按录像里真的那一侧, 与看的人无关)
 	var survivor: String = "right" if wiped_lr == "left" else "left"
 	for u in battle._units:
-		if u.get("alive", false) and str(u.get("side", "")) == survivor and not u.get("_isEgg", false):
+		if u.get("alive", false) and str(u.get("side", "")) == survivor and not u.get("_isEgg", false) and not battle._is_untouchable(u):   # §UNTOUCHABLE: 火花不落到训龟大师身上(会写它的 _spark_t)
 			battle._vfx._hit_spark(u)
 
 ## ★蛋破演出 —— 整场的最高潮, 原来却是【直接跳胜负横幅】, 零过场(横扫/终极路都走这条)。

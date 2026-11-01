@@ -3,65 +3,32 @@ extends RefCounted
 
 ## 本文件路径(逐帧直播 S3 出处键: 网格生成函数 `gen_tentacle_*` 由手机按路径 + 函数名调, 见 VfxTex.tag)
 const SRC := "res://scripts/systems/equip/tentacle_vfx.gd"
-## 灵物【触手】演出 —— **常驻实体 + 状态机**（2026-08-04）
+## 灵物【触手】—— **常驻实体 + 状态机**（2026-08-04 起）。外观与渲染 2026-10-31 整套换成 `TentacleMeshVfx`。
 ##
 ## ══════════════════════════════════════════════════════════════════════
-##  ★这一版改的是【它是什么】，不是【它长什么样】
+##  ★本文件只管【它是什么、什么时候做什么】，不管【它长什么样】
 ## ══════════════════════════════════════════════════════════════════════
-## 用户 2026-08-04：「我为什么让你参考？」
+## 用户 2026-10-31:「这东西在抽搐，而且一直闪光，你得想办法啊」「回放的时候还掉帧」「建议是直接大重做」→ 方向 B。
+##   本体的形状 / 着色 / 动作曲线全在 `tentacle_mesh_vfx.gd` + `assets/shaders/tentacle.gdshader`
+##   (固定网格 + 顶点着色器沿样条弯曲 + 不透明限色着色; 方案书 docs/plans/20261031d-灵物触手重做.md)。
+##   旧做法(每帧重建的半透明扁带网格 + 链式模拟 + 惯性弹簧 + 滚动流纹 + 外发光壳)整段删掉了;
+##   它的教训(时间曲线怎么逐帧量出来、「戳出去」「拍两次」的根因)在 git 历史与 memory fb-3d-quality-bar-tentacle,
+##   8 月量出来的**时间曲线**原样搬进了 `TentacleMeshVfx.pose_at`。
 ##
-## 我前两版把「参考俄洛伊」当成**照着画一条触手**在用（拿配色、拿形状、拿纹路），
-## 做出来的是「每 5 秒凭空冒一条出来拍一下就没了」。**那是技能特效，不是一个存在。**
+## 这里仍是唯一事实源的(玩法, 2026-10-31 重做一个字没动):
+##   状态机与各态时长 · 命中时刻 `T_TOUCH`(伤害挂在 tick 里梢端贴地那一帧) · 固定射程 `ATTACK_LEN` ·
+##   预警带(= 伤害带) · 命中演出 · 根部位置与转移阵地。
 ##
-## 俄洛伊触手真正的设计是 —— 它**长在地上、一直在那儿**：
-##   · 出土要 **2 秒**且期间不可选中 → 那 2 秒不是动画，是**给对手的预告**
-##   · 有**待机态**（蛰伏）与**唤醒态**，攻击只是它的一个动作
-##   · 所以玩家会**数**：这片区域有几根 = 这里有多危险
+## ── 为什么是常驻实体（用户 2026-08-04：「我为什么让你参考？」）──
+## 俄洛伊触手真正的设计是它**长在地上、一直在那儿**：出土 2 秒(那 2 秒是给对手的预告)、有待机态,
+##   攻击只是它的一个动作 ⇒ 玩家会**数**：这片区域有几根 = 这里有多危险。文案写的是「N 个无敌触手**登场**」。
 ##
-## ⇒ 本版：**每根触手一个常驻节点**，从出土活到换路，由状态机驱动。
-##   文案写的是「N 个无敌触手**登场**」——"登场"意味着它在场上，
-##   不常驻的话这四个字玩家永远读不到，后面画得再好也是给错的东西上妆。
-##
-## ── 时间节点（★取自 Riot 官方数值，不是我编的）──────────────────────
+## ── 时间节点（★取自 Riot 官方数值，不是我编的）──
 ## | 出土 | **2 秒**（`wiki:Illaoi` "Tentacles fully spawn after a 2 second delay"）|
 ## | 唤醒/立起 | **0.25 秒**（"The Tentacle awakens over 0.25 seconds"）|
 ## | 一次攻击 | **0.5 秒**出手 + **0.5 秒**锁定（大招态原文）|
-## | 连续攻击间隔 | 上次攻击后 **0.25 秒** |
-##
-## ⚠ 我们的触手是**每 5 秒拍一次的常驻 AOE**，不是"生成后被英雄唤醒"的实体。
-##   照搬 2 秒出土会占掉 40% 周期 ⇒ **2 秒出土只在【登场】用一次**，
-##   之后每次拍击走 `T_REAR(0.13) 立起 + T_SLAM(0.50) 出手`（前面还有 T_WARN 1.00 的预警）。
-##
-## ── 外观 ────────────────────────────────────────────────────────────
-##
-## ★★★2026-08-04【下载视频逐帧看之后的第 N 次修正 —— 也是最重要的一次】
-##
-## 用户：「我老早跟你说去抓视频，下载一帧帧看，你还要等我干什么」
-## —— 我一直卡在"我解码不了视频"这句话上，**却没试过下载 + 抽帧**。
-##    装 `yt-dlp` + `imageio-ffmpeg`，抽成 PNG，我就能看。这条路我早该走。
-##
-## 抽帧看完发现：**原画和实机是两个东西**，我之前照着原画做的方向是偏的。
-##
-## | | 原画 `ref-tentacle-illaoi.png` | **实机** `ref-tentacle-ingame.png` |
-## |---|---|---|
-## | 颜色 | 饱和翠绿 `#20c050` | **淡青绿、半透明**，能看到背后地形 |
-## | 回纹 | 醒目的方折刻纹 | **几乎看不见**（那是原画的艺术加工） |
-## | 形状 | S 形 + 梢端卷成整圈 | **平缓单弧**，梢端只是向下弯回收细 |
-## | 粗细 | 较粗 | **很细**（宽约长的 1/15） |
-##
-## ⇒ 用户要的是「**参考视频**」，所以按**实机**来：淡青绿半透明 · 细 · 平缓单弧 ·
-##   回纹极弱（只在近处隐约可见）· 攻击时才爆发亮光（实机待机是暗的、出手才亮）。
-##
-## 原画那份仍然有用 —— 它给了**回纹这个母题**与配色的方向；只是强度要按实机压下来。
-##
-## ── 技术路线 ────────────────────────────────────────────────────────
-## 程序化 `ArrayMesh`（`SurfaceTool` 现算），不导 `.glb`：实跑核实本仓库
-## **0 个模型文件 / 0 个 Skeleton3D / 0 个 AnimationPlayer**；而地图那三处
-## （礁石/墙/穹顶）本来就是现算网格（`battle_world_builder.gd:710,742`）。
-## 另一个好处：**程序化不产出图片，不吃「素材不许复用」那条铁律**。
-##
-## ⚠ 朝向坑：`Sprite3D.axis = AXIS_Y` 本身就是平铺，再 `rotation.x = -90` 会掰成竖环。
-##   本文件不用 Sprite3D，直接建 `ArrayMesh` 顶点（世界坐标），没有那层歧义。
+## ⚠ 我们的触手是**每 5 秒拍一次的常驻 AOE** ⇒ 2 秒出土只在【登场】用一次，
+##   之后每次拍击走 `T_WARN(1.00) 预警 → T_REAR(0.13) 前摇 → T_SLAM(0.50) 出手 → T_RECOVER(0.40) 收回`。
 
 const VfxTex := preload("res://scripts/util/vfx_textures.gd")
 
@@ -151,6 +118,43 @@ static func hit_delay(share: float) -> float:
 	##   (闪避追击的点刺 share<0.9 仍是 0 —— 它本来就是第 0 帧命中。)
 	return 0.0 if share < 0.9 else (T_WARN + T_REAR + T_TOUCH)
 
+## 包络表是 30fps 一格(预警带亮度 `WARN_ENV` 用)。
+static func _env(c: Array, ts: float) -> float:
+	var x: float = maxf(ts, 0.0) * 30.0
+	var i: int = int(floor(x))
+	if i >= c.size() - 1:
+		return float(c[c.size() - 1])
+	return lerpf(float(c[i]), float(c[i + 1]), x - float(i))
+## ★★攻击伸长到的长度 —— **固定值**（用户 2026-08-04：
+##   「俄洛伊触手的攻击长度是固定的，不会随目标距离改动」）。
+##
+##   我中途做过一版"按到目标的实际距离伸长"，那是错的：
+##   固定长度意味着触手有**明确的攻击范围** —— 玩家能学会"站在这条线外就安全"，
+##   而"够多远伸多远"等于没有范围，也就没有博弈。
+##   ⇒ 攻击时一律伸到 `ATTACK_LEN`，够不够得着由**逻辑侧的选靶**决定
+##     （范围外的敌人根本不该被选为目标）。
+## ★★2026-08-04 用户拍板缩短：原 14.0 → 战场 2D 码 **583**，实测
+##   = 战场【高度】的 80% / 比全场最远的远程龟(450)还远 30% / 中位近战龟(70)的 8.3 倍。
+##   那个数是我按"演出好看"反推的，从没按玩法平衡定过。缩到 ~400 ≈ 远程龟档位。
+const ATTACK_LEN := 9.6
+## 同一个范围换算成【战场 2D 码】给逻辑侧用（在 `_init` 里按真实缩放量一次）
+var attack_range_2d := 520.0
+
+## 砸下用时(秒)。★0.033 那档正好等于 30fps 的一帧 = **采样步长**，于是逐帧截图永远采不到中间态。拉到 0.07(≈2 帧)。
+## 2026-10-31 起: 新触手悬停到 `T_TOUCH - SNAP_T` 再用这 0.07 秒(60fps 4 帧)加速砸下, 见 `TentacleMeshVfx.pose_at`。
+const SNAP_T := 0.07
+
+# ══════════════════════════════════════════════════════════════════
+#  ★★★动作: 8 月那版原样(2026-10-31 恢复)
+# ══════════════════════════════════════════════════════════════════
+## 用户 2026-10-31 看了重写动作的成品:「甚至不如旧版，你完全不知道怎么动的」⇒ 动作 100% 用 8 月那版
+##   (用户亲自挑了十几轮的: 姿态表 `_phase_at` + 链式模拟 `_sim_chain` + 行波 / 惯性 / 重力),
+##   下面这一整段(形状常量 → `_slam_curl`)与 `_phase` / `_phase_at` / `_arc_for` / `_curvature` / `_seg_angle` /
+##   `_inertia_step` / `_sim_chain` / `_basis_of` 从 HEAD 原样搬回, 一个字没改;
+##   只换渲染(固定网格 + 着色器, 见 `_render` / `TentacleMeshVfx`)。没搬的: 死函数 `_slam_curl_of`、开关 `SIM_ON`(恒真)、
+##   半径式子里逐帧的粗细起伏 `r *= 1 + 0.055 sin(…) + 0.032 sin(…)`(方案书 §2.2 嫌疑③)。
+##   逐帧对账: tests/_probe_tentacle_head_parity.gd(同一场景同一帧, 中心线与 HEAD 逐点比)。
+
 # ── 形状 ──────────────────────────────────────────────────────────
 ##
 ## ★★2026-08-04【自截图看出来的第三次认错】：
@@ -166,8 +170,6 @@ static func hit_delay(share: float) -> float:
 ##      θ(u) 由状态机给：待机前倾下垂、蓄势竖直后仰、砸下整条前倒。
 ##      这样长度天然守恒，看起来才像一根真的触手在动。
 const SEG := 36
-## 高度剖面的站点数(门禁量前沿用)
-const PROF_N := 9
 ## 截面边数。★8 那版并排比对时**看得见多边形棱面**（轮廓是折的不是圆的）。
 const RING := 7                      # 扁带横向的采样点数（不再是圆周边数）
 ## ★★★【官方被动预览 `ref-tentacle-passive.png` 逐帧看出来的】体型完全反了 ——
@@ -234,29 +236,7 @@ const SLAM_W_CURVE := [
 	0.489, 0.467, 0.454, 0.456, 0.431, 0.414, 0.410, 0.418,
 	0.412, 0.398, 0.392, 0.405,
 ]
-## 表是 30fps 一格；ts 是【从拍击起始算起】的秒数（RECOVER 要加上 T_SLAM）
-static func _env(c: Array, ts: float) -> float:
-	var x: float = maxf(ts, 0.0) * 30.0
-	var i: int = int(floor(x))
-	if i >= c.size() - 1:
-		return float(c[c.size() - 1])
-	return lerpf(float(c[i]), float(c[i + 1]), x - float(i))
-## ★★攻击伸长到的长度 —— **固定值**（用户 2026-08-04：
-##   「俄洛伊触手的攻击长度是固定的，不会随目标距离改动」）。
-##
-##   我中途做过一版"按到目标的实际距离伸长"，那是错的：
-##   固定长度意味着触手有**明确的攻击范围** —— 玩家能学会"站在这条线外就安全"，
-##   而"够多远伸多远"等于没有范围，也就没有博弈。
-##   ⇒ 攻击时一律伸到 `ATTACK_LEN`，够不够得着由**逻辑侧的选靶**决定
-##     （范围外的敌人根本不该被选为目标）。
-## ★★2026-08-04 用户拍板缩短：原 14.0 → 战场 2D 码 **583**，实测
-##   = 战场【高度】的 80% / 比全场最远的远程龟(450)还远 30% / 中位近战龟(70)的 8.3 倍。
-##   那个数是我按"演出好看"反推的，从没按玩法平衡定过。缩到 ~400 ≈ 远程龟档位。
-## ⚠ `ARC_LEN` 必须同比缩 —— 不缩的话恢复期包络尾巴(0.29×peak)会被
-##   `maxf(reach*env, ARC_LEN)` 钳掉，长尾就没了。
-const ATTACK_LEN := 9.6
-## 同一个范围换算成【战场 2D 码】给逻辑侧用（在 `_init` 里按真实缩放量一次）
-var attack_range_2d := 520.0
+
 ## 各态的切角（度）：[根部角, 梢端角]。90° = 竖直向上，0° = 水平向前，负 = 朝下
 ## ★★★2026-08-04【逐帧量官方 f001~f007 之后推翻重做】
 ##   我原来做的是"卷成环 ⇄ 舒展成波浪长条、周期 2.4 秒的大幅呼吸" —— **编的**。
@@ -269,7 +249,8 @@ var attack_range_2d := 520.0
 ##   **上方那根离相机远、畸变小，宽高比 0.55~1.14（接近方/偏立）**——
 ##   它才反映真实 3D 形状。我上一版照的是被压扁那根 ⇒ 把"投影的假象"当成了形状。
 ##   （用户原话：「这样在下面触手以俯视角缩成一团时可以看上面吊顶」。）
-const ANG_IDLE := [79.0, 30.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
+## 2026-11-01 用户「初始状态下…太弯了，得把它搞直一点」: [79, 30] → [84, 45], 卷曲 262/222 → 160/136
+const ANG_IDLE := [84.0, 45.0]       # 待机: 升起后大幅弧过去（牧羊杖形，靠角度不靠螺旋）
 ## ★★2026-08-04【逐帧曲线抓到的】：[104, 88] = 近乎【笔直站立】，
 ##   而本作是俯角相机 ⇒ 竖直方向被压扁，**越立投影越短**：
 ##   实测前摇 −3→−2 投影臂长 0.134 → 0.085（塌了 37%），而官方是 0.167（在长）。
@@ -317,15 +298,13 @@ const CURL_FROM_CURLY := 0.30        # 待机/预警：大半条参与卷曲，�
 ## ★★★重标定：`CURL_FROM` 从 0.68 降到 0.30 之后，参与卷曲的长度从 32% 变成 70%，
 ##   **同样的数值卷曲量翻了一倍多** —— 原来的 318/299 在新口径下会把整条盘成蚊香
 ##   （实测 +13~+22 那几帧就是一坨旋涡）。整条曲线的 curl 值全部按新口径重定。
-const CURL_TIGHT := 262.0            # 待机：弧长恒定后靠【大卷曲】蜷成团（原 116×2.2）
+const CURL_TIGHT := 160.0            # 待机：弧长恒定后靠【大卷曲】蜷成团（原 116×2.2）
 ## ★立起来(ANG_IDLE 66→79)之后，同样的摆幅在投影上被放大：实测波动
 ## 从 1.2% 跳到 10.6%（官方 <1.5%）⇒ 摆幅再砍一半。
-const CURL_LOOSE := 240.0            # 舒展到底：只松一点点（官方待机基本不动）
-const BREATH_PERIOD := 3.6           # 一次完整呼吸的秒数（慢而轻）
-## 前摇末的卷曲量 —— 抽直波前"尚未扫到"的段保持这个值
-## 抽直过渡时长。★0.033 那档正好等于 30fps 的一帧 = **采样步长**，
-## 于是逐帧截图永远采不到中间态（看起来永远是瞬间跳变）。拉到 0.07（≈2 帧）。
-const SNAP_T := 0.07
+## ★2026-10-31 对齐 LoL(用户「动作也得调」): 待机实测周期 3.5 秒、梢端摆幅占高 9% ⇒ LoL 被动待机主频约 0.45 Hz(参考笔记 §4)
+##   ⇒ 呼吸周期 3.6 → 2.2 秒, 舒展量 240 → 222(摆幅略加大, 仍在「≤ 触手高 15%」以内)。
+const CURL_LOOSE := 136.0            # 舒展到底：只松一点点（官方待机基本不动）
+const BREATH_PERIOD := 2.2           # 一次完整呼吸的秒数（慢而轻）
 ## 余振行波的参数（曲率密度模型）
 const RING_AMP := 210.0        # 脉冲峰值曲率(度/单位弧长)
 const RING_WIDTH := 0.20       # 脉冲宽度(占全长比例)
@@ -386,6 +365,12 @@ const WHIP_LAG := 0.035
 
 ## 前沿从根跑到梢用掉 T_SLAM 的多少比例。0 = 退化成旧的棍子。
 const SLAM_FRONT_SPAN := 0.46
+## 下拍对齐 LoL(见 `_phase_at` ST_SLAM 的注): 先蓄力 SLAM_HOLD 秒, 再以 SLAM_SPEED 倍速播拍击曲线; 二者满足 HOLD = T_TOUCH·(1 − 1/SPEED)。
+## 三组实测(梢端最高 → 贴地帧数 / 贴地 ts / 中途悬停): 原速 14 帧 / 0.35 / 悬停 2~3 帧 · 2.5 倍 + 肌肉 40: 12 帧 / 0.40(晚于伤害) ·
+##   **1.6 倍 + 肌肉 40: 9 帧 / 0.35(= 伤害帧) / 逐帧下落 0.24 → 0.40 → 0.51 → 0.79 → 1.23 → 1.56 一路加速** ← 取这一组
+## 2026-11-01 用户「拍下去的速度为什么这么快？不应该有这么快」⇒ 回到 8 月验收过的原速(梢端最高→贴地约 14 帧), 贴地时刻仍是 T_TOUCH
+const SLAM_SPEED := 1.0
+const SLAM_HOLD := 0.0
 ## 前沿的加速度: <1 ⇒ 到达时间是**凹**的 = 前沿越跑越快(鞭子渐细的直接后果)。
 ##   =1 是匀速(那是绳子不是鞭子), >1 是越跑越慢(反了)。
 const SLAM_FRONT_P := 0.60
@@ -460,7 +445,6 @@ const INERTIA_GAIN_SLAM := 0.28
 ## 【为什么不是 1000 段】用户问的是理论极限。实际 36 段 + 8 次迭代已经够:
 ##   段越短越容易数值抖动(要更多迭代压)、而屏幕上这条触手只有几百像素, 肉眼分不出。
 ## 【确定性】固定子步长推进(不吃可变 delta), 否则不同机器结果不同, 会破 rng_discipline。
-const SIM_ON := true
 const SIM_H := 1.0 / 120.0         # 固定子步长
 const SIM_SUBMAX := 6              # 单帧最多几个子步(卡顿时别追太多)
 ## 下砸期的子步长缩放。★实测 0.25 能把弧长波动从 35%%压到 9%%, **但把折角从 29.3° 压到 16.6°**
@@ -469,28 +453,66 @@ const SIM_H_SLAM_K := 1.0
 const SIM_ITER := 20
 ## 地面钳位之后补的距离迭代次数(收回被钳位破坏的弧长)
 const SIM_GRAV := 26.0             # 重力加速度(世界单位/秒²)
-const SIM_DAMP := 0.986
+const SIM_DAMP := 0.95
+## ══════════════════════════════════════════════════════════════════
+##  ★★2026-10-31 抽搐修复(只修探针定位到的两处来源, 抬起 / 拍下 / 收回的姿势与节奏不动)
+## ══════════════════════════════════════════════════════════════════
+## 用户 10-31:「这东西在抽搐」「运动是有问题的啊」。探针(tests/_probe_tentacle_jitter_src.gd, 同一帧并排算
+##   「模拟输出」与「它追的目标姿势」; 特效台逐步导出 37 个节点)量出来的来源:
+## ① 【端着姿势】的三个状态(待机 / 出土 / 撤场)链式模拟撑不住、也停不下来:
+##   · 塌: 待机肌肉速率 3.0 扛不住重力 26 ⇒ 整根塌到地上, 梢端平均偏离目标姿势 3.94 米、贴地(y=0)被地面钳位托着在地上拖
+##     (出土同样偏 2.85 米) —— 旧版待机画面上是「一团」、一直「扭动」, 根子在这;
+##   · 甩: 每子步只保留 0.986 的阻尼太小, 进待机后梢端速度均值 248 → 106 → 73 → 62 → 36 mm/帧(0~5 秒), 5 秒还没停,
+##     而两次拍击只隔 2.8~5 秒(目标姿势本身待机时梢端逐帧最多动 15 mm);
+##   · 调系数救不了: 肌肉加到 15 / 40 + 强阻尼, 偏离降到 0.80 / 0.53 米, 但待机动得更凶(速率 40 时 3~5 秒还有 240 mm/帧不衰减) ——
+##     逐节肌肉拉 + 距离约束 + 弯曲平滑 + 地面钳位在「端着不动」时互相顶。
+##   不是时间步问题(每步恰 2 子步)、不是高频项(>3 Hz 能量 2~4%)、不是根部方向逐帧重算(瞄准点只在出手时变)。
+##   ⇒ 这三个状态不跑链式模拟: 每个节点用【临界阻尼弹簧】跟随姿态表积分出来的目标姿势(CALM_OMEGA, 约 0.3 秒到位、不过冲)。
+##     抬起 / 前摇 / 拍下 / 收回照旧跑链式模拟(鞭子、惯性、甩尾都是它长出来的, 不动)。两种模式切换时位置与速度连续(Verlet 历史照传)。
+## ② 状态切换处目标姿势 C0 不连续(梢端一帧跳: 拍下→收回 1.40 m —— 行波前沿滞后、横摆 wavy、收回期曲率脉冲同时断;
+##   待机→预警 0.26~1.0 m、收回→待机 0.20~0.33 m、出土→待机 0.29 m —— 待机的呼吸偏移不在邻居的起止姿势里)。
+##   每一跳都给链条踢一脚。⇒ 切换后 SWITCH_BLEND 秒内, 目标方向从切换前一帧平滑(smoothstep, 两端斜率 0)过渡过去。
+##   进【拍下】不过渡: 前摇→拍下本来就连续(实测 12 mm), 点刺要第 0 帧命中。
+## 临界阻尼弹簧的角频率(弧度/秒): 阶跃响应约 4.7/ω ≈ 0.3 秒到 95%; ω·子步长 = 0.13, 半隐式积分稳定
+const CALM_OMEGA := 16.0
+const SWITCH_BLEND := 0.15
+## 拖尾拍下(见 `_sim_chain` 里 ST_SLAM 那段): 梢端比根部晚起步几秒 / 根部比梢端早落地几秒 / 跟随滞后补偿 / 下落加速指数 / 落地仰角(根→梢, 度)
+const SLAM_TRAIL := 0.10
+## 抬起在 T_WARN 的这个比例处到顶(三次缓出: 开头最快、一路减到 0); 后弯跟着抬起先到 LEAN_FAST, 余下的蓄力期慢慢加满
+const LIFT_TOP := 0.62
+const LEAN_FAST := 0.82
+const SLAM_LAND_SPREAD := 0.06
+const SLAM_TOUCH_LEAD := 0.0
+const SLAM_EASE := 2.6
+const SLAM_END_ROOT_DEG := 20.0
+const SLAM_END_TIP_DEG := -2.0
+## 跟随模式每子步补几次段长约束(保弧长)
+const CALM_LEN_ITER := 6
+## 拍下那一档跟随的角频率: 跟随斜坡的滞后 ≈ 2/ω 秒, 用来把贴地压在伤害帧(verify_tentacle_soft ④ 差 ≤ 0.05 秒)
+const SLAM_FOLLOW_OMEGA := 50.0
 ## ⚠【试过并撤掉】沿链条的速度空间低通(粘性): 想用它"降速度不降幅度"。
 ##   实测 0.35 没效果(9.4→9.8 次/秒)、**0.55 以上直接 inf/nan** ——
 ##   那个平滑核是显式扩散算子, 系数 > 0.5 就发散。此路不通, 别再走。
 
 ## 主动力(肌肉)的基准速率与沿长度分布。★用户「整个是鞭子」⇒ **整根都软, 分布尽量均匀**,
 ## 不做成"根部硬棍+梢端面条"。FALL 控制衰减到梢端还剩多少(0.75 = 梢端仍有 25% 的基准)。
-const SIM_MUSCLE_RATE := 15.0
-## 待机的肌肉速率 —— 要"轻微晃"不是"死住"。实测 140: 幅度 0.0050 / 换向 3.9 次每秒。
-const SIM_MUSCLE_RATE_IDLE := 3.0
-## 破土/钻地的肌肉速率 —— 最紧。链条一边被拉长一边甩, 松了就乱扭。
-## 实测 200: 换向 **0.5 次每秒**(松档是 6.1)。
-const SIM_MUSCLE_RATE_EMERGE := 5.0
+const SIM_MUSCLE_RATE := 30.0
+## 下拍期的肌肉速率(2026-10-31 对齐 LoL 下拍, 见 `_phase_at` ST_SLAM 的注): 15 时链条跟不上挥动, 梢端中途悬停
+const SIM_MUSCLE_RATE_SLAM := 40.0
 const SIM_MUSCLE_P := 0.5
-const SIM_MUSCLE_FALL := 0.75
+const SIM_MUSCLE_FALL := 0.40
 ## ★弯曲刚度 —— 用户「太软了」的解药在这里, **不在肌肉**。
 ##   纯距离约束是"绳子"(允许任意折角); 触手/鞭子有截面刚度, 弯有半径。
 ##   每子步把每个节点往相邻两点的中线拉这么多。太大 → 变回硬棍。
-const SIM_BEND := 0.30
+const SIM_BEND := 0.55
 
 
-const WARN_FRONT_SPAN := 0.00
+## 2026-11-01 用户「首先根部先举起来，然后上部举起来」: 0 → 0.30(抬起行波, 梢端比根部晚起)
+const WARN_FRONT_SPAN := 0.11
+## 用户 11-01 认可的最高点位置: 上面三分之一明显往后折, 梢端在根部后方 3~4 米、梢尖朝后上方(探针实测 95/2.5 ⇒ 梢端后 3.6 米 高 8.6 米)
+## 抬起后半段到前摇: 上半截往后仰的角度(度, 梢端满额, 沿长 u^LEAN_P); 拍下时行波前沿扫过才松开 ⇒ 根先、梢最后
+const LEAN_DEG := 85.0
+const LEAN_P := 1.6
 ## 抬起前沿的加速度。比下砸的 0.60 更接近 1(匀速) —— 抬起没有"动量往梢端集中"那件事。
 const WARN_FRONT_P := 0.80
 
@@ -499,34 +521,11 @@ const SLAM_LAG_K := 0.0
 ## 拍击期横向摆动的地板值(原来是压到 0)
 const SLAM_WAVY_MIN := 0.22
 ## 待机摇曳
-const SWAY_SPEED := 1.15
+## ★2026-10-31 对齐 LoL 被动待机(约 0.45 Hz): 待机梢端实测周期 3.5 秒主要来自这两项横摆 / 波纹(不是呼吸) ⇒ 1.15 × 3.5 / 2.2
+const SWAY_SPEED := 1.82
 const SWAY_AMP := 0.30
-const CURL_SLAM := 6.0
-## 拍击/收回期的**卷曲量**由官方【投影臂长包络】反向驱动。
-##
-## ★★★2026-08-05【弧长恒定之后必须做的配套修正】
-##   `SLAM_LEN_CURVE` 量的是**投影臂长**（屏幕上根到梢有多远），
-##   我原来拿它去乘 `arc`（弧长）—— **口径用错了**：
-##   弧长恒定的鞭子，投影变短是因为**卷回来**，不是因为绳子缩短。
-##   实测症状：收回段触手变得又短又细（弧长被包络压到 0.28×）。
-##   ⇒ 包络值高(抻直) → curl 小；包络值低(卷起) → curl 大。
-## ★★★2026-08-05【用户："拍击的时候为什么触手会拍下去两次"】的真正解法。
-##   官方投影臂长的余振只有 **18%**（0.435→0.354→0.417），
-##   但**线性**映射到卷曲量之后变成 **6° → 72° → 21°** ——
-##   抽直、卷回一大截、再抽直 ⇒ 视觉上就是拍了两下。
-##   （弦长对卷曲量是强非线性的：curl 小时投影几乎不变，curl 大时才快速缩。）
-##   ⇒ 映射在高值区(接近抻直)压平。指数几经调整：
-##     0.62 那档给 12°→42°→17°，用户实测**仍然看得出是两次**；现行指数是 **0.52**（见下方 `pow(..., 0.52)`）。
-##   ⚠ 诚实记录：**几何上正确的映射不是 pow**。圆弧的 弦长/弧长 = sin(θ/2)/(θ/2)，
-##     从官方 +1 帧的投影比 0.813 反解出来是 **114°**，不是 24° —— 差 4.7 倍。
-##     114° 会让触手卷回一大截，就是用户说的"拍两次"。
-##     ⇒ 说明**我的假设本身可能是错的**：官方那 18% 的投影余振未必来自整体卷曲量，
-##       可能是根部位移或局部弯曲。这条没查清，先按"看起来对"压着。
-##     读起来是"甩出去的回弹"，不是第二次拍击。
-static func _slam_curl_of(e: float) -> float:
-	var k: float = pow(clampf((e - 0.28) / 0.72, 0.0, 1.0), 0.52)
-	return lerpf(CURL_TIGHT, CURL_SLAM, k)
-
+## ★2026-10-31(用户意见「拍下时梢端带一点弯」): 6 → 35。仍从前摇末 68° 单调松开、不回卷(不会「拍两次」), 收回从这里接(连续)。
+const CURL_SLAM := 35.0
 
 ## 拍击期的卷曲量（带**抽直阶段单向化**）。
 ##
@@ -551,43 +550,11 @@ func _slam_curl(ts: float) -> float:
 	var k: float = clampf(ts / (T_SLAM * 0.55), 0.0, 1.0)
 	return lerpf(REAR_END_CURL, CURL_SLAM, k * k * (3.0 - 2.0 * k))
 
-# ── 配色（★参考图逐像素统计，不是我挑的）────────────────────────────
-## ★色相取自【实机视频】抽帧（`#205040`~`#408070` 那一带的青绿），
-##   但**明度/饱和度按【我们自己的背景】调过** ——
-##   ⚠ 照搬实机数值那一版【自截图实测几乎看不见】：LoL 的场景是暗绿褐色，
-##     而本作战场是一大片**亮青色**，同样一条淡青绿在上面直接糊掉。
-##   ⇒ 参考给的是【色相与关系】（青绿、边缘微亮、待机暗出手亮），
-##     不是能照抄的 RGB。压暗主体 + 提高与背景的明度差，才读得出轮廓。
-const C_CORE := Color(0.09, 0.40, 0.42)      # 主体：压暗的【青】（官方偏 cyan，我原来偏绿）
-const C_EDGE := Color(0.42, 0.92, 0.94)      # 边缘亮青
-const C_GLYPH := Color(0.34, 0.72, 0.64)     # 回纹（弱，近看才见）
-
-## 回纹：1 = 亮刻痕。BAND 列 × 8 行一循环，沿长度平铺。
-## ★方折的阶梯/迷宫纹（参考图上那种直角折线纹样），不是随便的亮条。
-const GLYPH := [
-	[0, 1, 1, 1, 0],
-	[0, 1, 0, 0, 0],
-	[0, 1, 0, 1, 1],
-	[0, 1, 0, 1, 0],
-	[0, 0, 0, 1, 0],
-	[1, 1, 0, 1, 0],
-	[0, 0, 0, 0, 0],
-	[0, 0, 0, 0, 0],
-]
-
-## 待机态的重算节流：摇曳很慢，不必每帧重建网格（4 根 × 320 面是每帧开销）
-const IDLE_REBUILD_HZ := 12.0
-
 ## 常驻触手：key = "side|idx" → 状态字典
 var _tents: Dictionary = {}
 ## 【调试台专用】锁住根数：预览自己 ensure 之后，别让 `spirit_synergy_system` 每帧
 ## 按真实档位把它撤掉（真实档位在调试台里是 0）。只有 VFXPREVIEW 会打开它。
 var preview_lock := false
-## ★这里原有 `static var _skin_tex` + `static func _skin()`（懒加载 `VfxTex._make_tentacle_skin()`）。
-##   两个都删了：全仓零引用（`_skin(` 只有那条定义，`.xxx._skin(` / `"_skin"` 都是 0）。
-##   材质用的是 `VfxTex._make_tentacle_flow()`（见 `_ensure` 里 `mat.albedo_texture = ...`）——
-##   2026-08-04 管体改扁带时换的图，旧的 skin 路径从那天起就没人走了。
-##   ⚠ 连带: `scripts/util/vfx_textures.gd:909` 的 `_make_tentacle_skin()` 现在也零调用者(那是别人的目录)。
 
 
 func _init(b) -> void:
@@ -637,73 +604,51 @@ func ensure(side: String, n: int) -> void:
 				t["ts"] = 0.0
 
 
-## 根部的光花：官方被动里触手立在地上时，根部一直有一圈溅开的微光。
-## 没有它，触手看着像"插在地上的棍子"而不是"从地里钻出来的活物"。
-func _base_glow(t: Dictionary) -> void:
-	var p2: Vector2 = root_pos(str(t["side"]), int(t["idx"]))
-	battle._skill_ring(p2, Color(0.42, 0.95, 0.86, 0.22), 46.0)
 
-
+## 登场一根: 建节点(外观全在 TentacleMeshVfx: 共用的固定网格 + 各自一份着色器材质)、登记状态。
+## ★建完不当场画: 节点先藏着, 第一次 tick 才画(与 8 月那版同序 —— 链式模拟在第一次 `_sim_chain` 时按当时的姿态初始化,
+##   早一帧初始化, 之后整根就与旧版对不上; 对账探针 tests/_probe_tentacle_head_parity.gd 实测差到 4.4 米)。
 func _spawn(side: String, idx: int) -> void:
-	var mi := MeshInstance3D.new()
-	mi.name = "Tentacle_%s_%d" % [side, idx]
-	mi.mesh = VfxTex.gen_empty_mesh()
-	var mat := StandardMaterial3D.new()
-	# ★unshaded + 加色 + 半透明 —— 参考图上触手是【能看到背后城镇的发光能量体】。
-	#   开光照会有连续明暗渐变，跟限色像素立绘立刻打架。
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	# ★★不能用 BLEND_MODE_ADD ——【自截图实测】：加色混合叠在本作那片【亮青色】战场上
-	#   直接爆成白色，画面上看到的是一条白影，一点绿都没有。
-	#   参考图上触手之所以是绿的，是因为它【本体接近不透明】、只有边缘发光；
-	#   叠加混合只适合暗背景。⇒ 用普通 alpha 混合，亮边靠顶点色做。
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
-	# ★★这里【必须双面】(2026-08-04 试过单面, 实测更差)：
-	#   本体是半透明的能量体，远壁透过近壁叠加正好给出"体积感"——
-	#   单面(CULL_FRONT)实测变成一根【空心管】：亮轮廓 + 暗芯，
-	#   峰值从 220 掉到 199(官方 236)、均值 173→160。数字和眼睛一致。
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.vertex_color_use_as_albedo = true
-	# ★★回纹用【贴图】不用顶点色 ——【自截图实测】36×8 的网格上，一个格子在屏幕上才几像素，
-	#   顶点色插值出来是一片糊，参考图上最有辨识度的方折回纹**一点都看不见**。
-	#   贴图是逐像素画的（`VfxTex._make_tentacle_skin`），不复用任何现成图。
-	# ★★2026-08-04：贴图关掉过一轮（管体时代那几条丝变成了【接缝线】）。
-	#   扁带定型后并排看，"没有贴图"暴露了新问题：官方那条带**内部有流动的丝缕**，
-	#   我是一片纯色渐变 ⇒ 读起来是【霓虹灯管】不是【能量体】。
-	#   ⇒ 换一张**专给扁带画的**流纹（`_make_tentacle_flow`，只当亮度倍率，
-	#     横向不画任何明暗——横向渐隐已由顶点 alpha 负责）。
-	mat.albedo_texture = VfxTex._make_tentacle_flow()
-	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素风：不做双线性
-	# ★不再平铺 —— 平铺 3 遍 + 密环纹 = 毛线织物（并排比对时最刺眼的问题）
-	# 沿长度平铺 3 遍（贴图 Y 向无缝），配合 tick 里滚 uv1_offset.y = 能量往梢端流
-	mat.uv1_scale = Vector3(1.0, 3.0, 1.0)
-	# 实机是半透明的能量体。本作背景亮 ⇒ 不能照抄实机的 0.72（那版糊掉），
-	# 但 0.90 又太"实"（并排比对像塑料）。0.80 + 更强的边缘光是折中点。
-	# ★RGB 抬到 1.3：流纹贴图均值 ≈0.78，直接乘上去整条会暗一档。
-	mat.albedo_color = Color(1.3, 1.3, 1.3, 0.72)
-	mi.material_override = mat
-	battle._world.add_child(mi)
-	# ★外发光壳：实机触手裹着一层辉光雾，并排对比时我的显得"干"。
-	#   做法是同一条曲线再画一遍、半径放大、加色混合、很淡 —— 便宜且有效。
-	var halo := MeshInstance3D.new()
-	halo.name = "TentacleHalo_%s_%d" % [side, idx]
-	halo.mesh = VfxTex.gen_empty_mesh()
-	var hm := StandardMaterial3D.new()
-	hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	hm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	hm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	hm.vertex_color_use_as_albedo = true
-	hm.albedo_color = Color(1, 1, 1, 0.20)   # 攻击时在 tick 里提到 0.55
-	halo.material_override = hm
-	battle._world.add_child(halo)
-	_tents[_key(side, idx)] = {
-		"mi": mi, "halo": halo, "side": side, "idx": idx,
+	var mi: MeshInstance3D = TentacleMeshVfx.make_node(battle._world, "Tentacle_%s_%d" % [side, idx], ATTACK_LEN)
+	var t := {
+		"mi": mi, "side": side, "idx": idx,
 		"state": ST_EMERGE, "ts": 0.0,
 		"aim": Vector2.ZERO, "share": 1.0,
 		"phase": float(idx) * 1.7,          # 相位错开 → 两根不同步摇
-		"acc": 0.0,
 	}
+	_tents[_key(side, idx)] = t
+
+
+## 本体渲染(2026-10-31 定稿口径: 动作 100% 用 8 月那版, 只换渲染)。
+## `_geom` = 旧 `_rebuild` 的几何部分原样(姿态 → 链式模拟的 SEG+1 个节点 + 旧半径式子); 交给 TentacleMeshVfx 写进固定网格的着色器。
+func _render(t: Dictionary) -> void:
+	var g: Array = _geom(t)
+	t["root3"] = g[0]
+	t["center"] = g[1]
+	TentacleMeshVfx.apply(t, g[0], g[1], g[2], g[3], g[4], float(battle._t))
+
+
+## 旧 `_rebuild` 的几何部分(原样, 只是不再建网格): 返回 [根部世界点, 中心线(世界坐标, SEG+1 点), 每点半径, 前, 侧]。
+func _geom(t: Dictionary) -> Array:
+	var side: String = str(t["side"])
+	var from2: Vector2 = root_pos(side, int(t["idx"]))
+	var to2: Vector2 = t["aim"]
+	if to2 == Vector2.ZERO:
+		to2 = from2 + Vector2(1.0 if side == "left" else -1.0, 0.0) * 400.0
+	var ts_now: float = float(t["ts"])
+	var ph: Array = _phase(t)
+	var emerge: float = float(ph[0])
+	var bas: Array = _basis_of(from2, to2)
+	var root3: Vector3 = bas[0]
+	var fwd: Vector3 = bas[1]
+	var lat: Vector3 = bas[2]
+	var up: Vector3 = bas[3]
+	var swayt: float = battle._t * SWAY_SPEED + float(t["phase"])
+	var stt: int = int(t["state"])
+	var arc: float = _arc_for(t, stt)
+	var ds: float = arc * emerge / float(SEG)     # 出土 = 露出的弧长在长
+	var pts: PackedVector3Array = _sim_chain(t, root3, fwd, lat, up, ds, ts_now, stt, swayt)
+	return [root3, pts, _radii(stt, ts_now), fwd, lat]
 
 
 ## 请求一次拍击：进入蓄势(REAR) → 拍击(SLAM) → 回位。
@@ -778,7 +723,6 @@ func tick(delta: float) -> void:
 			ST_EMERGE:
 				if ts >= T_EMERGE:
 					t["state"] = ST_IDLE; t["ts"] = 0.0
-					_base_glow(t)          # 出土落定：根部溅一圈光
 			ST_WARN:
 				# ★预警带在这 1 秒里【一直存在】(官方 f009~f039)，每帧刷亮度包络。
 				#   原来是"蓄势开始时画一条线"= 0.13 秒的一闪，等于没有。
@@ -848,131 +792,15 @@ func tick(delta: float) -> void:
 						t.erase("relocate_to")
 						t["state"] = ST_EMERGE
 						t["ts"] = T_EMERGE - T_EMERGE_MOVE   # 搬家的破土比【登场】快
-						t["acc"] = 99.0
 						continue
-					for kk in ["mi", "halo", "warn_mi"]:
+					for kk in ["mi", "warn_mi"]:
 						var n = t.get(kk, null)
 						if is_instance_valid(n):
 							n.queue_free()
 					_tents.erase(k)
 					continue
-		# ── 重建网格（待机降频）────────────────────────
-		t["acc"] = float(t["acc"]) + delta
-		## ★★★2026-08-22 用户:「触手在疯狂的扭动」—— 根因不是"太软", 是**待机降频**。
-		##   `IDLE_REBUILD_HZ=12` 时实测: 大多数帧位移 0.0000(几何冻结),
-		##   每 5 帧跳一次 0.44 —— 最大/平均 **8.9 倍**。
-		##   运动学版本没这毛病(12Hz 下姿态公式插出来仍平滑); 而模拟是**积分**的,
-		##   攒够时间就一次性补完 ⇒ 一顿一顿地跳。
-		## ⇒ 开着模拟就不许降频(物理需要连续显示)。
-		if SIM_ON == false and int(t["state"]) == ST_IDLE and float(t["acc"]) < 1.0 / IDLE_REBUILD_HZ:
-			continue
-		t["acc"] = 0.0
-		_rebuild(t)
-		# ★攻击时把整条的不透明度也提上去 —— 只改顶点色不够，
-		#   0.80 的 alpha 会把"爆亮"稀释掉（对比时看不出明暗落差）。
-		var mi2 = t.get("mi", null)
-		if is_instance_valid(mi2):
-			var mm: StandardMaterial3D = (mi2 as MeshInstance3D).material_override
-			if mm != null:
-				var sN: int = int(t["state"])
-				# ★0.99 那版等于"不透明白板"；官方那条光带**能看到背后的地面和英雄**。
-				mm.albedo_color = Color(1.3, 1.3, 1.3,
-					0.84 if sN == ST_SLAM else (0.82 if sN == ST_REAR else
-					(_warn_alpha(t) if sN == ST_WARN else
-					(0.70 if sN == ST_IDLE else 0.80))))
-				# ★能量沿长度往梢端流 —— 攻击时流得快（爆发感），待机时缓慢蠕动。
-				mm.uv1_offset = Vector3(0.0,
-					-battle._t * (1.35 if sN == ST_SLAM else 0.28), 0.0)
-		var ha = t.get("halo", null)
-		if is_instance_valid(ha):
-			var hmm: StandardMaterial3D = (ha as MeshInstance3D).material_override
-			if hmm != null:
-				# 0.30 那档实测把本体推到 253（官方 ~205）——辉光是"托轮廓"的，不是"加亮度"的
-				hmm.albedo_color = Color(1, 1, 1, 0.26 if int(t["state"]) == ST_SLAM else 0.20)
-
-
-## 外发光壳：同一条曲线放大 `hk` 倍再画一遍，加色混合、很淡。
-## ★现行 `hk` = **1.16**（攻击态 1.34）—— 2026-08-04 从 2.9/2.6 一路收下来的，理由见 `_rebuild_halo` 内注。
-## ★面数与本体【相同】（都是 RN/RING = 7 边截面 × 36 段），不是"本体的 1/2、六边截面"。
-## 预警期的不透明度：立钩时最实，**摊平时淡下去**（官方那几帧画面上几乎看不见），
-## 蓄力时再回来。
-func _warn_alpha(t: Dictionary) -> float:
-	var wq: float = clampf(float(t["ts"]) / T_WARN, 0.0, 1.0)
-	if wq < 0.27:
-		return lerpf(0.70, 0.78, wq / 0.27)
-	if wq < 0.53:
-		return lerpf(0.78, 0.40, (wq - 0.27) / 0.26)
-	if wq < 0.80:
-		return 0.40
-	return lerpf(0.40, 0.80, (wq - 0.80) / 0.20)
-
-
-## 外发光壳网格(纯函数, 与本体同一组参数; 逐帧直播出处键)。原来是 `_rebuild_halo` 往同一份网格里 clear + commit。
-static func gen_tentacle_halo(q: PackedInt32Array, root: Vector3, fix_i: PackedInt32Array, fix_t: PackedVector3Array,
-		curl: float, phase: float, stt: int, ts: float, camp: Vector3, camp_ok: bool, up: Vector3, lat: Vector3) -> ArrayMesh:
-	var hmesh := ArrayMesh.new()
-	var rows: Array = _tent_rows(q, root, fix_i, fix_t, curl, phase, stt, ts)
-	if rows.size() < 2:
-		return hmesh
-	## 攻击态(拍击)辉光半径 1.16→1.34 倍、更青(官方整条在发光)
-	var hot: bool = stt == ST_SLAM
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var RN := 7
-	var prev: Array = []
-	for i in range(rows.size()):
-		var c: Vector3 = rows[i][0]
-		var sdu: Array = _tent_side(c, rows[i][1], camp, camp_ok, up, lat)
-		var sv: Vector3 = sdu[0]
-		var uv: Vector3 = sdu[1]
-		# ★★2026-08-04【探针 + 时间对齐对比抓到的真凶】：
-		#   上一版 `hk=3.1 / +0.34 / alpha 0.55 / 近白色` 的加色外壳，把整条触手糊成
-		#   **一块纯白实心板**（截图里本体的青色一点不剩）。
-		#   逐帧量官方 `wfull/041` 的横截面：R 18~108 / G 170~202 / B 140~224 ——
-		#   **它整条都是青的**，只有命中点那一小团是白的。
-		#   ⇒ 辉光退回"薄薄一层雾"：倍率 1.9、偏移 0.14，只把轮廓托出来，不吃掉本体。
-		# ★★2026-08-04【归一化裁切逐帧对照看出来的】：辉光壳占了包围盒一半以上、
-		#   糊成一片，官方的辉光是**贴着本体**的一薄层。收敛。
-		var hk: float = 1.34 if hot else 1.16
-		# ★★2026-08-04：本体加粗到 R_BASE 0.94 之后，`hk=2.9` 让根部辉光宽到
-		#   **4.1 世界单位** ⇒ 截图上是一大片【扇形淡雾】(官方根部是紧凑一团, 没有这个)。
-		#   辉光倍率必须跟着本体粗细走 —— 本体越粗, 倍率越要小。
-		var r: float = float(rows[i][2]) * hk + (0.05 if hot else 0.03)
-		# ★★2026-08-04【放大对比抓到的第二只】：本体改成扁带之后，**辉光还在绕环** ——
-		#   于是那根细光带外面套着一圈宽的、边界很硬的暗青板（放大图里那个"宽边框"）。
-		#   官方那条根本没有"外壳"这个东西，只有【亮芯往两侧化开】。
-		#   ⇒ 辉光也必须是朝向相机的扁带，而且**横向 alpha 渐隐**，不能是一块实色。
-		var vd: Vector3 = (c - camp).normalized() if camp_ok else Vector3(0, -1, 0)
-		var sd: Vector3 = uv.cross(vd)
-		if sd.length() < 0.001:
-			sd = sv
-		sd = sd.normalized()
-		var ring: Array = []
-		for k in range(RN):
-			var f2: float = float(k) / float(RN - 1) * 2.0 - 1.0
-			ring.append(c + sd * (f2 * r))
-		if not prev.is_empty():
-			var f: float = float(i) / float(rows.size())
-			# ★梢端不再往白里提 —— 那是并排比对时那个突兀的白点的来源
-			# 攻击时辉光【更青、不更白】—— 白是留给命中点的
-			var base: Color = (Color(0.24, 0.86, 0.96) if hot
-				else Color(0.26, 0.78, 0.76).lerp(Color(0.40, 0.88, 0.90), f * 0.45))
-			for k2 in range(RN - 1):
-				var k3: int = k2 + 1
-				# 横向渐隐：这两列各自的 alpha（实色 = 硬边框）
-				var e2: float = pow(1.0 - absf(float(k2) / float(RN - 1) * 2.0 - 1.0), 1.1)
-				var e3: float = pow(1.0 - absf(float(k3) / float(RN - 1) * 2.0 - 1.0), 1.1)
-				var c2 := Color(base.r, base.g, base.b, e2)
-				var c3 := Color(base.r, base.g, base.b, e3)
-				st.set_color(c2); st.add_vertex(prev[k2])
-				st.set_color(c3); st.add_vertex(prev[k3])
-				st.set_color(c2); st.add_vertex(ring[k2])
-				st.set_color(c3); st.add_vertex(prev[k3])
-				st.set_color(c3); st.add_vertex(ring[k3])
-				st.set_color(c2); st.add_vertex(ring[k2])
-		prev = ring
-	st.commit(hmesh)
-	return hmesh
+		# ── 画这一帧: 姿态是 (状态, 计时) 的纯函数, 每帧只写几个 uniform, 不建网格 ──
+		_render(t)
 
 
 ## 命中冲击（贴地版）。
@@ -993,17 +821,17 @@ func _flash(pos2: Vector2, scale: float, dir2: Vector2 = Vector2.RIGHT) -> void:
 	sp.transparent = true
 	sp.no_depth_test = true
 	sp.render_priority = 8
-	sp.modulate = Color(1.30, 1.42, 1.44, 1.0)
+	## 2026-10-31 触手重做: 灵物紫一族的白(原来是青白), 只闪一下(参考共同规律 4: 命中点白闪 1~2 帧)
+	sp.modulate = Color(1.0, 0.93, 1.08, 1.0)
 	sp.pixel_size = 0.0042 * scale
 	sp.position = battle._world_pos(pos2, battle.GROUND_LIFT + 0.10)
 	## 长轴顺着攻击方向 —— 贴地精灵绕 Y 轴转
 	sp.rotation.y = -atan2(dir2.y, dir2.x)
 	battle._world.add_child(sp)
 	var tw: Tween = battle._reg_tween()
-	tw.tween_property(sp, "scale", Vector3(2.30, 1.0, 0.86), 0.05).from(Vector3(0.30, 1.0, 0.24))
-	tw.tween_property(sp, "scale", Vector3(3.05, 1.0, 0.72), 0.22)
-	tw.parallel().tween_property(sp, "modulate:a", 0.70, 0.22)
-	tw.tween_property(sp, "modulate:a", 0.0, 0.24)
+	tw.tween_property(sp, "scale", Vector3(2.30, 1.0, 0.86), 0.03).from(Vector3(0.60, 1.0, 0.40))
+	tw.tween_property(sp, "scale", Vector3(2.60, 1.0, 0.80), 0.06)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.10)
 	tw.tween_callback(sp.queue_free)
 
 ## 预警区：T_WARN(1.00 秒) 的预警期里，在地面画出【即将被扫到的那条直线】。
@@ -1207,7 +1035,7 @@ func _telegraph_hide(t: Dictionary) -> void:
 ##   (用户 2026-08-21 一眼看出:「两个人被命中为什么只有一个」)。
 func impact_on_victim(pos2: Vector2, big: bool) -> void:
 	## 贴地压扁的冲击环(不是竖条白柱 —— 触手是**横着砸地**的)
-	battle._splash_ring_bold(pos2, Color(0.78, 1.0, 1.0, 0.55), 74.0 if big else 44.0)
+	battle._splash_ring_bold(pos2, Color(0.86, 0.76, 1.0, 0.55), 74.0 if big else 44.0)
 	battle._vfx._impact_particles(pos2, 0.0)
 	## ★被砸中的单位【压低一下】—— "重"的感觉主要来自这个, 不是来自更亮的白光。
 	##   只碰 sprite 的 scale, 不碰单位的逻辑状态(pos/height 都不动)。
@@ -1251,27 +1079,19 @@ func _impact(t: Dictionary) -> void:
 	##   ⇒ 主爆闪留在主目标处, **逐个被命中者**另走 `impact_on_victim()`(下面), 由
 	##   `spirit_synergy_system._slap_resolve` 在【命中那一刻重算的名单】上逐个调 ——
 	##   名单必须来自结算侧, 演出侧不知道谁被打到(方案 A, 用户 2026-08-10 拍板)。
-	_flash(hit2, 3.8 if big else 1.8, d.normalized())
-	battle._skill_ring(hit2, Color(0.70, 1.0, 1.0, 0.50), 120.0 if big else 60.0)
+	## ★2026-10-31 触手重做: 命中 = 触手本体白闪(着色器 `flash`, 3 帧) + 目标处一下小白闪 + 碎屑 + 地面沿通道的拍痕
+	##   (着色器 `trail`, 停 0.15 秒再 0.35 秒从远端退回根部; 参考共同规律 4)。
+	##   原来这里还有: 目标处 120 码青环、沿途 3 个青色扬尘环、一条根部→目标的青色直线 ——
+	##   新触手本身就趴在这条通道上、拍痕又画出了整条通道, 那三样成了叠在触手身上的「无含义圆环」(实拍: 青环压在紫触手上), 删掉。
+	_flash(hit2, 1.6 if big else 1.0, d.normalized())
+	## ★沿途那条【直线命中范围】(用户 2026-08-04 点名要的: 机制上打的是"根部到目标直线上所有敌人", 不画玩家永远不知道扫到的是一条线)。
+	##   时机与位置照旧(命中那一刻, 根部 → 命中点); 颜色换成灵物紫一族的亮淡紫。
+	battle._bolt_line(from2, hit2, Color(0.86, 0.76, 1.0, 0.60))
 	if big:
 		battle._shake(battle.JUICE_SHAKE_HEAVY * 0.55)   # 砸地要有分量, 但别抢戏
 	battle._vfx._impact_particles(hit2, 0.0)
 	if big:
 		battle._vfx._impact_particles(hit2, 0.6)
-	## 落地扬尘: 沿【整条带】撒一排贴地冲击, 让"砸的是一条线"看得出来
-	## 落地扬尘: 沿带子撒几处贴地冲击, 让"砸的是一条线"看得出来。
-	## ★2026-08-21 第一版撒了 5 个**大小差不多的圆环**, 实拍读成"一串泡泡" ——
-	##   正是 memory [[fb-vfx-defect-families]] 说的「无含义圆环」。
-	##   ⇒ 改成 3 处、**近端大远端快速衰减**(半径与透明度同时掉), 读起来像尘浪不是泡泡。
-	var _n_dust := 3
-	for _i in range(_n_dust):
-		var _q: float = float(_i + 1) / float(_n_dust + 1)
-		var _fall: float = pow(1.0 - _q, 1.6)          # 远端快速衰减
-		battle._splash_ring_bold(from2.lerp(hit2, _q),
-			Color(0.72, 0.98, 1.0, 0.14 + 0.30 * _fall), 26.0 + 46.0 * _fall)
-	# ★沿途那条【直线命中范围】也画出来 —— 机制上打的是"根部到目标直线上所有敌人"，
-	#   不画的话玩家永远不知道被扫到的是一条线。
-	battle._bolt_line(from2, hit2, Color(0.62, 1.0, 0.96, 0.55))
 
 
 ## 触手的根部坐标（场边固定位，idx 0/1 分上下）。
@@ -1321,6 +1141,9 @@ func relocate(side: String, idx: int, to2: Vector2) -> bool:
 	t["relocate_to"] = to2
 	_telegraph_hide(t)
 	return true
+
+
+
 
 
 ## 当前这根触手的「动作进度」→ [露出比例 emerge, 根部切角(度), 梢端切角(度), 卷曲量(度)]
@@ -1388,20 +1211,11 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 			##   (第一次探针其实就打出「到顶后的甩尾过冲 +0.00°」, 我看见了没当回事。)
 			## ⇒ 三段: 缓入 → 匀速 → **末尾一小段减速到停**。
 			##   减速段很短(SETTLE), 所以不会退回"定格"那个病(门禁 LIFT_FLOW_MIN 焊着)。
-			var wp: float = clampf(ts / T_WARN, 0.0, 1.0)
-			const WARM := 0.22
-			const SETTLE := 0.16          # 末尾这一段减速到停 —— 头部靠惯性甩过去
-			var q: float
-			var mid: float = 1.0 - SETTLE
-			## 三段的斜率在接缝处相等(否则接缝上会有速度跳变, 那正是我在治的毛病)
-			var k_lin: float = 2.0 / (2.0 - WARM - SETTLE)
-			if wp < WARM:
-				q = k_lin * wp * wp / (2.0 * WARM)
-			elif wp < mid:
-				q = k_lin * (wp - WARM * 0.5)
-			else:
-				var e: float = (wp - mid) / SETTLE
-				q = k_lin * (mid - WARM * 0.5) + k_lin * SETTLE * (e - e * e * 0.5)
+			## ★2026-11-01 用户「你整个过程都是速度都是平滑的吗？速度没有加速度吗？没有个运动过程吗？」:
+			##   探针 [spd] 实测上面那套「缓入 → 匀速 → 末尾减速」让梢端在 0.35~0.95 秒一直以 300~200 mm/帧平着走 = 匀速滑行。
+			##   ⇒ 猛举 + 长减速: 三次缓出, LIFT_TOP 处到顶(速度最大在开头、一路减到 0); 之后不定格 —— 蓄力的后弯还在慢慢加(见 _lean_back)。
+			var wp: float = clampf(ts / (T_WARN * LIFT_TOP), 0.0, 1.0)
+			var q: float = 1.0 - pow(1.0 - wp, 3.0)
 			return [1.0, lerpf(ANG_IDLE[0], 101.0, q), lerpf(ANG_IDLE[1], 99.0, q),
 				lerpf(CURL_TIGHT, 50.0, q)]
 		ST_REAR:
@@ -1425,6 +1239,12 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 				#   进前摇第一帧整条又卷回去，0.13 秒内再放开。角度接上了、这一项忘了。
 				lerpf(50.0, 68.0, r)]
 		ST_SLAM:
+			## ★2026-10-31 对齐 LoL 下拍(用户「动作也得调」): 实测梢端从最高到贴地 14 帧(60fps), 中途悬停 2~3 帧再加速
+			##   (逐帧下落 0.38 0.44 0.37 0.27 0.18 0.10 0.03 0.00 0.26 1.11 1.37 …) —— 「拍击中段定格」那一族;
+			##   LoL Q 是 4 帧(30fps)一路加速。⇒ 先顶在高处蓄力 SLAM_HOLD 秒, 再把这条拍击曲线(含行波前沿)以 SLAM_SPEED 倍速播完;
+			##   SLAM_HOLD = T_TOUCH × (1 − 1/SLAM_SPEED) ⇒ 贴地仍落在 T_TOUCH(伤害时刻不动)。点刺(share<0.9)第 0 帧命中, 不蓄力。
+			if float(t["share"]) >= 0.9:
+				ts = maxf(ts - SLAM_HOLD, 0.0) * SLAM_SPEED
 			# ★★★官方拍击【一帧都没有停过】：
 			#     覆盖 +0 7.06 → +2 峰值 8.53 → +6 5.47 → +9 4.11（**每帧都在降**）
 			#     臂长 +0 **0.435（一帧就到最长，还过冲）** → +1 0.354 → +2 0.417 → +6 0.348
@@ -1464,7 +1284,8 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 			#   我上一版 8 帧就掉回基线 = 收得太干脆。T_RECOVER 已拉长，这里用
 			#   **前慢后快**的曲线（官方 +10 0.327 → +11 0.245 有个拐点）。
 			var c: float = clampf(ts / T_RECOVER, 0.0, 1.0)
-			c = pow(c, 2.2)
+			## 2026-11-01 用户「速度没有加速度吗」: 原来前慢后快(pow 2.2) ⇒ 一路加速到收回结束、进待机被硬刹(探针 [spd] 梢端 428 → 249 mm/帧)。改成两头缓
+			c = smoothstep(0.0, 1.0, c)
 			# ★★★起点必须接住【拍击末】的角度 —— 拍击末除了 `-10/-8` 还减了一项
 			#   `comp`（抵消抻直带来的梢端抬升）。收回如果只减 `-10/-8` 就少减了 comp，
 			#   边界上梢端角一下跳 28°（连续性门禁抓到的第二个漏洞）。
@@ -1519,35 +1340,6 @@ func _arc_for(t: Dictionary, stt: int) -> float:
 	return ARC_LEN
 
 
-## 本体的顶点色。从 `_rebuild` 拆出来 —— 那个函数第二次撞架构预算的 250 行上限。
-##
-## ★实机：**待机是暗的、出手才爆亮** —— 明暗对比是这条特效的力量感来源。
-## ★`rimf` = 横向到边的距离（扁带上所有点法线相同，菲涅尔失效，只能用它）。
-##   芯部(f=0) rim=0、边缘(|f|=1) rim=1 —— 正是"暗芯 + 亮边"那条梯度。
-## ★★颜色的两条教训都写在这：
-##   ① 官方 `wfull/041` 横截面实测 (31,185,188)/(108,197,182)/(27,202,224) ——
-##      **明暗差在、白不在**；我曾写死成一片近白 ⇒「实心板」。
-##   ② 真正把它变白的是 **R 通道**：官方 R 只有 G·B 的 1/6~1/2，
-##      我写过 0.80 ≈ G ⇒ 必然是白。量了却没照着用。
-## ★S3: 静态版(网格函数是纯函数, 只拿得到状态号与状态计时 ts)。
-static func _body_color_s(st2: int, ts: float, u: float, rimf: float) -> Color:
-	var col: Color
-	if st2 == ST_SLAM:
-		col = Color(0.52, 1.06, 1.10).lerp(Color(0.10, 0.60, 0.62), pow(rimf, 1.3))
-	elif st2 == ST_REAR:
-		var kk: float = clampf(ts / T_REAR, 0.0, 1.0)
-		col = Color(0.46, 1.00, 1.04).lerp(Color(0.09, 0.56, 0.58), pow(rimf, 1.4))
-		col = col.lerp(Color(0.70, 1.26, 1.32), 0.5 * kk)
-	else:
-		col = Color(0.34, 0.86, 0.90).lerp(Color(0.08, 0.48, 0.52), pow(rimf, 1.5))
-	# ★官方那条光带【越靠近命中端越亮】(能量往目标涌)，我原来是均匀的。
-	#   梢端不再往白里提 —— 比对时那是个突兀的白点。
-	if st2 == ST_SLAM:
-		var g: float = 0.84 + 0.30 * u
-		col = Color(col.r * g, col.g * g, col.b * g)
-	return col
-
-
 ## 某一段的【切角】。从 `_rebuild` 拆出来 —— 那个函数第三次撞架构预算 250 行上限。
 ##
 ## ★★★这里集中了三条"真实物理"的实现，每条都是量出来才发现做错的：
@@ -1567,8 +1359,7 @@ static func _body_color_s(st2: int, ts: float, u: float, rimf: float) -> Color:
 ## ★行波包：**余振**。一个曲率脉冲从根部(u=0)传到梢端(u=1)、幅度指数衰减。
 ##   这是"拍两次"的正解 —— 旧模型让整条一起卷回来，所以看着像第二次拍击；
 ##   脉冲只让**局部**弯一下，端点小幅摆动，读起来是甩出去之后的余振。
-func _curvature(t: Dictionary, stt: int, u: float, ts_now: float,
-		curl_u: float, cfrom: float) -> float:
+func _curvature(t: Dictionary, stt: int, u: float, curl_u: float, cfrom: float) -> float:
 	# 主包：d/du [ curl × ((u-cfrom)/(1-cfrom))² ]，u < cfrom 时为 0
 	var k: float = 0.0
 	if u > cfrom:
@@ -1607,7 +1398,8 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	##   全局时间 − 前沿到达本段的时刻; 未被扫到的段局部时间为负 ⇒ 保持前摇姿态。
 	var lag_u: float
 	if stt == ST_SLAM:
-		lag_u = T_SLAM * SLAM_FRONT_SPAN * pow(u, SLAM_FRONT_P)
+		## 行波前沿随拍击曲线一起加速(否则梢端还按原速晚到, 贴地落在 T_TOUCH 之后)
+		lag_u = T_SLAM * SLAM_FRONT_SPAN * pow(u, SLAM_FRONT_P) / (SLAM_SPEED if float(t["share"]) >= 0.9 else 1.0)
 	elif stt == ST_WARN or stt == ST_REAR:
 		## ★抬起同样是行波(用户 2026-08-21)。未被前沿扫到的段局部时间为负 ⇒
 		##   `_phase_at(ST_WARN)` 的 `wp` clamp 到 0 ⇒ 保持待机姿态, 与 IDLE 边界天然连续。
@@ -1641,8 +1433,19 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	#   我第一版每段用 `steps = int(u*24)` 重新积分，步长随 u 变 ⇒ **数值误差随 u 漂**，
 	#   实测弧长从 9.33 掉到 7.62（门禁 ④b 立刻红）。
 	#   现在由调用方传入上一段的累积值，本段只加自己这一小段的贡献。
-	kacc += _curvature(t, stt, u, ts_now, curl_u, cfrom) / float(SEG)
-	ang -= kacc
+	kacc += _curvature(t, stt, u, curl_u, cfrom) / float(SEG)
+	## 松开按「离拍下行波前沿到达本段还有多久」算; 前摇期也按这把尺子(否则松开从拍下第 0 帧才起, 切换处一跳)
+	var tl_lean: float = ts_now - lag_u
+	if stt == ST_REAR:
+		tl_lean = ts_now - T_REAR - T_SLAM * SLAM_FRONT_SPAN * pow(u, SLAM_FRONT_P) / SLAM_SPEED
+	var lean_k: float = _lean_back(stt, tl_lean) / LEAN_DEG
+	## 往后折的同时把往前勾的卷曲收掉(用户 11-01「最顶端…还是往前面吊着的」)
+	ang -= kacc * (1.0 - 0.9 * lean_k)
+	## ★2026-11-01 用户「抬起是出手根部带动上部…最末端应该是往后仰…猛拍…同样的是有个先从下到上抽动的这个顺序…跟鞭子一样」:
+	##   出手改走跟随(不再跑会抽的链式模拟)之后, 惯性拖尾不会自己长出来 ⇒ 画进目标姿势(见 LEAN_DEG)。
+	## 弧: 从底到顶每段多转一点 ⇒ 整根往后弯成一条弧(LEAN_P = 1 是等曲率)。
+	##   用户 11-01「他整个是一个弯起来的，向后弯起来的呀。从底部到顶部，整个是向后，有点带着弯起来的」
+	ang += LEAN_DEG * lean_k * pow(u, LEAN_P)
 	## ★★2026-08-22 换成链式模拟之后, 这里**只剩"指定姿势"(肌肉的目标)**。
 	##   原来叠在这儿的两个手写项已删:
 	##     · 惯性拖尾弹簧 `lag * u^p`  —— 模拟的 Verlet 积分自带惯性, 留着是双重计算
@@ -1658,6 +1461,17 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	#   沿长度有明显的一波一波（像水流）。叠在切角上，幅度不大但读得出来。
 	ang += 7.0 * wavy * sin(u * TAU * 2.1 + swayt * 1.7)
 	return [ang, yaw, curl_u, kacc]
+
+
+## 上半截后仰量(度): 跟着抬起猛弯到 LEAN_FAST(三次缓出), 到顶后蓄力再慢慢加满, 到拍下那刻最满(用户 11-01「从抬头到劈下去…不连贯不自然」: 原来前 45% 弯完就定住 0.6 秒) → 前摇满额 → 拍下时本段在行波前沿到达前 0.08 秒起松开、到达后 0.02 秒松完(从后面甩回来路程长, 晚松会让落地晚于伤害帧)。tl = 本段的局部时间。
+func _lean_back(stt: int, tl: float) -> float:
+	if stt == ST_WARN:
+		var xw: float = tl / T_WARN
+		return LEAN_DEG * (LEAN_FAST * (1.0 - pow(1.0 - clampf(xw / LIFT_TOP, 0.0, 1.0), 3.0))
+			+ (1.0 - LEAN_FAST) * clampf((xw - LIFT_TOP) / (1.0 + T_REAR / T_WARN - LIFT_TOP), 0.0, 1.0))
+	if stt == ST_REAR or stt == ST_SLAM:
+		return LEAN_DEG * (1.0 - smoothstep(-0.08, 0.02, tl))
+	return 0.0
 
 
 ## 惯性拖尾的一步积分(见文件头 INERTIA_* 的长注)。
@@ -1709,6 +1523,47 @@ func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: V
 		var ar: float = deg_to_rad(float(seg[0]))
 		var yw: float = float(seg[1])
 		dirs.append((fwd * cos(ar) * cos(yw) + lat * sin(yw) * cos(ar) + up * sin(ar)).normalized())
+	## ── 抽搐修复②: 状态切换后目标方向平滑过渡(见 SWITCH_BLEND 注) ──
+	var d_prev: PackedVector3Array = t.get("sim_dirs", PackedVector3Array())
+	var switched: bool = stt != int(t.get("sim_st", stt)) or ts_now < float(t.get("sim_ts", ts_now)) - 0.000001
+	if switched and stt != ST_SLAM and d_prev.size() == n:
+		t["sim_dirs0"] = d_prev
+		t["sim_blend"] = 0.0
+	var bl: float = float(t.get("sim_blend", SWITCH_BLEND))
+	if bl < SWITCH_BLEND and stt != ST_SLAM and t.has("sim_dirs0"):
+		var d0: PackedVector3Array = t["sim_dirs0"]
+		var kb: float = smoothstep(0.0, 1.0, bl / SWITCH_BLEND)
+		for i in range(n):
+			var dm: Vector3 = d0[i].lerp(dirs[i], kb)
+			if dm.length() > 0.0001:
+				dirs[i] = dm.normalized()
+	## ★2026-11-01 拍下改成「拖尾」(用户「拍下去，途中为什么这个尖会比他身子更快到啊」):
+	##   探针 [hgt] 实测旧姿态表下梢端 6 帧里从根部后 1.5 米翻过头顶甩到前 7.5 米, 身子中段才从 3.8 米降到 2.3 米, 之后整根再慢慢沉十几帧。
+	##   现在: 从前摇最后一帧的形状出发, 每段的仰角往「平贴地面」转; 越靠梢起步越晚(SLAM_TRAIL)、根部先落地(SLAM_LAND_SPREAD),
+	##   任何时刻梢端的进度都不超过身子 ⇒ 整根始终是往后拖的弧(甩钓竿), 不会翻到前面; 下落加速(SLAM_EASE), 一下拍实。
+	##   只管整套拍击(share ≥ 0.9); 追击点刺第 0 帧就要命中, 仍走姿态表。
+	if stt == ST_SLAM and float(t.get("share", 1.0)) >= 0.9:
+		if switched and d_prev.size() == n:
+			t["slam_from"] = d_prev
+		var df: PackedVector3Array = t.get("slam_from", PackedVector3Array())
+		if df.size() == n:
+			for i in range(n):
+				var uu: float = float(i) / float(SEG)
+				var a0: float = atan2(df[i].dot(up), df[i].dot(fwd))
+				if a0 < -PI * 0.5:
+					a0 += TAU
+				var a1: float = deg_to_rad(lerpf(SLAM_END_ROOT_DEG, SLAM_END_TIP_DEG, smoothstep(0.0, 0.18, uu)))
+				var t_on: float = SLAM_TRAIL * uu
+				var t_off: float = T_TOUCH - SLAM_TOUCH_LEAD - SLAM_LAND_SPREAD * (1.0 - uu)
+				var xx: float = clampf((ts_now - t_on) / maxf(t_off - t_on, 0.01), 0.0, 1.0)
+				var ee: float = pow(xx, SLAM_EASE)
+				var aa: float = lerpf(a0, a1, ee)
+				var lk: float = df[i].dot(lat) * (1.0 - ee)
+				dirs[i] = (fwd * cos(aa) + up * sin(aa) + lat * lk).normalized()
+	t["sim_blend"] = bl + float(t.get("dt", 0.0))
+	t["sim_dirs"] = dirs
+	t["sim_st"] = stt
+	t["sim_ts"] = ts_now
 
 	var pp: PackedVector3Array = t.get("simP", PackedVector3Array())
 	var qq: PackedVector3Array = t.get("simQ", PackedVector3Array())
@@ -1730,11 +1585,68 @@ func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: V
 	var h: float = SIM_H * (SIM_H_SLAM_K if int(t["state"]) == ST_SLAM else 1.0)
 	var submax: int = SIM_SUBMAX * (2 if int(t["state"]) == ST_SLAM else 1)
 	var acc: float = float(t.get("sim_acc", 0.0)) + float(t.get("dt", 0.0))
+	## 抽搐修复①: 端着姿势的状态不跑链式模拟, 节点用临界阻尼弹簧跟随目标姿势(见 CALM_OMEGA 注)
+	## ★2026-11-01 用户「动作你这个太柔软了，这个出手一直在抽搐」: 探针(_probe_tentacle_jitter_src [jflip])量出
+	##   出手四段(预警 / 抬起 / 拍下 / 收回)链式模拟的速度方向反转 33 次, 它追的目标姿势只有 12 次 ⇒ 抖是链条甩出来的。
+	##   出手也改走临界阻尼跟随(不过冲); 拍下用更快的一档 SLAM_FOLLOW_OMEGA(直接贴目标姿势会在切换处跳: 点刺从待机进拍下一帧跳 7.8 米)。
+	var calm := true
 	t["dt"] = 0.0                       # 消费掉, 免得重复计入
 	var steps: int = 0
 	while acc >= h and steps < submax:
 		acc -= h
 		steps += 1
+		## 整套拍击直接贴目标姿势: 跟随会把撞地前那几帧磨成减速(探针 [spd] 实测梢端 1579 → 412 mm/帧 才落地 = 软着陆)
+		if stt == ST_SLAM and t.has("slam_from") and float(t.get("share", 1.0)) >= 0.9:
+			var tk: Vector3 = root3
+			for ik in range(1, n):
+				tk += dirs[ik - 1] * ds
+				qq[ik] = pp[ik]
+				var nk: Vector3 = tk
+				if nk.y < gy:
+					nk.y = gy
+				pp[ik] = nk
+			pp[0] = root3
+			continue
+		if calm:
+			var om: float = CALM_OMEGA
+			if stt == ST_WARN or stt == ST_RECOVER:
+				om = 30.0
+			elif stt == ST_REAR:
+				om = SLAM_FOLLOW_OMEGA
+			elif stt == ST_SLAM:
+				om = SLAM_FOLLOW_OMEGA
+			## 目标点 = 根部沿目标方向逐段积分(与上面「首帧直接摆到指定姿势」同一个式子)
+			var tp: Vector3 = root3
+			for ic in range(1, n):
+				tp += dirs[ic - 1] * ds
+				var cc: Vector3 = pp[ic]
+				var vc: Vector3 = (cc - qq[ic]) / h
+				vc += ((tp - cc) * (om * om) - vc * (2.0 * om)) * h
+				qq[ic] = cc
+				var nx: Vector3 = cc + vc * h
+				if nx.y < gy:
+					nx.y = gy
+				pp[ic] = nx
+			pp[0] = root3
+			## 段长约束: 各点各跟各的会在快速甩动时把整根压短(verify_tentacle_vfx ⑤ 实测 9.6 → 8.28 米, 贴地再伸回去 = 「戳出去」)。
+			##   根部逆质量 0 钉住, 其余两端平分修正量(与链式模拟 ③ 同一种做法)。
+			for _ic in range(CALM_LEN_ITER):
+				for i8 in range(n - 1):
+					var d8: Vector3 = pp[i8 + 1] - pp[i8]
+					var l8: float = d8.length()
+					if l8 <= 0.0001:
+						continue
+					var c8: Vector3 = d8 * (1.0 - ds / l8)
+					if i8 == 0:
+						pp[i8 + 1] -= c8
+					else:
+						pp[i8] += c8 * 0.5
+						pp[i8 + 1] -= c8 * 0.5
+				pp[0] = root3
+			for i9 in range(n):
+				if pp[i9].y < gy:
+					pp[i9].y = gy
+			continue
 		## ① Verlet 积分 + 重力 —— 惯性就在 (p - q) 里, 不用另写
 		for i3 in range(1, n):
 			var cur: Vector3 = pp[i3]
@@ -1771,12 +1683,8 @@ func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: V
 			##   肌肉越紧, 链条被拉回目标越快、自由振荡的余地越小 ⇒ 换向次数(每秒)直接掉。
 			##   (另外两个旋钮试过: 加阻尼/降重力确实降频, **但会把攻击手感一起带走**
 			##    —— 实测折角 29.3 → 15.4, 那是用户已经验收过的东西, 不动。)
-			var base_rate: float = SIM_MUSCLE_RATE
-			if stt == ST_EMERGE or stt == ST_RETRACT:
-				base_rate = SIM_MUSCLE_RATE_EMERGE
-			elif stt == ST_IDLE:
-				base_rate = SIM_MUSCLE_RATE_IDLE
-			var rate: float = base_rate * pow(1.0 - u4 * SIM_MUSCLE_FALL, SIM_MUSCLE_P)
+			## (2026-10-31: 待机 / 出土 / 撤场不再走到这里 —— 见 CALM_OMEGA 注; 原来那两档弱肌肉 3.0 / 5.0 随之删掉)
+			var rate: float = (SIM_MUSCLE_RATE_SLAM if (stt == ST_SLAM or stt == ST_RECOVER) else SIM_MUSCLE_RATE) * pow(1.0 - u4 * SIM_MUSCLE_FALL, SIM_MUSCLE_P)
 			var w: float = 1.0 - exp(-maxf(rate, 0.5) * h)
 			pp[i4 + 1] = pp[i4 + 1].lerp(pp[i4] + dirs[i4] * ds, w)
 		## ③ 距离约束(弧长守恒) —— 这个才需要迭代
@@ -1812,22 +1720,6 @@ func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: V
 	t["simQ"] = qq
 	return pp
 
-## 把这一帧的**真实几何**记给门禁/验收场景读: 梢端高度 / 沿长度 9 站点高度剖面 / 整条中心线。
-## ★从 `_rebuild` 里抽出来 —— 那个函数撞了架构预算的 250 行上限(`tools/arch_budget.py`)。
-## ★记的是 `halo_pts` 里**已经建好的点**, 不是重推一遍公式(重推的副本必然与渲染漂开)。
-func _record_probe(t: Dictionary, halo_pts: Array) -> void:
-	if halo_pts.is_empty():
-		return
-	t["tip_y"] = float((halo_pts[halo_pts.size() - 1][0] as Vector3).y)
-	var prof := PackedFloat32Array()
-	for pi in range(PROF_N):
-		var hi: int = int(round(float(pi) / float(PROF_N - 1) * float(halo_pts.size() - 1)))
-		prof.append(float((halo_pts[hi][0] as Vector3).y))
-	t["prof_y"] = prof
-	var cen := PackedVector3Array()
-	for ci in range(halo_pts.size()):
-		cen.append(halo_pts[ci][0] as Vector3)
-	t["center"] = cen
 
 ## 触手所在的局部标架(根部世界点 / 前 / 侧 / 上)。
 ## ★从 `_rebuild` 抽出来 —— 那个函数第三次撞架构预算的 250 行上限。
@@ -1842,265 +1734,35 @@ func _basis_of(from2: Vector2, to2: Vector2) -> Array:
 	var wn: Vector3 = battle._world_pos(from2 + nrm2 * 100.0, battle.GROUND_LIFT)
 	return [root3, (wa - root3).normalized(), (wn - root3).normalized(), Vector3.UP]
 
-## ★★★2026-08-22 起, `_rebuild` 的**几何来自 `_sim_chain`**(链式模拟), 不再靠
-## `pos += tan*ds` 描形状。姿态函数(`_seg_angle`)从此只负责**粗细/配色/肌肉目标**,
-## 不再决定它长什么样。切向由相邻模拟节点差分求。
-## (旧的运动学路径保留在 `SIM_ON=false` 分支里, 只为出问题时能一键对照。)
 
-func _rebuild(t: Dictionary) -> void:
-	var mi: MeshInstance3D = t["mi"]
-	if not is_instance_valid(mi):
-		return
-	var side: String = str(t["side"])
-	var from2: Vector2 = root_pos(side, int(t["idx"]))
-	var to2: Vector2 = t["aim"]
-	if to2 == Vector2.ZERO:
-		to2 = from2 + Vector2(1.0 if side == "left" else -1.0, 0.0) * 400.0
-	var ts_now: float = float(t["ts"])
-	var ph: Array = _phase(t)
-	var emerge: float = float(ph[0])
-	var a0: float = float(ph[1])       # 根部切角(度)
-	var a1: float = float(ph[2])       # 梢端切角(度)
-	var curl: float = float(ph[3])     # 卷曲量(度) —— 随状态变, 砸下时松开
-
-	var bas: Array = _basis_of(from2, to2)
-	var root3: Vector3 = bas[0]
-	var fwd: Vector3 = bas[1]
-	var lat: Vector3 = bas[2]
-	var up: Vector3 = bas[3]
-
-	var swayt: float = battle._t * SWAY_SPEED + float(t["phase"])
-	var kacc_run: float = 0.0     # 曲率沿长度的累积积分（逐段递推）
-	# ★攻击时弧长拉长（扑出去够到目标），其余状态用待机弧长
-	var arc: float = ARC_LEN
-	var stt: int = int(t["state"])
-	# 攻击/回位时按【到目标的真实世界距离】伸长
-	arc = _arc_for(t, stt)
-	var ds: float = arc * emerge / float(SEG)     # 出土 = 露出的弧长在长
-
-	# 菲涅尔边缘光要用相机位置。无头门禁里没有相机 ⇒ 退化成"全边缘"（不影响几何断言）。
-	var camp := Vector3.ZERO
-	var camp_ok := false
-	if battle._cam != null and is_instance_valid(battle._cam):
-		camp = (battle._cam as Camera3D).global_position
-		camp_ok = true
-
-	## ★★★链式模拟: 几何由它给, 不再靠 `pos += tan*ds` 描形状(见文件头 SIM_ON 长注)。
-	var simpts: PackedVector3Array = PackedVector3Array()
-	if SIM_ON:
-		simpts = _sim_chain(t, root3, fwd, lat, up, ds, ts_now, stt, swayt)
-
-	## ★S3(逐帧直播): 几何**按行**收集(中心点 + 求不出切向时的备用切向), 网格交给纯函数 `gen_tentacle_body` / `gen_tentacle_halo` 建 ——
-	##   每步新建一份赋给节点(原来是同一份 clear + commit, 录流看不见); 手机按出处键调同一个函数。
-	##   中心点先量化成整数(相对根部 1/64 米 ≈ 0.37 屏幕像素, 1 像素 ≈ 0.0426 米)再建: 服务器和手机都从同一组整数建网格, 逐位相同;
-	##   录流对上一代逐个做差(StreamFormat.T_IDIFF): 待机摇曳一次采样只挪几毫米 ⇒ 差多半是 0。
-	var pos: Vector3 = root3
-	var rows := PackedVector3Array()
-	var tans := PackedVector3Array()
-	var halo_pts: Array = []      # 门禁读的中心线(`_record_probe`, 未量化的真几何)
+## 每点半径(旧 `_tent_rows` 的式子原样, 只去掉逐帧粗细起伏那一项)。u = 沿长 0 根 … 1 梢。
+func _radii(stt: int, ts: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
 	for sidx in range(SEG + 1):
 		var u: float = float(sidx) / float(SEG)
-		var seg: Array = _seg_angle(t, stt, u, ts_now, swayt, kacc_run)
-		var ang: float = float(seg[0])
-		var yaw: float = float(seg[1])
-		kacc_run = float(seg[3])
-		var ar: float = deg_to_rad(ang)
-		var tan: Vector3 = (fwd * cos(ar) * cos(yaw) + lat * sin(yaw) * cos(ar) + up * sin(ar)).normalized()
-		if SIM_ON and simpts.size() == SEG + 1:   # 模拟接管几何(见 _rebuild 上方长注)
-			pos = simpts[sidx]
-		rows.append(pos)
-		tans.append(tan)
-		halo_pts.append([pos])
-		if not SIM_ON or simpts.size() != SEG + 1:   # 旧路径(仅关掉模拟时走)
-			var gy: float = root3.y
-			if pos.y <= gy + 0.001 and tan.y < 0.0:
-				tan.y = 0.0
-				tan = tan.normalized() if tan.length() > 0.001 else fwd
-			pos += tan * ds
-			if pos.y < gy:
-				pos.y = gy
-	## ★2026-08-21 句7: 把**梢端的真实世界高度**记下来, 给门禁读。
-	##   判据必须量真几何, 不是量我重推一遍的公式(重推的副本会和渲染漂开)。
-	##   新门禁 `verify_tentacle_soft` 断言: 下砸期这个值**单调不上升**。
-	##   —— 当年"拍下去两次"的真因就是梢端在下压中途往回抬; 盯住它, 就不必禁止 S 形。
-	_record_probe(t, halo_pts)
-	var q: PackedInt32Array = _q_rows(rows, root3)
-	## 切向: 模拟路径下 = 相邻量化点差分(网格函数里自己算); 差分太短(出土那一瞬全挤在根上, 量化后方向会跳)或旧路径 ⇒ 用这里的解析切向
-	var deq: PackedVector3Array = _dq_rows(q, root3)
-	var fix_i := PackedInt32Array()
-	var fix_t := PackedVector3Array()
-	var sim_geo: bool = SIM_ON and simpts.size() == SEG + 1
-	for sidx2 in range(SEG + 1):
-		if not sim_geo or _diff_tan(deq, sidx2).length() < TAN_MIN:
-			fix_i.append(sidx2)
-			fix_t.append(tans[sidx2])
-	var ph5: float = float(t["phase"])
-	var args: Array = [q, root3, fix_i, fix_t, curl, ph5, stt, ts_now, camp, camp_ok, up, lat]
-	## 录流里每几步发一代: 拍击 / 前摇快(30 Hz, 与变换同频), 其余慢动作 15 Hz(触手本体是整局体积的大头, 见方案书 §2.4 体积)
-	var sev: int = 2 if (stt == ST_SLAM or stt == ST_REAR) else 4
-	mi.mesh = VfxTex.tag(gen_tentacle_body(q, root3, fix_i, fix_t, curl, ph5, stt, ts_now, camp, camp_ok, up, lat),
-		"gen_tentacle_body", args, SRC, sev)
-	var halo = t.get("halo", null)
-	if is_instance_valid(halo):
-		## 外发光壳: 同一份参数(同一个 Array 对象 ⇒ 录流只发一遍, 见 StreamRecorder 出处键别名)
-		(halo as MeshInstance3D).mesh = VfxTex.tag(gen_tentacle_halo(q, root3, fix_i, fix_t, curl, ph5, stt, ts_now,
-			camp, camp_ok, up, lat), "gen_tentacle_halo", args, SRC, sev)
-
-
-## 中心点量化成整数(相对根部, 1/64 米; x, y, z 依次; 第 0 个点之后存与前一点之差)。服务器与手机都从这组整数解出同一组点。
-##   存「相邻点之差」而不是绝对坐标: 整条触手摆动 / 平移时各段的方向变得慢, 录流对上一代再做差(T_IDIFF)时多半是 0 / ±1。
-const Q_ROW := 32.0
-const TAN_MIN := 0.05             # 相邻两点(隔一点)差分短于这个(米)就不拿它当切向: 1/64 米的量化会让方向跳
-static func _q_rows(rows: PackedVector3Array, root: Vector3) -> PackedInt32Array:
-	var out := PackedInt32Array()
-	var last := Vector3i.ZERO
-	for p in rows:
-		var d: Vector3 = (p - root) * Q_ROW
-		var qi := Vector3i(roundi(d.x), roundi(d.y), roundi(d.z))
-		out.append(qi.x - last.x)
-		out.append(qi.y - last.y)
-		out.append(qi.z - last.z)
-		last = qi
-	return out
-
-
-static func _dq_rows(q: PackedInt32Array, root: Vector3) -> PackedVector3Array:
-	var out := PackedVector3Array()
-	var acc := Vector3i.ZERO
-	for i in range(0, q.size() - 2, 3):
-		acc += Vector3i(q[i], q[i + 1], q[i + 2])
-		out.append(root + Vector3(float(acc.x), float(acc.y), float(acc.z)) / Q_ROW)
-	return out
-
-
-static func _diff_tan(pts: PackedVector3Array, i: int) -> Vector3:
-	var ia: int = maxi(0, i - 1)
-	var ib: int = mini(pts.size() - 1, i + 1)
-	return pts[ib] - pts[ia]
-
-
-## 每行的 [中心点, 切向, 半径](两个网格函数共用; 半径的式子原样从 `_rebuild` 搬来, 注释见那里的历史版本 / git log)。
-static func _tent_rows(q: PackedInt32Array, root: Vector3, fix_i: PackedInt32Array, fix_t: PackedVector3Array,
-		curl: float, phase: float, stt: int, ts: float) -> Array:
-	var pts: PackedVector3Array = _dq_rows(q, root)
-	var out: Array = []
-	var fk := 0
-	for sidx in range(pts.size()):
-		var u: float = float(sidx) / float(SEG)
-		var pos: Vector3 = pts[sidx]
-		var tan: Vector3
-		if fk < fix_i.size() and fix_i[fk] == sidx:
-			tan = fix_t[fk]
-			fk += 1
-		else:
-			tan = _diff_tan(pts, sidx).normalized()
 		## 抻直度在纺锤(蜷着 = 团)与锥(抻直 = 鞭)之间连续插值(2026-08-05 用户「整套动作都用的相同建模」)
-		var straight: float = clampf(1.0 - curl / CURL_TIGHT, 0.0, 1.0)
-		var spindle: float = R_BASE * (0.42 + 0.58 * pow(sin(PI * clampf(u, 0.0, 1.0)), 0.72))
 		var taper: float = lerpf(R_BASE, R_TIP, pow(u, 0.85))
-		var r: float = lerpf(spindle, taper, smoothstep(0.0, 1.0, straight))
+		## ★2026-10-31(主会话转用户意见): 蜷着时用纺锤(中段鼓)⇒ 待机那只高拱读成粗笨的一坨; 粗细一律走锥度(根粗梢细, 梢端细),
+		##   抻直程度只影响下面那一行整体倍率(待机 ×1.75 / 拍击 ×3.01)。旧式子: r = lerp(纺锤 R_BASE·(0.42+0.58·sin(πu)^0.72), 锥度, smoothstep(抻直度))。
+		var r: float = taper
 		## 沿长度确定性起伏(官方轮廓是毛的) / 根部收窄(从地里钻出来) / 粗细随抻直度(待机 ×1.75, 拍击 ×1.72 倍于待机)
-		r *= 1.0 + 0.055 * sin(u * 21.0 + phase * 3.1) + 0.032 * sin(u * 47.0 + phase)
 		if u < 0.10:
 			r *= 0.42 + 0.58 * (u / 0.10)
-		r *= lerpf(1.75, 3.01, smoothstep(0.0, 1.0, straight))
+		## ★2026-10-31(主会话转用户意见「拍下那一刻退化成一根又直、又粗的管子, 不像同一根触手」): 原来抻直时 ×3.01(待机 ×1.75),
+		##   拍击带宽包络再 ×1.36 峰值 ⇒ 拍下时粗到待机的 2.3 倍。改成粗细与待机同一套(×1.75), 包络只留三成起伏。
+		## 2026-11-01 用户「现在是太细了，要粗一点」: 1.75 → 2.4
+		r *= 2.4
 		if stt == ST_RECOVER:
 			var _te: float = T_SLAM + ts
 			var _bl: float = clampf(ts / T_RECOVER, 0.0, 1.0)
-			r *= lerpf(W_PEAK * _env(SLAM_W_CURVE, _te), 1.0, pow(_bl, 3.0))
+			r *= lerpf(lerpf(1.0, W_PEAK * _env(SLAM_W_CURVE, _te), 0.3), 1.0, pow(_bl, 3.0))
 		if stt == ST_SLAM:
-			r *= W_PEAK * _env(SLAM_W_CURVE, ts)
+			r *= lerpf(1.0, W_PEAK * _env(SLAM_W_CURVE, ts), 0.3)
 		## 梢端收成尖
 		if u > 0.86:
 			r *= 1.0 - 0.86 * pow((u - 0.86) / 0.14, 1.4)
-		out.append([pos, tan, r])
+		out.append(r)
 	return out
-
-
-## 截面朝向(朝向相机的扁带): [side, up2]。
-static func _tent_side(pos: Vector3, tan: Vector3, camp: Vector3, camp_ok: bool, up: Vector3, lat: Vector3) -> Array:
-	var vdir: Vector3 = (pos - camp).normalized() if camp_ok else Vector3(0, -1, 0)
-	var sidev: Vector3 = tan.cross(vdir)
-	if sidev.length() < 0.001:
-		sidev = tan.cross(up)
-	if sidev.length() < 0.001:
-		sidev = lat
-	sidev = sidev.normalized()
-	return [sidev, sidev.cross(tan).normalized()]
-
-
-## 触手本体网格(纯函数: 逐帧直播出处键 —— 手机按同一组参数调它)。
-static func gen_tentacle_body(q: PackedInt32Array, root: Vector3, fix_i: PackedInt32Array, fix_t: PackedVector3Array,
-		curl: float, phase: float, stt: int, ts: float, camp: Vector3, camp_ok: bool, up: Vector3, lat: Vector3) -> ArrayMesh:
-	var mesh := ArrayMesh.new()
-	var rows: Array = _tent_rows(q, root, fix_i, fix_t, curl, phase, stt, ts)
-	var stool := SurfaceTool.new()
-	stool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var prev: Array = []
-	var prev_cols: Array = []
-	var prev_uvs: Array = []
-	var any := false
-	for sidx in range(rows.size()):
-		var u: float = float(sidx) / float(SEG)
-		var pos: Vector3 = rows[sidx][0]
-		var r: float = rows[sidx][2]
-		var sidev: Vector3 = _tent_side(pos, rows[sidx][1], camp, camp_ok, up, lat)[0]
-		var ring: Array = []
-		var cols: Array = []
-		var uvs: Array = []
-		var st2: int = stt
-		for k in range(RING):
-			# ★横向铺开的一条直线（不是绕一圈）—— f∈[-1,1]，0 是芯、±1 是边
-			var f: float = float(k) / float(RING - 1) * 2.0 - 1.0
-			var vpos: Vector3 = pos + sidev * (f * r)
-			ring.append(vpos)
-			uvs.append(Vector2(float(k) / float(RING - 1), u))
-			# ★★★【菲涅尔边缘光】—— 这一版最重要的一处。
-			#   官方那条光带的质感 = **半透明的暗青芯 + 一圈很亮的轮廓边**；
-			#   我原来用 `0.5+0.5*sin(环角)` 假装边缘光，那是"固定的一侧亮"，
-			#   跟真正的轮廓边**根本不重合**，所以并排看永远是一根「均匀塑料管」。
-			#   真轮廓边 = 法线与视线【垂直】的地方 ⇒ rim = 1 − |n·v|。
-			# ★扁带上所有点法线相同 ⇒ 菲涅尔失效。改用【横向到边的距离】：
-			#   芯部(f=0) rim=0、边缘(|f|=1) rim=1 —— 这正是"暗芯 + 亮边"的那条梯度。
-			var rimf: float = clampf(absf(f), 0.0, 1.0)
-			var col: Color = _body_color_s(st2, ts, u, rimf)
-			# ★★2026-08-04【放大对比】：扁带解决了"空心管/多边棱"，但芯变成了一条
-			#   **硬边白条** —— 边界是切出来的。官方那条是【亮芯往两侧化开】，
-			#   边界糊的。色梯度做不到这件事，得靠**顶点 alpha 横向渐隐**。
-			# ★★2026-08-04 放大对比：官方【待机】是一坨**不透明的圆润青团**（像果冻），
-			#   我是一根半透明发光带（边缘透）。量出来我反而比官方粗 33% ——
-			#   所以差的不是宽度，是**实心度**。待机时把横向渐隐压平（边缘也不透）。
-			# ★★预警期也要【有体积】—— 放大对比官方那个 C 钩是粗壮饱满的半透明实体，
-			#   我原来在 WARN 期用 0.85（细发光带），看着像根发丝。
-			#   只有【拍击】才该是细而亮的光带（那时它是"能量"不是"肉"）。
-			var soft: float = pow(1.0 - rimf,
-				0.34 if (st2 == ST_IDLE or st2 == ST_WARN) else 0.85)
-			var fin: Color = col.lerp(Color(0.62, 0.94, 0.88), u * 0.12)
-			cols.append(Color(fin.r, fin.g, fin.b, soft))
-		if not prev.is_empty():
-			any = true
-			# ★开放带：k2 只到 RING-2，且【不回绕】——
-			#   闭合环的 `% RING` 会把最后一点连回第一点，在扁带上就是一张
-			#   横穿整条带子的面（把带子封成了管），空心内壁就是这么来的。
-			for k2 in range(RING - 1):
-				var k3: int = k2 + 1
-				var u3a: Vector2 = prev_uvs[k2]
-				var u3b: Vector2 = Vector2(1.0, prev_uvs[k3].y) if k3 == 0 else prev_uvs[k3]
-				var u3c: Vector2 = uvs[k2]
-				var u3d: Vector2 = Vector2(1.0, uvs[k3].y) if k3 == 0 else uvs[k3]
-				stool.set_color(prev_cols[k2]); stool.set_uv(u3a); stool.add_vertex(prev[k2])
-				stool.set_color(prev_cols[k3]); stool.set_uv(u3b); stool.add_vertex(prev[k3])
-				stool.set_color(cols[k2]);      stool.set_uv(u3c); stool.add_vertex(ring[k2])
-				stool.set_color(prev_cols[k3]); stool.set_uv(u3b); stool.add_vertex(prev[k3])
-				stool.set_color(cols[k3]);      stool.set_uv(u3d); stool.add_vertex(ring[k3])
-				stool.set_color(cols[k2]);      stool.set_uv(u3c); stool.add_vertex(ring[k2])
-		prev = ring
-		prev_cols = cols
-		prev_uvs = uvs
-	if any:
-		stool.generate_normals()
-		stool.commit(mesh)
-	return mesh
 
 
 ## 场上现有几根（给门禁与调试用）
@@ -2118,43 +1780,43 @@ func count(side: String = "") -> int:
 ## ★做时间对齐对比图时**必须有它** —— 只看截图会把"状态切换"和"演出被藏了"
 ##   两种完全不同的原因看成同一个现象（CLAUDE.md：断根因先写探针打数值）。
 func probe() -> String:
-	# ★★ST_WARN 追加在末尾(=6)，这张表也必须跟着补 ——
-	#   漏补的话越界，探针把整整 33 帧的【预警】显示成 "IDL"，
-	#   看着像"预警根本没做出来"（实测被这条骗过一次）。
+	# ★★ST_WARN 追加在末尾(=6)，这张表也必须跟着补 —— 漏补的话探针把整整 33 帧的【预警】显示成 "IDL"。
 	var names := ["EM", "IDL", "REAR", "SLAM", "REC", "RET", "WARN"]
 	var out: Array = []
 	for k in _tents:
 		var t: Dictionary = _tents[k]
 		var mi = t.get("mi", null)
-		var ha = t.get("halo", null)
-		out.append("%s=%s/%.2f/mi%s/ha%s" % [k, (names[int(t["state"])] if int(t["state"]) < names.size() else "?%d" % int(t["state"])), float(t["ts"]),
-			"1" if (is_instance_valid(mi) and (mi as MeshInstance3D).visible) else "0",
-			"1" if (is_instance_valid(ha) and (ha as MeshInstance3D).visible) else "0"])
+		out.append("%s=%s/%.2f/mi%s" % [k, (names[int(t["state"])] if int(t["state"]) < names.size() else "?%d" % int(t["state"])), float(t["ts"]),
+			"1" if (is_instance_valid(mi) and (mi as MeshInstance3D).visible) else "0"])
 	return " ".join(out)
 
 
-## 这根触手梢端的当前世界高度(由 `_rebuild` 每帧写)。门禁用它验"下砸期单调不上升"。
-## 沿长度的高度剖面(9 个站点, prof_y[0]=根 … prof_y[8]=梢)。门禁用它还原前沿。
-func height_profile_of(side: String, idx: int) -> PackedFloat32Array:
-	var k: String = "%s|%d" % [side, idx]
-	if not _tents.has(k):
-		return PackedFloat32Array()
-	return (_tents[k] as Dictionary).get("prof_y", PackedFloat32Array())
-
-
-## 整条中心线(世界坐标, SEG+1 个点)。★给门禁量【曲率变号 = S 形 = 柔软】用 ——
-## 只有高度剖面看不出 S 形(它是曲率的性质, 不是高度的性质)。
-func centerline_of(side: String, idx: int) -> PackedVector3Array:
-	var k: String = "%s|%d" % [side, idx]
-	if not _tents.has(k):
-		return PackedVector3Array()
-	return (_tents[k] as Dictionary).get("center", PackedVector3Array())
-
-
-## 当前的惯性滞后角(度)。负 = 头部向后弯(追不上), 正 = 荡回来过头(甩尾)。给门禁读。
-func lag_of(side: String, idx: int) -> float:
-	var k: String = "%s|%d" % [side, idx]
-	return float((_tents[k] as Dictionary).get("lag", 0.0)) if _tents.has(k) else 0.0
+## 结构化探针(门禁 / 逐帧直播对账读): 每根触手一条 ——
+##   状态 / 计时 / 这一击的分量 / 中心线控制点(相对根部, 就是喂给着色器的那一份) / 露出比例 / 白闪 / 拍痕 /
+##   网格与材质的资源身份(固定网格: 整局不换、所有触手同一份)。
+func probe_data() -> Array:
+	var out: Array = []
+	for k in _tents:
+		var t: Dictionary = _tents[k]
+		var mi = t.get("mi", null)
+		var mesh_iid := 0
+		var mesh_rid := 0
+		var mat_iid := 0
+		if is_instance_valid(mi):
+			var ms: Mesh = (mi as MeshInstance3D).mesh
+			if ms != null:
+				mesh_iid = ms.get_instance_id()
+				mesh_rid = ms.get_rid().get_id()
+			var mo = (mi as MeshInstance3D).material_override
+			if mo != null:
+				mat_iid = (mo as Object).get_instance_id()
+		out.append({"key": k, "side": str(t["side"]), "idx": int(t["idx"]),
+			"state": int(t["state"]), "ts": float(t["ts"]), "share": float(t.get("share", 1.0)),
+			"ctrl_pts": t.get("mv_pts", PackedVector3Array()), "ctrl_r": t.get("mv_r", PackedFloat32Array()),
+			"center": t.get("center", PackedVector3Array()), "root3": t.get("root3", Vector3.ZERO),
+			"flash": float(t.get("mv_flash", 0.0)), "trail": float(t.get("mv_trail", 0.0)),
+			"mesh_iid": mesh_iid, "mesh_rid": mesh_rid, "mat_iid": mat_iid, "node": mi})
+	return out
 
 
 ## 当前状态已经走了多久(秒)。验收场景要按"SLAM 的第几秒"记账, 拿墙钟对不上时停/慢放。
@@ -2197,11 +1859,6 @@ func warn_color_of(side: String, idx: int) -> Color:
 	return best
 
 
-func tip_y_of(side: String, idx: int) -> float:
-	var k: String = _key(side, idx)
-	return float((_tents[k] as Dictionary).get("tip_y", 0.0)) if _tents.has(k) else 0.0
-
-
 func state_of(side: String, idx: int) -> int:
 	var k: String = _key(side, idx)
 	return int((_tents[k] as Dictionary)["state"]) if _tents.has(k) else -1
@@ -2215,7 +1872,7 @@ func clear() -> void:
 		#   下一根触手新建的同名节点被 Godot 自动改名成 `@TentacleWarn_left_0@…`，
 		#   于是按名字找节点的代码（门禁）**找到的是那个已隐藏的旧节点** ——
 		#   报出来是"预警带没建出来"，实际是建了两个、找错了一个。
-		for kk in ["mi", "halo", "warn_mi"]:
+		for kk in ["mi", "warn_mi"]:
 			var n = (_tents[k] as Dictionary).get(kk, null)
 			if is_instance_valid(n):
 				n.queue_free()

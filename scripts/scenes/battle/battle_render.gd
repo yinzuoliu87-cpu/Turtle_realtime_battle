@@ -434,7 +434,7 @@ func _update_ninja_marks() -> void:
 		for ns in ninja_sides.keys():
 			if str(o.get("side", "")) != ns:
 				is_enemy = true; break
-		var eligible: bool = is_enemy and o.get("alive", false) and not o.get("egg", false) and not battle._is_untargetable(o) and battle._t >= float(o.get("_ninja_dash_until", 0.0))
+		var eligible: bool = is_enemy and o.get("alive", false) and not o.get("egg", false) and not battle._is_untargetable(o) and not battle._is_untouchable(o) and battle._t >= float(o.get("_ninja_dash_until", 0.0))   # §UNTOUCHABLE: 忍者冲不到训龟大师, 不给它挂可冲标记
 		var spr = o.get("_ninja_mark_spr", null)
 		var valid: bool = spr != null and is_instance_valid(spr)
 		if eligible and not valid:

@@ -787,6 +787,8 @@ var _dbg_op := "-"                        # 最后进入的重操作(冻死时�
 var _burst_depth := 0                     # 泡泡/冰霜盾爆裂级联递归深度(死亡链burst→伤害→死→再burst); 超上限截断防卡死(用户2026-07-19卡死猎手抓 bubbleShield)
 static var _burst_cap_warned := false     # 深度上限只报一次(避免刷屏)
 var _adf_ct := 0                          # 本帧 _damage._apply_damage_from 调用数(每帧重置); 爆炸=死亡链无限级联→截断防卡死
+var _untouch_hits: Dictionary = {}        # §UNTOUCHABLE 落地层兜底账本: 入口名 → 有东西把训龟大师送进来的次数(应恒为空)
+var _untouch_trace: Array = []            # 同上, 前 40 次的调用栈摘要(诊断用)
 var _dbg_op2 := "-"                        # 更细粒度定位: 最后经手的伤害/死亡单位(冻死时打出)
 static var _adf_warned := false
 static var _stress_n := 0                 # 已跑对局数(跨reload累计)
@@ -1678,7 +1680,7 @@ func _random_ally(trainer: Dictionary):
 	var side: String = str(trainer.get("side", ""))
 	var pool: Array = []
 	for o in _units:
-		if o.get("alive", false) and not o.get("is_trainer", false) and not o.get("_isEgg", false) and str(o.get("side", "")) == side:
+		if o.get("alive", false) and not _is_untouchable(o) and not o.get("_isEgg", false) and str(o.get("side", "")) == side:
 			pool.append(o)
 	return pool[_battle_rng.randi() % pool.size()] if not pool.is_empty() else null
 
@@ -2245,7 +2247,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_t += dt
 			_timestop._ts_update_trigger(dt)   # 沙漏: 第10秒触发时停蓄力 → 蓄力满释放
 			for u in _units.duplicate():
-				if not u["alive"]:
+				if not u["alive"] or _is_untouchable(u):   # §UNTOUCHABLE: 训龟大师不走通用单位 tick(DoT/buff 到期/HoT/索敌/移动/普攻/放技对它全是空转; 它自己的出手在 trainer_system)
 					continue
 				_tick_unit(u, dt)
 			_apply_separation_pass(dt)   # 每帧全单位软分离(攻击/待机也摊开, 根治扎堆遮血条)
@@ -2620,6 +2622,8 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 func _is_hostile(a: Dictionary, b: Dictionary) -> bool:
 	if is_same(a, b):
 		return false          # is_same: 单位字典互引成环, == 会深比较→卡死(项目铁律)
+	if _is_untouchable(b):
+		return false          # §UNTOUCHABLE: 谁都不把训龟大师当敌人(它自己照样把别人当敌人 —— 只看 b, 不看 a)
 	if bool(b.get("hijacked", false)):
 		return true           # 被侵入者对所有人都是敌人(含侵入它的赛博方)
 	if bool(a.get("hijacked", false)):
@@ -2811,7 +2815,7 @@ func _separation(u: Dictionary) -> Vector2:
 	var mt_valid: bool = bool(u.get("melee", false)) and mt is Dictionary and (mt as Dictionary).get("alive", false)
 	var tgt_radius: float = minf(SEP_RADIUS, _eff_range(u) * 0.85)
 	for o in _units:
-		if is_same(o, u) or not o["alive"]:
+		if is_same(o, u) or not o["alive"] or _is_untouchable(o):   # §UNTOUCHABLE: 装饰单位不占体积, 不把人推开
 			continue
 		var d: Vector2 = u["pos"] - o["pos"]
 		var l := DetMath.vlen(d)
@@ -4416,13 +4420,13 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 		d *= 5.0                                     # 终极战场暴露蛋: ×5承伤(快速决胜)
 	if not raw and float(u.get("flat_dr", 0.0)) > 0.0:
 		d = maxf(0.0, d - float(u["flat_dr"]))       # 铁壁盾016: 每段固定减 X 点(护盾前)
-	# ★训龟大师: 受到的【所有类型】伤害降为 1(用户2026-07-22 含真实伤害)。
-	#   必须放在函数【最末尾】且【不看 raw】—— 上面每一项减伤都写着 `not raw`,
-	#   放在中间或加 raw 判断都会让真伤原样打穿。两条伤害路径共用本函数, 所以一处即全覆盖。
+	# ★训龟大师(§UNTOUCHABLE): 两条伤害路的入口已经先拦下(`_untouch_block`), 根本走不到这里;
+	#   下面那条 `_is_untouchable` 是第二道。仍要放在【不看 raw】的位置 —— 上面每一项减伤都写着 `not raw`,
+	#   放进去会让真伤原样打穿。(原口径「伤害降为 1 / 0、但吃 AOE」已被用户 2026-10-31 的「不受任何影响」取代。)
 	if _t < float(u.get("_tame_invuln_until", 0.0)):
 		return 0.0                                   # ★驯服重生演出期(2.5秒)无敌(用户 2026-07-28 B7)
-	if u.get("is_trainer", false):
-		return 0.0                                   # ★U2: 大师不可被打、没有血量 —— 任何伤害(含真伤)一律为 0
+	if _is_untouchable(u):
+		return 0.0                                   # §UNTOUCHABLE: 大师不可被打 —— 两条伤害路入口已先拦(`_untouch_block`), 这里是第二道
 	# ★"受到的任何攻击(含真实伤害)降为 1" 的通用闸(用户2026-08-01 给亡灵骷髅 032 用)。
 	#   与大师同一条口径、同一个位置 —— 放这儿是因为本函数是【两条伤害路径唯一的共用收口】,
 	#   在别处拦只会拦住其中一条(CLAUDE.md §3.3 那类"只在某种伤害下出现的诡异行为")。
@@ -4470,8 +4474,10 @@ func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
 	u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 
 func _kill(u: Dictionary, killer = null) -> void:
-	if u.get("_dead_done", false) or u.get("is_trainer", false):   # ★U2: 大师没有血量 ⇒ 任何直接处决也杀不死它
+	if u.get("_dead_done", false):
 		return   # 死亡已完整处理过→不重入(防死亡链重入无限递归卡死·用户2026-07-19卡死猎手: 053霰弹击杀 egg/minion 冻死)
+	if _untouch_block(u, "kill"):
+		return   # §UNTOUCHABLE: 大师没有血量 ⇒ 任何直接处决也杀不死它(原 U2 那条 is_trainer 收进统一入口)
 	## ★死亡处理计数(2026-10-08 天使龟不死 bug 的修法附带): 伤害结算记下「这一击开始时」的计数,
 	##   结算中途若在内层(反伤链)已经处理过一次死亡 —— 复活 / 涅槃 / 驯服重生 —— 外层就不再拿过期的「致命」补刀。
 	u["_kill_n"] = int(u.get("_kill_n", 0)) + 1
@@ -5262,7 +5268,7 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 		var dir: Vector2 = _nav_dir(u, tgt["pos"], straight)  # navmesh 绕障(无路径退回直奔)
 		intent = dir                                          # 追到射程
 		for o in _units:   # 绕行避挤: 正前方窄道有同队友军挡路→切向绕开(不再直挤成一团/根治"第二个挤第一个不绕路")
-			if is_same(o, u) or not o.get("alive", false) or str(o.get("side", "")) != str(u.get("side", "")):
+			if is_same(o, u) or not o.get("alive", false) or str(o.get("side", "")) != str(u.get("side", "")) or _is_untouchable(o):   # §UNTOUCHABLE: 不挡路
 				continue
 			var rel: Vector2 = o["pos"] - u["pos"]
 			var ahead: float = DetMath.dot(rel, dir)                       # 在我前方(朝目标)多远
@@ -5797,6 +5803,34 @@ const HUNTER_ARROW_SPD := 330.0   # 狩猎弹幕追踪箭飞行速度 px/s (慢�
 func _is_untargetable(o: Dictionary) -> bool:
 	return _t < float(o.get("untargetable_until", 0.0)) or o.get("_assembling", false)
 
+## ══ §UNTOUCHABLE 训龟大师 = 装饰单位 ══
+## 用户 2026-10-31:「训龟大师不应该受到任何影响，就是个装饰的地位，丢点技能」。方案书 docs/plans/20261031e-训龟大师不受影响.md。
+## ★「这个单位能不能被任何外部效果碰到」**只在这里回答** —— 原来是全仓 61 处各写一遍 `is_trainer` 排除,
+##   而且口径还互相矛盾(「不被主动索敌, 但吃 AOE」⇒ 光环 / 羁绊 / 范围治疗护盾 / 触须 / 腐蚀照样落到它身上)。
+## 两层:
+##   ① 查询层: `_is_hostile(x, 它)` 恒 false、`_targeting._enemies_of / _allies_of` 不含它
+##      ⇒ 选目标 / 范围结算 / 光环 / 均分 / 「最近的…」都数不到它;
+##      各 system 自己遍历 `_units` 的循环一律 `if battle._is_untouchable(o): continue`。
+##   ② 落地层(兜底): 扣血两条路 / 加盾 / 治疗 / 眩晕 / buff / DoT / 击退击飞 / 嘲讽 … 入口第一行 `_untouch_block(u, "入口名")`。
+##      查询层做对了它**一次都不该触发**; 触发 = 有东西选中了它 ⇒ 记账, 门禁 verify_trainer_untouchable 断言账本为空。
+## ★它自己的机制(扔石头 / 放技能 / 魔法石叠层)不走这些入口, 照旧。
+func _is_untouchable(o) -> bool:
+	return o is Dictionary and bool((o as Dictionary).get("is_trainer", false))
+
+## 落地层的闸: 是装饰单位 ⇒ 记一笔并返回 true(调用方直接 return)。
+func _untouch_block(o, where: String) -> bool:
+	if not _is_untouchable(o):
+		return false
+	_untouch_hits[where] = int(_untouch_hits.get(where, 0)) + 1
+	if _untouch_trace.size() < 40:
+		var st: Array = get_stack()   # 发布版里是空数组(只有调试构建有栈), 只影响诊断不影响结算
+		var fr: Array = []
+		for i in range(1, mini(st.size(), 6)):
+			var f: Dictionary = st[i]
+			fr.append("%s:%d %s" % [str(f.get("source", "")).get_file(), int(f.get("line", 0)), str(f.get("function", ""))])
+		_untouch_trace.append("%s ← %s" % [where, " ← ".join(fr)])
+	return true
+
 func _update_hunter_passive(u: Dictionary) -> void:   # 被动猎杀(重做·用户2026-07-14): 每帧扫场→任一敌<斩杀线(蛋免疫)且无强化箭在飞→猎人自动射强化箭→命中处决
 	if not u.get("alive", false): return
 	if _damage.is_controlled(u): return   # ★被控时不自动射处决箭(用户 10-16 被控规则)
@@ -6077,6 +6111,8 @@ func _slam_debris(at2d: Vector2) -> void:
 	var ftw := _reg_tween(); ftw.tween_interval(0.75); ftw.tween_callback(ps.queue_free)
 
 func _knock_up(o: Dictionary, center: Vector2, vy: float) -> void:
+	if _untouch_block(o, "knock_up"):
+		return   # §UNTOUCHABLE
 	if o == null or not o.get("alive", false) or o.get("airborne", false) or o.get("_knock_immune", false) or _damage._is_cc_immune(o):   # 免击飞(017不沉之锚) / ★免控也免击飞(10-16): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
 		return
 	var dir: Vector2 = (o["pos"] - center)
@@ -6308,11 +6344,15 @@ func _cc_dur(u: Dictionary, sec: float) -> float:
 	return sec * (1.0 - clampf(float(u.get("tenacity", 0.0)), 0.0, 0.9))
 
 func _freeze(u: Dictionary, sec: float = CTRL_SEC) -> void:
+	if _untouch_block(u, "freeze"):
+		return   # §UNTOUCHABLE
 	_damage._stun(u, sec, "_freeze")
 	_skill_ring(u["pos"], Color(0.6, 0.9, 1.0, 0.6), 48.0)
 
 func _taunt(by: Dictionary, targets: Array, sec: float = BUFF_SEC) -> void:
 	for o in targets:
+		if _untouch_block(o, "taunt"):
+			continue   # §UNTOUCHABLE
 		o["taunt_until"] = _t + sec
 		o["taunt_by"] = by
 
@@ -6403,6 +6443,8 @@ func _recalc_stats(u: Dictionary) -> void:
 
 # flat DoT (诅咒等). dps=每秒落血; 真伤穿护盾. 灼烧/中毒/流血改走 _damage._apply_dot_stacks 层数模型.
 func _add_dot(u: Dictionary, tag: String, dps: float, sec: float, src = null) -> void:
+	if _untouch_block(u, "add_dot"):
+		return   # §UNTOUCHABLE
 	# src: 施加者。原先不存 → 诅咒伤害永远无主(不进统计、不吃施加者穿甲)。2026-07-22 补。
 	u["dots"].append(_equip_sys.tally.tag({"tag": tag, "dps": dps, "until": _t + sec, "src": src, "_acc": 0.0}, src))   # ④ 装备上下文里施加的打来源标
 
@@ -7311,7 +7353,7 @@ func _check_end() -> void:
 	var left_alive := 0
 	var right_alive := 0
 	for u in _units:
-		if u.get("is_trainer", false):
+		if _is_untouchable(u):
 			continue   # 训龟大师不计胜负(同 _dl_sys._dl_side_alive; 漏这条会导致"打不死它→永远不结束")
 		if u["alive"] and not u.get("is_summon", false):   # 召唤体不计入胜负判定
 			# ★用有效阵营: 被侵入者仍按【原阵营】计。否则侵入掉对方最后一只 →

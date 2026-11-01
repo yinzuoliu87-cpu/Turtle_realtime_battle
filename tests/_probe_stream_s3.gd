@@ -160,7 +160,7 @@ func _gen_ranges(raw: PackedByteArray, key: bool) -> Array:
 						var gid := r.s()
 						r.vu()
 						var md := r.vu()
-						if md == F.GEN_ALIAS:
+						if md == 0:          # 方式 0「参数别名」v4 退役(本探针量的是 v3 的旧触手流)
 							r.vu()
 						else:
 							if md == F.GEN_DELTA:
