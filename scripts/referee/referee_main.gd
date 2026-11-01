@@ -4,6 +4,7 @@ extends Node
 ##   godot --headless --audio-driver Dummy --path <工程> res://scenes/Referee.tscn -- --job=<任务单.json> --out=<结果单.json>
 ##   可选 `--stream=<目录>`: 同时录状态流(逐帧直播 S1), 块文件与 end.json 写进那个目录(传输 S4 再做)。
 ##   另一个用法 `-- --bot-pool=<输出.json>`: 生成周六机器人快照池(`bot_pool.gd`), 写完退出(0 = 成功 / 4 = 写不了)。
+##   `-- --ranked-pool=<输出.json>`: 生成积分赛对手池(内置陪练 + 兜底机器人, `bot_pool.gd generate_ranked`), 退出码同上(2026-11-01)。
 ##
 ## 读一份任务单(形状见 `referee_job.gd` 头注) → `RefereeRunner.run` 跑完整一局 → 写结果单 → 退出。
 ## 退出码: 0 = 算完(结果单 ok=true) / 2 = 拒算(任务单本身不对, 重算也不会变, 结果单 permanent=true)
@@ -25,6 +26,20 @@ func _ready() -> void:
 		if OS.has_environment(k):
 			OS.unset_environment(k)
 	var args := _args()
+	if args.has("ranked-pool"):
+		await get_tree().process_frame
+		var rp: Dictionary = BotPool.generate_ranked()
+		var rf := FileAccess.open(str(args["ranked-pool"]), FileAccess.WRITE)
+		if rf == null:
+			printerr("[Referee] 写不了积分赛池 %s" % str(args["ranked-pool"]))
+			get_tree().quit(4)
+			return
+		rf.store_string(JSON.stringify(rp))
+		rf.close()
+		print("[Referee] ranked-pool v%s rules_ver=%d seeds=%d bots=%d" % [str(rp["client_version"]), int(rp["rules_ver"]),
+			(rp["seed_rows"] as Array).size(), (rp["bot_rows"] as Array).size()])
+		get_tree().quit(0)
+		return
 	if args.has("bot-pool"):
 		await get_tree().process_frame
 		var pool: Dictionary = BotPool.generate()

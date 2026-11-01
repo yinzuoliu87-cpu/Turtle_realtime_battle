@@ -153,21 +153,24 @@ func _t_lines() -> void:
 	var flip1: int = seat + 480
 	var cup_live := M.stage_line(fx.cup(cup + 9 * MI), 1)
 	## [标签, 时刻, 人, 正文, 倒计时(秒, -1 = 不显示), 开播签, 点了去看哪一场(组号, -1 = 对阵图)]
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 正文一件事(不再「· 观看」「备战中 · 未调整阵容…」); 能点的那一档右边单列「观看」(act);
+	##   「开播中」红签只在**真有一场在播**时亮(原来整段小组赛都亮)。保持阵容那句规则挪到对阵图备战屏(⑨)。
 	var rows: Array = [
 		["17:40 晋级者", SUN + 17 * H + 40 * MI, "in", "%s %s 开赛" % [P2.STAGE_GROUP, P2.local_hhmm(seat)], 20 * MI, false, -1],
 		["17:40 观众", SUN + 17 * H + 40 * MI, "plain", "%s %s 开赛" % [P2.STAGE_GROUP, P2.local_hhmm(seat)], 20 * MI, false, -1],
-		["★18:01 备战中(⑨)", seat + 60, "in", "备战中 · %s" % M.TXT_KEEP_LINEUP, 120, true, -1],
-		["18:05 备战结束等翻面", seat + 5 * MI, "in", "你的%s即将开播" % r1, flip1 - seat - 5 * MI, true, -1],
+		["★18:01 备战中(⑨)", seat + 60, "in", "%s备战剩余" % r1, 120, false, -1],
+		["18:05 备战结束等翻面", seat + 5 * MI, "in", "你的%s %s 开播" % [r1, P2.local_hhmm(flip1)], flip1 - seat - 5 * MI, false, -1],
 		## ★小组赛同一轮所有场同时开播(用户 10-31 纠正): 18:08 翻面即开播, 我那场没有「几点开播」那一态
-		["18:10 我的比赛开播中(本轮同时开播)", seat + 10 * MI, "in", "你的%s开播中 · 观看" % r1, -1, true, FX.MY_GROUP],
-		["我那场揭晓后 · 等决赛备战", t_end1 + 10, "in", "%s备战 %s 开始" % [r2, P2.local_hhmm(r2_at)], r2_at - t_end1 - 10, true, -1],
-		["18:13 决赛备战中(⑨)", seat + 13 * MI, "in", "备战中 · %s" % M.TXT_KEEP_LINEUP, r2_at + 180 - seat - 13 * MI, true, -1],
-		["18:10 观众(6 组 × 2 场同时开播)", seat + 10 * MI, "plain", "%s 12 场开播中 · 观看" % P2.STAGE_GROUP, -1, true, 0],
-		["18:10 第 1 轮就输的人(结果还没揭晓)", seat + 10 * MI, "out", "你的%s开播中 · 观看" % r1, -1, true, FX.MY_GROUP],
+		## 开播中: 左边红签「开播中」, 正文只说是哪一场(不重复「开播中」), 右边「观看」
+		["18:10 我的比赛开播中(本轮同时开播)", seat + 10 * MI, "in", "你的%s" % r1, -1, true, FX.MY_GROUP],
+		["我那场揭晓后 · 等决赛备战", t_end1 + 10, "in", "%s备战 %s 开始" % [r2, P2.local_hhmm(r2_at)], r2_at - t_end1 - 10, false, -1],
+		["18:13 决赛备战中(⑨)", seat + 13 * MI, "in", "%s备战剩余" % r2, r2_at + 180 - seat - 13 * MI, false, -1],
+		["18:10 观众(6 组 × 2 场同时开播)", seat + 10 * MI, "plain", "%s 12 场" % P2.STAGE_GROUP, -1, true, 0],
+		["18:10 第 1 轮就输的人(结果还没揭晓)", seat + 10 * MI, "out", "你的%s" % r1, -1, true, FX.MY_GROUP],
 		["18:40 第 1 轮就输了(等冠军杯赛)", SUN + 18 * H + 40 * MI, "out", "%s %s 开赛" % [P2.STAGE_CUP, P2.local_hhmm(cup)], cup - SUN - 18 * H - 40 * MI, false, -1],
 		["18:40 观众(等冠军杯赛)", SUN + 18 * H + 40 * MI, "plain", "%s %s 开赛" % [P2.STAGE_CUP, P2.local_hhmm(cup)], cup - SUN - 18 * H - 40 * MI, false, -1],
-		["冠军杯赛 +9 分 观众", cup + 9 * MI, "plain", "%s开播中 · 观看" % cup_live, -1, true, int(P2.FINALS_CUP_BUCKET)],
-		["22:00 观众", SUN + 22 * H, "plain", "冠军杯赛冠军 小辉同学", -1, false, -1],
+		["冠军杯赛 +9 分 观众", cup + 9 * MI, "plain", cup_live, -1, true, int(P2.FINALS_CUP_BUCKET)],
+		["22:00 观众", SUN + 22 * H, "plain", "冠军杯赛冠军：小辉同学", -1, false, -1],
 	]
 	for r in rows:
 		var ln := _line(int(r[1]), str(r[2]))
@@ -178,10 +181,11 @@ func _t_lines() -> void:
 		_ok("%s 倒计时 %d 秒 · 开播签 %s · 点了%s" % [tag, int(r[4]), str(r[5]), ("去看 %d 组那一场" % int(r[6])) if int(r[6]) >= 0 else "去对阵图"],
 			int(ln["cd"]) == int(r[4]) and bool(ln["live"]) == bool(r[5]) and tb == int(r[6]) and bool(ln["tap"]),
 			"cd=%d live=%s 去=%d" % [int(ln["cd"]), str(ln["live"]), tb])
+		_ok("%s 右边「观看」只在能直达那一场时出现" % tag, (str(ln.get("act", "")) == "观看") == (int(r[6]) >= 0), str(ln.get("act", "")))
 	_who("in")
 	var f: Dictionary = fx.feeds(seat + 10 * MI)
 	var lb := L.bar_line(seat + 10 * MI, f["group"], f["cup"], f["groups"], M.my_next(true, f["group"], f["cup"], seat + 10 * MI), true)
-	_ok("B 观战页上点条不跳走(会把正在看的那一场关掉), 也就不写「· 观看」", not bool(lb["tap"]) and str(lb["body"]) == "你的%s开播中" % r1, str(lb["body"]))
+	_ok("B 观战页上点条不跳走(会把正在看的那一场关掉), 也就不写「· 观看」", not bool(lb["tap"]) and str(lb["body"]) == "你的%s" % r1 and str(lb["act"]) == "", str(lb["body"]))
 
 
 # ───────────────────────────── 条宽 ─────────────────────────────
@@ -344,7 +348,7 @@ func _t_popup() -> void:
 	_at(t_mine - 25)
 	var p = _popup()
 	var r1 := M.round_name(4, 1)
-	var want_sub := "%s · 吃货一枚 对 Kiki" % M.sheet_name(fx.my_group(t_mine - 25))
+	var want_sub := "吃货一枚 对 Kiki"      # 哪一场写在标题「你的半决赛…」里, 第二行只写对阵(不用「·」拼)
 	_ok("D ★开播前 25 秒 ⇒ 弹「你的%s 25 秒后开播」+「%s」" % [r1, want_sub],
 		p != null and str(p.title.text) == "你的%s 25 秒后开播" % r1 and str(p.sub.text) == want_sub,
 		"%s / %s" % [str(p.title.text) if p else "-", str(p.sub.text) if p else "-"])
@@ -389,7 +393,7 @@ func _t_popup() -> void:
 	_ok("D 点「稍后」⇒ 收起、这一场不再弹", _popup() == null)
 	fd.popped = {}
 	_at(t_mine + 95)
-	_ok("D 开播 95 秒后才进来 ⇒ 不弹(条上挂着「开播中 · 观看」)", _popup() == null and str(fd.line["body"]).find("开播中") >= 0)
+	_ok("D 开播 95 秒后才进来 ⇒ 不弹(条上挂着「开播中」红签 + 「观看」)", _popup() == null and bool(fd.line["live"]) and str(fd.line["act"]) == "观看")
 	## 观众不弹 / 在商店也弹
 	fd.popped = {}
 	_at(t_mine - 20, "plain")
@@ -511,15 +515,15 @@ func _t_marquee() -> void:
 	for s0 in all:
 		if str(s0).begins_with(cg):
 			grp_live.append(str(s0))
-	_ok("E ★小组翻面 ⇒ 我那一组只播一句「%s %s开播」(同时开播不分第几场)" % [cg, M.round_name(4, 1)],
-		grp_live == ["%s %s开播" % [cg, M.round_name(4, 1)]], str(all))
+	_ok("E ★小组翻面 ⇒ 我那一组只播一句「%s%s开播」(同时开播不分第几场)" % [cg, M.round_name(4, 1)],
+		grp_live == ["%s%s开播" % [cg, M.round_name(4, 1)]], str(all))
 	## 观众: 各组同一轮同时开播 ⇒ 一句「小组赛 半决赛开播 · 6 组同时进行」(不逐组刷 6 句)
 	_mq_reset()
 	_at(seat + 8 * MI - 2, "plain")
 	_at(seat + 8 * MI + 1)
 	all = (fd.marquee.played as Array) + (fd.marquee.queue as Array)
-	_ok("E ★观众: 小组翻面 ⇒ 只播一句「%s %s开播 · 6 组同时进行」" % [P2.STAGE_GROUP, M.round_name(4, 1)],
-		all == ["%s %s开播 · 6 组同时进行" % [P2.STAGE_GROUP, M.round_name(4, 1)]], str(all))
+	_ok("E ★观众: 小组翻面 ⇒ 只播一句「%s%s开播，6 组同时进行」" % [P2.STAGE_GROUP, M.round_name(4, 1)],
+		all == ["%s%s开播，6 组同时进行" % [P2.STAGE_GROUP, M.round_name(4, 1)]], str(all))
 	## 冠军杯赛: 排进档期就播开播时刻
 	_mq_reset()
 	var cup := SUN + int(P2.FINALS_START_HOUR_UTC) * H
@@ -527,7 +531,7 @@ func _t_marquee() -> void:
 	_at(cup + 8 * MI + 1)
 	all = (fd.marquee.played as Array) + (fd.marquee.queue as Array)
 	var t2: int = int(fx.timeline(6, cup, {})[0]["slots"]["1-3"][0])
-	var want_up := "%s %s 第 2 场 %s 开播" % [P2.STAGE_CUP, M.round_name(6, 1), P2.local_hhmm(t2)]
+	var want_up := "%s %s 开播" % [load("res://scripts/ui/finals_copy.gd").join(P2.STAGE_CUP, M.round_name(6, 1) + "第 2 场"), P2.local_hhmm(t2)]
 	_ok("E ★冠军杯赛翻面 ⇒ 播「%s」(时刻来自服务端档期)" % want_up, all.has(want_up), str(all))
 	_mq_reset()
 	var final_end: int = int(fx.timeline(6, cup, {})[2]["slots"]["3-0"][1])

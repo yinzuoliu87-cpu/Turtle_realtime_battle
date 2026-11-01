@@ -11,6 +11,7 @@ extends RefCounted
 ##   referee_job_status(p_job_id)        查自己那一场算完没有(只读; 20261020c 起多回 coins = 这一局的战斗内铸币)
 ##   referee_finals_coins(...)           周日查我在这一场的战斗内铸币(只读; 20261020d, 翻面之前回 pending)
 ##   gauntlet_queue_join / poll / cancel 周六在线排队(20261027, 见下面「在线排队」那一节): 锁阵容进队 → 心跳 → 配上 = 任务号 + 我是 a / b 哪一方
+##   referee_ranked_start / referee_ranked_ledger  积分赛(20261101d): 交阵容开一局 / 读自己本周的服务端账本(见下面「积分赛」那一节)
 ## 逐帧直播(20261020 迁移, 只写文件、未上生产; 没上 = 404 ⇒ 两条都当没有):
 ##   referee_live_gauntlet()             本周周六正在算的裁判局(赛况板「观赛」, 只读): match_id / 双方名字 / 开始时刻 / 种子 / 版本
 ##   referee_request_restream(p_match_id) 开流之前算的裁判局请求补流(排一份「重放录流」任务; 写)
@@ -29,6 +30,10 @@ const K_GAUNTLET := "gauntlet_on"
 ##   `stream_version` = 裁判机从哪个客户端版本起才录流(""= 不限)。本机版本低于它 ⇒ 当作关(那一版服务器没录, 拉不到)。
 const K_STREAM := "stream_on"
 const K_STREAM_VER := "stream_version"
+## 积分赛交给服务器(2026-11-01 · 迁移 20261101d · 方案书 docs/plans/20261101c-积分赛服务器裁判.md): 开 ⇒ 积分赛一局 =
+##   交阵容(referee_ranked_start)→ 服务端挑对手 / 定种子 / 裁判机算 / 服务端记账 → 本机按服务器的数记账、看直播或录像。
+##   关 / 问不到 / 服务端还没上 20261101d(回包里没有这个键)⇒ 现行行为(本机挑、本机算), 一字不变。
+const K_RANKED := "ranked_on"
 
 ## 观测量(门禁分母): 本进程问过几次开关 / 交过几次阵容 / 查过几次任务。
 static var flag_asks := 0
@@ -36,6 +41,8 @@ static var status_asks := 0
 static var live_asks := 0
 static var restream_asks := 0
 static var coins_asks := 0
+static var ranked_starts := 0
+static var ledger_asks := 0
 
 
 # ─────────────────────────────── 开关 ───────────────────────────────
@@ -56,6 +63,11 @@ static func gauntlet_on() -> bool:
 	return bool(flags().get(K_GAUNTLET, false))
 
 
+## 积分赛这一局交给服务器吗(调用方已判过「不是周六 / 不在教程 / 不是切磋」, 这里只看开关)。
+static func ranked_on() -> bool:
+	return bool(flags().get(K_RANKED, false))
+
+
 ## 看服务器算的局要不要走状态流(开关开 且 本机版本 ≥ stream_version)。
 static func stream_on() -> bool:
 	var f := flags()
@@ -71,7 +83,7 @@ static func parse_flags(ok: bool, code: int, body: String) -> Dictionary:
 	if not ok:
 		return {}
 	if code == 404:
-		return {K_FINALS: false, K_GAUNTLET: false, K_STREAM: false, K_STREAM_VER: ""}
+		return {K_FINALS: false, K_GAUNTLET: false, K_STREAM: false, K_STREAM_VER: "", K_RANKED: false}
 	if code < 200 or code >= 300:
 		return {}
 	var j := JSON.new()
@@ -82,7 +94,9 @@ static func parse_flags(ok: bool, code: int, body: String) -> Dictionary:
 	var sv = d.get(K_STREAM_VER, "")
 	return {K_FINALS: bool(d.get(K_FINALS, false)), K_GAUNTLET: bool(d.get(K_GAUNTLET, false)),
 		K_STREAM: bool(d.get(K_STREAM, false)) if d.get(K_STREAM, false) is bool else false,
-		K_STREAM_VER: str(sv) if sv is String else ""}
+		K_STREAM_VER: str(sv) if sv is String else "",
+		## ranked_on 缺(服务端还没上 20261101d)/ 不是布尔 ⇒ 关
+		K_RANKED: bool(d.get(K_RANKED, false)) if d.get(K_RANKED, false) is bool else false}
 
 
 ## 问一次开关, 问到就写进存档(变了才存)。`done.call(flags)` 恰好一次({} = 没问到)。返回 false = 没发(没配后端)。
@@ -112,6 +126,8 @@ static func note_flags(f: Dictionary) -> void:
 	var old: Dictionary = GameState.referee_flags if GameState.referee_flags is Dictionary else {}
 	nf[K_STREAM] = bool(f.get(K_STREAM, old.get(K_STREAM, false)))
 	nf[K_STREAM_VER] = str(f.get(K_STREAM_VER, old.get(K_STREAM_VER, "")))
+	## 积分赛开关同理: 只改周日 / 周六的调用方不带它 ⇒ 沿用存档里那份
+	nf[K_RANKED] = bool(f.get(K_RANKED, old.get(K_RANKED, false)))
 	if nf == GameState.referee_flags:
 		return
 	GameState.referee_flags = nf
@@ -292,7 +308,13 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		var why := str(d.get("reason", "server"))
 		return {"err": why if why != "" else "server"}
 	var w = d.get("won", null)
+	var sd = d.get("seed", null)
 	return {"err": "", "status": str(d.get("status", "")), "match_id": str(d.get("match_id", "")),
+		## 积分赛局(20261101d): kind = "ranked"、ranked = 打完这一局之后的服务端账本(见 parse_ranked_result)、
+		##   seed = 裁判开算之后才回(跟播用; 周六 / 周日的回包没有这三个键 ⇒ "" / {} / -1)
+		"kind": str(d.get("kind", "")) if d.get("kind", null) is String else "",
+		"ranked": parse_ranked_result(d.get("ranked", null)),
+		"seed": int(sd) if (sd is float or sd is int) and int(sd) > 0 else -1,
 		"won": (1 if bool(w) else 0) if w is bool else -1,
 		"gw": int(d.get("gw", -1)) if d.get("gw", null) is float or d.get("gw", null) is int else -1,
 		"gl": int(d.get("gl", -1)) if d.get("gl", null) is float or d.get("gl", null) is int else -1,
@@ -469,4 +491,125 @@ static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Cal
 	n._get_once("/rest/v1/rpc/referee_finals_coins", "POST", JSON.stringify(finals_coins_body(week, bucket, r, m)), done,
 		func(res: Dictionary) -> Dictionary:
 			return parse_finals_coins(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+# ─────────────────────────────── 积分赛(2026-11-01) ───────────────────────────────
+## ★方案书 docs/plans/20261101c-积分赛服务器裁判.md(母方案书 20261019-服务器裁判.md §3 ③)。
+##   用户 10-19「我们的所有对局不应该在本机上吧，应该放服务器上吧」; 11-01「哪个商业游戏是这么本地做的？」
+##   referee_ranked_start(p_week, p_snapshot, p_match_no)  交「我的阵容 + 我要打第 N 场」(N = 本机 season_total_battles);
+##       对手(同场次真人快照 / 内置陪练 → 机器人)、种子都由服务端定, 客户端**没有任何参数位**能指定对手、种子或成绩。
+##       回 {ok, job_id, match_id, opp(卡片), ledger(服务端账本)}; 拒收回 reason + ledger(stale / eliminated / quota_full 时客户端按它对齐)。
+##   referee_ranked_ledger(p_week)                          读自己本周的服务端账本(主菜单对账)。
+##   之后与周六同一条路: referee_job_status → 记账(RefereeWatch.settle_ranked)→ 取录像 / 跟播。
+##   客户端版本走请求头 X-Client-Version(`SupabaseNet._headers` 每条都带); 规则版本以服务端登记的为准。
+
+## 账本里的六个数(非负整数; 余命 ≤ HEARTS_MAX)。
+const LEDGER_KEYS := ["battles", "wins", "hearts", "sweeps", "eggs", "used"]
+
+
+## 纯函数: 服务端账本(start / ledger 回包里的 `ledger`)→ {battles, wins, hearts, sweeps, eggs, used}; 缺键 / 不是非负整数 / 余命越界 ⇒ {}。
+static func parse_ledger(v) -> Dictionary:
+	if not (v is Dictionary):
+		return {}
+	var out := {}
+	for k in LEDGER_KEYS:
+		var x = (v as Dictionary).get(k, null)
+		if not (x is float or x is int) or float(x) < 0.0 or float(x) != floorf(float(x)):
+			return {}
+		out[k] = int(x)
+	if int(out["hearts"]) > int(P2C.HEARTS_MAX):
+		return {}
+	return out
+
+
+## 纯函数: job_status 回包里的 `ranked`(打完这一局之后的账本 + 这一局发的币 reward + 是否横扫 sweep)→ 同上 + reward / sweep; 不对 ⇒ {}。
+static func parse_ranked_result(v) -> Dictionary:
+	var led := parse_ledger(v)
+	if led.is_empty():
+		return {}
+	var rw = (v as Dictionary).get("reward", null)
+	if not (rw is float or rw is int) or float(rw) < 0.0:
+		return {}
+	led["reward"] = int(rw)
+	led["sweep"] = bool((v as Dictionary).get("sweep", false)) if (v as Dictionary).get("sweep", null) is bool else false
+	return led
+
+
+## 纯函数: 开战请求体(键名 = 服务端形参)。
+static func ranked_start_body(week: int, snapshot: Dictionary, match_no: int) -> Dictionary:
+	return {"p_week": week, "p_snapshot": snapshot, "p_match_no": match_no}
+
+
+## 纯函数: `referee_ranked_start` 回包 → {"err": "", "job_id", "match_id", "opp", "ledger", "in_flight"} 或 {"err": 原因码, "ledger"}。
+##   原因码: offline · server · unavailable(404: 服务端没上 20261101d)· 服务端 reason 原样
+##   (off / update_required / wrong_week / closed / bad_snapshot / stale / eliminated / quota_full / no_opponent / not_signed_in)。
+##   ★成功必须有任务号(> 0); 录像号不是 uuid ⇒ ""(查任务时服务端会再给)。
+static func parse_ranked_start(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline"}
+	if code == 404:
+		return {"err": "unavailable"}
+	if code < 200 or code >= 300:
+		return {"err": "server", "code": code}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return {"err": "server", "code": code}
+	var d: Dictionary = j.data
+	var led := parse_ledger(d.get("ledger", null))
+	if not bool(d.get("ok", false)):
+		var why := str(d.get("reason", "server"))
+		return {"err": why if why != "" else "server", "ledger": led}
+	var jid = d.get("job_id", null)
+	if not (jid is int or jid is float) or int(jid) <= 0:
+		return {"err": "server", "code": code}
+	var mid := str(d.get("match_id", "")) if d.get("match_id", null) is String else ""
+	return {"err": "", "job_id": int(jid), "match_id": mid if SB.is_uuid(mid) else "", "opp": card_of(d.get("opp", null)),
+		"ledger": led, "in_flight": bool(d.get("in_flight", false)) if d.get("in_flight", null) is bool else false}
+
+
+## 纯函数: `referee_ranked_ledger` 回包 → {"err": "", "ledger"} 或 {"err": 原因码}。账本形状不对 ⇒ server。
+static func parse_ranked_ledger(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline"}
+	if code == 404:
+		return {"err": "unavailable"}
+	if code < 200 or code >= 300:
+		return {"err": "server", "code": code}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return {"err": "server", "code": code}
+	var d: Dictionary = j.data
+	if not bool(d.get("ok", false)):
+		var why := str(d.get("reason", "server"))
+		return {"err": why if why != "" else "server"}
+	var led := parse_ledger(d.get("ledger", null))
+	if led.is_empty():
+		return {"err": "server", "code": code}
+	return {"err": "", "ledger": led}
+
+
+static func ranked_start_async(week: int, snapshot: Dictionary, match_no: int, done: Callable) -> bool:
+	if not SB.enabled():
+		return false
+	var n = SB._spawn()
+	if n == null:
+		return false
+	ranked_starts += 1
+	n._get_once("/rest/v1/rpc/referee_ranked_start", "POST", JSON.stringify(ranked_start_body(week, snapshot, match_no)), done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_ranked_start(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+static func ranked_ledger_async(week: int, done: Callable) -> bool:
+	if not SB.enabled():
+		return false
+	var n = SB._spawn()
+	if n == null:
+		return false
+	ledger_asks += 1
+	n._get_once("/rest/v1/rpc/referee_ranked_ledger", "POST", JSON.stringify({"p_week": week}), done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_ranked_ledger(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
 	return true

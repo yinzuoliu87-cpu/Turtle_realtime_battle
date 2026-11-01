@@ -67,3 +67,52 @@ static func generate() -> Dictionary:
 				rows.append({"battles": b, "gw": gw, "gl": gl, "variant": v, "snapshot": one(b, gw, gl, v)})
 	return {"v": FORMAT, "client_version": ReplayRecorder.client_version(), "rules_ver": int(P2.RULES_VER),
 		"max_battles": MAX_BATTLES, "variants": VARIANTS, "rows": rows}
+
+
+# ─────────────────────────────── 积分赛池(2026-11-01) ───────────────────────────────
+## 积分赛交给服务器(方案书 docs/plans/20261101c-积分赛服务器裁判.md)之后, 服务端挑对手(`referee_ranked_pick`)要两样
+##   原来只在客户端的东西, 都用客户端**同一个函数**离线生成、上传到 `ranked_pool`:
+##   · 内置陪练 seed: 客户端池子里那 396 份 = `Backend._load_seed()` 每一份过 `seed_as_human(g, 赛季号)`
+##     (`_ensure_seeded` 同一条路)。场次 = 快照自报的 `season_total_battles`(选靶以快照自己的账为准, 不信桶键)。
+##     赛季号固定 RANKED_SEED_SID: 它只进 `profile.id` 中间那一段(真人那一段是各自存档的大轮号, 本来就各不相同)。
+##   · 兜底机器人 bot: `make_bot(场次, rng)`(积分赛口径: 不带周六标签), 场次 0..MAX_BATTLES、每格 VARIANTS 份。
+##   两种都摘 `origin`(服务端直接取的真人快照没有这个键)。种子按 (规则版本, 场次, 序号) 定 ⇒ 同一版本重跑逐字节相同。
+## 形状: {v, client_version, rules_ver, seed_rows: [{battles, variant, snapshot}], bot_rows: [{battles, variant, snapshot}]}
+const RANKED_SEED_SID := 1
+
+
+static func ranked_seed_for(battles: int, variant: int) -> int:
+	return absi(("rankbot|%d|%d|%d" % [int(P2.RULES_VER), battles, variant]).hash())
+
+
+static func ranked_bot(battles: int, variant: int) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = ranked_seed_for(battles, variant)
+	var snap: Dictionary = BE.make_bot(battles, rng)
+	snap.erase(BE.ORIGIN_KEY)
+	return snap
+
+
+static func generate_ranked() -> Dictionary:
+	var seed_rows: Array = []
+	var nth := {}
+	var src: Dictionary = BE._load_seed()
+	var buckets: Dictionary = src.get(BE.POOL_KEY, {})
+	var keys: Array = buckets.keys()
+	keys.sort_custom(func(a, b) -> bool: return int(a) < int(b))
+	for k in keys:
+		for g in (buckets[k] as Array):
+			if not (g is Dictionary):
+				continue
+			var s: Dictionary = BE.seed_as_human(g as Dictionary, RANKED_SEED_SID)
+			s.erase(BE.ORIGIN_KEY)
+			var b := maxi(0, int(s.get("season_total_battles", 0)))
+			var v := int(nth.get(b, 0))
+			nth[b] = v + 1
+			seed_rows.append({"battles": b, "variant": v, "snapshot": s})
+	var bot_rows: Array = []
+	for b in range(MAX_BATTLES + 1):
+		for v in range(VARIANTS):
+			bot_rows.append({"battles": b, "variant": v, "snapshot": ranked_bot(b, v)})
+	return {"v": FORMAT, "client_version": ReplayRecorder.client_version(), "rules_ver": int(P2.RULES_VER),
+		"seed_rows": seed_rows, "bot_rows": bot_rows}

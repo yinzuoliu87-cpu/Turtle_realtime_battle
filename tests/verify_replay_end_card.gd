@@ -8,7 +8,7 @@ extends Node
 ##   ② ★时长落在 G8 区间: 看别人约 4 秒 / 自己赢约 7 秒 / 自己输约 6 秒; 第一拍只压一条带(整屏不暗、双方卡还没出来)
 ##   ③ ★点一下只跳到这一拍的终态(不是跳完整段); 不点也会每帧自己往前走
 ##   ④ 第二拍: 比分从 0 逐路加; 三路灯一路一盏、灯在赢下它的那一边; 阵亡的统领划掉(按收尾那一刻的单位表); 赢家发光、输家压灰下沉
-##   ⑤ 第三拍: 自己赢 = 晋级那一行 + 本轮奖励(+8 深海币 +2 经验, 数字滚到终值); 自己输 = 出局卡「止步半决赛 · 输给 X」+ 名次 + 奖励
+##   ⑤ 第三拍: 自己赢 = 晋级那一行 + 本轮奖励(+8 深海币 +2 经验, 数字滚到终值); 自己输 = 出局卡「止步半决赛，不敌 X」+ 名次 + 奖励
 ##   ⑥ ★出局卡主按钮 =「去看 X 对 Y」(下一场, G25); 按下 ⇒ 回对阵图并挂上那一场(对阵图到点自动开播, G18); 下一场到点自动跟过去
 ##   ⑦ ★P16: 「返回对阵图」回到刚才在看的那一组(挂上 view / bucket); 看别人(决赛日)三拍走完自动回, 顺带挂上下一场
 ##   ⑧ 按钮: 一开始不可见且不吃点击; 皮 = card_button, 高 ≥ 81; 回放有「再看一遍」在左
@@ -367,13 +367,13 @@ func _t_one(c: Dictionary) -> void:
 		bt.pose(bt.t)
 	if cs == "lose":
 		var ou := card.find_child(EB.N_OUT, true, false) as Label
-		_ok("%s ⑤ ★出局卡「止步半决赛 · 输给 头发多多」" % tag, ou != null and ou.text == "止步半决赛 · 输给 头发多多", ou.text if ou != null else "<无>")
+		_ok("%s ⑤ ★出局卡「止步半决赛，不敌 头发多多」" % tag, ou != null and ou.text == "止步半决赛，不敌 头发多多", ou.text if ou != null else "<无>")
 		var rk2 := card.find_child(EB.N_RANK, true, false) as Label
 		_ok("%s ⑤ 名次「第 3~4 名」" % tag, rk2 != null and rk2.text == "第 3~4 名")
 		var go := card.find_child(EB.N_GO, true, false) as Button
 		var bk := card.find_child(EB.N_BACK, true, false) as Button
 		await _frames(1)                      # 横排容器下一帧才排位置
-		_ok("%s ⑥ ★出局卡主按钮「去看 甲乙丙 对 丁戊己」在右、比「返回对阵图」高且宽(主次分明)" % tag, go != null and go.text == "去看 甲乙丙 对 丁戊己"
+		_ok("%s ⑥ ★出局卡主按钮「观看 甲乙丙 对 丁戊己」在右、比「返回对阵图」高且宽(主次分明)" % tag, go != null and go.text == "观看 甲乙丙 对 丁戊己"
 			and bk != null and bk.text == "返回对阵图" and bk.get_global_rect().position.x < go.get_global_rect().position.x
 			and bool(go.get_meta("primary", false)) and not bool(bk.get_meta("primary", false))
 			and go.size.y > bk.size.y + 8.0 and go.size.x > bk.size.x)
@@ -383,7 +383,7 @@ func _t_one(c: Dictionary) -> void:
 			and int(Ctx.follow.get("bucket", -1)) == 2, str(Ctx.follow))
 	if cs == "watch":
 		var nx := card.find_child(EB.N_NEXT, true, false) as Label
-		_ok("%s ⑤ 下一场条「下一场  甲乙丙 对 丁戊己」" % tag, nx != null and nx.text == "下一场  甲乙丙 对 丁戊己", nx.text if nx != null else "<无>")
+		_ok("%s ⑤ 下一场条「下一场：甲乙丙 对 丁戊己」" % tag, nx != null and nx.text == "下一场：甲乙丙 对 丁戊己", nx.text if nx != null else "<无>")
 		var ab := card.find_child(EB.N_AUTO, true, false) as Control
 		_ok("%s ⑦ 决赛日看别人: 有自动回对阵图的进度条" % tag, ab != null)
 		bt.t = EB.total_of(cs) + EB.AUTO_HOLD - 0.1

@@ -78,7 +78,7 @@ func play_champion(data: Dictionary):
 	if cup:
 		d = _CD.cup_show(view, wk, [], my_acc)
 	else:
-		d = _CD.group_show(view, bk, wk, [], my_acc, "晋级%s · %s 开赛" % [_P2C.STAGE_CUP, _P2C.local_hhmm(int(s._cup_start_ts()))])
+		d = _CD.group_show(view, bk, wk, [], my_acc, "晋级%s（%s 开赛）" % [_P2C.STAGE_CUP, _P2C.local_hhmm(int(s._cup_start_ts()))])
 	if d.is_empty():
 		return null
 	played[_key(cup, bk, wk)] = true

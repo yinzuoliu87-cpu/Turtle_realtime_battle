@@ -10,6 +10,9 @@ extends Node
 ##   接回上面那条路(wait → fetch → play), 任务号 / 我是 a 还是 b 由服务端定; 取消 = cancel → left; 心跳回过期 = left(「已退出排队」)。
 ##   ★旧入口 referee_gauntlet_start 周六不再调(服务端线 10-27: 旧入口还开着, 但客户端别走它; 原来的 `start` 已删)。
 ##     服务端没有排队(404)⇒ 与断网同一句「连接服务器后才能比赛」, 不退回旧入口。
+## ★2026-11-01 积分赛也走这里(`start_ranked`; 方案书 docs/plans/20261101c-积分赛服务器裁判.md): 交「我的阵容 + 第 N 场」
+##   (referee_ranked_start)⇒ 服务端当场挑好对手、建好任务 ⇒ 接回 `_on_submit`(与周六同一条路: 落单 → 查任务 → 记账 → 跟播 / 录像)。
+##   单子带 kind = ranked ⇒ 记账走 `RefereeWatch.settle_ranked`(服务器账本照抄)。没有排队(积分赛打的是快照, 不等在线对手)。
 
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const RL := preload("res://scripts/systems/replay/referee_live.gd")
@@ -90,6 +93,9 @@ var _q_inflight := false
 var _waited := 0                  # 服务端上一次回的「已等待秒数」
 var _waited_at := 0               # 那一刻(本机毫秒); 两次心跳之间按墙钟往上数
 var _opp_tries := 0
+## ── 积分赛(2026-11-01)──
+var ranked := false               # 这一局是积分赛服务器局(start_ranked)
+var _seed_hint := -1              # 积分赛局查任务时服务端回的种子(裁判开算后才有; 跟播直接用它, 不去问周六的「正在算」列表)
 
 ## 在线排队: 交锁定的阵容进队(本局唯一的开始入口)。
 func start_queue() -> void:
@@ -110,6 +116,53 @@ func start_queue() -> void:
 	cell = Vector2i(int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if not RW.RN.queue_join_async(_q_wk, snap, cell.x + cell.y, _on_join):
 		_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)
+
+
+## 积分赛: 交阵容开一局(本局唯一的开始入口)。对手 / 种子由服务端定; 回包即任务号 + 对手卡片(不排队)。
+func start_ranked() -> void:
+	active = self
+	ranked = true
+	opp = {}
+	side = "a"
+	_seed_hint = -1
+	_ep_stage = ""
+	_ep_shown = 0.0
+	_ep_tick = 0
+	_to(RW.ST_SUBMIT, RW.TXT_SUBMITTING)
+	var snap: Dictionary = RW.my_snapshot_ranked()
+	lineup = snap
+	if snap.is_empty():
+		_to(RW.ST_ERROR, RW.TXT_BAD_LINEUP)
+		return
+	_q_wk = RW.P2C.week_anchor_utc(int(RW.P2C.now_utc()))
+	if not RW.RN.ranked_start_async(_q_wk, snap, int(GameState.season_total_battles), _on_ranked_start):
+		_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)
+
+
+func _on_ranked_start(res: Dictionary) -> void:
+	if not is_inside_tree() or state != RW.ST_SUBMIT:
+		return
+	_on_submit(_q_wk, res)
+
+
+## 积分赛特有的拒收: 先按回包里的服务端账本对齐本机, 再说原因。返回 true = 处理了(调用方不再走通用那几条)。
+func _ranked_reject(err: String, res: Dictionary) -> bool:
+	var led: Dictionary = res.get("ledger", {}) if res.get("ledger", null) is Dictionary else {}
+	match err:
+		"off":
+			RW.RN.note_flags({RW.RN.K_FINALS: RW.RN.finals_on(), RW.RN.K_GAUNTLET: RW.RN.gauntlet_on(), RW.RN.K_RANKED: false})
+			_to(RW.ST_LOCAL, "")
+		"stale", "eliminated", "quota_full":
+			if RW.has_pending():
+				RW.resume_if_any()        # 上一局的账还挂着(它带着服务器的数): 先补记它
+			elif RW.adopt_ranked_ledger(GameState, led):
+				GameState.save()
+			_to(RW.ST_ERROR, RW.TXT_STALE if err == "stale" else (RW.TXT_RANKED_ELIM if err == "eliminated" else RW.TXT_RANKED_QUOTA))
+		"closed", "wrong_week":
+			_to(RW.ST_ERROR, RW.TXT_RANKED_CLOSED)
+		_:
+			return false
+	return true
 
 
 ## 已等待多少秒(服务端那一份 + 本机墙钟补上两次心跳之间)。
@@ -373,12 +426,19 @@ func _on_submit(wk: int, res: Dictionary) -> void:
 	if not is_inside_tree():
 		return
 	var err := str(res.get("err", ""))
+	if ranked and err != "" and _ranked_reject(err, res):
+		return
 	match err:
 		"":
 			job_id = int(res.get("job_id", -1))
 			match_id = str(res.get("match_id", ""))
 			opp = (res.get("opp", {}) as Dictionary).duplicate(true)
-			GameState.referee_pending = RW.pending_for(job_id, match_id, wk, opp, side)
+			if ranked:
+				## 积分赛: 单子带 kind; 开战回包里的服务端账本(打这一局之前的)先对齐本机(结算屏 / 主菜单读的是本机那份)
+				RW.adopt_ranked_ledger(GameState, res.get("ledger", {}) if res.get("ledger", null) is Dictionary else {})
+				GameState.referee_pending = RW.ranked_bill(job_id, match_id, wk, opp)
+			else:
+				GameState.referee_pending = RW.pending_for(job_id, match_id, wk, opp, side)
 			GameState.save()
 			_ep_go("build")
 			_to(RW.ST_WAIT, RW.TXT_ENTER_BUILD if RL.wanted() else RW.TXT_SETTLING)
@@ -453,6 +513,8 @@ func _on_status(res: Dictionary) -> void:
 			_later()                     # 交上去了, 但问不到结果: 单子留着, 主菜单补记
 		return
 	offline = 0
+	if ranked and int(res.get("seed", -1)) > 0:
+		_seed_hint = int(res["seed"])     # 积分赛局: 服务端在裁判开算后回种子(跟播用)
 	if not RW.SB.is_uuid(match_id) and RW.SB.is_uuid(str(res.get("match_id", ""))):
 		## 排队配上时回包只给了任务号(2026-10-27): 录像号用任务状态里的那个(取录像 / 战绩页都按它)
 		match_id = str(res["match_id"])
@@ -463,6 +525,10 @@ func _on_status(res: Dictionary) -> void:
 			if _tm != null:
 				_tm.stop()
 			view = RW.settle(GameState, job_id, res)
+			if view.is_empty() and ranked:
+				## 积分赛: 不是这一单 / 结果不明 ⇒ 结算屏照服务器的胜负出, 奖励 0(数字读本机, 主菜单按服务端账本再对一次)
+				view = {"kind": RW.KIND_RANKED, "won": int(res.get("won", 0)) == 1, "reward": 0,
+					"hearts": int(GameState.hearts), "wins": int(GameState.season_wins), "battles": int(GameState.season_total_battles)}
 			if view.is_empty():
 				var gw := int(res.get("gw", -1))
 				var gl := int(res.get("gl", -1))
@@ -535,6 +601,9 @@ func _on_routed(code: String, msg: String) -> void:
 ##   取不到 / 进不了 ⇒ 留在 ST_WAIT，下一次查任务再试（先算完就走原来那条：记账 → 从头播）。
 func _try_live() -> void:
 	_live_try = true
+	if _seed_hint > 0:
+		_buffer(_seed_hint)               # 积分赛局: 查任务的回包已带种子(周六那份「正在算」列表里没有积分赛局)
+		return
 	RL.lookup_seed(match_id, func(seed: int) -> void:
 		if not is_instance_valid(self) or not is_inside_tree() or state != RW.ST_WAIT:
 			return

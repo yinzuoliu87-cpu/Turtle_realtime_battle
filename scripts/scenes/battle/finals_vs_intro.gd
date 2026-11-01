@@ -244,7 +244,7 @@ func _build_card(side: String, r: Rect2) -> void:
 	y += nm.size.y                                  # 进树后按字体的最小高撑开 ⇒ 按实际高往下排
 	var badge := str(cd.get("title", ""))
 	var origin := str(cd.get("origin", ""))
-	var line := origin if badge == "" else (badge + ("  ·  " + origin if origin != "" else ""))
+	var line := origin if badge == "" else (("%s（%s）" % [origin, badge]) if origin != "" else badge)
 	if line != "":
 		var ol := SettleScreenS._lbl(line, 28, COL_GOLD if gold else Color("#ffd668"), HORIZONTAL_ALIGNMENT_CENTER)
 		ol.name = N_ORIGIN + side

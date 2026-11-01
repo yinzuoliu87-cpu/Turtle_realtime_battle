@@ -85,6 +85,7 @@ const _Stage := preload("res://scripts/scenes/bracket/bracket_stage.gd")
 const _Info := preload("res://scripts/scenes/bracket/bracket_info.gd")
 ## 组名「A 组 / B 组 …」(主会话 10-31 定: 商业赛事通行写法)的唯一来源是 D 的 `ChampionData.group_name`(组号从 0 起)。
 const _CD := preload("res://scripts/scenes/bracket/champion_data.gd")
+const _CP := preload("res://scripts/ui/finals_copy.gd")       # 决赛日写法(时长 / 时刻 / 标签：值)
 ## 冠军仪式 / 开场亮相 / 冠军墙(D 块的画面, 时机与参数在 bracket_ceremony.gd)。
 const _Ceremony := preload("res://scripts/scenes/bracket/bracket_ceremony.gd")
 const _CHK := preload("res://scripts/scenes/bracket/champion_hook.gd")
@@ -610,8 +611,8 @@ func _clock() -> int:
 
 
 ## 顶栏标题: 周一看的是上周日(用户 2026-10-19「保留到周一」)。
-const TITLE_NOW := "周日 · 决赛日"
-const TITLE_PAST := "上周日 · 决赛日"
+const TITLE_NOW := "决赛日"
+const TITLE_PAST := "上周决赛日"
 
 
 ## 这一屏问服务端要哪一周(周锚点)。★周一 = 上周(刚结束的那个周末), 其余 = 本周。
@@ -1067,7 +1068,7 @@ func _on_cta() -> void:
 		return
 	if kind == "live_pick":
 		_hero.flash_live(_canvas)
-		_show_replay_msg("点开播中的任意一场观看", _Hero.GOLD)
+		_show_replay_msg("选择一场开播中的对局", _Hero.GOLD)
 		return
 	var t: Vector2i = _cta.get_meta("rm", Vector2i(-1, -1))
 	if t.x >= 0:
@@ -1096,7 +1097,7 @@ func pick_chip(key) -> void:
 ## 即将开播那一格点开: 只写「X 后开播」的小卡(S 清单第 7 条)。
 func _open_upcoming_card(r: int, m: int) -> void:
 	var vp := get_viewport().get_visible_rect().size
-	_stage.upcoming_card(vp, "%s · 即将开播" % _info.match_label(r, m), competitor(r, m, 0), competitor(r, m, 1),
+	_stage.upcoming_card(vp, "%s %s 开播" % [_info.match_label(r, m), _CP.at(_PS.start_of(cur(), r, m))], competitor(r, m, 0), competitor(r, m, 1),
 		func() -> int: return _PS.start_of(cur(), r, m) - srv_now())
 
 
@@ -1298,21 +1299,10 @@ func _feed_kind() -> String:
 
 ## 「我这一组」页签名字后面缀什么。★输入就是 `_bucket_kind()` —— 页签与正文同一份判断。
 ## ★2026-10-04 用户: 不再有「还没分」(它把「没晋级」和「还没到分组时间」说成同一件事)。
-static func bucket_tab_suffix(kind: String) -> String:
-	match kind:
-		EK_SEATED:
-			return ""
-		EK_GROUP_SOLO:
-			return " · 直接晋级"
-		EK_NO_GROUP, EK_SPECTATE:
-			return " · 未晋级"
-		EK_NOT_SEATED:
-			return " · 待分组"
-		EK_TOO_FEW:
-			return " · 未开赛"
-		EK_UNREACHABLE:
-			return " · 连接失败"
-	return " · 查询中"
+## ★★2026-11-01: 页签只写名字(「小组赛」「冠军杯赛」), 不再缀「 · 未晋级 / · 待分组 / · 未开赛」——
+##   页签是名词(商业游戏无一例外), 处境写在页面里(赛前页 / 处境句)。函数留着: 门禁按分类量「两张页签同一份判断」。
+static func bucket_tab_suffix(_kind: String) -> String:
+	return ""
 
 
 ## 观赛能看的组(服务端 `finals_week_view` 的产物里的 `buckets`)。没上线 / 没问到 ⇒ 空。
@@ -1397,12 +1387,11 @@ func _sync_spec() -> void:
 		## 选手: 在看自己那组 ⇒「本组 · A 组」; 翻到别的组 ⇒「观战 · B 组」(只能看)。
 		var sb2: Dictionary = _spectate_bucket() if _peek else _bucket
 		var g2 := int(sb2.get("bucket", 0)) + 1
-		_spec_lb.text = ("观战 · %s" % _CD.group_name(g2 - 1)) if _peek else ("本组 · %s" % _CD.group_name(g2 - 1))
+		_spec_lb.text = _CP.kv("观战" if _peek else "本组", _CD.group_name(g2 - 1))
 	else:
 		var sb: Dictionary = _spectate_bucket()
 		var grp := int(sb.get("bucket", _spec_idx)) + 1
-		_spec_lb.text = ("%s · 观战 · %s" % ["上周未晋级" if _viewing_past() else "本周未晋级", _CD.group_name(grp - 1)]) + (
-			"  (%d/%d)" % [_spec_idx + 1, lst.size()] if lst.size() > 1 else "")
+		_spec_lb.text = _CP.kv("观战", _CD.group_name(grp - 1)) + ("（%d/%d）" % [_spec_idx + 1, lst.size()] if lst.size() > 1 else "")
 	for i in [0, 2]:
 		var bb := _spec_bar.get_child(i) as Button
 		bb.visible = lst.size() > 1 or peekable
@@ -1448,8 +1437,7 @@ static func champion_summary(buckets: Array, complete: bool) -> Dictionary:
 		var nm := str(names[sd]) if sd < names.size() else "神秘龟"
 		## ★冠军一律带 #玩家ID(用户 2026-10-04「名字 + #ID」): 这是全服名单, 不是一组里比重名。
 		var tg := str(tags[sd]) if sd < tags.size() else ""
-		lines.append("%s冠军 · %s%s" % [_CD.group_name(int(b.get("bucket", total - 1))), nm,
-			(" " + tg) if tg != "" else ""])
+		lines.append(_CP.kv("%s冠军" % _CD.group_name(int(b.get("bucket", total - 1))), _CP.who(nm, tg)))
 	var st := CH_NONE
 	if total > 0 and lines.size() == total:
 		st = CH_ALL
@@ -1471,9 +1459,9 @@ static func champion_text(cs: Dictionary) -> String:
 	else:
 		match str(cs.get("state", CH_NONE)):
 			CH_ALL:
-				head = "组冠军已全部产生 · 共 %d 组" % total
+				head = "组冠军（共 %d 组）" % total
 			CH_PARTIAL:
-				head = "%s进行中 · 组冠军 %d/%d" % [_P2C.STAGE_GROUP, int(cs.get("decided", 0)), total]
+				head = "已产生的组冠军（%d/%d）" % [int(cs.get("decided", 0)), total]
 			_:
 				head = "%s进行中" % _P2C.STAGE_GROUP
 	## 太多组就收尾一行, 不让框顶出屏幕(10 人规模下最多 3 组, 这是防将来)。
@@ -1517,14 +1505,13 @@ func _empty_icon_path(kind: String) -> String:
 func _empty_text() -> String:
 	match _empty_kind():
 		EK_WAIT:
-			return "正在查询分组"
+			return "正在载入"
 		EK_UNREACHABLE:
-			return "无法连接服务器 · 30 秒后自动刷新"
+			return "无法连接服务器\n请检查网络连接"
 		EK_NOT_SEATED:
-			return "未分组 · %s 自动分组" % _P2C.local_hhmm(
-				feed_week() + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
+			return "%s 公布分组" % _P2C.local_hhmm(feed_week() + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
-			return "本周晋级人数不足（%d 人）· 决赛日取消 · 晋级记录保留" % int(_feed_view().get("entered", 0))
+			return "本周决赛日取消\n晋级人数不足（%d 人），晋级记录保留" % int(_feed_view().get("entered", 0))
 		EK_FINALS_SOON:
 			## 开赛倒计时 + 已产生的组冠军(谁会进冠军杯赛)。
 			var left: int = _cup_start_ts() - _clock()
@@ -1532,28 +1519,27 @@ func _empty_text() -> String:
 				_week_view().has("buckets")))
 		EK_FINALS_LOCAL:
 			## 到点了还没成表: 说清在等开赛, 再列组冠军(★2026-10-04 的老规矩: 打完了就报出来, 不让人干等)。
-			return "%s · 等待开赛\n" % _P2C.STAGE_CUP + champion_text(champion_summary(_champ_buckets(),
+			return "%s即将开始\n" % _P2C.STAGE_CUP + champion_text(champion_summary(_champ_buckets(),
 				_week_view().has("buckets")))
 		EK_CUP_SOLO:
 			return cup_solo_text(_finals)
 		EK_GROUP_SOLO:
 			## 1 人组: 没有对局 ⇒ 说清去向与开赛时刻(本地时间)。
-			return "%s仅 1 人 · 直接晋级%s\n%s %s 开赛" % [sheet_name(_bucket), _P2C.STAGE_CUP, _P2C.STAGE_CUP,
+			return "%s仅 1 人，直接晋级%s\n%s %s 开赛" % [sheet_name(_bucket), _P2C.STAGE_CUP, _P2C.STAGE_CUP,
 				_P2C.local_hhmm(_cup_start_ts())]
 		EK_SEATED:
 			return "正在生成对阵"
 		EK_SPECTATE:
-			return "本周未晋级 · 仅可观战"
-	return "未晋级 · 需通过周六闯关赛"
+			return "本周未晋级决赛日"
+	## ★资格写成条件, 不写指令(原来「未晋级 · 需通过周六闯关赛」: 周日的观众做不到; Dota「…的玩家具有参赛资格。」)
+	return "本周未晋级决赛日\n%s" % _CP.kv("参赛资格", "周六闯关赛 %d 胜" % int(_P2C.GAUNTLET_WINS_IN))
 
 
 ## 冠军杯赛开赛倒计时那一行。`left` = 距冠军杯赛开赛(FINALS_START_HOUR_UTC)还有几秒。
 static func cup_soon_head(left: int) -> String:
 	if left <= 0:
-		return "%s · 等待开赛" % _P2C.STAGE_CUP
-	if left < 3600:
-		return "%s %d 分后开赛" % [_P2C.STAGE_CUP, maxi(1, left / 60)]
-	return "%s %d 小时 %d 分后开赛" % [_P2C.STAGE_CUP, left / 3600, (left % 3600) / 60]
+		return "%s即将开始" % _P2C.STAGE_CUP
+	return "距%s开始 %s" % [_P2C.STAGE_CUP, _CP.dur(left)]
 
 
 ## 冠军杯赛只有 1 人那一页(本周只有一个组: 那个组的冠军直接夺冠)。
@@ -1562,7 +1548,7 @@ static func cup_solo_text(cup: Dictionary) -> String:
 	var tags: Array = cup.get("tags", []) if cup.get("tags", []) is Array else []
 	var nm := str(names[0]) if not names.is_empty() else "神秘龟"
 	var tg := str(tags[0]) if not tags.is_empty() else ""
-	return "本周仅 1 名组冠军 · 直接夺冠\n冠军 · %s%s" % [nm, (" " + tg) if tg != "" else ""]
+	return "本周仅 1 名组冠军，直接夺冠\n%s" % _CP.kv("冠军", _CP.who(nm, tg))
 
 
 ## 冠军杯赛已收盘且决赛不在开播窗口里 ⇒ 顶上那一行「冠军 · 名字 #ID」; 否则 ""。
@@ -1580,7 +1566,7 @@ func cup_champion_line() -> String:
 	var names: Array = _finals.get("names", []) if _finals.get("names", []) is Array else []
 	var tags: Array = _finals.get("tags", []) if _finals.get("tags", []) is Array else []
 	var tg := str(tags[sd]) if sd < tags.size() else ""
-	return "冠军 · %s%s" % [str(names[sd]) if sd < names.size() else "神秘龟", (" " + tg) if tg != "" else ""]
+	return _CP.kv("冠军", _CP.who(str(names[sd]) if sd < names.size() else "神秘龟", tg))
 
 
 ## 两个 Tab 的样子：当前那张高亮；**还没形成的那张不禁用**（要让人点进去看倒计时），
@@ -1608,8 +1594,8 @@ func _sync_tabs() -> void:
 
 
 ## 第二张页签叫什么。★没成表 ⇒ 「· 未开赛」; 1 人表(直接夺冠)与成表一样不缀。
-static func finals_tab_text(finals_size: int) -> String:
-	return _P2C.STAGE_CUP + ("" if finals_size >= 1 else " · 未开赛")
+static func finals_tab_text(_finals_size: int) -> String:
+	return _P2C.STAGE_CUP
 
 
 ## 页签宽度**按字量**, 不拍脑袋。
@@ -2135,7 +2121,7 @@ func _open_popup(r: int, m: int) -> void:
 	vb.add_theme_constant_override("separation", 14)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(vb)
-	var info := "%s · %s" % [_Hero.round_name(int(cur().get("size", 0)), r), sheet_name(cur())]
+	var info := "%s%s" % [sheet_name(cur()), _Hero.round_name(int(cur().get("size", 0)), r)]
 	if play or rwatch:
 		vb.add_child(MatchCard.banner("本轮对战", info, Color("#5a4a1c"), Color("#2a2008"), MINE, Color("#e8d9b0")))
 	elif prem:
@@ -2586,7 +2572,7 @@ func _check_referee_watch() -> void:
 		return
 	if st == ST_UPCOMING:
 		var left := _PS.start_of(cur(), await_watch.x, await_watch.y) - srv_now()
-		_show_replay_msg("你的比赛 %s后开播" % countdown_text(left), ACCENT)
+		_show_replay_msg("你的比赛 %s 开播" % _CP.at(srv_now() + left), ACCENT)
 	_fetch_left = minf(_fetch_left, _RW.FINALS_POLL_SEC)
 
 
@@ -2621,7 +2607,7 @@ func open_replay(r: int, m: int, own: bool = false) -> void:
 	replay_busy = Vector2i(r, m)
 	var wk: int = feed_week()
 	last_replay_ask = {"week": wk, "bucket": bk, "round": r, "match": m}
-	_show_replay_msg("读取中…", ACCENT)
+	_show_replay_msg("正在载入", ACCENT)
 	## 2026-10-05: 多带这一场的两个人(`pair`)⇒ 回放铭牌能写出「谁 对 谁」(录像方是谁由录像里的对手快照认出来, 见 `ReplayRecorder.side_names`)。
 	var pair := [str(competitor(r, m, 0).get("name", "")), str(competitor(r, m, 1).get("name", ""))]
 	var pn := {"l": wn, "r": wn, "pair": pair}
@@ -2737,11 +2723,14 @@ func settle_wait_tip(lv: Dictionary) -> String:
 	if f.x != int(lv.get("round", 1)) or not is_my_match(f.x, f.y) or winner_side(f.x, f.y) >= 0:
 		return ""
 	if _RN.finals_on():
-		return "本场结算中 · 结果于开播时公布"   # 服务器裁判: 两侧都等服务器
+		return TXT_SETTLE_WAIT   # 服务器裁判: 两侧都等服务器
 	var side := my_side(f.x, f.y)
 	if side != 1 or _P2C.finals_fight_open(ra, srv, side) or played_awaiting_reveal(f.x, f.y):
 		return ""
-	return "本场结算中 · 结果于开播时公布"
+	return TXT_SETTLE_WAIT
+
+
+const TXT_SETTLE_WAIT := "本场结算中，结果于开播时公布"
 
 
 ## 备战那一行此刻的字(轮询与固定件排版共用一份)。`""` = 不出现。
@@ -2753,6 +2742,9 @@ func shop_row_text() -> String:
 	var lv := _live_dict()
 	var c := cur()
 	if int(c.get("size", 0)) > 1 and int(c.get("bucket", -9)) != int(lv.get("bucket", -8)):
+		return ""
+	## 这一行说的是**我的阵容**: 观众(me < 0)不出现
+	if int(lv.get("me", -1)) < 0:
 		return ""
 	var st := shop_tip(_SB.finals_shop_open_of(lv, _delta_now()), _SB.finals_shop_left_of(lv, _delta_now()),
 		shop_row_applies(lv))
@@ -2775,8 +2767,8 @@ static func shop_tip(shop_open: bool, left_sec: int, has_bucket: bool) -> String
 	if not has_bucket:
 		return ""
 	if shop_open:
-		return "备战购物 · 还剩 %s" % countdown_text(left_sec)
-	return "本轮备战已结束 · 等待开赛"
+		return "备战剩余 %s" % countdown_text(left_sec)
+	return "阵容已锁定"
 
 
 ## 备战那一行对这一组还适用吗。★2026-10-12 用户真机截图: 冠军杯赛已出冠军(顶部横幅),
@@ -2793,20 +2785,20 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 	if not tried:
 		return ""
 	if bool(res.get("ok", false)):
-		return "对手阵容已就位 · %s" % str(res.get("name", "对手"))
+		return _CP.kv("对手阵容已就位", str(res.get("name", "对手")))
 	match str(res.get("reason", "")):
 		"already_asked":
 			return "每轮仅可查看 1 名对手（已查看 %d 号）" % int(res.get("asked", -1))
 		"wrong_round":
-			return "本轮已结束，请刷新"
+			return "本轮已结束"
 		"not_in_bucket":
 			return "观战模式"
 		"empty_snapshot", "no_such_seed":
-			return "对手未提交阵容 · 判对手弃权"
+			return "对手未提交阵容，判对手弃权"
 		"shop_open":
-			return "备战阶段 · 结束后开赛"
+			return "备战中，备战结束后开赛"
 		"settled", "upper_first":
-			return "本场结算中 · 结果于开播时公布"
+			return TXT_SETTLE_WAIT
 		"update_required":
 			return "当前版本过低，请更新游戏"
 		"net", "bad_body":
@@ -2916,22 +2908,18 @@ func _live_dict() -> Dictionary:
 ## 倒计时的写法。★用户 2026-10-04 拍板「改成『8 分 43 秒后』」:
 ##   原来写 `8:43` —— 意思是 8 分 43 秒, 读起来却像 8 点 43 分。不足 1 分钟只写秒。
 static func countdown_text(sec: int) -> String:
-	var s: int = maxi(0, sec)
-	if s < 60:
-		return "%d 秒" % s
-	return "%d 分 %d 秒" % [s / 60, s % 60]
+	return _CP.dur(sec)        # ★2026-11-01 全决赛日一种写法(finals_copy.dur): 「8 分 43 秒」「3 分 00 秒」「43 秒」
 
 
 ## 顶上那行倒计时的话。★纯函数(喂数就能验)。
 ## ★★2026-10-11 周日实操: 2 人一组时整张图只有决赛一场, 屏幕却写「下一轮 5 分 22 秒后开播」——
 ##   已经没有下一轮了。最后一轮改说「决赛 X 后开播」。
-static func round_tip(cur_round: int, size: int, left_sec: int) -> String:
+## ★2026-11-01: 轮次名挪到处境句(原来第 1 轮也写「下一轮」); 这里只剩「距开播 X」(老服务端兜底那一档)。
+static func round_tip(_cur_round: int, _size: int, left_sec: int) -> String:
 	## ★2026-10-31 彩排: 服务端每分钟推进一次、这里每 30 秒重拉 ⇒ 归零后最多停一分半, 原来一直写「0 秒后开播」像卡住了。
 	if left_sec <= 0:
-		return "即将开播…"
-	if size > 1 and cur_round >= _B.rounds_for(size):
-		return "决赛 %s后开播" % countdown_text(left_sec)
-	return "下一轮 %s后开播" % countdown_text(left_sec)
+		return "即将开播"
+	return "距开播 %s" % countdown_text(left_sec)
 
 
 ## 顶上那行「下一轮 X 分 Y 秒后开」。★秒数来自**服务端的时间差**, 不看本机时钟绝对值。
@@ -2943,6 +2931,9 @@ func _sync_tip() -> void:
 	if _opp_tip_text != "":
 		return
 	var t := tip_text()
+	## P22: 倒计时归零 ⇒ 5 秒内重拉(原来要等满 30 秒, 加上服务端每分钟推进一次, 「即将开播」最多挂一分半)
+	if _SB.finals_left_of(_live_dict(), _delta_now()) == 0 and not bool(_live_dict().get("closed", false)):
+		_fetch_left = minf(_fetch_left, 5.0)
 	if t == "":
 		_tip.visible = false
 		return
@@ -2951,30 +2942,10 @@ func _sync_tip() -> void:
 	var vp: Vector2 = get_viewport().get_visible_rect().size
 	_tip.size.x = vp.x
 	_tip.position = Vector2(0.0, _hero_line0_y if _hero_on else 150.0)
-	## P22: 倒计时归零 ⇒ 5 秒内重拉(原来要等满 30 秒, 加上服务端每分钟推进一次, 「即将开播…」最多挂一分半)
-	if t.begins_with("即将开播") or t.find(" 0 秒后") >= 0:
-		_fetch_left = minf(_fetch_left, 5.0)
 
 
 ## 顶上那一行的字(倒计时 / 开播进度)。`""` = 不出现。
 ## ★跟着**正在看的那一张**走(P9 · S 清单第 9 条): 看别的组 / 我不在的冠军杯时说那一张的; 看我自己的(或空态页)说我正在打的那一张。
 ## ★一场接一场时句首补轮名(S 清单第 2 条):「半决赛第 1 场开播中 · 第 2 场 X 后开播」。
 func tip_text() -> String:
-	if _grid_on and _view == _L.VIEW_BUCKET:
-		return ""
-	var c := cur()
-	var lv := _live_dict()
-	if int(c.get("size", 0)) > 1 and int(c.get("me", -1)) < 0 and not bool(c.get("closed", false)):
-		lv = c
-	var seq_line: String = _LS.premiere_round_line(lv, _SB.finals_srv_now_of(lv, _delta_now()), countdown_text)
-	if seq_line != "":
-		var rn := _Hero.round_name(int(lv.get("size", 0)), _PS.flipped_round(lv))
-		if seq_line.begins_with("第 "):
-			seq_line = rn + seq_line                       # 冠军杯一场接一场:「1/4 决赛第 1 场开播中 · …」
-		elif seq_line.begins_with("本轮 "):
-			seq_line = rn + seq_line.substr(2)             # 小组赛同时开播:「半决赛 2 场开播中 · …」
-		return seq_line
-	var left: int = _SB.finals_left_of(lv, _delta_now())
-	if left < 0 or bool(lv.get("closed", false)):
-		return ""
-	return round_tip(int(lv.get("round", 1)), int(lv.get("size", 0)), left)
+	return str(_info.tip_line())

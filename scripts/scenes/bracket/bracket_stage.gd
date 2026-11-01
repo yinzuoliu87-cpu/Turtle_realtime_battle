@@ -5,19 +5,21 @@ extends RefCounted
 ##   · 本轮名牌墙(⑭ · G4 · Fall Guys 2-5 / Trackmania 5-1): 本轮所有人的名牌一排 → 输家逐个盖红叉 → 晋级者亮起抬高 → 揭晓下一轮对阵
 ##   · 3 分钟备战屏(⑮ · G5 · Chess.com 3-4 / 金铲铲 W-6): 大倒计时 + 本轮进度 + 下一轮谁对谁与一句利害 + 一排在动的选手卡
 ##   · 全部组宫格(⑲ · G23 · 9-7): 每格 组号 / 正在播谁 / 比分 / 组冠军, 点哪格进哪组
-##   · 开赛前大倒计时(⑫ · P12): 分组前 / 冠军杯赛开赛前(钟点都读常量), 大字倒计时 + 已报名人数
+##   · 开赛前那一页(⑫ · P12): 交给 `bracket_preseat.gd`(距开始 + 今晚赛程 + 晋级名单), 这里只决定出不出
 ##   · 即将开播那一格的说明卡(S 分身清单第 7 条): 只写「X 后开播」
 ## ★这些全不在 `_canvas` 里(③「画布里真按钮数 == 可点场次数」); 字一律不以「✓」开头(①的分母只数对阵卡)。
 ## ★过场里不判任何东西: 谁输谁赢 / 下一轮谁对谁 / 还剩几秒, 全由场景算好喂进来(`BracketMapScene.wall_data()` 等)。
 
 const _H := preload("res://scripts/scenes/bracket/bracket_hero.gd")
 const _C := preload("res://scripts/scenes/bracket/bracket_chrome.gd")
+const _PRE := preload("res://scripts/scenes/bracket/bracket_preseat.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
+const _Q := preload("res://scripts/net/finals_qualified.gd")
 
 const WALL_SEC := 5.6          # 名牌墙整段时长(G4: 打叉 → 亮起 → 揭晓, 不放按钮; 点一下跳过)
 const N_WALL := "NameWall"
 const N_PREP := "PrepScreen"
 const N_GRID := "GroupGrid"
-const N_PRESHOW := "PreShow"
 const N_UPCOMING := "UpcomingCard"
 
 var s
@@ -121,91 +123,6 @@ func _avatar(p: Control, r: Rect2, c: Dictionary, dim: bool = false, gold: bool 
 		for k in p.get_children():
 			if str(k.name) == "Portrait" and is_instance_valid(k):
 				(k as CanvasItem).modulate = Color(0.55, 0.52, 0.55, 1.0)
-
-
-# ═══════════════════════════════════════════════════════════════════
-#  ⑫ 开赛前大倒计时
-# ═══════════════════════════════════════════════════════════════════
-## `d` = {"title", "end_ts"(服务端 unix, 0 = 不数), "sub"}; 返回大倒计时块的下沿(空态框接在它下面)。
-func preshow(vp: Vector2, band: Dictionary, d: Dictionary) -> float:
-	var rt := _ensure_root()
-	var box := Control.new()
-	box.name = N_PRESHOW
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rt.add_child(box)
-	var top := float(band.get("top", 150.0)) - 24.0
-	var w := clampf(vp.x * 0.56, 560.0, 760.0)
-	var r := Rect2(Vector2((vp.x - w) * 0.5, top), Vector2(w, 196.0))
-	_plate(box, r, _H.GOLD_DEEP)
-	## 奖杯两侧各一枚(像素原图整数倍)
-	if ResourceLoader.exists(_H.TEX_TROPHY):
-		for k in [0, 1]:
-			var tr := TextureRect.new()
-			tr.texture = load(_H.TEX_TROPHY)
-			tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tr.size = Vector2(96, 96)
-			tr.position = Vector2(r.position.x + 24.0 if k == 0 else r.end.x - 120.0, r.position.y + 50.0)
-			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			box.add_child(tr)
-	var tl := _lb(str(d.get("title", "")), 24, _H.GOLD)
-	tl.name = "PreShowTitle"
-	tl.position = r.position + Vector2(0, 16)
-	tl.size = Vector2(w, 32)
-	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(tl)
-	var end_ts := int(d.get("end_ts", 0))
-	var big := _lb("", 44, _H.TXT)
-	big.name = "PreShowCountdown"
-	big.position = r.position + Vector2(0, 62)
-	big.size = Vector2(w, 64)
-	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	big.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	box.add_child(big)
-	var fn := func() -> String:
-		if end_ts <= 0:
-			return str(d.get("big", ""))
-		return str(s._info.big_countdown(end_ts - int(s.srv_now())))
-	big.text = fn.call()
-	live_texts.append([big, fn])
-	var sl := _lb(str(d.get("sub", "")), 17, Color("#e9d6a8"))
-	sl.name = "PreShowSub"
-	sl.position = r.position + Vector2(0, 140)
-	sl.size = Vector2(w, 40)
-	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	box.add_child(sl)
-	## 一图讲清一整晚(2-1): 小组赛 → 组冠军 → 冠军杯赛 → 冠军; 现在走到哪一站亮金
-	var steps: Array = d.get("steps", [])
-	if not steps.is_empty():
-		var sy := r.end.y + 196.0
-		var sw := minf(vp.x - 120.0, 860.0)
-		var sx := (vp.x - sw) * 0.5
-		var gapw := sw / float(steps.size())
-		for i in range(steps.size()):
-			var st: Dictionary = steps[i]
-			var cxs := sx + gapw * (float(i) + 0.5)
-			var on := bool(st.get("on", false))
-			if i < steps.size() - 1:
-				_box(box, Rect2(cxs + 14.0, sy + 11.0, gapw - 28.0, 3.0), _H.GOLD_DEEP if on else _H.BRONZE)
-			_box(box, Rect2(cxs - 12.0, sy, 24.0, 24.0).grow(2.0), _H.INK)
-			_box(box, Rect2(cxs - 12.0, sy, 24.0, 24.0), _H.GOLD if on else _H.BRONZE)
-			_box(box, Rect2(cxs - 7.0, sy + 5.0, 14.0, 14.0), _H.PLATE if not on else Color("#fff0b8"))
-			var t1 := _lb(str(st.get("time", "")), 15, _H.GOLD if on else _H.TXT_DIM, true)
-			t1.position = Vector2(cxs - gapw * 0.5, sy - 26.0)
-			t1.size = Vector2(gapw, 22.0)
-			t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			box.add_child(t1)
-			var t2 := _lb(str(st.get("name", "")), 17, _H.TXT if on else _H.TXT_DIM, true)
-			t2.position = Vector2(cxs - gapw * 0.5, sy + 30.0)
-			t2.size = Vector2(gapw, 24.0)
-			t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			box.add_child(t2)
-	if end_ts > 0:
-		box.modulate.a = 0.0
-		var tw := box.create_tween()
-		tw.tween_property(box, "modulate:a", 1.0, UIPalette.T_TRANS)
-	return r.end.y + 18.0
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -337,7 +254,7 @@ func name_wall(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 	nx.modulate.a = 0.0
 	wall.add_child(nx)
 	var ny := y0 + ph + 22.0
-	var nt := _lb("下一轮 · %s" % str(d.get("next_title", "")), 22, _H.GOLD)
+	var nt := _lb(_FC.kv("下一轮", str(d.get("next_title", ""))), 22, _H.GOLD)
 	nt.position = Vector2(0, ny)
 	nt.size = Vector2(vp.x, 30)
 	nt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -421,9 +338,11 @@ func prep(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 	big.pivot_offset = Vector2(w * 0.5, 30)
 	pnl.add_child(big)
 	var left_fn := func() -> int: return end_ts - int(s.srv_now())
+	## ★数的是**备战结束**(end_ts = round_at + 备战时长), 原来写「3 分 0 秒后开播」—— 开播在备战结束之后(服务器演算完才翻面),
+	##   同一屏顶上那行同时写「下一轮 8 分 0 秒后开播」, 两个「开播」差 5 分钟。⇒ 这里写「剩余」, 标题写「半决赛备战」。
 	var fn := func() -> String:
 		var lf: int = left_fn.call()
-		return ("%s后开播" % s.countdown_text(lf)) if lf > 0 else "即将开播…"
+		return ("剩余 %s" % _FC.dur(lf)) if lf > 0 else "备战结束"
 	big.text = fn.call()
 	big.set_meta("left_fn", left_fn)
 	live_texts.append([big, fn])
@@ -626,7 +545,7 @@ func grid(vp: Vector2, band: Dictionary, cells: Array) -> void:
 			nl.size = Vector2(body.size.x - av - 24, av * 0.55)
 			nl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			vis.add_child(nl)
-			var sl := _lb("组冠军 · 晋级%s" % s._P2C.STAGE_CUP, 13, _H.TXT_DIM, false)
+			var sl := _lb("组冠军", 13, _H.TXT_DIM, false)
 			sl.position = Vector2(body.position.x + av + 18, body.position.y + 2 + av * 0.55)
 			sl.size = Vector2(body.size.x - av - 24, av * 0.45)
 			vis.add_child(sl)
@@ -736,7 +655,7 @@ func upcoming_card(vp: Vector2, title: String, a: Dictionary, b: Dictionary, lef
 	card.add_child(big)
 	var fn := func() -> String:
 		var lf := int(left_fn.call())
-		return ("%s后开播" % s.countdown_text(lf)) if lf > 0 else "即将开播…"
+		return ("距开播 %s" % _FC.dur(lf)) if lf > 0 else "即将开播"
 	big.text = fn.call()
 	live_texts.append([big, fn])
 	var cl := Button.new()
@@ -757,41 +676,50 @@ func upcoming_card(vp: Vector2, title: String, a: Dictionary, b: Dictionary, lef
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  ⑫ 空态整页: 顶上固定件 + 开赛前大倒计时(分组 / 冠军杯赛, 钟点读常量)+ 已报名人数 + 一整晚四站; 说明框接在下面
+#  ⑫ 空态整页: 顶上固定件 + (开赛前)赛前页; 其余空态 = 说明框接在固定件下面
 # ═══════════════════════════════════════════════════════════════════
+## ★2026-11-01: 开赛前那一页换成 `bracket_preseat.gd`(距开始 + 今晚赛程 + 晋级名单), 晋级 / 没晋级同一页;
+##   原来晋级的人看到倒计时 + 「未分组 · 18:00 自动分组」, 没晋级的人只有「未晋级 · 需通过周六闯关赛」一把锁。
 func empty_preshow(vp0: Vector2, bw: float, bh: float) -> void:
 	s._hero_on = true
 	var band: Dictionary = s._chrome.build(vp0, false)
 	_restyle_empty_box()
-	var d := {}
 	var kind := str(s._empty_kind())
-	var cup_ts := int(s._cup_start_ts())
-	if kind == str(s.EK_NOT_SEATED):
-		var seat_ts: int = int(s._P2C.finals_seat_ts(int(s.feed_week())))
-		var en := int(s._feed_view().get("entered", 0))
-		d = {"title": "%s · %s 开赛" % [s._P2C.STAGE_GROUP, s._P2C.local_hhmm(seat_ts)], "end_ts": seat_ts,
-			"sub": ("已报名 %d 人 · " % en if en > 0 else "") + "分组单败 · 组冠军晋级%s（%s）" % [s._P2C.STAGE_CUP,
-				s._P2C.local_hhmm(cup_ts)], "steps": night_steps(0)}
-	elif kind == str(s.EK_FINALS_SOON) or kind == str(s.EK_GROUP_SOLO):
-		d = {"title": "%s · %s 开赛" % [s._P2C.STAGE_CUP, s._P2C.local_hhmm(cup_ts)], "end_ts": cup_ts,
-			"sub": "组冠军晋级 · 单败淘汰 · 一场接一场开播", "steps": night_steps(2)}
-	var y: float = float(band["top"]) - 10.0
-	if not d.is_empty():
-		y = preshow(vp0, band, d)
-	y = minf(y, vp0.y - bh - 16.0)
+	var now := int(s._clock())
+	var sunday: bool = int(s._P2C.iso_weekday_utc(now)) == 7
+	var mode := _PRE.mode_for(kind, sunday and bool(s._P2C.finals_before_seating(now)), bool(s._viewing_past()))
+	if mode != "":
+		s._empty_box.visible = false
+		var pre := _PRE.new(s)
+		pre.build(_ensure_root(), vp0, float(band["top"]), preseat_data(mode, kind))
+		s._refresh_lines()
+		return
+	var y: float = minf(float(band["top"]) - 10.0, vp0.y - bh - 16.0)
 	s._empty_box.position = Vector2((vp0.x - bw) * 0.5, y)
 	s._refresh_lines()
 
 
-## 一整晚四站(2-1): 走到第 `at` 站(0 起)亮金。
-func night_steps(at: int) -> Array:
-	var seat_ts: int = int(s._P2C.finals_seat_ts(int(s.feed_week())))
-	var names := [["分组开赛", s._P2C.local_hhmm(seat_ts)], ["小组赛", "依次开播"],
-		[s._P2C.STAGE_CUP, s._P2C.local_hhmm(int(s._cup_start_ts()))], ["冠军诞生", "收盘"]]
-	var out: Array = []
-	for i in range(names.size()):
-		out.append({"name": names[i][0], "time": names[i][1], "on": i <= at})
-	return out
+## 赛前页要的数(只读场景与缓存, 不判)。晋级名单: 服务端 finals_qualified_list(拿不到 ⇒ 只给人数或什么都不给)。
+func preseat_data(mode: String, kind: String) -> Dictionary:
+	var d := {"mode": mode, "now": int(s.srv_now()), "groups": s._spectate_list(), "cup": s._finals,
+		"wins_in": int(s._P2C.GAUNTLET_WINS_IN), "me_in": kind == str(s.EK_NOT_SEATED)}
+	if mode == _PRE.MODE_CUP:
+		d["end_ts"] = int(s._cup_start_ts())
+		d["champs"] = (s.champion_summary(s._champ_buckets(), true) as Dictionary).get("lines", [])
+		return d
+	var wk := int(s.feed_week())
+	d["end_ts"] = int(s._P2C.finals_seat_ts(wk))
+	var q: Dictionary = _Q.cached(wk)
+	if not q.is_empty():
+		d["list"] = q.get("list", [])
+		d["n"] = int(q.get("n", 0))
+	elif kind == str(s.EK_NOT_SEATED):
+		d["n"] = int(s._feed_view().get("entered", 0))
+	var sc = s
+	_Q.fetch(wk, func() -> void:
+		if is_instance_valid(sc):
+			sc._rebuild())
+	return d
 
 
 ## 说明框换成这一屏的暖色牌子(不透明底 + 青铜边 + 直角; 不是金属框)。

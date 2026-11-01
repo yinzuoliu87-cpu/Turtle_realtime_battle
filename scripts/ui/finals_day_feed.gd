@@ -8,6 +8,7 @@ const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const _SB := preload("res://scripts/net/supabase.gd")
 const _M := preload("res://scripts/ui/finals_day_model.gd")
 const _Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
+const _FQ := preload("res://scripts/net/finals_qualified.gd")
 
 ## 【门禁 / 实拍注入点】{"group": 我那一组, "cup": 冠军杯赛, "groups": [各组]}。空 = 读 Supabase 缓存(玩家路径)。
 static var override: Dictionary = {}
@@ -45,6 +46,9 @@ static func pull(now: int) -> void:
 	_SB.fetch_finals_week_async(wk)
 	if entered():
 		_SB.fetch_finals_async(wk, -1)
+	## 分组之前: 本周晋级名单(主菜单决赛日卡「本周晋级 N 人」/ 对阵图赛前页; 自带 60 秒节流)
+	if now < _M.seat_ts(now):
+		_FQ.fetch(wk)
 
 
 ## 上周冠军: 问上周的冠军杯赛 + 上周赛况板的头像(各一次)。

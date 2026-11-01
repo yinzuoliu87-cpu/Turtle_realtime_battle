@@ -137,6 +137,10 @@
    `referee_poller.py --bot-pool --version <新版本>`（调这个版本的 Godot 生成 2052 份 = `Backend.make_bot` 同一个函数，分批上传，
    同时把 `referee_versions.rules_ver` 登记上）。回读 `select public.referee_backlog()->'bot_pool';` 新版本 `rows` = 2052。
    ★忘了这一步：那个版本的玩家挑不到机器人 ⇒ 开战回 `no_opponent`（屏上「匹配失败，请稍后重试」）；`--health` 在闯关赛开着时报警。
+   ★2026-11-01 起（迁移 20261101d · 方案书 [docs/plans/20261101c-积分赛服务器裁判.md](../../docs/plans/20261101c-积分赛服务器裁判.md)）同一条命令顺带生成并上传
+   **积分赛对手池** `ranked_pool`（内置陪练 396 份 + 机器人 31 × 6 份；工程里没有 `generate_ranked` 的老版本跳过）。
+   回读 `select kind, rules_ver, count(*) from public.ranked_pool group by 1, 2;` ⇒ seed 396 / bot 186。
+   ★积分赛开关 `ranked_on` 打开之后这一步与周六池同样要紧：场次 0 没有真人快照，全靠池子；池子空 ⇒ 积分赛第一场开不了（`--health` 还没盯这个池）。
 5. 旧版本的任务清空之后（`select client_version, count(*) from referee_jobs where status in ('pending','claimed') group by 1`）再删旧目录、`update referee_versions set enabled = false`。
 
 ## 运维

@@ -41,6 +41,10 @@
                                     对每个装了的版本（或只 V）调 Godot 生成（scripts/referee/bot_pool.gd = Backend.make_bot 同一个函数），
                                     分批 rpc/referee_bot_pool_load 上传（第一批清掉同规则版本的旧池）；给了 --out 就只写文件不上传。
                                     ★每装一个新版本都要跑一次（服务端按 rules_ver 挑机器人；池子空 ⇒ 挑不到机器人 ⇒ 玩家开不了战，--health 报警）。
+                                    ★2026-11-01 起同一条命令顺带生成并上传**积分赛对手池**（迁移 20261101d · 方案书
+                                    docs/plans/20261101c-积分赛服务器裁判.md）：内置陪练（客户端池子里那 396 份）+ 兜底机器人
+                                    （scripts/referee/bot_pool.gd generate_ranked，Godot 参数 --ranked-pool=）→ rpc/referee_ranked_pool_load
+                                    （按种类分批，每种第一批清旧）。工程里没有 generate_ranked（0.22.7 之前的版本）⇒ 跳过这一半。
 """
 import argparse
 import json
@@ -441,6 +445,57 @@ def gen_bot_pool(proj: str, out_path: str, timeout_sec: int = 600) -> dict:
     return pool
 
 
+def ranked_pool_supported(proj: str) -> bool:
+    """这一版工程会不会生成积分赛池（bot_pool.gd 里有 generate_ranked = 0.22.7 起）。"""
+    try:
+        with open(os.path.join(proj, "scripts", "referee", "bot_pool.gd"), encoding="utf-8") as f:
+            return "static func generate_ranked(" in f.read()
+    except OSError:
+        return False
+
+
+def gen_ranked_pool(proj: str, out_path: str, timeout_sec: int = 600) -> dict:
+    """调 Godot 生成积分赛池（--ranked-pool=），返回解析后的 json；失败抛 RuntimeError。参数与 gen_bot_pool 同一套。"""
+    wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "botpool")
+    ud = os.path.join(wdir, "userdata-ranked")
+    shutil.rmtree(ud, ignore_errors=True)
+    os.makedirs(ud, exist_ok=True)
+    e = dict(os.environ)
+    e.pop("SUPABASE_SERVICE_KEY", None)
+    e.update({"XDG_DATA_HOME": ud, "APPDATA": ud, "HOME": ud, "TURTLE_SUPABASE": " ", "TURTLE_BACKEND": " "})
+    if os.path.exists(out_path):
+        os.remove(out_path)
+    cmd = [env("GODOT_BIN", "/opt/godot/godot"), "--headless", "--audio-driver", "Dummy", "--path", proj, SCENE,
+           "--quit-after", QUIT_AFTER_FRAMES, "--", "--ranked-pool=" + out_path]
+    r = subprocess.run(cmd, env=e, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout_sec)
+    if r.returncode != 0 or not os.path.exists(out_path):
+        raise RuntimeError("godot rc=%s %s" % (r.returncode, (r.stdout + r.stderr)[-400:]))
+    with open(out_path, encoding="utf-8") as f:
+        pool = json.load(f)
+    if not isinstance(pool, dict) or int(pool.get("rules_ver", 0)) < 1             or not isinstance(pool.get("seed_rows"), list) or not pool["seed_rows"]             or not isinstance(pool.get("bot_rows"), list) or not pool["bot_rows"]:
+        raise RuntimeError("积分赛池形状不对: %s" % out_path)
+    return pool
+
+
+def upload_ranked_pool(pool: dict) -> dict:
+    """两种（seed / bot）各自分批上传；每种第一批 p_replace = true。返回 {seed: 回包, bot: 回包}（含 total）。"""
+    out = {}
+    for kind, key in (("seed", "seed_rows"), ("bot", "bot_rows")):
+        rows = pool[key]
+        last = {}
+        for i in range(0, len(rows), BOT_POOL_BATCH):
+            last = rpc("referee_ranked_pool_load", {"p_client_version": str(pool["client_version"]),
+                                                    "p_rules_ver": int(pool["rules_ver"]), "p_kind": kind,
+                                                    "p_rows": rows[i:i + BOT_POOL_BATCH], "p_replace": i == 0},
+                       timeout=60.0) or {}
+            if not last.get("ok") or int(last.get("rejected", 0)) > 0:
+                raise RuntimeError("积分赛池 %s 第 %d 批被拒: %s" % (kind, i // BOT_POOL_BATCH, json.dumps(last, ensure_ascii=False)))
+        if int(last.get("total", -1)) != len(rows):
+            raise RuntimeError("积分赛池 %s 上传后行数 %s ≠ 生成的 %d" % (kind, last.get("total"), len(rows)))
+        out[kind] = last
+    return out
+
+
 def upload_bot_pool(pool: dict) -> dict:
     """分批上传；第一批 p_replace = true（清掉同规则版本的旧池）。返回最后一批的回包（含 total）。"""
     rows = pool["rows"]
@@ -472,11 +527,30 @@ def bot_pool_cmd(versions: dict, only: str, out_dir: str) -> int:
                 raise RuntimeError("生成的版本 %s ≠ 工程版本 %s" % (pool.get("client_version"), ver))
             if out_dir:
                 log("bot-pool %s: rules_ver=%s rows=%d → %s（只写文件）" % (ver, pool["rules_ver"], len(pool["rows"]), path))
-                continue
-            r = upload_bot_pool(pool)
-            log("bot-pool %s: rules_ver=%s rows=%d 上传完 → %s" % (ver, pool["rules_ver"], len(pool["rows"]), json.dumps(r)))
+            else:
+                r = upload_bot_pool(pool)
+                log("bot-pool %s: rules_ver=%s rows=%d 上传完 → %s" % (ver, pool["rules_ver"], len(pool["rows"]), json.dumps(r)))
         except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired, urllib.error.URLError) as ex:
             log("ERROR bot-pool %s: %s" % (ver, ex))
+            rc = 1
+        ## 积分赛池（2026-11-01 · 迁移 20261101d）：0.22.7 之前的工程没有生成器 ⇒ 跳过这一半（它们也不会有积分赛裁判局）
+        if not ranked_pool_supported(proj):
+            log("ranked-pool %s: 这一版工程没有 generate_ranked, 跳过" % ver)
+            continue
+        rpath = os.path.join(os.path.dirname(path), "ranked_pool_%s.json" % ver)
+        try:
+            rpool = gen_ranked_pool(proj, rpath)
+            if str(rpool.get("client_version")) != ver:
+                raise RuntimeError("生成的版本 %s ≠ 工程版本 %s" % (rpool.get("client_version"), ver))
+            if out_dir:
+                log("ranked-pool %s: rules_ver=%s seeds=%d bots=%d → %s（只写文件）" % (
+                    ver, rpool["rules_ver"], len(rpool["seed_rows"]), len(rpool["bot_rows"]), rpath))
+                continue
+            r = upload_ranked_pool(rpool)
+            log("ranked-pool %s: rules_ver=%s seeds=%d bots=%d 上传完 → %s" % (
+                ver, rpool["rules_ver"], len(rpool["seed_rows"]), len(rpool["bot_rows"]), json.dumps(r)))
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired, urllib.error.URLError) as ex:
+            log("ERROR ranked-pool %s: %s" % (ver, ex))
             rc = 1
     return rc
 

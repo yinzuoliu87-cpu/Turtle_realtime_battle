@@ -95,14 +95,14 @@ func _ready() -> void:
 	_fx = FX.new()
 	_fx.size = vp
 	_root.add_child(_fx)
-	_title = UI.ribbon(_root, Vector2(c.x, TITLE_Y), 480, "冠军杯", 48, "gold", "IntroTitle")
+	_title = UI.ribbon(_root, Vector2(c.x, TITLE_Y), 480, "冠军杯赛", 48, "gold", "IntroTitle")
 	var n := entrants().size()
-	var sub := "组冠军登场 · %d 位" % n
+	var sub := "%d 位组冠军登场" % n
 	var ed := DATA.edition_line(int(data.get("week", 0)), int(data.get("edition", -1)))
 	if ed != "":
-		sub += " · " + ed
+		sub = ed + "　" + sub
 	_sub = UI.label_in(_root, Rect2(0, TITLE_Y + 54, vp.x, 32), sub, 24, UI.TXT, false, "IntroSub")
-	_end = UI.label_in(_root, Rect2(0, c.y - 60, vp.x, 84), "冠军杯 即将开播", 60, UI.GOLD, true, "IntroEnd")
+	_end = UI.label_in(_root, Rect2(0, c.y - 60, vp.x, 84), "冠军杯赛即将开播", 60, UI.GOLD, true, "IntroEnd")
 	_end.modulate.a = 0.0
 	## 亮相那一位: 头像占屏 1/3 高(手机 240 · iPad 逻辑 320); 卡 = 头像 + 来历缎带 + 名字
 	face_px = roundf(vp.y / 3.0)

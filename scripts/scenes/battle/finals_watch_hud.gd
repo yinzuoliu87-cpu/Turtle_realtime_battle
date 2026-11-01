@@ -41,9 +41,9 @@ const LATE_STEPS := 600
 const TXT_LIVE := "开播中"
 const TXT_FROM_START := "从头看"
 const TXT_BACK_LIVE := "回到直播"
-const TXT_LANE_RESULT := "%s · 战果"
-const TXT_LANE_TAKE := "%s 拿下%s"
-const TXT_LANE_NEXT := "接下来 · %s"
+const TXT_LANE_RESULT := "%s战果"
+const TXT_LANE_TAKE := "%s 赢得%s"
+const TXT_LANE_NEXT := "接下来：%s"
 ## 路名全称(用户 10-07「我们叫上路战场，下路战场，终极战场」)
 const LANE_NAMES := {"top": "上路战场", "bottom": "下路战场", "final": "终极战场"}
 
@@ -410,7 +410,7 @@ func _set_break_title(cur: String) -> void:
 		art.custom_minimum_size = art.size
 		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(art)
-	var r2 := Ctx.title_lbl("· 战果", 36, Color("#fff2c8"))
+	var r2 := Ctx.title_lbl("战果", 36, Color("#fff2c8"))
 	r2.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(r2)
 

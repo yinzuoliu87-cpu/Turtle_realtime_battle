@@ -14,6 +14,7 @@ const _B := preload("res://scripts/gamedata/bracket.gd")
 const _L := preload("res://scripts/gamedata/bracket_layout.gd")
 const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
 const _PS := preload("res://scripts/systems/replay/premiere_schedule.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 
 ## 今天走到哪一段(按时刻 + 已揭晓的赛果)。
 const PH_PRE := "pre"        # 18:00 分组之前
@@ -44,8 +45,9 @@ const K_UPCOMING := "upcoming" # 已排进档期, 还没开播(一场接一场)
 const K_LIVE := "live"         # 开播中
 const K_CUP_WAIT := "cup_wait" # 我拿下了小组, 等冠军杯赛成表
 
-## 「不调整就沿用当前阵容」—— 服务端在玩家不调整时用 `finals_entrants.snapshot`(入座时那份, 备战里改阵容会更新它)。
-const TXT_KEEP_LINEUP := "不调整就沿用当前阵容"
+## 「未调整阵容时沿用当前阵容」—— 服务端在玩家不调整时用 `finals_entrants.snapshot`(入座时那份, 备战里改阵容会更新它)。
+##   ★对阵图备战屏与全局小条同一句(原来两处各写一版:「不调整就沿用当前阵容」/「不调整阵容则沿用上一轮阵容」)。
+const TXT_KEEP_LINEUP := "未调整阵容时沿用当前阵容"
 
 
 # ══════════════════════════════ 时刻 ══════════════════════════════
@@ -63,13 +65,11 @@ static func is_finals_time(now: int) -> bool:
 	return _P2.iso_weekday_utc(now) == 7 and _P2.phase_at_utc(now) == _P2.PHASE_FINALS
 
 
-## 剩余秒 → 「1:05:09」/「4:07」(倒计时一律带秒走, 动起来)。`full` ⇒ 不满一小时也写「0:20:00」
-##   (卡上子卡紧挨着「18:00」这种开赛时刻, 只写「20:00」分不清是时刻还是剩多久)。
-static func clock_text(sec: int, full: bool = false) -> String:
-	var s := maxi(0, sec)
-	if s >= 3600 or full:
-		return "%d:%02d:%02d" % [s / 3600, (s % 3600) / 60, s % 60]
-	return "%d:%02d" % [s / 60, s % 60]
+## 剩余秒 → 「54 分 09 秒」(倒计时一律带秒走, 动起来)。★2026-11-01 起全决赛日只有一种写法(`finals_copy.dur`):
+##   原来这里写「4:07」/「0:54:59」, 同一屏上与「54 分 59 秒」并存, 而且紧挨着「18:00」读着像钟点(用户 10-04)。
+##   `full` 留着只为不改调用方签名(已不起作用)。
+static func clock_text(sec: int, _full: bool = false) -> String:
+	return _FC.dur(sec)
 
 
 # ══════════════════════════════ 一张图 ══════════════════════════════
@@ -128,9 +128,9 @@ static func round_name(n: int, r: int) -> String:
 	return _L.round_label(n, r)
 
 
-## 「冠军杯赛 · 半决赛」/「C 组 · 决赛」。
+## 「冠军杯赛半决赛」/「C 组决赛」(一个名词短语, 不用「·」拼)。
 static func stage_line(b: Dictionary, r: int) -> String:
-	return "%s · %s" % [sheet_name(b), round_name(int(b.get("size", 0)), r)]
+	return _FC.join(sheet_name(b), round_name(int(b.get("size", 0)), r))
 
 
 ## 第 r 轮第 m 场两边的名字(未定 = "")。按已揭晓的结果推(不剧透下一轮谁上来)。
@@ -180,9 +180,34 @@ static func next_slot(b: Dictionary, now: int) -> Array:
 static func flip_eta(b: Dictionary) -> int:
 	var left := int(b.get("left", -1))
 	var sn := int(b.get("srv_now", 0))
+	if sn <= 0:
+		sn = int(b.get("recv_at", 0))        # 收包时刻(与 srv_now 同一刻; 老形状只带了 recv_at)
 	if left < 0 or sn <= 0 or bool(b.get("closed", false)):
 		return 0
 	return sn + left
+
+
+## ★★这一张图「下一次开播」的唯一答案(2026-11-01): {"at", "r", "m"}; 不知道 = {}。
+##   对阵图的处境句 / 倒计时 / 底部「下一场」卡、全局小条、主菜单都从这里取 —— 原来对阵图底部卡自己算
+##   「约 round_at + 备战时长」(= 备战结束, 不是开播), 18:05 实拍同屏三个时刻: 18:08 / 约 18:03(已过去)/ 3 分 0 秒后。
+##   · 已排进档期、还没开播的那一场(一场接一场 / 同一轮同时)⇒ 它的开播时刻(r, m 准确)
+##   · 还没翻面 ⇒ 服务端 next_at(本轮最早翻面 = 开播)时刻, m = -1(还不知道是哪一场先播)
+##   · 备战结束、服务器在算(settling)/ 下一轮备战还没开始 / 收盘 / 时刻已过 ⇒ {}(不给会过去的预告)
+static func premiere_eta(b: Dictionary, now: int) -> Dictionary:
+	if b.is_empty() or int(b.get("size", 0)) < 2:
+		return {}
+	var ns := next_slot(b, now)
+	if not ns.is_empty():
+		return {"at": int(ns[0]), "r": int(ns[1]), "m": int(ns[2])}
+	if bool(b.get("closed", false)) or _PS.settling(b, now):
+		return {}
+	## 上一轮播完、下一轮备战还没开始: 下一轮几点开播还说不准(要等 3 分钟备战 + 服务器演算), 只说备战几点开始(`prep_eta`)
+	if _PS.before_shop(b, now):
+		return {}
+	var e := flip_eta(b)
+	if e > now:
+		return {"at": e, "r": int(b.get("round", 1)), "m": -1}
+	return {}
 
 
 ## 所有图(各组 + 冠军杯赛)里此刻开播中的: [{"b", "r", "m"}, ...]。冠军杯赛排最前(全服一路), 其余按组号。
@@ -198,20 +223,14 @@ static func live_all(groups: Array, cup: Dictionary, now: int) -> Array:
 	return out
 
 
-## 所有图里最早的下一场: {"b", "r", "m", "at"}; 没有 = {}。
-static func next_all(groups: Array, cup: Dictionary, now: int) -> Dictionary:
-	var best := {}
-	var all: Array = groups.duplicate()
-	if not cup.is_empty():
-		all.push_front(cup)
-	for g in all:
-		if not (g is Dictionary):
-			continue
-		var s := next_slot(g, now)
-		if s.is_empty():
-			continue
-		if best.is_empty() or int(s[0]) < int(best["at"]):
-			best = {"b": g, "r": int(s[1]), "m": int(s[2]), "at": int(s[0])}
+## 所有图里最早的「下一轮备战开始」(上一轮播完、下一轮备战还没开始那一段): 时刻; 没有 = 0。
+static func prep_eta(boards: Array, now: int) -> int:
+	var best := 0
+	for b in boards:
+		if b is Dictionary and _PS.before_shop(b, now):
+			var ra := int((b as Dictionary).get("round_at", 0))
+			if ra > now and (best == 0 or ra < best):
+				best = ra
 	return best
 
 
@@ -549,17 +568,17 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 				(wv[2] as Array).append(int(it[0]))
 		for i in range(waves.size()):
 			var wv: Array = waves[i]
-			var which := round_name(n, fr) if waves.size() == 1 else "%s 第 %d 场" % [round_name(n, fr), i + 1]
+			var which := round_name(n, fr) if waves.size() == 1 else "%s第 %d 场" % [round_name(n, fr), i + 1]
 			var who := ""
 			if (wv[2] as Array).size() == 1:
 				var pr := pair_names(bd, fr, int(wv[2][0]), now)
 				who = "%s 对 %s" % [pr[0], pr[1]] if str(pr[0]) != "" and str(pr[1]) != "" else ""
 			if now < int(wv[0]):
-				out["up:%d:%d@%d" % [bk, fr, int(wv[0])]] = "%s %s %s 开播" % [sheet_name(bd), which, _P2.local_hhmm(int(wv[0]))]
+				out["up:%d:%d@%d" % [bk, fr, int(wv[0])]] = "%s %s 开播" % [_FC.join(sheet_name(bd), which), _P2.local_hhmm(int(wv[0]))]
 			elif now < int(wv[1]):
-				out["live:%d:%d@%d" % [bk, fr, int(wv[0])]] = "%s %s开播%s" % [sheet_name(bd), which, ("：" + who) if who != "" else ""]
-	## 观众: 各组同一轮同时开播 ⇒ 一句「小组赛 半决赛开播 · 6 组同时进行」(不逐组刷屏)
+				out["live:%d:%d@%d" % [bk, fr, int(wv[0])]] = "%s开播%s" % [_FC.join(sheet_name(bd), which), ("：" + who) if who != "" else ""]
+	## 观众: 各组同一轮同时开播 ⇒ 一句「小组赛半决赛开播，6 组同时进行」(不逐组刷屏)
 	for gk in gw:
 		var nb := (gw[gk][1] as Dictionary).size()
-		out["gwave:%s" % gk] = "%s %s开播%s" % [_P2.STAGE_GROUP, str(gw[gk][0]), (" · %d 组同时进行" % nb) if nb > 1 else ""]
+		out["gwave:%s" % gk] = "%s%s开播%s" % [_P2.STAGE_GROUP, str(gw[gk][0]), ("，%d 组同时进行" % nb) if nb > 1 else ""]
 	return out

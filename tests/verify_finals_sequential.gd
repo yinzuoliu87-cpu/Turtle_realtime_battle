@@ -198,14 +198,16 @@ func _t_pure() -> void:
 	_ok("① 揭晓早于开播的坏档期 ⇒ 不认", PS.slot(bx2, 1, 0).is_empty())
 	## 顶上那一行
 	var fmt := Callable(BMS, "countdown_text")
-	_ok("① 顶上那一行 · 第 1 场开播中", PS.round_line(b, F + 10, fmt) == "第 1 场开播中 · 第 2 场 2 分 25 秒后开播",
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): `round_line` 一行一件事: 有一场在播就只说在播(下一场几点在「下一场」卡 / 倒计时行), 不再「· 第 2 场 X 后开播」;
+	##   倒计时前面一个固定说法(「距开播」「距下一轮备战」)。★对阵图那两行(处境句 / 倒计时)现在由 BracketInfo 出, 见 ④ ⑧。
+	_ok("① 顶上那一行 · 第 1 场开播中", PS.round_line(b, F + 10, fmt) == "第 1 场开播中",
 		PS.round_line(b, F + 10, fmt))
-	_ok("① 顶上那一行 · 场间", PS.round_line(b, F + 140, fmt) == "第 2 场 15 秒后开播", PS.round_line(b, F + 140, fmt))
-	_ok("① 顶上那一行 · 本轮最后一场开播中 ⇒ 带下一轮备战倒计时", PS.round_line(b, F + 200, fmt) == "第 2 场开播中 · 下一轮备战 2 分 11 秒后开始",
+	_ok("① 顶上那一行 · 场间", PS.round_line(b, F + 140, fmt) == "第 2 场距开播 15 秒", PS.round_line(b, F + 140, fmt))
+	_ok("① 顶上那一行 · 本轮最后一场开播中 ⇒ 只说在播", PS.round_line(b, F + 200, fmt) == "第 2 场开播中",
 		PS.round_line(b, F + 200, fmt))
-	_ok("① 顶上那一行 · 本轮播完", PS.round_line(b, F + 320, fmt) == "下一轮备战 11 秒后开始", PS.round_line(b, F + 320, fmt))
+	_ok("① 顶上那一行 · 本轮播完", PS.round_line(b, F + 320, fmt) == "距下一轮备战 11 秒", PS.round_line(b, F + 320, fmt))
 	_ok("① 顶上那一行 · 备战开始后不归这里管(\"\")", PS.round_line(b, F + 331, fmt) == "")
-	_ok("① 顶上那一行 · 看完了第 1 场 ⇒ 当场间说", PS.round_line(b, F + 10, fmt, {0: true}) == "第 2 场 2 分 25 秒后开播",
+	_ok("① 顶上那一行 · 看完了第 1 场 ⇒ 当场间说", PS.round_line(b, F + 10, fmt, {0: true}) == "第 2 场距开播 2 分 25 秒",
 		PS.round_line(b, F + 10, fmt, {0: true}))
 	var bc := {"bucket": 0, "size": 2, "round": 1, "closed": true, "round_at": F - 600, "done": {"1-0": 0}, "seq": _wire(F, [6000])}
 	(bc["seq"] as Dictionary)["settle_at"] = 0
@@ -274,7 +276,7 @@ func _t_ls() -> void:
 	LS.watched[LS.premiere_key(b, 1, 0)] = true
 	_ok("③ 这台设备看完第 1 场 ⇒ 开播中也揭晓; 第 2 场仍是即将开播",
 		not LS.premiere_hidden(b, 1, 0, F + 10) and LS.premiere_upcoming(b, 1, 1, F + 10))
-	_ok("③ 顶上那一行(带 watched)= 场间写法", LS.premiere_round_line(b, F + 10, Callable(BMS, "countdown_text")) == "第 2 场 2 分 25 秒后开播",
+	_ok("③ 顶上那一行(带 watched)= 场间写法", LS.premiere_round_line(b, F + 10, Callable(BMS, "countdown_text")) == "第 2 场距开播 2 分 25 秒",
 		LS.premiere_round_line(b, F + 10, Callable(BMS, "countdown_text")))
 	LS.watched = {}
 	var old := _bk(F, null)
@@ -339,13 +341,14 @@ func _t_map() -> void:
 	_ok("④ 分母: 我那一组(4 人, 我是 0 号, 第 2 轮, seq)", int(m.cur().get("me", -1)) == 0 and int(m.cur().get("round", 0)) == 2
 		and PS.is_seq(m.cur()))
 	var fmt := Callable(BMS, "countdown_text")
-	## [时刻, 第 1 场状态, 第 2 场状态, ✓ 数, 「开播」小签数, 顶上那一行]
-	## ★对阵图那一行句首补轮名(20261031c 块 B · S 清单第 2 条:「半决赛第 1 场开播中 · 第 2 场 X 后开播」); `round_line` 本身不带(①那几条照旧)。
+	## [时刻, 第 1 场状态, 第 2 场状态, ✓ 数, 「开播」小签数, 处境句, 倒计时行("" = 不出现)]
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 一行一件事: 处境句说我(「你的半决赛开播中」「你已晋级决赛」), 下一行只放跟我有关的倒计时;
+	##   我那场在播 ⇒ 不数; 我这一轮打完、下一轮备战还没开始 ⇒「距下一轮备战 X」(不数别人那场, 否则和处境句对不上)。
 	var rows := [
-		[F + 10, BMS.ST_PREMIERE, BMS.ST_UPCOMING, 0, 1, "半决赛第 1 场开播中 · 第 2 场 2 分 25 秒后开播"],
-		[F + 140, BMS.ST_DONE, BMS.ST_UPCOMING, 1, 0, "半决赛第 2 场 15 秒后开播"],
-		[F + 200, BMS.ST_DONE, BMS.ST_PREMIERE, 1, 1, "半决赛第 2 场开播中 · 下一轮备战 2 分 11 秒后开始"],
-		[F + 320, BMS.ST_DONE, BMS.ST_DONE, 2, 0, "下一轮备战 11 秒后开始"],
+		[F + 10, BMS.ST_PREMIERE, BMS.ST_UPCOMING, 0, 1, "你的半决赛开播中", ""],
+		[F + 140, BMS.ST_DONE, BMS.ST_UPCOMING, 1, 0, "你已晋级决赛", "距下一轮备战 %s" % BMS.countdown_text(int(w["until"]) - (F + 140))],
+		[F + 200, BMS.ST_DONE, BMS.ST_PREMIERE, 1, 1, "你已晋级决赛", "距下一轮备战 %s" % BMS.countdown_text(int(w["until"]) - (F + 200))],
+		[F + 320, BMS.ST_DONE, BMS.ST_DONE, 2, 0, "你的决赛对手：丙", "距下一轮备战 11 秒"],
 	]
 	for row in rows:
 		var t: int = row[0]
@@ -366,7 +369,10 @@ func _t_map() -> void:
 		_ok("④ %s 开播中可点的场数 = %d(主按钮只指向它)" % [tag, 1 if (row[1] == BMS.ST_PREMIERE or row[2] == BMS.ST_PREMIERE) else 0],
 			live_btns == (1 if (row[1] == BMS.ST_PREMIERE or row[2] == BMS.ST_PREMIERE) else 0) and m.premiere_count() == live_btns,
 			"%d / premiere_count %d" % [live_btns, m.premiere_count()])
-		_ok("④ %s 顶上那一行「%s」" % [tag, row[5]], m._tip.visible and m._tip.text == row[5], m._tip.text)
+		var hs := m.find_child("HeroStatus", true, false) as Label
+		_ok("④ %s 处境句「%s」" % [tag, row[5]], hs != null and hs.text == row[5], hs.text if hs != null else "<无>")
+		_ok("④ %s 倒计时行「%s」" % [tag, row[6]], (m._tip.visible and m._tip.text == row[6]) if str(row[6]) != "" else not m._tip.visible,
+			m._tip.text if m._tip.visible else "<不出现>")
 		_ok("④ %s 备战那一行不出现(下一轮备战还没开始)" % tag, not m._shop_row.visible, m._shop_row.text)
 	var cta: Node = m.find_child("PrimaryCta", true, false)
 	if cta != null and (cta as Button).visible:
@@ -375,12 +381,13 @@ func _t_map() -> void:
 	## 下一轮备战开始
 	var ra := int(w["until"])
 	await _at(m, bk, ra + 5)
-	_ok("④ round_at 起: 备战那一行「备战购物 · 还剩 …」", m._shop_row.visible and str(m._shop_row.text).begins_with("备战购物"),
+	_ok("④ round_at 起: 我的阵容那一行「备战剩余 …」", m._shop_row.visible and str(m._shop_row.text).begins_with("备战剩余"),
 		m._shop_row.text)
-	_ok("④ round_at 起: 顶上那一行回到倒计时写法(决赛 X 后开播, 倒计时到最早翻面 = 备战结束 + 60)",
-		m._tip.text == BMS.round_tip(2, 4, ra + P2C.FINALS_SHOP_SEC + 60 - (ra + 5)), m._tip.text)
+	_ok("④ round_at 起: 备战中倒计时只在我的阵容那一行(顶上不重复)", not m._tip.visible, m._tip.text)
 	await _at(m, bk, ra + P2C.FINALS_SHOP_SEC + 5)
-	_ok("⑦ 备战结束后(还没翻面): 顶上那一行「结算中 · 即将开播」", m._tip.visible and m._tip.text == PS.TXT_SETTLE, m._tip.text)
+	## 备战结束、还没翻面(服务器在算): 翻面时刻要等裁判写回 ⇒ 不给开播时刻 / 倒计时; 决赛卡顶写「结算中」
+	_ok("⑦ 备战结束后(还没翻面): 不给开播时刻、卡顶「结算中」", not m._tip.visible and str(m._info.card_status_word(2, 0)) == "结算中",
+		"%s / %s" % [m._tip.text if m._tip.visible else "<不出现>", str(m._info.card_status_word(2, 0))])
 	m.queue_free()
 	await _frames(2)
 
@@ -435,8 +442,13 @@ func _t_legacy() -> void:
 	_ok("⑥ 没有「即将开播」这一态", not m.premiere_upcoming(1, 1))
 	_ok("⑥ 老规则那条例外照旧: 我的下一轮对手照常写出(要备战)", str(m.competitor(2, 0, 1).get("name", "")) == "丙",
 		str(m.competitor(2, 0, 1).get("name", "")))
-	_ok("⑥ 顶上那一行老写法(决赛 X 后开播)", m._tip.text == BMS.round_tip(2, 4, F + 480 - (F + 10)), m._tip.text)
-	_ok("⑥ 备战那一行老写法(购物窗开着: 备战购物 · 还剩 …)", m._shop_row.visible and str(m._shop_row.text).begins_with("备战购物"),
+	## 老规则那条例外(下一轮对手照常写出、要备战)⇒ 处境句说我的下一场「你的决赛对手：丙」;
+	##   购物窗开着 ⇒ 倒计时只在下面「我的阵容」那一行(备战剩余 …), 顶上那一行不重复
+	var hs6 := m.find_child("HeroStatus", true, false) as Label
+	_ok("⑥ 老规则: 处境句「你的决赛对手：丙」、备战中顶上倒计时行不出现", hs6 != null and hs6.text == "你的决赛对手：丙"
+		and not m._tip.visible,
+		"%s / %s" % [hs6.text if hs6 != null else "<无>", m._tip.text if m._tip.visible else "<不出现>"])
+	_ok("⑥ 备战那一行老写法(购物窗开着: 备战剩余 …)", m._shop_row.visible and str(m._shop_row.text).begins_with("备战剩余"),
 		m._shop_row.text)
 	_ok("⑥ 开播会话起点 = 整轮翻面时刻", int(LS.premiere_session(m.cur(), 1, 1, F + 10).get("flip_ts", 0)) == F)
 	m.queue_free()
@@ -465,13 +477,13 @@ func _t_together() -> void:
 			if bad.size() < 3:
 				bad.append("t=F%+d" % (t - F))
 	_ok("⑧ ★同一时刻两场都在开播(%d 秒), 短的那场先揭晓" % both, bad.is_empty() and both == 130, str(bad))
-	_ok("⑧ 顶上那一行 · 两场都在播", PS.round_line(bk, F + 10, fmt) == "本轮 2 场开播中 · 下一轮备战 2 分 46 秒后开始",
+	_ok("⑧ 顶上那一行 · 两场都在播", PS.round_line(bk, F + 10, fmt) == "本轮 2 场开播中",
 		PS.round_line(bk, F + 10, fmt))
-	_ok("⑧ 顶上那一行 · 短的那场揭晓后", PS.round_line(bk, F + 140, fmt) == "本轮 1 场开播中 · 下一轮备战 36 秒后开始",
+	_ok("⑧ 顶上那一行 · 短的那场揭晓后", PS.round_line(bk, F + 140, fmt) == "本轮 1 场开播中",
 		PS.round_line(bk, F + 140, fmt))
-	_ok("⑧ 顶上那一行 · 都揭晓了、下一轮备战没开始", PS.round_line(bk, F + 160, fmt) == "下一轮备战 16 秒后开始",
+	_ok("⑧ 顶上那一行 · 都揭晓了、下一轮备战没开始", PS.round_line(bk, F + 160, fmt) == "距下一轮备战 16 秒",
 		PS.round_line(bk, F + 160, fmt))
-	_ok("⑧ 顶上那一行 · 这台设备看完了第 1 场 ⇒ 只数还在播的", PS.round_line(bk, F + 10, fmt, {0: true}) == "本轮 1 场开播中 · 下一轮备战 2 分 46 秒后开始",
+	_ok("⑧ 顶上那一行 · 这台设备看完了第 1 场 ⇒ 只数还在播的", PS.round_line(bk, F + 10, fmt, {0: true}) == "本轮 1 场开播中",
 		PS.round_line(bk, F + 10, fmt, {0: true}))
 	_ok("⑧ 对照: 一场接一场(杯)不是 together", not PS.together(PS.lineup(_bk(F, _wire(F, [6000, 7230])), 1)))
 	var m: Node = await _open_map(bk, F + 10)
@@ -482,12 +494,13 @@ func _t_together() -> void:
 		and _ticks(m) == 0 and b.has(Vector2i(1, 0)) and b.has(Vector2i(1, 1)) and m.premiere_count() == 2,
 		"%s / %s · 开播 %d · ✓ %d · %s" % [m.match_state(1, 0), m.match_state(1, 1), _tags(m), _ticks(m), str(b)])
 	## ★对阵图那一行把「本轮」换成轮名(20261031c 块 B, 主会话转 S 10-31): 「半决赛 2 场开播中 · …」; `round_line` 本身(上面几条)照旧写「本轮」。
-	_ok("⑧ 对阵图 F+10: 顶上那一行「半决赛 2 场开播中 · …」、备战那一行不出现", m._tip.text == "半决赛 2 场开播中 · 下一轮备战 2 分 46 秒后开始"
-		and not m._shop_row.visible, m._tip.text)
+	var hs8 := m.find_child("HeroStatus", true, false) as Label
+	_ok("⑧ 对阵图 F+10: 处境句「你的半决赛开播中」、倒计时行与备战那一行都不出现", hs8 != null and hs8.text == "你的半决赛开播中"
+		and not m._tip.visible and not m._shop_row.visible, hs8.text if hs8 != null else "<无>")
 	await _at(m, bk, F + 140)
 	_ok("⑧ 对阵图 F+140: 第 1 场揭晓(✓ 1)、第 2 场仍开播、「开播」1 枚、顶上「半决赛 1 场开播中 · …」",
 		str(m.match_state(1, 0)) == BMS.ST_DONE and str(m.match_state(1, 1)) == BMS.ST_PREMIERE and _tags(m) == 1 and _ticks(m) == 1
-		and m._tip.text == "半决赛 1 场开播中 · 下一轮备战 36 秒后开始", "%s · %s" % [m.match_state(1, 1), m._tip.text])
+		and m._tip.text == "距下一轮备战 36 秒", "%s · %s" % [m.match_state(1, 1), m._tip.text])
 	## 不剧透: 我的下一轮对手(第 2 场的胜者)在第 2 场揭晓前一律「待定」
 	var bad2: Array = []
 	for t in range(F, F + 177):

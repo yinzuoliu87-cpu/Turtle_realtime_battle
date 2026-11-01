@@ -33,6 +33,16 @@ extends RefCounted
 ##     开关关 ⇒ `play_settled` 原样(本机重算)。
 ##
 ## ══════════════════════════════════════════════════════════════════════
+##  积分赛(开关 `ranked_on`, 2026-11-01 · 方案书 docs/plans/20261101c-积分赛服务器裁判.md; 关着时一字不变走老路)
+## ══════════════════════════════════════════════════════════════════════
+##   匹配屏 → `Run.start_ranked`: referee_ranked_start(我的阵容, 第 N 场)──► 服务端挑对手(同场次真人 / 内置陪练 → 机器人)、
+##     定种子、建任务 ⇒ 回任务号 + 对手卡片 ⇒ 落「待记账单」(带 kind = ranked)⇒ 之后与周六同一条路(等待 → 记账 → 跟播 / 录像)。
+##   记账 = `settle_ranked`: 胜场 / 余命 / 场次 / 横扫 / 碎蛋 / 配额 / 这一局的币全是服务器账本的数(客户端不加不减, 只照抄);
+##     只在本机存档里、不进排名的那几样(大轮经验 +2 / 096 砍伐 / 糖果罐 / 战绩页)照 `_settle_season` 积分赛那一支原样记。
+##   拒收: stale / eliminated / quota_full ⇒ 先按回包里的服务端账本对齐本机(`adopt_ranked_ledger`), 再在屏上说原因。
+##   主菜单开着时按服务端账本对一次(`sync_ranked_ledger`): 换设备 / 改存档 / 切换那一周的本机数都以服务端为准。
+##
+## ══════════════════════════════════════════════════════════════════════
 ##  周日决赛(开关 `finals_on`): 判据与界面在 BracketMapScene(点开自己那一场 = 看), 这里只放它要的记账 `finals_seal`
 ##  与战斗内铸币的待取单(`claim_finals_coins`: 翻面后按服务器给的数发, 2026-10-20)
 ## ══════════════════════════════════════════════════════════════════════
@@ -61,6 +71,14 @@ const TXT_NO_MATCH := "匹配失败，请稍后重试"
 const TXT_SHOP := "备战阶段 · 结束后开赛"
 const TXT_RESUMED_WIN := "上一场闯关：胜利"
 const TXT_RESUMED_LOSE := "上一场闯关：失败"
+## 积分赛服务器局(2026-11-01): 匹配屏那一行 / 主菜单补记那一句。
+const TXT_RANKED_CLOSED := "当前不在积分赛时段"
+const TXT_RANKED_ELIM := "本大轮已出局"
+const TXT_RANKED_QUOTA := "本周积分赛场次已用完"
+const TXT_RESUMED_RANKED_WIN := "上一场积分赛：胜利"
+const TXT_RESUMED_RANKED_LOSE := "上一场积分赛：失败"
+## 待记账单 / 结算口径里的种类(只有积分赛带; 周六 / 周日的单子没有这个键 ⇒ 与改之前逐字相同)。
+const KIND_RANKED := "ranked"
 const TXT_FINALS_COINS := "战斗内铸币 +%d"
 ## 配上之后跟播自己这一局(2026-10-29 · 方案书 docs/plans/20261029c-闯关赛排队时可回主页.md §4.4 / R11):
 ##   裁判机还在排队(任务 pending)时 VS 卡下那一行 / 流已播完而服务器的结果还没到时收尾处那一行。
@@ -201,6 +219,8 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 	if not (p is Dictionary) or (p as Dictionary).is_empty() or int((p as Dictionary).get("job_id", -1)) != job_id:
 		return {}
 	var pd: Dictionary = p
+	if is_ranked_bill(pd):
+		return settle_ranked(gs, job_id, st, preview)     # 积分赛(2026-11-01): 另一套口径, 见下
 	var wi := int(st.get("won", -1))
 	if wi < 0:
 		return {}
@@ -342,6 +362,8 @@ static func play_settled_route(tree: SceneTree, rec: Dictionary, view: Dictionar
 
 ## 结算之后的一句话(播不了录像时屏上写它)。
 static func result_line(view: Dictionary) -> String:
+	if str(view.get("kind", "")) == KIND_RANKED:
+		return "积分赛 · %s" % ("胜利" if bool(view.get("won", false)) else "失败")
 	var gl := P2C.gauntlet_label(int(view.get("gw", 0)), int(view.get("gl", 0)))
 	return "闯关 %s · %s" % [gl, "胜利" if bool(view.get("won", false)) else "失败"]
 
@@ -429,7 +451,14 @@ static func _on_resume_queue(wk: int, res: Dictionary, done: Callable, cancelled
 
 
 static func resume_text(view: Dictionary) -> String:
+	if str(view.get("kind", "")) == KIND_RANKED:
+		return TXT_RESUMED_RANKED_WIN if bool(view.get("won", false)) else TXT_RESUMED_RANKED_LOSE
 	return TXT_RESUMED_WIN if bool(view.get("won", false)) else TXT_RESUMED_LOSE
+
+
+## 这一份结果按哪套口径出结算屏 / 晋级仪式: 积分赛局 ⇒ SETTLE_RANKED; 其余(周六)⇒ SETTLE_GAUNTLET(与改之前一样)。
+static func settle_kind_of(view: Dictionary) -> String:
+	return P2C.SETTLE_RANKED if str(view.get("kind", "")) == KIND_RANKED else P2C.SETTLE_GAUNTLET
 
 
 # ─────────────────────────────── 结算屏(战斗场 HUD 调) ───────────────────────────────
@@ -450,7 +479,7 @@ static func dress_settle(battle) -> bool:
 		return false
 	var v: Dictionary = battle._replay.live.result
 	battle._had_season = true
-	battle._last_settle_kind = P2C.SETTLE_GAUNTLET
+	battle._last_settle_kind = settle_kind_of(v)
 	battle._last_was_exhibition = false
 	battle._last_reward = int(v.get("reward", 0))
 	return true
@@ -631,3 +660,129 @@ static func queue_locked() -> bool:
 	var scr = load(RUN_PATH)
 	var st := str(scr.active.state)
 	return in_queue(st) or st == ST_FOUND
+
+
+# ─────────────────────────────── 积分赛(2026-11-01) ───────────────────────────────
+## ★方案书 docs/plans/20261101c-积分赛服务器裁判.md。服务端账本 = 迁移 20261101d 的 ranked_records(每人每周一行),
+##   结算规则 = `RealtimeBattle3DScene._settle_season` 积分赛那一支原样搬到 `referee_complete`(门禁 verify_ranked_server_rules
+##   拿同一张结算表把两边各跑一遍)。客户端从此只照抄服务器的数, 不自己加减。
+
+## 积分赛这一局交给服务器吗(调用方已判过「不是周六 / 不在教程 / 不是切磋」, 这里只看开关)。
+static func ranked_on() -> bool:
+	return RN.ranked_on()
+
+
+## 积分赛开战交的阵容: 与本机打完上传的那份同一个构造(`Backend.build_ghost_snapshot`), ghost_id 带本机当前场次
+##   (服务端按它自己的账本改场次后缀 / 账本数, 见 ranked_stamp_snapshot)。没阵容 ⇒ {}。
+static func my_snapshot_ranked() -> Dictionary:
+	if GameState == null or not (GameState.season_leaders is Array) or (GameState.season_leaders as Array).size() < 1:
+		return {}
+	var leaders = GameState.season_leaders
+	var gid := BE.player_ghost_id(int(GameState.season_id), leaders, int(GameState.season_total_battles))
+	var av := str(leaders[0]) if (leaders as Array).size() > 0 else "basic"
+	return BE.build_ghost_snapshot(gid, {"name": BE.player_display_name(), "avatar": av, "id": gid})
+
+
+## 积分赛的待记账单 = 周六那一份 + kind(记账时据此走 `settle_ranked`)。
+static func ranked_bill(job_id: int, match_id: String, week: int, foe: Dictionary) -> Dictionary:
+	var out := pending_for(job_id, match_id, week, foe)
+	out["kind"] = KIND_RANKED
+	return out
+
+
+static func is_ranked_bill(p) -> bool:
+	return p is Dictionary and str((p as Dictionary).get("kind", "")) == KIND_RANKED
+
+
+## 服务端账本(`RefereeNet.parse_ledger` 的结果)→ 本机存档里那六项。返回有没有变。空账本 ⇒ 不动。
+static func adopt_ranked_ledger(gs, led: Dictionary) -> bool:
+	if gs == null or led.is_empty():
+		return false
+	var changed := false
+	for pair in [["season_total_battles", "battles"], ["season_wins", "wins"], ["hearts", "hearts"],
+			["season_sweeps", "sweeps"], ["season_eggs_killed", "eggs"], ["ranked_used", "used"]]:
+		var v := int(led.get(str(pair[1]), -1))
+		if v >= 0 and int(gs.get(str(pair[0]))) != v:
+			gs.set(str(pair[0]), v)
+			changed = true
+	if changed:
+		gs.sync_titles()                  # 配额 / 胜场变了 ⇒ 头衔对一次账(与 consume_ranked_quota 同一个函数, 幂等)
+	return changed
+
+
+## ★记账(积分赛口径)。由 `settle` 按单子上的 kind 分进来(任务号已核对)。
+##   与 `_settle_season` 积分赛那一支逐项对照:
+##     lose_heart / season_total_battles += 1 / consume_ranked_quota / season_wins / season_eggs_killed / season_sweeps
+##       ⇒ 全部改成照抄服务器账本(`st.ranked`, 打完这一局之后的数);
+##     币 = 8 + 余命 + 2×已失命 + 胜 6 + 战斗内铸币、出局那一局 0 ⇒ 服务器算好的 `reward`(客户端不重算);
+##     add_season_xp(2) / axe_on_match_end / candy_jar_add / 补 left_team / battles_total / record_match ⇒ 本机照原样记
+##       (这几样只在存档里、不进排名; 服务端不知道玩家的经验条、斧头、糖果罐);
+##     上传快照 ⇒ 不传(服务端写回那一刻已以它的数写进快照池)。
+##   `preview` 同 `settle`(跟播沙盒里预演; 跳过销单 / 录像号 / 战绩页 / 存盘)。
+##   返回 {kind, won, reward, coins, hearts, wins, battles}; {} = 结果不明 / 上一周的 / 回包里没有账本。
+static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false) -> Dictionary:
+	var p = gs.get("referee_pending")
+	if not is_ranked_bill(p) or int((p as Dictionary).get("job_id", -1)) != job_id:
+		return {}
+	var pd: Dictionary = p
+	var wi := int(st.get("won", -1))
+	var led: Dictionary = st.get("ranked", {}) if st.get("ranked", null) is Dictionary else {}
+	if wi < 0 or led.is_empty() or not led.has("reward"):
+		return {}
+	if int(pd.get("week", 0)) != P2C.week_anchor_utc(int(P2C.now_utc())):
+		if preview:
+			return {}
+		gs.referee_pending = {}           # 上一周交的: 不记进这一周(换周时 start_new_season 也会清)
+		gs.save()
+		return {}
+	var won := wi == 1
+	adopt_ranked_ledger(gs, led)
+	gs.add_season_xp(2)                   # = _settle_season: 每场 +2 大轮经验
+	gs.axe_on_match_end()                 # = _settle_season: 096 小木斧(持有才给)
+	gs.candy_jar_add(gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS)   # = _settle_season: 糖果罐
+	if won and gs.get("left_team") is Array and (gs.left_team as Array).is_empty() and gs.season_leaders is Array:
+		gs.left_team.assign((gs.season_leaders as Array).slice(0, 3))
+	var reward := maxi(0, int(led.get("reward", 0)))
+	gs.meta_deepsea_coins += reward
+	apply_chest(gs, st.get("chest", {}))
+	apply_incense(gs, st.get("incense", {}))
+	gs.battles_total += 1
+	if won:
+		gs.battles_won += 1
+	var view := {"kind": KIND_RANKED, "won": won, "reward": reward, "coins": maxi(0, int(st.get("coins", 0))),
+		"hearts": int(gs.hearts), "wins": int(gs.season_wins), "battles": int(gs.season_total_battles)}
+	if preview:
+		return view
+	var mid := str(pd.get("match_id", ""))
+	if not SB.is_uuid(mid):
+		mid = str(st.get("match_id", ""))
+	if SB.is_uuid(mid):
+		gs.replay_pending_id = mid        # 战绩页那一行挂上录像(服务器那一份)
+	var lineup: Array = (gs.season_leaders as Array).slice(0, 3) if gs.season_leaders is Array else []
+	gs.referee_pending = {}
+	gs.record_match("win" if won else "lose", lineup, "实时", 0)
+	if not gs.match_history.is_empty():
+		var row: Dictionary = gs.match_history[0]
+		row["ts"] = int(Time.get_unix_time_from_system())
+		if (pd.get("foe", []) as Array).size() > 0:
+			row["foe"] = (pd["foe"] as Array).duplicate()
+		if str(pd.get("foe_name", "")) != "":
+			row["foe_name"] = str(pd["foe_name"])
+	gs.save()
+	return view
+
+
+## 主菜单开着时按服务端账本对一次本机(积分赛开关开着、没有挂着的待记账单时)。`done.call(changed: bool)` 问到才调。
+##   返回 false = 没发(开关关 / 有单子 / 没配后端)。
+static func sync_ranked_ledger(done: Callable = Callable()) -> bool:
+	if GameState == null or not ranked_on() or has_pending():
+		return false
+	var wk := P2C.week_anchor_utc(int(P2C.now_utc()))
+	return RN.ranked_ledger_async(wk, func(res: Dictionary) -> void:
+		if str(res.get("err", "")) != "" or has_pending() or int(GameState.week_anchor_ts) != wk:
+			return                        # 问不到 / 这一刻刚交了一局 / 存档还没滚到这一周: 不动
+		var ch := adopt_ranked_ledger(GameState, res.get("ledger", {}))
+		if ch:
+			GameState.save()
+		if done.is_valid():
+			done.call(ch))

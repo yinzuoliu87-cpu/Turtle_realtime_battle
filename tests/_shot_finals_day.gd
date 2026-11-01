@@ -38,6 +38,8 @@ func _ready() -> void:
 	F.override = fx.feeds(ts)
 	F.prev_champ = {"name": "风起", "tag": "#P0101", "avatar": "angel", "week": MON - 7 * 86400}
 	F.avatars[MON] = {"#T000": "basic", "#T201": "bamboo", "#T102": "stone"}
+	## 本周晋级名单(服务端 finals_qualified_list 的形状; 分组前的赛前页 / 主菜单决赛日卡读它)
+	load("res://scripts/net/finals_qualified.gd").override = fx.qualified()
 	var case := OS.get_environment("SHOT_CASE")
 	if case == "bracket":
 		host = await _bracket()
@@ -63,11 +65,21 @@ func _ready() -> void:
 			F.override = fx.feeds(ts)
 			if host != null and host.get("clock_override_ts") != null:
 				host.clock_override_ts = ts
+			## 对阵图自己的钟(set_data 钉的 _now_override)也跟着走, 否则它停在开拍那一秒、和全局小条差几秒
+			if host != null and host.get("_now_override") != null and int(host.get("_now_override")) > 0:
+				host.set("_now_override", ts)
 			fd.tick()
 	await RenderingServer.frame_post_draw
 	var shot: Image = get_viewport().get_texture().get_image()
 	var out := OS.get_environment("SHOT_OUT")
 	shot.save_png(out)
+	## SHOT_TEXT=<txt>: 顺手把此刻屏上看得见的每一句字写下来(走查逐句判用; 采集器与门禁 verify_finals_copy 同一份)
+	if OS.has_environment("SHOT_TEXT"):
+		var TP = load("res://tests/_finals_text_probe.gd")
+		var vp := Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)
+		var fh := FileAccess.open(OS.get_environment("SHOT_TEXT"), FileAccess.WRITE)
+		fh.store_string(TP.dump(TP.collect(get_tree().root, vp)) + "\n")
+		fh.close()
 	print("SHOT_SAVED %s %dx%d ts=%d bar=%s slot=%d popup=%s marquee=%s" % [out, shot.get_width(), shot.get_height(), ts,
 		str(fd.line.get("body", "")), int(fd.slot), str(fd.popup != null and is_instance_valid(fd.popup)), str(fd.marquee.played)])
 	get_tree().quit(0)
@@ -121,8 +133,12 @@ func _plain_scene(nm: String) -> Node:
 func _bracket() -> Node:
 	var bm = (load("res://scenes/BracketMap.tscn") as PackedScene).instantiate()
 	var f: Dictionary = fx.feeds(ts)
-	if bm.has_method("set_data"):
+	## 18:00 分组之前一个组都没有(服务端 finals_week_view 回 buckets: [])⇒ 不喂单组, 只喂空的整周
+	if bm.has_method("set_data") and not ((f["group"] as Dictionary).is_empty() and (f["groups"] as Array).is_empty()):
 		bm.set_data(f["group"] if not (f["group"] as Dictionary).is_empty() else (f["groups"] as Array)[0], f["cup"], ts)
+	elif bm.has_method("set_data"):
+		## 联网、问到了: 没报名的人服务端回 not_entered(finals_view), 报了名的回 not_seated
+		bm.set_data({"ok": false, "reason": "not_entered" if not fx.me_in else "not_seated"}, f["cup"], ts)
 	if bm.has_method("set_week"):
 		bm.set_week({"buckets": f["groups"], "cup": f["cup"], "srv_now": ts, "recv_at": ts})
 	add_child(bm)

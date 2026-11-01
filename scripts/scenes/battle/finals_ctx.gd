@@ -19,6 +19,7 @@ const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const _B := preload("res://scripts/gamedata/bracket.gd")
 const _L := preload("res://scripts/gamedata/bracket_layout.gd")
 const PS := preload("res://scripts/systems/replay/premiere_schedule.gd")
+const _FCP := preload("res://scripts/ui/finals_copy.gd")
 ## 玩家看得见的组名一律「A 组 / B 组 …」, 唯一来源 ChampionData.group_name(组号从 0 起; 主会话 10-31 定)
 const ChampionDataS := preload("res://scripts/scenes/bracket/champion_data.gd")
 
@@ -26,7 +27,7 @@ const LANES := ["top", "bottom", "final"]
 ## 三路灯下的小字用短名(全称「上路战场 / 下路战场 / 终极战场」写在路间幕布上, 用户 10-07)
 const LANE_SHORT := {"top": "上路", "bottom": "下路", "final": "终极"}
 const TXT_ORIGIN_CUP := "组冠军"          # 冠军杯的每一位都是组冠军(入口没给组号时的写法, 不编组号)
-const TXT_LOCKED := "双方阵容已锁定 · 服务器实时演算"
+const TXT_LOCKED := "双方阵容已锁定，由服务器实时演算"
 
 ## 出局卡「去看 X 对 Y」/ 看别人播完自动回对阵图时留给对阵图的跟播请求(对阵图进场时 `take_follow()` 读走):
 ##   {"view", "bucket", "r", "m", "at"(服务端 unix)}。对阵图进场时读走并清空; 到点就开那一场(与它自己那场「揭晓后自动播」同一个做法)。
@@ -108,14 +109,13 @@ static func is_cup_final(st: Dictionary) -> bool:
 	return bool(st.get("cup", false)) and int(st.get("rounds", 0)) > 0 and int(st.get("round", 0)) == int(st.get("rounds", 0))
 
 
-## 开场 VS 顶上那一行: 「冠军杯赛 · 半决赛」/「小组赛 · B 组 · 半决赛」。没给 = ""。
+## 开场 VS 顶上那一行: 「冠军杯赛半决赛」/「小组赛 B 组半决赛」(一个名词短语, 不用「·」拼)。没给 = ""。
 static func round_title(st: Dictionary) -> String:
 	var rn := str(st.get("round_name", ""))
-	var tail := (" · " + rn) if rn != "" else ""
 	if bool(st.get("cup", false)):
-		return P2C.STAGE_CUP + tail
+		return _FCP.join(P2C.STAGE_CUP, rn)
 	if int(st.get("group", 0)) > 0:
-		return "%s · %s%s" % [P2C.STAGE_GROUP, ChampionDataS.group_name(int(st["group"]) - 1), tail]
+		return "%s %s" % [P2C.STAGE_GROUP, _FCP.join(ChampionDataS.group_name(int(st["group"]) - 1), rn)]
 	return ""
 
 
@@ -127,7 +127,7 @@ static func stage_tag(st: Dictionary) -> String:
 	var mi := int(st.get("match_i", 0))
 	var mn := int(st.get("match_n", 0))
 	if mi >= 1 and mn > 1:
-		t += " · 第 %d / %d 场" % [mi, mn]
+		t += "第 %d 场" % mi
 	return t
 
 
@@ -135,29 +135,29 @@ static func stage_tag(st: Dictionary) -> String:
 static func go_label(nx: Dictionary) -> String:
 	if str(nx.get("a", "")) == "" or str(nx.get("b", "")) == "":
 		return ""
-	return "去看 %s 对 %s" % [str(nx["a"]), str(nx["b"])]
+	return "观看 %s 对 %s" % [str(nx["a"]), str(nx["b"])]
 
 
-## 下一场条: 「下一场 X 对 Y · 20:14」(时刻按设备时区; 结算中 ⇒ 「· 结算中 · 即将开播」; 没排上时刻只写对阵)。
+## 下一场条: 「下一场 20:14 开播：X 对 Y」(时刻按设备时区; 结算中 ⇒ 「下一场即将开播：X 对 Y」; 没排上时刻只写对阵)。
 static func next_line(nx: Dictionary) -> String:
 	if str(nx.get("a", "")) == "" or str(nx.get("b", "")) == "":
 		return ""
-	var t := "下一场  %s 对 %s" % [str(nx["a"]), str(nx["b"])]
+	var pair := "%s 对 %s" % [str(nx["a"]), str(nx["b"])]
 	var at := int(nx.get("at", 0))
 	if at > 0:
-		t += " · " + P2C.local_hhmm(at)
-	elif bool(nx.get("settling", false)):
-		t += " · " + PS.TXT_SETTLE
-	return t
+		return "下一场 %s 开播：%s" % [P2C.local_hhmm(at), pair]
+	if bool(nx.get("settling", false)):
+		return "下一场即将开播：%s" % pair
+	return "下一场：%s" % pair
 
 
-## 出局卡那一句(G18): 「止步半决赛 · 输给 X」; 没给轮次 ⇒ 「输给 X」。
+## 出局卡那一句(G18): 「止步半决赛，不敌 X」; 没给轮次 ⇒ 「不敌 X」。
 static func out_line(st: Dictionary, foe: String) -> String:
 	var rn := str(st.get("round_name", ""))
-	var head := ("止步" + rn) if rn != "" else ""
+	var head := _FCP.join("止步", rn) if rn != "" else ""
 	if foe == "":
 		return head
-	return (head + " · 输给 " + foe) if head != "" else ("输给 " + foe)
+	return (head + "，不敌 " + foe) if head != "" else ("不敌 " + foe)
 
 
 ## 名牌下的来历: 入口给的字优先; 给了组号 ⇒「B 组冠军」(组名 ChampionData.group_name); 冠军杯都没给 ⇒「组冠军」
@@ -325,6 +325,7 @@ const ART_SCALE := 3
 const ART_NODE := "FinalsArt"
 const ART := {"惜败": "bt-xibai", "开战": "bt-kaizhan", "获胜": "bt-huosheng",
 	"晋级决赛": "bt-adv-final", "晋级半决赛": "bt-adv-semi", "晋级8强": "bt-adv-8", "晋级16强": "bt-adv-16",
+	"晋级 1/4 决赛": "bt-adv-8", "晋级 1/8 决赛": "bt-adv-16",
 	"晋级冠军杯赛": "bt-adv-cup", "冠军杯赛冠军": "bt-cup-champ",
 	"上路战场": "bt-lane-top", "下路战场": "bt-lane-bottom", "终极战场": "bt-lane-final"}
 
@@ -512,9 +513,11 @@ static func stop_ticker(tk) -> void:
 		(tk as Node).queue_free()
 
 
+## 两段我们自己的词拼起来(汉字挨数字处补空格; finals_copy.join)。给结束分拍用(它只认 Ctx)。
+static func join_words(a: String, b: String) -> String:
+	return _FCP.join(a, b)
+
+
 ## 秒数 → 「1 分 05 秒」/「42 秒」。
 static func span_text(sec: int) -> String:
-	sec = maxi(0, sec)
-	if sec >= 60:
-		return "%d 分 %02d 秒" % [sec / 60, sec % 60]
-	return "%d 秒" % sec
+	return _FCP.dur(sec)          # 全决赛日一种写法(finals_copy.dur)

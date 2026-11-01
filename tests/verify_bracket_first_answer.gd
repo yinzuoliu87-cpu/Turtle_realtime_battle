@@ -63,8 +63,17 @@ func _release(key: String, res: Dictionary) -> int:
 	return cbs.size()
 
 
+## ★2026-11-01(方案书 20261101e): 分组前那一档(not_seated)画的是赛前页(bracket_preseat.gd), 说明框藏起来
+##   ⇒ 「屏上那句当拍跟上」= 赛前页当拍出现; 其余档照旧比说明框的字。
 func _shown(bm) -> String:
+	var pre: Node = bm.find_child("Preseat", true, false)
+	if pre != null and (pre as CanvasItem).is_visible_in_tree():
+		return "(赛前页)"
 	return str(bm._empty_lb.text) if bm._empty_box != null and bm._empty_box.visible else "(画了图)"
+
+
+func _want(bm) -> String:
+	return "(赛前页)" if bm._empty_kind() == MAP.EK_NOT_SEATED else str(bm._empty_text())
 
 
 func _tab(bm) -> String:
@@ -101,8 +110,8 @@ func _case(nm: String, at: int, first: String, second: String, replies: Dictiona
 	var k: String = bm._empty_kind()
 	_ok("%s · 分母: 回包真的到了(问名册那一步 = %s)" % [nm, want_kind], SB.finals_tried() and k == want_kind,
 		"tried=%s kind=%s cached=%s" % [str(SB.finals_tried()), k, str(SB.finals_cached())])
-	_ok("%s · ★★★屏上那句当拍跟上(屏「%s」 ↔ 此刻该说「%s」)" % [nm, _shown(bm), bm._empty_text()],
-		_shown(bm) == bm._empty_text())
+	_ok("%s · ★★★屏上那句当拍跟上(屏「%s」 ↔ 此刻该说「%s」)" % [nm, _shown(bm), _want(bm)],
+		_shown(bm) == _want(bm))
 	var want_tab: String = P2C.STAGE_GROUP + MAP.bucket_tab_suffix(bm._bucket_kind())
 	_ok("%s · ★★页签也跟上(「%s」 ↔ 「%s」)" % [nm, _tab(bm), want_tab], _tab(bm) == want_tab)
 	bm.queue_free()

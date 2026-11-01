@@ -4,6 +4,7 @@ extends PanelContainer
 ## 画法: 不透明暗金底 + 2px 金边 + 直角 + 4px 硬投影(像素 UI 的招牌, 与对阵图冠军牌同一套; 半透底 + 描边会被判成网页盒)。
 ## 摆在哪由 finals_day_layer 量出来(避开当前这一屏所有看得见的按钮), 这里只管长什么样。
 
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 const BADGE := "res://assets/sprites/menu/weekend/badge-finals.png"
 const N_HEAD := "FdBarHead"
 const N_LIVE := "FdBarLive"
@@ -133,24 +134,25 @@ func paint(line: Dictionary) -> void:
 		if not first:
 			_flash()
 	var c := int(line.get("cd", -1))
-	cd.visible = c >= 0
+	var act := str(line.get("act", ""))
+	cd.visible = c >= 0 or act != ""
 	if c >= 0:
 		cd.text = _clock(c)
-		## 倒计时那一格按最宽的「0:00:00」留宽, 数字跳动时整条不抖
-		if _cd_w <= 0.0:
-			var f: Font = cd.get_theme_font("font")
-			_cd_w = ceilf(f.get_string_size("0:00:00", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_CD).x) + 4.0 if f != null else 76.0
-		cd.custom_minimum_size.x = _cd_w if c >= 600 else _cd_w * 0.72
+		## 倒计时那一格按这一档最宽的写法留宽(「00 分 00 秒」/「0 小时 00 分 00 秒」), 数字跳动时整条不抖
+		var f: Font = cd.get_theme_font("font")
+		var widest := "0 小时 00 分 00 秒" if c >= 3600 else ("00 分 00 秒" if c >= 60 else "00 秒")
+		cd.custom_minimum_size.x = ceilf(f.get_string_size(widest, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_CD).x) + 4.0 if f != null else 120.0
+	elif act != "":
+		## 能点的那一档: 右边单列一个「观看」(原来拼在正文后面「… · 观看」)
+		cd.text = act
+		cd.custom_minimum_size.x = 0.0
 	tappable = bool(line.get("tap", false))
 	reset_size()
 
 
-## 十分钟以上写满「0:19:56」(紧跟在「18:00 开赛」后面, 只写「19:56」分不清是时刻还是剩多久); 十分钟以内「4:07」。
+## 倒计时: 全决赛日一种写法(`finals_copy.dur`)。原来「0:19:56」「4:07」紧跟在「18:00 开赛」后面, 读着像钟点。
 static func _clock(sec: int) -> String:
-	var s := maxi(0, sec)
-	if s >= 600:
-		return "%d:%02d:%02d" % [s / 3600, (s % 3600) / 60, s % 60]
-	return "%d:%02d" % [s / 60, s % 60]
+	return _FC.dur(sec)
 
 
 ## 正文换字那一下: 冲亮再落回(与主菜单阶段切换同一组数)。

@@ -220,11 +220,21 @@ func _t_sql_v3() -> void:
 	_ok("①c v3 迁移文件与 schema.sql 那一段逐字相同", seg != "" and seg == mig, "%d / %d 字" % [seg.length(), mig.length()])
 	## ★「上线的是哪一版」= schema.sql 里**最后一个** `create or replace function public.week_leaderboard(`
 	##   —— 它必须落在 v3 段里(以后谁再追加一版而没带上这两行, 这条当场红)。
+	## ★2026-11-01 积分赛交给服务器(迁移 20261101d · 方案书 docs/plans/20261101c-积分赛服务器裁判.md)又追加了一版
+	##   (有账本的人按账本排); 它照抄了 v3 筛快照那一段 ⇒ 判据改成: 最后一个定义落在 v3 段或 20261101d 段里,
+	##   且**最后那一版的函数体**仍带着 v3 那两行(gl_w / gl_l 过滤)—— 量的还是「重放以后生效的那一版没丢这两行」。
 	var key := "create or replace function public.week_leaderboard("
 	var last := t.rfind(key)
-	_ok("①c ★★schema.sql 里最后一个 week_leaderboard 定义落在 v3 段内(整份重放时最后生效的是 v3)",
-		last > t.find(MARK3_BEGIN) and last < t.find(MARK3_END) and t.find(MARK3_BEGIN) > t.find(MARK2_END),
-		"最后定义 @%d / v3 段 [%d, %d]" % [last, t.find(MARK3_BEGIN), t.find(MARK3_END)])
+	var m4b := t.find("-- >>> BEGIN ranked_referee 20261101d >>>")
+	var m4e := t.find("-- <<< END ranked_referee 20261101d <<<")
+	var in_v3 := last > t.find(MARK3_BEGIN) and last < t.find(MARK3_END)
+	var in_v4 := m4b > 0 and last > m4b and last < m4e
+	var last_body := t.substr(last, t.find("end $$;", last) - last) if last >= 0 else ""
+	_ok("①c ★★schema.sql 里最后一个 week_leaderboard 定义落在 v3 段或 20261101d 段内, 且那一版带着周六行过滤",
+		(in_v3 or in_v4) and t.find(MARK3_BEGIN) > t.find(MARK2_END)
+		and last_body.contains("coalesce(g.snapshot -> 'gl_w', '0'::jsonb) = '0'::jsonb")
+		and last_body.contains("coalesce(g.snapshot -> 'gl_l', '0'::jsonb) = '0'::jsonb"),
+		"最后定义 @%d / v3 段 [%d, %d] / 20261101d 段 [%d, %d]" % [last, t.find(MARK3_BEGIN), t.find(MARK3_END), m4b, m4e])
 	var c := _code_of(seg)
 	_check_sql_common("①c", c)
 	_ok("①c ★★latest 里滤掉周六战绩非 0-0 的行(gl_w / gl_l 两条都在, 且在 order by 之前 = 在 latest 子句里)",

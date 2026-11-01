@@ -174,11 +174,12 @@ func _t_shop_wiring() -> void:
 	## ── 屏幕那一行说什么(纯函数, 三种状态各不相同) ──
 	var MAP := preload("res://scripts/scenes/BracketMapScene.gd")
 	var t_open := MAP.shop_tip(true, 125, true)
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 「备战购物 · 还剩 2 分 5 秒」→「备战剩余 2 分 05 秒」; 关了「本轮备战已结束 · 等待开赛」→「阵容已锁定」
 	_ok("②' 开着 ⇒ 说**还剩多久**(没有倒计时这一行就没价值)",
-		t_open.find("2 分 5 秒") >= 0, t_open)
+		t_open == "备战剩余 2 分 05 秒", t_open)
 	var t_shut := MAP.shop_tip(false, 0, true)
 	_ok("②' 关了 ⇒ 说清在等什么(不是干巴巴一句「不能买」)",
-		t_shut.find("等待开赛") >= 0, t_shut)
+		t_shut == "阵容已锁定", t_shut)
 	_ok("②' ★★没桶 ⇒ 这一行**根本不出现**(空串), 不是显示一句废话",
 		MAP.shop_tip(true, 100, false) == "", MAP.shop_tip(true, 100, false))
 	_ok("②' ★三种状态说的不是同一句话", t_open != t_shut)

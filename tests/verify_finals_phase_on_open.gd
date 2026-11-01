@@ -84,12 +84,14 @@ func _ready() -> void:
 	mp.free()
 
 	## ★2026-10-11: 2 人一组只有决赛一场, 倒计时不许写「下一轮」
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 轮次名挪到处境句(原来第 1 轮也写「下一轮」, 18:05 实拍); 这一行只剩「距开播 X」
+	##   ⇒ 判据改成「任何一轮都不写『下一轮』, 倒计时前面一个固定说法」。轮次名对不对由 verify_finals_copy 量处境句。
 	var t2: String = MAP.round_tip(1, 2, 322)
-	_ok("④ ★★2 人组第 1 轮 = 决赛, 不写「下一轮」", t2.begins_with("决赛") and t2.find("下一轮") < 0, t2)
+	_ok("④ ★★2 人组第 1 轮 不写「下一轮」", t2 == "距开播 5 分 22 秒", t2)
 	var t8a: String = MAP.round_tip(1, 8, 60)
 	var t8c: String = MAP.round_tip(3, 8, 60)
-	_ok("④ 对照: 8 人组第 1 轮仍是「下一轮」、第 3 轮是「决赛」", t8a.begins_with("下一轮") and t8c.begins_with("决赛"),
-		"%s / %s" % [t8a, t8c])
+	_ok("④ 对照: 8 人组第 1 轮 / 第 3 轮都只写「距开播 X」, 不写「下一轮」", t8a == "距开播 1 分 00 秒" and t8c == t8a
+		and t8a.find("下一轮") < 0, "%s / %s" % [t8a, t8c])
 
 	GameState.week_phase = keep_phase
 	GameState.finals_match = keep_match

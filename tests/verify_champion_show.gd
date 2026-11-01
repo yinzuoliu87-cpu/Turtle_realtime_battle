@@ -138,7 +138,7 @@ func _t_pure() -> void:
 		and not bool(p0[1]["won"]) and p0[1]["score"] == [1, 2], str(p0))
 	var bs: Array = DATA.best_cards(v, FIX.rows())
 	_ok("⑪ 今晚之最 · 最快结束 = C 组半决赛 1:12(行里 steps 最小那一场)", bs.size() == 1 and str(bs[0]["value"]) == "1:12"
-		and str(bs[0]["sub"]).contains("C 组 · 半决赛") and str(bs[0]["who"]) == "暗流", str(bs))
+		and str(bs[0]["sub"]).contains("C 组半决赛") and str(bs[0]["who"]) == "暗流", str(bs))
 	_ok("⑪ 没有 matches 行 ⇒ 今晚之最 0 张(不编)", DATA.best_cards(v, []).is_empty())
 	var rr: Array = FIX.rows()
 	var refd: Dictionary = (rr[17] as Dictionary).duplicate(true)
@@ -146,9 +146,10 @@ func _t_pure() -> void:
 	rr.append(refd)
 	var bs2: Array = DATA.best_cards(v, rr)
 	_ok("⑪ 有裁判写回的行 ⇒ 只认裁判那几行(本机那份更快的 1:12 不算)", bs2.size() == 1 and str(bs2[0]["value"]) != "1:12"
-		and str(bs2[0]["sub"]).contains("F 组 · 组决赛"), str(bs2))
-	_ok("⑪ 届数 / 日期: 10-26 那一周 = 第 4 届 · 11 月 1 日", DATA.edition_of(FIX.WEEK) == 4 and DATA.date_text(FIX.WEEK) == "11 月 1 日"
-		and DATA.edition_line(FIX.WEEK) == "第 4 届 · 11 月 1 日")
+		and str(bs2[0]["sub"]).contains("F 组决赛"), str(bs2))
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 届次与日期两个并列名词用全角空格隔开, 不用「·」
+	_ok("⑪ 届数 / 日期: 10-26 那一周 = 第 4 届　11 月 1 日", DATA.edition_of(FIX.WEEK) == 4 and DATA.date_text(FIX.WEEK) == "11 月 1 日"
+		and DATA.edition_line(FIX.WEEK) == "第 4 届　11 月 1 日")
 	_ok("⑪ 头衔写明「至下周日」", DATA.title_until_line().contains("至下周日"))
 	var rp: Array = DATA.reward_pages([P2C.TITLE_CHAMPION, P2C.TITLE_SEMIFINAL, P2C.TITLE_FINALS_DAY], 3)
 	_ok("⑪ 奖励页: 只放最高那档头衔一页 + 深海币一页(3 轮 × 8 = 24)", rp.size() == 2 and str(rp[0]["kind"]) == "title"
@@ -248,14 +249,14 @@ func _t_cup_full() -> void:
 		s.settled_at >= 12.0 and s.settled_at <= 16.0 and absf(s.settled_at - s.total_length()) < 0.1)
 	_ok("④ 定格卡落定之前场上 0 颗按钮(逐帧量了 %d 帧)" % steps, seen_btn_before == 0 and steps > 600, str(seen_btn_before))
 	_ok("① 揭晓中那一拍: 大字「决赛完成」+「揭晓中」", texts.get("reveal", []) == ["决赛完成", "揭晓中"], str(texts.get("reveal")))
-	_ok("① 亚军卡: 银缎带「冠军杯亚军」+ 名字 + 来历 · 第 2 名", texts.get("runner", []) == ["冠军杯亚军", "火山岩", "C 组冠军 · 第 2 名"],
+	_ok("① 亚军卡: 银缎带「冠军杯赛亚军」+ 名字 + 第 2 名（来历）", texts.get("runner", []) == ["冠军杯赛亚军", "火山岩", "第 2 名（C 组冠军）"],
 		str(texts.get("runner")))
 	_ok("② ★白闪满白之前奖杯不露面, 白闪那一刻起才出(白闪 %.2f / 奖杯 %.2f)" % [flash_peak_t, trophy_first],
 		flash_peak_t > 0.0 and trophy_first >= flash_peak_t - 0.001 and trophy_first - flash_peak_t < 0.1)
 	_ok("② 奖杯 → 「冠军」大字 → 名字缎带 依次出现(%.2f / %.2f / %.2f)" % [trophy_first, big_first, banner_first],
 		trophy_first > 0.0 and big_first > trophy_first + 0.2 and banner_first > big_first)
-	_ok("② 冠军仪式文字: 冠军 / 名字 / 冠军杯 · 24 人冠军 / 第 4 届 · 11 月 1 日",
-		texts.get("crown", []) == ["冠军", "凤凰之羽", "冠军杯 · 24 人冠军", "第 4 届 · 11 月 1 日"], str(texts.get("crown")))
+	_ok("② 冠军仪式文字: 冠军 / 名字 / 冠军杯赛冠军（24 人参赛）/ 第 4 届　11 月 1 日",
+		texts.get("crown", []) == ["冠军", "凤凰之羽", "冠军杯赛冠军（24 人参赛）", "第 4 届　11 月 1 日"], str(texts.get("crown")))
 	var ymin := 1e9
 	var ymax := -1e9
 	for y in trophy_ys:
@@ -334,7 +335,7 @@ func _t_skip() -> void:
 # ═══════════════════════════════════════════════════════════════════
 func _t_group() -> void:
 	for with_lineup in [true, false]:
-		var d: Dictionary = DATA.group_show(FIX.view(), 2, FIX.WEEK, FIX.rows() if with_lineup else [], "", "晋级冠军杯 · 20:00 开赛")
+		var d: Dictionary = DATA.group_show(FIX.view(), 2, FIX.WEEK, FIX.rows() if with_lineup else [], "", "晋级冠军杯赛（20:00 开赛）")
 		d["vp"] = Vector2(1560, 720)
 		var s = _mk(SHOW, d)
 		await get_tree().process_frame
@@ -356,8 +357,8 @@ func _t_group() -> void:
 		_ok("⑦ 组冠军(%s)各拍: %s" % [tag, str(names)], names == want)
 		_ok("③ 组冠军(%s)总长 8~11 s(实测 %.2f)" % [tag, s.settled_at], s.settled_at >= 8.0 and s.settled_at <= 11.0)
 		_ok("⑦ 组冠军(%s)大字「组冠军」、整段 0 颗按钮" % tag, big == "组冠军" and btn_before == 0, "%s %d" % [big, btn_before])
-		_ok("⑦ 组冠军(%s)定格卡写晋级冠军杯 + 头衔" % tag, _text(s, "CardTitleLine").contains("晋级冠军杯 · 20:00 开赛")
-			and _text(s, "CardTitleLine").contains("组冠军"), _text(s, "CardTitleLine"))
+		_ok("⑦ 组冠军(%s)定格卡写晋级冠军杯赛 + 头衔(各一行)" % tag, _text(s, "CardScale").begins_with("晋级冠军杯赛")
+			and _text(s, "CardTitleLine").contains("「组冠军」头衔"), _text(s, "CardScale") + " | " + _text(s, "CardTitleLine"))
 		s.queue_free()
 		await get_tree().process_frame
 
@@ -375,9 +376,9 @@ func _t_card_buttons() -> void:
 	var wall := s.node("BtnWall") as Button
 	_ok("④ 冠军本人定格卡: 「冠军墙」+「领取奖励」, 主按钮在右", claim != null and wall != null and claim.text == "领取奖励"
 		and claim.get_global_rect().position.x > wall.get_global_rect().position.x)
-	_ok("① 定格卡写来历 + 规模「E 组冠军 · 24 人冠军」+ 届数日期", _text(s, "CardScale") == "E 组冠军 · 24 人冠军"
-		and _text(s, "CardEdition") == "冠军杯 · 第 4 届 · 11 月 1 日", _text(s, "CardScale") + " | " + _text(s, "CardEdition"))
-	_ok("① 定格卡写「头衔「冠军」 · 挂在名字旁 · 至下周日」", _text(s, "CardTitleLine") == "头衔「冠军」 · 挂在名字旁 · 至下周日", _text(s, "CardTitleLine"))
+	_ok("① 定格卡写来历 + 规模「E 组冠军（24 人参赛）」+ 届数日期", _text(s, "CardScale") == "E 组冠军（24 人参赛）"
+		and _text(s, "CardEdition") == "冠军杯赛　第 4 届　11 月 1 日", _text(s, "CardScale") + " | " + _text(s, "CardEdition"))
+	_ok("① 定格卡写「获得「冠军」头衔（有效期至下周日）」", _text(s, "CardTitleLine") == "获得「冠军」头衔（有效期至下周日）", _text(s, "CardTitleLine"))
 	claim.pressed.emit()
 	await get_tree().process_frame
 	var rw: Node = null
@@ -487,8 +488,8 @@ func _t_rewards() -> void:
 	var r = _mk(REW, d)
 	await get_tree().process_frame
 	var nb := r.node("BtnNext") as Button
-	_ok("⑨ 第 1 页 = 头衔: 「获得头衔」+ 金缎带「冠军」+「挂在名字旁 · 至下周日」", _text(r, "PageTitle") == "获得头衔"
-		and _text(r, "TitleRibbon") == "冠军" and _text(r, "PageSub") == "挂在名字旁 · 至下周日" and _text(r, "PageCount") == "奖励 1 / 2")
+	_ok("⑨ 第 1 页 = 头衔: 「获得头衔」+ 金缎带「冠军」+「有效期至下周日」", _text(r, "PageTitle") == "获得头衔"
+		and _text(r, "TitleRibbon") == "冠军" and _text(r, "PageSub") == "有效期至下周日" and _text(r, "PageCount") == "奖励 1 / 2")
 	var shown_early := false
 	for _i in range(int((REW.ANIM_TITLE - 0.1) / DT)):
 		r.advance(DT)
@@ -542,8 +543,8 @@ func _t_wall() -> void:
 	_ok("⑩ 冠军墙两届(新的在上): 第 4 届 · 11 月 1 日 / 第 3 届 · 10 月 25 日", _text(w, "WallEdition0") == "第 4 届"
 		and _text(w, "WallDate0") == "11 月 1 日" and _text(w, "WallEdition1") == "第 3 届" and _text(w, "WallDate1") == "10 月 25 日"
 		and w.node("WallRow2") == null)
-	_ok("⑩ 铭牌: 冠军名 / 来历 · 规模 / 亚军 / 夺冠阵容三只", _text(w, "WallName0") == "凤凰之羽" and _text(w, "WallInfo0") == "E 组冠军 · 24 人冠军"
-		and _text(w, "WallRunner0") == "亚军 火山岩" and w.node("WallTurtle0_2") != null and w.node("WallTurtle1_0") == null)
+	_ok("⑩ 铭牌: 冠军名 / 来历（规模）/ 亚军 / 夺冠阵容三只", _text(w, "WallName0") == "凤凰之羽" and _text(w, "WallInfo0") == "E 组冠军（24 人参赛）"
+		and _text(w, "WallRunner0") == "亚军：火山岩" and w.node("WallTurtle0_2") != null and w.node("WallTurtle1_0") == null)
 	var b0 := w.node("WallReplay0") as Button
 	var b1 := w.node("WallReplay1") as Button
 	var asked: Array = []
@@ -555,7 +556,7 @@ func _t_wall() -> void:
 	_ok("⑩ 按钮皮 = card_button, 高 ≥ 81", sb is StyleBoxFlat and (sb as StyleBoxFlat).bg_color == Color("#6a3f1c") and b0.size.y >= 81.0)
 	var w2 = _mk(WALL, {"entries": [], "vp": Vector2(1560, 720)})
 	await get_tree().process_frame
-	_ok("⑩ 一届都没有 ⇒ 写「还没有往届冠军杯冠军」(不画空框)", _text(w2, "WallState") == "还没有往届冠军杯冠军")
+	_ok("⑩ 一届都没有 ⇒ 写「暂无往届冠军」(不画空框)", _text(w2, "WallState") == "暂无往届冠军")
 	var done := [false]
 	w.finished.connect(func() -> void: done[0] = true)
 	(w.node("BtnBack") as Button).pressed.emit()
@@ -572,7 +573,7 @@ func _t_layout() -> void:
 	var measured := 0
 	for vp in [Vector2(1560, 720), Vector2(1280, 960)]:
 		for mode in ["cup", "group"]:
-			var d: Dictionary = _cup_data(vp) if mode == "cup" else DATA.group_show(FIX.view(), 2, FIX.WEEK, FIX.rows(), "", "晋级冠军杯 · 20:00 开赛")
+			var d: Dictionary = _cup_data(vp) if mode == "cup" else DATA.group_show(FIX.view(), 2, FIX.WEEK, FIX.rows(), "", "晋级冠军杯赛（20:00 开赛）")
 			d["vp"] = vp
 			var s = _mk(SHOW, d)
 			await get_tree().process_frame

@@ -346,7 +346,7 @@ func _beat_champion() -> void:
 	var rb := UI.ribbon(_stage, Vector2(cx, oy + 455.0), 560.0, nm, 48, "gold", "RecapChampRibbon")
 	_anim(rb, "scale", 1.3, 1.65, Vector2(0.0, 1.0), Vector2.ONE, "back")
 	var sc := UI.label_in(_stage, Rect2(cx - 400.0, oy + 540.0, 800.0, 36.0),
-		"%d 人决赛日 · %d 组 · 冠军杯赛 %d 人" % [(data["rows"] as Array).size(), (data["groups"] as Array).size(), int(cup.get("size", 0))],
+		"本周决赛日 %d 人参赛，分为 %d 组" % [(data["rows"] as Array).size(), (data["groups"] as Array).size()],
 		24, UI.TXT, false, "RecapScale")
 	_anim(sc, "modulate:a", 1.6, 1.95, 0.0, 1.0, "lin")
 	beats.append("冠军 %s" % nm)

@@ -328,7 +328,7 @@ func _ready() -> void:
 	(a_dup["lane_assign"] as Dictionary)["bottom"] = ((a_dup["lane_assign"] as Dictionary)["bottom"] as Array) + ["basic"]
 	for c in [["wrong_version", bad_ver], ["bad_seed", _job(a, b, 0)], ["bad_seed", _job(a, b, seed1, {"seed": 1.5})],
 			["a_bad_snapshot", _job(a2, b, seed1)], ["b_bad_snapshot", _job(a, b_broken, seed1)],
-			["a_bad_snapshot", _job(a_dup, b, seed1)], ["bad_mode", _job(a, b, seed1, {"mode": "ranked"})]]:
+			["a_bad_snapshot", _job(a_dup, b, seed1)], ["bad_mode", _job(a, b, seed1, {"mode": "casual"})]]:   # 2026-11-01 起 ranked 是合法种类(积分赛服务器局), 拿一个不存在的种类试
 		var rr: Dictionary = await RefereeRunner.run(self, c[1])
 		_ok("★R7 拒算 %s ⇒ ok=false 且 permanent" % str(c[0]), not bool(rr.get("ok", true)) and str(rr.get("error", "")) == str(c[0])
 			and bool(rr.get("permanent", false)), str(rr.get("error", "")))

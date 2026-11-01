@@ -58,7 +58,7 @@ static func date_text(week: int) -> String:
 	return "%d 月 %d 日" % [int(d.get("month", 0)), int(d.get("day", 0))]
 
 
-## 「第 4 届 · 11 月 1 日」。缺哪样省哪样。
+## 「第 4 届　11 月 1 日」(届次与日期两个并列名词, 全角空格隔开; 不用「·」)。缺哪样省哪样。
 static func edition_line(week: int, edition: int = -1) -> String:
 	var ed := edition if edition >= 0 else edition_of(week)
 	var parts: Array = []
@@ -67,7 +67,7 @@ static func edition_line(week: int, edition: int = -1) -> String:
 	var dt := date_text(week)
 	if dt != "":
 		parts.append(dt)
-	return " · ".join(parts)
+	return "　".join(parts)
 
 
 ## 单败表里第 r 轮叫什么(从决赛往回数)。`group` = 小组赛那一张(末轮叫「组决赛」)。
@@ -80,7 +80,7 @@ static func round_name(n: int, r: int, group: bool = false) -> String:
 		return "半决赛"
 	if back == 2:
 		return "1/4 决赛"
-	return "第 %d 轮" % r
+	return "1/%d 决赛" % (1 << back)        # 与全决赛日同一套(finals_copy.round_name); 原来写「第 r 轮」
 
 
 ## 毫秒级时长 → 「1:52」。
@@ -89,10 +89,10 @@ static func mmss(sec: float) -> String:
 	return "%d:%02d" % [s / 60, s % 60]
 
 
-## 头衔页那一行: 「挂在名字旁 · 至下周日」。★永久记录(`GameState.titles` 里那条 {id, week})不随周清;
+## 头衔页那一行: 「有效期至下周日」。★永久记录(`GameState.titles` 里那条 {id, week})不随周清;
 ##   「至下周日」说的是**名字旁那块牌**: 排行榜 / 对阵图按「上周终榜」贴冠军 / 亚军 / 四强, 下一届冠军诞生就换人。
 static func title_until_line() -> String:
-	return "挂在名字旁 · %s" % TITLE_UNTIL
+	return "有效期至%s" % TITLE_UNTIL.trim_prefix("至")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -341,7 +341,7 @@ static func group_show(view: Dictionary, bucket_no: int, week: int, rows: Array 
 			"group": group_name(bucket_no), "entrants": int((b as Dictionary).get("size", 0)),
 			"champion": champ, "lineup": champ.get("lineup", []), "path": path_of(b, sd, people, true),
 			"viewer_is_champion": my_acc != "" and str(champ.get("acc", "")) == my_acc,
-			"next_text": next_text if next_text != "" else "晋级冠军杯"}
+			"next_text": next_text if next_text != "" else "晋级冠军杯赛"}
 	return {}
 
 
@@ -409,11 +409,11 @@ static func best_cards(view: Dictionary, rows: Array) -> Array:
 	var where := ""
 	var cup = view.get("cup", null)
 	if cup is Dictionary and int((cup as Dictionary).get("bucket", -9)) == fb:
-		where = "冠军杯 · " + round_name(int((cup as Dictionary).get("size", 0)), fr, false)
+		where = _P2C.STAGE_CUP + round_name(int((cup as Dictionary).get("size", 0)), fr, false)
 	else:
 		for b in (view.get("buckets", []) as Array):
 			if b is Dictionary and int((b as Dictionary).get("bucket", -9)) == fb:
-				where = group_name(fb) + " · " + round_name(int((b as Dictionary).get("size", 0)), fr, true)
+				where = group_name(fb) + round_name(int((b as Dictionary).get("size", 0)), fr, true).trim_prefix("组")
 	var ln := str(((best.get("lp", {}) if best.get("lp", {}) is Dictionary else {}) as Dictionary).get("name", ""))
 	var rn := str(((best.get("rp", {}) if best.get("rp", {}) is Dictionary else {}) as Dictionary).get("name", ""))
 	var won := bool(res.get("won", true))
@@ -421,7 +421,7 @@ static func best_cards(view: Dictionary, rows: Array) -> Array:
 	var lu := _leaders(best.get("la", null) if won else best.get("ra", null))
 	return [{"kind": "fast", "title": "最快结束的一场", "value_sec": float(best_steps) / float(SIM_HZ),
 		"value": mmss(float(best_steps) / float(SIM_HZ)), "who": winner,
-		"sub": ("%s 对 %s" % [ln, rn]) + ((" · " + where) if where != "" else ""),
+		"sub": ("%s：" % where if where != "" else "") + ("%s 对 %s" % [ln, rn]),
 		"turtle": str(lu[0]) if not lu.is_empty() else ""}]
 
 
@@ -439,7 +439,7 @@ static func reward_pages(titles: Array, rounds: int) -> Array:
 			break
 	if rounds > 0:
 		pages.append({"kind": "coins", "amount": rounds * int(_P2C.FINALS_COINS_PER_ROUND),
-			"sub": "决赛日 %d 轮 · 每轮 %d" % [rounds, int(_P2C.FINALS_COINS_PER_ROUND)]})
+			"sub": "决赛日共 %d 轮，每轮 %d 深海币" % [rounds, int(_P2C.FINALS_COINS_PER_ROUND)]})
 	return pages
 
 

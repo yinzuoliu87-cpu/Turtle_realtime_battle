@@ -32,7 +32,7 @@ const S_REVEALED := 3
 ## 屏上的字(短名词 / 短指令)。
 const TXT_LIVE := "开播中"
 ## 备战结束 → 翻面那一段(服务器在算; 翻面时刻取决于裁判多快写回, 不给倒计时)。
-const TXT_SETTLE := "结算中 · 即将开播"
+const TXT_SETTLE := "即将开播"
 
 
 ## 这一组的 seq; 没有 / 形状不对 / 版本不认识 ⇒ {}(= 老规则)。
@@ -168,7 +168,7 @@ static func round_line(b: Dictionary, now: int, fmt: Callable, watched_keys: Dic
 				next_i = i
 		elif now < int(it[2]) and not watched_keys.has(int(it[0])):
 			live.append(i)
-	var shop_tail := ("下一轮备战 %s后开始" % fmt.call(shop_at - now)) if (not closed and shop_at > now) else ""
+	var shop_tail := ("距下一轮备战 %s" % fmt.call(shop_at - now)) if (not closed and shop_at > now) else ""
 	if not live.is_empty():
 		var head := ""
 		if single:
@@ -177,11 +177,10 @@ static func round_line(b: Dictionary, now: int, fmt: Callable, watched_keys: Dic
 			head = "本轮 %d 场%s" % [live.size(), TXT_LIVE]
 		else:
 			head = _name(int(live[0]), false) + TXT_LIVE
-		if next_i >= 0:
-			return "%s · %s %s后开播" % [head, _name(next_i, false), fmt.call(int(ln[next_i][1]) - now)]
-		return (head + " · " + shop_tail) if shop_tail != "" else head
+		## ★2026-11-01 一行一件事: 有一场在播就只说在播(下一场几点在底部「下一场」卡 / 下一行倒计时)
+		return head
 	if next_i >= 0:
-		return "%s %s后开播" % [_name(next_i, single), fmt.call(int(ln[next_i][1]) - now)]
+		return "%s距开播 %s" % [_name(next_i, single), fmt.call(int(ln[next_i][1]) - now)]
 	if shop_tail != "":
 		return shop_tail
 	return TXT_SETTLE if settling(b, now) else ""

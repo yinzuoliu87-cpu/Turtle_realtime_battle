@@ -513,10 +513,61 @@ func _do_match(mm: Node) -> void:
 	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET:
 		await _do_match_queue(mm)
 		return
+	if _ranked_server():
+		await _do_match_ranked(mm)
+		return
 	_acted_id = mm.get_instance_id()
 	await _sleep(3.2)
 	if _alive(mm):
 		_shot("match_%02d" % (int(GameState.season_total_battles) + 1))
+
+
+## ★积分赛交给服务器(2026-11-01 · 方案书 docs/plans/20261101c-积分赛服务器裁判.md): 陪练号与真人走同一个匹配屏、同一个会话
+##   (MatchmakingScene._server_pick_ranked → referee_run.start_ranked): 交阵容 → 服务端挑对手 → 裁判机算 → 服务端记账 →
+##   本机照抄账本、看直播 / 录像。判据与匹配屏 `_ranked_server_now` 同一个开关(教程不走这里)。
+func _ranked_server() -> bool:
+	return bool(load("res://scripts/net/referee_net.gd").ranked_on()) and not bool(GameState.tutorial_active)
+
+
+## 积分赛服务器局的匹配屏: 只盯会话状态。账记完不看(SIM_SKIP_WATCH = `skip_play`)⇒ 去商店; 报错停够 ERROR_LEAVE_SEC ⇒ 按「←」
+##   回主菜单(账已记 / 「战绩已同步」⇒ 接着打, 别的 ⇒ 收工); 等不到结果(ST_LATER)⇒ 匹配屏自己回主菜单(单子由主菜单补记)。
+##   看直播 / 录像 ⇒ 换到战斗场, `_do_battle` 接手(结算屏按钮照旧)。等裁判的上限与闯关日同一条线(stuck_limit 闯关那一支)。
+func _do_match_ranked(mm: Node) -> void:
+	_acted_id = mm.get_instance_id()
+	var rw = load("res://scripts/systems/replay/referee_watch.gd")
+	rw.skip_play = OS.get_environment("SIM_SKIP_WATCH").strip_edges() == "1"
+	var limit := stuck_limit(S_MATCH, _P2.PHASE_GAUNTLET)
+	var t0 := Time.get_ticks_msec()
+	var shot := false
+	var err0 := -1
+	while _alive(mm):
+		var run = mm.get("_ref_run")
+		var st := str(run.state) if run != null and is_instance_valid(run) else ""
+		if st == rw.ST_SKIPPED:
+			_ev("watch_skipped", {"won": bool((run.view as Dictionary).get("won", false)), "ranked": true, "stats": _stats()})
+			SceneNav.go(get_tree(), S_SHOP)
+			await _wait_scene(S_SHOP, 10.0)
+			return
+		if st == rw.ST_ERROR:
+			if err0 < 0:
+				err0 = Time.get_ticks_msec()
+			elif (Time.get_ticks_msec() - err0) / 1000.0 > ERROR_LEAVE_SEC:
+				var again: bool = not (run.view as Dictionary).is_empty() or str(run.msg) == rw.TXT_STALE
+				_ev("match_error", {"msg": str(run.msg), "again": again, "ranked": true})
+				_shot("match_error")
+				mm.call("_on_cancel")
+				await _wait_scene(S_MENU, 10.0)
+				if not again:
+					_finish("match_error")
+				return
+		if not shot and (Time.get_ticks_msec() - t0) / 1000.0 > 3.2:
+			shot = true
+			_shot("match_%02d" % (int(GameState.season_total_battles) + 1))
+		if not _stuck_noted and (Time.get_ticks_msec() - t0) / 1000.0 > limit:
+			_stuck_noted = true
+			_ev("STUCK", {"scene": S_MATCH, "stayed_s": (Time.get_ticks_msec() - t0) / 1000.0, "state": st, "ranked": true})
+			_shot("STUCK_match")
+		await _sleep(0.5)
 
 
 ## ★2026-11-01 U3: 闯关日主菜单还挂着待记账单(上次配上就下线 / 被停号时那一局还在算)⇒ 等主菜单补记完再查格子。

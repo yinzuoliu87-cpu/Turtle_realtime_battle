@@ -50,7 +50,7 @@ const TXT_REWARD := "本轮奖励"
 const TXT_COINS := "深海币"
 const TXT_XP := "经验"
 const TXT_AUTO_BACK := "即将返回对阵图"
-const TXT_NEXT_AT := "%s后开播"
+const TXT_NEXT_AT := "距开播 %s"
 
 ## 节点名(门禁按名字找)
 const N_CARD := "ReplayEndCard"
@@ -192,9 +192,9 @@ static func advance_line(st: Dictionary) -> String:
 	if r < 1 or n < 1 or r > n:
 		return ""
 	if r == n:
-		return "冠军杯赛冠军" if bool(st.get("cup", false)) else "小组第 1 名 · 晋级冠军杯赛"
+		return "冠军杯赛冠军" if bool(st.get("cup", false)) else "小组第 1 名，晋级冠军杯赛"
 	var nx := str(st.get("next_name", ""))
-	return ("晋级" + nx) if nx != "" else "晋级下一轮"
+	return Ctx.join_words("晋级", nx) if nx != "" else "晋级下一轮"
 
 
 ## 顶上一行小字: 哪一项比赛哪一轮; 没给 ⇒ 按回哪一页说哪一天; 战绩页不写。
@@ -1016,7 +1016,7 @@ func _pose_third(x: float, t0: float) -> void:
 		gw.text = _go_when_text()
 
 
-## 「1 分 05 秒后开播」(下一场有时刻时)。
+## 「距开播 1 分 05 秒」(下一场有时刻时; 与对阵图下一行同一种写法)。
 func _go_when_text() -> String:
 	var at := int((info.get("next", {}) as Dictionary).get("at", 0))
 	if at <= 0:

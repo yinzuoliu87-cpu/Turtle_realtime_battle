@@ -97,6 +97,7 @@ var _gauntlet_now := false
 var _ref_run = null
 var _ref_lb: Label = null
 var _local_args: Array = []   # 服务端说开关已关时本机挑对手要的 [排除名单, rng]
+var _ranked_srv := false        # 这一屏是积分赛服务器局(2026-11-01; ST_LOCAL 时退回积分赛的本机挑对手, 不是周六那条)
 var _searching := false   # 雷达环循环的闸: _build_vs 里置 false 立即断. 原先靠 is_instance_valid(_dots_lbl) 判断,
                           #   但 queue_free 是延迟的 → 换幕后还会多播一圈残留弧.
 
@@ -143,6 +144,11 @@ func _ready() -> void:
 	##   交阵容与「找对手」动画同时进行, 回包里的对手卡片画 VS 卡。服务端说开关已关 ⇒ 退回下面的老路(本机挑、本机打)。
 	if _gauntlet_now and _RW.gauntlet_on():
 		_server_pick(exclude, _rng)
+		return
+	if _ranked_server_now():
+		## ★积分赛交给服务器(2026-11-01 · 方案书 docs/plans/20261101c-积分赛服务器裁判.md): 开关开 ⇒ 交阵容, 对手 / 种子 / 结果 / 记账
+		##   全由服务器定(`_server_pick_ranked`); 本机不挑、不写 dual_ghost。开关关 / 服务端说已关(ST_LOCAL)⇒ 下面本机挑的老路(一字未动)。
+		_server_pick_ranked(exclude, _rng)
 		return
 	if _gauntlet_now:
 		_pick_gauntlet_local(exclude, _rng)
@@ -229,6 +235,41 @@ func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
 	if _cancelled or not is_inside_tree() or _ref_run == null or (_ref_run.opp as Dictionary).is_empty():
 		return
 	_queue_box_free()
+	var card := _opponent_from_ghost(_ref_run.opp)
+	GameState.dual_opponent = card
+	_build_vs(card)
+	_ref_label()
+	_ref_bar_ensure()
+
+
+# ─────────────────────────────── 积分赛交给服务器(2026-11-01) ───────────────────────────────
+## 方案书 docs/plans/20261101c-积分赛服务器裁判.md。用户 10-19「我们的所有对局不应该在本机上吧，应该放服务器上吧」、
+##   11-01「哪个商业游戏是这么本地做的？」。
+
+## 这一局交给服务器吗: 不是闯关日、积分赛开关开、不在新手教程沙盒、不是好友切磋(切磋 / 教程各有自己的对手, 不计赛季)。
+func _ranked_server_now() -> bool:
+	return not _gauntlet_now and _RW.ranked_on() and not bool(GameState.tutorial_active) and not Spar.is_active()
+
+
+## 「找对手」动画与交阵容同时开始; 服务端当场挑好对手、建好任务 ⇒ 回包里的对手卡片翻 VS 卡(动画至少放满 2.2 秒, 与本机那条一样)。
+##   之后 VS 卡下面一行字 + 进度条跟着会话走(等裁判 → 跟播 / 取录像), 与周六配上之后同一屏。
+##   交不上(断网 / 拒收)⇒ 停在找对手那一屏, 下面一行字说原因, 左上「←」回主菜单(没有本地成绩)。
+##   服务端说开关已关(ST_LOCAL)⇒ `_on_referee_changed` 走本机挑的老路。
+func _server_pick_ranked(exclude: Array, rng: RandomNumberGenerator) -> void:
+	_local_args = [exclude, rng]
+	_ranked_srv = true
+	_build_searching()
+	_ref_run = _RUN.new()
+	_ref_run.name = "RefereeRun"
+	add_child(_ref_run)
+	_ref_run.changed.connect(_on_referee_changed)
+	_ref_run.start_ranked()
+	var t0 := Time.get_ticks_msec()
+	while not _cancelled and is_inside_tree() and _ref_run != null \
+			and (Time.get_ticks_msec() - t0 < 2200 or _RW.in_queue(str(_ref_run.state))):
+		await get_tree().process_frame
+	if _cancelled or not is_inside_tree() or _ref_run == null or (_ref_run.opp as Dictionary).is_empty():
+		return
 	var card := _opponent_from_ghost(_ref_run.opp)
 	GameState.dual_opponent = card
 	_build_vs(card)
@@ -394,7 +435,11 @@ func _on_referee_changed() -> void:
 		## 服务端说开关已关 ⇒ 老路: 本机挑、本机打(与开关关着时同一条)。
 		var ex: Array = _local_args[0] if _local_args.size() == 2 else []
 		var rng: RandomNumberGenerator = _local_args[1] if _local_args.size() == 2 else Backend.make_match_rng()
-		_pick_gauntlet_local(ex, rng)
+		if _ranked_srv:
+			## 积分赛(2026-11-01): 与 `_ready` 积分赛那一支同一行(本机按场次挑)
+			GameState.dual_ghost = Backend.find_opponent(int(GameState.season_total_battles), ex, rng)
+		else:
+			_pick_gauntlet_local(ex, rng)
 		_note_recent()
 		GameState.dual_opponent = _opponent_from_ghost(GameState.dual_ghost)
 		await _fade_to_black(0.4)
@@ -410,7 +455,7 @@ func _on_referee_changed() -> void:
 	##   否则这次晋级没有任何表示(周日收盘卡按设计不再庆祝)。只演一次。
 	if str(_ref_run.state) == _RW.ST_ERROR and not (_ref_run.view as Dictionary).is_empty() and not _promo_played:
 		_promo_played = true
-		var promo: Array = BattleHud.promotion_for(_P2C_MM.SETTLE_GAUNTLET, bool(_ref_run.view.get("won", false)), false, GameState)
+		var promo: Array = BattleHud.promotion_for(_RW.settle_kind_of(_ref_run.view), bool(_ref_run.view.get("won", false)), false, GameState)
 		if not promo.is_empty():
 			StageCeremony.play(self, str(promo[0]), str(promo[1]), str(promo[2]), str(promo[3]), false, func() -> void: pass)
 

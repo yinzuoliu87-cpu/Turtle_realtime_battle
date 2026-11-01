@@ -14,6 +14,8 @@ const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
 const _PS := preload("res://scripts/systems/replay/premiere_schedule.gd")
 const _H := preload("res://scripts/scenes/bracket/bracket_hero.gd")
 const _CD := preload("res://scripts/scenes/bracket/champion_data.gd")
+const _M := preload("res://scripts/ui/finals_day_model.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 
 var s
 ## 本次运行里见过「决赛还没揭晓」的那几张图(只有亲眼等到揭晓才算「那一刻」; 开屏就是收盘的不算)、已经报过的那几张。
@@ -39,13 +41,11 @@ func srv_now_of(b: Dictionary) -> int:
 	return int(_P2C.now_utc())
 
 
-## 大倒计时(⑫ 开赛前那一块): 「1 小时 32 分 05 秒」/「23 分 15 秒」。★不写「23:15」(用户 10-04: 读着像 23 点 15 分)。
+## 大倒计时(⑫ 开赛前那一块): 「1 小时 32 分 05 秒」/「23 分 15 秒」(全决赛日同一种写法 `finals_copy.dur`)。
 static func big_countdown(sec: int) -> String:
 	if sec <= 0:
 		return "即将开始"
-	if sec >= 3600:
-		return "%d 小时 %02d 分 %02d 秒" % [sec / 3600, (sec % 3600) / 60, sec % 60]
-	return "%d 分 %02d 秒" % [sec / 60, sec % 60]
+	return _FC.dur(sec)
 
 
 func cup_start_hhmm() -> String:
@@ -63,10 +63,10 @@ func hero_title() -> String:
 	if is_cup():
 		return _P2C.STAGE_CUP
 	if bool(s._grid_on):
-		return "%s · 全部组" % _P2C.STAGE_GROUP
+		return "全部小组"
 	var c: Dictionary = s.cur()
 	if int(c.get("size", 0)) >= 1 and int(c.get("bucket", -1)) >= 0:
-		return "%s · %s" % [_P2C.STAGE_GROUP, s.sheet_name(c)]
+		return "%s %s" % [_P2C.STAGE_GROUP, s.sheet_name(c)]
 	return _P2C.STAGE_GROUP
 
 
@@ -74,10 +74,12 @@ func champion_title() -> String:
 	return "冠军" if is_cup() else "%s冠军" % s.sheet_name(s.cur())
 
 
+## 冠军位下面那一行: 冠军拿什么(一件事)。★2026-11-01: 原来「组冠军得「组冠军」头衔 · 每轮 +8 深海币」——
+##   后半句是**每个参赛者**每轮都有的(FINALS_COINS_PER_ROUND 不看输赢), 拼在冠军那一行读成冠军专属; 它在每场结束的
+##   「本轮奖励」里另有一拍。⇒ 这里只写冠军奖励。
 func reward_line() -> String:
 	var t := _P2C.TITLE_CHAMPION if is_cup() else _P2C.TITLE_GROUP_CHAMPION
-	return "%s得「%s」头衔 · 每轮 +%d 深海币" % ["冠军" if is_cup() else "组冠军", str(_P2C.TITLE_LABEL.get(t, "")),
-		int(_P2C.FINALS_COINS_PER_ROUND)]
+	return _FC.kv("冠军奖励", "「%s」头衔" % str(_P2C.TITLE_LABEL.get(t, "")))
 
 
 ## 哪一列标题点亮(C02): 正在一场接一场开播的那一轮; 没有在播的 = 当前轮。收盘 = 不点。
@@ -145,7 +147,7 @@ func origin_label(sd: int) -> String:
 			out = "%s冠军" % _CD.group_name(int(bd.get("bucket", 0)))
 			break
 	if str(s.defending_acc) != "" and str(s.defending_acc) == acc:
-		out = ("卫冕 · " + out) if out != "" else "卫冕冠军"
+		out = (out + "（卫冕）") if out != "" else "卫冕冠军"
 	return out
 
 
@@ -211,10 +213,6 @@ func match_label(r: int, m: int) -> String:
 	return "%s第 %d 场" % [rn, k] if k > 0 else rn
 
 
-func _left_to_start(r: int, m: int) -> int:
-	return _PS.start_of(s.cur(), r, m) - int(s.srv_now())
-
-
 ## 观战那一侧的两张名牌(C 块 `FinalsCtx` 的 cards): 冠军杯里写他是哪一组的冠军(组号从 0 起)、上周冠军挂「卫冕」。小组赛 = []。
 func cards_for(r: int, m: int) -> Array:
 	if not is_cup():
@@ -251,7 +249,9 @@ func is_forfeit(r: int, m: int) -> bool:
 	return _PS.slot(c, r, m).is_empty() and r <= _PS.flipped_round(c)
 
 
-## 卡顶那一句(状态)。★只翻译场景判好的状态。
+## 卡顶左边那一句。★只翻译场景判好的状态。
+## ★2026-11-01: 原来决赛卡写「决赛 · 等待中」「决赛 · 已结束」、即将开播写「第 2 场 · 2 分 25 秒后」(一行两件事)。
+##   ⇒ 左边只写一件事: 决赛卡 =「决赛」(状态挪到右边 `card_head_state`), 其余卡 = 状态; 即将开播 = 开播时刻(右边有「即将开播」签)。
 func card_head_text(r: int, m: int) -> String:
 	var c: Dictionary = s.cur()
 	var n := int(c.get("size", 0))
@@ -263,37 +263,58 @@ func card_head_text(r: int, m: int) -> String:
 		return "轮空"
 	var k := seq_index(r, m)
 	var who := ("第 %d 场" % k) if (k > 0 and not fin) else ("决赛" if fin else _H.round_name(n, r))
-	if st == str(s.ST_DONE):
-		if is_forfeit(r, m):
-			return ("决赛 · " if fin else "") + "判负"
-		return ("决赛 · " if fin else "") + "已结束"
-	if st == str(s.ST_PREMIERE):
-		return who
 	if st == str(s.ST_UPCOMING):
-		return "%s · %s后" % [who, s.countdown_text(_left_to_start(r, m))]
+		return "%s %s 开播" % [who, _FC.at(_PS.start_of(c, r, m))]
+	if fin or st == str(s.ST_PREMIERE):
+		return who
+	return card_status_word(r, m)
+
+
+## 决赛卡右边那个状态词(左边写了「决赛」); 不是决赛 / 开播中 / 即将开播 / 轮空 = ""(那几种左边已经说了或有签)。
+func card_head_state(r: int, m: int) -> String:
+	var n := int(s.cur().get("size", 0))
+	if r < _B.rounds_for(n):
+		return ""
+	var st := str(s.match_state(r, m))
+	if st == str(s.ST_PREMIERE) or st == str(s.ST_UPCOMING) or st == str(s.ST_BYE):
+		return ""
+	return card_status_word(r, m)
+
+
+## 一场此刻的状态词(2~4 字, 商业游戏状态签那一种): 已结束 / 判负 / 等待中 / 备战中 / 结算中 / 等待开播。
+func card_status_word(r: int, m: int) -> String:
+	var c: Dictionary = s.cur()
+	var st := str(s.match_state(r, m))
+	if st == str(s.ST_DONE):
+		return "判负" if is_forfeit(r, m) else "已结束"
 	if st == str(s.ST_LIVE):
 		var ra := int(c.get("round_at", 0))
 		var now := int(s.srv_now())
 		if _PS.before_shop(c, now):
-			return ("决赛 · " if fin else "") + "等待中"     # 上一轮还在一场接一场地播
+			return "等待中"     # 上一轮还在一场接一场地播
 		if ra > 0 and _P2C.finals_shop_open(ra, now):
-			return ("决赛 · " if fin else "") + "备战中"
+			return "备战中"
 		if _PS.settling(c, now):
-			return ("决赛 · " if fin else "") + "结算中"
-		return ("决赛 · " if fin else "") + "等待开播"
-	return ("决赛 · " if fin else "") + "等待中"
+			return "结算中"
+		return "等待开播"
+	return "等待中"
 
 
 # ═══════════════════════════════════════════════════════════════════
 #  ⑥ 一句我的处境(P3 · S 清单第 3 / 4 / 9 条)
 # ═══════════════════════════════════════════════════════════════════
+## ★2026-11-01 改写(用户「作为玩家看到的东西是什么呢？…一定要按照商业游戏的口吻」):
+##   原来一行拼三件事(「观战 · A 组 · 半决赛备战中」「你的半决赛 · 对手 Kiki · 备战中」「你止步半决赛 · 可继续观看其他对局」)。
+##   ⇒ 这一行只说**一件事**(是什么 / 几点), 倒计时归下一行 `tip_line()`, 动作归主按钮。
+##   观众不加「观战 · A 组」前缀(缎带上已经写着在看哪一组; 旁观视角写第三人称, Dota「{轮次}的比赛正在进行中。」)。
+##   时刻全从 `next_premiere()` / `_PS.start_of` 出 —— 与底部「下一场」卡、全局小条同一份。
 func hero_status_line() -> String:
 	if bool(s._grid_on) and not is_cup():
 		var lv := 0
 		for b in s._spectate_list():
 			if group_live_rm(b).x >= 0:
 				lv += 1
-		return ("%d 个组开播中 · 点击查看" % lv) if lv > 0 else "点击一组查看对阵"
+		return ("%d 个小组开播中" % lv) if lv > 0 else "选择小组查看对阵"
 	var c: Dictionary = s.cur()
 	var n := int(c.get("size", 0))
 	if n < 2:
@@ -305,61 +326,119 @@ func hero_status_line() -> String:
 	if cws >= 0:
 		var champ: Dictionary = s.competitor(total, 0, cws)
 		if me >= 0 and int(champ.get("seed", -1)) == me:
-			return "你是%s冠军！" % _P2C.STAGE_CUP if is_cup() else "你是%s冠军！晋级%s" % [where, _P2C.STAGE_CUP]
+			return ("你获得%s冠军！" if is_cup() else "你获得 %s冠军！") % where
 		if is_cup():
-			return "冠军杯赛已结束 · 冠军 %s" % str(champ.get("name", ""))
-		return "%s冠军 · %s · 晋级%s" % [where, str(champ.get("name", "")), _P2C.STAGE_CUP]
+			return "%s已结束" % _P2C.STAGE_CUP
+		return _FC.kv("%s冠军" % where, str(champ.get("name", "")))
 	var lr := live_rm()
-	var up := upcoming_rm()
 	var now := int(s.srv_now())
 	var ra := int(c.get("round_at", 0))
 	var shop: bool = ra > 0 and _P2C.finals_shop_open(ra, now) and not _PS.before_shop(c, now)
 	if me < 0:
-		var pre := "观战 · %s" % where
 		var nlive := live_count(lr.x) if lr.x >= 1 else 0
 		if nlive >= 2:
-			return "%s · %s %d 场开播中" % [pre, _H.round_name(n, lr.x), nlive]     # 小组赛同一轮同时开播: 真实的 N
+			return "%s %d 场开播中" % [_H.round_name(n, lr.x), nlive]     # 小组赛同一轮同时开播: 真实的 N
 		if lr.x >= 1:
-			return "%s · %s开播中" % [pre, match_label(lr.x, lr.y)]
-		if up.x >= 1:
-			return "%s · %s %s后开播" % [pre, match_label(up.x, up.y), s.countdown_text(_left_to_start(up.x, up.y))]
+			return "%s开播中" % match_label(lr.x, lr.y)
 		if shop:
-			return "%s · %s备战中" % [pre, _H.round_name(n, int(c.get("round", 1)))]
-		return pre
+			return "%s备战中" % _H.round_name(n, int(c.get("round", 1)))
+		## 上一轮播完、下一轮备战还没开始(一场接一场): 说下一轮几点开始备战(那是定了的时刻; 开播时刻要等演算)
+		if _PS.before_shop(c, now) and ra > now and upcoming_rm().x < 0:
+			return "%s备战 %s 开始" % [_H.round_name(n, mini(int(c.get("round", 1)), total)), _FC.at(ra)]
+		var eta := next_premiere()
+		if not eta.is_empty():
+			return "%s %s 开播" % [eta_label(eta), _FC.at(int(eta["at"]))]
+		if _PS.settling(c, now):
+			return "%s即将开播" % _H.round_name(n, mini(int(c.get("round", 1)), total))
+		return ""
 	## 我出局了
 	for r in range(1, total + 1):
 		for m in range(_B.matches_in_round(n, r)):
 			var ws := int(s.winner_side(r, m))
 			if ws >= 0 and bool(s._is_me_side(r, m, 1 - ws)) and not bool(s.competitor(r, m, ws).get("bye", false)):
-				return "你止步%s · 可继续观看其他对局" % _H.round_name(n, r)
+				return _FC.join("你止步", _H.round_name(n, r))
 	## 我首轮轮空(本轮还在播)
+	var up := upcoming_rm()
 	for m2 in range(_B.matches_in_round(n, 1)):
 		if bool(s.is_my_match(1, m2)) and (bool(s.competitor(1, m2, 0).get("bye", false)) or bool(s.competitor(1, m2, 1).get("bye", false))):
 			if int(c.get("round", 1)) <= 2 and (lr.x == 1 or up.x == 1 or (int(c.get("round", 1)) == 1)):
-				return "你首轮轮空 · 直接晋级%s" % _H.round_name(n, 2)
+				return _FC.join("首轮轮空，直接晋级", _H.round_name(n, 2))
 	var f: Vector2i = s.my_focus()
 	if f.x < 1:
 		return ""
 	var rn := _H.round_name(n, f.x)
 	var st := str(s.match_state(f.x, f.y))
 	if st == str(s.ST_PREMIERE):
-		return "你的%s正在开播" % rn
+		return _FC.join("你的", rn) + "开播中"
 	if st == str(s.ST_UPCOMING):
-		return "你的%s %s后开播" % [rn, s.countdown_text(_left_to_start(f.x, f.y))]
+		return "%s %s 开播" % [_FC.join("你的", rn), _FC.at(_PS.start_of(c, f.x, f.y))]
 	var a: Dictionary = s.competitor(f.x, f.y, 0)
 	var b: Dictionary = s.competitor(f.x, f.y, 1)
 	var foe: Dictionary = b if int(a.get("seed", -1)) == me else a
 	if int(foe.get("seed", -1)) < 0:
-		return "你已晋级%s · 对手于本轮结束后揭晓" % rn
-	if shop and f.x == int(c.get("round", 1)):
-		return "你的%s · 对手 %s · 备战中" % [rn, str(foe.get("name", ""))]
-	return "你的%s · 对手 %s" % [rn, str(foe.get("name", ""))]
+		return _FC.join("你已晋级", rn)
+	return _FC.kv(_FC.join("你的", rn) + "对手", str(foe.get("name", "")))
+
+
+## ★★这一屏「下一次开播」的唯一答案: 正在看的那张图 → `FinalsDayModel.premiere_eta`(全局小条 / 主菜单同一个函数)。
+func next_premiere() -> Dictionary:
+	return _M.premiere_eta(s.cur(), int(s.srv_now()))
+
+
+## 「半决赛第 2 场」(知道是哪一场)/「半决赛」(还没翻面, 只知道是哪一轮)。
+func eta_label(eta: Dictionary) -> String:
+	var r := int(eta.get("r", 1))
+	if int(eta.get("m", -1)) >= 0:
+		return match_label(r, int(eta["m"]))
+	return _H.round_name(int(s.cur().get("size", 0)), r)
+
+
+## 处境句下面那一行: **只放倒计时**, 前面一个固定说法(「备战剩余」「距开播」)。`""` = 不出现。
+## ★倒计时与处境句 / 底部卡 / 全局小条同一个时刻来源 —— 原来这一行写「下一轮 3 分 0 秒后开播」(第 1 轮也叫「下一轮」),
+##   主按钮又把同一句写一遍, 底部卡写「约 18:03」(备战结束时刻, 18:05 时已经过去)。
+func tip_line() -> String:
+	if bool(s._grid_on) and not is_cup():
+		return ""
+	var c: Dictionary = s.cur()
+	var n := int(c.get("size", 0))
+	if n < 2 or bool(c.get("closed", false)) and live_rm().x < 0 and upcoming_rm().x < 0:
+		return ""
+	var now := int(s.srv_now())
+	var ra := int(c.get("round_at", 0))
+	if ra > 0 and _P2C.finals_shop_open(ra, now) and not _PS.before_shop(c, now):
+		## 备战屏开着(它自己数)/ 我在这一张图里(下面「我的阵容」那一行数)⇒ 不在这里再数一遍
+		if bool(s.prep_showing()) or int(c.get("me", -1)) >= 0:
+			return ""
+		return "备战剩余 %s" % _FC.dur(_P2C.finals_shop_left(ra, now))
+	## 选手: 只数**跟我有关的**那一刻(一场接一场时别人那场先播, 数到别人那场就和上一行「你的…」对不上):
+	##   我那场即将开播 ⇒ 距开播; 我那场在播 ⇒ 不数; 我这一轮打完了、下一轮备战还没开始 ⇒ 距下一轮备战
+	if int(c.get("me", -1)) >= 0:
+		var f: Vector2i = s.my_focus()
+		var fst := str(s.match_state(f.x, f.y)) if f.x >= 1 else ""
+		if fst == str(s.ST_UPCOMING):
+			return "距开播 %s" % _FC.dur(_PS.start_of(c, f.x, f.y) - now)
+		if fst == str(s.ST_PREMIERE):
+			return ""
+		if _PS.before_shop(c, now) and ra > now:
+			return "距下一轮备战 %s" % _FC.dur(ra - now)
+		var e2 := next_premiere()
+		if not e2.is_empty() and int(e2["m"]) < 0:
+			return "距开播 %s" % _FC.dur(int(e2["at"]) - now)        # 还没翻面: 我下一场最早这一刻开播
+		return ""
+	var eta := next_premiere()
+	if not eta.is_empty():
+		return ("距下一场开播 %s" if live_rm().x >= 1 else "距开播 %s") % _FC.dur(int(eta["at"]) - now)
+	if _PS.before_shop(c, now) and ra > now:
+		return "距下一轮备战 %s" % _FC.dur(ra - now)
+	return ""
 
 
 # ═══════════════════════════════════════════════════════════════════
 #  ⑳ / S 清单第 5 条: 唯一主按钮
 # ═══════════════════════════════════════════════════════════════════
 ## {"text", "enabled", "rm", "kind"(live / replay / cup / wait), "tick"(字每秒刷新)}; {} = 不出现。
+## ★2026-11-01: 等待时的按钮只写状态词(「等待开播」「备战中」), **不再带倒计时** —— 倒计时只在处境句下面那一行
+##   (原来按钮与那一行逐字相同:「下一轮 3 分 0 秒后开播」说两遍)。
 func cta_spec() -> Dictionary:
 	var c: Dictionary = s.cur()
 	var n := int(c.get("size", 0))
@@ -370,39 +449,32 @@ func cta_spec() -> Dictionary:
 	if lr.x >= 1 and bool(s.can_open(lr.x, lr.y)):
 		if bool(s.is_my_match(lr.x, lr.y)):
 			return {"text": "观看我的比赛", "enabled": true, "rm": lr, "kind": "live"}
-		## 小组赛同一轮几场同时开播、我不在播: 「观看开播 · N 场」, 点了在对阵图上点亮那几格(挑一场点开)
+		## 小组赛同一轮几场同时开播、我不在播: 「观看开播」, 点了在对阵图上点亮那几格(挑一场点开)
 		var nl := live_count(lr.x)
 		if nl >= 2:
-			return {"text": "观看开播 · %d 场" % nl, "enabled": true, "rm": lr, "kind": "live_pick"}
-		return {"text": "去看 %s" % pair_text(lr.x, lr.y, 120.0), "enabled": true, "rm": lr, "kind": "live"}
+			return {"text": "观看开播", "enabled": true, "rm": lr, "kind": "live_pick"}
+		return {"text": "观看 %s" % pair_text(lr.x, lr.y, 120.0), "enabled": true, "rm": lr, "kind": "live"}
 	if int(s.winner_side(total, 0)) >= 0:
 		if is_cup():
 			return {"text": "重看决赛", "enabled": bool(s.can_open(total, 0)), "rm": Vector2i(total, 0), "kind": "replay"}
 		if int(s._finals.get("size", 0)) >= 1:
 			return {"text": "前往%s" % _P2C.STAGE_CUP, "enabled": true, "kind": "cup"}
-		return {"text": str(s.cup_soon_head(int(s._cup_start_ts()) - int(s._clock()))), "enabled": false, "kind": "wait",
-			"tick": true}
-	var up := upcoming_rm()
-	if up.x >= 1:
-		var k := seq_index(up.x, up.y)
-		return {"text": "%s %s后开播" % [("第 %d 场" % k) if k > 0 else match_label(up.x, up.y),
-			s.countdown_text(_left_to_start(up.x, up.y))], "enabled": false, "kind": "wait", "tick": true}
+		return {"text": "%s %s 开赛" % [_P2C.STAGE_CUP, cup_start_hhmm()], "enabled": false, "kind": "wait"}
 	var now := int(s.srv_now())
 	var ra := int(c.get("round_at", 0))
+	if upcoming_rm().x >= 1:
+		return {"text": "等待开播", "enabled": false, "kind": "wait"}
 	if _PS.before_shop(c, now) and ra > now:
-		return {"text": "%s备战 %s后开始" % [_H.round_name(n, mini(int(c.get("round", 1)), total)), s.countdown_text(ra - now)],
-			"enabled": false, "kind": "wait", "tick": true}
+		return {"text": "等待下一轮", "enabled": false, "kind": "wait"}
 	if ra > 0 and _P2C.finals_shop_open(ra, now) and not _PS.before_shop(c, now):
-		## 备战屏开着时它自己有大倒计时 + 「查看对阵图」⇒ 主按钮让位(同一个数不在屏上说三遍)
+		## 备战屏开着时它自己有大倒计时 + 「查看对阵图」⇒ 主按钮让位
 		if bool(s.prep_showing()):
 			return {}
-		return {"text": "备战中 · 还剩 %s" % s.countdown_text(_P2C.finals_shop_left(ra, now)), "enabled": false,
-			"kind": "wait", "tick": true}
+		return {"text": "备战中", "enabled": false, "kind": "wait"}
 	if _PS.settling(c, now):
-		return {"text": _PS.TXT_SETTLE, "enabled": false, "kind": "wait"}
-	var left: int = int(s._SB.finals_left_of(c, int(s._delta_now())))
-	if left >= 0 and not bool(c.get("closed", false)):
-		return {"text": str(s.round_tip(int(c.get("round", 1)), n, left)), "enabled": false, "kind": "wait", "tick": true}
+		return {"text": "结算中", "enabled": false, "kind": "wait"}
+	if not bool(c.get("closed", false)):
+		return {"text": "等待开播", "enabled": false, "kind": "wait"}
 	return {}
 
 
@@ -421,15 +493,14 @@ func next_info() -> Dictionary:
 	var n := int(c.get("size", 0))
 	if n < 2 or bool(c.get("closed", false)) or bool(s._grid_on):
 		return {}
-	var now := int(s.srv_now())
-	var fr := _PS.flipped_round(c)
+	var eta := next_premiere()
 	var lr := live_rm()
-	if _PS.is_seq(c) and fr >= 1:
-		for it in _PS.lineup(c, fr):
-			var m := int(it[0])
-			if now < int(it[1]) and Vector2i(fr, m) != lr:
-				return {"head": "下一场 · %s" % match_label(fr, m), "pair": pair_text(fr, m, 104.0),
-					"time": _P2C.local_hhmm(int(it[1])), "rm": Vector2i(fr, m)}
+	## 已排进档期的下一场(知道是哪一场、几点)
+	if not eta.is_empty() and int(eta["m"]) >= 0 and Vector2i(int(eta["r"]), int(eta["m"])) != lr:
+		var r0 := int(eta["r"])
+		var m0 := int(eta["m"])
+		return {"head": _FC.kv("下一场", match_label(r0, m0)), "pair": pair_text(r0, m0, 104.0),
+			"time": _FC.at(int(eta["at"])), "rm": Vector2i(r0, m0)}
 	var r := int(c.get("round", 1))
 	if r > _B.rounds_for(n):
 		return {}
@@ -438,11 +509,9 @@ func next_info() -> Dictionary:
 		var b: Dictionary = s.competitor(r, m2, 1)
 		if bool(a.get("bye", false)) or bool(b.get("bye", false)) or int(a.get("seed", -1)) < 0 or int(b.get("seed", -1)) < 0:
 			continue
-		var ra := int(c.get("round_at", 0))
-		var tm := ""
-		if ra > 0:
-			tm = "约 %s" % _P2C.local_hhmm(ra + int(_P2C.FINALS_SHOP_SEC))
-		return {"head": "下一场 · %s" % _H.round_name(n, r), "pair": pair_text(r, m2, 104.0), "time": tm, "rm": Vector2i(r, m2)}
+		## ★时刻只在知道的时候写(= 处境句 / 全局小条那一个); 不知道就空着 —— 不写「约 xx:xx」(原来写的是备战结束时刻, 会过去)
+		var tm := _FC.at(int(eta["at"])) if (not eta.is_empty() and int(eta["r"]) == r) else ""
+		return {"head": _FC.kv("下一场", _H.round_name(n, r)), "pair": pair_text(r, m2, 104.0), "time": tm, "rm": Vector2i(r, m2)}
 	return {}
 
 
@@ -463,7 +532,7 @@ func my_path() -> Dictionary:
 		cells.append({"label": "直接晋级", "state": "bye"})
 		group_won = true
 	else:
-		var seg := _segment(g, me, "组")
+		var seg := _segment(g, me, "")
 		cells.append_array(seg["cells"])
 		group_won = bool(seg["champion"])
 		group_out = bool(seg["out"])
@@ -491,15 +560,9 @@ func my_path() -> Dictionary:
 	return {"cells": cells, "split": split, "champion": champion}
 
 
+## 格子下面的轮次名: 与全决赛日同一套(`finals_copy.round_name`; 原来这里叫「半决」「8强」「组决赛」, 对阵图叫「半决赛」「1/4 决赛」)。
 static func _short(total: int, r: int) -> String:
-	var k := total - r
-	if k == 0:
-		return "决赛"
-	if k == 1:
-		return "半决"
-	if k == 2:
-		return "8强"
-	return "%d强" % (1 << (k + 1))
+	return _FC.round_name(1 << total, r)
 
 
 ## 一张图里我这一段: 每一轮一格(赢 / 输 / 轮空 / 在播 / 下一场 / 还没到 / 已出局)。
@@ -636,7 +699,7 @@ func grid_cells() -> Array:
 				if not pa.is_empty() and not pb.is_empty():
 					break
 			cell.merge({"state": "prep" if shop else "wait", "chip": "备战中" if shop else "等待开播", "a": pa, "b": pb,
-				"line": "下一场 · %s" % _H.round_name(n, mini(r, total))})
+				"line": _FC.kv("下一场", _H.round_name(n, mini(r, total)))})
 		out.append(cell)
 	return out
 
@@ -681,7 +744,7 @@ func wall_data() -> Dictionary:
 		var pb: Dictionary = s.competitor(fr + 1, m3, 1)
 		if int(pa.get("seed", -1)) >= 0 and int(pb.get("seed", -1)) >= 0:
 			pairs.append([pa, pb])
-	return {"key": key, "title": "%s · 本轮结果" % _H.round_name(n, fr), "seats": seats,
+	return {"key": key, "title": "%s结果" % _H.round_name(n, fr), "seats": seats,
 		"next_title": _H.round_name(n, fr + 1), "pairs": pairs}
 
 
@@ -722,12 +785,12 @@ func prep_data() -> Dictionary:
 	var rn := _H.round_name(n, r)
 	var stake := ""
 	if r >= total:
-		stake = "胜者夺得%s冠军" % _P2C.STAGE_CUP if is_cup() else "胜者成为%s冠军 · 晋级%s" % [s.sheet_name(c), _P2C.STAGE_CUP]
+		stake = "胜者夺得%s冠军" % _P2C.STAGE_CUP if is_cup() else "胜者获得%s冠军，晋级%s" % [s.sheet_name(c), _P2C.STAGE_CUP]
 	else:
-		stake = "胜者进入%s" % _H.round_name(n, r + 1)
-	return {"key": key, "title": "%s · 备战中" % rn, "end_ts": ra + int(_P2C.FINALS_SHOP_SEC),
-		"progress": "本轮 %d 场 · 剩 %d 人" % [pairs.size(), players.size()], "pairs": pairs, "stake": stake,
-		"me_line": "不调整阵容则沿用上一轮阵容" if mine_in else "", "players": players}
+		stake = _FC.join("胜者进入", _H.round_name(n, r + 1))
+	return {"key": key, "title": "%s备战" % rn, "end_ts": ra + int(_P2C.FINALS_SHOP_SEC),
+		"progress": "本轮 %d 场，剩余 %d 人" % [pairs.size(), players.size()], "pairs": pairs, "stake": stake,
+		"me_line": _M.TXT_KEEP_LINEUP if mine_in else "", "players": players}
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -824,7 +887,7 @@ func entrants_text() -> String:
 			names.append(str(nm))
 	if names.is_empty():
 		return ""
-	return "本周决赛日 %d 位选手：%s" % [names.size(), "  ·  ".join(PackedStringArray(names))]
+	return "本周决赛日参赛选手（%d 人）　%s" % [names.size(), "　".join(PackedStringArray(names))]
 
 
 ## 冠军决出那一刻: 只认「亲眼等到揭晓」的那一下(本次运行里**刚刚**见过这张图的决赛还没揭晓), 每张图只报一次 ⇒ 场景的挂点。

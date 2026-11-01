@@ -2495,7 +2495,7 @@ func show_stream_end(won: bool) -> void:
 		if bool(sess.get("own", false)):
 			sess["shown"] = true          # 看到了结算屏 ⇒ 离场真记账时主菜单不再飘「上一场闯关」那一句
 		battle._had_season = true
-		battle._last_settle_kind = _P2C_HUD.SETTLE_GAUNTLET
+		battle._last_settle_kind = _RW.settle_kind_of(res as Dictionary)   # 积分赛服务器局(2026-11-01)⇒ 积分赛口径; 其余周六
 		battle._last_was_exhibition = false
 		battle._last_reward = int((res as Dictionary).get("reward", 0))
 		if _replay_ui != null and _replay_ui.root != null and is_instance_valid(_replay_ui.root):

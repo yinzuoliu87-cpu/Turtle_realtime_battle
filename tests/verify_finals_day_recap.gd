@@ -143,7 +143,7 @@ func _t_flow() -> void:
 	_ok("③ 第 1 拍内容: 「冠军杯赛冠军」像素大字 + 奖杯 + 冠军头像(他的真头像)+ 金缎带写「小辉同学」+ 规模一行",
 		cup_t != null and str((cup_t as TextureRect).texture.resource_path).ends_with("bt-cup-champ.png")
 		and str((_node(rc, "RecapChampFace") as TextureRect).texture.resource_path).ends_with("basic.png")
-		and str((rib.get_node("Text") as Label).text) == "小辉同学" and _txt(rc, "RecapScale") == "24 人决赛日 · 6 组 · 冠军杯赛 6 人",
+		and str((rib.get_node("Text") as Label).text) == "小辉同学" and _txt(rc, "RecapScale") == "本周决赛日 24 人参赛，分为 6 组",
 		"%s / %s" % [str((rib.get_node("Text") as Label).text), _txt(rc, "RecapScale")])
 	var rl: Label = rib.get_node("Text")
 	_ok("③ 缎带字读得清: 浅字 + 近黑描边(描边 ≥ 字号/3)、字号 ≥ 36", rl.get_theme_color("font_color").get_luminance() > 0.8
@@ -204,8 +204,11 @@ func _t_flow() -> void:
 		res.append("胜" if bool((_node(rw, "RecapStamp") as Node).get_meta("won")) else "负")
 		scores.append(_txt(rw, "RecapScore"))
 	var cg := ChampionData.group_name(FX.MY_GROUP)
-	var want := ["%s · %s 对 Kiki" % [cg, M.round_name(4, 1)], "%s · %s 对 老王不在" % [cg, M.round_name(4, 2)],
-		"%s · %s 对 Rex" % [P2.STAGE_CUP, M.round_name(6, 1)], "%s · %s 对 头发多多" % [P2.STAGE_CUP, M.round_name(6, 2)]]
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 「C 组 · 半决赛」→「C 组半决赛」/「冠军杯赛 1/4 决赛」(M.stage_line, 一个名词短语)
+	var want := ["%s 对 Kiki" % M.stage_line(fx.my_group(SUN + 86400), 1), "%s 对 老王不在" % M.stage_line(fx.my_group(SUN + 86400), 2),
+		"%s 对 Rex" % M.stage_line(fx.cup(SUN + 86400), 1), "%s 对 头发多多" % M.stage_line(fx.cup(SUN + 86400), 2)]
+	_ok("③ 场次名是一个名词短语(「%s」, 没有「·」)" % str(want[2]), str(want[0]) == "%s半决赛 对 Kiki" % cg
+		and str(want[2]) == "%s 1/4 决赛 对 Rex" % P2.STAGE_CUP)
 	_ok("③ ★我打过的 4 场按先后、对手对、胜负章对(胜 胜 胜 负)", rows == want and res == ["胜", "胜", "胜", "负"] and _node(rc, "RecapRow4") == null,
 		"%s %s" % [str(rows), str(res)])
 	_ok("③ ★比分按我这一侧摆、来自服务端比分码(2:1 / 2:1 / 2:1 / 0:2)", scores == ["2 : 1", "2 : 1", "2 : 1", "0 : 2"], str(scores))

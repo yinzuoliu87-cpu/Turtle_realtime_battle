@@ -7,10 +7,11 @@ extends Node
 ##      + 3 → 2 → 1 →「开战」自己走完收掉; 约 6 秒; 决赛整套换金; 两种比例下各块不重叠、不出屏
 ##   C ★接线: 周日开播按时进来 ⇒ 播放前先出开场 VS; 迟到(G17)⇒ 不放 VS、默认实时、有「从头看」(按下 = 播放器跳到开头, 再按回直播);
 ##      不是决赛日 / 是回放 ⇒ 这一层不建
-##   D ★观战页(G19 G20 G24): 阶段标签「冠军杯赛 · 半决赛 · 第 1 / 2 场」+「开播中」; 比分条 + 三路灯(赢一路亮一盏); 拔河条跟着单位表的剩余血量走;
-##      下一场条; 固定表情助威(按下飘起来, 连点有间隔); 路间幕布上压「上路战场 · 战果 / X 拿下上路 / 1 : 0」;
+##   D ★观战页(G19 G20 G24): 阶段标签「冠军杯赛半决赛第 1 场」+「开播中」; 比分条 + 三路灯(赢一路亮一盏); 拔河条跟着单位表的剩余血量走;
+##      下一场条; 固定表情助威(按下飘起来, 连点有间隔); 路间幕布上压「上路战场战果 / X 赢得上路 / 1 : 0」;
 ##      收尾出来后这几样收起; 不出现胜率 / 本场还剩 / 观看人数; 两种比例下不重叠、不出屏、不压退出键
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_finals_watch.tscn
+## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 观战页那几句去掉「·」拼接 / 口语(「去看」「输给」「拿下」), 期望值跟着改, 判据(量哪个节点、几时出现)一个不动。
 
 const RC := preload("res://scripts/scenes/battle/replay_controls.gd")
 const VS := preload("res://scripts/scenes/battle/finals_vs_intro.gd")
@@ -151,15 +152,15 @@ func _t_pure() -> void:
 		and str((f0["next"] as Dictionary).get("a", "")) != "" and str((f0["next"] as Dictionary).get("b", "")) != "", str(f0))
 	b["me"] = 0
 	_ok("A 我在这一场 ⇒ me = 我在 pair 里的位置", int(Ctx.from_bucket(b, 1, 0, 1300, "finals").get("me", -1)) == 0)
-	_ok("A 阶段标签「冠军杯赛 · 半决赛 · 第 1 / 2 场」/ 小组「小组赛 · C 组 · 决赛」(组名一律字母)(只一场不写场次)",
-		Ctx.stage_tag(STAGE) == "冠军杯赛 · 半决赛 · 第 1 / 2 场"
-		and Ctx.stage_tag({"group": 3, "round": 2, "rounds": 2, "round_name": "决赛", "match_i": 1, "match_n": 1}) == "小组赛 · C 组 · 决赛",
+	_ok("A 阶段标签「冠军杯赛半决赛第 1 场」/ 小组「小组赛 C 组决赛」(组名一律字母)(只一场不写场次)",
+		Ctx.stage_tag(STAGE) == "冠军杯赛半决赛第 1 场"
+		and Ctx.stage_tag({"group": 3, "round": 2, "rounds": 2, "round_name": "决赛", "match_i": 1, "match_n": 1}) == "小组赛 C 组决赛",
 		Ctx.stage_tag(STAGE))
-	_ok("A 「去看 甲乙丙 对 丁戊己」/ 下一场条 / 出局那一句", Ctx.go_label(NEXT) == "去看 甲乙丙 对 丁戊己"
-		and Ctx.next_line(NEXT) == "下一场  甲乙丙 对 丁戊己" and Ctx.out_line(STAGE, "乙") == "止步半决赛 · 输给 乙"
+	_ok("A 「观看 甲乙丙 对 丁戊己」/ 下一场条 / 出局那一句", Ctx.go_label(NEXT) == "观看 甲乙丙 对 丁戊己"
+		and Ctx.next_line(NEXT) == "下一场：甲乙丙 对 丁戊己" and Ctx.out_line(STAGE, "乙") == "止步半决赛，不敌 乙"
 		and Ctx.go_label({}) == "")
-	_ok("A 下一场时刻还没排(备战结束到翻面之间)⇒ 下一场条写「结算中 · 即将开播」",
-		Ctx.next_line({"a": "甲", "b": "乙", "at": 0, "settling": true}) == "下一场  甲 对 乙 · 结算中 · 即将开播")
+	_ok("A 下一场时刻还没排(备战结束到翻面之间)⇒ 下一场条写「下一场即将开播：甲 对 乙」",
+		Ctx.next_line({"a": "甲", "b": "乙", "at": 0, "settling": true}) == "下一场即将开播：甲 对 乙")
 	var tg: Array = Ctx.tug([{"side": "left", "hp": 300.0, "alive": true}, {"side": "right", "hp": 100.0, "alive": true},
 		{"side": "right", "hp": 500.0, "alive": false}])
 	_ok("A ★拔河条 = 活着的单位剩余血量之比(死了的不算): 300 : 100 ⇒ 0.75", is_equal_approx(Ctx.tug_frac(tg), 0.75), str(tg))
@@ -195,8 +196,8 @@ func _t_vs() -> void:
 		var root: Control = v.build(host, _vs_info(gold), Vector2(1560, 720))
 		_ok("B %s 分母: 建出开场 VS" % tag, root != null and root.name == VS.N_ROOT)
 		var tl := root.find_child(VS.N_TITLE, true, false) as Label
-		_ok("B %s ① 轮次名「%s」" % [tag, "冠军杯赛 · 决赛" if gold else "冠军杯赛 · 半决赛"], tl != null
-			and tl.text == ("冠军杯赛 · 决赛" if gold else "冠军杯赛 · 半决赛"), tl.text if tl != null else "<无>")
+		_ok("B %s ① 轮次名「%s」" % [tag, "冠军杯赛决赛" if gold else "冠军杯赛半决赛"], tl != null
+			and tl.text == ("冠军杯赛决赛" if gold else "冠军杯赛半决赛"), tl.text if tl != null else "<无>")
 		var crest := root.find_child(VS.N_CREST, true, false) as TextureRect
 		_ok("B %s ★决赛整套换金: 徽章 = %s, 轮次名金字" % [tag, "vs-crest-gold" if gold else "vs-crest"], crest != null and crest.texture != null
 			and crest.texture.resource_path.get_file() == ("vs-crest-gold.png" if gold else "vs-crest.png")
@@ -209,8 +210,8 @@ func _t_vs() -> void:
 		var nr := root.find_child(VS.N_NAME + "right", true, false) as Label
 		var ol := root.find_child(VS.N_ORIGIN + "right", true, false) as Label
 		var rr := root.find_child(VS.N_RECORD + "left", true, false) as Label
-		_ok("B ① 名牌: 名字 / 来历(带头衔「卫冕 · E 组冠军」(组号 4 ⇒ E 组, ChampionData.group_name))/ 本周战绩", nl != null and nl.text == "吃货一枚" and nr != null and nr.text == "小辉同学"
-			and ol != null and ol.text == "卫冕  ·  E 组冠军" and rr != null and rr.text == "闯关 9 胜 2 负")
+		_ok("B ① 名牌: 名字 / 来历(带头衔「E 组冠军（卫冕）」(组号 4 ⇒ E 组, ChampionData.group_name))/ 本周战绩", nl != null and nl.text == "吃货一枚" and nr != null and nr.text == "小辉同学"
+			and ol != null and ol.text == "E 组冠军（卫冕）" and rr != null and rr.text == "闯关 9 胜 2 负")
 		var chips: Array = root.find_children(VS.N_CHIP + "*", "", true, false)
 		_ok("B ① ★双方锁定阵容按路摆开(5 + 6 = 11 只)", chips.size() == 11, str(chips.size()))
 		var avr := (root.find_child(VS.N_CARD + "left", true, false) as Node).find_child("Portrait", true, false) as Control
@@ -224,7 +225,7 @@ func _t_vs() -> void:
 		_ok("B ① ★迷你对阵在盾徽正下方居中、放大(宽 %.0f)" % (mini.size.x if mini != null else -1.0), mini != null
 			and mini.position.y >= cr_r.end.y and absf(mini.position.x + mini.size.x * 0.5 - 780.0) <= 2.0 and mini.size.x >= 300.0)
 		var note := root.find_child(VS.N_NOTE, true, false) as Label
-		_ok("B ① 一行实话「双方阵容已锁定 · 服务器实时演算」", note != null and note.text == "双方阵容已锁定 · 服务器实时演算")
+		_ok("B ① 一行实话「双方阵容已锁定，由服务器实时演算」", note != null and note.text == "双方阵容已锁定，由服务器实时演算")
 		## 时间轴
 		v.pose(0.0)
 		var card_l := root.find_child(VS.N_CARD + "left", true, false) as Control
@@ -430,8 +431,8 @@ func _t_hud() -> void:
 	var labels: Array = []
 	for l in tag.find_children("*", "Label", true, false):
 		labels.append((l as Label).text)
-	_ok("D ① ★左上阶段标签「开播中」(带一明一暗的点)+「冠军杯赛 · 半决赛 · 第 1 / 2 场」", labels.has("开播中")
-		and labels.has("冠军杯赛 · 半决赛 · 第 1 / 2 场") and tag.find_child("LiveDot", true, false) != null, str(labels))
+	_ok("D ① ★左上阶段标签「开播中」(带一明一暗的点)+「冠军杯赛半决赛第 1 场」", labels.has("开播中")
+		and labels.has("冠军杯赛半决赛第 1 场") and tag.find_child("LiveDot", true, false) != null, str(labels))
 	var fs_bad: Array = []
 	for l in tag.find_children("*", "Label", true, false):
 		if (l as Label).text.begins_with("冠军杯赛") and (l as Label).get_theme_font_size("font_size") < 26:
@@ -485,7 +486,7 @@ func _t_hud() -> void:
 	if nx != null:
 		for l in (nx as Node).find_children("*", "Label", true, false):
 			ntxt = (l as Label).text
-	_ok("D ④ 下一场条「下一场  甲乙丙 对 丁戊己」", ntxt == "下一场  甲乙丙 对 丁戊己", ntxt)
+	_ok("D ④ 下一场条「下一场：甲乙丙 对 丁戊己」", ntxt == "下一场：甲乙丙 对 丁戊己", ntxt)
 	## 助威
 	var key := fb.find_child(HUD.N_CHEER_KEY, true, false) as Button
 	var row := fb.find_child(HUD.N_CHEERS, true, false) as Control
@@ -522,8 +523,8 @@ func _t_hud() -> void:
 		btxt.append((l as Label).text)
 	var bdl := bk.find_child("BreakDigit_left", true, false) as Label
 	var bdr := bk.find_child("BreakDigit_right", true, false) as Label
-	_ok("D ⑥ ★路间幕布压一块「上路战场 · 战果 / 吃货一枚 拿下上路 / 1 : 0」, 顶上比分条收起", bk.visible and btxt.has("上路战场 · 战果")
-		and btxt.has("吃货一枚 拿下上路") and bdl != null and bdl.text == "1" and bdr != null and bdr.text == "0"
+	_ok("D ⑥ ★路间幕布压一块「上路战场战果 / 吃货一枚 赢得上路 / 1 : 0」, 顶上比分条收起", bk.visible and btxt.has("上路战场战果")
+		and btxt.has("吃货一枚 赢得上路") and bdl != null and bdl.text == "1" and bdr != null and bdr.text == "0"
 		and not (fb.find_child(HUD.N_TUG, true, false) as Control).visible, str(btxt))
 	var trow := bk.find_child("BreakTitleArt", true, false)
 	var ttex := ""
@@ -533,7 +534,7 @@ func _t_hud() -> void:
 		bk.size.x >= bk.get_viewport_rect().size.x - 1.0 and bk.find_child("BreakRibbon", true, false) != null and ttex == "bt-lane-top.png"
 		and (bdl.get_node(Ctx.ART_NODE) as TextureRect).texture.resource_path.get_file() == "bt-n1.png"
 		and (bdr.get_node(Ctx.ART_NODE) as TextureRect).texture.resource_path.get_file() == "bt-g0.png")
-	_ok("D ⑥ 路间那一块写下一路「接下来 · 下路战场」; 左上标签 / 来历跟着顶栏一起让开(不孤零零飘在幕布上)", btxt.has("接下来 · 下路战场")
+	_ok("D ⑥ 路间那一块写下一路「接下来：下路战场」; 左上标签 / 来历跟着顶栏一起让开(不孤零零飘在幕布上)", btxt.has("接下来：下路战场")
 		and not (fb.find_child(HUD.N_TAG, true, false) as Control).visible and not (fb.find_child(HUD.N_ORIGIN + "left", true, false) as Control).visible)
 	## 插卡期间全局小条停在缎带上方正中(不落到左下角压住退出键); 观战页那一块停靠位让出来
 	var bdk := bk.find_child(HUD.N_BREAK_DOCK, true, false) as Control

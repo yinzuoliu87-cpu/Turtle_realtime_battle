@@ -170,3 +170,14 @@ func my_group(now: int) -> Dictionary:
 ## {"group", "cup", "groups"}(finals_day_feed.override / MenuFinalsDay.feed_override 的形状)。
 func feeds(now: int) -> Dictionary:
 	return {"group": my_group(now), "cup": cup(now), "groups": groups(now)}
+
+
+## 本周晋级名单(服务端 finals_qualified_list 回包解析后的形状): 6 组 × 4 人, 按闯关战绩排(4 胜 0~2 负)。
+func qualified() -> Dictionary:
+	var out: Array = []
+	for g in range(NAMES.size()):
+		for i in range(4):
+			out.append({"name": str(NAMES[g][i]), "tag": "#T%d%02d" % [g, i], "avatar": "", "gw": 4,
+				"gl": (g + i) % 3, "me": me_in and g == MY_GROUP and i == MY_SEED})
+	out.sort_custom(func(a, b): return int(a["gl"]) < int(b["gl"]))
+	return {"n": out.size(), "list": out, "seated": false}

@@ -16,6 +16,7 @@ extends CanvasLayer
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const _SB := preload("res://scripts/net/supabase.gd")
 const _M := preload("res://scripts/ui/finals_day_model.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 const _F := preload("res://scripts/ui/finals_day_feed.gd")
 const _W := preload("res://scripts/ui/finals_day_watch.gd")
 const _BAR := preload("res://scripts/ui/finals_day_bar.gd")
@@ -172,35 +173,43 @@ func tick() -> void:
 	_recap_mark(now, cup)
 
 
-## 条上那一行: {"head", "live", "body", "cd", "tap", "target"}。纯函数(门禁穷举)。
+## 条上那一行: {"head", "live", "body", "cd", "act", "tap", "target"}。纯函数(门禁穷举)。
 ## `in_battle` = 正在观战页: 点条不跳走(会把正在看的那一场关掉)。
+## ★2026-11-01 改写(用户「一定要按照商业游戏的口吻…不要乱乱用这种语句」):
+##   · 正文一件事, 不再「· 观看」「备战中 · 不调整就沿用当前阵容」拼两件事; 能点的那一档在右边单列「观看」(act)。
+##   · 倒计时只有一种写法(`finals_copy.dur`, 原来「2:58」「0:29:58」紧挨着「18:00 开赛」读着像钟点)。
+##   · 「开播中」红签只在**真有一场在播**时亮(原来整段小组赛都亮, 18:05 一场都没播也写「开播中」)。
+##   · 下一场的时刻走 `premiere_eta`(与对阵图处境句 / 底部「下一场」卡同一个答案)。
 static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array, mn: Dictionary,
 		in_battle: bool = false) -> Dictionary:
 	var ph := _M.phase(now, groups, cup)
 	## 条头一律「决赛日」(哪一段写在正文里, 不在条头再说一遍)
-	var out := {"head": "决赛日", "live": _M.state3(now, groups, cup) == _M.S3_LIVE, "body": "", "cd": -1,
-		"tap": not in_battle, "target": {}}
+	var out := {"head": "决赛日", "live": false, "body": "", "cd": -1, "act": "", "tap": not in_battle, "target": {}}
 	var at := int(mn.get("at", 0))
 	var rn := ""
 	if not (mn.get("b", {}) as Dictionary).is_empty() and int(mn.get("r", 0)) >= 1:
 		rn = short_stage(mn["b"], int(mn["r"]))
 	match str(mn.get("k", "")):
 		_M.K_SHOP:
-			out["body"] = "备战中 · %s" % _M.TXT_KEEP_LINEUP
+			out["body"] = "%s备战剩余" % rn
 			out["cd"] = at - now
 		_M.K_UPCOMING:
-			out["body"] = "你的%s %s 开播" % [rn, _P2.local_hhmm(at)]
+			out["body"] = "%s %s 开播" % [_FC.join("你的", rn), _P2.local_hhmm(at)]
 			out["cd"] = at - now
 		_M.K_LIVE:
-			out["body"] = "你的%s开播中 · 观看" % rn
+			out["body"] = _FC.join("你的", rn)         # 「开播中」由左边红签说, 正文不再说一遍
+			out["live"] = true
+			out["act"] = "观看"
 			out["target"] = mn
 		_M.K_NEXT:
 			out["body"] = "%s备战 %s 开始" % [rn, _P2.local_hhmm(at)]
 			out["cd"] = at - now
 		_M.K_WAIT:
-			out["body"] = "你的%s即将开播" % rn
 			if at > now:
+				out["body"] = "%s %s 开播" % [_FC.join("你的", rn), _P2.local_hhmm(at)]
 				out["cd"] = at - now
+			else:
+				out["body"] = _FC.join("你的", rn) + "即将开播"
 		_M.K_CUP_WAIT:
 			out["body"] = "%s %s 开赛" % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
 			out["cd"] = at - now
@@ -215,7 +224,7 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 			out["cd"] = _M.cup_ts(now) - now
 		_M.PH_DONE:
 			var sd := _M.champion_visible(cup, now)
-			out["body"] = "你是冠军杯赛冠军" if sd >= 0 and sd == int(cup.get("me", -1)) else "冠军杯赛冠军 %s" % _M.name_of(cup, sd)
+			out["body"] = "你获得冠军杯赛冠军" if sd >= 0 and sd == int(cup.get("me", -1)) else _FC.kv("冠军杯赛冠军", _M.name_of(cup, sd))
 		_:
 			var live: Array = _M.live_all(groups, cup, now)
 			## 我那一组排前面(组里输了的人最关心的还是自己那一组)
@@ -224,30 +233,33 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 			var stage := _P2.STAGE_CUP if ph == _M.PH_CUP else _P2.STAGE_GROUP
 			if not live.is_empty():
 				var t: Dictionary = live[0]
-				out["body"] = ("%s开播中 · 观看" % _M.stage_line(t["b"], int(t["r"]))) if live.size() == 1 					else ("%s %d 场开播中 · 观看" % [stage, live.size()])
+				out["body"] = _M.stage_line(t["b"], int(t["r"])) if live.size() == 1 \
+					else ("%s %d 场" % [stage, live.size()])
+				out["live"] = true
+				out["act"] = "观看"
 				out["target"] = t
 			else:
-				var nx: Dictionary = _M.next_all(groups, cup, now)
 				var eta := 0
-				if nx.is_empty():
-					for b in ([cup] if ph == _M.PH_CUP else groups):
-						var e := _M.flip_eta(b) if b is Dictionary else 0
-						if e > now and (eta == 0 or e < eta):
-							eta = e
-				else:
-					eta = int(nx["at"])
+				for b in ([cup] if ph == _M.PH_CUP else groups):
+					var e: Dictionary = _M.premiere_eta(b, now) if b is Dictionary else {}
+					if not e.is_empty() and (eta == 0 or int(e["at"]) < eta):
+						eta = int(e["at"])
+				var prep := _M.prep_eta([cup] if ph == _M.PH_CUP else groups, now)
 				if eta > now:
-					out["body"] = "%s · 下一场 %s 开播" % [stage, _P2.local_hhmm(eta)]
+					out["body"] = "%s下一场 %s 开播" % [stage, _P2.local_hhmm(eta)]
 					out["cd"] = eta - now
+				elif prep > now:
+					out["body"] = "%s下一轮备战 %s 开始" % [stage, _P2.local_hhmm(prep)]
+					out["cd"] = prep - now
 				else:
 					out["body"] = "%s进行中" % stage
 	return _battle_trim(out, in_battle)
 
 
-## 观战页上点条不跳走 ⇒ 不写「· 观看」(写了点不动 = 骗人)。
+## 观战页上点条不跳走 ⇒ 不写「观看」(写了点不动 = 骗人)。
 static func _battle_trim(out: Dictionary, in_battle: bool) -> Dictionary:
 	if in_battle:
-		out["body"] = str(out["body"]).trim_suffix(" · 观看")
+		out["act"] = ""
 	return out
 
 
@@ -424,10 +436,10 @@ static func popup_secs(k: String, at: int, now: int) -> int:
 	return -2 if k == _M.K_WAIT else 1
 
 
-## 横幅第二行那句: 「C 组 · 吃货一枚 对 Kiki」(冠军杯赛: 「冠军杯赛 · 吃货一枚 对 Kiki」)。
+## 横幅第二行那句: 「吃货一枚 对 Kiki」(哪一场写在横幅标题「你的 C 组半决赛…」里, 不在这一行再拼一遍)。
 static func popup_line(mn: Dictionary) -> String:
 	var b: Dictionary = mn.get("b", {})
-	return "%s · %s 对 %s" % [_M.sheet_name(b), _M.name_of(b, int(mn.get("me_sd", -1))), str(mn.get("opp", ""))]
+	return "%s 对 %s" % [_M.name_of(b, int(mn.get("me_sd", -1))), str(mn.get("opp", ""))]
 
 
 func _popup_tick(now: int, mn: Dictionary) -> void:

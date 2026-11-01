@@ -25,6 +25,7 @@ extends RefCounted
 ##   · **同半区两场间隔 32px；半区之间 94px —— 正好 3 倍**（分组全靠留白，一个框不画）
 ## 列间距不照 LoL 那个 26%：镜像布局列数翻倍（2R−1 列），得按屏宽反算。
 
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 const _B := preload("res://scripts/gamedata/bracket.gd")
 ## ★决赛时刻的事实源是 phase2_config —— 这里只引, 不再拄一份(同一个数存两份必然漂)。
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
@@ -220,23 +221,11 @@ static func content_size(n: int) -> Vector2:
 	return Vector2(right - left, bot)
 
 
-## 轮次标签：`32强 / 16强 / 8强 / 半决赛 / 决赛`（参考图顶部那一行）。
-## ★末轮=决赛、倒数第二=半决赛、再前一轮=8强，更早的按"还剩几个人"叫。
+## 轮次标签(参考图顶部那一行)。★2026-11-01 起与决赛日其余各处同一套(`finals_copy.round_name`):
+##   `1/16 决赛 / 1/8 决赛 / 1/4 决赛 / 半决赛 / 决赛` —— 原来这里叫「32强 / 8强 / 第 1 轮」, 对阵图本体叫「1/4 决赛」,
+##   同一轮在主菜单与对阵图上是两个名字。(2026-10-12「6 人桶叫 8 强名不副实」那条: 1/4 决赛从决赛往回数, 不按坑位数, 不再有这个问题。)
 static func round_label(n: int, r: int) -> String:
-	var total := _B.rounds_for(n)
-	if r < 1 or r > total:
-		return ""
-	if r == total:
-		return "决赛"
-	if r == total - 1:
-		return "半决赛"
-	## ★2026-10-12 对阵图对照参考改版 §5: 人数不满(有轮空)时第一轮按坑位叫「8强」名不副实(6 人桶叫 8 强)。
-	##   参考 06 火箭联盟 / 07 Brawlhalla 第一轮都叫 ROUND 1 ⇒ 有轮空时第一轮叫「第 1 轮」。
-	if r == 1 and n < _B.slots_for(n):
-		return "第 1 轮"
-	if r == total - 2:
-		return "8强"
-	return "%d强" % (_B.slots_for(n) >> (r - 1))
+	return _FC.round_name(n, r)
 
 
 ## 塞进视口要缩放多少。★上限 1.0 —— 小桶不放大（放大像素字会糊，而这屏全是字）。

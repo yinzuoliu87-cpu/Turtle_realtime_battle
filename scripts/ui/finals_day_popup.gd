@@ -10,6 +10,7 @@ extends Control
 ## 按钮一律 UISkin.card_button(卡片 / 弹框里不用木牌按钮); 头像框 / VS 盾徽与冠军仪式、观战开场同一套(同一场赛事)。
 
 const UI := preload("res://scripts/scenes/bracket/champion_ui.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 const VS_CREST := "res://assets/sprites/finals/vs-crest-gold.png"
 const N_TITLE := "FdPopTitle"
 const N_SUB := "FdPopSub"
@@ -125,11 +126,11 @@ func set_pair(me_av: String, opp_av: String) -> void:
 func paint(secs: int, line: String) -> void:
 	var t := ""
 	if secs >= 0:
-		t = "你的%s %d 秒后开播" % [stage_name, maxi(1, secs)]
+		t = "%s %d 秒后开播" % [_FC.join("你的", stage_name), maxi(1, secs)]
 	elif secs == -2:
-		t = "你的%s即将开播" % stage_name
+		t = _FC.join("你的", stage_name) + "即将开播"
 	else:
-		t = "你的%s开播中" % stage_name
+		t = _FC.join("你的", stage_name) + "开播中"
 	if t != _last_title:
 		_last_title = t
 		title.text = t

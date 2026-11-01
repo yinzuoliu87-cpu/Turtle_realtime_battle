@@ -68,16 +68,24 @@ const SQL := "res://server/supabase/migrations/20261027_gauntlet_online_queue.sq
 ##     第一次用: 2026-10-30 选龟页整页重做(用户「你这还是一股浏览器的感觉啊」「锁定后的就不用去显示其他龟和稀有度了啊」,
 ##     方案书 docs/plans/20261030-选龟页重做.md)—— 只改选龟页的画法与版式, 积分赛流程(选人 / 存档 / 出战进匹配)一行没动;
 ##     TeamSelectScene.gd 的基线换成那次提交, units = 那次提交里这个文件的全部函数。
+##   ★2026-11-01 积分赛交给服务器(方案书 docs/plans/20261101c-积分赛服务器裁判.md; 用户 10-19「我们的所有对局不应该在本机上吧」、
+##     11-01「哪个商业游戏是这么本地做的？」)—— 这一次**有意**改积分赛, 但只加「开关开 ⇒ 交给服务器」那一支, 开关关时本机那条一行不动:
+##     · `_ranked_view` 多去掉一种段落: 条件里带 `_ranked_server` 的 if(匹配屏 `_ranked_server_now()` / 陪练号 `_ranked_server()`)
+##       ⇒ R 段量的变成「去掉闯关日那一段与服务器积分赛那一段之后, 本机积分赛走的那几行一字没动」;
+##     · 匹配屏 `_ready` 从 units(整段逐字)挪到 views(去掉上面两种段落后逐字): 基线仍是 84d2d853, 摘要按同一口径现算
+##       (units 去掉 `_ready` 后 87e6a75f…、`_ready` 的 view cf345541… = 改动前那一版去掉闯关日那一段);
+##     · 新加的 `_ranked_server_now` / `_server_pick_ranked`(匹配屏)、`_ranked_server` / `_do_match_ranked`(陪练号)按「改动后新加」
+##       进周六专用那一组 ⇒「只从闯关日 / 服务器积分赛分支可达」照查。
 const RANKED_BASE := "84d2d853"
 const RANKED := {
 	"scripts/scenes/MatchmakingScene.gd": {
-		"digest": "27e540b58fdfe58747342238f5e0ae6625e68510c07051d9b0364e9b062b2771",
-		"views": {},
+		"digest": "87e6a75f0bcfdf2bd4df8159d93a4e8e6421856b2a10e3712d8d68974ffc41d2",
+		"views": {"_ready": "cf345541b161449917dd4a5cf352693982b741e5ea56cb337a4968bb14b603b7"},
 		"sat_only": ["_server_pick", "_on_referee_changed", "_leave_later"],
 		"units": [
 			"_bg", "_bold_font", "_build_cancel_btn", "_build_card", "_build_searching", "_build_vs", "_center", "_display_id",
 			"_fade_to_black", "_font", "_note_recent", "_on_cancel", "_opponent_from_ghost", "_pick_gauntlet_local",
-			"_player_profile", "_radar_ping", "_ready", "_ref_label", "_shockwave", "card_id_text", "class _RingFx",
+			"_player_profile", "_radar_ping", "_ref_label", "_shockwave", "card_id_text", "class _RingFx",
 		],
 	},
 	"scripts/systems/sim/sim_driver.gd": {
@@ -977,6 +985,7 @@ func _indent(l: String) -> int:
 
 
 ## 去掉「if … PHASE_GAUNTLET / _gauntlet_now …:」那一段(含更深缩进的行) = 积分赛日走得到的样子。
+## ★2026-11-01 起也去掉「if … _ranked_server …:」那一段(积分赛开关开 ⇒ 交给服务器; 见 RANKED 表头注) = 开关关时本机走的样子。
 func _ranked_view(body: String) -> String:
 	var lines := body.split("\n")
 	var out: Array = []
@@ -984,7 +993,7 @@ func _ranked_view(body: String) -> String:
 	while i < lines.size():
 		var l: String = lines[i]
 		var st := l.strip_edges()
-		if st.begins_with("if ") and (st.contains("PHASE_GAUNTLET") or st.contains("_gauntlet_now")) and st.ends_with(":"):
+		if st.begins_with("if ") and (st.contains("PHASE_GAUNTLET") or st.contains("_gauntlet_now") or st.contains("_ranked_server")) 				and st.ends_with(":"):
 			var d := _indent(l)
 			i += 1
 			while i < lines.size() and (lines[i].strip_edges() == "" or _indent(lines[i]) > d):

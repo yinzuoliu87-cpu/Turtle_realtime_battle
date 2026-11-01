@@ -36,14 +36,15 @@ func _ready() -> void:
 	## ★2026-10-12 开赛改 18:00 UTC: 前后两个时刻跟着常量走, 不再写死 07/10 点
 	var before := _say(sun0 + (P2.FINALS_SEAT_HOUR_UTC - 1) * 3600)   # 开赛前 1 小时
 	_ok("★★分组前(07:00 UTC)不说「人太少/下周再来」", before.find("下周再来") < 0 and before.find("人太少") < 0, before)
-	_ok("★★分组前说清什么时候开打", before.find("未分组") >= 0 and before.find(P2.local_hhmm(sun0 + P2.FINALS_SEAT_HOUR_UTC * 3600)) >= 0, before)
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 「未分组 · 18:00 自动分组」→「18:00 公布分组」(屏上那一页由赛前页 bracket_preseat 画; 这句是说明框兜底)
+	_ok("★★分组前说清什么时候开打", before.find("公布分组") >= 0 and before.find(P2.local_hhmm(sun0 + P2.FINALS_SEAT_HOUR_UTC * 3600)) >= 0, before)
 	var m = MAP.new()
 	m._injected = true
 	m._bucket = {"reason": "not_seated", "entered": 6}
 	m._now_override = sun0 + (P2.FINALS_SEAT_HOUR_UTC + 2) * 3600            # 就算时钟已过分组点, 服务端说没分组就是没分组
 	var ns := str(m._empty_text())
 	m.free()
-	_ok("★★服务端回 not_seated ⇒ 说「还没分组」", ns.find("未分组") >= 0 and ns.find("下周再来") < 0, ns)
+	_ok("★★服务端回 not_seated ⇒ 说「几点公布分组」", ns.find("公布分组") >= 0 and ns.find("下周再来") < 0, ns)
 	var SBn = load("res://scripts/net/supabase.gd")
 	var pv: Dictionary = SBn.parse_finals(true, 200, '{"ok":false,"reason":"not_seated","entered":6}', "uid-me", 1)
 	_ok("★★回包解析把 not_seated 带出来(不吞成空字典)", str(pv.get("reason", "")) == "not_seated" and int(pv.get("entered", 0)) == 6, str(pv))
@@ -68,9 +69,14 @@ func _ready() -> void:
 	var _j0 := _src.find("static func round_tip")
 	var _j1 := _src.find("\nfunc ", _j0 + 10)
 	var _rt := _src.substr(_j0, (_j1 if _j1 > 0 else _src.length()) - _j0) if _j0 >= 0 else ""
-	_ok("★★对阵图顶上那行走 countdown_text, 不再拼 %d:%02d",
-		(_body.find("countdown_text(") >= 0 or (_body.find("round_tip(") >= 0 and _rt.find("countdown_text(") >= 0))
-		and _body.find("%d:%02d") < 0 and _rt.find("%d:%02d") < 0)
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 顶上那行挪到 `BracketInfo.tip_line()`(倒计时一律走 `finals_copy.dur`) ⇒ 连它一起量
+	var _isrc := FileAccess.get_file_as_string("res://scripts/scenes/bracket/bracket_info.gd")
+	var _t0 := _isrc.find("func tip_line")
+	var _t1 := _isrc.find("\nfunc ", _t0 + 10)
+	var _tl := _isrc.substr(_t0, (_t1 if _t1 > 0 else _isrc.length()) - _t0) if _t0 >= 0 else ""
+	_ok("★★对阵图顶上那行走统一的时长写法(finals_copy.dur), 不再拼 %d:%02d",
+		_body.find("tip_line()") >= 0 and _tl.find("_FC.dur(") >= 0 and _body.find("%d:%02d") < 0 and _tl.find("%d:%02d") < 0
+		and _rt.find("%d:%02d") < 0)
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 分组前不劝退" if _fail == 0 else "FAIL x%d" % _fail)

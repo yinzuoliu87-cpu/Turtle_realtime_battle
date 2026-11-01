@@ -217,8 +217,10 @@ func _t_labels() -> void:
 	for r in range(1, B.rounds_for(32) + 1):
 		got32.append(L.round_label(32, r))
 	print("  ⑥ 32 人桶: %s" % str(got32))
-	_ok("⑥ ★32 人桶 = 32强/16强/8强/半决赛/决赛",
-		got32 == ["32强", "16强", "8强", "半决赛", "决赛"], str(got32))
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 轮次名全决赛日一套(finals_copy.round_name, 从决赛往回数):
+	##   原来这里叫「32强 / 8强 / 第 1 轮」, 对阵图本体叫「1/4 决赛」, 同一轮在主菜单与对阵图上是两个名字。
+	_ok("⑥ ★32 人桶 = 1/16 决赛/1/8 决赛/1/4 决赛/半决赛/决赛",
+		got32 == ["1/16 决赛", "1/8 决赛", "1/4 决赛", "半决赛", "决赛"], str(got32))
 	var got4: Array = []
 	for r in range(1, B.rounds_for(4) + 1):
 		got4.append(L.round_label(4, r))
@@ -232,12 +234,12 @@ func _t_labels() -> void:
 	var got6: Array = []
 	for r in range(1, B.rounds_for(6) + 1):
 		got6.append(L.round_label(6, r))
-	_ok("⑥ ★6 人桶(2 人轮空) = 第 1 轮/半决赛/决赛", got6 == ["第 1 轮", "半决赛", "决赛"], str(got6))
+	_ok("⑥ ★6 人桶(2 人轮空) = 1/4 决赛/半决赛/决赛(与有没有轮空无关)", got6 == ["1/4 决赛", "半决赛", "决赛"], str(got6))
 	var got12: Array = []
 	for r in range(1, B.rounds_for(12) + 1):
 		got12.append(L.round_label(12, r))
-	_ok("⑥ 12 人桶 = 第 1 轮/8强/半决赛/决赛(只改有轮空的第一轮)", got12 == ["第 1 轮", "8强", "半决赛", "决赛"], str(got12))
+	_ok("⑥ 12 人桶 = 1/8 决赛/1/4 决赛/半决赛/决赛", got12 == ["1/8 决赛", "1/4 决赛", "半决赛", "决赛"], str(got12))
 	var got8: Array = []
 	for r in range(1, B.rounds_for(8) + 1):
 		got8.append(L.round_label(8, r))
-	_ok("⑥ ★分母: 8 人满签不变 = 8强/半决赛/决赛", got8 == ["8强", "半决赛", "决赛"], str(got8))
+	_ok("⑥ ★分母: 8 人满签 = 1/4 决赛/半决赛/决赛", got8 == ["1/4 决赛", "半决赛", "决赛"], str(got8))

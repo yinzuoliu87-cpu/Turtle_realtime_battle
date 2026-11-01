@@ -95,13 +95,18 @@ func _closed_groups(now: int) -> Array:
 	return out
 
 
-func _open(bucket: Dictionary, finals: Dictionary, week: Dictionary, now: int, cup: bool) -> void:
+## `pre` > 0: set_week 那一次重画先钉在这个时刻(默认 = now)。
+## ★2026-11-01 查实: 原来 set_week 那一次重画走**真实时钟** —— WEEK 写死 2026-10-26 那一周, 真实日期恰好落在这一周
+##   (2026-11-01 周日晚上)时, 那一次重画就把第 1 场揭晓了(红叉 + 光点), 紧接着 set_data 重画把画布清掉、
+##   而「揭晓过」已记账不再放 ⇒ G9 只在这一周的这个时段红(与改动无关的日期偶发)。⇒ 一律钉住, 不读真实时钟。
+func _open(bucket: Dictionary, finals: Dictionary, week: Dictionary, now: int, cup: bool, pre: int = 0) -> void:
 	if _m != null and is_instance_valid(_m):
 		_m.queue_free()
 		await _frames(2)
 	_m = BMS.new()
 	get_tree().root.add_child(_m)
 	await _frames(2)
+	_m._now_override = pre if pre > 0 else now
 	if not week.is_empty():
 		_m.set_week(week)
 	_m.set_data(bucket, finals, now)
@@ -192,14 +197,15 @@ func _t_group_live(vp: Vector2i) -> void:
 		and int(_m.competitor(2, 0, 0).get("seed", 0)) < 0 and int(_m.competitor(2, 0, 1).get("seed", 0)) < 0, "✓ %d" % ticks)
 	## S1: 即将开播那一格有琥珀签 + 卡顶倒计时「…后」
 	var up := _card_at(1, 1)
-	_ok("%s S1 ★即将开播那一格: 「即将开播」签 + 卡顶写「X 后」" % tag, up != null and up.find_child("UpcomingTag", true, false) != null
-		and str((up.find_child("CardHead", true, false) as Label).text).find("后") >= 0,
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 卡顶一件事: 即将开播 = 开播时刻(「第 2 场 18:10 开播」), 右边「即将开播」签
+	_ok("%s S1 ★即将开播那一格: 「即将开播」签 + 卡顶写开播时刻" % tag, up != null and up.find_child("UpcomingTag", true, false) != null
+		and str((up.find_child("CardHead", true, false) as Label).text).ends_with(" 开播"),
 		str((up.find_child("CardHead", true, false) as Label).text) if up != null else "无卡")
 	## S2: 顶上那一行句首带轮名
-	_ok("%s S2 ★顶上那一行「半决赛第 1 场开播中 · 第 2 场 …后开播」" % tag, _m._tip.visible
-		and str(_m._tip.text).begins_with("半决赛第 1 场开播中 · 第 2 场 ") and str(_m._tip.text).ends_with("后开播"), str(_m._tip.text))
+	## 选手那一行只数跟我有关的: 我那场在播 ⇒ 不出现(原来「半决赛第 1 场开播中 · 第 2 场 X 后开播」一行两件事, 还数别人那场)
+	_ok("%s S2 ★我那场在播 ⇒ 倒计时行不出现" % tag, not _m._tip.visible, str(_m._tip.text))
 	## P3 / S3: 处境句
-	_ok("%s P3 ★处境句 = 「你的半决赛正在开播」" % tag, _label_text("HeroStatus") == "你的半决赛正在开播", _label_text("HeroStatus"))
+	_ok("%s P3 ★处境句 = 「你的半决赛开播中」" % tag, _label_text("HeroStatus") == "你的半决赛开播中", _label_text("HeroStatus"))
 	## P6: 页面级开播提示 —— 组页签上那一组挂红灯(开播中的组)
 	var lamps := 0
 	for chip in _m._spec_bar.get_children():
@@ -240,23 +246,27 @@ func _t_group_live(vp: Vector2i) -> void:
 	_m.pick_chip(2)
 	await _frames(2)
 	var gname: String = CD.group_name(2)
-	_ok("%s S4 ★看别的组: 「观战 · %s · 半决赛第 1 场开播中」" % [tag, gname], _label_text("HeroStatus") == "观战 · %s · 半决赛第 1 场开播中" % gname,
+	## 旁观第三人称、一件事(缎带上已写着在看哪一组, 不再「观战 · C 组 · …」)
+	_ok("%s S4 ★看别的组: 「半决赛第 1 场开播中」(缎带写「%s」)" % [tag, gname], _label_text("HeroStatus") == "半决赛第 1 场开播中",
 		_label_text("HeroStatus"))
 	_ok("%s S9 ★看别的组: 缎带写那一组, 顶上那一行仍是开播进度(那一组的)" % tag, _label_text("RibbonText").find(gname) >= 0
-		and str(_m._tip.text).begins_with("半决赛第 1 场开播中"), "%s / %s" % [_label_text("RibbonText"), _m._tip.text])
+		and str(_m._tip.text).begins_with("距下一场开播 "), "%s / %s" % [_label_text("RibbonText"), _m._tip.text])
 	## 场间(第 1 场揭晓、第 2 场还没开): S5 主按钮不消失、不可点、写倒计时
-	await _open(wk[0], {}, {"buckets": wk}, F + 140, false)
+	## 进场那两次重画: 先钉在第 1 场揭晓之前(F+10), 再到 F+140 ⇒ 揭晓发生在最后那一次重画里(玩家停在页上等到揭晓那一刻)
+	H._seen_reveal.clear()
+	await _open(wk[0], {}, {"buckets": wk}, F + 140, false, F + 10)
 	var cta2: Button = _m.find_child("PrimaryCta", true, false) as Button
-	_ok("%s S5 ★场间主按钮还在: 不可点「第 2 场 …后开播」" % tag, cta2 != null and cta2.visible and cta2.disabled
-		and str(cta2.text).begins_with("第 2 场 ") and str(cta2.text).ends_with("后开播"), str(cta2.text) if cta2 != null else "无")
+	## 主按钮等待时只写状态词(倒计时只在处境句下面一行出现一次; 原来按钮与那一行逐字相同)
+	_ok("%s S5 ★场间主按钮还在: 不可点「等待开播」" % tag, cta2 != null and cta2.visible and cta2.disabled
+		and str(cta2.text) == "等待开播", str(cta2.text) if cta2 != null else "无")
 	## G9: 第 1 场刚揭晓 ⇒ 输家头像盖红叉 + 一枚光点沿连线走
 	_ok("%s G9 ★揭晓那一刻: 输家红叉 + 光点走线" % tag, not _m._canvas.find_children("LoseMark", "", true, false).is_empty()
 		and not _m._canvas.find_children("TravelDot", "", true, false).is_empty())
 	## S3: 我那场排在第 2 场时「你的半决赛 X 后开播」(我 = 1 号种子, 在 1-1)
 	var mine2 := _g_seq(0, 2, F + 40)
 	await _open(mine2, {}, {"buckets": [mine2]}, F + 40, false)
-	_ok("%s S3 ★我那场排在后面: 「你的半决赛 X后开播」" % tag, _label_text("HeroStatus").begins_with("你的半决赛 ")
-		and _label_text("HeroStatus").ends_with("后开播"), _label_text("HeroStatus"))
+	_ok("%s S3 ★我那场排在后面: 「你的半决赛 HH:MM 开播」+ 下一行「距开播 X」" % tag, _label_text("HeroStatus").begins_with("你的半决赛 ")
+		and _label_text("HeroStatus").ends_with(" 开播") and str(_m._tip.text).begins_with("距开播 "), _label_text("HeroStatus") + " / " + str(_m._tip.text))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -277,9 +287,9 @@ func _t_cup_live(vp: Vector2i) -> void:
 		and str(_m.match_state(1, 3)) == BMS.ST_UPCOMING and bool(_m.competitor(1, 0, 1).get("bye", false)))
 	## G25 / ⑳: 我首轮轮空 ⇒ 主按钮「去看 X 对 Y」指向正在播的那一场
 	var cta: Button = _m.find_child("PrimaryCta", true, false) as Button
-	_ok("%s G25 ★轮空的人主按钮「去看 石头统领 对 龟龟冲鸭」" % tag, cta != null and cta.visible and not cta.disabled
-		and cta.text == "去看 石头统领 对 龟龟冲鸭" and cta.get_meta("rm", Vector2i(-1, -1)) == Vector2i(1, 1), str(cta.text) if cta != null else "无")
-	_ok("%s G25 处境句「你首轮轮空 · 直接晋级半决赛」" % tag, _label_text("HeroStatus") == "你首轮轮空 · 直接晋级半决赛", _label_text("HeroStatus"))
+	_ok("%s G25 ★轮空的人主按钮「观看 石头统领 对 龟龟冲鸭」" % tag, cta != null and cta.visible and not cta.disabled
+		and cta.text == "观看 石头统领 对 龟龟冲鸭" and cta.get_meta("rm", Vector2i(-1, -1)) == Vector2i(1, 1), str(cta.text) if cta != null else "无")
+	_ok("%s G25 处境句「首轮轮空，直接晋级半决赛」" % tag, _label_text("HeroStatus") == "首轮轮空，直接晋级半决赛", _label_text("HeroStatus"))
 	## P4: 轮空格是小卡(比真对局矮), 卡顶写「轮空」
 	var bye := _card_at(1, 0)
 	var real := _card_at(1, 1)
@@ -389,8 +399,8 @@ func _t_together() -> void:
 	var ups: int = _m._canvas.find_children("UpcomingTag", "", true, false).size()
 	_ok("同时开播 ★两格同时「开播」、没有「即将开播」签(那只在冠军杯)", tags == 2 and ups == 0
 		and str(_m.match_state(1, 0)) == BMS.ST_PREMIERE and str(_m.match_state(1, 1)) == BMS.ST_PREMIERE, "开播 %d · 即将 %d" % [tags, ups])
-	_ok("同时开播 ★顶上那一行「半决赛 2 场开播中 · 下一轮备战 …后开始」(「本轮」换成轮名)",
-		str(_m._tip.text).begins_with("半决赛 2 场开播中 · 下一轮备战 ") and str(_m._tip.text).ends_with("后开始"), str(_m._tip.text))
+	_ok("同时开播 ★我在播 ⇒ 处境句「你的半决赛开播中」、倒计时行不出现", _label_text("HeroStatus") == "你的半决赛开播中" and not _m._tip.visible,
+		_label_text("HeroStatus") + " / " + str(_m._tip.text))
 	var head := ""
 	var c0 := _card_at(1, 0)
 	if c0 != null:
@@ -401,10 +411,10 @@ func _t_together() -> void:
 	## 观众(我不在这一组)
 	var b2 := _g_together(0, -1, F + 40)
 	await _open(b2, {}, {"buckets": [b2]}, F + 40, false)
-	_ok("同时开播 ★观众句是真实的 N「观战 · %s · 半决赛 2 场开播中」" % CD.group_name(0),
-		_label_text("HeroStatus") == "观战 · %s · 半决赛 2 场开播中" % CD.group_name(0), _label_text("HeroStatus"))
+	_ok("同时开播 ★观众句是真实的 N「半决赛 2 场开播中」",
+		_label_text("HeroStatus") == "半决赛 2 场开播中", _label_text("HeroStatus"))
 	var cta2: Button = _m.find_child("PrimaryCta", true, false) as Button
-	_ok("同时开播 ★我不在播 ⇒ 主按钮「观看开播 · 2 场」", cta2 != null and cta2.visible and not cta2.disabled and cta2.text == "观看开播 · 2 场",
+	_ok("同时开播 ★我不在播 ⇒ 主按钮「观看开播」", cta2 != null and cta2.visible and not cta2.disabled and cta2.text == "观看开播",
 		str(cta2.text) if cta2 else "无")
 	if cta2 != null:
 		cta2.pressed.emit()
@@ -507,9 +517,9 @@ func _t_wall_prep() -> void:
 	await _open(b2, {}, {"buckets": [b2]}, F + 330, false)
 	var preps := _find("PrepScreen")
 	_ok("G5 ★备战窗开着 ⇒ 备战屏(大倒计时 + 本轮进度 + 下一轮对阵 + 利害一句)", preps.size() == 1
-		and str((preps[0] as Node).find_child("PrepCountdown", true, false).text).ends_with("后开播")
+		and str((preps[0] as Node).find_child("PrepCountdown", true, false).text).begins_with("剩余 ")
 		and str((preps[0] as Node).find_child("PrepStake", true, false).text).find("冠军") >= 0 if preps.size() == 1 else false)
-	_ok("S6 备战窗开着 ⇒ 备战那一行出现「备战购物 · 还剩 …」", _m._shop_row.visible and str(_m._shop_row.text).begins_with("备战购物"),
+	_ok("S6 备战窗开着 ⇒ 备战那一行出现「备战剩余 …」", _m._shop_row.visible and str(_m._shop_row.text).begins_with("备战剩余"),
 		str(_m._shop_row.text))
 	if preps.size() == 1:
 		## 「一样在动的东西」: 选手卡那一排真在走(量位置, 不量有没有 tween)
@@ -567,7 +577,7 @@ func _t_grid_peek() -> void:
 	var mine := _grp(0, 1, {}, {}, false, 0, F + 40, {"round_at": F})
 	var other := _grp(1, 1, {}, {}, false, -1, F + 40, {"round_at": F})
 	await _open(mine, {}, {"buckets": [mine, other]}, F + 40, false)
-	_ok("P9 分母: 看我那组时备战那一行在", _m._shop_row.visible and str(_m._shop_row.text).begins_with("备战购物"), str(_m._shop_row.text))
+	_ok("P9 分母: 看我那组时备战那一行在", _m._shop_row.visible and str(_m._shop_row.text).begins_with("备战剩余"), str(_m._shop_row.text))
 	_m.pick_chip(1)
 	await _frames(2)
 	_m._process(0.6)
@@ -615,7 +625,7 @@ func _t_closing() -> void:
 		places.append(str(st.get_meta("place")))
 	_ok("G22 ★领奖台: 1 / 2 / 3 台(两位四强)都站了人", places.count("1") == 1 and places.count("2") == 1 and places.count("3") == 2, str(places))
 	_ok("G22 ★滚动全部参赛者(16 人)", _find("EntrantTicker").size() == 1
-		and str(((_find("EntrantTicker")[0] as Node).get_child(0).get_child(0) as Label).text).begins_with("本周决赛日 16 位选手"))
+		and str(((_find("EntrantTicker")[0] as Node).get_child(0).get_child(0) as Label).text).begins_with("本周决赛日参赛选手（16 人）"))
 	## ★收盘只讲结果, 不预告下一场比赛(用户 10-31「为什么在这儿提示新的比赛」; 「下一站」归主菜单每周赛程条):
 	##   屏上任何一段字都不提闯关赛 / 积分赛 / 下周 / 新一大轮 / 开赛倒计时。分母: 屏上真有字(含处境句与领奖台名字)。
 	var teaser: Array = []
@@ -629,7 +639,7 @@ func _t_closing() -> void:
 			if tx.find(w) >= 0:
 				teaser.append(tx.substr(0, 30))
 	_ok("G22 ★收盘后不出现下一场比赛的预告(看得见的字 %d 段)" % nlab, teaser.is_empty() and nlab >= 20
-		and _label_text("HeroStatus") == "你是冠军杯赛冠军！", str(teaser))
+		and _label_text("HeroStatus") == "你获得冠军杯赛冠军！", str(teaser))
 	_ok("G22 收盘那一刻奖励行让给滚动名单(不叠字)", _m._canvas.find_child("RewardLine", true, false) == null)
 	var cta: Button = _m.find_child("PrimaryCta", true, false) as Button
 	_ok("G22 主按钮「重看决赛」", cta != null and cta.visible and cta.text == "重看决赛")
@@ -717,17 +727,19 @@ func _t_preshow() -> void:
 	await _open({"reason": "not_seated", "entered": 24}, {}, {}, now, false)
 	var seat := int(P2C.finals_seat_ts(WEEK))
 	_ok("P12 分母: 未分组那一档", str(_m._empty_kind()) == BMS.EK_NOT_SEATED)
-	_ok("P12 ★大倒计时数到 18:00(%s)" % _label_text("PreShowCountdown"), _label_text("PreShowCountdown") == _m._info.big_countdown(seat - now)
-		and _label_text("PreShowCountdown").begins_with("19 分"), _label_text("PreShowCountdown"))
-	_ok("P12 ★写出已报名人数", _label_text("PreShowSub").begins_with("已报名 24 人"), _label_text("PreShowSub"))
-	_ok("P12 说明框(门禁原有那一句)仍在、字仍是那一句", _m._empty_box.visible and str(_m._empty_lb.text) == str(_m._empty_text()))
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 18:00 前那一页换成赛前页(bracket_preseat: 距小组赛开始 + 今晚赛程 + 晋级名单; 详量见 verify_finals_copy ①)
+	_ok("P12 ★大倒计时数到 18:00(%s)" % _label_text("PreseatCountdown"), _label_text("PreseatCountdown") == _m._info.big_countdown(seat - now)
+		and _label_text("PreseatCountdown").begins_with("19 分"), _label_text("PreseatCountdown"))
+	_ok("P12 ★写出已报名人数(名单接口没回时用分组接口给的人数)", _label_text("PreseatListCount") == "24 人", _label_text("PreseatListCount"))
+	_ok("P12 说明框藏起来(赛前页取代), 判断那一句仍从同一份分类出", not _m._empty_box.visible and str(_m._empty_lb.text) == str(_m._empty_text()))
 	## P22: 倒计时归零 ⇒ 写「即将开播…」并 5 秒内重拉
 	var b := _grp(0, 1, {}, {}, false, 0, F, {"left": 0, "recv_at": F, "round_at": F - 400})
 	await _open(b, {}, {}, F, false)
 	_m._fetch_left = 30.0
 	_m._sync_tip()
-	_ok("P22 ★归零: 「即将开播…」+ 5 秒内重拉(原来要等满 30 秒)", str(_m._tip.text) == "即将开播…" and float(_m._fetch_left) <= 5.0,
-		"%s / %.1f" % [_m._tip.text, _m._fetch_left])
+	## 归零后不挂「0 秒」也不写会过去的时刻: 倒计时行收起、主按钮「等待开播」, 5 秒内重拉
+	_ok("P22 ★归零: 倒计时行收起(不停在 0)+ 5 秒内重拉(原来要等满 30 秒)", not _m._tip.visible and float(_m._fetch_left) <= 5.0,
+		"%s / %.1f" % [_m._tip.text if _m._tip.visible else "<不出现>", _m._fetch_left])
 
 
 # ─────────────────────────────────────────────────────────────
@@ -767,7 +779,7 @@ func _t_popup_and_forfeit() -> void:
 		(ui[0] as Button).pressed.emit()
 		await _frames(2)
 		var uc: Node = _m.find_child("UpcomingCard", true, false)
-		_ok("S7 ★小卡写「X后开播」", uc != null and str((uc.find_child("UpcomingCountdown", true, false) as Label).text).ends_with("后开播"))
+		_ok("S7 ★小卡写「距开播 X」", uc != null and str((uc.find_child("UpcomingCountdown", true, false) as Label).text).begins_with("距开播 "))
 		if uc != null:
 			uc.queue_free()
 			await _frames(1)
@@ -778,7 +790,7 @@ func _t_popup_and_forfeit() -> void:
 	_m._await_watch_view = _m._view
 	_m._check_referee_watch()
 	var rm: Label = _m.find_child("ReplayMsg", true, false) as Label
-	_ok("S8 ★等我那场(排在第 2 场): 「你的比赛 X后开播」", rm != null and str(rm.text).begins_with("你的比赛 ") and str(rm.text).ends_with("后开播"),
+	_ok("S8 ★等我那场(排在第 2 场): 「你的比赛 HH:MM 开播」", rm != null and str(rm.text).begins_with("你的比赛 ") and str(rm.text).ends_with(" 开播"),
 		str(rm.text) if rm != null else "无")
 	_m.await_watch = Vector2i(-1, -1)
 	## S10: 判负(有结果、无档期、不是轮空)⇒ 卡顶「判负」, 输方那一行「阵容无效 · 判负」
@@ -790,8 +802,8 @@ func _t_popup_and_forfeit() -> void:
 	if c11 != null:
 		for o in _meta(c11, "bk", "seat_origin"):
 			origins.append(str((o as Label).text))
-	_ok("S10 ★判负那一场: 卡顶「判负」、输方「阵容无效 · 判负」", c11 != null and str((c11.find_child("CardHead", true, false) as Label).text) == "判负"
-		and origins == ["阵容无效 · 判负"], "%s / %s" % [str((c11.find_child("CardHead", true, false) as Label).text) if c11 else "", str(origins)])
+	_ok("S10 ★判负那一场: 卡顶「判负」、输方「阵容无效，判负」", c11 != null and str((c11.find_child("CardHead", true, false) as Label).text) == "判负"
+		and origins == ["阵容无效，判负"], "%s / %s" % [str((c11.find_child("CardHead", true, false) as Label).text) if c11 else "", str(origins)])
 	var c10 := _card_at(1, 0)
 	_ok("S10 对照: 有档期的那一场照常「已结束」", c10 != null and str((c10.find_child("CardHead", true, false) as Label).text) == "已结束")
 
@@ -909,7 +921,7 @@ func _t_defending() -> void:
 	_def_reqs.clear()
 	var asks0: int = CER.defending_asks
 	await _def_enter()
-	var want := "卫冕 · %s冠军" % CD.group_name(0)
+	var want := "%s冠军（卫冕）" % CD.group_name(0)
 	var org := _def_origins()
 	_ok("卫冕 分母: 走的是真入口(没喂数据) · 冠军杯那一张 2 人", not bool(_m._injected) and str(_m._view) == L.VIEW_FINALS
 		and int(_m.cur().get("size", 0)) == 2, "%s %s" % [str(_m._view), str(_m.cur().get("size", 0))])

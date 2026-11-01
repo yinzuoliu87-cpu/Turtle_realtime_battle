@@ -109,6 +109,10 @@ static func on_done(run: Node, status_res: Dictionary) -> void:
 	if not in_own(jid):
 		return                            # 玩家已离开跟播: 不预演(不在沙盒里), 单子留给主菜单补记
 	var v := RW.settle(GameState, jid, status_res, true)
+	if v.is_empty() and bool(run.get("ranked")):
+		## 积分赛局(2026-11-01): 同下面那条兜底, 只是口径是积分赛(结算屏读本机的命 / 胜场)
+		v = {"kind": RW.KIND_RANKED, "won": int(status_res.get("won", 0)) == 1, "reward": 0,
+			"hearts": int(GameState.hearts), "wins": int(GameState.season_wins), "battles": int(GameState.season_total_battles)}
 	if v.is_empty():
 		## 不是这一单 / 上一周的 / 结果不明: 结算屏照服务器的胜负出, 奖励 0(与匹配屏那条同一个兜底)
 		var gw := int(status_res.get("gw", -1))

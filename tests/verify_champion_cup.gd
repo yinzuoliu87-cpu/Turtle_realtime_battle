@@ -141,7 +141,8 @@ func _t_copy() -> void:
 	_ok("① ★★★产品字符串里旧词 0 处", hits.is_empty(), str(hits.slice(0, 4)))
 	_ok("① ★分母: 正则真的会命中旧词(拿旧稿那句试)", re.search("\"冠军赛 %d 小时后开始\"") != null
 		and re.search("\"我的分组\"") != null)
-	_ok("① 页签字: 冠军杯赛没成表 / 成表", BMS.finals_tab_text(0) == "冠军杯赛 · 未开赛"
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 页签只写名字, 没成表也不缀「 · 未开赛」(处境写在页里)
+	_ok("① 页签字: 冠军杯赛没成表 / 成表", BMS.finals_tab_text(0) == "冠军杯赛"
 		and BMS.finals_tab_text(8) == "冠军杯赛", "%s / %s" % [BMS.finals_tab_text(0), BMS.finals_tab_text(8)])
 	_ok("① 结算副标题按组号说是哪一段", P2C.finals_stage_name(P2C.FINALS_CUP_BUCKET) == "冠军杯赛"
 		and P2C.finals_stage_name(0) == "小组赛" and P2C.finals_stage_name(-1) == "小组赛")
@@ -457,10 +458,10 @@ func _t_flow() -> void:
 	var et := str(m._empty_lb.text)
 	print("    冠军杯赛页: 「%s」" % et.replace("\n", " / "))
 	_ok("③ ★★分类 = 开赛前", str(m._empty_kind()) == BMS.EK_FINALS_SOON, str(m._empty_kind()))
-	_ok("③ ★★倒计时数到开赛钟点(40 分)", et.begins_with("冠军杯赛 40 分后开赛"), et)
+	_ok("③ ★★倒计时数到开赛钟点(40 分)", et.begins_with("距冠军杯赛开始 40 分 00 秒"), et)
 	_ok("③ ★★列出两名组冠军(进冠军杯赛的人)", et.find("我龟") >= 0 and et.find("丁龟") >= 0
 		and et.find("乙龟") < 0 and et.find("丙龟") < 0, et)
-	_ok("③ 页签「冠军杯赛 · 未开赛」", str((m._tabs.get_child(1) as Button).text) == "冠军杯赛 · 未开赛",
+	_ok("③ 页签「冠军杯赛」(只写名字)", str((m._tabs.get_child(1) as Button).text) == "冠军杯赛",
 		str((m._tabs.get_child(1) as Button).text))
 	_ok("③ 没成表 ⇒ 没有「冠军 · 名字」那一行", not m._champ_lb.visible)
 	m.queue_free()
@@ -490,11 +491,18 @@ func _t_flow() -> void:
 	## ★收包时刻对齐到钉住的钟: 剩余秒数 = 服务端钟 + (本屏的「现在」− 收包时刻), 而收包时刻是真实系统钟,
 	##   门禁把「现在」钉在周日 ⇒ 不对齐的话差出好几天(产品里两者是同一个钟, 差不出来)。
 	m._finals["recv_at"] = t1
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 备战屏开着时它自己数(大字「剩余 X」), 下面那一行让位(同一个数不在屏上说两遍)
+	##   ⇒ 先点「查看对阵图」收起备战屏(玩家也是这么看对阵图的), 再量那一行跟着哪一张
+	var ph := m.find_child("PrepHide", true, false) as Button
+	_ok("④ ★分母: 备战屏在(购物窗开着)", ph != null)
+	if ph != null:
+		ph.pressed.emit()
+		await _frames(1)
 	m._on_poll()
 	await _frames(1)
 	var shop := str(m._shop_row.text)
-	_ok("④ ★★购物窗跟着杯那一张(我那组早收盘了, 用组那张会说「已结束」)", shop.begins_with("备战购物 · 还剩 2 分 30 秒"), shop)
-	_ok("④ ★倒计时跟着杯那一张", m._tip.visible and str(m._tip.text).find("后开播") >= 0, str(m._tip.text))
+	_ok("④ ★★购物窗跟着杯那一张(我那组早收盘了, 用组那张会说「已结束」)", shop == "备战剩余 2 分 30 秒", shop)
+	_ok("④ ★备战中选手的倒计时只在那一行(顶上不重复)", not m._tip.visible, str(m._tip.text))
 	## 2026-10-12 周日统一结算: 购物窗内(开轮 30 秒)不能开打; 下面把钟拨到购物结束后再量「能」
 	_ok("④ ★★购物窗内我那一场还不能打(原稿「购物结束后统一结算」)", not m.should_fetch_opponent(1, 0))
 	P2C.now_override_ts = t1 + 200            # 购物结束(开轮 30 + 200 = 230 秒 > 180)
@@ -515,7 +523,7 @@ func _t_flow() -> void:
 		for c in _all(m):
 			if c is Label and str((c as Label).text).find("冠军杯赛") >= 0:
 				info = str((c as Label).text)
-		_ok("④ 弹卡副标写「决赛 · 冠军杯赛」(不是「第 1000001 组」)", info == "决赛 · 冠军杯赛", info)
+		_ok("④ 弹卡副标写「冠军杯赛决赛」(不是「第 1000001 组」)", info == "冠军杯赛决赛", info)
 		_reqs.clear()
 		if go != null:
 			go.pressed.emit()
@@ -590,7 +598,7 @@ func _t_flow() -> void:
 	m._on_poll()
 	await _frames(2)
 	var tg := P2C.player_tag("uid-d")
-	_ok("⑦ ★★顶上「冠军 · 丁龟 #ID」", m._champ_lb.visible and str(m._champ_lb.text) == "冠军 · 丁龟 " + tg,
+	_ok("⑦ ★★顶上「冠军：丁龟 #ID」", m._champ_lb.visible and str(m._champ_lb.text) == "冠军：丁龟 " + tg,
 		str(m._champ_lb.text))
 	_ok("⑦ 决赛格显示胜负了", m.match_state(1, 0) == BMS.ST_DONE and m.winner_side(1, 0) == 1)
 	_ok("⑦ ★★★我(冠军杯赛决赛输) ⇒【亚军】+【组冠军】", P2C.title_has(GameState.titles, P2C.TITLE_RUNNER_UP, _wk)
@@ -651,7 +659,7 @@ func _t_solo() -> void:
 	_ok("⑧ ★1 人表也算成表 ⇒ 晚上默认看冠军杯赛", str(m._view) == L.VIEW_FINALS, str(m._view))
 	var et := str(m._empty_lb.text)
 	_ok("⑧ ★★分类 = 直接夺冠", str(m._empty_kind()) == BMS.EK_CUP_SOLO, str(m._empty_kind()))
-	_ok("⑧ ★★写出「直接夺冠」和冠军名字", et.find("直接夺冠") >= 0 and et.find("冠军 · " + names[champ]) >= 0, et)
+	_ok("⑧ ★★写出「直接夺冠」和冠军名字", et.find("直接夺冠") >= 0 and et.find("冠军：" + names[champ]) >= 0, et)
 	_ok("⑧ 页签「冠军杯赛」(不缀未开赛)", str((m._tabs.get_child(1) as Button).text) == "冠军杯赛")
 	_ok("⑧ ★★★我(组决赛输) ⇒ 冠亚四强组冠军一个都没有(不再拿组里的名次兜底)",
 		not P2C.title_has(GameState.titles, P2C.TITLE_RUNNER_UP, _wk) and not P2C.title_has(GameState.titles, P2C.TITLE_SEMIFINAL, _wk)
@@ -704,9 +712,9 @@ func _t_group_solo() -> void:
 	var et := str(m._empty_lb.text)
 	_ok("⑧b ★★分类 = 1 人组(直接晋级)", str(m._bucket_kind()) == BMS.EK_GROUP_SOLO and str(m._view) == L.VIEW_BUCKET,
 		"%s / %s" % [str(m._bucket_kind()), str(m._view)])
-	_ok("⑧b ★★页签「小组赛 · 直接晋级」", str((m._tabs.get_child(0) as Button).text) == "小组赛 · 直接晋级",
+	_ok("⑧b ★★页签「小组赛」(只写名字; 「直接晋级」写在页里)", str((m._tabs.get_child(0) as Button).text) == "小组赛",
 		str((m._tabs.get_child(0) as Button).text))
-	_ok("⑧b ★★正文说清去向: 「A 组仅 1 人 · 直接晋级冠军杯赛」+ 开赛时刻", et.begins_with("A 组仅 1 人 · 直接晋级冠军杯赛")
+	_ok("⑧b ★★正文说清去向: 「A 组仅 1 人，直接晋级冠军杯赛」+ 开赛时刻", et.begins_with("A 组仅 1 人，直接晋级冠军杯赛")
 		and et.find("开赛") >= 0 and m._empty_lb.visible, et)
 	_ok("⑧b ★★★1 人组的那一位 ⇒【组冠军】(不设门槛)", P2C.title_has(GameState.titles, P2C.TITLE_GROUP_CHAMPION, _wk),
 		str(GameState.titles))
@@ -714,7 +722,7 @@ func _t_group_solo() -> void:
 	await _frames(1)
 	var ct := str(m._empty_lb.text)
 	_ok("⑧b ★冠军杯赛开赛前名单列出三个 1 人组的冠军", ct.find("我龟") >= 0 and ct.find("乙龟") >= 0 and ct.find("丙龟") >= 0
-		and ct.find("全部产生 · 共 3 组") >= 0, ct)
+		and ct.find("组冠军（共 3 组）") >= 0, ct)
 	m.queue_free()
 	await _frames(2)
 	## 2 人组(N=9~16 时的常态): 只有决赛一格 ⇒ 必须在屏幕正中、够宽(实拍抓到过被推到最右边、名字撞小签)

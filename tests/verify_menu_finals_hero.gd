@@ -367,40 +367,43 @@ func _t_sunday(mm) -> void:
 	print("  (我那场小组赛 %s 开播 · 冠军杯赛第 1 轮第 1 场 %s / 我那场 %s)" % [_hm(t_mine1), _hm(t_cup_first), _hm(t_cup_mine)])
 	## [标签, 时刻, 人, 主按钮大字, 副标, 点了去哪(watch/bracket), 卡状态带, 小组赛子卡, 冠军杯赛子卡, 我这一路(空 = 观众), 模式卡倒计时, 模式卡读数]
 	var rows: Array = [
+		## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 卡状态签「未开始 / 进行中 / 已结束」(原「开赛倒计时 / 开播中」: 18:05 一场没播也写开播中);
+		##   子卡只写状态(倒计时在模式卡上沿与全局小条数, 原来同一屏三处三种写法); 副标一件事(不再「· 还剩 2:00」「· 点击观看」);
+		##   分组前没晋级的人主按钮「查看赛况」(那时没有能看的, 原「观看开播」)。
 		["17:40 晋级者", SUN + 17 * H + 40 * MI, "in", "我的比赛", "小组赛 %s 开赛" % _hm(seat), "bracket",
-			"开赛倒计时", "还有 0:20:00", "CUPCD",
+			"未开始", "未开始", "CUPCD",
 			"group:%s=pending,group:%s=pending,cup:%s=pending,cup:%s=pending,cup:%s=pending" % [r1, r2, M.round_name(8, 1), M.round_name(8, 2), M.round_name(8, 3)],
 			"距小组赛开始 20 分 00 秒", "已晋级"],
-		["17:40 观众", SUN + 17 * H + 40 * MI, "plain", "观看开播", "小组赛 %s 开赛" % _hm(seat), "bracket",
-			"开赛倒计时", "还有 0:20:00", "CUPCD", "", "距小组赛开始 20 分 00 秒", "未晋级"],
-		["18:01 备战", SUN + 18 * H + 1 * MI, "in", "我的比赛", "%s备战中 · 还剩 2:00" % r1, "bracket",
-			"开播中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
-		["18:05 备战结束等开播", SUN + 18 * H + 5 * MI, "in", "我的比赛", "%s即将开播" % r1, "bracket",
-			"开播中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
+		["17:40 观众", SUN + 17 * H + 40 * MI, "plain", "查看赛况", "小组赛 %s 开赛" % _hm(seat), "bracket",
+			"未开始", "未开始", "CUPCD", "", "距小组赛开始 20 分 00 秒", "未晋级"],
+		["18:01 备战", SUN + 18 * H + 1 * MI, "in", "我的比赛", "%s备战中" % r1, "bracket",
+			"进行中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
+		["18:05 备战结束等开播", SUN + 18 * H + 5 * MI, "in", "我的比赛", "%s %s 开播" % [r1, _hm(SUN + 18 * H + 480)], "bracket",
+			"进行中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
 		## ★小组赛同一轮所有场同时开播(用户 10-31 纠正): 18:08 翻面, 我那场与同组另一场一起开播
-		["18:10 我的比赛开播中(本轮同时开播)", SUN + 18 * H + 10 * MI, "in", "我的比赛", "%s开播中 · 点击观看" % r1, "watch",
-			"开播中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
-		["18:13 我那场已揭晓 · 决赛备战中", SUN + 18 * H + 13 * MI, "in", "我的比赛", "%s备战中 · 还剩 %s" % [r2, M.clock_text(t_r2 + 180 - SUN - 18 * H - 13 * MI)], "bracket",
-			"开播中", "进行中", "CUPCD", "group:%s=won,group:%s=now" % [r1, r2], "MODECD", "已晋级"],
-		["18:10 观众(6 组 × 2 场同时开播中)", SUN + 18 * H + 10 * MI, "plain", "观看开播", "12 场开播中 · 点击观看", "watch",
-			"开播中", "进行中", "CUPCD", "", "MODECD", "未晋级"],
+		["18:10 我的比赛开播中(本轮同时开播)", SUN + 18 * H + 10 * MI, "in", "我的比赛", "%s开播中" % r1, "watch",
+			"进行中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
+		["18:13 我那场已揭晓 · 决赛备战中", SUN + 18 * H + 13 * MI, "in", "我的比赛", "%s备战中" % r2, "bracket",
+			"进行中", "进行中", "CUPCD", "group:%s=won,group:%s=now" % [r1, r2], "MODECD", "已晋级"],
+		["18:10 观众(6 组 × 2 场同时开播中)", SUN + 18 * H + 10 * MI, "plain", "观看开播", "12 场开播中", "watch",
+			"进行中", "进行中", "CUPCD", "", "MODECD", "未晋级"],
 		["18:40 我拿下小组(各组已决出, 等冠军杯赛)", SUN + 18 * H + 40 * MI, "in", "我的比赛", "冠军杯赛 %s 开赛" % _hm(cup), "bracket",
-			"开赛倒计时", "已结束", "CUPCD",
+			"未开始", "已结束", "CUPCD",
 			"group:%s=won,group:%s=won,cup:%s=pending" % [r1, r2, c1], "MODECD", "已晋级冠军杯赛"],
-		["18:40 第 1 轮就输了(等冠军杯赛)", SUN + 18 * H + 40 * MI, "out", "我的比赛", "已止步 · 冠军杯赛 %s 开赛" % _hm(cup), "bracket",
-			"开赛倒计时", "已结束", "CUPCD",
+		["18:40 第 1 轮就输了(等冠军杯赛)", SUN + 18 * H + 40 * MI, "out", "我的比赛", "冠军杯赛 %s 开赛" % _hm(cup), "bracket",
+			"未开始", "已结束", "CUPCD",
 			"group:%s=lost,group:%s=skip,cup:%s=skip" % [r1, r2, c1], "MODECD", "已止步"],
 		["冠军杯赛 +9 分 开播中(我那场还没到)", cup + 9 * MI, "in", "我的比赛", "%s %s 开播" % [c1, _hm(t_cup_mine)], "bracket",
-			"开播中", "已结束", "进行中", "group:%s=won,group:%s=won,cup:%s=now" % [r1, r2, c1], "冠军杯赛进行中", "已晋级冠军杯赛"],
+			"进行中", "已结束", "进行中", "group:%s=won,group:%s=won,cup:%s=now" % [r1, r2, c1], "冠军杯赛进行中", "已晋级冠军杯赛"],
 		["冠军杯赛 +9 分 观众", cup + 9 * MI, "plain", "观看开播", "%s开播中" % M.stage_line(fx.cup(cup + 9 * MI), 1), "watch",
-			"开播中", "已结束", "进行中", "", "冠军杯赛进行中", "未晋级"],
+			"进行中", "已结束", "进行中", "", "冠军杯赛进行中", "未晋级"],
 		["22:00 半决赛止步(冠军杯赛已决出)", SUN + 22 * H, "in", "我的比赛", "冠军杯赛已结束", "bracket",
 			"已结束", "已结束", "已结束", "group:%s=won,group:%s=won,cup:%s=won,cup:%s=lost,cup:%s=skip" % [r1, r2, c1, M.round_name(6, 2), M.round_name(6, 3)],
 			"冠军杯赛已结束", "已止步"],
 		["22:00 观众", SUN + 22 * H, "plain", "查看结果", "冠军杯赛已结束", "bracket",
 			"已结束", "已结束", "已结束", "", "冠军杯赛已结束", "未晋级"],
 		["周日上午 12:00 晋级者", SUN + 12 * H, "in", "我的比赛", "小组赛 %s 开赛" % _hm(seat), "bracket",
-			"开赛倒计时", "还有 6:00:00", "CUPCD", "", "", ""],
+			"未开始", "未开始", "CUPCD", "", "", ""],
 	]
 	for r in rows:
 		_state("in" if str(r[2]) != "plain" else "plain")
@@ -426,9 +429,9 @@ func _t_sunday(mm) -> void:
 		_ok("%s 小组赛子卡「%s」· %s" % [tag, r[7], _hm(seat)], _txt(c.find_child(CARD.N_SUB_G, true, false), "Line") == str(r[7])
 			and _txt(c.find_child(CARD.N_SUB_G, true, false), "Time") == _hm(seat), _txt(c.find_child(CARD.N_SUB_G, true, false), "Line"))
 		if str(r[8]) == "CUPCD":
-			r[8] = "还有 %s" % M.clock_text(cup - ts, true)
+			r[8] = "未开始"
 		if str(r[10]) == "MODECD":
-			r[10] = "距冠军杯赛开始 %s" % mm._left_text(cup - ts)
+			r[10] = "距冠军杯赛开始 %s" % M.clock_text(cup - ts)
 		_ok("%s 冠军杯赛子卡「%s」· %s" % [tag, r[8], _hm(cup)], _txt(c.find_child(CARD.N_SUB_C, true, false), "Line") == str(r[8])
 			and _txt(c.find_child(CARD.N_SUB_C, true, false), "Time") == _hm(cup), _txt(c.find_child(CARD.N_SUB_C, true, false), "Line"))
 		var want_cells := str(r[9])
@@ -517,13 +520,13 @@ func _t_tick(mm) -> void:
 	var a0: int = (fd.announced as Array).size()
 	_tick_to(mm, SUN + 18 * H + 1, "in")
 	var sub := mm._hero_btn.find_child(FD.N_SUB, true, false) as Label
-	var want_sub := "%s备战中 · 还剩 2:59" % M.round_name(4, 1)
+	var want_sub := "%s备战中" % M.round_name(4, 1)
 	_ok("④a 跨 18:00 ⇒ 副标换成「%s」" % want_sub, sub != null and sub.text == want_sub, sub.text if sub else "-")
 	_ok("④a ★跨 18:00 ⇒ 副标闪一下(当场冲亮)", int(fd.flashes) == f0 + 1 and sub != null and sub.modulate.r >= 1.5,
 		"闪 %d 次 · 亮度 %.2f" % [int(fd.flashes) - f0, sub.modulate.r if sub else 0.0])
-	var want_a := "小组赛已开赛，点「我的比赛」查看。"
+	var want_a := "小组赛已开赛"
 	_ok("④a ★跨 18:00 ⇒ 飘「%s」" % want_a, (fd.announced as Array).size() == a0 + 1 and _toast_has(mm, want_a), str(fd.announced))
-	_ok("④a 卡的状态带同一拍换成「开播中」", _txt(_card(mm), CARD.N_STATE) == "开播中", _txt(_card(mm), CARD.N_STATE))
+	_ok("④a 卡的状态带同一拍换成「进行中」", _txt(_card(mm), CARD.N_STATE) == "进行中", _txt(_card(mm), CARD.N_STATE))
 	## b) 只走倒计时: 不闪不飘, 但卡上的秒在走
 	_feed(mm, SUN + 17 * H + 40 * MI, "in")
 	_rebuild(mm, SUN + 17 * H + 40 * MI)
@@ -534,15 +537,17 @@ func _t_tick(mm) -> void:
 	sub = mm._hero_btn.find_child(FD.N_SUB, true, false) as Label
 	_ok("④b 只走倒计时 ⇒ 主按钮副标不变(倒计时只在卡上数, 一屏一个)", sub != null and sub.text == "小组赛 %s 开赛" % _hm(SUN + 18 * H), sub.text if sub else "-")
 	_ok("④b ★只走倒计时 ⇒ 不闪、不飘(闪只给阶段切换)", int(fd.flashes) == f0 and (fd.announced as Array).size() == a0)
-	_ok("④b ★卡上小组赛子卡的倒计时每秒在走(0:20:00 → 0:18:53)", l0 == "还有 0:20:00"
-		and _txt(_card(mm).find_child(CARD.N_SUB_G, true, false), "Line") == "还有 0:18:53", _txt(_card(mm).find_child(CARD.N_SUB_G, true, false), "Line"))
+	## 子卡只写状态(「未开始」), 这一屏数秒的是模式卡上沿(与全局小条同一种写法)
+	_ok("④b ★子卡写状态「未开始」、模式卡上沿的倒计时每秒在走(20 分 00 秒 → 18 分 53 秒)", l0 == "未开始"
+		and fd.band_text(SUN + 17 * H + 40 * MI) == "距小组赛开始 20 分 00 秒" and fd.band_text(SUN + 17 * H + 41 * MI + 7) == "距小组赛开始 18 分 53 秒",
+		"%s / %s" % [l0, fd.band_text(SUN + 17 * H + 41 * MI + 7)])
 	## c) 观众也飘(原来没晋级的人直接 return)
 	_state("plain")
 	_feed(mm, SUN + 18 * H - 2, "plain")
 	_rebuild(mm, SUN + 18 * H - 2)
 	a0 = (fd.announced as Array).size()
 	_tick_to(mm, SUN + 18 * H + 1, "plain")
-	var want_c := "小组赛已开赛，点「观看开播」进入。"
+	var want_c := "小组赛已开赛"
 	_ok("④c ★观众跨 18:00 也飘「%s」(原来没晋级的人收不到)" % want_c, (fd.announced as Array).size() == a0 + 1 and _toast_has(mm, want_c), str(fd.announced))
 	## d) 冠军杯赛开赛前 1 秒(已晋级冠军杯赛)→ 开赛后 1 秒(FINALS_START_HOUR_UTC)
 	var cup_at: int = SUN + int(P2.FINALS_START_HOUR_UTC) * H
@@ -552,9 +557,9 @@ func _t_tick(mm) -> void:
 	f0 = int(fd.flashes)
 	_tick_to(mm, cup_at + 1, "in")
 	sub = mm._hero_btn.find_child(FD.N_SUB, true, false) as Label
-	var want_d := "冠军杯赛已开赛，点「我的比赛」查看。"
-	_ok("④d 跨冠军杯赛开赛 ⇒「%s备战中 · 还剩 2:59」, 闪一下, 飘「%s」" % [M.round_name(6, 1), want_d], sub != null
-		and sub.text == "%s备战中 · 还剩 2:59" % M.round_name(6, 1) and int(fd.flashes) == f0 + 1 and _toast_has(mm, want_d), sub.text if sub else "-")
+	var want_d := "冠军杯赛已开赛"
+	_ok("④d 跨冠军杯赛开赛 ⇒「%s备战中」, 闪一下, 飘「%s」" % [M.round_name(6, 1), want_d], sub != null
+		and sub.text == "%s备战中" % M.round_name(6, 1) and int(fd.flashes) == f0 + 1 and _toast_has(mm, want_d), sub.text if sub else "-")
 	## e) 我那场揭晓那一拍: 格子翻牌(横向压扁再弹回), 主按钮闪
 	var t_end: int = int(fx.timeline(4, SUN + 18 * H, {"1-1": 1, "2-0": 1}, true)[0]["slots"]["1-1"][1])
 	_feed(mm, t_end - 10, "in")
@@ -579,8 +584,8 @@ func _t_tick(mm) -> void:
 	_rebuild(mm, SUN + 17 * H + 30 * MI - 1)
 	var was := _sig(mm._hero_btn).find("text=开始战斗") >= 0
 	_tick_to(mm, SUN + 17 * H + 30 * MI + 1, "plain")
-	_ok("④f ★17:30 收盘那一拍 ⇒ 主按钮当场从「开始战斗」换成「观看开播」+ 决赛日卡", was and mm._hero_btn != null and is_instance_valid(mm._hero_btn)
-		and _txt(mm._hero_btn, FD.N_TITLE) == "观看开播" and _card(mm) != null, _txt(mm._hero_btn, FD.N_TITLE))
+	_ok("④f ★17:30 收盘那一拍 ⇒ 主按钮当场从「开始战斗」换成「查看赛况」(分组前没有能看的)+ 决赛日卡", was and mm._hero_btn != null and is_instance_valid(mm._hero_btn)
+		and _txt(mm._hero_btn, FD.N_TITLE) == "查看赛况" and _card(mm) != null, _txt(mm._hero_btn, FD.N_TITLE))
 	## g) 周日 23:59:59 → 周一 00:00:01 换回「开始战斗」(周一休赛, 锁着)
 	_rebuild(mm, SUN + 86400 - 1)
 	_tick_to(mm, SUN + 86400 + 1, "plain")
@@ -694,7 +699,7 @@ func _t_champ(mm) -> void:
 	c = _card(mm)
 	var fd = mm._wk().fd
 	var wb := c.find_child(CARD.N_WALL, true, false) as BaseButton
-	_ok("⑥ ★冠军杯赛决出 ⇒ 这一行换成「冠军杯赛冠军 小辉同学」+ 他的头像", _txt(c, "FcChampHead") == "冠军杯赛冠军" and _txt(c, "FcChampName") == "小辉同学"
+	_ok("⑥ ★冠军杯赛决出 ⇒ 这一行换成「冠军杯赛冠军 小辉同学」+ 他的头像", _txt(c, "FcChampHead") == "本届冠军" and _txt(c, "FcChampName") == "小辉同学"
 		and str(c.find_child("Portrait", true, false).get_meta("Portrait", "")) == "basic", "%s / %s" % [_txt(c, "FcChampHead"), _txt(c, "FcChampName")])
 	var w0: int = int(fd.walls)
 	if wb != null:

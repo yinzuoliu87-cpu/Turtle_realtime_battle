@@ -14,6 +14,8 @@ extends Control
 
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const _M := preload("res://scripts/ui/finals_day_model.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
+const _FQ := preload("res://scripts/net/finals_qualified.gd")
 const _F := preload("res://scripts/ui/finals_day_feed.gd")
 const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
 
@@ -43,7 +45,8 @@ const GREEN := Color("#8fdc5a")
 const RED := Color("#e0574c")
 const SLOT_BG := Color("#1c120a")
 
-const TXT_S3 := {_M.S3_COUNT: "开赛倒计时", _M.S3_LIVE: "开播中", _M.S3_END: "已结束"}
+## ★2026-11-01: 状态签照商业游戏「未开始 / 进行中 / 已结束」(王者赛事卡); 原来「开播中」整段小组赛都亮, 一场没播也这么写。
+const TXT_S3 := {_M.S3_COUNT: "未开始", _M.S3_LIVE: "进行中", _M.S3_END: "已结束"}
 
 var font: Font = null
 ## 门禁读: 此刻画的
@@ -193,15 +196,16 @@ func paint(now: int, ent: bool, f: Dictionary) -> void:
 	var group: Dictionary = f.get("group", {})
 	state3 = _M.state3(now, groups, cup)
 	_paint_state()
-	_paint_sub(_subs["g"], _M.group_state(now, groups), _M.seat_ts(now), now)
-	_paint_sub(_subs["c"], _M.cup_state(now, cup), _M.cup_ts(now), now)
+	_paint_sub(_subs["g"], _M.group_state(now, groups), _M.seat_ts(now))
+	_paint_sub(_subs["c"], _M.cup_state(now, cup), _M.cup_ts(now))
 	cells = _M.path_cells(ent, group, cup, groups, now)
 	_paint_path(ent, spectator_lines(now, groups, cup) if not ent else [])
 	## 冠军杯赛决出(已揭晓)⇒ 这一行换成这一届的冠军杯赛冠军 + 「冠军墙」入口; 之前挂上周冠军
 	var sd := _M.champion_visible(cup, now)
 	if sd >= 0 and now >= _M.cup_ts(now):
 		var wk: int = _P2.week_anchor_utc(now)
-		_paint_champ({"head": "冠军杯赛冠军", "name": _M.name_of(cup, sd), "avatar": _F.avatar_of(wk, _M.tag_of(cup, sd)), "wall": true})
+		## 「本届冠军」与「上周冠军」同一个四字位(原来「冠军杯赛冠军」六个字压到名字上)
+		_paint_champ({"head": "本届冠军", "name": _M.name_of(cup, sd), "avatar": _F.avatar_of(wk, _M.tag_of(cup, sd)), "wall": true})
 	else:
 		var pc: Dictionary = _F.prev_champ
 		_paint_champ({"head": "上周冠军", "name": str(pc.get("name", "")), "avatar": str(pc.get("avatar", "")), "wall": false})
@@ -224,7 +228,7 @@ func _paint_state() -> void:
 	_state_lb.size = Vector2(w - (14.0 if live else 0.0), 28)
 
 
-func _paint_sub(s: Dictionary, st: String, at: int, now: int) -> void:
+func _paint_sub(s: Dictionary, st: String, at: int) -> void:
 	(s["time"] as Label).text = _P2.local_hhmm(at)
 	var ln: Label = s["line"]
 	var dot: ColorRect = s["dot"]
@@ -232,7 +236,8 @@ func _paint_sub(s: Dictionary, st: String, at: int, now: int) -> void:
 	ln.position.x = 26.0 if st == _M.S3_LIVE else 12.0
 	match st:
 		_M.S3_COUNT:
-			ln.text = "还有 %s" % _M.clock_text(at - now, true)
+			## 只写状态: 倒计时在模式卡上沿与全局小条(同一屏原来三处各数一遍、三种写法)
+			ln.text = "未开始"
 			ln.add_theme_color_override("font_color", GREEN)
 			(s["edge"] as ColorRect).color = Color("#5a4630")
 			(s["box"] as Control).modulate = Color.WHITE
@@ -273,25 +278,34 @@ func _paint_path(ent: bool, spect: Array) -> void:
 			tro.modulate = Color.WHITE if end == 1 else (Color(0.42, 0.40, 0.38) if end == -1 else Color(0.85, 0.82, 0.76))
 
 
-## 观众那一格的两行(只说今天): [规模 / 今天的两段, 此刻在播谁 / 冠军杯赛冠军 / 进行到哪]。纯读数, 门禁直接量。
+## 观众那一格的两行(只说今天): [规模, 此刻在播谁 / 冠军杯赛冠军 / 进行到哪]。纯读数, 门禁直接量。
+## ★2026-11-01: 原来 18:00 前写「今天 18:00 小组赛 · 19:00 冠军杯赛」(与上面两张子卡逐字重复)+「点「观看开播」进入对阵图」(教程腔)。
+##   ⇒ 分组前写本周晋级人数(服务端 finals_qualified_list; 拿不到就不写)+ 几点公布分组。
 static func spectator_lines(now: int, groups: Array, cup: Dictionary) -> Array:
 	var n := 0
 	for g in groups:
 		n += int((g as Dictionary).get("size", 0)) if g is Dictionary else 0
-	var l1 := ("本周 %d 人进入决赛日 · %d 组" % [n, groups.size()]) if n > 0 		else "今天 %s %s · %s %s" % [_P2.local_hhmm(_M.seat_ts(now)), _P2.STAGE_GROUP, _P2.local_hhmm(_M.cup_ts(now)), _P2.STAGE_CUP]
+	var l1 := ""
+	if n > 0:
+		l1 = "本周晋级 %d 人，分为 %d 组" % [n, groups.size()]
+	else:
+		var qn := int(_FQ.cached(_P2.week_anchor_utc(now)).get("n", 0))
+		l1 = ("本周晋级 %d 人" % qn) if qn > 0 else ""
 	var l2 := ""
 	var ph := _M.phase(now, groups, cup)
 	var live: Array = _M.live_all(groups, cup, now)
 	if ph == _M.PH_DONE:
-		l2 = "%s冠军 %s" % [_P2.STAGE_CUP, _M.name_of(cup, _M.champion_visible(cup, now))]
+		l2 = "%s已结束" % _P2.STAGE_CUP      # 冠军是谁写在下面「本届冠军」那一行, 这里不说第二遍
 	elif not live.is_empty():
 		var t: Dictionary = live[0]
 		var pr := _M.pair_names(t["b"], int(t["r"]), int(t["m"]), now)
-		l2 = "正在开播：%s 对 %s" % [pr[0], pr[1]] if str(pr[0]) != "" else "%s开播中" % _M.stage_line(t["b"], int(t["r"]))
+		l2 = _FC.kv("正在开播", "%s 对 %s" % [pr[0], pr[1]]) if str(pr[0]) != "" else "%s开播中" % _M.stage_line(t["b"], int(t["r"]))
 	elif ph == _M.PH_PRE:
-		l2 = "点「观看开播」进入对阵图"
+		l2 = "%s 公布分组" % _P2.local_hhmm(_M.seat_ts(now))
 	else:
 		l2 = "%s进行中" % (_P2.STAGE_CUP if ph in [_M.PH_CUP, _M.PH_INTER] else _P2.STAGE_GROUP)
+	if l1 == "":
+		return [l2, ""]
 	return [l1, l2]
 
 
@@ -422,7 +436,7 @@ func _paint_champ(pc: Dictionary) -> void:
 			_wall_btn()
 	else:
 		## 拿不到上周冠军 ⇒ 写今天的看点(冠军拿什么)
-		var c := _lb("FcChampHead", "冠军杯赛冠军获得「冠军」头衔", 17, DIM, Vector2(0, 3), Vector2(_champ_box.size.x, 28))
+		var c := _lb("FcChampHead", _FC.kv("冠军奖励", "「冠军」头衔"), 17, DIM, Vector2(0, 3), Vector2(_champ_box.size.x, 28))
 		_champ_box.add_child(c)
 
 

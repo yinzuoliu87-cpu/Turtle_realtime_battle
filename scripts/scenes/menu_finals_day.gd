@@ -19,6 +19,7 @@ const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const _SB := preload("res://scripts/net/supabase.gd")
 const _TSM := preload("res://scripts/scenes/team_select/ts_motion.gd")
 const _M := preload("res://scripts/ui/finals_day_model.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 const _F := preload("res://scripts/ui/finals_day_feed.gd")
 const _W := preload("res://scripts/ui/finals_day_watch.gd")
 const _CARD := preload("res://scripts/ui/finals_day_card.gd")
@@ -33,6 +34,8 @@ const N_SUB := "FinalsHeroSub"
 const TXT_MINE := "我的比赛"
 const TXT_WATCH := "观看开播"
 const TXT_RESULT := "查看结果"
+## 18:00 分组之前、没晋级的人: 还没有能看的对局, 写「观看开播」是说做不到的事(2026-11-01)。Dota 首页同位置「查看赛况」。
+const TXT_PRE := "查看赛况"
 ## 模式卡第二行的读数(「决赛日 · 」后半句; 主菜单 `_finals_status_line` 拼)
 const TXT_W_IN := "已晋级"
 const TXT_W_OUT := "已止步"
@@ -123,22 +126,24 @@ func hero_state(now: int) -> Dictionary:
 	var k := str(mn.get("k", ""))
 	var at := int(mn.get("at", 0))
 	var end := _M.path_end(_M.path_cells(ent, group, cup, groups, now))
-	var out := {"title": TXT_MINE if ent else (TXT_RESULT if ph == _M.PH_DONE else TXT_WATCH), "sub": "", "target": {}}
+	var out := {"title": TXT_MINE if ent else (TXT_RESULT if ph == _M.PH_DONE else (TXT_PRE if ph == _M.PH_PRE else TXT_WATCH)),
+		"sub": "", "target": {}}
 	var rn := ""
 	if not (mn.get("b", {}) as Dictionary).is_empty() and int(mn.get("r", 0)) >= 1:
 		rn = _M.round_name(int((mn["b"] as Dictionary).get("size", 0)), int(mn["r"]))
 	match k:
 		_M.K_SHOP:
-			out["sub"] = "%s备战中 · 还剩 %s" % [rn, _M.clock_text(at - now)]
+			out["sub"] = "%s备战中" % rn       # 剩多久在全局小条上数(一屏一个倒计时)
 		_M.K_UPCOMING:
 			out["sub"] = "%s %s 开播" % [rn, _P2.local_hhmm(at)]
 		_M.K_LIVE:
-			out["sub"] = "%s开播中 · 点击观看" % rn
+			out["sub"] = "%s开播中" % rn
 			out["target"] = mn
 		_M.K_NEXT:
 			out["sub"] = "%s备战 %s 开始" % [rn, _P2.local_hhmm(at)]
 		_M.K_WAIT:
-			out["sub"] = "%s即将开播" % rn
+			## 与全局小条同一句(知道时刻就写时刻; 原来这里写「即将开播」、小条写「18:08 开播」)
+			out["sub"] = ("%s %s 开播" % [rn, _P2.local_hhmm(at)]) if at > now else ("%s即将开播" % rn)
 		_M.K_CUP_WAIT:
 			out["sub"] = "%s %s 开赛" % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
 	if str(out["sub"]) == "":
@@ -155,14 +160,24 @@ func hero_state(now: int) -> Dictionary:
 			out["sub"] = "%s已结束" % _P2.STAGE_CUP
 		elif not live.is_empty():
 			var t: Dictionary = live[0]
-			out["sub"] = ("%s开播中" % _M.stage_line(t["b"], int(t["r"]))) if live.size() == 1 else ("%d 场开播中 · 点击观看" % live.size())
+			out["sub"] = ("%s开播中" % _M.stage_line(t["b"], int(t["r"]))) if live.size() == 1 else ("%d 场开播中" % live.size())
 			out["target"] = t
 		elif ph == _M.PH_INTER:
-			out["sub"] = ("已止步 · " if end == -1 else "") + "%s %s 开赛" % [_P2.STAGE_CUP, _P2.local_hhmm(_M.cup_ts(now))]
+			out["sub"] = "%s %s 开赛" % [_P2.STAGE_CUP, _P2.local_hhmm(_M.cup_ts(now))]     # 「已止步」写在模式卡上, 不在这里再拼
 		else:
-			var nx: Dictionary = _M.next_all(groups, cup, now)
-			var tail := ("下一场 %s 开播" % _P2.local_hhmm(int(nx["at"]))) if not nx.is_empty() else ("%s进行中" % (_P2.STAGE_CUP if ph == _M.PH_CUP else _P2.STAGE_GROUP))
-			out["sub"] = ("已止步 · %s" % tail) if end == -1 else tail
+			## 下一场的时刻与全局小条同一个答案(`premiere_eta`)
+			var eta := 0
+			for b in ([cup] if ph == _M.PH_CUP else groups):
+				var e: Dictionary = _M.premiere_eta(b, now) if b is Dictionary else {}
+				if not e.is_empty() and (eta == 0 or int(e["at"]) < eta):
+					eta = int(e["at"])
+			var prep := _M.prep_eta([cup] if ph == _M.PH_CUP else groups, now)
+			if eta > now:
+				out["sub"] = "下一场 %s 开播" % _P2.local_hhmm(eta)
+			elif prep > now:
+				out["sub"] = "下一轮备战 %s 开始" % _P2.local_hhmm(prep)
+			else:
+				out["sub"] = "%s进行中" % (_P2.STAGE_CUP if ph == _M.PH_CUP else _P2.STAGE_GROUP)
 	out["sig"] = "%s|%s|%d" % [ph, k, end]
 	return out
 
@@ -171,10 +186,11 @@ func hero_state(now: int) -> Dictionary:
 func band_text(now: int) -> String:
 	var seat: int = _M.seat_ts(now)
 	var cup: int = _M.cup_ts(now)
+	## 倒计时写法与全局小条同一份(`finals_copy.dur`; 原来走主菜单 `_left_text`: 满一小时不带秒, 同屏两种写法)
 	if now < seat:
-		return "距%s开始 %s" % [_P2.STAGE_GROUP, menu._left_text(seat - now)]
+		return "距%s开始 %s" % [_P2.STAGE_GROUP, _FC.dur(seat - now)]
 	if now < cup:
-		return "距%s开始 %s" % [_P2.STAGE_CUP, menu._left_text(cup - now)]
+		return "距%s开始 %s" % [_P2.STAGE_CUP, _FC.dur(cup - now)]
 	if _M.champion_visible(feeds(now)["cup"], now) >= 0:
 		return "%s已结束" % _P2.STAGE_CUP
 	return "%s进行中" % _P2.STAGE_CUP
@@ -367,7 +383,7 @@ func _announce(prev: String, st: String) -> void:
 		stage = _P2.STAGE_CUP
 	if stage == "":
 		return
-	var msg := "%s已开赛，点「%s」%s。" % [stage, TXT_MINE if entered() else TXT_WATCH, "查看" if entered() else "进入"]
+	var msg := "%s已开赛" % stage        # 一件事(原来「点「观看开播」进入。」教程腔)
 	announced.append(msg)
 	menu._toast(msg)
 

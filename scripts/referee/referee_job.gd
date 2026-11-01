@@ -9,7 +9,8 @@ extends RefCounted
 ##   v               格式版本(= FORMAT)
 ##   job_id          服务端任务号(原样带回结果单)
 ##   match_id        uuid v4 = 录像 id = `matches.match_id`(缺 / 不合法 ⇒ 裁判自己生成)
-##   mode            "gauntlet"(周六闯关) / "finals"(周日决赛)
+##   mode            "gauntlet"(周六闯关) / "finals"(周日决赛) / "ranked"(积分赛, 2026-11-01 · 方案书 docs/plans/20261101c-积分赛服务器裁判.md)
+##                   ★裁判这一侧三种算法完全相同(左 = A 快照、右 = B 快照、种子来自任务单); 种类只决定服务端 referee_complete 记哪本账。
 ##   key             这一场是谁(原样带回; 写回 RPC 用它落账, 裁判不读)
 ##   seed            1 ~ 2^53-1 的整数(`_battle_rng` 种子; 服务端生成, 不由客户端给)
 ##   client_version  这份任务要求的游戏版本; 与本机不等 ⇒ 拒算(wrong_version) —— 结果只在同版本里成立
@@ -31,7 +32,7 @@ extends RefCounted
 ##     因为右方在战斗里也拿不到它们。
 
 const FORMAT := 1
-const MODES := ["gauntlet", "finals"]
+const MODES := ["gauntlet", "finals", "ranked"]
 const SEED_MAX := 9007199254740991          # 2^53 - 1 (= GameState.BATTLE_SEED_MAX; JSON 往返不掉位的上限)
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const Duallane := preload("res://scripts/gamedata/phase2_duallane.gd")

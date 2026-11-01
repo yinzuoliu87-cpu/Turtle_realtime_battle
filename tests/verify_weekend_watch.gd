@@ -244,7 +244,9 @@ func _btn_at(m, r: int, mm: int) -> Button:
 
 func _t_bracket() -> void:
 	print("── ② 周日对阵图 ──")
-	var now := 1789862400 + 12 * 3600
+	## ★2026-11-01(方案书 20261101e): 周日分组之前没晋级的人看到的是赛前页(倒计时 + 赛程 + 晋级名单), 说明框藏起来
+	##   ⇒ 这里量「说明框」的版式, 钟改到分组之后(18:30 UTC, 冠军杯赛 19:00 之前)—— 那时没有我这一组才是说明框那一档
+	var now := 1789862400 + 18 * 3600 + 30 * 60
 	var m: Node = (load("res://scenes/BracketMap.tscn") as PackedScene).instantiate()
 	add_child(m)
 	m.set_data({}, {}, now)

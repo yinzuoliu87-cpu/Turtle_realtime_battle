@@ -234,6 +234,7 @@ func _ready() -> void:
 	##   周六交给服务器、还没记账的那一场(杀进程 / 断网)在这里查任务状态补记。判据全在 referee_watch.gd。
 	load("res://scripts/net/referee_net.gd").refresh_flags_async()
 	load("res://scripts/systems/replay/referee_watch.gd").resume_if_any(_on_referee_resumed)
+	load("res://scripts/systems/replay/referee_watch.gd").sync_ranked_ledger(_on_ranked_synced)   # 积分赛服务器局(2026-11-01): 本机账按服务端账本对一次
 	var _rwv = load("res://scripts/systems/replay/referee_watch.gd")   # 跟播中算完、没看结算屏就退出: 账已记好, 这里补演仪式
 	if not (_rwv.resumed_view as Dictionary).is_empty():
 		_on_referee_resumed(_rwv.resumed_view)
@@ -2792,6 +2793,12 @@ func _now_ts() -> int:
 var _clock_reads: int = 0
 
 
+## 积分赛服务器局(2026-11-01): 主菜单按服务端账本对齐了本机的命 / 胜场 / 场次 ⇒ 周进度那几处重画(与补记之后同一句)。
+func _on_ranked_synced(changed: bool) -> void:
+	if changed and is_inside_tree() and is_instance_valid(_mode_box):
+		_mode_card(_strip_now())
+
+
 ## 上一场周六裁判局补记完了: 说一句结果(不另开弹窗)。
 func _on_referee_resumed(view: Dictionary) -> void:
 	if not is_inside_tree():
@@ -2803,7 +2810,7 @@ func _on_referee_resumed(view: Dictionary) -> void:
 		if c is Label and str((c as Label).text) == str(rw.TXT_LATER):
 			c.queue_free()
 	## 补记的正好是第 4 胜 ⇒ 这里补演晋级仪式, 演完再飘补记那句(这一局没有结算屏, 不演就永远看不到)。
-	_wk().play_promo(BattleHud.promotion_for(_P2C.SETTLE_GAUNTLET, bool(view.get("won", false)), false, GameState), rw.resume_text(view))
+	_wk().play_promo(BattleHud.promotion_for(rw.settle_kind_of(view), bool(view.get("won", false)), false, GameState), rw.resume_text(view))
 	## 模式卡第二行是周六的战绩读数, 补记之后重画(与 `rebuild_week_page` 同一句)。
 	if is_instance_valid(_mode_box):
 		_mode_card(_strip_now())

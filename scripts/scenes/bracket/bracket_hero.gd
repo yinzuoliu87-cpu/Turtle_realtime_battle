@@ -19,6 +19,7 @@ extends RefCounted
 ##   不带 rm** 的透明热区弹出(S 分身清单第 7 条)。
 
 const _B := preload("res://scripts/gamedata/bracket.gd")
+const _FC := preload("res://scripts/ui/finals_copy.gd")
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const DL_SCORE := preload("res://scripts/gamedata/phase2_duallane.gd")
 const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
@@ -359,14 +360,7 @@ func _round_titles(canvas: Control, n: int, total: int, lay: Dictionary) -> void
 
 ## 列名(P5)。★8 签首轮叫「1/4 决赛」(有轮空也照叫 —— Dota A03 轮空那张首轮同样叫 QUARTER FINALS, 轮空写在格子里)。
 static func round_name(n: int, r: int) -> String:
-	var total := _B.rounds_for(n)
-	if r >= total:
-		return "决赛"
-	if r == total - 1:
-		return "半决赛"
-	if r == total - 2:
-		return "1/4 决赛"
-	return "1/%d 决赛" % (1 << (total - r))
+	return _FC.round_name(n, mini(r, _B.rounds_for(n)))
 
 
 # ── 连线: 粗、带硬描边; 已决出的亮、我那条整条金色 ──
@@ -479,7 +473,7 @@ func _center(canvas: Control, total: int, lay: Dictionary, anim: bool, podium: b
 		_box(canvas, plate.grow(2.0), INK)
 		_box(canvas, plate.grow(1.0), GOLD_DEEP if not decided else GOLD)
 		_box(canvas, plate, Color("#2b2016"))
-		var pl := _label("晋级 %s · %s" % [_P2C.STAGE_CUP, str(s._info.cup_start_hhmm())], 16, GOLD if decided else TXT, true)
+		var pl := _label("晋级%s" % _P2C.STAGE_CUP, 16, GOLD if decided else TXT, true)
 		pl.name = "PromoPlate"
 		pl.position = plate.position
 		pl.size = plate.size
@@ -529,7 +523,7 @@ func _center(canvas: Control, total: int, lay: Dictionary, anim: bool, podium: b
 	## 冠军缎带: 未决出 =「冠军」/「A 组冠军」, 决出 = 名字(冠军位未决出前是空的 —— 对标 C20)
 	var rib: Rect2 = cen["ribbon"]
 	var who := str(s._info.champion_title())
-	var rib_txt := who if not decided else "%s · %s" % [who, s._fit_name(str(champ.get("name", "")), rib.size.x - 150.0, false, 20.0)]
+	var rib_txt := who if not decided else _FC.kv(who, s._fit_name(str(champ.get("name", "")), rib.size.x - 150.0, false, 20.0))
 	_ribbon(canvas, rib, rib_txt, 18, decided)
 	## 奖励一行(决赛卡下面); 收盘那一刻这一行让给滚动名单(⑰)
 	if podium:
@@ -797,6 +791,17 @@ func _card(r: int, m: int, rc0: Rect2, is_final: bool) -> Control:
 	hl.clip_text = false
 	holder.add_child(hl)
 	var head_w := w - 20.0 - chip_w - 4.0
+	## 决赛卡: 左「决赛」、右状态词(原来一行「决赛 · 等待中」)
+	var hs := str(s._info.card_head_state(r, m)) if chip_w <= 0.0 else ""
+	if hs != "":
+		var sl2 := _label(hs, 13, TXT_DIM, false)
+		sl2.name = "CardState"
+		sl2.position = Vector2(10, 3)
+		sl2.size = Vector2(w - 20, HEAD_H)
+		sl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		sl2.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		holder.add_child(sl2)
+		head_w -= 70.0
 	_fit_head(hl, head_w)
 	if upcoming:
 		live_texts.append([hl, func() -> String:
@@ -861,17 +866,12 @@ func _card(r: int, m: int, rc0: Rect2, is_final: bool) -> Control:
 	return holder
 
 
-## 卡顶字放不下: 去掉最前面那一段(「第 2 场 · 」)→ 缩到 12 号。
+## 卡顶字放不下: 缩到 12 号(卡顶只剩一件事, 不再有「第 2 场 · 」可去)。
 func _fit_head(hl: Label, avail: float) -> void:
 	var f: Font = hl.get_theme_font("font")
 	if f == null:
 		return
 	var fs := hl.get_theme_font_size("font_size")
-	if f.get_string_size(hl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x <= avail:
-		return
-	var parts := hl.text.split(" · ")
-	if parts.size() > 1:
-		hl.text = " · ".join(parts.slice(1))
 	if f.get_string_size(hl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > avail:
 		hl.add_theme_font_size_override("font_size", 12)
 
@@ -914,7 +914,7 @@ func _row(holder: Control, r: int, m: int, side: int, c: Dictionary, ws: int, rr
 	var nw := maxf(30.0, rr.end.x - nx - sc_w - 6.0)
 	var origin := str(s._info.origin_label(sd)) if sd >= 0 else ""
 	if lost and bool(s._info.is_forfeit(r, m)):
-		origin = "阵容无效 · 判负"
+		origin = "阵容无效，判负"
 	var two_line := origin != "" and rr.size.y >= 40.0
 	var nm := str(c.get("name", ""))
 	if sd < 0 and not bool(c.get("bye", false)):

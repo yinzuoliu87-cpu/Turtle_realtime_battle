@@ -71,7 +71,7 @@ func _ready() -> void:
 	_root.add_child(bg)
 	UI.box(_root, Rect2(Vector2.ZERO, vp), Color(0.02, 0.01, 0.03, 0.55), "Dim")
 	UI.ribbon(_root, Vector2(c.x, 62), 320, "冠军墙", 48, "gold", "WallTitle")
-	UI.label_in(_root, Rect2(0, 106, vp.x, 30), "历届冠军杯冠军", 22, UI.TXT, false, "WallSub")
+	UI.label_in(_root, Rect2(0, 106, vp.x, 30), "历届冠军杯赛冠军", 22, UI.TXT, false, "WallSub")
 	var back := UI.button("返回", 170, "BtnBack", false)
 	back.position = Vector2(28, 22)
 	back.pressed.connect(close)
@@ -93,7 +93,7 @@ func _ready() -> void:
 	var e = data.get("entries", [])
 	set_entries(e if e is Array else [])
 	if bool(data.get("loading", false)):
-		_state.text = "正在读取往届冠军…"
+		_state.text = "正在载入"
 
 
 func _process(dt: float) -> void:
@@ -115,7 +115,7 @@ func set_entries(arr: Array) -> void:
 		ch.queue_free()
 	for i in range(entries.size()):
 		_list.add_child(_row(entries[i], i))
-	_state.text = "" if not entries.is_empty() else "还没有往届冠军杯冠军"
+	_state.text = "" if not entries.is_empty() else "暂无往届冠军"
 
 
 func _row(e: Dictionary, i: int) -> Control:
@@ -130,7 +130,7 @@ func _row(e: Dictionary, i: int) -> Control:
 	var bh := ROW_H - 8
 	## 届数 + 日期
 	var ed := int(e.get("edition", 0))
-	UI.label_in(body, Rect2(14, 18, 140, 40), ("第 %d 届" % ed) if ed > 0 else "冠军杯", 24, UI.GOLD, true, "WallEdition%d" % i)
+	UI.label_in(body, Rect2(14, 18, 140, 40), ("第 %d 届" % ed) if ed > 0 else "冠军杯赛", 24, UI.GOLD, true, "WallEdition%d" % i)
 	UI.label_in(body, Rect2(14, 62, 140, 30), str(e.get("date", "")), 20, UI.TXT_DIM, false, "WallDate%d" % i)
 	## 奖杯 + 冠军头像 + 名字 / 来历 / 亚军
 	var trh := Control.new()
@@ -143,14 +143,12 @@ func _row(e: Dictionary, i: int) -> Control:
 	UI.portrait(body, Vector2(296, bh * 0.5), 88, str(e.get("avatar", "")), UI.GOLD if latest else UI.BRONZE_HI, "WallFace%d" % i)
 	var nx := 356.0
 	UI.label_in(body, Rect2(nx, 14, 330, 46), str(e.get("name", "")), 36, UI.GOLD, true, "WallName%d" % i, HORIZONTAL_ALIGNMENT_LEFT)
-	var parts: Array = []
+	var info := ("%d 人参赛" % int(e["entrants"])) if int(e.get("entrants", 0)) > 0 else ""
 	if str(e.get("origin", "")) != "":
-		parts.append(str(e["origin"]))
-	if int(e.get("entrants", 0)) > 0:
-		parts.append("%d 人冠军" % int(e["entrants"]))
-	UI.label_in(body, Rect2(nx, 62, 330, 28), " · ".join(parts), 20, UI.TXT, false, "WallInfo%d" % i, HORIZONTAL_ALIGNMENT_LEFT)
+		info = str(e["origin"]) + (("（%s）" % info) if info != "" else "")
+	UI.label_in(body, Rect2(nx, 62, 330, 28), info, 20, UI.TXT, false, "WallInfo%d" % i, HORIZONTAL_ALIGNMENT_LEFT)
 	if str(e.get("runner_up", "")) != "":
-		UI.label_in(body, Rect2(nx, 90, 330, 26), "亚军 " + str(e["runner_up"]), 18, UI.TXT_DIM, false, "WallRunner%d" % i,
+		UI.label_in(body, Rect2(nx, 90, 330, 26), "亚军：" + str(e["runner_up"]), 18, UI.TXT_DIM, false, "WallRunner%d" % i,
 			HORIZONTAL_ALIGNMENT_LEFT)
 	## 夺冠阵容(拿到了才画)
 	var lu: Array = e.get("lineup", []) if e.get("lineup", []) is Array else []
@@ -176,7 +174,7 @@ func _on_replay(rp: Dictionary) -> void:
 	if not replay_requested.get_connections().is_empty():
 		replay_requested.emit(rp)
 		return
-	_msg.text = "读取中…"
+	_msg.text = "正在载入"
 	RF.open_finals(get_tree(), int(rp["week"]), int(rp["bucket"]), int(rp["round"]), int(rp["match"]),
 		func(code: String, msg: String) -> void:
 			if is_instance_valid(_msg):
@@ -187,7 +185,7 @@ func _on_replay(rp: Dictionary) -> void:
 func load_weeks(cur_week: int, n: int = 8) -> void:
 	_got = {}
 	_pending = 0
-	_state.text = "正在读取往届冠军…"
+	_state.text = "正在载入"
 	for k in range(n):
 		var wk := cur_week - k * DATA.WEEK_SEC
 		if wk < DATA.CUP_FIRST_WEEK:

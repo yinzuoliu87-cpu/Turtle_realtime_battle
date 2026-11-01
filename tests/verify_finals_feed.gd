@@ -654,8 +654,11 @@ func _t_empty() -> void:
 	_ok("⑥ ★★「回到我」在没数据时不可见(否则它停在 (0,0) 压住返回箭头)",
 		m._home_btn != null and not m._home_btn.visible,
 		"visible=%s pos=%s" % [m._home_btn.visible, str(m._home_btn.position)])
-	_ok("⑥ ★页签后缀同步了(「我这一组 · 还没分」而不是光秃秃的「我这一组」)",
-		str((m._tabs.get_child(0) as Button).text).find("·") >= 0,
+	## ★2026-11-01 文案改写(方案书 20261101e, 用户「一定要按照商业游戏的口吻」): 页签只写名字(商业游戏页签一律是名词), 处境写在页里 ——
+	##   原来缀「 · 查询中 / · 待分组 / · 未晋级」。门禁改成量「页签 = 名字 + 同一份判断给的后缀(现在恒为空)」。
+	_ok("⑥ ★页签只写名字、与判断同一份(「%s」)" % str((m._tabs.get_child(0) as Button).text),
+		str((m._tabs.get_child(0) as Button).text) == P2C.STAGE_GROUP + MAP.bucket_tab_suffix(m._bucket_kind())
+		and str((m._tabs.get_child(0) as Button).text).find("·") < 0,
 		str((m._tabs.get_child(0) as Button).text))
 	## ★★★页签的字**不许压在木边带上**(2026-09-28 实拍抓到, 一直没人看见)。
 	##   当时页签是木牌 `menu/frame-rect.png`, 左右各 27px 是**木框**(2026-10-07 换成 `UISkin.pixel_tab`, 边带 6px, 判据照旧从 StyleBox 读);

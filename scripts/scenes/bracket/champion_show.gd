@@ -35,6 +35,7 @@ signal finished
 
 const UI := preload("res://scripts/scenes/bracket/champion_ui.gd")
 const FX := preload("res://scripts/scenes/bracket/champion_fx.gd")
+const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const DATA := preload("res://scripts/scenes/bracket/champion_data.gd")
 const REWARDS_PATH := "res://scripts/scenes/bracket/champion_rewards.gd"
 const WALL_PATH := "res://scripts/scenes/bracket/champion_wall.gd"
@@ -382,12 +383,12 @@ func _apply_reveal(t: float) -> void:
 # ═══════════════════════════════════════════════════════════════════
 func _build_runner() -> void:
 	var ru: Dictionary = data.get("runner_up", {})
-	_n["rib"] = UI.ribbon(_stage, Vector2(c.x, c.y - 196), 480, "冠军杯亚军", 48, "silver", "RunnerRibbon")
+	_n["rib"] = UI.ribbon(_stage, Vector2(c.x, c.y - 196), 480, "冠军杯赛亚军", 48, "silver", "RunnerRibbon")
 	_n["face"] = UI.portrait(_stage, Vector2(c.x, c.y - 14), 216, str(ru.get("avatar", "")), UI.SILVER, "RunnerFace")
 	_n["name"] = UI.label_in(_stage, Rect2(0, c.y + 100, vp.x, 60), str(ru.get("name", "")), 48, UI.SILVER, true, "RunnerName")
 	var sub := "第 2 名"
 	if str(ru.get("origin", "")) != "":
-		sub = "%s · 第 2 名" % str(ru["origin"])
+		sub = "第 2 名（%s）" % str(ru["origin"])          # 来历作补充放括号里, 不用「·」拼
 	_n["sub"] = UI.label_in(_stage, Rect2(0, c.y + 160, vp.x, 32), sub, 24, UI.TXT_DIM, false, "RunnerSub")
 	_n["rib_y"] = (_n["rib"] as Control).position.y
 	_n["face_x"] = (_n["face"] as Control).position.x
@@ -435,9 +436,9 @@ func _build_crown() -> void:
 	var n := int(data.get("entrants", 0))
 	var scale_line := ""
 	if cup:
-		scale_line = "冠军杯 · %d 人冠军" % n if n > 0 else "冠军杯冠军"
+		scale_line = "%s冠军（%d 人参赛）" % [_P2C.STAGE_CUP, n] if n > 0 else "%s冠军" % _P2C.STAGE_CUP
 	else:
-		scale_line = "%s · %d 人冠军" % [str(data.get("group", "")), n] if n > 0 else str(data.get("group", "")) + "冠军"
+		scale_line = "%s冠军（%d 人参赛）" % [str(data.get("group", "")), n] if n > 0 else str(data.get("group", "")) + "冠军"
 	_n["l1"] = UI.label_in(_stage, Rect2(0, c.y + 244, vp.x, 32), scale_line, 24, UI.TXT, false, "ScaleLine")
 	_n["l2"] = UI.label_in(_stage, Rect2(0, c.y + 276, vp.x, 28),
 		DATA.edition_line(int(data.get("week", 0)), int(data.get("edition", -1))), 20, UI.TXT_DIM, false, "DateLine")
@@ -720,24 +721,24 @@ func _build_card() -> void:
 		_n["trophy"] = UI.tex_at(card, UI.TEX_TROPHY, Vector2(lx, 196), Vector2(192, 192), "CardTrophy")
 	else:
 		_n["trophy"] = UI.tex_at(card, UI.TEX_MEDAL, Vector2(lx, 220), Vector2(192, 192), "CardTrophy")
-	UI.ribbon(card, Vector2(lx, 406), 320, "冠军杯冠军" if cup else str(data.get("group", "")) + "冠军", 36,
+	UI.ribbon(card, Vector2(lx, 406), 320, "冠军杯赛冠军" if cup else str(data.get("group", "")) + "冠军", 36,
 		"gold" if cup else "red", "CardRibbon")
 	## 右栏
 	var rx := 390.0
 	var rw := w - rx - 50.0
 	var ed := DATA.edition_line(int(data.get("week", 0)), int(data.get("edition", -1)))
-	UI.label_in(card, Rect2(rx, 36, rw, 28), ("冠军杯 · " + ed) if cup else ed, 20, UI.TXT_DIM, false, "CardEdition",
+	UI.label_in(card, Rect2(rx, 36, rw, 28), (_P2C.STAGE_CUP + "　" + ed) if cup else ed, 20, UI.TXT_DIM, false, "CardEdition",
 		HORIZONTAL_ALIGNMENT_LEFT)
 	UI.label_in(card, Rect2(rx, 64, rw, 60), str(ch.get("name", "")), 48, UI.GOLD, true, "CardName", HORIZONTAL_ALIGNMENT_LEFT)
-	var parts: Array = []
+	## 一行一件事: 来历(冠军杯) / 参赛规模; 头衔一行
+	var scale := ("%d 人参赛" % int(data["entrants"])) if int(data.get("entrants", 0)) > 0 else ""
 	if str(ch.get("origin", "")) != "" and cup:
-		parts.append(str(ch["origin"]))
-	if int(data.get("entrants", 0)) > 0:
-		parts.append("%d 人冠军" % int(data["entrants"]))
-	UI.label_in(card, Rect2(rx, 124, rw, 30), " · ".join(parts), 24, UI.TXT, false, "CardScale", HORIZONTAL_ALIGNMENT_LEFT)
-	var tl := "头衔「%s」 · %s" % ["冠军" if cup else "组冠军", DATA.title_until_line()]
+		scale = str(ch["origin"]) + (("（%s）" % scale) if scale != "" else "")
+	## 组冠军: 这一行写去向(「晋级冠军杯赛（19:00 开赛）」), 规模那一组只有几个人不值一行
 	if not cup and str(data.get("next_text", "")) != "":
-		tl = "%s · 头衔「组冠军」" % str(data["next_text"])
+		scale = str(data["next_text"])
+	UI.label_in(card, Rect2(rx, 124, rw, 30), scale, 24, UI.TXT, false, "CardScale", HORIZONTAL_ALIGNMENT_LEFT)
+	var tl := "获得「%s」头衔（%s）" % ["冠军" if cup else "组冠军", DATA.title_until_line()]
 	UI.label_in(card, Rect2(rx, 156, rw, 30), tl, 22, UI.GOLD, false, "CardTitleLine", HORIZONTAL_ALIGNMENT_LEFT)
 	## 夺冠阵容(小)
 	var ids := lineup()
