@@ -46,7 +46,7 @@ description: 斗龟场（turtle-realtime-godot）整个项目的工作方式 —
 
 ## 3. 测试与门禁
 
-- **全量门禁**：`bash run-tests.sh`（自动发现 `tests/verify_*.gd` + 冒烟 + 审计器，约 3～6 分钟）。CI 拆 4 片并行。**改动小时只跑相关测试**，全量交给 push 后的 CI（用户 10-22 放宽）。门禁在跑时不改仓库。
+- **全量门禁**：`bash run-tests.sh`。**推送前本机跑完整门禁、全过再推**（用户 10-31「怎么可以这样浪费时间」；取代 10-22「全量交给 CI」那条）。开发中途改动小时只跑相关测试，推之前再跑全套。门禁在跑时不改仓库。命令、耗时、CI 分片等数字只看 CLAUDE.md §2，这里不抄。
 - **跑单个 / 几个测试**：`--headless --audio-driver Dummy` 并设 `TURTLE_SUPABASE=" "`；窗口要开就走 `godot-quiet.sh`（强制静音），放右边 `--position 2000,80`。
 - **审计器**：`tools/*.py`，登记在 `run-tests.sh` 的 `run_audit` 行（不带参数调用，只认「ALL OK」）。
 - **CI 偶发红、本地复现不了**：`--max-fps 15`，或 `_s._deterministic = true`；判据别跟机器快慢挂钩。
@@ -64,12 +64,13 @@ description: 斗龟场（turtle-realtime-godot）整个项目的工作方式 —
 
 ## 5. 发版（用户说「出包 / 可以出」才做）
 
-1. **版本号五处一起改**：`project.godot` `config/version` / `CHANGELOG.md` 顶部 / `export_presets.cfg` 的 iOS `short_version` 与 Android `version/name` / `docs/实时版-路线图与待办.md`。第 3 位每次 +1，加新玩法第 2 位 +1。至少一份方案书要提到新版本号（`plans_lint` 版本留痕）。门禁：`verify_version` + `docs_authority_lint`。
-2. 提交 push → **等 CI 绿** → 打 tag `git tag -a vX.Y.Z <提交>`，**一次只推一个 tag**（`git push origin refs/tags/vX.Y.Z`）。
-3. 推 tag 自动跑 `testflight.yml`：签名、拆包核对（版本 / 构建号 / 最低系统 / 屏幕方向两横向等）、上传。确认「Upload to TestFlight」那步成功，别只看绿勾。
-4. **外部测试**：等构建 VALID → 加进「公开测试」组 → 填本版说明（中文）→ 提交 Beta 审核（约 1 天）。脚本模板 scratchpad `asc_submit_*.py`；公开链接 `https://testflight.apple.com/join/tx8zK2Gu`。说明文字含换行时别用 heredoc 写脚本。
-5. **裁判机跟版本**（否则新版本服务器局回 `update_required`）：暂存目录装新版本 → `--import` → `verify_determinism_cross` + `verify_referee_job_roundtrip` 全过才挪进 `/opt/turtle/` → 正式服 `referee_versions` 登记 → `referee_poller.py --bot-pool --version X` → 非周日才改 `finals_version`。步骤见 `server/referee/README.md`「发版时」。
-6. 不要求装机就不出包；攒批合并发（用户 10-23「攒多点再出包」）。
+**命令与顺序只看 CLAUDE.md §3「发版流水」**（2026-11-02 起每一步都是仓库里的一条命令：`tools/release.py` / `tools/asc.py` / `tools/deploy.py` / `tools/prod_flags.py`）。这里只记三条最容易出事的：
+
+1. **`RULES_VER`**：这一版改了对局结果就 +1（`release.py bump --rules changed`）。0.22.7 漏过一次，代价是 tag 挪位 + TestFlight 重出 + 裁判机重装。
+2. **发版用的脚本进仓库**，不在会话临时目录里复制一份改版本号（0.22.x 攒了 30 多份这样的脚本）。工具缺功能就改工具。
+3. **强制更新**（`prod_flags.py force-update`）只在苹果 Beta 审核通过之后；抬早了公测玩家会被关在门外。公开链接 `https://testflight.apple.com/join/tx8zK2Gu`。
+
+不要求装机就不出包；攒批合并发（用户 10-23「攒多点再出包」）。
 
 ## 6. 服务器与平台（运维）
 

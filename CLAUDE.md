@@ -2,171 +2,47 @@
 
 斗龟场·实时版。Godot **4.6.3** / GDScript。2.5D（3D 场景 + Sprite3D 公告板）自走棋，28 只龟 × 59 件装备，双路对战。
 
+> 本文件只写**现行规则**。每条规则的来历、踩坑经过、当时的实测数字在
+> [docs/archive/CLAUDE-旧版全文-20261102.md](docs/archive/CLAUDE-旧版全文-20261102.md)（2026-11-02 重整前的逐字原文）。
+> 规则改了就改这里；新规则写明它**取代哪一条**，别在别处（技能、memory）再抄一份数字。
+
 ---
 
 ## 1. 事实源（谁说了算）
 
-按可信度排序。**冲突时一律以上位者为准，不要反过来"按文档改代码"。**
+冲突时一律以上位者为准，**不要反过来「按文档改代码」**。
 
 | 级别 | 位置 | 说明 |
 |---|---|---|
-| **1. 代码** | `scripts/` `autoload/` | 最终事实。任何数值问题的终审 |
-| **2. 数据** | `data/*.json` | 由 `DataRegistry` 载入：28 龟、59 装备、状态、规则 |
-| **3. 权威文档** | `docs/design/28龟技能设计-权威.md`<br>`docs/design/实时版-系统机制权威.md`<br>`docs/实时版-路线图与待办.md` | **只有这三份**。它们被同步工具当事实源用 |
+| **1. 代码** | `scripts/` `autoload/` | 最终事实。数值问题的终审 |
+| **2. 数据** | `data/*.json` | `DataRegistry` 载入：28 龟、59 装备、状态、规则 |
+| **3. 权威文档** | `docs/design/28龟技能设计-权威.md`<br>`docs/design/实时版-系统机制权威.md`<br>`docs/实时版-路线图与待办.md` | **只有这三份**（`tools/docs_authority_lint.py` 守） |
 
-`docs/` 下其余 90+ 篇是历史记录/草案/账本，**默认不可信**，多数带 ⛔/⚠ 横幅。不要因为标题写着"权威""焊死""单一事实源"就当真——曾同时有 4 份文件自称唯一事实源。
+`docs/` 其余文档是历史记录 / 方案书 / 账本，**默认不可信**。标题写着「权威」也不算。
 
-**装备属性的真事实源是 `EquipStats.STATS`**（`scripts/gamedata/equip_stats.gd`）、龟属性是 `turtle_stats.gd` 的 `STATS`。战斗（`battle.EquipStats.STATS`）与背包/图鉴 UI 都从它取值。`data/phase2-equipment.json` 里的 `baseStats1` 是它的手写镜像，仅供展示。（历史：这份数据 2026-07-23 从回合制 `phase2_equip_runtime.gd` 抽出为纯数据、回合制效果逻辑已删；2026-07-25 又从 `scripts/engine/` 迁到 `scripts/gamedata/`。）
+- 装备属性的事实源是 `EquipStats.STATS`（`scripts/gamedata/equip_stats.gd`），龟属性是 `turtle_stats.gd` 的 `STATS`。`data/phase2-equipment.json` 的 `baseStats1` 只是展示用的手写镜像。
+- 版本号的事实源是 `project.godot` `config/version`。
 
 ---
 
-## 2. 提交前门禁
+## 2. 门禁
 
 ```bash
-bash run-tests.sh          # 自证测试(自动发现) + 全流程冒烟 + 三方对账 —— 约 12 分钟(JOBS=4·2026-09-17 实测)
-JOBS=8 bash run-tests.sh   # 想更快(默认 4, 见下)
+bash run-tests.sh                 # 全套：自证测试(自动发现) + 冒烟 + 审计器，约 690 项，JOBS=16 约 3~6 分钟
+JOBS=8 bash run-tests.sh          # 保守一点（审计器池与测试池各占一份 JOBS）
+SHARD=k/8 SHARD_LIST_ONLY=1 bash run-tests.sh   # 只看第 k 片分到哪几条
 ```
 
-**★门禁约 3 分钟跑完（2026-10-01 实测，411 项 / JOBS=16）。**
-
-**★★CI 改成 8 台、按实测耗时分（2026-10-31，用户「CI 为什么这么慢」→「两个都做」）**：4 台时实测 10 / 11 / 14 / 17 分钟，最慢那台定总长。现在 `tests.yml` 是 `shard` ×8（`SHARD=k/8`），分片按 `tests/golden/test_seconds.tsv` 做最长优先分配（表缺失时退回按帧预算）；每轮 CI 把八片实测秒数汇总推到 `ci-timings` 分支，刷新这份表：`git fetch -f origin +refs/heads/ci-timings:refs/remotes/origin/ci-timings && git show origin/ci-timings:test_seconds.tsv > tests/golden/test_seconds.tsv`。`SHARD=k/N SHARD_LIST_ONLY=1 bash run-tests.sh` 只打印这一片分到哪几条（k≥2 时不起冒烟）。
-**★推送前本机跑完整门禁（默认 JOBS，约 10 分钟）全过再推，不拿 CI 试错**（2026-10-31「怎么可以这样浪费时间」）；手动跑单条测试一律 `APPDATA=$U XDG_DATA_HOME=$U` 隔离存档。
-
-**★CI 拆成 4 台并行（2026-10-23，用户「提速」）**：单台 4 核 runner 跑全套 565 项要 ~42 分钟（最慢 `verify_stream_parity` 单条 36 分钟）。
-现在 `tests.yml` 是 `shard` ×4（各跑 `SHARD=k/4 JOBS=4 bash run-tests.sh`）+ `report`（拼日志、出注解、推 `ci-logs`）。
-分片规则在 `run-tests.sh`「分片」一节：按帧预算排序后轮流发，冒烟 / 三方对账 / 审计器只在第 1 片。**本机不设 `SHARD` = 全套，与原来逐字相同。**
-看 CI 时 jobs 有 5 个（门禁分片 1~4 + 门禁汇总），哪片红看哪片的注解。
-
-★★★**2026-10-01 又一次整段作废。下面 2026-09-23 那套结论里，「审计器串行是瓶颈」已经修好了，
-但真正的瓶颈换了人，而我差点又照着旧表去优化：**
-
-| 实测（2026-10-01） | 优化前 | 优化后 |
-|---|---|---|
-| 审计器池核秒 | 1083s（最慢 `const_leftover_audit` **411s**） | **107s**（最慢 19s） |
-| 测试池核秒 | 2900s | **1727s** ← **我一个测试都没改** |
-| 墙钟（JOBS=8） | ~7 分 | **5.9 分** |
-
-★三个审计器的根因**是同一个形状**：`受检对象数 × 全仓行数`。
-全仓 192 个 `.gd` / 111,797 行，而每行里那几个检查**与被检的是哪个常量/字段无关**，
-却被按对象数重复了几百遍（实测四千万次行扫描）。
-⇒ 改成「全仓**建一次索引**（标识符 / 数值字面量 → 行），每个对象只看真的提到它的那几行」：
-`const_leftover` 411s→0.47s · `text_const_orphan` 329s→0.70s · `write_orphan` 180s→2.26s。
-★**判据一个字没动，验收标准是输出逐行相同**（三个都对过账；`const_leftover` 第一版差了 1 处——
-我的数值分词把 `-1.0` 整个当一个 token，而原版找 `1.0` 时那个是**算命中**的，改成带符号/不带符号各索引一份）。
-
-★★**连带效果是我没预料到的**：测试池核秒自己掉了 40%，因为原来**审计器霸着 4~8 个核跑 7 分钟，
-把测试饿着了**。⇒ 「这个池慢」可能根本不是这个池的问题。
-
-★排队尾巴：核秒 1727÷8=215s 理论墙钟而实际 354s —— 差的 140 秒是**最慢那根 125 秒的长杆
-轮到最后才起跑**。已改成按帧预算从大到小排（长杆先跑），不新增状态文件。
-
-★★**2026-09-23 整段重写——下面这些旧结论已经不成立，别再照着办：**
-
-> ~~耗时几乎 100% 是 Godot 进程启动，测试逻辑本身不要钱~~
-> ~~JOBS=4 跑 737 秒（12.3 分）~~
-
-那是 **123 项**时代量的。332 项时重量，**结论全变了**：
-
-| 实测（2026-09-23） | |
-|---|---|
-| 基线 JOBS=4 | **13 分 22 秒** |
-| 只把并行度调到 16 | 10 分 41 秒 —— **4 倍并行只快 20%** |
-| 找到真因后（JOBS=8） | **4 分 26 秒** |
-
-**真因不在测试池，在审计器。** 计时表一摊开就清楚：
-
-```
-核秒总和 1638s ÷ 并行度 16 ≈ 102s 理论墙钟，而实际 641s
-⇒ 84% 的时间根本不在测试池里
-```
-
-46 个审计器**串行**跑，光三个就吃掉 398 秒：
-`const_leftover_audit` 145s / `zero_caller_audit` 140s / `text_const_orphan_audit` 113s
-——其余 43 个**加起来才 35 秒**。
-（⚠ 这三个数字是 2026-09-23 的。到 2026-10-01 已涨到 411/40/329 秒，然后被索引化治掉，见上方。）
-
-⇒ 改法：审计器**并行跑、串行判**（判据一个字没动），而且**与测试池同时起跑**
-（两者零共享状态：审计器只读文件、不起 Godot）。清单从脚本自己的 `run_audit` 行扫出来，
-**不另立名单**——测试名单就是因为漏登记，让 8 个测试从没被执行过。
-
-**★现在 `run-tests.sh` 自己会打耗时表**（每测试耗时 + 最慢 12 个 + 审计器最慢 5 个）。
-**优化前先看那张表**，别再凭上一代的结论下手。
-
-**★★每个测试一份独立 `user://`**（2026-09-23 加，**2026-09-30 才真正做对**）。原来 332 个并行进程共用一个目录，
-而 Godot 的 `user://` 就解析到那里 ⇒ **测试之间靠文件互相串味**。拆开之后当场照出三条
-一直存在的**竞态绿**：
-- `verify_ghost_upload`：存档还原时撞上**别的测试**同一刻写的盘
-- `verify_shockwave_vfx` / `verify_execution_vfx`：跑的是调试场，而调试场开场会
-  **恢复上次保存的布置**——那个 `debug_setup.json` 是 `verify_determinism_b` 等写的。
-  并行池里谁先跑完不定，**它们一直是靠运气绿的**。
-
-三条都已改成自己造单位/自己摆状态。**看到"测试依赖另一个测试留下的文件"就是这一类。**
-
-**★★★ 2026-09-30 重要改正：上面那个隔离【在 CI 上从来没生效过】。**
-
-它当时只换了 `APPDATA` —— 而那只是 **Windows** 上 `user://` 的落点：
-
-| 平台 | `user://` 走哪个变量 |
-|---|---|
-| Windows | `%APPDATA%` |
-| **Linux（= CI）** | **`$XDG_DATA_HOME`**（没设就 `$HOME/.local/share`）—— **根本不看 APPDATA** |
-
-⇒ CI 上 404 个测试**一直共用同一份 `user://`**，互相写坏存档，谁输了那场竞争谁红。
-上面那句「拆开之后当场照出三条竞态绿」是真的，**但那是在本地照出来的**。
-
-**铁证不是任何断言，是 CI 日志里那一行**：`[GameState] ⚠ 正式存档损坏, 用备份 .bak 开局`
-—— 全新目录上不该有存档，更不该有**坏掉的**存档。
-⚠ 而我第一次查时**看不到这一行** —— CI 把每份日志 `tail -n 400`，它落在窗口外。
-**诊断一直都在，是传输把它截掉了**（已改成 4000 行）。
-
-现在两个变量都设，并且有判据 `verify_gate_isolation` 守着（它量的是引擎自己报的
-`OS.get_user_data_dir()`，并且**专门一条挡「只修了当前平台」**）。
-
-**⚠ 普适教训：一个写死了平台的隔离，只在那个平台上算数 —— 而门禁跑在两个平台上。**
-
-
-测试池的地板是**最慢那根长杆**：`verify_determinism_b` 一个就 125 秒，
-`verify_skills_not_dead` 92 秒 —— 并行度再高也下不去它们。
-
-默认 **`JOBS=16`**（2026-10-01 从 8 提上来）。以前 8 是对的——那时审计器池霸着一份 JOBS
-跑 7 分钟，再提并行只是让两个池互相抢核；索引化之后审计器几乎不占核，空出来的该还给测试池。
-想更保守 `JOBS=8 bash run-tests.sh`（这台机器 32 核），
-但**审计器池与测试池各占一份 JOBS**，实际并发是 2×JOBS。
-⚠ 机器蓝屏史见下方；用户 2026-09-23 确认「机器没问题了」。真出事第一件事是把 JOBS 调回 4，
-并且**跑门禁前先提交**（最坏只是重跑一轮，而不是丢掉未提交的工作）。
-
-**判定逻辑与串行版逐字相同**（退出码 / 致命正则 / `ALL PASS` 关键字），只改调度不改判据。
-
-- 测试**自动发现** `tests/verify_*.gd`，新增测试放进去配好 `.tscn` 即自动纳入，**无需登记**。
-  （2026-07-20 之前是硬编码名单，导致 8 个测试从没被执行过。）
-- 判定不只看退出码，还过一条**致命报错正则**（`run-tests.sh` 顶部 `FATAL`）。
-  **漏一个模式就等于把 bug 判成绿灯** —— 历史上 `Max recursion` 曾不在名单里，24 组压测全报"0 errors"，而真实对局每秒刷几百条错误。新报错形态往这条正则里加。
-- 慢测试的帧预算在 `frames_for()` 里登记。`--quit-after` 单位是**帧**不是毫秒；帧数不够会让测试跑到一半被掐断，表现为"没打 ALL PASS"而**不是**某条断言 FAIL —— 极易误判成真失败。
-- **★`run-tests.sh` = 111 个自证测试 + 冒烟 + 审计器三合一，共 123 项；只跑自证扫描（`sweep.sh`）≠ 门禁。** 2026-07-26 核心引擎拆分：`sweep.sh` 全绿就 push，CI 提交门禁却红——`tooltip_number_audit` 等审计器读战斗源码找装备数值，函数外迁到新文件后它找不到=误报，而 `sweep.sh` 不跑审计器。**push 前除自证扫描，下面这些审计器也各跑一遍**（或直接 `bash run-tests.sh` 全套）。移含装备数值/龟数据/源码符号的函数尤其要跑 tooltip/tri/brief_detail。
-
-**★★CI 上偶发红、本地永远复现不出来？用 `--max-fps 15` 把帧变慢**（2026-09-24 发现）：
-
-```bash
-<godot> --headless --max-fps 15 --path . res://tests/verify_xxx.tscn --quit-after 4000
-```
-
-本地无头帧率极高 ⇒ 一帧≈**1 步** sim；CI runner 一帧 ~0.066 秒 ⇒ 一帧跑 **4 步**。
-凡是**尺子跟机器快慢挂钩**的判据，本地必绿、CI 偶发红。一晚上抓到四条，**四种不同的形状**：
-
-| 形状 | 实例 | 改法 |
-|---|---|---|
-| 绝对时间阈值 | 「每帧 < 1.0 ms」CI 实测 1.52（机器参照 ×7.09） | 改成**耗时 ÷ 同进程参照负载** + 一道宽松硬顶 |
-| 采样条数当分母 | 「采到 ≥50 个样本」CI 47 红 / 本地 51 绿 | 改成量**采样覆盖的范围**（挤在一点的 50 条也是空检查） |
-| 拿「变大」判「在走」 | 触手内部钟 0.683 → **0.150**（每次状态切换归零） | 改成「**变了** 或 状态变了」 |
-| 每帧采一次抓帧内跃迁 | 龟能「攒满→归零」整个发生在两次采样之间 | **一次喂一步 sim、一步一采**，循环内一步 `await` 都不要 |
-
-**★最省事的那一招：`_s._deterministic = true`。** 它让每帧恰跑 **一步** SIM_DT ⇒
-整份测试里所有「等 N 帧」都变成确切的**游戏秒数**，与机器快慢无关。
-`verify_timestop_freeze` 一行修好四条红（15fps 下 `_wait(120)` 要走掉 8 游戏秒，
-20 秒的时停在两次等待之间就结束了 —— 看着像「时停冻不住东西」，实际是时停已经过去了）。
-
-**⚠ 别整套门禁跑 15fps**：按帧数的预算 `frames_for()` 会集体撞 `--quit-after`。
-挑「等游戏内效果」的那些单跑。
+- **推送前本机跑完整门禁、全过再推，不拿 CI 试错**（用户 10-31）。门禁在跑时不改仓库（改了 = 这轮作废）。
+- 手动跑单条测试一律隔离存档：`APPDATA=$U XDG_DATA_HOME=$U`（Windows 看 `APPDATA`，Linux/CI 看 `XDG_DATA_HOME`，两个都设；`verify_gate_isolation` 守）。并设 `TURTLE_SUPABASE=" "` 不连服务器。
+- 判定 = 退出码 0 + 不命中 `run-tests.sh` 顶部 `FATAL` 致命报错正则 + 日志里有 `ALL PASS`。**新报错形态往 `FATAL` 里加**，漏一个模式就等于把 bug 判绿。
+- 测试**自动发现** `tests/verify_*.gd`（配好 `.tscn` 即纳入，无需登记）。慢测试在 `frames_for()` 登记帧预算 —— `--quit-after` 单位是**帧**；帧数不够表现为「没打 ALL PASS」，不是某条断言 FAIL。
+- 审计器（`tools/*.py`）登记方式：在 `run-tests.sh` 加一行 `run_audit "tools/x.py" "ALL OK" "说明"`，清单从这些行自动扫出来。
+- 失败日志留在 `.out/gate/<测试名>.log`，转绿自动删；CI 失败时同名日志推到 `ci-logs` 分支（`git fetch origin ci-logs`）。
+- **CI**：`tests.yml` 8 片并行（`SHARD=k/8`）+ 汇总；分片按 `tests/golden/test_seconds.tsv` 最长优先，每轮把实测秒数推到 `ci-timings` 分支。刷新本机这份表：
+  `git fetch -f origin +refs/heads/ci-timings:refs/remotes/origin/ci-timings && git show origin/ci-timings:test_seconds.tsv > tests/golden/test_seconds.tsv`
+- **本地绿 ≠ CI 绿**，推完自己去看 CI（API 见 §6）。CI 偶发红、本地复现不出 ⇒ `--max-fps 15` 把帧变慢重跑；最省事的修法是测试里 `_s._deterministic = true`（每帧恰一步 sim）。判据别跟机器快慢挂钩：绝对时间阈值改成相对同进程参照、采样条数改成采样覆盖范围、「变大」改成「变了」、帧内跃迁改成一步一采。⚠ 别整套门禁跑 15fps（帧预算会集体撞顶）。
+- 机器有蓝屏史：出事先把 JOBS 调回 4，跑大批前先提交。
 
 只读审计器（可反复跑）：
 
@@ -174,240 +50,144 @@ JOBS=8 bash run-tests.sh   # 想更快(默认 4, 见下)
 python tools/data_integrity.py         # json 交叉引用 / 资源路径 / 孤儿字段
 python tools/tri_audit.py              # pets.json ↔ 活代码 ↔ 权威文档
 python tools/tooltip_number_audit.py   # 装备文案数值 ↔ 代码
-python tools/hp_staleness_check.py     # 云端同步新鲜度
-python tools/docs_authority_lint.py    # 单一事实源纪律（进 run-tests 门禁）：三权威在位/消费链活/README无漂移/无冒名
+python tools/docs_authority_lint.py    # 三份权威在位 / 消费链活 / 无冒名
+python tools/repo_hygiene_audit.py     # 仓库文件卫生（§8）
 ```
 
-**★特效"到底画了什么"只能用染色法核实**（2026-08-11 血泪）：
+（本机 python 一律写全路径 `C:/Users/Louis/AppData/Local/Python/pythoncore-3.14-64/python.exe`，不用商店别名。）
+
+**特效「到底画了什么」只能用染色法核实**：`python tools/vfx_dye_probe.py <装备id> <文件> '<颜色表达式>'`。看缩略图写问题清单不可靠；A/B 差分只在「同一件改前 vs 改后」时可靠。
+
+---
+
+## 3. 发版流水（每次玩家可感知的改动版本号 +1）
+
+`大版本.功能版本.改动序号`；第 3 位每次 +1，加新玩法第 2 位 +1。游戏内显示从 `ProjectSettings` 读，不许写死。
 
 ```bash
-python tools/vfx_dye_probe.py p2eq_071 scripts/scenes/battle/food_eq_vfx.gd 'Color(1.0, 0.96, 0.84, 0.42)'
+python tools/release.py bump <版本> --rules same|changed   # 五处版本号 + CHANGELOG 骨架 + 路线图一行；--rules 必填
+python tools/release.py checklist <版本>                    # 生成 docs/releases/<版本>.md 发版清单，逐步勾
+bash run-tests.sh  →  push  →  CI 绿
+python tools/release.py tag <版本>                          # 前置检查(干净/已推/CI 绿/五处一致) 后只推这一个 tag
+# 推 tag ⇒ testflight.yml 自动签名、核 tag=版本号、上传
+python tools/asc.py submit <版本>                           # 进公开测试组 + 说明(取 CHANGELOG) + 作废同版本在审旧构建 + 提审
+python tools/deploy.py <版本>                               # 裁判机 + 陪练号：暂存目录 → 导入 → 两条一致性门禁 → 原子切换 → 对手池 → 回读
+python tools/prod_flags.py force-update <版本> --yes-prod   # 苹果 Beta 审核通过后才放行，抬 min_client_version
 ```
 
-看 VFXLAB 的缩略接触印相**写不出可靠的问题清单** —— 我照它写的 17 件清单，
-**核实过 8 条错了 6 条**（060 说"灰白"实测 86% 青蓝、065 说"看不见"实测按设计随叠层变亮、
-066 说"零视觉"实际有闪光+飘字+体型过冲、073 说"白球"实测 62% 是绿的、
-063 把环面说成实心球、070/075 说"环超范围"而环用的就是伤害判定的同一个常量）。
-**060 和 065 的补丁都写好了，量完才发现不该改。**
-
-A/B 差分（同参数只换装备）也**只在"同一件改前 vs 改后"时可靠** ——
-换了装备龟的攻击节奏就变，差分把龟自己也算进去（061 差分报 3 万像素、裁开肉眼什么都没有）。
-`VFXLAB_STILL=1` 能降噪但清不了零（剩血条那一行）。**绝对归属只能染色。**
-```
+- **五处版本号**：`project.godot` / `CHANGELOG.md` 顶部 / `export_presets.cfg` 的 iOS `short_version` 与 Android `version/name` / `docs/实时版-路线图与待办.md`。`verify_version` 管前四处，路线图那处在 `tools/docs_authority_lint.py`。用 `release.py bump` 就不会漏。
+- **`RULES_VER`**（`scripts/gamedata/phase2_config.gd`）：**这一版改了对局结果就 +1**（数值、技能、装备效果、sim 路径任何改动）。快照池 / 对手池按它分桶；漏升 ⇒ 新旧规则的快照混进同一个池。0.22.7 就漏过一次（tag 挪位、TestFlight 重出、裁判机重装）。`release.py bump --rules changed` 会一起升。
+- **tag 不可变**：一次只推一个 tag（两个同推会互相覆盖产物）；推错了不挪 tag，出下一个版本号。
+- **正式服写入**（迁移、开关、强制更新、`referee_versions`）每次都要用户点头；`--yes-prod` 不是授权，用户的话才是。
+- 周末（周六闯关赛、周日决赛日）不动生产库与裁判机，除非用户明说。
+- 不要求装机就不出包；攒批合并发（用户 10-23）。
 
 ---
 
-## 2.5 版本号（每次玩家可感知的改动都要 +1）
+## 4. 本项目特有的地雷（都踩过）
 
-`大版本.功能版本.改动序号`，当前 `0.18.7`（真值以 `project.godot` `config/version` 为准，别信这行——它会漂）。第 3 位每次改动 +1；第 2 位加新玩法时 +1。
+### 4.1 `HP_MULT` 只用于召唤物 raw 值
+`RealtimeBattle3DScene.gd` 的 `HP_MULT = 3.0` 只能乘召唤物 raw 值（现状全仓无人用）。**装备 / 羁绊的「X% 最大生命值」一律按真实 `maxHp` 算，不除 `HP_MULT`**（用户 10-04 拍板；`verify_eq_maxhp_pct_basis` 守，静态扫 `/ HP_MULT`）。龟和装备的 `hp` 已是最终值，不要再乘。
 
-**改版本号要同时改五处**，漏一处 `verify_version` 直接红。（★ 2026-09-29 改正：原来写「四处」、漏了路线图。★★**两条门禁各管一半**，这就是它能漏掉一处的原因：`tests/verify_version.gd` 管 ①②③④，**路线图那一处在 `tools/docs_authority_lint.py:130`**（判据：路线图正文里的**最大**版本号 == `project.godot`）。两者都在提交门禁里，所以漏了照样红，只是**报错会出在你想不到的那条工具里**。（我 2026-09-29 就在这里踩过：grep 到 `verify_version.gd:49` 有「路线图」三个字就当成了断言，**那是注释**。））：
+### 4.2 单位字典不能做 key / 不能用 `==`
+单位字典互相引用成环，Godot 递归哈希会卡死。比较用 `is_same(a, b)`，判存在用 `_arr_has_unit()`，绝不拿单位字典当 Dictionary 的键。
 
-| 处 | 位置 |
-|---|---|
-| ① 事实源 | `project.godot` → `config/version` |
-| ② 记账 | `CHANGELOG.md` 顶部新增 `## x.y.z — YYYY-MM-DD` |
-| ③ iOS 包 | `export_presets.cfg` → `application/short_version` |
-| ④ Android 包 | `export_presets.cfg` → `version/name` |
-| ⑤ 路线图 | `docs/实时版-路线图与待办.md` → 得出现这个版本号 |
+### 4.3 两条独立的伤害路径
+`_apply_damage(u, dmg, ...)`（DoT / 真伤）与 `_apply_damage_from(src, u, dmg, ...)`（普攻 / 技能）**各自扣盾扣血**，改伤害逻辑两条都改。
 
-游戏内显示（主菜单右下角）**从 `ProjectSettings` 读**，不许写死 —— 门禁会扫硬编码字面量。
-版本号的全部价值在于**测试者报 bug 时能说清是哪个版本**，四处不一致就说不清了。
+### 4.4 `_t` 跨路累加，永不重置
+全局时钟 `_t` 跨上路 → 下路 → 决胜一直累加。按本场计时的机制自己存 `t0`（见 `_sd_t0`）。
 
-**每次升版本号后，给那个提交打 git tag**（`git tag -a v0.18.7 <提交> -m "..."` 然后 `git push origin --tags`）。
-tag 让"回到某个版本"从翻提交号变成 `git checkout v0.11.0`，也是 GitHub Release 的锚点
-（Release 能把 IPA 永久挂上去，不受 artifact 14 天限制）。2026-07-23 补齐了 v0.9.3~v0.12.1 全部 21 个 tag；现共 72 个。
+### 4.5 测试等游戏内效果
+- 数值测试**不依赖动画 tween 跑完**：把结算从演出里抽成函数，演出末尾调、测试也直接调（例：`_pirate_grapple_hit`）。无头 CI 下 tween 链推进不稳。
+- 等效果用轮询 + 上限，不用 `create_timer`（它走未钳制 delta，战斗时钟走 `minf(delta, 0.1)`）；也别拿游戏时钟 `_t` 当尺子（结束后冻结）。最稳是 `_deterministic = true`。
+- 拿随机 spawn 单位测精确数值会偶发红，用干净合成单位。
 
----
+### 4.6 改 CI 工作流后必须验 YAML
+`python tools/workflow_lint.py`（进门禁）。工作流里不写含转义换行的单行命令。YAML 坏掉的表现是 run 失败但 jobs 列表为空、name 变成文件路径 —— 门禁从那次起根本没运行。
 
-## 3. 本项目特有的地雷
-
-**这些都是踩过的，不是假想。**
-
-### 3.1 `HP_MULT` 只用于一处：召唤物 raw 值
-`RealtimeBattle3DScene.gd` 顶部的 `HP_MULT = 3.0` **只能**用于召唤物 raw 值（`×`）。（现状：全仓代码里一处都没在用，只剩常量本身。）
-
-**装备/羁绊的「X% 自身最大生命值」一律按真实 `maxHp` 算，不除 `HP_MULT`。**
-2026-10-04 之前这里写着「装备百分比回收（`maxHp /`）」，于是 047 重击锤 / 039 竹箭伤害 / 020 哑铃伤害 / 盾羁绊冲击波
-都写成 `maxHp / HP_MULT × pct`，实发只有文案的 1/3（而 079、039 自己的回血那一半按真实 maxHp，同一句文案两种口径）。
-用户 2026-10-04 拍板：「肯定是代码去掉除以3啊」「不需要列表给我看，强度都输没问题的」⇒ 文案一直是对的，改代码。
-守卫：`tests/verify_eq_maxhp_pct_basis.gd`（四件实测 == 文案% × 真实 maxHp，并静态扫 `scripts/` `autoload/` 不许出现 `/ HP_MULT`）。
-
-**龟和装备的 `hp` 数值本身已是最终值，不要再乘。** 曾因此让哑铃实发 330 而非文案的 110，且同一盲区污染了文案核对——只读数组字面量漏掉尾部的 `* HP_MULT`，导致文案和代码各错各的、还互相印证。
-
-### 3.2 单位字典不能做 key / 不能用 `==`
-Godot 会**递归哈希**整个 Dictionary，而单位字典之间互相引用成环 → 无限递归 → 卡死。
-
-- 比较用 `is_same(a, b)`，不要 `==`
-- 判断存在用 `_arr_has_unit()`，不要 `in` / `.has()`
-- 绝不拿单位字典当 Dictionary 的键
-
-### 3.3 两条独立的伤害路径
-`_apply_damage(u, dmg, ...)`（DoT/真伤）和 `_apply_damage_from(src, u, dmg, ...)`（普攻/技能）**各自扣盾扣血**。改伤害逻辑必须**两条都改**，只改一条会产生只在某类伤害下出现的诡异行为。
-
-### 3.4 `_t` 跨路累加，永不重置
-全局时钟 `_t` 会跨上路→下路→决胜一直累加。任何**按本场战斗**计时的机制都必须自己存 `t0`（见 `_sd_t0`），直接用 `_t` 会让下路一开场就触发。
-
-### 3.5 测试里等游戏内效果：**用墙钟**，别用帧数、别用游戏时钟
-
-2026-07-23 一次踩了三个：
-
-| 尺子 | 为什么错 |
-|---|---|
-| `create_timer` | 它走**未钳制** delta，而战斗时钟 `_t` 走**钳制后**的（`minf(delta, 0.1)` 防卡死）→ 慢机器上游戏时间落后于计时器 |
-| **帧数** | 本地 94 帧就落地，CI 无头帧率极高、每帧只推进 1ms → 同样的时间要跑上千帧 → 循环没退出、**"ALL PASS" 没打出来** → 判 FAIL（`rc=0`、致命报错=0，极像断言失败） |
-| **游戏时钟 `_t`** | 更糟：`_kill` 之后战斗判定结束，`_t` **直接冻结**（实测「游戏时间 0.00 秒 / 94 帧」）。拿冻结的时钟当尺子，永远不会超时 |
-
-**但墙钟也救不了"演出根本没推进"**：2026-07-23 `verify_pirate_hook` 连红三次(帧数→游戏时钟→墙钟)，
-最后发现根因是**场景树 `create_tween()` 在无头 CI 下推进不稳**——伤害结算埋在两层 tween 链
-(甩钩→拉回→callback)的最末尾，CI 上那条链跑不完，等多久都是 0。**本地永远复现不出来。**
-
-**真正的解法：别让数值测试依赖演出 tween。** 把逻辑从演出里抽出来：
-- 伤害结算 → `_pirate_grapple_hit(pk, kk)`，演出末尾调它、测试也直接调它
-- 拉回终点 → `_pirate_grapple_dest(...)`，纯几何，验终点而非等 tween 跑到
-- 触发证据 → 函数入口设一个同步标记 `_grappled_by`(不是"sim tween 增加"——`_kill` 里别的死亡
-  效果也建 tween，那是假断言，反向验证时没红)
-
-**原则：一个测"数值对不对"的用例，不该依赖任何动画 tween 跑完。** 能即时判定就即时判定。
-
-### 3.5.1 旧记录：别用 `create_timer` 等游戏内效果
-战斗时钟 `_t` 用的是**钳制后**的 delta（`_process` 开头 `delta = minf(delta, 0.1)` 防卡死），
-而 `get_tree().create_timer()` 用的是**未钳制**的真实帧 delta。
-
-慢机器上一帧超过 0.1 秒时，**计时器按真实时间走、战斗时钟最多只走 0.1/帧** →
-游戏时间落后于计时器 → 定时到点时效果还没结算 → 拿到 0 → **假 FAIL**。
-
-2026-07-22：`verify_pirate_hook` 因此在 CI(Linux) 上连红两次，本地 6/6 全过，
-我一开始误判成"偶发"。**等游戏内效果一律改成轮询**：
-
-```gdscript
-var _w := 0
-while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
-    await get_tree().process_frame
-    _w += 1
-```
-
-等 UI 入场动画（tween）不受影响 —— tween 也走未钳制 delta，与计时器同步。
-
-### 3.6 改 CI 工作流后必须验 YAML 能解析
-2026-07-23：我给 `tests.yml` 加了一行 `tr '
-' ' | '`，里面的换行是**真换行**，
-续行顶到第 0 列 —— **缩进比块标量小就会终止块**，GitHub 拿后半行当 YAML 结构解析 → 整个工作流解析失败。
-
-**表现极具迷惑性，我连着误判了两次**：
-
-- 页面/API 里 workflow 的 `name` 变成**文件路径**（读不到 name 字段）
-- run 的 `conclusion = failure`，但 **jobs 列表是空的** —— 一个 job 都没跑
-- 于是"门禁红了"看着像测试挂了，实际是**门禁从那次提交起就没再运行过**
-
-已加 `python tools/workflow_lint.py`（进门禁）：查能否解析 + 有没有 name/jobs + 顶格续行。
-**工作流里不要写含转义换行的单行命令**，用多行、每行保持缩进。
-
-### 3.7 脚本批量改代码：注释绝不插进行中间
-行内注释会**静默吃掉同行后续内容**。一天之内踩过三次：吃掉 `if` 行尾的 `:`（跑了 40 分钟的批次全废）、吃掉同行后续 6 个 dict 项。
-
-- 替换串里**不要带 `#`**；要加说明就单独占一行放目标行**上方**
-- 按标记删多行块时**每行都要打标记**，否则删掉 `func`/`if` 头会留下孤儿函数体
-- **每次脚本改完 `.gd` 立刻编译验证**，别等跑完测试才发现
+### 4.7 脚本批量改代码
+替换串里不带 `#`（行内注释会吃掉同行后续内容），说明单独占一行放上方；按标记删多行块时每行都打标记；改完 `.gd` 立刻编译验证。含反斜杠的改文件脚本用 Write 写成 `.py` 再跑，**别用 heredoc**（会吞反斜杠）。仓库行尾 CRLF / LF 混用：改文件用 Python 二进制读写、保留原行尾。
 
 ---
 
-## 4. 测试与调试开关（环境变量）
+## 5. 测试与调试开关（环境变量）
 
 | 开关 | 用途 |
 |---|---|
-| `SHIP=1` | 关掉 demo 劫持。**冒烟测试必须带** —— 否则假人永不死、战斗永不结束、结算路径根本没测到 |
+| `SHIP=1` | 关掉 demo 劫持。**冒烟测试必须带**（否则假人永不死、结算路径没测到） |
 | `REVIEW=1 REVIEW_TURTLE=<id> REVIEW_SKILL=<idx>` | 单技能审阅台 |
-| `EQDEMO_*` + `EQDEMO_ATTACKER=1` | 装备演示。**靠命中/充能触发的装备必须带 ATTACKER**，否则不会触发却看着像"没生效" |
+| `EQDEMO_*` + `EQDEMO_ATTACKER=1` | 装备演示。靠命中 / 充能触发的装备必须带 ATTACKER |
 | `DUALLANE=1 STRESS=1 DL_AUTOFIGHT=1 AUDIT=1` | 双路压测 + 自动巡检 |
 | `MAPEDIT=1` / `DEBUG_EDIT` | 地图编辑器 / 调试场 |
-| `SELFSHOT` `SHOT_BURST` `SHOT_STEP` `SHOT_OUT` | 自截图 |
+| `SELFSHOT` `SHOT_BURST` `SHOT_STEP` `SHOT_OUT` | 自截图；`SHOT_OUT` 一律指到 `res://.out/shots/…` |
+| `VFXLAB=1 VFXLAB_CASE=<id>` | 特效实验台；默认输出 `res://.out/vfxlab/<case>_<i>.png`；不能加 `--headless` |
 
 ---
 
-## 5. 代码风格
+## 6. 代码风格与放哪
 
-实测已高度统一，跟着现状写即可：
+- 缩进 tab；函数 snake_case；`class_name` PascalCase；新代码标注返回值类型。
+- **判据只有一条：不在 `_sim_step` 调用链上的，不进主文件 `RealtimeBattle3DScene.gd`**（用户 08-02「可以涨行数，但不能乱」）。单文件上限 3000 行（`tools/arch_budget.py`）。
 
-- 缩进 **tab**（112/112 文件，零空格缩进、零混用）
-- 函数名 **snake_case**（1669 个函数零例外）；`class_name` **PascalCase**
-- 类型标注：返回值 **98.0%**（1636/1669）；变量以 `:=` 推断为主，显式写类型的约 46%（旧版这里写"93.3%"是把 `:=` 也算进去了，口径不同）—— 新代码请标注返回值
-- 拆分模板照抄 [`scripts/scenes/battle/dmg_stats_panel.gd`](scripts/scenes/battle/dmg_stats_panel.gd)：`RefCounted` + 构造注入 `CanvasLayer` + `Callable` 取只读数据，主场景侧只剩 3 行
-- **战斗上帝文件已拆**（2026-07-26·8刀·`RealtimeBattle3DScene.gd` 25272→8555·−66%）：世界构建/特效/渲染/目标/伤害/弹道/生成/HUD 各成 `scripts/scenes/battle/battle_*.gd`（`battle` 注入·RefCounted·class_name）。剩余主文件≈核心 sim 循环（process/sim_step/tick/do_skill/移动/状态），每帧耦合·**不宜再碎化**。方法论与十九坑见 memory [[project-god-file-decomposition]]、方案书 [docs/plans/20260726-核心引擎拆分.md](docs/plans/20260726-核心引擎拆分.md)。
-
-**★新代码放哪：判据只有一条 —— 不在 `_sim_step` 调用链上的，不进主文件。**
-（用户 2026-08-02：「可以涨行数，但不能乱，要规范」。行数预算已放宽到 9000，
-但**约束从"行数"移到了"放对位置"**：余量的作用是"正常改动不必绕路"，不是"可以随便往主文件加"。）
-
-| 要写的东西 | 去哪 |
+| 要写的 | 去哪 |
 |---|---|
-| UI / 面板 / 结算表 | `scripts/scenes/battle/battle_hud.gd` 或对应 Scene |
-| 特效演出 | `scripts/scenes/battle/battle_vfx.gd` |
-| 单龟技能 | `scripts/systems/skills/<x>_system.gd` |
+| UI / 面板 / 结算 | `scripts/scenes/battle/battle_hud.gd` 或对应 Scene |
+| 特效演出 | `scripts/scenes/battle/battle_vfx.gd` 等 `*_vfx.gd` |
+| 单龟技能 | `scripts/systems/skills/<x>_system.gd`（入口 `_sk_*`） |
 | 装备效果 | `scripts/systems/equip/` |
 | 纯数据 / 常量表 | `scripts/gamedata/` |
 | 通用工具 | `scripts/util/` |
-| **每帧耦合的核心 sim** | 才留主文件（process / sim_step / tick_unit / 移动 / 状态机 / 伤害分派） |
+| 云后端 / 匹配 | `scripts/net/` |
+| 每帧耦合的核心 sim | 才留主文件 |
 
-> 历史教训：零余量那阵子**逼着把代码放错地方** —— 跨龟全局的诅咒效果差点为了不涨行数塞进 `ghost_system`。
-> 所以给余量；但余量不是免检通行证，判据仍是上面那一条。
-
-> **（2026-07-25 修正一处旧文档谎言）** 曾经这里写"`scripts/engine/` 是回合制旧引擎、只借 STATS 表"——**假的**，探针证明那 13 个文件全是活代码。已把 `scripts/engine/` 按真实身份拆成三个诚实的文件夹：<br>
-> · `scripts/gamedata/`（装备/龟/羁绊**属性表 + 配置**·`EquipStats`/`turtle_stats`/`phase2_*`·被战斗/背包/商店/图鉴/GameState 用）<br>
-> · `scripts/util/`（**共享工具**·`VfxTex` 特效纹理/`SkillText` 技能文案/`UIPalette` 配色/`SafeArea`）<br>
-> · `scripts/net/`（**云后端/匹配**·`backend.gd` 排行榜/bot对手/bracket）<br>
-> 它们**不是**行为层拆分模板（那是 `dmg_stats_panel.gd`），是被全项目复用的基础层。回合制**战斗逻辑**早已删净（见 `equip_stats.gd` 头注）。
+拆分模板：`scripts/scenes/battle/dmg_stats_panel.gd`（`RefCounted` + 构造注入 + `Callable` 取只读数据）。sim 路径用 `DetMath`；tween 捕获节点要 `bind_node`；`await lane_step()` 之后判 `is_instance_valid(battle)`。
 
 ---
 
-## 6. 构建与发布
+## 7. 构建、平台与服务器
 
-**动手做包之前先看这张表。** 2026-07-22 我在 Windows 上折腾了半天 iOS 出包（导 Xcode 工程、实测能不能直接出 ipa、退而求其次构建 Web），而 `.github/workflows/ios-build.yml` **一直就在仓库里**——只是我没查。
+| 目标 | 怎么做 |
+|---|---|
+| **iOS / iPad** | **TestFlight**：推 `v*` tag 自动跑 `testflight.yml`（App「斗龟场」Apple ID 6826108891，公开测试组 + 内部测试组自动分发）。不升版本只重传：推 `ci/testflight-*` 分支。侧载线 `ios-build.yml` 已停用 |
+| 提交门禁 | push 自动跑 `tests.yml` |
+| Web | `SHIP=1 bash build-web.sh` → `build/turtle-realtime-web.zip` |
+| Android | 见 [docs/实时版APK打包.md](docs/实时版APK打包.md) |
+| Mac | `<godot> --headless --path . --export-release "MacDist" "build/macdist/斗龟场.zip"`（未公证；重新打包保留 Unix 权限位） |
+| 数据库迁移 | `tools/sb_migrate.py`：sandbox → beta `--rehearse --apply` → prod `--precheck` → prod `--rehearse --apply --yes-prod`；只读查正式服 `tools/sb_ro.py prod` |
+| 裁判机 / 陪练号 | Hetzner 49.13.166.188（`ssh -i ~/.ssh/turtle_referee root@…`）；手册 `server/referee/README.md`，发版部署用 `tools/deploy.py`（`server/deploy/`） |
 
-| 目标 | 怎么做 | 产物 |
+- **iOS 硬事实**：Windows 出不了 `.ipa`（只能 macOS runner）；`targeted_device_family` 是枚举下标不是设备号（`2` = 通用），改完回读导出工程里的 `TARGETED_DEVICE_FAMILY`；导出版命令行给场景路径会 Abort。
+- **GitHub API**：本机没装 `gh`，令牌在 Git 凭据管理器里：`printf "protocol=https\nhost=github.com\n\n" | GCM_INTERACTIVE=Never git credential fill`（取出不打印）。Git Bash 里以 `/` 开头的路径参数加 `MSYS_NO_PATHCONV=1`；本机代理会改写 POST body，脚本里用 `ProxyHandler({})` 绕开。
+- **SSH 长任务**：服务器上 `nohup … > log 2>&1 < /dev/null &` 起，另发 `timeout 20 ssh …` 短命令看日志；同一条 ssh 里起后台又等结果会挂住。
+- 凭据一律在 `~/.config/turtle/secrets/` 等本机目录：不打印、不提交、不进 memory。
+
+---
+
+## 8. 文件放哪
+
+| 东西 | 放哪 | 备注 |
 |---|---|---|
-| **iOS / iPad（主路线）** | **TestFlight**：`testflight.yml`（2026-10-23 已合进 main，四项 Secrets 已填，首传 0.21.8 (301) 成功；推 `v*` tag 自动上传，不升版本只重传就推 `ci/testflight-*` 分支。App Store Connect 里 App「斗龟场」Apple ID 6826108891，内部测试组「内部测试」开了自动分发）。用户 2026-10-21：「之后主要去testflight了」 | TestFlight 构建 |
-| ~~iOS 免签包（备用）~~ **已停用**：用户 2026-10-23「不需要在用sideloadly了」—— 测试者一律走 TestFlight，下面这行只留作历史 | 推 `ci/ios-*` 分支（`git push origin HEAD:refs/heads/ci/ios-<日期>`，当时以为本机无 token 点不了 dispatch，10-26 更正见下方「iOS 的硬事实」最后一条）或手动 dispatch → `.github/workflows/ios-build.yml`（2026-10-21 起打 tag 不再自动出）；`bash fetch-ios.sh` 下到桌面 | Actions artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（unsigned，artifact 留 14 天） |
-| 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 123 项，ubuntu |
-| Web（手机浏览器直接玩） | `SHIP=1 bash build-web.sh` | `build/turtle-realtime-web.zip` |
-| Android APK | 见 [实时版APK打包.md](docs/实时版APK打包.md) | `build/android/*.apk` |
-| Mac 包 | Windows 上直接导：`<godot> --headless --path . --export-release "MacDist" "build/macdist/斗龟场.zip"`（通用二进制·Godot 内置临时签名·**未公证**，玩家首次打开要在「隐私与安全性」点「仍要打开」；重新打包时要保留条目的 Unix 权限位，否则 Mac 上解压后不可执行） | `build/macdist/斗龟场.zip` |
+| 开发产物（截图、实验台帧、对比图、门禁失败日志） | `/.out/` | 点目录，Godot 不导入、`.gitignore` 管住。代码里用 `DevOut.path()` / `DevOut.prep()`（`scripts/util/dev_out.gd`）。**不许再写根目录 `res://_…`**（`repo_hygiene_audit` 守） |
+| 清理 | `python tools/clean.py`（只列）/ `--apply` | 删旧日志与无源 `.import`，旧截图挪进 `.out/legacy/`；不碰 `build/`、`.godot/`、worktree |
+| 方案书 | `docs/plans/YYYYMMDD-<简称>.md` | 七节、状态行、完成后回填（`docs/plans/README.md`；`plans_lint` / `plan_stale_audit` 守）；在 `docs/README.md` 登记一行 |
+| 方案书配图 | `docs/plans/img-<日期>-<主题>/` | 单张 ≤ 2 MB（录屏放仓库外只留链接）；`docs/` 有 `.gdignore`，图不会被 Godot 导入 |
+| 发版清单 | `docs/releases/<版本>.md` | `release.py checklist` 生成 |
+| 历史 / 作废文档 | `docs/archive/` | |
+| 发版 / 部署 / 运维脚本 | `tools/`（本机）、`server/`（服务器端） | **进仓库**，不留在会话临时目录（临时目录里的脚本换个会话就找不到；0.22.x 那 30 多份按版本复制的脚本就是这么来的） |
+| 一次性脚本 | `tools/oneoff/` | |
+| 素材生成脚本 | 新写的放 `tools/assetgen/` | 生成结果确定性、重跑逐字节相同；存量 64 个还在 `tools/` 根目录（`blender_*` `build_*` `bake_*` `gen_*`），方案书 20261102 第二期搬 |
 
-**iOS 的硬事实（实测，别再试）：**
-
-- **Windows 出不了 `.ipa`**。打 ipa 要 `xcodebuild` + `codesign`，只存在于 macOS。把 `export_project_only` 改成 `false` 也没用——Godot 照样只吐 Xcode 工程，**退出码 0、不报错**，得自己发现产物里没有 ipa。所以只能走 macOS runner。
-- 装机流程（工作流注释里也有）：下载 artifact → Windows 装 **Sideloadly** → iPhone USB 连电脑 → 拖入 IPA 用 Apple ID 签名 → 手机「设置→通用→VPN与设备管理」信任证书。免费证书 **7 天**过期，重签即可，存档不丢。
-- `export_presets.cfg` 的 **`application/targeted_device_family` 是枚举下标不是设备号**：
-  `0`→`"1"` iPhone ／ `1`→`"2"` iPad ／ `2`→`"1,2"` 通用。
-  按字面读会改反（我把"通用"改成了"仅 iPad"）。**改完要回读导出后 `turtle.xcodeproj/project.pbxproj` 里的 `TARGETED_DEVICE_FAMILY` 确认**，光看 cfg 看不出来。
-- 只验"导出没报错"不够。导出版**禁用了 `disable_path_overrides`**，命令行给场景路径会直接 Abort，所以打包版默认只能启动 `run/main_scene`。想验打包后的真实对局：临时把 `run/main_scene` 改成 `res://tests/smoke_scenes.tscn`，导一个一次性包跑完再还原。
-- ~~本地无 `gh`、无 token，读不了 Actions API~~ **（2026-10-26 更正：这句是错的。）** 本地确实没装 `gh`、也没有 token 环境变量，**但 Git 凭据管理器里存着用户账号的 GitHub 令牌**（`gho_…`，权限 repo / workflow / gist）：`printf "protocol=https\nhost=github.com\n\n" | GCM_INTERACTIVE=Never git credential fill` 取出（不打印）就能调 API —— 读 Actions、手动 dispatch 工作流、写仓库 Secrets（值要先用仓库公钥 libsodium 加密，PyNaCl）。Git Bash 里以 `/` 开头的路径参数要 `MSYS_NO_PATHCONV=1`。**工作流失败会把日志推到 `ci-logs` 分支**，`git fetch origin ci-logs` 即可看——这是设计好的逃生口。
+根目录只许白名单里的那十几个文件（`repo_hygiene_audit` ①）。
 
 ---
 
-## 7. 工作方式
+## 9. 工作方式
 
-- **新需求先写方案书再动手**（用户 2026-07-22 定）：`docs/plans/YYYYMMDD-<简称>.md`，
-  格式与理由见 [docs/plans/README.md](docs/plans/README.md)。**必含「已知风险与未决点」一节** ——
-  不写这节就等于在宣称"无漏洞"，而那从来不成立。
-  三类真实教训催生了这条：①需求描述与代码事实相反（侵入那次方向是反的）
-  ②改动面被低估 3 倍（写"改 6 处"，穷举后是 20 处）③方案前提到实施才发现不成立
-- **需求一次摊开，别挤牙膏**（2026-07-24 调试场教训）：一个新需求进来，方案书里用一节**「验收清单」逐条列全子需求**再动手。
-  调试场那次子需求一条条冒出来（大师→精英→血量→无敌→满龟能→选技能）、来回问了七八轮才凑齐，两边都累。
-  手段：**先截图/录屏走一遍现状**、把不方便的点一次圈出来，比事后一条条补高效。子需求没列全就开工＝注定返工。
-- **一条新需求的标准流水**（把各条串起来）：`需求 → 方案书(验收清单 + 已知风险/未决点) → 用户拍板未决点 →
-  实现 → 门禁(本地+CI都看) → 版本号+tag+CHANGELOG(玩家可感知才升；调试场这类开发工具不升) →
-  push → CI 出包上 TestFlight → 测试在 TestFlight 装新版验 → 反馈进下一轮`。
-  （2026-10-21 之前这一步是「出免签包到 Release ios-latest」；TestFlight 工作流合进 main 之前，iOS 暂时没有自动出包。）
-  测试怎么拿包/装机/报bug（版本号+复现+截图）见 [docs/测试指南-取包与报bug.md](测试指南-取包与报bug.md)。
-- **本地绿 ≠ CI 绿，报绿前用 API 亲自看 CI**（2026-07-24 半天教训）：公开 repo 用
-  `curl "https://api.github.com/repos/yinzuoliu87-cpu/Turtle_realtime_battle/actions/runs"`（无 token）看 conclusion，
-  失败 run 的 `check-runs/<job_id>/annotations` 拿 `[FAIL]` 行；`tests.yml` 缺 `permissions: contents: write` 会让"推 ci-logs"静默 403。
-  拿随机 spawn 单位测**精确数值**会 CI 偶发红（队伍未播种 RNG·敌带盾/flat_dr）——用**干净合成单位**隔离。
-- **本地 commit 不 push**，除非用户点名要推
-- 报"做完了/没问题/对齐了"之前，**先证明检查本身会 FAIL**：故意改坏一个值，确认脚本报错。打印分母——`N=0` 是空检查不是通过
-- 断根因**先写探针打具体数值**，推理出来的不算根因
-- 巡检记账放在**事件发生处且无条件**；采样看不见缝隙，会造出假现象
-- **动手造轮子前先搜仓库**：`ls .github/workflows/`、`ls *.sh`、`ls tools/`、`docs/README.md`。已经有的东西比现搭的更贴合项目（含踩过的坑与逃生口）——iOS 工作流那次就是没搜
-- 重定向写 **`> log 2>&1`**，不是 `2>&1 > log`。后者顺序反了，stderr 去了终端、日志只剩 stdout，于是"致命 0 条"是对着空日志数出来的假绿灯
-- **别用 `git checkout -- <file>` 清理临时改动**——它会连同**未提交的真实工作一起回滚**。只想删刚追加的几行就用 `sed -i '$d'`（我刚因此丢了一整节，重写了一遍）
+- **新需求先写方案书再动手**：必含「验收清单」（子需求一次列全）与「已知风险与未决点」。标准流水：`需求 → 方案书 → 用户拍板未决点 → 实现 → 门禁 → 版本号 + tag + CHANGELOG（玩家可感知才升）→ push → TestFlight → 反馈`。
+- **push**：普通 push 随时推（用户 10-22），前提是本机完整门禁全过（10-31）。发版要用户认可。
+- 报「做完了」之前，**先证明检查本身会 FAIL**：故意改坏一处、确认变红、逐字节还原；打印分母，`N=0` 是空检查不是通过。
+- 断根因**先写探针打具体数值**；推理出来的不算根因。
+- 动手造轮子前先搜仓库：`ls .github/workflows/ tools/ server/`、`docs/README.md`。
+- 重定向写 `> log 2>&1`（顺序反了日志是空的）。**别用 `git checkout -- <file>` 清临时改动**（会连未提交的真实工作一起回滚）。
+- 测试者拿包 / 装机 / 报 bug：[docs/测试指南-取包与报bug.md](docs/测试指南-取包与报bug.md)。

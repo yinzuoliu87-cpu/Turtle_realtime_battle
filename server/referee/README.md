@@ -5,7 +5,8 @@
 > 表与 RPC：[server/supabase/migrations/20261019_referee_jobs.sql](../supabase/migrations/20261019_referee_jobs.sql)（已同步到 `schema.sql` 末尾，逐字相同）
 > 门禁：`tests/verify_referee_job_roundtrip.gd`
 >
-> **本目录的东西都还没部署、迁移也没上生产。** 下面是上线时照着做的步骤。
+> 2026-10-27 起正式服在跑（周六闯关赛、周日决赛日、11-02 起积分赛服务器局）。下面「部署步骤（第一次）」是当时照着做的记录；
+> **每个新版本的部署用 `tools/deploy.py <版本>`**（`server/deploy/`，2026-11-02 起），见「发版时」。
 
 ## 它是什么
 
@@ -24,7 +25,7 @@
 
 - 一局多快（本机 Windows x86_64 实测，Godot 4.6.3 无头）：三路打满 10469 步 ≈ **10~15 秒**墙钟（含 Godot 启动 ~1 秒）；两路 4300 步 ≈ 5.5 秒；一边倒上路碎蛋 1115 步 ≈ 1 秒。约 0.9~1.3 ms / sim 步。
 - CX33 4 核：`WORKERS=4` ⇒ 每分钟约 16~40 局。闯关赛 140 人 × 6 场 ≈ 840 局（2026-10-26 起摊在周六 00:00 ~ 周日 17:30 UTC 一天半里），周日决赛日一轮最多几十场，都够。
-- **现状（2026-10-26 起）：CPX22 2 核 / 4 GB，正式服 `WORKERS=2`**（核数 = 线程数，多开会抢核、单局变慢）。同一探针录流 149 步/秒 = 2.5 倍实时，与原 CPX32 持平。人多了换回 CPX32 + `WORKERS=4`（关机换型约 36 秒）。
+- **现状（2026-10-27 起）：CPX32 4 核 / 8 GB，正式服 `WORKERS=2`**（11-02 读机器核实：nproc 4、内存 7 GB、env `WORKERS=2`；另外两核留给同机的陪练号与直播）。10-26 一度降到 CPX22 2 核 / 4 GB，10-27 挤爆后换回。
 - 结果只在**同一个客户端版本**里成立：`VERSIONS_DIR` 下一个版本一份工程，轮询器只领本机装了的版本。
 
 ## 文件
@@ -130,6 +131,9 @@
 
 ## 发版时（每个新版本）
 
+**2026-11-02 起用 `python tools/deploy.py <版本>` 一条命令做第 1、4 步与陪练号工程切换**（前置检查 → 暂存目录装 tag 那一提交 → 导入两次 → 两条门禁 → 原子换进 `/opt/turtle/v<版本>` → 对手池 → 回读；用法与回退见 `server/deploy/README.md`）。下面是它做的事，手动排查时照着看。
+
+0. **先确认 `RULES_VER`**（`scripts/gamedata/phase2_config.gd`）：这一版改了对局结果就必须已经 +1（`tools/release.py bump --rules changed`）。对手池 / 快照池按 `rules_ver` 分桶，漏升 ⇒ 新旧规则的快照进同一个池（0.22.7 漏过一次，tag 挪位、TestFlight 重出、裁判机重装）。
 1. `/opt/turtle/v<新版本>/` 放工程 + `--import` + 第 3 步两个门禁；
 2. `insert into referee_versions …`；轮询器每轮自动重扫目录，**不用重启**；
 3. 周日用的版本改 `referee_config.finals_version`；
