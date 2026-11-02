@@ -309,9 +309,9 @@ func _ready() -> void:
 		else:
 			print("[BOXPAD] 浮层没开")
 
-	var out := "res://_panel.png"
+	var out := DevOut.path("panel.png")
 	if OS.has_environment("SHOT_OUT"):
-		out = OS.get_environment("SHOT_OUT")
+		out = DevOut.prep(OS.get_environment("SHOT_OUT"))
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
 	img.save_png(out)

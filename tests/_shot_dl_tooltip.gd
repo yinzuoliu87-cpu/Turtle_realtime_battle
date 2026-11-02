@@ -103,9 +103,9 @@ func _ready() -> void:
 	if not found:
 		print("[DLTIP] ⚠ tooltip 没浮出来")
 
-	var out := "res://_dltip.png"
+	var out := DevOut.path("dltip.png")
 	if OS.has_environment("SHOT_OUT"):
-		out = OS.get_environment("SHOT_OUT")
+		out = DevOut.prep(OS.get_environment("SHOT_OUT"))
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
 	img.save_png(out)

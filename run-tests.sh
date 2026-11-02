@@ -36,6 +36,11 @@ if ! ( mkdir -p "$GATE_APPDATA/.wtest" && rmdir "$GATE_APPDATA/.wtest" ) 2>/dev/
 fi
 export GATE_APPDATA
 DIR="$(cd "$(dirname "$0")" && pwd)"
+## ★2026-11-02 开发产物一律落 .out/(点目录: Godot 不扫不导入; .gitignore 一条 /.out/)。
+##   原来失败日志直接写仓库根目录 .gate-fail-<名>.log、转绿也不删, 两个月攒到 391 份
+##   (方案书 docs/plans/20261102-文件管理与发版流程重整.md F1)。现在: 红了写 .out/gate/<名>.log, 转绿删掉。
+GATE_FAIL_DIR="$DIR/.out/gate"
+mkdir -p "$GATE_FAIL_DIR"
 
 ## 本机(Windows)的 python 不走商店别名(%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe):
 ##   经别名每启动一次, 系统就建一次应用容器、加载一次包注册表; 本机 10-20 / 10-26 / 10-27 三次 0x50 蓝屏
@@ -624,6 +629,7 @@ run_test () {  # $1 = 测试名
   #   现在那份已改成真断言(10 条), 后门也就没有任何测试需要了 ⇒ 判据只认 ALL PASS。
   if [ "$rc" -eq 0 ] && [ "$fatal" -eq 0 ] && grep -q "ALL PASS" "$RAW/$name.log"; then
     PASS=$((PASS+1)); echo "  PASS  $name"
+    rm -f "$GATE_FAIL_DIR/$name.log"
   else
     FAIL=$((FAIL+1)); echo "  FAIL  $name  (rc=$rc, 致命报错=$fatal)"
     grep -E "\[FAIL\]|✗|$FATAL" "$RAW/$name.log" 2>/dev/null | head -5 | sed 's/^/        /'
@@ -631,9 +637,9 @@ run_test () {  # $1 = 测试名
     #   由来: verify_trainer_hunt_tame 在全套里红过三次(rc=1 而**日志里连一条 [FAIL] 都没有**),
     #   单跑十次全绿、四路并行也复现不出来 —— 而 `$RAW` 是 mktemp 目录、脚本一退出就删,
     #   于是每次红都只剩一行"rc=1"、**证据当场销毁**, 下次还是从零开始猜。
-    #   追不动的偶发, 至少要让它下次红的时候留下现场。(.gate-fail-*.log 已进 .gitignore)
-    cp "$RAW/$name.log" "$DIR/.gate-fail-$name.log" 2>/dev/null
-    echo "        ↳ 完整日志已留在 .gate-fail-$name.log"
+    #   追不动的偶发, 至少要让它下次红的时候留下现场。(落 .out/gate/, 转绿时删)
+    cp "$RAW/$name.log" "$GATE_FAIL_DIR/$name.log" 2>/dev/null
+    echo "        ↳ 完整日志已留在 .out/gate/$name.log"
   fi
 }
 
@@ -820,7 +826,7 @@ else
   echo "$SMOKE_OUT" | grep -E "$FATAL" | sort | uniq -c | sort -rn | head -5 | sed 's/^/        /'
   # ★冒烟失败时把整份日志落盘: $RAW 是 mktemp 目录, 脚本退出就没了 ——
   #   而冒烟是间歇性红(1/3), 事后想查根因时日志已经不在了。
-  cp "$RAW/smoke.log" ".gate-fail-smoke_scenes.log" 2>/dev/null || true
+  cp "$RAW/smoke.log" "$GATE_FAIL_DIR/smoke_scenes.log" 2>/dev/null || true
 fi
 fi   # FIRST_SHARD: 冒烟
 
@@ -875,6 +881,8 @@ if [ -n "${AUDIT_PID:-}" ]; then
 fi
 echo "=== 只读数据审计 ==="
 run_audit "tools/data_integrity.py"       "ALL OK" "data_integrity (json交叉引用/资源路径/孤儿字段)"
+run_audit "tools/repo_hygiene_audit.py"  "ALL OK" "repo_hygiene (根目录白名单/.gdignore在位/无死.import/文档大文件只减不增/开发产物落.out·20261102)"
+run_audit "tools/release_selftest.py"     "ALL OK" "release_selftest (发版工具: 五处版本号/行尾/RULES_VER/拒绝路径/tag不挪/提审演练只读·20261102)"
 run_audit "tools/copy_lol_style_lint.py"  "ALL OK" "copy_lol_style_lint (技能/装备文案体例: 无分号/破折号/口语词/普攻·括号密度≤LoL×1.5)"
 run_audit "tools/pixel_art_audit.py"     "ALL OK" "pixel_art_audit (装备图标必须是真像素画·台账只减不增)"
 run_audit "tools/get_meta_null_lint.py"   "ALL OK" "get_meta_null_lint (禁止 get_meta(k, null): 键不存在照样报错·10-13 内测刷进生产报错表)"

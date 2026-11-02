@@ -9,7 +9,7 @@ extends Node
 ##
 ## 跑法(★不能加 --headless, 无头不渲染、截图是空的还不报错;
 ##      ★必须加 --position 5000,5000 把窗口挪出屏幕, 多路 agent 并行时别糊住用户的屏幕):
-##   SHOT_OUT=res://_ringphase \
+##   SHOT_OUT=res://.out/shots/ringphase \
 ##   <godot> --path . --position 5000,5000 res://tests/shot_skill_ring_phases.tscn
 ##
 ## ⚠ 实测记录: `BLACKMAP=1` 【没有】把地图变黑, 所以这张图里
@@ -74,7 +74,7 @@ func _ready() -> void:
 
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
-	var out: String = OS.get_environment("SHOT_OUT") if OS.has_environment("SHOT_OUT") else "res://_ringphase"
+	var out: String = DevOut.prep(OS.get_environment("SHOT_OUT")) if OS.has_environment("SHOT_OUT") else DevOut.path("ringphase")
 	var img: Image = get_viewport().get_texture().get_image()
 	img.save_png(out + ".png")
 	print("[RINGPHASE] → %s.png  (%dx%d)" % [out, img.get_width(), img.get_height()])

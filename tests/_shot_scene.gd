@@ -1,7 +1,7 @@
 extends Node
 ## DEV 工具: 给【非战斗场景】截图(战斗场有自己的 SELFSHOT, 其它页一直没有)。
 ##
-##   SHOT_SCENE=res://scenes/TeamSelect.tscn SHOT_OUT=res://_shot_ts.png \
+##   SHOT_SCENE=res://scenes/TeamSelect.tscn SHOT_OUT=res://.out/shots/ts.png \
 ##     SHOT_WAIT=90 <godot> --path . res://tests/_shot_scene.tscn --position 5000,5000
 ##
 ## ★不能加 --headless —— 无头没有真实渲染, 截出来是空图**而且不报错**(同 VFXLAB 那条)。
@@ -23,8 +23,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var out := OS.get_environment("SHOT_OUT")
-	if out == "":
-		out = "res://_shot.png"
+	out = DevOut.path("shot.png") if out == "" else DevOut.prep(out)
 	var wait := int(OS.get_environment("SHOT_WAIT")) if OS.has_environment("SHOT_WAIT") else 90
 	## 可选: 先跑一段种子脚本(SHOT_SETUP=res://tests/_setup_syn_demo.gd), 让页面有数据可看。
 	if OS.has_environment("SHOT_SETUP"):

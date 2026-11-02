@@ -216,7 +216,7 @@ func _shop_selfshot() -> void:
 	await get_tree().create_timer(delay).timeout
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
-	img.save_png(OS.get_environment("SHOT_OUT") if OS.get_environment("SHOT_OUT") != "" else "res://_shop.png")
+	img.save_png(DevOut.prep(OS.get_environment("SHOT_OUT")) if OS.get_environment("SHOT_OUT") != "" else DevOut.path("shop.png"))
 	get_tree().quit()
 
 ## 从 GameState 恢复货架。成功返回 true; 货架不存在/已过期(打过新战斗)返回 false。

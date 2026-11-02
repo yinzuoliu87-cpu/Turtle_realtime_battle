@@ -3,7 +3,7 @@ extends Node
 const Backend = preload("res://scripts/net/backend.gd")
 
 ## 比对截图工具 (dev only). 设环境变量 SHOTDIFF=1 (或 SHOTDIFF=<秒数>) 启动:
-##   等 N 秒(默认2.8, 让场景建好+入场动画结束) → 截当前场景视口存 res://_shot.png → quit.
+##   等 N 秒(默认2.8, 让场景建好+入场动画结束) → 截当前场景视口存 res://.out/shots/shot.png → quit.
 ## 用法: SHOTDIFF=1 Godot --path . --resolution 1280x720 res://scenes/X.tscn
 ## 不设环境变量时完全无副作用 (直接 return), 可安全留在项目里.
 func _ready() -> void:
@@ -68,8 +68,8 @@ func _ready() -> void:
 		delay = s.to_float()
 	await get_tree().create_timer(delay).timeout
 	var img: Image = get_viewport().get_texture().get_image()
-	var out: String = "res://_shot.png"
+	var out: String = DevOut.path("shot.png")
 	if OS.has_environment("SHOT_OUT"):
-		out = OS.get_environment("SHOT_OUT")   # 并行 agent 各用唯一文件名防互相覆盖
+		out = DevOut.prep(OS.get_environment("SHOT_OUT"))   # 并行 agent 各用唯一文件名防互相覆盖
 	img.save_png(out)
 	get_tree().quit()

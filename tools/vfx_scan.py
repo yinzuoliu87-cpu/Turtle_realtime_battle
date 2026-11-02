@@ -61,7 +61,7 @@ def run_case(case, shots, glow=True):
     env["VFXLAB_SHOTS"] = ",".join("%.3f" % t for t in shots)
     if glow:
         env["VFXLAB_GLOW"] = "1"
-    for f in glob.glob(os.path.join(ROOT, "_vfxlab_%s_*.png" % case)):
+    for f in glob.glob(os.path.join(ROOT, ".out", "vfxlab", "%s_*.png" % case)):
         os.remove(f)
     ## ★★ env=env 一定要传! 第一版漏了这个参数 ⇒ VFXLAB 环境变量没进去,
     ##   跑的是**普通游戏**不是台子 ⇒ 永不退出。我一度以为是扫描慢卡了 30 分钟,
@@ -71,7 +71,7 @@ def run_case(case, shots, glow=True):
                         "--position", "5000,5000", "res://scenes/RealtimeBattle3D.tscn"],
                        cwd=ROOT, env=env, capture_output=True, text=True,
                        encoding="utf-8", errors="replace", timeout=300)
-    fs = sorted(glob.glob(os.path.join(ROOT, "_vfxlab_%s_*.png" % case)),
+    fs = sorted(glob.glob(os.path.join(ROOT, ".out", "vfxlab", "%s_*.png" % case)),
                 key=lambda q: int(q.split("_")[-1].split(".")[0]))
     return fs, p.returncode
 
@@ -170,7 +170,8 @@ def main():
     for n, i, ts in res[:a.top]:
         print("     f%-3d t=%6.2fs  %d px" % (i, ts, n))
     picks = sorted(i for _n, i, _t in res[:a.top])
-    out = a.out or os.path.join(ROOT, "_vfxscan_%s.png" % a.case)
+    out = a.out or os.path.join(ROOT, ".out", "vfxscan", "%s.png" % a.case)
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     sheet(files, picks, shots, out)
     print("  接触印相 → %s" % out)
     return 0

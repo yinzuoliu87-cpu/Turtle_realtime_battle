@@ -7856,9 +7856,9 @@ func _self_screenshot() -> void:
 	if s.is_valid_float() and s.to_float() > 0.1:
 		delay = s.to_float()
 	await get_tree().create_timer(delay).timeout
-	var out := "res://_p2_battle.png"
+	var out := DevOut.path("p2_battle.png")
 	if OS.has_environment("SHOT_OUT"):
-		out = OS.get_environment("SHOT_OUT")
+		out = DevOut.prep(OS.get_environment("SHOT_OUT"))
 	# 连拍模式(SHOT_BURST=N + SHOT_STEP=秒): 抓瞬时特效(火龙飞行/闪电劈), 存 out_0.png.._N.png
 	if OS.has_environment("SHOT_BURST"):
 		var n: int = maxi(1, int(OS.get_environment("SHOT_BURST")))

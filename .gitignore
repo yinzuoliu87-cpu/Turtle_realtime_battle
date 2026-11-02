@@ -10,8 +10,7 @@
 data_*/
 mono_crash.*.json
 
-# Build / export artifacts
-/build/
+# Build / export artifacts(/build/ 见下方开发产物一节)
 /export/
 /android/          # Android gradle build template (200MB+, install from Godot 编辑器: 项目→安装Android构建模板)
 *.apk
@@ -24,47 +23,19 @@ Thumbs.db
 *.swp
 *.swo
 
-# 像素diff/截图临时文件
-_poc*.png
-_g_*.png
-_g.png
-_diff*.png
-_v_*.png
-
-# dev 截图探针输出 (SHOT_DETAIL / SHOT_VFX / SHOT_ANIM 等; 无扩展名→同时盖 _gvfx_0.png 与 _gvfx_0.png.import)
-_gvfx*
-_ganim*
-_gbattle*
-_eggcrop*
-_beam*
-_cball*
-_proj*
-_vfx_*
-_panel*
-_minibeam*
-_detail_shot*
-_status_crop*
-_hdr_crop*
-_25d_*
-_min3d*
-_p2_battle*
-_p3_*
-_p3b_*
-_p4_*
-_polish*
-_novig*
-_shot.png
-_menu.png
-_fx*
-build/
+# ── 开发产物(2026-11-02 收拢, 方案书 docs/plans/20261102-文件管理与发版流程重整.md F3) ─────────
+#   现行落点: /.out/(截图 / 特效实验台 / 门禁失败日志 / 对比图; scripts/util/dev_out.gd)。点目录, Godot 不导入。
+#   清理: python tools/clean.py(默认只列), --apply 才删。
+/.out/
+#   旧落点: 根目录 _*(截图、实验台、连拍) —— 只锚根目录。
+#   原来写的是不带 / 的 _*.png, 把 assets/sprites/equip/_axe-base-steel.png(tools/axe_palette.py 要读)也藏了。
+/_*
+#   文档里的生成草稿(docs/plans/ref/_gen_wood_try1.png 等)照旧不进仓
+docs/**/_*
+/build/
+!/build/.gdignore
 vfx_preview.png
 vfx_slash*.png
-
-# debug scratch captures
-_*.gif
-_*.png
-_*.png.import
-_dragon_*
 tri_audit_report.txt
 
 # ── Python (tools/ 下 19 个脚本) ──────────────────────────────────────────────
@@ -94,11 +65,6 @@ tools/duel*/duel-*.csv
 tools/duel*/duel-*.csv.import
 tools/duel*-log/
 
-# 🔬 特效调试台 VFXLAB 的自截图输出
-_vfxlab_*
-# VFXLAB 改前/改后对比图(2026-08-07 表现层那一轮) —— 工作产物, 不进仓
-_vfxshots/
-
 # Claude Code 本地权限设置(每台机器不同, 不进版本库)
 .claude/settings.local.json
 .dyebak
@@ -106,10 +72,8 @@ _vfxshots/
 # Godot --import 跑到一半留下的中间文件; git add -A 会把它们一起收走(2026-08-20 误提交过两个)
 *.tmp
 
-# 门禁失败时留下的完整日志(用于追偶发, 不入库)
-.gate-fail-*.log
-
-# 本地运行垃圾(2026-10-22 收尾): 截图连拍输出 / 某次测试的 user:// 落点 / Sideloadly 装机日志
-/_show/
+# 本地运行垃圾(2026-10-22 收尾): 某次测试的 user:// 落点 / Sideloadly 装机日志(根目录 _show/ 已由 /_* 管)
+#   门禁失败日志 2026-11-02 起在 /.out/gate/; 旧的根目录 .gate-fail-*.log 用 tools/clean.py --apply 清
 /Godot/
 sideloadlydaemon.log
+.gate-fail-*.log

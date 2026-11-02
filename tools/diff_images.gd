@@ -7,7 +7,9 @@ extends SceneTree
 func _init() -> void:
 	var pa := OS.get_environment("DIFF_A")
 	var pb := OS.get_environment("DIFF_B")
-	var po := OS.get_environment("DIFF_OUT") if OS.has_environment("DIFF_OUT") else "res://_diff.png"
+	## 默认落 res://.out/shots/(2026-11-02 前是根目录 res://_diff.png); -s 脚本里不靠 class_name, 自己建目录
+	var po := OS.get_environment("DIFF_OUT") if OS.has_environment("DIFF_OUT") else "res://.out/shots/diff.png"
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(po).get_base_dir())
 	var thresh := 0.12
 	if OS.has_environment("DIFF_T"):
 		thresh = OS.get_environment("DIFF_T").to_float()

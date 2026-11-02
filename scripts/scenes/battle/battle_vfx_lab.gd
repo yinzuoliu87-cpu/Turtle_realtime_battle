@@ -19,7 +19,7 @@ extends Node
 ##   --path . res://scenes/RealtimeBattle3D.tscn
 ## ```
 ## ★**不能加 `--headless`** —— 无头没有真实渲染, 截出来是空图**而且不报错**。
-## 拍完自动退出; 截图默认存 `res://_vfxlab_<case>_<i>.png`(已进 .gitignore)。
+## 拍完自动退出; 截图默认存 `res://.out/vfxlab/<case>_<i>.png`(2026-11-02 前是根目录 `res://_vfxlab_…`, 见 DevOut)。
 ##
 ## ── 环境变量 ──────────────────────────────────────────────────────────────
 ## | 变量 | 作用 |
@@ -34,7 +34,7 @@ extends Node
 ## | `VFXLAB_SHAKE=1` | 保留震屏(默认压掉 —— 高倍数下震屏会把画面甩飞) |
 ## | `VFXLAB_SPEED=<倍>` | `Engine.time_scale`。0.25 = 慢动作细看 |
 ## | `VFXLAB_SHOTS=t1,t2,…` | 覆盖拍摄时刻(**游戏秒**) |
-## | `VFXLAB_OUT=<前缀>` | 截图路径前缀(默认 `res://_vfxlab_<case>`) |
+## | `VFXLAB_OUT=<前缀>` | 截图路径前缀(默认 `res://.out/vfxlab/<case>`) |
 ## | `VFXLAB_HOLD=1` | 不拍不退, 挂着让人自己看(窗口摆到**副屏幕正中**·用户 2026-08-29; 只有一块屏时退回左下角) |
 ## | `VFXLAB_REALMAP=1` | **在真实地图上看**(不黑场/不铺暗地板) —— 判断"特效与地面的关系"时必须用它, 黑场会把 103% 的叠加读成 364% |
 ## | `VFXLAB_GLOW=1` | 黑场里把泛光开回来(真机桌面端参数) —— 给用户【验收观看】用, 看到的=玩家看到的。⚠ 量测(染色/差分)一律不开: 黑场无 bloom 是基线 (battle_world_builder §env) |
@@ -187,7 +187,7 @@ func pre_build() -> bool:
 	_keep_shake = OS.has_environment("VFXLAB_SHAKE")
 	_shots = (cfg.get("shots", []) as Array).duplicate()
 	_hold = OS.has_environment("VFXLAB_HOLD") or (_shots.is_empty() and _wshots.is_empty())
-	_out_prefix = OS.get_environment("VFXLAB_OUT") if OS.has_environment("VFXLAB_OUT") else ("res://_vfxlab_" + case_id)
+	_out_prefix = DevOut.prep(OS.get_environment("VFXLAB_OUT")) if OS.has_environment("VFXLAB_OUT") else DevOut.path(case_id, "vfxlab")
 
 	# ── 翻译成 EQDEMO_*: 摆位这条路一行都不重写 ──
 	OS.set_environment("EQDEMO_EQUIP", str(cfg["eq"]))

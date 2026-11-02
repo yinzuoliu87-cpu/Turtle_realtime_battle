@@ -55,7 +55,7 @@ except Exception:
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GODOT = r"C:/Users/Louis/Desktop/Godot_v4.6.3-stable_win64.exe"
-OUT_DIR = os.path.join(ROOT, "_show")
+OUT_DIR = os.path.join(ROOT, ".out", "show")   # 2026-11-02 前是根目录 _show/
 
 
 class RECT(ctypes.Structure):

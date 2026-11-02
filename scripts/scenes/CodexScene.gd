@@ -277,7 +277,7 @@ func _codex_selfshot() -> void:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
-	img.save_png(OS.get_environment("SHOT_OUT") if OS.has_environment("SHOT_OUT") else "res://_codex.png")
+	img.save_png(DevOut.prep(OS.get_environment("SHOT_OUT")) if OS.has_environment("SHOT_OUT") else DevOut.path("codex.png"))
 	get_tree().quit()
 
 

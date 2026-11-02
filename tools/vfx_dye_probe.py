@@ -138,7 +138,7 @@ def main():
     try:
         io.open(path, "w", encoding="utf-8", newline="").write(
             src.replace(expr, DYE + "   # DYE-PROBE", 1))
-        prefix = "_dyeprobe_%s_" % eq_id
+        prefix = ".out/dye/dyeprobe_%s_" % eq_id   # 2026-11-02 前落根目录 _dyeprobe_*; 目录由实验台 DevOut.prep 建
         for f in glob.glob(prefix + "*.png"):
             os.remove(f)
         shoot(eq_id, prefix)
