@@ -5,8 +5,7 @@
 #                  → 拆 IPA 核对 → xcodebuild -exportArchive(destination=upload) 传 TestFlight
 #   【没密钥】      免签编译 .app 并核对 .app(证明 Xcode 26 编得过) → 上传 Xcode 工程 artifact → 绿灯结束
 #
-# 与 ios-build.yml 的关系: 那条是 unsigned IPA + Sideloadly 侧载线, 保留到 TestFlight 跑通为止(方案书 D5)。
-#   两条都在 v* tag 上跑: 一个出侧载包, 一个出 TestFlight 包, 互不覆盖(这里不碰 Release「ios-latest」)。
+# 与 ios-build.yml 的关系: 那条是 unsigned IPA + Sideloadly 侧载线, 2026-10-21 起不再在 tag 上跑、10-23 停用(用户「不需要在用sideloadly了」)。
 #
 # ── Secrets / Variables(仓库 Settings → Secrets and variables → Actions) ──
 #   ASC_KEY_ID       App Store Connect API key 的 Key ID
@@ -15,7 +14,12 @@
 #   APPLE_TEAM_ID    10 位 Team ID(放 Variables 或 Secrets 都行, 它不是秘密, 签好的包里本来就有)
 #   可选: IOS_DIST_CERT_P12_BASE64 + IOS_DIST_CERT_PASSWORD —— 给了就用这张 Apple Distribution 证书签 archive,
 #         不给就走 Xcode 云端托管证书(cloud signing, 要求 API key 是 Admin 角色)
-#   四个必需项缺任何一个 ⇒ 打印「缺 ASC 密钥，跳过上传」、只出未签名工程、绿灯结束(不红)。
+#   四个必需项缺任何一个: ci/testflight-* 分支 ⇒ 打印「缺 ASC 密钥，跳过上传」、只出未签名工程、绿灯结束;
+#   ★推 v* tag 时 ⇒ 红(2026-11-02 起): tag 就是要发版, 绿灯跳过等于「发版没发出去却显示成功」。
+#
+# ── tag 与版本号(2026-11-02 · 方案书 docs/plans/20261102-文件管理与发版流程重整.md P5) ──
+#   推 v* tag 时先核 tag 名 = project.godot config/version, 对不上直接红、不出包
+#   (tag 指错提交 ⇒ 包里的版本号和 tag 不是一回事, 测试者报的版本号就失去意义)。打 tag 用 tools/release.py tag。
 #
 # ── 构建号(CFBundleVersion) ──
 #   = run_number × 100 + run_attempt ⇒ 单调递增, 重跑(run_attempt+1)也不撞号。
@@ -54,6 +58,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 核对 tag 与 project.godot 版本(只在推 tag 时)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER=$(sed -n 's/^config\/version="\(.*\)".*/\1/p' project.godot | tr -d '\r')
+          if [ "$TAG" != "$VER" ]; then
+            echo "::error title=TestFlight::tag 与 project.godot 版本不一致（tag v$TAG ≠ project.godot $VER），不出包"
+            exit 1
+          fi
+          echo "tag v$TAG = project.godot $VER"
+
       - name: Check ASC secrets (只看在不在, 不打印内容)
         id: keys
         env:
@@ -75,6 +90,10 @@ jobs:
             echo "has_asc=false" >> "$GITHUB_OUTPUT"
             echo "缺 ASC 密钥，跳过上传（缺:$MISSING）⇒ 只出未签名工程"
             echo "::notice title=TestFlight::缺 ASC 密钥，跳过上传（缺:$MISSING）"
+            if [ "${GITHUB_REF#refs/tags/v}" != "$GITHUB_REF" ]; then
+              echo "::error title=TestFlight::推的是发版 tag 却缺 ASC 密钥（缺:$MISSING）⇒ 红，不当成功"
+              exit 1
+            fi
           fi
           if [ -n "$P12" ]; then echo "has_p12=true" >> "$GITHUB_OUTPUT"; else echo "has_p12=false" >> "$GITHUB_OUTPUT"; fi
 
