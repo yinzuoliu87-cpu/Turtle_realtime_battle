@@ -72,7 +72,7 @@ const REAP_TIER := 2
 ##   冲击波这一段伤害走 `_apply_damage_from`(from_equip 缺省 false), 会回调挨打方的 `on_damaged`;
 ##   挨打方也有盾羁绊、而一发 ≥ 400(顶档 8% × 最大生命 ≥ 5000)时, 原来对面挨一发就回敬一发,
 ##   而阵亡要等 `_apply_damage_from` 末尾的 `_kill` 才落地 ⇒ 嵌套里血 0 的单位还算活着, 链永不停,
-##   实测 1v1 一下普攻引出 350 发、嵌套 292 层后 `Stack overflow`(探针 tests/_probe_shield_wave_recursion.gd)。
+##   实测 1v1 一下普攻引出 350 发、嵌套 292 层后 `Stack overflow`(探针 tests/probes/_probe_shield_wave_recursion.gd)。
 ##   ⇒ 冲击波打出去的那一段【不给挨打方攒怒气】(反击照旧), 与「反伤不触发反伤」、反击 from_equip=true 同一口径。
 ##   ⚠ 不改成 from_equip=true: 那会连带关掉携带者的 on-hit 装备链与挨打方的 on-target 链, 单边时的数值也会变。
 ##   ⚠ 用栈不用一个布尔: 冲击波结算中途若别的钩子又引出一发冲击波, 内层出栈后外层这一对仍在栈顶。

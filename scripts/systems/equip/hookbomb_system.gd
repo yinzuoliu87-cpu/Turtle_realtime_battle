@@ -78,7 +78,7 @@ const BOMB_COUNT := [1, 1, 2]                 # 挂弹敌人数(1/1/2)
 ## ★2026-08-29 ×1.5 补偿: [0.02,0.04,0.04] → [0.03,0.06,0.06]。
 ##   同一轮把这两段从"不吃护甲的定额"改成**真物理**(`_phys_after_armor`);
 ##   实测平均护甲倍率 0.6685 ⇒ 0.02/0.6685=0.0299≈0.03, 0.04/0.6685=0.0598≈0.06。
-##   推导与探针见 `tests/_probe_armor_dist.gd` 与 ShellSystem.RELEASE_DMG_PCT 头注。
+##   推导与探针见 `tests/probes/_probe_armor_dist.gd` 与 ShellSystem.RELEASE_DMG_PCT 头注。
 const BOMB_DPS_PCT := [0.03, 0.06, 0.06]
 const BOMB_TICK := 1.0                        # "每秒"
 ## ★★2026-09-06 用户:「病毒箭头爆炸伤害削弱为120/250/400+目标10%最大生命值」

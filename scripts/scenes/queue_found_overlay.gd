@@ -18,7 +18,7 @@ extends CanvasLayer
 ##   (process_mode = ALWAYS 只保证它会跑, 不保证 delta 是真时间)。
 ## ★挂在 root 上、layer 高于各屏 HUD(工作室开场 StudioIntro 9000 之下 —— 开场只在冷启动, 那时不可能有排队)。
 ##   吞掉所有点击: 1.5 秒里点到下面那一屏的按钮会把人带去别处。
-## 音效: assets/audio/sfx/queue_found.wav(tools/build_queue_found_sfx.py 合成, 确定性)。
+## 音效: assets/audio/sfx/queue_found.wav(tools/assetgen/build_queue_found_sfx.py 合成, 确定性)。
 
 const NODE := "QueueFoundOverlay"
 const LAYER := 8800

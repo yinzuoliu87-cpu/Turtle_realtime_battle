@@ -139,7 +139,7 @@ func _t_pure() -> void:
 # ⑧ ─────────────────────────────────────────────────────────────
 ## ★开播 / 直播 / 回放都是「本机重算」: 一处没播种的随机改了结果, 观众就在那一刻「直播中断」。
 ##   2026-10-07 本方案实施时查出的那一处: 031 水晶扫射的起始角用的是裸 `randf()`(引擎全局 RNG)
-##   ⇒ 同一份录像重播 7 次分叉 4 次(探针 tests/_probe_lf_speed.gd)。这里钉住它不再回退。
+##   ⇒ 同一份录像重播 7 次分叉 4 次(探针 tests/probes/_probe_lf_speed.gd)。这里钉住它不再回退。
 func _t_rng_031() -> void:
 	print("── ⑧ 031 扫射起始角走种子化 RNG ──")
 	var f := FileAccess.open("res://scripts/systems/equip/equip_system.gd", FileAccess.READ)

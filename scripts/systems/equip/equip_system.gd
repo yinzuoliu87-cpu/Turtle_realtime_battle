@@ -557,7 +557,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			ct.tween_property(c, "modulate", Color(1.4, 1.15, 0.85, 1.0), 0.12)
 			ct.tween_property(c, "scale", Vector3.ONE * 1.3, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			ct.chain().tween_property(c, "scale", Vector3.ONE, 0.25)
-		## ★2026-09-13 用户要「火炎从中间爆开」; 原 `_boom_wave` 是通用冲击波环且在借用台账里。做法见 tools/bake_candle_fire.py。
+		## ★2026-09-13 用户要「火炎从中间爆开」; 原 `_boom_wave` 是通用冲击波环且在借用台账里。做法见 tools/assetgen/bake_candle_fire.py。
 		battle._vfx.candle_fire_burst(u["pos"])   # 直径 1001 码 = 判定半径 500 码 × 2
 		battle._shake(0.06)
 		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
@@ -657,7 +657,7 @@ const CHAIN_HOP_GAP := 0.2        # 026 连锁闪电逐跳错峰(秒·游戏钟)
 const CORAL_SPEED := 320.0        # 波前推进速度(码/秒·游戏钟) ⇒ 550 码走 1.72 秒
 const CORAL_BAND := 65.0          # 波前判定带半宽(码) —— 演出的火簇就摆在这条带上
 const CORAL_BURN := [40, 60, 90]  # 每星级施加的灼烧层数(用户2026-07-19: 原固定60不吃星级)
-## ── 火焰波的火簇素材(tools/blender_firecrest.py 烤, truefire 调色板) ──
+## ── 火焰波的火簇素材(tools/assetgen/blender_firecrest.py 烤, truefire 调色板) ──
 const CORAL_CREST_TEX := "res://assets/sprites/vfx/fire-crest.png"
 const CORAL_CREST_FRAMES := 8
 const CORAL_CREST_CELL := 28
@@ -688,7 +688,7 @@ const BLADE_R_IN := 500.0        # 扇形带内半径(码)
 const BLADE_R_OUT := 800.0       # 扇形带外半径(码)
 const BLADE_ARC_DEG := 60.0      # 扇面全角(度)·判定用半角 = 它的一半
 const BLADE_SEEK := 2000.0       # 沿瞄准方向自选释放点的最大偏移(码)
-## 009「月之刃」的两张素材: `tools/gen_moonslash.py` 烤 → `tools/pixelize_sheet.py` 的 `steel` 锁定板。
+## 009「月之刃」的两张素材: `tools/assetgen/gen_moonslash.py` 烤 → `tools/pixelize_sheet.py` 的 `steel` 锁定板。
 ##
 ## ★★这一版是**照着上一代实拍 100 帧逐帧重写的**(docs/studies/20260909-009旧特效逐帧.md)。
 ##   我上一版(三条同心弧 + 一弯月牙)被用户否掉, 原因不是"不好看", 是我**把结构删了**。
@@ -1017,7 +1017,7 @@ const SWORD_TEX_PATH := "res://assets/sprites/vfx/eq006-sword.png"
 ##   第一版整段冲刺剑都是**立着平移**过去的。一把在空中平移的剑没有任何理由保持刃朝上,
 ##   这与「不能凭空没有逻辑出现」是同一类问题。⇒ 立起来那一下改成蓄力, 发射瞬间转成刃朝前。
 ## ★为什么是方向表: 像素风只能 90° 无损旋转, 45° 一转就糊(001 飞斩 / 004 毒牙同一条)。
-##   角度由 Blender 在渲染时转好(tools/blender_sword.py --dirs 8), 运行时只选帧。
+##   角度由 Blender 在渲染时转好(tools/assetgen/blender_sword.py --dirs 8), 运行时只选帧。
 const SWORD_FLY_TEX_PATH := "res://assets/sprites/vfx/eq006-sword-fly.png"
 const SWORD_FLY_DIRS := 8
 ## 飞行姿态表里"朝上"那一格 = 立姿的同一个朝向(90°)。转平就是从它开始逐格转过去。
@@ -1036,7 +1036,7 @@ const SWORD_FLY_H := 1.0          # 飞行高度(米) —— 龟立绘 2.0 米, 
 ##   但仍焊了一条门禁量真实投影比 —— 相机哪天改了要有人知道。
 const SWORD_SCREEN_SQUASH := 0.78
 const SLIT_TEX_PATH := "res://assets/sprites/vfx/eq006-groundslit.png"
-const GROUND_SLIT_FRAMES := 6   # 地缝裂开的帧数(tools/blender_groundslit.py 渲)
+const GROUND_SLIT_FRAMES := 6   # 地缝裂开的帧数(tools/assetgen/blender_groundslit.py 渲)
 const SWORD_CELL := 48          # 剑贴图单元格边长(像素) —— 遮罩式"升起"要按它算
 const SWORD_TIP_ROW := 2        # 剑尖所在行(上面两行是空白余量) —— 遮罩高度不能小于它
 ## ★★这两个 pixel_size 是**成对**的, 别单独调其中一个:
@@ -1220,7 +1220,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 		##   贴地(`axis = AXIS_Y`)那版在俯角 51° 的相机下被压掉 37%, 七把剑读成七条斜杠;
 		##   而且四方向表的剑尖**四个方向全被画布平切**(逐行量: 刃恒宽 6px 直到护手)。
 		##   立起来之后正对相机 ⇒ 方向由"剑阵往哪推"表达, 贴图只要一帧, 也不再需要方向表。
-		##   (见 tools/blender_sword.py 头注)
+		##   (见 tools/assetgen/blender_sword.py 头注)
 		sp.texture = _sword_up_tex()
 		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED   # 与全项目单位立绘同一套
 		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -1751,7 +1751,7 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 ##       0.30 秒预警扇形 —— 那是把 009 评审得出的规矩(预警范围 == 伤害范围)当成通用设计法则,
 ##       去套一件**文案里根本没有预警**的装备。010 是每隔一次攻击间隔就斩一次的节奏技,
 ##       加预警 = 每 1.25 秒闪一片红网点还把出手推迟 0.30 秒。门禁 ⑩b 把这条钉死。
-##    ② 素材不是像素画(595/2623/2762/21296 色) ⇒ 四张全部重做(tools/gen_laserfan.py)。
+##    ② 素材不是像素画(595/2623/2762/21296 色) ⇒ 四张全部重做(tools/assetgen/gen_laserfan.py)。
 ##    ③ 像素密度随射程漂到 0.408 米/像素 ⇒ R_TEX 53 → 108, 一律细一倍。
 ##    ④ 后两帧平均 alpha 只有 56/255, 黑地上读成暗棕爪痕 ⇒ 消散靠碎开, 颜色全程满亮。
 ##    ⑤ `rotation = Vector3(0, -base_ang, 0)` 自由角旋转 ⇒ 16 向烤进素材, 运行时 rotation 恒 0。
@@ -1776,10 +1776,10 @@ const LASER_DIRS := 16
 const LASER_SLASH_FRAMES := 5
 const LASER_WAVE_FRAMES := 4
 const LASER_CHOP_FRAMES := 5
-## 扇形半径在纹理里占多少像素(必须与 tools/gen_laserfan.py 的 R_TEX 一致)。
+## 扇形半径在纹理里占多少像素(必须与 tools/assetgen/gen_laserfan.py 的 R_TEX 一致)。
 ## `pixel_size = rng × WS / LASER_R_TEX` ⇒ 半径画多远就打多远。
 const LASER_R_TEX := 108.0
-## 波前半宽在纹理里占多少像素(必须与 tools/gen_laserfan.py 的 BAR_HW_TEX 一致)。
+## 波前半宽在纹理里占多少像素(必须与 tools/assetgen/gen_laserfan.py 的 BAR_HW_TEX 一致)。
 const LASER_WAVE_HW_TEX := 19.0
 ## ★★竖劈判定半宽(码) —— **同一个常量**同时喂 `laser_chop_slab` 与贴图缩放。
 ##   旧版这里是写死的 `80.0` 传给 `_on_line`(判定 160 码宽), 而贴图 3.0 米 = 125 码,
@@ -2132,7 +2132,7 @@ func _moon_dir_of(k: int) -> Vector2:
 
 ## 009 的两张贴地素材共用这一份摆放(别各抄一份: 两处的口径必须完全一致, 否则预警和刃会错位)。
 func _moon_sprite(tex_path: String, vframes: int, dirf: int, org: Vector2, dir: Vector2, h: float) -> Sprite3D:
-	## 画布中心 = 释放点 + 瞄准方向 × 带心半径(素材就是这么烤的, 见 tools/gen_moonslash.py)。
+	## 画布中心 = 释放点 + 瞄准方向 × 带心半径(素材就是这么烤的, 见 tools/assetgen/gen_moonslash.py)。
 	return battle._vfx.ground_sprite(tex_path, MOON_DIRS, vframes, dirf,
 			MOON_PIXEL_SIZE, org + dir * MOON_ANCHOR, h)
 # 灼热火珊瑚 023(主动满法力)

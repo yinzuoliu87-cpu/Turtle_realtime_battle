@@ -7,7 +7,7 @@ extends Control
 ##   (皇室战争经典挑战 / 万智牌精选轮抽 / Marvel Snap / 云顶 / 斯普拉遁战绩卡)改成:
 ##     标题「闯关赛  第 N 场」· 战绩格(胜 4 格圆、负 3 格菱形)· 我锁定的阵容卡(+ 锁徽记)VS 对手空位(剪影轮换 + 扫描亮带)·
 ##     已等待计时 · 红色取消键 · 水下底纹。用户看了方向稿与风格稿回「行吧」。
-##   素材全是这一屏专门新画的(tools/build_replay_queue_ui.py → assets/sprites/ui/queue_wait/), ×3 最近邻;
+##   素材全是这一屏专门新画的(tools/assetgen/build_replay_queue_ui.py → assets/sprites/ui/queue_wait/), ×3 最近邻;
 ##   取消键用回放条那一张红键底座(同一套键, asset_borrow_audit CROSS_OK 写了理由)。
 ##   用户 10-27 定: 排队屏去掉左上「←」, 只留「取消」(匹配屏那一侧收起它); 小字用正文字体。
 ## ★阵容卡画的是**交上去的那份快照**(`referee_run.lineup` = `RefereeWatch.my_snapshot()` 进队那一刻的那一份):
@@ -45,7 +45,7 @@ const KEY_RED := "res://assets/sprites/ui/replay_bar/key-red.png"
 const KEY_RED_DOWN := "res://assets/sprites/ui/replay_bar/key-red-down.png"
 ## 小将头像(游戏真内容; 与对局过场 dual_lane_flow 的小将头像同一张)
 const MINION_AVATAR := "res://assets/sprites/pets/minion.png"
-## 剪影图集里的格序(与 tools/build_replay_queue_ui.py SIL_IDS 同一张表, 门禁 verify_replay_queue_art 对账)
+## 剪影图集里的格序(与 tools/assetgen/build_replay_queue_ui.py SIL_IDS 同一张表, 门禁 verify_replay_queue_art 对账)
 const SIL_IDS := ["candy", "hunter", "space", "stone", "ghost", "rainbow", "hiding", "angel",
 	"lightning", "ice", "crystal", "gambler", "fortune", "bamboo", "basic", "diamond"]
 const SIL_PX := 18

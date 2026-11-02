@@ -224,7 +224,7 @@ func _ready() -> void:
 	#  ⑨ 像素密度: 这两张贴地素材不许比别的特效粗一个数量级
 	# ══════════════════════════════════════════════════════════════
 	print("-- 9 像素密度(素材尺寸 ↔ 它要覆盖的场地范围) --")
-	## 素材烤的时候每格覆盖 2 × 0.525 × BLADE_R_OUT 码(见 tools/gen_moonslash.py 的 VIEW)。
+	## 素材烤的时候每格覆盖 2 × 0.525 × BLADE_R_OUT 码(见 tools/assetgen/gen_moonslash.py 的 VIEW)。
 	## 这条把「贴图有多少像素」和「它要盖住多大地方」焊在一起 ——
 	## 改了 MOON_CELL / BLADE_R_OUT 而没同步改 MOON_PIXEL_SIZE, 素材就会和判定范围对不上。
 	var span_m: float = 1.05 * EQ.BLADE_R_OUT * _s.WS

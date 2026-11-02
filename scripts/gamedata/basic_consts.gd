@@ -20,7 +20,7 @@ extends RefCounted
 ## ★2026-08-29 3% → 4.5%: 同时把这一段从"不吃魔抗的定额"改成**真吃魔抗**
 ##   (`_dot_after_resist`)。实测一场真实对局 387 次挨打的平均魔抗倍率 0.6745
 ##   ⇒ 0.03 / 0.6745 = 0.0445 ≈ 0.045, **平均强度不变**但从此魔抗能挡它。
-##   推导与探针见 `tests/_probe_armor_dist.gd` 与 shell_system.RELEASE_DMG_PCT 头注。
+##   推导与探针见 `tests/probes/_probe_armor_dist.gd` 与 shell_system.RELEASE_DMG_PCT 头注。
 const HEADLESS_BITE_MAXHP := 0.045
 ## 近战单位的射程被装备拉到这个值以上时, 普攻【改走弹道】(不再瞬发)。
 ## ★2026-08-29 由来: 手半剑 084 把近战携带者射程改成 450 码却不改 `melee` 标记

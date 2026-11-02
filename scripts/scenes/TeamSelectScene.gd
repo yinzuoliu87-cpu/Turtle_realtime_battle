@@ -25,7 +25,7 @@ const RL := {
 	##   「整个背景图，每个方正条条框框的地方，你都没有注意吗？」「你这还是一股浏览器的感觉啊，压根没有游戏的感觉」
 	##   原来 select-bg.png 烤着旧回合制版式(6 卡槽 + 前/后排横幅 / 龟池凹槽 / 右栏两格 / 绿牌 / 两块小木托),
 	##   界面一层层贴在上面, 8 块里 6 块对不上(网格伸出凹槽 45px、技能那行掉出右栏、顶栏方块盖住木托……)。
-	##   ⇒ 背景只留桌面和四周道具(tools/build_select_bg.py, 源图存 tools/art_src/), 框全部由代码按背包页那一套画:
+	##   ⇒ 背景只留桌面和四周道具(tools/assetgen/build_select_bg.py, 源图存 tools/art_src/), 框全部由代码按背包页那一套画:
 	##   统领 = 背包同款大卡(UnitCardArt) / 龟池 = 同款小卡 / 详情 = 说明卡底板 insp-card / 顶栏 = ← + 像素标题 + 木牌签。
 	##   下面就是这些框的位置(设计空间 1647×955, 与 _stage_to_screen 同一变换)。
 	## ★带高 = 778 − 62 = 716(原来 783 − 63 = 720)—— 别超 760(超了 fit_h 掉到 cover 以下, iPhone 左右露木条, 见 _stage_scale);
@@ -1542,7 +1542,7 @@ func _on_start() -> void:
 	## ★★★兜底走 `_P2C.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28)。
 	##   `lockout_now_override` **不删**(`verify_close_lockout` / `verify_week_phase_write` 在用),
 	##   它只是**更细的一层**; 但**真实时钟那条路只剩一条**。
-	##   实测(`tests/_probe_oneclock.gd`, 修前): 全局缝钉在「周五 22:55 封盘窗内」
+	##   实测(`tests/probes/_probe_oneclock.gd`, 修前): 全局缝钉在「周五 22:55 封盘窗内」
 	##   而 `lockout_now_override` 留 0 ⇒ 这条闸**照旧放过去**(left_team 被写了 3 只) ——
 	##   因为它读的是真实系统钟。下面那句 `week_phase` 也跟着记错阶段。
 	##   memory `fb-second-clock-drops-events`。

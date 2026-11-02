@@ -3,7 +3,7 @@
 ## ═════════════════════════════════════════════════════════════════════
 ##  为什么要有这东西: 这一屏看不见这个游戏
 ## ═════════════════════════════════════════════════════════════════════
-## 探针 `tests/_probe_wall_look.gd` 实测: `SettingsScene._maybe_login_wall()` 把 self 下的
+## 探针 `tests/probes/_probe_wall_look.gd` 实测: `SettingsScene._maybe_login_wall()` 把 self 下的
 ## Control **整批藏掉**, 连 `_bg()` 建的底色 / 平铺砖 / 渐变一起藏(探针打出那三个
 ## 节点都是 `visible=false`) ⇒ 玩家看到的是一块深蓝面板压在**自动载入的
 ## `PersistentBg` 那张平铺花砖**上 —— 全屏没有任何属于这个游戏的东西。
@@ -28,7 +28,7 @@ const WALL_ART_TEX := "res://assets/sprites/menu/menu-bg-crowd.png"
 ## 斗龟场的标(主菜单 `_title()` 用的同一张的静帧版)。
 const WALL_LOGO_TEX := "res://assets/sprites/menu/menu-title.png"
 ## 图上再压一层暗。★那张图生成时已经压过 ×0.62
-##   (见 `tools/build_menu_crowd_bg.py`), 但它上面还要摧一个对话框 ——
+##   (见 `tools/assetgen/build_menu_crowd_bg.py`), 但它上面还要摧一个对话框 ——
 ##   对比度不够字就读不清。它同时是原来那层 0.65 纯黑遮罩的**替代品**:
 ##   遮罩本身还在(它负责吃点击), 只是被这张图盖住了。
 const SHADE_A := 0.34

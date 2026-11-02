@@ -251,7 +251,7 @@ func _step_projectiles(delta: float) -> void:
 		##    全仓此前所有弹体都靠 `wisp_dir` 旋转贴图，这是第一个不旋转的。
 		## ★格数由贴图自己的 `hframes` 决定, 不写死 —— 001 一开始做成 8 方向, 实测发现
 		##   【8 格里只有 1 格被用过】(探针量飞行全程 di 恒 0), 而另外 7 格贡献了全部素材缺陷,
-		##   改成 4 方向(见 tools/build_dir_sheet.py 头注)。写死格数的话这里就得跟着改两处。
+		##   改成 4 方向(见 tools/assetgen/build_dir_sheet.py 头注)。写死格数的话这里就得跟着改两处。
 		if pr.get("dirsel", false) and node is Sprite3D and battle._cam != null:
 			var spd: Sprite3D = node as Sprite3D
 			var nd: int = maxi(1, int(spd.hframes))
@@ -701,7 +701,7 @@ func _fire_explosion(pos2d: Vector2) -> void:
 ## ── 001 飞斩剑气·五段结构的素材与规格(2026-09-06 重做) ──
 ## 表布局: 横 4 格 = 方向(E/N/W/S), 纵 4 格 = 4 帧循环。
 ## ★四格由 1 张基准帧经 **水平镜像 + 90° 旋转** 推出 —— 只有这两种变换对像素无损。
-## ★4 不是 8。改的理由与三条实测证据见 tools/build_dir_sheet.py 头注
+## ★4 不是 8。改的理由与三条实测证据见 tools/assetgen/build_dir_sheet.py 头注
 ## (8 格里只有 1 格被用过 / 45° 旋转对像素有损 / 第二张基准帧两条路都拿不到)。
 const TARGET_BODY_H_FANG := 1.55   # ★2.35 太大: 残影是等大复制, 叠起来是一坨粗块不是一条细带
 ## ★★不能只换素材不管可读性(2026-09-07 用户实拍:「这个感觉不如之前的射一颗毒牙」)。

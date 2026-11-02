@@ -12,7 +12,7 @@ extends RefCounted
 ##   ① 起止点直连不被任何洞挡住 ⇒ 直接 [起, 止]
 ##   ② 否则 Dijkstra: 节点 = 洞的顶点 + 起止点; 边 = 不穿过任何洞内部的线段; 只保留「切线」边(最短路只会用到切线)。
 ##   全部只用 + - * / sqrt 与比较(DetMath 的规矩) ⇒ 各平台逐位一致。
-##   与引擎寻路(optimize=true 的拉直路径)几何上是同一条最短路 —— 探针 `tests/_probe_det_nav.gd` 量过两者的偏差。
+##   与引擎寻路(optimize=true 的拉直路径)几何上是同一条最短路 —— 探针 `tests/probes/_probe_det_nav.gd` 量过两者的偏差。
 ##
 ## 门禁开关: DetMath.raw = true ⇒ 退回引擎寻路(+ DetMath.perturb 扰动每个路点), 供 verify_determinism_ulp 做「加固前」对照。
 

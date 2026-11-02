@@ -21,7 +21,7 @@ extends Node
 ##   单段宽(横扫描线游程, 按面积加权) 38.2px / 火高 149 = **0.256** ⇒ 80 格里 20.5 texel
 ##   连通块 38 个, **82% 是 ≤12px 的碎火星**
 ##
-## ★★我在这一件上连烤废四版, 每一版的病都写进 tools/blender_truefire.py 头注:
+## ★★我在这一件上连烤废四版, 每一版的病都写进 tools/assetgen/blender_truefire.py 头注:
 ##   ①实心橙板 ②细树枝 ③**一丛橙色的草**(它真进了游戏, 实拍才看出来) ④光滑面条+水洼。
 ##   ⇒ 判据落在**能把这四版判红**的量上: 分档、填充率、宽高比、循环, 不是「有没有贴图」。
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")

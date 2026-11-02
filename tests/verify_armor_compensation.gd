@@ -12,7 +12,7 @@ extends Node
 ## 本轮把三处从"不吃抗性的定额伤害"改成真吃抗性，并**按实测护甲分布补偿系数**，
 ## 使【平均强度不变】而【护甲从此能挡它】。
 ##
-## ★补偿倍率是量出来的不是拍的：`tests/_probe_armor_dist.gd` 挂在产品自己的伤害管线上，
+## ★补偿倍率是量出来的不是拍的：`tests/probes/_probe_armor_dist.gd` 挂在产品自己的伤害管线上，
 ##   记下一场真实对局里**每一次挨打时目标此刻的护甲**（387 次）：
 ##     护甲 p10=10 · p25=10 · 中位=14 · p75=34 · p90=52 · 最大=85
 ##     （建表值只有 9~21 —— 局内被装备/岩层/铁壁/护盾 buff 抬上去了，所以必须量运行时）
@@ -39,7 +39,7 @@ const ShellSystem := preload("res://scripts/systems/skills/shell_system.gd")
 const HookBombSystem := preload("res://scripts/systems/equip/hookbomb_system.gd")
 const BasicConsts := preload("res://scripts/gamedata/basic_consts.gd")
 
-## ★实测值（tests/_probe_armor_dist.gd，387 次真实挨打）。改这两个数 = 重新量过。
+## ★实测值（tests/probes/_probe_armor_dist.gd，387 次真实挨打）。改这两个数 = 重新量过。
 const ARMOR_AVG_MULT := 0.6685      # 物理：一发伤害平均会被护甲砍到原来的多少
 const MAGIC_AVG_MULT := 0.6745      # 魔法：同上，按魔抗
 ## 允许的偏差：系数要凑成好记的整数（0.598 → 0.60），不可能精确等于。

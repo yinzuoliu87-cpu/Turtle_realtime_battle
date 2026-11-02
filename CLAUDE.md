@@ -176,7 +176,8 @@ python tools/prod_flags.py force-update <版本> --yes-prod   # 苹果 Beta 审�
 | 历史 / 作废文档 | `docs/archive/` | |
 | 发版 / 部署 / 运维脚本 | `tools/`（本机）、`server/`（服务器端） | **进仓库**，不留在会话临时目录（临时目录里的脚本换个会话就找不到；0.22.x 那 30 多份按版本复制的脚本就是这么来的） |
 | 一次性脚本 | `tools/oneoff/` | |
-| 素材生成脚本 | 新写的放 `tools/assetgen/` | 生成结果确定性、重跑逐字节相同；存量 64 个还在 `tools/` 根目录（`blender_*` `build_*` `bake_*` `gen_*`），方案书 20261102 第二期搬 |
+| 素材生成脚本 | `tools/assetgen/` | 生成结果确定性、重跑逐字节相同；脚本里算仓库根目录是往上三层（`tools/README.md`） |
+| 探针 / 一次性诊断场景 | `tests/probes/` | 门禁只自动发现 `tests/verify_*.gd`；夹具与截图脚本（`_shot*` 等）仍在 `tests/` |
 
 根目录只许白名单里的那十几个文件（`repo_hygiene_audit` ①）。
 

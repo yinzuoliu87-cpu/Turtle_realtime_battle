@@ -261,7 +261,7 @@ func _t_real_entry() -> void:
 #
 # ★★为什么非要这一段(2026-09-28): 这两个函数的兜底原来是**就地**
 #   `int(Time.get_unix_time_from_system())` —— 它们和全局缝**互不相通**。
-#   实测(`tests/_probe_oneclock.gd`, 修前): 缝钉「周日 21:00」而不传 `now_override`
+#   实测(`tests/probes/_probe_oneclock.gd`, 修前): 缝钉「周日 21:00」而不传 `now_override`
 #   ⇒ `settle_ranked_close()` 返回 **0 场**、`settle_gauntlet_close()` 也 **0 场**,
 #   而同一刻 `phase_at_utc(now_utc())` 已经说 `finals` —— **整条链说的不是同一天**。
 #   修后同一次实测: 5 场 / 2 场 / `finals`。memory `fb-second-clock-drops-events`。

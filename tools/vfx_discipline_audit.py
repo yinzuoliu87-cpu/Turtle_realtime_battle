@@ -9,7 +9,7 @@
   ① 「**为什么那个地面的东西糊弄啊**」
      → `_skill_ring` 换了像素贴图, 却把原来那套 `tween pixel_size 连续放大` 原样留着。
        连续缩放像素贴图 = 非整数倍缩放 = 像素网格被打烂。
-       这条白纸黑字写在 `tools/blender_ring.py:13` 的头注里, 还抄了用户原话
+       这条白纸黑字写在 `tools/assetgen/blender_ring.py:13` 的头注里, 还抄了用户原话
        「**最好不要程序弄吧**」; `equip_system.gd:1169` 与 `battle_ballistics.gd:675`
        也各写了一遍。我照样犯。
 
@@ -376,7 +376,7 @@ def main():
 
     TITLES = {
         "a_scale": ("硬边像素贴图被 tween **连续缩放**(非整数倍 ⇒ 像素网格被打烂)",
-                    "改成【逐帧烤好、pixel_size 固定只切帧】(做法见 tools/blender_ring.py);"
+                    "改成【逐帧烤好、pixel_size 固定只切帧】(做法见 tools/assetgen/blender_ring.py);"
                     "\n    确实该缩的加 `# vfx-scale-ok: 原因`, 原因会被打印。"),
         "b_generators": ("**手写生成器**画素材(公式算像素只适合占位)",
                          "改走 tools/blender_*.py 那条(真 3D 几何 + 真光照);"

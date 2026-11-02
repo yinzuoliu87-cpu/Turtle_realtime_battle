@@ -5,7 +5,7 @@ extends Node
 ##   "抄了会崩 / 会把龟壳废掉一整场"的, 进了 CopyRules.UNCOPYABLE。
 ##   但**精英小将的【吞噬】是同一个机制**(偷敌人主动技再放出来), 走的却是另一套实现,
 ##   它只过滤了"被动技"与"未实装", **黑名单一个都不看**。
-##   实测(tests/_probe_devour.gd): 8 个黑名单技能全偷得到, 其中
+##   实测(tests/probes/_probe_devour.gd): 8 个黑名单技能全偷得到, 其中
 ##     · headlessSoulStrike → 小将龟能锁还剩 998 秒 + 射程 +60(废掉一整场)
 ##     · angelAscend        → 射程永久 +25
 ##

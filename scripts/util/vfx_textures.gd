@@ -233,7 +233,7 @@ static func _make_ring_texture(_col: Color) -> ImageTexture:   # 共享技能环
 ##   「**又是程序生成的环？哪个商业游戏是你这么做啊**」。
 ##   旧实现按公式复算的规格: RGB 1 色 / **半透明 4184 像素 / 全不透明 0 像素** /
 ##   alpha **148 种连续斜坡** / 峰值只有 **153/255** —— 同时踩「不是像素画」和「淡出病」,
-##   而它封着全游戏 **187 处调用**。⇒ 换成 `tools/gen_skillring.py` 烤的 96×96:
+##   而它封着全游戏 **187 处调用**。⇒ 换成 `tools/assetgen/gen_skillring.py` 烤的 96×96:
 ##   **4 色纯灰(R=G=B)/ 0 半透 / 六段能量弧带断口**, 几何(带心 0.82、半宽 0.18)一字未动。
 ##   ★峰值亮度由 `RealtimeBattle3DScene.RING_PEAK_A` 承接(1.0 → 0.6), 感知亮度与换前等价 ——
 ##     这一轮**不顺手把全游戏调亮**, 那是另一个决定。
@@ -521,7 +521,7 @@ static func _make_bladewall_texture(col: Color) -> ImageTexture:   # 阔剑007�
 static func _make_shellhalf_texture() -> ImageTexture:   # 守护贝壳018: **烤好的像素半壳**(玉青壳身+壳沟+奶金壳缘+深描边)
 ## ★★2026-09-11 换掉逐像素现算。从 Godot 导出真产物量过: 原来是 76×42 / **706 色** / 159 半透 ——
 ##   形状是认真画的(半穹顶/放射壳沟/奶金缘/描边, 全部保留), 坏在**颜色是连续插值**出来的。
-##   现在由 `tools/blender_shellguard.py` 烤成 **6 色 / 0 半透**, 尺寸 76×42 一字未动
+##   现在由 `tools/assetgen/blender_shellguard.py` 烤成 **6 色 / 0 半透**, 尺寸 76×42 一字未动
 ##   ⇒ 调用点的 pixel_size 换算不用改。
 	var img: Image = (load("res://assets/sprites/vfx/shell-guard.png") as Texture2D).get_image()
 	return tag(ImageTexture.create_from_image(img), "_make_shellhalf_texture", [])

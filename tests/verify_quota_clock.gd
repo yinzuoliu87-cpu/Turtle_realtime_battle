@@ -4,7 +4,7 @@ extends Node
 ## ══════════════════════════════════════════════════════════════════════
 ##  这份门禁守什么 —— 以及它是怎么被逼出来的
 ## ══════════════════════════════════════════════════════════════════════
-## 病灶(探针 `tests/_probe_twoclocks.gd` 实测, 不是推理出来的):
+## 病灶(探针 `tests/probes/_probe_twoclocks.gd` 实测, 不是推理出来的):
 ##   `MainMenuScene._build_page_buttons()` 原来调 `GameState.ranked_quota_full()`
 ##   **不带参**, 而那个函数的兜底是**真实系统钟** —— 既不过屏内的 `clock_override_ts`,
 ##   也不过全局缝 `phase2_config.now_override_ts`。于是同一屏上有两条钟:

@@ -7,7 +7,7 @@ extends Node
 ##   单发 ≥ 阈值 400(顶档 8% × 最大生命 ≥ 5000)时, 对面挨一发就回敬一发, 一路互弹。
 ##   而【阵亡】要等 `_apply_damage_from` 末尾的 `_kill` 才落地 —— 在嵌套的受击钩子里,
 ##   血已经是 0 的单位 `alive` 还是 true ⇒ 链永远不会因为有人死了而停下。
-##   探针(tests/_probe_shield_wave_recursion.gd)实测: 1v1 · 6000 血 · 一下 400 的普攻
+##   探针(tests/probes/_probe_shield_wave_recursion.gd)实测: 1v1 · 6000 血 · 一下 400 的普攻
 ##   ⇒ 同步引出 350 发冲击波、嵌套 292 层、`Stack overflow`; 5v5 同条件一帧双方全灭。
 ## ★修法: 冲击波打出去的那一段【不给挨打的那一方攒怒气】(反击照旧) —— 与「反伤不触发反伤」、
 ##   圣光反击 from_equip=true 同一口径; 单边盾羁绊时挨打方没有档位, 本来就不攒, 数值一个不变。

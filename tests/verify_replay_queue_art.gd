@@ -1,7 +1,7 @@
 extends Node
 ## verify_replay_queue_art.gd — 回放操作条 + 闯关排队等待屏的专用像素素材门禁(2026-10-27, 用户看了风格稿回「行吧」)
 ##
-## 图: tools/build_replay_queue_ui.py 生成, 存 1 倍源图(assets/sprites/ui/replay_bar/、queue_wait/);
+## 图: tools/assetgen/build_replay_queue_ui.py 生成, 存 1 倍源图(assets/sprites/ui/replay_bar/、queue_wait/);
 ##   运行时 PixelKey 最近邻 ×3(scripts/util/pixel_key.gd); 回放条 replay_controls.gd、等待屏 queue_wait_view.gd。
 ##   ① 表对账: 两个目录里的每一张 png 都被代码按完整路径引用(没有孤儿), 代码里引用的每一张都在盘上、能加载
 ##   ② 1 倍源图、真像素画: alpha 只有 0 / 255(硬边、零半透明)、每张 ≤ 64 色(tools/pixel_art_audit.py 的判据)
@@ -16,7 +16,7 @@ extends Node
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_replay_queue_art.tscn --quit-after 3000
 
-const GEN := "res://tools/build_replay_queue_ui.py"
+const GEN := "res://tools/assetgen/build_replay_queue_ui.py"
 const DIRS := ["res://assets/sprites/ui/replay_bar/", "res://assets/sprites/ui/queue_wait/"]
 const CODE := ["res://scripts/scenes/battle/replay_controls.gd", "res://scripts/scenes/queue_wait_view.gd"]
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")

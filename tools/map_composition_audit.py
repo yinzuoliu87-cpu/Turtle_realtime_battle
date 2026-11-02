@@ -10,7 +10,7 @@ A. 可玩性硬约束(改地图时最容易破的三条)
       最难读, 而那块地方单位密度最高。★这正是改前 v0 的毛病: 亮青池子恰好铺满接战区。
 
 B. 可重跑性
-   ④ arena.json 必须与 tools/gen_arena_map.py 【重跑的结果逐格一致】。
+   ④ arena.json 必须与 tools/assetgen/gen_arena_map.py 【重跑的结果逐格一致】。
       地图是脚本生成的; 一旦有人用 MAPEDIT 手刷一下就存盘, 生成器就与事实脱钩,
       下次想调构图只能对着 493 个数字手改。这条断言把"生成器是事实源"焊死。
       (顺带: MAPEDIT 的 save() 用 JSON.stringify 无缩进, 一存就把文件压成一整行。)
@@ -22,7 +22,7 @@ import json
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "assetgen"))   # 生成脚本 2026-11-02 起在 tools/assetgen/
 import gen_arena_map as G                                    # noqa: E402
 
 MAP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -114,7 +114,7 @@ def main():
     # ── ④ 与生成器重跑结果逐格一致 ──
     regen = G.build()
     diff = [(r, c) for r in range(h) for c in range(w) if int(grid[r][c]) != int(regen[r][c])]
-    print("  ④ 与 tools/gen_arena_map.py 重跑结果的分歧: %d 格" % len(diff))
+    print("  ④ 与 tools/assetgen/gen_arena_map.py 重跑结果的分歧: %d 格" % len(diff))
     if diff:
         fails.append("④ arena.json 与生成器【不一致】%d 格 —— 有人手刷过(MAPEDIT 存盘会覆盖)。"
                      "要么重跑生成器, 要么把改动写回生成器: %s" % (len(diff), diff[:8]))

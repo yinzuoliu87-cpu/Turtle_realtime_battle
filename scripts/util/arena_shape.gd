@@ -17,14 +17,14 @@ extends RefCounted
 ##   ⇒ 想调「多圆 / 留多少活动面积」只动 `RealtimeBattle3DScene.ARENA_SHAPE_N` 一个数。
 ##
 ## ★★这里**不放** ARENA 本身 —— 战场矩形是主场景的常量, 本文件只做形状数学,
-##   rect 由调用方传进来。这样地图生成器 `tools/gen_arena_map.py` 与门禁也能用同一套口径。
+##   rect 由调用方传进来。这样地图生成器 `tools/assetgen/gen_arena_map.py` 与门禁也能用同一套口径。
 ##
 ## ⚠ 放在 `scripts/util/` 而不是主场景: CLAUDE.md §5「不在 `_sim_step` 调用链上的不进主文件」——
 ##   这是纯几何工具, 全项目复用, 属于基础层。
 
 
 ## ★形状指数(本项目唯一一处)。2=正椭圆(面积 π/4≈78.5%) / 4=圆角方(≈87%) / 很大=退回矩形。
-## ⚠ 改它要同步改 `tools/gen_arena_map.py` 的 `ISLE`(画出来的岛) —— 不一致就又回到
+## ⚠ 改它要同步改 `tools/assetgen/gen_arena_map.py` 的 `ISLE`(画出来的岛) —— 不一致就又回到
 ##   「看得见的和走得到的不是一个东西」; 判据 `tests/verify_island_boundary.gd` 守着这条。
 const N := 2.0
 

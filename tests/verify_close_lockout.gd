@@ -141,7 +141,7 @@ func _ready() -> void:
 	## ③ ★★★同一条闸, 时刻从**全局缝**来 (`phase2_config.now_override_ts`, 2026-09-28)
 	##
 	## ★★为什么非要这一条: 这条闸的兜底原来是**就地** `Time.get_unix_time_from_system()`
-	##   —— 它和全局缝**互不相通**。实测(`tests/_probe_oneclock.gd`, 修前):
+	##   —— 它和全局缝**互不相通**。实测(`tests/probes/_probe_oneclock.gd`, 修前):
 	##   缝钉在「周五 22:55 封盘窗内」而 `lockout_now_override` 留 0 ⇒ 这条闸
 	##   **照旧放过去**(left_team 被写了 3 只), 因为它读的是真实系统钟。
 	##   于是「整屏钉在收盘前五分钟」的端到端场景里, 主菜单已经在喊封盘、

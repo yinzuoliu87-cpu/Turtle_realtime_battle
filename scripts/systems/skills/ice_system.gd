@@ -188,7 +188,7 @@ func _ice_burst(pos2d: Vector2) -> void:
 ##   实拍(7.40 秒那帧)量出来是一团 **144×100 屏幕像素、亮度中位 41** 的暗斑,
 ##   而龟只有 45 像素高 ⇒ **3.2 个龟宽的一坨暗色油污糊在地上**, 读不出"霜"。
 ##   CLAUDE.md 明令不许拿程序生成的圆环白球敷衍(memory [[fb-vfx-defect-families]])。
-## ★换成真像素冰晶表 `frost-mist.png`(tools/bake_frost.py), 帧推进挂 `_anim_fx` 走**游戏钟**
+## ★换成真像素冰晶表 `frost-mist.png`(tools/assetgen/bake_frost.py), 帧推进挂 `_anim_fx` 走**游戏钟**
 ##   —— 不用 tween(tween 走未钳制 delta = 第二条钟)。
 const FROST_MIST_TEX := "res://assets/sprites/vfx/frost-mist.png"
 const FROST_MIST_FRAMES := 6

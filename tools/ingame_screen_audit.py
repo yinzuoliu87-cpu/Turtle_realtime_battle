@@ -25,13 +25,13 @@ LIMITS 的写法全部沿用它 —— **不另发明一套**(memory [[fb-hand-r
     ingame_annotations.json      ← 人工标注 + 量出的几何(事实源)
     ig_results/ ig_shop/ ig_equip/  ← 参考图(公开界面截图, 只作内部度量参考)
     index.md                     ← 每张图的游戏名 / 原站分类 / 原图 URL / 分辨率
-    ours_*.json                  ← 我们三屏的真实控件几何(由 tests/_probe_ig_geom.gd 倒出)
+    ours_*.json                  ← 我们三屏的真实控件几何(由 tests/probes/_probe_ig_geom.gd 倒出)
 
 我们那一侧怎么来(★量真控件 `get_global_rect()`, 不读常量):
 
     IG_MODE=settle IG_UNITS=14 IG_W=1280 IG_H=720 IG_OUT=C:/tmp/uiref/ours_settle_1280.json \\
     APPDATA=<每屏一份私有目录> NO_SAVE=1 SHIP=1 TURTLE_SUPABASE=" " \\
-    <godot> --headless --audio-driver Dummy --path . res://tests/_probe_ig_geom.tscn --quit-after 2600
+    <godot> --headless --audio-driver Dummy --path . res://tests/probes/_probe_ig_geom.tscn --quit-after 2600
 
   ★这一屏可以 `--headless`(只量矩形不看像素); 要**截图**才必须去掉 --headless(无头是 dummy renderer)。
   ★`NO_SAVE=1` + `gs.test_mode = true` 不是可选的 —— 商店/背包会写存档。

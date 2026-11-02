@@ -157,7 +157,7 @@ func _ready() -> void:
 	##   上面那份 SCENES 里有 `Settings.tscn`, 但它载出来的是**普通设置页**:
 	##   墙只在 `login_wall_on(后端开着, 邮箱为空)` 时才建, 而门禁给每个测试
 	##   `TURTLE_SUPABASE=" "` ⇒ `SB.enabled()` 恒假 ⇒ **墙从来不在场**。
-	##   探针 `tests/_probe_wall_hit.gd` 实测: 不注入 `acct_override` 时 `_email_layer = false`。
+	##   探针 `tests/probes/_probe_wall_hit.gd` 实测: 不注入 `acct_override` 时 `_email_layer = false`。
 	##   ⇒ 和战斗信息面板同一个道理(那个也不是独立场景) —— 要**单独把它建出来**才扫得到。
 	##   ★这一屏是每个新玩家看到的第一屏, 而本门禁守的正是「接了点击却收不到点击」——
 	##     墙上那两个钮 + 三个输入框要是哪天被一块 `MOUSE_FILTER_STOP` 的装饰层盖住,

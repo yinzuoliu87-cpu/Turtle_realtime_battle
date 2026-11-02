@@ -18,7 +18,7 @@ extends Node
 ##      —— 走真伤害入口记账再读表, 读写两边的类型键名对不上就红
 ##
 ## ★数据是合成的「双路 6v6」: 上路/下路两份快照, 合计每侧 8 行(3 统领 + 3 小将 + 龟蛋 + 训龟大师),
-##   与方案书 §2.1 实测的真实对局同形(真实对局的实拍走 tests/_probe_settle_real.gd)。
+##   与方案书 §2.1 实测的真实对局同形(真实对局的实拍走 tests/probes/_probe_settle_real.gd)。
 ##   合成而不打真对局: 门禁要确定性, 不吃随机阵容(memory fb-make-assertions-rng-insensitive)。
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_settle_pages.tscn --quit-after 6000

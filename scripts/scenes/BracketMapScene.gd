@@ -600,7 +600,7 @@ static func _reveal_sealed_from(bucket: Dictionary) -> bool:
 ## ★★★兜底走 `_P2C.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28)。
 ##   原来这一行是本屏**第二条独立的时钟**: 把全局缝钉在周一上午渲这屏,
 ##   `_L.default_view()` 照旧按**真实**时刻挑默认视图。
-##   实测(`tests/_probe_oneclock.gd`, 修前): 注「周一 10:00」与注「周日 21:00」
+##   实测(`tests/probes/_probe_oneclock.gd`, 修前): 注「周一 10:00」与注「周日 21:00」
 ##   量出来是**同一个** `_clock()` 值(= 真实系统钟 09-28 21:37), 默认视图两次都是 `finals`
 ##   —— 注入值差六天, 这一屏一个字都没变。memory `fb-second-clock-drops-events`。
 ## ★`_now_override` **不删**, 留作**更细的一层**(`verify_bracket_map` 的 `set_data(..., now)`
@@ -2869,7 +2869,7 @@ func _on_poll() -> void:
 ## 「问名册」走到哪一步的指纹: 回没回音 / 回的是什么(还没分组 / 人太少 / 连不上 / 没有我这一组 = 空)。
 ## ★2026-10-31 周日彩排 P13: 原来指纹只看 size / round / done ⇒「还没回音」({})与「回音是 size 0 的那几种」指纹相同,
 ##   观赛那份先到、先重画过一次之后, finals_view 回来就再也不重画 ⇒ 屏停在「正在查询分组」
-##   (探针 tests/_probe_bracket_wait.gd: 回包 661 ms 就到了, 屏 65 秒不换)。门禁 tests/verify_bracket_first_answer.gd。
+##   (探针 tests/probes/_probe_bracket_wait.gd: 回包 661 ms 就到了, 屏 65 秒不换)。门禁 tests/verify_bracket_first_answer.gd。
 static func feed_sig(tried: bool, v: Dictionary) -> String:
 	return "|f%d:%s:%d" % [1 if tried else 0, str(v.get("reason", "")), int(v.get("entered", 0))]
 

@@ -588,7 +588,7 @@ func dual_lane_winner() -> String:
 ##
 ## ★★A3(大轮赛制 v2·2026-09-17)。判据要同时满足两条, 少一条就会误记:
 ##   ① 两路都有结果 —— **判负收尾局的 `lane_results` 是空字典**(2026-09-17 探针
-##      tests/_probe_draw_surrender.gd 实测: 投降后 `{}`、`dual_lane_winner()` 返回 "")。
+##      tests/probes/_probe_draw_surrender.gd 实测: 投降后 `{}`、`dual_lane_winner()` 返回 "")。
 ##      不挡住就会把它也当成一种"没打终极", 而它压根没打完。(投降 2026-10-19 已删; 现在只剩补打的「开局即判负」)
 ##   ② 两路是【同一方】赢 ⇒ `match_winner` 非空 = 不需要终极战场。
 ## ★放在这一层而不是主场景: 这里才是持有 `lane_results` 与 `_DualLane` 的地方,
@@ -625,7 +625,7 @@ func gauntlet_eligible() -> bool:
 ##   `promoted` 全仓只有一个写入点(`settle_ranked_close()`), 而那个函数开头就
 ##   `if now < ranked_close_ts(...)  return 0` ⇒ **周五 23:00 UTC 之前谁也不会被写 true**。
 ##   拿它去回答「这一周后面还有东西打吗」, 对**已经打够胜场**的人就是说谎:
-##   2026-09-28 探针 `tests/_probe_promote_ahead.gd` 实测 `season_wins=20`(线=5)、
+##   2026-09-28 探针 `tests/probes/_probe_promote_ahead.gd` 实测 `season_wins=20`(线=5)、
 ##   配额打满、0 命的玩家, 周一~周五点开打得到「💀 本大轮已出局 · 下周一开新的一轮」,
 ##   而他周六铁定有 6 场闯关赛可打。那一支在收盘前**七天里 0 次可达**。
 ##
@@ -653,7 +653,7 @@ func gauntlet_can_play(now: int = 0) -> bool:
 	##   (它自己就是 `int(Time.get_unix_time_from_system())`) ⇒ 玩家路径一字未动。
 	## ★★为什么要改: 本函数原来是全仓**唯一不听该缝**的时钟判据 ——
 	##   门禁/实拍把整屏钉在周六, 它依旧回答真实的周二 ⇒ 一屏两条钟
-	##   (探针 `tests/_probe_twoclocks.gd`: 10 个时刻里 5 个答案相反)。
+	##   (探针 `tests/probes/_probe_twoclocks.gd`: 10 个时刻里 5 个答案相反)。
 	## ⚠ `ensure_season()` / `is_season_expired()` / `start_new_season()` 那几处
 	##   **故意没动**: 它们会 `save()` / 滚下一轮 / 补发配额 —— 接上缝之后,
 	##   凡钉过时刻的门禁(verify_bracket_map / close_lockout / matchmaking_phase)
@@ -952,7 +952,7 @@ func ranked_quota_full(now: int = 0) -> bool:
 	##   (它自己就是 `int(Time.get_unix_time_from_system())`) ⇒ 玩家路径一字未动。
 	## ★★为什么要改: 本函数原来是全仓**唯一不听该缝**的时钟判据 ——
 	##   门禁/实拍把整屏钉在周六, 它依旧回答真实的周二 ⇒ 一屏两条钟
-	##   (探针 `tests/_probe_twoclocks.gd`: 10 个时刻里 5 个答案相反)。
+	##   (探针 `tests/probes/_probe_twoclocks.gd`: 10 个时刻里 5 个答案相反)。
 	## ⚠ `ensure_season()` / `is_season_expired()` / `start_new_season()` 那几处
 	##   **故意没动**: 它们会 `save()` / 滚下一轮 / 补发配额 —— 接上缝之后,
 	##   凡钉过时刻的门禁(verify_bracket_map / close_lockout / matchmaking_phase)
@@ -1736,7 +1736,7 @@ var test_mode: bool = false
 ## ★★【第二道闸】`NO_SAVE=1`(2026-09-19) —— headless 那道闸**盖不住要渲染的台子**。
 ##   VFXLAB / 评审台 / 调试场 / 截图台都必须真渲染 ⇒ 都不是 headless ⇒ 上面那句不触发。
 ##   而 `_ready()` 里 `ensure_season()` 会 `save()`, **开机那一刻就把玩家存档改写了**,
-##   台子自己再怎么置 `test_mode` 也晚了(探针 `tests/_probe_save_pollution.gd` 实证:
+##   台子自己再怎么置 `test_mode` 也晚了(探针 `tests/probes/_probe_save_pollution.gd` 实证:
 ##   全新空 user:// 下, 场景 `_ready` 时刻 `savegame.json` 已存在 · test_mode=false)。
 ##   存档目录里那两个 `savegame.json.bak-*-被测试污染` / `-被演示污染` 就是历史账。
 ##   ⇒ 凡是「要渲染但不是玩家在玩」的进程, 一律带 `NO_SAVE=1`。
@@ -1871,7 +1871,7 @@ func _save_dict() -> Dictionary:
 
 ## 存档落盘。★★★**原子写**: 写 `.tmp` → 旧档改名 `.bak` → `.tmp` 改名正式档。
 ##
-## 为什么非这样不可(2026-09-27 探针 `tests/_probe_save_torn.gd` 实测):
+## 为什么非这样不可(2026-09-27 探针 `tests/probes/_probe_save_torn.gd` 实测):
 ##   原来是**直接覆写**(`FileAccess.WRITE` 先把文件截断为 0, 再写, 再 close)。
 ##   手机上进程随时被系统杀掉 —— 杀在这中间, 盘上就是一份残档;
 ##   而 `_load()` 遇到坏 JSON 直接 return ⇒ **下次启动是全新档**。
@@ -2378,7 +2378,7 @@ func is_season_expired() -> bool:
 ##   U9(2026-09-16)用户拍板「0 命的话就只能等到周 6 周日观赛了, **不再打表演赛**」。
 ##   留着它很危险: 它正是「某一天没人管 ⇒ 可以无限打」那一类 bug 的说明书
 ##   (v0.19.458 刚修掉周日那一个)。
-## ★现在的真实行为(探针 `tests/_probe_hearts_matrix.gd` 七天 × 命数 × 资格 全矩阵实测):
+## ★现在的真实行为(探针 `tests/probes/_probe_hearts_matrix.gd` 七天 × 命数 × 资格 全矩阵实测):
 ##   0 命的人**只有一格能打** —— 周六 + 已拿到闯关赛资格 + 闯关赛还没打完,
 ##   那正好兑现周一~五那句「💀 本大轮已出局 · 但你已晋级, 周六闯关赛见」。
 func is_eliminated() -> bool:
@@ -2481,7 +2481,7 @@ func settle_ranked_close(now_override: int = 0) -> int:
 	## ★★★兜底走 `_P2.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28)。
 	##   `now_override` **不删**(它是**更细的一层**, `verify_ranked_close` ②③④ 与
 	##   `verify_gauntlet_ahead` 在用); 但**真实时钟那条路只剩一条**。
-	##   实测(`tests/_probe_oneclock.gd`, 修前): 全局缝钉「周日 21:00」而不传 `now_override`
+	##   实测(`tests/probes/_probe_oneclock.gd`, 修前): 全局缝钉「周日 21:00」而不传 `now_override`
 	##   ⇒ 本函数返回 **0 场**(它读的是真实系统钟 = 周一, 收盘还没到),
 	##   而同一刻 `_P2.phase_at_utc(_P2.now_utc())` 已经说 `finals` —— **整条链说的不是同一天**。
 	##   这一条是玩家真会碰到的: `ensure_season()` 不传参, 走的正是这条兜底。

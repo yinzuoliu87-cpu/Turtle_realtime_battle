@@ -522,6 +522,6 @@ func _ghost_break(u: Dictionary, _star_i: int) -> void:
 		n += 1
 	u["_ghost_burst_n"] = int(u.get("_ghost_burst_n", 0)) + 1
 	u["_ghost_cursed_n"] = int(u.get("_ghost_cursed_n", 0)) + n
-	## 演出与诅咒同一步: 浮囊炸开 + 诅咒水波第 0 帧泡沫外沿就在 GHOST_BURST_R(tools/blender_bladder_fx.py)
+	## 演出与诅咒同一步: 浮囊炸开 + 诅咒水波第 0 帧泡沫外沿就在 GHOST_BURST_R(tools/assetgen/blender_bladder_fx.py)
 	_vfx.bladder_pop(u["pos"], u)
 	_vfx.curse_wave(u["pos"], GHOST_BURST_R)

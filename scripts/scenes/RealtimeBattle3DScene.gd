@@ -399,7 +399,7 @@ const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技�
 const TRAINER_SPRITE := "res://assets/sprites/pets/trainer.png"
 
 const SPRITE_DIR := "res://assets/sprites/"           # pets.json img 相对此根
-const RING_FRAMES := 8   # 冲击环烤好的扩散帧数(tools/blender_ring.py 渲)
+const RING_FRAMES := 8   # 冲击环烤好的扩散帧数(tools/assetgen/blender_ring.py 渲)
 var _ring_sheet: Texture2D = null
 const TARGET_BODY_H := 2.0                 # 立绘目标世界高度 (米) — 龟 ≈ 2.0m (用户2026-06-29: 原2.3大了点)
 const WS := 0.024                         # 像素 → 米 比例 (ARENA 1140×520 px → ≈27×12.5 米地面)
@@ -4684,7 +4684,7 @@ func play_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, world_px: flo
 ##     半径/颜色/峰值亮度一个都没动, 所以别的调用者只会"看得见了", 不会变形变色。
 ## ★2026-09-11: RING_PS0 / RING_GROW_T / RING_FADE_T 三个常量随那套 tween 一起删了 ——
 ##   现在是「10 帧烤好的扩散 + pixel_size 固定只切帧」, 没有「起始尺寸」也没有两段时间轴。
-const RING_ANIM_FRAMES := 10   # skill-ring-10f.png 的帧数(tools/blender_ring.py 渲 + pixelize)
+const RING_ANIM_FRAMES := 10   # skill-ring-10f.png 的帧数(tools/assetgen/blender_ring.py 渲 + pixelize)
 const RING_ANIM_FPS := 21.0    # 10 帧 / 21fps ≈ 0.48 秒 —— 与改造前的 0.26+0.22 总时长一致
 const RING_CELL_PX := 64.0     # 每帧画布边长
 const RING_LAST_R_PX := 31.1   # 末帧外径(实测, 见提交信息里的逐帧量表)
@@ -4697,7 +4697,7 @@ const RING_PEAK_A := 0.6
 func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
 	## ★共享环(187 处)。用户否过两次(2026-08-09 看 095 / 2026-09-11 看 012
 	##   「为什么那个地面的东西糊弄啊」)。根因不是贴图是**放大方式**:
-	##   tween 连续缩放像素贴图 = 非整数倍 = 网格被打烂(tools/blender_ring.py:13)。
+	##   tween 连续缩放像素贴图 = 非整数倍 = 网格被打烂(tools/assetgen/blender_ring.py:13)。
 	##   → Blender 烤 10 帧扩散, pixel_size **恒定只切帧**(同 003)。详见方案书 20260911b §10。
 	if _skill_ring_sheet == null:
 		_skill_ring_sheet = load("res://assets/sprites/vfx/skill-ring-10f.png")
@@ -4727,12 +4727,12 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
 func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:
 	## 醒目冲击环: 贴地 + no_depth_test(恒在地板/立绘之上·用户2026-07-19)。
 	## ★2026-09-06 重做(用户:「最好不要程序弄吧，blender呢」): 程序软辉光 + 连续缩放像素贴图
-	##   ⇒ 改成 Blender 逐帧烤好的 8 帧扩散、**pixel_size 固定只切帧**。理由见 tools/blender_ring.py 头注。
+	##   ⇒ 改成 Blender 逐帧烤好的 8 帧扩散、**pixel_size 固定只切帧**。理由见 tools/assetgen/blender_ring.py 头注。
 	if _ring_sheet == null:
 		_ring_sheet = load("res://assets/sprites/vfx/eq003-splash-ring.png")
 	if _ring_sheet == null: return
 	## 末帧外径 31px / 画布 64px ⇒ 贴图要覆盖 2×radius 的话, pixel_size 按这个比例定
-	## ★环外径 = 真实判定半径。核对法【只能算不能量像素】, 推导与我栽的坑见 tools/blender_ring.py。
+	## ★环外径 = 真实判定半径。核对法【只能算不能量像素】, 推导与我栽的坑见 tools/assetgen/blender_ring.py。
 	var ps: float = (radius * 2.0 * WS) / (64.0 * (31.0 / 32.0))
 	for k in range(2):   # k0=主环(实) k1=外环(虚·略慢略大) → 双层更醒目(与改造前同)
 		var r := Sprite3D.new()
@@ -6286,7 +6286,7 @@ var _copy_fx_mult: float = 1.0
 func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放射紫刺 + 紫环 + 紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
 ## ★刺: `urchin-spike.png` 16 向预烤(4 色/0 半透), 贴地 axis=AXIS_Y + rotation 恒 0
 ##   —— 方向烤进素材, 不做任意角旋转(转了像素网格当场碎)。
-## ★ 2026-09-12 改走 Blender(`tools/blender_urchinspike.py`): 上一版手写 PIL 生成器
+## ★ 2026-09-12 改走 Blender(`tools/assetgen/blender_urchinspike.py`): 上一版手写 PIL 生成器
 ##   画出来是 14×6 = 2.3:1 的**楞子**, 现在是 25×4 = 6.2:1 针形。逐帧研究见 docs/studies/。
 	var col := Color(0.80, 0.32, 0.94)   # 海胆紫
 	_splash_ring_bold(u["pos"], Color(col.r, col.g, col.b, 0.9), 130.0)

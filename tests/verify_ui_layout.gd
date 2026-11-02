@@ -487,7 +487,7 @@ func _clickable(c: Control) -> bool:
 ##
 ## ★不变量: 一个 Control 如果 (a) 几乎铺满视口 且 (b) mouse_filter != IGNORE,
 ##   它就是一块透明挡板 —— 画在它下面的按钮全部点不到。
-##   实测(tests/_probe_hit.gd 派发真事件数回调):
+##   实测(tests/probes/_probe_hit.gd 派发真事件数回调):
 ##     上层框 PASS   → 下面按钮 0 次    IGNORE → 1 次;  框 IGNORE 时框内按钮 1 次。
 ##   这正是 2026-08-01「点进训龟大师直接卡死」的根因(UIFrame 的框我写成了 PASS)。
 ##

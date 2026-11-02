@@ -145,7 +145,7 @@ const CUR_FONT := 24                        # 货币数字
 const CUR_GAP := 8.0                        # 货币条与 ? 键之间
 const ICON_TAP := 81.0                                 # ? / ⚙ 的点击区(触摸线)
 ## 设置键的像素齿轮(2026-10-23 用户「换上」; 原来 Label 里画 ⚙ 字符 = 系统字体的细线 emoji, 与旁边像素「?」不是一套)。
-##   生成器 tools/build_gear_icon.py(19x19 像素 ×2)。
+##   生成器 tools/assetgen/build_gear_icon.py(19x19 像素 ×2)。
 const GEAR_TEX := "res://assets/sprites/menu/hud/ic-gear.png"
 const ICON_VIS := 50.0                                 # ? / ⚙ 看得见的暗槽(82→54→50; 2026-10-05 换像素小图标)
 
@@ -157,7 +157,7 @@ const FONT_HERO := 44
 const FONT_BTN := 22
 const ROW_H := 81.0                         # ★触摸线: 44pt = 81 视口像素(赛程条每格、门都吃它)
 
-## 件全在 assets/sprites/menu/hud/(PixelLab 新生成, 原件 src/, 烘焙 tools/build_menu_hud.py)。
+## 件全在 assets/sprites/menu/hud/(PixelLab 新生成, 原件 src/, 烘焙 tools/assetgen/build_menu_hud.py)。
 ## 沿用的旧件只有: menu/frame-rect.png(主 CTA 木框, R2 拍板保留) / menu/frame-square.png(?/⚙ 方框)。
 const HUD := "res://assets/sprites/menu/hud/"
 const FONT_VERSION := 15
@@ -191,7 +191,7 @@ func _ready() -> void:
 	_center_content()
 	## ★★★一屏只读一次钟(2026-09-29)。这一句是本屏唯一的「现在」,
 	##   往下传给状态行 / 赛程条 / 入口按钮 三处。
-	## ★★为什么非得这样: 探针 `tests/_probe_twoclocks.gd` 实测——`_build_page_buttons()`
+	## ★★为什么非得这样: 探针 `tests/probes/_probe_twoclocks.gd` 实测——`_build_page_buttons()`
 	##   原来调 `GameState.ranked_quota_full()` **不带参**, 而那个函数的兜底是
 	##   真实系统钟 ⇒ 它既不过 `clock_override_ts` 也不过全局缝
 	##   `phase2_config.now_override_ts`。同一屏上的后果(探针原文):
@@ -210,7 +210,7 @@ func _ready() -> void:
 	##   「还没登录，先联网开一局再绑」—— 而墙正好不让他开局。
 	##   唯一兜底是 GameState 那个 `wait_time=20 autostart` 的保活 tick(**第一次在 t=20s**)
 	##   ⇒ 装完头 20 秒游戏打不开, 且提示在教玩家做一件不可能的事。
-	##   探针: `tests/_probe_wall_deadlock.gd`(墙触发 ⇒ `_auth_inflight=false`; 不触发 ⇒ true)。
+	##   探针: `tests/probes/_probe_wall_deadlock.gd`(墙触发 ⇒ `_auth_inflight=false`; 不触发 ⇒ true)。
 	##   门禁: `verify_login_wall` ③。
 	## ★这一句本身是幂等的: 已经有 account_id 且 token 没过期就什么都不做, 连节点都不建
 	##   (每次开游戏都新建匿名号会把服务端刷出一堆一次性账号, Supabase 自己警告过)。
@@ -445,7 +445,7 @@ func _bg() -> void:
 	# ★★2026-10-05 背景换成【擂台 + 看台】(方案书 20260917-主菜单版式重做 R1 / R1-a / R1-b)。
 	#   原来是 28 只龟第 0 帧拼的群像墙(menu-bg-crowd.png) —— 用户先拍板「擂台 + 看台」,
 	#   又定了「尽量不要复用」「不能用现有的龟立绘」⇒ 场馆、观众、角斗龟、火盆、旗全是新画的,
-	#   由 tools/build_menu_arena_bg.py 分层烘好, MenuArenaBackdrop 拼起来并让观众/火/旗/主角动。
+	#   由 tools/assetgen/build_menu_arena_bg.py 分层烘好, MenuArenaBackdrop 拼起来并让观众/火/旗/主角动。
 	#   (群像图没删: 登录墙 `login_wall_art.gd` 还在用它。)
 	_bg_tile = MenuArenaBackdrop.new()
 	add_child(_bg_tile)
@@ -541,7 +541,7 @@ func _sq_y(i: int) -> float:
 ##   右下  训龟大师(铁箍木板, 小一档) + 开始战斗(木框 + 亮黄面, 全屏最大)
 ## ★`now` = 本屏那一刻(`_ready` 传)。**商店锁就指这一刻** —— 不传的话
 ##   `ranked_quota_full()` 兜底去读真实系统钟, 于是本屏就有两条钟
-##   (详见 `_ready` 里 `paint_ts` 那段 + 探针 `tests/_probe_twoclocks.gd`)。
+##   (详见 `_ready` 里 `paint_ts` 那段 + 探针 `tests/probes/_probe_twoclocks.gd`)。
 func _build_page_buttons(now: int = 0) -> void:
 	var ts: int = now if now > 0 else _now_ts()
 	## ★★★两颗按钮的锁**都从各自那条真判据取**(2026-09-29 台账 ④):
@@ -1139,7 +1139,7 @@ func _version_stamp() -> void:
 	#   _menu_label 里设了 set_anchors_preset(PRESET_FULL_RECT) —— 锚点 right/bottom = 1,
 	#   于是【下一帧布局会按父容器重算 size】, 把这里设的 (200,22) 冲掉, 实测变成 1480×744。
 	#   再叠上 HORIZONTAL_ALIGNMENT_RIGHT, 文字被画到那个巨框的右端 ≈ x 2544 —— 屏幕外。
-	#   审计器 tests/_probe_ui_layout.gd 报: @Label@42 超出右 1064~1264 · 尺寸 1480x744。
+	#   审计器 tests/probes/_probe_ui_layout.gd 报: @Label@42 超出右 1064~1264 · 尺寸 1480x744。
 	#   ★修法是把锚点先掰回 TOP_LEFT, 再设 size/position; 只改 size 不改锚点是没用的。
 	#   版本号的全部价值 = 测试者报 bug 时能说清是哪个版本(CLAUDE.md §2.5), 看不见 = 等于没有。
 	l.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -2310,7 +2310,7 @@ func _week_card(info: Dictionary) -> Control:
 		var c: Array = chips[i]
 		var chip := _zone(body, "Chip%d" % i, Rect2(Vector2(CARD_PAD - 2.0 + float(i) * (CARD_CHIP_SIZE.x + 10.0), y), CARD_CHIP_SIZE),
 			Color("#1a1412") if locked else Color("#170d07"))
-		## 数字一行、说明一行, 各自一个定位框(字按框居中)。偏移是帧差实测的墨迹偏差(tests/_probe_textpos.gd):
+		## 数字一行、说明一行, 各自一个定位框(字按框居中)。偏移是帧差实测的墨迹偏差(tests/probes/_probe_textpos.gd):
 		##   m6x11 数字字形整体偏左 1.5、偏下 2; 中文 15 号偏左 1、偏下 1.5。
 		var nrow := Control.new()
 		nrow.name = "ChipNumRow"
@@ -2515,7 +2515,7 @@ func _door(text: String, cb: Callable) -> Button:
 	##   · alpha 全 255 ⇒ 不用补 expand margin)。
 	## ⚠ **不走 `UISkin.button()`**: 它的 `big` 判据(短边 ≥56 且面积 ≥5000)会让
 	##   150×81 又去挑 `menu/frame-rect.png` —— **就是上面记的那张边带 27 的**。
-	## ★竖向预算(实测 `tests/_probe_mmprofile.gd`): 这张图 band = **7**,
+	## ★竖向预算(实测 `tests/probes/_probe_mmprofile.gd`): 这张图 band = **7**,
 	##   门 150×81 ⇒ 内容区 67px, 两行 15 号字 45px 居中 ⇒ 上下各余 11px。
 	##   (frame-rect 那张 27×2=54 ⇒ 内容区只剩 27, 装不下 —— 差得就是这么远。)
 	var fnine: StyleBox = UISkin.nine("menu/hud/brass.png", 14, fsb)   # 2026-10-05 UI 重做: 黄铜门牌

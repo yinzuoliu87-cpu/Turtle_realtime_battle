@@ -248,7 +248,7 @@ func _outline(l: Label, px: int) -> void:
 	l.add_theme_constant_override("outline_size", px)
 
 
-## 排队态那块面: 与亮黄面(tools/build_menu_hud.py `cta_face`)同一种画法 —— 一圈深描边 + 顶 2 行高光 + 底 3 行压暗 +
+## 排队态那块面: 与亮黄面(tools/assetgen/build_menu_hud.py `cta_face`)同一种画法 —— 一圈深描边 + 顶 2 行高光 + 底 3 行压暗 +
 ##   左上两道斜亮痕, 64×32 ×2 最近邻; 换成冷钢蓝(「进行中」), 全屏唯一的亮黄留给能开打的那一刻。代码现画, 不落盘。
 static func face_tex() -> Texture2D:
 	if _face_tex != null:

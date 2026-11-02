@@ -2,7 +2,7 @@ class_name PixelKey
 extends RefCounted
 ## 叠在画面上的像素控制键(回放操作条 / 观赛退出 / 闯关排队的取消)—— docs/plans/20261027-UI美术规矩.md §4.6-6:
 ##   「叠在战斗画面上的控制键照同类商业游戏做小方形图标键, 素材为这几屏专门新做, 不套商店卡片按钮, 也不借别屏的框」。
-##   素材: tools/build_replay_queue_ui.py 生成的 1 倍源图(assets/sprites/ui/replay_bar/、queue_wait/)。
+##   素材: tools/assetgen/build_replay_queue_ui.py 生成的 1 倍源图(assets/sprites/ui/replay_bar/、queue_wait/)。
 ## ★为什么要在运行时放大: StyleBoxTexture / Button.icon 只会按贴图原尺寸画(九宫格边距也是贴图像素), 没有「×3」这个参数;
 ##   存一份 ×3 的图就是同一张素材两份副本。⇒ 仓库只存 1 倍源图, 这里最近邻放大成 ImageTexture(整数倍、硬边), 按路径缓存。
 ## ★键看起来 60×60(20 源像素 ×3), 可点范围 84×84(用户 10-27 定: 看起来 60, 能点的范围放大到 84, 看不见)—— `HitButton._has_point`。

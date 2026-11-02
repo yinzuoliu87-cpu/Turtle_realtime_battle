@@ -28,7 +28,7 @@ var last_land := Vector2.ZERO
 var last_center := Vector2.ZERO
 
 const COL_DMG := Color("#ff9d5c")
-## ── 特效素材: 全部过肩摔专用的逐帧像素图(tools/build_basic_slam_vfx.py 生成; 2026-10-24 重做) ──
+## ── 特效素材: 全部过肩摔专用的逐帧像素图(tools/assetgen/build_basic_slam_vfx.py 生成; 2026-10-24 重做) ──
 ## 用户 10-24「为什么搞公用？」「全部是不是动画？」⇒ 不再用公用 skill-ring / dust-impact / 程序粒子。
 ## 参考 LoL 瑟提 R 落地逐帧(docs/studies/20261024b-过肩摔落地逐帧.md)。
 const FX_SHOCK := "res://assets/sprites/vfx/basic-slam-shock.png"     # 贴地冲击环 8 帧 128²; 末帧外沿半径 SHOCK_LAST_R 像素

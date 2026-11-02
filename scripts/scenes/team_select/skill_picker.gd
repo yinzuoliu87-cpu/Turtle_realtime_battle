@@ -359,7 +359,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	#   这里却还写着 host._refresh_slots() → 【运行时才炸】的 "Nonexistent function",
 	#   而且炸在第一行 → 后两行(含重建技能图标的 _refresh_detail)根本不执行。
 	#   表现: 点技能【数据改了但图标不高亮】(用户 2026-07-28 报的 bug)。
-	#   GDScript 动态派发, 编译期查不出来; 探针 tests/_probe_skillpick.gd 抓到的。
+	#   GDScript 动态派发, 编译期查不出来; 探针 tests/probes/_probe_skillpick.gd 抓到的。
 	host._slots._refresh_slots()
 	host._refresh_confirm()
 	host._detail._refresh_detail()

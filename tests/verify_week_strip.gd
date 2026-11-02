@@ -214,7 +214,7 @@ func _ready() -> void:
 ##  ⑤★★★整屏同一天 —— **只注 `clock_override_ts`**, 不碰 `strip_now_override`
 ## ═══════════════════════════════════════════════════════════════════
 ## 上面把**两个** override 一起喂 ⇒ 就算赛程页挂着**自己那条时钟**也照样全绿。
-## 2026-09-28 实测(`tests/_probe_mmclock.gd`, 修前): 只注 `clock_override_ts` 时七天里六天
+## 2026-09-28 实测(`tests/probes/_probe_mmclock.gd`, 修前): 只注 `clock_override_ts` 时七天里六天
 ## 标「今」的与注入日对不上(memory `fb-second-clock-drops-events`)。
 ## ★三处各自有判据: a) 金边那张 == 注入日  b) 今天那张的字 == `week_card_info(注入时刻)`
 ##   c) 模式卡第二行 == `_phase_status_line(注入时刻)`

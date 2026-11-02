@@ -6,7 +6,7 @@ extends RefCounted
 ##   无限火力里击杀敌人时一道激光从天击中敌人的那种处决」。
 ##   旧演出(`AxeFinalVfx.ember_execute`, 已删)是一根 0.34×2.6×0.34 米红色 BoxMesh 闪 0.35 秒 ——
 ##   正是特效纪律禁掉的那一类, 也读不出"从天而降"。
-## ★参考: LoL 无限火力「轨道激光」终结特效, 1080p60 实拍逐帧; 分段与尺寸见 `tools/blender_ember_laser.py` 头注,
+## ★参考: LoL 无限火力「轨道激光」终结特效, 1080p60 实拍逐帧; 分段与尺寸见 `tools/assetgen/blender_ember_laser.py` 头注,
 ##   素材逐帧见 docs/studies/20260915d-096余烬处决激光-{光柱,穹顶,地光}逐帧.md。
 ##
 ## ★三层**同一条时间轴**: 一个 tween 同时推三张帧表(`apply_frame`), 不会错帧 ——

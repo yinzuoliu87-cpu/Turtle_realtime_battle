@@ -1,7 +1,7 @@
 extends Node
 ## verify_big_title.gd — 结算屏大字美术字门禁(2026-10-27 用户选「方案 A」)
 ##
-## 图: tools/build_big_titles.py 生成, 存 1 倍源图; 贴: scripts/util/big_title.gd(BigTitle.apply)。
+## 图: tools/assetgen/build_big_titles.py 生成, 存 1 倍源图; 贴: scripts/util/big_title.gd(BigTitle.apply)。
 ##   ① 表对账: BigTitle 的三张表 == 生成脚本 WORDS(文字 → 文件名一一对应), 每张图都在、能加载
 ##   ② 图是 1 倍源图: 硬边(alpha 只有 0 / 255)、高 ≤ 40 源像素(防止把放大后的图存进来再放大一次)
 ##   ③ 覆盖: battle_hud._result_headline 能返回的每一句、左栏能写的每一句、各路能写的每一个字, 表里都有图
@@ -14,7 +14,7 @@ extends Node
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_big_title.tscn --quit-after 6000
 
 const SCENE := "res://scenes/RealtimeBattle3D.tscn"
-const GEN := "res://tools/build_big_titles.py"
+const GEN := "res://tools/assetgen/build_big_titles.py"
 const HUD_SRC := "res://scripts/scenes/battle/battle_hud.gd"
 const SETTLE_SRC := "res://scripts/scenes/battle/settle_screen.gd"
 const MAX_SRC_H := 40

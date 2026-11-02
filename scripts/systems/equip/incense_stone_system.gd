@@ -208,7 +208,7 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 
 ## 充能每次变化都写回存档(2026-10-23)。★原来只在刻成一道痕时写(`_persist_chg`), 换路 / 撤场那个写回点
 ##   `clear_all()` 又从来没人调 ⇒ 一局结束时最后那段不满一道的充能(最多 3999)丢掉, 下一局从上一道痕时的余额起算。
-##   (探针 `tests/_probe_incense_bugs.gd`: 局内 2300 / 存档 500。)与宝箱龟财宝值、命运之轮一样当场写。
+##   (探针 `tests/probes/_probe_incense_bugs.gd`: 局内 2300 / 存档 500。)与宝箱龟财宝值、命运之轮一样当场写。
 func _save_chg(side: String) -> void:
 	if side == "left" and GameState != null:
 		GameState.incense_charge = clampi(int(_chg.get("left", 0)), 0, PER_MARK)

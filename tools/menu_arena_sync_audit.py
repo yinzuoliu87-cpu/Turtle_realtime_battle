@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """menu_arena_sync_audit.py — 主菜单擂台背景的烘焙产物必须就是生成器现在吐出来的那一套
 
-由来（2026-10-05）：主菜单背景换成「擂台 + 看台」，由 `tools/build_menu_arena_bg.py` 把
+由来（2026-10-05）：主菜单背景换成「擂台 + 看台」，由 `tools/assetgen/build_menu_arena_bg.py` 把
 `assets/sprites/menu/arena/src/` 里 PixelLab 新生成的原件分层烘进 `baked/`，排布写进
 `scripts/gamedata/menu_arena_layout.gd`（生成文件）。同群像墙那条（`menu_crowd_sync_audit`）一样：
 **没有任何东西守着"改了生成器/换了原件要重跑"这一步** —— 调了一个站位、换了一张观众图却忘了重烘，
@@ -31,7 +31,7 @@ except Exception:
     pass
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "tools"))
+sys.path.insert(0, os.path.join(ROOT, "tools", "assetgen"))   # 生成脚本 2026-11-02 起在 tools/assetgen/
 
 try:
     from PIL import Image, ImageChops
@@ -106,7 +106,7 @@ def main():
     if bad:
         for x in bad:
             print(x)
-        print("       改了生成器/换了原件却没重烘: python tools/build_menu_arena_bg.py, 然后 <godot> --headless --path . --import")
+        print("       改了生成器/换了原件却没重烘: python tools/assetgen/build_menu_arena_bg.py, 然后 <godot> --headless --path . --import")
         print("FAILED: %d 处" % len(bad))
         return 1
     print("ALL OK — 主菜单擂台背景就是生成器现在的产物")

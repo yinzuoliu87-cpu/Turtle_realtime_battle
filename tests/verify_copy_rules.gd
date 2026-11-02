@@ -12,7 +12,7 @@ extends Node
 ## 否则从龟壳放会污染自身状态」—— 把"实现麻烦"当成了"玩法规则"。
 ## 后果：87 个主动技只能抄 29 个，**12 只龟一个技能都抄不到**。
 ##
-## 探针 `tests/_probe_copy_residue.gd`（56 个技能 × 带对照组 × 等 6 秒）实测：
+## 探针 `tests/probes/_probe_copy_residue.gd`（56 个技能 × 带对照组 × 等 6 秒）实测：
 ## **真正留下残留的只有 5 个** ⇒ 为了挡住 5 个，挡掉了 51 个。
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -36,7 +36,7 @@ const CopyRules := preload("res://scripts/gamedata/copy_rules.gd")
 ##   门禁**照样 ALL PASS** —— 因为它"不测它了"。
 ##   遍历被测对象自己的名单 = 只能发现"多了什么", 发现不了"少了什么"。
 ##
-##   这五个是探针 `tests/_probe_copy_residue.gd` 实测【6 秒后仍留残留】的全部,
+##   这五个是探针 `tests/probes/_probe_copy_residue.gd` 实测【6 秒后仍留残留】的全部,
 ##   要放行哪一个, 必须先跑探针证明它不再留残留, 然后**同时改这里**。
 const MUST_BLOCK := ["angelAscend", "fortuneBuyEquip", "cyberSmartAI", "hunterStealth", "shellShadow"]
 

@@ -8,7 +8,7 @@ extends Node
 ##    根因: `_gauntlet_ahead()` 问的是 `GameState.gauntlet_eligible()`(= `promoted`),
 ##    而 `promoted` 全仓**只有 `settle_ranked_close()` 一个写入点**, 那个函数开头就
 ##    「周五 23:00 UTC 之前直接 return」⇒ **周一~周五那一支结构上恒假**。
-##    探针 `tests/_probe_promote_ahead.gd` 实测: `season_wins=20`(线=5)、配额打满、0 命
+##    探针 `tests/probes/_probe_promote_ahead.gd` 实测: `season_wins=20`(线=5)、配额打满、0 命
 ##    ⇒ 七天里「周六闯关赛见」**0 次出现**; 手动把 `promoted` 置 true 才出现在周一~周五。
 ##    ★最讽刺的是 `_gauntlet_ahead()` 自己的头注写着它就是为了防这件事
 ##      (「跟开关走就会对其中一个说谎」), 而那件事正发生在它身上。

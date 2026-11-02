@@ -119,7 +119,8 @@ def check_boxes(path, name):
     ##   引用不存在的测试就是真烂账(测试被删/改名却没回填), 正是这条规则要抓的东西。
     draft = (st in ('草稿', '已拍板'))
     for ln in s.split(chr(10)):
-        for ref in set(re.findall(r'(tests/verify_[A-Za-z0-9_]+\.gd|verify_[A-Za-z0-9_]+\.gd|tools/[A-Za-z0-9_]+\.py)', ln)):
+        ## ★2026-11-02 认子目录(tools/assetgen/x.py、tools/oneoff/x.py): 原来只认 tools/x.py, 搬进子目录后的引用就不再被查了
+        for ref in set(re.findall(r'(tests/verify_[A-Za-z0-9_]+\.gd|verify_[A-Za-z0-9_]+\.gd|tools/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py)', ln)):
             cands = [ref, os.path.join('tests', ref)] if not ref.startswith(('tests/', 'tools/')) else [ref]
             if any(os.path.exists(c) for c in cands):
                 continue
@@ -287,7 +288,7 @@ def check_number_source():
 #    先 grep 出处 —— tools/ 里我自己写的可改, 用户原话/spec 不许改。)
 GATE_TOKEN = re.compile(
     r'verify_[A-Za-z0-9_]+'
-    r'|tools/[A-Za-z0-9_]+\.py'
+    r'|tools/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py'
     r'|run-tests'
     r'|\.github/workflows/[A-Za-z0-9_.-]+\.yml')
 DEBT_FILE = os.path.join('tools', 'plans_gate_debt.json')

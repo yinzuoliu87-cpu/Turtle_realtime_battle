@@ -3,7 +3,7 @@ extends Control
 ## 【设计框】—— 把一屏的内容装进 1280×720 的框里, 并让这个框【居中于真实视口】。
 ##
 ## ═══ 由来(用户 2026-08-01:「有些画面都没有居中」「pc端做一板，手机端做一板」) ═══
-## 审计器 tests/_probe_ui_layout.gd 实测(量真实 get_global_rect, 不是看像素猜):
+## 审计器 tests/probes/_probe_ui_layout.gd 实测(量真实 get_global_rect, 不是看像素猜):
 ##
 ##   屏           1280×720 视口   1680×720 视口   差
 ##   排行榜        居中偏移 -126    -326           -200  ← 一点没重排
@@ -74,7 +74,7 @@ func _setup(host: Node) -> Control:
 	custom_minimum_size = DESIGN
 	# ★★必须是 IGNORE, 【不能】是 PASS —— 这条我第一版写反了, 直接把训龟大师整屏点死
 	#   (用户 2026-08-01:「为啥点进训龟大师直接卡死」)。
-	#   实测(tests/_probe_hit.gd, 派发真 InputEventMouseButton 数回调次数):
+	#   实测(tests/probes/_probe_hit.gd, 派发真 InputEventMouseButton 数回调次数):
 	#     上层框 PASS   → 它【下面】的按钮被点到 0 次   ← 整屏点不动 = 看着像卡死
 	#     上层框 IGNORE → 它【下面】的按钮被点到 1 次   ✔
 	#     框 IGNORE 时, 框【里】的按钮被点到 1 次       ✔ 收编进来的内容照常能点

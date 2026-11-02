@@ -153,7 +153,7 @@ const SNAP_T := 0.07
 ##   `_inertia_step` / `_sim_chain` / `_basis_of` 从 HEAD 原样搬回, 一个字没改;
 ##   只换渲染(固定网格 + 着色器, 见 `_render` / `TentacleMeshVfx`)。没搬的: 死函数 `_slam_curl_of`、开关 `SIM_ON`(恒真)、
 ##   半径式子里逐帧的粗细起伏 `r *= 1 + 0.055 sin(…) + 0.032 sin(…)`(方案书 §2.2 嫌疑③)。
-##   逐帧对账: tests/_probe_tentacle_head_parity.gd(同一场景同一帧, 中心线与 HEAD 逐点比)。
+##   逐帧对账: tests/probes/_probe_tentacle_head_parity.gd(同一场景同一帧, 中心线与 HEAD 逐点比)。
 
 # ── 形状 ──────────────────────────────────────────────────────────
 ##
@@ -457,7 +457,7 @@ const SIM_DAMP := 0.95
 ## ══════════════════════════════════════════════════════════════════
 ##  ★★2026-10-31 抽搐修复(只修探针定位到的两处来源, 抬起 / 拍下 / 收回的姿势与节奏不动)
 ## ══════════════════════════════════════════════════════════════════
-## 用户 10-31:「这东西在抽搐」「运动是有问题的啊」。探针(tests/_probe_tentacle_jitter_src.gd, 同一帧并排算
+## 用户 10-31:「这东西在抽搐」「运动是有问题的啊」。探针(tests/probes/_probe_tentacle_jitter_src.gd, 同一帧并排算
 ##   「模拟输出」与「它追的目标姿势」; 特效台逐步导出 37 个节点)量出来的来源:
 ## ① 【端着姿势】的三个状态(待机 / 出土 / 撤场)链式模拟撑不住、也停不下来:
 ##   · 塌: 待机肌肉速率 3.0 扛不住重力 26 ⇒ 整根塌到地上, 梢端平均偏离目标姿势 3.94 米、贴地(y=0)被地面钳位托着在地上拖
@@ -607,7 +607,7 @@ func ensure(side: String, n: int) -> void:
 
 ## 登场一根: 建节点(外观全在 TentacleMeshVfx: 共用的固定网格 + 各自一份着色器材质)、登记状态。
 ## ★建完不当场画: 节点先藏着, 第一次 tick 才画(与 8 月那版同序 —— 链式模拟在第一次 `_sim_chain` 时按当时的姿态初始化,
-##   早一帧初始化, 之后整根就与旧版对不上; 对账探针 tests/_probe_tentacle_head_parity.gd 实测差到 4.4 米)。
+##   早一帧初始化, 之后整根就与旧版对不上; 对账探针 tests/probes/_probe_tentacle_head_parity.gd 实测差到 4.4 米)。
 func _spawn(side: String, idx: int) -> void:
 	var mi: MeshInstance3D = TentacleMeshVfx.make_node(battle._world, "Tentacle_%s_%d" % [side, idx], ATTACK_LEN)
 	var t := {

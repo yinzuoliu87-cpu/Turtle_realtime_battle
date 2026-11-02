@@ -3,7 +3,7 @@ extends Node
 ##
 ## ① 排行榜把【连不上】说成【你打得少】
 ##    屏上原话:「（榜上暂时只有你 —— 打完一场, 对手就会上来）」。
-##    探针 `tests/_probe_lb_reach.gd` 实测: 池子 396 条 / 榜上 rows = **1**。
+##    探针 `tests/probes/_probe_lb_reach.gd` 实测: 池子 396 条 / 榜上 rows = **1**。
 ##    `Backend.pool_add` 的全部调用点只有四条 ——
 ##      `_ensure_seeded`(陪练, 被「陪练不上榜」筛掉) /
 ##      `upload_ghost`(自己, 被 `_is_self_ghost` 筛掉) /
@@ -11,7 +11,7 @@ extends Node
 ##    ⇒ **断网时打一万场也不会有对手上来。** 那句话把网络失败归因到玩家的场次上。
 ##
 ## ② 「精确同场次命中率」把陪练全算成真人
-##    探针 `tests/_probe_seed_exact.gd` 实测: 40 次抽对手 40 次是 `seed_` 陪练,
+##    探针 `tests/probes/_probe_seed_exact.gd` 实测: 40 次抽对手 40 次是 `seed_` 陪练,
 ##    而 `match_src_counts` 报 `exact: 40 / bot: 0` ⇒ 命中率看着 **100%**、
 ##    真人**一个都没碰到**。而未决点 A-R3(「命中率多低算太低」)就靠这个数来答。
 ##    ★关键对照: 排行榜那一侧**早就有**同维度的筛子(`seed_` 前缀)。同一个判据只做了一半。
@@ -398,7 +398,7 @@ func _t_time_seam() -> void:
 ##   而 `report_finals_if_any` 只在结算时调一次。漏报会让那一场只能靠 960 秒宽限兜,
 ##   **可能把错的人送进下一轮**。
 ##
-## ★探针 `tests/_probe_finals_retry.gd` 实测之后, 情报里猜的那条根因**不成立**:
+## ★探针 `tests/probes/_probe_finals_retry.gd` 实测之后, 情报里猜的那条根因**不成立**:
 ##   补报单是**无条件**写的(不是"只在发失败那条路上写"), 而且进了 `_save_dict()`,
 ##   `_settle_season` 尾部那条无条件的 `gs.save()` 让它过得了夜。
 ## ★真正漏的是另一件: **补报单上的 `seed` 一个读者都没有**。

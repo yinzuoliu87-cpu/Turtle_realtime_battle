@@ -6,7 +6,7 @@ extends Node
 ##   但 **VFXLAB / 评审台 / 调试场 / 截图台全都必须真渲染 ⇒ 全都不是 headless**，
 ##   那道闸对它们一条都不生效。
 ##
-##   探针 `tests/_probe_save_pollution.gd` 实证（全新空 `user://`）：
+##   探针 `tests/probes/_probe_save_pollution.gd` 实证（全新空 `user://`）：
 ##     不带 NO_SAVE → 场景 `_ready` 时刻 `savegame.json` **已经存在** · test_mode=false
 ##     带  NO_SAVE → 同一时刻 **不存在** · test_mode=true
 ##   ⇒ 写入发生在 **autoload `_ready` 的 `ensure_season()`** 里，
@@ -32,7 +32,7 @@ extends Node
 ##   （把 `OS.has_environment(NO_SAVE_ENV)` 写死成 `false` 这条门禁不会红）。
 
 const E2E_NOTE := "本地端到端: rm -rf <空目录>; NO_SAVE=1 APPDATA=<空目录> godot --path . " \
-	+ "res://tests/_probe_save_pollution.tscn --audio-driver Dummy --position 5000,5000 " \
+	+ "res://tests/probes/_probe_save_pollution.tscn --audio-driver Dummy --position 5000,5000 " \
 	+ "⇒ 存档 0 个; 不带 NO_SAVE 的对照组 ⇒ 1 个(这就是分母)"
 
 var _pass := 0
@@ -60,7 +60,7 @@ func _ready() -> void:
 	## ── ② 判据表：四种组合逐个喂 ──────────────────────────────
 	##   ★第四种（不是无头、也没给 NO_SAVE）**必须返回 ""** ——
 	##     「挡多了也是错」：真玩家就是这一种，误锁了等于玩家存档再也不保存。
-	var DEV := "res://tests/_probe_save_pollution.tscn"
+	var DEV := "res://tests/probes/_probe_save_pollution.tscn"
 	var cases := [
 		[true,  false, "",   "headless", "无头(自动化测试) ⇒ 第一道闸"],
 		[true,  true,  DEV,  "headless", "三个都成立 ⇒ 报先命中的那个"],
@@ -121,7 +121,7 @@ func _ready() -> void:
 	## ══════════════════════════════════════════════════════════════════════
 	##  ⑥ ★★★存档写到一半被杀进程 (2026-09-27)
 	## ══════════════════════════════════════════════════════════════════════
-	## 探针(`tests/_probe_save_torn.gd`)实测原来的行为: 把存档截到 60%(1628→976 字节)
+	## 探针(`tests/probes/_probe_save_torn.gd`)实测原来的行为: 把存档截到 60%(1628→976 字节)
 	## 再读 —— 场次/胜场/深海币**一个都没回来**, 而且**一声不吭**, 也没有任何备份。
 	## 对测试者就是**一周进度凭空消失**。
 	## 根因两条: `save()` 直接覆写(不是原子写); `_load()` 遇到坏 JSON 直接 return。

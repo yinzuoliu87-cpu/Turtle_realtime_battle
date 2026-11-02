@@ -1,5 +1,5 @@
 extends Node
-## verify_reserve_vfx.gd —— 援军小将·四面合围 的演出(scripts/systems/skills/reserve_vfx.gd, 素材 tools/build_reserve_vfx.py)。
+## verify_reserve_vfx.gd —— 援军小将·四面合围 的演出(scripts/systems/skills/reserve_vfx.gd, 素材 tools/assetgen/build_reserve_vfx.py)。
 ##
 ## 演出模块的契约: 飞行逻辑(ReserveSystem)施法时调 converge_spawn, 每步对每道气波调 wave_trail(位置, 方向)、对目标调 lock_follow,
 ##   打中调 wave_hit(被打者位置, 方向), 没打中消失调 wave_fizzle。这里按这个契约逐 sim 步喂一段「四道追踪气波合围一个会走的目标」,

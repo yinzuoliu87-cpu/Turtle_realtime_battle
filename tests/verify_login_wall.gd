@@ -122,7 +122,7 @@ func _ready() -> void:
 	## ══════════════════════════════════════════════════════════════════════
 	## memory `fb-a-wall-must-let-the-unblocking-action-through`:
 	## 加了拦截就要验「被拦住的人**能不能完成解锁动作**」。上面三节全在验「挡得住」,
-	## 一条都没验「解锁之后放不放人」—— 而探针实测(`tests/_probe_wall_escape.gd`)
+	## 一条都没验「解锁之后放不放人」—— 而探针实测(`tests/probes/_probe_wall_escape.gd`)
 	## 原来**走不掉**: 遮罩不消、返回箭头还藏着, 屏幕写着「邮箱绑好了」,
 	## 唯一出路是杀进程重开(重开能进, 因为邮箱已经写盘 ⇒ memory `fb-restart-is-a-separate-scenario`)。
 	## 下周 10 人测试**第一个动作**就会撞上它。
@@ -799,7 +799,7 @@ func _t_identity_under_wall() -> void:
 #
 #    由来: 用户真机报「邮箱注册没用, app 里操作没反应」。
 #    发信层(手工 `PUT /auth/v1/user` 回 200 · 两个邮箱都收到码)与客户端状态机
-#    (`tests/_probe_wall_live.gd` 真后端实测 token→sending→sent)都已排除
+#    (`tests/probes/_probe_wall_live.gd` 真后端实测 token→sending→sent)都已排除
 #    ⇒ 剩下**触摸层**这一条从没人查过, 而上面 ①~⑤ 一条都不碰它:
 #    它们验的是「墙该不该立」「关不关得掉」「放不放人」「印没印版本」,
 #    **没有一条验「玩家的手指按下去, 产品有没有动」**。
@@ -1256,7 +1256,7 @@ func _t_no_typing(inst) -> void:
 # ──────────────────────────────────────────────────────────
 # ⑥f C · ★★★这一屏看不看得见这个游戏 (2026-09-29)
 #
-#    探针 `tests/_probe_wall_look.gd` 实测过: `_maybe_login_wall` 把 self 下的
+#    探针 `tests/probes/_probe_wall_look.gd` 实测过: `_maybe_login_wall` 把 self 下的
 #    Control 整批藏掉(连 `_bg()` 建的底色/平铺砖/渐变) ⇒ 这一屏一只龟都没有。
 #    ★判据量“屏幕上有没有一张盖满的真图”, 不量“源码里有没有 load 一张图”。
 #    ★★配对照组: **自己点开的对话框没有这层** —— 否则证不了是墙才有。
@@ -1534,7 +1534,7 @@ func _t_open_path() -> void:
 	##   ⇒ 这条判据的被测对象是**登录墙**, 阶段是它继承来的环境输入 ——
 	##   不钉的话它每个周六/周日都红(CI 也一样), 而红的理由跟登录墙无关。
 	##   (memory `fb-judge-inputs-must-be-made-on-the-spot`)
-	## ★用产品自己的那条缝 `clock_override_ts`(成例: `tests/_probe_mmclock.gd:65`),
+	## ★用产品自己的那条缝 `clock_override_ts`(成例: `tests/probes/_probe_mmclock.gd:65`),
 	##   不去改系统时钟, 也不碰全局 `now_override_ts`。
 	## ⚠ 这意味着**周六/周日那两块主菜单屏这条门禁没覆盖** —— 显式登记, 不假装覆盖到了。
 	##   (2026-10-03 周六实跑正是在那块屏上照出了「🔒 角标压边 13px」这个真 bug。)

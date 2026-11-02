@@ -1026,7 +1026,7 @@ static func send_code_async(email: String, flow: String) -> void:
 	if flow == FLOW_BIND and _token == "":
 		## ★★别教玩家「先联网开一局」—— v0.19.440 的登录墙就是**开局前**那一屏,
 		##   他根本没法先开一局(实测: 全新安装点「发验证码」就撞这句,
-		##   `tests/_probe_wall_deadlock.gd`)。
+		##   `tests/probes/_probe_wall_deadlock.gd`)。
 		##   这一步真实的情况只有一种: 身份还在路上(建匿名会话是一次 HTTP 往返)。
 		## ⇒ ①自己踢一脚把它建起来(幂等, 已经在飞就什么都不做)
 		##   ②照实说「在连」并让他重试 —— 连不上也照实说, 因为那时确实打不开游戏。

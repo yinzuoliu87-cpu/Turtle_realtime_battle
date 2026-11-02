@@ -243,7 +243,7 @@ func on_mode_tap() -> void:
 ##   「周五 23:00 UTC 之前直接 return」⇒ **周一~周五这一支结构上恒假**。
 ##   于是 `season_wins=20`(线=5)、配额打满的人, 周一~周五被告知「下周一开新的一轮」——
 ##   而他周六铁定有 6 场可打。**这个函数自己的头注(上面那两行)写的就是要防这件事,
-##   而那件事正发生在它自己身上。**(探针 `tests/_probe_promote_ahead.gd`:
+##   而那件事正发生在它自己身上。**(探针 `tests/probes/_probe_promote_ahead.gd`:
 ##   「周六闯关赛见」在 `promoted=false` 时七天 0 次出现。)
 ## ⇒ 收盘前该问的是「**胜场过没过晋级线**」(`GameState.gauntlet_line_reached()`),
 ##   收盘后 `promoted` 已经是事实 ⇒ 两个**取并集**, 缺一不可:

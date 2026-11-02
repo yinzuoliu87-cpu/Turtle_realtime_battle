@@ -1,43 +1,18 @@
-# tools/ — 常备工具 vs 一次性脚本
+# tools/ — 本机工具
 
-**2026-07-21 分家。** 以前 20 个脚本混在一起，分不清哪个能随便跑、哪个跑了会改文件。
+2026-11-02 重整（方案书 [docs/plans/20261102-文件管理与发版流程重整.md](../docs/plans/20261102-文件管理与发版流程重整.md)）。
+本目录有 `.gdignore`：Godot 不把这里的东西当素材导入（测试里读这里的文件一律用 `FileAccess` / `Image.load_from_file`）。
 
----
-
-## `tools/` 根目录 = **常备**（只读，可反复跑，跑多少次都安全）
-
-| 脚本 | 干什么 | 进门禁了吗 |
+| 位置 | 是什么 | 能不能随便跑 |
 |---|---|---|
-| `data_integrity.py` | json 交叉引用 / 资源路径 / 孤儿字段 | ✅ `run-tests.sh` |
-| `tooltip_number_audit.py` | 装备文案数值 ↔ 代码（带就近约束 + 反向验证） | ✅ `run-tests.sh` |
-| `tri_audit.py` | pets.json ↔ 活代码 ↔ 权威文档 三方对账 | ✅ `run-tests.sh` |
-| `codex_audit.py` | 图鉴文案 ↔ 活代码 ↔ 权威文档 | 手动 |
-| `asset_audit.py` | 素材引用普查（保守判定，宁漏删不错删） | 手动 |
-| `deadcode_audit.py` | 静态可达性死代码勘察 | 手动 |
-| `hp_staleness_check.py` | 云端同步新鲜度（只读，不连网） | 手动 |
-| `hp_survey.py` | 拉 HacknPlan 全树结构清单（只读） | 手动 |
-| `hacknplan_sync.py` | 云端同步**基础库**（被 oneoff/ 里的批次脚本复用） | 库，不单独跑 |
+| `tools/*_audit.py` `*_lint.py` 等 | **门禁审计器**。进门禁的那些以 `run-tests.sh` 里的 `run_audit` 行为准（清单从那里自动扫出来，这里不另抄） | 只读，可反复跑 |
+| `tools/release.py` `asc.py` `deploy.py` `prod_flags.py` | **发版流水**（CLAUDE.md §3）。每条都有 `--dry-run` / 只读子命令 | 真跑会打 tag / 提审 / 部署 / 写正式服 —— 照 CLAUDE.md §3 的顺序 |
+| `tools/sb_migrate.py` `sb_ro.py` `sb_common.py` `beta_ops.py` | **数据库**：迁移（沙盒 → 内测 → 正式）、正式服只读查询 | `sb_ro.py` 只读；迁移写库要用户点头 |
+| `tools/clean.py` | 清本机开发产物（默认只列，`--apply` 才动） | 安全 |
+| `tools/assetgen/` | **素材生成脚本**（`blender_*` `build_*` `bake_*` `gen_*` 等）：重跑会覆盖 `assets/` 里的成品。生成结果要确定性、重跑逐字节相同 | 会写素材文件 |
+| `tools/oneoff/` | **一次性脚本**：为某次迁移 / 同步写的，多数已完成使命，留作记录 | 别随便跑（可能改文件或写云端） |
+| `tools/art_src/` | 素材生成脚本读的原图 | —— |
+| 其余 `tools/*.py` | 手动诊断工具与被别的脚本 import 的库 | 看各自头注 |
 
----
-
-## `tools/oneoff/` = **一次性**（为某次迁移/同步写的，会改文件或连网写云端）
-
-**不要随便跑。** 它们是历史批次的留痕，多数已完成使命：
-
-- `hp_s8_systems.py` … `hp_s13_resync.py` — 2026-07 那轮 HacknPlan 云端同步的分批脚本，各自配一份 `*_report.txt`
-- `hp_minion_sync.py` — 补推小将三节
-- `sync_systems.py` — 已被 `hp_s8_systems.py` 取代
-- `dedupe_assets.py` — 按 md5 去重**删文件**
-- `repack_sheets.py` — 超 4096 的横条 sheet **重排成网格**
-- `reseed_bracket_gear.py` — 快照档位装备重排（2026-07-21 用过一次）
-
-`*_report.txt` 是这些脚本运行时写出的产物，**有意跟踪进 git**：
-`hp_staleness_check.py` 靠它们的 mtime 判断云端是否落后，删了会误报"从没同步过"。
-
----
-
-## 踩过的坑
-
-**搬家必须逐个跑一遍。** 这次分家时 `hp_staleness_check.py` 里写死了
-`tools/hp_s*_report.txt` 路径，搬完立刻报 3 条 "从没同步过" —— 是路径坏了，不是真落后。
-只看"目录变整齐了"不算验证。
+新工具放哪：进门禁的审计器放根目录并在 `run-tests.sh` 加一行 `run_audit`；生成素材的放 `assetgen/`；只用一次的放 `oneoff/`。
+**发版 / 部署 / 运维用的脚本进仓库**，不留在会话临时目录（CLAUDE.md §8）。

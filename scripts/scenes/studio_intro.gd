@@ -7,7 +7,7 @@ extends CanvasLayer
 ##   run/main_scene 不变 ⇒ 几十个直接起主菜单的门禁、陪练号、实玩驱动一条都不用改。
 ## ★画面规格按 10 家商业开场逐帧研究定(方案书 §4.1): 纯色底 #0a0e18(= iPhone 启动屏同色) / 单色像素小标志 /
 ##   0.3 秒内看得清 / 点灯那一下有高峰 + 声音 / 字晚一拍逐个落下 / 停留段不冻结 / 0.3 秒淡出。
-## 素材与音效: tools/build_studio_intro.py(确定性, 逐像素画, 0 次生成模型); 时间轴 TIMING 与那边逐项相同(门禁对账)。
+## 素材与音效: tools/assetgen/build_studio_intro.py(确定性, 逐像素画, 0 次生成模型); 时间轴 TIMING 与那边逐项相同(门禁对账)。
 ##
 ## 不播: 无头(门禁 / 裁判)、陪练号(SIM_DRIVER=1)、NO_INTRO=1; 同一进程只播一次(回主菜单不重放)。
 
@@ -21,7 +21,7 @@ const NODE := "StudioIntro"
 const S := 6                 ## 主像素(视口单位)
 const SZ := 3                ## 中文副标像素
 const SKIP_AFTER := 0.3      ## 开播 0.3 秒后点任意处跳到淡出
-## 与 tools/build_studio_intro.py 的 TIMING 逐项相同(秒)。
+## 与 tools/assetgen/build_studio_intro.py 的 TIMING 逐项相同(秒)。
 const TIMING := {
 	"spark1": 0.05, "spark2": 0.13, "ignite": 0.22,
 	"letters": 0.52, "letter_step": 0.045, "zh": 0.98, "blink": 1.45,

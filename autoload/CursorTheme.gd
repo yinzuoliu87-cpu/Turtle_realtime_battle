@@ -7,7 +7,7 @@ extends Node
 ##
 ## ═══ §CURSOR_SCALE 光标尺寸的口径(2026-09-30 改, 用户「这个光标为什么这么大？」) ═══
 ## ★**两个 bug 叠在一起**, 所以它比看代码想象的还要大一倍。都是探针实测的
-##   (tests/_probe_cursor_size.gd 量比例 / tests/_probe_paw.gd 量真节点几何), 不是推算:
+##   (tests/probes/_probe_cursor_size.gd 量比例 / tests/probes/_probe_paw.gd 量真节点几何), 不是推算:
 ##
 ## ① 旧的 `_cur.scale = base_scl / clampf(cf, 0.5, 4.0)` 把爪子钉在**屏幕物理像素**上,
 ##    故意不随内容缩放(照抄 PoC 那个 `position:fixed` div) ⇒ 换算成设计像素时它**随窗口变四倍**。

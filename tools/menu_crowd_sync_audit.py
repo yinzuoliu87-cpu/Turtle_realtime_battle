@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """menu_crowd_sync_audit.py — 主菜单群像背景 menu-bg-crowd.png 必须就是生成器现在吐出来的那张
 
-由来（2026-10-04 欠账盘点 R3）：`tools/build_menu_crowd_bg.py` 从 28 只龟的第 0 帧合成主菜单背景。
+由来（2026-10-04 欠账盘点 R3）：`tools/assetgen/build_menu_crowd_bg.py` 从 28 只龟的第 0 帧合成主菜单背景。
 它存在的全部理由写在它自己头注里 ——「加龟 / 换立绘 / 调纵深参数时重跑一次就同步，手工拼的图在下一只
 龟进来时就烂了」。**但没有任何东西守着"重跑一次"这一步**：加了第 29 只龟、改了某只立绘、调了
 LAYERS/DIM 参数而忘了重跑，背景就静静地落后，门禁全绿。
@@ -24,7 +24,7 @@ except Exception:
     pass
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "tools"))
+sys.path.insert(0, os.path.join(ROOT, "tools", "assetgen"))   # 生成脚本 2026-11-02 起在 tools/assetgen/
 
 try:
     from PIL import Image, ImageChops
@@ -71,7 +71,7 @@ def main():
                   % (n, exact, LEVEL, over, frac * 100.0, MAX_FRAC * 100.0))
             if frac > MAX_FRAC:
                 bad.append("[FAIL] menu-bg-crowd.png 与生成器现在吐出的图不一致(%.2f%% 像素差 > %d 级)。\n"
-                           "       加了龟 / 换了立绘 / 调了参数却没重跑: python tools/build_menu_crowd_bg.py\n"
+                           "       加了龟 / 换了立绘 / 调了参数却没重跑: python tools/assetgen/build_menu_crowd_bg.py\n"
                            "       然后 <godot> --headless --path . --import" % (frac * 100.0, LEVEL))
     print("")
     if bad:

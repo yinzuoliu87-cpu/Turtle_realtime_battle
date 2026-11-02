@@ -126,7 +126,7 @@ const SMOKE_D1 := 52.0
 ## 蛋糕法阵半径(码), 与 072 礼盒技能的 300 码同一个数
 ## ★同上: 判定用 `EqFoodBatch.BOX_FIELD_PX`(072 礼盒技能的蛋糕法阵半径)。
 const CAKE_FIELD_PX := EqFoodBatch.BOX_FIELD_PX
-## ── 072 蛋糕法阵帧表(2026-09-15 三轮重做, tools/blender_cake_field.py) ──
+## ── 072 蛋糕法阵帧表(2026-09-15 三轮重做, tools/assetgen/blender_cake_field.py) ──
 ## 前两轮(素圈 / 程序波浪环 + 缓旋辐条 + 程序奶糕)用户都说敷衍 ⇒ 否的是「代码现算的图形」整类, 换烘焙帧表。
 const CAKE_PLATE_TEX := "res://assets/sprites/vfx/eq072-cake-plate.png"
 const CAKE_CANDLE_TEX := "res://assets/sprites/vfx/eq072-cake-candle.png"
@@ -1009,7 +1009,7 @@ func taunt_ring_free(u: Dictionary) -> void:
 
 ## 072 蛋糕法阵(2026-09-15 三轮重做 · 用户「072的粉色蛋糕法阵太敷衍了，需要重做」):
 ##   前两轮(素圈 / 程序波浪环 + 缓旋辐条 + 程序奶糕)都是代码现算的图形 ⇒ 整类换成 Blender 烘焙帧表
-##   (tools/blender_cake_field.py): 贴地蛋糕盘(裱花边 + 草莓 + 糖霜) + 8 根站着的生日蜡烛公告板。
+##   (tools/assetgen/blender_cake_field.py): 贴地蛋糕盘(裱花边 + 草莓 + 糖霜) + 8 根站着的生日蜡烛公告板。
 ## 段: 展开(裱花袋沿盘边挤一圈, CAKE_OPEN_T) → 蜡烛冒出点亮 → 燃烧循环;
 ##     每秒结算那一步(box_field_pulse → cake_field_pulse)盘一亮 + 火苗窜高;
 ##     法阵结束(携带者 `_box_field_left` 归零: 5 秒到了 / 破盾出盒)→ 吹灭冒烟(CAKE_BLOW_T) → 盘缩回礼盒(CAKE_CLOSE_T)。

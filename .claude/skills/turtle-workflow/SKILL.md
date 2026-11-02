@@ -58,7 +58,7 @@ description: 斗龟场（turtle-realtime-godot）整个项目的工作方式 —
 
 - **素材不复用**，除非用户点名；同一只龟的技能和普攻也不共用。跨屏同义要登记理由。
 - 研究参考要**逐帧**看（写 `docs/studies/` 研究记录，`frame_study_audit` 守格式）；特效"到底画了什么"用染色法核实。
-- **像素画**：硬边、零半透明、小尺寸（`tools/pixel_art_audit.py`）；生成脚本确定性、重跑逐字节相同（例：`tools/build_lb_heart.py`、`tools/build_basic_slam_vfx.py`）。
+- **像素画**：硬边、零半透明、小尺寸（`tools/pixel_art_audit.py`）；生成脚本确定性、重跑逐字节相同（例：`tools/assetgen/build_lb_heart.py`、`tools/assetgen/build_basic_slam_vfx.py`）。
 - **实拍验收**：两个比例（1560×720 手机 / 960×720 iPad）、等动画落位再拍；发给用户前**自己先挑完一整类毛病**；只交最终成果，不给对比草稿。动作类交视频（Movie Maker 60fps → ffmpeg）。
 - 卡片 / 弹框里的按钮一律 `UISkin.card_button`，不用木牌按钮。文案不口语化，技能文案照 LoL 体例（`copy_lol_style_lint`）。
 

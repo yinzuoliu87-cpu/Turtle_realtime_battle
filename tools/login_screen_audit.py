@@ -37,7 +37,7 @@
 
   ★不能加 `--headless`: 无头是 dummy renderer, 截出来是空图**而且不报错**。
   ★`NO_SAVE=1` 不是可选的 —— 截图台真渲染 ⇒ 不是 headless ⇒ 不给它就**写玩家真存档**。
-  ★我们那几个矩形**不是从截图量的**, 是 `tests/_probe_wall_hit.gd` 打出来的实测
+  ★我们那几个矩形**不是从截图量的**, 是 `tests/probes/_probe_wall_hit.gd` 打出来的实测
     (`prov: "probe"`)。参考图没有探针, 只能从像素量 —— 这条不对称写在 LIMITS 里。
 
 ═══ 口径 ═══

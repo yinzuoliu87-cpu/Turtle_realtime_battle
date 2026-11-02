@@ -1320,7 +1320,7 @@ func twin_strike(at2d: Vector2) -> void:
 ## ★★2026-09-08 从上帝文件 `_coral_burst` 搬来 + 重做。改前是
 ##   `VfxTex._make_glow_texture()` 的**软光球中心 + 6 个软光点四溅** ——
 ##   通病「无含义圆环与白球」的另一张脸: 那是通用爆炸, 说明不了"珊瑚碎了"。
-##   ⇒ 换 Blender 烤的 5 帧碎块(tools/blender_coralspike.py --mode shatter),
+##   ⇒ 换 Blender 烤的 5 帧碎块(tools/assetgen/blender_coralspike.py --mode shatter),
 ##     碎块**大小不一、角度不匀、飞得不一样远** —— 第一版 9 片等长等角均匀发散,
 ##     我自己看实拍读成【烟花】, 规律的放射就是通用爆炸。
 ## ★逐帧展开走 `_wait_sim` 不走 tween(v0.19.345 学到的: tween 走真实时钟, 与实拍口径对不上)。
@@ -2298,7 +2298,7 @@ func tide_swell(at2d: Vector2, rising: bool, t_delay: float) -> void:
 ## 用户 2026-09-13:「这最好做一个头顶获得金币旋转的特效吧, 我也说不清,
 ##   你搜搜网上 blender 有没有例子, 照着做一板板」。
 ## ★参考是真找了真量了(OpenGameArt CC0 "Spinning Coin Sprites", 16 帧 × 32×32, **只量不用**),
-##   逐帧量出宽度包络再重采样到 12 帧 —— 详见 `tools/bake_coin_spin.py` 的头注。
+##   逐帧量出宽度包络再重采样到 12 帧 —— 详见 `tools/assetgen/bake_coin_spin.py` 的头注。
 ##   两条细节是纯 cos 给不出的: 正面**多停 2 帧**、侧面最窄**不为 0**(那是币的厚度)。
 const COIN_TEX := "res://assets/sprites/vfx/deepsea-coin-spin.png"
 const COIN_FRAMES := 12

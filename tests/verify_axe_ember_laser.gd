@@ -121,7 +121,7 @@ func _t_assets() -> void:
 		ground.get_width() == AEV.N_FRAMES * GROUND_FW and ground.get_height() == GROUND_FW)
 	_ok("时长 = 帧数 / 帧率(%.2f 秒)" % AEV.DUR, is_equal_approx(AEV.DUR, float(AEV.N_FRAMES) / AEV.FPS))
 
-	## 分段(见 tools/blender_ember_laser.py 头注): 帧 0 击杀闪光是【青】的, 帧 12 灼烧段是暖色
+	## 分段(见 tools/assetgen/blender_ember_laser.py 头注): 帧 0 击杀闪光是【青】的, 帧 12 灼烧段是暖色
 	var cy0: float = _cyan_share(beam, 0, BEAM_FW, BEAM_FH)
 	var cy12: float = _cyan_share(beam, 12, BEAM_FW, BEAM_FH)
 	_ok("★帧 0 击杀闪光以青色为主(青占比 %.2f > 0.6)" % cy0, cy0 > 0.6)

@@ -1,7 +1,7 @@
 class_name ReserveVfx
 extends RefCounted
 ## 援军小将·四面合围 的演出(方案书 docs/plans/20261029-终极战场援军小将.md; 结算在 ReserveSystem, 数值在 ReserveConsts)。
-## 素材全部由 tools/build_reserve_vfx.py 逐像素确定性生成(专用、硬边、零半透明、逐帧; pixel_size 恒定只切帧, 不靠缩放)。
+## 素材全部由 tools/assetgen/build_reserve_vfx.py 逐像素确定性生成(专用、硬边、零半透明、逐帧; pixel_size 恒定只切帧, 不靠缩放)。
 ##
 ## ★纯表现: 不读写任何单位字段、不用 _battle_rng、不往 _pending_shots 里塞东西 —— 只建 / 改 / 删自己挂进 battle._world 的节点,
 ##   节点名字都带 TAG, 全部由自己的 tween(battle._reg_tween, 按 sim 步喂)按时收掉。门禁 tests/verify_reserve_vfx.gd。

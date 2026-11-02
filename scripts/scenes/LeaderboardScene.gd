@@ -233,7 +233,7 @@ const COL_INK := Color(0.04, 0.05, 0.08, 0.85)
 ## ═══ 底部那一行提示 (2026-09-28: 「连不上」不许说成「你打得少」) ═══
 ##
 ## ★★★原来只有一句: 「（榜上暂时只有你 —— 打完一场, 对手就会上来）」。
-##   探针 `tests/_probe_lb_reach.gd` 实测: 池子 396 条 / 榜上 rows = **1**,
+##   探针 `tests/probes/_probe_lb_reach.gd` 实测: 池子 396 条 / 榜上 rows = **1**,
 ##   而池子里唯一能带来别人的两条路(`apply_pull_response` / `ingest_remote`)
 ##   **纯网络**。⇒ **断网时打一万场也不会有对手上来**, 那句话把网络失败
 ##   归因到了玩家的场次上。这是说谎级, 不是措辞问题。
@@ -1290,7 +1290,7 @@ func _stat_cell(parent: Control, i: int, v: int, is_self: bool) -> void:
 
 
 ## 剩余生命 = 一排 HEARTS_MAX 颗心: 还在的命是红心(左起), 丢掉的是暗色空槽; 整排右对齐到列右沿(与表头列名同一条右沿)。
-## 心形 18×16 = 9×8 美术像素 ×2(与行卡 / 奖牌同一个口径), `tools/build_lb_heart.py` 生成; 不拉伸、最近邻。
+## 心形 18×16 = 9×8 美术像素 ×2(与行卡 / 奖牌同一个口径), `tools/assetgen/build_lb_heart.py` 生成; 不拉伸、最近邻。
 ## ★不收点击: 整行点名字弹玩家菜单, 心不能挡热区。`hearts` 元数据 = 画了几颗红心(门禁读它, 不读贴图名猜)。
 func _hearts_cell(parent: Control, cx: float, v: int) -> void:
 	var n: int = int(_P2C.HEARTS_MAX)

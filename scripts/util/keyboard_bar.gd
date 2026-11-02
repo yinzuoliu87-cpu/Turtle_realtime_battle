@@ -52,7 +52,7 @@ const EST_KB := 0.52            ## 没量过时的估计: 中文候选栏 / 预�
 const KEY_BOTTOM := 12.0        ## 键底座下沿 4 源像素 ×3 是唇边, 字落在键面正中
 
 const COL_TEXT := Color("#e8f0ff")
-const COL_DIM := Color("#a8c0e4")        ## 条上说明字 / 字数(颜色随素材, tools/build_keyboard_bar_ui.py 头注)
+const COL_DIM := Color("#a8c0e4")        ## 条上说明字 / 字数(颜色随素材, tools/assetgen/build_keyboard_bar_ui.py 头注)
 const COL_ERR := Color("#ff9a9a")
 const COL_PH := Color("#6c80a6")
 const COL_KEY_MAIN := Color("#2e1a06")   ## 金键上的字: 深棕不描边

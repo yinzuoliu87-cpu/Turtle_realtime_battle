@@ -302,7 +302,7 @@ func _build_tilemap_ground() -> void:
 ##   翻成「岛→海→虚空」之后它会落在**海的外缘** —— 更远, 更不是边界。
 ##
 ## 【现在跟的是】陆地(grass/stone/sand) ↔ 非陆地(water/void)。
-##   因为岛 == 可活动区(`tools/gen_arena_map.py` 的 `ISLE` 与 `ArenaShape.N` 同一个超椭圆),
+##   因为岛 == 可活动区(`tools/assetgen/gen_arena_map.py` 的 `ISLE` 与 `ArenaShape.N` 同一个超椭圆),
 ##   所以这条界**就是**玩法边界, 一条线同时是"看得见的"和"走得到的"。
 ##
 ## ⚠ 竖面高度的标定值 `WALL_H`(照 TFT 实测: 竖面 ÷ 角色屏幕高 = 0.81 ⇒ 31px ⇒ 世界高 1.11 米)
@@ -335,7 +335,7 @@ func _coast_edge_segs(at: Callable, w: int, h: int, ox: float, oy: float, tile: 
 ## 用户 2026-09-18 说战斗场景很烂; 对标 30 款同类型好游戏后, 边界是差距最明确的一条:
 ## 好游戏的场地边界从来不是「颜色换一下」, 而是一个**能看见侧面的构件**。
 ## 本项目现在 tile 板厚只有 `TILE_THICK = 0.15 米` ⇒ 投到屏上 **2.63 px**(实测, 见
-## `tests/_probe_pxm.gd`), 等于一张贴纸直接切进黑色虚空。
+## `tests/probes/_probe_pxm.gd`), 等于一张贴纸直接切进黑色虚空。
 ##
 ## ★数值全部来自实测标定, 不是拍脑袋(方案书 R15):
 ##   · 参考(TFT 实测·做过透视校正): 竖面 ÷ 角色屏幕高 = 0.81
@@ -1771,7 +1771,7 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 	##   (两角大海带框边、中段压低让出视线、远/中/近三层), 两张叠着会把构图叠乱 ⇒ 只铺一张。
 	##   贴图是**灰度**: 灰度 = 层深(远亮近暗), 颜色仍由 fg_band_col 给, `fg_band_gain` 把灰度抬回剪影色量级。
 	##   1280×720 实测 1 世界单位 ≈ 421px(竖向 fov 40°·z=-2.35) ⇒ px 0.00475 ≈ 每格 2 屏幕像素, 800 格宽 ≈ 3.8 单位(宽屏手机也盖得住)。
-	## ★★2026-10-04 两角海带丛整体下压 45 格(贴图本身改了, 不是参数): 探针 `tests/_probe_fg_corner`
+	## ★★2026-10-04 两角海带丛整体下压 45 格(贴图本身改了, 不是参数): 探针 `tests/probes/_probe_fg_corner`
 	##   把龟摆到可活动椭圆底部左/右弧上逐角度量「立绘被前景盖住的像素比例」——
 	##   原图在 130°~145° 盖住 54%~86%(左)/ 31%~68%(右, 镜像), 下压后最坏 6.5%(只擦到脚)。
 	var _one: bool = cfg.has("fg_band_px")
@@ -2867,7 +2867,7 @@ func _build_navmesh() -> void:
 	##   新图要等下一个**物理帧**同步之后 `map_get_path` 才有路 —— 之前一律返回空 ⇒ `_nav_dir` 走直线。
 	##   物理帧按**墙钟**走, 不按 sim 步走 ⇒ 开打头几步「直奔还是绕障」取决于建场到开打那几帧真实花了多久:
 	##   回放摆位期 8 倍速快进, 建场到开打只隔约 5 帧, 机器快到这 5 帧不满 1/60 秒就分叉。
-	##   探针(tests/_probe_nav_sync.gd, --fixed-fps 1000): 默认 ⇒ 建完 6 帧内 iter=0 / path=0;
+	##   探针(tests/probes/_probe_nav_sync.gd, --fixed-fps 1000): 默认 ⇒ 建完 6 帧内 iter=0 / path=0;
 	##   map+region 关异步后 ⇒ `map_force_update` 当场 iter=1 / path=11。
 	##   ⇒ 两个都关异步, 建完当场可用, 与帧率/墙钟无关。门禁: verify_replay_roundtrip V1b。
 	NavigationServer2D.map_set_use_async_iterations(battle._nav_map, false)

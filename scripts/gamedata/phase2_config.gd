@@ -189,7 +189,7 @@ const SETTLE_FINALS := "finals"
 ## ★★★2026-09-27 抽成纯函数, 因为**顺序错过一次**: 结算里
 ##   `if _last_was_exhibition:` 原来排在 `elif _sk == SETTLE_GAUNTLET:` 前面,
 ##   而它只看 `is_eliminated()` ⇒ **0 命的人一律走表演赛**, 闯关赛/决赛日的记账全跳过。
-##   探针实测(`tests/_probe_zero_heart_gauntlet.gd`): 0 命 + 已晋级 + 周六打赢一场,
+##   探针实测(`tests/probes/_probe_zero_heart_gauntlet.gd`): 0 命 + 已晋级 + 周六打赢一场,
 ##   战绩 **0胜→0胜**(根本没记) ⇒ 他永远到不了 4 胜, 进不了决赛日,
 ##   而周一~五的屏幕刚答应过他「💀 本大轮已出局 · **但你已晋级, 周六闯关赛见**」。
 ##
@@ -645,7 +645,7 @@ static func note_server_clock_offset(off: int) -> void:
 ##  【本进程里时钟核对过没有】(2026-10-22 · 内测服整周彩排抓到的开机清档)
 ## ══════════════════════════════════════════════════════════════════════
 ## 开机那一次 `GameState.ensure_season()` 是**同步**跑在 `_ready` 里的, 比任何网络请求都早
-##   (探针 tests/_probe_boot_season_clock.gd: 那一刻 asked=0, 内测服偏移 0; 337ms 后偏移才到)。
+##   (探针 tests/probes/_probe_boot_season_clock.gd: 那一刻 asked=0, 内测服偏移 0; 337ms 后偏移才到)。
 ##   于是它只能用「本机钟 + 上次落盘的 Date 头偏移」, 而这两样都可能是旧的:
 ##   · 内测服: 假时间偏移**不落盘**, 开机那一刻恒 0 ⇒ 存档在假周(10-26)、本机钟在真周(10-19)
 ##     ⇒ 判成「跨周」⇒ 21 个模拟号整周战绩被清(season_id 2→3); 偏移一到再判又是「跨周」, 再清一次。

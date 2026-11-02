@@ -86,7 +86,7 @@ const CARD_GAP := 12.0
 const CARDS_X := 24.0
 const LANE_HDR_Y := 84.0       # 上路木牌; 下路木牌 = 它 + ROW_PITCH(再往上会压到顶栏「商店 / 背包」签)
 const LANE_SIGN_MARGIN_V := 9      # = 木牌纹理真实边带(3 倍画: 黑 3 + 高光 3 + 红边 3)
-## 木牌高 46 = 字的行框 30 + 边带 8 × 2(探针 tests/_probe_lane_sign.gd 实测: 汉字走 Noto 回退字体, 20 号字行框 30;
+## 木牌高 46 = 字的行框 30 + 边带 8 × 2(探针 tests/probes/_probe_lane_sign.gd 实测: 汉字走 Noto 回退字体, 20 号字行框 30;
 ##   28 / 36 / 40 时字撑出木牌或压进边带 —— verify_ui_consistency 8 压扁 / 11 压边带)
 const LANE_SIGN_H := 46.0
 ## 卡顶 = 木牌下沿(框图已裁掉透明留边, 不再让木牌压进卡里 —— 那会盖住框顶的贝壳)
@@ -2041,7 +2041,7 @@ var _toast_layer: CanvasLayer = null
 # ★★★TOAST_SURVIVES(2026-09-29 查实): 原来这行是 `add_child(l)` —— 直接挂在本场景下。
 #   而每一处 `host._toast(...)` 的【下一行】就是 `host._rebuild()`(见 inventory/equip_ops.gd 七处),
 #   `_rebuild()` 开头把所有非浮层子节点 `visible=false; queue_free()`
-#   ⇒ **提示生下来那一帧就被销毁**。实测(tests/_probe_toast_killed.gd):
+#   ⇒ **提示生下来那一帧就被销毁**。实测(tests/probes/_probe_toast_killed.gd):
 #       触发前 0 个 → 同帧立刻查 1 个 → +1 帧起 0 个 … +6 帧 0 个
 #   七条提示玩家一条都没看见过 —— 这就是「装到上限点了没反应」的真根因(提示其实全写好了)。
 #

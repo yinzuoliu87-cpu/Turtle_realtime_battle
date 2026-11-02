@@ -24,7 +24,7 @@ extends Node
 ##   判据会变恒真式（memory `fb-debug-stage-writes-real-save` 第②条）。
 ##   ⇒ 临时开闸让写盘真发生，并把 savegame.json 与备份文件逐字节还原 / 删掉。
 ## ⚠ 服务端那一半（比较并交换、RLS、只能走函数写）要真 Supabase 才验得到，
-##   见 `tests/_probe_d8.gd`；这里喂的是 schema.sql 里写死的回包形状。
+##   见 `tests/probes/_probe_d8.gd`；这里喂的是 schema.sql 里写死的回包形状。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const OWN := preload("res://scripts/net/save_own_write.gd")

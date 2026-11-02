@@ -318,7 +318,7 @@ const RAY_SIDE := [Vector2(0, 1), Vector2(-0.7071, 0.7071), Vector2(-1, 0), Vect
 
 
 ## ── 大字美术字(结算屏同一套做法: 大格子像素字 + 描边 + 渐变 + 落影, memory project-big-title-art-1027)。
-##   这几屏自己的那几张在 assets/sprites/finals/bt-*.png(生成脚本见方案书 C 块记录; 与 tools/build_big_titles.py 同一个栅格化 / 渐变)。
+##   这几屏自己的那几张在 assets/sprites/finals/bt-*.png(生成脚本见方案书 C 块记录; 与 tools/assetgen/build_big_titles.py 同一个栅格化 / 渐变)。
 ##   「胜利」仍走 BigTitle.BIG(普通结算那一张, 不另出一份)。
 const ART_DIR := "res://assets/sprites/finals/"
 const ART_SCALE := 3

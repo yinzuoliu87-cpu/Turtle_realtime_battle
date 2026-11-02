@@ -33,7 +33,7 @@ const V4_STORM := "storm"      # 风暴
 const ALL: Array = [V1_DUSK, V2_REEF, V3_SHOAL, V4_STORM]
 
 ## ★当前生效的主题。改这一个值 = 换一整张地图。
-## ⚠ 地形生成器 `tools/gen_arena_map.py` 也要跟着跑一次(它按主题换地面类型与岸线扰动)。
+## ⚠ 地形生成器 `tools/assetgen/gen_arena_map.py` 也要跟着跑一次(它按主题换地面类型与岸线扰动)。
 ## ★★2026-10-04 起**正式对局不读这个默认值**: 开局由 `choose_for_battle()` 按战斗种子改写(见文件尾)。
 ##   `V0_BASE` 只剩开发工具(调试场/审阅台/EQDEMO/VFXLAB)与单测的默认。
 static var active: String = V0_BASE

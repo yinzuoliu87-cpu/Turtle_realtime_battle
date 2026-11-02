@@ -772,7 +772,7 @@ var _email_box: Panel = null
 ## 【门禁注入点】虚拟键盘高度(**视口单位**)。< 0 = 真实读 `DisplayServer`。
 ##
 ## ★为什么必须有它: 无头 `DisplayServer.has_feature(FEATURE_VIRTUAL_KEYBOARD)` **实测为 false**
-##   (探针 `tests/_probe_ds_vkb.gd`), `window_get_size()` 还是 `(0,0)` ⇒ 键盘让位那一支
+##   (探针 `tests/probes/_probe_ds_vkb.gd`), `window_get_size()` 还是 `(0,0)` ⇒ 键盘让位那一支
 ##   在门禁里**永远走不到**, 判据就是空检查(memory `fb-gate-subject-never-constructed`)。
 ## ★默认 -1 ⇒ **玩家路径一字不动**(与 `acct_override` / `clock_override_ts` 同一个模式)。
 static var vkb_override_vp: float = -1.0
@@ -806,7 +806,7 @@ var _email_ver: Label = null
 ## ══════════════════════════════════════════════════════════════════════
 ##  为什么非得**分两步** —— 这不是版式偏好, 是算出来无解
 ## ══════════════════════════════════════════════════════════════════════
-## 上一版(v0.19.470)的实测剖面(探针 `tests/_probe_wall_vprofile.gd`):
+## 上一版(v0.19.470)的实测剖面(探针 `tests/probes/_probe_wall_vprofile.gd`):
 ##   5 个可点元素短边 42/44/46/44/46 px = **22.8~25.0pt**, 全部低于 44pt 触摸线;
 ##   相邻间隙只有 **4 / 6 / 12 / 6 px** ⇒ 瞄「发验证码」高 7px 就点进邮箱框,
 ##   而那一下正好弹出键盘 ⇒ 玩家看到的就是「点了没反应」。
@@ -1064,7 +1064,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true,
 	## ★★★这一屏盖满全屏, 而它原来**一只龟都看不见**。
 	##   (★ 2026-09-29 拆墙之后它不再是「每个新玩家看到的第一屏」—— 第一屏是主菜单;
 	##    这一屏只在玩家点了「进度没备份」之后才出现。美术的理由不变: 它仍然盖满整屏。)
-	##   探针 `tests/_probe_wall_look.gd` 实测: `_maybe_bind_screen`(当时叫 `_maybe_login_wall`) 把 self 下的
+	##   探针 `tests/probes/_probe_wall_look.gd` 实测: `_maybe_bind_screen`(当时叫 `_maybe_login_wall`) 把 self 下的
 	##   Control **整批藏掉**, 连 `_bg()` 建的底色/平铺砖/渐变一起藏 
 	##   (探针打出来那三个节点都是 visible=false) ⇒ 玩家看到的是一块深蓝面板
 	##   压在**自动载入的 `PersistentBg` 那张平铺花砖**上 —— 全屏没有任何

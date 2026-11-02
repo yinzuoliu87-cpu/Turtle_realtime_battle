@@ -4,7 +4,7 @@ extends Control
 ##
 ## 由来: 方案书 docs/plans/20260917-主菜单版式重做.md R1(场景 = 擂台 + 看台) /
 ##   R1-a(不拿 map 件拼) / R1-b(「不能用现有的龟立绘」, 观众也全新画)。
-##   素材全是 PixelLab 新生成的, 由 tools/build_menu_arena_bg.py 分层烘好、调好色,
+##   素材全是 PixelLab 新生成的, 由 tools/assetgen/build_menu_arena_bg.py 分层烘好、调好色,
 ##   排布在 scripts/gamedata/menu_arena_layout.gd(生成文件)。本文件只管【拼起来 + 让它动】。
 ##
 ## 会动的东西(都在 `step()` 里, 一条钟):

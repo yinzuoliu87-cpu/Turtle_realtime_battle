@@ -251,7 +251,7 @@ func _post_scene_state(scene_name: String, inst: Node) -> void:
 ## 由来(用户真机报「邮箱注册没用, app 里操作没反应」): `MENU_SCENES` 里那个 "Settings"
 ## 载的是**普通设置页**。这一屏只有 `acct_override = 1` 才造得出来, 而门禁给每个
 ## 测试 `TURTLE_SUPABASE=" "`(有意关后端) ⇒ `SB.enabled()` 恒假 ⇒ **它从来不在场**。
-## 探针 `tests/_probe_wall_hit.gd` 实测: 不注入 `acct_override` 时这一屏扫到 7 个可点元素
+## 探针 `tests/probes/_probe_wall_hit.gd` 实测: 不注入 `acct_override` 时这一屏扫到 7 个可点元素
 ## (顶栏返回 + 滑条把手那些), `_email_layer = false` —— **墙一个控件都没量到**。
 ## 而这一屏是**每个新玩家开游戏看到的第一屏**(关不掉、返回箭头都藏了),
 ## 本门禁两条主判据(按钮越界 / 按钮被后画的面板盖住)正是为它这种"盖上来的一层"准备的。

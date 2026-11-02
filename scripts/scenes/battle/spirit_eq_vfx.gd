@@ -287,7 +287,7 @@ const BLADDER_YARDS := 85.2      # 48 texel × 1.775 码 ⇒ 1:1 不糊
 ## 前后半圈沿视线各错开多少米(后半圈被龟身挡住、前半圈压在身前)
 const BLADDER_DEPTH := 0.35
 static var _bladder_tex: Texture2D = null
-## ── 064 触发 / 破裂两段的烘焙帧表(tools/blender_bladder_fx.py) ──
+## ── 064 触发 / 破裂两段的烘焙帧表(tools/assetgen/blender_bladder_fx.py) ──
 ## ★2026-09-15 重做: 原来破裂是程序圆盘 + 圆环按 Fick 扩散 0.75 秒才到 300 码 —— 诅咒却在破裂那一步就给了,
 ##   演出到边晚于结算; 触发那一刻没有任何演出(用户「不太行，得思考重做，思考怎么贴合装备效果」)。
 const RISE_TEX := "res://assets/sprites/vfx/eq064-bladder-rise.png"
@@ -1115,7 +1115,7 @@ func whale_haste(u: Dictionary, sec: float) -> void:
 
 
 ## 064: 浮囊。frac 由 `apply_at` 从外部余额喂进来(见 set_bladder_frac)。
-## 064【持有态】: 套在腰上的幽灵浮囊, 前后两半(tools/blender_bladder.py 烘焙 · 2 列 × 4 档瘪度)。
+## 064【持有态】: 套在腰上的幽灵浮囊, 前后两半(tools/assetgen/blender_bladder.py 烘焙 · 2 列 × 4 档瘪度)。
 ## ★用户 2026-09-15:「不太行，得思考重做，思考怎么贴合装备效果」「特效有盾的为什么角色动了盾没动」。
 ##   旧版是一颗程序加色球, 且只在开盾那一刻按坐标建 ⇒ 读不出「浮囊」、也不跟人。
 ## ★拆前后两半: 龟立绘 shader 写深度(depth_prepass_alpha) ⇒ 后半圈沿视线往后错开 BLADDER_DEPTH,

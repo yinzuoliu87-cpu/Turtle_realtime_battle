@@ -357,7 +357,7 @@ CROSS_OK = {
     "vfx/hunt-order-icon.png": "同上(狩猎令)。",
     "vfx/magic-stone-icon.png": "同上(魔石)。",
     "vfx/tame-icon.png": "同上(驯服)。",
-    ## ★2026-10-27 回放操作条 + 闯关排队等待屏的专用像素素材(tools/build_replay_queue_ui.py; 用户看了风格稿回「行吧」)。
+    ## ★2026-10-27 回放操作条 + 闯关排队等待屏的专用像素素材(tools/assetgen/build_replay_queue_ui.py; 用户看了风格稿回「行吧」)。
     ##   两屏的素材都是专门新画的, 只有这一对共用: 排队屏的「取消匹配」与回放 / 观赛的「退出」是**同一套键里的红键**
     ##   (docs/plans/20261027-UI美术规矩.md §4.6-6「叠在画面上的控制键」; 风格稿素材清单里写明「取消键 = 回放条红键底座九宫格拉宽」)。
     "ui/replay_bar/key-red.png":

@@ -497,7 +497,7 @@ func _ready() -> void:
 	#
 	# ★★★2026-09-29 查实的 bug: `equip_ops.gd` 里七处 `host._toast(...)` 的下一行都是
 	#   `host._rebuild()`, 而 `_rebuild()` 开头把所有非浮层子节点 queue_free
-	#   ⇒ 提示【生下来那一帧就被销毁】。实测(tests/_probe_toast_killed.gd):
+	#   ⇒ 提示【生下来那一帧就被销毁】。实测(tests/probes/_probe_toast_killed.gd):
 	#       同帧立刻查 1 个 → +1 帧起 0 个 … 一直 0
 	#   七条提示玩家一条都没看见过 —— 「装到上限点了没反应」的真根因。提示其实全写好了。
 	#
@@ -817,7 +817,7 @@ func _cap_pair(sc: Node) -> Array:
 ##   ③ 选中之后底部真的出现「卸下」键, 每颗短边 ≥ 81px(44pt)、全落在操作条里,
 ##      **数量 == 这只单位身上的件数**(少一颗就有一件只能靠小格子卸)
 ##   ④ ③ 对【统领】和【小将】分别验 —— 这正是原 bug 只坏一半的那一刀
-const PX_PER_PT := 81.0 / 44.0     # 81px = 44pt (见 tests/_probe_touch.gd 的换算推导)
+const PX_PER_PT := 81.0 / 44.0     # 81px = 44pt (见 tests/probes/_probe_touch.gd 的换算推导)
 const TOUCH_MIN_PX := 81.0
 
 

@@ -11,9 +11,9 @@ extends RefCounted
 ##   state                 开局那一刻 GameState 里**重放这一场真正要的**那几个变量(`STATE_KEYS`, 2026-10-04 瘦身)
 ##                         ★这张表不是凭印象列的, 是**量**出来的(方案书 §9.5):
 ##                           ① 量「回放那一遍实际读了 GameState 的哪些变量」(运行时给每个变量补 getter 记读,
-##                              `tests/_gs_read_trace.gd` + `tests/_probe_replay_gs_reads.gd`, 4 种阵容并集 24 个)
+##                              `tests/_gs_read_trace.gd` + `tests/probes/_probe_replay_gs_reads.gd`, 4 种阵容并集 24 个)
 ##                              + 静态扫战斗侧 `GameState.<变量>` 补上没走到的读者(gambler_wheel_stacks);
-##                           ② 对这 25 个逐个变异(`tests/_probe_replay_field_mut.gd`): 录像里拿掉 F、本机 F 换成
+##                           ② 对这 25 个逐个变异(`tests/probes/_probe_replay_field_mut.gd`): 录像里拿掉 F、本机 F 换成
 ##                              另一台设备的值 ⇒ 分叉的进表, 不分叉的不进。
 ##                         门禁(`verify_replay_roundtrip` V3): 播之前把**所有**不在表里的变量都换成另一份, 仍逐步一致;
 ##                           录像里不许出现表外的键(币/邮箱/账号/背包/装备池……), 配分母断言。

@@ -1,5 +1,5 @@
 extends RefCounted
-## menu_arena_layout.gd —— 【生成文件, 别手改】由 tools/build_menu_arena_bg.py 写出。
+## menu_arena_layout.gd —— 【生成文件, 别手改】由 tools/assetgen/build_menu_arena_bg.py 写出。
 ## 主菜单擂台背景的分层排布(原生 390x180 坐标), 读它的是 scripts/scenes/menu_arena_backdrop.gd。
 ## 改排布/换素材: 改生成器重跑, 再 --import。tools/menu_arena_sync_audit.py 守着两边一致。
 

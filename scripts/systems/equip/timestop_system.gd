@@ -533,7 +533,7 @@ const TS_WAVE_TOTAL := TS_WAVE_OUT + TS_WAVE_VIOLET + TS_WAVE_FLIP + TS_WAVE_IN 
 
 ## 【胸口白金光点】参考 10.83~10.97 秒(#025~#029): DIO 胸口正中亮起一个白金光点 → 从胸口爆开、全身发白金光。
 ##   用户原话「从人物中间爆开, 中间是什么颜色特效」—— 就是这个: 白芯 + 金晕。
-## ★像素帧(tools/bake_ts_core.py · 8 帧), 不是软光球: 蓄力末 3 帧「点→变大」, 释放后 5 帧「爆开→碎散」。
+## ★像素帧(tools/assetgen/bake_ts_core.py · 8 帧), 不是软光球: 蓄力末 3 帧「点→变大」, 释放后 5 帧「爆开→碎散」。
 ## ★帧号走时间累加器不走 tween: 蓄力段世界还在走(sim 步长), 释放后全局 `_t` 冻结(真实时间)。
 const TS_CORE_TEX := "res://assets/sprites/vfx/ts-core.png"
 const TS_CORE_FRAMES := 8
@@ -600,7 +600,7 @@ func _ts_free_cores() -> void:
 ##   用户原话「**直接是人物冒战斗特效**」—— 蓄力那 1 秒就是这一段(TS_CHARGE = 1.0 与参考 10.0~11.0 同长)。
 ## ★改之前蓄力段是 10 颗 `_make_fire_glow_tex` 软光球螺旋汇入 + 脚下一道 `_skill_ring` 金环 ——
 ##   两个都是点名过的禁区形状(无含义白球/圆环), 参考里也没有。
-## ★Blender 体积火(tools/blender_ts_aura.py, 同 022 真火那条路) + 参考量出的 6 档金色板;
+## ★Blender 体积火(tools/assetgen/blender_ts_aura.py, 同 022 真火那条路) + 参考量出的 6 档金色板;
 ##   身体那一块留空 ⇒ 龟看得见(火在身侧与头顶往上窜, 不糊在身上)。
 const TS_AURA_TEX := "res://assets/sprites/vfx/ts-aura.png"
 const TS_AURA_FRAMES := 8
@@ -641,7 +641,7 @@ func _ts_free_auras() -> void:
 			s.queue_free()
 	_ts_aura_sprs = []
 
-## 【时之砂】时停期间绕着携带者走的金沙(tools/bake_ts_sand.py · 8 帧循环)。
+## 【时之砂】时停期间绕着携带者走的金沙(tools/assetgen/bake_ts_sand.py · 8 帧循环)。
 ## ★它是来【替换一颗白球】的: 原来这里贴的是 150 码的 `VfxTex._make_fire_glow_tex()` 金球,
 ##   染色法核实过那团白就是它, 而它把携带者**整只盖没了**(并排图: 时停前看得见龟, 时停中只剩一颗球)。
 ##   两条都踩了 —— ①「无含义白球」是本仓点名过的禁区形状;

@@ -271,7 +271,7 @@ func _t_quota_and_sweep() -> void:
 	_ok("⑤ ★打到终极战场才赢 → 不算横扫", int(_gs.season_sweeps) == 1,
 		"season_sweeps=%d(应仍为 1)" % int(_gs.season_sweeps))
 
-	## 投降局: lane_results 是空的 —— 实测过(tests/_probe_draw_surrender.gd)
+	## 投降局: lane_results 是空的 —— 实测过(tests/probes/_probe_draw_surrender.gd)
 	_gs.lane_results = {}
 	_ok("⑤ ★分母: 投降局的 lane_results 确实是空字典",
 		(_gs.lane_results as Dictionary).is_empty())
@@ -298,7 +298,7 @@ func _t_quota_and_sweep() -> void:
 # ⑥ 赛程判定(A5 的纯函数) —— 全部按 UTC, 拿【已知日期】当样本
 #    ★不自己算星期几再跟产品比 —— 那是拿同一份推导验它自己。
 #      用真实日历上已知的四天(2026-09-14 周一 / 17 周四 / 19 周六 / 20 周日),
-#      探针 tests/_probe_weekday.gd 已核实 Godot 的 weekday 是 0=周日。
+#      探针 tests/probes/_probe_weekday.gd 已核实 Godot 的 weekday 是 0=周日。
 # ─────────────────────────────────────────────────────────────
 func _t_schedule() -> void:
 	print("── ⑥ 赛程判定(UTC) ──")

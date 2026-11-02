@@ -7,7 +7,7 @@ extends Node
 ## ④ 跳过: 0.3 秒前点不算; 之后点 ⇒ 直接进淡出
 ## ⑤ 播放期间压住背景音乐, 播完放开(不许留静音; 半路被拆也放开)
 ## ⑥ 摆位: 整组水平居中, 字标宽在屏宽 18%~32%(规格 25~30%, 参考 Supercell 21%), 全在屏内
-## ⑦ 时间轴 / 字宽与素材脚本 tools/build_studio_intro.py 逐项相同; 素材零半透明; 音效长度 = 时间轴总长
+## ⑦ 时间轴 / 字宽与素材脚本 tools/assetgen/build_studio_intro.py 逐项相同; 素材零半透明; 音效长度 = 时间轴总长
 ## ⑧ 主菜单真的接上了: 冷启动第一个主菜单盖一层, 第二个主菜单不再盖
 
 const SI := preload("res://scripts/scenes/studio_intro.gd")
@@ -184,7 +184,7 @@ func _t_skip() -> void:
 
 ## ⑦
 func _t_parity() -> void:
-	var src := FileAccess.get_file_as_string("res://tools/build_studio_intro.py")
+	var src := FileAccess.get_file_as_string("res://tools/assetgen/build_studio_intro.py")
 	_ok("⑦ 读得到素材脚本", src.length() > 1000)
 	var re := RegEx.new()
 	var bad: Array = []

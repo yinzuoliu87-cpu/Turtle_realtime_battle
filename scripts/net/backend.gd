@@ -1538,7 +1538,7 @@ static func ensure_finals_entry() -> void:
 ##   那几条走掉时**一点痕迹都不留**, 客户端毫不知情。⇒ 在交接的那一刻记一笔。
 ## ★它**不是**「我插一行数一行」那种假门禁: 判据量的是**流过这个交接口的值对不对**
 ##   —— 补报必须带【那一场】的 seed 与周号, 不是「现在」的那个
-##   (探针 `tests/_probe_finals_retry.gd` 量到过 4242 ↔ 999 的分岔)。
+##   (探针 `tests/probes/_probe_finals_retry.gd` 量到过 4242 ↔ 999 的分岔)。
 ##   与 `match_src_counts` 同一条纪律: 记账放在**事件发生处且无条件**。
 ## ⚠ 它记的是「交给网络层了」, **不是**「发出去了」。「真报成了」的唯一判据仍是
 ##   `SupabaseNet.finals_reported()`(只在 2xx 回调里置真) —— 两者不许混。
@@ -1553,7 +1553,7 @@ static var last_finals_report: Dictionary = {}
 ##
 ## ★★★`seed_used` 是**入参**, 不在函数体里读 `GameState.battle_seed`(2026-09-28 改)。
 ##   由来: 补报那条路(`retry_finals_report`)报的是**过去某一场**, 而
-##   `GameState.battle_seed` 是**现在这一场**的 —— 探针 `tests/_probe_finals_retry.gd`
+##   `GameState.battle_seed` 是**现在这一场**的 —— 探针 `tests/probes/_probe_finals_retry.gd`
 ##   量出来的分岔就是这个: 补报单上存着 `seed=4242`, 而函数体读到的是 `999`。
 ##   ⇒ 补报单里那个 `seed` 字段**一个读者都没有**(全仓 grep 过), 而报上去的是另一个数。
 ##   `p_seed` 是服务端确定性复算用的种子 ⇒ 报错了就等于报了一场复算不出来的比赛。

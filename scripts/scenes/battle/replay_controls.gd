@@ -26,7 +26,7 @@ extends RefCounted
 ##   原来是整条不透明金属底板 + 三颗棕底文字大框(商店卡片按钮)。照 13 个商业回放画面的共同做法改成:
 ##     左下一颗红色退出键 · 右下两颗小方形图标键(暂停 ↔ 播放、x1 → x2 → x4)· 中间一条**没有底板**的细进度条
 ##     (深色凹槽 + 金色已播 + 每一路开打处一颗菱形 + 播放头, 菱形下面写路名全称)· 进度条右端时间。
-##   素材全是这一屏专门新画的(tools/build_replay_queue_ui.py → assets/sprites/ui/replay_bar/), ×3 最近邻(PixelKey)。
+##   素材全是这一屏专门新画的(tools/assetgen/build_replay_queue_ui.py → assets/sprites/ui/replay_bar/), ×3 最近邻(PixelKey)。
 ##   键看起来 60, 可点 84(用户 10-27 定)。右下两颗键让开法术圆盘(battle_hud._build_spell_disc 同一个公式)。
 ##   ★退出要确认(方向稿定的): 键小、挨着屏幕边, 误触一下整场回放就没了 ⇒ 点退出先出一个小弹框, 弹框里的按钮属于弹框 ⇒ `UISkin.card_button`。
 ##   观赛 / 逐帧直播的「退出」是同一颗红键、同样先确认。

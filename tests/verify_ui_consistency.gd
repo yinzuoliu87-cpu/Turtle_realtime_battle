@@ -651,7 +651,7 @@ func _interactive(c: Control) -> bool:
 
 ## `gui_input` 上**外面**有人接吗(引擎自己接的那条不算)。
 ##
-## ★★2026-09-28 由来(探针 `tests/_probe_wire2.gd` 实测): `RichTextLabel` 一进场景树,
+## ★★2026-09-28 由来(探针 `tests/probes/_probe_wire2.gd` 实测): `RichTextLabel` 一进场景树,
 ##   它**内部的 `VScrollBar`** 就会把 `ScrollBar::_drag_node_input` 接到宿主的
 ##   `gui_input` 上 —— `scroll_active = false` 与 `mouse_filter = IGNORE` 都关不掉它。
 ##   ⇒ 照原来那句 `gui_input.get_connections().size() > 0`, **每一个** RichTextLabel
@@ -723,7 +723,7 @@ func _nine_outline_band(np: NinePatchRect) -> Vector2:
 
 ## 【这个框管得着这段字吗】—— 「压边带」第 11 条判据的**配对**规则。
 ##
-## ★★由来(2026-09-28, 探针 `tests/_probe_settings_frame.gd` 实测): 原来的配对只有一句
+## ★★由来(2026-09-28, 探针 `tests/probes/_probe_settings_frame.gd` 实测): 原来的配对只有一句
 ##   「取**屏幕坐标**上包住字块中心的**最小**框」—— 而屏幕坐标是**扁的**, 它认不出
 ##   「这两个东西根本不在同一层」。设置屏一开弹框, 三条假违规当场全冒出来:
 ##
@@ -1082,7 +1082,7 @@ const POPUPS: Array = [
 	## ★★★2026-09-28 【frame 这一列整列重测过一遍】: 配对规则从「屏幕上最小的框」收紧成
 	##   「祖先 / 同父兄弟」(见 `_frame_owns`)之后, 原来登记的 5 条存量里 **4 条是跨层假违规**
 	##   —— 报的是**页面上的字**配**弹框里的框**(或反过来)。逐条实测(探针
-	##   `tests/_probe_settings_frame.gd` / `UICONS_DUMP=1` 的「跨层·不配对」行):
+	##   `tests/probes/_probe_settings_frame.gd` / `UICONS_DUMP=1` 的「跨层·不配对」行):
 	##     · 羁绊详情框 `月之刃+11`      ← 背包**页面上的装备名** vs 弹框的金属面板
 	##     · 领奖框 `糖果罐碎了！…+20`   ← 弹框**标题** vs 背包页面的一个 Panel
 	##       (对它**自己**那个框量出来是负的 = 干净)
@@ -1962,7 +1962,7 @@ func _ready() -> void:
 # ══════════════════════════════════════════════════════════════════════════
 ## 由来 (2026-09-29 台账 ④, 用户原话「不合理的地方比如这个光标为什么这么大？」):
 ##   `autoload/CursorTheme.gd` 原来写 `_cur.scale = base_scl / clampf(cf, 0.5, 4.0)`,
-##   把爪子钉死在**屏幕物理 ~24px**、故意不随内容缩放。实测(tests/_probe_cursor_size.gd)
+##   把爪子钉死在**屏幕物理 ~24px**、故意不随内容缩放。实测(tests/probes/_probe_cursor_size.gd)
 ##   换算成设计像素时它**随窗口变四倍**: 2560 宽 12px / 1280 宽 24px / 640 宽 48px,
 ##   而本文件自己的触控下限 `TOUCH_MIN = 81`(44pt) ⇒ 小窗口下一只爪子有触控区的 59%。
 ##   附带: `clampf` 的下界 0.5 在 480 宽(cf=0.375)**真的被夹住** ⇒ 那句"固定 24px"本来就是假的。
