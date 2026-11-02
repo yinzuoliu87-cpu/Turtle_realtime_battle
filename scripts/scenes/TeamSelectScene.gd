@@ -1542,7 +1542,7 @@ func _on_start() -> void:
 	## ★★★兜底走 `_P2C.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28)。
 	##   `lockout_now_override` **不删**(`verify_close_lockout` / `verify_week_phase_write` 在用),
 	##   它只是**更细的一层**; 但**真实时钟那条路只剩一条**。
-	##   实测(`tests/probes/_probe_oneclock.gd`, 修前): 全局缝钉在「周五 22:55 封盘窗内」
+	##   实测(`tests/_probe_oneclock.gd`, 修前): 全局缝钉在「周五 22:55 封盘窗内」
 	##   而 `lockout_now_override` 留 0 ⇒ 这条闸**照旧放过去**(left_team 被写了 3 只) ——
 	##   因为它读的是真实系统钟。下面那句 `week_phase` 也跟着记错阶段。
 	##   memory `fb-second-clock-drops-events`。

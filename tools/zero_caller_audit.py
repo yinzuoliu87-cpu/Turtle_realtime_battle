@@ -190,11 +190,13 @@ def main():
     ##   它们**故意**只被 tests/ 调用: 产品不需要它们, 门禁需要它们把内部状态读出来。
     ##   不算进来会误报 40 多个 ⇒ 这条门禁立刻变成噪音, 而噪音门禁等于没门禁。
     testsrc = {}
+    ## ★2026-11-02 递归: 探针搬进 tests/probes/ 后, 只扫 tests/ 第一层就看不见它们的调用 ⇒ 只被探针调的函数误报成零调用
     if os.path.isdir("tests"):
-        for f in os.listdir("tests"):
-            if f.endswith(".gd"):
-                p = "tests/" + f
-                testsrc[p] = io.open(p, encoding="utf-8", errors="replace").read()
+        for dirpath, _d, fs in os.walk("tests"):
+            for f in fs:
+                if f.endswith(".gd"):
+                    p = os.path.join(dirpath, f).replace(os.sep, "/")
+                    testsrc[p] = io.open(p, encoding="utf-8", errors="replace").read()
 
     ## ══════════════════════════════════════════════════════════════
     ##  预分词(见下面主判据里的等价性说明)
