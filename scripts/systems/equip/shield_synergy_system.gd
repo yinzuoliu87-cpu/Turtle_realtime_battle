@@ -260,6 +260,21 @@ func holy_bonus(u: Dictionary) -> float:
 	return 1.0 + (T3_SHIELD_BONUS if int(battle._synergy.tier_for(u, "盾")) >= 3 else 0.0)
 
 
+## 圣盾值 / 藏壳盾段随护盾收敛(盾被打掉 ⇒ 标记同步缩; 盾清零后新得的普通盾不会被算成圣盾)。
+## ★2026-11-03 从血条 hp_bar.update_state 搬来, 由 _sim_step 每步末尾调一次: 原来写在界面层, 按真实帧执行,
+##   裁判机一帧跑很多步 ⇒ 什么时候收敛随机器快慢变 ⇒ 反击光弹(holy_live > 0 才发)有时打有时不打,
+##   同一局三个进程跑出 2445 / 7445 / 10105 步三种结局。门禁 verify_rules_fingerprint(金标跨进程比对)守。
+static func converge_marks(units: Array) -> void:
+	for u in units:
+		if not (u is Dictionary):
+			continue
+		var sh := float((u as Dictionary).get("shield", 0.0))
+		if float((u as Dictionary).get("_holyShieldVal", 0.0)) > sh:
+			u["_holyShieldVal"] = sh
+		if float((u as Dictionary).get("_hidingShellVal", 0.0)) > sh:
+			u["_hidingShellVal"] = sh
+
+
 ## 收殓：敌方单位阵亡 → 最近的携带盾者获得该单位 30% 最大生命的护盾。
 ## 挂在击杀钩上（`_eq_on_kill` 已存在且带 victim）。
 func on_enemy_died(victim: Dictionary) -> void:

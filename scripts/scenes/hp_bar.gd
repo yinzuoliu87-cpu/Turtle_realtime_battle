@@ -85,14 +85,12 @@ func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -
 		return
 	_shield = maxf(0.0, shield_override if shield_override >= 0.0 else float(f.get("shield", 0)))
 	# 圣盾量 (圣甲): shield 中属圣盾的部分, 画白黄亮段. 受击消盾时 clamp 不超当前总盾 (盾被打掉则圣盾段同步缩)。
-	#   写回 fighter 让 _holyShieldVal 随盾衰减 (盾清零→圣盾归0, 之后新得的普通盾不会被误染金): update_state 每次受伤刷新都收敛。
+	#   ★只读不写(2026-11-03): 这里原来把 _holyShieldVal / _hidingShellVal 写回 fighter 做「随盾收敛」——
+	#     血条按真实帧刷新, 裁判机一帧跑很多步 ⇒ 收敛时刻随机器快慢变 ⇒ 圣盾值不同 ⇒ 反击光弹有时打有时不打,
+	#     同一局跨进程结果不同(verify_rules_fingerprint 抓到)。收敛搬进 sim: ShieldSynergySystem.converge_marks 每步一次。
 	_holy = clampf(float(f.get("_holyShieldVal", 0)), 0.0, _shield)
-	if f.has("_holyShieldVal") and float(f.get("_holyShieldVal", 0)) > _shield and shield_override < 0.0:
-		f["_holyShieldVal"] = _shield
 	_hshell = clampf(float(f.get("_hidingShellVal", 0)), 0.0, maxf(0.0, _shield - _holy))
 	_urchin = clampf(float(f.get("urchin_sh_left", 0)), 0.0, maxf(0.0, _shield - _holy - _hshell))   # 海胆盾段: 随10秒衰减自动缩
-	if f.has("_hidingShellVal") and float(f.get("_hidingShellVal", 0)) > _shield and shield_override < 0.0:
-		f["_hidingShellVal"] = _shield   # 盾被打掉→壳盾段同步收敛(圣盾同款写回)
 	# 法力盾(068)不裁到 _shield: 它是 SpecialBalance 独立余额, 吸收顺序在普通盾之后 —— 不是 shield 的一部分。
 	_magic = maxf(0.0, float(f.get("magic_shield", 0)))
 	_mana = maxf(0.0, float(f.get("_manaShieldVal", 0)))

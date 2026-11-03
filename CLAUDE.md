@@ -76,7 +76,9 @@ python tools/prod_flags.py force-update <版本> --yes-prod   # 苹果 Beta 审�
 ```
 
 - **五处版本号**：`project.godot` / `CHANGELOG.md` 顶部 / `export_presets.cfg` 的 iOS `short_version` 与 Android `version/name` / `docs/实时版-路线图与待办.md`。`verify_version` 管前四处，路线图那处在 `tools/docs_authority_lint.py`。用 `release.py bump` 就不会漏。
-- **`RULES_VER`**（`scripts/gamedata/phase2_config.gd`）：**这一版改了对局结果就 +1**（数值、技能、装备效果、sim 路径任何改动）。快照池 / 对手池按它分桶；漏升 ⇒ 新旧规则的快照混进同一个池。0.22.7 就漏过一次（tag 挪位、TestFlight 重出、裁判机重装）。`release.py bump --rules changed` 会一起升。
+- **`RULES_VER`**（`scripts/gamedata/phase2_config.gd`）：**这一版改了对局结果就 +1**（数值、技能、装备效果、sim 路径任何改动）。快照池 / 对手池按它分桶；漏升 ⇒ 新旧规则的快照混进同一个池。0.22.7 就漏过一次（tag 挪位、TestFlight 重出、裁判机重装）。
+  - 门禁 `verify_rules_fingerprint`（裁判真入口跑 5 局，覆盖 28 龟 / 全部装备 / 顶档羁绊 / 训龟大师）：对局结果与金标 `tests/golden/rules_fingerprint.json` 不同就红。金标是另一个进程生成的，所以它同时守**跨进程确定性**（11-03 抓到血条写回圣盾值 ⇒ 同一局三种结局）。
+  - 改了结果：当场把 `RULES_VER` 升到比上个 `v*` tag 大（上方一行带日期注释），再 `python tools/rules_fingerprint.py --update`（不满足就拒写）。一周内升过一次就够，发版时 `release.py bump --rules changed` 看到已经升过不会再 +1；`--rules same` 遇到已升会拒。
 - **tag 不可变**：一次只推一个 tag（两个同推会互相覆盖产物）；推错了不挪 tag，出下一个版本号。
 - **正式服写入**（迁移、开关、强制更新、`referee_versions`）每次都要用户点头；`--yes-prod` 不是授权，用户的话才是。
 - 周末（周六闯关赛、周日决赛日）不动生产库与裁判机，除非用户明说。

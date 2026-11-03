@@ -77,6 +77,20 @@ func _per_unit(u: Dictionary) -> bool:
 	return battle._review_demo() or bool(u.get("is_summon", false))
 
 
+## 这只宝箱龟【原主人】那一侧 —— 账按主人记(财宝进度是主人存档里的东西, 不是谁手下的)。
+## 被驯服的龟: 本路里 side 仍是原阵营、tamed_side 是新阵营; 带进终极战场时按新阵营生成(side = tamed_side)。
+##   两种情况原主人都 = tamed_side 的对面。
+## ★2026-11-03 查实: 原来按 side 记 ⇒ 终极战场里被对面训龟大师驯服的宝箱龟, 打出的伤害记进【对面】的账
+##   (verify_referee_chest: B 方没有宝箱龟, chest_b 却涨到 1178 —— B 是真人时会写进 B 的存档), 登场回装也装成对面的战利品。
+static func _owner_side(u: Dictionary) -> String:
+	var ts := str(u.get("tamed_side", ""))
+	if ts == "left":
+		return "right"
+	if ts == "right":
+		return "left"
+	return str(u.get("side", ""))
+
+
 func _ledger_of(side: String) -> Dictionary:
 	if not _ledger.has(side):
 		_ledger[side] = _ledger_start(side)
@@ -118,7 +132,7 @@ static func _str_list(v) -> Array:
 func treasure_progress(u: Dictionary) -> Dictionary:
 	if _per_unit(u):
 		return {"value": _num(u.get("_chest_gain", 0.0)), "opened": int(u.get("chest_opened", 0))}
-	var lg: Dictionary = _ledger_of(str(u.get("side", "")))
+	var lg: Dictionary = _ledger_of(_owner_side(u))
 	return {"value": float(lg["base_value"]) + float(lg["gain"]),
 		"opened": (lg["base_won"] as Array).size() + (lg["won"] as Array).size()}
 
@@ -130,7 +144,7 @@ func note_damage(src: Dictionary, dmg: int) -> void:
 	if _per_unit(src):
 		src["_chest_gain"] = _num(src.get("_chest_gain", 0.0)) + float(dmg)
 		return
-	var lg: Dictionary = _ledger_of(str(src.get("side", "")))
+	var lg: Dictionary = _ledger_of(_owner_side(src))
 	lg["gain"] = float(lg["gain"]) + float(dmg)
 	if bool(lg["write"]):
 		GameState.chest_treasure_value = _num(GameState.chest_treasure_value) + float(dmg)
@@ -140,7 +154,7 @@ func note_damage(src: Dictionary, dmg: int) -> void:
 func _ledger_note_open(u: Dictionary, tid: String) -> void:
 	if _per_unit(u):
 		return
-	var lg: Dictionary = _ledger_of(str(u.get("side", "")))
+	var lg: Dictionary = _ledger_of(_owner_side(u))
 	(lg["won"] as Array).append(tid)
 	if bool(lg["write"]):
 		GameState.chest_treasures_won.append(tid)
@@ -151,7 +165,7 @@ func _ledger_note_open(u: Dictionary, tid: String) -> void:
 func spawn_loot(u: Dictionary) -> Array:
 	if _per_unit(u):
 		return []
-	var lg: Dictionary = _ledger_of(str(u.get("side", "")))
+	var lg: Dictionary = _ledger_of(_owner_side(u))
 	var out: Array = (lg["base_won"] as Array).duplicate()
 	out.append_array(lg["won"])
 	return out

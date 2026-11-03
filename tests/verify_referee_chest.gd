@@ -68,10 +68,16 @@ func _snap_a() -> Dictionary:
 	return Backend.build_ghost_snapshot("g_chest_a", {"name": "甲方", "avatar": "chest", "id": "g_chest_a"})
 
 
+## B 方 = 机器人池一份阵容, 且**统领里没有宝箱龟**(K1「B 方没有宝箱龟 ⇒ chest_b = 起点」的前提)。
+## ★2026-11-03: 原来写死 variant 0, 而机器人种子带 RULES_VER(bot_pool.seed_for) ⇒ RULES_VER 2 → 3 后
+##   variant 0 抽到了宝箱龟, K1 红(chest_b 1178)。现在按前提挑, 不赌种子。
 func _snap_b() -> Dictionary:
-	var b: Dictionary = BP.one(16, 0, 0, 0)
-	b["gl_ts"] = int(P2C.now_utc()) - 300
-	return b
+	for variant in range(20):
+		var b: Dictionary = BP.one(16, 0, 0, variant)
+		if not (b.get("leaders", []) as Array).has("chest"):
+			b["gl_ts"] = int(P2C.now_utc()) - 300
+			return b
+	return {}
 
 
 func _job(a: Dictionary, b: Dictionary) -> Dictionary:
@@ -100,7 +106,9 @@ func _ready() -> void:
 	_ok("分母: A 快照带着起点财宝值 %.0f" % BASE, float(a.get("chest_treasure_value", -1.0)) == BASE, str(a.get("chest_treasure_value")))
 
 	# ── K1 裁判 ──
-	var res: Dictionary = await RefereeRunner.run(self, _job(a, _snap_b()))
+	var sb := _snap_b()
+	_ok("分母 · B 方机器人阵容挑到了(统领 %s 里没有宝箱龟)" % str(sb.get("leaders", [])), not sb.is_empty())
+	var res: Dictionary = await RefereeRunner.run(self, _job(a, sb))
 	_ok("分母 · 裁判算完(ok)", bool(res.get("ok", false)), str(res.get("error", "")))
 	if not bool(res.get("ok", false)):
 		_finish()

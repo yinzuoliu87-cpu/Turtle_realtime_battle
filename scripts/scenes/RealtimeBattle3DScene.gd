@@ -2260,6 +2260,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_check_end()
 	_step_sim_tweens(dt)   # 演出 tween 按 sim 固定步长喂(两种模式都是; 见函数头注)
 	_face_by_motion()      # 无目标时朝向随本步位移(原在渲染里按帧写 ⇒ sim 兜底分支读到的值随渲染频率变)
+	ShieldSynergySystem.converge_marks(_units)   # 圣盾值 / 藏壳盾段随护盾收敛(原在血条里按帧写 ⇒ 同上, 见函数头注)
 	sim_stepped.emit()
 
 ## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。

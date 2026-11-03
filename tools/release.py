@@ -225,6 +225,18 @@ def git(root, *args, check=True, timeout=120):
     return r
 
 
+def tag_rules_ver(root, ver):
+    """v<ver> 那个 tag 上的 RULES_VER；ver 为空 / tag 不在 / 读不出 ⇒ None。"""
+    if not ver:
+        return None
+    try:
+        t = git(root, "show", "v%s:%s" % (ver, F_PHASE2)).stdout
+    except (ReleaseError, OSError, subprocess.SubprocessError):
+        return None
+    ms = re.findall(r"(?m)^const RULES_VER := (\d+)\r?$", t)
+    return int(ms[0]) if len(ms) == 1 else None
+
+
 def sim_changes(root):
     """上个 v* tag 以来（含工作区未提交、未跟踪）动过的 sim 路径文件。返回 (tag, [文件], 错误或 None)。"""
     try:
@@ -307,6 +319,10 @@ def plan_bump(root, new, rules, date, why=None):
             raise ReleaseError("%s 里 `const RULES_VER := N` 要恰好 1 处，实际 %d 处" % (F_PHASE2, len(ms)))
         m = ms[0]
         n = int(m.group(1))
+        base = tag_rules_ver(root, prev_tag_version(root, new))
+        if base is not None and n > base:
+            ## 上个 tag 之后已经升过（本周中途改了结果就当场升, 好让 verify_rules_fingerprint 的金标刷新）⇒ 不再 +1
+            return out, old, (base, n)
         cr = m.group(2)
         reason = why or "%s：哪些改动改变了对局结果）" % PLACEHOLDER
         if "\n" in reason or "\r" in reason:
@@ -347,6 +363,11 @@ def cmd_bump(a):
             print("  上个 tag %s 以来动过的 sim 路径文件 %d 个（分母: %s）:" % (tag, len(files), " ".join(SIM_GLOBS)))
             for f in files:
                 print("    · %s" % f)
+        base = tag_rules_ver(root, prev_tag_version(root, new))
+        if base is not None and rules_ver(root) > base:
+            print("✗ --rules same 但 RULES_VER 已从上个 tag 的 %d 升到 %d（本周改过对局结果）—— 用 --rules changed"
+                  % (base, rules_ver(root)))
+            return 1
         if (err or files) and not a.yes_rules_same:
             print("✗ --rules same 但%s —— 逐个确认这些改动不改变对局结果后加 --yes-rules-same；"
                   "改变了就用 --rules changed" % ("列不出改动" if err else "上面这些 sim 文件动过"))
