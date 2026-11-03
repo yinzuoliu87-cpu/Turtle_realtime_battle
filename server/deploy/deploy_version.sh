@@ -84,10 +84,11 @@ usage() { sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; }
 [ $# -ge 3 ] || { usage; FINAL=1; echo "DEPLOY FAILED: args"; exit 1; }
 ENVN=$1; VER=$2; SHA=$3; shift 3
 SKIP_BOTS=0; NO_SWITCH=0; NO_POOLS=0; NO_DRAIN=0; DRAIN_SEC=7800; OVERLAY=""; ALLOW_WEEKEND=0
-WANT_RV=""; EXPECT="2052,396,186"; ONLY=""
+WANT_RV=""; EXPECT="2052,396,186"; ONLY=""; HOTFIX=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1 ;;
+    --hotfix) HOTFIX=1 ;;   # 2026-11-03: 部署从 tag 拉出的热修提交（本机 deploy.py 已核 tag 是祖先 / 改动范围 / RULES_VER）
     --skip-bots) SKIP_BOTS=1 ;;
     --no-bots-switch) NO_SWITCH=1 ;;
     --no-pools) NO_POOLS=1 ;;
@@ -418,6 +419,7 @@ if [ -z "$ONLY" ]; then
   TAG_SHA=$(echo "$TAGLINE" | awk -v t="refs/tags/v$VER^{}" '$2==t{print $1}')
   [ -n "$TAG_SHA" ] || TAG_SHA=$(echo "$TAGLINE" | awk -v t="refs/tags/v$VER" '$2==t{print $1}')
   if [ -z "$TAGLINE" ]; then log "⚠ 远端没有 tag v$VER（或 ls-remote 失败）—— 照 sha 取"
+  elif [ "$TAG_SHA" != "$SHA" ] && [ "$HOTFIX" = 1 ]; then log "热修: 远端 tag v$VER → $TAG_SHA, 部署热修提交 $SHA（tag 是祖先、改动范围、RULES_VER 由本机 deploy.py 核过；这里是浅克隆核不了）"
   elif [ "$TAG_SHA" != "$SHA" ]; then fail "远端 tag v$VER → $TAG_SHA ≠ 给的 $SHA"
   else log "远端 tag v$VER → $SHA ✓"; fi
 fi

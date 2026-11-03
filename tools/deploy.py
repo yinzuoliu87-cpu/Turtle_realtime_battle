@@ -45,6 +45,8 @@ import sb_common as S  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SERVER_SCRIPT = os.path.join(REPO, "server", "deploy", "deploy_version.sh")
+## 热修只许改这些路径（2026-11-03）: 录流 / 测试 / 文档 / 工具 / 服务器脚本。动到对局计算的不许走热修。
+HOTFIX_OK = ("scripts/systems/stream/", "tests/", "docs/", "tools/", "server/")
 SSH_KEY = os.path.join(os.path.expanduser("~"), ".ssh", "turtle_referee")
 SSH_HOST = "root@49.13.166.188"
 REMOTE_DIR = "/root/deploy"
@@ -151,14 +153,40 @@ def local_preflight(a):
         want = git("rev-parse", "-q", "--verify", a.sha + "^{commit}")
         if want != sha:
             c.fail("--sha %s → %s ≠ tag 那一提交 %s" % (a.sha, want, sha))
+    tag_sha = sha
+    if a.hotfix:
+        ## ★2026-11-03 热修（积分赛播流信息面板全是默认值）: 手机还是这个版本, 只修服务器侧 ⇒ 不升版本号、tag 不挪,
+        ##   从 tag 拉热修分支, 部署那一提交。守住三条: tag 是它的祖先 / 改动只在录流 · 测试 · 文档 · 工具 · 服务器脚本里
+        ##   （动到对局计算的不许走热修, 那要出新版本）/ 版本号与 RULES_VER 与 tag 相同。
+        hs = git("rev-parse", "-q", "--verify", a.hotfix + "^{commit}")
+        if not hs:
+            c.fail("--hotfix %s 本机找不到" % a.hotfix)
+            return c, info
+        if subprocess.run(["git", "merge-base", "--is-ancestor", tag_sha, hs], cwd=REPO).returncode != 0:
+            c.fail("热修 %s 不是从 tag %s 拉出来的（tag 不是它的祖先）" % (hs[:8], tag))
+        changed = [f for f in (git("diff", "--name-only", tag_sha, hs) or "").splitlines() if f]
+        bad = [f for f in changed if not f.startswith(HOTFIX_OK)]
+        if not changed:
+            c.fail("热修与 tag 没有差别")
+        elif bad:
+            c.fail("热修改到了录流 / 测试 / 文档 / 工具 / 服务器脚本之外的文件（动对局计算要出新版本）: %s" % bad[:6])
+        else:
+            c.ok("热修 %s ← tag %s, 改了 %d 个文件（都在允许范围内）: %s" % (hs[:8], tag, len(changed), changed[:6]))
+        if not (git("branch", "-r", "--contains", hs) or "").strip():
+            c.fail("热修 %s 还没推到 GitHub（服务器按 sha 取）" % hs[:8])
+        rv = lambda s: (re.search(r"const RULES_VER\s*:?=\s*(\d+)", git("show", "%s:scripts/gamedata/phase2_config.gd" % s) or "") or [None, None])[1]
+        if rv(hs) != rv(tag_sha):
+            c.fail("热修改了 RULES_VER（%s → %s）—— 那是出新版本的事" % (rv(tag_sha), rv(hs)))
+        sha = hs
+        info["hotfix"] = True
     info["sha"] = sha
     remote = git("ls-remote", "origin", "refs/tags/%s" % tag, "refs/tags/%s^{}" % tag) or ""
     peel = {ln.split("\t")[1]: ln.split("\t")[0] for ln in remote.splitlines() if "\t" in ln}
     rsha = peel.get("refs/tags/%s^{}" % tag) or peel.get("refs/tags/%s" % tag)
     if not rsha:
         c.fail("远端没有 tag %s（没推？服务器按 sha 取也要这一提交在 GitHub 上）" % tag)
-    elif rsha != sha:
-        c.fail("远端 tag %s → %s ≠ 本机 %s（tag 挪过位？先对齐）" % (tag, rsha, sha))
+    elif rsha != tag_sha:
+        c.fail("远端 tag %s → %s ≠ 本机 %s（tag 挪过位？先对齐）" % (tag, rsha, tag_sha))
     else:
         c.ok("远端 tag %s 一致" % tag)
     pg = git("show", "%s:project.godot" % sha) or ""
@@ -173,7 +201,7 @@ def local_preflight(a):
         c.fail("读不到 RULES_VER（scripts/gamedata/phase2_config.gd）")
     else:
         info["rules_ver"] = int(m.group(1))
-        prev = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", sha + "^", check=True)
+        prev = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", tag_sha + "^", check=True)
         prv = None
         if prev:
             pm = re.search(r"const RULES_VER\s*:?=\s*(\d+)", git("show", "%s:scripts/gamedata/phase2_config.gd" % prev) or "")
@@ -282,6 +310,8 @@ def server_args(a, info):
         args += ["--bots-drain-sec", str(a.bots_drain_sec)]
     if info.get("overlay"):
         args += ["--sim-overlay", info["overlay"]]
+    if info.get("hotfix"):
+        args += ["--hotfix"]
     if a.only:
         args += ["--only", a.only]
     return args
@@ -415,6 +445,7 @@ def main():
     ap.add_argument("version")
     ap.add_argument("--env", choices=sorted(ENVS), default="prod")
     ap.add_argument("--sha", help="核对用：必须等于 tag v<版本> 那一提交")
+    ap.add_argument("--hotfix", metavar="SHA", help="热修：部署从 tag 拉出的补丁提交（不升版本号；只许改录流 / 测试 / 文档 / 工具 / 服务器脚本）")
     ap.add_argument("--dry-run", action="store_true", help="本机检查 + 服务器只读演练 + 现状回读，什么都不改")
     ap.add_argument("--status", action="store_true", help="接着看上一次的日志直到结束，然后回读")
     ap.add_argument("--no-follow", action="store_true", help="起完就返回，不跟日志")
