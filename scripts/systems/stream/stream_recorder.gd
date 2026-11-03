@@ -90,6 +90,28 @@ const UKEYS_S2 := ["bar_head_h", "hp_w", "maxEnergy", "active_skills", "energy_c
 ##   `_st_dealt_by_type` / `_st_taken_by_type` / `_st_eq` 是纯值字典(按类型 / 按装备分桶); `rarity` 给结算行的头像框配色。
 const UKEYS_ST := ["_st_dealt", "_st_taken", "_st_heal", "_st_shield", "_st_kills", "_st_crit", "_st_multi",
 	"_st_dealt_by_type", "_st_taken_by_type", "_st_eq", "rarity"]
+## ★2026-11-03 信息面板（用户「统计面板、伤害统计、装备统计、属性，全坏掉了」；积分赛第一天改服务器裁判、手机播流）：
+##   点单位弹出的详情面板读的属性（攻击 / 魔抗 / 暴击 / 暴伤 / 攻击间隔 / 射程 / 移速 / 吸血 / 穿透 / 增减伤 / 状态计时 / 形态 / 装备充能 …）
+##   原来一项都不在流里 ⇒ 播流时面板全是默认值（攻击 0 / 攻速 1.00 / 射程 70）。名单由静态扫 info_panel.gd 与它调用的战斗函数量出
+##   （去掉节点 / 另有通道的 equips），门禁 verify_stream_panels_parity 逐字比「原生点开」与「播流点开」证明够不够。
+##   这一组里的数组 / 字典只在**整层都是纯数据**时才发（`_plain_deep`），混进节点就不发。
+const UKEYS_INFO := [
+	"_academy_done", "_ancient", "_ancient_restored", "_angel_revive", "_ascend_growth", "_axe_eff_n", "_axe_eff_until",
+	"_axe_final", "_axe_pv", "_b4_dot", "_bbtimer", "_blood_rite", "_blood_rite_bucket", "_bone_dome", "_bone_plates",
+	"_chest_gain", "_chest_sec", "_corrode_vfx", "_dl_equips", "_eb_n", "_eggImmune", "_egg_fence", "_enh_prism",
+	"_enh_rebirth", "_eq_axe", "_fire_ctrl", "_food_grown", "_food_key", "_gad_freeze_cd", "_gad_freeze_immune",
+	"_hammer_n", "_harvest_atk", "_harvest_restored", "_hijack_orig_side", "_relic_atk_bonus", "_relic_egg_done",
+	"_relic_ls", "_shield_rage", "_sig_fired_n", "_spec_uid", "_staff_busy", "_tha_clip", "_tha_t0", "_tha_tk",
+	"_turret_aspd_mult", "_whip_cd", "anchor_swing_t", "armor_pen", "armor_pen_pct", "aspd_perm", "atk", "atk_interval",
+	"atk_range", "base_atk", "base_mr", "battles", "buffs", "buyequip_cost", "buyequip_id", "buyequip_star",
+	"chest_opened", "chest_treasures", "corrode_stacks", "corrode_tier", "crit", "crit_dmg", "damage_amp",
+	"damage_reduction", "def_shred", "dodge_bonus", "dot_stacks", "echarge_perm", "egg_side_lr", "elite", "energy_bank",
+	"energy_lock_until", "eq_state", "fear_until", "gold", "hammer_pct", "haste_mult", "haste_until", "heal_amp",
+	"heal_reduce_until", "hijacked", "hp_frac", "icicle", "idle_offy", "kind", "lifesteal", "ls_bonus", "magic_pen",
+	"magic_pen_pct", "melee", "mi", "minion_kind", "move_buff_mult", "move_buff_until", "move_perm", "move_spd", "mr",
+	"mr_shred", "no_basic", "no_move", "off", "passive", "range_add", "range_perm", "reflect", "role", "shell_stealth",
+	"shield_amp", "slow_mag", "slow_until", "spd_aspd_mult", "spd_move_mult", "stiff_stacks", "stun_until", "tame_used",
+	"taunt_until", "temp_lv", "two_form", "volcano", "volcano_until"]
 ## 允许整份发的数组键(纯值数组; 其余数组键里装的是单位字典 / 节点, 一律不发)。
 const UARR := {"active_skills": true}
 ## 单位外观节点: 单位第一次出现时(不论是不是 sim 步里建的)整体收进节点层; 单位字段 `@n` 告诉手机「哪个镜像节点是这个单位的哪一件」。
@@ -194,7 +216,8 @@ var _ucur: Array = []         # 上一步 battle._units 的顺序
 var _ucur_idx := PackedInt32Array()
 var _ucur_set := {}           # 当前在 battle._units 里的单位 idx
 var _gcache := {}
-var _ukeys_all: Array = UKEYS_STEP + UKEYS + UKEYS_S2 + UKEYS_ST
+var _ukeys_all: Array = UKEYS_STEP + UKEYS + UKEYS_S2 + UKEYS_ST + UKEYS_INFO
+var _info_set := {}           # UKEYS_INFO 查表（数组 / 字典按 `_plain_deep` 放行）
 ## ★2026-11-01 时刻键按双精度发(方案书 20261031e R7): 名字以 `_until` / `_t0` 结尾的是「游戏钟上的某一刻」, 手机渲染步拿它跟 `_t` 比
 ##   (真火 / 冰寒 / 电弧 / 涨潮 / 锁定标记 … 到点收特效)。float32 会把「差几个 ulp」抹平, 跟双精度的 `_t` 比就可能早 / 晚一个渲染步。
 ##   按名字定规则、不手列 ⇒ 以后新加的 `xxx_until` 自动是双精度。改动很少(状态开始 / 结束各一次), 体积可忽略。
@@ -232,6 +255,8 @@ func _init(b: Node, opts: Dictionary = {}) -> void:
 	for k in _ukeys_all:
 		if str(k).ends_with("_until") or str(k).ends_with("_t0"):
 			_uf64[k] = true
+	for k in UKEYS_INFO:
+		_info_set[k] = true
 	meta = {"format": F.VERSION, "hz": F.HZ, "chunk_steps": F.CHUNK_STEPS, "key_steps": F.KEY_STEPS,
 		"chunks": 0, "steps": 0, "first_step": -1, "last_step": -1, "raw_bytes": 0, "z_bytes": 0, "max_chunk_bytes": 0,
 		"nodes_new": 0, "nodes_del": 0, "nodes_peak": 0, "node_sets": 0, "res_defs": {}, "events": {},
@@ -664,7 +689,11 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 		var old = c.get(k)
 		if typeof(old) == t and (t == TYPE_NIL or old == v):
 			continue
-		if t == TYPE_OBJECT or t == TYPE_CALLABLE or (t == TYPE_ARRAY and not UARR.has(k)):
+		if t == TYPE_OBJECT or t == TYPE_CALLABLE or t == TYPE_RID:
+			continue
+		if t == TYPE_ARRAY and not UARR.has(k) and not (_info_set.has(k) and _plain_deep(v)):
+			continue
+		if t == TYPE_DICTIONARY and _info_set.has(k) and not _plain_deep(v):
 			continue
 		## ★深拷贝(2026-10-31): `_st_eq` 是两层字典, 浅拷贝的缓存里层与原件同一个对象 ⇒ 里层变了比不出来、不重发
 		##   (门禁 verify_stream_curtain_stats 抓到: 石头龟一件装备的物理伤害本机 66 / 流 51)
@@ -1909,3 +1938,21 @@ func _events() -> void:
 			else:
 				enc.val(args[ai])
 	_evs.clear()
+
+
+## 值里有没有节点 / 对象 / 回调（信息面板那组键的数组 / 字典只在整层纯数据时才进流）。
+static func _plain_deep(v, depth: int = 0) -> bool:
+	if depth > 6:
+		return false
+	var t := typeof(v)
+	if t == TYPE_OBJECT or t == TYPE_CALLABLE or t == TYPE_RID or t == TYPE_SIGNAL:
+		return false
+	if t == TYPE_ARRAY:
+		for x in v:
+			if not _plain_deep(x, depth + 1):
+				return false
+	elif t == TYPE_DICTIONARY:
+		for kk in v:
+			if not _plain_deep(kk, depth + 1) or not _plain_deep(v[kk], depth + 1):
+				return false
+	return true

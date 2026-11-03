@@ -20,7 +20,10 @@ const F := preload("res://scripts/systems/stream/stream_format.gd")
 ##   涨在哪一层量过(tests/probes/_probe_stream_s3.gd 按生成函数拿掉再压): 最重局 +0.77 MB 全是出处键定义 ——
 ##   触手本体 366 KB、090 水带 332 KB、触手外发光壳 29 KB、触手预警带 27 KB; 镜像局 +8.6 KB 是出处键(闪电连线为主), 其余 ~15 KB 是播放端 HUD 的全局 / 单位字段。
 ##   R1 按新数重算过(每周末 ≈ 1~3.3 GB, 峰值一块 69 KB/s ≈ 0.55 Mbit/s), 预算 = 实测 × 1.05(特效随机让同一局每遍差 ±1%)。
-const BUDGET := {"镜像快照局": 965000, "真实快照局(最重)": 3320000}
+## ★2026-11-03 信息面板字段进流（录流器 UKEYS_INFO；用户「统计面板、伤害统计、装备统计、属性，全坏掉了」）：实测 镜像局 979,491 B（+1.5%）/
+##   最重局 3,351,661 B（+1.0%）。涨在哪一层量过（tests/probes/_probe_info_key_churn.gd）: 新键几乎不变（整局最勤的 dot_stacks 148 次,
+##   多数只在单位登场时发一次）, 增量是 keyframe 整份重发多出来的那几十个键。R1 重算: 每周末 ≈ +1.5%, 可忽略。预算照旧 = 实测 × 1.05。
+const BUDGET := {"镜像快照局": 1028000, "真实快照局(最重)": 3519000}
 const BUDGET_CHUNK := 72600
 const DIR := "user://stream_size_budget"
 
