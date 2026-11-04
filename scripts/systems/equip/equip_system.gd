@@ -13,6 +13,7 @@ var _stats: EquipStatsApply   # 被动属性/flag 应用子系统(2026-07-26 从
 var _spirit_sys: EqSpiritBatch   # 灵物 5 件(060~064)用户重做版(2026-08-05·效果本体在 eq_spirit_batch.gd)
 var _potion_sys: EqPotionBatch   # 药水 4 件(065~068)用户重做版(2026-08-05·效果本体在 eq_potion_batch.gd)
 var _food_sys: EqFoodBatch   # 食物 4 件(069~072)用户重做版(2026-08-05·效果本体在 eq_food_batch.gd)
+var _fx_runner: EffectRunner = null   # A1 装备效果解释器(2026-11-04·读 EquipEffects.specs(); 首次用到才建)
 var _bow_sys: EqBowBatch   # 弓箭 4 件(073~076)用户重做版(2026-08-05·效果本体在 eq_bow_batch.gd·演出在 battle/bow_eq_vfx.gd)
 # ── 批④(2026-08-06) 用户逐件重做的后 17 件 · 一类一个批系统 ────────────────────
 #    ★统一接口(十个钩子: tick/tick_unit/on_spawn/on_basic/on_hit/on_damaged/
@@ -415,20 +416,6 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 		stt.erase("_dup"); u["eq_state"][iid] = stt
 
 # 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军
-func _eq_crossbow_volley(u: Dictionary, si: int) -> void:   # 连发弩049: 每8秒朝最远敌方向依次射1/2/3发, 命中沿途首敌(可被前排挡), 按已损血加伤
-	if not u.get("alive", false): return
-	var far49 := _eq_farthest_enemies(u, false)
-	if far49.is_empty(): return
-	var dir49: Vector2 = DetMath.norm((far49[0]["pos"] - u["pos"]))
-	var fire49 := func():
-		if not u.get("alive", false): return
-		var ft49 = _eq_first_in_line(u, dir49, 42.0)
-		if ft49 == null: return
-		var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / XBOW_LOST_FULL, 0.0, 1.0)
-		battle._muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
-		battle._spawn_eq_bolt(u, ft49, battle._atk_dmg(u, DetMath.flerp(XBOW_MIN_COEF, XBOW_MAX_COEF, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
-	battle._queue_shots([1, 2, 3][si], XBOW_GAP, fire49, u, "p2eq_049")
-
 func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 每8秒连打20/30/60发随机分布+永久减甲(单目标累计上限)
 	if not u.get("alive", false): return
 	var g_shred: float = [1.0, 2.0, 3.0][si]
@@ -494,19 +481,6 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 		for o in touched:
 			if int(o.get("_sg_hits", 0)) >= SHOTGUN_STUN_HITS and o.get("alive", false): battle._freeze(o, battle.CTRL_SEC)
 			o.erase("_sg_hits")})
-
-func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
-	if not u.get("alive", false): return
-	var t48 = battle._targeting._nearest_enemy(u)
-	var dir48: Vector2 = DetMath.norm((t48["pos"] - u["pos"])) if t48 != null else Vector2.RIGHT
-	var mul48: float = [0.5, 0.54, 0.6][si]
-	var fire48 := func():
-		if not u.get("alive", false): return
-		var ft48 = _eq_first_in_line(u, dir48, 36.0)
-		if ft48 == null: return
-		battle._muzzle_flash(u["pos"], dir48, Color("#ffe08a"))
-		battle._spawn_eq_bolt(u, ft48, battle._atk_dmg(u, mul48, ft48), "res://assets/sprites/vfx/bullet.png", Color("#fff0b0"), false, 0, 0.026)
-	battle._queue_shots([4, 5, 6][si], 0.08, fire48, u, "p2eq_048")
 
 func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	var low042 = null; var lv042 := INF
@@ -2382,9 +2356,9 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_039":   # 竹制弓箭: 改为每第3段普攻消耗1次充能(_eq_on_basic_attack, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_048":   # 黄铜手铳: 改为每8秒定时(battle._EQ_CUSTOM_IV→_eq_pistol_volley, 用户2026-07-19); on_cast不处理
+			"p2eq_048":   # 黄铜手铳: 改为每8秒定时(battle._EQ_CUSTOM_IV→EquipEffects 数据表 + EffectRunner, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_049":   # 连发弩: 改为每8秒定时(battle._EQ_CUSTOM_IV→_eq_crossbow_volley, 用户2026-07-19); on_cast不处理
+			"p2eq_049":   # 连发弩: 改为每8秒定时(battle._EQ_CUSTOM_IV→EquipEffects 数据表 + EffectRunner, 用户2026-07-19); on_cast不处理
 				pass
 			"p2eq_050":   # 幽灵加特林: 改为每8秒定时(battle._EQ_CUSTOM_IV→_eq_gatling_burst, 用户2026-07-19); on_cast不处理
 				pass
@@ -2807,10 +2781,16 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 	var si: int = _eq_si(star)
 	if stt == null:
 		stt = u["eq_state"].get(iid, {})
+	## ★A1 技能积木化(2026-11-04 · 方案书 20261102b §8.4): 写成数据的装备走解释器 —— 「哪个触发 → 哪个动作 → 什么参数」
+	##   在 scripts/gamedata/equip_effects.gd, 执行在 scripts/systems/equip/effect_runner.gd。样板 048 / 049
+	##   (原 _eq_pistol_volley / _eq_crossbow_volley 已删, 调用顺序逐行搬进解释器 ⇒ verify_rules_fingerprint 逐字相同)。
+	if EffectRunner.has(iid):
+		if _fx_runner == null:
+			_fx_runner = EffectRunner.new(battle, self)
+		_fx_runner.fire(u, iid, si)
+		return
 	match iid:
 		"p2eq_004": _eq_tyrantfang_tick(u, si)
-		"p2eq_048": _eq_pistol_volley(u, si)
-		"p2eq_049": _eq_crossbow_volley(u, si)
 		"p2eq_050": _eq_gatling_burst(u, si)
 		"p2eq_051": _eq_laser_pistol(u, si)
 		"p2eq_053": _eq_shotgun_blast(u, si)

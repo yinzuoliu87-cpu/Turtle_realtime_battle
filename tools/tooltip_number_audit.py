@@ -110,6 +110,8 @@ eq = json.load(io.open('data/phase2-equipment.json', encoding='utf-8'))
 eq = eq if isinstance(eq, list) else eq.get('equipment', eq.get('items'))
 code = io.open('scripts/scenes/RealtimeBattle3DScene.gd', encoding='utf-8').read() \
      + '\n@@@\n' + io.open('scripts/gamedata/equip_stats.gd', encoding='utf-8').read()
+# ★2026-11-04 A1 技能积木化: 写成数据的装备(EquipEffects.specs())数值住在这张表里, id 与逐星数组同一行 ⇒ 近处命中。
+code += '\n@@@\n' + io.open('scripts/gamedata/equip_effects.gd', encoding='utf-8').read()
 # 2026-07-25: 主战斗文件拆分后, 效果数组可能搬到 scripts/systems/*.gd(如沙漏 5/10/30 → timestop_system.gd)。
 #   把 systems/ 全体一并纳入对账源, 否则拆一个效果出去就误报"代码里找不到对应数组"。
 import glob as _glob

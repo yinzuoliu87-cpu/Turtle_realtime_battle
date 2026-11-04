@@ -180,7 +180,7 @@ func _ready() -> void:
 		_s._units.append(back)
 		var hf: float = float(front["hp"])
 		var hb: float = float(back["hp"])
-		_s._equip_sys._eq_pistol_volley(c3, si)
+		_s._equip_sys.fire_equip_effect(c3, "p2eq_048", si + 1)   # 2026-11-04 A1: 走真入口(048 已改成数据 + 解释器)
 		_ok("③ ★分母(%d 星): 一轮排了 %d 发(应 %d)" % [si + 1, _s._pending_shots.size(), EXP_HANDGUN_N[si]],
 			_s._pending_shots.size() == EXP_HANDGUN_N[si],
 			"文案: 依次射出 4/5/6 发")
@@ -211,7 +211,7 @@ func _ready() -> void:
 		tg4["hp"] = float(tg4["maxHp"]) * (1.0 - lost)
 		_s._units.append(tg4)
 		var h4: float = float(tg4["hp"])
-		_s._equip_sys._eq_crossbow_volley(c4, 0)               # ★1 = 1 发, 好量
+		_s._equip_sys.fire_equip_effect(c4, "p2eq_049", 1)   # ★1 = 1 发, 好量 · 2026-11-04 A1: 走真入口(049 已改成数据 + 解释器)
 		_ok("④ ★分母(已损 %.0f%%): 排了 %d 发(★1 应 %d)" % [lost * 100.0, _s._pending_shots.size(), EXP_XBOW_N[0]],
 			_s._pending_shots.size() == EXP_XBOW_N[0])
 		for _k in range(int(1.0 / _s.SIM_DT)):
