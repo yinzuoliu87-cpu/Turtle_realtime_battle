@@ -1731,10 +1731,10 @@ func _t_s() -> void:
 	var c0 := _hit(CANCEL)
 	var mh0: int = (_gs.match_history as Array).size()
 	var env := {"SIM_SLOT": "3", "SIM_ROUNDS": "3", "SIM_TOUR": "0", "SIM_QUEUE_GIVEUP_SEC": "7",
-		"SIM_SHOP_MIN_SEC": "18", "SIM_SHOP_MAX_SEC": "22", "SIM_EXPECT_CELL": "1-0", "SIM_SKIP_WATCH": ""}
+		"SIM_SHOP_MIN_SEC": "12", "SIM_SHOP_MAX_SEC": "14", "SIM_EXPECT_CELL": "1-0", "SIM_SKIP_WATCH": ""}
 	for k in env.keys():
 		OS.set_environment(k, str(env[k]))
-	_ok("S 分母: 逛店区间 = [18, 22] 秒、调度器以为的格子 = 1-0", Drv.shop_dwell_range() == Vector2(18, 22) and Drv.expect_cell() == Vector2i(1, 0))
+	_ok("S 分母: 逛店区间 = [12, 14] 秒、调度器以为的格子 = 1-0", Drv.shop_dwell_range() == Vector2(12, 14) and Drv.expect_cell() == Vector2i(1, 0))
 	var ev0 := _ev_size()
 	var d = await _start_driver()
 	var stage := 0
@@ -1774,19 +1774,28 @@ func _t_s() -> void:
 	_ok("S ★不看也照样记账: 两局都记进战绩(1-0 → %d-%d, 战绩页 +%d)" % [int(_gs.gauntlet_wins), int(_gs.gauntlet_losses),
 		(_gs.match_history as Array).size() - mh0], int(_gs.gauntlet_wins) == 3 and (_gs.match_history as Array).size() - mh0 == 2)
 	## 逛店: 每一次 shop_dwell 想逛的秒数在区间里, 离店时在店里待的时间 ≥ 想逛的
+	## ★2026-11-04 区间 [18, 22] → [12, 14](门禁提速, 省 ~14 秒墙钟; 没敢再压: 第二次进店本来逛完实测 3.2 / 6.1 秒, 16 路并行下会更慢): 量的是「逛够 N 秒」这个等待真的生效 ⇒
+	##   另记 spent_s(不等的话逛完一轮本来要几秒; 11-04 实测 3.2 / 6.1 秒), 判「本来逛完 < 想逛」—— 否则「待够」可能只是本来就慢。
 	var dw: Array = []
+	var spent: Array = []
 	var stays: Array = []
 	for e in evs:
 		var dd: Dictionary = (e as Dictionary).get("data", {})
 		if str((e as Dictionary).get("kind", "")) == "shop_dwell":
 			dw.append(float(dd.get("want_s", -1.0)))
+			spent.append(float(dd.get("spent_s", -1.0)))
 		elif str((e as Dictionary).get("kind", "")) == "scene" and str(dd.get("from", "")) == Drv.S_SHOP:
 			stays.append(float(dd.get("stayed_s", 0.0)))
 	var dw_ok := dw.size() == 2 and stays.size() == 2
 	for i in range(mini(dw.size(), stays.size())):
-		if float(dw[i]) < 18.0 or float(dw[i]) > 22.0 or float(stays[i]) + 0.3 < float(dw[i]):
+		if float(dw[i]) < 12.0 or float(dw[i]) > 14.0 or float(stays[i]) + 0.3 < float(dw[i]):
 			dw_ok = false
-	_ok("S ★两局之间逛店: 想逛 %s 秒(都在 [18, 22] 里)、实际在店里 %s 秒(≥ 想逛的; 分母 %d 次进店)" % [str(dw), str(stays), stays.size()], dw_ok)
+	_ok("S ★两局之间逛店: 想逛 %s 秒(都在 [12, 14] 里)、实际在店里 %s 秒(≥ 想逛的; 分母 %d 次进店)" % [str(dw), str(stays), stays.size()], dw_ok)
+	var sp_ok := spent.size() == dw.size() and spent.size() == 2
+	for i in range(mini(spent.size(), dw.size())):
+		if float(spent[i]) < 0.0 or float(spent[i]) >= float(dw[i]):
+			sp_ok = false
+	_ok("S ★「逛够 N 秒」真的在等: 不等的话本来逛完要 %s 秒 < 想逛 %s 秒" % [str(spent), str(dw)], sp_ok)
 	_ok("S ★第 3 局: 再排(join 共 %d 次)、等到上限 ⇒ 按「取消匹配」(出队 %d 次)⇒ 收工 queue_timeout" % [_hit(JOIN) - j0, _hit(CANCEL) - c0],
 		_hit(JOIN) - j0 == 3 and kinds.count("queue_timeout") == 1 and _hit(CANCEL) - c0 == 1 and _done_why(evs) == "queue_timeout"
 		and bool(d.get("_done")), "why=%s" % _done_why(evs))

@@ -28,7 +28,7 @@
 ## 2. 门禁
 
 ```bash
-bash run-tests.sh                 # 全套：自证测试(自动发现) + 冒烟 + 审计器，约 690 项，JOBS=16 约 3~6 分钟
+bash run-tests.sh                 # 全套：自证测试(自动发现) + 冒烟 + 审计器，约 700 项，JOBS=16 本机约 15 分钟（11-04 实测 903 秒）
 JOBS=8 bash run-tests.sh          # 保守一点（审计器池与测试池各占一份 JOBS）
 SHARD=k/8 SHARD_LIST_ONLY=1 bash run-tests.sh   # 只看第 k 片分到哪几条
 ```
@@ -42,7 +42,8 @@ SHARD=k/8 SHARD_LIST_ONLY=1 bash run-tests.sh   # 只看第 k 片分到哪几条
 - **CI**：`tests.yml` 8 片并行（`SHARD=k/8`）+ 汇总；分片按 `tests/golden/test_seconds.tsv` 最长优先，每轮把实测秒数推到 `ci-timings` 分支。刷新本机这份表：
   `git fetch -f origin +refs/heads/ci-timings:refs/remotes/origin/ci-timings && git show origin/ci-timings:test_seconds.tsv > tests/golden/test_seconds.tsv`
 - **本地绿 ≠ CI 绿**，推完自己去看 CI（API 见 §6）。CI 偶发红、本地复现不出 ⇒ `--max-fps 15` 把帧变慢重跑；最省事的修法是测试里 `_s._deterministic = true`（每帧恰一步 sim）。判据别跟机器快慢挂钩：绝对时间阈值改成相对同进程参照、采样条数改成采样覆盖范围、「变大」改成「变了」、帧内跃迁改成一步一采。⚠ 别整套门禁跑 15fps（帧预算会集体撞顶）。
-- 机器有蓝屏史：出事先把 JOBS 调回 4，跑大批前先提交。
+- 机器有蓝屏史：出事先把 JOBS 调回 4，跑大批前先提交。**别把默认 JOBS 往上提**：11-04 试 24 路墙钟 730 秒（−19%），但内存最低剩 3.2 GB、`verify_exact_match` 段错误一次（单跑复现不出）。
+- 门禁慢的地方（11-04 分段实测）：超过 60 秒的 37 条占总核秒一半，主要是逐帧直播（同两局 `mirror` / `heavy` 被 16 条测试各录一遍）与确定性一族（15 个调试场景被 b / cross / parity 各跑一遍）；按真实时间硬等的只有 `verify_gauntlet_online_queue`。新写测试别「真打一整局」去量开场就能比的东西（例：`verify_arena_theme_pick` 改成比开打第一帧的障碍物 / 单位 / 随机流，162 → 26 秒）。
 
 只读审计器（可反复跑）：
 

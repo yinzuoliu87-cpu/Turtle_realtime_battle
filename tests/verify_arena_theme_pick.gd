@@ -6,13 +6,17 @@ extends Node
 ## 方案书: docs/plans/20261003-四版完整地图.md §6。
 ##
 ## 这把尺子量五件事(编号对应派活单的门禁 ①~⑤):
-##   ★0 主题只改外观: 同种子同阵容, 五张图(含 V0_BASE)下**逐 sim 步**全场指纹逐字相同
-##      —— 调试场两个确定性场景 + 一场真正的正式双路对局(走 `_build_map_props` 那条路)。
+##   ★0 主题只改外观(2026-11-04 改成「开场比数字」, 用户:「一串数字可以表示一张地图, 开场比较这串数字就可以了」):
+##      战斗读到的地形只有 `_obstacles`(开路时 `_build_map_props` 写死, 主题只换贴图不换占地)。
+##      ⇒ (a) 每张图开到正式对局【开打第一帧】, 「战斗相关那串数字」= 障碍物表(去掉只管外观的 img) + 全场单位 + 随机流状态,
+##            五张图(含 V0_BASE)逐字相同; 调试场同理比开场那一帧。
+##         (b) 静态白名单: 读地图主题的文件只许是 建场 / 场外装饰 / 录流核对 那几个 —— 战斗逻辑、技能、装备一旦读主题 ⇒ 红。
+##      原来五张图各真打 1500 步 + 调试场两个场景五张图各跑一遍 + ④ 端到端再打两局(实测 146 / 162 秒), 换成上面两条后不用真打。
 ##   ①  多种子下四张都出现、分布大致均匀(打分母)
-##   ②  同种子 ⇒ 同主题(纯函数 + 真建场两次都对上)
+##   ②  同种子 ⇒ 同主题(纯函数算两遍 + 真建场等于纯函数; 「真建场两次」由这两条推出, 11-04 删掉第二次建场)
 ##   ③  正式对局不出 V0_BASE; 调试场照旧是进场前那张(开发工具不被弄坏)
-##   ④  选图不消耗战斗随机流: 让它自己选 vs 强制指定成同一张, 逐步指纹必须相同
-##      (分母: 种子改一下指纹就变 —— 证明这一局真的在读随机流, 否则 ④ 是空检查)
+##   ④a 选图不消耗战斗随机流: 产品选图入口前后 `_battle_rng.state` 逐位不变
+##      (原 ④ 端到端「自己选 vs 强制同一张, 逐步指纹」10-04 反向验证实测抓不到「吃流」, 只有 ④a 抓得到 ⇒ 11-04 删掉 ④ 那两局)
 ##   ⑤  回放一致在 `verify_replay_roundtrip` 里量(录与播的 ArenaTheme.active 相同)
 ##
 ## 反向验证(2026-10-04 做过, 见方案书 §6): 改成 randi 选图 ⇒ ②③红; 改成从 `_battle_rng` 取数选图 ⇒ ④a③红
@@ -26,8 +30,17 @@ const SC := preload("res://scripts/referee/det_scenarios.gd")
 const Backend := preload("res://scripts/net/backend.gd")
 
 const FORMAL_SEED := 4242             # 正式双路那一局的种子
-const FORMAL_FRAMES := 1500           # 摆位 → 开打 → 打 ~20 秒
+const FORMAL_FRAMES := 1500           # 开到「开打第一帧」的帧数上限(摆位 → 开打; 到不了开打 ⇒ 分母红)
 const ALL5: Array = [AT.V0_BASE, AT.V1_DUSK, AT.V2_REEF, AT.V3_SHOAL, AT.V4_STORM]
+## ★0(b) 允许读地图主题的文件(scripts/ autoload/ 下按「ArenaTheme / arena_theme.gd」字样扫)。
+##   新增一个读主题的文件 ⇒ 红: 先确认它只管外观(不在 `_sim_step` 调用链上), 再加进这里并写明理由。
+const THEME_READERS := {
+	"res://scripts/gamedata/arena_theme.gd": "主题表本身",
+	"res://scripts/scenes/battle/battle_world_builder.gd": "建场: 贴图 / 场内摆件 / 选图入口; 障碍物占地写死不读主题(★0a 量)",
+	"res://scripts/scenes/battle/arena_outer.gd": "场外装饰",
+	"res://scripts/systems/stream/stream_recorder.gd": "录流时记下主题名给手机核对",
+	"res://scripts/systems/stream/stream_player.gd": "手机核对自己建的是不是同一张图",
+}
 
 var _fail := 0
 var _n := 0
@@ -71,8 +84,46 @@ func _first_diff(a: Array, b: Array) -> String:
 	return ""
 
 
+## ★0(a) 「战斗相关那串数字」: 障碍物表(逐件逐键, 去掉只管外观的 img) + 随机流 seed/state + 全场单位(_fp)。
+func _sim_sig(s) -> String:
+	var parts: Array = ["obs=%d" % (s._obstacles as Array).size()]
+	var i := 0
+	for ob in s._obstacles:
+		var ks: Array = []
+		for k in (ob as Dictionary):
+			ks.append(str(k))
+		ks.sort()
+		var kv: Array = []
+		for k in ks:
+			if k != "img":
+				kv.append("%s=%s" % [k, str(ob[k])])
+		parts.append("ob%d{%s}" % [i, ",".join(PackedStringArray(kv))])
+		i += 1
+	parts.append("rng=%d/%d" % [int(s._battle_rng.seed), int(s._battle_rng.state)])
+	return "|".join(PackedStringArray(parts)) + "|" + _fp(s)
+
+
+## ★0(b) 递归扫 .gd, 把出现「ArenaTheme / arena_theme.gd」字样的文件收进 hits。返回扫过的文件数。
+func _scan_theme_readers(dir: String, hits: Array) -> int:
+	var n := 0
+	var da := DirAccess.open(dir)
+	if da == null:
+		return 0
+	for f in da.get_files():
+		if f.ends_with(".gd"):
+			n += 1
+			var p := dir.path_join(f)
+			var src := FileAccess.get_file_as_string(p)
+			if src.find("ArenaTheme") >= 0 or src.find("arena_theme.gd") >= 0:
+				hits.append(p)
+	for d in da.get_directories():
+		n += _scan_theme_readers(dir.path_join(d), hits)
+	return n
+
+
 # ───────────────────────── 调试场确定性场景(同 verify_determinism_cross 的建法) ─────────────────────────
-func _run_debug(sc: Dictionary, theme: String) -> Dictionary:
+## frames: 开打后跑几帧(★0 只要开打那一帧的数字 ⇒ 1; ③ 只看主题 ⇒ 1)。sig = 开打后第一帧的「战斗相关那串数字」。
+func _run_debug(sc: Dictionary, theme: String, frames: int = 1) -> Dictionary:
 	AT.active = theme
 	RB.DEBUG_EDIT = true
 	OS.set_environment("TURTLE_SEED", str(sc["seed"]))
@@ -106,15 +157,19 @@ func _run_debug(sc: Dictionary, theme: String) -> Dictionary:
 			u["skill_idx"] = 0
 	s._debug._edit_start_battle()
 	var tr: Array = []
-	for _i in range(int(sc["frames"])):
+	var sig := ""
+	for _i in range(frames):
 		await get_tree().process_frame
 		tr.append(_fp(s))
+		if sig == "":
+			sig = _sim_sig(s)
+	var n_units := (s._units as Array).size()
 	s.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	OS.set_environment("TURTLE_SEED", "")
 	RB.DEBUG_EDIT = false
-	return {"tr": tr, "theme": seen_theme, "ring": ring}
+	return {"tr": tr, "theme": seen_theme, "ring": ring, "sig": sig, "units": n_units}
 
 
 # ───────────────────────── 正式双路对局 ─────────────────────────
@@ -145,7 +200,8 @@ func _setup_gs() -> void:
 
 
 ## 建一场正式对局。frames=0 ⇒ 只建场不打(量选图用)。
-func _run_formal(seed_v: int, frames: int, tutorial: bool = false) -> Dictionary:
+## stop_at_fight: 开到「开打第一帧」就停, 记下那一帧的「战斗相关那串数字」(sig) 与用了几帧(fight_frame)。
+func _run_formal(seed_v: int, frames: int, tutorial: bool = false, stop_at_fight: bool = false) -> Dictionary:
 	_setup_gs()
 	GameState.tutorial_active = tutorial
 	RB.DEBUG_EDIT = false
@@ -162,6 +218,9 @@ func _run_formal(seed_v: int, frames: int, tutorial: bool = false) -> Dictionary
 	var st_frames := 0
 	var last := ""
 	var fought := false
+	var sig := ""
+	var fight_frame := -1
+	var n_units := 0
 	for _i in range(frames):
 		var st: String = str(s._dl_state)
 		if st != last:
@@ -174,6 +233,13 @@ func _run_formal(seed_v: int, frames: int, tutorial: bool = false) -> Dictionary
 		if str(s._dl_state) == "fight":
 			fought = true
 		tr.append(_fp(s))
+		if stop_at_fight and fought:
+			sig = _sim_sig(s)
+			fight_frame = _i + 1
+			for u in s._units:
+				if bool(u.get("alive", false)):
+					n_units += 1
+			break
 		await get_tree().process_frame
 	var taken := 0.0
 	for u in s._units:
@@ -187,7 +253,7 @@ func _run_formal(seed_v: int, frames: int, tutorial: bool = false) -> Dictionary
 	OS.set_environment("TURTLE_SEED", "")
 	GameState.tutorial_active = false
 	return {"tr": tr, "theme": theme, "props": props, "ring": ring, "formal": formal, "tut": tut, "tut_gs": tut_gs,
-		"fought": fought, "taken": taken}
+		"fought": fought, "taken": taken, "sig": sig, "fight_frame": fight_frame, "units": n_units}
 
 
 func _ready() -> void:
@@ -229,59 +295,56 @@ func _ready() -> void:
 		same = same and AT.theme_for_seed(sd) == AT.theme_for_seed(sd)
 	_ok("② 纯函数: 同一种子算两遍同一张", same)
 
-	# ═══ ★0 主题只改外观 —— 调试场两个确定性场景, 五张图逐步指纹相同 ═══
-	print("=== ★0 主题不影响模拟(调试场) ===")
+	# ═══ ★0(b) 静态: 读地图主题的文件只许是白名单那几个(战斗逻辑 / 技能 / 装备不许读) ═══
+	print("=== ★0 主题不影响模拟(静态: 谁在读地图主题) ===")
+	var readers: Array = []
+	var scanned := _scan_theme_readers("res://scripts", readers) + _scan_theme_readers("res://autoload", readers)
+	var extra: Array = []
+	for p in readers:
+		if not THEME_READERS.has(str(p)):
+			extra.append(str(p))
+	var wl_hit := 0
+	for p in THEME_READERS:
+		if readers.has(p):
+			wl_hit += 1
+	_ok("分母 · 扫了 %d 个 .gd, 白名单 %d 个文件里真读主题的 %d 个(扫描真的看得见读主题的文件)" % [scanned, THEME_READERS.size(), wl_hit],
+		scanned > 200 and wl_hit >= 4, str(readers))
+	_ok("★★0b 读地图主题的文件全在白名单里(新增的先确认只管外观、不在 _sim_step 调用链上, 再登记理由)", extra.is_empty(), str(extra))
+
+	# ═══ ★0(a) 调试场: 五张图开打那一帧的「战斗相关那串数字」逐字相同 ═══
+	print("=== ★0 主题不影响模拟(调试场, 比开打那一帧) ===")
 	var scs: Array = SC.all()
 	for idx in [1, 7]:            # ② 3v3 裸装(骰子吃随机) / ⑧ 受控 PRNG 落点(落点会不会碰到障碍)
 		var sc: Dictionary = scs[idx]
 		var base: Dictionary = {}
 		for th in ALL5:
 			var r: Dictionary = await _run_debug(sc, str(th))
-			_ok("分母 · %s · %s · 建场时 active 真的是它(themed=%s 有 ThemeRing)" % [sc["tag"], th, str(r["ring"])],
-				str(r["theme"]) == str(th) and bool(r["ring"]) == (str(th) != AT.V0_BASE))
+			_ok("分母 · %s · %s · 建场时 active 真的是它(themed=%s 有 ThemeRing) · 场上有单位(%d)" % [sc["tag"], th, str(r["ring"]), int(r["units"])],
+				str(r["theme"]) == str(th) and bool(r["ring"]) == (str(th) != AT.V0_BASE) and int(r["units"]) >= 2 and str(r["sig"]) != "")
 			if th == AT.V0_BASE:
 				base = r
-				var uq := {}
-				for f in r["tr"]:
-					uq[str(f)] = true
-				_ok("分母 · %s · 这一局真的在推进(%d 步, 不同指纹 %d 个)" % [sc["tag"], (r["tr"] as Array).size(), uq.size()],
-					uq.size() > 50)
 			else:
-				var d: String = _first_diff(base["tr"], r["tr"])
-				_ok("★★0 %s · %s 与 V0_BASE 逐步指纹逐字相同(%d 步)" % [sc["tag"], th, (r["tr"] as Array).size()], d == "", d)
+				var d: String = _first_diff([base["sig"]], [r["sig"]])
+				_ok("★★0a %s · %s 与 V0_BASE 开打那一帧的数字逐字相同" % [sc["tag"], th], d == "", d)
 
-	# ═══ ★0 正式双路对局: 五张图(强制指定)逐步指纹相同 ═══
+	# ═══ ★0(a) 正式双路对局: 五张图(强制指定)开到开打第一帧, 「战斗相关那串数字」逐字相同 ═══
 	AT.active = AT.V0_BASE        # 上面调试场逐张手动切过; 还原成「玩家进场前」的默认, ③ 才有对照
-	print("=== ★0 主题不影响模拟(正式双路对局, 种子 %d) ===" % FORMAL_SEED)
+	print("=== ★0 主题不影响模拟(正式双路对局, 种子 %d, 比开打第一帧) ===" % FORMAL_SEED)
 	var fbase: Dictionary = {}
-	var by_theme := {}
 	for th in ALL5:
 		AT.forced = str(th)
-		var r: Dictionary = await _run_formal(FORMAL_SEED, FORMAL_FRAMES)
+		var r: Dictionary = await _run_formal(FORMAL_SEED, FORMAL_FRAMES, false, true)
 		AT.forced = ""
-		by_theme[str(th)] = r
-		_ok("分母 · 正式对局 · %s · 是正式对局(formal=%s) · 用的是它 · 走了 MapProps 那条路" % [th, str(r["formal"])],
-			bool(r["formal"]) and str(r["theme"]) == str(th) and bool(r["props"]) and bool(r["ring"]) == (str(th) != AT.V0_BASE),
+		_ok("分母 · 正式对局 · %s · 是正式对局(formal=%s) · 用的是它 · 走了 MapProps 那条路 · 第 %d 帧开打 · 场上活着 %d 个" % [th, str(r["formal"]), int(r["fight_frame"]), int(r["units"])],
+			bool(r["formal"]) and str(r["theme"]) == str(th) and bool(r["props"]) and bool(r["ring"]) == (str(th) != AT.V0_BASE)
+				and bool(r["fought"]) and int(r["units"]) >= 6,
 			"theme=%s props=%s ring=%s" % [r["theme"], str(r["props"]), str(r["ring"])])
 		if th == AT.V0_BASE:
 			fbase = r
-			_ok("分母 · 正式对局真的开打并打出伤害(fought=%s 承伤 %.0f)" % [str(r["fought"]), float(r["taken"])],
-				bool(r["fought"]) and float(r["taken"]) > 0.0)
+			_ok("分母 · 开打那一帧障碍物表非空(比的不是空表): %s" % str(r["sig"]).left(120), str(r["sig"]).find("obs=0|") < 0 and str(r["sig"]).find("|ob0{") >= 0)
 		else:
-			var d2: String = _first_diff(fbase["tr"], r["tr"])
-			_ok("★★0 正式对局 · %s 与 V0_BASE 逐步指纹逐字相同(%d 步)" % [th, (r["tr"] as Array).size()], d2 == "", d2)
-
-	# ═══ ④ 选图不消耗战斗随机流 ═══
-	print("=== ④ 自己选图 vs 强制同一张 ===")
-	var auto: Dictionary = await _run_formal(FORMAL_SEED, FORMAL_FRAMES)
-	var want: String = AT.theme_for_seed(FORMAL_SEED)
-	_ok("③ 正式对局(不强制)选出的是种子算出的那张(%s), 不是 V0_BASE" % want,
-		str(auto["theme"]) == want and str(auto["theme"]) != AT.V0_BASE, str(auto["theme"]))
-	var d4: String = _first_diff((by_theme[want] as Dictionary)["tr"], auto["tr"])
-	_ok("★★④ 让它自己选 与 强制指定成同一张 ⇒ 逐步指纹逐字相同(选图没从 _battle_rng 取数)", d4 == "", d4)
-	var other: Dictionary = await _run_formal(FORMAL_SEED + 1, FORMAL_FRAMES)
-	var d4b: String = _first_diff(auto["tr"], other["tr"])
-	_ok("④ 分母: 种子改一下指纹就变(这局真的在读随机流, ④ 不是空检查)", d4b != "", d4b)
+			var d2: String = _first_diff([fbase["sig"]], [r["sig"]])
+			_ok("★★0a 正式对局 · %s 与 V0_BASE 开打第一帧的数字逐字相同(障碍物 / 单位 / 随机流)" % th, d2 == "", d2)
 
 	# ④a 直接量随机流状态: 正式对局建好后, 把种子换成 X、记下 state, 调产品的选图入口, state 必须一个位不差。
 	#   ★为什么要这一条: ④ 的端到端指纹对「从流里吃掉一个数」不够敏感 —— 2026-10-04 反向验证实测,
@@ -314,21 +377,17 @@ func _ready() -> void:
 
 	# ═══ ②③ 真建场: 多个种子, 每个建两次 ═══
 	print("=== ②③ 真建场选图 ===")
+	## ★11-04 每个种子只建一次: 「真建场 == 纯函数」+「纯函数算两遍同一张」⇒ 同种子建两次必然同一张(原第二次建场是重复量)。
 	var seen := {}
 	var all_ok := true
-	var twice_ok := true
 	var detail := ""
 	for sd in [11, 222, 3333, 44444, 555555, 6666666, 77777777, 1234567]:
 		var a: Dictionary = await _run_formal(sd, 0)
-		var b: Dictionary = await _run_formal(sd, 0)
 		seen[str(a["theme"])] = true
 		if str(a["theme"]) != AT.theme_for_seed(sd) or not AT.MATCH_POOL.has(str(a["theme"])):
 			all_ok = false
-		if str(a["theme"]) != str(b["theme"]):
-			twice_ok = false
-		detail += "%d→%s/%s " % [sd, a["theme"], b["theme"]]
-	_ok("★② 同一种子真建场两次 ⇒ 两次同一张", twice_ok, detail)
-	_ok("★③ 每一场正式对局都在四张池里、且等于种子算出的那张(没有一场是 V0_BASE)", all_ok, detail)
+		detail += "%d→%s " % [sd, a["theme"]]
+	_ok("★②③ 每一场正式对局真建场 == 种子算出的那张、且在四张池里(没有一场是 V0_BASE)", all_ok, detail)
 	_ok("分母 · 这 8 个种子覆盖到 ≥3 张不同的图(否则 ② 量不出随机)", seen.size() >= 3, str(seen.keys()))
 
 	# ═══ ③ 开发工具不被弄坏 ═══
