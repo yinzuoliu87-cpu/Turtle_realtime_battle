@@ -12,6 +12,7 @@ extends Node
 ## 在同一批步号上做同样的事，逐字比。不一致时打印两边差的那几行（缺哪个字段从这里看）。
 ## ★分母：比过的采样步数、单位面板数、统计页签数都 > 0，并打印。
 const J := preload("res://tests/_stream_jobs.gd")
+const FMT := preload("res://scripts/systems/stream/stream_format.gd")
 const SIM_DT := 1.0 / 60.0
 const TABS := ["dealt", "taken", "heal", "shield"]
 const EVERY := 1100        # 每隔这么多步（只在交战段）拍一次
@@ -42,6 +43,12 @@ func _ready() -> void:
 			var rec: StreamRecorder = bt._replay.stream
 			rec.on_sampled = func(s: int) -> void:
 				if _nat.size() >= MAX_SNAPS or s < _next or str(bt._dl_state) != "fight":
+					return
+				## ★只在录流器采了连续量的那一步拍(stream_format.CONT_EVERY: 连续量每 2 步采一次, 省流量的设计)。
+				##   落在不采的那一步, 流里的连续量(冷却 skill_cd 等)是上一步的值 ⇒ 龟能取整偶尔差 1 ——
+				##   2026-11-03 探针实测: 同一 t 原生冷却 5.31667、流里 5.33333, 正好差一个 sim 步(Issue #5)。
+				##   手机上那是 1/60 秒的滞后, 看不出来; 这里要比的是「流里有没有这个数」, 所以对齐采样步、逐字比。
+				if rec._step_n % FMT.CONT_EVERY != 0:
 					return
 				_next = s + EVERY
 				var ub := {}
@@ -164,8 +171,7 @@ func _play_and_compare(chunks: Array, meta: Dictionary, seed: int) -> void:
 			if ns[tab] != ps.get(tab, []):
 				stat_bad.append("步 %d 页签 %s：只在本机 %s ｜ 只在流 %s" % [s, tab, str(_only(ns[tab], ps.get(tab, []))).left(400),
 					str(_only(ps.get(tab, []), ns[tab])).left(400)])
-	print("  分母：采样步 %d · 单位面板 %d · 统计页签 %d · 龟能取整按 ±1 放过 %d 处" % [got.size(), n_units, n_tabs, _energy_tol])
-	_ok("龟能 ±1 放宽只覆盖个别边界（%d ≤ 面板数 / 20）" % _energy_tol, _energy_tol * 20 <= maxi(n_units, 1))
+	print("  分母：采样步 %d · 单位面板 %d · 统计页签 %d" % [got.size(), n_units, n_tabs])
 	_ok("★信息面板（属性 / 技能 / 装备 / 状态）逐字一致（%d 个面板，不一致 %d）" % [n_units, unit_bad.size()],
 		n_units >= 10 and unit_bad.is_empty(), "\n      ".join(unit_bad.slice(0, 6)))
 	_ok("★📊 统计四页签逐字一致（%d 个页签，不一致 %d）" % [n_tabs, stat_bad.size()],
@@ -176,26 +182,9 @@ func _play_and_compare(chunks: Array, meta: Dictionary, seed: int) -> void:
 	await get_tree().process_frame
 
 
-## 逐行比; 唯一的放宽: 「龟能  当前 / 上限」上限相同、当前差 ≤ 1 算一致。
-##   ★已知未查清（2026-11-03 方案书风险）: 原生在录流器 on_sampled 回调时拍（渲染步之后）, 播放端在采样步拍;
-##   龟能 = 冷却进度 × 花费再取整, 卡在整数边界时差 1（52 个面板里 1 个）。其余任何一个字不同都算红。
-var _energy_tol := 0
-var _energy_re := RegEx.create_from_string("^龟能  (\\d+) / (\\d+)$")
-
+## 逐行逐字比, 没有放宽(原来「龟能差 1」的放宽 11-03 查清是采样步没对齐, 见原生拍照那段, 已去掉)。
 func _same_lines(a: Array, b: Array) -> bool:
-	if a.size() != b.size():
-		return false
-	for i in range(a.size()):
-		if a[i] == b[i]:
-			continue
-		var ma := _energy_re.search(str(a[i]))
-		var mb := _energy_re.search(str(b[i]))
-		if ma != null and mb != null and ma.get_string(2) == mb.get_string(2) \
-				and absi(int(ma.get_string(1)) - int(mb.get_string(1))) <= 1:
-			_energy_tol += 1
-			continue
-		return false
-	return true
+	return a == b
 
 
 static func _only(a: Array, b: Array) -> Array:
