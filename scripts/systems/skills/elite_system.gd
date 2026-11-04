@@ -5,6 +5,24 @@ const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 ## 吞噬演出: 目标被吸收时染黑 / 缩小的满程幅度(渲染步按 `_devour_k` ∈ [0,1] 插值, 见 battle_render._update_world_transforms)。
 const DEVOUR_DARKEN := 0.85
 const DEVOUR_SHRINK := 0.45
+## ★2026-11-04 进文案的数字从字面量抽成常量(值一个不改, 规则指纹门禁证明对局结果不变)。
+##   文案 scripts/gamedata/minion_codex.gd 用 {C:EliteSystem.X} / {N|M:EliteSystem.X*ATK} 引。
+##   抽的时候查出一处文案与代码对不上: 铁锁代码是 2×ATK 魔法(用户 07-18 从 1A 改 2A), 文案还写「100% 攻击力」。
+const BLADE_ATK_COEF := 1.0             # 普攻·长手刃 ×ATK 物理
+const WHIRL_EVERY := 5                  # 每第 N 次攻击改为旋刃
+const WHIRL_ATK_COEF := 1.3             # 旋刃 ×ATK 物理(周围敌人)
+const WHIRL_HEAL_PCT := 0.5             # 旋刃按造成伤害回复的比例
+const CONSUME_HP_PCT := 0.15            # 吞噬: 目标生命低于最大生命 × 这个才发动
+const CONSUME_SEC := 1.5                # 吞噬演出时长(期间减伤; 结束时结算)
+const CONSUME_DR := 0.95                # 吞噬演出期减伤
+const CONSUME_HEAL_MULT := 2.0          # 吞噬完成回复 = 目标剩余生命 × 这个
+const CONSUME_ASPD_BONUS := 0.5         # 吞噬完成攻速 +(haste_mult = 1 + 这个)
+const CONSUME_HASTE_SEC := 5.0          # 攻速加成持续(秒)
+const HAMMER_ATK_COEF := 4.0            # 技能·铁锤 ×ATK 魔法
+const HAMMER_BIG_ATK_COEF := 6.0        # 铁锤·跃击(每第 3 次) ×ATK 魔法
+const WHIP_CD_SEC := 5.0                # 被动·铁锁 冷却(秒)
+const WHIP_STUN_SEC := 0.4              # 铁锁眩晕(秒)
+const WHIP_ATK_COEF := 2.0              # 铁锁 ×ATK 魔法
 ## 精英龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -59,12 +77,12 @@ func _elite_basic(u: Dictionary, tgt: Dictionary) -> void:      # 普攻·长手
 	if _elite_try_consume(u, tgt):
 		return
 	u["_eb_n"] = int(u.get("_eb_n", 0)) + 1
-	if u["_eb_n"] % 5 == 0:
+	if u["_eb_n"] % WHIRL_EVERY == 0:
 		_elite_whirl(u)
 		return
 	var dirv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
 	dirv = DetMath.norm(dirv) if DetMath.vlen(dirv) > 1.0 else Vector2.RIGHT
-	battle._emit_basic(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#e05555"), 0)
+	battle._emit_basic(u, tgt, battle._atk_dmg(u, BLADE_ATK_COEF, tgt), Color("#e05555"), 0)
 	_elite_slash_arc(tgt["pos"], dirv)
 
 func _elite_mist(pos2d: Vector2, h: float, n: int = 3) -> void:  # 黑红雾团(变形通用语言: 黑主体+暗红筋络·每次幻化都爆一口)
@@ -180,29 +198,29 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if DetMath.dist((o["pos"] as Vector2), u["pos"]) > 200.0: continue
-		var dmg: int = battle._atk_dmg(u, 1.3, o)
+		var dmg: int = battle._atk_dmg(u, WHIRL_ATK_COEF, o)
 		battle._damage._apply_damage_from(u, o, dmg, Color("#e05555"))
 		total += dmg
 		var dv: Vector2 = (o["pos"] as Vector2) - (u["pos"] as Vector2)
 		_elite_slash_arc(o["pos"], DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.RIGHT)
 	if total > 0:
-		battle._damage._heal(u, float(total) * 0.5)                              # 吸血50%(生物质回收)
+		battle._damage._heal(u, float(total) * WHIRL_HEAL_PCT)                              # 吸血50%(生物质回收)
 func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·吞噬(Consume·用户拍板: 1.5s演出不中断/演出期95%减伤/回复=触发瞬间目标剩余HP×2(用户2026-07-19)/只偷主动技)
 	if tgt == null or not tgt.get("alive", false): return false
 	if tgt.get("_eggImmune", false) or tgt.get("_consuming", false): return false
-	if float(tgt.get("hp", 0.0)) >= float(tgt.get("maxHp", 1.0)) * 0.15: return false
+	if float(tgt.get("hp", 0.0)) >= float(tgt.get("maxHp", 1.0)) * CONSUME_HP_PCT: return false
 	var uu = u
 	var tref: Dictionary = tgt
-	var heal_amt: float = maxf(0.0, float(tgt["hp"])) * 2.0   # 回复=目标剩余生命的2倍(用户2026-07-19: 原1倍)
+	var heal_amt: float = maxf(0.0, float(tgt["hp"])) * CONSUME_HEAL_MULT   # 回复=目标剩余生命的2倍(用户2026-07-19: 原1倍)
 	tgt["_consuming"] = true
 	_elite_anim(u, "consume")   # 扑抓动作 (放在所有 early-return 之后 = 只有真吞噬才播)
 	battle._damage._stun(tgt, 1.7, "_elite_try_consume", true)
 	tgt["untargetable_until"] = maxf(float(tgt.get("untargetable_until", 0.0)), battle._t + 1.7)
 	u["_slam"] = true                                             # 精英站桩播1.5s(不中断)
 	# 用户2026-07-19: 原本"可被攻击不免伤"→改为吞噬期间95%减伤(1.5s后撤回)
-	u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + 0.95
-	battle._pending_shots.append({"delay": 1.5, "src": u, "fn": func() -> void:
-		u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - 0.95)})
+	u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + CONSUME_DR
+	battle._pending_shots.append({"delay": CONSUME_SEC, "src": u, "fn": func() -> void:
+		u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - CONSUME_DR)})
 	var glow = VfxTex._make_fire_glow_tex()
 	var tends: Array = []
 	for k in range(3):                                            # 黑红卷须×3绕目标螺旋收紧(40→8码)
@@ -228,7 +246,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 			var rr: float = 40.0 - 32.0 * q
 			td2.position = battle._world_pos((tref["pos"] as Vector2) + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * rr, 0.35 + 0.3 * (1.0 + DetMath.dsin(aa * 0.7)) * 0.5)
 	, 0.0, 1.0, 1.45)
-	battle._pending_shots.append({"delay": 1.5, "fn": func() -> void:   # 吞噬完成: 黑丝缕流入→回血→击杀→偷放主动技
+	battle._pending_shots.append({"delay": CONSUME_SEC, "fn": func() -> void:   # 吞噬完成: 黑丝缕流入→回血→击杀→偷放主动技
 		for td3 in tends:
 			if is_instance_valid(td3): td3.queue_free()
 		if not uu.get("alive", false):                            # 精英已亡: 放开目标(保守)
@@ -261,7 +279,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 		elif tref.get("alive", false):
 			battle._kill(tref, uu)                                        # 正常击杀管线(统计/死亡钩子照走)
 		battle._damage._heal(uu, heal_amt)                                        # 回复=吞噬瞬间目标剩余HP×2(用户2026-07-19)
-		uu["haste_until"] = battle._t + 5.0; uu["haste_mult"] = 1.5       # 吞噬完成: 5秒+50%攻速(用户2026-07-19)
+		uu["haste_until"] = battle._t + CONSUME_HASTE_SEC; uu["haste_mult"] = 1.0 + CONSUME_ASPD_BONUS       # 吞噬完成: 5秒+50%攻速(用户2026-07-19)
 		battle._vfx._float_text(uu["pos"] + Vector2(0, -62), "吞噬 +50% 攻击速度", Color("#ff6a6a"))
 		battle._vfx._flash(uu, Color(1.5, 0.95, 0.95))
 		battle._skill_ring(uu["pos"] as Vector2, Color(0.55, 0.08, 0.1, 0.7), 46.0)
@@ -396,7 +414,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 					if DetMath.vlen(rel) > dist + 40.0 or DetMath.vlen(rel) < dist - 40.0: continue
 					if absf(DetMath.angle_to(rel, dirv)) > deg_to_rad(30.0): continue
 					o["_espk_tok"] = tok
-					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 4.0, o, true), Color("#9bdcff"))   # 普通施法 1.5→4.0 ATK魔法(用户2026-07-19)
+					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, HAMMER_ATK_COEF, o, true), Color("#9bdcff"))   # 普通施法 1.5→4.0 ATK魔法(用户2026-07-19)
 					battle._knock_up(o, origin, 5.5)
 			, "src": u})
 	else:
@@ -465,6 +483,6 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 						var dd2: float = DetMath.dist((o2["pos"] as Vector2), c2)
 						if dd2 > dist2 + 45.0 or dd2 < dist2 - 45.0: continue
 						o2["_espk_tok"] = tok2
-						battle._damage._apply_damage_from(uu, o2, battle._atk_dmg(uu, 6.0, o2, true), Color("#9bdcff"))   # 第三段 3.0→6.0 ATK魔法(用户2026-07-19)
+						battle._damage._apply_damage_from(uu, o2, battle._atk_dmg(uu, HAMMER_BIG_ATK_COEF, o2, true), Color("#9bdcff"))   # 第三段 3.0→6.0 ATK魔法(用户2026-07-19)
 						battle._knock_up(o2, c2, 13.2)
 				, "src": uu}))

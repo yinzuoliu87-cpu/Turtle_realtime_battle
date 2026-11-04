@@ -32,6 +32,10 @@ func _ready() -> void:
 	var _side := OS.get_environment("SHOT_SIDE")
 	## SHOT_PET=__minion__ (+SHOT_ROLE=back): 小将面板 —— 多一格「前排/后排」(2026-10-06)。
 	var _spec: Dictionary = {"minion": true, "role": OS.get_environment("SHOT_ROLE") if OS.has_environment("SHOT_ROLE") else "front", "level": 3} if pet == "__minion__" else {}
+	## SHOT_ROLE=elite(2026-11-04): 精英小将是「前排 + elite 旗」(与 backend 阵容 spec 同形), 不是第三种 role。
+	if str(_spec.get("role", "")) == "elite":
+		_spec["role"] = "front"
+		_spec["elite"] = true
 	## SHOT_LEVEL=6: 强制等级(走 GameState.debug_level, 与调试场同一个口) —— 和背包属性小卡对数时两边要同级。
 	if OS.has_environment("SHOT_LEVEL"):
 		get_node("/root/GameState").debug_level = int(OS.get_environment("SHOT_LEVEL"))

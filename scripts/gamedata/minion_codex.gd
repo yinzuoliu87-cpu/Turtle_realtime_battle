@@ -30,8 +30,10 @@ static func skill_desc(stype: String) -> Variant:
 		return null
 	var d: Dictionary = info(k)
 	## ★icon(2026-10-06): 信息面板技能格要图标 —— 原来小将两个技能没有图, 那一格是空的。
+	## ★tpl(2026-11-04): 带占位符的原文 —— 信息面板拿它走 render_skill_text(算好数值 / 伤害上色 / 底部公式行),
+	##   与龟技能同一条管线; desc 只展开了 {C:}, 留给没有单位上下文的地方。
 	return {"name": str(d.get("skill_name", "")), "desc": str(d.get("skill_desc", "")),
-		"icon": str(d.get("skill_icon", ""))}
+		"icon": str(d.get("skill_icon", "")), "tpl": str((MINION_INFO[k] as Dictionary).get("skill_desc", ""))}
 
 
 ## 一种小将的整条图鉴信息, 给屏幕用的版本(图鉴详情 / 信息面板都走这里):
@@ -118,24 +120,24 @@ const MINION_INFO := {
 		"name": "近战小将", "img": "minion.png", "role": "前排 · 近战",
 		"hp": 750, "atk": 42, "def": 13, "mr": 13, "interval": 0.85, "range": 100, "spd": 105,
 		"skill_name": "人体浪板", "skill_cost": 120, "skill_icon": "skills/minion-bodysurf.png",
-		"skill_desc": "近战小将锁定一个敌人并跃起，起跳时回复 200% 攻击力的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 10% 目标最大生命值的物理伤害。之后踩着目标滑行，对其持续造成 200% 攻击力的物理伤害，并对沿途敌人造成 150% 攻击力的物理伤害并将其击退，最后跳下。",
+		"skill_desc": "近战小将锁定一个敌人并跃起，起跳时回复（{C:HidingSystem.SURF_HEAL_COEF%}%×攻击力({ATK}) = {E:HidingSystem.SURF_HEAL_COEF*ATK}）生命值，距离过近时先向后跳开。随后射出铁链，将该敌人眩晕 {C:HidingSystem.SURF_STUN_SEC} 秒并将自身拉向目标，接触时造成其 {C:HidingSystem.SURF_CONTACT_MAXHP_PCT%}% 最大生命值的物理伤害。之后踩着目标滑行，对其持续造成（{C:HidingSystem.SURF_RIDE_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_RIDE_ATK_COEF*ATK}）物理伤害，并对沿途敌人造成（{C:HidingSystem.SURF_PASS_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_PASS_ATK_COEF*ATK}）物理伤害并将其击退，最后跳下。",
 	},
 	"back": {
 		"name": "远程小将", "img": "minion-back.png", "role": "后排 · 远程",
 		"hp": 750, "atk": 45, "def": 7, "mr": 7, "interval": 0.85, "range": 400, "spd": 105,
 		"skill_name": "追踪火箭筒", "skill_cost": 120, "skill_icon": "skills/minion-rocket.png",
-		"skill_desc": "远程小将锁定一名敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成 400% 攻击力的物理伤害，并施加 50% 治疗削减，持续 4 秒。",
+		"skill_desc": "远程小将锁定一名敌人，蓄力 {C:HidingSystem.ROCKET_CHARGE_SEC} 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成（{C:HidingSystem.ROCKET_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.ROCKET_ATK_COEF*ATK}）物理伤害，并施加 {C:HidingSystem.ROCKET_HEALCUT_PCT%}% 治疗削减，持续 {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒。",
 	},
 	"elite": {
 		"name": "精英小将", "img": "minion-elite.png", "role": "精英 · 近战",
 		"hp": 1000, "atk": 50, "def": 16, "mr": 20, "interval": 1.54, "range": 100, "spd": 105,
 		"skill_name": "铁锤", "skill_cost": 100, "skill_icon": "skills/elite-hammer.png",
-		"skill_desc": "精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成 400% 攻击力的魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成 600% 攻击力的魔法伤害。",
+		"skill_desc": "精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成（{C:EliteSystem.HAMMER_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_ATK_COEF*ATK}）魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成（{C:EliteSystem.HAMMER_BIG_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_BIG_ATK_COEF*ATK}）魔法伤害。",
 		## `slot` = 图鉴龟页同一套右栏里放哪: basic → 普通攻击条 / passive → 被动条 / skill → 技能卡(签「被动」)。
 		"passives": [
-			{"name": "长手刃", "slot": "basic", "desc": "精英小将的攻击造成 100% 攻击力的物理伤害，每 5 次攻击附带旋刃。"},
-			{"name": "吞噬", "slot": "passive", "desc": "精英小将在目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间获得 95% 减伤。吞噬完成后回复相当于目标剩余生命值 2 倍的生命值，并获得 50% 攻击速度，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。"},
-			{"name": "铁锁", "slot": "skill", "desc": "精英小将每 5 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 100% 攻击力的魔法伤害。"},
+			{"name": "长手刃", "slot": "basic", "desc": "精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。每第 {C:EliteSystem.WHIRL_EVERY} 次攻击转而挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。"},
+			{"name": "吞噬", "slot": "passive", "desc": "精英小将在目标生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成后回复相当于目标剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，并获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。"},
+			{"name": "铁锁", "slot": "skill", "desc": "精英小将每 {C:EliteSystem.WHIP_CD_SEC} 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 {C:EliteSystem.WHIP_STUN_SEC} 秒并拉至自身后方，造成（{C:EliteSystem.WHIP_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.WHIP_ATK_COEF*ATK}）魔法伤害。"},
 		],
 	},
 	## 援军小将(用户 2026-10-29, 方案书 docs/plans/20261029-终极战场援军小将.md):
@@ -148,7 +150,7 @@ const MINION_INFO := {
 		"interval": ReserveConsts.ATK_INTERVAL, "range": ReserveConsts.RANGE, "spd": ReserveConsts.MOVE,
 		"skill_name": ReserveConsts.SKILL_NAME, "skill_cost": ReserveConsts.ENERGY, "skill_icon": "skills/reserve-converge.png",
 		"growth_tag": "每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%",
-		"skill_desc": "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成 {C:ReserveConsts.ATK_COEF%}% 攻击力的物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。",
+		"skill_desc": "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。",
 		"passives": [
 			{"name": "援军", "slot": "passive", "desc": "终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
 		],

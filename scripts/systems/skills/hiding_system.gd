@@ -41,6 +41,18 @@ func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
 
 # 龟蛋立绘字典 (pets/egg.png = 单蛋 3帧 idle 动画横排 79×80, 修: 原当 frames:1 显成"3蛋并排")
 # ═════ 小将主动技(用户2026-07-18): 近战人体浪板 / 远程追踪火箭筒 (各120龟能·射程2000) ═════
+## ★2026-11-04 进文案的数字从下面两个技能的字面量抽成常量(值一个不改, 规则指纹门禁证明对局结果不变)。
+##   文案 scripts/gamedata/minion_codex.gd 用 {C:HidingSystem.X} / {N:HidingSystem.X*ATK} 引 —— 改数值只改这里,
+##   面板 / 图鉴的数字跟着变(原来文案是手写的「400% 攻击力」, 与代码各写一份)。
+const ROCKET_CHARGE_SEC := 1.5          # 远程·追踪火箭筒: 蓄力(秒)。★动画 ACTION_RANGED 焊死等于它(verify_elite_anim 读这个常量)
+const ROCKET_ATK_COEF := 4.0            # 核爆 ×ATK 物理
+const ROCKET_HEALCUT_PCT := 0.5         # 核爆附带治疗削减
+const ROCKET_HEALCUT_SEC := 4.0         # 治疗削减持续(秒)
+const SURF_HEAL_COEF := 2.0             # 近战·人体浪板: 起跳回复 ×ATK
+const SURF_STUN_SEC := 1.1              # 铁链眩晕(秒)·覆盖整个空中顿 + 俯冲
+const SURF_CONTACT_MAXHP_PCT := 0.10    # 接触: 目标最大生命 × 物理
+const SURF_RIDE_ATK_COEF := 2.0         # 踩滑全程合计 ×ATK 物理(按 0.1 秒一跳均摊到 slide_dur)
+const SURF_PASS_ATK_COEF := 1.5         # 沿途撞到的敌人 ×ATK 物理 + 击退
 func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火箭筒: 蓄力1.5s(枪口聚能)→枪口喷火发射→定向慢速追踪导弹(尾焰)→命中核爆(400码4A物理+4s50%治疗削减)
 	if tgt == null or not tgt.get("alive", false): return
 	var uu = u
@@ -55,7 +67,7 @@ func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火�
 	aim = DetMath.norm(aim) if DetMath.vlen(aim) > 1.0 else (Vector2.RIGHT if uu.get("face_right", true) else Vector2.LEFT)
 	uu["face_right"] = aim.x >= 0.0
 	battle._rocket_sys._rocket_charge_vfx(uu, aim)                         # 蓄力表现(用户2026-07-18): 枪口聚能球渐大转白热+火星汇入+脚下能量环脉冲
-	battle._pending_shots.append({"delay": 1.5, "fn": func() -> void:   # 蓄力1.5s→发射
+	battle._pending_shots.append({"delay": ROCKET_CHARGE_SEC, "fn": func() -> void:   # 蓄力1.5s→发射
 		uu["_slam"] = false
 		if not uu.get("alive", false): return
 		var aim2: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
@@ -171,9 +183,9 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 		if not o.get("alive", false): continue
 		if DetMath.dist((o["pos"] as Vector2), center) > 400.0: continue
 		battle._vfx._hit_spark(o)
-		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 4.0, o, false), Color("#ff4444"))   # 4A物理
-		o["heal_reduce_until"] = maxf(float(o.get("heal_reduce_until", 0.0)), battle._t + 4.0)   # 4秒50%治疗削减
-		o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
+		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, ROCKET_ATK_COEF, o, false), Color("#ff4444"))   # 4A物理
+		o["heal_reduce_until"] = maxf(float(o.get("heal_reduce_until", 0.0)), battle._t + ROCKET_HEALCUT_SEC)   # 4秒50%治疗削减
+		o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), ROCKET_HEALCUT_PCT)
 
 ## 夭折落地时长(秒)。文案不引用它, 但门禁要按它等 —— 具名常量便于两边同源。
 const FALL_T := 0.22
@@ -259,7 +271,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	uu["_unstoppable"] = true
 	_unstoppable_apply(uu)
 	battle._melee_anim(uu, "leap")                              # 0.00-0.64 蓄力+蹬地起跳
-	battle._damage._heal(uu, float(uu.get("atk", 30.0)) * 2.0)          # 高跳: 回复2ATK生命
+	battle._damage._heal(uu, float(uu.get("atk", 30.0)) * SURF_HEAL_COEF)          # 高跳: 回复2ATK生命
 	battle._skill_ring(uu["pos"], Color(0.7, 0.85, 1.0, 0.5), 40.0)
 	# ★蓄力→往后上方自然起跳(用户2026-07-18"正常蓄力往高处/后高处跳·别直上直下"): 位移往后+升到峰→悬停(不落)·等拉向目标才俯冲
 	var jstart: Vector2 = uu["pos"]
@@ -298,7 +310,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 			_minion_abort_fall(uu)                               # 不拉自己过去, 原地掉回地面
 			return
 		battle._surf_chain_shoot(uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], Color(0.6, 0.15, 0.15, 0.95))   # 从小将(空中·当前height)射铁链向目标
-		battle._damage._stun(tref, 1.1, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
+		battle._damage._stun(tref, SURF_STUN_SEC, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
 		battle._vfx._hit_spark(tref)
 	, "src": u})
 	battle._pending_shots.append({"delay": 1.28, "fn": func() -> void:   # 空中顿~0.6s(0.68射链→1.28拉)→拉己俯冲向目标→接触→踩滑(coroutine·用户2026-07-18)
@@ -334,7 +346,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
-	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * 0.10, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
+	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * SURF_CONTACT_MAXHP_PCT, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
 	battle._vfx._hit_spark(tref); battle._shake(0.14)
 	var sdir: Vector2 = ((tref["pos"] as Vector2) - from)
@@ -368,12 +380,12 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		dot_t += dt
 		if dot_t >= 0.1 and tref.get("alive", false):      # 对被踩目标逐渐2A物理(分摊·敌死则循环退出=自动结束·参考"血见底自动结束")
 			dot_t -= 0.1
-			battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, 2.0 * 0.1 / slide_dur, tref, false), Color("#ff4444"))
+			battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, SURF_RIDE_ATK_COEF * 0.1 / slide_dur, tref, false), Color("#ff4444"))
 		for o in battle._targeting._enemies_of(u):                           # 沿途撞到的其他敌: 1.5A物理+撞飞(参考"撞飞其他敌")
 			if is_same(o, tref) or not o.get("alive", false) or battle._arr_has_unit(hit_others, o): continue
 			if DetMath.dist((o["pos"] as Vector2), mypos) <= 70.0:
 				hit_others.append(o)
-				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.5, o, false), Color("#ff4444"))
+				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, SURF_PASS_ATK_COEF, o, false), Color("#ff4444"))
 				## ★2026-08-21: 免控的第三方**不被撞飞** —— 用户已定「推开就是控制技能」,
 				##   那免控就该免它。(伤害照吃, 免控 ≠ 免伤。)
 				if not battle._damage._is_cc_immune(o):

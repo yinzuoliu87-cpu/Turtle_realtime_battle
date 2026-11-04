@@ -34,6 +34,7 @@ func _ready() -> void:
 	_test_no_close_button()
 	_test_placeholder_rendered(s)
 	await _test_skill_desc_live(s)
+	await _test_minion_card_rules(s)
 
 	s.queue_free()
 	print("ALL PASS — 详情面板(更多属性/小将技能/实时刷新/点空白关)" if _fail == 0 else "FAILED: %d" % _fail)
@@ -132,6 +133,71 @@ func _test_minion_skills(s) -> void:
 		_ok("小将技能条目有名字与描述",
 			str(e.get("name", "")) != "" and str(e.get("desc", "")).length() > 10,
 			"%s: %s" % [e.get("name", ""), str(e.get("desc", "")).substr(0, 30)])
+
+
+## 2e. ★小将技能卡按龟的规矩走(2026-11-04 用户「点到它技能里面都没按的规律走」):
+##   四种小将逐个真生成 → 真开面板(看标题) → 取技能栏条目(看正文) → 走真点卡函数 _open_skill_card(看底部公式行)。
+##   ① 标题是种类全名(图鉴同一张表 MinionCodex), 不是笼统的「小将」
+##   ② 正文没有没换算的「N% 攻击力」—— 原来 minion_codex 的文案是手写纯文本, 直接贴进卡里
+##   ③ 正文的数按这个单位的攻击力算(攻击力翻倍 ⇒ 正文变)
+##   ④ 点开的卡有底部公式行 —— 原来小将条目 sk 为空, _skill_breakdown 见空就返回, 永远没有
+func _test_minion_card_rules(s) -> void:
+	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
+	## 「%」与「攻击力」之间允许夹 3 个以内的非数字字符: 渲染会在「攻击力」前插属性小图标, 解析成纯文本后是一个占位字符
+	##   (反向验证 M4 实测: 只写「% ?攻击力」时, 把文案改回手写「400% 攻击力」这条判据没红)。
+	var raw_re := RegEx.create_from_string("[0-9]+(\\.[0-9]+)?%[^0-9。，]{0,3}攻击力")
+	var n := 0
+	var names := {}
+	for spec in [{"role": "front"}, {"role": "back"}, {"role": "front", "elite": true}, {"role": "reserve"}]:
+		var sp: Dictionary = (spec as Dictionary).duplicate()
+		sp["minion"] = true
+		sp["level"] = 3
+		var u: Dictionary = s._spawn._make_unit("__minion__", "left", c, sp)
+		var kind := MinionCodex.kind_of(u)
+		var want := str(MinionCodex.info(kind).get("name", ""))
+		names[want] = true
+		s._units.clear()
+		s._units.append(u)
+		s._hud._show_unit_info_panel(u)
+		for _i in range(3):
+			await get_tree().process_frame
+		_ok("★① %s 面板标题叫全名(不是笼统的「小将」)" % want, want != "" and want != "小将" and _has_label(s._info_panel, want),
+			"kind=%s" % kind)
+		var ents: Array = s._info_sys._skill_bar_entries(u)
+		var sk_ents: Array = []
+		for e in ents:
+			if str((e as Dictionary).get("stype", "")) != "":
+				sk_ents.append(e)
+		_ok("分母 · %s 取到技能条目" % want, not sk_ents.is_empty(), "共 %d 条" % ents.size())
+		for e in sk_ents:
+			var ed: Dictionary = e
+			var body := _parsed_text(str(ed.get("desc", "")))
+			_ok("★② %s · %s 正文没有没换算的「N%% 攻击力」、没有没渲染的占位符" % [want, str(ed.get("name", ""))], raw_re.search(body) == null and not body.contains("{"), body.left(90))
+			var tpl := str(ed.get("tpl", ""))
+			var a0: float = float(u.get("atk", 0.0))
+			var lo: String = s._info_sys._skill_body_text(u, {}, tpl)
+			u["atk"] = a0 * 2.0
+			var hi: String = s._info_sys._skill_body_text(u, {}, tpl)
+			u["atk"] = a0
+			_ok("★③ %s · 正文的数按单位攻击力算(攻击力翻倍 ⇒ 正文变)" % want, tpl != "" and lo != hi)
+			s._info_sys.card().close()
+			s._info_sys._open_skill_card(u, "sk:test_" + kind, str(ed.get("name", "")), "技能", float(ed.get("cost", -1.0)), ed, s._info_panel)
+			var tb: Array = s._info_sys.card().live.get("table", []) if s._info_sys.card().is_open("sk:test_" + kind) else []
+			_ok("★④ %s · 点开的卡有底部公式行(伤害 = 系数 × 攻击力)" % want, tb.size() >= 1, "%d 行" % tb.size())
+			s._info_sys.card().close()
+			n += 1
+	_ok("分母 · 四种小将(近战 / 远程 / 精英 / 援军)的技能卡都量到了", n >= 4 and names.size() == 4, "%d 张 · %s" % [n, str(names.keys())])
+
+
+func _has_label(n: Node, txt: String) -> bool:
+	if n == null:
+		return false
+	if n is Label and (n as Label).text == txt:
+		return true
+	for ch in n.get_children():
+		if _has_label(ch, txt):
+			return true
+	return false
 
 
 ## 2c. 实时刷新

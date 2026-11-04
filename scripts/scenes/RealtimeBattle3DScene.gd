@@ -6012,7 +6012,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	if tgt == null or not tgt.get("alive", false): return
 	var d: float = DetMath.dist((tgt["pos"] as Vector2), u["pos"])
 	if d >= 150.0 and d <= 350.0 and _elite_sys._elite_try_consume(u, tgt):
-		u["_whip_cd"] = _t + 5.0   # 吞噬取代本次铁锁(用户2026-07-19: 铁链也能触发吞噬)
+		u["_whip_cd"] = _t + EliteSystem.WHIP_CD_SEC   # 吞噬取代本次铁锁(用户2026-07-19: 铁链也能触发吞噬)
 		return
 	if d < 150.0 or d > 350.0:
 		if _review_demo() and _review_turtle() == "elite" and (_review_skill_idx() == 1 or _review_skill_idx() == -1) and _t >= float(u.get("_whipdemo_next", 1.0e9)):
@@ -6021,7 +6021,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 			u["pos"] = Vector2(ARENA.position.x + 130.0, ARENA.position.y + ARENA.size.y * 0.5)
 			_elite_sys._elite_mist(u["pos"] as Vector2, 0.6, 3)
 		return
-	u["_whip_cd"] = _t + 5.0
+	u["_whip_cd"] = _t + EliteSystem.WHIP_CD_SEC
 	u["_whipdemo_next"] = _t + 4.5
 	u["_slam"] = true
 	_elite_sys._elite_anim(u, "whip")   # 甩臂动作 (挂在真链射这句, 不能挂函数头 —— 那里每帧都跑)
@@ -6056,7 +6056,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		if not tref.get("alive", false) or not uu.get("alive", false):
 			uu["_slam"] = false
 			return
-		_damage._stun(tref, 0.4, "_tick_elite_whip", true)
+		_damage._stun(tref, EliteSystem.WHIP_STUN_SEC, "_tick_elite_whip", true)
 		_vfx._flash(tref, Color(1.35, 1.2, 1.2))
 		_vfx._hit_spark(tref)
 	, "src": u})
@@ -6079,7 +6079,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		pt5.tween_callback(func() -> void:
 			uu["_slam"] = false
 			if tref.get("alive", false) and uu.get("alive", false):
-				_damage._apply_damage_from(uu, tref, _atk_dmg(uu, 2.0, tref, true), Color("#9bdcff"))   # 铁锁2A魔法(蓝字·用户2026-07-18: 1A→2A)
+				_damage._apply_damage_from(uu, tref, _atk_dmg(uu, EliteSystem.WHIP_ATK_COEF, tref, true), Color("#9bdcff"))   # 铁锁2A魔法(蓝字·用户2026-07-18: 1A→2A)
 				_elite_sys._elite_mist(uu["pos"], 0.6, 3)
 				var dv2: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
 				_elite_sys._elite_slash_arc(tref["pos"], DetMath.norm(dv2) if DetMath.vlen(dv2) > 1.0 else Vector2.RIGHT))

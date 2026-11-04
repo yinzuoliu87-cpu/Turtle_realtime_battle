@@ -1337,9 +1337,13 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 				## ★带上 stype: 小将这条分支 sk 是空字典, 而 _apply_forms 要靠 type 认多形态技
 				##   (精英铁锤就走这条路 —— 它没有 pets.json 技能池)。
 				var _mip := str(md.get("icon", ""))
+				## ★2026-11-04 走与龟同一条渲染(用户「点到它技能里面都没按的规律走」): 原来直接贴 desc 纯文本 ⇒
+				##   「400% 攻击力」不换算、伤害不上色、没有底部公式行。tpl 交给小卡算公式行(sk 为空时用 tpl)。
+				var _mtpl := str(md.get("tpl", ""))
 				out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)),
 					"icon": ("res://assets/sprites/" + _mip) if _mip != "" else "",
-					"desc": str(md["desc"]), "tpl": "", "sk": {}, "stype": str(t)})
+					"desc": battle._render._render_skill_text(_mtpl, u, {"type": str(t)}) if _mtpl != "" else str(md["desc"]),
+					"tpl": _mtpl, "sk": {}, "stype": str(t)})
 	else:
 		for t in battle._chosen_skill_types(id, str(u.get("side", "")) == "left"):
 			for sk in pool:
@@ -1671,7 +1675,9 @@ func _panel_skill_entries(u: Dictionary) -> Array:
 		for t in u.get("active_skills", []):
 			var md = MinionCodex.skill_desc(str(t))
 			if md != null:
-				out.append({"name": str(md["name"]), "desc": str(md["desc"])})
+				var _mt := str(md.get("tpl", ""))
+				out.append({"name": str(md["name"]), "tpl": _mt, "sk": {},
+					"desc": battle._render._render_skill_text(_mt, u, {"type": str(t)}) if _mt != "" else str(md["desc"])})
 		if not out.is_empty():
 			return out
 	var chosen: Array = battle._chosen_skill_types(id, str(u.get("side", "")) == "left")
@@ -1875,7 +1881,9 @@ func _open_skill_card(u: Dictionary, k: String, nm: String, role: String, cost: 
 		"icon": str(ent.get("icon", "")), "title": nm,
 		"tag": tag, "tag_col": _ROLE_COL.get(role, Color("#ffce4d")),
 		"body": body,
-		"table": ent.get("rows", []) if ent.has("rows") else _skill_breakdown(u, sk, src),   # 斧头那几格自带拆解行
+		## 小将那条分支 sk 是空的(没有 pets.json 技能字典) ⇒ 用 stype 补一个, 否则 _skill_breakdown 见空就返回 ——
+		##   2026-11-04 用户「点到它技能里面都没按的规律走」: 原来小将技能卡永远没有底部公式行。
+		"table": ent.get("rows", []) if ent.has("rows") else _skill_breakdown(u, sk if not sk.is_empty() or str(ent.get("stype", "")) == "" else {"type": str(ent["stype"])}, src),   # 斧头那几格自带拆解行
 	})
 	if lv.has("body"):
 		for reg in battle._info_skill_lbls:

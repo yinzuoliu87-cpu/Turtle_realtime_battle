@@ -344,19 +344,19 @@ scripts/gamedata/minion_codex.gd|lit|吞噬
 scripts/gamedata/minion_codex.gd|lit|小将
 scripts/gamedata/minion_codex.gd|lit|援军
 scripts/gamedata/minion_codex.gd|lit|援军 · 远程
-scripts/gamedata/minion_codex.gd|lit|援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成 {C:ReserveConsts.ATK_COEF%}% 攻击力的物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
-scripts/gamedata/minion_codex.gd|lit|精英小将在目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间获得 95% 减伤。吞噬完成后回复相当于目标剩余生命值 2 倍的生命值，并获得 50% 攻击速度，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。
-scripts/gamedata/minion_codex.gd|lit|精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成 400% 攻击力的魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成 600% 攻击力的魔法伤害。
-scripts/gamedata/minion_codex.gd|lit|精英小将每 5 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 100% 攻击力的魔法伤害。
-scripts/gamedata/minion_codex.gd|lit|精英小将的攻击造成 100% 攻击力的物理伤害，每 5 次攻击附带旋刃。
+scripts/gamedata/minion_codex.gd|lit|精英小将在目标生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成后回复相当于目标剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，并获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。
+scripts/gamedata/minion_codex.gd|lit|精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成（{C:EliteSystem.HAMMER_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_ATK_COEF*ATK}）魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成（{C:EliteSystem.HAMMER_BIG_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_BIG_ATK_COEF*ATK}）魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|精英小将每 {C:EliteSystem.WHIP_CD_SEC} 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 {C:EliteSystem.WHIP_STUN_SEC} 秒并拉至自身后方，造成（{C:EliteSystem.WHIP_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.WHIP_ATK_COEF*ATK}）魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。每第 {C:EliteSystem.WHIRL_EVERY} 次攻击转而挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。
 scripts/gamedata/minion_codex.gd|lit|终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。
 scripts/gamedata/minion_codex.gd|lit|近战小将
-scripts/gamedata/minion_codex.gd|lit|近战小将锁定一个敌人并跃起，起跳时回复 200% 攻击力的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 10% 目标最大生命值的物理伤害。之后踩着目标滑行，对其持续造成 200% 攻击力的物理伤害，并对沿途敌人造成 150% 攻击力的物理伤害并将其击退，最后跳下。
+scripts/gamedata/minion_codex.gd|lit|近战小将锁定一个敌人并跃起，起跳时回复（{C:HidingSystem.SURF_HEAL_COEF%}%×攻击力({ATK}) = {E:HidingSystem.SURF_HEAL_COEF*ATK}）生命值，距离过近时先向后跳开。随后射出铁链，将该敌人眩晕 {C:HidingSystem.SURF_STUN_SEC} 秒并将自身拉向目标，接触时造成其 {C:HidingSystem.SURF_CONTACT_MAXHP_PCT%}% 最大生命值的物理伤害。之后踩着目标滑行，对其持续造成（{C:HidingSystem.SURF_RIDE_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_RIDE_ATK_COEF*ATK}）物理伤害，并对沿途敌人造成（{C:HidingSystem.SURF_PASS_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_PASS_ATK_COEF*ATK}）物理伤害并将其击退，最后跳下。
 scripts/gamedata/minion_codex.gd|lit|远程小将
-scripts/gamedata/minion_codex.gd|lit|远程小将锁定一名敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成 400% 攻击力的物理伤害，并施加 50% 治疗削减，持续 4 秒。
+scripts/gamedata/minion_codex.gd|lit|远程小将锁定一名敌人，蓄力 {C:HidingSystem.ROCKET_CHARGE_SEC} 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成（{C:HidingSystem.ROCKET_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.ROCKET_ATK_COEF*ATK}）物理伤害，并施加 {C:HidingSystem.ROCKET_HEALCUT_PCT%}% 治疗削减，持续 {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒。
 scripts/gamedata/minion_codex.gd|lit|追踪火箭筒
 scripts/gamedata/minion_codex.gd|lit|铁锁
 scripts/gamedata/minion_codex.gd|lit|铁锤
@@ -1974,13 +1974,10 @@ scripts/scenes/codex/status_page.gd|lit|被动
 scripts/scenes/codex/status_page.gd|lit|装备
 scripts/scenes/codex/status_page.gd|lit|龟
 scripts/scenes/codex/status_sources.gd|lit|# 028 冰冻药剂[^\\n]*\\nfunc _eq_ice_throw
-scripts/scenes/codex/status_sources.gd|lit|0.4 秒
-scripts/scenes/codex/status_sources.gd|lit|1.1 秒
 scripts/scenes/codex/status_sources.gd|lit|1.6 秒
 scripts/scenes/codex/status_sources.gd|lit|1.7 秒
 scripts/scenes/codex/status_sources.gd|lit|1/1.8/2.5 秒
 scripts/scenes/codex/status_sources.gd|lit|3 秒
-scripts/scenes/codex/status_sources.gd|lit|50% · 4 秒
 scripts/scenes/codex/status_sources.gd|lit|func _ninja_dash\\(u: Dictionary, target: Dictionary\\) -> void:    # 被动
 scripts/scenes/codex/status_sources.gd|lit|{C:AxeEvolution.SLAM_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BambooSystem.SMACK_STUN} 秒
@@ -1990,6 +1987,7 @@ scripts/scenes/codex/status_sources.gd|lit|{C:BubbleSystem.SHIELD_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:ChestSystem.POISON_CUT%}% · {C:ChestSystem.POISON_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:CyberSystem.HIJACK_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:EliteSystem.WHIP_STUN_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.DART_KNOCKUP_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒
@@ -2000,6 +1998,8 @@ scripts/scenes/codex/status_sources.gd|lit|{C:GhostSystem.SPAWN_CURSE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:GhostSystem.STORM_CURSE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:HeadlessSystem.TENDRIL_STUN_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:HidingSystem.ROCKET_HEALCUT_PCT%}% · {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:HidingSystem.SURF_STUN_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:HunterSystem.MARK_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:HunterSystem.ROLL_DODGE%}% · {C:HunterSystem.ROLL_DODGE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:HunterSystem.SHOT_HEALCUT_PCT%}% · {C:HunterSystem.SHOT_HEALCUT_SEC} 秒

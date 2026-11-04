@@ -2025,6 +2025,10 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var hi = VBoxContainer.new(); hi.add_theme_constant_override("separation", 2)
 	hi.size_flags_horizontal = Control.SIZE_EXPAND_FILL; head.add_child(hi)
 	var nm = Label.new(); nm.text = str(u.get("name", id)); nm.add_theme_font_size_override("font_size", UIPalette.F_TITLE)
+	## ★2026-11-04 小将按种类叫全名(近战小将 / 远程小将 / 精英小将 / 援军小将), 与图鉴同一张表(MinionCodex)。
+	##   单位字典里的 name 仍是「小将」(统计面板等别处在读, 不动), 只改这块标题。
+	if u.has("minion_role") and not u.get("is_summon", false):
+		nm.text = str(MinionCodex.info(MinionCodex.kind_of(u)).get("name", nm.text))
 	var rar = str(pet.get("rarity", u.get("rarity", "C")))
 	nm.add_theme_color_override("font_color", battle._pet_rarity_color(rar)); hi.add_child(nm)
 	var sub = Label.new()

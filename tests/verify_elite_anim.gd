@@ -93,13 +93,13 @@ func _ready() -> void:
 ##   hammer_big 0.35跳起+1.0空中蓄力+0.12下砸 / _tick_elite_whip 0.3链射+0.18拉体 /
 ##   _elite_try_consume 的 _pending_shots delay 1.5
 const ELITE_BEATS := {
-	"whirl": 0.42, "hammer": 0.43, "hammer_big": 1.47, "whip": 0.48, "consume": 1.50,
+	"whirl": 0.42, "hammer": 0.43, "hammer_big": 1.47, "whip": 0.48, "consume": EliteSystem.CONSUME_SEC,
 }
 
 ## 远程小将(2026-08-21)。技能 = 火箭蓄力 1.5 秒(`_sk_minion_rocket` 的蓄力段)。
 ## ★动画时长必须 == 代码节拍, 否则动画先播完、角色站着发呆(精英/近战都栽过)。
 const RANGED_BEATS := {
-	"skill": 1.5,
+	"skill": HidingSystem.ROCKET_CHARGE_SEC,   # 2026-11-04 改读常量: 改了蓄力时长, 动画跟着要求
 }
 
 const MELEE_BEATS := {
