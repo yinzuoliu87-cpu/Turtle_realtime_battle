@@ -310,6 +310,7 @@ func _test_skill_desc_live(s) -> void:
 
 	var n_dep := 0        # 文案本来就随 ATK 变的槽数 = 真正能当证据的样本数
 	var n_changed := 0
+	var n_tbl := 0        # 带底部公式行、拿来验「公式行也跟着变」的槽数(2026-11-04)
 	var passive_proved := false
 	for i in range(slots.size()):
 		var ent: Dictionary = ents[i]
@@ -329,6 +330,7 @@ func _test_skill_desc_live(s) -> void:
 		for _j in range(2):
 			await get_tree().process_frame
 		var before := _overlay_text(s)
+		var tb_before: Array = _table_texts(s)
 		_ok("★分母: 槽 %d「%s」的描述框在屏上且有字" % [i, nm], before.length() > 5,
 			before.substr(0, 40))
 		_ok("★分母: 点开后【这一条】的 lbl 登记上了且只有这一条(原来永远是 null)",
@@ -368,6 +370,13 @@ func _test_skill_desc_live(s) -> void:
 				passive_proved = true
 		_ok("★★槽 %d「%s」: 攻击力翻倍后【屏幕上那段字】跟着变" % [i, nm], okc,
 			"%s → %s" % [before.substr(0, 44), after.substr(0, 44)])
+		## ★2026-11-04 底部公式行也要同一刻跟着变(用户「为什么上面52，下面57」: 开卡后攻击力变了,
+		##   正文跟着变、公式行停在开卡那一刻)。有公式行的样本才判; n_tbl 是分母。
+		if not tb_before.is_empty():
+			n_tbl += 1
+			var tb_after: Array = _table_texts(s)
+			_ok("★★槽 %d「%s」: 攻击力翻倍后【底部公式行】也跟着变(与正文同一刻)" % [i, nm],
+				tb_after.size() == tb_before.size() and tb_after != tb_before, "%s → %s" % [str(tb_before), str(tb_after)])
 		## ★★2026-10-02 改了【比法】, 判据一个字没改。
 		##   原来这里写着「两边都是纯文本(_render_skill_text 里 _strip_html 过),
 		##   所以能逐字比」并预告「哪天描述改成带 BBCode 的, 要改的是比法,
@@ -407,9 +416,22 @@ func _test_skill_desc_live(s) -> void:
 	_ok("★★★分母总账: 至少 2 个槽的文案本来就该随 ATK 变(样本不含 ATK ⇒ 判据恒绿)",
 		n_dep >= 2, "含 ATK 项的槽 %d 个" % n_dep)
 	_ok("★★★每一个该变的槽都真的变了", n_changed == n_dep, "%d / %d" % [n_changed, n_dep])
+	_ok("★★★分母: 至少 1 个槽带底部公式行、验过「公式行也跟着变」(0 = 那条判据没跑)", n_tbl >= 1, "%d 个" % n_tbl)
 	_ok("★★★【被动】那一槽也在证据里(原 `_info_passive_tpl` 那条测的是零写入点的孤儿字段)",
 		passive_proved)
 	print("  (技能描述实时性: 用掉 %d 帧, 默认预算 500)" % Engine.get_process_frames())
+
+
+## 当前开着的技能小卡底部公式行(拆解行)的文字; 没开 / 没有公式行 ⇒ 空数组。
+func _table_texts(s) -> Array:
+	var c = s._info_sys.card()
+	if c == null or c.card == null or not is_instance_valid(c.card):
+		return []
+	var out: Array = []
+	for l in (c.live.get("table", []) as Array):
+		if is_instance_valid(l):
+			out.append(_parsed_text(str((l as RichTextLabel).text)))
+	return out
 
 
 ## 技能栏的槽 = AbilityRow 里 88×88 且自己接了 gui_input 的 PanelContainer。

@@ -217,6 +217,15 @@ func _refresh_info_panel() -> void:
 			str((ent as Dictionary).get("tpl", "")))
 		if stxt != "" and str(slb.text) != stxt:
 			slb.text = stxt
+		## 底部公式行同一刻重算(见 _open_skill_card 里登记 tbl 的说明); 行数对不上(条目变了)就不动, 下次开卡重建。
+		var tbl: Array = (ent as Dictionary).get("tbl", [])
+		if not tbl.is_empty():
+			var brows: Array = _skill_breakdown(ud, (ent as Dictionary).get("bsk", {}), str((ent as Dictionary).get("src", "")))
+			if brows.size() == tbl.size():
+				for ri in range(tbl.size()):
+					var tl = tbl[ri]
+					if is_instance_valid(tl) and str(tl.text) != str(brows[ri][0]):
+						tl.text = str(brows[ri][0])
 	# ★状态 chips: 签名变了才整块重建(条目数会变, 改不了单个 Label)
 	if battle._info_status_box != null and is_instance_valid(battle._info_status_box):
 		var sig = _status_sig_own(ud)
@@ -1877,17 +1886,26 @@ func _open_skill_card(u: Dictionary, k: String, nm: String, role: String, cost: 
 	if role == "技能" and cost >= 0.0:
 		tag = "技能 · %d 龟能" % int(cost)
 	var src := str(battle.SkillText.text_of(sk, battle._skill_detail())) if not sk.is_empty() else tpl
+	## 小将那条分支 sk 是空的(没有 pets.json 技能字典) ⇒ 用 stype 补一个, 否则 _skill_breakdown 见空就返回 ——
+	##   2026-11-04 用户「点到它技能里面都没按的规律走」: 原来小将技能卡永远没有底部公式行。
+	var bsk: Dictionary = sk if not sk.is_empty() or str(ent.get("stype", "")) == "" else {"type": str(ent["stype"])}
 	var lv: Dictionary = card().open(k, anchor, {
 		"icon": str(ent.get("icon", "")), "title": nm,
 		"tag": tag, "tag_col": _ROLE_COL.get(role, Color("#ffce4d")),
 		"body": body,
-		## 小将那条分支 sk 是空的(没有 pets.json 技能字典) ⇒ 用 stype 补一个, 否则 _skill_breakdown 见空就返回 ——
-		##   2026-11-04 用户「点到它技能里面都没按的规律走」: 原来小将技能卡永远没有底部公式行。
-		"table": ent.get("rows", []) if ent.has("rows") else _skill_breakdown(u, sk if not sk.is_empty() or str(ent.get("stype", "")) == "" else {"type": str(ent["stype"])}, src),   # 斧头那几格自带拆解行
+		"table": ent.get("rows", []) if ent.has("rows") else _skill_breakdown(u, bsk, src),   # 斧头那几格自带拆解行
 	})
 	if lv.has("body"):
+		## ★2026-11-04 底部公式行也登记进来, 与正文一起每帧按当前属性重算(用户「为什么上面52，下面57」:
+		##   原来只登记正文 ⇒ 开卡后加攻 / 掉攻, 正文跟着变、公式行停在开卡那一刻, 同一张卡上两个数)。
+		##   斧头那几格自带拆解行(ent.rows, 不是从模板算的) ⇒ 不登记, 维持原样。
+		var live_rows: bool = not ent.has("rows")
 		for reg in battle._info_skill_lbls:
-			(reg as Dictionary)["lbl"] = (lv["body"] if str((reg as Dictionary).get("key", "")) == k else null)
+			var hit: bool = str((reg as Dictionary).get("key", "")) == k
+			(reg as Dictionary)["lbl"] = (lv["body"] if hit else null)
+			(reg as Dictionary)["tbl"] = (lv.get("table", []) if hit and live_rows else [])
+			(reg as Dictionary)["bsk"] = bsk
+			(reg as Dictionary)["src"] = src
 
 
 ## 技能数值拆解表(照云顶技能卡底部那几行:「Slash Damage: 365 = 450% ⚔ + 50% ✦」)。
