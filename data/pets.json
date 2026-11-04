@@ -559,8 +559,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "远程形态：变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} 外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n近战形态：变脸龟跃向目标并锤击地面，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK} 物理伤害，并获得相当于对目标所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。",
-        "detail": "· 远程形态【灵能冲击】：\n变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK}）外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n· 近战形态【锤击】：\n变脸龟跃向目标并锤击地面，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK}）物理伤害，并获得相当于对目标所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。"
+        "brief": "远程形态：变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} 外加 {N:TwoHeadSystem.STRIKE_RANGED_MAXHP*100+TwoHeadSystem.STRIKE_RANGED_MAXHP_PER_ATK*100*ATK}% 目标最大生命值的物理伤害。\n近战形态：变脸龟跃向目标并锤击地面，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK+HP*TwoHeadSystem.STRIKE_MELEE_SELF_MAXHP} 物理伤害，并获得相当于对目标所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。",
+        "detail": "· 远程形态【灵能冲击】：\n变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK}）外加（{C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% + {C:TwoHeadSystem.STRIKE_RANGED_MAXHP_PER_ATK%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_RANGED_MAXHP*100+TwoHeadSystem.STRIKE_RANGED_MAXHP_PER_ATK*100*ATK}%）目标最大生命值的物理伤害。\n· 近战形态【锤击】：\n变脸龟跃向目标并锤击地面，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK}）外加（{C:TwoHeadSystem.STRIKE_MELEE_SELF_MAXHP%}%×最大生命值({HP}) = {N:HP*TwoHeadSystem.STRIKE_MELEE_SELF_MAXHP}）物理伤害，并获得相当于对目标所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。"
       },
       {
         "name": "精神干扰/吸收",

@@ -6,7 +6,7 @@ eq|余烬燃油瓶|effectDesc1	5.0 8.0
 eq|信号放大器|effectBrief	5.0
 eq|信号放大器|effectDesc1	2.5 5.0 5.0 20.0 30.0 90.0 90.0 360.0
 eq|六分仪浮游炮|effectBrief	3.0 6.0
-eq|六分仪浮游炮|effectDesc1	2.0 3.0 6.0
+eq|六分仪浮游炮|effectDesc1	2.0 3.0 6.0 50.0
 eq|冰冻药剂|effectBrief	5.0 6.0
 eq|冰冻药剂|effectDesc1	5.0 6.0 10.0 20.0
 eq|冰封水母|effectDesc1	0.6
@@ -36,7 +36,7 @@ eq|幽灵加特林|effectBrief	8.0
 eq|幽灵加特林|effectDesc1	8.0
 eq|手半剑|effectBrief	450.0
 eq|手半剑|effectDesc1	20.0 80.0 100.0 100.0 450.0
-eq|打捞旋翼机|effectDesc1	1.2 4.0 10.0 35.0 40.0 100.0
+eq|打捞旋翼机|effectDesc1	1.2 4.0 10.0 30.0 40.0 100.0
 eq|护心甲|effectBrief	15.0
 eq|护心甲|effectDesc1	15.0
 eq|暴君之牙|effectBrief	6.0
@@ -95,6 +95,7 @@ eq|荆棘海胆|effectBrief	3.0 50.0
 eq|荆棘海胆|effectDesc1	3.0 4.0 50.0
 eq|草莓蛋糕|effectBrief	30.0 55.0 80.0
 eq|草莓蛋糕|effectDesc1	3.0 5.0 8.0 20.0 30.0 30.0 50.0 55.0 80.0
+eq|藤蔓弓弦|effectDesc1	3.0
 eq|蚀月符纸|effectBrief	15.0
 eq|蚀月符纸|effectDesc1	1.0 15.0
 eq|蛋糕蜡烛|effectBrief	5.0
@@ -124,7 +125,7 @@ eq|银色箭袋|effectDesc1	0.25 1.5 6.0 100.0
 eq|锈蚀阔剑|effectBrief	6.0
 eq|锈蚀阔剑|effectDesc1	6.0
 eq|镇海杵|effectDesc1	1.0 3.0
-eq|雷电法杖|effectDesc1	15.0
+eq|雷电法杖|effectDesc1	10.0 15.0
 eq|雷鸣贝壳|effectBrief	4.0
 eq|雷鸣贝壳|effectDesc1	4.0
 eq|霰弹贝古|effectBrief	1.5 8.0 8.0
@@ -154,10 +155,10 @@ pet|凤凰龟/烫伤|detail	5.0 15.0 50.0 50.0 50.0 68.5 150.0 205.5
 pet|凤凰龟/熔岩盾|brief	4.0 19.18 479.5
 pet|凤凰龟/熔岩盾|detail	4.0 14.0 19.18 350.0 479.5
 pet|变脸龟/双生|desc	4.0 4.0 25.0 25.0 25.0 30.0 34.25 34.25 41.1 60.0 70.0 82.2 110.0 110.0 140.0 150.7 150.7 191.8 250.0 342.5 400.0
-pet|变脸龟/变脸攻击|brief	123.3 164.4
-pet|变脸龟/变脸攻击|detail	90.0 120.0 123.3 164.4
-pet|变脸龟/灵能冲击/锤击|brief	4.0 10.0 50.0 137.0 191.8
-pet|变脸龟/灵能冲击/锤击|detail	4.0 10.0 50.0 100.0 137.0 140.0 191.8
+pet|变脸龟/变脸攻击|brief	123.3 150.7
+pet|变脸龟/变脸攻击|detail	90.0 110.0 123.3 150.7
+pet|变脸龟/灵能冲击/锤击|brief	4.0 12.74 50.0 205.5 364.55
+pet|变脸龟/灵能冲击/锤击|detail	0.02 4.0 5.0 10.0 12.74 50.0 90.55 150.0 200.0 205.5 274.0
 pet|变脸龟/精神干扰/吸收|brief	5.0 8.0 18.0 50.0 50.0 54.8 82.2 274.0
 pet|变脸龟/精神干扰/吸收|detail	5.0 8.0 18.0 40.0 50.0 50.0 54.8 60.0 82.2 200.0 274.0
 pet|变脸龟/融合|brief	4.0 20.0 30.0 109.6 109.6

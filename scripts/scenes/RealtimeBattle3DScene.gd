@@ -958,7 +958,7 @@ func _ready() -> void:
 	# §AUDIO: 战斗 BGM (淡入, autoload Audio 单例处理循环/音量)
 	var _audio := get_node_or_null("/root/Audio")
 	if _audio != null:
-		_audio.play_bgm("battle")
+		_audio.play_bgm("battle", 1.0, AudioSystem.BATTLE_BGM_BASE)
 	# DEV 自截图 (SELFSHOT=<秒>): 等若干帧让战斗跑起来再从主视口存盘
 	if OS.has_environment("VFXPREVIEW"):
 		_vfx._vfx_preview_start()
@@ -4532,6 +4532,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		return
 	u["alive"] = false
 	u["_dead_done"] = true                       # 标记死亡已处理(防重入·配合顶部 _dead_done 守卫)
+	_audio_sys.sfx_death(u)                      # 阵亡声(召唤物 / 龟蛋内部跳过)
 	var _phx_fs = u.get("flame_sector", null)   # 凤凰持续喷火扇形(常驻MeshInstance3D·非_follow_vfx管理·死后不再tick)→死亡即清, 否则残留场上(用户2026-07-18"凤凰龟死后留下喷火特效")
 	if is_instance_valid(_phx_fs):
 		_phx_fs.queue_free()
@@ -5312,6 +5313,7 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 		return false
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
+	_audio_sys.sfx_skill_cast(u)    # 放技能声(每只龟一条 cast_<id>; 只管声音不碰 sim)
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
 	# (原通用 _vfx._play_skill_vfx 飘空贴图已禁用 — 一张图标浮半空不贴 2.5D)
 	_do_skill(u, tgt, stype)

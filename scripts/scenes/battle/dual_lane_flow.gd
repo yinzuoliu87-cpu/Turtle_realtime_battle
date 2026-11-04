@@ -517,6 +517,7 @@ func _dl_fight_start_dramatize() -> void:
 	battle._add_hitstop(0.18)                                  # 短定格: 比团灭(0.30)短, 是"起势"不是"收势"
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	_dl_flash_screen(Color(1.0, 0.92, 0.55), 0.22)      # 淡金起手闪
+	battle._audio_sys._sfx_simple("fight_start")        # 开战声(整局最响的一声; 2026-11-04 对标云顶开战横幅那一声)
 	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -120.0), "开 战", Color("#ffd93d"), true, "label")
 	# 两侧战线各炸一圈, 强调"两边同时压上来"
 	var half_w: float = battle.ARENA.size.x * 0.5

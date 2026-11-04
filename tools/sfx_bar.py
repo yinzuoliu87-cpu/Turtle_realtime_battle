@@ -82,7 +82,7 @@ def main() -> int:
 	open(os.path.join(ROOT, ".out", "sfx_rank", "bar.tsv"), "w", encoding="utf-8").write("\n".join(rows) + "\n")
 	spread = (max(atk_rms) - min(atk_rms)) if atk_rms else 0.0
 	print("分母: %d 个事件 · 四项全过 %d · 不过按项: %s" % (len(pj["picks"]), n_pass, {NAMES[m]: n for m, n in fails_by.items()}))
-	print("普攻响度(L100)极差 %.1f LU(黑箱同一声音 5 变体 1.6; 线 2.0) · 普攻两两最像 %.3f(线 %.2f)" % (spread, max(v.get("max_sim_other_atk", 0) for v in pj["picks"].values()), P.SIM_MAX))
+	print("普攻响度(L100)极差 %.1f LU(黑箱同一声音 5 变体 1.6; 线 2.0) · 普攻 / 放技能组内两两最像 %.3f(线 %.2f)" % (spread, max(v.get("max_sim_in_group", 0) for v in pj["picks"].values()), P.SIM_MAX))
 	return 0
 
 

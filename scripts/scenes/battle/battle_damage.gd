@@ -303,12 +303,12 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		## 门禁 `verify_true_dmg_white`（②③④ + 三色互不相同的分母）焊住这条。
 		var _fcol: Color = _dot_bucket_col(bucket)
 		battle._vfx._float_text(u["pos"] + Vector2(randf_range(-26.0, 26.0), -40.0 + randf_range(-10.0, 6.0)), str(dmg), _fcol, false, "damage", _fdt)   # 抖开: 多段/AOE 出伤飘字不重叠成糊团
-	# §AUDIO: 无来源伤害也出命中音 (非暴击); 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
+	# §AUDIO: 护盾破→shield-break。mute_sfx=诅咒 tick 静音(用户2026-07-23)
+	# ★2026-11-04: 这条路(持续伤害每一跳 / 无来源伤害)不再出命中音 —— 探针量到一局通用命中声 993 次, 灼烧 / 中毒每 tick 一下
+	#   刷成一层底; 云顶持续伤害 tick 不出声。护盾被打破那一下照旧出声。
 	if not mute_sfx:
 		if shield_before > 0.0 and u["shield"] <= 0.0:
 			battle._audio_sys._sfx_shield_break()
-		else:
-			battle._audio_sys._sfx_hit(false)
 	# ★2026-08-06 窄口: 068 深海气压罐的充能条要吃【所有】伤害(用户原文"将收到的...伤害储存"),
 	#   而 `_eq_on_target` 只挂在另一条路上。不给那个钩子补全路是因为它还挂着硬化层/冰封反制,
 	#   让它们从每一跳灼烧触发是行为变更。详见 eq_potion_batch.store_from_any_damage 的头注。
@@ -919,8 +919,8 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 		u["_heal_acc_t"] = battle._t
 		if float(u.get("_heal_acc_start", 0.0)) <= 0.0:
 			u["_heal_acc_start"] = battle._t
-	if not silent:
-		battle._audio_sys._sfx_heal()                          # §AUDIO: 治疗音 (节流)
+	if not silent and _act > 0.0:          # ★11-04: 满血回 0 不出声(原来照响)
+		battle._audio_sys._sfx_heal()                          # §AUDIO: 治疗音 (节流 HEAL_SFX_GAP)
 	return _act
 
 func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.15s(一波打完)或攒够0.6s→合并弹一个绿字(=实际回血)

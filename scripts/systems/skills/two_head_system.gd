@@ -9,7 +9,8 @@ const DISRUPT_TRUE := 2.0   # 精神干扰(远程形态): ×ATK 真实伤害 (�
 ##   `_two_head_enhanced_basic` / `_two_head_retreat` 的函数体里, 文案又各手写一遍。
 ## 【切近战时的属性变化】(基准都是 ATK)
 ## 【双头攻击(普攻)】随形态两套系数, 真值在【主场景】(那里引用本组常量)。
-const BASIC_RANGED_COEF := 1.2   # 远程形态: 灵能弹 ×ATK 物理
+## ★2026-11-04 用户: 远程普攻 120% → 110%×ATK(随 0.22.8)
+const BASIC_RANGED_COEF := 1.1   # 远程形态: 灵能弹 ×ATK 物理
 const BASIC_MELEE_COEF := 0.9    # 近战形态: 挥砍 ×ATK 物理
 const MELEE_HP_COEF := 2.5       # 最大生命 +
 const MELEE_DEF_COEF := 0.25     # 护甲 +
@@ -32,11 +33,18 @@ const ENH_SEC := 4.0             # 破甲/护盾持续秒
 const RETREAT_DIST := 200.0
 ## 【技能二·远程形态: 精神干扰】(真伤系数见上面 DISRUPT_TRUE)
 ## 【技能一·远程形态: 灵能冲击】紫炮弹碰第一个敌人即爆。
-const STRIKE_RANGED_COEF := 1.0    # ×ATK 物理
-const STRIKE_RANGED_MAXHP := 0.10  # + 目标最大生命 ×
+## ★2026-11-04 用户: 100%×ATK + 10% 目标最大生命 → 150%×ATK + (10% + 每 100 攻击力 2%) 目标最大生命(随 0.22.8)。
+##   「每 100 攻击力 2%」按连续算(攻击力 150 ⇒ 13%), 用户举例「100 点攻击力 ⇒ 12%」; 见 strike_ranged_pct。
+##   文案照 LoL 凯隐 R 实截「16% = (15% +0.1% bonus AD) max Health physical damage」: 系数按【每 1 攻击力】写(0.02%),
+##   不写「每 100 攻击力 +2%」(LoL 16.20 实截里没有这种写法; 规则表 R6 也禁「每点」)。
+const STRIKE_RANGED_COEF := 1.5    # ×ATK 物理
+const STRIKE_RANGED_MAXHP := 0.10  # + 目标最大生命 ×(基础)
+const STRIKE_RANGED_MAXHP_PER_ATK := 0.0002   # 每 1 攻击力再 + 目标最大生命 ×(= 每 100 攻击力 2%)
 const STRIKE_BLAST_RADIUS := 200.0 # 爆点半径(码)
 ## 【技能一·近战形态: 锤击】
-const STRIKE_MELEE_COEF := 1.4     # ×ATK 物理
+## ★2026-11-04 用户: 140%×ATK → 200%×ATK + 变脸龟自身 5% 最大生命(出手那一刻的最大生命, 近战形态含 +2.5×ATK 生命加成; 随 0.22.8)
+const STRIKE_MELEE_COEF := 2.0     # ×ATK 物理
+const STRIKE_MELEE_SELF_MAXHP := 0.05   # + 自身最大生命 × 物理
 const STRIKE_SHIELD_PCT := 0.5     # 获得 = 所造成伤害 × 的护盾
 const STRIKE_SHIELD_SEC := 4.0     # 护盾持续(秒)
 ## ★锤击是范围技(用户 2026-10-20「锤击是单体技能吗」→「这样，改为aoe」→「范围200码」):
@@ -145,17 +153,28 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), STRIKE_BLAST_RADIUS)       # 地面环 = 真实判定半径 200 码(谁在圈里谁挨炸)
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and DetMath.dist(at2d, o["pos"]) <= STRIKE_BLAST_RADIUS:
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * STRIKE_RANGED_MAXHP, o), Color("#c0a0ff"))
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * strike_ranged_pct(float(u["atk"])), o), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 
-# 变脸龟·锤击(近战 技1): 跳起→落在目标身前→锤头落点 200 码内敌人各 1.4A 物理(2026-10-20 改范围)+获主目标那一下伤害 50% 的盾 4s
+## 灵能冲击的目标最大生命比例 = 10% + 每 100 攻击力 2%(连续算)。atk = 出手那一刻的攻击力(与 _atk_dmg 读同一个 u["atk"])。
+static func strike_ranged_pct(atk: float) -> float:
+	return STRIKE_RANGED_MAXHP + STRIKE_RANGED_MAXHP_PER_ATK * atk
+
+
+## 锤击对一个敌人的伤害 = 200%×ATK(吃暴击/护甲, 同 _atk_dmg) + 自身 5% 最大生命(吃护甲, 不二次暴击)。主目标(举锤时)与范围内其余敌人(落地时)共用这一个口径。
+func hammer_dmg(u: Dictionary, o: Dictionary) -> int:
+	var dmg: int = battle._atk_dmg(u, STRIKE_MELEE_COEF, o) + battle._phys_after_armor(u, float(u["maxHp"]) * STRIKE_MELEE_SELF_MAXHP, o)
+	return dmg
+
+
+# 变脸龟·锤击(近战 技1): 跳起→落在目标身前→锤头落点 200 码内敌人各 2.0A + 自身 5% 最大生命 物理(2026-10-20 改范围 · 11-04 改数值)+获主目标那一下伤害 50% 的盾 4s
 func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 	var from2d: Vector2 = u["pos"]
 	var d: Vector2 = tgt["pos"] - from2d
 	var land2d: Vector2 = tgt["pos"] - (DetMath.norm(d) if DetMath.vlen(d) > 1.0 else Vector2.RIGHT) * 52.0
 	u["_slam"] = true                                           # 跳跃期免分离推挤
 	u["_anim_lock_until"] = battle._t + 0.46                           # 跳跃期AI不出手/不移动
-	var dmg: int = battle._atk_dmg(u, STRIKE_MELEE_COEF, tgt)
+	var dmg: int = hammer_dmg(u, tgt)
 	var tw = battle._reg_tween()
 	tw.tween_method(_two_head_hammer_arc.bind(u, from2d, land2d), 0.0, 1.0, HAMMER_LEAP_SEC)
 	tw.tween_callback(_two_head_hammer_land.bind(u, tgt, land2d, dmg, battle._last_dmg_type))   # 捕获举锤时的伤害类型(空中会被覆写)
@@ -185,12 +204,12 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 		battle._damage._grant_shield(u, dmg * STRIKE_SHIELD_PCT, STRIKE_SHIELD_SEC)                        # 获造成伤害50%护盾(4秒)·只按主目标这一下
 		vfx.shell_behind(u)                                    # 护盾罩退到立绘后面一层, 不盖砸地
 		battle._vfx._flash(tgt)
-	## 范围: 锤头落点 STRIKE_MELEE_RADIUS 码内的其余敌人各吃一次 1.4×ATK 物理(各自现算护甲; 主目标上面已经打过, 不重复)
+	## 范围: 锤头落点 STRIKE_MELEE_RADIUS 码内的其余敌人各吃一次 hammer_dmg(各自现算护甲; 主目标上面已经打过, 不重复)
 	for o in battle._targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false):
 			continue
 		if DetMath.dist(hit_at, o["pos"]) <= STRIKE_MELEE_RADIUS:
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_MELEE_COEF, o), Color("#ffb05c"))
+			battle._damage._apply_damage_from(u, o, hammer_dmg(u, o), Color("#ffb05c"))
 			battle._vfx._flash(o)
 
 

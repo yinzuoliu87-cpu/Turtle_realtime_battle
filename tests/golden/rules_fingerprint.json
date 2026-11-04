@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "0d17c4cac071e397b108640c530637d746220eff4e3eeef86c4bd2075cc6be2e",
+ "fingerprint": "4d2cc6a8c436ec4bc83baf4e25cfb8760e342b7e276bab7936ee294d92838b37",
  "per_case": [
   {
    "def": "c22ef928ec6e74d1",
@@ -10,7 +10,7 @@
   },
   {
    "def": "cab1247cb50df155",
-   "hash": "8144acfc13158791d6a1c07d4b4a44817295c945b6f3c06229b918daa12edcb0",
+   "hash": "f755901cec1730bc4abe656588d0f53eda5ed546353ae068666a1609db8ade59",
    "tag": "② 药水/枪 vs 弓箭/剑 · 3 统领同路 + 精英小将"
   },
   {
@@ -20,7 +20,7 @@
   },
   {
    "def": "0d002503011c891d",
-   "hash": "7c5b2a4585f395b892b179acb448434b5dd922314ba597882a65038a28060429",
+   "hash": "67db23f7452fd6ec9f42918fe62836e34adb13683890604f55a014e6679962df",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {

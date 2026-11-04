@@ -81,7 +81,8 @@ func _ready() -> void:
 		["res://scripts/systems/skills/lava_system.gd", "STRIKE_MAXHP_PCT", ""],
 		["res://scripts/systems/skills/lava_system.gd", "PIERCE_MAXHP_PCT", ""],
 		["res://scripts/systems/skills/pirate_system.gd", "VOLLEY_MAXHP_PCT", ""],
-		["res://scripts/systems/skills/two_head_system.gd", "STRIKE_RANGED_MAXHP", ""],
+		["res://scripts/systems/skills/two_head_system.gd", "strike_ranged_pct(", ""],
+		["res://scripts/systems/skills/two_head_system.gd", "STRIKE_MELEE_SELF_MAXHP", ""],
 		["res://scripts/systems/skills/two_head_system.gd", "ABSORB_MAXHP_PCT", ""],
 	]
 	for st in sites:

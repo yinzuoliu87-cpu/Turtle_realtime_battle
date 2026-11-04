@@ -42,7 +42,7 @@ func _ready() -> void:
 		n_ev += 1
 		if not (ResourceLoader.exists(str(SfxEvents.EVENTS[ev])) and au.has_sfx(ev)):
 			miss.append(ev)
-	_ok("① 事件表 %d 条全部载进 Audio(匹配成功沿用 queue_found.wav, 不在表里)" % n_ev, n_ev >= 37 and miss.is_empty(), str(miss))
+	_ok("① 事件表 %d 条全部载进 Audio(匹配成功沿用 queue_found.wav, 不在表里)" % n_ev, n_ev >= 67 and miss.is_empty(), str(miss))
 
 	var scene = RTScene.new()
 	add_child(scene)
@@ -111,11 +111,65 @@ func _ready() -> void:
 	for s in au.recent:
 		if str(s).begins_with("atk_") or str(s).begins_with("hit-"):
 			n_hit += 1
-	_ok("⑧ 6 只龟同一刻普攻命中 ⇒ 命中声 ≤ 2 路(分母 6)", n_hit >= 1 and n_hit <= 2, str(au.recent))
+	_ok("⑧ 6 只龟同一刻普攻命中 ⇒ 命中声只出 1 路(分母 6; 11-04 由 2 路收到 1 路)", n_hit == 1, str(au.recent))
 	scene._t += 0.2
 	au.recent.clear()
 	scene._audio_sys._sfx_hit(false, {"id": "lava"}, true)
 	_ok("⑧b 过了窗口(0.2 秒后)新的命中照常出声", au.recent.has("atk_lava"), str(au.recent))
+
+	## ⑩ 放技能(11-04 七轮 · 对标云顶: 大事件比普攻响): 28 只龟各自的 cast_<id>(放技能那一层的出口, 逐只);
+	##    再走一只龟的真入口 _cast_skill 证明接线(只调出口的话, 主文件那行删了这条照样绿)
+	var cw: Array = []
+	var n_c := 0
+	for id in ids:
+		scene._t += 1.0
+		scene._audio_sys._cast_ts.clear()
+		au.recent.clear()
+		scene._audio_sys.sfx_skill_cast(scene._spawn._make_unit(id, "left", Vector2(600, 400)))
+		n_c += 1
+		if not au.recent.has("cast_" + id):
+			cw.append("%s → %s" % [id, str(au.recent)])
+	_ok("⑩ %d 只龟放技能各播自己那条 cast_<id>" % n_c, n_c >= 28 and cw.is_empty(), "; ".join(cw))
+	scene._units.clear()
+	scene._t += 5.0
+	var ice: Dictionary = scene._spawn._make_unit("ice", "left", Vector2(600, 400))
+	var foe: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(700, 400))
+	foe["maxHp"] = 1.0e7; foe["hp"] = 1.0e7
+	scene._units.append(ice); scene._units.append(foe)
+	scene._audio_sys._cast_ts.clear(); scene._audio_sys._ev_last_t.clear()
+	au.recent.clear()
+	scene._cast_skill(ice, foe, "iceFrost")
+	_ok("⑩b ★真入口: _cast_skill(寒冰·冰霜) 播 cast_ice", au.recent.has("cast_ice"), str(au.recent))
+	## ⑪ 层次: 放技能那一声的播放器音量比普攻那一声高 ≈ 7 dB(普攻层 ATK_GAIN −7 dB; 另 3 dB 在成品文件里, build_sfx --check 管)。
+	##    量的是 Audio 真建出来的 AudioStreamPlayer.volume_db(含 ±5% 随机抖动 ⇒ 区间 6~8 dB)
+	##    ★门禁 QUIET 跑时 sfx_volume = 0 ⇒ 两个都是 −inf(差值无意义, 门禁里实红过一次) ⇒ 量的这两下临时用默认音量 0.8, 量完还原
+	var _sv: float = au.sfx_volume
+	au.sfx_volume = 0.8
+	scene._t += 5.0
+	scene._audio_sys._hit_ts.clear(); scene._audio_sys._ev_last_t.clear()
+	scene._audio_sys._sfx_hit(false, {"id": "stone"}, true)
+	var v_atk: float = _last_player_db(au)
+	scene._t += 1.0
+	scene._audio_sys._cast_ts.clear()
+	scene._audio_sys.sfx_skill_cast(scene._spawn._make_unit("stone", "left", Vector2(600, 400)))
+	var v_cast: float = _last_player_db(au)
+	au.sfx_volume = _sv
+	_ok("⑪ 放技能播放器比普攻高 6~8 dB(普攻层压低 7 dB)", v_cast - v_atk > 6.0 and v_cast - v_atk < 8.0, "普攻 %.1f · 放技能 %.1f dB" % [v_atk, v_cast])
+	## ⑫ 阵亡: 真入口 _kill ⇒ unit_death; 召唤物不播。开战: 双路开打演出 ⇒ fight_start
+	scene._t += 5.0
+	au.recent.clear()
+	scene._kill(foe, ice)
+	var died_ok: bool = au.recent.has("unit_death")
+	var sm: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(800, 400))
+	sm["is_summon"] = true
+	scene._units.append(sm)
+	scene._t += 1.0
+	au.recent.clear()
+	scene._kill(sm, ice)
+	_ok("⑫ 单位阵亡(真入口 _kill) 播 unit_death; 召唤物阵亡不播", died_ok and not au.recent.has("unit_death"), "召唤物那次: %s" % str(au.recent))
+	au.recent.clear()
+	scene._dl_sys._dl_fight_start_dramatize()
+	_ok("⑫b 开战演出播 fight_start", au.recent.has("fight_start"), str(au.recent))
 
 	## ⑥ 结算页奖励: 拿到币 ⇒ 金币格弹出时 reward_normal; 本局升了级 ⇒ 接着 level_up(真入口 _show_banner → 结算页补间)
 	scene._settled = false
@@ -140,6 +194,15 @@ func _ready() -> void:
 		var want := "victory" if won else "defeat"
 		_ok("⑤ 结算(%s)播 %s" % ["胜" if won else "负", want], au.recent.has(want), str(au.recent))
 	_finish()
+
+
+## Audio 最后建出来的那个 AudioStreamPlayer 的音量(play_sfx 每次 add_child 一个临时播放器)。
+func _last_player_db(au) -> float:
+	for i in range(au.get_child_count() - 1, -1, -1):
+		var c = au.get_child(i)
+		if c is AudioStreamPlayer and c.stream != null:
+			return float(c.volume_db)
+	return -999.0
 
 
 ## 造一个攻击方 + 打不死的假人, 直接打一次普攻, 推进到弹道落地(最多 3 秒), 返回这期间真播出去的音效名。

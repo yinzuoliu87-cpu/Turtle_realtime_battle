@@ -1,7 +1,9 @@
 extends Node
 ## verify_two_head_strike.gd — 双头技1(用户2026-07-11重设计)自证
-##   远程灵能冲击炮弹爆炸: 200码内敌 1A+10%maxHp物理·圈外0(半径截断)
-##   近战锤击落地: 目标受1.4A物理·双头获50%伤害盾
+##   远程灵能冲击炮弹爆炸: 200码内敌 1.5A+(10%+每100攻击力2%)目标maxHp物理·圈外0(半径截断)
+##   近战锤击落地: 目标受 2.0A+自身5%maxHp 物理·双头获50%伤害盾
+##   ★2026-11-04 用户改数值: 灵能弹 120→110%; 灵能冲击 1A+10% → 1.5A+(10%+每100攻击力2%)「假如变脸龟是一百点攻击力…就是百分之十二」;
+##     锤击 1.4A → 2.0A + 变脸龟自身 5% 最大生命。下面的期望值按用户原话的数字写死, 不读常量(读常量的话改错常量测试照样绿)
 ##   ★2026-10-20 锤击改范围(用户「这样，改为aoe」「范围200码」): 以锤头落点(TwoHeadSystem.hammer_point)为圆心
 ##     STRIKE_MELEE_RADIUS 内每个敌人各吃 1.4A 物理(各算各的护甲)、圈外 0; 护盾只按主目标那一下 × 50%(不随人数叠加)
 ##   炮弹飞行/跳跃弧线观感由用户 F5(走tween/async·headless不推进)
@@ -36,16 +38,23 @@ func _ready() -> void:
 		sc._units.append(d)
 
 	# ── 灵能冲击炮弹爆炸(直接调 boom = 炮弹碰敌后的结算) ──
-	# 每敌 = _atk_dmg(100,1.0,def0)=100 + 10%maxHp(1000)×补偿 1.5(def0 不减)=150 → 250
-	# ★「+10% 最大生命」段真吃护甲(2026-10-11); ×1.5 隐藏补偿 10-16 已删(用户「删」), 按文案数值打
+	# 每敌 = 150%×攻击力 100 = 150 + (10% + 每 100 攻击力 2% = 12%)×maxHp 1000 = 120 → 270(0 护甲)
+	# ★最大生命段真吃护甲(2026-10-11); ×1.5 隐藏补偿 10-16 已删(用户「删」), 按文案数值打
+	_ok("★灵能冲击比例: 攻击力 100 ⇒ 12%(用户原话) · 50 ⇒ 11% · 150 ⇒ 13%(连续算) · 0 ⇒ 10%", is_equal_approx(TwoHeadSystem.strike_ranged_pct(100.0), 0.12) and is_equal_approx(TwoHeadSystem.strike_ranged_pct(50.0), 0.11) and is_equal_approx(TwoHeadSystem.strike_ranged_pct(150.0), 0.13) and is_equal_approx(TwoHeadSystem.strike_ranged_pct(0.0), 0.10))
+	_ok("★灵能弹(远程普攻) = 110%×攻击力(用户 11-04)", is_equal_approx(TwoHeadSystem.BASIC_RANGED_COEF, 1.1), str(TwoHeadSystem.BASIC_RANGED_COEF))
 	sc._two_head_sys._two_head_cannon_boom(dh, land)
-	var _want: int = 100 + int(round(1000.0 * TwoHeadSystem.STRIKE_RANGED_MAXHP))
-	_ok("圈内(≤200码)敌受伤 %d(1A+10%%maxHp×补偿·0 护甲)" % _want, int(near1["_st_taken"])==_want and int(near2["_st_taken"])==_want, "n1=%d n2=%d"%[int(near1["_st_taken"]),int(near2["_st_taken"])])
+	var _want: int = 150 + 120
+	_ok("圈内(≤200码)敌受伤 %d(150%%×攻击力 100 + 12%%×maxHp 1000 · 0 护甲)" % _want, int(near1["_st_taken"])==_want and int(near2["_st_taken"])==_want, "n1=%d n2=%d"%[int(near1["_st_taken"]),int(near2["_st_taken"])])
 	_ok("★圈外(>200码)敌 0(半径截断)", int(far1["_st_taken"])==0, "far=%d"%int(far1["_st_taken"]))
 
 	# ── 近战锤击落地(直接调 land 结算) ──
 	near1["hp"]=1000.0; near1["_st_taken"]=0
 	dh["shield"]=0.0
+	## ★锤击伤害口径(举锤时主目标与落地时范围内其余敌人共用 hammer_dmg): 200%×攻击力 100 + 自身 5% 最大生命(0 护甲)
+	var _dh_hp: float = float(dh["maxHp"])
+	var _hw: int = 200 + int(round(_dh_hp * 0.05))
+	var _hg: int = sc._two_head_sys.hammer_dmg(dh, near1)
+	_ok("★锤击 = 200%%×攻击力 + 自身 5%% 最大生命 = 200 + 5%%×%.0f = %d(用户 11-04)" % [_dh_hp, _hw], _hg == _hw and _dh_hp > 100.0, "got=%d" % _hg)
 	sc._two_head_sys._two_head_hammer_land(dh, near1, near1["pos"], 140)
 	_ok("锤击目标受伤 140", int(near1["_st_taken"])==140, "taken=%d"%int(near1["_st_taken"]))
 	_ok("锤击双头获50%伤害盾(70)", int(round(float(dh["shield"])))==70, "shield=%.0f"%float(dh["shield"]))
@@ -81,7 +90,7 @@ func _ready() -> void:
 		lines.append("%s=%d" % [k, got])
 		if bool(spots[k][1]):
 			in_n += 1
-			var want: int = main_dmg if k == "主目标" else int(sc._atk_dmg(dh, TwoHeadSystem.STRIKE_MELEE_COEF, mk[k]))
+			var want: int = main_dmg if k == "主目标" else int(sc._two_head_sys.hammer_dmg(dh, mk[k]))
 			if got == want and got > 0:
 				in_hit += 1
 		else:
@@ -89,7 +98,7 @@ func _ready() -> void:
 			if got == 0:
 				out_zero += 1
 	_ok("分母: 圈内 ≥ 4 只(含边内 5 码与带护甲的)、圈外 ≥ 2 只(含边外 5 码)", in_n >= 4 and out_n >= 2, "圈内 %d · 圈外 %d" % [in_n, out_n])
-	_ok("★锤击范围: 锤头落点 %.0f 码内每个敌人各吃一次 1.4A 物理(各算各的护甲)" % R, in_hit == in_n, "%d/%d · %s" % [in_hit, in_n, ", ".join(lines)])
+	_ok("★锤击范围: 锤头落点 %.0f 码内每个敌人各吃一次 2.0A + 自身 5% 最大生命 物理(各算各的护甲)" % R, in_hit == in_n, "%d/%d · %s" % [in_hit, in_n, ", ".join(lines)])
 	_ok("★锤击范围: 圈外(含边外 5 码)不吃", out_zero == out_n, "%d/%d" % [out_zero, out_n])
 	_ok("分母: 带护甲那只确实比 0 护甲的少吃(护甲真的参与了)", int(mk["圈内·斜向·带护甲"]["_st_taken"]) < int(mk["圈内·上方"]["_st_taken"]) and int(mk["圈内·斜向·带护甲"]["_st_taken"]) > 0,
 		"带甲 %d · 无甲 %d" % [int(mk["圈内·斜向·带护甲"]["_st_taken"]), int(mk["圈内·上方"]["_st_taken"])])

@@ -40,10 +40,15 @@ CAT_REFS = {
 	"levelup": ["player_levelup", "sfx_ui_levelup"],
 	"coin": ["coin_bag_reward", "pick_up_jewlery_d"],
 	"popup": ["sfx_ui_popup"],
+	## 11-04 七轮(对标云顶实录): 放技能 / 开战 / 阵亡。形状对黑箱同类原声(技能前摇 6 条 / 融合开始提示 / 敌人阵亡), 响度比普攻高多少按云顶实测(见 build_sfx CAT)。
+	"cast": ["sfx_boss_skill_laser_pre", "sfx_boss_skill_saw_pre", "sfx_boss_skill_slash_pre", "sfx_boss_skill_spin_pre",
+		"particle_caster_single_001", "flame_load"],
+	"fight": ["sfx_fusion_start"],
+	"death": ["sfx_enemy_death"],
 }
 KEY_CAT = {"ui_click": "click", "ui_back": "click", "ui_confirm": "confirm", "victory": "win", "defeat": "lose",
 	"reward_normal": "reward_normal", "reward_rare": "reward_rare", "level_up": "levelup", "coin_buy": "coin",
-	"match_found": "popup"}
+	"match_found": "popup", "fight_start": "fight", "unit_death": "death"}
 NO_MELODY = {"atk", "click"}
 ## 不定选的事件(有专门做的、已交付的声音, 且对黑箱标准也达标):
 EXCLUDE = {"match_found": "匹配成功沿用 assets/audio/sfx/queue_found.wav(为匹配弹层专门做的; 对黑箱弹窗标准达标; verify_gauntlet_queue_menu ⑥ 钉着它)"}
@@ -51,7 +56,11 @@ SIM_MAX = 0.93
 
 
 def cat_of(key: str) -> str:
-	return "atk" if key.startswith("atk_") else KEY_CAT[key]
+	if key.startswith("atk_"):
+		return "atk"
+	if key.startswith("cast_"):
+		return "cast"
+	return KEY_CAT[key]
 
 
 def median_feats(names: list) -> dict:
@@ -114,25 +123,27 @@ def main() -> int:
 		ranked[k] = sorted(ok)
 	## 定选 + 区分度: 普攻之间 CLAP 声音向量太像 ⇒ 分数差得少的那条换次优
 	pick = {k: 0 for k in ranked if ranked[k]}
-	atk = [k for k in pick if k.startswith("atk_")]
-	for _ in range(20):
-		worst = None
-		for i, a in enumerate(atk):
-			for b in atk[i + 1:]:
-				s = float(emb[ranked[a][pick[a]][1]] @ emb[ranked[b][pick[b]][1]])
-				if s > SIM_MAX and (worst is None or s > worst[0]):
-					worst = (s, a, b)
-		if worst is None:
-			break
-		_, a, b = worst
-		cand = [x for x in (a, b) if pick[x] + 1 < len(ranked[x])]
-		if not cand:
-			break
-		x = min(cand, key=lambda q: ranked[q][pick[q] + 1][0] - ranked[q][pick[q]][0])
-		pick[x] += 1
+	## 按组各自拉开(普攻一组、放技能一组; 11-04 七轮加放技能组): 组内两两太像 ⇒ 分数差得少的那条换次优
 	maxsim = {}
-	for a in atk:
-		maxsim[a] = max([float(emb[ranked[a][pick[a]][1]] @ emb[ranked[b][pick[b]][1]]) for b in atk if b != a] or [0.0])
+	for prefix in ("atk_", "cast_"):
+		grp = [k for k in pick if k.startswith(prefix)]
+		for _ in range(20):
+			worst = None
+			for i, a in enumerate(grp):
+				for b in grp[i + 1:]:
+					s = float(emb[ranked[a][pick[a]][1]] @ emb[ranked[b][pick[b]][1]])
+					if s > SIM_MAX and (worst is None or s > worst[0]):
+						worst = (s, a, b)
+			if worst is None:
+				break
+			_, a, b = worst
+			cand = [x for x in (a, b) if pick[x] + 1 < len(ranked[x])]
+			if not cand:
+				break
+			x = min(cand, key=lambda q: ranked[q][pick[q] + 1][0] - ranked[q][pick[q]][0])
+			pick[x] += 1
+		for a in grp:
+			maxsim[a] = max([float(emb[ranked[a][pick[a]][1]] @ emb[ranked[b][pick[b]][1]]) for b in grp if b != a] or [0.0])
 	out = {"_doc": "sfx_pick.py 自动定选(批次 %s)。每条: 选中的候选文件(相对 <SFX_SRC>/eleven/<批次>/) + 量化依据。build_sfx.py 读这份。" % batch,
 		"batch": batch, "picks": {}}
 	missing = [k for k in by_key if k not in pick]
@@ -140,7 +151,7 @@ def main() -> int:
 		s, f, d, m, nm = ranked[k][pick[k]]
 		out["picks"][k] = {"file": f, "cat": cat_of(k), "score": round(s, 3), "dist_to_blackbox": round(d, 3), "clap": round(m, 4),
 			"rank_used": pick[k] + 1, "bar_misses": nm, "usable": len(ranked[k]), "of": len(by_key[k]),
-			"max_sim_other_atk": round(maxsim.get(k, 0.0), 3)}
+			"max_sim_in_group": round(maxsim.get(k, 0.0), 3)}
 	json.dump(out, open(PICKS, "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
 	open(os.path.join(odir, "pick_report.tsv"), "w", encoding="utf-8").write("\n".join(report) + "\n")
 	n_rej = sum(1 for r in report[1:] if "\t淘汰\t" in r)

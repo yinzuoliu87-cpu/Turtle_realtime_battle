@@ -874,7 +874,7 @@ func _t080_spawn() -> void:
 
 
 func _t080_strafe_energy() -> void:
-	print("── ④ 080: 每 1.2 秒扫射 3/4/10 发 · 每发 0.35ATK · 每命中 +4 龟能(上限 100) ──")
+	print("── ④ 080: 每 1.2 秒扫射 3/4/10 发 · 每发 0.30ATK(11-04 削弱自 0.35) · 每命中 +4 龟能(上限 100) ──")
 	var shots: Array = []
 	for si in range(3):
 		_reset()
@@ -891,7 +891,7 @@ func _t080_strafe_energy() -> void:
 		if si == 0:
 			_ok("④ 1.19 秒还没到 1.2 秒的节拍 ⇒ 一发都没排", mid == 0, "mid=%d" % mid)
 	_ok("④ 一轮扫射 3/4/10 发(无羁绊时不带金弹)", shots == [3, 4, 10], str(shots))
-	# 每发 0.35 ATK: ATK 200 ⇒ 70/发; 一轮 3 发 = 210
+	# 每发 0.30 ATK: ATK 200 ⇒ 60/发; 一轮 3 发 = 180(按用户原话 30% 写死, 不读常量)
 	_reset()
 	var u2: Dictionary = _mk("fortune", "left", Vector2(-300.0, 0.0))
 	_equip(u2, "p2eq_080", 1)
@@ -902,7 +902,7 @@ func _t080_strafe_energy() -> void:
 	_s._pending_shots.clear()
 	_gun.tick(1.2)
 	_pump()
-	_ok("④ ★端到端: 1★ 一轮 3 发 × 0.35×200 = 210", _near(h0 - float(foe["hp"]), 210.0, 1.0),
+	_ok("④ ★端到端: 1★ 一轮 3 发 × 0.30×200 = 180", _near(h0 - float(foe["hp"]), 180.0, 1.0),
 		"实打 %.1f" % (h0 - float(foe["hp"])))
 	var h: Dictionary = _gun._helis[0]
 	_ok("④ 3 发全命中 ⇒ 龟能 +12", _near(float(h["energy"]), 12.0, 0.01), "energy=%.1f" % float(h["energy"]))
@@ -978,7 +978,7 @@ func _t080_lane() -> void:
 
 
 func _t080_bomb() -> void:
-	print("── ④ 080 炸弹: 落点 150 码内 0.8/1.1/1.5ATK 物理 + 40/70/120 魔法 ──")
+	print("── ④ 080 炸弹: 落点 150 码内 0.4/0.7/1.5ATK 物理 + 50/100/120 魔法(11-04 削弱 1★2★) ──")
 	_reset()
 	var u: Dictionary = _mk("fortune", "left", Vector2(-300.0, 0.0))
 	_equip(u, "p2eq_080", 1)
@@ -996,10 +996,14 @@ func _t080_bomb() -> void:
 	# ★2026-08-08 半径 180 → 150(用户削弱)。测试点用的是 100 码(内) / 300 码(外),
 	#   两个都还在正确的一侧 ⇒ 判据不变, 只改文字。
 	_ok("④ ★分母: 一枚炸弹命中了 1 个人(150 码内那个)", n == 1, "命中 %d 人" % n)
-	_ok("④ 1★ 一枚 = 0.8×200 物理 + 40 魔法 = 200", _near(i0 - float(inn["hp"]), 200.0, 0.6),
+	_ok("④ 1★ 一枚 = 0.4×200 物理 + 50 魔法 = 130", _near(i0 - float(inn["hp"]), 130.0, 0.6),
 		"实打 %.1f" % (i0 - float(inn["hp"])))
 	_ok("④ 150 码外(300 码)不吃伤", _near(o0 - float(out["hp"]), 0.0, 0.01),
 		"实打 %.1f" % (o0 - float(out["hp"])))
+	var i1b: float = float(inn["hp"])
+	_gun.heli_bomb_hit(h, 1, at)
+	_ok("④ 2★ 一枚 = 0.7×200 物理 + 100 魔法 = 240", _near(i1b - float(inn["hp"]), 240.0, 0.6),
+		"实打 %.1f" % (i1b - float(inn["hp"])))
 	var i1: float = float(inn["hp"])
 	_gun.heli_bomb_hit(h, 2, at)
 	_ok("④ 3★ 一枚 = 1.5×200 物理 + 120 魔法 = 420", _near(i1 - float(inn["hp"]), 420.0, 0.6),

@@ -954,7 +954,7 @@
     "baseStats1": "+攻30/90/260·+双抗12/28/60",
     "shopAvailable": 1,
     "emoji": "🚁",
-    "effectDesc1": "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF%}% 攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的航线飞过，投下 8/10/14 枚炸弹，每枚对落点附近敌人造成 80/110/150% 攻击力的物理伤害+40/70/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n自身阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对附近敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
+    "effectDesc1": "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF%}% 攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的航线飞过，投下 8/10/14 枚炸弹，每枚对落点附近敌人造成 40/70/150% 攻击力的物理伤害+50/100/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n自身阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对附近敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
     "effectDesc3": "",
     "img": "equip/p2eq_080.png",
     "effectBrief": "登场时召唤一架直升机进行扫射。直升机龟能满时沿航线发动地毯轰炸。"

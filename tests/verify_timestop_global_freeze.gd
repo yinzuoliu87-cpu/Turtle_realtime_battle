@@ -44,6 +44,7 @@ const ALLOW := {
 	"_vfx": "演出层：携带者自己的打击火花/飘字",
 	"_hud": "UI 层：血条/面板刷新",
 	"_equip_tick_sys": "携带者自己的延时结算队列（与 _ballistics 同族，见主场景 in_ts 分支）",
+	"_audio_sys": "音效节流表（_cast_ts / _ev_last_t）：携带者自己放技能、出手时记下出声时刻（2026-11-04 加放技能声后才有）；只管声音，不进 sim",
 }
 
 var _s = null

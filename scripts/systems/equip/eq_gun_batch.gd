@@ -166,7 +166,8 @@ const TOWER_RANGE := 700.0
 const TOWER_MUZZLE_FRAC := 0.78
 ## 080 直升机: 机炮节拍 1.2 秒(规格原文) · 每命中一发 +4 龟能、上限 100(规格原文)
 ## 【080 打捞旋翼机】每发机炮的 ×ATK 物理系数(发数是三元数组, 就近声明在开火处)。
-const HELI_SHOT_COEF := 0.35
+## ★2026-11-04 用户削弱 35% → 30%×ATK(随 0.22.8)。
+const HELI_SHOT_COEF := 0.30
 ## 【077 铜管手铳】携带者阵亡后, 小手枪受到的所有伤害降为这个固定值。
 const PISTOL_DMG_CAP_DEAD := 5.0
 const HELI_FIRE_IV := 1.2
@@ -1137,13 +1138,14 @@ func _heli_doomed(h: Dictionary) -> bool:
 	return not (owner is Dictionary and owner.get("alive", false))
 
 
-## 一枚炸弹落地: 落点 BOMB_R(150) 码内 0.8/1.1/1.5 ATK 物理 + 40/70/120 魔法。
+## 一枚炸弹落地: 落点 BOMB_R(150) 码内 0.4/0.7/1.5 ATK 物理 + 50/100/120 魔法。
+## ★2026-11-04 用户削弱: 1★ 0.8A+40 → 0.4A+50 · 2★ 1.1A+70 → 0.7A+100 · 3★ 不动(随 0.22.8)。
 ## ★公开(非下划线): 门禁直接调它验数值, **不依赖演出 tween 跑完**(CLAUDE.md §3.5)。
 func heli_bomb_hit(h: Dictionary, si: int, at: Vector2) -> int:
 	var owner: Dictionary = h["owner"]
 	# ★三元数组就近声明(契约 §6): 上面 `_queue_shots(..., "p2eq_080")` 就是锚点。
-	var scale: float = [0.8, 1.1, 1.5][si]
-	var mag: float = [40.0, 70.0, 120.0][si]
+	var scale: float = [0.4, 0.7, 1.5][si]
+	var mag: float = [50.0, 100.0, 120.0][si]
 	var n := 0
 	for o in battle._targeting._enemies_of(owner):
 		if not o.get("alive", false):
