@@ -87,6 +87,7 @@ func _ready() -> void:
 		if ResourceLoader.exists(ep):
 			_sfx_cache[ev] = load(ep)
 	_ensure_master_limiter()
+	_apply_master_trim()
 
 	# BGM player 常驻
 	_bgm_player = AudioStreamPlayer.new()
@@ -107,6 +108,19 @@ func _ensure_master_limiter() -> void:
 	var lim := AudioEffectHardLimiter.new()
 	lim.ceiling_db = MASTER_CEILING_DB
 	AudioServer.add_bus_effect(0, lim, 0)
+
+
+## ★2026-11-04 总音量 −7 dB(主总线): 黑箱 Demo 实玩 4 分钟(用户亲自玩, Game Bar 录游戏自己的声音)整局 −25.6 LUFS,
+##   我们实机 2 分钟 −11.3 LUFS, 响约 14 dB。单条声音已对齐黑箱(build_sfx.ANCHOR), 差在自走棋十几个单位一直在打的密度 + 背景乐。
+##   目标定在手机游戏常见的 −18 左右, 不压到黑箱(PC)的 −25.6: 手机外放偏小, 压太低玩家要把音量开很大。
+##   各声音之间的比例不变, 只整体往下。QUIET 静音时不动(静音优先)。门禁 verify_sfx_events ⑨。
+const MASTER_TRIM_DB := -7.0
+
+
+func _apply_master_trim() -> void:
+	if AudioServer.is_bus_mute(0):
+		return
+	AudioServer.set_bus_volume_db(0, MASTER_TRIM_DB)
 
 
 ## 游戏里还没换成新做的那几条旧音效(命中 / 暴击 / 治疗 / 护盾 / 复活)的增益: 新音效的命中锚点从原命中音(L100 −11.8)

@@ -93,6 +93,12 @@ func _ready() -> void:
 		if AudioServer.get_bus_effect(0, i) is AudioEffectHardLimiter:
 			has_lim = (AudioServer.get_bus_effect(0, i) as AudioEffectHardLimiter).ceiling_db <= -0.9
 	_ok("⑦ 主总线挂着限幅器(天花板 ≤ −0.9 dB)", has_lim)
+	## ⑨ 总音量 −7 dB(黑箱实玩整局 −25.6 LUFS、我们原来 −11.3; 目标手机常见 −18 左右)。QUIET 跑时主总线是静音 −80, 那时量不到, 只验常量与「不静音时生效」的分支
+	if AudioServer.is_bus_mute(0):
+		_ok("⑨ 总音量常量 = −7 dB(本次 QUIET 静音, 主总线 −80 由静音接管)", is_equal_approx(float(au.MASTER_TRIM_DB), -7.0))
+	else:
+		_ok("⑨ 主总线音量 = 总音量常量 −7 dB", is_equal_approx(AudioServer.get_bus_volume_db(0), float(au.MASTER_TRIM_DB)) and float(au.MASTER_TRIM_DB) < -6.0,
+			"%.1f dB" % AudioServer.get_bus_volume_db(0))
 	## ⑧ 全场命中声同时最多 2 路: 6 只不同的龟同一刻普攻命中 ⇒ 只出 ≤ 2 声(原来按来源出声后 6 声叠加 → 削波)
 	au.recent.clear()
 	scene._audio_sys._ev_last_t.clear()
