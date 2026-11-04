@@ -5,7 +5,7 @@
 三方：
   ① 账本 ranked_records（每人每周：场次 battles / 胜 wins / 命 hearts / 横扫 sweeps）
   ② 快照 ghosts：同一人同一周场次最大的那份 —— 场次 = 账本场次，胜 / 命 / 横扫 与账本一致
-  ③ 任务 referee_jobs（kind = ranked, status = done, a_account = 本人, season_week = 该周）个数 = 账本场次
+  ③ 任务 referee_jobs（kind = ranked, status = done, a_account = 本人, season_week = 该周, 去重键不带 :void）个数 = 账本场次
      （seeded = true 的账本行是从客户端账本接过来的，起点不是 0 ⇒ 只比 ①②，③ 单列）
 另报：该周积分赛任务的状态分布、平均 / 最长出结果时间。全对上打印 ALL OK，否则逐行列出对不上的人。
 """
@@ -35,8 +35,12 @@ def main():
     rec = q(a.env, "select account_id, battles, wins, hearts, sweeps, seeded from public.ranked_records where season_week = %d" % wk)
     gh = q(a.env, "select distinct on (account_id) account_id, battles, season_wins, hearts, season_sweeps from public.ghosts "
                   "where season_week = %d order by account_id, battles desc" % wk)
+    ## 带 `:void` 的任务 = 测试号被 tools/reset_test_account.py 重置前打的（账本那一行已删）⇒ 不数
     jobs = q(a.env, "select a_account, count(*) n from public.referee_jobs where kind = 'ranked' and status = 'done' "
-                    "and season_week = %d group by a_account" % wk)
+                    "and season_week = %d and match_key not like '%%:void%%' group by a_account" % wk)
+    ## a_account 为空 = 那个号后来删了（referee_jobs 外键 on delete set null，账本行随删号级联删掉）⇒ 不对账，单列报数
+    deleted = [r for r in jobs if r["a_account"] is None]
+    jobs = [r for r in jobs if r["a_account"] is not None]
     st = q(a.env, "select status, count(*) n, round(avg(extract(epoch from (done_at - created_at)))::numeric, 1) avg_s, "
                   "round(max(extract(epoch from (done_at - created_at)))::numeric, 1) max_s from public.referee_jobs "
                   "where kind = 'ranked' and season_week = %d group by status order by 2 desc" % wk)
@@ -65,6 +69,8 @@ def main():
         bad.append("%s 有 %d 个完成任务但账本没有这人" % (acc[:8], J[acc]))
     print("第 %d 周 · %s" % (wk, a.env))
     print("[分母] 账本 %d 人 · 快照 %d 人 · 有完成任务的 %d 人 · 完成任务合计 %d 个" % (len(rec), len(gh), len(J), sum(J.values())))
+    if deleted:
+        print("  （已删号的完成任务 %d 个：账号已不存在，账本随删号删掉，不对账）" % sum(int(r["n"]) for r in deleted))
     for s in st:
         print("  任务 %-8s %5s 个  平均 %ss  最长 %ss" % (s["status"], s["n"], s["avg_s"], s["max_s"]))
     if seeded_job_diff:
