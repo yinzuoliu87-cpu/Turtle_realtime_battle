@@ -45,7 +45,7 @@ func _ready() -> void:
 		au.mute_sfx = true
 	for jj in [["镜像快照局", "m"], ["真实快照局(最重)", "h"]]:
 		var job: Dictionary = J.mirror(gs) if str(jj[1]) == "m" else J.heavy()
-		var nat: Dictionary = await P.record_referee(self, job, func(_n2: int) -> bool: return false)
+		var nat: Dictionary = await P.record_referee_shared(self, job)
 		var res: Dictionary = nat["res"]
 		var chunks: Array = res.get("stream_chunks", [])
 		_ok("分母 · %s 录到三路打满的流(%d 块)" % [str(jj[0]), chunks.size()], bool(res.get("ok", false)) and chunks.size() > 100)

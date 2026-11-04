@@ -68,7 +68,7 @@ func _ready() -> void:
 	add_child(_http)
 	_ok("分母 · 本机 HTTP 服务起来了(端口 %d)" % _http.port, _http.start())
 	OS.set_environment(SW.ENV_BASE, _http.base())
-	var nat: Dictionary = await P.record_referee(self, J.mirror(_gs), func(_n2: int) -> bool: return false)
+	var nat: Dictionary = await P.record_referee_shared(self, J.mirror(_gs))
 	var res: Dictionary = nat["res"]
 	var chunks: Array = res.get("stream_chunks", [])
 	var meta: Dictionary = (res.get("stream", {}) as Dictionary).duplicate()

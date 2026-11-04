@@ -119,7 +119,7 @@ func _ready() -> void:
 		au.mute_sfx = true
 	## 状态流: 裁判程序在本进程真算一局三路打满并录流(与 verify_stream_referee_paths 同一份对局)
 	var job: Dictionary = J.mirror(_gs)
-	var nat: Dictionary = await P.record_referee(self, job, func(_n2: int) -> bool: return false)
+	var nat: Dictionary = await P.record_referee_shared(self, job)
 	var res: Dictionary = nat["res"]
 	_chunks = res.get("stream_chunks", [])
 	_meta = (res.get("stream", {}) as Dictionary).duplicate()

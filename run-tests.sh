@@ -687,6 +687,10 @@ run_test () {  # $1 = 测试名
 echo "=== 自证测试 (自动发现 tests/verify_*.gd) ==="
 RAW="$(mktemp -d)"
 trap 'rm -rf "$RAW" "$ARAW"' EXIT
+## ★2026-11-04 逐帧直播测试同一轮共用录像的目录(本轮临时, 随 $RAW 一起删 ⇒ 同一轮代码冻结, 吃不到旧录像)。
+##   见 tests/_stream_play.gd record_referee_shared。
+export GATE_STREAM_CACHE="$RAW/stream_cache"
+mkdir -p "$GATE_STREAM_CACHE"
 
 # ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
 #   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。

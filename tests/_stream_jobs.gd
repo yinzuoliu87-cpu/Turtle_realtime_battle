@@ -49,6 +49,10 @@ static func mirror(gs) -> Dictionary:
 	gs.trainer_skill = "hook"
 	gs.season_level = LEVEL
 	var a: Dictionary = Backend.build_ghost_snapshot("g_stream_m_a", {"name": "甲方", "avatar": "basic", "id": "g_stream_m_a"})
+	## ★2026-11-04 玩家 ID 钉死: 它由每个测试进程自己的隔离存档随机生成(只管显示, 不进 sim)。不钉的话每条测试拼出的
+	##   任务单都差这一个字段 ⇒ 门禁「同一轮共用录像」(_stream_play.record_referee_shared)永远对不上键, 各录各的。
+	if a.get("profile") is Dictionary:
+		(a["profile"] as Dictionary)["tag"] = "#STRMA0"
 	var b: Dictionary = a.duplicate(true)
 	b["profile"] = {"name": "乙方", "avatar": "stone", "id": "g_stream_m_b"}
 	b["ghost_id"] = "g_stream_m_b"

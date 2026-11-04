@@ -102,7 +102,7 @@ func _ready() -> void:
 		au.mute_sfx = true
 	_t_sql()
 	var job: Dictionary = J.mirror(_gs)
-	var nat: Dictionary = await P.record_referee(self, job, func(_n2: int) -> bool: return false)
+	var nat: Dictionary = await P.record_referee_shared(self, job)
 	var res: Dictionary = nat["res"]
 	_chunks = res.get("stream_chunks", [])
 	_meta = (res.get("stream", {}) as Dictionary).duplicate()

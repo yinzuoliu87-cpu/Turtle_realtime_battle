@@ -60,7 +60,7 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	gs.test_mode = true
 	gs.tutorial_active = false
-	var nat: Dictionary = await P.record_referee(self, J.mirror(gs), func(_n2: int) -> bool: return false)
+	var nat: Dictionary = await P.record_referee_shared(self, J.mirror(gs))
 	var res: Dictionary = nat["res"]
 	var chunks: Array = res.get("stream_chunks", [])
 	var meta: Dictionary = res.get("stream", {})

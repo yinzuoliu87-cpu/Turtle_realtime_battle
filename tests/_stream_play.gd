@@ -221,6 +221,69 @@ static func record_referee(host: Node, job: Dictionary, want: Callable) -> Dicti
 	return {"res": res, "snaps": snaps, "floats": floats, "state": st, "seed": RefereeJob.seed_of(job)}
 
 
+## ★2026-11-04 门禁提速(用户「就这周改」): 只要录像本身(不拍原生快照、默认裁判预算)的测试, 同一轮门禁里共用一份。
+##   GATE_STREAM_CACHE = run-tests.sh 本轮的临时目录(跑完随 $RAW 一起删) ⇒ 同一轮里代码冻结, 吃不到旧录像;
+##   没设(单跑 / 别的入口)⇒ 照旧现场录, 与原来逐字相同。
+##   键 = 整份任务单 + 裁判预算的哈希(任务单不同就各录各的)。第一个要的进程抢锁(建目录是原子的)现场录、写盘
+##   (写完回读逐字节比, 不一致就不留); 后来的读盘; 有人正在录就等它 —— 等的时候阻塞休眠、不推引擎帧
+##   (推帧会白吃 --quit-after 帧预算 ⇒ 没打 ALL PASS)。等满 SHARED_WAIT_MS 还没有 ⇒ 自己录。
+const SHARED_WAIT_MS := 300000
+
+
+static func record_referee_shared(host: Node, job: Dictionary) -> Dictionary:
+	var never := func(_n: int) -> bool: return false
+	var dir := OS.get_environment("GATE_STREAM_CACHE").strip_edges()
+	if dir == "":
+		return await record_referee(host, job, never)
+	DirAccess.make_dir_recursive_absolute(dir)
+	var key := ("%s|budget=%d" % [var_to_str(job), ReplayRecorder.referee_budget_us]).sha256_text().left(32)
+	var path := dir.path_join(key + ".bin")
+	var hit: Variant = _shared_read(path)
+	if hit is Dictionary:
+		print("  [共用录像] 读本轮已录好的 %s" % key.left(8))
+		return hit
+	if DirAccess.make_dir_absolute(dir.path_join(key + ".lock")) == OK:
+		var nat: Dictionary = await record_referee(host, job, never)
+		_shared_write(path, nat)
+		return nat
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < SHARED_WAIT_MS:
+		OS.delay_msec(250)
+		hit = _shared_read(path)
+		if hit is Dictionary:
+			print("  [共用录像] 等别的测试录完再读 %s(等了 %d ms)" % [key.left(8), Time.get_ticks_msec() - t0])
+			return hit
+	print("  [共用录像] 等了 %d ms 没等到 ⇒ 自己录" % SHARED_WAIT_MS)
+	return await record_referee(host, job, never)
+
+
+static func _shared_read(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		return null
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	var v: Variant = f.get_var(false)
+	f.close()
+	return v if v is Dictionary else null
+
+
+static func _shared_write(path: String, nat: Dictionary) -> void:
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_var(nat, false)
+	f.close()
+	var back: Variant = _shared_read(tmp)
+	if not (back is Dictionary) or var_to_bytes(back) != var_to_bytes(nat):
+		print("  [共用录像] ⚠ 写盘回读与原件不一致 ⇒ 不共用这份(其余测试等满后各自现场录)")
+		DirAccess.remove_absolute(tmp)
+		return
+	DirAccess.rename_absolute(tmp, path)
+	print("  [共用录像] 录好并写盘 %s" % path.get_file().left(8))
+
+
 ## 飘字普查: `_ui_layer` 下新加的 Label(飘字的数字本体), 记 [当前步, 文本]。两边同一个口径。
 static func _float_hook(floats: Dictionary, cur: Array) -> Callable:
 	return func(n: Node) -> void:

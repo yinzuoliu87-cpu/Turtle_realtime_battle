@@ -46,7 +46,7 @@ func _ready() -> void:
 	gs.tutorial_active = false
 	gs.test_mode = true
 	await _t_kinds()
-	var nat: Dictionary = await P.record_referee(self, J.mirror(gs), func(_n2: int) -> bool: return false)
+	var nat: Dictionary = await P.record_referee_shared(self, J.mirror(gs))
 	var res: Dictionary = nat["res"]
 	var chunks: Array = res.get("stream_chunks", [])
 	var meta: Dictionary = res.get("stream", {})
