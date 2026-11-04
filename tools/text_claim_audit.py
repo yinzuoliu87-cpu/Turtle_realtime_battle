@@ -228,8 +228,9 @@ def main():
     # 召唤物类装备(复活海螺/旋翼机/毒蛾茧/潜水钟)的行为住在 battle/ 与主场景, 不在 equip/ ——
     # 只扫 equip/ 会把它们全报成"选靶对不上"。把提到这件 id 的其它文件也收进来。
     eq_extra = {}
+    ## ★2026-11-04 A1 技能积木化: 写成数据的装备(瞄准 / 周期 / 发数)住在 EquipEffects 数据表, 也是证据源。
     for f in (sorted(glob.glob('scripts/scenes/battle/*.gd'))
-              + ['scripts/scenes/RealtimeBattle3DScene.gd']):
+              + ['scripts/scenes/RealtimeBattle3DScene.gd', 'scripts/gamedata/equip_effects.gd']):
         eq_extra[f] = io.open(f, encoding='utf-8', errors='replace').read()
     eqd = json.load(io.open('data/phase2-equipment.json', encoding='utf-8'))
     eqarr = eqd if isinstance(eqd, list) else list(eqd.values())[0]
