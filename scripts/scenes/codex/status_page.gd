@@ -201,7 +201,7 @@ func describe(e: Dictionary) -> Dictionary:
 			for mk in MinionCodex.MINION_KINDS:
 				if str(mk.get("kind", "")) == id:
 					out["name"] = str(mk.get("name", id))
-					out["icon"] = _tex("res://assets/sprites/pets/%s" % str(mk.get("img", "")))
+					out["icon"] = _tex(MinionCodex.avatar_path(str(mk.get("kind", ""))))   # 头像(与龟那条的 avatars/<id> 同一种)
 			var info: Dictionary = MinionCodex.MINION_INFO.get(id, {})
 			var bits2: PackedStringArray = []
 			if str(e.get("sk", "")) != "" and str(info.get("skill_name", "")) != "":

@@ -1304,6 +1304,8 @@ func _axe_entries(u: Dictionary) -> Array:
 func _skill_bar_entries(u: Dictionary) -> Array:
 	if u.get("_eq_axe", false):
 		return _axe_entries(u)
+	if u.has("minion_role") and not u.get("is_summon", false):
+		return _minion_entries(u)
 	var out: Array = []
 	var id := str(u.get("id", ""))
 	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
@@ -1340,19 +1342,7 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 
 	# ③ 携带的主动技(3选1 选中的那一个; 小将走独立文案表)
 	if pool.is_empty():
-		for t in u.get("active_skills", []):
-			var md = MinionCodex.skill_desc(str(t))
-			if md != null:
-				## ★带上 stype: 小将这条分支 sk 是空字典, 而 _apply_forms 要靠 type 认多形态技
-				##   (精英铁锤就走这条路 —— 它没有 pets.json 技能池)。
-				var _mip := str(md.get("icon", ""))
-				## ★2026-11-04 走与龟同一条渲染(用户「点到它技能里面都没按的规律走」): 原来直接贴 desc 纯文本 ⇒
-				##   「400% 攻击力」不换算、伤害不上色、没有底部公式行。tpl 交给小卡算公式行(sk 为空时用 tpl)。
-				var _mtpl := str(md.get("tpl", ""))
-				out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)),
-					"icon": ("res://assets/sprites/" + _mip) if _mip != "" else "",
-					"desc": battle._render._render_skill_text(_mtpl, u, {"type": str(t)}) if _mtpl != "" else str(md["desc"]),
-					"tpl": _mtpl, "sk": {}, "stype": str(t)})
+		out.append_array(_minion_skill_entries(u))
 	else:
 		for t in battle._chosen_skill_types(id, str(u.get("side", "")) == "left"):
 			for sk in pool:
@@ -1367,6 +1357,74 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 	##   放在最后统一套一次: 上面两条分支(龟走 pool / 小将走 MinionCodex)都要覆盖,
 	##   分头改就变成"同一件事记在两处"(用户 2026-08-28:「我需要根除任何分歧」)。
 	_apply_forms(u, out)
+	return out
+
+
+## ★2026-11-04 小将的能力排按龟的规矩: 被动 | 攻击 | 技能 三格(用户「能力排被动，攻击，技能呢」)。
+##   原来只有「技能 + 站位」两格(站位挪进副标题, 见 battle_hud 建副标题处)。三格的文字全取 MinionCodex 那张表,
+##   图鉴小将页读的是同一张(不另写一份):
+##   · 被动 = passives 里 slot=passive 的(精英「吞噬」/ 援军「援军」); 精英的「铁锁」(slot=skill, 图鉴里是签「被动」的技能卡)
+##     合进被动那一格、带「【铁锁】：」小标题 —— 照小木斧「被动只占一格」的先例, 面板宽 300 只放得下三格。
+##     近战 / 远程小将没有被动 ⇒ 被动格照样占位、写「无」、不能点(格子位置与龟一致, 不留空洞)。
+##   · 攻击 = slot=basic 的(精英「长手刃」; 其余三种是通用普攻, 见 MinionCodex 表里那条的注释)。
+##   · 技能 = 原来那条(_minion_skill_entries)。
+##   被动 / 攻击两格没有真技能字典 ⇒ 与技能格同样带 stype(不是任何技能 type 的占位名), 小卡才算得出底部公式行。
+func _minion_entries(u: Dictionary) -> Array:
+	var mi: Dictionary = MinionCodex.MINION_INFO.get(MinionCodex.kind_of(u), {})
+	var out: Array = []
+	var pas_names: PackedStringArray = []
+	var pas_tpl := ""
+	var pas_icon := ""
+	for want_slot in ["passive", "skill"]:
+		for pv in mi.get("passives", []):
+			var pd: Dictionary = pv
+			if str(pd.get("slot", "passive")) != want_slot:
+				continue
+			if pas_names.is_empty():
+				pas_tpl = str(pd.get("desc", ""))
+				pas_icon = str(pd.get("icon", ""))
+			else:
+				pas_tpl += "\n【%s】：%s" % [str(pd.get("name", "")), str(pd.get("desc", ""))]
+			pas_names.append(str(pd.get("name", "")))
+	if pas_names.is_empty():
+		out.append({"name": "被动 · 无", "cost": -1.0, "icon": "", "none": true, "desc": "", "tpl": "", "sk": {}})
+	else:
+		out.append({"name": "被动 · " + " · ".join(pas_names), "cost": -1.0,
+			"icon": ("res://assets/sprites/" + pas_icon) if pas_icon != "" else "",
+			"desc": battle._render._render_skill_text(pas_tpl, u, {"type": "_minion_passive"}), "tpl": pas_tpl, "sk": {},
+			"stype": "_minion_passive"})
+	for pv in mi.get("passives", []):
+		var bd: Dictionary = pv
+		if str(bd.get("slot", "")) != "basic":
+			continue
+		var btpl := str(bd.get("desc", ""))
+		var bic := str(bd.get("icon", ""))
+		out.append({"name": str(bd.get("name", "普通攻击")) + " (普攻)", "cost": -1.0,
+			"icon": ("res://assets/sprites/" + bic) if bic != "" else "",
+			"desc": battle._render._render_skill_text(btpl, u, {"type": "_minion_basic"}), "tpl": btpl, "sk": {},
+			"stype": "_minion_basic"})
+		break
+	out.append_array(_minion_skill_entries(u))
+	_apply_forms(u, out)
+	return out
+
+
+## 小将的主动技条目(走 MinionCodex 独立文案表)。龟资料表里没有技能池的单位也走这里(找不到条目就什么都不出)。
+func _minion_skill_entries(u: Dictionary) -> Array:
+	var out: Array = []
+	for t in u.get("active_skills", []):
+		var md = MinionCodex.skill_desc(str(t))
+		if md != null:
+			## ★带上 stype: 小将这条分支 sk 是空字典, 而 _apply_forms 要靠 type 认多形态技
+			##   (精英铁锤就走这条路 —— 它没有 pets.json 技能池)。
+			var _mip := str(md.get("icon", ""))
+			## ★2026-11-04 走与龟同一条渲染(用户「点到它技能里面都没按的规律走」): 原来直接贴 desc 纯文本 ⇒
+			##   「400% 攻击力」不换算、伤害不上色、没有底部公式行。tpl 交给小卡算公式行(sk 为空时用 tpl)。
+			var _mtpl := str(md.get("tpl", ""))
+			out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)),
+				"icon": ("res://assets/sprites/" + _mip) if _mip != "" else "",
+				"desc": battle._render._render_skill_text(_mtpl, u, {"type": str(t)}) if _mtpl != "" else str(md["desc"]),
+				"tpl": _mtpl, "sk": {}, "stype": str(t)})
 	return out
 
 
@@ -1829,7 +1887,7 @@ func _open_stat_card(u: Dictionary, idx: int, anchor: Control) -> void:
 	lv["stat_idx"] = idx
 
 
-## 被动 / 普攻 / 技能 三格一行(小将: 技能 + 前排/后排)。
+## 被动 / 普攻 / 技能 三格一行(小将同一套, 2026-11-04 起; 前排 / 后排写在副标题)。
 ## ★用户 2026-10-06「天生是什么鬼啊，是被动，普通攻击，和技能啊」⇒ 三格都在, 角色字就叫这三个词。
 func _info_ability_row(vb: VBoxContainer, u: Dictionary) -> void:
 	var entries: Array = _skill_bar_entries(u)
@@ -1848,6 +1906,17 @@ func _info_ability_row(vb: VBoxContainer, u: Dictionary) -> void:
 		if cost >= 0.0:
 			_corner_text(cell.get_meta("slot"), "%d" % int(cost), Color("#ffce4d"))
 		var nm := str(ent.get("name", "")).replace("被动 · ", "").replace(" (普攻)", "")
+		## ★2026-11-04 没有被动的小将(近战 / 远程): 被动格照样占位、压暗、写「无」、不能点 —— 三格位置与龟一致。
+		##   没配图标的格(小将的攻击 / 被动图标待出图)在格里写能力名, 不留一个只有角标的空格。
+		var icon_ok: bool = str(ent.get("icon", "")) != "" and ResourceLoader.exists(str(ent.get("icon", "")))
+		if not icon_ok:
+			_slot_name_text(cell.get_meta("slot"), "无" if bool(ent.get("none", false)) else nm)
+		if bool(ent.get("none", false)):
+			var ns: Control = cell.get_meta("slot")
+			ns.modulate = Color(1, 1, 1, 0.5)
+			ns.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ns.mouse_default_cursor_shape = Control.CURSOR_ARROW
+			continue
 		var sk: Dictionary = ent.get("sk", {})
 		var tpl := str(ent.get("tpl", ""))
 		var k := "sk:" + nm
@@ -1856,21 +1925,24 @@ func _info_ability_row(vb: VBoxContainer, u: Dictionary) -> void:
 		slot.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				_open_skill_card(u, k, nm, role, cost, ent, slot))
-	## 小将多一格「前排 / 后排」(用户 2026-10-06: 小弟有前排后排)。不可点, 只是标识。
-	if u.has("minion_role"):
-		## 援军小将(minion_role = "reserve")是远程(ReserveConsts.RANGE)⇒ 后排。按种类显式判,
-		##   不靠「不是 front 就当远程」碰巧对(方案书 20261029-终极战场援军小将 D7)。
-		var front: bool = str(u.get("minion_role", "front")) == "front" and not MinionCodex.is_reserve(u)
-		var pc := _slot_cell(rowc, "", "站位", Color("#a99c88"))
-		var pl := Label.new()
-		pl.text = "前排" if front else "后排"
-		pl.add_theme_font_size_override("font_size", UIPalette.F_TITLE)
-		pl.add_theme_color_override("font_color", Color("#f4ead8"))
-		pl.set_anchors_preset(Control.PRESET_FULL_RECT)
-		pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		pl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		pl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		(pc.get_meta("slot") as Control).add_child(pl)
+	## (原「站位」第四格 2026-11-04 起挪进副标题「友军 · 后排 · Lv N」—— 用户 10-06「小弟有前排后排」那件事仍在, 只是换了位置。)
+
+
+## 格里没有图标时写能力名(居中, 两行以内; 槽左上角的角色字不动)。
+func _slot_name_text(slot: Control, txt: String) -> void:
+	var pl := Label.new()
+	pl.text = txt
+	pl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
+	pl.add_theme_color_override("font_color", Color("#f4ead8"))
+	pl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	pl.add_theme_constant_override("outline_size", 4)
+	pl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pl.offset_top = 16.0
+	pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pl.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	pl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(pl)
 
 
 ## ★用户 2026-10-06「普通攻击，不要叫普攻呢」⇒ 角色字写全称。

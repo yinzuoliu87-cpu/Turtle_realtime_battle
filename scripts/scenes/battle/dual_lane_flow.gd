@@ -399,8 +399,7 @@ func _dl_unit_card(spec, is_mine: bool) -> Control:
 		var ne = Label.new(); ne.text = "（无装备）"; ne.add_theme_font_size_override("font_size", 15); ne.add_theme_color_override("font_color", Color("#5f6f7c")); info.add_child(ne)
 	return card
 
-# 头像节点(稀有度描边). spec 为 leader→avatars/<id>.png; minion→pets/minion.png
-# 头像节点(稀有度描边). spec 为 leader→avatars/<id>.png; minion→pets/minion.png
+# 头像节点(稀有度描边). spec 为 leader→avatars/<id>.png; minion→该种小将的头像(MinionCodex.avatar_path)
 func _dl_avatar_node(spec, sz: int) -> Control:
 	var box = Panel.new(); box.custom_minimum_size = Vector2(sz, sz)
 	var bsb = StyleBoxFlat.new(); bsb.bg_color = Color("#0c141c"); bsb.set_border_width_all(2); bsb.set_corner_radius_all(6)
@@ -411,10 +410,13 @@ func _dl_avatar_node(spec, sz: int) -> Control:
 		else: id = str(spec.get("id", spec.get("kind", "")))
 	bsb.border_color = Color("#8b949e") if is_minion else battle._pet_rarity_color(str(battle._data_by_id.get(id, {}).get("rarity", "C")))
 	box.add_theme_stylebox_override("panel", UISkin.slot(bsb, UISkin.tint_of(bsb.border_color)))   # 2026-10-05: 圆角色块 → 槽框(稀有度色走 modulate)
-	var path = (battle.SPRITE_DIR + "pets/minion.png") if is_minion else (battle.SPRITE_DIR + "avatars/" + id + ".png")
-	## 援军小将用它自己的立绘(MinionCodex 与图鉴同一张); 美术还没交 ⇒ 仍是通用小将图。
-	if is_minion and MinionCodex.is_reserve(spec) and MinionCodex.portrait_path("reserve") != "":
-		path = MinionCodex.portrait_path("reserve")
+	var path = battle.SPRITE_DIR + "avatars/" + id + ".png"
+	## ★2026-11-04 小将取它那一种的头像(头部特写; 用户「头像不等于全身画啊」): 原来三种小将一律 pets/minion.png
+	##   全身画 —— 远程 / 精英也显示成绿色近战那只。spec 是阵容格子(role / elite), kind_of 认得; 援军按 role=reserve。
+	if is_minion:
+		path = MinionCodex.avatar_path(MinionCodex.kind_of(spec))
+		if path == "":
+			path = battle.SPRITE_DIR + "pets/minion.png"
 	if not ResourceLoader.exists(path) and not is_minion:
 		path = battle.SPRITE_DIR + "pets/" + id + ".png"   # 无头像退回全身图
 	if ResourceLoader.exists(path):

@@ -660,7 +660,7 @@ static func hdr_text(s: String) -> String:
 	return s.substr(0, 2) + "\n" + s.substr(2) if s.length() > 4 else s
 
 
-## 单位头像: 统领用 avatars/<id>, 没有就退回全身图; 小将统一 minion(援军小将用它自己的); 召唤体不画(留空位对齐)。
+## 单位头像: 统领用 avatars/<id>, 没有就退回全身图; 小将用它那一种的头像(行里的 _st_mkind); 召唤体不画(留空位对齐)。
 static func avatar(r: Dictionary, sz: float) -> Control:
 	var tr := TextureRect.new()
 	tr.custom_minimum_size = Vector2(sz, sz)
@@ -671,10 +671,14 @@ static func avatar(r: Dictionary, sz: float) -> Control:
 	var p := ""
 	if bool(r.get("is_summon", false)):
 		p = ""
-	elif MinionCodex.is_reserve(r) and MinionCodex.portrait_path("reserve") != "":
-		p = MinionCodex.portrait_path("reserve")   # 援军小将用自己的立绘(行里认 id + 名字); 图还没交 ⇒ 落到下一条的通用小将图
+	elif MinionCodex.is_reserve(r):
+		p = MinionCodex.avatar_path("reserve")   # 援军小将(行里认 id + 名字)
 	elif bool(r.get("_st_multi", false)):
-		p = SPRITE_ROOT + "pets/minion.png"
+		## ★2026-11-04 小将按行里记的种类取头像(头部特写; 用户「头像不等于全身画啊」), 原来三种一律 pets/minion.png 全身画。
+		##   旧快照行没记种类 ⇒ 近战那张。
+		p = MinionCodex.avatar_path(str(r.get("_st_mkind", "front")))
+		if p == "":
+			p = SPRITE_ROOT + "pets/minion.png"
 	elif id != "":
 		p = SPRITE_ROOT + "avatars/" + id + ".png"
 		if not ResourceLoader.exists(p):

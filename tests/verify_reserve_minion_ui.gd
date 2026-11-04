@@ -5,11 +5,13 @@ extends Node
 ##      技能卡「四面合围」/ 被动条「援军」(出场条件 + 每场成长)都在, 文案里 {C:} 全展开、数字 == ReserveConsts;
 ##      签牌不出左栏、定高富文本没有被切成半截的行(排版不挤)。
 ##   ② 图鉴数值 == 真生成的援军小将(0 场): 血 / 攻 / 双抗 / 射程 / 攻击间隔 / 龟能。
-##   ③ 战斗信息面板: 技能格取到「四面合围」+ 135 + 同一段文案(单一来源); 站位格「后排」; 面板上写着「援军小将」。
+##   ③ 战斗信息面板: 技能格取到「四面合围」+ 135 + 同一段文案(单一来源); 副标题「友军 · 后排」; 面板上写着「援军小将」。
 ##   ④ 终极战场对阵幕布(真入口 _dl_build_present_overlay, 名单为空的那一方): 卡片上写「援军小将」、头像取援军立绘;
 ##      对照: 普通小将 / 精英小将的卡名不变。
 ##   ⑤ 结算表(真行 _st_row → SettleScreen.avatar)、⑥ 顶栏(真 portrait_candidates → _refresh_portrait)、
-##      ⑦ 左右队头像框(_make_team_frame): 认得出援军小将、头像取援军立绘。
+##      ⑦ 左右队头像框(_make_team_frame): 认得出援军小将、头像取援军头像。
+## ★2026-11-04 ③~⑦ 与图鉴列表行的头像改量【援军头像】(avatars/minion-reserve.png, 头部特写; 用户「头像不等于全身画啊」),
+##   图鉴详情页的大图仍是援军立绘(全身画)。
 ## ★援军立绘(pets/minion-reserve.png)美术还没交时, ④~⑦ 的头像按回落路径量(通用小将图 / 战场立绘首帧),
 ##   并打一行「立绘未交付」—— 交了之后同一条断言自动改量援军立绘, 不用改本文件。
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_reserve_minion_ui.tscn --quit-after 3000
@@ -61,10 +63,20 @@ func _tex_paths(root: Node) -> PackedStringArray:
 	while not st.is_empty():
 		var n: Node = st.pop_back()
 		if n is TextureRect and (n as TextureRect).texture != null:
-			out.append(str((n as TextureRect).texture.resource_path))
+			out.append(_tex_src((n as TextureRect).texture))
 		for ch in n.get_children():
 			st.append(ch)
 	return out
+
+
+## 贴图来源: 哪张图。头像框里的半身裁切(AtlasTexture, 2026-11-04 小将头像按龟的规矩填满框)认它的底图 ——
+##   要量的是「头像取的是援军立绘」, 裁框只是取了这张图的上半身; 换成别的图(通用小将 / 战场帧)照样不等。
+static func _tex_src(t: Texture2D) -> String:
+	if t == null:
+		return "null"
+	if t is AtlasTexture:
+		return str((t as AtlasTexture).atlas.resource_path) if (t as AtlasTexture).atlas != null else "?"
+	return str(t.resource_path)
 
 
 ## 贴图身份: 文件路径; 帧表裁出来的单帧(AtlasTexture, 自己没有路径)认它的底图 + 裁框。
@@ -187,7 +199,7 @@ func _codex(art: String) -> void:
 	_ok("详情页名字「援军小将」", labels.has(ReserveConsts.NAME), str(labels))
 	if art != "":
 		_ok("详情页立绘 = 援军立绘", _tex_paths(c.detail).has(art))
-		_ok("列表行图标 = 援军立绘", _tex_paths(c.list_vbox).has(art))
+		_ok("列表行图标 = 援军头像(头部特写, 与龟行同一种)", _tex_paths(c.list_vbox).has(MinionCodex.avatar_path("reserve")), MinionCodex.avatar_path("reserve"))
 	_ok("★签牌: 援军 / 不可编入 / 每场 +%s%%(不是「每级 ×1.05」)" % _pct(ReserveConsts.GROWTH_PER_BATTLE),
 		labels.has("援军") and labels.has("不可编入") and labels.has("每场 +%s%%" % _pct(ReserveConsts.GROWTH_PER_BATTLE)) and not labels.has("每级 ×1.05"))
 	var stat_ok := true
@@ -274,8 +286,15 @@ func _battle(gs, art: String) -> void:
 
 	## ③ 信息面板
 	var ent: Array = s._info_sys._skill_bar_entries(u)
-	var e0: Dictionary = ent[0] if not ent.is_empty() else {}
-	_ok("③ 技能格「%s」· %d 龟能" % [ReserveConsts.SKILL_NAME, int(ReserveConsts.ENERGY)], ent.size() == 1
+	## ★2026-11-04 能力排按龟的规矩是 被动 | 攻击 | 技能 三条(用户「能力排被动，攻击，技能呢」): 技能格按 stype 取。
+	var e0: Dictionary = {}
+	for _e in ent:
+		if str((_e as Dictionary).get("stype", "")) == ReserveConsts.SKILL:
+			e0 = _e
+	var ent_nm: Array = ent.map(func(x): return str((x as Dictionary).get("name", "")))
+	_ok("③ 三条依次 = 被动「援军」/ 普通攻击 / 技能「%s」" % ReserveConsts.SKILL_NAME,
+		ent_nm == ["被动 · 援军", "普通攻击 (普攻)", ReserveConsts.SKILL_NAME], str(ent_nm))
+	_ok("③ 技能格「%s」· %d 龟能" % [ReserveConsts.SKILL_NAME, int(ReserveConsts.ENERGY)], not e0.is_empty()
 		and str(e0.get("name", "")) == ReserveConsts.SKILL_NAME and absf(float(e0.get("cost", -1.0)) - ReserveConsts.ENERGY) < 0.01, str(ent))
 	## ★2026-11-04 面板走 render_skill_text(算好数值 / 上色): 单一来源比的是渲染用的模板, 渲染结果另验无残留占位符。
 	_ok("③ 技能格的模板 == 图鉴表同一段原文(单一来源)", str(e0.get("tpl", "")) != ""
@@ -285,15 +304,17 @@ func _battle(gs, art: String) -> void:
 	await _settle(2)
 	var ip_txt: PackedStringArray = _texts(s._info_panel) if s._info_panel != null else PackedStringArray()
 	_ok("③ 面板写着「援军小将」", ip_txt.has(ReserveConsts.NAME), str(ip_txt).substr(0, 120))
-	_ok("③ 站位格「后排」(远程, 不是前排)", ip_txt.has("后排") and not ip_txt.has("前排"))
+	_ok("③ 副标题写站位「后排」(远程, 不是前排)", (ip_txt.has("友军 · 后排") or ip_txt.has("敌方 · 后排")) and not str(ip_txt).contains("前排"), str(ip_txt).substr(0, 80))
 	var sub_lv := false
 	for t in ip_txt:
 		if t.find("Lv %d" % lv_u) >= 0:
 			sub_lv = true
-	_ok("③ 副标题不写等级(援军按场数成长, 等级对它无效)", not sub_lv and (ip_txt.has("敌方 · C") or ip_txt.has("友军 · C")), str(ip_txt).substr(0, 80))
+	_ok("③ 副标题不写等级(援军按场数成长, 等级对它无效)、不写稀有度兜底「C」", not sub_lv and not str(ip_txt).contains(" · C"), str(ip_txt).substr(0, 80))
 	var ip_tex: PackedStringArray = _tex_paths(s._info_panel) if s._info_panel != null else PackedStringArray()
-	if art != "":
-		_ok("③ 面板头像 = 援军立绘", ip_tex.has(art), str(ip_tex))
+	## ★头像 = 头部特写文件, 不是全身立绘(用户「头像不等于全身画啊」)
+	var hd: String = MinionCodex.avatar_path("reserve")
+	_ok("★援军头像是头部特写文件(avatars/), 不是全身立绘", hd.contains("/avatars/") and hd != art, "%s / 立绘 %s" % [hd, art])
+	_ok("③ 面板头像 = 援军头像", ip_tex.has(hd), str(ip_tex))
 	s._hud._close_info_panel()
 
 	## ④ 终极战场对阵幕布(真入口): 两边名单都为空 ⇒ 两边各一只援军小将
@@ -310,8 +331,8 @@ func _battle(gs, art: String) -> void:
 	_ok("分母: 幕布建出来了", root != null and cur_txt.size() > 3, str(cur_txt.size()))
 	_ok("★④ 我方名单为空 ⇒ 幕布卡片写「援军小将」", cur_txt.has(ReserveConsts.NAME), str(cur_txt))
 	_ok("④ 对照: 对方幸存的普通 / 精英小将卡名不变", cur_txt.has("小将") and cur_txt.has("精英小将"))
-	var want_cur: String = art if art != "" else s.SPRITE_DIR + "pets/minion.png"
-	_ok("★④ 援军卡头像 = %s" % ("援军立绘" if art != "" else "回落: 通用小将图"), cur_tex.has(want_cur), str(cur_tex))
+	var want_cur: String = hd
+	_ok("★④ 援军卡头像 = 援军头像", cur_tex.has(want_cur), str(cur_tex))
 	_ok("④ 名字函数: 援军 / 普通 / 精英", s._dl_sys._dl_spec_name({"kind": "minion", "role": "reserve"}) == ReserveConsts.NAME
 		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "back"}) == "小将"
 		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "front", "elite": true}) == "精英小将")
@@ -324,7 +345,7 @@ func _battle(gs, art: String) -> void:
 	_ok("⑤ 结算行认得出援军小将(行里只有 id + 名字)", MinionCodex.is_reserve(row), "%s / %s" % [str(row.get("id")), str(row.get("name"))])
 	var av: TextureRect = SS.avatar(row, 48.0)
 	var av_p: String = str(av.texture.resource_path) if av.texture != null else ""
-	_ok("★⑤ 结算头像 = %s" % ("援军立绘" if art != "" else "回落: 通用小将图"), av_p == want_cur, av_p)
+	_ok("★⑤ 结算头像 = 援军头像", av_p == want_cur, av_p)
 	av.free()
 
 	## ⑥ 顶栏: 这一边只剩援军小将 ⇒ 候选里有它、头像取它
@@ -333,9 +354,7 @@ func _battle(gs, art: String) -> void:
 	_ok("⑥ 顶栏候选 = 这只援军小将", cands.size() == 1 and is_same(cands[0], u), str(cands.size()))
 	var tr := TextureRect.new()
 	tb._refresh_portrait("right", tr)
-	var want_top: Texture2D = load(art) if art != "" else s._unit_portrait_texture(u)
-	_ok("★⑥ 顶栏头像 = %s" % ("援军立绘" if art != "" else "回落: 原取图链(战场立绘首帧)"),
-		_tex_id(tr.texture) == _tex_id(want_top) and (art == "" or _tex_id(tr.texture) == art), "%s / 应 %s" % [_tex_id(tr.texture), _tex_id(want_top)])
+	_ok("★⑥ 顶栏头像 = 援军头像", _tex_src(tr.texture) == hd, "%s / 应 %s" % [_tex_id(tr.texture), hd])
 	tr.free()
 
 	## ⑦ 左右队头像框
@@ -349,10 +368,7 @@ func _battle(gs, art: String) -> void:
 	fr_c.free()
 	_ok("⑦ 头像框不挂等级牌(对照: 同一侧远程小将挂着「%d」)" % int(ctl.get("level", 1)),
 		not fr_txt.has(str(lv_u)) and ctl_txt.has(str(int(ctl.get("level", 1)))), "%s / 对照 %s" % [fr_txt, ctl_txt])
-	if art != "":
-		_ok("★⑦ 头像框头像 = 援军立绘", fr_tex.has(art), str(fr_tex))
-	else:
-		_ok("⑦ 立绘未交付 ⇒ 头像框走原取图链", _tex_id(s._hud.unit_portrait(u)) == _tex_id(s._unit_portrait_texture(u)), _tex_id(s._unit_portrait_texture(u)))
+	_ok("★⑦ 头像框头像 = 援军头像", fr_tex.has(hd), str(fr_tex))
 	fr.free()
 	## 单位字典不能拿 == / erase 比(CLAUDE.md §3.2: 递归哈希成环) ⇒ 按 is_same 滤掉
 	s._units = s._units.filter(func(x): return not is_same(x, u))

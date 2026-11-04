@@ -309,8 +309,15 @@ static func _lanes_of(lineup: Dictionary) -> Array:
 		for pid in (la.get(lane, []) if la.get(lane) is Array else []):
 			var pet: Dictionary = DataRegistry.pet_by_id.get(str(pid), {})
 			row.append({"kind": "leader", "id": str(pid), "rarity": str(pet.get("rarity", "C"))})
+		var lead_n: int = row.size()
+		var m_i := 0
 		for _m in (mi.get(lane, []) if mi.get(lane) is Array else []):
-			row.append({"kind": "minion", "id": "", "rarity": "minion"})
+			## ★2026-11-04 记下是哪一种小将(头像按种类取, 用户「头像不等于全身画啊」)。阵容格子带 role / elite;
+			##   老存档没写 elite ⇒ 按开局同一条规则(这一路没有统领时第一只是精英, battle_spawn._spawn_lane_side)。
+			var md: Dictionary = (_m as Dictionary) if _m is Dictionary else {}
+			var mk: String = MinionCodex.kind_of({"role": str(md.get("role", "front")), "elite": bool(md.get("elite", lead_n == 0 and m_i == 0))})
+			row.append({"kind": "minion", "id": "", "rarity": "minion", "mkind": mk})
+			m_i += 1
 		out.append(row)
 	return out
 
@@ -393,7 +400,9 @@ func _build_my_card(lineup: Dictionary, lanes: Array, pos: Vector2) -> void:
 			var sk := PixelKey.sprite(str(SOCKET.get(rar, SOCKET["C"])))
 			sk.position = sp
 			card.add_child(sk)
-			var path: String = MINION_AVATAR if str(u["kind"]) == "minion" else "res://assets/sprites/avatars/%s.png" % str(u["id"])
+			var path: String = MinionCodex.avatar_path(str(u.get("mkind", "front"))) if str(u["kind"]) == "minion" else "res://assets/sprites/avatars/%s.png" % str(u["id"])
+			if path == "":
+				path = MINION_AVATAR
 			if not ResourceLoader.exists(path):
 				path = "res://assets/sprites/pets/%s.png" % str(u["id"])      # 无头像退回全身图(与 dual_lane_flow 同)
 			var av := TextureRect.new()

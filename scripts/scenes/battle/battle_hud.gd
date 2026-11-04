@@ -1664,11 +1664,15 @@ func _build_brush_bar() -> void:
 	battle._debug._edit_refresh_brush_highlight()
 
 ## 战斗界面里一个单位的头像(左右队头像框 / 信息面板 / 顶栏三处共用)。
-## 援军小将先取它自己的立绘(与图鉴、对阵幕布、结算表同一张 —— MinionCodex.portrait_path); 别的单位、
-##   以及援军小将的图还没交时, 走原来的取图链(avatars/<id>.png → 战场立绘首帧)。
+## ★2026-11-04 小将取它那一种的头像(头部特写, MinionCodex.avatar_path; 用户「头像不等于全身画啊」) ——
+##   原来小将没有头像, 退回战场立绘首帧: 远程小将那帧 100×100 里人物只占 21%, 框里一小团暗红。
+##   别的单位走原来的取图链(avatars/<id>.png → 战场立绘首帧)。
 func unit_portrait(u: Dictionary) -> Texture2D:
-	var t: Texture2D = MinionCodex.reserve_portrait(u)
-	return t if t != null else battle._unit_portrait_texture(u)
+	if u.has("minion_role") and not u.get("is_summon", false):
+		var mp: String = MinionCodex.avatar_path(MinionCodex.kind_of(u))
+		if mp != "":
+			return load(mp) as Texture2D
+	return battle._unit_portrait_texture(u)
 
 # ----------------------------------------------------------------------------
 #  1) 左右队头像框栏
@@ -2038,12 +2042,18 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var sub = Label.new()
 	## 「友军」= 看的人那一侧(周六配对局我是 B ⇒ 右队; 其余左队, 与改之前相同)。颜色仍按场上左右(与血条一致)。
 	var is_mine: bool = str(u.get("side", "")) == ReplayRecorder.my_side(battle)
-	sub.text = "%s · %s · Lv %d" % ["友军" if is_mine else "敌方", rar, int(u.get("level", 1))]
+	var camp: String = "友军" if is_mine else "敌方"
+	## 等级取「显示等级」(与头顶等级牌同一个函数: 基础等级 + 温泉蛋临时孵化等级)。
+	sub.text = "%s · %s · Lv %d" % [camp, rar, battle._effective_level(u)]
 	## ★召唤物没有稀有度也没有等级(2026-10-22): 原来斧头显示「友军 · C · Lv 1」, 两项都是兜底值。
 	if u.get("is_summon", false):
-		sub.text = "友军" if is_mine else "敌方"
-	elif MinionCodex.is_reserve(u):   # 援军小将不按等级成长(按本周场数) ⇒ 不写等级
-		sub.text = "%s · %s" % ["友军" if is_mine else "敌方", rar]
+		sub.text = camp
+	elif u.has("minion_role"):
+		## ★2026-11-04 小将没有稀有度 —— 原来那个「C」是兜底值(图鉴小将页也不挂稀有度)。这一格改写站位(前排 / 后排):
+		##   原来能力排里单独一格「站位」, 现在能力排按龟的规矩只放 被动 | 攻击 | 技能(用户「能力排被动，攻击，技能呢」)。
+		##   援军小将(minion_role = reserve)是远程 ⇒ 后排; 精英是 front + elite ⇒ 前排。援军不按等级成长(按本周场数) ⇒ 不写等级。
+		var mpos: String = "前排" if str(u.get("minion_role", "front")) == "front" and not MinionCodex.is_reserve(u) else "后排"
+		sub.text = ("%s · %s" % [camp, mpos]) if MinionCodex.is_reserve(u) else ("%s · %s · Lv %d" % [camp, mpos, battle._effective_level(u)])
 	## ★副标题 12(与资源名/状态签/「装备：」同属"次要信息"这一档) —— 面板字号收成
 	##   21 标题 / 14 正文 / 12 次要 / 11 说明 / 10 角标 五档, 一档只表示一种角色。
 	sub.add_theme_font_size_override("font_size", UIPalette.F_SUB); sub.add_theme_color_override("font_color", side_col); hi.add_child(sub)

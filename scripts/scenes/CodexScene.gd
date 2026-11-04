@@ -451,8 +451,9 @@ func _switch_tab(tab: String) -> void:
 			_codex_list._add_group_header("深海小将")   # 页签计数仍是「龟(28)」, 小将不算龟 → 拿分隔条把两段划开(用户2026-07-19)
 			for mk in MINION_KINDS:
 				_items.append({"_minion": mk["kind"]})
+				## 行图标 = 头像(与龟行的 avatars/<id> 同一种东西; 2026-11-04 用户「头像不等于全身画啊」), 不是全身立绘。
 				_codex_list._add_simple_row(str(mk["name"]), "#cdd9c2", Color("#7a8a96"),
-					"res://assets/sprites/pets/%s" % mk["img"], _items.size() - 1)
+					MinionCodex.avatar_path(str(mk["kind"])), _items.size() - 1)
 		"equips":
 			_codex_list._add_equip_rows()
 		"synergies":

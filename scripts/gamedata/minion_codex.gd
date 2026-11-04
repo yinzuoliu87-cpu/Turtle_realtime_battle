@@ -90,12 +90,24 @@ static func is_reserve(x: Dictionary) -> bool:
 	return str(x.get("id", "")) == "__minion__" and str(x.get("name", "")) == ReserveConsts.NAME
 
 
-## 援军小将的头像贴图; 不是援军小将或图还没画好 ⇒ null(调用方走原来的取图链)。
-static func reserve_portrait(u: Dictionary) -> Texture2D:
-	if not is_reserve(u):
-		return null
-	var p := portrait_path("reserve")
-	return load(p) as Texture2D if p != "" else null
+## ★2026-11-04 某种小将的【头像】= 头部特写, 与龟的 avatars/<id>.png 同一种东西(用户「头像不等于全身画啊」)。
+##   凡是龟用 avatars/ 头像的地方(战斗信息面板 / 顶栏 / 左右队头像框 / 换路过场卡 / 结算表 / 排队页 /
+##   图鉴列表行 / 状态来源图标), 小将都读这里; 立绘(portrait_path)只给图鉴详情大图这类「全身画」位置。
+##   原来这些地方给的是全身立绘(远程小将在框里只剩一小团暗红), 换路过场与排队页还三种小将一律用近战那张。
+##   文件由 tools/assetgen/build_minion_avatars.py 从各自立绘裁头部生成。文件不在 ⇒ 退回立绘。
+const AVATAR := {
+	"front": "res://assets/sprites/avatars/minion.png",
+	"back": "res://assets/sprites/avatars/minion-back.png",
+	"elite": "res://assets/sprites/avatars/minion-elite.png",
+	"reserve": "res://assets/sprites/avatars/minion-reserve.png",
+}
+
+
+static func avatar_path(kind: String) -> String:
+	var p: String = str(AVATAR.get(kind, ""))
+	if p != "" and ResourceLoader.exists(p):
+		return p
+	return portrait_path(kind)
 
 
 # 深海小将 (虚拟图鉴条目 — 非龟, pets.json 里没有)
@@ -121,12 +133,21 @@ const MINION_INFO := {
 		"hp": 750, "atk": 42, "def": 13, "mr": 13, "interval": 0.85, "range": 100, "spd": 105,
 		"skill_name": "人体浪板", "skill_cost": 120, "skill_icon": "skills/minion-bodysurf.png",
 		"skill_desc": "近战小将锁定一个敌人并跃起，起跳时回复（{C:HidingSystem.SURF_HEAL_COEF%}%×攻击力({ATK}) = {E:HidingSystem.SURF_HEAL_COEF*ATK}）生命值，距离过近时先向后跳开。随后射出铁链，将该敌人眩晕 {C:HidingSystem.SURF_STUN_SEC} 秒并将自身拉向目标，接触时造成其 {C:HidingSystem.SURF_CONTACT_MAXHP_PCT%}% 最大生命值的物理伤害。之后踩着目标滑行，对其持续造成（{C:HidingSystem.SURF_RIDE_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_RIDE_ATK_COEF*ATK}）物理伤害，并对沿途敌人造成（{C:HidingSystem.SURF_PASS_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_PASS_ATK_COEF*ATK}）物理伤害并将其击退，最后跳下。",
+		## ★2026-11-04 补「普通攻击」(用户「能力排被动，攻击，技能呢」): 近战 / 远程 / 援军小将的普攻在代码里走通用普攻
+		##   (RealtimeBattle3DScene.DEFAULT_BASIC, 系数 BasicConsts.DEFAULT_BASIC_COEF, 单体物理) —— 原来这张表只有精英写了「长手刃」,
+		##   面板与图鉴都缺这一条。写法与长手刃同一句式。
+		"passives": [
+			{"name": "普通攻击", "slot": "basic", "desc": "近战小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
+		],
 	},
 	"back": {
 		"name": "远程小将", "img": "minion-back.png", "role": "后排 · 远程",
 		"hp": 750, "atk": 45, "def": 7, "mr": 7, "interval": 0.85, "range": 400, "spd": 105,
 		"skill_name": "追踪火箭筒", "skill_cost": 120, "skill_icon": "skills/minion-rocket.png",
 		"skill_desc": "远程小将锁定一名敌人，蓄力 {C:HidingSystem.ROCKET_CHARGE_SEC} 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成（{C:HidingSystem.ROCKET_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.ROCKET_ATK_COEF*ATK}）物理伤害，并施加 {C:HidingSystem.ROCKET_HEALCUT_PCT%}% 治疗削减，持续 {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒。",
+		"passives": [
+			{"name": "普通攻击", "slot": "basic", "desc": "远程小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
+		],
 	},
 	"elite": {
 		"name": "精英小将", "img": "minion-elite.png", "role": "精英 · 近战",
@@ -153,6 +174,7 @@ const MINION_INFO := {
 		"skill_desc": "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。",
 		"passives": [
 			{"name": "援军", "slot": "passive", "desc": "终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
+			{"name": "普通攻击", "slot": "basic", "desc": "援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
 		],
 	},
 }

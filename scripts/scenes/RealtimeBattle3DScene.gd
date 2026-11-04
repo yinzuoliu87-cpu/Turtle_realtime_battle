@@ -7629,7 +7629,7 @@ func _st_row(u: Dictionary) -> Dictionary:
 	var sp: Array = _SETTLE_S.dealt_split(u)
 	var row: Dictionary = {
 		"name": _st_name(u), "is_summon": bool(u.get("is_summon", false)),
-		"id": str(u.get("id", "")),
+		"id": str(u.get("id", "")), "_st_mkind": MinionCodex.kind_of(u) if bool(u.get("_isMinion", false)) else str(u.get("_st_mkind", "")),
 		"_st_multi": bool(u.get("_st_multi",
 			bool(u.get("is_summon", false)) or bool(u.get("_isMinion", false)))),
 		"rarity": str(u.get("rarity", "C")), "alive": bool(u.get("alive", true)),

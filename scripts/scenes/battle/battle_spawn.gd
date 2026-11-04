@@ -512,7 +512,10 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["mr"] *= _m; u["base_mr"] *= _m
 		u["atk_interval"] /= (1.0 + 0.02 * float(_lvl - 1))   # 攻速+2%/级 → 间隔变短
 	u["energy_cost"] = energy_cost_table(d)         # 数据驱动龟能(与缩头随从共用同一函数, 见其注释)
-	u["level"] = _lvl
+	## ★2026-11-04 小将的等级 = 它自己的 spec.level(属性就是按它算的, 见上面 MinionCodex.base_stats)。原来一律写成这一方的
+	##   玩家等级 ⇒ 小将吃了「临时等级器」(阵容格 temp_lv)时属性是 N+1 级、面板副标题与头顶等级牌写 N 级(截图: 攻击 49 / 生命 826
+	##   是 3 级的数, 副标题「Lv1」)。龟那边临时等级早就算进 _lvl 了。只影响显示: sim 里没有读小将 level 的地方。
+	u["level"] = int(spec.get("level", _lvl)) if is_minion else _lvl
 	if is_minion:
 		u["_isMinion"] = true
 		u["minion_role"] = str(spec.get("role", "front"))

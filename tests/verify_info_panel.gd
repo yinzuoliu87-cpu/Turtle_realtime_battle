@@ -1,4 +1,5 @@
 extends Node
+const _SETTLE := preload("res://scripts/scenes/battle/settle_screen.gd")
 ## verify_info_panel.gd — 守卫「局内详情面板」的四项改造(用户 2026-07-21 需求2)
 ##
 ##   2a 属性区要显示更多属性(治疗强度/护盾强度/闪避率等)
@@ -163,6 +164,55 @@ func _test_minion_card_rules(s) -> void:
 			await get_tree().process_frame
 		_ok("★① %s 面板标题叫全名(不是笼统的「小将」)" % want, want != "" and want != "小将" and _has_label(s._info_panel, want),
 			"kind=%s" % kind)
+		## ①b 2026-11-04 头像 = 这一种小将的头部特写文件(用户「这里按规矩了吗」→「头像不等于全身画啊」):
+		##   原来退回战场立绘首帧(全身画), 远程小将在框里只剩一小团暗红(100×100 里人物占 21%)。
+		##   判据三条一起: 取的是 MinionCodex.AVATAR[该种] 那个文件 / 不在 pets/(全身立绘目录)/ 人物外框占画面 ≥ 50%。
+		var pt: Texture2D = s._hud.unit_portrait(u)
+		var pp: String = str(pt.resource_path) if pt != null else ""
+		var pim: Image = pt.get_image() if pt != null else null
+		var occ := 0.0
+		if pim != null and not pim.is_empty():
+			var ur: Rect2i = pim.get_used_rect()
+			occ = float(ur.size.x * ur.size.y) / float(maxi(1, pim.get_width() * pim.get_height()))
+		_ok("★①b %s 头像 = 头部特写文件「%s」(不是 pets/ 全身立绘), 人物占画面 %.0f%% ≥ 50%%" % [want, pp, occ * 100.0],
+			pp != "" and pp == str(MinionCodex.AVATAR.get(kind, "#")) and not pp.contains("/pets/") and occ >= 0.5)
+		## ⑧ 其余用头像的地方是同一张(结算表真行 _st_row → SettleScreen.avatar / 换路过场卡 _dl_avatar_node):
+		##   原来三种小将一律 pets/minion.png 全身画(远程 / 精英也显示成绿色近战那只)。
+		var sav: TextureRect = _SETTLE.avatar(s._st_row(u), 48.0)
+		var st_av: String = str(sav.texture.resource_path) if sav.texture != null else ""
+		sav.free()
+		var dn: Control = s._dl_sys._dl_avatar_node({"kind": "minion", "role": str(sp.get("role", "front")), "elite": bool(sp.get("elite", false))}, 48)
+		var dl_av := ""
+		for trn in dn.find_children("*", "TextureRect", true, false):
+			if (trn as TextureRect).texture != null:
+				dl_av = str((trn as TextureRect).texture.resource_path)
+		dn.free()
+		_ok("★⑧ %s 结算表与换路过场卡也是这张头像" % want, st_av == pp and dl_av == pp and pp != "", "结算 %s / 过场 %s" % [st_av, dl_av])
+		## ⑥ 2026-11-04 能力排按龟的规矩 = 被动 | 攻击 | 技能 恰好三格(用户「能力排被动，攻击，技能呢」), 不再有「站位」格。
+		##   读的是面板上真建出来的格子(AbilityRow 的子节点)和每格左上角的角色字, 不是条目表。
+		var arow: Node = s._info_panel.find_child("AbilityRow", true, false) if s._info_panel != null else null
+		var roles: Array = []
+		if arow != null:
+			for cell in arow.get_children():
+				var rl := ""
+				for lb in cell.find_children("*", "Label", true, false):
+					if ["被动", "攻击", "技能", "站位"].has((lb as Label).text):
+						rl = (lb as Label).text
+						break
+				roles.append(rl)
+		_ok("★⑥ %s 能力排 = 被动 | 攻击 | 技能(恰好三格, 没有「站位」格)" % want, roles == ["被动", "攻击", "技能"], str(roles))
+		if kind == "front" or kind == "back":
+			var c0: Node = arow.get_child(0) if arow != null and arow.get_child_count() > 0 else null
+			var s0: Control = c0.get_meta("slot") if c0 != null and c0.has_meta("slot") else null
+			_ok("⑥b %s 没有被动 ⇒ 被动格照样占位、写「无」、不能点" % want,
+				s0 != null and _has_label(s0, "无") and s0.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+		## ⑦ 副标题: 小将没有稀有度(原来写的「C」是兜底值), 那一格写站位; 等级 == 属性用的那个等级(本段生成时 spec.level = 3,
+		##   截图里攻击 49 / 生命 826 是 3 级的数而副标题写「Lv1」); 援军小将按场数成长 ⇒ 不写等级。逐字比整行。
+		var camp: String = "友军" if str(u.get("side", "")) == ReplayRecorder.my_side(s) else "敌方"
+		var mpos: String = "前排" if kind == "front" or kind == "elite" else "后排"
+		var want_sub: String = ("%s · %s" % [camp, mpos]) if kind == "reserve" else ("%s · %s · Lv %d" % [camp, mpos, 3])
+		_ok("★⑦ %s 副标题 =「%s」(没有稀有度兜底「C」; 等级与属性同一个)" % [want, want_sub],
+			_has_label(s._info_panel, want_sub) and (kind == "reserve" or int(u.get("level", 0)) == 3), "u.level=%d" % int(u.get("level", 0)))
 		var ents: Array = s._info_sys._skill_bar_entries(u)
 		var sk_ents: Array = []
 		for e in ents:
@@ -174,6 +224,9 @@ func _test_minion_card_rules(s) -> void:
 			var body := _parsed_text(str(ed.get("desc", "")))
 			_ok("★② %s · %s 正文没有没换算的「N%% 攻击力」、没有没渲染的占位符" % [want, str(ed.get("name", ""))], raw_re.search(body) == null and not body.contains("{"), body.left(90))
 			var tpl := str(ed.get("tpl", ""))
+			## 不含攻击力项的条目(援军小将的被动「援军」只写出场条件与每场成长)没有可换算的数 ⇒ ③④⑤ 只量含 ATK 的条目。
+			if not tpl.contains("ATK"):
+				continue
 			var a0: float = float(u.get("atk", 0.0))
 			var lo: String = s._info_sys._skill_body_text(u, {}, tpl)
 			u["atk"] = a0 * 2.0
@@ -193,7 +246,8 @@ func _test_minion_card_rules(s) -> void:
 				s._ui_layer.get_child_count() > n_before and fl != null and cd != null and fl.z_index < s._info_panel.z_index and s._info_panel.z_index < cd.z_index)
 			s._info_sys.card().close()
 			n += 1
-	_ok("分母 · 四种小将(近战 / 远程 / 精英 / 援军)的技能卡都量到了", n >= 4 and names.size() == 4, "%d 张 · %s" % [n, str(names.keys())])
+	## 分母: 四种 × (攻击 + 技能) = 8 张起; 精英的被动格(吞噬 · 铁锁)也含攻击力项 ⇒ 9 张。
+	_ok("分母 · 四种小将(近战 / 远程 / 精英 / 援军)的攻击卡与技能卡都量到了", n >= 9 and names.size() == 4, "%d 张 · %s" % [n, str(names.keys())])
 
 
 func _has_label(n: Node, txt: String) -> bool:
