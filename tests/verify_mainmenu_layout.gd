@@ -66,6 +66,7 @@ func _ready() -> void:
 	gs.meta_deepsea_coins = 380
 	gs.battles_won = 7
 	gs.battles_total = 11
+	gs.nickname_default = "Mr_Lv"
 
 	print("=== 主菜单版式体检 (%.0f×%.0f) ===" % [W, H])
 	var packed := load("res://scenes/MainMenu.tscn")
@@ -267,6 +268,7 @@ func _ready() -> void:
 			and bar_a != null and sl_a.get_global_rect().position.y >= bar_a.get_global_rect().end.y, "")
 		## ★昵称那一行不参与字面搜: 默认昵称是随机抽的(data/nickname-words.json 里有「连胜中」「必胜」),
 		##   抽中就会让「胜」字假红(2026-10-10 实测「连胜中」)。战绩行是另起的一行, 不在昵称里。
+		##   「Lv」同理: 拼音姓 py_surnames 里有「lv」(吕), 模板「Mr_」+首字母大写 ⇒「Mr_Lv」(2026-11-04 CI 实测假红)。
 		var ctxt_nn: Array = []
 		for t_nn in ctxt:
 			if str(t_nn) != want_name:
@@ -274,8 +276,8 @@ func _ready() -> void:
 		var cj_nn := " | ".join(PackedStringArray(ctxt_nn))
 		_ok("ⓐ ★分母: 去掉昵称后卡里还有字(徽章数字 / ID / 经验条 / 大轮)", ctxt_nn.size() >= 3, cj_nn)
 		_ok("ⓐ ★卡里没有战绩行(战绩 / 胜负 / 还没上过场)", cj_nn.find("战绩") < 0 and cj_nn.find("胜") < 0 and cj_nn.find("还没上过场") < 0, cj)
-		_ok("ⓐ ★卡里没有命与本周(挪到开始战斗上方)", cj.find("♥") < 0 and cj.find("本周") < 0, cj)
-		_ok("ⓐ ★卡里没有「Lv」字样(等级就是徽章上的数字)", cj.find("Lv") < 0, cj)
+		_ok("ⓐ ★卡里没有命与本周(挪到开始战斗上方)", cj_nn.find("♥") < 0 and cj_nn.find("本周") < 0, cj)
+		_ok("ⓐ ★卡里没有「Lv」字样(等级就是徽章上的数字)", cj_nn.find("Lv") < 0, cj)
 		_ok("ⓐ ★整张卡可点", taps.has(card))
 		var fnt_bad: Array = []
 		var ink_end := 0.0
