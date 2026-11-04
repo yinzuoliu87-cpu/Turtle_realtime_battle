@@ -555,7 +555,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		u["shield_until"] = 0.0   # 盾被打空→清限时标记(防陈旧到期误清后续永久盾)
 		battle._audio_sys._sfx_shield_break()
 	else:
-		battle._audio_sys._sfx_hit(was_crit)
+		battle._audio_sys._sfx_hit(was_crit, src, basic)   # 普攻按来源出声(audio_system._sfx_hit 头注)
 	# Phase4 打击感: 受击闪白+轻压扁(每段直接命中); 顿帧/震屏/火花按伤害分级(auto: ≥gate=重击).
 	battle._vfx._flash(u)
 	battle._vfx._impact(u, dmg, "auto")

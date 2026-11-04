@@ -15,11 +15,26 @@ func _audio() -> Node:
 	return battle.get_node_or_null("/root/Audio")
 
 # 命中音 (普攻/技能/装备直接伤害): 暴击→hit-crit, 否则→hit-physical. 同名音 battle.SFX_HIT_MIN_GAP 内只响一次.
-# 命中音 (普攻/技能/装备直接伤害): 暴击→hit-crit, 否则→hit-physical. 同名音 battle.SFX_HIT_MIN_GAP 内只响一次.
-func _sfx_hit(crit: bool) -> void:
+## ★2026-11-04 普攻按来源出声(用户「一个乌龟攻击是物理伤害，另外一个也是物理伤害，它们两个音效…应该是用一样的音效吗？」):
+##   龟的普攻命中播它自己那一条 atk_<id>(音效事件表), 暴击时再叠一层 hit-crit(压低)。
+##   小将 / 召唤物 / 没有专属声的龟 ⇒ 照旧通用命中音。同一来源 SFX_HIT_MIN_GAP 内只响一次(多段普攻不刷屏)。
+##   ★只管声音, 不碰 sim: 节流表记在本对象上, 不写单位字典。
+var _ev_last_t: Dictionary = {}
+
+
+func _sfx_hit(crit: bool, src = null, basic: bool = false) -> void:
 	var a = _audio()
 	if a == null:
 		return
+	if basic and src is Dictionary and not (src as Dictionary).has("minion_role") and not bool((src as Dictionary).get("is_summon", false)):
+		var ev := "atk_" + str((src as Dictionary).get("id", ""))
+		if a.has_method("has_sfx") and a.has_sfx(ev):
+			if battle._t - float(_ev_last_t.get(ev, -99.0)) >= battle.SFX_HIT_MIN_GAP:
+				_ev_last_t[ev] = battle._t
+				a.play_sfx(ev, 1.0, 1.0, 0.04)
+				if crit:
+					a.play_sfx("hit-crit", 0.6, 1.0, 0.03)
+			return
 	if crit:
 		if battle._t - battle._last_crit_sfx_t < battle.SFX_HIT_MIN_GAP:
 			return
@@ -30,6 +45,16 @@ func _sfx_hit(crit: bool) -> void:
 			return
 		battle._last_hit_sfx_t = battle._t
 		a.play_sfx("hit-physical", 0.85, 1.0, 0.08)   # pitch/vol 抖动由 Audio 自带 → 连段听感有差
+
+## 普攻出声的另一个入口: 普攻伤害不带「普攻命中」标记的龟(闪电龟)在出手那一刻播自己的 atk_<id>, 与 _sfx_hit 共用节流表。
+func sfx_basic_cast(u: Dictionary) -> void:
+	var a = _audio()
+	if a == null or not a.has_method("has_sfx"):
+		return
+	var ev := "atk_" + str(u.get("id", ""))
+	if a.has_sfx(ev) and battle._t - float(_ev_last_t.get(ev, -99.0)) >= battle.SFX_HIT_MIN_GAP:
+		_ev_last_t[ev] = battle._t
+		a.play_sfx(ev, 1.0, 1.0, 0.04)
 
 func _sfx_heal() -> void:
 	var a = _audio()

@@ -37,6 +37,9 @@ func _init(b) -> void:
 	battle = b
 
 func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
+	## 普攻出声(2026-11-04 A5): 连锁闪电的伤害在补间回调里结算、标的是真伤不是「普攻命中」⇒ 按来源出声认不出它;
+	##   闪电是瞬间到的 ⇒ 出手这一刻播它自己的 atk_lightning(只管声音, 不改伤害标记 —— 改了会触发普攻命中效果、动对局结果)。
+	battle._audio_sys.sfx_basic_cast(u)
 	# 建链(顺序最近未连): 打1 → 1找最近2 → 2找最近3, 最多连锁2跳
 	var chain: Array = [tgt]
 	var prev: Dictionary = tgt

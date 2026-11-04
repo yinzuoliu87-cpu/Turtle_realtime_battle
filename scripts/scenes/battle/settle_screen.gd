@@ -490,6 +490,12 @@ func _pop_coin_chip(chips: Control, tw: Tween, delay: float) -> void:
 	if n <= 0:
 		return
 	v.text = "+0"
+	## 奖励音(2026-11-04 A5): 金币格弹出那一刻播 reward_normal; 这一局升了大轮等级(开局快照 _season_lv0 见 battle_hud._build_team_panels)
+	##   ⇒ 接着 0.6 秒后播 level_up。只在真的拿到币时(上面 n <= 0 已返回)。
+	tw.tween_callback(Audio.play_sfx.bind("reward_normal")).set_delay(delay)
+	var lv0: int = int(battle.get_meta("_season_lv0", -1))
+	if lv0 >= 1 and int(GameState.season_level) > lv0:
+		tw.tween_callback(Audio.play_sfx.bind("level_up")).set_delay(delay + 0.6)
 	tw.tween_method(func(x: float) -> void:
 		v.text = "+%d" % int(round(x))
 		v.pivot_offset = v.size / 2.0

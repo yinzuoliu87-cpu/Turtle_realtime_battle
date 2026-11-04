@@ -40,6 +40,7 @@ var _held_target_db: float = -80.0
 
 # SFX 播放器池 (一次性 spawn, 自动 free)
 var _sfx_cache: Dictionary = {}   # name → AudioStream
+var recent: Array[String] = []    # 最近真播出去的音效名(play_sfx 里记)
 
 # BGM 单例
 var _bgm_player: AudioStreamPlayer = null
@@ -79,6 +80,12 @@ func _ready() -> void:
 		var path: String = SFX_PATHS[name]
 		if ResourceLoader.exists(path):
 			_sfx_cache[name] = load(path)
+	## ★2026-11-04 音效事件表(tools/assetgen/build_sfx.py 生成 SfxEvents): 每只龟的普攻 / 胜负 / 按钮 / 奖励 / 升级 / 买东西 / 匹配成功。
+	##   与旧表同名的(defeat)用新的覆盖。定选与对黑箱标准的量化见 tools/assetgen/sfx_picks.json、tools/sfx_bar.py。
+	for ev in SfxEvents.EVENTS:
+		var ep: String = SfxEvents.EVENTS[ev]
+		if ResourceLoader.exists(ep):
+			_sfx_cache[ev] = load(ep)
 
 	# BGM player 常驻
 	_bgm_player = AudioStreamPlayer.new()
@@ -107,6 +114,10 @@ func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 	var stream: AudioStream = _sfx_cache.get(name)
 	if stream == null or mute_sfx:
 		return
+	## 最近真播出去的音效名(只记名字, 最多 32 条): 门禁 verify_sfx_events 量「这一下播的是哪条」, 不靠猜。
+	recent.append(name)
+	if recent.size() > 32:
+		recent.pop_front()
 	# 每次 spawn 一个临时 player, finished 后自动 free (避免重叠时 cut off 旧的)
 	var p := AudioStreamPlayer.new()
 	p.stream = stream
@@ -116,6 +127,11 @@ func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 	add_child(p)
 	p.finished.connect(p.queue_free)
 	p.play()
+
+
+## 这个名字有没有载入的音效(按来源出声的地方先问一句, 没有就走通用音)。
+func has_sfx(name: String) -> bool:
+	return _sfx_cache.has(name)
 
 
 ## 按 VisualConstants cls (飘字类) 自动选 SFX, 跟 Phaser visual_dispatcher.ts:215-242 同步

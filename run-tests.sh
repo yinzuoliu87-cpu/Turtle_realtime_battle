@@ -1124,6 +1124,7 @@ run_audit "tools/gate_offline_audit.py" "ALL OK" "gate_offline (门禁里每个�
 run_audit "tools/bot_schedule_audit.py" "ALL OK" "bot_schedule (陪练号排班表: 规模公式·每号≤16场·封盘前开打·周二晚同场次覆盖)"
 run_audit "tools/bot_runner_queue_audit.py" "ALL OK" "bot_runner_queue (陪练号轮流打到底: 积分赛每号每周一次·并发与每小时上限·周五封盘前轮完·周末不起号·jemalloc 开关)"
 run_audit "tools/gauntlet_planner_audit.py" "ALL OK" "gauntlet_planner (周末在线闯关陪练号调度器推演: 12 格候场·真人等待≤120秒·开赛/平时/收尾·35 条输赢路线穷举)"
+run_audit "tools/sfx_audit.py" "ALL OK" "sfx_audit (音效产物 ↔ 定选表: 文件齐 / L100 响度 / 峰值与时长上限 / 授权台账 / 事件表·20261104 A5)"
 run_audit "tools/gate_reuse_selftest.py" "ALL OK" "gate_reuse_selftest (只改文档复用上次全绿的口径: 12 种改动·该复用的复用、该跑全套的跑全套·临时仓库不碰真仓库·20261104)"
 
 echo ""

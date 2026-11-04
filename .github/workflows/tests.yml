@@ -54,8 +54,8 @@ jobs:
       - name: 装门禁审计器的第三方依赖
         run: |
           python3 -m pip install --quiet --upgrade pip
-          python3 -m pip install --quiet pillow pyyaml
-          python3 -c "import PIL, yaml; print('Pillow', PIL.__version__, '| PyYAML', yaml.__version__)"
+          python3 -m pip install --quiet pillow pyyaml numpy
+          python3 -c "import PIL, yaml, numpy; print('Pillow', PIL.__version__, '| PyYAML', yaml.__version__, '| numpy', numpy.__version__)"
 
       - name: 装 Godot (linux headless)
         run: |

@@ -1,0 +1,274 @@
+{
+ "_doc": "ElevenLabs 音效生成描述表（2026-11-04 · A5，用户选 ElevenLabs）。按来源一条：key = 产物事件名；text = 英文描述（ElevenLabs 按英文训练）；dur = 秒（接口 0.5~30）；ref = 拿黑箱 Demo 的哪条原声当尺子（.out/blackbox/sfx/ 里的文件名，量曲线初筛用）；zh = 给人看的中文。生成脚本 tools/assetgen/gen_sfx_elevenlabs.py。 11-04 二轮: 普攻 dur 统一 0.5(接口下限; 黑箱命中 0.2~0.4 秒, 进游戏前再裁), atk_basic / atk_bubble 原描述出来 3/4 近乎无声 ⇒ 改写得更有冲击。 11-04 三轮: ui_click / ui_back / ui_confirm / coin_buy / atk_hiding 成品对黑箱不达标(按钮偏闷偏长、缩头起音慢) ⇒ 改写成短、亮、干, dur 0.5 再裁。 四轮: atk_dice(尖瞬态太多拉不上响度) / atk_hunter(偏闷) / ui_back(尾长) 改写。 五轮: atk_dice 14 个全是尖峰多的清脆碰撞(L100 拉不到锚点, 不靠重压限幅) ⇒ 改成单颗实心闷击; atk_gambler 卡牌带「嗖」起音慢 ⇒ 要瞬间拍击。",
+ "style": "cartoon pixel-art mobile game sound effect, punchy, clean, single sound, no music, no voice",
+ "batches": {
+  "b1": [
+   {
+    "key": "atk_basic",
+    "zh": "小龟·攻击(轻拳)",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "quick cartoon punch impact, snappy clear smack with a bright attack"
+   },
+   {
+    "key": "atk_stone",
+    "zh": "石头龟·打击(石头重击)",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "heavy stone club strike hitting a target, deep rocky thud"
+   },
+   {
+    "key": "atk_bamboo",
+    "zh": "竹叶龟·一叶刃",
+    "dur": 0.5,
+    "ref": "sfx_shoot",
+    "text": "sharp leaf blade thrown, quick swish then light slicing hit"
+   },
+   {
+    "key": "atk_angel",
+    "zh": "天使龟·裁决",
+    "dur": 0.5,
+    "ref": "sfx_boss_skill_orb_hit_1",
+    "text": "holy light strike, bright shimmering impact with a soft chime"
+   },
+   {
+    "key": "atk_ice",
+    "zh": "寒冰龟·冰锥",
+    "dur": 0.5,
+    "ref": "sfx_shoot",
+    "text": "ice shard projectile shot, crisp icy crack on impact"
+   },
+   {
+    "key": "atk_ninja",
+    "zh": "忍者龟·斩击",
+    "dur": 0.5,
+    "ref": "sfx_boss_skill_slash_hit",
+    "text": "fast ninja sword slash, sharp metallic swish and cut"
+   },
+   {
+    "key": "atk_two_head",
+    "zh": "变脸龟·灵能弹",
+    "dur": 0.5,
+    "ref": "sfx_shoot",
+    "text": "psychic energy bolt shot, wobbly warbling zap impact"
+   },
+   {
+    "key": "atk_ghost",
+    "zh": "幽灵龟·幽魂触碰",
+    "dur": 0.5,
+    "ref": "sfx_boss_skill_orb_hit_1",
+    "text": "eerie ghost touch, airy spectral whoosh with a soft hit"
+   },
+   {
+    "key": "atk_diamond",
+    "zh": "钻石龟·钻石切割",
+    "dur": 0.5,
+    "ref": "sfx_boss_skill_slash_hit",
+    "text": "diamond blade slice, glassy sharp cut with a crystal ring"
+   },
+   {
+    "key": "atk_fortune",
+    "zh": "财神龟·打击",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "golden strike hitting a target, light thump with a short coin jingle"
+   },
+   {
+    "key": "atk_dice",
+    "zh": "骰子龟·骰子攻击",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "one big heavy wooden die thudding hard into a target, a deep solid body with a short low rumble, no rattling"
+   },
+   {
+    "key": "atk_rainbow",
+    "zh": "彩虹龟·七彩光束",
+    "dur": 0.5,
+    "ref": "particle_caster_single_001",
+    "text": "rainbow light beam zap, bright shimmering magical laser"
+   },
+   {
+    "key": "atk_gambler",
+    "zh": "赌神龟·卡牌射击",
+    "dur": 0.5,
+    "ref": "sfx_shoot",
+    "text": "a playing card snapping hard into a target, an instant sharp paper slap, no whoosh before it"
+   },
+   {
+    "key": "atk_hunter",
+    "zh": "猎人龟·射箭",
+    "dur": 0.5,
+    "ref": "magnetcrossbow_single_004",
+    "text": "a bright sharp arrow strike, quick bow twang into a crisp thwack on impact"
+   },
+   {
+    "key": "atk_pirate",
+    "zh": "海盗龟·弯刀",
+    "dur": 0.5,
+    "ref": "sfx_boss_skill_slash_hit",
+    "text": "pirate cutlass slash, metal blade swing and slicing hit"
+   },
+   {
+    "key": "atk_candy",
+    "zh": "糖果龟·糖果拳",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "candy coated cartoon punch, bouncy rubbery bonk hit"
+   },
+   {
+    "key": "atk_bubble",
+    "zh": "泡泡龟·泡泡三连击",
+    "dur": 0.5,
+    "ref": "bubble",
+    "text": "three quick watery bubble shots fired in a row, each with a crisp wet pop impact"
+   },
+   {
+    "key": "atk_line",
+    "zh": "线条龟·素描",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "quick pencil scribble strike ending in a small ink splat"
+   },
+   {
+    "key": "atk_lightning",
+    "zh": "闪电龟·闪电",
+    "dur": 0.5,
+    "ref": "particle_caster_single_001",
+    "text": "small electric lightning zap, crackling electric arc"
+   },
+   {
+    "key": "atk_phoenix",
+    "zh": "凤凰龟·灼烧(喷火)",
+    "dur": 0.5,
+    "ref": "flame_load",
+    "text": "short burst of fire breath, whooshing flame"
+   },
+   {
+    "key": "atk_lava",
+    "zh": "熔岩龟·熔岩弹",
+    "dur": 0.5,
+    "ref": "etfx_explosion_gas",
+    "text": "molten lava ball thrown, sizzling gloopy splat impact"
+   },
+   {
+    "key": "atk_cyber",
+    "zh": "赛博龟·激光枪",
+    "dur": 0.5,
+    "ref": "player_shoot",
+    "text": "sci-fi laser gun shot, clean digital pew"
+   },
+   {
+    "key": "atk_crystal",
+    "zh": "水晶龟·水晶刺",
+    "dur": 0.5,
+    "ref": "sfx_boss_skill_orb_hit_1",
+    "text": "crystal spike thrust, ringing crystalline stab"
+   },
+   {
+    "key": "atk_chest",
+    "zh": "宝箱龟·宝箱砸击",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "heavy wooden treasure chest slammed down, wooden thud with coins rattling"
+   },
+   {
+    "key": "atk_space",
+    "zh": "星际龟·星光弹",
+    "dur": 0.5,
+    "ref": "particle_caster_single_001",
+    "text": "starlight energy bolt, sparkly cosmic zap"
+   },
+   {
+    "key": "atk_hiding",
+    "zh": "缩头乌龟·攻击",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "a quick sharp shell bump hitting a target, instant snappy knock with a hard wooden attack"
+   },
+   {
+    "key": "atk_headless",
+    "zh": "无头龟·撕咬",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "monster bite, wet chomp crunch"
+   },
+   {
+    "key": "atk_shell",
+    "zh": "龟壳·攻击",
+    "dur": 0.5,
+    "ref": "hit8",
+    "text": "spinning turtle shell hit, hollow shell clack"
+   },
+   {
+    "key": "victory",
+    "zh": "胜利",
+    "dur": 2.5,
+    "ref": "sfx_level_clear",
+    "text": "short cheerful victory fanfare jingle for a cartoon game"
+   },
+   {
+    "key": "defeat",
+    "zh": "失败",
+    "dur": 2.5,
+    "ref": "sfx_game_over",
+    "text": "short sad defeat jingle, gentle descending notes, cartoon game"
+   },
+   {
+    "key": "ui_click",
+    "zh": "按钮点击",
+    "dur": 0.5,
+    "ref": "sfx_ui_click",
+    "text": "very short crisp high-pitched user interface tap, a bright tiny tick, dry, no reverb"
+   },
+   {
+    "key": "ui_confirm",
+    "zh": "确认 / 开始",
+    "dur": 0.5,
+    "ref": "sfx_pick_reward",
+    "text": "very short bright user interface confirm blip, one quick high chime that stops fast, crisp and dry"
+   },
+   {
+    "key": "ui_back",
+    "zh": "返回 / 关闭",
+    "dur": 0.5,
+    "ref": "sfx_ui_click",
+    "text": "an extremely short bright user interface tick, one crisp click that stops instantly, dry, no reverb"
+   },
+   {
+    "key": "reward_normal",
+    "zh": "普通奖励",
+    "dur": 1.0,
+    "ref": "sfx_canteen_reward_normal",
+    "text": "reward collect sound, light sparkle chime"
+   },
+   {
+    "key": "reward_rare",
+    "zh": "稀有奖励",
+    "dur": 1.2,
+    "ref": "sfx_canteen_reward_rare",
+    "text": "rare reward reveal, magical sparkle burst with bright shimmer"
+   },
+   {
+    "key": "level_up",
+    "zh": "升级",
+    "dur": 1.2,
+    "ref": "player_levelup",
+    "text": "level up sound, rising magical chime"
+   },
+   {
+    "key": "coin_buy",
+    "zh": "金币购买",
+    "dur": 0.5,
+    "ref": "coin_bag_reward",
+    "text": "short bright clink of a few gold coins, crisp metallic sparkle, quick and dry"
+   },
+   {
+    "key": "match_found",
+    "zh": "匹配成功",
+    "dur": 1.0,
+    "ref": "sfx_ui_popup",
+    "text": "match found alert, energetic short sting"
+   }
+  ]
+ }
+}

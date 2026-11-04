@@ -25,6 +25,8 @@ const LAYER := 8800
 const HOLD_SEC := 1.5            ## 盖多久再调 then(秒, 墙钟)
 const FADE_SEC := 0.25           ## 调完 then 之后淡出(新场景在这段里接上, 不闪旧屏)
 const SFX := "res://assets/audio/sfx/queue_found.wav"
+## ★2026-11-04 优先用音效事件表里的「匹配成功」(match_found, 对黑箱弹窗音达标); 事件表没有才退回上面这条合成音。
+const SFX_EVENT := "match_found"
 const TXT_TITLE := "匹配成功"
 const TXT_SUB := "即将进入对局"
 
@@ -109,10 +111,13 @@ func _ready() -> void:
 	_build_band()
 	_layout()
 	get_viewport().size_changed.connect(_layout)
-	if ResourceLoader.exists(SFX) and not Audio.mute_sfx:
+	var _sfx_path: String = str(SfxEvents.EVENTS.get(SFX_EVENT, SFX))
+	if not ResourceLoader.exists(_sfx_path):
+		_sfx_path = SFX
+	if ResourceLoader.exists(_sfx_path) and not Audio.mute_sfx:
 		_sfx = AudioStreamPlayer.new()
 		_sfx.name = "Sfx"
-		_sfx.stream = load(SFX)
+		_sfx.stream = load(_sfx_path)
 		_sfx.volume_db = linear_to_db(maxf(0.0001, Audio.sfx_volume))
 		add_child(_sfx)
 		_sfx.play()

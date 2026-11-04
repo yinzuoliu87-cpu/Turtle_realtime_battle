@@ -827,6 +827,7 @@ func _on_btn(id: String) -> void:
 
 
 func _open_rewards() -> void:
+	Audio.play_sfx("reward_rare")   # 冠军领奖(音效事件表; 2026-11-04 A5)
 	var rd := {"pages": data.get("rewards", []), "coin_from": int(data.get("coin_from", -1))}
 	if data.has("coin_target"):
 		rd["coin_target"] = data["coin_target"]

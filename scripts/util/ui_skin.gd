@@ -101,7 +101,35 @@ static func slot(fallback: StyleBox, tint: Color = Color.WHITE, dim: bool = fals
 ## ★用户 2026-10-22「为什么还在用这个木头按钮？我说了无数遍啊」: 商店 / 背包的弹出层与操作条一律用这一种,
 ##   不再用下面 `button()` 那块带铆钉的木牌框(frame-rect)。尺寸与字号由调用方定, 这里只管皮和字色。
 ## ★原来商店(`_card_button_skin`)和背包(`_card_btn`)各抄了一份这套颜色, 现在两边都调这里。
+## ★2026-11-04 按钮点击音(音效 A5): 上皮肤的四个入口(card_button / button / pixel_button / pixel_tab)统一接一次,
+##   打元数据标记防重复接(同一个按钮常被反复上皮)。按下那一刻读按钮上的字:
+##   返回 / 关闭 / 取消 → ui_back; 开始 / 确认 / 确定 / 购买 / 出战 → ui_confirm; 其余 ui_click。
+const _SFX_BACK := ["返回", "关闭", "取消"]
+const _SFX_CONFIRM := ["开始", "确认", "确定", "购买", "出战"]
+
+
+static func click_event_for(text: String) -> String:
+	for w in _SFX_CONFIRM:
+		if text.contains(w):
+			return "ui_confirm"
+	for w in _SFX_BACK:
+		if text.contains(w):
+			return "ui_back"
+	return "ui_click"
+
+
+static func hook_click_sfx(b: Button) -> void:
+	if b == null or b.has_meta("_ui_sfx"):
+		return
+	b.set_meta("_ui_sfx", true)
+	b.pressed.connect(func() -> void:
+		var au = b.get_node_or_null("/root/Audio")
+		if au != null:
+			au.play_sfx(click_event_for(b.text), 1.0, 1.0, 0.03, 0.03))
+
+
 static func card_button(b: Button) -> void:
+	hook_click_sfx(b)
 	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
 			["disabled", "#3a2a1e", "#6a5440"], ["focus", "#6a3f1c", "#ffe27a"]]:
 		var sb := StyleBoxFlat.new()
@@ -117,6 +145,7 @@ static func card_button(b: Button) -> void:
 
 
 static func button(b: Button, tint: Color = Color.WHITE, margin: int = 7) -> void:
+	hook_click_sfx(b)
 	## ★★按尺寸挑框(2026-08-19): 原来一律用 `chip-frame`(源图 **48x24**)。
 	##   小签牌上没问题, 但返回键这类 120x81 的大按钮把它拉了 2.5~3.4 倍 ——
 	##   **金属细节全被拉平, 看起来就是一块灰板**(实拍图鉴/排行榜/背包的返回键, 三个一模一样)。
@@ -202,6 +231,7 @@ static func _px_cell(row: int, col: int, pressed: bool = false) -> StyleBoxTextu
 
 ## 像素按钮(实心色块)。`accent` = PX_RED / PX_GOLD / PX_SLATE。
 static func pixel_button(b: Button, accent: String = PX_SLATE, outline: int = 4) -> void:
+	hook_click_sfx(b)
 	var row: int = int(_PX_ROW.get(accent, 2))
 	var styles := {
 		"normal": _px_cell(row, 0), "hover": _px_cell(row, 1), "pressed": _px_cell(row, 2, true),
@@ -221,6 +251,7 @@ static func pixel_button(b: Button, accent: String = PX_SLATE, outline: int = 4)
 
 ## 像素页签(深底细边)。`on` = 选中: 青边 + 青色底杠 + 亮字; 未选: 暗边暗字。切换选中时再调一次。
 static func pixel_tab(b: Button, on: bool) -> void:
+	hook_click_sfx(b)
 	var c0 := 2 if on else 0
 	var styles := {
 		"normal": _px_cell(_PX_ROW_TAB, c0), "hover": _px_cell(_PX_ROW_TAB, c0 + 1),

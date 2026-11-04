@@ -22,6 +22,7 @@ func _on_break_jar() -> void:
 
 
 func _show_jar_reward(r: Dictionary) -> void:
+	Audio.play_sfx("reward_rare")   # 开罐大奖(音效事件表; 2026-11-04 A5)
 	var dim = ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

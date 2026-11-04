@@ -1,0 +1,150 @@
+extends Node
+## verify_sfx_events.gd —— 音效事件接进游戏了没有(2026-11-04 · A5; 用户「一个乌龟攻击是物理伤害，另外一个也是物理伤害，
+##   它们两个音效，你觉得应该是用一样的音效吗？」「我只听最终成果」)。量的是【游戏里真播出去的是哪条】(Audio.recent):
+##   ① 事件表(SfxEvents, build_sfx.py 生成)每个文件都在、都载进了 Audio
+##   ② ★28 只龟逐只真打一次普攻(_basic_attack → 近战即时 / 弹道推进到落地): 播的是它自己的 atk_<id>, 不是通用命中音
+##   ③ 小将普攻照旧通用命中音(没有专属声)
+##   ④ 按钮: 上皮肤的按钮按下去播点击音; 字是「返回」播 ui_back、「开始战斗」播 ui_confirm; 同一按钮上两次皮只响一声
+##   ⑤ 结算: _show_banner(true) 播 victory、(false) 播 defeat
+## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_sfx_events.tscn --quit-after 3000
+
+const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+
+var _n := 0
+var _fail := 0
+
+
+func _ok(name: String, cond: bool, detail: String = "") -> void:
+	_n += 1
+	if cond:
+		print("  [PASS] ", name, ("  " + detail) if detail != "" else "")
+	else:
+		_fail += 1
+		print("  [FAIL] ", name, "  ", detail)
+
+
+func _ready() -> void:
+	await get_tree().process_frame
+	var au = get_node_or_null("/root/Audio")
+	var gs = get_node_or_null("/root/GameState")
+	if gs != null:
+		gs.test_mode = true
+	_ok("分母: Audio 在", au != null)
+	if au == null:
+		_finish()
+		return
+	au.mute_sfx = false
+
+	## ① 事件表
+	var n_ev := 0
+	var miss: Array = []
+	for ev in SfxEvents.EVENTS:
+		n_ev += 1
+		if not (ResourceLoader.exists(str(SfxEvents.EVENTS[ev])) and au.has_sfx(ev)):
+			miss.append(ev)
+	_ok("① 事件表 %d 条全部载进 Audio" % n_ev, n_ev >= 38 and miss.is_empty(), str(miss))
+
+	var scene = RTScene.new()
+	add_child(scene)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	scene.set_process(false)
+	scene.set_physics_process(false)
+	scene._edit_mode = false
+	scene._dl_state = "fight"
+
+	## ② 每只龟普攻 → 它自己的声音
+	var ids: Array = []
+	for p in DataRegistry.launch_pets:
+		ids.append(str((p as Dictionary).get("id", "")))
+	var wrong: Array = []
+	var n_t := 0
+	for id in ids:
+		var got := await _basic_once(scene, au, id, {})
+		n_t += 1
+		if not got.has("atk_" + id):
+			wrong.append("%s → %s" % [id, str(got)])
+	_ok("★② %d 只龟普攻命中播的都是自己那条 atk_<id>" % n_t, n_t >= 28 and wrong.is_empty(), "; ".join(wrong))
+
+	## ③ 小将: 没有专属声 ⇒ 通用命中音
+	var gm := await _basic_once(scene, au, "__minion__", {"minion": true, "role": "front", "level": 1})
+	var atk_any := false
+	for s in gm:
+		if str(s).begins_with("atk_"):
+			atk_any = true
+	_ok("③ 小将普攻照旧通用命中音(不借某只龟的声音)", not atk_any and (gm.has("hit-physical") or gm.has("hit-crit")), str(gm))
+
+	## ④ 按钮
+	var cases := [["背包", "ui_click"], ["返回", "ui_back"], ["开始战斗", "ui_confirm"], ["购买", "ui_confirm"]]
+	for c in cases:
+		var b := Button.new()
+		b.text = str(c[0])
+		add_child(b)
+		UISkin.card_button(b)
+		UISkin.button(b)   # 同一个按钮上两次皮
+		au.recent.clear()
+		b.pressed.emit()
+		_ok("④ 按钮「%s」按下 → 只响一声 %s" % [c[0], c[1]], au.recent.size() == 1 and au.recent[0] == str(c[1]), str(au.recent))
+		b.queue_free()
+
+	## ⑥ 结算页奖励: 拿到币 ⇒ 金币格弹出时 reward_normal; 本局升了级 ⇒ 接着 level_up(真入口 _show_banner → 结算页补间)
+	scene._settled = false
+	scene._had_season = true
+	scene._last_reward = 7
+	GameState.season_level = 5   # 测试档默认 1 级 ⇒ 快照 0 会被「快照 ≥ 1」挡掉; 造一个 4 → 5 的升级
+	scene.set_meta("_season_lv0", 4)
+	au.recent.clear()
+	scene._hud._show_banner(true)
+	## 结算页补间按真实时间走(奖励 0.42 s、升级 1.02 s); 无头帧很快, 按帧数等会不到点 ⇒ 按毫秒等, 最多 3 秒
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 3000 and not au.recent.has("level_up"):
+		await get_tree().process_frame
+	_ok("⑥ 结算页拿到币 ⇒ 播 reward_normal、本局升级 ⇒ 播 level_up", au.recent.has("reward_normal") and au.recent.has("level_up"), str(au.recent))
+	scene._had_season = false
+	## ⑤ 结算
+	for won in [true, false]:
+		au.recent.clear()
+		scene._settled = false   # _show_banner 结算过一次会拦第二次(同一场景里先测胜再测负)
+		scene._hud._show_banner(won)
+		await get_tree().process_frame
+		var want := "victory" if won else "defeat"
+		_ok("⑤ 结算(%s)播 %s" % ["胜" if won else "负", want], au.recent.has(want), str(au.recent))
+	_finish()
+
+
+## 造一个攻击方 + 打不死的假人, 直接打一次普攻, 推进到弹道落地(最多 3 秒), 返回这期间真播出去的音效名。
+func _basic_once(scene, au, id: String, spec: Dictionary) -> Array:
+	scene._units.clear()
+	scene._t = 100.0 + float(_n)
+	scene._over = false
+	var atk: Dictionary = scene._spawn._make_unit(id, "left", Vector2(600, 400), spec)
+	atk["active_skills"] = []
+	scene._units.append(atk)
+	var d: float = 80.0 if bool(atk.get("melee", false)) else 220.0
+	var dummy: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(600.0 + d, 400.0))
+	dummy["active_skills"] = []
+	dummy["no_basic"] = true
+	dummy["no_move"] = true
+	dummy["maxHp"] = 1.0e7
+	dummy["hp"] = 1.0e7
+	scene._units.append(dummy)
+	await get_tree().process_frame
+	au.recent.clear()
+	scene._audio_sys._ev_last_t.clear()
+	scene._basic_attack(atk, dummy)
+	for _i in range(60):
+		scene._t += 0.05
+		scene._ballistics._step_pending_shots(0.05)
+		scene._ballistics._step_projectiles(0.05)
+		if not au.recent.is_empty() and float(dummy["hp"]) < 1.0e7:
+			break
+	return au.recent.duplicate()
+
+
+func _finish() -> void:
+	print("分母: %d 项" % _n)
+	if _fail == 0:
+		print("ALL PASS — 音效事件接进游戏了(普攻按来源 / 按钮 / 结算)")
+	else:
+		print("FAIL x%d" % _fail)
+	get_tree().quit()

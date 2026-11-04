@@ -1181,12 +1181,10 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 			and is_instance_valid(battle._dmg_stats.panel):
 		battle._dmg_stats.panel.visible = false
 	battle._log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "胜利" if won else "失败"])
-	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
-	# ⚠缺口(2026-07-21 核实): assets/audio/sfx/ 下【只有 defeat.wav, 没有胜利音】,
-	#   所以赢了是静悄悄的。不在这里硬写一个 "victory" —— 文件不存在时 battle._audio_sys._sfx_simple 是
-	#   静默失败(不报错、只是没声音), 反而更难发现。等补了音频文件再接。
-	if not won:
-		battle._audio_sys._sfx_simple("defeat")
+	# §AUDIO: 结算 — 胜方放 victory、败方放 defeat; BGM 淡出收尾.
+	## ★2026-11-04 补上胜利音(原来只有 defeat.wav, 赢了是静悄悄的): 两条都来自音效事件表(build_sfx.py),
+	##   门禁 verify_sfx_events 量「文件在 + 这里真的播了」。
+	battle._audio_sys._sfx_simple("victory" if won else "defeat")
 	var a = battle._audio_sys._audio()
 	if a != null:
 		a.stop_bgm()
@@ -1680,6 +1678,9 @@ func unit_portrait(u: Dictionary) -> Texture2D:
 func _build_team_panels() -> void:
 	if battle._ui_layer == null:
 		return
+	## 开局记一笔大轮等级(结算时比它高 ⇒ 播升级音, 见 settle_screen._pop_coin_chip)。只记第一次(头像栏换路 / 归顺时会重建)。
+	if not battle.has_meta("_season_lv0"):
+		battle.set_meta("_season_lv0", int(GameState.season_level))
 	# 旧栏清掉 (重生/重开安全)
 	# ★必须 remove_child 之后再 queue_free —— queue_free 是【延迟到帧末】的:
 	#   光 queue_free 的话, 旧栏这一帧还挂在树上, 于是

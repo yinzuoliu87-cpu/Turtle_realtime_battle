@@ -1228,6 +1228,7 @@ func _on_buy(idx: int) -> void:
 	else:
 		_toast("购买成功，「%s」已放入背包" % _nm)
 	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
+	Audio.play_sfx("coin_buy")   # 成交音(音效事件表; 2026-11-04 A5)
 	if _axe_evolved:
 		## ★还没补放的(结算 / 战斗里攒出来的)排在前面一起播 —— 否则先在这里看到 2→3, 进背包才补 1→2, 顺序反了。
 		play_axe_evo(GameState.axe_evo_take() + [{"from": _axe_from, "to": int(GameState.axe_stage)}])
