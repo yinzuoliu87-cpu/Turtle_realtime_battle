@@ -94,6 +94,10 @@ func close() -> void:
 ##   extra_title + extra: 装备的「本局统计」(纯文本, 每行一项)
 ##   head_right: 放在卡头最右边的控件(商店的「购买」, 2026-10-22 用户「购买按钮放右上角」)
 ## anchor = 被点的那个控件(小卡顶边对齐它)。返回 live 字典。
+## ★2026-11-04 技能小卡的绘制层级: 比信息面板(15)高一层, 战斗飘字(0)永远在它下面。
+const CARD_Z := 16
+
+
 func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 	if is_open(k):
 		close()                          # 再点一次 = 收起
@@ -112,6 +116,7 @@ func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 	card.mouse_filter = Control.MOUSE_FILTER_STOP   # 点在卡上不穿到战场(否则会关掉面板)
 	card.custom_minimum_size = Vector2(_w, 0)
 	card.size = Vector2(_w, 0)
+	card.z_index = CARD_Z   # 画在信息面板(15)与战斗飘字(0)上面, 见 battle_hud 建信息面板处的层级说明
 	battle._ui_layer.add_child(card)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)

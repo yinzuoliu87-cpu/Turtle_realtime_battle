@@ -184,6 +184,13 @@ func _test_minion_card_rules(s) -> void:
 			s._info_sys._open_skill_card(u, "sk:test_" + kind, str(ed.get("name", "")), "技能", float(ed.get("cost", -1.0)), ed, s._info_panel)
 			var tb: Array = s._info_sys.card().live.get("table", []) if s._info_sys.card().is_open("sk:test_" + kind) else []
 			_ok("★④ %s · 点开的卡有底部公式行(伤害 = 系数 × 攻击力)" % want, tb.size() >= 1, "%d 行" % tb.size())
+			## ⑤ 2026-11-04 战斗飘字不许盖住面板与小卡(用户截图: 治疗飘字「+4」压在小卡「22% 生命偷取」上)
+			var n_before: int = s._ui_layer.get_child_count()
+			s._vfx._float_text(u["pos"], "+4", Color("#3ddc84"))
+			var fl: CanvasItem = s._ui_layer.get_child(s._ui_layer.get_child_count() - 1) as CanvasItem
+			var cd: CanvasItem = s._info_sys.card().card
+			_ok("★⑤ %s · 飘字画在信息面板与技能小卡下面(z: 飘字 %d < 面板 %d < 小卡 %d)" % [want, fl.z_index if fl else -99, s._info_panel.z_index, cd.z_index if cd else -99],
+				s._ui_layer.get_child_count() > n_before and fl != null and cd != null and fl.z_index < s._info_panel.z_index and s._info_panel.z_index < cd.z_index)
 			s._info_sys.card().close()
 			n += 1
 	_ok("分母 · 四种小将(近战 / 远程 / 精英 / 援军)的技能卡都量到了", n >= 4 and names.size() == 4, "%d 张 · %s" % [n, str(names.keys())])

@@ -2004,6 +2004,10 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   底下也没有任何东西。宝箱龟正好差 28px 才装得下, 这里白让出来的 18px 是最便宜的一笔。
 	panel.offset_top = 46.0; panel.offset_bottom = -8.0
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉面板内点击(不穿到战场·点空白才关)
+	## ★2026-11-04 画在战斗飘字上面(用户截图: 绿色治疗飘字「+4」压在技能小卡的「22% 生命偷取」上)。
+	##   飘字与面板同在 _ui_layer、后加的画在上面 ⇒ 开着面板时新冒的飘字会盖住它。
+	##   层级: 飘字 0 < 装备闪屏 3 < 信息面板 15 < 技能小卡 16(inspect_card.CARD_Z) < 顶栏弹层 19~20 < 结算 / 换路幕布 50。
+	panel.z_index = 15
 	battle._ui_layer.add_child(panel)
 	battle._info_panel = panel
 
