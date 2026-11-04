@@ -520,6 +520,40 @@ if [ -n "${SHARD:-}" ]; then
 fi
 FIRST_SHARD=0; [ "$SHARD_K" -eq 1 ] && FIRST_SHARD=1
 
+## ★★2026-11-04 只改文档 ⇒ 复用上次全绿(用户「改」; memory project-gate-reuse-docs-only-1104)。
+##   测试输入 = docs/ 与根目录 .md 以外的全部文件 + 被 Godot 侧代码用 res:// 点名的文档 + Godot 可执行文件
+##   (口径全在 tools/gate_input_key.py)。与上次全绿时逐字节相同 ⇒ 自证测试 + 冒烟复用上次结果, 不起 Godot;
+##   三方对账 / 审计器照跑(它们读文档, 文档改了它们把关)。输入变了一个字节 ⇒ 照旧全套。
+##   · 只在本机全套(不分片)时生效; 记录 12 小时过期(防日期相关的测试吃旧结果); `GATE_NO_REUSE=1` 强制全套。
+##   · 记录只在「全套跑完全绿 + 开头与结尾算的 key 相同(跑的时候没人改仓库)」时写, 落 .out/gate/last_green.txt。
+##   · `GATE_REUSE_CHECK=1` 只打印判定(REUSE / FULL + 原因)就退出 —— 反向验证用。
+GATE_STAMP="$GATE_FAIL_DIR/last_green.txt"
+GATE_KEY=""
+REUSE=0
+REUSE_WHY=""
+S_KEY=""; S_EPOCH=0; S_HEAD=""; S_N=0
+if [ "$SHARD_N" -eq 1 ]; then
+  GATE_KEY="$(cd "$DIR" && GODOT="$GODOT" python tools/gate_input_key.py 2>/dev/null | head -1)"
+  if [ "${GATE_NO_REUSE:-}" = "1" ]; then REUSE_WHY="GATE_NO_REUSE=1"
+  elif [ -z "$GATE_KEY" ]; then REUSE_WHY="算不出测试输入 key(tools/gate_input_key.py 失败)"
+  elif [ ! -f "$GATE_STAMP" ]; then REUSE_WHY="没有上次全绿的记录"
+  else
+    read -r S_KEY S_EPOCH S_HEAD S_N < "$GATE_STAMP"
+    S_AGE=$(( $(date +%s) - ${S_EPOCH:-0} ))
+    if [ "$S_KEY" != "$GATE_KEY" ]; then REUSE_WHY="测试输入与上次全绿($S_HEAD)不同"
+    elif [ "$S_AGE" -gt 43200 ]; then REUSE_WHY="上次全绿($S_HEAD)已过 12 小时($(( S_AGE / 3600 )) 小时前)"
+    elif ! [[ "$S_N" =~ ^[0-9]+$ ]] || [ "$S_N" -lt 1 ]; then REUSE_WHY="上次全绿的记录坏了"
+    else REUSE=1
+    fi
+  fi
+else
+  REUSE_WHY="分片(SHARD=$SHARD)不复用"
+fi
+if [ "${GATE_REUSE_CHECK:-}" = "1" ]; then
+  if [ "$REUSE" -eq 1 ]; then echo "REUSE 上次全绿 $S_HEAD · $S_N 项 · key ${GATE_KEY:0:12}"; else echo "FULL $REUSE_WHY"; fi
+  exit 0
+fi
+
 # 只跑, 不判定。输出与退出码各写一个文件(并行下拿不到子进程的 $?)
 run_one () {  # $1 = 测试名
   local t="$1"
@@ -656,7 +690,7 @@ trap 'rm -rf "$RAW" "$ARAW"' EXIT
 
 # ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
 #   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。
-QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" --import > /dev/null 2>&1
+[ "$REUSE" -eq 1 ] || QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" --import > /dev/null 2>&1
 
 # ★冒烟(80 秒)与测试池【同时】跑 —— 它是完全独立的进程, 与自证测试零共享状态,
 #   排在后面串行等 = 白白多花 80 秒。判定逻辑在下面的冒烟段, 一个字没改。
@@ -665,7 +699,7 @@ QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headles
 #   每跑一次门禁就在线上 auth.users 里造一个垃圾账号(本机 + CI 每次都造; 9-27 起每天 25~125 个, 实测零真人)。
 #   测试池那一行早就带了, 冒烟这一行漏了。判据: tools/gate_offline_audit.py。
 SMOKE_PID=""
-if [ "$FIRST_SHARD" -eq 1 ]; then
+if [ "$FIRST_SHARD" -eq 1 ] && [ "$REUSE" -eq 0 ]; then
 ( SHIP=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
     --quit-after 90000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
 SMOKE_PID=$!
@@ -739,6 +773,11 @@ export GODOT DIR RAW
 ##   ⇒ 按帧预算从大到小排。帧预算是现成的代理, 相关性很好(长杆都是 3~6 万帧, 默认才 500),
 ##     **不新增任何状态文件** —— 存一份"上次各跑了多久"会让仓库每轮都脏一次,
 ##     而那份数据还会随机器快慢漂。
+if [ "$REUSE" -eq 1 ]; then
+  ## 复用: 不起 Godot。S_N = 上次全绿时自证测试 + 冒烟通过的项数(那次分母就是它)。
+  PASS=$((PASS + S_N))
+  echo "  REUSE 自证测试 + 冒烟 $S_N 项: 测试输入与上次全绿($S_HEAD, $(( S_AGE / 60 )) 分钟前)逐字节相同 ⇒ 复用(GATE_NO_REUSE=1 强制全套)"
+else
 for _n in "${NAMES[@]}"; do printf '%s %s\n' "$(frames_for "$_n")" "$_n"; done \
   | sort -rn | awk '{print $2}' | xargs -P "$JOBS" -I{} bash -c 'run_one "$@"' _ {}
 
@@ -746,6 +785,7 @@ for _n in "${NAMES[@]}"; do printf '%s %s\n' "$(frames_for "$_n")" "$_n"; done \
 for t in "${NAMES[@]}"; do
   run_test "$t"
 done
+fi
 echo "  (发现 $DISCOVERED 个测试, 并行度 $JOBS)"
 
 # ── 耗时表 ────────────────────────────────────────────────────
@@ -799,7 +839,7 @@ fi
 
 # ── 全流程闪退冒烟 ────────────────────────────────────────────────────────────
 #   必须用 SHIP=1 跑: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
-if [ "$FIRST_SHARD" -eq 1 ]; then
+if [ "$FIRST_SHARD" -eq 1 ] && [ "$REUSE" -eq 0 ]; then
 echo "=== 全流程闪退冒烟 (SHIP=1 真实对局) ==="
 wait "$SMOKE_PID"        # ★它在自证测试跑的时候就已经在跑了, 通常这里立刻返回
 SMOKE_OUT="$(cat "$RAW/smoke.log" 2>/dev/null)"
@@ -831,6 +871,7 @@ else
   cp "$RAW/smoke.log" "$GATE_FAIL_DIR/smoke_scenes.log" 2>/dev/null || true
 fi
 fi   # FIRST_SHARD: 冒烟
+GODOT_PASS=$PASS   # 自证测试 + 冒烟通过的项数(复用记录的分母)
 
 
 # ── 三方一致性对账 (pets.json ↔ 活代码 ↔ 权威文档) ──────────────────────────
@@ -1081,8 +1122,21 @@ run_audit "tools/bot_runner_queue_audit.py" "ALL OK" "bot_runner_queue (陪练�
 run_audit "tools/gauntlet_planner_audit.py" "ALL OK" "gauntlet_planner (周末在线闯关陪练号调度器推演: 12 格候场·真人等待≤120秒·开赛/平时/收尾·35 条输赢路线穷举)"
 
 echo ""
+if [ "$FAIL" -eq 0 ] && [ "$REUSE" -eq 0 ] && [ "$SHARD_N" -eq 1 ] && [ -n "$GATE_KEY" ]; then
+  K2="$(cd "$DIR" && GODOT="$GODOT" python tools/gate_input_key.py 2>/dev/null | head -1)"
+  if [ "$K2" = "$GATE_KEY" ]; then
+    echo "$GATE_KEY $(date +%s) $(git -C "$DIR" rev-parse --short HEAD 2>/dev/null) $GODOT_PASS" > "$GATE_STAMP"
+    echo "  (已记全绿: key ${GATE_KEY:0:12} · 自证测试 + 冒烟 $GODOT_PASS 项; 之后只改文档可复用)"
+  else
+    echo "  ⚠ 门禁跑的时候测试输入变了(开头 ${GATE_KEY:0:12} / 结尾 ${K2:0:12}) ⇒ 这轮不记全绿"
+  fi
+fi
 if [ "$FAIL" -eq 0 ]; then
-  echo "ALL PASS ($PASS/$PASS)"
+  if [ "$REUSE" -eq 1 ]; then
+    echo "ALL PASS ($PASS/$PASS · 其中 $S_N 项复用上次全绿 $S_HEAD)"
+  else
+    echo "ALL PASS ($PASS/$PASS)"
+  fi
   exit 0
 else
   echo "FAIL x$FAIL  (PASS $PASS)"

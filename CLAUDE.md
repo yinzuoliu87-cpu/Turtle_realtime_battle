@@ -34,6 +34,7 @@ SHARD=k/8 SHARD_LIST_ONLY=1 bash run-tests.sh   # 只看第 k 片分到哪几条
 ```
 
 - **推送前本机跑完整门禁、全过再推，不拿 CI 试错**（用户 10-31）。门禁在跑时不改仓库（改了 = 这轮作废）。
+- **只改文档 ⇒ 复用上次全绿**（用户 11-04「改」，修订上一条）：`run-tests.sh` 开头用 `tools/gate_input_key.py` 算测试输入哈希（docs/ 与根目录 .md 以外的全部文件 + 被 Godot 侧 `res://` 点名的文档 + Godot 可执行文件）；与 12 小时内上次全绿相同 ⇒ 自证测试 + 冒烟复用、不起 Godot，三方对账与审计器照跑，结尾打「其中 N 项复用」。输入变一个字节就跑全套。`GATE_NO_REUSE=1` 强制全套，`GATE_REUSE_CHECK=1` 只看判定。**不许扩大成「只跑相关测试」**（用户没同意）。
 - 手动跑单条测试一律隔离存档：`APPDATA=$U XDG_DATA_HOME=$U`（Windows 看 `APPDATA`，Linux/CI 看 `XDG_DATA_HOME`，两个都设；`verify_gate_isolation` 守）。并设 `TURTLE_SUPABASE=" "` 不连服务器。
 - 判定 = 退出码 0 + 不命中 `run-tests.sh` 顶部 `FATAL` 致命报错正则 + 日志里有 `ALL PASS`。**新报错形态往 `FATAL` 里加**，漏一个模式就等于把 bug 判绿。
 - 测试**自动发现** `tests/verify_*.gd`（配好 `.tscn` 即纳入，无需登记）。慢测试在 `frames_for()` 登记帧预算 —— `--quit-after` 单位是**帧**；帧数不够表现为「没打 ALL PASS」，不是某条断言 FAIL。
