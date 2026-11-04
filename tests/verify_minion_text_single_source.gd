@@ -37,8 +37,10 @@ func _ready() -> void:
 	for t in types:
 		var k: String = str(MinionCodex.TYPE_TO_KIND.get(t, ""))
 		var codex_txt: String = str((MinionCodex.MINION_INFO.get(k, {}) as Dictionary).get("skill_desc", ""))
-		var battle_txt: String = str((MinionCodex.skill_desc(t) as Dictionary).get("desc", ""))
-		_ok("② %s 图鉴与战斗同一段文案" % t, codex_txt != "" and codex_txt == battle_txt,
+		## ★2026-11-04 战斗面板改走 render_skill_text(与龟同一条管线), 它吃的是 `tpl`(带占位符的原文);
+		##   `desc` 只展开了 {C:}, 给没有单位上下文的地方。「同一个字符串」比的是战斗真用的那份 = tpl。
+		var battle_txt: String = str((MinionCodex.skill_desc(t) as Dictionary).get("tpl", ""))
+		_ok("② %s 图鉴与战斗同一段文案(战斗面板渲染用的模板 == 图鉴表原文)" % t, codex_txt != "" and codex_txt == battle_txt,
 			"图鉴 %d 字 / 战斗 %d 字" % [codex_txt.length(), battle_txt.length()])
 
 	# ③ 战斗主文件里【不许再出现】第二份手抄常量

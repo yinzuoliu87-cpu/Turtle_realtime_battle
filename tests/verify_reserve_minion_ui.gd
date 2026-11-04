@@ -135,10 +135,12 @@ func _pure() -> void:
 	var desc := str(mi.get("skill_desc", ""))
 	var pv: Array = mi.get("passives", [])
 	var pdesc: String = str((pv[0] as Dictionary).get("desc", "")) if not pv.is_empty() else ""
-	_ok("★文案里 {C:} 全展开(技能 / 被动 / 签牌)", desc != "" and pdesc != "" and (desc + pdesc + str(mi.get("growth_tag", ""))).find("{") < 0,
+	## ★2026-11-04 技能文案改成龟同款推导式(「（100%×攻击力({ATK}) = {N:…}）物理伤害」, 小将技能卡按龟的规矩走):
+	##   info() 只展开 {C:}; {N:…} / {ATK} 留给 render_bbcode 按单位算(图鉴详情页显示无残留由下面「详情页没有 {C:} 残留」守)。
+	_ok("★文案里 {C:} 全展开(技能 / 被动 / 签牌)", desc != "" and pdesc != "" and (desc + pdesc + str(mi.get("growth_tag", ""))).find("{C:") < 0,
 		desc.substr(0, 30))
-	_ok("★技能文案: %s%% 攻击力物理 == ReserveConsts.ATK_COEF" % _pct(ReserveConsts.ATK_COEF),
-		desc.find("%s%% 攻击力的物理伤害" % _pct(ReserveConsts.ATK_COEF)) >= 0, desc)
+	_ok("★技能文案: 推导式系数 %s%% 攻击力 == ReserveConsts.ATK_COEF, 换算项引的是同一个常量" % _pct(ReserveConsts.ATK_COEF),
+		desc.find("（%s%%×攻击力" % _pct(ReserveConsts.ATK_COEF)) >= 0 and desc.find("{N:ReserveConsts.ATK_COEF*ATK}）物理伤害") >= 0, desc)
 	_ok("★技能文案: 该敌人 %s%% 最大生命值魔法 == ReserveConsts.MAXHP_PCT(写明是谁的生命值)" % _pct(ReserveConsts.MAXHP_PCT),
 		desc.find("该敌人 %s%% 最大生命值的魔法伤害" % _pct(ReserveConsts.MAXHP_PCT)) >= 0)
 	_ok("技能文案: 前后左右 / 同时追向该敌人(追踪) / 命中的第一个敌人", desc.find("前后左右") >= 0 and desc.find("同时追向该敌人") >= 0 and desc.find("命中的第一个敌人") >= 0)
@@ -275,7 +277,10 @@ func _battle(gs, art: String) -> void:
 	var e0: Dictionary = ent[0] if not ent.is_empty() else {}
 	_ok("③ 技能格「%s」· %d 龟能" % [ReserveConsts.SKILL_NAME, int(ReserveConsts.ENERGY)], ent.size() == 1
 		and str(e0.get("name", "")) == ReserveConsts.SKILL_NAME and absf(float(e0.get("cost", -1.0)) - ReserveConsts.ENERGY) < 0.01, str(ent))
-	_ok("③ 技能格正文 == 图鉴同一段(单一来源)", str(e0.get("desc", "")) == str(mi["skill_desc"]))
+	## ★2026-11-04 面板走 render_skill_text(算好数值 / 上色): 单一来源比的是渲染用的模板, 渲染结果另验无残留占位符。
+	_ok("③ 技能格的模板 == 图鉴表同一段原文(单一来源)", str(e0.get("tpl", "")) != ""
+		and str(e0.get("tpl", "")) == str((MinionCodex.MINION_INFO["reserve"] as Dictionary)["skill_desc"]))
+	_ok("③ 技能格正文已渲染(无残留占位符)", str(e0.get("desc", "")).find("{") < 0 and str(e0.get("desc", "")) != "", str(e0.get("desc", "")).left(60))
 	s._hud._show_unit_info_panel(u)
 	await _settle(2)
 	var ip_txt: PackedStringArray = _texts(s._info_panel) if s._info_panel != null else PackedStringArray()
