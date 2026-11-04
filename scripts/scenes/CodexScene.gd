@@ -661,11 +661,15 @@ func _fit_detail_frame(content_bottom: float) -> void:
 
 
 func _clear_detail() -> void:
-	## ★2026-11-04 先 remove_child 再 queue_free(与 battle_hud._build_team_panels 同一条规矩): 光 queue_free 的话旧页节点
-	##   这一帧还挂在树上 ⇒ ① 新页同名节点(BasicBar / PassiveBar)被引擎自动改名(小将页也有了普通攻击条后,
-	##   远程 → 精英切页实测精英那条变成 @Panel@N); ② 旧页与新页叠着画一帧。
+	## ★2026-11-04 旧页节点先让出名字、藏起来, 再 queue_free: 光 queue_free 的话它这一帧还挂在树上 ⇒
+	##   ① 新页同名节点(BasicBar / PassiveBar)被引擎自动改名(小将页也有了普通攻击条后, 远程 → 精英切页实测精英那条变成 @Panel@N);
+	##   ② 旧页与新页叠着画一帧。
+	##   ★不能 remove_child: 重画常常发生在详情里某个热区的点击回调里(点被动条 / 普攻条), 那个热区这时被摘出树,
+	##   引擎接着给它派发同一个事件 ⇒「can_process: !is_inside_tree()」(verify_scroll_touch_sweep 实测 4 条)。
 	for c in detail.get_children():
-		detail.remove_child(c)
+		c.name = "_old_%d" % c.get_instance_id()
+		if c is CanvasItem:
+			(c as CanvasItem).visible = false
 		c.queue_free()
 
 

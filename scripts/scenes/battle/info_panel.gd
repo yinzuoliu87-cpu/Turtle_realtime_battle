@@ -1387,7 +1387,8 @@ func _minion_entries(u: Dictionary) -> Array:
 				pas_tpl += "\n【%s】：%s" % [str(pd.get("name", "")), str(pd.get("desc", ""))]
 			pas_names.append(str(pd.get("name", "")))
 	if pas_names.is_empty():
-		out.append({"name": "被动 · 无", "cost": -1.0, "icon": "", "none": true, "desc": "", "tpl": "", "sk": {}})
+		## role 写明是被动格(名字里不拼「被动 · 」前缀: 那是两件事拼一行, 文案规矩 verify_ui_copy ③)
+		out.append({"name": "无", "role": "被动", "cost": -1.0, "icon": "", "none": true, "desc": "", "tpl": "", "sk": {}})
 	else:
 		out.append({"name": "被动 · " + " · ".join(pas_names), "cost": -1.0,
 			"icon": ("res://assets/sprites/" + pas_icon) if pas_icon != "" else "",
@@ -1901,6 +1902,8 @@ func _info_ability_row(vb: VBoxContainer, u: Dictionary) -> void:
 		var innate: bool = str(ent.get("name", "")).begins_with("被动 · ")
 		var basic: bool = str(ent.get("name", "")).find("(普攻)") >= 0
 		var role := "被动" if innate else ("攻击" if basic else "技能")
+		if ent.has("role"):
+			role = str(ent["role"])   # 条目自己写明是哪一格(小将没有被动时那一格「无」)
 		var cell := _slot_cell(rowc, str(ent.get("icon", "")), role, _ROLE_COL[role])
 		var cost: float = float(ent.get("cost", -1.0))
 		if cost >= 0.0:

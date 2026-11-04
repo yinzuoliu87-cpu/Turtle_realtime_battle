@@ -1619,7 +1619,6 @@ scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|窃取护盾
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
-scripts/scenes/battle/info_panel.gd|lit|被动 · 无
 scripts/scenes/battle/info_panel.gd|lit|财宝
 scripts/scenes/battle/info_panel.gd|lit|近战形态：锤击
 scripts/scenes/battle/info_panel.gd|lit|远程形态：灵能弹
