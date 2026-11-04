@@ -1043,6 +1043,7 @@ run_audit "tools/text_prose_guard.py"   "ALL OK" "text_prose_guard (文案的文
 # ★装备属性展示串 ↔ EquipStats.STATS(CLAUDE.md 说的真事实源)。这条缝以前谁都没管:
 #   tooltip_number_audit 只查 effectDesc1 的**效果**三元组, 属性这块它明确不管。
 run_audit "tools/basestats_audit.py"    "ALL OK" "basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)"
+run_audit "tools/equip_budget_audit.py" "ALL OK" "equip_budget (装备属性预算: 按费用×星级比同档中位数·越界进台账写理由·星级不许倒挂)"
 
 # ★await 之后 battle 可能已被 queue_free —— 2026-08-20 smoke 间歇红 1/3 的根因
 #   (`get_process_delta_time` in base `previously freed`)。这类错只在"战斗刚结束"那一瞬
