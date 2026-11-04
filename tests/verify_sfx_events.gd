@@ -42,7 +42,7 @@ func _ready() -> void:
 		n_ev += 1
 		if not (ResourceLoader.exists(str(SfxEvents.EVENTS[ev])) and au.has_sfx(ev)):
 			miss.append(ev)
-	_ok("① 事件表 %d 条全部载进 Audio" % n_ev, n_ev >= 38 and miss.is_empty(), str(miss))
+	_ok("① 事件表 %d 条全部载进 Audio(匹配成功沿用 queue_found.wav, 不在表里)" % n_ev, n_ev >= 37 and miss.is_empty(), str(miss))
 
 	var scene = RTScene.new()
 	add_child(scene)
@@ -87,6 +87,30 @@ func _ready() -> void:
 		_ok("④ 按钮「%s」按下 → 只响一声 %s" % [c[0], c[1]], au.recent.size() == 1 and au.recent[0] == str(c[1]), str(au.recent))
 		b.queue_free()
 
+	## ⑦ 主总线有限幅器(兜底不削波; 实机录 2 分钟原来 981/1200 个 0.1 秒块贴顶)
+	var has_lim := false
+	for i in range(AudioServer.get_bus_effect_count(0)):
+		if AudioServer.get_bus_effect(0, i) is AudioEffectHardLimiter:
+			has_lim = (AudioServer.get_bus_effect(0, i) as AudioEffectHardLimiter).ceiling_db <= -0.9
+	_ok("⑦ 主总线挂着限幅器(天花板 ≤ −0.9 dB)", has_lim)
+	## ⑧ 全场命中声同时最多 2 路: 6 只不同的龟同一刻普攻命中 ⇒ 只出 ≤ 2 声(原来按来源出声后 6 声叠加 → 削波)
+	au.recent.clear()
+	scene._audio_sys._ev_last_t.clear()
+	scene._audio_sys._hit_ts.clear()
+	scene._t += 5.0
+	var six := ["stone", "bamboo", "angel", "ice", "ninja", "pirate"]
+	for sid in six:
+		scene._audio_sys._sfx_hit(false, {"id": sid}, true)
+	var n_hit := 0
+	for s in au.recent:
+		if str(s).begins_with("atk_") or str(s).begins_with("hit-"):
+			n_hit += 1
+	_ok("⑧ 6 只龟同一刻普攻命中 ⇒ 命中声 ≤ 2 路(分母 6)", n_hit >= 1 and n_hit <= 2, str(au.recent))
+	scene._t += 0.2
+	au.recent.clear()
+	scene._audio_sys._sfx_hit(false, {"id": "lava"}, true)
+	_ok("⑧b 过了窗口(0.2 秒后)新的命中照常出声", au.recent.has("atk_lava"), str(au.recent))
+
 	## ⑥ 结算页奖励: 拿到币 ⇒ 金币格弹出时 reward_normal; 本局升了级 ⇒ 接着 level_up(真入口 _show_banner → 结算页补间)
 	scene._settled = false
 	scene._had_season = true
@@ -115,7 +139,7 @@ func _ready() -> void:
 ## 造一个攻击方 + 打不死的假人, 直接打一次普攻, 推进到弹道落地(最多 3 秒), 返回这期间真播出去的音效名。
 func _basic_once(scene, au, id: String, spec: Dictionary) -> Array:
 	scene._units.clear()
-	scene._t = 100.0 + float(_n)
+	scene._t += 10.0   # 时钟一直往前走(与真对局一样); 每只龟之间隔开, 不共用「全场最多 2 路」的时间窗
 	scene._over = false
 	var atk: Dictionary = scene._spawn._make_unit(id, "left", Vector2(600, 400), spec)
 	atk["active_skills"] = []
@@ -131,6 +155,7 @@ func _basic_once(scene, au, id: String, spec: Dictionary) -> Array:
 	await get_tree().process_frame
 	au.recent.clear()
 	scene._audio_sys._ev_last_t.clear()
+	scene._audio_sys._hit_ts.clear()
 	scene._basic_attack(atk, dummy)
 	for _i in range(60):
 		scene._t += 0.05

@@ -86,11 +86,32 @@ func _ready() -> void:
 		var ep: String = SfxEvents.EVENTS[ev]
 		if ResourceLoader.exists(ep):
 			_sfx_cache[ev] = load(ep)
+	_ensure_master_limiter()
 
 	# BGM player 常驻
 	_bgm_player = AudioStreamPlayer.new()
 	_bgm_player.bus = "Master"
 	add_child(_bgm_player)
+
+
+## ★2026-11-04 主总线限幅器(兜底): 多路音效 + 背景乐叠加时总输出不许削波 ——
+##   实机录 2 分钟量出整段 −6.4 LUFS、1200 个 0.1 秒块里 981 个贴顶。主因已在源头修(命中锚点对齐黑箱 −16.4、全场命中同时最多 2 路),
+##   这一层只管「万一还叠到顶」: 天花板 −1 dB。门禁 verify_sfx_events ⑦ 量它在不在。
+const MASTER_CEILING_DB := -1.0
+
+
+func _ensure_master_limiter() -> void:
+	for i in range(AudioServer.get_bus_effect_count(0)):
+		if AudioServer.get_bus_effect(0, i) is AudioEffectHardLimiter:
+			return
+	var lim := AudioEffectHardLimiter.new()
+	lim.ceiling_db = MASTER_CEILING_DB
+	AudioServer.add_bus_effect(0, lim, 0)
+
+
+## 游戏里还没换成新做的那几条旧音效(命中 / 暴击 / 治疗 / 护盾 / 复活)的增益: 新音效的命中锚点从原命中音(L100 −11.8)
+##   降到黑箱命中中位(−16.4), 旧音效同降 4.6 dB 保持相对关系(build_sfx.ANCHOR 头注)。被事件表同名覆盖的(defeat)不降。
+const LEGACY_GAIN := 0.589
 
 
 ## 把 bgm_volume 即时应用到正在播放的 BGM player (滑条拖动时实时听感, 无淡入).
@@ -122,6 +143,8 @@ func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 	var p := AudioStreamPlayer.new()
 	p.stream = stream
 	var vol_mult: float = volume_scale * (1.0 + randf_range(-vol_jitter, vol_jitter))
+	if SFX_PATHS.has(name) and not SfxEvents.EVENTS.has(name):
+		vol_mult *= LEGACY_GAIN
 	p.volume_db = linear_to_db(sfx_volume * maxf(0.01, vol_mult))
 	p.pitch_scale = pitch_base * (1.0 + randf_range(-pitch_jitter, pitch_jitter))
 	add_child(p)

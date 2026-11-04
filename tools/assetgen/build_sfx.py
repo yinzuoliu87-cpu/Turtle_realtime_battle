@@ -3,7 +3,7 @@
 
 输入: tools/assetgen/sfx_picks.json(tools/sfx_pick.py 自动定选; 每个事件一个候选文件)
       候选源文件在仓库外: <SFX_SRC>/eleven/<批次>/(tools/assetgen/gen_sfx_elevenlabs.py 拉下来的 ElevenLabs 生成结果)
-输出: assets/audio/sfx/ev/<事件>.wav(单声道 44.1 kHz 16 位) + LICENSES.md(授权台账)
+输出: assets/audio/sfx/ev/<事件>.wav(单声道 44.1 kHz 16 位) + tools/assetgen/sfx_licenses.md(授权台账)
       scripts/gamedata/sfx_events.gd(事件 → 路径表, Audio 读它; 本脚本生成, 勿手改)
 
 处理照黑箱 Demo 拆包实测(按类整组量的中位数, 见 CAT 表):
@@ -27,12 +27,17 @@ sys.stdout.reconfigure(encoding="utf-8")
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PICKS = os.path.join(ROOT, "tools", "assetgen", "sfx_picks.json")
 OUT_DIR = os.path.join(ROOT, "assets", "audio", "sfx", "ev")
+## 授权台账是文档不是素材 ⇒ 放 tools/assetgen/(原来写在 assets/ 里, asset_orphan 审计当它是没人引用的素材)
+LIC_PATH = os.path.join(ROOT, "tools", "assetgen", "sfx_licenses.md")
 EVENTS_GD = os.path.join(ROOT, "scripts", "gamedata", "sfx_events.gd")
 SRC = os.environ.get("SFX_SRC", r"D:/turtle_audio_src")
 FF = os.environ.get("FFMPEG", r"D:/oopz/ffmpeg.exe")
 SR = 44100
 ## ★响度一律用 L100(K 加权最响 100 ms, 见 l100 头注)。锚点 = 我们原命中音 hit-physical.wav 的 L100(实测 −11.8), 保持现有混音。
-ANCHOR = -11.8
+## ★11-04 实机录 2 分钟量出整段 −6.4 LUFS、1200 个 0.1 秒块里 981 个贴顶(削波): 原锚点(原命中音 −11.8)比黑箱命中中位(−16.4)
+##   响 4.6 dB, 原来全场命中只响一路时被盖住, 按来源出声后叠起来就爆了 ⇒ 绝对响度也对齐黑箱: 锚点 = 黑箱命中整组 L100 中位数。
+##   (游戏里没换掉的旧音效同降 4.6 dB, 见 Audio.LEGACY_GAIN; 全场命中同时最多 2 路, 见 audio_system._sfx_hit; 总线有限幅器兜底。)
+ANCHOR = -16.4
 ## 类 → 与命中的响度差(黑箱同类整组 L100 中位数之差, 11-04 实测) / 峰值上限 / 最长秒数 / 淡出秒数
 ##   胜利 / 失败不照黑箱(+9.6 / +8.3 会远超峰值上限被硬压): 取我们原失败音 defeat.wav 的 L100(−8.9) ⇒ +2.9, 两者同级。
 CAT = {
@@ -197,7 +202,7 @@ def check() -> int:
 	pj = json.load(open(PICKS, encoding="utf-8"))
 	picks = pj["picks"]
 	bad = []
-	lic = open(os.path.join(OUT_DIR, "LICENSES.md"), encoding="utf-8").read() if os.path.exists(os.path.join(OUT_DIR, "LICENSES.md")) else ""
+	lic = open(LIC_PATH, encoding="utf-8").read() if os.path.exists(LIC_PATH) else ""
 	for k, v in sorted(picks.items()):
 		p = os.path.join(OUT_DIR, k + ".wav")
 		if not os.path.exists(p):
@@ -245,7 +250,7 @@ def main() -> int:
 		x = process(decode(os.path.join(SRC, "eleven", pj["batch"], v["file"])), v["cat"])
 		write_wav(os.path.join(OUT_DIR, k + ".wav"), x)
 		lic.append("| %s.wav | %s | %s/%s | %s |" % (k, k, pj["batch"], v["file"], man.get(v["file"], {}).get("text", "?").replace("|", "/")))
-	open(os.path.join(OUT_DIR, "LICENSES.md"), "w", encoding="utf-8").write("\n".join(lic) + "\n")
+	open(LIC_PATH, "w", encoding="utf-8").write("\n".join(lic) + "\n")
 	open(EVENTS_GD, "w", encoding="utf-8").write(events_gd(picks))
 	print("生成 %d 个事件 → %s" % (len(picks), OUT_DIR))
 	return check()

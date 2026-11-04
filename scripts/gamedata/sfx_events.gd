@@ -35,7 +35,6 @@ const EVENTS := {
 	"coin_buy": "res://assets/audio/sfx/ev/coin_buy.wav",
 	"defeat": "res://assets/audio/sfx/ev/defeat.wav",
 	"level_up": "res://assets/audio/sfx/ev/level_up.wav",
-	"match_found": "res://assets/audio/sfx/ev/match_found.wav",
 	"reward_normal": "res://assets/audio/sfx/ev/reward_normal.wav",
 	"reward_rare": "res://assets/audio/sfx/ev/reward_rare.wav",
 	"ui_back": "res://assets/audio/sfx/ev/ui_back.wav",

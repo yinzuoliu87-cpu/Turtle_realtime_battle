@@ -45,6 +45,8 @@ KEY_CAT = {"ui_click": "click", "ui_back": "click", "ui_confirm": "confirm", "vi
 	"reward_normal": "reward_normal", "reward_rare": "reward_rare", "level_up": "levelup", "coin_buy": "coin",
 	"match_found": "popup"}
 NO_MELODY = {"atk", "click"}
+## 不定选的事件(有专门做的、已交付的声音, 且对黑箱标准也达标):
+EXCLUDE = {"match_found": "匹配成功沿用 assets/audio/sfx/queue_found.wav(为匹配弹层专门做的; 对黑箱弹窗标准达标; verify_gauntlet_queue_menu ⑥ 钉着它)"}
 SIM_MAX = 0.93
 
 
@@ -71,7 +73,7 @@ def main() -> int:
 	prof = {c: median_feats(v) for c, v in CAT_REFS.items()}
 	by_key = {}
 	for fn, rec in man.items():
-		if os.path.exists(os.path.join(cdir, fn)) and fn in clap:
+		if os.path.exists(os.path.join(cdir, fn)) and fn in clap and rec["key"] not in EXCLUDE:
 			by_key.setdefault(rec["key"], []).append(fn)
 	report = ["key\tcand\tverdict\tscore\tdist\tclap\tclap_z\tbad\twhy"]
 	ranked = {}

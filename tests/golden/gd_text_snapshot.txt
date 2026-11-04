@@ -2685,3 +2685,11 @@ scripts/util/skill_text.gd|lit|被动：
 scripts/util/skill_text.gd|lit|防御力加成
 scripts/util/skill_text.gd|lit|魔抗
 scripts/util/skill_text.gd|lit|魔法伤害
+scripts/util/ui_skin.gd|lit|关闭
+scripts/util/ui_skin.gd|lit|出战
+scripts/util/ui_skin.gd|lit|取消
+scripts/util/ui_skin.gd|lit|开始
+scripts/util/ui_skin.gd|lit|确定
+scripts/util/ui_skin.gd|lit|确认
+scripts/util/ui_skin.gd|lit|购买
+scripts/util/ui_skin.gd|lit|返回
