@@ -661,7 +661,11 @@ func _fit_detail_frame(content_bottom: float) -> void:
 
 
 func _clear_detail() -> void:
+	## ★2026-11-04 先 remove_child 再 queue_free(与 battle_hud._build_team_panels 同一条规矩): 光 queue_free 的话旧页节点
+	##   这一帧还挂在树上 ⇒ ① 新页同名节点(BasicBar / PassiveBar)被引擎自动改名(小将页也有了普通攻击条后,
+	##   远程 → 精英切页实测精英那条变成 @Panel@N); ② 旧页与新页叠着画一帧。
 	for c in detail.get_children():
+		detail.remove_child(c)
 		c.queue_free()
 
 

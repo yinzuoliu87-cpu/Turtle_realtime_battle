@@ -137,7 +137,7 @@ const MINION_INFO := {
 		##   (RealtimeBattle3DScene.DEFAULT_BASIC, 系数 BasicConsts.DEFAULT_BASIC_COEF, 单体物理) —— 原来这张表只有精英写了「长手刃」,
 		##   面板与图鉴都缺这一条。写法与长手刃同一句式。
 		"passives": [
-			{"name": "普通攻击", "slot": "basic", "desc": "近战小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
+			{"name": "普通攻击", "slot": "basic", "icon": "skills/minion-front-basic.png", "desc": "近战小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
 		],
 	},
 	"back": {
@@ -146,7 +146,7 @@ const MINION_INFO := {
 		"skill_name": "追踪火箭筒", "skill_cost": 120, "skill_icon": "skills/minion-rocket.png",
 		"skill_desc": "远程小将锁定一名敌人，蓄力 {C:HidingSystem.ROCKET_CHARGE_SEC} 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成（{C:HidingSystem.ROCKET_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.ROCKET_ATK_COEF*ATK}）物理伤害，并施加 {C:HidingSystem.ROCKET_HEALCUT_PCT%}% 治疗削减，持续 {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒。",
 		"passives": [
-			{"name": "普通攻击", "slot": "basic", "desc": "远程小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
+			{"name": "普通攻击", "slot": "basic", "icon": "skills/minion-back-basic.png", "desc": "远程小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
 		],
 	},
 	"elite": {
@@ -155,9 +155,10 @@ const MINION_INFO := {
 		"skill_name": "铁锤", "skill_cost": 100, "skill_icon": "skills/elite-hammer.png",
 		"skill_desc": "精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成（{C:EliteSystem.HAMMER_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_ATK_COEF*ATK}）魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成（{C:EliteSystem.HAMMER_BIG_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_BIG_ATK_COEF*ATK}）魔法伤害。",
 		## `slot` = 图鉴龟页同一套右栏里放哪: basic → 普通攻击条 / passive → 被动条 / skill → 技能卡(签「被动」)。
+		## `icon`(2026-11-04, 相对 assets/sprites/): 战斗信息面板能力排与图鉴普通攻击条 / 被动条用同一张; 铁锁合进被动格, 不单独出图。
 		"passives": [
-			{"name": "长手刃", "slot": "basic", "desc": "精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。每第 {C:EliteSystem.WHIRL_EVERY} 次攻击转而挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。"},
-			{"name": "吞噬", "slot": "passive", "desc": "精英小将在目标生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成后回复相当于目标剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，并获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。"},
+			{"name": "长手刃", "slot": "basic", "icon": "skills/elite-blade.png", "desc": "精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。每第 {C:EliteSystem.WHIRL_EVERY} 次攻击转而挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。"},
+			{"name": "吞噬", "slot": "passive", "icon": "passive/elite-consume-icon.png", "desc": "精英小将在目标生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成后回复相当于目标剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，并获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。"},
 			{"name": "铁锁", "slot": "skill", "desc": "精英小将每 {C:EliteSystem.WHIP_CD_SEC} 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 {C:EliteSystem.WHIP_STUN_SEC} 秒并拉至自身后方，造成（{C:EliteSystem.WHIP_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.WHIP_ATK_COEF*ATK}）魔法伤害。"},
 		],
 	},
@@ -173,8 +174,8 @@ const MINION_INFO := {
 		"growth_tag": "每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%",
 		"skill_desc": "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。",
 		"passives": [
-			{"name": "援军", "slot": "passive", "desc": "终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
-			{"name": "普通攻击", "slot": "basic", "desc": "援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
+			{"name": "援军", "slot": "passive", "icon": "passive/reserve-reinforce-icon.png", "desc": "终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
+			{"name": "普通攻击", "slot": "basic", "icon": "skills/reserve-basic.png", "desc": "援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
 		],
 	},
 }

@@ -101,7 +101,8 @@ func _minion_pet(kind: String, mi: Dictionary) -> Dictionary:
 	var extra: Array = []
 	var passive: Dictionary = {}
 	for pv in mi.get("passives", []):
-		var d: Dictionary = {"name": str(pv["name"]), "brief": str(pv["desc"]), "detail": str(pv["desc"]), "desc": str(pv["desc"])}
+		var d: Dictionary = {"name": str(pv["name"]), "brief": str(pv["desc"]), "detail": str(pv["desc"]), "desc": str(pv["desc"]),
+			"icon": str(pv.get("icon", ""))}   # 2026-11-04 小将普通攻击 / 被动有了图标(与战斗信息面板同一张)
 		match str(pv.get("slot", "passive")):
 			"basic":
 				d["_role"] = "basic"
@@ -421,6 +422,8 @@ func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 		var mid_y: float = passive_y + 19.0   # 标题行中线(与普攻条同一套几何)
 		var text_x = RCOL_X + 16.0
 		var pi_path: String = DataRegistry.passive_icons.get(passive.get("type", ""), "")
+		if pi_path == "":
+			pi_path = str(passive.get("icon", ""))   # 小将的被动没有 type(不在龟被动表里), 图标写在条目自己身上
 		if pi_path != "":
 			if pi_path.ends_with(".png"):
 				## 被动条九宫格边带 13 ⇒ 图标放 28, 不漫到边带上。

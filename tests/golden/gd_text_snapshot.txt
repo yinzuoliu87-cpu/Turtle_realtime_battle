@@ -344,7 +344,9 @@ scripts/gamedata/minion_codex.gd|lit|吞噬
 scripts/gamedata/minion_codex.gd|lit|小将
 scripts/gamedata/minion_codex.gd|lit|援军
 scripts/gamedata/minion_codex.gd|lit|援军 · 远程
+scripts/gamedata/minion_codex.gd|lit|援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
 scripts/gamedata/minion_codex.gd|lit|援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|普通攻击
 scripts/gamedata/minion_codex.gd|lit|每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
@@ -354,8 +356,10 @@ scripts/gamedata/minion_codex.gd|lit|精英小将每 {C:EliteSystem.WHIP_CD_SEC}
 scripts/gamedata/minion_codex.gd|lit|精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。每第 {C:EliteSystem.WHIRL_EVERY} 次攻击转而挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。
 scripts/gamedata/minion_codex.gd|lit|终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。
 scripts/gamedata/minion_codex.gd|lit|近战小将
+scripts/gamedata/minion_codex.gd|lit|近战小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
 scripts/gamedata/minion_codex.gd|lit|近战小将锁定一个敌人并跃起，起跳时回复（{C:HidingSystem.SURF_HEAL_COEF%}%×攻击力({ATK}) = {E:HidingSystem.SURF_HEAL_COEF*ATK}）生命值，距离过近时先向后跳开。随后射出铁链，将该敌人眩晕 {C:HidingSystem.SURF_STUN_SEC} 秒并将自身拉向目标，接触时造成其 {C:HidingSystem.SURF_CONTACT_MAXHP_PCT%}% 最大生命值的物理伤害。之后踩着目标滑行，对其持续造成（{C:HidingSystem.SURF_RIDE_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_RIDE_ATK_COEF*ATK}）物理伤害，并对沿途敌人造成（{C:HidingSystem.SURF_PASS_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_PASS_ATK_COEF*ATK}）物理伤害并将其击退，最后跳下。
 scripts/gamedata/minion_codex.gd|lit|远程小将
+scripts/gamedata/minion_codex.gd|lit|远程小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
 scripts/gamedata/minion_codex.gd|lit|远程小将锁定一名敌人，蓄力 {C:HidingSystem.ROCKET_CHARGE_SEC} 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成（{C:HidingSystem.ROCKET_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.ROCKET_ATK_COEF*ATK}）物理伤害，并施加 {C:HidingSystem.ROCKET_HEALCUT_PCT%}% 治疗削减，持续 {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒。
 scripts/gamedata/minion_codex.gd|lit|追踪火箭筒
 scripts/gamedata/minion_codex.gd|lit|铁锁
@@ -1354,7 +1358,10 @@ scripts/scenes/battle/battle_hud.gd|lit|决赛日%s：%s 开始
 scripts/scenes/battle/battle_hud.gd|lit|决赛日%s：%s 开始。
 scripts/scenes/battle/battle_hud.gd|lit|决赛日开放观战。下一轮积分赛：下周二开始。
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
+scripts/scenes/battle/battle_hud.gd|lit|前排
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命
+scripts/scenes/battle/battle_hud.gd|lit|友军
+scripts/scenes/battle/battle_hud.gd|lit|后排
 scripts/scenes/battle/battle_hud.gd|lit|大师
 scripts/scenes/battle/battle_hud.gd|lit|失败
 scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
@@ -1362,6 +1369,7 @@ scripts/scenes/battle/battle_hud.gd|lit|已晋级！
 scripts/scenes/battle/battle_hud.gd|lit|战报
 scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
 scripts/scenes/battle/battle_hud.gd|lit|援军
+scripts/scenes/battle/battle_hud.gd|lit|敌方
 scripts/scenes/battle/battle_hud.gd|lit|晋级决赛日！
 scripts/scenes/battle/battle_hud.gd|lit|晋级闯关赛！
 scripts/scenes/battle/battle_hud.gd|lit|本周场次
@@ -1391,9 +1399,7 @@ scripts/scenes/battle/battle_hud.gd|lit|闯关赛不消耗生命。
 scripts/scenes/battle/battle_hud.gd|lit|闯关赛：%s 开始
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
-scripts/scenes/battle/battle_hud.gd|text|友军
 scripts/scenes/battle/battle_hud.gd|text|战斗日志
-scripts/scenes/battle/battle_hud.gd|text|敌方
 scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果
 scripts/scenes/battle/battle_hud.gd|text|阵容已上传
 scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
@@ -1571,8 +1577,10 @@ scripts/scenes/battle/info_panel.gd|lit|攻击打出暴击的几率。
 scripts/scenes/battle/info_panel.gd|lit|攻击距离。
 scripts/scenes/battle/info_panel.gd|lit|攻速
 scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 次
+scripts/scenes/battle/info_panel.gd|lit|无
 scripts/scenes/battle/info_panel.gd|lit|星能
 scripts/scenes/battle/info_panel.gd|lit|普攻
+scripts/scenes/battle/info_panel.gd|lit|普通攻击
 scripts/scenes/battle/info_panel.gd|lit|暂无效果
 scripts/scenes/battle/info_panel.gd|lit|暴伤
 scripts/scenes/battle/info_panel.gd|lit|暴伤 
@@ -1609,9 +1617,9 @@ scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果�
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|窃取护盾
-scripts/scenes/battle/info_panel.gd|lit|站位
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
+scripts/scenes/battle/info_panel.gd|lit|被动 · 无
 scripts/scenes/battle/info_panel.gd|lit|财宝
 scripts/scenes/battle/info_panel.gd|lit|近战形态：锤击
 scripts/scenes/battle/info_panel.gd|lit|远程形态：灵能弹
@@ -1643,8 +1651,6 @@ scripts/scenes/battle/info_panel.gd|lit|龟能锁
 scripts/scenes/battle/info_panel.gd|lit|，剩余 %.1f 秒\n
 scripts/scenes/battle/info_panel.gd|lit|，已就绪\n
 scripts/scenes/battle/info_panel.gd|lit|，锁定 %.1f 秒\n
-scripts/scenes/battle/info_panel.gd|text|前排
-scripts/scenes/battle/info_panel.gd|text|后排
 scripts/scenes/battle/info_panel.gd|text|收起
 scripts/scenes/battle/info_panel.gd|text|生命  %d / %d
 scripts/scenes/battle/info_panel.gd|text|详细

@@ -201,6 +201,20 @@ func _test_minion_card_rules(s) -> void:
 						break
 				roles.append(rl)
 		_ok("★⑥ %s 能力排 = 被动 | 攻击 | 技能(恰好三格, 没有「站位」格)" % want, roles == ["被动", "攻击", "技能"], str(roles))
+		## ⑥c 2026-11-04 攻击 / 被动格有图标(方向稿放行后出的 6 张): 除了「无」那格(不能点), 每格里都画着一张图, 不是只写能力名。
+		var n_img := 0
+		var n_need := 0
+		if arow != null:
+			for cell in arow.get_children():
+				var sl: Control = cell.get_meta("slot") if cell.has_meta("slot") else null
+				if sl == null or sl.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+					continue
+				n_need += 1
+				for trn in sl.find_children("*", "TextureRect", true, false):
+					if (trn as TextureRect).texture != null:
+						n_img += 1
+						break
+		_ok("★⑥c %s 能力排每个能点的格子都有图标(%d / %d)" % [want, n_img, n_need], n_need >= 2 and n_img == n_need)
 		if kind == "front" or kind == "back":
 			var c0: Node = arow.get_child(0) if arow != null and arow.get_child_count() > 0 else null
 			var s0: Control = c0.get_meta("slot") if c0 != null and c0.has_meta("slot") else null
