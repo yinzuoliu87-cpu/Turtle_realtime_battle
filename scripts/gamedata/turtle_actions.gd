@@ -178,7 +178,7 @@ const CAST := {
 	"bubble": {
 		"bubbleBind": ["pets/animations/bubble/cast_bubbleBind.png", 15.0, 2],   # 7 帧 · pixellab
 		"bubbleBurst": ["pets/animations/bubble/cast_bubbleBurst.png", 15.0, 4],   # 7 帧 · pixellab
-		"bubbleShield": ["pets/animations/bubble/cast_bubbleShield.png", 15.0, 5],   # 7 帧 · pixellab
+		"bubbleShield": ["pets/animations/bubble/cast_bubbleShield.png", 15.0, 5],   # 12 帧 · pixellab
 	},
 	"candy": {
 		"candyBarrage": ["pets/animations/candy/cast_candyBarrage.png", 15.0, 3],   # 7 帧 · pixellab

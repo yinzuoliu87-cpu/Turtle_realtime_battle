@@ -241,6 +241,11 @@ def build(tid: str) -> dict:
 					rel_at[nm] = len(frames) - 1   # 释放帧 = 到达关键姿势那一帧(开盖 / 球成形 / 缩进壳); peak_frame 按像素差选, 钉住段全帧都有 AI 重画噪声, 会选到第 1 帧
 			elif end is not None:   # 只钉末帧(钻石球: 末帧 = 球形定稿, 状态循环从这一帧接)
 				frames.append(end)
+			if os.path.isdir(os.path.join(d, "then")):
+				## 尾段(泡泡盾: 泡泡吹走后「重新长出来」; animate_image 首帧 = 本段末帧、末帧 = 定稿):
+				##   尾段第 1 帧 = 本段末帧重画(重复)丢掉, 末帧换定稿原图 ⇒ 接回待机无跳
+				tail = [place(f) for f in _ai(os.path.join(d, "then"), pal)]
+				frames = frames + tail[1:-1] + [k0]
 			if os.path.exists(os.path.join(d, "pingpong")):
 				## 来回段(宝箱开盖 / 水晶球现身): 定稿 → 关键姿势, 停 N 帧, 再倒放回定稿(与熔岩变回 = 变身倒放同一做法)
 				hold = int((open(os.path.join(d, "pingpong"), encoding="utf-8").read().split() or ["3"])[0])
