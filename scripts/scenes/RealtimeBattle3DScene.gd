@@ -4978,26 +4978,20 @@ func _glow_bb(pos2d: Vector2, h: float, size_px: float, col: Color) -> MeshInsta
 
 # ★立牌朝相机 + 尖头指向「屏幕上的行进方向」— 任意360°尖头都精准(仿Botworld弹道)
 #    面向相机→有体积不像贴图; 屏幕内旋转→尖头跟着飞行方向转(斜/上下都对).
+##   ★2026-11-05 改用相机基(与猎人箭 / 幽魂弹 / 钩爪同一套 _vfx.cam_basis): 原来按「这个点→相机」的连线立牌, 透视相机下
+##     离画面中心越远越歪 —— 探针 tests/probes/_probe_chiwave_dir.gd 量到气波横飞到画面边上尖头偏 21.6~27.3°(刚发射时 1.5°)。
+##     用户 11-05「波在运行的时候…方向并不朝着敌人…整个游戏弹道可能有问题」。贴图平面与屏幕平行 ⇒ 任何位置尖头都对准屏幕行进方向。
 func _orient_billboard_dir(node: Node3D, travel_world: Vector3) -> void:
-	if _cam == null or not is_instance_valid(_cam): return
+	if _cam == null or not is_instance_valid(_cam) or not node.is_inside_tree(): return
 	var p: Vector3 = node.global_position
-	var to_cam: Vector3 = _cam.global_position - p
-	if to_cam.length() < 0.001: return
-	to_cam = to_cam.normalized()
 	if travel_world.length() < 0.001: return
 	var tw: Vector3 = travel_world.normalized()
 	var s0: Vector2 = _cam.unproject_position(p)
 	var s1: Vector2 = _cam.unproject_position(p + tw)
 	var scr: Vector2 = s1 - s0
 	if DetMath.vlen(scr) < 0.001: return
-	var ang: float = DetMath.datan2(scr.y, scr.x)   # 屏幕行进角(y向下)
-	var zx: Vector3 = to_cam                # 法线朝相机→面向相机
-	var xx: Vector3 = Vector3.UP.cross(zx)
-	if xx.length() < 0.001: xx = Vector3.RIGHT
-	xx = xx.normalized()
-	var yx: Vector3 = zx.cross(xx).normalized()
-	var b: Basis = Basis(xx, yx, zx).rotated(zx, -ang)   # 绕视轴旋转→尖头(local+X)对准屏幕行进方向
-	node.global_transform = Transform3D(b, p)
+	## 屏幕行进角(y 向下 ⇒ 取 -y): 绕相机视轴转, 尖头(贴图 local +X)对准屏幕行进方向
+	node.global_transform = Transform3D(_vfx.cam_basis() * Basis(Vector3(0, 0, 1), DetMath.datan2(-scr.y, scr.x)), p)
 
 # 蓝色能量火星 (一次性爆·自销) — 仿 _vfx._impact_particles 但蓝+加性
 func _chi_embers(pos2d: Vector2, h: float, amount: int = 10) -> void:
@@ -5511,10 +5505,13 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	sp.texture = load("res://assets/sprites/vfx/chiwave-spawn.png")
 	sp.hframes = 6; sp.frame = 0
 	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true   # 生成也billboard立牌(与飞行一致·用户2026-07-13)
+	## ★2026-11-05 用户「波在生成的时候那个方向不对」: 原来是立牌 —— 贴图尖头永远朝屏幕右(探针: 目标在左偏 180°、在上偏 90°)。
+	##   改成与飞行波同一套定向(面向相机 + 尖头指向目标), 聚气期间跟着目标转(下面 stw 每步重瞄; 只动画面, 不碰 sim)。
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED; sp.shaded = false; sp.transparent = true
 	sp.pixel_size = (130.0 * WS) / 128.0
 	sp.position = _world_pos(start2, 0.9)   # 立在掌心高度(与飞行同高)
 	_world.add_child(sp)
+	_orient_billboard_dir(sp, Vector3(dir.x, 0.0, dir.y))
 	# ⚡聚气: 掌心加性暖光由小涨大 (蓄力感)
 	var cg := _glow_bb(start2, 0.9, 60.0, Color(0.70, 0.44, 0.16, 0.0))
 	var cgt := _reg_tween(); cgt.set_parallel(true)
@@ -5522,12 +5519,23 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	cgt.tween_property(cg, "material_override:albedo_color", Color(0.80, 0.50, 0.20, 0.88), 0.5)
 	cgt.chain().tween_callback(cg.queue_free)
 	var stw := _reg_tween()
-	stw.tween_method(func(fv: float) -> void: sp.frame = mini(5, int(fv)), 0.0, 6.0, 0.6)   # 6帧播一遍 0→5
+	stw.bind_node(sp)   # 聚气贴图没了(换路清场等)这段演出就停, lambda 不再被调
+	stw.tween_method(func(fv: float) -> void:
+		sp.frame = mini(5, int(fv))   # 6帧播一遍 0→5
+		if tgt.get("alive", false):   # 聚气时跟着目标转(只是画面)
+			var ad: Vector2 = tgt["pos"] - uu2["pos"]
+			if DetMath.vlen(ad) >= 1.0:
+				_orient_billboard_dir(sp, Vector3(ad.x, 0.0, ad.y)), 0.0, 6.0, 0.6)
 	stw.tween_callback(sp.queue_free)
 	# ── 0.6s聚气后 → 发射飞行波(chiwave-fly 6帧循环·恒速300码/秒·伤害随球扫过结算) ──
 	_pending_shots.append({"delay": 0.6, "fn": func() -> void:
 		if not uu2.get("alive", false): return
 		var launch: Vector2 = uu2["pos"]
+		## ★2026-11-05 用户「波在运行的时候有的时候这个波的方向并不朝着敌人」: 方向原来在聚气开始时就定死, 0.6 秒聚气里目标走开 /
+		##   小龟被击退都不改(探针: 目标横走 200 码/秒 ⇒ 偏 14~17°)。改成发射这一刻从小龟当前位置瞄目标当前位置; 目标已倒下才沿用原方向。
+		var aim: Vector2 = dir
+		if tgt.get("alive", false) and DetMath.vlen(tgt["pos"] - launch) >= 1.0:
+			aim = DetMath.norm(tgt["pos"] - launch)
 		var FLY_H := 0.9   # ★立牌高度: 火球在空中飞(约单位身体高·非贴地)
 		var ball := Sprite3D.new()
 		ball.texture = load("res://assets/sprites/vfx/chiwave-fly.png")
@@ -5538,7 +5546,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 		ball.pixel_size = (170.0 * WS) / 128.0
 		ball.position = _world_pos(launch, FLY_H)   # 立在空中(非贴地)
 		_world.add_child(ball)
-		_orient_billboard_dir(ball, Vector3(dir.x, 0.0, dir.y))   # 初始定向(尖头对准行进方向)
+		_orient_billboard_dir(ball, Vector3(aim.x, 0.0, aim.y))   # 初始定向(尖头对准行进方向)
 		# ── ⚡全套增强: 加性发光晕 + 热核 + 发射震屏 + 火星 ──
 		var glow := _glow_bb(launch, FLY_H, 260.0, Color(0.62, 0.38, 0.12, 0.80))   # 暖金橙晕(halo)
 		var core := _glow_bb(launch, FLY_H, 70.0, Color(0.90, 0.58, 0.22, 0.85))    # 热核
@@ -5547,11 +5555,11 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 		var _last_trail := [0.0]   # 拖尾里程 (数组封装以在闭包内可变)
 		var hit2: Array = []   # Array(.has 走 ==) 防拿单位字典当 Dict key 的 recursive_hash 崩(2026-07-10教训)
 		var step2 := func(d: float) -> void:
-			var c: Vector2 = launch + dir * d
+			var c: Vector2 = launch + aim * d
 			if is_instance_valid(ball):
 				ball.position = _world_pos(c, FLY_H)
 				ball.frame = int(d / 30.0) % 6                     # 飞行帧循环: 每30码换帧(≈0.1s @300码/秒)
-				_orient_billboard_dir(ball, Vector3(dir.x, 0.0, dir.y))   # 每帧定向: 面向相机+尖头朝行进方向
+				_orient_billboard_dir(ball, Vector3(aim.x, 0.0, aim.y))   # 每帧定向: 面向相机+尖头朝行进方向
 			var cw: Vector3 = _world_pos(c, FLY_H)   # 晕/核心跟火球同高(空中)
 			if is_instance_valid(glow):
 				glow.position = cw
@@ -5568,7 +5576,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 				_chi_embers(c, FLY_H, 4)                             # 沿途火星
 			for o in _targeting._enemies_of(uu2):
 				if not o.get("alive", false) or _arr_has_unit(hit2, o): continue
-				if not _on_line(launch, dir, o["pos"], 80.0): continue
+				if not _on_line(launch, aim, o["pos"], 80.0): continue
 				if DetMath.dist(o["pos"], c) > 95.0: continue
 				hit2.append(o)
 				_damage._apply_damage_from(uu2, o, _atk_dmg(uu2, BasicConsts.CHI_ATK_COEF, o), Color("#7fd0ff"))   # 气波 3.5→3.0→2.0A(用户2026-07-29 第五轮)
