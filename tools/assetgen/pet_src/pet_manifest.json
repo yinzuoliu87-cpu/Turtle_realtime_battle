@@ -70,8 +70,8 @@
     "pixellab"
    ],
    "chestStorm": [
-    7,
-    3,
+    15,
+    5,
     "pixellab"
    ]
   },
@@ -298,8 +298,8 @@
   "body0": 163,
   "casts": {
    "hunterBarrage": [
-    7,
-    2,
+    15,
+    5,
     "pixellab"
    ],
    "hunterShot": [

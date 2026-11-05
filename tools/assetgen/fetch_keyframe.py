@@ -27,6 +27,14 @@ def cut(a: np.ndarray) -> tuple:
 	border += [tuple(a[y, x, :3]) for x in range(w) for y in (0, h - 1) if a[y, x, 3] > 0]
 	if not border:
 		return a, 0
+	## 只有「真有一圈底色」才抠: 边缘最常见的不透明色要占边长 ≥ 20%(image_to_pixelart 的灰底: 四角透明、其余两百多格同一灰)。
+	##   Pro Flash 改出来的透明底图边缘只有几个描边点 ⇒ 不抠; 拿它当背景色会把整圈深色描边 / 深色身体抠掉
+	##   (11-05 晚猎人「朝天拉弓」: 边缘只有 6 个黑点 ⇒ 按黑色抠掉, 腿断了; 海盗阵亡姿势整圈描边被抠, 返工)
+	if Counter(border).most_common(1)[0][1] < 0.2 * 2 * (h + w):
+		out = a.copy()
+		out[..., 3] = np.where(out[..., 3] >= 128, 255, 0)
+		out[out[..., 3] == 0] = 0
+		return out, 0
 	bg = np.array(Counter(border).most_common(1)[0][0], dtype=int)
 
 	def isbg(y, x):

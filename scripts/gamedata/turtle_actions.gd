@@ -188,7 +188,7 @@ const CAST := {
 	"chest": {
 		"chestCannon": ["pets/animations/chest/cast_chestCannon.png", 15.0, 6],   # 9 帧 · pixellab
 		"chestCount": ["pets/animations/chest/cast_chestCount.png", 15.0, 5],   # 15 帧 · pixellab
-		"chestStorm": ["pets/animations/chest/cast_chestStorm.png", 15.0, 3],   # 7 帧 · pixellab
+		"chestStorm": ["pets/animations/chest/cast_chestStorm.png", 15.0, 5],   # 15 帧 · pixellab
 	},
 	"crystal": {
 		"crystalBall": ["pets/animations/crystal/cast_crystalBall.png", 15.0, 5],   # 15 帧 · pixellab
@@ -231,7 +231,7 @@ const CAST := {
 		"hidingShrink": ["pets/animations/hiding/cast_hidingShrink.png", 15.0, 5],   # 6 帧 · pixellab
 	},
 	"hunter": {
-		"hunterBarrage": ["pets/animations/hunter/cast_hunterBarrage.png", 15.0, 2],   # 7 帧 · pixellab
+		"hunterBarrage": ["pets/animations/hunter/cast_hunterBarrage.png", 15.0, 5],   # 15 帧 · pixellab
 		"hunterShot": ["pets/animations/hunter/cast_hunterShot.png", 15.0, 6],   # 9 帧 · pixellab
 		"hunterStealth": ["pets/animations/hunter/cast_hunterStealth.png", 15.0, 4],   # 7 帧 · pixellab
 	},
