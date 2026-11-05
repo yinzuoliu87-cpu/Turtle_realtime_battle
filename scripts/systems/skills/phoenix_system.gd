@@ -123,6 +123,7 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 			0.0, false, false, false, false, false, is_near)
 		battle._damage._apply_dot_stacks(e2, "burn", burn_stacks, u)
 		battle._vfx._flash(e2, Color("#ff8a3a"))
+		BuffVfx.burst(battle, e2["pos"], Color(1.0, 0.55, 0.15), 4)   # ★11-05 被烧的人身上冒一撮像素火星(审核片: 喷中的敌人只有伤害数字)
 		burned += 1
 	## ★on-hit 放在伤害结算【之后】: 有些 on-hit 装备读的是"这一下打了多少",
 	##   放前面它读到的是上一跳的账。

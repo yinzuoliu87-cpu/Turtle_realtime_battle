@@ -856,7 +856,8 @@ func _hook_hit_fx(pos2d: Vector2) -> void:
 
 ## R3 钩链(专属铁链·替海盗电光 chain-bolt·连续调=连续绷紧): 横向铁链贴图从 A 拉到 B。
 func _hook_chain(from2d: Vector2, to2d: Vector2) -> void:
-	battle._beam_vfx("res://assets/sprites/vfx/hook-chain.png", from2d, to2d, 20.0, Color(0.92, 0.94, 0.98, 1.0), 0.13)
+	## 11-05 宽 20→30 码: 审核片里 20 码的链节缩得太细, 读成「两条深色虚线横穿场地」(用户以为是 bug)
+	battle._beam_vfx("res://assets/sprites/vfx/hook-chain.png", from2d, to2d, 30.0, Color(0.92, 0.94, 0.98, 1.0), 0.13)
 
 ## 训龟大师【自己】的索敌: 射程内最近的敌人。不复用 _nearest_enemy ——
 ## 那个会跳过 is_trainer(别人锁不到它), 但没有射程限制、也不该被别的规则牵连。

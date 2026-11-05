@@ -39,6 +39,11 @@ static func activate(battle, u: Dictionary, col: Color, dur: float, ring_r: floa
 	tk.tween_interval(dur)
 	tk.tween_callback(holder.queue_free)
 
+## 只爆一小撮(不画环、没有持续段): 给「每跳都在结算」的东西用(凤凰喷火每 0.5 秒一跳, 被烧的人身上冒一撮火星)
+static func burst(battle, pos2d: Vector2, col: Color, n: int = 4) -> void:
+	for i in range(n):
+		_mote(battle, pos2d, col, true)
+
 static func _mote(battle, pos2d: Vector2, col: Color, burst: bool) -> void:
 	var s := Sprite3D.new()
 	s.texture = VfxTex._make_pixel_block_tex()

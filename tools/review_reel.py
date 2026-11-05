@@ -21,6 +21,7 @@ ROOT, OUT, TAG = sys.argv[1], os.path.abspath(sys.argv[2]), sys.argv[3]
 JOBS = int(sys.argv[4]) if len(sys.argv) > 4 else 4
 ONLY = set(sys.argv[5].split(",")) if len(sys.argv) > 5 and sys.argv[5] else None
 FORMS = {"lava": [("normal", ""), ("volcano", "火山形态·")]}   # 会变身的龟: (REVIEW_FORM, 段名前缀)
+LONG = {"fortune:2": 1500}   # 25 秒内放不出来的段多录一会儿(梭哈要先攒金币; 11-05 审核片里 25 秒没放出)
 G = "C:/Users/Louis/Desktop/Godot_v4.6.3-stable_win64.exe"
 FF = "D:/oopz/ffmpeg.exe"
 FPS = 30
@@ -58,7 +59,7 @@ for p in pets:
 def record(j):
 	raw = os.path.join(OUT, "raw_%s%s_%d.avi" % (j["id"], ("_" + j["form"]) if j["form"] else "", j["idx"]))
 	log = raw + ".log"
-	n = 300 if j["idx"] == 0 else 750
+	n = 300 if j["idx"] == 0 else LONG.get("%s:%d" % (j["id"], j["idx"]), 750)
 	u = tempfile.mkdtemp()
 	env = dict(os.environ, REVIEW="1", REVIEW_TURTLE=j["id"], REVIEW_SKILL=str(j["idx"]), TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ",
 		APPDATA=u, XDG_DATA_HOME=u)

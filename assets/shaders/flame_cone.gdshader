@@ -43,7 +43,8 @@ void fragment(){
 	col = mix(col, vec3(1.0, 0.95, 0.74), clamp((heat - 0.62) * 2.6, 0.0, 1.0));
 	float core = smoothstep(0.26, 0.0, rad) * smoothstep(0.16, 0.0, abs(ang - 0.5));   // 嘴部白热收小(参考: 只一小簇)
 	col = mix(col, vec3(1.0, 0.98, 0.9), core * 0.85);
-	col *= 0.78 + streaks * 0.45;                                                     // 条纹明暗强化(放射笔触感)
+	// ★11-05 0.78+0.45 → 0.64+0.66: 远端一大片橙色太均匀(审核片放大看, 隔几帧几乎一样), 火舌之间压暗、火舌提亮 ⇒ 看得出火在往外流
+	col *= 0.64 + streaks * 0.66;                                                     // 条纹明暗强化(放射笔触感)
 	col = mix(col, vec3(0.32, 0.11, 0.05), smokiness * 0.7);                          // 烟边压成暗红棕(非黑·量收敛)
 	// 火体不透明: 轮廓内alpha≈1, 只边缘渐隐(参考: 地面透不出来)
 	float a = smoothstep(0.1, 0.3, sil * (0.7 + streaks * 0.45)) * intensity;
