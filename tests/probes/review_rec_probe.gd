@@ -44,6 +44,11 @@ func _process(_d: float) -> void:
 			if "_cam" in sc and sc._cam != null:   # 受审龟每帧的屏幕位置(tools/review_frames.py 按它跟拍裁切)
 				var sp: Vector2 = sc._cam.unproject_position(sc._world_pos(u["pos"], 0.0))
 				print("[POS] %d %d %d" % [f, int(sp.x), int(sp.y)])
+			## 受审龟每帧的动画状态(11-05: 钻石滚球录像里没变成球 ⇒ 查是谁占着动画槽)
+			var asd: Dictionary = u.get("anim_sd", {})
+			var atex = asd.get("tex", null)
+			print("[ANIM] %d act=%s state=%s tex=%s roll=%s ch=%.2f" % [f, str(u.get("anim_action", "")), str(u.get("_state_on", "")),
+				(atex.resource_path.get_file() if atex != null else "-"), str(u.get("roll_active", false)), float(u.get("channel_until", 0.0)) - float(sc._t)])
 			var cds: Dictionary = u.get("skill_cd", {})
 			for k in cds:
 				var v := float(cds[k])
