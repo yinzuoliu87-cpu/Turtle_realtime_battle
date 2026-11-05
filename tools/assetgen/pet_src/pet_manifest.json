@@ -55,6 +55,125 @@
   "hurt": 5,
   "run": 9
  },
+ "chest": {
+  "attack": 9,
+  "body0": 135,
+  "casts": {
+   "chestCannon": [
+    9,
+    6,
+    "pixellab"
+   ],
+   "chestCount": [
+    7,
+    2,
+    "pixellab"
+   ],
+   "chestStorm": [
+    7,
+    3,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "crystal": {
+  "attack": 9,
+  "body0": 164,
+  "casts": {
+   "crystalBall": [
+    7,
+    2,
+    "pixellab"
+   ],
+   "crystalBarrier": [
+    7,
+    5,
+    "pixellab"
+   ],
+   "crystalBurst": [
+    7,
+    2,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 260,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "cyber": {
+  "attack": 9,
+  "body0": 112,
+  "casts": {
+   "cyberBeam": [
+    9,
+    5,
+    "pixellab"
+   ],
+   "cyberHijack": [
+    7,
+    2,
+    "pixellab"
+   ],
+   "cyberSmartAI": [
+    7,
+    4,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "diamond": {
+  "attack": 9,
+  "body0": 158,
+  "casts": {
+   "diamondFortify": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "diamondPowerball": [
+    8,
+    7,
+    "pixellab"
+   ],
+   "diamondSmash": [
+    7,
+    4,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 255,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7,
+  "states": [
+   [
+    "diamondRoll",
+    "pets/animations/diamond/state_diamondRoll.png",
+    15.0
+   ]
+  ]
+ },
  "dice": {
   "attack": 9,
   "body0": 165,
@@ -110,6 +229,69 @@
   "hit": 4,
   "hurt": 5,
   "run": 7
+ },
+ "headless": {
+  "attack": 9,
+  "body0": 108,
+  "casts": {
+   "headlessFear": [
+    10,
+    4,
+    "pixellab"
+   ],
+   "headlessSoulStrike": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "headlessTendrils": [
+    7,
+    4,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "hiding": {
+  "attack": 9,
+  "body0": 108,
+  "casts": {
+   "hidingBuffSummon": [
+    7,
+    3,
+    "pixellab"
+   ],
+   "hidingDefend": [
+    7,
+    2,
+    "pixellab"
+   ],
+   "hidingShrink": [
+    7,
+    2,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7,
+  "states": [
+   [
+    "hidingShrink",
+    "pets/animations/hiding/state_hidingShrink.png",
+    6.0
+   ]
+  ]
  },
  "hunter": {
   "attack": 9,
@@ -189,6 +371,34 @@
   },
   "death": 15,
   "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "space": {
+  "attack": 9,
+  "body0": 165,
+  "casts": {
+   "starGravityWarp": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "starWave": [
+    7,
+    5,
+    "pixellab"
+   ],
+   "starWormhole": [
+    9,
+    5,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 260,
   "fps": 15,
   "frame": 272,
   "hit": 4,

@@ -167,27 +167,43 @@ func _ready() -> void:
 	# ★灵体小龟形象(用户 2026-07-30:「用现在小龟统领的形象加一点灵体感」):
 	#   spirit-turtle.png 由小龟统领 idle 首帧【灵体化处理】另存 —— 形象同源、文件全新。
 	#   判据是【轮廓一致】(alpha 掩膜重合度), 不是"看着像"。
-	var lead := Image.load_from_file("res://assets/sprites/pets/animations/basic/idle.png")
+	#   ★11-05 改参照: 小龟待机换成外包像素序列帧(pets.json 的 basic.img)后, 「现在的小龟形象」是那一张;
+	#   原来写死旧图 pets/animations/basic/idle.png 的 64×64 左上角 ⇒ 改成按 pets.json 取当前小龟待机第 0 帧,
+	#   两边都裁到本体、缩到同一尺寸再比轮廓(灵体图由 tools/assetgen/build_spirit_turtle.py 生成)。
+	#   门槛 90%: 归一后龟的轮廓本来就像 —— 旧小龟画的灵体图也有 71%(70% 分不开, 11-05 反向验证实测), 新图 98%。
+	var lead := _basic_idle_frame0()
 	var sp_img := Image.load_from_file("res://assets/sprites/vfx/spirit-turtle.png")
 	_chk("⑤ ★分母: 两张图都读得到", lead != null and sp_img != null)
 	if lead != null and sp_img != null:
+		var la_img := _crop_body(lead, 64)
+		var sa_img := _crop_body(sp_img, 64)
 		var same := 0
 		var tot := 0
 		for y in range(64):
 			for x in range(64):
-				var la: float = lead.get_pixel(x, y).a
-				var sa: float = sp_img.get_pixel(x, y).a
+				var la: float = la_img.get_pixel(x, y).a
+				var sa: float = sa_img.get_pixel(x, y).a
 				if la > 0.5 or sa > 0.5:
 					tot += 1
 					if (la > 0.5) == (sa > 0.5):
 						same += 1
 		var overlap: float = float(same) / float(maxi(1, tot))
-		print("     灵体小龟 vs 小龟统领首帧: 轮廓重合 %.0f%% (光晕会让灵体的略大)" % (overlap * 100.0))
-		_chk("⑤ ★灵体小龟用的是【小龟统领的形象】(轮廓重合 ≥70%)", overlap >= 0.70,
-			"%.0f%%" % (overlap * 100.0))
-		var c := sp_img.get_pixel(32, 32)
-		_chk("⑤ ★而且是【灵体化】的配色(偏青蓝: b>r)", c.b > c.r,
-			"中心色 %s" % c.to_html(false))
+		print("     灵体小龟 vs 小龟统领首帧: 轮廓重合 %.0f%% (分母 %d 像素)" % [overlap * 100.0, tot])
+		_chk("⑤ ★灵体小龟用的是【小龟统领的形象】(轮廓重合 ≥90%)", overlap >= 0.90 and tot > 500,
+			"%.0f%% / %d 像素" % [overlap * 100.0, tot])
+		## 配色: 不透明像素的平均色偏青蓝(原来取 (32,32) 一点; 新图尺寸不同, 那一点可能落在透明处)
+		var sr := 0.0
+		var sb := 0.0
+		var n_op := 0
+		for y in range(sp_img.get_height()):
+			for x in range(sp_img.get_width()):
+				var c := sp_img.get_pixel(x, y)
+				if c.a > 0.5:
+					sr += c.r
+					sb += c.b
+					n_op += 1
+		_chk("⑤ ★而且是【灵体化】的配色(不透明像素平均偏青蓝: b>r)", n_op > 0 and sb > sr * 1.2,
+			"平均 r %.2f b %.2f · %d 像素" % [sr / maxf(1.0, n_op), sb / maxf(1.0, n_op), n_op])
 	_chk("⑤ 气波尺寸走常量 WAVE_D_M(不再是 (150*WS)/128 那个魔数=3.60m 盖住小龟)",
 		src.contains("WAVE_D_M / float(") and not src.contains("(150.0 * battle.WS) / 128.0"))
 
@@ -261,6 +277,35 @@ func _chk(what: String, ok: bool, extra: String = "") -> void:
 	if not ok:
 		_fail += 1
 	print("     %s %s%s" % ["[PASS]" if ok else "[FAIL]", what, ("  " + extra) if extra != "" else ""])
+
+
+## 当前小龟待机第 0 帧(按 pets.json 的 basic.img / sprite, 不写死路径)
+func _basic_idle_frame0() -> Image:
+	var raw = JSON.parse_string(FileAccess.get_file_as_string("res://data/pets.json"))
+	var arr: Array = raw.get("pets", []) if raw is Dictionary else raw
+	for p in arr:
+		if str(p.get("id", "")) == "basic":
+			var sp: Dictionary = p.get("sprite", {})
+			var t: Texture2D = load("res://assets/sprites/" + str(p.get("img", "")))
+			if t == null or sp.is_empty():
+				return null
+			var im: Image = t.get_image()
+			im.convert(Image.FORMAT_RGBA8)
+			return im.get_region(Rect2i(0, 0, int(sp["frameW"]), int(sp["frameH"])))
+	return null
+
+
+## 裁到不透明本体、补成正方形(底边对齐)、最近邻缩到 side×side —— 两张不同尺寸的图比轮廓用
+func _crop_body(im: Image, side: int) -> Image:
+	var src := im.duplicate() as Image
+	src.convert(Image.FORMAT_RGBA8)
+	var r: Rect2i = src.get_used_rect()
+	var body := src.get_region(r)
+	var m: int = maxi(r.size.x, r.size.y)
+	var sq := Image.create(m, m, false, Image.FORMAT_RGBA8)
+	sq.blit_rect(body, Rect2i(Vector2i.ZERO, r.size), Vector2i((m - r.size.x) / 2, m - r.size.y))
+	sq.resize(side, side, Image.INTERPOLATE_NEAREST)
+	return sq
 
 
 func _done(s) -> void:

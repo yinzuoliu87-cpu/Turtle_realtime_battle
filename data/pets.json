@@ -712,7 +712,7 @@
     "def": 21,
     "mr": 18,
     "crit": 0.25,
-    "img": "pets/diamond.png",
+    "img": "pets/pixel/diamond_idle.png", "sprite": {"frames": 7, "frameW": 188, "frameH": 165, "duration": 875},
     "passive": {
       "type": "diamondStructure",
       "name": "钻石结构",
@@ -1748,7 +1748,7 @@
     "def": 14,
     "mr": 13,
     "crit": 0.25,
-    "img": "pets/cyber.png",
+    "img": "pets/pixel/cyber_idle.png", "sprite": {"frames": 7, "frameW": 200, "frameH": 115, "duration": 875},
     "passive": {
       "type": "cyberDrone",
       "name": "浮游炮",
@@ -1820,12 +1820,8 @@
     "def": 21,
     "mr": 23,
     "crit": 0.25,
-    "img": "pets/crystal.png",
-    "sprite": {
-      "frames": 10,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/crystal_idle.png",
+    "sprite": {"frames": 7, "frameW": 187, "frameH": 165, "duration": 875},
     "passive": {
       "type": "crystalResonance",
       "name": "水晶共鸣",
@@ -1895,12 +1891,8 @@
     "def": 16,
     "mr": 14,
     "crit": 0.25,
-    "img": "pets/chest.png",
-    "sprite": {
-      "frames": 11,
-      "frameW": 300,
-      "frameH": 200
-    },
+    "img": "pets/pixel/chest_idle.png",
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 137, "duration": 875},
     "passive": {
       "type": "chestTreasure",
       "name": "藏宝图",
@@ -1969,12 +1961,8 @@
     "def": 13,
     "mr": 15,
     "crit": 0.25,
-    "img": "pets/space.png",
-    "sprite": {
-      "frames": 11,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/space_idle.png",
+    "sprite": {"frames": 7, "frameW": 198, "frameH": 165, "duration": 875},
     "passive": {
       "type": "starEnergy",
       "name": "星能",
@@ -2045,12 +2033,8 @@
     "def": 20,
     "mr": 21,
     "crit": 0.25,
-    "img": "pets/hiding.png",
-    "sprite": {
-      "frames": 13,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/hiding_idle.png",
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 111, "duration": 875},
     "passive": {
       "type": "summonAlly",
       "name": "喊龟",
@@ -2125,12 +2109,8 @@
     "def": 13,
     "mr": 12,
     "crit": 0.25,
-    "img": "pets/headless.png",
-    "sprite": {
-      "frames": 16,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/headless_idle.png",
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 110, "duration": 875},
     "passive": {
       "type": "undeadRage",
       "name": "亡灵",

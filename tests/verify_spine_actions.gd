@@ -181,7 +181,8 @@ func _ready() -> void:
 			_ok("%s 状态 %s 结束 ⇒ 回待机" % [id, sname], btex != null and btex.resource_path == (u["idle_sd"]["tex"] as Texture2D).resource_path)
 	_ok("★分母: 运行时每只龟普攻 / 受击 / 阵亡都播了(%d 只 × 3)" % ids.size(), played == ids.size() * 3, "%d 次" % played)
 	_ok("★分母: 技能释放动作至少 25 段播过(外包 11 只)", ncast >= 25, "%d 段" % ncast)
-	_ok("★分母: 宠物状态循环每条都触发过", nstate == nstate_rows, "%d / %d 条" % [nstate, nstate_rows])
+	## 至少 2 条 = 缩头乌龟缩壳 + 钻石龟滚球(build_pet_actions.STATE_LOOPS); 0 / 0 不算过
+	_ok("★分母: 宠物状态循环每条都触发过(至少缩壳 + 滚球 2 条)", nstate == nstate_rows and nstate_rows >= 2, "%d / %d 条" % [nstate, nstate_rows])
 	## 熔岩火山形态: 进火山后播动作, 像素尺寸 / 脚底线仍与普通待机一致
 	for e in scn._units:
 		if str(e.get("id", "")) == "lava":

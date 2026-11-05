@@ -109,6 +109,27 @@ def procedural_dice(k0: np.ndarray) -> dict:
 
 PROCEDURAL = {"dice": procedural_dice}
 
+
+## ── 单段程序化(其余段仍用 AI): AI 画坏、又是刚体能表达的动作
+##   无头龟普攻: AI 8 帧里第 3 帧起凭空长出一个头(11-05 预览; 设定就是无头) ⇒ 后仰蓄力 → 前扑(第 4 帧命中)→ 收回
+##   无头龟恐吓: AI 只有尾巴在动 ⇒ 前身抬起 → 顶点抖两下 → 砸回地面(压扁一帧)→ 回原样
+def _headless_attack(k0: np.ndarray) -> list:
+	ys, xs = np.where(k0[..., 3] > 0)
+	bl, br = (float(xs.min()), float(ys.max() + 1)), (float(xs.max() + 1), float(ys.max() + 1))
+	seq = [(0, 0, br), (2, -2, br), (4, -4, br), (5, -6, br), (-12, 3, bl), (-10, 2, bl), (-6, 1, bl), (-3, 0, bl), (0, 0, bl)]
+	return [_xf(k0, angle=a, dx=dx_, pivot=p) for dx_, a, p in seq]
+
+
+def _headless_fear(k0: np.ndarray) -> list:
+	ys, xs = np.where(k0[..., 3] > 0)
+	br, bc = (float(xs.max() + 1), float(ys.max() + 1)), ((xs.min() + xs.max() + 1) / 2.0, float(ys.max() + 1))
+	out = [k0] + [_xf(k0, angle=a, dx=dx_, pivot=br) for a, dx_ in ((-6, 0), (-12, 0), (-16, -2), (-16, 2), (-16, -2), (-8, 0))]
+	out += [_xf(k0, sx=1.06, sy=0.9, pivot=bc), _xf(k0, sx=1.02, sy=0.97, pivot=bc), k0]
+	return out
+
+
+SEG_PROCEDURAL = {"headless": {"attack": _headless_attack, "cast_headlessFear": _headless_fear}}
+
 ## ── 持续状态循环(技能期间身体一直保持某个样子; 游戏侧条件在 AttackRhythm.state_active)
 ##   (状态名, 取哪段技能的末帧, 做法, 帧率): hold = 末帧 + 1px 起伏; spin = 末帧绕本体中心整圈滚(向左滚 = 逆时针), 底边钉在原脚底行
 STATE_LOOPS = {
@@ -183,9 +204,14 @@ def build(tid: str) -> dict:
 		Image.fromarray(sheet, "RGBA").save(os.path.join(PIXEL_DIR, "%s_idle.png" % tid), optimize=False)
 	for nm in ([] if tid in PROCEDURAL else sorted(os.listdir(src))):
 		d = os.path.join(src, nm)
-		if not os.path.isdir(d) or nm == "idle":
-			continue
-		frames = [k0] + [place(f) for f in _ai(d, pal)]
+		if not os.path.isdir(d) or not (nm in ("attack", "hurt", "death", "run") or nm.startswith("cast_")):
+			continue   # 只认动作段目录(idle 另算; ball_src 等是素材源, 不是段)
+		if nm in SEG_PROCEDURAL.get(tid, {}):
+			frames = SEG_PROCEDURAL[tid][nm](k0)
+		else:
+			frames = [k0] + [place(f) for f in _ai(d, pal)]
+			if os.path.exists(os.path.join(d, "end.png")):   # 钉住的末帧(如钻石球定稿; 状态循环从这一帧接)
+				frames.append(place(A._palette_lock(np.asarray(Image.open(os.path.join(d, "end.png")).convert("RGBA")), pal)))
 		if nm == "death":
 			while len(frames) < int(A.DEATH["frames"]):
 				frames.append(frames[-1].copy())
