@@ -20,24 +20,24 @@ const ATTACK := {
 	"gambler": ["pets/animations/gambler/attack.png", 15.0],   # 9 帧
 	"headless": ["pets/animations/headless/attack.png", 15.0],   # 9 帧
 	"hiding": ["pets/animations/hiding/attack.png", 15.0],   # 9 帧
-	"hunter": ["pets/animations/hunter/attack.png", 15.0],   # 9 帧
+	"hunter": ["pets/animations/hunter/attack.png", 15.0],   # 8 帧
 	"ice": ["pets/animations/ice/attack.png", 15.0],   # 10 帧
 	"lava": ["pets/animations/lava/attack.png", 15.0],   # 10 帧
 	"lava_volcano": ["pets/animations/lava_volcano/attack.png", 15.0],   # 9 帧
 	"lightning": ["pets/animations/lightning/attack.png", 15.0],   # 10 帧
-	"line": ["pets/animations/line/attack.png", 15.0],   # 9 帧
+	"line": ["pets/animations/line/attack.png", 15.0],   # 8 帧
 	"phoenix": ["pets/animations/phoenix/attack.png", 15.0],   # 10 帧
-	"pirate": ["pets/animations/pirate/attack.png", 15.0],   # 9 帧
+	"pirate": ["pets/animations/pirate/attack.png", 15.0],   # 8 帧
 	"rainbow": ["pets/animations/rainbow/attack.png", 15.0],   # 10 帧
 	"shell": ["pets/animations/shell/attack.png", 15.0],   # 10 帧
-	"space": ["pets/animations/space/attack.png", 15.0],   # 9 帧
+	"space": ["pets/animations/space/attack.png", 15.0],   # 8 帧
 	"stone": ["pets/animations/stone/attack.png", 15.0],   # 10 帧
 }
 const HURT := {
 	"angel": ["pets/animations/angel/hurt.png", 15.0],   # 6 帧
 	"bamboo": ["pets/animations/bamboo/hurt.png", 15.0],   # 6 帧
 	"basic": ["pets/animations/basic/hurt.png", 15.0],   # 6 帧
-	"bubble": ["pets/animations/bubble/hurt.png", 15.0],   # 5 帧
+	"bubble": ["pets/animations/bubble/hurt.png", 15.0],   # 6 帧
 	"candy": ["pets/animations/candy/hurt.png", 15.0],   # 5 帧
 	"chest": ["pets/animations/chest/hurt.png", 15.0],   # 5 帧
 	"crystal": ["pets/animations/crystal/hurt.png", 15.0],   # 5 帧
@@ -47,7 +47,7 @@ const HURT := {
 	"fortune": ["pets/animations/fortune/hurt.png", 15.0],   # 6 帧
 	"gambler": ["pets/animations/gambler/hurt.png", 15.0],   # 5 帧
 	"headless": ["pets/animations/headless/hurt.png", 15.0],   # 5 帧
-	"hiding": ["pets/animations/hiding/hurt.png", 15.0],   # 5 帧
+	"hiding": ["pets/animations/hiding/hurt.png", 15.0],   # 6 帧
 	"hunter": ["pets/animations/hunter/hurt.png", 15.0],   # 5 帧
 	"ice": ["pets/animations/ice/hurt.png", 15.0],   # 6 帧
 	"lava": ["pets/animations/lava/hurt.png", 15.0],   # 6 帧
@@ -137,12 +137,12 @@ const HIT := {
 	"pets/animations/lava/attack.png": 4,
 	"pets/animations/lava_volcano/attack.png": 5,
 	"pets/animations/lightning/attack.png": 4,
-	"pets/animations/line/attack.png": 4,
+	"pets/animations/line/attack.png": 3,
 	"pets/animations/phoenix/attack.png": 4,
-	"pets/animations/pirate/attack.png": 4,
+	"pets/animations/pirate/attack.png": 5,
 	"pets/animations/rainbow/attack.png": 4,
 	"pets/animations/shell/attack.png": 4,
-	"pets/animations/space/attack.png": 4,
+	"pets/animations/space/attack.png": 2,
 	"pets/animations/stone/attack.png": 4,
 }
 ## 技能释放动作 [路径, 帧率, 释放帧](AttackRhythm.cast_begin 读: 技能前摇开始就播, 释放帧对上 _cast_skill 生效)。来源: 骨骼模板 / PixelLab。
@@ -226,7 +226,7 @@ const CAST := {
 		"headlessTendrils": ["pets/animations/headless/cast_headlessTendrils.png", 15.0, 4],   # 7 帧 · pixellab
 	},
 	"hiding": {
-		"hidingBuffSummon": ["pets/animations/hiding/cast_hidingBuffSummon.png", 15.0, 3],   # 7 帧 · pixellab
+		"hidingBuffSummon": ["pets/animations/hiding/cast_hidingBuffSummon.png", 15.0, 2],   # 7 帧 · pixellab
 		"hidingDefend": ["pets/animations/hiding/cast_hidingDefend.png", 15.0, 2],   # 7 帧 · pixellab
 		"hidingShrink": ["pets/animations/hiding/cast_hidingShrink.png", 15.0, 2],   # 7 帧 · pixellab
 	},
@@ -307,7 +307,7 @@ const NORM := {
 	"fortune": [149.0, 260.0, 149.0],
 	"gambler": [165.0, 260.0, 165.0],
 	"headless": [108.0, 260.0, 108.0],
-	"hiding": [108.0, 260.0, 108.0],
+	"hiding": [104.0, 260.0, 104.0],
 	"hunter": [163.0, 260.0, 163.0],
 	"ice": [158.0, 260.0, 158.0],
 	"lava": [162.0, 260.0, 162.0],

@@ -24,7 +24,7 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
+  "hurt": 6,
   "run": 7
  },
  "candy": {
@@ -260,11 +260,11 @@
  },
  "hiding": {
   "attack": 9,
-  "body0": 108,
+  "body0": 104,
   "casts": {
    "hidingBuffSummon": [
     7,
-    3,
+    2,
     "pixellab"
    ],
    "hidingDefend": [
@@ -279,11 +279,11 @@
    ]
   },
   "death": 15,
-  "feet_row": 259,
+  "feet_row": 255,
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
+  "hurt": 6,
   "run": 7,
   "states": [
    [
@@ -294,7 +294,7 @@
   ]
  },
  "hunter": {
-  "attack": 9,
+  "attack": 8,
   "body0": 163,
   "casts": {
    "hunterBarrage": [
@@ -322,7 +322,7 @@
   "run": 7
  },
  "line": {
-  "attack": 9,
+  "attack": 8,
   "body0": 148,
   "casts": {
    "lineFinish": [
@@ -345,12 +345,12 @@
   "feet_row": 259,
   "fps": 15,
   "frame": 272,
-  "hit": 4,
+  "hit": 3,
   "hurt": 5,
   "run": 7
  },
  "pirate": {
-  "attack": 9,
+  "attack": 8,
   "body0": 127,
   "casts": {
    "pirateCannonBarrage": [
@@ -373,12 +373,12 @@
   "feet_row": 259,
   "fps": 15,
   "frame": 272,
-  "hit": 4,
+  "hit": 5,
   "hurt": 5,
   "run": 7
  },
  "space": {
-  "attack": 9,
+  "attack": 8,
   "body0": 165,
   "casts": {
    "starGravityWarp": [
@@ -401,7 +401,7 @@
   "feet_row": 260,
   "fps": 15,
   "frame": 272,
-  "hit": 4,
+  "hit": 2,
   "hurt": 5,
   "run": 7
  }

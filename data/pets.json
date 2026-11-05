@@ -2034,7 +2034,7 @@
     "mr": 21,
     "crit": 0.25,
     "img": "pets/pixel/hiding_idle.png",
-    "sprite": {"frames": 7, "frameW": 200, "frameH": 225, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 217, "duration": 875},
     "passive": {
       "type": "summonAlly",
       "name": "喊龟",

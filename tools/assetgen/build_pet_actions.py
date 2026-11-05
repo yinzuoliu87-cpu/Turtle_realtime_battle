@@ -128,6 +128,10 @@ def _headless_fear(k0: np.ndarray) -> list:
 	return out
 
 
+## 首尾钉住重做的普攻(11-05 晚): 道具 / 弹道在龟身前方或身上, 「最靠前那帧」量不出 ⇒ 逐帧看定(.out/art/pin_hitframes.png)
+##   海盗 5 = 弯刀扫到身前 · 猎人 4 = 箭离弦 · 线条 3 = 墨线最长 · 星际 2 = 星光弹射出
+HIT_OVERRIDE = {"pirate": 5, "hunter": 4, "line": 3, "space": 2}
+
 SEG_PROCEDURAL = {"headless": {"attack": _headless_attack, "cast_headlessFear": _headless_fear}}
 
 ## ── 持续状态循环(技能期间身体一直保持某个样子; 游戏侧条件在 AttackRhythm.state_active)
@@ -224,6 +228,10 @@ def build(tid: str) -> dict:
 			frames = SEG_PROCEDURAL[tid][nm](k0)
 		else:
 			frames = [k0] + [place(f) for f in _ai(d, pal)]
+			if os.path.exists(os.path.join(d, "pinned")):
+				## 首尾都钉在定稿上生成的段(animate_image first_frame = last_frame = 定稿; 11-05 晚起普攻 / 受击这样重做):
+				##   AI 第 1 帧 = 起始姿势重画一遍(与第 0 帧重复)⇒ 丢掉; 末帧换成定稿原图 ⇒ 接回待机逐像素无跳
+				frames = [k0] + frames[2:-1] + [k0]
 			if os.path.exists(os.path.join(d, "end.png")):   # 钉住的末帧(如钻石球定稿; 状态循环从这一帧接)
 				frames.append(place(A._palette_lock(np.asarray(Image.open(os.path.join(d, "end.png")).convert("RGBA")), pal)))
 		if nm == "death":
@@ -240,6 +248,7 @@ def build(tid: str) -> dict:
 		## 前冲够明显(≥ 4px)才按「伸到 85% 那帧」定命中; 不前冲的(吹泡泡 / 射箭等原地出手)按提示词约定「前三帧蓄力、第 4 帧出手」
 		##   (11-05 泡泡龟: 最大前伸 1px 落在第 1 帧 ⇒ 被定成命中帧 1, 等于没有前摇)
 		ent["hit"] = next(i for i, e in enumerate(ext) if e >= 0.85 * max(ext)) if max(ext) >= 4 else A.ATTACK_HIT
+		ent["hit"] = HIT_OVERRIDE.get(tid, ent["hit"])
 	for nm, frames in segs.items():
 		if nm.startswith("cast_"):
 			ent["casts"][nm[5:]] = [len(frames), A.peak_frame(frames), "pixellab"]
