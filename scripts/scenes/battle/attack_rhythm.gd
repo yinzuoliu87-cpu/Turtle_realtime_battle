@@ -113,6 +113,9 @@ static func apply_state_idle(battle, u: Dictionary) -> void:
 	var key = battle._anim_key(u)
 	var rows: Array = CastSheets.STATE.get(key, TurtleActions.STATE.get(key, []))
 	if rows.is_empty():
+		if str(u.get("_state_on", "")) != "":   # 状态结束且动画键已变(火山 → 普通): 回待机
+			u["_state_on"] = ""
+			battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
 		return
 	var row: Array = []
 	for r in rows:
@@ -135,4 +138,26 @@ static func apply_state_idle(battle, u: Dictionary) -> void:
 		return
 	sd["loop"] = true
 	u["_state_on"] = str(row[0])
-	battle._set_anim_sheet(u, sd, "", true)
+	_set_sheet_normed(battle, u, sd, "")
+
+
+## 换帧表并按归一表修正(方帧动作图与待机同像素尺寸、同脚底线); 没登记归一的(64 像素小图)走待机口径
+static func _set_sheet_normed(battle, u: Dictionary, sd: Dictionary, action: String) -> void:
+	var key = battle._anim_key(u)
+	if battle.ANIM_NORM.has(key) or TurtleActions.NORM.has(key):
+		battle._set_anim_sheet(u, sd, action, false)
+		battle._elite_sys._elite_fix_norm(u, sd)
+	else:
+		battle._set_anim_sheet(u, sd, action, action == "")
+
+
+## 形态切换段(熔岩变身 / 变回): TurtleActions.FORM[龟][段] = [路径, 帧率]; 播一次, 期间普攻 / 受击不打断(battle_vfx 白名单)
+static func play_form(battle, u: Dictionary, tid: String, seg: String) -> void:
+	var ent: Array = (TurtleActions.FORM.get(tid, {}) as Dictionary).get(seg, [])
+	if ent.is_empty() or not is_instance_valid(u.get("sprite", null)) or str(u.get("anim_action", "")) == "death":
+		return
+	var sd: Dictionary = battle._resolve_action(str(ent[0]), float(ent[1]))
+	if sd.is_empty():
+		return
+	u["_state_on"] = ""
+	_set_sheet_normed(battle, u, sd, "transform")

@@ -36,9 +36,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("=== 外包 11 只龟动作帧 ↔ 待机 ===")
 	var pets := _pets()
-	var ids: Array = TA.ATTACK.keys()
+	var ids: Array = []
+	var form_ids: Array = []   # 形态套(如 lava_volcano): 不在 pets.json, 第 0 帧对的是这一套自己的待机
+	for k in TA.ATTACK.keys():
+		(ids if pets.has(str(k)) else form_ids).append(str(k))
 	ids.sort()
 	_ok("★分母: 动作表里有 11 只龟", ids.size() == 11, str(ids))
+	_check_forms(form_ids)
 	## ── ①② 文件 ──
 	for id in ids:
 		var p: Dictionary = pets.get(id, {})
@@ -154,7 +158,89 @@ func _ready() -> void:
 			u["_cast_wind"] = false
 	_ok("★分母: 运行时一共播了 33 次动作(11 只 × 3)", played == 33, "%d 次" % played)
 	_ok("★分母: 技能释放动作至少 25 段播过(外包 11 只)", ncast >= 25, "%d 段" % ncast)
+	## 熔岩火山形态: 进火山后播动作, 像素尺寸 / 脚底线仍与普通待机一致
+	for e in scn._units:
+		if str(e.get("id", "")) == "lava":
+			var lspr: Sprite3D = e["sprite"]
+			scn._set_anim_sheet(e, e.get("idle_sd", {}), "", true)
+			var lfh: float = float(int(e["idle_sd"].get("frame_h", 0)))
+			var lpx0: float = lspr.pixel_size
+			var lfeet0: float = (lspr.offset.y + lfh * 0.5 - lfh) * lpx0
+			e["volcano"] = true
+			_ok("火山形态的动画键是 lava_volcano", str(scn._anim_key(e)) == "lava_volcano", str(scn._anim_key(e)))
+			for kind in KINDS:
+				scn._vfx._play_action(e, kind)
+				var vsd: Dictionary = e.get("anim_sd", {})
+				var vfeet: float = (lspr.offset.y + float(int(vsd.get("frame_h", 0))) * 0.5 - float((TA.NORM["lava_volcano"] as Array)[1])) * lspr.pixel_size
+				_ok("★★火山形态 %s 与普通待机同一个像素尺寸、同一条脚底线" % kind,
+					str((vsd.get("tex", null) as Texture2D).resource_path).contains("lava_volcano") and absf(lspr.pixel_size - lpx0) < 1e-7 and absf(vfeet - lfeet0) < 1e-5,
+					"%s · pixel_size %.6f/%.6f · 脚底 %.5f/%.5f" % [str((vsd.get("tex", null) as Texture2D).resource_path).get_file(), lspr.pixel_size, lpx0, vfeet, lfeet0])
+				scn._set_anim_sheet(e, e.get("idle_sd", {}), "", true)
+			e["volcano"] = false
 	scn.queue_free()
 	print("%d passed, %d failed" % [_n - _fail, _fail])
 	print("ALL PASS — 外包 11 只动作帧与待机同框同尺度" if _fail == 0 else "FAIL")
 	get_tree().quit(0 if _fail == 0 else 1)
+
+
+func _frame0(path: String) -> Image:
+	var t: Texture2D = load("res://assets/sprites/" + path)
+	if t == null:
+		return null
+	var im: Image = t.get_image()
+	im.convert(Image.FORMAT_RGBA8)
+	var h: int = im.get_height()
+	return im.get_region(Rect2i(0, 0, h, h))
+
+
+func _last(path: String) -> Image:
+	var t: Texture2D = load("res://assets/sprites/" + path)
+	var im: Image = t.get_image()
+	im.convert(Image.FORMAT_RGBA8)
+	var h: int = im.get_height()
+	return im.get_region(Rect2i(im.get_width() - h, 0, h, h))
+
+
+func _same(a: Image, b: Image) -> bool:
+	return a != null and b != null and a.get_data() == b.get_data()
+
+
+## 形态套(熔岩火山): 每个动作第 0 帧 == 这一套待机第 0 帧; 变身段首帧 == 普通形态动作第 0 帧、末帧 == 火山待机第 0 帧; 变回 = 变身倒放
+func _check_forms(form_ids: Array) -> void:
+	_ok("★分母: 形态套至少 1 套(熔岩火山)", form_ids.size() >= 1, str(form_ids))
+	for fid in form_ids:
+		var st: Array = TA.STATE.get(fid, [])
+		_ok("%s 有待机循环(STATE)" % fid, not st.is_empty())
+		if st.is_empty():
+			continue
+		var idle0 := _frame0(str((st[0] as Array)[1]))
+		var paths: Array = []
+		for kind in KINDS:
+			paths.append(str((TA.by_kind(kind)[fid] as Array)[0]))
+		for cst in (TA.CAST.get(fid, {}) as Dictionary):
+			paths.append(str((TA.CAST[fid][cst] as Array)[0]))
+		for pth in paths:
+			_ok("%s %s 第0帧 == 这一套待机第0帧" % [fid, str(pth).get_file()], _same(_frame0(str(pth)), idle0))
+	for tid in TA.FORM:
+		var fm: Dictionary = TA.FORM[tid]
+		var a0 := _frame0(str((TA.ATTACK[tid] as Array)[0]))
+		if fm.has("revive"):
+			## 复活段: 首帧 == 阵亡末帧(趴着), 末帧 == 待机第0帧(站起来正好接回待机)
+			var rp: String = str((fm["revive"] as Array)[0])
+			_ok("%s 复活段首帧 == 阵亡末帧" % tid, _same(_frame0(rp), _last(str((TA.DEATH[tid] as Array)[0]))))
+			_ok("%s 复活段末帧 == 待机第0帧" % tid, _same(_last(rp), a0))
+		if fm.has("awaken"):
+			_ok("%s 觉醒段首帧 == 待机第0帧" % tid, _same(_frame0(str((fm["awaken"] as Array)[0])), a0))
+		if not fm.has("transform"):
+			continue
+		var tr: Array = (TA.FORM[tid] as Dictionary).get("transform", [])
+		var rv: Array = (TA.FORM[tid] as Dictionary).get("revert", [])
+		var vol_idle: Array = TA.STATE.get(str(tid) + "_volcano", [])
+		if tr.is_empty() or rv.is_empty() or vol_idle.is_empty():
+			_ok("%s 变身 / 变回 / 火山待机都登记了" % tid, false)
+			continue
+		var n0 := _frame0(str((TA.ATTACK[tid] as Array)[0]))
+		_ok("%s 变身段首帧 == 普通形态第0帧" % tid, _same(_frame0(str(tr[0])), n0))
+		_ok("%s 变身段末帧 == 火山待机第0帧" % tid, _same(_last(str(tr[0])), _frame0(str((vol_idle[0] as Array)[1]))))
+		_ok("%s 变回段首帧 == 火山待机第0帧、末帧 == 普通形态第0帧" % tid,
+			_same(_frame0(str(rv[0])), _frame0(str((vol_idle[0] as Array)[1]))) and _same(_last(str(rv[0])), n0))

@@ -430,6 +430,7 @@ func nirvana_begin(u: Dictionary, pct: float) -> void:
 		u["_assembling"] = true
 		u["_phx_reborn_t0"] = battle._t
 		nirvana_show(u, pct)              # 三拍演出(灰烬 → 聚火 → 展翼)
+		AttackRhythm.play_form(battle, u, "phoenix", "revive")   # 复活段: 趴着 2.5 秒里最后一拍站起, 对上展翼(11-05; build_spine_actions REVIVE_SHOW_SEC)
 		battle._pending_shots.append({"delay": NIRVANA_SHOW_SEC, "src": u, "fn": func() -> void:
 			if not (u is Dictionary):
 				return

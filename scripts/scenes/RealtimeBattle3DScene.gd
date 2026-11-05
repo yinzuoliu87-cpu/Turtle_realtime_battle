@@ -1914,6 +1914,7 @@ func _anim_key(u: Dictionary) -> String:
 		if u.get("is_elite", false):
 			return "__minion_elite__"
 		return "__minion_front__" if str(u.get("minion_role", "front")) == "front" else "__minion_back__"
+	if id == "lava" and u.get("volcano", false): return "lava_volcano"   # 火山形态整套动作(TurtleActions「lava_volcano」, 11-05 方案书 20261105b §4.3b)
 	return id
 
 
@@ -4468,7 +4469,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 			_audio_sys._sfx_simple("g_rebirth")              # §AUDIO: 首死复活音 (天使圣光等, 低频不节流)
 		if u["id"] != "phoenix":
 			u["hp"] = u["maxHp"] * pct                 # 天使/宝箱雕像: 保持原来的"一帧复活"
-			_vfx._float_text(u["pos"] + Vector2(0, -64), "复活", Color("#ffd93d"))
+			_vfx._revive_fx(u)                           # 飘「复活」+ 复活段(倒地 → 站起, 11-05)
 			return
 		## ★★凤凰涅槃 = 一段 2.5 秒的演出(用户 2026-08-13)。整段住在 PhoenixSystem ——
 		##   它不在 _sim_step 调用链上, 按 CLAUDE.md §5 就不该进主文件(实测加进来超预算 18 行)。

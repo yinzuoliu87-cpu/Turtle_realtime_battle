@@ -429,6 +429,7 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 #  注: 3D 版血条 overlay 每帧统一刷新, 故去掉 2D 版各处的 _update_bars(u) 调用.
 # ============================================================================
 func _shell_apply_awaken(u: Dictionary) -> void:   # 气场觉醒一次(六属性+6%/暴击+12.5%·用户2026-07-28 12%→6%、25%→12.5%) + 金光爆发特效
+	AttackRhythm.play_form(battle, u, "shell", "awaken")   # 觉醒那一下的身体动作(一缩一鼓一抖; 11-05)
 	battle._damage._buff(u, "atk", AWAKEN_PCT, true, 9999.0); battle._damage._buff(u, "def", AWAKEN_PCT, true, 9999.0); battle._damage._buff(u, "mr", AWAKEN_PCT, true, 9999.0)
 	battle._damage._buff(u, "lifesteal", AWAKEN_PCT, true, 9999.0)   # +6%吸血
 	var ah: float = u["maxHp"] * AWAKEN_PCT; u["maxHp"] += ah; u["hp"] += ah   # +6%最大生命

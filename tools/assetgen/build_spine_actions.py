@@ -215,10 +215,57 @@ def _check_cast_variety() -> None:
 				raise SystemExit("%s.%s 转角超过 HEAD_MAX" % (nm, ch))
 
 
+## ── 走路循环(骨骼; 不花额度): 对角步态 —— 近侧前腿与远侧后腿同相、另一对差半个周期;
+##   着地时脚往后划(龟朝左, 往后 = +x), 抬起时往前摆、离地 WALK_LIFT; 身体随步轻微起伏。8 帧循环, 首尾相接。
+WALK_STRIDE = 9.0    # 屏幕上龟约 45 像素高(缩放约 0.3), 5 像素步幅缩下来看不见(11-05 预览)
+WALK_LIFT = 6.0
+
+
+def _walk_leg(phase: float, n: int) -> list:
+	import math
+	out = []
+	for k in range(n):
+		t = (k / float(n) + phase) % 1.0
+		if t < 0.5:
+			x = -WALK_STRIDE + 2 * WALK_STRIDE * (t / 0.5)
+			y = 0.0
+		else:
+			u_ = (t - 0.5) / 0.5
+			x = WALK_STRIDE - 2 * WALK_STRIDE * u_
+			y = WALK_LIFT * math.sin(math.pi * u_)
+		out.append((round(x, 2), round(y, 2)))
+	return out
+
+
+def walk_spec() -> dict:
+	import math
+	n = 8
+	sp = {"frames": n, "loop": True}
+	for bones, ph in ((("arml3", "handl2", "legr3", "footr2"), 0.0), (("armr3", "handr2", "legl2", "footl2"), 0.5)):
+		for bn in bones:
+			sp[bn + ".translate"] = _walk_leg(ph, n)
+	sp["main.translate"] = [(0.0, round(1.0 * abs(math.sin(2 * math.pi * k / n)), 2)) for k in range(n)]
+	sp["shell.rotate"] = [round(1.0 * math.sin(2 * math.pi * k / n), 2) for k in range(n)]
+	return sp
+
+
+## ── 复活段 / 觉醒(被动里改变身体的那几个; 方案书 20261105b §4.1) ──
+## 复活 = 阵亡末帧 + AI 8 帧(animate_image 首帧钉阵亡末帧、末帧钉待机原帧; spine_src/<龟>/ai_revive/)+ 待机原帧, 首尾与前后动作对得上。
+## REVIVE_HOLD: 复活前保持趴着多少帧 —— 凤凰涅槃是 2.5 秒三拍演出(phoenix_system.NIRVANA_SHOW_SEC), 站起要落在最后「展翼」那刻;
+##   天使「一帧复活」直接播。
+REVIVE_SHOW_SEC = {"phoenix": 2.5}
+SHELL_AWAKEN = {   # 龟壳气场觉醒(登场后两次): 一缩一鼓一抖, 末帧回原样
+	"frames": 10,
+	"main.scale": [(1, 1), (1.03, 0.95), (1.05, 0.92), (0.96, 1.08), (1.1, 1.1), (1.08, 1.08), (1.05, 1.05), (1.03, 1.03), (1.01, 1.01), (1, 1)],
+	"main.translate": [(0, 0), (0, 0), (0, 0), (0, 0), (-2, 0), (2, 0), (-2, 0), (1, 0), (0, 0), (0, 0)],
+	"shell.rotate": [0, 0, 0, 0, 3, -3, 2, -1, 0, 0],
+}
+
+
 def specs_for(tid: str) -> dict:
 	if tid == "shell":
 		return {"attack": SHELL_ATTACK, "hurt": SHELL_HURT, "death": SHELL_DEATH}
-	return {"attack": ATTACK_RANGED if tid in RANGED else ATTACK_MELEE, "hurt": HURT, "death": DEATH}
+	return {"attack": ATTACK_RANGED if tid in RANGED else ATTACK_MELEE, "hurt": HURT, "death": DEATH, "run": walk_spec()}
 
 
 ## 待机时间轴各通道: 字段与缺省值(取 t=0 的值当动作的底)
@@ -247,7 +294,7 @@ def build_anim(sk, spec: dict) -> dict:
 
 	touched = set()
 	for ch, vals in spec.items():
-		if ch == "frames" or ch in ("eyes", "tint", "root.drift"):
+		if ch in ("frames", "loop") or ch in ("eyes", "tint", "root.drift"):
 			continue
 		who, kind = ch.split(".")
 		targets = {"front": FRONT_IK, "hind": HIND_IK, "tail": [tail] if tail else []}.get(who, [who])
@@ -447,6 +494,79 @@ def ai_death_frames(d: str, tid: str, idle: dict) -> list:
 	return frames
 
 
+## ── 熔岩龟火山形态(方案书 20261105b §4.3b) ──
+## 定稿: spine_src/turtle04_lava/volcano/keyframe.png(PixelLab Pro Flash 以待机原帧为底改图, 208×192 画布 ⇒ 游戏里同像素尺度显得大一圈);
+## 各段: volcano/<段>/ai_N.png(animate_image 首帧 = 定稿; 变身段首帧 = 普通形态原帧放进同画布、末帧钉定稿)。
+## 摆放: 208×192 格在方帧里 ox = (S-208)/2、底边 = FEET; 普通形态原帧在 208×192 画布的 (4,16) ⇒ 与普通形态动作帧逐像素同位。
+VOLC_DIR = os.path.join(I.SRC, "turtle04_lava", "volcano")
+VOLC_W, VOLC_H = 208, 192
+VOLC_N0 = (4, 16)   # 普通形态原帧在火山画布里的位置(tools: .out/art/ai/lava_f0_208.png 同口径)
+
+
+def build_volcano(idle_lava: dict, preview_rows: list, write: bool) -> dict:
+	key = np.asarray(Image.open(os.path.join(VOLC_DIR, "keyframe.png")).convert("RGBA"))
+	sheet = np.asarray(Image.open(IDLE_SHEET % "lava").convert("RGBA"))
+	pal = np.unique(np.concatenate([sheet[sheet[..., 3] > 0][:, :3], key[key[..., 3] > 0][:, :3]]), axis=0)
+	ox = (S_FRAME - VOLC_W) // 2
+	oy = FEET - VOLC_H
+
+	def place(cell: np.ndarray) -> np.ndarray:
+		fr = np.zeros((S_FRAME, S_FRAME, 4), dtype=np.uint8)
+		fr[oy:oy + VOLC_H, ox:ox + VOLC_W] = cell
+		return fr
+
+	def seg(name: str) -> list:
+		d = os.path.join(VOLC_DIR, name)
+		n = len([f for f in os.listdir(d) if f.startswith("ai_") and f.endswith(".png")])
+		return [place(_palette_lock(np.asarray(Image.open(os.path.join(d, "ai_%d.png" % k)).convert("RGBA")), pal)) for k in range(1, n + 1)]
+	k0 = place(_palette_lock(key, pal))
+	n0 = np.zeros((VOLC_H, VOLC_W, 4), dtype=np.uint8)
+	fw, fh = idle_lava["frameW"], idle_lava["frameH"]
+	n0[VOLC_N0[1]:VOLC_N0[1] + fh, VOLC_N0[0]:VOLC_N0[0] + fw] = sheet[:fh, :fw]
+	normal0 = place(n0)
+	out = {}
+	acts = {
+		"idle": [k0] + seg("idle")[4:],   # AI 待机的前 4 帧整只发白过曝(「裂缝一明一暗」被做成白闪), 循环里一半时间在闪 ⇒ 只取后 4 帧接定稿(11-05 预览)
+		"attack": [k0] + seg("attack"),
+		"hurt": [k0] + seg("hurt"),
+		"death": [k0] + seg("death"),
+	}
+	while len(acts["death"]) < int(DEATH["frames"]):
+		acts["death"].append(acts["death"][-1].copy())
+	casts = {}
+	for st in ("lavaQuake", "lavaSurge", "lavaErupt"):
+		if os.path.isdir(os.path.join(VOLC_DIR, "cast_" + st)):
+			casts[st] = [k0] + seg("cast_" + st)
+	tr = [normal0] + seg("transform") + [k0]   # 末帧 = 定稿(变身完正好接火山待机)
+	forms = {"transform": tr, "revert": tr[::-1]}   # 变回 = 变身倒放(不另花生成次数)
+	bx0, by0, bx1, by1 = _bbox(k0)
+	lefts = [(_bbox(f)[0] if (f[..., 3] > 0).any() else 999) for f in acts["attack"]]
+	ext = [lefts[0] - x for x in lefts]
+	hit = next(i for i, e in enumerate(ext) if e >= 0.85 * max(ext)) if max(ext) > 0 else ATTACK_HIT
+	ent = {"frame": S_FRAME, "fps": FPS, "body0": by1 - by0, "feet_row": by1, "hit": hit,
+		"attack": len(acts["attack"]), "hurt": len(acts["hurt"]), "death": len(acts["death"]),
+		"states": [["volcano", "pets/animations/lava_volcano/idle.png", 10.0]], "casts": {}}
+	od = os.path.join(OUT_DIR, "lava_volcano")
+	os.makedirs(od, exist_ok=True)
+	for nm, frames in list(acts.items()) + [("cast_" + st, f) for st, f in casts.items()]:
+		preview_rows.append(("lava_volcano", nm, frames))
+		if write:
+			Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(od, "%s.png" % nm), optimize=False)
+	for st, frames in casts.items():
+		ent["casts"][st] = [len(frames), peak_frame(frames), "pixellab"]
+	fl = {}
+	for nm, frames in forms.items():
+		preview_rows.append(("lava", nm, frames))
+		if write:
+			Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(OUT_DIR, "lava", "%s.png" % nm), optimize=False)
+		fl[nm] = len(frames)
+	print("lava_volcano 待机 %d · 普攻 %d(命中 %d)· 受击 %d · 阵亡 %d · 技能 %s · 变身 / 变回 %d 帧" % (
+		len(acts["idle"]), len(acts["attack"]), hit, len(acts["hurt"]), len(acts["death"]), sorted(casts), len(tr)))
+	out["lava_volcano"] = ent
+	out["lava_forms"] = fl
+	return out
+
+
 def _bbox(fr: np.ndarray) -> tuple:
 	m = fr[..., 3] > 0
 	ys = np.where(m.any(axis=1))[0]
@@ -473,10 +593,16 @@ def write_gd(man: dict) -> None:
 		for t in ids:
 			L.append("\t\"%s\": [\"pets/animations/%s/%s.png\", %.1f],   # %d 帧" % (t, t, act, float(FPS), int(man[t][act])))
 		L.append("}")
+	L.append("## 走路循环(骨骼对角步态; battle_render._update_run_anim 读; 龟壳没有腿不做)")
+	L.append("const RUN := {")
+	for t in ids:
+		if "run" in man[t]:
+			L.append("	\"%s\": [\"pets/animations/%s/run.png\", 12.0],   # %d 帧" % (t, t, int(man[t]["run"])))
+	L.append("}")
 	L.append("## 普攻命中帧(按路径; AttackHits.hit_frame 读): 前摇 1~%d 帧 → 第 %d 帧命中 → 后摇。" % (ATTACK_HIT - 1, ATTACK_HIT))
 	L.append("const HIT := {")
 	for t in ids:
-		L.append("\t\"pets/animations/%s/attack.png\": %d," % (t, ATTACK_HIT))
+		L.append("\t\"pets/animations/%s/attack.png\": %d," % (t, int(man[t].get("hit", ATTACK_HIT))))
 	L.append("}")
 	L.append("## 技能释放动作 [路径, 帧率, 释放帧](AttackRhythm.cast_begin 读: 技能前摇开始就播, 释放帧对上 _cast_skill 生效)。来源: 骨骼模板 / PixelLab。")
 	L.append("## 持续状态循环 [[状态名, 路径, 帧率], ...](AttackRhythm.apply_state_idle 读; 熔岩火山形态等)")
@@ -485,6 +611,13 @@ def write_gd(man: dict) -> None:
 		stt = man[t].get("states", [])
 		if stt:
 			L.append("	\"%s\": [%s]," % (t, ", ".join("[\"%s\", \"%s\", %.1f]" % (a, b_, float(c)) for a, b_, c in stt)))
+	L.append("}")
+	L.append("## 形态切换段 [路径, 帧率](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放)")
+	L.append("const FORM := {")
+	for t in ids:
+		fm = man[t].get("forms", {})
+		if fm:
+			L.append("\t\"%s\": {%s}," % (t, ", ".join("\"%s\": [\"pets/animations/%s/%s.png\", %.1f]" % (nm, t, nm, float(FPS)) for nm in sorted(fm))))
 	L.append("}")
 	L.append("const CAST := {")
 	for t in ids:
@@ -536,8 +669,11 @@ def main() -> int:
 			if act == "death" and os.path.isdir(os.path.join(I.SRC, d, "ai_death")):
 				frames = ai_death_frames(d, tid, idle)
 				ent["death_src"] = "pixellab"
+				death_frames = frames
 			else:
 				frames = render_action(d, tid, spec, idle)
+			if act == "death":
+				death_frames = frames
 			if act == "death" and max(_bbox(f)[3] for f in frames) > FEET + GROUND_TOL:
 				raise SystemExit("%s 阵亡穿地: 最低点 %d > 脚底线 %d + %d" % (tid, max(_bbox(f)[3] for f in frames), FEET, GROUND_TOL))
 			bx0, by0, bx1, by1 = _bbox(frames[0])
@@ -551,6 +687,22 @@ def main() -> int:
 				os.makedirs(od, exist_ok=True)
 				Image.fromarray(sheet, "RGBA").save(os.path.join(od, "%s.png" % act), optimize=False)
 			print("%-10s %-7s %2d 帧 · 第0帧本体高 %d 脚底行 %d(待机本体高 %d)" % (tid, act, len(frames), by1 - by0, by1, idle["content"][1]))
+		forms = {}
+		if os.path.isdir(os.path.join(I.SRC, d, "ai_revive")):
+			ai = ai_frames(d, tid, idle, "ai_revive")
+			rise = [death_frames[-1]] + ai[1:] + [ai[0]]
+			hold = max(0, int(round(REVIVE_SHOW_SEC.get(tid, 0.0) * FPS)) - len(rise))
+			forms["revive"] = [death_frames[-1].copy() for _ in range(hold)] + rise
+		if tid == "shell":
+			forms["awaken"] = render_action(d, tid, SHELL_AWAKEN, idle)
+		if forms:
+			ent["forms"] = {}
+			for nm, frames in forms.items():
+				ent["forms"][nm] = len(frames)
+				rows.append((tid, nm, frames))
+				if preview is None:
+					Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(OUT_DIR, tid, "%s.png" % nm), optimize=False)
+				print("%-10s %-7s %2d 帧(形态 / 被动段)" % (tid, nm, len(frames)))
 		casts = {}
 		for stype, spec in CAST_SKEL.get(tid, {}).items():
 			casts[stype] = ("skel", render_action(d, tid, spec, idle))
@@ -569,6 +721,11 @@ def main() -> int:
 				Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(od, "cast_%s.png" % stype), optimize=False)
 			print("%-10s cast_%-22s %2d 帧 · 释放帧 %d · %s" % (tid, stype, len(frames), rel, src))
 		man[tid] = ent
+	if (only is None or "lava" in only) and os.path.exists(os.path.join(VOLC_DIR, "keyframe.png")):
+		vo = build_volcano(idle_man["lava"], rows, preview is None)
+		man["lava_volcano"] = vo["lava_volcano"]
+		if "lava" in man:
+			man["lava"]["forms"] = vo["lava_forms"]
 	if preview:
 		cell = S_FRAME // 2
 		maxn = max(len(f) for _, _, f in rows)

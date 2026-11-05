@@ -12,6 +12,7 @@ const ATTACK := {
 	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 10 帧
 	"ice": ["pets/animations/ice/attack.png", 15.0],   # 10 帧
 	"lava": ["pets/animations/lava/attack.png", 15.0],   # 10 帧
+	"lava_volcano": ["pets/animations/lava_volcano/attack.png", 15.0],   # 9 帧
 	"lightning": ["pets/animations/lightning/attack.png", 15.0],   # 10 帧
 	"phoenix": ["pets/animations/phoenix/attack.png", 15.0],   # 10 帧
 	"rainbow": ["pets/animations/rainbow/attack.png", 15.0],   # 10 帧
@@ -25,6 +26,7 @@ const HURT := {
 	"fortune": ["pets/animations/fortune/hurt.png", 15.0],   # 6 帧
 	"ice": ["pets/animations/ice/hurt.png", 15.0],   # 6 帧
 	"lava": ["pets/animations/lava/hurt.png", 15.0],   # 6 帧
+	"lava_volcano": ["pets/animations/lava_volcano/hurt.png", 15.0],   # 5 帧
 	"lightning": ["pets/animations/lightning/hurt.png", 15.0],   # 6 帧
 	"phoenix": ["pets/animations/phoenix/hurt.png", 15.0],   # 6 帧
 	"rainbow": ["pets/animations/rainbow/hurt.png", 15.0],   # 6 帧
@@ -38,11 +40,25 @@ const DEATH := {
 	"fortune": ["pets/animations/fortune/death.png", 15.0],   # 15 帧
 	"ice": ["pets/animations/ice/death.png", 15.0],   # 15 帧
 	"lava": ["pets/animations/lava/death.png", 15.0],   # 15 帧
+	"lava_volcano": ["pets/animations/lava_volcano/death.png", 15.0],   # 15 帧
 	"lightning": ["pets/animations/lightning/death.png", 15.0],   # 15 帧
 	"phoenix": ["pets/animations/phoenix/death.png", 15.0],   # 15 帧
 	"rainbow": ["pets/animations/rainbow/death.png", 15.0],   # 15 帧
 	"shell": ["pets/animations/shell/death.png", 15.0],   # 15 帧
 	"stone": ["pets/animations/stone/death.png", 15.0],   # 15 帧
+}
+## 走路循环(骨骼对角步态; battle_render._update_run_anim 读; 龟壳没有腿不做)
+const RUN := {
+	"angel": ["pets/animations/angel/run.png", 12.0],   # 8 帧
+	"bamboo": ["pets/animations/bamboo/run.png", 12.0],   # 8 帧
+	"basic": ["pets/animations/basic/run.png", 12.0],   # 8 帧
+	"fortune": ["pets/animations/fortune/run.png", 12.0],   # 8 帧
+	"ice": ["pets/animations/ice/run.png", 12.0],   # 8 帧
+	"lava": ["pets/animations/lava/run.png", 12.0],   # 8 帧
+	"lightning": ["pets/animations/lightning/run.png", 12.0],   # 8 帧
+	"phoenix": ["pets/animations/phoenix/run.png", 12.0],   # 8 帧
+	"rainbow": ["pets/animations/rainbow/run.png", 12.0],   # 8 帧
+	"stone": ["pets/animations/stone/run.png", 12.0],   # 8 帧
 }
 ## 普攻命中帧(按路径; AttackHits.hit_frame 读): 前摇 1~3 帧 → 第 4 帧命中 → 后摇。
 const HIT := {
@@ -52,6 +68,7 @@ const HIT := {
 	"pets/animations/fortune/attack.png": 4,
 	"pets/animations/ice/attack.png": 4,
 	"pets/animations/lava/attack.png": 4,
+	"pets/animations/lava_volcano/attack.png": 5,
 	"pets/animations/lightning/attack.png": 4,
 	"pets/animations/phoenix/attack.png": 4,
 	"pets/animations/rainbow/attack.png": 4,
@@ -61,6 +78,14 @@ const HIT := {
 ## 技能释放动作 [路径, 帧率, 释放帧](AttackRhythm.cast_begin 读: 技能前摇开始就播, 释放帧对上 _cast_skill 生效)。来源: 骨骼模板 / PixelLab。
 ## 持续状态循环 [[状态名, 路径, 帧率], ...](AttackRhythm.apply_state_idle 读; 熔岩火山形态等)
 const STATE := {
+	"lava_volcano": [["volcano", "pets/animations/lava_volcano/idle.png", 10.0]],
+}
+## 形态切换段 [路径, 帧率](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放)
+const FORM := {
+	"angel": {"revive": ["pets/animations/angel/revive.png", 15.0]},
+	"lava": {"revert": ["pets/animations/lava/revert.png", 15.0], "transform": ["pets/animations/lava/transform.png", 15.0]},
+	"phoenix": {"revive": ["pets/animations/phoenix/revive.png", 15.0]},
+	"shell": {"awaken": ["pets/animations/shell/awaken.png", 15.0]},
 }
 const CAST := {
 	"angel": {
@@ -93,6 +118,11 @@ const CAST := {
 		"lavaQuake": ["pets/animations/lava/cast_lavaQuake.png", 15.0, 3],   # 8 帧 · skel
 		"lavaSurge": ["pets/animations/lava/cast_lavaSurge.png", 15.0, 3],   # 7 帧 · pixellab
 	},
+	"lava_volcano": {
+		"lavaErupt": ["pets/animations/lava_volcano/cast_lavaErupt.png", 15.0, 6],   # 7 帧 · pixellab
+		"lavaQuake": ["pets/animations/lava_volcano/cast_lavaQuake.png", 15.0, 3],   # 7 帧 · pixellab
+		"lavaSurge": ["pets/animations/lava_volcano/cast_lavaSurge.png", 15.0, 3],   # 7 帧 · pixellab
+	},
 	"lightning": {
 		"lightningBarrage": ["pets/animations/lightning/cast_lightningBarrage.png", 15.0, 4],   # 8 帧 · skel
 		"lightningShield": ["pets/animations/lightning/cast_lightningShield.png", 15.0, 4],   # 8 帧 · skel
@@ -124,10 +154,11 @@ const CAST := {
 const NORM := {
 	"angel": [160.0, 260.0, 160.0],
 	"bamboo": [165.0, 260.0, 165.0],
-	"basic": [141.0, 260.0, 141.0],
+	"basic": [139.0, 260.0, 139.0],
 	"fortune": [149.0, 260.0, 149.0],
 	"ice": [158.0, 260.0, 158.0],
 	"lava": [162.0, 260.0, 162.0],
+	"lava_volcano": [189.0, 260.0, 189.0],
 	"lightning": [157.0, 260.0, 157.0],
 	"phoenix": [167.0, 260.0, 167.0],
 	"rainbow": [156.0, 260.0, 156.0],

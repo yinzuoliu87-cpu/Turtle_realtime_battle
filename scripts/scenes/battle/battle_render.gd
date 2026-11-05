@@ -22,7 +22,7 @@ const SKILL_TEXT_FS := 13
 const RENDER_OWNED_KEYS := [
 	"anim_action", "anim_t", "anim_sd",
 	"flash_t", "hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_atk_voff",
-	"_windup_total", "_atk_wind", "_atk_hit_frame", "_cast_wind", "_state_on",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
+	"_windup_total", "_atk_wind", "_atk_hit_frame", "_cast_wind", "_state_on", "_run_key",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
 	"_run_acc", "_run_acc_t", "_run_last_pos", "run_sd",
 	"_tr_move_dir", "_tr_move_acc", "_tr_last_pos", "_tr_move_t", "_tr_speed", "_tr_face", "_tr_anim_t",
 	"_hhot_owner", "_mark_spr", "_phase_ai_t",
@@ -69,13 +69,15 @@ func _update_spell_disc() -> void:
 # ----------------------------------------------------------------------------
 # 移动时播 run 走路动画(循环), 停下回 idle. 攻击/受击/死亡/冲刺手动动画期间不切.
 func _update_run_anim(u: Dictionary, delta: float) -> void:
-	if not u.has("run_sd"):
-		var e = battle.ACTION_RUN.get(battle._anim_key(u), null)   # ★同 battle._vfx._play_action: 三种小将共用 id, 要走动画键
+	var _rk = battle._anim_key(u)
+	if not u.has("run_sd") or str(u.get("_run_key", _rk)) != str(_rk):   # 动画键变了(熔岩变火山)⇒ 重取; 火山形态没有走路帧 = 不播
+		var e = battle.ACTION_RUN.get(_rk, TurtleActions.RUN.get(_rk, null))   # ★同 battle._vfx._play_action: 三种小将共用 id, 要走动画键; 外包 11 只的在生成表
 		u["run_sd"] = (battle._resolve_action(str(e[0]), float(e[1])) if e != null else {})
+		u["_run_key"] = _rk
 	var rsd: Dictionary = u["run_sd"]
 	if rsd.is_empty():
 		return
-	if str(u.get("anim_action", "")) != "" or u.get("_manual_anim", false):
+	if str(u.get("anim_action", "")) != "" or u.get("_manual_anim", false) or str(u.get("_state_on", "")) != "":   # 持续状态(虚化…)期间不切走路, 否则与状态循环每帧互抢
 		return
 	# ★定步长下 pos 只在 sim step 跳, 逐 render 帧测 moved 会在 step 边界狂切 run↔idle(每切复位 frame=0)
 	#   → 高帧率"不动且一直闪"(2026-07-25·4070)。改按 0.1s 时间窗累计位移测速(跨多 step 稳), 窗内不切帧表。
@@ -92,7 +94,7 @@ func _update_run_anim(u: Dictionary, delta: float) -> void:
 		battle._set_anim_sheet(u, rsd, "", true)
 		# ★走动走的是 is_idle=true 分支(直接套 idle_px/idle_offy), 同样绕不过归一问题:
 		#   idle_px 是按 80px 帧算的, 套到 96px 帧上 → 本体只有 1.17m 且悬空 0.43m。
-		if battle.ANIM_NORM.has(battle._anim_key(u)):
+		if battle.ANIM_NORM.has(battle._anim_key(u)) or TurtleActions.NORM.has(battle._anim_key(u)):
 			battle._elite_sys._elite_fix_norm(u, rsd)
 	elif speed <= 48.0 and is_run_now:   # 停下 → 回 idle
 		battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回 idle: 该分支会自己还原 idle_px/idle_offy

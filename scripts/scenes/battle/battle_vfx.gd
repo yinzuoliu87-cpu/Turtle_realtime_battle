@@ -86,7 +86,7 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 	if not own_rows.has(kind) and not table.has(id):
 		return
 	# hurt 不打断正在播的 attack (避免普攻动作被打断闪烁); attack 不打断 hurt 中
-	if kind != "death" and u.get("anim_action", "") in ["attack", "hurt", "cast"]:   # cast = 技能释放动作(AttackRhythm.cast_begin): 受击 / 普攻不打断
+	if kind != "death" and u.get("anim_action", "") in ["attack", "hurt", "cast", "transform"]:   # cast = 技能释放动作(AttackRhythm.cast_begin): 受击 / 普攻不打断
 		if kind == "hurt" and u.get("anim_action", "") == "hurt":
 			pass   # 刷新 hurt
 		elif kind != u.get("anim_action", ""):
@@ -110,6 +110,11 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 		art_spr.offset = Vector2(0.0, float(u.get("_art_offy", 0.0)))
 	if battle.ANIM_NORM.has(id) or TurtleActions.NORM.has(id):
 		battle._elite_sys._elite_fix_norm(u, asd)   # 普攻(battle.ACTION_ATTACK)也是 96×96 的 PixelLab 图, 同样要修归一; 外包 11 只的方帧也走这条
+
+## 天使 / 宝箱雕像「一帧复活」的画面: 飘字 + 复活段(阵亡末帧 → 站起 → 待机原帧; AttackRhythm.play_form, 11-05)
+func _revive_fx(u: Dictionary) -> void:
+	_float_text(u["pos"] + Vector2(0, -64), "复活", Color("#ffd93d"))
+	AttackRhythm.play_form(battle, u, str(u.get("id", "")), "revive")
 
 # ----------------------------------------------------------------------------
 #  §GROUNDING — 立绘底部软渐隐 ShaderMaterial (根治"纸板硬切地面").

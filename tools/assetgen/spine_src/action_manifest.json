@@ -22,10 +22,14 @@
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
+  "forms": {
+   "revive": 10
+  },
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 160
+  "idle_body": 160,
+  "run": 8
  },
  "bamboo": {
   "attack": 10,
@@ -53,11 +57,12 @@
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 166
+  "idle_body": 166,
+  "run": 8
  },
  "basic": {
   "attack": 10,
-  "body0": 141,
+  "body0": 139,
   "casts": {
    "basicBarrage": [
     9,
@@ -77,11 +82,12 @@
   },
   "death": 15,
   "death_src": "pixellab",
-  "feet_row": 259,
+  "feet_row": 257,
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 142
+  "idle_body": 142,
+  "run": 8
  },
  "fortune": {
   "attack": 10,
@@ -109,7 +115,8 @@
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 153
+  "idle_body": 153,
+  "run": 8
  },
  "ice": {
   "attack": 10,
@@ -137,7 +144,8 @@
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 158
+  "idle_body": 158,
+  "run": 8
  },
  "lava": {
   "attack": 10,
@@ -162,10 +170,49 @@
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
+  "forms": {
+   "revert": 10,
+   "transform": 10
+  },
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 162
+  "idle_body": 162,
+  "run": 8
+ },
+ "lava_volcano": {
+  "attack": 9,
+  "body0": 189,
+  "casts": {
+   "lavaErupt": [
+    7,
+    6,
+    "pixellab"
+   ],
+   "lavaQuake": [
+    7,
+    3,
+    "pixellab"
+   ],
+   "lavaSurge": [
+    7,
+    3,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 260,
+  "fps": 15,
+  "frame": 272,
+  "hit": 5,
+  "hurt": 5,
+  "states": [
+   [
+    "volcano",
+    "pets/animations/lava_volcano/idle.png",
+    10.0
+   ]
+  ]
  },
  "lightning": {
   "attack": 10,
@@ -193,7 +240,8 @@
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 175
+  "idle_body": 175,
+  "run": 8
  },
  "phoenix": {
   "attack": 10,
@@ -218,10 +266,14 @@
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
+  "forms": {
+   "revive": 38
+  },
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 171
+  "idle_body": 171,
+  "run": 8
  },
  "rainbow": {
   "attack": 10,
@@ -249,7 +301,8 @@
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 156
+  "idle_body": 156,
+  "run": 8
  },
  "shell": {
   "attack": 10,
@@ -273,6 +326,9 @@
   },
   "death": 15,
   "feet_row": 259,
+  "forms": {
+   "awaken": 10
+  },
   "fps": 15,
   "frame": 272,
   "hurt": 6,
@@ -304,6 +360,7 @@
   "fps": 15,
   "frame": 272,
   "hurt": 6,
-  "idle_body": 152
+  "idle_body": 152,
+  "run": 8
  }
 }

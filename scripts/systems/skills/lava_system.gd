@@ -501,8 +501,10 @@ func _lava_transform(u: Dictionary) -> void:
 	u["maxHp"] += hp_gain; u["hp"] += hp_gain
 	# 变身演出: 加里奥R式 跃升 → 敌最密处大圈预警 → 砸地击飞范围内全部敌 + 入场爆发AOE (异步)
 	_lava_volcano_slam(u)
+	AttackRhythm.play_form(battle, u, "lava", "transform")   # 变身段: 普通形态 → 火山定稿(画面; 11-05)
 
 func _lava_revert(u: Dictionary) -> void:                        # 火山形态结束 → 变回小形态 (撤回血上限, 属性buff自然到期)
+	AttackRhythm.play_form(battle, u, "lava", "revert")      # 变回段(变身段倒放; 画面; 11-05)
 	u["volcano"] = false
 	u["rage"] = 0.0                                               # 形态结束怒气正好归零(倒计时条走完·用户2026-07-15)
 	u["melee"] = false; u["atk_range"] = 400.0; u["move_spd"] = LAVA_SPD   # 变回远程射程400, 但移速仍按【近战法师】档(用户2026-07-28拍板·ROLE_MELEE_EXEMPT)
