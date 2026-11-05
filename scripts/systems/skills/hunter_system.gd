@@ -42,6 +42,7 @@ func _init(b) -> void:
 	battle = b
 
 func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·隐蔽(封板·薇恩Q Tumble·80龟能): 智能翻滚~250码→下次普攻附带0.9A物理(吃吸血)+25%闪避+0.7A护盾
+	BuffVfx.activate(battle, u, Color(0.55, 0.95, 0.6), 0.0, 0.0)   # ★11-05 翻滚起手一把绿色火星(BuffVfx)
 	var dir = Vector2.RIGHT
 	var nm = null
 	var nmd = 150.0

@@ -353,6 +353,7 @@ func _step_projectiles(delta: float) -> void:
 							battle._recalc_stats(_bsrc)
 						battle._vfx._flash(_bsrc, Color(0.5, 1.7, 0.65)))                      # 吸收瞬间携带者绿闪
 				elif pr.get("shuriken_hit", false):   # 手里剑: 物理段(红·减甲)+暴击时真伤段(白·穿甲)→同发跳两数字(飘字系统按类型自动错开行·不合并)
+					battle._vfx._cut_x(tgt["pos"], Color(1.0, 0.86, 0.4) if bool(pr.get("is_crit", false)) else Color(0.82, 0.9, 1.0), 120.0)   # 11-05 命中 X 形斩痕(原来伤害走普攻档, 看着和普攻一样)
 					battle._last_atk_crit = bool(pr.get("is_crit", false))   # 两段都按暴击显示(大字+暴击图标)
 					battle._damage.set_dtype("physical", tgt, null, true)   # ★下一行走 _phys_after_armor = 真算护甲
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._phys_after_armor(pr["src"], float(pr["nj_phys"]), tgt), Color("#ff4444"), 0.0, false, false, false, false, false, true)   # 物理段(红·basic=普攻)
@@ -543,13 +544,14 @@ func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw:
 	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED             # 面镜头·靠帧旋转不靠转node
 	p.shaded = false; p.transparent = true
 	p.modulate = (Color(1.0, 0.86, 0.4, 1.0) if is_crit else Color(1, 1, 1, 1))   # 暴击金染 / 普通原色
-	p.pixel_size = (58.0 * battle.WS) / 128.0
+	p.pixel_size = (74.0 * battle.WS) / 128.0   # 11-05 58→74(审核片: 贴脸放时飞 0.12 秒, 小飞镖几乎看不见)
 	var world_from = battle._world_pos(start2d, 1.0)
 	p.position = world_from
 	battle._world.add_child(p)
 	var dur = clampf(DetMath.dist(start2d, tgt["pos"]) / 850.0, 0.12, 0.5)   # 快镖
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "src": src, "t": 0.0, "dur": dur,
+		"afterimage": 0.02, "ai_life": 0.16,   # 11-05 残影拖尾(快镖拉出一条速度带)
 		"shuriken_hit": true, "shuriken_anim": true,
 		"nj_phys": phys_raw, "nj_true": true_raw, "is_crit": is_crit,
 	})
@@ -565,7 +567,7 @@ func _fire_hunter_arrow(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # �
 	p.frame = 0
 	p.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 手动in-plane roll朝向(箭头随角度)
 	p.shaded = false; p.transparent = true
-	p.pixel_size = (66.0 * battle.WS) / float(fh)
+	p.pixel_size = (84.0 * battle.WS) / float(fh)   # 11-05 66→84
 	var from2d: Vector2 = u["pos"]
 	p.position = battle._world_pos(from2d, 1.2)
 	battle._world.add_child(p)
@@ -620,6 +622,11 @@ func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:  
 		node.queue_free(); return false
 	if int(node.hframes) > 1:
 		node.frame = int(float(pr["t"]) * 16.0) % int(node.hframes)   # 箭身帧动画
+	## 11-05 残影拖尾(审核片: 狩猎弹幕的箭又细又小, 看不出追踪轨迹)。这条弹道自己推进、不走通用的 afterimage 段, 在这里补
+	pr["_ai_t"] = float(pr.get("_ai_t", 0.0)) + delta
+	if float(pr["_ai_t"]) >= 0.03:
+		pr["_ai_t"] = 0.0
+		_spawn_afterimage(node, 0.22)
 	var cur2d: Vector2 = pr["pos2d"]
 	var tp: Vector2 = tgt["pos"]
 	var dist: float = DetMath.dist(cur2d, tp)

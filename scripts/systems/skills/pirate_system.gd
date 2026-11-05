@@ -59,6 +59,8 @@ func _init(b) -> void:
 func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(120龟能): 海盗船扔酒瓶→每秒回4%maxHP×6秒(HoT绿回血) + 护甲+0.7A/魔抗+0.2A×6秒(0.2A双抗 + 另给护甲 0.5A·见下方两行·暖色酒气护光)
 	u["rum_until"] = battle._t + RUM_SEC; u["rum_dps"] = u["maxHp"] * RUM_HOT_PCT   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
 	u["rum_glow_until"] = battle._t + RUM_SEC                               # 暖色酒气护光标记
+	## ★11-05 增益演出(BuffVfx: 放出一把主题色火星 + 持续期火星往上飘; 审核片里这个技能放出后身上看不出任何东西)
+	BuffVfx.activate(battle, u, Color(0.55, 1.0, 0.45), RUM_SEC, 62.0)
 	var _rum_dr: float = u["atk"] * RUM_MR_COEF                          # 双抗 += ATK × RUM_MR_COEF (原回合制 defUpAtkPct{pct:15}; 2026-08-29 用户调到 20%)
 	battle._damage._buff(u, "def", _rum_dr, false, RUM_SEC); battle._damage._buff(u, "mr", _rum_dr, false, RUM_SEC)
 	battle._damage._buff(u, "def", u["atk"] * RUM_DEF_EXTRA, false, RUM_SEC)                  # +0.5A护甲(用户2026-07-14确认保留·连同上方 RUM_MR_COEF=0.2 ⇒ 护甲共 +0.7A / 魔抗 +0.2A)

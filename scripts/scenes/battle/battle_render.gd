@@ -497,6 +497,9 @@ func _update_dot_floats() -> void:
 			df.erase(b)
 
 # ── 竹叶生命球 (1:1 回合制 _spawn_bamboo_orb 港到2.5D): 绿球从目标抛物线(3D高度弧)飞回竹叶龟 + 绿拖尾 + 落点爆 ──
+const INK_LINE_W := 18.0   # 连笔墨线宽(码)
+const INK_RIM_W := 32.0    # 墨线下面米白描边宽(码)
+
 func _tick_ink_links() -> void:                                  # 每帧: 线跟着两只龟脚底走; 到期/死亡→断
 	for i in range(battle._ink_links.size() - 1, -1, -1):
 		var L: Dictionary = battle._ink_links[i]
@@ -513,7 +516,7 @@ func _tick_ink_links() -> void:                                  # 每帧: 线�
 		if Lg < 0.01: continue
 		var th: int = maxi(1, spr.texture.get_height())
 		var tw_px: int = maxi(1, spr.texture.get_width())
-		spr.pixel_size = (10.0 * battle.WS) / float(th)                 # 线宽10码
+		spr.pixel_size = (INK_LINE_W * battle.WS) / float(th)           # 线宽(11-05 10→18 码; 子节点米白描边见 _make_ink_link)
 		spr.position = wf + seg * 0.5
 		spr.rotation = Vector3.ZERO
 		spr.rotation.y = -atan2(seg.z, seg.x)

@@ -62,6 +62,7 @@ func _ascend_growth_tick(u: Dictionary) -> void:
 
 func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞升 (用户2026-07-06: +20%攻速+25码射程·到战斗结束·可叠加无上限; 移速2026-07-11改+5%)
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * ASCEND_ASPD_MULT       # +20%攻速(永久·叠加)
+	BuffVfx.activate(battle, u, Color(1.0, 0.9, 0.5), 0.0, 62.0)   # ★11-05 放出一把金色火星 + 地面环(BuffVfx; 永久增益, 没有持续段)
 	u["move_spd"] = float(u["move_spd"]) * ASCEND_MOVE_MULT                 # +5%移速(永久·叠加·用户2026-07-11: 10%→5%)
 	u["atk_range"] = float(u["atk_range"]) + ASCEND_RANGE              # +25码射程(永久·叠加)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 88.0, Color(1.0, 0.92, 0.55, 0.62), 2.4)   # 金光飞升圣环(施法瞬间圣环渐亮)
@@ -76,7 +77,10 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 	for i in range(EQUAL_SEGMENTS):
 		battle._pending_shots.append({"delay": EQUAL_SEG_GAP * float(i), "src": u, "fn": func():
 			if tgt == null or not tgt.get("alive", false): return
-			battle._bolt_line(u["pos"], tgt["pos"], Color(1.0, 0.92, 0.66))      # 金白斩弧曳光
+			## ★11-05 审核片: 原来每道只画一条虚点细线(_bolt_line) + 小环, 「斩出 N 道圣光」看不出来
+			##   ⇒ 每道一束金色光束(施法者 → 目标) + 目标身上一道金色斩弧, 方向左右交替(连斩)
+			battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], tgt["pos"], 30.0, Color(1.0, 0.9, 0.55, 0.85), 0.22)
+			battle._vfx._cut_slash(tgt["pos"], Color(1.0, 0.92, 0.55), 160.0, i % 2 == 1)
 			battle._skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, EQUAL_SEG_COEF, tgt, false), Color("#ffe9a8"), EQUAL_LIFESTEAL)   # 单道50%物理(4道合计200%)·10%吸血
 			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")

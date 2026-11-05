@@ -577,6 +577,33 @@ func _juice_bob_for(u: Dictionary) -> float:
 	return sin(ph) * battle.JUICE_BOB_AMP
 
 # 战场缩放: 沿视轴向 CAM_TARGET 推拉镜头(方向不变→无需重look_at); shake 围绕缩放后基准
+## X 形斩痕(2026-11-05): 目标身上交叉两道斩弧, 0.05 秒拉满再 0.1 秒收(先满亮后淡, 不一出生就淡)。
+## 给「技能命中但伤害走普攻档」的那几个(手里剑…)一个和普攻分得开的命中读法(方案书 20261104b R4)。
+var _cutx_tex: Dictionary = {}
+func _cut_x(pos2d: Vector2, col: Color, size: float = 120.0) -> void:
+	_cut_slash(pos2d, col, size, false)
+	_cut_slash(pos2d, col, size, true)
+
+## 单道斩弧(_cut_x 的一半; 平等的连斩按左右交替调它)
+func _cut_slash(pos2d: Vector2, col: Color, size: float = 120.0, flip: bool = false) -> void:
+	var key: String = col.to_html()
+	if not _cutx_tex.has(key):
+		_cutx_tex[key] = VfxTex._make_slash_texture(col)
+	var s := Sprite3D.new()
+	s.texture = _cutx_tex[key]
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false; s.transparent = true
+	s.flip_h = flip
+	s.no_depth_test = true; s.render_priority = 20
+	s.pixel_size = (size * battle.WS) / 64.0
+	s.position = battle._world_pos(pos2d, 0.5)
+	s.scale = Vector3.ONE * 0.5
+	battle._world.add_child(s)
+	var tw = battle._reg_tween().bind_node(s)
+	tw.tween_property(s, "scale", Vector3.ONE * 1.1, 0.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(s, "modulate:a", 0.0, 0.10)
+	tw.tween_callback(s.queue_free)
+
 func _flash(u: Dictionary, col: Color = battle.JUICE_FLASH_COLOR) -> void:
 	if u == null or not u.get("alive", false):
 		return

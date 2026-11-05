@@ -628,6 +628,8 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 
 func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂打击(机制大改·用户2026-07-17拍板·80龟能): 触发→下3次攻击强化(射程+60·各额外0.5A+10%当前HP魔法·牙齿闭合)→第3下落地蓄力→镰刀横扫(100°300码击退300+幽灵诅咒3s·Camille W); 全程锁龟能, 扫完解锁清零重充
 	u["headless_soul_stacks"] = SOUL_HITS
+	## ★11-05 增益演出(BuffVfx: 放出一把主题色火星 + 持续期火星往上飘; 审核片里这个技能放出后身上看不出任何东西)
+	BuffVfx.activate(battle, u, Color(0.72, 0.45, 1.0), 3.0, 62.0)   # 3 下强化攻击约 3 秒
 	u["headless_soul_base_range"] = float(u.get("atk_range", 100.0))
 	u["atk_range"] = float(u["headless_soul_base_range"]) + SOUL_RANGE_BONUS   # 强化窗口+60射程(用户"60+基础射程")
 	u["energy_lock_until"] = battle._t + 999.0                            # 锁龟能条到镰刀扫完(_headless_scythe置回_t)

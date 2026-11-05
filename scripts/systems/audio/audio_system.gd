@@ -98,12 +98,25 @@ func sfx_basic_cast(u: Dictionary) -> void:
 		a.play_sfx(ev, ATK_GAIN, 1.0, 0.04)
 
 
-## 放技能: 龟放出主动技那一刻播它自己的 cast_<id>(每只龟一条, 与普攻同一个「按来源」规矩)。小将 / 召唤物没有专属声 ⇒ 不出声。
-func sfx_skill_cast(u: Dictionary, tier: int = VfxTiers.NORMAL) -> void:
+## 放技能: 龟放出主动技那一刻播这个技能自己的 cast_<技能类型>(11-05 b8: 每个技能一条, 照该技能的特效写);
+##   没有专属声的(新加的技能还没出声)退回这只龟的 cast_<id>。小将 / 召唤物没有专属声 ⇒ 不出声。
+## ★熔岩龟火山形态: 技能类型不变(冷却键仍是 lavaQuake / lavaSurge / lavaErupt), 声音换成火山那三条。
+const VOLCANO_CAST := {"lavaQuake": "cast_volcanoErupt", "lavaSurge": "cast_volcanoSmash", "lavaErupt": "cast_lavaRampage"}
+
+static func cast_event_of(u: Dictionary, stype: String) -> String:
+	if stype == "":
+		return ""
+	if bool(u.get("volcano", false)) and VOLCANO_CAST.has(stype):
+		return VOLCANO_CAST[stype]
+	return "cast_" + stype
+
+func sfx_skill_cast(u: Dictionary, tier: int = VfxTiers.NORMAL, stype: String = "") -> void:
 	var a = _audio()
 	if a == null or not a.has_method("has_sfx") or u.has("minion_role") or bool(u.get("is_summon", false)):
 		return
-	var ev := "cast_" + str(u.get("id", ""))
+	var ev := cast_event_of(u, stype)
+	if ev == "" or not a.has_sfx(ev):
+		ev = "cast_" + str(u.get("id", ""))
 	if not a.has_sfx(ev) or battle._t - float(_ev_last_t.get(ev, -99.0)) < CAST_SAME_SRC_GAP:
 		return
 	while not _cast_ts.is_empty() and battle._t - float(_cast_ts[0]) > CAST_WINDOW:

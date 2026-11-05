@@ -69,6 +69,7 @@ func _sk_stone_rock_shield(u: Dictionary) -> void:               # 石头龟·�
 		battle._damage._grant_shield(o, u["atk"] * RS_ATK_COEF + u["maxHp"] * RS_MAXHP_PCT, RS_SHIELD_SEC)   # 全队盾=1×石头ATK+6%【石头龟】最大生命(用户2026-07-11: 0.2A+5%→1A+6%)·每友军等量·4秒
 		o["rock_shield_until"] = battle._t + RS_SHIELD_SEC                          # 标记"石头岩石护盾"来源: LoL式六棱屏障VFX + 锁龟能(持盾期不充能), 盾破/到期即释放(用户2026-07-11)
 		battle._skill_ring(o["pos"], Color(0.79, 0.64, 0.42, 0.45), 46.0)
+		BuffVfx.activate(battle, o, Color(0.92, 0.76, 0.48), 0.0, 0.0)   # ★11-05 每个拿到盾的友军身上一把石色火星(BuffVfx)
 	battle._damage._buff(u, "def", RS_RESIST_UP, true, RS_RESIST_SEC)   # 自身护甲+20%(pct·5秒)
 	battle._damage._buff(u, "mr", RS_RESIST_UP, true, RS_RESIST_SEC)    # 自身魔抗+20%
 

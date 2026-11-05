@@ -1,5 +1,5 @@
 {
- "_doc": "ElevenLabs 音效生成描述表（2026-11-04 · A5，用户选 ElevenLabs）。按来源一条：key = 产物事件名；text = 英文描述（ElevenLabs 按英文训练）；dur = 秒（接口 0.5~30）；ref = 拿黑箱 Demo 的哪条原声当尺子（.out/blackbox/sfx/ 里的文件名，量曲线初筛用）；zh = 给人看的中文。生成脚本 tools/assetgen/gen_sfx_elevenlabs.py。 11-04 二轮: 普攻 dur 统一 0.5(接口下限; 黑箱命中 0.2~0.4 秒, 进游戏前再裁), atk_basic / atk_bubble 原描述出来 3/4 近乎无声 ⇒ 改写得更有冲击。 11-04 三轮: ui_click / ui_back / ui_confirm / coin_buy / atk_hiding 成品对黑箱不达标(按钮偏闷偏长、缩头起音慢) ⇒ 改写成短、亮、干, dur 0.5 再裁。 四轮: atk_dice(尖瞬态太多拉不上响度) / atk_hunter(偏闷) / ui_back(尾长) 改写。 五轮: atk_dice 14 个全是尖峰多的清脆碰撞(L100 拉不到锚点, 不靠重压限幅) ⇒ 改成单颗实心闷击; atk_gambler 卡牌带「嗖」起音慢 ⇒ 要瞬间拍击。 六轮: coin_buy 起音太快(黑箱金币是钱袋先晃再叮当) ⇒ 改写。 11-04 七轮(对标云顶实录: 云顶大事件比普攻响 6.9 dB, 我们原来只有命中一层 2.7 dB): 加放技能 cast_<龟 id> 28 条(每只龟一条, 同普攻按来源的规矩) + 开战 fight_start + 阵亡 unit_death。",
+ "_doc": "ElevenLabs 音效生成描述表（2026-11-04 · A5，用户选 ElevenLabs）。按来源一条：key = 产物事件名；text = 英文描述（ElevenLabs 按英文训练）；dur = 秒（接口 0.5~30）；ref = 拿黑箱 Demo 的哪条原声当尺子（.out/blackbox/sfx/ 里的文件名，量曲线初筛用）；zh = 给人看的中文。生成脚本 tools/assetgen/gen_sfx_elevenlabs.py。 11-04 二轮: 普攻 dur 统一 0.5(接口下限; 黑箱命中 0.2~0.4 秒, 进游戏前再裁), atk_basic / atk_bubble 原描述出来 3/4 近乎无声 ⇒ 改写得更有冲击。 11-04 三轮: ui_click / ui_back / ui_confirm / coin_buy / atk_hiding 成品对黑箱不达标(按钮偏闷偏长、缩头起音慢) ⇒ 改写成短、亮、干, dur 0.5 再裁。 四轮: atk_dice(尖瞬态太多拉不上响度) / atk_hunter(偏闷) / ui_back(尾长) 改写。 五轮: atk_dice 14 个全是尖峰多的清脆碰撞(L100 拉不到锚点, 不靠重压限幅) ⇒ 改成单颗实心闷击; atk_gambler 卡牌带「嗖」起音慢 ⇒ 要瞬间拍击。 六轮: coin_buy 起音太快(黑箱金币是钱袋先晃再叮当) ⇒ 改写。 11-04 七轮(对标云顶实录: 云顶大事件比普攻响 6.9 dB, 我们原来只有命中一层 2.7 dB): 加放技能 cast_<龟 id> 28 条(每只龟一条, 同普攻按来源的规矩) + 开战 fight_start + 阵亡 unit_death。 11-05 八轮 b8(用户「这个跟云顶，这个声音也比不了」·LoL / 云顶每个技能都有自己的声音, 我们 3 个技能共用一条 cast_<龟 id>): 每个技能一条 cast_<技能类型>(87 条; 火山形态另三条 volcanoErupt / volcanoSmash / lavaRampage), 描述照该技能的特效写; 游戏里先找 cast_<技能类型>, 没有再退回 cast_<龟 id>。 b8r: b8 里 6 条成品不达标(太短 / 太闷 / 靠限幅硬压) ⇒ 描述改成带尾音、更亮, 每条 4 个候选。",
  "style": "cartoon pixel-art mobile game sound effect, punchy, clean, single sound, no music, no voice",
  "batches": {
   "b1": [
@@ -478,6 +478,661 @@
     "dur": 1.0,
     "ref": "sfx_enemy_death",
     "text": "cartoon unit defeated, a soft downward whoosh ending in a hollow poof"
+   }
+  ],
+  "b8": [
+   {
+    "key": "cast_basicBarrage",
+    "zh": "小龟·打击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "rapid volley of small chi energy blasts, quick pew pew pew bursts"
+   },
+   {
+    "key": "cast_basicChiWave",
+    "zh": "小龟·龟派气波",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "charged energy wave release, rising charge hum then a powerful whooshing blast"
+   },
+   {
+    "key": "cast_basicSlam",
+    "zh": "小龟·过肩摔",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "wrestling throw, grab whoosh then a heavy body slam thud on the ground"
+   },
+   {
+    "key": "cast_stoneRockShield",
+    "zh": "石头龟·岩石护盾",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "stone barrier forming, rocks grinding and clacking together into a solid shield"
+   },
+   {
+    "key": "cast_rockShockwave",
+    "zh": "石头龟·磐石之躯",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "rock shockwave, ground cracking rumble rolling forward"
+   },
+   {
+    "key": "cast_stoneTaunt",
+    "zh": "石头龟·嘲讽",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "deep war drum taunt boom then a heavy stone slam on the ground"
+   },
+   {
+    "key": "cast_bambooHeal",
+    "zh": "竹叶龟·自然恢复",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "nature healing magic, rustling leaves and gentle sparkling chimes"
+   },
+   {
+    "key": "cast_bambooSmack",
+    "zh": "竹叶龟·竹击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "bamboo vine whip snap and hook yank, sharp woody crack"
+   },
+   {
+    "key": "cast_bambooSpikes",
+    "zh": "竹叶龟·竹刺阵",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "bamboo spikes bursting out of the ground, rapid wooden stabs and earth crack"
+   },
+   {
+    "key": "cast_angelBless",
+    "zh": "天使龟·祝福",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "holy blessing, bright heavenly shimmer and soft bell chimes"
+   },
+   {
+    "key": "cast_angelEquality",
+    "zh": "天使龟·平等",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "holy light slashes, three quick radiant blade swishes with bright ringing"
+   },
+   {
+    "key": "cast_angelAscend",
+    "zh": "天使龟·飞升",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "ascending power up, rising magical whoosh with sparkling wing flutter"
+   },
+   {
+    "key": "cast_iceFrost",
+    "zh": "寒冰龟·冰霜",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "freezing frost field forming, icy crackle and falling icicles shattering"
+   },
+   {
+    "key": "cast_iceFreeze",
+    "zh": "寒冰龟·冰封",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "instant freeze, ice encasing a target with a sharp crystalline crack"
+   },
+   {
+    "key": "cast_commonTeamShield",
+    "zh": "寒冰龟·团队护盾",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "protective magic shield forming, soft shimmering hum and a clear chime"
+   },
+   {
+    "key": "cast_ninjaShuriken",
+    "zh": "忍者龟·手里剑",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "ninja shuriken throw, sharp spinning metal whir and a quick slice"
+   },
+   {
+    "key": "cast_ninjaBomb",
+    "zh": "忍者龟·炸弹",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "small ninja bomb toss, fuse hiss and a pop explosion with smoke puff"
+   },
+   {
+    "key": "cast_ninjaBackstab",
+    "zh": "忍者龟·背刺",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "ninja teleport poof then quick double dagger stabs"
+   },
+   {
+    "key": "cast_twoHeadStrike",
+    "zh": "变脸龟·灵能冲击/锤击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "psychic cannon blast, warbling energy charge and a heavy smashing boom"
+   },
+   {
+    "key": "cast_twoHeadDisrupt",
+    "zh": "变脸龟·精神干扰",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "mind disruption, eerie warbling psychic zap with glitchy distortion"
+   },
+   {
+    "key": "cast_twoHeadFusion",
+    "zh": "变脸龟·融合",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "fusion transformation, two energy hums merging into one powerful resonance"
+   },
+   {
+    "key": "cast_ghostPhantom",
+    "zh": "幽灵龟·幽冥突袭",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "spectral lunge, fast ghostly whoosh with eerie hollow wind"
+   },
+   {
+    "key": "cast_ghostStorm",
+    "zh": "幽灵龟·灵魂风暴",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "soul storm, swirling ghostly wind vortex with two spooky bursts"
+   },
+   {
+    "key": "cast_ghostPhase",
+    "zh": "幽灵龟·虚化",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "ethereal phase shift, hollow reverse whoosh and a shimmering fade"
+   },
+   {
+    "key": "cast_diamondFortify",
+    "zh": "钻石龟·坚不可摧",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "diamond armor forming, crystal clinking and a hard glassy shield ring"
+   },
+   {
+    "key": "cast_diamondPowerball",
+    "zh": "钻石龟·钻石滚球",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "rolling diamond ball, rumbling roll then a crashing crystal impact"
+   },
+   {
+    "key": "cast_diamondSmash",
+    "zh": "钻石龟·钻石冲撞",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "charge up then crystal body slam, heavy impact with glass shattering"
+   },
+   {
+    "key": "cast_fortuneDice",
+    "zh": "财神龟·骰子",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "golden dice roll with coins jingling and a lucky chime"
+   },
+   {
+    "key": "cast_fortuneAllIn",
+    "zh": "财神龟·梭哈",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "barrage of gold coins thrown rapidly, fast metallic coin clinks"
+   },
+   {
+    "key": "cast_fortuneBuyEquip",
+    "zh": "财神龟·招财进宝",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "cash register cha-ching with a magical gold sparkle"
+   },
+   {
+    "key": "cast_diceAllIn",
+    "zh": "骰子龟·孤注一掷",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "giant scythe sweeping slash, fast heavy whoosh with a sharp metallic swish"
+   },
+   {
+    "key": "cast_diceFate",
+    "zh": "骰子龟·命运骰子",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "magic dice cast, dice rolling then a glowing fortune chime"
+   },
+   {
+    "key": "cast_diceFlashStrike",
+    "zh": "骰子龟·稳定骰子",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "rapid dash strikes, quick sword whooshes in fast succession"
+   },
+   {
+    "key": "cast_shield",
+    "zh": "彩虹龟·棱镜护盾",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "prismatic shield, bright crystalline rainbow shimmer and chime"
+   },
+   {
+    "key": "cast_rainbowStorm",
+    "zh": "彩虹龟·全色风暴",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "swirling rainbow magic storm, whirling wind with sparkling magical tones"
+   },
+   {
+    "key": "cast_rainbowReflect",
+    "zh": "彩虹龟·反射",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "prism reflection, bright glassy ping and a refracting shimmer"
+   },
+   {
+    "key": "cast_gamblerDraw",
+    "zh": "赌神龟·万能牌",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "magic playing card flick, sharp card snap and whoosh"
+   },
+   {
+    "key": "cast_gamblerBet",
+    "zh": "赌神龟·赌注",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "flurry of playing cards thrown, rapid card shuffle and snapping hits"
+   },
+   {
+    "key": "cast_gamblerFateWheel",
+    "zh": "赌神龟·命运之轮",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "spinning roulette wheel clicking then a bright ding"
+   },
+   {
+    "key": "cast_hunterShot",
+    "zh": "猎人龟·精准射击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "precise bow shot, taut bowstring twang and an arrow thunk"
+   },
+   {
+    "key": "cast_hunterStealth",
+    "zh": "猎人龟·隐蔽",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "quick tumble roll, cloth whoosh and a stealthy swish"
+   },
+   {
+    "key": "cast_hunterBarrage",
+    "zh": "猎人龟·狩猎弹幕",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "volley of homing arrows, several bowstring twangs and arrows whizzing"
+   },
+   {
+    "key": "cast_pirateCannonBarrage",
+    "zh": "海盗龟·火炮齐射",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "pirate ship cannon barrage, several cannon booms and splashing impacts"
+   },
+   {
+    "key": "cast_pirateRum",
+    "zh": "海盗龟·朗姆酒",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "glass bottle thrown and smashed, sloshing liquid and a healing chime"
+   },
+   {
+    "key": "cast_pirateShipPassive",
+    "zh": "海盗龟·海盗船",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "pirate ship ramming, wooden creaking and a crashing wave impact"
+   },
+   {
+    "key": "cast_candyHammer",
+    "zh": "糖果龟·糖果锤",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "giant candy hammer wind-up and a bouncy heavy smash"
+   },
+   {
+    "key": "cast_candyBarrage",
+    "zh": "糖果龟·糖衣炮弹",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "rain of candy bombs, bouncy popping explosions"
+   },
+   {
+    "key": "cast_candyBomb",
+    "zh": "糖果龟·糖果炸弹",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "candy bomb summon, sugary fizz and a bouncy pop"
+   },
+   {
+    "key": "cast_bubbleShield",
+    "zh": "泡泡龟·泡泡盾",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "bubble shield forming, wobbly bubble blowing and a soft pop"
+   },
+   {
+    "key": "cast_bubbleBind",
+    "zh": "泡泡龟·泡泡束缚",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "big bubble trapping a target, gloopy bubble swell and wobble"
+   },
+   {
+    "key": "cast_bubbleBurst",
+    "zh": "泡泡龟·泡泡爆破",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "many bubbles bursting at once, rapid popping splash"
+   },
+   {
+    "key": "cast_lineLink",
+    "zh": "线条龟·连笔",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "ink brush stroke connecting, quick brush swish and an inky tether stretch"
+   },
+   {
+    "key": "cast_lineFinish",
+    "zh": "线条龟·画龙点睛",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "final ink brush dot, decisive brush stroke and splatter impact"
+   },
+   {
+    "key": "cast_lineInkBomb",
+    "zh": "线条龟·墨水炸弹",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "ink bomb splash explosion, wet gloopy splatter"
+   },
+   {
+    "key": "cast_lightningSurgeBuff",
+    "zh": "闪电龟·涌动",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "electric surge, crackling charge up and a sharp zap"
+   },
+   {
+    "key": "cast_lightningBarrage",
+    "zh": "闪电龟·雷暴",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "lightning storm, several thunder cracks and electric strikes"
+   },
+   {
+    "key": "cast_lightningShield",
+    "zh": "闪电龟·雷盾",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "electric shield, buzzing static field crackling"
+   },
+   {
+    "key": "cast_phoenixShield",
+    "zh": "凤凰龟·熔岩盾",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "fiery shield, flames whooshing into a burning barrier"
+   },
+   {
+    "key": "cast_phoenixScald",
+    "zh": "凤凰龟·烫伤",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "fireball throw, fiery whoosh and a sizzling burst"
+   },
+   {
+    "key": "cast_phoenixEnhancedRebirth",
+    "zh": "凤凰龟·强化涅槃",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "phoenix flame power up, roaring fire burst rising upward"
+   },
+   {
+    "key": "cast_lavaQuake",
+    "zh": "熔岩龟·地裂",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "lava pool forming, ground cracking and bubbling magma"
+   },
+   {
+    "key": "cast_lavaSurge",
+    "zh": "熔岩龟·岩浆涌动",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "magma geyser erupting from the ground, explosive lava burst"
+   },
+   {
+    "key": "cast_lavaErupt",
+    "zh": "熔岩龟·熔岩爆发",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "fiery dash then a searing lava beam blast"
+   },
+   {
+    "key": "cast_volcanoErupt",
+    "zh": "火山龟·火山爆发",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "massive lava wave rushing forward, roaring molten surge"
+   },
+   {
+    "key": "cast_volcanoSmash",
+    "zh": "火山龟·重击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "heavy volcanic slam, molten rock crash and a fiery impact"
+   },
+   {
+    "key": "cast_lavaRampage",
+    "zh": "火山龟·烈焰暴走",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "volcanic rage power up, roaring flames and rumbling heat"
+   },
+   {
+    "key": "cast_cyberBeam",
+    "zh": "赛博龟·能量大炮",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "sci-fi energy cannon charging then a powerful laser beam blast"
+   },
+   {
+    "key": "cast_cyberHijack",
+    "zh": "赛博龟·侵入",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "digital hacking, glitchy data blips and an electronic takeover tone"
+   },
+   {
+    "key": "cast_cyberSmartAI",
+    "zh": "赛博龟·智能AI",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "robot AI activation, digital beeps and a quick thruster dash"
+   },
+   {
+    "key": "cast_crystalBarrier",
+    "zh": "水晶龟·水晶壁垒",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "crystal wall rising, resonant glassy hum and crystal clinks"
+   },
+   {
+    "key": "cast_crystalBurst",
+    "zh": "水晶龟·碎晶爆破",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "crystal shards shattering burst, rapid glass breaking"
+   },
+   {
+    "key": "cast_crystalBall",
+    "zh": "水晶龟·水晶球",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "crystal orb summon, mystical glassy ring and a beam zap"
+   },
+   {
+    "key": "cast_chestCount",
+    "zh": "宝箱龟·清点财宝",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "counting treasure, coins and jewels clinking with a healing chime"
+   },
+   {
+    "key": "cast_chestStorm",
+    "zh": "宝箱龟·财宝风暴",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "whirlwind of gold coins and gems, swirling wind with metallic jingles"
+   },
+   {
+    "key": "cast_chestCannon",
+    "zh": "宝箱龟·财宝炮击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "treasure cannon blast, heavy boom with spraying coins"
+   },
+   {
+    "key": "cast_starWormhole",
+    "zh": "星际龟·虫洞",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "wormhole opening, deep sci-fi warping whoosh and a gravitational hum"
+   },
+   {
+    "key": "cast_starWave",
+    "zh": "星际龟·星波",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "cosmic star wave pulse, sparkling sci-fi shockwave"
+   },
+   {
+    "key": "cast_starGravityWarp",
+    "zh": "星际龟·扭曲空间",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "gravity warp, deep bending space distortion and an implosion"
+   },
+   {
+    "key": "cast_hidingShrink",
+    "zh": "缩头乌龟·缩头",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "turtle retreating into its shell, hollow shell thunk"
+   },
+   {
+    "key": "cast_hidingDefend",
+    "zh": "缩头乌龟·防御",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "sturdy defense, heavy shell armor clank and a shield hum"
+   },
+   {
+    "key": "cast_hidingBuffSummon",
+    "zh": "缩头乌龟·强化随从",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "empowering an ally, golden power-up chime and rising energy"
+   },
+   {
+    "key": "cast_headlessFear",
+    "zh": "无头龟·恐吓",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "terrifying dark shockwave, horror sting with a deep boom"
+   },
+   {
+    "key": "cast_headlessTendrils",
+    "zh": "无头龟·万千触须",
+    "dur": 1.2,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "dozens of fleshy tentacles bursting out, squelching whips and dark rumble"
+   },
+   {
+    "key": "cast_headlessSoulStrike",
+    "zh": "无头龟·灵魂打击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "dark soul empowerment, eerie ghostly hum and a blade sharpening"
+   },
+   {
+    "key": "cast_shellCopy",
+    "zh": "龟壳·复制",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "magical copy, mirror shimmer and an echoing whoosh"
+   },
+   {
+    "key": "cast_shellAbsorb",
+    "zh": "龟壳·吸收",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "life drain, dark sucking whoosh and a pulse"
+   },
+   {
+    "key": "cast_shellShadow",
+    "zh": "龟壳·暗影",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "fading into shadows, dark muffled whoosh and a stealth shimmer"
+   }
+  ],
+  "b8r": [
+   {
+    "key": "cast_bambooSmack",
+    "zh": "竹叶龟·竹击",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "bamboo vine lash, sharp whip crack followed by a creaking woody pull and rustling leaves"
+   },
+   {
+    "key": "cast_bubbleShield",
+    "zh": "泡泡龟·泡泡盾",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "bright sparkling bubble shield forming, shimmering high bubbly chime with fizzing sparkles"
+   },
+   {
+    "key": "cast_candyBomb",
+    "zh": "糖果龟·糖果炸弹",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "candy bomb appears, sugary sparkle fizz then a bouncy pop with twinkling chimes"
+   },
+   {
+    "key": "cast_gamblerDraw",
+    "zh": "赌神龟·万能牌",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "magic playing card thrown, card whooshing through the air with a sparkling shimmer and a sharp snap"
+   },
+   {
+    "key": "cast_headlessFear",
+    "zh": "无头龟·恐吓",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "eerie screeching metallic horror sting, shrill whoosh with a long reverb tail"
+   },
+   {
+    "key": "cast_hunterStealth",
+    "zh": "猎人龟·隐蔽",
+    "dur": 1.0,
+    "ref": "sfx_boss_skill_slash_pre",
+    "text": "quick stealthy tumble, bright airy whoosh with rustling cloth and a light shimmer"
    }
   ]
  }

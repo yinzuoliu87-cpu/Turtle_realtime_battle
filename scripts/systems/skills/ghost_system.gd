@@ -150,6 +150,8 @@ func _sk_ghost_phase(u: Dictionary, tgt: Dictionary) -> void:    # 幽灵龟·�
 	for i in range(PHASE_SEGMENTS):
 		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * PHASE_SEG_COEF), Color("#c77dff"), 0.0, true)   # 真实(穿减伤)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 78.0, Color(0.78, 0.49, 1.0, 0.55), 4.0)   # 虚化紫环(虚化4秒·跟随)
+	## ★11-05 增益演出(BuffVfx: 放出一把主题色火星 + 持续期火星往上飘; 审核片里这个技能放出后身上看不出任何东西)
+	BuffVfx.activate(battle, u, Color(0.78, 0.55, 1.0), PHASE_SEC, 0.0)
 	battle._skill_ring(u["pos"], Color(0.7, 0.45, 1.0, 0.78), 92.0)   # 虚化入场幽紫脉冲(用户2026-07-11)
 	var _pr2 = battle._reg_tween()
 	_pr2.tween_interval(0.08)

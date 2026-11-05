@@ -5342,7 +5342,7 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 		return false
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
-	_audio_sys.sfx_skill_cast(u, VfxTiers.of_skill(stype, _skill_cost(u, stype)))    # 放技能声(每只龟一条 cast_<id>, 音量按重要度档位; 只管声音不碰 sim)
+	_audio_sys.sfx_skill_cast(u, VfxTiers.of_skill(stype, _skill_cost(u, stype)), stype)    # 放技能声(每个技能一条 cast_<技能类型>, 没有退回 cast_<id>; 音量按重要度档位; 只管声音不碰 sim)
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
 	# (原通用 _vfx._play_skill_vfx 飘空贴图已禁用 — 一张图标浮半空不贴 2.5D)
 	_ring_side = str(u.get("side", ""))   # 地面环敌我描边: 只在这一次施放的同步调用里有效
@@ -5894,10 +5894,23 @@ func _make_ink_link(a: Dictionary, b: Dictionary, caster: Dictionary) -> void:
 		spr.texture = t
 		spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 		spr.axis = Vector3.AXIS_Y
-		spr.modulate = Color(0.15, 0.15, 0.18, 0.85)             # 墨线(近黑)
+		spr.modulate = Color(0.10, 0.08, 0.16, 0.95)             # 墨线(近黑偏靛)
 		spr.pixel_size = 0.01
 		spr.no_depth_test = true
 		add_child(spr)
+		## ★11-05 审核片: 10 码近黑墨线贴在深色地面上几乎看不见 ⇒ 墨线加宽(battle_render INK_LINE_W) + 下面垫一条米白描边。
+		##   描边做成子节点: 跟随 / 到期 / 断链 / 换路清理都跟着父节点走, 不用改那几处。
+		var rim := Sprite3D.new()
+		rim.texture = t
+		rim.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		rim.axis = Vector3.AXIS_Y
+		rim.modulate = Color(1.0, 0.95, 0.82, 0.5)
+		rim.no_depth_test = true
+		rim.render_priority = -1
+		var th0: float = float(maxi(1, t.get_height()))
+		rim.pixel_size = (BattleRender.INK_RIM_W * WS) / th0
+		rim.scale = Vector3(BattleRender.INK_LINE_W / BattleRender.INK_RIM_W, 1.0, 1.0)   # 长度跟墨线一样, 只有宽度放大
+		spr.add_child(rim)
 	_ink_links.append({"a": a, "b": b, "until": _t + INK_LINK_SEC, "spr": spr, "caster": caster})
 
 func _drop_ink_link_of(u: Dictionary) -> void:

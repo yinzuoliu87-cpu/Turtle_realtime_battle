@@ -614,6 +614,8 @@ func _sk_hiding_buff(u: Dictionary) -> void:                    # 强化随从(�
 	var m = _hiding_minion_of(u)
 	if m == null: return
 	_hiding_apply_buff(m, EMPOWER_SEC)
+	## ★11-05 增益演出(BuffVfx: 放出一把主题色火星 + 持续期火星往上飘; 审核片里这个技能放出后身上看不出任何东西)
+	BuffVfx.activate(battle, m, Color(1.0, 0.82, 0.35), EMPOWER_SEC, 56.0)
 	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], m["pos"], 24.0, Color(1.0, 0.85, 0.4, 0.65), 0.45)   # 金色注入光束(2026-07-17)
 	var stex = VfxTex._make_star_texture()
 	var mref: Dictionary = m

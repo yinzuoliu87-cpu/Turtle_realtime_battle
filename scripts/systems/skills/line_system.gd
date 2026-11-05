@@ -73,20 +73,21 @@ func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·�
 func _ink_link_of(u: Dictionary) -> Dictionary:
 	for L in battle._ink_links:
 		if battle._t >= float(L["until"]): continue
-		if L["a"] == u and L["b"].get("alive", false): return L
-		if L["b"] == u and L["a"].get("alive", false): return L
+		## ★11-05: == → is_same(CLAUDE.md §4.2: 单位字典互相引用成环, == 会递归深比较; 同一对象时两者结果相同)
+		if is_same(L["a"], u) and L["b"].get("alive", false): return L
+		if is_same(L["b"], u) and L["a"].get("alive", false): return L
 	return {}
 
 func _ink_link_partner(u: Dictionary) -> Dictionary:             # 连接对象(仍在有效期且活着); 无 → 空字典
 	var L: Dictionary = _ink_link_of(u)
 	if L.is_empty(): return {}
-	return L["b"] if L["a"] == u else L["a"]
+	return L["b"] if is_same(L["a"], u) else L["a"]
 
 func _ink_link_transfer(u: Dictionary, taken: float) -> void:    # 受伤30%以真实伤害传导给连接对象
 	if battle._ink_link_busy or taken <= 0.0: return
 	var L: Dictionary = _ink_link_of(u)
 	if L.is_empty(): return
-	var p: Dictionary = L["b"] if L["a"] == u else L["a"]
+	var p: Dictionary = L["b"] if is_same(L["a"], u) else L["a"]
 	var amt = int(taken * battle.INK_LINK_TRANSFER)
 	if amt <= 0: return
 	# src = 施法的线条龟(不是受伤的那只敌人!) — 否则敌人"打了队友"会吃到吸血并被记进输出统计

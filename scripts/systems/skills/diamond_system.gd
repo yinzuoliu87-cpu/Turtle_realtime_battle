@@ -115,6 +115,7 @@ func _diamond_slash_fx(u: Dictionary, tgt: Dictionary) -> void:   # 钻石普攻
 
 func _sk_diamond_unbreak(u: Dictionary) -> void:                 # 钻石龟·坚不可摧(封板): 20%最大生命护盾(4秒·限时盾原语)+护甲/魔抗各+20%攻击力(flat·5秒)
 	battle._damage._grant_shield(u, u["maxHp"] * FORTIFY_SHIELD_PCT, FORTIFY_SHIELD_SEC)
+	BuffVfx.activate(battle, u, Color(0.6, 0.95, 1.0), 0.0, 62.0)   # ★11-05 放出一把冰青火星 + 地面环(BuffVfx)
 	u["diamond_fortify_until"] = battle._t + FORTIFY_SHIELD_SEC   # 持盾期锁龟能+青水晶护罩(与shield同4s·盾破/到期即恢复·用户2026-07-12)
 	battle._damage._buff(u, "def", u["atk"] * FORTIFY_RESIST_COEF, false, FORTIFY_RESIST_SEC)
 	battle._damage._buff(u, "mr", u["atk"] * FORTIFY_RESIST_COEF, false, FORTIFY_RESIST_SEC)

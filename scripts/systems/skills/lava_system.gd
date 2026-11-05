@@ -754,6 +754,8 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 		u["move_buff_mult"] = RAMPAGE_SPD_MULT; u["move_buff_until"] = battle._t + RAMPAGE_SEC   # +30%移速(移速增益通道, 不借冰寒字段)
 		battle._pending_shots.append({"delay": RAMPAGE_SEC, "src": u, "fn": _lava_ult_revert.bind(u)})
 		battle._skill_ring(u["pos"], Color(1.0, 0.4, 0.1, 0.6), 62.0); battle._vfx._flash(u, Color(1.6, 0.9, 0.4))
+		## ★11-05 增益演出(BuffVfx: 放出一把主题色火星 + 持续期火星往上飘; 审核片里这个技能放出后身上看不出任何东西)
+		BuffVfx.activate(battle, u, Color(1.0, 0.45, 0.12), RAMPAGE_SEC, 0.0)
 		return
 	var danger: bool = u["hp"] < u["maxHp"] * 0.35
 	if not danger:

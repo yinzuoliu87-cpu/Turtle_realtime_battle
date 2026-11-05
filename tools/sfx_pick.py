@@ -144,12 +144,16 @@ def main() -> int:
 			pick[x] += 1
 		for a in grp:
 			maxsim[a] = max([float(emb[ranked[a][pick[a]][1]] @ emb[ranked[b][pick[b]][1]]) for b in grp if b != a] or [0.0])
-	out = {"_doc": "sfx_pick.py 自动定选(批次 %s)。每条: 选中的候选文件(相对 <SFX_SRC>/eleven/<批次>/) + 量化依据。build_sfx.py 读这份。" % batch,
-		"batch": batch, "picks": {}}
+	## ★11-05 合并写入(原来每跑一批就把整张表重写成只含这一批 —— 跑 b8 冲掉了 b1 的 67 条):
+	##   读现有表, 只覆盖本批出现的 key; 每条记自己的批次(没记的老条目沿用顶层 batch)。
+	old = json.load(open(PICKS, encoding="utf-8")) if os.path.exists(PICKS) else {}
+	base_batch = old.get("batch", batch)
+	out = {"_doc": "sfx_pick.py 自动定选(合并写入; 每条: 选中的候选文件(相对 <SFX_SRC>/eleven/<该条的 batch, 缺省 = 顶层 batch>/) + 量化依据)。build_sfx.py 读这份。",
+		"batch": base_batch, "picks": dict(old.get("picks", {}))}
 	missing = [k for k in by_key if k not in pick]
 	for k in sorted(pick):
 		s, f, d, m, nm = ranked[k][pick[k]]
-		out["picks"][k] = {"file": f, "cat": cat_of(k), "score": round(s, 3), "dist_to_blackbox": round(d, 3), "clap": round(m, 4),
+		out["picks"][k] = {"file": f, "batch": batch, "cat": cat_of(k), "score": round(s, 3), "dist_to_blackbox": round(d, 3), "clap": round(m, 4),
 			"rank_used": pick[k] + 1, "bar_misses": nm, "usable": len(ranked[k]), "of": len(by_key[k]),
 			"max_sim_in_group": round(maxsim.get(k, 0.0), 3)}
 	json.dump(out, open(PICKS, "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)

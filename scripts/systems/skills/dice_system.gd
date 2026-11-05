@@ -123,8 +123,10 @@ func _dash_streak_begin(u: Dictionary) -> void:
 func _dash_streak_update(u: Dictionary) -> void:
 	var i := _dash_fx_of(u)
 	if i < 0: return
-	var sp: Sprite3D = _dash_fx[i]["node"]
-	if not is_instance_valid(sp): return
+	var sp = _dash_fx[i]["node"]   # ★不带类型: 保险删掉之后再赋给 Sprite3D 变量会报「assign previously freed instance」(CI 11-05)
+	if not is_instance_valid(sp):
+		_dash_fx.remove_at(i)
+		return
 	var a: Vector2 = _dash_fx[i]["from"]
 	var b: Vector2 = u["pos"]
 	var d: Vector2 = b - a
@@ -142,7 +144,7 @@ func _dash_streak_update(u: Dictionary) -> void:
 func _dash_streak_end(u: Dictionary) -> void:
 	var i := _dash_fx_of(u)
 	if i < 0: return
-	var sp: Sprite3D = _dash_fx[i]["node"]
+	var sp = _dash_fx[i]["node"]   # 不带类型(同上)
 	_dash_fx.remove_at(i)
 	if not is_instance_valid(sp): return
 	var tw = battle._reg_tween().bind_node(sp)
@@ -183,14 +185,16 @@ func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用�
 ##   现在: 0.11 秒扫完(先快后慢) + 连续月牙刀光(SmearVfx) 0.22 秒收掉; 刀经过每个被砍中的敌人那一帧, 敌人身上一道白色斩痕。
 const SCYTHE_SWEEP_SEC := 0.11
 const SCYTHE_FADE_SEC := 0.22
-const SCYTHE_SMEAR_PAL := [Color(1.0, 0.86, 0.86, 0.95), Color(0.95, 0.16, 0.24, 0.85), Color(0.45, 0.04, 0.12, 0.70)]
+const SCYTHE_SMEAR_PATH := "res://assets/sprites/vfx/dice-scythe-smear.png"   # 月牙刀光帧表(tools/assetgen/build_scythe_smear.py; 时长/缓出与上面两个常量同一套)
+const SCYTHE_SMEAR_FRAMES := 7
+const SCYTHE_SMEAR_FPS := 30.0
 
 func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float, hits: Array = []) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-scythe.png")
 	if tex == null: return
 	var base_ang: float = DetMath.datan2(dir.y, dir.x)
 	var half: float = deg_to_rad(half_deg)
-	SmearVfx.sweep(battle, origin, base_ang, half, rng, SCYTHE_SWEEP_SEC, SCYTHE_FADE_SEC, SCYTHE_SMEAR_PAL)
+	SmearVfx.play_sheet(battle, SCYTHE_SMEAR_PATH, SCYTHE_SMEAR_FRAMES, SCYTHE_SMEAR_FPS, origin, base_ang, rng)
 	var blade = Sprite3D.new()
 	blade.texture = tex
 	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

@@ -249,13 +249,17 @@ def main() -> int:
 	pj = json.load(open(PICKS, encoding="utf-8"))
 	picks = pj["picks"]
 	os.makedirs(OUT_DIR, exist_ok=True)
-	man = json.load(open(os.path.join(SRC, "eleven", pj["batch"], "manifest.json"), encoding="utf-8"))
+	## ★11-05 每条定选可以来自不同批次(v["batch"]; 缺省 = 顶层 batch)
+	mans = {}
 	lic = ["# 游戏音效授权台账（tools/assetgen/build_sfx.py 生成，勿手改）", "", LIC, "",
 		"| 产物 | 事件 | 来源候选 | 生成描述 |", "|---|---|---|---|"]
 	for k, v in sorted(picks.items()):
-		x = process(decode(os.path.join(SRC, "eleven", pj["batch"], v["file"])), v["cat"])
+		b = v.get("batch", pj["batch"])
+		if b not in mans:
+			mans[b] = json.load(open(os.path.join(SRC, "eleven", b, "manifest.json"), encoding="utf-8"))
+		x = process(decode(os.path.join(SRC, "eleven", b, v["file"])), v["cat"])
 		write_wav(os.path.join(OUT_DIR, k + ".wav"), x)
-		lic.append("| %s.wav | %s | %s/%s | %s |" % (k, k, pj["batch"], v["file"], man.get(v["file"], {}).get("text", "?").replace("|", "/")))
+		lic.append("| %s.wav | %s | %s/%s | %s |" % (k, k, b, v["file"], mans[b].get(v["file"], {}).get("text", "?").replace("|", "/")))
 	open(LIC_PATH, "w", encoding="utf-8").write("\n".join(lic) + "\n")
 	open(EVENTS_GD, "w", encoding="utf-8").write(events_gd(picks))
 	print("生成 %d 个事件 → %s" % (len(picks), OUT_DIR))

@@ -129,7 +129,34 @@ func _ready() -> void:
 		n_c += 1
 		if not au.recent.has("cast_" + id):
 			cw.append("%s → %s" % [id, str(au.recent)])
-	_ok("⑩ %d 只龟放技能各播自己那条 cast_<id>" % n_c, n_c >= 28 and cw.is_empty(), "; ".join(cw))
+	_ok("⑩ %d 只龟放技能(不给技能类型时)各播自己那条 cast_<id>" % n_c, n_c >= 28 and cw.is_empty(), "; ".join(cw))
+	## ⑩c ★11-05 b8: 每个技能一条专属声 cast_<技能类型>(用户「这个跟云顶，这个声音也比不了」; LoL / 云顶每个技能都有自己的声音)。
+	##    逐只逐技(技能池第 1~3 个主动技)走出口, 分母 = 实际走过的技能数; 熔岩龟火山形态三条另验。
+	var sw: Array = []
+	var n_s := 0
+	for p in DataRegistry.launch_pets:
+		var pool: Array = (p as Dictionary).get("skillPool", [])
+		for si in range(1, mini(4, pool.size())):
+			var st: String = str((pool[si] as Dictionary).get("type", ""))
+			scene._t += 1.0
+			scene._audio_sys._cast_ts.clear()
+			au.recent.clear()
+			scene._audio_sys.sfx_skill_cast(scene._spawn._make_unit(str(p["id"]), "left", Vector2(600, 400)), VfxTiers.NORMAL, st)
+			n_s += 1
+			if not au.recent.has("cast_" + st):
+				sw.append("%s/%s → %s" % [str(p["id"]), st, str(au.recent)])
+	_ok("⑩c %d 个技能放出时各播自己那条 cast_<技能类型>" % n_s, n_s >= 84 and sw.is_empty(), "; ".join(sw))
+	var vw: Array = []
+	for pair in [["lavaQuake", "cast_volcanoErupt"], ["lavaSurge", "cast_volcanoSmash"], ["lavaErupt", "cast_lavaRampage"]]:
+		var lv: Dictionary = scene._spawn._make_unit("lava", "left", Vector2(600, 400))
+		lv["volcano"] = true
+		scene._t += 1.0
+		scene._audio_sys._cast_ts.clear()
+		au.recent.clear()
+		scene._audio_sys.sfx_skill_cast(lv, VfxTiers.NORMAL, pair[0])
+		if not au.recent.has(pair[1]):
+			vw.append("%s → %s" % [pair[0], str(au.recent)])
+	_ok("⑩d 火山形态三个技能播火山那三条", vw.is_empty(), "; ".join(vw))
 	scene._units.clear()
 	scene._t += 5.0
 	var ice: Dictionary = scene._spawn._make_unit("ice", "left", Vector2(600, 400))
@@ -139,7 +166,7 @@ func _ready() -> void:
 	scene._audio_sys._cast_ts.clear(); scene._audio_sys._ev_last_t.clear()
 	au.recent.clear()
 	scene._cast_skill(ice, foe, "iceFrost")
-	_ok("⑩b ★真入口: _cast_skill(寒冰·冰霜) 播 cast_ice", au.recent.has("cast_ice"), str(au.recent))
+	_ok("⑩b ★真入口: _cast_skill(寒冰·冰霜) 播冰霜自己那条 cast_iceFrost", au.recent.has("cast_iceFrost"), str(au.recent))
 	## ⑪ 层次: 放技能那一声的播放器音量比普攻那一声高 ≈ 7 dB(普攻层 ATK_GAIN −7 dB; 另 3 dB 在成品文件里, build_sfx --check 管)。
 	##    量的是 Audio 真建出来的 AudioStreamPlayer.volume_db(含 ±5% 随机抖动 ⇒ 区间 6~8 dB)
 	##    ★门禁 QUIET 跑时 sfx_volume = 0 ⇒ 两个都是 −inf(差值无意义, 门禁里实红过一次) ⇒ 量的这两下临时用默认音量 0.8, 量完还原
