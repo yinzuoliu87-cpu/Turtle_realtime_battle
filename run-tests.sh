@@ -466,6 +466,7 @@ frames_for () {
     # tween 捕获物先释放(换路/顿帧/时停 三段): 每推一步 sim 等一帧, 共约 1050 步 ⇒ 给 3000
     verify_tween_capture_lane) echo 3000 ;;
     verify_ninja_dash_cc) echo 2500 ;;   # 逐帧采样 1200 帧真 sim(2026-10-16): 默认 500 帧会在一半处被掐断, 表现为没打 ALL PASS
+    verify_scene_transition) echo 1500 ;;   # 2026-11-05 切页过场: 冷加载图鉴约 330 帧 + 多等 400 帧看连点的第二次请求有没有把页换走
     *)             echo 500  ;;
   esac
 }

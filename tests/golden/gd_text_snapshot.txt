@@ -2618,6 +2618,7 @@ scripts/util/big_title.gd|lit|胜
 scripts/util/big_title.gd|lit|胜利
 scripts/util/big_title.gd|lit|负
 scripts/util/keyboard_bar.gd|lit|完成
+scripts/util/scene_fader.gd|text|加载中
 scripts/util/skill_text.gd|lit|(?:\\s*外加[^，。；\\n]{0,50}?)?)[^，。；\\n（]{0,4}?生命值)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
 scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)

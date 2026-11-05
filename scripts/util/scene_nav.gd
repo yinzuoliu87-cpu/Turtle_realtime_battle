@@ -20,6 +20,10 @@ const ONLINE_ONLY := ["res://scenes/Matchmaking.tscn"]
 ## 【门禁注入点】有效 ⇒ 过了联网那一道之后不真换屏, 改调它(入参 = 目标路径)。默认无效 ⇒ 玩家路径一字不动。
 ## ⚠ static, 用完必须还原。
 static var nav_for_test: Callable = Callable()
+## ★切页过场(2026-11-05, SceneFader 头注): 有窗口时暗幕淡入 → 后台加载 → 换场 → 淡出。无头(门禁 / 陪练号 / 裁判)
+##   照旧同步换场 —— 几百条门禁按帧数等换屏, 不让它们跟着变; 过场本身由 verify_scene_transition 把这个开关打开来量。
+## ⚠ static, 门禁用完必须还原。
+static var transition_in_headless := false
 
 
 static func go(tree: SceneTree, path: String) -> void:
@@ -34,4 +38,7 @@ static func go(tree: SceneTree, path: String) -> void:
 	var cur := tree.current_scene
 	if cur != null:
 		cur.process_mode = Node.PROCESS_MODE_DISABLED
+	if DisplayServer.get_name() != "headless" or transition_in_headless:
+		SceneFader.instance(tree).go(path)   # 换场在暗幕盖满之后(已过了这一帧的输入分发)
+		return
 	tree.change_scene_to_file.call_deferred(path)

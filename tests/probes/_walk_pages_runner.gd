@@ -69,7 +69,10 @@ func _next() -> void:
 	t_step = float(st[2])
 	step_max[cur] = 0.0
 	if str(st[1]) != "":
-		get_tree().change_scene_to_file(str(st[1]))
+		if OS.has_environment("WALK_NAV"):
+			SceneNav.go(get_tree(), str(st[1]))   # 走真入口(带切页过场)
+		else:
+			get_tree().change_scene_to_file(str(st[1]))
 	else:
 		_act(str(st[3]))
 	last_us = Time.get_ticks_usec()
@@ -84,7 +87,9 @@ func _process(delta: float) -> void:
 	if i >= 0 and cur != "":
 		step_max[cur] = maxf(float(step_max[cur]), ms)
 		if ms > 50.0:
-			spikes.append("%s: %.0f ms" % [cur, ms])
+			var fd = get_tree().root.get_node_or_null("SceneFader")
+			var a: float = float(fd._rect.color.a) if fd != null else -1.0
+			spikes.append("%s: %.0f ms(暗幕 %.2f)" % [cur, ms, a])
 	t_step -= delta
 	if i < 0 or t_step <= 0.0:
 		_next()
