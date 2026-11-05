@@ -242,6 +242,26 @@ func _ready() -> void:
 		if str(ev).begins_with("eq_"):
 			n_eq += 1
 	_ok("⑩g 装备音效 ≥ 80 件(有触发时刻的都有; 纯属性的不出声)", n_eq >= 80, "%d 件" % n_eq)
+	## ⑩h ★没有伤害的装备触发点(召唤 / 时停 / 饮药…)在自己的触发点显式出声: 走沙漏时停真入口 _ts_fire;
+	##    携带者已死(时停没放出来)⇒ 不许响
+	var hg: Dictionary = scene._spawn._make_unit("basic", "left", Vector2(600, 400))
+	scene._units.append(hg)
+	scene._t += 2.0
+	au.recent.clear()
+	scene._timestop._ts_maxstar = 1
+	scene._timestop._ts_charge_casters = [hg]
+	scene._timestop._ts_fire()
+	var ts_on: bool = au.recent.has("eq_059")
+	scene._timestop._end_timestop()
+	scene._t += 2.0
+	au.recent.clear()
+	var hg2: Dictionary = scene._spawn._make_unit("basic", "left", Vector2(620, 400))
+	hg2["alive"] = false
+	scene._timestop._ts_charge_casters = [hg2]
+	scene._timestop._ts_fire()
+	var ts_off: bool = not au.recent.has("eq_059")
+	_ok("★⑩h 沙漏时停放出来 ⇒ 播 eq_059; 携带者已死没放出来 ⇒ 不响(真入口 _ts_fire)", ts_on and ts_off, "放出 %s · 没放出不响 %s" % [ts_on, ts_off])
+	scene._units.erase(hg)
 
 	scene._units.clear()
 	scene._t += 5.0

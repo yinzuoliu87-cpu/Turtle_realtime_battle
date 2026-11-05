@@ -184,7 +184,6 @@ func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触�
 		_ts_charge_vfx(c)
 
 func _ts_fire() -> void:
-	battle._audio_sys.sfx_equip("p2eq_059")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var casters: Array = _ts_charge_casters.filter(func(x): return x is Dictionary and x.get("alive", false))
 	_ts_charge_casters = []
 	_ts_free_auras()   # 金火气只活在蓄力段: 释放那一刻交给胸口光点爆开(没人能放也要收掉)
@@ -196,6 +195,7 @@ func _ts_fire() -> void:
 		_ts_fired = false
 		return
 	_ts_active = casters
+	battle._audio_sys.sfx_equip("p2eq_059")   # 装备触发声(11-05 音效 v2; 只管声音): 放得出来才响(上面没人能放就 return 了)
 	## ★三档下标：只有最高星的沙漏携带者才进 `casters`，所以 `_ts_maxstar` 就是他们自己的星。
 	##   时长/倍率/瞬间龟能**必须跟同一个 star**，否则会出现「定格按最高星、龟能按自己星」的错位。
 	var _si: int = clampi(_ts_maxstar, 1, 3) - 1

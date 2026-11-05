@@ -5333,6 +5333,13 @@
   "sel": [
    "r2__sk_angelEquality_3.wav"
   ],
+  "sweetener": {
+   "sk_angelEquality__1.wav": {
+    "gain_db": -10,
+    "layer": "sw_swell_4",
+    "low_before": 0.002
+   }
+  },
   "zh": "天使龟·平等·放出"
  },
  "sk_bambooHeal": {
@@ -5453,6 +5460,13 @@
   "sel": [
    "sk_basicSlam_2.wav"
   ],
+  "sweetener": {
+   "sk_basicSlam__1.wav": {
+    "gain_db": -8,
+    "layer": "sw_swell_4",
+    "low_before": 0.173
+   }
+  },
   "zh": "小龟·过肩摔·放出"
  },
  "sk_bubbleBind": {
@@ -5473,6 +5487,13 @@
   "sel": [
    "sk_bubbleBind_3.wav"
   ],
+  "sweetener": {
+   "sk_bubbleBind__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_3",
+    "low_before": 0.011
+   }
+  },
   "zh": "泡泡龟·泡泡束缚·放出"
  },
  "sk_bubbleBurst": {
@@ -5493,6 +5514,13 @@
   "sel": [
    "sk_bubbleBurst_2.wav"
   ],
+  "sweetener": {
+   "sk_bubbleBurst__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_4",
+    "low_before": 0.04
+   }
+  },
   "zh": "泡泡龟·泡泡爆破·放出"
  },
  "sk_bubbleShield": {
@@ -5553,6 +5581,13 @@
   "sel": [
    "r2__sk_candyBomb_1.wav"
   ],
+  "sweetener": {
+   "sk_candyBomb__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_2",
+    "low_before": 0.001
+   }
+  },
   "zh": "糖果龟·糖果炸弹·放出"
  },
  "sk_candyHammer": {
@@ -5593,6 +5628,13 @@
   "sel": [
    "sk_chestCannon_3.wav"
   ],
+  "sweetener": {
+   "sk_chestCannon__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_3",
+    "low_before": 0.043
+   }
+  },
   "zh": "宝箱龟·财宝炮击·放出"
  },
  "sk_chestCount": {
@@ -5673,6 +5715,13 @@
   "sel": [
    "sk_crystalBall_2.wav"
   ],
+  "sweetener": {
+   "sk_crystalBall__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_3",
+    "low_before": 0.009
+   }
+  },
   "zh": "水晶龟·水晶球·放出"
  },
  "sk_crystalBarrier": {
@@ -5713,6 +5762,13 @@
   "sel": [
    "sk_crystalBurst_3.wav"
   ],
+  "sweetener": {
+   "sk_crystalBurst__1.wav": {
+    "gain_db": -8,
+    "layer": "sw_swell_4",
+    "low_before": 0.002
+   }
+  },
   "zh": "水晶龟·碎晶爆破·放出"
  },
  "sk_cyberBeam": {
@@ -5733,6 +5789,13 @@
   "sel": [
    "sk_cyberBeam_2.wav"
   ],
+  "sweetener": {
+   "sk_cyberBeam__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_1",
+    "low_before": 0.001
+   }
+  },
   "zh": "赛博龟·能量大炮·放出"
  },
  "sk_cyberHijack": {
@@ -5833,6 +5896,13 @@
   "sel": [
    "r2__sk_diamondSmash_1.wav"
   ],
+  "sweetener": {
+   "sk_diamondSmash__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_4",
+    "low_before": 0.002
+   }
+  },
   "zh": "钻石龟·钻石冲撞·放出"
  },
  "sk_diceAllIn": {
@@ -5873,6 +5943,13 @@
   "sel": [
    "sk_diceFate_3.wav"
   ],
+  "sweetener": {
+   "sk_diceFate__1.wav": {
+    "gain_db": -10,
+    "layer": "sw_swell_2",
+    "low_before": 0.001
+   }
+  },
   "zh": "骰子龟·命运骰子·放出"
  },
  "sk_diceFlashStrike": {
@@ -5893,6 +5970,13 @@
   "sel": [
    "sk_diceFlashStrike_1.wav"
   ],
+  "sweetener": {
+   "sk_diceFlashStrike__1.wav": {
+    "gain_db": -10,
+    "layer": "sw_swell_4",
+    "low_before": 0.004
+   }
+  },
   "zh": "骰子龟·稳定骰子·放出"
  },
  "sk_fortuneAllIn": {
@@ -5913,6 +5997,13 @@
   "sel": [
    "r2__sk_fortuneAllIn_2.wav"
   ],
+  "sweetener": {
+   "sk_fortuneAllIn__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_1",
+    "low_before": 0.001
+   }
+  },
   "zh": "财神龟·梭哈·放出"
  },
  "sk_fortuneBuyEquip": {
@@ -5953,6 +6044,13 @@
   "sel": [
    "sk_fortuneDice_1.wav"
   ],
+  "sweetener": {
+   "sk_fortuneDice__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_2",
+    "low_before": 0.001
+   }
+  },
   "zh": "财神龟·骰子·放出"
  },
  "sk_gamblerBet": {
@@ -5973,6 +6071,13 @@
   "sel": [
    "sk_gamblerBet_2.wav"
   ],
+  "sweetener": {
+   "sk_gamblerBet__1.wav": {
+    "gain_db": -16,
+    "layer": "sw_swell_3",
+    "low_before": 0.01
+   }
+  },
   "zh": "赌神龟·赌注·放出"
  },
  "sk_gamblerDraw": {
@@ -6013,6 +6118,13 @@
   "sel": [
    "sk_gamblerFateWheel_2.wav"
   ],
+  "sweetener": {
+   "sk_gamblerFateWheel__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_3",
+    "low_before": 0.003
+   }
+  },
   "zh": "赌神龟·命运之轮·放出"
  },
  "sk_ghostPhantom": {
@@ -6033,6 +6145,13 @@
   "sel": [
    "r2__sk_ghostPhantom_1.wav"
   ],
+  "sweetener": {
+   "sk_ghostPhantom__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_4",
+    "low_before": 0.0
+   }
+  },
   "zh": "幽灵龟·幽冥突袭·放出"
  },
  "sk_ghostPhase": {
@@ -6133,6 +6252,13 @@
   "sel": [
    "r2__sk_headlessTendrils_2.wav"
   ],
+  "sweetener": {
+   "sk_headlessTendrils__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_4",
+    "low_before": 0.082
+   }
+  },
   "zh": "无头龟·万千触须·放出"
  },
  "sk_hidingBuffSummon": {
@@ -6213,6 +6339,13 @@
   "sel": [
    "r2__sk_hunterBarrage_2.wav"
   ],
+  "sweetener": {
+   "sk_hunterBarrage__1.wav": {
+    "gain_db": -10,
+    "layer": "sw_swell_1",
+    "low_before": 0.002
+   }
+  },
   "zh": "猎人龟·狩猎弹幕·放出"
  },
  "sk_hunterShot": {
@@ -6233,6 +6366,13 @@
   "sel": [
    "sk_hunterShot_1.wav"
   ],
+  "sweetener": {
+   "sk_hunterShot__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_3",
+    "low_before": 0.106
+   }
+  },
   "zh": "猎人龟·精准射击·放出"
  },
  "sk_hunterStealth": {
@@ -6273,6 +6413,13 @@
   "sel": [
    "sk_iceFreeze_1.wav"
   ],
+  "sweetener": {
+   "sk_iceFreeze__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_1",
+    "low_before": 0.002
+   }
+  },
   "zh": "寒冰龟·冰封·放出"
  },
  "sk_iceFrost": {
@@ -6293,6 +6440,13 @@
   "sel": [
    "sk_iceFrost_2.wav"
   ],
+  "sweetener": {
+   "sk_iceFrost__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_1",
+    "low_before": 0.001
+   }
+  },
   "zh": "寒冰龟·冰霜·放出"
  },
  "sk_lavaErupt": {
@@ -6453,6 +6607,13 @@
   "sel": [
    "sk_lineFinish_3.wav"
   ],
+  "sweetener": {
+   "sk_lineFinish__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_4",
+    "low_before": 0.25
+   }
+  },
   "zh": "线条龟·画龙点睛·放出"
  },
  "sk_lineInkBomb": {
@@ -6473,6 +6634,13 @@
   "sel": [
    "sk_lineInkBomb_2.wav"
   ],
+  "sweetener": {
+   "sk_lineInkBomb__1.wav": {
+    "gain_db": -8,
+    "layer": "sw_swell_3",
+    "low_before": 0.022
+   }
+  },
   "zh": "线条龟·墨水炸弹·放出"
  },
  "sk_lineLink": {
@@ -6493,6 +6661,13 @@
   "sel": [
    "sk_lineLink_1.wav"
   ],
+  "sweetener": {
+   "sk_lineLink__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_3",
+    "low_before": 0.065
+   }
+  },
   "zh": "线条龟·连笔·放出"
  },
  "sk_ninjaBackstab": {
@@ -6533,6 +6708,13 @@
   "sel": [
    "r2__sk_ninjaBomb_3.wav"
   ],
+  "sweetener": {
+   "sk_ninjaBomb__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_1",
+    "low_before": 0.002
+   }
+  },
   "zh": "忍者龟·炸弹·放出"
  },
  "sk_ninjaShuriken": {
@@ -6553,6 +6735,13 @@
   "sel": [
    "sk_ninjaShuriken_3.wav"
   ],
+  "sweetener": {
+   "sk_ninjaShuriken__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_3",
+    "low_before": 0.01
+   }
+  },
   "zh": "忍者龟·手里剑·放出"
  },
  "sk_phoenixEnhancedRebirth": {
@@ -6673,6 +6862,13 @@
   "sel": [
    "r2__sk_pirateShipPassive_3.wav"
   ],
+  "sweetener": {
+   "sk_pirateShipPassive__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_1",
+    "low_before": 0.002
+   }
+  },
   "zh": "海盗龟·海盗船·放出"
  },
  "sk_rainbowReflect": {
@@ -6693,6 +6889,13 @@
   "sel": [
    "r2__sk_rainbowReflect_2.wav"
   ],
+  "sweetener": {
+   "sk_rainbowReflect__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_4",
+    "low_before": 0.001
+   }
+  },
   "zh": "彩虹龟·反射·放出"
  },
  "sk_rainbowStorm": {
@@ -6853,6 +7056,13 @@
   "sel": [
    "r2__sk_starWave_1.wav"
   ],
+  "sweetener": {
+   "sk_starWave__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_3",
+    "low_before": 0.018
+   }
+  },
   "zh": "星际龟·星波·放出"
  },
  "sk_starWormhole": {
@@ -6913,6 +7123,13 @@
   "sel": [
    "r3__sk_stoneTaunt_1.wav"
   ],
+  "sweetener": {
+   "sk_stoneTaunt__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_3",
+    "low_before": 0.073
+   }
+  },
   "zh": "石头龟·嘲讽·放出"
  },
  "sk_twoHeadDisrupt": {
@@ -6933,6 +7150,13 @@
   "sel": [
    "r2__sk_twoHeadDisrupt_3.wav"
   ],
+  "sweetener": {
+   "sk_twoHeadDisrupt__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_body_3",
+    "low_before": 0.012
+   }
+  },
   "zh": "变脸龟·精神干扰·放出"
  },
  "sk_twoHeadFusion": {
@@ -6973,6 +7197,13 @@
   "sel": [
    "r2__sk_twoHeadStrike_2.wav"
   ],
+  "sweetener": {
+   "sk_twoHeadStrike__1.wav": {
+    "gain_db": -6,
+    "layer": "sw_swell_3",
+    "low_before": 0.151
+   }
+  },
   "zh": "变脸龟·灵能冲击/锤击·放出"
  },
  "sk_volcanoErupt": {

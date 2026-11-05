@@ -18,6 +18,7 @@ import os
 import subprocess
 import sys
 import wave
+import zlib
 
 import numpy as np
 from scipy.signal import butter, sosfilt
@@ -103,10 +104,58 @@ def tone_match(x: np.ndarray, cat: str) -> np.ndarray:
 	return x
 
 
-def process(x: np.ndarray, target: float, cat: str = "") -> np.ndarray:
+## ── 低频垫底层(sweetener): 技能放出偏薄(低频占比 0.12 vs Riot 0.41)⇒ 在起音处垫一层低通 300 Hz 的分量 ─────────────────
+## 素材 = ElevenLabs v2sw 批(tools/assetgen/sfx_v2_table.sweeteners); 只用质心 120~380 Hz 的 6 个(纯 40 Hz 次低频手机放不出, 不用)。
+## 按技能名固定挑一层(crc32), 增益从 −30 dB 往上试, 到低频占比 ≥ SW_GOAL 为止(上限 −4 dB)。用了哪层、多大增益记进定选记录。
+CAND_SW = os.path.join(SRC, "eleven", "v2sw")
+SW_USE = ["sw_body_3", "sw_body_4", "sw_swell_1", "sw_swell_2", "sw_swell_3", "sw_swell_4"]
+SW_TRIGGER = 0.25
+SW_GOAL = 0.30
+SW_CAP_DB = -6   # 垫层最多比主体 RMS 低 6 dB(第一版 −4 dB 卡上限的太多, 怕把主体糊住)
+_sw_cache = {}
+DMG_CASTS = set()   # main() 里按「有没有 skh_ 命中声」填: sk_<技能> 的技能会造成伤害
+
+
+def _sw_layer(name: str, ch: int) -> np.ndarray:
+	k = (name, ch)
+	if k not in _sw_cache:
+		y = decode(os.path.join(CAND_SW, name + ".mp3"), ch)
+		y = sosfilt(butter(4, 300.0, btype="lowpass", fs=SR, output="sos"), y, axis=0)
+		e, hop = env_db(y.mean(axis=1))
+		i0 = int(np.argmax(e > e.max() - 30)) * hop
+		_sw_cache[k] = y[i0:]
+	return _sw_cache[k]
+
+
+def sweeten(x: np.ndarray, key: str) -> tuple:
+	"""返回 (加了垫底层的 x, 记录)。低频够的原样返回。"""
+	lo = low_ratio(x.mean(axis=1))
+	if lo >= SW_TRIGGER:
+		return x, None
+	name = SW_USE[zlib.crc32(key.encode("utf-8")) % len(SW_USE)]
+	layer = _sw_layer(name, x.shape[1])
+	e, hop = env_db(x.mean(axis=1))
+	on = int(np.argmax(e > e.max() - 20)) * hop
+	rms_x = np.sqrt(np.mean(x ** 2)) + 1e-12
+	base = np.zeros_like(x)
+	n = min(len(layer), len(x) - on)
+	base[on:on + n] = layer[:n]
+	base *= rms_x / (np.sqrt(np.mean(base ** 2)) + 1e-12)
+	for g_db in range(-30, SW_CAP_DB + 1, 2):
+		y = x + base * 10 ** (g_db / 20)
+		if low_ratio(y.mean(axis=1)) >= SW_GOAL:
+			return y, {"layer": name, "gain_db": g_db, "low_before": round(lo, 3)}
+	return x + base * 10 ** (SW_CAP_DB / 20), {"layer": name, "gain_db": SW_CAP_DB, "low_before": round(lo, 3)}
+
+
+def process(x: np.ndarray, target: float, cat: str = "", key: str = "", rec: dict = None) -> np.ndarray:
 	sos = butter(2, 30.0, btype="highpass", fs=SR, output="sos")
 	x = sosfilt(sos, x, axis=0)
 	x = tone_match(x, cat)
+	if cat == "sk_cast" and key in DMG_CASTS:   # 只给造成伤害的技能垫分量; 治疗 / 护盾 / 增益类不垫(钟声垫一层闷响不对)
+		x, r = sweeten(x, key)
+		if r is not None and rec is not None:
+			rec.update(r)
 	mono = x.mean(axis=1)
 	edb, hop = env_db(mono)
 	pk = float(edb.max())
@@ -271,6 +320,8 @@ def main() -> int:
 		mans[bn] = (d, json.load(open(mp, encoding="utf-8")) if os.path.exists(mp) else {})
 	os.makedirs(OUT_DIR, exist_ok=True)
 	keep_picks = {}
+	sw_used = {}
+	DMG_CASTS.update(k for k in picks if k.startswith("sk_") and ("skh_" + k[3:]) in picks)
 	made = 0
 	led = ["# 游戏音效授权台账（tools/assetgen/build_sfx_v2.py 生成，勿手改）", "", LIC, "",
 		"| 产物 | 事件 | 来源候选 | 生成描述 |", "|---|---|---|---|"]
@@ -283,18 +334,24 @@ def main() -> int:
 		for k, wavname in enumerate(p["sel"], start=1):
 			bn = "v2r2" if wavname.startswith("r2__") else ("v2r3" if wavname.startswith("r3__") else "v2")
 			mp3name = (wavname[4:] if bn != "v2" else wavname)[:-4] + ".mp3"
-			y = process(decode(os.path.join(mans[bn][0], mp3name), ch), target, p["cat"])
+			out = "%s__%d.wav" % (key, k)
+			swrec = {}
+			y = process(decode(os.path.join(mans[bn][0], mp3name), ch), target, p["cat"], key, swrec)
+			if swrec:
+				sw_used[out] = swrec
 			if key in ALIGN_PEAK:
 				y = align_peak(y, ALIGN_PEAK[key])
 			if key in FIX_LEN:
 				y = fix_len(y, FIX_LEN[key])
-			out = "%s__%d.wav" % (key, k)
 			write_wav(os.path.join(OUT_DIR, out), y)
 			made += 1
 			led.append("| %s | %s | %s/%s | %s |" % (out, key, bn, mp3name, str(mans[bn][1].get(mp3name, {}).get("text", "")).replace("|", "/")))
 		sel_scores = [s for s in p["all"] if os.path.basename(s["file"]) in p["sel"]]
 		keep_picks[key] = {"cat": p["cat"], "zh": p["zh"], "sel": p["sel"],
 			"score": [{k2: s[k2] for k2 in ("text", "riot", "champ", "pen", "pix", "score", "dur", "low", "cent")} for s in sel_scores]}
+		sw = {o: sw_used[o] for o in ("%s__%d.wav" % (key, k) for k in range(1, len(p["sel"]) + 1)) if o in sw_used}
+		if sw:
+			keep_picks[key]["sweetener"] = sw
 	ev_vars = ev_vars_of(keep_picks)
 	keep = {os.path.basename(q) for v in ev_vars.values() for q in v}
 	for fn in os.listdir(OUT_DIR):
@@ -303,7 +360,10 @@ def main() -> int:
 			if os.path.exists(os.path.join(OUT_DIR, fn + ".import")):
 				os.remove(os.path.join(OUT_DIR, fn + ".import"))
 	open(PICKS_V2, "w", encoding="utf-8", newline="\n").write(json.dumps(keep_picks, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+	if sw_used:
+		led += ["", "低频垫底层(技能放出偏薄时垫在起音处, 同一授权): " + " · ".join(sorted({v["layer"] + ".mp3" for v in sw_used.values()})) + " (<SFX_SRC>/eleven/v2sw/)"]
 	open(LEDGER, "w", encoding="utf-8", newline="\n").write("\n".join(led) + "\n")
+	print("垫了低频层的技能放出: %d 条" % len(sw_used))
 	open(EVENTS_GD, "w", encoding="utf-8", newline="\n").write(events_gd_text(ev_vars))
 	print("写出 %d 个文件 · %d 条事件 → %s" % (made, len(ev_vars), OUT_DIR))
 	return 0

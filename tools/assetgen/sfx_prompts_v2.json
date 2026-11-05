@@ -3,7 +3,8 @@
  "style": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, punchy transient, full-bodied low end, crisp detail, tight and clean, no music, no speech",
  "styles": {
   "v2r2": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, crisp punchy transient, balanced full frequency range with clear mid and high detail, not muddy, not just a low rumble, no music, no speech",
-  "v2r3": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends, professionally layered, crisp, no music, no speech"
+  "v2r3": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends, professionally layered, crisp, no music, no speech",
+  "v2sw": "High-fidelity cinematic game sound design layer, clean, no music, no speech"
  },
  "batches": {
   "v2": [
@@ -6121,6 +6122,62 @@
     "n": 4,
     "ref": "TFT item proc",
     "text": "item effect: a metal armor plate thump with a soft glowing heartbeat pulse and a bright healing chime. Crisp, bright, detailed."
+   }
+  ],
+  "v2sw": [
+   {
+    "key": "sw_boom",
+    "zh": "低频垫底层",
+    "cat": "sweetener",
+    "dur": 1.2,
+    "n": 4,
+    "ref": "-",
+    "text": "a deep cinematic impact boom with a sub-bass thump, short and clean."
+   },
+   {
+    "key": "sw_swell",
+    "zh": "低频垫底层",
+    "cat": "sweetener",
+    "dur": 1.2,
+    "n": 4,
+    "ref": "-",
+    "text": "a deep magical energy whoosh swell with heavy low end."
+   },
+   {
+    "key": "sw_earth",
+    "zh": "低频垫底层",
+    "cat": "sweetener",
+    "dur": 1.2,
+    "n": 4,
+    "ref": "-",
+    "text": "a deep earthy rumble impact, short."
+   },
+   {
+    "key": "sw_body",
+    "zh": "低频垫底层",
+    "cat": "sweetener",
+    "dur": 1.2,
+    "n": 4,
+    "ref": "-",
+    "text": "a low heavy body hit thud with weight."
+   },
+   {
+    "key": "sw_fire",
+    "zh": "低频垫底层",
+    "cat": "sweetener",
+    "dur": 1.2,
+    "n": 4,
+    "ref": "-",
+    "text": "a deep fiery whump burst with heavy low end."
+   },
+   {
+    "key": "sw_pulse",
+    "zh": "低频垫底层",
+    "cat": "sweetener",
+    "dur": 1.2,
+    "n": 4,
+    "ref": "-",
+    "text": "a deep resonant magical pulse boom."
    }
   ]
  }

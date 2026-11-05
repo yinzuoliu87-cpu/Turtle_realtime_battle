@@ -428,7 +428,26 @@ def build() -> dict:
 	for key, zh, dur, n, ref, text in G:
 		items.append({"key": key, "zh": zh, "cat": "global", "dur": dur, "n": n, "ref": ref, "text": text + "."})
 	return {"_doc": "音效 v2 描述表(tools/assetgen/sfx_v2_table.py 生成, 勿手改)。2026-11-05 全部重做, 对标云顶 / LoL。v2r2 = 第二轮(见 round2 头注)。",
-		"style": STYLE, "styles": {"v2r2": STYLE_R2, "v2r3": STYLE_R3}, "batches": {"v2": items, "v2r2": round2(items), "v2r3": round3(items)}}
+		"style": STYLE, "styles": {"v2r2": STYLE_R2, "v2r3": STYLE_R3, "v2sw": STYLE_SW},
+		"batches": {"v2": items, "v2r2": round2(items), "v2r3": round3(items), "v2sw": sweeteners()}}
+
+
+## ── 低频垫底层(v2sw): 不是事件, 是给「技能放出」垫分量用的素材 ──────────────────────────────────────
+## 三轮选中的技能放出低频占比 0.12(Riot 0.41)、质心 2152 Hz(1141) ⇒ 偏薄。直接让生成器出「有分量」的放出会出一团轰鸣(第一轮 35 条全否)。
+## 商业做法: 主体声 + 一层低频「甜味剂」(sweetener)。build_sfx_v2 给低频不够的放出声在起音处垫一层(低通 220 Hz)。
+STYLE_SW = "High-fidelity cinematic game sound design layer, clean, no music, no speech"
+SW = [
+	("sw_boom", "a deep cinematic impact boom with a sub-bass thump, short and clean"),
+	("sw_swell", "a deep magical energy whoosh swell with heavy low end"),
+	("sw_earth", "a deep earthy rumble impact, short"),
+	("sw_body", "a low heavy body hit thud with weight"),
+	("sw_fire", "a deep fiery whump burst with heavy low end"),
+	("sw_pulse", "a deep resonant magical pulse boom"),
+]
+
+
+def sweeteners() -> list:
+	return [{"key": k, "zh": "低频垫底层", "cat": "sweetener", "dur": 1.2, "n": 4, "ref": "-", "text": t + "."} for k, t in SW]
 
 
 ## ── 第三轮(v2r3): 两轮 6~7 个候选全被否决的 7 条(都是「只剩低频轰鸣」或「像素感」), 每条 4 个候选, 描述逐条重写成「清脆、有细节」 ──
