@@ -10,7 +10,8 @@
   attack_melee  近战(小龟 / 竹叶 / 彩虹 / 财神 / 石头): 后缩蓄力 → 前冲咬(第 2 帧就咬中: 游戏里普攻出手即结算) → 收回
   attack_ranged 远程(闪电 / 凤凰 / 天使 / 寒冰 / 熔岩): 缩颈蓄力 → 探头喷射 + 身体后坐 → 回正
   hurt          受击: 被打退 + 压扁 + 仰头 + 眯眼(画师的眨眼部件) → 回正
-  death         阵亡: 刚体仰面翻倒(转 root, 不拧网格) + 闭眼 + 四脚朝天蹬两下, 末帧定住(时长 ≥ 游戏阵亡淡出)
+  death         阵亡: 有 spine_src/<龟>/ai_death/ 的用 PixelLab 生成帧(趴倒 + 头贴地 + 闭眼, 锁原调色板, 见 ai_death_frames);
+                没有的(龟壳)走骨骼: 刚体倒下(转 root, 不拧网格), 末帧定住(时长 ≥ 游戏阵亡淡出)
   ★头 / 脖子转角 ≤ HEAD_MAX(6°): 画师的头是加权网格, 转大了脸会被拧歪(用户 11-05「这个头低下来很诡异」)
   龟壳(纯逐帧, 只有 main / shell / efx 三根骨, 整只是 efx 上一个逐帧插槽)单独一套: 前撞 / 震退 / 后倾压扁 + 整体调暗。
 帧格: 方帧 S×S(游戏 _resolve_action 只认方帧), 待机格子(200×176)摆在帧里同一位置: 水平居中、脚底行 = FEET;
@@ -269,6 +270,60 @@ def render_action(d: str, tid: str, spec: dict, idle: dict, strict: bool = True)
 	return frames
 
 
+AI_FRAMES = 8          # PixelLab animate_image 8 帧(200×176 一格约 5 次生成)
+IDLE_SHEET = os.path.join(ROOT, "assets", "sprites", "pets", "spine", "%s_idle.png")
+
+
+def _palette_lock(img: np.ndarray, pal: np.ndarray) -> np.ndarray:
+	"""每个不透明像素吸附到 pal(原画用过的颜色)里 RGB 最近的那个; 透明度二值。
+	先对 AI 帧的**颜色种类**(约一百种)求最近色再映射回像素 —— 逐像素对整张调色板算会卡死
+	(凤凰龟待机火焰渐变用了 15 万种颜色, 11-05 第一版跑了 7 分钟没出来)。"""
+	out = np.zeros_like(img)
+	m = img[..., 3] >= 128
+	uniq, inv = np.unique(img[m][:, :3], axis=0, return_inverse=True)
+	u32 = uniq.astype(np.int32)
+	p32 = pal.astype(np.int32)
+	best = np.zeros(len(u32), dtype=np.int64)
+	bd = np.full(len(u32), 1 << 30, dtype=np.int64)
+	for i0 in range(0, len(p32), 4096):
+		chunk = p32[i0:i0 + 4096]
+		d = ((u32[:, None, :] - chunk[None, :, :]) ** 2).sum(axis=2)
+		j = d.argmin(axis=1)
+		dj = d[np.arange(len(u32)), j]
+		better = dj < bd
+		bd[better] = dj[better]
+		best[better] = j[better] + i0
+	out[m, :3] = pal[best][inv.reshape(-1)]
+	out[m, 3] = 255
+	return out
+
+
+def ai_death_frames(d: str, tid: str, idle: dict) -> list:
+	"""阵亡 = 第 0 帧待机原帧 + PixelLab 8 帧(锁回这只龟待机 50 帧用过的颜色)+ 末帧定住到 15 帧。
+	用户 11-05 看了骨骼版「这个头低下来很诡异」并问「为什么不直接…AI…生成」⇒ 同一只小龟两版对照(.out/art/ai/compare_death.png):
+	AI 版「腿一软趴下、头贴地、闭眼」读得出死了, 花纹 / 金币 / 体型都保住; 骨骼弯头会拧坏脸, 刚体翻倒偏滑稽且旋转有锯齿 ⇒ 阵亡用 AI。
+	AI 原始帧在 spine_src/<龟>/ai_death/(fetch_pixellab_frames.py 下的, 素材源); 颜色 95% 偏离原调色板 ⇒ 这里锁回。"""
+	sheet = np.asarray(Image.open(IDLE_SHEET % tid).convert("RGBA"))
+	fw, fh = idle["frameW"], idle["frameH"]
+	pal = np.unique(sheet[sheet[..., 3] > 0][:, :3], axis=0)
+	ox = (S_FRAME - fw) // 2
+	oy = FEET - fh
+
+	def place(cell: np.ndarray) -> np.ndarray:
+		fr = np.zeros((S_FRAME, S_FRAME, 4), dtype=np.uint8)
+		fr[oy:oy + fh, ox:ox + fw] = cell
+		return fr
+	frames = [place(sheet[:fh, :fw])]
+	for n in range(1, AI_FRAMES + 1):
+		ai = np.asarray(Image.open(os.path.join(I.SRC, d, "ai_death", "ai_%d.png" % n)).convert("RGBA"))
+		if ai.shape[:2] != (fh, fw):
+			raise SystemExit("%s AI 第 %d 帧尺寸 %s ≠ 待机格子 %d×%d" % (tid, n, ai.shape[:2], fw, fh))
+		frames.append(place(_palette_lock(ai, pal)))
+	while len(frames) < int(DEATH["frames"]):
+		frames.append(frames[-1].copy())
+	return frames
+
+
 def _bbox(fr: np.ndarray) -> tuple:
 	m = fr[..., 3] > 0
 	ys = np.where(m.any(axis=1))[0]
@@ -330,7 +385,11 @@ def main() -> int:
 		idle = idle_man[tid]
 		ent = {"frame": S_FRAME, "fps": FPS, "idle_body": int(idle["content"][1])}
 		for act, spec in specs_for(tid).items():
-			frames = render_action(d, tid, spec, idle)
+			if act == "death" and os.path.isdir(os.path.join(I.SRC, d, "ai_death")):
+				frames = ai_death_frames(d, tid, idle)
+				ent["death_src"] = "pixellab"
+			else:
+				frames = render_action(d, tid, spec, idle)
 			if act == "death" and max(_bbox(f)[3] for f in frames) > FEET + GROUND_TOL:
 				raise SystemExit("%s 阵亡穿地: 最低点 %d > 脚底线 %d + %d" % (tid, max(_bbox(f)[3] for f in frames), FEET, GROUND_TOL))
 			bx0, by0, bx1, by1 = _bbox(frames[0])
