@@ -200,14 +200,17 @@ def build(tid: str) -> dict:
 	ox, oy = (S - cw) // 2, FEET - ch
 
 	def place(cell: np.ndarray) -> np.ndarray:
+		"""格子摆进方帧。补过边的画布(为 Pro Flash 凑 4 的倍数、上方留道具空间; 定稿贴在左下)⇒ 底对齐、右边多出的列裁掉, 上方的道具保留。"""
 		fr = np.zeros((S, S, 4), dtype=np.uint8)
-		fr[oy:oy + ch, ox:ox + cw] = cell
+		h = cell.shape[0]
+		fr[oy + ch - h:oy + ch, ox:ox + cw] = cell[:, :cw]
 		return fr
 	k0 = place(key)
 	od = os.path.join(ANIM_DIR, tid)
 	os.makedirs(od, exist_ok=True)
 	ent = {"frame": S, "fps": FPS, "casts": {}}
 	segs = {}
+	rel_at = {}
 	if tid in PROCEDURAL:
 		ps = PROCEDURAL[tid](k0)
 		idle_extra = ps.pop("_idle")
@@ -228,12 +231,20 @@ def build(tid: str) -> dict:
 			frames = SEG_PROCEDURAL[tid][nm](k0)
 		else:
 			frames = [k0] + [place(f) for f in _ai(d, pal)]
+			endp = os.path.join(d, "end.png")
+			end = place(A._palette_lock(np.asarray(Image.open(endp).convert("RGBA")), pal)) if os.path.exists(endp) else None
 			if os.path.exists(os.path.join(d, "pinned")):
-				## 首尾都钉在定稿上生成的段(animate_image first_frame = last_frame = 定稿; 11-05 晚起普攻 / 受击这样重做):
-				##   AI 第 1 帧 = 起始姿势重画一遍(与第 0 帧重复)⇒ 丢掉; 末帧换成定稿原图 ⇒ 接回待机逐像素无跳
-				frames = [k0] + frames[2:-1] + [k0]
-			if os.path.exists(os.path.join(d, "end.png")):   # 钉住的末帧(如钻石球定稿; 状态循环从这一帧接)
-				frames.append(place(A._palette_lock(np.asarray(Image.open(os.path.join(d, "end.png")).convert("RGBA")), pal)))
+				## 首尾钉住生成的段(animate_image first_frame = 定稿, last_frame = 定稿或关键姿势 end.png; 11-05 晚起):
+				##   AI 第 1 帧 = 起始姿势重画一遍(与第 0 帧重复)⇒ 丢掉; 末帧换成原图(定稿 / end.png)⇒ 接回待机或状态循环逐像素无跳
+				frames = [k0] + frames[2:-1] + [end if end is not None else k0]
+				if end is not None:
+					rel_at[nm] = len(frames) - 1   # 释放帧 = 到达关键姿势那一帧(开盖 / 球成形 / 缩进壳); peak_frame 按像素差选, 钉住段全帧都有 AI 重画噪声, 会选到第 1 帧
+			elif end is not None:   # 只钉末帧(钻石球: 末帧 = 球形定稿, 状态循环从这一帧接)
+				frames.append(end)
+			if os.path.exists(os.path.join(d, "pingpong")):
+				## 来回段(宝箱开盖 / 水晶球现身): 定稿 → 关键姿势, 停 N 帧, 再倒放回定稿(与熔岩变回 = 变身倒放同一做法)
+				hold = int((open(os.path.join(d, "pingpong"), encoding="utf-8").read().split() or ["3"])[0])
+				frames = frames + [frames[-1]] * hold + frames[-2::-1]
 		if nm == "death":
 			while len(frames) < int(A.DEATH["frames"]):
 				frames.append(frames[-1].copy())
@@ -251,7 +262,7 @@ def build(tid: str) -> dict:
 		ent["hit"] = HIT_OVERRIDE.get(tid, ent["hit"])
 	for nm, frames in segs.items():
 		if nm.startswith("cast_"):
-			ent["casts"][nm[5:]] = [len(frames), A.peak_frame(frames), "pixellab"]
+			ent["casts"][nm[5:]] = [len(frames), rel_at.get(nm, A.peak_frame(frames)), "pixellab"]
 	for sname, seg, mode, sfps in STATE_LOOPS.get(tid, []):
 		if seg not in segs:
 			continue

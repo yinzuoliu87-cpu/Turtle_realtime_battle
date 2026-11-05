@@ -65,8 +65,8 @@
     "pixellab"
    ],
    "chestCount": [
-    7,
-    2,
+    15,
+    5,
     "pixellab"
    ],
    "chestStorm": [
@@ -88,8 +88,8 @@
   "body0": 164,
   "casts": {
    "crystalBall": [
-    7,
-    2,
+    15,
+    5,
     "pixellab"
    ],
    "crystalBarrier": [
@@ -273,8 +273,8 @@
     "pixellab"
    ],
    "hidingShrink": [
-    7,
-    2,
+    6,
+    5,
     "pixellab"
    ]
   },
