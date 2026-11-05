@@ -15,7 +15,10 @@ name: 提交门禁(测试+审计)
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    # ★2026-11-05 加 wip/**(用户「肯定是要改…这个做法效率太低了…你按最好的做法来」):
+    #   改动先推 wip/<主题> → 这里八片跑全套 → 全绿由下面的 promote 快进进 main。main 永远是 CI 验过的提交;
+    #   本机不再跑全套(占满用户电脑 15 分钟、跑的期间不能改仓库 / 录片), 只跑相关测试。工具: tools/ship.py
+    branches: [main, 'wip/**']
   pull_request:
 
 permissions:
@@ -309,3 +312,26 @@ jobs:
             exit 1
           fi
           echo "八片全绿"
+
+  # ★★2026-11-05 全绿自动进 main(主干开发 + CI 把关合并, 业界通行做法):
+  #   只在 push 到 wip/** 且八片全绿时跑; 只做「快进」—— main 在这期间被别人动过(这次提交不是 main 的后代)就失败, 不硬塞。
+  #   用 GITHUB_TOKEN 推: 它推的提交不会再触发一轮工作流(同一个提交刚验过, 不必再跑)。
+  promote:
+    name: 全绿 ⇒ 快进 main
+    needs: [shard, report]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/wip/') && needs.shard.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 快进 main 到这次提交
+        run: |
+          git fetch -q origin main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/main
+            echo "main ⇒ $(git rev-parse --short HEAD)"
+          else
+            echo "::error::main 已经有这次提交之外的新提交, 不能快进 —— 本地 rebase 到最新 main 再推 wip"
+            exit 1
+          fi

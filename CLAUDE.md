@@ -33,8 +33,8 @@ JOBS=8 bash run-tests.sh          # 保守一点（审计器池与测试池各�
 SHARD=k/8 SHARD_LIST_ONLY=1 bash run-tests.sh   # 只看第 k 片分到哪几条
 ```
 
-- **推送前本机跑完整门禁、全过再推，不拿 CI 试错**（用户 10-31）。门禁在跑时不改仓库（改了 = 这轮作废）。
-- **只改文档 ⇒ 复用上次全绿**（用户 11-04「改」，修订上一条）：`run-tests.sh` 开头用 `tools/gate_input_key.py` 算测试输入哈希（docs/ 与根目录 .md 以外的全部文件 + 被 Godot 侧 `res://` 点名的文档 + Godot 可执行文件）；与 12 小时内上次全绿相同 ⇒ 自证测试 + 冒烟复用、不起 Godot，三方对账与审计器照跑，结尾打「其中 N 项复用」。输入变一个字节就跑全套。`GATE_NO_REUSE=1` 强制全套，`GATE_REUSE_CHECK=1` 只看判定。**不许扩大成「只跑相关测试」**（用户没同意）。
+- **改动经 CI 把关进 main，不直接 push main**（用户 11-05「肯定是要改呀…这个做法效率太低了呀…你按最好的做法来呀」，取代 10-31「推送前本机跑完整门禁」）：提交后 `python tools/ship.py <主题> [--wait]` 推到 `wip/<主题>` → `tests.yml` 八片跑全套（约 10 分钟，公开仓库不计费）→ 全绿由 `promote` 自动**快进** main（不是 main 的后代就失败，不硬塞）。本机只跑与改动直接相关的测试 + 审计器；本机全套 `bash run-tests.sh` 只在要 Windows 侧证据（生成金标等）或 CI 不可用时跑。由来：10-31 那条占满用户电脑约 15 分钟、跑的期间不能改仓库 / 开录制，而它跑的是和 CI 同一套测试、并不多抓问题（11-05 分析：CI 中位 10 分钟、最近 30 次 29 绿）。
+- **只改文档 ⇒ 复用上次全绿**（用户 11-04「改」，修订上一条）：`run-tests.sh` 开头用 `tools/gate_input_key.py` 算测试输入哈希（docs/ 与根目录 .md 以外的全部文件 + 被 Godot 侧 `res://` 点名的文档 + Godot 可执行文件）；与 12 小时内上次全绿相同 ⇒ 自证测试 + 冒烟复用、不起 Godot，三方对账与审计器照跑，结尾打「其中 N 项复用」。输入变一个字节就跑全套。`GATE_NO_REUSE=1` 强制全套，`GATE_REUSE_CHECK=1` 只看判定。**不许扩大成「只跑相关测试」**（用户没同意）。（本机跑全套时才用得上；11-05 起常规流程走 CI，见上一条）
 - 手动跑单条测试一律隔离存档：`APPDATA=$U XDG_DATA_HOME=$U`（Windows 看 `APPDATA`，Linux/CI 看 `XDG_DATA_HOME`，两个都设；`verify_gate_isolation` 守）。并设 `TURTLE_SUPABASE=" "` 不连服务器。
 - 判定 = 退出码 0 + 不命中 `run-tests.sh` 顶部 `FATAL` 致命报错正则 + 日志里有 `ALL PASS`。**新报错形态往 `FATAL` 里加**，漏一个模式就等于把 bug 判绿。
 - 测试**自动发现** `tests/verify_*.gd`（配好 `.tscn` 即纳入，无需登记）。慢测试在 `frames_for()` 登记帧预算 —— `--quit-after` 单位是**帧**；帧数不够表现为「没打 ALL PASS」，不是某条断言 FAIL。
@@ -69,7 +69,7 @@ python tools/repo_hygiene_audit.py     # 仓库文件卫生（§8）
 ```bash
 python tools/release.py bump <版本> --rules same|changed   # 五处版本号 + CHANGELOG 骨架 + 路线图一行；--rules 必填
 python tools/release.py checklist <版本>                    # 生成 docs/releases/<版本>.md 发版清单，逐步勾
-bash run-tests.sh  →  push  →  CI 绿
+python tools/ship.py <主题> --wait                         # 推 wip/<主题> → CI 全绿自动快进 main（11-05 起，取代本机全套 + 直接 push）
 python tools/release.py tag <版本>                          # 前置检查(干净/已推/CI 绿/五处一致) 后只推这一个 tag
 # 推 tag ⇒ testflight.yml 自动签名、核 tag=版本号、上传
 python tools/asc.py submit <版本>                           # 进公开测试组 + 说明(取 CHANGELOG) + 作废同版本在审旧构建 + 提审
@@ -190,7 +190,7 @@ python tools/prod_flags.py force-update <版本> --yes-prod   # 苹果 Beta 审�
 ## 9. 工作方式
 
 - **新需求先写方案书再动手**：必含「验收清单」（子需求一次列全）与「已知风险与未决点」。标准流水：`需求 → 方案书 → 用户拍板未决点 → 实现 → 门禁 → 版本号 + tag + CHANGELOG（玩家可感知才升）→ push → TestFlight → 反馈`。
-- **push**：普通 push 随时推（用户 10-22），前提是本机完整门禁全过（10-31）。发版要用户认可。
+- **push**：普通改动随时交（用户 10-22），走 `tools/ship.py` → CI 全绿自动进 main（11-05 取代 10-31「本机完整门禁全过」）。发版要用户认可。
 - 报「做完了」之前，**先证明检查本身会 FAIL**：故意改坏一处、确认变红、逐字节还原；打印分母，`N=0` 是空检查不是通过。
 - 断根因**先写探针打具体数值**；推理出来的不算根因。
 - 动手造轮子前先搜仓库：`ls .github/workflows/ tools/ server/`、`docs/README.md`。
