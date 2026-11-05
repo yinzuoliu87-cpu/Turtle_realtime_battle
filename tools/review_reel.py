@@ -67,7 +67,8 @@ def record(j):
 	## REEL_REUSE=1: 原片和日志都在就不重录, 只重剪(改了几只龟之后删掉那几只的 raw_*.avi 再跑, 整片按最新代码拼齐)
 	reuse = os.environ.get("REEL_REUSE") == "1" and os.path.exists(raw) and os.path.getsize(raw) > 100000 and os.path.exists(log)
 	u = tempfile.mkdtemp()
-	env = dict(os.environ, REVIEW="1", REVIEW_TURTLE=j["id"], REVIEW_SKILL=("0" if j["idx"] == 4 else str(j["idx"])), TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ",
+	env = dict(os.environ, REVIEW="1", REVIEW_TURTLE=j["id"], REVIEW_SKILL=(("1" if j["id"] == "two_head" else "0") if j["idx"] == 4 else str(j["idx"])),
+		REVIEW_PASSIVE=("1" if j["idx"] == 4 else ""), TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ",
 		APPDATA=u, XDG_DATA_HOME=u)
 	if j["form"]:
 		env["REVIEW_FORM"] = j["form"]

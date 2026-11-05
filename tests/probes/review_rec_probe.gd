@@ -9,10 +9,13 @@ var f := 0
 var tid := ""
 var form := ""
 var transformed := false
+var passive := false   # REVIEW_PASSIVE=1: 被动段, 开打 2 秒把触发条件摆好(_stage_passive)
+var staged := false
 var last := {}
 func _ready() -> void:
 	tid = OS.get_environment("REVIEW_TURTLE")
 	form = OS.get_environment("REVIEW_FORM")
+	passive = OS.get_environment("REVIEW_PASSIVE") == "1"
 	sc = (load("res://scenes/RealtimeBattle3D.tscn") as PackedScene).instantiate()
 	add_child(sc)
 var _sfx_seen := 0
@@ -35,6 +38,9 @@ func _process(_d: float) -> void:
 				sc._lava_sys._lava_transform(u)
 				transformed = true
 				print("[FORM] frame=%d volcano" % f)
+			if passive and not staged and f > 60:
+				staged = true
+				_stage_passive(u)
 			if "_cam" in sc and sc._cam != null:   # 受审龟每帧的屏幕位置(tools/review_frames.py 按它跟拍裁切)
 				var sp: Vector2 = sc._cam.unproject_position(sc._world_pos(u["pos"], 0.0))
 				print("[POS] %d %d %d" % [f, int(sp.x), int(sp.y)])
@@ -45,3 +51,30 @@ func _process(_d: float) -> void:
 					print("[CAST] frame=%d skill=%s" % [f, str(k)])
 				last[k] = v
 			break
+
+## 被动段(11-05 审核片里 30 秒内没触发的被动): 开打 2 秒把触发条件摆好, 之后走游戏自己的触发函数(声音 / 特效都是真路径)。
+##   赏金猎人 = 敌人血量压到 5%(处决线以下, 去掉假人「受击回满」) · 宝箱龟 = 财宝值补到差 1 点开箱(下一下伤害开箱)
+##   凤凰 / 无头 = 受到敌人一次致死伤害(去掉受审龟的「受击回满」) · 变脸龟 = 放技能后换形态(review_reel 给它的被动段开技能 1)
+func _stage_passive(u: Dictionary) -> void:
+	var foe = null
+	for o in sc._units:
+		if str(o.get("side", "")) == "right" and bool(o.get("alive", false)):
+			foe = o
+			break
+	match tid:
+		"hunter":
+			if foe != null:
+				foe.erase("_review_dummy")
+				foe["hp"] = float(foe["maxHp"]) * 0.05
+		"chest":
+			var tp: Dictionary = sc._chest_sys.treasure_progress(u)
+			var opened: int = int(tp["opened"])
+			if opened < sc._CHEST_THRESH.size():
+				var need: float = float(sc._CHEST_THRESH[opened]) - float(tp["value"])
+				if need > 1.0:
+					sc._chest_sys.note_damage(u, int(need) - 1)
+		"phoenix", "headless":
+			if foe != null:
+				u.erase("_review_dummy")
+				sc._damage._apply_damage_from(foe, u, int(float(u["hp"])) + 9999, Color.RED, 0.0, true)
+	print("[STAGE] frame=%d passive %s" % [f, tid])
