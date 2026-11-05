@@ -108,7 +108,7 @@ func _ready() -> void:
 			and lsys.contains('u["shock_boost_until"] = battle._t + SURGE_SEC'))
 	_chk("⑥ 涌动旧值 5 秒已消失", not is_equal_approx(LightningSystem.SURGE_SEC, 5.0))
 	_chk("⑥ 涌动光环时长跟到 %.1f 秒(灭了但buff还在=误导)" % WANT_SURGE_SEC,
-		lsys.contains("Color(0.3, 0.67, 0.97, 0.5), SURGE_SEC)"))
+		lsys.contains("BuffVfx.activate(battle, u, Color(0.4, 0.75, 1.0), SURGE_SEC, 54.0)"))   # 11-05: 图标光环换成增益演出, 持续段仍跟 SURGE_SEC
 
 	## SURGE_HIT_COEF 是推导常量(SHOCK_COEF × (1+SURGE_BOOST)) —— 比它算出来的值。
 	_chk("⑦ 涌动立即伤害 = %.1f×ATK(与文案一致)" % WANT_SURGE_HIT,

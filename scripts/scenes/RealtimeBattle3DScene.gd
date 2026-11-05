@@ -4043,42 +4043,9 @@ func _scald_trail(pos2d: Vector2, h: float) -> void:
 	tw.tween_property(spr, "modulate:a", 0.0, 0.26)
 	tw.chain().tween_callback(spr.queue_free)
 
-func _barrage_strike(pos2d: Vector2) -> void:   # 雷暴专属落雷(闪电龟自有lightning-0竖直落雷+lightning-3电爆; 用户2026-07-15强调: 区别于被动8层引爆的common-lightning-strike)
-	var tex := load("res://assets/sprites/skills/lightning-0.png")
-	if tex != null:
-		var world_h := 4.4                            # 落雷加高(从高空风暴云延伸下来·2026-07-15)
-		var spr := Sprite3D.new()
-		spr.texture = tex
-		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		spr.shaded = false
-		spr.transparent = true
-		spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		spr.pixel_size = world_h / float(maxi(1, tex.get_height()))
-		spr.position = _world_pos(pos2d, world_h * 0.5)   # 中心抬到半高→底部炸裂贴地·顶端够到风暴云
-		spr.modulate = Color(0.9, 0.96, 1.0, 0.0)
-		_world.add_child(spr)
-		var tw := _reg_tween()
-		tw.tween_property(spr, "modulate:a", 1.0, 0.04)
-		tw.tween_interval(0.05)
-		tw.tween_property(spr, "modulate:a", 0.0, 0.18)
-		tw.tween_callback(spr.queue_free)
-	var btex := load("res://assets/sprites/skills/lightning-3.png")
-	if btex != null:
-		var burst := Sprite3D.new()
-		burst.texture = btex
-		burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		burst.shaded = false
-		burst.transparent = true
-		burst.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		burst.pixel_size = 0.42 / float(maxi(1, btex.get_height()))
-		burst.position = _world_pos(pos2d, 0.4)
-		burst.modulate = Color(1, 1, 1, 0.0)
-		_world.add_child(burst)
-		var tb := _reg_tween()
-		tb.tween_property(burst, "modulate:a", 1.0, 0.05)
-		tb.parallel().tween_property(burst, "scale", Vector3(2.4, 2.4, 2.4), 0.22)
-		tb.tween_property(burst, "modulate:a", 0.0, 0.14)
-		tb.tween_callback(burst.queue_free)
+func _barrage_strike(pos2d: Vector2) -> void:   # 雷暴专属落雷(用户2026-07-15强调: 区别于被动8层引爆的common-lightning-strike)
+	## ★11-05 换成真闪电(参考凯南 R): 原来是技能图标 lightning-0.png 竖着放 + 图标 lightning-3.png 当爆点, 像盖表情。演出在 LightningStormVfx
+	LightningStormVfx.bolt(self, pos2d, 4.5)
 
 func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用户2026-07-15重做: 水平弧→天降竖直落雷·闪电龟自有素材)
 	var es := _targeting._pick_enemies_of(u)

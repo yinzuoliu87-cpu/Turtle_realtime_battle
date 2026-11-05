@@ -128,20 +128,8 @@ func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷�
 			center += e["pos"]
 		center /= float(es.size())
 	var cloud_h = 4.5                             # 敌上空高处(原3.4太低压脸·5.4又顶出画面顶→4.5)
-	var cloud = Sprite3D.new()
-	var ctex = load("res://assets/sprites/skills/lightning-2.png")
-	if ctex != null:
-		cloud.texture = ctex
-		cloud.pixel_size = 5.2 / float(maxi(1, ctex.get_height()))   # 大风暴云(原3.4→5.2)
-	cloud.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	cloud.shaded = false
-	cloud.transparent = true
-	cloud.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	cloud.position = battle._world_pos(center, cloud_h)
-	cloud.modulate = Color(0.55, 0.66, 0.92, 0.0)  # 冷色压暗成阴沉风暴云(非亮图标)·淡入
-	battle._world.add_child(cloud)
-	var tin = battle._reg_tween()
-	tin.tween_property(cloud, "modulate:a", 0.96, 0.22)
+	## ★11-05 云换成真的暗风暴云(原来是技能图标 lightning-2.png: 一朵云 + 黄色 ⚡ 符号, 看着像表情图标), 每道雷劈下时云里打闪(LightningStormVfx)
+	var cloud = LightningStormVfx.cloud(battle, center, cloud_h)
 	var tw = battle._reg_tween()
 	for i in range(BARRAGE_BOLTS):                 # 天降落雷(每0.075s·稍慢更可读)
 		tw.tween_callback(battle._barrage_bolt.bind(u, cloud_h))
@@ -152,7 +140,8 @@ func _sk_lightning_shield(u: Dictionary) -> void:              # 闪电龟·雷�
 	battle._damage._grant_shield(u, u["atk"] * SHIELD_ATK_COEF + u["maxHp"] * SHIELD_MAXHP_PCT, SHIELD_SEC)   # 雷盾5秒(用户2026-07-28: 3.0ATK → 2.0ATK+5%最大生命, 改吃血量成长)
 	u["thunder_shield_until"] = battle._t + SHIELD_SEC
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 50.0)
-	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 58.0, Color(0.45, 0.85, 1.0, 0.5), 5.0)   # 脚下电爆光环随身5秒
+	## ★11-05 脚下光环原来是技能图标 lightning-3.png(一摊蓝色毛边图标, 看不出是电)⇒ 删; 雷盾的读法交给环绕身体的三道电弧 + 增益演出
+	BuffVfx.activate(battle, u, Color(0.55, 0.88, 1.0), 5.0, 58.0)
 	var etex: Texture2D = load("res://assets/sprites/vfx/electric-zap.png")   # 以雷电包裹自身: 3道电弧环绕身体5秒
 	if etex != null:
 		var n = 3
@@ -182,6 +171,7 @@ func _sk_lightning_surge(u: Dictionary, tgt: Dictionary) -> void: # 闪电龟·�
 	                                              # ★2026-08-02 更正注释: 值早已是 8.0(第四轮 5→8), 注释还写着"5秒内"
 	u["shock_boost_pct"] = SURGE_BOOST
 	battle._skill_ring(u["pos"], Color(0.45, 0.85, 1.0, 0.5), 52.0)
-	battle._aura_vfx("res://assets/sprites/skills/lightning-3.png", u, 54.0, Color(0.3, 0.67, 0.97, 0.5), SURGE_SEC)   # 涌动增伤电流光环5秒(标示buff激活期)
+	## ★11-05 原来脚下垫技能图标 lightning-3.png(一摊蓝色毛边图标)⇒ 换成增益演出: 放出爆一把电蓝光点 + 持续期间身上一直冒火星(与其它增益同一套读法)
+	BuffVfx.activate(battle, u, Color(0.4, 0.75, 1.0), SURGE_SEC, 54.0)
 	battle._vfx._hit_spark(u)                                                                                          # 自身电流上涌
 
