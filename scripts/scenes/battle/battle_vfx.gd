@@ -86,7 +86,7 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 	if not own_rows.has(kind) and not table.has(id):
 		return
 	# hurt 不打断正在播的 attack (避免普攻动作被打断闪烁); attack 不打断 hurt 中
-	if kind != "death" and u.get("anim_action", "") in ["attack", "hurt"]:
+	if kind != "death" and u.get("anim_action", "") in ["attack", "hurt", "cast"]:   # cast = 技能释放动作(AttackRhythm.cast_begin): 受击 / 普攻不打断
 		if kind == "hurt" and u.get("anim_action", "") == "hurt":
 			pass   # 刷新 hurt
 		elif kind != u.get("anim_action", ""):

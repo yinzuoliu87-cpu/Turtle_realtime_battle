@@ -5,7 +5,7 @@ extends Node
 ##   表在 scripts/gamedata/turtle_actions.gd(生成)。这套历史上踩过的病(用户 2026-07-21「大小明显不对」/ 08-22「站立的图片和其他动作完全接不上」):
 ##   动作帧本体只占半帧 ⇒ 一播就缩; 脚底行不同 ⇒ 一播就上下跳。
 ## 判据(量需求本身, 不读我自己写的配置当答案):
-##   ① 表里每张动作图都在, 是方帧条(帧高 = 帧宽), 帧数 ≥ 6
+##   ① 表里每张动作图(普攻 / 受击 / 阵亡 / 每个技能的释放动作)都在, 是方帧条(帧高 = 帧宽), 帧数 ≥ 6
 ##   ② 每个动作的第 0 帧 = 待机第 0 帧摆进方帧(水平居中、格子底边 = 归一表的脚底行)后**逐像素相同** —— 同一只龟、同一个像素尺度
 ##   ③ 真场景里生成这 11 只, 播普攻 / 受击 / 阵亡: 精灵 pixel_size 与待机相同、脚底线的本地高度与待机相同(不缩、不跳)
 ##   ④ 主场景 ACTION_* 表里没有这 11 只(否则旧表会盖掉新表 —— 小龟原来挂着旧形象的三张图)
@@ -56,9 +56,12 @@ func _ready() -> void:
 		if norm.size() != 3:
 			continue
 		var feet: int = int(norm[1])
-		for kind in KINDS:
-			var ent: Array = TA.by_kind(kind).get(id, [])
-			var at: Texture2D = load("res://assets/sprites/" + str(ent[0])) if ent.size() == 2 else null
+		var kinds: Array = KINDS.duplicate()
+		for st in (TA.CAST.get(id, {}) as Dictionary):
+			kinds.append("cast:" + str(st))
+		for kind in kinds:
+			var ent: Array = (TA.CAST[id][str(kind).substr(5)] as Array) if str(kind).begins_with("cast:") else TA.by_kind(kind).get(id, [])
+			var at: Texture2D = load("res://assets/sprites/" + str(ent[0])) if ent.size() >= 2 else null
 			_ok("★分母: %s %s 动作图加载到了" % [id, kind], at != null)
 			if at == null:
 				continue
@@ -107,6 +110,7 @@ func _ready() -> void:
 	var cx: float = scn.ARENA.position.x + scn.ARENA.size.x * 0.5
 	var cy: float = scn.ARENA.position.y + scn.ARENA.size.y * 0.5
 	var played := 0
+	var ncast := 0
 	for i in range(ids.size()):
 		var id: String = str(ids[i])
 		var u: Dictionary = scn._spawn._make_unit(id, "left", Vector2(cx - 400.0 + 70.0 * i, cy))
@@ -135,7 +139,21 @@ func _ready() -> void:
 				"pixel_size %.6f/%.6f · 脚底 %.5f/%.5f m" % [spr.pixel_size, px0, feet1, feet0])
 			## 回待机再播下一个(动作之间互不打断的闸不在这条门禁的范围)
 			scn._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+		for st in (TA.CAST.get(id, {}) as Dictionary):
+			AttackRhythm.cast_begin(scn, u, str(st), 0.34)
+			if str(u.get("anim_action", "")) != "cast":
+				_ok("★分母: %s 释放动作 %s 播起来了" % [id, st], false)
+				continue
+			ncast += 1
+			var cfh: float = float(int((u.get("anim_sd", {}) as Dictionary).get("frame_h", 0)))
+			var cfeet: float = (spr.offset.y + cfh * 0.5 - float((TA.NORM[id] as Array)[1])) * spr.pixel_size
+			_ok("★★%s 释放 %s 与待机同一个像素尺寸、同一条脚底线" % [id, st],
+				absf(spr.pixel_size - px0) < 1e-7 and absf(cfeet - feet0) < 1e-5,
+				"pixel_size %.6f/%.6f · 脚底 %.5f/%.5f m" % [spr.pixel_size, px0, cfeet, feet0])
+			scn._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+			u["_cast_wind"] = false
 	_ok("★分母: 运行时一共播了 33 次动作(11 只 × 3)", played == 33, "%d 次" % played)
+	_ok("★分母: 技能释放动作至少 25 段播过(外包 11 只)", ncast >= 25, "%d 段" % ncast)
 	scn.queue_free()
 	print("%d passed, %d failed" % [_n - _fail, _fail])
 	print("ALL PASS — 外包 11 只动作帧与待机同框同尺度" if _fail == 0 else "FAIL")

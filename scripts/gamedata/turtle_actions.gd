@@ -1,6 +1,6 @@
 class_name TurtleActions
 extends RefCounted
-## 外包 11 只龟的动作帧表(普攻 / 受击 / 阵亡) —— 由 tools/assetgen/build_spine_actions.py 生成, **别手改**(改关键帧后重跑脚本)。
+## 外包 11 只龟的动作帧表(普攻 / 受击 / 阵亡 / 技能释放) —— 由 tools/assetgen/build_spine_actions.py 生成, **别手改**(改关键帧后重跑脚本)。
 ## 方案书 docs/plans/20261105b-龟美术统一与动作补全.md §4.3: 在画师 Spine 原骨骼上写关键帧, 求值器(已与官方运行库逐帧对账)渲成像素序列帧。
 ## 帧表值 = [相对 assets/sprites/ 的路径, 每秒帧率], 与主场景 ACTION_ATTACK 同口径; 主场景表里没有的龟才查这里(battle_vfx._play_action)。
 ## 方帧 272×272(_resolve_action 只认方帧); 第 0 帧 = 待机第 0 帧同姿势、同一像素尺寸。
@@ -57,6 +57,67 @@ const HIT := {
 	"pets/animations/rainbow/attack.png": 4,
 	"pets/animations/shell/attack.png": 4,
 	"pets/animations/stone/attack.png": 4,
+}
+## 技能释放动作 [路径, 帧率, 释放帧](AttackRhythm.cast_begin 读: 技能前摇开始就播, 释放帧对上 _cast_skill 生效)。来源: 骨骼模板 / PixelLab。
+## 持续状态循环 [[状态名, 路径, 帧率], ...](AttackRhythm.apply_state_idle 读; 熔岩火山形态等)
+const STATE := {
+}
+const CAST := {
+	"angel": {
+		"angelAscend": ["pets/animations/angel/cast_angelAscend.png", 15.0, 3],   # 7 帧 · pixellab
+		"angelBless": ["pets/animations/angel/cast_angelBless.png", 15.0, 4],   # 8 帧 · skel
+		"angelEquality": ["pets/animations/angel/cast_angelEquality.png", 15.0, 6],   # 9 帧 · pixellab
+	},
+	"bamboo": {
+		"bambooHeal": ["pets/animations/bamboo/cast_bambooHeal.png", 15.0, 4],   # 8 帧 · skel
+		"bambooSmack": ["pets/animations/bamboo/cast_bambooSmack.png", 15.0, 4],   # 7 帧 · pixellab
+		"bambooSpikes": ["pets/animations/bamboo/cast_bambooSpikes.png", 15.0, 3],   # 8 帧 · skel
+	},
+	"basic": {
+		"basicBarrage": ["pets/animations/basic/cast_basicBarrage.png", 15.0, 4],   # 9 帧 · pixellab
+		"basicChiWave": ["pets/animations/basic/cast_basicChiWave.png", 15.0, 3],   # 9 帧 · pixellab
+		"basicSlam": ["pets/animations/basic/cast_basicSlam.png", 15.0, 4],   # 9 帧 · pixellab
+	},
+	"fortune": {
+		"fortuneAllIn": ["pets/animations/fortune/cast_fortuneAllIn.png", 15.0, 4],   # 9 帧 · pixellab
+		"fortuneBuyEquip": ["pets/animations/fortune/cast_fortuneBuyEquip.png", 15.0, 4],   # 8 帧 · skel
+		"fortuneDice": ["pets/animations/fortune/cast_fortuneDice.png", 15.0, 3],   # 7 帧 · pixellab
+	},
+	"ice": {
+		"commonTeamShield": ["pets/animations/ice/cast_commonTeamShield.png", 15.0, 4],   # 8 帧 · skel
+		"iceFreeze": ["pets/animations/ice/cast_iceFreeze.png", 15.0, 2],   # 7 帧 · pixellab
+		"iceFrost": ["pets/animations/ice/cast_iceFrost.png", 15.0, 3],   # 8 帧 · skel
+	},
+	"lava": {
+		"lavaErupt": ["pets/animations/lava/cast_lavaErupt.png", 15.0, 3],   # 7 帧 · pixellab
+		"lavaQuake": ["pets/animations/lava/cast_lavaQuake.png", 15.0, 3],   # 8 帧 · skel
+		"lavaSurge": ["pets/animations/lava/cast_lavaSurge.png", 15.0, 3],   # 7 帧 · pixellab
+	},
+	"lightning": {
+		"lightningBarrage": ["pets/animations/lightning/cast_lightningBarrage.png", 15.0, 4],   # 8 帧 · skel
+		"lightningShield": ["pets/animations/lightning/cast_lightningShield.png", 15.0, 4],   # 8 帧 · skel
+		"lightningSurgeBuff": ["pets/animations/lightning/cast_lightningSurgeBuff.png", 15.0, 4],   # 8 帧 · skel
+	},
+	"phoenix": {
+		"phoenixEnhancedRebirth": ["pets/animations/phoenix/cast_phoenixEnhancedRebirth.png", 15.0, 4],   # 8 帧 · skel
+		"phoenixScald": ["pets/animations/phoenix/cast_phoenixScald.png", 15.0, 3],   # 7 帧 · pixellab
+		"phoenixShield": ["pets/animations/phoenix/cast_phoenixShield.png", 15.0, 4],   # 8 帧 · skel
+	},
+	"rainbow": {
+		"rainbowReflect": ["pets/animations/rainbow/cast_rainbowReflect.png", 15.0, 4],   # 8 帧 · skel
+		"rainbowStorm": ["pets/animations/rainbow/cast_rainbowStorm.png", 15.0, 3],   # 9 帧 · pixellab
+		"shield": ["pets/animations/rainbow/cast_shield.png", 15.0, 4],   # 8 帧 · skel
+	},
+	"shell": {
+		"shellAbsorb": ["pets/animations/shell/cast_shellAbsorb.png", 15.0, 3],   # 8 帧 · skel
+		"shellCopy": ["pets/animations/shell/cast_shellCopy.png", 15.0, 4],   # 8 帧 · skel
+		"shellShadow": ["pets/animations/shell/cast_shellShadow.png", 15.0, 4],   # 8 帧 · skel
+	},
+	"stone": {
+		"rockShockwave": ["pets/animations/stone/cast_rockShockwave.png", 15.0, 4],   # 8 帧 · skel
+		"stoneRockShield": ["pets/animations/stone/cast_stoneRockShield.png", 15.0, 4],   # 8 帧 · skel
+		"stoneTaunt": ["pets/animations/stone/cast_stoneTaunt.png", 15.0, 4],   # 8 帧 · skel
+	},
 }
 ## 归一 [动作图本体高, 脚底行, 待机本体高] —— 与主场景 ANIM_NORM 同口径(elite_system._elite_fix_norm 读)。
 ##   两个本体高相等(动作与待机同一个像素尺寸); 脚底行 = 待机格子底边在方帧里的行(动作一播不上下跳)。

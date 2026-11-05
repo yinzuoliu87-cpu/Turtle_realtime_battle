@@ -128,6 +128,93 @@ def _check_head_caps() -> None:
 				raise SystemExit("%s.%s 转角超过 HEAD_MAX %.0f°(画师头部网格会被拧歪)" % (nm, ch, HEAD_MAX))
 
 
+## ── 技能释放动作(方案书 20261105b §2.4 / §4.1 / §4.1b; PixelLab 额度规矩见 memory project-pixellab-budget-1105) ──
+## 小幅动作(抬身 / 蹲稳 / 跺地 / 振奋 / 前倾)走骨骼模板, 不花额度; 新姿势(吐 / 甩 / 抱摔 / 冲 / 掷)走 AI(spine_src/<龟>/ai_cast/<技能类型>/)。
+## 同一只龟的三个技能**不用同一个模板**(项目规矩「同一只龟的技能和普攻也不共用素材」; 构建时自检)。8 帧, 释放帧 = 动作最大那帧。
+CAST_REAR = {   # 抬身: 整只往后仰(头侧抬起), 胸口挺出 —— 护盾 / 回复 / 祝福类「抬身发光」
+	"frames": 8,
+	"root.rotate": [0, -4, -9, -14, -16, -12, -5, 0],
+	"main.scale": [(1, 1), (0.98, 1.02), (0.97, 1.05), (0.96, 1.07), (0.96, 1.07), (0.98, 1.04), (0.99, 1.01), (1, 1)],
+	"neck.rotate": [0, -1, -2, -3, -3, -2, -1, 0],
+	"eyes": [0, 0, 0, 0, 0, 0, 0, 0],
+}
+CAST_BRACE = {   # 蹲稳: 压低身子、四脚撑开、壳一抖 —— 护甲 / 减伤 / 硬抗类
+	"frames": 8,
+	"main.scale": [(1, 1), (1.03, 0.95), (1.07, 0.89), (1.1, 0.84), (1.1, 0.84), (1.06, 0.91), (1.02, 0.97), (1, 1)],
+	"shell.rotate": [0, 2, -3, 5, -5, 3, -1, 0],
+	"front.translate": [(0, 0), (-1, 0), (-2, 0), (-3, 0), (-3, 0), (-2, 0), (-1, 0), (0, 0)],
+	"hind.translate": [(0, 0), (1, 0), (2, 0), (3, 0), (3, 0), (2, 0), (1, 0), (0, 0)],
+}
+CAST_STOMP = {   # 跺地: 前脚抬起再砸下 —— 地面 / 范围类
+	"frames": 8,
+	"root.rotate": [0, -3, -6, -8, 2, 0, 0, 0],
+	"front.translate": [(0, 0), (0, 5), (0, 9), (0, 12), (0, 0), (0, 0), (0, 0), (0, 0)],
+	"main.scale": [(1, 1), (1, 1), (0.99, 1.03), (0.98, 1.05), (1.1, 0.86), (1.04, 0.95), (1.01, 0.99), (1, 1)],
+}
+CAST_SHAKE = {   # 振奋: 全身一抖一鼓 —— 自身强化 / 充能类
+	"frames": 8,
+	"main.translate": [(0, 0), (-3, 0), (3, 0), (-3, 0), (0, 2), (0, 1), (0, 0), (0, 0)],
+	"main.scale": [(1, 1), (1.03, 0.97), (0.97, 1.03), (1.04, 0.96), (1.08, 1.08), (1.04, 1.04), (1.01, 1.01), (1, 1)],
+	"tail.rotate": [0, 6, -6, 6, 0, 0, 0, 0],
+}
+CAST_LEAN = {   # 前倾: 身子往前一探、头点向目标 —— 指令 / 遥控类(在目标处生效)
+	"frames": 8,
+	"main.translate": [(0, 0), (2, 0), (3, 0), (-6, 0), (-7, 0), (-4, 0), (-1, 0), (0, 0)],
+	"neck.rotate": [0, -2, -3, 4, 5, 3, 1, 0],
+	"head.rotate": [0, -1, -2, 3, 4, 2, 1, 0],
+	"shell.rotate": [0, 1, 2, -6, -7, -4, -1, 0],
+}
+## 龟 → 技能类型 → 骨骼模板(其余技能走 AI, 见 CAST_AI)
+CAST_SKEL = {
+	"stone": {"stoneRockShield": CAST_REAR, "rockShockwave": CAST_BRACE, "stoneTaunt": CAST_STOMP},
+	"bamboo": {"bambooHeal": CAST_REAR, "bambooSpikes": CAST_STOMP},
+	"angel": {"angelBless": CAST_REAR},
+	"ice": {"iceFrost": CAST_STOMP, "commonTeamShield": CAST_REAR},
+	"fortune": {"fortuneBuyEquip": CAST_SHAKE},
+	"rainbow": {"shield": CAST_REAR, "rainbowReflect": CAST_SHAKE},
+	"lightning": {"lightningSurgeBuff": CAST_SHAKE, "lightningBarrage": CAST_REAR, "lightningShield": CAST_BRACE},
+	"phoenix": {"phoenixShield": CAST_BRACE, "phoenixEnhancedRebirth": CAST_REAR},
+	"lava": {"lavaQuake": CAST_STOMP},
+	"shell": {"shellCopy": CAST_SHAKE, "shellAbsorb": CAST_LEAN, "shellShadow": CAST_BRACE},
+}
+## AI 段的动作描述(PixelLab animate_image, 首帧 = 待机原帧, 8 帧, 种子 1105; 原始帧落 spine_src/<龟>/ai_cast/<技能类型>/)
+CAST_AI = {
+	"basic": {
+		"basicBarrage": "rapid energy blasts: the turtle braces, then snaps its head forward three times in quick succession spitting small blue energy waves to the left, then settles back. Side view facing left, camera does not move.",
+		"basicChiWave": "charged energy beam: the turtle pulls its head back and gathers glowing blue energy at its mouth, then thrusts its head forward and fires a big energy wave straight to the left, recoils slightly, then returns to its stance. Side view facing left, camera does not move.",
+		"basicSlam": "grab and throw: the turtle rears up on its hind legs, lunges forward, then heaves its whole body up and over backward in a powerful slam motion, landing back on all fours. Side view facing left, camera does not move.",
+	},
+	"bamboo": {"bambooSmack": "vine whip: the turtle swings its head back, then whips a long green bamboo vine forward to the left from its mouth, then yanks it back toward itself. Side view facing left, camera does not move."},
+	"angel": {
+		"angelEquality": "holy slashes: the turtle flaps its small wings, rears up, and slashes its head down to the left twice in quick strokes leaving bright golden light, then lands back on all fours. Side view facing left, camera does not move.",
+		"angelAscend": "ascension: the turtle spreads its small wings wide and rises a little off the ground in a burst of golden light, hovers, then settles back down. Side view facing left, camera does not move.",
+	},
+	"ice": {"iceFreeze": "ice breath: the turtle inhales, then breathes a short burst of icy frost forward to the left from its mouth, then closes its mouth. Side view facing left, camera does not move."},
+	"fortune": {
+		"fortuneDice": "dice toss: the turtle flicks its head up and tosses a small white die into the air in front of it to the left, then watches it. Side view facing left, camera does not move.",
+		"fortuneAllIn": "coin barrage: the turtle crouches and charges up, then rapidly spits a stream of gold coins forward to the left, then sits back. Side view facing left, camera does not move.",
+	},
+	"rainbow": {"rainbowStorm": "prism storm: the turtle spins in place once while rainbow-colored light swirls around its shell, then stops facing left. Side view, camera does not move."},
+	"phoenix": {"phoenixScald": "fireball: the turtle rears its head back, then spits a blazing fireball forward to the left, then recoils slightly and settles. Side view facing left, camera does not move."},
+	"lava": {
+		"lavaSurge": "magma roar: the turtle crouches, then raises its head and roars while magma bubbles up through the cracks in its shell, then settles. Side view facing left, camera does not move.",
+		"lavaErupt": "magma dash: the turtle crouches and dashes forward to the left in a burst of fiery speed, then skids to a stop. Side view facing left, camera does not move.",
+	},
+}
+
+
+def _check_cast_variety() -> None:
+	"""同一只龟的技能不共用一个骨骼模板(项目规矩); 头 / 脖子转角 ≤ HEAD_MAX。"""
+	for tid, m in CAST_SKEL.items():
+		ids = [id(v) for v in m.values()]
+		if len(ids) != len(set(ids)):
+			raise SystemExit("%s 有两个技能用了同一个骨骼模板(技能不共用素材)" % tid)
+	for nm, sp in (("CAST_REAR", CAST_REAR), ("CAST_BRACE", CAST_BRACE), ("CAST_STOMP", CAST_STOMP), ("CAST_SHAKE", CAST_SHAKE), ("CAST_LEAN", CAST_LEAN)):
+		for ch in ("neck.rotate", "head.rotate"):
+			if ch in sp and max(abs(float(v)) for v in sp[ch]) > HEAD_MAX:
+				raise SystemExit("%s.%s 转角超过 HEAD_MAX" % (nm, ch))
+
+
 def specs_for(tid: str) -> dict:
 	if tid == "shell":
 		return {"attack": SHELL_ATTACK, "hurt": SHELL_HURT, "death": SHELL_DEATH}
@@ -303,6 +390,37 @@ def _palette_lock(img: np.ndarray, pal: np.ndarray) -> np.ndarray:
 	return out
 
 
+def ai_frames(d: str, tid: str, idle: dict, sub: str, hold_to: int = 0) -> list:
+	"""第 0 帧 = 待机原帧 + spine_src/<龟>/<sub>/ai_1..8.png(锁回这只龟待机 50 帧用过的颜色); hold_to > 0 时末帧定住补到这么多帧。"""
+	sheet = np.asarray(Image.open(IDLE_SHEET % tid).convert("RGBA"))
+	fw, fh = idle["frameW"], idle["frameH"]
+	pal = np.unique(sheet[sheet[..., 3] > 0][:, :3], axis=0)
+	ox = (S_FRAME - fw) // 2
+	oy = FEET - fh
+
+	def place(cell: np.ndarray) -> np.ndarray:
+		fr = np.zeros((S_FRAME, S_FRAME, 4), dtype=np.uint8)
+		fr[oy:oy + fh, ox:ox + fw] = cell
+		return fr
+	frames = [place(sheet[:fh, :fw])]
+	n_ai = len([f for f in os.listdir(os.path.join(I.SRC, d, sub)) if f.startswith("ai_") and f.endswith(".png")])   # 6 或 8 帧(单动作 6 帧省额度)
+	for n in range(1, n_ai + 1):
+		ai = np.asarray(Image.open(os.path.join(I.SRC, d, sub, "ai_%d.png" % n)).convert("RGBA"))
+		if ai.shape[:2] != (fh, fw):
+			raise SystemExit("%s %s AI 第 %d 帧尺寸 %s ≠ 待机格子 %d×%d" % (tid, sub, n, ai.shape[:2], fw, fh))
+		frames.append(place(_palette_lock(ai, pal)))
+	while len(frames) < hold_to:
+		frames.append(frames[-1].copy())
+	return frames
+
+
+def peak_frame(frames: list) -> int:
+	"""释放帧 = 与第 0 帧不同像素最多的那一帧(动作最大的瞬间); 至少第 1 帧。"""
+	f0 = frames[0]
+	diffs = [int(np.any(f != f0, axis=-1).sum()) for f in frames]
+	return max(1, int(np.argmax(diffs)))
+
+
 def ai_death_frames(d: str, tid: str, idle: dict) -> list:
 	"""阵亡 = 第 0 帧待机原帧 + PixelLab 8 帧(锁回这只龟待机 50 帧用过的颜色)+ 末帧定住到 15 帧。
 	用户 11-05 看了骨骼版「这个头低下来很诡异」并问「为什么不直接…AI…生成」⇒ 同一只小龟两版对照(.out/art/ai/compare_death.png):
@@ -344,7 +462,7 @@ def write_gd(man: dict) -> None:
 	ids = sorted(man)
 	L = ["class_name TurtleActions",
 		"extends RefCounted",
-		"## 外包 11 只龟的动作帧表(普攻 / 受击 / 阵亡) —— 由 tools/assetgen/build_spine_actions.py 生成, **别手改**(改关键帧后重跑脚本)。",
+		"## 外包 11 只龟的动作帧表(普攻 / 受击 / 阵亡 / 技能释放) —— 由 tools/assetgen/build_spine_actions.py 生成, **别手改**(改关键帧后重跑脚本)。",
 		"## 方案书 docs/plans/20261105b-龟美术统一与动作补全.md §4.3: 在画师 Spine 原骨骼上写关键帧, 求值器(已与官方运行库逐帧对账)渲成像素序列帧。",
 		"## 帧表值 = [相对 assets/sprites/ 的路径, 每秒帧率], 与主场景 ACTION_ATTACK 同口径; 主场景表里没有的龟才查这里(battle_vfx._play_action)。",
 		"## 方帧 %d×%d(_resolve_action 只认方帧); 第 0 帧 = 待机第 0 帧同姿势、同一像素尺寸。" % (S_FRAME, S_FRAME),
@@ -359,6 +477,25 @@ def write_gd(man: dict) -> None:
 	L.append("const HIT := {")
 	for t in ids:
 		L.append("\t\"pets/animations/%s/attack.png\": %d," % (t, ATTACK_HIT))
+	L.append("}")
+	L.append("## 技能释放动作 [路径, 帧率, 释放帧](AttackRhythm.cast_begin 读: 技能前摇开始就播, 释放帧对上 _cast_skill 生效)。来源: 骨骼模板 / PixelLab。")
+	L.append("## 持续状态循环 [[状态名, 路径, 帧率], ...](AttackRhythm.apply_state_idle 读; 熔岩火山形态等)")
+	L.append("const STATE := {")
+	for t in ids:
+		stt = man[t].get("states", [])
+		if stt:
+			L.append("	\"%s\": [%s]," % (t, ", ".join("[\"%s\", \"%s\", %.1f]" % (a, b_, float(c)) for a, b_, c in stt)))
+	L.append("}")
+	L.append("const CAST := {")
+	for t in ids:
+		cs = man[t].get("casts", {})
+		if not cs:
+			continue
+		L.append("\t\"%s\": {" % t)
+		for st in sorted(cs):
+			n, rel, src = cs[st]
+			L.append("\t\t\"%s\": [\"pets/animations/%s/cast_%s.png\", %.1f, %d],   # %d 帧 · %s" % (st, t, st, float(FPS), int(rel), int(n), src))
+		L.append("\t},")
 	L.append("}")
 	L.append("## 归一 [动作图本体高, 脚底行, 待机本体高] —— 与主场景 ANIM_NORM 同口径(elite_system._elite_fix_norm 读)。")
 	L.append("##   两个本体高相等(动作与待机同一个像素尺寸); 脚底行 = 待机格子底边在方帧里的行(动作一播不上下跳)。")
@@ -385,6 +522,7 @@ def main() -> int:
 		only = set(sys.argv[sys.argv.index("--only") + 1].split(","))
 	preview = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
 	_check_head_caps()
+	_check_cast_variety()
 	idle_man = json.load(open(IDLE_MANIFEST, encoding="utf-8"))
 	man = json.load(open(MANIFEST, encoding="utf-8")) if os.path.exists(MANIFEST) else {}
 	rows = []
@@ -413,6 +551,23 @@ def main() -> int:
 				os.makedirs(od, exist_ok=True)
 				Image.fromarray(sheet, "RGBA").save(os.path.join(od, "%s.png" % act), optimize=False)
 			print("%-10s %-7s %2d 帧 · 第0帧本体高 %d 脚底行 %d(待机本体高 %d)" % (tid, act, len(frames), by1 - by0, by1, idle["content"][1]))
+		casts = {}
+		for stype, spec in CAST_SKEL.get(tid, {}).items():
+			casts[stype] = ("skel", render_action(d, tid, spec, idle))
+		cdir = os.path.join(I.SRC, d, "ai_cast")
+		if os.path.isdir(cdir):
+			for stype in sorted(os.listdir(cdir)):
+				casts[stype] = ("pixellab", ai_frames(d, tid, idle, os.path.join("ai_cast", stype)))
+		ent["casts"] = {}
+		for stype, (src, frames) in sorted(casts.items()):
+			rel = peak_frame(frames)
+			ent["casts"][stype] = [len(frames), rel, src]
+			rows.append((tid, "cast_" + stype, frames))
+			if preview is None:
+				od = os.path.join(OUT_DIR, tid)
+				os.makedirs(od, exist_ok=True)
+				Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(od, "cast_%s.png" % stype), optimize=False)
+			print("%-10s cast_%-22s %2d 帧 · 释放帧 %d · %s" % (tid, stype, len(frames), rel, src))
 		man[tid] = ent
 	if preview:
 		cell = S_FRAME // 2

@@ -22,7 +22,7 @@ const SKILL_TEXT_FS := 13
 const RENDER_OWNED_KEYS := [
 	"anim_action", "anim_t", "anim_sd",
 	"flash_t", "hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_atk_voff",
-	"_windup_total", "_atk_wind", "_atk_hit_frame",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
+	"_windup_total", "_atk_wind", "_atk_hit_frame", "_cast_wind", "_state_on",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
 	"_run_acc", "_run_acc_t", "_run_last_pos", "run_sd",
 	"_tr_move_dir", "_tr_move_acc", "_tr_last_pos", "_tr_move_t", "_tr_speed", "_tr_face", "_tr_anim_t",
 	"_hhot_owner", "_mark_spr", "_phase_ai_t",
@@ -103,6 +103,7 @@ func _advance_anim(u: Dictionary, delta: float) -> void:
 	var spr = u.get("sprite", null)
 	if not is_instance_valid(spr):
 		return
+	AttackRhythm.apply_state_idle(battle, u)   # 持续状态(虚化 / 火山…)期间待机换成状态循环, 结束换回(11-05)
 	var sd: Dictionary = u.get("anim_sd", {})
 	var frames: int = int(sd.get("frames", 1))
 	var fps: float = float(sd.get("fps", 8.0))

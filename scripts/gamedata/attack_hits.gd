@@ -12,7 +12,7 @@ const BY_PATH := {
 	"pets/animations/ghost/attack.png": 5,      # 9 帧
 	"pets/animations/ninja/slash.png": 1,       # 3 帧
 	"pets/animations/elite/attack.png": 2,      # 4 帧
-	"pets/animations/melee/attack.png": 1,      # 4 帧(前摇只有 1 帧 —— 要重画成多帧前摇, 方案书 20261105b §4.0)
+	"pets/animations/melee/attack.png": 4,      # 9 帧(11-05 重做: 0~3 蓄力 → 4 刺到 → 5~6 定住 → 7~8 收回; tools/assetgen/build_melee_attack.py)
 	"pets/animations/ranged/attack.png": 3,     # 5 帧
 	"pets/animations/reserve/attack.png": 5,    # 7 帧
 	"pets/animations/wraith/attack.png": 2,     # 5 帧

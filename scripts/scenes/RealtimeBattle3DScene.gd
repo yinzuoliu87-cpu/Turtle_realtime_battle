@@ -2517,13 +2517,13 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 				# 就绪技放技: 自/友向任意距离; 远程敌向技(如手里剑2000码)够得着就放·不被近战射程卡; 普通敌向技=进攻击射程放(用户2026-07-11)
 				u["pending"] = "K:" + rs
 				u["state"] = "windup"; u["state_t"] = CAST_WINDUP
-				_anticipate(u)
+				AttackRhythm.cast_begin(self, u, str(rs), CAST_WINDUP)   # 释放动作: 前摇一开始就播, 释放帧对上生效(无动作 = 蓄力形变)
 			elif dist <= rng and not u.get("no_basic", false):
 				# 进入射程 → 敌向就绪技优先, 否则普攻, 都没好原地待命
 				if rs != "":
 					u["pending"] = "K:" + rs
 					u["state"] = "windup"; u["state_t"] = CAST_WINDUP
-					_anticipate(u)                       # 蓄力形变(前摇)
+					AttackRhythm.cast_begin(self, u, str(rs), CAST_WINDUP)   # 释放动作 / 蓄力形变(前摇)
 				elif u["id"] == "phoenix":
 					_phoenix_sys._phoenix_flame_channel(u, tgt, delta)               # 凤凰: 持续喷火(VFX+每0.5s伤害)
 					if not u["melee"] and dist < rng * 0.7:
@@ -5279,7 +5279,7 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	#   现在只在【不满足前置】时 return false, 满足就落到下面正常施放。
 	if stype == "fortuneAllIn" and u.get("allin_used", false) and int(u.get("gold", 0)) <= 0:
 		return false
-	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
+	AttackRhythm.cast_on(self, u)   # 前摇里已开播释放动作 ⇒ 此刻是释放帧; 没有动作的照旧预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
 	_audio_sys.sfx_skill_cast(u, VfxTiers.of_skill(stype, _skill_cost(u, stype)), stype)    # 放技能声(每个技能一条 cast_<技能类型>, 没有退回 cast_<id>; 音量按重要度档位; 只管声音不碰 sim)
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard

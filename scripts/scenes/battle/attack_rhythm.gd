@@ -56,3 +56,83 @@ static func sheet_path(battle, u: Dictionary) -> String:
 	if TurtleActions.ATTACK.has(id):
 		return str((TurtleActions.ATTACK[id] as Array)[0])
 	return ""
+
+
+## ── 技能释放: 同一套对齐 —— 技能前摇(CAST_WINDUP)一开始就播这只龟这个技能的释放动作, 释放帧对上 _cast_skill 生效那一刻 ──
+## 释放动作表 TurtleActions.CAST[动画键][技能类型] = [路径, 帧率, 释放帧](build_spine_actions.py 生成; 方案书 20261105b §2.4 / §4.1:
+##   每个技能一段、不共用)。没有释放动作的照旧蓄力形变(_anticipate)。
+static func cast_begin(battle, u: Dictionary, stype: String, wsec: float) -> void:
+	u["_cast_wind"] = false
+	var ent: Array = cast_entry(battle, u, stype)
+	if ent.is_empty() or not is_instance_valid(u.get("sprite", null)) or wsec <= 0.0 or str(u.get("anim_action", "")) == "death":
+		battle._anticipate(u)
+		return
+	var asd: Dictionary = battle._resolve_action(str(ent[0]), 1.0)
+	if asd.is_empty():
+		battle._anticipate(u)
+		return
+	var rel: int = int(ent[2]) if ent.size() > 2 else maxi(1, int(asd.get("frames", 2)) / 2)
+	asd["fps"] = clampf(float(maxi(1, rel)) / wsec, FPS_MIN, FPS_MAX)
+	battle._set_anim_sheet(u, asd, "cast", false)
+	var key = battle._anim_key(u)
+	if battle.ANIM_NORM.has(key) or TurtleActions.NORM.has(key):
+		battle._elite_sys._elite_fix_norm(u, asd)
+	u["_cast_wind"] = true
+
+
+## 技能生效(_cast_skill)时调: 前摇里已开播 ⇒ 此刻正是释放帧, 不重播; 没有释放动作的照旧预备形变
+static func cast_on(battle, u: Dictionary) -> void:
+	if not u.get("_cast_wind", false):
+		battle._anticipate(u)
+	u["_cast_wind"] = false
+
+
+static func cast_entry(battle, u: Dictionary, stype: String) -> Array:
+	var key = battle._anim_key(u)
+	var tbl: Dictionary = TurtleActions.CAST.get(key, {})
+	if tbl.has(stype):
+		return tbl[stype]
+	return (CastSheets.CAST.get(key, {}) as Dictionary).get(stype, [])   # 外包 11 只以外的龟(忍者 / 幽灵…; build_extra_casts.py 生成)
+
+
+## ── 持续状态循环: 状态期间替代待机(方案书 20261105b §4.1「持续状态」: 虚化 / 缩壳 / 潜影 / 触须 / 侵入 / 滚球 / 火山…) ──
+## 表: CastSheets.STATE / TurtleActions.STATE[动画键] = [[状态名, 路径, 帧率], ...]; 状态名 → 判据见 state_active。
+## 渲染步(battle_render._advance_anim)在待机时调; 只写渲染专属键(anim_* / _state_on)。
+static func state_active(battle, u: Dictionary, name: String) -> bool:
+	match name:
+		"ghostPhase":
+			return battle._t < float(u.get("phase_until", 0.0))
+		"volcano":
+			return bool(u.get("volcano", false))
+	return false
+
+
+static func apply_state_idle(battle, u: Dictionary) -> void:
+	if str(u.get("anim_action", "")) != "" or not u.get("alive", true):
+		return
+	var key = battle._anim_key(u)
+	var rows: Array = CastSheets.STATE.get(key, TurtleActions.STATE.get(key, []))
+	if rows.is_empty():
+		return
+	var row: Array = []
+	for r in rows:
+		if state_active(battle, u, str(r[0])):
+			row = r
+			break
+	## 比对「当前帧条是不是该有的那张」(不靠记忆的标记: 状态期间播完一次动作回的是普通待机, 要能再切回状态循环)
+	var tex = (u.get("anim_sd", {}) as Dictionary).get("tex", null)
+	var cur: String = tex.resource_path if tex != null else ""
+	if row.is_empty():
+		if str(u.get("_state_on", "")) != "":
+			u["_state_on"] = ""
+			if cur != ((u.get("idle_sd", {}) as Dictionary).get("tex", null) as Texture2D).resource_path:
+				battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 状态结束 → 回待机
+		return
+	if cur.ends_with(str(row[1])):
+		return
+	var sd: Dictionary = battle._resolve_action(str(row[1]), float(row[2]))
+	if sd.is_empty():
+		return
+	sd["loop"] = true
+	u["_state_on"] = str(row[0])
+	battle._set_anim_sheet(u, sd, "", true)

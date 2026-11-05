@@ -2,6 +2,23 @@
  "angel": {
   "attack": 10,
   "body0": 160,
+  "casts": {
+   "angelAscend": [
+    7,
+    3,
+    "pixellab"
+   ],
+   "angelBless": [
+    8,
+    4,
+    "skel"
+   ],
+   "angelEquality": [
+    9,
+    6,
+    "pixellab"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -13,6 +30,23 @@
  "bamboo": {
   "attack": 10,
   "body0": 165,
+  "casts": {
+   "bambooHeal": [
+    8,
+    4,
+    "skel"
+   ],
+   "bambooSmack": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "bambooSpikes": [
+    8,
+    3,
+    "skel"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -24,6 +58,23 @@
  "basic": {
   "attack": 10,
   "body0": 141,
+  "casts": {
+   "basicBarrage": [
+    9,
+    4,
+    "pixellab"
+   ],
+   "basicChiWave": [
+    9,
+    3,
+    "pixellab"
+   ],
+   "basicSlam": [
+    9,
+    4,
+    "pixellab"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 259,
@@ -35,6 +86,23 @@
  "fortune": {
   "attack": 10,
   "body0": 149,
+  "casts": {
+   "fortuneAllIn": [
+    9,
+    4,
+    "pixellab"
+   ],
+   "fortuneBuyEquip": [
+    8,
+    4,
+    "skel"
+   ],
+   "fortuneDice": [
+    7,
+    3,
+    "pixellab"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -46,6 +114,23 @@
  "ice": {
   "attack": 10,
   "body0": 158,
+  "casts": {
+   "commonTeamShield": [
+    8,
+    4,
+    "skel"
+   ],
+   "iceFreeze": [
+    7,
+    2,
+    "pixellab"
+   ],
+   "iceFrost": [
+    8,
+    3,
+    "skel"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -57,6 +142,23 @@
  "lava": {
   "attack": 10,
   "body0": 162,
+  "casts": {
+   "lavaErupt": [
+    7,
+    3,
+    "pixellab"
+   ],
+   "lavaQuake": [
+    8,
+    3,
+    "skel"
+   ],
+   "lavaSurge": [
+    7,
+    3,
+    "pixellab"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -68,6 +170,23 @@
  "lightning": {
   "attack": 10,
   "body0": 157,
+  "casts": {
+   "lightningBarrage": [
+    8,
+    4,
+    "skel"
+   ],
+   "lightningShield": [
+    8,
+    4,
+    "skel"
+   ],
+   "lightningSurgeBuff": [
+    8,
+    4,
+    "skel"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -79,6 +198,23 @@
  "phoenix": {
   "attack": 10,
   "body0": 167,
+  "casts": {
+   "phoenixEnhancedRebirth": [
+    8,
+    4,
+    "skel"
+   ],
+   "phoenixScald": [
+    7,
+    3,
+    "pixellab"
+   ],
+   "phoenixShield": [
+    8,
+    4,
+    "skel"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -90,6 +226,23 @@
  "rainbow": {
   "attack": 10,
   "body0": 156,
+  "casts": {
+   "rainbowReflect": [
+    8,
+    4,
+    "skel"
+   ],
+   "rainbowStorm": [
+    9,
+    3,
+    "pixellab"
+   ],
+   "shield": [
+    8,
+    4,
+    "skel"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
@@ -101,6 +254,23 @@
  "shell": {
   "attack": 10,
   "body0": 143,
+  "casts": {
+   "shellAbsorb": [
+    8,
+    3,
+    "skel"
+   ],
+   "shellCopy": [
+    8,
+    4,
+    "skel"
+   ],
+   "shellShadow": [
+    8,
+    4,
+    "skel"
+   ]
+  },
   "death": 15,
   "feet_row": 259,
   "fps": 15,
@@ -111,6 +281,23 @@
  "stone": {
   "attack": 10,
   "body0": 151,
+  "casts": {
+   "rockShockwave": [
+    8,
+    4,
+    "skel"
+   ],
+   "stoneRockShield": [
+    8,
+    4,
+    "skel"
+   ],
+   "stoneTaunt": [
+    8,
+    4,
+    "skel"
+   ]
+  },
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
