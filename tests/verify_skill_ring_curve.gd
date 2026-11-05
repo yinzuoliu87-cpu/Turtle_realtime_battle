@@ -152,7 +152,8 @@ func _ring_entry(spr):
 # ── ③ 几何没动: 末帧外径 == 调用点给的 radius ──────────────────────────────
 func _g3_geometry_unchanged() -> void:
 	print("  ③ 几何(换的是怎么画, 不是画多大)")
-	for radius in [40.0, 60.0, 105.0]:
+	## ★11-05 三档帧表(64/128/256 按半径挑): 300 码那个落在 256 档, 105 落在 128 档
+	for radius in [40.0, 60.0, 105.0, 300.0]:
 		var r: Sprite3D = _s._skill_ring(P, Color(1, 1, 1, 0.6), radius)
 		if r == null or not is_instance_valid(r):
 			_ok("③ radius=%.0f 建出了环" % radius, false); continue
@@ -160,9 +161,15 @@ func _g3_geometry_unchanged() -> void:
 		##   产品的 pixel_size 公式里就有这个常量, 拿它去验会**在等式两边约掉** ⇒ 恒真式
 		##   (把常量改成 24.0 这条照样绿 —— 反向验证当场拓到的)。
 		var meas_r: float = _last_frame_outer_r(r.texture)
-		_ok("③ radius=%.0f ★分母: 从素材量出末帧外径 %.1fpx" % [radius, meas_r], meas_r > 1.0)
-		_ok("③ ★常量 RING_LAST_R_PX(%.1f) 与素材实测(%.1f) 对得上" % [RB.RING_LAST_R_PX, meas_r],
-			absf(RB.RING_LAST_R_PX - meas_r) < 1.0)
+		var cell_px: float = float(r.texture.get_height())
+		_ok("③ radius=%.0f ★分母: 从素材量出末帧外径 %.1fpx(格边长 %.0f)" % [radius, meas_r, cell_px], meas_r > 1.0)
+		## 常量是按 64 档量的; 128/256 档同一套几何, 按格边长折回 64 再比
+		var meas_r64: float = meas_r * RB.RING_CELL_PX / cell_px
+		_ok("③ ★常量 RING_LAST_R_PX(%.1f) 与素材实测(折回 64 档 %.1f) 对得上" % [RB.RING_LAST_R_PX, meas_r64],
+			absf(RB.RING_LAST_R_PX - meas_r64) < 1.0)
+		## ★11-05 用户看审核片: 大环一格一格的台阶 ⇒ 一格在世界里不许超过 8 码(64 档 300 码时是 9.6 码)
+		var texel_yd: float = float(r.pixel_size) / _s.WS
+		_ok("③ radius=%.0f 一格 = %.1f 码(≤ 8; 64 档画 300 码的环是 9.6)" % [radius, texel_yd], texel_yd <= 8.0)
 		var dia_m: float = meas_r * 2.0 * float(r.pixel_size)
 		var want_m: float = radius * 2.0 * _s.WS
 		_ok("③ radius=%.0f 末帧直径 = 2r×WS" % radius, absf(dia_m - want_m) < 0.01,

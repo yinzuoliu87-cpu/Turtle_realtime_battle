@@ -672,7 +672,6 @@ var _edit_btn_edit: Button = null
 # --- Phase 4 juice 全局态 ---
 var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
 var _hitstop_mute := 0                    # >0 时 _add_hitstop 不生效(过肩摔落地那一下的伤害不触发通用重击顿帧)
-var _skill_ring_sheet: Texture2D = null   # 共享技能环的 10 帧扩散表(懒加载)
 ## 位置固定的帧动画(不跟单位走): [{spr,t0,fps,n}] —— 每帧按游戏时钟算到第几帧, 放完自销。
 ## ★与 `_follow_vfx` 分开是因为那张表的每一条都必须有 `unit`, 而环是打在场地坐标上的。
 var _anim_fx: Array = []
@@ -4710,10 +4709,11 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float, side: String = "") -
 	##   「为什么那个地面的东西糊弄啊」)。根因不是贴图是**放大方式**:
 	##   tween 连续缩放像素贴图 = 非整数倍 = 网格被打烂(tools/assetgen/blender_ring.py:13)。
 	##   → Blender 烤 10 帧扩散, pixel_size **恒定只切帧**(同 003)。详见方案书 20260911b §10。
-	if _skill_ring_sheet == null:
-		_skill_ring_sheet = load("res://assets/sprites/vfx/skill-ring-10f.png")
+	## ★11-05 三档帧表(64/128/256)按半径挑, 大环不再一格一格的台阶(RingSheets 头注)
+	var cell: int = RingSheets.cell_for(radius)
+	var sheet: Texture2D = RingSheets.sheet(cell)
 	var r := Sprite3D.new()
-	r.texture = _skill_ring_sheet
+	r.texture = sheet
 	r.hframes = RING_ANIM_FRAMES
 	r.frame = 0
 	r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
@@ -4725,7 +4725,7 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float, side: String = "") -
 	r.position = _world_pos(pos2d, 0.05)
 	## ★环外径 = 调用点给的 radius。末帧外径实测 31.1px / 半画布 32px ⇒ 按这个比例定 pixel_size,
 	##   **算出来的, 不是量屏幕量出来的**(量屏幕会把飘字/火花/重叠的环一起框进去, 见 blender_ring.py 头注)。
-	var target_ps: float = (radius * 2.0 * WS) / (float(RING_CELL_PX) * (RING_LAST_R_PX / (RING_CELL_PX * 0.5)))
+	var target_ps: float = RingSheets.pixel_size_for(radius, cell, WS)
 	r.pixel_size = target_ps        # ★固定。不再 tween —— 连续缩放像素贴图就是被否掉的那个糊
 	r.set_meta("ring_target_ps", target_ps)   # 门禁/量尺拿它当分母(不重算一遍公式)
 	_world.add_child(r)
@@ -4737,7 +4737,7 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float, side: String = "") -
 	if rs == "left" or rs == "right":
 		var tc: Color = RING_RIM_LEFT if rs == "left" else RING_RIM_RIGHT
 		var rim := Sprite3D.new()
-		rim.texture = _skill_ring_sheet
+		rim.texture = sheet
 		rim.hframes = RING_ANIM_FRAMES
 		rim.frame = 0
 		rim.billboard = BaseMaterial3D.BILLBOARD_DISABLED

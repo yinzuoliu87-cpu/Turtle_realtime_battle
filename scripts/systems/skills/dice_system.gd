@@ -36,7 +36,9 @@ func _init(b) -> void:
 func _dice_dash_set_target(u: Dictionary, tgt) -> void:
 	u["dice_dash_target"] = tgt
 	u["dice_dash_seg_start"] = battle._t                                  # 本段起始(超时保险)
+	_dash_streak_end(u)
 	if tgt == null: return
+	_dash_streak_begin(u)
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
 	dir = DetMath.norm(dir)
@@ -76,15 +78,78 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 	u["pos"] += ddir * battle.DICE_DASH_SPD * delta                   # 固定速真位移(沿冲刺方向直线·穿过目标)
 	u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 	u["face_right"] = ddir.x > 0.0
-	if int(battle._t * 45.0) % 2 == 0:                      # 青蓝刀锋拖尾(刀妹穿刺残影)
-		_dice_blade_trail(u["pos"], ddir)
+	_dash_streak_update(u)                                   # 冲刺光带: 起点 → 当前位置(11-05 换掉每两帧一张的淡蓝残影)
 
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
 	var scale_i: float = FLASH_FIRST_COEF * DetMath.dpow(1.0 - FLASH_FALLOFF, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
 	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, FLASH_SHIELD_SEC)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)
 	_dice_blade_slash(tgt["pos"], dir)   # AI挥剑斩(沿冲刺方向)
+	_dice_cut_mark(tgt, DetMath.datan2(dir.y, dir.x))
+	_dash_streak_end(u)
 	battle._melee_lunge(u, tgt)
+
+## ★2026-11-05 冲刺光带(参考 LoL 艾瑞莉娅 Q 逐帧: 冲刺时人整个拉成一道头亮尾细的长光, 冲到目标那一刻白光一闪)。
+##   原来每两帧丢一张半透明淡蓝刀光残影, 在地面上几乎看不出(审核片 11-05)。
+##   光带 = 激光束贴图(白热核 + 青光晕, 两端尖)躺平在 0.35 高度, 从本段起点拉到骰子当前位置; 命中后 0.03 秒满亮再 0.14 秒收掉。
+##   只是演出, 存在本系统的表里(不往单位字典里加字段: 单位字典进确定性摘要)。
+var _dash_fx: Array = []          # [{u, node, from}]
+var _streak_tex: Texture2D = null
+const DASH_STREAK_THICK := 56.0   # 光带粗(码)·贴地躺平, 相机斜看会压扁一半, 30 码时实拍像一根激光细线
+const DASH_STREAK_TAIL := 240.0   # 光带最长(码): 只拖在骰子身后一段彗尾(艾瑞莉娅 Q), 不是整条路径(长冲刺会横穿半场)
+
+func _dash_fx_of(u: Dictionary) -> int:
+	for i in range(_dash_fx.size()):
+		if is_same(_dash_fx[i]["u"], u):
+			return i
+	return -1
+
+func _dash_streak_begin(u: Dictionary) -> void:
+	if _streak_tex == null:
+		_streak_tex = VfxTex._make_laser_beam_tex(Color(0.45, 0.85, 1.0))
+	var sp := Sprite3D.new()
+	sp.texture = _streak_tex
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED; sp.axis = Vector3.AXIS_Y
+	sp.shaded = false; sp.transparent = true
+	sp.pixel_size = battle.WS
+	sp.visible = false
+	battle._world.add_child(sp)
+	_dash_fx.append({"u": u, "node": sp, "from": u["pos"]})
+	## 保险: 冲刺被控制打断时(主场景直接把 dice_dash_active 置 false)不会走到 _dash_streak_end ⇒ 2 秒后自己删
+	var guard = battle._reg_tween().bind_node(sp)
+	guard.tween_interval(2.0)
+	guard.tween_callback(sp.queue_free)
+
+func _dash_streak_update(u: Dictionary) -> void:
+	var i := _dash_fx_of(u)
+	if i < 0: return
+	var sp: Sprite3D = _dash_fx[i]["node"]
+	if not is_instance_valid(sp): return
+	var a: Vector2 = _dash_fx[i]["from"]
+	var b: Vector2 = u["pos"]
+	var d: Vector2 = b - a
+	var L: float = d.length()
+	if L > DASH_STREAK_TAIL:
+		a = b - d / L * DASH_STREAK_TAIL
+		d = b - a
+		L = DASH_STREAK_TAIL
+	if L < 8.0: return
+	sp.visible = true
+	sp.position = battle._world_pos((a + b) * 0.5, 0.35)
+	sp.rotation = Vector3(0.0, -atan2(d.y, d.x), 0.0)
+	sp.scale = Vector3((L + 40.0) / 100.0, 1.0, DASH_STREAK_THICK / 16.0)
+
+func _dash_streak_end(u: Dictionary) -> void:
+	var i := _dash_fx_of(u)
+	if i < 0: return
+	var sp: Sprite3D = _dash_fx[i]["node"]
+	_dash_fx.remove_at(i)
+	if not is_instance_valid(sp): return
+	var tw = battle._reg_tween().bind_node(sp)
+	tw.tween_interval(0.03)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.14)
+	tw.parallel().tween_property(sp, "scale:z", sp.scale.z * 0.3, 0.14)
+	tw.tween_callback(sp.queue_free)
 
 func _dice_blade_slash(pos2d: Vector2, dir: Vector2) -> void:   # AI挥剑斩弧(dice-slash.png): 立绘朝相机·按冲刺左右镜像(斩弧沿冲刺方向)·放大淡出
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-slash.png")
@@ -103,20 +168,6 @@ func _dice_blade_slash(pos2d: Vector2, dir: Vector2) -> void:   # AI挥剑斩弧
 	tw.chain().tween_callback(s.queue_free)
 
 # 骰子赌徒之血: 低血→身上泛血色气焰(随已损生命渐强·损30%满·脉动), 满血无. 暗示"血越低暴击越猛".
-func _dice_blade_trail(pos2d: Vector2, dir: Vector2) -> void:   # 冲刺青蓝刀锋残影(立绘朝相机·按冲刺左右镜像)
-	var tex: Texture2D = load("res://assets/sprites/vfx/dice-slash.png")
-	if tex == null: return
-	var s = Sprite3D.new()
-	s.texture = tex; s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	s.flip_h = dir.x < 0.0
-	s.shaded = false; s.transparent = true
-	s.pixel_size = (110.0 * battle.WS) / float(maxi(1, int(tex.get_height())))
-	s.position = battle._world_pos(pos2d, 0.55)
-	s.modulate = Color(0.6, 0.85, 1.0, 0.5)
-	battle._world.add_child(s)
-	var tt = battle._reg_tween(); tt.tween_property(s, "modulate:a", 0.0, 0.14); tt.tween_callback(s.queue_free)
-
 func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用户2026-07-13:不是最近/残血)·射程2000·_enemies_of已跳围栏内蛋(注意龟蛋)
 	var cand: Array = []
 	for o in battle._targeting._pick_enemies_of(u):
@@ -126,10 +177,20 @@ func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用�
 	if cand.is_empty(): return null
 	return cand[battle._battle_rng.randi() % cand.size()]
 
-func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:
+## ★2026-11-05 重做(用户「整个镰刀都是一个平滑运动，这是确定是你学到的东西吗？这个得改呀」; 参考德莱厄斯 Q 逐帧,
+##   docs/studies/20261105-镰刀参考-德莱厄斯Q逐帧.md):
+##   原来 0.4 秒匀速转 120° + 每帧一张分开的红色复制图, 伤害第 0 帧就跳完、刀 0.4 秒后才扫到人。
+##   现在: 0.11 秒扫完(先快后慢) + 连续月牙刀光(SmearVfx) 0.22 秒收掉; 刀经过每个被砍中的敌人那一帧, 敌人身上一道白色斩痕。
+const SCYTHE_SWEEP_SEC := 0.11
+const SCYTHE_FADE_SEC := 0.22
+const SCYTHE_SMEAR_PAL := [Color(1.0, 0.86, 0.86, 0.95), Color(0.95, 0.16, 0.24, 0.85), Color(0.45, 0.04, 0.12, 0.70)]
+
+func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float, hits: Array = []) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-scythe.png")
 	if tex == null: return
 	var base_ang: float = DetMath.datan2(dir.y, dir.x)
+	var half: float = deg_to_rad(half_deg)
+	SmearVfx.sweep(battle, origin, base_ang, half, rng, SCYTHE_SWEEP_SEC, SCYTHE_FADE_SEC, SCYTHE_SMEAR_PAL)
 	var blade = Sprite3D.new()
 	blade.texture = tex
 	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -138,26 +199,47 @@ func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 	var fh: float = float(maxi(1, int(tex.get_height())))
 	blade.pixel_size = (rng * 0.85 * battle.WS) / fh          # 镰刀高 ≈ 0.85×射程(盖住扇形纵深)
 	battle._world.add_child(blade)
-	var tw = battle._reg_tween()
-	tw.tween_method(_dice_scythe_step.bind(blade, origin, base_ang, rng, half_deg), 0.0, 1.0, 0.40)
-	tw.tween_property(blade, "modulate:a", 0.0, 0.10)
+	_dice_scythe_step(0.0, blade, origin, base_ang, rng, half)
+	var tw = battle._reg_tween().bind_node(blade)
+	tw.tween_method(_dice_scythe_step.bind(blade, origin, base_ang, rng, half), 0.0, 1.0, SCYTHE_SWEEP_SEC)
+	tw.tween_property(blade, "modulate:a", 0.0, SCYTHE_FADE_SEC * 0.6)
 	tw.tween_callback(blade.queue_free)
+	for o in hits:                                   # 刀经过谁, 那一帧谁身上一道斩痕
+		var to_o: Vector2 = o["pos"] - origin
+		var rel: float = wrapf(DetMath.datan2(to_o.y, to_o.x) - base_ang, -PI, PI)
+		var s: float = clampf((rel + half) / (2.0 * half), 0.0, 1.0)
+		var th = battle._reg_tween()
+		th.tween_interval(SCYTHE_SWEEP_SEC * SmearVfx.time_at(s))
+		th.tween_callback(_dice_cut_mark.bind(o, base_ang + rel + PI * 0.5))
 
-func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: float, rng: float, half_deg: float) -> void:
+func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: float, rng: float, half: float) -> void:
 	if not is_instance_valid(blade): return
-	var a: float = base_ang + deg_to_rad(DetMath.flerp(-half_deg, half_deg, fr))   # 从 -60° 扫到 +60°
-	var bd = Vector2(DetMath.dcos(a), DetMath.dsin(a))
+	var a: float = base_ang - half + 2.0 * half * SmearVfx.ease_out(fr)   # 先快后慢: 从 -60° 扫到 +60°
+	var bd = Vector2(cos(a), sin(a))
 	blade.rotation = Vector3(0.0, -a - PI * 0.5, 0.0)     # 刀刃切向沿扫掠方向(镰刀立绘上=刀朝上→旋转对齐弧线)
 	blade.position = battle._world_pos(origin + bd * (rng * 0.5), 0.16)
-	var tr = Sprite3D.new()   # 红拖尾(残影)
-	tr.texture = blade.texture
-	tr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	tr.billboard = BaseMaterial3D.BILLBOARD_DISABLED; tr.axis = Vector3.AXIS_Y
-	tr.shaded = false; tr.transparent = true
-	tr.pixel_size = blade.pixel_size; tr.rotation = blade.rotation; tr.position = blade.position
-	tr.modulate = Color(1.0, 0.28, 0.32, 0.30)
-	battle._world.add_child(tr)
-	var tt = battle._reg_tween(); tt.tween_property(tr, "modulate:a", 0.0, 0.15); tt.tween_callback(tr.queue_free)
+
+## 斩痕: 一道沿刀切向的白色细长光, 0.03 秒拉满 → 0.12 秒变细淡出(在单位身上, 立着朝相机)。
+func _dice_cut_mark(o: Dictionary, tangent: float) -> void:
+	if not o.has("pos"): return
+	## ★不能用 _make_blob_texture: 那是【黑色】软阴影(乘白还是黑, 11-05 第一版就是因此看不见)
+	if _cut_tex == null:
+		_cut_tex = VfxTex._make_slash_texture(Color(1.0, 0.55, 0.6))
+	var s := Sprite3D.new()
+	s.texture = _cut_tex
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false; s.transparent = true
+	s.flip_h = cos(tangent) < 0.0                        # 斩弧方向跟刀走
+	s.no_depth_test = true; s.render_priority = 20       # 画在单位身上(不被龟立绘挡住)
+	s.pixel_size = (120.0 * battle.WS) / 64.0
+	s.position = battle._world_pos(o["pos"], 0.45)
+	s.scale = Vector3.ONE * 0.55
+	battle._world.add_child(s)
+	var tw = battle._reg_tween().bind_node(s)
+	tw.tween_property(s, "scale", Vector3.ONE * 1.1, 0.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(s, "modulate:a", 0.0, 0.10)       # 先满亮 0.05 秒再收(不一出生就淡)
+	tw.tween_callback(s.queue_free)
+var _cut_tex: Texture2D = null
 
 func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.5A物理+30%吸血·用户2026-07-28 1.2→1.5)
 	var tgt = battle._targeting._nearest_enemy(u)
@@ -165,14 +247,16 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
 	dir = DetMath.norm(dir)
 	var half_cos: float = DetMath.dcos(deg_to_rad(ALLIN_ARC_DEG * 0.5))   # 半角60°=全120°
+	var hits: Array = []
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var to_o: Vector2 = o["pos"] - u["pos"]
 		var d: float = DetMath.vlen(to_o)
 		if d > ALLIN_RANGE or d < 1.0: continue
 		if DetMath.dot(dir, to_o / d) < half_cos: continue
+		hits.append(o)
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, ALLIN_DMG, o), Color("#ff4444"), ALLIN_LIFESTEAL)
-	_dice_scythe_sweep(u, u["pos"], dir, ALLIN_RANGE, ALLIN_ARC_DEG * 0.5)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13)
+	_dice_scythe_sweep(u, u["pos"], dir, ALLIN_RANGE, ALLIN_ARC_DEG * 0.5, hits)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13) + 月牙刀光(11-05)
 	battle._skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.35), 52.0)
 
 # 骰子龟·稳定骰子(刀妹Q式·〖#4"刀妹Q式·你仔细设计"〗; 数值取回合制 diceFlashStrike: baseHits=4 / perHitScale=0.9 / falloffPct=10)

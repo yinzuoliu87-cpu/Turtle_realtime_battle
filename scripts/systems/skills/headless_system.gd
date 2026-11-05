@@ -54,6 +54,8 @@ func _headless_fear_mark(o: Dictionary) -> void:               # 恐惧标记: �
 	t.tween_property(mk, "modulate:a", 0.0, 0.35)               # 控制结束->缓散
 	t.tween_callback(mk.queue_free)
 
+const TENDRIL_HOLD_A := 0.45   # 触须伸出之后定格期的不透明度(峰值 1.0 只给伸出那 0.26 秒)
+
 func _headless_tendril_shoot(center: Vector2, dir: Vector2, elev: float, length: float, big: bool, erupt_delay: float, hold_time: float) -> void:   # 万千触须·单根(用户2026-07-17"上半球三维爆发"): 从龟身球心沿三维方向(方位dir+仰角elev)伸出→抽打→缩回; 手动basis让长轴对准三维方向+面朝相机(非billboard)
 	var vn: String = ["tendril-a", "tendril-b", "tendril-c"][randi() % 3]
 	var tex: Texture2D = load("res://assets/sprites/vfx/%s.png" % vn)
@@ -104,11 +106,14 @@ func _headless_tendril_shoot(center: Vector2, dir: Vector2, elev: float, length:
 		spk.scale.y = maxf(0.01, full_yscale * q)
 		spk.modulate.a = clampf(q / 0.18, 0.0, 1.0)
 	, 0.0, 1.0, 0.26).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	st.tween_interval(maxf(0.1, hold_time))                            # 到位停顿抽打
+	## ★2026-11-05 定格期压到半透明(审核片: 100 根满亮尖刺盖满全屏 2 秒多, 被眩晕的单位全看不见;
+	##   方案书 20261104b R3「持续层要暗, 最亮只给峰值」)。根数 / 长度 / 布满全场是用户 07-17 定的, 不动; 只把伸出之后那段压暗。
+	st.tween_property(spk, "modulate:a", TENDRIL_HOLD_A, 0.25)
+	st.tween_interval(maxf(0.1, hold_time - 0.25))                     # 到位停顿抽打
 	st.tween_method(func(q: float) -> void:                            # 缩回球心
 		if not is_instance_valid(spk): return
 		spk.scale.y = maxf(0.01, full_yscale * (1.0 - q))
-		spk.modulate.a = maxf(0.0, 1.0 - q * 0.5)
+		spk.modulate.a = maxf(0.0, TENDRIL_HOLD_A * (1.0 - q * 0.5))
 	, 0.0, 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	st.tween_callback(spk.queue_free)
 

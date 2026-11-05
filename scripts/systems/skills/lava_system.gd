@@ -258,14 +258,15 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 				st.tween_property(sp, "position", battle._world_pos(sx + tdir * DetMath.rrange(battle._juice_rng, 20.0, 60.0), 0.1), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 				st.tween_property(sp, "modulate:a", 0.0, 0.4)
 				st.chain().tween_callback(sp.queue_free)
-			if battle._juice_rng.randf() < 0.6:                          # ★雾云尾迹(娜美R观察: 不规则软雾云包四周+尾部拖白雾)
+			if battle._juice_rng.randf() < 0.35:                         # ★雾云尾迹(娜美R观察: 不规则软雾云包四周+尾部拖白雾)·11-05 0.6→0.35
 				var mpos: Vector2 = front + perp_axis * DetMath.rrange(battle._juice_rng, -half_w * 1.1, half_w * 1.1) - tdir * DetMath.rrange(battle._juice_rng, 0.0, 180.0)
 				var mf := Sprite3D.new()
 				mf.texture = VfxTex._make_fire_glow_tex()
 				mf.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 				mf.billboard = BaseMaterial3D.BILLBOARD_ENABLED; mf.shaded = false; mf.transparent = true
-				mf.pixel_size = 0.013
-				mf.modulate = Color(1.0, 0.62, 0.3, 0.22)         # 软橙雾(低alpha大团)
+				mf.pixel_size = 0.010
+				## ★11-05: 软橙雾 → 暗色烟。橙雾和浪体同色, 一团团盖上去把浪的边界糊没了(审核片: 一团模糊的橙色椭圆)
+				mf.modulate = Color(0.22, 0.10, 0.07, 0.30)
 				mf.scale = Vector3(0.6, 0.6, 0.6)
 				mf.position = battle._world_pos(mpos, DetMath.rrange(battle._juice_rng, 0.2, wall_h * 0.9))
 				battle._world.add_child(mf)
@@ -521,12 +522,48 @@ func _lava_ult_revert(u: Dictionary) -> void:                   # 火山暴走5�
 func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透普攻: 贯穿全场岩浆光矢+沿途0.6A【魔法】+4%目标maxHp+0.07A灼烧层 (★旧注释写"真伤"与代码不符, 2026-07-10订正)
 	var dir: Vector2 = (DetMath.norm((tgt["pos"] - u["pos"])) if (tgt != null) else Vector2.RIGHT)
 	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
-	battle._bolt_line(u["pos"], u["pos"] + dir * 2000.0, Color(1.0, 0.5, 0.2, 0.95))
+	_lava_beam_vfx(u["pos"], dir)
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if is_same(o, tgt) or battle._on_line(u["pos"], dir, o["pos"], 70.0):
+		if is_same(o, tgt) or battle._on_line(u["pos"], dir, o["pos"], PIERCE_HALF_W):
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, PIERCE_ATK_COEF, o, true) + battle._damage._magic_after_mr(u, float(o["maxHp"]) * PIERCE_MAXHP_PCT, o), Color("#ff7a3c"))
 			battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(float(u["atk"]) * PIERCE_BURN_COEF))), u)
+			_lava_burst_vfx(o["pos"])
+
+## ★2026-11-05 熔岩光矢重画(用户看审核片:「熔岩龟特效几乎看不见…它是什么技能？你为什么看不见？」):
+##   原来是一根 2000 码的细线(_bolt_line), 实拍是一条细细的橙色虚点线, 还穿出场地墙外。
+##   伤害是放出瞬间沿整条线同时结算(没有飞行时间) ⇒ 画法参照 LoL 拉克丝 R(瞬发光束): 打出那一刻最亮最宽,
+##   0.06 秒保持 → 0.3 秒收细淡出; 宽度 = 判定宽度(两侧各 PIERCE_HALF_W); 截到场地边为止; 被穿的每个敌人身上爆一团岩浆。
+const PIERCE_HALF_W := 70.0       # 光矢判定半宽(码)·原来写死在 _on_line 调用里
+var _beam_tex: Texture2D = null
+var _beam_core_tex: Texture2D = null
+
+func _lava_beam_vfx(origin: Vector2, dir: Vector2) -> void:
+	var L := 40.0
+	while L < 2000.0 and ArenaShape.in_rect_shape(origin + dir * (L + 20.0), battle.ARENA):
+		L += 20.0
+	if _beam_tex == null:
+		_beam_tex = VfxTex._make_laser_beam_tex(Color(1.0, 0.36, 0.06))
+		_beam_core_tex = VfxTex._make_laser_beam_tex(Color(1.0, 0.85, 0.45))
+	var mid: Vector2 = origin + dir * (L * 0.5)
+	var ang: float = -atan2(dir.y, dir.x)
+	for layer in [[_beam_tex, PIERCE_HALF_W * 2.6, 0.95, 0.27], [_beam_core_tex, PIERCE_HALF_W * 1.0, 1.0, 0.20]]:
+		var sp := Sprite3D.new()
+		sp.texture = layer[0]
+		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED; sp.axis = Vector3.AXIS_Y
+		sp.shaded = false; sp.transparent = true
+		sp.pixel_size = battle.WS
+		sp.position = battle._world_pos(mid, 0.3)
+		sp.rotation = Vector3(0.0, ang, 0.0)
+		var th: float = float(layer[1]) / 16.0
+		sp.scale = Vector3((L + 60.0) / 100.0, 1.0, th)
+		sp.modulate = Color(1, 1, 1, float(layer[2]))
+		battle._world.add_child(sp)
+		var tw = battle._reg_tween().bind_node(sp)
+		tw.tween_interval(0.06)
+		tw.tween_property(sp, "scale:z", th * 0.15, float(layer[3])).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(sp, "modulate:a", 0.0, float(layer[3])).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(sp.queue_free)
 
 func _lava_slam_telegraph(pos2d: Vector2, radius: float, dur: float) -> void:   # 落点预警(像素化·用户2026-07-15): 外硬边像素环+内环倒计时收缩到圆心+中心裂纹微光
 	var outer = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), pos2d, radius * 2.0, Color(1.0, 0.32, 0.1, 0.0), 0.045)

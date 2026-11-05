@@ -870,7 +870,7 @@ func _ready() -> void:
 			if before.has(c.get_instance_id()) or not (c is Sprite3D) or (c as Sprite3D).texture == null:
 				continue
 			var tp := str((c as Sprite3D).texture.resource_path)
-			if tp.ends_with("skill-ring-10f.png"):
+			if tp.get_file().begins_with("skill-ring-10f"):   # 11-05 起三档(-128 / -256)
 				rings += 1
 			elif tp == BattleVfx.SHELL_TEX:
 				shells += 1

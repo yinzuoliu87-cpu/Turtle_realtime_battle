@@ -22,17 +22,7 @@
   "scripts/systems/trainer/trainer_system.gd::_glacier_spike::scale",
   "scripts/systems/trainer/trainer_system.gd::_ms_tier_burst::scale"
  ],
- "b_generators": [
-  "gen_bloodslash.py -> assets/sprites/equip/eq011-icon.png",
-  "gen_bloodslash.py -> assets/sprites/vfx/eq011-slash.png",
-  "gen_eq_icons_12_21.py -> assets/sprites/equip/eq012-icon.png",
-  "gen_kelp_frond.py -> assets/sprites/vfx/kelp-frond.png",
-  "gen_laserfan.py -> assets/sprites/vfx/eq010-tel.png",
-  "gen_moonslash.py -> assets/sprites/vfx/eq009-band.png",
-  "gen_shield_shell.py -> assets/sprites/vfx/shield-shell.png",
-  "gen_shop_card_frames.py -> assets/sprites/shop/card-frame-n.png",
-  "gen_skillring.py -> assets/sprites/vfx/skill-ring.png"
- ],
+ "b_generators": [],
  "c_no_study": [
   "bamboo-arrow.png",
   "bamboo-charge-burst.png",
@@ -186,7 +176,6 @@
   "lava-crack.png",
   "lava-rock.png",
   "magic-stone-icon.png",
-  "magic-wave.png",
   "ms-mote.png",
   "ms-resonance-burst.png",
   "ms-rune-ring.png",
@@ -194,7 +183,6 @@
   "ninja-mark.png",
   "ninja-shuriken.png",
   "ninja-slash.png",
-  "psychic-blast.png",
   "qibo-ball.png",
   "qibo-spawn.png",
   "rainbow-shred.png",

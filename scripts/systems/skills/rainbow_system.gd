@@ -165,6 +165,10 @@ func _sk_rainbow_shield(u: Dictionary) -> void:                  # 彩虹龟·�
 	for o in battle._targeting._allies_of(u):
 		battle._damage._grant_shield(o, u["atk"] * PRISM_SHIELD_SCALE, PRISM_BLUE_SEC)   # 彩虹棱镜护盾(通用护盾4秒·用户2026-07-28: 0.65→1.0ATK)
 
+const STORM_VORTEX_PEAK_A := 0.92   # 放出那一下(峰值)
+const STORM_VORTEX_HOLD_A := 0.24   # 持续 4 秒期间(加性混合; 0.34 实拍仍偏亮, 0.24 看得出七彩在转, 单位不被洗白)
+const STORM_PARTICLES := 100
+
 func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全色风暴 (重做2026-07-13: AI棱镜漩涡+GPU彩虹粒子+碎甲可视化-20%护甲魔抗+亮边AOE·期间锁龟能)
 	u["storm_until"] = battle._t + STORM_SEC                 # 风暴4秒期间龟能锁定(用户)
 	var center: Vector2 = u["pos"]              # 固定施法点
@@ -190,7 +194,11 @@ func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全
 		mi.material_override = m
 		mi.rotation_degrees = Vector3(-90, 0, 0)              # 躺平贴地
 		pivot.add_child(mi)
-		var fin = battle._reg_tween(); fin.tween_property(mi, "material_override:albedo_color", Color(1, 1, 1, 0.92), 0.3)
+		## ★2026-11-05 持续层压暗(审核片: 高饱和彩虹盘整整 4 秒满亮、盖住半个画面, 单位看不清;
+		##   Riot 风格指南「持续层要暗, 最亮只给峰值」, 方案书 20261104b R3): 放出 0.25 秒满亮(峰值) → 0.45 秒压到 0.34 维持
+		var fin = battle._reg_tween()
+		fin.tween_property(mi, "material_override:albedo_color", Color(1, 1, 1, STORM_VORTEX_PEAK_A), 0.25)
+		fin.tween_property(mi, "material_override:albedo_color", Color(1, 1, 1, STORM_VORTEX_HOLD_A), 0.45)
 		var spin = battle._reg_tween(); spin.tween_property(pivot, "rotation:y", -TAU * 3.0, 4.0)   # 4s转3圈
 		nodes.append(pivot)
 	# ② 亮边圈(AOE边界·贴地)
@@ -199,14 +207,16 @@ func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全
 	rim.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	rim.axis = Vector3.AXIS_Y
 	rim.shaded = false; rim.transparent = true
-	rim.modulate = Color(0.78, 0.9, 1.0, 0.85)
+	rim.modulate = Color(0.78, 0.9, 1.0, 0.6)    # 11-05 0.85→0.6(边界仍清楚, 不再是一圈刺眼白边)
 	rim.position = battle._world_pos(center, 0.05)
 	rim.pixel_size = (radius * 2.0 * battle.WS) / 96.0
 	battle._world.add_child(rim)
 	nodes.append(rim)
 	# ③ GPU彩虹粒子(圆盘内上升·全光谱ramp·240颗=暴风能量/体积)
 	var ps = battle._storm_particles(center, radius)
-	if ps != null: nodes.append(ps)
+	if ps != null:
+		ps.amount = STORM_PARTICLES   # 11-05 240→100: 加性彩虹粒子满盘飘, 和漩涡一起把单位洗白
+		nodes.append(ps)
 	u["storm_nodes"] = nodes
 	var tw = battle._reg_tween()
 	for i in range(STORM_TICKS):   # 4秒 / 每0.5秒 = 8跳
