@@ -1095,7 +1095,6 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|加时：治疗效果 -%d%%，每 %d
 scripts/scenes/RealtimeBattle3DScene.gd|lit|升级 Lv%d
 scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
 scripts/scenes/RealtimeBattle3DScene.gd|lit|命运生命偷取
-scripts/scenes/RealtimeBattle3DScene.gd|lit|复活
 scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊
 scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊蓄力...
 scripts/scenes/RealtimeBattle3DScene.gd|lit|实时
@@ -1417,6 +1416,7 @@ scripts/scenes/battle/battle_spawn.gd|lit|随从
 scripts/scenes/battle/battle_spawn.gd|lit|龟蛋
 scripts/scenes/battle/battle_vfx.gd|lit|冰川
 scripts/scenes/battle/battle_vfx.gd|lit|口哨·灵体气波
+scripts/scenes/battle/battle_vfx.gd|lit|复活
 scripts/scenes/battle/battle_vfx.gd|lit|怒火药水
 scripts/scenes/battle/battle_vfx.gd|lit|猎龟令
 scripts/scenes/battle/battle_vfx.gd|lit|钩锁

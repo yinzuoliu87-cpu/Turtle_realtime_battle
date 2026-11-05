@@ -71,9 +71,12 @@ func _ready() -> void:
 	_ok("★正对照 · 改 modulate(白名单内) ⇒ 不报警, 且这一改被录成节点改动", int(c2.get("alarm", -1)) == 0
 		and int(c2.get("node_sets", 0)) > int(c1.get("node_sets", 0)), "alarm=%s sets %d vs %d" % [str(c2.get("alarm")),
 		int(c2.get("node_sets", 0)), int(c1.get("node_sets", 0))])
+	## ★11-05 改相对参照: 原来断言整场 vframes 改动 == 1(默认场景里别的单位不改 vframes)。美术分支起外包 11 只待机是 50 帧(10 列 × 5 行),
+	##   前摇在 sim 步里换成单行普攻帧条 ⇒ 场景自己就有 vframes 改动(实测 2 次)。探针那一改要「比同场景参照(c1: 只改 billboard)多恰 1 次」。
 	var c3: Dictionary = await _run_det(sc0, "vframes")
-	_ok("★正对照 · sim 步里改 Sprite3D.vframes ⇒ 不报警、流里录到恰 1 次", int(c3.get("alarm", -1)) == 0
-		and int(c3.get("vframes_sets", 0)) == 1, "alarm=%s %s vframes_sets=%d" % [str(c3.get("alarm")), str(c3.get("alarm_props")), int(c3.get("vframes_sets", 0))])
+	_ok("★正对照 · sim 步里改 Sprite3D.vframes ⇒ 不报警、流里比同场景参照多录恰 1 次", int(c3.get("alarm", -1)) == 0
+		and int(c3.get("vframes_sets", 0)) == int(c1.get("vframes_sets", 0)) + 1, "alarm=%s %s vframes_sets=%d(参照 %d)" % [str(c3.get("alarm")), str(c3.get("alarm_props")),
+		int(c3.get("vframes_sets", 0)), int(c1.get("vframes_sets", 0))])
 	var c4: Dictionary = await _run_det(sc0, "material_override")
 	_ok("★正对照 · sim 步里换 MeshInstance3D.material_override ⇒ 不报警、流里录到恰 1 次", int(c4.get("alarm", -1)) == 0
 		and int(c4.get("mo_sets", 0)) == 1, "alarm=%s %s mo_sets=%d" % [str(c4.get("alarm")), str(c4.get("alarm_props")), int(c4.get("mo_sets", 0))])
