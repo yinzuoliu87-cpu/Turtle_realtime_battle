@@ -1371,7 +1371,7 @@ func _minion_entries(u: Dictionary) -> Array:
 	var mi: Dictionary = MinionCodex.MINION_INFO.get(MinionCodex.kind_of(u), {})
 	var out: Array = []
 	var pas_names: PackedStringArray = []
-	var pas_tpl := ""
+	var pas_descs: PackedStringArray = []
 	var pas_icon := ""
 	for want_slot in ["passive", "skill"]:
 		for pv in mi.get("passives", []):
@@ -1379,11 +1379,19 @@ func _minion_entries(u: Dictionary) -> Array:
 			if str(pd.get("slot", "passive")) != want_slot:
 				continue
 			if pas_names.is_empty():
-				pas_tpl = str(pd.get("desc", ""))
 				pas_icon = str(pd.get("icon", ""))
-			else:
-				pas_tpl += "\n【%s】：%s" % [str(pd.get("name", "")), str(pd.get("desc", ""))]
 			pas_names.append(str(pd.get("name", "")))
+			pas_descs.append(str(pd.get("desc", "")))
+	## ★2026-11-05 多条被动(精英小将 3 条): 每条都带「【名字】：」小标题, 三条同一个格式(用户「把这个被动写上…按格式来」);
+	##   格子图标用表里的合成图(passive_icon: 两道斜杠切三段), 只有一条时照旧用那条自己的图标。
+	var pas_tpl := ""
+	if pas_names.size() == 1:
+		pas_tpl = pas_descs[0]
+	else:
+		for k in range(pas_names.size()):
+			pas_tpl += ("\n" if k > 0 else "") + "【%s】：%s" % [pas_names[k], pas_descs[k]]
+	if pas_names.size() > 1 and str(mi.get("passive_icon", "")) != "":
+		pas_icon = str(mi["passive_icon"])
 	if pas_names.is_empty():
 		## role 写明是被动格(名字里不拼「被动 · 」前缀: 那是两件事拼一行, 文案规矩 verify_ui_copy ③)
 		out.append({"name": "无", "role": "被动", "cost": -1.0, "icon": "", "none": true, "desc": "", "tpl": "", "sk": {}})

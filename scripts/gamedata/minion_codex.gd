@@ -153,6 +153,8 @@ const MINION_INFO := {
 		"name": "精英小将", "img": "minion-elite.png", "role": "精英 · 近战",
 		"hp": 1000, "atk": 50, "def": 16, "mr": 20, "interval": 1.54, "range": 100, "spd": 105,
 		"skill_name": "铁锤", "skill_cost": 100, "skill_icon": "skills/elite-hammer.png",
+		## 战斗信息面板被动格(三条合一格)的图标: 两道斜杠切三段 = 旋刃左 / 铁锁中 / 吞噬右(用户 11-05, tools/assetgen/build_elite_passive_combo.py)
+		"passive_icon": "passive/elite-passive-combo.png",
 		"skill_desc": "精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成（{C:EliteSystem.HAMMER_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_ATK_COEF*ATK}）魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成（{C:EliteSystem.HAMMER_BIG_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_BIG_ATK_COEF*ATK}）魔法伤害。",
 		## `slot` = 图鉴龟页同一套右栏里放哪: basic → 普通攻击条 / passive → 被动条 / skill → 技能卡(签「被动」)。
 		## `icon`(2026-11-04, 相对 assets/sprites/): 战斗信息面板能力排与图鉴普通攻击条 / 被动条用同一张; 铁锁合进被动格, 不单独出图。
