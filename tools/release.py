@@ -418,9 +418,9 @@ CHECKLIST = """# 发版清单 · v{ver}
 
 ## 2. 门禁与推送
 
-- [ ] 本机完整门禁 `bash run-tests.sh`
-  - 回读：末尾汇总 0 FAIL、致命报错 0
-- [ ] 提交（版本号与 CHANGELOG 单独一个提交：`release: {ver} —— …`）→ `git push origin main`
+- [ ] 提交（版本号与 CHANGELOG 单独一个提交：`release: {ver} —— …`）→ `python tools/ship.py release-{ver} --wait`
+  （11-05 起改动经 CI 把关进 main：推 `wip/<主题>` → 八片全套 → 全绿自动快进 main；不直接 push main、本机不跑全套，CLAUDE.md §2）
+  - 回读：末尾「main 已快进到 <提交>」
 - [ ] CI `tests.yml` 在这个提交上绿
   - 回读：`python tools/release.py tag {ver} --dry-run` 的「CI」一行是 completed / success
 
