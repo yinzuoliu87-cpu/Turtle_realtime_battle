@@ -165,3 +165,5 @@ static func play_form(battle, u: Dictionary, tid: String, seg: String) -> void:
 		return
 	u["_state_on"] = ""
 	_set_sheet_normed(battle, u, sd, "transform")
+	if ent.size() >= 3 and float(ent[2]) > 0.0:
+		u["anim_t"] = -float(ent[2])   # 开播前在首帧停留(凤凰复活先趴着; 帧号 int(负数) 钳到 0, battle_render._advance_anim)

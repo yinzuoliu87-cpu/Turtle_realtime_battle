@@ -612,12 +612,13 @@ def write_gd(man: dict) -> None:
 		if stt:
 			L.append("	\"%s\": [%s]," % (t, ", ".join("[\"%s\", \"%s\", %.1f]" % (a, b_, float(c)) for a, b_, c in stt)))
 	L.append("}")
-	L.append("## 形态切换段 [路径, 帧率](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放)")
+	L.append("## 形态切换段 [路径, 帧率(, 开播前在首帧停留秒数)](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放; 凤凰复活先趴 2.5 秒)")
 	L.append("const FORM := {")
 	for t in ids:
 		fm = man[t].get("forms", {})
+		hd = man[t].get("form_hold", {})
 		if fm:
-			L.append("\t\"%s\": {%s}," % (t, ", ".join("\"%s\": [\"pets/animations/%s/%s.png\", %.1f]" % (nm, t, nm, float(FPS)) for nm in sorted(fm))))
+			L.append("\t\"%s\": {%s}," % (t, ", ".join("\"%s\": [\"pets/animations/%s/%s.png\", %.1f%s]" % (nm, t, nm, float(FPS), (", %.3f" % float(hd[nm])) if nm in hd else "") for nm in sorted(fm))))
 	L.append("}")
 	L.append("const CAST := {")
 	for t in ids:
@@ -695,8 +696,12 @@ def main() -> int:
 		if os.path.isdir(os.path.join(I.SRC, d, "ai_revive")):
 			ai = ai_frames(d, tid, idle, "ai_revive")
 			rise = [death_frames[-1]] + ai[1:] + [ai[0]]
-			hold = max(0, int(round(REVIVE_SHOW_SEC.get(tid, 0.0) * FPS)) - len(rise))
-			forms["revive"] = [death_frames[-1].copy() for _ in range(hold)] + rise
+			## 趴着的那段不进帧条(凤凰 2.5 秒 = 37 张重复帧 ⇒ 帧条 10336 像素宽, 超手机 GPU 4096 上限; verify_sprite_sheets 11-05 抓到)
+			##   ⇒ 帧条只放站起来这几帧, 停留秒数写进 FORM 第 3 列, AttackRhythm.play_form 开播前在首帧停这么久
+			forms["revive"] = rise
+			hold_s = max(0.0, REVIVE_SHOW_SEC.get(tid, 0.0) - len(rise) / float(FPS))
+			if hold_s > 0.0:
+				ent["form_hold"] = {"revive": round(hold_s, 3)}
 		if tid == "shell":
 			forms["awaken"] = render_action(d, tid, SHELL_AWAKEN, idle)
 		if forms:

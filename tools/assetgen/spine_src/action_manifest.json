@@ -266,8 +266,11 @@
   "death": 15,
   "death_src": "pixellab",
   "feet_row": 260,
+  "form_hold": {
+   "revive": 1.833
+  },
   "forms": {
-   "revive": 38
+   "revive": 10
   },
   "fps": 15,
   "frame": 272,

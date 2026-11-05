@@ -16,10 +16,16 @@ const MAX_DIM := 4096
 
 ## 重排【之前】测得的有效帧数 (= min(sprite.frames, hframes*vframes - 1), drop_last)
 ## 改动画帧数是设计行为, 不该由重排偷偷带来 → 任一不符即 FAIL。
+## ★2026-11-05 美术重做(方案书 20261105b, 分支 art/turtle-seq)是设计行为, 按新图重填:
+##   外包 11 只 = Spine 待机渲成的像素序列帧(tools/assetgen/build_spine_idle.py, 50 帧);
+##   其余 14 只 = 像素化定稿 + AI 待机(tools/assetgen/build_pet_actions.py, 7 帧; 糖果 9、骰子程序化 6)。忍者 / 幽灵未动。
+##   原表(07-10 重排时测): basic 7 stone 9 bamboo 9 angel 7 fortune 17 hunter 14 candy 9 line 13 crystal 10 space 11 hiding 13 headless 16 shell 19
 const EXPECTED_EFFECTIVE := {
-	"basic": 7, "stone": 9, "bamboo": 9, "angel": 7, "ninja": 5, "ghost": 11,
-	"fortune": 17, "hunter": 14, "candy": 9, "line": 13, "crystal": 10,
-	"space": 11, "hiding": 13, "headless": 16, "shell": 19,
+	"basic": 50, "stone": 50, "bamboo": 50, "angel": 50, "ice": 50, "fortune": 50, "rainbow": 50,
+	"lightning": 50, "phoenix": 50, "lava": 50, "shell": 50,
+	"ninja": 5, "ghost": 11,
+	"diamond": 7, "dice": 6, "gambler": 7, "hunter": 7, "pirate": 7, "candy": 9, "bubble": 7, "line": 7,
+	"cyber": 7, "crystal": 7, "chest": 7, "space": 7, "hiding": 7, "headless": 7,
 }
 
 var _fail := 0

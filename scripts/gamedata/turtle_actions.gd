@@ -152,11 +152,11 @@ const STATE := {
 	"hiding": [["hidingShrink", "pets/animations/hiding/state_hidingShrink.png", 6.0]],
 	"lava_volcano": [["volcano", "pets/animations/lava_volcano/idle.png", 10.0]],
 }
-## 形态切换段 [路径, 帧率](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放)
+## 形态切换段 [路径, 帧率(, 开播前在首帧停留秒数)](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放; 凤凰复活先趴 2.5 秒)
 const FORM := {
 	"angel": {"revive": ["pets/animations/angel/revive.png", 15.0]},
 	"lava": {"revert": ["pets/animations/lava/revert.png", 15.0], "transform": ["pets/animations/lava/transform.png", 15.0]},
-	"phoenix": {"revive": ["pets/animations/phoenix/revive.png", 15.0]},
+	"phoenix": {"revive": ["pets/animations/phoenix/revive.png", 15.0, 1.833]},
 	"shell": {"awaken": ["pets/animations/shell/awaken.png", 15.0]},
 }
 const CAST := {

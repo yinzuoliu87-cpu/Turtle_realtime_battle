@@ -132,6 +132,16 @@ func _ready() -> void:
 			continue
 		var ifh: float = float(int(u["idle_sd"].get("frame_h", 0)))
 		var px0: float = spr.pixel_size
+		## 游戏里的本体米数(11-05: 新定稿贴边裁、游戏按帧高归一到 2 米 ⇒ 扁宽的龟被放大成 3.6 米宽; 无头 / 缩头 / 赛博 / 海盗)
+		##   上限 高 2.0 / 宽 3.0 米: 旧立绘最宽的海盗 2.76 米; 修前无头 3.64、缩头 3.59、赛博 3.48、海盗 3.08 都会红
+		var itex: Texture2D = (u["idle_sd"] as Dictionary).get("tex", null)
+		if itex != null:
+			var iim: Image = itex.get_image()
+			iim.convert(Image.FORMAT_RGBA8)
+			var ur: Rect2i = iim.get_region(Rect2i(0, 0, int(float(iim.get_width()) / maxf(1.0, float(int(u["idle_sd"].get("hframes", 1))))), int(ifh))).get_used_rect()
+			var bw: float = float(ur.size.x) * px0
+			var bh: float = float(ur.size.y) * px0
+			_ok("★%s 游戏里本体 %.2f×%.2f 米(高 ≤ 2.0、宽 ≤ 3.0)" % [id, bw, bh], bh <= 2.0 + 1e-3 and bw <= 3.0 and bh > 0.5)
 		var feet0: float = (spr.offset.y + ifh * 0.5 - ifh) * px0   # 待机格子底边的本地高度
 		for kind in KINDS:
 			scn._vfx._play_action(u, kind)

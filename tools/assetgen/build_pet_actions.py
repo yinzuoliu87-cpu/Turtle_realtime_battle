@@ -151,6 +151,29 @@ def _state_frames(last: np.ndarray, mode: str) -> list:
 	return [last, last, _xf(last, dy=-1.0), _xf(last, dy=-1.0)]
 
 
+## ── 游戏里的本体大小 = 旧立绘时的大小 ──
+## 游戏按【待机帧高】把立绘归一到 2 米(battle_spawn: pixel_size = TARGET_BODY_H / frame_h)。旧立绘画在 500×500 等画布上、四周留白,
+## 本体只占一部分; 新定稿贴边裁 ⇒ 一换就整只放大(11-05 审核片实测: 无头龟本体 1.54×0.84 米 → 3.64×1.96 米, 缩头乌龟 1.72 → 3.59 米宽)。
+## 做法: 待机格子【上方】补透明行, 使 本体像素高 × 2 / 格子高 == 旧本体米高; 动作方帧不动(NORM 按待机像素尺寸对齐, 自动跟着缩)。
+## 值 = main 分支 data/pets.json 旧 img 第 0 帧不透明(α>20)本体高 × 2 / 帧高(11-05 量; 新旧宽高比一致, 高对上宽也对上)。
+TARGET_BODY_H = 2.0
+OLD_BODY_H_M = {
+	"bubble": 1.27, "candy": 1.56, "chest": 1.27, "crystal": 1.64, "cyber": 1.37, "diamond": 1.66, "dice": 1.70,
+	"gambler": 1.67, "headless": 0.84, "hiding": 0.96, "hunter": 1.38, "line": 1.12, "pirate": 1.78, "space": 1.32,
+}
+
+
+def _write_idle(tid: str, idle: list, ch: int, cw: int, chp: int) -> None:
+	"""待机帧条: 每格 chp 高(定稿贴底, 上方补透明), 多留 1 格(游戏 _sprite_dict_from 的 drop_last 会丢最后一格)。"""
+	rows = int(math.ceil((len(idle) + 1) / float(COLS)))
+	sheet = np.zeros((rows * chp, COLS * cw, 4), dtype=np.uint8)
+	for k, f in enumerate(idle):
+		r, c = divmod(k, COLS)
+		sheet[r * chp + (chp - ch):(r + 1) * chp, c * cw:(c + 1) * cw] = f
+	os.makedirs(PIXEL_DIR, exist_ok=True)
+	Image.fromarray(sheet, "RGBA").save(os.path.join(PIXEL_DIR, "%s_idle.png" % tid), optimize=False)
+
+
 def _ai(d: str, pal: np.ndarray) -> list:
 	n = len([f for f in os.listdir(d) if f.startswith("ai_") and f.endswith(".png")])
 	return [A._palette_lock(np.asarray(Image.open(os.path.join(d, "ai_%d.png" % k)).convert("RGBA")), pal) for k in range(1, n + 1)]
@@ -163,16 +186,11 @@ def build(tid: str) -> dict:
 	key[key[..., 3] == 0] = 0
 	ch, cw = key.shape[:2]
 	pal = np.unique(key[key[..., 3] > 0][:, :3], axis=0)
-	## ① 待机帧条(格子 = 定稿尺寸; 多留 1 格 —— 游戏 _sprite_dict_from 的 drop_last 会丢最后一格)
+	kys = np.where(key[..., 3] > 0)[0]
+	chp = max(ch, int(round((kys.max() - kys.min() + 1) * TARGET_BODY_H / OLD_BODY_H_M[tid]))) if tid in OLD_BODY_H_M else ch
+	## ① 待机帧条(格子 = 定稿宽 × chp 高)
 	idle = [key] + (_ai(os.path.join(src, "idle"), pal) if os.path.isdir(os.path.join(src, "idle")) else [])
-	cells = len(idle) + 1
-	rows = int(math.ceil(cells / float(COLS)))
-	sheet = np.zeros((rows * ch, COLS * cw, 4), dtype=np.uint8)
-	for k, f in enumerate(idle):
-		r, c = divmod(k, COLS)
-		sheet[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw] = f
-	os.makedirs(PIXEL_DIR, exist_ok=True)
-	Image.fromarray(sheet, "RGBA").save(os.path.join(PIXEL_DIR, "%s_idle.png" % tid), optimize=False)
+	_write_idle(tid, idle, ch, cw, chp)
 	## ② 动作方帧
 	S, FEET = A.S_FRAME, A.FEET
 	ox, oy = (S - cw) // 2, FEET - ch
@@ -197,11 +215,7 @@ def build(tid: str) -> dict:
 			Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(od, "%s.png" % nm), optimize=False)
 		## 待机帧条也用程序化(帧条格子 = 定稿尺寸: 从方帧里切回格子)
 		idle = [key] + [f[oy:oy + ch, ox:ox + cw] for f in idle_extra]
-		sheet = np.zeros((int(math.ceil((len(idle) + 1) / float(COLS))) * ch, COLS * cw, 4), dtype=np.uint8)
-		for k, f in enumerate(idle):
-			r, c = divmod(k, COLS)
-			sheet[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw] = f
-		Image.fromarray(sheet, "RGBA").save(os.path.join(PIXEL_DIR, "%s_idle.png" % tid), optimize=False)
+		_write_idle(tid, idle, ch, cw, chp)
 	for nm in ([] if tid in PROCEDURAL else sorted(os.listdir(src))):
 		d = os.path.join(src, nm)
 		if not os.path.isdir(d) or not (nm in ("attack", "hurt", "death", "run") or nm.startswith("cast_")):
@@ -250,9 +264,9 @@ def build(tid: str) -> dict:
 	pad = np.zeros((av.shape[0] + 2, av.shape[1] + 2, 4), dtype=np.uint8)
 	pad[1:-1, 1:-1] = av
 	Image.fromarray(pad, "RGBA").resize((pad.shape[1] * 3, pad.shape[0] * 3), Image.NEAREST).save(os.path.join(AVATAR_DIR, "%s.png" % tid), optimize=False)
-	ent["_idle"] = {"img": "pets/pixel/%s_idle.png" % tid, "frames": len(idle), "frameW": cw, "frameH": ch,
+	ent["_idle"] = {"img": "pets/pixel/%s_idle.png" % tid, "frames": len(idle), "frameW": cw, "frameH": chp,
 		"duration": int(round(len(idle) * 1000.0 / IDLE_FPS))}
-	print("%-8s 待机 %d 帧(%d×%d)· %s · 命中帧 %s · 技能 %s" % (tid, len(idle), cw, ch,
+	print("%-8s 待机 %d 帧(%d×%d, 格子高 %d ⇒ 本体 %.2f 米)· %s · 命中帧 %s · 技能 %s" % (tid, len(idle), cw, ch, chp, (kys.max() - kys.min() + 1) * TARGET_BODY_H / chp,
 		" ".join("%s %d" % (k, ent[k]) for k in ("attack", "hurt", "death", "run") if k in ent), ent.get("hit"), sorted(ent["casts"])))
 	return ent
 

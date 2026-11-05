@@ -712,7 +712,7 @@
     "def": 21,
     "mr": 18,
     "crit": 0.25,
-    "img": "pets/pixel/diamond_idle.png", "sprite": {"frames": 7, "frameW": 188, "frameH": 165, "duration": 875},
+    "img": "pets/pixel/diamond_idle.png", "sprite": {"frames": 7, "frameW": 188, "frameH": 190, "duration": 875},
     "passive": {
       "type": "diamondStructure",
       "name": "钻石结构",
@@ -866,7 +866,7 @@
     "def": 14,
     "mr": 12,
     "crit": 0.25,
-    "img": "pets/pixel/dice_idle.png", "sprite": {"frames": 6, "frameW": 154, "frameH": 165, "duration": 750},
+    "img": "pets/pixel/dice_idle.png", "sprite": {"frames": 6, "frameW": 154, "frameH": 194, "duration": 750},
     "passive": {
       "type": "gamblerBlood",
       "name": "赌徒之血",
@@ -1019,7 +1019,7 @@
     "mr": 11,
     "crit": 0.25,
     "img": "pets/pixel/gambler_idle.png",
-    "sprite": {"frames": 7, "frameW": 185, "frameH": 165, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 185, "frameH": 198, "duration": 875},
     "passive": {
       "type": "gamblerMultiHit",
       "name": "多重打击",
@@ -1091,7 +1091,7 @@
     "mr": 11,
     "crit": 0.25,
     "img": "pets/pixel/hunter_idle.png",
-    "sprite": {"frames": 7, "frameW": 200, "frameH": 165, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 236, "duration": 875},
     "passive": {
       "type": "hunterKill",
       "name": "猎杀",
@@ -1164,7 +1164,7 @@
     "def": 15,
     "mr": 13,
     "crit": 0.25,
-    "img": "pets/pixel/pirate_idle.png", "sprite": {"frames": 7, "frameW": 200, "frameH": 130, "duration": 875},
+    "img": "pets/pixel/pirate_idle.png", "sprite": {"frames": 7, "frameW": 200, "frameH": 143, "duration": 875},
     "passive": {
       "type": "pirateBarrage",
       "name": "掠夺",
@@ -1240,7 +1240,7 @@
     "mr": 16,
     "crit": 0.25,
     "img": "pets/pixel/candy_idle.png",
-    "sprite": {"frames": 9, "frameW": 172, "frameH": 166, "duration": 1125},
+    "sprite": {"frames": 9, "frameW": 172, "frameH": 210, "duration": 1125},
     "passive": {
       "type": "candySteal",
       "name": "甜蜜掠夺",
@@ -1314,7 +1314,7 @@
     "mr": 19,
     "crit": 0.25,
     "img": "pets/pixel/bubble_idle.png",
-    "sprite": {"frames": 7, "frameW": 166, "frameH": 165, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 166, "frameH": 258, "duration": 875},
     "passive": {
       "type": "bubbleStore",
       "name": "泡沫",
@@ -1386,7 +1386,7 @@
     "mr": 11,
     "crit": 0.25,
     "img": "pets/pixel/line_idle.png",
-    "sprite": {"frames": 7, "frameW": 200, "frameH": 149, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 264, "duration": 875},
     "passive": {
       "type": "inkMark",
       "name": "墨迹",
@@ -1748,7 +1748,7 @@
     "def": 14,
     "mr": 13,
     "crit": 0.25,
-    "img": "pets/pixel/cyber_idle.png", "sprite": {"frames": 7, "frameW": 200, "frameH": 115, "duration": 875},
+    "img": "pets/pixel/cyber_idle.png", "sprite": {"frames": 7, "frameW": 200, "frameH": 164, "duration": 875},
     "passive": {
       "type": "cyberDrone",
       "name": "浮游炮",
@@ -1821,7 +1821,7 @@
     "mr": 23,
     "crit": 0.25,
     "img": "pets/pixel/crystal_idle.png",
-    "sprite": {"frames": 7, "frameW": 187, "frameH": 165, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 187, "frameH": 200, "duration": 875},
     "passive": {
       "type": "crystalResonance",
       "name": "水晶共鸣",
@@ -1892,7 +1892,7 @@
     "mr": 14,
     "crit": 0.25,
     "img": "pets/pixel/chest_idle.png",
-    "sprite": {"frames": 7, "frameW": 200, "frameH": 137, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 213, "duration": 875},
     "passive": {
       "type": "chestTreasure",
       "name": "藏宝图",
@@ -1962,7 +1962,7 @@
     "mr": 15,
     "crit": 0.25,
     "img": "pets/pixel/space_idle.png",
-    "sprite": {"frames": 7, "frameW": 198, "frameH": 165, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 198, "frameH": 250, "duration": 875},
     "passive": {
       "type": "starEnergy",
       "name": "星能",
@@ -2034,7 +2034,7 @@
     "mr": 21,
     "crit": 0.25,
     "img": "pets/pixel/hiding_idle.png",
-    "sprite": {"frames": 7, "frameW": 200, "frameH": 111, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 225, "duration": 875},
     "passive": {
       "type": "summonAlly",
       "name": "喊龟",
@@ -2110,7 +2110,7 @@
     "mr": 12,
     "crit": 0.25,
     "img": "pets/pixel/headless_idle.png",
-    "sprite": {"frames": 7, "frameW": 200, "frameH": 110, "duration": 875},
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 257, "duration": 875},
     "passive": {
       "type": "undeadRage",
       "name": "亡灵",
