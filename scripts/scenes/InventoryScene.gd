@@ -183,6 +183,7 @@ var _bench_tap := TapSlop.new(BENCH_TAP_SLOP)
 var _press_ms := 0               # 背包格按下的时刻(按住 ≥ InvDrag.HOLD_MS 再动 = 拿起来拖)
 
 func _ready() -> void:
+	SkillText.prewarm_consts()   # 说明卡第一次点开不现场加载脚本(见 SkillText.prewarm_consts)
 	if OS.has_environment("INV_DEMO"):   # dev截图用: 内存填演示背包(不save·不碰真存档)
 		_inject_demo_inventory()
 	if OS.has_environment("PH_DEMO"):    # dev: 清统领模拟大轮开局 → 看统领1/2/3问号占位(不save)

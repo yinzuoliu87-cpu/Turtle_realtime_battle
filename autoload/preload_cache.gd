@@ -4,6 +4,11 @@ extends Node
 ##   Godot load() 默认缓存(CACHE_MODE_REUSE): 启动后台 threaded 预载入缓存后,
 ##   各场景的 load() 命中缓存 = 不再冷加载卡帧。headless 自测不渲染, 跳过。
 
+## 退出时等文案常量的后台预加载做完再走(SkillText.prewarm_consts; 半路掐断会打编译错误)。
+func _exit_tree() -> void:
+	SkillText.flush_prewarm()
+
+
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
@@ -31,6 +36,8 @@ func menu_bg_tile_tex() -> ImageTexture:
 
 
 func _warm_cache() -> void:
+	## 文案里 {C:类.常量} 引用的脚本交给后台线程先加载(商店 / 背包 / 图鉴第一次点开说明不卡 1 秒, 见 SkillText.prewarm_consts)
+	SkillText.prewarm_consts()
 	if not is_instance_valid(DataRegistry) or DataRegistry.all_pets.is_empty():
 		return
 	menu_bg_tile_tex()   # 启动时预缩一次(菜单空闲期付掉), 之后各场景复用无卡顿

@@ -158,6 +158,7 @@ var _shelf_tap_after_ms := 0
 const BUY_TAP_GUARD_MS := 400
 
 func _ready() -> void:
+	SkillText.prewarm_consts()   # 说明卡第一次点开不现场加载脚本(主菜单已排过的直接跳过, 见 SkillText.prewarm_consts)
 	var _td = get_node_or_null("/root/TutorialDirector")
 	var _in_tut: bool = _td != null and _td.is_active()
 	if int(GameState.season_total_battles) <= 0 and not _in_tut:
@@ -403,8 +404,40 @@ func _dismiss_popups() -> bool:
 		_axe_card_closed = true
 		any = true
 	if any:
-		_rebuild()
+		_refresh_popups()
 	return any
+
+
+## ★轻量刷新(2026-11-05 用户「这个商店因为是动态的，然后我任意点击屏幕上一个地方，都会使这个商店重置一下，于是所有图片都卡一下」):
+##   原来选中一件货 / 点空白收起 / 点等级看概率都走 `_rebuild()` —— 整页(背景、货柜、10 件货、店主、氛围动效)全部销毁再建,
+##   呼吸光 / 斜掠高光 / 店主待机 / 氛围粒子全从头播 ⇒ 满屏一跳。商业游戏的通行做法: 只改变了的那几样, 节点留着、动画不重播。
+##   这三个操作只改三样东西: 选中那格身后的金光、说明卡、出货概率牌 —— 只动它们。
+##   买 / 刷新 / 锁定 / 买经验这些真的改了货架或数字的, 仍走 `_rebuild()`。
+##   门禁 tests/verify_shop_no_rebuild.gd(点完背景 / 货架 / 店主节点还是同一批, 不重播)。
+func _refresh_popups() -> void:
+	for i in range(_offer.size()):
+		var box := find_child("ShelfItem%d" % i, true, false)
+		if box == null:
+			continue
+		var g := box.get_node_or_null("SelGlow")
+		if g != null:
+			box.remove_child(g)
+			g.queue_free()
+		if i == _sel and _offer[i] != null:
+			var sg := _sel_glow()
+			box.add_child(sg)
+			box.move_child(sg, 0)   # 与 _card 里同一层: 在物品身后
+	for nm in ["OddsPlate", "OddsRow"]:
+		var o := find_child(nm, true, false)
+		if o != null:
+			o.get_parent().remove_child(o)
+			o.queue_free()
+	if _show_odds:
+		_build_odds_row()
+	_insp.close()
+	if _detail_wanted():
+		_open_detail_card()
+	UIFrame.attach(self)   # 新挂上的说明卡 / 概率牌收编进设计框(幂等, 不重建)
 
 # ══════════════════════════════════════════════════════════════
 #  §一句话提示 (toast)
@@ -768,8 +801,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 	var afford := int(GameState.meta_deepsea_coins) >= price
 	## 选中: 物品身后一圈金光
 	if sel:
-		var sg := ShopChest.ellipse(ITEM_W + 8.0, ITEM_H, 26, 22, Color(1.0, 0.86, 0.35, 0.45)); sg.name = "SelGlow"
-		sg.position = Vector2(ITEM_X - 4.0, 0.0); box.add_child(sg)
+		box.add_child(_sel_glow())
 	## 已拥有同款: 身后一团呼吸的淡金光(原卡片镀层的同一个意思, 换成不带框的光)
 	## ★数【任何星级】(用户 2026-10-22「背包里有二星，不提示吗」): 原来借的是合成进度那个口径 `_owned_count(id)`,
 	##   它默认只数 ★1(07-29 为「合成进度 N/3」改的) ⇒ 背包里只有 ★2 时这里是 0, 一点提示都没有。
@@ -880,6 +912,13 @@ func _clip_box(parent: Control) -> Control:
 
 
 
+## 选中那格身后一圈金光(_card 与 _refresh_popups 共用)。
+func _sel_glow() -> Control:
+	var sg := ShopChest.ellipse(ITEM_W + 8.0, ITEM_H, 26, 22, Color(1.0, 0.86, 0.35, 0.45)); sg.name = "SelGlow"
+	sg.position = Vector2(ITEM_X - 4.0, 0.0)
+	return sg
+
+
 ## 点卡 → 选中(两步购买第一步)。再点同一张 = 取消选中。
 func _on_select(idx: int) -> void:
 	if idx < 0 or idx >= _offer.size() or _offer[idx] == null:
@@ -888,7 +927,7 @@ func _on_select(idx: int) -> void:
 	_sel_own = ""          # 与"已拥有"选中互斥 —— 同一块面板同时只讲一件事
 	_sel_bench = -1        # 看货架就不再选着宝箱里那件
 	_show_odds = false     # 出货概率牌与说明卡同时只开一个(卡底会压住概率牌, 2026-10-22 交互排查)
-	_rebuild()
+	_refresh_popups()      # 只换金光 / 说明卡 / 概率牌, 不整页重建(2026-11-05, 见 _refresh_popups)
 	if _sel >= 0:
 		_tut_notify("offer_selected")   # 教程 v3「点击一件装备」(两步购买的第一步; 取消选中不算)
 
@@ -1317,7 +1356,7 @@ func _build_level_row(btn_pos: Vector2) -> void:
 		## 概率牌与说明卡同时只开一个: 原来选着货时点等级, 概率牌弹在说明卡底下、被卡盖住左半截(2026-10-22 交互排查)
 		if _show_odds:
 			_sel = -1; _sel_own = ""; _sel_bench = -1
-		_rebuild())
+		_refresh_popups())
 	add_child(lvhit)
 	## 2026-10-21 用户「底下的经验条」: 等级 / 经验 / 可装备 装进一块木牌(与三颗按钮同一张), 不再是散在底座上的小字
 	var lvplq := _plank(lvhit, Vector2.ZERO, lvhit.size); lvplq.name = "LevelPlaque"

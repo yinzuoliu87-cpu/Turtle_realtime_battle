@@ -1120,6 +1120,46 @@ static func text_of(d: Dictionary, want_detail: bool) -> String:
 
 ## class_name → 它的脚本常量表(缓存)。
 static var _const_cache: Dictionary = {}
+## 后台线程正在加载的脚本(path → true), 见 prewarm_consts。
+static var _warm_pending: Dictionary = {}
+
+
+## ★文案常量预热(2026-11-05 用户「我任意点击屏幕上一个地方，都会使这个商店重置一下，于是所有图片都卡一下」):
+##   探针实测进店后【第一次】点开装备说明卡 948 毫秒, 之后每次 9 毫秒 —— 说明里的 {C:类.常量} 第一次取值要在主线程现场
+##   load 那个类的脚本: EquipSystem 930 毫秒(71 处文案引用)、RealtimeBattle3DScene 1603 毫秒(tests/probes/_probe_class_load_time)。
+##   商业游戏的通行做法 = 后台预加载: 进页面时把数据文案里引用到的类交给后台线程加载(ResourceLoader.load_threaded_request),
+##   玩家点开时已在缓存里; 还没加载完就在 const_of 里接着等它完成(不会比原来直接 load 慢)。
+##   主菜单 / 商店 / 背包进页时调; 已经在加载或已经取过的类直接跳过。返回本次新排进后台的个数。
+static func prewarm_consts(texts: Array = []) -> int:
+	if texts.is_empty():
+		for f in DirAccess.get_files_at("res://data"):
+			if str(f).ends_with(".json"):
+				texts.append(FileAccess.get_file_as_string("res://data/" + str(f)))
+	var want := {}
+	var re := RegEx.create_from_string("[{]C:([A-Za-z0-9_]+)[.]")
+	for t in texts:
+		for m in re.search_all(str(t)):
+			want[m.get_string(1)] = true
+	var n := 0
+	for c in ProjectSettings.get_global_class_list():
+		var cls := str(c.get("class", ""))
+		if not want.has(cls) or _const_cache.has(cls):
+			continue
+		var path := str(c.get("path", ""))
+		if path == "" or _warm_pending.has(path) or ResourceLoader.has_cached(path):
+			continue
+		if ResourceLoader.load_threaded_request(path, "", false) == OK:
+			_warm_pending[path] = true
+			n += 1
+	return n
+
+
+## 退出前把还在后台加载的取完(PreloadCache._exit_tree 调)。进程退出时后台线程编译到一半被掐断, 会打一串
+##   「Could not preload resource file / Failed to compile depended scripts」(实测: 商店门禁打完 ALL PASS 就退出时出现, 门禁判红)。
+static func flush_prewarm() -> void:
+	for path in _warm_pending.keys():
+		ResourceLoader.load_threaded_get(path)   # 没加载完就等完
+	_warm_pending.clear()
 
 
 ## 读一个代码常量: "VenomDroneSystem.FOG_LIFE" → 6。
@@ -1158,7 +1198,12 @@ static func const_of(ref: String) -> String:
 			if str(c.get("class", "")) == cls:
 				path = str(c.get("path", ""))
 				break
-		var scr: Script = (load(path) as Script) if path != "" and ResourceLoader.exists(path) else null
+		var scr: Script = null
+		if _warm_pending.has(path):   # 后台在加载(prewarm_consts): 取它的结果, 没加载完就在这里等完
+			_warm_pending.erase(path)
+			scr = ResourceLoader.load_threaded_get(path) as Script
+		if scr == null:
+			scr = (load(path) as Script) if path != "" and ResourceLoader.exists(path) else null
 		_const_cache[cls] = scr.get_script_constant_map() if scr != null else {}
 	var m: Dictionary = _const_cache[cls]
 	if not m.has(key):
