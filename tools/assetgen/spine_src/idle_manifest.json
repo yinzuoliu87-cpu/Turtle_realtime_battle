@@ -1,0 +1,123 @@
+{
+ "angel": {
+  "content": [
+   177,
+   160
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "bamboo": {
+  "content": [
+   166,
+   166
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "basic": {
+  "content": [
+   175,
+   140
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "fortune": {
+  "content": [
+   191,
+   153
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "ice": {
+  "content": [
+   181,
+   158
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "lava": {
+  "content": [
+   196,
+   162
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "lightning": {
+  "content": [
+   200,
+   175
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "phoenix": {
+  "content": [
+   195,
+   171
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "rainbow": {
+  "content": [
+   192,
+   156
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "shell": {
+  "content": [
+   171,
+   161
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ },
+ "stone": {
+  "content": [
+   164,
+   152
+  ],
+  "duration": 3333,
+  "fps": 15,
+  "frameH": 176,
+  "frameW": 200,
+  "frames": 50
+ }
+}

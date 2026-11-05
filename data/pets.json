@@ -9,11 +9,12 @@
     "def": 14,
     "mr": 13,
     "crit": 0.25,
-    "img": "pets/animations/basic/idle.png",
+    "img": "pets/spine/basic_idle.png",
     "sprite": {
-      "frames": 8,
-      "frameW": 64,
-      "frameH": 64
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
     },
     "attackAnim": {
       "src": "pets/animations/basic/attack.png",
@@ -104,11 +105,12 @@
     "def": 18,
     "mr": 15,
     "crit": 0.25,
-    "img": "pets/stone.png",
+    "img": "pets/spine/stone_idle.png",
     "sprite": {
-      "frames": 9,
-      "frameW": 500,
-      "frameH": 500
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
     },
     "passive": {
       "type": "stoneWall",
@@ -187,11 +189,12 @@
     "def": 10,
     "mr": 11,
     "crit": 0.25,
-    "img": "pets/bamboo.png",
+    "img": "pets/spine/bamboo_idle.png",
     "sprite": {
-      "frames": 9,
-      "frameW": 500,
-      "frameH": 400
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
     },
     "passive": {
       "type": "bambooCharge",
@@ -266,11 +269,12 @@
     "def": 13,
     "mr": 16,
     "crit": 0.25,
-    "img": "pets/angel.png",
+    "img": "pets/spine/angel_idle.png",
     "sprite": {
-      "frames": 8,
-      "frameW": 248,
-      "frameH": 200
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
     },
     "passive": {
       "type": "judgement",
@@ -346,7 +350,7 @@
     "def": 16,
     "mr": 18,
     "crit": 0.25,
-    "img": "pets/ice.png",
+    "img": "pets/spine/ice_idle.png",
     "passive": {
       "type": "frostAura",
       "name": "寒域",
@@ -415,7 +419,13 @@
       0,
       1,
       2
-    ]
+    ],
+    "sprite": {
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
+    }
   },
   {
     "id": "ninja",
@@ -781,11 +791,12 @@
     "def": 19,
     "mr": 16,
     "crit": 0.25,
-    "img": "pets/fortune.png",
+    "img": "pets/spine/fortune_idle.png",
     "sprite": {
-      "frames": 17,
-      "frameW": 500,
-      "frameH": 500
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
     },
     "passive": {
       "type": "fortuneGold",
@@ -923,7 +934,7 @@
     "def": 15,
     "mr": 17,
     "crit": 0.25,
-    "img": "pets/rainbow.png",
+    "img": "pets/spine/rainbow_idle.png",
     "passive": {
       "type": "rainbowPrism",
       "name": "棱镜",
@@ -989,7 +1000,13 @@
       0,
       1,
       2
-    ]
+    ],
+    "sprite": {
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
+    }
   },
   {
     "id": "gambler",
@@ -1459,7 +1476,7 @@
     "def": 10,
     "mr": 13,
     "crit": 0.25,
-    "img": "pets/lightning.png",
+    "img": "pets/spine/lightning_idle.png",
     "passive": {
       "type": "lightningStorm",
       "name": "雷电",
@@ -1522,7 +1539,13 @@
       0,
       1,
       2
-    ]
+    ],
+    "sprite": {
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
+    }
   },
   {
     "id": "phoenix",
@@ -1534,7 +1557,7 @@
     "def": 12,
     "mr": 15,
     "crit": 0.25,
-    "img": "pets/phoenix.png",
+    "img": "pets/spine/phoenix_idle.png",
     "passive": {
       "type": "phoenixRebirth",
       "name": "涅槃",
@@ -1611,7 +1634,13 @@
       0,
       1,
       2
-    ]
+    ],
+    "sprite": {
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
+    }
   },
   {
     "id": "lava",
@@ -1623,7 +1652,7 @@
     "def": 14,
     "mr": 16,
     "crit": 0.25,
-    "img": "pets/lava.png",
+    "img": "pets/spine/lava_idle.png",
     "passive": {
       "type": "lavaRage",
       "name": "熔岩之心",
@@ -1721,7 +1750,13 @@
         "brief": "火山形态：火山龟获得 {C:LavaSystem.RAMPAGE_HP_PCT%}% 自身最大生命值、{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度与 {C:LavaSystem.RAMPAGE_SPD%}% 移动速度，持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
         "detail": "火山形态：火山龟获得 {C:LavaSystem.RAMPAGE_HP_PCT%}% 自身最大生命值、{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度与 {C:LavaSystem.RAMPAGE_SPD%}% 移动速度，持续 {C:LavaSystem.RAMPAGE_SEC} 秒。"
       }
-    ]
+    ],
+    "sprite": {
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
+    }
   },
   {
     "id": "cyber",
@@ -2185,11 +2220,12 @@
     "def": 17,
     "mr": 18,
     "crit": 0.25,
-    "img": "pets/shell.png",
+    "img": "pets/spine/shell_idle.png",
     "sprite": {
-      "frames": 19,
-      "frameW": 500,
-      "frameH": 500
+      "frames": 50,
+      "frameW": 200,
+      "frameH": 176,
+      "duration": 3333
     },
     "passive": {
       "type": "auraAwaken",
