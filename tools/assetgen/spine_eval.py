@@ -458,8 +458,9 @@ def _poly_mask(H: int, W: int, poly: np.ndarray) -> np.ndarray:
 	return inside
 
 
-def render(sk: Skeleton, anim: str, t: float, size: tuple = (256, 256), origin: tuple = None) -> np.ndarray:
-	"""渲一帧 → float32 预乘 RGBA (H, W, 4)。origin = 世界坐标里画布左下角(默认取 skeleton.x / y)。"""
+def render(sk: Skeleton, anim: str, t: float, size: tuple = (256, 256), origin: tuple = None, only_slots=None) -> np.ndarray:
+	"""渲一帧 → float32 预乘 RGBA (H, W, 4)。origin = 世界坐标里画布左下角(默认取 skeleton.x / y)。
+	only_slots: 插槽名集合 —— 只画这些插槽(裁切照常生效); None = 全画。头像裁切用它求头部范围。"""
 	W, H = size
 	ox, oy = origin if origin is not None else (float(sk.sk.get("x", 0)), float(sk.sk.get("y", 0)))
 	dst = np.zeros((H, W, 4), dtype=np.float32)
@@ -473,6 +474,11 @@ def render(sk: Skeleton, anim: str, t: float, size: tuple = (256, 256), origin: 
 			pv[:, 1] = H - (pv[:, 1] - oy)
 			clip_mask = _poly_mask(H, W, pv)
 			clip_end = item["end"]
+			continue
+		if only_slots is not None and item["slot"] not in only_slots:
+			if clip_end is not None and item["slot"] == clip_end:
+				clip_mask = None
+				clip_end = None
 			continue
 		tex = sk.atlas["pages"][item["page"]]
 		pv = item["verts"].copy()
