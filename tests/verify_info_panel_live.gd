@@ -129,6 +129,7 @@ func _ready() -> void:
 	await _test_section_order()
 	await _test_panel_v2()
 	await _test_no_rebuild_loop()
+	await _test_hp_fill_follows_slot()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -136,6 +137,38 @@ func _ready() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 局内信息栏实时读数" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ⑫ 头像框血条跟着槽宽走(2026-11-05 Issue #7): 直播播放端装备字段晚到一步 ⇒ 同一帧装备格 3 → 4、框变宽(槽 90 → 138),
+##   原来的血条按旧槽宽算像素宽, 这一帧只画到 65%。改成锚点比例后由排版跟着槽宽走。
+##   量法: 半血建框 → 刷一次 → 加到 4 件装备(框变宽) → 等两帧排版【不再刷】→ 血条宽 / 槽宽 仍 = 0.5; 分母: 槽宽真的变了。
+func _test_hp_fill_follows_slot() -> void:
+	var u := _mk("basic")
+	u["equips"] = [{"id": "p2eq_001", "star": 1}, {"id": "p2eq_010", "star": 1}, {"id": "p2eq_093", "star": 1}]
+	_s._units.append(u)
+	_s._hud._build_team_panels()
+	u["hp"] = float(u["maxHp"]) * 0.5
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_ip._update_team_panels()
+	await get_tree().process_frame
+	var fill = u.get("panel_hp_fill", null)
+	if fill == null or not is_instance_valid(fill):
+		_ok("⑫ 分母: 头像框血条建出来了", false)
+		_s._units.erase(u)
+		return
+	var slot: Control = (fill as Control).get_parent()
+	var w0: float = slot.size.x
+	var r0: float = (fill as Control).size.x / maxf(1.0, w0)
+	u["equips"] = [{"id": "p2eq_001", "star": 1}, {"id": "p2eq_010", "star": 1}, {"id": "p2eq_093", "star": 1}, {"id": "p2eq_087", "star": 1}]
+	_s._refresh_panel_equips(u)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var w1: float = slot.size.x
+	var r1: float = (fill as Control).size.x / maxf(1.0, w1)
+	_ok("⑫ 分母: 加第 4 件装备后槽宽真的变了(%.0f → %.0f)" % [w0, w1], absf(w1 - w0) > 5.0)
+	_ok("⑫ 半血时血条 / 槽宽 = 0.5(变宽前 %.3f · 变宽后不重刷 %.3f)" % [r0, r1], absf(r0 - 0.5) < 0.02 and absf(r1 - 0.5) < 0.02)
+	_s._units.erase(u)
 
 
 func _mk(id: String) -> Dictionary:

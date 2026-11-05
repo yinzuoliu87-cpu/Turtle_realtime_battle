@@ -311,7 +311,10 @@ func _apply_until(s: int, fire: bool) -> void:
 			##   流里只在它们又被 sim 改了才重发 ⇒ 这里照服务器的节奏(每个采样步 2·SIM_DT)把它们衰减掉, 跳进来那一帧才对得上
 			##   (目标那一步不在这里衰减: 跳完紧接着那次渲染步会做)
 			_set_ts_active()
-			battle._vfx._juice_decay(F.CONT_EVERY * SIM_DT)
+			## ★11-05 Issue #7: 顿帧中不衰减 —— 服务器的渲染步与顺播的 `_render` 都是 `_render_step(dt, _hitstop > 0)`, 顿帧时整段冻结
+			##   (形变 / 闪白定格在冲击姿势); 快进这里原来不看顿帧照样衰减 ⇒ 跳进顿帧里那一刻, 受击闪白少一截、踏步已收回(种子 2000035 第 6638 步)
+			if float(battle._hitstop) <= 0.0:
+				battle._vfx._juice_decay(F.CONT_EVERY * SIM_DT)
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -89,11 +89,9 @@ func _update_team_panels() -> void:
 			##   满血的龟画出来只有 80/90 = **88.9%**, 右端永远空 10px。
 			##   ⇒ 分母必须是槽【当前的真实宽度】; 常量只当兜底(建框那一帧槽还没排版)。
 			##   ★装备格数一变框就变宽(3 格 152 / 4 格 200), 所以这个数不能写死。
-			var slot_w: float = battle._PANEL_HP_W
-			var slot = fill.get_parent()
-			if slot is Control and (slot as Control).size.x > 1.0:
-				slot_w = (slot as Control).size.x
-			fill.size.x = slot_w * ratio
+			## ★11-05 改写锚点比例(battle_hud 建框处): 宽度由排版跟着槽宽走, 槽在同一帧里变宽也不会画短(Issue #7)
+			fill.anchor_right = ratio
+			fill.offset_right = 0.0
 			# 血色随比例 (绿→黄→红)
 			if ratio > 0.5:
 				fill.color = Color("#4ade80")

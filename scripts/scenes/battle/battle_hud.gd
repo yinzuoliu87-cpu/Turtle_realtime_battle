@@ -1792,6 +1792,11 @@ func _make_team_frame(u: Dictionary) -> Control:
 	hp_fill.size = Vector2(battle._PANEL_HP_W, 5)
 	hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hp_bg.add_child(hp_fill)
+	## ★11-05 改成锚点: 左锚 0、右锚 = 血量比例(info_panel 每帧写 anchor_right), 上下贴满槽。
+	##   原来每帧按「槽当前宽」算像素宽 —— 同一帧里装备格从 3 格变 4 格、框变宽(槽 90 → 138)时, 这一帧的血条
+	##   按旧宽算, 只画到 90/138 = 65%(直播 Issue #7: 播放端装备字段晚到一步就撞上)。锚点由排版自己跟着槽宽走。
+	hp_fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hp_fill.offset_left = 0.0; hp_fill.offset_top = 0.0; hp_fill.offset_right = 0.0; hp_fill.offset_bottom = 0.0
 	# 头像下方: 至多4个装备格 (图标 + 充能类装备的充能进度条). 常建空行+存引用 → 招财进宝运行时抽装备可刷新(battle._refresh_panel_equips)
 	var eq_row = HBoxContainer.new()
 	eq_row.add_theme_constant_override("separation", 4)
