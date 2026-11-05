@@ -159,6 +159,11 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 	u["hp"] = float(u["hp"]) + steal                            # 龟壳maxHp+当前同步增
 	battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d" % int(steal), Color("#7fe3a0"))
 	var tp: Vector2 = tgt["pos"]                                # 2026-07-17: 4颗红色生命珠鱼贯从目标流向龟壳(删"吸收"技能名飘字=UI规矩)
+	## ★11-05 审核片: 只有 4 颗小红点和一个 +N, 看不出「从目标身上夺走了生命」⇒ 目标 → 龟壳一道暗红吸取光束,
+	##   目标身上一撮暗红火星(被夺走) + 龟壳身上一撮绿色火星(拿到了)
+	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", tp, u["pos"], 34.0, Color(0.85, 0.12, 0.22, 0.85), 0.35)
+	BuffVfx.burst(battle, tp, Color(0.85, 0.15, 0.25), 6)
+	BuffVfx.activate(battle, u, Color(0.5, 1.0, 0.6), 0.0, 0.0)
 	var uref: Dictionary = u
 	for i in range(4):
 		battle._pending_shots.append({"delay": 0.08 * float(i), "fn": func(): battle._headless_sys._headless_drain_dot(tp, uref), "src": u})
