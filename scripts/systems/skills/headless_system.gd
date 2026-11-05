@@ -574,11 +574,11 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	bt.chain().tween_callback(burst.queue_free)
 	battle._shake(0.1)
 	battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
-	var crack = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), center, 60.0, Color(0.6, 0.2, 0.75, 0.8), 0.06)
+	var crack = battle._px_ground_sprite(VfxTex.pixel_ring_for(500.0), center, 60.0, Color(0.6, 0.2, 0.75, 0.8), 0.06)
 	var ct = battle._reg_tween()
 	ct.bind_node(crack)
 	ct.tween_method(func(q: float) -> void:
-		if is_instance_valid(crack): crack.pixel_size = (maxf(60.0, 500.0 * q) * battle.WS) / 48.0
+		if is_instance_valid(crack): crack.pixel_size = (maxf(60.0, 500.0 * q) * battle.WS) / float(crack.texture.get_height())
 	, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	ct.tween_property(crack, "modulate:a", 0.0, 0.3)
 	ct.tween_callback(crack.queue_free)

@@ -736,6 +736,32 @@ static func _make_pixel_ring_tex() -> ImageTexture:   # 硬边像素圆环(48px�
 	_pixel_ring_cache = ImageTexture.create_from_image(img)
 	return tag(_pixel_ring_cache, "_make_pixel_ring_tex", [])
 
+## ★11-05 硬边像素圆环的高分辨率档: 48 像素那张放到 520 码(星波)一格 ≈ 11 码, 一格一格的台阶(审核片)。
+##   同一比例(环带 18.5~23.0 / 半格 23.5)按 N 重算, 仍是硬边无渐变; 调用方按「最终画多大」挑 N(pixel_ring_for)。
+static var _pixel_ring_hi: Dictionary = {}
+static func _make_pixel_ring_tex_n(N: int) -> ImageTexture:
+	if N <= 48:
+		return _make_pixel_ring_tex()
+	if _pixel_ring_hi.has(N):
+		return tag(_pixel_ring_hi[N], "_make_pixel_ring_tex_n", [N])
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	var c := float(N - 1) / 2.0
+	var k := float(N) / 48.0
+	for y in range(N):
+		for x in range(N):
+			var d := Vector2(float(x) - c, float(y) - c).length() / k
+			img.set_pixel(x, y, Color(1, 1, 1, 1.0 if (d >= 18.5 and d <= 23.0) else 0.0))
+	_pixel_ring_hi[N] = ImageTexture.create_from_image(img)
+	return tag(_pixel_ring_hi[N], "_make_pixel_ring_tex_n", [N])
+
+## 画到 max_size_yd 码(直径)时用哪一档: 一格 ≤ 约 4 码(48 档在 200 码以内够用)
+static func pixel_ring_for(max_size_yd: float) -> ImageTexture:
+	if max_size_yd <= 200.0:
+		return _make_pixel_ring_tex()
+	if max_size_yd <= 400.0:
+		return _make_pixel_ring_tex_n(96)
+	return _make_pixel_ring_tex_n(192)
+
 static var _pixel_block_cache: ImageTexture = null
 static func _make_pixel_block_tex() -> ImageTexture:   # 6px实心像素块(尘土/碎屑用·白色modulate上色)
 	if _pixel_block_cache != null:

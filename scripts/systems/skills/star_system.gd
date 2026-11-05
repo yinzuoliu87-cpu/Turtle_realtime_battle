@@ -85,7 +85,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	if charged:
 		u["star_lock_until"] = float(u["energy_lock_until"])     # 用户2026-07-16: 普通版施法可积攒星能; 强化版才锁星能不积攒
 	var glow := VfxTex._make_fire_glow_tex()
-	var rtex := VfxTex._make_pixel_ring_tex()
+	var rtex := VfxTex.pixel_ring_for(800.0)   # 11-05: 最大画到 800 码(紫双环预警), 用高分辨率档
 	var stex := VfxTex._make_star_texture()
 	var wtex := VfxTex._make_ring_texture(Color(1, 1, 1, 1))
 	# ── 预告(0.21s): 奇点从地里升起由小长大 + 白紫细范围环从中心扩到500码(h≥0.06防掉地下)
@@ -351,7 +351,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		gt.tween_property(gs, "modulate:a", 0.0, 0.12).set_delay(0.28)
 		gt.chain().tween_callback(gs.queue_free)
 	# ── 波环扩散(0.4s起·1.16s推到520码): 双层贴地环+环带12星随波转·波前扫到才结算·尽头碎星屑
-	var rtex := VfxTex._make_pixel_ring_tex()
+	var rtex := VfxTex.pixel_ring_for(1096.0)   # 11-05: 波前推到 520 码(直径 1040 + 晕带 56), 48 像素那张一格 ≈ 23 码
 	var wave := func() -> void:
 		if not uu2.get("alive", false): return
 		var rc = battle._px_ground_sprite(rtex, origin, 20.0, Color(0.95, 0.9, 1.0, 0.95), 0.06)    # 锐利白紫波前

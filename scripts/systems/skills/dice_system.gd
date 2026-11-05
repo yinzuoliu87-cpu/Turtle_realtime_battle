@@ -130,7 +130,7 @@ func _dash_streak_update(u: Dictionary) -> void:
 	var a: Vector2 = _dash_fx[i]["from"]
 	var b: Vector2 = u["pos"]
 	var d: Vector2 = b - a
-	var L: float = d.length()
+	var L: float = DetMath.vlen(d)
 	if L > DASH_STREAK_TAIL:
 		a = b - d / L * DASH_STREAK_TAIL
 		d = b - a
@@ -138,7 +138,7 @@ func _dash_streak_update(u: Dictionary) -> void:
 	if L < 8.0: return
 	sp.visible = true
 	sp.position = battle._world_pos((a + b) * 0.5, 0.35)
-	sp.rotation = Vector3(0.0, -atan2(d.y, d.x), 0.0)
+	sp.rotation = Vector3(0.0, -DetMath.datan2(d.y, d.x), 0.0)
 	sp.scale = Vector3((L + 40.0) / 100.0, 1.0, DASH_STREAK_THICK / 16.0)
 
 func _dash_streak_end(u: Dictionary) -> void:
@@ -219,7 +219,7 @@ func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: float, rng: float, half: float) -> void:
 	if not is_instance_valid(blade): return
 	var a: float = base_ang - half + 2.0 * half * SmearVfx.ease_out(fr)   # 先快后慢: 从 -60° 扫到 +60°
-	var bd = Vector2(cos(a), sin(a))
+	var bd = Vector2(DetMath.dcos(a), DetMath.dsin(a))
 	blade.rotation = Vector3(0.0, -a - PI * 0.5, 0.0)     # 刀刃切向沿扫掠方向(镰刀立绘上=刀朝上→旋转对齐弧线)
 	blade.position = battle._world_pos(origin + bd * (rng * 0.5), 0.16)
 
@@ -233,7 +233,7 @@ func _dice_cut_mark(o: Dictionary, tangent: float) -> void:
 	s.texture = _cut_tex
 	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	s.shaded = false; s.transparent = true
-	s.flip_h = cos(tangent) < 0.0                        # 斩弧方向跟刀走
+	s.flip_h = DetMath.dcos(tangent) < 0.0                        # 斩弧方向跟刀走
 	s.no_depth_test = true; s.render_priority = 20       # 画在单位身上(不被龟立绘挡住)
 	s.pixel_size = (120.0 * battle.WS) / 64.0
 	s.position = battle._world_pos(o["pos"], 0.45)

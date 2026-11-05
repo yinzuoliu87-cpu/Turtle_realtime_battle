@@ -546,7 +546,7 @@ func _lava_beam_vfx(origin: Vector2, dir: Vector2) -> void:
 		_beam_tex = VfxTex._make_laser_beam_tex(Color(1.0, 0.36, 0.06))
 		_beam_core_tex = VfxTex._make_laser_beam_tex(Color(1.0, 0.85, 0.45))
 	var mid: Vector2 = origin + dir * (L * 0.5)
-	var ang: float = -atan2(dir.y, dir.x)
+	var ang: float = -DetMath.datan2(dir.y, dir.x)
 	for layer in [[_beam_tex, PIERCE_HALF_W * 2.6, 0.95, 0.27], [_beam_core_tex, PIERCE_HALF_W * 1.0, 1.0, 0.20]]:
 		var sp := Sprite3D.new()
 		sp.texture = layer[0]
@@ -566,8 +566,8 @@ func _lava_beam_vfx(origin: Vector2, dir: Vector2) -> void:
 		tw.tween_callback(sp.queue_free)
 
 func _lava_slam_telegraph(pos2d: Vector2, radius: float, dur: float) -> void:   # 落点预警(像素化·用户2026-07-15): 外硬边像素环+内环倒计时收缩到圆心+中心裂纹微光
-	var outer = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), pos2d, radius * 2.0, Color(1.0, 0.32, 0.1, 0.0), 0.045)
-	var inner = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), pos2d, radius * 2.0, Color(1.0, 0.62, 0.2, 0.0), 0.05)
+	var outer = battle._px_ground_sprite(VfxTex.pixel_ring_for(radius * 2.0), pos2d, radius * 2.0, Color(1.0, 0.32, 0.1, 0.0), 0.045)
+	var inner = battle._px_ground_sprite(VfxTex.pixel_ring_for(radius * 2.0), pos2d, radius * 2.0, Color(1.0, 0.62, 0.2, 0.0), 0.05)
 	var crack = battle._px_ground_sprite(load("res://assets/sprites/vfx/lava-crack.png"), pos2d, radius * 1.1, Color(1, 1, 1, 0.0), 0.035)   # 中心裂纹预示(淡)
 	var td = battle._reg_tween()
 	td.set_parallel(true)
@@ -676,7 +676,7 @@ func _lava_burst_vfx(pos2d: Vector2) -> void:
 func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击飞范围内全部敌 + 入场爆发AOE
 	battle._shake(battle.JUICE_SHAKE_BIG); battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
 	for ri in range(2):                               # 像素冲击环×2错峰扩散(硬边·替换软_skill_ring·2026-07-15像素化)
-		var pring = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), center, battle.LAVA_SLAM_RADIUS * 2.0, Color(1.0, 0.5 + 0.25 * float(ri), 0.15, 0.0), 0.05 + 0.01 * float(ri))
+		var pring = battle._px_ground_sprite(VfxTex.pixel_ring_for(battle.LAVA_SLAM_RADIUS * 2.0), center, battle.LAVA_SLAM_RADIUS * 2.0, Color(1.0, 0.5 + 0.25 * float(ri), 0.15, 0.0), 0.05 + 0.01 * float(ri))
 		pring.scale = Vector3(0.25, 1.0, 0.25)
 		var rt = battle._reg_tween()
 		rt.tween_interval(0.09 * float(ri))

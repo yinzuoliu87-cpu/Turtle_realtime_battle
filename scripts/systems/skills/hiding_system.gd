@@ -449,11 +449,11 @@ func _hiding_summon_vfx(pos: Vector2) -> void:                 # 喊龟·召唤�
 	rt.tween_interval(0.45)
 	rt.tween_property(ring, "modulate:a", 0.0, 0.3)
 	rt.tween_callback(ring.queue_free)
-	var inner = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), pos, 260.0, Color(0.85, 0.7, 0.4, 0.7), 0.06)   # 内环倒收(聚拢感)
+	var inner = battle._px_ground_sprite(VfxTex.pixel_ring_for(260.0), pos, 260.0, Color(0.85, 0.7, 0.4, 0.7), 0.06)   # 内环倒收(聚拢感)
 	var it = battle._reg_tween()
 	it.bind_node(inner)
 	it.tween_method(func(q: float) -> void:
-		if is_instance_valid(inner): inner.pixel_size = (maxf(50.0, 260.0 * (1.0 - q)) * battle.WS) / 48.0
+		if is_instance_valid(inner): inner.pixel_size = (maxf(50.0, 260.0 * (1.0 - q)) * battle.WS) / float(inner.texture.get_height())
 	, 0.0, 1.0, 0.45)
 	it.tween_property(inner, "modulate:a", 0.0, 0.2)
 	it.tween_callback(inner.queue_free)
