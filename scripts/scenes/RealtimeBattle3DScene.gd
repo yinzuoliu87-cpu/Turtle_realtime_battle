@@ -2209,7 +2209,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_hitstop = maxf(0.0, _hitstop - dt)
 	elif in_ts:
 		# ═══ 沙漏JoJo时停: 冻结全局_t → 全场非active的所有_t计时器暂停; 只tick active携带者 ═══
-		_timestop._ts_remaining -= dt
+		_timestop.consume(dt)   # 扣剩余时间 + 同一步写图标框充能条(见 TimestopSystem.consume)
 		_timestop._ts_active = _timestop._ts_active.filter(func(x): return x is Dictionary and x.get("alive", false))
 		if _timestop._ts_remaining <= 0.0 or _timestop._ts_active.is_empty():
 			_timestop._end_timestop()

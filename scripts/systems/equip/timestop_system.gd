@@ -398,6 +398,15 @@ func ts_screen_end() -> void:
 ##   「充能条和层数不要放头顶, 在装备图标框里」; 044/045 的持续回复也是这么做的。
 ##   钟面不动是**刻意的**: 钟是像素贴图, 转指针 = 非整数角旋转 = 像素网格当场碎。
 ## ★分母只能是常量 ⇒ 存 0~100 的归一化镜像, 不存【剩几秒】(时长随星级 4/7/20 变)。
+## sim 步里扣时停剩余时间, 同一步写图标框充能条的镜像(ts_pct)。
+## ★2026-11-05 直播 HUD 对照抓到(verify_stream_hud_parity, 真实快照局种子 2000132 步 8220~8340): 剩余时间在 sim 步里扣,
+##   镜像原来只在渲染帧(_ts_tick_visual)里写 ⇒ 录流器采到的是上一次渲染时的值, 播放端那根条比本机多剩 0.84%(差 2~4 步)。
+##   改成与扣时间同一步写, 不随渲染节奏; 渲染帧里那一次照旧写(无害, 值相同)。
+func consume(dt: float) -> void:
+	_ts_remaining -= dt
+	_ts_bar_mirror()
+
+
 func _ts_bar_mirror() -> void:
 	for c in _ts_active:
 		if not (c is Dictionary):
