@@ -40,13 +40,16 @@ FF = os.environ.get("FFMPEG", r"D:/oopz/ffmpeg.exe")
 CAND = os.path.join(SRC, "eleven", "v2")
 CAND_R2 = os.path.join(SRC, "eleven", "v2r2")   # 第二轮候选(定选里文件名前缀 r2__)
 CAND_R3 = os.path.join(SRC, "eleven", "v2r3")   # 第三轮候选(前缀 r3__)
+CAND_PS = os.path.join(SRC, "eleven", "v2ps")   # 被动候选(文件名 ps_* 本身唯一)
+CAND_DT = os.path.join(SRC, "eleven", "v2dt")   # 阵亡候选(g_death_enemy / g_death_ally)
+CAND_R4 = os.path.join(SRC, "eleven", "v2r4")   # 第四轮候选(前缀 r4__)
 PICKS = os.path.join(ROOT, ".out", "sfx_v2", "picks.json")
 OUT_DIR = os.path.join(ROOT, "assets", "audio", "sfx", "v2")
 EVENTS_GD = os.path.join(ROOT, "scripts", "gamedata", "sfx_events.gd")
 SR = 44100
-TARGET_RMS = {"ba_cast": -20.0, "ba_hit": -16.0, "crit": -15.0, "sk_cast": -13.0, "sk_hit": -15.0, "equip": -15.0}
+TARGET_RMS = {"ba_cast": -20.0, "ba_hit": -16.0, "crit": -15.0, "sk_cast": -13.0, "sk_hit": -15.0, "equip": -15.0, "passive": -15.0, "death": -16.0}
 TARGET_KEY = {"g_hit": -16.0, "g_crit": -15.0, "g_skill_hit": -16.0, "g_shield_gain": -17.0, "g_shield_break": -16.0,
-	"g_heal": -18.0, "g_death": -14.0, "g_rebirth": -13.0, "g_dodge": -20.0, "fight_start": -12.0, "victory": -14.0,
+	"g_heal": -18.0, "g_death": -14.0, "g_death_enemy": -15.0, "g_death_ally": -14.0, "g_rebirth": -13.0, "g_dodge": -20.0, "fight_start": -12.0, "victory": -14.0,
 	"defeat": -15.0, "ui_click": -20.0, "ui_confirm": -19.0, "ui_back": -21.0, "reward_normal": -16.0, "reward_rare": -14.0,
 	"level_up": -15.0, "coin_buy": -17.0, "match_found": -15.0, "studio_intro": -16.0}
 STEREO = {"fight_start", "victory", "defeat", "reward_normal", "reward_rare", "level_up", "match_found", "studio_intro"}
@@ -325,7 +328,7 @@ def main() -> int:
 	picks = json.load(open(PICKS, encoding="utf-8"))
 	man = json.load(open(os.path.join(CAND, "manifest.json"), encoding="utf-8"))
 	mans = {}
-	for bn, d in (("v2", CAND), ("v2r2", CAND_R2), ("v2r3", CAND_R3)):
+	for bn, d in (("v2", CAND), ("v2r2", CAND_R2), ("v2r3", CAND_R3), ("v2ps", CAND_PS), ("v2dt", CAND_DT), ("v2r4", CAND_R4)):
 		mp = os.path.join(d, "manifest.json")
 		mans[bn] = (d, json.load(open(mp, encoding="utf-8")) if os.path.exists(mp) else {})
 	os.makedirs(OUT_DIR, exist_ok=True)
@@ -342,8 +345,8 @@ def main() -> int:
 		target = TARGET_KEY.get(key, TARGET_RMS.get(p["cat"], -15.0))
 		ch = 2 if key in STEREO else 1
 		for k, wavname in enumerate(p["sel"], start=1):
-			bn = "v2r2" if wavname.startswith("r2__") else ("v2r3" if wavname.startswith("r3__") else "v2")
-			mp3name = (wavname[4:] if bn != "v2" else wavname)[:-4] + ".mp3"
+			bn = {"r2__": "v2r2", "r3__": "v2r3", "r4__": "v2r4"}.get(wavname[:4]) or ("v2ps" if wavname.startswith("ps_") else ("v2dt" if wavname.startswith(("g_death_enemy", "g_death_ally")) else "v2"))
+			mp3name = (wavname[4:] if bn in ("v2r2", "v2r3", "v2r4") else wavname)[:-4] + ".mp3"
 			out = "%s__%d.wav" % (key, k)
 			swrec = {}
 			y = process(decode(os.path.join(mans[bn][0], mp3name), ch), target, p["cat"], key, swrec)

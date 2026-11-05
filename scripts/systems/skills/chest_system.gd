@@ -28,6 +28,7 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 		return
 	if _per_unit(u):
 		u["chest_opened"] = opened + 1
+	battle._audio_sys.sfx_passive(u, "chest")   # 被动音效(11-05; 只管声音)
 	var group: String = ["basic", "basic", "adv", "adv", "legend"][opened]   # 第1-2箱基础/3-4进阶/5传说
 	var heal_pct: float = CHEST_HEAL_PCT[opened]
 	var tid: String = _chest_pick_treasure(u, group)

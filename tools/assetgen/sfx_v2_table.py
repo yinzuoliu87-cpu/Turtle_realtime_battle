@@ -428,8 +428,91 @@ def build() -> dict:
 	for key, zh, dur, n, ref, text in G:
 		items.append({"key": key, "zh": zh, "cat": "global", "dur": dur, "n": n, "ref": ref, "text": text + "."})
 	return {"_doc": "音效 v2 描述表(tools/assetgen/sfx_v2_table.py 生成, 勿手改)。2026-11-05 全部重做, 对标云顶 / LoL。v2r2 = 第二轮(见 round2 头注)。",
-		"style": STYLE, "styles": {"v2r2": STYLE_R2, "v2r3": STYLE_R3, "v2sw": STYLE_SW},
-		"batches": {"v2": items, "v2r2": round2(items), "v2r3": round3(items), "v2sw": sweeteners()}}
+		"style": STYLE, "styles": {"v2r2": STYLE_R2, "v2r3": STYLE_R3, "v2sw": STYLE_SW, "v2ps": STYLE_R2, "v2dt": STYLE_R2, "v2r4": STYLE_R4},
+		"batches": {"v2": with_refs(items), "v2r2": round2(items), "v2r3": round3(items), "v2sw": sweeteners(), "v2ps": passives(), "v2dt": deaths(), "v2r4": round4(items)}}
+
+
+## ── 阵亡(v2dt): 11-05 用户「角色死亡的时候有什么声音？你怎么参考的？」—— 原来只有一条 g_death(我编的描述, 没对照过云顶) ─────
+## 云顶实拆(.out/riot_audio/map22): 单位阵亡 = 提示声分敌我(alert_death_unit 敌方 4 变体 1.45 秒 / alert_death_unit_self 自己 3 变体 1.7~1.9 秒、更低沉)
+##   + 英雄自己的 Death3D(58 个英雄几乎都有, 按材质)。⇒ g_death_enemy / g_death_ally + 每只龟一条 die_<龟>。
+## ref_rx = 这一条拿哪些 Riot 原声文件当尺子(正则, 对文件名小写); 没有的退回按类别。
+DEATH_ALERT = [
+	("g_death_enemy", "敌方单位阵亡(提示)", 1.4, r"alert_death_unit__", "an enemy unit knocked out in an auto battler, a satisfying punchy knockout impact with a short bright rewarding shimmer"),
+	("g_death_ally", "我方单位阵亡(提示)", 1.8, r"alert_death_unit_self", "your own unit falls in an auto battler, a heavier lower somber collapse with a dark descending whoosh and a fading tail"),
+]
+
+
+def deaths() -> list:
+	## ★每只龟一条 die_<龟> 撤掉(11-05 用户「每只龟有自己一条的倒地声，真的假的？你这怎么参考到的？」): 实查 Riot 的 Death3D 是配英雄
+	##   死亡动画的整段音轨(中位 3.7 秒, 58 个英雄里 42 个有), 而我们 28 只龟只有 3 只有死亡动画、其余 0.4 秒淡出 —— 没有可配的东西;
+	##   我写的 28 条描述是按材质编的, 参考英雄多半没有 Death3D, 尺子退回平均 ⇒ 不算参考过。阵亡只留云顶有原样的敌我提示声。
+	return [{"key": k, "zh": zh, "cat": "global", "dur": d, "n": 4, "ref": "TFT " + rx, "ref_rx": rx, "text": t + "."} for k, zh, d, rx, t in DEATH_ALERT]
+
+
+## 全局事件逐条的 Riot 尺子(云顶公共包里找得到对应的那一种); 找不到的(开战 / 胜负 / 匹配成功 / 开场 / 闪避)退回按类别
+GLOBAL_REF = {
+	"g_crit": r"critattack[0-9]?_(onhit|hit)__",
+	"g_hit": r"basicattack[0-9]?_(onhit|hit)__",
+	"g_shield_gain": r"shield.*(buffactivate|cast)__",
+	"g_shield_break": r"shield.*(break|deactivate|ondeactivate)__",
+	"g_heal": r"heal.*(hit|cast|buffactivate|healing)__",
+	"g_rebirth": r"(revive|rebirth)",
+	"ui_click": r"hud_base_tft.*(click|button)",
+	"ui_confirm": r"hud_base_tft.*(click|button)",
+	"ui_back": r"hud_base_tft.*(close|back|return)",
+	"reward_normal": r"(orb|loot).*(open|land|spawn)",
+	"reward_rare": r"(orb|loot).*(open|land|spawn)",
+	"level_up": r"levelup_unit_star",
+	"coin_buy": r"tft.*gold",
+}
+
+
+def with_refs(items: list) -> list:
+	out = []
+	for it in items:
+		r = dict(it)
+		if r["key"] in GLOBAL_REF:
+			r["ref_rx"] = GLOBAL_REF[r["key"]]
+		out.append(r)
+	return out
+
+
+## ── 被动(v2ps): 11-05 用户「忍者龟除了普攻技能以外，还有个什么呢？还有个被动啊！我是不是全漏了？」—— 是, 全漏了 ──────
+## 有「触发那一刻」的被动各一条 ps_<龟>[_第二个时刻]; 每一下攻击都附带的(天使审判 / 线条墨迹 / 星际星能 / 赌神多重打击)并在命中声里,
+## 纯属性(骰子赌徒之血)没有那一刻 —— 同装备的规矩(云顶的攻击附带类与纯属性也不单独出声)。参考列 = 对应的 LoL 被动 / 技能。
+PS = [
+	("ps_basic", "小龟·不屈(龟盾强化一击)", 1.3, "LeeSin W", "a martial artist's empowered strike that raises a golden energy barrier, punchy impact with a bright protective shimmer"),
+	("ps_stone", "石头龟·坚壁(护甲增长)", 1.0, "Malphite passive", "a granite shield hardening, short heavy rock plates clicking into place with a solid stone thud"),
+	("ps_bamboo", "竹叶龟·生长(蓄力一击)", 1.2, "Ivern/Maokai passive", "an empowered nature strike, bamboo wood crack with a burst of rustling leaves and a soft green healing shimmer"),
+	("ps_ice", "寒冰龟·寒域(登场寒潮)", 1.8, "Lissandra/Anivia", "a freezing aura spreading across the battlefield, rushing icy wind with crackling frost and a deep cold boom"),
+	("ps_ninja", "忍者龟·忍术(冲刺斩击)", 0.9, "Yasuo E/Akali", "a ninja dash slash, very fast rushing whoosh ending in a sharp katana cut"),
+	("ps_two_head", "变脸龟·双生(切换形态)", 1.4, "Jayce R", "a hextech weapon transforming, mechanical shifting clanks and a rising energy hum locking into a new form"),
+	("ps_ghost", "幽灵龟·怨灵(登场诅咒)", 1.8, "Karthus/Mordekaiser", "a haunting curse falling on all enemies, ghostly wail with dark whispers and a deep spectral boom"),
+	("ps_ghost_death", "幽灵龟·怨灵(阵亡诅咒)", 1.4, "Karthus passive", "a dying ghost's last curse, fading spectral wail with a dark pulse"),
+	("ps_diamond", "钻石龟·钻石结构(登场全队加抗)", 1.6, "Taric W", "a diamond barrier empowering the whole team, resonant crystal chime swelling with a solid gem shield ring"),
+	("ps_fortune", "财神龟·聚宝盆(得金币)", 0.8, "TFT gold", "a few gold coins dropping into a pouch, bright satisfying coin clinks"),
+	("ps_rainbow", "彩虹龟·棱镜(换色)", 0.9, "Lux/Seraphine", "a prism switching color, quick bright glassy shimmer chime"),
+	("ps_hunter", "猎人龟·猎杀(处决箭)", 1.4, "Pyke R/Varus", "an execution arrow drawn and released, heavy bowstring snap with a deadly whistling shot and a finishing thud"),
+	("ps_pirate", "海盗龟·掠夺(登场轰击)", 1.6, "Gangplank R", "a single heavy ship cannon shot from afar, deep boom with a whistling cannonball and explosion"),
+	("ps_pirate_hook", "海盗龟·掠夺(阵亡钩索)", 1.3, "Thresh Q/Pyke Q", "a chained hook thrown and yanking a target in, rattling chain whip with a heavy pull"),
+	("ps_candy", "糖果龟·甜蜜掠夺(吸取)", 1.6, "Vladimir/Fiddlesticks", "a sugary life drain, sweet sucking whoosh with a pulsing candy shimmer and a heartbeat"),
+	("ps_bubble", "泡泡龟·泡沫(释放)", 1.1, "Nami", "stored foam released in a burst, wet bubbly blast with a liquid splash and a soft healing shimmer"),
+	("ps_lightning", "闪电龟·雷电(自动电击)", 0.7, "Kennen passive", "a quick automatic electric zap, sharp crackling shock"),
+	("ps_lightning_burst", "闪电龟·雷电(满层引爆)", 1.3, "Kennen passive stun", "electric charges detonating, a loud lightning strike crack with a buzzing stun"),
+	("ps_phoenix", "凤凰龟·涅槃(复活)", 2.2, "Anivia passive", "a phoenix reborn, a huge burst of rising flames with a mighty fiery roar and a bright chime"),
+	("ps_lava", "熔岩龟·熔岩之心(变身火山)", 2.2, "Malphite R/Shyvana R", "a volcanic transformation, deep rumbling magma eruption and a roaring molten surge"),
+	("ps_cyber", "赛博龟·浮游炮(生成)", 1.0, "Heimerdinger Q", "a combat drone deploying, mechanical whir and a digital lock-on beep"),
+	("ps_cyber_shot", "赛博龟·浮游炮(开炮)", 0.6, "Heimerdinger turret", "a small drone laser shot, crisp electronic pew"),
+	("ps_crystal", "水晶龟·水晶共鸣(结晶引爆)", 1.1, "Skarner passive", "crystal shards detonating on a target, loud resonant crystal shatter"),
+	("ps_chest", "宝箱龟·藏宝图(开箱)", 1.6, "TFT loot orb open", "a treasure chest bursting open, creaking lid with a magical reveal sparkle and coins"),
+	("ps_hiding", "缩头乌龟·喊龟(召唤随从)", 1.4, "Yorick/Annie Tibbers", "a summon call, a magical portal pop with a quick creature arrival"),
+	("ps_headless", "无头龟·亡灵(免死)", 1.6, "Tryndamere R", "an undying rage, a monstrous roar with a dark ghostly surge refusing death"),
+	("ps_shell", "龟壳·气场觉醒", 1.6, "Ornn/Galio", "an ancient aura awakening, deep resonant hum swelling into a powerful shell glow burst"),
+]
+
+
+def passives() -> list:
+	return [{"key": k, "zh": zh, "cat": "passive", "dur": dur, "n": 3, "ref": ref, "text": "passive effect: %s. Distinct, punchy, short natural tail." % t} for k, zh, dur, ref, t in PS]
 
 
 ## ── 低频垫底层(v2sw): 不是事件, 是给「技能放出」垫分量用的素材 ──────────────────────────────────────
@@ -460,11 +543,42 @@ R3 = {
 	"eq_038": "item effect: an electromagnetic pulse burst, crackling electric discharge with a sharp zap and buzzing static sweep. Realistic, crisp, detailed.",
 	"eq_080": "item effect: a helicopter rotor whirring overhead and a quick series of bomb explosions with debris. Realistic, crisp, detailed.",
 	"eq_082": "item effect: a metal armor plate thump with a soft glowing heartbeat pulse and a bright healing chime. Crisp, bright, detailed.",
+	## 被动批(v2ps)三个候选全否的 3 条(11-05)
+	"ps_rainbow": "passive effect: a prism switching color, a quick crystal glass ting with a soft magical sparkle swish. Realistic, crisp, detailed, not a synth beep.",
+	"ps_pirate": "passive effect: a pirate ship cannon firing from afar, sharp cannon crack, whistling cannonball and a crisp explosion with splintering wood. Crisp and detailed, not a low rumble.",
+	"ps_lava": "passive effect: a volcanic transformation, cracking rock and hissing lava with a roaring fiery burst and crackling embers. Crisp and detailed, not a low rumble.",
 }
 
 
+## ── 第四轮(v2r4): 逐条尺子下和自己那条云顶原声太不像的 7 条(0.23~0.42), 按 CLAP 反听原声的前几个词重写 ──────────
+## (tools/sfx_describe_ref.py: 敌方阵亡 = 击倒重拳 / 有力冲击 / 电击; 我方阵亡 = 电击 / 掉电 / 格挡; 治疗 = 复活 / 治疗法术 / 下行魔法音 / 魔法尘;
+##  复活 = 复活法术 / 治疗 / 电光 / 上扬; 升级 = 复活 / 治疗 / 镲 / 鼓; 返回 = 界面点击; 得盾 = 复活 / 治疗 / 电光 / 反向呼啸)
+STYLE_R4 = "High-fidelity League of Legends and Teamfight Tactics game sound effect, polished magical, crisp, no music, no speech"
+R4 = {
+	"g_death_enemy": (1.4, "an enemy unit knocked out: a punchy knockout punch impact with a short electric zap crackle and a quick magical shimmer tail"),
+	"g_death_ally": (1.8, "your unit is defeated: a power down sound with an electric zap, a soft shield-like thud and a fading magical dissipate"),
+	"g_heal": (1.0, "a healing spell: a soft resurrection-like magical swell with a gentle descending sparkle of magical dust"),
+	"g_rebirth": (1.8, "a resurrection spell: a rising radiant magical swell with an electric sparkle and a bright powerful burst"),
+	"level_up": (3.0, "a level up: a tonal magical swell rising for about one second into a bright resonant major chord with a warm low hum beneath, then a smooth ringing tail"),
+	"ui_back": (0.5, "a polished user interface back click, short soft low click"),
+	"g_shield_gain": (1.0, "a magical shield forming: a quick reverse whoosh into a soft resurrection-like shimmer with a light electric sparkle"),
+}
+
+
+def round4(items: list) -> list:
+	by = {it["key"]: it for it in items + deaths()}
+	out = []
+	for k, (d, t) in R4.items():
+		it = dict(by[k])
+		it["text"] = t + "."
+		it["n"] = 4
+		it["dur"] = d
+		out.append(it)
+	return out
+
+
 def round3(items: list) -> list:
-	by = {it["key"]: it for it in items}
+	by = {it["key"]: it for it in items + passives()}
 	out = []
 	for k, t in R3.items():
 		it = dict(by[k])

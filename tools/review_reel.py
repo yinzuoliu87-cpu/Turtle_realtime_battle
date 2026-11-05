@@ -54,16 +54,20 @@ for p in pets:
 			if form == "volcano" and idx < len(names):
 				nm = names[idx]
 			jobs.append({"id": p["id"], "name": p["name"], "idx": idx, "kind": kind, "skill": nm, "form": form})
+		## ★11-05 被动段(用户「还有个被动啊！我是不是全漏了？」): 只打普攻录 30 秒, 剪在这只龟第一声被动音效(ps_<龟>)前 1 秒;
+		##   熔岩龟的被动 = 怒气满变身火山 ⇒ 放在火山形态那一套(开打 2 秒直接变身)里
+		if (form == "" or form == "volcano") and not (p["id"] == "lava" and form == "") and not (ONLY and key not in ONLY and ("%s:4" % key) not in ONLY):
+			jobs.append({"id": p["id"], "name": p["name"], "idx": 4, "kind": prefix + "被动", "skill": (p.get("passive") or {}).get("name", "?"), "form": form})
 
 
 def record(j):
 	raw = os.path.join(OUT, "raw_%s%s_%d.avi" % (j["id"], ("_" + j["form"]) if j["form"] else "", j["idx"]))
 	log = raw + ".log"
-	n = 300 if j["idx"] == 0 else LONG.get("%s:%d" % (j["id"], j["idx"]), 750)
+	n = 300 if j["idx"] == 0 else (900 if j["idx"] == 4 else LONG.get("%s:%d" % (j["id"], j["idx"]), 750))
 	## REEL_REUSE=1: 原片和日志都在就不重录, 只重剪(改了几只龟之后删掉那几只的 raw_*.avi 再跑, 整片按最新代码拼齐)
 	reuse = os.environ.get("REEL_REUSE") == "1" and os.path.exists(raw) and os.path.getsize(raw) > 100000 and os.path.exists(log)
 	u = tempfile.mkdtemp()
-	env = dict(os.environ, REVIEW="1", REVIEW_TURTLE=j["id"], REVIEW_SKILL=str(j["idx"]), TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ",
+	env = dict(os.environ, REVIEW="1", REVIEW_TURTLE=j["id"], REVIEW_SKILL=("0" if j["idx"] == 4 else str(j["idx"])), TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ",
 		APPDATA=u, XDG_DATA_HOME=u)
 	if j["form"]:
 		env["REVIEW_FORM"] = j["form"]
@@ -76,7 +80,13 @@ def record(j):
 				PROBE], env=env, stdout=lf, stderr=subprocess.STDOUT, timeout=600)
 	txt = open(log, encoding="utf-8", errors="replace").read()
 	casts = [int(x) for x in re.findall(r"\[CAST\] frame=(\d+)", txt)]
-	if j["idx"] == 0:
+	if j["idx"] == 4:   # 被动: 第一声 ps_<龟>(或 ps_<龟>_第二个时刻) 前 1 秒
+		pf = [int(f) for f, nm in re.findall(r"\[SFX\] (\d+) (ps_\S+)", txt) if nm == "ps_" + j["id"] or nm.startswith("ps_" + j["id"] + "_")]
+		if pf:
+			t0, note = max(0.0, pf[0] / FPS - 1.0), "被动在第 %.1f 秒触发" % (pf[0] / FPS)
+		else:
+			t0, note = 1.0, "30 秒内没触发(要阵亡 / 敌人低血 / 被控等条件)"
+	elif j["idx"] == 0:
 		t0, note = 1.0, ""
 	elif casts:
 		t0, note = max(0.0, casts[0] / FPS - 1.0), "放技能在第 %.1f 秒" % (casts[0] / FPS)
@@ -116,6 +126,6 @@ open(os.path.join(OUT, "list.txt"), "w", encoding="utf-8").write("".join("file '
 reel = os.path.join(OUT, "审核片_%s.mp4" % TAG)
 subprocess.run([FF, "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy", os.path.basename(reel)], cwd=OUT, check=True)
 open(os.path.join(OUT, "时间表_%s.md" % TAG), "w", encoding="utf-8").write("\n".join(idx_lines) + "\n")
-miss = [d for d in done if d["idx"] > 0 and not d["cast_frames"]]
+miss = [d for d in done if d["idx"] in (1, 2, 3) and not d["cast_frames"]]
 print("完成: %d 段 · 成片 %s · 没放出技能的段 %d: %s · 报错 %d" % (len(done), reel, len(miss), [(m["id"], m["kind"]) for m in miss],
 	sum(1 for d in done if d["err"])))

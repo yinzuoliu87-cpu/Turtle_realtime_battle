@@ -230,7 +230,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	## ★2026-10-11 全项目通读第六条: 亡灵的【首次触发】原来只写在 _apply_damage_from ⇒ 第一下致命伤来自 DoT/真伤
 	##   就直接死(下面的锁血只管已经触发过的)。两条路同一写法(CLAUDE.md §3.3, 门禁 verify_headless_rage_once)。
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
-		u["undead_used"] = true; u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR
+		u["undead_used"] = true; u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR; battle._audio_sys.sfx_passive(u, "headless")
 		battle._vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵", Color("#9b6bff"))
 		battle._headless_sys._headless_undead_vfx(u)
 	if u["hp"] <= 0.0 and battle._t < float(u.get("deathfloor_until", 0.0)):
@@ -486,7 +486,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	_record_buckets(src, u, dmg, _bkt, was_crit)
 	# headless 亡灵: 首次濒死→5秒内HP不降到1以下(免死), 5秒后正常死
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
-		u["undead_used"] = true; u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR
+		u["undead_used"] = true; u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR; battle._audio_sys.sfx_passive(u, "headless")
 		battle._vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵", Color("#9b6bff"))
 		battle._headless_sys._headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
 	if battle._t < float(u.get("deathfloor_until", 0.0)):

@@ -4,7 +4,10 @@
  "styles": {
   "v2r2": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, crisp punchy transient, balanced full frequency range with clear mid and high detail, not muddy, not just a low rumble, no music, no speech",
   "v2r3": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends, professionally layered, crisp, no music, no speech",
-  "v2sw": "High-fidelity cinematic game sound design layer, clean, no music, no speech"
+  "v2sw": "High-fidelity cinematic game sound design layer, clean, no music, no speech",
+  "v2ps": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, crisp punchy transient, balanced full frequency range with clear mid and high detail, not muddy, not just a low rumble, no music, no speech",
+  "v2dt": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, crisp punchy transient, balanced full frequency range with clear mid and high detail, not muddy, not just a low rumble, no music, no speech",
+  "v2r4": "High-fidelity League of Legends and Teamfight Tactics game sound effect, polished magical, crisp, no music, no speech"
  },
  "batches": {
   "v2": [
@@ -2850,7 +2853,8 @@
     "dur": 0.5,
     "n": 4,
     "ref": "TFT minion BasicAttack_OnHit",
-    "text": "a solid weapon impact on a body, punchy mid thump with a short crunchy transient."
+    "text": "a solid weapon impact on a body, punchy mid thump with a short crunchy transient.",
+    "ref_rx": "basicattack[0-9]?_(onhit|hit)__"
    },
    {
     "key": "g_crit",
@@ -2859,7 +2863,8 @@
     "dur": 0.7,
     "n": 3,
     "ref": "LoL CritAttack_OnHit",
-    "text": "a critical strike, heavy crunchy impact with a bright crack and a deep bass punch."
+    "text": "a critical strike, heavy crunchy impact with a bright crack and a deep bass punch.",
+    "ref_rx": "critattack[0-9]?_(onhit|hit)__"
    },
    {
     "key": "g_skill_hit",
@@ -2877,7 +2882,8 @@
     "dur": 1.0,
     "n": 3,
     "ref": "TFT shield",
-    "text": "a protective magical shield forming, quick rising resonant shimmer with a solid hum, bright and clean."
+    "text": "a protective magical shield forming, quick rising resonant shimmer with a solid hum, bright and clean.",
+    "ref_rx": "shield.*(buffactivate|cast)__"
    },
    {
     "key": "g_shield_break",
@@ -2886,7 +2892,8 @@
     "dur": 0.8,
     "n": 3,
     "ref": "TFT shield break",
-    "text": "a magical shield shattering, glassy energy crack with a short dissipating shimmer."
+    "text": "a magical shield shattering, glassy energy crack with a short dissipating shimmer.",
+    "ref_rx": "shield.*(break|deactivate|ondeactivate)__"
    },
    {
     "key": "g_heal",
@@ -2895,7 +2902,8 @@
     "dur": 1.0,
     "n": 3,
     "ref": "TFT heal",
-    "text": "a soft magical heal, warm rising shimmer with a gentle chime."
+    "text": "a soft magical heal, warm rising shimmer with a gentle chime.",
+    "ref_rx": "heal.*(hit|cast|buffactivate|healing)__"
    },
    {
     "key": "g_death",
@@ -2913,7 +2921,8 @@
     "dur": 1.8,
     "n": 2,
     "ref": "Anivia/Zilean revive",
-    "text": "a heroic resurrection, rising radiant swell with a powerful magical burst."
+    "text": "a heroic resurrection, rising radiant swell with a powerful magical burst.",
+    "ref_rx": "(revive|rebirth)"
    },
    {
     "key": "g_dodge",
@@ -2958,7 +2967,8 @@
     "dur": 0.5,
     "n": 3,
     "ref": "LoL client click",
-    "text": "a crisp polished user interface click, short and clean, subtle metallic tick."
+    "text": "a crisp polished user interface click, short and clean, subtle metallic tick.",
+    "ref_rx": "hud_base_tft.*(click|button)"
    },
    {
     "key": "ui_confirm",
@@ -2967,7 +2977,8 @@
     "dur": 0.5,
     "n": 3,
     "ref": "LoL client confirm",
-    "text": "a polished user interface confirm, bright clean magical tick with a short shimmer."
+    "text": "a polished user interface confirm, bright clean magical tick with a short shimmer.",
+    "ref_rx": "hud_base_tft.*(click|button)"
    },
    {
     "key": "ui_back",
@@ -2976,7 +2987,8 @@
     "dur": 0.5,
     "n": 3,
     "ref": "LoL client back",
-    "text": "a polished user interface back click, soft short low tick."
+    "text": "a polished user interface back click, soft short low tick.",
+    "ref_rx": "hud_base_tft.*(close|back|return)"
    },
    {
     "key": "reward_normal",
@@ -2985,7 +2997,8 @@
     "dur": 1.2,
     "n": 3,
     "ref": "TFT orb pickup",
-    "text": "a reward collected, bright magical sparkle with a satisfying chime."
+    "text": "a reward collected, bright magical sparkle with a satisfying chime.",
+    "ref_rx": "(orb|loot).*(open|land|spawn)"
    },
    {
     "key": "reward_rare",
@@ -2994,7 +3007,8 @@
     "dur": 1.8,
     "n": 3,
     "ref": "TFT legendary orb",
-    "text": "a rare legendary reward revealed, magical burst with shimmering bells and a deep swell."
+    "text": "a rare legendary reward revealed, magical burst with shimmering bells and a deep swell.",
+    "ref_rx": "(orb|loot).*(open|land|spawn)"
    },
    {
     "key": "level_up",
@@ -3003,7 +3017,8 @@
     "dur": 1.6,
     "n": 3,
     "ref": "TFT level up",
-    "text": "a level up, rising magical swell ending in a bright resonant chime."
+    "text": "a level up, rising magical swell ending in a bright resonant chime.",
+    "ref_rx": "levelup_unit_star"
    },
    {
     "key": "coin_buy",
@@ -3012,7 +3027,8 @@
     "dur": 0.6,
     "n": 3,
     "ref": "TFT buy",
-    "text": "a satisfying gold purchase, a few gold coins clinking with a crisp clean ring."
+    "text": "a satisfying gold purchase, a few gold coins clinking with a crisp clean ring.",
+    "ref_rx": "tft.*gold"
    },
    {
     "key": "match_found",
@@ -6122,6 +6138,33 @@
     "n": 4,
     "ref": "TFT item proc",
     "text": "item effect: a metal armor plate thump with a soft glowing heartbeat pulse and a bright healing chime. Crisp, bright, detailed."
+   },
+   {
+    "key": "ps_rainbow",
+    "zh": "彩虹龟·棱镜(换色)",
+    "cat": "passive",
+    "dur": 0.9,
+    "n": 4,
+    "ref": "Lux/Seraphine",
+    "text": "passive effect: a prism switching color, a quick crystal glass ting with a soft magical sparkle swish. Realistic, crisp, detailed, not a synth beep."
+   },
+   {
+    "key": "ps_pirate",
+    "zh": "海盗龟·掠夺(登场轰击)",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 4,
+    "ref": "Gangplank R",
+    "text": "passive effect: a pirate ship cannon firing from afar, sharp cannon crack, whistling cannonball and a crisp explosion with splintering wood. Crisp and detailed, not a low rumble."
+   },
+   {
+    "key": "ps_lava",
+    "zh": "熔岩龟·熔岩之心(变身火山)",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 4,
+    "ref": "Malphite R/Shyvana R",
+    "text": "passive effect: a volcanic transformation, cracking rock and hissing lava with a roaring fiery burst and crackling embers. Crisp and detailed, not a low rumble."
    }
   ],
   "v2sw": [
@@ -6178,6 +6221,340 @@
     "n": 4,
     "ref": "-",
     "text": "a deep resonant magical pulse boom."
+   }
+  ],
+  "v2ps": [
+   {
+    "key": "ps_basic",
+    "zh": "小龟·不屈(龟盾强化一击)",
+    "cat": "passive",
+    "dur": 1.3,
+    "n": 3,
+    "ref": "LeeSin W",
+    "text": "passive effect: a martial artist's empowered strike that raises a golden energy barrier, punchy impact with a bright protective shimmer. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_stone",
+    "zh": "石头龟·坚壁(护甲增长)",
+    "cat": "passive",
+    "dur": 1.0,
+    "n": 3,
+    "ref": "Malphite passive",
+    "text": "passive effect: a granite shield hardening, short heavy rock plates clicking into place with a solid stone thud. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_bamboo",
+    "zh": "竹叶龟·生长(蓄力一击)",
+    "cat": "passive",
+    "dur": 1.2,
+    "n": 3,
+    "ref": "Ivern/Maokai passive",
+    "text": "passive effect: an empowered nature strike, bamboo wood crack with a burst of rustling leaves and a soft green healing shimmer. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_ice",
+    "zh": "寒冰龟·寒域(登场寒潮)",
+    "cat": "passive",
+    "dur": 1.8,
+    "n": 3,
+    "ref": "Lissandra/Anivia",
+    "text": "passive effect: a freezing aura spreading across the battlefield, rushing icy wind with crackling frost and a deep cold boom. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_ninja",
+    "zh": "忍者龟·忍术(冲刺斩击)",
+    "cat": "passive",
+    "dur": 0.9,
+    "n": 3,
+    "ref": "Yasuo E/Akali",
+    "text": "passive effect: a ninja dash slash, very fast rushing whoosh ending in a sharp katana cut. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_two_head",
+    "zh": "变脸龟·双生(切换形态)",
+    "cat": "passive",
+    "dur": 1.4,
+    "n": 3,
+    "ref": "Jayce R",
+    "text": "passive effect: a hextech weapon transforming, mechanical shifting clanks and a rising energy hum locking into a new form. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_ghost",
+    "zh": "幽灵龟·怨灵(登场诅咒)",
+    "cat": "passive",
+    "dur": 1.8,
+    "n": 3,
+    "ref": "Karthus/Mordekaiser",
+    "text": "passive effect: a haunting curse falling on all enemies, ghostly wail with dark whispers and a deep spectral boom. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_ghost_death",
+    "zh": "幽灵龟·怨灵(阵亡诅咒)",
+    "cat": "passive",
+    "dur": 1.4,
+    "n": 3,
+    "ref": "Karthus passive",
+    "text": "passive effect: a dying ghost's last curse, fading spectral wail with a dark pulse. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_diamond",
+    "zh": "钻石龟·钻石结构(登场全队加抗)",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 3,
+    "ref": "Taric W",
+    "text": "passive effect: a diamond barrier empowering the whole team, resonant crystal chime swelling with a solid gem shield ring. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_fortune",
+    "zh": "财神龟·聚宝盆(得金币)",
+    "cat": "passive",
+    "dur": 0.8,
+    "n": 3,
+    "ref": "TFT gold",
+    "text": "passive effect: a few gold coins dropping into a pouch, bright satisfying coin clinks. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_rainbow",
+    "zh": "彩虹龟·棱镜(换色)",
+    "cat": "passive",
+    "dur": 0.9,
+    "n": 3,
+    "ref": "Lux/Seraphine",
+    "text": "passive effect: a prism switching color, quick bright glassy shimmer chime. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_hunter",
+    "zh": "猎人龟·猎杀(处决箭)",
+    "cat": "passive",
+    "dur": 1.4,
+    "n": 3,
+    "ref": "Pyke R/Varus",
+    "text": "passive effect: an execution arrow drawn and released, heavy bowstring snap with a deadly whistling shot and a finishing thud. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_pirate",
+    "zh": "海盗龟·掠夺(登场轰击)",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 3,
+    "ref": "Gangplank R",
+    "text": "passive effect: a single heavy ship cannon shot from afar, deep boom with a whistling cannonball and explosion. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_pirate_hook",
+    "zh": "海盗龟·掠夺(阵亡钩索)",
+    "cat": "passive",
+    "dur": 1.3,
+    "n": 3,
+    "ref": "Thresh Q/Pyke Q",
+    "text": "passive effect: a chained hook thrown and yanking a target in, rattling chain whip with a heavy pull. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_candy",
+    "zh": "糖果龟·甜蜜掠夺(吸取)",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 3,
+    "ref": "Vladimir/Fiddlesticks",
+    "text": "passive effect: a sugary life drain, sweet sucking whoosh with a pulsing candy shimmer and a heartbeat. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_bubble",
+    "zh": "泡泡龟·泡沫(释放)",
+    "cat": "passive",
+    "dur": 1.1,
+    "n": 3,
+    "ref": "Nami",
+    "text": "passive effect: stored foam released in a burst, wet bubbly blast with a liquid splash and a soft healing shimmer. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_lightning",
+    "zh": "闪电龟·雷电(自动电击)",
+    "cat": "passive",
+    "dur": 0.7,
+    "n": 3,
+    "ref": "Kennen passive",
+    "text": "passive effect: a quick automatic electric zap, sharp crackling shock. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_lightning_burst",
+    "zh": "闪电龟·雷电(满层引爆)",
+    "cat": "passive",
+    "dur": 1.3,
+    "n": 3,
+    "ref": "Kennen passive stun",
+    "text": "passive effect: electric charges detonating, a loud lightning strike crack with a buzzing stun. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_phoenix",
+    "zh": "凤凰龟·涅槃(复活)",
+    "cat": "passive",
+    "dur": 2.2,
+    "n": 3,
+    "ref": "Anivia passive",
+    "text": "passive effect: a phoenix reborn, a huge burst of rising flames with a mighty fiery roar and a bright chime. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_lava",
+    "zh": "熔岩龟·熔岩之心(变身火山)",
+    "cat": "passive",
+    "dur": 2.2,
+    "n": 3,
+    "ref": "Malphite R/Shyvana R",
+    "text": "passive effect: a volcanic transformation, deep rumbling magma eruption and a roaring molten surge. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_cyber",
+    "zh": "赛博龟·浮游炮(生成)",
+    "cat": "passive",
+    "dur": 1.0,
+    "n": 3,
+    "ref": "Heimerdinger Q",
+    "text": "passive effect: a combat drone deploying, mechanical whir and a digital lock-on beep. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_cyber_shot",
+    "zh": "赛博龟·浮游炮(开炮)",
+    "cat": "passive",
+    "dur": 0.6,
+    "n": 3,
+    "ref": "Heimerdinger turret",
+    "text": "passive effect: a small drone laser shot, crisp electronic pew. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_crystal",
+    "zh": "水晶龟·水晶共鸣(结晶引爆)",
+    "cat": "passive",
+    "dur": 1.1,
+    "n": 3,
+    "ref": "Skarner passive",
+    "text": "passive effect: crystal shards detonating on a target, loud resonant crystal shatter. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_chest",
+    "zh": "宝箱龟·藏宝图(开箱)",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 3,
+    "ref": "TFT loot orb open",
+    "text": "passive effect: a treasure chest bursting open, creaking lid with a magical reveal sparkle and coins. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_hiding",
+    "zh": "缩头乌龟·喊龟(召唤随从)",
+    "cat": "passive",
+    "dur": 1.4,
+    "n": 3,
+    "ref": "Yorick/Annie Tibbers",
+    "text": "passive effect: a summon call, a magical portal pop with a quick creature arrival. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_headless",
+    "zh": "无头龟·亡灵(免死)",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 3,
+    "ref": "Tryndamere R",
+    "text": "passive effect: an undying rage, a monstrous roar with a dark ghostly surge refusing death. Distinct, punchy, short natural tail."
+   },
+   {
+    "key": "ps_shell",
+    "zh": "龟壳·气场觉醒",
+    "cat": "passive",
+    "dur": 1.6,
+    "n": 3,
+    "ref": "Ornn/Galio",
+    "text": "passive effect: an ancient aura awakening, deep resonant hum swelling into a powerful shell glow burst. Distinct, punchy, short natural tail."
+   }
+  ],
+  "v2dt": [
+   {
+    "key": "g_death_enemy",
+    "zh": "敌方单位阵亡(提示)",
+    "cat": "global",
+    "dur": 1.4,
+    "n": 4,
+    "ref": "TFT alert_death_unit__",
+    "ref_rx": "alert_death_unit__",
+    "text": "an enemy unit knocked out in an auto battler, a satisfying punchy knockout impact with a short bright rewarding shimmer."
+   },
+   {
+    "key": "g_death_ally",
+    "zh": "我方单位阵亡(提示)",
+    "cat": "global",
+    "dur": 1.8,
+    "n": 4,
+    "ref": "TFT alert_death_unit_self",
+    "ref_rx": "alert_death_unit_self",
+    "text": "your own unit falls in an auto battler, a heavier lower somber collapse with a dark descending whoosh and a fading tail."
+   }
+  ],
+  "v2r4": [
+   {
+    "key": "g_death_enemy",
+    "zh": "敌方单位阵亡(提示)",
+    "cat": "global",
+    "dur": 1.4,
+    "n": 4,
+    "ref": "TFT alert_death_unit__",
+    "ref_rx": "alert_death_unit__",
+    "text": "an enemy unit knocked out: a punchy knockout punch impact with a short electric zap crackle and a quick magical shimmer tail."
+   },
+   {
+    "key": "g_death_ally",
+    "zh": "我方单位阵亡(提示)",
+    "cat": "global",
+    "dur": 1.8,
+    "n": 4,
+    "ref": "TFT alert_death_unit_self",
+    "ref_rx": "alert_death_unit_self",
+    "text": "your unit is defeated: a power down sound with an electric zap, a soft shield-like thud and a fading magical dissipate."
+   },
+   {
+    "key": "g_heal",
+    "zh": "治疗",
+    "cat": "global",
+    "dur": 1.0,
+    "n": 4,
+    "ref": "TFT heal",
+    "text": "a healing spell: a soft resurrection-like magical swell with a gentle descending sparkle of magical dust."
+   },
+   {
+    "key": "g_rebirth",
+    "zh": "复活",
+    "cat": "global",
+    "dur": 1.8,
+    "n": 4,
+    "ref": "Anivia/Zilean revive",
+    "text": "a resurrection spell: a rising radiant magical swell with an electric sparkle and a bright powerful burst."
+   },
+   {
+    "key": "level_up",
+    "zh": "升级",
+    "cat": "global",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "TFT level up",
+    "text": "a level up: a tonal magical swell rising for about one second into a bright resonant major chord with a warm low hum beneath, then a smooth ringing tail."
+   },
+   {
+    "key": "ui_back",
+    "zh": "返回 / 关闭",
+    "cat": "global",
+    "dur": 0.5,
+    "n": 4,
+    "ref": "LoL client back",
+    "text": "a polished user interface back click, short soft low click."
+   },
+   {
+    "key": "g_shield_gain",
+    "zh": "得盾",
+    "cat": "global",
+    "dur": 1.0,
+    "n": 4,
+    "ref": "TFT shield",
+    "text": "a magical shield forming: a quick reverse whoosh into a soft resurrection-like shimmer with a light electric sparkle."
    }
   ]
  }

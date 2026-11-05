@@ -15,8 +15,16 @@ func _ready() -> void:
 	form = OS.get_environment("REVIEW_FORM")
 	sc = (load("res://scenes/RealtimeBattle3D.tscn") as PackedScene).instantiate()
 	add_child(sc)
+var _sfx_seen := 0
 func _process(_d: float) -> void:
 	f += 1
+	## 这一帧新播的音效(Audio.played_total 涨了几条 ⇒ recent 末尾几条), 和 [CAST] / [POS] 同一套帧号(11-05: 画面与声音对齐审)
+	var au = get_node_or_null("/root/Audio")
+	if au != null and int(au.played_total) > _sfx_seen:
+		var k: int = mini(int(au.played_total) - _sfx_seen, au.recent.size())
+		for nm in au.recent.slice(au.recent.size() - k):
+			print("[SFX] %d %s" % [f, nm])
+		_sfx_seen = int(au.played_total)
 	if sc == null or not ("_units" in sc):
 		return
 	for u in sc._units:

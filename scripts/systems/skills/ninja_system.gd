@@ -79,6 +79,7 @@ const DASH_SELF_CD := 0.4         # 本体两次冲刺的最小间隔(秒)
 const DASH_TARGET_CD := 10.0      # 同一敌人被冲后的冷却(秒)
 
 func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击(亚索E式): 朝最近敌固定位移300码(2026-07-22订正: 头注释一直没跟上同日的 450→300)·主目标1.3A/路径其余0.8A物理+击飞0.8s·每敌10s冷却·无伤害递增
+	battle._audio_sys.sfx_passive(u, "ninja")   # 被动音效(11-05; 只管声音)
 	# 〖用户2026-07-06〗"450码固定距离，最近，所以理想的效果就是他会连着滑几下，不用加递增"; 伤害取回合制 ninjaImpact(atkScale=1.3 / behindScale=0.8)
 	u["_ninja_last_dash"] = battle._t
 	var start: Vector2 = u["pos"]

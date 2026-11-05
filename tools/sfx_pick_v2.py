@@ -33,14 +33,17 @@ SRC = os.environ.get("SFX_SRC", r"D:/turtle_audio_src")
 FF = os.environ.get("FFMPEG", r"D:/oopz/ffmpeg.exe")
 CAND = os.path.join(SRC, "eleven", "v2")
 CAND_R2 = os.path.join(SRC, "eleven", "v2r2")   # 第二轮(去掉低频字眼, 见 sfx_v2_table.round2); 候选 wav 名前缀 r2__
-CAND_R3 = os.path.join(SRC, "eleven", "v2r3")   # 第三轮(两轮全否决的 7 条, 见 sfx_v2_table.round3); 前缀 r3__
+CAND_R3 = os.path.join(SRC, "eleven", "v2r3")
+CAND_DT = os.path.join(SRC, "eleven", "v2dt")   # 阵亡(11-05 补): g_death_enemy / g_death_ally(每龟一条 die_<龟> 已撤, 见 sfx_v2_table.deaths)
+CAND_R4 = os.path.join(SRC, "eleven", "v2r4")   # 第四轮(逐条尺子下太不像的 7 条, 按 CLAP 反听原声重写); 前缀 r4__
+CAND_PS = os.path.join(SRC, "eleven", "v2ps")   # 被动(11-05 补): 事件名 ps_*, 候选文件名本身唯一, 不加前缀   # 第三轮(两轮全否决的 7 条, 见 sfx_v2_table.round3); 前缀 r3__
 OUT = os.path.join(ROOT, ".out", "sfx_v2")
 RIOT = os.path.join(ROOT, ".out", "riot_audio")
 TAB = os.path.join(ROOT, "tools", "assetgen", "sfx_prompts_v2.json")
 CACHE = os.path.join(OUT, "emb_cache.npz")
 ## 每类留几个变体(云顶: 普攻出手 / 命中 3~4 个随机轮换, 技能命中 2~3, 放出 1)
-KEEP = {"ba_cast": 3, "ba_hit": 3, "crit": 2, "sk_cast": 1, "sk_hit": 2, "equip": 1, "global": 1}
-KEEP_KEY = {"g_hit": 3, "g_crit": 2, "g_skill_hit": 2, "g_shield_gain": 2, "g_shield_break": 2, "g_heal": 2, "g_death": 2, "g_dodge": 2, "ui_click": 2}
+KEEP = {"ba_cast": 3, "ba_hit": 3, "crit": 2, "sk_cast": 1, "sk_hit": 2, "equip": 1, "global": 1, "passive": 1, "death": 1}
+KEEP_KEY = {"g_death_enemy": 3, "g_death_ally": 3, "ps_stone": 2, "ps_fortune": 2, "ps_lightning": 2, "ps_cyber_shot": 2, "g_hit": 3, "g_crit": 2, "g_skill_hit": 2, "g_shield_gain": 2, "g_shield_break": 2, "g_heal": 2, "g_death": 2, "g_dodge": 2, "ui_click": 2}
 RIOT_RX = {
 	"ba_cast": r"basicattack[0-9]?_(oncast|onmissilelaunch|cast)__",
 	"ba_hit": r"basicattack[0-9]?_(onhit|hit)__",
@@ -59,6 +62,8 @@ def riot_sets() -> dict:
 	items = [f for f in m22 if re.search(r"item", os.path.basename(f).lower())]
 	sets["equip"] = items if len(items) >= 20 else sets["sk_hit"] + sets["sk_cast"]
 	sets["global"] = m22 if len(m22) >= 20 else sets["sk_hit"]
+	sets["passive"] = sets["sk_cast"] + sets["sk_hit"]   # 被动: 英雄被动 / 技能那一类声音(放出 + 命中)
+	sets["death"] = [f for f in allf if "death3d" in os.path.basename(f).lower()]   # 英雄自己的 Death3D
 	rnd = random.Random(1105)
 	out = {}
 	for k, v in sets.items():
@@ -110,8 +115,9 @@ def emb(paths: list) -> np.ndarray:
 def to_wav(mp3: str, prefix: str = "") -> str:
 	os.makedirs(os.path.join(OUT, "cand"), exist_ok=True)
 	w = os.path.join(OUT, "cand", prefix + os.path.basename(mp3)[:-4] + ".wav")
-	if not os.path.exists(w):
+	if not os.path.exists(w) or os.path.getmtime(mp3) > os.path.getmtime(w):   # 同名重出过(例: 第四轮升级声重写) => 重转, 丢掉旧向量
 		subprocess.run([FF, "-v", "error", "-y", "-i", mp3, "-ac", "1", "-ar", "44100", w], check=True)
+		_cache.pop(w, None)
 	return w
 
 
@@ -128,6 +134,17 @@ def stats(ms: list) -> dict:
 	for c in FEATS + ["rms", "cent"]:
 		a = np.array([m[c] for m in ms])
 		st[c] = (float(np.percentile(a, 10)), float(np.median(a)), float(np.percentile(a, 90)))
+	return st
+
+
+def rx_shape(ms: list, cat_st: dict) -> dict:
+	"""逐条形状尺子: 中心 = 这条云顶原声的中位, 容差 = 同类 P10~P90 的半宽(原声常只有 3~6 个文件, 直接取 P10~P90 太窄, 罚分压过相似度)。"""
+	st = {}
+	for c in cat_st:
+		a = np.array([m[c] for m in ms])
+		md = float(np.median(a))
+		hw = max((cat_st[c][2] - cat_st[c][0]) / 2.0, (float(a.max()) - float(a.min())) / 2.0)
+		st[c] = (md - hw, md, md + hw)
 	return st
 
 
@@ -149,7 +166,23 @@ def main() -> int:
 		z = np.load(CACHE, allow_pickle=True)
 		_cache.update(dict(zip(list(z["k"]), list(z["v"]))))
 	tab = json.load(open(TAB, encoding="utf-8"))
-	items = tab["batches"]["v2"]
+	items = tab["batches"]["v2"] + tab["batches"].get("v2ps", []) + tab["batches"].get("v2dt", [])
+	## ★11-05 逐条尺子(用户「角色死亡的时候有什么声音？你怎么参考的？」—— 按类别平均当尺子, 阵亡那条比的是装备 / 护盾 / 界面的混合):
+	##   描述里带 ref_rx 的, 用文件名匹配上的 Riot 原声当这一条自己的尺子(≥ 3 个才用), 报告里逐条列出用了几个
+	all_riot = sorted(glob.glob(os.path.join(RIOT, "champ", "*", "*.wav")) + glob.glob(os.path.join(RIOT, "map22", "*.wav")) + glob.glob(os.path.join(RIOT, "chogath", "*.wav")))
+	rx_cent = {}
+	rx_st = {}
+	rx_n = {}
+	for it in items:
+		rx = it.get("ref_rx")
+		if not rx or rx in rx_cent:
+			continue
+		fs = [f for f in all_riot if re.search(rx, os.path.basename(f).lower())][:80]
+		rx_n[rx] = len(fs)
+		if len(fs) >= 3:
+			c = emb(fs).mean(axis=0)
+			rx_cent[rx] = c / np.linalg.norm(c)
+			rx_st[rx] = [m for m in (feats(f) for f in fs) if m]   # 形状也按这条原声量(例: 云顶升星 4~5 秒、起音 1.5 秒, 整类平均是 1 秒的短声); 下面 rx_shape 定范围
 	rs = riot_sets()
 	print("Riot 参考: " + " · ".join("%s %d" % (k, len(v)) for k, v in rs.items()))
 	cent, st = {}, {}
@@ -172,14 +205,14 @@ def main() -> int:
 	cand_files = {}
 	for it in items:
 		for i in range(1, 5):
-			for d, pre in ((CAND, ""), (CAND_R2, "r2__"), (CAND_R3, "r3__")):
+			for d, pre in ((CAND, ""), (CAND_R2, "r2__"), (CAND_R3, "r3__"), (CAND_PS, ""), (CAND_DT, ""), (CAND_R4, "r4__")):
 				mp = os.path.join(d, "%s_%d.mp3" % (it["key"], i))
 				if os.path.exists(mp):
 					cand_files.setdefault(it["key"], []).append(to_wav(mp, pre))
 	allc = [f for v in cand_files.values() for f in v]
 	emb(allc)
 	cat_of = {it["key"]: it["cat"] for it in items}
-	for k in ["ba_cast", "ba_hit", "crit", "sk_cast", "sk_hit", "equip", "global"]:
+	for k in ["ba_cast", "ba_hit", "crit", "sk_cast", "sk_hit", "equip", "global", "passive", "death"]:
 		h = emb(hold[k]) @ cent[k] if hold[k] else np.array([])
 		ol = [f for f in old if any(os.path.basename(f).startswith(p) and old_cat[p] == k for p in old_cat)]
 		o = emb(ol) @ cent[k] if ol else np.array([])
@@ -196,6 +229,13 @@ def main() -> int:
 	report.append("")
 	## 打分 + 定选
 	TE = sfx_clap.embed_text([it["text"] for it in items])
+	round_text = {}   # (前缀, 事件) -> 那一轮的描述向量
+	for pre, bn in (("r4__", "v2r4"),):   # 只第四轮: 它的描述是照云顶原声反听写的; 第二 / 三轮仍按第一轮描述比(改了会把已定的普攻 / 技能选择整片洗一遍, 实测 15 条更像 / 18 条更不像)
+		its = tab["batches"].get(bn, [])
+		if its:
+			V = sfx_clap.embed_text([x["text"] for x in its])
+			for x, v in zip(its, V):
+				round_text[(pre, x["key"])] = v
 	picks = {}
 	rows = []
 	n_rej = 0
@@ -227,10 +267,12 @@ def main() -> int:
 				rej.append("只剩低频轰鸣(质心 %.0f Hz)" % m["cent"])
 			if pix > 0.02:
 				rej.append("像素感 %+.3f" % pix)
-			t = float(e @ TE[idx])
-			r = float(e @ cent[cat])
+			te = round_text.get((os.path.basename(f)[:4], key))
+			t = float(e @ (te if te is not None else TE[idx]))
+			rc = rx_cent.get(it.get("ref_rx", ""))
+			r = float(e @ (rc if rc is not None else cent[cat]))   # 逐条尺子优先, 没有才按类别
 			h = float(e @ champ_cent[ref_champ]) if champ_cent.get(ref_champ) is not None else r
-			pen = penalty(m, st[cat]) if m else 9.0
+			pen = penalty(m, rx_shape(rx_st[it["ref_rx"]], st[cat]) if it.get("ref_rx", "") in rx_st else st[cat]) if m else 9.0
 			s = 2.0 * t + 1.5 * r + 0.75 * h - 0.6 * pen   # 形状罚分 0.25 → 0.6(第一轮选中的命中 / 暴击太闷, 形状要更有分量)
 			sc.append(dict(file=f, text=round(t, 4), riot=round(r, 4), champ=round(h, 4), pen=round(pen, 3), pix=round(pix, 4),
 				score=round(s, 4), rej=rej, dur=round(m["dur"], 3) if m else 0, low=round(m["low"], 3) if m else 0, cent=round(m["cent"], 1) if m else 0))
@@ -250,7 +292,7 @@ def main() -> int:
 	report.append("")
 	report.append("| 类别 | 事件数 | 选中变体 | CLAP 像云顶 | 像描述 | 时长 秒(Riot) | 低频占比(Riot) | 质心 Hz(Riot) |")
 	report.append("|---|---|---|---|---|---|---|---|")
-	for k in ["ba_cast", "ba_hit", "crit", "sk_cast", "sk_hit", "equip", "global"]:
+	for k in ["ba_cast", "ba_hit", "crit", "sk_cast", "sk_hit", "equip", "global", "passive", "death"]:
 		ss = [s for key, p in picks.items() if p["cat"] == k for s in p["all"] if os.path.basename(s["file"]) in p["sel"]]
 		ne = sum(1 for p in picks.values() if p["cat"] == k)
 		if not ss:
@@ -259,6 +301,17 @@ def main() -> int:
 		md = lambda f: float(np.median([s[f] for s in ss]))
 		report.append("| %s | %d | %d | %.3f | %.3f | %.2f (%.2f) | %.2f (%.2f) | %.0f (%.0f) |" % (
 			k, ne, len(ss), md("riot"), md("text"), md("dur"), st[k]["dur"][1], md("low"), st[k]["low"][1], md("cent"), st[k]["cent"][1]))
+	report.append("")
+	report.append("## 逐条尺子(ref_rx 匹配到的 Riot 原声个数; < 3 个的退回按类别)")
+	report.append("")
+	report.append("| 事件 | 正则 | 匹配个数 | 选中的与这条尺子的 CLAP 余弦 |")
+	report.append("|---|---|---|---|")
+	for it in items:
+		rx = it.get("ref_rx")
+		if not rx or it["key"] not in picks:
+			continue
+		ss = [s for s in picks[it["key"]]["all"] if os.path.basename(s["file"]) in picks[it["key"]]["sel"]]
+		report.append("| %s | `%s` | %d | %s |" % (it["key"], rx, rx_n.get(rx, 0), " / ".join("%.3f" % s["riot"] for s in ss) or "—"))
 	report.append("")
 	report.append("否决候选 %d 个; 没有可用候选的事件 %d 条:" % (n_rej, sum(1 for p in picks.values() if not p["sel"])))
 	for key, why in rows:

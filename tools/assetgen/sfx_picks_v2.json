@@ -2347,19 +2347,19 @@
   "cat": "global",
   "score": [
    {
-    "cent": 4211.7,
-    "champ": 0.5846,
+    "cent": 7884.9,
+    "champ": 0.5006,
     "dur": 0.604,
-    "low": 0.166,
-    "pen": 0.0,
-    "pix": -0.0863,
-    "riot": 0.5846,
-    "score": 1.5726,
-    "text": 0.1287
+    "low": 0.006,
+    "pen": 0.257,
+    "pix": -0.1465,
+    "riot": 0.5006,
+    "score": 1.6851,
+    "text": 0.3565
    }
   ],
   "sel": [
-   "coin_buy_3.wav"
+   "coin_buy_1.wav"
   ],
   "zh": "金币购买"
  },
@@ -4912,30 +4912,30 @@
   "score": [
    {
     "cent": 193.0,
-    "champ": 0.4054,
+    "champ": 0.6818,
     "dur": 0.519,
     "low": 0.874,
-    "pen": 0.813,
+    "pen": 0.371,
     "pix": -0.1056,
-    "riot": 0.4054,
-    "score": 1.2892,
+    "riot": 0.6818,
+    "score": 2.1762,
     "text": 0.4324
    },
    {
     "cent": 301.9,
-    "champ": 0.4087,
+    "champ": 0.6758,
     "dur": 0.683,
     "low": 0.831,
-    "pen": 0.552,
+    "pen": 0.198,
     "pix": 0.013,
-    "riot": 0.4087,
-    "score": 1.354,
+    "riot": 0.6758,
+    "score": 2.1671,
     "text": 0.3828
    }
   ],
   "sel": [
-   "r2__g_crit_3.wav",
-   "g_crit_1.wav"
+   "g_crit_1.wav",
+   "r2__g_crit_3.wav"
   ],
   "zh": "通用暴击"
  },
@@ -4970,6 +4970,94 @@
    "g_death_2.wav"
   ],
   "zh": "单位阵亡"
+ },
+ "g_death_ally": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 1106.0,
+    "champ": 0.7003,
+    "dur": 1.472,
+    "low": 0.596,
+    "pen": 0.0,
+    "pix": -0.1147,
+    "riot": 0.7003,
+    "score": 2.3419,
+    "text": 0.3831
+   },
+   {
+    "cent": 1317.0,
+    "champ": 0.697,
+    "dur": 0.968,
+    "low": 0.589,
+    "pen": 0.0,
+    "pix": -0.1022,
+    "riot": 0.697,
+    "score": 2.3408,
+    "text": 0.3863
+   },
+   {
+    "cent": 1783.7,
+    "champ": 0.6647,
+    "dur": 1.761,
+    "low": 0.576,
+    "pen": 0.0,
+    "pix": -0.1034,
+    "riot": 0.6647,
+    "score": 2.3116,
+    "text": 0.4081
+   }
+  ],
+  "sel": [
+   "r4__g_death_ally_2.wav",
+   "r4__g_death_ally_3.wav",
+   "r4__g_death_ally_4.wav"
+  ],
+  "zh": "我方单位阵亡(提示)"
+ },
+ "g_death_enemy": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 3475.9,
+    "champ": 0.6017,
+    "dur": 1.362,
+    "low": 0.465,
+    "pen": 0.325,
+    "pix": -0.0857,
+    "riot": 0.6017,
+    "score": 2.004,
+    "text": 0.4224
+   },
+   {
+    "cent": 2304.0,
+    "champ": 0.6436,
+    "dur": 1.362,
+    "low": 0.438,
+    "pen": 0.134,
+    "pix": -0.0874,
+    "riot": 0.6436,
+    "score": 2.3065,
+    "text": 0.4695
+   },
+   {
+    "cent": 1261.5,
+    "champ": 0.5722,
+    "dur": 1.362,
+    "low": 0.754,
+    "pen": 0.054,
+    "pix": -0.1217,
+    "riot": 0.5722,
+    "score": 2.1423,
+    "text": 0.4435
+   }
+  ],
+  "sel": [
+   "r4__g_death_enemy_2.wav",
+   "r4__g_death_enemy_4.wav",
+   "r4__g_death_enemy_1.wav"
+  ],
+  "zh": "敌方单位阵亡(提示)"
  },
  "g_dodge": {
   "cat": "global",
@@ -5008,30 +5096,30 @@
   "score": [
    {
     "cent": 2599.1,
-    "champ": 0.479,
+    "champ": 0.3503,
     "dur": 1.003,
     "low": 0.0,
-    "pen": 0.001,
+    "pen": 0.121,
     "pix": -0.0475,
-    "riot": 0.479,
-    "score": 1.1325,
+    "riot": 0.3503,
+    "score": 0.7712,
     "text": 0.0278
    },
    {
-    "cent": 4569.5,
-    "champ": 0.3484,
-    "dur": 1.003,
-    "low": 0.0,
-    "pen": 0.001,
-    "pix": -0.0089,
-    "riot": 0.3484,
-    "score": 0.9471,
-    "text": 0.082
+    "cent": 4040.8,
+    "champ": 0.4697,
+    "dur": 0.863,
+    "low": 0.113,
+    "pen": 0.397,
+    "pix": -0.1166,
+    "riot": 0.4697,
+    "score": 0.9913,
+    "text": 0.0863
    }
   ],
   "sel": [
-   "g_heal_1.wav",
-   "r2__g_heal_2.wav"
+   "r4__g_heal_1.wav",
+   "g_heal_1.wav"
   ],
   "zh": "治疗"
  },
@@ -5040,42 +5128,42 @@
   "score": [
    {
     "cent": 3129.3,
-    "champ": 0.4317,
+    "champ": 0.6067,
     "dur": 0.484,
     "low": 0.357,
-    "pen": 0.012,
+    "pen": 0.0,
     "pix": -0.1206,
-    "riot": 0.4317,
-    "score": 1.3338,
+    "riot": 0.6067,
+    "score": 1.7348,
     "text": 0.1849
    },
    {
     "cent": 1259.4,
-    "champ": 0.6143,
+    "champ": 0.5387,
     "dur": 0.484,
     "low": 0.3,
     "pen": 0.0,
     "pix": 0.0002,
-    "riot": 0.6143,
-    "score": 1.5512,
+    "riot": 0.5387,
+    "score": 1.3811,
     "text": 0.0845
    },
    {
     "cent": 194.0,
-    "champ": 0.4852,
+    "champ": 0.7089,
     "dur": 0.439,
     "low": 0.917,
-    "pen": 0.879,
+    "pen": 0.543,
     "pix": -0.2945,
-    "riot": 0.4852,
-    "score": 1.2936,
+    "riot": 0.7089,
+    "score": 1.9987,
     "text": 0.3647
    }
   ],
   "sel": [
-   "r2__g_hit_2.wav",
+   "g_hit_3.wav",
    "g_hit_2.wav",
-   "g_hit_3.wav"
+   "r2__g_hit_2.wav"
   ],
   "zh": "通用命中(小将 / 召唤物 / 没有专属声的)"
  },
@@ -5083,19 +5171,19 @@
   "cat": "global",
   "score": [
    {
-    "cent": 3321.6,
-    "champ": 0.2881,
-    "dur": 1.482,
-    "low": 0.069,
-    "pen": 0.0,
-    "pix": -0.0008,
-    "riot": 0.3944,
-    "score": 0.8143,
-    "text": 0.0033
+    "cent": 2297.7,
+    "champ": 0.7778,
+    "dur": 1.297,
+    "low": 0.567,
+    "pen": 0.167,
+    "pix": -0.292,
+    "riot": 0.6825,
+    "score": 1.944,
+    "text": 0.2185
    }
   ],
   "sel": [
-   "g_rebirth_1.wav"
+   "r4__g_rebirth_1.wav"
   ],
   "zh": "复活"
  },
@@ -5104,30 +5192,30 @@
   "score": [
    {
     "cent": 2088.2,
-    "champ": 0.6101,
+    "champ": 0.5232,
     "dur": 0.514,
     "low": 0.513,
-    "pen": 0.0,
+    "pen": 0.035,
     "pix": -0.1818,
-    "riot": 0.6101,
-    "score": 2.1445,
+    "riot": 0.5232,
+    "score": 1.9279,
     "text": 0.3859
    },
    {
-    "cent": 3633.2,
-    "champ": 0.5588,
+    "cent": 913.0,
+    "champ": 0.4102,
     "dur": 0.803,
-    "low": 0.112,
-    "pen": 0.0,
-    "pix": 0.0117,
-    "riot": 0.5588,
-    "score": 2.0141,
-    "text": 0.3784
+    "low": 0.726,
+    "pen": 0.057,
+    "pix": -0.0176,
+    "riot": 0.4102,
+    "score": 1.7568,
+    "text": 0.4341
    }
   ],
   "sel": [
    "r2__g_shield_break_1.wav",
-   "r2__g_shield_break_3.wav"
+   "g_shield_break_2.wav"
   ],
   "zh": "盾破"
  },
@@ -5136,30 +5224,30 @@
   "score": [
    {
     "cent": 4983.1,
-    "champ": 0.4794,
+    "champ": 0.4853,
     "dur": 1.003,
     "low": 0.001,
-    "pen": 0.0,
+    "pen": 0.325,
     "pix": -0.0198,
-    "riot": 0.4794,
-    "score": 1.5095,
+    "riot": 0.4853,
+    "score": 1.3279,
     "text": 0.2154
    },
    {
-    "cent": 5558.6,
-    "champ": 0.4724,
-    "dur": 0.768,
-    "low": 0.001,
-    "pen": 0.095,
-    "pix": -0.1391,
-    "riot": 0.4724,
-    "score": 1.2385,
-    "text": 0.1164
+    "cent": 2775.7,
+    "champ": 0.6139,
+    "dur": 0.649,
+    "low": 0.083,
+    "pen": 0.0,
+    "pix": -0.257,
+    "riot": 0.6139,
+    "score": 1.7071,
+    "text": 0.1629
    }
   ],
   "sel": [
-   "g_shield_gain_3.wav",
-   "r2__g_shield_gain_3.wav"
+   "r4__g_shield_gain_3.wav",
+   "g_shield_gain_3.wav"
   ],
   "zh": "得盾"
  },
@@ -5199,19 +5287,19 @@
   "cat": "global",
   "score": [
    {
-    "cent": 1814.2,
-    "champ": 0.4502,
-    "dur": 1.028,
-    "low": 0.002,
-    "pen": 0.0,
-    "pix": -0.0886,
-    "riot": 0.4502,
-    "score": 1.7358,
-    "text": 0.3614
+    "cent": 2116.7,
+    "champ": 0.2244,
+    "dur": 2.41,
+    "low": 0.0,
+    "pen": 1.015,
+    "pix": -0.1237,
+    "riot": 0.2244,
+    "score": 0.7072,
+    "text": 0.4057
    }
   ],
   "sel": [
-   "r2__level_up_3.wav"
+   "r4__level_up_3.wav"
   ],
   "zh": "升级"
  },
@@ -5235,18 +5323,594 @@
   ],
   "zh": "匹配成功"
  },
+ "ps_bamboo": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1896.7,
+    "champ": 0.5007,
+    "dur": 1.202,
+    "low": 0.692,
+    "pen": 0.0,
+    "pix": -0.1373,
+    "riot": 0.525,
+    "score": 1.8904,
+    "text": 0.3637
+   }
+  ],
+  "sel": [
+   "ps_bamboo_1.wav"
+  ],
+  "zh": "竹叶龟·生长(蓄力一击)"
+ },
+ "ps_basic": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 4429.0,
+    "champ": 0.405,
+    "dur": 1.282,
+    "low": 0.001,
+    "pen": 0.436,
+    "pix": -0.0451,
+    "riot": 0.405,
+    "score": 0.8907,
+    "text": 0.1205
+   }
+  ],
+  "sel": [
+   "ps_basic_3.wav"
+  ],
+  "zh": "小龟·不屈(龟盾强化一击)"
+ },
+ "ps_bubble": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1773.0,
+    "champ": 0.6903,
+    "dur": 1.083,
+    "low": 0.335,
+    "pen": 0.0,
+    "pix": -0.1795,
+    "riot": 0.7486,
+    "score": 2.0785,
+    "text": 0.2189
+   }
+  ],
+  "sel": [
+   "ps_bubble_3.wav"
+  ],
+  "zh": "泡泡龟·泡沫(释放)"
+ },
+ "ps_candy": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 640.8,
+    "champ": 0.6179,
+    "dur": 1.462,
+    "low": 0.246,
+    "pen": 0.0,
+    "pix": -0.134,
+    "riot": 0.6179,
+    "score": 1.783,
+    "text": 0.1964
+   }
+  ],
+  "sel": [
+   "ps_candy_1.wav"
+  ],
+  "zh": "糖果龟·甜蜜掠夺(吸取)"
+ },
+ "ps_chest": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 4065.0,
+    "champ": 0.3177,
+    "dur": 1.601,
+    "low": 0.003,
+    "pen": 0.211,
+    "pix": -0.081,
+    "riot": 0.3177,
+    "score": 0.9394,
+    "text": 0.1757
+   }
+  ],
+  "sel": [
+   "ps_chest_1.wav"
+  ],
+  "zh": "宝箱龟·藏宝图(开箱)"
+ },
+ "ps_crystal": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 5171.8,
+    "champ": 0.4493,
+    "dur": 1.083,
+    "low": 0.391,
+    "pen": 1.357,
+    "pix": -0.1401,
+    "riot": 0.5548,
+    "score": 0.9782,
+    "text": 0.3117
+   }
+  ],
+  "sel": [
+   "ps_crystal_1.wav"
+  ],
+  "zh": "水晶龟·水晶共鸣(结晶引爆)"
+ },
+ "ps_cyber": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1683.1,
+    "champ": 0.588,
+    "dur": 0.763,
+    "low": 0.174,
+    "pen": 0.046,
+    "pix": -0.1135,
+    "riot": 0.588,
+    "score": 1.5882,
+    "text": 0.1464
+   }
+  ],
+  "sel": [
+   "ps_cyber_2.wav"
+  ],
+  "zh": "赛博龟·浮游炮(生成)"
+ },
+ "ps_cyber_shot": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1191.5,
+    "champ": 0.6821,
+    "dur": 0.604,
+    "low": 0.634,
+    "pen": 0.064,
+    "pix": -0.2472,
+    "riot": 0.6821,
+    "score": 2.445,
+    "text": 0.4744
+   }
+  ],
+  "sel": [
+   "ps_cyber_shot_1.wav"
+  ],
+  "zh": "赛博龟·浮游炮(开炮)"
+ },
+ "ps_diamond": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 5898.6,
+    "champ": 0.3214,
+    "dur": 1.601,
+    "low": 0.0,
+    "pen": 0.676,
+    "pix": -0.0209,
+    "riot": 0.2741,
+    "score": 0.6088,
+    "text": 0.181
+   }
+  ],
+  "sel": [
+   "ps_diamond_3.wav"
+  ],
+  "zh": "钻石龟·钻石结构(登场全队加抗)"
+ },
+ "ps_fortune": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 2278.4,
+    "champ": 0.3003,
+    "dur": 0.803,
+    "low": 0.699,
+    "pen": 0.007,
+    "pix": 0.0028,
+    "riot": 0.3003,
+    "score": 1.477,
+    "text": 0.4027
+   },
+   {
+    "cent": 6512.8,
+    "champ": 0.507,
+    "dur": 0.803,
+    "low": 0.174,
+    "pen": 1.523,
+    "pix": -0.16,
+    "riot": 0.507,
+    "score": 1.1557,
+    "text": 0.4643
+   }
+  ],
+  "sel": [
+   "ps_fortune_1.wav",
+   "ps_fortune_3.wav"
+  ],
+  "zh": "财神龟·聚宝盆(得金币)"
+ },
+ "ps_ghost": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 728.2,
+    "champ": 0.5938,
+    "dur": 1.616,
+    "low": 0.072,
+    "pen": 0.096,
+    "pix": -0.1407,
+    "riot": 0.5601,
+    "score": 1.7412,
+    "text": 0.2566
+   }
+  ],
+  "sel": [
+   "ps_ghost_1.wav"
+  ],
+  "zh": "幽灵龟·怨灵(登场诅咒)"
+ },
+ "ps_ghost_death": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 901.4,
+    "champ": 0.4758,
+    "dur": 1.197,
+    "low": 0.178,
+    "pen": 0.045,
+    "pix": -0.1185,
+    "riot": 0.5369,
+    "score": 1.3132,
+    "text": 0.0891
+   }
+  ],
+  "sel": [
+   "ps_ghost_death_1.wav"
+  ],
+  "zh": "幽灵龟·怨灵(阵亡诅咒)"
+ },
+ "ps_headless": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 917.0,
+    "champ": 0.4028,
+    "dur": 1.003,
+    "low": 0.373,
+    "pen": 0.041,
+    "pix": -0.1366,
+    "riot": 0.4028,
+    "score": 1.1237,
+    "text": 0.1211
+   }
+  ],
+  "sel": [
+   "ps_headless_2.wav"
+  ],
+  "zh": "无头龟·亡灵(免死)"
+ },
+ "ps_hiding": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1022.2,
+    "champ": 0.6216,
+    "dur": 1.043,
+    "low": 0.585,
+    "pen": 0.105,
+    "pix": -0.262,
+    "riot": 0.6891,
+    "score": 2.1831,
+    "text": 0.373
+   }
+  ],
+  "sel": [
+   "ps_hiding_1.wav"
+  ],
+  "zh": "缩头乌龟·喊龟(召唤随从)"
+ },
+ "ps_hunter": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 356.4,
+    "champ": 0.5369,
+    "dur": 1.102,
+    "low": 0.807,
+    "pen": 0.26,
+    "pix": -0.1955,
+    "riot": 0.5897,
+    "score": 1.6511,
+    "text": 0.2599
+   }
+  ],
+  "sel": [
+   "ps_hunter_2.wav"
+  ],
+  "zh": "猎人龟·猎杀(处决箭)"
+ },
+ "ps_ice": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1195.6,
+    "champ": 0.608,
+    "dur": 1.761,
+    "low": 0.45,
+    "pen": 0.0,
+    "pix": 0.0161,
+    "riot": 0.6302,
+    "score": 1.8755,
+    "text": 0.2371
+   }
+  ],
+  "sel": [
+   "ps_ice_3.wav"
+  ],
+  "zh": "寒冰龟·寒域(登场寒潮)"
+ },
+ "ps_lava": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 2247.2,
+    "champ": 0.5266,
+    "dur": 1.207,
+    "low": 0.33,
+    "pen": 0.0,
+    "pix": 0.0087,
+    "riot": 0.5652,
+    "score": 1.4414,
+    "text": 0.0993
+   }
+  ],
+  "sel": [
+   "r3__ps_lava_3.wav"
+  ],
+  "zh": "熔岩龟·熔岩之心(变身火山)"
+ },
+ "ps_lightning": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1010.2,
+    "champ": 0.7945,
+    "dur": 0.683,
+    "low": 0.801,
+    "pen": 0.176,
+    "pix": -0.1037,
+    "riot": 0.6665,
+    "score": 2.3427,
+    "text": 0.4263
+   },
+   {
+    "cent": 779.6,
+    "champ": 0.8466,
+    "dur": 0.683,
+    "low": 0.809,
+    "pen": 0.207,
+    "pix": -0.2157,
+    "riot": 0.7098,
+    "score": 2.2859,
+    "text": 0.3552
+   }
+  ],
+  "sel": [
+   "ps_lightning_1.wav",
+   "ps_lightning_3.wav"
+  ],
+  "zh": "闪电龟·雷电(自动电击)"
+ },
+ "ps_lightning_burst": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 3883.6,
+    "champ": 0.7312,
+    "dur": 1.282,
+    "low": 0.223,
+    "pen": 0.122,
+    "pix": -0.2255,
+    "riot": 0.6374,
+    "score": 2.1021,
+    "text": 0.3353
+   }
+  ],
+  "sel": [
+   "ps_lightning_burst_3.wav"
+  ],
+  "zh": "闪电龟·雷电(满层引爆)"
+ },
+ "ps_ninja": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 2159.8,
+    "champ": 0.7309,
+    "dur": 0.644,
+    "low": 0.484,
+    "pen": 0.005,
+    "pix": -0.0854,
+    "riot": 0.7628,
+    "score": 2.4446,
+    "text": 0.3775
+   }
+  ],
+  "sel": [
+   "ps_ninja_3.wav"
+  ],
+  "zh": "忍者龟·忍术(冲刺斩击)"
+ },
+ "ps_phoenix": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 593.9,
+    "champ": 0.6761,
+    "dur": 2.11,
+    "low": 0.84,
+    "pen": 0.241,
+    "pix": -0.1844,
+    "riot": 0.7205,
+    "score": 2.0639,
+    "text": 0.3104
+   }
+  ],
+  "sel": [
+   "ps_phoenix_3.wav"
+  ],
+  "zh": "凤凰龟·涅槃(复活)"
+ },
+ "ps_pirate": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 281.6,
+    "champ": 0.5887,
+    "dur": 1.442,
+    "low": 0.789,
+    "pen": 0.367,
+    "pix": -0.2822,
+    "riot": 0.5905,
+    "score": 1.8794,
+    "text": 0.3861
+   }
+  ],
+  "sel": [
+   "r3__ps_pirate_4.wav"
+  ],
+  "zh": "海盗龟·掠夺(登场轰击)"
+ },
+ "ps_pirate_hook": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 3998.1,
+    "champ": 0.3266,
+    "dur": 0.793,
+    "low": 0.077,
+    "pen": 0.059,
+    "pix": -0.1677,
+    "riot": 0.3907,
+    "score": 1.1209,
+    "text": 0.1625
+   }
+  ],
+  "sel": [
+   "ps_pirate_hook_2.wav"
+  ],
+  "zh": "海盗龟·掠夺(阵亡钩索)"
+ },
+ "ps_rainbow": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 5517.3,
+    "champ": 0.5491,
+    "dur": 0.883,
+    "low": 0.0,
+    "pen": 1.012,
+    "pix": -0.0449,
+    "riot": 0.4546,
+    "score": 0.987,
+    "text": 0.2504
+   }
+  ],
+  "sel": [
+   "r3__ps_rainbow_1.wav"
+  ],
+  "zh": "彩虹龟·棱镜(换色)"
+ },
+ "ps_shell": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 6488.9,
+    "champ": 0.2291,
+    "dur": 1.601,
+    "low": 0.03,
+    "pen": 1.47,
+    "pix": -0.0184,
+    "riot": 0.3566,
+    "score": -0.1927,
+    "text": -0.0086
+   }
+  ],
+  "sel": [
+   "ps_shell_3.wav"
+  ],
+  "zh": "龟壳·气场觉醒"
+ },
+ "ps_stone": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 4382.7,
+    "champ": 0.4761,
+    "dur": 0.903,
+    "low": 0.041,
+    "pen": 0.25,
+    "pix": -0.2001,
+    "riot": 0.5194,
+    "score": 1.5282,
+    "text": 0.2709
+   },
+   {
+    "cent": 3910.8,
+    "champ": 0.5577,
+    "dur": 1.003,
+    "low": 0.293,
+    "pen": 0.092,
+    "pix": -0.1833,
+    "riot": 0.591,
+    "score": 1.9024,
+    "text": 0.3263
+   }
+  ],
+  "sel": [
+   "ps_stone_2.wav",
+   "ps_stone_1.wav"
+  ],
+  "zh": "石头龟·坚壁(护甲增长)"
+ },
+ "ps_two_head": {
+  "cat": "passive",
+  "score": [
+   {
+    "cent": 1123.2,
+    "champ": 0.6865,
+    "dur": 1.023,
+    "low": 0.79,
+    "pen": 0.179,
+    "pix": -0.2316,
+    "riot": 0.728,
+    "score": 2.3499,
+    "text": 0.4251
+   }
+  ],
+  "sel": [
+   "ps_two_head_3.wav"
+  ],
+  "zh": "变脸龟·双生(切换形态)"
+ },
  "reward_normal": {
   "cat": "global",
   "score": [
    {
     "cent": 3190.1,
-    "champ": 0.4225,
+    "champ": 0.4885,
     "dur": 1.202,
     "low": 0.001,
-    "pen": 0.002,
+    "pen": 0.0,
     "pix": 0.0035,
-    "riot": 0.4225,
-    "score": 1.7228,
+    "riot": 0.4885,
+    "score": 1.8725,
     "text": 0.3866
    }
   ],
@@ -5260,13 +5924,13 @@
   "score": [
    {
     "cent": 5095.2,
-    "champ": 0.4757,
+    "champ": 0.4861,
     "dur": 1.761,
     "low": 0.001,
-    "pen": 0.001,
+    "pen": 0.0,
     "pix": -0.1978,
-    "riot": 0.4757,
-    "score": 1.5463,
+    "riot": 0.4861,
+    "score": 1.5702,
     "text": 0.2382
    }
   ],
@@ -9166,19 +9830,19 @@
   "cat": "global",
   "score": [
    {
-    "cent": 1218.0,
-    "champ": 0.3694,
-    "dur": 0.404,
-    "low": 0.018,
+    "cent": 7021.7,
+    "champ": 0.517,
+    "dur": 0.484,
+    "low": 0.002,
     "pen": 0.0,
-    "pix": -0.0761,
-    "riot": 0.3694,
-    "score": 1.4402,
-    "text": 0.3045
+    "pix": -0.0654,
+    "riot": 0.517,
+    "score": 1.4879,
+    "text": 0.1623
    }
   ],
   "sel": [
-   "r2__ui_back_1.wav"
+   "r2__ui_back_3.wav"
   ],
   "zh": "返回 / 关闭"
  },
@@ -9187,24 +9851,24 @@
   "score": [
    {
     "cent": 4688.4,
-    "champ": 0.6158,
+    "champ": 0.5726,
     "dur": 0.484,
     "low": 0.08,
-    "pen": 0.0,
+    "pen": 0.187,
     "pix": -0.1289,
-    "riot": 0.6158,
-    "score": 1.9025,
+    "riot": 0.5726,
+    "score": 1.6932,
     "text": 0.2585
    },
    {
     "cent": 6431.1,
-    "champ": 0.5118,
+    "champ": 0.5148,
     "dur": 0.484,
     "low": 0.017,
-    "pen": 0.286,
+    "pen": 0.421,
     "pix": -0.1229,
-    "riot": 0.5118,
-    "score": 1.572,
+    "riot": 0.5148,
+    "score": 1.4981,
     "text": 0.2961
    }
   ],
@@ -9219,13 +9883,13 @@
   "score": [
    {
     "cent": 2264.5,
-    "champ": 0.6213,
+    "champ": 0.5482,
     "dur": 0.484,
     "low": 0.0,
-    "pen": 0.001,
+    "pen": 0.314,
     "pix": -0.1016,
-    "riot": 0.6213,
-    "score": 2.2806,
+    "riot": 0.5482,
+    "score": 1.928,
     "text": 0.4416
    }
   ],

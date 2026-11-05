@@ -4464,7 +4464,10 @@ func _kill(u: Dictionary, killer = null) -> void:
 		var pct: float = (PhoenixSystem.NIRVANA_ENH_HP_PCT if u.get("_enh_rebirth", false) else PhoenixSystem.NIRVANA_HP_PCT) if u["id"] == "phoenix" else AngelSystem.REVIVE_HP_PCT   # 凤凰60/25%(用户2026-07-28 100/30→) · 天使圣光/宝箱凤凰雕像 25%
 		u["dots"] = []
 		u["dot_stacks"] = {}
-		_audio_sys._sfx_simple("g_rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
+		if u["id"] == "phoenix":
+			_audio_sys.sfx_passive(u, "phoenix")   # 被动音效(11-05; 只管声音)(凤凰涅槃有自己的一条)
+		else:
+			_audio_sys._sfx_simple("g_rebirth")              # §AUDIO: 首死复活音 (天使圣光等, 低频不节流)
 		if u["id"] != "phoenix":
 			u["hp"] = u["maxHp"] * pct                 # 天使/宝箱雕像: 保持原来的"一帧复活"
 			_vfx._float_text(u["pos"] + Vector2(0, -64), "复活", Color("#ffd93d"))
@@ -5290,7 +5293,12 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
 	# (原通用 _vfx._play_skill_vfx 飘空贴图已禁用 — 一张图标浮半空不贴 2.5D)
 	_ring_side = str(u.get("side", ""))   # 地面环敌我描边: 只在这一次施放的同步调用里有效
+	var _ps0: int = _pending_shots.size()
+	_audio_sys.skill_ctx = stype; _audio_sys.skill_ctx_src = u   # 技能章(只管声音): 这次施放同步打出的伤害 / 射出的弹道 / 排进的延时段 = 这个技能的命中
 	_do_skill(u, tgt, stype)
+	_audio_sys.skill_ctx = ""; _audio_sys.skill_ctx_src = null
+	for _pi in range(_ps0, _pending_shots.size()):
+		if not (_pending_shots[_pi] as Dictionary).has("_sk"): _pending_shots[_pi]["_sk"] = stype
 	_ring_side = ""
 	_log("[color=%s]◆ %s[/color] 施放 [color=#ffe08a]%s[/color]" % [_log_side_hex(u), _unit_name(u), _skill_disp(stype)])
 	return true
@@ -5822,6 +5830,7 @@ func _update_hunter_passive(u: Dictionary) -> void:   # 被动猎杀(重做·用
 		var thr: float = HunterSystem.EXEC_MARKED if _t < float(o.get("hunt_mark_until", 0.0)) else HunterSystem.EXEC_BASE   # 猎杀印记期间抬到24%
 		if float(o["hp"]) < float(o["maxHp"]) * thr:
 			o["_hunt_exec_pending"] = true
+			_audio_sys.sfx_passive(u, "hunter")   # 被动音效(11-05; 只管声音)
 			_ballistics._fire_hunter_exec_arrow(u, o)
 
 const INK_LINK_SEC := 3.0
@@ -6561,6 +6570,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"bamboo":                                         # 生长(改造): 蓄力时下一发普攻强化(追加魔法+回血+永久成长)
 			if u.get("bamboo_charge", false):
 				u["bamboo_charge"] = false
+				_audio_sys.sfx_passive(u, "bamboo")   # 被动音效(11-05; 只管声音)
 				_damage._apply_damage_from(u, tgt, _mitigate(u, u["atk"] * (BambooSystem.GROW_SMACK_ATK_COEF if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_ATK_COEF) + u["maxHp"] * (BambooSystem.GROW_SMACK_HP_PCT if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_HP_PCT), tgt, true), Color("#9be7ff"), 0.0, false)   # 追击魔法·选竹击=强化生长(1.0A+13%maxHp)否则基础(0.75A+8%maxHp)·用户核对JS bambooCharged
 				_melee_lunge(u, tgt, 0.66)                                     # 不灭之握式: 强化发踏步加倍(0.30→0.66)明显扑上去
 				_shake(0.06)
@@ -6596,6 +6606,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "basic" and u.get("basic_enh_ready", false):
 		u["basic_enh_ready"] = false
 		if tgt.get("alive", false):
+			_audio_sys.sfx_passive(u, "basic")   # 被动音效(11-05; 只管声音)
 			_sk_basic_shield(u, tgt)
 	# 无头亡灵(每损1%HP攻击+1%·上限+100%)只在 _tick_periodic_passive 算一处。
 	# ★2026-10-11 全项目通读第六条: 这里原来每次普攻又写一遍 `atk = base_atk×(1+损血)` ⇒ 与周期被动叠成平方
@@ -6689,6 +6700,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "cyber":
 		if u["_ptimer"] >= CyberSystem.DRONE_SPAWN_SEC:
 			u["_ptimer"] = 0.0
+			if int(u.get("drone_n", 0)) < CyberSystem.DRONE_CAP:
+				_audio_sys.sfx_passive(u, "cyber")   # 被动音效(11-05; 只管声音)(满了不再生成就不响)
 			u["drone_n"] = mini(CyberSystem.DRONE_CAP, int(u.get("drone_n", 0)) + 1)
 		_tick_cyber_drones(u, delta)
 		if not u.get("_slam", false) and not _damage.is_controlled(u) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
@@ -6705,6 +6718,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_ptimer"] = 0.0
 			var _cap: float = u["stone_init_def"] * (1.0 + StoneSystem.BULWARK_CAP_PCT)
 			if u["base_def"] < _cap:
+				_audio_sys.sfx_passive(u, "stone")   # 被动音效(11-05; 只管声音)(加满了就不响)
 				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] * StoneSystem.BULWARK_GAIN_PCT)
 				_recalc_stats(u)
 				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0, str(u.get("side", "")))   # 视觉: 硬化贴地褐环 (不飘名字文字)
@@ -6721,9 +6735,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		var _adt: float = _t - float(u["_awaken_t0"])
 		if not u.get("awakened", false) and _adt >= ShellSystem.AWAKEN_AT_1:
 			u["awakened"] = true
+			_audio_sys.sfx_passive(u, "shell")   # 被动音效(11-05; 只管声音)
 			_shell_sys._shell_apply_awaken(u)   # 入场10秒觉醒 (+金光爆发特效)
 		if not u.get("awakened2", false) and _adt >= ShellSystem.AWAKEN_AT_2:
 			u["awakened2"] = true
+			_audio_sys.sfx_passive(u, "shell")   # 被动音效(11-05; 只管声音)
 			_shell_sys._shell_apply_awaken(u)   # 入场20秒第二次觉醒(封板: 强化觉醒已并入被动·自动触发·不再gate选中)
 		# 储能相位机: store(6s 受伤转储能) → 释放(冲击波+护盾) → cd(15s 不储) → store…
 		_shell_sys._shell_phase_tick(u, delta)
@@ -6745,6 +6761,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
 		if u["_goldtimer"] >= FortuneSystem.COIN_IV:
 			u["_goldtimer"] = 0.0; u["gold"] += _battle_rng.randi_range(FortuneSystem.COIN_MIN, FortuneSystem.COIN_MAX)   # B 阶段: 出多少金币是对局结果
+			_audio_sys.sfx_passive(u, "fortune")   # 被动音效(11-05; 只管声音)
 			for _gk in range(2):   # 聚宝盆冒金币: 脚下叮当迸2金块(设计"每隔几秒叮当冒金币")
 				_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-24.0, 24.0), randf_range(6.0, 18.0)))
 	# --- 线条墨迹(用户2026-07-28): 自身实时获得 =(0.5×攻击力)% 攻速 ---
@@ -6758,6 +6775,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_rbtimer"] = 0.0
 			u["prism_color"] = _battle_rng.randi() % 3   # 棱镜(改造): 自身获颜色6秒, 普攻附色(见 _on_basic_hit)
 			var _pcc: Color = _PRISM_COLS[int(u["prism_color"])]   # 换色瞬间闪新色(醒目提示切色)
+			_audio_sys.sfx_passive(u, "rainbow")   # 被动音效(11-05; 只管声音)
 			_vfx._flash(u, Color(_pcc.r + 0.4, _pcc.g + 0.4, _pcc.b + 0.4))
 		if u["id"] == "rainbow" and u.get("_enh_prism", false):   # 强化棱镜(选反射打包): 每5秒抽1色(橙吸血/黄灼烧/青冰寒/紫诅咒)
 			u["_epTimer"] = float(u.get("_epTimer", 0.0)) + delta
@@ -6772,6 +6790,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_bbtimer"] = 0.0
 			var bs: float = float(u.get("bubble_store", 0.0))
 			if bs >= 1.0:
+				_audio_sys.sfx_passive(u, "bubble")   # 被动音效(11-05; 只管声音)
 				_damage._heal(u, bs * BubbleSystem.FOAM_HEAL_PCT, true)              # 修: 15%→10%(封板)
 				for _bh in range(2): _bubble_sys._bubble_rise(u["pos"])   # 泡沫被动proc: 自身回血泡泡(用户2026-07-14)
 				var bt = _targeting._nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
@@ -6788,6 +6807,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_ltimer"] = 0.0
 			var le := _targeting._pick_enemies_of(u)
 			if not le.is_empty():
+				_audio_sys.sfx_passive(u, "lightning")   # 被动音效(11-05; 只管声音)
 				var lv2 = le[_battle_rng.randi() % le.size()]
 				_damage._apply_damage_from(u, lv2, _shock_dmg(u), Color("#4dabf7"), 0.0, true)
 				_lightning_sys._lightning_strike(lv2["pos"], Color("#aef0ff"))   # 天降闪电(自动电击)
@@ -6864,6 +6884,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 		_hunter_sys._hunter_apply_steal(killer, u)
 	# 幽灵强化怨灵: 死亡时再诅咒全体敌一次
 	if u["id"] == "ghost":
+		_audio_sys.sfx_passive(u, "ghost_death")   # 被动音效(11-05; 只管声音)
 		var _ce: Array = _targeting._enemies_of(u)   # 死亡诅咒: 全体→随机1个(用户2026-07-28削弱)
 		if not _ce.is_empty(): _damage._add_curse(_ce[_battle_rng.randi() % _ce.size()], BUFF_SEC, u)
 	# 海盗掠夺被动已按封板L354/382删除(掠夺去掉→海盗龟无被动·场外船是共用演出载体·待用户确认是否补新被动)
@@ -6927,6 +6948,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 			var tgt = null
 			if not es.is_empty(): tgt = es[_battle_rng.randi() % es.size()]   # B 阶段: 无人机打谁是对局逻辑
 			if tgt != null and tgt.get("alive", false):
+				_audio_sys.sfx_passive(u, "cyber_shot")   # 被动音效(11-05; 只管声音)
 				var mz := Sprite3D.new()                          # 攻击动作: 炮口青闪+后坐脉冲
 				mz.texture = VfxTex._make_fire_glow_tex()
 				mz.billboard = BaseMaterial3D.BILLBOARD_ENABLED; mz.shaded = false; mz.transparent = true

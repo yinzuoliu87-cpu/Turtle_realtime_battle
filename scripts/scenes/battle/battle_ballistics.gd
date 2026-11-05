@@ -41,6 +41,8 @@ func _push_proj(d: Dictionary) -> void:
 	d["_crit_rolled"] = d["is_crit"]   # 独立副本, 只给门禁对账用(还原用 is_crit)
 	if not d.has("_tl"):
 		d["_tl"] = battle._equip_sys.tally.capture()   # ④ 装备统计: 发射那一刻是哪件装备的上下文, 落地时切回去
+	if not d.has("_sk"):
+		d["_sk"] = battle._audio_sys.skill_ctx         # 技能章(只管声音): 技能射出的弹道落地时播这个技能的命中声
 	battle._projectiles.append(d)
 
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) -> void:
@@ -220,6 +222,7 @@ func _step_projectiles(delta: float) -> void:
 	var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 每发弹切到它发射时的装备上下文, 循环完还原
 	for pr in battle._projectiles:
 		battle._equip_sys.tally.use(pr.get("_tl", null))
+		battle._audio_sys.skill_ctx = str(pr.get("_sk", "")); battle._audio_sys.skill_ctx_src = pr.get("src")   # 技能章切到这发弹道发射时的
 		## ★2026-09-06 从 `Sprite3D` 放宽到 `Node3D`：001 飞斩剑气改成 LoL 式束身后
 		##   是 `MeshInstance3D`(quad + 滚动 shader)，不再是 Sprite3D。
 		##   本循环里用到的全是 `Node3D` 的东西(position / global_transform / queue_free)，
@@ -412,6 +415,7 @@ func _step_projectiles(delta: float) -> void:
 			continue
 		keep.append(pr)
 	battle._equip_sys.tally.pop(_tl0)
+	battle._audio_sys.skill_ctx = ""; battle._audio_sys.skill_ctx_src = null
 	battle._projectiles = keep
 
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
@@ -442,6 +446,7 @@ func _step_pending_shots(delta: float) -> void:
 			var fn = s["fn"]
 			if fn is Callable and fn.is_valid():
 				battle._equip_sys.tally.use(s.get("_tl", null))
+				battle._audio_sys.skill_ctx = str(s.get("_sk", "")); battle._audio_sys.skill_ctx_src = s.get("src")   # 技能章切到这一段入队时的
 				if s.has("_copy") and s.get("src") is Dictionary:   # 龟壳复制出来的技能的延后段: 照样按 60% 结算(见 ShellSystem._mark_copy_tail)
 					var _cs: Dictionary = s["src"]
 					battle._copy_fx_mult = float(s["_copy"]); _cs["dmg_out_mult"] = float(s["_copy"])
@@ -450,6 +455,7 @@ func _step_pending_shots(delta: float) -> void:
 				else:
 					fn.call()
 				battle._equip_sys.tally.use(_tl0)
+				battle._audio_sys.skill_ctx = ""; battle._audio_sys.skill_ctx_src = null
 			else:
 				## 静默丢弃点(探针·2026-08-22): 回调失效 ⇒ 演出照演、结算永不发生。
 				_ps_drop_invalid += 1

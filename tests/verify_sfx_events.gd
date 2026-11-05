@@ -81,14 +81,20 @@ func _ready() -> void:
 	var ids: Array = []
 	for p in DataRegistry.launch_pets:
 		ids.append(str((p as Dictionary).get("id", "")))
+	## ★11-05 近战不播出手(出手这一帧就结算伤害, 挥击和命中会叠成一团; 忍者龟音画对齐审) ⇒ 远程: 发射 + 命中; 近战: 只有命中
 	var wrong: Array = []
 	var n_t := 0
+	var n_melee := 0
 	for id in ids:
 		var got := await _basic_once(scene, au, id, {})
 		n_t += 1
-		if not (got.has("bas_" + id) and (got.has("bah_" + id) or got.has("crit_" + id))):   # 这一下刚好暴击 ⇒ 播的是 crit_<id>
-			wrong.append("%s → %s" % [id, str(got)])
-	_ok("★② %d 只龟普攻: 出手播 bas_<id>、命中播 bah_<id>(暴击时 crit_<id>; 云顶 BasicAttack_OnCast + OnHit)" % n_t, n_t >= 28 and wrong.is_empty(), "; ".join(wrong))
+		var melee: bool = bool(scene._spawn._make_unit(id, "left", Vector2(600, 400)).get("melee", false))
+		n_melee += 1 if melee else 0
+		var hit_ok: bool = got.has("bah_" + id) or got.has("crit_" + id)   # 这一下刚好暴击 ⇒ 播的是 crit_<id>
+		var swing_ok: bool = (not got.has("bas_" + id)) if melee else got.has("bas_" + id)
+		if not (hit_ok and swing_ok):
+			wrong.append("%s(%s) → %s" % [id, "近战" if melee else "远程", str(got)])
+	_ok("★② %d 只龟普攻: 命中播 bah_<id>(暴击 crit_<id>); 远程另有发射声 bas_<id>, 近战(%d 只)不播出手" % [n_t, n_melee], n_t >= 28 and n_melee >= 10 and wrong.is_empty(), "; ".join(wrong))
 	## ②b 普攻暴击 ⇒ 这只龟自己的暴击声
 	var cw2: Array = []
 	for id in ids:
@@ -262,6 +268,75 @@ func _ready() -> void:
 	var ts_off: bool = not au.recent.has("eq_059")
 	_ok("★⑩h 沙漏时停放出来 ⇒ 播 eq_059; 携带者已死没放出来 ⇒ 不响(真入口 _ts_fire)", ts_on and ts_off, "放出 %s · 没放出不响 %s" % [ts_on, ts_off])
 	scene._units.erase(hg)
+	## ⑩i ★技能射出的弹道按普攻结算也播技能命中(技能章): 真入口 _cast_skill(忍者·手里剑) → 推进弹道到落地
+	scene._units.clear()
+	scene._t += 5.0
+	var nj: Dictionary = scene._spawn._make_unit("ninja", "left", Vector2(600, 400))
+	var nf: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(800, 400))
+	nf["maxHp"] = 1.0e7; nf["hp"] = 1.0e7; nf["no_basic"] = true; nf["no_move"] = true
+	scene._units.append(nj); scene._units.append(nf)
+	scene._audio_sys._ev_last_t.clear(); scene._audio_sys._skh_ts.clear(); scene._audio_sys._hit_ts.clear(); scene._audio_sys._cast_ts.clear()
+	au.recent.clear()
+	scene._cast_skill(nj, nf, "ninjaShuriken")
+	for _i in range(30):
+		scene._t += 0.05
+		scene._ballistics._step_projectiles(0.05)
+		if float(nf["hp"]) < 1.0e7:
+			break
+	var landed: bool = float(nf["hp"]) < 1.0e7
+	_ok("★⑩i 手里剑(落地按普攻结算)播手里剑命中 skh_ninjaShuriken、不播普攻命中", landed and au.recent.has("skh_ninjaShuriken") and not au.recent.has("bah_ninja") and not au.recent.has("crit_ninja"),
+		"落地 %s · %s" % [landed, str(au.recent)])
+	## ⑩j 训龟大师(装饰)打出的伤害不出命中声
+	var tr = null
+	for o in scene._units:
+		if scene._is_untouchable(o):
+			tr = o
+	if tr == null:
+		tr = scene._spawn._make_unit("basic", "left", Vector2(500, 400))
+		tr["id"] = "__trainer__"; tr["is_trainer"] = true
+	scene._t += 2.0
+	au.recent.clear()
+	scene._audio_sys._sfx_hit(false, tr, false)
+	scene._audio_sys._sfx_hit(true, tr, false)
+	_ok("⑩j 训龟大师的伤害不出命中声(装饰)", scene._is_untouchable(tr) and au.recent.is_empty(), "%s · %s" % [scene._is_untouchable(tr), str(au.recent)])
+	## ⑭ ★被动(11-05 用户「还有个被动啊！我是不是全漏了？」): 有触发时刻的被动各一条 ps_<龟>; 走 5 个被动的真触发函数
+	var n_ps := 0
+	for ev in SfxEvents.EVENTS:
+		if str(ev).begins_with("ps_"):
+			n_ps += 1
+	_ok("⑭ 被动音效 ≥ 25 条(有触发时刻的都有)", n_ps >= 25, "%d 条" % n_ps)
+	scene._units.clear()
+	var pfoe: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(800, 400))
+	pfoe["maxHp"] = 1.0e7; pfoe["hp"] = 1.0e7
+	scene._units.append(pfoe)
+	var pw: Array = []
+	var cases_ps := [["lava", "ps_lava"], ["candy", "ps_candy"], ["crystal", "ps_crystal"], ["lightning", "ps_lightning_burst"], ["two_head", "ps_two_head"]]
+	for cp in cases_ps:
+		var pu: Dictionary = scene._spawn._make_unit(str(cp[0]), "left", Vector2(600, 400))
+		scene._units.append(pu)
+		scene._t += 2.0
+		scene._audio_sys._ev_last_t.clear()
+		au.recent.clear()
+		match str(cp[0]):
+			"lava": scene._lava_sys._lava_transform(pu)
+			"candy": scene._candy_sys._candy_sweet_drain(pu)
+			"crystal": scene._crystal_sys._crystal_stack(pu, pfoe, CrystalSystem.STACK_MAX)
+			"lightning":
+				for _k in range(LightningSystem.SHOCK_STACK_MAX):
+					scene._lightning_sys._lightning_electric(pu, pfoe)
+			"two_head": scene._two_head_sys._two_head_after_cast(pu, pfoe)
+		if not au.recent.has(str(cp[1])):
+			pw.append("%s → %s" % [cp[0], str(au.recent)])
+		scene._units.erase(pu)
+	_ok("★⑭b 5 个被动走真触发函数各播自己那条(熔岩变身 / 糖果吸取 / 水晶引爆 / 闪电满层 / 变脸换形态)", pw.is_empty(), "; ".join(pw))
+	## ⑭c 被动自己打出的伤害(同一刻)不再补通用命中声
+	var pz: Dictionary = scene._spawn._make_unit("lightning", "left", Vector2(600, 400))
+	scene._t += 2.0
+	scene._audio_sys._ev_last_t.clear(); scene._audio_sys._skill_hit_last_t = -99.0
+	scene._audio_sys.sfx_passive(pz, "lightning")
+	au.recent.clear()
+	scene._audio_sys._sfx_hit(false, pz, false)
+	_ok("⑭c 被动声之后同一刻这只龟的非普攻伤害不补通用命中", au.recent.is_empty(), str(au.recent))
 
 	scene._units.clear()
 	scene._t += 5.0
@@ -290,14 +365,27 @@ func _ready() -> void:
 	scene._t += 5.0
 	au.recent.clear()
 	scene._kill(foe, ice)
-	var died_ok: bool = au.recent.has("g_death")
+	var died_ok: bool = au.recent == ["g_death_enemy"]   # 敌方(右)小龟倒下: 只有敌方提示声
 	var sm: Dictionary = scene._spawn._make_unit("basic", "right", Vector2(800, 400))
 	sm["is_summon"] = true
 	scene._units.append(sm)
 	scene._t += 1.0
 	au.recent.clear()
 	scene._kill(sm, ice)
-	_ok("⑫ 单位阵亡(真入口 _kill) 播 g_death; 召唤物阵亡不播", died_ok and not au.recent.has("g_death"), "召唤物那次: %s" % str(au.recent))
+	var summon_quiet: bool = au.recent.is_empty()
+	## 我方(左)单位倒下 ⇒ 我方提示(低沉的那条)
+	scene._t += 1.0
+	au.recent.clear()
+	scene._kill(ice, foe)
+	var ally_ok: bool = au.recent == ["g_death_ally"]
+	_ok("⑫ 阵亡提示分敌我(真入口 _kill): 敌方倒下只播 g_death_enemy, 我方倒下只播 g_death_ally; 召唤物不播", died_ok and ally_ok and summon_quiet,
+		"敌方 %s · 我方 %s · 召唤物不响 %s · 最后 %s" % [died_ok, ally_ok, summon_quiet, str(au.recent)])
+	var n_die := 0
+	for ev in SfxEvents.EVENTS:
+		if str(ev).begins_with("die_"):
+			n_die += 1
+	## 每龟一条倒地声 11-05 撤掉(没有逐只参考过, 我们也没有可配的死亡动画) —— 成品里不许再出现
+	_ok("⑫c 没有每龟一条的倒地声 die_<龟>(已撤)", n_die == 0 and SfxEvents.EVENTS.has("g_death_enemy") and SfxEvents.EVENTS.has("g_death_ally"), "die_ %d 条" % n_die)
 	au.recent.clear()
 	scene._dl_sys._dl_fight_start_dramatize()
 	_ok("⑫b 开战演出播 fight_start", au.recent.has("fight_start"), str(au.recent))

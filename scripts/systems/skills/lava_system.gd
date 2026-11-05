@@ -480,6 +480,7 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 func _lava_transform(u: Dictionary) -> void:
 	if u.get("volcano", false):
 		return
+	battle._audio_sys.sfx_passive(u, "lava")   # 被动音效(11-05; 只管声音)
 	var p: Dictionary = u.get("passive", {}) if u.get("passive", null) is Dictionary else {}
 	var dur: float = float(p.get("transformDuration", 15))
 	var hp_scale: float = float(p.get("transformHpScale", 2.5))

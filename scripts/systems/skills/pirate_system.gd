@@ -276,6 +276,7 @@ func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on
 func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 	# 死亡钩索(用户2026-07-14做观感): 从尸位甩铁钩爪(带链条)飞向击杀者→抓住猛拉回尸位90码→25%击杀者maxHp真伤
 	if killer == null or not killer.get("alive", false): return
+	battle._audio_sys.sfx_passive(pirate, "pirate_hook")   # 被动音效(11-05; 只管声音)
 	killer["_grappled_by"] = pirate   # ★同步标记: 钩索确实锁定了击杀者(演出/伤害都在 tween 里, 无头 CI 下不稳; 测试用这个即时证据)
 	var from2d: Vector2 = pirate["pos"]
 	var kpos: Vector2 = killer["pos"]

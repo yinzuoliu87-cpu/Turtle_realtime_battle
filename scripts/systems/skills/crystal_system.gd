@@ -487,6 +487,7 @@ func _crystal_stack(src: Dictionary, tgt: Dictionary, n: int) -> void:
 	var cv = battle._add_stack(tgt, "crystal", n, STACK_MAX)
 	if cv >= STACK_MAX:
 		battle._consume_stacks(tgt, "crystal")
+		battle._audio_sys.sfx_passive(src, "crystal")   # 被动音效(11-05; 只管声音)
 		battle._damage._apply_damage_from(src, tgt, battle._damage._magic_after_mr(src, tgt["maxHp"] * BURST_MAXHP_PCT, tgt), Color("#9bdcff"), 0.0, false, false, true)   # 引爆22%最大生命魔法(吃魔抗·19%→22% 用户2026-07-29 第五轮)
 		battle._damage._buff(tgt, "mr", -BURST_MR_SHRED, true)
 		_crystal_detonate(tgt["pos"])

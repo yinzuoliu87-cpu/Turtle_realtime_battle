@@ -43,6 +43,7 @@ var _sfx_cache: Dictionary = {}   # name → AudioStream(有变体的 = 第一�
 var _var_cache: Dictionary = {}
 var _var_last: Dictionary = {}
 var recent: Array[String] = []    # 最近真播出去的音效名(play_sfx 里记)
+var played_total := 0             # 累计真播出去的条数(审核录像探针按它逐帧打印「这一帧播了哪几条」; 11-05)
 
 # BGM 单例
 var _bgm_player: AudioStreamPlayer = null
@@ -151,6 +152,7 @@ func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 		return
 	## 最近真播出去的音效名(只记名字, 最多 32 条): 门禁 verify_sfx_events 量「这一下播的是哪条」, 不靠猜。
 	recent.append(name)
+	played_total += 1
 	if recent.size() > 32:
 		recent.pop_front()
 	# 每次 spawn 一个临时 player, finished 后自动 free (避免重叠时 cut off 旧的)

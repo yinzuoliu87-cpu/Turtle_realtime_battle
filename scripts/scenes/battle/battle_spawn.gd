@@ -646,11 +646,13 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				# ★用户2026-07-29 第四轮: 25%/40% → 15%/30%。叠上忍术后暴击总量 95% → 75%。
 				battle._damage._buff(u, "dodge", NinjaSystem.FOOT_DODGE, false, 9999.0); u["crit"] += NinjaSystem.FOOT_CRIT
 		"ghost":
+			battle._audio_sys.sfx_passive(u, "ghost")   # 被动音效(11-05; 只管声音)
 			for o in battle._targeting._enemies_of(u):
 				battle._damage._add_curse(o, GhostSystem.SPAWN_CURSE_SEC, u)   # 登场诅咒(用户2026-07-28: BUFF_SEC 5s → 4s; 死亡诅咒仍 5s)
 		"ice":
 			u["_vs_fire_bonus"] = IceSystem.AURA_VS_FIRE   # 寒域: 对熔岩/凤凰 +20%伤害
 			u["_burnImmune"] = true            # 极寒(用户设计L162: 改常驻被动): 免疫灼烧
+			battle._audio_sys.sfx_passive(u, "ice")   # 被动音效(11-05; 只管声音)
 			battle._ice_sys._ice_chill_vfx(u["pos"], true, str(u.get("side", "")))     # 寒冰自身登场寒爆(大)
 			battle._vfx._flash(u, Color(0.6, 0.86, 1.0))   # 自身蓝闪
 			for o in battle._targeting._enemies_of(u):
@@ -682,6 +684,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				var ps2d: Vector2 = (pship.get_meta("ship2d") if pship != null else u["pos"] + Vector2(0.0, -260.0))
 				var psh: float = (pship.get_meta("ship_h") if pship != null else 5.5)
 				battle._pirate_sys._pirate_ship_muzzle(ps2d, psh)
+				battle._audio_sys.sfx_passive(u, "pirate")   # 被动音效(11-05; 只管声音)
 				var uu2: Dictionary = u; var vv2: Dictionary = v
 				battle._pirate_sys._pirate_cannonball(ps2d, psh, v["pos"], func() -> void:
 					if not vv2.get("alive", false): return
@@ -735,6 +738,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				battle._two_head_sys._two_head_apply_melee(u, true)
 				battle._two_head_sys._two_head_fusion_onset(u)                      # 融合登场VFX(用户2026-07-11): 合体爆发+持续融合态光环
 		"diamond":                                    # 钻石结构(封板): 全队护甲/魔抗加成+50%(简化=开局全队+50%pct); 选钻石冲撞→强化结构(自身额外+100%·"受击再减20甲10抗"近似折进护甲留F5)
+			battle._audio_sys.sfx_passive(u, "diamond")   # 被动音效(11-05; 只管声音)
 			for o in battle._targeting._allies_of(u):
 				battle._damage._buff(o, "def", DiamondSystem.STRUCT_RESIST_UP, true, 9999.0)
 				battle._damage._buff(o, "mr", DiamondSystem.STRUCT_RESIST_UP, true, 9999.0)
@@ -745,6 +749,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				battle._damage._buff(u, "mr", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)
 
 func _spawn_hiding_minion(u: Dictionary) -> void:
+	battle._audio_sys.sfx_passive(u, "hiding")   # 被动音效(11-05; 只管声音)
 	var pool: Array = battle._hiding_sys._hiding_pool()
 	var pick: String = pool[battle._battle_rng.randi() % pool.size()]
 	var d: Dictionary = battle._data_by_id.get(pick, {})

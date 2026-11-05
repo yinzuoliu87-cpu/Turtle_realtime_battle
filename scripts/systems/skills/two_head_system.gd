@@ -352,6 +352,7 @@ func _two_head_deferred_cast(u: Dictionary, tgt, stype: String) -> void:
 
 func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生(用户2026-07-11 B案): 切形态+挂"下1下强化普攻"; 近战不单独位移(锤击自带跳接近)/远程纯滑退到射程
 	var to_ranged: bool = u["melee"]
+	battle._audio_sys.sfx_passive(u, "two_head")   # 被动音效(11-05; 只管声音)
 	u["two_form"] = "ranged" if to_ranged else "melee"
 	_two_head_apply_melee(u, not to_ranged)
 	u["melee"] = not to_ranged

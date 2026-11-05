@@ -61,9 +61,23 @@ const SKH_GAP := 0.12            # 同一个技能命中声的最小间隔(多�
 const SKH_VOICES := 2            # 全场技能命中声同一窗口最多 2 路
 const SKH_WINDOW := 0.15
 var _skh_ts: Array = []
-const CAST_HIT_WINDOW := 6.0     # 放技能后这么久之内、这只龟打出的非普攻伤害 = 这个技能的命中
+## ★11-05 忍者龟音画对齐审(SFX_HIT_LOG 逐下打印): 原来「放技能后 6 秒内的非普攻伤害 = 这个技能的命中」——
+##   ① 手里剑落地按普攻结算(basic=true, 让命中附带类装备生效) ⇒ 播成了普攻命中声; ② 6 秒太宽, 4.9 秒后别的伤害被认成手里剑命中。
+##   ⇒ 主路径改成「技能章」: _cast_skill 执行技能时记下(技能类型 + 施法者), 技能射出的弹道 / 延时条目带着章, 落地 / 到点时切回;
+##   有章且来源就是施法者 ⇒ 这个技能的命中声(不看普攻标记)。拿不到章的(tween 回调等)才退回窗口, 窗口收到 1.5 秒。
+const CAST_HIT_WINDOW := 1.5     # 退路: 放技能后这么久之内、这只龟打出的非普攻伤害 = 这个技能的命中
+var skill_ctx := ""              # 技能章: 当前正在结算的是哪个技能(技能类型); 空 = 不在技能结算里
+var skill_ctx_src = null         # 技能章的施法者(只做引用, 用 is_same 比)
 var _cast_by: Array = []         # [[单位, 技能类型, 时刻], ...] 每只龟最近一次放的技能(单位只做引用, 用 is_same 比)
 const EQ_GAIN := 0.8
+## ★11-05 被动(用户「忍者龟除了普攻技能以外，还有个什么呢？还有个被动啊！我是不是全漏了？」): 有「触发那一刻」的被动各一条 ps_<龟>;
+##   触发点各自调 sfx_passive。被动自己打出的伤害(闪电自动电击 / 泡泡释放 / 水晶引爆…)与被动声同一刻 ⇒ 不再补通用命中声。
+const PS_GAIN := 0.8
+const PS_GAIN_FREQ := 0.55       # 高频的几个(坚壁 / 聚宝盆 / 自动电击 / 浮游炮开炮)轻一点
+const PS_FREQ := ["stone", "fortune", "lightning", "cyber_shot", "rainbow"]
+const PS_GAP := 0.4
+const PS_COVER := 0.6            # 被动声之后这么久之内这只龟的非普攻伤害 = 被动自己的伤害, 不补通用命中(忍者冲刺先滑行 ≈0.5 秒才结算)
+var _ps_mark: Array = []         # [[单位, 时刻], ...]
 const EQ_GAP := 0.5              # 同一件装备的声音最小间隔
 ## 持续回复 / 每次攻击叠盾的装备(温泉蛋每秒 / 深海项链 16 秒持续 / 咸鱼砖灰血 / 魔法胸甲每攻 / 龟甲片每 0.25 秒):
 ##   每一跳都响会刷屏(云顶持续回复不出声) ⇒ 它们上下文里的治疗与护盾不出声; 触发那一刻由装备自己的 sfx_equip 出声。
@@ -101,10 +115,12 @@ static func _is_turtle(src) -> bool:
 	return src is Dictionary and not (src as Dictionary).has("minion_role") and not bool((src as Dictionary).get("is_summon", false))
 
 
-## 普攻出手(_basic_attack 开头调): 近战挥击破风 / 远程发射声。小将 / 召唤物不出(它们只有命中声)。
+## 普攻出手(_basic_attack 开头调): 远程的发射声(之后弹道飞行, 命中声在落地时响)。
+##   ★11-05 近战不播: 近战普攻在出手这一帧就结算伤害 ⇒ 挥击破风和命中叠在同一帧成一团(忍者龟审核: 一刀三声);
+##   云顶近战的出手声比命中早 0.2~0.4 秒, 我们没有这个时间差 ⇒ 近战只播命中。小将 / 召唤物不出。
 func sfx_basic_swing(u: Dictionary) -> void:
 	var a = _audio()
-	if a == null or not _is_turtle(u):
+	if a == null or not _is_turtle(u) or bool(u.get("melee", false)):
 		return
 	var ev := "bas_" + str(u.get("id", ""))
 	if not a.has_sfx(ev) or battle._t - float(_ev_last_t.get(ev, -99.0)) < battle.SFX_HIT_MIN_GAP:
@@ -116,9 +132,20 @@ func sfx_basic_swing(u: Dictionary) -> void:
 
 
 ## 命中(两条伤害路 → battle_damage 调): eq_iid = 这一段伤害所在的装备上下文(battle_damage 记完账前抓下来的)。
+static var _hit_log := OS.has_environment("SFX_HIT_LOG")   # 审核用: 每一下命中打印来源 / 标记(11-05 忍者龟音画对齐审)
 func _sfx_hit(crit: bool, src = null, basic: bool = false, eq_iid: String = "") -> void:
 	var a = _audio()
 	if a == null:
+		return
+	if _hit_log:
+		print("[HIT] t=%.3f src=%s side=%s basic=%s crit=%s eq=%s cast=%s ctx=%s" % [battle._t, str((src as Dictionary).get("id", "?")) if src is Dictionary else "-",
+			str((src as Dictionary).get("side", "?")) if src is Dictionary else "-", basic, crit, eq_iid, _recent_cast(src), skill_ctx])
+	## 训龟大师(装饰, 用户 10-31「就是个装饰的地位，丢点技能」): 它丢出的伤害不出命中声 —— 审核时一局里约每 1.5 秒一下通用声, 全是它
+	if src is Dictionary and battle.has_method("_is_untouchable") and battle._is_untouchable(src):
+		return
+	## 技能章: 技能射出的弹道 / 延时段落地, 来源就是施法者 ⇒ 这个技能的命中声(即使按普攻结算)
+	if skill_ctx != "" and _is_turtle(src) and is_same(src, skill_ctx_src):
+		_play_skill_hit(a, src, skill_ctx)
 		return
 	if basic and _is_turtle(src):
 		var id := str((src as Dictionary).get("id", ""))
@@ -135,15 +162,10 @@ func _sfx_hit(crit: bool, src = null, basic: bool = false, eq_iid: String = "") 
 		if eq_iid != "" and sfx_equip(eq_iid):
 			return
 		var st := "" if eq_iid != "" else _recent_cast(src)   # 装备打的伤害(该件没有自己的声音)不冒充技能命中
-		if st != "":
-			var hev := hit_event_of(src, st)
-			if a.has_sfx(hev):
-				if battle._t - float(_ev_last_t.get(hev, -99.0)) >= SKH_GAP and _skh_slot():
-					_ev_last_t[hev] = battle._t
-					a.play_sfx(hev, SKH_GAIN, 1.0, 0.04)
-					if crit:
-						a.play_sfx("g_crit", 0.5 * ATK_GAIN, 1.0, 0.03)
-				return
+		if st != "" and _play_skill_hit(a, src, st):
+			return
+		if _passive_cover(src):   # 被动自己的伤害: 被动声已经响了
+			return
 		## 认不出来源的技能 / 装备伤害: 公共技能命中声, 全场 SKILL_HIT_GAP 内最多一下(11-04 探针: 每段都响会刷成一层底)
 		if battle._t - _skill_hit_last_t < SKILL_HIT_GAP:
 			return
@@ -162,6 +184,46 @@ func _sfx_hit(crit: bool, src = null, basic: bool = false, eq_iid: String = "") 
 			return
 		battle._last_hit_sfx_t = battle._t
 		a.play_sfx("g_hit", 0.85 * g, 1.0, 0.06)
+
+
+## 被动触发(各被动的触发点调): key = 龟 id 或「龟 id_第二个时刻」(ghost_death / pirate_hook / lightning_burst / cyber_shot)。
+func sfx_passive(u, key: String) -> void:
+	var a = _audio()
+	if a == null or not (u is Dictionary):
+		return
+	var found := false
+	for r in _ps_mark:
+		if is_same(r[0], u):
+			r[1] = battle._t
+			found = true
+			break
+	if not found:
+		_ps_mark.append([u, battle._t])
+	var ev := "ps_" + key
+	if not a.has_sfx(ev) or battle._t - float(_ev_last_t.get(ev, -99.0)) < PS_GAP:
+		return
+	_ev_last_t[ev] = battle._t
+	a.play_sfx(ev, PS_GAIN_FREQ if PS_FREQ.has(key) else PS_GAIN, 1.0, 0.04)
+
+
+func _passive_cover(src) -> bool:
+	if not (src is Dictionary):
+		return false
+	for r in _ps_mark:
+		if is_same(r[0], src):
+			return battle._t - float(r[1]) <= PS_COVER
+	return false
+
+
+## 技能命中声(节流: 同一条 SKH_GAP 内一下、全场 SKH_VOICES 路)。不再叠通用暴击(11-05: 背刺每一刀两声)。返回 true = 这个技能有命中声。
+func _play_skill_hit(a, src, stype: String) -> bool:
+	var hev := hit_event_of(src, stype)
+	if not a.has_sfx(hev):
+		return false
+	if battle._t - float(_ev_last_t.get(hev, -99.0)) >= SKH_GAP and _skh_slot():
+		_ev_last_t[hev] = battle._t
+		a.play_sfx(hev, SKH_GAIN, 1.0, 0.04)
+	return true
 
 
 ## 装备触发(eq_<编号>): 伤害 / 治疗 / 护盾在装备上下文里时由上面几处转进来; 没有伤害的触发(召唤 / 时停 / 饮药…)在装备自己的触发点调。
@@ -241,15 +303,18 @@ func sfx_skill_cast(u: Dictionary, tier: int = VfxTiers.NORMAL, stype: String = 
 	a.play_sfx(ev, VfxTiers.cast_sfx_gain(tier), 1.0, 0.03)   # 音量按重要度档位(VfxTiers; 大招级原音量)
 
 
-## 阵亡: 主龟与小将倒下播 g_death(召唤物 / 龟蛋不播: 蛋有自己的碎裂演出)。全场 DEATH_GAP 内只响一声。
+## 阵亡(★11-05 用户「角色死亡的时候有什么声音？你怎么参考的？」): 照云顶的阵亡提示声, 分敌我 ——
+##   我方(左)单位倒下 g_death_ally, 敌方倒下 g_death_enemy(云顶 alert_death_unit_self / alert_death_unit, 逐条尺子就是这两条原声)。
+##   召唤物 / 龟蛋不播(蛋有自己的碎裂演出)。全场 DEATH_GAP 内只响一声(团灭不叠成一团)。
+##   ✗ 每只龟一条倒地声(die_<龟>)11-05 撤掉(用户「每只龟有自己一条的倒地声，真的假的？你这怎么参考到的？」): Riot 的 Death3D 是配
+##     英雄死亡动画的整段音轨(中位 3.7 秒), 我们 28 只龟只有 3 只有死亡动画、其余 0.4 秒淡出, 没有可配的东西; 那 28 条也没逐只对照过原声。
 func sfx_death(u: Dictionary) -> void:
 	var a = _audio()
 	if a == null or bool(u.get("is_summon", false)) or bool(u.get("_isEgg", false)):
 		return
-	if battle._t - _death_last_t < DEATH_GAP:
-		return
-	_death_last_t = battle._t
-	a.play_sfx("g_death", 1.0, 1.0, 0.04)
+	if battle._t - _death_last_t >= DEATH_GAP:
+		_death_last_t = battle._t
+		a.play_sfx("g_death_ally" if str(u.get("side", "")) == "left" else "g_death_enemy", 1.0, 1.0, 0.04)
 
 ## ★11-04 探针: 治疗声一局 489 次(原间隔 0.06 秒 ⇒ 生命偷取 / 持续回血每一跳都响, 满血回 0 也响)。
 ##   云顶回血 tick 不出声 ⇒ 只在真回了血时(调用方判)且全场 HEAL_SFX_GAP 内最多一下; 得盾同理 SHIELD_SFX_GAP。

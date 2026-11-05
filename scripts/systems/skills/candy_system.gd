@@ -241,6 +241,7 @@ func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(�
 	if not u.get("alive", false): return
 	var ce = battle._targeting._enemies_of(u)
 	if ce.is_empty(): return
+	battle._audio_sys.sfx_passive(u, "candy")   # 被动音效(11-05; 只管声音)
 	var fat: Dictionary = ce[0]
 	for e in ce:
 		if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
