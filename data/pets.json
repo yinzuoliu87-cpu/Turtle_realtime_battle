@@ -1247,12 +1247,8 @@
     "def": 15,
     "mr": 16,
     "crit": 0.25,
-    "img": "pets/candy.png",
-    "sprite": {
-      "frames": 9,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/candy_idle.png",
+    "sprite": {"frames": 9, "frameW": 172, "frameH": 166, "duration": 1125},
     "passive": {
       "type": "candySteal",
       "name": "甜蜜掠夺",

@@ -1,0 +1,30 @@
+{
+ "candy": {
+  "attack": 9,
+  "body0": 164,
+  "casts": {
+   "candyBarrage": [
+    7,
+    3,
+    "pixellab"
+   ],
+   "candyBomb": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "candyHammer": [
+    9,
+    6,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 9
+ }
+}

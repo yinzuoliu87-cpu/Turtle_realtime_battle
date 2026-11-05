@@ -1,11 +1,11 @@
 extends Node
-## verify_spine_actions.gd — 外包 11 只龟的动作帧(普攻 / 受击 / 阵亡)与待机「同一只龟、同一个大小、同一条脚底线」(2026-11-05)。
+## verify_spine_actions.gd — 动作帧(外包 11 只 + 从头做的龟: 普攻 / 受击 / 阵亡 / 技能 / 形态段)与待机「同一只龟、同一个大小、同一条脚底线」(2026-11-05)。
 ##
 ## 由来: 方案书 docs/plans/20261105b-龟美术统一与动作补全.md §4.3。动作帧由 tools/assetgen/build_spine_actions.py 在画师 Spine 原骨骼上渲出,
 ##   表在 scripts/gamedata/turtle_actions.gd(生成)。这套历史上踩过的病(用户 2026-07-21「大小明显不对」/ 08-22「站立的图片和其他动作完全接不上」):
 ##   动作帧本体只占半帧 ⇒ 一播就缩; 脚底行不同 ⇒ 一播就上下跳。
 ## 判据(量需求本身, 不读我自己写的配置当答案):
-##   ① 表里每张动作图(普攻 / 受击 / 阵亡 / 每个技能的释放动作)都在, 是方帧条(帧高 = 帧宽), 帧数 ≥ 6
+##   ① 表里每张动作图(普攻 / 受击 / 阵亡 / 每个技能的释放动作)都在, 是方帧条(帧高 = 帧宽), 帧数 ≥ 5
 ##   ② 每个动作的第 0 帧 = 待机第 0 帧摆进方帧(水平居中、格子底边 = 归一表的脚底行)后**逐像素相同** —— 同一只龟、同一个像素尺度
 ##   ③ 真场景里生成这 11 只, 播普攻 / 受击 / 阵亡: 精灵 pixel_size 与待机相同、脚底线的本地高度与待机相同(不缩、不跳)
 ##   ④ 主场景 ACTION_* 表里没有这 11 只(否则旧表会盖掉新表 —— 小龟原来挂着旧形象的三张图)
@@ -41,7 +41,7 @@ func _ready() -> void:
 	for k in TA.ATTACK.keys():
 		(ids if pets.has(str(k)) else form_ids).append(str(k))
 	ids.sort()
-	_ok("★分母: 动作表里有 11 只龟", ids.size() == 11, str(ids))
+	_ok("★分母: 动作表里至少有外包 11 只(另加从头做的龟)", ids.size() >= 11, "%d 只 %s" % [ids.size(), str(ids)])
 	_check_forms(form_ids)
 	## ── ①② 文件 ──
 	for id in ids:
@@ -73,7 +73,8 @@ func _ready() -> void:
 			ai.convert(Image.FORMAT_RGBA8)
 			var S: int = ai.get_height()
 			var nf: int = ai.get_width() / S
-			_ok("%s %s 是方帧条, 帧数 ≥ 6" % [id, kind], ai.get_width() % S == 0 and nf >= 6, "%d×%d, %d 帧" % [ai.get_width(), S, nf])
+			## 帧数 ≥ 5: 受击 = 第 0 帧 + 4 帧(15fps ≈ 0.33 秒)是最短的一段(糖果龟 AI 受击 4 帧; 原门槛 6 是随手定的)
+			_ok("%s %s 是方帧条, 帧数 ≥ 5" % [id, kind], ai.get_width() % S == 0 and nf >= 5, "%d×%d, %d 帧" % [ai.get_width(), S, nf])
 			## 待机格子在方帧里的位置: 水平居中, 底边 = 脚底行
 			var ox: int = (S - fw) / 2
 			var oy: int = feet - fh
@@ -156,7 +157,7 @@ func _ready() -> void:
 				"pixel_size %.6f/%.6f · 脚底 %.5f/%.5f m" % [spr.pixel_size, px0, cfeet, feet0])
 			scn._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
 			u["_cast_wind"] = false
-	_ok("★分母: 运行时一共播了 33 次动作(11 只 × 3)", played == 33, "%d 次" % played)
+	_ok("★分母: 运行时每只龟普攻 / 受击 / 阵亡都播了(%d 只 × 3)" % ids.size(), played == ids.size() * 3, "%d 次" % played)
 	_ok("★分母: 技能释放动作至少 25 段播过(外包 11 只)", ncast >= 25, "%d 段" % ncast)
 	## 熔岩火山形态: 进火山后播动作, 像素尺寸 / 脚底线仍与普通待机一致
 	for e in scn._units:

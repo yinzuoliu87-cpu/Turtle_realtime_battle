@@ -9,6 +9,7 @@ const ATTACK := {
 	"angel": ["pets/animations/angel/attack.png", 15.0],   # 10 帧
 	"bamboo": ["pets/animations/bamboo/attack.png", 15.0],   # 10 帧
 	"basic": ["pets/animations/basic/attack.png", 15.0],   # 10 帧
+	"candy": ["pets/animations/candy/attack.png", 15.0],   # 9 帧
 	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 10 帧
 	"ice": ["pets/animations/ice/attack.png", 15.0],   # 10 帧
 	"lava": ["pets/animations/lava/attack.png", 15.0],   # 10 帧
@@ -23,6 +24,7 @@ const HURT := {
 	"angel": ["pets/animations/angel/hurt.png", 15.0],   # 6 帧
 	"bamboo": ["pets/animations/bamboo/hurt.png", 15.0],   # 6 帧
 	"basic": ["pets/animations/basic/hurt.png", 15.0],   # 6 帧
+	"candy": ["pets/animations/candy/hurt.png", 15.0],   # 5 帧
 	"fortune": ["pets/animations/fortune/hurt.png", 15.0],   # 6 帧
 	"ice": ["pets/animations/ice/hurt.png", 15.0],   # 6 帧
 	"lava": ["pets/animations/lava/hurt.png", 15.0],   # 6 帧
@@ -37,6 +39,7 @@ const DEATH := {
 	"angel": ["pets/animations/angel/death.png", 15.0],   # 15 帧
 	"bamboo": ["pets/animations/bamboo/death.png", 15.0],   # 15 帧
 	"basic": ["pets/animations/basic/death.png", 15.0],   # 15 帧
+	"candy": ["pets/animations/candy/death.png", 15.0],   # 15 帧
 	"fortune": ["pets/animations/fortune/death.png", 15.0],   # 15 帧
 	"ice": ["pets/animations/ice/death.png", 15.0],   # 15 帧
 	"lava": ["pets/animations/lava/death.png", 15.0],   # 15 帧
@@ -52,6 +55,7 @@ const RUN := {
 	"angel": ["pets/animations/angel/run.png", 12.0],   # 8 帧
 	"bamboo": ["pets/animations/bamboo/run.png", 12.0],   # 8 帧
 	"basic": ["pets/animations/basic/run.png", 12.0],   # 8 帧
+	"candy": ["pets/animations/candy/run.png", 12.0],   # 9 帧
 	"fortune": ["pets/animations/fortune/run.png", 12.0],   # 8 帧
 	"ice": ["pets/animations/ice/run.png", 12.0],   # 8 帧
 	"lava": ["pets/animations/lava/run.png", 12.0],   # 8 帧
@@ -65,6 +69,7 @@ const HIT := {
 	"pets/animations/angel/attack.png": 4,
 	"pets/animations/bamboo/attack.png": 4,
 	"pets/animations/basic/attack.png": 4,
+	"pets/animations/candy/attack.png": 4,
 	"pets/animations/fortune/attack.png": 4,
 	"pets/animations/ice/attack.png": 4,
 	"pets/animations/lava/attack.png": 4,
@@ -102,6 +107,11 @@ const CAST := {
 		"basicBarrage": ["pets/animations/basic/cast_basicBarrage.png", 15.0, 4],   # 9 帧 · pixellab
 		"basicChiWave": ["pets/animations/basic/cast_basicChiWave.png", 15.0, 3],   # 9 帧 · pixellab
 		"basicSlam": ["pets/animations/basic/cast_basicSlam.png", 15.0, 4],   # 9 帧 · pixellab
+	},
+	"candy": {
+		"candyBarrage": ["pets/animations/candy/cast_candyBarrage.png", 15.0, 3],   # 7 帧 · pixellab
+		"candyBomb": ["pets/animations/candy/cast_candyBomb.png", 15.0, 4],   # 7 帧 · pixellab
+		"candyHammer": ["pets/animations/candy/cast_candyHammer.png", 15.0, 6],   # 9 帧 · pixellab
 	},
 	"fortune": {
 		"fortuneAllIn": ["pets/animations/fortune/cast_fortuneAllIn.png", 15.0, 4],   # 9 帧 · pixellab
@@ -155,6 +165,7 @@ const NORM := {
 	"angel": [160.0, 260.0, 160.0],
 	"bamboo": [165.0, 260.0, 165.0],
 	"basic": [139.0, 260.0, 139.0],
+	"candy": [164.0, 260.0, 164.0],
 	"fortune": [149.0, 260.0, 149.0],
 	"ice": [158.0, 260.0, 158.0],
 	"lava": [162.0, 260.0, 162.0],

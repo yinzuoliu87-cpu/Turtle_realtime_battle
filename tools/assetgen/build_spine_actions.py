@@ -739,7 +739,9 @@ def main() -> int:
 	else:
 		json.dump(man, open(MANIFEST, "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
 		if only is None:
-			write_gd(man)
+			## 外包 11 只以外、从头做的龟(build_pet_actions.py 的清单)并进同一张生成表 —— 查表 / 门禁对它们一律生效
+			pm = os.path.join(HERE, "pet_src", "pet_manifest.json")
+			write_gd(dict(man, **(json.load(open(pm, encoding="utf-8")) if os.path.exists(pm) else {})))
 	return 0
 
 
