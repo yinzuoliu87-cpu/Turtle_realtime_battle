@@ -47,7 +47,7 @@ func _rocket_charge_vfx(u: Dictionary, aim: Vector2) -> void:
 		})
 	battle._skill_ring(u["pos"], Color(1.0, 0.6, 0.2, 0.55), 42.0)   # 脚下能量环脉冲×2
 	battle._pending_shots.append({"delay": 0.75, "src": u, "fn": func() -> void:
-		if uu.get("alive", false): battle._skill_ring(uu["pos"], Color(1.0, 0.72, 0.32, 0.5), 46.0)})
+		if uu.get("alive", false): battle._skill_ring(uu["pos"], Color(1.0, 0.72, 0.32, 0.5), 46.0, str(uu.get("side", "")))})
 
 # 枪口特效: 白热闪(瞬爆大→收) + 3条锥形喷火 + 火星前喷 + 后坐推退
 # 枪口特效: 白热闪(瞬爆大→收) + 3条锥形喷火 + 火星前喷 + 后坐推退

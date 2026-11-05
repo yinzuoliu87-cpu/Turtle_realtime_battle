@@ -514,8 +514,8 @@ func _dl_start_fight() -> void:
 ##   做法对齐 _dl_wipe_dramatize(一段的结尾): 定格 + 震屏 + 闪屏 + 大字 + 两侧战线冲击环。
 ##   ★不要在这里做任何按 battle._t 计时的东西 —— battle._t 跨路累加, 见 §SUDDEN / battle._sd_t0。
 func _dl_fight_start_dramatize() -> void:
-	battle._add_hitstop(0.18)                                  # 短定格: 比团灭(0.30)短, 是"起势"不是"收势"
-	battle._shake(battle.JUICE_SHAKE_HEAVY)
+	battle._hitstop_force(0.18)                                # 短定格: 比团灭(0.30)短, 是"起势"不是"收势"
+	battle._shake_force(battle.JUICE_SHAKE_HEAVY)
 	_dl_flash_screen(Color(1.0, 0.92, 0.55), 0.22)      # 淡金起手闪
 	battle._audio_sys._sfx_simple("fight_start")        # 开战声(整局最响的一声; 2026-11-04 对标云顶开战横幅那一声)
 	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -120.0), "开 战", Color("#ffd93d"), true, "label")
@@ -789,8 +789,8 @@ static func side_swap_flash(col: Color) -> Color:
 
 func _dl_wipe_dramatize(wiped_lr: String) -> void:
 	var we_lost: bool = (wiped_lr == ReplayRecorder.my_side(battle))   # 「我方」= 看的人那一侧(配对局 B ⇒ 右)
-	battle._add_hitstop(0.30)                     # 定格: 比普通击杀(0.05~0.12)长得多, 标记"这是一段的结束"
-	battle._shake(battle.JUICE_SHAKE_BIG)
+	battle._hitstop_force(0.30)                   # 定格: 比普通击杀(0.05~0.12)长得多, 标记"这是一段的结束"
+	battle._shake_force(battle.JUICE_SHAKE_BIG)
 	# 全屏闪: 我方被团灭→暗红警示; 我方获胜→金色
 	var col: Color = FLASH_WIPE_LOST if we_lost else FLASH_WIPE_WON
 	_dl_flash_screen(col, 0.34)
@@ -808,8 +808,8 @@ func _dl_wipe_dramatize(wiped_lr: String) -> void:
 ## 比团灭更重: 更长的顿帧 + 最大震屏 + 蛋位置爆冲击环 + 全场大字。
 func _dl_egg_break_dramatize(broken_side_lr: String) -> void:
 	var we_lost: bool = (broken_side_lr == ReplayRecorder.my_side(battle))   # 「我方」= 看的人那一侧(配对局 B ⇒ 右)
-	battle._add_hitstop(0.45)                    # 比团灭(0.30)更长 —— 这是整场结束
-	battle._shake(battle.JUICE_SHAKE_MAX)
+	battle._hitstop_force(0.45)                  # 比团灭(0.30)更长 —— 这是整场结束
+	battle._shake_force(battle.JUICE_SHAKE_MAX)
 	_dl_flash_screen(FLASH_EGG_WON if not we_lost else FLASH_EGG_LOST, 0.55)
 	# 在破掉的那颗蛋的位置炸冲击环
 	for u in battle._units:

@@ -78,6 +78,8 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    verify_no_combat_juice) echo 9000 ;;   # 2026-11-04 战斗中不屏震不顿帧: 双路自动战真打 60 秒(每帧恰一步)数屏震 / 顿帧
+    verify_ring_team_rim) echo 9000 ;;   # 2026-11-04 地面环敌我描边: 左右真施放 + 双路自动战 60 秒量覆盖率
     verify_shop_inv_phone) echo 3000 ;;   # 2026-10-21 商店 / 背包手机版式: 3 种比例 × 7 个状态各建一次场景, 实测见方案书
     verify_shop_interactions) echo 4000 ;;   # 2026-10-22 商店交互漏洞: 真点击走 96 件说明卡 + 三比例 × 10 格 + 斧头三比例, 每一步等排版帧; 实测 2575 帧(防连点那 0.4 秒用 OS.delay_msec, 不吃帧)
     verify_axe_evo_show) echo 1200 ;;   # 2026-10-22 小木斧进化演出: 商店 ×4 / 背包 ×2 各建一次场景 + 真点击, 实测 400 帧内跑完, 给足余量

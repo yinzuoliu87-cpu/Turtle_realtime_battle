@@ -387,8 +387,8 @@ func _ice_frost_field(center: Vector2, radius: float, secs: float) -> void:
 func _frost_icicle_drop(at: Vector2) -> void:
 	if battle._world == null:
 		return
-	# ② 预警: 落点先出现一个小霜圈(0.15 秒), 给"要被砸了"的预期
-	battle._skill_ring(at, Color(0.55, 0.85, 1.0, 0.30), 34.0)
+	# ② 预警: ★2026-11-04 每根冰锥的小霜圈去掉 —— 探针量到一局两分钟 1115 个(加上落地环共 2230 个, 占全场地面环 97%),
+	#   霜盘(_ice_frost_field)已经标出整个危险范围; 再给每根配环 = Riot「什么都重要就什么都不重要」(方案书 20261104b P5)
 	var tex: Texture2D = load(FROST_ICICLE)
 	if tex == null:
 		return
@@ -425,7 +425,7 @@ func _frost_impact(at: Vector2) -> void:
 		tg.tween_property(g, "scale", Vector3.ONE * 2.1, 0.14)
 		tg.tween_property(g.material_override, "albedo_color", Color(0.80, 0.95, 1.0, 0.0), 0.16)
 		tg.chain().tween_callback(g.queue_free)
-	battle._skill_ring(at, Color(0.70, 0.92, 1.0, 0.55), 58.0)  # 地面冲击环
+	## 地面冲击环 ★2026-11-04 去掉(理由同上面的预警圈): 落地反馈由闪光 + 冰屑 + 霜痕给
 	battle._shake(0.012)                                        # 极轻(一跳最多 16 根, 不能重)
 	_frost_scar(at)                                             # 残留霜痕
 
@@ -536,10 +536,10 @@ func _frost_shield_burst(ally: Dictionary) -> void:
 
 
 # 寒冰登场寒气特效: 蓝霜地环×2 + 上升冰晶 (敌人小, 寒冰自身big)
-func _ice_chill_vfx(pos2d: Vector2, big: bool = false) -> void:
+func _ice_chill_vfx(pos2d: Vector2, big: bool = false, side: String = "") -> void:
 	var r: float = 84.0 if big else 52.0
-	battle._skill_ring(pos2d, Color(0.55, 0.85, 1.0, 0.95), r)         # 外层寒环
-	battle._skill_ring(pos2d, Color(0.85, 0.96, 1.0, 0.55), r * 0.5)  # 内层亮霜
+	battle._skill_ring(pos2d, Color(0.55, 0.85, 1.0, 0.95), r, side)         # 外层寒环(side = 寒冰龟那一方, 敌我描边)
+	battle._skill_ring(pos2d, Color(0.85, 0.96, 1.0, 0.55), r * 0.5, side)  # 内层亮霜
 	var n: int = 8 if big else 5
 	var tex = "res://assets/sprites/skills/ice-spike.png"
 	var has_tex = ResourceLoader.exists(tex)

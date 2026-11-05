@@ -532,7 +532,7 @@ const JUICE_SWING_SCALE := 1.16                    # 出招挥出: 整体微伸 
 const JUICE_SWING_SEC := 0.14                      # 挥出回弹时长
 # ② 受击闪白 hit-flash (Sprite3D modulate 瞬白 → 淡回)
 const JUICE_FLASH_COLOR := Color(2.4, 2.4, 2.4)    # 过曝白 (>1 提亮; shaded=false 下生效)
-const JUICE_FLASH_SEC := 0.11                      # 闪白淡回时长
+const JUICE_FLASH_SEC := 0.06                      # 闪白淡回时长(11-04 0.11→0.06: 商业做法闪白 1~2 帧, 太长会被读成状态效果; 方案书 20261104b)
 # ③ 顿帧 hit-stop (极短跳过 _tick 推进, 不碰 Engine.time_scale — 用计时恢复)
 const JUICE_HITSTOP_HEAVY := 0.055                 # 大招/暴击命中卡顿
 const JUICE_HITSTOP_KNOCK := 0.060                 # 击飞卡顿
@@ -3828,7 +3828,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	##   正是"无含义圆环"那条禁区; 砸地的反馈由 `_impact_particles` + 震屏 + 顿帧给。
 	u["_bear_voff"] = Vector3(0.0, -0.22, 0.0)
 	u["land_t"] = JUICE_LAND_SEC
-	_shake(JUICE_SHAKE_BIG); _hitstop = maxf(_hitstop, 0.05)
+	_shake(JUICE_SHAKE_BIG)
 	_vfx._impact_particles(origin, 0.0)
 	_equip_tick_sys.bear_wave_start(u, origin, dir, _atk_dmg(u, EquipTickSystem.BEAR_WAVE_COEF, tgt))
 	## 起身复位也交给波(它知道波什么时候完), 这里不再自己等 —— 两条钟必然丢事件。
@@ -4694,9 +4694,18 @@ const RING_LAST_R_PX := 31.1   # 末帧外径(实测, 见提交信息里的逐�
 ##   旧软边贴图的 alpha 斜坡自己封顶在 153/255 = 0.6, 而 modulate.a 是 1.0。
 ##   换成硬 alpha 像素环后那个 0.6 没人承接 ⇒ 不接住则 187 处一起变亮 67%(顺手调亮是夹带)。
 const RING_PEAK_A := 0.6
+## ★敌我描边(2026-11-04 · 方案书 docs/plans/20261104b-特效对标商业做法.md P4; 学的是 Supercell《荒野乱斗》「每个特效都要表明阵营」):
+##   放技能那一刻生成的地面环外面再套一圈阵营色(左蓝右红 —— 与开战演出 dual_lane_flow 两侧冲击环同一对颜色)。
+##   环本体仍是技能主题色; 弹道 / tween 回调里异步生成的环拿不到施法者, 不描(门禁 verify_ring_team_rim 量覆盖)。
+const RING_RIM_SCALE := 1.08
+const RING_RIM_A := 0.55
+const RING_RIM_LEFT := Color(0.36, 0.66, 1.0)
+const RING_RIM_RIGHT := Color(1.0, 0.42, 0.42)
+var _ring_side := ""          # _cast_skill 调 _do_skill 期间 = 施法者阵营; 其余时候空
 
 # 技能光圈: 地面上一个躺平的环, 扩散淡出 (2D 接口对齐 _skill_ring(pos, col, radius))
-func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
+func _skill_ring(pos2d: Vector2, col: Color, radius: float, side: String = "") -> Sprite3D:
+	## side: 这个环属于哪一方(敌我描边用)。不传 = 用 _cast_skill 施放期间记下的 _ring_side; 异步生成的环要自己传。
 	## ★共享环(187 处)。用户否过两次(2026-08-09 看 095 / 2026-09-11 看 012
 	##   「为什么那个地面的东西糊弄啊」)。根因不是贴图是**放大方式**:
 	##   tween 连续缩放像素贴图 = 非整数倍 = 网格被打烂(tools/assetgen/blender_ring.py:13)。
@@ -4724,6 +4733,26 @@ func _skill_ring(pos2d: Vector2, col: Color, radius: float) -> Sprite3D:
 	_anim_fx.append({
 		"spr": r, "t0": _t, "fps": RING_ANIM_FPS, "n": RING_ANIM_FRAMES,
 	})
+	var rs: String = side if side != "" else _ring_side
+	if rs == "left" or rs == "right":
+		var tc: Color = RING_RIM_LEFT if rs == "left" else RING_RIM_RIGHT
+		var rim := Sprite3D.new()
+		rim.texture = _skill_ring_sheet
+		rim.hframes = RING_ANIM_FRAMES
+		rim.frame = 0
+		rim.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		rim.axis = Vector3.AXIS_Y
+		rim.shaded = false
+		rim.transparent = true
+		rim.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		rim.modulate = Color(tc.r, tc.g, tc.b, RING_RIM_A)
+		rim.position = _world_pos(pos2d, 0.045)
+		rim.pixel_size = target_ps * RING_RIM_SCALE   # 同样恒定只切帧(不连续缩放)
+		rim.render_priority = -1                      # 垫在本体环下面
+		_world.add_child(rim)
+		_anim_fx.append({"spr": rim, "t0": _t, "fps": RING_ANIM_FPS, "n": RING_ANIM_FRAMES})
+		r.set_meta("ring_rim", rim)
+		r.set_meta("ring_rim_side", rs)
 	return r
 
 func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:
@@ -5313,10 +5342,12 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 		return false
 	_anticipate(u)                  # 放大招前预备(缩)→挥出(伸) 形变
 	_shake(JUICE_SHAKE_HEAVY)       # 大招释放 = 轻震屏
-	_audio_sys.sfx_skill_cast(u)    # 放技能声(每只龟一条 cast_<id>; 只管声音不碰 sim)
+	_audio_sys.sfx_skill_cast(u, VfxTiers.of_skill(stype, _skill_cost(u, stype)))    # 放技能声(每只龟一条 cast_<id>, 音量按重要度档位; 只管声音不碰 sim)
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
 	# (原通用 _vfx._play_skill_vfx 飘空贴图已禁用 — 一张图标浮半空不贴 2.5D)
+	_ring_side = str(u.get("side", ""))   # 地面环敌我描边: 只在这一次施放的同步调用里有效
 	_do_skill(u, tgt, stype)
+	_ring_side = ""
 	_log("[color=%s]◆ %s[/color] 施放 [color=#ffe08a]%s[/color]" % [_log_side_hex(u), _unit_name(u), _skill_disp(stype)])
 	return true
 
@@ -6575,7 +6606,6 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				u["bamboo_charge"] = false
 				_damage._apply_damage_from(u, tgt, _mitigate(u, u["atk"] * (BambooSystem.GROW_SMACK_ATK_COEF if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_ATK_COEF) + u["maxHp"] * (BambooSystem.GROW_SMACK_HP_PCT if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_HP_PCT), tgt, true), Color("#9be7ff"), 0.0, false)   # 追击魔法·选竹击=强化生长(1.0A+13%maxHp)否则基础(0.75A+8%maxHp)·用户核对JS bambooCharged
 				_melee_lunge(u, tgt, 0.66)                                     # 不灭之握式: 强化发踏步加倍(0.30→0.66)明显扑上去
-				_hitstop = maxf(_hitstop, 0.06)                                # 顿帧=命中厚重感
 				_shake(0.06)
 				_vfx._impact_particles(tgt["pos"], float(tgt.get("height", 0.0)))   # 命中碎屑迸发
 				_vfx._flash(tgt, Color(0.5, 1.7, 0.65))                             # 敌绿闪(生长主题)
@@ -6720,7 +6750,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			if u["base_def"] < _cap:
 				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] * StoneSystem.BULWARK_GAIN_PCT)
 				_recalc_stats(u)
-				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环 (不飘名字文字)
+				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0, str(u.get("side", "")))   # 视觉: 硬化贴地褐环 (不飘名字文字)
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---
 	elif u["id"] == "bamboo":
 		if u.get("bamboo_charge", false): u["_ptimer"] = 0.0   # 蓄满待放期间不计时: 放出后重新数 6 秒(10-16: 原来照走, 放完下一发立即又蓄满)
@@ -7092,15 +7122,31 @@ func _pinch_dist() -> float:
 	var ks: Array = _touch_pts.keys()
 	return DetMath.dist((_touch_pts[ks[0]] as Vector2), _touch_pts[ks[1]] as Vector2)
 
-func _shake(amp: float) -> void:
+## ★★2026-11-04 战斗中不屏震、不顿帧(方案书 docs/plans/20261104b-特效对标商业做法.md P3)。
+##   用户「参考游戏有震屏吗」→ 实量云顶战斗录像: 40 秒 + 60 秒场景整体平移 0 帧;
+##   我们正常速度一局: 每分钟 13 次来回抖、5% 的帧在晃(探针: 一分钟 940 次 _shake, 828 次是寒冰冰锥的 0.012 微震)。
+##   顿帧: 用户 10-24 看过肩摔落地「顿啥啊」⇒ 删过一处; 探针量到一局每分钟顿 28~60 次、4~7% 的帧整场定住。
+##   ⇒ 战斗里散落的 _shake / _add_hitstop 调用一律不生效(20 多处调用点保留: 个别要恢复就改调 *_force 并写清用户原话)。
+##   只剩: 转场节点(开战 / 团灭 / 整场结束, dual_lane_flow) + 用户点名要的竹叶龟「拽住得顿一下」(07-11, bamboo_system)。
+##   门禁 verify_no_combat_juice: 一局真打下来战斗中屏震 / 顿帧次数。
+func _shake(_amp: float) -> void:
+	pass
+
+
+func _shake_force(amp: float) -> void:
 	if amp <= 0.0:
 		return
 	_shake_amp = minf(JUICE_SHAKE_MAX, maxf(_shake_amp, amp))
 	_shake_t = 0.0
 	if StreamRecorder.cur != null: StreamRecorder.cur.ev("shake", [amp])   # 逐帧直播事件层(S1)
 
-# 触发顿帧: 取较大值 (短事件不覆盖更长的卡顿)
-func _add_hitstop(sec: float) -> void:
+
+func _add_hitstop(_sec: float) -> void:
+	pass
+
+
+# 触发顿帧(只给转场节点与用户点名的那一处, 见上): 取较大值 (短事件不覆盖更长的卡顿)
+func _hitstop_force(sec: float) -> void:
 	if _hitstop_mute > 0:
 		return   # 调用方明确不要顿帧的那几下(过肩摔落地: 用户 10-24「顿啥啊」)
 	if sec > _hitstop:

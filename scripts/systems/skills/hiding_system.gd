@@ -178,7 +178,7 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 	battle._rocket_sys._rocket_smoke_plume(center)
 	battle._rocket_sys._rocket_scorch(center)
 	# ⑦ 结算伤害(数值/机制封板不动)
-	battle._skill_ring(center, Color(1.0, 0.7, 0.3, 0.75), 400.0)
+	battle._skill_ring(center, Color(1.0, 0.7, 0.3, 0.75), 400.0, str(u.get("side", "")))
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if DetMath.dist((o["pos"] as Vector2), center) > 400.0: continue

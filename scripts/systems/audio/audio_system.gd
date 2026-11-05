@@ -99,7 +99,7 @@ func sfx_basic_cast(u: Dictionary) -> void:
 
 
 ## 放技能: 龟放出主动技那一刻播它自己的 cast_<id>(每只龟一条, 与普攻同一个「按来源」规矩)。小将 / 召唤物没有专属声 ⇒ 不出声。
-func sfx_skill_cast(u: Dictionary) -> void:
+func sfx_skill_cast(u: Dictionary, tier: int = VfxTiers.NORMAL) -> void:
 	var a = _audio()
 	if a == null or not a.has_method("has_sfx") or u.has("minion_role") or bool(u.get("is_summon", false)):
 		return
@@ -112,7 +112,7 @@ func sfx_skill_cast(u: Dictionary) -> void:
 		return
 	_cast_ts.append(battle._t)
 	_ev_last_t[ev] = battle._t
-	a.play_sfx(ev, 1.0, 1.0, 0.03)
+	a.play_sfx(ev, VfxTiers.cast_sfx_gain(tier), 1.0, 0.03)   # 音量按重要度档位(VfxTiers; 大招级原音量)
 
 
 ## 阵亡: 主龟与小将倒下播 unit_death(召唤物 / 龟蛋不播: 蛋有自己的碎裂演出)。全场 DEATH_GAP 内只响一声。

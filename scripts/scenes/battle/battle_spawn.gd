@@ -651,14 +651,14 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 		"ice":
 			u["_vs_fire_bonus"] = IceSystem.AURA_VS_FIRE   # 寒域: 对熔岩/凤凰 +20%伤害
 			u["_burnImmune"] = true            # 极寒(用户设计L162: 改常驻被动): 免疫灼烧
-			battle._ice_sys._ice_chill_vfx(u["pos"], true)     # 寒冰自身登场寒爆(大)
+			battle._ice_sys._ice_chill_vfx(u["pos"], true, str(u.get("side", "")))     # 寒冰自身登场寒爆(大)
 			battle._vfx._flash(u, Color(0.6, 0.86, 1.0))   # 自身蓝闪
 			for o in battle._targeting._enemies_of(u):
 				o["spd_aspd_mult"] = IceSystem.AURA_MULT   # -30% 攻速
 				o["spd_echarge_mult"] = IceSystem.AURA_MULT   # -30% 龟能充能速度
 				o["spd_move_mult"] = IceSystem.AURA_MULT   # -30% 移速
 				o["spd_dbf_until"] = battle._t + IceSystem.AURA_SEC   # 登场全场敌减速【12秒】(用户2026-07-11: 原永久改12秒)
-				battle._ice_sys._ice_chill_vfx(o["pos"])        # 敌人寒气蓝环
+				battle._ice_sys._ice_chill_vfx(o["pos"], false, str(u.get("side", "")))        # 敌人寒气蓝环(描边 = 施放的寒冰那一方)
 				battle._vfx._flash(o, Color(0.6, 0.86, 1.0))   # 敌蓝闪
 		"headless":
 			u["lifesteal"] += HeadlessSystem.UNDEAD_LIFESTEAL

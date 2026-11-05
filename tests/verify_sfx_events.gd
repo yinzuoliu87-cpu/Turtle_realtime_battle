@@ -151,7 +151,8 @@ func _ready() -> void:
 	var v_atk: float = _last_player_db(au)
 	scene._t += 1.0
 	scene._audio_sys._cast_ts.clear()
-	scene._audio_sys.sfx_skill_cast(scene._spawn._make_unit("stone", "left", Vector2(600, 400)))
+	## 量「放技能那一层」比普攻层高多少: 用大招档(原音量); 普通 / 轻技再轻 3 dB 由 verify_vfx_tiers ③ 管
+	scene._audio_sys.sfx_skill_cast(scene._spawn._make_unit("stone", "left", Vector2(600, 400)), VfxTiers.ULTIMATE)
 	var v_cast: float = _last_player_db(au)
 	au.sfx_volume = _sv
 	_ok("⑪ 放技能播放器比普攻高 6~8 dB(普攻层压低 7 dB)", v_cast - v_atk > 6.0 and v_cast - v_atk < 8.0, "普攻 %.1f · 放技能 %.1f dB" % [v_atk, v_cast])

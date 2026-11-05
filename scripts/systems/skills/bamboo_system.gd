@@ -119,7 +119,7 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 		battle._damage._stun(far, SMACK_STUN, "_sk_bamboo_smack")
 		battle._damage._buff(far, "atk", -SMACK_CHILL_DOWN, true, SMACK_CHILL_SEC)                     # 冰寒-20%攻4秒
 		battle._damage.apply_chill(far, SMACK_CHILL_MULT, 1.0, SMACK_CHILL_SEC)   # 冰寒-20%移速4秒
-		battle._hitstop = maxf(battle._hitstop, 0.05)                          # 抓住瞬间小顿(用户2026-07-11: 拽住得顿一下)
+		battle._hitstop_force(0.05)                                            # 抓住瞬间小顿(用户2026-07-11: 拽住得顿一下) —— 11-04 战斗顿帧全删, 唯独这处是用户点名要的
 		var ff = far
 		var uu = u
 		var pull_fn = func() -> void:                           # 顿0.2s后再拽贴身
@@ -149,7 +149,6 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 				if not o.get("_eggImmune", false):
 					battle._damage._knockback(uu, o, 70.0, 2.75)                # 击飞【1.5秒】(用户#12"击飞1.5秒"·滞空=2×(6.0×2.75)/22=1.5s·原vy_mult=1.5只给0.82s)
 		battle._shake(0.06)
-		battle._hitstop = maxf(battle._hitstop, 0.05)
 	battle._skill_ring(c, Color(0.22, 0.83, 0.33, 0.4), SPIKE_RADIUS)         # 蓄力预警圈
 	battle._pending_shots.append({"delay": SPIKE_WINDUP, "fn": spikes, "src": u, "cc": {}})   # 蓄力期被控 / 阵亡即取消(10-16)
 

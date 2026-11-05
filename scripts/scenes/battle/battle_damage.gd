@@ -558,7 +558,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		battle._audio_sys._sfx_hit(was_crit, src, basic)   # 普攻按来源出声(audio_system._sfx_hit 头注)
 	# Phase4 打击感: 受击闪白+轻压扁(每段直接命中); 顿帧/震屏/火花按伤害分级(auto: ≥gate=重击).
 	battle._vfx._flash(u)
-	battle._vfx._impact(u, dmg, "auto")
+	battle._vfx._impact(u, dmg, "auto", null, VfxTiers.BASIC if basic else VfxTiers.NORMAL)   # 火花大小按重要度档位(普攻小一号)
 	# 来源累积 ----
 	src["dmg_dealt"] = float(src.get("dmg_dealt", 0.0)) + float(dmg)   # ★.get 不是 +=: 合成来源(触手ghost等)没这个键, += 缺键=运行时错误⇒本函数当场中止(后面吸血/统计/死亡全不跑)而测试照样 ALL PASS
 	## 宝箱龟财宝值在伤害落地这一刻进账(本场宝箱账, 阵亡后风暴余下几跳照记 —— G)。另一半在 _apply_damage(§3.3)。

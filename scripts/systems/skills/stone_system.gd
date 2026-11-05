@@ -152,7 +152,7 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 	smt.chain().tween_callback(func(): uu["_slam_voff"] = Vector3.ZERO)
 	# ── 踏地瞬间(windup 后): 震屏+顿帧+脚下碎石+起手环 ──
 	var wf = func() -> void:
-		battle._shake(battle.JUICE_SHAKE_HEAVY); battle._hitstop = maxf(battle._hitstop, 0.05)
+		battle._shake(battle.JUICE_SHAKE_HEAVY)
 		battle._vfx._impact_particles(origin, 0.0)
 		battle._burst_vfx("res://assets/sprites/vfx/stone-slam-impact.png", origin, 210.0, 0.06)
 		battle._skill_ring(origin, Color(0.79, 0.64, 0.42, 0.6), 120.0)

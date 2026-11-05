@@ -154,15 +154,15 @@ func _play_egg_shatter(u: Dictionary) -> void:
 		battle._shake(battle.JUICE_SHAKE_BIG)
 		# ★尘环两道(内快外慢)。★不用 _particle_burst —— 那是【橙色火星】的通用粒子,
 		#   蛋壳崩裂不该有火(实拍确认: 中间炸出一团橙色, 和米白碎壳完全不搭)。
-		battle._skill_ring(pos2d, Color(1.00, 0.96, 0.82, 0.90), 120.0)
-		_dust_ring_later(pos2d))   # ★本文件自己的函数, 别加 battle. 前缀
+		battle._skill_ring(pos2d, Color(1.00, 0.96, 0.82, 0.90), 120.0, str(u.get("side", "")))
+		_dust_ring_later(pos2d, str(u.get("side", ""))))   # ★本文件自己的函数, 别加 battle. 前缀
 
 
 ## 破蛋的第二道尘环: 晚半拍、更大更淡 = 冲击波扩散出去。
-func _dust_ring_later(pos2d: Vector2) -> void:
+func _dust_ring_later(pos2d: Vector2, side: String = "") -> void:
 	var tw = battle._reg_tween()
 	tw.tween_interval(0.10)
-	tw.tween_callback(func() -> void: battle._skill_ring(pos2d, Color(0.94, 0.90, 0.76, 0.45), 210.0))
+	tw.tween_callback(func() -> void: battle._skill_ring(pos2d, Color(0.94, 0.90, 0.76, 0.45), 210.0, side))
 
 
 ## 从 egg.png 第 0 帧切 3×3 小块当碎壳, 抛物线飞散。
@@ -591,7 +591,7 @@ func _flash(u: Dictionary, col: Color = battle.JUICE_FLASH_COLOR) -> void:
 # heavy=技能/暴击命中级; big=大招/击飞级. light(普攻小段)只闪白不顿帧不抖.
 # 命中重量分级: 单段伤害(或暴击/大招标志)决定 闪白/顿帧/震屏/粒子 强度.
 # heavy=技能/暴击命中级; big=大招/击飞级. light(普攻小段)只闪白不顿帧不抖.
-func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -> void:
+func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null, tier: int = VfxTiers.NORMAL) -> void:
 	if tgt == null:
 		return
 	var lvl = level
@@ -608,7 +608,7 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -
 			if battle.JUICE_HITSTOP_LIGHT > 0.0: battle._add_hitstop(battle.JUICE_HITSTOP_LIGHT)
 			if battle.JUICE_SHAKE_LIGHT > 0.0:   battle._shake(battle.JUICE_SHAKE_LIGHT)
 	# 命中特效 (Botworld式: 普攻不打断敌人, 反馈全靠特效) — 每次命中迸 Hit Spark + Impact Ring
-	_hit_spark(tgt, at_pos)
+	_hit_spark(tgt, at_pos, tier)
 	# 冲击粒子: 只在重击/大招迸火花
 	if (lvl == "heavy" or lvl == "big") and float(dmg) >= battle.JUICE_PARTICLE_MIN_DMG:
 		var p2d: Vector2 = at_pos if at_pos != null else tgt.get("pos", Vector2.ZERO)
@@ -671,7 +671,7 @@ func _throw_item(src: Dictionary, tgt: Dictionary, img: String, label: String, c
 			p.queue_free())
 
 
-func _hit_spark(tgt, at_pos = null) -> void:
+func _hit_spark(tgt, at_pos = null, tier: int = VfxTiers.NORMAL) -> void:
 	if tgt == null or battle._t < float(tgt.get("_spark_t", 0.0)):
 		return
 	tgt["_spark_t"] = battle._t + 0.05
@@ -693,10 +693,12 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	r.shaded = false; r.transparent = true
 	r.modulate = Color(1.0, 0.96, 0.8, 0.95)
 	r.position = battle._world_pos(pos2d, h)
-	r.pixel_size = 0.006
+	var k: float = VfxTiers.spark_scale(tier)   # 重要度档位: 普攻小一号(方案书 20261104b P2)
+	r.pixel_size = 0.006 * k
+	r.set_meta("spark_tier", tier)
 	battle._world.add_child(r)
 	var tw = battle._reg_tween(); tw.set_parallel(true)
-	tw.tween_property(r, "pixel_size", 0.020, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(r, "pixel_size", 0.020 * k, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	## ★保亮到 65% 再淡: 一出生就线性淡出会被实拍读成"一团灰"(memory 里那条"淡出病",
 	##   一天踩过四次)。0.09 秒满亮 + 0.05 秒收。
 	tw.tween_property(r, "modulate:a", 0.0, 0.05).set_delay(0.09)
@@ -711,7 +713,7 @@ func _hit_spark(tgt, at_pos = null) -> void:
 	sp.shaded = false; sp.transparent = true
 	sp.modulate = Color(1.0, 1.0, 0.85, 0.9)
 	sp.position = battle._world_pos(pos2d, h)
-	sp.pixel_size = 0.012
+	sp.pixel_size = 0.012 * k
 	sp.scale = Vector3.ONE * 0.5
 	battle._world.add_child(sp)
 	var tw2 = battle._reg_tween(); tw2.set_parallel(true)

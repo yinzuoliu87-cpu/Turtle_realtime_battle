@@ -221,7 +221,6 @@ static func hammer_point(at2d: Vector2, face_right: bool) -> Vector2:
 # 锤击落地: 震屏 + 顿帧 + 锤头落点砸地冲击(2026-10-20 改范围技后重做: 冲击扩到 STRIKE_MELEE_RADIUS = 判定半径)
 func _two_head_slam_impact(at2d: Vector2, face_right: bool = true) -> void:
 	battle._shake(battle.JUICE_SHAKE_BIG)
-	battle._hitstop = maxf(battle._hitstop, 0.06)
 	vfx.hammer_slam(at2d, face_right)      # 锤头落点砸地: 白核闪 + 贴地冲击波扩到判定半径 + 符文地裂 + 碎石 + 尘 + 挥锤弧(落点见 hammer_point)
 
 # 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)

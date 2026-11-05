@@ -547,9 +547,9 @@ func _event(kind: String, a: Array) -> void:
 				battle._vfx._float_text(a[0], ft, fc, bool(a[3]), str(a[4]), str(a[5]), float(a[6]))
 				battle._t = t_end
 		"shake":
-			battle._shake(float(a[0]))
+			battle._shake_force(float(a[0]))   # 录制端只有转场节点会录 shake(战斗中 _shake 不生效)
 		"hitstop":
-			battle._add_hitstop(float(a[0]))
+			battle._hitstop_force(float(a[0]))
 		"flash":
 			if a.size() >= 1 and str(a[0]) == "light":
 				battle._vfx.screen_flash_light()

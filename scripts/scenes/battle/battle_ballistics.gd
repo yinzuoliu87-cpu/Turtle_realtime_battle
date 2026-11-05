@@ -337,7 +337,6 @@ func _step_projectiles(delta: float) -> void:
 					_fire_explosion(tgt["pos"])
 				elif pr.get("bamboo", false):   # 竹枝箭039: 命中演出照抄竹叶龟强化普攻(用户2026-07-19"特效用竹叶龟同款")
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._resolve_dmg(pr["src"], float(pr["dmg"]), tgt, true), pr["col"], 0.0, false, true)
-					battle._hitstop = maxf(battle._hitstop, 0.06)                                # 顿帧=命中厚重感
 					battle._shake(0.06)
 					battle._vfx._impact_particles(tgt["pos"], float(tgt.get("height", 0.0)))   # 命中碎屑迸发
 					battle._vfx._flash(tgt, Color(0.5, 1.7, 0.65))                             # 敌绿闪(生长主题)

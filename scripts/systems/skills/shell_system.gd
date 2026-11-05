@@ -433,7 +433,6 @@ func _shell_apply_awaken(u: Dictionary) -> void:   # 气场觉醒一次(六属�
 
 func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+微顿帧 + 强金闪 + 双金环 + 金光柱 + 金光上腾 + "觉醒"飘字
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	battle._hitstop = maxf(battle._hitstop, 0.06)
 	battle._vfx._flash(u, Color(1.0, 0.92, 0.55))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.28, 0.9), 132.0)   # 外金环
 	battle._skill_ring(u["pos"], Color(1.0, 0.95, 0.6, 0.9), 76.0)     # 内亮环

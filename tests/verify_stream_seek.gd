@@ -54,12 +54,20 @@ func _ready() -> void:
 		for kc in [10, 60, 110]:
 			if kc * F.CHUNK_STEPS + 37 + AFTER < int((res.get("stream", {}) as Dictionary).get("steps", 0)):
 				targets.append(first + kc * F.CHUNK_STEPS + 37)   # first + 37 是奇数偏移 ⇒ 渲染采样步(见 verify_stream_parity)
-		for tgt in targets:
-			await _one("%s 跳到第 %d 步" % [str(jj[0]), int(tgt)], chunks, res.get("stream", {}), nat, int(tgt))
+		## ★2026-11-04: 挑的步落在两路之间的换场空档(顺播那一步也一个单位都没有)⇒ 往后顺延 5 块再挑, 最多 4 次。
+		##   由来: 战斗中顿帧去掉(方案书 20261104b P3)后镜像局变短, 第 60 块那一步正好是换场空档 ——
+		##   那不是跳播的错, 是这一步本来就空。只有「顺播有单位、跳播没有」才是跳播的毛病, 下面的判据照判。
+		for tgt0 in targets:
+			var tgt: int = int(tgt0)
+			for _try in range(4):
+				if await _one("%s 跳到第 %d 步" % [str(jj[0]), tgt], chunks, res.get("stream", {}), nat, tgt):
+					break
+				tgt += 5 * F.CHUNK_STEPS
 	_finish()
 
 
-func _one(tag: String, chunks: Array, meta: Dictionary, nat: Dictionary, tgt: int) -> void:
+## 返回 false = 这一步顺播也没有单位(换场空档), 没判, 调用方顺延再挑。
+func _one(tag: String, chunks: Array, meta: Dictionary, nat: Dictionary, tgt: int) -> bool:
 	print("=== %s ===" % tag)
 	var backup: Dictionary = ReplayRecorder.capture_all()
 	## A 顺播
@@ -82,6 +90,9 @@ func _one(tag: String, chunks: Array, meta: Dictionary, nat: Dictionary, tgt: in
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_restore(backup)
+	if (sa[0]["units"] as Dictionary).is_empty():
+		print("  [换场空档] 第 %d 步顺播也没有单位 ⇒ 顺延" % tgt)
+		return false
 	## B 跳播
 	var b: Node = P.make_player_battle(self, chunks, meta, int(nat["seed"]), nat.get("state", {}))
 	b.set_process(false)
@@ -116,6 +127,7 @@ func _one(tag: String, chunks: Array, meta: Dictionary, nat: Dictionary, tgt: in
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_restore(backup)
+	return true
 
 
 func _diff(x: Dictionary, y: Dictionary) -> Array:
