@@ -116,6 +116,7 @@ func _tick_parasol(u: Dictionary, delta: float) -> void:
 
 ## 伞打开: 自身 + 200 码内队友拿 11/22/35% 减伤 + 15% 闪避
 func _parasol_open(u: Dictionary, si: int, stt: Dictionary) -> void:
+	battle._audio_sys.sfx_equip("p2eq_060")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var dr: float = [0.11, 0.22, 0.35][si]
 	var got: Array = []
 	for o in battle._targeting._allies_of(u, true):

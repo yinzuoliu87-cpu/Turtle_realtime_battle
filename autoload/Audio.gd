@@ -11,14 +11,13 @@ extends Node
 ## SFX 来源: PoC public/sfx/*.wav (直接拷过来)
 ## BGM 来源: PoC public/audio/*.mp3
 
-const SFX_PATHS: Dictionary = {
-	"hit-physical":  "res://assets/audio/sfx/hit-physical.wav",
-	"hit-crit":      "res://assets/audio/sfx/hit-crit.wav",
-	"heal":          "res://assets/audio/sfx/heal.wav",
-	"shield-gain":   "res://assets/audio/sfx/shield-gain.wav",
-	"shield-break":  "res://assets/audio/sfx/shield-break.wav",
-	"defeat":        "res://assets/audio/sfx/defeat.wav",
-	"rebirth":       "res://assets/audio/sfx/rebirth.wav",
+## ★2026-11-05 音效全部重做(用户「旧的那个普攻、伤害音效、盾音效，全部都要重做…原来的音效要删掉」):
+##   旧的 PoC 七条(hit-physical / hit-crit / heal / shield-gain / shield-break / defeat / rebirth)与 11-04 的 ev/ 一起删了,
+##   全部改由事件表 SfxEvents(tools/assetgen/build_sfx_v2.py 生成)提供。
+## 旧名 → 新名(只为放旧录像: 逐帧直播 / 回放里录的是当时的事件名)。新代码一律用新名。
+const ALIASES := {
+	"hit-physical": "g_hit", "hit-crit": "g_crit", "heal": "g_heal", "shield-gain": "g_shield_gain",
+	"shield-break": "g_shield_break", "rebirth": "g_rebirth", "unit_death": "g_death",
 }
 
 const BGM_PATHS: Dictionary = {
@@ -39,7 +38,10 @@ var bgm_hold := false
 var _held_target_db: float = -80.0
 
 # SFX 播放器池 (一次性 spawn, 自动 free)
-var _sfx_cache: Dictionary = {}   # name → AudioStream
+var _sfx_cache: Dictionary = {}   # name → AudioStream(有变体的 = 第一个变体)
+## 变体(云顶普攻 / 命中 3~4 个随机轮换): name → [AudioStream, ...]; 上一次播的序号, 下一次不连续重复
+var _var_cache: Dictionary = {}
+var _var_last: Dictionary = {}
 var recent: Array[String] = []    # 最近真播出去的音效名(play_sfx 里记)
 
 # BGM 单例
@@ -75,17 +77,18 @@ func _apply_quiet_gate() -> void:
 
 func _ready() -> void:
 	_apply_quiet_gate()
-	# 预加载所有 SFX (小, < 1MB 全部进内存便宜)
-	for name in SFX_PATHS:
-		var path: String = SFX_PATHS[name]
-		if ResourceLoader.exists(path):
-			_sfx_cache[name] = load(path)
-	## ★2026-11-04 音效事件表(tools/assetgen/build_sfx.py 生成 SfxEvents): 每只龟的普攻 / 胜负 / 按钮 / 奖励 / 升级 / 买东西 / 匹配成功。
-	##   与旧表同名的(defeat)用新的覆盖。定选与对黑箱标准的量化见 tools/assetgen/sfx_picks.json、tools/sfx_bar.py。
+	## 音效事件表(SfxEvents, tools/assetgen/build_sfx_v2.py 生成): 普攻出手 / 命中 / 暴击 / 技能放出 / 技能命中 / 装备 / 公共 / 界面。
+	##   定选依据(对云顶 / LoL 原声的量化): tools/sfx_pick_v2.py → .out/sfx_v2/pick_report.md。
 	for ev in SfxEvents.EVENTS:
-		var ep: String = SfxEvents.EVENTS[ev]
-		if ResourceLoader.exists(ep):
-			_sfx_cache[ev] = load(ep)
+		var streams: Array = []
+		for ep in SfxEvents.VARIANTS.get(ev, [SfxEvents.EVENTS[ev]]):
+			if ResourceLoader.exists(str(ep)):
+				streams.append(load(str(ep)))
+		if streams.is_empty():
+			continue
+		_sfx_cache[ev] = streams[0]
+		if streams.size() > 1:
+			_var_cache[ev] = streams
 	_ensure_master_limiter()
 	_apply_master_trim()
 
@@ -123,11 +126,6 @@ func _apply_master_trim() -> void:
 	AudioServer.set_bus_volume_db(0, MASTER_TRIM_DB)
 
 
-## 游戏里还没换成新做的那几条旧音效(命中 / 暴击 / 治疗 / 护盾 / 复活)的增益: 新音效的命中锚点从原命中音(L100 −11.8)
-##   降到黑箱命中中位(−16.4), 旧音效同降 4.6 dB 保持相对关系(build_sfx.ANCHOR 头注)。被事件表同名覆盖的(defeat)不降。
-const LEGACY_GAIN := 0.589
-
-
 ## 把 bgm_volume 即时应用到正在播放的 BGM player (滑条拖动时实时听感, 无淡入).
 ##
 ## ★必须与 play_bgm 用【同一条公式】: base_vol × (bgm_volume / 0.45)。
@@ -146,7 +144,9 @@ func apply_bgm_volume() -> void:
 func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 		pitch_jitter: float = 0.05, vol_jitter: float = 0.05) -> void:
 	if StreamRecorder.cur != null: StreamRecorder.cur.ev("sfx", [name, volume_scale, pitch_base])   # 逐帧直播事件层(S1): 裁判机静音也照录
-	var stream: AudioStream = _sfx_cache.get(name)
+	if not _sfx_cache.has(name):
+		name = legacy_name(name)           # 旧录像里的旧事件名
+	var stream: AudioStream = _pick_variant(name)
 	if stream == null or mute_sfx:
 		return
 	## 最近真播出去的音效名(只记名字, 最多 32 条): 门禁 verify_sfx_events 量「这一下播的是哪条」, 不靠猜。
@@ -157,8 +157,6 @@ func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 	var p := AudioStreamPlayer.new()
 	p.stream = stream
 	var vol_mult: float = volume_scale * (1.0 + randf_range(-vol_jitter, vol_jitter))
-	if SFX_PATHS.has(name) and not SfxEvents.EVENTS.has(name):
-		vol_mult *= LEGACY_GAIN
 	p.volume_db = linear_to_db(sfx_volume * maxf(0.01, vol_mult))
 	p.pitch_scale = pitch_base * (1.0 + randf_range(-pitch_jitter, pitch_jitter))
 	add_child(p)
@@ -171,6 +169,29 @@ func has_sfx(name: String) -> bool:
 	return _sfx_cache.has(name)
 
 
+## 旧事件名 → 新事件名(旧录像): 七条固定的走 ALIASES; atk_<龟> → bah_<龟>; cast_<技能类型> → sk_<技能类型>。认不出原样返回。
+func legacy_name(name: String) -> String:
+	if ALIASES.has(name):
+		return str(ALIASES[name])
+	if name.begins_with("atk_"):
+		return "bah_" + name.substr(4)
+	if name.begins_with("cast_") and _sfx_cache.has("sk_" + name.substr(5)):
+		return "sk_" + name.substr(5)
+	return name
+
+
+## 有变体的随机挑一个, 不连续重复同一个(只用全局 randf, 不碰战斗随机流)。
+func _pick_variant(name: String) -> AudioStream:
+	if not _var_cache.has(name):
+		return _sfx_cache.get(name)
+	var arr: Array = _var_cache[name]
+	var i: int = randi() % arr.size()
+	if i == int(_var_last.get(name, -1)):
+		i = (i + 1) % arr.size()
+	_var_last[name] = i
+	return arr[i]
+
+
 ## 按 VisualConstants cls (飘字类) 自动选 SFX, 跟 Phaser visual_dispatcher.ts:215-242 同步
 ## 用户报 "Phaser 都用同一个受击太单一" → 这里靠 pitch_base 按伤害类型分音色:
 ##   物理       pitch=1.0  (基础)
@@ -180,25 +201,19 @@ func has_sfx(name: String) -> bool:
 ##   DoT       pitch ≈ dmg_type 对应 (灼烧/中毒按魔法、流血按物理、诅咒按真伤)
 ##   暴击       走 hit-crit 强音
 func play_sfx_for_cls(cls: String) -> void:
+	## 11-05 全部换成 v2 公共声(g_*); 不再靠变调把一条声音假装成几种
 	if cls.begins_with("crit"):
-		# 暴击专用音, 随机 pitch ±3% (爆裂感, 别变太多失去识别性)
-		play_sfx("hit-crit", 1.0, 1.0, 0.03)
-	elif cls in ["direct-dmg", "phys-dmg", "dot-bleed"]:
-		play_sfx("hit-physical", 0.85, 1.0, 0.08)              # 物理: 基础 + 8% jitter
-	elif cls in ["magic-dmg", "dot-dmg", "dot-poison"]:
-		play_sfx("hit-physical", 0.85, 1.18, 0.08)             # 魔法: pitch +18%
-	elif cls in ["true-dmg", "dot-curse"]:
-		play_sfx("hit-physical", 0.95, 0.85, 0.05)             # 真伤: pitch -15% 更沉重
-	elif cls == "pierce-dmg":
-		play_sfx("hit-physical", 0.75, 1.3, 0.06)              # 穿透: pitch +30% 脆
+		play_sfx("g_crit", 1.0, 1.0, 0.03)
+	elif cls in ["direct-dmg", "phys-dmg", "dot-bleed", "magic-dmg", "dot-dmg", "dot-poison", "true-dmg", "dot-curse", "pierce-dmg"]:
+		play_sfx("g_hit", 0.85, 1.0, 0.05)
 	elif cls in ["heal-num", "heal"]:
-		play_sfx("heal", 1.0, 1.0, 0.04)
+		play_sfx("g_heal", 1.0, 1.0, 0.04)
 	elif cls in ["shield-num", "shield-gain"]:
-		play_sfx("shield-gain", 0.9, 1.0, 0.05)
+		play_sfx("g_shield_gain", 0.9, 1.0, 0.05)
 	elif cls == "shield-dmg":
-		play_sfx("shield-break", 1.0, 1.0, 0.06)
+		play_sfx("g_shield_break", 1.0, 1.0, 0.06)
 	elif cls in ["dodge-num", "miss"]:
-		play_sfx("heal", 0.28, 1.26, 0.04)   # 1:1 PoC 闪避whoosh=heal.wav rate1.6/detune400 vol≈0.22 (sfx.ts:24/visual_dispatcher:241) — 原闪避无音
+		play_sfx("g_dodge", 0.8, 1.0, 0.04)
 	# (删 death-explode→defeat 分支: 无人spawn该cls=死代码, 且PoC fireSfxForCls无此case=自创; 防日后接死爆float误响死亡音)
 
 

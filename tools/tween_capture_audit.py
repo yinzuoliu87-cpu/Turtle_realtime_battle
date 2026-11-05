@@ -96,7 +96,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #        `_sim_tweens` 之后才扫 `_world`(门禁①守着, 变异两行都删 ⇒ 上千条报错)。
 #      真正的触发条件只有「两条时钟错开」: 顿帧(tween 走、延时/协程不走)与时停(定格的 tween 不走、
 #      携带者的协程/延时照走)。判无害 = 两种错开下捕获物都不会先于回调被释放。
-BASELINE = 27   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2) · 2026-10-14: 31 → 28(三处 UI 循环 tween 改走 TweenKit, 退出时随节点停) · 2026-10-23: 28 → 27(精英吞噬不再捕获目标立绘, 改写单位字段 _devour_k)
+BASELINE = 26   # 2026-11-05 27→26: 星波三道环的逐帧更新收进 StarSystem._wave_rings, 闭包不再捕获环节点   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2) · 2026-10-14: 31 → 28(三处 UI 循环 tween 改走 TweenKit, 退出时随节点停) · 2026-10-23: 28 → 27(精英吞噬不再捕获目标立绘, 改写单位字段 _devour_k)
 
 # ★每一处剩下的风险都要有一句**为什么无害**。键 = (文件, 被捕获的名字逗号串), 值 = (处数, 理由)。
 #   新冒出来一处没登记 → 红; 登记了但代码里没这处了(修掉了/改名了) → 也红, 逼着把台账跟着降。
@@ -140,8 +140,6 @@ HARMLESS = {
         (3, "奇点核心: core/halo 只由 do_burst 里三条互斥分支(cf/cd/eat)之一释放, 全在 master 链之后"),
     ("scripts/systems/skills/star_system.gd", "swirl"):
         (2, "换位螺旋: 由本链回调里新建的 st2 释放"),
-    ("scripts/systems/skills/star_system.gd", "rc, rh"):
-        (1, "星波: 两道环由本链回调里新建的链释放"),
     ("scripts/systems/skills/star_system.gd", "rc"):
         (1, "同一条星波链(窗口重复计数)"),
     ("scripts/systems/skills/star_system.gd", "pillar"):

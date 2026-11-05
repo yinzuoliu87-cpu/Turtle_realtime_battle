@@ -122,7 +122,7 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 		var c = Vector2.ZERO
 		for o in es: c += o["pos"]
 		center = c / float(es.size())                            # 单位最密集区域(简化=敌质心)
-	battle._skill_ring(center, Color(1.0, 0.62, 0.84, 0.32), BARRAGE_RADIUS)     # 600码笼罩区淡指示
+	_barrage_zone(center)   # 笼罩区: 细环 + 淡底, 整段炮弹雨一直亮着(11-05 照船长 R; 原来共享技能环一闪就没)
 	var uu: Dictionary = u; var ctr: Vector2 = center
 	for i in range(BARRAGE_TICKS):                              # 8跳·每跳8颗糖弹密集散落该区·落点局部结算(用户2026-07-15两次加密→3→6→8颗+炮弹/糖爆调大)
 		battle._pending_shots.append({"delay": float(i) * BARRAGE_TICK_SEC, "src": u, "fn": func() -> void:
@@ -161,6 +161,7 @@ func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣�
 	var fall_sec: float = DetMath.rrange(battle._battle_rng, 0.42, 0.6)
 	s.position = battle._world_pos(land2d, from_h)
 	battle._world.add_child(s)
+	_shell_shadow(land2d, fall_sec)   # 落点影子(11-05 照船长 R: 炮弹没落地, 地上先看得到要砸哪儿)
 	var tw = battle._reg_tween()
 	tw.bind_node(s)
 	tw.tween_method(func(p: float) -> void:
@@ -174,6 +175,49 @@ func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣�
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(s): s.queue_free()
 		if on_land.is_valid(): on_land.call())
+
+## ★11-05 演出(用户「这个参考对象是…你这也没有参考啊」同一类问题; 特效简报: 糖衣炮弹 = LoL 船长 R):
+##   船长 R 官网演示逐帧(.out/ref_lol/gangplankR.webm): 一圈红色落区环整段炮弹雨都在 + 每颗炮弹落地前地上先出一团影子、落下变大。
+##   原来: 共享技能环一闪就淡, 炮弹落地前地上什么都没有。只改画面, 不碰结算与随机流。
+func _barrage_zone(center: Vector2) -> void:
+	var dur: float = float(BARRAGE_TICKS) * BARRAGE_TICK_SEC + 0.6
+	var ring := _flat_sprite(VfxTex._make_thin_ring_tex(), center, BARRAGE_RADIUS * 2.0, Color(1.0, 0.55, 0.82, 0.0), 0.05)
+	var rs: String = str(battle._ring_side)   # 外缘边 = 施法方阵营色(11-04 敌我描边规矩); 没有阵营时深粉
+	var ec: Color = battle.RING_RIM_LEFT if rs == "left" else (battle.RING_RIM_RIGHT if rs == "right" else Color(0.45, 0.12, 0.3))
+	var edge := _flat_sprite(VfxTex._make_thin_ring_tex(), center, BARRAGE_RADIUS * 2.03, Color(ec.r, ec.g, ec.b, 0.0), 0.048)
+	ring.set_meta("ring_target_ps", ring.pixel_size)   # 地面环标记(门禁 verify_ring_team_rim 按它认环)
+	if rs == "left" or rs == "right":
+		ring.set_meta("ring_rim", edge)
+		ring.set_meta("ring_rim_side", rs)
+	var fill := _flat_sprite(VfxTex._make_disc_texture(), center, BARRAGE_RADIUS * 2.0, Color(1.0, 0.6, 0.85, 0.0), 0.035)
+	for pr in [[ring, 0.95], [edge, 0.7], [fill, 0.12]]:
+		var spr: Sprite3D = pr[0]
+		var tw = battle._reg_tween().bind_node(spr)
+		tw.tween_property(spr, "modulate:a", float(pr[1]), 0.15)
+		tw.tween_interval(dur)
+		tw.tween_property(spr, "modulate:a", 0.0, 0.35)
+		tw.tween_callback(spr.queue_free)
+
+func _shell_shadow(land2d: Vector2, fall_sec: float) -> void:
+	var sh := _flat_sprite(VfxTex._make_blob_texture(), land2d, 120.0, Color(0.12, 0.02, 0.08, 0.0), 0.03)
+	sh.scale = Vector3(0.35, 1.0, 0.35)
+	var tw = battle._reg_tween().bind_node(sh)
+	tw.set_parallel(true)
+	tw.tween_property(sh, "modulate:a", 0.55, fall_sec).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(sh, "scale", Vector3(1.0, 1.0, 1.0), fall_sec).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(sh.queue_free)
+
+func _flat_sprite(tex: Texture2D, c: Vector2, size_px: float, col: Color, h: float) -> Sprite3D:
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y
+	s.shaded = false; s.transparent = true
+	s.modulate = col
+	s.pixel_size = (size_px * battle.WS) / float(maxi(1, tex.get_height()))
+	s.position = battle._world_pos(c, h)
+	battle._world.add_child(s)
+	return s
 
 func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技能三糖果炸弹(封板·喂续命): 炸弹活→上限+25%糖果龟maxHp+治疗10%(喂); 炸弹亡→召新HP=20%糖果龟maxHp (登场召唤+死亡爆炸在spawn/summon)
 	var bomb = null

@@ -1,0 +1,9026 @@
+{
+ "bah_angel": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1216.0,
+    "champ": 0.4428,
+    "dur": 0.683,
+    "low": 0.728,
+    "pen": 0.157,
+    "pix": -0.0045,
+    "riot": 0.4335,
+    "score": 1.1921,
+    "text": 0.1518
+   },
+   {
+    "cent": 4137.7,
+    "champ": 0.4781,
+    "dur": 0.574,
+    "low": 0.055,
+    "pen": 0.128,
+    "pix": -0.1188,
+    "riot": 0.7,
+    "score": 1.9746,
+    "text": 0.3215
+   },
+   {
+    "cent": 184.2,
+    "champ": 0.4823,
+    "dur": 0.484,
+    "low": 0.882,
+    "pen": 1.63,
+    "pix": -0.221,
+    "riot": 0.6838,
+    "score": 1.2784,
+    "text": 0.4345
+   }
+  ],
+  "sel": [
+   "r2__bah_angel_2.wav",
+   "bah_angel_4.wav",
+   "r2__bah_angel_1.wav"
+  ],
+  "zh": "天使龟·普攻命中"
+ },
+ "bah_bamboo": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 774.1,
+    "champ": 0.5,
+    "dur": 0.499,
+    "low": 0.695,
+    "pen": 0.187,
+    "pix": -0.2283,
+    "riot": 0.6931,
+    "score": 2.1702,
+    "text": 0.4339
+   },
+   {
+    "cent": 3265.3,
+    "champ": 0.4784,
+    "dur": 0.479,
+    "low": 0.155,
+    "pen": 0.352,
+    "pix": -0.1609,
+    "riot": 0.6924,
+    "score": 2.0159,
+    "text": 0.4149
+   },
+   {
+    "cent": 3925.7,
+    "champ": 0.469,
+    "dur": 0.644,
+    "low": 0.007,
+    "pen": 0.248,
+    "pix": -0.2573,
+    "riot": 0.5462,
+    "score": 1.6416,
+    "text": 0.3097
+   }
+  ],
+  "sel": [
+   "bah_bamboo_1.wav",
+   "r2__bah_bamboo_1.wav",
+   "r2__bah_bamboo_3.wav"
+  ],
+  "zh": "竹叶龟·普攻命中"
+ },
+ "bah_basic": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 553.1,
+    "champ": 0.7984,
+    "dur": 0.494,
+    "low": 0.836,
+    "pen": 0.624,
+    "pix": -0.2007,
+    "riot": 0.7984,
+    "score": 2.1501,
+    "text": 0.3642
+   },
+   {
+    "cent": 368.5,
+    "champ": 0.7324,
+    "dur": 0.429,
+    "low": 0.724,
+    "pen": 0.892,
+    "pix": -0.1923,
+    "riot": 0.7324,
+    "score": 1.9736,
+    "text": 0.4305
+   },
+   {
+    "cent": 596.6,
+    "champ": 0.6221,
+    "dur": 0.549,
+    "low": 0.651,
+    "pen": 0.332,
+    "pix": -0.3048,
+    "riot": 0.6221,
+    "score": 1.9243,
+    "text": 0.3618
+   }
+  ],
+  "sel": [
+   "bah_basic_2.wav",
+   "r2__bah_basic_2.wav",
+   "r2__bah_basic_3.wav"
+  ],
+  "zh": "小龟·普攻命中"
+ },
+ "bah_bubble": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 654.2,
+    "champ": 0.6546,
+    "dur": 0.683,
+    "low": 0.022,
+    "pen": 0.963,
+    "pix": -0.1367,
+    "riot": 0.4976,
+    "score": 1.5572,
+    "text": 0.4489
+   },
+   {
+    "cent": 677.6,
+    "champ": 0.5401,
+    "dur": 0.604,
+    "low": 0.117,
+    "pen": 0.454,
+    "pix": -0.0704,
+    "riot": 0.3524,
+    "score": 1.4841,
+    "text": 0.4116
+   },
+   {
+    "cent": 495.1,
+    "champ": 0.5393,
+    "dur": 0.544,
+    "low": 0.325,
+    "pen": 0.622,
+    "pix": -0.0978,
+    "riot": 0.4161,
+    "score": 1.5466,
+    "text": 0.4455
+   }
+  ],
+  "sel": [
+   "r2__bah_bubble_1.wav",
+   "r2__bah_bubble_4.wav",
+   "bah_bubble_4.wav"
+  ],
+  "zh": "泡泡龟·普攻命中"
+ },
+ "bah_candy": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 355.9,
+    "champ": 0.4795,
+    "dur": 0.604,
+    "low": 0.904,
+    "pen": 1.127,
+    "pix": -0.1213,
+    "riot": 0.6426,
+    "score": 1.7189,
+    "text": 0.5358
+   },
+   {
+    "cent": 2557.0,
+    "champ": 0.4251,
+    "dur": 0.604,
+    "low": 0.545,
+    "pen": 0.072,
+    "pix": -0.1412,
+    "riot": 0.6095,
+    "score": 2.0018,
+    "text": 0.406
+   },
+   {
+    "cent": 3963.1,
+    "champ": 0.5487,
+    "dur": 0.384,
+    "low": 0.091,
+    "pen": 0.44,
+    "pix": -0.1479,
+    "riot": 0.6717,
+    "score": 1.9706,
+    "text": 0.4078
+   }
+  ],
+  "sel": [
+   "bah_candy_2.wav",
+   "bah_candy_4.wav",
+   "bah_candy_1.wav"
+  ],
+  "zh": "糖果龟·普攻命中"
+ },
+ "bah_chest": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 463.4,
+    "champ": 0.4162,
+    "dur": 0.374,
+    "low": 0.884,
+    "pen": 1.151,
+    "pix": -0.1129,
+    "riot": 0.4762,
+    "score": 1.065,
+    "text": 0.3646
+   },
+   {
+    "cent": 531.7,
+    "champ": 0.6889,
+    "dur": 0.574,
+    "low": 0.65,
+    "pen": 0.396,
+    "pix": -0.1546,
+    "riot": 0.6968,
+    "score": 2.3536,
+    "text": 0.5147
+   }
+  ],
+  "sel": [
+   "bah_chest_2.wav",
+   "r2__bah_chest_1.wav"
+  ],
+  "zh": "宝箱龟·普攻命中"
+ },
+ "bah_crystal": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 238.7,
+    "champ": 0.6761,
+    "dur": 0.394,
+    "low": 0.958,
+    "pen": 1.513,
+    "pix": -0.2374,
+    "riot": 0.8009,
+    "score": 1.7312,
+    "text": 0.4651
+   },
+   {
+    "cent": 1820.2,
+    "champ": 0.6208,
+    "dur": 0.683,
+    "low": 0.613,
+    "pen": 0.085,
+    "pix": -0.1289,
+    "riot": 0.7674,
+    "score": 2.4747,
+    "text": 0.4543
+   },
+   {
+    "cent": 1299.9,
+    "champ": 0.6524,
+    "dur": 0.434,
+    "low": 0.69,
+    "pen": 0.365,
+    "pix": -0.2848,
+    "riot": 0.6885,
+    "score": 2.1196,
+    "text": 0.4083
+   }
+  ],
+  "sel": [
+   "r2__bah_crystal_2.wav",
+   "bah_crystal_4.wav",
+   "bah_crystal_2.wav"
+  ],
+  "zh": "水晶龟·普攻命中"
+ },
+ "bah_cyber": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1567.0,
+    "champ": 0.7,
+    "dur": 0.683,
+    "low": 0.677,
+    "pen": 0.059,
+    "pix": -0.109,
+    "riot": 0.7942,
+    "score": 2.6343,
+    "text": 0.4765
+   },
+   {
+    "cent": 2264.0,
+    "champ": 0.53,
+    "dur": 0.683,
+    "low": 0.515,
+    "pen": 0.0,
+    "pix": -0.073,
+    "riot": 0.6586,
+    "score": 2.1267,
+    "text": 0.3707
+   },
+   {
+    "cent": 4360.8,
+    "champ": 0.7026,
+    "dur": 0.683,
+    "low": 0.239,
+    "pen": 0.073,
+    "pix": -0.1961,
+    "riot": 0.7387,
+    "score": 2.4969,
+    "text": 0.4529
+   }
+  ],
+  "sel": [
+   "r2__bah_cyber_2.wav",
+   "r2__bah_cyber_4.wav",
+   "r2__bah_cyber_3.wav"
+  ],
+  "zh": "赛博龟·普攻命中"
+ },
+ "bah_diamond": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 395.1,
+    "champ": 0.4312,
+    "dur": 0.604,
+    "low": 0.789,
+    "pen": 0.893,
+    "pix": -0.223,
+    "riot": 0.6158,
+    "score": 1.3359,
+    "text": 0.3124
+   },
+   {
+    "cent": 3936.7,
+    "champ": 0.4963,
+    "dur": 0.429,
+    "low": 0.364,
+    "pen": 0.282,
+    "pix": -0.1952,
+    "riot": 0.5653,
+    "score": 1.4986,
+    "text": 0.2238
+   },
+   {
+    "cent": 2958.3,
+    "champ": 0.3405,
+    "dur": 0.683,
+    "low": 0.589,
+    "pen": 0.0,
+    "pix": -0.0928,
+    "riot": 0.4238,
+    "score": 1.1838,
+    "text": 0.1464
+   }
+  ],
+  "sel": [
+   "r2__bah_diamond_1.wav",
+   "bah_diamond_1.wav",
+   "r2__bah_diamond_4.wav"
+  ],
+  "zh": "钻石龟·普攻命中"
+ },
+ "bah_dice": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 984.9,
+    "champ": 0.6767,
+    "dur": 0.604,
+    "low": 0.615,
+    "pen": 0.0,
+    "pix": -0.26,
+    "riot": 0.7826,
+    "score": 2.4843,
+    "text": 0.4014
+   },
+   {
+    "cent": 1518.6,
+    "champ": 0.8028,
+    "dur": 0.559,
+    "low": 0.614,
+    "pen": 0.0,
+    "pix": -0.1731,
+    "riot": 0.7864,
+    "score": 2.4759,
+    "text": 0.3471
+   },
+   {
+    "cent": 605.3,
+    "champ": 0.8369,
+    "dur": 0.569,
+    "low": 0.81,
+    "pen": 0.522,
+    "pix": -0.2142,
+    "riot": 0.8068,
+    "score": 2.4587,
+    "text": 0.4669
+   }
+  ],
+  "sel": [
+   "bah_dice_2.wav",
+   "r2__bah_dice_3.wav",
+   "bah_dice_4.wav"
+  ],
+  "zh": "骰子龟·普攻命中"
+ },
+ "bah_fortune": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 2768.6,
+    "champ": 0.5567,
+    "dur": 0.604,
+    "low": 0.384,
+    "pen": 0.0,
+    "pix": -0.1716,
+    "riot": 0.6019,
+    "score": 2.3056,
+    "text": 0.4927
+   },
+   {
+    "cent": 4984.7,
+    "champ": 0.6055,
+    "dur": 0.683,
+    "low": 0.001,
+    "pen": 0.345,
+    "pix": -0.042,
+    "riot": 0.6477,
+    "score": 2.1197,
+    "text": 0.4506
+   },
+   {
+    "cent": 4534.9,
+    "champ": 0.5494,
+    "dur": 0.683,
+    "low": 0.233,
+    "pen": 0.162,
+    "pix": -0.1043,
+    "riot": 0.6105,
+    "score": 2.1427,
+    "text": 0.456
+   }
+  ],
+  "sel": [
+   "bah_fortune_1.wav",
+   "r2__bah_fortune_3.wav",
+   "r2__bah_fortune_1.wav"
+  ],
+  "zh": "财神龟·普攻命中"
+ },
+ "bah_gambler": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 2061.5,
+    "champ": 0.591,
+    "dur": 0.564,
+    "low": 0.566,
+    "pen": 0.0,
+    "pix": -0.2237,
+    "riot": 0.6227,
+    "score": 2.2583,
+    "text": 0.4405
+   },
+   {
+    "cent": 2166.0,
+    "champ": 0.7174,
+    "dur": 0.683,
+    "low": 0.314,
+    "pen": 0.0,
+    "pix": -0.2294,
+    "riot": 0.76,
+    "score": 2.6351,
+    "text": 0.4785
+   },
+   {
+    "cent": 3248.8,
+    "champ": 0.5818,
+    "dur": 0.474,
+    "low": 0.215,
+    "pen": 0.338,
+    "pix": -0.1475,
+    "riot": 0.6572,
+    "score": 2.0883,
+    "text": 0.4345
+   }
+  ],
+  "sel": [
+   "r2__bah_gambler_1.wav",
+   "bah_gambler_1.wav",
+   "r2__bah_gambler_2.wav"
+  ],
+  "zh": "赌神龟·普攻命中"
+ },
+ "bah_ghost": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1458.8,
+    "champ": 0.4412,
+    "dur": 0.474,
+    "low": 0.364,
+    "pen": 0.0,
+    "pix": -0.0305,
+    "riot": 0.6613,
+    "score": 1.6889,
+    "text": 0.183
+   },
+   {
+    "cent": 2275.3,
+    "champ": 0.5656,
+    "dur": 0.604,
+    "low": 0.382,
+    "pen": 0.0,
+    "pix": -0.2991,
+    "riot": 0.6898,
+    "score": 1.8641,
+    "text": 0.2026
+   },
+   {
+    "cent": 1086.8,
+    "champ": 0.4457,
+    "dur": 0.683,
+    "low": 0.344,
+    "pen": 0.0,
+    "pix": -0.0736,
+    "riot": 0.6267,
+    "score": 1.6572,
+    "text": 0.1915
+   }
+  ],
+  "sel": [
+   "bah_ghost_2.wav",
+   "bah_ghost_1.wav",
+   "r2__bah_ghost_2.wav"
+  ],
+  "zh": "幽灵龟·普攻命中"
+ },
+ "bah_headless": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 2606.7,
+    "champ": 0.4666,
+    "dur": 0.564,
+    "low": 0.171,
+    "pen": 0.0,
+    "pix": -0.1875,
+    "riot": 0.6707,
+    "score": 2.2767,
+    "text": 0.4603
+   },
+   {
+    "cent": 1891.3,
+    "champ": 0.4304,
+    "dur": 0.683,
+    "low": 0.449,
+    "pen": 0.0,
+    "pix": -0.2262,
+    "riot": 0.6383,
+    "score": 2.2401,
+    "text": 0.4799
+   },
+   {
+    "cent": 919.8,
+    "champ": 0.5497,
+    "dur": 0.479,
+    "low": 0.756,
+    "pen": 0.309,
+    "pix": -0.1533,
+    "riot": 0.7488,
+    "score": 2.2597,
+    "text": 0.4547
+   }
+  ],
+  "sel": [
+   "r2__bah_headless_1.wav",
+   "bah_headless_3.wav",
+   "r2__bah_headless_2.wav"
+  ],
+  "zh": "无头龟·普攻命中"
+ },
+ "bah_hiding": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1393.8,
+    "champ": 0.191,
+    "dur": 0.614,
+    "low": 0.271,
+    "pen": 0.717,
+    "pix": -0.0188,
+    "riot": 0.1693,
+    "score": 0.1161,
+    "text": 0.0745
+   }
+  ],
+  "sel": [
+   "r2__bah_hiding_3.wav"
+  ],
+  "zh": "缩头乌龟·普攻命中"
+ },
+ "bah_hunter": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 865.9,
+    "champ": 0.7591,
+    "dur": 0.539,
+    "low": 0.618,
+    "pen": 0.07,
+    "pix": -0.3357,
+    "riot": 0.7646,
+    "score": 2.4598,
+    "text": 0.3929
+   },
+   {
+    "cent": 422.1,
+    "champ": 0.5131,
+    "dur": 0.639,
+    "low": 0.829,
+    "pen": 0.824,
+    "pix": -0.0734,
+    "riot": 0.5479,
+    "score": 1.1084,
+    "text": 0.1981
+   },
+   {
+    "cent": 696.6,
+    "champ": 0.597,
+    "dur": 0.404,
+    "low": 0.719,
+    "pen": 0.418,
+    "pix": -0.1596,
+    "riot": 0.6729,
+    "score": 1.888,
+    "text": 0.3408
+   }
+  ],
+  "sel": [
+   "r2__bah_hunter_1.wav",
+   "r2__bah_hunter_3.wav",
+   "r2__bah_hunter_2.wav"
+  ],
+  "zh": "猎人龟·普攻命中"
+ },
+ "bah_ice": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1510.1,
+    "champ": 0.5153,
+    "dur": 0.474,
+    "low": 0.784,
+    "pen": 0.367,
+    "pix": -0.0966,
+    "riot": 0.5556,
+    "score": 1.9473,
+    "text": 0.474
+   },
+   {
+    "cent": 711.0,
+    "champ": 0.6055,
+    "dur": 0.604,
+    "low": 0.745,
+    "pen": 0.335,
+    "pix": -0.1373,
+    "riot": 0.6687,
+    "score": 2.2293,
+    "text": 0.4866
+   },
+   {
+    "cent": 926.3,
+    "champ": 0.7137,
+    "dur": 0.683,
+    "low": 0.847,
+    "pen": 0.383,
+    "pix": -0.1766,
+    "riot": 0.7846,
+    "score": 2.5673,
+    "text": 0.5424
+   }
+  ],
+  "sel": [
+   "r2__bah_ice_4.wav",
+   "bah_ice_4.wav",
+   "bah_ice_1.wav"
+  ],
+  "zh": "寒冰龟·普攻命中"
+ },
+ "bah_lava": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1238.7,
+    "champ": 0.4294,
+    "dur": 0.539,
+    "low": 0.38,
+    "pen": 0.239,
+    "pix": -0.1355,
+    "riot": 0.5727,
+    "score": 1.9947,
+    "text": 0.4786
+   },
+   {
+    "cent": 663.6,
+    "champ": 0.3436,
+    "dur": 0.604,
+    "low": 0.715,
+    "pen": 0.316,
+    "pix": -0.1555,
+    "riot": 0.5655,
+    "score": 1.8793,
+    "text": 0.4814
+   },
+   {
+    "cent": 1102.7,
+    "champ": 0.4522,
+    "dur": 0.683,
+    "low": 0.414,
+    "pen": 0.0,
+    "pix": -0.0852,
+    "riot": 0.642,
+    "score": 2.0881,
+    "text": 0.393
+   }
+  ],
+  "sel": [
+   "r2__bah_lava_4.wav",
+   "r2__bah_lava_1.wav",
+   "bah_lava_3.wav"
+  ],
+  "zh": "熔岩龟·普攻命中"
+ },
+ "bah_lightning": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 455.3,
+    "champ": 0.5167,
+    "dur": 0.344,
+    "low": 0.898,
+    "pen": 1.007,
+    "pix": 0.0117,
+    "riot": 0.5691,
+    "score": 1.4596,
+    "text": 0.4113
+   },
+   {
+    "cent": 1869.6,
+    "champ": 0.5537,
+    "dur": 0.604,
+    "low": 0.694,
+    "pen": 0.346,
+    "pix": -0.0136,
+    "riot": 0.5392,
+    "score": 1.8376,
+    "text": 0.4105
+   },
+   {
+    "cent": 3740.0,
+    "champ": 0.4647,
+    "dur": 0.604,
+    "low": 0.514,
+    "pen": 0.028,
+    "pix": -0.0061,
+    "riot": 0.4649,
+    "score": 1.5526,
+    "text": 0.2618
+   }
+  ],
+  "sel": [
+   "bah_lightning_2.wav",
+   "bah_lightning_3.wav",
+   "bah_lightning_1.wav"
+  ],
+  "zh": "闪电龟·普攻命中"
+ },
+ "bah_line": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1466.3,
+    "champ": 0.3387,
+    "dur": 0.683,
+    "low": 0.624,
+    "pen": 0.085,
+    "pix": -0.0508,
+    "riot": 0.5614,
+    "score": 1.3483,
+    "text": 0.1514
+   },
+   {
+    "cent": 217.6,
+    "champ": 0.5137,
+    "dur": 0.604,
+    "low": 0.927,
+    "pen": 1.466,
+    "pix": -0.1679,
+    "riot": 0.7762,
+    "score": 1.3511,
+    "text": 0.3404
+   },
+   {
+    "cent": 1234.3,
+    "champ": 0.376,
+    "dur": 0.683,
+    "low": 0.647,
+    "pen": 0.015,
+    "pix": 0.0002,
+    "riot": 0.6091,
+    "score": 1.7382,
+    "text": 0.2758
+   }
+  ],
+  "sel": [
+   "r2__bah_line_4.wav",
+   "bah_line_4.wav",
+   "r2__bah_line_2.wav"
+  ],
+  "zh": "线条龟·普攻命中"
+ },
+ "bah_ninja": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 2935.0,
+    "champ": 0.4701,
+    "dur": 0.604,
+    "low": 0.495,
+    "pen": 0.118,
+    "pix": -0.0704,
+    "riot": 0.6542,
+    "score": 1.9275,
+    "text": 0.3322
+   },
+   {
+    "cent": 2662.3,
+    "champ": 0.7318,
+    "dur": 0.589,
+    "low": 0.451,
+    "pen": 0.0,
+    "pix": -0.3159,
+    "riot": 0.829,
+    "score": 2.8375,
+    "text": 0.5226
+   },
+   {
+    "cent": 1349.1,
+    "champ": 0.6232,
+    "dur": 0.409,
+    "low": 0.72,
+    "pen": 0.361,
+    "pix": -0.2042,
+    "riot": 0.7388,
+    "score": 2.3887,
+    "text": 0.5147
+   }
+  ],
+  "sel": [
+   "r2__bah_ninja_2.wav",
+   "r2__bah_ninja_3.wav",
+   "bah_ninja_2.wav"
+  ],
+  "zh": "忍者龟·普攻命中"
+ },
+ "bah_phoenix": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1851.5,
+    "champ": 0.5359,
+    "dur": 0.474,
+    "low": 0.437,
+    "pen": 0.0,
+    "pix": -0.2002,
+    "riot": 0.632,
+    "score": 2.2008,
+    "text": 0.4254
+   },
+   {
+    "cent": 201.6,
+    "champ": 0.5032,
+    "dur": 0.519,
+    "low": 0.719,
+    "pen": 1.272,
+    "pix": -0.0493,
+    "riot": 0.5836,
+    "score": 1.2497,
+    "text": 0.3801
+   },
+   {
+    "cent": 888.4,
+    "champ": 0.5146,
+    "dur": 0.604,
+    "low": 0.581,
+    "pen": 0.0,
+    "pix": -0.1893,
+    "riot": 0.587,
+    "score": 1.9289,
+    "text": 0.3312
+   }
+  ],
+  "sel": [
+   "r2__bah_phoenix_1.wav",
+   "r2__bah_phoenix_4.wav",
+   "r2__bah_phoenix_3.wav"
+  ],
+  "zh": "凤凰龟·普攻命中"
+ },
+ "bah_pirate": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 4872.9,
+    "champ": 0.5155,
+    "dur": 0.489,
+    "low": 0.004,
+    "pen": 0.326,
+    "pix": -0.152,
+    "riot": 0.5886,
+    "score": 1.5436,
+    "text": 0.2349
+   },
+   {
+    "cent": 216.8,
+    "champ": 0.7759,
+    "dur": 0.499,
+    "low": 0.9,
+    "pen": 1.406,
+    "pix": -0.2738,
+    "riot": 0.7876,
+    "score": 1.7099,
+    "text": 0.395
+   },
+   {
+    "cent": 5352.1,
+    "champ": 0.5806,
+    "dur": 0.683,
+    "low": 0.009,
+    "pen": 0.609,
+    "pix": -0.2843,
+    "riot": 0.6565,
+    "score": 1.6493,
+    "text": 0.2972
+   }
+  ],
+  "sel": [
+   "r2__bah_pirate_2.wav",
+   "r2__bah_pirate_3.wav",
+   "bah_pirate_1.wav"
+  ],
+  "zh": "海盗龟·普攻命中"
+ },
+ "bah_rainbow": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 5420.5,
+    "champ": 0.61,
+    "dur": 0.604,
+    "low": 0.001,
+    "pen": 0.837,
+    "pix": -0.1351,
+    "riot": 0.5685,
+    "score": 1.671,
+    "text": 0.4316
+   },
+   {
+    "cent": 4350.2,
+    "champ": 0.5346,
+    "dur": 0.683,
+    "low": 0.001,
+    "pen": 0.261,
+    "pix": -0.0606,
+    "riot": 0.553,
+    "score": 1.5748,
+    "text": 0.2504
+   },
+   {
+    "cent": 3813.5,
+    "champ": 0.6653,
+    "dur": 0.604,
+    "low": 0.223,
+    "pen": 0.0,
+    "pix": -0.1562,
+    "riot": 0.6689,
+    "score": 2.1797,
+    "text": 0.3387
+   }
+  ],
+  "sel": [
+   "bah_rainbow_3.wav",
+   "bah_rainbow_1.wav",
+   "r2__bah_rainbow_2.wav"
+  ],
+  "zh": "彩虹龟·普攻命中"
+ },
+ "bah_shell": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 376.5,
+    "champ": 0.2334,
+    "dur": 0.474,
+    "low": 0.947,
+    "pen": 1.325,
+    "pix": -0.0111,
+    "riot": 0.2633,
+    "score": 0.077,
+    "text": 0.1509
+   },
+   {
+    "cent": 11376.1,
+    "champ": 0.182,
+    "dur": 0.683,
+    "low": 0.001,
+    "pen": 2.906,
+    "pix": -0.0408,
+    "riot": 0.3137,
+    "score": -0.9263,
+    "text": 0.1051
+   }
+  ],
+  "sel": [
+   "r2__bah_shell_3.wav",
+   "r2__bah_shell_4.wav"
+  ],
+  "zh": "龟壳·普攻命中"
+ },
+ "bah_space": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 292.6,
+    "champ": 0.579,
+    "dur": 0.604,
+    "low": 0.835,
+    "pen": 1.109,
+    "pix": -0.1294,
+    "riot": 0.7559,
+    "score": 1.8768,
+    "text": 0.4871
+   },
+   {
+    "cent": 4664.3,
+    "champ": 0.5448,
+    "dur": 0.444,
+    "low": 0.065,
+    "pen": 0.376,
+    "pix": -0.2369,
+    "riot": 0.6686,
+    "score": 1.7961,
+    "text": 0.3052
+   },
+   {
+    "cent": 2687.6,
+    "champ": 0.5024,
+    "dur": 0.454,
+    "low": 0.168,
+    "pen": 0.07,
+    "pix": -0.1471,
+    "riot": 0.5917,
+    "score": 1.906,
+    "text": 0.342
+   }
+  ],
+  "sel": [
+   "r2__bah_space_3.wav",
+   "bah_space_1.wav",
+   "bah_space_3.wav"
+  ],
+  "zh": "星际龟·普攻命中"
+ },
+ "bah_stone": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 511.6,
+    "champ": 0.6702,
+    "dur": 0.559,
+    "low": 0.844,
+    "pen": 0.737,
+    "pix": -0.1865,
+    "riot": 0.7332,
+    "score": 2.0468,
+    "text": 0.4434
+   },
+   {
+    "cent": 730.7,
+    "champ": 0.4708,
+    "dur": 0.683,
+    "low": 0.535,
+    "pen": 0.132,
+    "pix": -0.1534,
+    "riot": 0.4874,
+    "score": 1.6519,
+    "text": 0.3234
+   },
+   {
+    "cent": 362.9,
+    "champ": 0.4887,
+    "dur": 0.449,
+    "low": 0.825,
+    "pen": 1.02,
+    "pix": -0.1039,
+    "riot": 0.5156,
+    "score": 1.3227,
+    "text": 0.3973
+   }
+  ],
+  "sel": [
+   "bah_stone_1.wav",
+   "r2__bah_stone_1.wav",
+   "bah_stone_3.wav"
+  ],
+  "zh": "石头龟·普攻命中"
+ },
+ "bah_two_head": {
+  "cat": "ba_hit",
+  "score": [
+   {
+    "cent": 1169.0,
+    "champ": 0.6792,
+    "dur": 0.604,
+    "low": 0.442,
+    "pen": 0.0,
+    "pix": -0.21,
+    "riot": 0.8351,
+    "score": 2.713,
+    "text": 0.4754
+   },
+   {
+    "cent": 1065.2,
+    "champ": 0.721,
+    "dur": 0.604,
+    "low": 0.829,
+    "pen": 0.469,
+    "pix": -0.1502,
+    "riot": 0.8002,
+    "score": 2.3479,
+    "text": 0.444
+   },
+   {
+    "cent": 798.1,
+    "champ": 0.6721,
+    "dur": 0.683,
+    "low": 0.734,
+    "pen": 0.243,
+    "pix": -0.0618,
+    "riot": 0.8069,
+    "score": 2.2994,
+    "text": 0.3653
+   }
+  ],
+  "sel": [
+   "bah_two_head_1.wav",
+   "bah_two_head_2.wav",
+   "r2__bah_two_head_2.wav"
+  ],
+  "zh": "变脸龟·普攻命中"
+ },
+ "bas_angel": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 6278.7,
+    "champ": 0.3562,
+    "dur": 0.604,
+    "low": 0.0,
+    "pen": 0.355,
+    "pix": -0.0295,
+    "riot": 0.3201,
+    "score": 0.8558,
+    "text": 0.1607
+   },
+   {
+    "cent": 3541.1,
+    "champ": 0.4689,
+    "dur": 0.604,
+    "low": 0.0,
+    "pen": 0.01,
+    "pix": -0.0066,
+    "riot": 0.4649,
+    "score": 1.6069,
+    "text": 0.2818
+   },
+   {
+    "cent": 5748.2,
+    "champ": 0.2751,
+    "dur": 0.683,
+    "low": 0.0,
+    "pen": 0.117,
+    "pix": -0.0901,
+    "riot": 0.3186,
+    "score": 0.8723,
+    "text": 0.1293
+   }
+  ],
+  "sel": [
+   "bas_angel_3.wav",
+   "r2__bas_angel_3.wav",
+   "bas_angel_1.wav"
+  ],
+  "zh": "天使龟·普攻出手"
+ },
+ "bas_bamboo": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 183.5,
+    "champ": 0.5313,
+    "dur": 0.334,
+    "low": 0.532,
+    "pen": 0.561,
+    "pix": -0.2622,
+    "riot": 0.6757,
+    "score": 1.7524,
+    "text": 0.3385
+   },
+   {
+    "cent": 250.0,
+    "champ": 0.4112,
+    "dur": 0.504,
+    "low": 0.847,
+    "pen": 0.908,
+    "pix": -0.2559,
+    "riot": 0.6136,
+    "score": 1.2573,
+    "text": 0.2865
+   }
+  ],
+  "sel": [
+   "bas_bamboo_2.wav",
+   "r2__bas_bamboo_2.wav"
+  ],
+  "zh": "竹叶龟·普攻出手"
+ },
+ "bas_basic": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 358.8,
+    "champ": 0.8526,
+    "dur": 0.514,
+    "low": 0.357,
+    "pen": 0.203,
+    "pix": -0.2685,
+    "riot": 0.8526,
+    "score": 2.7306,
+    "text": 0.4671
+   }
+  ],
+  "sel": [
+   "r2__bas_basic_3.wav"
+  ],
+  "zh": "小龟·普攻出手"
+ },
+ "bas_bubble": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 829.1,
+    "champ": 0.5927,
+    "dur": 0.569,
+    "low": 0.159,
+    "pen": 0.025,
+    "pix": -0.0949,
+    "riot": 0.5047,
+    "score": 2.0352,
+    "text": 0.4244
+   },
+   {
+    "cent": 797.3,
+    "champ": 0.5992,
+    "dur": 0.604,
+    "low": 0.19,
+    "pen": 0.0,
+    "pix": -0.1901,
+    "riot": 0.5459,
+    "score": 1.9706,
+    "text": 0.3511
+   },
+   {
+    "cent": 296.3,
+    "champ": 0.6072,
+    "dur": 0.399,
+    "low": 0.105,
+    "pen": 0.249,
+    "pix": -0.1925,
+    "riot": 0.4832,
+    "score": 1.9586,
+    "text": 0.464
+   }
+  ],
+  "sel": [
+   "r2__bas_bubble_1.wav",
+   "bas_bubble_2.wav",
+   "r2__bas_bubble_3.wav"
+  ],
+  "zh": "泡泡龟·普攻出手"
+ },
+ "bas_candy": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 882.2,
+    "champ": 0.5441,
+    "dur": 0.394,
+    "low": 0.708,
+    "pen": 0.506,
+    "pix": -0.1768,
+    "riot": 0.7752,
+    "score": 2.096,
+    "text": 0.4143
+   },
+   {
+    "cent": 572.3,
+    "champ": 0.399,
+    "dur": 0.364,
+    "low": 0.599,
+    "pen": 0.351,
+    "pix": -0.2877,
+    "riot": 0.7113,
+    "score": 1.9896,
+    "text": 0.4171
+   },
+   {
+    "cent": 391.5,
+    "champ": 0.4066,
+    "dur": 0.504,
+    "low": 0.68,
+    "pen": 0.428,
+    "pix": -0.2384,
+    "riot": 0.7158,
+    "score": 1.8809,
+    "text": 0.3796
+   }
+  ],
+  "sel": [
+   "r2__bas_candy_1.wav",
+   "bas_candy_2.wav",
+   "bas_candy_3.wav"
+  ],
+  "zh": "糖果龟·普攻出手"
+ },
+ "bas_chest": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 721.0,
+    "champ": 0.5608,
+    "dur": 0.314,
+    "low": 0.032,
+    "pen": 0.188,
+    "pix": -0.2943,
+    "riot": 0.769,
+    "score": 2.1861,
+    "text": 0.3623
+   },
+   {
+    "cent": 1491.8,
+    "champ": 0.5153,
+    "dur": 0.369,
+    "low": 0.079,
+    "pen": 0.09,
+    "pix": -0.19,
+    "riot": 0.682,
+    "score": 2.0901,
+    "text": 0.3674
+   },
+   {
+    "cent": 411.0,
+    "champ": 0.6549,
+    "dur": 0.439,
+    "low": 0.728,
+    "pen": 0.473,
+    "pix": -0.1561,
+    "riot": 0.7454,
+    "score": 1.9286,
+    "text": 0.3015
+   }
+  ],
+  "sel": [
+   "r2__bas_chest_1.wav",
+   "r2__bas_chest_2.wav",
+   "bas_chest_3.wav"
+  ],
+  "zh": "宝箱龟·普攻出手"
+ },
+ "bas_crystal": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 2997.8,
+    "champ": 0.3046,
+    "dur": 0.683,
+    "low": 0.0,
+    "pen": 0.009,
+    "pix": -0.0525,
+    "riot": 0.4541,
+    "score": 1.4229,
+    "text": 0.2594
+   },
+   {
+    "cent": 613.1,
+    "champ": 0.5112,
+    "dur": 0.459,
+    "low": 0.865,
+    "pen": 0.58,
+    "pix": -0.2102,
+    "riot": 0.66,
+    "score": 1.3945,
+    "text": 0.1845
+   },
+   {
+    "cent": 7058.3,
+    "champ": 0.4009,
+    "dur": 0.683,
+    "low": 0.0,
+    "pen": 0.959,
+    "pix": -0.0613,
+    "riot": 0.5589,
+    "score": 1.2426,
+    "text": 0.3394
+   }
+  ],
+  "sel": [
+   "r2__bas_crystal_1.wav",
+   "bas_crystal_3.wav",
+   "r2__bas_crystal_3.wav"
+  ],
+  "zh": "水晶龟·普攻出手"
+ },
+ "bas_cyber": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 2235.4,
+    "champ": 0.5997,
+    "dur": 0.604,
+    "low": 0.177,
+    "pen": 0.0,
+    "pix": -0.0333,
+    "riot": 0.5657,
+    "score": 1.9438,
+    "text": 0.3228
+   },
+   {
+    "cent": 1128.7,
+    "champ": 0.5795,
+    "dur": 0.604,
+    "low": 0.573,
+    "pen": 0.044,
+    "pix": -0.0164,
+    "riot": 0.571,
+    "score": 1.9084,
+    "text": 0.3218
+   },
+   {
+    "cent": 853.0,
+    "champ": 0.6219,
+    "dur": 0.683,
+    "low": 0.713,
+    "pen": 0.3,
+    "pix": -0.0381,
+    "riot": 0.6304,
+    "score": 1.9962,
+    "text": 0.382
+   }
+  ],
+  "sel": [
+   "r2__bas_cyber_3.wav",
+   "bas_cyber_1.wav",
+   "bas_cyber_3.wav"
+  ],
+  "zh": "赛博龟·普攻出手"
+ },
+ "bas_diamond": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 6181.3,
+    "champ": 0.514,
+    "dur": 0.604,
+    "low": 0.001,
+    "pen": 0.664,
+    "pix": -0.0571,
+    "riot": 0.619,
+    "score": 1.389,
+    "text": 0.2368
+   },
+   {
+    "cent": 2109.9,
+    "champ": 0.5641,
+    "dur": 0.683,
+    "low": 0.0,
+    "pen": 0.01,
+    "pix": -0.0847,
+    "riot": 0.584,
+    "score": 1.6635,
+    "text": 0.1851
+   },
+   {
+    "cent": 4978.8,
+    "champ": 0.5026,
+    "dur": 0.539,
+    "low": 0.001,
+    "pen": 0.103,
+    "pix": -0.2334,
+    "riot": 0.6775,
+    "score": 1.8563,
+    "text": 0.2623
+   }
+  ],
+  "sel": [
+   "bas_diamond_3.wav",
+   "r2__bas_diamond_2.wav",
+   "bas_diamond_2.wav"
+  ],
+  "zh": "钻石龟·普攻出手"
+ },
+ "bas_dice": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 192.5,
+    "champ": 0.6626,
+    "dur": 0.474,
+    "low": 0.94,
+    "pen": 1.089,
+    "pix": -0.3178,
+    "riot": 0.7076,
+    "score": 1.5193,
+    "text": 0.3074
+   },
+   {
+    "cent": 2190.4,
+    "champ": 0.7318,
+    "dur": 0.389,
+    "low": 0.329,
+    "pen": 0.0,
+    "pix": -0.1765,
+    "riot": 0.7905,
+    "score": 2.4036,
+    "text": 0.3345
+   },
+   {
+    "cent": 5462.2,
+    "champ": 0.5751,
+    "dur": 0.539,
+    "low": 0.043,
+    "pen": 0.194,
+    "pix": -0.1323,
+    "riot": 0.5483,
+    "score": 1.5419,
+    "text": 0.2021
+   }
+  ],
+  "sel": [
+   "r2__bas_dice_2.wav",
+   "bas_dice_3.wav",
+   "bas_dice_2.wav"
+  ],
+  "zh": "骰子龟·普攻出手"
+ },
+ "bas_fortune": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 5036.3,
+    "champ": 0.6149,
+    "dur": 0.469,
+    "low": 0.269,
+    "pen": 0.245,
+    "pix": -0.0785,
+    "riot": 0.7096,
+    "score": 1.9685,
+    "text": 0.295
+   },
+   {
+    "cent": 680.1,
+    "champ": 0.5822,
+    "dur": 0.474,
+    "low": 0.569,
+    "pen": 0.036,
+    "pix": -0.257,
+    "riot": 0.7171,
+    "score": 2.1342,
+    "text": 0.3217
+   },
+   {
+    "cent": 336.4,
+    "champ": 0.7085,
+    "dur": 0.454,
+    "low": 0.91,
+    "pen": 0.931,
+    "pix": -0.3455,
+    "riot": 0.7894,
+    "score": 1.8049,
+    "text": 0.324
+   }
+  ],
+  "sel": [
+   "r2__bas_fortune_2.wav",
+   "bas_fortune_2.wav",
+   "r2__bas_fortune_3.wav"
+  ],
+  "zh": "财神龟·普攻出手"
+ },
+ "bas_gambler": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 4741.2,
+    "champ": 0.5967,
+    "dur": 0.274,
+    "low": 0.111,
+    "pen": 0.482,
+    "pix": -0.0684,
+    "riot": 0.6271,
+    "score": 1.8816,
+    "text": 0.3913
+   },
+   {
+    "cent": 4047.0,
+    "champ": 0.5297,
+    "dur": 0.459,
+    "low": 0.017,
+    "pen": 0.265,
+    "pix": -0.171,
+    "riot": 0.5222,
+    "score": 1.7084,
+    "text": 0.3435
+   },
+   {
+    "cent": 5058.9,
+    "champ": 0.5996,
+    "dur": 0.514,
+    "low": 0.023,
+    "pen": 0.075,
+    "pix": -0.1412,
+    "riot": 0.691,
+    "score": 2.2747,
+    "text": 0.4169
+   }
+  ],
+  "sel": [
+   "r2__bas_gambler_2.wav",
+   "r2__bas_gambler_1.wav",
+   "bas_gambler_2.wav"
+  ],
+  "zh": "赌神龟·普攻出手"
+ },
+ "bas_ghost": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 1527.1,
+    "champ": 0.3102,
+    "dur": 0.454,
+    "low": 0.001,
+    "pen": 0.018,
+    "pix": -0.0628,
+    "riot": 0.464,
+    "score": 1.2977,
+    "text": 0.1901
+   },
+   {
+    "cent": 3965.4,
+    "champ": 0.4302,
+    "dur": 0.484,
+    "low": 0.006,
+    "pen": 0.0,
+    "pix": -0.2289,
+    "riot": 0.5686,
+    "score": 1.6824,
+    "text": 0.2535
+   },
+   {
+    "cent": 1396.2,
+    "champ": 0.5752,
+    "dur": 0.484,
+    "low": 0.7,
+    "pen": 0.277,
+    "pix": -0.1581,
+    "riot": 0.738,
+    "score": 1.9287,
+    "text": 0.2782
+   }
+  ],
+  "sel": [
+   "bas_ghost_3.wav",
+   "bas_ghost_2.wav",
+   "r2__bas_ghost_1.wav"
+  ],
+  "zh": "幽灵龟·普攻出手"
+ },
+ "bas_headless": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 1789.9,
+    "champ": 0.3598,
+    "dur": 0.364,
+    "low": 0.201,
+    "pen": 0.022,
+    "pix": -0.0746,
+    "riot": 0.4642,
+    "score": 1.5218,
+    "text": 0.2843
+   },
+   {
+    "cent": 2376.8,
+    "champ": 0.5708,
+    "dur": 0.424,
+    "low": 0.244,
+    "pen": 0.0,
+    "pix": -0.159,
+    "riot": 0.6292,
+    "score": 1.8254,
+    "text": 0.2267
+   },
+   {
+    "cent": 1551.3,
+    "champ": 0.6567,
+    "dur": 0.549,
+    "low": 0.464,
+    "pen": 0.0,
+    "pix": -0.1867,
+    "riot": 0.7001,
+    "score": 2.1386,
+    "text": 0.2979
+   }
+  ],
+  "sel": [
+   "r2__bas_headless_3.wav",
+   "r2__bas_headless_2.wav",
+   "r2__bas_headless_1.wav"
+  ],
+  "zh": "无头龟·普攻出手"
+ },
+ "bas_hiding": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 481.6,
+    "champ": 0.5772,
+    "dur": 0.644,
+    "low": 0.615,
+    "pen": 0.125,
+    "pix": -0.2545,
+    "riot": 0.7411,
+    "score": 2.3898,
+    "text": 0.4603
+   },
+   {
+    "cent": 465.8,
+    "champ": 0.6069,
+    "dur": 0.549,
+    "low": 0.6,
+    "pen": 0.093,
+    "pix": -0.3046,
+    "riot": 0.7351,
+    "score": 2.3367,
+    "text": 0.4175
+   }
+  ],
+  "sel": [
+   "r2__bas_hiding_1.wav",
+   "bas_hiding_3.wav"
+  ],
+  "zh": "缩头乌龟·普攻出手"
+ },
+ "bas_hunter": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 743.4,
+    "champ": 0.4698,
+    "dur": 0.369,
+    "low": 0.445,
+    "pen": 0.065,
+    "pix": -0.1141,
+    "riot": 0.4466,
+    "score": 1.5183,
+    "text": 0.2675
+   },
+   {
+    "cent": 216.4,
+    "champ": 0.5073,
+    "dur": 0.18,
+    "low": 0.896,
+    "pen": 1.445,
+    "pix": -0.0407,
+    "riot": 0.4392,
+    "score": 0.7591,
+    "text": 0.2934
+   },
+   {
+    "cent": 211.6,
+    "champ": 0.4165,
+    "dur": 0.16,
+    "low": 0.882,
+    "pen": 1.363,
+    "pix": 0.0026,
+    "riot": 0.3635,
+    "score": 0.3464,
+    "text": 0.1533
+   }
+  ],
+  "sel": [
+   "bas_hunter_1.wav",
+   "bas_hunter_2.wav",
+   "r2__bas_hunter_3.wav"
+  ],
+  "zh": "猎人龟·普攻出手"
+ },
+ "bas_ice": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 3616.4,
+    "champ": 0.518,
+    "dur": 0.604,
+    "low": 0.124,
+    "pen": 0.112,
+    "pix": -0.0294,
+    "riot": 0.5474,
+    "score": 1.7796,
+    "text": 0.3187
+   },
+   {
+    "cent": 1499.2,
+    "champ": 0.2637,
+    "dur": 0.464,
+    "low": 0.0,
+    "pen": 0.061,
+    "pix": -0.0761,
+    "riot": 0.4552,
+    "score": 1.4713,
+    "text": 0.3136
+   },
+   {
+    "cent": 2773.5,
+    "champ": 0.4082,
+    "dur": 0.683,
+    "low": 0.001,
+    "pen": 0.009,
+    "pix": -0.0144,
+    "riot": 0.4255,
+    "score": 1.5294,
+    "text": 0.2953
+   }
+  ],
+  "sel": [
+   "bas_ice_1.wav",
+   "r2__bas_ice_3.wav",
+   "bas_ice_3.wav"
+  ],
+  "zh": "寒冰龟·普攻出手"
+ },
+ "bas_lava": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 192.6,
+    "champ": 0.7299,
+    "dur": 0.489,
+    "low": 0.88,
+    "pen": 0.979,
+    "pix": -0.2189,
+    "riot": 0.7373,
+    "score": 1.6399,
+    "text": 0.2868
+   }
+  ],
+  "sel": [
+   "r2__bas_lava_2.wav"
+  ],
+  "zh": "熔岩龟·普攻出手"
+ },
+ "bas_lightning": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 3370.5,
+    "champ": 0.7362,
+    "dur": 0.604,
+    "low": 0.432,
+    "pen": 0.0,
+    "pix": -0.1526,
+    "riot": 0.6349,
+    "score": 2.0766,
+    "text": 0.286
+   },
+   {
+    "cent": 3187.5,
+    "champ": 0.6103,
+    "dur": 0.683,
+    "low": 0.316,
+    "pen": 0.0,
+    "pix": -0.1005,
+    "riot": 0.5643,
+    "score": 1.8674,
+    "text": 0.2816
+   },
+   {
+    "cent": 3079.8,
+    "champ": 0.757,
+    "dur": 0.683,
+    "low": 0.422,
+    "pen": 0.0,
+    "pix": -0.134,
+    "riot": 0.6993,
+    "score": 1.9503,
+    "text": 0.1668
+   }
+  ],
+  "sel": [
+   "bas_lightning_2.wav",
+   "r2__bas_lightning_3.wav",
+   "r2__bas_lightning_2.wav"
+  ],
+  "zh": "闪电龟·普攻出手"
+ },
+ "bas_line": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 240.3,
+    "champ": 0.4554,
+    "dur": 0.429,
+    "low": 0.955,
+    "pen": 1.07,
+    "pix": -0.2259,
+    "riot": 0.5972,
+    "score": 1.3054,
+    "text": 0.3551
+   },
+   {
+    "cent": 245.9,
+    "champ": 0.2223,
+    "dur": 0.519,
+    "low": 0.972,
+    "pen": 1.117,
+    "pix": -0.1243,
+    "riot": 0.3946,
+    "score": 0.6781,
+    "text": 0.2949
+   },
+   {
+    "cent": 2056.0,
+    "champ": 0.5139,
+    "dur": 0.654,
+    "low": 0.635,
+    "pen": 0.157,
+    "pix": -0.232,
+    "riot": 0.6371,
+    "score": 1.9448,
+    "text": 0.3489
+   }
+  ],
+  "sel": [
+   "r2__bas_line_3.wav",
+   "bas_line_1.wav",
+   "bas_line_2.wav"
+  ],
+  "zh": "线条龟·普攻出手"
+ },
+ "bas_ninja": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 1466.4,
+    "champ": 0.6346,
+    "dur": 0.434,
+    "low": 0.534,
+    "pen": 0.0,
+    "pix": -0.1568,
+    "riot": 0.652,
+    "score": 2.2057,
+    "text": 0.3758
+   },
+   {
+    "cent": 2840.1,
+    "champ": 0.6994,
+    "dur": 0.683,
+    "low": 0.194,
+    "pen": 0.087,
+    "pix": -0.095,
+    "riot": 0.674,
+    "score": 2.119,
+    "text": 0.3177
+   },
+   {
+    "cent": 789.2,
+    "champ": 0.7009,
+    "dur": 0.384,
+    "low": 0.79,
+    "pen": 0.491,
+    "pix": -0.1264,
+    "riot": 0.6839,
+    "score": 1.9227,
+    "text": 0.3329
+   }
+  ],
+  "sel": [
+   "bas_ninja_1.wav",
+   "r2__bas_ninja_1.wav",
+   "bas_ninja_2.wav"
+  ],
+  "zh": "忍者龟·普攻出手"
+ },
+ "bas_phoenix": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 201.0,
+    "champ": 0.5266,
+    "dur": 0.604,
+    "low": 0.76,
+    "pen": 0.775,
+    "pix": -0.1504,
+    "riot": 0.5012,
+    "score": 1.3709,
+    "text": 0.3446
+   },
+   {
+    "cent": 433.2,
+    "champ": 0.5278,
+    "dur": 0.574,
+    "low": 0.489,
+    "pen": 0.062,
+    "pix": -0.2867,
+    "riot": 0.5983,
+    "score": 1.8441,
+    "text": 0.294
+   },
+   {
+    "cent": 337.6,
+    "champ": 0.5455,
+    "dur": 0.429,
+    "low": 0.225,
+    "pen": 0.166,
+    "pix": -0.1709,
+    "riot": 0.5733,
+    "score": 1.7672,
+    "text": 0.2989
+   }
+  ],
+  "sel": [
+   "r2__bas_phoenix_2.wav",
+   "bas_phoenix_3.wav",
+   "bas_phoenix_2.wav"
+  ],
+  "zh": "凤凰龟·普攻出手"
+ },
+ "bas_pirate": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 220.3,
+    "champ": 0.6254,
+    "dur": 0.569,
+    "low": 0.799,
+    "pen": 0.78,
+    "pix": -0.0636,
+    "riot": 0.6623,
+    "score": 1.5685,
+    "text": 0.2871
+   },
+   {
+    "cent": 423.8,
+    "champ": 0.5445,
+    "dur": 0.424,
+    "low": 0.675,
+    "pen": 0.319,
+    "pix": -0.181,
+    "riot": 0.7414,
+    "score": 2.3205,
+    "text": 0.4958
+   },
+   {
+    "cent": 214.0,
+    "champ": 0.6095,
+    "dur": 0.364,
+    "low": 0.752,
+    "pen": 0.734,
+    "pix": -0.288,
+    "riot": 0.7919,
+    "score": 2.2867,
+    "text": 0.541
+   }
+  ],
+  "sel": [
+   "r2__bas_pirate_2.wav",
+   "bas_pirate_3.wav",
+   "r2__bas_pirate_1.wav"
+  ],
+  "zh": "海盗龟·普攻出手"
+ },
+ "bas_rainbow": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 6990.6,
+    "champ": 0.5412,
+    "dur": 0.683,
+    "low": 0.001,
+    "pen": 1.148,
+    "pix": -0.1698,
+    "riot": 0.496,
+    "score": 0.9204,
+    "text": 0.2295
+   },
+   {
+    "cent": 7870.0,
+    "champ": 0.5462,
+    "dur": 0.604,
+    "low": 0.001,
+    "pen": 1.256,
+    "pix": -0.1745,
+    "riot": 0.5275,
+    "score": 0.9981,
+    "text": 0.2756
+   },
+   {
+    "cent": 6742.4,
+    "champ": 0.571,
+    "dur": 0.683,
+    "low": 0.0,
+    "pen": 0.899,
+    "pix": -0.1633,
+    "riot": 0.6031,
+    "score": 1.5332,
+    "text": 0.37
+   }
+  ],
+  "sel": [
+   "r2__bas_rainbow_3.wav",
+   "bas_rainbow_3.wav",
+   "r2__bas_rainbow_1.wav"
+  ],
+  "zh": "彩虹龟·普攻出手"
+ },
+ "bas_shell": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 2195.0,
+    "champ": 0.3774,
+    "dur": 0.504,
+    "low": 0.179,
+    "pen": 0.0,
+    "pix": -0.1766,
+    "riot": 0.6278,
+    "score": 1.8531,
+    "text": 0.3142
+   },
+   {
+    "cent": 3773.8,
+    "champ": 0.2542,
+    "dur": 0.354,
+    "low": 0.11,
+    "pen": 0.032,
+    "pix": -0.2282,
+    "riot": 0.53,
+    "score": 1.4334,
+    "text": 0.2336
+   },
+   {
+    "cent": 1562.0,
+    "champ": 0.5132,
+    "dur": 0.683,
+    "low": 0.247,
+    "pen": 0.01,
+    "pix": -0.023,
+    "riot": 0.6966,
+    "score": 1.8616,
+    "text": 0.219
+   }
+  ],
+  "sel": [
+   "r2__bas_shell_3.wav",
+   "r2__bas_shell_1.wav",
+   "bas_shell_3.wav"
+  ],
+  "zh": "龟壳·普攻出手"
+ },
+ "bas_space": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 5572.0,
+    "champ": 0.7459,
+    "dur": 0.604,
+    "low": 0.039,
+    "pen": 0.478,
+    "pix": -0.2898,
+    "riot": 0.7906,
+    "score": 2.0921,
+    "text": 0.3169
+   },
+   {
+    "cent": 2898.0,
+    "champ": 0.5392,
+    "dur": 0.683,
+    "low": 0.002,
+    "pen": 0.007,
+    "pix": -0.1101,
+    "riot": 0.4612,
+    "score": 1.3364,
+    "text": 0.1222
+   },
+   {
+    "cent": 3320.3,
+    "champ": 0.6025,
+    "dur": 0.683,
+    "low": 0.004,
+    "pen": 0.003,
+    "pix": -0.0722,
+    "riot": 0.5212,
+    "score": 1.6049,
+    "text": 0.1864
+   }
+  ],
+  "sel": [
+   "bas_space_1.wav",
+   "r2__bas_space_2.wav",
+   "r2__bas_space_1.wav"
+  ],
+  "zh": "星际龟·普攻出手"
+ },
+ "bas_stone": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 350.5,
+    "champ": 0.6392,
+    "dur": 0.569,
+    "low": 0.49,
+    "pen": 0.118,
+    "pix": -0.2647,
+    "riot": 0.6171,
+    "score": 1.7187,
+    "text": 0.1923
+   },
+   {
+    "cent": 315.2,
+    "champ": 0.6079,
+    "dur": 0.539,
+    "low": 0.458,
+    "pen": 0.169,
+    "pix": -0.1637,
+    "riot": 0.6824,
+    "score": 1.9152,
+    "text": 0.2687
+   },
+   {
+    "cent": 357.2,
+    "champ": 0.7387,
+    "dur": 0.504,
+    "low": 0.318,
+    "pen": 0.12,
+    "pix": -0.3052,
+    "riot": 0.7327,
+    "score": 2.293,
+    "text": 0.3559
+   }
+  ],
+  "sel": [
+   "r2__bas_stone_3.wav",
+   "bas_stone_2.wav",
+   "r2__bas_stone_1.wav"
+  ],
+  "zh": "石头龟·普攻出手"
+ },
+ "bas_two_head": {
+  "cat": "ba_cast",
+  "score": [
+   {
+    "cent": 1755.5,
+    "champ": 0.5065,
+    "dur": 0.579,
+    "low": 0.208,
+    "pen": 0.0,
+    "pix": -0.0029,
+    "riot": 0.4952,
+    "score": 1.6812,
+    "text": 0.2793
+   },
+   {
+    "cent": 1299.5,
+    "champ": 0.7116,
+    "dur": 0.504,
+    "low": 0.402,
+    "pen": 0.0,
+    "pix": -0.1638,
+    "riot": 0.7128,
+    "score": 2.5154,
+    "text": 0.4562
+   },
+   {
+    "cent": 1685.8,
+    "champ": 0.41,
+    "dur": 0.683,
+    "low": 0.236,
+    "pen": 0.0,
+    "pix": -0.1172,
+    "riot": 0.4725,
+    "score": 1.5158,
+    "text": 0.2498
+   }
+  ],
+  "sel": [
+   "bas_two_head_3.wav",
+   "r2__bas_two_head_1.wav",
+   "r2__bas_two_head_3.wav"
+  ],
+  "zh": "变脸龟·普攻出手"
+ },
+ "coin_buy": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 4211.7,
+    "champ": 0.5846,
+    "dur": 0.604,
+    "low": 0.166,
+    "pen": 0.0,
+    "pix": -0.0863,
+    "riot": 0.5846,
+    "score": 1.5726,
+    "text": 0.1287
+   }
+  ],
+  "sel": [
+   "coin_buy_3.wav"
+  ],
+  "zh": "金币购买"
+ },
+ "crit_angel": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 7033.5,
+    "champ": 0.5726,
+    "dur": 0.554,
+    "low": 0.001,
+    "pen": 0.957,
+    "pix": -0.1885,
+    "riot": 0.4313,
+    "score": 0.7239,
+    "text": 0.1109
+   },
+   {
+    "cent": 7740.3,
+    "champ": 0.2419,
+    "dur": 0.534,
+    "low": 0.001,
+    "pen": 1.565,
+    "pix": -0.1199,
+    "riot": 0.2564,
+    "score": -0.2602,
+    "text": 0.0563
+   }
+  ],
+  "sel": [
+   "r3__crit_angel_3.wav",
+   "r3__crit_angel_4.wav"
+  ],
+  "zh": "天使龟·暴击"
+ },
+ "crit_bamboo": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 367.8,
+    "champ": 0.4082,
+    "dur": 0.803,
+    "low": 0.884,
+    "pen": 0.833,
+    "pix": -0.1227,
+    "riot": 0.5549,
+    "score": 1.5932,
+    "text": 0.4774
+   },
+   {
+    "cent": 3804.2,
+    "champ": 0.4047,
+    "dur": 0.883,
+    "low": 0.237,
+    "pen": 0.294,
+    "pix": -0.138,
+    "riot": 0.6621,
+    "score": 2.0953,
+    "text": 0.4876
+   }
+  ],
+  "sel": [
+   "r2__crit_bamboo_2.wav",
+   "crit_bamboo_2.wav"
+  ],
+  "zh": "竹叶龟·暴击"
+ },
+ "crit_basic": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 555.6,
+    "champ": 0.7934,
+    "dur": 0.883,
+    "low": 0.777,
+    "pen": 0.386,
+    "pix": -0.1761,
+    "riot": 0.7934,
+    "score": 2.362,
+    "text": 0.4043
+   }
+  ],
+  "sel": [
+   "r2__crit_basic_2.wav"
+  ],
+  "zh": "小龟·暴击"
+ },
+ "crit_bubble": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 661.1,
+    "champ": 0.5551,
+    "dur": 0.624,
+    "low": 0.48,
+    "pen": 0.109,
+    "pix": -0.1026,
+    "riot": 0.5743,
+    "score": 1.9518,
+    "text": 0.3698
+   },
+   {
+    "cent": 1149.7,
+    "champ": 0.7015,
+    "dur": 0.883,
+    "low": 0.071,
+    "pen": 0.293,
+    "pix": -0.2191,
+    "riot": 0.599,
+    "score": 2.1795,
+    "text": 0.4655
+   }
+  ],
+  "sel": [
+   "r2__crit_bubble_2.wav",
+   "r2__crit_bubble_1.wav"
+  ],
+  "zh": "泡泡龟·暴击"
+ },
+ "crit_candy": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 1455.7,
+    "champ": 0.4744,
+    "dur": 0.484,
+    "low": 0.777,
+    "pen": 0.241,
+    "pix": 0.0026,
+    "riot": 0.5366,
+    "score": 2.0382,
+    "text": 0.5111
+   },
+   {
+    "cent": 1205.4,
+    "champ": 0.5181,
+    "dur": 0.803,
+    "low": 0.828,
+    "pen": 0.338,
+    "pix": -0.203,
+    "riot": 0.65,
+    "score": 2.1148,
+    "text": 0.477
+   }
+  ],
+  "sel": [
+   "crit_candy_2.wav",
+   "crit_candy_1.wav"
+  ],
+  "zh": "糖果龟·暴击"
+ },
+ "crit_chest": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 326.6,
+    "champ": 0.7768,
+    "dur": 0.773,
+    "low": 0.781,
+    "pen": 0.738,
+    "pix": -0.1696,
+    "riot": 0.8436,
+    "score": 2.3215,
+    "text": 0.458
+   },
+   {
+    "cent": 533.9,
+    "champ": 0.5833,
+    "dur": 0.723,
+    "low": 0.622,
+    "pen": 0.198,
+    "pix": -0.1196,
+    "riot": 0.5958,
+    "score": 2.1035,
+    "text": 0.4455
+   }
+  ],
+  "sel": [
+   "r2__crit_chest_1.wav",
+   "r2__crit_chest_2.wav"
+  ],
+  "zh": "宝箱龟·暴击"
+ },
+ "crit_crystal": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 6224.5,
+    "champ": 0.3885,
+    "dur": 0.883,
+    "low": 0.085,
+    "pen": 1.037,
+    "pix": -0.093,
+    "riot": 0.5422,
+    "score": 0.843,
+    "text": 0.1804
+   },
+   {
+    "cent": 724.4,
+    "champ": 0.5713,
+    "dur": 0.529,
+    "low": 0.795,
+    "pen": 0.405,
+    "pix": -0.2007,
+    "riot": 0.6702,
+    "score": 1.7581,
+    "text": 0.2837
+   }
+  ],
+  "sel": [
+   "r2__crit_crystal_2.wav",
+   "r2__crit_crystal_1.wav"
+  ],
+  "zh": "水晶龟·暴击"
+ },
+ "crit_cyber": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 340.0,
+    "champ": 0.603,
+    "dur": 0.798,
+    "low": 0.752,
+    "pen": 0.711,
+    "pix": -0.1304,
+    "riot": 0.6941,
+    "score": 1.7921,
+    "text": 0.3626
+   },
+   {
+    "cent": 551.7,
+    "champ": 0.7016,
+    "dur": 0.833,
+    "low": 0.742,
+    "pen": 0.48,
+    "pix": -0.1252,
+    "riot": 0.7188,
+    "score": 2.1054,
+    "text": 0.3944
+   }
+  ],
+  "sel": [
+   "r2__crit_cyber_2.wav",
+   "r2__crit_cyber_1.wav"
+  ],
+  "zh": "赛博龟·暴击"
+ },
+ "crit_diamond": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 452.9,
+    "champ": 0.5383,
+    "dur": 0.474,
+    "low": 0.903,
+    "pen": 1.039,
+    "pix": -0.0475,
+    "riot": 0.7227,
+    "score": 1.7216,
+    "text": 0.4286
+   },
+   {
+    "cent": 2610.5,
+    "champ": 0.6151,
+    "dur": 0.883,
+    "low": 0.59,
+    "pen": 0.034,
+    "pix": -0.1602,
+    "riot": 0.7437,
+    "score": 2.5668,
+    "text": 0.5051
+   }
+  ],
+  "sel": [
+   "r2__crit_diamond_2.wav",
+   "r2__crit_diamond_1.wav"
+  ],
+  "zh": "钻石龟·暴击"
+ },
+ "crit_dice": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 921.4,
+    "champ": 0.703,
+    "dur": 0.479,
+    "low": 0.7,
+    "pen": 0.26,
+    "pix": -0.1716,
+    "riot": 0.6845,
+    "score": 2.195,
+    "text": 0.3985
+   },
+   {
+    "cent": 784.3,
+    "champ": 0.7458,
+    "dur": 0.663,
+    "low": 0.784,
+    "pen": 0.255,
+    "pix": -0.2485,
+    "riot": 0.7303,
+    "score": 2.3688,
+    "text": 0.4335
+   }
+  ],
+  "sel": [
+   "r2__crit_dice_2.wav",
+   "r2__crit_dice_1.wav"
+  ],
+  "zh": "骰子龟·暴击"
+ },
+ "crit_fortune": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 336.2,
+    "champ": 0.5269,
+    "dur": 0.614,
+    "low": 0.904,
+    "pen": 0.99,
+    "pix": -0.0046,
+    "riot": 0.5213,
+    "score": 1.1581,
+    "text": 0.2873
+   },
+   {
+    "cent": 8224.7,
+    "champ": 0.2317,
+    "dur": 0.883,
+    "low": 0.072,
+    "pen": 1.693,
+    "pix": -0.0821,
+    "riot": 0.2264,
+    "score": 0.1842,
+    "text": 0.3432
+   }
+  ],
+  "sel": [
+   "crit_fortune_1.wav",
+   "r2__crit_fortune_2.wav"
+  ],
+  "zh": "财神龟·暴击"
+ },
+ "crit_gambler": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 2991.2,
+    "champ": 0.4271,
+    "dur": 0.803,
+    "low": 0.0,
+    "pen": 0.216,
+    "pix": -0.0014,
+    "riot": 0.4888,
+    "score": 1.3393,
+    "text": 0.2078
+   },
+   {
+    "cent": 947.3,
+    "champ": 0.7545,
+    "dur": 0.649,
+    "low": 0.696,
+    "pen": 0.09,
+    "pix": -0.2717,
+    "riot": 0.7141,
+    "score": 2.5841,
+    "text": 0.5006
+   }
+  ],
+  "sel": [
+   "r2__crit_gambler_2.wav",
+   "crit_gambler_1.wav"
+  ],
+  "zh": "赌神龟·暴击"
+ },
+ "crit_ghost": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 1844.8,
+    "champ": 0.4617,
+    "dur": 0.803,
+    "low": 0.708,
+    "pen": 0.112,
+    "pix": -0.0531,
+    "riot": 0.5895,
+    "score": 1.3492,
+    "text": 0.0928
+   },
+   {
+    "cent": 838.4,
+    "champ": 0.6135,
+    "dur": 0.883,
+    "low": 0.644,
+    "pen": 0.0,
+    "pix": -0.1736,
+    "riot": 0.7311,
+    "score": 1.9168,
+    "text": 0.18
+   }
+  ],
+  "sel": [
+   "r2__crit_ghost_1.wav",
+   "crit_ghost_1.wav"
+  ],
+  "zh": "幽灵龟·暴击"
+ },
+ "crit_headless": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 645.1,
+    "champ": 0.6572,
+    "dur": 0.584,
+    "low": 0.795,
+    "pen": 0.439,
+    "pix": -0.2225,
+    "riot": 0.8652,
+    "score": 2.5438,
+    "text": 0.5082
+   },
+   {
+    "cent": 1046.0,
+    "champ": 0.471,
+    "dur": 0.564,
+    "low": 0.64,
+    "pen": 0.176,
+    "pix": -0.1676,
+    "riot": 0.7268,
+    "score": 2.4059,
+    "text": 0.5341
+   }
+  ],
+  "sel": [
+   "crit_headless_2.wav",
+   "r2__crit_headless_2.wav"
+  ],
+  "zh": "无头龟·暴击"
+ },
+ "crit_hiding": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 2622.1,
+    "champ": 0.3494,
+    "dur": 0.883,
+    "low": 0.0,
+    "pen": 0.657,
+    "pix": -0.0208,
+    "riot": 0.4311,
+    "score": 0.5895,
+    "text": 0.0376
+   }
+  ],
+  "sel": [
+   "r2__crit_hiding_1.wav"
+  ],
+  "zh": "缩头乌龟·暴击"
+ },
+ "crit_hunter": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 662.7,
+    "champ": 0.5805,
+    "dur": 0.464,
+    "low": 0.755,
+    "pen": 0.655,
+    "pix": -0.0372,
+    "riot": 0.6468,
+    "score": 1.7206,
+    "text": 0.3541
+   },
+   {
+    "cent": 550.2,
+    "champ": 0.7772,
+    "dur": 0.539,
+    "low": 0.819,
+    "pen": 0.468,
+    "pix": -0.2449,
+    "riot": 0.7641,
+    "score": 2.4036,
+    "text": 0.4776
+   }
+  ],
+  "sel": [
+   "r2__crit_hunter_2.wav",
+   "crit_hunter_2.wav"
+  ],
+  "zh": "猎人龟·暴击"
+ },
+ "crit_ice": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 936.5,
+    "champ": 0.6958,
+    "dur": 0.668,
+    "low": 0.605,
+    "pen": 0.0,
+    "pix": -0.191,
+    "riot": 0.7353,
+    "score": 2.5778,
+    "text": 0.4765
+   },
+   {
+    "cent": 1095.3,
+    "champ": 0.7977,
+    "dur": 0.713,
+    "low": 0.449,
+    "pen": 0.029,
+    "pix": -0.1989,
+    "riot": 0.8155,
+    "score": 2.8103,
+    "text": 0.5032
+   }
+  ],
+  "sel": [
+   "r2__crit_ice_2.wav",
+   "r2__crit_ice_1.wav"
+  ],
+  "zh": "寒冰龟·暴击"
+ },
+ "crit_lava": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 483.6,
+    "champ": 0.4923,
+    "dur": 0.883,
+    "low": 0.845,
+    "pen": 0.586,
+    "pix": -0.2049,
+    "riot": 0.729,
+    "score": 1.8696,
+    "text": 0.3794
+   }
+  ],
+  "sel": [
+   "r2__crit_lava_2.wav"
+  ],
+  "zh": "熔岩龟·暴击"
+ },
+ "crit_lightning": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 461.3,
+    "champ": 0.5047,
+    "dur": 0.803,
+    "low": 0.889,
+    "pen": 0.695,
+    "pix": -0.0208,
+    "riot": 0.5195,
+    "score": 1.0805,
+    "text": 0.1698
+   }
+  ],
+  "sel": [
+   "crit_lightning_2.wav"
+  ],
+  "zh": "闪电龟·暴击"
+ },
+ "crit_line": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 1205.0,
+    "champ": 0.5283,
+    "dur": 0.574,
+    "low": 0.704,
+    "pen": 0.105,
+    "pix": -0.0993,
+    "riot": 0.7012,
+    "score": 2.0301,
+    "text": 0.3226
+   },
+   {
+    "cent": 766.8,
+    "champ": 0.6232,
+    "dur": 0.614,
+    "low": 0.77,
+    "pen": 0.258,
+    "pix": -0.2405,
+    "riot": 0.7797,
+    "score": 2.0892,
+    "text": 0.3035
+   }
+  ],
+  "sel": [
+   "crit_line_2.wav",
+   "crit_line_1.wav"
+  ],
+  "zh": "线条龟·暴击"
+ },
+ "crit_ninja": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 1588.7,
+    "champ": 0.7378,
+    "dur": 0.803,
+    "low": 0.732,
+    "pen": 0.158,
+    "pix": -0.1964,
+    "riot": 0.7918,
+    "score": 2.6003,
+    "text": 0.4769
+   },
+   {
+    "cent": 1273.5,
+    "champ": 0.6094,
+    "dur": 0.484,
+    "low": 0.588,
+    "pen": 0.0,
+    "pix": -0.1704,
+    "riot": 0.5938,
+    "score": 2.1857,
+    "text": 0.419
+   }
+  ],
+  "sel": [
+   "crit_ninja_2.wav",
+   "r2__crit_ninja_2.wav"
+  ],
+  "zh": "忍者龟·暴击"
+ },
+ "crit_phoenix": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 244.4,
+    "champ": 0.5469,
+    "dur": 0.514,
+    "low": 0.676,
+    "pen": 0.934,
+    "pix": -0.0986,
+    "riot": 0.6259,
+    "score": 1.5674,
+    "text": 0.3894
+   },
+   {
+    "cent": 704.8,
+    "champ": 0.5183,
+    "dur": 0.654,
+    "low": 0.768,
+    "pen": 0.254,
+    "pix": -0.2114,
+    "riot": 0.5363,
+    "score": 1.6659,
+    "text": 0.3126
+   }
+  ],
+  "sel": [
+   "r3__crit_phoenix_3.wav",
+   "r3__crit_phoenix_2.wav"
+  ],
+  "zh": "凤凰龟·暴击"
+ },
+ "crit_pirate": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 1166.8,
+    "champ": 0.642,
+    "dur": 0.544,
+    "low": 0.692,
+    "pen": 0.082,
+    "pix": -0.1803,
+    "riot": 0.7036,
+    "score": 2.1918,
+    "text": 0.352
+   },
+   {
+    "cent": 691.1,
+    "champ": 0.7201,
+    "dur": 0.758,
+    "low": 0.801,
+    "pen": 0.311,
+    "pix": -0.3388,
+    "riot": 0.704,
+    "score": 2.105,
+    "text": 0.3477
+   }
+  ],
+  "sel": [
+   "r2__crit_pirate_1.wav",
+   "crit_pirate_2.wav"
+  ],
+  "zh": "海盗龟·暴击"
+ },
+ "crit_rainbow": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 543.2,
+    "champ": 0.6611,
+    "dur": 0.544,
+    "low": 0.887,
+    "pen": 0.602,
+    "pix": -0.1968,
+    "riot": 0.6179,
+    "score": 1.5331,
+    "text": 0.2359
+   },
+   {
+    "cent": 565.9,
+    "champ": 0.5764,
+    "dur": 0.738,
+    "low": 0.892,
+    "pen": 0.644,
+    "pix": -0.0922,
+    "riot": 0.6007,
+    "score": 1.5766,
+    "text": 0.3149
+   }
+  ],
+  "sel": [
+   "r2__crit_rainbow_2.wav",
+   "crit_rainbow_1.wav"
+  ],
+  "zh": "彩虹龟·暴击"
+ },
+ "crit_shell": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 1020.8,
+    "champ": 0.3851,
+    "dur": 0.883,
+    "low": 0.727,
+    "pen": 0.148,
+    "pix": 0.0067,
+    "riot": 0.5598,
+    "score": 1.6225,
+    "text": 0.2913
+   }
+  ],
+  "sel": [
+   "r2__crit_shell_1.wav"
+  ],
+  "zh": "龟壳·暴击"
+ },
+ "crit_space": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 312.9,
+    "champ": 0.6839,
+    "dur": 0.644,
+    "low": 0.931,
+    "pen": 1.003,
+    "pix": -0.131,
+    "riot": 0.6502,
+    "score": 1.2786,
+    "text": 0.1962
+   }
+  ],
+  "sel": [
+   "crit_space_1.wav"
+  ],
+  "zh": "星际龟·暴击"
+ },
+ "crit_stone": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 346.3,
+    "champ": 0.5447,
+    "dur": 0.509,
+    "low": 0.798,
+    "pen": 0.819,
+    "pix": -0.2212,
+    "riot": 0.6934,
+    "score": 1.8918,
+    "text": 0.4674
+   },
+   {
+    "cent": 491.7,
+    "champ": 0.6818,
+    "dur": 0.883,
+    "low": 0.789,
+    "pen": 0.493,
+    "pix": -0.2715,
+    "riot": 0.7707,
+    "score": 2.3053,
+    "text": 0.467
+   }
+  ],
+  "sel": [
+   "r2__crit_stone_2.wav",
+   "r2__crit_stone_1.wav"
+  ],
+  "zh": "石头龟·暴击"
+ },
+ "crit_two_head": {
+  "cat": "crit",
+  "score": [
+   {
+    "cent": 189.2,
+    "champ": 0.5331,
+    "dur": 0.883,
+    "low": 0.899,
+    "pen": 1.507,
+    "pix": -0.0323,
+    "riot": 0.6049,
+    "score": 1.0727,
+    "text": 0.3348
+   },
+   {
+    "cent": 591.7,
+    "champ": 0.6099,
+    "dur": 0.688,
+    "low": 0.658,
+    "pen": 0.134,
+    "pix": -0.0434,
+    "riot": 0.7363,
+    "score": 2.1718,
+    "text": 0.3453
+   }
+  ],
+  "sel": [
+   "r2__crit_two_head_2.wav",
+   "r2__crit_two_head_1.wav"
+  ],
+  "zh": "变脸龟·暴击"
+ },
+ "defeat": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 331.5,
+    "champ": 0.4308,
+    "dur": 2.779,
+    "low": 0.495,
+    "pen": 0.187,
+    "pix": -0.1085,
+    "riot": 0.4308,
+    "score": 1.628,
+    "text": 0.3856
+   }
+  ],
+  "sel": [
+   "defeat_2.wav"
+  ],
+  "zh": "失败"
+ },
+ "eq_001": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 435.8,
+    "champ": 0.6616,
+    "dur": 0.589,
+    "low": 0.635,
+    "pen": 0.493,
+    "pix": -0.2002,
+    "riot": 0.6616,
+    "score": 2.0024,
+    "text": 0.405
+   }
+  ],
+  "sel": [
+   "r2__eq_001_1.wav"
+  ],
+  "zh": "木制长剑·剑气"
+ },
+ "eq_004": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1097.5,
+    "champ": 0.5488,
+    "dur": 1.282,
+    "low": 0.687,
+    "pen": 0.069,
+    "pix": -0.0479,
+    "riot": 0.5488,
+    "score": 1.7117,
+    "text": 0.2592
+   }
+  ],
+  "sel": [
+   "r2__eq_004_2.wav"
+  ],
+  "zh": "暴君之牙·处决/毒牙"
+ },
+ "eq_005": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3264.0,
+    "champ": 0.806,
+    "dur": 0.688,
+    "low": 0.364,
+    "pen": 0.014,
+    "pix": -0.3099,
+    "riot": 0.806,
+    "score": 2.8054,
+    "text": 0.5001
+   }
+  ],
+  "sel": [
+   "r2__eq_005_1.wav"
+  ],
+  "zh": "双生匕首·追加刺击"
+ },
+ "eq_006": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2239.7,
+    "champ": 0.722,
+    "dur": 0.913,
+    "low": 0.49,
+    "pen": 0.122,
+    "pix": -0.2741,
+    "riot": 0.722,
+    "score": 2.3409,
+    "text": 0.3949
+   }
+  ],
+  "sel": [
+   "eq_006_1.wav"
+  ],
+  "zh": "千刃风暴"
+ },
+ "eq_007": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1160.6,
+    "champ": 0.6246,
+    "dur": 0.584,
+    "low": 0.641,
+    "pen": 0.064,
+    "pix": -0.2291,
+    "riot": 0.6246,
+    "score": 2.2566,
+    "text": 0.445
+   }
+  ],
+  "sel": [
+   "eq_007_1.wav"
+  ],
+  "zh": "锈蚀阔剑·剑气墙"
+ },
+ "eq_008": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1719.8,
+    "champ": 0.2348,
+    "dur": 1.048,
+    "low": 0.0,
+    "pen": 0.21,
+    "pix": -0.0114,
+    "riot": 0.2348,
+    "score": 0.6339,
+    "text": 0.1159
+   }
+  ],
+  "sel": [
+   "r2__eq_008_1.wav"
+  ],
+  "zh": "双穿珊瑚刺"
+ },
+ "eq_009": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3520.7,
+    "champ": 0.4267,
+    "dur": 1.282,
+    "low": 0.0,
+    "pen": 0.023,
+    "pix": 0.0098,
+    "riot": 0.4267,
+    "score": 1.2303,
+    "text": 0.1421
+   }
+  ],
+  "sel": [
+   "r2__eq_009_2.wav"
+  ],
+  "zh": "月之刃·弧形刀光"
+ },
+ "eq_010": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1527.4,
+    "champ": 0.7952,
+    "dur": 0.863,
+    "low": 0.322,
+    "pen": 0.0,
+    "pix": -0.0395,
+    "riot": 0.7952,
+    "score": 2.3786,
+    "text": 0.2948
+   }
+  ],
+  "sel": [
+   "r2__eq_010_1.wav"
+  ],
+  "zh": "激光长刃"
+ },
+ "eq_011": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1237.3,
+    "champ": 0.4029,
+    "dur": 0.728,
+    "low": 0.42,
+    "pen": 0.0,
+    "pix": -0.1037,
+    "riot": 0.4029,
+    "score": 1.4108,
+    "text": 0.2521
+   }
+  ],
+  "sel": [
+   "eq_011_2.wav"
+  ],
+  "zh": "饮血护符坠·连斩"
+ },
+ "eq_012": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 6680.1,
+    "champ": 0.5807,
+    "dur": 1.282,
+    "low": 0.028,
+    "pen": 1.159,
+    "pix": -0.0255,
+    "riot": 0.5807,
+    "score": 0.9906,
+    "text": 0.1897
+   }
+  ],
+  "sel": [
+   "r2__eq_012_1.wav"
+  ],
+  "zh": "海藻·魔法护盾"
+ },
+ "eq_013": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 6107.6,
+    "champ": 0.5958,
+    "dur": 0.873,
+    "low": 0.058,
+    "pen": 1.115,
+    "pix": -0.246,
+    "riot": 0.5958,
+    "score": 1.4734,
+    "text": 0.4009
+   }
+  ],
+  "sel": [
+   "eq_013_2.wav"
+  ],
+  "zh": "炙烤海胆·满层护盾"
+ },
+ "eq_014": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1505.5,
+    "champ": 0.6784,
+    "dur": 1.008,
+    "low": 0.336,
+    "pen": 0.0,
+    "pix": -0.1566,
+    "riot": 0.6784,
+    "score": 2.0868,
+    "text": 0.2802
+   }
+  ],
+  "sel": [
+   "r2__eq_014_2.wav"
+  ],
+  "zh": "深海堡垒甲"
+ },
+ "eq_015": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 6173.2,
+    "champ": 0.5493,
+    "dur": 1.003,
+    "low": 0.002,
+    "pen": 0.674,
+    "pix": -0.0835,
+    "riot": 0.5493,
+    "score": 1.2383,
+    "text": 0.2034
+   }
+  ],
+  "sel": [
+   "eq_015_2.wav"
+  ],
+  "zh": "荆棘海胆·反伤护盾"
+ },
+ "eq_016": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2951.2,
+    "champ": 0.5194,
+    "dur": 0.778,
+    "low": 0.048,
+    "pen": 0.0,
+    "pix": -0.1747,
+    "riot": 0.5194,
+    "score": 1.8022,
+    "text": 0.3168
+   }
+  ],
+  "sel": [
+   "r2__eq_016_2.wav"
+  ],
+  "zh": "铁壁盾·全队护盾"
+ },
+ "eq_017": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3195.3,
+    "champ": 0.5799,
+    "dur": 1.282,
+    "low": 0.283,
+    "pen": 0.0,
+    "pix": -0.0742,
+    "riot": 0.5799,
+    "score": 2.0809,
+    "text": 0.388
+   }
+  ],
+  "sel": [
+   "r2__eq_017_2.wav"
+  ],
+  "zh": "不沉之锚·击飞"
+ },
+ "eq_018": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2344.5,
+    "champ": 0.3053,
+    "dur": 1.003,
+    "low": 0.302,
+    "pen": 0.011,
+    "pix": -0.0527,
+    "riot": 0.3053,
+    "score": 0.9174,
+    "text": 0.1185
+   }
+  ],
+  "sel": [
+   "eq_018_1.wav"
+  ],
+  "zh": "守护贝壳·回血"
+ },
+ "eq_019": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 6103.2,
+    "champ": 0.4616,
+    "dur": 0.539,
+    "low": 0.01,
+    "pen": 0.789,
+    "pix": -0.1657,
+    "riot": 0.4616,
+    "score": 1.2898,
+    "text": 0.3623
+   }
+  ],
+  "sel": [
+   "eq_019_1.wav"
+  ],
+  "zh": "海葵药膏·治疗"
+ },
+ "eq_020": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 353.0,
+    "champ": 0.7359,
+    "dur": 1.182,
+    "low": 0.867,
+    "pen": 0.819,
+    "pix": -0.2556,
+    "riot": 0.7359,
+    "score": 1.8538,
+    "text": 0.3448
+   }
+  ],
+  "sel": [
+   "r2__eq_020_1.wav"
+  ],
+  "zh": "哑铃·投掷"
+ },
+ "eq_021": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2867.3,
+    "champ": 0.5417,
+    "dur": 0.698,
+    "low": 0.402,
+    "pen": 0.0,
+    "pix": -0.2386,
+    "riot": 0.5417,
+    "score": 1.3381,
+    "text": 0.0597
+   }
+  ],
+  "sel": [
+   "eq_021_2.wav"
+  ],
+  "zh": "守护贝母·连接"
+ },
+ "eq_022": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4464.5,
+    "champ": 0.7066,
+    "dur": 1.282,
+    "low": 0.211,
+    "pen": 0.336,
+    "pix": -0.174,
+    "riot": 0.7066,
+    "score": 2.1102,
+    "text": 0.3608
+   }
+  ],
+  "sel": [
+   "r2__eq_022_1.wav"
+  ],
+  "zh": "余烬燃油瓶"
+ },
+ "eq_023": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 735.6,
+    "champ": 0.6514,
+    "dur": 1.282,
+    "low": 0.8,
+    "pen": 0.27,
+    "pix": -0.2622,
+    "riot": 0.6514,
+    "score": 1.7113,
+    "text": 0.2039
+   }
+  ],
+  "sel": [
+   "r2__eq_023_1.wav"
+  ],
+  "zh": "灼热火珊瑚·火焰波"
+ },
+ "eq_024": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 219.5,
+    "champ": 0.4238,
+    "dur": 0.998,
+    "low": 0.477,
+    "pen": 0.92,
+    "pix": -0.0507,
+    "riot": 0.4238,
+    "score": 0.8194,
+    "text": 0.209
+   }
+  ],
+  "sel": [
+   "r2__eq_024_2.wav"
+  ],
+  "zh": "龙蛋·喷火龙"
+ },
+ "eq_025": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3265.8,
+    "champ": 0.5202,
+    "dur": 1.282,
+    "low": 0.5,
+    "pen": 0.322,
+    "pix": -0.0947,
+    "riot": 0.5202,
+    "score": 1.239,
+    "text": 0.1308
+   }
+  ],
+  "sel": [
+   "r2__eq_025_1.wav"
+  ],
+  "zh": "雷鸣贝壳·落雷"
+ },
+ "eq_026": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2514.2,
+    "champ": 0.59,
+    "dur": 0.673,
+    "low": 0.534,
+    "pen": 0.049,
+    "pix": -0.0888,
+    "riot": 0.59,
+    "score": 1.8324,
+    "text": 0.2672
+   }
+  ],
+  "sel": [
+   "eq_026_1.wav"
+  ],
+  "zh": "雷电法杖·连锁闪电"
+ },
+ "eq_027": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4469.2,
+    "champ": 0.7369,
+    "dur": 1.282,
+    "low": 0.267,
+    "pen": 0.105,
+    "pix": -0.2059,
+    "riot": 0.7369,
+    "score": 2.6212,
+    "text": 0.5132
+   }
+  ],
+  "sel": [
+   "r2__eq_027_1.wav"
+  ],
+  "zh": "电棍·眩晕"
+ },
+ "eq_028": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3856.0,
+    "champ": 0.6622,
+    "dur": 1.282,
+    "low": 0.304,
+    "pen": 0.315,
+    "pix": -0.2096,
+    "riot": 0.6622,
+    "score": 2.1732,
+    "text": 0.4362
+   }
+  ],
+  "sel": [
+   "r2__eq_028_2.wav"
+  ],
+  "zh": "冰冻药剂"
+ },
+ "eq_029": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 617.1,
+    "champ": 0.6478,
+    "dur": 1.018,
+    "low": 0.679,
+    "pen": 0.181,
+    "pix": -0.2751,
+    "riot": 0.6478,
+    "score": 1.8642,
+    "text": 0.2576
+   }
+  ],
+  "sel": [
+   "r2__eq_029_2.wav"
+  ],
+  "zh": "冰封水母·冰道"
+ },
+ "eq_030": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2965.7,
+    "champ": 0.5267,
+    "dur": 1.282,
+    "low": 0.003,
+    "pen": 0.019,
+    "pix": -0.0231,
+    "riot": 0.5267,
+    "score": 1.8733,
+    "text": 0.3497
+   }
+  ],
+  "sel": [
+   "r2__eq_030_2.wav"
+  ],
+  "zh": "迷你水晶球A·光束"
+ },
+ "eq_031": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3748.5,
+    "champ": 0.586,
+    "dur": 1.282,
+    "low": 0.001,
+    "pen": 0.022,
+    "pix": -0.1175,
+    "riot": 0.586,
+    "score": 1.9212,
+    "text": 0.308
+   }
+  ],
+  "sel": [
+   "r2__eq_031_2.wav"
+  ],
+  "zh": "迷你水晶球B·射线扫射"
+ },
+ "eq_032": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 319.9,
+    "champ": 0.7994,
+    "dur": 0.783,
+    "low": 0.931,
+    "pen": 0.974,
+    "pix": -0.3284,
+    "riot": 0.7994,
+    "score": 2.0146,
+    "text": 0.4001
+   }
+  ],
+  "sel": [
+   "r2__eq_032_1.wav"
+  ],
+  "zh": "唤灵骨符·骷髅"
+ },
+ "eq_033": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 5304.0,
+    "champ": 0.6192,
+    "dur": 1.282,
+    "low": 0.0,
+    "pen": 0.363,
+    "pix": -0.0992,
+    "riot": 0.6192,
+    "score": 1.5015,
+    "text": 0.1631
+   }
+  ],
+  "sel": [
+   "r2__eq_033_2.wav"
+  ],
+  "zh": "复活海螺·化虫"
+ },
+ "eq_034": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 432.4,
+    "champ": 0.548,
+    "dur": 0.654,
+    "low": 0.606,
+    "pen": 0.513,
+    "pix": -0.0927,
+    "riot": 0.548,
+    "score": 1.4386,
+    "text": 0.2568
+   }
+  ],
+  "sel": [
+   "eq_034_1.wav"
+  ],
+  "zh": "玩偶小熊·撞击"
+ },
+ "eq_035": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 11485.4,
+    "champ": 0.453,
+    "dur": 1.282,
+    "low": 0.004,
+    "pen": 2.377,
+    "pix": -0.0525,
+    "riot": 0.453,
+    "score": 0.308,
+    "text": 0.3575
+   }
+  ],
+  "sel": [
+   "r2__eq_035_2.wav"
+  ],
+  "zh": "黄铜齿轮·深海币"
+ },
+ "eq_036": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1339.6,
+    "champ": 0.47,
+    "dur": 1.013,
+    "low": 0.002,
+    "pen": 0.183,
+    "pix": -0.0879,
+    "riot": 0.47,
+    "score": 1.42,
+    "text": 0.2361
+   }
+  ],
+  "sel": [
+   "r2__eq_036_1.wav"
+  ],
+  "zh": "温泉蛋·孵化升级"
+ },
+ "eq_037": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 243.0,
+    "champ": 0.4132,
+    "dur": 0.853,
+    "low": 0.63,
+    "pen": 0.837,
+    "pix": -0.2493,
+    "riot": 0.4132,
+    "score": 1.398,
+    "text": 0.4851
+   }
+  ],
+  "sel": [
+   "eq_037_1.wav"
+  ],
+  "zh": "蛋糕蜡烛·爆燃"
+ },
+ "eq_038": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 5282.7,
+    "champ": 0.5597,
+    "dur": 1.003,
+    "low": 0.108,
+    "pen": 0.923,
+    "pix": -0.0015,
+    "riot": 0.5597,
+    "score": 1.2486,
+    "text": 0.2717
+   }
+  ],
+  "sel": [
+   "r3__eq_038_3.wav"
+  ],
+  "zh": "信号放大器·电磁波"
+ },
+ "eq_039": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2789.8,
+    "champ": 0.6586,
+    "dur": 0.639,
+    "low": 0.198,
+    "pen": 0.128,
+    "pix": -0.1605,
+    "riot": 0.6586,
+    "score": 1.8205,
+    "text": 0.2078
+   }
+  ],
+  "sel": [
+   "eq_039_1.wav"
+  ],
+  "zh": "竹制弓箭·竹箭"
+ },
+ "eq_040": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4710.2,
+    "champ": 0.7298,
+    "dur": 1.282,
+    "low": 0.184,
+    "pen": 0.408,
+    "pix": -0.244,
+    "riot": 0.7298,
+    "score": 2.2998,
+    "text": 0.4512
+   }
+  ],
+  "sel": [
+   "r2__eq_040_1.wav"
+  ],
+  "zh": "FPGA板·古灵精怪枪"
+ },
+ "eq_041": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2885.8,
+    "champ": 0.4559,
+    "dur": 1.282,
+    "low": 0.011,
+    "pen": 0.007,
+    "pix": -0.0194,
+    "riot": 0.4559,
+    "score": 1.1381,
+    "text": 0.0582
+   }
+  ],
+  "sel": [
+   "r2__eq_041_1.wav"
+  ],
+  "zh": "退潮浊液·涨潮"
+ },
+ "eq_042": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1788.6,
+    "champ": 0.4329,
+    "dur": 0.853,
+    "low": 0.0,
+    "pen": 0.023,
+    "pix": 0.0103,
+    "riot": 0.4329,
+    "score": 1.3403,
+    "text": 0.1902
+   }
+  ],
+  "sel": [
+   "r2__eq_042_2.wav"
+  ],
+  "zh": "涟漪药剂·全队回复"
+ },
+ "eq_043": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 421.7,
+    "champ": 0.4523,
+    "dur": 0.963,
+    "low": 0.72,
+    "pen": 0.51,
+    "pix": -0.0621,
+    "riot": 0.4523,
+    "score": 0.9886,
+    "text": 0.1384
+   }
+  ],
+  "sel": [
+   "r2__eq_043_1.wav"
+  ],
+  "zh": "海浪护符·浪墙"
+ },
+ "eq_044": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3382.9,
+    "champ": 0.5575,
+    "dur": 1.282,
+    "low": 0.0,
+    "pen": 0.085,
+    "pix": -0.0679,
+    "riot": 0.5575,
+    "score": 1.0355,
+    "text": -0.0839
+   }
+  ],
+  "sel": [
+   "r2__eq_044_2.wav"
+  ],
+  "zh": "深海项链·低血回复"
+ },
+ "eq_045": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 397.7,
+    "champ": 0.5658,
+    "dur": 1.282,
+    "low": 0.673,
+    "pen": 0.497,
+    "pix": -0.0941,
+    "riot": 0.5658,
+    "score": 1.3978,
+    "text": 0.2114
+   }
+  ],
+  "sel": [
+   "r2__eq_045_1.wav"
+  ],
+  "zh": "地狱护盾·低血回复与火球"
+ },
+ "eq_046": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2416.0,
+    "champ": 0.5628,
+    "dur": 0.788,
+    "low": 0.0,
+    "pen": 0.023,
+    "pix": 0.0145,
+    "riot": 0.5628,
+    "score": 1.7191,
+    "text": 0.2334
+   }
+  ],
+  "sel": [
+   "r2__eq_046_1.wav"
+  ],
+  "zh": "幽灵墨鱼·闪避护盾"
+ },
+ "eq_048": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 437.7,
+    "champ": 0.6131,
+    "dur": 0.673,
+    "low": 0.78,
+    "pen": 0.56,
+    "pix": -0.0555,
+    "riot": 0.6131,
+    "score": 1.7397,
+    "text": 0.3482
+   }
+  ],
+  "sel": [
+   "r2__eq_048_1.wav"
+  ],
+  "zh": "黄铜手铳·连射"
+ },
+ "eq_049": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3458.6,
+    "champ": 0.5264,
+    "dur": 1.282,
+    "low": 0.017,
+    "pen": 0.0,
+    "pix": -0.0682,
+    "riot": 0.5264,
+    "score": 1.9,
+    "text": 0.3578
+   }
+  ],
+  "sel": [
+   "r2__eq_049_2.wav"
+  ],
+  "zh": "连发弩"
+ },
+ "eq_050": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2880.1,
+    "champ": 0.674,
+    "dur": 1.282,
+    "low": 0.016,
+    "pen": 0.0,
+    "pix": -0.0853,
+    "riot": 0.674,
+    "score": 1.8404,
+    "text": 0.1619
+   }
+  ],
+  "sel": [
+   "r2__eq_050_2.wav"
+  ],
+  "zh": "幽灵加特林"
+ },
+ "eq_051": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2518.6,
+    "champ": 0.7703,
+    "dur": 1.282,
+    "low": 0.429,
+    "pen": 0.0,
+    "pix": -0.0589,
+    "riot": 0.7703,
+    "score": 2.7496,
+    "text": 0.5083
+   }
+  ],
+  "sel": [
+   "r2__eq_051_1.wav"
+  ],
+  "zh": "激光手枪"
+ },
+ "eq_052": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1182.6,
+    "champ": 0.4805,
+    "dur": 0.833,
+    "low": 0.179,
+    "pen": 0.181,
+    "pix": -0.2067,
+    "riot": 0.4805,
+    "score": 1.7375,
+    "text": 0.3825
+   }
+  ],
+  "sel": [
+   "r2__eq_052_1.wav"
+  ],
+  "zh": "左轮手枪"
+ },
+ "eq_053": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1239.1,
+    "champ": 0.6295,
+    "dur": 1.003,
+    "low": 0.518,
+    "pen": 0.062,
+    "pix": -0.0774,
+    "riot": 0.6295,
+    "score": 2.0498,
+    "text": 0.3354
+   }
+  ],
+  "sel": [
+   "eq_053_1.wav"
+  ],
+  "zh": "霰弹贝古"
+ },
+ "eq_055": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 392.3,
+    "champ": 0.6518,
+    "dur": 0.753,
+    "low": 0.865,
+    "pen": 0.86,
+    "pix": -0.1873,
+    "riot": 0.6518,
+    "score": 1.4649,
+    "text": 0.2573
+   }
+  ],
+  "sel": [
+   "r2__eq_055_2.wav"
+  ],
+  "zh": "病毒箭头·钩索炸弹"
+ },
+ "eq_056": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4368.6,
+    "champ": 0.6224,
+    "dur": 1.282,
+    "low": 0.09,
+    "pen": 0.103,
+    "pix": -0.0182,
+    "riot": 0.6224,
+    "score": 1.653,
+    "text": 0.1572
+   }
+  ],
+  "sel": [
+   "r2__eq_056_2.wav"
+  ],
+  "zh": "飞镖"
+ },
+ "eq_057": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 740.8,
+    "champ": 0.3422,
+    "dur": 1.112,
+    "low": 0.549,
+    "pen": 0.028,
+    "pix": -0.0199,
+    "riot": 0.3422,
+    "score": 1.3699,
+    "text": 0.3084
+   }
+  ],
+  "sel": [
+   "r2__eq_057_1.wav"
+  ],
+  "zh": "狙击长管"
+ },
+ "eq_058": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3916.3,
+    "champ": 0.6227,
+    "dur": 1.282,
+    "low": 0.014,
+    "pen": 0.08,
+    "pix": 0.0038,
+    "riot": 0.6227,
+    "score": 1.7238,
+    "text": 0.1854
+   }
+  ],
+  "sel": [
+   "r2__eq_058_1.wav"
+  ],
+  "zh": "远古炮台·召唤"
+ },
+ "eq_059": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4165.1,
+    "champ": 0.7116,
+    "dur": 0.788,
+    "low": 0.316,
+    "pen": 0.033,
+    "pix": -0.1512,
+    "riot": 0.7116,
+    "score": 1.9771,
+    "text": 0.1981
+   }
+  ],
+  "sel": [
+   "eq_059_2.wav"
+  ],
+  "zh": "沙漏·时间停止"
+ },
+ "eq_060": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 682.6,
+    "champ": 0.6917,
+    "dur": 0.718,
+    "low": 0.8,
+    "pen": 0.315,
+    "pix": -0.2588,
+    "riot": 0.6917,
+    "score": 1.7076,
+    "text": 0.1702
+   }
+  ],
+  "sel": [
+   "r2__eq_060_1.wav"
+  ],
+  "zh": "磷光水母伞·撑开"
+ },
+ "eq_062": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3850.2,
+    "champ": 0.5831,
+    "dur": 0.873,
+    "low": 0.077,
+    "pen": 0.0,
+    "pix": -0.081,
+    "riot": 0.5831,
+    "score": 1.9734,
+    "text": 0.3307
+   }
+  ],
+  "sel": [
+   "r2__eq_062_1.wav"
+  ],
+  "zh": "螳螂虾钳·重击"
+ },
+ "eq_063": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3731.2,
+    "champ": 0.5772,
+    "dur": 1.038,
+    "low": 0.007,
+    "pen": 0.013,
+    "pix": -0.1754,
+    "riot": 0.5772,
+    "score": 1.7584,
+    "text": 0.2339
+   }
+  ],
+  "sel": [
+   "r2__eq_063_2.wav"
+  ],
+  "zh": "白鲸气环·引爆"
+ },
+ "eq_064": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1222.5,
+    "champ": 0.4786,
+    "dur": 1.142,
+    "low": 0.11,
+    "pen": 0.157,
+    "pix": -0.0296,
+    "riot": 0.4786,
+    "score": 1.3701,
+    "text": 0.1937
+   }
+  ],
+  "sel": [
+   "r2__eq_064_2.wav"
+  ],
+  "zh": "溺者的浮囊·幽灵护盾"
+ },
+ "eq_066": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 605.5,
+    "champ": 0.5143,
+    "dur": 1.177,
+    "low": 0.738,
+    "pen": 0.285,
+    "pix": -0.2092,
+    "riot": 0.5143,
+    "score": 1.9248,
+    "text": 0.4693
+   }
+  ],
+  "sel": [
+   "r2__eq_066_2.wav"
+  ],
+  "zh": "鲸涎浓浆·饮药"
+ },
+ "eq_067": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3119.1,
+    "champ": 0.6127,
+    "dur": 1.282,
+    "low": 0.41,
+    "pen": 0.0,
+    "pix": -0.1746,
+    "riot": 0.6127,
+    "score": 2.2458,
+    "text": 0.4336
+   }
+  ],
+  "sel": [
+   "r2__eq_067_1.wav"
+  ],
+  "zh": "毒药瓶"
+ },
+ "eq_068": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3764.7,
+    "champ": 0.6616,
+    "dur": 1.282,
+    "low": 0.055,
+    "pen": 0.0,
+    "pix": -0.0609,
+    "riot": 0.6616,
+    "score": 2.053,
+    "text": 0.2821
+   }
+  ],
+  "sel": [
+   "r2__eq_068_1.wav"
+  ],
+  "zh": "深海气压罐·激光"
+ },
+ "eq_069": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 8329.4,
+    "champ": 0.5075,
+    "dur": 0.973,
+    "low": 0.001,
+    "pen": 1.946,
+    "pix": -0.1833,
+    "riot": 0.5075,
+    "score": 0.6626,
+    "text": 0.3442
+   }
+  ],
+  "sel": [
+   "r2__eq_069_2.wav"
+  ],
+  "zh": "草莓蛋糕·回复"
+ },
+ "eq_071": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 3442.7,
+    "champ": 0.4789,
+    "dur": 0.584,
+    "low": 0.023,
+    "pen": 0.026,
+    "pix": -0.1962,
+    "riot": 0.4789,
+    "score": 1.5436,
+    "text": 0.2409
+   }
+  ],
+  "sel": [
+   "eq_071_2.wav"
+  ],
+  "zh": "炼乳罐·奶油护盾"
+ },
+ "eq_072": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 8040.1,
+    "champ": 0.7218,
+    "dur": 1.282,
+    "low": 0.056,
+    "pen": 1.789,
+    "pix": -0.2346,
+    "riot": 0.7218,
+    "score": 1.1806,
+    "text": 0.3149
+   }
+  ],
+  "sel": [
+   "r2__eq_072_1.wav"
+  ],
+  "zh": "铁皮蛋糕盒·化身礼盒"
+ },
+ "eq_073": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1559.5,
+    "champ": 0.7772,
+    "dur": 0.908,
+    "low": 0.776,
+    "pen": 0.212,
+    "pix": -0.3719,
+    "riot": 0.7772,
+    "score": 2.147,
+    "text": 0.2627
+   }
+  ],
+  "sel": [
+   "r2__eq_073_1.wav"
+  ],
+  "zh": "藤蔓弓弦·藤蔓箭"
+ },
+ "eq_075": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4612.4,
+    "champ": 0.676,
+    "dur": 0.858,
+    "low": 0.046,
+    "pen": 0.213,
+    "pix": -0.277,
+    "riot": 0.676,
+    "score": 1.7683,
+    "text": 0.1877
+   }
+  ],
+  "sel": [
+   "eq_075_2.wav"
+  ],
+  "zh": "银色箭袋·箭雨"
+ },
+ "eq_076": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1353.5,
+    "champ": 0.8028,
+    "dur": 1.282,
+    "low": 0.665,
+    "pen": 0.103,
+    "pix": -0.0548,
+    "riot": 0.8028,
+    "score": 2.4289,
+    "text": 0.3421
+   }
+  ],
+  "sel": [
+   "r2__eq_076_1.wav"
+  ],
+  "zh": "连发弩机·竹箭连射"
+ },
+ "eq_078": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4557.1,
+    "champ": 0.7253,
+    "dur": 1.282,
+    "low": 0.255,
+    "pen": 0.47,
+    "pix": -0.1245,
+    "riot": 0.7253,
+    "score": 2.2594,
+    "text": 0.4549
+   }
+  ],
+  "sel": [
+   "r2__eq_078_2.wav"
+  ],
+  "zh": "电鳗双管铳"
+ },
+ "eq_079": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 6199.7,
+    "champ": 0.5526,
+    "dur": 1.003,
+    "low": 0.001,
+    "pen": 1.049,
+    "pix": -0.0566,
+    "riot": 0.5526,
+    "score": 1.4864,
+    "text": 0.4361
+   }
+  ],
+  "sel": [
+   "eq_079_2.wav"
+  ],
+  "zh": "珊瑚急救塔·治疗"
+ },
+ "eq_080": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2773.5,
+    "champ": 0.4841,
+    "dur": 1.003,
+    "low": 0.284,
+    "pen": 0.0,
+    "pix": -0.0704,
+    "riot": 0.4841,
+    "score": 1.4357,
+    "text": 0.1732
+   }
+  ],
+  "sel": [
+   "r3__eq_080_2.wav"
+  ],
+  "zh": "打捞旋翼机·地毯轰炸"
+ },
+ "eq_081": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 4250.6,
+    "champ": 0.6124,
+    "dur": 0.998,
+    "low": 0.063,
+    "pen": 0.0,
+    "pix": -0.1529,
+    "riot": 0.6124,
+    "score": 1.9691,
+    "text": 0.2956
+   }
+  ],
+  "sel": [
+   "r2__eq_081_1.wav"
+  ],
+  "zh": "藤编圆盾·举盾"
+ },
+ "eq_082": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1504.9,
+    "champ": 0.3609,
+    "dur": 0.569,
+    "low": 0.425,
+    "pen": 0.193,
+    "pix": -0.0703,
+    "riot": 0.3609,
+    "score": 1.1097,
+    "text": 0.2068
+   }
+  ],
+  "sel": [
+   "r3__eq_082_3.wav"
+  ],
+  "zh": "护心甲·回复"
+ },
+ "eq_084": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 576.6,
+    "champ": 0.7137,
+    "dur": 0.863,
+    "low": 0.911,
+    "pen": 0.59,
+    "pix": -0.1649,
+    "riot": 0.7137,
+    "score": 1.9456,
+    "text": 0.3468
+   }
+  ],
+  "sel": [
+   "r2__eq_084_2.wav"
+  ],
+  "zh": "手半剑·十字斩"
+ },
+ "eq_086": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1076.2,
+    "champ": 0.7557,
+    "dur": 1.282,
+    "low": 0.569,
+    "pen": 0.0,
+    "pix": -0.1155,
+    "riot": 0.7557,
+    "score": 2.3141,
+    "text": 0.307
+   }
+  ],
+  "sel": [
+   "r2__eq_086_1.wav"
+  ],
+  "zh": "六分仪浮游炮·终极射线"
+ },
+ "eq_087": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 2531.5,
+    "champ": 0.57,
+    "dur": 1.282,
+    "low": 0.0,
+    "pen": 0.023,
+    "pix": -0.1034,
+    "riot": 0.57,
+    "score": 1.9348,
+    "text": 0.3331
+   }
+  ],
+  "sel": [
+   "r2__eq_087_1.wav"
+  ],
+  "zh": "盗令潜水钟·偷取技能"
+ },
+ "eq_088": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 867.5,
+    "champ": 0.6744,
+    "dur": 1.282,
+    "low": 0.858,
+    "pen": 0.342,
+    "pix": -0.1627,
+    "riot": 0.6744,
+    "score": 1.5327,
+    "text": 0.1101
+   }
+  ],
+  "sel": [
+   "r2__eq_088_2.wav"
+  ],
+  "zh": "涨潮碑"
+ },
+ "eq_089": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 887.3,
+    "champ": 0.4522,
+    "dur": 0.688,
+    "low": 0.576,
+    "pen": 0.0,
+    "pix": -0.0705,
+    "riot": 0.4522,
+    "score": 1.7401,
+    "text": 0.3613
+   }
+  ],
+  "sel": [
+   "eq_089_1.wav"
+  ],
+  "zh": "蚀月符纸"
+ },
+ "eq_090": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 310.4,
+    "champ": 0.5694,
+    "dur": 0.848,
+    "low": 0.811,
+    "pen": 0.929,
+    "pix": -0.266,
+    "riot": 0.5694,
+    "score": 1.1356,
+    "text": 0.2058
+   }
+  ],
+  "sel": [
+   "r2__eq_090_2.wav"
+  ],
+  "zh": "镇海杵·跃起猛砸"
+ },
+ "eq_091": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 1361.2,
+    "champ": 0.2651,
+    "dur": 1.282,
+    "low": 0.0,
+    "pen": 0.191,
+    "pix": -0.0196,
+    "riot": 0.2651,
+    "score": 1.151,
+    "text": 0.3345
+   }
+  ],
+  "sel": [
+   "r2__eq_091_2.wav"
+  ],
+  "zh": "远古龟甲片·回复"
+ },
+ "eq_092": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 5903.4,
+    "champ": 0.5136,
+    "dur": 1.282,
+    "low": 0.016,
+    "pen": 1.157,
+    "pix": -0.2096,
+    "riot": 0.5136,
+    "score": 1.227,
+    "text": 0.3828
+   }
+  ],
+  "sel": [
+   "r2__eq_092_2.wav"
+  ],
+  "zh": "毒蛾茧·毒蛾"
+ },
+ "eq_093": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 914.9,
+    "champ": 0.572,
+    "dur": 0.509,
+    "low": 0.673,
+    "pen": 0.226,
+    "pix": -0.0385,
+    "riot": 0.572,
+    "score": 1.629,
+    "text": 0.2387
+   }
+  ],
+  "sel": [
+   "eq_093_2.wav"
+  ],
+  "zh": "香火石·强化"
+ },
+ "eq_094": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 717.8,
+    "champ": 0.7566,
+    "dur": 0.788,
+    "low": 0.693,
+    "pen": 0.115,
+    "pix": -0.2655,
+    "riot": 0.7566,
+    "score": 1.9783,
+    "text": 0.1725
+   }
+  ],
+  "sel": [
+   "eq_094_1.wav"
+  ],
+  "zh": "祖龟碑·立碑与石雷"
+ },
+ "eq_096": {
+  "cat": "equip",
+  "score": [
+   {
+    "cent": 254.0,
+    "champ": 0.5637,
+    "dur": 0.574,
+    "low": 0.837,
+    "pen": 1.125,
+    "pix": -0.1914,
+    "riot": 0.5637,
+    "score": 1.5861,
+    "text": 0.4965
+   }
+  ],
+  "sel": [
+   "r2__eq_096_2.wav"
+  ],
+  "zh": "小木斧·斧头"
+ },
+ "fight_start": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 673.2,
+    "champ": 0.6363,
+    "dur": 2.2,
+    "low": 0.62,
+    "pen": 0.0,
+    "pix": -0.1587,
+    "riot": 0.6363,
+    "score": 2.2536,
+    "text": 0.411
+   }
+  ],
+  "sel": [
+   "fight_start_2.wav"
+  ],
+  "zh": "开战"
+ },
+ "g_crit": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 193.0,
+    "champ": 0.4054,
+    "dur": 0.519,
+    "low": 0.874,
+    "pen": 0.813,
+    "pix": -0.1056,
+    "riot": 0.4054,
+    "score": 1.2892,
+    "text": 0.4324
+   },
+   {
+    "cent": 301.9,
+    "champ": 0.4087,
+    "dur": 0.683,
+    "low": 0.831,
+    "pen": 0.552,
+    "pix": 0.013,
+    "riot": 0.4087,
+    "score": 1.354,
+    "text": 0.3828
+   }
+  ],
+  "sel": [
+   "r2__g_crit_3.wav",
+   "g_crit_1.wav"
+  ],
+  "zh": "通用暴击"
+ },
+ "g_death": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 1320.7,
+    "champ": 0.6567,
+    "dur": 0.953,
+    "low": 0.374,
+    "pen": 0.0,
+    "pix": -0.184,
+    "riot": 0.6567,
+    "score": 1.9347,
+    "text": 0.2286
+   },
+   {
+    "cent": 648.7,
+    "champ": 0.7164,
+    "dur": 1.202,
+    "low": 0.747,
+    "pen": 0.193,
+    "pix": -0.1819,
+    "riot": 0.7164,
+    "score": 1.9799,
+    "text": 0.242
+   }
+  ],
+  "sel": [
+   "g_death_3.wav",
+   "g_death_2.wav"
+  ],
+  "zh": "单位阵亡"
+ },
+ "g_dodge": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 779.3,
+    "champ": 0.5409,
+    "dur": 0.359,
+    "low": 0.622,
+    "pen": 0.0,
+    "pix": -0.169,
+    "riot": 0.5409,
+    "score": 1.5191,
+    "text": 0.1511
+   },
+   {
+    "cent": 562.6,
+    "champ": 0.5265,
+    "dur": 0.364,
+    "low": 0.557,
+    "pen": 0.0,
+    "pix": -0.2898,
+    "riot": 0.5265,
+    "score": 1.8925,
+    "text": 0.3539
+   }
+  ],
+  "sel": [
+   "g_dodge_3.wav",
+   "r2__g_dodge_2.wav"
+  ],
+  "zh": "闪避"
+ },
+ "g_heal": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 2599.1,
+    "champ": 0.479,
+    "dur": 1.003,
+    "low": 0.0,
+    "pen": 0.001,
+    "pix": -0.0475,
+    "riot": 0.479,
+    "score": 1.1325,
+    "text": 0.0278
+   },
+   {
+    "cent": 4569.5,
+    "champ": 0.3484,
+    "dur": 1.003,
+    "low": 0.0,
+    "pen": 0.001,
+    "pix": -0.0089,
+    "riot": 0.3484,
+    "score": 0.9471,
+    "text": 0.082
+   }
+  ],
+  "sel": [
+   "g_heal_1.wav",
+   "r2__g_heal_2.wav"
+  ],
+  "zh": "治疗"
+ },
+ "g_hit": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 3129.3,
+    "champ": 0.4317,
+    "dur": 0.484,
+    "low": 0.357,
+    "pen": 0.012,
+    "pix": -0.1206,
+    "riot": 0.4317,
+    "score": 1.3338,
+    "text": 0.1849
+   },
+   {
+    "cent": 1259.4,
+    "champ": 0.6143,
+    "dur": 0.484,
+    "low": 0.3,
+    "pen": 0.0,
+    "pix": 0.0002,
+    "riot": 0.6143,
+    "score": 1.5512,
+    "text": 0.0845
+   },
+   {
+    "cent": 194.0,
+    "champ": 0.4852,
+    "dur": 0.439,
+    "low": 0.917,
+    "pen": 0.879,
+    "pix": -0.2945,
+    "riot": 0.4852,
+    "score": 1.2936,
+    "text": 0.3647
+   }
+  ],
+  "sel": [
+   "r2__g_hit_2.wav",
+   "g_hit_2.wav",
+   "g_hit_3.wav"
+  ],
+  "zh": "通用命中(小将 / 召唤物 / 没有专属声的)"
+ },
+ "g_rebirth": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 3321.6,
+    "champ": 0.2881,
+    "dur": 1.482,
+    "low": 0.069,
+    "pen": 0.0,
+    "pix": -0.0008,
+    "riot": 0.3944,
+    "score": 0.8143,
+    "text": 0.0033
+   }
+  ],
+  "sel": [
+   "g_rebirth_1.wav"
+  ],
+  "zh": "复活"
+ },
+ "g_shield_break": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 2088.2,
+    "champ": 0.6101,
+    "dur": 0.514,
+    "low": 0.513,
+    "pen": 0.0,
+    "pix": -0.1818,
+    "riot": 0.6101,
+    "score": 2.1445,
+    "text": 0.3859
+   },
+   {
+    "cent": 3633.2,
+    "champ": 0.5588,
+    "dur": 0.803,
+    "low": 0.112,
+    "pen": 0.0,
+    "pix": 0.0117,
+    "riot": 0.5588,
+    "score": 2.0141,
+    "text": 0.3784
+   }
+  ],
+  "sel": [
+   "r2__g_shield_break_1.wav",
+   "r2__g_shield_break_3.wav"
+  ],
+  "zh": "盾破"
+ },
+ "g_shield_gain": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 4983.1,
+    "champ": 0.4794,
+    "dur": 1.003,
+    "low": 0.001,
+    "pen": 0.0,
+    "pix": -0.0198,
+    "riot": 0.4794,
+    "score": 1.5095,
+    "text": 0.2154
+   },
+   {
+    "cent": 5558.6,
+    "champ": 0.4724,
+    "dur": 0.768,
+    "low": 0.001,
+    "pen": 0.095,
+    "pix": -0.1391,
+    "riot": 0.4724,
+    "score": 1.2385,
+    "text": 0.1164
+   }
+  ],
+  "sel": [
+   "g_shield_gain_3.wav",
+   "r2__g_shield_gain_3.wav"
+  ],
+  "zh": "得盾"
+ },
+ "g_skill_hit": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 2870.5,
+    "champ": 0.6507,
+    "dur": 0.604,
+    "low": 0.036,
+    "pen": 0.0,
+    "pix": -0.1437,
+    "riot": 0.6507,
+    "score": 2.0914,
+    "text": 0.3136
+   },
+   {
+    "cent": 279.8,
+    "champ": 0.6136,
+    "dur": 0.494,
+    "low": 0.843,
+    "pen": 0.604,
+    "pix": -0.1707,
+    "riot": 0.6136,
+    "score": 1.8049,
+    "text": 0.3933
+   }
+  ],
+  "sel": [
+   "r2__g_skill_hit_1.wav",
+   "r2__g_skill_hit_2.wav"
+  ],
+  "zh": "技能命中(没有专属命中的技能)"
+ },
+ "level_up": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 1814.2,
+    "champ": 0.4502,
+    "dur": 1.028,
+    "low": 0.002,
+    "pen": 0.0,
+    "pix": -0.0886,
+    "riot": 0.4502,
+    "score": 1.7358,
+    "text": 0.3614
+   }
+  ],
+  "sel": [
+   "r2__level_up_3.wav"
+  ],
+  "zh": "升级"
+ },
+ "match_found": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 1936.7,
+    "champ": 0.4086,
+    "dur": 1.222,
+    "low": 0.0,
+    "pen": 0.005,
+    "pix": -0.0647,
+    "riot": 0.4086,
+    "score": 1.3191,
+    "text": 0.2015
+   }
+  ],
+  "sel": [
+   "r2__match_found_3.wav"
+  ],
+  "zh": "匹配成功"
+ },
+ "reward_normal": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 3190.1,
+    "champ": 0.4225,
+    "dur": 1.202,
+    "low": 0.001,
+    "pen": 0.002,
+    "pix": 0.0035,
+    "riot": 0.4225,
+    "score": 1.7228,
+    "text": 0.3866
+   }
+  ],
+  "sel": [
+   "reward_normal_2.wav"
+  ],
+  "zh": "普通奖励"
+ },
+ "reward_rare": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 5095.2,
+    "champ": 0.4757,
+    "dur": 1.761,
+    "low": 0.001,
+    "pen": 0.001,
+    "pix": -0.1978,
+    "riot": 0.4757,
+    "score": 1.5463,
+    "text": 0.2382
+   }
+  ],
+  "sel": [
+   "reward_rare_2.wav"
+  ],
+  "zh": "稀有奖励"
+ },
+ "sk_angelAscend": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 451.5,
+    "champ": 0.646,
+    "dur": 1.187,
+    "low": 0.742,
+    "pen": 0.085,
+    "pix": -0.2696,
+    "riot": 0.5972,
+    "score": 1.9484,
+    "text": 0.3097
+   }
+  ],
+  "sel": [
+   "sk_angelAscend_1.wav"
+  ],
+  "zh": "天使龟·飞升·放出"
+ },
+ "sk_angelBless": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2068.3,
+    "champ": 0.4226,
+    "dur": 1.487,
+    "low": 0.0,
+    "pen": 0.111,
+    "pix": -0.2465,
+    "riot": 0.3901,
+    "score": 1.1836,
+    "text": 0.174
+   }
+  ],
+  "sel": [
+   "sk_angelBless_3.wav"
+  ],
+  "zh": "天使龟·祝福·放出"
+ },
+ "sk_angelEquality": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 5591.5,
+    "champ": 0.6667,
+    "dur": 1.601,
+    "low": 0.0,
+    "pen": 2.087,
+    "pix": -0.0232,
+    "riot": 0.5109,
+    "score": 0.5862,
+    "text": 0.286
+   }
+  ],
+  "sel": [
+   "r2__sk_angelEquality_3.wav"
+  ],
+  "zh": "天使龟·平等·放出"
+ },
+ "sk_bambooHeal": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1964.8,
+    "champ": 0.4239,
+    "dur": 1.601,
+    "low": 0.0,
+    "pen": 0.111,
+    "pix": -0.0421,
+    "riot": 0.2865,
+    "score": 1.1044,
+    "text": 0.2115
+   }
+  ],
+  "sel": [
+   "sk_bambooHeal_1.wav"
+  ],
+  "zh": "竹叶龟·自然恢复·放出"
+ },
+ "sk_bambooSmack": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1424.6,
+    "champ": 0.5675,
+    "dur": 0.813,
+    "low": 0.339,
+    "pen": 0.098,
+    "pix": -0.2404,
+    "riot": 0.5675,
+    "score": 1.9164,
+    "text": 0.349
+   }
+  ],
+  "sel": [
+   "sk_bambooSmack_1.wav"
+  ],
+  "zh": "竹叶龟·竹击·放出"
+ },
+ "sk_bambooSpikes": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1338.5,
+    "champ": 0.6238,
+    "dur": 1.277,
+    "low": 0.802,
+    "pen": 0.183,
+    "pix": -0.2583,
+    "riot": 0.6198,
+    "score": 1.4084,
+    "text": 0.0602
+   }
+  ],
+  "sel": [
+   "sk_bambooSpikes_1.wav"
+  ],
+  "zh": "竹叶龟·竹刺阵·放出"
+ },
+ "sk_basicBarrage": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2035.5,
+    "champ": 0.5683,
+    "dur": 1.362,
+    "low": 0.2,
+    "pen": 0.084,
+    "pix": -0.0959,
+    "riot": 0.5683,
+    "score": 1.622,
+    "text": 0.1969
+   }
+  ],
+  "sel": [
+   "sk_basicBarrage_2.wav"
+  ],
+  "zh": "小龟·打击·放出"
+ },
+ "sk_basicChiWave": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 905.4,
+    "champ": 0.7048,
+    "dur": 1.831,
+    "low": 0.585,
+    "pen": 0.0,
+    "pix": -0.1218,
+    "riot": 0.687,
+    "score": 2.4658,
+    "text": 0.4533
+   }
+  ],
+  "sel": [
+   "r2__sk_basicChiWave_2.wav"
+  ],
+  "zh": "小龟·龟派气波·放出"
+ },
+ "sk_basicSlam": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1048.2,
+    "champ": 0.4999,
+    "dur": 0.758,
+    "low": 0.241,
+    "pen": 0.0,
+    "pix": -0.1406,
+    "riot": 0.4999,
+    "score": 1.6857,
+    "text": 0.2805
+   }
+  ],
+  "sel": [
+   "sk_basicSlam_2.wav"
+  ],
+  "zh": "小龟·过肩摔·放出"
+ },
+ "sk_bubbleBind": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 586.0,
+    "champ": 0.6117,
+    "dur": 1.152,
+    "low": 0.015,
+    "pen": 0.111,
+    "pix": -0.0891,
+    "riot": 0.4931,
+    "score": 1.9431,
+    "text": 0.4056
+   }
+  ],
+  "sel": [
+   "sk_bubbleBind_3.wav"
+  ],
+  "zh": "泡泡龟·泡泡束缚·放出"
+ },
+ "sk_bubbleBurst": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1197.8,
+    "champ": 0.4983,
+    "dur": 1.217,
+    "low": 0.06,
+    "pen": 0.014,
+    "pix": -0.0781,
+    "riot": 0.506,
+    "score": 1.9217,
+    "text": 0.3986
+   }
+  ],
+  "sel": [
+   "sk_bubbleBurst_2.wav"
+  ],
+  "zh": "泡泡龟·泡泡爆破·放出"
+ },
+ "sk_bubbleShield": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 642.1,
+    "champ": 0.5766,
+    "dur": 1.182,
+    "low": 0.014,
+    "pen": 0.185,
+    "pix": -0.0775,
+    "riot": 0.4425,
+    "score": 1.8101,
+    "text": 0.4124
+   }
+  ],
+  "sel": [
+   "sk_bubbleShield_3.wav"
+  ],
+  "zh": "泡泡龟·泡泡盾·放出"
+ },
+ "sk_candyBarrage": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1503.2,
+    "champ": 0.7035,
+    "dur": 2.0,
+    "low": 0.461,
+    "pen": 0.0,
+    "pix": -0.123,
+    "riot": 0.6352,
+    "score": 2.0354,
+    "text": 0.2775
+   }
+  ],
+  "sel": [
+   "sk_candyBarrage_1.wav"
+  ],
+  "zh": "糖果龟·糖衣炮弹·放出"
+ },
+ "sk_candyBomb": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 9212.0,
+    "champ": 0.3481,
+    "dur": 1.601,
+    "low": 0.001,
+    "pen": 4.126,
+    "pix": -0.0271,
+    "riot": 0.3169,
+    "score": -1.0422,
+    "text": 0.3486
+   }
+  ],
+  "sel": [
+   "r2__sk_candyBomb_1.wav"
+  ],
+  "zh": "糖果龟·糖果炸弹·放出"
+ },
+ "sk_candyHammer": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3408.9,
+    "champ": 0.4159,
+    "dur": 0.808,
+    "low": 0.472,
+    "pen": 0.874,
+    "pix": -0.1427,
+    "riot": 0.644,
+    "score": 1.4744,
+    "text": 0.3605
+   }
+  ],
+  "sel": [
+   "sk_candyHammer_3.wav"
+  ],
+  "zh": "糖果龟·糖果锤·放出"
+ },
+ "sk_chestCannon": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 282.9,
+    "champ": 0.484,
+    "dur": 0.474,
+    "low": 0.599,
+    "pen": 0.366,
+    "pix": -0.007,
+    "riot": 0.4517,
+    "score": 1.3273,
+    "text": 0.2532
+   }
+  ],
+  "sel": [
+   "sk_chestCannon_3.wav"
+  ],
+  "zh": "宝箱龟·财宝炮击·放出"
+ },
+ "sk_chestCount": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 5461.1,
+    "champ": 0.2355,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 1.233,
+    "pix": 0.0109,
+    "riot": 0.2355,
+    "score": 0.287,
+    "text": 0.2485
+   }
+  ],
+  "sel": [
+   "sk_chestCount_3.wav"
+  ],
+  "zh": "宝箱龟·清点财宝·放出"
+ },
+ "sk_chestStorm": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3124.3,
+    "champ": 0.5871,
+    "dur": 1.447,
+    "low": 0.424,
+    "pen": 0.49,
+    "pix": -0.1525,
+    "riot": 0.6252,
+    "score": 2.0378,
+    "text": 0.4768
+   }
+  ],
+  "sel": [
+   "r2__sk_chestStorm_1.wav"
+  ],
+  "zh": "宝箱龟·财宝风暴·放出"
+ },
+ "sk_commonTeamShield": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 4356.3,
+    "champ": 0.495,
+    "dur": 1.362,
+    "low": 0.0,
+    "pen": 0.876,
+    "pix": -0.0928,
+    "riot": 0.495,
+    "score": 1.0245,
+    "text": 0.2181
+   }
+  ],
+  "sel": [
+   "sk_commonTeamShield_2.wav"
+  ],
+  "zh": "寒冰龟·团队护盾·放出"
+ },
+ "sk_crystalBall": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2036.4,
+    "champ": 0.7106,
+    "dur": 1.601,
+    "low": 0.145,
+    "pen": 0.0,
+    "pix": -0.0695,
+    "riot": 0.6356,
+    "score": 2.1264,
+    "text": 0.32
+   }
+  ],
+  "sel": [
+   "sk_crystalBall_2.wav"
+  ],
+  "zh": "水晶龟·水晶球·放出"
+ },
+ "sk_crystalBarrier": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 6938.5,
+    "champ": 0.3772,
+    "dur": 1.382,
+    "low": 0.0,
+    "pen": 2.458,
+    "pix": -0.1718,
+    "riot": 0.505,
+    "score": 0.3116,
+    "text": 0.3731
+   }
+  ],
+  "sel": [
+   "sk_crystalBarrier_2.wav"
+  ],
+  "zh": "水晶龟·水晶壁垒·放出"
+ },
+ "sk_crystalBurst": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 7586.6,
+    "champ": 0.5978,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 3.477,
+    "pix": -0.1578,
+    "riot": 0.5578,
+    "score": 0.0375,
+    "text": 0.4194
+   }
+  ],
+  "sel": [
+   "sk_crystalBurst_3.wav"
+  ],
+  "zh": "水晶龟·碎晶爆破·放出"
+ },
+ "sk_cyberBeam": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1950.9,
+    "champ": 0.5196,
+    "dur": 1.876,
+    "low": 0.0,
+    "pen": 0.11,
+    "pix": -0.0912,
+    "riot": 0.4864,
+    "score": 1.7659,
+    "text": 0.3564
+   }
+  ],
+  "sel": [
+   "sk_cyberBeam_2.wav"
+  ],
+  "zh": "赛博龟·能量大炮·放出"
+ },
+ "sk_cyberHijack": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 7241.3,
+    "champ": 0.5275,
+    "dur": 1.362,
+    "low": 0.002,
+    "pen": 1.966,
+    "pix": 0.0082,
+    "riot": 0.3801,
+    "score": 0.1123,
+    "text": 0.1632
+   }
+  ],
+  "sel": [
+   "r2__sk_cyberHijack_1.wav"
+  ],
+  "zh": "赛博龟·侵入·放出"
+ },
+ "sk_cyberSmartAI": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2113.4,
+    "champ": 0.515,
+    "dur": 1.362,
+    "low": 0.0,
+    "pen": 0.11,
+    "pix": 0.0164,
+    "riot": 0.4267,
+    "score": 1.3674,
+    "text": 0.2036
+   }
+  ],
+  "sel": [
+   "sk_cyberSmartAI_1.wav"
+  ],
+  "zh": "赛博龟·智能AI·放出"
+ },
+ "sk_diamondFortify": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 4668.7,
+    "champ": 0.5917,
+    "dur": 0.833,
+    "low": 0.003,
+    "pen": 1.234,
+    "pix": -0.0607,
+    "riot": 0.5722,
+    "score": 1.5905,
+    "text": 0.5145
+   }
+  ],
+  "sel": [
+   "sk_diamondFortify_2.wav"
+  ],
+  "zh": "钻石龟·坚不可摧·放出"
+ },
+ "sk_diamondPowerball": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2412.5,
+    "champ": 0.4614,
+    "dur": 1.467,
+    "low": 0.155,
+    "pen": 0.0,
+    "pix": -0.0883,
+    "riot": 0.6082,
+    "score": 1.6637,
+    "text": 0.2027
+   }
+  ],
+  "sel": [
+   "sk_diamondPowerball_3.wav"
+  ],
+  "zh": "钻石龟·钻石滚球·放出"
+ },
+ "sk_diamondSmash": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3975.1,
+    "champ": 0.5419,
+    "dur": 1.482,
+    "low": 0.0,
+    "pen": 0.468,
+    "pix": -0.1334,
+    "riot": 0.5349,
+    "score": 1.3803,
+    "text": 0.2262
+   }
+  ],
+  "sel": [
+   "r2__sk_diamondSmash_1.wav"
+  ],
+  "zh": "钻石龟·钻石冲撞·放出"
+ },
+ "sk_diceAllIn": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 646.7,
+    "champ": 0.6444,
+    "dur": 1.078,
+    "low": 0.672,
+    "pen": 0.0,
+    "pix": -0.2781,
+    "riot": 0.7068,
+    "score": 2.1901,
+    "text": 0.3233
+   }
+  ],
+  "sel": [
+   "sk_diceAllIn_1.wav"
+  ],
+  "zh": "骰子龟·孤注一掷·放出"
+ },
+ "sk_diceFate": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3886.9,
+    "champ": 0.1706,
+    "dur": 0.993,
+    "low": 0.001,
+    "pen": 0.248,
+    "pix": -0.1272,
+    "riot": 0.1195,
+    "score": 0.8516,
+    "text": 0.3467
+   }
+  ],
+  "sel": [
+   "sk_diceFate_3.wav"
+  ],
+  "zh": "骰子龟·命运骰子·放出"
+ },
+ "sk_diceFlashStrike": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3085.2,
+    "champ": 0.6988,
+    "dur": 0.818,
+    "low": 0.006,
+    "pen": 0.151,
+    "pix": -0.1397,
+    "riot": 0.5097,
+    "score": 1.7765,
+    "text": 0.2892
+   }
+  ],
+  "sel": [
+   "sk_diceFlashStrike_1.wav"
+  ],
+  "zh": "骰子龟·稳定骰子·放出"
+ },
+ "sk_fortuneAllIn": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 8888.3,
+    "champ": 0.3106,
+    "dur": 1.761,
+    "low": 0.0,
+    "pen": 4.027,
+    "pix": -0.0607,
+    "riot": 0.3245,
+    "score": -0.811,
+    "text": 0.4427
+   }
+  ],
+  "sel": [
+   "r2__sk_fortuneAllIn_2.wav"
+  ],
+  "zh": "财神龟·梭哈·放出"
+ },
+ "sk_fortuneBuyEquip": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 5172.6,
+    "champ": 0.418,
+    "dur": 0.853,
+    "low": 0.004,
+    "pen": 1.21,
+    "pix": -0.1225,
+    "riot": 0.418,
+    "score": 1.0201,
+    "text": 0.4029
+   }
+  ],
+  "sel": [
+   "sk_fortuneBuyEquip_2.wav"
+  ],
+  "zh": "财神龟·招财进宝·放出"
+ },
+ "sk_fortuneDice": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 5020.7,
+    "champ": 0.1779,
+    "dur": 1.207,
+    "low": 0.0,
+    "pen": 1.498,
+    "pix": -0.1092,
+    "riot": 0.1707,
+    "score": 0.2931,
+    "text": 0.4012
+   }
+  ],
+  "sel": [
+   "sk_fortuneDice_1.wav"
+  ],
+  "zh": "财神龟·骰子·放出"
+ },
+ "sk_gamblerBet": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2735.2,
+    "champ": 0.5181,
+    "dur": 0.718,
+    "low": 0.093,
+    "pen": 0.076,
+    "pix": -0.1487,
+    "riot": 0.4571,
+    "score": 1.5366,
+    "text": 0.2541
+   }
+  ],
+  "sel": [
+   "sk_gamblerBet_2.wav"
+  ],
+  "zh": "赌神龟·赌注·放出"
+ },
+ "sk_gamblerDraw": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2214.7,
+    "champ": 0.7485,
+    "dur": 0.728,
+    "low": 0.098,
+    "pen": 0.0,
+    "pix": -0.2915,
+    "riot": 0.7397,
+    "score": 2.628,
+    "text": 0.4785
+   }
+  ],
+  "sel": [
+   "sk_gamblerDraw_3.wav"
+  ],
+  "zh": "赌神龟·万能牌·放出"
+ },
+ "sk_gamblerFateWheel": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 7561.7,
+    "champ": 0.2374,
+    "dur": 1.212,
+    "low": 0.002,
+    "pen": 2.367,
+    "pix": -0.1227,
+    "riot": 0.2278,
+    "score": -0.3073,
+    "text": 0.2965
+   }
+  ],
+  "sel": [
+   "sk_gamblerFateWheel_2.wav"
+  ],
+  "zh": "赌神龟·命运之轮·放出"
+ },
+ "sk_ghostPhantom": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 6020.5,
+    "champ": 0.3826,
+    "dur": 1.362,
+    "low": 0.0,
+    "pen": 1.842,
+    "pix": -0.0956,
+    "riot": 0.3613,
+    "score": -0.296,
+    "text": -0.0098
+   }
+  ],
+  "sel": [
+   "r2__sk_ghostPhantom_1.wav"
+  ],
+  "zh": "幽灵龟·幽冥突袭·放出"
+ },
+ "sk_ghostPhase": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3386.7,
+    "champ": 0.4667,
+    "dur": 1.197,
+    "low": 0.0,
+    "pen": 0.317,
+    "pix": -0.1995,
+    "riot": 0.4636,
+    "score": 1.1771,
+    "text": 0.161
+   }
+  ],
+  "sel": [
+   "r2__sk_ghostPhase_2.wav"
+  ],
+  "zh": "幽灵龟·虚化·放出"
+ },
+ "sk_ghostStorm": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1674.2,
+    "champ": 0.632,
+    "dur": 1.761,
+    "low": 0.629,
+    "pen": 0.0,
+    "pix": -0.1457,
+    "riot": 0.6851,
+    "score": 1.6604,
+    "text": 0.0794
+   }
+  ],
+  "sel": [
+   "r2__sk_ghostStorm_3.wav"
+  ],
+  "zh": "幽灵龟·灵魂风暴·放出"
+ },
+ "sk_headlessFear": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 368.8,
+    "champ": 0.3941,
+    "dur": 1.008,
+    "low": 0.566,
+    "pen": 0.166,
+    "pix": -0.0353,
+    "riot": 0.3666,
+    "score": 1.2972,
+    "text": 0.2758
+   }
+  ],
+  "sel": [
+   "r2__sk_headlessFear_1.wav"
+  ],
+  "zh": "无头龟·恐吓·放出"
+ },
+ "sk_headlessSoulStrike": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 4826.7,
+    "champ": 0.4515,
+    "dur": 1.277,
+    "low": 0.004,
+    "pen": 1.315,
+    "pix": -0.1068,
+    "riot": 0.5086,
+    "score": 1.0926,
+    "text": 0.3902
+   }
+  ],
+  "sel": [
+   "sk_headlessSoulStrike_3.wav"
+  ],
+  "zh": "无头龟·灵魂打击·放出"
+ },
+ "sk_headlessTendrils": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2923.5,
+    "champ": 0.5459,
+    "dur": 0.873,
+    "low": 0.225,
+    "pen": 0.018,
+    "pix": -0.0346,
+    "riot": 0.5546,
+    "score": 2.0147,
+    "text": 0.3922
+   }
+  ],
+  "sel": [
+   "r2__sk_headlessTendrils_2.wav"
+  ],
+  "zh": "无头龟·万千触须·放出"
+ },
+ "sk_hidingBuffSummon": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 5203.3,
+    "champ": 0.4811,
+    "dur": 1.362,
+    "low": 0.0,
+    "pen": 1.659,
+    "pix": -0.1236,
+    "riot": 0.4614,
+    "score": 0.695,
+    "text": 0.3188
+   }
+  ],
+  "sel": [
+   "sk_hidingBuffSummon_2.wav"
+  ],
+  "zh": "缩头乌龟·强化随从·放出"
+ },
+ "sk_hidingDefend": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2314.2,
+    "champ": 0.5634,
+    "dur": 1.008,
+    "low": 0.178,
+    "pen": 0.0,
+    "pix": -0.196,
+    "riot": 0.556,
+    "score": 1.8633,
+    "text": 0.3033
+   }
+  ],
+  "sel": [
+   "r2__sk_hidingDefend_1.wav"
+  ],
+  "zh": "缩头乌龟·防御·放出"
+ },
+ "sk_hidingShrink": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 4284.9,
+    "champ": 0.3071,
+    "dur": 0.629,
+    "low": 0.0,
+    "pen": 0.434,
+    "pix": -0.1673,
+    "riot": 0.345,
+    "score": 0.6717,
+    "text": 0.0921
+   }
+  ],
+  "sel": [
+   "sk_hidingShrink_1.wav"
+  ],
+  "zh": "缩头乌龟·缩头·放出"
+ },
+ "sk_hunterBarrage": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1754.2,
+    "champ": 0.5875,
+    "dur": 1.601,
+    "low": 0.085,
+    "pen": 0.0,
+    "pix": 0.0137,
+    "riot": 0.4815,
+    "score": 1.8604,
+    "text": 0.3488
+   }
+  ],
+  "sel": [
+   "r2__sk_hunterBarrage_2.wav"
+  ],
+  "zh": "猎人龟·狩猎弹幕·放出"
+ },
+ "sk_hunterShot": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 6890.0,
+    "champ": 0.6221,
+    "dur": 1.302,
+    "low": 0.049,
+    "pen": 3.263,
+    "pix": -0.3466,
+    "riot": 0.6221,
+    "score": -0.1891,
+    "text": 0.1846
+   }
+  ],
+  "sel": [
+   "sk_hunterShot_1.wav"
+  ],
+  "zh": "猎人龟·精准射击·放出"
+ },
+ "sk_hunterStealth": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 279.8,
+    "champ": 0.5055,
+    "dur": 0.644,
+    "low": 0.924,
+    "pen": 0.62,
+    "pix": -0.2222,
+    "riot": 0.4614,
+    "score": 1.5037,
+    "text": 0.4022
+   }
+  ],
+  "sel": [
+   "sk_hunterStealth_2.wav"
+  ],
+  "zh": "猎人龟·隐蔽·放出"
+ },
+ "sk_iceFreeze": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 7259.2,
+    "champ": 0.6841,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 3.377,
+    "pix": -0.1684,
+    "riot": 0.5022,
+    "score": -0.2359,
+    "text": 0.2619
+   }
+  ],
+  "sel": [
+   "sk_iceFreeze_1.wav"
+  ],
+  "zh": "寒冰龟·冰封·放出"
+ },
+ "sk_iceFrost": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3930.8,
+    "champ": 0.5257,
+    "dur": 1.601,
+    "low": 0.0,
+    "pen": 0.609,
+    "pix": -0.1784,
+    "riot": 0.3775,
+    "score": 0.6815,
+    "text": 0.0431
+   }
+  ],
+  "sel": [
+   "sk_iceFrost_2.wav"
+  ],
+  "zh": "寒冰龟·冰霜·放出"
+ },
+ "sk_lavaErupt": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 672.2,
+    "champ": 0.7206,
+    "dur": 1.088,
+    "low": 0.786,
+    "pen": 0.156,
+    "pix": -0.1646,
+    "riot": 0.7494,
+    "score": 2.2016,
+    "text": 0.3154
+   }
+  ],
+  "sel": [
+   "r2__sk_lavaErupt_2.wav"
+  ],
+  "zh": "熔岩龟·熔岩爆发·放出"
+ },
+ "sk_lavaQuake": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1805.0,
+    "champ": 0.4168,
+    "dur": 1.013,
+    "low": 0.563,
+    "pen": 0.063,
+    "pix": -0.0783,
+    "riot": 0.4522,
+    "score": 1.4659,
+    "text": 0.2564
+   }
+  ],
+  "sel": [
+   "r2__sk_lavaQuake_2.wav"
+  ],
+  "zh": "熔岩龟·地裂·放出"
+ },
+ "sk_lavaRampage": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2342.5,
+    "champ": 0.2973,
+    "dur": 1.611,
+    "low": 0.643,
+    "pen": 0.188,
+    "pix": -0.1284,
+    "riot": 0.4647,
+    "score": 0.982,
+    "text": 0.0873
+   }
+  ],
+  "sel": [
+   "r2__sk_lavaRampage_3.wav"
+  ],
+  "zh": "火山龟·烈焰暴走·放出"
+ },
+ "sk_lavaSurge": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2151.9,
+    "champ": 0.7208,
+    "dur": 1.417,
+    "low": 0.44,
+    "pen": 0.0,
+    "pix": -0.2642,
+    "riot": 0.7116,
+    "score": 1.8907,
+    "text": 0.1413
+   }
+  ],
+  "sel": [
+   "r2__sk_lavaSurge_2.wav"
+  ],
+  "zh": "熔岩龟·岩浆涌动·放出"
+ },
+ "sk_lightningBarrage": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1333.1,
+    "champ": 0.7386,
+    "dur": 2.0,
+    "low": 0.469,
+    "pen": 0.0,
+    "pix": -0.1315,
+    "riot": 0.6724,
+    "score": 2.3695,
+    "text": 0.4035
+   }
+  ],
+  "sel": [
+   "sk_lightningBarrage_3.wav"
+  ],
+  "zh": "闪电龟·雷暴·放出"
+ },
+ "sk_lightningShield": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 6117.3,
+    "champ": 0.607,
+    "dur": 1.362,
+    "low": 0.174,
+    "pen": 2.1,
+    "pix": -0.0974,
+    "riot": 0.4894,
+    "score": 0.3746,
+    "text": 0.2225
+   }
+  ],
+  "sel": [
+   "sk_lightningShield_2.wav"
+  ],
+  "zh": "闪电龟·雷盾·放出"
+ },
+ "sk_lightningSurgeBuff": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 4857.7,
+    "champ": 0.6425,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 1.322,
+    "pix": -0.2015,
+    "riot": 0.6331,
+    "score": 1.2344,
+    "text": 0.298
+   }
+  ],
+  "sel": [
+   "r2__sk_lightningSurgeBuff_2.wav"
+  ],
+  "zh": "闪电龟·涌动·放出"
+ },
+ "sk_lineFinish": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1410.2,
+    "champ": 0.4541,
+    "dur": 1.317,
+    "low": 0.777,
+    "pen": 0.71,
+    "pix": -0.2094,
+    "riot": 0.5357,
+    "score": 1.472,
+    "text": 0.377
+   }
+  ],
+  "sel": [
+   "sk_lineFinish_3.wav"
+  ],
+  "zh": "线条龟·画龙点睛·放出"
+ },
+ "sk_lineInkBomb": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1290.3,
+    "champ": 0.6265,
+    "dur": 0.589,
+    "low": 0.508,
+    "pen": 0.031,
+    "pix": -0.1325,
+    "riot": 0.6559,
+    "score": 2.2272,
+    "text": 0.3961
+   }
+  ],
+  "sel": [
+   "sk_lineInkBomb_2.wav"
+  ],
+  "zh": "线条龟·墨水炸弹·放出"
+ },
+ "sk_lineLink": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 2397.9,
+    "champ": 0.3664,
+    "dur": 1.362,
+    "low": 0.453,
+    "pen": 0.024,
+    "pix": -0.0635,
+    "riot": 0.4097,
+    "score": 1.6735,
+    "text": 0.3993
+   }
+  ],
+  "sel": [
+   "sk_lineLink_1.wav"
+  ],
+  "zh": "线条龟·连笔·放出"
+ },
+ "sk_ninjaBackstab": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 383.8,
+    "champ": 0.6364,
+    "dur": 0.718,
+    "low": 0.916,
+    "pen": 0.472,
+    "pix": -0.1833,
+    "riot": 0.6473,
+    "score": 1.9827,
+    "text": 0.4089
+   }
+  ],
+  "sel": [
+   "sk_ninjaBackstab_2.wav"
+  ],
+  "zh": "忍者龟·背刺·放出"
+ },
+ "sk_ninjaBomb": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 7933.6,
+    "champ": 0.5632,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 3.369,
+    "pix": -0.0709,
+    "riot": 0.4032,
+    "score": -0.3974,
+    "text": 0.2984
+   }
+  ],
+  "sel": [
+   "r2__sk_ninjaBomb_3.wav"
+  ],
+  "zh": "忍者龟·炸弹·放出"
+ },
+ "sk_ninjaShuriken": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 5754.6,
+    "champ": 0.5457,
+    "dur": 0.629,
+    "low": 0.136,
+    "pen": 2.301,
+    "pix": -0.1552,
+    "riot": 0.5622,
+    "score": 0.6039,
+    "text": 0.3659
+   }
+  ],
+  "sel": [
+   "sk_ninjaShuriken_3.wav"
+  ],
+  "zh": "忍者龟·手里剑·放出"
+ },
+ "sk_phoenixEnhancedRebirth": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 805.5,
+    "champ": 0.7357,
+    "dur": 1.596,
+    "low": 0.713,
+    "pen": 0.038,
+    "pix": -0.2114,
+    "riot": 0.7051,
+    "score": 2.4956,
+    "text": 0.4544
+   }
+  ],
+  "sel": [
+   "sk_phoenixEnhancedRebirth_2.wav"
+  ],
+  "zh": "凤凰龟·强化涅槃·放出"
+ },
+ "sk_phoenixScald": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 288.2,
+    "champ": 0.7711,
+    "dur": 1.003,
+    "low": 0.656,
+    "pen": 0.213,
+    "pix": -0.2979,
+    "riot": 0.7965,
+    "score": 2.5448,
+    "text": 0.4498
+   }
+  ],
+  "sel": [
+   "r2__sk_phoenixScald_1.wav"
+  ],
+  "zh": "凤凰龟·烫伤·放出"
+ },
+ "sk_phoenixShield": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 747.4,
+    "champ": 0.6419,
+    "dur": 1.098,
+    "low": 0.533,
+    "pen": 0.0,
+    "pix": -0.2015,
+    "riot": 0.6314,
+    "score": 1.9854,
+    "text": 0.2785
+   }
+  ],
+  "sel": [
+   "sk_phoenixShield_1.wav"
+  ],
+  "zh": "凤凰龟·熔岩盾·放出"
+ },
+ "sk_pirateCannonBarrage": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 641.7,
+    "champ": 0.6608,
+    "dur": 1.866,
+    "low": 0.523,
+    "pen": 0.0,
+    "pix": -0.1931,
+    "riot": 0.5787,
+    "score": 1.9437,
+    "text": 0.29
+   }
+  ],
+  "sel": [
+   "r2__sk_pirateCannonBarrage_2.wav"
+  ],
+  "zh": "海盗龟·火炮齐射·放出"
+ },
+ "sk_pirateRum": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 426.0,
+    "champ": 0.3318,
+    "dur": 1.038,
+    "low": 0.532,
+    "pen": 0.028,
+    "pix": -0.1016,
+    "riot": 0.3377,
+    "score": 1.4174,
+    "text": 0.3394
+   }
+  ],
+  "sel": [
+   "sk_pirateRum_1.wav"
+  ],
+  "zh": "海盗龟·朗姆酒·放出"
+ },
+ "sk_pirateShipPassive": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3390.1,
+    "champ": 0.4693,
+    "dur": 1.761,
+    "low": 0.17,
+    "pen": 0.067,
+    "pix": 0.004,
+    "riot": 0.4878,
+    "score": 1.3508,
+    "text": 0.1538
+   }
+  ],
+  "sel": [
+   "r2__sk_pirateShipPassive_3.wav"
+  ],
+  "zh": "海盗龟·海盗船·放出"
+ },
+ "sk_rainbowReflect": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 6243.7,
+    "champ": 0.4936,
+    "dur": 1.202,
+    "low": 0.0,
+    "pen": 1.82,
+    "pix": -0.0597,
+    "riot": 0.4621,
+    "score": 0.5434,
+    "text": 0.286
+   }
+  ],
+  "sel": [
+   "r2__sk_rainbowReflect_2.wav"
+  ],
+  "zh": "彩虹龟·反射·放出"
+ },
+ "sk_rainbowStorm": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3494.1,
+    "champ": 0.7518,
+    "dur": 2.0,
+    "low": 0.566,
+    "pen": 0.633,
+    "pix": -0.1876,
+    "riot": 0.6952,
+    "score": 1.4608,
+    "text": 0.1171
+   }
+  ],
+  "sel": [
+   "sk_rainbowStorm_2.wav"
+  ],
+  "zh": "彩虹龟·全色风暴·放出"
+ },
+ "sk_rockShockwave": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 573.1,
+    "champ": 0.6219,
+    "dur": 1.028,
+    "low": 0.764,
+    "pen": 0.125,
+    "pix": -0.0878,
+    "riot": 0.5729,
+    "score": 1.816,
+    "text": 0.2827
+   }
+  ],
+  "sel": [
+   "r3__sk_rockShockwave_3.wav"
+  ],
+  "zh": "石头龟·磐石之躯·放出"
+ },
+ "sk_shellAbsorb": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 260.6,
+    "champ": 0.5432,
+    "dur": 0.688,
+    "low": 0.642,
+    "pen": 0.322,
+    "pix": -0.1755,
+    "riot": 0.5432,
+    "score": 1.6283,
+    "text": 0.2996
+   }
+  ],
+  "sel": [
+   "sk_shellAbsorb_3.wav"
+  ],
+  "zh": "龟壳·吸收·放出"
+ },
+ "sk_shellCopy": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 4695.2,
+    "champ": 0.5558,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 1.067,
+    "pix": -0.1526,
+    "riot": 0.5558,
+    "score": 1.1126,
+    "text": 0.2511
+   }
+  ],
+  "sel": [
+   "r2__sk_shellCopy_1.wav"
+  ],
+  "zh": "龟壳·复制·放出"
+ },
+ "sk_shellShadow": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 982.2,
+    "champ": 0.5134,
+    "dur": 0.878,
+    "low": 0.553,
+    "pen": 0.0,
+    "pix": -0.1876,
+    "riot": 0.6002,
+    "score": 1.9108,
+    "text": 0.3128
+   }
+  ],
+  "sel": [
+   "sk_shellShadow_3.wav"
+  ],
+  "zh": "龟壳·暗影·放出"
+ },
+ "sk_shield": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 8092.0,
+    "champ": 0.5505,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 2.906,
+    "pix": -0.1835,
+    "riot": 0.4591,
+    "score": -0.0281,
+    "text": 0.307
+   }
+  ],
+  "sel": [
+   "sk_shield_2.wav"
+  ],
+  "zh": "彩虹龟·棱镜护盾·放出"
+ },
+ "sk_starGravityWarp": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1221.3,
+    "champ": 0.5878,
+    "dur": 1.447,
+    "low": 0.179,
+    "pen": 0.0,
+    "pix": -0.3289,
+    "riot": 0.6788,
+    "score": 1.961,
+    "text": 0.251
+   }
+  ],
+  "sel": [
+   "sk_starGravityWarp_1.wav"
+  ],
+  "zh": "星际龟·扭曲空间·放出"
+ },
+ "sk_starWave": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1661.4,
+    "champ": 0.6021,
+    "dur": 0.873,
+    "low": 0.499,
+    "pen": 0.0,
+    "pix": -0.1053,
+    "riot": 0.6667,
+    "score": 2.278,
+    "text": 0.4132
+   }
+  ],
+  "sel": [
+   "r2__sk_starWave_1.wav"
+  ],
+  "zh": "星际龟·星波·放出"
+ },
+ "sk_starWormhole": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1615.2,
+    "champ": 0.3913,
+    "dur": 1.157,
+    "low": 0.598,
+    "pen": 0.0,
+    "pix": -0.2555,
+    "riot": 0.4887,
+    "score": 1.5028,
+    "text": 0.2381
+   }
+  ],
+  "sel": [
+   "sk_starWormhole_2.wav"
+  ],
+  "zh": "星际龟·虫洞·放出"
+ },
+ "sk_stoneRockShield": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1026.8,
+    "champ": 0.5565,
+    "dur": 1.152,
+    "low": 0.419,
+    "pen": 0.0,
+    "pix": -0.1885,
+    "riot": 0.535,
+    "score": 1.8683,
+    "text": 0.3242
+   }
+  ],
+  "sel": [
+   "r2__sk_stoneRockShield_3.wav"
+  ],
+  "zh": "石头龟·岩石护盾·放出"
+ },
+ "sk_stoneTaunt": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 881.2,
+    "champ": 0.3804,
+    "dur": 1.601,
+    "low": 0.397,
+    "pen": 0.031,
+    "pix": -0.1148,
+    "riot": 0.3439,
+    "score": 1.2777,
+    "text": 0.2476
+   }
+  ],
+  "sel": [
+   "r3__sk_stoneTaunt_1.wav"
+  ],
+  "zh": "石头龟·嘲讽·放出"
+ },
+ "sk_twoHeadDisrupt": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 4471.9,
+    "champ": 0.5331,
+    "dur": 1.362,
+    "low": 0.003,
+    "pen": 1.313,
+    "pix": -0.0097,
+    "riot": 0.553,
+    "score": 0.7762,
+    "text": 0.1673
+   }
+  ],
+  "sel": [
+   "r2__sk_twoHeadDisrupt_3.wav"
+  ],
+  "zh": "变脸龟·精神干扰·放出"
+ },
+ "sk_twoHeadFusion": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 265.7,
+    "champ": 0.6015,
+    "dur": 1.532,
+    "low": 0.836,
+    "pen": 0.489,
+    "pix": -0.3619,
+    "riot": 0.6453,
+    "score": 1.9697,
+    "text": 0.422
+   }
+  ],
+  "sel": [
+   "sk_twoHeadFusion_2.wav"
+  ],
+  "zh": "变脸龟·融合·放出"
+ },
+ "sk_twoHeadStrike": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 3300.0,
+    "champ": 0.7625,
+    "dur": 1.601,
+    "low": 0.219,
+    "pen": 0.262,
+    "pix": -0.258,
+    "riot": 0.7566,
+    "score": 2.0983,
+    "text": 0.2743
+   }
+  ],
+  "sel": [
+   "r2__sk_twoHeadStrike_2.wav"
+  ],
+  "zh": "变脸龟·灵能冲击/锤击·放出"
+ },
+ "sk_volcanoErupt": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 1390.2,
+    "champ": 0.8012,
+    "dur": 1.836,
+    "low": 0.285,
+    "pen": 0.0,
+    "pix": -0.1715,
+    "riot": 0.6604,
+    "score": 2.2125,
+    "text": 0.3105
+   }
+  ],
+  "sel": [
+   "r2__sk_volcanoErupt_1.wav"
+  ],
+  "zh": "火山龟·火山爆发·放出"
+ },
+ "sk_volcanoSmash": {
+  "cat": "sk_cast",
+  "score": [
+   {
+    "cent": 927.6,
+    "champ": 0.4339,
+    "dur": 0.668,
+    "low": 0.808,
+    "pen": 0.203,
+    "pix": -0.1228,
+    "riot": 0.399,
+    "score": 0.9832,
+    "text": 0.0905
+   }
+  ],
+  "sel": [
+   "sk_volcanoSmash_3.wav"
+  ],
+  "zh": "火山龟·重击·放出"
+ },
+ "skh_angelEquality": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 5744.2,
+    "champ": 0.666,
+    "dur": 1.202,
+    "low": 0.242,
+    "pen": 0.832,
+    "pix": -0.1471,
+    "riot": 0.5111,
+    "score": 1.5917,
+    "text": 0.4124
+   },
+   {
+    "cent": 3158.5,
+    "champ": 0.4215,
+    "dur": 1.083,
+    "low": 0.013,
+    "pen": 0.268,
+    "pix": -0.1785,
+    "riot": 0.4257,
+    "score": 1.5011,
+    "text": 0.3536
+   }
+  ],
+  "sel": [
+   "skh_angelEquality_2.wav",
+   "r2__skh_angelEquality_2.wav"
+  ],
+  "zh": "天使龟·平等·命中"
+ },
+ "skh_bambooSmack": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 532.6,
+    "champ": 0.4219,
+    "dur": 1.202,
+    "low": 0.803,
+    "pen": 0.192,
+    "pix": -0.1096,
+    "riot": 0.4219,
+    "score": 1.4584,
+    "text": 0.3122
+   },
+   {
+    "cent": 2860.8,
+    "champ": 0.642,
+    "dur": 1.362,
+    "low": 0.334,
+    "pen": 0.0,
+    "pix": -0.1636,
+    "riot": 0.642,
+    "score": 1.6752,
+    "text": 0.1154
+   }
+  ],
+  "sel": [
+   "r2__skh_bambooSmack_3.wav",
+   "skh_bambooSmack_3.wav"
+  ],
+  "zh": "竹叶龟·竹击·命中"
+ },
+ "skh_bambooSpikes": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 943.7,
+    "champ": 0.6381,
+    "dur": 1.093,
+    "low": 0.644,
+    "pen": 0.039,
+    "pix": -0.2507,
+    "riot": 0.6911,
+    "score": 2.27,
+    "text": 0.3892
+   },
+   {
+    "cent": 772.8,
+    "champ": 0.5941,
+    "dur": 1.003,
+    "low": 0.723,
+    "pen": 0.0,
+    "pix": -0.3304,
+    "riot": 0.6939,
+    "score": 2.278,
+    "text": 0.3958
+   }
+  ],
+  "sel": [
+   "skh_bambooSpikes_2.wav",
+   "r2__skh_bambooSpikes_1.wav"
+  ],
+  "zh": "竹叶龟·竹刺阵·命中"
+ },
+ "skh_basicBarrage": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 628.1,
+    "champ": 0.8282,
+    "dur": 0.988,
+    "low": 0.759,
+    "pen": 0.053,
+    "pix": -0.1397,
+    "riot": 0.8282,
+    "score": 2.6302,
+    "text": 0.3992
+   },
+   {
+    "cent": 451.3,
+    "champ": 0.7454,
+    "dur": 0.818,
+    "low": 0.791,
+    "pen": 0.155,
+    "pix": -0.1911,
+    "riot": 0.7454,
+    "score": 2.461,
+    "text": 0.4383
+   }
+  ],
+  "sel": [
+   "r2__skh_basicBarrage_1.wav",
+   "skh_basicBarrage_2.wav"
+  ],
+  "zh": "小龟·打击·命中"
+ },
+ "skh_basicChiWave": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1318.8,
+    "champ": 0.7765,
+    "dur": 1.362,
+    "low": 0.465,
+    "pen": 0.0,
+    "pix": -0.1297,
+    "riot": 0.7754,
+    "score": 2.5245,
+    "text": 0.3895
+   },
+   {
+    "cent": 648.8,
+    "champ": 0.6395,
+    "dur": 0.718,
+    "low": 0.705,
+    "pen": 0.0,
+    "pix": -0.0513,
+    "riot": 0.6594,
+    "score": 1.9749,
+    "text": 0.2531
+   }
+  ],
+  "sel": [
+   "r2__skh_basicChiWave_1.wav",
+   "skh_basicChiWave_3.wav"
+  ],
+  "zh": "小龟·龟派气波·命中"
+ },
+ "skh_basicSlam": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 244.2,
+    "champ": 0.778,
+    "dur": 0.728,
+    "low": 0.859,
+    "pen": 0.664,
+    "pix": -0.263,
+    "riot": 0.778,
+    "score": 2.1147,
+    "text": 0.3814
+   },
+   {
+    "cent": 218.8,
+    "champ": 0.6785,
+    "dur": 0.858,
+    "low": 0.807,
+    "pen": 0.602,
+    "pix": -0.2202,
+    "riot": 0.6785,
+    "score": 2.1377,
+    "text": 0.4862
+   }
+  ],
+  "sel": [
+   "skh_basicSlam_3.wav",
+   "skh_basicSlam_2.wav"
+  ],
+  "zh": "小龟·过肩摔·命中"
+ },
+ "skh_bubbleBind": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1017.2,
+    "champ": 0.6296,
+    "dur": 1.053,
+    "low": 0.045,
+    "pen": 0.233,
+    "pix": -0.1098,
+    "riot": 0.4878,
+    "score": 1.8647,
+    "text": 0.4003
+   },
+   {
+    "cent": 965.4,
+    "champ": 0.6246,
+    "dur": 1.362,
+    "low": 0.004,
+    "pen": 0.307,
+    "pix": -0.1097,
+    "riot": 0.503,
+    "score": 1.8214,
+    "text": 0.3915
+   }
+  ],
+  "sel": [
+   "skh_bubbleBind_3.wav",
+   "r2__skh_bubbleBind_3.wav"
+  ],
+  "zh": "泡泡龟·泡泡束缚·命中"
+ },
+ "skh_bubbleBurst": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 616.6,
+    "champ": 0.4875,
+    "dur": 1.362,
+    "low": 0.837,
+    "pen": 0.182,
+    "pix": -0.12,
+    "riot": 0.6158,
+    "score": 2.1968,
+    "text": 0.5083
+   },
+   {
+    "cent": 342.1,
+    "champ": 0.4707,
+    "dur": 1.362,
+    "low": 0.752,
+    "pen": 0.268,
+    "pix": -0.1036,
+    "riot": 0.594,
+    "score": 1.8939,
+    "text": 0.4055
+   }
+  ],
+  "sel": [
+   "r2__skh_bubbleBurst_1.wav",
+   "r2__skh_bubbleBurst_2.wav"
+  ],
+  "zh": "泡泡龟·泡泡爆破·命中"
+ },
+ "skh_candyBarrage": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1159.9,
+    "champ": 0.5688,
+    "dur": 1.202,
+    "low": 0.452,
+    "pen": 0.0,
+    "pix": 0.0023,
+    "riot": 0.609,
+    "score": 1.7981,
+    "text": 0.229
+   },
+   {
+    "cent": 446.6,
+    "champ": 0.6404,
+    "dur": 0.738,
+    "low": 0.792,
+    "pen": 0.161,
+    "pix": -0.2327,
+    "riot": 0.5903,
+    "score": 1.8499,
+    "text": 0.2904
+   }
+  ],
+  "sel": [
+   "skh_candyBarrage_3.wav",
+   "skh_candyBarrage_2.wav"
+  ],
+  "zh": "糖果龟·糖衣炮弹·命中"
+ },
+ "skh_candyBomb": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1078.5,
+    "champ": 0.4834,
+    "dur": 1.088,
+    "low": 0.587,
+    "pen": 0.031,
+    "pix": -0.0744,
+    "riot": 0.6799,
+    "score": 2.2193,
+    "text": 0.4276
+   },
+   {
+    "cent": 890.9,
+    "champ": 0.4687,
+    "dur": 1.048,
+    "low": 0.702,
+    "pen": 0.0,
+    "pix": -0.1408,
+    "riot": 0.7179,
+    "score": 2.2802,
+    "text": 0.426
+   }
+  ],
+  "sel": [
+   "r2__skh_candyBomb_3.wav",
+   "skh_candyBomb_2.wav"
+  ],
+  "zh": "糖果龟·糖果炸弹·命中"
+ },
+ "skh_candyHammer": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 774.2,
+    "champ": 0.7165,
+    "dur": 0.668,
+    "low": 0.746,
+    "pen": 0.063,
+    "pix": -0.0257,
+    "riot": 0.6178,
+    "score": 2.4825,
+    "text": 0.5281
+   },
+   {
+    "cent": 2638.9,
+    "champ": 0.6913,
+    "dur": 0.793,
+    "low": 0.466,
+    "pen": 0.0,
+    "pix": -0.0429,
+    "riot": 0.6638,
+    "score": 2.5998,
+    "text": 0.5428
+   }
+  ],
+  "sel": [
+   "r2__skh_candyHammer_2.wav",
+   "skh_candyHammer_2.wav"
+  ],
+  "zh": "糖果龟·糖果锤·命中"
+ },
+ "skh_chestCannon": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2081.0,
+    "champ": 0.731,
+    "dur": 0.968,
+    "low": 0.37,
+    "pen": 0.0,
+    "pix": -0.2737,
+    "riot": 0.7171,
+    "score": 2.4873,
+    "text": 0.4317
+   },
+   {
+    "cent": 883.4,
+    "champ": 0.6986,
+    "dur": 1.063,
+    "low": 0.706,
+    "pen": 0.0,
+    "pix": -0.1025,
+    "riot": 0.7241,
+    "score": 2.4363,
+    "text": 0.4132
+   }
+  ],
+  "sel": [
+   "r2__skh_chestCannon_1.wav",
+   "r2__skh_chestCannon_3.wav"
+  ],
+  "zh": "宝箱龟·财宝炮击·命中"
+ },
+ "skh_chestStorm": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 5176.4,
+    "champ": 0.5016,
+    "dur": 1.362,
+    "low": 0.18,
+    "pen": 0.284,
+    "pix": -0.0869,
+    "riot": 0.5168,
+    "score": 1.7308,
+    "text": 0.3748
+   },
+   {
+    "cent": 464.7,
+    "champ": 0.7345,
+    "dur": 0.958,
+    "low": 0.8,
+    "pen": 0.156,
+    "pix": -0.1903,
+    "riot": 0.6229,
+    "score": 1.7422,
+    "text": 0.1753
+   }
+  ],
+  "sel": [
+   "r2__skh_chestStorm_3.wav",
+   "r2__skh_chestStorm_1.wav"
+  ],
+  "zh": "宝箱龟·财宝风暴·命中"
+ },
+ "skh_crystalBall": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2964.1,
+    "champ": 0.7099,
+    "dur": 1.202,
+    "low": 0.231,
+    "pen": 0.0,
+    "pix": -0.1196,
+    "riot": 0.6862,
+    "score": 2.5443,
+    "text": 0.4913
+   },
+   {
+    "cent": 5548.3,
+    "champ": 0.7034,
+    "dur": 1.202,
+    "low": 0.015,
+    "pen": 0.648,
+    "pix": -0.0983,
+    "riot": 0.5461,
+    "score": 1.7859,
+    "text": 0.414
+   }
+  ],
+  "sel": [
+   "skh_crystalBall_1.wav",
+   "skh_crystalBall_2.wav"
+  ],
+  "zh": "水晶龟·水晶球·命中"
+ },
+ "skh_crystalBurst": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 5987.4,
+    "champ": 0.4542,
+    "dur": 1.362,
+    "low": 0.001,
+    "pen": 0.822,
+    "pix": -0.2013,
+    "riot": 0.5298,
+    "score": 1.2993,
+    "text": 0.3287
+   },
+   {
+    "cent": 5920.6,
+    "champ": 0.4822,
+    "dur": 0.893,
+    "low": 0.189,
+    "pen": 0.624,
+    "pix": -0.1137,
+    "riot": 0.4718,
+    "score": 1.3681,
+    "text": 0.3366
+   }
+  ],
+  "sel": [
+   "skh_crystalBurst_3.wav",
+   "r2__skh_crystalBurst_2.wav"
+  ],
+  "zh": "水晶龟·碎晶爆破·命中"
+ },
+ "skh_cyberBeam": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1493.6,
+    "champ": 0.5952,
+    "dur": 1.202,
+    "low": 0.593,
+    "pen": 0.0,
+    "pix": -0.0861,
+    "riot": 0.7653,
+    "score": 2.4195,
+    "text": 0.4126
+   },
+   {
+    "cent": 1999.0,
+    "champ": 0.654,
+    "dur": 1.362,
+    "low": 0.572,
+    "pen": 0.0,
+    "pix": -0.0485,
+    "riot": 0.6943,
+    "score": 2.272,
+    "text": 0.37
+   }
+  ],
+  "sel": [
+   "skh_cyberBeam_1.wav",
+   "r2__skh_cyberBeam_2.wav"
+  ],
+  "zh": "赛博龟·能量大炮·命中"
+ },
+ "skh_diamondPowerball": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 670.3,
+    "champ": 0.821,
+    "dur": 0.923,
+    "low": 0.716,
+    "pen": 0.0,
+    "pix": -0.2686,
+    "riot": 0.7847,
+    "score": 2.3173,
+    "text": 0.2622
+   },
+   {
+    "cent": 1057.9,
+    "champ": 0.6599,
+    "dur": 1.058,
+    "low": 0.55,
+    "pen": 0.0,
+    "pix": -0.2115,
+    "riot": 0.7677,
+    "score": 2.1577,
+    "text": 0.2556
+   }
+  ],
+  "sel": [
+   "skh_diamondPowerball_2.wav",
+   "r2__skh_diamondPowerball_3.wav"
+  ],
+  "zh": "钻石龟·钻石滚球·命中"
+ },
+ "skh_diamondSmash": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1411.2,
+    "champ": 0.6664,
+    "dur": 0.808,
+    "low": 0.495,
+    "pen": 0.0,
+    "pix": -0.1749,
+    "riot": 0.6788,
+    "score": 2.3883,
+    "text": 0.4351
+   },
+   {
+    "cent": 2574.7,
+    "champ": 0.6153,
+    "dur": 1.362,
+    "low": 0.52,
+    "pen": 0.009,
+    "pix": -0.0248,
+    "riot": 0.6957,
+    "score": 2.2863,
+    "text": 0.3933
+   }
+  ],
+  "sel": [
+   "skh_diamondSmash_1.wav",
+   "r2__skh_diamondSmash_1.wav"
+  ],
+  "zh": "钻石龟·钻石冲撞·命中"
+ },
+ "skh_diceAllIn": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 650.2,
+    "champ": 0.7288,
+    "dur": 0.798,
+    "low": 0.765,
+    "pen": 0.063,
+    "pix": -0.2027,
+    "riot": 0.6716,
+    "score": 2.3441,
+    "text": 0.4138
+   },
+   {
+    "cent": 995.6,
+    "champ": 0.7453,
+    "dur": 0.728,
+    "low": 0.668,
+    "pen": 0.026,
+    "pix": -0.1638,
+    "riot": 0.6823,
+    "score": 2.2916,
+    "text": 0.3624
+   }
+  ],
+  "sel": [
+   "skh_diceAllIn_1.wav",
+   "skh_diceAllIn_3.wav"
+  ],
+  "zh": "骰子龟·孤注一掷·命中"
+ },
+ "skh_diceFate": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2188.5,
+    "champ": 0.4781,
+    "dur": 1.202,
+    "low": 0.15,
+    "pen": 0.0,
+    "pix": -0.0272,
+    "riot": 0.5238,
+    "score": 1.8477,
+    "text": 0.3517
+   },
+   {
+    "cent": 6792.3,
+    "champ": 0.589,
+    "dur": 1.362,
+    "low": 0.007,
+    "pen": 1.165,
+    "pix": -0.1088,
+    "riot": 0.6126,
+    "score": 1.4559,
+    "text": 0.3973
+   }
+  ],
+  "sel": [
+   "skh_diceFate_1.wav",
+   "r2__skh_diceFate_1.wav"
+  ],
+  "zh": "骰子龟·命运骰子·命中"
+ },
+ "skh_diceFlashStrike": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2343.6,
+    "champ": 0.6442,
+    "dur": 1.362,
+    "low": 0.369,
+    "pen": 0.0,
+    "pix": -0.0644,
+    "riot": 0.7116,
+    "score": 2.358,
+    "text": 0.4037
+   },
+   {
+    "cent": 1675.9,
+    "champ": 0.6084,
+    "dur": 0.604,
+    "low": 0.432,
+    "pen": 0.01,
+    "pix": -0.1746,
+    "riot": 0.693,
+    "score": 2.3296,
+    "text": 0.4201
+   }
+  ],
+  "sel": [
+   "r2__skh_diceFlashStrike_1.wav",
+   "skh_diceFlashStrike_3.wav"
+  ],
+  "zh": "骰子龟·稳定骰子·命中"
+ },
+ "skh_fortuneAllIn": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 3390.0,
+    "champ": 0.4717,
+    "dur": 0.813,
+    "low": 0.412,
+    "pen": 0.0,
+    "pix": -0.1651,
+    "riot": 0.3895,
+    "score": 1.6861,
+    "text": 0.374
+   },
+   {
+    "cent": 1988.4,
+    "champ": 0.6877,
+    "dur": 0.963,
+    "low": 0.774,
+    "pen": 0.3,
+    "pix": -0.2825,
+    "riot": 0.7037,
+    "score": 1.7289,
+    "text": 0.1687
+   }
+  ],
+  "sel": [
+   "r2__skh_fortuneAllIn_2.wav",
+   "r2__skh_fortuneAllIn_1.wav"
+  ],
+  "zh": "财神龟·梭哈·命中"
+ },
+ "skh_fortuneDice": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 4659.0,
+    "champ": 0.4792,
+    "dur": 1.202,
+    "low": 0.206,
+    "pen": 0.013,
+    "pix": -0.0071,
+    "riot": 0.5611,
+    "score": 1.6834,
+    "text": 0.2451
+   },
+   {
+    "cent": 1956.2,
+    "champ": 0.5168,
+    "dur": 1.362,
+    "low": 0.116,
+    "pen": 0.015,
+    "pix": -0.1624,
+    "riot": 0.6483,
+    "score": 1.9195,
+    "text": 0.2842
+   }
+  ],
+  "sel": [
+   "r2__skh_fortuneDice_2.wav",
+   "skh_fortuneDice_2.wav"
+  ],
+  "zh": "财神龟·骰子·命中"
+ },
+ "skh_gamblerBet": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 353.6,
+    "champ": 0.5998,
+    "dur": 0.693,
+    "low": 0.884,
+    "pen": 0.495,
+    "pix": -0.1092,
+    "riot": 0.5772,
+    "score": 1.8516,
+    "text": 0.4165
+   },
+   {
+    "cent": 2654.9,
+    "champ": 0.5499,
+    "dur": 0.644,
+    "low": 0.593,
+    "pen": 0.0,
+    "pix": -0.1801,
+    "riot": 0.5654,
+    "score": 1.9026,
+    "text": 0.321
+   }
+  ],
+  "sel": [
+   "skh_gamblerBet_3.wav",
+   "skh_gamblerBet_2.wav"
+  ],
+  "zh": "赌神龟·赌注·命中"
+ },
+ "skh_gamblerDraw": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1176.4,
+    "champ": 0.5253,
+    "dur": 0.773,
+    "low": 0.286,
+    "pen": 0.0,
+    "pix": 0.0016,
+    "riot": 0.5709,
+    "score": 2.1015,
+    "text": 0.4256
+   },
+   {
+    "cent": 1360.6,
+    "champ": 0.6675,
+    "dur": 0.848,
+    "low": 0.482,
+    "pen": 0.0,
+    "pix": -0.0325,
+    "riot": 0.7167,
+    "score": 2.4038,
+    "text": 0.4141
+   }
+  ],
+  "sel": [
+   "skh_gamblerDraw_3.wav",
+   "skh_gamblerDraw_2.wav"
+  ],
+  "zh": "赌神龟·万能牌·命中"
+ },
+ "skh_gamblerFateWheel": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 665.3,
+    "champ": 0.5464,
+    "dur": 0.973,
+    "low": 0.364,
+    "pen": 0.016,
+    "pix": -0.079,
+    "riot": 0.618,
+    "score": 1.9536,
+    "text": 0.3131
+   },
+   {
+    "cent": 635.6,
+    "champ": 0.3923,
+    "dur": 0.778,
+    "low": 0.618,
+    "pen": 0.068,
+    "pix": -0.0972,
+    "riot": 0.4308,
+    "score": 1.6383,
+    "text": 0.3694
+   }
+  ],
+  "sel": [
+   "r2__skh_gamblerFateWheel_1.wav",
+   "skh_gamblerFateWheel_3.wav"
+  ],
+  "zh": "赌神龟·命运之轮·命中"
+ },
+ "skh_ghostPhantom": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1405.6,
+    "champ": 0.4491,
+    "dur": 0.718,
+    "low": 0.237,
+    "pen": 0.004,
+    "pix": 0.0189,
+    "riot": 0.4693,
+    "score": 1.4582,
+    "text": 0.21
+   },
+   {
+    "cent": 308.0,
+    "champ": 0.405,
+    "dur": 0.788,
+    "low": 0.869,
+    "pen": 0.554,
+    "pix": -0.0239,
+    "riot": 0.4933,
+    "score": 0.848,
+    "text": 0.0685
+   }
+  ],
+  "sel": [
+   "skh_ghostPhantom_1.wav",
+   "r2__skh_ghostPhantom_1.wav"
+  ],
+  "zh": "幽灵龟·幽冥突袭·命中"
+ },
+ "skh_ghostStorm": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 460.9,
+    "champ": 0.4431,
+    "dur": 0.489,
+    "low": 0.77,
+    "pen": 0.225,
+    "pix": 0.0159,
+    "riot": 0.4907,
+    "score": 1.1847,
+    "text": 0.1258
+   },
+   {
+    "cent": 1333.4,
+    "champ": 0.3924,
+    "dur": 1.202,
+    "low": 0.549,
+    "pen": 0.0,
+    "pix": -0.1167,
+    "riot": 0.4393,
+    "score": 1.2442,
+    "text": 0.1455
+   }
+  ],
+  "sel": [
+   "skh_ghostStorm_2.wav",
+   "skh_ghostStorm_1.wav"
+  ],
+  "zh": "幽灵龟·灵魂风暴·命中"
+ },
+ "skh_headlessFear": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 680.7,
+    "champ": 0.6272,
+    "dur": 0.773,
+    "low": 0.508,
+    "pen": 0.134,
+    "pix": -0.1564,
+    "riot": 0.563,
+    "score": 2.0732,
+    "text": 0.4195
+   },
+   {
+    "cent": 295.0,
+    "champ": 0.6073,
+    "dur": 0.993,
+    "low": 0.762,
+    "pen": 0.414,
+    "pix": -0.2989,
+    "riot": 0.6497,
+    "score": 1.8731,
+    "text": 0.3456
+   }
+  ],
+  "sel": [
+   "skh_headlessFear_2.wav",
+   "r2__skh_headlessFear_3.wav"
+  ],
+  "zh": "无头龟·恐吓·命中"
+ },
+ "skh_headlessTendrils": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 448.4,
+    "champ": 0.7141,
+    "dur": 0.768,
+    "low": 0.78,
+    "pen": 0.201,
+    "pix": -0.0757,
+    "riot": 0.5983,
+    "score": 1.8811,
+    "text": 0.2844
+   },
+   {
+    "cent": 572.9,
+    "champ": 0.6621,
+    "dur": 0.848,
+    "low": 0.775,
+    "pen": 0.081,
+    "pix": -0.0734,
+    "riot": 0.5216,
+    "score": 1.9444,
+    "text": 0.3569
+   }
+  ],
+  "sel": [
+   "skh_headlessTendrils_3.wav",
+   "r2__skh_headlessTendrils_1.wav"
+  ],
+  "zh": "无头龟·万千触须·命中"
+ },
+ "skh_hunterBarrage": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1438.7,
+    "champ": 0.6667,
+    "dur": 0.918,
+    "low": 0.714,
+    "pen": 0.1,
+    "pix": -0.3749,
+    "riot": 0.7303,
+    "score": 2.1344,
+    "text": 0.2995
+   },
+   {
+    "cent": 3017.2,
+    "champ": 0.6866,
+    "dur": 1.362,
+    "low": 0.471,
+    "pen": 0.017,
+    "pix": -0.1771,
+    "riot": 0.7216,
+    "score": 2.3732,
+    "text": 0.3932
+   }
+  ],
+  "sel": [
+   "r2__skh_hunterBarrage_2.wav",
+   "skh_hunterBarrage_1.wav"
+  ],
+  "zh": "猎人龟·狩猎弹幕·命中"
+ },
+ "skh_hunterShot": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 399.7,
+    "champ": 0.7081,
+    "dur": 0.549,
+    "low": 0.815,
+    "pen": 0.405,
+    "pix": -0.2717,
+    "riot": 0.7081,
+    "score": 2.3211,
+    "text": 0.4854
+   },
+   {
+    "cent": 2297.4,
+    "champ": 0.693,
+    "dur": 0.993,
+    "low": 0.572,
+    "pen": 0.0,
+    "pix": -0.2792,
+    "riot": 0.693,
+    "score": 2.2621,
+    "text": 0.3514
+   }
+  ],
+  "sel": [
+   "skh_hunterShot_1.wav",
+   "r2__skh_hunterShot_3.wav"
+  ],
+  "zh": "猎人龟·精准射击·命中"
+ },
+ "skh_iceFreeze": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1346.4,
+    "champ": 0.6521,
+    "dur": 1.202,
+    "low": 0.53,
+    "pen": 0.0,
+    "pix": -0.1504,
+    "riot": 0.6394,
+    "score": 2.2169,
+    "text": 0.3844
+   },
+   {
+    "cent": 376.8,
+    "champ": 0.6622,
+    "dur": 0.963,
+    "low": 0.797,
+    "pen": 0.361,
+    "pix": -0.1168,
+    "riot": 0.6105,
+    "score": 2.2125,
+    "text": 0.5081
+   }
+  ],
+  "sel": [
+   "skh_iceFreeze_1.wav",
+   "skh_iceFreeze_3.wav"
+  ],
+  "zh": "寒冰龟·冰封·命中"
+ },
+ "skh_iceFrost": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 4423.4,
+    "champ": 0.7411,
+    "dur": 1.127,
+    "low": 0.155,
+    "pen": 0.225,
+    "pix": -0.1926,
+    "riot": 0.6306,
+    "score": 2.3259,
+    "text": 0.4797
+   },
+   {
+    "cent": 3907.1,
+    "champ": 0.6485,
+    "dur": 1.362,
+    "low": 0.196,
+    "pen": 0.0,
+    "pix": -0.0327,
+    "riot": 0.6084,
+    "score": 2.2,
+    "text": 0.4005
+   }
+  ],
+  "sel": [
+   "r2__skh_iceFrost_2.wav",
+   "r2__skh_iceFrost_3.wav"
+  ],
+  "zh": "寒冰龟·冰霜·命中"
+ },
+ "skh_lavaErupt": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1544.9,
+    "champ": 0.504,
+    "dur": 1.202,
+    "low": 0.29,
+    "pen": 0.0,
+    "pix": -0.1245,
+    "riot": 0.6893,
+    "score": 1.9438,
+    "text": 0.266
+   },
+   {
+    "cent": 1706.2,
+    "champ": 0.6292,
+    "dur": 0.778,
+    "low": 0.41,
+    "pen": 0.0,
+    "pix": -0.0934,
+    "riot": 0.638,
+    "score": 1.7592,
+    "text": 0.1652
+   }
+  ],
+  "sel": [
+   "skh_lavaErupt_2.wav",
+   "r2__skh_lavaErupt_3.wav"
+  ],
+  "zh": "熔岩龟·熔岩爆发·命中"
+ },
+ "skh_lavaQuake": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 748.8,
+    "champ": 0.6108,
+    "dur": 1.068,
+    "low": 0.595,
+    "pen": 0.0,
+    "pix": -0.2163,
+    "riot": 0.7132,
+    "score": 1.982,
+    "text": 0.2271
+   },
+   {
+    "cent": 594.7,
+    "champ": 0.6109,
+    "dur": 0.938,
+    "low": 0.857,
+    "pen": 0.216,
+    "pix": -0.196,
+    "riot": 0.6835,
+    "score": 1.9551,
+    "text": 0.3006
+   }
+  ],
+  "sel": [
+   "r2__skh_lavaQuake_2.wav",
+   "skh_lavaQuake_3.wav"
+  ],
+  "zh": "熔岩龟·地裂·命中"
+ },
+ "skh_lavaSurge": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 985.5,
+    "champ": 0.5361,
+    "dur": 0.973,
+    "low": 0.56,
+    "pen": 0.0,
+    "pix": -0.1945,
+    "riot": 0.7647,
+    "score": 1.7264,
+    "text": 0.0887
+   },
+   {
+    "cent": 550.3,
+    "champ": 0.5881,
+    "dur": 1.112,
+    "low": 0.865,
+    "pen": 0.229,
+    "pix": -0.1782,
+    "riot": 0.7934,
+    "score": 1.8127,
+    "text": 0.1593
+   }
+  ],
+  "sel": [
+   "r2__skh_lavaSurge_2.wav",
+   "skh_lavaSurge_1.wav"
+  ],
+  "zh": "熔岩龟·岩浆涌动·命中"
+ },
+ "skh_lightningBarrage": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2823.1,
+    "champ": 0.4612,
+    "dur": 1.202,
+    "low": 0.291,
+    "pen": 0.0,
+    "pix": -0.0616,
+    "riot": 0.4916,
+    "score": 1.8627,
+    "text": 0.3897
+   },
+   {
+    "cent": 779.2,
+    "champ": 0.3754,
+    "dur": 1.362,
+    "low": 0.836,
+    "pen": 0.182,
+    "pix": -0.132,
+    "riot": 0.3464,
+    "score": 1.1182,
+    "text": 0.2129
+   }
+  ],
+  "sel": [
+   "skh_lightningBarrage_1.wav",
+   "r2__skh_lightningBarrage_3.wav"
+  ],
+  "zh": "闪电龟·雷暴·命中"
+ },
+ "skh_lineFinish": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1147.7,
+    "champ": 0.6894,
+    "dur": 0.828,
+    "low": 0.522,
+    "pen": 0.0,
+    "pix": -0.2037,
+    "riot": 0.8194,
+    "score": 2.2919,
+    "text": 0.2729
+   },
+   {
+    "cent": 1694.4,
+    "champ": 0.658,
+    "dur": 1.202,
+    "low": 0.509,
+    "pen": 0.0,
+    "pix": -0.2233,
+    "riot": 0.7483,
+    "score": 2.0036,
+    "text": 0.1939
+   }
+  ],
+  "sel": [
+   "skh_lineFinish_1.wav",
+   "skh_lineFinish_3.wav"
+  ],
+  "zh": "线条龟·画龙点睛·命中"
+ },
+ "skh_lineInkBomb": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1551.8,
+    "champ": 0.4855,
+    "dur": 0.898,
+    "low": 0.051,
+    "pen": 0.191,
+    "pix": -0.1191,
+    "riot": 0.4515,
+    "score": 1.0909,
+    "text": 0.0821
+   },
+   {
+    "cent": 291.3,
+    "champ": 0.477,
+    "dur": 0.604,
+    "low": 0.843,
+    "pen": 0.66,
+    "pix": -0.1296,
+    "riot": 0.5509,
+    "score": 1.2756,
+    "text": 0.2437
+   }
+  ],
+  "sel": [
+   "skh_lineInkBomb_3.wav",
+   "r2__skh_lineInkBomb_1.wav"
+  ],
+  "zh": "线条龟·墨水炸弹·命中"
+ },
+ "skh_lineLink": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 928.1,
+    "champ": 0.6979,
+    "dur": 0.524,
+    "low": 0.709,
+    "pen": 0.076,
+    "pix": -0.29,
+    "riot": 0.7102,
+    "score": 2.0617,
+    "text": 0.2594
+   },
+   {
+    "cent": 994.3,
+    "champ": 0.5833,
+    "dur": 1.202,
+    "low": 0.625,
+    "pen": 0.0,
+    "pix": -0.1391,
+    "riot": 0.6922,
+    "score": 1.8455,
+    "text": 0.1849
+   }
+  ],
+  "sel": [
+   "skh_lineLink_1.wav",
+   "skh_lineLink_3.wav"
+  ],
+  "zh": "线条龟·连笔·命中"
+ },
+ "skh_ninjaBackstab": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2855.7,
+    "champ": 0.6443,
+    "dur": 1.362,
+    "low": 0.313,
+    "pen": 0.0,
+    "pix": -0.2953,
+    "riot": 0.6771,
+    "score": 2.3425,
+    "text": 0.4218
+   },
+   {
+    "cent": 2333.9,
+    "champ": 0.6381,
+    "dur": 0.718,
+    "low": 0.474,
+    "pen": 0.004,
+    "pix": -0.2174,
+    "riot": 0.6767,
+    "score": 2.3902,
+    "text": 0.4496
+   }
+  ],
+  "sel": [
+   "skh_ninjaBackstab_2.wav",
+   "r2__skh_ninjaBackstab_1.wav"
+  ],
+  "zh": "忍者龟·背刺·命中"
+ },
+ "skh_ninjaBomb": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2042.6,
+    "champ": 0.5078,
+    "dur": 0.783,
+    "low": 0.002,
+    "pen": 0.205,
+    "pix": -0.0388,
+    "riot": 0.4925,
+    "score": 1.2154,
+    "text": 0.1093
+   },
+   {
+    "cent": 988.8,
+    "champ": 0.6233,
+    "dur": 0.778,
+    "low": 0.725,
+    "pen": 0.0,
+    "pix": -0.1479,
+    "riot": 0.6151,
+    "score": 2.0887,
+    "text": 0.3493
+   }
+  ],
+  "sel": [
+   "r2__skh_ninjaBomb_2.wav",
+   "skh_ninjaBomb_2.wav"
+  ],
+  "zh": "忍者龟·炸弹·命中"
+ },
+ "skh_ninjaShuriken": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1805.5,
+    "champ": 0.4239,
+    "dur": 1.202,
+    "low": 0.756,
+    "pen": 0.049,
+    "pix": -0.1697,
+    "riot": 0.4531,
+    "score": 1.7943,
+    "text": 0.4129
+   },
+   {
+    "cent": 5517.9,
+    "champ": 0.4656,
+    "dur": 1.362,
+    "low": 0.0,
+    "pen": 0.828,
+    "pix": -0.004,
+    "riot": 0.4339,
+    "score": 1.0251,
+    "text": 0.2608
+   }
+  ],
+  "sel": [
+   "skh_ninjaShuriken_2.wav",
+   "r2__skh_ninjaShuriken_2.wav"
+  ],
+  "zh": "忍者龟·手里剑·命中"
+ },
+ "skh_phoenixScald": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1684.2,
+    "champ": 0.6214,
+    "dur": 1.048,
+    "low": 0.736,
+    "pen": 0.016,
+    "pix": -0.2284,
+    "riot": 0.6482,
+    "score": 2.1315,
+    "text": 0.3512
+   },
+   {
+    "cent": 304.5,
+    "champ": 0.5863,
+    "dur": 0.993,
+    "low": 0.911,
+    "pen": 0.533,
+    "pix": -0.2437,
+    "riot": 0.6389,
+    "score": 1.8441,
+    "text": 0.383
+   }
+  ],
+  "sel": [
+   "r2__skh_phoenixScald_1.wav",
+   "skh_phoenixScald_2.wav"
+  ],
+  "zh": "凤凰龟·烫伤·命中"
+ },
+ "skh_pirateCannonBarrage": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 268.1,
+    "champ": 0.7262,
+    "dur": 0.728,
+    "low": 0.848,
+    "pen": 0.587,
+    "pix": -0.1676,
+    "riot": 0.6709,
+    "score": 1.5601,
+    "text": 0.1808
+   },
+   {
+    "cent": 210.9,
+    "champ": 0.6943,
+    "dur": 1.098,
+    "low": 0.78,
+    "pen": 0.571,
+    "pix": -0.103,
+    "riot": 0.6559,
+    "score": 1.7378,
+    "text": 0.288
+   }
+  ],
+  "sel": [
+   "skh_pirateCannonBarrage_3.wav",
+   "skh_pirateCannonBarrage_2.wav"
+  ],
+  "zh": "海盗龟·火炮齐射·命中"
+ },
+ "skh_pirateShipPassive": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1162.8,
+    "champ": 0.7251,
+    "dur": 1.202,
+    "low": 0.448,
+    "pen": 0.0,
+    "pix": -0.0616,
+    "riot": 0.7242,
+    "score": 2.3718,
+    "text": 0.3709
+   },
+   {
+    "cent": 856.9,
+    "champ": 0.7063,
+    "dur": 1.202,
+    "low": 0.399,
+    "pen": 0.0,
+    "pix": -0.1132,
+    "riot": 0.7157,
+    "score": 2.2095,
+    "text": 0.3031
+   }
+  ],
+  "sel": [
+   "skh_pirateShipPassive_1.wav",
+   "skh_pirateShipPassive_2.wav"
+  ],
+  "zh": "海盗龟·海盗船·命中"
+ },
+ "skh_rainbowReflect": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2412.9,
+    "champ": 0.6496,
+    "dur": 1.362,
+    "low": 0.441,
+    "pen": 0.0,
+    "pix": -0.073,
+    "riot": 0.7007,
+    "score": 2.2827,
+    "text": 0.3722
+   },
+   {
+    "cent": 2876.7,
+    "champ": 0.5928,
+    "dur": 1.202,
+    "low": 0.422,
+    "pen": 0.059,
+    "pix": -0.1242,
+    "riot": 0.5833,
+    "score": 2.0754,
+    "text": 0.3957
+   }
+  ],
+  "sel": [
+   "r2__skh_rainbowReflect_1.wav",
+   "skh_rainbowReflect_2.wav"
+  ],
+  "zh": "彩虹龟·反射·命中"
+ },
+ "skh_rainbowStorm": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 886.6,
+    "champ": 0.767,
+    "dur": 0.763,
+    "low": 0.854,
+    "pen": 0.245,
+    "pix": -0.255,
+    "riot": 0.8154,
+    "score": 2.4678,
+    "text": 0.4083
+   },
+   {
+    "cent": 837.9,
+    "champ": 0.7636,
+    "dur": 1.202,
+    "low": 0.807,
+    "pen": 0.133,
+    "pix": -0.1219,
+    "riot": 0.6885,
+    "score": 2.3297,
+    "text": 0.402
+   }
+  ],
+  "sel": [
+   "r2__skh_rainbowStorm_1.wav",
+   "skh_rainbowStorm_3.wav"
+  ],
+  "zh": "彩虹龟·全色风暴·命中"
+ },
+ "skh_rockShockwave": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 788.7,
+    "champ": 0.5625,
+    "dur": 0.823,
+    "low": 0.589,
+    "pen": 0.0,
+    "pix": -0.1548,
+    "riot": 0.6572,
+    "score": 2.2883,
+    "text": 0.4403
+   },
+   {
+    "cent": 1146.2,
+    "champ": 0.5636,
+    "dur": 0.973,
+    "low": 0.523,
+    "pen": 0.0,
+    "pix": -0.0825,
+    "riot": 0.6527,
+    "score": 2.2836,
+    "text": 0.441
+   }
+  ],
+  "sel": [
+   "skh_rockShockwave_1.wav",
+   "r2__skh_rockShockwave_3.wav"
+  ],
+  "zh": "石头龟·磐石之躯·命中"
+ },
+ "skh_shellAbsorb": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 317.2,
+    "champ": 0.7594,
+    "dur": 1.088,
+    "low": 0.706,
+    "pen": 0.316,
+    "pix": -0.1383,
+    "riot": 0.7594,
+    "score": 2.1141,
+    "text": 0.2976
+   }
+  ],
+  "sel": [
+   "skh_shellAbsorb_3.wav"
+  ],
+  "zh": "龟壳·吸收·命中"
+ },
+ "skh_shellShadow": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 2521.6,
+    "champ": 0.4888,
+    "dur": 0.873,
+    "low": 0.29,
+    "pen": 0.0,
+    "pix": -0.3185,
+    "riot": 0.5589,
+    "score": 1.4696,
+    "text": 0.1323
+   },
+   {
+    "cent": 340.3,
+    "champ": 0.5168,
+    "dur": 0.654,
+    "low": 0.895,
+    "pen": 0.485,
+    "pix": -0.0742,
+    "riot": 0.5708,
+    "score": 1.4871,
+    "text": 0.2671
+   }
+  ],
+  "sel": [
+   "r2__skh_shellShadow_3.wav",
+   "skh_shellShadow_3.wav"
+  ],
+  "zh": "龟壳·暗影·命中"
+ },
+ "skh_starGravityWarp": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1611.4,
+    "champ": 0.5266,
+    "dur": 1.202,
+    "low": 0.267,
+    "pen": 0.0,
+    "pix": -0.0826,
+    "riot": 0.4819,
+    "score": 1.4166,
+    "text": 0.1494
+   },
+   {
+    "cent": 481.9,
+    "champ": 0.3465,
+    "dur": 0.259,
+    "low": 0.459,
+    "pen": 0.341,
+    "pix": -0.0243,
+    "riot": 0.4973,
+    "score": 1.3276,
+    "text": 0.2633
+   }
+  ],
+  "sel": [
+   "skh_starGravityWarp_2.wav",
+   "skh_starGravityWarp_3.wav"
+  ],
+  "zh": "星际龟·扭曲空间·命中"
+ },
+ "skh_starWave": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 855.9,
+    "champ": 0.5936,
+    "dur": 1.362,
+    "low": 0.455,
+    "pen": 0.0,
+    "pix": -0.0059,
+    "riot": 0.6551,
+    "score": 2.3057,
+    "text": 0.4389
+   },
+   {
+    "cent": 528.2,
+    "champ": 0.6645,
+    "dur": 1.212,
+    "low": 0.69,
+    "pen": 0.03,
+    "pix": -0.1385,
+    "riot": 0.7895,
+    "score": 2.2933,
+    "text": 0.3144
+   }
+  ],
+  "sel": [
+   "r2__skh_starWave_2.wav",
+   "r2__skh_starWave_3.wav"
+  ],
+  "zh": "星际龟·星波·命中"
+ },
+ "skh_starWormhole": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 1216.0,
+    "champ": 0.4567,
+    "dur": 0.768,
+    "low": 0.152,
+    "pen": 0.0,
+    "pix": -0.0295,
+    "riot": 0.451,
+    "score": 1.2942,
+    "text": 0.1376
+   },
+   {
+    "cent": 1746.1,
+    "champ": 0.6907,
+    "dur": 1.202,
+    "low": 0.337,
+    "pen": 0.061,
+    "pix": -0.0387,
+    "riot": 0.6197,
+    "score": 1.8399,
+    "text": 0.2145
+   }
+  ],
+  "sel": [
+   "skh_starWormhole_2.wav",
+   "r2__skh_starWormhole_1.wav"
+  ],
+  "zh": "星际龟·虫洞·命中"
+ },
+ "skh_stoneTaunt": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 257.9,
+    "champ": 0.5434,
+    "dur": 0.858,
+    "low": 0.79,
+    "pen": 0.476,
+    "pix": -0.052,
+    "riot": 0.5533,
+    "score": 1.2809,
+    "text": 0.1646
+   }
+  ],
+  "sel": [
+   "r2__skh_stoneTaunt_1.wav"
+  ],
+  "zh": "石头龟·嘲讽·命中"
+ },
+ "skh_twoHeadDisrupt": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 463.5,
+    "champ": 0.6363,
+    "dur": 0.893,
+    "low": 0.803,
+    "pen": 0.162,
+    "pix": -0.0945,
+    "riot": 0.7262,
+    "score": 2.0217,
+    "text": 0.2761
+   },
+   {
+    "cent": 2200.1,
+    "champ": 0.4063,
+    "dur": 0.604,
+    "low": 0.001,
+    "pen": 0.334,
+    "pix": -0.0557,
+    "riot": 0.5417,
+    "score": 1.2902,
+    "text": 0.1866
+   }
+  ],
+  "sel": [
+   "r2__skh_twoHeadDisrupt_1.wav",
+   "r2__skh_twoHeadDisrupt_3.wav"
+  ],
+  "zh": "变脸龟·精神干扰·命中"
+ },
+ "skh_twoHeadStrike": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 916.4,
+    "champ": 0.6449,
+    "dur": 1.202,
+    "low": 0.557,
+    "pen": 0.0,
+    "pix": -0.0356,
+    "riot": 0.7016,
+    "score": 2.2649,
+    "text": 0.3644
+   },
+   {
+    "cent": 269.8,
+    "champ": 0.5494,
+    "dur": 0.524,
+    "low": 0.85,
+    "pen": 0.587,
+    "pix": 0.0133,
+    "riot": 0.5431,
+    "score": 1.5398,
+    "text": 0.3325
+   }
+  ],
+  "sel": [
+   "skh_twoHeadStrike_2.wav",
+   "skh_twoHeadStrike_3.wav"
+  ],
+  "zh": "变脸龟·灵能冲击/锤击·命中"
+ },
+ "skh_volcanoErupt": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 628.8,
+    "champ": 0.6841,
+    "dur": 0.958,
+    "low": 0.686,
+    "pen": 0.0,
+    "pix": -0.1584,
+    "riot": 0.7896,
+    "score": 2.2809,
+    "text": 0.2917
+   },
+   {
+    "cent": 946.4,
+    "champ": 0.6628,
+    "dur": 0.988,
+    "low": 0.398,
+    "pen": 0.0,
+    "pix": -0.1786,
+    "riot": 0.7581,
+    "score": 2.0661,
+    "text": 0.2159
+   }
+  ],
+  "sel": [
+   "r2__skh_volcanoErupt_1.wav",
+   "skh_volcanoErupt_2.wav"
+  ],
+  "zh": "火山龟·火山爆发·命中"
+ },
+ "skh_volcanoSmash": {
+  "cat": "sk_hit",
+  "score": [
+   {
+    "cent": 376.7,
+    "champ": 0.6223,
+    "dur": 0.838,
+    "low": 0.871,
+    "pen": 0.381,
+    "pix": -0.1227,
+    "riot": 0.6904,
+    "score": 2.2108,
+    "text": 0.4685
+   },
+   {
+    "cent": 2317.4,
+    "champ": 0.5693,
+    "dur": 0.933,
+    "low": 0.183,
+    "pen": 0.0,
+    "pix": -0.245,
+    "riot": 0.6961,
+    "score": 2.372,
+    "text": 0.4504
+   }
+  ],
+  "sel": [
+   "r2__skh_volcanoSmash_1.wav",
+   "skh_volcanoSmash_1.wav"
+  ],
+  "zh": "火山龟·重击·命中"
+ },
+ "studio_intro": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 1543.8,
+    "champ": 0.4485,
+    "dur": 1.556,
+    "low": 0.023,
+    "pen": 0.0,
+    "pix": -0.0078,
+    "riot": 0.4485,
+    "score": 1.451,
+    "text": 0.2209
+   }
+  ],
+  "sel": [
+   "studio_intro_2.wav"
+  ],
+  "zh": "工作室开场(灯鱼点灯)"
+ },
+ "ui_back": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 1218.0,
+    "champ": 0.3694,
+    "dur": 0.404,
+    "low": 0.018,
+    "pen": 0.0,
+    "pix": -0.0761,
+    "riot": 0.3694,
+    "score": 1.4402,
+    "text": 0.3045
+   }
+  ],
+  "sel": [
+   "r2__ui_back_1.wav"
+  ],
+  "zh": "返回 / 关闭"
+ },
+ "ui_click": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 4688.4,
+    "champ": 0.6158,
+    "dur": 0.484,
+    "low": 0.08,
+    "pen": 0.0,
+    "pix": -0.1289,
+    "riot": 0.6158,
+    "score": 1.9025,
+    "text": 0.2585
+   },
+   {
+    "cent": 6431.1,
+    "champ": 0.5118,
+    "dur": 0.484,
+    "low": 0.017,
+    "pen": 0.286,
+    "pix": -0.1229,
+    "riot": 0.5118,
+    "score": 1.572,
+    "text": 0.2961
+   }
+  ],
+  "sel": [
+   "r2__ui_click_1.wav",
+   "r2__ui_click_3.wav"
+  ],
+  "zh": "按钮点击"
+ },
+ "ui_confirm": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 2264.5,
+    "champ": 0.6213,
+    "dur": 0.484,
+    "low": 0.0,
+    "pen": 0.001,
+    "pix": -0.1016,
+    "riot": 0.6213,
+    "score": 2.2806,
+    "text": 0.4416
+   }
+  ],
+  "sel": [
+   "r2__ui_confirm_1.wav"
+  ],
+  "zh": "确认 / 开始"
+ },
+ "victory": {
+  "cat": "global",
+  "score": [
+   {
+    "cent": 2370.4,
+    "champ": 0.4054,
+    "dur": 3.003,
+    "low": 0.0,
+    "pen": 0.001,
+    "pix": -0.034,
+    "riot": 0.4054,
+    "score": 1.752,
+    "text": 0.4203
+   }
+  ],
+  "sel": [
+   "victory_3.wav"
+  ],
+  "zh": "胜利"
+ }
+}

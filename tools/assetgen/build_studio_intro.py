@@ -14,7 +14,8 @@
       rays.png                                                       点灯那一下的像素光芒
       letter_0.png … letter_7.png                                    L A M P F I S H(逐个弹出)
       zh.png                                                         「灯鱼游戏」(融合像素 12 号, 字距拉开)
-    assets/audio/sfx/studio_intro.wav                                点灯「叮」+ 字弹出时的上行琶音(合成, 方波 / 三角波)
+    (音效不再由本脚本生成: 2026-11-05 音效全部重做(对标云顶), 方波芯片音删了, 开场音改由 tools/assetgen/build_sfx_v2.py 出
+     assets/audio/sfx/v2/studio_intro__1.wav, 主冲击对齐 TIMING.ignite; synth() 留着只作历史记录, 不再写盘)
 
   硬边、零半透明(alpha 只有 0 / 255)。
 
@@ -335,8 +336,7 @@ def build():
     for i, ch in enumerate(WORD):
         save(letter_img(ch), "letter_%d.png" % i)
     save(zh_img(), "zh.png")
-    write_wav(synth(), WAV)
-    print("ok", DIR, WAV)
+    print("ok", DIR)
 
 
 if __name__ == "__main__":

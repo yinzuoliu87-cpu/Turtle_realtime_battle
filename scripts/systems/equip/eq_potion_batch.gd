@@ -153,6 +153,7 @@ func _tick_whale_brew(u: Dictionary, si: int) -> void:
 func _eq_whale_brew(u: Dictionary, si: int, stt: Dictionary) -> void:
 	if not u.get("alive", false):
 		return
+	battle._audio_sys.sfx_equip("p2eq_066")   # 装备触发声(11-05 音效 v2; 只管声音)
 	stt["brew_done"] = true
 	stt["brew_at_t"] = battle._t
 	stt["brew_size0"] = float(u.get("size_mult", 1.0))

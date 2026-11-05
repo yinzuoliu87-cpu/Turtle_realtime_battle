@@ -2831,6 +2831,7 @@ func _separation(u: Dictionary) -> Vector2:
 # ============================================================================
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
+	_audio_sys.sfx_basic_swing(u)   # 普攻出手声(挥击破风 / 发射; 11-05 照云顶 BasicAttack_OnCast; 只管声音)
 	_vfx._play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
 	var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(不算多段)
@@ -3044,30 +3045,6 @@ func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	tw.tween_property(spr, "modulate:a", 0.95, 0.1)
 	tw.chain().tween_interval(linger)                        # 冰墙留存
 	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.35)  # 按生成序消退(前面先erupt→先消退)
-	tw.chain().tween_callback(spr.queue_free)
-
-func _spawn_bamboo_spike(pos2d: Vector2, hscale: float, linger: float) -> void:   # 竹刺破土冒起(绿·仿 _spawn_ice_spike)
-	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")
-	if tex == null:
-		return
-	var spr := Sprite3D.new()
-	spr.texture = tex
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false
-	spr.transparent = true
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.modulate = Color(0.28, 0.82, 0.34, 0.0)   # 竹绿(起始透明)
-	spr.pixel_size = (1.9 * hscale) / float(maxi(1, int(tex.get_height())))
-	var world_h: float = float(tex.get_height()) * spr.pixel_size
-	var base_pos: Vector3 = _world_pos(pos2d, world_h * 0.42)
-	spr.position = base_pos - Vector3(0.0, 0.6, 0.0)
-	_world.add_child(spr)
-	var tw := _reg_tween()
-	tw.set_parallel(true)
-	tw.tween_property(spr, "position", base_pos, UIPalette.T_TAP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # 破土弹出
-	tw.tween_property(spr, "modulate:a", 0.95, 0.09)
-	tw.chain().tween_interval(linger)
-	tw.chain().tween_property(spr, "modulate:a", 0.0, UIPalette.T_TRANS)
 	tw.chain().tween_callback(spr.queue_free)
 
 func _unfollow_vfx(spr) -> void:
@@ -4520,7 +4497,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		var pct: float = (PhoenixSystem.NIRVANA_ENH_HP_PCT if u.get("_enh_rebirth", false) else PhoenixSystem.NIRVANA_HP_PCT) if u["id"] == "phoenix" else AngelSystem.REVIVE_HP_PCT   # 凤凰60/25%(用户2026-07-28 100/30→) · 天使圣光/宝箱凤凰雕像 25%
 		u["dots"] = []
 		u["dot_stacks"] = {}
-		_audio_sys._sfx_simple("rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
+		_audio_sys._sfx_simple("g_rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
 		if u["id"] != "phoenix":
 			u["hp"] = u["maxHp"] * pct                 # 天使/宝箱雕像: 保持原来的"一帧复活"
 			_vfx._float_text(u["pos"] + Vector2(0, -64), "复活", Color("#ffd93d"))

@@ -138,18 +138,16 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 	var uu = u
 	var spikes = func() -> void:
 		if not uu.get("alive", false): return
-		for i in range(14):   # 竹刺齐爆: 300码圈内铺一片从地冒起的绿竹刺(科加斯Q式·用户2026-07-11「要补刺」)
-			var ang: float = TAU * float(i) / 14.0 + randf() * 0.45
-			var rr: float = sqrt(randf()) * 285.0
-			battle._spawn_bamboo_spike(c + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * rr, randf_range(0.85, 1.3), 0.5)
+		var hit_pos: Array = []   # 被打中的人脚下各一根粗竹桩(演出用, 取挨打那一刻的位置)
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and DetMath.dist(o["pos"], c) <= SPIKE_RADIUS:
+				hit_pos.append(o["pos"])
 				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SPIKE_ATK_COEF, o) + battle._phys_after_armor(uu, float(uu["maxHp"]) * SPIKE_MAXHP_PCT, o), Color("#39d353"))   # 10-16: 生命值那段原来裸加, 不过护甲
-				battle._spawn_bamboo_spike(o["pos"], 1.5, 0.5)   # 命中点更粗一根竹刺
 				if not o.get("_eggImmune", false):
 					battle._damage._knockback(uu, o, 70.0, 2.75)                # 击飞【1.5秒】(用户#12"击飞1.5秒"·滞空=2×(6.0×2.75)/22=1.5s·原vy_mult=1.5只给0.82s)
-		battle._shake(0.06)
-	battle._skill_ring(c, Color(0.22, 0.83, 0.33, 0.4), SPIKE_RADIUS)         # 蓄力预警圈
+		BambooSpikesVfx.erupt(battle, c, SPIKE_RADIUS, hit_pos)   # 11-05 照科加斯 Q 重做: 黄白闪光 → 竹绿光罩 → 圆周一圈向外倾的竹桩 + 圈内几根 + 裂地 + 碎土崩飞
+		battle._shake(0.08)
+	BambooSpikesVfx.telegraph(battle, c, SPIKE_RADIUS, SPIKE_WINDUP)   # 预警: 环亮起后保持到爆点 + 裂纹淡透 + 尘土向心聚(科加斯 Q 预警段)
 	battle._pending_shots.append({"delay": SPIKE_WINDUP, "fn": spikes, "src": u, "cc": {}})   # 蓄力期被控 / 阵亡即取消(10-16)
 
 func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·自然恢复 ✅

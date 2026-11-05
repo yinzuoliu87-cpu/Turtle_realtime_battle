@@ -615,6 +615,7 @@ func _dive_sync_stacks(u: Dictionary, si: int) -> void:
 ## ★自动瞄准: dir/point 朝敌人最密集处, target 取最近的敌人, none 直接放(用户 2026-08-06)。
 ## ★只有 `_cast_active` 返回 true 才计入"已偷"(自决 ⑧)。
 func dive_steal_once(u: Dictionary, st: Dictionary) -> String:
+	battle._audio_sys.sfx_equip("p2eq_087")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var stolen: Array = st.get("stolen", [])
 	var pool: Array = []
 	for sid in DIVE_SKILLS:

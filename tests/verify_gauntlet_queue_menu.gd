@@ -551,8 +551,9 @@ func _part_overlay() -> void:
 	_ok("⑥ 整屏吞点击(全屏、MOUSE_FILTER_STOP)", rt != null and rt.mouse_filter == Control.MOUSE_FILTER_STOP and rt.size.x >= vs.x - 1 and rt.size.y >= vs.y - 1,
 		str(rt.size) if rt != null else "-")
 	var sfx := ov.get_node_or_null("Sfx") as AudioStreamPlayer
-	_ok("⑥ ★带音效: 播的是新做的 queue_found.wav", sfx != null and sfx.stream != null and str(sfx.stream.resource_path) == QueueFoundOverlay.SFX
-		and QueueFoundOverlay.SFX.get_file() == "queue_found.wav")
+	## 11-05 音效全部重做: 方波合成的 queue_found.wav 删了, 匹配成功改用事件表里的 match_found(对标云顶)
+	_ok("⑥ ★带音效: 播的是 v2 的匹配成功 match_found", sfx != null and sfx.stream != null and str(sfx.stream.resource_path) == QueueFoundOverlay.SFX
+		and QueueFoundOverlay.SFX.get_file() == "match_found__1.wav")
 	await _sleep(0.6)
 	await _shot("queue_found_overlay")
 	var w_early := 1.0 - float(Time.get_ticks_msec() - t0) / 1000.0

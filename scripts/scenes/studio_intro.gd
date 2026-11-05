@@ -14,7 +14,8 @@ extends CanvasLayer
 signal finished
 
 const DIR := "res://assets/sprites/ui/studio_intro/"
-const SFX := "res://assets/audio/sfx/studio_intro.wav"
+## 11-05 音效全部重做(对标云顶): 原方波芯片音删了, 改用 v2 的 studio_intro(主冲击对齐 TIMING.ignite = 0.22 秒, build_sfx_v2.ALIGN_PEAK)
+const SFX := "res://assets/audio/sfx/v2/studio_intro__1.wav"
 const BG := Color8(10, 14, 24)
 const LAYER := 9000
 const NODE := "StudioIntro"

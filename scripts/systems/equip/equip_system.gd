@@ -278,6 +278,7 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 # 032: 登场召唤亡灵骷髅 (双抗为 0, 靠 _dmg_cap_one 把任何一击钳成 1 = 近乎免疫; 存活 13/17/23s 自灭, 死亡 200 码内 8/13/20% 最大生命真伤)
 func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重做): 登场召唤不可移动的炮台
 	if not u.get("alive", false): return
+	battle._audio_sys.sfx_equip("p2eq_058")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var tr = battle._spawn._spawn_summon(u, "turret", [650.0, 1400.0, 2500.0][si] + TURRET_HP_PER_ATK * float(u.get("atk", 0.0)), [70.0, 120.0, 180.0][si] + float(u.get("atk", 0.0)),
 		{"label": "炮台", "spr_id": "turret", "col_size": 44.0, "hp_w": 32.0,
 		 "atk_interval": 1.0 / TURRET_ASPD, "atk_range": TURRET_RANGE, "move_spd": 0.0, "melee": false})
@@ -316,6 +317,7 @@ func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗
 
 func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
+	battle._audio_sys.sfx_equip("p2eq_032")   # 装备触发声(11-05 音效 v2; 只管声音)
 	# 亡灵骷髅移速=近战斗士档110(用户2026-07-28移速定位化: 原 130 比全表任何龟都快)
 	# ★2026-08-01 用户重定义: 血 16/31/55 · 攻 3/5/8 · 双抗 0 · 受任何伤害(含真伤)恒为 1 · 存活 13/17/23 秒。
 	#   ★血【不乘 HP_MULT】: 用户给的是"拥有 16/31/55 最大生命值", 那是游戏里能看见的最终值。
@@ -759,6 +761,7 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> void:   # 退潮浊液041: 涨潮期开始
 	if not u.get("alive", false) or u.get("_ebb_on", false): return
 	u["_ebb_on"] = true
+	battle._audio_sys.sfx_equip("p2eq_041")   # 装备触发声(11-05 音效 v2; 只管声音)
 	## ★涨潮**持续期**的演出靠这个字段(battle_render._tick_ebb_coat 逐帧扫):
 	##   用户 2026-09-14「最好做一个 buff 持续期间的特效, 整个身体怎么样」。
 	##   跟 `_pending_shots` 里那条还原走**同一条游戏钟**, 不另起计时。
@@ -1453,6 +1456,7 @@ const THORN_BLEED := [30, 50, 90]             # 强化的那一击命中时施�
 ##   强制不重复会在小池子里失败; 而且"随机 3 件"没说不许重复)。
 ## ★用 battle._battle_rng 抽 —— 裸 randi() 会破坏确定性(rng_discipline 门禁会红)。
 func _conch_grant_equips(worm: Dictionary, si: int) -> void:
+	battle._audio_sys.sfx_equip("p2eq_033")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var pool: Array = []
 	for it in DataRegistry.phase2_equipment:
 		var c: int = int(it.get("cost", 0))
@@ -2570,6 +2574,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 		match iid:
 			"p2eq_044":   # 深海项链: 首次<50%触发, 【16秒内】回复 40/85/130% maxHp(2026-08-01 定 6秒/20-40-80; 2026-09-14 用户两次上调)
 				_eq_start_hot(u, u["maxHp"] * [0.40, 0.85, 1.30][si], NECKLACE_HOT_SEC); fired = true   # 用户2026-09-14: 20/40/80 → 25/50/85 → 40/85/130
+				battle._audio_sys.sfx_equip("p2eq_044")   # 装备触发声(11-05 音效 v2; 只管声音)(之后 16 秒的持续回复不再出声)
 				battle._heal_body_glow(u)
 			"p2eq_045":   # 珍珠耳环: 首次<50%触发, 【8秒内】回复 30/60/100% maxHp(用户2026-08-01, 原为瞬回15/29/65%) + 抛物线火球
 				_eq_start_hot(u, u["maxHp"] * [0.30, 0.60, 1.00][si], EARRING_HOT_SEC)

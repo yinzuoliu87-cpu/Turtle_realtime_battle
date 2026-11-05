@@ -18,13 +18,14 @@ extends CanvasLayer
 ##   (process_mode = ALWAYS 只保证它会跑, 不保证 delta 是真时间)。
 ## ★挂在 root 上、layer 高于各屏 HUD(工作室开场 StudioIntro 9000 之下 —— 开场只在冷启动, 那时不可能有排队)。
 ##   吞掉所有点击: 1.5 秒里点到下面那一屏的按钮会把人带去别处。
-## 音效: assets/audio/sfx/queue_found.wav(tools/assetgen/build_queue_found_sfx.py 合成, 确定性)。
+## 音效: 事件表里的 match_found(2026-11-05 音效全部重做, 原方波合成的 queue_found.wav 与其生成脚本已删)。
 
 const NODE := "QueueFoundOverlay"
 const LAYER := 8800
 const HOLD_SEC := 1.5            ## 盖多久再调 then(秒, 墙钟)
 const FADE_SEC := 0.25           ## 调完 then 之后淡出(新场景在这段里接上, 不闪旧屏)
-const SFX := "res://assets/audio/sfx/queue_found.wav"
+## 11-05 音效全部重做(对标云顶): 原方波合成的 queue_found.wav 删了, 改用事件表里的 match_found(tools/assetgen/build_sfx_v2.py)
+const SFX := "res://assets/audio/sfx/v2/match_found__1.wav"
 const TXT_TITLE := "匹配成功"
 const TXT_SUB := "即将进入对局"
 

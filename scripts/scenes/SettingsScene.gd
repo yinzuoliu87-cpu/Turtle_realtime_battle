@@ -378,7 +378,7 @@ func _settings_panel(x: float, w: float) -> void:
 	_row_label(cx, cy, "音效")
 	_slider(ctl_x, cy, _SLD_W, GameState.sfx_volume,
 		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
-		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
+		func(): Audio.play_sfx("g_hit", 1.0); GameState.save())
 
 	## 「画面」组只剩「显示: 窗口 / 全屏」一行, 而它只在桌面端建 —— 手机上没有「窗口」这回事,
 	##   切了也没反应(本仓原则: 点了没反应比没有这个键糟)。⇒ 手机上整组(连小标题)不建, 免得挂一个空标题。

@@ -201,6 +201,7 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		stt["emp_t"] = float(stt["emp_t"]) - EMP_IV
 		if int(stt.get("emp", 0)) <= 0:
 			stt["emp"] = EMP_SHOTS
+			battle._audio_sys.sfx_equip("p2eq_093")   # 装备触发声(11-05 音效 v2; 只管声音)
 			_set_emp_haste(u, true)
 			if battle._incense_vfx != null:
 				battle._incense_vfx.empower_burst(u)

@@ -184,6 +184,7 @@ func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触�
 		_ts_charge_vfx(c)
 
 func _ts_fire() -> void:
+	battle._audio_sys.sfx_equip("p2eq_059")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var casters: Array = _ts_charge_casters.filter(func(x): return x is Dictionary and x.get("alive", false))
 	_ts_charge_casters = []
 	_ts_free_auras()   # 金火气只活在蓄力段: 释放那一刻交给胸口光点爆开(没人能放也要收掉)

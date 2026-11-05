@@ -27,7 +27,8 @@ import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PROMPTS = os.path.join(ROOT, "tools", "assetgen", "sfx_prompts.json")
+PROMPTS = os.path.join(ROOT, "tools", "assetgen", "sfx_prompts_v2.json")   # 11-05 起只有 v2 表(旧表 sfx_prompts.json 统一前缀 cartoon pixel-art, 已删)
+## 11-05 v2(全部重做): --prompts tools/assetgen/sfx_prompts_v2.json; 每条可带自己的候选数 n
 SRC = os.environ.get("SFX_SRC", r"D:/turtle_audio_src")
 KEY_FILE = os.path.join(os.path.expanduser("~"), ".config", "turtle", "secrets", "elevenlabs_key.txt")
 API = "https://api.elevenlabs.io/v1"
@@ -71,13 +72,14 @@ def main() -> int:
 	ap.add_argument("--influence", type=float, default=0.45, help="prompt_influence(接口默认 0.3; 越高越照字面)")
 	ap.add_argument("--workers", type=int, default=3)
 	ap.add_argument("--credits", action="store_true")
+	ap.add_argument("--prompts", default=PROMPTS, help="描述表路径(v2 = tools/assetgen/sfx_prompts_v2.json)")
 	a = ap.parse_args()
 	c0 = credits()
 	print("额度 %s: 已用 %s / %s" % (c0["tier"], c0["used"], c0["limit"]))
 	if a.credits or not a.batch:
 		return 0
-	tab = json.load(open(PROMPTS, encoding="utf-8"))
-	style = str(tab.get("style", ""))
+	tab = json.load(open(a.prompts, encoding="utf-8"))
+	style = str(tab.get("styles", {}).get(a.batch, tab.get("style", "")))   # 每批可有自己的风格前缀(v2r2)
 	items = tab["batches"][a.batch]
 	if a.only:
 		keep = set(a.only.split(","))
@@ -88,7 +90,7 @@ def main() -> int:
 	man = json.load(open(man_path, encoding="utf-8")) if os.path.exists(man_path) else {}
 	jobs = []
 	for it in items:
-		for i in range(1, a.n + 1):
+		for i in range(1, int(it.get("n", a.n)) + 1):
 			fn = "%s_%d.mp3" % (it["key"], i)
 			if not os.path.exists(os.path.join(out_dir, fn)):
 				jobs.append((it, fn))
@@ -97,6 +99,8 @@ def main() -> int:
 	def run(job):
 		it, fn = job
 		text = (style + ", " + it["text"]) if style else it["text"]
+		if len(text) > 450:   # 接口上限 450 字: 超了换短版风格前缀(v2r2 风格长)
+			text = ("High-fidelity League of Legends style game sound effect, crisp, balanced, not muddy, no music, no speech, " + it["text"])[:450]
 		data, rid = generate(text, float(it["dur"]), a.influence)
 		open(os.path.join(out_dir, fn), "wb").write(data)
 		return fn, {"key": it["key"], "zh": it.get("zh", ""), "ref": it.get("ref", ""), "text": text,

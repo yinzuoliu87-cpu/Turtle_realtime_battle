@@ -463,6 +463,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 			if side == "left":   # 深海币=玩家侧meta货币: 画面反馈只给左方(右方只记数, 供周日裁判结果单 coins_b)
 				battle._vfx._float_text(u["pos"], "+%d 深海币" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
 				battle._vfx.coin_pop(u, coins)   # 头顶旋转金币(用户2026-09-13: 「做一个头顶获得金币旋转的特效」)
+				battle._audio_sys.sfx_equip("p2eq_035")   # 装备触发声(11-05 音效 v2; 只管声音)
 				stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
 		u["eq_state"]["p2eq_035"] = stt
 
@@ -719,6 +720,7 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 	stt["incub"] = float(stt.get("incub", 0.0)) + amt
 	while float(stt["incub"]) >= EGG_FULL and int(stt.get("egg_levels", 0)) < cap:
 		stt["incub"] = float(stt["incub"]) - EGG_FULL
+		battle._audio_sys.sfx_equip("p2eq_036")   # 装备触发声(11-05 音效 v2; 只管声音)
 		if not stt.has("ref_atk"):   # 首次升级锁基准 → 线性+5%/级(同统领 1+0.05×级, 非复利)
 			stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
 			stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))

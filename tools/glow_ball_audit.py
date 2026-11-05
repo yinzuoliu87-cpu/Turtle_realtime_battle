@@ -60,6 +60,9 @@ LEDGER = {
     "scripts/scenes/battle/synergy_vfx.gd": 1,
     "scripts/systems/skills/angel_system.gd": 1,
     "scripts/systems/trainer/trainer_system.gd": 1,
+    ## 竹刺阵爆点(2026-11-05): 科加斯 Q 逐帧第 19~21 帧 = 圆心黄白闪光 → 两帧内铺满整圈的光罩
+    ##   (docs/studies/20261105-竹刺阵参考-科加斯Q逐帧.md); 闪光 0.16 秒、光罩 0.35 秒收, 不是常驻的无含义白球
+    "scripts/scenes/battle/bamboo_spikes_vfx.gd": 2,
 }
 
 

@@ -116,7 +116,7 @@ def calibrate() -> int:
 def score_batch(batch: str) -> int:
 	cdir = os.path.join(SRC, "eleven", batch)
 	man = json.load(open(os.path.join(cdir, "manifest.json"), encoding="utf-8"))
-	tab = {it["key"]: it for it in json.load(open(os.path.join(ROOT, "tools", "assetgen", "sfx_prompts.json"), encoding="utf-8"))["batches"][batch]}
+	tab = {it["key"]: it for it in json.load(open(os.path.join(ROOT, "tools", "assetgen", "sfx_prompts_v2.json"), encoding="utf-8"))["batches"][batch]}
 	fns = sorted(f for f in man if os.path.exists(os.path.join(cdir, f)))
 	A = embed_audio([os.path.join(cdir, f) for f in fns])
 	B = embed_text(list(BAD.values()))

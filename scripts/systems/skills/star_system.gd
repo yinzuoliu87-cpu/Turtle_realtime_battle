@@ -328,6 +328,27 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	master.tween_interval(0.21)
 	master.tween_callback(do_burst)
 
+## 星波三道环逐帧跟着波前半径 r 走: 波前(1.0) / 第一道余波(0.96, 淡出到一半) / 第二道余波(0.91, 更淡)
+func _wave_rings(rc, rh, rh2, r: float, q: float, tex: Texture2D) -> void:
+	for spec in [[rc, 1.0, -1.0, 0.0], [rh, 0.96, 0.7, 0.5], [rh2, 0.91, 0.4, 0.6]]:
+		var s = spec[0]
+		if not is_instance_valid(s): continue
+		s.pixel_size = (maxf(20.0, r * 2.0 * float(spec[1])) * battle.WS) / float(maxi(1, tex.get_height()))
+		if float(spec[2]) > 0.0: s.modulate.a = float(spec[2]) * (1.0 - q * float(spec[3]))
+
+## 贴地细环(线性过滤的高分辨率细线圆环; 大范围像素环放大会变成粗带)
+func _star_flat(tex: Texture2D, c: Vector2, col: Color, h: float) -> Sprite3D:
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y
+	s.shaded = false; s.transparent = true
+	s.modulate = col
+	s.pixel_size = (20.0 * battle.WS) / float(maxi(1, tex.get_height()))
+	s.position = battle._world_pos(c, h)
+	battle._world.add_child(s)
+	return s
+
 func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板数值·2026-07-16演出重设计"星潮扩散/天崩"): 普通=扩散环1.16s波扫到才结算1.0A魔法; 星能满追加巨彗星敌阵中心【真伤=100%消耗的星能】(落地结算·400码)+清空星能
 	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * ENERGY_CAP_PCT
 	var uu2 := u
@@ -351,11 +372,14 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		gt.tween_property(gs, "modulate:a", 0.0, 0.12).set_delay(0.28)
 		gt.chain().tween_callback(gs.queue_free)
 	# ── 波环扩散(0.4s起·1.16s推到520码): 双层贴地环+环带12星随波转·波前扫到才结算·尽头碎星屑
-	var rtex := VfxTex.pixel_ring_for(1096.0)   # 11-05: 波前推到 520 码(直径 1040 + 晕带 56), 48 像素那张一格 ≈ 23 码
+	## ★11-05 波前换细环 + 两道余波(审核片: 原来高分辨率像素环推到 1040 码直径 = 一圈又粗又白的大甜甜圈; 参考龙王 R 天瀑落点冲击波:
+	##   一道亮细边在最前, 后面的紫色能量越往里越淡)。结算(波前半径 r = 520·q、扫到才算)一行没动。
+	var rtex := VfxTex._make_thin_ring_tex()
 	var wave := func() -> void:
 		if not uu2.get("alive", false): return
-		var rc = battle._px_ground_sprite(rtex, origin, 20.0, Color(0.95, 0.9, 1.0, 0.95), 0.06)    # 锐利白紫波前
-		var rh = battle._px_ground_sprite(rtex, origin, 20.0, Color(0.65, 0.45, 1.0, 0.5), 0.055)   # 外侧紫晕带(略大=带宽感)
+		var rc = _star_flat(rtex, origin, Color(1.0, 0.96, 1.0, 1.0), 0.06)      # 最前: 亮白细波前
+		var rh = _star_flat(rtex, origin, Color(0.72, 0.5, 1.0, 0.7), 0.055)     # 第一道余波(紫, 落后 4%)
+		var rh2 = _star_flat(rtex, origin, Color(0.5, 0.3, 0.95, 0.4), 0.05)     # 第二道余波(深紫, 落后 9%)
 		var wstars: Array = []
 		for wi in range(12):                                      # 环带嵌星(随波旋转)
 			var ws := Sprite3D.new()
@@ -371,10 +395,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		var wt = battle._reg_tween()
 		wt.tween_method(func(q: float) -> void:
 			var r: float = 520.0 * q
-			if is_instance_valid(rc): rc.pixel_size = (maxf(20.0, r * 2.0) * battle.WS) / float(maxi(1, rtex.get_height()))
-			if is_instance_valid(rh):
-				rh.pixel_size = (maxf(20.0, r * 2.0 + 56.0) * battle.WS) / float(maxi(1, rtex.get_height()))
-				rh.modulate.a = 0.5 * (1.0 - q * 0.5)
+			_wave_rings(rc, rh, rh2, r, q, rtex)
 			for wi2 in range(wstars.size()):
 				var ws2 = wstars[wi2]
 				if not is_instance_valid(ws2): continue
@@ -421,10 +442,11 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				var rcf = battle._reg_tween()
 				rcf.tween_property(rc, "modulate:a", 0.0, 0.55)
 				rcf.tween_callback(rc.queue_free)
-			if is_instance_valid(rh):
-				var rhf = battle._reg_tween()
-				rhf.tween_property(rh, "modulate:a", 0.0, 0.55)
-				rhf.tween_callback(rh.queue_free)
+			for rr in [rh, rh2]:
+				if is_instance_valid(rr):
+					var rhf = battle._reg_tween()
+					rhf.tween_property(rr, "modulate:a", 0.0, 0.55)
+					rhf.tween_callback(rr.queue_free)
 			for wi3 in range(wstars.size()):
 				var ws3 = wstars[wi3]
 				if not is_instance_valid(ws3): continue

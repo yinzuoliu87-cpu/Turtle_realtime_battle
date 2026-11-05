@@ -850,6 +850,7 @@ func lowest_ally(t: Dictionary):
 #    这两条是**结构性成立**的 —— 与 092 剧毒飞行物同一条理由(eq_venom_drone.gd 判断②)。
 
 func _spawn_heli(owner: Dictionary, si: int, crash_phys: float) -> void:
+	battle._audio_sys.sfx_equip("p2eq_080")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var back: float = -160.0 if str(owner.get("side", "left")) == "left" else 160.0
 	var h: Dictionary = {
 		"owner": owner, "si": si,
