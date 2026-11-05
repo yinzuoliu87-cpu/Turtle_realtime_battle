@@ -21,7 +21,17 @@ import wave
 import zlib
 
 import numpy as np
-from scipy.signal import butter, sosfilt
+## scipy 只在加工音频时用(butter / sosfilt); 审计 check() 只读成品, CI 环境没有 scipy ⇒ 不在模块顶上导入(11-05 CI 红过一次)
+
+
+def butter(*a, **k):
+	from scipy.signal import butter as _b
+	return _b(*a, **k)
+
+
+def sosfilt(*a, **k):
+	from scipy.signal import sosfilt as _s
+	return _s(*a, **k)
 
 sys.stdout.reconfigure(encoding="utf-8")
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
