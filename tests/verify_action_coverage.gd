@@ -23,10 +23,8 @@ const BESPOKE := {
 	"two_head:twoHeadFusion": ["TwoHeadArt fusion_cast", [TH_DIR + "fusion_cast.png"]],
 	"ghost:ghostPhase": ["虚化 = 持续状态循环(CastSheets.STATE.ghost)", ["res://assets/sprites/pets/animations/ghost/state_ghostPhase.png"]],
 }
-## 已知缺口: 键 = 龟:格子, 值 = 原因
-const KNOWN_GAPS := {
-	"two_head:hurt": "变脸龟动作全由 TwoHeadArt.tick 每帧自管, 没有受击帧条(挨打只有通用闪白); 用户 11-05「变脸…不用动」, 补不补待用户定",
-}
+## 已知缺口: 键 = 龟:格子, 值 = 原因(现在没有)
+const KNOWN_GAPS := {}
 ## 设计上不要的格子(不是缺口): 键 = 龟:格子, 值 = 原因(出处)
 const NOT_NEEDED := {
 	"shell:run": "龟壳没有腿, 移动 = 待机原样滑行(tools/assetgen/build_spine_actions.py 走路表注释「龟壳没有腿不做」)",
@@ -66,8 +64,8 @@ func _ready() -> void:
 	var pets: Array = raw.get("pets", []) if raw is Dictionary else raw
 	var rb = load("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	var cs: Dictionary = rb.get_script_constant_map()
-	var main_tbl := {"attack": cs.get("ACTION_ATTACK", {}), "hurt": cs.get("ACTION_HURT", {}), "death": cs.get("ACTION_DEATH", {}), "run": cs.get("ACTION_RUN", {})}
-	var ta_tbl := {"attack": TurtleActions.ATTACK, "hurt": TurtleActions.HURT, "death": TurtleActions.DEATH, "run": TurtleActions.RUN}
+	var main_tbl := {"attack": cs.get("ACTION_ATTACK", {}), "death": cs.get("ACTION_DEATH", {}), "run": cs.get("ACTION_RUN", {})}
+	var ta_tbl := {"attack": TurtleActions.ATTACK, "death": TurtleActions.DEATH, "run": TurtleActions.RUN}
 	_ok("★分母: pets.json 28 只", pets.size() == 28, "%d 只" % pets.size())
 	var cells := 0
 	var gaps_seen: Array = []
@@ -81,7 +79,7 @@ func _ready() -> void:
 		else:
 			_ok("%s 待机帧条在" % id, _tex_ok(str(p.get("img", ""))) and not (p.get("sprite", {}) as Dictionary).is_empty())
 		## 走路 / 普攻 / 受击 / 阵亡
-		for kind in ["run", "attack", "hurt", "death"]:
+		for kind in ["run", "attack", "death"]:   # 不含受击: 全游戏不要受击动作(用户 07-11 / 11-05, 参考云顶)
 			cells += 1
 			var key := "%s:%s" % [id, kind]
 			var path := _row(main_tbl[kind], id)
@@ -130,7 +128,16 @@ func _ready() -> void:
 						path = str((r as Array)[1])
 		cells += 1
 		_ok("%s 有帧条且加载得到" % spec, path != "" and _tex_ok(path), path)
-	_ok("★分母: 查了 ≥ 28 × 8 格", cells >= 28 * 8, "%d 格" % cells)
+	_ok("★分母: 查了 ≥ 28 × 7 格", cells >= 28 * 7, "%d 格" % cells)
+	## 受击不许回来: 主场景受击表为空、生成表没有 HURT、盘上没有任何单位的 hurt.png
+	var hurt_files: Array = []
+	var dd := DirAccess.open("res://assets/sprites/pets/animations")
+	if dd != null:
+		for sub in dd.get_directories():
+			if FileAccess.file_exists("res://assets/sprites/pets/animations/%s/hurt.png" % sub):
+				hurt_files.append(sub)
+	_ok("★没有受击动作: ACTION_HURT 空、TurtleActions 没有 HURT 表、没有 hurt.png", (cs.get("ACTION_HURT", {}) as Dictionary).is_empty()
+		and not (load("res://scripts/gamedata/turtle_actions.gd") as Script).get_script_constant_map().has("HURT") and hurt_files.is_empty() and dd != null, str(hurt_files))
 	_ok("★已知缺口数 == 登记数(补上一个要把 KNOWN_GAPS 删一行; 新缺口不许混进来)", gaps_seen.size() == KNOWN_GAPS.size(), "%d / %d %s" % [gaps_seen.size(), KNOWN_GAPS.size(), str(gaps_seen)])
 	_ok("★设计上不要的格子数 == 登记数", nn_seen.size() == NOT_NEEDED.size(), "%d / %d %s" % [nn_seen.size(), NOT_NEEDED.size(), str(nn_seen)])
 	print("%d passed, %d failed" % [_n - _fail, _fail])

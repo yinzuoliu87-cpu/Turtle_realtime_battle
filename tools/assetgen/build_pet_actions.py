@@ -3,7 +3,7 @@
 
 方案书 docs/plans/20261105b-龟美术统一与动作补全.md §4.4 / §4.1b: 这 14 只现有立绘不是像素画(500×500 帧、上万色) ⇒
   ① 定稿: PixelLab image_to_pixelart(忠实模式)把现有形象转成像素画, 尺度对齐外包 11 只(内容约 170 像素), 抠底 → pet_src/<龟>/keyframe.png
-  ② 各段: animate_image 首帧 = 定稿 → pet_src/<龟>/<段>/ai_N.png(idle / run / attack / hurt / death / cast_<技能类型>)
+  ② 各段: animate_image 首帧 = 定稿 → pet_src/<龟>/<段>/ai_N.png(idle / run / attack / death / cast_<技能类型>; 不出受击 —— 全游戏不要受击动作)
   ③ 本脚本: 锁回定稿调色板, 待机帧条(格子 = 定稿尺寸)+ 动作方帧(与外包 11 只同一布局: S_FRAME 方帧、格子底边 = FEET),
      命中帧 = 第一次伸到最大伸出量 85% 的帧(刚打到), 释放帧 = 与第 0 帧差最多的帧; 头像 = 定稿左侧头部 ×3。
      写 pet_src/pet_manifest.json, build_spine_actions.py 生成 TurtleActions 时并进去(查表 / 门禁对新龟一律生效)。
@@ -91,7 +91,6 @@ def procedural_dice(k0: np.ndarray) -> dict:
 		((0, 1, 1), (-6, 0.97, 1.03), (-10, 1, 1), (-6, 1, 1), (0, 1.08, 0.9), (0, 1.02, 0.97), (0, 1, 1))]
 	att = [(0, 0, br), (-5, 0, br), (-10, 0, br), (-14, 0, br), (18, -6, bl), (14, -5, bl), (8, -3, bl), (3, -1, bl), (0, 0, bl)]
 	seg["attack"] = [_xf(k0, angle=a, dx=dx_, pivot=p) for a, dx_, p in att]   # 第 4 帧砸下 = 命中帧
-	seg["hurt"] = [_xf(k0, angle=a, dx=dx_, pivot=br) for a, dx_ in ((0, 0), (-8, 8), (-5, 6), (-2, 3), (0, 0))]
 	## 阵亡: 一震(往后歪)→ 往前歪倒靠在一条棱上 → 变暗定住。翻满 90° 会整颗落到轴心左边一个骰子宽, 出 272 方帧(11-05 预览)
 	dth = [(0, br), (-8, br), (10, bl), (22, bl), (28, bl), (24, bl), (26, bl)]
 	seg["death"] = [_dim(_xf(k0, angle=a, pivot=p), 1.0 - 0.07 * i) for i, (a, p) in enumerate(dth)]
@@ -225,7 +224,7 @@ def build(tid: str) -> dict:
 		_write_idle(tid, idle, ch, cw, chp)
 	for nm in ([] if tid in PROCEDURAL else sorted(os.listdir(src))):
 		d = os.path.join(src, nm)
-		if not os.path.isdir(d) or not (nm in ("attack", "hurt", "death", "run") or nm.startswith("cast_")):
+		if not os.path.isdir(d) or not (nm in ("attack", "death", "run") or nm.startswith("cast_")):
 			continue   # 只认动作段目录(idle 另算; ball_src 等是素材源, 不是段)
 		if nm in SEG_PROCEDURAL.get(tid, {}):
 			frames = SEG_PROCEDURAL[tid][nm](k0)
@@ -255,7 +254,7 @@ def build(tid: str) -> dict:
 				frames.append(frames[-1].copy())
 		segs[nm] = frames
 		Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(od, "%s.png" % nm), optimize=False)
-	for nm in ("attack", "hurt", "death", "run"):
+	for nm in ("attack", "death", "run"):   # 不出受击: 全游戏不要受击动作(用户 07-11 / 11-05)
 		if nm in segs:
 			ent[nm] = len(segs[nm])
 	if "attack" in segs:
@@ -292,7 +291,7 @@ def build(tid: str) -> dict:
 	ent["_idle"] = {"img": "pets/pixel/%s_idle.png" % tid, "frames": len(idle), "frameW": cw, "frameH": chp,
 		"duration": int(round(len(idle) * 1000.0 / IDLE_FPS))}
 	print("%-8s 待机 %d 帧(%d×%d, 格子高 %d ⇒ 本体 %.2f 米)· %s · 命中帧 %s · 技能 %s" % (tid, len(idle), cw, ch, chp, (kys.max() - kys.min() + 1) * TARGET_BODY_H / chp,
-		" ".join("%s %d" % (k, ent[k]) for k in ("attack", "hurt", "death", "run") if k in ent), ent.get("hit"), sorted(ent["casts"])))
+		" ".join("%s %d" % (k, ent[k]) for k in ("attack", "death", "run") if k in ent), ent.get("hit"), sorted(ent["casts"])))
 	return ent
 
 

@@ -75,7 +75,7 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 	var table: Dictionary
 	match kind:
 		"attack": table = battle.ACTION_ATTACK
-		"hurt":   table = battle.ACTION_HURT
+		"hurt":   return   # 全游戏不要受击动作(用户 07-11「按理压根不该用受伤动画」/ 11-05「不应该有受激(击)动画」, 参考云顶); 挨打只闪白 + 压扁(_flash)
 		"death":  table = battle.ACTION_DEATH
 		_:        return
 	## 外包 11 只龟(2026-11-05 在画师 Spine 原骨骼上做的动作帧)的表在 gamedata, 由 build_spine_actions.py 生成; 主表没有才查它

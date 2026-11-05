@@ -33,34 +33,6 @@ const ATTACK := {
 	"space": ["pets/animations/space/attack.png", 15.0],   # 8 帧
 	"stone": ["pets/animations/stone/attack.png", 15.0],   # 10 帧
 }
-const HURT := {
-	"angel": ["pets/animations/angel/hurt.png", 15.0],   # 6 帧
-	"bamboo": ["pets/animations/bamboo/hurt.png", 15.0],   # 6 帧
-	"basic": ["pets/animations/basic/hurt.png", 15.0],   # 6 帧
-	"bubble": ["pets/animations/bubble/hurt.png", 15.0],   # 6 帧
-	"candy": ["pets/animations/candy/hurt.png", 15.0],   # 5 帧
-	"chest": ["pets/animations/chest/hurt.png", 15.0],   # 5 帧
-	"crystal": ["pets/animations/crystal/hurt.png", 15.0],   # 5 帧
-	"cyber": ["pets/animations/cyber/hurt.png", 15.0],   # 5 帧
-	"diamond": ["pets/animations/diamond/hurt.png", 15.0],   # 5 帧
-	"dice": ["pets/animations/dice/hurt.png", 15.0],   # 5 帧
-	"fortune": ["pets/animations/fortune/hurt.png", 15.0],   # 6 帧
-	"gambler": ["pets/animations/gambler/hurt.png", 15.0],   # 5 帧
-	"headless": ["pets/animations/headless/hurt.png", 15.0],   # 5 帧
-	"hiding": ["pets/animations/hiding/hurt.png", 15.0],   # 6 帧
-	"hunter": ["pets/animations/hunter/hurt.png", 15.0],   # 5 帧
-	"ice": ["pets/animations/ice/hurt.png", 15.0],   # 6 帧
-	"lava": ["pets/animations/lava/hurt.png", 15.0],   # 6 帧
-	"lava_volcano": ["pets/animations/lava_volcano/hurt.png", 15.0],   # 5 帧
-	"lightning": ["pets/animations/lightning/hurt.png", 15.0],   # 6 帧
-	"line": ["pets/animations/line/hurt.png", 15.0],   # 5 帧
-	"phoenix": ["pets/animations/phoenix/hurt.png", 15.0],   # 6 帧
-	"pirate": ["pets/animations/pirate/hurt.png", 15.0],   # 5 帧
-	"rainbow": ["pets/animations/rainbow/hurt.png", 15.0],   # 6 帧
-	"shell": ["pets/animations/shell/hurt.png", 15.0],   # 6 帧
-	"space": ["pets/animations/space/hurt.png", 15.0],   # 5 帧
-	"stone": ["pets/animations/stone/hurt.png", 15.0],   # 6 帧
-}
 const DEATH := {
 	"angel": ["pets/animations/angel/death.png", 15.0],   # 15 帧
 	"bamboo": ["pets/animations/bamboo/death.png", 15.0],   # 15 帧
@@ -326,6 +298,5 @@ const NORM := {
 static func by_kind(kind: String) -> Dictionary:
 	match kind:
 		"attack": return ATTACK
-		"hurt": return HURT
 		"death": return DEATH
 	return {}

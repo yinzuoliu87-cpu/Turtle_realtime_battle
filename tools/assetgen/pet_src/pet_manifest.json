@@ -24,7 +24,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 6,
   "run": 7
  },
  "candy": {
@@ -52,7 +51,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 9
  },
  "chest": {
@@ -80,7 +78,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7
  },
  "crystal": {
@@ -108,7 +105,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7
  },
  "cyber": {
@@ -136,7 +132,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7
  },
  "diamond": {
@@ -164,7 +159,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7,
   "states": [
    [
@@ -199,7 +193,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7
  },
  "gambler": {
@@ -227,7 +220,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7
  },
  "headless": {
@@ -255,7 +247,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7
  },
  "hiding": {
@@ -283,7 +274,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 6,
   "run": 7,
   "states": [
    [
@@ -318,7 +308,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 4,
-  "hurt": 5,
   "run": 7
  },
  "line": {
@@ -346,7 +335,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 3,
-  "hurt": 5,
   "run": 7
  },
  "pirate": {
@@ -374,7 +362,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 5,
-  "hurt": 5,
   "run": 7
  },
  "space": {
@@ -402,7 +389,6 @@
   "fps": 15,
   "frame": 272,
   "hit": 2,
-  "hurt": 5,
   "run": 7
  }
 }

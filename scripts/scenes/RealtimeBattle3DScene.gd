@@ -459,10 +459,8 @@ const ActionElite := preload("res://scripts/gamedata/action_elite.gd")
 ## ★整表已搬到 gamedata(CLAUDE.md §5「纯数据/常量表」)。同名 const 指向同一个字典,
 ##   所有 `battle.ACTION_ELITE.xxx` 的调用方一字不用改。
 const ACTION_ELITE := ActionElite.TABLE
-const ACTION_HURT := {
-	"ghost":  ["pets/animations/ghost/hurt.png", 16.0],
-	"ninja":  ["pets/animations/ninja/hurt.png", 16.0],
-}
+## 全游戏不要受击动作(用户 07-11「按理压根不该用受伤动画」/ 11-05 再次拍板, 参考云顶): 表留空(门禁按表名对账), _play_action 见 hurt 直接返回
+const ACTION_HURT := {}
 const ACTION_DEATH := {
 	"ghost":  ["pets/animations/ghost/death.png", 12.0],
 	"ninja":  ["pets/animations/ninja/death.png", 11.0],

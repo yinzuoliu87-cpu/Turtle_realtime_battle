@@ -10,7 +10,8 @@ extends Node
 ##   ③ 真场景里生成这 11 只, 播普攻 / 受击 / 阵亡: 精灵 pixel_size 与待机相同、脚底线的本地高度与待机相同(不缩、不跳)
 ##   ④ 主场景 ACTION_* 表里没有这 11 只(否则旧表会盖掉新表 —— 小龟原来挂着旧形象的三张图)
 const TA := preload("res://scripts/gamedata/turtle_actions.gd")
-const KINDS := ["attack", "hurt", "death"]
+## 不含受击: 全游戏不要受击动作(用户 07-11 / 11-05, 参考云顶), 下面另有「调受击什么都不发生」的真入口断言
+const KINDS := ["attack", "death"]
 
 var _n := 0
 var _fail := 0
@@ -158,6 +159,11 @@ func _ready() -> void:
 				"pixel_size %.6f/%.6f · 脚底 %.5f/%.5f m" % [spr.pixel_size, px0, feet1, feet0])
 			## 回待机再播下一个(动作之间互不打断的闸不在这条门禁的范围)
 			scn._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+		## 受击: 走真入口 _play_action(hurt) ⇒ 什么都不该发生(不换帧条、不进 hurt 动作)
+		var tex_b = (u.get("anim_sd", {}) as Dictionary).get("tex", null)
+		scn._vfx._play_action(u, "hurt")
+		_ok("★%s 调 _play_action(hurt) 什么都不发生(全游戏不要受击动作)" % id,
+			str(u.get("anim_action", "")) != "hurt" and (u.get("anim_sd", {}) as Dictionary).get("tex", null) == tex_b)
 		for st in (TA.CAST.get(id, {}) as Dictionary):
 			AttackRhythm.cast_begin(scn, u, str(st), 0.34)
 			if str(u.get("anim_action", "")) != "cast":
@@ -189,7 +195,7 @@ func _ready() -> void:
 			AttackRhythm.apply_state_idle(scn, u)
 			var btex = (u.get("anim_sd", {}) as Dictionary).get("tex", null)
 			_ok("%s 状态 %s 结束 ⇒ 回待机" % [id, sname], btex != null and btex.resource_path == (u["idle_sd"]["tex"] as Texture2D).resource_path)
-	_ok("★分母: 运行时每只龟普攻 / 受击 / 阵亡都播了(%d 只 × 3)" % ids.size(), played == ids.size() * 3, "%d 次" % played)
+	_ok("★分母: 运行时每只龟普攻 / 阵亡都播了(%d 只 × %d)" % [ids.size(), KINDS.size()], played == ids.size() * KINDS.size(), "%d 次" % played)
 	_ok("★分母: 技能释放动作至少 25 段播过(外包 11 只)", ncast >= 25, "%d 段" % ncast)
 	## 至少 2 条 = 缩头乌龟缩壳 + 钻石龟滚球(build_pet_actions.STATE_LOOPS); 0 / 0 不算过
 	_ok("★分母: 宠物状态循环每条都触发过(至少缩壳 + 滚球 2 条)", nstate == nstate_rows and nstate_rows >= 2, "%d / %d 条" % [nstate, nstate_rows])

@@ -9,14 +9,13 @@
 动作:
   attack_melee  近战(小龟 / 竹叶 / 彩虹 / 财神 / 石头): 后缩蓄力 3 帧 → 第 4 帧前冲咬中 → 收回(游戏在前摇开始就播, 命中帧对上伤害结算)
   attack_ranged 远程(闪电 / 凤凰 / 天使 / 寒冰 / 熔岩): 缩颈蓄力 → 探头喷射 + 身体后坐 → 回正
-  hurt          受击: 被打退 + 压扁 + 仰头 + 眯眼(画师的眨眼部件) → 回正
   death         阵亡: 有 spine_src/<龟>/ai_death/ 的用 PixelLab 生成帧(趴倒 + 头贴地 + 闭眼, 锁原调色板, 见 ai_death_frames);
                 没有的(龟壳)走骨骼: 刚体倒下(转 root, 不拧网格), 末帧定住(时长 ≥ 游戏阵亡淡出)
   ★头 / 脖子转角 ≤ HEAD_MAX(6°): 画师的头是加权网格, 转大了脸会被拧歪(用户 11-05「这个头低下来很诡异」)
   龟壳(纯逐帧, 只有 main / shell / efx 三根骨, 整只是 efx 上一个逐帧插槽)单独一套: 前撞 / 震退 / 后倾压扁 + 整体调暗。
 帧格: 方帧 S×S(游戏 _resolve_action 只认方帧), 待机格子(200×176)摆在帧里同一位置: 水平居中、脚底行 = FEET;
   第 0 帧 = 待机第 0 帧同姿势 ⇒ 游戏用 ANIM_NORM 一行 [本体高, 脚底行, 本体高] 归一, 动作与待机同一个像素尺寸、同一条脚底线。
-输出: assets/sprites/pets/animations/<龟id>/{attack,hurt,death}.png + tools/assetgen/spine_src/action_manifest.json。确定性: 重跑逐字节相同。
+输出: assets/sprites/pets/animations/<龟id>/{attack,death}.png(全游戏不要受击动作: 用户 07-11 / 11-05, 不出 hurt) + tools/assetgen/spine_src/action_manifest.json。确定性: 重跑逐字节相同。
 用法: python tools/assetgen/build_spine_actions.py [--only 龟id,…] [--preview 输出.png]
 """
 import copy
@@ -76,16 +75,6 @@ ATTACK_RANGED = {
 	"shell.rotate": [0, 1, 1, 2, -2, 2, 1, 0, 0, 0],
 	"tail.rotate": [0, 2, 4, 6, -4, 4, 1, 0, 0, 0],
 }
-HURT = {
-	"frames": 6,
-	"main.translate": [(0, 0), (8, 1), (6, 0), (3, 0), (1, 0), (0, 0)],
-	"main.scale": [(1, 1), (1.05, 0.9), (1.02, 0.96), (1.0, 1.0), (1, 1), (1, 1)],
-	"neck.rotate": [0, -6, -4, -2, -1, 0],
-	"head.rotate": [0, -4, -2, -1, 0, 0],
-	"shell.rotate": [0, 4, 2, 1, 0, 0],
-	"tail.rotate": [0, 6, 3, 1, 0, 0],
-	"eyes": [0, 1, 1, 1, 0, 0],
-}
 ## 阵亡 = 刚体仰面翻倒: 转 root(main 与四条腿 IK 目标的共同父骨) ⇒ 整只一起转, 不拧任何网格。
 ##   往尾巴那侧(+x)翻过去, 落地略过冲再回正, 四条腿朝天蹬两下停住; 眼睛全程闭着。
 ##   每帧往上抬多少由 flip_lift() 按第 0 帧的真实像素现算: 让最低点始终贴地(仰面时壳顶着地)。
@@ -104,12 +93,6 @@ SHELL_ATTACK = {
 	"shell.rotate": [0, 3, 6, 8, -14, -12, -7, -3, -1, 0],
 	"main.scale": [(1, 1), (1.01, 0.98), (1.02, 0.96), (1.02, 0.95), (1.04, 1.0), (1.02, 1.0), (1, 1), (1, 1), (1, 1), (1, 1)],
 }
-SHELL_HURT = {
-	"frames": 6,
-	"main.translate": [(0, 0), (8, 0), (6, 0), (3, 0), (1, 0), (0, 0)],
-	"shell.rotate": [0, 10, 6, 3, 1, 0],
-	"main.scale": [(1, 1), (1.05, 0.9), (1.02, 0.96), (1, 1), (1, 1), (1, 1)],
-}
 SHELL_DEATH = {
 	## 龟壳整只就是 efx 骨上的一个逐帧插槽(没有单独的「光」可熄) ⇒ 阵亡 = 一震 → 往后倾 + 压扁 + 整体调暗(读作熄火), 末帧定住
 	"frames": 15,
@@ -122,7 +105,7 @@ SHELL_DEATH = {
 
 
 def _check_head_caps() -> None:
-	for nm, sp in (("ATTACK_MELEE", ATTACK_MELEE), ("ATTACK_RANGED", ATTACK_RANGED), ("HURT", HURT), ("DEATH", DEATH)):
+	for nm, sp in (("ATTACK_MELEE", ATTACK_MELEE), ("ATTACK_RANGED", ATTACK_RANGED), ("DEATH", DEATH)):
 		for ch in ("neck.rotate", "head.rotate"):
 			if ch in sp and max(abs(float(v)) for v in sp[ch]) > HEAD_MAX:
 				raise SystemExit("%s.%s 转角超过 HEAD_MAX %.0f°(画师头部网格会被拧歪)" % (nm, ch, HEAD_MAX))
@@ -264,8 +247,8 @@ SHELL_AWAKEN = {   # 龟壳气场觉醒(登场后两次): 一缩一鼓一抖, �
 
 def specs_for(tid: str) -> dict:
 	if tid == "shell":
-		return {"attack": SHELL_ATTACK, "hurt": SHELL_HURT, "death": SHELL_DEATH}
-	return {"attack": ATTACK_RANGED if tid in RANGED else ATTACK_MELEE, "hurt": HURT, "death": DEATH, "run": walk_spec()}
+		return {"attack": SHELL_ATTACK, "death": SHELL_DEATH}
+	return {"attack": ATTACK_RANGED if tid in RANGED else ATTACK_MELEE, "death": DEATH, "run": walk_spec()}
 
 
 ## 待机时间轴各通道: 字段与缺省值(取 t=0 的值当动作的底)
@@ -528,7 +511,6 @@ def build_volcano(idle_lava: dict, preview_rows: list, write: bool) -> dict:
 	acts = {
 		"idle": [k0] + seg("idle")[4:],   # AI 待机的前 4 帧整只发白过曝(「裂缝一明一暗」被做成白闪), 循环里一半时间在闪 ⇒ 只取后 4 帧接定稿(11-05 预览)
 		"attack": [k0] + seg("attack"),
-		"hurt": [k0] + seg("hurt"),
 		"death": [k0] + seg("death"),
 	}
 	while len(acts["death"]) < int(DEATH["frames"]):
@@ -544,7 +526,7 @@ def build_volcano(idle_lava: dict, preview_rows: list, write: bool) -> dict:
 	ext = [lefts[0] - x for x in lefts]
 	hit = next(i for i, e in enumerate(ext) if e >= 0.85 * max(ext)) if max(ext) > 0 else ATTACK_HIT
 	ent = {"frame": S_FRAME, "fps": FPS, "body0": by1 - by0, "feet_row": by1, "hit": hit,
-		"attack": len(acts["attack"]), "hurt": len(acts["hurt"]), "death": len(acts["death"]),
+		"attack": len(acts["attack"]), "death": len(acts["death"]),
 		"states": [["volcano", "pets/animations/lava_volcano/idle.png", 10.0]], "casts": {}}
 	od = os.path.join(OUT_DIR, "lava_volcano")
 	os.makedirs(od, exist_ok=True)
@@ -560,8 +542,8 @@ def build_volcano(idle_lava: dict, preview_rows: list, write: bool) -> dict:
 		if write:
 			Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(OUT_DIR, "lava", "%s.png" % nm), optimize=False)
 		fl[nm] = len(frames)
-	print("lava_volcano 待机 %d · 普攻 %d(命中 %d)· 受击 %d · 阵亡 %d · 技能 %s · 变身 / 变回 %d 帧" % (
-		len(acts["idle"]), len(acts["attack"]), hit, len(acts["hurt"]), len(acts["death"]), sorted(casts), len(tr)))
+	print("lava_volcano 待机 %d · 普攻 %d(命中 %d)· 阵亡 %d · 技能 %s · 变身 / 变回 %d 帧" % (
+		len(acts["idle"]), len(acts["attack"]), hit, len(acts["death"]), sorted(casts), len(tr)))
 	out["lava_volcano"] = ent
 	out["lava_forms"] = fl
 	return out
@@ -588,7 +570,7 @@ def write_gd(man: dict) -> None:
 		"## 方帧 %d×%d(_resolve_action 只认方帧); 第 0 帧 = 待机第 0 帧同姿势、同一像素尺寸。" % (S_FRAME, S_FRAME),
 		"",
 	]
-	for const, act in (("ATTACK", "attack"), ("HURT", "hurt"), ("DEATH", "death")):
+	for const, act in (("ATTACK", "attack"), ("DEATH", "death")):
 		L.append("const %s := {" % const)
 		for t in ids:
 			L.append("\t\"%s\": [\"pets/animations/%s/%s.png\", %.1f],   # %d 帧" % (t, t, act, float(FPS), int(man[t][act])))
@@ -642,7 +624,6 @@ def write_gd(man: dict) -> None:
 	L.append("static func by_kind(kind: String) -> Dictionary:")
 	L.append("\tmatch kind:")
 	L.append("\t\t\"attack\": return ATTACK")
-	L.append("\t\t\"hurt\": return HURT")
 	L.append("\t\t\"death\": return DEATH")
 	L.append("\treturn {}")
 	open(GD_OUT, "wb").write(("\n".join(L) + "\n").encode("utf-8"))
