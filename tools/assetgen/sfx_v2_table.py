@@ -428,8 +428,8 @@ def build() -> dict:
 	for key, zh, dur, n, ref, text in G:
 		items.append({"key": key, "zh": zh, "cat": "global", "dur": dur, "n": n, "ref": ref, "text": text + "."})
 	return {"_doc": "音效 v2 描述表(tools/assetgen/sfx_v2_table.py 生成, 勿手改)。2026-11-05 全部重做, 对标云顶 / LoL。v2r2 = 第二轮(见 round2 头注)。",
-		"style": STYLE, "styles": {"v2r2": STYLE_R2, "v2r3": STYLE_R3, "v2sw": STYLE_SW, "v2ps": STYLE_R2, "v2dt": STYLE_R2, "v2r4": STYLE_R4},
-		"batches": {"v2": with_refs(items), "v2r2": round2(items), "v2r3": round3(items), "v2sw": sweeteners(), "v2ps": passives(), "v2dt": deaths(), "v2r4": round4(items)}}
+		"style": STYLE, "styles": {"v2r2": STYLE_R2, "v2r3": STYLE_R3, "v2sw": STYLE_SW, "v2ps": STYLE_R2, "v2dt": STYLE_R2, "v2r4": STYLE_R4, "v2r5": STYLE_R2},
+		"batches": {"v2": with_refs(items), "v2r2": round2(items), "v2r3": round3(items), "v2sw": sweeteners(), "v2ps": passives(), "v2dt": deaths(), "v2r4": round4(items), "v2r5": round5(items)}}
 
 
 ## ── 阵亡(v2dt): 11-05 用户「角色死亡的时候有什么声音？你怎么参考的？」—— 原来只有一条 g_death(我编的描述, 没对照过云顶) ─────
@@ -573,6 +573,35 @@ def round4(items: list) -> list:
 		it["text"] = t + "."
 		it["n"] = 4
 		it["dur"] = d
+		out.append(it)
+	return out
+
+
+## ── 第五轮(v2r5): 技能放出 / 命中里与「参考的那个英雄技能原声」最不像的那批(< 0.45, 尺子见 tools/sfx_skill_refs.py) ──
+## 描述 = 我们自己技能的主题 + 那条原声反听出来最突出的 3 个特征词 + 原声时长(tools/sfx_r5_describe.py → sfx_r5_texts.json, 进仓库)。
+R5_TEXTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sfx_r5_texts.json")
+
+
+def round5(items: list) -> list:
+	if not os.path.exists(R5_TEXTS):
+		return []
+	r5 = json.load(open(R5_TEXTS, encoding="utf-8"))
+	by = {it["key"]: it for it in items}
+	core = {}
+	for stype, _zh, _dur, _ref, cast, hit in S:
+		core["sk_" + stype] = ("ability cast", cast)
+		if hit:
+			core["skh_" + stype] = ("ability impact", hit)
+	out = []
+	for k in sorted(r5):
+		if k not in by or k not in core:
+			continue
+		it = dict(by[k])
+		lab, c = core[k]
+		w = r5[k]["words"]
+		it["text"] = "%s: %s. It sounds like %s, %s and %s." % (lab, c, w[0], w[1], w[2])
+		it["dur"] = float(r5[k]["dur"])
+		it["n"] = 4
 		out.append(it)
 	return out
 

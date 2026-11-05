@@ -28,6 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import sfx_clap  # noqa: E402
 from sfx_measure import measure  # noqa: E402
+import sfx_skill_refs  # noqa: E402
 
 SRC = os.environ.get("SFX_SRC", r"D:/turtle_audio_src")
 FF = os.environ.get("FFMPEG", r"D:/oopz/ffmpeg.exe")
@@ -35,6 +36,7 @@ CAND = os.path.join(SRC, "eleven", "v2")
 CAND_R2 = os.path.join(SRC, "eleven", "v2r2")   # 第二轮(去掉低频字眼, 见 sfx_v2_table.round2); 候选 wav 名前缀 r2__
 CAND_R3 = os.path.join(SRC, "eleven", "v2r3")
 CAND_DT = os.path.join(SRC, "eleven", "v2dt")   # 阵亡(11-05 补): g_death_enemy / g_death_ally(每龟一条 die_<龟> 已撤, 见 sfx_v2_table.deaths)
+CAND_R5 = os.path.join(SRC, "eleven", "v2r5")   # 第五轮(技能里与参考技能原声最不像的那批, 见 sfx_v2_table.round5); 前缀 r5__
 CAND_R4 = os.path.join(SRC, "eleven", "v2r4")   # 第四轮(逐条尺子下太不像的 7 条, 按 CLAP 反听原声重写); 前缀 r4__
 CAND_PS = os.path.join(SRC, "eleven", "v2ps")   # 被动(11-05 补): 事件名 ps_*, 候选文件名本身唯一, 不加前缀   # 第三轮(两轮全否决的 7 条, 见 sfx_v2_table.round3); 前缀 r3__
 OUT = os.path.join(ROOT, ".out", "sfx_v2")
@@ -170,6 +172,13 @@ def main() -> int:
 	## ★11-05 逐条尺子(用户「角色死亡的时候有什么声音？你怎么参考的？」—— 按类别平均当尺子, 阵亡那条比的是装备 / 护盾 / 界面的混合):
 	##   描述里带 ref_rx 的, 用文件名匹配上的 Riot 原声当这一条自己的尺子(≥ 3 个才用), 报告里逐条列出用了几个
 	all_riot = sorted(glob.glob(os.path.join(RIOT, "champ", "*", "*.wav")) + glob.glob(os.path.join(RIOT, "map22", "*.wav")) + glob.glob(os.path.join(RIOT, "chogath", "*.wav")))
+	## ★技能也逐条(11-05 音效出版合格后的优化第 1 项): 参考栏「Malphite R」⇒ 墨菲特 R 的原声文件(tools/sfx_skill_refs.py, 技能编号取自 Data Dragon);
+	##   技能的尺子是那一个技能本身, 1 个文件也用(全局声那种「一类声音」才要 ≥ 3 个)
+	for it in items:
+		if not it.get("ref_rx") and it["key"].startswith(("sk_", "skh_")):
+			rx = sfx_skill_refs.ref_rx_for(re.sub(r" (OnCast|hit)$", "", it["ref"]), "cast" if it["key"].startswith("sk_") else "hit")
+			if rx:
+				it["ref_rx"] = rx
 	rx_cent = {}
 	rx_st = {}
 	rx_n = {}
@@ -179,7 +188,7 @@ def main() -> int:
 			continue
 		fs = [f for f in all_riot if re.search(rx, os.path.basename(f).lower())][:80]
 		rx_n[rx] = len(fs)
-		if len(fs) >= 3:
+		if len(fs) >= (1 if it["key"].startswith(("sk_", "skh_")) else 3):
 			c = emb(fs).mean(axis=0)
 			rx_cent[rx] = c / np.linalg.norm(c)
 			rx_st[rx] = [m for m in (feats(f) for f in fs) if m]   # 形状也按这条原声量(例: 云顶升星 4~5 秒、起音 1.5 秒, 整类平均是 1 秒的短声); 下面 rx_shape 定范围
@@ -205,7 +214,7 @@ def main() -> int:
 	cand_files = {}
 	for it in items:
 		for i in range(1, 5):
-			for d, pre in ((CAND, ""), (CAND_R2, "r2__"), (CAND_R3, "r3__"), (CAND_PS, ""), (CAND_DT, ""), (CAND_R4, "r4__")):
+			for d, pre in ((CAND, ""), (CAND_R2, "r2__"), (CAND_R3, "r3__"), (CAND_PS, ""), (CAND_DT, ""), (CAND_R4, "r4__"), (CAND_R5, "r5__")):
 				mp = os.path.join(d, "%s_%d.mp3" % (it["key"], i))
 				if os.path.exists(mp):
 					cand_files.setdefault(it["key"], []).append(to_wav(mp, pre))
@@ -229,8 +238,13 @@ def main() -> int:
 	report.append("")
 	## 打分 + 定选
 	TE = sfx_clap.embed_text([it["text"] for it in items])
+	## ★不退步(11-05 第五轮): 现在成品里的定选(tools/assetgen/sfx_picks_v2.json, build_sfx_v2 写)。有具体技能尺子的技能声,
+	##   新选的与那条原声的平均相似度低于成品那版 ⇒ 保留成品那版(第五轮实测 33 条里 6 条被「像描述」拉去更不像的候选)
+	shipped_p = os.path.join(ROOT, "tools", "assetgen", "sfx_picks_v2.json")
+	shipped = json.load(open(shipped_p, encoding="utf-8")) if os.path.exists(shipped_p) else {}
+	n_kept = 0
 	round_text = {}   # (前缀, 事件) -> 那一轮的描述向量
-	for pre, bn in (("r4__", "v2r4"),):   # 只第四轮: 它的描述是照云顶原声反听写的; 第二 / 三轮仍按第一轮描述比(改了会把已定的普攻 / 技能选择整片洗一遍, 实测 15 条更像 / 18 条更不像)
+	for pre, bn in (("r4__", "v2r4"), ("r5__", "v2r5")):   # 只第四轮: 它的描述是照云顶原声反听写的; 第二 / 三轮仍按第一轮描述比(改了会把已定的普攻 / 技能选择整片洗一遍, 实测 15 条更像 / 18 条更不像)
 		its = tab["batches"].get(bn, [])
 		if its:
 			V = sfx_clap.embed_text([x["text"] for x in its])
@@ -284,6 +298,13 @@ def main() -> int:
 			rows.append((key, "全部否决: " + "; ".join(",".join(s["rej"]) for s in sc)))
 			picks[key] = {"cat": cat, "zh": it["zh"], "sel": [], "all": sc}
 			continue
+		if it.get("ref_rx") and key.startswith(("sk_", "skh_")) and key in shipped:
+			by_name = {os.path.basename(s["file"]): s for s in sc}
+			old_sel = [by_name[x] for x in shipped[key].get("sel", []) if x in by_name and not by_name[x]["rej"]]
+			if old_sel and len(old_sel) == len(shipped[key]["sel"]):
+				if float(np.mean([s["riot"] for s in sel])) < float(np.mean([s["riot"] for s in old_sel])) - 0.005:
+					sel = old_sel
+					n_kept += 1
 		picks[key] = {"cat": cat, "zh": it["zh"], "sel": [os.path.basename(s["file"]) for s in sel], "all": sc}
 	json.dump(picks, open(os.path.join(OUT, "picks.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 	np.savez(CACHE, k=np.array(list(_cache.keys()), dtype=object), v=np.array(list(_cache.values())))
@@ -312,6 +333,8 @@ def main() -> int:
 			continue
 		ss = [s for s in picks[it["key"]]["all"] if os.path.basename(s["file"]) in picks[it["key"]]["sel"]]
 		report.append("| %s | `%s` | %d | %s |" % (it["key"], rx, rx_n.get(rx, 0), " / ".join("%.3f" % s["riot"] for s in ss) or "—"))
+	report.append("")
+	report.append("不退步: %d 条技能声新选的不如成品那版像参考技能, 保留成品那版" % n_kept)
 	report.append("")
 	report.append("否决候选 %d 个; 没有可用候选的事件 %d 条:" % (n_rej, sum(1 for p in picks.values() if not p["sel"])))
 	for key, why in rows:

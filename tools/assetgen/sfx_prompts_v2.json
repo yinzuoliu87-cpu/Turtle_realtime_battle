@@ -7,7 +7,8 @@
   "v2sw": "High-fidelity cinematic game sound design layer, clean, no music, no speech",
   "v2ps": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, crisp punchy transient, balanced full frequency range with clear mid and high detail, not muddy, not just a low rumble, no music, no speech",
   "v2dt": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, crisp punchy transient, balanced full frequency range with clear mid and high detail, not muddy, not just a low rumble, no music, no speech",
-  "v2r4": "High-fidelity League of Legends and Teamfight Tactics game sound effect, polished magical, crisp, no music, no speech"
+  "v2r4": "High-fidelity League of Legends and Teamfight Tactics game sound effect, polished magical, crisp, no music, no speech",
+  "v2r5": "High-fidelity fantasy MOBA game sound effect in the style of League of Legends and Teamfight Tactics, professionally layered, crisp punchy transient, balanced full frequency range with clear mid and high detail, not muddy, not just a low rumble, no music, no speech"
  },
  "batches": {
   "v2": [
@@ -6555,6 +6556,305 @@
     "n": 4,
     "ref": "TFT shield",
     "text": "a magical shield forming: a quick reverse whoosh into a soft resurrection-like shimmer with a light electric sparkle."
+   }
+  ],
+  "v2r5": [
+   {
+    "key": "sk_angelBless",
+    "zh": "天使龟·祝福·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Kayle R OnCast",
+    "text": "ability cast: a holy blessing descending, rising heavenly choir-like shimmer with bright bells and soft feathery wings. It sounds like a synth pluck, a magical shimmer and a harp gliss."
+   },
+   {
+    "key": "sk_bambooSmack",
+    "zh": "竹叶龟·竹击·放出",
+    "cat": "sk_cast",
+    "dur": 1.72,
+    "n": 4,
+    "ref": "Maokai W/Ivern Q OnCast",
+    "text": "ability cast: a long bamboo vine lashing out fast, sharp whip crack then a creaking wooden yank pulling something in. It sounds like a magical shimmer, a harp gliss and a bright sparkle."
+   },
+   {
+    "key": "sk_bambooSpikes",
+    "zh": "竹叶龟·竹刺阵·放出",
+    "cat": "sk_cast",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Chogath Q OnCast",
+    "text": "ability cast: a deep ominous underground rumble building, the earth cracking and swelling as something is about to erupt from below. It sounds like a heartbeat pulse, a rising magical swell and a card shuffle."
+   },
+   {
+    "key": "sk_bubbleBind",
+    "zh": "泡泡龟·泡泡束缚·放出",
+    "cat": "sk_cast",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Nami Q OnCast",
+    "text": "ability cast: a big water bubble launched, wet whoosh. It sounds like a mechanical whir, a wind gust and a cloth flap."
+   },
+   {
+    "key": "sk_candyBomb",
+    "zh": "糖果龟·糖果炸弹·放出",
+    "cat": "sk_cast",
+    "dur": 2.14,
+    "n": 4,
+    "ref": "Ziggs R OnCast",
+    "text": "ability cast: a candy bomb's fuse fizzing, sugary sizzle building to a big explosion. It sounds like a whoosh, a reverse whoosh and a card shuffle."
+   },
+   {
+    "key": "sk_candyHammer",
+    "zh": "糖果龟·糖果锤·放出",
+    "cat": "sk_cast",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Gragas E/Poppy OnCast",
+    "text": "ability cast: a giant candy hammer raised, heavy wind-up whoosh then a crushing smash. It sounds like a punchy impact, a shield block and a drum hit."
+   },
+   {
+    "key": "sk_crystalBarrier",
+    "zh": "水晶龟·水晶壁垒·放出",
+    "cat": "sk_cast",
+    "dur": 2.1,
+    "n": 4,
+    "ref": "Taliyah E/Skarner OnCast",
+    "text": "ability cast: a crystal wall rising from the ground, grinding stone with resonant glassy hum and crystal clinks. It sounds like a reverse whoosh, a chain rattle and a whoosh."
+   },
+   {
+    "key": "sk_diamondFortify",
+    "zh": "钻石龟·坚不可摧·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Taric W OnCast",
+    "text": "ability cast: diamond armor forming, crystal plates clinking together into a hard glassy shield ring with a solid low hum. It sounds like a ghostly wail, a choir pad and a dark rumble."
+   },
+   {
+    "key": "sk_diamondPowerball",
+    "zh": "钻石龟·钻石滚球·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Rammus Q OnCast",
+    "text": "ability cast: a diamond ball curling up and rolling faster and faster, heavy accelerating rumble with crystal grinding. It sounds like a sizzling hiss, a water splash and a bubbling liquid."
+   },
+   {
+    "key": "sk_diceFate",
+    "zh": "骰子龟·命运骰子·放出",
+    "cat": "sk_cast",
+    "dur": 0.92,
+    "n": 4,
+    "ref": "TwistedFate W OnCast",
+    "text": "ability cast: magic dice rolled, bone dice tumbling then a glowing magical resonance. It sounds like a cloth flap, an arrow release and a spring boing."
+   },
+   {
+    "key": "sk_fortuneAllIn",
+    "zh": "财神龟·梭哈·放出",
+    "cat": "sk_cast",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Gangplank/MissFortune R OnCast",
+    "text": "ability cast: a barrage of gold coins flung out rapidly, a stream of metallic coin whooshes and clinks. It sounds like a crunchy hit, an arrow release and a card shuffle."
+   },
+   {
+    "key": "sk_fortuneDice",
+    "zh": "财神龟·骰子·放出",
+    "cat": "sk_cast",
+    "dur": 0.92,
+    "n": 4,
+    "ref": "TwistedFate W OnCast",
+    "text": "ability cast: golden dice rattling and tossed onto the ground, bright golden tumble with a lucky chime. It sounds like a cloth flap, an arrow release and a spring boing."
+   },
+   {
+    "key": "sk_gamblerBet",
+    "zh": "赌神龟·赌注·放出",
+    "cat": "sk_cast",
+    "dur": 0.87,
+    "n": 4,
+    "ref": "TwistedFate Q OnCast",
+    "text": "ability cast: a fan of magic cards thrown, rapid card shuffle and multiple card flicks whooshing out. It sounds like a card shuffle, an arrow release and a sword slash."
+   },
+   {
+    "key": "sk_gamblerFateWheel",
+    "zh": "赌神龟·命运之轮·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "TwistedFate R OnCast",
+    "text": "ability cast: a magic roulette wheel spinning, rapid ratcheting clicks slowing down then a bright magical ding. It sounds like a whoosh, an orchestral hit and a cymbal crash."
+   },
+   {
+    "key": "sk_ghostPhantom",
+    "zh": "幽灵龟·幽冥突袭·放出",
+    "cat": "sk_cast",
+    "dur": 2.93,
+    "n": 4,
+    "ref": "Hecarim E/Thresh OnCast",
+    "text": "ability cast: a spectral lunge, rushing ghostly wind with eerie whispers and a hollow echo. It sounds like a gong, a dark rumble and an orchestral hit."
+   },
+   {
+    "key": "sk_hidingBuffSummon",
+    "zh": "缩头乌龟·强化随从·放出",
+    "cat": "sk_cast",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Shen R/Lulu OnCast",
+    "text": "ability cast: empowering an ally, rising golden power-up swell with a bright resonant chime. It sounds like a crunchy hit, a wooden knock and a punchy impact."
+   },
+   {
+    "key": "sk_hidingShrink",
+    "zh": "缩头乌龟·缩头·放出",
+    "cat": "sk_cast",
+    "dur": 1.46,
+    "n": 4,
+    "ref": "Rammus W OnCast",
+    "text": "ability cast: a turtle retreating into its hard shell, quick hollow shell clunk and an armored thud. It sounds like a metal clang, a mechanical whir and a wind gust."
+   },
+   {
+    "key": "sk_hunterBarrage",
+    "zh": "猎人龟·狩猎弹幕·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Ashe W/Varus OnCast",
+    "text": "ability cast: a volley of arrows fired at once, layered bowstring twangs and many arrows whistling out. It sounds like a heartbeat pulse, a cloth flap and a chain rattle."
+   },
+   {
+    "key": "sk_hunterShot",
+    "zh": "猎人龟·精准射击·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Varus Q/Ashe W OnCast",
+    "text": "ability cast: a longbow drawn slowly with a creaking bowstring, then a powerful arrow release with a deep twang. It sounds like a heartbeat pulse, a cloth flap and a chain rattle."
+   },
+   {
+    "key": "sk_hunterStealth",
+    "zh": "猎人龟·隐蔽·放出",
+    "cat": "sk_cast",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Vayne Q OnCast",
+    "text": "ability cast: a quick tumble roll, fast cloth whoosh with a light footstep and a stealthy shimmer. It sounds like a shield block, a punchy impact and a fire burst."
+   },
+   {
+    "key": "sk_iceFreeze",
+    "zh": "寒冰龟·冰封·放出",
+    "cat": "sk_cast",
+    "dur": 1.63,
+    "n": 4,
+    "ref": "Lissandra R OnCast",
+    "text": "ability cast: a target instantly frozen solid, ice rapidly encasing with a sharp crystalline crack and deep cold resonance. It sounds like a reverse whoosh, a dark magic pulse and a shield block."
+   },
+   {
+    "key": "sk_lavaQuake",
+    "zh": "熔岩龟·地裂·放出",
+    "cat": "sk_cast",
+    "dur": 1.69,
+    "n": 4,
+    "ref": "Brand W OnCast",
+    "text": "ability cast: the ground cracking open, a magma pool bubbling up with a deep rumble and a fiery hiss. It sounds like a fire burst, a sizzling hiss and a wind gust."
+   },
+   {
+    "key": "sk_lavaRampage",
+    "zh": "火山龟·烈焰暴走·放出",
+    "cat": "sk_cast",
+    "dur": 2.17,
+    "n": 4,
+    "ref": "Brand R/Malphite OnCast",
+    "text": "ability cast: a volcanic rage awakening, roaring flames and deep rumbling heat building into a fiery roar. It sounds like a power down sound, an explosion and a heartbeat pulse."
+   },
+   {
+    "key": "sk_lineFinish",
+    "zh": "线条龟·画龙点睛·放出",
+    "cat": "sk_cast",
+    "dur": 1.25,
+    "n": 4,
+    "ref": "Hwei R OnCast",
+    "text": "ability cast: a decisive final brush stroke, sweeping ink swish then a heavy ink dot slam. It sounds like a harp gliss, a power up sound and a cymbal crash."
+   },
+   {
+    "key": "sk_ninjaBomb",
+    "zh": "忍者龟·炸弹·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Akali W/Ziggs OnCast",
+    "text": "ability cast: a ninja smoke bomb tossed, short fuse hiss then a punchy explosion with a smoke puff. It sounds like a wooden knock, a gong and an orchestral hit."
+   },
+   {
+    "key": "sk_rockShockwave",
+    "zh": "石头龟·磐石之躯·放出",
+    "cat": "sk_cast",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Malphite E OnCast",
+    "text": "ability cast: a stone giant stomping the ground, a heavy rock shockwave cracking outward with a deep earthquake rumble. It sounds like a reverse whoosh, a whoosh and a cloth flap."
+   },
+   {
+    "key": "sk_shellShadow",
+    "zh": "龟壳·暗影·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Corki W OnCast",
+    "text": "ability cast: a shadowy dive, dark rushing whoosh with a fading shadow shimmer. It sounds like a monster growl, a dark rumble and a ghostly wail."
+   },
+   {
+    "key": "sk_shield",
+    "zh": "彩虹龟·棱镜护盾·放出",
+    "cat": "sk_cast",
+    "dur": 1.88,
+    "n": 4,
+    "ref": "Lux W OnCast",
+    "text": "ability cast: a prismatic shield forming, bright crystalline rainbow shimmer swelling into a clear resonant chime. It sounds like a cymbal crash, an electric zap and a healing spell."
+   },
+   {
+    "key": "sk_starGravityWarp",
+    "zh": "星际龟·扭曲空间·放出",
+    "cat": "sk_cast",
+    "dur": 3.0,
+    "n": 4,
+    "ref": "Bard R/Zoe OnCast",
+    "text": "ability cast: space bending and warping, deep distorted whoosh collapsing into a heavy implosion. It sounds like a choir pad, an orchestral hit and a synth pluck."
+   },
+   {
+    "key": "sk_volcanoSmash",
+    "zh": "火山龟·重击·放出",
+    "cat": "sk_cast",
+    "dur": 1.27,
+    "n": 4,
+    "ref": "Malphite Q OnCast",
+    "text": "ability cast: a volcanic fist wind-up, heavy fiery whoosh. It sounds like an orchestral hit, a reverse whoosh and a healing spell."
+   },
+   {
+    "key": "skh_bubbleBind",
+    "zh": "泡泡龟·泡泡束缚·命中",
+    "cat": "sk_hit",
+    "dur": 0.8,
+    "n": 4,
+    "ref": "Nami Q hit",
+    "text": "ability impact: a water bubble trapping an enemy, gloopy splash with a wobbly bubble swell. It sounds like a crunchy hit, a synth pluck and a water splash."
+   },
+   {
+    "key": "skh_lightningBarrage",
+    "zh": "闪电龟·雷暴·命中",
+    "cat": "sk_hit",
+    "dur": 0.95,
+    "n": 4,
+    "ref": "Kennen R/Zeri R hit",
+    "text": "ability impact: a lightning bolt striking an enemy, loud electric crack with sizzling static. It sounds like an electric zap, a crunchy hit and a sizzling hiss."
+   },
+   {
+    "key": "skh_shellShadow",
+    "zh": "龟壳·暗影·命中",
+    "cat": "sk_hit",
+    "dur": 2.12,
+    "n": 4,
+    "ref": "Corki W hit",
+    "text": "ability impact: a shadow strike hitting an enemy, dark hollow impact. It sounds like a sizzling hiss, a crackling fire and a fire burst."
    }
   ]
  }

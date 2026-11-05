@@ -43,6 +43,7 @@ CAND_R3 = os.path.join(SRC, "eleven", "v2r3")   # 第三轮候选(前缀 r3__)
 CAND_PS = os.path.join(SRC, "eleven", "v2ps")   # 被动候选(文件名 ps_* 本身唯一)
 CAND_DT = os.path.join(SRC, "eleven", "v2dt")   # 阵亡候选(g_death_enemy / g_death_ally)
 CAND_R4 = os.path.join(SRC, "eleven", "v2r4")   # 第四轮候选(前缀 r4__)
+CAND_R5 = os.path.join(SRC, "eleven", "v2r5")   # 第五轮候选(前缀 r5__)
 PICKS = os.path.join(ROOT, ".out", "sfx_v2", "picks.json")
 OUT_DIR = os.path.join(ROOT, "assets", "audio", "sfx", "v2")
 EVENTS_GD = os.path.join(ROOT, "scripts", "gamedata", "sfx_events.gd")
@@ -328,7 +329,7 @@ def main() -> int:
 	picks = json.load(open(PICKS, encoding="utf-8"))
 	man = json.load(open(os.path.join(CAND, "manifest.json"), encoding="utf-8"))
 	mans = {}
-	for bn, d in (("v2", CAND), ("v2r2", CAND_R2), ("v2r3", CAND_R3), ("v2ps", CAND_PS), ("v2dt", CAND_DT), ("v2r4", CAND_R4)):
+	for bn, d in (("v2", CAND), ("v2r2", CAND_R2), ("v2r3", CAND_R3), ("v2ps", CAND_PS), ("v2dt", CAND_DT), ("v2r4", CAND_R4), ("v2r5", CAND_R5)):
 		mp = os.path.join(d, "manifest.json")
 		mans[bn] = (d, json.load(open(mp, encoding="utf-8")) if os.path.exists(mp) else {})
 	os.makedirs(OUT_DIR, exist_ok=True)
@@ -345,8 +346,8 @@ def main() -> int:
 		target = TARGET_KEY.get(key, TARGET_RMS.get(p["cat"], -15.0))
 		ch = 2 if key in STEREO else 1
 		for k, wavname in enumerate(p["sel"], start=1):
-			bn = {"r2__": "v2r2", "r3__": "v2r3", "r4__": "v2r4"}.get(wavname[:4]) or ("v2ps" if wavname.startswith("ps_") else ("v2dt" if wavname.startswith(("g_death_enemy", "g_death_ally")) else "v2"))
-			mp3name = (wavname[4:] if bn in ("v2r2", "v2r3", "v2r4") else wavname)[:-4] + ".mp3"
+			bn = {"r2__": "v2r2", "r3__": "v2r3", "r4__": "v2r4", "r5__": "v2r5"}.get(wavname[:4]) or ("v2ps" if wavname.startswith("ps_") else ("v2dt" if wavname.startswith(("g_death_enemy", "g_death_ally")) else "v2"))
+			mp3name = (wavname[4:] if bn in ("v2r2", "v2r3", "v2r4", "v2r5") else wavname)[:-4] + ".mp3"
 			out = "%s__%d.wav" % (key, k)
 			swrec = {}
 			y = process(decode(os.path.join(mans[bn][0], mp3name), ch), target, p["cat"], key, swrec)

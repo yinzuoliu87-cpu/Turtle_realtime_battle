@@ -1,0 +1,494 @@
+{
+ "sk_angelBless": {
+  "words": [
+   "a synth pluck",
+   "a magical shimmer",
+   "a harp gliss"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.362,
+  "ref_files": [
+   "Play_sfx_Kayle_KayleR_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_bambooSmack": {
+  "words": [
+   "a magical shimmer",
+   "a harp gliss",
+   "a bright sparkle"
+  ],
+  "dur": 1.72,
+  "sim_before": 0.407,
+  "ref_files": [
+   "Play_sfx_Ivern_IvernQ_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_bambooSpikes": {
+  "words": [
+   "a heartbeat pulse",
+   "a rising magical swell",
+   "a card shuffle"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.411,
+  "ref_files": [
+   "Play_sfx_Chogath_Rupture_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_bubbleBind": {
+  "words": [
+   "a mechanical whir",
+   "a wind gust",
+   "a cloth flap"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.297,
+  "ref_files": [
+   "Play_sfx_Nami_NamiQ_OnCast__L1_v1.wav",
+   "Play_sfx_Nami_NamiQ_OnCast__L1_v2.wav"
+  ],
+  "ref_n": 2
+ },
+ "sk_candyBomb": {
+  "words": [
+   "a whoosh",
+   "a reverse whoosh",
+   "a card shuffle"
+  ],
+  "dur": 2.14,
+  "sim_before": 0.295,
+  "ref_files": [
+   "Play_sfx_Ziggs_ZiggsR_OnCast__L1_v1.wav",
+   "Play_sfx_Ziggs_ZiggsR_OnCast__L1_v2.wav",
+   "Play_sfx_Ziggs_ZiggsR_OnCast__L1_v3.wav",
+   "Play_sfx_Ziggs_ZiggsR_missilelaunch__L1_v1.wav"
+  ],
+  "ref_n": 4
+ },
+ "sk_candyHammer": {
+  "words": [
+   "a punchy impact",
+   "a shield block",
+   "a drum hit"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.409,
+  "ref_files": [
+   "Play_sfx_Gragas_GragasE_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_crystalBarrier": {
+  "words": [
+   "a reverse whoosh",
+   "a chain rattle",
+   "a whoosh"
+  ],
+  "dur": 2.1,
+  "sim_before": 0.193,
+  "ref_files": [
+   "Play_sfx_Taliyah_TaliyahEMineRumble_buffactivate__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_diamondFortify": {
+  "words": [
+   "a ghostly wail",
+   "a choir pad",
+   "a dark rumble"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.161,
+  "ref_files": [
+   "Play_sfx_Taric_TaricWLeashWarning_OnBuffActivate__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_diamondPowerball": {
+  "words": [
+   "a sizzling hiss",
+   "a water splash",
+   "a bubbling liquid"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.349,
+  "ref_files": [
+   "Play_sfx_Rammus_PowerBall_OnBuffActivate__L1_v1.wav",
+   "Play_sfx_Rammus_PowerBall_OnBuffActivate__L2_v1.wav"
+  ],
+  "ref_n": 2
+ },
+ "sk_diceFate": {
+  "words": [
+   "a cloth flap",
+   "an arrow release",
+   "a spring boing"
+  ],
+  "dur": 0.92,
+  "sim_before": 0.283,
+  "ref_files": [
+   "Play_sfx_TwistedFate_PickACard_OnCast__L1_v1.wav",
+   "Play_sfx_TwistedFate_PickACard_OnCast__L1_v2.wav",
+   "Play_sfx_TwistedFate_PickACard_OnCast__L1_v3.wav"
+  ],
+  "ref_n": 3
+ },
+ "sk_fortuneAllIn": {
+  "words": [
+   "a crunchy hit",
+   "an arrow release",
+   "a card shuffle"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.253,
+  "ref_files": [
+   "Play_sfx_MissFortune_MissFortuneBulletTime_OnCast__L1_v1.wav",
+   "Play_sfx_MissFortune_MissFortuneRicochetShot_OnCast__L1_v1.wav",
+   "Play_sfx_MissFortune_MissFortuneRicochetShot_OnCast__L1_v2.wav",
+   "Play_sfx_MissFortune_MissFortuneRicochetShot_OnCast__L1_v3.wav",
+   "Play_sfx_MissFortune_MissFortuneRicochetShot_OnCast__L1_v4.wav"
+  ],
+  "ref_n": 5
+ },
+ "sk_fortuneDice": {
+  "words": [
+   "a cloth flap",
+   "an arrow release",
+   "a spring boing"
+  ],
+  "dur": 0.92,
+  "sim_before": 0.202,
+  "ref_files": [
+   "Play_sfx_TwistedFate_PickACard_OnCast__L1_v1.wav",
+   "Play_sfx_TwistedFate_PickACard_OnCast__L1_v2.wav",
+   "Play_sfx_TwistedFate_PickACard_OnCast__L1_v3.wav"
+  ],
+  "ref_n": 3
+ },
+ "sk_gamblerBet": {
+  "words": [
+   "a card shuffle",
+   "an arrow release",
+   "a sword slash"
+  ],
+  "dur": 0.87,
+  "sim_before": 0.43,
+  "ref_files": [
+   "Play_sfx_TwistedFate_WildCards_OnCast__L1_v1.wav",
+   "Play_sfx_TwistedFate_WildCards_OnCast__L1_v2.wav",
+   "Play_sfx_TwistedFate_WildCards_OnCast__L1_v3.wav",
+   "Play_sfx_TwistedFate_WildCards_OnCast__L1_v4.wav"
+  ],
+  "ref_n": 4
+ },
+ "sk_gamblerFateWheel": {
+  "words": [
+   "a whoosh",
+   "an orchestral hit",
+   "a cymbal crash"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.252,
+  "ref_files": [
+   "Play_sfx_TwistedFate_Destiny_OnCast__L1_v1.wav",
+   "Play_sfx_TwistedFate_Destiny_OnCast__L1_v2.wav"
+  ],
+  "ref_n": 2
+ },
+ "sk_ghostPhantom": {
+  "words": [
+   "a gong",
+   "a dark rumble",
+   "an orchestral hit"
+  ],
+  "dur": 2.93,
+  "sim_before": 0.315,
+  "ref_files": [
+   "Play_sfx_Hecarim_HecarimRampAttack_OnCast__L1_v1.wav",
+   "Play_sfx_Hecarim_HecarimRampAttack_OnCast__L1_v2.wav",
+   "Play_sfx_Hecarim_HecarimRamp_OnCast__L1_v1.wav",
+   "Play_sfx_Hecarim_HecarimRamp_OnCast__L1_v2.wav",
+   "Play_sfx_Hecarim_HecarimRamp_OnCast__L1_v3.wav"
+  ],
+  "ref_n": 5
+ },
+ "sk_hidingBuffSummon": {
+  "words": [
+   "a crunchy hit",
+   "a wooden knock",
+   "a punchy impact"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.241,
+  "ref_files": [
+   "Play_sfx_Shen_ShenR_OnCast__L1_v1.wav",
+   "Play_sfx_Shen_ShenR_OnCast__L1_v2.wav",
+   "Play_sfx_Shen_ShenR_OnCast__L1_v3.wav"
+  ],
+  "ref_n": 3
+ },
+ "sk_hidingShrink": {
+  "words": [
+   "a metal clang",
+   "a mechanical whir",
+   "a wind gust"
+  ],
+  "dur": 1.46,
+  "sim_before": 0.15,
+  "ref_files": [
+   "Play_sfx_Rammus_DefensiveBallCurl_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_hunterBarrage": {
+  "words": [
+   "a heartbeat pulse",
+   "a cloth flap",
+   "a chain rattle"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.296,
+  "ref_files": [
+   "Play_sfx_Ashe_VolleyAttack_OnCast__L1_v1.wav",
+   "Play_sfx_Ashe_VolleyRank2_OnCast__L1_v1.wav",
+   "Play_sfx_Ashe_VolleyRank2_OnCast__L1_v2.wav",
+   "Play_sfx_Ashe_VolleyRank3_OnCast__L1_v1.wav",
+   "Play_sfx_Ashe_VolleyRank3_OnCast__L1_v2.wav",
+   "Play_sfx_Ashe_VolleyRank4_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 11
+ },
+ "sk_hunterShot": {
+  "words": [
+   "a heartbeat pulse",
+   "a cloth flap",
+   "a chain rattle"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.428,
+  "ref_files": [
+   "Play_sfx_Ashe_VolleyAttack_OnCast__L1_v1.wav",
+   "Play_sfx_Ashe_VolleyRank2_OnCast__L1_v1.wav",
+   "Play_sfx_Ashe_VolleyRank2_OnCast__L1_v2.wav",
+   "Play_sfx_Ashe_VolleyRank3_OnCast__L1_v1.wav",
+   "Play_sfx_Ashe_VolleyRank3_OnCast__L1_v2.wav",
+   "Play_sfx_Ashe_VolleyRank4_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 11
+ },
+ "sk_hunterStealth": {
+  "words": [
+   "a shield block",
+   "a punchy impact",
+   "a fire burst"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.421,
+  "ref_files": [
+   "Play_sfx_Vayne_VayneTumble_OnCast__L1_v1.wav",
+   "Play_sfx_Vayne_VayneTumble_OnCast__L1_v2.wav"
+  ],
+  "ref_n": 2
+ },
+ "sk_iceFreeze": {
+  "words": [
+   "a reverse whoosh",
+   "a dark magic pulse",
+   "a shield block"
+  ],
+  "dur": 1.63,
+  "sim_before": 0.408,
+  "ref_files": [
+   "Play_sfx_Lissandra_LissandraRExpand_buffactivate__L1_v1.wav",
+   "Play_sfx_Lissandra_LissandraRHandCas_buffactivate__L1_v1.wav",
+   "Play_sfx_Lissandra_LissandraRHandCas_buffactivate__L1_v2.wav",
+   "Play_sfx_Lissandra_LissandraRMark_buffactivate__L1_v1.wav",
+   "Play_sfx_Lissandra_LissandraRMark_buffactivate__L1_v2.wav",
+   "Play_sfx_Lissandra_LissandraRSelf_OnBuffActivate__L1_v1.wav"
+  ],
+  "ref_n": 6
+ },
+ "sk_lavaQuake": {
+  "words": [
+   "a fire burst",
+   "a sizzling hiss",
+   "a wind gust"
+  ],
+  "dur": 1.69,
+  "sim_before": 0.406,
+  "ref_files": [
+   "Play_sfx_Brand_BrandW_OnCast__L1_v1.wav",
+   "Play_sfx_Brand_BrandW_OnCast__L1_v2.wav",
+   "Play_sfx_Brand_BrandW_OnCast__L1_v3.wav",
+   "Play_sfx_Brand_BrandW_OnCast__L1_v4.wav"
+  ],
+  "ref_n": 4
+ },
+ "sk_lavaRampage": {
+  "words": [
+   "a power down sound",
+   "an explosion",
+   "a heartbeat pulse"
+  ],
+  "dur": 2.17,
+  "sim_before": 0.386,
+  "ref_files": [
+   "Play_sfx_Brand_BrandR_OnCast__L1_v1.wav",
+   "Play_sfx_Brand_BrandR_OnCast__L1_v2.wav",
+   "Play_sfx_Brand_BrandR_OnCast__L1_v3.wav",
+   "Play_sfx_Brand_BrandR_OnCast__L1_v4.wav"
+  ],
+  "ref_n": 4
+ },
+ "sk_lineFinish": {
+  "words": [
+   "a harp gliss",
+   "a power up sound",
+   "a cymbal crash"
+  ],
+  "dur": 1.25,
+  "sim_before": 0.287,
+  "ref_files": [
+   "Play_sfx_Hwei_HweiR_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_ninjaBomb": {
+  "words": [
+   "a wooden knock",
+   "a gong",
+   "an orchestral hit"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.175,
+  "ref_files": [
+   "Play_sfx_Akali_AkaliW_OnCastOther__L1_v1.wav",
+   "Play_sfx_Akali_AkaliW_OnCastSelf__L1_v1.wav"
+  ],
+  "ref_n": 2
+ },
+ "sk_rockShockwave": {
+  "words": [
+   "a reverse whoosh",
+   "a whoosh",
+   "a cloth flap"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.396,
+  "ref_files": [
+   "Play_sfx_Malphite_Landslide_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "sk_shellShadow": {
+  "words": [
+   "a monster growl",
+   "a dark rumble",
+   "a ghostly wail"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.428,
+  "ref_files": [
+   "Play_sfx_Corki_CarpetBombMega_OnCast__L1_v1.wav",
+   "Play_sfx_Corki_CarpetBombMega_OnCast__L1_v2.wav",
+   "Play_sfx_Corki_CarpetBombMega_OnCast__L2_v1.wav",
+   "Play_sfx_Corki_CarpetBombMega_OnCast__L2_v2.wav"
+  ],
+  "ref_n": 4
+ },
+ "sk_shield": {
+  "words": [
+   "a cymbal crash",
+   "an electric zap",
+   "a healing spell"
+  ],
+  "dur": 1.88,
+  "sim_before": 0.363,
+  "ref_files": [
+   "Play_sfx_Lux_LuxPrismaticWave_OnCast__L1_v1.wav",
+   "Play_sfx_Lux_LuxPrismaticWave_OnCast__L1_v2.wav",
+   "Play_sfx_Lux_LuxPrismaticWave_OnCast__L1_v3.wav"
+  ],
+  "ref_n": 3
+ },
+ "sk_starGravityWarp": {
+  "words": [
+   "a choir pad",
+   "an orchestral hit",
+   "a synth pluck"
+  ],
+  "dur": 3.0,
+  "sim_before": 0.378,
+  "ref_files": [
+   "Play_sfx_Bard_BardR_OnCast__L1_v1.wav",
+   "Play_sfx_Bard_BardR_OnCast__L1_v2.wav",
+   "Play_sfx_Bard_BardR_OnCast__L1_v3.wav"
+  ],
+  "ref_n": 3
+ },
+ "sk_volcanoSmash": {
+  "words": [
+   "an orchestral hit",
+   "a reverse whoosh",
+   "a healing spell"
+  ],
+  "dur": 1.27,
+  "sim_before": 0.273,
+  "ref_files": [
+   "Play_sfx_Malphite_SeismicShard_OnCast__L1_v1.wav"
+  ],
+  "ref_n": 1
+ },
+ "skh_bubbleBind": {
+  "words": [
+   "a crunchy hit",
+   "a synth pluck",
+   "a water splash"
+  ],
+  "dur": 0.8,
+  "sim_before": 0.402,
+  "ref_files": [
+   "Play_sfx_Nami_NamiQ_hit__L1_v1.wav",
+   "Play_sfx_Nami_NamiQ_hit__L1_v2.wav"
+  ],
+  "ref_n": 2
+ },
+ "skh_lightningBarrage": {
+  "words": [
+   "an electric zap",
+   "a crunchy hit",
+   "a sizzling hiss"
+  ],
+  "dur": 0.95,
+  "sim_before": 0.434,
+  "ref_files": [
+   "Play_sfx_Kennen_KennenShurikenStorm_hit__L1_v1.wav",
+   "Play_sfx_Kennen_KennenShurikenStorm_hit__L1_v2.wav",
+   "Play_sfx_Kennen_KennenShurikenStorm_hit__L1_v3.wav",
+   "Play_sfx_Kennen_KennenShurikenStorm_hit__L1_v4.wav",
+   "Play_sfx_Zeri_ZeriRChain_hit__L1_v1.wav",
+   "Play_sfx_Zeri_ZeriRChain_hit__L1_v2.wav"
+  ],
+  "ref_n": 7
+ },
+ "skh_shellShadow": {
+  "words": [
+   "a sizzling hiss",
+   "a crackling fire",
+   "a fire burst"
+  ],
+  "dur": 2.12,
+  "sim_before": 0.387,
+  "ref_files": [
+   "Play_sfx_Corki_CarpetBombMega_OnHitLocation__L1_v1.wav",
+   "Play_sfx_Corki_CarpetBombMega_hit__L1_v1.wav",
+   "Play_sfx_Corki_CarpetBombMega_hit__L1_v2.wav",
+   "Play_sfx_Corki_CarpetBombMega_hit__L1_v3.wav",
+   "Play_sfx_Corki_CarpetBombMega_hit__L1_v4.wav"
+  ],
+  "ref_n": 5
+ }
+}
