@@ -55,7 +55,8 @@ func _elite_fix_norm(u: Dictionary, sd: Dictionary) -> void:
 	var spr = u.get("sprite", null)
 	if not is_instance_valid(spr):
 		return
-	var nk = battle.ANIM_NORM.get(battle._anim_key(u), null)
+	var _nkey: String = battle._anim_key(u)
+	var nk = battle.ANIM_NORM.get(_nkey, TurtleActions.NORM.get(_nkey, null))   # 外包 11 只的归一行在 gamedata(生成)
 	if nk == null:
 		return          # 没登记归一数据的单位不动它(用通用规则)
 	var act_body: float = float(nk[0])

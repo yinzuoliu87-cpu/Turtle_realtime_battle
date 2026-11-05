@@ -406,13 +406,12 @@ const WS := 0.024                         # 像素 → 米 比例 (ARENA 1140×5
 const PIXEL_SIZE := 0.012                 # (旧) 头像兜底像素→米; 全身图改按帧高归一到 TARGET_BODY_H
 
 # 动作动画表 (1:1 复用回合制 BattleScene _ACTION_ATTACK/_ACTION_HURT/_ACTION_DEATH).
-#   只有 basic/ghost/ninja 有真动作帧 (其余龟靠 idle + juice 形变).
+#   ghost/ninja 有真动作帧; 外包 11 只(含 basic)的动作表在 scripts/gamedata/turtle_actions.gd(2026-11-05 生成, 查不到主表才查它); 其余龟靠 idle + juice 形变.
 #   ⚠ 这行原来还写着 treasure_golem —— **是假的**(2026-08-20 核实): 它在下面三张 ACTION_* 表里
 #     出现 0 次, 四张帧从没接过线; 且全项目没有一处把 spr_id 设成 "treasure-golem"(召唤物用龟 id), 连 idle 分支也走不到。
 #     没有顺手"接上" —— 没有消费者的接线等于凭空发明玩法, 该由用户决定这套美术要不要用。
 #   值 = [相对路径, 每秒帧率] (帧尺寸 = 图高=方帧; hframes = 宽/帧高). 播一次后回 idle.
 const ACTION_ATTACK := {
-	"basic":  ["pets/animations/basic/attack.png", 14.0],
 	"ghost":  ["pets/animations/ghost/attack.png", 14.0],
 	"ninja":  ["pets/animations/ninja/slash.png", 16.0],
 	"__minion_elite__": ["pets/animations/elite/attack.png", 12.0],
@@ -461,12 +460,10 @@ const ActionElite := preload("res://scripts/gamedata/action_elite.gd")
 ##   所有 `battle.ACTION_ELITE.xxx` 的调用方一字不用改。
 const ACTION_ELITE := ActionElite.TABLE
 const ACTION_HURT := {
-	"basic":  ["pets/animations/basic/hurt.png", 16.0],
 	"ghost":  ["pets/animations/ghost/hurt.png", 16.0],
 	"ninja":  ["pets/animations/ninja/hurt.png", 16.0],
 }
 const ACTION_DEATH := {
-	"basic":  ["pets/animations/basic/death.png", 12.0],
 	"ghost":  ["pets/animations/ghost/death.png", 12.0],
 	"ninja":  ["pets/animations/ninja/death.png", 11.0],
 	"__minion_reserve__": ["pets/animations/reserve/death.png", 12.0],   # 12 帧(末帧 hold) = 1.0s ≥ 阵亡淡出 0.95s, 不会淡到一半站起来

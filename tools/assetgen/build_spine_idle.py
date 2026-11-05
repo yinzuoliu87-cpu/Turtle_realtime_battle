@@ -102,7 +102,9 @@ def main() -> int:
 			sheet[r * ch + dy: r * ch + dy + crop.shape[0], c * cw + dx: c * cw + dx + crop.shape[1]] = crop
 		Image.fromarray(sheet, "RGBA").save(os.path.join(OUT_DIR, "%s_idle.png" % tid), optimize=False)
 		man[tid] = {"frameW": cw, "frameH": ch, "frames": n, "duration": int(round(L * 1000)), "fps": FPS,
-			"content": [int(bw), int(y1 - y0)]}
+			"content": [int(bw), int(y1 - y0)],
+			## 画布像素 (px, py) ↔ 待机格子像素 (px - x0 + dx, py - y0 + dy); 动作帧(build_spine_actions.py)按同一套摆, 才能和待机逐像素对齐
+			"crop0": [int(x0), int(y0)], "place": [int(dx), int(dy)]}
 		print("写出 %-10s %d×%d 格 × %d 帧(%d 行)" % (tid, cw, ch, n, rows))
 	json.dump(man, open(MANIFEST, "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
 	print("共用格子 %d×%d → %s" % (cw, ch, os.path.relpath(OUT_DIR, ROOT)))

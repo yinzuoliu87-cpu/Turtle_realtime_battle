@@ -78,6 +78,9 @@ func _play_action(u: Dictionary, kind: String) -> void:
 		"hurt":   table = battle.ACTION_HURT
 		"death":  table = battle.ACTION_DEATH
 		_:        return
+	## 外包 11 只龟(2026-11-05 在画师 Spine 原骨骼上做的动作帧)的表在 gamedata, 由 build_spine_actions.py 生成; 主表没有才查它
+	if not table.has(id):
+		table = TurtleActions.by_kind(kind)
 	## ★单位自带帧表(096 九把斧按形态各用各的, 见 AxeArt): 先查单位身上的 `_act_rows`, 没有再查全局表
 	var own_rows: Dictionary = u.get("_act_rows", {})
 	if not own_rows.has(kind) and not table.has(id):
@@ -103,8 +106,8 @@ func _play_action(u: Dictionary, kind: String) -> void:
 		var art_spr = u["sprite"]
 		art_spr.pixel_size = float(u["_art_px"])
 		art_spr.offset = Vector2(0.0, float(u.get("_art_offy", 0.0)))
-	if battle.ANIM_NORM.has(id):
-		battle._elite_sys._elite_fix_norm(u, asd)   # 普攻(battle.ACTION_ATTACK)也是 96×96 的 PixelLab 图, 同样要修归一
+	if battle.ANIM_NORM.has(id) or TurtleActions.NORM.has(id):
+		battle._elite_sys._elite_fix_norm(u, asd)   # 普攻(battle.ACTION_ATTACK)也是 96×96 的 PixelLab 图, 同样要修归一; 外包 11 只的方帧也走这条
 
 # ----------------------------------------------------------------------------
 #  §GROUNDING — 立绘底部软渐隐 ShaderMaterial (根治"纸板硬切地面").

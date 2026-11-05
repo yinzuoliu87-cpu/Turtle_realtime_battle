@@ -4,120 +4,208 @@
    177,
    160
   ],
+  "crop0": [
+   112,
+   120
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   11,
+   16
+  ]
  },
  "bamboo": {
   "content": [
    166,
    166
   ],
+  "crop0": [
+   117,
+   116
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   17,
+   10
+  ]
  },
  "basic": {
   "content": [
    175,
    142
   ],
+  "crop0": [
+   113,
+   130
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   12,
+   34
+  ]
  },
  "fortune": {
   "content": [
    191,
    153
   ],
+  "crop0": [
+   104,
+   122
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   4,
+   23
+  ]
  },
  "ice": {
   "content": [
    182,
    158
   ],
+  "crop0": [
+   104,
+   130
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   9,
+   18
+  ]
  },
  "lava": {
   "content": [
    196,
    162
   ],
+  "crop0": [
+   102,
+   121
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   2,
+   14
+  ]
  },
  "lightning": {
   "content": [
    200,
    175
   ],
+  "crop0": [
+   104,
+   107
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   0,
+   1
+  ]
  },
  "phoenix": {
   "content": [
    195,
    171
   ],
+  "crop0": [
+   82,
+   121
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   2,
+   5
+  ]
  },
  "rainbow": {
   "content": [
    193,
    156
   ],
+  "crop0": [
+   109,
+   133
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   3,
+   20
+  ]
  },
  "shell": {
   "content": [
    171,
    161
   ],
+  "crop0": [
+   120,
+   85
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   14,
+   15
+  ]
  },
  "stone": {
   "content": [
    166,
    152
   ],
+  "crop0": [
+   116,
+   124
+  ],
   "duration": 3333,
   "fps": 15,
   "frameH": 176,
   "frameW": 200,
-  "frames": 50
+  "frames": 50,
+  "place": [
+   17,
+   24
+  ]
  }
 }
