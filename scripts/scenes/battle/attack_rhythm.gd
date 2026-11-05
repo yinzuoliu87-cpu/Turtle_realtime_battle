@@ -104,6 +104,10 @@ static func state_active(battle, u: Dictionary, name: String) -> bool:
 			return battle._t < float(u.get("phase_until", 0.0))
 		"volcano":
 			return bool(u.get("volcano", false))
+		"hidingShrink":   # 缩头乌龟缩头 3 秒(hiding_system._sk_hiding_shrink → channel)
+			return battle._t < float(u.get("channel_until", 0.0))
+		"diamondRoll":    # 钻石滚球位移态
+			return bool(u.get("roll_active", false))
 	return false
 
 

@@ -1,4 +1,32 @@
 {
+ "bubble": {
+  "attack": 9,
+  "body0": 164,
+  "casts": {
+   "bubbleBind": [
+    7,
+    2,
+    "pixellab"
+   ],
+   "bubbleBurst": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "bubbleShield": [
+    7,
+    5,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 260,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
  "candy": {
   "attack": 9,
   "body0": 164,
@@ -26,5 +54,145 @@
   "hit": 4,
   "hurt": 5,
   "run": 9
+ },
+ "dice": {
+  "attack": 9,
+  "body0": 165,
+  "casts": {
+   "diceAllIn": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "diceFate": [
+    8,
+    4,
+    "pixellab"
+   ],
+   "diceFlashStrike": [
+    6,
+    2,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 260,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "gambler": {
+  "attack": 9,
+  "body0": 165,
+  "casts": {
+   "gamblerBet": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "gamblerDraw": [
+    7,
+    6,
+    "pixellab"
+   ],
+   "gamblerFateWheel": [
+    7,
+    5,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 260,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "hunter": {
+  "attack": 9,
+  "body0": 163,
+  "casts": {
+   "hunterBarrage": [
+    7,
+    2,
+    "pixellab"
+   ],
+   "hunterShot": [
+    9,
+    6,
+    "pixellab"
+   ],
+   "hunterStealth": [
+    7,
+    4,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "line": {
+  "attack": 9,
+  "body0": 148,
+  "casts": {
+   "lineFinish": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "lineInkBomb": [
+    7,
+    6,
+    "pixellab"
+   ],
+   "lineLink": [
+    7,
+    4,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
+ },
+ "pirate": {
+  "attack": 9,
+  "body0": 127,
+  "casts": {
+   "pirateCannonBarrage": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "pirateRum": [
+    7,
+    4,
+    "pixellab"
+   ],
+   "pirateShipPassive": [
+    7,
+    4,
+    "pixellab"
+   ]
+  },
+  "death": 15,
+  "feet_row": 259,
+  "fps": 15,
+  "frame": 272,
+  "hit": 4,
+  "hurt": 5,
+  "run": 7
  }
 }

@@ -654,6 +654,10 @@ def main() -> int:
 	if "--only" in sys.argv:
 		only = set(sys.argv[sys.argv.index("--only") + 1].split(","))
 	preview = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
+	if "--gd-only" in sys.argv:   # 只重写 TurtleActions(外包 11 只清单 + 从头做的龟清单), 不重渲(新做一只龟后用)
+		pm = os.path.join(HERE, "pet_src", "pet_manifest.json")
+		write_gd(dict(json.load(open(MANIFEST, encoding="utf-8")), **json.load(open(pm, encoding="utf-8"))))
+		return 0
 	_check_head_caps()
 	_check_cast_variety()
 	idle_man = json.load(open(IDLE_MANIFEST, encoding="utf-8"))

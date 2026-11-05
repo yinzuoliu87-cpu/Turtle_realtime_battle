@@ -866,7 +866,7 @@
     "def": 14,
     "mr": 12,
     "crit": 0.25,
-    "img": "pets/dice.png",
+    "img": "pets/pixel/dice_idle.png", "sprite": {"frames": 6, "frameW": 154, "frameH": 165, "duration": 750},
     "passive": {
       "type": "gamblerBlood",
       "name": "赌徒之血",
@@ -1018,12 +1018,8 @@
     "def": 11,
     "mr": 11,
     "crit": 0.25,
-    "img": "pets/gambler.png",
-    "sprite": {
-      "frames": 8,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/gambler_idle.png",
+    "sprite": {"frames": 7, "frameW": 185, "frameH": 165, "duration": 875},
     "passive": {
       "type": "gamblerMultiHit",
       "name": "多重打击",
@@ -1094,12 +1090,8 @@
     "def": 13,
     "mr": 11,
     "crit": 0.25,
-    "img": "pets/hunter.png",
-    "sprite": {
-      "frames": 14,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/hunter_idle.png",
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 165, "duration": 875},
     "passive": {
       "type": "hunterKill",
       "name": "猎杀",
@@ -1172,7 +1164,7 @@
     "def": 15,
     "mr": 13,
     "crit": 0.25,
-    "img": "pets/pirate.png",
+    "img": "pets/pixel/pirate_idle.png", "sprite": {"frames": 7, "frameW": 200, "frameH": 130, "duration": 875},
     "passive": {
       "type": "pirateBarrage",
       "name": "掠夺",
@@ -1321,12 +1313,8 @@
     "def": 18,
     "mr": 19,
     "crit": 0.25,
-    "img": "pets/bubble.png",
-    "sprite": {
-      "frames": 8,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/bubble_idle.png",
+    "sprite": {"frames": 7, "frameW": 166, "frameH": 165, "duration": 875},
     "passive": {
       "type": "bubbleStore",
       "name": "泡沫",
@@ -1397,12 +1385,8 @@
     "def": 10,
     "mr": 11,
     "crit": 0.25,
-    "img": "pets/line.png",
-    "sprite": {
-      "frames": 13,
-      "frameW": 500,
-      "frameH": 500
-    },
+    "img": "pets/pixel/line_idle.png",
+    "sprite": {"frames": 7, "frameW": 200, "frameH": 149, "duration": 875},
     "passive": {
       "type": "inkMark",
       "name": "墨迹",

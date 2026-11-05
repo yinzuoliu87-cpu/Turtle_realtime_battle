@@ -33,7 +33,101 @@ FPS = 15
 IDLE_FPS = 8
 COLS = 10
 ## 头像裁切(定稿内容框的比例): 龟朝左, 头在左侧 —— 每只按定稿看过再登记
-AVATAR_BOX = {"candy": (0.0, 0.18, 0.62, 0.84)}
+AVATAR_BOX = {
+	"candy": (0.0, 0.18, 0.62, 0.84), "diamond": (0.0, 0.3, 0.6, 0.95), "gambler": (0.0, 0.0, 0.8, 0.72), "hunter": (0.0, 0.1, 0.6, 0.8),
+	"pirate": (0.0, 0.0, 0.55, 0.75), "bubble": (0.0, 0.3, 0.65, 1.0), "line": (0.0, 0.25, 0.55, 0.85), "cyber": (0.0, 0.0, 0.5, 0.8),
+	"crystal": (0.0, 0.35, 0.6, 1.0), "space": (0.0, 0.3, 0.6, 1.0), "hiding": (0.0, 0.3, 0.55, 1.0),
+	## 没有头的: 骰子 / 宝箱 / 无头 —— 取整只
+	"dice": (0.0, 0.0, 1.0, 1.0), "chest": (0.0, 0.0, 1.0, 1.0), "headless": (0.0, 0.0, 1.0, 1.0),
+}
+
+
+## ── 程序化刚体动作(不走 AI): 骰子龟本体是一颗刚体骰子, animate_image 把它画成半透明(二值化后只剩轮廓)、普攻帧画「化」了
+##   (11-05 预览, 那 24 次作废)⇒ 直接对定稿做平移 / 旋转 / 压扁 / 描边发光, 确定性、不花额度。
+def _xf(fr: np.ndarray, angle: float = 0.0, dx: float = 0.0, dy: float = 0.0, sx: float = 1.0, sy: float = 1.0, pivot=None) -> np.ndarray:
+	"""绕 pivot(帧坐标)缩放 + 旋转(度, 屏幕上逆时针为正; PIL Image.rotate 的定义)再平移; 最近邻。
+	(11-05 第一版手推仿射矩阵, 平移 / 轴心项算错 ⇒ 阵亡翻倒翻出画面; 改用 PIL 自带的 rotate)"""
+	h, w = fr.shape[:2]
+	px, py = pivot if pivot is not None else (w / 2.0, h / 2.0)
+	img = Image.fromarray(fr, "RGBA")
+	if sx != 1.0 or sy != 1.0:
+		w2, h2 = max(1, int(round(w * sx))), max(1, int(round(h * sy)))
+		big = img.resize((w2, h2), Image.NEAREST)
+		canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+		canvas.paste(big, (int(round(px - px * sx)), int(round(py - py * sy))), big)
+		img = canvas
+	img = img.rotate(angle, resample=Image.NEAREST, center=(px, py), translate=(dx, dy))
+	out = np.asarray(img).copy()
+	out[..., 3] = np.where(out[..., 3] >= 128, 255, 0)
+	out[out[..., 3] == 0] = 0
+	return out
+
+
+def _outline(fr: np.ndarray, rgb: tuple, width: int = 1) -> np.ndarray:
+	m = fr[..., 3] > 0
+	g = m.copy()
+	for _ in range(width):
+		g = g | np.roll(g, 1, 0) | np.roll(g, -1, 0) | np.roll(g, 1, 1) | np.roll(g, -1, 1)
+	out = fr.copy()
+	ring = g & ~m
+	out[ring, :3] = rgb
+	out[ring, 3] = 255
+	return out
+
+
+def _dim(fr: np.ndarray, k: float) -> np.ndarray:
+	out = fr.copy()
+	out[..., :3] = (out[..., :3].astype(float) * k).astype(np.uint8)
+	return out
+
+
+def procedural_dice(k0: np.ndarray) -> dict:
+	ys, xs = np.where(k0[..., 3] > 0)
+	x0, x1, y0, y1 = float(xs.min()), float(xs.max() + 1), float(ys.min()), float(ys.max() + 1)
+	cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+	bl, br = (x0, y1), (x1, y1)
+	seg = {}
+	seg["run"] = [_xf(k0, dy=v, sx=sx_, sy=sy_, pivot=(cx, y1)) for v, sx_, sy_ in
+		((0, 1, 1), (-6, 0.97, 1.03), (-10, 1, 1), (-6, 1, 1), (0, 1.08, 0.9), (0, 1.02, 0.97), (0, 1, 1))]
+	att = [(0, 0, br), (-5, 0, br), (-10, 0, br), (-14, 0, br), (18, -6, bl), (14, -5, bl), (8, -3, bl), (3, -1, bl), (0, 0, bl)]
+	seg["attack"] = [_xf(k0, angle=a, dx=dx_, pivot=p) for a, dx_, p in att]   # 第 4 帧砸下 = 命中帧
+	seg["hurt"] = [_xf(k0, angle=a, dx=dx_, pivot=br) for a, dx_ in ((0, 0), (-8, 8), (-5, 6), (-2, 3), (0, 0))]
+	## 阵亡: 一震(往后歪)→ 往前歪倒靠在一条棱上 → 变暗定住。翻满 90° 会整颗落到轴心左边一个骰子宽, 出 272 方帧(11-05 预览)
+	dth = [(0, br), (-8, br), (10, bl), (22, bl), (28, bl), (24, bl), (26, bl)]
+	seg["death"] = [_dim(_xf(k0, angle=a, pivot=p), 1.0 - 0.07 * i) for i, (a, p) in enumerate(dth)]
+	seg["cast_diceAllIn"] = [_xf(k0, angle=a, dx=dx_, pivot=(cx, cy)) for a, dx_ in ((0, 0), (45, -5), (90, -10), (135, -14), (180, -12), (270, -6), (360, 0))]
+	fate = [_xf(k0, angle=a, pivot=(cx, cy)) for a in (0, 60, 120, 180, 240, 300, 360)]
+	fate[-1] = _outline(fate[-1], (255, 210, 60), 2)
+	fate.append(_outline(k0, (255, 210, 60), 1))
+	seg["cast_diceFate"] = fate
+	fl = [k0, _xf(k0, sx=1.03, sy=1.03, pivot=(cx, y1)), _outline(_xf(k0, sx=1.05, sy=1.05, pivot=(cx, y1)), (255, 255, 255), 2),
+		_outline(k0, (255, 255, 255), 3), _outline(k0, (255, 255, 255), 1), k0]
+	seg["cast_diceFlashStrike"] = fl
+	seg["_idle"] = [_xf(k0, dy=v, pivot=(cx, y1)) for v in (0, -1, -2, -2, -1, 0)][1:]
+	return seg
+
+
+PROCEDURAL = {"dice": procedural_dice}
+
+## ── 持续状态循环(技能期间身体一直保持某个样子; 游戏侧条件在 AttackRhythm.state_active)
+##   (状态名, 取哪段技能的末帧, 做法, 帧率): hold = 末帧 + 1px 起伏; spin = 末帧绕本体中心整圈滚(向左滚 = 逆时针), 底边钉在原脚底行
+STATE_LOOPS = {
+	"hiding": [("hidingShrink", "cast_hidingShrink", "hold", 6.0)],      # 缩头 3 秒: 缩在壳里
+	"diamond": [("diamondRoll", "cast_diamondPowerball", "spin", 15.0)],  # 钻石滚球: roll_active 期间一直滚
+}
+
+
+def _state_frames(last: np.ndarray, mode: str) -> list:
+	ys, xs = np.where(last[..., 3] > 0)
+	cx, cy, bot = (xs.min() + xs.max() + 1) / 2.0, (ys.min() + ys.max() + 1) / 2.0, int(ys.max())
+	if mode == "spin":
+		out = []
+		for a in range(0, 360, 45):
+			f = _xf(last, angle=float(a), pivot=(cx, cy))
+			fy = np.where(f[..., 3] > 0)[0]
+			out.append(_xf(f, dy=float(bot - int(fy.max()))) if len(fy) else f)
+		return out
+	return [last, last, _xf(last, dy=-1.0), _xf(last, dy=-1.0)]
 
 
 def _ai(d: str, pal: np.ndarray) -> list:
@@ -71,7 +165,23 @@ def build(tid: str) -> dict:
 	os.makedirs(od, exist_ok=True)
 	ent = {"frame": S, "fps": FPS, "casts": {}}
 	segs = {}
-	for nm in sorted(os.listdir(src)):
+	if tid in PROCEDURAL:
+		ps = PROCEDURAL[tid](k0)
+		idle_extra = ps.pop("_idle")
+		for nm, frames in ps.items():
+			if nm == "death":
+				while len(frames) < int(A.DEATH["frames"]):
+					frames.append(frames[-1].copy())
+			segs[nm] = frames
+			Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(od, "%s.png" % nm), optimize=False)
+		## 待机帧条也用程序化(帧条格子 = 定稿尺寸: 从方帧里切回格子)
+		idle = [key] + [f[oy:oy + ch, ox:ox + cw] for f in idle_extra]
+		sheet = np.zeros((int(math.ceil((len(idle) + 1) / float(COLS))) * ch, COLS * cw, 4), dtype=np.uint8)
+		for k, f in enumerate(idle):
+			r, c = divmod(k, COLS)
+			sheet[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw] = f
+		Image.fromarray(sheet, "RGBA").save(os.path.join(PIXEL_DIR, "%s_idle.png" % tid), optimize=False)
+	for nm in ([] if tid in PROCEDURAL else sorted(os.listdir(src))):
 		d = os.path.join(src, nm)
 		if not os.path.isdir(d) or nm == "idle":
 			continue
@@ -87,10 +197,18 @@ def build(tid: str) -> dict:
 	if "attack" in segs:
 		lefts = [(A._bbox(f)[0] if (f[..., 3] > 0).any() else 999) for f in segs["attack"]]
 		ext = [lefts[0] - x for x in lefts]
-		ent["hit"] = next(i for i, e in enumerate(ext) if e >= 0.85 * max(ext)) if max(ext) > 0 else A.ATTACK_HIT
+		## 前冲够明显(≥ 4px)才按「伸到 85% 那帧」定命中; 不前冲的(吹泡泡 / 射箭等原地出手)按提示词约定「前三帧蓄力、第 4 帧出手」
+		##   (11-05 泡泡龟: 最大前伸 1px 落在第 1 帧 ⇒ 被定成命中帧 1, 等于没有前摇)
+		ent["hit"] = next(i for i, e in enumerate(ext) if e >= 0.85 * max(ext)) if max(ext) >= 4 else A.ATTACK_HIT
 	for nm, frames in segs.items():
 		if nm.startswith("cast_"):
 			ent["casts"][nm[5:]] = [len(frames), A.peak_frame(frames), "pixellab"]
+	for sname, seg, mode, sfps in STATE_LOOPS.get(tid, []):
+		if seg not in segs:
+			continue
+		frames = _state_frames(segs[seg][-1], mode)
+		Image.fromarray(np.concatenate(frames, axis=1), "RGBA").save(os.path.join(od, "state_%s.png" % sname), optimize=False)
+		ent.setdefault("states", []).append([sname, "pets/animations/%s/state_%s.png" % (tid, sname), sfps])
 	bx0, by0, bx1, by1 = A._bbox(k0)
 	ent["body0"] = by1 - by0
 	ent["feet_row"] = by1

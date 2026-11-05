@@ -116,6 +116,10 @@ func _ready() -> void:
 	var cy: float = scn.ARENA.position.y + scn.ARENA.size.y * 0.5
 	var played := 0
 	var ncast := 0
+	var nstate := 0
+	var nstate_rows := 0
+	for sid in ids:
+		nstate_rows += (TA.STATE.get(sid, []) as Array).size()
 	for i in range(ids.size()):
 		var id: String = str(ids[i])
 		var u: Dictionary = scn._spawn._make_unit(id, "left", Vector2(cx - 400.0 + 70.0 * i, cy))
@@ -157,8 +161,27 @@ func _ready() -> void:
 				"pixel_size %.6f/%.6f · 脚底 %.5f/%.5f m" % [spr.pixel_size, px0, cfeet, feet0])
 			scn._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
 			u["_cast_wind"] = false
+		## 持续状态循环(缩头乌龟缩壳 / 钻石龟滚球, 11-05): 条件成立 ⇒ 切到状态帧条且脚底线不跳; 条件结束 ⇒ 回待机
+		for row in (TA.STATE.get(id, []) as Array):
+			var sname: String = str((row as Array)[0])
+			if not _set_state(scn, u, sname, true):
+				_ok("★%s 状态 %s 在门禁里有触发条件(新状态要在 _set_state 补一行)" % [id, sname], false)
+				continue
+			nstate += 1
+			AttackRhythm.apply_state_idle(scn, u)
+			var stex = (u.get("anim_sd", {}) as Dictionary).get("tex", null)
+			var sfh: float = float(int((u.get("anim_sd", {}) as Dictionary).get("frame_h", 0)))
+			var sfeet: float = (spr.offset.y + sfh * 0.5 - float((TA.NORM[id] as Array)[1])) * spr.pixel_size
+			_ok("★★%s 状态 %s 条件成立 ⇒ 播状态帧条, 同一个像素尺寸、同一条脚底线" % [id, sname],
+				stex != null and str(stex.resource_path).ends_with(str((row as Array)[1])) and absf(spr.pixel_size - px0) < 1e-7 and absf(sfeet - feet0) < 1e-5,
+				"%s · 脚底 %.5f/%.5f" % [str(stex.resource_path).get_file() if stex != null else "无", sfeet, feet0])
+			_set_state(scn, u, sname, false)
+			AttackRhythm.apply_state_idle(scn, u)
+			var btex = (u.get("anim_sd", {}) as Dictionary).get("tex", null)
+			_ok("%s 状态 %s 结束 ⇒ 回待机" % [id, sname], btex != null and btex.resource_path == (u["idle_sd"]["tex"] as Texture2D).resource_path)
 	_ok("★分母: 运行时每只龟普攻 / 受击 / 阵亡都播了(%d 只 × 3)" % ids.size(), played == ids.size() * 3, "%d 次" % played)
 	_ok("★分母: 技能释放动作至少 25 段播过(外包 11 只)", ncast >= 25, "%d 段" % ncast)
+	_ok("★分母: 宠物状态循环每条都触发过", nstate == nstate_rows, "%d / %d 条" % [nstate, nstate_rows])
 	## 熔岩火山形态: 进火山后播动作, 像素尺寸 / 脚底线仍与普通待机一致
 	for e in scn._units:
 		if str(e.get("id", "")) == "lava":
@@ -182,6 +205,18 @@ func _ready() -> void:
 	print("%d passed, %d failed" % [_n - _fail, _fail])
 	print("ALL PASS — 外包 11 只动作帧与待机同框同尺度" if _fail == 0 else "FAIL")
 	get_tree().quit(0 if _fail == 0 else 1)
+
+
+## 状态循环的触发条件(与 AttackRhythm.state_active 一一对应; 认不得的状态名返回 false ⇒ 门禁红)
+func _set_state(scn, u: Dictionary, sname: String, on: bool) -> bool:
+	match sname:
+		"hidingShrink":
+			u["channel_until"] = scn._t + 3.0 if on else 0.0
+		"diamondRoll":
+			u["roll_active"] = on
+		_:
+			return false
+	return true
 
 
 func _frame0(path: String) -> Image:

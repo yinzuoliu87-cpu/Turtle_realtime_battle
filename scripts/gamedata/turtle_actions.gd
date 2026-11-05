@@ -9,13 +9,19 @@ const ATTACK := {
 	"angel": ["pets/animations/angel/attack.png", 15.0],   # 10 帧
 	"bamboo": ["pets/animations/bamboo/attack.png", 15.0],   # 10 帧
 	"basic": ["pets/animations/basic/attack.png", 15.0],   # 10 帧
+	"bubble": ["pets/animations/bubble/attack.png", 15.0],   # 9 帧
 	"candy": ["pets/animations/candy/attack.png", 15.0],   # 9 帧
+	"dice": ["pets/animations/dice/attack.png", 15.0],   # 9 帧
 	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 10 帧
+	"gambler": ["pets/animations/gambler/attack.png", 15.0],   # 9 帧
+	"hunter": ["pets/animations/hunter/attack.png", 15.0],   # 9 帧
 	"ice": ["pets/animations/ice/attack.png", 15.0],   # 10 帧
 	"lava": ["pets/animations/lava/attack.png", 15.0],   # 10 帧
 	"lava_volcano": ["pets/animations/lava_volcano/attack.png", 15.0],   # 9 帧
 	"lightning": ["pets/animations/lightning/attack.png", 15.0],   # 10 帧
+	"line": ["pets/animations/line/attack.png", 15.0],   # 9 帧
 	"phoenix": ["pets/animations/phoenix/attack.png", 15.0],   # 10 帧
+	"pirate": ["pets/animations/pirate/attack.png", 15.0],   # 9 帧
 	"rainbow": ["pets/animations/rainbow/attack.png", 15.0],   # 10 帧
 	"shell": ["pets/animations/shell/attack.png", 15.0],   # 10 帧
 	"stone": ["pets/animations/stone/attack.png", 15.0],   # 10 帧
@@ -24,13 +30,19 @@ const HURT := {
 	"angel": ["pets/animations/angel/hurt.png", 15.0],   # 6 帧
 	"bamboo": ["pets/animations/bamboo/hurt.png", 15.0],   # 6 帧
 	"basic": ["pets/animations/basic/hurt.png", 15.0],   # 6 帧
+	"bubble": ["pets/animations/bubble/hurt.png", 15.0],   # 5 帧
 	"candy": ["pets/animations/candy/hurt.png", 15.0],   # 5 帧
+	"dice": ["pets/animations/dice/hurt.png", 15.0],   # 5 帧
 	"fortune": ["pets/animations/fortune/hurt.png", 15.0],   # 6 帧
+	"gambler": ["pets/animations/gambler/hurt.png", 15.0],   # 5 帧
+	"hunter": ["pets/animations/hunter/hurt.png", 15.0],   # 5 帧
 	"ice": ["pets/animations/ice/hurt.png", 15.0],   # 6 帧
 	"lava": ["pets/animations/lava/hurt.png", 15.0],   # 6 帧
 	"lava_volcano": ["pets/animations/lava_volcano/hurt.png", 15.0],   # 5 帧
 	"lightning": ["pets/animations/lightning/hurt.png", 15.0],   # 6 帧
+	"line": ["pets/animations/line/hurt.png", 15.0],   # 5 帧
 	"phoenix": ["pets/animations/phoenix/hurt.png", 15.0],   # 6 帧
+	"pirate": ["pets/animations/pirate/hurt.png", 15.0],   # 5 帧
 	"rainbow": ["pets/animations/rainbow/hurt.png", 15.0],   # 6 帧
 	"shell": ["pets/animations/shell/hurt.png", 15.0],   # 6 帧
 	"stone": ["pets/animations/stone/hurt.png", 15.0],   # 6 帧
@@ -39,13 +51,19 @@ const DEATH := {
 	"angel": ["pets/animations/angel/death.png", 15.0],   # 15 帧
 	"bamboo": ["pets/animations/bamboo/death.png", 15.0],   # 15 帧
 	"basic": ["pets/animations/basic/death.png", 15.0],   # 15 帧
+	"bubble": ["pets/animations/bubble/death.png", 15.0],   # 15 帧
 	"candy": ["pets/animations/candy/death.png", 15.0],   # 15 帧
+	"dice": ["pets/animations/dice/death.png", 15.0],   # 15 帧
 	"fortune": ["pets/animations/fortune/death.png", 15.0],   # 15 帧
+	"gambler": ["pets/animations/gambler/death.png", 15.0],   # 15 帧
+	"hunter": ["pets/animations/hunter/death.png", 15.0],   # 15 帧
 	"ice": ["pets/animations/ice/death.png", 15.0],   # 15 帧
 	"lava": ["pets/animations/lava/death.png", 15.0],   # 15 帧
 	"lava_volcano": ["pets/animations/lava_volcano/death.png", 15.0],   # 15 帧
 	"lightning": ["pets/animations/lightning/death.png", 15.0],   # 15 帧
+	"line": ["pets/animations/line/death.png", 15.0],   # 15 帧
 	"phoenix": ["pets/animations/phoenix/death.png", 15.0],   # 15 帧
+	"pirate": ["pets/animations/pirate/death.png", 15.0],   # 15 帧
 	"rainbow": ["pets/animations/rainbow/death.png", 15.0],   # 15 帧
 	"shell": ["pets/animations/shell/death.png", 15.0],   # 15 帧
 	"stone": ["pets/animations/stone/death.png", 15.0],   # 15 帧
@@ -55,12 +73,18 @@ const RUN := {
 	"angel": ["pets/animations/angel/run.png", 12.0],   # 8 帧
 	"bamboo": ["pets/animations/bamboo/run.png", 12.0],   # 8 帧
 	"basic": ["pets/animations/basic/run.png", 12.0],   # 8 帧
+	"bubble": ["pets/animations/bubble/run.png", 12.0],   # 7 帧
 	"candy": ["pets/animations/candy/run.png", 12.0],   # 9 帧
+	"dice": ["pets/animations/dice/run.png", 12.0],   # 7 帧
 	"fortune": ["pets/animations/fortune/run.png", 12.0],   # 8 帧
+	"gambler": ["pets/animations/gambler/run.png", 12.0],   # 7 帧
+	"hunter": ["pets/animations/hunter/run.png", 12.0],   # 7 帧
 	"ice": ["pets/animations/ice/run.png", 12.0],   # 8 帧
 	"lava": ["pets/animations/lava/run.png", 12.0],   # 8 帧
 	"lightning": ["pets/animations/lightning/run.png", 12.0],   # 8 帧
+	"line": ["pets/animations/line/run.png", 12.0],   # 7 帧
 	"phoenix": ["pets/animations/phoenix/run.png", 12.0],   # 8 帧
+	"pirate": ["pets/animations/pirate/run.png", 12.0],   # 7 帧
 	"rainbow": ["pets/animations/rainbow/run.png", 12.0],   # 8 帧
 	"stone": ["pets/animations/stone/run.png", 12.0],   # 8 帧
 }
@@ -69,13 +93,19 @@ const HIT := {
 	"pets/animations/angel/attack.png": 4,
 	"pets/animations/bamboo/attack.png": 4,
 	"pets/animations/basic/attack.png": 4,
+	"pets/animations/bubble/attack.png": 4,
 	"pets/animations/candy/attack.png": 4,
+	"pets/animations/dice/attack.png": 4,
 	"pets/animations/fortune/attack.png": 4,
+	"pets/animations/gambler/attack.png": 4,
+	"pets/animations/hunter/attack.png": 4,
 	"pets/animations/ice/attack.png": 4,
 	"pets/animations/lava/attack.png": 4,
 	"pets/animations/lava_volcano/attack.png": 5,
 	"pets/animations/lightning/attack.png": 4,
+	"pets/animations/line/attack.png": 4,
 	"pets/animations/phoenix/attack.png": 4,
+	"pets/animations/pirate/attack.png": 4,
 	"pets/animations/rainbow/attack.png": 4,
 	"pets/animations/shell/attack.png": 4,
 	"pets/animations/stone/attack.png": 4,
@@ -108,15 +138,35 @@ const CAST := {
 		"basicChiWave": ["pets/animations/basic/cast_basicChiWave.png", 15.0, 3],   # 9 帧 · pixellab
 		"basicSlam": ["pets/animations/basic/cast_basicSlam.png", 15.0, 4],   # 9 帧 · pixellab
 	},
+	"bubble": {
+		"bubbleBind": ["pets/animations/bubble/cast_bubbleBind.png", 15.0, 2],   # 7 帧 · pixellab
+		"bubbleBurst": ["pets/animations/bubble/cast_bubbleBurst.png", 15.0, 4],   # 7 帧 · pixellab
+		"bubbleShield": ["pets/animations/bubble/cast_bubbleShield.png", 15.0, 5],   # 7 帧 · pixellab
+	},
 	"candy": {
 		"candyBarrage": ["pets/animations/candy/cast_candyBarrage.png", 15.0, 3],   # 7 帧 · pixellab
 		"candyBomb": ["pets/animations/candy/cast_candyBomb.png", 15.0, 4],   # 7 帧 · pixellab
 		"candyHammer": ["pets/animations/candy/cast_candyHammer.png", 15.0, 6],   # 9 帧 · pixellab
 	},
+	"dice": {
+		"diceAllIn": ["pets/animations/dice/cast_diceAllIn.png", 15.0, 4],   # 7 帧 · pixellab
+		"diceFate": ["pets/animations/dice/cast_diceFate.png", 15.0, 4],   # 8 帧 · pixellab
+		"diceFlashStrike": ["pets/animations/dice/cast_diceFlashStrike.png", 15.0, 2],   # 6 帧 · pixellab
+	},
 	"fortune": {
 		"fortuneAllIn": ["pets/animations/fortune/cast_fortuneAllIn.png", 15.0, 4],   # 9 帧 · pixellab
 		"fortuneBuyEquip": ["pets/animations/fortune/cast_fortuneBuyEquip.png", 15.0, 4],   # 8 帧 · skel
 		"fortuneDice": ["pets/animations/fortune/cast_fortuneDice.png", 15.0, 3],   # 7 帧 · pixellab
+	},
+	"gambler": {
+		"gamblerBet": ["pets/animations/gambler/cast_gamblerBet.png", 15.0, 4],   # 7 帧 · pixellab
+		"gamblerDraw": ["pets/animations/gambler/cast_gamblerDraw.png", 15.0, 6],   # 7 帧 · pixellab
+		"gamblerFateWheel": ["pets/animations/gambler/cast_gamblerFateWheel.png", 15.0, 5],   # 7 帧 · pixellab
+	},
+	"hunter": {
+		"hunterBarrage": ["pets/animations/hunter/cast_hunterBarrage.png", 15.0, 2],   # 7 帧 · pixellab
+		"hunterShot": ["pets/animations/hunter/cast_hunterShot.png", 15.0, 6],   # 9 帧 · pixellab
+		"hunterStealth": ["pets/animations/hunter/cast_hunterStealth.png", 15.0, 4],   # 7 帧 · pixellab
 	},
 	"ice": {
 		"commonTeamShield": ["pets/animations/ice/cast_commonTeamShield.png", 15.0, 4],   # 8 帧 · skel
@@ -138,10 +188,20 @@ const CAST := {
 		"lightningShield": ["pets/animations/lightning/cast_lightningShield.png", 15.0, 4],   # 8 帧 · skel
 		"lightningSurgeBuff": ["pets/animations/lightning/cast_lightningSurgeBuff.png", 15.0, 4],   # 8 帧 · skel
 	},
+	"line": {
+		"lineFinish": ["pets/animations/line/cast_lineFinish.png", 15.0, 4],   # 7 帧 · pixellab
+		"lineInkBomb": ["pets/animations/line/cast_lineInkBomb.png", 15.0, 6],   # 7 帧 · pixellab
+		"lineLink": ["pets/animations/line/cast_lineLink.png", 15.0, 4],   # 7 帧 · pixellab
+	},
 	"phoenix": {
 		"phoenixEnhancedRebirth": ["pets/animations/phoenix/cast_phoenixEnhancedRebirth.png", 15.0, 4],   # 8 帧 · skel
 		"phoenixScald": ["pets/animations/phoenix/cast_phoenixScald.png", 15.0, 3],   # 7 帧 · pixellab
 		"phoenixShield": ["pets/animations/phoenix/cast_phoenixShield.png", 15.0, 4],   # 8 帧 · skel
+	},
+	"pirate": {
+		"pirateCannonBarrage": ["pets/animations/pirate/cast_pirateCannonBarrage.png", 15.0, 4],   # 7 帧 · pixellab
+		"pirateRum": ["pets/animations/pirate/cast_pirateRum.png", 15.0, 4],   # 7 帧 · pixellab
+		"pirateShipPassive": ["pets/animations/pirate/cast_pirateShipPassive.png", 15.0, 4],   # 7 帧 · pixellab
 	},
 	"rainbow": {
 		"rainbowReflect": ["pets/animations/rainbow/cast_rainbowReflect.png", 15.0, 4],   # 8 帧 · skel
@@ -165,13 +225,19 @@ const NORM := {
 	"angel": [160.0, 260.0, 160.0],
 	"bamboo": [165.0, 260.0, 165.0],
 	"basic": [139.0, 260.0, 139.0],
+	"bubble": [164.0, 260.0, 164.0],
 	"candy": [164.0, 260.0, 164.0],
+	"dice": [165.0, 260.0, 165.0],
 	"fortune": [149.0, 260.0, 149.0],
+	"gambler": [165.0, 260.0, 165.0],
+	"hunter": [163.0, 260.0, 163.0],
 	"ice": [158.0, 260.0, 158.0],
 	"lava": [162.0, 260.0, 162.0],
 	"lava_volcano": [189.0, 260.0, 189.0],
 	"lightning": [157.0, 260.0, 157.0],
+	"line": [148.0, 260.0, 148.0],
 	"phoenix": [167.0, 260.0, 167.0],
+	"pirate": [127.0, 260.0, 127.0],
 	"rainbow": [156.0, 260.0, 156.0],
 	"shell": [143.0, 260.0, 143.0],
 	"stone": [151.0, 260.0, 151.0],
