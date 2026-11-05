@@ -156,10 +156,15 @@ const MINION_INFO := {
 		"skill_desc": "精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成（{C:EliteSystem.HAMMER_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_ATK_COEF*ATK}）魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成（{C:EliteSystem.HAMMER_BIG_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_BIG_ATK_COEF*ATK}）魔法伤害。",
 		## `slot` = 图鉴龟页同一套右栏里放哪: basic → 普通攻击条 / passive → 被动条 / skill → 技能卡(签「被动」)。
 		## `icon`(2026-11-04, 相对 assets/sprites/): 战斗信息面板能力排与图鉴普通攻击条 / 被动条用同一张; 铁锁合进被动格, 不单独出图。
+		## ★2026-11-05 用户「他的被动应该是有三个啊…每五次攻击之后…旋刃…钩子…斩杀…这都是被动，所以你还是按照规矩来写被动普攻技能」:
+		##   被动 3 条(旋刃 / 铁锁 / 吞噬, 用户说的顺序) · 攻击 1 条(长手刃, 只写普通攻击本身) · 技能 1 张(铁锤)。
+		##   原来旋刃塞在长手刃里、铁锁是签「被动」的技能卡(图鉴里一块没图标没框的字), 与龟页不是一个结构。
+		##   代码里铁锁本来就是「被动2」(RealtimeBattle3DScene._tick_elite_whip 头注), 吞噬完成时目标被击杀(EliteSystem 吞噬回调)。
 		"passives": [
-			{"name": "长手刃", "slot": "basic", "icon": "skills/elite-blade.png", "desc": "精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。每第 {C:EliteSystem.WHIRL_EVERY} 次攻击转而挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。"},
-			{"name": "吞噬", "slot": "passive", "icon": "passive/elite-consume-icon.png", "desc": "精英小将在目标生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成后回复相当于目标剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，并获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。"},
-			{"name": "铁锁", "slot": "skill", "desc": "精英小将每 {C:EliteSystem.WHIP_CD_SEC} 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 {C:EliteSystem.WHIP_STUN_SEC} 秒并拉至自身后方，造成（{C:EliteSystem.WHIP_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.WHIP_ATK_COEF*ATK}）魔法伤害。"},
+			{"name": "旋刃", "slot": "passive", "icon": "passive/elite-whirl-icon.png", "desc": "精英小将每第 {C:EliteSystem.WHIRL_EVERY} 次攻击挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。"},
+			{"name": "铁锁", "slot": "passive", "icon": "passive/elite-whip-icon.png", "desc": "精英小将每 {C:EliteSystem.WHIP_CD_SEC} 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 {C:EliteSystem.WHIP_STUN_SEC} 秒并拉至自身后方，造成（{C:EliteSystem.WHIP_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.WHIP_ATK_COEF*ATK}）魔法伤害。"},
+			{"name": "吞噬", "slot": "passive", "icon": "passive/elite-consume-icon.png", "desc": "精英小将的攻击、铁锁或铁锤命中生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 的敌人时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成时击杀该敌人，回复相当于其剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取该敌人的主动技能。"},
+			{"name": "长手刃", "slot": "basic", "icon": "skills/elite-blade.png", "desc": "精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。"},
 		],
 	},
 	## 援军小将(用户 2026-10-29, 方案书 docs/plans/20261029-终极战场援军小将.md):

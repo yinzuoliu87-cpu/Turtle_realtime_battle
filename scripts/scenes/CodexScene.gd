@@ -582,6 +582,7 @@ func _select(idx: int) -> void:
 	_codex_form_view = false   # 切换条目重置双形态视图 (回普通技能)
 	_codex_skill_detail = {}   # 切换条目重置内联技能详情 (回技能卡列表)
 	_codex_passive_view = false   # 切换条目重置被动展开 (回技能卡列表)
+	_codex_passive_idx = 0
 	var item: Dictionary = _items[idx]
 	match current_tab:
 		"pets":
@@ -851,3 +852,4 @@ const MINION_INFO := MinionCodex.MINION_INFO
 var _codex_form_view: bool = false   # 图鉴双形态: false=普通skillPool, true=形态(近战/火山)技能
 var _codex_skill_detail: Dictionary = {}   # 内联技能详情视图 (非空=显示该技能完整detail+返回钮, 1:1 PoC view={skillIdx}; 空=技能卡列表)
 var _codex_passive_view: bool = false   # 内联被动展开 (true=下方区显示完整被动desc, 1:1 PoC view='passive'; false=技能卡列表)
+var _codex_passive_idx: int = 0   # 展开的是第几条被动(精英小将有 3 条, 2026-11-05)

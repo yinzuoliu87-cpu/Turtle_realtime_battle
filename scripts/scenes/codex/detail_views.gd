@@ -94,12 +94,13 @@ func _show_minion(kind: String) -> void:
 	_render_right(_minion_pet(kind, mi), ctx)
 
 
-## 小将 → 龟页右栏认得的形状: skillPool[0] 普通攻击(有才放) / 主动技 / 其余技能, passive 一条。
-## 每条被动按 MinionCodex 里的 `slot` 归位: basic → 普通攻击条, passive → 被动条, skill → 技能卡(签「被动」)。
+## 小将 → 龟页右栏认得的形状: skillPool[0] 普通攻击(有才放) / 主动技 / 其余技能, passive 第一条 + passives 全部。
+## 每条按 MinionCodex 里的 `slot` 归位: basic → 普通攻击条, passive → 被动条(可以多条, 2026-11-05), skill → 技能卡(签「被动」)。
 func _minion_pet(kind: String, mi: Dictionary) -> Dictionary:
 	var basic: Array = []
 	var extra: Array = []
 	var passive: Dictionary = {}
+	var plist: Array = []
 	for pv in mi.get("passives", []):
 		var d: Dictionary = {"name": str(pv["name"]), "brief": str(pv["desc"]), "detail": str(pv["desc"]), "desc": str(pv["desc"]),
 			"icon": str(pv.get("icon", ""))}   # 2026-11-04 小将普通攻击 / 被动有了图标(与战斗信息面板同一张)
@@ -113,14 +114,12 @@ func _minion_pet(kind: String, mi: Dictionary) -> Dictionary:
 			_:
 				if passive.is_empty():
 					passive = d
-				else:
-					d["_role"] = "passive"
-					extra.append(d)
+				plist.append(d)
 	var active: Dictionary = {"name": str(mi["skill_name"]), "icon": str(mi.get("skill_icon", "")),
 		"brief": str(mi["skill_desc"]), "detail": str(mi["skill_desc"]),
 		"_role": "active", "_energy": int(mi["skill_cost"])}
 	return {"id": "__minion_%s" % kind, "_minion": kind, "name": str(mi["name"]),
-		"skillPool": basic + [active] + extra, "passive": passive}
+		"skillPool": basic + [active] + extra, "passive": passive, "passives": plist}
 
 # ══════════════════════════════════════════════════════════════════
 # 属性牌 / 稀有度牌 / 词条签 (2026-09-27 去"后台仪表盘"味)
@@ -412,56 +411,17 @@ func _show_pet(pet: Dictionary) -> void:
 ## 右栏: 被动条 → 普通攻击条 → 技能卡。龟页与小将页(_show_minion 合成的 pet)共用 —— 两边长得一样就是因为走的同一段。
 func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 	# 9) 被动条(右栏顶) 高 PASSIVE_BAR_H · 两行: 标题行 + 简述一行
-	var passive: Dictionary = pet.get("passive", {})
-	var rw: float = _rw()
+	## ★2026-11-05 被动可以有多条(精英小将 3 条: 用户「他的被动应该是有三个啊」): 每条一根与龟同样的被动条, 往下排;
+	##   点哪条就在下方展开哪条的全文(host._codex_passive_idx)。龟只有一条 ⇒ 长相不变。
+	var plist: Array = pet.get("passives", [])
+	if plist.is_empty() and not (pet.get("passive", {}) as Dictionary).is_empty():
+		plist = [pet["passive"]]
 	var cards_y := 16.0   # 无被动的龟(目前 0 只)从右栏顶起
-	if not passive.is_empty():
-		var passive_y = 16.0
-		## ★2026-10-08 无框(见 _flat_row 上方): 展开态靠右端「收起」二字区分, 不再靠框色。
-		_flat_row(RCOL_X, passive_y, rw, PASSIVE_BAR_H, "PassiveBar")
-		var mid_y: float = passive_y + 19.0   # 标题行中线(与普攻条同一套几何)
-		var text_x = RCOL_X + 16.0
-		var pi_path: String = DataRegistry.passive_icons.get(passive.get("type", ""), "")
-		if pi_path == "":
-			pi_path = str(passive.get("icon", ""))   # 小将的被动没有 type(不在龟被动表里), 图标写在条目自己身上
-		if pi_path != "":
-			if pi_path.ends_with(".png"):
-				## 被动条九宫格边带 13 ⇒ 图标放 28, 不漫到边带上。
-				host._add_image(RCOL_X + 30.0, mid_y, "res://assets/sprites/%s" % pi_path, 28, 28)
-				text_x = RCOL_X + ROW_TEXT_X
-			else:
-				host._add_text(RCOL_X + ROW_ICON_CX, mid_y, pi_path, 28, "#ffffff", 0.5, 0.5)
-				text_x = RCOL_X + ROW_TEXT_X
-		host._add_text(text_x, mid_y, "被动 · %s" % passive.get("name", ""), 17, "#58d3ff", 0.0, 0.5, true)
-		## ★★被动的简述【就画在条上】(2026-08-15, 用户点名的"同一屏两种交互"):
-		##   与技能卡同构 —— **条上给简述, 点开看全文**。
-		## ★2026-10-08 两栏后右栏只剩 494 宽, 简述从「标题右边横着放」改成标题下面一整行。
-		var p_brief: String = str(passive.get("brief", passive.get("desc", "")))
-		var p_cut: bool = false
-		## ★2026-10-14: 展开时不画简述 —— 全文第一句就是同一句话, 两层同时显示 = 一屏说两遍(彩虹龟实拍)。
-		if p_brief.strip_edges() != "" and not host._codex_passive_view:
-			var brt := _one_line_preview(passive_y + 35.0)   # 标题 Label 下沿约 +34
-			## 开头若只是一行小标题(海盗龟「登场轰击：」), 预览从下面那句效果开始; 放不下就「…」截断。
-			p_cut = PreviewText.fit_one_line(brt, SkillText.render_bbcode(
-				PreviewText.skip_lead_headings(_trim_tail(p_brief)), ctx, passive, PREVIEW_PX))
-			brt.set_meta("preview_truncated", p_cut)
-		# hint: 展开→"收起"金 / 否则"查看全部"蓝(与技能卡同一句式)。
-		## ★2026-10-10「查看全部」只在【真的截断了】时画 —— 原来无条件画, 一句话写完的被动也挂着它, 点开什么新东西都没有。
-		if host._codex_passive_view or p_cut:
-			var p_hint: String = "收起" if host._codex_passive_view else "查看全部"
-			var p_hint_col: String = "#ffd93d" if host._codex_passive_view else "#7fb5d8"
-			host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, mid_y, p_hint, HINT_PX, p_hint_col, 1.0, 0.5)
-		# drill-down: 点被动条 → 内联展开/收起完整 passive desc (1:1 PoC showPetDetail view='passive' toggle, 非弹窗)
-		var p_hit = Control.new()
-		p_hit.position = Vector2(RCOL_X, passive_y)
-		p_hit.size = Vector2(rw, PASSIVE_BAR_H)
-		_tap_hit(p_hit, func() -> void:
-			host._codex_skill_detail = {}
-			host._codex_passive_view = not host._codex_passive_view
-			_redraw())
-		host.detail.add_child(p_hit)
-		_row_rule(passive_y + PASSIVE_BAR_H + 3.0)
-		cards_y = passive_y + PASSIVE_BAR_H + 8.0
+	for k in range(plist.size()):
+		cards_y = _passive_bar(plist[k], k, cards_y, ctx)
+	if host._codex_passive_view and plist.size() > 1:
+		pet = pet.duplicate()
+		pet["passive"] = plist[clampi(host._codex_passive_idx, 0, plist.size() - 1)]   # 下方展开的是被点的那一条
 	## 双形态龟(双头/熔岩)的形态切换钮: 原来写死 y=262 压在被动条上; 后来给它在这里留了一条 42px 带,
 	##   而钮却按【卡片起点】定位(start_y 已经越过普攻条) ⇒ 实拍压在普攻条上、带子空着。
 	## ★2026-10-07 改挂到「开局三选一」那一行的右端(见 _render_skill_cards), 这里不再另留带 ——
@@ -469,6 +429,59 @@ func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 
 	# 10) 技能卡 — 4 卡 1 行, 铺满板宽, 每卡高度按自己的正文收(见 _render_skill_cards)
 	_render_skill_cards(pet, ctx, cards_y)
+
+
+## 一根被动条(第 k 条, 从 top 起), 返回下面内容的起点。
+func _passive_bar(passive: Dictionary, k: int, top: float, ctx: Dictionary) -> float:
+	var rw: float = _rw()
+	var opened: bool = host._codex_passive_view and host._codex_passive_idx == k
+	var passive_y = top
+	## ★2026-10-08 无框(见 _flat_row 上方): 展开态靠右端「收起」二字区分, 不再靠框色。
+	_flat_row(RCOL_X, passive_y, rw, PASSIVE_BAR_H, "PassiveBar" if k == 0 else "PassiveBar%d" % (k + 1))
+	var mid_y: float = passive_y + 19.0   # 标题行中线(与普攻条同一套几何)
+	var text_x = RCOL_X + 16.0
+	var pi_path: String = DataRegistry.passive_icons.get(passive.get("type", ""), "")
+	if pi_path == "":
+		pi_path = str(passive.get("icon", ""))   # 小将的被动没有 type(不在龟被动表里), 图标写在条目自己身上
+	if pi_path != "":
+		if pi_path.ends_with(".png"):
+			## 被动条九宫格边带 13 ⇒ 图标放 28, 不漫到边带上。
+			host._add_image(RCOL_X + 30.0, mid_y, "res://assets/sprites/%s" % pi_path, 28, 28)
+			text_x = RCOL_X + ROW_TEXT_X
+		else:
+			host._add_text(RCOL_X + ROW_ICON_CX, mid_y, pi_path, 28, "#ffffff", 0.5, 0.5)
+			text_x = RCOL_X + ROW_TEXT_X
+	host._add_text(text_x, mid_y, "被动 · %s" % passive.get("name", ""), 17, "#58d3ff", 0.0, 0.5, true)
+	## ★★被动的简述【就画在条上】(2026-08-15, 用户点名的"同一屏两种交互"):
+	##   与技能卡同构 —— **条上给简述, 点开看全文**。
+	## ★2026-10-08 两栏后右栏只剩 494 宽, 简述从「标题右边横着放」改成标题下面一整行。
+	var p_brief: String = str(passive.get("brief", passive.get("desc", "")))
+	var p_cut: bool = false
+	## ★2026-10-14: 展开时不画简述 —— 全文第一句就是同一句话, 两层同时显示 = 一屏说两遍(彩虹龟实拍)。
+	if p_brief.strip_edges() != "" and not opened:
+		var brt := _one_line_preview(passive_y + 35.0)   # 标题 Label 下沿约 +34
+		## 开头若只是一行小标题(海盗龟「登场轰击：」), 预览从下面那句效果开始; 放不下就「…」截断。
+		p_cut = PreviewText.fit_one_line(brt, SkillText.render_bbcode(
+			PreviewText.skip_lead_headings(_trim_tail(p_brief)), ctx, passive, PREVIEW_PX))
+		brt.set_meta("preview_truncated", p_cut)
+	# hint: 展开→"收起"金 / 否则"查看全部"蓝(与技能卡同一句式)。
+	## ★2026-10-10「查看全部」只在【真的截断了】时画 —— 原来无条件画, 一句话写完的被动也挂着它, 点开什么新东西都没有。
+	if opened or p_cut:
+		var p_hint: String = "收起" if opened else "查看全部"
+		var p_hint_col: String = "#ffd93d" if opened else "#7fb5d8"
+		host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, mid_y, p_hint, HINT_PX, p_hint_col, 1.0, 0.5)
+	# drill-down: 点被动条 → 内联展开/收起完整 passive desc (1:1 PoC showPetDetail view='passive' toggle, 非弹窗)
+	var p_hit = Control.new()
+	p_hit.position = Vector2(RCOL_X, passive_y)
+	p_hit.size = Vector2(rw, PASSIVE_BAR_H)
+	_tap_hit(p_hit, func() -> void:
+		host._codex_skill_detail = {}
+		host._codex_passive_view = not opened
+		host._codex_passive_idx = k
+		_redraw())
+	host.detail.add_child(p_hit)
+	_row_rule(passive_y + PASSIVE_BAR_H + 3.0)
+	return passive_y + PASSIVE_BAR_H + 8.0
 
 
 # ─── 技能卡 (1:1 PoC renderSkillListSection) ───

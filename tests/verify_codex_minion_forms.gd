@@ -5,7 +5,7 @@ extends Node
 ##     顶上一行灰字「不可编入阵容 · 开战时自动登场」。现在右栏走龟页同一段 `_render_right`。
 ##     判据(量真实节点): 有「技能」小节标题; 技能写在【龟页技能卡】里(codex_card_body 富文本 + 17px 卡名 + 「主动 · 龟能 N」签);
 ##     右栏不再有龟页没有的那种 fit_content 大段正文; 灰字两行不在了, 换成签牌「不可编入」「每级 ×1.05」;
-##     精英小将另有被动条(PassiveBar)+ 普通攻击条(BasicBar) —— 与龟页同名同构。
+##     精英小将另有被动条(PassiveBar, 3 根: 旋刃 / 铁锁 / 吞噬, 2026-11-05)+ 普通攻击条(BasicBar) —— 与龟页同名同构。
 ##     对照组: 小龟页同一批判据也成立(证明比的是"同一套", 不是凑出来的小将专属判据)。
 ##   T 双头龟: 原来没有形态钮, 卡名「灵能冲击/锤击」「精神干扰/吸收」两招拼一张。
 ##     判据: 有形态钮; 默认(远程)卡名 = 灵能冲击 / 精神干扰 / 融合, 切到近战 = 锤击 / 吸收 / 融合; 任何卡名都不带「/」;
@@ -165,19 +165,33 @@ func _ready() -> void:
 				grey = true
 		_ok("M %s 顶上灰字说明行不在了" % kind, not grey)
 		_ok("M %s 签牌「不可编入」「每级 ×1.05」" % kind, t.has("不可编入") and t.has("每级 ×1.05"), str(t))
-	## 精英: 被动条 + 普通攻击条, 与龟页同名同构; 铁锁是一张签「被动」的卡
+	## 精英(★2026-11-05 用户「他的被动应该是有三个啊…按照规矩来写被动普攻技能」「小将和龟…应该是要一个结构的呀」):
+	##   被动 3 根(旋刃 / 铁锁 / 吞噬, 与龟页同样的被动条)· 攻击条 = 长手刃 · 技能卡只有铁锤(铁锁不再是夹在技能区里的一块字)
 	## (就在循环最后打开的这一页上量 —— 同一页连开两次, 新节点会撞上还没删掉的旧节点名而被引擎改名)
 	_ok("M elite 被动条(PassiveBar)", _named("PassiveBar") != null)
+	var tx := _texts()
+	var order: Array = []
+	for nm in ["被动 · 旋刃", "被动 · 铁锁", "被动 · 吞噬"]:
+		order.append(tx.find(nm))
+	_ok("M elite 被动 3 根: 旋刃 / 铁锁 / 吞噬(依次)", not order.has(-1) and order[0] < order[1] and order[1] < order[2], str(order))
 	_ok("M elite 攻击条(BasicBar)", _named("BasicBar") != null)
-	_ok("M elite 攻击条写的是长手刃", _texts().has("攻击 · 长手刃"))
+	_ok("M elite 攻击条写的是长手刃", tx.has("攻击 · 长手刃"))
 	var en := _card_names()
-	_ok("M elite 技能卡 = 铁锤 + 铁锁", en.has("铁锤") and en.has("铁锁"), ", ".join(en))
-	## 点被动条展开 → 与龟页同一个展开态(「收起」), 重画回到的是小将页而不是别的龟
+	_ok("M elite 技能卡只有铁锤(铁锁归被动)", en == PackedStringArray(["铁锤"]), ", ".join(en))
+	## 点第 2 根被动条(铁锁)展开 → 与龟页同一个展开态(「收起」), 展开的是铁锁全文、重画回到的是小将页
 	_c._codex_passive_view = true
+	_c._codex_passive_idx = 1
 	_c._codex_detail._redraw()
 	await _settle(4)
-	_ok("M elite 被动展开后仍是小将页、出现「收起」", _texts().has("收起") and _texts().has("精英小将"))
+	## 展开的全文 = fit_content 的那块富文本(条上的一行简述是 fit_content=false, 见 detail_views._one_line_preview)
+	var body := ""
+	for rt in _c.find_children("*", "RichTextLabel", true, false):
+		if (rt as RichTextLabel).is_visible_in_tree() and not rt.is_queued_for_deletion() and (rt as RichTextLabel).fit_content:
+			body += (rt as RichTextLabel).get_parsed_text()
+	_ok("M elite 点第 2 根被动展开的是铁锁全文、仍是小将页、出现「收起」", _texts().has("收起") and _texts().has("精英小将") and body.find("射出锁链") >= 0 and body.find("挥出旋刃") < 0,
+		body.substr(0, 80))
 	_c._codex_passive_view = false
+	_c._codex_passive_idx = 0
 
 	# ── T 双头龟 ──
 	var th := await _open("id", "two_head")
