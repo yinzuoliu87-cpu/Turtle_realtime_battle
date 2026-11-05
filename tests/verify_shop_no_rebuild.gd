@@ -139,15 +139,9 @@ func _ready() -> void:
 	## ③ 第一次点开说明卡不卡: 进店时文案里 {C:类.常量} 引用的脚本已交给后台线程加载(SkillText.prewarm_consts)。
 	##   原来第一次 948 毫秒、之后每次约 9 毫秒(EquipSystem 主线程现场加载 930 毫秒)。判据用同一进程里的「第二次」作参照。
 	var pend: Array = SkillText._warm_pending.keys()
+	## 等后台做完: 一次性阻塞取完(SkillText.flush_prewarm), 不按帧轮询 —— CI 无头跑帧极快, 轮询 15 秒会先把帧预算用光(11-05 CI 红过一次)
 	var tw := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - tw < 15000:
-		var left := 0
-		for pth in pend:
-			if SkillText._warm_pending.has(pth) and ResourceLoader.load_threaded_get_status(pth) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-				left += 1
-		if left == 0:
-			break
-		await get_tree().process_frame
+	SkillText.flush_prewarm()
 	var eq_path := ""
 	for c in ProjectSettings.get_global_class_list():
 		if str(c.get("class", "")) == "EquipSystem":
