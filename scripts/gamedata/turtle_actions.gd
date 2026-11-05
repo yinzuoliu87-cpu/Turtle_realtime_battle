@@ -6,17 +6,17 @@ extends RefCounted
 ## 方帧 272×272(_resolve_action 只认方帧); 第 0 帧 = 待机第 0 帧同姿势、同一像素尺寸。
 
 const ATTACK := {
-	"angel": ["pets/animations/angel/attack.png", 15.0],   # 8 帧
-	"bamboo": ["pets/animations/bamboo/attack.png", 15.0],   # 8 帧
-	"basic": ["pets/animations/basic/attack.png", 15.0],   # 8 帧
-	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 8 帧
-	"ice": ["pets/animations/ice/attack.png", 15.0],   # 8 帧
-	"lava": ["pets/animations/lava/attack.png", 15.0],   # 8 帧
-	"lightning": ["pets/animations/lightning/attack.png", 15.0],   # 8 帧
-	"phoenix": ["pets/animations/phoenix/attack.png", 15.0],   # 8 帧
-	"rainbow": ["pets/animations/rainbow/attack.png", 15.0],   # 8 帧
-	"shell": ["pets/animations/shell/attack.png", 15.0],   # 8 帧
-	"stone": ["pets/animations/stone/attack.png", 15.0],   # 8 帧
+	"angel": ["pets/animations/angel/attack.png", 15.0],   # 10 帧
+	"bamboo": ["pets/animations/bamboo/attack.png", 15.0],   # 10 帧
+	"basic": ["pets/animations/basic/attack.png", 15.0],   # 10 帧
+	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 10 帧
+	"ice": ["pets/animations/ice/attack.png", 15.0],   # 10 帧
+	"lava": ["pets/animations/lava/attack.png", 15.0],   # 10 帧
+	"lightning": ["pets/animations/lightning/attack.png", 15.0],   # 10 帧
+	"phoenix": ["pets/animations/phoenix/attack.png", 15.0],   # 10 帧
+	"rainbow": ["pets/animations/rainbow/attack.png", 15.0],   # 10 帧
+	"shell": ["pets/animations/shell/attack.png", 15.0],   # 10 帧
+	"stone": ["pets/animations/stone/attack.png", 15.0],   # 10 帧
 }
 const HURT := {
 	"angel": ["pets/animations/angel/hurt.png", 15.0],   # 6 帧
@@ -43,6 +43,20 @@ const DEATH := {
 	"rainbow": ["pets/animations/rainbow/death.png", 15.0],   # 15 帧
 	"shell": ["pets/animations/shell/death.png", 15.0],   # 15 帧
 	"stone": ["pets/animations/stone/death.png", 15.0],   # 15 帧
+}
+## 普攻命中帧(按路径; AttackHits.hit_frame 读): 前摇 1~3 帧 → 第 4 帧命中 → 后摇。
+const HIT := {
+	"pets/animations/angel/attack.png": 4,
+	"pets/animations/bamboo/attack.png": 4,
+	"pets/animations/basic/attack.png": 4,
+	"pets/animations/fortune/attack.png": 4,
+	"pets/animations/ice/attack.png": 4,
+	"pets/animations/lava/attack.png": 4,
+	"pets/animations/lightning/attack.png": 4,
+	"pets/animations/phoenix/attack.png": 4,
+	"pets/animations/rainbow/attack.png": 4,
+	"pets/animations/shell/attack.png": 4,
+	"pets/animations/stone/attack.png": 4,
 }
 ## 归一 [动作图本体高, 脚底行, 待机本体高] —— 与主场景 ANIM_NORM 同口径(elite_system._elite_fix_norm 读)。
 ##   两个本体高相等(动作与待机同一个像素尺寸); 脚底行 = 待机格子底边在方帧里的行(动作一播不上下跳)。

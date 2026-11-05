@@ -59,7 +59,7 @@ func ground_sprite(tex_path: String, hframes: int, vframes: int, frame: int,
 	return sp
 
 
-func _play_action(u: Dictionary, kind: String) -> void:
+func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> void:
 	if u == null or not is_instance_valid(u.get("sprite", null)):
 		return
 	# death 优先级最高; 已在播 death 不打断
@@ -99,6 +99,8 @@ func _play_action(u: Dictionary, kind: String) -> void:
 		var _afr: float = float(asd.get("frames", 1))
 		var _aiv: float = maxf(0.15, float(u.get("atk_interval", 0.85)))
 		asd["fps"] = clampf(_afr / (_aiv * 0.45), 10.0, 30.0)   # 斩击动作时长随攻速(LoL式·越快越短): 占攻击周期~45%
+	if fps_override > 0.0:
+		asd["fps"] = fps_override   # 普攻前摇开播(AttackRhythm.begin): 帧率由「命中帧 / 前摇秒数」定, 覆盖上面所有默认
 	battle._set_anim_sheet(u, asd, kind, false)
 	## ★统一贴图尺寸的单位(096 斧头): 动作帧与待机同一个像素尺寸、同一条贴地行,
 	##   不走「身高 / 帧高」通用归一(那条默认本体填满整帧, 而斧头表为挥砍留了画布)
@@ -552,8 +554,10 @@ func _juice_scale_for(u: Dictionary) -> Vector2:
 	var wt: float = u.get("windup_t", 0.0)
 	var st: float = u.get("swing_t", 0.0)
 	if wt > 0.0:
-		var fw: float = wt / battle.JUICE_WINDUP_SEC        # 1→0
-		var m: float = lerpf(1.0, battle.JUICE_WINDUP_SCALE, fw)
+		## 蓄力: 整个前摇里从 1 慢慢缩到 JUICE_WINDUP_SCALE, 结算那刻最缩、随即 swing 弹出(11-05 普攻三段; 原来是结算时才先缩后伸)
+		var tot: float = maxf(0.001, float(u.get("_windup_total", battle.JUICE_WINDUP_SEC)))
+		var fw: float = clampf(wt / tot, 0.0, 1.0)        # 1→0
+		var m: float = lerpf(battle.JUICE_WINDUP_SCALE, 1.0, fw)
 		sx *= m; sy *= m
 	elif st > 0.0:
 		var fs: float = clampf(st / battle.JUICE_SWING_SEC, 0.0, 1.0)   # swing 段 (windup 已耗尽)

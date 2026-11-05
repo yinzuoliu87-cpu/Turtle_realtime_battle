@@ -84,7 +84,7 @@ const UKEYS_S2 := ["bar_head_h", "hp_w", "maxEnergy", "active_skills", "energy_c
 	"tamed_side", "id", "name", "untargetable_until", "_assembling", "egg", "summon_kind",
 	## 渲染步算立绘变换 / 呼吸 / 形变要的(单位外观节点主人活着时不镜像, 见 `_samp`)
 	"bob_phase", "spr_base_scale", "shadow_base_scale", "contact_base_scale", "airborne", "vy",
-	"hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_lunge_dir", "_lunge_dur"]
+	"hitsq_t", "land_t", "swing_t", "windup_t", "_windup_total", "_lunge_t", "_lunge_amp", "_lunge_dir", "_lunge_dur"]
 ## ★2026-10-31 伤害统计(用户「所有数据都没有统计啊」): 战中 📊 面板与结算屏读的就是单位身上这几项,
 ##   原来一项都不在流里 ⇒ 播状态流时全是 0(探针 tests/probes/_probe_stream_stats.gd: 本机跑合计 1.65 万、流里 0)。
 ##   `_st_dealt_by_type` / `_st_taken_by_type` / `_st_eq` 是纯值字典(按类型 / 按装备分桶); `rarity` 给结算行的头像框配色。

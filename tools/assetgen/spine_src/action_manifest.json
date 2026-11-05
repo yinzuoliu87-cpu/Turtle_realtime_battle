@@ -1,6 +1,6 @@
 {
  "angel": {
-  "attack": 8,
+  "attack": 10,
   "body0": 160,
   "death": 15,
   "death_src": "pixellab",
@@ -11,7 +11,7 @@
   "idle_body": 160
  },
  "bamboo": {
-  "attack": 8,
+  "attack": 10,
   "body0": 165,
   "death": 15,
   "death_src": "pixellab",
@@ -22,7 +22,7 @@
   "idle_body": 166
  },
  "basic": {
-  "attack": 8,
+  "attack": 10,
   "body0": 141,
   "death": 15,
   "death_src": "pixellab",
@@ -33,7 +33,7 @@
   "idle_body": 142
  },
  "fortune": {
-  "attack": 8,
+  "attack": 10,
   "body0": 149,
   "death": 15,
   "death_src": "pixellab",
@@ -44,7 +44,7 @@
   "idle_body": 153
  },
  "ice": {
-  "attack": 8,
+  "attack": 10,
   "body0": 158,
   "death": 15,
   "death_src": "pixellab",
@@ -55,7 +55,7 @@
   "idle_body": 158
  },
  "lava": {
-  "attack": 8,
+  "attack": 10,
   "body0": 162,
   "death": 15,
   "death_src": "pixellab",
@@ -66,7 +66,7 @@
   "idle_body": 162
  },
  "lightning": {
-  "attack": 8,
+  "attack": 10,
   "body0": 157,
   "death": 15,
   "death_src": "pixellab",
@@ -77,7 +77,7 @@
   "idle_body": 175
  },
  "phoenix": {
-  "attack": 8,
+  "attack": 10,
   "body0": 167,
   "death": 15,
   "death_src": "pixellab",
@@ -88,7 +88,7 @@
   "idle_body": 171
  },
  "rainbow": {
-  "attack": 8,
+  "attack": 10,
   "body0": 156,
   "death": 15,
   "death_src": "pixellab",
@@ -99,7 +99,7 @@
   "idle_body": 156
  },
  "shell": {
-  "attack": 8,
+  "attack": 10,
   "body0": 143,
   "death": 15,
   "feet_row": 259,
@@ -109,7 +109,7 @@
   "idle_body": 161
  },
  "stone": {
-  "attack": 8,
+  "attack": 10,
   "body0": 151,
   "death": 15,
   "death_src": "pixellab",

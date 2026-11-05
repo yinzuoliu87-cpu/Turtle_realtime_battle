@@ -22,6 +22,7 @@ const SKILL_TEXT_FS := 13
 const RENDER_OWNED_KEYS := [
 	"anim_action", "anim_t", "anim_sd",
 	"flash_t", "hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_atk_voff",
+	"_windup_total", "_atk_wind", "_atk_hit_frame",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
 	"_run_acc", "_run_acc_t", "_run_last_pos", "run_sd",
 	"_tr_move_dir", "_tr_move_acc", "_tr_last_pos", "_tr_move_t", "_tr_speed", "_tr_face", "_tr_anim_t",
 	"_hhot_owner", "_mark_spr", "_phase_ai_t",

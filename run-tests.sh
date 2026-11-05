@@ -339,6 +339,7 @@ frames_for () {
     verify_replay_upload_retry) echo 4000 ;;
     # 渲染不写 sim 读的字段: 三局各 2400 步全在同一帧里同步推(不 await), 帧数只有几十; 墙钟约 1.5 分钟(逐步全标量指纹)
     verify_render_writeback) echo 2000 ;;
+    verify_attack_rhythm) echo 1500 ;;   # 2026-11-05 普攻三段: 真场景 900 帧观察 5 种攻击方各 ≥2 次结算
     # 回放 S3: 录一局(每帧 3 步) + 战绩页点回放播两整局(每帧约 6 步) + 一段中途退出 + 9 种失败各等几帧; 帧数就是分母, 给足
     verify_replay_watch) echo 12000 ;;
     # 周末看回放: 录两局(每帧 1 步 sim, 各约 600 帧) + 赛况板 / 对阵图各进一次回放再退出; 本地实测 1930 帧, 给足 4 倍

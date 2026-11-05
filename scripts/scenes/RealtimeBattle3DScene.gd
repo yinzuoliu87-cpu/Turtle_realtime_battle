@@ -2512,9 +2512,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			if _t < float(u.get("_anim_lock_until", 0.0)):
 				pass                                     # 动作锁(背刺等committed动作): 播完前站定不出手/不放技/不移动(用户2026-07-11 动作播完前不打断)
 			elif dist <= rng and not u.get("no_basic", false) and u["id"] != "phoenix" and u["atk_cd"] <= 0.0:
-				u["pending"] = "B"                       # 普攻优先: 在射程且普攻就绪→先普攻, 技能塞进普攻冷却空档(不打断攻击流·用户2026-07-11)
-				u["state"] = "windup"
-				u["state_t"] = clampf(float(u["atk_interval"]) * ATK_WINDUP_PCT, ATK_WINDUP_MIN, ATK_WINDUP_MAX)
+				_enter_basic_windup(u)                   # 普攻优先: 在射程且普攻就绪→先普攻, 技能塞进普攻冷却空档(不打断攻击流·用户2026-07-11)
 			elif rs != "" and dist <= _skill_cast_range(u, str(rs)):
 				# 就绪技放技: 自/友向任意距离; 远程敌向技(如手里剑2000码)够得着就放·不被近战射程卡; 普通敌向技=进攻击射程放(用户2026-07-11)
 				u["pending"] = "K:" + rs
@@ -2531,9 +2529,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					if not u["melee"] and dist < rng * 0.7:
 						_do_move(u, tgt, dist, rng, spd * PhoenixSystem.FLAME_MOVE_MULT, delta)   # 边喷边走位(kite); 喷火时移速×0.5(寻敌时正常速)(用户)
 				elif u["atk_cd"] <= 0.0:
-					u["pending"] = "B"
-					u["state"] = "windup"
-					u["state_t"] = clampf(float(u["atk_interval"]) * ATK_WINDUP_PCT, ATK_WINDUP_MIN, ATK_WINDUP_MAX)   # 前摇=攻击周期30%(随攻速缩放); 出手juice由_basic_attack触发
+					_enter_basic_windup(u)
 				elif not u["melee"] and dist < rng * 0.7:
 					_do_move(u, tgt, dist, rng, spd, delta)   # 远程风筝
 			else:
@@ -2826,10 +2822,15 @@ func _separation(u: Dictionary) -> Vector2:
 # ============================================================================
 #  普攻 (复用 2D BASIC_ATK 表 + 伤害公式; 远程发 3D 投射物) + 复杂普攻特判 + on-hit 被动
 # ============================================================================
+## 进普攻前摇: 前摇 = 攻击周期 × ATK_WINDUP_PCT(随攻速缩放); 前摇一开始就播普攻帧条, 命中帧对上结算(AttackRhythm, 11-05 用户「盖伦平 A」)
+func _enter_basic_windup(u: Dictionary) -> void:
+	u["pending"] = "B"; u["state"] = "windup"
+	u["state_t"] = clampf(float(u["atk_interval"]) * ATK_WINDUP_PCT, ATK_WINDUP_MIN, ATK_WINDUP_MAX)
+	AttackRhythm.begin(self, u, float(u["state_t"]))
+
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
-	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
+	AttackRhythm.on_hit(self, u)    # 普攻三段: 前摇里已开播 ⇒ 此刻正是命中帧不重播; 追打等无前摇的出手照旧(预备形变 + 开播)
 	_audio_sys.sfx_basic_swing(u)   # 普攻出手声(挥击破风 / 发射; 11-05 照云顶 BasicAttack_OnCast; 只管声音)
-	_vfx._play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
 	var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(不算多段)
 	_equip_sys.tally.pop(_tl0)
@@ -7327,6 +7328,7 @@ func _anticipate(u: Dictionary) -> void:
 	if u == null or not u.get("alive", false):
 		return
 	u["windup_t"] = JUICE_WINDUP_SEC
+	u["_windup_total"] = JUICE_WINDUP_SEC
 	u["swing_t"] = JUICE_WINDUP_SEC + JUICE_SWING_SEC   # 预备结束后挥出仍有效 (decay 先过 windup 段再进 swing 段)
 
 func _particle_burst(pos2d: Vector2) -> void:
