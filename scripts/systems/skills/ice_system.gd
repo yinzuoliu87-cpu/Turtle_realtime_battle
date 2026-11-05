@@ -338,13 +338,14 @@ func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
 ##   ④ 命中      GPU 冰屑粒子爆散 + 白蓝闪光 + 地面冲击环 + 极轻震屏
 ##   ⑤ 残留      地面霜痕渐隐
 const FROST_ICICLE := "res://assets/sprites/vfx/frost-icicle-fall.png"
-const FROST_FIELD := "res://assets/sprites/vfx/frost-field-ground.png"
+## ★2026-11-05 霜盘换成新画的地面冰层(旧 frost-field-ground.png 是立体白冰饼 = 一团白雾, 见 _ice_frost_field 头注)
+const FROST_FLOOR := "res://assets/sprites/vfx/frost-floor.png"
 const FROST_CHIP := "res://assets/sprites/vfx/frost-chip.png"
 
 ## 一跳的视觉: 按半径决定落几根, 每根独立预警→坠落→命中→残留.
 func _ice_frost_rain(center: Vector2, radius: float) -> void:
-	# ④ 片数跟半径走(旧版恒 5): 150码→5 根, 满层 750码→15 根(3+int(750/60)). 上限 16 防帧率(实际到不了).
-	var n: int = clampi(3 + int(radius / 60.0), 5, 16)
+	# ④ 片数跟半径走。★2026-11-05 v2: 少而大而亮(原 5~16 根细淡冰锥像下雨): 150码→3 根, 满层 750码→6 根
+	var n: int = clampi(2 + int(radius / 150.0), 2, 6)
 	for i in range(n):
 		# 极坐标均匀采样(旧版是方形取样再 continue 掉圈外的, 实际根数经常不足)
 		var a: float = battle._juice_rng.randf() * TAU
@@ -353,35 +354,81 @@ func _ice_frost_rain(center: Vector2, radius: float) -> void:
 		var delay: float = battle._juice_rng.randf() * 0.30      # 错峰, 不要齐刷刷一起落
 		battle._pending_shots.append({"delay": delay, "fn": _frost_icicle_drop.bind(at)})
 
-## 领域底层(只在首跳建一次): 地面霜盘, 缓慢自转 + 呼吸, secs 秒后淡出.
+## 领域底层(只在首跳建一次)。
+## ★2026-11-05 v2(用户「寒冰龟这个特效其实是不合格的」; 参考 LoL 艾尼维亚大招逐帧 docs/studies/20261105-冰霜参考-艾尼维亚大招逐帧.md):
+##   旧版问题: 霜盘 frost-field-ground.png 画的是一块立起来的白冰饼(物体), 拉到 150~750 码再半透明 = 一团白雾, 把单位洗淡;
+##   没有边(看不清范围); 0.35 秒慢慢淡入, 没有峰值; 每根冰锥落地再铺一个小霜盘 = 满地白圈(像水泡)。
+##   v2(只为「看清楚」, 伤害 / 范围 / 跳数一个字没动):
+##     ① 峰值前置: 放出那一下中心白芯一闪, 0.1 秒内到最亮(Riot: 最亮的一下只给峰值)
+##     ② 底层换成新画的地面冰层 frost-floor.png(400×400; 暗灰紫底 + 细淡青裂纹 + 浅蓝亮边, 边 = 判定范围), 0.08 秒铺满; 比地面暗 ⇒ 单位站在上面更突出
+##     ③ 外面一圈施法方阵营色描边常驻(左蓝右红, 与地面环敌我描边同色)
+##     ④ 缓慢自转 25 度(有「活」的感觉但不抢眼)  ⑤ 结束 0.25 秒收掉
+## 地面冰层本身就是暗灰紫(持续层压暗 —— 艾尼维亚大招长满后也是暗紫), 不再染色, 只留 72% 不透明让地面透出一点
+const FROST_FLOOR_TINT := Color(1.0, 1.0, 1.0, 0.72)
+const FROST_RIM_FRAME := 7          # skill-ring-10f.png 第 7 帧: 环宽 / 外径 0.11(第 5 帧 0.15 太粗); 自带 alpha 150
+const FROST_RIM_OUTER_PX := 26.3    # 第 7 帧外径(texel, 实量)
 func _ice_frost_field(center: Vector2, radius: float, secs: float) -> void:
-	var tex: Texture2D = load(FROST_FIELD)
+	var tex: Texture2D = load(FROST_FLOOR)
 	if tex == null or battle._world == null:
 		return
 	var spr := Sprite3D.new()
 	spr.texture = tex
-	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED           # ★贴地不朝相机 —— 它是"地面上的一层霜"
+	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED           # ★贴地不朝相机 —— 它是"地面上的一层冰"
 	spr.shaded = false
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	spr.pixel_size = (radius * 2.0 * battle.WS) / float(maxi(1, tex.get_width()))
 	spr.position = battle._world_pos(center, 0.02)
 	spr.rotation_degrees = Vector3(-90.0, 0.0, 0.0)             # 平铺到地面
-	spr.modulate = Color(0.72, 0.92, 1.0, 0.0)
+	spr.modulate = Color(FROST_FLOOR_TINT.r, FROST_FLOOR_TINT.g, FROST_FLOOR_TINT.b, 0.0)
 	battle._world.add_child(spr)
 	var tin = battle._reg_tween()
-	tin.tween_property(spr, "modulate:a", 0.42, 0.35)
-	# 缓慢自转(整个持续时长转 40 度) + 呼吸
+	tin.tween_property(spr, "modulate:a", FROST_FLOOR_TINT.a, 0.08)
 	var trot = battle._reg_tween()
-	trot.tween_property(spr, "rotation_degrees:y", 40.0, secs)
-	var tbr = battle._reg_tween()
-	tbr.set_loops(maxi(1, int(secs / 1.6)))
-	tbr.tween_property(spr, "modulate:a", 0.30, 0.8)
-	tbr.tween_property(spr, "modulate:a", 0.42, 0.8)
+	trot.tween_property(spr, "rotation_degrees:y", 25.0, secs)
 	var tout = battle._reg_tween()
-	tout.tween_interval(maxf(0.1, secs - 0.4))
-	tout.tween_property(spr, "modulate:a", 0.0, 0.4)
+	tout.tween_interval(maxf(0.1, secs - 0.25))
+	tout.tween_property(spr, "modulate:a", 0.0, 0.25)
 	tout.tween_callback(spr.queue_free)
+	# ① 峰值前置: 中心白芯一闪(加粗冲击环试过 —— 64 像素环贴图拉到判定半径是一圈圈锯齿台阶, 实拍粗糙, 去掉)
+	var g = battle._glow_bb(center, 0.3, minf(radius * 0.5, 120.0), Color(0.92, 0.98, 1.0, 0.9))
+	if g != null:
+		var tg = battle._reg_tween()
+		tg.set_parallel(true)
+		tg.tween_property(g, "scale", Vector3.ONE * 1.6, 0.10)
+		tg.tween_property(g.material_override, "albedo_color", Color(0.92, 0.98, 1.0, 0.0), 0.20)
+		tg.chain().tween_callback(g.queue_free)
+	_frost_team_rim(center, radius, secs)
+
+
+## ③ 施法方阵营色描边常驻(放技能时 _cast_skill 记下的 battle._ring_side; 拿不到就不描)。
+func _frost_team_rim(center: Vector2, radius: float, secs: float) -> void:
+	var side: String = str(battle._ring_side)
+	if side != "left" and side != "right":
+		return
+	var sheet: Texture2D = load("res://assets/sprites/vfx/skill-ring-10f.png")
+	if sheet == null or battle._world == null:
+		return
+	var tc: Color = battle.RING_RIM_LEFT if side == "left" else battle.RING_RIM_RIGHT
+	var rim := Sprite3D.new()
+	rim.texture = sheet
+	rim.hframes = battle.RING_ANIM_FRAMES
+	rim.frame = FROST_RIM_FRAME
+	rim.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	rim.axis = Vector3.AXIS_Y
+	rim.shaded = false
+	rim.transparent = true
+	rim.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	rim.pixel_size = (radius * battle.WS) / FROST_RIM_OUTER_PX * battle.RING_RIM_SCALE   # 恒定只放一次, 不连续缩放
+	rim.modulate = Color(tc.r, tc.g, tc.b, 0.0)
+	rim.position = battle._world_pos(center, 0.025)
+	rim.set_meta("frost_rim_side", side)
+	battle._world.add_child(rim)
+	var tw = battle._reg_tween()
+	tw.tween_property(rim, "modulate:a", battle.RING_RIM_A, 0.08)
+	tw.tween_interval(maxf(0.1, secs - 0.33))
+	tw.tween_property(rim, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(rim.queue_free)
 
 ## 一根冰锥的完整生命: 预警圈 → 加速坠落 → 命中(粒子+闪光+环+震) → 霜痕残留.
 func _frost_icicle_drop(at: Vector2) -> void:
@@ -398,14 +445,14 @@ func _frost_icicle_drop(at: Vector2) -> void:
 	spr.shaded = false
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = (54.0 * battle.WS) / float(maxi(1, tex.get_height()))
-	spr.modulate = Color(0.85, 0.96, 1.0, 0.95)
+	spr.pixel_size = (78.0 * battle.WS) / float(maxi(1, tex.get_height()))   # v2: 54 → 78 码(大一半)
+	spr.modulate = Color(1.15, 1.30, 1.50, 1.0)                                 # v2: 过曝提亮(无光照下 >1 生效), 尖端亮读出「砸」
 	var ground: Vector3 = battle._world_pos(at, 0.06)
 	spr.position = ground + Vector3(0.0, 3.5, 0.0)              # ③ 起点抬高(旧版 2.2)
 	battle._world.add_child(spr)
 	var tw = battle._reg_tween()
 	tw.bind_node(spr)
-	tw.tween_interval(0.15)                                     # 等预警圈
+	tw.tween_interval(0.06)                                     # v2: 预警圈去掉了, 不用再等
 	# ★重力感: TRANS_QUAD + EASE_IN, 0.22 秒(旧版线性 0.35 秒)
 	tw.tween_property(spr, "position", ground, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
@@ -413,7 +460,7 @@ func _frost_icicle_drop(at: Vector2) -> void:
 			spr.queue_free()
 		_frost_impact(at))
 
-## ④ 命中三件套: GPU 冰屑粒子 + 白蓝闪光 + 地面冲击环 + 极轻震屏; ⑤ 再留一小片霜痕.
+## ④ 命中: GPU 冰屑粒子 + 白蓝闪光(11-04 / 11-05 去掉了冲击环、震屏、霜痕, 见函数里)
 func _frost_impact(at: Vector2) -> void:
 	if battle._world == null:
 		return
@@ -425,9 +472,7 @@ func _frost_impact(at: Vector2) -> void:
 		tg.tween_property(g, "scale", Vector3.ONE * 2.1, 0.14)
 		tg.tween_property(g.material_override, "albedo_color", Color(0.80, 0.95, 1.0, 0.0), 0.16)
 		tg.chain().tween_callback(g.queue_free)
-	## 地面冲击环 ★2026-11-04 去掉(理由同上面的预警圈): 落地反馈由闪光 + 冰屑 + 霜痕给
-	battle._shake(0.012)                                        # 极轻(一跳最多 16 根, 不能重)
-	_frost_scar(at)                                             # 残留霜痕
+	## 地面冲击环 ★2026-11-04 去掉; 震屏 ★11-04 战斗中不震; 霜痕 ★11-05 去掉(每根一个小霜盘 = 满地白圈像水泡) —— 落地反馈 = 闪光 + 冰屑
 
 ## GPU 冰屑粒子: 向上+外扩, 重力回落. 照 battle_vfx._impact_particles 的结构改配色/形状.
 func _frost_chips(at: Vector2) -> void:
@@ -470,25 +515,6 @@ func _frost_chips(at: Vector2) -> void:
 	tw.tween_callback(ps.queue_free)
 
 ## ⑤ 残留: 落点一小片霜痕, 0.9 秒渐隐(复用领域那张图缩小).
-func _frost_scar(at: Vector2) -> void:
-	var tex: Texture2D = load(FROST_FIELD)
-	if tex == null:
-		return
-	var spr := Sprite3D.new()
-	spr.texture = tex
-	spr.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	spr.shaded = false
-	spr.transparent = true
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.pixel_size = (72.0 * battle.WS) / float(maxi(1, tex.get_width()))
-	spr.position = battle._world_pos(at, 0.03)
-	spr.rotation_degrees = Vector3(-90.0, battle._juice_rng.randf() * 360.0, 0.0)
-	spr.modulate = Color(0.80, 0.94, 1.0, 0.55)
-	battle._world.add_child(spr)
-	var tw = battle._reg_tween()
-	tw.tween_interval(0.25)
-	tw.tween_property(spr, "modulate:a", 0.0, 0.65)
-	tw.tween_callback(spr.queue_free)
 func _sk_ice_freeze(u: Dictionary, tgt: Dictionary) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return

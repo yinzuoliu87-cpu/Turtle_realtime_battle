@@ -214,7 +214,8 @@ func _frozen() -> void:
 		is_equal_approx(TwoHeadSystem.MELEE_ATK_PENALTY, 0.30))   # ★比【常量的值】不比源码里的字面量: 后者把写法焊死, 挡的是正常重构(2026-08-22 文案根除把它提成了具名常量)
 	# 冰霜特效重做: 三张【新生成】素材必须在位(用户「别复用，自己搞新的」)
 	var ic: String = _S["ice_system.gd"]
-	for tex in ["frost-icicle-fall", "frost-field-ground", "frost-chip"]:
+	## ★2026-11-05 霜盘 frost-field-ground → 新画的地面冰层 frost-floor(用户「寒冰龟这个特效其实是不合格的」; 仍是新生成、未复用)
+	for tex in ["frost-icicle-fall", "frost-floor", "frost-chip"]:
 		_chk("⑤ 冰霜新素材 %s 在位" % tex,
 			ic.contains(tex) and FileAccess.file_exists("res://assets/sprites/vfx/%s.png" % tex))
 	_chk("⑤ 冰霜用上了 GPU 粒子(不是图片平移)", ic.contains("GPUParticles3D"))
