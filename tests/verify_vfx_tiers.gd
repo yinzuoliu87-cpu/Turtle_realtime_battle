@@ -82,7 +82,7 @@ func _ready() -> void:
 			scene._units.append(foe)
 			au.recent.clear()
 			scene._cast_skill(caster, foe, str(c[1]))
-			vols[c[0]] = _player_db(au, "cast_" + str(c[0]))
+			vols[c[0]] = _player_db(au, AudioSystem.cast_event_of(caster, str(c[1])))   # 11-05 起每个技能一条 cast_<技能类型>
 		au.sfx_volume = _sv
 		var d: float = float(vols["headless"]) - float(vols["angel"])
 		_ok("③ ★大招级放技能声比轻技大 2~4.5 dB(真入口 _cast_skill)", d > 2.0 and d < 4.5,

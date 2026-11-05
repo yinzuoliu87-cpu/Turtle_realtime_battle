@@ -60,6 +60,8 @@ def record(j):
 	raw = os.path.join(OUT, "raw_%s%s_%d.avi" % (j["id"], ("_" + j["form"]) if j["form"] else "", j["idx"]))
 	log = raw + ".log"
 	n = 300 if j["idx"] == 0 else LONG.get("%s:%d" % (j["id"], j["idx"]), 750)
+	## REEL_REUSE=1: 原片和日志都在就不重录, 只重剪(改了几只龟之后删掉那几只的 raw_*.avi 再跑, 整片按最新代码拼齐)
+	reuse = os.environ.get("REEL_REUSE") == "1" and os.path.exists(raw) and os.path.getsize(raw) > 100000 and os.path.exists(log)
 	u = tempfile.mkdtemp()
 	env = dict(os.environ, REVIEW="1", REVIEW_TURTLE=j["id"], REVIEW_SKILL=str(j["idx"]), TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ",
 		APPDATA=u, XDG_DATA_HOME=u)
@@ -67,10 +69,11 @@ def record(j):
 		env["REVIEW_FORM"] = j["form"]
 	env.pop("SHIP", None)
 	env.pop("STRESS", None)
-	with open(log, "w", encoding="utf-8") as lf:
-		subprocess.run([G, "--path", ROOT, "--rendering-driver", "opengl3", "--audio-driver", "Dummy", "--resolution", "1280x720",
-			"--position", "1960,60", "--disable-vsync", "--write-movie", raw, "--fixed-fps", str(FPS), "--quit-after", str(n),
-			PROBE], env=env, stdout=lf, stderr=subprocess.STDOUT, timeout=600)
+	if not reuse:
+		with open(log, "w", encoding="utf-8") as lf:
+			subprocess.run([G, "--path", ROOT, "--rendering-driver", "opengl3", "--audio-driver", "Dummy", "--resolution", "1280x720",
+				"--position", "1960,60", "--disable-vsync", "--write-movie", raw, "--fixed-fps", str(FPS), "--quit-after", str(n),
+				PROBE], env=env, stdout=lf, stderr=subprocess.STDOUT, timeout=600)
 	txt = open(log, encoding="utf-8", errors="replace").read()
 	casts = [int(x) for x in re.findall(r"\[CAST\] frame=(\d+)", txt)]
 	if j["idx"] == 0:

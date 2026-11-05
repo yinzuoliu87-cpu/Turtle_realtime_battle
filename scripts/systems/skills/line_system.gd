@@ -68,6 +68,10 @@ func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·�
 		battle._add_stack(o, "ink", 1, _ink_cap(u))
 	if picks.size() < LINK_TARGETS: return                                  # 只有1个敌人 → 无链路可连
 	battle._make_ink_link(picks[0], picks[1], u)
+	## ★11-05 被连上的两个敌人身上一直冒墨色像素点(审核片: 两个敌人贴在一起时连线只有几十像素、被立绘挡住, 看不出谁被连上了)。
+	##   不借 ink-splat.png: 那是本龟另一个命中效果的专用图(素材不复用)
+	for o in picks:
+		BuffVfx.activate(battle, o, Color(0.42, 0.36, 0.62), battle.INK_LINK_SEC, 0.0)
 
 # 返回 u 所在的有效链路 {a,b,caster,until,spr}; 无 → 空字典 (不返 null: GDScript静态分析对"可能为null再下标"报Parse Error)
 func _ink_link_of(u: Dictionary) -> Dictionary:
