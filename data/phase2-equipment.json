@@ -390,7 +390,7 @@
     "baseStats1": "+生命110/270/3000",
     "shopAvailable": 1,
     "emoji": "🐌",
-    "effectDesc1": "所有复活机会用尽、彻底阵亡时，在原位变形为一只小虫。小虫拥有 100/1500/10000 生命值与 50/80/200 攻击力，无护甲与魔抗，只有星级而无等级，会自动攻击最近的敌人，攻击速度为 {C:EquipSystem.WORM_ASPD}/秒，造成 100% 攻击力的物理伤害。\n小虫诞生时随机携带 3 件 1/2/3 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。",
+    "effectDesc1": "所有复活机会用尽、彻底阵亡时，在原位变形为一只小虫。小虫拥有 {C:EquipSystem.WORM_HP} 生命值与 50/80/200 攻击力，无护甲与魔抗，只有星级而无等级，会自动攻击最近的敌人，攻击速度为 {C:EquipSystem.WORM_ASPD}/秒，造成 100% 攻击力的物理伤害。\n小虫诞生时随机携带 3 件 1/2/3 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。",
     "effectDesc3": "3 星：变虫后每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新小虫（上限 {C:EquipSystem.WORM_CAP} 只）。",
     "img": "equip/dungeon-conch.png",
     "effectBrief": "彻底阵亡时在原位变为一只小虫继续战斗，并随机携带 3 件装备。"
