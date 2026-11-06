@@ -1019,7 +1019,6 @@ scripts/scenes/MainMenuScene.gd|lit|商店
 scripts/scenes/MainMenuScene.gd|lit|图鉴
 scripts/scenes/MainMenuScene.gd|lit|场上限
 scripts/scenes/MainMenuScene.gd|lit|场次已用完
-scripts/scenes/MainMenuScene.gd|lit|好友
 scripts/scenes/MainMenuScene.gd|lit|已出局
 scripts/scenes/MainMenuScene.gd|lit|已截止
 scripts/scenes/MainMenuScene.gd|lit|已结束

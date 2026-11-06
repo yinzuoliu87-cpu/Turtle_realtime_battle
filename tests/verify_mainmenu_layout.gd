@@ -110,10 +110,10 @@ func _ready() -> void:
 	for c in page_box.get_children():
 		if c is Control and (c as Control).visible:
 			stack.append(c)
-	## ★2026-10-24 左列加第 5 颗「好友」(用户 10-23 选「主菜单加「好友」键」, 方案书 docs/plans/20261023-好友切磋.md)。
-	print("  page_box 栈 %d 个 (★分母: 应为 7 = 左列 5 颗方键 + 训龟大师 + 开始战斗)" % stack.size())
-	_ok("★分母: page_box 栈 = 7 个", stack.size() == 7, "%d 个" % stack.size())
-	if stack.size() != 7:
+	## ★2026-10-24 左列加第 5 颗「好友」; ★2026-11-06 好友挪到右上小图标键(不在 page_box) ⇒ 回到 4 颗方键。
+	print("  page_box 栈 %d 个 (★分母: 应为 6 = 左列 4 颗方键 + 训龟大师 + 开始战斗)" % stack.size())
+	_ok("★分母: page_box 栈 = 6 个", stack.size() == 6, "%d 个" % stack.size())
+	if stack.size() != 6:
 		_done(); return
 
 	# ── ① 谁也别超出 1280×720(只量看得见的; 弹层的内容在 ⓕ 打开后单独量) ──
@@ -168,11 +168,15 @@ func _ready() -> void:
 					_tag(taps[j]), rb.position.x, rb.position.y, rb.size.x, rb.size.y,
 					it.size.x, it.size.y])
 	_ok("② ★可点控件互不重叠(重叠=点 A 点到 B; ?/⚙ 外扩点击区搭边除外, 但看得见的键不许碰)", clash.is_empty(), "撞 %d 对" % clash.size())
-	## ★分母: 那条豁免真的只用在 ?/⚙ 那一对上(0 对 = 豁免没走到, 上一条对 ?/⚙ 是空检查; >1 对 = 豁免放宽了)。
-	_ok("② ★分母: 设计内搭边恰 1 对(?×⚙)", margin_pairs.size() == 1
-		and str(margin_pairs[0][0]).find("⚙") >= 0, str(margin_pairs))
-	if margin_pairs.size() == 1:
-		_ok("② ★?/⚙ 看得见的两颗键不碰、之间留缝 ≥ 4px", float(margin_pairs[0][1]) >= 4.0, str(margin_pairs[0][0]))
+	## ★分母: 那条豁免真的只用在右上一排相邻的小图标键上(2026-11-06 加好友: ?×⚙ 与 好友×? 恰 2 对;
+	##   少了 = 豁免没走到, 上一条是空检查; 多了 = 豁免放宽了)。
+	var mp_ok := margin_pairs.size() == 2
+	for mp in margin_pairs:
+		var mp_s := str(mp[0])
+		mp_ok = mp_ok and ((mp_s.find("⚙") >= 0 and mp_s.find("?") >= 0) or (mp_s.find("好友") >= 0 and mp_s.find("?") >= 0))
+	_ok("② ★分母: 设计内搭边恰 2 对(?×⚙ / 好友×?)", mp_ok, str(margin_pairs))
+	for mp in margin_pairs:
+		_ok("② ★%s: 看得见的两颗键不碰、之间留缝 ≥ 4px" % str(mp[0]).get_slice(" ", 0), float(mp[1]) >= 4.0, str(mp[0]))
 	for cl in clash.slice(0, 6):
 		print("       ★压住: " + cl)
 
@@ -338,7 +342,16 @@ func _ready() -> void:
 			icon_taps.append(t_b)
 		elif t_b is Control and _find_frame_square(t_b) != null and tg_b.find("⚙") < 0:
 			icon_taps.append(t_b)
-	_ok("ⓑ ★分母: ? 与 ⚙ 两颗都找到了", icon_taps.size() == 2, "%d 颗" % icon_taps.size())
+	_ok("ⓑ ★分母: 好友 / ? / ⚙ 三颗都找到了", icon_taps.size() == 3, "%d 颗" % icon_taps.size())
+	## ★2026-11-06 好友小图标键: 在 ? 左边、同一行、同一种暗槽(用户「这右上角这边就设置的这个呃左边吧，左边的左边」)。
+	var x_of := {}
+	for t_o in icon_taps:
+		var v_o: Control = _find_frame_square(t_o)
+		x_of[_tag(t_o)] = (v_o if v_o != null else (t_o as Control)).get_global_rect()
+	_ok("ⓑ ★右上一排从左到右 = 好友 · ? · ⚙(同一行, 中心 y 差 ≤2)", x_of.has("好友") and x_of.has("?") and x_of.has("⚙")
+		and (x_of["好友"] as Rect2).position.x < (x_of["?"] as Rect2).position.x and (x_of["?"] as Rect2).position.x < (x_of["⚙"] as Rect2).position.x
+		and absf((x_of["好友"] as Rect2).get_center().y - (x_of["?"] as Rect2).get_center().y) <= 2.0, str(x_of))
+	_ok("ⓑ ★好友键与 ? 键看得见的方框一样大", x_of.has("好友") and x_of.has("?") and (x_of["好友"] as Rect2).size == (x_of["?"] as Rect2).size)
 	## ★2026-10-23 用户「换上」: 设置键是像素齿轮图, 整个主菜单不许再有看得见的 ⚙ 字。
 	var gear_glyph := 0
 	for n_g in _walk(_menu):
@@ -381,7 +394,8 @@ func _ready() -> void:
 	var sq_names: Array = []
 	for c in squares:
 		sq_names.append(_sq_label(c))
-	_ok("ⓒ ★分母: 左列 5 颗方键 = 背包/商店/图鉴/排行榜/好友(没有战绩: 整张玩家卡就是战绩入口)", sq_names == ["背包", str(MENU_S.SHOP_LABEL), "图鉴", "排行榜", "好友"], str(sq_names))
+	## ★2026-11-06 好友挪到右上小图标键(用户「左边就是保持，就是四个这个框框嘛」) ⇒ 左列恰 4 颗, 好友不许回来。
+	_ok("ⓒ ★分母: 左列 4 颗方键 = 背包/商店/图鉴/排行榜(没有战绩: 整张玩家卡就是战绩入口; 好友在右上)", sq_names == ["背包", str(MENU_S.SHOP_LABEL), "图鉴", "排行榜"], str(sq_names))
 	var not_sq: Array = []
 	var lefts: Array = []
 	var gaps_c: Array = []
@@ -412,8 +426,8 @@ func _ready() -> void:
 			var br_c: Rect2 = (bd_c as Control).get_global_rect()
 			if br_c.get_center().x > r_c.get_center().x and br_c.get_center().y < r_c.get_center().y:
 				badge_ok += 1
-	## 左列方键数(2026-10-24 加「好友」: 4 → 5)。
-	var sq_n := 5
+	## 左列方键数(2026-10-24 加「好友」: 4 → 5; 2026-11-06 好友挪到右上小图标键: 5 → 4)。
+	var sq_n := 4
 	_ok("ⓒ ★%d 颗都是正方形(宽高差 ≤1)" % sq_n, squares.size() == sq_n and not_sq.is_empty(), str(not_sq))
 	_ok("ⓒ ★%d 颗共用一条左沿(极差 ≤1)、贴左边(≤ 32)" % sq_n, lefts.size() == sq_n and lefts.max() - lefts.min() <= 1.0 and lefts.min() <= 32.0, str(lefts))
 	_ok("ⓒ ★竖排等距(间距极差 ≤1, 不重叠)", gaps_c.size() == sq_n - 1 and gaps_c.max() - gaps_c.min() <= 1.0 and gaps_c.min() >= 0.0, str(gaps_c))
@@ -1384,6 +1398,9 @@ func _tag(c: Node) -> String:
 		if n is TextureRect and (n as TextureRect).texture != null \
 				and str((n as TextureRect).texture.resource_path).get_file() == "ic-gear.png":
 			return "⚙"
+		if n is TextureRect and (n as TextureRect).texture != null \
+				and str((n as TextureRect).texture.resource_path).get_file() == "ic-friends-s.png":
+			return "好友"
 	for n in _walk(c):
 		if n is Label and str((n as Label).text).strip_edges() != "":
 			return str((n as Label).text).substr(0, 12)

@@ -314,10 +314,14 @@ func _part_hero_and_locks() -> void:
 		var h: Control = pb.get_node_or_null(str(MENU_S.SQ_NAME_PREFIX) + nm) as Control
 		_ok("③ ★[%s] 画着锁 + 底边短签「匹配中」(与商店锁同一种)" % nm, _has_lock(h) and _reason(h) == MenuQueue.TXT_MATCHING, _reason(h))
 	var open_sq := 0
-	for nm in ["图鉴", "排行榜", "好友"]:
+	for nm in ["图鉴", "排行榜"]:
 		var h2: Control = pb.get_node_or_null(str(MENU_S.SQ_NAME_PREFIX) + nm) as Control
 		if h2 != null and not _has_lock(h2) and _reason(h2) == "":
 			open_sq += 1
+	## 好友 2026-11-06 起是右上小图标键(menu_friends_tile.gd), 不在左列
+	var fr2: Control = _menu.content_root.get_node_or_null("FriendsTile") as Control
+	if fr2 != null and not _has_lock(fr2) and _reason(fr2) == "":
+		open_sq += 1
 	_ok("③ 图鉴 / 排行榜 / 好友 不画锁(%d / 3)" % open_sq, open_sq == 3)
 	var tb := _holder(pb, "训龟大师")
 	_ok("③ ★[训龟大师] 画着锁 + 短签「匹配中」", _has_lock(tb) and _reason(tb) == MenuQueue.TXT_MATCHING, _reason(tb))
@@ -500,8 +504,10 @@ func _part_open_doors() -> void:
 		var h: Control = null
 		if str(d[0]) == "设置":
 			for c in _menu.content_root.get_children():
-				if c is Control and c.find_child("IconTex", true, false) != null:
+				if c is Control and c.find_child("IconTex", true, false) != null and str(c.name) != "FriendsTile":
 					h = c
+		elif str(d[0]) == "好友":
+			h = _menu.content_root.get_node_or_null("FriendsTile") as Control
 		else:
 			h = _menu.page_box.get_node_or_null(str(MENU_S.SQ_NAME_PREFIX) + str(d[0])) as Control
 		var b := _btn(h)
