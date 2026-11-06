@@ -18,8 +18,8 @@ const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const InvScene := preload("res://scripts/scenes/InventoryScene.gd")
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
-const SQL_MIG := "res://server/supabase/migrations/20261106c_econ_state.sql"
-const SQL_CHK := "res://server/supabase/tests/20261106c_econ_state_check.sql"
+const SQL_MIG := "res://server/supabase/migrations/20261106e_econ_facts.sql"
+const SQL_CHK := "res://server/supabase/tests/20261106e_econ_facts_check.sql"
 const MARK_A := "-- >>> 契约样本(verify_econ_server_check 生成; 手改无效)"
 const MARK_B := "-- <<< 契约样本"
 ## econ_check 读的快照键(D 段再从 SQL 文本里扫一遍, 对不上就红)
