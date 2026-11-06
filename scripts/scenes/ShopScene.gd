@@ -301,7 +301,7 @@ func _after_seeded(r: Dictionary, refresh: bool) -> void:
 		return
 	_econ_wait = false
 	if not bool(r.get("ok", false)):
-		_toast("网络不稳定，请稍后再试")
+		_toast("无法连接服务器。请检查网络连接后重试。")   # 全游戏联网失败同一句(好友 / 回放 / 对阵图 / 登录)
 	_offer_from_gs()
 	if refresh:
 		_sel = -1
