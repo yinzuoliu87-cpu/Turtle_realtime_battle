@@ -5,7 +5,7 @@ extends Node
 ##   A ★老实的一周: 走真结算入口(积分赛 12 场 / 闯关 4 场 + 第 4 胜补发 / 决赛一轮 + 铸币 + 揭晓 / 积分赛补发 / 裁判宝箱 + 香火 /
 ##     商店 / 背包穿统领与小将), 九种收入来源都出现; 按恰好的账本 strict 重放 ⇒ 一条不拦、与本机逐字节相同。
 ##   B ★判据卡得刚好: 账本每一项少 1(或配额多用 1)⇒ 都停在某一条。证明上限不是虚设(A 过 + B 红 = 正好卡在真实值上)。
-##   C ★作弊: 编收入 / 编字段 / 编宝箱 / 编香火 / 场次倒退拿免费换货 / 场次超过服务器 / 本机斧头经验 ⇒ 停在那一条, 前面的不受影响;
+##   C ★作弊: 编收入 / 编字段 / 编宝箱 / 编香火 / 场次倒退拿免费换货 / 场次超过服务器 / 超账的斧头经验 ⇒ 停在那一条, 前面的不受影响;
 ##     没拿到账本(facts 缺)⇒ 什么收入都不认(fail closed)。
 ##   D ★真快照契约: econ_check 读的每个键, 真快照 / 真重放结果里都有(分母打印); 真快照 + 真重放结果这一份样本嵌在 SQL 检查脚本里
 ##     (C1 ~ C4 由 PGlite / 内测服跑)。这里比「嵌的样本 = 现在代码算出来的」: 快照或重放的形状一变就红 ——
@@ -18,8 +18,8 @@ const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const InvScene := preload("res://scripts/scenes/InventoryScene.gd")
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
-const SQL_MIG := "res://server/supabase/migrations/20261106e_econ_facts.sql"
-const SQL_CHK := "res://server/supabase/tests/20261106e_econ_facts_check.sql"
+const SQL_MIG := "res://server/supabase/migrations/20261106g_econ_axe_temp.sql"
+const SQL_CHK := "res://server/supabase/tests/20261106g_econ_axe_temp_check.sql"
 const MARK_A := "-- >>> 契约样本(verify_econ_server_check 生成; 手改无效)"
 const MARK_B := "-- <<< 契约样本"
 ## econ_check 读的快照键(D 段再从 SQL 文本里扫一遍, 对不上就红)
@@ -78,6 +78,7 @@ func _honest_week(gs) -> Dictionary:
 		if i == 3:
 			st["chest"] = {"value": 120.5, "won": ["t1"]}
 			st["incense"] = {"marks": 1, "charge": 2}
+			st["axe_kills"] = 2                                       # 这一局斧头 2 次击杀(RefereeWatch.apply_axe_kills 记 axe_exp)
 			chest_list.append(st["chest"])
 			inc_list.append(st["incense"])
 		gs.referee_pending = RW.ranked_bill(1000 + i, MID, wk, {})
@@ -127,6 +128,7 @@ func _honest_week(gs) -> Dictionary:
 	return {"ranked": {"n": 12, "w": 11, "coins": r_coins, "used": 12},
 		"gauntlet": {"n": 4, "w": 4, "minted": g_minted},
 		"finals": {"n": 1, "w": 1, "minted": f_minted},
+		"axe": {"kills": 2},
 		"chest": chest_list, "incense": inc_list}
 
 
@@ -202,7 +204,7 @@ func _ready() -> void:
 	## ── B 判据卡得刚好 ──
 	for c in [["ranked", "n", -1], ["ranked", "w", -1], ["ranked", "coins", -1], ["ranked", "used", 1],
 			["gauntlet", "n", -1], ["gauntlet", "w", -1], ["gauntlet", "minted", -1],
-			["finals", "n", -1], ["finals", "w", -1], ["finals", "minted", -1]]:
+			["finals", "n", -1], ["finals", "w", -1], ["finals", "minted", -1], ["axe", "kills", -1]]:
 		var r := _replay(gs, log, _bump(facts, c[0], c[1], c[2]))
 		_ok("B ★账本 %s.%s %+d ⇒ 拦下(说明上限卡在真实值上)" % [c[0], c[1], c[2]], int(r.get("bad_at", -1)) >= 0, "没拦")
 	var f_nc: Dictionary = facts.duplicate(true)
@@ -232,7 +234,8 @@ func _ready() -> void:
 	_ok("C ★编香火 ⇒ over:incense", str(_replay(gs, _with(log, {"op": "incense", "inc": {"marks": 9, "charge": 9}, "bt": bt}), facts).get("why", "")) == "over:incense")
 	_ok("C ★场次倒退(白拿免费换货)⇒ bt:back", str(_replay(gs, _with(log, {"op": "roll", "seed": 1, "bt": bt - 1}), facts).get("why", "")) == "bt:back")
 	_ok("C ★场次超过服务器记的 ⇒ bt:over", str(_replay(gs, _with(log, {"op": "lock", "on": true, "bt": 99}), facts).get("why", "")) == "bt:over")
-	_ok("C ★本机斧头经验(服务器局里没有这条路)⇒ local_only", str(_replay(gs, _with(log, {"op": "axe_exp", "n": 6, "bt": bt}), facts).get("why", "")) == "local_only:axe_exp")
+	_ok("C ★斧头经验超过账本 ⇒ over:axe_exp", str(_replay(gs, _with(log, {"op": "axe_exp", "n": 6, "bt": bt}), facts).get("why", "")) == "over:axe_exp")
+	_ok("C ★斧头经验不是击杀数的整数倍 ⇒ shape", str(_replay(gs, _with(log, {"op": "axe_exp", "n": 5, "bt": bt}), _bump(facts, "axe", "kills", 9)).get("why", "")) == "shape:axe_exp")
 	var r3 := _replay(gs, log, null)
 	_ok("C ★没拿到账本 ⇒ 什么收入都不认(fail closed)", int(r3.get("bad_at", -1)) >= 0 and (str(r3.get("why", "")).begins_with("over:") or str(r3.get("why", "")) == "bt:over"), str(r3.get("why", "")))
 	var f_np := _bump(facts, "ranked", "w", -1)
@@ -249,12 +252,14 @@ func _ready() -> void:
 	var re := RegEx.new()
 	re.compile("(p_snap|v_a|v_p) ->>? '(\\w+)'")
 	var seen := {}
-	for m in re.search_all(mig.substr(mig.find("function public.econ_check"), mig.find("function public.econ_truncate") - mig.find("function public.econ_check"))):
+	for m in re.search_all(mig.substr(mig.find("function public.econ_check"))):
 		seen["%s.%s" % [m.get_string(1), m.get_string(2)]] = true
 	var assets: Dictionary = res.get("assets", {})
 	var prog: Dictionary = res.get("progress", {})
 	var absent: Array = []
 	for k in seen:
+		if str(k) == "p_snap.temp_levels":
+			continue                                                  # 只有用过才带这个键(没用过与机器人同形), SQL 那边 T 段专门比
 		var parts: PackedStringArray = str(k).split(".")
 		var src_d: Dictionary = snap if parts[0] == "p_snap" else (assets if parts[0] == "v_a" else prog)
 		if not src_d.has(parts[1]):

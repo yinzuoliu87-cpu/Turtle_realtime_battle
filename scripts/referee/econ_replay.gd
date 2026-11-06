@@ -7,7 +7,7 @@ extends RefCounted
 ##   不另抄一份「起点清单」—— 手抄的副本必然漂移。
 ## ★重放用的就是客户端那一份 `EconLedger.apply`(同一份代码), 不在服务器另写一份商店 / 背包。
 ## ★逐条校验: 序号连续、操作种类在白名单里; `strict`(记账开关开着的那一周)时收入只认「裁判结果」那几种来源,
-##   本机计分局才有的来源与 `prog` / `axe_exp` 一律不认(方案书 R7)。
+##   本机计分局才有的来源与 `prog` 一律不认(方案书 R7)。
 ## ★`strict` 时每一笔进账都核服务器账本(`facts` = 服务端 econ_facts, S4b): 每种来源的字段形状 + 累计不超过账本; 宝箱 / 香火必须
 ##   逐字是某一局的结果单。超了 ⇒ 从那条起作废(方案书 §4.5)。★规则常量只在这里(同一份 Phase2Config), 服务端只汇总事实、不抄第二份。
 ##   ★缺 facts ⇒ 全按 0 算(fail closed): 没拿到账就什么收入都不认, 不是放行。
@@ -15,6 +15,7 @@ extends RefCounted
 
 const EL := preload("res://scripts/gamedata/econ_ledger.gd")
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 
 ## 记账口认识的全部操作(econ_ledger.gd `apply`)。不在表里 ⇒ 不合法。
 const OPS := ["roll", "refresh", "lock", "buy", "buy_xp", "candy", "equip", "unequip", "move", "sell", "leveler", "swap",
@@ -22,8 +23,8 @@ const OPS := ["roll", "refresh", "lock", "buy", "buy_xp", "candy", "equip", "une
 ## 开关开着时认的收入来源 = 裁判结果 / 服务器账本上有的那几种(GameState 结算函数与 RefereeWatch 里写下的 src)。
 const SRC_SERVER := ["ranked_ref", "gauntlet", "gauntlet_ref", "finals", "finals_ref", "finals_coins", "finals_reveal",
 	"backfill_ranked", "backfill_gauntlet"]
-## 开关开着时不认的操作: 本机打的计分局里宝箱 / 香火的终值、小木斧局内击杀经验(服务器没有对应的裁判局可核)。
-const LOCAL_ONLY := ["prog", "axe_exp"]
+## 开关开着时不认的操作: 本机打的计分局里宝箱 / 香火的终值(服务器没有对应的裁判局可核)。
+const LOCAL_ONLY := ["prog"]
 ## 重放要从初值开始的经济字段(= assets_of / progress_of 读的那些 + 它们依赖的场次戳 / 阵容 / 进化排队)。
 const KEYS := ["meta_deepsea_coins", "persistent_bench", "persistent_equipped", "dual_lineup", "equip_pool",
 	"meta_shop_offer", "meta_shop_battles", "meta_shop_locked", "season_level", "season_xp", "season_leaders",
@@ -174,6 +175,16 @@ static func check_facts(gs, d: Dictionary, facts: Dictionary, t: Dictionary) -> 
 	match str(d.get("op", "")):
 		"income":
 			return check_income(gs, d, facts, t)
+		"axe_exp":
+			## 小木斧击杀经验 = 服务器局结果单的击杀数 × EXP_ON_KILL(RefereeWatch.apply_axe_kills 记的), 累计不超过账本
+			var ax := int(d.get("n", 0))
+			if ax <= 0 or ax % AE.EXP_ON_KILL != 0:
+				return "shape:axe_exp"
+			var sum := int(t.get("_axe", 0)) + ax
+			if sum > _fact(facts, "axe", "kills") * AE.EXP_ON_KILL:
+				return "over:axe_exp"
+			t["_axe"] = sum
+			return ""
 		"chest":
 			return check_progress("chest", d, facts)
 		"incense":
