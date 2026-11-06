@@ -14,14 +14,17 @@
   ⑥ worker_loop: 正常任务领空了才领补流; 补流任务交给 handle_restream(不走 handle)
   ⑦ referee_claim_restream 404(服务端没部署): 本进程以后不再领补流
   ⑧ 正常任务照旧: handle 调 referee_complete(补流的改动没碰它)
-  ⑨~⑬ 局外经济流水重放(2026-11-06 · 方案书 docs/plans/20261106-装备与深海币服务器记账.md §4.5 S4b):
-     ⑨ 正常任务、补流都空了 ⇒ 0 号线程领一批(econ_replay_claim)、一个 Godot 进程(--econ-replay)算完、econ_replay_done 回写那一批;
-        strict = referee_flags 的 econ_on
-     ⑩ 1 号线程不领(免得几个线程算同一个号)  ⑪ 有正常任务 ⇒ 这一轮不领(真比赛优先)
+  ⑨~⑭ 局外经济流水重放(2026-11-06 · 方案书 docs/plans/20261106-装备与深海币服务器记账.md §4.5 S4b):
+     ⑨ 领一批(econ_replay_claim)、一个 Godot 进程(--econ-replay)算完、econ_replay_done 回写那一批;
+        strict = referee_flags 的 econ_on; ★每个号的 facts 原样进输入文件(丢了 ⇒ 重放什么收入都不认)
+     ⑩ ★比赛工作线程不领(开局要等重放, 排在比赛后面 ⇒ 越忙越卡)  ⑪ ★单开的线程 econ_loop 领完回写、main 真起了它
      ⑫ econ_replay_claim 404 ⇒ 本进程不再领  ⑬ 用的工程 = 最新且带 econ_replay.gd 的版本
+     ⑭ 整批算不出来 ⇒ 拆开一个一个算: 算得出的回写, 算不出的不回写(不堵别人)
 进 run-tests.sh 门禁(成功打印 ALL OK)。
 """
 import importlib.util
+import threading
+import time
 import io
 import json
 import os
@@ -80,6 +83,7 @@ class Env:
         self.claims = {'referee_claim': [], 'referee_claim_restream': [], 'econ_replay_claim': []}
         self.econ_in = None
         self.econ_404 = False
+        self.econ_poison = None
         self.flags = {}
         self.godot_proj = None
         self.restream_404 = False
@@ -131,10 +135,11 @@ class Env:
                 if econ:
                     with open(econ, encoding='utf-8') as f:
                         me.econ_in = json.load(f)
-                    with open(out, 'w', encoding='utf-8') as f:
-                        json.dump({'results': [{'account_id': j['account_id'], 'week': j['week'], 'seen': j['seen'],
-                                                'result': {'upto': len(j['rows']), 'bad_at': -1, 'assets': {}}}
-                                               for j in me.econ_in['jobs']]}, f)
+                    if me.econ_poison is None or not any(j['account_id'] == me.econ_poison for j in me.econ_in['jobs']):
+                        with open(out, 'w', encoding='utf-8') as f:
+                            json.dump({'results': [{'account_id': j['account_id'], 'week': j['week'], 'seen': j['seen'],
+                                                    'result': {'upto': len(j['rows']), 'bad_at': -1, 'assets': {}}}
+                                                   for j in me.econ_in['jobs']]}, f)
                 elif out:
                     with open(out, 'w', encoding='utf-8') as f:
                         json.dump(me.fake_res, f)
@@ -258,46 +263,64 @@ def main():
        and not e.names('referee_restream_done') and not e.names('referee_claim_restream'), str([c[0] for c in e.calls]))
     e.close()
     print('=== 局外经济流水重放 ===')
-    ejobs = [{'account_id': 'a1', 'week': 1, 'seen': 2, 'rows': [{'op': 'lock', 'seq': 0}, {'op': 'lock', 'seq': 1}]},
-             {'account_id': 'a2', 'week': 1, 'seen': 1, 'rows': [{'op': 'buy_xp', 'seq': 0}]}]
+    ejobs = [{'account_id': 'a1', 'week': 1, 'seen': 2, 'facts': {'ranked': {'n': 3}},
+              'rows': [{'op': 'lock', 'seq': 0}, {'op': 'lock', 'seq': 1}]},
+             {'account_id': 'a2', 'week': 1, 'seen': 1, 'facts': {'ranked': {'n': 7}}, 'rows': [{'op': 'buy_xp', 'seq': 0}]}]
     # ⑨
     e = Env(m)
     os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
     open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    vers = m.discover_versions(e.tmp)
+    wd = os.path.join(e.tmp, 'econw')
     e.claims['econ_replay_claim'] = [ejobs]
     e.flags = {'econ_on': True}
-    m.worker_loop(0, True)
-    names = [c[0] for c in e.calls]
+    n9 = m.handle_econ(m.claim_econ(), vers, wd)
     done = e.names('econ_replay_done')
-    ok('⑨ ★正常任务、补流都空了才领经济重放(领活顺序)', names[:3] == ['referee_claim', 'referee_claim_restream', 'econ_replay_claim'], str(names))
     ok('⑨ 一个 Godot 进程算一批: 进去 2 个号、strict = econ_on(开)', e.popens == 1 and e.econ_in is not None
        and len(e.econ_in.get('jobs', [])) == 2 and e.econ_in.get('strict') is True, str(e.econ_in)[:120])
-    ok('⑨ ★econ_replay_done 回写那一批(2 个号, seen 原样带回)', len(done) == 1 and [i['account_id'] for i in done[0][1]['p_items']] == ['a1', 'a2']
+    ok('⑨ ★每个号的 facts 原样进输入文件', e.econ_in is not None
+       and [j.get('facts', {}).get('ranked', {}).get('n') for j in e.econ_in['jobs']] == [3, 7], str(e.econ_in)[:160])
+    ok('⑨ ★econ_replay_done 回写那一批(2 个号, seen 原样带回)', n9 == 2 and len(done) == 1
+       and [i['account_id'] for i in done[0][1]['p_items']] == ['a1', 'a2']
        and [i['seen'] for i in done[0][1]['p_items']] == [2, 1], str(done)[:200])
     e.close()
     # ⑩
     e = Env(m)
     e.claims['econ_replay_claim'] = [ejobs]
+    m.worker_loop(0, True)
     m.worker_loop(1, True)
-    ok('⑩ 1 号线程不领经济重放', not e.names('econ_replay_claim'), str([c[0] for c in e.calls]))
+    ok('⑩ ★比赛工作线程不领经济重放', not e.names('econ_replay_claim'), str([c[0] for c in e.calls]))
     e.close()
     # ⑪
     e = Env(m)
-    e.fake_res = res()
-    nj = job()
-    nj.pop('task')
-    e.claims['referee_claim'] = [nj]
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
     e.claims['econ_replay_claim'] = [ejobs]
-    m.worker_loop(0, True)
-    ok('⑪ 有正常任务 ⇒ 这一轮不领经济重放(真比赛优先)', not e.names('econ_replay_claim') and len(e.names('referee_complete')) == 1)
+    os.environ['POLL_SEC'] = '0.01'
+    th = threading.Thread(target=m.econ_loop, daemon=True)
+    th.start()
+    for _ in range(300):
+        if e.names('econ_replay_done'):
+            break
+        time.sleep(0.01)
+    m._stop.set()
+    th.join(5)
+    m._stop.clear()
+    os.environ.pop('POLL_SEC', None)
+    ok('⑪ ★单开的 econ_loop 领了一批并回写、_stop 之后退出', len(e.names('econ_replay_done')) == 1 and not th.is_alive())
+    src = open(m.__file__, encoding='utf-8').read()
+    ok('⑪ ★main 真起了这条线程', 'threading.Thread(target=econ_loop' in src)
     e.close()
     # ⑫
     e = Env(m)
     m._econ_off.clear()
     e.econ_404 = True
-    m.worker_loop(0, True)
-    m.worker_loop(0, True)
-    ok('⑫ econ_replay_claim 404 ⇒ 本进程只问一次就不再领', len(e.names('econ_replay_claim')) == 1 and m._econ_off.is_set())
+    r1 = m.claim_econ()
+    r2 = m.claim_econ()
+    ok('⑫ econ_replay_claim 404 ⇒ 本进程只问一次就不再领', r1 == [] and r2 == [] and len(e.names('econ_replay_claim')) == 1
+       and m._econ_off.is_set())
+    m.econ_loop()
+    ok('⑫ 404 之后 econ_loop 立刻退出(不空转)', len(e.names('econ_replay_claim')) == 1)
     m._econ_off.clear()
     e.close()
     # ⑬
@@ -315,9 +338,19 @@ def main():
     open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
     ok('⑬ 9.9.9 也带了 ⇒ 用最新的 9.9.9', m.econ_project(vers) == e.proj)
     e.close()
+    # ⑭
+    e = Env(m)
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    e.econ_poison = 'a2'
+    n14 = m.handle_econ(ejobs, m.discover_versions(e.tmp), os.path.join(e.tmp, 'econw'))
+    done = e.names('econ_replay_done')
+    ok('⑭ ★整批算不出来 ⇒ 拆开算: 算得出的 a1 回写了, a2 没回写, 共起 3 个进程', n14 == 1 and e.popens == 3 and len(done) == 1
+       and [i['account_id'] for i in done[0][1]['p_items']] == ['a1'], '%d popens=%d %s' % (n14, e.popens, str(done)[:160]))
+    e.close()
     print('')
-    if fails[0] == 0 and n[0] >= 23:
-        print('ALL OK — 补流只产出状态流、不写回结果; 重算对不上就撤流; 经济重放只在空闲时由 0 号线程批量做 (%d 条)' % n[0])
+    if fails[0] == 0 and n[0] >= 26:
+        print('ALL OK — 补流只产出状态流、不写回结果; 重算对不上就撤流; 经济重放单开线程批量做 (%d 条)' % n[0])
         return 0
     print('FAIL x%d (断言 %d 条)' % (fails[0], n[0]))
     return 1

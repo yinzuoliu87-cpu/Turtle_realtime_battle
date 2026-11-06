@@ -7506,7 +7506,7 @@ func _settle_season(won: bool) -> void:
 		##   就是同一判据存两份, 必然有一处落后。这个洞第一次出现正是因为这样。
 		gs.consume_ranked_quota()
 		## 每场 +2 大轮经验 / 096 小木斧(打完一整场 +15 砍伐经验, 持有才给 + 羁绊局数)/ 糖果罐(选糖果龟当统领才有: 赢 +2 / 输 +3 / 封顶 60) —— 一条进账走记账口
-		gs.econ({"op": "income", "src": "ranked", "xp": 2, "axe": true, "candy": gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS})
+		gs.econ({"op": "income", "src": "ranked", "xp": Phase2Cfg.RANKED_XP_PER_MATCH, "axe": true, "candy": gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS})
 		if won:
 			gs.season_wins += 1
 			gs.season_eggs_killed += 1

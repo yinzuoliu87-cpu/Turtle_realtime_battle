@@ -17,6 +17,8 @@ const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 
 var _fails := 0
 var _n := 0
+## 这一周的服务器账本(闯关 1 场赢、发币 40 = 8 + 铸币 32、宝箱结果单 120)。收入核账本的判据在 verify_econ_server_check
+var FACTS := {"gauntlet": {"n": 1, "w": 1, "minted": 32}, "chest": [{"value": 120.0, "won": ["t1"]}]}
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -115,7 +117,7 @@ func _ready() -> void:
 		and not jar.is_empty(), str(kinds))
 	_ok("② 分母: 哨兵一次没响(这段全走记账口)", int(gs.econ_drift) == 0, str(gs.econ_drift_note))
 	var cap0: Dictionary = ReplayRecorder.capture_all()
-	var res: Dictionary = EconReplay.run(gs, {"rows": log, "strict": true})
+	var res: Dictionary = EconReplay.run(gs, {"rows": log, "strict": true, "facts": FACTS})
 	_ok("② ★strict 重放: 每条都过", int(res.get("upto", -1)) == log.size() and int(res.get("bad_at", 0)) == -1,
 		"upto=%d bad_at=%d why=%s" % [int(res.get("upto", -1)), int(res.get("bad_at", 0)), str(res.get("why", ""))])
 	var rep := JSON.stringify({"a": res.get("assets", {}), "p": res.get("progress", {})})
@@ -130,7 +132,7 @@ func _ready() -> void:
 	## ── ③ strict 不认的 ──
 	gs.econ({"op": "income", "src": "match", "coins": 7})               # 本机计分局那条路的收入
 	var log2: Array = (gs.econ_log as Array).duplicate(true)
-	var r2: Dictionary = EconReplay.run(gs, {"rows": log2, "strict": true})
+	var r2: Dictionary = EconReplay.run(gs, {"rows": log2, "strict": true, "facts": FACTS})
 	_ok("③ strict: 本机计分局的收入(src=match)⇒ 停在那一条", int(r2.get("bad_at", -1)) == log2.size() - 1
 		and str(r2.get("why", "")) == "src:match" and int(r2.get("upto", -1)) == log2.size() - 1, str(r2.get("why", "")))
 	_ok("③ 不 strict(开关关着那一周)照过", int(EconReplay.run(gs, {"rows": log2, "strict": false}).get("bad_at", 0)) == -1)
@@ -142,7 +144,7 @@ func _ready() -> void:
 	prow["seq"] = log.size()
 	var log_p: Array = log.duplicate(true)
 	log_p.append(prow)
-	var r3: Dictionary = EconReplay.run(gs, {"rows": log_p, "strict": true})
+	var r3: Dictionary = EconReplay.run(gs, {"rows": log_p, "strict": true, "facts": FACTS})
 	_ok("③ strict: 本机战斗的宝箱终值(prog)⇒ 停在那一条", str(prow.get("op", "")) == "prog"
 		and int(r3.get("bad_at", -1)) == log.size() and str(r3.get("why", "")) == "local_only:prog", str(r3.get("why", "")))
 	var r3b: Dictionary = EconReplay.run(gs, {"rows": log3, "strict": false})
@@ -157,15 +159,15 @@ func _ready() -> void:
 			bi = i
 			break
 	(t_buy[bi] as Dictionary)["slot"] = 99                            # 买一格不存在的
-	var r4: Dictionary = EconReplay.run(gs, {"rows": t_buy, "strict": true})
+	var r4: Dictionary = EconReplay.run(gs, {"rows": t_buy, "strict": true, "facts": FACTS})
 	_ok("④ ★篡改: 买一格不存在的 ⇒ 停在那一条(apply 不成交)", int(r4.get("bad_at", -1)) == bi
 		and str(r4.get("why", "")).begins_with("apply:buy"), str(r4.get("why", "")))
 	var t_seq: Array = log.duplicate(true)
 	t_seq.remove_at(2)                                                # 中间少一条 ⇒ 序号断了
-	_ok("④ 序号断了 ⇒ 停在断开那一条", str(EconReplay.run(gs, {"rows": t_seq, "strict": true}).get("why", "")) == "seq")
+	_ok("④ 序号断了 ⇒ 停在断开那一条", str(EconReplay.run(gs, {"rows": t_seq, "strict": true, "facts": FACTS}).get("why", "")) == "seq")
 	var t_op: Array = log.duplicate(true)
 	(t_op[0] as Dictionary)["op"] = "gift"
-	_ok("④ 不认识的操作 ⇒ 停在那一条", str(EconReplay.run(gs, {"rows": t_op, "strict": true}).get("why", "")) == "op:gift")
+	_ok("④ 不认识的操作 ⇒ 停在那一条", str(EconReplay.run(gs, {"rows": t_op, "strict": true, "facts": FACTS}).get("why", "")) == "op:gift")
 	var t_seed: Array = log.duplicate(true)
 	for row in t_seed:
 		if str(row.get("op", "")) == "roll":
@@ -179,7 +181,7 @@ func _ready() -> void:
 	var inp := OS.get_user_data_dir().path_join("econ_replay_in.json")
 	var outp := OS.get_user_data_dir().path_join("econ_replay_out.json")
 	var f := FileAccess.open(inp, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"rows": log, "strict": true}))
+	f.store_string(JSON.stringify({"rows": log, "strict": true, "facts": FACTS}))
 	f.close()
 	var code := EconReplay.run_files(self, inp, outp)
 	var back = JSON.parse_string(FileAccess.get_file_as_string(outp))

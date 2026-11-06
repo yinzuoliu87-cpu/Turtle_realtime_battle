@@ -71,8 +71,9 @@ _CHUNK_RE = re.compile(r"^[0-9]{6}\.bin$")
 _stop = threading.Event()
 TASK_RESTREAM = "restream"
 _restream_off = threading.Event()      # rpc/referee_claim_restream 回过 404（服务端没上 20261020）⇒ 本进程不再领补流
-## 局外经济流水重放（2026-11-06 · 方案书 docs/plans/20261106-装备与深海币服务器记账.md §4.5 S4b）：正常任务、补流都空了，
-##   0 号工作线程领一批「流水比 econ_state 新」的号，一个 Godot 进程（--econ-replay）算完一批，rpc/econ_replay_done 回写。纯计算、不跑战斗。
+## 局外经济流水重放（2026-11-06 · 方案书 docs/plans/20261106-装备与深海币服务器记账.md §4.5 S4b）：单开一条线程（不占比赛的工作线程）
+##   领一批「有新流水」的号，一个 Godot 进程（--econ-replay）算完一批，rpc/econ_replay_done 回写。纯计算、不跑战斗。
+##   ★不排在比赛后面：开局要等重放追上，排在后面 ⇒ 工作线程越忙开局越卡（一局约 42 秒，客户端只等 30 秒）。
 _econ_off = threading.Event()          # rpc/econ_replay_claim 回过 404（服务端没上 20261106c）⇒ 本进程不再领
 ECON_BATCH = 20
 
@@ -408,7 +409,14 @@ def claim_econ(limit: int = ECON_BATCH) -> list:
 
 
 def handle_econ(jobs: list, versions: dict, wdir: str, timeout_sec: int = 120) -> int:
-    """一批号交给一个 Godot 进程重放，结果回写。返回回写了几个号；起不来 / 读不到结果 ⇒ 0（不回写，下一轮重领）。"""
+    """一批号交给一个 Godot 进程重放，结果回写。返回回写了几个号；整批算不出来 ⇒ 拆开一个一个算（一个号算不出来不堵别人）。"""
+    n = _replay_batch(jobs, versions, wdir, timeout_sec)
+    if n > 0 or len(jobs) < 2:
+        return n
+    return sum(_replay_batch([j], versions, wdir, timeout_sec) for j in jobs)
+
+
+def _replay_batch(jobs: list, versions: dict, wdir: str, timeout_sec: int) -> int:
     proj = econ_project(versions)
     if not proj or not jobs:
         return 0
@@ -449,6 +457,19 @@ def handle_econ(jobs: list, versions: dict, wdir: str, timeout_sec: int = 120) -
     return len(items)
 
 
+def econ_loop() -> None:
+    """经济重放线程。没活时隔 POLL_SEC 问一次；有活接着领。"""
+    wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "econ")
+    poll = float(env("POLL_SEC", "2"))
+    while not _stop.is_set() and not _econ_off.is_set():
+        try:
+            if handle_econ(claim_econ(), discover_versions(env("VERSIONS_DIR", "/opt/turtle")), wdir) > 0:
+                continue
+        except (urllib.error.URLError, OSError, ValueError) as ex:
+            log("WARN 经济重放失败: %s" % ex)
+        _stop.wait(poll)
+
+
 def worker_loop(idx: int, once: bool) -> None:
     worker = "%s-%d" % (env("WORKER_NAME", socket.gethostname()), idx)
     wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "w%d" % idx)
@@ -472,13 +493,6 @@ def worker_loop(idx: int, once: bool) -> None:
             except (urllib.error.URLError, OSError, ValueError) as ex:
                 log("WARN %s 领补流失败: %s" % (worker, ex))
                 jobs = []
-        if not jobs and idx == 0:
-            ## 正常任务、补流都空了: 0 号线程做一批经济重放（真比赛永远优先；只一个线程做，免得几个线程算同一个号）
-            try:
-                if handle_econ(claim_econ(), versions, wdir) > 0 and not once:
-                    continue
-            except (urllib.error.URLError, OSError, ValueError) as ex:
-                log("WARN %s 经济重放失败: %s" % (worker, ex))
         if not jobs:
             if once:
                 log("%s: 没有待算的任务" % worker)
@@ -701,6 +715,8 @@ def main() -> int:
     ts = [threading.Thread(target=worker_loop, args=(i, a.once), daemon=True) for i in range(1 if a.once else n)]
     for t in ts:
         t.start()
+    if not a.once:
+        threading.Thread(target=econ_loop, daemon=True).start()
     for t in ts:
         while t.is_alive():
             t.join(1.0)

@@ -8,6 +8,10 @@ extends Node
 ##   B ★econ_mismatch(本机改了存档: 多塞一件 3★、多 999 币)⇒ 拉服务器那份流水在本机重放对齐 ⇒ 作弊那部分没了、
 ##     本机资产 = 服务器流水重放的结果; 屏上「装备已同步，请重新开战」
 ##   C econ_invalid(服务器判第 2 条不合法)⇒ 先 econ_truncate(at 2)认它, 再拉剩下的那 2 条对齐
+##   D ★开局等流水传完才交阵容(上传慢 0.6 秒: 交阵容那个请求不能抢在前面, 否则服务器比的是旧账, 刚买的东西被对齐掉)
+##   E 上传被服务器拒(mismatch, 两份账不一致)⇒ 不再死等, 按服务器对齐; 没交阵容
+##   F 断网传不动 ⇒ 约 10 秒后报连不上; 没交阵容
+##   G ★对齐时服务器尾部有没传回的种子行(闪退, R9)⇒ 本机补上 bt 并重传那一条, 否则服务器的可重放前缀永远停在它前面
 ## 反向验证(手工, 见方案书): referee_run 不处理 econ_* ⇒ A / B 红。
 
 const SB := preload("res://scripts/net/supabase.gd")
@@ -26,6 +30,9 @@ var _rows: Array = []          # 假服务器上的流水 [{seq, op}]
 var _commits := 0
 var _truncs: Array = []
 var _gets := 0
+var _commit_ms := 0            # 假服务器处理一次上传要多久
+var _commit_reply: Dictionary = {}   # 非空 ⇒ 上传一律回这个(拒收 / 断网)
+var _commit_done_at := 0       # 最后一次上传回包的时刻
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -46,11 +53,19 @@ func _fake(_method, url, _headers, body, cb) -> void:
 		cb.call({"ok": true, "code": 200, "body": JSON.stringify(r)})
 	elif u.ends_with("/rest/v1/rpc/econ_commit"):
 		_commits += 1
+		if not _commit_reply.is_empty():
+			cb.call(_commit_reply)
+			return
 		var from := int(b.get("p_from", 0))
 		var ops: Array = b.get("p_ops", [])
+		if _commit_ms > 0:
+			await get_tree().create_timer(_commit_ms / 1000.0).timeout
 		for i in range(ops.size()):
 			if from + i >= _rows.size():
 				_rows.append({"seq": from + i, "op": ops[i]})
+			else:
+				_rows[from + i] = {"seq": from + i, "op": ops[i]}
+		_commit_done_at = Time.get_ticks_msec()
 		cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "next": _rows.size()})})
 	elif u.ends_with("/rest/v1/rpc/econ_truncate"):
 		_truncs.append(int(b.get("p_at", -1)))
@@ -173,6 +188,74 @@ func _ready() -> void:
 	_ok("C 再拉剩下的 2 条对齐: 本机流水 2 条、econ_up 2", (gs.econ_log as Array).size() == 2 and int(gs.econ_up) == 2,
 		"log=%d up=%d" % [(gs.econ_log as Array).size(), int(gs.econ_up)])
 	run.queue_free()
+
+	## ── D 开局等流水传完 ──
+	_honest_week(gs)
+	_rows = []
+	_commit_ms = 600
+	_commit_done_at = 0
+	_starts = [{"ok": true, "job_id": 4343, "match_id": "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b",
+		"opp": {"profile": {"name": "x", "avatar": "ninja", "id": "g_x", "tag": "t"}, "leaders": ["ninja"]},
+		"ledger": {"battles": 2, "wins": 1, "hearts": 6, "sweeps": 0, "eggs": 1, "used": 2}}]
+	_start_n = 0
+	_start_ms = []
+	run = _new_run()
+	run.start_ranked()
+	await _wait(func() -> bool: return _start_n >= 1)
+	_ok("D ★开局: 流水传完才交阵容(上传回包 %d ≤ 交阵容 %s)" % [_commit_done_at, str(_start_ms)],
+		_start_ms.size() == 1 and _commit_done_at > 0 and int(_start_ms[0]) >= _commit_done_at)
+	_ok("D 服务器那份 = 本机(交阵容那一刻)", _rows.size() == (gs.econ_log as Array).size())
+	run.queue_free()
+	gs.referee_pending = {}
+	_commit_ms = 0
+
+	## ── E 上传被服务器拒 ⇒ 对齐 ──
+	truth = _honest_week(gs)
+	_rows = []
+	for i in range(2):
+		_rows.append({"seq": i, "op": (gs.econ_log[i] as Dictionary).duplicate(true)})
+	gs.econ_up = 2
+	_commit_reply = {"ok": true, "code": 200, "body": JSON.stringify({"ok": false, "reason": "mismatch", "at": 2, "next": 2})}
+	_start_n = 0
+	a0 = EN.adopts
+	run = _new_run()
+	run.start_ranked()
+	await _wait(func() -> bool: return str(run.state) == RW.ST_ERROR)
+	_ok("E ★上传被拒 ⇒ 按服务器对齐、没交阵容", EN.adopts == a0 + 1 and _start_n == 0 and str(run.msg) == RW.TXT_ECON_SYNCED,
+		"adopts %d→%d 交了 %d 次 msg=%s" % [a0, EN.adopts, _start_n, str(run.msg)])
+	_ok("E 本机流水 = 服务器那 2 条", (gs.econ_log as Array).size() == 2 and int(gs.econ_up) == 2)
+	run.queue_free()
+	_commit_reply = {}
+
+	## ── F 断网传不动 ──
+	_honest_week(gs)
+	_commit_reply = {"ok": false, "code": 0, "body": ""}
+	_start_n = 0
+	var t0 := Time.get_ticks_msec()
+	run = _new_run()
+	run.start_ranked()
+	await _wait(func() -> bool: return str(run.state) == RW.ST_ERROR, 20000)
+	var took := Time.get_ticks_msec() - t0
+	_ok("F 传不动 ⇒ 约 10 秒报连不上、没交阵容(实际 %d 毫秒)" % took, str(run.msg) == RW.TXT_NEED_SERVER and _start_n == 0 and took >= 8000 and took <= 16000,
+		"msg=%s 交了 %d 次" % [str(run.msg), _start_n])
+	run.queue_free()
+	_commit_reply = {}
+	EN.last_error = ""
+
+	## ── G 对齐时尾部有没传回的种子行 ──
+	_honest_week(gs)
+	_rows = []
+	for i in range((gs.econ_log as Array).size()):
+		_rows.append({"seq": i, "op": (gs.econ_log[i] as Dictionary).duplicate(true)})
+	var n_srv := _rows.size()
+	_rows.append({"seq": n_srv, "op": {"op": "roll", "seed": 7654321}})     # 服务器发了种子, 本机闪退没传回(缺 bt)
+	gs.econ_up = n_srv
+	var ad: Dictionary = EconReplay.adopt(gs, EN.parse_rows(true, 200, JSON.stringify(_rows)).get("rows", []))
+	_ok("G 分母: 对齐成交(%d 条, 含尾部种子行)" % _rows.size(), bool(ad.get("ok", false)) and (gs.econ_log as Array).size() == _rows.size(), str(ad))
+	_ok("G ★econ_up 退到种子行(还要把带 bt 的传回去)", int(gs.econ_up) == n_srv, "econ_up=%d" % int(gs.econ_up))
+	EN.pump()
+	await _wait(func() -> bool: return int(gs.econ_up) == n_srv + 1 and not EN.busy)
+	_ok("G ★传回之后服务器那一行带上了 bt", ((_rows[n_srv] as Dictionary)["op"] as Dictionary).has("bt"), str(_rows[n_srv]))
 
 	SB._transport_for_test = Callable()
 	OS.set_environment("TURTLE_SUPABASE", " ")

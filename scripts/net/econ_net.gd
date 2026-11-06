@@ -27,6 +27,16 @@ static func on() -> bool:
 	return GameState != null and RN.econ_on() and not EL.quiet(GameState)
 
 
+## 开局前还要等吗: 有没传的流水 / 有提交在路上。开关关着恒 false。
+static func unsynced() -> bool:
+	return on() and (busy or int(GameState.econ_up) < (GameState.econ_log as Array).size())
+
+
+## 上传被服务器拒了(本机与服务器两份账不一致, 传多少次都一样)⇒ 只能按服务器那份对齐。
+static func conflict() -> bool:
+	return last_error == "mismatch" or last_error == "taken"
+
+
 ## 本周锚点(与服务端 econ_week_now 同一个口径: 周一 00:00 UTC)。
 static func week() -> int:
 	return P2C.week_anchor_utc(int(P2C.now_utc()))
@@ -141,6 +151,7 @@ static func _fetch_adopt(done: Callable) -> void:
 		done.call(false)
 		return
 	adopts += 1
+	last_error = ""
 	n._get_once("/rest/v1/econ_ops?select=seq,op&week=eq.%d&order=seq.asc&limit=50000" % week(), "GET", "",
 		func(res: Dictionary) -> void:
 			busy = false
@@ -184,6 +195,7 @@ static func pump() -> bool:
 	var sent := _send(from, ops, "", func(r: Dictionary) -> void:
 		busy = false
 		if bool(r.get("ok", false)):
+			last_error = ""
 			gs.econ_up = clampi(int(r.get("next", from)), 0, (gs.econ_log as Array).size())
 			return
 		last_error = str(r.get("reason", "net"))

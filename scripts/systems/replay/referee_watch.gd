@@ -726,7 +726,7 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 		gs.left_team.assign((gs.season_leaders as Array).slice(0, 3))
 	var reward := maxi(0, int(led.get("reward", 0)))
 	## = _settle_season 积分赛那一支: 每场 +2 大轮经验 / 096 小木斧(持有才给)/ 糖果罐 + 服务器算好的币 —— 一条进账走记账口
-	gs.econ({"op": "income", "src": "ranked_ref", "coins": reward, "xp": 2, "axe": true,
+	gs.econ({"op": "income", "src": "ranked_ref", "coins": reward, "xp": P2C.RANKED_XP_PER_MATCH, "axe": true,
 		"candy": gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS})
 	apply_chest(gs, st.get("chest", {}))
 	apply_incense(gs, st.get("incense", {}))
