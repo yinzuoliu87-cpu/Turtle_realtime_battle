@@ -321,7 +321,13 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		"coins": maxi(0, int(d.get("coins", 0))) if d.get("coins", null) is float or d.get("coins", null) is int else 0,
 		"chest": parse_chest(d.get("chest", null)),
 		"incense": parse_incense(d.get("incense", null)),
+		"axe_kills": parse_axe_kills(d.get("axe_kills", null)),
 		"error": str(d.get("error", "")) if d.get("error", null) is String else ""}
+
+
+## 纯函数: 回包里的 `axe_kills`(20261106f 起: 这一局我方斧头的击杀 + 助攻次数)→ 次数。缺 / 不是数 ⇒ 0(服务端没上这条迁移时什么都不发)。
+static func parse_axe_kills(v) -> int:
+	return clampi(int(v), 0, 200) if v is float or v is int else 0
 
 
 ## 纯函数: 回包里的 `incense`(20261023 起: 这一局结束时我方 093 香火石的刻痕 + 充能)→ {"marks", "charge"};
@@ -478,7 +484,8 @@ static func parse_finals_coins(ok: bool, code: int, body: String) -> Dictionary:
 		return {"err": "server", "code": code}
 	var c = d.get("coins", null)
 	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0,
-		"chest": parse_chest(d.get("chest", null)), "incense": parse_incense(d.get("incense", null))}
+		"chest": parse_chest(d.get("chest", null)), "incense": parse_incense(d.get("incense", null)),
+		"axe_kills": parse_axe_kills(d.get("axe_kills", null))}
 
 
 static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Callable) -> bool:
