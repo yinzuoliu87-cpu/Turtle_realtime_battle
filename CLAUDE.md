@@ -34,6 +34,7 @@ SHARD=k/8 SHARD_LIST_ONLY=1 bash run-tests.sh   # 只看第 k 片分到哪几条
 ```
 
 - **改动经 CI 把关进 main，不直接 push main**（用户 11-05「肯定是要改呀…这个做法效率太低了呀…你按最好的做法来呀」，取代 10-31「推送前本机跑完整门禁」）：提交后 `python tools/ship.py <主题> [--wait]` 推到 `wip/<主题>` → `tests.yml` 八片跑全套（约 10 分钟，公开仓库不计费）→ 全绿由 `promote` 自动**快进** main（不是 main 的后代就失败，不硬塞）。本机只跑与改动直接相关的测试 + 审计器；本机全套 `bash run-tests.sh` 只在要 Windows 侧证据（生成金标等）或 CI 不可用时跑。由来：10-31 那条占满用户电脑约 15 分钟、跑的期间不能改仓库 / 开录制，而它跑的是和 CI 同一套测试、并不多抓问题（11-05 分析：CI 中位 10 分钟、最近 30 次 29 绿）。
+- **推之前先过本机预检，CI 不是用来找小错的**（用户 11-06「每次跑个十分钟 CI，然后找个小问题，然后又跑个十分钟 CI…我不觉得这是很好的呀」，修订上一条的「本机只跑相关测试」）：`python tools/precheck.py` 跑全部审计器 + 全仓扫描类测试 + 碰到改动文件的测试，过了 `ship.py` 才放行（`--list` 看要跑哪些）。CI 红了不整轮重来：本机 `SHARD=k/8 bash run-tests.sh` 只跑红的那片，修好确认再推；攒齐一批再推，不是修一个推一个。
 - **只改文档 ⇒ 复用上次全绿**（用户 11-04「改」，修订上一条）：`run-tests.sh` 开头用 `tools/gate_input_key.py` 算测试输入哈希（docs/ 与根目录 .md 以外的全部文件 + 被 Godot 侧 `res://` 点名的文档 + Godot 可执行文件）；与 12 小时内上次全绿相同 ⇒ 自证测试 + 冒烟复用、不起 Godot，三方对账与审计器照跑，结尾打「其中 N 项复用」。输入变一个字节就跑全套。`GATE_NO_REUSE=1` 强制全套，`GATE_REUSE_CHECK=1` 只看判定。**不许扩大成「只跑相关测试」**（用户没同意）。（本机跑全套时才用得上；11-05 起常规流程走 CI，见上一条）
 - 手动跑单条测试一律隔离存档：`APPDATA=$U XDG_DATA_HOME=$U`（Windows 看 `APPDATA`，Linux/CI 看 `XDG_DATA_HOME`，两个都设；`verify_gate_isolation` 守）。并设 `TURTLE_SUPABASE=" "` 不连服务器。
 - 判定 = 退出码 0 + 不命中 `run-tests.sh` 顶部 `FATAL` 致命报错正则 + 日志里有 `ALL PASS`。**新报错形态往 `FATAL` 里加**，漏一个模式就等于把 bug 判绿。

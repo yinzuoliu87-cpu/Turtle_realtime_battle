@@ -1212,7 +1212,7 @@ func _t_v() -> void:
 	hits.sort()
 	_ok("V ★静态: 代码里写出 side=b 的只有 referee_watch.gd(watch_names)与 RecordScene.gd(我在右边那一行)",
 		hits == ["res://scripts/scenes/RecordScene.gd", "res://scripts/systems/replay/referee_watch.gd"], str(hits))
-	var rw := FileAccess.get_file_as_string("res://scripts/systems/replay/referee_watch.gd")
+	var rw := FileAccess.get_file_as_string("res://scripts/systems/replay/referee_watch.gd").replace("\r\n", "\n")   # 行尾归一: 新 worktree 检出成 CRLF
 	_ok("V 静态: watch_names 只在 side == b 时给名字(其余 {} ⇒ 与改之前同一句 play)", rw.contains("if str(view.get(\"side\", \"a\")) != \"b\":\n\t\treturn {}"))
 
 
