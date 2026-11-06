@@ -6484,7 +6484,7 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 				dmg = stacks + roundi(max_hp * stacks * CombatMath.STACK_DOT_MAXHP_PCT)
 				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
 				if _t < u.get("true_fire_until", 0.0):
-					_damage._apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
+					_damage._apply_damage(u, EquipSystem.truefire_burn_dmg(u, dmg), Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
 				else:
 					_damage._apply_damage(u, _damage._dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("burn", null)), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag", false, true)   # 灼烧=魔法伤害·吃魔抗
 			"poison":

@@ -706,6 +706,15 @@ const MOON_SLASH_STEP := 0.11    # 斩痕 5 帧 × 0.11 = 0.55 秒(与上一代�
 ## 【022 余烬燃油瓶】定时抛火瓶, 命中点上「真火」。
 const EMBER_IV := 8.0            # 每几秒抛一个火瓶(主场景 _EQ_CUSTOM_IV 引用本常量)
 const EMBER_TRUEFIRE_SEC := 5.0  # 真火持续(秒)·期间该目标的灼烧改判真实伤害
+## 【真火】打龟蛋: 灼烧伤害减少这么多百分比(用户 2026-11-06「真火对龟蛋的伤害减少百分之五十」); 文案与 truefire_burn_dmg 读它
+const EMBER_TRUEFIRE_EGG_REDUCE := 50
+
+## 真火这一跳灼烧打到 `u` 的实际伤害: 龟蛋减 EMBER_TRUEFIRE_EGG_REDUCE%, 其余原样; 普通灼烧(没真火)不走这里。
+## 主场景 `_tick_dot_stacks` 的真火分支调(放这里而不放主文件: 主文件行数冻结, tools/arch_budget.py)。
+static func truefire_burn_dmg(u: Dictionary, dmg: int) -> int:
+	if bool(u.get("_isEgg", false)):
+		return roundi(float(dmg) * (1.0 - float(EMBER_TRUEFIRE_EGG_REDUCE) / 100.0))
+	return dmg
 ## 【042 涟漪药剂】定时给全队按【已损生命】回复。
 const RIPPLE_IV := 8.0           # 每几秒回一次(主场景 _EQ_CUSTOM_IV 引用本常量)
 ## 【048 黄铜手铳】定时连射, 每发只打沿途第一个敌人。

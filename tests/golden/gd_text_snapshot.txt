@@ -281,7 +281,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
 scripts/gamedata/glossary.gd|lit|余烬攻击命中时叠加在目标身上的层数，每层提高该目标的斩杀线。
-scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。
+scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。对龟蛋的灼烧伤害会降低，数值见余烬燃油瓶。
 scripts/gamedata/glossary.gd|lit|余烬种子
 scripts/gamedata/glossary.gd|lit|冰霜
 scripts/gamedata/glossary.gd|lit|剑士
