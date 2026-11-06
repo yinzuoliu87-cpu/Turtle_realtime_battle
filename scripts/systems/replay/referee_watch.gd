@@ -244,6 +244,7 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 	apply_chest(gs, st.get("chest", {}))   # 服务器那一局里宝箱龟攒的财宝值 / 开出的战利品(2026-10-22b)
 	apply_incense(gs, st.get("incense", {}))   # 服务器那一局里 093 香火石的刻痕 / 充能(2026-10-23)
 	apply_axe_kills(gs, st)                    # 服务器那一局里斧头的击杀 + 助攻(2026-11-06)
+	apply_wheel(gs, st)                        # 服务器那一局里命运之轮新抽到的花色(2026-11-06)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -628,6 +629,7 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 			var ch_c: bool = apply_chest(GameState, res.get("chest", {}))
 			var in_c: bool = apply_incense(GameState, res.get("incense", {}))   # 093 香火石(2026-10-23), 同一张单子同一道闸
 			apply_axe_kills(GameState, res)
+			apply_wheel(GameState, res)
 			if ch_c or in_c:
 				GameState.save()
 	else:
@@ -724,6 +726,17 @@ static func apply_axe_kills(gs, st: Dictionary) -> bool:
 	return true
 
 
+## 服务器那一局我方命运之轮新抽到的花色 ⇒ 累积进本大轮存档(设计: 一大轮内逐渐成长, 换轮清零)。
+##   ★服务端没传这个键(迁移没上 / 老裁判)⇒ 什么都不发。服务端回的是「我这一侧」(B 方取 wheel_new_b, 回包按视角换好)。
+static func apply_wheel(gs, st: Dictionary) -> bool:
+	var w = st.get("wheel_new", {})
+	if not (w is Dictionary) or (w as Dictionary).is_empty():
+		return false
+	for k in w:
+		gs.gambler_wheel_stacks[k] = int(gs.gambler_wheel_stacks.get(k, 0)) + int(w[k])
+	return true
+
+
 ## ★记账(积分赛口径)。由 `settle` 按单子上的 kind 分进来(任务号已核对)。
 ##   与 `_settle_season` 积分赛那一支逐项对照:
 ##     lose_heart / season_total_battles += 1 / consume_ranked_quota / season_wins / season_eggs_killed / season_sweeps
@@ -761,6 +774,7 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 	apply_chest(gs, st.get("chest", {}))
 	apply_incense(gs, st.get("incense", {}))
 	apply_axe_kills(gs, st)
+	apply_wheel(gs, st)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1

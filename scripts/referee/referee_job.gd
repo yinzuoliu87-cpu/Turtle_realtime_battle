@@ -216,7 +216,7 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 		"loadouts": lo,
 		"candy_temp_levels": tl,          # 2026-11-06 快照带上了(原来恒空 ⇒ 服务器局里临时等级器用了等于没用); 右方读 dual_ghost 同一个键
 		"trainer_skill": ts if ts != "" else "hook",   # 与右方回落相同(battle_spawn: 老快照没有 ⇒ hook)
-		"gambler_wheel_stacks": {},       # 同上(命运之轮跨场累积只给玩家本机那一方)
+		"gambler_wheel_stacks": BE.ghost_wheel_stacks(a),   # 2026-11-06 快照带上了(原来恒空 ⇒ 服务器局里命运之轮不累积); 右方读 dual_ghost 同一个键
 		"chest_treasure_value": float(cv) if (cv is int or cv is float) else 0.0,
 		"chest_treasures_won": cw,
 		## 093 香火石(2026-10-23): 从 A 的快照起算(原来写死 0 ⇒ 周末服务器局里我方刻痕不生效)。

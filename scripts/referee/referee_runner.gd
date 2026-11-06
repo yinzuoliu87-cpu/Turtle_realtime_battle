@@ -96,6 +96,9 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 		##   (正式服 527 个经验增量里没有一个带 +6)。客户端 RefereeWatch.apply_axe_kills 按次数发。
 		res["axe_kills"] = int(battle._equip_sys._axe.kills["left"])
 		res["axe_kills_b"] = int(battle._equip_sys._axe.kills["right"])
+		## 赌神命运之轮(2026-11-06): 这一局两侧新抽到的花色, 客户端结算时累积进存档(一大轮内成长, 换轮清零)。
+		res["wheel_new"] = (battle._gambler_sys.drawn["left"] as Dictionary).duplicate()
+		res["wheel_new_b"] = (battle._gambler_sys.drawn["right"] as Dictionary).duplicate()
 	if rr != null and rr.stream != null:
 		res["stream"] = rr.stream.finish({"match_id": str(job.get("match_id", "")), "ok": why == "",
 			"digest": str(res.get("digest", "")), "client_version": ReplayRecorder.client_version()})

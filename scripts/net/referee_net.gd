@@ -322,7 +322,19 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		"chest": parse_chest(d.get("chest", null)),
 		"incense": parse_incense(d.get("incense", null)),
 		"axe_kills": parse_axe_kills(d.get("axe_kills", null)),
+		"wheel_new": parse_wheel(d.get("wheel_new", null)),
 		"error": str(d.get("error", "")) if d.get("error", null) is String else ""}
+
+
+## 纯函数: 回包里的 `wheel_new`(20261106h 起: 这一局我方新抽到的花色)→ {花色: 次数}。缺 / 形状不对 ⇒ {}(什么都不发)。
+static func parse_wheel(v) -> Dictionary:
+	var out := {}
+	if v is Dictionary:
+		for k in ["spade", "heart", "diamond", "club"]:
+			var n = (v as Dictionary).get(k, 0)
+			if (n is int or n is float) and int(n) > 0:
+				out[k] = clampi(int(n), 0, 99)
+	return out
 
 
 ## 纯函数: 回包里的 `axe_kills`(20261106f 起: 这一局我方斧头的击杀 + 助攻次数)→ 次数。缺 / 不是数 ⇒ 0(服务端没上这条迁移时什么都不发)。
@@ -485,7 +497,7 @@ static func parse_finals_coins(ok: bool, code: int, body: String) -> Dictionary:
 	var c = d.get("coins", null)
 	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0,
 		"chest": parse_chest(d.get("chest", null)), "incense": parse_incense(d.get("incense", null)),
-		"axe_kills": parse_axe_kills(d.get("axe_kills", null))}
+		"axe_kills": parse_axe_kills(d.get("axe_kills", null)), "wheel_new": parse_wheel(d.get("wheel_new", null))}
 
 
 static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Callable) -> bool:

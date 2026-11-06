@@ -203,6 +203,18 @@ static func ghost_minion_extras(m: Dictionary, spec: Dictionary) -> void:
 		spec["temp_lv"] = int(m["temp_lv"])
 
 
+## 快照里的命运之轮累积 {花色: 次数}(裁判左方 / 战斗右方同一个口径)。快照是别人传上来的 ⇒ 只认四种花色, 夹到 0 ~ 99。
+static func ghost_wheel_stacks(g) -> Dictionary:
+	var t = (g as Dictionary).get("wheel_stacks", null) if g is Dictionary else null
+	var out := {}
+	if t is Dictionary:
+		for k in ["spade", "heart", "diamond", "club"]:
+			var v = (t as Dictionary).get(k, 0)
+			if (v is int or v is float) and int(v) > 0:
+				out[k] = clampi(int(v), 0, 99)
+	return out
+
+
 ## 快照里某只统领的临时等级(裁判左方 / 战斗右方同一个口径)。快照是别人传上来的 ⇒ 夹到 0 ~ 10。
 static func ghost_temp_level(g, pid: String) -> int:
 	var t = (g as Dictionary).get("temp_levels", null) if g is Dictionary else null
@@ -2095,4 +2107,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	## 只有用过才带: 没用过的真人与机器人同形(verify_bot_snapshot_shape, 机器人不许露馅)
 	if not tl_out.is_empty():
 		out["temp_levels"] = tl_out
+	var wh := ghost_wheel_stacks({"wheel_stacks": GameState.gambler_wheel_stacks})   # 命运之轮本大轮累积: 同样只有抽过才带
+	if not wh.is_empty():
+		out["wheel_stacks"] = wh
 	return out

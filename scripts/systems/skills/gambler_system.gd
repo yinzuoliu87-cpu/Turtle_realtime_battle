@@ -40,6 +40,9 @@ const JOKER_ATK_DOWN := 0.15 # 万能牌: 目标攻击力 −
 const JOKER_SHIELD := 1.0    # 万能牌: ×ATK 永久护盾 (0.25→1.0)
 const BET_MULTI_HEAL := 0.3   # 赌注每张牌触发多重打击时回复 ×ATK(原写死 0.3·10-16); 追加的那一发 = 普攻系数 CARD_ATK_COEF
 
+const _BE := preload("res://scripts/net/backend.gd")
+## 这一局每一方新抽到的花色 {side: {花色: 次数}}(裁判写进结果单 wheel_new / wheel_new_b, 客户端结算时累积进存档)。
+var drawn := {"left": {}, "right": {}}
 var battle
 
 func _init(b) -> void:
@@ -179,7 +182,7 @@ func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之�
 	battle._recalc_stats(u)
 
 func _gambler_apply_wheel_stacks(u: Dictionary) -> void:   # 命运之轮跨场累积(方案B): 登场套用GameState本大轮已抽花色(切轮重置)·只玩家赌神调用
-	var ws: Dictionary = GameState.gambler_wheel_stacks
+	var ws: Dictionary = GameState.gambler_wheel_stacks if str(u.get("side", "left")) == "left" else _BE.ghost_wheel_stacks(GameState.dual_ghost)
 	if ws.is_empty(): return
 	for i in range(int(ws.get("spade", 0))):
 		u["base_atk"] = float(u["base_atk"]) + WHEEL_SPADE_ATK; u["maxHp"] += WHEEL_SPADE_HP; u["hp"] += WHEEL_SPADE_HP
@@ -262,8 +265,10 @@ func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·�
 
 func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+3&血+10/♥护甲魔抗各+1/♦暴击+2%&护穿+1/♣吸血+0.5%&攻速+2%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
 	var _suit = battle._battle_rng.randi() % 4
-	if u.get("side", "") == "left":   # 跨场累积: 抽中即记录(只玩家赌神写本大轮累积·敌/ghost镜像不写·切轮reset)
-		var _sk: String = ["spade", "heart", "diamond", "club"][_suit]
+	var _sk: String = ["spade", "heart", "diamond", "club"][_suit]
+	var _dr: Dictionary = drawn["left" if str(u.get("side", "")) == "left" else "right"]
+	_dr[_sk] = int(_dr.get(_sk, 0)) + 1   # 这一局抽到的: 裁判写进结果单, 两边都是真人时各带回各的存档
+	if u.get("side", "") == "left":   # 跨场累积: 抽中即记录(本机打的局直接写本大轮累积·切轮reset)
 		GameState.gambler_wheel_stacks[_sk] = int(GameState.gambler_wheel_stacks.get(_sk, 0)) + 1
 	# ★流程优化(用户2026-07-14): 放技→抽取阶段锁龟能+转盘动画→花色落定后才跳文字+实装属性→龟能自动解锁
 	var SPIN = WHEEL_SPIN_SEC
