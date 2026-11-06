@@ -48,6 +48,13 @@ func _ready() -> void:
 	scene._kill(crystal, killer)
 	await get_tree().process_frame
 
+	## 玩家反馈 11-06「团灭的时候水晶球还没死掉, 都被判定团灭」: 水晶球继续战斗 ⇒ 这一路没团灭
+	var side_c := str(crystal.get("side", "left"))
+	var n_with := int(scene._dl_sys._dl_side_alive(side_c))
+	ball["alive"] = false
+	var n_without := int(scene._dl_sys._dl_side_alive(side_c))
+	ball["alive"] = true
+	_ok("★水晶球算进团灭判定: 球活着时存活数更多", n_with > n_without, "球活 %d / 球死 %d" % [n_with, n_without])
 	_ok("★水晶龟阵亡后水晶球【继续战斗】(用户2026-07-16反转)", ball.get("alive", false),
 		"ball.alive=%s" % [ball.get("alive")])
 

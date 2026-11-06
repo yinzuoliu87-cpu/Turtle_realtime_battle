@@ -1524,7 +1524,7 @@ func _dual_foe_lane(lane: String) -> Array:
 
 # ── 双路流程控制 (P4: 团灭→破蛋10s窗口→结束; P5 升级为 top→bottom→final 分路推进) ──
 # 团灭判定排除的【惰性】召唤(否则续着卡死破蛋窗口); 战斗型召唤(大熊/海螺虫/骷髅/小将/机甲/浮游炮)算存活→用户2026-07-11「还在打召唤物别突然弹下一战场」
-const _DL_INERT_SUMMON := {"candybomb": true, "crystalball": true}
+const _DL_INERT_SUMMON := {"candybomb": true}   # 水晶球 11-06 移出: 用户 07-16 定「不随主人阵亡, 继续战斗」, 这张表当时没跟着改
 func _snapshot_world_permanent() -> void:   # 记录建场阶段的 _world 子节点(相机/灯光/地砖/竞技场环等)
 	_world_permanent.clear()
 	if not is_instance_valid(_world): return

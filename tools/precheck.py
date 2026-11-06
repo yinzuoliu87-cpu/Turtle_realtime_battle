@@ -127,7 +127,8 @@ def run_test(name, fatal, budget):
 def audits(runner):
 	bad = []
 	tools = sorted(set(re.findall(r'^run_audit "(tools/[^"]+)"', runner, re.M)))
-	env = dict(os.environ, PYTHONIOENCODING="utf-8")
+	## 有的审计器要调 sh: 从 PowerShell 起的时候 PATH 里没有 Git 的 sh
+	env = dict(os.environ, PYTHONIOENCODING="utf-8", PATH=r"C:\Program Files\Git\bin;" + os.environ.get("PATH", ""))
 
 	def one(t):
 		try:
@@ -139,8 +140,14 @@ def audits(runner):
 	with cf.ThreadPoolExecutor(6) as ex:
 		for t, rc, last in ex.map(one, tools):
 			if rc != 0:
-				bad.append((t, last))
-	return len(tools), bad
+				bad.append(t)
+	## 并行时偶发红(本来就不是并行写的审计器): 单独重跑一次, 还红才算红
+	final = []
+	for t in bad:
+		_, rc, last = one(t)
+		if rc != 0:
+			final.append((t, last))
+	return len(tools), final
 
 
 def main():
