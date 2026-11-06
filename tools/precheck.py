@@ -127,8 +127,9 @@ def run_test(name, fatal, budget):
 def audits(runner):
 	bad = []
 	tools = sorted(set(re.findall(r'^run_audit "(tools/[^"]+)"', runner, re.M)))
-	## 有的审计器要调 sh: 从 PowerShell 起的时候 PATH 里没有 Git 的 sh
-	env = dict(os.environ, PYTHONIOENCODING="utf-8", PATH=r"C:\Program Files\Git\bin;" + os.environ.get("PATH", ""))
+	## 有的审计器要调 sh: 从 PowerShell 起的时候 PATH 里没有。★要 Git\usr\bin 的真 sh, 不是 Git\bin 的启动器:
+	##   启动器会把系统路径插到最前面, 盖掉 beta_server_selftest 假的 date / systemctl(四种环境对比实测)
+	env = dict(os.environ, PYTHONIOENCODING="utf-8", PATH=r"C:\Program Files\Git\usr\bin;" + os.environ.get("PATH", ""))
 
 	def one(t):
 		try:
