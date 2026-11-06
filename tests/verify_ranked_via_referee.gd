@@ -366,6 +366,40 @@ func _t_menu() -> void:
 		and RW.resume_text(v[0]) == RW.TXT_RESUMED_RANKED_WIN, str(v[0]))
 	_gs.referee_flags = {RN.K_FINALS: false, RN.K_GAUNTLET: false, RN.K_RANKED: false}
 	_ok("M4 开关关 ⇒ 主菜单不问账本", not RW.sync_ranked_ledger() and _ledger_asks == 1)
+	await _t_menu_weekend()
+
+
+## 用户 2026-11-06 排查: 服务端账本只有积分赛那几场; 周六 / 周日主菜单一对账, 闯关 / 决赛加的场次与胜场就被覆盖回去
+##   (货架因此不换货、胜场掉回去)。积分赛阶段照常对账是分母。
+func _t_menu_weekend() -> void:
+	_setup_gs()
+	var P := RW.P2C
+	var keep: int = P.now_override_ts
+	var wk: int = int(_gs.week_anchor_ts)
+	_gs.referee_flags = {RN.K_FINALS: false, RN.K_GAUNTLET: false, RN.K_RANKED: true}
+	_gs.season_total_battles = 16
+	_gs.season_wins = 11
+	_ledger_body = "{\"ok\":true,\"week\":1,\"ledger\":%s}" % _led(16, 11, 3, 2, 11, 16)
+	P.now_override_ts = wk + 4 * 86400 + 12 * 3600                    # 周五 12:00
+	var a0 := _ledger_asks
+	_ok("M5 分母: 周五(积分赛阶段)照常问账本", RW.sync_ranked_ledger() and _ledger_asks == a0 + 1, "asks %d→%d" % [a0, _ledger_asks])
+	for _i in range(60):
+		await get_tree().process_frame
+	P.now_override_ts = wk + 5 * 86400 + 12 * 3600                    # 周六 12:00
+	_gs.gauntlet_settle(true)                                         # 闯关赢一场 ⇒ 本机 17 场 12 胜
+	var b1 := int(_gs.season_total_battles)
+	var w1 := int(_gs.season_wins)
+	a0 = _ledger_asks
+	var sent: bool = RW.sync_ranked_ledger()
+	for _i in range(60):
+		await get_tree().process_frame
+	_ok("M6 ★周六主菜单不拿积分赛账本覆盖闯关(本机 %d 场 %d 胜不变)" % [b1, w1], not sent and _ledger_asks == a0
+		and int(_gs.season_total_battles) == b1 and int(_gs.season_wins) == w1 and b1 == 17 and w1 == 12,
+		"发了=%s 现在 %d 场 %d 胜" % [str(sent), int(_gs.season_total_battles), int(_gs.season_wins)])
+	P.now_override_ts = wk + 6 * 86400 + 12 * 3600                    # 周日 12:00
+	a0 = _ledger_asks
+	_ok("M7 周日同样不问", not RW.sync_ranked_ledger() and _ledger_asks == a0)
+	P.now_override_ts = keep
 
 
 # ─────────────────────────────── D 陪练号同一路(静态) ───────────────────────────────

@@ -775,7 +775,9 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 ## 主菜单开着时按服务端账本对一次本机(积分赛开关开着、没有挂着的待记账单时)。`done.call(changed: bool)` 问到才调。
 ##   返回 false = 没发(开关关 / 有单子 / 没配后端)。
 static func sync_ranked_ledger(done: Callable = Callable()) -> bool:
-	if GameState == null or not ranked_on() or has_pending():
+	## ★只在积分赛阶段对: 服务端账本只有积分赛那几场, 周六 / 周日本机的场次与胜场还含闯关 / 决赛 ⇒ 对一次就被覆盖回去
+	##   (2026-11-06 探针: 17 场 12 胜 → 16 场 11 胜; 货架因此不换货, 援军小将的场次加成少算)。
+	if GameState == null or not ranked_on() or has_pending() or P2C.phase_at_utc(int(P2C.now_utc())) != P2C.PHASE_RANKED:
 		return false
 	var wk := P2C.week_anchor_utc(int(P2C.now_utc()))
 	return RN.ranked_ledger_async(wk, func(res: Dictionary) -> void:
