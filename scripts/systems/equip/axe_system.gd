@@ -22,6 +22,9 @@ const AFS := preload("res://scripts/gamedata/axe_final_stats.gd")
 var battle = null
 var _pas = null                          # 被动 3~6(五期), 见 axe_passives.gd
 var _fin = null                          # 四个最终造物(六期), 见 axe_final_forms.gd
+## 这一局每一方斧头的击杀 + 助攻次数(裁判写进结果单 axe_kills / axe_kills_b, 客户端结算时发经验)。
+##   只计数, 不参与对局结算(2026-11-06 探针: 服务器局 340 → 352 涨了, 跑完 GameState 还原, 经验就没了)。
+var kills := {"left": 0, "right": 0}
 
 
 func _init(b) -> void:
@@ -398,6 +401,8 @@ func steal_shield(ax: Dictionary, tgt: Dictionary) -> float:
 func on_hit(src: Dictionary, tgt: Dictionary, basic: bool) -> void:
 	if not (src is Dictionary) or not src.get("_eq_axe", false):
 		return
+	if tgt is Dictionary and not src.get("_axe_local", false):
+		tgt["_axe_touch_r"] = float(battle._t)   # 右方那把斧头碰过(配对局 / 决赛的 B 也是真人, 只进 kills, 不碰本机经验)
 	if tgt is Dictionary and src.get("_axe_local", false):
 		## 助攻窗的起点(四期)。★记在**被打的那个**身上, 而不是在斧头身上记一份名单 ——
 		##   名单要拿单位字典当元素比对, 而单位字典之间互相引用成环(CLAUDE.md §3.2)。
@@ -460,6 +465,13 @@ func on_death(victim: Dictionary, killer) -> bool:
 	var gs = battle.get_node_or_null("/root/GameState")
 	if gs == null or not gs.has_method("econ"):
 		return false
+	var hit_r := false
+	if killer is Dictionary and (killer as Dictionary).get("_eq_axe", false):
+		hit_r = not bool((killer as Dictionary).get("_axe_local", false))
+	if not hit_r and not (killer is Dictionary and (killer as Dictionary).get("_axe_local", false)):
+		hit_r = float(battle._t) - float(victim.get("_axe_touch_r", -9999.0)) <= AE.ASSIST_WINDOW
+	if hit_r:
+		kills["right"] = int(kills["right"]) + 1
 	var hit := false
 	## ★★只认**本机玩家**的斧头(`_axe_local`, 登场时钉, 2026-10-10)。原来任何一把斧头的击杀都给
 	##   本机 GameState 加经验 ⇒ 对手的斧头砍死我的龟, 涨的是**我的**砍伐进度。
@@ -470,5 +482,6 @@ func on_death(victim: Dictionary, killer) -> bool:
 		hit = true                                   # 3 秒内被斧头碰过 = 参与击杀
 	if not hit:
 		return false
+	kills["left"] = int(kills["left"]) + 1
 	## 记账口(方案书 20261106 S2): 本机打的局逐次落流水; 回放 / 裁判机 / 切磋沙盒里只改不记(同一份 axe_add_exp)
 	return bool(gs.econ({"op": "axe_exp", "n": AE.EXP_ON_KILL}).get("evolved", false))
