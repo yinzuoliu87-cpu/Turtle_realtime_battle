@@ -147,6 +147,23 @@ func _t086_pierce() -> void:
 	_ok("086 ★分母: 这一发确实放出来了(1 门炮 ⇒ 1 条射线)", rays == 1, "条数 %d" % rays)
 	_ok("086 ★★贯穿: 挤在 10 码内的 3 个敌人**全部**吃到(不贯穿只会中 1 个)",
 		hit == 3, "中了 %d/3, 各自掉血 %s" % [hit, str(dmgs)])
+	# ── ★玩家反馈 10-28「终极射线 … 怎么命中的, 没伤害, 瞄的哪里」: 蓄力 1.35 秒里目标走开了, 射线也要打得到 ──
+	_s._units.clear()
+	var um: Dictionary = _mk("fortune", "left", Vector2(-500.0, 0.0))
+	um["atk"] = 100.0
+	um["base_atk"] = 100.0
+	_equip(um, "p2eq_086", 3)
+	var mover: Dictionary = _mk("fortune", "right", Vector2(-100.0, 0.0), 9.0e7)
+	(_g()._stt(um, "p2eq_086"))["drones"] = [{"ang": 0.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0}]
+	_drain_pending()
+	var hm0: float = float(mover["hp"])
+	_g().sext_ultimate(um, 2)
+	mover["pos"] = Vector2(mover["pos"]) + Vector2(0.0, 420.0)   # 蓄力期间走开 420 码(远大于判定半宽 40)
+	_pump_shots(GVfx.SEXT_FIRE_DELAY + 0.3)
+	_ok("086 ★目标在蓄力期间走开 ⇒ 射线朝它现在的位置, 照样打中(不是空射)", float(mover["hp"]) < hm0,
+		"掉血 %.0f" % (hm0 - float(mover["hp"])))
+	_s._units.clear()
+	## 重新摆回上面第一段的场景, 后面的小节各自建单位
 	# ── ★用户 2026-08-08:「吃到 3 个激光就是 3 倍率, 考虑龟蛋和训龟大师」──
 	#   ① 倍率: 一个单位站在 N 条线上就吃 N 份(每条射线各自结算)
 	#   ② 龟蛋(围栏未破): `_enemies_of` 里直接 continue ⇒ **连 AoE 都不吃**, 更不会被选中
