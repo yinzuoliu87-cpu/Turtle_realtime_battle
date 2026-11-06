@@ -455,8 +455,16 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 		#   本件旧版是"光束凭空出现再淡出", 七段一段都没有, 伤害也在开火那一帧就落。
 		#   ⇒ 伤害推迟到**光束真的射出去**那一刻(SEXT_CHARGE 秒后), 与演出对齐。
 		var org: Vector2 = sp
-		var dr: Vector2 = ldir
+		var seg: Array = [sp, endp]
+		var aim: Dictionary = tgt
 		battle._queue_shots(1, 0.0, func() -> void:
+			## ★开火这一刻才定方向(玩家反馈 10-28「那个终极射线不是长直线吗, 怎么命中的, 没伤害, 瞄的哪里」):
+			##   原来蓄力开始就定死, 1.35 秒后才射, 目标早走开 ⇒ 光束从原来的位置穿过去、一点伤害没有。
+			##   目标还活着 ⇒ 朝它现在的位置; 已经死了 ⇒ 沿原方向射。演出读同一个 seg, 画的就是判定那条线。
+			var dr: Vector2 = DetMath.norm(seg[1] - org)
+			if aim.get("alive", false) and DetMath.vlen(Vector2(aim["pos"]) - org) > 1.0:
+				dr = DetMath.norm(Vector2(aim["pos"]) - org)
+			seg[1] = org + dr * SEXT_RAY_LEN
 			# 贯穿: 线上**所有**敌人各吃一次(照赛博龟那条 `_on_line(dpos, ldir, pos, 40)`)
 			for o in battle._targeting._enemies_of(u):
 				if not o.get("alive", false):
@@ -467,7 +475,7 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 				battle._damage._apply_damage_from(u, o, dm, GadgetEqVfx.RAY_COLOR, 0.0, false, true)
 				vfx.sextant_ray_hit(Vector2(o["pos"])),
 			u, "", Callable(), GadgetEqVfx.SEXT_FIRE_DELAY)
-		beams.append([sp, endp])
+		beams.append(seg)
 		n += 1
 	u["_sext_ults"] = int(u.get("_sext_ults", 0)) + 1     # 同步证据: 终极放了几轮
 	u["_sext_rays"] = n                                   # 同步证据: 这一轮几条射线

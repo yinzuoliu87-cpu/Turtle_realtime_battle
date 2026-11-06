@@ -170,6 +170,9 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 			var mo = md.get("off", null)
 			if mo is Array and (mo as Array).size() == 2:
 				ms["off"] = LineupPos.pack(Vector2i(int(mo[0]), int(mo[1])))
+			var mt = md.get("temp_lv", 0)
+			if (mt is int or mt is float) and int(mt) > 0:
+				ms["temp_lv"] = clampi(int(mt), 0, 10)
 			specs.append(ms)
 		dl[lane] = normalize.call(specs)
 	## 一只统领分到两路(坏快照) ⇒ 上面按 lane_assign 原样排了两次; `validate` 只查了「3 只」, 这里补查「恰好各一次」。
@@ -194,6 +197,10 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 			var v = alo[k]
 			if v is int or v is float:
 				lo[str(k)] = int(v)
+	var tl := {}
+	for p in leaders:
+		if BE.ghost_temp_level(a, p) > 0:
+			tl[p] = BE.ghost_temp_level(a, p)
 	var ts := str(a.get("trainer_skill", ""))
 	var cw: Array = []
 	var acw = a.get("chest_treasures_won", [])
@@ -207,7 +214,7 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 		"season_leaders": leaders,
 		"persistent_equipped": pe,
 		"loadouts": lo,
-		"candy_temp_levels": {},          # 快照不带; 右方也拿不到 ⇒ 两边同口径
+		"candy_temp_levels": tl,          # 2026-11-06 快照带上了(原来恒空 ⇒ 服务器局里临时等级器用了等于没用); 右方读 dual_ghost 同一个键
 		"trainer_skill": ts if ts != "" else "hook",   # 与右方回落相同(battle_spawn: 老快照没有 ⇒ hook)
 		"gambler_wheel_stacks": {},       # 同上(命运之轮跨场累积只给玩家本机那一方)
 		"chest_treasure_value": float(cv) if (cv is int or cv is float) else 0.0,

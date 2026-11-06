@@ -113,6 +113,7 @@ func _t_path(name: String, hit: Callable) -> void:
 
 func _t_paths() -> void:
 	## 弓箭 / 药水的门槛是羁绊档位: 直接摆档位, 走系统自己的函数体
+	var keep_tier = _s._synergy._by_side.get("left", {})
 	_s._synergy._by_side["left"] = {"弓箭": 3, "药水": 3}
 	_t_path("猎人强化箭", func(src, tgt) -> void:
 		_s._hunter_sys._hunter_exec_arrow_hit(src, tgt))
@@ -121,7 +122,7 @@ func _t_paths() -> void:
 	_t_path("药水【斩首】", func(src, tgt) -> void:
 		_s._potion_syn._prey["left"] = tgt
 		_s._potion_syn.try_behead(src, tgt))
-	_s._synergy._by_side.erase("left")
+	_s._synergy._by_side["left"] = keep_tier        # 恢复, 不能 erase: 场景下一帧还要读这个键
 
 
 func _t_bar() -> void:

@@ -118,9 +118,11 @@ const RANKED := {
 	##   积分赛读池 / 挑对手的流程不受影响。基线单独钉到 d2d21816(其余文件仍比 84d2d853):
 	##   84d2d853→d2d21816 这 55 个函数里只变了 save_pool 一个, 且这次没有新增函数 ⇒「周六专用只从闯关日可达」那条查的集合不变。
 	##   旧摘要用同一口径复算 84d2d853 得 354eb647…, 与原表一致; 新摘要从 git show d2d21816 现算。
+	## ★2026-11-06 临时等级器进服务器局(提交 15185ba0): build_ghost_snapshot 只在**用过**临时等级器时多带 temp_levels / 小将 temp_lv,
+	##   没用过的快照一字不变(verify_bot_snapshot_shape 守); 55 个函数里只变这一个, 没有挪走函数 ⇒ 判据不变松。基线 d2d21816 ⇒ 15185ba0, 摘要现算。
 	"scripts/net/backend.gd": {
-		"base": "d2d21816",
-		"digest": "f8d6af675f7e1b9d809ded1d835624f34bff155e7647988c1e82c50da0afe52c",
+		"base": "15185ba0",
+		"digest": "ae720e969732cf37fb804f978f64f5d0dd3a4377cdb09a476ea6e2a66e1c2432",
 		"views": {},
 		"sat_only": [],
 		"units": [

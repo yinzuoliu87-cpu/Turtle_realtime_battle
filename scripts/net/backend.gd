@@ -195,6 +195,21 @@ static func is_sparring(g) -> bool:
 ##   同一个对手上路是 bot 的龟、下路是鬼影的小将, 拼出来的对手根本不存在。
 ## ⚠ 这里是**第二道**。第一道在 `Backend.pool_find_battles`(坏快照压根选不上),
 ##   留两道是因为 `dual_ghost` 还能从别处被写(调试台/教程/手工录入)。
+## 快照里一只小将的站位 / 临时等级器抄进战斗规格(`m` = 快照那一条, `spec` = 规格)。
+static func ghost_minion_extras(m: Dictionary, spec: Dictionary) -> void:
+	if m.get("off") is Array:
+		spec["off"] = (m["off"] as Array).duplicate()
+	if int(m.get("temp_lv", 0)) > 0:
+		spec["temp_lv"] = int(m["temp_lv"])
+
+
+## 快照里某只统领的临时等级(裁判左方 / 战斗右方同一个口径)。快照是别人传上来的 ⇒ 夹到 0 ~ 10。
+static func ghost_temp_level(g, pid: String) -> int:
+	var t = (g as Dictionary).get("temp_levels", null) if g is Dictionary else null
+	var v = (t as Dictionary).get(pid, 0) if t is Dictionary else 0
+	return clampi(int(v), 0, 10) if v is int or v is float else 0
+
+
 ## 对手快照自带的赛季等级(1 ~ MAX_LEVEL); 没带 / 不是数 = -1(旧快照 ⇒ 调用方退回「与左方同级」的老口径)。
 ## ★用户 2026-10-19「赛季等级」: 双方各用各自的等级 —— 右方读这里, 左方照旧读 GameState。
 ##   快照是别人传上来的数据 ⇒ 一律夹到 1 ~ MAX_LEVEL, 不信越界值。
@@ -1973,6 +1988,8 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 					m["equips"] = (meq as Array).duplicate(true)
 				if ud.get("off") is Array:
 					m["off"] = LineupPos.pack(LineupPos.off_of(ud, 0, 1))
+				if int(ud.get("temp_lv", 0)) > 0:
+					m["temp_lv"] = int(ud["temp_lv"])    # 临时等级器(2026-11-06): 原来不进快照 ⇒ 服务器局里用了等于没用
 				(minions[lk] as Array).append(m)
 				m_seen += 1
 	## ★统领名单与分路**同源**。原来读 `GameState.left_team`, 而它只在【赢了】那支分支里
@@ -1995,6 +2012,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	##   (`:5183` `var idx := 1`), 一个用户要过的功能静默失效了两个月。
 	## ★只收这份快照里真有的那几只 —— 不把玩家对别的龟的选择一起传上云(同 `levels` 的口径)。
 	var lo_out := {}
+	var tl_out := {}          # 临时等级器 {统领: +级}(2026-11-06): 服务器局由裁判读它; 只带用过的
 	var pe: Dictionary = {}
 	if GameState != null and GameState.persistent_equipped is Dictionary:
 		pe = GameState.persistent_equipped
@@ -2004,6 +2022,8 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		if eqs is Array and not (eqs as Array).is_empty():
 			equipped[p] = (eqs as Array).duplicate(true)
 		levels[p] = GameState.get_pet_level(p)
+		if GameState.temp_level_bonus(p) > 0:
+			tl_out[p] = GameState.temp_level_bonus(p)
 		var _lo = GameState.loadouts.get(p, null) if GameState.loadouts is Dictionary else null
 		if _lo is int or _lo is float:
 			lo_out[p] = int(_lo)
@@ -2012,7 +2032,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	var prof_out: Dictionary = profile.duplicate()
 	if not prof_out.has("tag"):
 		prof_out["tag"] = my_tag()
-	return {
+	var out := {
 		## ★schema 1 → 2(2026-08-15, 用户拍板 A): 快照开始带【宝箱进度】。
 		##   老快照没有这两个字段, 而敌方宝箱龟要靠它决定开几件 ——
 		##   不做向后兼容, 直接升版本号, 载入时把 <2 的整批丢掉(见 `SCHEMA_VER` / `load_pool`)。
@@ -2072,3 +2092,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"axe_stage": int(GameState.axe_stage),
 		"axe_final": str(GameState.axe_final),
 	}
+	## 只有用过才带: 没用过的真人与机器人同形(verify_bot_snapshot_shape, 机器人不许露馅)
+	if not tl_out.is_empty():
+		out["temp_levels"] = tl_out
+	return out
