@@ -1011,6 +1011,8 @@ var meta_shop_locked: bool = false
 ## 局外经济操作流水(方案书 docs/plans/20261106-装备与深海币服务器记账.md): 本周每一笔掷货 / 买 / 刷新 / 锁货架 /
 ##   买经验 / 开糖果罐由 `EconLedger.do` 追加, 服务器按它重放出权威状态。换周清空(本周开局 = 重放起点)。
 var econ_log: Array = []
+## 服务器已经有本周流水的前几条(S3, EconNet: 下一次从这里往上传)。随云存档走; 换周 / 清档归零。
+var econ_up: int = 0
 ## 哨兵(S2, EconLedger.check): 资产在记账口外被改了几次 / 最近一次在哪、哪几块变了。进存档, S4 上报。
 var econ_drift: int = 0
 var econ_drift_note: String = ""
@@ -1590,6 +1592,7 @@ func backup_save(tag: String) -> String:
 ## ★test_mode 下**不跑**: 门禁要自己决定什么时候调 `ensure_signed_in_async`,
 ##   后台一拍冷不丁 spawn 一个节点会让「数子节点」的判据偶发红。
 const _SB_NET := preload("res://scripts/net/supabase.gd")
+const _EconNet := preload("res://scripts/net/econ_net.gd")
 
 func _start_net_keepalive() -> void:
 	var t := Timer.new()
@@ -1605,6 +1608,7 @@ func _net_tick() -> void:
 		return
 	_SB_NET.ensure_signed_in_async()
 	_SB_NET.maybe_push_save()
+	_EconNet.pump()            # 经济流水上传(开关 econ_on 关着时什么都不发)
 
 
 ## 手机切回前台时立刻续一次 —— 在后台放了一小时回来, token 早过期了,
@@ -1813,6 +1817,7 @@ func _save_dict() -> Dictionary:
 		"meta_shop_battles": meta_shop_battles,
 		"meta_shop_locked": meta_shop_locked,
 		"econ_log": econ_log,                 # 本周经济操作流水(随云存档走: 换设备接着记)
+		"econ_up": econ_up,
 		"econ_drift": econ_drift,
 		"econ_drift_note": econ_drift_note,
 		"install_uid": install_uid,      # 本机随机安装标识(见 get_install_uid 的长注释)
@@ -2000,6 +2005,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	meta_shop_locked = bool(data.get("meta_shop_locked", false))
 	var _el = data.get("econ_log", [])
 	econ_log = _el if _el is Array else []
+	econ_up = int(data.get("econ_up", 0))
 	econ_drift = int(data.get("econ_drift", 0))
 	econ_drift_note = str(data.get("econ_drift_note", ""))
 	install_uid = str(data.get("install_uid", ""))
@@ -2237,6 +2243,7 @@ func reset_save() -> void:
 	meta_shop_battles = -1
 	meta_shop_locked = false
 	econ_log = []
+	econ_up = 0
 	season_id = 1
 	season_start_ts = 0
 	hearts = _P2.HEARTS_MAX
@@ -2584,6 +2591,13 @@ func econ(op: Dictionary) -> Dictionary:
 func break_candy_jar() -> Dictionary:
 	return _EconLedger.do(self, {"op": "candy", "seed": _EconLedger.draw_seed()}).get("reward", {})
 
+## 界面用这个(S3): 记账开关开着时种子向服务器要(异步), 关着当场成交。`done.call(奖励摘要)` 恰好一次; 没开成 ⇒ {}。
+func break_candy_jar_async(done: Callable) -> void:
+	var r: Dictionary = _EconNet.seeded({"op": "candy"}, _EconLedger.draw_seed(),
+		func(res: Dictionary) -> void: done.call(res.get("reward", {})))
+	if not bool(r.get("pending", false)):
+		done.call(r.get("reward", {}))
+
 ## 糖果罐真身: 所有随机都吃 `seed`(服务器重放用流水里记的同一个种子)。只给 EconLedger.apply 调。
 func candy_jar_open_seeded(seed: int) -> Dictionary:
 	if not has_candy_jar():
@@ -2903,6 +2917,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	meta_shop_battles = -1
 	meta_shop_locked = false   # 新赛季货架都作废了, 锁也跟着解(锁的对象不存在了)
 	econ_log = []              # 新赛季流水从空开始(服务器重放的起点 = 本周开局)
+	econ_up = 0
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0

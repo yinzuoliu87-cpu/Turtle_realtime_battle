@@ -121,8 +121,11 @@ func _test_source_no_unconditional_roll() -> void:
 		"必须先 _restore_offer() 才 _roll()")
 	## ★2026-11-06 掷货 / 买走改由 EconLedger 记账(方案书 20261106): 场景只调 `EconLedger.do`, 写 meta_shop_offer 的是记账口。
 	var led_src := FileAccess.get_file_as_string(LEDGER_SRC)
-	_ok("掷货后落盘(ShopScene._roll 走记账口 roll, 记账口把货架写进 meta_shop_offer)",
-		_fn_body(src, "func _roll").contains("EconLedger.do(GameState, {\"op\": \"roll\"")
+	## ★S3(同日): 种子可能要向服务器要 ⇒ 场景调 `EconNet.seeded({"op": "roll"}, …)`, 它成交时走 `EL.do`(开关关着当场走)。
+	var net_src := FileAccess.get_file_as_string("res://scripts/net/econ_net.gd")
+	_ok("掷货后落盘(ShopScene._roll 走 EconNet.seeded → 记账口 roll, 记账口把货架写进 meta_shop_offer)",
+		_fn_body(src, "func _roll").contains("EconNet.seeded({\"op\": \"roll\"}")
+		and _fn_body(net_src, "static func seeded").contains("EL.do(gs, row)")
 		and _fn_body(led_src, "static func _roll").contains("gs.meta_shop_offer = out"))
 	# 买入分支也要落盘, 否则买走的位子会复活
 	# ★2026-08-03: 原来是 substr(buy_idx, 600) —— 【按固定字符数】截函数体。

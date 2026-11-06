@@ -15,10 +15,11 @@ func _init(b) -> void:
 
 
 func _on_break_jar() -> void:
-	var r: Dictionary = GameState.break_candy_jar()
-	if r.is_empty():
-		return
-	_show_jar_reward(r)
+	## 记账开关开着时种子向服务器要(S3, 方案书 20261106): 等它到了再出奖励弹框; 关着当场出(与原来一样)。
+	GameState.break_candy_jar_async(func(r: Dictionary) -> void:
+		if r.is_empty() or not is_instance_valid(host):
+			return
+		_show_jar_reward(r))
 
 
 func _show_jar_reward(r: Dictionary) -> void:

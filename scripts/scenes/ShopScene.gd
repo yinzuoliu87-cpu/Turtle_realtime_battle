@@ -122,6 +122,7 @@ const LEFT_X := 18.0
 const LEFT_R := CAB_X - 8.0
 const MIN_TOUCH_H := 81.0   # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
 const EconLedger := preload("res://scripts/gamedata/econ_ledger.gd")   # 掷货 / 买 / 刷新 / 锁货架都走它记账(方案书 20261106)
+const EconNet := preload("res://scripts/net/econ_net.gd")   # 记账开关开着时掷货 / 换一批的种子向服务器要(S3)
 const REFRESH_COST := EconLedger.REFRESH_COST   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
 ## 原背景 shop-bg.png(PixelLab 原生 384×216)不再直接画: 底图 / 货柜两张都是从它离线切出来的(见 _build_backdrop / CAB_TEX)。
 const PRICE_MULT := EconLedger.PRICE_MULT        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
@@ -130,6 +131,9 @@ const P2 = preload("res://scripts/gamedata/phase2_config.gd")
 
 var _offer: Array = []
 var _rolls_here := 0   # 本场景掷过几次货(test_mode 的固定种子按它递增, 见 _next_seed)
+## 正在等服务器发种子(记账开关 econ_on 开着时掷货 / 换一批要等这一下, 约 0.1~0.3 秒): 货架上还是上一批,
+##   这时候点买 / 锁 / 再换一批都不理 —— 否则买到的是服务器账上已经换掉的那一批。
+var _econ_wait := false
 var _tut_coin: Label = null   # 教学高亮"深海币"锚点(每次 _rebuild 重设)
 var _tut_xp_btn: Button = null   # 教程高亮「买经验」钮(每次 _rebuild 重设)
 var _tut_buy_btn: Button = null  # 教程手势指针: 详情面板里买得起时的「购买」钮
@@ -221,11 +225,8 @@ func _shop_selfshot() -> void:
 ##   而云顶的解锁是「下一回合才刷」, 不是「解锁即刷」。
 func _restore_offer() -> bool:
 	var _locked: bool = bool(GameState.meta_shop_locked)
-	if not _locked and int(GameState.meta_shop_battles) != int(GameState.season_total_battles):
-		return false      # 打过新的一场 → 该换货了
-	var saved: Array = GameState.meta_shop_offer
-	if saved.is_empty():
-		return false
+	if EconLedger.roll_due(GameState):
+		return false      # 从没掷过 / 打过新的一场 → 该换货了(判据只有一份: 记账口 roll 也认它, 不该换时的 roll 不成交)
 	if _locked and int(GameState.meta_shop_battles) != int(GameState.season_total_battles):
 		GameState.meta_shop_battles = int(GameState.season_total_battles)
 		GameState.save()
@@ -286,8 +287,26 @@ func _shop_level() -> int:
 
 func _roll() -> void:
 	## 掷货逻辑在 EconLedger._roll(服务器重放同一份); 这里只定种子、落流水、换成界面用的整份字典。
-	EconLedger.do(GameState, {"op": "roll", "seed": _next_seed()})
+	## 种子: 记账开关开着向服务器要(EconNet.seeded, 异步 ⇒ 先把货架清空等它), 关着当场用本机的(_next_seed)。
+	var r: Dictionary = EconNet.seeded({"op": "roll"}, _next_seed(), _after_seeded.bind(false))
+	if bool(r.get("pending", false)):
+		_econ_wait = true
+		_offer = []
+		return
 	_offer_from_gs()
+
+## 服务器发的种子到了、这一笔已成交(或没成): 换上新货架重画。`refresh` = 是不是「换一批」那一下(要清选中、存盘)。
+func _after_seeded(r: Dictionary, refresh: bool) -> void:
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
+	_econ_wait = false
+	if not bool(r.get("ok", false)):
+		_toast("网络不稳定，请稍后再试")
+	_offer_from_gs()
+	if refresh:
+		_sel = -1
+		GameState.save()
+	_rebuild()
 
 ## 这一次掷货用的种子。test_mode 下本场景第 k 次 = TEST_SHOP_SEED + k(第 0 次与原来 `_rng.seed = 20260819` 掷出来逐件相同 ——
 ##   货架是随机掷的, 不钉死的话「数一数商店里有几个 X」的门禁会随机红, 2026-08-19 实测同一份代码连跑三次拿到 0/1/3);
@@ -1144,7 +1163,7 @@ func _online_or_wait(resume: Callable) -> bool:
 
 
 func _on_buy(idx: int) -> void:
-	if idx < 0 or idx >= _offer.size() or _offer[idx] == null:
+	if _econ_wait or idx < 0 or idx >= _offer.size() or _offer[idx] == null:
 		return
 	if not _online_or_wait(_on_buy.bind(idx)):
 		return
@@ -1345,6 +1364,8 @@ func _build_level_row(btn_pos: Vector2) -> void:
 
 
 func _on_buy_xp() -> void:
+	if _econ_wait:
+		return
 	if not _online_or_wait(_on_buy_xp):
 		return
 	var _lv0: int = int(GameState.season_level)
@@ -1462,6 +1483,8 @@ func _coin_after_text(b: Button) -> void:
 
 
 func _on_toggle_lock() -> void:
+	if _econ_wait:
+		return
 	## 锁 / 解锁并把戳对齐当前场次(货架就是本场次的货), 记账在 EconLedger
 	EconLedger.do(GameState, {"op": "lock", "on": not bool(GameState.meta_shop_locked)})
 	GameState.save()
@@ -1470,6 +1493,8 @@ func _on_toggle_lock() -> void:
 
 
 func _on_refresh() -> void:
+	if _econ_wait:
+		return
 	if not _online_or_wait(_on_refresh):
 		return
 	if int(GameState.meta_deepsea_coins) < REFRESH_COST:
@@ -1478,7 +1503,11 @@ func _on_refresh() -> void:
 		_toast("深海币不足（需要 %d）" % REFRESH_COST)
 		return
 	## 扣钱 + 顺带解锁(照云顶: 锁的是「这批货」, 换掉了锁就没有对象; 方案书 20261004 §⑤ U5-1) + 掷新货, 全在 EconLedger。
-	EconLedger.do(GameState, {"op": "refresh", "seed": _next_seed()})
+	## 种子同 _roll(开关开着向服务器要: 等的这一下货架锁住)。
+	var rr: Dictionary = EconNet.seeded({"op": "refresh"}, _next_seed(), _after_seeded.bind(true))
+	if bool(rr.get("pending", false)):
+		_econ_wait = true
+		return
 	_offer_from_gs()
 	## ★换了一批货, 原来选着的那件已经不在了 ⇒ 不选任何一件(原来下标留着, 新货架同一格的货被自动选中)。
 	_sel = -1

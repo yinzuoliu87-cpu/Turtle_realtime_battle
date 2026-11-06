@@ -207,6 +207,10 @@ static func _norm(v):
 static func apply(gs, op: Dictionary) -> Dictionary:
 	match str(op.get("op", "")):
 		"roll":
+			## ★掷货不花钱 ⇒ 只在「该换货」时成交(= ShopScene._restore_offer 的判据: 货架空 / 没锁且打过新的一场),
+			##   否则就是免费刷新。S3 起服务器只要看到不该换货时的 roll 就拒。
+			if not roll_due(gs):
+				return {"ok": false, "reason": "not_due"}
 			return _roll(gs, int(op.get("seed", 0)))
 		"refresh":
 			if int(gs.meta_deepsea_coins) < REFRESH_COST:
@@ -329,6 +333,13 @@ static func _incense(gs, inc: Dictionary) -> bool:
 		gs.incense_charge = c
 		return true
 	return false
+
+
+## 进店该不该自动换货: 从没掷过(货架空) / 没上锁且打过新的一场。上了锁打多少场都不换(云顶的锁)。
+static func roll_due(gs) -> bool:
+	if (gs.meta_shop_offer as Array).is_empty():
+		return true
+	return not bool(gs.meta_shop_locked) and int(gs.meta_shop_battles) != int(gs.season_total_battles)
 
 
 ## 这件装备在商店里卖多少(小木斧随进化变形态与售价, 其余 = 费用 × PRICE_MULT)。与 ShopScene._price(_deco(e)) 同值。
