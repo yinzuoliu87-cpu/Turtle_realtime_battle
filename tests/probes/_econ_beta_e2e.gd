@@ -55,10 +55,15 @@ func _start() -> Dictionary:
 
 func _ready() -> void:
 	await get_tree().process_frame
+	## ★硬保险: 不是内测服就退出, 一个请求都不发(这个探针会写数据、开局、改流水, 绝不能连到正式服)
+	if not load("res://scripts/net/server_env.gd").is_beta():
+		printerr("[E2E] 不是内测服(要 TURTLE_SERVER=beta + debug 构建), 退出, 未发任何请求")
+		get_tree().quit(3)
+		return
 	var gs = GameState
 	gs.test_mode = true
 	var auth := FileAccess.get_file_as_string(OS.get_environment("E2E_AUTH"))
-	_ok("分母: 连的是内测服(TURTLE_SERVER=beta)、后端配上、登录成功", SB.enabled() and SB.apply_auth_response(true, 200, auth) and load("res://scripts/net/server_env.gd").is_beta())
+	_ok("分母: 连的是内测服(TURTLE_SERVER=beta)、后端配上、登录成功", SB.enabled() and SB.apply_auth_response(true, 200, auth))
 	var fl := [false]
 	RN.refresh_flags_async(func(_r = null) -> void: fl[0] = true)
 	await _wait(func() -> bool: return RN.econ_on(), 15000)
