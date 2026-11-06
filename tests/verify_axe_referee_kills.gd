@@ -7,11 +7,13 @@ extends Node
 ##   A 计数: 左方斧头亲手击杀 / 3 秒内助攻 ⇒ kills.left +1, 本机经验 +EXP_ON_KILL; 右方同样两种 ⇒ kills.right +1, ★本机经验不动;
 ##     过了助攻窗 / 不是斧头 ⇒ 都不算(分母)
 ##   B ★真裁判局: 结果单带 axe_kills / axe_kills_b, 且 = 这一局 kills(不是恒 0: 跑一局两边都带斧头的, 分母 > 0)
-##   C 结算: 积分赛 / 闯关回包带 axe_kills ⇒ 经验 +n×EXP_ON_KILL 且落流水; 不带这个键(服务端没上)⇒ 一点不变; 回包异常的大数 ⇒ 夹住
+##   C ★结算走真回包解析(parse_status / parse_finals_coins): 带 axe_kills ⇒ 经验 +n×EXP_ON_KILL; 不带这个键(服务端没上)⇒ 一点不变; 异常的数 ⇒ 夹住。
+##     (第一版直接喂字典、绕过了解析 ⇒ 门禁绿, 真回包里这个键却被白名单丢掉: 判据要走真入口)
 ##   D 不改对局: 同一局不算 kills 的结果(赢家 / 步数 / 指纹)与计数无关 —— 由 verify_rules_fingerprint 守, 这里只查结果单键齐全。
 
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")
+const RN := preload("res://scripts/net/referee_net.gd")
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const BP := preload("res://scripts/referee/bot_pool.gd")
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
@@ -97,38 +99,44 @@ func _t_referee() -> void:
 	_ok("B ★真裁判局: 结果单带击杀数, 三只都带斧头的一方跑出来 > 0(分母, 不是恒 0)", total > 0, "累计 %d" % total)
 
 
+func _status(body: Dictionary) -> Dictionary:
+	return RN.parse_status(true, 200, JSON.stringify(body))
+
+
 func _t_settle() -> void:
 	var wk := P2.week_anchor_utc(int(P2.now_utc()))
 	_gs.start_new_season()
 	_gs.week_anchor_ts = wk
 	_gs.persistent_bench = []
 	_gs.persistent_equipped = {"candy": [{"id": "p2eq_096", "star": 1}]}
-	_gs.econ_log = []
-	_gs.econ_up = 0
-	var led := {"battles": 1, "wins": 1, "hearts": P2.HEARTS_MAX, "sweeps": 0, "eggs": 1, "used": 1, "reward": 20}
+	var led := {"battles": 1, "wins": 1, "hearts": P2.HEARTS_MAX, "sweeps": 0, "eggs": 1, "used": 1, "reward": 20, "sweep": false}
+	var body := {"ok": true, "status": "done", "match_id": MID, "kind": "ranked", "won": true, "coins": 0, "ranked": led, "axe_kills": 2}
+	_ok("C ★真回包解析把 axe_kills 带过来了(不是被白名单丢掉)", int(_status(body).get("axe_kills", -1)) == 2, str(_status(body).get("axe_kills", "没有")))
 	_gs.referee_pending = RW.ranked_bill(1, MID, wk, {})
 	var t0 := int(_gs.axe_exp_total)
-	RW.settle_ranked(_gs, 1, {"won": 1, "coins": 0, "ranked": led, "axe_kills": 2})
+	RW.settle_ranked(_gs, 1, _status(body))
 	_ok("C ★积分赛回包带 2 次击杀 ⇒ 经验 = 打完一局 %d + 击杀 %d" % [AE.EXP_ON_MATCH, 2 * AE.EXP_ON_KILL],
 		int(_gs.axe_exp_total) == t0 + AE.EXP_ON_MATCH + 2 * AE.EXP_ON_KILL, "%d → %d" % [t0, int(_gs.axe_exp_total)])
-	var ops: Array = (_gs.econ_log as Array).filter(func(r): return str(r.get("op", "")) == "axe_exp")
-	_ok("C 落了流水(一条 axe_exp n=%d)" % (2 * AE.EXP_ON_KILL), ops.size() == 1 and int(ops[0].get("n", 0)) == 2 * AE.EXP_ON_KILL, str(ops))
 	var t1 := int(_gs.axe_exp_total)
 	led["battles"] = 2
 	led["used"] = 2
+	body.erase("axe_kills")
 	_gs.referee_pending = RW.ranked_bill(2, MID, wk, {})
-	RW.settle_ranked(_gs, 2, {"won": 1, "coins": 0, "ranked": led})
+	RW.settle_ranked(_gs, 2, _status(body))
 	_ok("C ★回包不带这个键(服务端没上)⇒ 只有打完一局那一笔", int(_gs.axe_exp_total) == t1 + AE.EXP_ON_MATCH, "%d → %d" % [t1, int(_gs.axe_exp_total)])
 	var t2 := int(_gs.axe_exp_total)
 	_gs.referee_pending = RW.pending_for(3, MID, wk, {})
-	RW.settle(_gs, 3, {"won": 1, "coins": 0, "gw": 1, "gl": 0, "axe_kills": 1})
+	RW.settle(_gs, 3, _status({"ok": true, "status": "done", "match_id": MID, "won": true, "coins": 0, "gw": 1, "gl": 0, "axe_kills": 1}))
 	_ok("C ★闯关回包同样发", int(_gs.axe_exp_total) == t2 + AE.EXP_ON_MATCH + AE.EXP_ON_KILL, "%d → %d" % [t2, int(_gs.axe_exp_total)])
+	var fc: Dictionary = RN.parse_finals_coins(true, 200, JSON.stringify({"ok": true, "status": "done", "coins": 3, "axe_kills": 3}))
+	_ok("C ★决赛回包解析也带过来了", int(fc.get("axe_kills", -1)) == 3, str(fc))
 	var t3 := int(_gs.axe_exp_total)
-	RW.apply_axe_kills(_gs, {"axe_kills": 99999})
+	RW.apply_axe_kills(_gs, {"axe_kills": RN.parse_axe_kills(99999)})
 	_ok("C 回包异常的大数被夹住", int(_gs.axe_exp_total) <= t3 + 200 * AE.EXP_ON_KILL, str(_gs.axe_exp_total))
 	var t4 := int(_gs.axe_exp_total)
-	RW.apply_axe_kills(_gs, {"axe_kills": -5})
-	_ok("C 负数不发", int(_gs.axe_exp_total) == t4)
+	RW.apply_axe_kills(_gs, {"axe_kills": RN.parse_axe_kills(-5)})
+	RW.apply_axe_kills(_gs, {"axe_kills": RN.parse_axe_kills("3")})
+	_ok("C 负数 / 不是数 ⇒ 不发", int(_gs.axe_exp_total) == t4)
 
 
 func _ready() -> void:
