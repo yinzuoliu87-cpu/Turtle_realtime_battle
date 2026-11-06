@@ -132,7 +132,7 @@ func _ready() -> void:
 		{"ok": false, "reason": "econ_pending", "have": 2, "need": 4},
 		{"ok": true, "job_id": 4242, "match_id": "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b",
 			"opp": {"profile": {"name": "x", "avatar": "ninja", "id": "g_x", "tag": "t"}, "leaders": ["ninja"]},
-			"ledger": {"battles": 2, "wins": 1, "hearts": 6, "sweeps": 0, "eggs": 1, "used": 2}}]
+			"ledger": {"battles": 2, "wins": 1, "hearts": RW.P2C.HEARTS_MAX, "sweeps": 0, "eggs": 1, "used": 2}}]
 	_start_n = 0
 	_start_ms = []
 	var c0 := _commits
@@ -196,7 +196,7 @@ func _ready() -> void:
 	_commit_done_at = 0
 	_starts = [{"ok": true, "job_id": 4343, "match_id": "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b",
 		"opp": {"profile": {"name": "x", "avatar": "ninja", "id": "g_x", "tag": "t"}, "leaders": ["ninja"]},
-		"ledger": {"battles": 2, "wins": 1, "hearts": 6, "sweeps": 0, "eggs": 1, "used": 2}}]
+		"ledger": {"battles": 2, "wins": 1, "hearts": RW.P2C.HEARTS_MAX, "sweeps": 0, "eggs": 1, "used": 2}}]
 	_start_n = 0
 	_start_ms = []
 	run = _new_run()

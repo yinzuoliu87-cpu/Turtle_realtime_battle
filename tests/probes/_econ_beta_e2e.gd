@@ -75,7 +75,7 @@ func _ready() -> void:
 	gs.econ({"op": "leaders", "ids": ["candy", "stone", "ice"]})
 	gs.referee_pending = RW.ranked_bill(77, MID, wk, {})
 	var v: Dictionary = RW.settle_ranked(gs, 77, {"status": "done", "won": 1, "coins": 0,
-		"ranked": {"battles": 1, "wins": 1, "hearts": 6, "sweeps": 0, "eggs": 1, "used": 1, "reward": 20}})
+		"ranked": {"battles": 1, "wins": 1, "hearts": RW.P2C.HEARTS_MAX, "sweeps": 0, "eggs": 1, "used": 1, "reward": 20}})
 	_ok("A 分母: 积分赛结算记了账(币 %d)" % int(gs.meta_deepsea_coins), not v.is_empty() and int(gs.meta_deepsea_coins) == 20)
 	var got := [{}]
 	var r0: Dictionary = EN.seeded({"op": "roll"}, 0, func(r: Dictionary) -> void: got[0] = r)

@@ -50,7 +50,7 @@ func _replay(gs, rows: Array, facts) -> Dictionary:
 
 
 func _led(n: int, w: int, used: int, reward: int) -> Dictionary:
-	return {"battles": n, "wins": w, "hearts": 6, "sweeps": 0, "eggs": w, "used": used, "reward": reward}
+	return {"battles": n, "wins": w, "hearts": RW.P2C.HEARTS_MAX, "sweeps": 0, "eggs": w, "used": used, "reward": reward}
 
 
 ## 老实的一周。返回恰好的账本(= 服务端 econ_facts 这时候应该回的)。全走真结算入口, 手写的只有服务器回包。
