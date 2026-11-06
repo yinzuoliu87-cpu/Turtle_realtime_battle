@@ -1004,6 +1004,7 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 #   holo_aura_tick / ember_light_cast 全是零调用者), 而 64 条门禁全绿 —— 因为门禁直接调它们。
 #   存量 10 个记台账只减不增; 新增的当场红。
 run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有任何人调的函数)"
+run_audit "tools/econ_writer_audit.py"   "ALL OK" "econ_writer (经济字段只许经 EconLedger 记账口写·存量只减不增·20261106)"
 ## ★ zero_caller 的【反面】: 有读者却没有任何人写真值的字段(2026-09-28)。
 ##   实例 `GameState.battle_seed` —— 零写入点 ⇒ 那条 `if battle_seed != 0` 恒假,
 ##   且决赛结果的 `p_seed` 恒为 0、服务端复算不出任何一场。人工 grep 才发现的,

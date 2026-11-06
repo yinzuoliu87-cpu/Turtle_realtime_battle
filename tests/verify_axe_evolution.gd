@@ -330,7 +330,9 @@ func _t_shop(gs) -> void:
 	gs.axe_exp_bar = 0; gs.axe_exp_total = 0
 	gs.meta_deepsea_coins = 9999
 	gs.ensure_equip_pool()
-	shop._offer = [raw.duplicate(), raw.duplicate(), other.duplicate()]
+	## ★2026-11-06 货架的事实源是 GameState.meta_shop_offer(买走走 EconLedger 记账), 场景的 _offer 只是它的显示副本
+	gs.meta_shop_offer = [{"id": str(raw["id"])}, {"id": str(raw["id"])}, {"id": str(other["id"])}]
+	shop._offer_from_gs()
 	shop._on_buy(0)
 	var n1: int = gs.persistent_bench.size()
 	var e1: int = gs.axe_exp_total

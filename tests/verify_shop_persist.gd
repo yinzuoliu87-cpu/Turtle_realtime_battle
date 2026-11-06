@@ -16,6 +16,7 @@ extends Node
 ##   F. ShopScene 源码里 _ready 不再无条件 _roll(防复发)
 
 const SRC := "res://scripts/scenes/ShopScene.gd"
+const LEDGER_SRC := "res://scripts/gamedata/econ_ledger.gd"   # 2026-11-06 起写货架的是记账口
 
 var _fail := 0
 
@@ -118,7 +119,11 @@ func _test_source_no_unconditional_roll() -> void:
 	f.close()
 	_ok("★_ready 不再无条件 _roll(先试恢复)", src.contains("if not _restore_offer():"),
 		"必须先 _restore_offer() 才 _roll()")
-	_ok("掷货后落盘", src.contains("_persist_offer()"))
+	## ★2026-11-06 掷货 / 买走改由 EconLedger 记账(方案书 20261106): 场景只调 `EconLedger.do`, 写 meta_shop_offer 的是记账口。
+	var led_src := FileAccess.get_file_as_string(LEDGER_SRC)
+	_ok("掷货后落盘(ShopScene._roll 走记账口 roll, 记账口把货架写进 meta_shop_offer)",
+		_fn_body(src, "func _roll").contains("EconLedger.do(GameState, {\"op\": \"roll\"")
+		and _fn_body(led_src, "static func _roll").contains("gs.meta_shop_offer = out"))
 	# 买入分支也要落盘, 否则买走的位子会复活
 	# ★2026-08-03: 原来是 substr(buy_idx, 600) —— 【按固定字符数】截函数体。
 	#   批2 给 _on_buy 加了 4 行私人池注释, _persist_offer() 就被挤出了那 600 字符 → 这条当场误红,
@@ -129,4 +134,19 @@ func ", buy_idx + 10) if buy_idx >= 0 else -1
 	if buy_end < 0:
 		buy_end = src.length()
 	var buy_body := src.substr(buy_idx, buy_end - buy_idx) if buy_idx >= 0 else ""
-	_ok("★买入后落盘(买走的位子不复活)", buy_body.contains("_persist_offer()"))
+	var led_buy := _fn_body(FileAccess.get_file_as_string(LEDGER_SRC), "static func _buy")
+	_ok("★买入后落盘(买走的位子不复活: _on_buy 走记账口 buy, 记账口把那一格置空写回 meta_shop_offer)",
+		buy_body.contains("EconLedger.do(GameState, {\"op\": \"buy\"")
+		and led_buy.contains("offer[slot] = null") and led_buy.contains("gs.meta_shop_offer = offer"))
+
+
+## 截一个函数体: 从 `head` 截到下一个顶格 func / static func 为止(加多少注释都不影响, 同上面 buy_body 的教训)。
+func _fn_body(src: String, head: String) -> String:
+	var i := src.find(head)
+	if i < 0:
+		return ""
+	var j := src.find("\nfunc ", i + head.length())
+	var j2 := src.find("\nstatic func ", i + head.length())
+	if j < 0 or (j2 >= 0 and j2 < j):
+		j = j2
+	return src.substr(i, (j if j >= 0 else src.length()) - i)

@@ -121,14 +121,15 @@ const BUY_W := 240.0
 const LEFT_X := 18.0
 const LEFT_R := CAB_X - 8.0
 const MIN_TOUCH_H := 81.0   # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
-const REFRESH_COST := 2   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
+const EconLedger := preload("res://scripts/gamedata/econ_ledger.gd")   # 掷货 / 买 / 刷新 / 锁货架都走它记账(方案书 20261106)
+const REFRESH_COST := EconLedger.REFRESH_COST   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
 ## 原背景 shop-bg.png(PixelLab 原生 384×216)不再直接画: 底图 / 货柜两张都是从它离线切出来的(见 _build_backdrop / CAB_TEX)。
-const PRICE_MULT := 1        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
+const PRICE_MULT := EconLedger.PRICE_MULT        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
 const Phase2Equip = preload("res://scripts/gamedata/phase2_equip.gd")
 const P2 = preload("res://scripts/gamedata/phase2_config.gd")
 
 var _offer: Array = []
-var _rng := RandomNumberGenerator.new()
+var _rolls_here := 0   # 本场景掷过几次货(test_mode 的固定种子按它递增, 见 _next_seed)
 var _tut_coin: Label = null   # 教学高亮"深海币"锚点(每次 _rebuild 重设)
 var _tut_xp_btn: Button = null   # 教程高亮「买经验」钮(每次 _rebuild 重设)
 var _tut_buy_btn: Button = null  # 教程手势指针: 详情面板里买得起时的「购买」钮
@@ -164,13 +165,7 @@ func _ready() -> void:
 	if int(GameState.season_total_battles) <= 0 and not _in_tut:
 		_build_locked()   # 商店锁: 本大轮未打第一场 → 不开店(用户2026-07-18「商店打完第一场后解锁」)
 		return             # ★教学沙盒不计战斗数(不给奖励)→ 会永远锁; 教学模式旁路开店(用户2026-07-23"教买装备")
-	## ★test_mode 下用固定种子, 不 randomize(): 货架是随机掷的 ⇒ 每次跑出来的卡片/样式数都不同,
-	##   任何"数一数商店里有几个 X"的门禁都会**随机红**。2026-08-19 实测同一份代码连跑三次拿到 0/1/3。
-	##   ⇒ 把被测对象钉死, 比把阈值放宽诚实(放宽只是让判据看不见问题)。
-	if GameState.test_mode:
-		_rng.seed = 20260819
-	else:
-		_rng.randomize()
+	## ★掷货的种子见 `_next_seed`(test_mode 钉死, 否则每次新掷; 种子记进经济流水, 服务器重放用同一个)。
 	# ★货架要跨场景保留 —— 原来这里无条件 _roll(), 于是每次退出重进都重掷:
 	#   买掉的位子会复活、看中的货被冲掉(用户 2026-07-21 报的 bug)。
 	#   现在只有【打完新的一场】(season_total_battles 变了)才自动换货, 否则恢复上次的货架。
@@ -234,9 +229,14 @@ func _restore_offer() -> bool:
 	if _locked and int(GameState.meta_shop_battles) != int(GameState.season_total_battles):
 		GameState.meta_shop_battles = int(GameState.season_total_battles)
 		GameState.save()
+	_offer_from_gs()
+	return true
+
+## 货架以 GameState.meta_shop_offer(只存 id)为准, 换成整份装备字典给界面用。
+func _offer_from_gs() -> void:
 	_offer = []
-	for row in saved:
-		if row == null:
+	for row in GameState.meta_shop_offer:
+		if not (row is Dictionary):
 			_offer.append(null)          # 这一格已经买走, 保持空
 			continue
 		var eid := str((row as Dictionary).get("id", ""))
@@ -246,18 +246,6 @@ func _restore_offer() -> bool:
 				found = e
 				break
 		_offer.append(found)             # 数据里查无此装备(改过json) → null, 不崩
-	return true
-
-## 把当前货架写回 GameState(只存 id, 不存整份装备字典 —— 存档不膨胀且不会存旧数值)
-func _persist_offer() -> void:
-	var out: Array = []
-	for it in _offer:
-		if it == null:
-			out.append(null)
-		else:
-			out.append({"id": str((it as Dictionary).get("id", ""))})
-	GameState.meta_shop_offer = out
-	GameState.meta_shop_battles = int(GameState.season_total_battles)
 
 ## 商店上锁屏 (大轮开局·未打第一场): 提示 + 返回, 不出货架
 func _build_locked() -> void:
@@ -297,64 +285,21 @@ func _shop_level() -> int:
 	return clampi(int(GameState.season_level), 1, 10)   # 大轮等级驱动出货档 (用户 2026-06-27)
 
 func _roll() -> void:
-	# 用户2026-07-18: 已3星(满星)的装备不再出现在货架(买了也没用·避免占位)
-	var maxed := _maxed_item_ids()
-	var pool: Array = DataRegistry.phase2_equipment
-	if not maxed.is_empty():
-		pool = []
-		for e in DataRegistry.phase2_equipment:
-			if not maxed.has(str((e as Dictionary).get("id", ""))):
-				pool.append(e)
-	# ★2026-08-03 批2 私人池: 只掷【池里还有张】的件。抽空(0)与满3★冻结(-1)都不出。
-	#   注意上面的 _maxed_item_ids 过滤【仍然保留】—— 它管的是"背包里已满星", 池冻结管的是"池子里的张",
-	#   两者在正常流程下同时发生, 但存档损坏/调试快进时可能只有一边成立, 各守各的。
-	GameState.ensure_equip_pool()
-	pool = EquipPool.available(GameState.equip_pool, pool)
-	## ★096 小木斧的出货是【独立的一条通路】(方案书四期 / 未决点 ⑫)。三种模式:
-	##   ""      没激活斧头羁绊 → 什么都不做, 走常规 1 费档(它本来就是 1 费, 天然成立)
-	##   "off"   已选完最终造物 → 从池里剔掉, 彻底不再出货
-	##   "indep" 已激活羁绊 → 先从常规池剔掉, 再按每格独立概率铺回去
-	##           (不剔就是**两条路叠加**, 实际概率比标称的高)
-	var _axe_mode: String = AxeEvo.shelf_mode(GameState.axe_synergy_active(), GameState.axe_final)
-	var _axe_def = null
-	if _axe_mode != "":
-		var _kept: Array = []
-		for e2 in pool:
-			if e2 is Dictionary and str((e2 as Dictionary).get("id", "")) == "p2eq_096":
-				_axe_def = e2
-			else:
-				_kept.append(e2)
-		pool = _kept
-	_offer = Phase2Equip.roll_shop(pool, _shop_level(), 10, _rng)
-	## ★每格概率由【整货架至少出一个】反解而来(AxeEvo.slot_prob), 不是把 3% 直接当每格用。
-	##   槽数必须与上面 roll_shop 的 count 是**同一个数** —— 分头写死两个 10 就会漂。
-	if _axe_mode == "indep" and _axe_def != null:
-		var _q: float = AxeEvo.slot_prob(GameState.axe_syn_matches, _offer.size())
-		for _i in range(_offer.size()):
-			if _rng.randf() < _q:
-				_offer[_i] = _axe_def
-	_persist_offer()   # 掷完立刻落盘, 否则退出重进又变了
+	## 掷货逻辑在 EconLedger._roll(服务器重放同一份); 这里只定种子、落流水、换成界面用的整份字典。
+	EconLedger.do(GameState, {"op": "roll", "seed": _next_seed()})
+	_offer_from_gs()
 
-# 玩家已有 3 星(满星)的装备 id 集合(背包+统领已装+小将已装)→ 商店 roll 时排除
-func _maxed_item_ids() -> Dictionary:
-	var s := {}
-	for it in GameState.persistent_bench:
-		if it is Dictionary and int(it.get("star", 1)) >= 3: s[str(it.get("id", ""))] = true
-	if GameState.persistent_equipped is Dictionary:
-		for pid in GameState.persistent_equipped:
-			for it2 in GameState.persistent_equipped[pid]:
-				if it2 is Dictionary and int(it2.get("star", 1)) >= 3: s[str(it2.get("id", ""))] = true
-	if GameState.has_method("get_dual_lineup"):
-		var lineup: Dictionary = GameState.get_dual_lineup()
-		for lk in ["top", "bottom"]:
-			for u in lineup.get(lk, []):
-				if u is Dictionary and u.get("equips") is Array:
-					for it3 in u["equips"]:
-						if it3 is Dictionary and int(it3.get("star", 1)) >= 3: s[str(it3.get("id", ""))] = true
-	return s
+## 这一次掷货用的种子。test_mode 下本场景第 k 次 = TEST_SHOP_SEED + k(第 0 次与原来 `_rng.seed = 20260819` 掷出来逐件相同 ——
+##   货架是随机掷的, 不钉死的话「数一数商店里有几个 X」的门禁会随机红, 2026-08-19 实测同一份代码连跑三次拿到 0/1/3);
+##   否则新掷一个(S3 起改成向服务器要)。种子记进经济流水。
+func _next_seed() -> int:
+	if GameState.test_mode:
+		_rolls_here += 1
+		return EconLedger.TEST_SHOP_SEED + _rolls_here - 1
+	return EconLedger.draw_seed()
 
 ## ★096 小木斧的【形态与售价随进化变】(方案书四期)。返回**浅拷贝**, 原 edef 一个字段不碰。
-##   为什么不直接改 `_offer` 里那份: 货架是**落盘持久化**的(_persist_offer), 写脏了就等于
+##   为什么不直接改 `_offer` 里那份: 货架是**落盘持久化**的(EconLedger 写 meta_shop_offer), 写脏了就等于
 ##   把形态冻在掷货那一刻 —— 进化之后要等下一次刷新才更新, 而刷新要花钱。
 ##   `id` 保持不变 ⇒ 拿装饰后的 edef 去 pool_take / 进背包 / _price 全都对。
 ##   其余 95 件**原样返回**(连 duplicate 都不做), 免得每次重绘白拷 95 个字典。
@@ -1206,50 +1151,32 @@ func _on_buy(idx: int) -> void:
 	var edef: Dictionary = _deco(_offer[idx])
 	var price := _price(edef)
 	var _nm: String = str(edef.get("name", "这件"))
-	## ★★三条不成交的路原来都是【裸 return】—— 玩家看到的是"点了没反应",
-	##   而那与"游戏卡住了"在屏幕上长得一模一样(同 `_toast` 头注记的那次真机实测)。
-	##   ⚠ 别以为"按钮已经 disabled 了所以走不到": 那是**另一处**的判断。
-	##     按钮文案与这里各算一遍价钱, 两边一漂(或按钮被程序触发)这里就是唯一的出口 ——
-	##     满级那颗买经验按钮的 else 分支就是为同一个理由补的。
-	if int(GameState.meta_deepsea_coins) < price:
-		_toast("深海币不足，购买「%s」还差 %d" % [_nm, price - int(GameState.meta_deepsea_coins)])
-		return   # 买不起
-	# ★私人池: 先扣张再扣钱 —— 扣不到张就整笔不成交(货架是异步持久化的, 极端情况下
-	#   可能出现"货架上还挂着、池子已被别的路径抽空"; 那时宁可这一次点击无效, 也不能凭空造张)。
 	var _eid: String = str(edef.get("id", ""))
-	if not GameState.pool_take(_eid, 1):
-		## ★这一条**不是**到不了的分支: 货架是异步持久化的, 同一件被别的路径抽空时
-		##   摊上那张卡还挂着。玩家点下去钱没扣、货没来, 必须有人告诉他为什么。
-		_toast("「%s」已失效，请刷新商店" % _nm)
-		return
-	GameState.meta_deepsea_coins -= price
-	## ★096 小木斧(方案书未决点 ⑧, 用户 2026-08-31 亲自纠正过我): **只能拥有一把**。
-	##   已经有了还买 ⇒ 这一次购买【整笔化成 +15 砍伐经验】, 不进背包。
-	##   钱照扣 —— 这就是它的"用钱换经验"通路, 也是需求原话「购买该装备会使经验条+15」。
-	##   ⚠ 第一把也 +15(需求没有"第一把不算"的例外), 差别只在进不进背包。
 	## ★成交反馈要说的那句话在**合成发生之前**才算得出来 ——
 	##   `auto_merge_all()` 跑完之后 ★1 已经被吃掉, 再问"这一买合到几星"永远是 0。
 	var _will_star: int = _purchase_merge_star(_eid)
-	var _axe_dup := false
 	var _axe_from: int = int(GameState.axe_stage)
-	var _axe_evolved := false
-	if _eid == "p2eq_096":
-		var _dup: bool = GameState.axe_owned()
-		_axe_dup = _dup
-		_axe_evolved = GameState.axe_add_exp(AxeEvo.EXP_ON_BUY, false)   # 进化了就在下面当场播, 不进待播队列
-		if not _dup:
-			GameState.persistent_bench.append({"id": _eid, "star": 1})
-	else:
-		GameState.persistent_bench.append({"id": _eid, "star": 1})
-	GameState.auto_merge_all()   # 买后自动 3 合 1 (背包+龟身一起算)
-	_offer[idx] = null
+	## 记账(买得起 / 先扣张再扣钱 / 096 小木斧只能有一把、重复买化成砍伐经验 / 进背包 / 自动 3 合 1 / 空出这一格)
+	##   全在 EconLedger._buy(服务器重放同一份)。
+	var r: Dictionary = EconLedger.do(GameState, {"op": "buy", "slot": idx})
+	if not bool(r.get("ok", false)):
+		## ★★不成交的路不许裸 return —— 玩家看到的是"点了没反应", 与"游戏卡住了"在屏幕上长得一模一样
+		##   (同 `_toast` 头注记的那次真机实测)。
+		match str(r.get("reason", "")):
+			"coins":
+				_toast("深海币不足，购买「%s」还差 %d" % [_nm, price - int(GameState.meta_deepsea_coins)])
+			"pool":
+				## 货架是异步持久化的, 同一件被别的路径抽空时摊上那张卡还挂着: 钱没扣、货没来, 必须说为什么。
+				_toast("「%s」已失效，请刷新商店" % _nm)
+		return
+	var _axe_dup: bool = bool(r.get("axe_dup", false))
+	var _axe_evolved: bool = bool(r.get("axe_evolved", false))
+	_offer_from_gs()   # 买走的那格已在账上置空(退出重进也不会长回来)
 	## ★买走的那格不再算「选中」(2026-10-22 用户「买完一个东西，点了刷新后怎么自动选中一个物品？」):
-	##   原来 `_sel` 还指着这个空格, 卡是因为格空了才没画; 一刷新这格长出新货 ⇒ 新货被自动选中、说明卡自己弹出来。
-	##   小木斧待选那张也被这个残留的下标挡掉(_open_detail_card 读到空格就 return)。
+	##   原来 `_sel` 还指着这个空格; 一刷新这格长出新货 ⇒ 新货被自动选中、说明卡自己弹出来。
 	if _sel == idx:
 		_sel = -1
 	_shelf_tap_after_ms = Time.get_ticks_msec() + BUY_TAP_GUARD_MS
-	_persist_offer()   # 买走的位子要留空, 不能退出重进又长回来
 	GameState.save()
 	_rebuild()
 	## ★★成交也要有一句话(用户 2026-09-29 台账 ⑮:「买成功的唯一反馈是整屏重画」)。
@@ -1535,9 +1462,8 @@ func _coin_after_text(b: Button) -> void:
 
 
 func _on_toggle_lock() -> void:
-	GameState.meta_shop_locked = not bool(GameState.meta_shop_locked)
-	## 锁的那一刻把戳对齐当前场次(货架就是本场次的货; 防一份旧戳在解锁后被当成"该换了")
-	GameState.meta_shop_battles = int(GameState.season_total_battles)
+	## 锁 / 解锁并把戳对齐当前场次(货架就是本场次的货), 记账在 EconLedger
+	EconLedger.do(GameState, {"op": "lock", "on": not bool(GameState.meta_shop_locked)})
 	GameState.save()
 	_rebuild()   # ★先重建再提示 —— _rebuild 会清掉全部子节点(提示也在其中)
 	_toast("已锁定商品，下场战斗后不刷新" if GameState.meta_shop_locked else "已解锁商品，下场战斗后刷新")
@@ -1549,15 +1475,11 @@ func _on_refresh() -> void:
 	if int(GameState.meta_deepsea_coins) < REFRESH_COST:
 		## ★同 `_on_buy`: 原来是裸 return。而「换一批」那颗按钮**一直是亮的**
 		##   (实测 coins=0 时 `disabled=false`) ⇒ 玩家点得下去、什么也不发生。
-		##   这是满级买经验那颗死按钮的同一个形状: 死按钮要长得像死的 + 点了要说为什么。
 		_toast("深海币不足（需要 %d）" % REFRESH_COST)
 		return
-	GameState.meta_deepsea_coins -= REFRESH_COST
-	## ★锁着也能换一批, 而且**换完自动解锁** —— 照云顶(tft.ninja「The Shop」: 锁住的商店
-	##   一直锁到你手动解锁、**或者你刷新**为止; 刷新会顺带解锁)。理由: 锁的是「这批货」,
-	##   你亲手把这批货换掉了, 锁就没有对象了。方案书 §⑤ 未决点 U5-1 记着, 用户要反过来改这一行。
-	GameState.meta_shop_locked = false
-	_roll()
+	## 扣钱 + 顺带解锁(照云顶: 锁的是「这批货」, 换掉了锁就没有对象; 方案书 20261004 §⑤ U5-1) + 掷新货, 全在 EconLedger。
+	EconLedger.do(GameState, {"op": "refresh", "seed": _next_seed()})
+	_offer_from_gs()
 	## ★换了一批货, 原来选着的那件已经不在了 ⇒ 不选任何一件(原来下标留着, 新货架同一格的货被自动选中)。
 	_sel = -1
 	GameState.save()
