@@ -93,6 +93,8 @@ func try_behead(src, tgt) -> bool:
 	var mx: float = float(tgt.get("maxHp", 0.0))
 	if mx <= 0.0 or float(tgt.get("hp", 0.0)) >= mx * BEHEAD_HP_PCT:
 		return false
+	if battle._damage.execute_saved(tgt):
+		return false          # 免死(亡灵等)挡下斩首
 	## ★★处决演出(2026-08-14): 药水【斩首】与弓箭【处决】是同族 —— 都是"血线以下直接抹杀",
 	##   玩家看到的应当是**同一件事**, 所以共用 `SynergyVfx.execution`。
 	##   在此之前两条都只有一句 `-999999` 浮字, 与普通真伤大字长得一样, 读不出"这是处决"。

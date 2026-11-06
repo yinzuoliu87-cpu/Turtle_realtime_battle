@@ -166,6 +166,23 @@ func _record_extra_true(src, u: Dictionary, amt: int) -> void:
 ##   那次的教训是「参数没删、注释解释着为什么不用它，于是白传了三年没人知道」，
 ##   所以这次一改完就加下划线，让 `verify_dead_params` 棘轮不再把它当新增欠债。
 ##   （那条棘轮当场就抓到了这次新增，本注释是照它的规矩处置的。）
+## 处决(血线以下直接抹杀)不走扣血路径 ⇒ 免死要在这里判。返回 true = 这次处决不成立, 调用方什么都别做(处决演出也不放)。
+##   规则与两条伤害路径相同: 无头龟首次致命 ⇒ 进亡灵锁 1 血; 免死期间 ⇒ 不死。文案写的是「5 秒内生命值不会低于 1」, 没有写处决例外。
+##   ★玩家反馈 2026-11-06「无头龟被动为什么被处决」: 弓箭 / 药水 / 暴君之牙 / 精英吞噬四条路都没看免死, 猎人只看了已经进亡灵的情况。
+##   ★新加处决路径必须先问这里(门禁 verify_execute_respects_floor 静态扫 `["hp"] = 0.0`)。
+func execute_saved(u: Dictionary) -> bool:
+	if str(u.get("id", "")) == "headless" and not u.get("undead_used", false):
+		u["undead_used"] = true
+		u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR
+		battle._headless_sys._headless_undead_vfx(u)
+		u["hp"] = 1.0
+		return true
+	if battle._t < float(u.get("deathfloor_until", 0.0)):
+		u["hp"] = maxf(1.0, float(u.get("hp", 1.0)))
+		return true
+	return false
+
+
 func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: String = "dot", is_self: bool = false, dot_accum: bool = false, mute_sfx: bool = false) -> void:
 	if battle._untouch_block(u, "apply_damage"):
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)

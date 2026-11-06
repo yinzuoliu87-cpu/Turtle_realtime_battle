@@ -1561,7 +1561,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决<斩杀线敌 (削弱·用户2026-07-23: 斩杀线 4/6/12% ×(1+暴击率), 原 5/7/10%+10/15/40%×暴击)
 				var line: float = [0.04, 0.06, 0.12][si] * (1.0 + float(src["crit"]))
-				if tgt["alive"] and not tgt.get("eq_exec_immune", false) and tgt["hp"] < tgt["maxHp"] * line:
+				if tgt["alive"] and not tgt.get("eq_exec_immune", false) and tgt["hp"] < tgt["maxHp"] * line and not battle._damage.execute_saved(tgt):
 					var was: bool = tgt["alive"]
 					## ★2026-10-02 补处决演出(原来只有浮字, 与普通真伤大字无异) —— 来历见 verify_execution_vfx_all.gd 头注
 					if battle._vfx != null and battle._vfx._syn != null: battle._vfx._syn.execution(tgt["pos"], SynergyVfx.COL_EXEC_FANG)

@@ -16,6 +16,7 @@ var _shield := 0.0
 var _holy := 0.0          # 圣甲圣盾量 (shield 中属圣盾的部分) — 血条上画成白黄亮 (区别普通盾段)
 var _hshell := 0.0        # 缩头防御特殊盾量 (shield 中属壳盾的部分) — 画壳青绿段
 var _urchin := 0.0        # 海胆护盾量 (013满层·shield 中属海胆盾的部分) — 画海胆紫段(10秒渐衰肉眼可见)
+var _cream := 0.0         # 071奶油护盾量 (SpecialBalance独立余额, 不在shield里; eq_food_batch每帧镜像进_creamShieldVal)
 var _ult := 0.0           # 072终极护盾量 (SpecialBalance独立余额, 不在shield里; eq_food_batch每帧镜像进_ultShieldVal) — 画礼盒粉段
 var _ghost := 0.0         # 064溺者的浮囊护盾量 (SpecialBalance独立余额, 不在shield里; eq_spirit_batch每帧镜像进_ghostShieldVal) — 画救生圈珊瑚段(20秒线性衰减)
 var _magic := 0.0         # 012 魔法护盾量 (独立字段 magic_shield, 不在shield里; 只挡魔法、先于普通盾扛) — 画蓝紫段, 紧接生命之后
@@ -55,6 +56,8 @@ const _MAGIC_L := Color8(0x9a, 0x8c, 0xff)
 const _MAGIC_D := Color8(0x5b, 0x4a, 0xd8)
 const _MANA_L := Color8(0x9e, 0xd1, 0xff)    # 法力盾段 法力蓝 (068·用户2026-08-11"特殊颜色护盾条"; 与充能条#9ed1ff同支)
 const _MANA_D := Color8(0x4d, 0x8d, 0xdf)    # 法力蓝暗
+const _CREAM_L := Color(1.0, 0.85, 0.56)   # 071 奶油护盾: 炼乳金, 与圣盾淡白黄 / 普通盾灰白分得开(沿用原奶油段的取色)
+const _CREAM_D := Color(0.90, 0.72, 0.42)
 const _ULT_L := Color8(0xff, 0x99, 0xc2)     # 终极护盾段 礼盒粉 (072; 与奶油金/圣盾白黄/法力蓝都分得开)
 const _ULT_D := Color8(0xc2, 0x4f, 0x86)     # 礼盒粉暗
 ## 浮囊护盾段 救生圈珊瑚(064·用户 2026-09-15「64这个不是获得护盾吗，没有特殊护盾条？」)。
@@ -95,6 +98,7 @@ func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -
 	_magic = maxf(0.0, float(f.get("magic_shield", 0)))
 	_mana = maxf(0.0, float(f.get("_manaShieldVal", 0)))
 	_ult = maxf(0.0, float(f.get("_ultShieldVal", 0)))
+	_cream = maxf(0.0, float(f.get("_creamShieldVal", 0)))
 	_ghost = maxf(0.0, float(f.get("_ghostShieldVal", 0)))
 	_aura = maxf(0.0, float(f.get("_auraShieldVal", f.get("_lavaShieldVal", f.get("_hidingShieldVal", 0)))))
 	_bubble = maxf(0.0, float(f.get("bubbleShieldVal", 0)))
@@ -102,7 +106,7 @@ func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -
 	## ★★终极护盾必须进 barMax: 它是最大生命的 50/80/120%, 不撑开分母的话满血时
 	##   它那一段的起点就已经在条尾, 宽度被压成 0 —— 这正是 2026-08-12 用户
 	##   「5费蛋糕礼盒的特殊护盾条我压根没看到」的根因。
-	_bm = maxf(_max_hp, new_hp + _magic + _shield + _ghost + _mana + _ult + _aura + _bubble + _anem)   # turtle-hud:228-229
+	_bm = maxf(_max_hp, new_hp + _magic + _shield + _ghost + _cream + _mana + _ult + _aura + _bubble + _anem)   # turtle-hud:228-229
 	if _prev_hp >= 0.0 and new_hp < _prev_hp:
 		_start_trail(_prev_hp / _bm, new_hp / _bm)
 		_start_flash()
@@ -214,6 +218,7 @@ func _draw() -> void:
 	cursor += _seg(x, cursor, w, maxf(0.0, _shield - _holy - _hshell - _urchin), _SHIELD_L, _SHIELD_D, 0.55)
 	## 浮囊护盾(064)接普通盾之后、法力盾之前 = SpecialBalance 实际吸收顺序(order 0 先于法力盾的 order 10)
 	cursor += _seg_special(x, cursor, w, _ghost, _GHOST_L, _GHOST_D)
+	cursor += _seg_special(x, cursor, w, _cream, _CREAM_L, _CREAM_D)   # 奶油护盾(071)同样按 _bm 算: 满血时血条让出位置, 不会宽度为 0
 	cursor += _seg_special(x, cursor, w, _mana, _MANA_L, _MANA_D)   # 法力盾接普通盾之后 = 实际吸收顺序(普通盾先扛)
 	## 终极护盾(072 礼盒)排在最外: 它是"破了才出盒参战"的那层, 语义上最后被打穿。
 	cursor += _seg_special(x, cursor, w, _ult, _ULT_L, _ULT_D)
