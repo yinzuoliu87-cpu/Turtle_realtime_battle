@@ -104,15 +104,26 @@ func _ready() -> void:
 	# ⑥ ★★不能卖(2026-08-12 用户问「背包里这个圣光护盾确定完全没问题了吗」⇒ 逐条路径查)
 	#    实测过的现状: 卖它得 0 币、私人池不受影响、但会被 sync 立刻补发回来 ——
 	#    玩家看到"点了卖→闪一下又回来→一分钱没有", 是 bug 观感。⇒ 卖出路径直接拦截。
-	var src := FileAccess.get_file_as_string("res://scripts/scenes/inventory/equip_ops.gd")
-	var sell_i: int = src.find("func _sell_selected")
+	## ★2026-11-06 S2(方案书 20261106 装备与深海币服务器记账): 卖出的记账部分搬进记账口 `EconInv.sell`
+	##   (界面 equip_ops._sell_selected 只按返回的 reason 出那句话) ⇒ 拦截量的是记账口那一份。
+	var src := FileAccess.get_file_as_string("res://scripts/gamedata/econ_inv.gd")
+	var sell_i: int = src.find("static func sell(")
 	var seg: String = src.substr(sell_i, 700) if sell_i >= 0 else ""
-	_ok("⑥ ★卖出路径里有羁绊赠送件的拦截(is_synergy_grant 早退)",
+	_ok("⑥ ★卖出路径(记账口 EconInv.sell)里有羁绊赠送件的拦截(is_synergy_grant 早退)",
 		sell_i >= 0 and seg.contains("is_synergy_grant") and seg.contains("return"),
 		"片段长度 %d" % seg.length())
 	_ok("⑥ ★分母: 拦截写在【加币之前】(写在后面等于先给钱再拦)",
-		sell_i >= 0 and seg.find("is_synergy_grant") < seg.find("meta_deepsea_coins +="),
-		"grant@%d coins@%d" % [seg.find("is_synergy_grant"), seg.find("meta_deepsea_coins +=")])
+		sell_i >= 0 and seg.find("is_synergy_grant") >= 0 and seg.find("is_synergy_grant") < seg.find("meta_deepsea_coins ="),
+		"grant@%d coins@%d" % [seg.find("is_synergy_grant"), seg.find("meta_deepsea_coins =")])
+	## 运行时再走一遍真入口: 背包里只有一件圣光护盾 ⇒ 卖它被拒、一分钱不进、东西还在
+	var ui_src := FileAccess.get_file_as_string("res://scripts/scenes/inventory/equip_ops.gd")
+	_ok("⑥ 界面卖出走记账口(econ sell)且认 grant 那句话", ui_src.contains("\"op\": \"sell\"") and ui_src.contains("\"grant\""))
+	gs.persistent_bench = [{"id": HOLY, "star": 1}]
+	var c_before: int = int(gs.meta_deepsea_coins)
+	var rs: Dictionary = gs.econ({"op": "sell", "bench": 0})
+	_ok("⑥ ★运行时: 卖圣光护盾被拒(reason=grant)、深海币不变、东西还在",
+		not bool(rs.get("ok", true)) and str(rs.get("reason", "")) == "grant"
+		and int(gs.meta_deepsea_coins) == c_before and (gs.persistent_bench as Array).size() == 1, str(rs))
 	# ⑦ ★合成: 最多只会同时存在 2 个(档3 送 2) ⇒ 永远凑不满 3 件 ⇒ 不会被三合一吃掉
 	var max_grant := 0
 	for n in [3, 6, 9]:

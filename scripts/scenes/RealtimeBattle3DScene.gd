@@ -7505,9 +7505,8 @@ func _settle_season(won: bool) -> void:
 		##   理由同下面的 `dual_lane_was_sweep()`: 在主场景就地再写一份 `== "ranked"`,
 		##   就是同一判据存两份, 必然有一处落后。这个洞第一次出现正是因为这样。
 		gs.consume_ranked_quota()
-		gs.add_season_xp(2)                          # 每场 +2 大轮经验
-		gs.axe_on_match_end()                        # 096 小木斧: 打完一整场 +15 砍伐经验(持有才给) + 羁绊局数
-		gs.candy_jar_add(gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS)   # 糖果罐(选糖果龟当统领才有): 赢 +2 / 输 +3 / 封顶 60(2026-10-22)
+		## 每场 +2 大轮经验 / 096 小木斧(打完一整场 +15 砍伐经验, 持有才给 + 羁绊局数)/ 糖果罐(选糖果龟当统领才有: 赢 +2 / 输 +3 / 封顶 60) —— 一条进账走记账口
+		gs.econ({"op": "income", "src": "ranked", "xp": 2, "axe": true, "candy": gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS})
 		if won:
 			gs.season_wins += 1
 			gs.season_eggs_killed += 1
@@ -7561,7 +7560,7 @@ func _settle_season(won: bool) -> void:
 	##   出局后商店锁住、深海币周一清零 ⇒ 这笔钱一枚都花不出去, 发了只是假账(60 人实操台账)。
 	if gs.is_eliminated():
 		_last_reward = 0
-	gs.meta_deepsea_coins += _last_reward
+	gs.econ({"op": "income", "src": "match", "coins": _last_reward})   # 记账口(方案书 20261106 S2)
 	# #7 战绩同步: 实时战斗原来不写战绩 → RecordScene 永远空。这里补记本场(总场/胜计数 + match_history 一条)。
 	gs.battles_total += 1
 	if won:

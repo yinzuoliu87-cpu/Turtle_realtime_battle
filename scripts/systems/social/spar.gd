@@ -79,6 +79,7 @@ static func begin(ghost: Dictionary, info: Dictionary) -> bool:
 		GameState.default_nickname()
 		_backup = ReplayRecorder.capture_all()
 		_backup_test_mode = bool(GameState.test_mode)
+		GameState.econ_quiet = int(GameState.econ_quiet) + 1   # 沙盒: 不记流水、哨兵不响(随备份一起还原)
 	active = true
 	_ghost = ghost.duplicate(true)
 	friend = info.duplicate(true)

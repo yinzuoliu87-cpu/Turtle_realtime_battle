@@ -383,9 +383,8 @@ func _do_menu(m: Node) -> void:
 			GameState.lose_heart()
 		var lost_hearts: int = maxi(0, int(_P2.HEARTS_MAX) - int(GameState.hearts))
 		var reward: int = 8 + int(GameState.hearts) + 2 * lost_hearts + (6 if won else 0)
-		GameState.meta_deepsea_coins += reward
 		GameState.season_total_battles += 1
-		GameState.add_season_xp(2)
+		GameState.econ({"op": "income", "src": "sim_econ", "coins": reward, "xp": 2})   # 记账口(方案书 20261106 S2)
 		if won:
 			GameState.season_wins += 1
 		GameState.save()

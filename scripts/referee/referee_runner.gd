@@ -35,6 +35,7 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 		battle.free()
 		return RefereeJob.error_result(job, str(st["_error"]))
 	gs.test_mode = true               # 任何 save() 空转(裁判机上没有玩家存档可写)
+	gs.econ_quiet = int(gs.econ_quiet) + 1   # 沙盒: 不记流水、哨兵不响(在上面那条早退之后: 下面一定走到按备份还原)
 	gs.tutorial = false
 	gs.reset_dual_lane()
 	ReplayRecorder.apply_state(st)

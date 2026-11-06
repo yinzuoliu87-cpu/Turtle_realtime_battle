@@ -239,7 +239,7 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 	gs.gauntlet_promote_bonus()   # 第 4 胜当场发「省下的场次」—— 放在服务端战绩覆盖之后(按定下来的战绩算, 不会多发)
 	if gs.is_eliminated():
 		reward = 0                        # 与 `_settle_season` 同一条: 出局那一局不发币(含战斗内铸币)
-	gs.meta_deepsea_coins += reward
+	gs.econ({"op": "income", "src": "gauntlet_ref", "coins": reward})   # 记账口(方案书 20261106 S2)
 	apply_chest(gs, st.get("chest", {}))   # 服务器那一局里宝箱龟攒的财宝值 / 开出的战利品(2026-10-22b)
 	apply_incense(gs, st.get("incense", {}))   # 服务器那一局里 093 香火石的刻痕 / 充能(2026-10-23)
 	gs.battles_total += 1
@@ -280,16 +280,8 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 static func apply_chest(gs, chest: Dictionary) -> bool:
 	if gs == null or chest.is_empty():
 		return false
-	var changed := false
-	var v: float = float(chest.get("value", 0.0))
-	if v > float(gs.chest_treasure_value):
-		gs.chest_treasure_value = v
-		changed = true
-	var won: Array = chest.get("won", [])
-	if won.size() > (gs.chest_treasures_won as Array).size():
-		gs.chest_treasures_won = won.duplicate()
-		changed = true
-	return changed
+	## 判据(取大 / 取长)在记账口 EconLedger._chest(方案书 20261106 S2: 进流水, 服务器 S4 拿裁判结果单核)
+	return bool(gs.econ({"op": "chest", "chest": chest}).get("ok", false))
 
 
 ## 服务器那一局结束时我方 093 香火石的刻痕 + 充能 → 存档(2026-10-23 · 方案书 20261023-香火石四个问题 3)。
@@ -299,16 +291,8 @@ static func apply_chest(gs, chest: Dictionary) -> bool:
 static func apply_incense(gs, inc: Dictionary) -> bool:
 	if gs == null or inc.is_empty():
 		return false
-	var m: int = int(inc.get("marks", 0))
-	var c: int = int(inc.get("charge", 0))
-	if m > int(gs.incense_marks):
-		gs.incense_marks = m
-		gs.incense_charge = c
-		return true
-	if m == int(gs.incense_marks) and c > int(gs.incense_charge):
-		gs.incense_charge = c
-		return true
-	return false
+	## 判据(刻痕多两个都换 / 刻痕一样充能取大)在记账口 EconLedger._incense(同上)
+	return bool(gs.econ({"op": "incense", "inc": inc}).get("ok", false))
 
 
 ## 开战时服务端说「第几场」对不上(stale): 以账本为准。上一场的账还挂着 ⇒ 先补记那一场(它带着服务器的战绩与铸币);
@@ -521,7 +505,7 @@ static func finals_seal(gs, bucket: int, r: int, m: int, week: int = -1) -> bool
 	var reward: int = gs.finals_settle_sealed()
 	if gs.is_eliminated():
 		reward = 0
-	gs.meta_deepsea_coins += reward
+	gs.econ({"op": "income", "src": "finals_ref", "coins": reward})   # 记账口(方案书 20261106 S2)
 	gs.battles_total += 1
 	if week > 0:
 		_add_coins_ticket(gs, {"week": week, "bucket": bucket, "round": r, "match": m})
@@ -582,7 +566,7 @@ static func finals_coins_settle(gs, t: Dictionary, coins: int) -> int:
 				n = 0                         # 与 `_settle_season` 同一条: 出局那一局不发币
 			(x as Dictionary)["paid"] = true
 			(x as Dictionary)["coins"] = n
-			gs.meta_deepsea_coins += n
+			gs.econ({"op": "income", "src": "finals_coins", "coins": n})   # 记账口(方案书 20261106 S2)
 			gs.save()
 			return n
 	return -1
@@ -737,13 +721,12 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 		return {}
 	var won := wi == 1
 	adopt_ranked_ledger(gs, led)
-	gs.add_season_xp(2)                   # = _settle_season: 每场 +2 大轮经验
-	gs.axe_on_match_end()                 # = _settle_season: 096 小木斧(持有才给)
-	gs.candy_jar_add(gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS)   # = _settle_season: 糖果罐
 	if won and gs.get("left_team") is Array and (gs.left_team as Array).is_empty() and gs.season_leaders is Array:
 		gs.left_team.assign((gs.season_leaders as Array).slice(0, 3))
 	var reward := maxi(0, int(led.get("reward", 0)))
-	gs.meta_deepsea_coins += reward
+	## = _settle_season 积分赛那一支: 每场 +2 大轮经验 / 096 小木斧(持有才给)/ 糖果罐 + 服务器算好的币 —— 一条进账走记账口
+	gs.econ({"op": "income", "src": "ranked_ref", "coins": reward, "xp": 2, "axe": true,
+		"candy": gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS})
 	apply_chest(gs, st.get("chest", {}))
 	apply_incense(gs, st.get("incense", {}))
 	gs.battles_total += 1

@@ -985,6 +985,7 @@ static func begin_play(r: Dictionary) -> void:
 		_backup = capture_all()
 		_backup_test_mode = bool(GameState.test_mode)
 		_has_backup = true
+		GameState.econ_quiet = int(GameState.econ_quiet) + 1   # 沙盒: 不记流水、哨兵不响(随备份一起还原)
 	GameState.test_mode = true          # 回放期间任何 save() 都空转(V5)
 	GameState.tutorial = false          # 回放不挂教学引导(战斗场 _ready 看它; 不进录像)
 	apply_state(r.get("state", {}))

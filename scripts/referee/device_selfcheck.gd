@@ -64,6 +64,8 @@ func run(host: Node) -> Dictionary:
 	## ── 现场 ──
 	var backup: Dictionary = ReplayRecorder.capture_all()
 	var tm0 := bool(gs.test_mode) if gs != null else false
+	if gs != null:
+		gs.econ_quiet = int(gs.econ_quiet) + 1   # 沙盒: 不记流水、哨兵不响(随备份一起还原)
 	var dbg0 := bool(rb.DEBUG_EDIT)
 	var seed0 := OS.get_environment("TURTLE_SEED")
 	var had_setup := FileAccess.file_exists(DEBUG_SETUP)
@@ -177,6 +179,7 @@ static func _reset_to_defaults(gs: Node) -> void:
 	for n in ReplayRecorder.capture_all():
 		var v = fresh.get(str(n))
 		gs.set(str(n), v.duplicate(true) if (v is Array or v is Dictionary) else v)
+	gs.econ_quiet = 1   # 自检沙盒: 重置之后仍静音(跑完按备份还原成 0)
 	if fresh is Node:
 		(fresh as Node).free()
 
