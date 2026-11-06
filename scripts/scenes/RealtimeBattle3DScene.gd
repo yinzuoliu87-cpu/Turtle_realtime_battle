@@ -1496,8 +1496,7 @@ func _dual_foe_lane(lane: String) -> Array:
 						var meq = (m as Dictionary).get("equips", null)   # 对手小将装备(用户2026-07-18)→_spawn_lane_side转_dl_equips注入
 						if meq is Array and not (meq as Array).is_empty():
 							mspec["equips"] = (meq as Array).duplicate(true)
-						if (m as Dictionary).get("off") is Array:
-							mspec["off"] = ((m as Dictionary)["off"] as Array).duplicate()
+						Backend.ghost_minion_extras(m, mspec)
 						specs.append(mspec)
 				return _foe_normalize_lane(specs)               # ★每路规整到3单位=minions(3-统领)·与玩家同(用户2026-07-18)
 	# 兜底 bot(无快照/冷启动): 每路3单位·上路2统领+1小将 / 下路1统领+2小将(normalize补齐·与玩家默认同·用户2026-07-18)
