@@ -76,7 +76,7 @@ def main() -> int:
 		print("✗ 工作区有没提交的改动 —— CI 只验提交过的东西, 先提交")
 		return 1
 	## ★没过本机预检不许推(用户 11-06「跑个十分钟 CI, 找个小问题, 又跑个十分钟 CI …我不觉得这是很好的呀」): 只改文档的提交不用过
-	code = [f for f in git("diff", "--name-only", "origin/main", "HEAD").split() if not f.startswith("docs/") and not f.endswith(".md")]
+	code = [f for f in git("-c", "core.quotepath=off", "diff", "--name-only", "origin/main", "HEAD").splitlines() if not f.startswith("docs/") and not f.endswith(".md")]   # quotepath: 中文文件名否则被转义成带引号的八进制, 文档提交会被当成代码
 	stamp = os.path.join(ROOT, ".out", "precheck_ok")
 	done = open(stamp, encoding="utf-8").read().strip() if os.path.exists(stamp) else ""
 	if code and done != head and "--no-precheck" not in sys.argv:
