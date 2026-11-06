@@ -227,7 +227,10 @@ static func parse_queue(ok: bool, code: int, body: String) -> Dictionary:
 		var why := str(d.get("reason", "server"))
 		if why == Q_PAIRED:
 			return _paired_of(d, gw, gl)
-		return {"err": why if why != "" else "server", "gw": gw, "gl": gl}
+		var qout := {"err": why if why != "" else "server", "gw": gw, "gl": gl}
+		if d.has("at"):
+			qout["at"] = int(d["at"])          # econ_invalid: 服务器判第几条流水不合法(EconNet.adopt_async 用)
+		return qout
 	var st := str(d.get("status", ""))
 	match st:
 		Q_WAITING:
@@ -569,7 +572,10 @@ static func parse_ranked_start(ok: bool, code: int, body: String) -> Dictionary:
 	var led := parse_ledger(d.get("ledger", null))
 	if not bool(d.get("ok", false)):
 		var why := str(d.get("reason", "server"))
-		return {"err": why if why != "" else "server", "ledger": led}
+		var rout := {"err": why if why != "" else "server", "ledger": led}
+		if d.has("at"):
+			rout["at"] = int(d["at"])          # econ_invalid: 同上
+		return rout
 	var jid = d.get("job_id", null)
 	if not (jid is int or jid is float) or int(jid) <= 0:
 		return {"err": "server", "code": code}

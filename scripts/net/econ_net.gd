@@ -20,6 +20,7 @@ const RPC := "/rest/v1/rpc/econ_commit"
 static var busy := false      # 同一时刻只有一个提交在路上(两个并发的种子请求会抢同一个序号)
 static var commits := 0       # 发出去几次(门禁量「真发了」)
 static var last_error := ""   # 最近一次失败的原因(mismatch / taken = 本机与服务器账不一致, S4 对齐)
+static var adopts := 0       # 按服务器流水对齐了几次(门禁量)
 
 
 static func on() -> bool:
@@ -111,6 +112,63 @@ static func seeded(op: Dictionary, local_seed: int, done: Callable) -> Dictionar
 		busy = false
 		return {"ok": false, "reason": "net"}
 	return {"pending": true}
+
+
+## 本机按服务器那份流水对齐(S4b: 开局回 econ_mismatch / econ_invalid)。`at` ≥ 0 = 服务器判第 at 条不合法 ⇒ 先认它、把那条起作废
+##   (econ_truncate), 再拉流水在本机重放(EconReplay.adopt)。`done.call(对齐了没有)` 恰好一次。
+static func adopt_async(at: int, done: Callable) -> void:
+	if not on() or busy or not SB.enabled():
+		done.call(false)
+		return
+	busy = true
+	if at < 0:
+		_fetch_adopt(done)
+		return
+	var n = SB._spawn()
+	if n == null:
+		busy = false
+		done.call(false)
+		return
+	n._get_once("/rest/v1/rpc/econ_truncate", "POST", JSON.stringify({"p_week": week(), "p_at": at}),
+		func(_r: Dictionary) -> void: _fetch_adopt(done),
+		func(res: Dictionary) -> Dictionary: return res)
+
+
+static func _fetch_adopt(done: Callable) -> void:
+	var n = SB._spawn()
+	if n == null:
+		busy = false
+		done.call(false)
+		return
+	adopts += 1
+	n._get_once("/rest/v1/econ_ops?select=seq,op&week=eq.%d&order=seq.asc&limit=50000" % week(), "GET", "",
+		func(res: Dictionary) -> void:
+			busy = false
+			if not bool(res.get("ok", false)):
+				done.call(false)
+				return
+			EconReplay.adopt(GameState, res.get("rows", []))
+			GameState.save()
+			done.call(true),
+		func(res: Dictionary) -> Dictionary:
+			return parse_rows(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+
+
+## 纯函数: 读 econ_ops 的回包([{seq, op}, …] 按序号)⇒ {ok, rows: [op 带上 seq]}; 序号不连续 / 看不懂 ⇒ ok false。
+static func parse_rows(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok or code < 200 or code >= 300:
+		return {"ok": false}
+	var j = JSON.parse_string(body)
+	if not (j is Array):
+		return {"ok": false}
+	var rows: Array = []
+	for x in j:
+		if not (x is Dictionary) or not ((x as Dictionary).get("op") is Dictionary) or int((x as Dictionary).get("seq", -1)) != rows.size():
+			return {"ok": false}
+		var op: Dictionary = ((x as Dictionary)["op"] as Dictionary).duplicate(true)
+		op["seq"] = rows.size()
+		rows.append(op)
+	return {"ok": true, "rows": rows}
 
 
 ## 把还没传的流水传上去(开关关 / 正忙 / 没有要传的 ⇒ 不发)。返回是否发了。

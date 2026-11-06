@@ -67,6 +67,7 @@ const TXT_FINISHED := "本周闯关已结束"
 const TXT_BAD_LINEUP := "阵容无效，请检查背包"
 const TXT_UNPLAYABLE := "录像无法在本设备播放"
 const TXT_STALE := "战绩已同步，请重新开战"
+const TXT_ECON_SYNCED := "装备已同步，请重新开战"   # 局外经济记账(S4b): 快照与服务器重放对不上 ⇒ 按服务器流水对齐之后(同 TXT_STALE 句式)
 const TXT_NO_MATCH := "匹配失败，请稍后重试"
 const TXT_SHOP := "备战阶段结束后开赛"
 const TXT_RESUMED_WIN := "上一场闯关：胜利"

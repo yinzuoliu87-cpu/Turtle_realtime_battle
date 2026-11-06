@@ -101,14 +101,60 @@ static func run(gs, input: Dictionary) -> Dictionary:
 	return out
 
 
+## 本机按服务器那份流水对齐(S4b: 开局回 econ_mismatch / econ_invalid 之后, EconNet.adopt_async 拉下来调这里)。
+##   与 run 同一个起点、同一份 apply, 但**留下**重放结果; 本机流水换成服务器那一份(成交的那一截), econ_up 跟上。
+##   ★场次(season_total_battles)不动 —— 它归积分赛 / 闯关账本管(adopt_ranked_ledger), 不是经济流水的东西。
+##   ★缺 bt 的(服务器刚发的种子行, 本机还没传回)按当前场次算。
+##   ⚠ 阵型站位 / 前后排不在流水里, 对齐之后回到默认阵(只在对不上时才走这里)。
+static func adopt(gs, rows: Array) -> Dictionary:
+	var bt0 := int(gs.season_total_battles)
+	gs.econ_quiet = int(gs.econ_quiet) + 1     # 重放过程中顺手存的盘不算漂移、不落流水
+	week_start(gs)
+	var kept: Array = []
+	var bad_at := -1
+	for i in range(rows.size()):
+		if not (rows[i] is Dictionary):
+			bad_at = i
+			break
+		var row: Dictionary = (rows[i] as Dictionary).duplicate(true)
+		row["seq"] = i
+		if not row.has("bt"):
+			row["bt"] = bt0
+		gs.season_total_battles = int(row["bt"])
+		if not bool(EL.apply(gs, row).get("ok", false)):
+			bad_at = i
+			break
+		kept.append(row)
+	gs.season_total_battles = bt0
+	gs.econ_log = kept
+	gs.econ_up = kept.size()
+	gs.econ_quiet = int(gs.econ_quiet) - 1
+	EL.rebase(gs)
+	return {"ok": bad_at < 0, "upto": kept.size(), "bad_at": bad_at}
+
+
 ## 裁判机命令行入口(referee_main `--econ-replay=<流水.json> --out=<结果.json>`)。返回进程退出码: 0 = 写出了结果, 4 = 读写失败。
+##   输入两种: {rows, strict} 单个号 ⇒ 输出 run 的结果;
+##   {jobs: [{account_id, week, seen, rows}], strict} 一批号(轮询器用: 一个 Godot 进程算多个号, 省掉每次起进程)⇒
+##   {results: [{account_id, week, seen, result}]}(= 服务端 econ_replay_done 吃的形状)。
 static func run_files(host: Node, in_path: String, out_path: String) -> int:
 	var txt := FileAccess.get_file_as_string(in_path)
 	var j = JSON.parse_string(txt) if txt != "" else null
 	if not (j is Dictionary):
 		return 4
 	var gs = host.get_node_or_null("/root/GameState")
-	var res := run(gs, j)
+	var res: Dictionary
+	if (j as Dictionary).get("jobs") is Array:
+		var outs: Array = []
+		for job in (j as Dictionary)["jobs"]:
+			if not (job is Dictionary):
+				continue
+			var r := run(gs, {"rows": (job as Dictionary).get("rows", []), "strict": bool((j as Dictionary).get("strict", true))})
+			outs.append({"account_id": str(job.get("account_id", "")), "week": int(job.get("week", 0)),
+				"seen": int(job.get("seen", 0)), "result": r})
+		res = {"results": outs}
+	else:
+		res = run(gs, j)
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	if f == null:
 		return 4
