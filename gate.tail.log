@@ -1,0 +1,120 @@
+  ── 耗时 ──
+  核秒总和 1132s ÷ 并行度 4 ≈ 283s 理论墙钟
+  平均 14337ms/个 · 最慢 12 个:
+    154907ms  verify_ui_consistency
+    133759ms  verify_stream_seek
+     91644ms  verify_abandoned_match
+     91136ms  verify_stream_hud_parity
+     51408ms  verify_referee_watch_stream
+     41247ms  verify_tutorial_flow_v3
+     21682ms  verify_chest_ledger
+     20995ms  verify_finals_coins
+     18327ms  verify_stream_tentacle
+     16316ms  verify_menu_finals_title
+     15017ms  verify_no_place_stage
+     13181ms  verify_no_surrender
+=== 只读数据审计 ===
+
+ALL PASS (79/79)
+========== 门禁分片 8/8 ==========
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  分片 8/8: 全套 632 个里跑这 80 个
+  PASS  verify_action_coverage
+  PASS  verify_arena_layers_drawn
+  PASS  verify_arena_themes
+  PASS  verify_autopilot_finals
+  PASS  verify_axe
+  PASS  verify_axe_finals
+  PASS  verify_b4_wiring
+  PASS  verify_boot_splash
+  PASS  verify_cake_box_form
+  PASS  verify_cam_mac_gestures
+  PASS  verify_chain_lightning
+  PASS  verify_codex_status_sources
+  PASS  verify_conch_worm_033
+  PASS  verify_copy_no_lock
+  PASS  verify_crystal_line_030
+  PASS  verify_cyber_charge
+  PASS  verify_determinism_ulp_replay
+  PASS  verify_dot_float
+  PASS  verify_drag_lift
+  PASS  verify_drain_stream
+  PASS  verify_eq_blade_batch
+  PASS  verify_eq_hp_grants
+  PASS  verify_equip_tier_labels
+  PASS  verify_exact_match
+  PASS  verify_execution_vfx_all
+  PASS  verify_finals_day_recap
+  PASS  verify_finals_premiere
+  PASS  verify_float_style_uses_palette
+  PASS  verify_fortress_harden
+  PASS  verify_gauntlet
+  PASS  verify_gauntlet_server_pick
+  PASS  verify_gauntlet_via_referee
+  PASS  verify_gremlin_atk_survives
+  PASS  verify_gremlin_gun
+  PASS  verify_hitstop_freezes_global
+  PASS  verify_ice_fissure
+  PASS  verify_info_panel_stats
+  PASS  verify_interactive_determinism
+  PASS  verify_knock_dest_on_island
+  PASS  verify_leaderboard_sort
+  PASS  verify_lifecycle_net
+  PASS  verify_line_band_vfx
+  PASS  verify_mainmenu_layout
+  PASS  verify_map_geometry
+  PASS  verify_minion_unstoppable
+  PASS  verify_nickname
+  PASS  verify_ninja_shuriken
+  PASS  verify_no_emoji_icons
+  PASS  verify_offline_dev_build
+  PASS  verify_phoenix_flame_onhit
+  PASS  verify_referee_coins
+  PASS  verify_referee_incense
+  PASS  verify_remote_pool
+  PASS  verify_replay_end_card
+  PASS  verify_replay_queue_art
+  PASS  verify_rules_fingerprint
+  PASS  verify_salvo_trainer
+  PASS  verify_scene_calibration
+  PASS  verify_scene_change_on_release
+  PASS  verify_settings
+  PASS  verify_snapshot_positions
+  PASS  verify_spawn_busy_root
+  PASS  verify_star_delta_matches_apply
+  PASS  verify_stream_coverage_2
+  PASS  verify_stream_coverage_3
+  PASS  verify_stream_no_sim
+  PASS  verify_stream_referee_paths
+  PASS  verify_talisman_089
+  PASS  verify_tame_defection
+  PASS  verify_teamselect_redo
+  PASS  verify_text_render
+  PASS  verify_tile_texture
+  PASS  verify_titles
+  PASS  verify_two_head_enhanced
+  PASS  verify_two_head_strike
+  PASS  verify_uncovered_equips
+  PASS  verify_unit_scaling
+  PASS  verify_upload_auth
+  PASS  verify_vfxlab_case_config
+  PASS  verify_weekend_watch
+  (发现 80 个测试, 并行度 4)
+  ── 耗时 ──
+  核秒总和 1354s ÷ 并行度 4 ≈ 338s 理论墙钟
+  平均 16931ms/个 · 最慢 12 个:
+    179637ms  verify_determinism_ulp_replay
+    143135ms  verify_stream_coverage_3
+    141384ms  verify_rules_fingerprint
+    135680ms  verify_stream_coverage_2
+     77208ms  verify_exact_match
+     61204ms  verify_stream_referee_paths
+     54701ms  verify_gauntlet_via_referee
+     31329ms  verify_stream_no_sim
+     30880ms  verify_referee_coins
+     21210ms  verify_referee_incense
+     20500ms  verify_finals_premiere
+     16682ms  verify_codex_status_sources
+=== 只读数据审计 ===
+
+ALL PASS (80/80)

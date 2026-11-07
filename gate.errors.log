@@ -1,0 +1,4 @@
+175:  FAIL  menu_crowd_sync (登录墙群像背景 == 生成器现在的产物·加龟/换立绘忘了重跑就红)
+178:        [FAIL] menu-bg-crowd.png 与生成器现在吐出的图不一致(42.08% 像素差 > 6 级)。
+181:        FAILED: 1 处
+192:FAIL x1  (PASS 154)
