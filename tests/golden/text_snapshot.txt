@@ -383,10 +383,10 @@ pet|竹叶龟/竹刺阵|brief|竹叶龟以目标为中心蓄力 0.6 秒，随后
 pet|竹叶龟/竹刺阵|detail|竹叶龟以目标为中心蓄力 0.6 秒，随后竹刺破地而出，对范围内的敌人造成（90%×攻击力({ATK}) = {N:BambooSystem.SPIKE_ATK_COEF*ATK}）外加（15%×最大生命值({HP}) = {N:HP*BambooSystem.SPIKE_MAXHP_PCT}）物理伤害，并将其击飞 1.5 秒。\n<span style="color:#8a93a0">龟蛋不会被击飞。蓄力期间被控制则技能取消。</span>
 pet|竹叶龟/自然恢复|brief|竹叶龟回复 {E:HP*BambooSystem.REGEN_SELF} 生命值，并为每名龟队友提供其 12% 最大生命值的护盾，持续 4 秒。若没有其他龟队友存活，转而回复 {E:HP*BambooSystem.REGEN_SOLO} 生命值。
 pet|竹叶龟/自然恢复|detail|竹叶龟回复（10%×最大生命值({HP}) = {E:HP*BambooSystem.REGEN_SELF}）生命值，并为每名龟队友提供其 12% 最大生命值的护盾，持续 4 秒。\n若没有其他龟队友存活，转而回复（15%×最大生命值({HP}) = {E:HP*BambooSystem.REGEN_SOLO}）生命值。\n<span style="color:#8a93a0">训龟大师、龟蛋与召唤物不算龟队友。</span>
+pet|糖果龟/横扫大锤|brief|糖果龟挥锤砸向目标，造成 {N:CandySystem.PUNCH_ATK_COEF*ATK} 外加 {N:HP*CandySystem.PUNCH_SELF_HP} 物理伤害，并使其攻击力降低 15%，持续 5 秒。
+pet|糖果龟/横扫大锤|detail|糖果龟挥锤砸向目标，造成（110%×攻击力({ATK}) = {N:CandySystem.PUNCH_ATK_COEF*ATK}）外加（3%×最大生命值({HP}) = {N:HP*CandySystem.PUNCH_SELF_HP}）物理伤害，并使其攻击力降低 15%，持续 5 秒。\n<span style="color:#8a93a0">攻击力降低效果不可叠加，再次命中刷新持续时间。</span>
 pet|糖果龟/甜蜜掠夺|brief|糖果龟在战斗第 8 秒吸取最大生命值最高的敌人 25% 最大生命值，并回复等量生命值。\n<span style="color:#8a93a0">该吸取不会杀死目标。</span>
 pet|糖果龟/甜蜜掠夺|desc|糖果龟在战斗第 8 秒吸取最大生命值最高的敌人 25% 最大生命值，并回复等量生命值。\n<span style="color:#8a93a0">该吸取不会杀死目标。</span>
-pet|糖果龟/糖果拳|brief|糖果龟挥拳砸向目标，造成 {N:CandySystem.PUNCH_ATK_COEF*ATK} 外加 {N:HP*CandySystem.PUNCH_SELF_HP} 物理伤害，并使其攻击力降低 15%，持续 5 秒。
-pet|糖果龟/糖果拳|detail|糖果龟挥拳砸向目标，造成（110%×攻击力({ATK}) = {N:CandySystem.PUNCH_ATK_COEF*ATK}）外加（3%×最大生命值({HP}) = {N:HP*CandySystem.PUNCH_SELF_HP}）物理伤害，并使其攻击力降低 15%，持续 5 秒。\n<span style="color:#8a93a0">攻击力降低效果不可叠加，再次命中刷新持续时间。</span>
 pet|糖果龟/糖果炸弹|brief|糖果龟登场时召唤一颗糖果炸弹，其生命值为自身 50% 最大生命值。\n每当龟能充满，若炸弹存活，糖果龟使其生命上限提升自身 25% 最大生命值，并为其回复自身 10% 最大生命值的生命值。\n若炸弹已阵亡，则召唤一颗生命值为自身 20% 最大生命值的新炸弹。\n炸弹死亡时爆炸，对全体敌人均摊其 100% 最大生命值的魔法伤害。\n<span style="color:#8a93a0">炸弹每秒损失自身 8% 最大生命值，不攻击也不移动。</span>
 pet|糖果龟/糖果炸弹|detail|被动：糖果龟登场时召唤一颗糖果炸弹。炸弹最大生命值为糖果龟登场时最大生命值×50%，攻击力、护甲与魔抗均为 0，不主动攻击，每秒衰减自身 8% 最大生命值。\n\n主动：若炸弹存活，其最大生命值上限提升糖果龟最大生命值的 25%，并回复相当于糖果龟最大生命值 10% 的生命值。\n若炸弹已阵亡，则召唤一颗新炸弹，生命值为糖果龟最大生命值的 20%。\n炸弹因自身衰减或被击杀而死亡时爆炸，对全体敌人造成总计相当于炸弹 100% 最大生命值的魔法伤害，由存活敌人均摊。
 pet|糖果龟/糖果锤|brief|糖果龟蓄力后猛砸前方直线上的敌人，总计 {N:CandySystem.HAMMER_ATK_COEF*ATK+HP*CandySystem.HAMMER_HP_PCT} 物理伤害由命中的敌人均分，并回复造成伤害 40% 的生命值。

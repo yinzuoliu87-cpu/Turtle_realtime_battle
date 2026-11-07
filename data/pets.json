@@ -1249,7 +1249,7 @@
     },
     "skillPool": [
       {
-        "name": "糖果拳",
+        "name": "横扫大锤",
         "icon": "skills/candy-hammer.png",
         "type": "physical",
         "power": 0,
@@ -1259,8 +1259,8 @@
           "pct": 15,
           "turns": 2
         },
-        "brief": "糖果龟挥拳砸向目标，造成 {N:CandySystem.PUNCH_ATK_COEF*ATK} 外加 {N:HP*CandySystem.PUNCH_SELF_HP} 物理伤害，并使其攻击力降低 {C:CandySystem.PUNCH_ATK_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。",
-        "detail": "糖果龟挥拳砸向目标，造成（{C:CandySystem.PUNCH_ATK_COEF%}%×攻击力({ATK}) = {N:CandySystem.PUNCH_ATK_COEF*ATK}）外加（{C:CandySystem.PUNCH_SELF_HP%}%×最大生命值({HP}) = {N:HP*CandySystem.PUNCH_SELF_HP}）物理伤害，并使其攻击力降低 {C:CandySystem.PUNCH_ATK_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。\n<span style=\"color:#8a93a0\">攻击力降低效果不可叠加，再次命中刷新持续时间。</span>"
+        "brief": "糖果龟挥锤砸向目标，造成 {N:CandySystem.PUNCH_ATK_COEF*ATK} 外加 {N:HP*CandySystem.PUNCH_SELF_HP} 物理伤害，并使其攻击力降低 {C:CandySystem.PUNCH_ATK_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。",
+        "detail": "糖果龟挥锤砸向目标，造成（{C:CandySystem.PUNCH_ATK_COEF%}%×攻击力({ATK}) = {N:CandySystem.PUNCH_ATK_COEF*ATK}）外加（{C:CandySystem.PUNCH_SELF_HP%}%×最大生命值({HP}) = {N:HP*CandySystem.PUNCH_SELF_HP}）物理伤害，并使其攻击力降低 {C:CandySystem.PUNCH_ATK_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。\n<span style=\"color:#8a93a0\">攻击力降低效果不可叠加，再次命中刷新持续时间。</span>"
       },
       {
         "name": "糖果锤",

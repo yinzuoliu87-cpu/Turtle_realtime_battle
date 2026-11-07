@@ -263,6 +263,7 @@ func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 
 	if not candy.get("alive", false): return
 	var from2d: Vector2 = fat["pos"]
 	var kp: Vector2 = candy["pos"]
+	var mouth: Vector2 = kp + Vector2((0.36 if candy.get("face_right", false) else -0.36) / battle.WS, 0.0)   # 新形象(11-07)站着, 嘴在身前 0.36 米、离地 1 米: 糖粒吸进嘴里, 不是吸进肚子
 	## ★★★用户 2026-08-14:「糖果龟的被动展现方式也要改」。
 	##   原来是 4 颗 `_glow_bb`(发光公告板)= **一堆圆光球**飘过来 + 一行字。
 	##   圆球没有语义 —— 读不出"糖", 也读不出"生命被抽走"(用户 2026-08-06 反对过
@@ -294,7 +295,7 @@ func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 
 		var tw = battle._reg_tween()
 		tw.tween_interval(float(k) * 0.035)
 		tw.tween_property(bit, "position", battle._world_pos(mid, 1.15), 0.16) 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(bit, "position", battle._world_pos(kp, 1.0), 0.42) 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tw.tween_property(bit, "position", battle._world_pos(mouth, 1.0), 0.42) 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		var t2 = battle._reg_tween()
 		t2.tween_interval(float(k) * 0.035 + 0.40)
 		t2.tween_property(bit, "scale", Vector3(0.35, 0.35, 0.35), 0.18)

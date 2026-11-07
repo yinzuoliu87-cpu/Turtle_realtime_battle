@@ -331,7 +331,7 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 	cone.pixel_size = (300.0 * battle.WS) / 128.0
 	cone.rotation.y = -DetMath.datan2(aim.y, aim.x) - PI * 0.5
 	cone.position = battle._world_pos(center, 0.05)
-	cone.no_depth_test = true; cone.render_priority = 16
+	cone.render_priority = 16   # 11-07 去掉 no_depth_test: 扇形是地面上的东西, 单位要画在它上面, 否则收势白闪把龟身整个盖住
 	battle._world.add_child(cone)
 	# —— 镰刀本体(billboard·柄尾锚origin·rotation.z绕柄尾扫) ——
 	var scythe := Sprite3D.new()
@@ -371,7 +371,7 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 		edge.rotation.y = -DetMath.datan2(d.y, d.x)
 		edge.scale = Vector3((300.0 * battle.WS) / maxf(0.001, float(etw) * eps), 1.0, 1.0)
 		edge.position = battle._world_pos(center + d * 150.0, 0.07)
-		edge.no_depth_test = true; edge.render_priority = 24
+		edge.render_priority = 24
 		battle._world.add_child(edge)
 		var et = battle._reg_tween()
 		et.tween_interval(0.16)
