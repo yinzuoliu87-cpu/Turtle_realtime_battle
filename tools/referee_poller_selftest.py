@@ -14,6 +14,11 @@
   ⑥ worker_loop: 正常任务领空了才领补流; 补流任务交给 handle_restream(不走 handle)
   ⑦ referee_claim_restream 404(服务端没部署): 本进程以后不再领补流
   ⑧ 正常任务照旧: handle 调 referee_complete(补流的改动没碰它)
+  ⑨ 空闲放慢: 真 worker_loop + 假时钟走满一小时, 领活次数和补流次数都降下来, 头 30 秒仍 2 秒
+  ⑩ 放慢后来了任务: 6 秒内领到, 之后回到 2 秒
+  ⑪ 补流有积压: 领到一份立刻接着问, 不等 60 秒
+  ⑫ 补流限频窗口内来了任务: 下一次询问就领到
+  ⑬ 领补流网络失败也限频: 不因为出错退回每轮都问
 进 run-tests.sh 门禁(成功打印 ALL OK)。
 """
 import importlib.util
@@ -74,6 +79,10 @@ class Env:
         self.chunks = 5
         self.claims = {'referee_claim': [], 'referee_claim_restream': []}
         self.restream_404 = False
+        self.restream_err = False
+        self.on_complete = None
+        for k in ('POLL_SEC', 'IDLE_POLL_SEC', 'IDLE_AFTER_SEC', 'RESTREAM_POLL_SEC'):
+            os.environ.pop(k, None)
         os.environ['STREAM_ROOT'] = self.root
         os.environ.pop('STREAM_TMP', None)
         os.environ['JOB_TIMEOUT_SEC'] = '30'
@@ -85,8 +94,12 @@ class Env:
 
         def fake_rpc(fn, body, timeout=20.0):
             env.calls.append((fn, body))
+            if fn == 'referee_complete' and env.on_complete:
+                env.on_complete()
             if fn == 'referee_claim_restream' and env.restream_404:
                 raise urllib.error.HTTPError('http://x/rpc/' + fn, 404, 'Not Found', None, None)
+            if fn == 'referee_claim_restream' and env.restream_err:
+                raise urllib.error.URLError('连不上')
             if fn in env.claims:
                 q = env.claims[fn]
                 return [q.pop(0)] if q else []
@@ -145,6 +158,39 @@ def res(**kw):
          'client_version': VER, 'replay_b64': 'eJw='}
     r.update(kw)
     return r
+
+
+class FakeStop:
+    """假 _stop: wait() 只拨假时钟, 到点触发 hooks, 走满 end 就停, 每次等待都记下来。"""
+
+    def __init__(self, clock, end, hooks):
+        self.clock, self.end, self.hooks, self.waits = clock, end, list(hooks), []
+
+    def is_set(self):
+        return self.clock[0] >= self.end
+
+    def wait(self, sec):
+        self.waits.append(sec)
+        self.clock[0] += sec
+        for h in list(self.hooks):
+            if self.clock[0] - 1000.0 >= h[0]:
+                self.hooks.remove(h)
+                h[1]()
+
+
+def run_sim(m, sec, hooks=(), e=None, job_sec=0.0):
+    """跑真 worker_loop, 时钟是假的。hooks = [(第几秒, 函数)]。job_sec = 一局在假时钟上算多久。"""
+    clock = [1000.0]
+    if e is not None:
+        e.on_complete = lambda: clock.__setitem__(0, clock[0] + job_sec)
+    st = FakeStop(clock, 1000.0 + sec, hooks)
+    old_now, old_stop = m._now, m._stop
+    m._now, m._stop = (lambda: clock[0]), st
+    try:
+        m.worker_loop(0, False)
+    finally:
+        m._now, m._stop = old_now, old_stop
+    return st
 
 
 def main():
@@ -230,8 +276,61 @@ def main():
     ok('⑧ 正常任务: referee_complete 一次、没有补流写回', len(e.names('referee_complete')) == 1
        and not e.names('referee_restream_done') and not e.names('referee_claim_restream'), str([c[0] for c in e.calls]))
     e.close()
+    # ⑨ 空闲放慢 + 补流限频: 一小时全空闲
+    e = Env(m)
+    st = run_sim(m, 3600)
+    c, r = len(e.names('referee_claim')), len(e.names('referee_claim_restream'))
+    ok('⑨ 空闲一小时领活 %d 次(不放慢是 1800, 应约 610)' % c, 560 <= c <= 660)
+    ok('⑨ 空闲一小时问补流 %d 次(不限频是 1800, 应约 60)' % r, 55 <= r <= 66)
+    ok('⑨ 头 30 秒仍是 2 秒一次', st.waits[:15] == [2.0] * 15, str(st.waits[:16]))
+    ok('⑨ 空闲之后是 6 秒一次(分母 %d 次等待)' % len(st.waits), len(st.waits) > 500 and st.waits[-1] == 6.0)
+    e.close()
+    # ⑩ 放慢后来了任务
+    e = Env(m)
+    e.fake_res = res()
+    nj = job()
+    nj.pop('task')
+    st = run_sim(m, 660, [(600, lambda: e.claims['referee_claim'].append(nj))])
+    t, k = 0.0, 0
+    while t < 600:
+        t += st.waits[k]
+        k += 1
+    ok('⑩ 放慢后来的任务被领走(complete %d 次)' % len(e.names('referee_complete')), len(e.names('referee_complete')) == 1)
+    ok('⑩ 等待不超过 6 秒', st.waits[k - 1] == 6.0, str(st.waits[k - 2:k + 2]))
+    ok('⑩ 领到之后回到 2 秒', st.waits[k:k + 15] == [2.0] * 15, str(st.waits[k:k + 16]))
+    e.close()
+    # ⑩ 一局算很久: 算完也算刚忙过, 不是从领到那一刻起算空闲
+    e = Env(m)
+    e.fake_res = res()
+    nj = job()
+    nj.pop('task')
+    e.claims['referee_claim'] = [nj]
+    st = run_sim(m, 180, e=e, job_sec=120.0)
+    ok('⑩ 算了 120 秒的局结束后仍 2 秒一次(分母 %d 次等待)' % len(st.waits), len(st.waits) >= 15 and st.waits[:15] == [2.0] * 15, str(st.waits[:16]))
+    e.close()
+    # ⑪ 补流有积压
+    e = Env(m)
+    e.fake_res = res()
+    e.claims['referee_claim_restream'] = [job(), job()]
+    run_sim(m, 10)
+    ok('⑪ 积压的两份 10 秒内都领走(done %d 次, 问 %d 次)' % (len(e.names('referee_restream_done')), len(e.names('referee_claim_restream'))),
+       len(e.names('referee_restream_done')) == 2 and len(e.names('referee_claim_restream')) == 3)
+    e.close()
+    # ⑫ 限频窗口内来了补流
+    e = Env(m)
+    e.fake_res = res()
+    run_sim(m, 170, [(100, lambda: e.claims['referee_claim_restream'].append(job()))])
+    ok('⑫ 窗口内来的补流下一次询问就领到(done %d 次)' % len(e.names('referee_restream_done')), len(e.names('referee_restream_done')) == 1)
+    e.close()
+    # ⑬ 领补流失败也限频
+    e = Env(m)
+    e.restream_err = True
+    run_sim(m, 600)
+    r = len(e.names('referee_claim_restream'))
+    ok('⑬ 网络失败时十分钟只问 %d 次(不限频约 300 次)' % r, 8 <= r <= 12)
+    e.close()
     print('')
-    if fails[0] == 0 and n[0] >= 15:
+    if fails[0] == 0 and n[0] >= 26:
         print('ALL OK — 补流只产出状态流、不写回结果; 重算对不上就撤流 (%d 条)' % n[0])
         return 0
     print('FAIL x%d (断言 %d 条)' % (fails[0], n[0]))

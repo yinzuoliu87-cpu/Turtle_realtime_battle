@@ -13,7 +13,10 @@
                          只领这些版本的任务。一个版本一套：结果只在同版本里成立）
   WORK_DIR               默认 /var/lib/turtle-referee（每个线程一个子目录：任务单 / 结果单 / user:// / 日志）
   WORKERS                默认 = CPU 核数
-  POLL_SEC               空闲时多久领一次，默认 2
+  POLL_SEC               刚忙过时多久领一次，默认 2
+  IDLE_AFTER_SEC         连续这么久没活才算真空闲，默认 30
+  IDLE_POLL_SEC          真空闲时多久领一次，默认 6
+  RESTREAM_POLL_SEC      没领到补流后隔多久再问，默认 60；领到了说明有积压，立刻接着问
   JOB_TIMEOUT_SEC        一局的墙钟上限，默认 600（10-19 CX33 实测: 真实满装备快照三路打满不录约 150 秒; 原默认 120 会把重局判超时）
   WORKER_NAME            默认 = 主机名（线程号会接在后面）
   STREAM_ROOT            逐帧直播状态流的对外目录（Caddy 只读分发，见 server/stream/README.md）。
@@ -71,6 +74,9 @@ _CHUNK_RE = re.compile(r"^[0-9]{6}\.bin$")
 _stop = threading.Event()
 TASK_RESTREAM = "restream"
 _restream_off = threading.Event()      # rpc/referee_claim_restream 回过 404（服务端没上 20261020）⇒ 本进程不再领补流
+
+
+_now = time.monotonic                  # 自测换成假时钟
 
 
 def log(msg: str) -> None:
@@ -377,10 +383,41 @@ def claim_restream(worker: str, versions: dict) -> list:
         raise
 
 
+class IdlePacer:
+    """决定下一次领活等多久、这一轮问不问补流（2026-11-07，#23 Supabase 出站流量超额）。
+
+    两个线程闲着也每 2 秒问两次，一天约 12.4 万次，是流量最大头（响应头每次约 900 字节）。
+    忙时不变；连续 idle_after 秒没活才放慢到 idle_poll。补流不急：没领到隔 restream_poll 秒再问，
+    领到了立刻接着问，不让积压排队。
+    """
+
+    def __init__(self, poll: float, idle_poll: float, idle_after: float, restream_poll: float) -> None:
+        self.poll = poll
+        self.idle_poll = max(poll, idle_poll)
+        self.idle_after = idle_after
+        self.restream_poll = restream_poll
+        self.last_job = _now()
+        self.next_restream = 0.0
+
+    def busy(self) -> None:
+        self.last_job = _now()
+
+    def restream_due(self) -> bool:
+        return _now() >= self.next_restream
+
+    def restream_asked(self, got: bool) -> None:
+        self.next_restream = 0.0 if got else _now() + self.restream_poll
+
+    def wait_sec(self) -> float:
+        return self.idle_poll if _now() - self.last_job >= self.idle_after else self.poll
+
+
 def worker_loop(idx: int, once: bool) -> None:
     worker = "%s-%d" % (env("WORKER_NAME", socket.gethostname()), idx)
     wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "w%d" % idx)
     poll = float(env("POLL_SEC", "2"))
+    pacer = IdlePacer(poll, float(env("IDLE_POLL_SEC", "6")), float(env("IDLE_AFTER_SEC", "30")),
+                      float(env("RESTREAM_POLL_SEC", "60")))
     while not _stop.is_set():
         versions = discover_versions(env("VERSIONS_DIR", "/opt/turtle"))
         if not versions:
@@ -393,19 +430,21 @@ def worker_loop(idx: int, once: bool) -> None:
             log("WARN %s 领活失败: %s" % (worker, ex))
             _stop.wait(max(poll, 5))
             continue
-        if not jobs:
+        if not jobs and pacer.restream_due():
             ## 正常任务空了才领补流（真比赛永远优先）
             try:
                 jobs = claim_restream(worker, versions)
             except (urllib.error.URLError, OSError, ValueError) as ex:
                 log("WARN %s 领补流失败: %s" % (worker, ex))
                 jobs = []
+            pacer.restream_asked(bool(jobs))
         if not jobs:
             if once:
                 log("%s: 没有待算的任务" % worker)
                 return
-            _stop.wait(poll)
+            _stop.wait(pacer.wait_sec())
             continue
+        pacer.busy()
         for job in jobs:
             try:
                 if str(job.get("task", "")) == TASK_RESTREAM:
@@ -414,6 +453,7 @@ def worker_loop(idx: int, once: bool) -> None:
                     handle(job, versions, worker, wdir)
             except Exception as ex:      # 网络 / 意外: 不写回 ⇒ 租期一过别的裁判重领
                 log("ERROR %s job=%s: %r" % (worker, job.get("job_id"), ex))
+        pacer.busy()
         if once:
             return
 
