@@ -1,4 +1,4 @@
-"""gh_week_issues.py —— 建「0.22.8」里程碑和这周的待办 Issues（2026-11-03，用户「全部事项将在这周完成，周日晚上发新版」）。
+"""gh_week_issues.py —— 建当前里程碑和这周的待办 Issues（2026-11-03，用户「全部事项将在这周完成，周日晚上发新版」）。
 
 待办只留一处（方案书 docs/plans/20261102-文件管理与发版流程重整.md Q1，用户 11-02 同意搬到 GitHub Issues）。
 令牌取自 Git 凭据管理器（不打印）；绕开本机代理（代理会改写 POST body）。已存在同名里程碑 / 同标题 Issue 就跳过（可重跑）。
@@ -11,41 +11,23 @@ REPO = "yinzuoliu87-cpu/Turtle_realtime_battle"
 API = "https://api.github.com/repos/" + REPO
 APPLY = "--apply" in sys.argv
 
-MILESTONE = {"title": "0.22.8", "due_on": "2026-11-08T23:59:00Z",
-             "description": "周日 11-08 晚发版（冠军杯 19:00 UTC 打完之后）。用户 11-03「全部事项将在这周完成，周日晚上发新版」。"}
+MILESTONE = {"title": "0.23.0", "due_on": "2026-11-16T23:59:00Z",
+             "description": "龟战 × 主站对接, 目标周一 11-16 上线。方案书 docs/plans/20261107-龟战主站对接.md, 准绳 docs/specs/龟战主站整体方案.md。"}
 
+PLAN = "方案书 docs/plans/20261107-龟战主站对接.md "
 ISSUES = [
-    ("积分赛成绩对账稳定后关掉客户端写成绩（ranked_client_write = false）",
-     "方案书 docs/plans/20261101c-积分赛服务器裁判.md V9。\n\n"
-     "- [ ] 周二~周四每天对一次：`referee_backlog()`、真人局等待时长、`ranked_records` 与 `ghosts` 逐格对账\n"
-     "- [ ] 连续两天 0 失败 / 0 对不上 ⇒ `python tools/prod_flags.py set ranked_client_write false --yes-prod`，回读\n"
-     "- [ ] 方案书 V9 回填\n\n11-03 第一天：1154 局 0 失败，平均 36.5 s、最长 117 s。"),
-    ("周六 11-07 闯关赛开局一小时实测（陪练号铺号 / 1 分钟兜底 / 补格子号配上即下线）",
-     "方案书 docs/plans/20261031b-闯关赛开局铺号与早兜底.md §10.6 第 4 条、§11。\n\n"
-     "- [ ] 00:00~01:00 UTC 看调度器日志「拉 … fill」之后 12 秒内进队、配上、几秒内退出\n"
-     "- [ ] 真人兜底等待时长、深格子有没有号\n"
-     "- [ ] `client_errors` 没有带 /bot 的 unclean_exit 新增\n- [ ] 方案书回填"),
-    ("参考《黑箱：无限构筑》学 AI 开发方式（美术 / 技能 / 数值 / 音效 / 特效）",
-     "方案书 docs/plans/20261102b-参考黑箱学AI开发方式.md（截止从 11-09 提前到 11-08 随 0.22.8）。\n\n"
-     "- [ ] S1 预告片逐帧研究 3~5 个技能演出（docs/studies/，frame_study_audit 守）\n"
-     "- [ ] S2 Steam 免费 Demo 实玩 15 分钟录屏（用户 11-02 已同意装）\n- [ ] S3 音效实机录音\n"
-     "- [ ] S4 五块对照表 → 用户拍板 A1~A5 做哪几条\n- [ ] 拍板的那几条落地，各有门禁并反向验证会红"),
-    ("RULES_VER 门禁：对局结果变了而 RULES_VER 没升就红",
-     "方案书 docs/plans/20261102-文件管理与发版流程重整.md R1。半成品在本机 `.out/wip-rules-fingerprint/`。\n\n"
-     "- [ ] `verify_rules_fingerprint` 覆盖 28 龟 / 全部装备 / 训龟大师 / 顶档羁绊 / 召唤物，3 次跑指纹相同\n"
-     "- [ ] `tools/rules_fingerprint.py --update` 只在 RULES_VER 比上个 tag 大时才许刷新\n"
-     "- [ ] 反向验证：把 0.22.7 三处改动（训龟大师免疫 / 盾冲击波 / 触手）逐个改回去，都要红"),
-    ("播服务器状态流时信息面板龟能偶尔差 1",
-     "11-03 修信息面板属性（951f4185）时门禁 verify_stream_panels_parity 发现：52 个面板里 1 个龟能 9 vs 8（当前放宽 ±1）。\n\n"
-     "- [ ] 探针查清是采样时刻（原生在渲染步之后拍）还是数据缺字段\n- [ ] 修好后去掉门禁里的 ±1 放宽"),
-    ("0.22.8 发版（周日 11-08 晚，冠军杯打完后）",
-     "按 CLAUDE.md §3 发版流水，全部用仓库里的命令：\n\n"
-     "- [ ] `tools/release.py bump 0.22.8 --rules same|changed`（这周有没有改对局结果要如实答）\n"
-     "- [ ] 本机完整门禁 → push → CI 绿 → `tools/release.py tag 0.22.8`\n"
-     "- [ ] TestFlight 上传成功 → `tools/asc.py submit 0.22.8`\n"
-     "- [ ] `tools/deploy.py 0.22.8 --allow-weekend`（用户点名周日晚发）\n"
-     "- [ ] 苹果过审后 `tools/prod_flags.py force-update 0.22.8 --yes-prod` + `asc.py group-remove 0.22.7`\n"
-     "- [ ] `finals_version` 周一再改"),
+    ("先定四件事: 升级规则 / 拥有限制范围 / 固定阵容带什么 / 龟币提现",
+     PLAN + "§5 Q1 ~ Q4。\n\n- [ ] Q1 升级系统怎么升\n- [ ] Q2「拥有 + 限免」管到哪\n- [ ] Q3 固定阵容的装备、大师、小将从哪来\n"
+     "- [ ] Q4 主站书面答复龟币能否换真钱或加密货币(不挡开发, 挡 11-16 上线)"),
+    ("主站给内测环境: 地址与密钥(最晚 11-12)", PLAN + "§4.7。\n\n- [ ] 内测地址\n- [ ] 内测密钥\n- [ ] 我们回给主站内测 gameServerURL 和播放器地址"),
+    ("11-08 假主站按新接口重写, 迁移草稿", PLAN + "§4.7。分支 feat/raid, 决赛日不动正式服。\n\n- [ ] tools/mock_mainsite.py 覆盖方案 §6 全部接口\n- [ ] 迁移过沙盒"),
+    ("11-09 记账合 main, 内测服开始 S5", PLAN + "§4.6。\n\n- [ ] econ/ledger 合最新 main\n- [ ] 补命运之轮记账\n- [ ] 内测服跑满到 11-16"),
+    ("11-09 账号登录", PLAN + "§4.1。\n\n- [ ] 网关骨架(验签)\n- [ ] 登录码、系统浏览器、轮询\n- [ ] link/info、link/confirm\n- [ ] 删号调 unlinked"),
+    ("11-10 固定阵容", PLAN + "§4.2。\n\n- [ ] raid_defense 表与服务器校验\n- [ ] App 设置页\n- [ ] 变化时上报 defense(rating、device)\n- [ ] 换周清装备、保留龟和站位"),
+    ("11-11 拥有 + 限免 + 按龟等级 + 升级", PLAN + "§4.3。\n\n- [ ] player 接口与 mainsite_pets\n- [ ] 限免 7 只\n- [ ] 按龟等级 R1\n- [ ] 升级系统与 pet-level\n- [ ] 等级盖章"),
+    ("11-12 偷袭任务与网页播放器, 开发完成", PLAN + "§4.4、§4.5。\n\n- [ ] 建任务接口: 验签、幂等、10 秒回包\n- [ ] 裁判 raid 模式\n- [ ] started / settle / void, 发件箱重试\n- [ ] 超时与 expireAt\n- [ ] raid_on 总开关\n- [ ] 网页播放器上内测\n- [ ] App 全页面无龟币金额(门禁)"),
+    ("11-13 ~ 11-14 联调, 出 0.23.0", PLAN + "§6。\n\n- [ ] 方案 §8 第 2 步全流程\n- [ ] 合 main\n- [ ] 0.23.0 tag 与提审"),
+    ("11-16 上线", PLAN + "§4.7。正式服写入与部署都要用户点头。\n\n- [ ] 正式服迁移\n- [ ] 网关上线\n- [ ] econ_on\n- [ ] 换正式地址和密钥\n- [ ] 过审后强制更新\n- [ ] 主站开总开关"),
 ]
 
 
