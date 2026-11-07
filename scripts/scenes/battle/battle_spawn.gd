@@ -7,6 +7,7 @@ extends RefCounted
 ## 原默认 120 会让无名召唤物比大多数龟都快, 与"近战>远程"的结构保证冲突。
 ## 有明确设计理由的召唤物照旧各自硬写(水晶球90 / 海盗船40 —— 注释里有出处)。
 const SUMMON_DEFAULT_SPD := 100.0
+const _BE := preload("res://scripts/net/backend.gd")
 const _TUT_BUFF := preload("res://scripts/systems/onboarding/tutorial_buff.gd")   # 新手教程加成(只在教程那一把生效)
 
 var battle
@@ -283,7 +284,7 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 				elite = false                                   # 援军小将永远不是精英
 			minion_seen += 1
 			var mlv: int = lvl
-			if side == "left": mlv += int(u.get("temp_lv", 0))   # 临时等级器用在小将身上(糖果罐战利品·记在阵容格子上)
+			mlv += clampi(int(u.get("temp_lv", 0)), 0, 10)   # 临时等级器用在小将身上(糖果罐战利品·记在阵容格子上); 右方的快照同样带(2026-11-06)
 			made = _make_unit("__minion__", side, pos, {"minion": true, "role": role, "elite": elite, "level": mlv, "battles": int(u.get("battles", 0))})
 		if u.has("hp_frac"):   # 幸存带血进终极
 			made["hp"] = maxf(1.0, made["maxHp"] * clampf(float(u["hp_frac"]), 0.05, 1.0))
@@ -502,6 +503,8 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	var _lvl: int = maxi(1, battle._unit_level(side))
 	if side == "left" and not is_minion and not is_egg and not is_trainer and GameState != null:   # 临时等级器(糖果罐战利品·封板L402): 玩家方该龟本大轮永久+N级(切轮重置)
 		_lvl += GameState.temp_level_bonus(id)
+	elif side == "right" and not is_minion and not is_egg and not is_trainer and GameState != null and battle._is_dual_lane_mode():
+		_lvl += _BE.ghost_temp_level(GameState.dual_ghost, id)   # 对手的临时等级器(2026-11-06, 两边同一条规则)
 	# ★训龟大师不吃等级缩放: 用户给的 500/1/0/0 是【定值】, 缩放会让"伤害降为1"之外的
 	#   血量随大轮涨, 与"场外监视者"的设定不符。
 	if _lvl > 1 and not is_minion and not is_egg and not is_trainer:
@@ -676,7 +679,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				u["hp"] = maxf(1.0, u["hp"] - u["maxHp"] * GamblerSystem.WHEEL_HP_COST)   # 登场损30%当前血(=30%maxHp·上限不变)
 				u["multi_base"] = GamblerSystem.MULTI_WHEEL                              # 永久基础多重概率40%→60%(与赌注+20%叠加可到80%)
 				battle._vfx._float_text(u["pos"] + Vector2(0, -64), "命运之轮 -30% 生命值", Color("#ff5566"))
-				if u["side"] == "left": battle._gambler_sys._gambler_apply_wheel_stacks(u)   # 跨场累积: 登场套用本大轮已抽花色(切轮重置·方案B·只玩家)
+				battle._gambler_sys._gambler_apply_wheel_stacks(u)   # 跨场累积: 登场套用本大轮已抽花色(切轮重置·方案B); 右方读对手快照(2026-11-06, 两边同一条规则)
 		"pirate":
 			var es = battle._targeting._pick_enemies_of(u)
 			if not es.is_empty():

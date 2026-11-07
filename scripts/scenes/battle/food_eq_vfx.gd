@@ -747,43 +747,8 @@ func cream_shell_free(h: Dictionary) -> void:
 	h["spr"] = null
 
 
-## 特殊护盾段在【血条局部坐标】里的位置与宽度(071 奶油段 / 072 终极段共用的纯函数)。
-## 返回 [x0, w]: 从「当前生命 + 前面已画的段」右端起画, 长度 = 本段余额 / 最大生命, 钳在条内。
-## ★为什么画在血条上: 068 法力盾定过规矩(用户 2026-08-11「应该是给一个特殊颜色护盾条,
-##   这是特殊护盾」——hp_bar 的法力蓝第四段)。奶油盾/终极盾同是 SpecialBalance 余额,
-##   不进 u["shield"] ⇒ 血条上原本【完全没有】它们的读数, 玩家无从得知盾还剩多少。
-##   hp_bar.gd 是别人的地盘 ⇒ 照 070 灰条的既有做法: 运行时往 bar_root 加 ColorRect,
-##   几何走本纯函数, 门禁量真实节点。`before` = 排在本段前面的其他余额合计(段与段不重叠)。
-static func shield_seg_rect(bar_w: float, hp: float, maxhp: float, before: float, val: float) -> Array:
-	var m: float = maxf(maxhp, 1.0)
-	var x0: float = bar_w * clampf((maxf(hp, 0.0) + maxf(before, 0.0)) / m, 0.0, 1.0)
-	var w: float = bar_w * clampf(val / m, 0.0, 1.0)
-	return [x0, minf(w, maxf(0.0, bar_w - x0))]
-
-
-## 071 奶油护盾段(奶油白黄): 挂在单位自己的血条上, 每帧由 _cream_tick 的友军巡回喂值。
-## 排序: 排在 070 灰条之后(灰条语义是"会回来的血", 更贴 hp; 盾类靠外)。
-func cream_bar_update(u: Dictionary, val: float) -> void:
-	var root = u.get("bar_root", null)
-	if not is_instance_valid(root):
-		return
-	var rect = u.get("_cream_rect", null)
-	if not is_instance_valid(rect):
-		rect = ColorRect.new()
-		rect.name = "CreamShield"
-		## ★奶黄(炼乳金) —— 特意压深饱和度(2026-08-11 用户点名要奶油护盾条):
-		##   圣盾段是淡白黄 #FFF4C0、普通盾段是灰白, 若取"奶油白"会和这两段都撞脸;
-		##   炼乳本来就是金奶色, #FFD98F 一眼分得开(hp_bar._HOLY_L 对照)。
-		rect.color = Color(1.0, 0.85, 0.56, 0.95)
-		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		rect.z_index = 3
-		root.add_child(rect)
-		u["_cream_rect"] = rect
-	var before: float = battle._spec.val(u, EqFoodBatch.KEY_GREY)
-	var g: Array = shield_seg_rect(float(battle.BAR_W), float(u["hp"]), float(u["maxHp"]), before, val)
-	rect.position = Vector2(float(g[0]), 8.0)
-	rect.size = Vector2(float(g[1]), float(battle.BAR_H))
-	rect.visible = val > 0.5 and u.get("alive", false)
+## ⛔ 这里曾经是 `cream_bar_update()`(071 奶油盾自画一条 ColorRect)。2026-11-06 改走 HpBar(镜像 `_creamShieldVal`)后删掉:
+##   它按 maxHp 算段起点 ⇒ 满血时段宽恒为 0(玩家反馈「奶油护盾显示肯定有问题」), 也不进 HpBar 的 _bm, 和普通盾段互相盖。072 在 8 月修过同一个问题。
 
 
 ## 破壳: Taylor–Culick 洞缘恒速张开(r 线性), 边缘卷入质量 ∝ r²(所以越张越粗)。
@@ -968,7 +933,6 @@ func unbox_smoke(u: Dictionary) -> Array:
 
 
 ## 072 终极护盾段(礼盒粉): 挂在携带者血条上, 每帧由 _box_tick 喂真实余额。
-## 与 071 奶油段共用 shield_seg_rect 这把尺; 排序在灰条/奶油段之后(段与段不重叠)。
 ## ⛔ 这里曾经是 `ult_bar_update()`(072 终极盾自画一条 ColorRect)。
 ##   2026-08-12 改走 HpBar(镜像 `_ultShieldVal`)后**零调用者** ⇒ 删掉, 不留空壳:
 ##   零调用者的死函数会被"断言函数存在"型门禁保护住(memory [[fb-verify-must-run-the-real-path]])。

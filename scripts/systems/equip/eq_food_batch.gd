@@ -387,7 +387,7 @@ func _cream_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
 		## ★盾量进血条(2026-08-11 补验收): 奶油盾是 SpecialBalance 余额, 不进 u["shield"] ⇒
 		##   血条上原本【没有任何读数】—— 玩家看得见壳、看不见"还剩多少/破没破"。
 		##   照 068 法力盾的规矩(特殊护盾给特殊颜色护盾条)每帧喂真实余额, 0 时自动隐藏。
-		_vfx.cream_bar_update(o, cv)
+		o["_creamShieldVal"] = cv
 		var osh = o.get("_cream_shell", null)
 		if not (osh is Dictionary):
 			continue

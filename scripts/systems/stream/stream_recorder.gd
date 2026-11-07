@@ -70,7 +70,7 @@ const UKEYS := ["_active_cd", "_anemoneShield", "_appearance", "_atk_voff", "_au
 	"_holyShieldVal", "_initDef", "_isEgg", "_lavaRage", "_lavaShieldVal", "_manaShieldVal", "_manual_anim",
 	"_mark_until", "_ms_stacks", "_ninja_dash_until", "_ninja_mark_pulse", "_phase_ai_t", "_slam_voff", "_starEnergy",
 	"_stoneDefGained", "_tr_active", "_tr_face", "_tr_passive", "_tr_speed", "_tr_throw_t0", "_tr_throw_until",
-	"_tr_throw_vec", "_ultShieldVal", "baseDef", "base_def",
+	"_tr_throw_vec", "_creamShieldVal", "_ultShieldVal", "baseDef", "base_def",
 	"baton_zap_until", "bubbleShieldVal", "bubbleStore", "bubble_store", "def", "energy", "energyMaxStorePct",
 	"face_right", "flash_col", "flash_t", "height", "hp", "is_big_bear", "is_summon", "is_trainer",
 	"magic_shield", "maxChargePct", "maxEnergy", "maxHp", "phase_until", "pos", "rage", "rageMax", "rum_glow_until",

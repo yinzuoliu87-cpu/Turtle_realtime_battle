@@ -277,7 +277,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 			tref["_consuming"] = false
 			tref["hp"] = float(tref["maxHp"]) * 0.18
 			tref["_devour_k"] = 0.0
-		elif tref.get("alive", false):
+		elif tref.get("alive", false) and not battle._damage.execute_saved(tref):
 			battle._kill(tref, uu)                                        # 正常击杀管线(统计/死亡钩子照走)
 		battle._damage._heal(uu, heal_amt)                                        # 回复=吞噬瞬间目标剩余HP×2(用户2026-07-19)
 		uu["haste_until"] = battle._t + CONSUME_HASTE_SEC; uu["haste_mult"] = 1.0 + CONSUME_ASPD_BONUS       # 吞噬完成: 5秒+50%攻速(用户2026-07-19)

@@ -258,7 +258,7 @@
     "baseStats1": "+攻8/15/25·+10%龟能充能速率",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "每 {C:EquipSystem.EMBER_IV} 秒向最近的敌人抛出一个火瓶，命中时造成 40/60/100 真实伤害，施加（20/35/60 + 10/15/20% 攻击力）层灼烧，并施加【真火】，持续 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒。【真火】使目标受到的灼烧伤害转为真实伤害。",
+    "effectDesc1": "每 {C:EquipSystem.EMBER_IV} 秒向最近的敌人抛出一个火瓶，命中时造成 40/60/100 真实伤害，施加（20/35/60 + 10/15/20% 攻击力）层灼烧，并施加【真火】，持续 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒。【真火】使目标受到的灼烧伤害转为真实伤害，对龟蛋的灼烧伤害降低 {C:EquipSystem.EMBER_TRUEFIRE_EGG_REDUCE}%。",
     "effectDesc3": "",
     "img": "equip/ember-flask.png",
     "effectBrief": "每 {C:EquipSystem.EMBER_IV} 秒抛出火瓶，造成 40/60/100 真实伤害并施加真火，持续 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒。"

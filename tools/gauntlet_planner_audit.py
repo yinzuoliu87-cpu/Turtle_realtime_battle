@@ -1304,6 +1304,20 @@ def main():
        P.fill_exit_on_pair({}, SAT0 + win - 1, CLOSE) and not P.fill_exit_on_pair({}, SAT0 + win + 1, CLOSE)
        and not P.fill_exit_on_pair({'FILL_EXIT_ON_PAIR': False}, SAT0 + 10, CLOSE)
        and P.fill_exit_on_pair({'FILL_EXIT_ON_PAIR_SEC': -1}, CLOSE - 60, CLOSE))
+    ## ⑳ 空转冷却(11-07 周六 p38 一个号被拉 680 次: 进程查格子对不上就退, 账本不动, 调度器下一拍再拉)
+    led = {}
+    bb = [{'account_id': 'x', 'gw': 1, 'gl': 1}, {'account_id': 'y', 'gw': 1, 'gl': 1}]
+    for k in range(3):
+        P.note_launch(led, 'x', 2, 1000.0 + k * 23.0, {})
+    ok('⑳ 连拉 3 次局数没涨 ⇒ 冷却', P.dud_ids(led, bb, 1100.0, {}) == {'x'}, str(led))
+    ok('⑳ 只拉过 2 次不冷却(分母)', not P.dud_ids({'x': {'g': 2, 't': 1000.0, 'n': 2}}, bb, 1100.0, {}))
+    ok('⑳ 局数涨了就不算(账本动了)', not P.dud_ids(led, [{'account_id': 'x', 'gw': 2, 'gl': 1}], 1100.0, {}))
+    ok('⑳ 冷却到期放开', not P.dud_ids(led, bb, 1046.0 + P.DEFAULTS['DUD_COOL_SEC'] + 1.0, {}))
+    l2 = {'x': {'g': 2, 't': 1000.0, 'n': 3}}
+    P.note_launch(l2, 'x', 2, 1000.0 + P.DEFAULTS['DUD_WINDOW_SEC'] + 1.0, {})
+    ok('⑳ 隔得久了重新数', l2['x']['n'] == 1, str(l2))
+    src = open(P.__file__, encoding='utf-8').read()
+    ok('⑳ decide 真的跳过冷却号、one_tick 真的记账(不是写了没人读)', "elif bid in dud:" in src and "st['dud'] = dud_ids(" in src and 'note_launch(led, bid,' in src)
     ok('⑲ 配上就下线不超并发(同时在线最多 %d ≤ 4)、拉号 / 配对合规' % a_mx,
        a_mx <= 4 and all(r['nviol'] == 0 for r in u3 + nu3), str([r['viol'] for r in u3 + nu3 if r['nviol']][:2]))
 

@@ -941,31 +941,11 @@ func _t_vfx_art() -> void:
 		_ok("⑦-6f 071 壳贴图 NEAREST 采样(像素感, 不糊)",
 			shs.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST, "")
 	vfx.cream_shell_free(shh)
-	# ⑦-6g 071 奶油护盾进血条(特殊护盾给特殊颜色护盾条 —— 068 法力盾定的规矩):
-	#   量真实 ColorRect 的位置/宽度, 0 时必须隐藏
-	var cbu: Dictionary = _mk("fortune", "left", Vector2(560.0, -250.0), 1000.0)
-	cbu["hp"] = 500.0
-	vfx.cream_bar_update(cbu, 200.0)
-	var crect = cbu.get("_cream_rect", null)
-	var croot = cbu.get("bar_root", null)
-	_ok("⑦-6g 071 奶油盾段真的是血条 Control 的子节点",
-		is_instance_valid(crect) and is_instance_valid(croot) and is_same(crect.get_parent(), croot)
-		and crect.is_inside_tree(), "")
-	if is_instance_valid(crect):
-		_ok("⑦-6h 071 ★量真实节点: hp 50%% / 盾 20%% ⇒ x=33.0 宽=13.2(血条宽 66)",
-			absf(crect.position.x - 33.0) < 0.51 and absf(crect.size.x - 13.2) < 0.51,
-			"x=%.2f w=%.2f" % [crect.position.x, crect.size.x])
-		vfx.cream_bar_update(cbu, 0.0)
-		_ok("⑦-6i 071 ★分母: 盾 0 时段隐藏(不留空条)", not crect.visible, "")
-	# ⑦-6j 段几何纯函数: 排在 before 之后 + 钳在条内(供 072 终极盾段共用同一把尺)
-	var sg: Array = FoodEqVfx.shield_seg_rect(66.0, 500.0, 1000.0, 200.0, 300.0)
-	_ok("⑦-6j 071 段几何: hp 50%% + 前段 20%% + 本段 30%% ⇒ x0=46.2 宽=19.8",
-		absf(float(sg[0]) - 46.2) < 0.01 and absf(float(sg[1]) - 19.8) < 0.01,
-		"x0=%.2f w=%.2f" % [float(sg[0]), float(sg[1])])
-	var sg2: Array = FoodEqVfx.shield_seg_rect(66.0, 900.0, 1000.0, 0.0, 800.0)
-	_ok("⑦-6k 071 段几何 ★钳在血条内: 盾比余量多时不画出右边界",
-		float(sg2[0]) + float(sg2[1]) <= 66.0 + 0.01,
-		"x0=%.2f w=%.2f" % [float(sg2[0]), float(sg2[1])])
+	# ⑦-6g 071 奶油护盾进血条(2026-11-06 改走 HpBar 标准路线: 镜像 `_creamShieldVal`, 满血时血条让位; 判据在 verify_execute_respects_floor H 段)
+	var cbu: Dictionary = _equip(_mk("fortune", "left", Vector2(560.0, -250.0), 1000.0), "p2eq_071", 3)
+	_food.tick_unit(cbu, 0.016)
+	_ok("⑦-6h 071 ★奶油盾量每帧镜像进 _creamShieldVal(满血也有)", float(cbu.get("_creamShieldVal", 0.0)) > 1.0,
+		"镜像 %.1f" % float(cbu.get("_creamShieldVal", 0.0)))
 	# ⑦-6l~6m 壳【不随盾量缩小】+ 破盾走【炸开】(2026-08-11 用户钉死:「不要做那种被打缩小的」)
 	var nsu: Dictionary = _equip(_mk("fortune", "left", Vector2(600.0, -250.0), 1000.0), "p2eq_071", 3)
 	_food.tick_unit(nsu, 0.016)
@@ -986,12 +966,11 @@ func _t_vfx_art() -> void:
 		_count_live_kind("tc") == live_tc0 + 1 and not nsu.has("_cream_shell"),
 		"tc句柄 %d→%d · 壳键还在=%s" % [live_tc0, _count_live_kind("tc"), str(nsu.has("_cream_shell"))])
 	# ⑦-6n 盾条颜色 = 奶黄(炼乳金): 与圣盾白黄段 #fff4c0 拉得开(用户点名要分得清的特殊护盾条)
-	if is_instance_valid(crect):
-		var cc: Color = crect.color
-		var d_holy: float = absf(cc.r - 1.0) + absf(cc.g - 0.957) + absf(cc.b - 0.753)
-		_ok("⑦-6n 071 盾条是奶黄(R1.0 G0.85 B0.56)且与圣盾白黄距离 > 0.15",
-			absf(cc.r - 1.0) < 0.02 and absf(cc.g - 0.85) < 0.02 and absf(cc.b - 0.56) < 0.02
-			and d_holy > 0.15, "实测 (%.2f, %.2f, %.2f) · 与圣盾差 %.3f" % [cc.r, cc.g, cc.b, d_holy])
+	var cc: Color = load("res://scripts/scenes/hp_bar.gd")._CREAM_L
+	var d_holy: float = absf(cc.r - 1.0) + absf(cc.g - 0.957) + absf(cc.b - 0.753)
+	_ok("⑦-6n 071 盾条是奶黄(R1.0 G0.85 B0.56)且与圣盾白黄距离 > 0.15",
+		absf(cc.r - 1.0) < 0.02 and absf(cc.g - 0.85) < 0.02 and absf(cc.b - 0.56) < 0.02
+		and d_holy > 0.15, "实测 (%.2f, %.2f, %.2f) · 与圣盾差 %.3f" % [cc.r, cc.g, cc.b, d_holy])
 
 	# ⑦-7 072 嘲讽环: 半径 = 550 码, 亮度随锁定人数升
 	var bx: Dictionary = _equip(_mk("fortune", "left", Vector2(500.0, 200.0), 2000.0), "p2eq_072", 3)

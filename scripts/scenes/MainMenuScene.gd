@@ -2,7 +2,7 @@ extends Control
 
 ## MainMenuScene — 主菜单, 1:1 PoC MainMenuScene.ts 布局.
 ## 设计台 1280×720. 标题menu-title图@(240,130) / 左栏btn-frame按钮(360×87)中心x=240 /
-## 右上货币芯片(裸图标+数字) + 左列 5 颗方键(背包/商店/图鉴/排行榜/好友).
+## 右上货币芯片(裸图标+数字) + 左列 4 颗方键(背包/商店/图鉴/排行榜) + 右上好友小图标键(menu_friends_tile.gd).
 
 ## 商店按钮的文字。★它同时是【商店锁的判别式】(下面 `str(s[0]) == SHOP_LABEL`) ——
 ##   所以必须是一个常量, 不能两处各写一遍字面量: 改了按钮名字而漏改判别式,
@@ -25,6 +25,7 @@ const _AM := preload("res://scripts/systems/replay/abandoned_match.gd")
 const _SET := preload("res://scripts/scenes/SettingsScene.gd")
 ## 冠军/亚军/四强头衔的发放链住在对阵图那侧(`record_progress_from`), 主菜单只喂 feed 调它。
 const _BMS := preload("res://scripts/scenes/BracketMapScene.gd")
+const _FT := preload("res://scripts/scenes/menu_friends_tile.gd")   # 右上好友小图标键(2026-11-06 从左列挪来)
 
 const W := 1280
 const H := 720
@@ -537,7 +538,7 @@ func _sq_y(i: int) -> float:
 
 
 ## 建主菜单的可点元素 (2026-10-05 第三轮「手游大厅骨架」, 见文件头):
-##   左列  背包 / 商店 / 图鉴 / 排行榜 / 好友   —— 方形图标键, 图标在上、字在下, 带红点槽
+##   左列  背包 / 商店 / 图鉴 / 排行榜   —— 方形图标键, 图标在上、字在下, 带红点槽(好友 11-06 挪到右上小图标键)
 ##   右下  训龟大师(铁箍木板, 小一档) + 开始战斗(木框 + 亮黄面, 全屏最大)
 ## ★`now` = 本屏那一刻(`_ready` 传)。**商店锁就指这一刻** —— 不传的话
 ##   `ranked_quota_full()` 兜底去读真实系统钟, 于是本屏就有两条钟
@@ -561,9 +562,6 @@ func _build_page_buttons(now: int = 0) -> void:
 		[SHOP_LABEL, func(): _open_shop(), mic + "ic-shop.png", shop_locked],
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png", false],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png", false],
-		## ★2026-10-24 好友(用户 10-23 选「主菜单加「好友」键」, 方案书 docs/plans/20261023-好友切磋.md): 加好友 + 切磋。
-		##   5 × 100 + 4 × 8 = 532 ⇒ 144..676, 屏高 720 内; 图标新画(menu/ic-friends.png), 不复用。
-		["好友", func(): _go("Friends"), mic + "ic-friends.png", false],
 	]
 	## 锁着的那颗底边常驻一行短原因(不点也看得见) —— 只有商店有自己的锁(本大轮首战后开)。
 	## ★2026-10-23 拿掉了「新手逐个点亮」(NoviceMenu: 走完教程的号 1 场后亮背包 / 2 场后亮图鉴等):
@@ -1106,6 +1104,7 @@ func _right_column(now: int = 0) -> void:
 	content_root.add_child(help_tile)
 	_mq().dress_help(help_tile)   # 周六排队中压灰 + 锁(menu_queue.gd)
 	_slide_in(help_tile, 2)
+	var fr_x: float = _FT.add(self, help_x, uy)   # ★2026-11-06 好友小图标键在 ? 左边, 货币条再往左(用户「设置的左边」)
 	## ★2026-10-06 照荒野乱斗主大厅右上角(interfaceingame brawl-stars-main-menu / -lobby):
 	##   所有货币挤在【同一条】深色长条里(图标 + 数字, 中间一道分隔), 长条右边紧挨着方形小键, 同高、底边对齐。
 	##   原来两块带尖角的木牌是自己画的, 7 张参考里没有一款这么做(用户「金币框哪个游戏这么做的」)。
@@ -1117,7 +1116,7 @@ func _right_column(now: int = 0) -> void:
 		["res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0), maxi(0, real_c - _wk().withheld()), real_c],
 		["res://assets/sprites/ui/coin.png", Color(0.122, 0.561, 0.247), int(GameState.coins)],
 	])
-	bar.position = Vector2(help_x + (ICON_TAP - ICON_VIS) / 2.0 - CUR_GAP - bar.size.x, slot_y)
+	bar.position = Vector2(fr_x + (ICON_TAP - ICON_VIS) / 2.0 - CUR_GAP - bar.size.x, slot_y)
 	content_root.add_child(bar)
 	_slide_in(bar, 0)
 	_status_row(now)       # 左上玩家信息卡

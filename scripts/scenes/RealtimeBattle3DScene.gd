@@ -1491,8 +1491,7 @@ func _dual_foe_lane(lane: String) -> Array:
 						var meq = (m as Dictionary).get("equips", null)   # 对手小将装备(用户2026-07-18)→_spawn_lane_side转_dl_equips注入
 						if meq is Array and not (meq as Array).is_empty():
 							mspec["equips"] = (meq as Array).duplicate(true)
-						if (m as Dictionary).get("off") is Array:
-							mspec["off"] = ((m as Dictionary)["off"] as Array).duplicate()
+						Backend.ghost_minion_extras(m, mspec)
 						specs.append(mspec)
 				return _foe_normalize_lane(specs)               # ★每路规整到3单位=minions(3-统领)·与玩家同(用户2026-07-18)
 	# 兜底 bot(无快照/冷启动): 每路3单位·上路2统领+1小将 / 下路1统领+2小将(normalize补齐·与玩家默认同·用户2026-07-18)
@@ -1520,7 +1519,7 @@ func _dual_foe_lane(lane: String) -> Array:
 
 # ── 双路流程控制 (P4: 团灭→破蛋10s窗口→结束; P5 升级为 top→bottom→final 分路推进) ──
 # 团灭判定排除的【惰性】召唤(否则续着卡死破蛋窗口); 战斗型召唤(大熊/海螺虫/骷髅/小将/机甲/浮游炮)算存活→用户2026-07-11「还在打召唤物别突然弹下一战场」
-const _DL_INERT_SUMMON := {"candybomb": true, "crystalball": true}
+const _DL_INERT_SUMMON := {"candybomb": true}   # 水晶球 11-06 移出: 用户 07-16 定「不随主人阵亡, 继续战斗」, 这张表当时没跟着改
 func _snapshot_world_permanent() -> void:   # 记录建场阶段的 _world 子节点(相机/灯光/地砖/竞技场环等)
 	_world_permanent.clear()
 	if not is_instance_valid(_world): return
@@ -6479,7 +6478,7 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 				dmg = stacks + roundi(max_hp * stacks * CombatMath.STACK_DOT_MAXHP_PCT)
 				new_val = CombatMath.decay_stacks(stacks)   # 衰减80%(用户)
 				if _t < u.get("true_fire_until", 0.0):
-					_damage._apply_damage(u, dmg, Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
+					_damage._apply_damage(u, EquipSystem.truefire_burn_dmg(u, dmg), Color("#ffffff"), u.get("dot_src", {}).get("burn", null), "tru", false, true)   # 真火: 灼烧转真伤(原走_raw_lose→无飘字无统计·用户2026-07-19)
 				else:
 					_damage._apply_damage(u, _damage._dot_after_resist(u, float(dmg), true, u.get("dot_src", {}).get("burn", null)), Color("#4dabf7"), u.get("dot_src", {}).get("burn", null), "mag", false, true)   # 灼烧=魔法伤害·吃魔抗
 			"poison":

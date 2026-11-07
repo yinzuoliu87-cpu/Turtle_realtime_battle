@@ -12,6 +12,7 @@
   python tools/ship.py <主题>            # 推 HEAD 到 wip/<主题>, 立刻返回
   python tools/ship.py <主题> --wait     # 推完等 CI 结论(每 60 秒查一次, 最多 40 分钟); 红了打印失败测试与日志尾
   python tools/ship.py --status          # 看 HEAD 这个提交在 CI 上的状态
+  ★推之前先过 python tools/precheck.py(11-06 起强制; 只改文档免; 紧急绕过 --no-precheck)
 前提: 工作区干净(未提交的改动不会被验, 拒绝推); HEAD 是 origin/main 的后代(否则 CI 绿了也快进不了)。
 令牌: Git 凭据管理器里取(不打印); 本机代理会改写请求, 一律绕开(ProxyHandler({}))。
 """
@@ -73,6 +74,13 @@ def main() -> int:
 		return 2
 	if git("status", "--porcelain", "--untracked-files=no"):
 		print("✗ 工作区有没提交的改动 —— CI 只验提交过的东西, 先提交")
+		return 1
+	## ★没过本机预检不许推(用户 11-06「跑个十分钟 CI, 找个小问题, 又跑个十分钟 CI …我不觉得这是很好的呀」): 只改文档的提交不用过
+	code = [f for f in git("-c", "core.quotepath=off", "diff", "--name-only", "origin/main", "HEAD").splitlines() if not f.startswith("docs/") and not f.endswith(".md")]   # quotepath: 中文文件名否则被转义成带引号的八进制, 文档提交会被当成代码
+	stamp = os.path.join(ROOT, ".out", "precheck_ok")
+	done = open(stamp, encoding="utf-8").read().strip() if os.path.exists(stamp) else ""
+	if code and done != head and "--no-precheck" not in sys.argv:
+		print("✗ 这个提交没过本机预检 —— 先跑 python tools/precheck.py(CI 不是用来找小错的)")
 		return 1
 	git("fetch", "-q", "origin", "main")
 	if subprocess.run(["git", "merge-base", "--is-ancestor", "origin/main", "HEAD"], cwd=ROOT).returncode != 0:

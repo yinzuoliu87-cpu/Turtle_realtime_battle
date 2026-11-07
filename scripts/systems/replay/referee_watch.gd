@@ -47,6 +47,7 @@ extends RefCounted
 ##  与战斗内铸币的待取单(`claim_finals_coins`: 翻面后按服务器给的数发, 2026-10-20)
 ## ══════════════════════════════════════════════════════════════════════
 
+const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
 const SB := preload("res://scripts/net/supabase.gd")
 const RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
@@ -242,6 +243,8 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 	gs.meta_deepsea_coins += reward
 	apply_chest(gs, st.get("chest", {}))   # 服务器那一局里宝箱龟攒的财宝值 / 开出的战利品(2026-10-22b)
 	apply_incense(gs, st.get("incense", {}))   # 服务器那一局里 093 香火石的刻痕 / 充能(2026-10-23)
+	apply_axe_kills(gs, st)                    # 服务器那一局里斧头的击杀 + 助攻(2026-11-06)
+	apply_wheel(gs, st)                        # 服务器那一局里命运之轮新抽到的花色(2026-11-06)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -625,6 +628,8 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 		if n >= 0 and int(t.get("week", 0)) == P2C.week_anchor_utc(int(P2C.now_utc())):
 			var ch_c: bool = apply_chest(GameState, res.get("chest", {}))
 			var in_c: bool = apply_incense(GameState, res.get("incense", {}))   # 093 香火石(2026-10-23), 同一张单子同一道闸
+			apply_axe_kills(GameState, res)
+			apply_wheel(GameState, res)
 			if ch_c or in_c:
 				GameState.save()
 	else:
@@ -710,6 +715,28 @@ static func adopt_ranked_ledger(gs, led: Dictionary) -> bool:
 	return changed
 
 
+## 服务器那一局我方斧头的击杀 + 助攻 ⇒ 发砍伐经验(与本机打时 AxeSystem.on_death 同一个数 EXP_ON_KILL)。
+##   ★服务端没传这个键(迁移没上 / 老裁判)⇒ 0, 什么都不发。服务端回的是「我这一侧」(B 方取 axe_kills_b, 回包按视角换好)。
+##   上限只防回包异常: 一局不可能超过场上单位数的量级。
+static func apply_axe_kills(gs, st: Dictionary) -> bool:
+	var n := clampi(int(st.get("axe_kills", 0)), 0, 200)
+	if n <= 0:
+		return false
+	gs.axe_add_exp(n * AE.EXP_ON_KILL)
+	return true
+
+
+## 服务器那一局我方命运之轮新抽到的花色 ⇒ 累积进本大轮存档(设计: 一大轮内逐渐成长, 换轮清零)。
+##   ★服务端没传这个键(迁移没上 / 老裁判)⇒ 什么都不发。服务端回的是「我这一侧」(B 方取 wheel_new_b, 回包按视角换好)。
+static func apply_wheel(gs, st: Dictionary) -> bool:
+	var w = st.get("wheel_new", {})
+	if not (w is Dictionary) or (w as Dictionary).is_empty():
+		return false
+	for k in w:
+		gs.gambler_wheel_stacks[k] = int(gs.gambler_wheel_stacks.get(k, 0)) + int(w[k])
+	return true
+
+
 ## ★记账(积分赛口径)。由 `settle` 按单子上的 kind 分进来(任务号已核对)。
 ##   与 `_settle_season` 积分赛那一支逐项对照:
 ##     lose_heart / season_total_battles += 1 / consume_ranked_quota / season_wins / season_eggs_killed / season_sweeps
@@ -746,6 +773,8 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 	gs.meta_deepsea_coins += reward
 	apply_chest(gs, st.get("chest", {}))
 	apply_incense(gs, st.get("incense", {}))
+	apply_axe_kills(gs, st)
+	apply_wheel(gs, st)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -775,7 +804,9 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 ## 主菜单开着时按服务端账本对一次本机(积分赛开关开着、没有挂着的待记账单时)。`done.call(changed: bool)` 问到才调。
 ##   返回 false = 没发(开关关 / 有单子 / 没配后端)。
 static func sync_ranked_ledger(done: Callable = Callable()) -> bool:
-	if GameState == null or not ranked_on() or has_pending():
+	## ★只在积分赛阶段对: 服务端账本只有积分赛那几场, 周六 / 周日本机的场次与胜场还含闯关 / 决赛 ⇒ 对一次就被覆盖回去
+	##   (2026-11-06 探针: 17 场 12 胜 → 16 场 11 胜; 货架因此不换货, 援军小将的场次加成少算)。
+	if GameState == null or not ranked_on() or has_pending() or P2C.phase_at_utc(int(P2C.now_utc())) != P2C.PHASE_RANKED:
 		return false
 	var wk := P2C.week_anchor_utc(int(P2C.now_utc()))
 	return RN.ranked_ledger_async(wk, func(res: Dictionary) -> void:

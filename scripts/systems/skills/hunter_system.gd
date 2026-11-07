@@ -249,7 +249,7 @@ func _hunter_exec_arrow_hit(src, tgt) -> void:   # 强化箭命中: 目标仍<�
 		_hunter_apply_steal(src, tgt)
 		tgt["hp"] = float(tgt["maxHp"]) * 0.12
 		return
-	if float(tgt.get("deathfloor_until", 0.0)) > battle._t:   # 临时免死(亡灵等)→免疫处决(命中但不斩)
+	if battle._damage.execute_saved(tgt):   # 临时免死(亡灵等, 含亡灵还没触发的首次致命)→免疫处决(命中但不斩)
 		battle._vfx._hit_spark(tgt); return
 	_hunter_execute_fx(tgt)
 	battle._vfx._float_text(tgt["pos"] + Vector2(0, -40), "处决", Color("#ffd700"))

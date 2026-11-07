@@ -110,9 +110,12 @@ const RANKED := {
 	##   积分赛读池 / 挑对手的流程不受影响。基线单独钉到 d2d21816(其余文件仍比 84d2d853):
 	##   84d2d853→d2d21816 这 55 个函数里只变了 save_pool 一个, 且这次没有新增函数 ⇒「周六专用只从闯关日可达」那条查的集合不变。
 	##   旧摘要用同一口径复算 84d2d853 得 354eb647…, 与原表一致; 新摘要从 git show d2d21816 现算。
+	## ★2026-11-06 临时等级器进服务器局(提交 15185ba0): build_ghost_snapshot 只在**用过**临时等级器时多带 temp_levels / 小将 temp_lv,
+	##   没用过的快照一字不变(verify_bot_snapshot_shape 守); 55 个函数里只变这一个, 没有挪走函数 ⇒ 判据不变松。基线 d2d21816 ⇒ 15185ba0, 摘要现算。
+	## ★2026-11-06 命运之轮进服务器局(提交 ee59a074): build_ghost_snapshot 只在抽过时多带 wheel_stacks, 没抽过的快照一字不变; 只变这一个函数, 判据不变松。
 	"scripts/net/backend.gd": {
-		"base": "d2d21816",
-		"digest": "f8d6af675f7e1b9d809ded1d835624f34bff155e7647988c1e82c50da0afe52c",
+		"base": "ee59a074",
+		"digest": "fa0b601d03c726b04c7ea87b6fec2b15712b3735f23e685072f7b21d8c2703ed",
 		"views": {},
 		"sat_only": [],
 		"units": [
@@ -1210,7 +1213,7 @@ func _t_v() -> void:
 	hits.sort()
 	_ok("V ★静态: 代码里写出 side=b 的只有 referee_watch.gd(watch_names)与 RecordScene.gd(我在右边那一行)",
 		hits == ["res://scripts/scenes/RecordScene.gd", "res://scripts/systems/replay/referee_watch.gd"], str(hits))
-	var rw := FileAccess.get_file_as_string("res://scripts/systems/replay/referee_watch.gd")
+	var rw := FileAccess.get_file_as_string("res://scripts/systems/replay/referee_watch.gd").replace("\r\n", "\n")   # 行尾归一: 新 worktree 检出成 CRLF
 	_ok("V 静态: watch_names 只在 side == b 时给名字(其余 {} ⇒ 与改之前同一句 play)", rw.contains("if str(view.get(\"side\", \"a\")) != \"b\":\n\t\treturn {}"))
 
 
@@ -1804,24 +1807,30 @@ func _t_s() -> void:
 		str(get_tree().current_scene.scene_file_path) if get_tree().current_scene != null else "")
 	d.queue_free()
 	await _frames(3)
-	## SIM_EXPECT_CELL ①: 本机战绩不在调度器以为的格子 ⇒ 不排, 收工 cell_mismatch
+	## SIM_EXPECT_CELL ①: 本机战绩不在调度器给的格子(取自服务端账本), 也没有挂着的账 ⇒ 对齐到账本再排, 不收工
+	##   (11-07 周六 p38: 本机 1-0、账本 1-1, 原来收工 ⇒ 调度器下一拍再拉, 空转 680 次)
 	_gs.gauntlet_wins = 1
 	_gs.gauntlet_losses = 0
 	_reset_sc({"pair_after": -1, "cancel": "cancelled"})
 	OS.set_environment("SIM_ROUNDS", "1")
 	OS.set_environment("SIM_SKIP_WATCH", "")
 	OS.set_environment("SIM_EXPECT_CELL", "0-2")
+	OS.set_environment("SIM_QUEUE_GIVEUP_SEC", "3")   # 这条没人配对: 排一会儿自己出队收工, 不把在队里的状态留给下一条(下一条数出队次数)
 	j0 = _hit(JOIN)
 	ev0 = _ev_size()
 	d = await _start_driver()
 	t0 = Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 30000 and not bool(d.get("_done")):
+	while Time.get_ticks_msec() - t0 < 40000 and not bool(d.get("_done")):
 		await get_tree().process_frame
+	OS.set_environment("SIM_QUEUE_GIVEUP_SEC", "7")
 	evs = _sim_events(ev0)
-	_ok("S ★SIM_EXPECT_CELL=0-2、本机 1-0 ⇒ 不排(join 0 次)、收工 cell_mismatch", _done_why(evs) == "cell_mismatch" and _hit(JOIN) == j0
-		and _kind_count(evs, "cell_mismatch") == 1, "why=%s join+%d" % [_done_why(evs), _hit(JOIN) - j0])
+	_ok("S ★★SIM_EXPECT_CELL=0-2、本机 1-0、没挂账 ⇒ 对齐账本后照排(join 1 次), 不收工", _hit(JOIN) - j0 == 1 and _kind_count(evs, "cell_adopt") == 1
+		and _kind_count(evs, "cell_mismatch") == 0 and int(_gs.gauntlet_wins) == 0 and int(_gs.gauntlet_losses) == 2,
+		"join+%d adopt=%d mismatch=%d 本机 %d-%d" % [_hit(JOIN) - j0, _kind_count(evs, "cell_adopt"), _kind_count(evs, "cell_mismatch"), int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)])
 	d.queue_free()
 	await _frames(3)
+	_gs.gauntlet_wins = 1
+	_gs.gauntlet_losses = 0
 	## SIM_EXPECT_CELL ②: 本机对得上、服务端账本(进队回的格子)对不上 ⇒ 出队、收工 cell_mismatch
 	_reset_sc({"pair_after": -1, "cancel": "cancelled", "srv_cell": [0, 1]})
 	OS.set_environment("SIM_EXPECT_CELL", "1-0")
