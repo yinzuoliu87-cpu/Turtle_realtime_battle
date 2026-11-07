@@ -17,6 +17,7 @@
   expire <构建号> [--ver x.y.z] [--dry-run] [--force]   作废一份构建（不可撤回）
   group-remove <版本> [--dry-run] [--force]             把这一版的构建撤出公开测试组
         ★默认拒绝：组里没有更高版本、已过审、没作废的构建时（撤了公测玩家就没包可装）
+  tester-add <邮箱> [--dry-run]                         把这个 Apple ID 邮箱加进公开测试组，发 TestFlight 邀请，回读状态
 
 凭据只在本机：~/.config/turtle/secrets/asc.json（key_id / issuer / app_id / public_group）
             + ~/.config/turtle/secrets/AuthKey_<key_id>.p8。令牌不打印、不进仓库。
@@ -30,6 +31,7 @@ import sys
 import time
 import unicodedata
 import urllib.error
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -528,6 +530,51 @@ def cmd_group_remove(a):
     return 0 if not left else 1
 
 
+def tester_of(email, group_id):
+    """按邮箱找测试员。返回 (测试员 id 或 None, 在不在这个组, 状态)。"""
+    data, _ = get_all("/v1/betaTesters?filter[email]=%s&include=betaGroups&limit=50" % urllib.parse.quote(email, safe=""))
+    for t in data:
+        at = t.get("attributes") or {}
+        if (at.get("email") or "").lower() == email.lower():
+            gs = ((t.get("relationships") or {}).get("betaGroups") or {}).get("data") or []
+            return t["id"], any(g.get("id") == group_id for g in gs), at.get("state") or "未知"
+    return None, False, ""
+
+
+def cmd_tester_add(a):
+    global DRY_RUN
+    DRY_RUN = bool(a.dry_run)
+    email = a.email.strip()
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise AscError("邮箱格式不对: %s" % email)
+    gid = cfg()["public_group"]
+    tid, inside, state = tester_of(email, gid)
+    print("现状: %s" % ("不是测试员" if not tid else ("已在公开测试组，状态 %s" % state if inside else "是测试员，不在公开测试组，状态 %s" % state)))
+    if inside:
+        print("已在组里，不重复邀请")
+        return 0
+    if a.dry_run:
+        print("（演练: 会把它加进公开测试组；GET %d 次，写 0 次）" % COUNTS["GET"])
+        return 0
+    if tid:
+        code, js = call("POST", "/v1/betaGroups/%s/relationships/betaTesters" % gid, {"data": [{"type": "betaTesters", "id": tid}]})
+    else:
+        code, js = call("POST", "/v1/betaTesters", {"data": {"type": "betaTesters", "attributes": {"email": email},
+                        "relationships": {"betaGroups": {"data": [{"type": "betaGroups", "id": gid}]}}}})
+    print("加入: %s %s" % (code, "ok" if code < 300 else err(js)))
+    if code >= 300:
+        return 1
+    tid, inside, state = tester_of(email, gid)
+    print("回读: 在公开测试组=%s 状态=%s %s" % (inside, state, "✓" if inside else "✗"))
+    if inside and state == "NOT_INVITED":
+        code, js = call("POST", "/v1/betaTesterInvitations", {"data": {"type": "betaTesterInvitations", "relationships": {
+            "app": {"data": {"type": "apps", "id": cfg()["app_id"]}}, "betaTester": {"data": {"type": "betaTesters", "id": tid}}}}})
+        print("发邀请: %s %s" % (code, "ok" if code < 300 else err(js)))
+        if code >= 300:
+            return 1
+    return 0 if inside else 1
+
+
 def main(argv=None):
     R.stdout_utf8()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -553,6 +600,10 @@ def main(argv=None):
     x.add_argument("--force", action="store_true")
     x.add_argument("--dry-run", action="store_true")
     x.set_defaults(fn=cmd_group_remove)
+    x = sp.add_parser("tester-add", help="把 Apple ID 邮箱加进公开测试组并发邀请")
+    x.add_argument("email")
+    x.add_argument("--dry-run", action="store_true")
+    x.set_defaults(fn=cmd_tester_add)
     a = ap.parse_args(argv)
     try:
         return a.fn(a)
