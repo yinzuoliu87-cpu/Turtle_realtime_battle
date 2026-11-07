@@ -525,6 +525,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				rst.chain().tween_callback(rs.queue_free)
 		, 0.0, 1.0, 2.0)
 		var comet := func() -> void:                              # 2.0s后(见文末 _pending_shots delay): 坠落0.5s(大火球头+束状粗光柱+嵌星+坠落微震)
+			AttackRhythm.play_passive(battle, uu2, "comet")   # 强化星波: 彗星落下时挥一下(只管画面)
 			if is_instance_valid(pillar):                          # 天光柱: 坠落瞬间快速隐去(彗星接管); 紫环保留到撞击后慢散
 				var pf = battle._reg_tween()
 				pf.tween_property(pillar, "modulate:a", 0.0, 0.15)

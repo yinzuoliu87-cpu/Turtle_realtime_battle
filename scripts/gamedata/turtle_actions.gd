@@ -139,8 +139,9 @@ const FORM := {
 	"hunter": {"dodge": ["pets/animations/hunter/dodge.png", 18.0], "execute": ["pets/animations/hunter/execute.png", 15.0]},
 	"lava": {"revert": ["pets/animations/lava/revert.png", 15.0], "transform": ["pets/animations/lava/transform.png", 15.0]},
 	"phoenix": {"revive": ["pets/animations/phoenix/revive.png", 15.0, 1.833]},
-	"pirate": {"enter": ["pets/animations/pirate/enter.png", 12.0]},
+	"pirate": {"drink": ["pets/animations/pirate/drink.png", 15.0], "enter": ["pets/animations/pirate/enter.png", 12.0]},
 	"shell": {"awaken": ["pets/animations/shell/awaken.png", 15.0]},
+	"space": {"comet": ["pets/animations/space/comet.png", 15.0]},
 }
 const CAST := {
 	"angel": {
@@ -250,7 +251,7 @@ const CAST := {
 	},
 	"pirate": {
 		"pirateCannonBarrage": ["pets/animations/pirate/cast_pirateCannonBarrage.png", 15.0, 4],   # 11 帧 · seq
-		"pirateRum": ["pets/animations/pirate/cast_pirateRum.png", 15.0, 4],   # 17 帧 · seq
+		"pirateRum": ["pets/animations/pirate/cast_pirateRum.png", 15.0, 4, 12],   # 13 帧 · seq
 		"pirateShipPassive": ["pets/animations/pirate/cast_pirateShipPassive.png", 15.0, 4],   # 11 帧 · seq
 		"pirateShipShot": ["pets/animations/pirate/cast_pirateShipShot.png", 15.0, 5],   # 13 帧 · seq
 	},
@@ -282,7 +283,7 @@ const NORM := {
 	"bamboo": [165.0, 260.0, 165.0],
 	"basic": [139.0, 260.0, 139.0],
 	"bubble": [59.0, 155.0, 59.0],
-	"candy": [79.0, 283.0, 79.0],
+	"candy": [79.0, 193.0, 79.0],
 	"chest": [74.0, 135.0, 74.0],
 	"crystal": [87.0, 147.0, 87.0],
 	"cyber": [60.0, 138.0, 60.0],
@@ -307,10 +308,7 @@ const NORM := {
 }
 ## 折行帧条 {路径: [行数, 帧数]}(宽超手机 GPU 上限 4096 的长动作; _resolve_action 读; 没登记的 = 单行)
 const ROWS := {
-	"pets/animations/candy/cast_candyBarrage.png": [2, 19],
-	"pets/animations/candy/cast_candyHammer.png": [3, 30],
-	"pets/animations/candy/death.png": [2, 15],
-	"pets/animations/candy/drain.png": [2, 18],
+	"pets/animations/candy/cast_candyHammer.png": [2, 30],
 	"pets/animations/hunter/cast_hunterBarrage.png": [2, 42],
 }
 

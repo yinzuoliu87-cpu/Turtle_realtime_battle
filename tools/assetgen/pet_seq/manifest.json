@@ -50,8 +50,8 @@
    ]
   },
   "death": 15,
-  "feet": 283,
-  "feet_row": 283,
+  "feet": 193,
+  "feet_row": 193,
   "form_fps": {
    "drain": 12.0
   },
@@ -59,24 +59,12 @@
    "drain": 18
   },
   "fps": 15,
-  "frame": 284,
+  "frame": 196,
   "hit": 4,
   "rows": {
-   "pets/animations/candy/cast_candyBarrage.png": [
-    2,
-    19
-   ],
    "pets/animations/candy/cast_candyHammer.png": [
-    3,
+    2,
     30
-   ],
-   "pets/animations/candy/death.png": [
-    2,
-    15
-   ],
-   "pets/animations/candy/drain.png": [
-    2,
-    18
    ]
   },
   "run": 8
@@ -470,9 +458,10 @@
     "seq"
    ],
    "pirateRum": [
-    17,
+    13,
     4,
-    "seq"
+    "seq",
+    12
    ],
    "pirateShipPassive": [
     11,
@@ -489,9 +478,11 @@
   "feet": 146,
   "feet_row": 146,
   "form_fps": {
+   "drink": 15.0,
    "enter": 12.0
   },
   "forms": {
+   "drink": 8,
    "enter": 9
   },
   "fps": 15,
@@ -526,6 +517,12 @@
   "death": 15,
   "feet": 147,
   "feet_row": 147,
+  "form_fps": {
+   "comet": 15.0
+  },
+  "forms": {
+   "comet": 7
+  },
   "fps": 15,
   "frame": 148,
   "hit": 5,

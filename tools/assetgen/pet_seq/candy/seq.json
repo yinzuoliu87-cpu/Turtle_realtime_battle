@@ -9,22 +9,22 @@
  "cast_candyBarrage": {
   "cancel": -1,
   "fps": 15,
-  "ground": 213,
-  "ox": 40,
+  "ground": 123,
+  "ox": 0,
   "rel": 4
  },
  "cast_candyBomb": {
   "cancel": -1,
   "fps": 15,
-  "ground": 153,
-  "ox": 40,
+  "ground": 123,
+  "ox": 0,
   "rel": 5
  },
  "cast_candyHammer": {
   "cancel": 12,
   "fps": 15,
   "ground": 123,
-  "ox": 60,
+  "ox": 0,
   "rel": 5
  },
  "death": {

@@ -27,7 +27,7 @@ SK = {
     "hiding": {"缩头": "hidingShrink", "防御": "hidingDefend", "强化随从": "hidingBuffSummon"},
     "headless": {"恐吓": "headlessFear", "万千触须": "headlessTendrils", "灵魂打击": "headlessSoulStrike"},
 }
-FORM = {"甜蜜吸取": "drain", "钻石结构_登场": "enter", "闪避": "dodge", "处决": "execute", "多重打击": "multi", "登场": "enter", "霰弹": "shot"}
+FORM = {"接瓶": "drink", "甜蜜吸取": "drain", "钻石结构_登场": "enter", "闪避": "dodge", "处决": "execute", "多重打击": "multi", "登场": "enter", "霰弹": "shot"}
 RAWNAME = {"dice": "dice3"}
 
 
@@ -44,7 +44,7 @@ def put(tid, seg, frames, meta, m):
 
 
 ## 真生效比 _cast_skill 晚的技能: {技能: (插几帧蓄力循环, 第几帧起可被走路 / 普攻打断)}
-HOLD = {"chestCannon": (4, 11), "starWave": (4, 11), "starWormhole": (3, 10), "crystalBall": (2, 9)}
+HOLD = {"chestCannon": (4, 11), "starWormhole": (3, 10), "crystalBall": (2, 9)}
 
 
 def charge(fr, n):
@@ -98,6 +98,9 @@ def run(tid):
                 put(tid, "cast_" + sk, fr[:5], meta, m)
                 put(tid, "state_diceDash", [fr[4], fr[5]], meta, dict(m, fps=12, rel=-1))
                 put(tid, "form_diceDash_end", fr[6:], meta, dict(m, fps=15, rel=-1))
+            elif sk == "starWave":         # 起波 +0.4 秒; 强化版第 2 秒另有彗星(star:527), 单独挥一下
+                put(tid, "cast_" + sk, charge(fr, 4), meta, dict(m, cancel=11))
+                put(tid, "form_comet", fr[3:], meta, dict(m, fps=15, rel=-1))
             elif sk == "crystalBarrier":    # 盾破 / 到期才砸地放水晶刺(M:6002)
                 put(tid, "cast_" + sk, fr, meta, m)
                 put(tid, "form_barrier_end", fr[6:], meta, dict(m, fps=15, rel=-1))

@@ -14,7 +14,7 @@
   "rel": 4
  },
  "cast_pirateRum": {
-  "cancel": -1,
+  "cancel": 12,
   "fps": 15,
   "ground": 123,
   "ox": 0,
@@ -35,6 +35,13 @@
   "rel": 5
  },
  "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_drink": {
   "cancel": -1,
   "fps": 15,
   "ground": 123,

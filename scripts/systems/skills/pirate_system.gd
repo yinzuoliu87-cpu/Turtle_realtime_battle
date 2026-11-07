@@ -70,6 +70,7 @@ func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗
 	var uu: Dictionary = u
 	_pirate_rum_bottle(ship2d, ship_h, u["pos"], func() -> void:   # 酒瓶到手: 饮酒琥珀爆+环
 		if not uu.get("alive", false): return
+		AttackRhythm.play_form(battle, uu, str(battle._anim_key(uu)), "drink")   # 瓶到手那一刻接瓶仰头(飞行时间随距离变, 只有这里准; 只管画面)
 		battle._gambler_sys._gambler_pop(uu["pos"], float(uu.get("height", 0.0)) + 0.5, Color(0.95, 0.62, 0.25, 0.85))
 		battle._skill_ring(uu["pos"], Color(0.95, 0.62, 0.25, 0.55), 52.0))
 

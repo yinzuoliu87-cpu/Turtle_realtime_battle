@@ -34,6 +34,13 @@
   "ox": 56,
   "rel": -1
  },
+ "form_comet": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
  "idle": {
   "cancel": -1,
   "fps": 8,
