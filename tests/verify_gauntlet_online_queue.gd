@@ -1807,24 +1807,30 @@ func _t_s() -> void:
 		str(get_tree().current_scene.scene_file_path) if get_tree().current_scene != null else "")
 	d.queue_free()
 	await _frames(3)
-	## SIM_EXPECT_CELL ①: 本机战绩不在调度器以为的格子 ⇒ 不排, 收工 cell_mismatch
+	## SIM_EXPECT_CELL ①: 本机战绩不在调度器给的格子(取自服务端账本), 也没有挂着的账 ⇒ 对齐到账本再排, 不收工
+	##   (11-07 周六 p38: 本机 1-0、账本 1-1, 原来收工 ⇒ 调度器下一拍再拉, 空转 680 次)
 	_gs.gauntlet_wins = 1
 	_gs.gauntlet_losses = 0
 	_reset_sc({"pair_after": -1, "cancel": "cancelled"})
 	OS.set_environment("SIM_ROUNDS", "1")
 	OS.set_environment("SIM_SKIP_WATCH", "")
 	OS.set_environment("SIM_EXPECT_CELL", "0-2")
+	OS.set_environment("SIM_QUEUE_GIVEUP_SEC", "3")   # 这条没人配对: 排一会儿自己出队收工, 不把在队里的状态留给下一条(下一条数出队次数)
 	j0 = _hit(JOIN)
 	ev0 = _ev_size()
 	d = await _start_driver()
 	t0 = Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 30000 and not bool(d.get("_done")):
+	while Time.get_ticks_msec() - t0 < 40000 and not bool(d.get("_done")):
 		await get_tree().process_frame
+	OS.set_environment("SIM_QUEUE_GIVEUP_SEC", "7")
 	evs = _sim_events(ev0)
-	_ok("S ★SIM_EXPECT_CELL=0-2、本机 1-0 ⇒ 不排(join 0 次)、收工 cell_mismatch", _done_why(evs) == "cell_mismatch" and _hit(JOIN) == j0
-		and _kind_count(evs, "cell_mismatch") == 1, "why=%s join+%d" % [_done_why(evs), _hit(JOIN) - j0])
+	_ok("S ★★SIM_EXPECT_CELL=0-2、本机 1-0、没挂账 ⇒ 对齐账本后照排(join 1 次), 不收工", _hit(JOIN) - j0 == 1 and _kind_count(evs, "cell_adopt") == 1
+		and _kind_count(evs, "cell_mismatch") == 0 and int(_gs.gauntlet_wins) == 0 and int(_gs.gauntlet_losses) == 2,
+		"join+%d adopt=%d mismatch=%d 本机 %d-%d" % [_hit(JOIN) - j0, _kind_count(evs, "cell_adopt"), _kind_count(evs, "cell_mismatch"), int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)])
 	d.queue_free()
 	await _frames(3)
+	_gs.gauntlet_wins = 1
+	_gs.gauntlet_losses = 0
 	## SIM_EXPECT_CELL ②: 本机对得上、服务端账本(进队回的格子)对不上 ⇒ 出队、收工 cell_mismatch
 	_reset_sc({"pair_after": -1, "cancel": "cancelled", "srv_cell": [0, 1]})
 	OS.set_environment("SIM_EXPECT_CELL", "1-0")

@@ -137,6 +137,9 @@ DEFAULTS = {
     'OPENING_MAX_PAR': None, # 开赛头 OPENING_SEC 的并发上限(env MAX_PAR_OPENING); None = 与 MAX_PAR 相同
     'OPENING_FRONT': True,   # 开赛头 OPENING_SEC: 真人马上要进的格子里他交过手的号不算数(decide C 段 front); env PLANNER_OPENING_FRONT=0 关
     'FILL_EXIT_ON_PAIR': True,   # 补格子的号配上对手就下线(客户端 SIM_EXIT_ON_PAIR, 2026-11-01 U3); env PLANNER_FILL_EXIT_ON_PAIR=0 关
+    'DUD_TRIES': 3,            # 同一个号连拉这么多次、一局没涨 ⇒ 冷却(11-07 p38 一个号空转 680 次: 进程起来查格子对不上就退, 这边下一拍又拉)
+    'DUD_WINDOW_SEC': 900,     # 两次拉起隔得比这久就重新数
+    'DUD_COOL_SEC': 1800,      # 冷却多久(期间不算候场号, decide 换别的号; 到期再给 DUD_TRIES 次)
     'FILL_EXIT_ON_PAIR_SEC': 3600,   # U3 只在开赛后这么多秒内拉起的补格子号上用(env PLANNER_FILL_EXIT_ON_PAIR_SEC; < 0 = 全周末)。
                                      # 推演 16 个种子: 全周末都用 ⇒ 50 个真人时整周末兜底多 ~13%(补格子太便宜, 号花在号对号上);
                                      # 只用头一小时 ⇒ 开局一样(⑲ 深格子 100% 有号), 重负载持平或更好(fill_exit_on_pair)
@@ -433,6 +436,7 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
     online = {cc: [] for cc in CELLS}        # 在线、没在打、还要打: 会在这一格排队
     exiting = {cc: 0 for cc in CELLS}        # 在线但打完了(马上下线 ⇒ 停在这一格)
     exiting_ids = {cc: [] for cc in CELLS}   # 同上, 是哪几个号(判「没有陪练号能来」/ 凑对上限要知道是谁)
+    dud = set(state.get('dud') or ())
     moving = {cc: 0 for cc in CELLS}         # 在这一格打完这局 / 下一局就成候场号的(各 0.5 进两个下一格)
     for bid, cc in cell_of.items():
         b = bots[bid]
@@ -446,6 +450,8 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
                 exiting_ids[cc].append(bid)
             else:
                 online[cc].append(bid)
+        elif bid in dud:                           # 空转冷却中: 不算候场号(11-07; 见 dud_ids)
+            pass
         elif in_job(b) or bid in queued:           # 刚下线的号 15 秒内排队条目还有效、可能被配上 ⇒ 当作在打
             moving[cc] += 1
         else:
@@ -834,6 +840,22 @@ def decide(state: dict, now: float, rng: random.Random, cfg: dict = None, trace:
     return cmds
 
 
+def note_launch(led: dict, bid: str, games: int, now: float, cfg: dict) -> dict:
+    """记一次拉号。led[bid] = {g: 拉起时打过几局, t: 上次拉起, n: 同一局数下连拉几次}。"""
+    r = led.get(bid) or {}
+    same = r.get('g') == games and now - float(r.get('t', 0.0)) <= cfg.get('DUD_WINDOW_SEC', DEFAULTS['DUD_WINDOW_SEC'])
+    led[bid] = {'g': games, 't': now, 'n': int(r.get('n', 0)) + 1 if same else 1}
+    return led
+
+
+def dud_ids(led: dict, bots: list, now: float, cfg: dict) -> set:
+    """连拉 DUD_TRIES 次局数没涨、冷却期内的号: 拉了也白拉, decide 别再挑它。局数涨了就不算(账本是事实源)。"""
+    tries = cfg.get('DUD_TRIES', DEFAULTS['DUD_TRIES'])
+    cool = cfg.get('DUD_COOL_SEC', DEFAULTS['DUD_COOL_SEC'])
+    games = {b['account_id']: int(b.get('gw', 0) or 0) + int(b.get('gl', 0) or 0) for b in bots}
+    return {bid for bid, r in led.items() if int(r.get('n', 0)) >= tries and games.get(bid) == r.get('g') and now - float(r.get('t', 0.0)) < cool}
+
+
 def remember(memory: dict, cmds: list, now: float, state: dict = None) -> dict:
     """本机记忆(纯函数), IO 层与推演门禁用同一个:
     session_starts 「整段打完」开始时刻(D 的每小时计数); humans 在 0-0 排过队的真人 → 第一次看到的时刻(算 0-0 本钱线的来人速率)。只留 48 小时。"""
@@ -1035,6 +1057,10 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
             len([w for w in st['waiting'] if w['account_id'] not in {b['account_id'] for b in st['bots']}]),
             len(run), st['external_running'], cfg.get('MAX_PAR', DEFAULTS['MAX_PAR'])))
         return
+    led = {k: v for k, v in (ps.get('launches') or {}).items() if now - float(v.get('t', 0.0)) < 86400.0}
+    st['dud'] = dud_ids(led, st['bots'], now, cfg)
+    if st['dud'] and st['dud'] != set(ps.get('dud_seen') or ()):
+        log('空转冷却 %d 个号: %s' % (len(st['dud']), ' '.join(sorted(x[:8] for x in st['dud']))))
     cmds = decide(st, now, rng, cfg)
     nobot = [x for x in cmds if x[0] == 'nobot']
     cmds = [x for x in cmds if x[0] != 'nobot']
@@ -1064,8 +1090,11 @@ def one_tick(br, ps: dict, cfg: dict, rng: random.Random, dry: bool, status: boo
         run[bid] = {'pid': pid, 'since': now, 'wall': time.time(), 'rounds': rounds, 'purpose': purpose,
                     'g0': cell[0] + cell[1], 'slot': slots[bid]}
         done.append((op, bid, rounds, purpose, why))
+        note_launch(led, bid, cell[0] + cell[1], now, cfg)
         log('拉 p%02d %s %d-%d %s %d 局 pid=%d —— %s' % (slots[bid], bid[:8], cell[0], cell[1], purpose, rounds, pid, why))
     if not dry:
+        ps['launches'] = led
+        ps['dud_seen'] = sorted(st['dud'])
         ps['running'] = run
         ps['memory'] = remember(ps.get('memory') or {}, done, now, st)
 

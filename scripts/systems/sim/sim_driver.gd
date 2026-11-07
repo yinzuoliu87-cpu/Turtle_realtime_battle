@@ -35,8 +35,8 @@ extends Node
 ## ── 闯关日专用(2026-10-27 陪练号调度器 server/referee/gauntlet_bot_planner.py 拉号时传; 积分赛日一概不看)──
 ##   SIM_SHOP_MIN_SEC / SIM_SHOP_MAX_SEC  两局之间在商店逛多久(秒, 区间里随机; 只给一个 ⇒ 两头相同; 都不给 ⇒ 买完就走)。
 ##                        逛的时候照常按已有策略买(买完再凑够时间)。
-##   SIM_EXPECT_CELL=gw-gl  调度器以为这个号停在哪个战绩格子: 本机战绩(开排之前)或服务端回的格子(第一次进队)对不上 ⇒
-##                        不排 / 出队, 收工(`cell_mismatch`)。只查这个进程的第一局(之后格子本来就会变)。
+##   SIM_EXPECT_CELL=gw-gl  调度器以为这个号停在哪个战绩格子(取自服务端账本): 本机战绩对不上 ⇒ 先补挂着的账, 还对不上就对齐到账本(`cell_adopt`);
+##                        服务端回的格子(第一次进队)对不上 ⇒ 出队, 收工(`cell_mismatch`)。只查这个进程的第一局(之后格子本来就会变)。
 ##   SIM_SKIP_WATCH=1       配上后不看直播 / 录像: 账一记完(服务器算完那一刻, 在取录像之前)就去商店(`RefereeWatch.skip_play`)。
 ##   SIM_GAUNTLET_ONLINE=1  调度器会传; 本驱动按赛程阶段自动走排队(闯关日 = 排队), 不看它。
 ##   SIM_EXIT_ON_PAIR=1     (2026-11-01 U3, 调度器只给「补格子」拉起的号传)配上对手、服务端已接手算局(带任务号的待记账单已在存档里)
@@ -368,6 +368,12 @@ func _do_menu(m: Node) -> void:
 		await _settle_pending_first()
 		if not _alive(m):
 			return
+	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET and not _cell_checked and not _local_cell_ok():
+		## ★2026-11-07: 挂着的账上面已补完, 还对不上 = 本机这一局的账丢了(进程被杀等)。SIM_EXPECT_CELL 来自服务端账本, 以账本为准对齐。
+		##   原来这里直接收工 ⇒ 调度器看账本还是这一格, 下一拍再拉它: 11-07 周六 p38 一个号这样空转 680 次(本机 1-0、账本 1-1)。
+		##   进队时服务端回的格子还会再核一次(下面 _do_match_queue), 对不上照旧出队收工。
+		_ev("cell_adopt", {"want": [expect_cell().x, expect_cell().y], "local": [int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)]})
+		load("res://scripts/systems/replay/referee_watch.gd").adopt_ledger(GameState, expect_cell().x, expect_cell().y)
 	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_GAUNTLET and not _cell_checked and not _local_cell_ok():
 		## 闯关日: 调度器以为这个号在 A 格子, 本机战绩却在 B 格子 ⇒ 别排(免得被拉去补 A 格子却排进 B 格子)
 		_ev("cell_mismatch", {"want": [expect_cell().x, expect_cell().y], "local": [int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)]})
