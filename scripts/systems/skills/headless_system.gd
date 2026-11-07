@@ -269,6 +269,7 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 	if DetMath.vlen(aim) < 0.5: aim = Vector2.RIGHT
 	u["_scythe_aim"] = aim
 	u["_slam"] = true                                          # 蓄力期定身(举镰)
+	AttackRhythm.play_form(battle, u, str(battle._anim_key(u)), "scythe")   # 举爪聚焰 1 秒 → 第 1.05 秒砍下, 对上下面的预警与横扫(只管画面; 7 秒兜底也走这里)
 	var raise := Sprite3D.new()                                # 蓄力: 头顶镰刀抬起+紫光聚
 	raise.texture = load("res://assets/sprites/vfx/soul-scythe.png")
 	raise.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

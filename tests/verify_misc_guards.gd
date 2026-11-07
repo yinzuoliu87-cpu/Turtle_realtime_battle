@@ -43,7 +43,8 @@ func _ready() -> void:
 		s._art_faces_right({"id": "_summon_mech", "is_summon": true, "summon_kind": "mech"}),
 		"若失败=例外表又对召唤物失效了")
 	_ok("玩偶熊(kind=bear) 不翻转", not s._art_faces_right({"id": "_summon_bear", "is_summon": true, "summon_kind": "bear"}))
-	_ok("缩头龟(按龟 id) 仍然翻转", s._art_faces_right({"id": "hiding"}))
+	_ok("训龟大师(按 id) 仍然翻转", s._art_faces_right({"id": "__trainer__"}))
+	_ok("缩头龟 11-07 换新形象后朝左, 不翻转", not s._art_faces_right({"id": "hiding"}))
 	_ok("普通龟不翻转", not s._art_faces_right({"id": "basic"}))
 
 	# ── C. 眩晕唯一入口: 全项目只有 _stun 能写 stun_until ──

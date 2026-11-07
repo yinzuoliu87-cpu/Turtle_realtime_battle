@@ -1,0 +1,535 @@
+{
+ "bubble": {
+  "attack": 12,
+  "body0": 59,
+  "casts": {
+   "bubbleBind": [
+    10,
+    4,
+    "seq"
+   ],
+   "bubbleBurst": [
+    12,
+    4,
+    "seq"
+   ],
+   "bubbleShield": [
+    10,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 155,
+  "feet_row": 155,
+  "fps": 15,
+  "frame": 156,
+  "hit": 5,
+  "rows": {},
+  "run": 8
+ },
+ "candy": {
+  "attack": 11,
+  "body0": 79,
+  "casts": {
+   "candyBarrage": [
+    19,
+    4,
+    "seq"
+   ],
+   "candyBomb": [
+    9,
+    5,
+    "seq"
+   ],
+   "candyHammer": [
+    30,
+    5,
+    "seq",
+    12
+   ]
+  },
+  "death": 15,
+  "feet": 283,
+  "feet_row": 283,
+  "form_fps": {
+   "drain": 12.0
+  },
+  "forms": {
+   "drain": 18
+  },
+  "fps": 15,
+  "frame": 284,
+  "hit": 4,
+  "rows": {
+   "pets/animations/candy/cast_candyBarrage.png": [
+    2,
+    19
+   ],
+   "pets/animations/candy/cast_candyHammer.png": [
+    3,
+    30
+   ],
+   "pets/animations/candy/death.png": [
+    2,
+    15
+   ],
+   "pets/animations/candy/drain.png": [
+    2,
+    18
+   ]
+  },
+  "run": 8
+ },
+ "chest": {
+  "attack": 12,
+  "body0": 74,
+  "casts": {
+   "chestCannon": [
+    14,
+    4,
+    "seq",
+    11
+   ],
+   "chestCount": [
+    10,
+    4,
+    "seq"
+   ],
+   "chestStorm": [
+    10,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 135,
+  "feet_row": 135,
+  "fps": 15,
+  "frame": 140,
+  "hit": 5,
+  "rows": {},
+  "run": 8
+ },
+ "crystal": {
+  "attack": 12,
+  "body0": 87,
+  "casts": {
+   "crystalBall": [
+    12,
+    4,
+    "seq",
+    9
+   ],
+   "crystalBarrier": [
+    10,
+    4,
+    "seq"
+   ],
+   "crystalBurst": [
+    10,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 147,
+  "feet_row": 147,
+  "form_fps": {
+   "barrier_end": 15.0
+  },
+  "forms": {
+   "barrier_end": 4
+  },
+  "fps": 15,
+  "frame": 148,
+  "hit": 5,
+  "rows": {},
+  "run": 8
+ },
+ "cyber": {
+  "attack": 12,
+  "body0": 60,
+  "casts": {
+   "cyberBeam": [
+    19,
+    4,
+    "seq",
+    17
+   ],
+   "cyberHijack": [
+    10,
+    4,
+    "seq"
+   ],
+   "cyberSmartAI": [
+    9,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 138,
+  "feet_row": 138,
+  "fps": 15,
+  "frame": 140,
+  "hit": 5,
+  "rows": {},
+  "run": 8
+ },
+ "diamond": {
+  "attack": 12,
+  "body0": 77,
+  "casts": {
+   "diamondFortify": [
+    13,
+    4,
+    "seq"
+   ],
+   "diamondPowerball": [
+    6,
+    5,
+    "seq"
+   ],
+   "diamondSmash": [
+    14,
+    4,
+    "seq",
+    11
+   ]
+  },
+  "death": 15,
+  "feet": 135,
+  "feet_row": 135,
+  "form_fps": {
+   "diamondRoll_end": 15.0,
+   "enter": 12.0
+  },
+  "forms": {
+   "diamondRoll_end": 3,
+   "enter": 11
+  },
+  "fps": 15,
+  "frame": 136,
+  "hit": 5,
+  "rows": {},
+  "run": 8,
+  "states": [
+   [
+    "diamondRoll",
+    "pets/animations/diamond/state_diamondRoll.png",
+    15.0
+   ]
+  ]
+ },
+ "dice": {
+  "attack": 12,
+  "body0": 71,
+  "casts": {
+   "diceAllIn": [
+    9,
+    4,
+    "seq"
+   ],
+   "diceFate": [
+    9,
+    4,
+    "seq"
+   ],
+   "diceFlashStrike": [
+    5,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 139,
+  "feet_row": 139,
+  "form_fps": {
+   "diceDash_end": 15.0
+  },
+  "forms": {
+   "diceDash_end": 4
+  },
+  "fps": 15,
+  "frame": 140,
+  "hit": 5,
+  "rows": {},
+  "run": 8,
+  "states": [
+   [
+    "diceDash",
+    "pets/animations/dice/state_diceDash.png",
+    12.0
+   ]
+  ]
+ },
+ "gambler": {
+  "attack": 10,
+  "body0": 78,
+  "casts": {
+   "gamblerBet": [
+    10,
+    3,
+    "seq"
+   ],
+   "gamblerDraw": [
+    7,
+    4,
+    "seq"
+   ],
+   "gamblerFateWheel": [
+    22,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 143,
+  "feet_row": 143,
+  "form_fps": {
+   "enter": 12.0,
+   "multi": 18.0
+  },
+  "forms": {
+   "enter": 9,
+   "multi": 9
+  },
+  "fps": 15,
+  "frame": 148,
+  "hit": 4,
+  "rows": {},
+  "run": 12
+ },
+ "headless": {
+  "attack": 12,
+  "body0": 91,
+  "casts": {
+   "headlessFear": [
+    10,
+    4,
+    "seq"
+   ],
+   "headlessSoulStrike": [
+    8,
+    4,
+    "seq"
+   ],
+   "headlessTendrils": [
+    5,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 135,
+  "feet_row": 135,
+  "form_fps": {
+   "headlessTendrils_end": 15.0,
+   "scythe": 15.0
+  },
+  "forms": {
+   "headlessTendrils_end": 4,
+   "scythe": 22
+  },
+  "fps": 15,
+  "frame": 136,
+  "hit": 5,
+  "rows": {},
+  "run": 8,
+  "states": [
+   [
+    "headlessTendrils",
+    "pets/animations/headless/state_headlessTendrils.png",
+    8.0
+   ]
+  ]
+ },
+ "hiding": {
+  "attack": 12,
+  "body0": 71,
+  "casts": {
+   "hidingBuffSummon": [
+    10,
+    4,
+    "seq"
+   ],
+   "hidingDefend": [
+    10,
+    4,
+    "seq"
+   ],
+   "hidingShrink": [
+    6,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 138,
+  "feet_row": 138,
+  "form_fps": {
+   "hidingShrink_end": 15.0
+  },
+  "forms": {
+   "hidingShrink_end": 4
+  },
+  "fps": 15,
+  "frame": 140,
+  "hit": 5,
+  "rows": {},
+  "run": 8,
+  "states": [
+   [
+    "hidingShrink",
+    "pets/animations/hiding/state_hidingShrink.png",
+    6.0
+   ]
+  ]
+ },
+ "hunter": {
+  "attack": 10,
+  "body0": 78,
+  "casts": {
+   "hunterBarrage": [
+    42,
+    5,
+    "seq",
+    32
+   ],
+   "hunterShot": [
+    15,
+    4,
+    "seq",
+    11
+   ],
+   "hunterStealth": [
+    13,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 148,
+  "feet_row": 148,
+  "form_fps": {
+   "dodge": 18.0,
+   "execute": 15.0
+  },
+  "forms": {
+   "dodge": 9,
+   "execute": 9
+  },
+  "fps": 15,
+  "frame": 152,
+  "hit": 5,
+  "rows": {
+   "pets/animations/hunter/cast_hunterBarrage.png": [
+    2,
+    42
+   ]
+  },
+  "run": 12
+ },
+ "line": {
+  "attack": 12,
+  "body0": 88,
+  "casts": {
+   "lineFinish": [
+    10,
+    4,
+    "seq"
+   ],
+   "lineInkBomb": [
+    10,
+    4,
+    "seq"
+   ],
+   "lineLink": [
+    10,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 139,
+  "feet_row": 139,
+  "fps": 15,
+  "frame": 140,
+  "hit": 5,
+  "rows": {},
+  "run": 8
+ },
+ "pirate": {
+  "attack": 12,
+  "body0": 84,
+  "casts": {
+   "pirateCannonBarrage": [
+    11,
+    4,
+    "seq"
+   ],
+   "pirateRum": [
+    17,
+    4,
+    "seq"
+   ],
+   "pirateShipPassive": [
+    11,
+    4,
+    "seq"
+   ],
+   "pirateShipShot": [
+    13,
+    5,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 146,
+  "feet_row": 146,
+  "form_fps": {
+   "enter": 12.0
+  },
+  "forms": {
+   "enter": 9
+  },
+  "fps": 15,
+  "frame": 148,
+  "hit": 5,
+  "rows": {},
+  "run": 12
+ },
+ "space": {
+  "attack": 12,
+  "body0": 70,
+  "casts": {
+   "starGravityWarp": [
+    23,
+    4,
+    "seq",
+    21
+   ],
+   "starWave": [
+    14,
+    4,
+    "seq",
+    11
+   ],
+   "starWormhole": [
+    13,
+    4,
+    "seq",
+    10
+   ]
+  },
+  "death": 15,
+  "feet": 147,
+  "feet_row": 147,
+  "fps": 15,
+  "frame": 148,
+  "hit": 5,
+  "rows": {},
+  "run": 8
+ }
+}

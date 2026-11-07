@@ -72,8 +72,9 @@ func _ready() -> void:
 				continue
 			var ai: Image = at.get_image()
 			ai.convert(Image.FORMAT_RGBA8)
-			var S: int = ai.get_height()
-			var nf: int = ai.get_width() / S
+			var _row: Array = TA.ROWS.get(str(ent[0]), [1, 0])   # 长动作折行(宽超手机 GPU 上限), 单元边长 = 图高 / 行数
+			var S: int = ai.get_height() / int(_row[0])
+			var nf: int = int(_row[1]) if int(_row[1]) > 0 else ai.get_width() / S
 			## 帧数 ≥ 5: 受击 = 第 0 帧 + 4 帧(15fps ≈ 0.33 秒)是最短的一段(糖果龟 AI 受击 4 帧; 原门槛 6 是随手定的)
 			_ok("%s %s 是方帧条, 帧数 ≥ 5" % [id, kind], ai.get_width() % S == 0 and nf >= 5, "%d×%d, %d 帧" % [ai.get_width(), S, nf])
 			## 待机格子在方帧里的位置: 水平居中, 底边 = 脚底行
@@ -194,10 +195,13 @@ func _ready() -> void:
 			_set_state(scn, u, sname, false)
 			AttackRhythm.apply_state_idle(scn, u)
 			var btex = (u.get("anim_sd", {}) as Dictionary).get("tex", null)
-			_ok("%s 状态 %s 结束 ⇒ 回待机" % [id, sname], btex != null and btex.resource_path == (u["idle_sd"]["tex"] as Texture2D).resource_path)
+			var end_seg: Array = (TA.FORM.get(id, {}) as Dictionary).get(sname + "_end", [])
+			var want_end: String = str(end_seg[0]) if not end_seg.is_empty() else (u["idle_sd"]["tex"] as Texture2D).resource_path.trim_prefix("res://assets/sprites/")
+			_ok("%s 状态 %s 结束 ⇒ %s" % [id, sname, "接收招段" if not end_seg.is_empty() else "回待机"], btex != null and btex.resource_path.ends_with(want_end), btex.resource_path if btex != null else "无")
+			scn._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
 	_ok("★分母: 运行时每只龟普攻 / 阵亡都播了(%d 只 × %d)" % [ids.size(), KINDS.size()], played == ids.size() * KINDS.size(), "%d 次" % played)
 	_ok("★分母: 技能释放动作至少 25 段播过(外包 11 只)", ncast >= 25, "%d 段" % ncast)
-	## 至少 2 条 = 缩头乌龟缩壳 + 钻石龟滚球(build_pet_actions.STATE_LOOPS); 0 / 0 不算过
+	## 至少 2 条 = 缩头乌龟缩壳 + 钻石龟滚球(build_turtle_seq.py 的 state_ 段); 0 / 0 不算过
 	_ok("★分母: 宠物状态循环每条都触发过(至少缩壳 + 滚球 2 条)", nstate == nstate_rows and nstate_rows >= 2, "%d / %d 条" % [nstate, nstate_rows])
 	## 熔岩火山形态: 进火山后播动作, 像素尺寸 / 脚底线仍与普通待机一致
 	for e in scn._units:
@@ -229,8 +233,12 @@ func _set_state(scn, u: Dictionary, sname: String, on: bool) -> bool:
 	match sname:
 		"hidingShrink":
 			u["channel_until"] = scn._t + 3.0 if on else 0.0
+		"headlessTendrils":
+			u["channel_until"] = scn._t + 4.0 if on else 0.0
 		"diamondRoll":
 			u["roll_active"] = on
+		"diceDash":
+			u["dice_dash_active"] = on
 		_:
 			return false
 	return true

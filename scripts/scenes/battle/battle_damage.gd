@@ -384,6 +384,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# no_dodge: 吸取类必中(用户2026-07-22「吸取不可以被闪避或暴击」)
 	if not no_dodge and u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and battle._battle_rng.randf() < u["dodge_bonus"]:
 		battle._vfx._float_text(u["pos"] + Vector2(0, -40), "闪避", battle._VC.color_of("dodge-num"))   # 走飘字色表, 不再手抄 #a0e8ff
+		AttackRhythm.play_passive(battle, u, "dodge")   # 有闪避动作的龟(猎人)闪一下
 		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys.tally.use_first_of(u, ["p2eq_046"])   # 闪避钩里出东西的只有 046 的护盾
 		battle._equip_sys._eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)

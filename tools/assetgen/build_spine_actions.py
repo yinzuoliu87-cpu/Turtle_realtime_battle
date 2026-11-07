@@ -600,7 +600,7 @@ def write_gd(man: dict) -> None:
 		fm = man[t].get("forms", {})
 		hd = man[t].get("form_hold", {})
 		if fm:
-			L.append("\t\"%s\": {%s}," % (t, ", ".join("\"%s\": [\"pets/animations/%s/%s.png\", %.1f%s]" % (nm, t, nm, float(FPS), (", %.3f" % float(hd[nm])) if nm in hd else "") for nm in sorted(fm))))
+			L.append("\t\"%s\": {%s}," % (t, ", ".join("\"%s\": [\"pets/animations/%s/%s.png\", %.1f%s]" % (nm, t, nm, float(man[t].get("form_fps", {}).get(nm, FPS)), (", %.3f" % float(hd[nm])) if nm in hd else "") for nm in sorted(fm))))
 	L.append("}")
 	L.append("const CAST := {")
 	for t in ids:
@@ -609,15 +609,22 @@ def write_gd(man: dict) -> None:
 			continue
 		L.append("\t\"%s\": {" % t)
 		for st in sorted(cs):
-			n, rel, src = cs[st]
-			L.append("\t\t\"%s\": [\"pets/animations/%s/cast_%s.png\", %.1f, %d],   # %d 帧 · %s" % (st, t, st, float(FPS), int(rel), int(n), src))
+			n, rel, src = cs[st][:3]
+			cancel = (", %d" % int(cs[st][3])) if len(cs[st]) > 3 else ""   # 第 4 列: 从这一帧起可被走路 / 普攻打断(默认 释放帧 + 3)
+			L.append("\t\t\"%s\": [\"pets/animations/%s/cast_%s.png\", %.1f, %d%s],   # %d 帧 · %s" % (st, t, st, float(FPS), int(rel), cancel, int(n), src))
 		L.append("\t},")
 	L.append("}")
 	L.append("## 归一 [动作图本体高, 脚底行, 待机本体高] —— 与主场景 ANIM_NORM 同口径(elite_system._elite_fix_norm 读)。")
 	L.append("##   两个本体高相等(动作与待机同一个像素尺寸); 脚底行 = 待机格子底边在方帧里的行(动作一播不上下跳)。")
 	L.append("const NORM := {")
 	for t in ids:
-		L.append("\t\"%s\": [%.1f, %.1f, %.1f]," % (t, float(man[t]["body0"]), float(FEET), float(man[t]["body0"])))
+		L.append("\t\"%s\": [%.1f, %.1f, %.1f]," % (t, float(man[t]["body0"]), float(man[t].get("feet", FEET)), float(man[t]["body0"])))
+	L.append("}")
+	L.append("## 折行帧条 {路径: [行数, 帧数]}(宽超手机 GPU 上限 4096 的长动作; _resolve_action 读; 没登记的 = 单行)")
+	L.append("const ROWS := {")
+	for t in ids:
+		for pth, rw in sorted(man[t].get("rows", {}).items()):
+			L.append("\t\"%s\": [%d, %d]," % (pth, int(rw[0]), int(rw[1])))
 	L.append("}")
 	L.append("")
 	L.append("")
@@ -637,7 +644,7 @@ def main() -> int:
 		only = set(sys.argv[sys.argv.index("--only") + 1].split(","))
 	preview = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
 	if "--gd-only" in sys.argv:   # 只重写 TurtleActions(外包 11 只清单 + 从头做的龟清单), 不重渲(新做一只龟后用)
-		pm = os.path.join(HERE, "pet_src", "pet_manifest.json")
+		pm = os.path.join(HERE, "pet_seq", "manifest.json")
 		write_gd(dict(json.load(open(MANIFEST, encoding="utf-8")), **json.load(open(pm, encoding="utf-8"))))
 		return 0
 	_check_head_caps()
@@ -729,8 +736,8 @@ def main() -> int:
 	else:
 		json.dump(man, open(MANIFEST, "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
 		if only is None:
-			## 外包 11 只以外、从头做的龟(build_pet_actions.py 的清单)并进同一张生成表 —— 查表 / 门禁对它们一律生效
-			pm = os.path.join(HERE, "pet_src", "pet_manifest.json")
+			## 外包 11 只以外、新形象 14 只(build_turtle_seq.py 的清单)并进同一张生成表 —— 查表 / 门禁对它们一律生效
+			pm = os.path.join(HERE, "pet_seq", "manifest.json")
 			write_gd(dict(man, **(json.load(open(pm, encoding="utf-8")) if os.path.exists(pm) else {})))
 	return 0
 

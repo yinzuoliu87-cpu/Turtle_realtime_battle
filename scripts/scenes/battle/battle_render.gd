@@ -22,7 +22,7 @@ const SKILL_TEXT_FS := 13
 const RENDER_OWNED_KEYS := [
 	"anim_action", "anim_t", "anim_sd",
 	"flash_t", "hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_atk_voff",
-	"_windup_total", "_atk_wind", "_atk_hit_frame", "_cast_wind", "_state_on", "_run_key",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
+	"_windup_total", "_atk_wind", "_atk_hit_frame", "_cast_wind", "_cast_cancel", "_state_on", "_run_key",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
 	"_run_acc", "_run_acc_t", "_run_last_pos", "run_sd",
 	"_tr_move_dir", "_tr_move_acc", "_tr_last_pos", "_tr_move_t", "_tr_speed", "_tr_face", "_tr_anim_t",
 	"_hhot_owner", "_mark_spr", "_phase_ai_t",
@@ -77,7 +77,7 @@ func _update_run_anim(u: Dictionary, delta: float) -> void:
 	var rsd: Dictionary = u["run_sd"]
 	if rsd.is_empty():
 		return
-	if str(u.get("anim_action", "")) != "" or u.get("_manual_anim", false) or str(u.get("_state_on", "")) != "":   # 持续状态(虚化…)期间不切走路, 否则与状态循环每帧互抢
+	if (str(u.get("anim_action", "")) != "" and not AttackRhythm.cast_cancelable(u)) or u.get("_manual_anim", false) or str(u.get("_state_on", "")) != "":   # 持续状态(虚化…)期间不切走路, 否则与状态循环每帧互抢
 		return
 	# ★定步长下 pos 只在 sim step 跳, 逐 render 帧测 moved 会在 step 边界狂切 run↔idle(每切复位 frame=0)
 	#   → 高帧率"不动且一直闪"(2026-07-25·4070)。改按 0.1s 时间窗累计位移测速(跨多 step 稳), 窗内不切帧表。

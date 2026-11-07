@@ -89,7 +89,7 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 	if kind != "death" and u.get("anim_action", "") in ["attack", "hurt", "cast", "transform"]:   # cast = 技能释放动作(AttackRhythm.cast_begin): 受击 / 普攻不打断
 		if kind == "hurt" and u.get("anim_action", "") == "hurt":
 			pass   # 刷新 hurt
-		elif kind != u.get("anim_action", ""):
+		elif kind != u.get("anim_action", "") and not (kind == "attack" and AttackRhythm.cast_cancelable(u)):
 			return
 	var entry: Array = own_rows[kind] if own_rows.has(kind) else table[id]
 	var asd = battle._resolve_action(str(entry[0]), float(entry[1]))

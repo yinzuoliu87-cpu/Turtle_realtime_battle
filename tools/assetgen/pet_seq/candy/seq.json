@@ -1,0 +1,58 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 135,
+  "ox": 80,
+  "rel": 4
+ },
+ "cast_candyBarrage": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 213,
+  "ox": 40,
+  "rel": 4
+ },
+ "cast_candyBomb": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 153,
+  "ox": 40,
+  "rel": 5
+ },
+ "cast_candyHammer": {
+  "cancel": 12,
+  "fps": 15,
+  "ground": 123,
+  "ox": 60,
+  "rel": 5
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_drain": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ }
+}

@@ -1,0 +1,65 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 12.5,
+  "ground": 167,
+  "ox": 56,
+  "rel": 5
+ },
+ "cast_hidingBuffSummon": {
+  "cancel": -1,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "cast_hidingDefend": {
+  "cancel": -1,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "cast_hidingShrink": {
+  "cancel": -1,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "form_hidingShrink_end": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "state_hidingShrink": {
+  "cancel": -1,
+  "fps": 6,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ }
+}

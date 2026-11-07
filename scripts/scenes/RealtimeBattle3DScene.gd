@@ -131,7 +131,7 @@ static func _review_demo() -> bool:
 ## __trainer__ 2026-07-23: PixelLab 的 south-east 面就是朝右, 而训龟大师后续的走路/扔石头
 ##   动作图也全是同一套朝向 —— 与其每张都逐帧镜像(小将那 7 张就是这么交的税), 不如登记例外。
 ##   ★探针实测(修之前): 我方 face_right=true / art_faces_right=false → flip_h=true → 背对战场。
-const ART_FACES_RIGHT := ["hiding", "headless", "mech", "__trainer__", "axe"]   # 缩头2026-07-17用户抓 / 无头预检自查颈残端在右 / 机甲2026-07-19用户抓「建模也反了」 / 训龟大师2026-07-23 / 斧头2026-09-01用户抓「方向」(四套动画护目镜全在身体中心右侧+2.3~4.0px, 量出来的)
+const ART_FACES_RIGHT := ["mech", "__trainer__", "axe"]   # 缩头 / 无头 11-07 换新形象后朝左, 移出 / 机甲2026-07-19用户抓「建模也反了」 / 训龟大师2026-07-23 / 斧头2026-09-01用户抓「方向」(四套动画护目镜全在身体中心右侧+2.3~4.0px, 量出来的)
 const REVIEW_TURTLE := "headless"              # 受审龟 id (技能特效验收: 换龟只改这里; 账本见 docs/design/技能特效验收账本.md)
 ## ⚠ 用的时候一律走 `_review_skill_idx()`, 别直接引用本常量 —— 那个函数才会读【调试面板覆盖】和【env REVIEW_SKILL】; 直接用常量的话环境变量对该处失效。(2026-07-19 修: 原有 10 处 demo 分支直接用常量, 导致 REVIEW_SKILL=-1 对它们一律无效, 评审场景开不出来。)
 const REVIEW_SKILL_IDX := 0   # 评审受审龟放哪个技(skillPool索引): 0=普攻/1-3=候选技/-1=默认轮转(=被动) (26缩头全✅封板2026-07-17→27无头预检中: 0普攻起)
@@ -1796,11 +1796,7 @@ func _resolve_action(rel: String, fps: float) -> Dictionary:
 	var tex: Texture2D = load(full)
 	if tex == null:
 		return {}
-	var tw := tex.get_width()
-	var th := tex.get_height()
-	var fh := th
-	var hframes: int = maxi(1, int(floor(float(tw) / float(fh))))
-	return {"tex": tex, "frames": hframes, "fps": fps, "frame_h": fh, "hframes": hframes, "vframes": 1, "loop": false}
+	return AttackRhythm.action_sd(rel, tex, fps)
 
 # 召唤体立绘解析: spr_id (如 candy-bomb/conch-worm/doll-bear/mech/minion/treasure-golem) → pets/<spr_id>.png.
 #   treasure_golem 有 idle 动画帧 → 用 sheet; 其余多为静态全身图. 缺 → tex=null (上层退色块).
@@ -5836,6 +5832,7 @@ func _update_hunter_passive(u: Dictionary) -> void:   # 被动猎杀(重做·用
 		if float(o["hp"]) < float(o["maxHp"]) * thr:
 			o["_hunt_exec_pending"] = true
 			_audio_sys.sfx_passive(u, "hunter")   # 被动音效(11-05; 只管声音)
+			AttackRhythm.play_passive(self, u, "execute")   # 处决箭的拉弓动作
 			_ballistics._fire_hunter_exec_arrow(u, o)
 
 const INK_LINK_SEC := 3.0
@@ -5997,6 +5994,7 @@ func _tick_bulwark(u: Dictionary) -> void:   # 壁垒监视: 盾到期或被打�
 			if is_instance_valid(dome): dome.queue_free())
 	u["_bulwark_dome"] = null
 	if u.get("alive", false):
+		AttackRhythm.play_form(self, u, str(_anim_key(u)), "barrier_end")   # 盾破 / 到期: 砸地放水晶刺的那一下
 		_crystal_sys._crystal_spike_line(u)
 
 const SPIKE_LINE_RANGE := 700.0   # 壁垒水晶刺直线长度(用户2026-07-16定)
@@ -7326,6 +7324,8 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int, grow: float
 func _anticipate(u: Dictionary) -> void:
 	if u == null or not u.get("alive", false):
 		return
+	if str(u.get("anim_action", "")) == "cast":
+		return   # 逐帧释放动作在播: 姿势归帧条管, 再叠蓄力形变会把帧压变形
 	u["windup_t"] = JUICE_WINDUP_SEC
 	u["_windup_total"] = JUICE_WINDUP_SEC
 	u["swing_t"] = JUICE_WINDUP_SEC + JUICE_SWING_SEC   # 预备结束后挥出仍有效 (decay 先过 windup 段再进 swing 段)

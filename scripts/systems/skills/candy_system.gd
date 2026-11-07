@@ -54,7 +54,8 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 	dir = DetMath.norm(dir)
 	battle._anticipate(u)                                              # 蹲身蓄力
 	var hammer: Sprite3D = null                                # 举锤→猛砸一气呵成(用户2026-07-15"不连贯"→连续动作·无干等)
-	var htex = load("res://assets/sprites/skills/candy-hammer.png")
+	## 糖果龟自己的锤子在释放动作帧里(11-07), 飘锤只留给没有这段动作的(龟壳复制)
+	var htex = load("res://assets/sprites/skills/candy-hammer.png") if AttackRhythm.cast_entry(battle, u, "candyHammer").is_empty() else null
 	if htex != null:
 		hammer = Sprite3D.new()
 		hammer.texture = htex; hammer.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -247,6 +248,7 @@ func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(�
 		if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
 	var steal: float = minf(fat["maxHp"] * DRAIN_MAXHP_PCT, fat["hp"] - 1.0)
 	if steal > 0:
+		AttackRhythm.play_passive(battle, u, "drain")   # 抬锤吸取(只管画面)
 		## ★回复按【实际扣掉的生命】(10-16 十只龟核查): 原来按计划量回 ⇒ 打在护盾上几乎不掉血也回满; 且增伤乘区能把「留 1 点」打穿
 		var _hp0: float = float(fat["hp"])
 		fat["_nonlethal_hit"] = true

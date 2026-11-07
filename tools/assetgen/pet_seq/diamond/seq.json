@@ -1,0 +1,72 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 12.5,
+  "ground": 167,
+  "ox": 56,
+  "rel": 5
+ },
+ "cast_diamondFortify": {
+  "cancel": -1,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "cast_diamondPowerball": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": 5
+ },
+ "cast_diamondSmash": {
+  "cancel": 11,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "form_diamondRoll_end": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "form_enter": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "state_diamondRoll": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ }
+}

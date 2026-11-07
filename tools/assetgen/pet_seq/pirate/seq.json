@@ -1,0 +1,65 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 5
+ },
+ "cast_pirateCannonBarrage": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_pirateRum": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_pirateShipPassive": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_pirateShipShot": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 5
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_enter": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ }
+}

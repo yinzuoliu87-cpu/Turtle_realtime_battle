@@ -1,0 +1,72 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 13.333333333333334,
+  "ground": 167,
+  "ox": 56,
+  "rel": 5
+ },
+ "cast_headlessFear": {
+  "cancel": -1,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "cast_headlessSoulStrike": {
+  "cancel": -1,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "cast_headlessTendrils": {
+  "cancel": -1,
+  "fps": 11.76470588235294,
+  "ground": 167,
+  "ox": 56,
+  "rel": 4
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "form_headlessTendrils_end": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "form_scythe": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ },
+ "state_headlessTendrils": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 167,
+  "ox": 56,
+  "rel": -1
+ }
+}

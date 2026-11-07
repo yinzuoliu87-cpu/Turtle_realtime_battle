@@ -1,0 +1,65 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 5
+ },
+ "cast_hunterBarrage": {
+  "cancel": 32,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 5
+ },
+ "cast_hunterShot": {
+  "cancel": 11,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_hunterStealth": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_dodge": {
+  "cancel": -1,
+  "fps": 18,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_execute": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ }
+}

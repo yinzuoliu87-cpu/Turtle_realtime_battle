@@ -148,8 +148,8 @@ func _t_facing() -> void:
 		_ok("★素材朝左 ⇒ axe 不该登记在 ART_FACES_RIGHT(登记了 = 场上左右反)", not listed,
 			"登记=%s" % str(listed))
 	## 反过来也要有分母: 表里那几个老成员还在(整张表被清空时上面那条会假绿)
-	_ok("★分母: 表里原有的 hiding/headless/mech 还在(被清空会让上面那条变成空检查)",
-		m != null and m.get_string(1).contains("hiding") and m.get_string(1).contains("mech"))
+	_ok("★分母: 表里原有的 mech / __trainer__ 还在(被清空会让上面那条变成空检查)",
+		m != null and m.get_string(1).contains("__trainer__") and m.get_string(1).contains("mech"))
 
 
 # ══════════════════════════════════════════════════════════════

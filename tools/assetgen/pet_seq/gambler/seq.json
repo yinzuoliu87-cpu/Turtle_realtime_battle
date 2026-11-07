@@ -1,0 +1,65 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_gamblerBet": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 3
+ },
+ "cast_gamblerDraw": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_gamblerFateWheel": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": 4
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_enter": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_multi": {
+  "cancel": -1,
+  "fps": 18,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ }
+}

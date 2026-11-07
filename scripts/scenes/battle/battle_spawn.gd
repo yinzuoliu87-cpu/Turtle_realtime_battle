@@ -633,6 +633,7 @@ func _apply_spawn_passives() -> void:
 
 ## 单个单位的登场被动(2026-07-17抽出: 缩头随从=实体完整龟, 它对应的被动也要正常·用户"什么被动什么显示和动画都得正常")
 func _apply_spawn_passive_one(u: Dictionary) -> void:
+	AttackRhythm.play_passive(battle, u, "enter")   # 登场动作(钻石怒吼 / 海盗 / 赌神压帽檐; 只管画面)
 	match u["id"]:
 		"rainbow":
 			u["prism_color"] = battle._battle_rng.randi() % 3   # 开局即给棱镜色(修: 原-1致前6秒普攻无附色)

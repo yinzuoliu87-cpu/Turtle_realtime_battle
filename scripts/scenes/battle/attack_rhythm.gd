@@ -10,8 +10,19 @@ extends RefCounted
 ## 现在: 前摇一开始 begin() 就播, 帧率 = 命中帧(AttackHits)/ 前摇秒数 ⇒ 结算那一刻正好显示命中帧, 同一帧率播完后摇;
 ##   攻速越快前摇越短 ⇒ 帧率越高、整段越短。没有帧条的单位: 形变在整个前摇里慢慢缩(蓄力), 结算那刻弹出去。
 ## 门禁 tests/verify_attack_rhythm.gd(真场景量「进前摇那帧在播普攻」「结算那帧显示命中帧」)。
+const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 const FPS_MIN := 4.0
 const FPS_MAX := 40.0
+const CAST_CANCEL_AFTER := 3   # 释放帧之后几帧起可被走路 / 普攻打断(约 0.25 秒, 对上 CAST_RECOVER)
+
+
+## 动作帧条 → 帧字典(主场景 _resolve_action 用)。方帧; 长动作折行(宽超手机 GPU 上限 4096, build_turtle_seq.py 登记在 ROWS)
+static func action_sd(rel: String, tex: Texture2D, fps: float) -> Dictionary:
+	var row: Array = TurtleActions.ROWS.get(rel, [1, 0])
+	var fh: int = tex.get_height() / int(row[0])
+	var hframes: int = maxi(1, int(floor(float(tex.get_width()) / float(fh))))
+	var nf: int = int(row[1]) if int(row[1]) > 0 else hframes
+	return {"tex": tex, "frames": nf, "fps": fps, "frame_h": fh, "hframes": hframes, "vframes": int(row[0]), "loop": false}
 
 
 ## 进普攻前摇时调(sim 步里; 只写渲染专属键 anim_* / windup_t / swing_t / _windup_total / _atk_wind / _atk_hit_frame)
@@ -74,10 +85,28 @@ static func cast_begin(battle, u: Dictionary, stype: String, wsec: float) -> voi
 	var rel: int = int(ent[2]) if ent.size() > 2 else maxi(1, int(asd.get("frames", 2)) / 2)
 	asd["fps"] = clampf(float(maxi(1, rel)) / wsec, FPS_MIN, FPS_MAX)
 	battle._set_anim_sheet(u, asd, "cast", false)
+	u["_cast_cancel"] = int(ent[3]) if ent.size() > 3 else rel + CAST_CANCEL_AFTER
 	var key = battle._anim_key(u)
 	if battle.ANIM_NORM.has(key) or TurtleActions.NORM.has(key):
 		battle._elite_sys._elite_fix_norm(u, asd)
 	u["_cast_wind"] = true
+
+
+## 释放后走路 / 普攻能不能打断释放动作。
+## 11-07 查: 释放后 CAST_RECOVER(0.24 秒)AI 就恢复, 而动作普遍还要播 0.5 秒以上 ⇒ 不让打断, 身体摆着施法姿势滑步、普攻没动作。
+##   打断帧之前的部分是技能本身(蓄力 / 连射 / 落锤), 不让断; 之后是收招, 可以断。登记在 CAST 第 4 列, 没登记 = 释放帧 + CAST_CANCEL_AFTER。
+static func cast_cancelable(u: Dictionary) -> bool:
+	if str(u.get("anim_action", "")) != "cast":
+		return false
+	var sd: Dictionary = u.get("anim_sd", {})
+	return int(float(u.get("anim_t", 0.0)) * float(sd.get("fps", 0.0))) >= int(u.get("_cast_cancel", 9999))
+
+
+## 被动的一次性段(闪避 / 处决箭 / 吸取 / 连击 / 登场): 不打断技能、形态段, 也不打断普攻前摇; 这只龟没这一段就什么都不做
+static func play_passive(battle, u: Dictionary, seg: String) -> void:
+	if str(u.get("anim_action", "")) in ["cast", "transform", "death"] or u.get("_atk_wind", false):
+		return
+	play_form(battle, u, str(battle._anim_key(u)), seg)
 
 
 ## 技能生效(_cast_skill)时调: 前摇里已开播 ⇒ 此刻正是释放帧, 不重播; 没有释放动作的照旧预备形变
@@ -90,6 +119,8 @@ static func cast_on(battle, u: Dictionary) -> void:
 static func cast_entry(battle, u: Dictionary, stype: String) -> Array:
 	var key = battle._anim_key(u)
 	var tbl: Dictionary = TurtleActions.CAST.get(key, {})
+	if stype == "pirateShipPassive" and SkillForms.current_index(u, stype) == 1:
+		stype = "pirateShipShot"   # 海盗船第二形态 = 霰弹, 是另一个动作(形态判据只认 SkillForms)
 	if tbl.has(stype):
 		return tbl[stype]
 	return (CastSheets.CAST.get(key, {}) as Dictionary).get(stype, [])   # 外包 11 只以外的龟(忍者 / 幽灵…; build_extra_casts.py 生成)
@@ -108,6 +139,10 @@ static func state_active(battle, u: Dictionary, name: String) -> bool:
 			return battle._t < float(u.get("channel_until", 0.0))
 		"diamondRoll":    # 钻石滚球位移态
 			return bool(u.get("roll_active", false))
+		"headlessTendrils":   # 万千触须引导 4 秒(headless_system: channel)
+			return battle._t < float(u.get("channel_until", 0.0))
+		"diceDash":       # 稳定骰子连续突刺
+			return bool(u.get("dice_dash_active", false))
 	return false
 
 
@@ -131,9 +166,11 @@ static func apply_state_idle(battle, u: Dictionary) -> void:
 	var cur: String = tex.resource_path if tex != null else ""
 	if row.is_empty():
 		if str(u.get("_state_on", "")) != "":
+			var ended: String = str(u["_state_on"])
 			u["_state_on"] = ""
 			if cur != ((u.get("idle_sd", {}) as Dictionary).get("tex", null) as Texture2D).resource_path:
 				battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 状态结束 → 回待机
+			play_form(battle, u, str(key), ended + "_end")   # 有收招段的(缩壳探头 / 滚球舒展)播完再回待机; 没登记的 play_form 自己返回
 		return
 	if cur.ends_with(str(row[1])):
 		return
