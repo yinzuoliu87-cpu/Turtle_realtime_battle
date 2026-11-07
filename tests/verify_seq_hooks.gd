@@ -7,7 +7,7 @@ extends Node
 ##   查 11-07 时 FORM 里新增的 10 段**零调用**(表里有、没人播), 所以这条门禁量「真的播起来了」, 不量表里有没有。
 ## 判据:
 ##   ① 静态: 14 只的每个 FORM 段都有调用者; `<状态>_end` 段对得上这只龟的持续状态
-##   ② 无头: 第 3 下之后的挥镰(_headless_scythe)在播 scythe 段, 举爪撑到预警结束才砍下
+##   ② 无头: 强化的三下播拍爪段; 第 3 下之后的挥镰(_headless_scythe)在播 scythe 段, 举爪撑到预警结束才扫出
 ##   ③ 海盗船: 第一形态 / 第二形态放的是两段不同动作
 ##   ④ 持续状态: 触须 / 连续突刺 / 缩壳 / 滚球 期间在播状态循环, 结束接收招段, 收招段播完回待机
 ##   ⑤ 释放动作可打断: 打断帧之前普攻不许断(技能本身), 之后能断(否则身体摆着施法姿势滑步)
@@ -126,6 +126,16 @@ func _check_static() -> void:
 
 
 func _check_scythe(scn, u: Dictionary) -> void:
+	## 三下强化攻击用拍爪, 不用普攻(用户 11-07); 走普攻真入口 AttackRhythm.begin
+	var plain := AttackRhythm.sheet_path(scn, u)
+	u["headless_soul_stacks"] = 3
+	AttackRhythm.begin(scn, u, 0.375)
+	_ok("② ★★强化的三下播拍爪段, 不是普攻", _sheet(u).ends_with("headless/soul_attack.png"), _sheet(u))
+	_ok("② 拍爪段登记了命中帧(否则按 40% 估, 伤害对不上拍下那一帧)", TurtleActions.HIT.has("pets/animations/headless/soul_attack.png"))
+	scn._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+	u["_atk_wind"] = false
+	u["headless_soul_stacks"] = 0
+	_ok("② 强化结束回普攻", AttackRhythm.sheet_path(scn, u) == plain, plain)
 	u["headless_soul_stacks"] = 3
 	scn._headless_sys._headless_scythe(u)
 	_ok("② ★★第 3 下后在播挥镰段(不是待机, 也不是放技能时那一段)", _sheet(u).ends_with("headless/scythe.png"), _sheet(u))

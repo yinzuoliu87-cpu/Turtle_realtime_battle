@@ -154,6 +154,8 @@ def build(tid: str) -> dict:
 		elif kind == "form":
 			ent.setdefault("forms", {})[seg[5:]] = n
 			ent.setdefault("form_fps", {})[seg[5:]] = float(s["fps"])
+			if int(s.get("rel", -1)) >= 0:   # 普攻的替换帧条(灵魂打击拍爪): 命中帧登记到 HIT
+				ent.setdefault("hits", {})[rel_path] = int(s["rel"])
 		elif kind == "state":
 			ent.setdefault("states", []).append([seg[6:], rel_path, float(s["fps"])])
 	## ③ 头像: 头部特写源图(PixelLab Pro Flash 128×128, 见 pet_seq/README.md)裁透明边 ×3 最近邻

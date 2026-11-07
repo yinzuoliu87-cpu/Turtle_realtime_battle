@@ -585,6 +585,8 @@ def write_gd(man: dict) -> None:
 	L.append("const HIT := {")
 	for t in ids:
 		L.append("\t\"pets/animations/%s/attack.png\": %d," % (t, int(man[t].get("hit", ATTACK_HIT))))
+		for pth, h in sorted(man[t].get("hits", {}).items()):
+			L.append("\t\"%s\": %d," % (pth, int(h)))
 	L.append("}")
 	L.append("## 技能释放动作 [路径, 帧率, 释放帧](AttackRhythm.cast_begin 读: 技能前摇开始就播, 释放帧对上 _cast_skill 生效)。来源: 骨骼模板 / PixelLab。")
 	L.append("## 持续状态循环 [[状态名, 路径, 帧率], ...](AttackRhythm.apply_state_idle 读; 熔岩火山形态等)")

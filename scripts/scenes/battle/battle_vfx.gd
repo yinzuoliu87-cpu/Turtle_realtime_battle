@@ -82,7 +82,7 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 	if not table.has(id):
 		table = TurtleActions.by_kind(kind)
 	## ★单位自带帧表(096 九把斧按形态各用各的, 见 AxeArt): 先查单位身上的 `_act_rows`, 没有再查全局表
-	var own_rows: Dictionary = u.get("_act_rows", {})
+	var own_rows: Dictionary = AttackRhythm.own_rows_of(battle, u)
 	if not own_rows.has(kind) and not table.has(id):
 		return
 	# hurt 不打断正在播的 attack (避免普攻动作被打断闪烁); attack 不打断 hurt 中

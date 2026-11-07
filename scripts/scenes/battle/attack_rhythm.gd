@@ -16,6 +16,17 @@ const FPS_MAX := 40.0
 const CAST_CANCEL_AFTER := 3   # 释放帧之后几帧起可被走路 / 普攻打断(约 0.25 秒, 对上 CAST_RECOVER)
 
 
+## 这个单位自己的普攻帧表: 单位自带(九把斧按形态)优先; 灵魂打击强化的三下用拍爪(用户 11-07「三下强化攻击都用那个爪子向下拍的动作」)。
+## 判据只读 headless_soul_stacks, 不往单位字典加键(单位字典进确定性摘要)。龟壳复制没有这段, 查不到就走自己的普攻。
+static func own_rows_of(battle, u: Dictionary) -> Dictionary:
+	var own: Dictionary = u.get("_act_rows", {})
+	if own.is_empty() and int(u.get("headless_soul_stacks", 0)) > 0:
+		var ent: Array = (TurtleActions.FORM.get(battle._anim_key(u), {}) as Dictionary).get("soul_attack", [])
+		if not ent.is_empty():
+			return {"attack": ent}
+	return own
+
+
 ## 动作帧条 → 帧字典(主场景 _resolve_action 用)。方帧; 长动作折行(宽超手机 GPU 上限 4096, build_turtle_seq.py 登记在 ROWS)
 static func action_sd(rel: String, tex: Texture2D, fps: float) -> Dictionary:
 	var row: Array = TurtleActions.ROWS.get(rel, [1, 0])
@@ -58,7 +69,7 @@ static func on_hit(battle, u: Dictionary) -> void:
 
 ## 这个单位的普攻帧条路径(与 _play_action 选表同一套: 单位自带 → 主表 → 外包 11 只的生成表); 没有 = ""
 static func sheet_path(battle, u: Dictionary) -> String:
-	var own_rows: Dictionary = u.get("_act_rows", {})
+	var own_rows: Dictionary = own_rows_of(battle, u)
 	if own_rows.has("attack"):
 		return str((own_rows["attack"] as Array)[0])
 	var id = battle._anim_key(u)

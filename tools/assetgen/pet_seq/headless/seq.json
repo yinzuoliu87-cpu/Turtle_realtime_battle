@@ -44,9 +44,16 @@
  "form_scythe": {
   "cancel": -1,
   "fps": 15,
+  "ground": 123,
+  "ox": 0,
+  "rel": -1
+ },
+ "form_soul_attack": {
+  "cancel": -1,
+  "fps": 15,
   "ground": 167,
   "ox": 56,
-  "rel": -1
+  "rel": 5
  },
  "idle": {
   "cancel": -1,

@@ -314,15 +314,20 @@
   "feet_row": 135,
   "form_fps": {
    "headlessTendrils_end": 15.0,
-   "scythe": 15.0
+   "scythe": 15.0,
+   "soul_attack": 15.0
   },
   "forms": {
    "headlessTendrils_end": 4,
-   "scythe": 22
+   "scythe": 26,
+   "soul_attack": 11
   },
   "fps": 15,
   "frame": 136,
   "hit": 5,
+  "hits": {
+   "pets/animations/headless/soul_attack.png": 5
+  },
   "rows": {},
   "run": 8,
   "states": [

@@ -312,8 +312,10 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀横扫·柄尾钉龟身+刀身billboard绕柄尾转100度(用户2026-07-17终版·Camille W): rotation.z跟随投影后的场内径向→刀锋始终咬合地面扇形当前扫向(非平面乱转)→贴地宽亮刀光累积铺满100度footprint(等距主角)→收势整片白闪+顿帧震
 	if battle._cam == null: return
 	var half := deg_to_rad(50.0)
-	var a0 := -deg_to_rad(60.0)                                # 起手刀锋后引(蓄势超-50度)
-	var a1 := half                                            # 收势到+50度
+	## 朝左朝右都从身前扫到身后(龟身帧条左右翻转, 11-07 新做的横扫动作是这条路线; 判定是对称扇形, 不受影响)
+	var flip: float = -1.0 if aim.x > 0.0 else 1.0
+	var a0: float = -deg_to_rad(60.0) * flip                   # 起手刀锋后引(蓄势超-50度)
+	var a1: float = half * flip                               # 收势到+50度
 	var grip = battle._world_pos(center, 0.5)                        # 柄尾支点=龟握持点(全程钉死)
 	var blade_len := 250.0                                     # 镰刀视觉长度(billboard高·大而醒目)
 	var tex: Texture2D = load("res://assets/sprites/vfx/soul-scythe-2.png")
@@ -356,8 +358,8 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 		if not is_instance_valid(scythe): return
 		var theta: float = DetMath.flerp(a0, a1, q)
 		battle._scythe_face_screen(scythe, center, aim, theta)
-		if is_instance_valid(cone): cone.modulate.a = 0.22 + 0.5 * clampf((theta + half) / (2.0 * half), 0.0, 1.0)   # 扫过区渐亮
-		if trailtex == null or theta < -half: return
+		if is_instance_valid(cone): cone.modulate.a = 0.22 + 0.5 * clampf((theta * flip + half) / (2.0 * half), 0.0, 1.0)   # 扫过区渐亮
+		if trailtex == null or theta * flip < -half: return
 		var d := DetMath.rotated(aim, clampf(theta, -half, half))    # 贴地宽亮径向刀光(扫过处刷亮·累积成footprint)
 		var edge := Sprite3D.new()
 		edge.texture = trailtex

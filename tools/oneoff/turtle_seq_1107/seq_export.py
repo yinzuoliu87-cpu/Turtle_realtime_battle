@@ -7,6 +7,9 @@ import sys
 
 from PIL import Image
 
+sys.path.insert(0, "C:/Users/Louis/AppData/Local/Temp/claude/5a6586b023f62759/a1c0e931-7a92-4ec5-b358-31af224163c8/scratchpad")
+from act import despeck
+
 sys.stdout.reconfigure(encoding="utf-8")
 ROOT = "C:/Users/Louis/Documents/GitHub/turtle-realtime-godot/"
 RAW = ROOT + ".out/review/seq_raw/"
@@ -88,8 +91,14 @@ def run(tid):
                 put(tid, "cast_" + sk, fr[:8] + [fr[7]] + fr[8:], meta, dict(m, cancel=11))
             elif sk == "headlessSoulStrike":   # 放技能只是充能; 第 3 下后才挥镰(head:260): 蓄力 0.55 + 预警 0.5 = 第 1.05 秒砍下
                 put(tid, "cast_" + sk, [fr[i] for i in (0, 1, 2, 3, 4, 3, 2, 1)], meta, m)
-                raise_ = [fr[0], fr[1]] + [(fr[2], fr[3], fr[4], fr[5])[i % 4] for i in range(14)]
-                put(tid, "form_scythe", raise_ + fr[6:], meta, dict(m, fps=15, rel=-1))
+                ## 三下强化攻击用这一拍爪往下砍(用户 11-07), 第 6 帧命中
+                put(tid, "form_soul_attack", [fr[i] for i in (0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11)], meta, dict(m, fps=15, rel=5))
+                ## 横扫镰刀(用户 11-07): 龟身只挥手, 镰刀由技能特效画; 路线绕身体一圈不走回头路 .out/review/scythe_path.png
+                ## 举到身后上方 → 经身前压到左下(第 16 帧 = 1.07 秒, 特效镰刀此刻出现) → 平扫 → 扬到左上 → 从身后绕回
+                sy = lambda seg, i: despeck(Image.open(ROOT + ".out/review/scythe/%s/f_%02d.png" % (seg, i)).convert("RGBA"), 14)
+                seq_ = [sy("in", i) for i in range(1, 8)] + [sy("in", 8), sy("in", 7)] * 3 + [sy("down", 1), sy("down", 2), sy("down", 3)]
+                seq_ += [sy("down", 4), sy("up", 0), sy("up", 2), sy("up", 4), sy("up", 4), sy("up", 4)] + [sy("back", i) for i in (1, 2, 3, 4)]
+                put(tid, "form_scythe", seq_, meta, dict(ox=0, ground=123, fps=15, rel=-1))
             elif sk == "headlessTendrils":  # 引导 4 秒(head:535): 出手 → 触须循环 → 收
                 put(tid, "cast_" + sk, fr[:5], meta, m)
                 put(tid, "state_headlessTendrils", [fr[3], fr[4], fr[5], fr[4]], meta, dict(m, fps=8, rel=-1))
