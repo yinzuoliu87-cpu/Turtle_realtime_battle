@@ -170,10 +170,10 @@ func _ready() -> void:
 	var m1 := _mk("ally", c + Vector2(260, 60))
 	var m2 := _mk("ally", c + Vector2(300, 60))
 	var msrc := _mk("enemy", c + Vector2(340, 60))
-	## 挂两种受害者侧状态: 靶向器(增伤) + 钩索易伤。两条路都该吃到。
+	## 挂两种受害者侧状态: 靶向器(增伤) + 冰川易伤(钩索易伤 11-08 已删)。两条路都该吃到。
 	for m in [m1, m2]:
 		m["eq_marked_until"] = _s._t + 30.0
-		m["hook_vuln_until"] = _s._t + 30.0
+		m["glacier_vuln_until"] = _s._t + 30.0
 	var NOM := 1000
 	var h1: float = float(m1["hp"])
 	var h2: float = float(m2["hp"])

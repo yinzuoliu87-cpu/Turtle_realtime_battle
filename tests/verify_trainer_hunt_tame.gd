@@ -21,11 +21,12 @@ const WANT_HUNT_RANGE := 2000.0   # ★U2/D1(用户 2026-09-16「射程全部提
 const WANT_HUNT_SEC := 15.0
 const WANT_HUNT_TAUNT_R := 400.0
 const WANT_HUNT_VULN := 1.15        # 受到 15% 额外伤害
-const WANT_TAME_CD := 60.0
+const WANT_TAME_CD := 999.0       # 用户 11-08: 60 → 999
+const WANT_TAME_CD_MISS := 30.0   # 用户 11-08:「未命中还是三十秒」(与冷却脱钩)
 const WANT_TAME_RANGE := 2000.0   # ★U2/D1: 原需求字面 600
 const WANT_TAME_REVIVE := 0.30      # 30% 最大生命重生
 const WANT_TAME_INVULN := 2.5       # 重生演出 2.5 秒
-const WANT_TAME_DECAY := 0.02       # 每秒 2% 最大生命
+const WANT_TAME_DECAY := 0.05       # 每秒 5% 最大生命(用户 11-08: 2% → 5%)
 
 var _fail := 0
 
@@ -67,6 +68,19 @@ func _ready() -> void:
 	var foe = _foe(s)
 	if foe.is_empty():
 		print("  [FAIL] ★分母: 场上没有敌方单位"); _fail += 1; _done(s); return
+	## ①b 没标中的冷却 = 需求字面 30 秒, 不是冷却的一半(冷却 999 的一半是 499.5)。真入口 _cast_tame, 同一帧内把敌人暂时移出再放回。
+	var _gone: Array = []
+	for o in s._targeting._pick_enemies_of(tr):
+		_gone.append(o)
+		o["alive"] = false
+	tr["_active_cd"] = 0.0
+	var _hit_m: bool = s._trainer_sys._cast_tame(tr, Vector2.RIGHT)
+	var _mcd: float = float(tr.get("_active_cd", -1.0))
+	for o in _gone:
+		o["alive"] = true
+	tr["_active_cd"] = 0.0
+	print("  ①b 没有可标的敌人(暂时移出 %d 个): 标中=%s 冷却=%.1f 秒 (需求 %.0f)" % [_gone.size(), str(_hit_m), _mcd, WANT_TAME_CD_MISS])
+	_chk("①b 驯服没标中冷却 = %.0f 秒" % WANT_TAME_CD_MISS, _gone.size() > 0 and not _hit_m and absf(_mcd - WANT_TAME_CD_MISS) < 0.01)
 	print("")
 	print("  ★分母: 大师 @%s / 靶子「%s」maxHp=%.0f" % [str(tr["pos"].round()), str(foe.get("name", "?")), float(foe["maxHp"])])
 

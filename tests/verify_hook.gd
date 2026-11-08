@@ -52,14 +52,14 @@ func _ready() -> void:
 	# ═══ ② _hook_grab: 眩晕(吃韧性)+ 拖拽标记 + 受伤放大 + 触发证据 ═══
 	var v0 := _mk("right", 300.0, 0.0)
 	b._trainer_sys._hook_grab(L, v0)
-	_ok("钩住→眩晕4秒(无韧性)", abs(float(v0.get("stun_until", 0.0)) - 4.0) < 0.01, "%.2f" % float(v0.get("stun_until", 0.0)))
-	_ok("★钩住→标记4秒拖拽", abs(float(v0.get("_hook_pull_until", 0.0)) - 4.0) < 0.01)
-	_ok("★钩住→受伤放大窗口4秒", abs(float(v0.get("hook_vuln_until", 0.0)) - 4.0) < 0.01)
+	_ok("钩住→眩晕2.5秒(无韧性·用户 11-08)", abs(float(v0.get("stun_until", 0.0)) - 2.5) < 0.01, "%.2f" % float(v0.get("stun_until", 0.0)))
+	_ok("★钩住→标记2.5秒拖拽", abs(float(v0.get("_hook_pull_until", 0.0)) - 2.5) < 0.01)
+	_ok("★钩住不再挂受伤放大(用户 11-08 只眩晕并往回拽)", not v0.has("hook_vuln_until"))
 	_ok("拖拽指向施法大师", is_same(v0.get("_hook_pull_by", null), L))
 	_ok("同步触发证据 _hooked_by(非tween假断言)", is_same(v0.get("_hooked_by", null), L))
 	var vTen := _mk("right", 300.0, 0.0, {"tenacity": 0.5})
 	b._trainer_sys._hook_grab(L, vTen)
-	_ok("★眩晕吃韧性(0.5韧性→4×0.5=2秒)", abs(float(vTen.get("stun_until", 0.0)) - 2.0) < 0.01, "%.2f" % float(vTen.get("stun_until", 0.0)))
+	_ok("★眩晕吃韧性(0.5韧性→2.5×0.5=1.25秒)", abs(float(vTen.get("stun_until", 0.0)) - 1.25) < 0.01, "%.2f" % float(vTen.get("stun_until", 0.0)))
 
 	# ═══ ③ ★真 skillshot: 出手不锁定 / 飞行中能躲 / 空放要飞满才返还 ═══
 	# 推进钩子飞行的小工具: 按固定步长喂 delta(delta 制 → 无头也稳, 不依赖 tween)
@@ -77,8 +77,8 @@ func _ready() -> void:
 	b._trainer_sys._flights = []
 	_ok("★出手→返回true(语义=成功放出, 不再是'将命中')",
 		b._trainer_sys._cast_hook(L2, Vector2(1, 0)) == true)
-	_ok("★出手即进 CD=20(命中/空放只决定要不要返还)",
-		abs(float(L2.get("_active_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L2.get("_active_cd", 0.0)))
+	_ok("★出手即进 CD=30(命中/空放只决定要不要返还)",
+		abs(float(L2.get("_active_cd", 0.0)) - 30.0) < 0.01, "%.1f" % float(L2.get("_active_cd", 0.0)))
 	_ok("★出手时还没钩到人(不再是出手就判定)", not e2.has("_hooked_by"))
 	_ok("★场上多了一个在飞的钩子", b._trainer_sys._flights.size() == 1)
 	_ok("CD未好→不能再放(返回false)", b._trainer_sys._cast_hook(L2, Vector2(1, 0)) == false)
@@ -100,7 +100,7 @@ func _ready() -> void:
 	fly.call(b, b.HOOK_RANGE / b.HOOK_MISSILE_SPD + 0.20)     # 让钩子飞满射程
 	_ok("★★飞行中走开→躲掉了(没有 _hooked_by)", not e4.has("_hooked_by"),
 		"实际 %s" % str(e4.get("_hooked_by", null)))
-	_ok("★躲掉后按空放返还 CD=10", abs(float(L4.get("_active_cd", 0.0)) - 10.0) < 0.01,
+	_ok("★躲掉后按没命中冷却 CD=15", abs(float(L4.get("_active_cd", 0.0)) - 15.0) < 0.01,
 		"%.1f" % float(L4.get("_active_cd", 0.0)))
 	_ok("★躲掉后钩子已回收", b._trainer_sys._flights.is_empty())
 
@@ -123,10 +123,10 @@ func _ready() -> void:
 	b._t = 0.0
 	b._trainer_sys._flights = []
 	_ok("★空放也返回true(放出去了)", b._trainer_sys._cast_hook(L3, Vector2(1, 0)) == true)
-	_ok("★空放【出手瞬间】CD 仍是 20(还没飞完, 不知道会不会中)",
-		abs(float(L3.get("_active_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L3.get("_active_cd", 0.0)))
+	_ok("★空放【出手瞬间】CD 仍是 30(还没飞完, 不知道会不会中)",
+		abs(float(L3.get("_active_cd", 0.0)) - 30.0) < 0.01, "%.1f" % float(L3.get("_active_cd", 0.0)))
 	fly.call(b, 0.35 + b.HOOK_RANGE / b.HOOK_MISSILE_SPD + 0.10)
-	_ok("★飞满射程未命中→返还成 CD=10", abs(float(L3.get("_active_cd", 0.0)) - 10.0) < 0.01,
+	_ok("★飞满射程未命中→冷却 15", abs(float(L3.get("_active_cd", 0.0)) - 15.0) < 0.01,
 		"%.1f" % float(L3.get("_active_cd", 0.0)))
 
 	# ── ③-f 大师死了 → 在飞的钩子作废 ──
@@ -142,11 +142,9 @@ func _ready() -> void:
 	_ok("★大师死了→钩子已回收", b._trainer_sys._flights.is_empty())
 
 	# ═══ ④ _mitigate_incoming: 被钩4秒内受伤 ×1.25 ═══
-	var hv := _mk("right", 0.0, 0.0, {"hook_vuln_until": 5.0})   # _t=0 < 5 → 生效
-	_ok("★被钩→受伤×1.25(100→125)", abs(b._mitigate_incoming(hv, 100.0, false, false) - 125.0) < 0.5, "%.1f" % b._mitigate_incoming(hv, 100.0, false, false))
-	var nohv := _mk("right", 0.0, 0.0, {"hook_vuln_until": 0.0})
-	_ok("未被钩→不放大(100→100)", abs(b._mitigate_incoming(nohv, 100.0, false, false) - 100.0) < 0.5)
-	_ok("自损(is_self)不吃放大", abs(b._mitigate_incoming(hv, 100.0, false, true) - 100.0) < 0.5)
+	## 用户 11-08 删了受伤 +25%: 就算有人手写旧键, _mitigate_incoming 也不再放大。
+	var hv := _mk("right", 0.0, 0.0, {"hook_vuln_until": 5.0})
+	_ok("★钩锁不再受伤放大(100→100)", abs(b._mitigate_incoming(hv, 100.0, false, false) - 100.0) < 0.5, "%.1f" % b._mitigate_incoming(hv, 100.0, false, false))
 
 	# ═══ ⑤ _tick_hooks: CD扣减 + 被钩单位【一段段】拽(非匀速·锤石口径) ═══
 	var Lc := _mk("left", 400.0, 300.0, {"is_trainer": true, "_active_cd": 5.0})
@@ -167,17 +165,46 @@ func _ready() -> void:
 		b._trainer_sys._tick_hooks(0.03)
 	var d_after: float = pulled["pos"].distance_to(Lc["pos"])
 	_ok("★停顿期不拽(每秒1下·非匀速)", abs(d_before - d_after) < 0.5, "停顿期又移了 %.2f 码" % abs(d_before - d_after))
-	# ★共拖4下·每下70=总≈280码(用户2026-07-26"每秒70码共4秒拖4下"): 起点拉远跑满4秒眩晕, 数总位移
-	var far_u := _mk("right", 900.0, 300.0, {"_hook_pull_until": 4.0, "_hook_pull_by": Lc, "_hook_tug_t0": 0.0})
+	# ★每秒拽 1 下·每下 70 码; 眩晕 2.5 秒(用户 11-08)内拽 t≈0/1/2 共 3 下 ≈ 210 码: 起点拉远跑满眩晕, 数总位移
+	var far_u := _mk("right", 900.0, 300.0, {"_hook_pull_until": b.HOOK_STUN, "_hook_pull_by": Lc, "_hook_tug_t0": 0.0})
 	b._units = [Lc, far_u]
 	var dfar0: float = far_u["pos"].distance_to(Lc["pos"])
 	var tt: float = 0.0
-	while tt < 4.0:
+	while tt < b.HOOK_STUN:
 		b._t = tt
 		b._trainer_sys._tick_hooks(0.03)
 		tt += 0.03
 	var moved: float = dfar0 - far_u["pos"].distance_to(Lc["pos"])
-	_ok("★4秒内共拖4下≈280码(4×70·每秒1下)", moved > 250.0 and moved < 320.0, "4秒共拖 %.0f 码" % moved)
+	_ok("★2.5秒内共拖3下≈210码(3×70·每秒1下)", moved > 180.0 and moved < 250.0, "2.5秒共拖 %.0f 码" % moved)
+
+	# ═══ ⑤b 用户 11-08「不要再是最近的敌人，改为向随机敌人」: 射程内随机一个敌人, 走本局 _battle_rng(同种子同结果) ═══
+	var Lr := _mk("left", 0.0, 0.0, {"is_trainer": true})
+	var r1 := _mk("right", 300.0, 0.0)
+	var r2 := _mk("right", 0.0, 500.0)
+	var r3 := _mk("right", -600.0, 100.0)
+	var rfar := _mk("right", b.TRAINER_RANGE + 500.0, 0.0)          # 射程外: 永远不选
+	var rtr := _mk("right", 100.0, 0.0, {"is_trainer": true})        # 敌方大师: 永远不选
+	b._units = [Lr, r1, r2, r3, rfar, rtr]
+	var cands: Array = [r1, r2, r3]
+	var draw := func(seed_v: int) -> Array:
+		b._battle_rng.seed = seed_v
+		var out: Array = []
+		for _i in range(60):
+			var pick = b._targeting._random_enemy_for_trainer(Lr)
+			var idx := -1
+			for j in range(cands.size()):
+				if is_same(pick, cands[j]):
+					idx = j
+			out.append(idx)
+		return out
+	var s1: Array = draw.call(20261108)
+	var s2: Array = draw.call(20261108)
+	var hit_n := {}
+	for k in s1:
+		hit_n[k] = int(hit_n.get(k, 0)) + 1
+	_ok("★随机只选射程内、非大师的敌人(60 次, 分母 3 个候选)", not s1.has(-1), str(hit_n))
+	_ok("★随机真的会选到不同的敌人(60 次覆盖 3 个)", hit_n.size() == 3, str(hit_n))
+	_ok("★同一种子两次抽到的顺序完全相同(裁判机与客户端一致)", s1 == s2)
 
 	# ═══ ⑥ 接线证据(分母): Q键 / AI / _process tick / mitigate ═══
 	var src: String = ""
@@ -189,7 +216,8 @@ func _ready() -> void:
 	_ok("★sim 主循环挂了 _tick_hooks(2026-07-25 Phase4: 在 _sim_step·_process/累加器调 _sim_step)", src.contains("_tick_hooks(dt)") and src.contains("_sim_step(SIM_DT"))
 	_ok("★大师 AI 放主动已接线(_cast_active分派·U2 敌我同规则)", src.contains("_tick_trainer_ai") and src.contains("_cast_active(u,"))
 	_ok("★装配分派入口 _cast_active 存在", src.contains("func _cast_active") and src.contains('"fury_potion":') and src.contains('"glacier":'))
-	_ok("★受伤放大接进 _mitigate_incoming", src.contains("hook_vuln_until"))
+	_ok("★钩锁受伤放大已从 _mitigate_incoming 拿掉(用户 11-08)", not src.contains("hook_vuln_until"))
+	_ok("★AI 放钩锁走随机索敌(用户 11-08), 其余主动仍走最近", src.contains('_random_enemy_for_trainer(u) if str(u.get("_tr_active", "")) == "hook"'))
 
 	b.free()
 	print("ALL PASS — 钩锁核心机制(射程/眩晕/拖拽/受伤/CD/接线)" if _fail == 0 else "FAILED: %d" % _fail)

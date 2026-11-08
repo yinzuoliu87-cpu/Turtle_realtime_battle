@@ -337,9 +337,9 @@ const TRAINER_RANGE := 2000.0
 const TRAINER_ATK_INTERVAL := 1.5
 # ★钩锁技能(点3·法术圆盘第一个技能, 用户2026-07-23): 参考 LoL 锤石Q。
 const HOOK_RANGE := 2000.0       # 射程(码)·U2/D1「射程全部提升到 2000」(大师站后排不动, 原 600 够不到对面)
-const HOOK_CD := 20.0            # 冷却(秒)
-const HOOK_CD_MISS := 10.0       # 空放(没钩到人)→只冷却10秒(返还10秒)
-const HOOK_STUN := 4.0           # 钩住眩晕(秒, 吃韧性)
+const HOOK_CD := 30.0            # 冷却(秒)·用户 11-08: 20 → 30
+const HOOK_CD_MISS := 15.0       # 没钩到人 → 冷却 15 秒(用户 11-08: 10 → 15)
+const HOOK_STUN := 2.5           # 钩住眩晕(秒, 吃韧性)·用户 11-08: 4 → 2.5, 只眩晕并往回拽
 # ── 手感(仔细参照 Wild Rift 锤石Q·用户2026-07-24「不太行」返工) ──
 const HOOK_WINDUP := 0.35        # 施法前摇: 大师举钩蓄力, 松手/按Q后不立刻丢(锤石Q有前摇, 期间不转身不动)
 const HOOK_MISSILE_SPD := 570.0  # 钩子飞行速度(码/秒·用户2026-07-26 再−40%: 950→570·更像可躲skillshot·600码约1.05秒到)
@@ -349,7 +349,6 @@ const HOOK_PULL_INTERVAL := 1.0  # 两下拽之间的间隔(每 1.0s 拽一下 �
 const HOOK_TUG_DUR := 0.2        # 每一下"拽"的快速位移时长(0.2s猛滑·其余停顿=一下一下拽感)
 const HOOK_HIT_R := 70.0         # ★钩头【飞行中】的碰撞半径(码) —— 真 skillshot 靠这个每帧判, 不再出手就锁定
 const HOOK_TUG_DIST := 70.0      # 每一下拽把目标朝大师拽近的距离(码·4下×70=280码)
-const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25  ★真事实源: _mitigate_incoming 读它(2026-07-30 修好前那里是硬编码 1.25, 本常量【游戏代码零读者】)
 const WHISTLE_SHRED_MULT := 0.7   # 口哨②灵体气波削甲: 护甲 ×0.7 (-30%)
 const GLACIER_LEN := 2000.0      # 冰川长度(码) = 射程·U2/D1 原 500 → 2000
 const GLACIER_WIDTH := 90.0      # 冰川判定带宽(码·文案没写这一项)
@@ -360,7 +359,7 @@ const GLACIER_VULN_MULT := 1.2   # 站冰川上受到伤害 ×1.2  ★同上: �
 # id → {名/圆盘图标/冷却}。大师单位带 _tr_active(装配的主动 id) + 通用 _active_cd(所有主动共用一个冷却字段)。
 # 施放统一走 _trainer_sys._cast_active(u, aim), 按 _tr_active 分派到各技能。圆盘显示已装配技能的图标+冷却。
 const TRAINER_SKILLS := {
-	"hook":        {"name": "钩锁",   "icon": "res://assets/sprites/vfx/hook-skill-icon.png",   "cd": 20.0, "range": 2000.0, "aim": "dir"},
+	"hook":        {"name": "钩锁",   "icon": "res://assets/sprites/vfx/hook-skill-icon.png",   "cd": 30.0, "range": 2000.0, "aim": "dir"},
 	"fury_potion": {"name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png",  "cd": 16.0, "range": 2000.0, "aim": "point"},
 	"whistle":     {"name": "口哨",   "icon": "res://assets/sprites/vfx/whistle-icon.png",      "cd": 14.0, "range": 0.0,   "aim": "none"},
 	"glacier":     {"name": "冰川",   "icon": "res://assets/sprites/vfx/glacier-icon.png",      "cd": 17.0, "range": 2000.0, "aim": "dir"},
@@ -368,7 +367,7 @@ const TRAINER_SKILLS := {
 	#   用户 2026-07-28:「这个不是直线发射吧，而是像 lol 安妮的 Q 一样弹道锁头」——
 	#   即指定一个【敌方单位】, 弹道自动跟到它身上, 不会因为它走开而落空。
 	"hunt_order":  {"name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png",   "cd": 30.0, "range": 2000.0, "aim": "target"},
-	"tame":        {"name": "驯服",   "icon": "res://assets/sprites/vfx/tame-icon.png",         "cd": 60.0, "range": 2000.0, "aim": "target"},
+	"tame":        {"name": "驯服",   "icon": "res://assets/sprites/vfx/tame-icon.png",         "cd": 999.0, "range": 2000.0, "aim": "target"},
 }
 
 # ── 猎龟令(用户 2026-07-28) ──
@@ -390,7 +389,7 @@ const TAME_CD: float = TRAINER_SKILLS["tame"]["cd"]        # 同上: 只此一�
 const TAME_RANGE: float = TRAINER_SKILLS["tame"]["range"]
 const TAME_REVIVE_PCT := 0.30     # 死后按 30% 最大生命重生
 const TAME_REVIVE_SEC := 2.5      # 重生演出时长(期间无敌不可选中)
-const TAME_DECAY_PCT := 0.02      # 归顺后每秒损失 2% 最大生命
+const TAME_DECAY_PCT := 0.05      # 归顺后每秒损失 5% 最大生命(用户 11-08: 2% → 5%)
 const TAME_MISSILE_SPD := 1200.0
 const SpellDisc := preload("res://scripts/scenes/spell_disc.gd")
 const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技能图标(精修·带链条+青芒宝石); 飞行弹体仍用 trainer-hook.png
@@ -2190,7 +2189,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_tentacle_vfx.tick(dt)  # 触手拍击: 每帧重算网格(甩动)
 		_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
 		_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
-		_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 2% 最大生命
+		_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 TAME_DECAY_PCT 最大生命
 		_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
 		_trainer_sys._ms_tick_aura(dt)         # 魔法石: 按叠层阈值(10/25/50)建撤大师本体特效 + 推进绕转
 		_trainer_sys._tick_wave_flights(dt)     # 口哨②: 灵体气波蓄力/逐帧飞行/每帧碰撞(真 skillshot·命中才结算)
@@ -4343,8 +4342,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	#   把常量改成 1.5, 门禁会要求文案写"+50%", 改完文案门禁就绿了, 而游戏里仍是 +25%
 	#   —— 门禁会把【错误的文案判成正确的】。改成读常量后它才真是事实源。
 	#   冰川那条连常量都没有, 一并补上 GLACIER_VULN_MULT(值不变, 纯口径修正)。
-	if not is_self and _t < u.get("hook_vuln_until", 0.0):
-		d *= HOOK_VULN_MULT                          # ★钩锁(点3): 被钩住4秒内受到伤害 +25%
+	#   ★2026-11-08 钩锁受伤 +25% 删了(用户「只将其眩晕二点五秒，并往回拽」), 常量一并删, 不留零读者的死常量。
 	if not is_self and _t < u.get("glacier_vuln_until", 0.0):
 		d *= GLACIER_VULN_MULT                       # ★冰川: 站冰川上受到伤害 +20%(用户2026-07-23)
 	if not is_self and _t < u.get("hunt_until", 0.0):
@@ -4440,7 +4438,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		u["hp"] = float(u["maxHp"]) * 0.6
 		return
 	# ★驯服重生钩(训龟大师·用户 2026-07-28): 被驯服的敌人死亡时不真死, 以 30% 最大生命
-	#   重生并【归顺我方】, 之后每秒损失 2% 最大生命。
+	#   重生并【归顺我方】, 之后每秒损失 TAME_DECAY_PCT 最大生命。
 	#   放在自带复活钩【之前】—— 驯服是外部强加的效果, 应当优先于目标自己的涅槃/圣光,
 	#   否则凤凰被驯服后会先走自己的涅槃、归顺永远轮不上。
 	if _trainer_sys._tame_try_revive(u):

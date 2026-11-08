@@ -783,13 +783,11 @@ func _glacier_mist(pos2d: Vector2, delay: float) -> void:
 
 ## ★纯效果结算(可测): 钩住 target → 眩晕(吃韧性) + 标记4秒【一段段拽】 + 4秒受伤放大。不建任何 tween。
 func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
-	battle._damage._stun(target, battle.HOOK_STUN, "hook")                          # 眩晕4秒(吃韧性)
-	target["_hook_pull_until"] = battle._t + battle.HOOK_STUN               # 4秒内被拽
+	battle._damage._stun(target, battle.HOOK_STUN, "hook")                          # 眩晕 HOOK_STUN 秒(吃韧性)
+	target["_hook_pull_until"] = battle._t + battle.HOOK_STUN               # 眩晕期间被拽
 	target["_hook_pull_by"] = trainer                         # 朝这个大师拽
 	target["_hook_tug_t0"] = battle._t + battle.HOOK_TUG_DELAY              # 第一下拽的时刻(0.1s后·锤石口径)
-	target["hook_vuln_until"] = battle._t + battle.HOOK_STUN                # 4秒内受伤 ×1.25(见 _mitigate_incoming)
 	target["_hooked_by"] = trainer                            # 触发证据(同步标记, 非tween)
-	battle._buff_aura(target, Color(1.0, 0.35, 0.35, 0.45), battle.HOOK_STUN, 44.0)   # R3 易伤标记(受伤×1.25期间红环·守_world空)
 
 ## 每帧: 大师钩锁冷却扣减; 被钩单位【一段段】朝大师拽(每 battle.HOOK_PULL_INTERVAL 秒里, 前 battle.HOOK_TUG_DUR 秒快速位移一段, 其余停顿)。
 ## ★非匀速(用户2026-07-24: 锤石钩住是一下一下拽, 不是匀速)。在 _process 战斗门内调。
@@ -825,7 +823,9 @@ func _tick_trainer_ai(_delta: float) -> void:
 func _trainer_ai_step(u: Dictionary) -> void:
 	if float(u.get("_active_cd", 0.0)) > 0.0 or str(u.get("_tr_active", "")) == "":
 		return
-	var tgt = battle._targeting._nearest_enemy_for_trainer(u)
+	## 钩锁朝射程内随机一个敌人(用户 11-08「不要再是最近的敌人，改为向随机敌人」); 其余主动技仍朝最近的敌人。
+	var tgt = battle._targeting._random_enemy_for_trainer(u) if str(u.get("_tr_active", "")) == "hook" \
+		else battle._targeting._nearest_enemy_for_trainer(u)
 	if tgt != null:
 		_cast_active(u, tgt["pos"] - u["pos"])
 
@@ -1257,12 +1257,16 @@ func _hunt_sigil(tgt: Dictionary) -> void:
 # 被驯服的敌人【死亡时不真死】:
 #   · 以 30% 最大生命重生, 2.5 秒演出期间无敌且不可选中
 #   · 重生后【归顺我方】(用户:「顺归算我方」) —— 走 tamed_side, 绝不改写 side
-#   · 归顺后每秒损失 2% 最大生命(永久, 没有解除手段)
+#   · 归顺后每秒损失 TAME_DECAY_PCT(5%) 最大生命(永久, 没有解除手段)
 #   · 活到本路结束可跨入终极战场, 掉血 buff 继续
 #
 # ★与赛博侵入(hijacked)是两种语义, 别混:
 #   hijacked = 孤军(对所有人都是敌人); tamed = 真换队(我方给它治疗/护盾都算数)。
 # ══════════════════════════════════════════════════════════════
+
+## 驯服没标中的冷却。用户 11-08「冷却就是九九九秒，未命中还是三十秒」⇒ 与冷却(TRAINER_SKILLS.tame.cd = 999)脱钩,
+##   原来写的是「冷却 × 0.5」, 冷却改 999 后会变成 499.5 秒。
+const TAME_CD_MISS := 30.0
 
 ## 施放驯服。返回是否锁到目标。
 func _cast_tame(trainer: Dictionary, aim: Vector2) -> bool:
@@ -1282,7 +1286,7 @@ func _cast_tame(trainer: Dictionary, aim: Vector2) -> bool:
 		if dd < bd:
 			bd = dd; tgt = o
 	if tgt == null:
-		trainer["_active_cd"] = battle.TAME_CD * 0.5   # 空放返还一半
+		trainer["_active_cd"] = TAME_CD_MISS
 		return false
 	trainer["_active_cd"] = battle.TAME_CD
 	var dist: float = DetMath.vlen((tgt["pos"] - trainer["pos"]))
@@ -1334,7 +1338,7 @@ func _tame_try_revive(u: Dictionary) -> bool:
 	return true
 
 
-## 归顺者每秒损失 2% 最大生命(B8·永久)。演出期不掉。
+## 归顺者每秒损失 TAME_DECAY_PCT 最大生命(B8·永久)。演出期不掉。
 ##
 ## ★★【每秒跳一次】, 不是每帧摊薄 —— 用户 2026-07-30 定。
 ##   原来写的是每帧 `int(ceilf(maxHp * 0.02 * delta))`, 而 ceilf 让【每帧至少扣 1 点】,
@@ -1353,7 +1357,7 @@ func _tame_try_revive(u: Dictionary) -> bool:
 ## ★★【真实伤害】(bucket="tru"), 用户 2026-07-30 指出 —— 原来是 "dot" 桶。
 ##   _apply_damage 里 `_raw = (bucket == "tru")`, 所以 "dot" 会过完整减伤链:
 ##   钻石 ×0.82 / 石头岩石之躯 ×最多0.7 / 石头嘲讽期减免 / 铁壁盾016 flat_dr 固定减。
-##   文案写的是「每秒损失 2% 最大生命」= 归顺的固定代价, 不该被对方的护甲天赋打折。
+##   文案写的是「每秒损失 5% 最大生命」= 归顺的固定代价, 不该被对方的护甲天赋打折。
 ##   (护盾照吸 —— 那是本项目真伤的既有语义, 不改。)
 ## ★is_self=true 保留: 自损不吃增伤类修正(靶向器标记 ×1.2 之类), 否则 2% 会被放大。
 ##   raw + is_self 两个都给, _mitigate_incoming 每一项减伤才全部跳过 = 精确 2%。

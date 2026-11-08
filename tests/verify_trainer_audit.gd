@@ -114,17 +114,16 @@ func _ready() -> void:
 func _dead_const() -> void:
 	print("  ── ① 易伤倍率必须读常量(不许回退成硬编码) ──")
 	var rb: String = _src[RB_PATH]
-	_chk("① HOOK_VULN_MULT 常量在位", rb.contains("const HOOK_VULN_MULT :="))
+	_chk("① 钩锁受伤加成已删(用户 11-08), 常量不留零读者", not rb.contains("const HOOK_VULN_MULT :="))
 	_chk("① GLACIER_VULN_MULT 常量在位", rb.contains("const GLACIER_VULN_MULT :="))
 	# ★核心: _mitigate_incoming 里必须是 d *= 常量名
-	_chk("① ★钩锁易伤读的是常量(d *= HOOK_VULN_MULT)", rb.contains("d *= HOOK_VULN_MULT"))
+	_chk("① ★_mitigate_incoming 不再读钩锁易伤", not rb.contains("hook_vuln_until"))
 	_chk("① ★冰川易伤读的是常量(d *= GLACIER_VULN_MULT)", rb.contains("d *= GLACIER_VULN_MULT"))
 	# ★反面: 那两处【易伤判定紧跟着的那一行】不许回退成字面量。
 	#   ★不能写成"全文件不许出现 d *= 1.2" —— 我第一版就这么写, 结果抓到的是
 	#   【装备·靶向器055】那行 `d *= 1.2`(另一个功能, 不在本次审核范围)。
 	#   顺带说明: 同一个反模式在装备域也存在(靶向器的 +20% 也是硬编码), 见审核报告。
 	#   所以判据要【定位到各自的判定行之后】, 不是全文件扫。
-	_chk("① ★钩锁易伤那一行不是字面量", not _after(rb, 'hook_vuln_until", 0.0)', 90).contains("d *= 1.2"))
 	_chk("① ★冰川易伤那一行不是字面量",
 		not _after(rb, 'glacier_vuln_until", 0.0)', 90).contains("d *= 1."))
 	_chk("① 口哨削甲读的是常量(不是裸 0.7)", rb.contains("WHISTLE_SHRED_MULT if _t <"))

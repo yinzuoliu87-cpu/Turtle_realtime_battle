@@ -18,6 +18,28 @@ func _init(b) -> void:
 func _nearest_enemy_for_trainer(u: Dictionary):
 	var best = null
 	var best_d = battle.TRAINER_RANGE * battle.TRAINER_RANGE
+	for o in _trainer_targets(u):
+		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
+		if dd < best_d:
+			best_d = dd; best = o
+	return best
+
+
+## 训龟大师射程内随机一个敌人(钩锁用, 用户 11-08)。随机走本局的 `_battle_rng` ⇒ 同种子同结果(裁判机与客户端一致)。
+func _random_enemy_for_trainer(u: Dictionary):
+	var pool: Array = []
+	var r2: float = battle.TRAINER_RANGE * battle.TRAINER_RANGE
+	for o in _trainer_targets(u):
+		if DetMath.len2((o["pos"] - u["pos"])) < r2:
+			pool.append(o)
+	if pool.is_empty():
+		return null
+	return pool[battle._battle_rng.randi() % pool.size()]
+
+
+## 训龟大师能选的敌人(最近 / 随机两种选法共用这一道闸门, 免得各抄一份)。
+func _trainer_targets(u: Dictionary) -> Array:
+	var out: Array = []
 	for o in battle._units:
 		if not o.get("alive", false) or not battle._is_hostile(u, o):
 			continue
@@ -25,10 +47,8 @@ func _nearest_enemy_for_trainer(u: Dictionary):
 			continue   # 训龟大师之间不互殴(§UNTOUCHABLE; `_is_hostile` 已先排, 这行是显式写给读的人)
 		if battle._is_untargetable(o):
 			continue
-		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
-		if dd < best_d:
-			best_d = dd; best = o
-	return best
+		out.append(o)
+	return out
 
 
 ## 【最远】的敌人 —— 与 `_nearest_enemy` 同一套选靶闸门, 只把比较方向反过来。
