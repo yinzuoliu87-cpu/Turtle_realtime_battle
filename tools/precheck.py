@@ -98,7 +98,7 @@ def seconds():
 
 def frames(name, runner):
 	m = re.search(r"^\s*%s\)\s*echo\s+(\d+)" % re.escape(name), runner, re.M)
-	return m.group(1) if m else "4000"
+	return m.group(1) if m else "500"   # 与 run-tests.sh frames_for 的默认 `*) echo 500` 一致(11-08: 原来写 4000, 没登记帧预算的新测试本机过、CI 跑不完)
 
 
 def run_test(name, fatal, budget):
