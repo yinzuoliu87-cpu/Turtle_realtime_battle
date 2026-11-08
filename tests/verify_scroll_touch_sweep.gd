@@ -924,6 +924,10 @@ const TEAM_DRAFT := "user://team_draft.json"
 
 func _s_teamselect() -> void:
 	GameState.season_leaders = []
+	## 本段量的是整页龟池(≥ 20 张)的滚动 ⇒ 不登录(PetLevelsNet.filter_on 关): 登录了就只显示「拥有 ∪ 本周限免」(2026-11-09),
+	##   没拥有的号只有 7 张、一屏放得下没得滚。上一段(好友)设的账号量完还回去。
+	var acc0 := str(GameState.account_id)
+	GameState.account_id = ""
 	var had_draft := FileAccess.file_exists(TEAM_DRAFT)
 	var draft0 := FileAccess.get_file_as_string(TEAM_DRAFT) if had_draft else ""
 	if had_draft:
@@ -946,6 +950,7 @@ func _s_teamselect() -> void:
 			f.close()
 	elif FileAccess.file_exists(TEAM_DRAFT):
 		DirAccess.remove_absolute(TEAM_DRAFT)
+	GameState.account_id = acc0
 
 
 func _inv_state(r: Node) -> String:

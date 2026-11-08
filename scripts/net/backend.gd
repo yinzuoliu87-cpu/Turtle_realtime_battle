@@ -390,11 +390,22 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 	#   原来这里走 equip_slots_for_battles(每只固定N件) = 敌我两把尺子, 已废。
 	var budget := _P2.team_equip_cap(bot_lv)
 	# 随机 3 龟
+	## ★2026-11-09 只从「本周限免」那 7 只里抽(方案书 20261107 §4.9「兜底机器人 make_bot 改成按同一个限免函数」;
+	##   没绑主站的真人 / 陪练号能上场的就是这 7 只, 1 级)。种子 = 这个机器人自己的号(`bot:<rng 当前状态>`, 只读不消耗随机数)
+	##   + 周锚点 0(机器人池是离线按版本生成的, 不跟着周变 ⇒ 同一版本重跑逐字节相同)。
+	##   ★28 只照旧整副洗一遍、再按洗出来的先后取限免里的前 3 只 ⇒ 消耗的随机数个数与改之前相同, 后面装备 / 名字 / 技能的随机序列不变。
+	var free: Array = WeeklyFree.free_ids("bot:%d" % rng.state, 0, [])
 	var all_ids: Array = []
 	for p in DataRegistry.launch_pets:
 		all_ids.append(str((p as Dictionary)["id"]))
 	_shuffle(all_ids, rng)
-	var leaders: Array = all_ids.slice(0, 3) if all_ids.size() >= 3 else all_ids
+	var leaders: Array = []
+	for pid in all_ids:
+		if free.has(pid) and leaders.size() < 3:
+			leaders.append(pid)
+	for pid in all_ids:       # 兜底: 数据里的龟与 WeeklyFree.ALL 对不上时(不该发生)仍凑够 3 只
+		if leaders.size() < 3 and not leaders.has(pid):
+			leaders.append(pid)
 	# 分路: 前2上 / 后1下 (= auto_split 2/1)
 	var lane_assign := {"top": [], "bottom": []}
 	for i in range(leaders.size()):
@@ -466,6 +477,8 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		"loadouts": loadouts,
 		"equipped": equipped,
 		"pet_levels": levels,
+		## 按龟等级(R1, 2026-11-09): 限免龟一律 1 级(同没绑主站的真人; 服务器裁判开算时也会按 1 级盖章)
+		"lv": levels.duplicate(),
 		## 敌方大师读它(`battle_spawn.gd`)。从玩家**能选的那张表**里抽, 真人谁都在这七个里。
 		"trainer_skill": _bot_trainer_skill(rng),
 		"season_total_battles": battles,
@@ -1172,6 +1185,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"loadouts": (g.get("loadouts", {}) as Dictionary).duplicate(true) if g.get("loadouts") is Dictionary else {},
 		"equipped": equipped,
 		"pet_levels": levels,
+		"lv": levels.duplicate(),      # 按龟等级(R1, 2026-11-09): 与真人同形(没绑主站的真人 = 全 1 级)
 		"trainer_skill": str(g.get("trainer_skill", "")),
 		"season_total_battles": battles,
 		"season_level": _seed_level(g, battles),
@@ -2108,6 +2122,12 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"axe_stage": int(GameState.axe_stage),
 		"axe_final": str(GameState.axe_final),
 	}
+	## ★按龟等级(R1, 2026-11-09): 三只统领各自的等级(本机 = 服务器等级表的缓存 GameState.pet_lv)。
+	##   服务器裁判开算时按服务器等级表重新盖章(迁移 20261109b), 这里写的只给本机 / 好友切磋用。
+	##   本机还没取到等级表(空)⇒ 不带 = 旧口径(对面也按整队等级打, 与我这边一致)。
+	var lv_out: Dictionary = TurtleLevel.snapshot_table(leaders, TurtleLevel.table_of(GameState.pet_lv)) if GameState != null else {}
+	if not lv_out.is_empty():
+		out["lv"] = lv_out
 	## 只有用过才带: 没用过的真人与机器人同形(verify_bot_snapshot_shape, 机器人不许露馅)
 	if not tl_out.is_empty():
 		out["temp_levels"] = tl_out

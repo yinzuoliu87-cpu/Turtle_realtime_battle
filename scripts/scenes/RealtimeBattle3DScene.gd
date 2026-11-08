@@ -1548,8 +1548,8 @@ func _season_leaders() -> Array:
 			break
 	return out
 
-# 单位等级 (血条左侧牌 + 属性缩放): 左方读 GameState.season_level; 右方读对手快照的 season_level(缺 ⇒ 同左方).
-func _unit_level(side: String) -> int:
+# 单位等级 (血条左侧牌 + 属性缩放): 调试强制等级 > 评审场 1 级 > 按龟等级(pid = 统领、带 lv 表) > 整队赛季等级 —— 后两级见 TurtleLevel.unit_level.
+func _unit_level(side: String, pid: String = "", tbl_side: String = "") -> int:   # tbl_side: 查哪一方的 lv 表(驯服过来的龟进终极战场 = 原主人那一方)
 	var _gsd = get_node_or_null("/root/GameState")
 	if _gsd != null:
 		var _dl = _gsd.get("debug_level")
@@ -1557,25 +1557,12 @@ func _unit_level(side: String) -> int:
 			return int(_dl)                  # 调试器: 强制全体等级(两队同档)
 	if _review_demo():
 		return 1                             # 评审默认 Lv1(看 base 数值); 调试器设 debug_level 可 override
-	if side == "left":
-		var gs = get_node_or_null("/root/GameState")
-		if gs != null:
-			var lv = gs.get("season_level")
-			if lv != null:
-				return maxi(1, int(lv))
-		return 1
-	# 右队: 双路对手快照自带赛季等级 ⇒ 用它(用户 2026-10-19「赛季等级」双方各用各的); 旧快照 / 非双路 ⇒ 与左方同级(老口径)
-	var gs2 = get_node_or_null("/root/GameState")
-	var base := 1
-	if gs2 != null and gs2.get("season_level") != null:
-		base = maxi(1, int(gs2.get("season_level")))
-	var fl: int = Backend.ghost_level(gs2.get("dual_ghost")) if gs2 != null and _is_dual_lane_mode() else -1
-	return fl if fl >= 1 else base
+	return TurtleLevel.unit_level(_gsd, side, pid, tbl_side, _is_dual_lane_mode())
 
 # 等级乘数: 该单位/召唤体所属侧的等级 → 主属性 +5%/级 (与 _spawn._make_unit spawn 缩放同公式).
 #   装备 flat 加值 + 固定值召唤体(随从/海螺虫/大熊) 用它"吃等级"; owner 派生召唤体已间接吃, 不用.
 func _lvl_mult_for(u: Dictionary) -> float:
-	var lvl: int = maxi(1, _unit_level(str(u.get("side", "left"))))
+	var lvl: int = maxi(1, _unit_level(str(u.get("side", "left")), TurtleLevel.pid_of(u), TurtleLevel.table_side_of(u)))   # 按这只龟(召唤物按主人)的等级
 	return UnitScaling.level_multiplier(lvl)
 
 func _random_bot(n: int) -> Array:

@@ -195,9 +195,15 @@ func _ready() -> void:
 	#   全程不改 canvas 比例)。同步建完(无 await), 首帧即完整布局, 无半成品/撕裂帧。背景铺满见 _ensure_menu_bg。
 	_ensure_menu_bg()
 	_fit_background()
+	## ★拥有 ∪ 本周限免 + 按龟等级(2026-11-09 · 方案书 20261107 §4.3): 先按上次缓存(没有 ⇒ 全 1 级)建, 问到服务器再重建一次。
+	PetLevelsNet.ensure_default()
 	_build_ui()
 	_load_team()
 	_refresh_all()
+	PetLevelsNet.fetch(func() -> void:
+		if is_instance_valid(self) and is_inside_tree():
+			_drop_disallowed()
+			_refresh_all())
 	## 锁定版有常驻提示签(_build_locked_hint), 不再弹一条一闪而过的(2026-10-30)
 	# 新手引导: 教学模式挂分步引导(带高亮锚点)。导演按当前阶段选步骤集 + 是否 mandatory。
 	var _tdg = get_node_or_null("/root/TutorialDirector")
@@ -1209,13 +1215,18 @@ func _sync_special_slots() -> void:
 
 func _refresh_all() -> void:
 	_sync_special_slots()
+	## 右栏正在看的那只本周不能上阵(拥有变了 / 刚问到服务器)⇒ 换一只(锁定版看的是自己的统领, 不换)
+	if detail_pet_id != "" and not _roster_locked and not _pet_allowed(detail_pet_id):
+		detail_pet_id = ""
 	if detail_pet_id == "":
 		for id in team:
 			if id != null and not _is_special_mark(id):
 				detail_pet_id = id
 				break
-		if detail_pet_id == "" and not DataRegistry.launch_pets.is_empty():
-			detail_pet_id = DataRegistry.launch_pets[0]["id"]
+		## 没上阵的 ⇒ 第一只能上阵的(不过滤时就是 launch_pets[0], 与原来相同)
+		for p in DataRegistry.launch_pets:
+			if detail_pet_id == "" and _pet_allowed(str(p["id"])):
+				detail_pet_id = str(p["id"])
 	_slots._refresh_slots()
 	_pet_grid._refresh_grid()
 	_refresh_confirm()
@@ -1334,10 +1345,30 @@ func _set_detail_pet(pid: String) -> void:
 		_slots._refresh_slots()   # 锁定版没有龟池: 金边画在正在看的那张统领卡上
 
 
+## ★这只龟本周能不能上阵 = 拥有 ∪ 本周限免(2026-11-09 · 方案书 20261107 §4.3 / §4.9; 网格也只显示这些)。
+##   没登录后端(本机开发 / 门禁)/ 教学 ⇒ 不拦(`PetLevelsNet.filter_on`)。服务器裁判开算前还会再查一遍(`RefereeJob.validate`)。
+func _pet_allowed(pid) -> bool:
+	if pid == null or _is_special_mark(pid):
+		return true
+	return not PetLevelsNet.filter_on() or PetLevelsNet.allowed_now().has(str(pid))
+
+
+## 未锁定的草稿 / 上次阵容里不能上阵的龟拿掉(拥有变了 / 换周换了限免)。
+func _drop_disallowed() -> void:
+	if _roster_locked:
+		return
+	for i in range(team.size()):
+		if team[i] != null and not _pet_allowed(team[i]):
+			team[i] = null
+	_sync_special_slots()
+
+
 ## 点卡片: 有空槽则入队 (PoC onPickPet — 找首个空槽)
 func _on_pick_pet(pid: String) -> void:
 	if _roster_locked:
 		return   # 大轮锁定: 卡片点击只看详情(由 gui_input 的 _set_detail_pet 处理), 不入队
+	if not _pet_allowed(pid):
+		return   # 不是拥有 / 本周限免(网格里本来就不显示)
 	if pid in team:
 		return   # 已在队中, 只查看
 	var placed := 0
@@ -1433,6 +1464,8 @@ func _card_drag(_at_pos: Vector2, source: Control, pet_id: String) -> Variant:
 func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 	if _roster_locked:
 		return   # 大轮锁定: 忽略任何落点(防拖放绕过)
+	if not _pet_allowed(pet_id):
+		return   # 不是拥有 / 本周限免
 	var old_idx := team.find(pet_id)
 	var existing = team[slot_idx]
 	if existing == pet_id:
@@ -1499,6 +1532,7 @@ func _on_restore_last() -> void:
 		var si := SLOT_KEYS.find(k)
 		if si >= 0:
 			team[si] = slot_map[k]
+	_drop_disallowed()   # 上次阵容里本周不能上阵的不恢复
 	_refresh_all()
 
 
@@ -1697,7 +1731,7 @@ func _load_team() -> void:
 	if parsed is Array and parsed.size() == team.size():
 		for i in range(team.size()):
 			var id = parsed[i]
-			team[i] = id if (id is String and DataRegistry.pet_by_id.has(id)) else null
+			team[i] = id if (id is String and DataRegistry.pet_by_id.has(id) and _pet_allowed(id)) else null
 
 
 # ══════════════════════════════════════════════════════════════

@@ -2267,6 +2267,7 @@ scripts/scenes/team_select/layout_editor.gd|lit|🔧 布局编辑开: 拖=移动
 scripts/scenes/team_select/layout_editor.gd|text|布局编辑 · 拖绿框=移动 · 拖右下角黄块=缩放 · 拖完点右上「保存坐标」→
 scripts/scenes/team_select/layout_editor.gd|text|💾 保存坐标
 scripts/scenes/team_select/pet_grid.gd|text|已上阵
+scripts/scenes/team_select/pet_grid.gd|text|限免
 scripts/scenes/team_select/roster_slots.gd|lit|%s 不能被替换
 scripts/scenes/team_select/roster_slots.gd|lit|水晶球
 scripts/scenes/team_select/roster_slots.gd|lit|糖果炸弹

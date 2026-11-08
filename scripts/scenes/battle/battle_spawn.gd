@@ -271,7 +271,9 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 			pos = battle._dl_sys.clamp_place_side(LineupPos.to_field(base, LineupPos.off_of(u, i, n), side), side)
 		var made: Dictionary
 		if str(u.get("kind", "")) == "leader":
-			made = _make_unit(str(u.get("id", "basic")), side, pos)
+			made = _make_unit(str(u.get("id", "basic")), side, pos, {"lv_side": str(u["lv_side"])} if u.has("lv_side") else {})
+			if u.has("lv_side"):
+				made["lv_side"] = str(u["lv_side"])   # 它的固定值召唤(_lvl_mult_for)也按原主人那张表
 		else:
 			var role: String = str(u.get("role", "front"))
 			var elite: bool = (lead_n == 0 and minion_seen == 0)
@@ -320,6 +322,12 @@ static func energy_cost_table(d: Dictionary) -> Dictionary:
 		if e != null:
 			ec[str(sk.get("type", ""))] = float(e)
 	return ec
+
+
+## 按龟等级(R1, 2026-11-09): 统领按自己那只查 lv 表(驯服过来进终极战场的 spec.lv_side = 原主人那一方); 小将 / 龟蛋 / 大师走整队等级。
+func _unit_lv(id: String, side: String, spec: Dictionary) -> int:
+	var pid: String = "" if (bool(spec.get("minion", false)) or bool(spec.get("egg", false)) or bool(spec.get("trainer", false))) else id
+	return battle._unit_level(side, pid, str(spec.get("lv_side", "")))
 
 
 func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -> Dictionary:
@@ -432,7 +440,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	battle._world.add_child(ring)
 
 	# --- HP / 龟能 overlay (CanvasLayer 上, 每帧 unproject 定位) ---
-	var bar = battle._make_status_bar(side, battle._unit_level(side))
+	var bar = battle._make_status_bar(side, _unit_lv(id, side, spec))
 	if is_trainer:   # ★U2「移除大师信息栏」: 不建头顶血条/龟能/等级(它没有血量)
 		bar["root"].free()
 		bar = {"root": null, "hp_bar": null, "en": null, "level_badge": null}
@@ -499,7 +507,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		"bob_phase": randf() * TAU,        # idle bob 起始相位 (错峰, 不齐刷)
 	}
 	# 等级缩放: 主属性 +5%/级, 攻速 +2%/级 (吃等级表见 战斗基础-策划焊死.md §三). 小将自带×1.05缩放, 跳过龟式缩放.
-	var _lvl: int = maxi(1, battle._unit_level(side))
+	var _lvl: int = maxi(1, _unit_lv(id, side, spec))
 	if side == "left" and not is_minion and not is_egg and not is_trainer and GameState != null:   # 临时等级器(糖果罐战利品·封板L402): 玩家方该龟本大轮永久+N级(切轮重置)
 		_lvl += GameState.temp_level_bonus(id)
 	elif side == "right" and not is_minion and not is_egg and not is_trainer and GameState != null and battle._is_dual_lane_mode():

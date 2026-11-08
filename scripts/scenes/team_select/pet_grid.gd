@@ -37,6 +37,11 @@ func _refresh_grid() -> void:
 				filt.append(p2)
 		if not filt.is_empty():
 			pets = filt
+	## ★只显示拥有 ∪ 本周限免(2026-11-09 · 方案书 20261107 §4.3「周赛选龟同样只能选拥有 ∪ 本周限免」)。
+	##   没登录后端(本机开发 / 门禁)/ 教学 ⇒ 不过滤(PetLevelsNet.filter_on)。
+	if PetLevelsNet.filter_on():
+		var ok_ids: Array = PetLevelsNet.allowed_now()
+		pets = pets.filter(func(p3) -> bool: return ok_ids.has(str(p3.get("id", ""))))
 	# rarity filter
 	if host.filter_rarity != "all":
 		var filtered: Array = []
@@ -159,6 +164,35 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	lv.size = Vector2(sz.x - 2.0 * b - 20.0, float(maxi(12, int(roundf(sz.y * 0.1)))) * 1.5)
 	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(lv)
+	## 限免角标(2026-11-09 · 方案书 20261107b §4.5): 没拥有、本周限免的这只 ⇒ 等级牌下面挂一枚「限免」角标(固定 1 级, 不涨经验)。
+	##   样式照同一页技能格的「固有 / 已选」角标(`skill_picker._make_skill_corner`: 实色方底 + 深色字 + 下投影),
+	##   第一版是等级牌同款的描边字, 实拍压在立绘上读不清(2026-11-09 截图)。底色取冷青, 与金色等级牌、绿色「固有」分开。
+	if PetLevelsNet.is_free_pick(pid):
+		var fb := PanelContainer.new()
+		fb.name = "FreeBadge"
+		fb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var fsb := StyleBoxFlat.new()
+		fsb.bg_color = Color("#8fe3ff")
+		fsb.set_corner_radius_all(0)
+		fsb.content_margin_left = 3.0; fsb.content_margin_right = 3.0
+		fsb.shadow_color = Color(0, 0, 0, 0.5); fsb.shadow_size = 1; fsb.shadow_offset = Vector2(0, 1)
+		fb.add_theme_stylebox_override("panel", fsb)
+		var ft := Label.new()
+		ft.name = "FreeTag"
+		ft.text = "限免"
+		ft.add_theme_font_size_override("font_size", maxi(11, int(roundf(sz.y * 0.09))))
+		ft.add_theme_color_override("font_color", Color("#06222b"))
+		ft.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ft.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		ft.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fb.add_child(ft)
+		## 右上(窗口里), 紧贴等级牌下沿、与它右对齐: 锚在卡片右上角, 往左长
+		fb.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		fb.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		fb.offset_right = -(b + 10.0)
+		fb.offset_left = fb.offset_right
+		fb.offset_top = lv.position.y + lv.size.y - 2.0
+		card.add_child(fb)
 	if selected:
 		var tag := Label.new()
 		tag.name = "InTeamTag"

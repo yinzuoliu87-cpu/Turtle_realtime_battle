@@ -308,6 +308,9 @@ static func _note(acc: String, linked: bool, user_id = null, owned = null) -> vo
 			if str(k) != "" and not ids.has(str(k)):
 				ids.append(str(k))
 		_cache["owned"] = ids
+		## 选龟页的「拥有 ∪ 本周限免」立刻跟着变(工作线 C · PetLevelsNet; 只认当前这个号的)
+		if acc == _acc():
+			PetLevelsNet.adopt_owned(ids)
 	_cache["t"] = int(Time.get_unix_time_from_system())
 	_save_cache()
 
