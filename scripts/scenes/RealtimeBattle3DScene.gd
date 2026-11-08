@@ -6031,39 +6031,25 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	var to5: Vector2 = tgt["pos"]
 	_elite_sys._elite_mist(from5 + DetMath.norm((to5 - from5)) * 24.0, 0.8, 3)   # 手臂黑雾幻化
 	_bolt_line(from5, to5, Color(0.55, 0.1, 0.12, 0.9))
-	var ctex: Texture2D = load("res://assets/sprites/vfx/bio-chain.png")
-	if ctex != null:                                              # 链节依次伸出(快)
-		var links: int = clampi(int(d / 55.0), 5, 14)
-		for i in range(links):
-			var lp: Vector2 = DetMath.vlerp(from5, to5, float(i + 1) / float(links))
-			var lk := Sprite3D.new()
-			lk.texture = ctex
-			lk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			lk.shaded = false; lk.transparent = true
-			lk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			lk.pixel_size = (20.0 * WS) / float(maxi(1, ctex.get_height()))
-			lk.position = _world_pos(lp, 0.8)
-			lk.rotation.z = DetMath.datan2(-(to5 - from5).y, (to5 - from5).x)
-			lk.modulate = Color(1, 1, 1, 0.0)
-			_world.add_child(lk)
-			var lt := _reg_tween()
-			lt.tween_interval(0.01 * float(i))
-			lt.tween_property(lk, "modulate:a", 1.0, 0.03)
-			lt.tween_interval(UIPalette.T_TRANS)
-			lt.tween_property(lk, "modulate:a", 0.0, 0.1)
-			lt.tween_callback(lk.queue_free)
+	## 链节依次伸出(快), 留到被拽过去、途中逐段收(11-08; 链节只管画面, 不进单位字典; 兜底寿命 = 出手 + 拉完 + 余量)
+	var whip_links: Array = PullRopeVfx.elite_links(self, from5, to5, load("res://assets/sprites/vfx/bio-chain.png"),
+		EliteSystem.WHIP_SHOT_DELAY + EliteSystem.whip_pull_sec(from5, to5) + 0.4)
 	_pending_shots.append({"delay": 0.14, "fn": func() -> void:   # 命中: 顿一下+目标眩晕0.4s
 		if not tref.get("alive", false) or not uu.get("alive", false):
 			uu["_slam"] = false
+			PullRopeVfx.release(self, whip_links)
 			return
 		_damage._stun(tref, EliteSystem.WHIP_STUN_SEC, "_tick_elite_whip", true)
 		_vfx._flash(tref, Color(1.35, 1.2, 1.2))
 		_vfx._hit_spark(tref)
 	, "src": u})
 	_pending_shots.append({"delay": EliteSystem.WHIP_SHOT_DELAY, "fn": func() -> void:    # 拉体: 按速度飞到目标身后(11-08, 原固定 0.18s)
-		if not uu.get("alive", false): return
+		if not uu.get("alive", false):
+			PullRopeVfx.release(self, whip_links)
+			return
 		if not tref.get("alive", false):
 			uu["_slam"] = false
+			PullRopeVfx.release(self, whip_links)
 			return
 		var tp: Vector2 = tref["pos"]
 		var dirp: Vector2 = tp - (uu["pos"] as Vector2)
@@ -6073,10 +6059,14 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		var fromp: Vector2 = uu["pos"]
 		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", fromp, dest, 40.0, Color(0.45, 0.08, 0.1, 0.6), EliteSystem.whip_pull_sec(fromp, dest) + 0.07)
 		var pt5 := _reg_tween()
+		var chain_len: float = maxf(1.0, DetMath.dist(from5, to5))
+		var pull_len: float = DetMath.dist(fromp, dest)
 		pt5.tween_method(func(q: float) -> void:
 			if uu.get("alive", false): uu["pos"] = DetMath.vlerp(fromp, dest, q)
+			PullRopeVfx.reel(whip_links, q * pull_len / chain_len)   # 已经被拽过的链节收掉(画面)
 		, 0.0, 1.0, EliteSystem.whip_pull_sec(fromp, dest))
 		pt5.tween_callback(func() -> void:
+			PullRopeVfx.release(self, whip_links)
 			uu["_slam"] = false
 			if tref.get("alive", false) and uu.get("alive", false):
 				_damage._apply_damage_from(uu, tref, _atk_dmg(uu, EliteSystem.WHIP_ATK_COEF, tref, true), Color("#9bdcff"))   # 铁锁2A魔法(蓝字·用户2026-07-18: 1A→2A)

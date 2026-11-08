@@ -57,6 +57,10 @@ const SURF_PASS_ATK_COEF := 1.5         # 沿途撞到的敌人 ×ATK 物理 + �
 ##   原来不管多远都固定 0.3 秒(技能射程 2000, 远了等于瞬移)。速度参考 LoL 钩拉类约为移速 4 ~ 5 倍。
 const SURF_PULL_SPD := 500.0
 const SURF_PULL_MIN := 0.12            # 贴脸时的保底时长(秒), 免得动作一闪而过
+## 铁索(11-08 改成一节节小图, 留到被拽过去、途中逐段收; 见 scripts/scenes/battle/pull_rope_vfx.gd)
+const SURF_ROPE_TEX := "res://assets/sprites/vfx/minion-rope-link.png"
+const SURF_ROPE_THICK := 10.0          # 绳粗(像素码)
+const SURF_ROPE_SPACING := 18.0        # 相邻两节间距(码); 图 16×8 ⇒ 每节长 20 码, 微微交叠
 
 ## 拉向目标要飞多久: 距离 ÷ 速度。
 static func surf_pull_sec(from: Vector2, to: Vector2) -> float:
@@ -289,6 +293,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	back_dir = DetMath.norm(back_dir) if DetMath.vlen(back_dir) > 1.0 else Vector2.LEFT
 	var apex: Vector2 = jstart + back_dir * 120.0        # 往后上方跳~120码(后撤+20%·用户2026-07-18)
 	apex = ArenaShape.clamp_in(apex, battle.ARENA, 30, 20)
+	var rope: Array = []                                 # 铁索链节(只管画面; 射链 / 拉人两步与俯冲共用, 不进单位字典)
 	var jt = battle._reg_tween()
 	jt.tween_interval(0.3)                               # 蓄力更久(蹬地聚力·用户2026-07-18"蓄力久点·用力一跳·符合现实")
 	jt.tween_method(func(q: float) -> void:              # 用力爆发式起跳: 高度sin(离地瞬间最快→到顶减速=真实抛物上升)·水平匀速往后上→到顶悬停
@@ -319,7 +324,9 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 			battle._vfx._hit_spark(tref)
 			_minion_abort_fall(uu)                               # 不拉自己过去, 原地掉回地面
 			return
-		battle._surf_chain_shoot(uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], Color(0.6, 0.15, 0.15, 0.95))   # 从小将(空中·当前height)射铁链向目标
+		## 从小将(空中·当前 height)射铁索向目标: 由近到远 0.1 秒伸到, 一直留到被拽过去(11-08: 原来射出 0.42 秒就淡掉, 拉人第 1.28 秒才开始)
+		rope.append_array(PullRopeVfx.shoot(battle, uu["pos"], float(uu.get("height", 0.0)) + 0.6, tref["pos"], 0.8,
+			load(SURF_ROPE_TEX), SURF_ROPE_THICK, SURF_ROPE_SPACING, 0.1, 0.6 + surf_pull_sec(uu["pos"], tref["pos"]) + 0.5))
 		battle._damage._stun(tref, SURF_STUN_SEC, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
 		battle._vfx._hit_spark(tref)
 	, "src": u})
@@ -329,17 +336,19 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 			##   起跳 tween 把 height 抬到 5.76 后【故意悬停不落】(等 _minion_bodysurf_ride 拉下来),
 			##   而这两个提前返回只解锁了 _slam, **height 一个字没碰** ⇒ 永远挂在天上。
 			##   全局那个 height<=0 归零只在【击飞路径】(airborne)里跑, 本技能不走击飞 ⇒ 没人管它。
+			PullRopeVfx.release(battle, rope)
 			_minion_abort_fall(uu)
 			return
 		_unstoppable_apply(uu)
 		## 途中目标才变免控 ⇒ 中断伤害并跳回地面(用户 2026-08-20 原话)
 		if battle._damage._is_cc_immune(tref):
+			PullRopeVfx.release(battle, rope)
 			_minion_abort_fall(uu)
 			return
-		_minion_bodysurf_ride(uu, tref)                          # 1.28 起被绳拉着俯冲(动作在里面按飞行时长播)
+		_minion_bodysurf_ride(uu, tref, rope)                    # 1.28 起被绳拉着俯冲(动作在里面按飞行时长播; 经过的绳段逐段收)
 	, "src": u})
 
-func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己向目标→接触10%maxHP→踩着目标滑行(coroutine)
+func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) -> void:   # 拉己向目标→接触10%maxHP→踩着目标滑行(coroutine)
 	var from: Vector2 = u["pos"]
 	var h0: float = float(u.get("height", 0.0))           # 从空中悬停高度俯冲下来
 	var dive_sec: float = surf_pull_sec(from, tref["pos"])   # 按速度飞(用户 11-08), 原固定 0.3 秒
@@ -355,6 +364,8 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		if u.get("alive", false):
 			u["pos"] = DetMath.vlerp(from, (tref["pos"] as Vector2), kk)   # 水平接近目标
 			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")
+		PullRopeVfx.reel(rope, kk)                       # 已经被拽过的那段绳收掉(画面)
+	PullRopeVfx.release(battle, rope)                    # 到了 / 作废: 剩下的绳段淡出
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
 	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * SURF_CONTACT_MAXHP_PCT, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
