@@ -385,14 +385,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		spr.frame = 0
 		spr.offset = Vector2(0.0, frame_h * 0.5)             # 脚底贴地: 单帧上抬半帧高
 		grounded_mat = battle._make_grounded_material(tex, sd)      # 接地软渐隐 (单帧 UV 上做底淡)
-		spr.material_override = grounded_mat
-		## 四方向表的大师: battle_render._update_trainer_anim 第一帧会关接地 shader、改硬切 alpha、抬脚底 ——
-		##   建的时候就设成那样(11-08 #22 起敌方 / 裁判局大师也走四方向表; 建完再改会被直播当成白名单外变化报警)。
-		if is_trainer and not battle._render._trainer_sheets(str(sd.get("_appearance", ""))).is_empty():
-			spr.material_override = null
-			spr.transparent = true
-			spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-			spr.offset = Vector2(0.0, 48.0 * 0.5 - 6.0)
+		spr.material_override = grounded_mat; _preset_trainer_4dir(spr, sd, is_trainer)   # 四方向表大师建时就设好(见函数头注)
 	spr.position = battle._world_pos(pos, battle.GROUND_LIFT)
 	battle._world.add_child(spr)
 
@@ -797,6 +790,18 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 		minion["passive"] = d.get("passive", null)                      # 被动数据(特殊资源条/口径跟真龟一致)
 		_apply_spawn_passive_one(minion)                                # 实体完整龟: 对应登场被动正常生效(用户2026-07-17"什么被动什么显示和动画都得正常")
 		battle._hiding_sys._hiding_summon_vfx(minion["pos"])                               # 召唤法阵+光柱+星粒+落地尘(2026-07-17·原无演出)
+
+## 四方向表的大师: battle_render._update_trainer_anim 第一帧会关接地 shader、改硬切 alpha、抬脚底 ——
+##   建的时候就设成那样(11-08 #22 起敌方 / 裁判局大师也走四方向表; 建完再改会被直播当成白名单外变化报警)。
+##   单独成函数: _make_unit 已贴着 250 行上限(tools/arch_budget.py)。
+func _preset_trainer_4dir(spr: Sprite3D, sd: Dictionary, is_trainer: bool) -> void:
+	if not is_trainer or battle._render._trainer_sheets(str(sd.get("_appearance", ""))).is_empty():
+		return
+	spr.material_override = null
+	spr.transparent = true
+	spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	spr.offset = Vector2(0.0, 48.0 * 0.5 - 6.0)
+
 
 ## #20(用户 11-07「有的时候会卡 bug，有的时候是旧出现旧形象」): 召唤通用路 `_resolve_summon_sprite` 读的是旧全身图
 ##   pets/<id>.png, 而随从随后把 id 改成这只龟 ⇒ 动作走新帧条 ⇒ 待机旧图、动作新图, 大小也对不上。
