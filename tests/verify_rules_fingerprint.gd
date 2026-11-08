@@ -163,6 +163,10 @@ const CASES := [
 ##   只收数字 / 表(不收字符串常量, 改名字 / 文案不该红)。
 const TABLE_SCRIPTS := ["res://scripts/gamedata/equip_stats.gd", "res://scripts/gamedata/turtle_stats.gd",
 	"res://scripts/gamedata/phase2_minion.gd"]
+## ★2026-11-08 晚: 上面 5 局里每只龟只用一套技能组, 其余技能组改了结果指纹看不见(龟壳「暗影」那套就是这样漏的)。
+##   用户「没必要搞那么复杂」⇒ 最省事的补法: 技能系统文件里的数值常量整份进上面同一份静态摘要 —— 不多跑一局,
+##   哪套技能改了数都会红; 只改逻辑不改数仍看不见, 那部分靠每次改技能时配的专门门禁(例 verify_shell_dive_trail)。
+const SKILL_DIR := "res://scripts/systems/skills/"
 ## 「同一进程再跑一遍必须逐字相同」用哪一局(金标成立的前提; 挑最短的一局, 省时间)
 const REPEAT_CASE := 1
 
@@ -255,7 +259,7 @@ func _ready() -> void:
 		"前 %s / 后 %s" % [str(tb0["hash"]).left(16), str(tb["hash"]).left(16)])
 	_ok("分母 · 数值表静态摘要收了 %d 个常量(装备 / 龟 / 小将属性表)" % int(tb["n"]), int(tb["n"]) >= 10)
 	hashes.append(str(tb["hash"]))
-	per_case.append({"tag": "数值表 EquipStats / TurtleStats / 小将", "def": "static-tables", "hash": str(tb["hash"])})
+	per_case.append({"tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量", "def": "static-tables", "hash": str(tb["hash"])})
 
 	## ── 总指纹 ──
 	var fp := _sha("\n".join(PackedStringArray(hashes)))
@@ -613,9 +617,21 @@ func _sha(s: String) -> String:
 
 
 ## 场景定义摘要(不含本机版本号): `--update` 靠它分辨「同一局结果变了」与「场景表改了」。
+## 进静态摘要的脚本: 三张数值表 + 技能目录下全部 .gd(按路径排序, 新加的技能文件自动收进来)。
+func _table_paths() -> Array:
+	var out: Array = TABLE_SCRIPTS.duplicate()
+	var sk: Array = []
+	for f in DirAccess.get_files_at(SKILL_DIR):
+		if f.ends_with(".gd"):
+			sk.append(SKILL_DIR + f)
+	sk.sort()
+	out.append_array(sk)
+	return out
+
+
 func _tables_digest(when: String = "") -> Dictionary:
 	var parts: PackedStringArray = []
-	for path in TABLE_SCRIPTS:
+	for path in _table_paths():
 		var cm: Dictionary = (load(path) as Script).get_script_constant_map()
 		var ks: Array = cm.keys()
 		## ★按字符串排: 键是 StringName, 它的 < 比的是内存地址 ⇒ 裸 sort() 的顺序每个进程不同(11-03 实测摘要跨进程变)

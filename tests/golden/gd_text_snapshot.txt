@@ -2311,9 +2311,7 @@ scripts/scenes/week_close_card.gd|lit|确定
 scripts/scenes/week_close_card.gd|lit|积分赛已结束
 scripts/scenes/week_close_card.gd|lit|积分赛战绩
 scripts/scenes/week_close_card.gd|lit|经验
-scripts/scenes/week_close_card.gd|lit|胜
 scripts/scenes/week_close_card.gd|lit|观战
-scripts/scenes/week_close_card.gd|lit|负
 scripts/scenes/week_close_card.gd|lit|距晋级还差 %d 胜，未晋级闯关赛
 scripts/scenes/week_close_card.gd|lit|闯关赛与决赛日开放观战。
 scripts/scenes/week_close_card.gd|lit|闯关赛已于%s 截止，未晋级决赛日
@@ -2321,6 +2319,7 @@ scripts/scenes/week_close_card.gd|lit|闯关赛已结束
 scripts/scenes/week_close_card.gd|lit|闯关赛战绩
 scripts/scenes/week_close_card.gd|lit|闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。
 scripts/scenes/week_close_card.gd|lit|领取
+scripts/scenes/week_close_card.gd|text|[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
 scripts/systems/equip/eq_blood_combo.gd|lit|护盾+
 scripts/systems/equip/eq_bow_batch.gd|lit|弓箭

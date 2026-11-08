@@ -388,7 +388,7 @@ static func _badge(key: String, dim: bool, lock: bool) -> Control:
 	return holder
 
 
-## 战绩: 小字说明在上, 「12 胜 1 负」大字在下(胜金色、负灰色, 数字比单位大一号)。
+## 战绩: 小字说明在上, 「12 胜 1 负」大字在下(胜场数金色、负场数灰白, 数字比单位大一号, 四段共用一条基线)。
 static func _record(cap: String, w: int, l: int) -> Control:
 	var v := VBoxContainer.new()
 	v.name = "Record"
@@ -401,22 +401,20 @@ static func _record(cap: String, w: int, l: int) -> Control:
 		c.add_theme_font_size_override("font_size", 18)
 		c.add_theme_color_override("font_color", Color("#9fb3c8"))
 		v.add_child(c)
-	var h := HBoxContainer.new()
-	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	h.add_theme_constant_override("separation", 6)
-	v.add_child(h)
-	for part in [[str(w), 48, Color("#ffd93d"), "RecordW"], ["胜", 26, Color("#f2ead8"), ""],
-			[str(l), 48, Color("#dfe6ee"), "RecordL"], ["负", 26, Color("#f2ead8"), ""]]:
-		var lb := Label.new()
-		if str(part[3]) != "":
-			lb.name = str(part[3])
-		lb.text = str(part[0])
-		lb.add_theme_font_size_override("font_size", int(part[1]))
-		lb.add_theme_color_override("font_color", part[2])
-		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
-		lb.add_theme_constant_override("outline_size", 6)
-		lb.size_flags_vertical = Control.SIZE_SHRINK_END
-		h.add_child(lb)
+	## ★数字和「胜 / 负」排进同一个 RichTextLabel ⇒ 一行字共用一条基线(用户 2026-11-08 实机截图「这个四和一是故意的吗？」:
+	##   原来是四个 Label 放 HBox、按框底对齐, 48 号字框底下的空白比 26 号的多, 数字被顶高一截, 读着像「4¹ 胜 1¹ 负」)。
+	var rt := RichTextLabel.new()
+	rt.name = "RecordLine"
+	rt.bbcode_enabled = true
+	rt.fit_content = true
+	rt.autowrap_mode = TextServer.AUTOWRAP_OFF
+	rt.scroll_active = false
+	rt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rt.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	rt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	rt.add_theme_constant_override("outline_size", 6)
+	rt.text = "[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]" % [w, l]
+	v.add_child(rt)
 	return v
 
 
