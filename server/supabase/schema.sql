@@ -10186,6 +10186,11 @@ begin
   v_rating := case when v_has then public.raid_rating(p_uid, wk) else 0 end;
   select m.mainsite_user_id into v_msu from public.mainsite_accounts m where m.account_id = p_uid;
   if v_msu is null then
+    -- 解绑了（主站 unlinked 会清掉那边的阵容）⇒ 上次报的状态作废：以后重新绑定从头报，换周也不再挑它
+    if d.rep_user is not null then
+      update public.raid_defense set rep_user = null, rep_has = null, rep_rating = null, rep_device = null
+       where account_id = p_uid;
+    end if;
     return jsonb_build_object('ok', true, 'linked', false, 'has_defense', v_has, 'rating', v_rating, 'sent', false);
   end if;
   if not (coalesce(p_force, false)
@@ -10452,12 +10457,19 @@ begin
 end $$;
 revoke all on function public.raid_on_job(bigint, text, text, jsonb, uuid) from public, anon, authenticated;
 
--- 触发器本体。周赛那一支整个兜在异常里：报主站出任何问题都不许拖垮周赛记账（referee_complete 的事务）。
+-- 触发器本体。两支都兜在异常里：
+--   周赛那一支：报主站出任何问题都不许拖垮周赛记账（referee_complete 的事务）。
+--   偷袭那一支：发件箱写不进（A1 那边出问题）不许拖垮领活 —— referee_claim 的租期回收会一次改多行（含周赛局），
+--     这里一抛异常整个领活就失败、周赛局也领不走。丢的那一条 started / settle 由主站超时作废兜底（各退各的，钱不会错）。
 create or replace function public.raid_job_status_hook() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if new.kind = 'raid' then
-    perform public.raid_on_job(new.job_id, new.status, new.error, new.result, new.match_id);
+    begin
+      perform public.raid_on_job(new.job_id, new.status, new.error, new.result, new.match_id);
+    exception when others then
+      raise warning 'raid_job_status_hook: 偷袭 job=% status=% 没记上（主站会超时作废）: %', new.job_id, new.status, sqlerrm;
+    end;
   elsif new.status = 'done' and new.kind in ('ranked', 'gauntlet', 'finals') then
     begin
       if new.a_account is not null then

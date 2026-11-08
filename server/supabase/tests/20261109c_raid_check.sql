@@ -414,6 +414,28 @@ select pg_temp.ck('K16 ★全部偷袭结算完：周赛账本 / 快照池 / rat
   and public.raid_rating(pg_temp.u('att'), pg_temp.fake_week()) = (pg_temp.r('rat0') #>> '{}')::int,
   pg_temp.ledgers());
 
+-- 发件箱写不进（A1 出问题）：领活 / 租期回收不许跟着失败（那会把周赛局也卡住）
+select pg_temp.raid(9020, 'ChkAtt01', 'ChkDef01');
+select pg_temp.raid(9021, 'ChkAtt01', 'ChkDef01');
+select pg_temp.claim('chk-w5');
+update public.referee_jobs set claimed_at = now() - interval '1 hour', attempts = 3
+ where job_id = (pg_temp.rj(9020)).referee_job_id;
+insert into public.referee_jobs (kind, match_key, season_week, client_version, seed, a_account, a_snapshot, b_snapshot)
+  values ('gauntlet', 'chk-raid-g-2', pg_temp.fake_week(), '9.9.10', 4, pg_temp.u('cnt'),
+    pg_temp.snap('cnt', 'basic', 'stone', 'bamboo'), pg_temp.snap('x', 'ninja', 'dice', 'pirate'));
+alter function public.mainsite_outbox_put(text, text, jsonb) rename to mainsite_outbox_put_chk_gone;
+select pg_temp.keep('k17', pg_temp.claim('chk-w6'));
+select pg_temp.keep('k17b', pg_temp.claim('chk-w6'));
+alter function public.mainsite_outbox_put_chk_gone(text, text, jsonb) rename to mainsite_outbox_put;
+select pg_temp.ck('K17 ★发件箱写不进时领活照常：租期回收把次数用尽的偷袭记 failed、周赛局照领、下一个偷袭也领得走',
+  pg_temp.r('k17') -> 0 ->> 'mode' = 'gauntlet' and pg_temp.r('k17b') -> 0 ->> 'mode' = 'raid'
+  and (pg_temp.r('k17b') -> 0 ->> 'job_id')::bigint = (pg_temp.rj(9021)).referee_job_id
+  and (pg_temp.job_of(9020)).status = 'failed' and pg_temp.ob_n('settle', 9020) = 0 and pg_temp.ob_n('started', 9021) = 0,
+  left(pg_temp.r('k17')::text, 120) || ' / ' || left(pg_temp.r('k17b')::text, 120));
+select public.referee_complete((pg_temp.rj(9021)).referee_job_id, 'chk-w6', pg_temp.result((pg_temp.rj(9021)).referee_job_id, 'a'));
+select pg_temp.ck('K18 丢了 started 的那一场写回照样 settle（主站那边没延期就按它自己的超时作废，钱不会错）',
+  (pg_temp.rj(9021)).status = 'done' and pg_temp.ob('settle', 9021) ->> 'result' = 'attacker');
+
 -- ═══ P 周清 ═══
 insert into public.matches (match_id, season_week, phase, seed, left_snapshot, right_snapshot, result, client_version, created_at)
   values ('11111111-1111-4111-8111-000000000010', 1, 'raid', 1, '{}', '{}', '{}', '9.9.10', now() - interval '10 days'),
@@ -479,6 +501,12 @@ select pg_temp.ck('W3 ★新的一周双方都还没开轮 ⇒ 建任务 void at
 select pg_temp.ck('W4 本周第一次开打存阵容 ⇒ 报回 hasDefense:true（rating = 新一周的 0）',
   (pg_temp.put('att', pg_temp.fake_week(), pg_temp.snap('att', 'basic', 'stone', 'bamboo'), 'dev-B') ->> 'has_defense')::boolean
   and pg_temp.def_last('att') = jsonb_build_object('userId', 'ChkAtt01', 'hasDefense', true, 'rating', 0, 'device', 'dev-B'));
+delete from public.mainsite_accounts where account_id = pg_temp.u('att');
+select pg_temp.keep('u1', public.raid_defense_report(pg_temp.u('att')));
+select pg_temp.ck('U1 解绑了 ⇒ 不报、上次报的状态清掉（换周不再挑它；重新绑定从头报）',
+  pg_temp.r('u1') ->> 'linked' = 'false' and pg_temp.r('u1') ->> 'sent' = 'false'
+  and (select rep_user is null and rep_has is null from public.raid_defense where account_id = pg_temp.u('att')),
+  pg_temp.r('u1')::text);
 
 -- ★红的那几条排在最前面（每条截 600 字）：Management API 回的报错只有约 3600 字
 do $$
