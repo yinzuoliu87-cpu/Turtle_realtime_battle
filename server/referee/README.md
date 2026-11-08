@@ -562,6 +562,8 @@ sudo systemctl daemon-reload && sudo systemctl enable --now turtle-mainsite-gate
 curl -s https://arena-beta.turtlearena.xyz/healthz                                   # {"ok": true}
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://arena-beta.turtlearena.xyz/mainsite/link/confirm -d '{}'   # 401（不带签名）
 ```
+★2026-11-09 起内测环境用 `python tools/mainsite_deploy.py`（下一节「内测环境部署与联调」）一条命令做上面这几行，差别：地址 / 密钥 / 发件箱开关写进单独的 `/etc/turtle-referee/env-mainsite-beta`（root 600），网关与内测服轮询器各加一个 drop-in 读它，`env-beta` 与已部署的单元文件一个字不动。
+
 本机联调（不连主站）：`python tools/mock_mainsite.py serve` 起假主站，网关 / 发件箱的 `MAINSITE_BASE` 指过去；
 `mock_mainsite.py link-info / link-confirm / raid` 扮演主站调网关。门禁 `tools/mainsite_selftest.py`；数据库函数 `server/supabase/tests/20261109a_mainsite_core_check.sql`。
 
@@ -569,6 +571,70 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://arena-beta.turtlearena.
   匿名号没有邮箱 ⇒ 先补内部邮箱 `<账号>@link.turtlearena.xyz`（`email_confirm`，不发信）——★副作用：这个号 `is_anonymous` 变 false。11-09 内测服实测全通过
   （`tools/oneoff/probe_auth_session.py`，临时号已删）。
 - 发件箱在轮询器里 ⇒ 内测服周末随 `turtle-referee-beta-peak` 停，周一续发（不丢：行留在表里）。
+
+## 内测环境部署与联调（2026-11-09 周一起 · 方案书 [docs/plans/20261107-龟战主站对接.md](../../docs/plans/20261107-龟战主站对接.md) §4.7 · 工作线 G）
+
+两条命令：`tools/mainsite_deploy.py`（部署，**默认演练**，真执行要 `--apply`，周六 / 周日 UTC 还要 `--weekend-ok`）、
+`tools/mainsite_beta_smoke.py`（以主站身份 + App 身份把我们这一侧走一遍）。门禁 `tools/mainsite_deploy_selftest.py`（假执行器，量步骤顺序与拒绝路径）。
+内测主站地址两者都从 turtlebet `origin/main:docs/arena-plan.md` §8 读（或环境变量 `MAINSITE_BETA_BASE`）——★不写进本仓库；打印时打码。
+密钥 `~/.config/turtle/secrets/mainsite_beta_hook.txt`，只在内存里，经 ssh 标准输入写到服务器。
+
+**0. 用户先做（周一点头之后）**
+- Porkbun：`arena-beta.turtlearena.xyz` 与 `arena.turtlearena.xyz` 两条 A 记录 → `49.13.166.188`（登录要手机验证码）。两条都要：同一个 Caddy 片段里两个站点都在，少一条 Caddy 会一直申请证书失败。
+  本机确认：`nslookup arena-beta.turtlearena.xyz` 回 `49.13.166.188`（部署第 29 步也会查，不对就停在 Caddy 之前）。
+- 点头部署内测环境（内测服迁移 + 裁判机）。正式服 11-16 另走，不在这两条命令里。
+
+**1. 本机演练（不连任何服务器 / 库）**
+```bash
+python tools/mainsite_deploy.py
+```
+预期：本机检查三行（主站地址打码、密钥「在（64 字，不打印）」、迁移 7 份 / 文件 6 个）→ 42 步清单 → `== 演练结束：什么都没改`，退出码 0。
+出错先看：`✗ 内测主站地址` ⇒ `git -C ../turtlebet fetch`（或设 `MAINSITE_BETA_BASE`）；`✗ 没有内测密钥文件` ⇒ 密钥文件路径。
+
+**2. 真执行**
+```bash
+python tools/mainsite_deploy.py --apply
+```
+每步打 ✓ / ✗ 与耗时，第一条 ✗ 就停。预期结尾 `== 全部 N 步过了`（账本里已上的迁移显示「跳过」；11-08 查：记账五份内测服已上，只剩 20261109a / c）。
+
+| 停在 | 先看哪里 |
+|---|---|
+| ① `sb_migrate.py beta … --rehearse` | 打印的检查脚本输出（`ALL PASS` 没出现那一条）；本机单跑 `python tools/sb_migrate.py beta <名> --rehearse` |
+| ① 账本 sha256 不同 | 迁移在上内测服之后又改过 —— 不许重上同名迁移，出一份新迁移 |
+| ② 锁 BUSY | 另一个 `tools/deploy.py` 在跑：`python tools/deploy.py <版本> --env beta --status` |
+| ② 传文件 / py_compile | 回显里的 sha256 / Python 报错；暂存目录 `/root/deploy/mainsite-beta/` |
+| ② 写 env | 回显（不打印）核的是 `600 root:root` 与 sha256；`ls -l /etc/turtle-referee/env-mainsite-beta` |
+| ② DNS | 第 0 步的两条 A 记录（刚加的等几分钟） |
+| ② caddy validate | 已自动从 `/root/betadeploy/mainsite-<时刻>/Caddyfile` 还原、删片段、**没 reload**；`caddy validate --config /etc/caddy/Caddyfile` 看报错 |
+| ② 重启 / 读进程环境 | `journalctl -u turtle-mainsite-gateway-beta -n 50`；「进程比 env 文件旧」= 没重启上；轮询器没在跑（周末 / `beta-off`）只记一条，不算失败 |
+| ③ HTTPS 回读 | `/healthz` 不通 = Caddy 证书（`journalctl -u caddy -n 50`）或网关没起；401 变成 503 = 网关连不上库 |
+
+结尾会提示待办：偷袭要内测服 `referee_config.raid_on` **与** `econ_on` 都开（`raid_enabled()`；本工具不写配置）——
+`update public.referee_config set raid_on = true, updated_at = now() where id = 1;`（`econ_on` 由记账线 S5 开）。
+回滚：`/root/betadeploy/mainsite-last` 指的目录里有 Caddyfile / 旧代码 / 旧 env；`systemctl disable --now turtle-mainsite-gateway-beta`、删两个 drop-in、`daemon-reload`、拷回 Caddyfile → `caddy validate` → `systemctl reload caddy`。
+
+**3. 我们这一侧自测**
+```bash
+python tools/mainsite_beta_smoke.py --mock      # 本机，不连外网：假主站 + 本机真网关进程 + 内存假库（23 步）
+python tools/mainsite_beta_smoke.py --no-raid   # 内测：S1 验签 ~ S7 换号（建 3 个匿名测试号，结束删掉）
+python tools/mainsite_beta_smoke.py             # 内测：再加 S8 防守阵容 ~ S11 发件箱 started / settle
+```
+预期结尾 `N 步 ALL PASS`。S9 起要三件事都在：`raid_on` + `econ_on`、内测服裁判机装了认 `raid` 模式的客户端版本（0.22.9 及更早的
+`referee_job.gd` 没有 raid ⇒ 裁判拒算 `bad_mode` ⇒ settle void；装新版本走 `python tools/deploy.py <版本> --env beta`）、内测服轮询器在跑（周末被 peak timer 停着）。
+缺哪件脚本停在那一步并直说。脚本编的 raidId 主站不认识 ⇒ 发件箱 started / settle 发到主站内测回 `ok:false`（raid not found）属预期。
+`--attacker-uid / --defender-uid` 换成主站内测的真测试号，就能和主站一起看同一场。
+
+**4. 给主站三个地址（11-08 已交用户转；部署通了再确认一次）**：`gameServerURL` = `https://arena-beta.turtlearena.xyz/mainsite/raid`、
+`gameApiURL` = `https://arena-beta.turtlearena.xyz`、`playerURL` = `https://arena-beta.turtlearena.xyz/player`（播放器另由 `tools/deploy.py <版本> --env beta --only player` 装）。
+
+**5. 双方各自自测**：主站在他们后台调 `link/info` / `link/confirm` / `raid`；我们这边看
+`journalctl -u turtle-mainsite-gateway-beta -f`（只记方法、路径、状态码、耗时）—— 他们的 401 = 密钥或时钟不对（两边密钥是不是同一份、`date -u`）；
+他们收我们的回调看发件箱（只读）：`select id, topic, last_status, attempts, done_at, reply from public.mainsite_outbox order by id desc limit 20;`
+（`last_status` 401 = 主站那边验不过我们的签名；`ok:false` 记下就停、不重试）。
+
+**6. 全流程（turtlebet arena-plan §8 第 2 步，两三个主站内测测试号）**：App「龟投账号」登录确认（`mainsite_accounts` 多一行）→ 设阵容（App 离开背包 / 选龟页，
+`raid_defense` 本周一行、发件箱 `defense` 已发）→ 存金库 → 主站偷袭（`raid_jobs` 一行 queued）→ 开算（`started` 已发、主站回新 expireAt）→
+结果（`settle` attacker / defender、`matches` 一行 phase = raid）→ 主站「看录像」打开 `playerURL?match=<matchId>` → 主站后台对账（我们 `raid_jobs.result` 与主站记录一致）。
 
 ## 已知风险与未决点
 
