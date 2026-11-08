@@ -163,7 +163,8 @@ const STATS := {
 	"p2eq_059": [{"hp": 100, "_echargePct": 10}, {"hp": 210, "_echargePct": 10}, {"hp": 1000, "_echargePct": 10}],   # 沙漏: +生命 + 龟能充能+10%(echarge_perm×1.1); 主动=JoJo时停(登场10s触发, _eq_hourglass_timestop)
 	# ── 杖系026雷电/027电棍/030·031水晶球 + 潮汐043海浪护符 (批10) ──
 	"p2eq_026": [{"magicPen": 8}, {"magicPen": 13}, {"magicPen": 20}],
-	"p2eq_027": [{"hp": 20, "def": 5, "mr": 5}, {"hp": 40, "def": 8, "mr": 8}, {"hp": 80, "def": 13, "mr": 13}],
+	## 电棍属性加强(用户 11-08「最大生命值改为一百一、二百五、四百。提供的双抗改为9/16/25」; 原 20/40/80 · 5/8/13)
+	"p2eq_027": [{"hp": 110, "def": 9, "mr": 9}, {"hp": 250, "def": 16, "mr": 16}, {"hp": 400, "def": 25, "mr": 25}],
 	"p2eq_030": [{"atk": 7, "hp": 20, "magicPen": 5}, {"atk": 12, "hp": 40, "magicPen": 8}, {"atk": 20, "hp": 80, "magicPen": 13}],
 	"p2eq_031": [{"atk": 7, "hp": 20, "magicPen": 3}, {"atk": 12, "hp": 40, "magicPen": 6}, {"atk": 20, "hp": 80, "magicPen": 10}],
 	"p2eq_043": [{"hp": 80, "shieldHealPct": 10}, {"hp": 200, "shieldHealPct": 20}, {"hp": 5000, "shieldHealPct": 30}],

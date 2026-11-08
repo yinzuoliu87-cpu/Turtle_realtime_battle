@@ -123,6 +123,8 @@ const CASES := [
 				["p2eq_013", "p2eq_036", "p2eq_037"], ["p2eq_069", "p2eq_070", "p2eq_071"]],
 			"x": {"season_total_battles": 14}}},
 	## ④ 奇械顶档 / 药水 8 件 vs 遗物顶档(含 093 香火石, 带刻痕) / 枪 8 件 · 宝箱龟带财宝值
+	##   ★2026-11-08 B 的上下路对调(原上路赌徒 / 下路赛博 + 宝箱): RULES_VER 4 删了奇械僵硬 / 易碎与药水斩首后, A 上路被一边倒碎蛋、
+	##     整场在第一路就结束, 下路的彩虹 / 赛博 / 宝箱和 047/085/092/093 从没上过场(覆盖分母抓到)。
 	{"tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱", "seed": 7140004,
 		"a": {"lv": 7, "tr": "tame", "top": ["two_head", "fortune"], "bottom": ["rainbow"],
 			"lo": {"two_head": 3, "fortune": 2, "rainbow": 1},
@@ -130,7 +132,7 @@ const CASES := [
 				["p2eq_047", "p2eq_085", "p2eq_086"], ["p2eq_087", "p2eq_019", "p2eq_022"],
 				["p2eq_028", "p2eq_041", "p2eq_042"], ["p2eq_065", "p2eq_066", "p2eq_067"]],
 			"x": {"season_total_battles": 4}},
-		"b": {"lv": 7, "tr": "villager", "top": ["gambler"], "bottom": ["cyber", "chest"],
+		"b": {"lv": 7, "tr": "villager", "top": ["cyber", "chest"], "bottom": ["gambler"],
 			"lo": {"gambler": 2, "cyber": 3, "chest": 1},
 			"eq": [["p2eq_004", "p2eq_024", "p2eq_044"], ["p2eq_053", "p2eq_058", "p2eq_059"],
 				["p2eq_091", "p2eq_092", "p2eq_093"], ["p2eq_094", "p2eq_048", "p2eq_050"],
