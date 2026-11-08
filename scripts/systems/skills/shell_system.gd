@@ -2,6 +2,8 @@ class_name ShellSystem
 extends RefCounted
 const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
 const CopyRules = preload("res://scripts/gamedata/copy_rules.gd")
+## 「复制」「暗影俯冲」的演出(2026-11-08 重做成像素帧表, 只管画面)。
+const ShellVfxScript = preload("res://scripts/scenes/battle/shell_vfx.gd")
 ## 龟壳龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -40,6 +42,7 @@ const STEALTH_HEALCUT_PCT := 0.5    # 破隐首发: 治疗削减比例
 ## 【暗影俯冲】主动的龟能消耗(理由同 TwoHeadSystem.FUSION_WAVE_ENERGY)。
 const SHADOW_ENERGY := 130.0
 const DIVE_RANGE := 600.0           # 暗影俯冲: 俯冲距离(码)
+const DIVE_DASH_SEC := 0.22         # 暗影俯冲: 冲刺滑行秒数(位移补间与沿途火团 / 命中火球的落点时刻共用这一份)
 const BURN_RADIUS := 150.0          # 暗影燃烧区: 半径(码)
 const BURN_TICK_SEC := 0.5          # 暗影燃烧区: 每几秒结算一次
 const BURN_TICKS := 10              # 暗影燃烧区: 结算几次 ⇒ 总时长 = TICKS × TICK_SEC
@@ -61,15 +64,19 @@ const COPY_SECOND_DELAY := 0.6 # 第二个复制技能隔几秒放(错峰, 不�
 ##   而且 CLAUDE.md §5:「不在 _sim_step 调用链上的, 不进主文件」。
 const COPY_ICON_H := 46.0          # 图标的世界高(码)。按图高归一, 因为这些图 186~923px 不等
 const COPY_ICON_HEIGHT := 2.35     # 浮在头顶多高。血条在 ~2.0, 再高一点免得压住
-const COPY_ICON_HOLD := 0.55       # 满亮保持多久(弹入 0.16 / 淡出 0.22 另算)
+const COPY_ICON_HOLD := 0.6        # 满亮保持多久(弹入 / 淡出另算; 11-08 方向稿「停 0.6 秒」)。两发时第一个缩短, 让它收了第二个才出
+const COPY_ICON_POP := 0.16        # 图标弹入秒数(battle_vfx.copy_steal_icon 与 ShellVfx 头顶底框共用这一份)
+const COPY_ICON_FADE := 0.22       # 图标淡出秒数(同上)
 ## 【吸收】偷目标最大生命并转给自己(双方 maxHp 与当前值同步变)。
 const ABSORB_PCT := 0.10       # 偷取 = 目标最大生命 ×
 const SPLASH_PCT := 0.5        # 溅射给周围其他敌人的比例(类型跟随主段)
 
 var battle
+var _fx = null           # ShellVfx: 复制 / 暗影俯冲的演出
 
 func _init(b) -> void:
 	battle = b
+	_fx = ShellVfxScript.new(b)
 
 func _shell_guard_fx(u: Dictionary) -> void:   # 守护贝壳018: 双半壳张开→咬合(壳体金闪)→再张开消散 + 脚下治疗圈(用户2026-07-19"做个特效")
 	if battle._shellhalf_tex == null: battle._shellhalf_tex = VfxTex._make_shellhalf_texture()
@@ -168,7 +175,7 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 	for i in range(4):
 		battle._pending_shots.append({"delay": 0.08 * float(i), "fn": func(): battle._headless_sys._headless_drain_dot(tp, uref), "src": u})
 
-func _shell_dark_flame(pos2d: Vector2, size: float, dur: float) -> void:   # 暗焰喷发(起跳/落地/破隐·2026-07-17): 紫芯+黑烟双层胀开渐隐
+func _shell_dark_flame(pos2d: Vector2, size: float, dur: float) -> void:   # 暗焰喷发(破隐·2026-07-17; 起跳 / 落地两处 11-08 换成 ShellVfx 像素帧表): 紫芯+黑烟双层胀开渐隐
 	var glow = VfxTex._make_fire_glow_tex()
 	for i in range(2):
 		var g = Sprite3D.new()
@@ -183,36 +190,6 @@ func _shell_dark_flame(pos2d: Vector2, size: float, dur: float) -> void:   # 暗
 		gt.tween_property(g, "scale", Vector3.ONE * 1.7, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		gt.tween_property(g, "modulate:a", 0.0, dur)
 		gt.chain().tween_callback(g.queue_free)
-
-func _shell_burn_patch(pos2d: Vector2, dur: float) -> void:    # 暗焰斑块(Corki火团黑烟式官方帧2026-07-17·暗紫黑): 亮芯+外圈黑烟·烟先散火后灭
-	var glow = VfxTex._make_fire_glow_tex()
-	var smoke = Sprite3D.new()
-	smoke.texture = glow
-	smoke.billboard = BaseMaterial3D.BILLBOARD_ENABLED; smoke.shaded = false; smoke.transparent = true
-	smoke.pixel_size = (randf_range(60.0, 80.0) * battle.WS) / 128.0
-	smoke.modulate = Color(0.12, 0.06, 0.16, 0.0)
-	smoke.position = battle._world_pos(pos2d, 0.35)
-	battle._world.add_child(smoke)
-	var fire = Sprite3D.new()
-	fire.texture = glow
-	fire.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fire.shaded = false; fire.transparent = true
-	var fps0: float = (randf_range(30.0, 42.0) * battle.WS) / 128.0
-	fire.pixel_size = fps0
-	fire.modulate = Color(0.72, 0.3, 0.95, 0.0)
-	fire.position = battle._world_pos(pos2d, 0.25)
-	battle._world.add_child(fire)
-	var st = battle._reg_tween(); st.set_parallel(true)
-	st.tween_property(smoke, "modulate:a", 0.55, 0.15)
-	st.tween_property(fire, "modulate:a", 0.9, 0.12)
-	st.chain().tween_interval(maxf(0.2, dur - 0.75))
-	st.chain().tween_property(smoke, "modulate:a", 0.0, 0.35)   # 烟先散
-	st.chain().tween_property(fire, "modulate:a", 0.0, 0.25)    # 火后灭
-	st.chain().tween_callback(func() -> void: smoke.queue_free(); fire.queue_free())
-	var ft = battle._reg_tween()                                      # 火芯闪动(活火感)
-	ft.tween_interval(0.3)
-	for i in range(maxi(1, int(dur / 0.4))):
-		ft.tween_property(fire, "pixel_size", fps0 * 1.15, 0.2)
-		ft.tween_property(fire, "pixel_size", fps0, 0.2)
 
 func _shell_enter_stealth(u: Dictionary) -> void:              # 潜影: 进入隐身(不可被选+半透明); 只有龟壳自己放技能/普攻破隐(AOE不破); 2026-07-17羽化渐隐0.4s+3缕暗雾上腾
 	if u.get("shell_stealth", false): return
@@ -256,29 +233,30 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	dir = DetMath.norm(dir)
 	var dest: Vector2 = start + dir * DIVE_RANGE
 	dest = ArenaShape.clamp_in(dest, battle.ARENA)
+	var hits: Array = []                                        # 被打中的人(只给演出读位置: 命中火球)
 	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.0A魔法+击退
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], 75.0): continue
 		if DetMath.dist(o["pos"], start) > 620.0: continue
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, DIVE_MAGIC, o, true), Color("#9b3bff"))
 		battle._damage._knockback(u, o, 60.0, 1.0, 1.4)
-	_shell_dark_flame(start, 60.0, 0.5)                         # 起跳点火(Corki官方帧t=1.0起飞喷焰·2026-07-17)
+		hits.append(o)
+	## 起飞喷焰 + 沿途火团(在身后依次落、烟晕相接、先落先灭) + 路径命中火球(2026-11-08 库奇 W 式像素帧表, 只管画面)
+	_fx.dive(start, dest, dir, DIVE_DASH_SEC, hits)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", start, 90.0, 0.1)
 	var uu: Dictionary = u
 	u["_slam"] = true                                           # 冲刺滑行0.22s(cyber dash先例·位移演出; 伤害仍施放帧结算=封板)
 	var dv = battle._reg_tween()
 	dv.tween_method(func(q: float) -> void:
 		if uu.get("alive", false): uu["pos"] = DetMath.vlerp(start, dest, DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_IN))
-	, 0.0, 1.0, 0.22)
+	, 0.0, 1.0, DIVE_DASH_SEC)
 	dv.tween_callback(func() -> void:
 		uu["_slam"] = false
 		if not uu.get("alive", false): return
-		_shell_dark_flame(dest, 110.0, 0.6)                     # 落地暗影爆
+		## 落地不另放大爆炸(库奇 W 落地那块和沿途一样大, 11-08 删掉原来 110 码的紫光团), 只留冲击环 + 落地区火团
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", dest, 200.0, 0.1)
 		battle._shake(0.1)
-		for bi in range(7):                                     # 燃烧区=暗焰斑块群铺150码(Corki火团式·替代原每0.5s重复画环)
-			var ba: float = randf() * TAU
-			_shell_burn_patch(dest + Vector2(DetMath.dcos(ba), DetMath.dsin(ba)) * randf_range(0.0, 120.0), 5.0)
+		_fx.land(dest, dir, BURN_LIFE, BURN_RADIUS)            # 燃烧区 = 中心 1 + 外圈 6 块贴地火团, 与燃烧区同寿
 		var zring = Sprite3D.new()                             # 区界暗紫细环常驻5秒→渐隐
 		zring.texture = VfxTex._make_thin_ring_tex()
 		zring.billboard = BaseMaterial3D.BILLBOARD_DISABLED; zring.axis = Vector3.AXIS_Y
@@ -292,11 +270,6 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 		zt.tween_property(zring, "modulate:a", 0.0, 0.5)
 		zt.tween_callback(zring.queue_free)
 		_shell_enter_stealth(uu))                               # 落地才羽化入隐(原瞬移即隐)
-	for si in range(5):                                         # 沿途暗焰痕(纯视觉·Corki沿途火团黑烟·各1.8s烟先散火后灭)
-		var sp: Vector2 = DetMath.vlerp(start, dest, (float(si) + 0.5) / 5.0) + Vector2(randf_range(-20.0, 20.0), randf_range(-20.0, 20.0))
-		var st = battle._reg_tween()
-		st.tween_interval(0.22 * (float(si) + 0.5) / 5.0)
-		st.tween_callback(func() -> void: _shell_burn_patch(sp, 1.8))
 	var zc: Vector2 = dest
 	for i in range(BURN_TICKS):                                 # 暗影燃烧区(半径/时长/节拍全在常量里, 文案 {C:} 引用同一份)
 		var fn = func():
@@ -354,22 +327,11 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 		var _tmp = pool[_i]
 		pool[_i] = pool[_j]
 		pool[_j] = _tmp
-	if pool.size() >= 1:                                       # 2026-07-17镜像签名: 施放前两侧紫白残影错位闪现0.35s+白紫环(复制感)
-		var glow = VfxTex._make_fire_glow_tex()
-		for mi in range(2):
-			var mg = Sprite3D.new()
-			mg.texture = glow
-			mg.billboard = BaseMaterial3D.BILLBOARD_ENABLED; mg.shaded = false; mg.transparent = true
-			mg.pixel_size = (60.0 * battle.WS) / 128.0
-			mg.modulate = Color(0.85, 0.7, 1.0, 0.85)
-			var off: float = 30.0 if mi == 0 else -30.0
-			mg.position = battle._world_pos((u["pos"] as Vector2) + Vector2(off, 0.0), 0.7)
-			battle._world.add_child(mg)
-			var mt = battle._reg_tween(); mt.set_parallel(true)
-			mt.tween_property(mg, "position", battle._world_pos((u["pos"] as Vector2) + Vector2(off * 1.8, 0.0), 0.7), 0.35)
-			mt.tween_property(mg, "modulate:a", 0.0, 0.35)
-			mt.chain().tween_callback(mg.queue_free)
-		battle._skill_ring(u["pos"], Color(0.85, 0.7, 1.0, 0.6), 52.0)
+	if pool.size() >= 1:
+		## ★2026-11-08 塞拉斯 R 式偷招演出(甩链 → 分节锁链 → 抓住 + 已被偷小圈 → 抽紫流 → 持有态电弧), 与第一发同时开始、不推迟它。
+		##   原来是两团紫白柔光残影 + 一圈紫白环。只管画面(ShellVfx), 原主只读。
+		var two: bool = pool.size() >= 2
+		_fx.copy_begin(u, pool.slice(0, 2), (COPY_SECOND_DELAY + 0.3) if two else 0.8)
 		u["dmg_out_mult"] = COPY_EFFECT                                # 60%效果(封板)·即时伤害经_apply_damage_from乘数
 		battle._copy_fx_mult = COPY_EFFECT                                    # 60%效果·护盾/治疗/DoT
 		var s0: String = str(pool[0])
@@ -384,7 +346,9 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 		## ★★头顶浮出【这一发要放的技能的图标】(用户 2026-08-27 的演出设计)。
 		##   在 `_do_skill` 之前调 —— 玩家先看见"抄到了什么", 再看见技能打出来。
 		##   ★形态钉已经打好了, 所以多形态技能这里取到的就是【被偷者当时那一态】的图标。
-		battle._vfx.copy_steal_icon(u, s0, COPY_ICON_HOLD)
+		##   ★两发时第一个图标保持段缩短: 它收掉了第二个才出(用户 08-27「图标1 收 → 头顶浮出图标2」; 原来两个叠在头顶 0.3 秒)。
+		_fx.copy_icon(u, s0, maxf(0.05, COPY_SECOND_DELAY - COPY_ICON_POP - COPY_ICON_FADE - 0.04) if two else COPY_ICON_HOLD)
+		_fx.copy_release(u)                                           # 放出那一刻龟壳闪白 1 帧(之后原技能特效原样播)
 		var _ps0: int = battle._pending_shots.size()
 		battle._do_skill(u, t0, s0)                                   # 第1个立即
 		_mark_copy_tail(_ps0)
@@ -415,7 +379,8 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 				SkillForms.pin_form(uu, p1, f1)
 			## ★第二发同样先出图标 —— 它隔了 0.6 秒才发, 原来是**凭空出现**的,
 			##   玩家看不出这一段是哪来的(①-E 记的三个硬伤之一)。
-			battle._vfx.copy_steal_icon(uu, p1, COPY_ICON_HOLD)
+			_fx.copy_icon(uu, p1, COPY_ICON_HOLD)
+			_fx.copy_release(uu)
 			var _ps1: int = battle._pending_shots.size()
 			battle._do_skill(uu, t2, p1)
 			_mark_copy_tail(_ps1)
