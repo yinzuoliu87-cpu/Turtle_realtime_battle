@@ -23,6 +23,19 @@ const HAMMER_BIG_ATK_COEF := 6.0        # 铁锤·跃击(每第 3 次) ×ATK 魔
 const WHIP_CD_SEC := 5.0                # 被动·铁锁 冷却(秒)
 const WHIP_STUN_SEC := 0.4              # 铁锁眩晕(秒)
 const WHIP_ATK_COEF := 2.0              # 铁锁 ×ATK 魔法
+## 铁锁把自己拉向目标的飞行速度(码/秒)。用户 11-08「把自己拉进敌人这个速度也是太快，而且为什么固定就不应该，你就要慢慢…飞过去」:
+##   原来固定 0.18 秒(150 ~ 350 码 ⇒ 每秒 1100 ~ 2200 码)。
+const WHIP_PULL_SPD := 500.0
+const WHIP_PULL_MIN := 0.12
+const WHIP_SHOT_DELAY := 0.3            # 链射出手到开始拉体(与 _tick_elite_whip 的 delay 0.3 同一个数)
+
+## 拉过去要飞多久: 距离 ÷ 速度。
+static func whip_pull_sec(from: Vector2, to: Vector2) -> float:
+	return maxf(WHIP_PULL_MIN, DetMath.dist(from, to) / WHIP_PULL_SPD)
+
+## 甩臂动作 whip.png 7 帧拉长到「出手 0.3 秒 + 拉过去」整段(出手时按当时距离 + 绕到身后 46 码估), 播完才不会回站姿。
+static func whip_anim_fps(d: float) -> float:
+	return 7.0 / (WHIP_SHOT_DELAY + maxf(WHIP_PULL_MIN, (d + 46.0) / WHIP_PULL_SPD))
 ## 精英龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -31,7 +44,7 @@ var battle
 func _init(b) -> void:
 	battle = b
 
-func _elite_anim(u: Dictionary, action: String) -> void:
+func _elite_anim(u: Dictionary, action: String, fps_over: float = 0.0) -> void:
 	if not (u.get("is_elite", false) and u.get("alive", false)):
 		return
 	if not is_instance_valid(u.get("sprite", null)):
@@ -41,7 +54,7 @@ func _elite_anim(u: Dictionary, action: String) -> void:
 	var e = battle.ACTION_ELITE.get(action, null)
 	if e == null:
 		return
-	var asd = battle._resolve_action(str(e[0]), float(e[1]))
+	var asd = battle._resolve_action(str(e[0]), float(e[1]) if fps_over <= 0.0 else fps_over)
 	if asd.is_empty():
 		return
 	battle._set_anim_sheet(u, asd, action, false)

@@ -93,7 +93,8 @@ func _ready() -> void:
 ##   hammer_big 0.35跳起+1.0空中蓄力+0.12下砸 / _tick_elite_whip 0.3链射+0.18拉体 /
 ##   _elite_try_consume 的 _pending_shots delay 1.5
 const ELITE_BEATS := {
-	"whirl": 0.42, "hammer": 0.43, "hammer_big": 1.47, "whip": 0.48, "consume": EliteSystem.CONSUME_SEC,
+	"whirl": 0.42, "hammer": 0.43, "hammer_big": 1.47, "consume": EliteSystem.CONSUME_SEC,
+	## "whip" 11-08 起按距离变长(拉体按速度飞), 运行时按实际时长传 fps ⇒ 改由 verify_minion_pull_speed 量真播的时长
 }
 
 ## 远程小将(2026-08-21)。技能 = 火箭蓄力 1.5 秒(`_sk_minion_rocket` 的蓄力段)。
@@ -105,7 +106,7 @@ const RANGED_BEATS := {
 const MELEE_BEATS := {
 	"leap": 0.64,    # 0.00-0.64 蓄力(tween_interval 0.3) + 起跳(tween_method 0.34)
 	"throw": 0.64,   # 0.64-1.28 滞空(_pending_shots delay 0.68 → 1.28)
-	"dive": 0.30,    # 1.28-1.58 俯冲(_minion_bodysurf_ride 的 while d < 0.3)
+	## "dive" 11-08 起按距离变长(按速度飞), 运行时按实际时长传 fps ⇒ 改由 verify_minion_pull_speed 量
 	"surf": 0.833,   # 1.58-2.41 踩滑(slide_dur = 0.833)
 	"land": 0.30,    # 2.41 侧跳落地
 }

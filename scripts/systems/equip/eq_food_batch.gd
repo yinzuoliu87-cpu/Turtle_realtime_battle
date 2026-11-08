@@ -409,6 +409,8 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 	for o in battle._targeting._allies_of(u, true):
 		if not o.get("alive", false):
 			continue
+		if o.get("_isEgg", false):
+			continue   # #19 用户 11-07「奶油炼乳罐，它的这个护盾会分到这个龟蛋上，这个感觉是不对的」
 		var amt: float = float(o["maxHp"]) * pct
 		# ★永久不衰减 ⇒ decay_sec 缺省 0。破盾回调走 SpecialBalance 的 on_break。
 		# ⚠ 同 key 再 grant 会【叠加余额并换掉 on_break】(SpecialBalance 的既有语义) ⇒

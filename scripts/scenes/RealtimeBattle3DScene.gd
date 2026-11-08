@@ -1947,7 +1947,7 @@ const ANIM_NORM := {
 ## ★2026-08-21 扩到远程小将: 原来硬卡 `!= "__minion_front__"` 直接 return,
 ##   所以远程小将**没有任何入口能播动作**(精英走 _elite_anim, 它两头不靠)。
 ##   按 `_anim_key` 选表, 不新写第三个近似函数(手抄的副本必然落后)。
-func _melee_anim(u: Dictionary, action: String) -> void:
+func _melee_anim(u: Dictionary, action: String, fps_over: float = 0.0) -> void:
 	var _k := _anim_key(u)
 	if not u.get("alive", false):
 		return
@@ -1967,7 +1967,7 @@ func _melee_anim(u: Dictionary, action: String) -> void:
 	var e = _tbl.get(action, null)
 	if e == null:
 		return
-	var asd := _resolve_action(str(e[0]), float(e[1]))
+	var asd := _resolve_action(str(e[0]), float(e[1]) if fps_over <= 0.0 else fps_over)   # fps_over: 按实际时长拉长(人体浪板俯冲, 11-08)
 	if asd.is_empty():
 		return
 	_set_anim_sheet(u, asd, action, false)
@@ -6022,7 +6022,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	u["_whip_cd"] = _t + EliteSystem.WHIP_CD_SEC
 	u["_whipdemo_next"] = _t + 4.5
 	u["_slam"] = true
-	_elite_sys._elite_anim(u, "whip")   # 甩臂动作 (挂在真链射这句, 不能挂函数头 —— 那里每帧都跑)
+	_elite_sys._elite_anim(u, "whip", EliteSystem.whip_anim_fps(d))   # 甩臂动作(挂在真链射这句, 不能挂函数头 —— 那里每帧都跑); 按拉体时长拉长(11-08)
 	var uu := u
 	var tref: Dictionary = tgt
 	var from5: Vector2 = u["pos"]
@@ -6058,7 +6058,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		_vfx._flash(tref, Color(1.35, 1.2, 1.2))
 		_vfx._hit_spark(tref)
 	, "src": u})
-	_pending_shots.append({"delay": 0.3, "fn": func() -> void:    # 拉体: 0.18s冲到目标身后
+	_pending_shots.append({"delay": EliteSystem.WHIP_SHOT_DELAY, "fn": func() -> void:    # 拉体: 按速度飞到目标身后(11-08, 原固定 0.18s)
 		if not uu.get("alive", false): return
 		if not tref.get("alive", false):
 			uu["_slam"] = false
@@ -6069,11 +6069,11 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		var dest: Vector2 = tp + dirp * 46.0
 		dest = ArenaShape.clamp_in(dest, ARENA, 30, 20)
 		var fromp: Vector2 = uu["pos"]
-		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", fromp, dest, 40.0, Color(0.45, 0.08, 0.1, 0.6), 0.25)
+		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", fromp, dest, 40.0, Color(0.45, 0.08, 0.1, 0.6), EliteSystem.whip_pull_sec(fromp, dest) + 0.07)
 		var pt5 := _reg_tween()
 		pt5.tween_method(func(q: float) -> void:
 			if uu.get("alive", false): uu["pos"] = DetMath.vlerp(fromp, dest, q)
-		, 0.0, 1.0, 0.18)
+		, 0.0, 1.0, EliteSystem.whip_pull_sec(fromp, dest))
 		pt5.tween_callback(func() -> void:
 			uu["_slam"] = false
 			if tref.get("alive", false) and uu.get("alive", false):

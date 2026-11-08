@@ -53,6 +53,16 @@ const SURF_STUN_SEC := 1.1              # 铁链眩晕(秒)·覆盖整个空中�
 const SURF_CONTACT_MAXHP_PCT := 0.10    # 接触: 目标最大生命 × 物理
 const SURF_RIDE_ATK_COEF := 2.0         # 踩滑全程合计 ×ATK 物理(按 0.1 秒一跳均摊到 slide_dur)
 const SURF_PASS_ATK_COEF := 1.5         # 沿途撞到的敌人 ×ATK 物理 + 击退
+## 被铁链拉向目标的飞行速度(码/秒)。用户 11-08「把自己拉向对面这个时间现在是固定的…改成就是以这个速度去飞行」:
+##   原来不管多远都固定 0.3 秒(技能射程 2000, 远了等于瞬移)。速度参考 LoL 钩拉类约为移速 4 ~ 5 倍。
+const SURF_PULL_SPD := 500.0
+const SURF_PULL_MIN := 0.12            # 贴脸时的保底时长(秒), 免得动作一闪而过
+
+## 拉向目标要飞多久: 距离 ÷ 速度。
+static func surf_pull_sec(from: Vector2, to: Vector2) -> float:
+	return maxf(SURF_PULL_MIN, DetMath.dist(from, to) / SURF_PULL_SPD)
+
+
 func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火箭筒: 蓄力1.5s(枪口聚能)→枪口喷火发射→定向慢速追踪导弹(尾焰)→命中核爆(400码4A物理+4s50%治疗削减)
 	if tgt == null or not tgt.get("alive", false): return
 	var uu = u
@@ -326,21 +336,22 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 		if battle._damage._is_cc_immune(tref):
 			_minion_abort_fall(uu)
 			return
-		battle._melee_anim(uu, "dive")                           # 1.28-1.58 被绳拉着俯冲, 双脚前伸
-		_minion_bodysurf_ride(uu, tref)
+		_minion_bodysurf_ride(uu, tref)                          # 1.28 起被绳拉着俯冲(动作在里面按飞行时长播)
 	, "src": u})
 
 func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己向目标→接触10%maxHP→踩着目标滑行(coroutine)
 	var from: Vector2 = u["pos"]
 	var h0: float = float(u.get("height", 0.0))           # 从空中悬停高度俯冲下来
+	var dive_sec: float = surf_pull_sec(from, tref["pos"])   # 按速度飞(用户 11-08), 原固定 0.3 秒
+	battle._melee_anim(u, "dive", 4.0 / dive_sec)           # dive.png 4 帧拉长到整段飞行, 播完才不会半空回站姿
 	var d = 0.0
-	while is_instance_valid(battle) and d < 0.3 and u.get("alive", false):             # 0.3s从空中俯冲扑到目标身上(边冲边下落·减速40%·用户2026-07-18)
+	while is_instance_valid(battle) and d < dive_sec and u.get("alive", false):        # 从空中俯冲扑到目标身上(边冲边下落)
 		await battle._dl_sys.lane_step()
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
 		d += battle._frame_sim_dt
-		var kk: float = clampf(d / 0.3, 0.0, 1.0)
+		var kk: float = clampf(d / dive_sec, 0.0, 1.0)
 		if u.get("alive", false):
 			u["pos"] = DetMath.vlerp(from, (tref["pos"] as Vector2), kk)   # 水平接近目标
 			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")

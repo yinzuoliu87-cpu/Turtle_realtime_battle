@@ -303,6 +303,19 @@ func _tick_hook_flights(delta: float) -> void:
 
 
 ## 回收钩头节点。
+## 换战场清场(dual_lane_flow._dl_clear_units 调): 在途的钩子 / 口哨气波连同节点一起清掉。
+## ★#21 用户 11-07「上半场打完，到了下半场或到了终极战场之后，突然会射出两根钩锁」:
+##   原来这两张表只有逐帧推进那里改写, 换路后上一路的钩子还在飞(探针: 换路后仍 3 根, 发射者是上一路的旧大师),
+##   新一路的大师冷却一好再放 ⇒ 同时两根。
+func clear_flights() -> void:
+	for f in _flights:
+		_hook_head_free(f)
+	_flights = []
+	for w in _wave_flights:
+		_wave_free(w)
+	_wave_flights = []
+
+
 func _hook_head_free(f: Dictionary) -> void:
 	var nd = f.get("node", null)
 	# ★is_instance_valid 必须【在前】—— 对已释放实例做 `is` 会报

@@ -397,7 +397,12 @@ func _t071() -> void:
 		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(120.0, y), 3000.0), "p2eq_071", si + 1)
 		var mate: Dictionary = _mk("fortune", "left", Vector2(160.0, y), 2000.0)
 		var foe: Dictionary = _mk("fortune", "right", Vector2(200.0, y), 2000.0)
+		## #19 用户 11-07「奶油炼乳罐，它的这个护盾会分到这个龟蛋上，这个感觉是不对的」: 我方龟蛋拿不到
+		var egg: Dictionary = _s._spawn._make_unit("__egg__", "left", _s.ARENA.position + _s.ARENA.size * 0.5 + Vector2(140.0, y), {"egg": true})
+		_s._units.append(egg)
 		_food.tick_unit(u, 0.016)
+		_ok("071 si=%d ★#19 我方龟蛋拿不到奶油护盾(分母: 它确实是龟蛋=%s)" % [si, str(egg.get("_isEgg", false))],
+			egg.get("_isEgg", false) and _s._spec.val(egg, "p2eq_071_cream") <= 0.001, "实测 %.1f" % _s._spec.val(egg, "p2eq_071_cream"))
 		_ok("071 si=%d 队友拿到 最大生命 10/18/25%% = %.0f 奶油护盾" % [si, 2000.0 * pct[si]],
 			absf(_s._spec.val(mate, "p2eq_071_cream") - 2000.0 * pct[si]) < 0.51,
 			"实测 %.1f" % _s._spec.val(mate, "p2eq_071_cream"))
