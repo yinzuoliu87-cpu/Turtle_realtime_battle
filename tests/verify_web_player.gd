@@ -175,7 +175,7 @@ func _full_play() -> void:
 	_ok("★★进了播放器页 ⇒ 后端整层停用(不登录)", not SB.enabled())
 	_ok("★播放器页取了 end.json、拉到第 0 块读出地图种子、换去战斗场",
 		wp.state == "playing" and _codes(wp) == [200] and int(wp.map_seed) == int(nat.get("seed", -1)) and _nav == [ReplayRecorder.BATTLE_SCENE],
-		"state=%s 种子 %d(任务单 %d) 换屏 %s" % [wp.state, int(wp.map_seed), int(nat.get("seed", -1)), str(_nav)])
+		"state=%s 种子 %d(任务单 %d) 换屏 %s 请求 %s 服务端收到 %d" % [wp.state, int(wp.map_seed), int(nat.get("seed", -1)), str(_nav), str(wp.requests), _srv.reqs.size() - r0])
 	_close(wp)
 	if _nav != [ReplayRecorder.BATTLE_SCENE]:
 		return

@@ -252,6 +252,12 @@ static func record_referee_shared(host: Node, job: Dictionary) -> Dictionary:
 		hit = _shared_read(path)
 		if hit is Dictionary:
 			print("  [共用录像] 等别的测试录完再读 %s(等了 %d ms)" % [key.left(8), Time.get_ticks_msec() - t0])
+			## ★11-08: 阻塞等的这段一帧没走 ⇒ 下一帧的帧间隔就是整段等待(实测 22 秒)。调用方紧接着发的 HTTPRequest
+			##   按帧间隔累计超时(播放器页 15 秒)⇒ 一帧就超时、判「离线」(verify_web_player CI 红, 本机设 GATE_STREAM_CACHE 复现)。
+			##   这里先走两帧把长间隔吃掉, 再交给调用方: process_frame 在一帧开头、各节点 _process 之前发出,
+			##   只等一帧时醒来那一帧的 22 秒还没分发, 调用方这时建的请求计时器紧接着就吃到它(实测一帧不够)。
+			await host.get_tree().process_frame
+			await host.get_tree().process_frame
 			return hit
 	print("  [共用录像] 等了 %d ms 没等到 ⇒ 自己录" % SHARED_WAIT_MS)
 	return await record_referee(host, job, never)
