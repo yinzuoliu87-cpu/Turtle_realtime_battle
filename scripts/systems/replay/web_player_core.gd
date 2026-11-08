@@ -12,7 +12,7 @@ extends RefCounted
 ## 判定顺序(与入口页同一套, 播放器自己再判一次 —— 有人直接打开 /player/<版本>/ 也得对):
 ##   手机浏览器 ⇒「请在小游戏内观看」; 对局号不像样 ⇒「未找到该对局的录像」;
 ##   end.json 200 ⇒ 版本对 ⇒ 播; 版本不对 ⇒ 网页上回入口页重新选目录(带 hop=1, 第二次还不对就说版本不一致);
-##   end.json 404 ⇒ expired 记号 200 ⇒「录像已过期」, 否则「未找到该对局的录像」; 连不上 / 5xx ⇒「网络连接失败」+ 重试。
+##   end.json 404 ⇒ expired 记号 200 ⇒「录像已过期」, 否则「未找到该对局的录像」; 连不上 / 5xx ⇒「无法连接服务器。请检查网络连接后重试。」+ 重试。
 
 const F := preload("res://scripts/systems/stream/stream_format.gd")
 
@@ -30,7 +30,8 @@ const ENV_TOUCH := "WEBPLAYER_TOUCH"
 const TXT_MOBILE := "请在小游戏内观看"
 const TXT_EXPIRED := "录像已过期"
 const TXT_NOT_FOUND := "未找到该对局的录像"
-const TXT_OFFLINE := "网络连接失败"
+## 网络失败全游戏只有一种说法(verify_ui_copy 第 7 条)
+const TXT_OFFLINE := "无法连接服务器。请检查网络连接后重试。"
 const TXT_VERSION := "录像版本与播放器版本不一致"
 const TXT_LOADING := "正在载入录像"
 const TXT_ENDED := "播放结束"

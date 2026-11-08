@@ -121,9 +121,13 @@ const RANKED := {
 	## ★2026-11-06 临时等级器进服务器局(提交 15185ba0): build_ghost_snapshot 只在**用过**临时等级器时多带 temp_levels / 小将 temp_lv,
 	##   没用过的快照一字不变(verify_bot_snapshot_shape 守); 55 个函数里只变这一个, 没有挪走函数 ⇒ 判据不变松。基线 d2d21816 ⇒ 15185ba0, 摘要现算。
 	## ★2026-11-06 命运之轮进服务器局(提交 ee59a074): build_ghost_snapshot 只在抽过时多带 wheel_stacks, 没抽过的快照一字不变; 只变这一个函数, 判据不变松。
+	## ★2026-11-08 偷袭防守阵容(提交 eeb95b2c, 方案书 20261107 §4.2「每打完一局顺手传一次最新阵容」): upload_ghost 开头多一次
+	##   raid_defense_net.put_defense()(阵容没变不传、本周没开轮 / 教程 / test_mode / 没配后端都不传, 失败静默; verify_raid_defense_put 守),
+	##   原来那几行(本地池 + 积分赛 ghosts 排队)一字没动 ⇒ 积分赛的流程与记下的数不变。55 个函数里只变这一个、没有新增 ⇒ 判据不变松。
+	##   基线 ee59a074 ⇒ eeb95b2c, 摘要按本表口径现算(同口径复算 ee59a074 得 fa0b601d…, 与原表一致)。
 	"scripts/net/backend.gd": {
-		"base": "ee59a074",
-		"digest": "fa0b601d03c726b04c7ea87b6fec2b15712b3735f23e685072f7b21d8c2703ed",
+		"base": "eeb95b2c",
+		"digest": "e8dbecde7b24e0835923fc28a055bab3b95ba6e3ab69e48db7150154f2f9b8f2",
 		"views": {},
 		"sat_only": [],
 		"units": [

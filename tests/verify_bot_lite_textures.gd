@@ -143,7 +143,8 @@ func _part1() -> Vector2:
 	_ok("① 接线: persistent_bg._init 里调 install_if_bot(无头?, SIM_DRIVER 原值)",
 		i_init >= 0 and i_call > i_init and (i_ready < 0 or i_call < i_ready),
 		"_init@%d call@%d _ready@%d" % [i_init, i_call, i_ready])
-	var proj := FileAccess.get_file_as_string("res://project.godot")
+	## 先去掉 \r: 本机 Windows 检出是 CRLF, 空行会剩一个 "\r" 被当成第一行(11-08 本机假红; CI 是 LF)
+	var proj := FileAccess.get_file_as_string("res://project.godot").replace("\r", "")
 	var i_al := proj.find("[autoload]")
 	var first_al := proj.substr(i_al).split("\n", false)[1] if i_al >= 0 else ""
 	_ok("① PersistentBg 是第一个 autoload(_init 早于其余 autoload 载入贴图)",

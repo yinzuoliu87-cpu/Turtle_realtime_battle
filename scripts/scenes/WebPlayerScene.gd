@@ -11,7 +11,7 @@ extends Control
 const WC := preload("res://scripts/systems/replay/web_player_core.gd")
 const SW := preload("res://scripts/systems/replay/stream_watch.gd")
 const TIMEOUT_SEC := 15.0
-## 网络一直不通时, 等第 0 块等多久改说「网络连接失败」(块来源自己按退避一直重试)。
+## 网络一直不通时, 等第 0 块等多久改说网络失败那一句(WebPlayerCore.TXT_OFFLINE)(块来源自己按退避一直重试)。
 const FIRST_CHUNK_WAIT_SEC := 20.0
 const BG := Color(0.0392, 0.0549, 0.0941)
 const N_STATUS := "WebPlayerStatus"

@@ -103,7 +103,9 @@ def frames(name, runner):
 
 def run_test(name, fatal, budget):
 	u = tempfile.mkdtemp(prefix="pc_")
-	env = dict(os.environ, APPDATA=u, XDG_DATA_HOME=u, TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ", SHIP="1")
+	## 与 run-tests.sh 的 run_one 同一套环境(11-08: 这里原来多设 SHIP=1, 会关掉审阅台演示劫持 ⇒ verify_two_head_anim 在预检里假红、CI 里绿)
+	env = dict(os.environ, APPDATA=u, XDG_DATA_HOME=u, TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ", QUIET="1")
+	env.pop("SHIP", None)
 	log = os.path.join(ROOT, ".out", "gate", name + ".log")
 	os.makedirs(os.path.dirname(log), exist_ok=True)
 	t0 = time.time()

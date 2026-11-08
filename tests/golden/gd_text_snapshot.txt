@@ -2462,9 +2462,9 @@ scripts/systems/replay/stream_watch.gd|lit|画面生成中
 scripts/systems/replay/web_player_core.gd|lit|录像已过期
 scripts/systems/replay/web_player_core.gd|lit|录像版本与播放器版本不一致
 scripts/systems/replay/web_player_core.gd|lit|播放结束
+scripts/systems/replay/web_player_core.gd|lit|无法连接服务器。请检查网络连接后重试。
 scripts/systems/replay/web_player_core.gd|lit|未找到该对局的录像
 scripts/systems/replay/web_player_core.gd|lit|正在载入录像
-scripts/systems/replay/web_player_core.gd|lit|网络连接失败
 scripts/systems/replay/web_player_core.gd|lit|请在小游戏内观看
 scripts/systems/replay/web_player_core.gd|lit|重新播放
 scripts/systems/replay/web_player_core.gd|lit|重试
