@@ -1,0 +1,35 @@
+# 龟投（主站）网关 · 内测服（turtle-beta）（server/referee/mainsite_gateway.py；方案书 docs/plans/20261107-龟战主站对接.md §4.7）。
+# 放到 /etc/systemd/system/turtle-mainsite-gateway-beta.service。部署步骤见同目录 README.md「龟投网关」。
+# ★正式服那份 turtle-mainsite-gateway.service 与 /etc/turtle-referee/env 一个字不动；本份只是同机第二套：
+#   自己的 env（env-beta，内测主站地址 + 内测密钥）、自己的代码目录 /opt/turtle-beta/referee/、自己的端口 127.0.0.1:8791，
+#   对外由 Caddy（mainsite-gateway.caddy，arena-beta.turtlearena.xyz）反代。低优先级、最多半个核。
+# ★不跟 turtle-referee-beta-peak.timer 周末停：网关很轻；但内测服的发件箱在轮询器里，周末随轮询器停（周一自动续发，不丢）。
+[Unit]
+Description=Turtle mainsite gateway - BETA server (turtle-beta, low priority)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=turtle-referee
+Group=turtle-referee
+Environment=GATEWAY_BIND=127.0.0.1
+Environment=GATEWAY_PORT=8791
+EnvironmentFile=/etc/turtle-referee/env-beta
+ExecStart=/usr/bin/python3 /opt/turtle-beta/referee/mainsite_gateway.py
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+Nice=10
+CPUQuota=50%
+MemoryMax=192M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

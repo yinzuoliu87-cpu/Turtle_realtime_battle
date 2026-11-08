@@ -539,6 +539,37 @@ journalctl -u turtle-gauntlet-planner-prod -f
 ⑥ 不是阻塞（已查）：无头截图两处都先判 `headless` 跳过（`sim_driver.gd:1611`、`sim_shot.gd:25`）；`scripts/systems/sim/` 里没有 Windows 路径或 Windows 专用 API；Linux 上 user:// = `$XDG_DATA_HOME/godot/app_userdata/斗龟场 实时版/`，`bot_runner` 已按槽位设 `XDG_DATA_HOME`。
    ★10-27 实测一致：p01 的 `start` 事件 `user_dir` = `/var/lib/turtle-bots-beta/p01/godot/app_userdata/斗龟场 实时版`；`shots/` 目录建了但是空的（无头不截图）。
 
+## 龟投网关与发件箱（2026-11-09 · 方案书 [docs/plans/20261107-龟战主站对接.md](../../docs/plans/20261107-龟战主站对接.md) §4.1 / §4.8 · ★只写了仓库文件、未部署）
+
+| 文件 | 去哪 | 是什么 |
+|---|---|---|
+| `mainsite_gateway.py` + `mainsite_sign.py` | `/opt/turtle/referee/`（内测 `/opt/turtle-beta/referee/`），与 `referee_poller.py` 同目录（网关 import 它的 `rpc`） | 网关：主站 → 我们（验签）、App → 我们（登录码 / 轮询 / 拥有龟）；接口清单见文件头 |
+| `turtle-mainsite-gateway.service` / `-beta.service` | `/etc/systemd/system/` | 正式 127.0.0.1:8790 / 内测 127.0.0.1:8791 |
+| `mainsite-gateway.caddy` | `/etc/caddy/mainsite-gateway.caddy` + Caddyfile 末尾 `import /etc/caddy/mainsite-gateway.caddy` | `arena.turtlearena.xyz` / `arena-beta.turtlearena.xyz` 反代（要先加 DNS） |
+| `referee_poller.py` 的 `outbox_loop` | 同上 | 发件箱线程：`MAINSITE_OUTBOX=1` 才起（默认关） |
+| （A2 线）`raid_intake.py` | 同目录 | `/mainsite/raid` 的建任务逻辑；没拷 ⇒ 网关对建任务回 503（主站立刻退押注） |
+
+env（加进 `/etc/turtle-referee/env` 与 `env-beta`，600 root）：`MAINSITE_BASE=https://turtlepoll.com`（内测地址只在 turtlebet 仓库 `docs/arena-plan.md` §8）、
+`MAINSITE_HOOK_SECRET=<密钥>`（内测 / 正式各一套，★不进仓库）、发件箱开关 `MAINSITE_OUTBOX=1`。可选：`MAINSITE_LINK_BASE`（默认 = `MAINSITE_BASE`）、`LOGIN_EMAIL_DOMAIN`。
+
+部署（第一次；DNS 两条 A 记录先加好）：
+```bash
+sudo cp server/referee/mainsite_gateway.py server/referee/mainsite_sign.py server/referee/referee_poller.py /opt/turtle-beta/referee/   # 先内测
+sudo install -m 644 server/referee/turtle-mainsite-gateway-beta.service /etc/systemd/system/   # 仓库是 CRLF：先转 LF
+sudo install -m 644 server/referee/mainsite-gateway.caddy /etc/caddy/ && echo 'import /etc/caddy/mainsite-gateway.caddy' | sudo tee -a /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+sudo systemctl daemon-reload && sudo systemctl enable --now turtle-mainsite-gateway-beta && sudo systemctl restart turtle-referee-beta
+curl -s https://arena-beta.turtlearena.xyz/healthz                                   # {"ok": true}
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://arena-beta.turtlearena.xyz/mainsite/link/confirm -d '{}'   # 401（不带签名）
+```
+本机联调（不连主站）：`python tools/mock_mainsite.py serve` 起假主站，网关 / 发件箱的 `MAINSITE_BASE` 指过去；
+`mock_mainsite.py link-info / link-confirm / raid` 扮演主站调网关。门禁 `tools/mainsite_selftest.py`；数据库函数 `server/supabase/tests/20261109a_mainsite_core_check.sql`。
+
+- 签发登录态（`/app/link/poll` 的 `switched:true`）：管理员 `generate_link`（magiclink）→ `/auth/v1/verify`（token_hash）换出 session。
+  匿名号没有邮箱 ⇒ 先补内部邮箱 `<账号>@link.turtlearena.xyz`（`email_confirm`，不发信）——★副作用：这个号 `is_anonymous` 变 false。11-09 内测服实测全通过
+  （`tools/oneoff/probe_auth_session.py`，临时号已删）。
+- 发件箱在轮询器里 ⇒ 内测服周末随 `turtle-referee-beta-peak` 停，周一续发（不丢：行留在表里）。
+
 ## 已知风险与未决点
 
 - **R1 真机确定性**：服务器（Linux x86）算的录像要在 iPhone（ARM）上逐步重算。x86↔x86 已逐位一致（金标 + 本门禁），ARM 没验过（方案书 §0，`verify_referee_device_parity` 未做）。不一致时手机播放会在第一个对不上的校验点停下并上报（不会默默播错的），但玩家就看不了那一场。
