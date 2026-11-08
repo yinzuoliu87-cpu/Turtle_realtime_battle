@@ -346,8 +346,9 @@ func _t_real_settle() -> void:
 	_ok("④ ★★★**对称**轮次币: 赢和输拿的**一样多**(原稿逐字「对称」) —— "
 		+ "只断言「发了 8 币」的话, 「赢 8 输 0」照样绿",
 		coin_win == coin_lose, "赢 %d / 输 %d" % [coin_win, coin_lose])
-	_ok("④ ★分母: 而且真的是 8(与周六同值, 都是无命模式)",
-		coin_win == int(P2C.FINALS_COINS_PER_ROUND) and coin_win == 8, str(coin_win))
+	## 11-08 用户「周六周日的深海币改为每轮 18」: 不再写死 8, 量「= 常量 且 与周六同值」(两者都是无命模式, 用户一起改)
+	_ok("④ ★分母: 而且真的是 FINALS_COINS_PER_ROUND(%d, 与周六每场同值, 都是无命模式)" % int(P2C.FINALS_COINS_PER_ROUND),
+		coin_win == int(P2C.FINALS_COINS_PER_ROUND) and coin_win == int(P2C.GAUNTLET_COINS_PER_MATCH) and coin_win > 0, str(coin_win))
 	_ok("④ ★★决赛日的币**不等于**积分赛那条公式算出来的(否则等于没分流)",
 		coin_win != 8 + int(GameState.hearts) + 2 * maxi(0, int(P2C.HEARTS_MAX) - int(GameState.hearts)) + 6,
 		str(coin_win))
