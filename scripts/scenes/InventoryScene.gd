@@ -1020,6 +1020,8 @@ func _notification(what: int) -> void:
 ##   阵容没变 ⇒ 一个请求都不发; 教程沙盒 / 门禁(test_mode)里不传。
 func _exit_tree() -> void:
 	FriendsNet.put_lineup()
+	## 偷袭防守阵容(方案书 20261107 §4.2): 本周已开轮且阵容变了才传(scripts/net/raid_defense_net.gd)。
+	load("res://scripts/net/raid_defense_net.gd").put_defense()
 
 
 

@@ -190,8 +190,10 @@ func _acct_on() -> bool:
 
 
 ## 当前绑的邮箱。注入态下恒空 = 「还没绑」, 那才是墙会弹出来的条件。
+## ★2026-11-08 龟投账号: 服务器给绑定 / 换号的号补的内部邮箱(`<账号ID>@link.turtlearena.xyz`)不是玩家绑的 ⇒ 当空
+##   (`MainsiteLink.user_email`; 主会话 11-08: 设置页不显示它、不说「已绑定邮箱」)。
 func _acct_mail() -> String:
-	return "" if acct_override == 1 else str(GameState.account_email)
+	return "" if acct_override == 1 else _ML.user_email()
 
 
 ## 左框「账号」。状态分支(连接中 / 登录失效 / 存档冲突 / 已绑定 / 未绑定)与旧账号行逐条相同,
@@ -220,18 +222,23 @@ func _account_panel(x: float, w: float) -> void:
 		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮, 并把它染成主操作。
 		status = "登录已失效，请重新登录"
 		status_col = "#ff8a94"
-		note = "邮箱 %s" % mail
+		note = ("邮箱 %s" % mail) if mail != "" else ""
 		primary = "BtnRecover"
 	elif _SB_ACC.save_conflict():
 		## D-8: 两台设备交替玩 ⇒ 云端版本和这台对不上。**不自动选**, 等玩家二选一。
 		status = "云端存档与本地存档不一致"
 		status_col = "#ffb454"
-		note = "邮箱 %s" % mail
+		note = ("邮箱 %s" % mail) if mail != "" else ""
 		primary = "BtnConflict"
 	elif mail != "":
 		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
 		status = "已绑定：%s" % mail
 		status_col = "#7fe0b0"
+		note = "云端同步已开启，可在其他设备登录恢复进度"
+	elif _ML.is_internal_email(str(GameState.account_email)):
+		## ★绑了龟投账号的号(服务器补了内部邮箱): 没有玩家自己的邮箱, 但进度照样同步到云端 ——
+		##   换设备用同一个龟投账号登录就能取回(主会话 11-08)。所以不说「无法恢复」、不催绑邮箱(不染主操作)。
+		status = "未绑定邮箱"
 		note = "云端同步已开启，可在其他设备登录恢复进度"
 	else:
 		## ★匿名号**不**同步(隐私政策承诺过只有绑定者才上传) ⇒ 两种状态说的话不一样。
@@ -286,40 +293,52 @@ func _account_panel(x: float, w: float) -> void:
 	## ── 按钮: 钉在框底往上排(状态行折几行都不影响按钮的位置) ──
 	## ★D-3c: 「邮箱登录」是新手机上把旧号拿回来的唯一入口, 任何状态都在。
 	## ★2026-10-04 第三颗「修改昵称」(E 阶段方案书 ③)。
-	var btns: Array = []     # [节点名后缀, 文字, 回调]
+	## ★2026-11-08 加「龟投账号」一行(方案书 20261107 §4.1, `settings/mainsite_link_row.gd`), 紧贴状态卡之下;
+	##   账号框高不变 ⇒「绑定邮箱 / 邮箱登录」并成半宽一排(两颗都是邮箱那件事), 「修改昵称」整行。
+	## 每排 = [[节点名后缀, 文字, 回调], ...]: 一颗 = 整行, 两颗 = 半宽并排。
+	var rows: Array = []
+	var mail_row: Array = []
 	if aid != "" and _SB_ACC.save_conflict():
-		btns.append(["BtnConflict", "处理存档冲突", _open_conflict_dialog])
+		mail_row.append(["BtnConflict", "处理存档冲突", _open_conflict_dialog])
 	elif aid != "":
-		btns.append(["BtnBind", ("更换邮箱" if mail != "" else "绑定邮箱"),
+		mail_row.append(["BtnBind", ("更换邮箱" if mail != "" else "绑定邮箱"),
 			func(): _open_email_dialog(_SB_ACC.FLOW_BIND)])
-	btns.append(["BtnRecover", "邮箱登录", func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)])
-	if aid != "":
-		btns.append(["BtnRename", RENAME_LABEL, _open_rename_dialog])
+	mail_row.append(["BtnRecover", "邮箱登录", func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)])
+	rows.append(mail_row)
 	## ★2026-10-20 最底下一行两颗半宽键「黑名单」「删除账号」(App Store 审核指南 1.2 / 5.1.1(v))。
-	##   只在拿到账号之后建: 没有账号就没有可删的, 也看不到别人的昵称。
-	var pair_row := aid != ""
-	var nrow: int = btns.size() + (1 if pair_row else 0)
+	##   只在拿到账号之后建: 没有账号就没有可删的, 也看不到别人的昵称。龟投账号同理(没有账号就没有可绑的)。
+	var has_acc := aid != ""
+	if has_acc:
+		rows.append([["BtnRename", RENAME_LABEL, _open_rename_dialog]])
+		rows.append([[BTN_BLOCKLIST, BLOCKLIST_LABEL, func() -> void: _BLP.open(self)],
+			[BTN_DELETE, DELETE_LABEL, _open_account_delete]])
+	var nrow: int = rows.size() + (1 if has_acc else 0)
 	var by := _BOT - 30.0 - float(nrow) * _ROW_H - float(nrow - 1) * _BTN_GAP
-	for row in btns:
-		var accent: String = UISkin.PX_GOLD if str(row[0]) == primary else UISkin.PX_SLATE
-		var bt := _pix_button(Rect2(cx, by, cw, _ROW_H), str(row[1]), accent, row[2])
-		bt.name = ACCT_ROW_PREFIX + str(row[0])
+	if has_acc:
+		var ml_row: Control = _ML_ROW.new()
+		ml_row.setup(self, Rect2(cx, by, cw, _ROW_H))
+		add_child(ml_row)
 		by += _ROW_H + _BTN_GAP
-	if pair_row:
-		var hw := (cw - _BTN_GAP) / 2.0
-		_pix_button(Rect2(cx, by, hw, _ROW_H), BLOCKLIST_LABEL, UISkin.PX_SLATE,
-			func() -> void: _BLP.open(self)).name = ACCT_ROW_PREFIX + BTN_BLOCKLIST
-		## 破坏性 ⇒ 石板底 + 红字(同「重置存档」: 实心红留给确认框里真正动手的那一下)。
-		var dbt := _pix_button(Rect2(cx + hw + _BTN_GAP, by, hw, _ROW_H), DELETE_LABEL, UISkin.PX_SLATE,
-			_open_account_delete)
-		dbt.name = ACCT_ROW_PREFIX + BTN_DELETE
-		for fs in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
-			dbt.add_theme_color_override(fs, Color("#ff8a94"))
+	for row in rows:
+		var n: int = (row as Array).size()
+		var bw := cw if n == 1 else (cw - _BTN_GAP) / 2.0
+		for i in range(n):
+			var it: Array = row[i]
+			var accent: String = UISkin.PX_GOLD if str(it[0]) == primary else UISkin.PX_SLATE
+			var bt := _pix_button(Rect2(cx + float(i) * (bw + _BTN_GAP), by, bw, _ROW_H), str(it[1]), accent, it[2])
+			bt.name = ACCT_ROW_PREFIX + str(it[0])
+			if str(it[0]) == BTN_DELETE:
+				## 破坏性 ⇒ 石板底 + 红字(同「重置存档」: 实心红留给确认框里真正动手的那一下)。
+				for fs in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+					bt.add_theme_color_override(fs, Color("#ff8a94"))
+		by += _ROW_H + _BTN_GAP
 
 
 # ─── 删除账号 / 黑名单 (2026-10-20 · 方案书 docs/plans/20261020-AppStore上架.md §4.2 / D8) ───
 const _ACCT_DEL := preload("res://scripts/scenes/settings/account_delete_dialog.gd")
 const _BLP := preload("res://scripts/scenes/settings/blocklist_panel.gd")
+const _ML_ROW := preload("res://scripts/scenes/settings/mainsite_link_row.gd")
+const _ML := preload("res://scripts/net/mainsite_link.gd")
 const DELETE_LABEL := "删除账号"
 const BLOCKLIST_LABEL := "黑名单"
 const BTN_DELETE := "BtnDelete"
@@ -1250,7 +1269,7 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 
 	_email_edit = LineEdit.new()
 	_email_edit.placeholder_text = "输入邮箱"
-	_email_edit.text = str(GameState.account_email)
+	_email_edit.text = _acct_mail()      # 内部邮箱不填进来(不给玩家看)
 	## ★★键盘**类型**要对(2026-09-28)。它不只是方便: 中文键盘的候选条会让键盘再高
 	##   一档(41.5% → ≈52% 屏高), 而这一屏的按钮就在那条线附近(见 `_email_relayout` 头注)。
 	##   `KEYBOARD_TYPE_EMAIL_ADDRESS` 直接给 ASCII + `@` 键, 没有候选条。

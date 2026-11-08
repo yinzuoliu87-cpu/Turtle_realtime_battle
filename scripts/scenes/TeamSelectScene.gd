@@ -1619,6 +1619,11 @@ func _lockout_toast() -> void:
 	tw.tween_callback(lab.queue_free)
 
 
+## 离开选龟页(开打 / 返回): 偷袭防守阵容(方案书 20261107 §4.2)。本周已开轮且阵容变了才传(scripts/net/raid_defense_net.gd)。
+func _exit_tree() -> void:
+	load("res://scripts/net/raid_defense_net.gd").put_defense()
+
+
 func _on_back() -> void:
 	GameState.reset_dungeon()
 	GameState.clear_team()

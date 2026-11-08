@@ -1896,6 +1896,10 @@ static func self_season_prefix(season_id: int) -> String:
 ##   ⚠ 盖在**副本**上: 调用方那份快照还要原样发给服务端, 不该带本机的来源标记。
 ## `ladder = false`: 只进本地池, 不往积分赛那张 `ghosts` 表排队(周六闯关赛用, 见 `upload_gauntlet_ghost`)。
 static func upload_ghost(snapshot: Dictionary, ladder: bool = true) -> void:
+	## 偷袭防守阵容(方案书 20261107 §4.2): 每打完一局顺手传一次最新阵容(没变不传; scripts/net/raid_defense_net.gd)。
+	var RD = load("res://scripts/net/raid_defense_net.gd")
+	if RD != null:
+		RD.put_defense()
 	var mine := snapshot.duplicate(true)
 	mine[ORIGIN_KEY] = ORIGIN_LOCAL
 	var pool := load_pool()
