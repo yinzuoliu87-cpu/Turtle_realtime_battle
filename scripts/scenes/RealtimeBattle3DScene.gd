@@ -410,12 +410,14 @@ const PIXEL_SIZE := 0.012                 # (旧) 头像兜底像素→米; 全�
 #     没有顺手"接上" —— 没有消费者的接线等于凭空发明玩法, 该由用户决定这套美术要不要用。
 #   值 = [相对路径, 每秒帧率] (帧尺寸 = 图高=方帧; hframes = 宽/帧高). 播一次后回 idle.
 const ACTION_ATTACK := {
-	"ghost":  ["pets/animations/ghost/attack.png", 14.0],
-	"ninja":  ["pets/animations/ninja/slash.png", 16.0],
-	"__minion_elite__": ["pets/animations/elite/attack.png", 12.0],
-	"__minion_front__": ["pets/animations/melee/attack.png", 12.0],
-	"__minion_back__": ["pets/animations/ranged/attack.png", 12.0],
-	"__minion_reserve__": ["pets/animations/reserve/attack.png", 14.0],   # 援军小将(2026-10-29): 7 帧 / 0.5s 推掌放小气弹
+	## 11-08 小将与幽灵帧条按节奏重排(帧数变多, tools/assetgen/build_attack_rhythm.py): 这里的帧率只管没有前摇的出手(追打等),
+	##   按「整段时长不变」同比例调高; 有前摇的普攻帧率由 AttackRhythm 按 命中帧 / 前摇秒数 算。
+	"ghost":  ["pets/animations/ghost/attack.png", 18.7],   # 12 帧 / 0.64s(原 9 帧 × 14)
+	"ninja":  ["pets/animations/ninja/slash.png", 40.0],   # 13 帧 / 0.33s(原 3 帧 × 16 = 0.19s 太急)
+	"__minion_elite__": ["pets/animations/elite/attack.png", 39.0],   # 13 帧 / 0.33s(原 4 帧 × 12)
+	"__minion_front__": ["pets/animations/melee/attack.png", 16.0],   # 12 帧 / 0.75s(原 9 帧 × 12)
+	"__minion_back__": ["pets/animations/ranged/attack.png", 28.8],   # 12 帧 / 0.42s(原 5 帧 × 12)
+	"__minion_reserve__": ["pets/animations/reserve/attack.png", 24.0],   # 援军小将(2026-10-29): 推掌放小气弹; 12 帧 / 0.5s(原 7 帧 × 14)
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
 	"_summon_axe": ["vfx/eq096-axe-wood-attack.png", 16.0],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时装到单位 _act_rows)
 }

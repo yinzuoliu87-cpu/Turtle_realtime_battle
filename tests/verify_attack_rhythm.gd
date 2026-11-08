@@ -9,6 +9,9 @@ extends Node
 ##   ② 伤害结算那一帧(_atk_wind 由真变假 = _basic_attack 跑过), 精灵显示的帧 == 登记的命中帧(±1)
 ##   ③ 没有帧条的单位: 前摇期间形变在蓄力(windup_t > 0 且 _windup_total = 前摇秒数)
 ##   ④ 每张主表 / 生成表里的普攻帧条都在 AttackHits 登记了命中帧(没登记 = 按 40% 估, 不许)
+##   ⑤ 节奏形状(用户 11-08「三个四个小将的…普通攻击有没有按照我们昨天说的，就是攻击前摇，攻击后摇，然后中间就是就慢一点…
+##      包括我们自己的忍者龟、变脸龟…幽灵龟」): 这 7 个单位命中前 ≥ 5 帧(站姿 + 蓄力 2 + 挥动 2)、命中后 ≥ 6 帧(停 2 + 收回 4);
+##      变脸龟走自己的驱动(two_head_art.gd), 量命中后那几帧播完的秒数 ≥ 6 / 16(= 16 帧每秒下「停 2 + 收回 4」)。
 ## 分母: 每个攻击方至少观察到 2 次结算。
 
 var _n := 0
@@ -38,6 +41,20 @@ func _ready() -> void:
 				unreg.append(p)
 	_ok("★分母: 普攻帧条 %d 张" % nreg, nreg >= 15)
 	_ok("④ 每张普攻帧条都登记了命中帧", unreg.is_empty(), str(unreg))
+	## ⑤ 节奏形状(数字写需求字面: 前 5 后 6)
+	var aa: Dictionary = cs.get("ACTION_ATTACK", {})
+	for k in ["__minion_front__", "__minion_back__", "__minion_elite__", "__minion_reserve__", "ghost", "ninja"]:
+		var p5: String = str((aa.get(k, [""]) as Array)[0])
+		var tx: Texture2D = load("res://assets/sprites/" + p5) if p5 != "" else null
+		var nf: int = (tx.get_width() / tx.get_height()) if tx != null else 0
+		var hf: int = AttackHits.hit_frame(p5, nf)
+		_ok("⑤ %s 普攻: 命中前 %d 帧 ≥ 5、命中后 %d 帧 ≥ 6(共 %d 帧)" % [k, hf, nf - hf - 1, nf], nf > 0 and hf >= 5 and nf - hf - 1 >= 6, p5)
+	for clip in ["melee_attack", "ranged_attack"]:
+		var ent: Array = TwoHeadArt.CLIPS[clip]
+		var tx2: Texture2D = load(TwoHeadArt.DIR + clip + ".png")
+		var nf2: int = tx2.get_width() / TwoHeadArt.FRAME
+		var post: float = float(nf2 - int(ent[0]) - 1) / float(ent[1])
+		_ok("⑤ 变脸龟 %s: 命中后 %d 帧 × 1/%.0f 秒 = %.3f 秒 ≥ 0.375" % [clip, nf2 - int(ent[0]) - 1, float(ent[1]), post], post >= 0.375 - 1.0e-6)
 
 	var scn = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
 	add_child(scn)

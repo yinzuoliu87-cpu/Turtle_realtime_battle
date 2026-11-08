@@ -377,6 +377,7 @@ frames_for () {
     verify_referee_coins) echo 8000 ;;
     verify_referee_chest) echo 8000 ;;   # 裁判一局 + 本机复算一局(同 verify_referee_coins)
     verify_referee_incense) echo 8000 ;;   # 裁判一局 + 本机复算一局(同 verify_referee_chest)
+    verify_raid_referee) echo 8000 ;;   # 2026-11-09 偷袭裁判: 真裁判算三局(100ms/帧) + 拒算两种; 本地实测 26 帧 / 7 秒(同 verify_referee_coins 的余量)
     # 周日决赛服务器局铸币(2026-10-20): 裁判真算两局 + 同一局本机复算到结算(逐帧读两侧出口)
     verify_finals_coins) echo 8000 ;;
     # 宝箱龟本场宝箱账(2026-10-22): 单元段手动驱动(几帧) + 裁判真算一局(100ms/帧) + 同一局本机复算到结算(40ms/帧); 本地实测 209 帧 / 16 秒
@@ -973,6 +974,14 @@ run_audit "tools/server_logic_gate.py"    "ALL OK" "server_logic_gate (云函数
 # 裁判机轮询器的「补流」任务(逐帧直播 §5, 2026-10-20): 假 rpc + 假 Godot 子进程, 发布 / 撤流 / 领活顺序是真代码。
 #   ★补流只产出状态流, 一次 referee_complete 都不许有(不写回结果、不改账); 重算胜方 / 指纹对不上 ⇒ 撤流。
 run_audit "tools/referee_poller_selftest.py" "ALL OK" "referee_poller_selftest (补流只录流不记账·对不上撤流·正常任务优先)"
+# 龟投（主站）对接服务器侧(2026-11-09 · docs/plans/20261107-龟战主站对接.md §4.8): 不连库不连主站, 签名 / 网关 / 发件箱 / 假主站是真代码。
+#   ★签名与主站 Go 代码逐字节(已知向量); 过期 / 签名错 / 改字段被拒; ok:false 不重试、5xx·401 重试; settle 等 started。
+#   数据库函数本身由 server/supabase/tests/20261109a_mainsite_core_check.sql 守(sb_migrate.py sandbox)。
+run_audit "tools/mainsite_selftest.py" "ALL OK" "mainsite_selftest (龟投签名=Go·网关验签/重放/登录码·发件箱重试与顺序)"
+
+# 主站建偷袭任务的入口(2026-11-09 · 20261107 §4.4 / §4.8 · 工作线 A2): 假 rpc, 不连库不起网关。
+#   ★参数不对 / 已过期 / 攻守同一人一律 ok:false 且不调数据库; 数据库连不上 ⇒ busy(主站立即退回); 形参与迁移 20261109c 逐个对。
+run_audit "tools/raid_intake_selftest.py" "ALL OK" "raid_intake_selftest (偷袭建任务: 参数守门/过期拒收/数据库不可用回 busy/形参对账)"
 # 内测服工具链(2026-10-21 · docs/plans/20261020-内测服.md): 不连网(网络换成记账)。beta_ops 见正式服 ref 当场退出 3 /
 #   正式服写要显式放行且拒时一条请求都不发 / 正式服上线只收内测服上过同 sha256 的迁移 / 迁移逐字在 schema.sql /
 #   beta_setup 第一句挡 / 裁判机内测服 unit 不读正式服 env / Caddy 两套 /streams 都在。

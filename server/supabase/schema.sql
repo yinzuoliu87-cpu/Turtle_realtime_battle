@@ -10915,3 +10915,1002 @@ end $$;
 revoke all on function public.referee_finals_coins(bigint, int, int, int) from public, anon;
 grant execute on function public.referee_finals_coins(bigint, int, int, int) to authenticated;
 -- <<< END wheel_status 20261106h <<<
+
+-- >>> BEGIN mainsite_core 20261109a >>>
+-- ─────────────────────────────────────────────────────────────
+-- 龟投账号绑定 + 拥有龟缓存 + 发件箱（2026-11-09 · 方案书 docs/plans/20261107-龟战主站对接.md §4.1 / §4.3 / §4.8；
+--   网关与发件箱的原始设计 docs/plans/20261105c-主站对接偷袭.md §4.1 / §4.6 D38；主站接口 docs/specs/龟战主站整体方案.md §6）
+--
+-- 本文件做六件事：
+--   ① mainsite_accounts：账号 ↔ 主站用户（主站对外编码 ID，如 GEACjjPJERy）。一个号最多绑一个主站用户，一个主站用户最多绑一个号。
+--   ② mainsite_codes：App 登录码（5 分钟、一次性，带设备型号给主站确认页显示）。
+--      mainsite_link_start / mainsite_link_info / mainsite_link_confirm / mainsite_link_poll —— 网关调（service_role）。
+--   ③ mainsite_pets：主站 /player 返回的拥有龟缓存。mainsite_pets_put（网关调）/ mainsite_status（网关调）/ mainsite_me()（App 调）。
+--   ④ mainsite_outbox：所有「我们调主站」的写请求先进这里，referee_poller.py 的 outbox_loop 发。
+--      mainsite_outbox_put（其他 security definer 函数内部调）/ mainsite_outbox_claim / mainsite_outbox_mark（outbox_loop 调）。
+--      发送顺序：按 id；同一 raidId 的 started / settle 一条道、同一 userId 的 defense / pet-level / unlinked 一条道，
+--      道里前一条没完成（done_at 为空）后一条不发；settle 另外要等同 raidId 的 started 完成（不论谁的 id 小）。
+--      重试（方案书 §4.8）：只对连不上、5xx、401 退避重试；HTTP 200 + ok:false 记下 last_status 后停（done_at 也写上 = 终态）。
+--   ⑤ 换绑与删号：已绑在别的号上的主站用户来确认 ⇒ result = switched（网关给 App 签那个号的登录态）；
+--      这个号原先绑着另一个主站用户 ⇒ 改绑（rebound），给旧的那个发 unlinked、清掉拥有龟缓存；
+--      主站用户重新绑上时，他还没发出去的 unlinked 作废（superseded），免得晚到的解绑把新绑定冲掉。
+--   ⑥ account_delete_self()：以 20261020b 版为底，删号前已绑定 ⇒ 写一条 unlinked 发件箱（没绑 ⇒ 不写）。其余一字不动。
+--
+-- ★表一律开 RLS、不建 policy、revoke 掉 anon / authenticated：客户端读不到也写不进，只经下面的函数。
+--   App 只有 mainsite_me() 一个入口（authenticated）；其余全是 service_role（网关 / 裁判轮询器）。
+-- ★本文件只建表 / 建函数 / 改写一个函数，不删任何已有数据。重复执行安全（沙盒里 schema.sql 末尾同段会先跑一遍）。
+-- ★上线前跑 server/supabase/tests/20261109a_mainsite_core_check.sql（整段一个事务，结尾必回滚）。
+-- ─────────────────────────────────────────────────────────────
+
+-- ═══ ① 绑定 ═══
+create table if not exists public.mainsite_accounts (
+  account_id       uuid        primary key references public.accounts(account_id) on delete cascade,
+  mainsite_user_id text        not null unique
+                               check (mainsite_user_id ~ '^[0-9A-Za-z]{4,32}$' and mainsite_user_id !~ '^[0-9]+$'),
+  is_bot           boolean     not null default false,
+  linked_at        timestamptz not null default now(),
+  pets_fetched_at  timestamptz            -- 上次成功从主站 /player 取到拥有龟的时刻（一只都没有时也记）
+);
+alter table public.mainsite_accounts enable row level security;
+revoke all on public.mainsite_accounts from anon, authenticated, public;
+
+-- ═══ ② 登录码 ═══
+create table if not exists public.mainsite_codes (
+  code             text        primary key check (code ~ '^[A-Za-z0-9_-]{4,64}$'),
+  account_id       uuid        not null references auth.users(id) on delete cascade,
+  device           text        not null default '' check (char_length(device) <= 128),
+  created_at       timestamptz not null default now(),
+  expires_at       timestamptz not null,
+  mainsite_user_id text,
+  confirmed_at     timestamptz,
+  result           text        check (result in ('bound', 'same', 'switched', 'rebound')),
+  target_account   uuid        references auth.users(id) on delete set null
+);
+create index if not exists mainsite_codes_account_idx on public.mainsite_codes (account_id, created_at desc);
+alter table public.mainsite_codes enable row level security;
+revoke all on public.mainsite_codes from anon, authenticated, public;
+
+-- ═══ ③ 拥有龟缓存 ═══
+create table if not exists public.mainsite_pets (
+  account_id uuid        not null references public.mainsite_accounts(account_id) on delete cascade,
+  pet_key    text        not null check (pet_key ~ '^[a-z0-9_]{1,32}$'),
+  fetched_at timestamptz not null default now(),
+  primary key (account_id, pet_key)
+);
+alter table public.mainsite_pets enable row level security;
+revoke all on public.mainsite_pets from anon, authenticated, public;
+
+-- ═══ ④ 发件箱 ═══
+create table if not exists public.mainsite_outbox (
+  id          bigserial   primary key,
+  topic       text        not null check (topic in ('defense', 'pet-level', 'started', 'settle', 'unlinked')),
+  idem_key    text        not null check (idem_key <> ''),
+  body        jsonb       not null check (jsonb_typeof(body) = 'object'),
+  attempts    int         not null default 0,
+  next_at     timestamptz not null default now(),
+  done_at     timestamptz,
+  last_status text,
+  reply       jsonb,
+  created_at  timestamptz not null default now(),
+  unique (topic, idem_key)
+);
+create index if not exists mainsite_outbox_open_idx on public.mainsite_outbox (id) where done_at is null;
+alter table public.mainsite_outbox enable row level security;
+revoke all on public.mainsite_outbox from anon, authenticated, public;
+
+-- 一条发件属于哪条「道」（道内按 id 顺序、前一条完成才发后一条）。
+create or replace function public.mainsite_outbox_lane(p_topic text, p_body jsonb) returns text
+language sql immutable as $$
+  select case when p_topic in ('started', 'settle') then 'raid:' || coalesce(p_body->>'raidId', '')
+              else 'user:' || coalesce(p_body->>'userId', '') end
+$$;
+revoke all on function public.mainsite_outbox_lane(text, jsonb) from public, anon, authenticated;
+
+-- 写一条发件。同 (topic, idem_key) 重复写 = 不动。
+--   ★业务规矩在这里统一挡（调用方不用各自再判）：defense / pet-level 只在这个 userId 已绑定时写；
+--     pet-level 只写主站 /player 返回过的龟（mainsite_pets 里有）、等级 1 ~ 10。不满足 ⇒ 静默不写。
+--   ★调用写错（主题不认识 / 幂等键空 / 缺 raidId 或 userId）⇒ 抛异常（门禁里当场红，不悄悄吞掉）。
+create or replace function public.mainsite_outbox_put(p_topic text, p_key text, p_body jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare lv text;
+begin
+  if p_topic is null or p_topic not in ('defense', 'pet-level', 'started', 'settle', 'unlinked') then
+    raise exception 'mainsite_outbox_put: bad topic %', p_topic;
+  end if;
+  if coalesce(p_key, '') = '' or p_body is null or jsonb_typeof(p_body) <> 'object' then
+    raise exception 'mainsite_outbox_put: empty key or body is not an object (topic %)', p_topic;
+  end if;
+  if p_topic in ('started', 'settle') and coalesce(p_body->>'raidId', '') = '' then
+    raise exception 'mainsite_outbox_put: % without raidId', p_topic;
+  end if;
+  if p_topic in ('defense', 'pet-level', 'unlinked') and coalesce(p_body->>'userId', '') = '' then
+    raise exception 'mainsite_outbox_put: % without userId', p_topic;
+  end if;
+  if p_topic in ('defense', 'pet-level')
+     and not exists (select 1 from public.mainsite_accounts where mainsite_user_id = p_body->>'userId') then
+    return;
+  end if;
+  if p_topic = 'pet-level' then
+    lv := p_body->>'level';
+    if lv is null or lv !~ '^[0-9]{1,3}$' or lv::int not between 1 and 10 then
+      return;
+    end if;
+    if not exists (select 1 from public.mainsite_accounts a
+                     join public.mainsite_pets p on p.account_id = a.account_id
+                    where a.mainsite_user_id = p_body->>'userId' and p.pet_key = p_body->>'petKey') then
+      return;
+    end if;
+  end if;
+  insert into public.mainsite_outbox (topic, idem_key, body) values (p_topic, p_key, p_body)
+    on conflict (topic, idem_key) do nothing;
+end $$;
+revoke all on function public.mainsite_outbox_put(text, text, jsonb) from public, anon, authenticated;
+grant execute on function public.mainsite_outbox_put(text, text, jsonb) to service_role;
+
+-- 领一批该发的（outbox_loop 调）：没完成、到点、道里前面没有没完成的、settle 的 started 已完成。
+--   ★settle 比 started 先写（id 更小）时 started 不被它挡（否则两条互等，谁也发不出去）。
+--   领到的 next_at 推后 p_lease_sec 秒当租期（发送方中途挂了 ⇒ 租期过后重发；主站各接口按 raidId / userId 幂等）。
+--   返回 jsonb 数组，按 id 升序。
+create or replace function public.mainsite_outbox_claim(p_limit int default 20, p_lease_sec int default 120)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_out jsonb;
+begin
+  with c as (
+    select o.id from public.mainsite_outbox o
+     where o.done_at is null and o.next_at <= now()
+       and not exists (select 1 from public.mainsite_outbox e
+                        where e.done_at is null and e.id < o.id
+                          and public.mainsite_outbox_lane(e.topic, e.body) = public.mainsite_outbox_lane(o.topic, o.body)
+                          and not (o.topic = 'started' and e.topic = 'settle'))
+       and not (o.topic = 'settle' and exists (select 1 from public.mainsite_outbox s
+                        where s.topic = 'started' and s.done_at is null and s.body->>'raidId' = o.body->>'raidId'))
+     order by o.id
+     limit greatest(1, least(coalesce(p_limit, 20), 100))
+     for update skip locked
+  ), u as (
+    update public.mainsite_outbox o
+       set next_at = now() + make_interval(secs => greatest(10, coalesce(p_lease_sec, 120)))
+      from c where o.id = c.id
+    returning o.*
+  )
+  select coalesce(jsonb_agg(jsonb_build_object('id', u.id, 'topic', u.topic, 'idem_key', u.idem_key,
+                                               'body', u.body, 'attempts', u.attempts) order by u.id), '[]'::jsonb)
+    into v_out from u;
+  return v_out;
+end $$;
+revoke all on function public.mainsite_outbox_claim(int, int) from public, anon, authenticated;
+grant execute on function public.mainsite_outbox_claim(int, int) to service_role;
+
+-- 记一次发送结果（outbox_loop 调）。p_retry_sec 为空 ⇒ 终态（成功，或 HTTP 200 + ok:false）：done_at = now()；
+--   否则（连不上 / 5xx / 401）attempts + 1、next_at = now() + p_retry_sec。回包整个存进 reply（started 的回包带新 expireAt）。
+create or replace function public.mainsite_outbox_mark(p_id bigint, p_status text, p_reply jsonb, p_retry_sec int)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  update public.mainsite_outbox
+     set attempts = attempts + 1,
+         last_status = left(coalesce(p_status, ''), 300),
+         reply = coalesce(p_reply, reply),
+         done_at = case when p_retry_sec is null then now() else null end,
+         next_at = case when p_retry_sec is null then next_at
+                        else now() + make_interval(secs => greatest(1, least(p_retry_sec, 3600))) end
+   where id = p_id and done_at is null;
+  get diagnostics n = row_count;
+  return jsonb_build_object('ok', n = 1, 'done', p_retry_sec is null);
+end $$;
+revoke all on function public.mainsite_outbox_mark(bigint, text, jsonb, int) from public, anon, authenticated;
+grant execute on function public.mainsite_outbox_mark(bigint, text, jsonb, int) to service_role;
+
+-- ═══ ② 登录码（网关调）═══
+-- App 点「龟投账号登录」→ 网关生成随机码（Python secrets）→ 本函数登记。同一个号同时只有一个有效码（新码作废旧码）；
+--   每号每小时最多 30 个（防刷）。码 5 分钟过期。
+create or replace function public.mainsite_link_start(p_account uuid, p_code text, p_device text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  if p_account is null or not exists (select 1 from auth.users where id = p_account) then
+    return jsonb_build_object('ok', false, 'error', 'no_account');
+  end if;
+  if p_code is null or p_code !~ '^[A-Za-z0-9_-]{4,64}$' then
+    return jsonb_build_object('ok', false, 'error', 'bad_code');
+  end if;
+  perform pg_advisory_xact_lock(hashtext('mainsite_link_start:' || p_account::text));
+  delete from public.mainsite_codes where created_at < now() - interval '1 day';
+  select count(*) into n from public.mainsite_codes where account_id = p_account and created_at > now() - interval '1 hour';
+  if n >= 30 then
+    return jsonb_build_object('ok', false, 'error', 'rate_limited');
+  end if;
+  update public.mainsite_codes set expires_at = now()
+   where account_id = p_account and confirmed_at is null and expires_at > now();
+  insert into public.mainsite_codes (code, account_id, device, expires_at)
+    values (p_code, p_account, left(btrim(coalesce(p_device, '')), 128), now() + interval '5 minutes')
+    on conflict (code) do nothing;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'code_taken');
+  end if;
+  return jsonb_build_object('ok', true, 'code', p_code, 'expires_in', 300);
+end $$;
+revoke all on function public.mainsite_link_start(uuid, text, text) from public, anon, authenticated;
+grant execute on function public.mainsite_link_start(uuid, text, text) to service_role;
+
+-- 主站确认页查设备型号（主站 GET /mainsite/link/info）。码不对 / 过期 / 已用 ⇒ ok:false（主站一律当「登录码无效」）。
+create or replace function public.mainsite_link_info(p_code text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare d text;
+begin
+  select device into d from public.mainsite_codes
+   where code = p_code and confirmed_at is null and expires_at > now();
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'bad_code');
+  end if;
+  return jsonb_build_object('ok', true, 'device', d);
+end $$;
+revoke all on function public.mainsite_link_info(text) from public, anon, authenticated;
+grant execute on function public.mainsite_link_info(text) to service_role;
+
+-- 主站确认登录（主站 POST /mainsite/link/confirm {code, user_id}）。
+--   这个主站用户已绑在这个号上 ⇒ same；绑在别的号上 ⇒ switched（App 轮询时网关签那个号的登录态）；
+--   还没绑 ⇒ 绑到这个号（bound）；这个号原先绑着另一个主站用户 ⇒ 改绑（rebound，旧的那个发 unlinked）。
+--   ★一次性：同一个码只能确认一次；主站重试（同一个 user_id 再来一次）回同一个结果，换个 user_id ⇒ ok:false。
+create or replace function public.mainsite_link_confirm(p_code text, p_user_id text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare c record; tgt uuid; cur text; res text;
+begin
+  if p_user_id is null or p_user_id !~ '^[0-9A-Za-z]{4,32}$' or p_user_id ~ '^[0-9]+$' then
+    return jsonb_build_object('ok', false, 'error', 'bad userId');
+  end if;
+  select * into c from public.mainsite_codes where code = p_code for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'bad_code');
+  end if;
+  if c.confirmed_at is not null then
+    if c.mainsite_user_id = p_user_id then
+      return jsonb_build_object('ok', true, 'result', c.result);
+    end if;
+    return jsonb_build_object('ok', false, 'error', 'code_used');
+  end if;
+  if c.expires_at <= now() then
+    return jsonb_build_object('ok', false, 'error', 'expired');
+  end if;
+  -- 同一个主站用户 / 同一个号的并发确认串行化
+  perform pg_advisory_xact_lock(hashtext('mainsite_user:' || p_user_id));
+  perform pg_advisory_xact_lock(hashtext('mainsite_account:' || c.account_id::text));
+  select account_id into tgt from public.mainsite_accounts where mainsite_user_id = p_user_id;
+  if tgt is not null and tgt = c.account_id then
+    res := 'same';
+  elsif tgt is not null then
+    res := 'switched';
+  else
+    insert into public.accounts (account_id) values (c.account_id) on conflict (account_id) do nothing;
+    select mainsite_user_id into cur from public.mainsite_accounts where account_id = c.account_id;
+    if cur is not null then
+      update public.mainsite_accounts set mainsite_user_id = p_user_id, linked_at = now(), pets_fetched_at = null
+       where account_id = c.account_id;
+      delete from public.mainsite_pets where account_id = c.account_id;
+      perform public.mainsite_outbox_put('unlinked', 'rebind:' || c.account_id::text || ':' || cur || ':' || p_code,
+                                         jsonb_build_object('userId', cur));
+      res := 'rebound';
+    else
+      insert into public.mainsite_accounts (account_id, mainsite_user_id) values (c.account_id, p_user_id);
+      res := 'bound';
+    end if;
+    tgt := c.account_id;
+    -- 他刚又绑上了：之前删号留下的、还没发出去的 unlinked 作废
+    update public.mainsite_outbox set done_at = now(), last_status = 'superseded'
+     where topic = 'unlinked' and done_at is null and body->>'userId' = p_user_id;
+  end if;
+  update public.mainsite_codes
+     set confirmed_at = now(), mainsite_user_id = p_user_id, result = res, target_account = tgt
+   where code = p_code;
+  return jsonb_build_object('ok', true, 'result', res);
+end $$;
+revoke all on function public.mainsite_link_confirm(text, text) from public, anon, authenticated;
+grant execute on function public.mainsite_link_confirm(text, text) to service_role;
+
+-- App 轮询（网关 POST /app/link/poll 调）：只有发起这个码的号能查。
+--   status：pending（等确认）/ confirmed / expired（没确认就过了 5 分钟，或确认后又过了 5 分钟还没来取）。
+--   switched = true 时带 target_account（网关拿它签登录态，不原样转给 App）。
+create or replace function public.mainsite_link_poll(p_account uuid, p_code text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare c record;
+begin
+  select * into c from public.mainsite_codes where code = p_code and account_id = p_account;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'bad_code');
+  end if;
+  if c.confirmed_at is null then
+    return jsonb_build_object('ok', true, 'status', case when c.expires_at <= now() then 'expired' else 'pending' end,
+                              'switched', false);
+  end if;
+  if c.confirmed_at <= now() - interval '5 minutes' then
+    return jsonb_build_object('ok', true, 'status', 'expired', 'switched', false);
+  end if;
+  if c.result = 'switched' and c.target_account is null then
+    return jsonb_build_object('ok', false, 'error', 'target_gone');
+  end if;
+  return jsonb_build_object('ok', true, 'status', 'confirmed', 'switched', c.result = 'switched', 'result', c.result,
+                            'user_id', c.mainsite_user_id)
+      || case when c.result = 'switched' then jsonb_build_object('target_account', c.target_account) else '{}'::jsonb end;
+end $$;
+revoke all on function public.mainsite_link_poll(uuid, text) from public, anon, authenticated;
+grant execute on function public.mainsite_link_poll(uuid, text) to service_role;
+
+-- ═══ ③ 拥有龟（网关 / App）═══
+-- {ok, linked, user_id, owned: [pet_key…], fetched_at}。没绑 ⇒ linked:false、owned:[]。
+create or replace function public.mainsite_status(p_account uuid)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare a record; ow jsonb;
+begin
+  select * into a from public.mainsite_accounts where account_id = p_account;
+  if not found then
+    return jsonb_build_object('ok', true, 'linked', false, 'user_id', null, 'owned', '[]'::jsonb, 'fetched_at', null);
+  end if;
+  select coalesce(jsonb_agg(pet_key order by pet_key), '[]'::jsonb) into ow from public.mainsite_pets where account_id = p_account;
+  return jsonb_build_object('ok', true, 'linked', true, 'user_id', a.mainsite_user_id, 'owned', ow,
+                            'fetched_at', a.pets_fetched_at);
+end $$;
+revoke all on function public.mainsite_status(uuid) from public, anon, authenticated;
+grant execute on function public.mainsite_status(uuid) to service_role;
+
+-- App 用：查自己（auth.uid()）。
+create or replace function public.mainsite_me()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in', 'linked', false, 'user_id', null,
+                              'owned', '[]'::jsonb, 'fetched_at', null);
+  end if;
+  return public.mainsite_status(uid);
+end $$;
+revoke all on function public.mainsite_me() from public;
+revoke execute on function public.mainsite_me() from anon;
+grant execute on function public.mainsite_me() to authenticated;
+
+-- 网关刷新拥有龟（主站 /player 成功之后）：整份替换。p_user_id = 网关调 /player 时用的主站用户；
+--   这期间改绑了（绑定的已不是他）⇒ 不写，回 relinked。不合格式的 pet_key 跳过。
+create or replace function public.mainsite_pets_put(p_account uuid, p_user_id text, p_keys jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare keys text[];
+begin
+  if not exists (select 1 from public.mainsite_accounts where account_id = p_account) then
+    return jsonb_build_object('ok', false, 'error', 'not_linked');
+  end if;
+  if not exists (select 1 from public.mainsite_accounts where account_id = p_account and mainsite_user_id = p_user_id) then
+    return jsonb_build_object('ok', false, 'error', 'relinked');
+  end if;
+  if p_keys is null or jsonb_typeof(p_keys) <> 'array' then
+    return jsonb_build_object('ok', false, 'error', 'bad_keys');
+  end if;
+  select coalesce(array_agg(distinct k), '{}') into keys
+    from jsonb_array_elements_text(p_keys) k where k ~ '^[a-z0-9_]{1,32}$';
+  delete from public.mainsite_pets where account_id = p_account and pet_key <> all(keys);
+  insert into public.mainsite_pets (account_id, pet_key, fetched_at)
+    select p_account, k, now() from unnest(keys) k
+    on conflict (account_id, pet_key) do update set fetched_at = excluded.fetched_at;
+  update public.mainsite_accounts set pets_fetched_at = now() where account_id = p_account;
+  return public.mainsite_status(p_account);
+end $$;
+revoke all on function public.mainsite_pets_put(uuid, text, jsonb) from public, anon, authenticated;
+grant execute on function public.mainsite_pets_put(uuid, text, jsonb) to service_role;
+
+-- ═══ ⑥ 删号（以 20261020b 版为底；只多「已绑定 ⇒ 写 unlinked 发件箱」一段，在删 auth.users 之前）═══
+create or replace function public.account_delete_self() returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
+declare
+  uid   uuid := auth.uid();
+  tags  text[];
+  ph    jsonb;
+  n_m   int := 0; n_l int := 0; n_j int := 0; n_f int := 0; tmp_n int;
+  ms_uid text;
+begin
+  if uid is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  -- 我用过的玩家 ID：按账号算的那一个 + 我上传过的快照里实际带着的（老客户端曾按安装号算）
+  select coalesce(array_agg(distinct t), '{}') into tags from (
+    select public.player_tag_of(uid::text) as t
+    union select snapshot->'profile'->>'tag' from public.ghosts where account_id = uid
+    union select snapshot->'profile'->>'tag' from public.gauntlet_ghosts where account_id = uid
+    union select left_snapshot->'profile'->>'tag' from public.matches where left_account = uid
+    union select left_snapshot->'profile'->>'tag' from public.live_matches where account_id = uid
+    union select snapshot->'profile'->>'tag' from public.finals_entrants where account_id = uid
+    union select snapshot->'profile'->>'tag' from public.finals_pending where account_id = uid
+    union select a_snapshot->'profile'->>'tag' from public.referee_jobs where a_account = uid
+    union select b_snapshot->'profile'->>'tag' from public.referee_jobs where b_account = uid
+  ) s where t is not null and t <> '';
+
+  ph := jsonb_build_object('name', '已注销玩家', 'avatar', 'basic', 'id', 'deleted',
+                           'tag', public.player_tag_of(gen_random_uuid()::text));
+
+  update public.matches set left_snapshot = public.profile_scrub(left_snapshot, ph)
+   where left_account = uid or left_snapshot->'profile'->>'tag' = any(tags);
+  get diagnostics tmp_n = row_count; n_m := n_m + tmp_n;
+  update public.matches set right_snapshot = public.profile_scrub(right_snapshot, ph)
+   where right_account = uid or right_snapshot->'profile'->>'tag' = any(tags);
+  get diagnostics tmp_n = row_count; n_m := n_m + tmp_n;
+
+  update public.live_matches set left_snapshot = public.profile_scrub(left_snapshot, ph)
+   where account_id <> uid and left_snapshot->'profile'->>'tag' = any(tags);
+  get diagnostics tmp_n = row_count; n_l := n_l + tmp_n;
+  update public.live_matches set right_snapshot = public.profile_scrub(right_snapshot, ph)
+   where account_id <> uid and right_snapshot->'profile'->>'tag' = any(tags);
+  get diagnostics tmp_n = row_count; n_l := n_l + tmp_n;
+
+  -- 我自己还没算完的周六任务：作废（只有我一个人在等它的结果）
+  update public.referee_jobs set status = 'failed', error = 'account_deleted', done_at = now(),
+         claimed_by = null, claimed_at = null
+   where kind = 'gauntlet' and a_account = uid and status in ('pending', 'claimed');
+  update public.referee_jobs set a_snapshot = public.profile_scrub(a_snapshot, ph), meta = meta - 'account'
+   where a_account = uid or a_snapshot->'profile'->>'tag' = any(tags);
+  get diagnostics tmp_n = row_count; n_j := n_j + tmp_n;
+  update public.referee_jobs set b_snapshot = public.profile_scrub(b_snapshot, ph)
+   where b_account = uid or b_snapshot->'profile'->>'tag' = any(tags);
+  get diagnostics tmp_n = row_count; n_j := n_j + tmp_n;
+
+  update public.finals_entrants set name = ph->>'name', snapshot = public.profile_scrub(snapshot, ph)
+   where account_id = uid;
+  get diagnostics n_f = row_count;
+
+  update public.referee_restream set requested_by = null where requested_by = uid;
+
+  delete from public.nickname_reports
+   where reporter = uid or reported_account = uid or reported_tag = any(tags);
+
+  -- 2026-11-09a：绑过龟投账号 ⇒ 发件箱写 unlinked（主站解绑、停止推荐；主站账号和金库保留）。没绑 ⇒ 不写。
+  --   mainsite_accounts / mainsite_pets 随下面删 auth.users 一路 cascade 掉。
+  select mainsite_user_id into ms_uid from public.mainsite_accounts where account_id = uid;
+  if ms_uid is not null then
+    perform public.mainsite_outbox_put('unlinked', 'del:' || uid::text, jsonb_build_object('userId', ms_uid));
+  end if;
+
+  -- 其余表（accounts / ghosts / gauntlet_ghosts / saves / standings / finals_pending / finals_scout /
+  --   live_matches 我自己的行 / gauntlet_records / client_errors / player_feedback / nickname_resets）随 cascade 删；
+  --   matches.left/right_account、referee_jobs.a/b_account、finals_entrants.account_id 随 set null 断开。
+  delete from auth.users where id = uid;
+
+  return jsonb_build_object('ok', true, 'scrubbed',
+    jsonb_build_object('matches', n_m, 'live', n_l, 'jobs', n_j, 'finals', n_f));
+end $$;
+revoke all on function public.account_delete_self() from public;
+revoke execute on function public.account_delete_self() from anon;
+grant execute on function public.account_delete_self() to authenticated;
+
+-- 上线后回读（memory：`revoke from public` 收不掉 anon 的默认授权，必须逐个看）：
+--   select p.proname, r.rolname, has_function_privilege(r.rolname, p.oid, 'execute')
+--     from pg_proc p cross join (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
+--    where p.pronamespace = 'public'::regnamespace and p.proname like 'mainsite%';
+--   期望：anon 全 false；authenticated 只有 mainsite_me true；service_role 除 mainsite_me / mainsite_outbox_lane 外全 true。
+-- <<< END mainsite_core 20261109a <<<
+
+-- >>> BEGIN raid 20261109c >>>
+-- ─────────────────────────────────────────────────────────────
+-- 偷袭任务（2026-11-09 · 方案书 docs/plans/20261107-龟战主站对接.md §4.2 / §4.4 / §4.8 / §4.9 ·
+--   主站方案 docs/specs/龟战主站整体方案.md §4 ~ §6 · 工作线 A2）
+--   主站网页发起偷袭 → POST gameServerURL（server/referee/raid_intake.py → raid_create）→ 锁定双方本周阵容建裁判任务 →
+--   裁判领到 ⇒ 发件箱 started → 算完 ⇒ 发件箱 settle（attacker / defender）；算不出 / 超时 / 没有阵容 ⇒ settle void。
+-- 前提：20261109a_mainsite_core.sql（A1：mainsite_accounts / mainsite_pets / mainsite_outbox / mainsite_outbox_put）已执行。
+--   ★本段只在函数体（plpgsql，执行时才解析表名）里用到那几样 ⇒ 建函数不依赖它们；周赛写回那条路另有异常兜底（见 ⑦）。
+-- 本段（★总开关 raid_on 默认关、且只有 econ_on 也开着才生效 ⇒ 执行本段不改变任何现行行为）：
+--   ① referee_jobs.kind 多一个 'raid'；referee_config 多一个 raid_on；raid_enabled() = raid_on 且 econ_on（§4.9）
+--   ② raid_defense：每个号一行 = 本周最新的阵容快照（形状 = Backend.build_ghost_snapshot）+ 上次报给主站的状态
+--      raid_defense_put（App）：只有本周已开轮（三统领齐、分路合法、p_week = 本周锚点）才存、才算 has_defense
+--   ③ raid_rating = 本大轮已打场数（服务器记录：积分赛账本 + 闯关账本 + 周日决赛局），= pool_find_battles 用的那个数（§4.9）
+--      raid_defense_report：已绑定的号状态变了（有没有阵容 / rating / 设备号）⇒ 发件箱 defense
+--      raid_week_rollover：换周 ⇒ 上周报过「有阵容」的已绑定号一律报 hasDefense:false（pg_cron 每小时第 3 分钟，周一 00:03 UTC 起）
+--   ④ raid_jobs + raid_create（主站建任务，只给 service_role）：raidId 幂等回同一 jobId；没绑定 / 没有本周阵容 / 阵容不合法 ⇒
+--      不排裁判、直接 settle void；否则锁定双方快照（带服务器的 owned = mainsite_pets）建 kind = 'raid' 的裁判任务
+--   ⑤ referee_jobs 状态钩子（触发器）：raid 领到 ⇒ started；写回 ⇒ settle（a 赢 = attacker、b 赢 = defender）；
+--      失败（拒算 / 次数用尽 / 超时）⇒ settle void；周赛局（积分赛 / 闯关 / 决赛）写回 ⇒ 双方 rating 重算、变了就报 defense
+--   ⑥ raid_sweep：排队过了 expireAt 还没开算 ⇒ 不再算；开算 30 分钟没结果 ⇒ void。pg_cron 每分钟（领活本身也不领这两种）
+--   ⑦ referee_claim：偷袭局排在闯关 / 决赛 / 积分赛后面领；过期的不领
+--   ⑧ purge_old_matches：偷袭局录像留 30 天（周清跳过它）；raid_jobs 同样留 30 天
+-- ★偷袭局不发任何东西：referee_complete 只有 finals / gauntlet / ranked 三支落账，raid 一支都不进 ⇒
+--   不发深海币 / 宝箱 / 香火 / 小木斧经验 / 命运之轮 / 龟经验，不计本大轮场数（raid_rating 不数 raid 局），不进快照池（ghosts /
+--   gauntlet_ghosts 不写）；只落一行 matches（phase = 'raid'，录像）。referee_complete 本身不改。
+-- ★时间：周锚点按 app_now()（与积分赛同一口径，内测服假时钟跟着走）；expireAt / 30 分钟按真时间 now()（主站的钟）。
+-- 回滚：raid_on = false；trigger raid_job_status 可 drop；referee_claim / purge_old_matches 换回 20261101d / 20261008 版。
+-- ★重复执行安全（if not exists / create or replace / drop ... if exists）。
+-- ─────────────────────────────────────────────────────────────
+
+-- ① 任务种类 / 开关 ─────────────────────────────────────────
+alter table public.referee_jobs drop constraint if exists referee_jobs_kind_check;
+alter table public.referee_jobs add constraint referee_jobs_kind_check
+  check (kind in ('gauntlet', 'finals', 'ranked', 'raid'));
+
+alter table public.referee_config add column if not exists raid_on boolean not null default false;
+
+-- 偷袭开着没有。★§4.9：押的是龟币，本周等级与装备必须以服务器记账为准 ⇒ raid_on 只有在 econ_on（记账总开关，
+--   econ/ledger 分支 20261106c 加的 referee_config.econ_on）也开着时才生效。
+--   econ_on 那一列还没进 main ⇒ 按整行转 jsonb 取（列不存在 = null = 关），合并 econ/ledger 后不用改这里也自动接上
+--   （想写得更直白可以换成 public.referee_econ_on()）。判断只在这一处。
+create or replace function public.raid_enabled() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select c.raid_on and coalesce((to_jsonb(c) ->> 'econ_on')::boolean, false)
+                     from public.referee_config c where c.id = 1), false)
+$$;
+revoke all on function public.raid_enabled() from public, anon, authenticated;
+
+-- 常量：开算后多久没结果就作废（= 主站 arena.raidTimeoutMinutes 默认 30）
+create or replace function public.raid_compute_sec() returns int language sql immutable as $$ select 1800 $$;
+revoke all on function public.raid_compute_sec() from public, anon, authenticated;
+
+-- 本周锚点（周一 00:00 UTC 的 epoch 秒 = 客户端 week_anchor_ts；内测服跟假时钟）
+create or replace function public.raid_week() returns bigint
+language sql stable security definer set search_path = public as $$
+  select extract(epoch from date_trunc('week', public.app_now() at time zone 'UTC'))::bigint
+$$;
+revoke all on function public.raid_week() from public, anon, authenticated;
+
+-- 阵容能不能拿去偷袭 / 防守：本周已开轮 = 三统领齐、每只在两路里恰好一次（= 裁判左方的开打条件 referee_lineup_ok）。
+--   ★两方都按左方的标准查（守方也必须已开轮，用户 11-08「对面也要是开轮状态才行吧」）。判断只在这一处。
+create or replace function public.raid_snapshot_ok(p_snap jsonb) returns boolean
+language plpgsql immutable as $$
+begin
+  if p_snap is null or jsonb_typeof(p_snap) <> 'object' or octet_length(p_snap::text) > 65536 then
+    return false;
+  end if;
+  return public.referee_lineup_ok(p_snap);
+end $$;
+revoke all on function public.raid_snapshot_ok(jsonb) from public, anon, authenticated;
+
+-- 主站用户 ID（对外编码：base62 字母数字串）；纯数字 = 内部 ID ⇒ 不收（主站方案 §6「纯数字或格式不对的一律 bad userId」）
+create or replace function public.raid_user_ok(p text) returns boolean
+language sql immutable as $$
+  select p is not null and p ~ '^[A-Za-z0-9_-]{1,64}$' and p !~ '^[0-9]+$'
+$$;
+revoke all on function public.raid_user_ok(text) from public, anon, authenticated;
+
+-- ② 防守阵容 ─────────────────────────────────────────────────
+create table if not exists public.raid_defense (
+  account_id   uuid        primary key references auth.users(id) on delete cascade,
+  season_week  bigint      not null,                -- 这份快照是哪一周的（≠ 本周 ⇒ 没有阵容）
+  snapshot     jsonb       not null,                -- Backend.build_ghost_snapshot 的产物（摘掉了客户端自带的 owned / account_id）
+  device       text,                                -- 设备号（≤ 128；空 = 沿用上一次的）
+  updated_at   timestamptz not null default now(),
+  -- 上次报给主站（发件箱 defense）的状态：变了才再报；换周判据也看它
+  rep_user     text,                                -- 报给的是哪个主站用户
+  rep_has      boolean,
+  rep_rating   int,
+  rep_device   text,
+  rep_seq      int         not null default 0,      -- 发件箱幂等键的序号（<主站用户>:<账号>:<序号>）
+  rep_at       timestamptz
+);
+alter table public.raid_defense enable row level security;
+-- 没有任何策略 ⇒ 客户端直连读写都不行（阵容 = 情报）；只走 raid_defense_put
+
+-- 这个号本周有没有能用的阵容
+create or replace function public.raid_has_defense(p_uid uuid) returns boolean
+language plpgsql stable security definer set search_path = public as $$
+declare d record;
+begin
+  select * into d from public.raid_defense where account_id = p_uid;
+  return found and d.season_week = public.raid_week() and public.raid_snapshot_ok(d.snapshot);
+end $$;
+revoke all on function public.raid_has_defense(uuid) from public, anon, authenticated;
+
+-- ③ rating = 本大轮已打场数（服务器记录；§4.9 / 20261105c D17 的口径 = backend.gd pool_find_battles 的 season_total_battles）
+--   = 积分赛（ranked_ledger_peek：有服务端账本读账本，没有读切换之前的最后一份）+ 闯关（gauntlet_records 胜 + 负）
+--   + 周日决赛（本周算完的 finals 裁判局，我在任一侧）。★偷袭局不在里面（不计场数）。客户端 GameState.season_total_battles
+--   在 _settle_season 的积分赛 / gauntlet_settle / finals_settle_sealed 三处 +1，与这三项一一对应。
+create or replace function public.raid_rating(p_uid uuid, p_week bigint) returns int
+language plpgsql stable security definer set search_path = public as $$
+declare v_r int; v_g int; v_f int;
+begin
+  v_r := coalesce((public.ranked_ledger_peek(p_uid, p_week) ->> 'battles')::int, 0);
+  select gw + gl into v_g from public.gauntlet_records where season_week = p_week and account_id = p_uid;
+  select count(*)::int into v_f from public.referee_jobs
+   where kind = 'finals' and season_week = p_week and status = 'done' and (a_account = p_uid or b_account = p_uid);
+  return greatest(v_r, 0) + greatest(coalesce(v_g, 0), 0) + coalesce(v_f, 0);
+end $$;
+revoke all on function public.raid_rating(uuid, bigint) from public, anon, authenticated;
+
+-- 把这个号现在的状态报给主站（发件箱 defense {userId, hasDefense, rating, device}）：已绑定 + 与上次报的不同才写。
+--   p_force：不比较、直接报一次（A1 绑定成功后调，让主站拿到当前状态）。
+--   ★从没存过阵容的号不报（主站那边默认就是没有阵容；删号时主站 unlinked 也会清掉）。
+--   ★没部署 A1（没有 mainsite_accounts）⇒ 回 no_mainsite、什么都不写。
+create or replace function public.raid_defense_report(p_uid uuid, p_force boolean default false) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare d record; wk bigint := public.raid_week(); v_msu text; v_has boolean; v_rating int; v_seq int;
+begin
+  if p_uid is null or to_regclass('public.mainsite_accounts') is null then
+    return jsonb_build_object('ok', false, 'reason', 'no_mainsite', 'sent', false);
+  end if;
+  select * into d from public.raid_defense where account_id = p_uid for update;
+  if not found then
+    return jsonb_build_object('ok', true, 'has_defense', false, 'rating', 0, 'sent', false);
+  end if;
+  v_has := d.season_week = wk and public.raid_snapshot_ok(d.snapshot);
+  v_rating := case when v_has then public.raid_rating(p_uid, wk) else 0 end;
+  select m.mainsite_user_id into v_msu from public.mainsite_accounts m where m.account_id = p_uid;
+  if v_msu is null then
+    -- 解绑了（主站 unlinked 会清掉那边的阵容）⇒ 上次报的状态作废：以后重新绑定从头报，换周也不再挑它
+    if d.rep_user is not null then
+      update public.raid_defense set rep_user = null, rep_has = null, rep_rating = null, rep_device = null
+       where account_id = p_uid;
+    end if;
+    return jsonb_build_object('ok', true, 'linked', false, 'has_defense', v_has, 'rating', v_rating, 'sent', false);
+  end if;
+  if not (coalesce(p_force, false)
+          or (d.rep_user is not null and d.rep_user <> v_msu)
+          or coalesce(d.rep_has, false) <> v_has
+          or coalesce(d.rep_rating, 0) <> v_rating
+          or (v_has and d.device is not null and d.device is distinct from d.rep_device)) then
+    return jsonb_build_object('ok', true, 'linked', true, 'has_defense', v_has, 'rating', v_rating, 'sent', false);
+  end if;
+  v_seq := d.rep_seq + 1;
+  perform public.mainsite_outbox_put('defense', format('%s:%s:%s', v_msu, p_uid, v_seq),
+    jsonb_build_object('userId', v_msu, 'hasDefense', v_has, 'rating', v_rating, 'device', coalesce(d.device, '')));
+  update public.raid_defense
+     set rep_user = v_msu, rep_has = v_has, rep_rating = v_rating, rep_device = d.device, rep_seq = v_seq, rep_at = now()
+   where account_id = p_uid;
+  return jsonb_build_object('ok', true, 'linked', true, 'has_defense', v_has, 'rating', v_rating, 'sent', true);
+end $$;
+revoke all on function public.raid_defense_report(uuid, boolean) from public, anon, authenticated;
+grant execute on function public.raid_defense_report(uuid, boolean) to service_role;
+
+-- App 存当前号这一周的最新阵容（B：离开背包 / 选龟页、每打完一局上传快照时）。回 {ok, has_defense}。
+--   ★只有本周已开轮才存：p_week ≠ 本周锚点 ⇒ wrong_week；三统领不齐 / 分路坏 ⇒ 不存、不动已存的那份（stored:false）。
+--   ★客户端快照里自带的 owned / account_id 一律摘掉（拥有以服务器 mainsite_pets 为准，建任务时由服务端盖上）。
+--   ★报给主站那一步出错不影响存阵容（异常兜住，下一次存 / 下一局写回会再报）。
+create or replace function public.raid_defense_put(p_week bigint, p_snapshot jsonb, p_device text default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); wk bigint := public.raid_week(); v_dev text; v_snap jsonb;
+begin
+  if uid is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in', 'has_defense', false);
+  end if;
+  if p_week is distinct from wk then
+    return jsonb_build_object('ok', false, 'reason', 'wrong_week', 'has_defense', public.raid_has_defense(uid));
+  end if;
+  if p_snapshot is null or jsonb_typeof(p_snapshot) <> 'object' or octet_length(p_snapshot::text) > 65536 then
+    return jsonb_build_object('ok', false, 'reason', 'bad_snapshot', 'has_defense', public.raid_has_defense(uid));
+  end if;
+  v_snap := p_snapshot - 'owned' - 'account_id';
+  if not public.raid_snapshot_ok(v_snap) then
+    return jsonb_build_object('ok', true, 'stored', false, 'reason', 'not_open', 'has_defense', public.raid_has_defense(uid));
+  end if;
+  v_dev := nullif(left(btrim(coalesce(p_device, '')), 128), '');
+  insert into public.raid_defense (account_id, season_week, snapshot, device, updated_at)
+    values (uid, wk, v_snap, v_dev, now())
+    on conflict (account_id) do update
+      set season_week = excluded.season_week, snapshot = excluded.snapshot,
+          device = coalesce(excluded.device, public.raid_defense.device), updated_at = now();
+  begin
+    perform public.raid_defense_report(uid);
+  exception when others then
+    raise warning 'raid_defense_put: 报主站失败（阵容已存）: %', sqlerrm;
+  end;
+  return jsonb_build_object('ok', true, 'stored', true, 'has_defense', true);
+end $$;
+revoke all on function public.raid_defense_put(bigint, jsonb, text) from public, anon;
+grant execute on function public.raid_defense_put(bigint, jsonb, text) to authenticated;
+
+-- 换周：上周报过「有阵容」（或 rating 不是 0）的号重报一次 —— 快照不是本周的 ⇒ hasDefense:false、rating 0。
+--   §4.2「周一 00:00 UTC 换周时给所有已绑定玩家经发件箱报 hasDefense:false」：从没报过有阵容的号主站那边本来就是 false，
+--   不重复报；本周第一次开打（App 存阵容）后由 raid_defense_put 报回 true。
+--   触发：pg_cron 'raid_week_rollover' 每小时第 3 分钟（周一 00:03 UTC 第一次生效；之后每小时一次是兜底 / 内测服假时钟）。幂等。
+create or replace function public.raid_week_rollover() returns int
+language plpgsql security definer set search_path = public as $$
+declare wk bigint := public.raid_week(); r record; n int := 0; x jsonb;
+begin
+  for r in select d.account_id from public.raid_defense d
+            where d.season_week < wk and (coalesce(d.rep_has, false) or coalesce(d.rep_rating, 0) <> 0)
+            order by d.account_id loop
+    x := public.raid_defense_report(r.account_id);
+    if coalesce((x ->> 'sent')::boolean, false) then
+      n := n + 1;
+    end if;
+  end loop;
+  return n;
+end $$;
+revoke all on function public.raid_week_rollover() from public, anon, authenticated;
+grant execute on function public.raid_week_rollover() to service_role;
+select cron.unschedule(jobid) from cron.job where jobname = 'raid_week_rollover';
+select cron.schedule('raid_week_rollover', '3 * * * *', 'select public.raid_week_rollover()');
+
+-- ④ 偷袭任务 ─────────────────────────────────────────────────
+create table if not exists public.raid_jobs (
+  id               bigint      generated always as identity primary key,   -- = 回给主站的 jobId（字符串）
+  raid_id          bigint      not null unique,                            -- 主站 raidId（幂等键）
+  attacker         text        not null,                                   -- 主站用户 ID（对外编码）
+  defender         text        not null,
+  attacker_account uuid        references auth.users(id) on delete set null,
+  defender_account uuid        references auth.users(id) on delete set null,
+  seed             bigint      not null default 0,                         -- 主站给的原值（裁判实际用的在 referee_jobs.seed）
+  stake            bigint      not null default 0,                         -- 只记录（App 里不显示任何金额）
+  is_revenge       boolean     not null default false,                     -- 只记录（不做复仇，用户 11-08）
+  expire_at        timestamptz not null,                                   -- 主站 expireAt：过了还没开算就不再算
+  season_week      bigint      not null,
+  status           text        not null default 'queued' check (status in ('queued', 'started', 'done', 'void')),
+  reason           text,                                                   -- void 的原因（attacker_unlinked / defender_no_defense / raid_timeout …）
+  a_snapshot       jsonb,                                                  -- 建任务那一刻锁定的攻方阵容（= 裁判任务的 a，含 owned）
+  b_snapshot       jsonb,                                                  -- 守方（= b）
+  a_owned          jsonb,                                                  -- 攻方拥有的龟（mainsite_pets 的 pet_key）
+  b_owned          jsonb,
+  referee_job_id   bigint      references public.referee_jobs(job_id) on delete set null,
+  match_id         uuid,                                                   -- = 录像 id = settle 的 matchId
+  result           text        check (result in ('attacker', 'defender', 'void')),
+  created_at       timestamptz not null default now(),
+  started_at       timestamptz,                                            -- 裁判第一次领到（= 发 started 的那一刻）
+  settled_at       timestamptz
+);
+create index if not exists raid_jobs_job_idx on public.raid_jobs (referee_job_id);
+create index if not exists raid_jobs_open_idx on public.raid_jobs (status) where status in ('queued', 'started');
+alter table public.raid_jobs enable row level security;
+-- 没有任何策略 ⇒ 客户端读写都不行
+
+-- 偷袭用哪个版本算：裁判机装了、开着的最新版本（两边快照都是数据，规则以算它的版本为准；同周赛 referee_versions 那张表）
+create or replace function public.raid_pick_version() returns text
+language sql stable security definer set search_path = public as $$
+  select v.client_version from public.referee_versions v
+   where v.enabled and public.semver_arr(v.client_version) is not null
+   order by public.semver_arr(v.client_version) desc limit 1
+$$;
+revoke all on function public.raid_pick_version() from public, anon, authenticated;
+
+-- 作废一场：记 void；p_send ⇒ 发件箱 settle {raidId, result:'void', matchId:''}
+create or replace function public.raid_void(p_id bigint, p_reason text, p_send boolean default true) returns void
+language plpgsql security definer set search_path = public as $$
+declare r record;
+begin
+  update public.raid_jobs
+     set status = 'void', result = 'void', reason = left(coalesce(p_reason, '?'), 200), settled_at = now()
+   where id = p_id and status in ('queued', 'started')
+  returning * into r;
+  if found and coalesce(p_send, true) then
+    perform public.mainsite_outbox_put('settle', r.raid_id::text,
+      jsonb_build_object('raidId', r.raid_id, 'result', 'void', 'matchId', ''));
+  end if;
+end $$;
+revoke all on function public.raid_void(bigint, text, boolean) from public, anon, authenticated;
+
+-- 主站建任务（raid_intake.handle_create 调；只给 service_role）。回 {ok:true, jobId} / {ok:false, error}。
+--   ok:false（主站立即作废退回）：bad_raidId / bad_userId / same_user / raid_conflict（同 raidId 双方不同）/ raid_off / expired / no_referee
+--   ok:true 但直接 void（不排裁判，settle void 入发件箱）：attacker_unlinked / defender_unlinked /
+--     attacker_no_defense / defender_no_defense（没有本周阵容 = 没开轮 / 快照是上周的 / 阵容不合法）
+--   ★同 raidId 重发：不看开关、不看过期，直接回同一个 jobId（主站重发的是同一场）。
+--   ★种子：主站给的 1 ~ 2^53-1 原样用（两边都能复算）；0 / 超界 ⇒ 服务端生成。
+create or replace function public.raid_create(p_raid_id bigint, p_attacker text, p_defender text, p_seed bigint,
+    p_stake bigint, p_is_revenge boolean, p_expire_at bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare ex record; v_id bigint; wk bigint; v_now_ms bigint; ua uuid; ud uuid; da record; dd record; v_reason text;
+        v_ver text; v_own_a jsonb; v_own_b jsonb; v_snap_a jsonb; v_snap_b jsonb; jid bigint; mid uuid; v_seed bigint;
+begin
+  if p_raid_id is null or p_raid_id <= 0 then
+    return jsonb_build_object('ok', false, 'error', 'bad_raidId');
+  end if;
+  if not public.raid_user_ok(p_attacker) or not public.raid_user_ok(p_defender) then
+    return jsonb_build_object('ok', false, 'error', 'bad_userId');
+  end if;
+  if p_attacker = p_defender then
+    return jsonb_build_object('ok', false, 'error', 'same_user');
+  end if;
+  select * into ex from public.raid_jobs where raid_id = p_raid_id;
+  if found then
+    if ex.attacker <> p_attacker or ex.defender <> p_defender then
+      return jsonb_build_object('ok', false, 'error', 'raid_conflict');
+    end if;
+    return jsonb_build_object('ok', true, 'jobId', ex.id::text);
+  end if;
+  if not public.raid_enabled() then
+    return jsonb_build_object('ok', false, 'error', 'raid_off');
+  end if;
+  v_now_ms := floor(extract(epoch from now()) * 1000)::bigint;
+  if p_expire_at is null or p_expire_at <= v_now_ms then
+    return jsonb_build_object('ok', false, 'error', 'expired');
+  end if;
+  v_ver := public.raid_pick_version();
+  if v_ver is null then
+    return jsonb_build_object('ok', false, 'error', 'no_referee');
+  end if;
+  wk := public.raid_week();
+  select m.account_id into ua from public.mainsite_accounts m where m.mainsite_user_id = p_attacker;
+  select m.account_id into ud from public.mainsite_accounts m where m.mainsite_user_id = p_defender;
+  if ua is null then
+    v_reason := 'attacker_unlinked';
+  elsif ud is null then
+    v_reason := 'defender_unlinked';
+  else
+    select * into da from public.raid_defense where account_id = ua;
+    select * into dd from public.raid_defense where account_id = ud;
+    if da.account_id is null or da.season_week <> wk or not public.raid_snapshot_ok(da.snapshot) then
+      v_reason := 'attacker_no_defense';
+    elsif dd.account_id is null or dd.season_week <> wk or not public.raid_snapshot_ok(dd.snapshot) then
+      v_reason := 'defender_no_defense';
+    end if;
+  end if;
+  insert into public.raid_jobs (raid_id, attacker, defender, attacker_account, defender_account, seed, stake, is_revenge,
+      expire_at, season_week)
+    values (p_raid_id, p_attacker, p_defender, ua, ud, coalesce(p_seed, 0), coalesce(p_stake, 0), coalesce(p_is_revenge, false),
+      to_timestamp(p_expire_at / 1000.0), wk)
+    on conflict (raid_id) do nothing
+    returning id into v_id;
+  if v_id is null then
+    -- 同一刻另一个请求先建了（主站超时重发）：回先到的那一个
+    select * into ex from public.raid_jobs where raid_id = p_raid_id;
+    if ex.attacker <> p_attacker or ex.defender <> p_defender then
+      return jsonb_build_object('ok', false, 'error', 'raid_conflict');
+    end if;
+    return jsonb_build_object('ok', true, 'jobId', ex.id::text);
+  end if;
+  if v_reason is not null then
+    perform public.raid_void(v_id, v_reason);
+    return jsonb_build_object('ok', true, 'jobId', v_id::text);
+  end if;
+  select coalesce(jsonb_agg(p.pet_key order by p.pet_key), '[]'::jsonb) into v_own_a from public.mainsite_pets p where p.account_id = ua;
+  select coalesce(jsonb_agg(p.pet_key order by p.pet_key), '[]'::jsonb) into v_own_b from public.mainsite_pets p where p.account_id = ud;
+  -- 锁定：本周那份快照 + 服务器的 owned / 账号（C 的裁判校验「拥有 ∪ 限免」按这两个键读）
+  v_snap_a := (da.snapshot - 'owned' - 'account_id') || jsonb_build_object('owned', v_own_a, 'account_id', ua::text);
+  v_snap_b := (dd.snapshot - 'owned' - 'account_id') || jsonb_build_object('owned', v_own_b, 'account_id', ud::text);
+  v_seed := case when p_seed between 1 and 9007199254740991 then p_seed else public.referee_new_seed() end;
+  insert into public.referee_jobs (kind, match_key, season_week, client_version, seed,
+      a_account, b_account, a_snapshot, b_snapshot, level, meta)
+    values ('raid', format('raid:%s', p_raid_id), wk, v_ver, v_seed, ua, ud, v_snap_a, v_snap_b,
+      public.referee_level_of(v_snap_a),
+      jsonb_build_object('raid_id', p_raid_id, 'attacker', p_attacker, 'defender', p_defender,
+                         'account', ua, 'b_account', ud, 'expire_ms', p_expire_at))
+    on conflict (match_key) do nothing
+    returning job_id, match_id into jid, mid;
+  if jid is null then
+    select job_id, match_id into jid, mid from public.referee_jobs where match_key = format('raid:%s', p_raid_id);
+  end if;
+  update public.raid_jobs
+     set referee_job_id = jid, match_id = mid, a_snapshot = v_snap_a, b_snapshot = v_snap_b, a_owned = v_own_a, b_owned = v_own_b
+   where id = v_id;
+  return jsonb_build_object('ok', true, 'jobId', v_id::text);
+end $$;
+revoke all on function public.raid_create(bigint, text, text, bigint, bigint, boolean, bigint) from public, anon, authenticated;
+grant execute on function public.raid_create(bigint, text, text, bigint, bigint, boolean, bigint) to service_role;
+
+-- ⑤ 裁判任务状态变了 ⇒ 偷袭的 started / settle、周赛的 rating ─────────
+-- 一场偷袭对应的裁判任务：领到（claimed）⇒ started（只第一次；重领不再发）；写回（done）⇒ settle attacker / defender；
+--   失败（failed）⇒ void（排队过期 raid_expired 不发 settle：主站到点自己作废退回，迟到的 settle 主站也不认）。
+--   ★结果单的 winner 是唯一依据（a = 攻方 = attacker）；裁判另带的 raid_result 与它对不上 ⇒ void（不赌哪一个对）。
+create or replace function public.raid_on_job(p_job_id bigint, p_status text, p_error text, p_result jsonb, p_match_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare r record; v_res text;
+begin
+  select * into r from public.raid_jobs where referee_job_id = p_job_id for update;
+  if not found or r.status in ('done', 'void') then
+    return;
+  end if;
+  if p_status = 'claimed' then
+    if r.status = 'queued' then
+      update public.raid_jobs set status = 'started', started_at = now() where id = r.id;
+      perform public.mainsite_outbox_put('started', r.raid_id::text, jsonb_build_object('raidId', r.raid_id));
+    end if;
+  elsif p_status = 'done' then
+    v_res := case p_result ->> 'winner' when 'a' then 'attacker' when 'b' then 'defender' end;
+    if v_res is null or (p_result ? 'raid_result' and p_result ->> 'raid_result' is distinct from v_res) then
+      perform public.raid_void(r.id, 'bad_result');
+      return;
+    end if;
+    update public.raid_jobs set status = 'done', result = v_res, match_id = p_match_id, settled_at = now() where id = r.id;
+    perform public.mainsite_outbox_put('settle', r.raid_id::text,
+      jsonb_build_object('raidId', r.raid_id, 'result', v_res, 'matchId', p_match_id::text));
+  elsif p_status = 'failed' then
+    perform public.raid_void(r.id, coalesce(p_error, 'failed'), coalesce(p_error, '') <> 'raid_expired');
+  end if;
+end $$;
+revoke all on function public.raid_on_job(bigint, text, text, jsonb, uuid) from public, anon, authenticated;
+
+-- 触发器本体。两支都兜在异常里：
+--   周赛那一支：报主站出任何问题都不许拖垮周赛记账（referee_complete 的事务）。
+--   偷袭那一支：发件箱写不进（A1 那边出问题）不许拖垮领活 —— referee_claim 的租期回收会一次改多行（含周赛局），
+--     这里一抛异常整个领活就失败、周赛局也领不走。丢的那一条 started / settle 由主站超时作废兜底（各退各的，钱不会错）。
+create or replace function public.raid_job_status_hook() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.kind = 'raid' then
+    begin
+      perform public.raid_on_job(new.job_id, new.status, new.error, new.result, new.match_id);
+    exception when others then
+      raise warning 'raid_job_status_hook: 偷袭 job=% status=% 没记上（主站会超时作废）: %', new.job_id, new.status, sqlerrm;
+    end;
+  elsif new.status = 'done' and new.kind in ('ranked', 'gauntlet', 'finals') then
+    begin
+      if new.a_account is not null then
+        perform public.raid_defense_report(new.a_account);
+      end if;
+      if new.b_account is not null and (new.kind = 'finals' or coalesce(new.meta ->> 'pair', '') = 'true') then
+        perform public.raid_defense_report(new.b_account);
+      end if;
+    exception when others then
+      raise warning 'raid_job_status_hook: rating 没报出去（不影响周赛记账）: %', sqlerrm;
+    end;
+  end if;
+  return null;
+end $$;
+revoke all on function public.raid_job_status_hook() from public, anon, authenticated;
+drop trigger if exists raid_job_status on public.referee_jobs;
+create trigger raid_job_status after update of status on public.referee_jobs
+  for each row when (old.status is distinct from new.status) execute function public.raid_job_status_hook();
+
+-- ⑥ 过期 / 超时 ─────────────────────────────────────────────
+-- ① 还没开算（queued）就过了 expireAt ⇒ 任务记 failed raid_expired（不再算；钩子记 void、不发 settle）
+-- ② 开算后 raid_compute_sec（30 分钟）还没写回 ⇒ failed raid_timeout（钩子记 void、发 settle void）；迟到的写回 not_owner 被拒
+create or replace function public.raid_sweep() returns int
+language plpgsql security definer set search_path = public as $$
+declare n1 int; n2 int;
+begin
+  update public.referee_jobs j
+     set status = 'failed', error = 'raid_expired', done_at = now(), claimed_by = null, claimed_at = null
+    from public.raid_jobs r
+   where r.referee_job_id = j.job_id and r.status = 'queued' and r.expire_at <= now()
+     and j.kind = 'raid' and j.status = 'pending';
+  get diagnostics n1 = row_count;
+  update public.referee_jobs j
+     set status = 'failed', error = 'raid_timeout', done_at = now(), claimed_by = null, claimed_at = null
+    from public.raid_jobs r
+   where r.referee_job_id = j.job_id and r.status = 'started'
+     and r.started_at <= now() - make_interval(secs => public.raid_compute_sec())
+     and j.kind = 'raid' and j.status in ('pending', 'claimed');
+  get diagnostics n2 = row_count;
+  return n1 + n2;
+end $$;
+revoke all on function public.raid_sweep() from public, anon, authenticated;
+grant execute on function public.raid_sweep() to service_role;
+select cron.unschedule(jobid) from cron.job where jobname = 'raid_sweep';
+select cron.schedule('raid_sweep', '* * * * *', 'select public.raid_sweep()');
+
+-- ⑦ 领活（以 20261101d 版为底，只改两处，标了「2026-11-09 偷袭」）：
+--   ① 偷袭局：还在排队且没过 expireAt，或已开算且没满 30 分钟，才领（过期 / 超时的由 raid_sweep 每分钟收成 failed）
+--   ② order by 最前面多一项 (kind = 'raid')：偷袭排在闯关 / 决赛 / 积分赛后面（false 在前；没有偷袭局时排序结果逐字不变）
+--   ★领活这条热路径上不加写（raid_sweep 不在这里跑）：多个裁判并发领活时不多一处行锁。
+create or replace function public.referee_claim(p_worker text, p_versions text[], p_limit int default 1)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare cfg record; v_out jsonb;
+begin
+  select * into cfg from public.referee_config where id = 1;
+  insert into public.referee_workers (worker, versions, seen_at) values (p_worker, coalesce(p_versions, '{}'), now())
+    on conflict (worker) do update set versions = excluded.versions, seen_at = now();
+  update public.referee_jobs
+     set status = 'failed', error = coalesce(error, 'lease_expired'), done_at = now()
+   where status = 'claimed' and claimed_at < now() - make_interval(secs => cfg.lease_sec)
+     and attempts >= cfg.max_attempts;
+  with c as (
+    select job_id from public.referee_jobs
+     where client_version = any(coalesce(p_versions, '{}'))
+       and (status = 'pending'
+            or (status = 'claimed' and claimed_at < now() - make_interval(secs => cfg.lease_sec)))
+       -- 2026-11-09 偷袭 ①
+       and (kind <> 'raid' or exists (select 1 from public.raid_jobs r where r.referee_job_id = referee_jobs.job_id
+              and ((r.status = 'queued' and r.expire_at > now())
+                   or (r.status = 'started' and r.started_at > now() - make_interval(secs => public.raid_compute_sec())))))
+     order by (kind = 'raid'),   -- 2026-11-09 偷袭 ②
+              (kind = 'ranked' and exists (select 1 from public.bot_accounts b where b.account_id = a_account)),
+              created_at, job_id
+     limit greatest(1, least(coalesce(p_limit, 1), 32))
+     for update skip locked
+  ), u as (
+    update public.referee_jobs j
+       set status = 'claimed', claimed_by = p_worker, claimed_at = now(), attempts = j.attempts + 1
+      from c where j.job_id = c.job_id
+    returning j.*
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'v', 1, 'job_id', u.job_id, 'match_id', u.match_id, 'mode', u.kind,
+           'key', u.meta || jsonb_build_object('week', u.season_week, 'match_key', u.match_key),
+           'seed', u.seed, 'client_version', u.client_version, 'level', u.level,
+           'a', u.a_snapshot, 'b', u.b_snapshot) order by u.job_id), '[]'::jsonb)
+    into v_out from u;
+  return v_out;
+end $$;
+revoke all on function public.referee_claim(text, text[], int) from public, anon, authenticated;
+grant execute on function public.referee_claim(text, text[], int) to service_role;
+
+-- ⑧ 周清（以 20261008 版为底）：偷袭局录像留 30 天（主站「看录像」要用；20261107 §4.5），不随周清删；raid_jobs 同样留 30 天。
+--   其余三行逐字不动（cron 'purge_old_matches' '0 0 * * 2' 不变）。
+create or replace function public.purge_old_matches() returns void
+language sql security definer as $$
+  delete from public.matches where created_at < date_trunc('week', now() at time zone 'UTC') at time zone 'UTC'
+    and phase <> 'raid';
+  delete from public.matches where phase = 'raid' and created_at < now() - interval '30 days';
+  delete from public.raid_jobs where created_at < now() - interval '30 days';
+  delete from public.live_matches where started_at < date_trunc('week', now() at time zone 'UTC') at time zone 'UTC';
+  delete from public.ghosts where season_week < extract(epoch from date_trunc('week', now() at time zone 'UTC'))::bigint;
+  delete from public.gauntlet_ghosts where season_week < extract(epoch from date_trunc('week', now() at time zone 'UTC'))::bigint;
+$$;
+revoke all on function public.purge_old_matches() from public, anon, authenticated;
+-- <<< END raid 20261109c <<<

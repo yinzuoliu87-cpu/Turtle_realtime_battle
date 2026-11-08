@@ -8,13 +8,15 @@ extends RefCounted
 ## 现在: AttackRhythm.begin 在前摇**开始**就播, 帧率 = 命中帧 / 前摇秒数 ⇒ 结算那一刻正好显示命中帧。
 ## 这里登记手量的帧条: 命中帧 = 本体往前(美术朝左)伸得最远的那一帧(11-05 逐帧量 alpha 包围盒左缘)。
 ## 外包 11 只的命中帧在 TurtleActions.HIT(build_spine_actions.py 生成)。门禁 verify_attack_rhythm 要求每张普攻帧条都登记了。
+## 11-08 起小将与幽灵按 11-07 的节奏重排(站姿 → 蓄力 2 → 挥动 2 ~ 3 → 命中 → 停 2 → 收回 4; 用户 11-08「攻击前摇，攻击后摇，
+##   然后中间就是就慢一点」), 生成脚本 tools/assetgen/build_attack_rhythm.py 打印命中帧, 抄到这里。
 const BY_PATH := {
-	"pets/animations/ghost/attack.png": 5,      # 9 帧
-	"pets/animations/ninja/slash.png": 1,       # 3 帧
-	"pets/animations/elite/attack.png": 2,      # 4 帧
-	"pets/animations/melee/attack.png": 4,      # 9 帧(11-05 重做: 0~3 蓄力 → 4 刺到 → 5~6 定住 → 7~8 收回; tools/assetgen/build_melee_attack.py)
-	"pets/animations/ranged/attack.png": 3,     # 5 帧
-	"pets/animations/reserve/attack.png": 5,    # 7 帧
+	"pets/animations/ghost/attack.png": 5,      # 12 帧(11-08 重排: 命中后定住 2 拍、收回 4 拍)
+	"pets/animations/ninja/slash.png": 6,       # 13 帧(11-08: 原 3 帧是旧画风, 从新形象待机整段重做)
+	"pets/animations/elite/attack.png": 6,      # 13 帧(11-08: 站姿起手 + AI 补拉镰 3 帧 / 收回 5 帧)
+	"pets/animations/melee/attack.png": 5,      # 12 帧(11-05 重做 9 帧 → 11-08 重排: 蓄力补一拍、收回每帧两拍)
+	"pets/animations/ranged/attack.png": 5,     # 12 帧(11-08: AI 补收回 4 帧)
+	"pets/animations/reserve/attack.png": 5,    # 12 帧(11-08: AI 补抬手 3 帧 / 收回 5 帧)
 	"pets/animations/wraith/attack.png": 2,     # 5 帧
 	"vfx/eq096-axe-wood-attack.png": 2,         # 8 帧(斧头兜底表; 按形态的表走 AxeArt._act_rows, 没登记的按 40% 算)
 }

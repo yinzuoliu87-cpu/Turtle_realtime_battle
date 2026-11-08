@@ -10,7 +10,11 @@ extends RefCounted
 ##   job_id          服务端任务号(原样带回结果单)
 ##   match_id        uuid v4 = 录像 id = `matches.match_id`(缺 / 不合法 ⇒ 裁判自己生成)
 ##   mode            "gauntlet"(周六闯关) / "finals"(周日决赛) / "ranked"(积分赛, 2026-11-01 · 方案书 docs/plans/20261101c-积分赛服务器裁判.md)
-##                   ★裁判这一侧三种算法完全相同(左 = A 快照、右 = B 快照、种子来自任务单); 种类只决定服务端 referee_complete 记哪本账。
+##                   / "raid"(偷袭, 2026-11-09 · 方案书 docs/plans/20261107-龟战主站对接.md §4.2 / §4.4: A = 攻方、B = 守方)
+##                   ★裁判这一侧四种算法完全相同(左 = A 快照、右 = B 快照、种子来自任务单); 种类只决定服务端 referee_complete 记哪本账
+##                     (偷袭一本都不记: 不发币 / 不计场数 / 不进快照池, 服务端只按结果单的 winner 报主站 attacker / defender)。
+##                   偷袭多两条: 守方也必须已开轮(三统领, `validate`); 结果单多一个 `raid_result`(`raid_result_of`)。
+##                   两方快照里服务端盖了 `owned`(主站拥有的龟) / `account_id`, 给「拥有 ∪ 限免」校验读(工作线 C)。
 ##   key             这一场是谁(原样带回; 写回 RPC 用它落账, 裁判不读)
 ##   seed            1 ~ 2^53-1 的整数(`_battle_rng` 种子; 服务端生成, 不由客户端给)
 ##   client_version  这份任务要求的游戏版本; 与本机不等 ⇒ 拒算(wrong_version) —— 结果只在同版本里成立
@@ -32,7 +36,8 @@ extends RefCounted
 ##     因为右方在战斗里也拿不到它们。
 
 const FORMAT := 1
-const MODES := ["gauntlet", "finals", "ranked"]
+const MODES := ["gauntlet", "finals", "ranked", "raid"]
+const MODE_RAID := "raid"
 const SEED_MAX := 9007199254740991          # 2^53 - 1 (= GameState.BATTLE_SEED_MAX; JSON 往返不掉位的上限)
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const Duallane := preload("res://scripts/gamedata/phase2_duallane.gd")
@@ -63,7 +68,17 @@ static func validate(job) -> String:
 		return "a_bad_snapshot"
 	if not (j.get("b") is Dictionary) or not _lanes_ok(j["b"]):
 		return "b_bad_snapshot"
+	## 偷袭: 守方是真人的固定阵容, 也必须已开轮(三统领; 用户 11-08「对面也要是开轮状态才行吧」) ——
+	##   服务端 raid_create 建任务时已按同一条(raid_snapshot_ok)查过, 这里是裁判自己的一道。
+	if str(j.get("mode", "")) == MODE_RAID and leaders_of(j["b"]).size() != 3:
+		return "b_bad_snapshot"
 	return ""
+
+
+## 偷袭的结果码(主站 settle 的 result): A = 攻方 ⇒ A 赢 = "attacker", 否则 "defender"(没有平局)。
+## ★服务端以结果单的 winner 为准自己映射一遍(迁移 20261109c raid_on_job), 两边对不上 ⇒ 这场作废(void)。
+static func raid_result_of(a_won: bool) -> String:
+	return "attacker" if a_won else "defender"
 
 
 ## 种子: 1 ~ 2^53-1 的整数(JSON 解析出来是 float ⇒ 要求是整数值)。不合法 = -1。
@@ -246,7 +261,7 @@ static func ok_result(j: Dictionary, rec: Dictionary, lane_results: Dictionary, 
 		if e is Dictionary and str((e as Dictionary).get("k", "")) == "fight":
 			fights += 1
 	var b64: String = Uploader.upload_b64(rec)
-	return {
+	var out := {
 		"ok": true,
 		"v": FORMAT,
 		"job_id": job_id_of(j),
@@ -274,6 +289,9 @@ static func ok_result(j: Dictionary, rec: Dictionary, lane_results: Dictionary, 
 		"elapsed_ms": elapsed_ms,
 		"frames": frames,
 	}
+	if str(j.get("mode", "")) == MODE_RAID:
+		out["raid_result"] = raid_result_of(a_won)
+	return out
 
 
 ## 任务号原样带回。JSON 解析把整数变成 float(1 → 1.0)⇒ 整数值的 float 还原成 int, 免得写回时 bigint 列收到「1.0」。
