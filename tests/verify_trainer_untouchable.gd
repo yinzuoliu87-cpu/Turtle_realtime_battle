@@ -34,6 +34,9 @@ const OWN_KEYS := {
 	"_tr_atk_cd": "扔石头冷却", "_tr_throw_vec": "扔石头朝向", "_tr_throw_t0": "扔石头起始时刻",
 	"_tr_throw_until": "扔石头动作结束时刻", "_active_cd": "主动技冷却(单槽)",
 	"_throw_sd": "扔石头动作帧表(battle_render._update_trainer_anim)",
+	# 四方向动画(battle_render._update_trainer_anim 每帧写, 只管画面; 11-08 #22 起敌方 / 裁判局大师也走四方向表)
+	"_tr_last_pos": "四方向·上一帧位置", "_tr_move_dir": "四方向·最近移动方向", "_tr_move_acc": "四方向·测速累计位移",
+	"_tr_move_t": "四方向·测速窗口计时", "_tr_speed": "四方向·速度", "_tr_face": "四方向·朝向", "_tr_anim_t": "四方向·走路帧计时",
 	# 它自己的被动 —— 魔法石叠层(trainer_system._trainer_magicstone_onhit)与它的阈值特效(_ms_tick_aura)
 	"_ms_stacks": "魔法石层数", "_ms_burst_n": "魔法石阈值爆闪次数", "_ms_motes": "魔法石绕转晶石节点",
 	"_ms_aura_tier": "魔法石特效档位", "_ms_orbit_t": "魔法石晶石绕转相位",

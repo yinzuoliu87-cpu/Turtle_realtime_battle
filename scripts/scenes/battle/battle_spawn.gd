@@ -386,6 +386,13 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		spr.offset = Vector2(0.0, frame_h * 0.5)             # 脚底贴地: 单帧上抬半帧高
 		grounded_mat = battle._make_grounded_material(tex, sd)      # 接地软渐隐 (单帧 UV 上做底淡)
 		spr.material_override = grounded_mat
+		## 四方向表的大师: battle_render._update_trainer_anim 第一帧会关接地 shader、改硬切 alpha、抬脚底 ——
+		##   建的时候就设成那样(11-08 #22 起敌方 / 裁判局大师也走四方向表; 建完再改会被直播当成白名单外变化报警)。
+		if is_trainer and not battle._render._trainer_sheets(str(sd.get("_appearance", ""))).is_empty():
+			spr.material_override = null
+			spr.transparent = true
+			spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+			spr.offset = Vector2(0.0, 48.0 * 0.5 - 6.0)
 	spr.position = battle._world_pos(pos, battle.GROUND_LIFT)
 	battle._world.add_child(spr)
 

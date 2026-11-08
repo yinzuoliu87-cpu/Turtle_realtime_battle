@@ -11,7 +11,7 @@
     手机浏览器 ⇒「请在小游戏内观看」（不下载游戏资源）；对局号不像样 ⇒「未找到该对局的录像」；
     读 /player/streams/<对局号>/end.json 的 client_version ⇒ 这一版播放器在 ⇒ 跳 /player/<版本>/?match=<对局号>；
       这一版播放器已清掉 ⇒「录像已过期」；
-    end.json 404 ⇒ /player/expired/<对局号> 200 ⇒「录像已过期」，否则「未找到该对局的录像」；连不上 ⇒「网络连接失败」+ 重试。
+    end.json 404 ⇒ /player/expired/<对局号> 200 ⇒「录像已过期」，否则「未找到该对局的录像」；连不上 ⇒「无法连接服务器。请检查网络连接后重试。」+ 重试。
   判据与 Godot 侧 scripts/systems/replay/web_player_core.gd 同一套（字与正则逐字相同，tools/web_player_audit.py 对账）。
 -->
 <style>
@@ -35,7 +35,7 @@
   var TXT_MOBILE = "请在小游戏内观看";
   var TXT_EXPIRED = "录像已过期";
   var TXT_NOT_FOUND = "未找到该对局的录像";
-  var TXT_OFFLINE = "网络连接失败";
+  var TXT_OFFLINE = "无法连接服务器。请检查网络连接后重试。";
   var TXT_LOADING = "正在载入录像";
   var MOBILE_RE = /(android|iphone|ipad|ipod|mobile|harmonyos|windows phone|iemobile|opera mini|blackberry|kindle|silk)/i;
   var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
