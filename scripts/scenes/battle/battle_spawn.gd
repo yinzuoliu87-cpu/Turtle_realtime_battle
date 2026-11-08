@@ -610,6 +610,8 @@ func _spawn_trainers() -> void:
 				_gsk = "hook"
 			u["_tr_active"] = "" if _gsk == "magic_stone" else battle._valid_active(_gsk)
 			u["_tr_passive"] = "magic_stone" if _gsk == "magic_stone" else ""
+		if str(u.get("_tr_active", "")) == "hunt_order":
+			u["_active_cd"] = battle._trainer_sys.HUNT_FIRST_SEC   # 猎龟令: 每个战场开打后第 10 秒第一次放(用户 11-08)
 	# ★★回填魔法石叠层(用户 2026-07-30"跨路保留")。
 	#   本函数【每路都被 _dl_build_lane_field 调一次】, 大师是全新字典 → 层数天然归零。
 	#   0.17.18 只删掉了 _dl_start_fight 里的显式清零, 根本不够 —— 真正的丢失点在这里。

@@ -32,6 +32,7 @@ const MS_MOTE_TEX := "res://assets/sprites/vfx/ms-mote.png"
 const MS_RING_TEX := "res://assets/sprites/vfx/ms-rune-ring.png"
 const MS_BURST_TEX := "res://assets/sprites/vfx/ms-resonance-burst.png"
 const FURY_RADIUS := 300.0       # 怒火药水: 落点生效半径(码)
+const HUNT_FIRST_SEC := 10.0     # 猎龟令: 每个战场开打后第 10 秒第一次放(用户 11-08「你规定第一次释放十秒吧」)
 const FURY_SEC := 5.0            # 怒火药水: buff 持续(秒)
 const FURY_HASTE := 1.3          # 怒火药水: 攻速 ×1.3 (+30%)
 const FURY_MOVE := 1.25          # 怒火药水: 移速 ×1.25 (+25%)
@@ -683,7 +684,7 @@ func _tick_glaciers(_delta: float) -> void:
 func _glacier_dramatize(from2d: Vector2, dir: Vector2) -> void:
 	if battle._world == null:
 		return
-	var zlen: float = 500.0
+	var zlen: float = battle.GLACIER_LEN   # 演出长度 = 判定长度(原来演出写死 500、判定是 2000, 两个数对不上)
 	var life: float = 6.0
 	var perp: Vector2 = Vector2(-dir.y, dir.x)             # 带的横向单位向量
 	var heavy: bool = battle._glacier_zones.size() <= 2    # 降级: 场上>2条冰川只铺地不长冰晶(护帧)
@@ -823,11 +824,102 @@ func _tick_trainer_ai(_delta: float) -> void:
 func _trainer_ai_step(u: Dictionary) -> void:
 	if float(u.get("_active_cd", 0.0)) > 0.0 or str(u.get("_tr_active", "")) == "":
 		return
-	## 钩锁朝射程内随机一个敌人(用户 11-08「不要再是最近的敌人，改为向随机敌人」); 其余主动技仍朝最近的敌人。
-	var tgt = battle._targeting._random_enemy_for_trainer(u) if str(u.get("_tr_active", "")) == "hook" \
-		else battle._targeting._nearest_enemy_for_trainer(u)
-	if tgt != null:
-		_cast_active(u, tgt["pos"] - u["pos"])
+	var aim = _ai_aim(u)
+	if aim != null:
+		_cast_active(u, aim)
+
+
+## 训龟大师每个主动技往哪放(用户 11-08 逐个定)。返回大师 → 目标 / 落点的向量; 没有可放的返回 null。
+func _ai_aim(u: Dictionary):
+	var at = null
+	match str(u.get("_tr_active", "")):
+		"hook":         ## 射程内随机一个敌人(「不要再是最近的敌人，改为向随机敌人」)
+			var t = battle._targeting._random_enemy_for_trainer(u)
+			if t != null: at = t["pos"]
+		"hunt_order":   ## 敌方这个战场造成伤害最高的单位
+			var t2 = _hunt_ai_target(u)
+			if t2 != null: at = t2["pos"]
+		"glacier":      ## 敌人最密的一团(冰川以它为中心铺 GLACIER_LEN)
+			if battle._targeting._nearest_enemy_for_trainer(u) != null:
+				at = battle._densest_enemy_point(u, battle.GLACIER_LEN * 0.5)
+		"fury_potion":  ## 友军最密的一团(落点 FURY_RADIUS 内的友军吃增益, #18)
+			at = _densest_ally_point(u)
+		_:
+			var t3 = battle._targeting._nearest_enemy_for_trainer(u)
+			if t3 != null: at = t3["pos"]
+	if at == null:
+		return null
+	return (at as Vector2) - (u["pos"] as Vector2)
+
+
+## 猎龟令选靶(用户 11-08「对敌方造成伤害最高的一个单位」): 射程内敌方这个战场 `_st_dealt` 最高的,
+##   不选召唤物与龟蛋; 谁都还没出手(全是 0)就退回最近的敌人。平手取单位表里靠前的(确定)。
+func _hunt_ai_target(u: Dictionary):
+	var best = null
+	var best_d: int = 0
+	for o in battle._targeting._trainer_targets(u):
+		if o.get("is_summon", false) or o.get("_isEgg", false):
+			continue
+		if DetMath.vlen((o["pos"] - u["pos"])) > battle.HUNT_RANGE:
+			continue
+		var d: int = int(o.get("_st_dealt", 0))
+		if d > best_d:
+			best_d = d
+			best = o
+	return best if best != null else battle._targeting._nearest_enemy_for_trainer(u)
+
+
+## 友军最密的一团: 以每个我方单位为圆心数 FURY_RADIUS 内的我方单位, 取最多的那个单位的位置(与 `_densest_enemy_point` 同一算法)。
+##   不含训龟大师与龟蛋。没有友军返回 null。
+func _densest_ally_point(u: Dictionary):
+	var side: String = str(u.get("side", ""))
+	var al: Array = []
+	for o in battle._units:
+		if o.get("alive", false) and not battle._is_untouchable(o) and not o.get("_isEgg", false) and str(o.get("side", "")) == side:
+			al.append(o)
+	if al.is_empty():
+		return null
+	var best: Vector2 = al[0]["pos"]
+	var best_n: int = -1
+	for a in al:
+		var n: int = 0
+		for o in al:
+			if DetMath.vlen((o["pos"] - a["pos"])) <= FURY_RADIUS:
+				n += 1
+		if n > best_n:
+			best_n = n
+			best = a["pos"]
+	return best
+
+
+## 冰川方向: 中心 GLACIER_LEN/2 内敌人站位的主轴(协方差), 让冰川顺着这团敌人铺;
+##   只有一个敌人(或叠在一起)时垂直于大师 → 中心, 横着挡在它前面。全程 DetMath(结果进裁判, 跨设备一致)。
+func _glacier_axis(trainer: Dictionary, center: Vector2) -> Vector2:
+	var r: float = battle.GLACIER_LEN * 0.5
+	var pts: Array = []
+	for e in battle._targeting._pick_enemies_of(trainer):
+		if e.get("alive", false) and DetMath.vlen((e["pos"] - center)) <= r:
+			pts.append(e["pos"])
+	var to_c: Vector2 = center - (trainer["pos"] as Vector2)
+	var fallback: Vector2 = DetMath.norm(Vector2(-to_c.y, to_c.x)) if DetMath.vlen(to_c) > 1.0 else Vector2.UP
+	if pts.size() < 2:
+		return fallback
+	var m: Vector2 = Vector2.ZERO
+	for p in pts:
+		m += p
+	m /= float(pts.size())
+	var cxx: float = 0.0
+	var cyy: float = 0.0
+	var cxy: float = 0.0
+	for p in pts:
+		var d: Vector2 = (p as Vector2) - m
+		cxx += d.x * d.x
+		cyy += d.y * d.y
+		cxy += d.x * d.y
+	if cxx + cyy < 1.0:
+		return fallback
+	var ang: float = 0.5 * DetMath.datan2(2.0 * cxy, cxx - cyy)
+	return Vector2(DetMath.dcos(ang), DetMath.dsin(ang))
 
 ## (已删 _hook_dramatize —— 钩锁 2026-07-30 改真 skillshot 后它就是死代码:
 ##  飞行/命中演出全在 _cast_hook + _tick_hook_flights 里(钩头节点逐帧更新位置, 不用 tween)。
@@ -1145,7 +1237,7 @@ func _cast_hunt_order(trainer: Dictionary, aim: Vector2) -> bool:
 	return true
 
 
-## 每帧: 刷新【所有被猎龟令标记者】周围 400 码内我方友军的嘲讽。
+## 每帧: 刷新【所有被猎龟令标记者】对下令方【全体】友军的嘲讽(用户 11-08「使得所有友军单位都去攻击他」, 原来只管 400 码内)。
 ## ★在 battle 的 sim tick 里调。标记过期自动停(不用额外清理)。
 func _tick_hunt_taunt(_delta: float) -> void:
 	for m in battle._units:
@@ -1162,8 +1254,6 @@ func _tick_hunt_taunt(_delta: float) -> void:
 			if not battle._is_ally(o, by):        # 只嘲讽【下令方】的友军
 				continue
 			if not battle._is_hostile(o, m):      # 已经归顺我方的不该被嘲讽去打自己人
-				continue
-			if DetMath.dist(o["pos"], m["pos"]) > battle.HUNT_TAUNT_R:
 				continue
 			# 只刷到"下一帧" —— 出圈立刻失效, 不留尾巴
 			o["taunt_until"] = battle._t + 0.2

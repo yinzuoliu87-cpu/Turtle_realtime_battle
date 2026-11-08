@@ -34,6 +34,7 @@ func _ready() -> void:
 	_test_fury_potion(scene)
 	_test_whistle(scene)
 	_test_glacier(scene)
+	_test_ai_aims(scene)
 	_test_source(scene)
 
 	scene.queue_free()
@@ -188,11 +189,11 @@ func _test_glacier(scene) -> void:
 	if trainer == null or e_on == null or e_off == null:
 		return
 	scene._glacier_zones.clear()
-	e_on["pos"] = trainer["pos"] + Vector2(200.0, 0.0)    # 大师正东200 → 冰川带上
-	e_off["pos"] = trainer["pos"] + Vector2(200.0, 300.0) # 偏离带(带宽90/2=45)
+	e_on["pos"] = trainer["pos"] + Vector2(200.0, 0.0)    # 冰川中心(11-08 起 aim 指向中心)
+	e_off["pos"] = trainer["pos"] + Vector2(200.0, 700.0) # 离中心 700 > 半长 300 ⇒ 不在冰面上
 	e_on["slow_until"] = 0.0; e_on["glacier_vuln_until"] = 0.0; e_off["glacier_vuln_until"] = 0.0
 	trainer["_active_cd"] = 0.0
-	var ok: bool = scene._cast_glacier(trainer, Vector2(1.0, 0.0))
+	var ok: bool = scene._cast_glacier(trainer, e_on["pos"] - trainer["pos"])
 	_ok("★冰川·施放建带 + CD17", ok and scene._glacier_zones.size() >= 1 and abs(float(trainer.get("_active_cd", 0.0)) - 17.0) < 0.1)
 	# ★冰川带【真的铺出专属冰川美术】: _glacier_dramatize(R6 重做·不复用)铺 glacier-ground 冰河 + 立 glacier-crystals 冰脊 → _world 有该 Sprite3D
 	_ok("★冰川·铺出专属冰川美术(_world 有 glacier 冰脊/冰河 Sprite3D)", _world_has_sprite(scene, "glacier-crystals.png") or _world_has_sprite(scene, "glacier-ground.png"))
@@ -236,3 +237,79 @@ func _test_source(scene) -> void:
 	_ok("★攻速叠层【跨路保留】: 重建大师处有回填 _ms_restore_stacks",
 		FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_spawn.gd")
 			.contains("battle._trainer_sys._ms_restore_stacks(u)"))
+
+
+## 冰面判定(与 trainer_system._tick_glaciers 同一套几何)
+func _on_glacier(z: Dictionary, p: Vector2) -> bool:
+	var rel: Vector2 = p - (z["from"] as Vector2)
+	var along: float = DetMath.dot(rel, z["dir"])
+	if along < 0.0 or along > float(z["len"]):
+		return false
+	return DetMath.vlen(rel - (z["dir"] as Vector2) * along) <= float(z["width"]) * 0.5
+
+
+## 用户 11-08 训龟大师放法: 冰川铺在敌人最密的一团、长 600、顺着站位; 药水扔友军最密的一团(#18)。走真入口 _ai_aim → _cast_*。
+func _test_ai_aims(scene) -> void:
+	var trainer = null
+	var foes: Array = []
+	var allies: Array = []
+	for u in scene._units:
+		if not u.get("alive", false) or u.get("_isEgg", false):
+			continue
+		if u.get("is_trainer", false):
+			if str(u.get("side", "")) == "left": trainer = u
+			continue
+		if str(u.get("side", "")) == "right": foes.append(u)
+		else: allies.append(u)
+	_ok("放法·分母: 大师 + ≥4 敌 + ≥3 友", trainer != null and foes.size() >= 4 and allies.size() >= 3, "敌 %d 友 %d" % [foes.size(), allies.size()])
+	if trainer == null or foes.size() < 4 or allies.size() < 3:
+		return
+	var base: Vector2 = trainer["pos"]
+	var keep: Array = []
+	for u in foes + allies:
+		keep.append(u["pos"])
+	var prev_act = trainer.get("_tr_active", "")
+	## 冰川: 一个落单的离大师近, 三个排成一横排离得远 ⇒ 最密的是那一排
+	foes[0]["pos"] = base + Vector2(150.0, 0.0)
+	foes[1]["pos"] = base + Vector2(900.0, 200.0)
+	foes[2]["pos"] = base + Vector2(1080.0, 200.0)
+	foes[3]["pos"] = base + Vector2(1260.0, 200.0)
+	for k in range(4, foes.size()):
+		foes[k]["pos"] = base + Vector2(0.0, 4000.0 + 400.0 * k)
+	for k in range(allies.size()):
+		allies[k]["pos"] = base + Vector2(-3000.0 - 400.0 * k, -3000.0)
+	trainer["_tr_active"] = "glacier"
+	trainer["_active_cd"] = 0.0
+	scene._glacier_zones.clear()
+	var aim = scene._trainer_sys._ai_aim(trainer)
+	_ok("★冰川·有落点", aim != null)
+	if aim != null:
+		_ok("★冰川·落点在三个敌人那一团(不是最近那个)", DetMath.dist(base + (aim as Vector2), base + Vector2(1080.0, 200.0)) <= 200.0, str(aim))
+		scene._cast_glacier(trainer, aim)
+		var z: Dictionary = scene._glacier_zones.back()
+		_ok("★冰川·长 600 码(用户 11-08)", absf(float(z["len"]) - 600.0) < 0.01, str(z["len"]))
+		var on_n := 0
+		for k in [1, 2, 3]:
+			if _on_glacier(z, foes[k]["pos"]): on_n += 1
+		_ok("★冰川·顺着那一排铺, 三个都在冰面上", on_n == 3, "%d/3 方向 %s" % [on_n, str(z["dir"])])
+		_ok("★冰川·落单那个不在冰面上", not _on_glacier(z, foes[0]["pos"]))
+	## 药水: 一个友军落单靠近敌人, 其余挤在一起 ⇒ 扔向挤在一起那团
+	for k in range(allies.size()):
+		allies[k]["pos"] = base + Vector2(-600.0 + 80.0 * float(k), -400.0)
+	allies[0]["pos"] = foes[0]["pos"] + Vector2(30.0, 0.0)
+	trainer["_tr_active"] = "fury_potion"
+	trainer["_active_cd"] = 0.0
+	var aimf = scene._trainer_sys._ai_aim(trainer)
+	_ok("★药水·有落点", aimf != null)
+	if aimf != null:
+		var pt: Vector2 = base + (aimf as Vector2)
+		_ok("★药水·落点在友军那一团(不是敌人堆, #18)", pt.y < base.y - 300.0 and DetMath.dist(pt, foes[0]["pos"]) > 600.0, str(aimf))
+		for a in allies:
+			a["haste_until"] = 0.0
+		var n: int = scene._trainer_sys._fury_apply_buffs(trainer, pt)
+		_ok("★药水·挤在一起的友军都吃到(%d / %d)" % [n, allies.size() - 1], n >= allies.size() - 1)
+	trainer["_tr_active"] = prev_act
+	var i := 0
+	for u in foes + allies:
+		u["pos"] = keep[i]; i += 1
+	scene._glacier_zones.clear()

@@ -16,10 +16,10 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 # ── 需求字面值 ──
-const WANT_HUNT_CD := 30.0
+const WANT_HUNT_CD := 40.0         # 用户 11-08: 30 → 40
+const WANT_HUNT_FIRST := 10.0      # 用户 11-08:「你规定第一次释放十秒吧」
 const WANT_HUNT_RANGE := 2000.0   # ★U2/D1(用户 2026-09-16「射程全部提升到 2000」): 原需求字面 600
 const WANT_HUNT_SEC := 15.0
-const WANT_HUNT_TAUNT_R := 400.0
 const WANT_HUNT_VULN := 1.15        # 受到 15% 额外伤害
 const WANT_TAME_CD := 999.0       # 用户 11-08: 60 → 999
 const WANT_TAME_CD_MISS := 30.0   # 用户 11-08:「未命中还是三十秒」(与冷却脱钩)
@@ -112,17 +112,16 @@ func _ready() -> void:
 	if ally.is_empty():
 		print("  [FAIL] ★分母: 场上没有我方非大师单位"); _fail += 1
 	else:
-		ally["pos"] = foe["pos"] + Vector2(200.0, 0.0)     # 圈内(200 < 400)
+		ally["pos"] = foe["pos"] + Vector2(200.0, 0.0)     # 近处
 		s._trainer_sys._tick_hunt_taunt(0.016)
 		var in_r: bool = s._t < float(ally.get("taunt_until", 0.0)) and is_same(ally.get("taunt_by", null), foe)
-		ally["pos"] = foe["pos"] + Vector2(900.0, 0.0)     # 圈外(900 > 400)
+		ally["pos"] = foe["pos"] + Vector2(1500.0, 0.0)    # 远处(原来 400 码圈外, 11-08 起也要去打)
 		ally["taunt_until"] = 0.0; ally["taunt_by"] = null
 		s._trainer_sys._tick_hunt_taunt(0.016)
 		var out_r: bool = s._t < float(ally.get("taunt_until", 0.0))
 		print("")
-		print("  ④ 友军距目标 200 码(圈内 %.0f) → 被嘲讽=%s" % [WANT_HUNT_TAUNT_R, str(in_r)])
-		print("     友军距目标 900 码(圈外)      → 被嘲讽=%s (应为 false)" % str(out_r))
-		_chk("④ 嘲讽只对 %.0f 码内我方友军生效(圈随目标移动)" % WANT_HUNT_TAUNT_R, in_r and not out_r)
+		print("  ④ 友军距目标 200 码 → 被嘲讽=%s; 1500 码 → 被嘲讽=%s (11-08 起都应为 true)" % [str(in_r), str(out_r)])
+		_chk("④ 嘲讽全体友军, 不论远近(用户 11-08「使得所有友军单位都去攻击他」)", in_r and out_r)
 
 	# ── ⑤ 驯服: 死亡 → 30% 重生 + 归顺 ──
 	var f2 = _foe(s)
@@ -228,6 +227,7 @@ func _ready() -> void:
 
 	await _sigil_geometry(s)
 	await _tame_into_final(s)
+	_hunt_ai_checks(s, tr)
 	_done(s)
 
 
@@ -433,3 +433,68 @@ func _done(s) -> void:
 	print("")
 	print("ALL PASS — 猎龟令 / 驯服" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ⑪ 用户 11-08 猎龟令放法: 选敌方造成伤害最高的(不是最近), 不选召唤物; 训龟大师出场冷却 = 10 秒(真出场入口)。
+func _hunt_ai_checks(s, tr: Dictionary) -> void:
+	print("")
+	print("  ⑪ 猎龟令放法(用户 11-08):")
+	## 前面的驯服 / 掉血环节会把场上敌人打死或驯服 ⇒ 现场造两个干净的敌人, 其余敌人这一段先移出(结束放回)。
+	var parked: Array = []
+	for u in s._units:
+		if u.get("alive", false) and not u.get("is_trainer", false) and str(u.get("side", "")) == "right":
+			parked.append(u)
+			u["alive"] = false
+	var foes: Array = [s._spawn._make_unit("basic", "right", tr["pos"] + Vector2(150.0, 0.0), {}),
+		s._spawn._make_unit("stone", "right", tr["pos"] + Vector2(1200.0, 300.0), {})]
+	for f in foes:
+		s._units.append(f)
+	var keep_pos: Array = []
+	var keep_dealt: Array = []
+	for f in foes:
+		keep_pos.append(f["pos"]); keep_dealt.append(f.get("_st_dealt", 0))
+		f["_st_dealt"] = 0
+	foes[0]["pos"] = tr["pos"] + Vector2(150.0, 0.0)      # 最近, 打得少
+	foes[0]["_st_dealt"] = 100
+	foes[1]["pos"] = tr["pos"] + Vector2(1200.0, 300.0)   # 远, 打得多
+	foes[1]["_st_dealt"] = 900
+	var pick = s._trainer_sys._hunt_ai_target(tr)
+	_chk("⑪ 选造成伤害最高的(900), 不是最近的(100)", is_same(pick, foes[1]))
+	foes[1]["is_summon"] = true
+	var pick2 = s._trainer_sys._hunt_ai_target(tr)
+	foes[1].erase("is_summon")
+	_chk("⑪ 召唤物伤害再高也不选", is_same(pick2, foes[0]))
+	for f in foes:
+		f["_st_dealt"] = 0
+	var pick3 = s._trainer_sys._hunt_ai_target(tr)
+	_chk("⑪ 都还没出手 ⇒ 退回最近的敌人", is_same(pick3, foes[0]))
+	## 移除用 is_same 按身份找 —— 单位字典不能拿 == / erase 比(互相引用会递归, CLAUDE.md §4.2)
+	for f in foes:
+		for i in range(s._units.size() - 1, -1, -1):
+			if is_same(s._units[i], f):
+				s._units.remove_at(i)
+	for u in parked:
+		u["alive"] = true
+	## 真出场: 左方大师装配猎龟令 ⇒ 出场冷却 = 第一次放的时刻
+	## `_spawn_trainers` 见到场上已有大师就直接返回 ⇒ 先把现有两个大师移出, 出场后检查, 再换回原样。
+	var prev_sk = GameState.trainer_skill
+	GameState.trainer_skill = "hunt_order"
+	var old_tr: Array = []
+	for i in range(s._units.size() - 1, -1, -1):
+		if s._units[i].get("is_trainer", false):
+			old_tr.append(s._units[i])
+			s._units.remove_at(i)
+	s._spawn._spawn_trainers()
+	var fresh = null
+	for i in range(s._units.size() - 1, -1, -1):
+		var u: Dictionary = s._units[i]
+		if u.get("is_trainer", false):
+			if str(u.get("side", "")) == "left":
+				fresh = u
+			s._units.remove_at(i)
+	for u in old_tr:
+		s._units.append(u)
+	GameState.trainer_skill = prev_sk
+	print("     新出场的左方大师: 主动=%s 冷却=%.1f (需求 %.0f)" % [str(fresh.get("_tr_active", "")) if fresh != null else "无", float(fresh.get("_active_cd", -1.0)) if fresh != null else -1.0, WANT_HUNT_FIRST])
+	_chk("⑪ 装配猎龟令的大师出场冷却 = %.0f 秒(开打后第 %.0f 秒第一次放)" % [WANT_HUNT_FIRST, WANT_HUNT_FIRST],
+		fresh != null and str(fresh.get("_tr_active", "")) == "hunt_order" and absf(float(fresh.get("_active_cd", -1.0)) - WANT_HUNT_FIRST) < 0.01)

@@ -350,7 +350,7 @@ const HOOK_TUG_DUR := 0.2        # 每一下"拽"的快速位移时长(0.2s猛�
 const HOOK_HIT_R := 70.0         # ★钩头【飞行中】的碰撞半径(码) —— 真 skillshot 靠这个每帧判, 不再出手就锁定
 const HOOK_TUG_DIST := 70.0      # 每一下拽把目标朝大师拽近的距离(码·4下×70=280码)
 const WHISTLE_SHRED_MULT := 0.7   # 口哨②灵体气波削甲: 护甲 ×0.7 (-30%)
-const GLACIER_LEN := 2000.0      # 冰川长度(码) = 射程·U2/D1 原 500 → 2000
+const GLACIER_LEN := 600.0       # 冰川长度(码)·用户 11-08「六百码」, 以敌人最密处为中心铺开(原 2000 = 从大师脚下铺满)
 const GLACIER_WIDTH := 90.0      # 冰川判定带宽(码·文案没写这一项)
 const GLACIER_SEC := 6.0         # 冰川持续(秒)
 const GLACIER_VULN_MULT := 1.2   # 站冰川上受到伤害 ×1.2  ★同上: 原来也是硬编码在 _mitigate_incoming, 连常量都没有
@@ -362,11 +362,11 @@ const TRAINER_SKILLS := {
 	"hook":        {"name": "钩锁",   "icon": "res://assets/sprites/vfx/hook-skill-icon.png",   "cd": 30.0, "range": 2000.0, "aim": "dir"},
 	"fury_potion": {"name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png",  "cd": 16.0, "range": 2000.0, "aim": "point"},
 	"whistle":     {"name": "口哨",   "icon": "res://assets/sprites/vfx/whistle-icon.png",      "cd": 14.0, "range": 0.0,   "aim": "none"},
-	"glacier":     {"name": "冰川",   "icon": "res://assets/sprites/vfx/glacier-icon.png",      "cd": 17.0, "range": 2000.0, "aim": "dir"},
+	"glacier":     {"name": "冰川",   "icon": "res://assets/sprites/vfx/glacier-icon.png",      "cd": 17.0, "range": 2000.0, "aim": "point"},
 	# ★aim:"target" 是【新增的第四种瞄准模式】(原来只有 dir 方向 / point 落点 / none 无需瞄准)。
 	#   用户 2026-07-28:「这个不是直线发射吧，而是像 lol 安妮的 Q 一样弹道锁头」——
 	#   即指定一个【敌方单位】, 弹道自动跟到它身上, 不会因为它走开而落空。
-	"hunt_order":  {"name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png",   "cd": 30.0, "range": 2000.0, "aim": "target"},
+	"hunt_order":  {"name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png",   "cd": 40.0, "range": 2000.0, "aim": "target"},
 	"tame":        {"name": "驯服",   "icon": "res://assets/sprites/vfx/tame-icon.png",         "cd": 999.0, "range": 2000.0, "aim": "target"},
 }
 
@@ -380,7 +380,6 @@ const TRAINER_SKILLS := {
 const HUNT_CD: float = TRAINER_SKILLS["hunt_order"]["cd"]
 const HUNT_RANGE: float = TRAINER_SKILLS["hunt_order"]["range"]
 const HUNT_SEC := 15.0            # 标记持续
-const HUNT_TAUNT_R := 400.0       # 以【目标】为圆心的嘲讽半径(圈随目标移动)
 const HUNT_VULN := 1.15           # 被标记者受伤 ×1.15
 const HUNT_MISSILE_SPD := 1400.0  # 锁头弹道飞行速度(码/秒)
 
@@ -1685,12 +1684,14 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["glacier"]["cd"])
-	var dir: Vector2 = DetMath.norm(aim) if DetMath.vlen(aim) > 0.01 else Vector2.RIGHT
+	var center: Vector2 = trainer["pos"] + DetMath.limit_len(aim, float(TRAINER_SKILLS["glacier"]["range"]))   # aim 指向冰川中心(用户 11-08: 敌人最密处)
+	var dir: Vector2 = _trainer_sys._glacier_axis(trainer, center)
+	var gfrom: Vector2 = center - dir * (GLACIER_LEN * 0.5)
 	_glacier_zones.append({
-		"from": trainer["pos"], "dir": dir, "len": GLACIER_LEN, "width": GLACIER_WIDTH,
+		"from": gfrom, "dir": dir, "len": GLACIER_LEN, "width": GLACIER_WIDTH,
 		"until": _t + GLACIER_SEC, "side": str(trainer.get("side", "")),
 	})
-	_trainer_sys._glacier_dramatize(trainer["pos"], dir)
+	_trainer_sys._glacier_dramatize(gfrom, dir)
 	return true
 
 
@@ -2188,7 +2189,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_relic_syn.tick(dt)   # 遗物: 远古之力累积(每 2.5 秒) + 觉醒判定
 		_tentacle_vfx.tick(dt)  # 触手拍击: 每帧重算网格(甩动)
 		_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
-		_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新目标周围 400 码我方友军的嘲讽(圈随目标移动)
+		_trainer_sys._tick_hunt_taunt(dt)      # 猎龟令: 每帧刷新被标记者对下令方【全体】友军的嘲讽(用户 11-08)
 		_trainer_sys._tick_tame_decay(dt)      # 驯服: 归顺者每秒损失 TAME_DECAY_PCT 最大生命
 		_trainer_sys._tick_trainer_ai(dt)      # 敌方(快照)大师 AI: 乱走 + 逮机会甩钩锁(点3·场外援助·用户2026-07-23)
 		_trainer_sys._ms_tick_aura(dt)         # 魔法石: 按叠层阈值(10/25/50)建撤大师本体特效 + 推进绕转

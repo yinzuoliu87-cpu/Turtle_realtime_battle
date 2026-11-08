@@ -168,7 +168,8 @@ func _ready() -> void:
 			"eqL": t_sword + t_spirit + t_misc, "eqR": t_staff + t_gadget + ["p2eq_004"]},
 		{"tag": "S2 食物+盾 vs 药水+弓箭", "L": g1, "R": g3, "tr_l": "glacier", "tr_r": "hunt_order", "ms_l": true,
 			"eqL": t_food + t_shield + ["p2eq_024", "p2eq_044", "p2eq_053"], "eqR": t_potion + t_bow + ["p2eq_058", "p2eq_091", "p2eq_092"]},
-		{"tag": "S3 枪+遗物(时停) vs 剑+盾", "L": g2, "R": g0, "tr_l": "whistle", "tr_r": "fury_potion", "ms_l": false,
+		{"tag": "S3 枪+遗物(时停) vs 剑+盾", "L": g2, "R": g0, "tr_l": "fury_potion", "tr_r": "whistle", "ms_l": false,
+			## ★2026-11-08 两边技能对调: 怒火药水改成扔给友军最密处(#18)后真正加到了己方 ⇒ 原来放右边时右方一边倒, 左方全灭、带沙漏的凤凰活不到第 10 秒 ⇒ 时停一次没放(调试输出实测)
 			## 084 手半剑会把【近战】携带者的技能整个换成十字斩 —— S1 里它落在竹叶龟身上, 这里倒过来发, 免得竹叶龟两次都被换掉
 			## 059 时停排到第 7 只(凤凰龟, 带涅槃)身上: 第一版落在闪电龟身上, 它活不到第 10 秒 ⇒ 时停一次没放, 那一族整段空跑
 			"eqL": t_gun + ["p2eq_004", "p2eq_024", "p2eq_044", "p2eq_053", "p2eq_058", "p2eq_091", "p2eq_059", "p2eq_092", "p2eq_094"]

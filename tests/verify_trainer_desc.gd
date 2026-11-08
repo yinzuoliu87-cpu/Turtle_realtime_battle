@@ -109,7 +109,9 @@ func _ready() -> void:
 			["不写射程", "!%d码" % int(K["HUNT_RANGE"])],
 			["持续", "%d秒" % int(K["HUNT_SEC"])],
 			["受伤加成", "受到的伤害提高%d%%" % int(round((K["HUNT_VULN"] - 1.0) * 100.0))],
-			["不写半径", "!%d码" % int(K["HUNT_TAUNT_R"])],
+			["全体友军(11-08 去掉范围)", "全体友军"],
+			["第一次放的时刻", "%d秒后" % int(TK["HUNT_FIRST_SEC"])],
+			["选伤害最高的", "伤害最高"],
 			["冷却", "冷却%d秒" % int(K["HUNT_CD"])],
 		],
 		"tame": [

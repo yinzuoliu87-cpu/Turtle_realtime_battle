@@ -217,7 +217,7 @@ func _ready() -> void:
 	_ok("★大师 AI 放主动已接线(_cast_active分派·U2 敌我同规则)", src.contains("_tick_trainer_ai") and src.contains("_cast_active(u,"))
 	_ok("★装配分派入口 _cast_active 存在", src.contains("func _cast_active") and src.contains('"fury_potion":') and src.contains('"glacier":'))
 	_ok("★钩锁受伤放大已从 _mitigate_incoming 拿掉(用户 11-08)", not src.contains("hook_vuln_until"))
-	_ok("★AI 放钩锁走随机索敌(用户 11-08), 其余主动仍走最近", src.contains('_random_enemy_for_trainer(u) if str(u.get("_tr_active", "")) == "hook"'))
+	_ok("★AI 放钩锁走随机索敌(用户 11-08), 其余主动仍走最近", src.contains('"hook":         ## 射程内随机一个敌人') and src.contains("var t = battle._targeting._random_enemy_for_trainer(u)"))
 
 	b.free()
 	print("ALL PASS — 钩锁核心机制(射程/眩晕/拖拽/受伤/CD/接线)" if _fail == 0 else "FAILED: %d" % _fail)

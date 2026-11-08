@@ -665,6 +665,9 @@ func dive_steal_once(u: Dictionary, st: Dictionary) -> String:
 
 ## 自动瞄准向量(相对携带者的偏移), 按 `TRAINER_SKILLS[sid].aim` 分三种。
 func _dive_aim_for(u: Dictionary, sid: String) -> Vector2:
+	if sid == "fury_potion":   # 药水给友军上增益 ⇒ 扔友军最密处(与训龟大师同一个选点, #18)
+		var ap = battle._trainer_sys._densest_ally_point(u)
+		return ((ap as Vector2) - (u["pos"] as Vector2)) if ap != null else Vector2.ZERO
 	var mode: String = str(battle.TRAINER_SKILLS.get(sid, {}).get("aim", "none"))
 	match mode:
 		"target":
