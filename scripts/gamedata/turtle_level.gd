@@ -134,18 +134,6 @@ static func table_side_of(u: Dictionary) -> String:
 	return str(cur.get("lv_side", ""))
 
 
-## 龟蛋按几级算：这一方按龟等级 ⇒ 三只统领的平均（四舍五入，整数算法：(2 × 和 + 只数) / (2 × 只数)）；没有 lv 表 ⇒ fallback。
-static func egg_level(table: Dictionary, leaders: Array, fallback: int) -> int:
-	if table.is_empty() or leaders.is_empty():
-		return fallback
-	var s := 0
-	for p in leaders:
-		s += level_in(table, str(p))
-	var n := leaders.size()
-	return clampi((2 * s + n) / (2 * n), 1, MAX)
-
-
-## 快照用：这几只统领各自的等级（mine = 本机的 lv 表；表空 ⇒ {}，快照不带 lv = 旧口径）。
 static func snapshot_table(leaders: Array, mine: Dictionary) -> Dictionary:
 	if mine.is_empty():
 		return {}

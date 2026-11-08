@@ -241,9 +241,10 @@ func _ready() -> void:
 	_ok("★② 小将等级不动(左 %d / 右 %d = 赛季等级)、生命与整队那遍逐位相同" % [LEFT_LV, RIGHT_LV],
 		int(perm["Lm"][0][0]) == LEFT_LV and int(perm["Rm"][0][0]) == RIGHT_LV
 		and var_to_bytes(perm["Lm"]) == var_to_bytes(refm["Lm"]) and var_to_bytes(perm["Rm"]) == var_to_bytes(refm["Rm"]))
-	_ok("★★② 龟蛋满血按三只平均: 左 (1+2+9)/3 = 4、右 (2+7+10)/3 ⇒ 6(不是 5 / 3)",
-		is_equal_approx(float(per["egg"]["left"]), DLF.egg_max_for(4)) and is_equal_approx(float(per["egg"]["right"]), DLF.egg_max_for(6))
-		and is_equal_approx(float(per["egg_hp"]["left"]), DLF.egg_max_for(4)) and is_equal_approx(float(per["egg_hp"]["right"]), DLF.egg_max_for(6)),
+	## 用户 2026-11-08「尾端血量按赛季等级」⇒ 龟蛋按这一方的赛季等级, 不是三只统领龟等级的平均(那样会是 4 / 6)
+	_ok("★★② 龟蛋满血按赛季等级: 左 %d、右 %d(不是三只平均 4 / 6)" % [LEFT_LV, RIGHT_LV],
+		is_equal_approx(float(per["egg"]["left"]), DLF.egg_max_for(LEFT_LV)) and is_equal_approx(float(per["egg"]["right"]), DLF.egg_max_for(RIGHT_LV))
+		and is_equal_approx(float(per["egg_hp"]["left"]), DLF.egg_max_for(LEFT_LV)) and is_equal_approx(float(per["egg_hp"]["right"]), DLF.egg_max_for(RIGHT_LV)),
 		"%.0f / %.0f" % [float(per["egg"]["left"]), float(per["egg"]["right"])])
 	_ok("★② _unit_level: 左 stone = 2、左整队 = %d、右第三只 = 10、右整队 = %d" % [LEFT_LV, RIGHT_LV],
 		per["ul"] == {"L_stone": 2, "L_team": LEFT_LV, "R_last": 10, "R_team": RIGHT_LV}, str(per["ul"]))

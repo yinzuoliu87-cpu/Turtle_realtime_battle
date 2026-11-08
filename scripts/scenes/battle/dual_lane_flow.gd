@@ -572,9 +572,9 @@ func _dl_build_lane_field() -> void:
 	battle._spawn._spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
 	battle._spawn._spawn_lane_side(foe, "right", flvl, Vector2(_cx + 420.0, _cy))
 	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按**各自**等级初始化); hp_max=原始满血→血条显跨路累积伤害.
-	## ★按龟等级(R1, 2026-11-09): 这一方带 lv 表 ⇒ 蛋按三只统领龟等级的平均; 没有(旧快照) ⇒ 整队等级, 逐位同改之前。
-	var elvl: int = _dl_egg_level("left", lvl)
-	var eflvl: int = _dl_egg_level("right", flvl)
+	## ★龟蛋按这一方的赛季等级(用户 2026-11-08「尾端血量按赛季等级」; 不按三只统领各自龟等级的平均, 与方案书 20261107b §4.3 一致)。
+	var elvl: int = lvl
+	var eflvl: int = flvl
 	_dl_ensure_egg_hp(elvl, eflvl)
 	battle._units.append(battle._spawn._make_unit("__egg__", "left", Vector2(battle.ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max_for(elvl)}))
 	battle._units.append(battle._spawn._make_unit("__egg__", "right", Vector2(battle.ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max_for(eflvl)}))
@@ -696,19 +696,6 @@ func _dl_ensure_egg_hp(lvl: int, flvl: int) -> void:
 	for s in ["left", "right"]:
 		if float(GameState.egg_hp.get(s, 0.0)) <= 0.0:
 			GameState.egg_hp[s] = egg_max_for(lvl if s == "left" else flvl)
-
-
-## 龟蛋按几级算(按龟等级 R1, 方案书 20261105c §4.2「龟蛋血量按三只平均」): 这一方带 lv 表 ⇒ 三只统领龟等级的平均
-##   (左 = GameState.season_leaders, 右 = 对手快照 leaders); 没有 lv 表 ⇒ base(整队等级, 老口径)。
-func _dl_egg_level(side_lr: String, base: int) -> int:
-	if GameState == null:
-		return base
-	var ldr: Array = []
-	if side_lr == "left":
-		ldr = (GameState.season_leaders as Array).slice(0, 3) if GameState.season_leaders is Array else []
-	elif GameState.dual_ghost is Dictionary and (GameState.dual_ghost as Dictionary).get("leaders") is Array:
-		ldr = ((GameState.dual_ghost as Dictionary)["leaders"] as Array).slice(0, 3)
-	return TurtleLevel.egg_level(TurtleLevel.side_table(GameState, side_lr, true), ldr, base)
 
 
 ## 蛋原始满血(用户2026-07-19: 2000+100/级 → 3000+300/级) = maxHp 基准。
