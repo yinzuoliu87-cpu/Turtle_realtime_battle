@@ -55,15 +55,22 @@ var _btn: Button = null
 var _sig := ""
 
 
-## 纯函数: 这一刻这一行长什么样。`linked` 取 `MainsiteLink.linked_state()`(1 / 0 / -1 不知道)。
+## 纯函数: 这一刻这一行长什么样。`linked` 取 `MainsiteLink.linked_state()`(1 / 0 / -1 不知道);
+##   `lost` 取 `MainsiteLink.lost_mode()`(0 没失效 / 1 失效、可用龟投账号重新登录 / 2 失效、不是龟投的号)。
 ## 返回 {state, col, btn("" = 没有按钮), btn_on, act("bind" / "cancel" / "")}。
-static func view_of(st: String, linked: int, why: String, me_busy: bool) -> Dictionary:
+## ★登录已失效(主会话 11-08): 龟投的号照样给「绑定」—— 点了先建临时匿名会话再发起登录(`MainsiteLink.start_link`);
+##   状态行用现成的「登录已失效」, 不加新字。不是龟投的号不给按钮(走账号框里的「邮箱登录」)。
+static func view_of(st: String, linked: int, why: String, me_busy: bool, lost: int = 0) -> Dictionary:
 	match st:
 		ML.ST_STARTING:
 			return {"state": S_CONNECTING, "col": C_WAIT, "btn": L_BIND, "btn_on": false, "act": ""}
 		ML.ST_PENDING, ML.ST_SWITCH_ASK:
 			return {"state": S_WAIT, "col": C_WAIT, "btn": L_CANCEL, "btn_on": st == ML.ST_PENDING, "act": "cancel"}
-	if linked == 1:
+	if lost == 1 and not (st == ML.ST_EXPIRED or st == ML.ST_CANCELLED or st == ML.ST_ERROR):
+		return {"state": S_ERR[ML.R_AUTH], "col": C_ERR, "btn": L_BIND, "btn_on": true, "act": "bind"}
+	if lost == 2:
+		return {"state": S_ERR[ML.R_AUTH], "col": C_ERR, "btn": "", "btn_on": false, "act": ""}
+	if linked == 1 and lost == 0:
 		return {"state": S_BOUND, "col": C_BOUND, "btn": "", "btn_on": false, "act": ""}
 	match st:
 		ML.ST_EXPIRED:
@@ -143,7 +150,7 @@ func _refresh() -> void:
 	if _state == null:
 		return
 	var st := ML.state()
-	var v := view_of(st, ML.linked_state(), ML.reason(), ML.me_inflight())
+	var v := view_of(st, ML.linked_state(), ML.reason(), ML.me_inflight(), ML.lost_mode())
 	var sig := "%s|%s|%s|%s" % [v["state"], v["col"], v["btn"], v["btn_on"]]
 	if sig != _sig:
 		_sig = sig

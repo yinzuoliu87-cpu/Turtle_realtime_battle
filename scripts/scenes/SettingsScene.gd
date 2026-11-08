@@ -223,7 +223,8 @@ func _account_panel(x: float, w: float) -> void:
 		status = "登录已失效，请重新登录"
 		status_col = "#ff8a94"
 		note = ("邮箱 %s" % mail) if mail != "" else ""
-		primary = "BtnRecover"
+		## 只有内部邮箱(龟投的号)时「邮箱登录」用不上 —— 那种号用下面龟投那一行的「绑定」重新登录, 不染主操作。
+		primary = "BtnRecover" if mail != "" else ""
 	elif _SB_ACC.save_conflict():
 		## D-8: 两台设备交替玩 ⇒ 云端版本和这台对不上。**不自动选**, 等玩家二选一。
 		status = "云端存档与本地存档不一致"

@@ -30,10 +30,11 @@ const GW := "https://gw.test"
 const ACC1 := "a1b2c3d4-1111-4222-8333-444455556666"
 const ACC2 := "b2c3d4e5-2222-4333-8444-555566667777"
 const ACC3 := "c3d4e5f6-3333-4444-8555-666677778888"
+const ACC_T := "d4e5f6a7-4444-4555-8666-777788889999"   # 登录已失效时临时建的匿名号
 const CODE1 := "Lk7_zQ-9aB"
 const URL1 := "https://www.example.test/game/link?code=Lk7_zQ-9aB"
 const BANNED := ["主站", "龟币", "金额"]
-const NEED := 85    # 分母: 断言条数一条不能少(少了 = 半路中止)
+const NEED := 102    # 分母: 断言条数一条不能少(少了 = 半路中止)
 
 var _n := 0
 var _fail := 0
@@ -44,6 +45,7 @@ var _me_reply := {"linked": false, "user_id": null, "owned": []}
 var _start_reply := {}
 var _hook_calls := 0
 var _poll_replies_last: Dictionary = {}
+var _signup_reply: Dictionary = {}
 
 
 func _ok(t: String, c: bool, ex: String = "") -> void:
@@ -73,6 +75,8 @@ func _transport(m: String, u: String, h: PackedStringArray, b: String, cb: Calla
 		body = JSON.stringify(_me_reply)
 	elif u.find("/rest/v1/saves?") >= 0:
 		body = "[]"
+	elif u.ends_with("/auth/v1/signup") and not _signup_reply.is_empty():
+		body = JSON.stringify(_signup_reply)
 	else:
 		cb.call({"ok": false, "code": 0, "body": ""})
 		return
@@ -165,6 +169,7 @@ func _ready() -> void:
 	await _t_expire(gs)
 	await _t_switch(gs)
 	await _t_settings(gs)
+	await _t_relogin(gs)
 	_t_delete(gs)
 	await _t_copy()
 	_t_pure()
@@ -502,6 +507,111 @@ func _t_internal_mail(gs) -> void:
 	s2.queue_free()
 	await _frames(2)
 	gs.account_email = ""
+
+
+# ⑥ ─────────────────────────────────────────────────────────
+## 登录已失效(主会话 11-08): 龟投的号照样能点「绑定」—— 先建临时匿名会话(本机身份与存档不动), 拿它的令牌发起登录;
+##   回 switched:true + 本机这个号 ⇒ 重新登录(不弹框、不清本机, 收尾同「邮箱登录」取回同一个号); 回别的号 ⇒ 照常换号框。
+func _lost_seed(gs, internal: bool) -> void:
+	ML._reset_for_test()
+	ML.gateway_override = GW
+	_seed(gs, ACC1)
+	gs.account_email = (ACC1 + "@link.turtlearena.xyz") if internal else "lost@example.com"
+	gs.auth_refresh = ""
+	SB._token = ""
+	SB._expires_at = 0
+	SB._session_lost = true
+	ML._note(ACC1, internal)
+
+
+func _t_relogin(gs) -> void:
+	print("── ⑥ 登录已失效 → 龟投账号重新登录 ──")
+	_lost_seed(gs, false)
+	_ok("⑥ 不是龟投的号(真邮箱、没绑过)失效 ⇒ 这一行不给按钮(走「邮箱登录」)", ML.lost_mode() == 2
+		and ROW.view_of(ML.state(), ML.linked_state(), "", false, ML.lost_mode())["btn"] == "")
+	_lost_seed(gs, true)
+	var temp_tok := _jwt({"sub": ACC_T, "email": "", "exp": int(Time.get_unix_time_from_system()) + 3600})
+	_signup_reply = {"access_token": temp_tok, "refresh_token": "rt-t", "expires_in": 3600, "user": {"id": ACC_T, "is_anonymous": true}}
+	_ok("⑥ 分母: 龟投的号(内部邮箱)登录已失效", SB.session_lost() and ML.lost_mode() == 1 and SB.access_token() == "")
+	var s: Control = await _open_settings()
+	var btn = s.find_child(ROW.N_BTN, true, false)
+	_ok("⑥ ★失效时龟投那一行: 「登录已失效」+「绑定」照常可点", _txt(s, ROW.N_STATE) == "登录已失效" and btn is Button
+		and (btn as Button).visible and (btn as Button).text == "绑定" and not (btn as Button).disabled, _txt(s, ROW.N_STATE))
+	_ok("⑥ 账号框不露内部邮箱、「邮箱登录」不染主操作", _txt(s, "AcctRowNote") == "<无>"
+		and _txt(s, "AcctRowSub") == "登录已失效，请重新登录", "%s / %s" % [_txt(s, "AcctRowSub"), _txt(s, "AcctRowNote")])
+	var r0 := _reqs.size()
+	_start_reply = {"ok": true, "code": CODE1, "url": URL1, "expires_in": 300}
+	if btn is Button:
+		(btn as Button).pressed.emit()
+	await _frames(6)
+	var i_sign := -1
+	var i_start := -1
+	for i in range(r0, _reqs.size()):
+		var u := str(_reqs[i]["u"])
+		if u.ends_with("/auth/v1/signup") and i_sign < 0:
+			i_sign = i
+		if u == GW + ML.P_START and i_start < 0:
+			i_start = i
+	_ok("⑥ ★点「绑定」⇒ 先建匿名会话(POST /auth/v1/signup), 再发开始请求", i_sign >= 0 and i_start > i_sign
+		and str(_reqs[i_sign]["m"]) == "POST" and ML.temp_signups == 1, "signup@%d start@%d" % [i_sign, i_start])
+	var sh: Array = Array(_reqs[i_start]["h"]) if i_start >= 0 else []
+	_ok("⑥ ★开始请求带的是新会话的令牌(不是公共钥匙)", ("Authorization: Bearer " + temp_tok) in sh, str(sh.filter(func(x): return str(x).begins_with("Authorization"))))
+	_ok("⑥ ★临时会话不落成本机身份: 账号 / 令牌 / 失效状态 / 进度都没动", str(gs.account_id) == ACC1 and SB.access_token() == ""
+		and SB.session_lost() and str(gs.auth_refresh) == "" and int(gs.coins) == 999 and ML.state() == ML.ST_PENDING, ML.state())
+	var p := ML.poller()
+	if p != null:
+		for c in p.get_children():
+			if c is Timer:
+				(c as Timer).paused = true
+	var sw0 := ML.switches
+	var saves0 := _count("/rest/v1/saves")
+	_poll_replies = [_switch_reply(ACC1, ACC1 + "@link.turtlearena.xyz", "rt-a")]
+	var want_tok := str(((_poll_replies[0] as Dictionary)["session"] as Dictionary)["access_token"])
+	ML.poll_now()
+	await _frames(5)
+	var ph: Array = Array(_last(ML.P_POLL).get("h", PackedStringArray()))
+	_ok("⑥ 轮询也带新会话的令牌", ("Authorization: Bearer " + temp_tok) in ph)
+	_ok("⑥ ★switched:true + 本机这个号 ⇒ 重新登录(不弹换号框)", s.get_node_or_null(DLG.LAYER) == null and ML.state() == ML.ST_CONFIRMED
+		and ML.switches == sw0, ML.state())
+	_ok("⑥ ★换到目标号的登录态: 账号 = 目标号、令牌 / refresh 是目标号的、失效状态解除", str(gs.account_id) == ACC1
+		and SB.access_token() == want_tok and str(gs.auth_refresh) == "rt-a" and not SB.session_lost())
+	_ok("⑥ 同一个号不清本机进度; 收尾同邮箱登录: 拉这个号的云存档", int(gs.coins) == 999 and _count("/rest/v1/saves") == saves0 + 1
+		and str(_last("/rest/v1/saves").get("u", "")).contains("account_id=eq." + ACC1), "coins=%d" % int(gs.coins))
+	_ok("⑥ 行上「已绑定」", _txt(s, ROW.N_STATE) == "已绑定", _txt(s, ROW.N_STATE))
+	s.queue_free()
+	await _frames(2)
+	## 回来的是别的号 ⇒ 照常弹换号框, 确认后换过去
+	_lost_seed(gs, true)
+	var t1 := ML.temp_signups
+	ML.start_link()
+	await _frames(6)
+	_ok("⑥ 再发起一次: 同样先建临时会话", ML.temp_signups == t1 + 1 and ML.state() == ML.ST_PENDING)
+	_poll_replies = [_switch_reply(ACC2, "", "rt-2")]
+	ML.poll_now()
+	await _frames(4)
+	_ok("⑥ 回的是别的号 ⇒ 等确认(换号框那条路)、本机不动", ML.state() == ML.ST_SWITCH_ASK and str(gs.account_id) == ACC1 and int(gs.coins) == 999)
+	_ok("⑥ 确认 ⇒ 换到那个号", ML.confirm_switch() and str(gs.account_id) == ACC2 and not SB.session_lost())
+	## 拿临时会话发起却回 switched:false(龟投账号绑到了临时号上)⇒ 登录失败, 本机不动
+	_lost_seed(gs, true)
+	ML.start_link()
+	await _frames(6)
+	_poll_replies = [{"ok": true, "status": "confirmed", "switched": false}]
+	ML.poll_now()
+	await _frames(4)
+	_ok("⑥ 临时会话那条路回 switched:false ⇒ 登录失败、本机身份与失效状态不动", ML.state() == ML.ST_ERROR
+		and str(gs.account_id) == ACC1 and SB.session_lost() and ML.linked_state() == 1, ML.state())
+	## 建匿名会话失败
+	_lost_seed(gs, true)
+	_signup_reply = {}
+	var st0 := _count(ML.P_START)
+	ML.start_link()
+	await _frames(6)
+	_ok("⑥ 建临时会话失败 ⇒ 无法连接服务器、没发开始请求", ML.state() == ML.ST_ERROR and ML.reason() == ML.R_NET
+		and _count(ML.P_START) == st0
+		and ROW.view_of(ML.state(), 1, ML.reason(), false, 1)["state"] == "无法连接服务器", ML.state())
+	SB._session_lost = false
+	SB._token = "probe-token"
+	SB._expires_at = int(Time.get_unix_time_from_system()) + 3600
 
 
 # ③ ─────────────────────────────────────────────────────────

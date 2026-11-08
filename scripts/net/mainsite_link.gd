@@ -80,6 +80,12 @@ static var _switch_acc: Dictionary = {}
 static var _poller: Node = null
 static var _cache: Dictionary = {}
 static var _cache_loaded := false
+## 「登录已失效」时为发起登录临时建的匿名会话 {account_id, token, expires_at}(主会话 11-08 定的解法)。
+##   ★只在内存里给 /app/link/start、/app/link/poll 当令牌用, **不落成本机身份、不写存档** ——
+##   玩家取消 / 过期时本机还是原来那个号; 确认后服务器回 switched:true + 目标号的登录态, 落的是那个。
+static var _temp: Dictionary = {}
+## 观测量(门禁分母): 为登录建过几次临时匿名会话。
+static var temp_signups := 0
 
 
 # ─────────────────────────── 配置与纯判据 ───────────────────────────
@@ -244,6 +250,8 @@ static func _reset_for_test() -> void:
 	_poller = null
 	_cache = {}
 	_cache_loaded = true
+	_temp = {}
+	temp_signups = 0
 
 
 ## 删号 / 门禁: 本机的登录过程与缓存一起清掉(文件由 `account_delete.WIPE_FILES` 删)。
@@ -256,6 +264,7 @@ static func clear_local() -> void:
 	_me_inflight = false
 	_cache = {}
 	_cache_loaded = true
+	_temp = {}
 
 
 # ─────────────────────────── 绑定状态缓存 ───────────────────────────
@@ -314,6 +323,16 @@ static func linked_state() -> int:
 	return 1 if bool(_cache["linked"]) else 0
 
 
+## 登录已失效时这一行怎么办: 0 = 没失效 / 1 = 失效、可用龟投账号重新登录(这个号绑过龟投: 缓存说绑了, 或带着内部邮箱) /
+##   2 = 失效、不是龟投的号(走「邮箱登录」; 这里不给按钮 —— 没绑过的号走这条路, 服务器会把龟投账号绑到那个临时匿名号上)。
+static func lost_mode() -> int:
+	if not SB.session_lost():
+		return 0
+	var gs = SB._gs()
+	var mail := str(gs.account_email) if gs != null else ""
+	return 1 if (is_internal_email(mail) or linked_state() == 1) else 2
+
+
 ## 当前账号拥有的龟(pet_key; 上次 `mainsite_me` / `refresh_pets` 的结果)。不知道 ⇒ []。
 static func owned_ids() -> Array:
 	_load_cache()
@@ -324,8 +343,8 @@ static func owned_ids() -> Array:
 
 # ─────────────────────────── 网络 ───────────────────────────
 
-## 调网关。`done(r)` 一定会被调一次(r 形状见 `parse`)。
-static func _gw_post(path: String, body: Dictionary, done: Callable) -> void:
+## 调网关。`done(r)` 一定会被调一次(r 形状见 `parse`)。`temp` = 用临时匿名会话的令牌(只有登录那两条用)。
+static func _gw_post(path: String, body: Dictionary, done: Callable, temp: bool = false) -> void:
 	if not enabled():
 		done.call({"ok": false, "reason": R_OFF, "data": {}})
 		return
@@ -333,11 +352,15 @@ static func _gw_post(path: String, body: Dictionary, done: Callable) -> void:
 	if n == null:
 		done.call({"ok": false, "reason": R_NET, "data": {}})
 		return
-	_send(n, gateway_base() + path, path, JSON.stringify(body), true, done)
+	var tok := str(_temp.get("token", "")) if temp else ""
+	_send(n, gateway_base() + path, path, JSON.stringify(body), true, done, tok)
 
 
-static func _send(n, url: String, tag: String, body: String, need_ok: bool, done: Callable) -> void:
-	if not await n._await_token():
+## `bearer` 非空 ⇒ 这一条请求用它当令牌(挂在请求节点上, supabase.gd `_headers` 读), 不等本机登录态。
+static func _send(n, url: String, tag: String, body: String, need_ok: bool, done: Callable, bearer: String = "") -> void:
+	if bearer != "":
+		n.set_meta(&"bearer", bearer)
+	elif not await n._await_token():
 		n._bye()
 		done.call({"ok": false, "reason": R_AUTH if SB.session_lost() else R_NET, "data": {}})
 		return
@@ -396,6 +419,43 @@ static func start_link() -> void:
 	_code = ""
 	_switch_acc = {}
 	_go(ST_STARTING)
+	if SB.session_lost():
+		## 登录已失效: 本机拿不到令牌 ⇒ 先建一个临时匿名会话, 拿它的令牌发起登录(本机身份与存档不动)。
+		_ensure_temp(func(ok: bool) -> void:
+			if g != _gen:
+				return
+			if not ok:
+				_go(ST_ERROR, R_NET)
+				return
+			_start(g))
+		return
+	_start(g)
+
+
+## 临时匿名会话: 有且还够用 ⇒ 直接用; 否则走现成的新建匿名号请求(`POST /auth/v1/signup`,
+##   同 supabase.gd `sign_in_anonymous`), 回包按 `account_from_auth_response` 读 —— 但**不** `_store_session`。
+static func _ensure_temp(done: Callable) -> void:
+	if str(_temp.get("token", "")) != "" and int(_temp.get("expires_at", 0)) - int(_now()) > 120:
+		done.call(true)
+		return
+	var n = SB._spawn()
+	if n == null:
+		done.call(false)
+		return
+	temp_signups += 1
+	n._http("POST", SB.base_url().rstrip("/") + "/auth/v1/signup", "{}", func(res: Dictionary) -> void:
+		var a := SB.account_from_auth_response(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")))
+		n._bye()
+		if bool(a["ok"]) and str(a["token"]) != "":
+			var exp := int(a["expires_at"])
+			_temp = {"account_id": str(a["account_id"]), "token": str(a["token"]),
+				"expires_at": exp if exp > 0 else int(_now()) + 3600}
+			done.call(true)
+		else:
+			done.call(false))
+
+
+static func _start(g: int) -> void:
 	_gw_post(P_START, {"device": device_id()}, func(r: Dictionary) -> void:
 		if g != _gen:
 			return                                  # 等回包的时候玩家已经取消了
@@ -413,7 +473,8 @@ static func start_link() -> void:
 		_deadline = _now() + float(clampi(ttl if ttl > 0 else CAP_SEC, 1, CAP_SEC))
 		_go(ST_PENDING)
 		_open(url)
-		_ensure_poller())
+		_ensure_poller(),
+		SB.session_lost())
 
 
 ## 等确认时点「取消」: 停止轮询(登录码留给它自己过期)。
@@ -453,7 +514,7 @@ static func poll_now() -> void:
 			_gen += 1
 			_go(ST_EXPIRED)                   # 网关明说这个码不行了(不认识 / 已用过)
 		## 连不上 / 401 ⇒ 下一拍再查, 到点算过期
-		)
+		, SB.session_lost() and str(_temp.get("token", "")) != "")
 
 
 ## 一次轮询回包落地(抽出来让门禁不碰网络也能逐条喂)。返回落地后的状态。
@@ -465,9 +526,16 @@ static func apply_poll(d: Dictionary) -> String:
 				var acc := account_from_session(d.get("session", null))
 				if not bool(acc["ok"]):
 					_go(ST_ERROR, R_BAD)
+				elif str(acc["account_id"]) == _acc():
+					_relogin(acc)                  # 目标就是本机这个号(登录已失效后重新登录): 不是换号, 不弹框
 				else:
 					_switch_acc = acc
 					_go(ST_SWITCH_ASK)
+			elif not _temp.is_empty() and SB.session_lost():
+				## 拿临时匿名会话发起的登录却回 switched:false ⇒ 龟投账号绑到了那个临时号上(本机这个号没绑过)。
+				##   本机身份与存档一个字不动; 照登录失败说(lost_mode 已经不给没绑过的号这颗键, 走到这里是服务器那边状态变了)。
+				_temp = {}
+				_go(ST_ERROR, R_BAD)
 			else:
 				_note(_acc(), true)
 				_go(ST_CONFIRMED)
@@ -485,6 +553,17 @@ static func apply_poll(d: Dictionary) -> String:
 	return _state
 
 
+## 登录已失效后用龟投账号重新登录, 回来的就是本机这个号: 不是换号 ⇒ 不清本机、不弹框,
+##   收尾与「邮箱登录」取回同一个号完全相同(`supabase._apply_verify` 的 recover 那支: `_store_session` + `pull_save_async("recover")`)。
+static func _relogin(acc: Dictionary) -> void:
+	_temp = {}
+	SB._store_session(acc)
+	_note(str(acc["account_id"]), true)
+	SB.pull_save_async("recover")
+	_go(ST_CONFIRMED)
+	refresh_pets()
+
+
 ## 玩家在弹窗里点了「确认切换」。返回是否换了。
 ## ★顺序: 备份本机存档 → 本机回到全新安装(旧号不合并) → 落新号的登录态 → 拉新号的云存档(有才拉)。
 static func confirm_switch() -> bool:
@@ -498,6 +577,7 @@ static func confirm_switch() -> bool:
 	_AD.wipe_local()
 	if gs != null:
 		gs.onboarded = true        # 这台设备上早就进过游戏: 换号不重走首次进入流程
+	_temp = {}
 	SB._store_session(acc)
 	_note(str(acc["account_id"]), true)
 	switches += 1
