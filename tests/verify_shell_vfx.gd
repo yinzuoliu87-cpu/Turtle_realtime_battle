@@ -350,6 +350,9 @@ func _run_dive() -> Array:
 			continue
 		## frost-chill.png = 被火道减速的敌人身上的「冰寒」状态标记(battle_vfx.chill_mark, 挂在 spd_dbf_until 上):
 		##   11-08 晚起落点那名是龟壳飞到才开始被烧 + 减速, 标记正好落在落地前后 —— 它是状态, 不是爆炸。
+		## shell-shade-*.png = 落地那一刻进潜影的烟球 / 背上暗火(11-08 晚潜影形态; 技能写明「落地后进入潜影」) —— 是潜影状态, 不是落地爆炸。
+		if nn["file"].begins_with("shell-shade-"):
+			continue
 		if nn["bb"] and float(nn["size"]) >= 1.5 and not (nn["file"] in ["shell-dive-hit.png", "shell-dive-patch.png", "frost-chill.png"]):
 			big.append("%s %.1f米%s" % [nn["file"] if nn["file"] != "" else "(程序贴图)", float(nn["size"]), " 柔光团" if nn["glow"] else ""])
 	_ok("★★⑥ 落地不另放大爆炸(落点附近没有新出现 ≥1.5 米的公告板)", land >= 0 and big.is_empty(),
