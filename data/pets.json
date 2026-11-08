@@ -681,8 +681,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "幽灵龟对目标释放灵魂风暴，造成两段共 {M:GhostSystem.STORM_DMG*ATK} 魔法伤害并施加 {C:GhostSystem.STORM_CURSE_SEC} 秒诅咒。\n若目标已被诅咒，转而造成 {T:GhostSystem.STORM_DMG*ATK} 真实伤害，且不刷新诅咒。",
-        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（{C:GhostSystem.STORM_DMG%}%×攻击力({ATK}) = {M:GhostSystem.STORM_DMG*ATK}）魔法伤害并施加 {C:GhostSystem.STORM_CURSE_SEC} 秒诅咒。\n若目标已被诅咒，转而造成（{C:GhostSystem.STORM_DMG%}%×攻击力({ATK}) = {T:GhostSystem.STORM_DMG*ATK}）真实伤害，且不刷新诅咒。"
+        "brief": "幽灵龟对目标释放灵魂风暴，造成两段共 {M:GhostSystem.STORM_DMG*ATK} 魔法伤害并施加 {C:GhostSystem.STORM_CURSE_SEC} 秒诅咒。\n若目标已被诅咒，转而造成 {T:GhostSystem.STORM_CURSED_TRUE*ATK} 真实伤害，并使诅咒持续时间延长 {C:GhostSystem.STORM_CURSE_SEC} 秒。",
+        "detail": "幽灵龟对目标释放灵魂风暴，造成两段共（{C:GhostSystem.STORM_DMG%}%×攻击力({ATK}) = {M:GhostSystem.STORM_DMG*ATK}）魔法伤害并施加 {C:GhostSystem.STORM_CURSE_SEC} 秒诅咒。\n若目标已被诅咒，转而造成（{C:GhostSystem.STORM_CURSED_TRUE%}%×攻击力({ATK}) = {T:GhostSystem.STORM_CURSED_TRUE*ATK}）真实伤害，并使诅咒持续时间延长 {C:GhostSystem.STORM_CURSE_SEC} 秒。"
       },
       {
         "name": "虚化",

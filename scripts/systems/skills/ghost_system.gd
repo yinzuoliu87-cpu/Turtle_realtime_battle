@@ -17,7 +17,7 @@ const PHASE_SEGMENTS := 2       # 打几段
 const PHASE_SEG_COEF := 0.6     # 每段 ×ATK 真实(两段合计 1.2)
 const PHASE_TOTAL := PHASE_SEGMENTS * PHASE_SEG_COEF   # 推导: 合计, 文案原来手写 120%     # 每段 ×ATK 真实(两段合计 1.2)
 ## 【幽冥突袭】魔法伤 + 高吸血 + 自身闪避, 并把目标击退抛飞。
-const RAID_MAGIC := 1.5      # ×ATK 魔法
+const RAID_MAGIC := 2.5      # ×ATK 魔法(用户 11-08: 150% → 250%)
 const RAID_LIFESTEAL := 0.8  # 回复所造成伤害 ×
 const RAID_DODGE := 0.25     # 自身闪避 +
 const RAID_DODGE_SEC := 4.0  # 闪避持续(秒)
@@ -25,7 +25,8 @@ const RAID_DODGE_SEC := 4.0  # 闪避持续(秒)
 const BASIC_PHYS := 0.4        # ×ATK 物理(红)
 const BASIC_TRUE := 0.9        # + ×ATK 真实(白)
 const STORM_DMG := 2.0         # 灵魂风暴: ×ATK (2.5→2.0·魔法与"已中咒转真伤"两支同值)
-const STORM_CURSE_SEC := 4.0   # 灵魂风暴: 施加的诅咒秒数(10→6→4·用户2026-07-29 第五轮)
+const STORM_CURSE_SEC := 4.0   # 灵魂风暴: 施加的诅咒秒数(10→6→4·用户2026-07-29 第五轮); 目标已有诅咒时在剩余时间上再加这么多(用户 11-08)
+const STORM_CURSED_TRUE := 3.0 # 灵魂风暴: 目标已有诅咒时 ×ATK 真实伤害(用户 11-08: 原与 STORM_DMG 同为 2.0 → 3.0)
 ## ★为什么砍时长而不是砍本体: 一发 369 点里【诅咒占 77%】(6秒 × 5%目标最大生命真伤, 无视双抗),
 ##   本体 2.0A 只占 23%。而 21 个 80 龟能技能中位胜率 51.8%, 它 92.8% —— 比第二名还高 11pp。
 ##   诅咒【百分比】5% 是 battle_damage.gd 的共享常量(无头/彩虹也吃), 所以只动时长。
@@ -135,11 +136,13 @@ func _sk_ghost_phantom(u: Dictionary, tgt) -> void:
 func _sk_ghost_soulstorm(u: Dictionary, tgt: Dictionary) -> void: # 幽灵龟·灵魂风暴 ✅
 	var cursed: bool = battle._has_dot(tgt, "curse")
 	if cursed:
-		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * STORM_DMG), Color("#e0b0ff"), 0.0, true)   # 有诅咒→2.0A真伤(处决感·用户2026-07-09"打有诅咒是真伤"·2026-07-28 2.5→2.0)
+		battle._damage._apply_damage_from(u, tgt, int(u["atk"] * STORM_CURSED_TRUE), Color("#e0b0ff"), 0.0, true)   # 有诅咒→3.0A真伤(用户 11-08 2.0→3.0)(处决感·用户2026-07-09"打有诅咒是真伤"·2026-07-28 2.5→2.0)
 	else:
 		for i in range(2):
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, STORM_DMG / 2.0, tgt, true), Color("#c77dff"))   # 无诅咒→2段共2.0A魔法(用户2026-07-09"打无诅咒目标是魔法"·2026-07-28 2.5→2.0)
-		battle._damage._add_curse(tgt, STORM_CURSE_SEC, u)   # 技2诅咒 4 秒(见 STORM_CURSE_SEC; 10→6→4)
+	## 两支都上诅咒 STORM_CURSE_SEC 秒: 无诅咒 = 新上; 已有 = 在剩余时间上延长(用户 11-08「在原有诅咒基础上，就增加四秒诅咒」)。
+	##   _add_curse 本身就是「已有就续上」(battle_damage._add_curse), 原来只是已诅咒那支没调它(「且不刷新诅咒」)。
+	battle._damage._add_curse(tgt, STORM_CURSE_SEC, u)
 	battle._vfx._play_anim_vfx("res://assets/sprites/vfx/ghost-storm.png", tgt["pos"], 135.0, 15.0, 1.1)   # 灵魂风暴(回合制vfx/8帧·逐帧播·用户2026-07-11纠正:原误用skills/单帧图)
 	battle._skill_ring(tgt["pos"], Color(0.78, 0.49, 1.0, 0.6), 92.0)
 	battle._shake(0.1)
