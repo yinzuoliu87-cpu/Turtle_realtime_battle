@@ -109,7 +109,7 @@ select pg_temp.ck('L10 坏 userId 不消耗这个码', (public.mainsite_link_inf
 -- L4 绑定（A 是匿名号、没有 accounts 行）
 select pg_temp.ck('L4 前提: A 没有 accounts 行', not exists (select 1 from public.accounts where account_id = (select a from _ids)));
 insert into _r select 4, public.mainsite_link_confirm('codeA2_yyyyyyyyyyyy', 'GEACjjPJERy');
-select pg_temp.ck('L4 确认 ⇒ ok / bound', (select r = '{"ok": true, "result": "bound"}'::jsonb from _r where k = 4), (select r::text from _r where k = 4));
+select pg_temp.ck('L4 确认 ⇒ ok / bound(带上绑到的号, 网关用)', (select r = jsonb_build_object('ok', true, 'result', 'bound', 'account', (select a from _ids)::text) from _r where k = 4), (select r::text from _r where k = 4));
 select pg_temp.ck('L4 绑定行在、accounts 行补上了',
   (select mainsite_user_id from public.mainsite_accounts where account_id = (select a from _ids)) = 'GEACjjPJERy'
   and exists (select 1 from public.accounts where account_id = (select a from _ids)));
@@ -139,7 +139,7 @@ select pg_temp.ck('L6 过期的码: info ok:false / 确认 expired / 轮询 expi
 -- L7 已绑在 A 上的主站用户在 B 上确认 ⇒ switched
 select public.mainsite_link_start((select b from _ids), 'codeB2_wwwwwwwwwwww', 'Pixel 8');
 insert into _r select 7, public.mainsite_link_confirm('codeB2_wwwwwwwwwwww', 'GEACjjPJERy');
-select pg_temp.ck('L7 确认 ⇒ ok / switched', (select r = '{"ok": true, "result": "switched"}'::jsonb from _r where k = 7), (select r::text from _r where k = 7));
+select pg_temp.ck('L7 确认 ⇒ ok / switched(account = 已绑的 A)', (select r = jsonb_build_object('ok', true, 'result', 'switched', 'account', (select a from _ids)::text) from _r where k = 7), (select r::text from _r where k = 7));
 select pg_temp.ck('L7 轮询 ⇒ switched:true + target_account = A',
   (select r->>'switched' = 'true' and r->>'status' = 'confirmed' and (r->>'target_account')::uuid = (select a from _ids)
      from (select public.mainsite_link_poll((select b from _ids), 'codeB2_wwwwwwwwwwww') as r) x));

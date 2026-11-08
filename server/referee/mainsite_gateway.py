@@ -253,8 +253,26 @@ class Gateway:
             return 200, {"ok": False, "error": "bad userId"}
         r = self._rpc("mainsite_link_confirm", {"p_code": code, "p_user_id": uid}) or {}
         if r.get("ok") is True:
+            acc = str(r.get("account") or "")
+            if r.get("result") in ("bound", "rebound") and acc:
+                ## 新绑定: 回包之后再拉拥有的龟、报防守状态(主站等我们 10 秒, 不能在回包前反过来调主站)
+                threading.Thread(target=self._after_bind, args=(acc,), daemon=True).start()
             return 200, {"ok": True, "result": r.get("result")}
         return 200, {"ok": False, "error": str(r.get("error") or "bad_code")}
+
+    def _after_bind(self, acc):
+        """新绑定之后(A2 合并接线 11-08): ① 拉一次拥有的龟写进 mainsite_pets(偷袭建任务的 owned 读它, 空的话只认限免 7 只);
+        ② raid_defense_report(账号) 把「有没有本周阵容 / rating」报给主站(否则玩家绑完不进背包, 主站一直当他没阵容)。
+           非强制: 新绑定 / 改绑时状态必然算「变了」会报; 主站重试同一个确认时没变, 不多发。
+        两步各自兜住异常: 失败只记日志, 下次 App 刷新拥有 / 存阵容时还会再报。"""
+        try:
+            self.app_pets_refresh(acc, {})
+        except Exception as ex:
+            RP.log("WARN gateway 绑定后拉龟失败: %r" % (ex,))
+        try:
+            self._rpc("raid_defense_report", {"p_uid": acc, "p_force": False})
+        except Exception as ex:      # 迁移 20261109c 没上时这里 404
+            RP.log("WARN gateway 绑定后报防守状态失败: %r" % (ex,))
 
     def raid(self, _, data):
         if self.raid_handler is None:

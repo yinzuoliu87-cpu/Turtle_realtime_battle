@@ -247,7 +247,7 @@ begin
   end if;
   if c.confirmed_at is not null then
     if c.mainsite_user_id = p_user_id then
-      return jsonb_build_object('ok', true, 'result', c.result);
+      return jsonb_build_object('ok', true, 'result', c.result, 'account', c.target_account::text);
     end if;
     return jsonb_build_object('ok', false, 'error', 'code_used');
   end if;
@@ -284,7 +284,9 @@ begin
   update public.mainsite_codes
      set confirmed_at = now(), mainsite_user_id = p_user_id, result = res, target_account = tgt
    where code = p_code;
-  return jsonb_build_object('ok', true, 'result', res);
+  -- 'account' = 绑到 / 切到的那个号(11-08 A1×A2 接线: 网关据此在新绑定后拉龟、报防守状态; 网关回主站时不带它)。
+  --   原样重放走上面那条早返回, 同样带 ⇒ 函数幂等; 网关重复报用的是非强制模式, 状态没变不会多发。
+  return jsonb_build_object('ok', true, 'result', res, 'account', tgt::text);
 end $$;
 revoke all on function public.mainsite_link_confirm(text, text) from public, anon, authenticated;
 grant execute on function public.mainsite_link_confirm(text, text) to service_role;

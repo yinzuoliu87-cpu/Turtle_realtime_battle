@@ -152,7 +152,7 @@ class FakeDB:
         if not c:
             return {'ok': False, 'error': 'bad_code'}
         if c['confirmed'] is not None:
-            return {'ok': True, 'result': c['result']} if c['user'] == p_user_id else {'ok': False, 'error': 'code_used'}
+            return {'ok': True, 'result': c['result'], 'account': c['target']} if c['user'] == p_user_id else {'ok': False, 'error': 'code_used'}
         if c['expires'] <= self.t:
             return {'ok': False, 'error': 'expired'}
         tgt = next((a for a, u in self.links.items() if u == p_user_id), None)
@@ -165,7 +165,10 @@ class FakeDB:
             self.links[c['account']] = p_user_id
             tgt = c['account']
         c.update(confirmed=self.t, user=p_user_id, result=res, target=tgt)
-        return {'ok': True, 'result': res}
+        return {'ok': True, 'result': res, 'account': tgt}
+
+    def raid_defense_report(self, p_uid, p_force=False):
+        return {'ok': True}
 
     def mainsite_link_poll(self, p_account, p_code):
         c = self.codes.get(p_code)
@@ -406,6 +409,15 @@ def part_c():
         c2, r2 = raw('POST', g + '/mainsite/link/confirm', good, h)
         ok('C4 ★原样重放同一个请求（同时间戳同签名）⇒ 同一个结果、绑定不变', (c2, r2) == (c, r) and db.links == {ACC_A: UID},
            '%s %s' % (c2, r2))
+        for _ in range(100):          # 绑定后的两步在后台线程里(回包之后)
+            if db.names('raid_defense_report'):
+                break
+            time.sleep(0.02)
+        time.sleep(0.1)
+        rep = db.names('raid_defense_report')
+        ok('C4b ★新绑定后报防守状态 raid_defense_report(这个号, 非强制 ⇒ 重放不多发)(11-08 A1×A2 接线)',
+           len(rep) >= 1 and all(x == ('raid_defense_report', {'p_uid': ACC_A, 'p_force': False}) for x in rep), str(rep))
+        ok('C4b 新绑定后先拉过一次拥有的龟(mainsite_status)', len(db.names('mainsite_status')) >= 1, str(db.names('mainsite_status')))
         c, r = MOCK.link_confirm(g, SECRET, code, 'HxyzOtherU1')
         ok('C7 一次性: 用过的码换个主站用户再确认 ⇒ ok:false', c == 200 and r.get('ok') is False, str(r))
         c, r = MOCK.link_info(g, SECRET, code)
