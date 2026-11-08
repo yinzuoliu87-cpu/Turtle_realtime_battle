@@ -122,11 +122,13 @@ python3 /root/deploy/player/player_ops.py status prod
 预计可省：背景乐约 14 MB（pck 里就是 14 MB）+ 菜单大图约 5 MB（源 5.3 MB，进 pck 后按导入格式可能略有出入）≈ **19 MB，151 MB → 约 132 MB**。
 大头（技能 / 龟 / 音效 / 装备贴图约 140 MB 源）播放器都要用，排目录省不下来；再往下压只能动导入格式（网页包贴图改有损 WebP、音效降码率）或按龟拆包，属于另一件事。
 
-WebPlayer 预设（`export_presets.cfg` 里 `name="WebPlayer"` 那段）`exclude_filter` 的写法——在原有那串后面追加，逗号加空格分隔：
+WebPlayer 预设（`export_presets.cfg` 里 `name="WebPlayer"` 那段）`exclude_filter` 的写法——在原有那串后面追加，逗号加空格分隔（11-08 已写进预设，只改了这一行，其他预设逐字未变）：
 
 ```
 exclude_filter="tests/*, tools/*, build/*, _*, .out/*, *.log, diff_images.gd, docs/*, *.md, *.ps1, *.sh, *.py, assets/audio/bgm/*, assets/sprites/menu/arena/*, assets/sprites/menu/menu-bg-tile.png, assets/sprites/bg/*, assets/sprites/intro/*"
 ```
+
+**下次导出后核对首开体积**：写进预设之后还没导出过（11-08 时间不够）。下次 `bash build-web.sh player` 出包后，量 `build/webplayer/index.pck` 应比 142 MB 少约 19 MB、首开总量约 132 MB；再用桌面 `--main-pack` 开一次、拉一局录像播完，确认没有缺图 / 缺依赖报错。不对就回到这一行查。
 
 风险：被排除的图在菜单类脚本里有 `preload`（`MainMenuScene.gd` / `TeamSelectScene.gd` 等）。脚本以二进制令牌导出、只有被加载时才解析 `preload`；播放器开机直进 `WebPlayer.tscn`、不进任何菜单页，所以不会触发。导出时 Godot 可能对这些缺依赖打警告，属预期。**只排上表加粗的几项，别按目录名整排 `menu/` / `shop/` / `inventory/`**（战斗路径有引用，排了会在回放里缺图或报错）。
 
