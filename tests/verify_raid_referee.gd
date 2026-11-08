@@ -4,7 +4,8 @@ extends Node
 ##
 ## 全程真入口 `RefereeRunner.run`(战斗场原样实例化), 两方快照都走真生产函数 `Backend.build_ghost_snapshot`
 ## (合成阵容: 强 = 三只统领各 3 件 3 星、小将也带; 弱 = 一件装备都没有), 任务单形状 = 服务端 referee_claim 给偷袭局的那份
-## (mode = raid、key 带 raid_id、两方快照里服务端盖的 owned / account_id), 经一次 JSON 往返(与服务器上一样)。
+## (mode = raid、key 带 raid_id 与服务端盖的 a_owned / b_owned / a_account / b_account), 经一次 JSON 往返(与服务器上一样)。
+## ★两方快照里另外故意塞了 owned / account_id(旧任务形状 / 别的路带进来的): 裁判不许把它们带进录像(V8)。
 ##
 ##   V1 分母: 两份快照都是三统领、强弱差得开(强方 9 件统领装备 / 弱方 0 件); 任务单 mode = raid 过 validate
 ##   V2 ★强攻弱: 算完(ok、步数 > 0、开打过、有路分出胜负); winner = a ⇒ raid_result = attacker; 结果单 mode = raid
@@ -14,9 +15,15 @@ extends Node
 ##   V5 守方没开轮(两只统领) ⇒ 偷袭拒算 b_bad_snapshot(permanent, 不进战斗场); 同一个 B 当积分赛对手照算(周赛 B 不要求三只)
 ##   V6 mode 拼错 ⇒ bad_mode; 映射函数两个值 = 服务端 raid_on_job 认的那两个字面值(迁移 20261109c)
 ##   V7 零副作用: 跑完 GameState 还原成跑之前那一份、存档逐字节不变(偷袭不计场数 / 不发币 —— 裁判这一侧本来就不结算)
+##   V8 ★私有字段不外泄(工作线 F): V2 那一局的录像(结果单 replay_b64 解码 = 进 matches 的那一份; 直播 rs 是同一份 state)
+##      里找不到两个账号 id、没有 owned 键; 录像里的对手快照(dual_ghost)摘掉了两键、其余(统领 / 分路)原样; 任务单原件不动
+##   V9 ★装备上限两份对得上: 服务端检查脚本 20261109c_raid_check L0 钉的字面表(raid_cap_table / raid_unit_cap)
+##      = phase2_config.gd team_equip_cap(0 ~ 11) / UNIT_EQUIP_CAP(raid_lock_snapshot 照它不认超上限的件)
 
 const Backend := preload("res://scripts/net/backend.gd")
 const MIG := "res://server/supabase/migrations/20261109c_raid.sql"
+const CHK := "res://server/supabase/tests/20261109c_raid_check.sql"
+const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const MID := "8b1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4c"
 const SEED := 3000026
 const LEVEL := 6
@@ -77,17 +84,21 @@ func _snap(gs, leaders: Array, strong: bool, tag: String) -> Dictionary:
 	return Backend.build_ghost_snapshot("g_raid_" + tag, {"name": tag, "avatar": str(leaders[0]), "id": "g_raid_" + tag})
 
 
-## = referee_claim 给偷袭局的任务单(服务端在两方快照里盖 owned / account_id; key = meta + week + match_key)。
+## = referee_claim 给偷袭局的任务单(key = meta + week + match_key; 服务端把 owned / 账号盖在 key 里)。
+## ★快照里也塞了 owned / account_id(旧形状 / 兜底): V8 量的就是它们进不了录像。
+const ACC_A := "11111111-2222-4333-8444-555555555555"
+const ACC_B := "66666666-7777-4888-8999-000000000000"
 func _job(a: Dictionary, b: Dictionary, mode: String = "raid") -> Dictionary:
 	var aa := a.duplicate(true)
 	var bb := b.duplicate(true)
 	aa["owned"] = (aa["leaders"] as Array).duplicate()
-	aa["account_id"] = "11111111-2222-4333-8444-555555555555"
+	aa["account_id"] = ACC_A
 	bb["owned"] = (bb["leaders"] as Array).duplicate()
-	bb["account_id"] = "66666666-7777-4888-8999-000000000000"
+	bb["account_id"] = ACC_B
 	var j := {"v": 1, "job_id": 77, "match_id": MID, "mode": mode,
-		"key": {"raid_id": 9001, "attacker": "ChkAtt01", "defender": "ChkDef01", "account": aa["account_id"],
-			"b_account": bb["account_id"], "expire_ms": 1, "week": 1, "match_key": "raid:9001"},
+		"key": {"raid_id": 9001, "attacker": "ChkAtt01", "defender": "ChkDef01", "account": ACC_A,
+			"b_account": ACC_B, "a_account": ACC_A, "a_owned": aa["owned"], "b_owned": bb["owned"],
+			"expire_ms": 1, "week": 1, "match_key": "raid:9001"},
 		"seed": SEED, "client_version": ReplayRecorder.client_version(), "level": LEVEL, "a": aa, "b": bb}
 	return JSON.parse_string(JSON.stringify(j))
 
@@ -186,12 +197,49 @@ func _ready() -> void:
 		and int(gs.season_total_battles) == 5 and int(gs.season_level) == 9)
 	_ok("★V7 存档文件逐字节不变", FileAccess.get_file_as_bytes(GameState.SAVE_PATH) == save0)
 	_ok("V7 没有残留的待裁判 / 待播", ReplayRecorder.pending_referee.is_empty() and ReplayRecorder.pending_play.is_empty())
+
+	print("=== V8 私有字段不外泄 ===")
+	var rec8: Dictionary = {}
+	var b64 := str(r_sw.get("replay_b64", ""))
+	if b64 != "":
+		rec8 = ReplayRecorder.decode(Marshalls.base64_to_raw(b64))
+	var txt8 := JSON.stringify(rec8)
+	var st8: Dictionary = rec8.get("state", {}) if rec8.get("state") is Dictionary else {}
+	var g8: Dictionary = st8.get("dual_ghost", {}) if st8.get("dual_ghost") is Dictionary else {}
+	_ok("V8 分母 · 录像解得出来、带开局 state、对手快照统领 = 守方三只", txt8.length() > 1000
+		and str(g8.get("leaders", [])) == str(weak["leaders"]), "%d 字 / %s" % [txt8.length(), str(g8.get("leaders", []))])
+	_ok("★V8 录像里找不到两个账号 id、没有 owned 键", not txt8.contains(ACC_A) and not txt8.contains(ACC_B)
+		and not txt8.contains("\"owned\""))
+	_ok("V8 对手快照摘掉两键、分路原样", not g8.has("owned") and not g8.has("account_id")
+		and JSON.stringify(g8.get("lane_assign", {})) == JSON.stringify(weak.get("lane_assign", {})))
+	_ok("V8 任务单原件不动(validate 读的那一份仍带着)", (j_sw["b"] as Dictionary).has("owned")
+		and str((j_sw["b"] as Dictionary).get("account_id", "")) == ACC_B)
+
+	print("=== V9 装备上限两份对得上 ===")
+	var chk := FileAccess.get_file_as_string(CHK)
+	var want_tbl := ""
+	var want_unit := -1
+	for line in chk.split("\n"):
+		if line.contains("-- raid_cap_table"):
+			var m := RegEx.create_from_string("array\\[([0-9, ]+)\\]").search(line)
+			if m != null:
+				want_tbl = m.get_string(1).replace(" ", "")
+		if line.contains("-- raid_unit_cap"):
+			var m2 := RegEx.create_from_string("raid_unit_equip_cap\\(\\) = ([0-9]+)").search(line)
+			if m2 != null:
+				want_unit = int(m2.get_string(1))
+	var got: Array = []
+	for l in range(0, 12):
+		got.append(str(P2.team_equip_cap(l)))
+	_ok("V9 分母 · 检查脚本里两张字面表都找到", want_tbl != "" and want_unit >= 0, "%s / %d" % [want_tbl, want_unit])
+	_ok("★V9 全队上限 0 ~ 11 级 = phase2_config.team_equip_cap", want_tbl == ",".join(got), "%s / %s" % [want_tbl, ",".join(got)])
+	_ok("★V9 单只上限 = phase2_config.UNIT_EQUIP_CAP", want_unit == P2.UNIT_EQUIP_CAP, "%d / %d" % [want_unit, P2.UNIT_EQUIP_CAP])
 	_finish()
 
 
 func _finish() -> void:
 	print("")
 	print("  (共 %d 条断言 · %d 帧 · %.1f 秒)" % [_n, Engine.get_process_frames(), Time.get_ticks_msec() / 1000.0])
-	print("ALL PASS — 偷袭裁判任务跑完、结果映射 attacker / defender、与周赛同一套 sim" if _fail == 0 and _n >= 25
+	print("ALL PASS — 偷袭裁判任务跑完、结果映射 attacker / defender、与周赛同一套 sim" if _fail == 0 and _n >= 35
 		else "FAIL x%d (断言 %d 条)" % [_fail, _n])
 	get_tree().quit(1 if _fail > 0 else 0)

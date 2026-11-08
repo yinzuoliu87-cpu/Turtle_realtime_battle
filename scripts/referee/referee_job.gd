@@ -14,7 +14,10 @@ extends RefCounted
 ##                   ★裁判这一侧四种算法完全相同(左 = A 快照、右 = B 快照、种子来自任务单); 种类只决定服务端 referee_complete 记哪本账
 ##                     (偷袭一本都不记: 不发币 / 不计场数 / 不进快照池, 服务端只按结果单的 winner 报主站 attacker / defender)。
 ##                   偷袭多两条: 守方也必须已开轮(三统领, `validate`); 结果单多一个 `raid_result`(`raid_result_of`)。
-##                   两方快照里服务端盖了 `owned`(主站拥有的龟) / `account_id`, 给「拥有 ∪ 限免」校验读(工作线 C)。
+##                   拥有的龟与账号在 key 里(`a_owned` / `b_owned` / `a_account` / `b_account`, 迁移 20261109c raid_create 写进 meta;
+##                   = 20261109b 领活盖章同一组键), 给「拥有 ∪ 限免」校验读(工作线 C)。★快照里不放这两样(快照会原样进
+##                   matches / 录像 / 直播, 任何登录用户都读得到); 万一快照里带了(旧任务 / 别的路), 进战斗场前也摘掉(`PRIVATE_KEYS`)。
+##                   两方快照的等级 / 装备 / 场次 / 小木斧宝箱香火已由服务端按记账改写(raid_lock_snapshot, §4.9), 裁判照快照算。
 ##   key             这一场是谁(原样带回; 写回 RPC 用它落账, 裁判不读)
 ##   seed            1 ~ 2^53-1 的整数(`_battle_rng` 种子; 服务端生成, 不由客户端给)
 ##   client_version  这份任务要求的游戏版本; 与本机不等 ⇒ 拒算(wrong_version) —— 结果只在同版本里成立
@@ -43,6 +46,10 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const Duallane := preload("res://scripts/gamedata/phase2_duallane.gd")
 const Uploader := preload("res://scripts/systems/replay/replay_uploader.gd")
 const BE := preload("res://scripts/net/backend.gd")
+
+## 快照里的私有字段(拥有的龟 / 账号): 裁判只从任务单(校验)读, 不进战斗场 ⇒ 不进录像(`state.dual_ghost`)与直播(`rs`)。
+##   战斗场一个都不读(全仓 grep 过: 读者只有 validate 一侧)。服务端 matches 写入前另有一道(迁移 20261109c matches_strip_private)。
+const PRIVATE_KEYS := ["owned", "account_id"]
 
 ## 错误码(英文短码, 进服务端 `referee_jobs.error`)。permanent = 重算也不会变好 ⇒ 写回失败、不重领。
 const ERR_PERMANENT := ["bad_job", "bad_mode", "bad_seed", "wrong_version", "a_bad_snapshot", "b_bad_snapshot"]
@@ -134,7 +141,7 @@ static func level_for(j: Dictionary) -> int:
 ## 左方(A)开局 GameState —— `ReplayRecorder.STATE_KEYS` 全部都给值(不留本机残值)。
 ## `normalize` = 战斗场的 `_foe_normalize_lane`(每路规整到 3 单位, 与右方同一条规则)。
 static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
-	var b: Dictionary = (j["b"] as Dictionary).duplicate(true)
+	var b: Dictionary = strip_private(j["b"])
 	var st: Dictionary
 	if j.get("a_state") is Dictionary:
 		st = {}
@@ -155,6 +162,14 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 		var a: Dictionary = j.get("a", {}) if j.get("a") is Dictionary else {}
 		st["season_total_battles"] = maxi(0, int(a.get("season_total_battles", 0)))
 	return st
+
+
+## 快照副本, 摘掉 `PRIVATE_KEYS`(原件不动: validate 读的是任务单里那一份)。
+static func strip_private(snap: Dictionary) -> Dictionary:
+	var out: Dictionary = snap.duplicate(true)
+	for k in PRIVATE_KEYS:
+		out.erase(k)
+	return out
 
 
 static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictionary:
