@@ -303,6 +303,10 @@ func _ready() -> void:
 	var jo := _job([fa[0], fa[1], outside_a], [fb[0], fb[1], fb[2]])
 	jo["key"] = {"week": WEEK}
 	_ok("④ 旧任务(key 里没有账号、不是偷袭) ⇒ 不查(与改之前相同)", RefereeJob.validate(jo) == "", RefereeJob.validate(jo))
+	(jo["a"] as Dictionary)["account_id"] = ACCT_A
+	(jo["a"] as Dictionary)["owned"] = []
+	_ok("★④ 周赛局快照里自报的 account_id / owned 一概不读(没盖章 = 不查; 不拿客户端给的身份去算限免)",
+		RefereeJob.validate(jo) == "", RefereeJob.validate(jo))
 	var nrm := func(specs: Array) -> Array: return specs
 	(ja["a"] as Dictionary)["lv"] = {"stone": 4, fa[0]: 1, fa[1]: 1}
 	var st: Dictionary = RefereeJob.state_for(ja, nrm)
