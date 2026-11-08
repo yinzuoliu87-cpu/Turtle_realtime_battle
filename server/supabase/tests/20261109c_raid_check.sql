@@ -9,13 +9,19 @@
 --   D 防守阵容 raid_defense_put：not_signed_in / wrong_week / bad_snapshot / 没开轮不存（stored:false）；开轮 ⇒ has_defense；
 --     已绑定 ⇒ 发件箱 defense {userId, hasDefense, rating = 服务器场数, device}；没变化不重报；设备号变了重报、空串沿用；
 --     客户端自带的 owned / account_id 摘掉；没绑定的号存但不报
---   R rating = 积分赛账本 + 闯关账本 + 周日决赛局；周赛局写回（真 referee_complete）⇒ 重报新 rating；报主站出错不拖垮周赛记账
+--   R rating = 积分赛账本 + 闯关账本 + 周日决赛局；周赛局写回（真 referee_complete）⇒ 重报新 rating；报主站出错不拖垮周赛记账；
+--     ★三种周赛结算都报：积分赛（A）/ 闯关配对局（A、B 两边）/ 周日决赛（两边）
 --   C 建任务 raid_create：raid_off（raid_on 关 / econ_on 关）/ bad_raidId / same_user / bad_userId / expired / no_referee；
---     正常 ⇒ 锁定双方本周快照 + 服务器 owned、kind = raid、种子用主站的；★同 raidId 幂等回同一 jobId（只一行、只一个裁判任务）；
+--     正常 ⇒ 锁定双方本周快照（等级 / 装备按记账改写）、服务器 owned 只进 meta、kind = raid、种子用主站的；
+--     ★同 raidId 幂等回同一 jobId（只一行、只一个裁判任务）；
 --     raid_conflict；没绑定 / 没有本周阵容 / 阵容不合法 ⇒ ok + jobId，但不排裁判、直接 settle void（没有 started）
 --   K 领活与结算：偷袭排在闯关后面；领到 ⇒ started（重领不重发）；a 赢 ⇒ attacker、b 赢 ⇒ defender、matchId = 录像 id；
 --     ★偷袭局不计场数、不进快照池、不进任何账本、不触发 defense；raid_result 对不上 ⇒ void；拒算 ⇒ void；
 --     ★过了 expireAt 还没开算 ⇒ 不领、记 void 不发 settle；开算 30 分钟没结果 ⇒ void，迟到的写回被拒
+--   L ★记账锁定 raid_lock_snapshot（§4.9）：上限表 = phase2_config；等级取 econ_state（没有 = 1，快照自报不认）；
+--     账本里没有的件 / 星级不对的件 / 不在这只身上的件不认；小将按池；全队上限 (等级 − 1) × 2、单只 3；场次 = rating；
+--     小木斧 / 宝箱 / 香火 = 重放结果；经 raid_create 真进裁判任务（a / b / level）
+--   M ★私有字段不外泄：快照与领活单的 a / b 里没有 owned / account_id（只在 key 里）；matches 写入前摘掉
 --   P 周清：偷袭局录像留 30 天（10 天的留着、31 天的删），其余照旧按周删；raid_jobs 31 天的删
 --   W 换周：上周报过有阵容的已绑定号 ⇒ hasDefense:false / rating 0；重跑不重报；新的一周没开轮 ⇒ 建任务 void；开轮后报回 true
 --   F 权限 / 结构：put 只给 authenticated；建任务 / 报主站只给 service_role；两张表开 RLS 无策略；kind 认 raid；两条 cron 在
@@ -259,6 +265,33 @@ select pg_temp.ck('R4 ★报主站出错不拖垮周赛记账：referee_complete
   pg_temp.r('rc2')::text);
 select pg_temp.ck('R5 下一次报（存阵容 / 下一局）补上：rating 11',
   (public.raid_defense_report(pg_temp.u('att')) ->> 'sent')::boolean and (pg_temp.def_last('att') ->> 'rating')::int = 11);
+-- 闯关配对局（meta.pair，两边都是在场的人）与周日决赛：真 referee_complete ⇒ 两边都重报
+select pg_temp.keep('rn0', jsonb_build_object('att', pg_temp.def_n('att'), 'def', pg_temp.def_n('def')));
+insert into public.referee_jobs (kind, match_key, season_week, client_version, seed, a_account, b_account, a_snapshot, b_snapshot,
+    status, claimed_by, claimed_at, attempts, meta)
+  values ('gauntlet', 'chk-raid-gpair-1', pg_temp.fake_week(), '9.9.10', 13, pg_temp.u('att'), pg_temp.u('def'),
+    pg_temp.snap('att', 'basic', 'stone', 'bamboo'), pg_temp.snap('def', 'ninja', 'dice', 'pirate'),
+    'claimed', 'chk-w0', now(), 1, jsonb_build_object('rules_ver', 4, 'pair', true));
+select pg_temp.keep('rc6', public.referee_complete((select job_id from public.referee_jobs where match_key = 'chk-raid-gpair-1'),
+  'chk-w0', pg_temp.result((select job_id from public.referee_jobs where match_key = 'chk-raid-gpair-1'), 'a')));
+select pg_temp.ck('R6 ★闯关配对局写回 ⇒ 攻守两边各重报一次，rating = 各自的服务器场数（A 12 = 11 + 1、B 1）',
+  (pg_temp.r('rc6') ->> 'ok')::boolean
+  and pg_temp.def_n('att') = (pg_temp.r('rn0') ->> 'att')::int + 1 and pg_temp.def_n('def') = (pg_temp.r('rn0') ->> 'def')::int + 1
+  and (pg_temp.def_last('att') ->> 'rating')::int = 12 and (pg_temp.def_last('def') ->> 'rating')::int = 1
+  and (pg_temp.def_last('def') ->> 'rating')::int = public.raid_rating(pg_temp.u('def'), pg_temp.fake_week()),
+  pg_temp.r('rc6')::text || ' / ' || coalesce(pg_temp.def_last('def')::text, 'null'));
+insert into public.referee_jobs (kind, match_key, season_week, client_version, seed, a_account, b_account, a_snapshot, b_snapshot,
+    status, claimed_by, claimed_at, attempts, meta)
+  values ('finals', 'chk-raid-finals-2', pg_temp.fake_week(), '9.9.10', 14, pg_temp.u('def'), pg_temp.u('att'),
+    pg_temp.snap('def', 'ninja', 'dice', 'pirate'), pg_temp.snap('att', 'basic', 'stone', 'bamboo'),
+    'claimed', 'chk-w0', now(), 1, jsonb_build_object('bucket', 77, 'round', 1, 'match', 1));
+select pg_temp.keep('rc7', public.referee_complete((select job_id from public.referee_jobs where match_key = 'chk-raid-finals-2'),
+  'chk-w0', pg_temp.result((select job_id from public.referee_jobs where match_key = 'chk-raid-finals-2'), 'b')));
+select pg_temp.ck('R7 ★周日决赛写回 ⇒ 两边各重报一次（A 13、B 2）',
+  (pg_temp.r('rc7') ->> 'ok')::boolean
+  and pg_temp.def_n('att') = (pg_temp.r('rn0') ->> 'att')::int + 2 and pg_temp.def_n('def') = (pg_temp.r('rn0') ->> 'def')::int + 2
+  and (pg_temp.def_last('att') ->> 'rating')::int = 13 and (pg_temp.def_last('def') ->> 'rating')::int = 2,
+  pg_temp.r('rc7')::text || ' / ' || coalesce(pg_temp.def_last('att')::text, 'null'));
 
 -- ═══ C 建任务 ═══
 -- 守方「过期阵容」（上周的）/ 「阵容不合法」（本周但只有两只）直接造行
@@ -290,16 +323,27 @@ select pg_temp.ck('C5 ★正常：ok + jobId；raid_jobs 排队；裁判任务 k
   and (pg_temp.job_of(9001)).client_version = '9.9.10' and (pg_temp.job_of(9001)).seed = 777
   and (pg_temp.job_of(9001)).match_key = 'raid:9001' and (pg_temp.rj(9001)).match_id = (pg_temp.job_of(9001)).match_id,
   pg_temp.r('c5')::text);
-select pg_temp.ck('C6 ★锁定的快照 = 双方本周那一份 + 服务器 owned（mainsite_pets，排好序）+ account_id；快照里的阵容原样',
-  (pg_temp.job_of(9001)).a_snapshot -> 'owned' = '["basic", "stone"]'::jsonb
-  and (pg_temp.job_of(9001)).b_snapshot -> 'owned' = '["ninja"]'::jsonb
-  and (pg_temp.job_of(9001)).a_snapshot ->> 'account_id' = pg_temp.u('att')::text
-  and (pg_temp.job_of(9001)).b_snapshot ->> 'account_id' = pg_temp.u('def')::text
+select pg_temp.ck('C6 ★锁定的快照 = 双方本周那一份（阵容原样）；服务器 owned（mainsite_pets，排好序）/ 账号只在 meta（a_owned / b_owned / a_account / b_account），快照里没有',
+  (pg_temp.job_of(9001)).meta -> 'a_owned' = '["basic", "stone"]'::jsonb
+  and (pg_temp.job_of(9001)).meta -> 'b_owned' = '["ninja"]'::jsonb
+  and (pg_temp.job_of(9001)).meta ->> 'a_account' = pg_temp.u('att')::text
+  and (pg_temp.job_of(9001)).meta ->> 'b_account' = pg_temp.u('def')::text
+  and not ((pg_temp.job_of(9001)).a_snapshot ? 'owned') and not ((pg_temp.job_of(9001)).a_snapshot ? 'account_id')
+  and not ((pg_temp.job_of(9001)).b_snapshot ? 'owned') and not ((pg_temp.job_of(9001)).b_snapshot ? 'account_id')
   and (pg_temp.job_of(9001)).a_snapshot -> 'leaders' = '["basic", "stone", "bamboo"]'::jsonb
   and (pg_temp.job_of(9001)).b_snapshot -> 'leaders' = '["ninja", "dice", "pirate"]'::jsonb
+  and (pg_temp.job_of(9001)).a_snapshot -> 'lane_assign' = pg_temp.snap('att', 'basic', 'stone', 'bamboo') -> 'lane_assign'
   and (pg_temp.rj(9001)).a_owned = '["basic", "stone"]'::jsonb and (pg_temp.rj(9001)).b_snapshot = (pg_temp.job_of(9001)).b_snapshot
   and (pg_temp.rj(9001)).stake = 50,
-  ((pg_temp.job_of(9001)).a_snapshot -> 'owned')::text);
+  ((pg_temp.job_of(9001)).meta)::text);
+select pg_temp.ck('C6b ★账本里没有这个号（econ_state 无行）⇒ 等级 1（快照自报 4 不认）、0 件装备（快照里 1 件不认）、场次 = 服务器 rating（不是自报 99）；任务 level = 1',
+  ((pg_temp.job_of(9001)).a_snapshot ->> 'season_level')::int = 1
+  and (pg_temp.job_of(9001)).a_snapshot -> 'equipped' = '{}'::jsonb
+  and ((pg_temp.job_of(9001)).a_snapshot ->> 'season_total_battles')::int = public.raid_rating(pg_temp.u('att'), pg_temp.fake_week())
+  and ((pg_temp.job_of(9001)).a_snapshot ->> 'season_total_battles')::int <> 99
+  and ((pg_temp.job_of(9001)).b_snapshot ->> 'season_level')::int = 1 and (pg_temp.job_of(9001)).b_snapshot -> 'equipped' = '{}'::jsonb
+  and (pg_temp.job_of(9001)).level = 1,
+  left((pg_temp.job_of(9001)).a_snapshot::text, 300));
 select pg_temp.ck('C7 ★同 raidId 重发 ⇒ 回同一个 jobId；raid_jobs 一行、裁判任务一个；还没 started / settle',
   pg_temp.raid(9001, 'ChkAtt01', 'ChkDef01') ->> 'jobId' = pg_temp.r('c5') ->> 'jobId'
   and (select count(*) from public.raid_jobs where raid_id = 9001) = 1
@@ -337,9 +381,12 @@ select pg_temp.ck('K1 ★偷袭排在闯关后面：闯关局晚建一小时也�
   pg_temp.r('k1') -> 0 ->> 'mode' = 'gauntlet', left(pg_temp.r('k1')::text, 200));
 update public.referee_jobs set status = 'failed', error = 'chk' where match_key = 'chk-raid-g-1';
 select pg_temp.keep('k2', pg_temp.claim());
-select pg_temp.ck('K2 ★领到偷袭：任务单 mode = raid、a 带 owned、key 带 raid_id；raid_jobs started；发件箱 started {raidId}',
+select pg_temp.ck('K2 ★领到偷袭：任务单 mode = raid、key 带 raid_id 与 a_owned / b_owned（裁判从任务单读）、a / b 快照里没有 owned / account_id；raid_jobs started；发件箱 started {raidId}',
   pg_temp.r('k2') -> 0 ->> 'mode' = 'raid' and (pg_temp.r('k2') -> 0 ->> 'job_id')::bigint = (pg_temp.rj(9001)).referee_job_id
-  and pg_temp.r('k2') -> 0 -> 'a' -> 'owned' = '["basic", "stone"]'::jsonb
+  and pg_temp.r('k2') -> 0 -> 'key' -> 'a_owned' = '["basic", "stone"]'::jsonb
+  and pg_temp.r('k2') -> 0 -> 'key' -> 'b_owned' = '["ninja"]'::jsonb
+  and not (pg_temp.r('k2') -> 0 -> 'a' ? 'owned') and not (pg_temp.r('k2') -> 0 -> 'b' ? 'owned')
+  and not (pg_temp.r('k2') -> 0 -> 'a' ? 'account_id') and not (pg_temp.r('k2') -> 0 -> 'b' ? 'account_id')
   and (pg_temp.r('k2') -> 0 -> 'key' ->> 'raid_id')::bigint = 9001
   and (pg_temp.rj(9001)).status = 'started' and (pg_temp.rj(9001)).started_at is not null
   and pg_temp.ob('started', 9001) = jsonb_build_object('raidId', 9001) and pg_temp.ob_n('settle', 9001) = 0,
@@ -361,9 +408,11 @@ select pg_temp.ck('K5 ★偷袭局不发任何东西：积分赛 / 闯关账本�
   and public.raid_rating(pg_temp.u('att'), pg_temp.fake_week()) = (pg_temp.r('rat0') #>> '{}')::int
   and pg_temp.def_n('att') + pg_temp.def_n('def') = (pg_temp.r('defn0') #>> '{}')::int,
   pg_temp.ledgers() || ' / ' || (pg_temp.r('led0') #>> '{}'));
-select pg_temp.ck('K6 录像落 matches（phase = raid、左 = 攻方）',
+select pg_temp.ck('K6 录像落 matches（phase = raid、左 = 攻方）；★两边快照里没有 owned / account_id',
   exists (select 1 from public.matches where match_id = (pg_temp.job_of(9001)).match_id and phase = 'raid'
-          and left_account = pg_temp.u('att')));
+          and left_account = pg_temp.u('att') and left_snapshot ? 'leaders' and right_snapshot ? 'leaders'
+          and not (left_snapshot ? 'owned') and not (left_snapshot ? 'account_id')
+          and not (right_snapshot ? 'owned') and not (right_snapshot ? 'account_id')));
 select pg_temp.ck('K7 同一局重复写回 ⇒ already_done、settle 仍只 1 条',
   public.referee_complete((pg_temp.rj(9001)).referee_job_id, 'chk-w2',
     pg_temp.result((pg_temp.rj(9001)).referee_job_id, 'a')) ->> 'reason' = 'already_done'
@@ -435,6 +484,132 @@ select pg_temp.ck('K17 ★发件箱写不进时领活照常：租期回收把次
 select public.referee_complete((pg_temp.rj(9021)).referee_job_id, 'chk-w6', pg_temp.result((pg_temp.rj(9021)).referee_job_id, 'a'));
 select pg_temp.ck('K18 丢了 started 的那一场写回照样 settle（主站那边没延期就按它自己的超时作废，钱不会错）',
   (pg_temp.rj(9021)).status = 'done' and pg_temp.ob('settle', 9021) ->> 'result' = 'attacker');
+
+-- ═══ L 记账锁定（§4.9：本周等级与装备以服务器记账为准）═══
+-- ★L0 的字面表就是 tests/verify_raid_private_fields.gd 对 phase2_config.gd 的那一张（标记 raid_cap_table / raid_unit_cap，别改名）
+select pg_temp.ck('L0 ★上限 = phase2_config：全队 0 ~ 11 级 = raid_cap_table、单只 = raid_unit_cap',
+  (select array_agg(public.raid_team_equip_cap(l) order by l) from generate_series(0, 11) l)
+    = array[0, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 18]   -- raid_cap_table
+  and public.raid_unit_equip_cap() = 3,                 -- raid_unit_cap
+  (select array_agg(public.raid_team_equip_cap(l) order by l) from generate_series(0, 11) l)::text);
+create or replace function pg_temp.it(p_id text, p_star numeric default 1) returns jsonb language sql as $$
+  select jsonb_build_object('id', p_id, 'star', p_star)
+$$;
+create or replace function pg_temp.econ(p_k text, p_assets jsonb, p_progress jsonb default '{}'::jsonb) returns void language sql as $$
+  insert into public.econ_state (account_id, week, seen, upto, assets, progress)
+    values (pg_temp.u(p_k), pg_temp.fake_week(), 5, 5, p_assets, p_progress)
+    on conflict (account_id, week) do update set assets = excluded.assets, progress = excluded.progress
+$$;
+-- 守方账本：本周等级 3（上限 4 件）；忍者身上 001★1 + 002★2；小将合计一件 010★1；小木斧 / 宝箱 / 香火进度
+select pg_temp.econ('def', jsonb_build_object('lv', 3,
+    'worn', jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_002', 2))),
+    'minions', jsonb_build_array(jsonb_build_object('eq', jsonb_build_array(pg_temp.it('p2eq_010')), 'lv', 0)::text),
+    'axe', jsonb_build_array(0, 120, 2, '', 0)),
+  jsonb_build_object('cv', 12.5, 'cw', jsonb_build_array('p2eq_201'), 'im', 2, 'ic', 1));
+select pg_temp.keep('l1', public.raid_lock_snapshot(pg_temp.u('def'), pg_temp.fake_week(),
+  pg_temp.snap('def', 'ninja', 'dice', 'pirate') || jsonb_build_object(
+    'equipped', jsonb_build_object(
+      'ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_003'), pg_temp.it('p2eq_002', 2.0), pg_temp.it('p2eq_002', 3)),
+      'dice', jsonb_build_array(pg_temp.it('p2eq_001'))),
+    'minions', jsonb_build_object(
+      'top', jsonb_build_array(jsonb_build_object('role', 'front', 'equips', jsonb_build_array(pg_temp.it('p2eq_010'), pg_temp.it('p2eq_011')))),
+      'bottom', jsonb_build_array(jsonb_build_object('role', 'back', 'equips', jsonb_build_array(pg_temp.it('p2eq_010'))),
+                                  jsonb_build_object('role', 'front'))),
+    'owned', jsonb_build_array('phoenix'), 'account_id', 'leak-me',
+    'axe_exp_total', 999, 'axe_stage', 9, 'chest_treasure_value', 500, 'incense_marks', 9)));
+select pg_temp.ck('L1 ★等级 = 账本的 3（快照自报 4 不认）；场次 = 服务器 rating（不是自报 99）',
+  (pg_temp.r('l1') ->> 'season_level')::int = 3
+  and (pg_temp.r('l1') ->> 'season_total_battles')::int = public.raid_rating(pg_temp.u('def'), pg_temp.fake_week()),
+  pg_temp.r('l1') ->> 'season_level');
+select pg_temp.ck('L2 ★统领：账本里没有的件（003）/ 星级不对的件（002★3）/ 不在这只身上的件（骰子身上的 001）不认；认下的星规整成整数',
+  pg_temp.r('l1') -> 'equipped' = jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_002', 2))),
+  (pg_temp.r('l1') -> 'equipped')::text);
+select pg_temp.ck('L3 ★小将：账本小将池只有一件 010 ⇒ 上路那只留 010（011 不认）、下路那只的 010 不认（池扣光了）；没装备的那只原样',
+  pg_temp.r('l1') -> 'minions' = jsonb_build_object(
+    'top', jsonb_build_array(jsonb_build_object('role', 'front', 'equips', jsonb_build_array(pg_temp.it('p2eq_010')))),
+    'bottom', jsonb_build_array(jsonb_build_object('role', 'back', 'equips', '[]'::jsonb), jsonb_build_object('role', 'front'))),
+  (pg_temp.r('l1') -> 'minions')::text);
+select pg_temp.ck('L4 ★小木斧 / 宝箱 / 香火 = 重放结果（自报的 999 / 9 / 500 / 9 不认）；owned / account_id 摘掉；阵容 / 名字原样',
+  (pg_temp.r('l1') ->> 'axe_exp_total')::int = 120 and (pg_temp.r('l1') ->> 'axe_stage')::int = 2 and pg_temp.r('l1') ->> 'axe_final' = ''
+  and (pg_temp.r('l1') ->> 'chest_treasure_value')::numeric = 12.5 and pg_temp.r('l1') -> 'chest_treasures_won' = '["p2eq_201"]'::jsonb
+  and (pg_temp.r('l1') ->> 'incense_marks')::int = 2 and (pg_temp.r('l1') ->> 'incense_charge')::int = 1
+  and not (pg_temp.r('l1') ? 'owned') and not (pg_temp.r('l1') ? 'account_id')
+  and pg_temp.r('l1') -> 'lane_assign' = pg_temp.snap('def', 'ninja', 'dice', 'pirate') -> 'lane_assign'
+  and pg_temp.r('l1') -> 'profile' = pg_temp.snap('def', 'ninja', 'dice', 'pirate') -> 'profile',
+  left(pg_temp.r('l1')::text, 400));
+-- 全队上限：等级 2（上限 2 件），账本里三件都在忍者身上、小将池也有一件 ⇒ 只留前两件
+select pg_temp.econ('cnt', jsonb_build_object('lv', 2,
+  'worn', jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_002'), pg_temp.it('p2eq_003'))),
+  'minions', jsonb_build_array(jsonb_build_object('eq', jsonb_build_array(pg_temp.it('p2eq_010')), 'lv', 0)::text)));
+select pg_temp.keep('l5', public.raid_lock_snapshot(pg_temp.u('cnt'), pg_temp.fake_week(),
+  pg_temp.snap('cnt', 'ninja', 'dice', 'pirate') || jsonb_build_object(
+    'equipped', jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_002'), pg_temp.it('p2eq_003'))),
+    'minions', jsonb_build_object('top', jsonb_build_array(jsonb_build_object('role', 'front', 'equips', jsonb_build_array(pg_temp.it('p2eq_010')))),
+                                  'bottom', '[]'::jsonb))));
+select pg_temp.ck('L5 ★全队上限 (等级 − 1) × 2：等级 2 ⇒ 2 件（忍者前两件），第 3 件与小将那件都在账本里也不认',
+  pg_temp.r('l5') -> 'equipped' = jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_002')))
+  and pg_temp.r('l5') -> 'minions' -> 'top' -> 0 -> 'equips' = '[]'::jsonb,
+  (pg_temp.r('l5') -> 'equipped')::text || ' ' || (pg_temp.r('l5') -> 'minions')::text);
+-- 单只上限：等级 10（上限 18），账本里四件都在忍者身上 ⇒ 只留 3 件
+select pg_temp.econ('bad', jsonb_build_object('lv', 10,
+  'worn', jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_002'), pg_temp.it('p2eq_003'), pg_temp.it('p2eq_004')))));
+select pg_temp.keep('l6', public.raid_lock_snapshot(pg_temp.u('bad'), pg_temp.fake_week(),
+  pg_temp.snap('bad', 'ninja', 'dice', 'pirate') || jsonb_build_object(
+    'equipped', jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001'), pg_temp.it('p2eq_002'), pg_temp.it('p2eq_003'), pg_temp.it('p2eq_004'))))));
+select pg_temp.ck('L6 ★单只上限 3：等级 10，账本里四件都在这只身上 ⇒ 留前 3 件；等级 10',
+  jsonb_array_length(pg_temp.r('l6') -> 'equipped' -> 'ninja') = 3
+  and pg_temp.r('l6') -> 'equipped' -> 'ninja' -> 2 = pg_temp.it('p2eq_003') and (pg_temp.r('l6') ->> 'season_level')::int = 10,
+  (pg_temp.r('l6') -> 'equipped')::text);
+select pg_temp.keep('l7', public.raid_lock_snapshot(pg_temp.u('stale'), pg_temp.fake_week(),
+  pg_temp.snap('stale', 'ninja', 'dice', 'pirate') || jsonb_build_object('axe_exp_total', 50, 'incense_marks', 3,
+    'minions', jsonb_build_object('top', jsonb_build_array(jsonb_build_object('role', 'front', 'equips', jsonb_build_array(pg_temp.it('p2eq_010')))),
+                                  'bottom', '[]'::jsonb))));
+select pg_temp.ck('L7 ★账本没有这个号（econ_state 无行）⇒ 等级 1、0 件（统领 / 小将都拿掉）、小木斧 / 香火 0',
+  (pg_temp.r('l7') ->> 'season_level')::int = 1 and pg_temp.r('l7') -> 'equipped' = '{}'::jsonb
+  and pg_temp.r('l7') -> 'minions' -> 'top' -> 0 -> 'equips' = '[]'::jsonb
+  and (pg_temp.r('l7') ->> 'axe_exp_total')::int = 0 and (pg_temp.r('l7') ->> 'incense_marks')::int = 0,
+  left(pg_temp.r('l7')::text, 300));
+-- 经 raid_create 真进裁判任务：攻方账本等级 2、首领身上一件 001（= 存的阵容里那件）；守方等级 3、忍者身上 001
+select pg_temp.econ('att', jsonb_build_object('lv', 2, 'worn', jsonb_build_object('basic', jsonb_build_array(pg_temp.it('p2eq_001')))));
+select pg_temp.keep('l8', pg_temp.raid(9030, 'ChkAtt01', 'ChkDef01'));
+select pg_temp.ck('L8 ★raid_create 锁定的 a / b = 记账改写后的：攻方等级 2 带 001、守方等级 3 带 001；任务 level = 攻方的 2；raid_jobs 存的同一份',
+  (pg_temp.r('l8') ->> 'ok')::boolean
+  and ((pg_temp.job_of(9030)).a_snapshot ->> 'season_level')::int = 2
+  and (pg_temp.job_of(9030)).a_snapshot -> 'equipped' = jsonb_build_object('basic', jsonb_build_array(pg_temp.it('p2eq_001')))
+  and ((pg_temp.job_of(9030)).b_snapshot ->> 'season_level')::int = 3
+  and (pg_temp.job_of(9030)).b_snapshot -> 'equipped' = jsonb_build_object('ninja', jsonb_build_array(pg_temp.it('p2eq_001')))
+  and (pg_temp.job_of(9030)).level = 2
+  and (pg_temp.rj(9030)).a_snapshot = (pg_temp.job_of(9030)).a_snapshot,
+  left((pg_temp.job_of(9030)).a_snapshot::text, 300));
+
+-- ═══ M 私有字段不外泄 ═══
+select pg_temp.keep('m1', pg_temp.claim('chk-w7'));
+select pg_temp.ck('M1 ★领活单：a / b 里没有 owned / account_id，key 里有（裁判从任务单读）',
+  (pg_temp.r('m1') -> 0 ->> 'job_id')::bigint = (pg_temp.rj(9030)).referee_job_id
+  and not (pg_temp.r('m1') -> 0 -> 'a' ? 'owned') and not (pg_temp.r('m1') -> 0 -> 'b' ? 'account_id')
+  and pg_temp.r('m1') -> 0 -> 'key' -> 'b_owned' = '["ninja"]'::jsonb
+  and pg_temp.r('m1') -> 0 -> 'key' ->> 'a_account' = pg_temp.u('att')::text,
+  left(pg_temp.r('m1')::text, 300));
+-- 兜底那一道：哪怕任务里的快照带了（旧任务 / 别的路），写 matches 时也摘掉
+update public.referee_jobs set a_snapshot = a_snapshot || jsonb_build_object('owned', jsonb_build_array('basic'), 'account_id', 'leak-a'),
+    b_snapshot = b_snapshot || jsonb_build_object('owned', jsonb_build_array('ninja'), 'account_id', 'leak-b')
+ where job_id = (pg_temp.rj(9030)).referee_job_id;
+select pg_temp.keep('m2', public.referee_complete((pg_temp.rj(9030)).referee_job_id, 'chk-w7',
+  pg_temp.result((pg_temp.rj(9030)).referee_job_id, 'a')));
+select pg_temp.ck('M2 ★写 matches 前摘掉：任务快照带了 owned / account_id，matches 两边都没有（其余原样）',
+  (pg_temp.r('m2') ->> 'ok')::boolean
+  and exists (select 1 from public.matches where match_id = (pg_temp.job_of(9030)).match_id
+                and left_snapshot ? 'leaders' and right_snapshot ? 'leaders'
+                and not (left_snapshot ? 'owned') and not (left_snapshot ? 'account_id')
+                and not (right_snapshot ? 'owned') and not (right_snapshot ? 'account_id')),
+  pg_temp.r('m2')::text);
+insert into public.matches (match_id, season_week, phase, seed, left_snapshot, right_snapshot, result, client_version)
+  values ('11111111-1111-4111-8111-0000000000a1', 1, 'ranked', 1,
+          '{"leaders": ["basic"], "owned": ["basic"], "account_id": "leak"}', '{"leaders": ["ninja"], "account_id": "leak"}',
+          '{}', '9.9.10');
+select pg_temp.ck('M3 客户端那条路（直接写 matches）同样摘掉；别的键不动',
+  (select left_snapshot = '{"leaders": ["basic"]}'::jsonb and right_snapshot = '{"leaders": ["ninja"]}'::jsonb
+     from public.matches where match_id = '11111111-1111-4111-8111-0000000000a1'));
 
 -- ═══ P 周清 ═══
 insert into public.matches (match_id, season_week, phase, seed, left_snapshot, right_snapshot, result, client_version, created_at)
