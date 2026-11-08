@@ -97,6 +97,41 @@ python3 /root/deploy/player/player_ops.py status prod
 - 整个下线：站点块里删掉 `import /etc/caddy/turtle-player.caddy` 那一行 → validate → reload。主站拿不到 `playerURL` 时不显示「看录像」（20261107 §5），不挡别的。
 - purge 退回：把旧 `stream_ops.py`（git 历史）装回去；过期记号目录可以直接删（之后过期的局会显示「未找到」而不是「已过期」）。
 
+## 首开体积
+
+现状（5fe4b179 那次导出）：首开约 151 MB，其中 `index.pck` 142 MB = 贴图 98 MB + 背景乐 14 MB + 字体 10 MB + 其余。
+下表是 11-08 用 Python 量的 `assets/` 源文件体积（不含 `.import`），以及播放器（只播对局录像：战场、单位帧条、特效、血条 HUD、字体）用不用得到。
+
+| 目录 / 文件 | 源体积 | 播放器用不用 | 能否排除 |
+|---|---|---|---|
+| `assets/sprites/skills/` | 50.0 MB | 用（技能特效帧） | 不能 |
+| `assets/sprites/pets/` | 44.5 MB | 用（单位帧条） | 不能 |
+| `assets/audio/sfx/` | 46.2 MB | 用（战斗音效） | 不能 |
+| `assets/sprites/equip/` 15.8 · `vfx/` 6.8 · `passive/` 6.5 · `status/` 2.1 · `map/` 1.1 | 32.3 MB | 用 | 不能 |
+| `assets/fonts/` | 15.5 MB | 用（`default_theme.tres` 直接引 NotoSansSC 8.3 MB；像素字 5.1 MB；NotoEmoji 2.0 MB） | 不能（要省只能换字体子集，另做） |
+| **`assets/audio/bgm/*`** | **14.4 MB** | 不用（`Audio.play_bgm` 先 `ResourceLoader.exists` 再 `load`，缺文件只是不放） | **能** |
+| **`assets/sprites/menu/arena/*`** | **0.7 MB** | 不用（只有 `menu_arena_layout.gd` 主菜单斗兽场引） | **能** |
+| **`assets/sprites/menu/menu-bg-tile.png`** | **2.1 MB** | 不用（只有菜单类场景引） | **能** |
+| **`assets/sprites/bg/*`**（`select-bg.png`） | **1.9 MB** | 不用（选龟 / 图鉴 / 设置等菜单页） | **能** |
+| **`assets/sprites/intro/*`** | **0.6 MB** | 不用（开场标） | **能** |
+| `assets/sprites/menu/` 其余 | 约 2.6 MB | **用**：`ui_skin.gd` 引 `menu/frame-rect.png`，`coin_fly.gd` / `finals_end_beats.gd` 引 `menu/ic-deepsea.png` | 不能整目录排 |
+| `assets/sprites/shop/` | 0.2 MB | **用**：`finals_end_beats.gd` 引 `shop/icon-xp.png` | 不能整目录排（量也小） |
+| `assets/sprites/inventory/` | 0.1 MB | **用**：`unit_card_art.gd` 引 `unit-card*.png` | 不能 |
+| `assets/sprites/finals/` | <0.1 MB | **用**：决赛日回放的开场 / 助威 | 不能 |
+
+预计可省：背景乐约 14 MB（pck 里就是 14 MB）+ 菜单大图约 5 MB（源 5.3 MB，进 pck 后按导入格式可能略有出入）≈ **19 MB，151 MB → 约 132 MB**。
+大头（技能 / 龟 / 音效 / 装备贴图约 140 MB 源）播放器都要用，排目录省不下来；再往下压只能动导入格式（网页包贴图改有损 WebP、音效降码率）或按龟拆包，属于另一件事。
+
+WebPlayer 预设（`export_presets.cfg` 里 `name="WebPlayer"` 那段）`exclude_filter` 的写法——在原有那串后面追加，逗号加空格分隔（11-08 已写进预设，只改了这一行，其他预设逐字未变）：
+
+```
+exclude_filter="tests/*, tools/*, build/*, _*, .out/*, *.log, diff_images.gd, docs/*, *.md, *.ps1, *.sh, *.py, assets/audio/bgm/*, assets/sprites/menu/arena/*, assets/sprites/menu/menu-bg-tile.png, assets/sprites/bg/*, assets/sprites/intro/*"
+```
+
+**下次导出后核对首开体积**：写进预设之后还没导出过（11-08 时间不够）。下次 `bash build-web.sh player` 出包后，量 `build/webplayer/index.pck` 应比 142 MB 少约 19 MB、首开总量约 132 MB；再用桌面 `--main-pack` 开一次、拉一局录像播完，确认没有缺图 / 缺依赖报错。不对就回到这一行查。
+
+风险：被排除的图在菜单类脚本里有 `preload`（`MainMenuScene.gd` / `TeamSelectScene.gd` 等）。脚本以二进制令牌导出、只有被加载时才解析 `preload`；播放器开机直进 `WebPlayer.tscn`、不进任何菜单页，所以不会触发。导出时 Godot 可能对这些缺依赖打警告，属预期。**只排上表加粗的几项，别按目录名整排 `menu/` / `shop/` / `inventory/`**（战斗路径有引用，排了会在回放里缺图或报错）。
+
 ## 已知风险与未决
 
 - **首开 151 MB**：主站内嵌页第一次打开要等。可做：WebPlayer 预设改「只导出选中的场景 + 依赖」会漏掉按路径字符串运行时 `load` 的特效资源（不可取）；可行的是按目录排除播放器用不到的菜单 / 商店 / 引导大图与背景乐，或按龟拆包（方案书原话）。
