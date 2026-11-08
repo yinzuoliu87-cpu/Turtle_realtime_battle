@@ -44,7 +44,7 @@ const HIT_YD := 120.0                # 命中火球 ≈ 1.5 倍龟身
 ## ── 复制 ──
 const CH_H_SHELL := 0.8              # 锁链 / 紫流挂在龟壳身上的高度(米): 龟壳矮, 身体中段约 0.8
 const CH_H_SRC := 1.0                # 挂在原主身上的高度(米): 立绘 2 米高, 取中段
-const LINK_THICK := 9.0              # 锁链粗(码); 一节 10×6 像素 ⇒ 一节长 15 码, 沿线平铺不拉伸
+const LINK_THICK := 12.0             # 锁链粗(码); 一节 10×6 像素 ⇒ 一节长 20 码, 沿线平铺不拉伸(实录 9 码粗只是一串虚点)
 const DRAIN_THICK := 20.0            # 紫流粗(码); 一段 16×12 像素
 const GRAB_YD := 108.0               # 抓住白闪 ≈ 1.3 倍身高
 const MARK_YD := 80.0                # 「已被偷」小圈一格(32 像素)的世界宽(码)
@@ -53,6 +53,7 @@ const BADGE_INNER := 22.0            # 底框定稿帧(第 3 帧)里图标那块
 const EMPTY_REACH := 120.0           # 原主找不到 / 已死: 朝正前方空甩多远(码)
 ## 闪白色(⑦ 放招 / ④ 原主被抽空)。比受击闪白(JUICE_FLASH_COLOR)略带淡紫, 门禁按它认「这一下是放招闪」。
 const RELEASE_FLASH := Color(2.4, 2.3, 2.6)
+const GROUND_PRIO := -1              # 贴地层(火团 / 已被偷小圈)的渲染优先级: 比立绘(0)先画 ⇒ 永远压在龟脚下
 ## 复制演出节拍(秒, 从施放那一刻起; 10 fps 一格 0.1 秒): ① 0~0.2 ② 0~0.3(0.2 变细 / 0.3 只剩细线) ③ 0.3 ④ 0.4~0.7
 const T_THIN := 0.2
 const T_GRAB := 0.3
@@ -70,7 +71,8 @@ func _live() -> bool:
 
 
 ## 公告板帧表(先藏着, 由 _seq 到点显示)。size_yd = 一格的世界高(码)。
-func _bb(path: String, hframes: int, size_yd: float, at: Vector2, h: float) -> Sprite3D:
+## prio / on_top: 排序在进树之前定好(录流器按进树那一刻的属性建镜像)。on_top = 贴在身上的那几层(旋涡 / 电弧), 不被立绘挡。
+func _bb(path: String, hframes: int, size_yd: float, at: Vector2, h: float, prio: int = 0, on_top: bool = false) -> Sprite3D:
 	var tex: Texture2D = load(path)
 	var s := Sprite3D.new()
 	s.texture = tex
@@ -82,16 +84,22 @@ func _bb(path: String, hframes: int, size_yd: float, at: Vector2, h: float) -> S
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.pixel_size = (size_yd * battle.WS) / float(maxi(1, tex.get_height()))
 	s.position = battle._world_pos(at, h)
+	s.render_priority = prio
+	s.no_depth_test = on_top
 	s.visible = false
 	battle._world.add_child(s)
 	return s
 
 
 ## 贴地帧表: 走 battle._vfx.ground_sprite(像素风三条硬约束在那里写一次: NEAREST / AXIS_Y 躺平 / 不转)。
+## ★排在立绘后面(render_priority -1 + sorting_offset -1, 同 battle_vfx 激光地印): 11-08 实录第一版火团与站在上面的龟
+##   深度并列, 落地区 5 秒里落点那名敌人和龟壳整个被火团盖没(只剩隐身描边)。地上的印子不该盖住龟。
 func _ground(path: String, hframes: int, size_yd: float, at: Vector2, h: float) -> Sprite3D:
 	var tex: Texture2D = load(path)
 	var ps: float = (size_yd * battle.WS) / float(maxi(1, tex.get_height()))
 	var s: Sprite3D = battle._vfx.ground_sprite(path, hframes, 1, 0, ps, at, h)
+	s.render_priority = GROUND_PRIO
+	s.sorting_offset = -1.0
 	s.visible = false
 	battle._world.add_child(s)
 	return s
@@ -235,18 +243,14 @@ func copy_begin(u: Dictionary, stypes: Array, hold_end: float) -> void:
 		var d: Vector2 = sp - me
 		_crescent(me, DetMath.norm(d) if DetMath.vlen(d) > 1.0 else Vector2.RIGHT)
 		_chain(me, sp, CH_H_SRC)
-		var vx := _bb(VORTEX, 2, 40.0, sp, CH_H_SRC)
-		vx.no_depth_test = true
-		vx.render_priority = 5
+		var vx := _bb(VORTEX, 2, 40.0, sp, CH_H_SRC, 5, true)
 		vx.set_meta("shell_fx", "vortex")
 		_seq(vx, [0, 1], FPS, T_THIN)
 		var tw = battle._reg_tween()
 		tw.tween_interval(T_GRAB)
 		tw.tween_callback(_grab.bind(u, o, hold_end + 0.3))
 	## ⑥ 持有态: 抓住那一刻起, 龟壳身上碎电弧循环到 hold_end
-	var arc := _bb(ARC, 4, ARC_YD, me, CH_H_SHELL)
-	arc.no_depth_test = true
-	arc.render_priority = 6
+	var arc := _bb(ARC, 4, ARC_YD, me, CH_H_SHELL, 6, true)
 	arc.set_meta("shell_fx", "arc")
 	battle._follow_vfx.append({"spr": arc, "unit": u, "h": CH_H_SHELL})
 	_seq(arc, _loop_frames(0, 4, int(round((hold_end - T_GRAB) * FPS))), FPS, T_GRAB)
@@ -290,9 +294,8 @@ func _grab(u: Dictionary, o: Dictionary, mark_end: float) -> void:
 	if not _live() or not o.get("alive", false):
 		return
 	var sp: Vector2 = o["pos"]
-	## 身后白色圆闪: 往镜头反方向挪 0.35 米, 让原主立绘压在它前面
-	var g := _bb(GRAB, 2, GRAB_YD, sp, CH_H_SRC)
-	g.position.z -= 0.35
+	## 身后白色圆闪: 渲染优先级比立绘低, 原主立绘压在它前面
+	var g := _bb(GRAB, 2, GRAB_YD, sp, CH_H_SRC, -1)          # 比原主立绘先画 ⇒ 压在身后
 	g.set_meta("shell_fx", "grab")
 	_seq(g, [0, 1], FPS)
 	## 脚下「已被偷」小圈(贴地, 跟着原主走): 出现 1 格 → 挂着 → 淡 2 格
@@ -345,14 +348,13 @@ func copy_release(u: Dictionary) -> void:
 	_flash(u)
 
 
-## ⑤ 头顶图标 + 底框。图标本体仍由 battle._vfx.copy_steal_icon 出(弹入 / 保持 / 淡出秒数见 ShellSystem.COPY_ICON_*),
+## ⑤ 头顶图标 + 边框(暗紫描边 + 白外发光, 中间空出来露图标)。图标本体仍由 battle._vfx.copy_steal_icon 出(弹入 / 保持 / 淡出秒数见 ShellSystem.COPY_ICON_*),
 ##   底框按同样的秒数逐格切: 弹入 4 格 → 定稿格保持 → 淡出 2 格。没图标的技能(小将技)两样都不画。
 func copy_icon(u: Dictionary, stype: String, hold: float) -> void:
 	battle._vfx.copy_steal_icon(u, stype, hold)
 	if not _live() or not u.get("alive", false) or SkillIcons.path_of(stype, u) == "":
 		return
-	var b := _bb(BADGE, 6, ShellSystem.COPY_ICON_H * 32.0 / BADGE_INNER, u["pos"], ShellSystem.COPY_ICON_HEIGHT)
-	b.render_priority = -1                 # 压在图标下面
+	var b := _bb(BADGE, 6, ShellSystem.COPY_ICON_H * 32.0 / BADGE_INNER, u["pos"], ShellSystem.COPY_ICON_HEIGHT, -1)   # 压在图标下面
 	b.set_meta("shell_fx", "badge")
 	battle._follow_vfx.append({"spr": b, "unit": u, "h": ShellSystem.COPY_ICON_HEIGHT})
 	var pop: float = ShellSystem.COPY_ICON_POP / 4.0

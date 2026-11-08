@@ -84,7 +84,8 @@ func _scan(step: int) -> void:
 			var tw: int = sp.texture.get_width()
 			r = {"file": path.get_file(), "first": step, "last": step, "frames": {}, "kind": str(sp.get_meta("shell_fx", "")),
 				"pos": _arena_of(sp.position), "ground": sp.billboard == BaseMaterial3D.BILLBOARD_DISABLED and sp.axis == Vector3.AXIS_Y,
-				"w": sp.pixel_size * float(tw) / float(maxi(1, sp.hframes)) / _s.WS, "tier": int(sp.get_meta("tier", -1))}
+				"w": sp.pixel_size * float(tw) / float(maxi(1, sp.hframes)) / _s.WS, "tier": int(sp.get_meta("tier", -1)),
+				"prio": sp.render_priority}
 			_trk[iid] = r
 		r["last"] = step
 		r["frames"][sp.frame] = true
@@ -110,6 +111,18 @@ func _trace(units: Array, step: int, prev: Array, out: Array) -> void:
 		if step % 30 == 0:
 			var p: Vector2 = units[i]["pos"]
 			out.append("%d|%d|pos|%d|%d|%s" % [step, i, int(round(p.x * 100.0)), int(round(p.y * 100.0)), str(units[i]["alive"])])
+
+
+## 单位立绘的真实渲染优先级(精灵自己的, 与接地材质的取大)。贴地层要比它小才压在龟脚下。
+func _unit_prio(u: Dictionary) -> int:
+	var spr = u.get("sprite", null)
+	if not (spr is Sprite3D):
+		return -999
+	var pr: int = (spr as Sprite3D).render_priority
+	var mo = (spr as Sprite3D).material_override
+	if mo is Material:
+		pr = maxi(pr, (mo as Material).render_priority)
+	return pr
 
 
 func _unit(id: String, side: String, p: Vector2) -> Dictionary:
@@ -270,6 +283,11 @@ func _run_dive() -> Array:
 		life_ok and vanish == sorted_van, "寿命 %s 秒; 消失步 %s" % [str(lives), str(vanish)])
 	_ok("★③ 每块都走完 生成 → 循环 → 消散 三段(第 0/2 格、循环格、末格 10 都播到)", tr.size() == 5 and phases_ok)
 	_ok("★沿途火团是贴地的(躺平, 不是公告板)", tr.size() > 0 and tr.all(func(r): return r["ground"]))
+	## 11-08 实录第一版: 火团与站在上面的龟深度并列, 落地区 5 秒里落点敌人和龟壳整个被火团盖没。贴地层必须比立绘(渲染优先级 0)先画。
+	var ground_all := _of("shell-dive-patch.png")
+	var up: int = mini(_unit_prio(e1), _unit_prio(e2))
+	_ok("★★火团压在龟脚下: 全部火团渲染优先级 < 站在上面的立绘", up > -999 and ground_all.size() == 12 and ground_all.all(func(r): return int(r["prio"]) < up),
+		"%d 块, 火团优先级 %s / 立绘 %d" % [ground_all.size(), str(ground_all.map(func(r): return r["prio"]).reduce(func(a, x): return a if a.has(x) else a + [x], [])), up])
 
 	## 落地区
 	var zn := _of("shell-dive-patch.png", "zone")
@@ -410,12 +428,12 @@ func _run_copy() -> Array:
 		_ok("★② %s 身上紫旋涡一个(锁链变细那一刻, 约 0.2 秒)" % tag, v.size() == 1 and int(v[0]["first"]) >= 10 and int(v[0]["first"]) <= 16,
 			("第 %d 步" % v[0]["first"]) if v.size() == 1 else "%d 个" % v.size())
 		var g := gb.filter(func(r): return DetMath.dist(r["pos"], o["pos"]) < 40.0)
-		_ok("★③ %s 身后白色圆闪一个(锁链连上之后, 约 0.3 秒)" % tag, g.size() == 1 and int(g[0]["first"]) >= lk_first + 12 and int(g[0]["first"]) <= 22,
+		_ok("★③ %s 身后白色圆闪一个(锁链连上之后, 约 0.3 秒; 渲染优先级比立绘低 ⇒ 在身后)" % tag, g.size() == 1 and int(g[0]["first"]) >= lk_first + 12 and int(g[0]["first"]) <= 22 and int(g[0]["prio"]) < _unit_prio(o),
 			("第 %d 步(锁链第 %d 步)" % [g[0]["first"], lk_first]) if g.size() == 1 else "%d 个" % g.size())
 		var m := mk.filter(func(r): return DetMath.dist(r["pos"], o["pos"]) < 30.0)
 		var ml: float = (float(m[0]["last"] - m[0]["first"] + 1) / 60.0) if m.size() == 1 else 0.0
-		_ok("★③ %s 脚下「已被偷」小圈: 贴地、挂到第二发放完之后(≥0.8 秒)、最后收掉" % tag,
-			m.size() == 1 and m[0]["ground"] and ml >= 0.8 and int(m[0]["last"]) < COPY_STEPS - 1 and m[0]["frames"].has(3),
+		_ok("★③ %s 脚下「已被偷」小圈: 贴地且压在立绘下、挂到第二发放完之后(≥0.8 秒)、最后收掉" % tag,
+			m.size() == 1 and m[0]["ground"] and int(m[0]["prio"]) < _unit_prio(o) and ml >= 0.8 and int(m[0]["last"]) < COPY_STEPS - 1 and m[0]["frames"].has(3),
 			("挂 %.2f 秒" % ml) if m.size() == 1 else "%d 个" % m.size())
 		var seg2: Vector2 = me - (o["pos"] as Vector2)
 		var d := dr.filter(func(r):

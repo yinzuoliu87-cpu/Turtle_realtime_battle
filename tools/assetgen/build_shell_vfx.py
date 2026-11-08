@@ -22,7 +22,7 @@
     shell-copy-grab.png     2 帧 64×64 公告板: 抓住时原主身后的白色圆闪(1 帧 + 收 1 帧)
     shell-copy-mark.png     4 帧 32×32 贴地: 原主脚下「已被偷」紫色细圈 + 尾巴小环(出现 / 挂着 / 淡 2 帧)
     shell-copy-drain.png    3 帧 16×12: 抽能量的紫流一段(沿线平铺): 粗流 2 帧(白芯, 纹路错开半段 = 在流) → 细锯齿闪电
-    shell-copy-badge.png    6 帧 32×32 公告板: 头顶技能图标的底框(2 像素暗紫描边 + 1 像素白外发光 + 近黑紫底)
+    shell-copy-badge.png    6 帧 32×32 公告板: 头顶技能图标的边框(2 像素暗紫描边 + 1 像素白外发光, 中间空出来露图标)
                            0~3 弹出(小 → 大 → 过冲 → 定) / 4~5 淡(描边断成虚线 → 只剩四角)
     shell-copy-arc.png      4 帧 48×48 公告板: 持有态龟壳身上的紫色碎电弧(循环)
 
@@ -239,14 +239,14 @@ def hit_frames():
 
 
 # ═══════════════════════ 暗影俯冲 ②~④ 贴地火团(俯视 64×64 × 11) ═══════════════════════
-PATCH_SEEDS = 7
+PATCH_SEEDS = 11      # 第一版 7 格: 实录里格子太大, 读成龟甲花纹 / 彩色玻璃, 不像龟裂熔岩 ⇒ 加密到 11 格、裂缝 1 像素
 
 
 def _crack_seeds():
-    """裂纹芯的 7 个格点(黄金角螺线, 确定性)。"""
+    """裂纹芯的格点(黄金角螺线, 确定性)。"""
     pts = []
     for k in range(PATCH_SEEDS):
-        rr = 13.0 * math.sqrt((k + 0.5) / PATCH_SEEDS)
+        rr = 14.0 * math.sqrt((k + 0.5) / PATCH_SEEDS)
         a = k * 2.39996 + 0.3
         pts.append((32 + math.cos(a) * rr, 32 + math.sin(a) * rr))
     return pts
@@ -270,9 +270,9 @@ def _core(img, r, lit, dim=0, holes=0.0, hseed=0):
             (d1, i1), (d2, _i2) = ds[0], ds[1]
             if f > 0.84:
                 col = P1 if dim < 2 else K2                         # 芯边一圈暗紫
-            elif d2 - d1 < 1.3:
+            elif d2 - d1 < 0.95:
                 col = K1                                            # 裂缝
-            elif d1 < 2.6:
+            elif d1 < 2.1:
                 col = bright[(i1 + lit) % 3]                        # 格子中心亮块(按组轮换)
             else:
                 col = base
@@ -527,15 +527,15 @@ def drain_frames():
             bot = 9 - (1 if ((x + 2) // 4) % 2 == 0 else 0)
             for y in range(top, bot + 1):
                 dy = abs(y + 0.5 - 6.0)
-                core_w = 1.0 if fi == 0 else 1.5
+                ## 第一版白芯 2 行 + 淡紫白 2 行, 实录里整条读成「白色拉链」⇒ 白芯只留中间 1 行、淡紫白只在第 2 帧, 其余是紫
                 if y == top or y == bot:
                     col = K0
-                elif dy < core_w:
-                    col = W
-                elif dy < core_w + 1.0:
-                    col = L1
+                elif dy < 1.0:
+                    col = W if (y == 6 or fi == 1) else L1
+                elif dy < 2.0:
+                    col = M1 if (x + fi * 8 + y) % 6 < 2 else P3       # 流纹(第 2 帧错开半段)
                 elif dy < 3.0:
-                    col = M1 if (x + fi * 8 + int(dy * 2)) % 6 < 2 else P3     # 流纹(第 2 帧错开半段)
+                    col = P2 if (x + fi * 8 + y) % 5 else M1
                 else:
                     col = P1
                 px[x, y] = col
@@ -553,7 +553,7 @@ def drain_frames():
 
 
 # ═══════════════════════ 复制 ⑤ 头顶图标底框(公告板 32×32 × 6) ═══════════════════════
-def _badge(im, s, perim_keep=1.0, inner_keep=1.0, corners_only=False, hseed=0):
+def _badge(im, s, perim_keep=1.0, corners_only=False):
     px = im.load()
     x0 = (32 - s) // 2
     x1 = x0 + s - 1
@@ -571,9 +571,7 @@ def _badge(im, s, perim_keep=1.0, inner_keep=1.0, corners_only=False, hseed=0):
             elif ring == 2:
                 col = K2                                       # (内)
             else:
-                if inner_keep < 1.0 and h2(x, y, hseed) >= inner_keep:
-                    continue
-                col = K1                                       # 近黑紫底
+                continue                                       # 中间留空: 图标原图露出来(第一版垫了近黑紫底, 深色图标看不清)
             if ring <= 2 and perim_keep < 1.0 and ((x + y) % 2 == 1):
                 continue                                       # 描边断成虚线
             px[x, y] = col
@@ -586,7 +584,7 @@ def badge_frames():
         _badge(im, s)
         out.append(im)
     im = new(32, 32)
-    _badge(im, 28, perim_keep=0.5, inner_keep=0.5, hseed=111)
+    _badge(im, 28, perim_keep=0.5)
     out.append(im)
     im = new(32, 32)
     _badge(im, 28, corners_only=True)
