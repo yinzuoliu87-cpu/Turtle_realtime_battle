@@ -255,13 +255,13 @@ pet|小龟/过肩摔|detail|小龟冲上前抱起目标摔至身后，眩晕 0.5
 pet|小龟/龟派气波|brief|小龟打出一道贯穿气波，对沿途所有敌人造成 {N:BasicConsts.CHI_ATK_COEF*ATK} 物理伤害并将其击飞 1.5 秒。\n施法期间小龟获得 25% 暴击率、20% 生命偷取和 {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK} 护甲穿透，持续 3 秒。
 pet|小龟/龟派气波|detail|小龟打出一道贯穿气波，对沿途所有敌人造成（200%×攻击力({ATK}) = {N:BasicConsts.CHI_ATK_COEF*ATK}）物理伤害并将其击飞 1.5 秒。\n施法期间小龟获得 25% 暴击率、20% 生命偷取和（10%×攻击力({ATK}) = {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK}）护甲穿透，持续 3 秒。
 pet|幽灵龟/幽冥突袭|brief|幽灵龟对目标造成 {M:GhostSystem.RAID_MAGIC*ATK} 魔法伤害并将其击飞，回复相当于该伤害 80% 的生命值，并获得 25% 闪避，持续 4 秒。
-pet|幽灵龟/幽冥突袭|detail|幽灵龟对目标造成（150%×攻击力({ATK}) = {M:GhostSystem.RAID_MAGIC*ATK}）魔法伤害并将其击飞，回复相当于该伤害 80% 的生命值，并获得 25% 闪避，持续 4 秒。
+pet|幽灵龟/幽冥突袭|detail|幽灵龟对目标造成（250%×攻击力({ATK}) = {M:GhostSystem.RAID_MAGIC*ATK}）魔法伤害并将其击飞，回复相当于该伤害 80% 的生命值，并获得 25% 闪避，持续 4 秒。
 pet|幽灵龟/幽魂触碰|brief|幽灵龟攻击目标，造成 {N:GhostSystem.BASIC_PHYS*ATK} 物理伤害和 {T:GhostSystem.BASIC_TRUE*ATK} 真实伤害。
 pet|幽灵龟/幽魂触碰|detail|幽灵龟攻击目标，造成（40%×攻击力({ATK}) = {N:GhostSystem.BASIC_PHYS*ATK}）物理伤害和（90%×攻击力({ATK}) = {T:GhostSystem.BASIC_TRUE*ATK}）真实伤害。
 pet|幽灵龟/怨灵|brief|幽灵龟登场时对全体敌人施加 2.5 秒诅咒，阵亡时对随机 1 名敌人施加 5 秒诅咒。\n诅咒每秒造成 5% 目标最大生命值的真实伤害。\n<span style="color:#8a93a0">重复施加诅咒时累加持续时间。</span>
 pet|幽灵龟/怨灵|desc|幽灵龟登场时对全体敌人施加 2.5 秒诅咒，阵亡时对随机 1 名敌人施加 5 秒诅咒。\n诅咒每秒造成 5% 目标最大生命值的真实伤害。\n<span style="color:#8a93a0">重复施加诅咒时累加持续时间。</span>
-pet|幽灵龟/灵魂风暴|brief|幽灵龟对目标释放灵魂风暴，造成两段共 {M:GhostSystem.STORM_DMG*ATK} 魔法伤害并施加 4 秒诅咒。\n若目标已被诅咒，转而造成 {T:GhostSystem.STORM_DMG*ATK} 真实伤害，且不刷新诅咒。
-pet|幽灵龟/灵魂风暴|detail|幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力({ATK}) = {M:GhostSystem.STORM_DMG*ATK}）魔法伤害并施加 4 秒诅咒。\n若目标已被诅咒，转而造成（200%×攻击力({ATK}) = {T:GhostSystem.STORM_DMG*ATK}）真实伤害，且不刷新诅咒。
+pet|幽灵龟/灵魂风暴|brief|幽灵龟对目标释放灵魂风暴，造成两段共 {M:GhostSystem.STORM_DMG*ATK} 魔法伤害并施加 4 秒诅咒。\n若目标已被诅咒，转而造成 {T:GhostSystem.STORM_CURSED_TRUE*ATK} 真实伤害，并使诅咒持续时间延长 4 秒。
+pet|幽灵龟/灵魂风暴|detail|幽灵龟对目标释放灵魂风暴，造成两段共（200%×攻击力({ATK}) = {M:GhostSystem.STORM_DMG*ATK}）魔法伤害并施加 4 秒诅咒。\n若目标已被诅咒，转而造成（300%×攻击力({ATK}) = {T:GhostSystem.STORM_CURSED_TRUE*ATK}）真实伤害，并使诅咒持续时间延长 4 秒。
 pet|幽灵龟/虚化|brief|幽灵龟进入虚化状态，持续 4 秒，期间受到的物理伤害降低 90%，并对目标攻击 2 段，共造成 {T:GhostSystem.PHASE_TOTAL*ATK} 真实伤害。\n<span style="color:#8a93a0">虚化期间龟能停止充能。</span>
 pet|幽灵龟/虚化|detail|幽灵龟进入虚化状态，持续 4 秒，期间受到的物理伤害降低 90%，并对目标攻击 2 段，共造成（120%×攻击力 = {T:GhostSystem.PHASE_TOTAL*ATK}）真实伤害。\n<span style="color:#8a93a0">虚化期间龟能停止充能。</span>
 pet|彩虹龟/七彩光束|brief|彩虹龟射出一道七彩光束，单段造成 {N:RainbowSystem.BEAM_COEF*ATK} 物理伤害，并根据当前棱镜颜色附加对应效果。

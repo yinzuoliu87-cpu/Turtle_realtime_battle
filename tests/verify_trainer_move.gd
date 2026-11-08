@@ -77,12 +77,13 @@ func _ready() -> void:
 	var others_moved := false
 	var other0: Dictionary = _first_non_trainer(s, "left")
 	var o0: Vector2 = other0.get("pos", Vector2.ZERO)
-	for _i in range(60 * 25):   # 25 游戏秒: 钩锁冷却 20 秒(空放 10), 双方都至少放两次
+	## 35 游戏秒: 钩锁冷却 30 秒(没命中 15)—— 用户 11-08「钩锁冷却改为三十秒，未命中改为十五秒」⇒ 双方都至少放两次
+	for _i in range(60 * 35):
 		var cd_l: float = float(tl.get("_active_cd", 0.0))
 		var cd_r: float = float(tr.get("_active_cd", 0.0))
 		var nf: int = s._trainer_sys._flights.size()
-		var want_l: Vector2 = _nearest_dir(s, tl)
-		var want_r: Vector2 = _nearest_dir(s, tr)
+		var want_l: Array = _enemy_dirs(s, tl)
+		var want_r: Array = _enemy_dirs(s, tr)
 		s._sim_step(s.SIM_DT, false, false)
 		await get_tree().process_frame
 		if cd_l <= 0.0 and float(tl.get("_active_cd", 0.0)) > 0.0:
@@ -97,14 +98,14 @@ func _ready() -> void:
 			others_moved = true
 	key.pressed = false
 	Input.parse_input_event(key)
-	_ok("分母: 这 25 秒里战斗真的在推进(我方别的龟走动了)", others_moved)
-	_ok("★① 按住方向键 25 秒, 我方大师一码都没动", (tl["pos"] as Vector2) == p_l, "%s → %s" % [p_l, tl["pos"]])
+	_ok("分母: 这 35 秒里战斗真的在推进(我方别的龟走动了)", others_moved)
+	_ok("★① 按住方向键 35 秒, 我方大师一码都没动", (tl["pos"] as Vector2) == p_l, "%s → %s" % [p_l, tl["pos"]])
 	_ok("★① 敌方大师也一码都没动(原 AI 随机游走已删)", (tr["pos"] as Vector2) == p_r, "%s → %s" % [p_r, tr["pos"]])
 
-	# ── ② 自动放技能 · 敌我同规则 · 打最近的 ──
+	# ── ② 自动放技能 · 敌我同规则 · 朝射程内的敌人(11-08 起随机挑一个, 随机分布由 verify_trainer_skills 管) ──
 	_ok("★② 我方大师自己放了主动技(不靠人按): %d 次 ≥ 2" % casts_l, casts_l >= 2)
 	_ok("★② 敌方大师同一套规则: %d 次 ≥ 2" % casts_r, casts_r >= 2)
-	_ok("★② 每一发都朝【最近的敌人】(%d/%d)" % [dir_ok, dir_n], dir_n > 0 and dir_ok == dir_n)
+	_ok("★② 每一发都朝射程内的某个敌人(%d/%d)" % [dir_ok, dir_n], dir_n > 0 and dir_ok == dir_n)
 
 	# ── ③ 不可被打 · 没有血量 · 不建信息栏 ──
 	for t in [tl, tr]:
@@ -176,20 +177,27 @@ func _first_non_trainer(s, side: String) -> Dictionary:
 
 
 ## 用产品自己的选靶函数(不手抄一份): 大师「打最近的」就是它。
-func _nearest_dir(s, t: Dictionary) -> Vector2:
-	var tgt = s._targeting._nearest_enemy_for_trainer(t)
-	return ((tgt["pos"] as Vector2) - (t["pos"] as Vector2)).normalized() if tgt != null else Vector2.ZERO
+## 出手前这一步, 大师射程内每个可选敌人的方向(钩锁从其中随机挑一个)
+func _enemy_dirs(s, t: Dictionary) -> Array:
+	var out: Array = []
+	for o in s._targeting._trainer_targets(t):
+		if (o["pos"] as Vector2).distance_to(t["pos"]) < s.TRAINER_RANGE:
+			out.append(((o["pos"] as Vector2) - (t["pos"] as Vector2)).normalized())
+	return out
 
 
 ## 这一步刚甩出去的那一发(同一步里别的钩子可能刚好收回 ⇒ 不能按数组长度判, 按"刚出手 t≈0"找)。
-func _last_flight_dir_close(s, t: Dictionary, want: Vector2, _n_before: int) -> bool:
+func _last_flight_dir_close(s, t: Dictionary, want: Array, _n_before: int) -> bool:
 	for f in s._trainer_sys._flights:
 		if is_same(f.get("src", null), t) and float(f.get("t", 99.0)) <= s.SIM_DT + 1.0e-6:
-			if want == Vector2.ZERO:
+			if want.is_empty():
 				return false
-			var ok: bool = (f["dir"] as Vector2).dot(want) > 0.999
+			var ok := false
+			for w in want:
+				if (f["dir"] as Vector2).dot(w) > 0.999:
+					ok = true
 			if not ok:
-				print("    [方向] %s 大师 出手 %s / 最近敌 %s" % [str(t.get("side", "")), f["dir"], want])
+				print("    [方向] %s 大师 出手 %s / 射程内敌人方向 %s" % [str(t.get("side", "")), f["dir"], str(want)])
 			return ok
 	print("    [方向] %s 大师 这一步没找到刚出手的钩子" % str(t.get("side", "")))
 	return false

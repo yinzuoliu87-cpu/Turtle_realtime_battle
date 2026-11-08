@@ -151,6 +151,10 @@ func _salvo_run(gseed: int) -> Array:
 	for _i in range(40):
 		await get_tree().process_frame
 	s._units.clear()
+	## ★2026-11-08: 清单位也要清在途钩锁 / 气波(同换路 _dl_clear_units)。钩锁改「朝随机敌人」后, 预热 40 帧里大师甩出的钩子
+	##   方向取决于本场景没定种子的 _battle_rng, 还在飞的钩子会撞上后放进来的合成敌人
+	##   (探针 tests/probes/_probe_salvo_order.gd: 同一 gseed 第 1 / 3 遍结果不同, 齐射时在途钩子 2 / 1 根)。
+	s._trainer_sys.clear_flights()
 	var ar: Rect2 = s.ARENA
 	var ctr: Vector2 = ar.position + ar.size * 0.5
 	var cyber: Dictionary = _salvo_unit(s, "left", ctr)
