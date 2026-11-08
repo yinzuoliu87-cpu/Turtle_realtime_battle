@@ -82,6 +82,7 @@ const TXT_RESUMED_RANKED_LOSE := "上一场积分赛：失败"
 ## 待记账单 / 结算口径里的种类(只有积分赛带; 周六 / 周日的单子没有这个键 ⇒ 与改之前逐字相同)。
 const KIND_RANKED := "ranked"
 const TXT_FINALS_COINS := "战斗内铸币 +%d"
+const TXT_ROUND_REWARD := "本轮奖励：深海币 +%d　经验 +%d"   # 周日每轮出结果就发(对阵图当场提示; 用户 11-08「你每轮每轮就应该发呀」)
 ## 配上之后跟播自己这一局(2026-10-29 · 方案书 docs/plans/20261029c-闯关赛排队时可回主页.md §4.4 / R11):
 ##   裁判机还在排队(任务 pending)时 VS 卡下那一行 / 流已播完而服务器的结果还没到时收尾处那一行。
 const TXT_LIVE_PENDING := "等待服务器开始对局"
@@ -496,7 +497,7 @@ static func note_unplayable(scr: Node) -> void:
 
 ## 周日点开自己那一场(购物窗已关、交给服务器算): 与胜负无关的那部分(场次 / 经验 / 轮次币)此刻就给,
 ##   吃胜负的等对阵图揭晓(`finals_pending_reveal` → `BracketMapScene._reveal_sealed_from`, 老路同一条)。
-##   ★同一场只给一次(待揭晓单就是凭据)。返回 true = 这一次真给了。
+##   ★同一场只给一次(`finals_granted` 是凭据, 与「结果到手就发」那条路共用)。返回 true = 这一次真给了。
 ## `week` = 对阵图那一周(`BracketMapScene.feed_week`); > 0 ⇒ 同时记一张战斗内铸币的待取单(翻面后 `claim_finals_coins` 取)。
 static func finals_seal(gs, bucket: int, r: int, m: int, week: int = -1) -> bool:
 	if gs == null or bucket < 0 or r < 1 or m < 0:
@@ -505,7 +506,30 @@ static func finals_seal(gs, bucket: int, r: int, m: int, week: int = -1) -> bool
 	if p is Dictionary and int((p as Dictionary).get("round", -1)) == r and int((p as Dictionary).get("match", -1)) == m \
 			and int((p as Dictionary).get("bucket", -1)) == bucket:
 		return false
+	if (gs.finals_granted as Array).has(finals_key(bucket, r, m)):
+		return false                  # 结果到手那条路已经发过(并当场揭晓过) ⇒ 不再挂待揭晓单, 否则胜场 / 糖罐会揭晓两遍
 	gs.finals_pending_reveal = {"round": r, "match": m, "bucket": bucket}
+	finals_grant_round(gs, bucket, r, m, week)
+	return true
+
+
+## 「组:轮:场」—— 周日一场在本周里的唯一键(小组赛与冠军杯赛坐标相同, 组号把两张图分开)。
+static func finals_key(bucket: int, r: int, m: int) -> String:
+	return "%d:%d:%d" % [bucket, r, m]
+
+
+## ★★发一场的轮次奖励(对称那部分: 场次 / 赛季经验 / 斧经验 / 轮次币 + 战斗内铸币待取单), 同一场一周只发一次。
+## 用户 2026-11-08「冠军杯赛和小组赛都有 bug，整个深海币和经验压根是没给啊」: 原来只有 `finals_seal`(点开自己那一场、
+##   且那一刻这场还没出结果)会走到这里 —— 服务器 3~4 分钟就出结果(正式服第 4 组: 购物窗 18:03 关、18:06 出结果; 第 2 轮
+##   只有约 1 分钟), 出了结果再点走「看回放」, 不点更不发 ⇒ 测试号赛季 21 场里周日 0 场。
+##   ⇒ 对阵数据里我那一场出了结果也走这里(`BracketMapScene._grant_decided_from`)。返回 true = 这一次真发了。
+static func finals_grant_round(gs, bucket: int, r: int, m: int, week: int = -1) -> bool:
+	if gs == null or bucket < 0 or r < 1 or m < 0:
+		return false
+	var key := finals_key(bucket, r, m)
+	if (gs.finals_granted as Array).has(key):
+		return false
+	(gs.finals_granted as Array).append(key)
 	var reward: int = gs.finals_settle_sealed()
 	if gs.is_eliminated():
 		reward = 0

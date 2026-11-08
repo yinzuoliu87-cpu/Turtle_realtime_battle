@@ -2969,10 +2969,10 @@ func _finals_title_tick() -> void:
 		var v: Dictionary = _SB.finals_cached()
 		if str(v.get("reason", "")) != _SB.UNREACHABLE:
 			## 问到了: 有桶就走那条链; 没桶(观众 / 人不够)那条链自己会一个字都不记。
-			_BMS.record_progress_from(v)
+			_BMS.record_progress_from(v, _ft_week)
 			## ★冠军杯赛(2026-10-07): 冠军 / 亚军 / 四强从杯那一张来 —— 不进对阵图也要对得上账。
 			##   服务端没部署 / 没成表 ⇒ `finals_cup_cached()` 是空的, 那条链一个字都不记。
-			_BMS.record_cup_from(_SB.finals_cup_cached())
+			_BMS.record_cup_from(_SB.finals_cup_cached(), _ft_week)
 			finals_title_records += 1
 			_finals_title_stop()
 			return

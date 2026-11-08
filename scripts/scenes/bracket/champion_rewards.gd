@@ -8,7 +8,7 @@ extends CanvasLayer
 ## ★版式(主会话 10-31 逐帧审改): 居中一张大奖励卡(冠军卡框)—— 物件大、名字大、说明一行; 背后整屏不透明压暗
 ##   (竞技场背景 + 暗幕, 看不出后面那一屏的字); 「已获得 / 已入账」章砸下去有冲击(2.6 倍回弹 + 尘 + 卡片一震 + 一下亮)。
 ##
-## 用法: var r := ChampionRewards.open(host, {"pages": ChampionData.reward_pages(titles, rounds),
+## 用法: var r := ChampionRewards.open(host, {"pages": ChampionData.reward_pages(titles),
 ##            "coin_target": 顶栏深海币图标的屏幕坐标(可选), "coin_from": 入账前余额(可选)})
 ##        r.coins_landed.connect(func(n): 顶栏数字 += n)   # 给了 coin_target 时由宿主自己涨数
 ##        r.finished.connect(...)                          # 最后一页点「完成」(层已自删)

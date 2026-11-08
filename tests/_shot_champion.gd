@@ -42,7 +42,7 @@ func cup_data() -> Dictionary:
 	## 演示用第二张(真数据要服务端补 top_dmg, 见报告)
 	d["bests"] = (d["bests"] as Array) + [{"kind": "num", "title": "单场最高伤害", "value": "18420", "value_num": 18420,
 		"who": "凤凰之羽", "sub": "冠军杯 · 决赛", "turtle": "phoenix"}]
-	d["rewards"] = DATA.reward_pages([P2C.TITLE_CHAMPION, P2C.TITLE_SEMIFINAL], 3)
+	d["rewards"] = DATA.reward_pages([P2C.TITLE_CHAMPION, P2C.TITLE_SEMIFINAL])
 	d["coin_from"] = 40
 	d["wall_entries"] = wall_entries()
 	return d

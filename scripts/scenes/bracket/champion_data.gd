@@ -428,18 +428,16 @@ static func best_cards(view: Dictionary, rows: Array) -> Array:
 # ═══════════════════════════════════════════════════════════════════
 #  奖励链(G11)
 # ═══════════════════════════════════════════════════════════════════
-## 一页一件。`titles` = 这一周拿到的头衔 id(TITLE_*), 只放最高那一档一页(其余在副标题里提一句);
-##   `rounds` = 本周决赛日打了几轮(每轮 FINALS_COINS_PER_ROUND 深海币, 打完当场已入账 —— 这里是**把入账演出来**)。
-static func reward_pages(titles: Array, rounds: int) -> Array:
+## 一页一件。`titles` = 这一周拿到的头衔 id(TITLE_*), 只放最高那一档一页(其余在副标题里提一句)。
+## ★2026-11-08 删掉「深海币入账」那一页(用户「为什么获得冠军之后还讲深海币啊？冠军之后获得深海币没意义了呀。你每轮每轮就应该发呀」):
+##   轮次币每轮出结果就发、对阵图当场提示(`RefereeWatch.finals_grant_round`), 冠军仪式只放头衔。
+static func reward_pages(titles: Array) -> Array:
 	var pages: Array = []
 	for tid in _P2C.TITLE_ORDER:
 		if tid in titles and tid != _P2C.TITLE_FINALS_DAY and tid != _P2C.TITLE_FULL_QUOTA:
 			pages.append({"kind": "title", "id": tid, "name": str(_P2C.TITLE_LABEL.get(tid, tid)),
 				"sub": title_until_line()})
 			break
-	if rounds > 0:
-		pages.append({"kind": "coins", "amount": rounds * int(_P2C.FINALS_COINS_PER_ROUND),
-			"sub": "决赛日共 %d 轮，每轮 %d 深海币" % [rounds, int(_P2C.FINALS_COINS_PER_ROUND)]})
 	return pages
 
 

@@ -462,8 +462,13 @@ func _record_progress() -> void:
 	##   ⇒ 拿上周的结果去记 = 新一周平白多一个冠军头衔。周一只看, 不记。
 	if _viewing_past():
 		return
-	record_progress_from(_bucket)
-	record_cup_from(_finals)
+	var c0 := int(GameState.meta_deepsea_coins)
+	var g0 := (GameState.finals_granted as Array).size()
+	record_progress_from(_bucket, feed_week())
+	record_cup_from(_finals, feed_week())
+	var got := (GameState.finals_granted as Array).size() - g0
+	if got > 0:    # 周日每轮出结果就发(用户 11-08「你每轮每轮就应该发呀」) ⇒ 当场说一声(币按实发的数, 0 命那种不报假数)
+		_show_replay_msg(_RW.TXT_ROUND_REWARD % [int(GameState.meta_deepsea_coins) - c0, got * int(_P2C.FINALS_XP_PER_ROUND)], ACCENT)
 	## 周日服务器局的战斗内铸币(2026-10-20): 待取单翻面了就按服务器的数发(判据全在 referee_watch.gd; 没单子不发请求)。
 	_RW.claim_finals_coins(_on_finals_coins)
 
@@ -486,7 +491,7 @@ func _pick_default_view() -> String:
 ## ★★冠军杯赛那一张 → 记进度 + 对头衔账(2026-10-07)。与 `record_progress_from` 同一个形状、同一条链:
 ##   主菜单不进对阵图也走这里(只喂 feed)。
 ## 返回: 存档有没有变(门禁用)。
-static func record_cup_from(cup: Dictionary) -> bool:
+static func record_cup_from(cup: Dictionary, week: int = -1) -> bool:
 	if GameState == null:
 		return false
 	var n := int(cup.get("size", 0))
@@ -502,6 +507,8 @@ static func record_cup_from(cup: Dictionary) -> bool:
 		var pr: Dictionary = _B.my_progress(me, n, cup.get("done", {}) as Dictionary)
 		changed = GameState.record_cup_progress(int(pr.get("deepest", 0)), int(pr.get("total", 0)),
 			bool(pr.get("champion", false)), bool(pr.get("runner_up", false)))
+	if me >= 0 and _grant_decided_from(cup, week):    # 先发(认得出点开那条路挂着的待揭晓单), 再揭晓
+		changed = true
 	if me >= 0 and _reveal_sealed_from(cup):
 		changed = true
 	var got: int = GameState.sync_titles()
@@ -514,7 +521,7 @@ static func record_cup_from(cup: Dictionary) -> bool:
 ##   让主菜单也能拿同一份 feed 走同一条链 —— 原来只有打开对阵图才会跑到这里,
 ##   **从不再打开对阵图的冠军永远拿不到头衔**。主菜单不另写判据, 只喂 feed 调它。
 ## 返回: 存档有没有变(门禁用)。
-static func record_progress_from(bucket: Dictionary) -> bool:
+static func record_progress_from(bucket: Dictionary, week: int = -1) -> bool:
 	if GameState == null:
 		return false
 	var n := int(bucket.get("size", 0))
@@ -530,6 +537,8 @@ static func record_progress_from(bucket: Dictionary) -> bool:
 		changed = GameState.record_finals_progress(
 			int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)),
 			bool(pr.get("runner_up", false)))
+	if _grant_decided_from(bucket, week):    # 先发(认得出点开那条路挂着的待揭晓单), 再揭晓
+		changed = true
 	if _reveal_sealed_from(bucket):
 		changed = true
 	## ★头衔在 `sync_titles()` 里发(与满配额/进决赛日同一个入口) —— 这里不自己发。
@@ -554,6 +563,43 @@ static func record_progress_from(bucket: Dictionary) -> bool:
 ## ★只看 `_bucket`(我那个桶)那一张, 不看 `cur()` —— `cur()` 跟着页签变,
 ##   切到「冠军赛」那张会拿另一张图的 `done` 去判我的场。
 ## 返回值: 真的揭晓了吗(调用方据此决定要不要存档)。
+## ★★结果到手就发(用户 2026-11-08「冠军杯赛和小组赛都有 bug，整个深海币和经验压根是没给啊」):
+##   这一张里每一场**我在其中、已出结果**、本周还没发过的 ⇒ 发对称那部分(`RefereeWatch.finals_grant_round`)并当场揭晓吃胜负那部分。
+##   原来只有「点开自己那一场、且那一刻还没出结果」才发(`finals_seal`), 服务器几分钟就出结果 ⇒ 几乎没人拿得到(根因见 finals_grant_round 头注)。
+## ★只在服务器裁判开着时发: 关着时周日是本机打, 打完那一刻 `_settle_season` → `finals_settle_sealed` 已经发过。
+## ★点开那条路挂了待揭晓单、还没揭晓的那一场不碰(对称那部分已发, 揭晓交给 `_reveal_sealed_from`)。
+## ★按「轮-场」排序逐场发(轮次小的先发), 发几场存一次档。返回: 真发了吗。
+static func _grant_decided_from(bucket: Dictionary, week: int = -1) -> bool:
+	if GameState == null or not _RN.finals_on():
+		return false
+	var n := int(bucket.get("size", 0))
+	var me := int(bucket.get("me", -1))
+	var bk := int(bucket.get("bucket", -1))
+	if n <= 1 or me < 0 or bk < 0:
+		return false
+	var done: Dictionary = bucket.get("done", {}) as Dictionary
+	var keys: Array = done.keys()
+	keys.sort_custom(func(a, b) -> bool: return str(a).naturalnocasecmp_to(str(b)) < 0)
+	var pd = GameState.get("finals_pending_reveal")
+	var any := false
+	for k in keys:
+		var rm: PackedStringArray = str(k).split("-")
+		if rm.size() != 2:
+			continue
+		var r := int(rm[0])
+		var m := int(rm[1])
+		var side := _B.my_side_in(me, r, m, n, done)
+		if side < 0 or int(done[k]) < 0:
+			continue
+		if pd is Dictionary and int((pd as Dictionary).get("round", -1)) == r and int((pd as Dictionary).get("match", -1)) == m \
+				and int((pd as Dictionary).get("bucket", -1)) == bk:
+			continue
+		if _RW.finals_grant_round(GameState, bk, r, m, week):
+			GameState.finals_reveal(int(done[k]) == side)
+			any = true
+	return any
+
+
 static func _reveal_sealed_from(bucket: Dictionary) -> bool:
 	if GameState == null:
 		return false

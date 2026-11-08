@@ -222,10 +222,11 @@ func _t_parse() -> void:
 func _client_flow(coins: int, hearts: int = -1, st: Dictionary = {}, week: int = WEEK) -> Dictionary:
 	var keep := {"coins": int(_gs.meta_deepsea_coins), "hearts": int(_gs.hearts), "bt": int(_gs.battles_total),
 		"stb": int(_gs.season_total_battles), "fcp": (_gs.finals_coins_pending as Array).duplicate(true),
-		"fpr": (_gs.finals_pending_reveal as Dictionary).duplicate(true)}
+		"fpr": (_gs.finals_pending_reveal as Dictionary).duplicate(true), "fg": (_gs.finals_granted as Array).duplicate()}
 	_gs.hearts = hearts if hearts >= 0 else int(P2C.HEARTS_MAX)
 	_gs.finals_coins_pending = []
 	_gs.finals_pending_reveal = {}
+	_gs.finals_granted = []      # 2026-11-08 已发清单(同一场一周只发一次): 每个场景都是同一场 0:1:0, 要各自从头来
 	RW.finals_seal(_gs, 0, 1, 0, week)
 	_gs.finals_pending_reveal = {}
 	RW.finals_seal(_gs, 0, 1, 0, week)                    # 同一场又点一次(待揭晓单已被清): 单子不该多一张
@@ -250,6 +251,7 @@ func _client_flow(coins: int, hearts: int = -1, st: Dictionary = {}, week: int =
 	_gs.season_total_battles = keep["stb"]
 	_gs.finals_coins_pending = keep["fcp"]
 	_gs.finals_pending_reveal = keep["fpr"]
+	_gs.finals_granted = keep["fg"]
 	return out
 
 

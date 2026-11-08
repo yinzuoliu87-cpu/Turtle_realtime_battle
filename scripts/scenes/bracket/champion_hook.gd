@@ -39,33 +39,13 @@ static func week_of(view: Dictionary) -> int:
 	return P2C.week_anchor_utc(now)
 
 
-## 冠军本人这一周打了几轮(轮空不算; 每轮那 8 深海币当场已入账, 奖励链只是演出来)。
-static func rounds_played(view: Dictionary, cup_path: Array) -> int:
-	var n := 0
-	for row in cup_path:
-		if not bool((row as Dictionary).get("bye", false)):
-			n += 1
-	for b in (view.get("buckets", []) as Array):
-		if b is Dictionary and int((b as Dictionary).get("me", -1)) >= 0:
-			for row in DATA.path_of(b, int(b["me"]), {}, true):
-				if not bool(row.get("bye", false)):
-					n += 1
-	return n
-
-
 func on_cup_final_end(info: Dictionary, host: Control) -> void:
 	var view: Dictionary = SB.finals_week_cached()
 	var d: Dictionary = DATA.cup_show_from_end(info, view, week_of(view))
 	if d.is_empty():
 		return
 	if bool(d.get("viewer_is_champion", false)):
-		var titles: Array = [P2C.TITLE_CHAMPION]
-		var rounds := rounds_played(view, d.get("path", []))
-		d["rewards"] = DATA.reward_pages(titles, rounds)
-		var gs = get_node_or_null("/root/GameState")
-		if gs != null:
-			var amount := rounds * int(P2C.FINALS_COINS_PER_ROUND)
-			d["coin_from"] = maxi(0, int(gs.get("meta_deepsea_coins")) - amount)
+		d["rewards"] = DATA.reward_pages([P2C.TITLE_CHAMPION])   # 只有头衔: 轮次币每轮出结果就发(用户 11-08)
 	last_data = d
 	var parent: Node = host if host != null and is_instance_valid(host) else get_tree().root
 	last_show = SHOW.open(parent, d)

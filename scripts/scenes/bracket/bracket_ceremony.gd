@@ -83,18 +83,9 @@ func play_champion(data: Dictionary):
 		return null
 	played[_key(cup, bk, wk)] = true
 	if bool(d.get("viewer_is_champion", false)):
-		## 冠军本人: 定格卡上出「领取奖励」(头衔 + 这一周打的那几轮深海币; 币当场已入账, 奖励链只是演出来)
-		var rounds := 0
-		if cup:
-			rounds = _CH.rounds_played(view, d.get("path", []))
-		else:
-			for row in (d.get("path", []) as Array):
-				if not bool((row as Dictionary).get("bye", false)):
-					rounds += 1
-		d["rewards"] = _CD.reward_pages([_P2C.TITLE_CHAMPION if cup else _P2C.TITLE_GROUP_CHAMPION], rounds)
-		if gs != null:
-			d["coin_from"] = maxi(0, int(gs.get("meta_deepsea_coins")) - rounds * int(_P2C.FINALS_COINS_PER_ROUND))
-		## coin_target: 对阵图顶栏没有深海币图标 ⇒ 不给, 奖励链飞到它自己画的右上角小条
+		## 冠军本人: 定格卡上出「领取奖励」= 头衔。★不再演深海币那一页(用户 2026-11-08「为什么获得冠军之后还讲深海币啊？…
+		##   你每轮每轮就应该发呀」): 轮次币每轮出结果就发(`RefereeWatch.finals_grant_round`), 对阵图当场提示。
+		d["rewards"] = _CD.reward_pages([_P2C.TITLE_CHAMPION if cup else _P2C.TITLE_GROUP_CHAMPION])
 	last_show = _CS.open(s, d)               # 定格卡上的「冠军墙」由 ChampionShow 自己开(没人接 wall_requested 时它自己开)
 	if cup and ResourceLoader.exists(RECAP_PATH):
 		var rc = load(RECAP_PATH)

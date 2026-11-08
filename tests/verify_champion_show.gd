@@ -69,7 +69,7 @@ func _cup_data(vp := Vector2(1560, 720)) -> Dictionary:
 	var d: Dictionary = DATA.cup_show(FIX.view(), FIX.WEEK, FIX.rows(), FIX.acc(4, 0))
 	d["bests"] = (d["bests"] as Array) + [{"kind": "num", "title": "单场最高伤害", "value": "18,420", "value_num": 18420,
 		"who": "凤凰之羽", "sub": "冠军杯 · 决赛", "turtle": "phoenix"}]
-	d["rewards"] = DATA.reward_pages([P2C.TITLE_CHAMPION, P2C.TITLE_SEMIFINAL], 3)
+	d["rewards"] = DATA.reward_pages([P2C.TITLE_CHAMPION, P2C.TITLE_SEMIFINAL])
 	d["coin_from"] = 40
 	d["vp"] = vp
 	return d
@@ -151,9 +151,10 @@ func _t_pure() -> void:
 	_ok("⑪ 届数 / 日期: 10-26 那一周 = 第 4 届　11 月 1 日", DATA.edition_of(FIX.WEEK) == 4 and DATA.date_text(FIX.WEEK) == "11 月 1 日"
 		and DATA.edition_line(FIX.WEEK) == "第 4 届　11 月 1 日")
 	_ok("⑪ 头衔写明「至下周日」", DATA.title_until_line().contains("至下周日"))
-	var rp: Array = DATA.reward_pages([P2C.TITLE_CHAMPION, P2C.TITLE_SEMIFINAL, P2C.TITLE_FINALS_DAY], 3)
-	_ok("⑪ 奖励页: 只放最高那档头衔一页 + 深海币一页(3 轮 × 8 = 24)", rp.size() == 2 and str(rp[0]["kind"]) == "title"
-		and str(rp[0]["name"]) == "冠军" and str(rp[1]["kind"]) == "coins" and int(rp[1]["amount"]) == 3 * int(P2C.FINALS_COINS_PER_ROUND), str(rp))
+	var rp: Array = DATA.reward_pages([P2C.TITLE_CHAMPION, P2C.TITLE_SEMIFINAL, P2C.TITLE_FINALS_DAY])
+	## ★2026-11-08 用户「为什么获得冠军之后还讲深海币啊？…你每轮每轮就应该发呀」⇒ 不再有「深海币入账」那一页(轮次币每轮出结果就发)
+	_ok("⑪ 奖励页: 只放最高那档头衔一页, 没有深海币页", rp.size() == 1 and str(rp[0]["kind"]) == "title"
+		and str(rp[0]["name"]) == "冠军" and rp.all(func(pg): return str(pg["kind"]) != "coins"), str(rp))
 	var gs: Dictionary = DATA.group_show(v, 2, FIX.WEEK, FIX.rows())
 	_ok("⑪ 组冠军: C 组 0 号「火山岩」, 规模 4, 夺冠之路 半决赛 / 组决赛", str((gs.get("champion", {}) as Dictionary).get("name", "")) == "火山岩"
 		and int(gs.get("entrants", 0)) == 4 and str(gs.get("group", "")) == "C 组" and (gs.get("path", []) as Array).size() == 2
@@ -484,7 +485,9 @@ func _t_intro() -> void:
 
 # ═══════════════════════════════════════════════════════════════════
 func _t_rewards() -> void:
-	var d := {"pages": DATA.reward_pages([P2C.TITLE_CHAMPION], 3), "coin_from": 40, "vp": Vector2(1560, 720)}
+	## 奖励链组件本身仍支持「深海币入账」页(产品 11-08 起不再放, 见 ⑪); 这里手搭一页量组件的飞币 / 滚数字
+	var d := {"pages": DATA.reward_pages([P2C.TITLE_CHAMPION]) + [{"kind": "coins", "amount": 24, "sub": "3 轮"}],
+		"coin_from": 40, "vp": Vector2(1560, 720)}
 	var r = _mk(REW, d)
 	await get_tree().process_frame
 	var nb := r.node("BtnNext") as Button
@@ -767,7 +770,7 @@ func _t_round2() -> void:
 	s.queue_free()
 	await get_tree().process_frame
 	## ⑬-6 奖励卡: 大、背后不透明、章砸下回弹
-	var r = _mk(REW, {"pages": DATA.reward_pages([P2C.TITLE_CHAMPION], 3), "coin_from": 40, "vp": Vector2(1560, 720)})
+	var r = _mk(REW, {"pages": DATA.reward_pages([P2C.TITLE_CHAMPION]), "coin_from": 40, "vp": Vector2(1560, 720)})
 	await get_tree().process_frame
 	var bg := r.node("RewardsBg") as TextureRect
 	var card: Rect2 = r.card_rect

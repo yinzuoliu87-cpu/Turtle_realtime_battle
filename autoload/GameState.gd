@@ -1690,6 +1690,7 @@ var referee_pending: Dictionary = {}
 ##   每张 {week, bucket, round, match}; 翻面后问服务端 `referee_finals_coins` 发币, 发完销单(同一场只发一次)。
 ## ★进存档、设备本地(同 referee_pending: 两台各取一遍 = 发两次); 随周清(同 finals_pending_reveal)。
 var finals_coins_pending: Array = []
+var finals_granted: Array = []   # 周日本周已发过轮次奖励的场次「组:轮:场」(RefereeWatch.finals_grant_round; 点开 / 结果到手两条路共用去重; 进云存档、随周清)
 
 func record_match(result: String, lineup: Array, mode_str: String, turn_num: int) -> void:
 	match_history.insert(0, {"result": result, "lineup": lineup, "mode": mode_str, "turn": turn_num})
@@ -1864,6 +1865,7 @@ func _save_dict() -> Dictionary:
 		"referee_flags": referee_flags,                   # 服务器裁判开关(设备本地)
 		"referee_pending": referee_pending,               # 周六待记账的裁判局(设备本地)
 		"finals_coins_pending": finals_coins_pending,     # 周日待取的战斗内铸币(设备本地)
+		"finals_granted": finals_granted,                 # 周日本周已发轮次奖励的场次(上云: 换设备不重发)
 		"finals_deepest_round": finals_deepest_round,
 		"finals_rounds_total": finals_rounds_total,
 		"finals_champion": finals_champion,
@@ -2060,6 +2062,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	referee_pending = (_rpd as Dictionary).duplicate(true) if _rpd is Dictionary else {}
 	var _fcp = data.get("finals_coins_pending", [])
 	finals_coins_pending = (_fcp as Array).duplicate(true) if _fcp is Array else []
+	finals_granted = (data.get("finals_granted") as Array).duplicate() if data.get("finals_granted") is Array else []
 	finals_deepest_round = int(data.get("finals_deepest_round", 0))
 	finals_rounds_total = int(data.get("finals_rounds_total", 0))
 	finals_champion = bool(data.get("finals_champion", false))
@@ -2280,7 +2283,7 @@ func reset_save() -> void:
 	finals_pending_reveal = {}
 	finals_report_pending = {}
 	referee_pending = {}                  # 服务器裁判: 上周交的那一场不记进本周
-	finals_coins_pending = []             # 周日待取的战斗内铸币: 随周清
+	finals_coins_pending = []; finals_granted = []   # 周日待取的战斗内铸币 / 已发轮次奖励的场次: 随周清
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false
@@ -2958,7 +2961,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	finals_pending_reveal = {}
 	finals_report_pending = {}
 	referee_pending = {}                  # 服务器裁判: 上周交的那一场不记进本周
-	finals_coins_pending = []             # 周日待取的战斗内铸币: 随周清
+	finals_coins_pending = []; finals_granted = []   # 周日待取的战斗内铸币 / 已发轮次奖励的场次: 随周清
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false

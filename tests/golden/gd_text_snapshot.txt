@@ -1836,7 +1836,6 @@ scripts/scenes/bracket/champion_data.gd|lit|1/%d 决赛
 scripts/scenes/bracket/champion_data.gd|lit|1/4 决赛
 scripts/scenes/bracket/champion_data.gd|lit|冠军
 scripts/scenes/bracket/champion_data.gd|lit|决赛
-scripts/scenes/bracket/champion_data.gd|lit|决赛日共 %d 轮，每轮 %d 深海币
 scripts/scenes/bracket/champion_data.gd|lit|半决赛
 scripts/scenes/bracket/champion_data.gd|lit|晋级冠军杯赛
 scripts/scenes/bracket/champion_data.gd|lit|最快结束的一场
@@ -2416,6 +2415,7 @@ scripts/systems/replay/referee_watch.gd|lit|战绩已同步，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|本周积分赛场次已用完
 scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
 scripts/systems/replay/referee_watch.gd|lit|本大轮已出局
+scripts/systems/replay/referee_watch.gd|lit|本轮奖励：深海币 +%d　经验 +%d
 scripts/systems/replay/referee_watch.gd|lit|正在寻找 %d 胜 %d 负的对手
 scripts/systems/replay/referee_watch.gd|lit|正在建立对局
 scripts/systems/replay/referee_watch.gd|lit|正在提交阵容
