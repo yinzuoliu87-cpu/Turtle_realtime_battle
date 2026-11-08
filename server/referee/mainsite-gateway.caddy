@@ -1,0 +1,52 @@
+# 龟投（主站）网关 · 反代（方案书 docs/plans/20261107-龟战主站对接.md §4.7；网关 server/referee/mainsite_gateway.py；部署见同目录 README.md「龟投网关」）
+# 放到 /etc/caddy/mainsite-gateway.caddy，由 /etc/caddy/Caddyfile 末尾加一行 `import /etc/caddy/mainsite-gateway.caddy` 引入
+#   （与 relay.caddy 同一种接法；★仓库里的 server/stream/Caddyfile 还没加这一行 —— DNS 没加之前加了会让 Caddy 一直申请证书失败刷日志）。
+# 改完：caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy（validate 不过就别 reload）
+# 前提：Porkbun 两条 A 记录 arena / arena-beta.turtlearena.xyz → 49.13.166.188（Caddy 自动申请 Let's Encrypt 证书）
+#
+# 规则（只有这些）：
+#   /mainsite/*  /app/*   → 本机网关（正式 127.0.0.1:8790 / 内测 127.0.0.1:8791）；请求体原样转（★主站签的是原始字节，不许改写）
+#   /healthz             → 网关自己的 /healthz（顺带证明网关活着）
+#   /player*             → 网页播放器（E 线，路径与目录到时候接；现在 404）
+#   其余一律 404；带 .. 的原始路径一律 404（同 relay.caddy 那一课：path 匹配器看的是清理过的路径）
+#   请求体 ≤ 64 KB（主站 / App 的请求都是小 JSON）；上游连上 3 秒、等回包头 12 秒（主站那边 10 秒就放弃）
+#   不开访问日志（本文件没有 `log` 指令）；网关自己只记方法、路径、状态码
+#   ★本机不持有主站密钥以外的东西：签名在网关里验，Caddy 只转发
+
+(mainsite_gateway) {
+	header -Server
+
+	request_body {
+		max_size 64KB
+	}
+
+	@gw_dots vars_regexp gw_dots {http.request.orig_uri.path} \.\.
+	@gw_api path /mainsite/* /app/* /healthz
+	@gw_bad_method not method GET POST
+
+	route {
+		header @gw_dots Cache-Control no-store
+		respond @gw_dots 404
+
+		header @gw_bad_method Cache-Control no-store
+		respond @gw_bad_method 405
+
+		reverse_proxy @gw_api {args[0]} {
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 12s
+			}
+		}
+
+		header Cache-Control no-store
+		respond 404
+	}
+}
+
+arena.turtlearena.xyz {
+	import mainsite_gateway 127.0.0.1:8790
+}
+
+arena-beta.turtlearena.xyz {
+	import mainsite_gateway 127.0.0.1:8791
+}

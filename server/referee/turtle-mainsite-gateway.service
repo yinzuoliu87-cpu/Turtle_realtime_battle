@@ -1,0 +1,31 @@
+# 龟投（主站）网关 · 正式服（server/referee/mainsite_gateway.py；方案书 docs/plans/20261107-龟战主站对接.md §4.7）。
+# 放到 /etc/systemd/system/turtle-mainsite-gateway.service。部署步骤见同目录 README.md「龟投网关」。
+# ★与正式服裁判轮询器同一份 /etc/turtle-referee/env（要另加 MAINSITE_BASE / MAINSITE_HOOK_SECRET，见 README）；只听回环 127.0.0.1:8790，
+#   对外由 Caddy（mainsite-gateway.caddy，arena.turtlearena.xyz）反代。主站调我们一律 10 秒超时 ⇒ 不降优先级。
+[Unit]
+Description=Turtle mainsite gateway - PROD (HMAC hooks from TurtleBet + App login link)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=turtle-referee
+Group=turtle-referee
+Environment=GATEWAY_BIND=127.0.0.1
+Environment=GATEWAY_PORT=8790
+EnvironmentFile=/etc/turtle-referee/env
+ExecStart=/usr/bin/python3 /opt/turtle/referee/mainsite_gateway.py
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+MemoryMax=256M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
