@@ -7,6 +7,7 @@
 |---|---|---|
 | `tools/*_audit.py` `*_lint.py` 等 | **门禁审计器**。进门禁的那些以 `run-tests.sh` 里的 `run_audit` 行为准（清单从那里自动扫出来，这里不另抄） | 只读，可反复跑 |
 | `tools/release.py` `asc.py` `deploy.py` `prod_flags.py` | **发版流水**（CLAUDE.md §3）。每条都有 `--dry-run` / 只读子命令 | 真跑会打 tag / 提审 / 部署 / 写正式服 —— 照 CLAUDE.md §3 的顺序 |
+| `tools/mainsite_deploy.py` `mainsite_beta_smoke.py` | **龟投网关内测环境**：一条命令部署（内测服迁移 → 裁判机网关 / env / Caddy → 回读）、一条命令联调冒烟（扮演主站 + App）。用法见 `server/referee/README.md`「内测环境部署与联调」 | 部署默认只演练、`--apply` 才动（周末另要 `--weekend-ok`）；冒烟会在内测服建 / 删测试号，`--mock` 只在本机 |
 | `tools/sb_migrate.py` `sb_ro.py` `sb_common.py` `beta_ops.py` | **数据库**：迁移（沙盒 → 内测 → 正式）、正式服只读查询 | `sb_ro.py` 只读；迁移写库要用户点头 |
 | `tools/clean.py` | 清本机开发产物（默认只列，`--apply` 才动） | 安全 |
 | `tools/assetgen/` | **素材生成脚本**（`blender_*` `build_*` `bake_*` `gen_*` 等）：重跑会覆盖 `assets/` 里的成品。生成结果要确定性、重跑逐字节相同 | 会写素材文件 |

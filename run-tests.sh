@@ -983,6 +983,10 @@ run_audit "tools/mainsite_selftest.py" "ALL OK" "mainsite_selftest (龟投签名
 # 主站建偷袭任务的入口(2026-11-09 · 20261107 §4.4 / §4.8 · 工作线 A2): 假 rpc, 不连库不起网关。
 #   ★参数不对 / 已过期 / 攻守同一人一律 ok:false 且不调数据库; 数据库连不上 ⇒ busy(主站立即退回); 形参与迁移 20261109c 逐个对。
 run_audit "tools/raid_intake_selftest.py" "ALL OK" "raid_intake_selftest (偷袭建任务: 参数守门/过期拒收/数据库不可用回 busy/形参对账)"
+# 龟投网关 · 内测环境一条命令部署(2026-11-09 · 20261107 §4.7 · 工作线 G): 假执行器, 不 ssh 不连库不连网。
+#   ★默认就是演练(一条命令都不发); 周末 --apply 不带 --weekend-ok ⇒ 退出 3 且什么都不做; 迁移全在裁判机之前、已上的跳过;
+#   caddy validate 在 reload 之前且不过就还原; 重启之后读进程环境(进程比 env 旧 / 密钥不一致 ⇒ 红); 密钥只走写 env 那一步的标准输入。
+run_audit "tools/mainsite_deploy_selftest.py" "ALL OK" "mainsite_deploy_selftest (龟投网关内测部署: 默认演练/周末拒/迁移→网关→validate→reload→读进程环境/密钥不进命令行)"
 # 内测服工具链(2026-10-21 · docs/plans/20261020-内测服.md): 不连网(网络换成记账)。beta_ops 见正式服 ref 当场退出 3 /
 #   正式服写要显式放行且拒时一条请求都不发 / 正式服上线只收内测服上过同 sha256 的迁移 / 迁移逐字在 schema.sql /
 #   beta_setup 第一句挡 / 裁判机内测服 unit 不读正式服 env / Caddy 两套 /streams 都在。
