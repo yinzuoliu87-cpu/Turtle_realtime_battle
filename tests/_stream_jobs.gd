@@ -1,15 +1,17 @@
 extends RefCounted
 ## 逐帧直播 S1 门禁共用的任务单(下划线开头: 不是门禁, 被 verify_stream_* 三个门禁 preload)。
-##   · mirror: 与 verify_referee_job_roundtrip `_snap_a(gs, false)` 同一份(镜像阵容, 种子 2000023 打满三路)
+##   · mirror: 与 verify_referee_job_roundtrip `_snap_a(gs, false)` 同一份阵容(镜像阵容; 种子见 SEED, 要打满三路)
 ##   · heavy:  tests/golden/stream_heavy_pair.json(真实快照池两份打满赛季的快照, S0 的「裁判局②」; 种子在 json 里:
-##            原 2000023 → 2000032 → 2000050 → 2000071 → 2026-11-05 2000132(规则一改那局就可能 2:0), 理由写在 json 的 _doc)
+##            原 2000023 → 2000032 → 2000050 → 2000071 → 2000132 → 2026-11-08 2000142(规则一改那局就可能 2:0), 理由写在 json 的 _doc)
 
 const Backend := preload("res://scripts/net/backend.gd")
 const HEAVY := "res://tests/golden/stream_heavy_pair.json"
 ## 2026-10-20: 白名单报警样本(真人快照一对, 带 072 蛋糕礼盒 ⇒ 立绘换表改 vframes), 见 verify_stream_whitelist_alarm
 const ALARM_072 := "res://tests/golden/stream_alarm_pair_072.json"
 const LEVEL := 6
-const SEED := 2000023
+## 2026-11-08 2000023 → 2000026: RULES_VER 4(训龟大师钩锁朝随机敌人等, 方案书 20261108)后 2000023 只打两路;
+##   2000024~2000060 用裁判入口复算(tests/probes/_probe_heavy_seed_scan.gd SCAN_MODE=mirror), 取最近的三路打满 2000026(8002 步, 最大块 18 KB)。
+const SEED := 2000026
 
 
 static func job(a: Dictionary, b: Dictionary, seed: int) -> Dictionary:

@@ -2,6 +2,7 @@ extends Node
 ## 探针: 真实快照局(tests/golden/stream_heavy_pair.json 那一对)换种子 —— 规则一改那局就可能 2:0(不三路打满), 直播门禁要的是三路打满。
 ##   用裁判真入口(RefereeRunner.run, 带录流)逐个复算 SEED_FROM..SEED_TO, 报 开打几路 / 步数 / 最大块(预算 72600 B)。
 ##   用法: SEED_FROM=2000072 SEED_TO=2000090 <godot> --headless --path . res://tests/probes/_probe_heavy_seed_scan.tscn
+##   SCAN_MODE=mirror ⇒ 扫镜像快照局(J.mirror 那一份, 原种子 J.SEED)(2026-11-08 加: RULES_VER 4 后两局都打不满三路)
 const J := preload("res://tests/_stream_jobs.gd")
 const DIR := "user://heavy_seed_scan"
 
@@ -24,6 +25,9 @@ func _ready() -> void:
 		for f in DirAccess.get_files_at(adir):
 			DirAccess.remove_absolute(adir.path_join(f))
 		var job := J.job((d as Dictionary)["a"], (d as Dictionary)["b"], s)
+		if OS.get_environment("SCAN_MODE") == "mirror":
+			job = J.mirror(gs)
+			job["seed"] = s
 		var res: Dictionary = await RefereeRunner.run(self, job, Callable(), {"dir": adir})
 		var m: Dictionary = res.get("stream", {})
 		print("[SEED] %d 开打 %d 步 %d 最大块 %d 压缩 %d %s" % [s, int(res.get("fights", 0)), int(m.get("steps", 0)), int(m.get("max_chunk_bytes", 0)),

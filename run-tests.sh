@@ -452,7 +452,7 @@ frames_for () {
     verify_thorn_reflect) echo 3000 ;;
     verify_vfx_frames) echo 2000 ;;
     verify_salvo_trainer) echo 3000 ;;
-    verify_trainer_move) echo 4000 ;;   # U2: 逐步喂 25 游戏秒 sim(1500 步/帧) + 建场
+    verify_trainer_move) echo 5000 ;;   # U2: 逐步喂 35 游戏秒 sim(2100 步/帧, 11-08 钩锁冷却 30) + 建场
     # 装备演出时钟帧率无关(2026-09-15): 判据本身就是【每喂 1~2 步 sim 真的等一帧】(帧号不走, 帧号去重就触发不了),
     #   060 伞 60fps 一遍 ≈600 帧 + 30fps 三遍 ≈900 帧 + 食物/药水/激光 16.5 秒 ≈500 帧 + 六次建场 ⇒ 给 4000。
     verify_equip_vfx_clock) echo 4000 ;;
