@@ -270,7 +270,9 @@ func _tick_hook_flights(delta: float) -> void:
 	var keep: Array = []
 	for f in _flights:
 		var src: Dictionary = f["src"]
-		if not src.get("alive", false):                        # 大师死了 → 钩子作废
+		## 大师死了 / 已不在场上(单位表被清: 换路已由 clear_flights 清过, 这条兜住测试与别的清场路径)→ 钩子作废。
+		##   11-08: 钩锁朝随机敌人后, 清场前甩出的钩子会撞上清场后放进来的单位(verify_determinism_b ⑯ / verify_axe_orphan 偶发红)。
+		if not src.get("alive", false) or not battle._arr_has_unit(battle._units, src):
 			_hook_head_free(f)
 			continue
 		f["t"] = float(f["t"]) + delta
@@ -478,7 +480,7 @@ func _tick_wave_flights(delta: float) -> void:
 	var keep: Array = []
 	for f in _wave_flights:
 		var src: Dictionary = f["src"]
-		if not src.get("alive", false):                        # 大师死了 → 气波作废
+		if not src.get("alive", false) or not battle._arr_has_unit(battle._units, src):   # 大师死了 / 已不在场上 → 气波作废(同钩子)
 			_wave_free(f)
 			continue
 		f["t"] = float(f["t"]) + delta

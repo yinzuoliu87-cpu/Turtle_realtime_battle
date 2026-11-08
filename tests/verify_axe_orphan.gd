@@ -59,6 +59,9 @@ func _rig(off_y: float, final_key: String, pv: int) -> Dictionary:
 
 func _arena(foe_off: Vector2) -> Dictionary:
 	_s._units.clear()
+	## ★11-08: 清单位也清在途钩锁 / 气波(同换路 _dl_clear_units; 同 verify_determinism_b ⑯)。钩锁改「朝随机敌人」后,
+	##   开场那几帧大师甩出的钩子方向取决于没定种子的 _battle_rng, 还在飞的会撞上斧头眩晕 2.5 秒 ⇒「砸完后又走了 0 码」(CI 偶发红)。
+	_s._trainer_sys.clear_flights()
 	_s._over = false
 	var ally: Dictionary = _s._spawn._make_unit("basic", "left", _c() + Vector2(-600, 300))
 	_s._units.append(ally)
