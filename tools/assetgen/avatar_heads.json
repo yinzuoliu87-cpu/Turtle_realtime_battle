@@ -1,0 +1,254 @@
+{
+ "angel": {
+  "src": "tools/assetgen/avatar_src/angel.png",
+  "k": 3,
+  "box": [
+   0,
+   2,
+   74
+  ]
+ },
+ "bamboo": {
+  "src": "tools/assetgen/avatar_src/bamboo.png",
+  "k": 3,
+  "box": [
+   0,
+   4,
+   60
+  ]
+ },
+ "basic": {
+  "src": "tools/assetgen/avatar_src/basic.png",
+  "k": 3,
+  "box": [
+   2,
+   4,
+   80
+  ]
+ },
+ "bubble": {
+  "src": "tools/assetgen/pet_seq/bubble/avatar.png",
+  "k": 1,
+  "box": [
+   0,
+   12,
+   96
+  ]
+ },
+ "candy": {
+  "src": "tools/assetgen/pet_seq/candy/avatar.png",
+  "k": 1,
+  "box": [
+   48,
+   22,
+   68
+  ]
+ },
+ "chest": {
+  "src": "tools/assetgen/pet_seq/chest/avatar.png",
+  "k": 1,
+  "box": [
+   4,
+   34,
+   72
+  ]
+ },
+ "crystal": {
+  "src": "tools/assetgen/pet_seq/crystal/avatar.png",
+  "k": 1,
+  "box": [
+   25,
+   28,
+   60
+  ]
+ },
+ "cyber": {
+  "src": "tools/assetgen/pet_seq/cyber/avatar.png",
+  "k": 1,
+  "box": [
+   8,
+   16,
+   84
+  ]
+ },
+ "diamond": {
+  "src": "tools/assetgen/pet_seq/diamond/avatar.png",
+  "k": 1,
+  "box": [
+   0,
+   38,
+   50
+  ]
+ },
+ "dice": {
+  "src": "tools/assetgen/pet_seq/dice/avatar.png",
+  "k": 1,
+  "box": [
+   0,
+   42,
+   54
+  ]
+ },
+ "fortune": {
+  "src": "tools/assetgen/avatar_src/fortune.png",
+  "k": 3,
+  "box": [
+   0,
+   2,
+   80
+  ]
+ },
+ "gambler": {
+  "src": "tools/assetgen/pet_seq/gambler/avatar.png",
+  "k": 1,
+  "box": [
+   20,
+   28,
+   80
+  ]
+ },
+ "ghost": {
+  "src": "tools/assetgen/avatar_src/ghost.png",
+  "k": 1,
+  "box": [
+   20,
+   5,
+   160
+  ]
+ },
+ "headless": {
+  "src": "tools/assetgen/pet_seq/headless/avatar.png",
+  "k": 1,
+  "box": [
+   20,
+   20,
+   90
+  ]
+ },
+ "hiding": {
+  "src": "tools/assetgen/pet_seq/hiding/avatar.png",
+  "k": 1,
+  "box": [
+   17,
+   34,
+   56
+  ]
+ },
+ "hunter": {
+  "src": "tools/assetgen/pet_seq/hunter/avatar.png",
+  "k": 1,
+  "box": [
+   6,
+   8,
+   84
+  ]
+ },
+ "ice": {
+  "src": "tools/assetgen/avatar_src/ice.png",
+  "k": 3,
+  "box": [
+   0,
+   14,
+   86
+  ]
+ },
+ "lava": {
+  "src": "tools/assetgen/avatar_src/lava.png",
+  "k": 3,
+  "box": [
+   0,
+   2,
+   60
+  ]
+ },
+ "lightning": {
+  "src": "tools/assetgen/avatar_src/lightning.png",
+  "k": 3,
+  "box": [
+   2,
+   0,
+   72
+  ]
+ },
+ "line": {
+  "src": "tools/assetgen/pet_seq/line/avatar.png",
+  "k": 1,
+  "box": [
+   2,
+   4,
+   84
+  ]
+ },
+ "ninja": {
+  "src": "tools/assetgen/avatar_src/ninja.png",
+  "k": 1,
+  "box": [
+   30,
+   20,
+   140
+  ]
+ },
+ "phoenix": {
+  "src": "tools/assetgen/avatar_src/phoenix.png",
+  "k": 3,
+  "box": [
+   2,
+   14,
+   90
+  ]
+ },
+ "pirate": {
+  "src": "tools/assetgen/pet_seq/pirate/avatar.png",
+  "k": 1,
+  "box": [
+   4,
+   2,
+   90
+  ]
+ },
+ "rainbow": {
+  "src": "tools/assetgen/avatar_src/rainbow.png",
+  "k": 3,
+  "box": [
+   0,
+   0,
+   80
+  ]
+ },
+ "shell": {
+  "src": "tools/assetgen/avatar_src/shell.png",
+  "k": 3,
+  "box": [
+   0,
+   74,
+   56
+  ]
+ },
+ "space": {
+  "src": "tools/assetgen/pet_seq/space/avatar.png",
+  "k": 1,
+  "box": [
+   2,
+   14,
+   92
+  ]
+ },
+ "stone": {
+  "src": "tools/assetgen/avatar_src/stone.png",
+  "k": 3,
+  "box": [
+   0,
+   4,
+   60
+  ]
+ },
+ "two_head": {
+  "src": "tools/assetgen/avatar_src/two_head.png",
+  "k": 4,
+  "box": [
+   8,
+   6,
+   34
+  ]
+ }
+}

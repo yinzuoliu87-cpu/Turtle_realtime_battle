@@ -30,6 +30,8 @@ MANIFEST = os.path.join(SRC, "manifest.json")
 PIXEL_DIR = os.path.join(ROOT, "assets", "sprites", "pets", "pixel")
 ANIM_DIR = os.path.join(ROOT, "assets", "sprites", "pets", "animations")
 AVATAR_DIR = os.path.join(ROOT, "assets", "sprites", "avatars")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import build_avatar_heads as AvatarHeads  # noqa: E402
 PETS = os.path.join(ROOT, "data", "pets.json")
 
 CELL_H = 104          # 待机格子高(全 14 只同一个)
@@ -158,10 +160,9 @@ def build(tid: str) -> dict:
 				ent.setdefault("hits", {})[rel_path] = int(s["rel"])
 		elif kind == "state":
 			ent.setdefault("states", []).append([seg[6:], rel_path, float(s["fps"])])
-	## ③ 头像: 头部特写源图(PixelLab Pro Flash 128×128, 见 pet_seq/README.md)裁透明边 ×3 最近邻
-	av = _clean(Image.open(os.path.join(SRC, tid, "avatar.png")))
-	av = av.crop(av.getbbox())
-	av.resize((av.width * 3, av.height * 3), Image.NEAREST).save(os.path.join(AVATAR_DIR, "%s.png" % tid), optimize=False)
+	## ③ 头像: 源图(PixelLab 128×128, 半身)按 avatar_heads.json 裁成头部特写(用户 11-08「头像…表现他这个头部」)。
+	##   原来只裁透明边 ×3 ⇒ 半身像; 裁切规矩与框表见 build_avatar_heads.py。
+	AvatarHeads.build_one(tid)
 	ent["_idle"] = {"frames": 8, "frameW": W, "frameH": CELL_H, "duration": IDLE_MS}
 	print("%-9s S=%d feet=%d 待机格 %d×%d 本体 %d 像素 = %.2f 米 · 普攻 %d 帧命中 %d · 技能 %d 段 · 被动段 %s" % (
 		tid, S, feet, W, CELL_H, ent["body0"], ent["body0"] * 2.0 / CELL_H, ent.get("attack", 0), ent.get("hit", -1), len(ent["casts"]), sorted(ent.get("forms", {}))))

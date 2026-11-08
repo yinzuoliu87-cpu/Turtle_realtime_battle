@@ -8,7 +8,8 @@
   (先试过「把 head 骨挪走、比两帧差异」: 身体是一整张加权网格, 头一挪整张被拉伸, 差异框把大半个身子都框进来, 弃用。)
 裁切框: 脸(head 插槽)框往右(身体那侧)放宽 RIGHT 倍、往下放宽 DOWN 倍(带出脖子与一点壳), 再与头部框(含饰物)取并, 再收紧到实际不透明像素; 龟壳(没有头骨)用整只。
 像素: 透明度二值(与待机序列帧同一个规矩), 整数倍 SCALE 最近邻放大(头像框常比原尺寸大, 先放大免得引擎线性过滤糊掉)。
-输出: assets/sprites/avatars/<龟id>.png(覆盖旧头像)。确定性: 重跑逐字节相同。仓库根目录 = 本文件往上三层。
+输出: tools/assetgen/avatar_src/<龟id>.png(源图), 再经 build_avatar_heads.py 按 avatar_heads.json 裁成头部特写
+  写到 assets/sprites/avatars/<龟id>.png(2026-11-08 用户「头像…表现他这个头部」)。确定性: 重跑逐字节相同。仓库根目录 = 本文件往上三层。
 用法: python tools/assetgen/build_spine_avatars.py [--preview 输出.png]
 """
 import os
@@ -23,7 +24,8 @@ sys.path.insert(0, HERE)
 import spine_eval as S  # noqa: E402
 import build_spine_idle as I  # noqa: E402
 
-OUT_DIR = os.path.join(ROOT, "assets", "sprites", "avatars")
+OUT_DIR = os.path.join(ROOT, "tools", "assetgen", "avatar_src")
+import build_avatar_heads as AvatarHeads  # noqa: E402
 HEAD_W = 0.5           # 头部插槽的权重门槛(见 head_slots)
 RIGHT = 0.55           # 头部框往身体那侧多带出的宽度(× 头宽)
 DOWN = 0.30            # 往下多带出的高度(× 头高)
@@ -145,6 +147,7 @@ def main() -> int:
 		img, hb, box = avatar(d)
 		if preview is None:
 			img.save(os.path.join(OUT_DIR, "%s.png" % tid), optimize=False)
+			AvatarHeads.build_one(tid)
 		imgs.append((tid, img))
 		print("%-10s 头部框 %s · 裁切 %s · 头像 %d×%d" % (tid, hb, box, img.width, img.height))
 	if preview:
