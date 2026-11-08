@@ -972,6 +972,9 @@ run_audit "tools/server_logic_gate.py"    "ALL OK" "server_logic_gate (云函数
 # 裁判机轮询器的「补流」任务(逐帧直播 §5, 2026-10-20): 假 rpc + 假 Godot 子进程, 发布 / 撤流 / 领活顺序是真代码。
 #   ★补流只产出状态流, 一次 referee_complete 都不许有(不写回结果、不改账); 重算胜方 / 指纹对不上 ⇒ 撤流。
 run_audit "tools/referee_poller_selftest.py" "ALL OK" "referee_poller_selftest (补流只录流不记账·对不上撤流·正常任务优先)"
+# 主站建偷袭任务的入口(2026-11-09 · 20261107 §4.4 / §4.8 · 工作线 A2): 假 rpc, 不连库不起网关。
+#   ★参数不对 / 已过期 / 攻守同一人一律 ok:false 且不调数据库; 数据库连不上 ⇒ busy(主站立即退回); 形参与迁移 20261109c 逐个对。
+run_audit "tools/raid_intake_selftest.py" "ALL OK" "raid_intake_selftest (偷袭建任务: 参数守门/过期拒收/数据库不可用回 busy/形参对账)"
 # 内测服工具链(2026-10-21 · docs/plans/20261020-内测服.md): 不连网(网络换成记账)。beta_ops 见正式服 ref 当场退出 3 /
 #   正式服写要显式放行且拒时一条请求都不发 / 正式服上线只收内测服上过同 sha256 的迁移 / 迁移逐字在 schema.sql /
 #   beta_setup 第一句挡 / 裁判机内测服 unit 不读正式服 env / Caddy 两套 /streams 都在。
