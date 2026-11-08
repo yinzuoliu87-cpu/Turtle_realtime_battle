@@ -196,6 +196,8 @@ func _t_shape() -> void:
 	gs.season_sweeps = 4
 	gs.chest_treasures_won = []
 	gs.chest_treasure_value = 1234.0
+	## 按龟等级(2026-11-09): 真人本机有服务器等级表(没绑主站 = 28 只全 1 级)⇒ 快照带 lv; 服务器裁判结算时存进池子的也是盖过 lv 的那一份
+	gs.pet_lv = TurtleLevel.full_table([], {})
 	BE.pool_override = {BE.POOL_KEY: {}}
 	BE.upload_gauntlet_ghost(2, 1)
 	var sent: Dictionary = {}
@@ -204,6 +206,7 @@ func _t_shape() -> void:
 			if (g as Dictionary).has("gl_w"):
 				sent = (g as Dictionary).duplicate(true)
 	BE.pool_override = {}
+	gs.pet_lv = {}
 	sent.erase(BE.ORIGIN_KEY)              # 传上服务端的是没盖章的原件(upload_ghost 盖在副本上)
 	_ok("分母: 周六真人快照由 upload_gauntlet_ghost 产出", not sent.is_empty() and sent.has("gl_ts"))
 	## 服务端那一侧: 真人 = gauntlet_ghosts 原件(jsonb ⇒ JSON); 机器人 = 池子那份 + 服务端补 gl_ts(整数秒)

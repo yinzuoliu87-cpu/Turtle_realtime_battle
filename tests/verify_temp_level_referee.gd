@@ -98,6 +98,9 @@ func _ready() -> void:
 	var UM = load("res://scripts/combat/unit_scaling.gd")
 	var lvl_a := int(a0.get("season_level", 1))
 	var lvl_b := int(b.get("season_level", 1))
+	## 按龟等级(2026-11-09): 对手快照带 lv 表 ⇒ 这只的底子是它自己的龟等级(机器人池 = 1 级), 临时等级加在它上面
+	if TurtleLevel.level_in(TurtleLevel.table_of(b.get("lv")), foe) >= 1:
+		lvl_b = TurtleLevel.level_in(TurtleLevel.table_of(b.get("lv")), foe)
 	var want_a: float = float(UM.level_multiplier(lvl_a + 2)) / float(UM.level_multiplier(lvl_a))
 	var want_b: float = float(UM.level_multiplier(lvl_b + 2)) / float(UM.level_multiplier(lvl_b))
 	var got_a: float = float(h1.get("left/basic", 0.0)) / maxf(1.0, float(h0.get("left/basic", 0.0)))

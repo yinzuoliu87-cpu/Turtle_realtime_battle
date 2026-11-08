@@ -167,6 +167,8 @@ func _setup_human(battles: int) -> void:
 	gs.season_sweeps = 4
 	gs.chest_treasures_won = []
 	gs.chest_treasure_value = 1234.0
+	## 按龟等级(2026-11-09): 真人本机有服务器等级表(没绑主站 = 28 只全 1 级)⇒ 快照带 lv, 机器人也得带
+	gs.pet_lv = TurtleLevel.full_table([], {})
 
 
 func _ready() -> void:
@@ -234,8 +236,14 @@ func _ready() -> void:
 		for k in range(8):
 			var r := RandomNumberGenerator.new()
 			r.seed = n * 100 + k
+			var st0: int = r.state
 			var b: Dictionary = BE.make_bot(n, r)
 			var why := _value_problem(b, n, -1, -1, skill_ids)
+			## 统领只从它自己那组限免 7 只里抽(2026-11-09 · 方案书 20261107 §4.9)
+			var fr: Array = WeeklyFree.free_ids("bot:%d" % st0, 0, [])
+			for p in (b.get("leaders", []) as Array):
+				if why == "" and not fr.has(str(p)):
+					why = "统领 %s 不在它那组限免里 %s" % [str(p), str(fr)]
 			if why != "":
 				bad.append("n=%d: %s" % [n, why])
 	for k in range(40):
@@ -298,6 +306,14 @@ func _value_problem(b: Dictionary, battles: int, gw: int, gl: int, skill_ids: Di
 	for k in (b.get("pet_levels", {}) as Dictionary).keys():
 		if int(b["pet_levels"][k]) != 1:
 			return "pet_levels %s=%s(真人恒 1)" % [k, str(b["pet_levels"][k])]
+	## 按龟等级(2026-11-09): lv = 三只统领、1 ~ 10 的整数(没绑主站的真人 / 机器人 / 陪练全 1)
+	var lvt = b.get("lv", null)
+	if not (lvt is Dictionary) or (lvt as Dictionary).size() != (b.get("leaders", []) as Array).size():
+		return "lv 表 %s 不是三只统领各一项" % str(lvt)
+	for k in (lvt as Dictionary).keys():
+		var lvv = (lvt as Dictionary)[k]
+		if not (b.get("leaders", []) as Array).has(k) or not (lvv is int or lvv is float) or int(lvv) != 1:
+			return "lv %s=%s(没绑主站的真人恒 1)" % [str(k), str(lvv)]
 	if BE.owner_tag_of_id(str((b.get("profile", {}) as Dictionary).get("id", ""))) == "":
 		return "profile.id %s 不是真人 id 的形状" % str((b.get("profile", {}) as Dictionary).get("id", ""))
 	## ★玩家 ID(2026-10-04): 与真人同一个算法同一种长相(`_P2.tag_valid`) ——

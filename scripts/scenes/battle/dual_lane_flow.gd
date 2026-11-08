@@ -384,6 +384,9 @@ func _dl_unit_card(spec, is_mine: bool) -> Control:
 	var lvl = 1
 	if GameState != null and GameState.season_level != null: lvl = maxi(1, int(GameState.season_level))
 	if not is_mine: lvl = _dl_foe_level(lvl)   # 对手卡写对手自己的等级(快照带; 旧快照 = 与我同级)
+	## 按龟等级(R1, 2026-11-09): 统领卡写这只龟自己的等级(这一方带 lv 表时; 与战斗 `_unit_level(side, id)` 同一个取法)
+	var _pl: int = TurtleLevel.level_of(GameState, "left" if is_mine else "right", str(spec.get("id", "")) if str(spec.get("kind", "")) == "leader" else "", true)
+	if _pl >= 1: lvl = _pl
 	var lv = Label.new(); lv.text = "Lv.%d" % lvl; lv.add_theme_font_size_override("font_size", 17); lv.add_theme_color_override("font_color", Color("#ffd93d")); lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	## 援军小将不按等级成长(按本周场数), 卡上不挂「Lv」(同信息面板 / 头像框的口径)
 	if str(spec.get("role", "")) != "reserve":
@@ -569,9 +572,12 @@ func _dl_build_lane_field() -> void:
 	battle._spawn._spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
 	battle._spawn._spawn_lane_side(foe, "right", flvl, Vector2(_cx + 420.0, _cy))
 	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按**各自**等级初始化); hp_max=原始满血→血条显跨路累积伤害.
-	_dl_ensure_egg_hp(lvl, flvl)
-	battle._units.append(battle._spawn._make_unit("__egg__", "left", Vector2(battle.ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max_for(lvl)}))
-	battle._units.append(battle._spawn._make_unit("__egg__", "right", Vector2(battle.ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max_for(flvl)}))
+	## ★按龟等级(R1, 2026-11-09): 这一方带 lv 表 ⇒ 蛋按三只统领龟等级的平均; 没有(旧快照) ⇒ 整队等级, 逐位同改之前。
+	var elvl: int = _dl_egg_level("left", lvl)
+	var eflvl: int = _dl_egg_level("right", flvl)
+	_dl_ensure_egg_hp(elvl, eflvl)
+	battle._units.append(battle._spawn._make_unit("__egg__", "left", Vector2(battle.ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max_for(elvl)}))
+	battle._units.append(battle._spawn._make_unit("__egg__", "right", Vector2(battle.ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max_for(eflvl)}))
 	battle._spawn._spawn_trainers()    # 双方场外监视者。★放在这里 = 每路 spawn 一次, 而 _dl_next_lane 会先
 						 #   _dl_clear_units() 再重 spawn → 血量【天然每场重置】(用户要的), 不用另写重置逻辑。
 						 #   另见 _dl_snapshot_survivors: 训龟大师不进幸存名单, 否则会带残血去终极战场+重复 spawn。
@@ -690,6 +696,19 @@ func _dl_ensure_egg_hp(lvl: int, flvl: int) -> void:
 	for s in ["left", "right"]:
 		if float(GameState.egg_hp.get(s, 0.0)) <= 0.0:
 			GameState.egg_hp[s] = egg_max_for(lvl if s == "left" else flvl)
+
+
+## 龟蛋按几级算(按龟等级 R1, 方案书 20261105c §4.2「龟蛋血量按三只平均」): 这一方带 lv 表 ⇒ 三只统领龟等级的平均
+##   (左 = GameState.season_leaders, 右 = 对手快照 leaders); 没有 lv 表 ⇒ base(整队等级, 老口径)。
+func _dl_egg_level(side_lr: String, base: int) -> int:
+	if GameState == null:
+		return base
+	var ldr: Array = []
+	if side_lr == "left":
+		ldr = (GameState.season_leaders as Array).slice(0, 3) if GameState.season_leaders is Array else []
+	elif GameState.dual_ghost is Dictionary and (GameState.dual_ghost as Dictionary).get("leaders") is Array:
+		ldr = ((GameState.dual_ghost as Dictionary)["leaders"] as Array).slice(0, 3)
+	return TurtleLevel.egg_level(TurtleLevel.side_table(GameState, side_lr, true), ldr, base)
 
 
 ## 蛋原始满血(用户2026-07-19: 2000+100/级 → 3000+300/级) = maxHp 基准。
@@ -978,6 +997,9 @@ func _dl_snapshot_survivors() -> void:
 			if str(u.get("tamed_side", "")) != "":
 				spec["tamed_side"] = str(u["tamed_side"])
 				spec["tame_used"] = true
+				## 按龟等级(R1, 2026-11-09): 驯服过来的龟在终极战场仍按它自己的等级 = 原主人那一方的 lv 表(那一方没有表 ⇒ 老口径)
+				if spec.get("kind", "") == "leader" and str(u.get("side", side)) != side:
+					spec["lv_side"] = str(u.get("side", side))
 			## ★财神龟「招财进宝」的临时装备进度要跟着进终极战场(2026-10-21 查实的 bug):
 			##   临时装备本身随 equips 带过去了, 但「已抽 / 几星 / 当前消耗」没带 ⇒ 终极战场里当成没抽过、
 			##   再抽一件(身上两件临时装备), 原来那件也不再升星。一局内的进度不重置(用户 08-01 第 8/9 条同一原则)。

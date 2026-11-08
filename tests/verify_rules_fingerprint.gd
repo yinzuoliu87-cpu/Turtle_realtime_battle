@@ -74,6 +74,9 @@ const ROW_EQ_PREFIX := "_st_eq|"
 ##   单位顺序 = 统领(top 再 bottom, 按写的顺序) → 上路小将 → 下路小将(每路补到 3 个; 0 统领那一路首个小将是精英)
 ##   每个单位的装备按位置定星: 第 1 件 3★、第 2 件 2★、第 3 件 1★、第 4 件(只有 095 圣光护盾, 它不占单只 3 件上限)1★
 ##   x 其它快照字段（香火刻痕 / 宝箱财宝值 / 本周场数 ⇒ 小木斧进度与援军小将成长）
+##     ★2026-11-09 x 里加 lv（按龟等级 R1）：线上每一局裁判开算时都盖了 lv 表（迁移 20261109b），没有 lv 的老口径线上已经走不到 ⇒
+##       五局两侧都带、三只各不相同（在赛季等级上下 1 ~ 2 级），守「每只龟按自己的等级 + 龟蛋按三只平均」这条路。
+##       （去掉 lv 时总指纹与 11-08 的金标逐位相同 —— 即「没有 lv 表 ⇒ 整队等级」逐位不变，11-09 实测。）
 const CASES := [
 	## ① 双方顶档盾羁绊 ⇒ 冲击波互打（0.22.7「冲击波不给挨打方攒怒气」只在两边都有盾羁绊时才看得见）
 	##   + 剑顶档 / 食物顶档; 两边各两件 095 圣光护盾（9 件盾 = 6 档以上送 2 件）
@@ -85,13 +88,13 @@ const CASES := [
 			"eq": [["p2eq_014", "p2eq_015", "p2eq_016", "p2eq_095"], ["p2eq_017", "p2eq_018", "p2eq_021"],
 				["p2eq_045", "p2eq_081", "p2eq_082", "p2eq_095"], ["p2eq_001", "p2eq_003", "p2eq_005"],
 				["p2eq_006", "p2eq_007", "p2eq_009"], ["p2eq_010", "p2eq_083", "p2eq_084"]],
-			"x": {"season_total_battles": 6}},
+			"x": {"season_total_battles": 6, "lv": {"stone": 9, "bamboo": 8, "diamond": 10}}},
 		"b": {"lv": 9, "tr": "magic_stone", "top": ["bubble"], "bottom": ["crystal", "phoenix"],
 			"lo": {"bubble": 2, "crystal": 1, "phoenix": 3},
 			"eq": [["p2eq_014", "p2eq_015", "p2eq_016", "p2eq_095"], ["p2eq_017", "p2eq_018", "p2eq_021", "p2eq_095"],
 				["p2eq_045", "p2eq_081", "p2eq_082"], ["p2eq_002", "p2eq_012", "p2eq_013"],
 				["p2eq_036", "p2eq_037", "p2eq_069"], ["p2eq_070", "p2eq_071", "p2eq_072"]],
-			"x": {"season_total_battles": 6}}},
+			"x": {"season_total_battles": 6, "lv": {"bubble": 10, "crystal": 9, "phoenix": 8}}}},
 	## ② 药水 / 枪 顶档 vs 弓箭 / 剑 顶档 · A 的 3 统领同在上路(下路全是小将, 首个精英) · B 上路 2 / 下路 1
 	##   ★2026-11-03 原来 076 / 080 挂在下路单位上, 而上路一边倒碎蛋整场就结束(试了 9 种换路 / 等级 / 训龟大师都碎),
 	##     这两件从没上过场(覆盖分母抓到)。挪到上路统领 / 小将身上后上路不再一边倒, 两路都打, 下路的精英小将也上场了。
@@ -101,13 +104,13 @@ const CASES := [
 			"eq": [["p2eq_019", "p2eq_022", "p2eq_080"], ["p2eq_041", "p2eq_042", "p2eq_065"],
 				["p2eq_066", "p2eq_067", "p2eq_068"], ["p2eq_048", "p2eq_050", "p2eq_051"],
 				["p2eq_052", "p2eq_057", "p2eq_077"], ["p2eq_078", "p2eq_079", "p2eq_028"]],
-			"x": {"season_total_battles": 9}},
+			"x": {"season_total_battles": 9, "lv": {"basic": 7, "ninja": 8, "hunter": 9}}},
 		"b": {"lv": 8, "tr": "whistle", "top": ["pirate", "dice"], "bottom": ["lightning"],
 			"lo": {"pirate": 1, "dice": 3, "lightning": 3},
 			"eq": [["p2eq_039", "p2eq_049", "p2eq_054"], ["p2eq_055", "p2eq_056", "p2eq_073"],
 				["p2eq_074", "p2eq_075", "p2eq_005"], ["p2eq_001", "p2eq_003", "p2eq_076"],
 				["p2eq_006", "p2eq_007", "p2eq_009"], ["p2eq_010", "p2eq_083", "p2eq_084"]],
-			"x": {"season_total_battles": 9}}},
+			"x": {"season_total_battles": 9, "lv": {"pirate": 9, "dice": 8, "lightning": 7}}}},
 	## ③ 灵物顶档(触手) + 096 小木斧 + 遗物 7 件 vs 法器顶档 / 食物 8 件
 	{"tag": "③ 灵物触手 + 小木斧 vs 法器/食物", "seed": 7130003,
 		"a": {"lv": 10, "tr": "glacier", "top": ["angel"], "bottom": ["ice", "ghost"],
@@ -115,13 +118,13 @@ const CASES := [
 			"eq": [["p2eq_025", "p2eq_032", "p2eq_033"], ["p2eq_034", "p2eq_046", "p2eq_060"],
 				["p2eq_061", "p2eq_062", "p2eq_063"], ["p2eq_064", "p2eq_096", "p2eq_004"],
 				["p2eq_024", "p2eq_044", "p2eq_053"], ["p2eq_058", "p2eq_059", "p2eq_091"]],
-			"x": {"season_total_battles": 14}},
+			"x": {"season_total_battles": 14, "lv": {"angel": 10, "ice": 9, "ghost": 8}}},
 		"b": {"lv": 10, "tr": "hunt_order", "top": ["candy", "line"], "bottom": ["lava"],
 			"lo": {"candy": 2, "line": 3, "lava": 1},
 			"eq": [["p2eq_011", "p2eq_023", "p2eq_026"], ["p2eq_029", "p2eq_030", "p2eq_031"],
 				["p2eq_043", "p2eq_088", "p2eq_089"], ["p2eq_090", "p2eq_002", "p2eq_012"],
 				["p2eq_013", "p2eq_036", "p2eq_037"], ["p2eq_069", "p2eq_070", "p2eq_071"]],
-			"x": {"season_total_battles": 14}}},
+			"x": {"season_total_battles": 14, "lv": {"candy": 9, "line": 10, "lava": 8}}}},
 	## ④ 奇械顶档 / 药水 8 件 vs 遗物顶档(含 093 香火石, 带刻痕) / 枪 8 件 · 宝箱龟带财宝值
 	##   ★2026-11-08 B 的上下路对调(原上路赌徒 / 下路赛博 + 宝箱): RULES_VER 4 删了奇械僵硬 / 易碎与药水斩首后, A 上路被一边倒碎蛋、
 	##     整场在第一路就结束, 下路的彩虹 / 赛博 / 宝箱和 047/085/092/093 从没上过场(覆盖分母抓到)。
@@ -131,14 +134,14 @@ const CASES := [
 			"eq": [["p2eq_008", "p2eq_020", "p2eq_027"], ["p2eq_035", "p2eq_038", "p2eq_040"],
 				["p2eq_047", "p2eq_085", "p2eq_086"], ["p2eq_087", "p2eq_019", "p2eq_022"],
 				["p2eq_028", "p2eq_041", "p2eq_042"], ["p2eq_065", "p2eq_066", "p2eq_067"]],
-			"x": {"season_total_battles": 4}},
+			"x": {"season_total_battles": 4, "lv": {"two_head": 7, "fortune": 6, "rainbow": 8}}},
 		"b": {"lv": 7, "tr": "villager", "top": ["cyber", "chest"], "bottom": ["gambler"],
 			"lo": {"gambler": 2, "cyber": 3, "chest": 1},
 			"eq": [["p2eq_004", "p2eq_024", "p2eq_044"], ["p2eq_053", "p2eq_058", "p2eq_059"],
 				["p2eq_091", "p2eq_092", "p2eq_093"], ["p2eq_094", "p2eq_048", "p2eq_050"],
 				["p2eq_051", "p2eq_052", "p2eq_057"], ["p2eq_077", "p2eq_078", "p2eq_079"]],
 			"x": {"season_total_battles": 4, "incense_marks": 12, "incense_charge": 2500,
-				"chest_treasure_value": 240.0}}},
+				"chest_treasure_value": 240.0, "lv": {"gambler": 8, "cyber": 7, "chest": 6}}}},
 	## ⑤ 双方灵物顶档(触手对拍) · 弓箭 8 件 vs 剑 8 件 · 龟壳复制 / 命运之轮 / 雷暴
 	{"tag": "⑤ 双方灵物触手 · 弓箭 vs 剑 · 复制/命运之轮/雷暴", "seed": 7150005,
 		"a": {"lv": 9, "tr": "mage", "top": ["space", "hiding"], "bottom": ["headless"],
@@ -146,13 +149,13 @@ const CASES := [
 			"eq": [["p2eq_025", "p2eq_032", "p2eq_033"], ["p2eq_034", "p2eq_046", "p2eq_060"],
 				["p2eq_061", "p2eq_062", "p2eq_063"], ["p2eq_064", "p2eq_039", "p2eq_049"],
 				["p2eq_054", "p2eq_055", "p2eq_056"], ["p2eq_073", "p2eq_074", "p2eq_075"]],
-			"x": {"season_total_battles": 11}},
+			"x": {"season_total_battles": 11, "lv": {"space": 9, "hiding": 10, "headless": 8}}},
 		"b": {"lv": 9, "tr": "hook", "top": ["shell"], "bottom": ["gambler", "lightning"],
 			"lo": {"shell": 2, "gambler": 3, "lightning": 2},
 			"eq": [["p2eq_025", "p2eq_032", "p2eq_033"], ["p2eq_034", "p2eq_046", "p2eq_060"],
 				["p2eq_061", "p2eq_062", "p2eq_063"], ["p2eq_064", "p2eq_001", "p2eq_003"],
 				["p2eq_005", "p2eq_006", "p2eq_007"], ["p2eq_009", "p2eq_010", "p2eq_083"]],
-			"x": {"season_total_battles": 11}}},
+			"x": {"season_total_battles": 11, "lv": {"shell": 8, "gambler": 10, "lightning": 9}}}},
 ]
 ## 数值表静态摘要(这几个脚本里的数字 / 表常量整份进指纹)。
 ## ★2026-11-03 反向验证抓到的洞: 五局里每件装备只放在一个星级上(第几格 = 几星), 另外两个星级的数值改了

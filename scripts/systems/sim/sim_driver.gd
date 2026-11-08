@@ -469,7 +469,9 @@ func _do_team(t: Node) -> void:
 		var td = get_node_or_null("/root/TutorialDirector")
 		want = Array(td.FIXED_TEAM) if td != null else []
 	else:
-		want = _roster.get("pets", [])
+		## ★陪练号只用自己的「拥有 ∪ 本周限免」(没绑主站 = 限免 7 只, 1 级; 2026-11-09 · 方案书 20261107 §4.9):
+		##   槽位表里本周能上的按原顺序留下, 不够 3 只按限免顺序补(补上的不改招, 用默认招)。不登录后端 ⇒ 原样。
+		want = PetLevelsNet.fill_allowed(_roster.get("pets", []))
 	if not locked:
 		t.call("_on_clear_all")
 		for pid in want:

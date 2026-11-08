@@ -27,6 +27,13 @@ extends RefCounted
 ##                     B 是没带等级的旧快照 ⇒ 战斗场退回「与左方同级」的老口径(客户端同一条, 手机播录像时一致)。
 ##   a / b           双方快照(`Backend.build_ghost_snapshot` 同一形状)。A 在左、B 在右。
 ##   a_state         可选: A 方开局那一刻的 `ReplayRecorder.capture_state()`(以后「本地先播、服务器落账」用) —— 有它就不从快照推
+##   key.a_account / key.b_account  双方账号 uuid(null = 服务器机器人池)。★2026-11-09 主站对接 C: 领活那一刻服务器写进任务 meta
+##                   (迁移 20261109b 触发器 pet_stamp_on_claim; key = meta ∪ {week, match_key}), 只用来算这一方本周的限免
+##                   (`WeeklyFree`, 种子 = 账号 + 周锚点 key.week)。
+##   key.a_owned / key.b_owned  这一方开算那一刻拥有的龟(主站 /player 缓存 mainsite_pets); 没有 = 没绑定 ⇒ 只有限免 7 只。
+##                   ★周赛局的账号和拥有只在 meta、不进快照: matches.left/right_snapshot 所有登录用户都读得到(机器人池那一侧没有账号, 放进快照就露馅)。
+##                   偷袭局另有 raid_create 盖在快照里的 account_id / owned(两侧都是真人), 没有 ① 时用它(`pets_allowed`)。
+##   a.lv / b.lv     按龟等级表 {pet_key: 1~10}, 领活时按服务器等级表盖章(`pet_stamp_snapshot`, 快照自报的作废)。没有 lv = 旧快照 ⇒ 整队等级。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  左方为什么要「从快照推」
@@ -79,6 +86,12 @@ static func validate(job) -> String:
 	##   服务端 raid_create 建任务时已按同一条(raid_snapshot_ok)查过, 这里是裁判自己的一道。
 	if str(j.get("mode", "")) == MODE_RAID and leaders_of(j["b"]).size() != 3:
 		return "b_bad_snapshot"
+	## ★拥有 ∪ 本周限免(2026-11-09 · 方案书 20261107 §4.9「周赛也要服务器把关」): 三只统领有一只不在 ⇒ 这一方的快照不认。
+	##   错误码沿用 a_bad_snapshot / b_bad_snapshot: 积分赛开战(referee_ranked_start)已按它们分流(A 坏 ⇒ 收新阵容, B 坏 ⇒ 重挑对手)。
+	if not pets_allowed(j, "a"):
+		return "a_bad_snapshot"
+	if not pets_allowed(j, "b"):
+		return "b_bad_snapshot"
 	return ""
 
 
@@ -86,6 +99,37 @@ static func validate(job) -> String:
 ## ★服务端以结果单的 winner 为准自己映射一遍(迁移 20261109c raid_on_job), 两边对不上 ⇒ 这场作废(void)。
 static func raid_result_of(a_won: bool) -> String:
 	return "attacker" if a_won else "defender"
+
+
+## 这一方的三只统领是否都在「拥有 ∪ 本周限免」(`WeeklyFree.allowed_ids`)。纯函数。
+##   账号 / 拥有从哪来(都是服务器填的, 快照自报的不认):
+##   ① key.<side>_account / key.<side>_owned —— 领活那一刻的盖章(迁移 20261109b 触发器 pet_stamp_on_claim 写进任务 meta, 四种任务都有;
+##      两个键总是一起写 ⇒ 以 <side>_owned 在不在为准: 偷袭建任务时 meta 里另有一个只放账号的 b_account, 不能拿它当盖过章);
+##      <side>_account 是 null = 这一方没有账号(服务器机器人池)⇒ 不查。
+##   ② 没有 ①(20261109b 没上 / 旧任务)且是偷袭 ⇒ 快照里 raid_create 盖的 account_id / owned(20261109c)。
+##   ③ 都没有 ⇒ 不查(与改之前相同)。
+##   周锚点 = key.week(服务端 season_week)。
+static func pets_allowed(j: Dictionary, side: String) -> bool:
+	var snap = j.get(side, null)
+	if not (snap is Dictionary):
+		return false
+	var key: Dictionary = j.get("key", {}) if j.get("key") is Dictionary else {}
+	var acct = null
+	var ow = []
+	if key.has(side + "_owned"):
+		acct = key.get(side + "_account", null)
+		ow = key[side + "_owned"]
+	elif str(j.get("mode", "")) == MODE_RAID:
+		acct = (snap as Dictionary).get("account_id", null)
+		ow = (snap as Dictionary).get("owned", [])
+	if not (acct is String) or str(acct) == "":
+		return true
+	var owned: Array = []
+	if ow is Array:
+		for p in ow:
+			owned.append(str(p))
+	var wk = key.get("week", 0)
+	return WeeklyFree.all_allowed(str(acct), int(wk) if (wk is int or wk is float) else 0, owned, leaders_of(snap))
 
 
 ## 种子: 1 ~ 2^53-1 的整数(JSON 解析出来是 float ⇒ 要求是整数值)。不合法 = -1。
@@ -157,6 +201,10 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	st["tutorial_active"] = false
 	st["debug_level"] = 0
 	st["season_level"] = level_for(j)
+	## 按龟等级(R1, 2026-11-09): 左方的 lv 表 = A 快照里的(开算时服务器盖过章, 盖过章就压过 a_state 自报的); 都没有 ⇒ 空 = 整队等级(旧快照)。
+	var alv: Dictionary = TurtleLevel.table_of((j["a"] as Dictionary).get("lv", null))
+	if not alv.is_empty() or not st.has("pet_lv"):
+		st["pet_lv"] = alv
 	## 援军小将按左方已打场数成长(2026-10-29): 录像那条路已带(STATE_KEYS); 按快照建的这条从 A 快照取。
 	if not st.has("season_total_battles"):
 		var a: Dictionary = j.get("a", {}) if j.get("a") is Dictionary else {}

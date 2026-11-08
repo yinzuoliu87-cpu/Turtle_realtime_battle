@@ -989,6 +989,7 @@ var battles_total: int = 0
 var inventory: Array[String] = []                     # 收集到的装备 id 列表 (跨场景持久)
 var match_history: Array = []                          # 对局记录 [{result,lineup,mode,turn}], 最新在前封顶 50
 var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-10} (1:1 PoC petState.levels; 默认1)。★唯一写入方(图鉴调试面板)2026-10-07 已删, 现在只从旧存档读回; 战斗不读它(用 season_level)
+var pet_lv: Dictionary = {}                            # ★按龟等级(R1, 2026-11-09): 我方每只龟的等级 {pet_key: 1~10} = 服务器等级表的缓存(PetLevelsNet 写 28 只全表)。空 = 还没取到 ⇒ 战斗退回整队等级(TurtleLevel 头注); 录像 STATE_KEYS 里有它
 var bgm_volume: float = 0.45                           # 设置: BGM 音量
 var sfx_volume: float = 0.8                            # 设置: SFX 音量
 var fullscreen: bool = false                           # 设置: 全屏 (原来切了不存, 重启回窗口)
@@ -1820,6 +1821,7 @@ func _save_dict() -> Dictionary:
 		"inventory": inventory,
 		"match_history": match_history,
 		"pet_levels": pet_levels,
+		"pet_lv": pet_lv,
 		"bgm_volume": bgm_volume,
 		"sfx_volume": sfx_volume,
 		"fullscreen": fullscreen,
@@ -2006,6 +2008,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	battles_total = data.get("battles_total", 0)
 	match_history = data.get("match_history", [])
 	pet_levels = data.get("pet_levels", {})
+	pet_lv = TurtleLevel.table_of(data.get("pet_lv", {}))
 	bgm_volume = data.get("bgm_volume", 0.45)
 	sfx_volume = data.get("sfx_volume", 0.8)
 	fullscreen = bool(data.get("fullscreen", false))
@@ -2664,6 +2667,9 @@ func apply_temp_leveler(pet_id: String) -> void:
 ##   ⇒ 选龟时看到的等级/属性/技能数与实战不符。抽到这里, 两边都调它。
 func battle_level_for(pet_id: String) -> int:
 	var lv: int = debug_level if debug_level > 0 else maxi(1, season_level)
+	var plv: int = TurtleLevel.level_in(TurtleLevel.table_of(pet_lv), pet_id)   # 按龟等级(R1): 同战斗 `_unit_level("left", id)`; 空表 / 小将("") ⇒ -1
+	if debug_level <= 0 and plv >= 1:
+		lv = plv
 	return lv + temp_level_bonus(pet_id)
 
 

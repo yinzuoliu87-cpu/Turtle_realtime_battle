@@ -48,6 +48,7 @@ func _foe(lv) -> Dictionary:
 		g.erase("season_level")
 	else:
 		g["season_level"] = lv
+	g.erase("lv")    # 本门禁量的是「整队赛季等级」那条路(按龟等级 R1 见 verify_pet_level_r1); 带 lv 表就走按龟了
 	return g
 
 
