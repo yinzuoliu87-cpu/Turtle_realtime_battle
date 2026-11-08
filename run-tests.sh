@@ -376,6 +376,7 @@ frames_for () {
     verify_referee_coins) echo 8000 ;;
     verify_referee_chest) echo 8000 ;;   # 裁判一局 + 本机复算一局(同 verify_referee_coins)
     verify_referee_incense) echo 8000 ;;   # 裁判一局 + 本机复算一局(同 verify_referee_chest)
+    verify_raid_referee) echo 8000 ;;   # 2026-11-09 偷袭裁判: 真裁判算三局(100ms/帧) + 拒算两种; 本地实测 26 帧 / 7 秒(同 verify_referee_coins 的余量)
     # 周日决赛服务器局铸币(2026-10-20): 裁判真算两局 + 同一局本机复算到结算(逐帧读两侧出口)
     verify_finals_coins) echo 8000 ;;
     # 宝箱龟本场宝箱账(2026-10-22): 单元段手动驱动(几帧) + 裁判真算一局(100ms/帧) + 同一局本机复算到结算(40ms/帧); 本地实测 209 帧 / 16 秒
