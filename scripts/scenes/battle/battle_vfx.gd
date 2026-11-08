@@ -467,11 +467,12 @@ func copy_steal_icon(u: Dictionary, stype: String, hold: float = 0.55) -> void:
 	## 弹入(0.16) → **满亮保持** → 淡出(0.22)。保持段占大头, 拍出来才是它本来的颜色。
 	var tw = battle._reg_tween()
 	tw.set_parallel(true)
-	tw.tween_property(s, "modulate:a", 1.0, 0.16)
-	tw.tween_property(s, "scale", Vector3.ONE, 0.16).from(Vector3.ONE * 0.35) \
+	## 秒数取 ShellSystem.COPY_ICON_POP / FADE: ShellVfx 的头顶底框按同一份逐格切, 两边对得上(11-08)
+	tw.tween_property(s, "modulate:a", 1.0, ShellSystem.COPY_ICON_POP)
+	tw.tween_property(s, "scale", Vector3.ONE, ShellSystem.COPY_ICON_POP).from(Vector3.ONE * 0.35) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_interval(maxf(0.05, hold))
-	tw.chain().tween_property(s, "modulate:a", 0.0, 0.22)
+	tw.chain().tween_property(s, "modulate:a", 0.0, ShellSystem.COPY_ICON_FADE)
 	tw.chain().tween_callback(s.queue_free)
 
 
