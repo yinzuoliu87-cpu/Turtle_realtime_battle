@@ -24,7 +24,9 @@ const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
 const BATTLE := "res://scenes/RealtimeBattle3D.tscn"
 const MID := "5b2c7d1e-3f4a-4b6c-8d9e-0a1b2c3d4e5f"
-const SEED := 3100041
+## 2026-11-08 3100041 → 3100047: RULES_VER 4(方案书 20261108)后 3100041 两侧都铸 3 枚, F1「两侧不是同一个读数」分不出来;
+##   3100041~3100052 用裁判入口复算(tests/probes/_probe_finals_coins_seed.gd), 取 A 三件 3 星 6 枚 / B 两件低星 3 枚的 3100047。
+const SEED := 3100047
 const GEAR := "p2eq_035"
 const MIG := "res://server/supabase/migrations/20261020d_finals_coins.sql"
 const SCHEMA := "res://server/supabase/schema.sql"
