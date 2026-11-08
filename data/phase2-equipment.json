@@ -546,10 +546,10 @@
     "baseStats1": "+生命80/140/400·闪避15/25/50%",
     "shopAvailable": 1,
     "emoji": "🦑",
-    "effectDesc1": "每成功闪避一次攻击，立即获得 30/50/120 点永久护盾。",
+    "effectDesc1": "每成功闪避一次攻击，立即获得 30/50/120 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-ghost.png",
-    "effectBrief": "每闪避一次攻击，获得 30/50/120 点永久护盾。"
+    "effectBrief": "每闪避一次攻击，获得 30/50/120 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
   },
   {
     "id": "p2eq_047",

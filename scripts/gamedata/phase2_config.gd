@@ -89,7 +89,7 @@ const PULL_BATTLES_AHEAD := 1
 ## ★2026-11-03 2 → 3(0.22.8): 盾羁绊圣盾值随护盾收敛从血条挪进 sim(原按真实帧写回 ⇒ 反击光弹时有时无,
 ##   同一局跨进程结局不同) —— 改变对局结果。verify_rules_fingerprint 金标从这一版起守着, 再改结果它会红。
 ## ★2026-11-08 3 → 4(0.23.0): 训龟大师五项(驯服 / 钩锁 / 猎龟令 / 冰川 / 怒火药水)、幽灵龟灵魂风暴与幽冥突袭、
-##   羁绊删僵硬 / 易碎 / 斩首 / 穿透 / 灵泉、遗物生死界改全体单位、小将拉人按速度飞、炼乳罐不给龟蛋、换路清钩子、龟壳暗影俯冲改成匀速飞 + 沿途火道(11-08 晚) —— 都改变对局结果。
+##   羁绊删僵硬 / 易碎 / 斩首 / 穿透 / 灵泉、遗物生死界改全体单位、小将拉人按速度飞、炼乳罐不给龟蛋、换路清钩子、龟壳暗影俯冲改成匀速飞 + 沿途火道(11-08 晚)、046 幽灵墨鱼闪避护盾改通用 4 秒(11-08 晚) —— 都改变对局结果。
 const RULES_VER := 4
 
 ## 积分赛(周二~周五)
@@ -154,12 +154,14 @@ const PROMOTE_WINS := RANKED_QUOTA - (HEARTS_MAX - 1)
 const GAUNTLET_WINS_IN := 4            # 4 胜晋级
 const GAUNTLET_LOSSES_OUT := 3         # 3 负出局
 const GAUNTLET_QUOTA := 6              # 配额 6 场(原稿: 晋级率 ≈34%)
-const GAUNTLET_BACKFILL_COINS := 8     # 补发地板/场(只补晋级者)
-const GAUNTLET_BACKFILL_XP := 2
+## ★★2026-11-08 用户「周六周日的这个深海币的值改为每轮一十八。提供的经验值改为六点」: 周六每场 / 周日每轮 8 → 18 币、2 → 6 经验。
+##   闯关配额补发(只补晋级者)与实打每场同额, 一起改(否则第 4 胜就晋级的人补到的比实打少)。
+const GAUNTLET_BACKFILL_COINS := 18    # 补发/场(只补晋级者; 与实打每场同额)
+const GAUNTLET_BACKFILL_XP := 6
 ## ★周六**不掉命**(原稿:「每场照常结算深海币(无命, 公式退化为固定数 8)」) ——
 ##   积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` 整条都吃 `hearts`, 周六直接复用会算错。
-const GAUNTLET_COINS_PER_MATCH := 8    # 周六每场固定深海币(不含胜负差, 原稿就是固定数)
-const GAUNTLET_XP_PER_MATCH := 2       # 周六每场经验(与积分赛每场 +2 同额)
+const GAUNTLET_COINS_PER_MATCH := 18   # 周六每场固定深海币(不含胜负差; 11-08 用户 8 → 18)
+const GAUNTLET_XP_PER_MATCH := 6       # 周六每场经验(11-08 用户 2 → 6)
 const RANKED_XP_PER_MATCH := 2         # 积分赛每场经验
 
 ## ─── 周日决赛日(E-B7, 2026-09-25) ────────────────────────────
@@ -170,8 +172,9 @@ const RANKED_XP_PER_MATCH := 2         # 积分赛每场经验
 ##   「公式退化为固定数」；决赛日没有理由比它高或低。原稿**没给这个数**，是我定的。
 ## ★积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` **整条都吃 hearts** ——
 ##   决赛日没有"命"这个维度，直接复用会按命算钱（与周六同一个坑）。
-const FINALS_COINS_PER_ROUND := 8
-const FINALS_XP_PER_ROUND := 2
+## ★2026-11-08 用户定 18 / 6(与周六同值, 见上面闯关赛那条)。
+const FINALS_COINS_PER_ROUND := 18
+const FINALS_XP_PER_ROUND := 6
 ## 备战购物窗（原稿：「3 分钟备战购物」）。从**本轮开始那一刻**算起。
 const FINALS_SHOP_SEC := 180
 

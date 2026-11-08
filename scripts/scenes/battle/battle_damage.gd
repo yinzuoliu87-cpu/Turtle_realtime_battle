@@ -404,7 +404,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		AttackRhythm.play_passive(battle, u, "dodge")   # 有闪避动作的龟(猎人)闪一下
 		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys.tally.use_first_of(u, ["p2eq_046"])   # 闪避钩里出东西的只有 046 的护盾
-		battle._equip_sys._eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
+		battle._equip_sys._eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→护盾, 通用 4 秒)
 		battle._equip_sys.tally.pop(_tl0)
 		battle._spirit_syn.on_dodge(u)             # 灵物【闪避追击】: 触手立即追击 1 次(25% 伤害, 每周期上限队伍共用)
 		return

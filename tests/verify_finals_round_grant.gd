@@ -5,7 +5,7 @@ extends Node
 ##   正式服 11-08 第 4 组 购物窗 18:03 关、18:06 出结果(第 2 轮只有约 1 分钟)⇒ 测试号赛季 21 场里周日 0 场。
 ## 判据全量存档里的结果(深海币 / 赛季经验 / 赛季场数 / 胜场 / 已发清单), 走产品真入口
 ##   `BracketMapScene.record_progress_from` / `record_cup_from`(对阵图轮询与主菜单拉一次都调它们):
-##   ① 我那一场出了结果、从没点开 ⇒ 喂一次数据就发: +8 币 +2 经验 +1 场; 我赢了 ⇒ 胜场 +1
+##   ① 我那一场出了结果、从没点开 ⇒ 喂一次数据就发: +FINALS_COINS_PER_ROUND 币 +FINALS_XP_PER_ROUND 经验 +1 场; 我赢了 ⇒ 胜场 +1
 ##   ② 同一份数据再喂 3 次 ⇒ 一分不多(幂等)
 ##   ③ 第 2 轮出结果 ⇒ 再发一次(按场)
 ##   ④ 先点开(那一刻还没结果)、后出结果 ⇒ 对称那部分只发一次、胜负只揭晓一次
@@ -14,7 +14,7 @@ extends Node
 ##   ⑦ 不是我的场 / 纯观众 / 服务器裁判开关关着 ⇒ 不发
 ##   ⑧ 冠军杯赛那一张同样发(组号不同: 与小组赛同坐标的场不冲突)
 ##   ⑨ 已发清单进存档(序列化读回还在)、换周清掉
-##   ⑩ 真对阵图(set_data → _record_progress)喂到我那一场的结果 ⇒ 屏上当场「本轮奖励：深海币 +8　经验 +2」、币真到账
+##   ⑩ 真对阵图(set_data → _record_progress)喂到我那一场的结果 ⇒ 屏上当场「本轮奖励：深海币 +N　经验 +N」、币真到账
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_finals_round_grant.tscn
 
 const BMS := preload("res://scripts/scenes/BracketMapScene.gd")

@@ -287,7 +287,7 @@ func _t_rules() -> void:
 
 
 # ─────────────────────────────────────────────────────────────
-# ② 结算(走真入口): 记战绩 / 不掉命 / 固定 8 币 / 不吃积分赛配额
+# ② 结算(走真入口): 记战绩 / 不掉命 / 固定 GAUNTLET_COINS_PER_MATCH 币 / 不吃积分赛配额
 # ─────────────────────────────────────────────────────────────
 func _t_settle() -> void:
 	print("── ② 结算(走真入口 _settle_season) ──")
@@ -315,7 +315,7 @@ func _t_settle() -> void:
 	_ok("② 赢一场 → 闯关战绩 1-0", int(_gs.gauntlet_wins) == 1 and int(_gs.gauntlet_losses) == 0,
 		P2.gauntlet_label(int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)))
 	_ok("② ★不掉命(周六无命)", int(_gs.hearts) == 8, "hearts=%d" % int(_gs.hearts))
-	_ok("② ★每场固定 8 币(不含胜负差)", int(_gs.meta_deepsea_coins) == 8,
+	_ok("② ★每场固定 %d 币(不含胜负差; 11-08 用户 8 → 18)" % int(P2.GAUNTLET_COINS_PER_MATCH), int(_gs.meta_deepsea_coins) == int(P2.GAUNTLET_COINS_PER_MATCH),
 		"币=%d" % int(_gs.meta_deepsea_coins))
 	_ok("② ★不吃积分赛配额", int(_gs.ranked_used) == 0, "ranked_used=%d" % int(_gs.ranked_used))
 
@@ -323,7 +323,7 @@ func _t_settle() -> void:
 	_ok("② 输一场 → 闯关战绩 1-1", int(_gs.gauntlet_wins) == 1 and int(_gs.gauntlet_losses) == 1,
 		P2.gauntlet_label(int(_gs.gauntlet_wins), int(_gs.gauntlet_losses)))
 	_ok("② ★输了也不掉命", int(_gs.hearts) == 8, "hearts=%d" % int(_gs.hearts))
-	_ok("② ★输了也是 8 币(公式退化成固定数)", int(_gs.meta_deepsea_coins) == 16,
+	_ok("② ★输了也是 %d 币(公式退化成固定数)" % int(P2.GAUNTLET_COINS_PER_MATCH), int(_gs.meta_deepsea_coins) == 2 * int(P2.GAUNTLET_COINS_PER_MATCH),
 		"币=%d" % int(_gs.meta_deepsea_coins))
 
 	## ★★分母(关键): 同一条路在**积分赛**阶段**会**掉命 ——

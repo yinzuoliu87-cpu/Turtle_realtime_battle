@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "ab9da07921bb2d9e3d43d1dc996cafb2cf87515e7dd57c234a72eb1bf45f8aef",
+ "fingerprint": "354f2696c9dd7b390dfc3c37f8770a61f406dd291ad00e9d22019da8d20dc8d0",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -15,7 +15,7 @@
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "7893f1e6edd6a2d27238fb945b6c1605bf24efdaa64aea19f6e29f0c5d247099",
+   "hash": "5b2ceed05c6711b32b96fa94a20109466ba681e84ca6173ece020d5504714262",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
@@ -25,13 +25,13 @@
   },
   {
    "def": "99521fedd8b3b2c9",
-   "hash": "a1891e6aeeff90bd708e040b33a1aded921ae019d89f104a03f3b8b13182a242",
+   "hash": "7a16a9a567f1ede1f084b35b3edd89892297d34717e8d0f362efb6bb05aaf411",
    "tag": "⑤ 双方灵物触手 · 弓箭 vs 剑 · 复制/命运之轮/雷暴"
   },
   {
    "def": "static-tables",
    "hash": "fdbae60204ecbab33dad6e59d937960659160bd6e111941bb7fd10b0e079978a",
-   "tag": "数值表 EquipStats / TurtleStats / 小将"
+   "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],
  "rules_ver": 4

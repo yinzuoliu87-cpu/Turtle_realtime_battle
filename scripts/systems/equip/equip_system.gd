@@ -2320,9 +2320,9 @@ func _eq_on_dodge(u: Dictionary) -> void:
 	## 不遍历 equips: 被罩的队友自己不带这件装备(光环给的), 遍历装备会漏掉他们。
 	_spirit_sys.on_parasol_dodge(u)
 	for e in u.get("equips", []):
-		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→永久护盾
+		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→护盾, 通用护盾 4 秒(用户 2026-11-08「幽灵墨鱼提供的护盾值改为是通用护盾的持续时间, 也就是四秒」; 原永久)
 			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})
-			battle._damage._grant_shield(u, float(stt.get("ghost_shield", 30.0)))
+			battle._damage._grant_shield(u, float(stt.get("ghost_shield", 30.0)), BattleDamage.COMMON_SHIELD_SEC)
 			battle._shield_dome(u)   # 专属护盾罩(原注释说的 `_shield_bubble` 已于 2026-09-13 删除)
 		# ── 灵物 5 件(2026-08-05 用户逐件重做·§0.5 定稿) ──────────────────
 		#    ★060/061 原来挂在这个钩子上的旧效果(闪避→魔法伤 / 闪避→移速)

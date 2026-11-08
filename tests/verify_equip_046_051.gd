@@ -91,7 +91,7 @@ func _ready() -> void:
 	_s.process_mode = Node.PROCESS_MODE_DISABLED
 	_s._edit_mode = false
 
-	# ══════════════ 046 幽灵墨鱼: 闪避 → 永久护盾 ══════════════
+	# ══════════════ 046 幽灵墨鱼: 闪避 → 护盾, 通用 4 秒(用户 2026-11-08「改为是通用护盾的持续时间, 也就是四秒」; 原永久) ══════════════
 	for si in [0, 2]:
 		_s._units.clear()
 		_s._pending_shots.clear()
@@ -113,14 +113,16 @@ func _ready() -> void:
 		_ok("① ★★★%d 星闪避一次 → +%.0f 护盾(应 %.0f)" % [si + 1, got, EXP_GHOST_SHIELD[si]],
 			absf(got - EXP_GHOST_SHIELD[si]) < 0.5,
 			"文案: 每成功闪避一次立即获得 30/50/120 点护盾")
-		## ★★「**永久**」那两个字要单独验 —— 本作通用护盾是 **4 秒**过期的,
-		##   `_grant_shield(u, amt)` 不传 dur 才是永久。推 6 秒(远超 4 秒)看它掉不掉。
-		for _k in range(int(6.0 / _s.SIM_DT)):
+		## ★★时长单独验(2026-11-08 起是通用护盾 BattleDamage.COMMON_SHIELD_SEC = 4 秒, 原「永久」):
+		##   推到 3.5 秒还在、推到 4.5 秒没了 —— 两头都量, 改回永久(不传 dur)或改成别的时长都会红。
+		for _k in range(int(3.5 / _s.SIM_DT)):
 			_s._sim_step(_s.SIM_DT, false, false)
-		_ok("① ★★★推 6 秒后护盾还在(%.0f) —— 文案写的是**永久**不是限时"
-			% float(c1["shield"]),
-			absf(float(c1["shield"]) - EXP_GHOST_SHIELD[si]) < 0.5,
-			"通用护盾封板是 4 秒; 这件必须走 dur=0 的永久分支")
+		var sh35: float = float(c1["shield"])
+		for _k in range(int(1.0 / _s.SIM_DT)):
+			_s._sim_step(_s.SIM_DT, false, false)
+		_ok("① ★★★通用 %.0f 秒: 3.5 秒时护盾还在(%.0f)、4.5 秒时没了(%.0f)" % [BattleDamage.COMMON_SHIELD_SEC, sh35, float(c1["shield"])],
+			absf(sh35 - EXP_GHOST_SHIELD[si]) < 0.5 and float(c1["shield"]) < 0.5,
+			"文案: 获得护盾, 持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒")
 		_ok("① 闪避那一下叠了一次(再闪一次应再 +%.0f)" % EXP_GHOST_SHIELD[si],
 			true, "下一条量")
 		var sh1: float = float(c1["shield"])
