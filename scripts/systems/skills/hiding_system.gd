@@ -58,9 +58,12 @@ const SURF_PASS_ATK_COEF := 1.5         # 沿途撞到的敌人 ×ATK 物理 + �
 const SURF_PULL_SPD := 500.0
 const SURF_PULL_MIN := 0.12            # 贴脸时的保底时长(秒), 免得动作一闪而过
 ## 铁索(11-08 改成一节节小图, 留到被拽过去、途中逐段收; 见 scripts/scenes/battle/pull_rope_vfx.gd)
-const SURF_ROPE_TEX := "res://assets/sprites/vfx/minion-rope-link.png"
-const SURF_ROPE_THICK := 10.0          # 绳粗(像素码)
-const SURF_ROPE_SPACING := 18.0        # 相邻两节间距(码); 图 16×8 ⇒ 每节长 20 码, 微微交叠
+# 第二版换成铁链环: 用户 11-08「你这个小将他丢出这个锁链的时候，什么是锁链？是一个个正方形的像素块。」
+# 旧的 16×8 麻绳段在战场上读成一串方块; 新图 26×12 一节 = 长椭圆平放链环 + 侧立链环(tools/assetgen/build_minion_chain.py)。
+# 粗 14 码对图高 12 像素; 一节 26 像素约 30 码, 间距 28 码 ⇒ 相邻两节微微交叠、链环咬合不留缝。
+const SURF_ROPE_TEX := "res://assets/sprites/vfx/minion-chain-link.png"
+const SURF_ROPE_THICK := 14.0
+const SURF_ROPE_SPACING := 28.0
 
 ## 拉向目标要飞多久: 距离 ÷ 速度。
 static func surf_pull_sec(from: Vector2, to: Vector2) -> float:
