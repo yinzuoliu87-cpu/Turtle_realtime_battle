@@ -183,54 +183,22 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 	for i in range(4):
 		battle._pending_shots.append({"delay": 0.08 * float(i), "fn": func(): battle._headless_sys._headless_drain_dot(tp, uref), "src": u})
 
-func _shell_dark_flame(pos2d: Vector2, size: float, dur: float) -> void:   # 暗焰喷发(破隐·2026-07-17; 起跳 / 落地两处 11-08 换成 ShellVfx 像素帧表): 紫芯+黑烟双层胀开渐隐
-	var glow = VfxTex._make_fire_glow_tex()
-	for i in range(2):
-		var g = Sprite3D.new()
-		g.texture = glow
-		g.billboard = BaseMaterial3D.BILLBOARD_ENABLED; g.shaded = false; g.transparent = true
-		g.pixel_size = (size * (1.0 - 0.35 * float(i)) * battle.WS) / 128.0
-		g.modulate = Color(0.5, 0.15, 0.65, 0.9) if i == 0 else Color(0.15, 0.06, 0.2, 0.8)
-		g.position = battle._world_pos(pos2d, 0.5 + 0.25 * float(i))
-		g.scale = Vector3.ONE * 0.4
-		battle._world.add_child(g)
-		var gt = battle._reg_tween(); gt.set_parallel(true)
-		gt.tween_property(g, "scale", Vector3.ONE * 1.7, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		gt.tween_property(g, "modulate:a", 0.0, dur)
-		gt.chain().tween_callback(g.queue_free)
-
-func _shell_enter_stealth(u: Dictionary) -> void:              # 潜影: 进入隐身(不可被选+半透明); 只有龟壳自己放技能/普攻破隐(AOE不破); 2026-07-17羽化渐隐0.4s+3缕暗雾上腾
+## 潜影: 进入隐身(不可被选); 只有龟壳自己放技能 / 普攻破隐(范围伤害不破)。
+## ★画面(11-08 晚重做, 见 ShellVfx「潜影」节): 原来这里把立绘 modulate.a 补到 0.4, 可渲染步每帧按 _body_tint 重写 modulate,
+##   第一帧就盖回不透明 —— 潜影期间画面上什么都没有。现在立绘颜色由 battle_render 按 shell_stealth 每帧写,
+##   这里只放进入那一下; 脚下暗影池 / 身上暗火由渲染步挂、跟随通道收。
+func _shell_enter_stealth(u: Dictionary) -> void:
 	if u.get("shell_stealth", false): return
 	u["shell_stealth"] = true
 	u["untargetable_until"] = battle._t + 999.0
-	var spr = u.get("sprite", null)
-	if is_instance_valid(spr):
-		var ht = battle._reg_tween()
-		ht.tween_property(spr, "modulate:a", 0.4, 0.4)          # 羽化(原瞬变)
-	var glow = VfxTex._make_fire_glow_tex()
-	for i in range(3):
-		var w = Sprite3D.new()
-		w.texture = glow
-		w.billboard = BaseMaterial3D.BILLBOARD_ENABLED; w.shaded = false; w.transparent = true
-		w.pixel_size = 0.006
-		w.modulate = Color(0.35, 0.15, 0.5, 0.8)
-		var wp: Vector2 = (u["pos"] as Vector2) + Vector2(randf_range(-24.0, 24.0), randf_range(-14.0, 14.0))
-		w.position = battle._world_pos(wp, 0.3)
-		battle._world.add_child(w)
-		var wt = battle._reg_tween(); wt.set_parallel(true)
-		wt.tween_property(w, "position", battle._world_pos(wp, randf_range(1.3, 1.8)), 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		wt.tween_property(w, "modulate:a", 0.0, 0.6)
-		wt.chain().tween_callback(w.queue_free)
-	battle._skill_ring(u["pos"], Color(0.4, 0.2, 0.55, 0.5), 46.0)
+	_fx.stealth_enter(u)
 
-func _shell_break_stealth(u: Dictionary) -> void:              # 破隐(自己放技能/普攻触发): 清隐身 + 标记破隐首发普攻bonus; 2026-07-17黑雾炸开
+func _shell_break_stealth(u: Dictionary) -> void:              # 破隐(自己放技能/普攻触发): 清隐身 + 标记破隐首发普攻bonus; 画面 = 亮紫一闪 + 暗烟外散
 	if not u.get("shell_stealth", false): return
 	u["shell_stealth"] = false
 	u["untargetable_until"] = 0.0
 	u["shell_stealth_broke"] = true                            # 破隐后第一发普攻附加(在_shell_basic消费)
-	var spr = u.get("sprite", null)
-	if is_instance_valid(spr): spr.modulate.a = 1.0
-	_shell_dark_flame(u["pos"], 90.0, 0.4)
+	_fx.stealth_break(u)
 
 ## 龟壳·暗影俯冲(130 龟能·库奇 W 式, 用户 2026-11-08 重做): 朝目标匀速飞 DIVE_RANGE 码(DIVE_SPEED ⇒ 0.8 秒)
 ##   → 飞过谁就在那一刻打谁 DIVE_MAGIC×ATK 魔法 + 击退(用户 2026-07-28 2.5→2.0)

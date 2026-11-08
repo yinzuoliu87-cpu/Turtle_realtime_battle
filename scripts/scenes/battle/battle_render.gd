@@ -254,6 +254,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 	_update_world_transforms()
 	_tick_true_fire()              # 022 真火: 谁把 true_fire_until 写上去, 身上就自动烧起来
 	_tick_chill_mark()             # 冰寒标记: 谁的 spd_dbf_until 还没过就挂霜(状态的函数)
+	_tick_shell_shade()            # 龟壳潜影: shell_stealth 为真就挂脚下暗影池 + 身上暗火(跟随通道按同一个字段收)
 	_tick_baton_zap_mark()         # 027 电击眩晕: 谁的 baton_zap_until 还没过就一直冒电弧
 	_tick_ebb_coat()               # 041 涨潮期: 谁的 _ebb_until 还没过, 整只龟就泡在浊液里
 	_tick_heal_hot()               # 持续回复期: 逐件扫 eq_hots, 每件各演各的
@@ -371,6 +372,15 @@ func _tick_chill_mark() -> void:
 		battle._vfx.chill_mark(u)
 
 
+func _tick_shell_shade() -> void:
+	for u in battle._units:
+		if not u.get("alive", false) or not bool(u.get("shell_stealth", false)):
+			continue
+		if is_instance_valid(u.get("_shade_pool", null)):
+			continue
+		battle._shell_sys._fx.stealth_layers(u)
+
+
 func _tick_follow_vfx() -> void:
 	for i in range(battle._follow_vfx.size() - 1, -1, -1):
 		var f: Dictionary = battle._follow_vfx[i]
@@ -384,12 +394,21 @@ func _tick_follow_vfx() -> void:
 			battle._follow_vfx.remove_at(i)
 			if f.get("mark", false): u["_mark_spr"] = null
 			continue
+		## ★「状态为真才挂着」(龟壳潜影 11-08): 读单位身上那个布尔字段(while_key), 变假就收 —— 与 until_key 同理, 不另起计时。
+		if f.has("while_key") and not bool(u.get(str(f["while_key"]), false)):
+			spr.queue_free()
+			battle._follow_vfx.remove_at(i)
+			var _wk: String = str(f.get("clear_key", ""))
+			if _wk != "":
+				u.erase(_wk)
+			continue
 		if f.get("mark", false) and battle._t > float(u.get("_mark_until", 0.0)):   # 锁定标记到期 → 移除
 			spr.queue_free()
 			battle._follow_vfx.remove_at(i)
 			u["_mark_spr"] = null
 			continue
-		var base: Vector3 = battle._world_pos(u["pos"], float(u.get("height", 0.0)) + float(f["h"]))
+		## ground: 贴地层(脚下暗影池)不跟单位高度走 —— 被击飞时影子留在地上
+		var base: Vector3 = battle._world_pos(u["pos"], (0.0 if f.get("ground", false) else float(u.get("height", 0.0))) + float(f["h"]))
 		if f.has("orbit_r"):                         # 绕身环绕(水晶叠层)
 			var ang: float = float(f["orbit_a"]) + battle._t * float(f["orbit_spd"])
 			base += Vector3(cos(ang) * float(f["orbit_r"]), 0.0, sin(ang) * float(f["orbit_r"]))
@@ -576,6 +595,8 @@ func _update_world_transforms() -> void:
 			if battle._t - float(u.get("_phase_ai_t", -1.0)) >= 0.08:
 				u["_phase_ai_t"] = battle._t
 				battle._vfx.phase_afterimage(spr)
+		if bool(u.get("shell_stealth", false)):   # 龟壳潜影(11-08 晚): 暗紫半透明剪影 + 慢呼吸; 受击闪色照常叠上去(吃范围伤害不破隐, 也看得出挨了)
+			spr.modulate = ShellVfx.shade_tint(battle._t).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
 		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
 		## ★演出抬高(`_slam_voff`, 过肩摔 / 双头跃起…)也算离地高度(2026-10-24 过肩摔体检 B7: 原来只读 height, 腾空 5 米影子照旧满大)。
 		var _lift_h: float = _rh + maxf(0.0, float((u.get("_slam_voff", Vector3.ZERO) as Vector3).y))

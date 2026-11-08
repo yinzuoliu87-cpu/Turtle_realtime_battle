@@ -1,7 +1,8 @@
 class_name ShellVfx
 extends RefCounted
 ## 龟壳「复制」「暗影俯冲」的演出(2026-11-08 重做)。只管画面: 不改伤害 / 时机 / 范围 / 火道结算, 不碰对局随机流
-##   (落点全是确定性公式), 不往单位字典写东西(唯一例外是闪白: 走全项目共用的 battle._vfx._flash)。
+##   (落点全是确定性公式), 不往单位字典写东西(例外: 闪白走全项目共用的 battle._vfx._flash; 潜影两层节点挂在
+##   u["_shade_pool"] / u["_shade_wisp"], 与冰寒标记 _chill_spr 同一个原语, 由跟随通道按 shell_stealth 收)。
 ##
 ## 用户 11-08:「龟壳的复制和暗影，这些需要优…需要设计。」复制参考用户指定的「谢老师(塞拉斯) R 偷别人大招」, 暗影俯冲对标库奇 W。
 ## 参考逐帧: docs/studies/20261108-龟壳复制参考-塞拉斯R逐帧.md、docs/studies/20261108-龟壳暗影俯冲参考-库奇W逐帧.md;
@@ -186,6 +187,77 @@ func hit(o: Dictionary) -> void:
 	var s := _bb(HIT, 4, HIT_YD, o["pos"], 1.0)
 	s.set_meta("shell_fx", "hit")
 	_seq(s, [0, 1, 2, 3], FPS)
+
+
+# ═══════════════════════════════ 潜影(被动) ═══════════════════════════════
+## 用户 11-08 晚:「除了主动的…暗影冲刺，还有被动它在暗影形态下，它应该是怎么样的呢？隐形的话，透明的还是怎么样的？这都没设计啊。」
+## 原来: 进潜影只把立绘 modulate.a 补到 0.4 —— 可渲染步每帧按 _body_tint 重写 modulate, 第一帧就被盖回不透明,
+##   潜影期间画面上什么都没有, 只剩进入那一下 3 缕程序柔光。
+## 参考(Riot 官方技能演示, 自己这边视角; 抽帧在 .out/ref_stealth): Twitch Q = 黑烟球炸开 + 本色火舌, 之后身体变淡、脚下一团黑影跟着走;
+##   伊芙琳被动 = 黑紫烟升起, 全身变成暗影剪影。都看得见 —— 是「影子」, 不是消失。我们双方都是旁观, 敌我同一个样子。
+## 四层: ① 进入烟球(stealth_enter) ② 身体暗紫半透明剪影(battle_render 每帧写 shade_tint) ③ 脚下暗影池 + 身上暗火(stealth_layers,
+##   跟随通道循环, shell_stealth 变假就收) ④ 破隐紫闪 + 暗烟外散(stealth_break)。
+const SHADE_ENTER := "res://assets/sprites/vfx/shell-shade-enter.png"
+const SHADE_BREAK := "res://assets/sprites/vfx/shell-shade-break.png"
+const SHADE_POOL := "res://assets/sprites/vfx/shell-shade-pool.png"
+const SHADE_WISP := "res://assets/sprites/vfx/shell-shade-wisp.png"
+## ★第一版 (0.46, 0.34, 0.72, 0.5) + 120 码不透明暗影池: 实录里身体叠在暗池上整个被吞掉, 远看只剩一团漩涡, 认不出是龟壳(11-08 晚自查)。
+##   ⇒ 身体调浅、透明度提到约 0.6(伊芙琳那样「认得出是谁的影子」), 暗影池缩到 80 码、再压到六成透明当软影子。
+const SHADE_TINT := Color(0.6, 0.48, 0.9, 0.6)    # 潜影期间立绘颜色: 乘到原色上 = 偏暗的紫色剪影(花纹 / 符文还认得出), 透明约四成
+const SHADE_BREATH := 0.06                        # 透明度慢呼吸幅度(±)
+const SHADE_FPS := 12.0                           # 进入 / 破隐两段的帧率(6 帧 0.5 秒 / 5 帧 0.42 秒)
+const POOL_FPS := 6.0                             # 暗影池旋臂: 4 帧一圈 0.67 秒
+const WISP_FPS := 8.0                             # 身上暗火: 6 帧一圈 0.75 秒
+const ENTER_YD := 130.0                           # 进入烟球一格(64 像素)世界大小(码) ≈ 1.35 倍龟身
+const BREAK_YD := 140.0
+const POOL_YD := 80.0                             # 脚下暗影池一格的世界宽(码) ≈ 龟壳身宽(只当脚下影子, 不盖过本体)
+const POOL_ALPHA := 0.6                           # 暗影池整体透明度(帧表本身零半透明, 这里整张压淡)
+const WISP_YD := 70.0                             # 身上暗火一格(64 像素高)的世界高(码) ≈ 1.7 米(第一版 110 码 2.6 米: 底下垂到地面, 像往下滴的小泡)
+const POOL_H := 0.03                              # 暗影池离地高度(米): 贴地, 不跟单位高度走
+const WISP_H := 1.0                               # 暗火挂在身体中段偏上(米, 跟单位高度走): 从背上往上窜
+
+
+## 潜影期间立绘颜色(battle_render 每帧调; 只读游戏钟)。
+static func shade_tint(t: float) -> Color:
+	return Color(SHADE_TINT.r, SHADE_TINT.g, SHADE_TINT.b, SHADE_TINT.a + SHADE_BREATH * sin(t * 2.4))
+
+
+## 进潜影那一刻: 黑紫烟球胀开 + 紫色弯火舌, 再散成几团往上飘(Twitch Q 第 1.25~2 秒)。
+func stealth_enter(u: Dictionary) -> void:
+	if not _live():
+		return
+	var s := _bb(SHADE_ENTER, 6, ENTER_YD, u["pos"], 0.7, 1)
+	s.set_meta("shell_fx", "shade_enter")
+	_seq(s, [0, 1, 2, 3, 4, 5], SHADE_FPS)
+
+
+## 破隐那一刻: 亮紫一闪 + 一圈暗烟往外散。
+func stealth_break(u: Dictionary) -> void:
+	if not _live():
+		return
+	var s := _bb(SHADE_BREAK, 5, BREAK_YD, u["pos"], 0.7, 1)
+	s.set_meta("shell_fx", "shade_break")
+	_seq(s, [0, 1, 2, 3, 4], SHADE_FPS)
+
+
+## 渲染步调(battle_render._tick_shell_shade): 潜影中还没挂 ⇒ 挂脚下暗影池 + 身上暗火, 交给跟随通道循环、贴着走;
+##   shell_stealth 变假 / 单位死了由跟随通道收(while_key), 不另起计时。
+func stealth_layers(u: Dictionary) -> void:
+	if not _live() or not u.get("alive", false):
+		return
+	var pool := _ground(SHADE_POOL, 4, POOL_YD, u["pos"], POOL_H)
+	pool.set_meta("shell_fx", "shade_pool")
+	pool.modulate = Color(1, 1, 1, POOL_ALPHA)
+	pool.visible = true
+	var wisp := _bb(SHADE_WISP, 6, WISP_YD, u["pos"], WISP_H, 1)
+	wisp.set_meta("shell_fx", "shade_wisp")
+	wisp.visible = true
+	u["_shade_pool"] = pool
+	u["_shade_wisp"] = wisp
+	battle._follow_vfx.append({"spr": pool, "unit": u, "h": POOL_H, "ground": true,
+		"loop_fps": POOL_FPS, "loop_n": 4, "loop_t0": battle._t, "while_key": "shell_stealth", "clear_key": "_shade_pool"})
+	battle._follow_vfx.append({"spr": wisp, "unit": u, "h": WISP_H,
+		"loop_fps": WISP_FPS, "loop_n": 6, "loop_t0": battle._t, "while_key": "shell_stealth", "clear_key": "_shade_wisp"})
 
 
 # ═══════════════════════════════ 复制 ═══════════════════════════════

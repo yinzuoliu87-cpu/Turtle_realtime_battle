@@ -25,6 +25,11 @@
     shell-copy-badge.png    6 帧 32×32 公告板: 头顶技能图标的边框(2 像素暗紫描边 + 1 像素白外发光, 中间空出来露图标)
                            0~3 弹出(小 → 大 → 过冲 → 定) / 4~5 淡(描边断成虚线 → 只剩四角)
     shell-copy-arc.png      4 帧 48×48 公告板: 持有态龟壳身上的紫色碎电弧(循环)
+  潜影(被动; 用户 11-08 晚「隐形的话，透明的还是怎么样的？这都没设计啊」; 参考 Twitch Q / 伊芙琳被动官方演示, .out/ref_stealth)
+    shell-shade-enter.png   6 帧 64×64 公告板: 进入 —— 黑紫烟球胀开、边缘窜出紫色弯火舌(最满那帧中间一点亮), 再散成三团往上飘
+    shell-shade-break.png   5 帧 64×64 公告板: 破隐 —— 亮紫一闪 + 一圈暗烟往外散
+    shell-shade-pool.png    4 帧 64×64 贴地: 脚下暗影池(俯视圆, 外沿棋盘虚边, 三条暗紫旋臂每帧转 30° ⇒ 4 帧无缝循环)
+    shell-shade-wisp.png    6 帧 48×64 公告板: 身上往上窜的三缕暗火(错开相位, 6 帧循环)
 
 ★全部确定性(没有随机数): 形状噪声用整数哈希与固定相位的正弦, 重跑逐字节相同。
 跑法:  python tools/assetgen/build_shell_vfx.py
@@ -616,6 +621,162 @@ def arc_frames():
     return out
 
 
+# ═══════════════════════ 潜影 ① 进入: 黑紫烟球炸开 + 紫色光丝(公告板 64×64 × 6) ═══════════════════════
+## Twitch Q: 一团黑烟球(约 2.5 倍身宽)炸开, 球里窜出本色光丝, 0.8 秒后散成几团往上飘。我们: 本色 = 紫。
+def _streaks(im, cx, cy, r0, r1, n, seed, cols):
+    """从烟球边缘往外窜的弯火舌(Twitch Q 那种): 根在 r0, 尖到 r1, 每条弯向不同、长短不一; 根部 2 像素宽、尖 1 像素。"""
+    for k in range(n):
+        a = math.radians(k * (360.0 / n) + 35 * h2(k, seed, 3))
+        bend = (h2(k, seed, 7) - 0.5) * 1.1
+        ln = 0.55 + 0.45 * h2(k, seed, 5)
+        steps = 18
+        for i in range(steps + 1):
+            t = i / float(steps)
+            rr = r0 + (r1 - r0) * ln * t
+            aa = a + bend * t * t
+            x = cx + math.cos(aa) * rr
+            y = cy + math.sin(aa) * rr * 0.9
+            col = cols[-1] if t > 0.8 else cols[0]
+            put(im, int(round(x)), int(round(y)), col)
+            if t < 0.45:
+                put(im, int(round(x + math.sin(aa))), int(round(y - math.cos(aa))), cols[0])
+
+
+def enter_frames():
+    out = []
+    smoke = [(0.5, K1), (0.78, K2), (1.01, K1)]
+    # f0 小黑核 + 四道短光丝
+    im = new(64, 64)
+    paint_blob(im, 32, 36, 9, 71, 0.18, smoke, off=(-2, -2))
+    outline(im)
+    _streaks(im, 32, 36, 7, 15, 4, 1, (P3, L1))
+    out.append(im)
+    # f1 烟球胀大, 光丝从球里窜出
+    im = new(64, 64)
+    paint_blob(im, 32, 35, 19, 72, 0.15, smoke, off=(-3, -3))
+    outline(im)
+    _streaks(im, 32, 35, 14, 27, 5, 2, (M1, L1))
+    out.append(im)
+    # f2 最满: 烟球最大, 光丝最亮
+    im = new(64, 64)
+    paint_blob(im, 32, 34, 24, 73, 0.14, smoke, off=(-3, -3))
+    outline(im)
+    _streaks(im, 32, 34, 17, 31, 6, 3, (P3, W))
+    paint_blob(im, 32, 34, 6, 70, 0.2, [(0.5, L1), (1.01, P3)])
+    out.append(im)
+    # f3 外沿开始碎, 光丝变暗
+    im = new(64, 64)
+    paint_blob(im, 32, 33, 22, 74, 0.16, smoke, holes=0.3, hole_from=0.72, hseed=75, off=(-3, -3))
+    outline(im)
+    _streaks(im, 32, 33, 16, 26, 5, 5, (P2, P3))
+    out.append(im)
+    # f4 散成三团往上飘
+    im = new(64, 64)
+    for (cx, cy, r, sd) in ((22, 30, 9, 76), (41, 27, 8, 77), (32, 18, 7, 78)):
+        paint_blob(im, cx, cy, r, sd, 0.2, [(0.6, K2), (1.01, K1)], holes=0.35, hole_from=0.6, hseed=sd)
+    outline(im)
+    out.append(im)
+    # f5 只剩几缕
+    im = new(64, 64)
+    for (cx, cy, r, sd) in ((20, 24, 5, 79), (43, 20, 5, 80), (32, 10, 4, 81)):
+        paint_blob(im, cx, cy, r, sd, 0.25, [(1.01, K2)], holes=0.5, hseed=sd)
+    out.append(im)
+    return out
+
+
+# ═══════════════════════ 潜影 ② 破隐: 紫闪 + 一圈暗烟往外散(公告板 64×64 × 5) ═══════════════════════
+def break_frames():
+    out = []
+    puffs = 7
+
+    def ring(im, r, size, holes, hs):
+        for k in range(puffs):
+            a = math.radians(k * (360.0 / puffs) + 10)
+            cx, cy = 32 + math.cos(a) * r, 34 + math.sin(a) * r * 0.8
+            paint_blob(im, cx, cy, size, 90 + k, 0.22, [(0.55, K2), (1.01, K1)], holes=holes, hole_from=0.5, hseed=hs + k)
+
+    # f0 亮紫闪 + 贴身一圈烟
+    im = new(64, 64)
+    ring(im, 13, 7, 0.0, 100)
+    paint_blob(im, 32, 34, 12, 91, 0.12, [(0.35, W), (0.6, L1), (0.85, P3), (1.01, M1)])
+    outline(im)
+    out.append(im)
+    # f1 闪收小, 烟往外
+    im = new(64, 64)
+    ring(im, 19, 6, 0.1, 110)
+    paint_blob(im, 32, 34, 7, 92, 0.15, [(0.5, L1), (1.01, P3)])
+    outline(im)
+    out.append(im)
+    # f2
+    im = new(64, 64)
+    ring(im, 24, 5, 0.3, 120)
+    put(im, 32, 34, P3)
+    outline(im)
+    out.append(im)
+    # f3
+    im = new(64, 64)
+    ring(im, 27, 4, 0.5, 130)
+    outline(im)
+    out.append(im)
+    # f4 只剩碎点
+    im = new(64, 64)
+    ring(im, 29, 3, 0.7, 140)
+    out.append(im)
+    return out
+
+
+# ═══════════════════════ 潜影 ③ 脚下暗影池(俯视 64×64 × 4, 循环) ═══════════════════════
+## Twitch 隐身时脚下一团黑影跟着走。俯视画一个圆, 躺平后镜头压扁; 里面三条暗紫旋臂, 每帧转 30° (三条臂 120° 一周期 ⇒ 4 帧无缝)。
+def pool_frames():
+    out = []
+    for f in range(4):
+        im = new(64, 64)
+        px = im.load()
+        rot = math.radians(30 * f)
+        for y in range(64):
+            for x in range(64):
+                d = blob_f(x, y, 32, 32, 27, 150, 0.08)
+                if d is None:
+                    continue
+                if d > 0.8 and ((x + y) % 2 == 0):          # 外沿棋盘点: 边缘是虚的, 不是一圈硬边
+                    continue
+                if d > 0.92:
+                    continue
+                dx, dy = x + 0.5 - 32, y + 0.5 - 32
+                th = math.atan2(dy, dx) - rot
+                arm = math.sin(3 * th + d * 7.0)            # 三条旋臂
+                if d < 0.3:
+                    col = K0
+                elif arm > 0.55 and d < 0.78:
+                    col = K2
+                else:
+                    col = K1 if d < 0.65 else K0
+                px[x, y] = col
+        out.append(im)
+    return out
+
+
+# ═══════════════════════ 潜影 ④ 身上暗影往上飘(公告板 48×64 × 6, 循环) ═══════════════════════
+## 伊芙琳进伪装时一圈黑紫烟往上升; 持续时只留几缕。三缕错开相位, 每缕从下往上飘、越往上越小, 6 帧一圈无缝。
+def wisp_frames():
+    out = []
+    cols = [(14, 0), (34, 2), (24, 4)]                       # (x, 相位偏移)
+    for f in range(6):
+        im = new(48, 64)
+        for i, (x0, off) in enumerate(cols):
+            ph = ((f + off) % 6) / 6.0                      # 0 底 → 1 顶
+            y = 56 - ph * 46
+            x = x0 + 2.5 * math.sin(ph * math.tau + i)
+            r = 3.6 * (1.0 - 0.55 * ph)
+            for j, (k, dy) in enumerate(((1.0, 0.0), (0.66, -1.6), (0.36, -2.9))):   # 一缕 = 三颗往上收尖
+                ramp = [(0.45, P1), (1.01, K2)] if (j == 0 and ph < 0.5) else [(1.01, K2)]
+                paint_blob(im, x + 0.6 * j * math.sin(ph * 9 + i), y + dy * r, r * k, 160 + i * 3 + j, 0.2, ramp,
+                           holes=0.3 * ph, hseed=170 + f * 7 + i * 3 + j)
+        outline(im)
+        out.append(im)
+    return out
+
+
 SHEETS = [
     ("shell-dive-launch.png", launch_frames),
     ("shell-dive-patch.png", patch_frames),
@@ -628,6 +789,10 @@ SHEETS = [
     ("shell-copy-drain.png", drain_frames),
     ("shell-copy-badge.png", badge_frames),
     ("shell-copy-arc.png", arc_frames),
+    ("shell-shade-enter.png", enter_frames),
+    ("shell-shade-break.png", break_frames),
+    ("shell-shade-pool.png", pool_frames),
+    ("shell-shade-wisp.png", wisp_frames),
 ]
 
 
