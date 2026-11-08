@@ -24,6 +24,10 @@
                          每局：Godot 写 <STREAM_TMP>/<match_id>/，轮询器边算边把**写完的块**一个一个原子 rename 到
                          <STREAM_ROOT>/<match_id>/（块 N 在块 N+1 出现时才算写完），最后挪 end.json。
   STREAM_TMP             默认 <STREAM_ROOT>-tmp（必须与 STREAM_ROOT 同一文件系统，rename 才是原子的）
+  MAINSITE_OUTBOX        龟投发件箱线程（2026-11-09 · 迁移 20261109a）：★默认空 = 关；"1" 才起（见 outbox_loop）
+  MAINSITE_BASE          发件箱发往的主站根地址（{MAINSITE_BASE}/api/arena-hook/{topic}）
+  MAINSITE_HOOK_SECRET[_FILE]  签名密钥（同网关 mainsite_gateway.py；★不进仓库、不打印）
+  OUTBOX_POLL_SEC / OUTBOX_IDLE_POLL_SEC / OUTBOX_IDLE_AFTER_SEC  发件箱忙时 / 空闲时多久领一次、多久算空闲，默认 5 / 30 / 60
 
 补流（逐帧直播 §5，迁移 20261020_referee_live_list.sql，2026-10-20 · ★只改了仓库文件、未部署）：
   正常任务领不到时，再领一份「补流」任务（rpc/referee_claim_restream；任务单 = 原任务 + task = "restream"）。
@@ -39,6 +43,7 @@
                                     不连库：拿本地任务单直接调 Godot（版本取任务单里的 client_version）
   referee_poller.py --health        打印 rpc/referee_backlog；积压或心跳超阈值时退出码 1（给 systemd timer / 外部告警）
   referee_poller.py --versions      打印本机装了哪些版本
+  referee_poller.py --outbox-once   龟投发件箱只发一批就退（手测；不看 MAINSITE_OUTBOX 开关）
   referee_poller.py --bot-pool [--version V] [--out DIR]
                                     周六机器人快照池（迁移 20261020c，2026-10-20 · ★只改了仓库文件、未部署）：
                                     对每个装了的版本（或只 V）调 Godot 生成（scripts/referee/bot_pool.gd = Backend.make_bot 同一个函数），
@@ -458,6 +463,129 @@ def worker_loop(idx: int, once: bool) -> None:
             return
 
 
+# ─────────────────────────────── 龟投发件箱（2026-11-09 · 迁移 20261109a_mainsite_core） ───────────────────────────────
+# 所有「我们调主站」的写请求（defense / pet-level / started / settle / unlinked）先进表 mainsite_outbox，这个线程发。
+# 顺序由 rpc/mainsite_outbox_claim 定（按 id；同 raidId、同 userId 各一条道，settle 等 started）；本线程按回包里的 id 顺序发。
+# 重试（方案书 20261107 §4.8）：连不上、5xx、401 ⇒ 退避重试（5 秒起翻倍，封顶 5 分钟，不设次数上限）；
+#   HTTP 200 + ok:false ⇒ 记下 last_status 后停（终态）；其余 4xx（请求本身不对，重发也一样）⇒ 终态。
+# 开关：MAINSITE_OUTBOX=1 才起（默认关）；另要 MAINSITE_BASE 与 MAINSITE_HOOK_SECRET[_FILE]，缺一个就不起（打一行 WARN）。
+# ★签名模块 mainsite_sign.py 用到时才 import：只拷了本文件、没拷它的旧部署照样能跑裁判。
+OUTBOX_BATCH = 20
+OUTBOX_LEASE_SEC = 120
+OUTBOX_RETRY_MAX_SEC = 300
+OUTBOX_HTTP_TIMEOUT = 10.0
+_outbox_off = threading.Event()          # rpc/mainsite_outbox_claim 回过 404（库里没上 20261109a）⇒ 本进程不再领
+
+
+def outbox_enabled() -> bool:
+    return env("MAINSITE_OUTBOX") == "1"
+
+
+def _ms():
+    """同目录的 mainsite_sign（没有 ⇒ ImportError）。"""
+    d = os.path.dirname(os.path.abspath(__file__))
+    if d not in sys.path:
+        sys.path.insert(0, d)
+    import mainsite_sign
+    return mainsite_sign
+
+
+def outbox_retry_sec(attempts: int) -> int:
+    """第 attempts 次（从 0 起）失败之后隔多久再发：5、10、20、40 … 封顶 OUTBOX_RETRY_MAX_SEC。"""
+    return int(min(OUTBOX_RETRY_MAX_SEC, 5 * (2 ** max(0, min(int(attempts), 12)))))
+
+
+def outbox_send(base: str, secret: str, topic: str, body: dict, timeout: float = OUTBOX_HTTP_TIMEOUT) -> tuple:
+    """签名 POST {base}/api/arena-hook/{topic}。返回 (last_status, 回包 dict 或 None, 要不要重试)。"""
+    MS = _ms()
+    data = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    hdr = MS.headers(secret, data)
+    hdr["Content-Type"] = "application/json"
+    req = urllib.request.Request(base.rstrip("/") + "/api/arena-hook/" + topic, data=data, method="POST", headers=hdr)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))   # 代理会改写 POST body ⇒ 签名对不上
+    try:
+        with opener.open(req, timeout=timeout) as r:
+            code, raw = r.status, r.read()
+    except urllib.error.HTTPError as ex:
+        code, raw = ex.code, ex.read()
+    except Exception as ex:      # 连不上 / 超时 / 对面断开（http.client 的几种异常不都是 OSError）⇒ 当没送到
+        return "conn: %s" % (str(getattr(ex, "reason", ex))[:120],), None, True
+    try:
+        reply = json.loads(raw.decode("utf-8")) if raw else None
+    except (ValueError, UnicodeDecodeError):
+        reply = None
+    if not isinstance(reply, dict):
+        reply = None
+    if code == 401 or code >= 500:
+        return "http_%d" % code, reply, True
+    if 200 <= code < 300:
+        if reply is None:
+            return "bad_reply_http_%d" % code, None, True      # 200 却不是 JSON：多半是中间层的错误页，当没送到
+        if reply.get("ok") is True:
+            return "ok", reply, False
+        return "ok_false: %s" % (str(reply.get("error", ""))[:200],), reply, False
+    return "http_%d" % code, reply, False
+
+
+def outbox_pass(base: str, secret: str) -> int:
+    """领一批、按 id 发完、逐条记结果。返回这一批的条数（领活失败 ⇒ -1）。"""
+    try:
+        rows = rpc("mainsite_outbox_claim", {"p_limit": OUTBOX_BATCH, "p_lease_sec": OUTBOX_LEASE_SEC}) or []
+    except urllib.error.HTTPError as ex:
+        if ex.code == 404:
+            _outbox_off.set()
+            log("mainsite_outbox_claim 404（库里没上 20261109a）: 本进程不再发件")
+        else:
+            log("WARN 发件箱领活失败: HTTP %d" % ex.code)
+        return -1
+    except (urllib.error.URLError, OSError, ValueError) as ex:
+        log("WARN 发件箱领活失败: %s" % ex)
+        return -1
+    for row in sorted(rows, key=lambda r: int(r.get("id", 0))):
+        st, reply, retry = outbox_send(base, secret, str(row.get("topic")), row.get("body") or {})
+        mark = {"p_id": row.get("id"), "p_status": st, "p_reply": reply,
+                "p_retry_sec": outbox_retry_sec(int(row.get("attempts") or 0)) if retry else None}
+        try:
+            rpc("mainsite_outbox_mark", mark)
+        except (urllib.error.URLError, OSError, ValueError) as ex:
+            ## 记不上：租期一过这一条会重发（主站各接口按 raidId / userId 幂等）
+            log("WARN 发件箱记结果失败 id=%s: %s" % (row.get("id"), ex))
+        log("outbox id=%s %s → %s%s" % (row.get("id"), row.get("topic"), st, "（重试）" if retry else ""))
+    return len(rows)
+
+
+def outbox_loop(once: bool = False) -> int:
+    """发件箱常驻线程（MAINSITE_OUTBOX=1 才起）。once ⇒ 只跑一批就返回。返回总共发了几条。"""
+    base = env("MAINSITE_BASE").rstrip("/")
+    try:
+        MS = _ms()
+    except ImportError:
+        log("WARN 发件箱: 同目录没有 mainsite_sign.py, 不启动")
+        return 0
+    secret = MS.load_secret()
+    if not base or not secret:
+        log("WARN 发件箱: 缺 MAINSITE_BASE / MAINSITE_HOOK_SECRET(_FILE), 不启动")
+        return 0
+    pacer = IdlePacer(float(env("OUTBOX_POLL_SEC", "5")), float(env("OUTBOX_IDLE_POLL_SEC", "30")),
+                      float(env("OUTBOX_IDLE_AFTER_SEC", "60")), 0.0)
+    total = 0
+    while not _stop.is_set():
+        try:
+            n = outbox_pass(base, secret)
+        except Exception as ex:      # 意外（回包形状不对等）：记一行、照常等下一轮 —— 线程不能悄悄死掉
+            log("ERROR 发件箱: %r" % (ex,))
+            n = -1
+        if _outbox_off.is_set():
+            break
+        if n > 0:
+            total += n
+            pacer.busy()
+        if once:
+            return total
+        _stop.wait(0.2 if n >= OUTBOX_BATCH else (max(pacer.poll, 10.0) if n < 0 else pacer.wait_sec()))
+    return total
+
+
 BOT_POOL_BATCH = 200                    # 一批几行（每行约 1.4 KB 快照）
 
 
@@ -621,6 +749,7 @@ def main() -> int:
     ap.add_argument("--versions", action="store_true")
     ap.add_argument("--bot-pool", action="store_true")
     ap.add_argument("--version", default="")
+    ap.add_argument("--outbox-once", action="store_true", help="龟投发件箱只发一批就退（手测；不看 MAINSITE_OUTBOX 开关）")
     a = ap.parse_args()
     versions = discover_versions(env("VERSIONS_DIR", "/opt/turtle"))
     if a.versions:
@@ -655,11 +784,17 @@ def main() -> int:
         for s in probs:
             log("HEALTH " + s)
         return 1 if probs else 0
+    if a.outbox_once:
+        print("发件箱: 这一批发了 %d 条" % outbox_loop(once=True))
+        return 0
     n = int(env("WORKERS", str(os.cpu_count() or 1)))
-    log("referee poller: %d workers, versions=%s" % (1 if a.once else n, sorted(versions)))
+    log("referee poller: %d workers, versions=%s, 龟投发件箱=%s" % (
+        1 if a.once else n, sorted(versions), "开" if outbox_enabled() and not a.once else "关"))
     signal.signal(signal.SIGTERM, lambda *_: _stop.set())
     signal.signal(signal.SIGINT, lambda *_: _stop.set())
     ts = [threading.Thread(target=worker_loop, args=(i, a.once), daemon=True) for i in range(1 if a.once else n)]
+    if outbox_enabled() and not a.once:
+        ts.append(threading.Thread(target=outbox_loop, daemon=True))
     for t in ts:
         t.start()
     for t in ts:
