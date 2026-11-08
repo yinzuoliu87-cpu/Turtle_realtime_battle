@@ -97,8 +97,12 @@ def seconds():
 
 
 def frames(name, runner):
-	m = re.search(r"^\s*%s\)\s*echo\s+(\d+)" % re.escape(name), runner, re.M)
-	return m.group(1) if m else "500"   # 与 run-tests.sh frames_for 的默认 `*) echo 500` 一致(11-08: 原来写 4000, 没登记帧预算的新测试本机过、CI 跑不完)
+	## 与 run-tests.sh frames_for 同一套: case 分支可以是 `a|b|c) echo N ;;`(11-08: 原来只认单个名字, 多名字共用一条的
+	##   verify_stream_coverage 掉到默认值; 默认原来写 4000 正好盖住了这个缺陷)。都没登记 ⇒ 与 `*) echo 500` 一致。
+	for m in re.finditer(r"^\s*([\w|]+)\)\s*echo\s+(\d+)", runner, re.M):
+		if name in m.group(1).split("|"):
+			return m.group(2)
+	return "500"
 
 
 def run_test(name, fatal, budget):

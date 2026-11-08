@@ -79,6 +79,7 @@ func _ready() -> void:
 	dm["deathfloor_until"] = 1.0e9
 	dm["active_skills"] = []
 	scn._units.append(dm)
+	var dm0: Vector2 = dm["pos"]
 	var specs := [
 		["小龟(外包·骨骼帧条)", "basic", {}],
 		["幽灵(主表帧条)", "ghost", {}],
@@ -98,10 +99,23 @@ func _ready() -> void:
 		a["maxHp"] = 9.0e7
 		a["hp"] = 9.0e7
 		scn._units.append(a)
-		atk.append({"nm": str(sp[0]), "u": a, "hits": 0, "bad": [], "start_ok": 0, "start_bad": 0, "juice": 0,
+		atk.append({"nm": str(sp[0]), "u": a, "p0": a["pos"], "hits": 0, "bad": [], "start_ok": 0, "start_bad": 0, "juice": 0,
 			"prev_state": "", "prev_wind": false, "sheet": AttackRhythm.sheet_path(scn, a)})
-	for _f in range(900):
+	## ★11-08: 原来固定看 900 帧。交互模式下每帧的 sim 时间 = 真实帧间隔, 机器越快 900 帧里 sim 时间越短 ⇒ 钻石龟有时只出手 1 次(预检里偶发红)。
+	##   改成「每个攻击方都观察到 ≥ 3 次结算就停, 最多 20000 帧」: 判据只看次数够不够, 不跟机器快慢挂钩(CLAUDE.md §2)。
+	for _f in range(20000):
+		var enough := true
+		for e0 in atk:
+			if int(e0["hits"]) < 3:
+				enough = false
+		if enough:
+			break
 		await get_tree().process_frame
+		## ★每帧钉回原位: 全场软分离会把挤在靶子边上的攻击方慢慢推开, 推出近战射程后就卡在 state=move 再也不出手
+		##   (11-08 探针: 战斗钟 138 秒只结算 2 次, 小龟 / 钻石龟都停在 move)。这里要量的是普攻节奏, 不是站位。
+		for e1 in atk:
+			(e1["u"] as Dictionary)["pos"] = e1["p0"]
+		dm["pos"] = dm0   # 靶子也钉住(同一个推挤: 靶子被推走, 钉住的近战攻击方就够不着, 只剩远程的幽灵还在打)
 		for e in atk:
 			var u: Dictionary = e["u"]
 			var st := str(u.get("state", ""))
@@ -120,12 +134,20 @@ func _ready() -> void:
 				e["hits"] += 1
 				var spr: Sprite3D = u["sprite"]
 				var want: int = int(u.get("_atk_hit_frame", -1))
-				if str(u.get("anim_action", "")) != "attack" or absi(spr.frame - want) > 1:
+				var act: String = str(u.get("anim_action", ""))
+				if act in ["whirl", "consume"]:
+					pass   # 精英第 5 击旋刃 / 低血吞噬取代这一下普攻, 播它自己的动作(玩法如此; 11-08 观察窗拉长后撞上)
+				elif act != "attack" or absi(spr.frame - want) > 1:
 					e["bad"].append("显示第 %d 帧, 命中帧 %d, 动作 %s" % [spr.frame, want, str(u.get("anim_action", ""))])
 			elif bool(e["prev_wind"]) and not wind:
 				e["hits"] += 1
 			e["prev_state"] = st
 			e["prev_wind"] = wind
+	for e in atk:
+		var uq: Dictionary = e["u"]
+		print("  [量] %s 结算 %d 次 · state=%s pending=%s 前摇中=%s 眩晕到 %.2f · 战斗钟 %.2f · 攻击间隔 %.2f · 动作 %s" % [e["nm"], int(e["hits"]),
+			str(uq.get("state", "")), str(uq.get("pending", "")), str(uq.get("_atk_wind", false)), float(uq.get("stun_until", 0.0)),
+			float(scn._t), float(uq.get("atk_interval", 0.0)), str(uq.get("anim_action", ""))])
 	for e in atk:
 		_ok("★分母: %s 观察到 ≥2 次普攻结算" % e["nm"], int(e["hits"]) >= 2, "%d 次" % int(e["hits"]))
 		if str(e["sheet"]) != "":

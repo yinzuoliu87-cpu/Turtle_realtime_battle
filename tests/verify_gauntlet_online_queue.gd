@@ -85,6 +85,10 @@ const SQL := "res://server/supabase/migrations/20261027_gauntlet_online_queue.sq
 ##       基线 1f8baa93 ⇒ d8976866(这次提交), units 不变(70 个), 摘要现算 a5a3820f… ⇒ fcc1547f…;
 ##       1f8baa93 之后这个文件没有新加函数 ⇒ 挪基线不让判据变松。
 const RANKED_BASE := "84d2d853"
+	## ★2026-11-08 按龟等级(R1)与拥有 ∪ 限免(C 线, 提交 2d0da736…0130a607; 方案书 20261107 §4.3 / §4.9, 用户 11-07「周赛也只能用这个有的龟和下面的龟」):
+	##   **有意**改积分赛会走的代码 —— 快照多带 lv 表、选龟页只列拥有 ∪ 本周限免、陪练号 / 兜底机器人按同一个限免函数挑龟。
+	##   sim_driver.gd / backend.gd / TeamSelectScene.gd 三个文件基线 ⇒ 0130a607, 摘要按本表口径现算(同口径复算旧基线与原表一致);
+	##   变的只有上面这几处, 没有挪走函数 ⇒「周六专用只从闯关日可达」查的集合不变。
 const RANKED := {
 	"scripts/scenes/MatchmakingScene.gd": {
 		"digest": "87e6a75f0bcfdf2bd4df8159d93a4e8e6421856b2a10e3712d8d68974ffc41d2",
@@ -97,7 +101,8 @@ const RANKED := {
 		],
 	},
 	"scripts/systems/sim/sim_driver.gd": {
-		"digest": "82aa6b708927bca6f00a30f9ab2dd04ce88f9f4b578dd4ae4c45a08a86ecab5e",
+		"base": "0130a607",
+		"digest": "cdcddea787fbdf0533378dd35fa6e56cc5ded8dfff2a95542e2cbabe38c0d6ae",
 		"views": {"stuck_limit": "249c0a8120123e0922fcd539dd090b34a6c7f3d0b40a590947a134823e5be79a", "_do_match": "ba0505964df1b434b7f0ec774d2371d9cb95b6869140166520e8a5b475f9676b", "_do_menu": "8243b94af82a11179bd8693000515a524d5a0346f4ec46b641e1ddecab015139", "_do_shop": "366a597e0ab76a1d45f40d2532021528328e34c2555a7c6f64b58e4d06a805f6"},
 		"sat_only": [],
 		"units": [
@@ -126,8 +131,8 @@ const RANKED := {
 	##   原来那几行(本地池 + 积分赛 ghosts 排队)一字没动 ⇒ 积分赛的流程与记下的数不变。55 个函数里只变这一个、没有新增 ⇒ 判据不变松。
 	##   基线 ee59a074 ⇒ eeb95b2c, 摘要按本表口径现算(同口径复算 ee59a074 得 fa0b601d…, 与原表一致)。
 	"scripts/net/backend.gd": {
-		"base": "eeb95b2c",
-		"digest": "e8dbecde7b24e0835923fc28a055bab3b95ba6e3ab69e48db7150154f2f9b8f2",
+		"base": "0130a607",
+		"digest": "c3051f7b55b9e9045020ee4db4c2c755c708646065be21e3d9830d5d15cb5c4d",
 		"views": {},
 		"sat_only": [],
 		"units": [
@@ -152,8 +157,8 @@ const RANKED := {
 	##   `_build_locked_hint`(画锁定提示签)与 `_lockout_toast`(弹截止提示)只管画字, 不在选人 / 存档 / 出战进匹配的流程上,
 	##   从 units 里拿掉(70 个); 基线不动(1f8baa93), 摘要按同一口径从那次提交现算(72 → 70 个, da5ef1b1… → a5a3820f…)。
 	"scripts/scenes/TeamSelectScene.gd": {
-		"base": "d8976866",
-		"digest": "fcc1547fc319da055de59fac2973b22a005cd8f4023523423a2aabbcfe6417fa",
+		"base": "0130a607",
+		"digest": "0f1bc33aa4409dec3c1b43130c9769a55677eda57d1de97e5d0ec9ec5f57bd4d",
 		"views": {},
 		"sat_only": [],
 		"units": [
