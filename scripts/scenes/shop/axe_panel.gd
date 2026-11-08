@@ -181,9 +181,10 @@ func build(parent: Node, x: float, y: float, w: float, compact: bool = false) ->
 ##   状态归 GameState 管, UI 只负责画和转发。
 func _pick(key: String) -> void:
 	var gs = host.get_node_or_null("/root/GameState")
-	if gs == null or not gs.has_method("axe_pick_final"):
+	if gs == null or not gs.has_method("econ"):
 		return
-	if gs.axe_pick_final(key) and host.has_method("_rebuild"):
+	## 记账口(方案书 20261106 S2): 判据仍在 GameState.axe_pick_final, 这里只经 econ 转过去落流水
+	if bool(gs.econ({"op": "axe_final", "key": key}).get("ok", false)) and host.has_method("_rebuild"):
 		host._rebuild()
 		if host.has_method("play_axe_evo"):
 			host.play_axe_evo([{"final": key}])   # 点下就播最终造物那一段(加长版)

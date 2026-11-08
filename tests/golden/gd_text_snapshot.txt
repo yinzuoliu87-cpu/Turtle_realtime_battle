@@ -1220,6 +1220,7 @@ scripts/scenes/ShopScene.gd|lit|已达最高等级 Lv%d
 scripts/scenes/ShopScene.gd|lit|已锁定
 scripts/scenes/ShopScene.gd|lit|已锁定商品，下场战斗后不刷新
 scripts/scenes/ShopScene.gd|lit|无属性加成
+scripts/scenes/ShopScene.gd|lit|无法连接服务器。请检查网络连接后重试。
 scripts/scenes/ShopScene.gd|lit|深海币不足（需要 %d）
 scripts/scenes/ShopScene.gd|lit|深海币不足，购买「%s」还差 %d
 scripts/scenes/ShopScene.gd|lit|等级已满
@@ -2405,6 +2406,7 @@ scripts/systems/replay/referee_watch.gd|lit|积分赛：%s
 scripts/systems/replay/referee_watch.gd|lit|等待服务器开始对局
 scripts/systems/replay/referee_watch.gd|lit|结算失败，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|胜利
+scripts/systems/replay/referee_watch.gd|lit|装备已同步，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|连接中断，已退出排队
 scripts/systems/replay/referee_watch.gd|lit|连接服务器后才能比赛
 scripts/systems/replay/referee_watch.gd|lit|闯关赛 %s：%s

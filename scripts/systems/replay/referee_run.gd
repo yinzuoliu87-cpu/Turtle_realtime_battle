@@ -17,6 +17,13 @@ extends Node
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const RL := preload("res://scripts/systems/replay/referee_live.gd")
 const SW := preload("res://scripts/systems/replay/stream_watch.gd")
+const EconNet := preload("res://scripts/net/econ_net.gd")
+## 局外经济记账(方案书 20261106 S4b): 服务器重放还没追上(econ_pending)⇒ 先把流水传上去、隔这么久自动重交, 最多这么多次
+const ECON_RETRY_SEC := 2.0
+const ECON_RETRY_MAX := 15
+## 交阵容之前等流水传完: 每隔这么久看一次, 最多这么多次(约 10 秒)
+const ECON_FLUSH_SEC := 0.25
+const ECON_FLUSH_MAX := 40
 const MATCHMAKING := "res://scenes/Matchmaking.tscn"
 const OVERLAY := "res://scripts/scenes/queue_found_overlay.gd"
 
@@ -96,6 +103,8 @@ var _opp_tries := 0
 ## ── 积分赛(2026-11-01)──
 var ranked := false               # 这一局是积分赛服务器局(start_ranked)
 var _seed_hint := -1              # 积分赛局查任务时服务端回的种子(裁判开算后才有; 跟播直接用它, 不去问周六的「正在算」列表)
+var econ_tries := 0               # econ_pending 自动重交了几次(交上去被收 / 别的原因被拒 ⇒ 归零)
+var econ_waits := 0               # 交阵容之前等流水上传等了几次
 
 ## 在线排队: 交锁定的阵容进队(本局唯一的开始入口)。
 func start_queue() -> void:
@@ -114,8 +123,9 @@ func start_queue() -> void:
 		return
 	_q_wk = RW.P2C.week_anchor_utc(int(RW.P2C.now_utc()))
 	cell = Vector2i(int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
-	if not RW.RN.queue_join_async(_q_wk, snap, cell.x + cell.y, _on_join):
-		_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)
+	_econ_then(func() -> void:
+		if not RW.RN.queue_join_async(_q_wk, snap, cell.x + cell.y, _on_join):
+			_to(RW.ST_ERROR, RW.TXT_NEED_SERVER))
 
 
 ## 积分赛: 交阵容开一局(本局唯一的开始入口)。对手 / 种子由服务端定; 回包即任务号 + 对手卡片(不排队)。
@@ -135,8 +145,9 @@ func start_ranked() -> void:
 		_to(RW.ST_ERROR, RW.TXT_BAD_LINEUP)
 		return
 	_q_wk = RW.P2C.week_anchor_utc(int(RW.P2C.now_utc()))
-	if not RW.RN.ranked_start_async(_q_wk, snap, int(GameState.season_total_battles), _on_ranked_start):
-		_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)
+	_econ_then(func() -> void:
+		if not RW.RN.ranked_start_async(_q_wk, snap, int(GameState.season_total_battles), _on_ranked_start):
+			_to(RW.ST_ERROR, RW.TXT_NEED_SERVER))
 
 
 func _on_ranked_start(res: Dictionary) -> void:
@@ -163,6 +174,72 @@ func _ranked_reject(err: String, res: Dictionary) -> bool:
 		_:
 			return false
 	return true
+
+
+## 流水传完才交阵容(开关关着当场走, 一个请求不多发)。★不能边传边交: 交阵容那个请求先到的话, 服务器比的是旧账,
+##   刚买的装备会被判 econ_mismatch, 再按服务器流水「对齐」⇒ 玩家刚成交的东西没了。
+##   上传被服务器拒(两份账不一致)⇒ 按服务器对齐; 传不动(断网)⇒ 约 10 秒后报连不上。
+func _econ_then(go: Callable) -> void:
+	if not EconNet.unsynced():
+		econ_waits = 0
+		go.call()
+		return
+	if EconNet.conflict():
+		econ_waits = 0
+		EconNet.adopt_async(-1, _econ_adopted)
+		return
+	econ_waits += 1
+	if econ_waits > ECON_FLUSH_MAX:
+		econ_waits = 0
+		_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)
+		return
+	EconNet.pump()
+	_econ_after(ECON_FLUSH_SEC, _econ_then.bind(go))
+
+
+## 隔一会儿调一次(计时器挂在本节点上: 玩家离开匹配屏就一起没了)。
+func _econ_after(sec: float, cb: Callable) -> void:
+	var t := Timer.new()
+	t.one_shot = true
+	t.wait_time = sec
+	add_child(t)
+	t.timeout.connect(cb)
+	t.timeout.connect(t.queue_free)
+	t.start()
+
+
+## 局外经济记账的拒收(积分赛开局 / 周六进队同一套; 方案书 20261106 S4b)。返回 true = 处理了。
+##   econ_pending: 服务器还没把我的流水重放完 ⇒ 补传、隔 ECON_RETRY_SEC 秒自动重交(屏上仍是「正在提交阵容」), 最多 ECON_RETRY_MAX 次。
+##   econ_mismatch / econ_invalid: 快照与服务器重放对不上 ⇒ 按服务器那份流水在本机重放对齐, 再请玩家重新开战。
+func _econ_reject(err: String, res: Dictionary) -> bool:
+	match err:
+		"econ_pending":
+			econ_tries += 1
+			if econ_tries > ECON_RETRY_MAX:
+				econ_tries = 0
+				_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)
+				return true
+			EconNet.pump()
+			_econ_after(ECON_RETRY_SEC, _econ_resubmit)
+			return true
+		"econ_mismatch", "econ_invalid":
+			EconNet.adopt_async(int(res.get("at", -1)) if err == "econ_invalid" else -1, _econ_adopted)
+			return true
+	return false
+
+
+func _econ_resubmit() -> void:
+	if not is_inside_tree() or state != RW.ST_SUBMIT:
+		return
+	if ranked:
+		start_ranked()
+	else:
+		start_queue()
+
+
+func _econ_adopted(ok: bool) -> void:
+	if is_inside_tree():
+		_to(RW.ST_ERROR, RW.TXT_ECON_SYNCED if ok else RW.TXT_NEED_SERVER)
 
 
 ## 已等待多少秒(服务端那一份 + 本机墙钟补上两次心跳之间)。
@@ -426,6 +503,10 @@ func _on_submit(wk: int, res: Dictionary) -> void:
 	if not is_inside_tree():
 		return
 	var err := str(res.get("err", ""))
+	if err != "econ_pending":
+		econ_tries = 0
+	if err.begins_with("econ_") and _econ_reject(err, res):
+		return
 	if ranked and err != "" and _ranked_reject(err, res):
 		return
 	match err:

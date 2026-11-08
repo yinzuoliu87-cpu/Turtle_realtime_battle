@@ -76,6 +76,14 @@ const SQL := "res://server/supabase/migrations/20261027_gauntlet_online_queue.sq
 ##       (units 去掉 `_ready` 后 87e6a75f…、`_ready` 的 view cf345541… = 改动前那一版去掉闯关日那一段);
 ##     · 新加的 `_ranked_server_now` / `_server_pick_ranked`(匹配屏)、`_ranked_server` / `_do_match_ranked`(陪练号)按「改动后新加」
 ##       进周六专用那一组 ⇒「只从闯关日 / 服务器积分赛分支可达」照查。
+##   ★2026-11-06 装备与深海币服务器记账 S2(方案书 docs/plans/20261106-装备与深海币服务器记账.md; 用户 11-06「装备要改成伏击机装了，这个要做。」)——
+##     **有意**改两处积分赛会走的代码, 只换「记账的写法」、记下的数一个不变(门禁 verify_econ_paths 重放逐字节相同):
+##     · 陪练号 `_do_menu` 的 SIM_ECON_ONLY 推演: `meta_deepsea_coins += reward` + `add_season_xp(2)` ⇒ 一条 `GameState.econ(income)`。
+##       只换 `_do_menu` 那一个 view 的摘要(da531d08… ⇒ 8243b94a…, 照本表口径从 d8976866 现算); 基线仍是 84d2d853,
+##       「周六专用只从闯关日可达」查的集合不变(没挪基线就不会变松)。
+##     · 选龟页 `_on_start`: `season_leaders = …` + `sync_synergy_grants()` ⇒ 一条 `GameState.econ(leaders)`(同样两件事)。
+##       基线 1f8baa93 ⇒ d8976866(这次提交), units 不变(70 个), 摘要现算 a5a3820f… ⇒ fcc1547f…;
+##       1f8baa93 之后这个文件没有新加函数 ⇒ 挪基线不让判据变松。
 const RANKED_BASE := "84d2d853"
 const RANKED := {
 	"scripts/scenes/MatchmakingScene.gd": {
@@ -90,7 +98,7 @@ const RANKED := {
 	},
 	"scripts/systems/sim/sim_driver.gd": {
 		"digest": "82aa6b708927bca6f00a30f9ab2dd04ce88f9f4b578dd4ae4c45a08a86ecab5e",
-		"views": {"stuck_limit": "249c0a8120123e0922fcd539dd090b34a6c7f3d0b40a590947a134823e5be79a", "_do_match": "ba0505964df1b434b7f0ec774d2371d9cb95b6869140166520e8a5b475f9676b", "_do_menu": "da531d0881e93941022065cb369a014ec36d604d103fcd294dd15b768b6e6b21", "_do_shop": "366a597e0ab76a1d45f40d2532021528328e34c2555a7c6f64b58e4d06a805f6"},
+		"views": {"stuck_limit": "249c0a8120123e0922fcd539dd090b34a6c7f3d0b40a590947a134823e5be79a", "_do_match": "ba0505964df1b434b7f0ec774d2371d9cb95b6869140166520e8a5b475f9676b", "_do_menu": "8243b94af82a11179bd8693000515a524d5a0346f4ec46b641e1ddecab015139", "_do_shop": "366a597e0ab76a1d45f40d2532021528328e34c2555a7c6f64b58e4d06a805f6"},
 		"sat_only": [],
 		"units": [
 			"_account_only", "_alive", "_all_gear", "_arrange_lineup", "_back_to_menu", "_bench_gear_by_value", "_bench_gear_n",
@@ -140,8 +148,8 @@ const RANKED := {
 	##   `_build_locked_hint`(画锁定提示签)与 `_lockout_toast`(弹截止提示)只管画字, 不在选人 / 存档 / 出战进匹配的流程上,
 	##   从 units 里拿掉(70 个); 基线不动(1f8baa93), 摘要按同一口径从那次提交现算(72 → 70 个, da5ef1b1… → a5a3820f…)。
 	"scripts/scenes/TeamSelectScene.gd": {
-		"base": "1f8baa93",
-		"digest": "a5a3820f0e9daa30e41ad1240272506ecbd3ec87578ebbca75d759ae361e5e96",
+		"base": "d8976866",
+		"digest": "fcc1547fc319da055de59fac2973b22a005cd8f4023523423a2aabbcfe6417fa",
 		"views": {},
 		"sat_only": [],
 		"units": [

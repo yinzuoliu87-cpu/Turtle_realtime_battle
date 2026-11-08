@@ -876,11 +876,12 @@ func _check_sell_nonzero() -> void:
 		% raw_zero, raw_zero > 0)
 	## ★只看**代码行**, 注释行要跳过 —— 那个原式此刻正被写在注释里当反面教材,
 	##   整份文件里搜一下必然命中, 那样这条就永远红(第一版就是这么红的)。
-	var ops := FileAccess.get_file_as_string("res://scripts/scenes/inventory/equip_ops.gd")
+	## ★2026-11-06 S2: 卖价函数搬进记账口 `EconInv.sell_value`(界面 InvOps._sell_value 转它)⇒ 两个文件一起量。
+	var ops := FileAccess.get_file_as_string("res://scripts/scenes/inventory/equip_ops.gd") \
+		+ "\n" + FileAccess.get_file_as_string("res://scripts/gamedata/econ_inv.gd")
 	var handrolled: Array = []
 	var routed := false
-	for ln in ops.split("
-"):
+	for ln in ops.replace("\r\n", "\n").split("\n"):   # 两份源码行尾不一定一样(CRLF / LF), 先统一再切
 		var t := str(ln).strip_edges()
 		if t.begins_with("#"):
 			continue

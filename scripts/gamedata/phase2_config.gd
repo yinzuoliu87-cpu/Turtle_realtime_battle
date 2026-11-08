@@ -160,6 +160,7 @@ const GAUNTLET_BACKFILL_XP := 2
 ##   积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` 整条都吃 `hearts`, 周六直接复用会算错。
 const GAUNTLET_COINS_PER_MATCH := 8    # 周六每场固定深海币(不含胜负差, 原稿就是固定数)
 const GAUNTLET_XP_PER_MATCH := 2       # 周六每场经验(与积分赛每场 +2 同额)
+const RANKED_XP_PER_MATCH := 2         # 积分赛每场经验
 
 ## ─── 周日决赛日(E-B7, 2026-09-25) ────────────────────────────
 ## ★★「**对称**轮次币」是原稿逐字（§四「桶内逐轮发放对称轮次币 ⚙ 并刷新货架」）——

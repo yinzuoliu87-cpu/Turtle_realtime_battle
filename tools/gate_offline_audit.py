@@ -29,6 +29,9 @@ import glob as _glob, os as _os
 ## 本来就是去量正式服的只读探针(不进门禁、手动跑) —— 名单必须写理由, 不许拿来放水。
 ## (2026-10-21 清空: probe_finals_server.py 起的 Godot 只导切桶规格, 已同时关掉两层后端, 不再需要例外。)
 _PROD_OK = {
+    # 2026-11-06 经济记账全链路实测: 手动跑、不进门禁, 目的就是连内测服真数据库。子进程带 TURTLE_SERVER=beta;
+    # 探针 _econ_beta_e2e.gd 开头先判 is_beta(), 不是内测服就退出、一个请求都不发; 令牌也是内测服发的。
+    "econ_beta_smoke.py",
 }
 py_hits = 0
 for _f in sorted(_glob.glob(_os.path.join("tools", "**", "*.py"), recursive=True)):

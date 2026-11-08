@@ -687,9 +687,9 @@ func gauntlet_record(won: bool) -> void:
 func gauntlet_settle(won: bool) -> int:
 	season_total_battles += 1
 	gauntlet_record(won)
-	add_season_xp(int(_P2.GAUNTLET_XP_PER_MATCH))
-	axe_on_match_end()                   # 096 小木斧: 打完一整场给砍伐经验(持有才给, 函数里判)
-	candy_jar_add(CANDY_JAR_WIN if won else CANDY_JAR_LOSS)
+	## 大轮经验 / 096 小木斧(打完一整场给砍伐经验, 持有才给, 函数里判)/ 糖果罐 —— 一条进账走记账口
+	econ({"op": "income", "src": "gauntlet", "xp": int(_P2.GAUNTLET_XP_PER_MATCH), "axe": true,
+		"candy": CANDY_JAR_WIN if won else CANDY_JAR_LOSS})
 	if won:
 		season_wins += 1
 		season_eggs_killed += 1
@@ -736,15 +736,15 @@ func finals_settle(won: bool) -> int:
 ## 封存部分: 与胜负**无关**的那些, 打完立刻给。返回这一轮的轮次币。
 func finals_settle_sealed() -> int:
 	season_total_battles += 1
-	add_season_xp(int(_P2.FINALS_XP_PER_ROUND))
-	axe_on_match_end()                   # 096 小木斧: 打完一整场给砍伐经验(持有才给, 函数里判)
+	## 大轮经验 / 096 小木斧(打完一整场给砍伐经验, 持有才给, 函数里判)—— 走记账口
+	econ({"op": "income", "src": "finals", "xp": int(_P2.FINALS_XP_PER_ROUND), "axe": true})
 	return int(_P2.FINALS_COINS_PER_ROUND)
 
 
 ## 揭晓部分: 吃胜负的那些。★由**对阵图的 feed** 在轮次推进后调, 不由战斗结束调。
 ## ★幂等靠调用方(`finals_pending_reveal` 清掉之后就不会再来第二次)。
 func finals_reveal(won: bool) -> void:
-	candy_jar_add(CANDY_JAR_WIN if won else CANDY_JAR_LOSS)
+	econ({"op": "income", "src": "finals_reveal", "candy": CANDY_JAR_WIN if won else CANDY_JAR_LOSS})
 	if won:
 		season_wins += 1
 		season_eggs_killed += 1
@@ -760,8 +760,8 @@ func backfill_gauntlet_quota() -> int:
 		return 0
 	## ★钱包是 `meta_deepsea_coins` —— 打一场真给的就是它, 商店花的也是它。
 	##   (`coins` 在全仓没有任何消费入口, 补进去等于没发; A7 栽过一次, 别再栽。)
-	meta_deepsea_coins += pay * int(_P2.GAUNTLET_BACKFILL_COINS)
-	add_season_xp(pay * int(_P2.GAUNTLET_BACKFILL_XP))
+	econ({"op": "income", "src": "backfill_gauntlet",
+		"coins": pay * int(_P2.GAUNTLET_BACKFILL_COINS), "xp": pay * int(_P2.GAUNTLET_BACKFILL_XP)})
 	gauntlet_backfill_paid = int(gauntlet_backfill_paid) + pay
 	return pay
 
@@ -1008,6 +1008,19 @@ var meta_shop_battles: int = -1
 ##   手动「换一批」照样能换, 换完自动解锁(云顶同款: 刷新 = 换掉了被锁的那批货)。新赛季 / 清档解锁(货架本身都作废了)。
 ##   方案书 docs/plans/20261004-五件新需求.md §⑤。
 var meta_shop_locked: bool = false
+## 局外经济操作流水(方案书 docs/plans/20261106-装备与深海币服务器记账.md): 本周每一笔掷货 / 买 / 刷新 / 锁货架 /
+##   买经验 / 开糖果罐由 `EconLedger.do` 追加, 服务器按它重放出权威状态。换周清空(本周开局 = 重放起点)。
+var econ_log: Array = []
+## 服务器已经有本周流水的前几条(S3, EconNet: 下一次从这里往上传)。随云存档走; 换周 / 清档归零。
+var econ_up: int = 0
+## 哨兵(S2, EconLedger.check): 资产在记账口外被改了几次 / 最近一次在哪、哪几块变了。进存档, S4 上报。
+var econ_drift: int = 0
+var econ_drift_note: String = ""
+## >0 = 沙盒里(回放 / 切磋 / 裁判机 / 设备自检): 不记流水、哨兵不响。在 capture_all 之后 +1, 离场整份还原时自然回到 0。
+var econ_quiet: int = 0
+var _econ_fp: String = ""       # 上一笔记账后的资产指纹(EconLedger.rebase)
+var _econ_prog: String = ""     # 上一笔记账后的宝箱 / 香火(变了 ⇒ 补一条 prog)
+var _econ_depth: int = 0         # 正在 EconLedger.apply 里(嵌套的只改不记)
 var season_id: int = 1                                # 第几大轮赛季 (★一个自然周一轮, 切轮全重置)
 var season_start_ts: int = 0                          # 本赛季开始 unix 时间戳 = 本周一 00:00 UTC (0=未初始化)
 var hearts: int = _P2.HEARTS_MAX                      # 命数 (输-1, 0=淘汰; 上限的事实源 = phase2_config.HEARTS_MAX)
@@ -1127,6 +1140,7 @@ var equip_pool: Dictionary = {}
 const _EquipPool := preload("res://scripts/gamedata/equip_pool.gd")
 const _P2T := preload("res://scripts/gamedata/phase2_types.gd")   # 类型映射(圣光护盾按盾件数发)
 const _AxeEvo := preload("res://scripts/gamedata/axe_evolution.gd")  # 096 小木斧: 档位/阈值/出货概率的唯一事实源
+const _EconLedger := preload("res://scripts/gamedata/econ_ledger.gd")   # 局外经济记账口(买经验 / 开糖果罐走它落流水)
 var debug_level: int = 0                              # 调试器: >0 强制全体战斗单位等级(测试用, 正式版用外部快照); 0=用真实等级
 var season_xp: int = 0                                # 大轮等级当前经验 (满 xp_to_next(level) 升级)
 var chest_treasure_value: float = 0.0                 # 宝箱藏宝图·财宝值(随一大轮累积·用户2026-07-16)
@@ -1523,7 +1537,8 @@ func _ready() -> void:
 ##   · ghost_upload_pending —— 快照上传队列(E7): 两台设备各补一遍同一行是白发; 单子跟着打出它的那台设备走
 const DEVICE_LOCAL_KEYS := ["bgm_volume", "sfx_volume", "fullscreen",
 	"install_uid", "account_id", "account_email", "auth_refresh", "cloud_rev",
-	"replay_upload_pending", "ghost_upload_pending", "referee_flags", "referee_pending", "finals_coins_pending"]
+	"replay_upload_pending", "ghost_upload_pending", "referee_flags", "referee_pending", "finals_coins_pending",
+	"econ_drift", "econ_drift_note"]   # 记账哨兵是这台设备自己的诊断(不跟云存档换设备, 也不该引起推送; S4 另行上报)
 
 
 ## 要上云的那一份: 全部字段减去设备本地键。
@@ -1577,6 +1592,7 @@ func backup_save(tag: String) -> String:
 ## ★test_mode 下**不跑**: 门禁要自己决定什么时候调 `ensure_signed_in_async`,
 ##   后台一拍冷不丁 spawn 一个节点会让「数子节点」的判据偶发红。
 const _SB_NET := preload("res://scripts/net/supabase.gd")
+const _EconNet := preload("res://scripts/net/econ_net.gd")
 
 func _start_net_keepalive() -> void:
 	var t := Timer.new()
@@ -1592,6 +1608,7 @@ func _net_tick() -> void:
 		return
 	_SB_NET.ensure_signed_in_async()
 	_SB_NET.maybe_push_save()
+	_EconNet.pump()            # 经济流水上传(开关 econ_on 关着时什么都不发)
 
 
 ## 手机切回前台时立刻续一次 —— 在后台放了一小时回来, token 早过期了,
@@ -1799,6 +1816,10 @@ func _save_dict() -> Dictionary:
 		"meta_shop_offer": meta_shop_offer,
 		"meta_shop_battles": meta_shop_battles,
 		"meta_shop_locked": meta_shop_locked,
+		"econ_log": econ_log,                 # 本周经济操作流水(随云存档走: 换设备接着记)
+		"econ_up": econ_up,
+		"econ_drift": econ_drift,
+		"econ_drift_note": econ_drift_note,
 		"install_uid": install_uid,      # 本机随机安装标识(见 get_install_uid 的长注释)
 		"account_id": account_id,        # D-3 服务端账号(身份, 不随赛季变)
 		"account_email": account_email,
@@ -1881,6 +1902,7 @@ func _save_dict() -> Dictionary:
 ## ★`.bak` 是双保险: 万一「旧档改名」与「新档改名」之间被杀, 正式档暂时不存在,
 ##   读档那边会回落到 `.bak`(见 `_load`)。
 func save() -> void:
+	_EconLedger.check(self, "save")   # 哨兵: 上一笔记账之后资产有没有被别处改过(只记不拦)
 	## ★教程沙盒(2026-10-07 用户「整个教程都不应该有当前存档的东西」): 教程期间内存里是教程专用状态,
 	##   一个字节都不许落到账号存档上。结束时导演先把账号状态换回来、关掉 tutorial_active, 再 save()。
 	if test_mode or tutorial_active:
@@ -1981,6 +2003,11 @@ func _apply_save_dict(data: Dictionary) -> void:
 	meta_shop_offer = data.get("meta_shop_offer", [])
 	meta_shop_battles = int(data.get("meta_shop_battles", -1))
 	meta_shop_locked = bool(data.get("meta_shop_locked", false))
+	var _el = data.get("econ_log", [])
+	econ_log = _el if _el is Array else []
+	econ_up = int(data.get("econ_up", 0))
+	econ_drift = int(data.get("econ_drift", 0))
+	econ_drift_note = str(data.get("econ_drift_note", ""))
 	install_uid = str(data.get("install_uid", ""))
 	account_id = str(data.get("account_id", ""))
 	account_email = str(data.get("account_email", ""))
@@ -2074,6 +2101,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	var _mig := migrate_equip_caps()
 	if _mig > 0:
 		print("[GameState] 装备容量新规则迁移: ★删除 ", _mig, " 件超额装备(单只≤3 且 全队≤", team_equip_cap(), ")")
+	_EconLedger.rebase(self)   # 读档 = 记账新起点(哨兵从这里开始比)
 
 
 ## 重置所有进度。**不清设置项**(bgm/sfx 音量 · fullscreen) — 那是偏好不是进度。
@@ -2214,6 +2242,8 @@ func reset_save() -> void:
 	meta_shop_offer = []
 	meta_shop_battles = -1
 	meta_shop_locked = false
+	econ_log = []
+	econ_up = 0
 	season_id = 1
 	season_start_ts = 0
 	hearts = _P2.HEARTS_MAX
@@ -2283,6 +2313,9 @@ func reset_save() -> void:
 	nickname_default = _keep_nick_def
 	auth_refresh = _keep_refresh
 	cloud_rev = _keep_rev
+	econ_drift = 0
+	econ_drift_note = ""
+	_EconLedger.rebase(self)   # 清档 = 记账新起点
 	save()
 
 
@@ -2448,8 +2481,9 @@ func backfill_ranked_quota() -> int:
 	## ⚠ 为什么门禁没拦住: `verify_backfill` 当时读的也是 `coins` —— **两边同错所以一直全绿**
 	##   (同族 memory `fb-gate-must-measure-requirement-not-my-hook`: 判据要落在产品自己的账上,
 	##    而"产品自己的账"指的是**玩家真花得出去的那本**, 不是我随手挑的那个字段)。
-	meta_deepsea_coins += pay * int(_P2.RANKED_BACKFILL_COINS)
-	add_season_xp(pay * int(_P2.RANKED_BACKFILL_XP))   # ★走现成的升级路径, 不另写一套
+	## ★走现成的升级路径(记账口 income 里调 add_season_xp), 不另写一套
+	econ({"op": "income", "src": "backfill_ranked",
+		"coins": pay * int(_P2.RANKED_BACKFILL_COINS), "xp": pay * int(_P2.RANKED_BACKFILL_XP)})
 	backfill_paid = int(backfill_paid) + pay
 	return pay
 
@@ -2549,20 +2583,37 @@ func candy_jar_add(n: int) -> void:
 func candy_jar_tier() -> int:
 	return clampi(maxi(0, candy_jar_count) / CANDY_JAR_TIER_SPAN + 1, 1, _CANDY_JAR_TIERS.size())
 
+## 局外经济操作一律走这里(= EconLedger.do): 落一条流水再改状态。op 的种类见 econ_ledger.gd `apply`。
+func econ(op: Dictionary) -> Dictionary:
+	return _EconLedger.do(self, op)
+
 ## 打碎糖果罐: 按当前档领奖(深海币+装备进背包+可能临时等级器)·碎即消失. 返回奖励摘要; 无罐→{}.
 func break_candy_jar() -> Dictionary:
+	return _EconLedger.do(self, {"op": "candy", "seed": _EconLedger.draw_seed()}).get("reward", {})
+
+## 界面用这个(S3): 记账开关开着时种子向服务器要(异步), 关着当场成交。`done.call(奖励摘要)` 恰好一次; 没开成 ⇒ {}。
+func break_candy_jar_async(done: Callable) -> void:
+	var r: Dictionary = _EconNet.seeded({"op": "candy"}, _EconLedger.draw_seed(),
+		func(res: Dictionary) -> void: done.call(res.get("reward", {})))
+	if not bool(r.get("pending", false)):
+		done.call(r.get("reward", {}))
+
+## 糖果罐真身: 所有随机都吃 `seed`(服务器重放用流水里记的同一个种子)。只给 EconLedger.apply 调。
+func candy_jar_open_seeded(seed: int) -> Dictionary:
 	if not has_candy_jar():
 		return {}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
 	var tier: int = candy_jar_tier()
 	var packs: Array = _CANDY_JAR_TIERS[tier - 1]
-	var pack_i: int = randi() % packs.size()                  # 这一档里随机给一套(等概率)
+	var pack_i: int = rng.randi() % packs.size()                  # 这一档里随机给一套(等概率)
 	var spec: Dictionary = packs[pack_i]
 	var cr: Array = spec.get("coins", [0, 0])
-	var got_coins: int = randi_range(int(cr[0]), int(cr[1]))  # 深海币套内随机
+	var got_coins: int = rng.randi_range(int(cr[0]), int(cr[1]))  # 深海币套内随机
 	meta_deepsea_coins += got_coins
 	var got_equips: Array = []   # 每件按它自己的费档抽 1 → 进持久背包(指定星)
 	for es in spec.get("equips", []):
-		var eq_id: String = _candy_jar_pick_equip((es as Dictionary)["cost"])
+		var eq_id: String = _candy_jar_pick_equip((es as Dictionary)["cost"], rng)
 		if eq_id != "":
 			persistent_bench.append(mk_eq(eq_id, int((es as Dictionary)["star"])))
 			got_equips.append({"id": eq_id, "star": int((es as Dictionary)["star"])})
@@ -2578,7 +2629,7 @@ func break_candy_jar() -> Dictionary:
 	return {"tier": tier, "pack": pack_i, "coins": got_coins, "equips": got_equips, "xp": xp, "levelers": n_lv,
 		"equip": str(first.get("id", "")), "star": int(first.get("star", 1)), "leveler": n_lv > 0}
 
-func _candy_jar_pick_equip(costs: Array) -> String:   # 从 DataRegistry.phase2_equipment 按 cost 抽1
+func _candy_jar_pick_equip(costs: Array, rng: RandomNumberGenerator = null) -> String:   # 从 DataRegistry.phase2_equipment 按 cost 抽1
 	var pool: Array = []
 	var has_axe: bool = axe_owned()
 	for eq in DataRegistry.phase2_equipment:
@@ -2588,7 +2639,7 @@ func _candy_jar_pick_equip(costs: Array) -> String:   # 从 DataRegistry.phase2_
 				continue
 			pool.append(str(eq.get("id", "")))
 	if pool.is_empty(): return ""
-	return str(pool[randi() % pool.size()])
+	return str(pool[(rng.randi() if rng != null else randi()) % pool.size()])
 
 ## 临时等级器: 用在1只龟/小将 → 本大轮该单位永久+1级(切轮重置). 自存.
 func apply_temp_leveler(pet_id: String) -> void:
@@ -2667,12 +2718,10 @@ static func candy_jar_pack_text(sp: Dictionary) -> String:
 
 ## 买经验: 4 深海币 = 4 XP (设计§五). 满级/币不足 → false.
 func buy_season_xp() -> bool:
-	if meta_deepsea_coins < _P2.BUY_XP_COST or season_level >= _P2.MAX_LEVEL:
-		return false
-	meta_deepsea_coins -= _P2.BUY_XP_COST
-	add_season_xp(_P2.BUY_XP_AMOUNT)
-	save()
-	return true
+	var ok: bool = bool(_EconLedger.do(self, {"op": "buy_xp"}).get("ok", false))   # 判据与扣钱在 EconLedger(重放同一份)
+	if ok:
+		save()
+	return ok
 
 ## 同名同星的装备一共有几件(背包 + 统领身上 + 小将身上) —— 与 `auto_merge_all` 的合成池同一个范围。
 ## ★全项目唯一一份(2026-10-22 从 `ShopScene._owned_count` 收拢过来): 商店「已有 / 再买合成」与背包「合成进度 2/3」读同一个数,
@@ -2796,7 +2845,7 @@ func auto_merge_all() -> void:
 				persistent_bench.append(mk_eq(iid, star + 1, chg_sum))
 			changed = true
 			# ★D21「满 3★ 后剩下的张不再流通」这里【不做任何事】—— 不是漏了。
-			#   ShopScene._maxed_item_ids() 早就把 star>=3 的 id 排除出掷货池了, 且它是【库存驱动】:
+			#   EconLedger.maxed_ids()(原 ShopScene._maxed_item_ids) 早就把 star>=3 的 id 排除出掷货池了, 且它是【库存驱动】:
 			#   卖掉 3★ 之后自动不再排除。若在这里再写一个冻结状态, 就会与 D22 的守恒律直接打架
 			#   (冻结后卖出退不回张 ⇒ 池子永久少 31 张)。完整推导见 equip_pool.gd 末尾。
 			break
@@ -2867,6 +2916,8 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	meta_shop_offer = []      # 新赛季货架作废(否则会带着上赛季的货开局)
 	meta_shop_battles = -1
 	meta_shop_locked = false   # 新赛季货架都作废了, 锁也跟着解(锁的对象不存在了)
+	econ_log = []              # 新赛季流水从空开始(服务器重放的起点 = 本周开局)
+	econ_up = 0
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0
@@ -2924,3 +2975,4 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	gambler_wheel_stacks = {}
 	lane_loadout = {}
 	dual_lineup = {}
+	_EconLedger.rebase(self)   # 本周开局 = 服务器重放的起点

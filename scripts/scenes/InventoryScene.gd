@@ -982,13 +982,9 @@ func _dl_click(lane: String, idx: int) -> void:
 func _swap_units(sl: String, si: int, lane: String, idx: int) -> void:
 	if sl == lane and si == idx:
 		_rebuild(); return
-	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
-	if not a.has(sl) or not a.has(lane) or si < 0 or si >= (a[sl] as Array).size() or idx < 0 or idx >= (a[lane] as Array).size():
+	## 记账口(方案书 20261106 S2): 换位不改资产, 但小将按「哪一路第几格」寻址 ⇒ 重放要知道换过
+	if not bool(GameState.econ({"op": "swap", "sl": sl, "si": si, "dl": lane, "di": idx}).get("ok", false)):
 		_rebuild(); return
-	var tmp = a[sl][si]
-	a[sl][si] = a[lane][idx]
-	a[lane][idx] = tmp
-	GameState.dual_lineup = a
 	GameState.save()
 	_rebuild()
 

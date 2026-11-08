@@ -19,9 +19,18 @@
   ⑪ 补流有积压: 领到一份立刻接着问, 不等 60 秒
   ⑫ 补流限频窗口内来了任务: 下一次询问就领到
   ⑬ 领补流网络失败也限频: 不因为出错退回每轮都问
+  ⑭~⑳ 局外经济流水重放(2026-11-06 · 方案书 docs/plans/20261106-装备与深海币服务器记账.md §4.5 S4b):
+     ⑭ 领一批(econ_replay_claim)、一个 Godot 进程(--econ-replay)算完、econ_replay_done 回写那一批;
+        strict = referee_flags 的 econ_on; ★每个号的 facts 原样进输入文件(丢了 ⇒ 重放什么收入都不认)
+     ⑮ ★比赛工作线程不领(开局要等重放, 排在比赛后面 ⇒ 越忙越卡)  ⑯ ★单开的线程 econ_loop 领完回写、main 真起了它
+     ⑰ econ_replay_claim 404 ⇒ 本进程不再领  ⑱ 用的工程 = 最新且带 econ_replay.gd 的版本
+     ⑲ 整批算不出来 ⇒ 拆开一个一个算: 算得出的回写, 算不出的不回写(不堵别人)
+     ⑳ econ_loop 空闲也放慢(和 ⑨ 同一个 IdlePacer, 2026-11-08 合 main 时接上): 一小时约 610 次不是 1800 次
 进 run-tests.sh 门禁(成功打印 ALL OK)。
 """
 import importlib.util
+import threading
+import time
 import io
 import json
 import os
@@ -77,7 +86,12 @@ class Env:
         self.popens = 0
         self.fake_res = {}
         self.chunks = 5
-        self.claims = {'referee_claim': [], 'referee_claim_restream': []}
+        self.claims = {'referee_claim': [], 'referee_claim_restream': [], 'econ_replay_claim': []}
+        self.econ_in = None
+        self.econ_404 = False
+        self.econ_poison = None
+        self.flags = {}
+        self.godot_proj = None
         self.restream_404 = False
         self.restream_err = False
         self.on_complete = None
@@ -96,6 +110,13 @@ class Env:
             env.calls.append((fn, body))
             if fn == 'referee_complete' and env.on_complete:
                 env.on_complete()
+            if fn == 'econ_replay_claim' and env.econ_404:
+                raise urllib.error.HTTPError('http://x/rpc/' + fn, 404, 'Not Found', None, None)
+            if fn == 'econ_replay_claim':
+                q = env.claims[fn]
+                return q.pop(0) if q else []
+            if fn == 'referee_flags':
+                return env.flags
             if fn == 'referee_claim_restream' and env.restream_404:
                 raise urllib.error.HTTPError('http://x/rpc/' + fn, 404, 'Not Found', None, None)
             if fn == 'referee_claim_restream' and env.restream_err:
@@ -108,8 +129,12 @@ class Env:
         class FakePopen:
             def __init__(self, cmd, stdout=None, stderr=None, env=None):
                 me.popens += 1
-                stream = out = None
+                stream = out = econ = None
+                if '--path' in cmd:
+                    me.godot_proj = cmd[cmd.index('--path') + 1]
                 for a in cmd:
+                    if a.startswith('--econ-replay='):
+                        econ = a[len('--econ-replay='):]
                     if a.startswith('--stream='):
                         stream = a[len('--stream='):]
                     if a.startswith('--out='):
@@ -121,7 +146,15 @@ class Env:
                             f.write(b'chunk%d' % i)
                     with open(os.path.join(stream, 'end.json'), 'w', encoding='utf-8') as f:
                         json.dump({'chunks': me.chunks, 'last_step': 600}, f)
-                if out:
+                if econ:
+                    with open(econ, encoding='utf-8') as f:
+                        me.econ_in = json.load(f)
+                    if me.econ_poison is None or not any(j['account_id'] == me.econ_poison for j in me.econ_in['jobs']):
+                        with open(out, 'w', encoding='utf-8') as f:
+                            json.dump({'results': [{'account_id': j['account_id'], 'week': j['week'], 'seen': j['seen'],
+                                                    'result': {'upto': len(j['rows']), 'bad_at': -1, 'assets': {}}}
+                                                   for j in me.econ_in['jobs']]}, f)
+                elif out:
                     with open(out, 'w', encoding='utf-8') as f:
                         json.dump(me.fake_res, f)
 
@@ -178,8 +211,8 @@ class FakeStop:
                 h[1]()
 
 
-def run_sim(m, sec, hooks=(), e=None, job_sec=0.0):
-    """跑真 worker_loop, 时钟是假的。hooks = [(第几秒, 函数)]。job_sec = 一局在假时钟上算多久。"""
+def run_sim(m, sec, hooks=(), e=None, job_sec=0.0, loop=None):
+    """跑真 worker_loop(或 loop 给的那条循环), 时钟是假的。hooks = [(第几秒, 函数)]。job_sec = 一局在假时钟上算多久。"""
     clock = [1000.0]
     if e is not None:
         e.on_complete = lambda: clock.__setitem__(0, clock[0] + job_sec)
@@ -187,7 +220,10 @@ def run_sim(m, sec, hooks=(), e=None, job_sec=0.0):
     old_now, old_stop = m._now, m._stop
     m._now, m._stop = (lambda: clock[0]), st
     try:
-        m.worker_loop(0, False)
+        if loop is None:
+            m.worker_loop(0, False)
+        else:
+            loop()
     finally:
         m._now, m._stop = old_now, old_stop
     return st
@@ -329,9 +365,104 @@ def main():
     r = len(e.names('referee_claim_restream'))
     ok('⑬ 网络失败时十分钟只问 %d 次(不限频约 300 次)' % r, 8 <= r <= 12)
     e.close()
+    print('=== 局外经济流水重放 ===')
+    ejobs = [{'account_id': 'a1', 'week': 1, 'seen': 2, 'facts': {'ranked': {'n': 3}},
+              'rows': [{'op': 'lock', 'seq': 0}, {'op': 'lock', 'seq': 1}]},
+             {'account_id': 'a2', 'week': 1, 'seen': 1, 'facts': {'ranked': {'n': 7}}, 'rows': [{'op': 'buy_xp', 'seq': 0}]}]
+    # ⑭
+    e = Env(m)
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    vers = m.discover_versions(e.tmp)
+    wd = os.path.join(e.tmp, 'econw')
+    e.claims['econ_replay_claim'] = [ejobs]
+    e.flags = {'econ_on': True}
+    n9 = m.handle_econ(m.claim_econ(), vers, wd)
+    done = e.names('econ_replay_done')
+    ok('⑭ 一个 Godot 进程算一批: 进去 2 个号、strict = econ_on(开)', e.popens == 1 and e.econ_in is not None
+       and len(e.econ_in.get('jobs', [])) == 2 and e.econ_in.get('strict') is True, str(e.econ_in)[:120])
+    ok('⑭ ★每个号的 facts 原样进输入文件', e.econ_in is not None
+       and [j.get('facts', {}).get('ranked', {}).get('n') for j in e.econ_in['jobs']] == [3, 7], str(e.econ_in)[:160])
+    ok('⑭ ★econ_replay_done 回写那一批(2 个号, seen 原样带回)', n9 == 2 and len(done) == 1
+       and [i['account_id'] for i in done[0][1]['p_items']] == ['a1', 'a2']
+       and [i['seen'] for i in done[0][1]['p_items']] == [2, 1], str(done)[:200])
+    e.close()
+    # ⑮
+    e = Env(m)
+    e.claims['econ_replay_claim'] = [ejobs]
+    m.worker_loop(0, True)
+    m.worker_loop(1, True)
+    ok('⑮ ★比赛工作线程不领经济重放', not e.names('econ_replay_claim'), str([c[0] for c in e.calls]))
+    e.close()
+    # ⑯
+    e = Env(m)
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    e.claims['econ_replay_claim'] = [ejobs]
+    os.environ['POLL_SEC'] = '0.01'
+    th = threading.Thread(target=m.econ_loop, daemon=True)
+    th.start()
+    for _ in range(300):
+        if e.names('econ_replay_done'):
+            break
+        time.sleep(0.01)
+    m._stop.set()
+    th.join(5)
+    m._stop.clear()
+    os.environ.pop('POLL_SEC', None)
+    ok('⑯ ★单开的 econ_loop 领了一批并回写、_stop 之后退出', len(e.names('econ_replay_done')) == 1 and not th.is_alive())
+    src = open(m.__file__, encoding='utf-8').read()
+    ok('⑯ ★main 真起了这条线程', 'threading.Thread(target=econ_loop' in src)
+    e.close()
+    # ⑰
+    e = Env(m)
+    m._econ_off.clear()
+    e.econ_404 = True
+    r1 = m.claim_econ()
+    r2 = m.claim_econ()
+    ok('⑰ econ_replay_claim 404 ⇒ 本进程只问一次就不再领', r1 == [] and r2 == [] and len(e.names('econ_replay_claim')) == 1
+       and m._econ_off.is_set())
+    m.econ_loop()
+    ok('⑰ 404 之后 econ_loop 立刻退出(不空转)', len(e.names('econ_replay_claim')) == 1)
+    m._econ_off.clear()
+    e.close()
+    # ⑱
+    e = Env(m)
+    old = os.path.join(e.tmp, 'old')
+    os.makedirs(os.path.join(old, 'scripts', 'referee'))
+    os.makedirs(os.path.join(old, 'scenes'))
+    open(os.path.join(old, 'scenes', 'Referee.tscn'), 'w').close()
+    open(os.path.join(old, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    with open(os.path.join(old, 'project.godot'), 'w', encoding='utf-8') as f:
+        f.write('config/version="9.9.8"\n')
+    vers = m.discover_versions(e.tmp)
+    ok('⑱ 最新的 9.9.9 没有 econ_replay.gd ⇒ 用带它的 9.9.8', m.econ_project(vers) == old, str(vers))
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    ok('⑱ 9.9.9 也带了 ⇒ 用最新的 9.9.9', m.econ_project(vers) == e.proj)
+    e.close()
+    # ⑲
+    e = Env(m)
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    e.econ_poison = 'a2'
+    n14 = m.handle_econ(ejobs, m.discover_versions(e.tmp), os.path.join(e.tmp, 'econw'))
+    done = e.names('econ_replay_done')
+    ok('⑲ ★整批算不出来 ⇒ 拆开算: 算得出的 a1 回写了, a2 没回写, 共起 3 个进程', n14 == 1 and e.popens == 3 and len(done) == 1
+       and [i['account_id'] for i in done[0][1]['p_items']] == ['a1'], '%d popens=%d %s' % (n14, e.popens, str(done)[:160]))
+    e.close()
+    # ⑳ econ_loop 空闲放慢: 一小时全空闲(econ_replay_claim 一直回空)
+    e = Env(m)
+    m._econ_off.clear()
+    st = run_sim(m, 3600, loop=m.econ_loop)
+    c = len(e.names('econ_replay_claim'))
+    ok('⑳ econ_loop 空闲一小时领 %d 次(不放慢是 1800, 应约 610)' % c, 560 <= c <= 660)
+    ok('⑳ econ_loop 头 30 秒仍是 2 秒一次', st.waits[:15] == [2.0] * 15, str(st.waits[:16]))
+    ok('⑳ econ_loop 空闲之后是 6 秒一次(分母 %d 次等待)' % len(st.waits), len(st.waits) > 500 and st.waits[-1] == 6.0)
+    e.close()
     print('')
-    if fails[0] == 0 and n[0] >= 26:
-        print('ALL OK — 补流只产出状态流、不写回结果; 重算对不上就撤流 (%d 条)' % n[0])
+    if fails[0] == 0 and n[0] >= 40:
+        print('ALL OK — 补流只产出状态流、不写回结果; 重算对不上就撤流; 空闲放慢; 经济重放单开线程批量做 (%d 条)' % n[0])
         return 0
     print('FAIL x%d (断言 %d 条)' % (fails[0], n[0]))
     return 1

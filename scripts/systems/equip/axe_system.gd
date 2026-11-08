@@ -463,7 +463,7 @@ func on_death(victim: Dictionary, killer) -> bool:
 	if not (victim is Dictionary):
 		return false
 	var gs = battle.get_node_or_null("/root/GameState")
-	if gs == null or not gs.has_method("axe_add_exp"):
+	if gs == null or not gs.has_method("econ"):
 		return false
 	var hit_r := false
 	if killer is Dictionary and (killer as Dictionary).get("_eq_axe", false):
@@ -483,4 +483,5 @@ func on_death(victim: Dictionary, killer) -> bool:
 	if not hit:
 		return false
 	kills["left"] = int(kills["left"]) + 1
-	return bool(gs.axe_add_exp(AE.EXP_ON_KILL))
+	## 记账口(方案书 20261106 S2): 本机打的局逐次落流水; 回放 / 裁判机 / 切磋沙盒里只改不记(同一份 axe_add_exp)
+	return bool(gs.econ({"op": "axe_exp", "n": AE.EXP_ON_KILL}).get("evolved", false))

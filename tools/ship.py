@@ -13,6 +13,8 @@
   python tools/ship.py <主题> --wait     # 推完等 CI 结论(每 60 秒查一次, 最多 40 分钟); 红了打印失败测试与日志尾
   python tools/ship.py --status          # 看 HEAD 这个提交在 CI 上的状态
   ★推之前先过 python tools/precheck.py(11-06 起强制; 只改文档免; 紧急绕过 --no-precheck)
+  python tools/ship.py --hold <分支> [--wait]   # 只验不进 main(2026-11-06): 推 HEAD 到 <分支>(不是 wip/), 手动触发 tests.yml 全套;
+                                         #   promote 只认 push 事件 ⇒ 绿了也不快进。给「发版前不许进 main」的长分支用(例: econ/ledger 等 0.22.8)
 前提: 工作区干净(未提交的改动不会被验, 拒绝推); HEAD 是 origin/main 的后代(否则 CI 绿了也快进不了)。
 令牌: Git 凭据管理器里取(不打印); 本机代理会改写请求, 一律绕开(ProxyHandler({}))。
 """
@@ -43,6 +45,12 @@ def token() -> str:
 def api(path: str) -> dict:
 	req = urllib.request.Request(API + path, headers={"Authorization": "Bearer " + token(), "Accept": "application/vnd.github+json"})
 	return json.loads(OPENER.open(req, timeout=30).read())
+
+
+def api_post(path: str, body: dict) -> int:
+	req = urllib.request.Request(API + path, data=json.dumps(body).encode("utf-8"), method="POST",
+		headers={"Authorization": "Bearer " + token(), "Accept": "application/vnd.github+json", "Content-Type": "application/json"})
+	return OPENER.open(req, timeout=30).status
 
 
 def run_for(sha: str) -> dict:
@@ -83,15 +91,23 @@ def main() -> int:
 		print("✗ 这个提交没过本机预检 —— 先跑 python tools/precheck.py(CI 不是用来找小错的)")
 		return 1
 	git("fetch", "-q", "origin", "main")
-	if subprocess.run(["git", "merge-base", "--is-ancestor", "origin/main", "HEAD"], cwd=ROOT).returncode != 0:
+	if "--hold" not in sys.argv and subprocess.run(["git", "merge-base", "--is-ancestor", "origin/main", "HEAD"], cwd=ROOT).returncode != 0:
 		print("✗ HEAD 不是 origin/main 的后代 —— 先 rebase 到最新 main, 否则 CI 绿了也快进不了")
 		return 1
-	branch = "wip/" + args[0]
+	hold = "--hold" in sys.argv
+	branch = args[0] if hold else "wip/" + args[0]
+	if hold and (branch.startswith("wip/") or branch == "main"):
+		print("✗ --hold 的分支不能是 main / wip/*(推上去就会自动进 main)")
+		return 1
 	r = subprocess.run(["git", "push", "-f", "origin", "HEAD:refs/heads/" + branch], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
 	if r.returncode != 0:
 		print("✗ 推送失败:", r.stderr.strip()[-300:])
 		return 1
-	print("已推 %s → %s(CI 跑全套, 全绿自动快进 main)" % (head[:8], branch))
+	if hold:
+		st = api_post("/actions/workflows/tests.yml/dispatches", {"ref": branch})
+		print("已推 %s → %s, 手动触发全套(HTTP %d; 只验不进 main)" % (head[:8], branch, st))
+	else:
+		print("已推 %s → %s(CI 跑全套, 全绿自动快进 main)" % (head[:8], branch))
 	if "--wait" not in sys.argv:
 		return 0
 	t0 = time.time()
@@ -101,6 +117,8 @@ def main() -> int:
 		if rr.get("status") == "completed":
 			c = rr.get("conclusion")
 			print("CI 结论: %s · %.0f 分钟 · %s" % (c, (time.time() - t0) / 60, rr.get("html_url", "")))
+			if c == "success" and hold:
+				return 0
 			if c == "success":
 				time.sleep(20)
 				git("fetch", "-q", "origin", "main")

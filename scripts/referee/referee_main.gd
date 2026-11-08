@@ -53,6 +53,13 @@ func _ready() -> void:
 		print("[Referee] bot-pool v%s rules_ver=%d rows=%d" % [str(pool["client_version"]), int(pool["rules_ver"]), (pool["rows"] as Array).size()])
 		get_tree().quit(0)
 		return
+	## 局外经济流水重放(方案书 20261106 装备与深海币服务器记账 S4a): --econ-replay=<流水.json> --out=<结果.json>
+	if args.has("econ-replay"):
+		await get_tree().process_frame
+		var ec := EconReplay.run_files(self, str(args["econ-replay"]), str(args.get("out", "")))
+		print("[Referee] econ-replay %s" % ("OK" if ec == 0 else "ERR"))
+		get_tree().quit(ec)
+		return
 	var jp := str(args.get("job", OS.get_environment("REFEREE_JOB")))
 	var op := str(args.get("out", OS.get_environment("REFEREE_OUT")))
 	if jp == "" or op == "":

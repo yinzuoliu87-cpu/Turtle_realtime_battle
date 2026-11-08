@@ -74,6 +74,11 @@ _CHUNK_RE = re.compile(r"^[0-9]{6}\.bin$")
 _stop = threading.Event()
 TASK_RESTREAM = "restream"
 _restream_off = threading.Event()      # rpc/referee_claim_restream 回过 404（服务端没上 20261020）⇒ 本进程不再领补流
+## 局外经济流水重放（2026-11-06 · 方案书 docs/plans/20261106-装备与深海币服务器记账.md §4.5 S4b）：单开一条线程（不占比赛的工作线程）
+##   领一批「有新流水」的号，一个 Godot 进程（--econ-replay）算完一批，rpc/econ_replay_done 回写。纯计算、不跑战斗。
+##   ★不排在比赛后面：开局要等重放追上，排在后面 ⇒ 工作线程越忙开局越卡（一局约 42 秒，客户端只等 30 秒）。
+_econ_off = threading.Event()          # rpc/econ_replay_claim 回过 404（服务端没上 20261106c）⇒ 本进程不再领
+ECON_BATCH = 20
 
 
 _now = time.monotonic                  # 自测换成假时钟
@@ -410,6 +415,96 @@ class IdlePacer:
 
     def wait_sec(self) -> float:
         return self.idle_poll if _now() - self.last_job >= self.idle_after else self.poll
+def _ver_key(v: str) -> tuple:
+    return tuple(int(x) if x.isdigit() else 0 for x in re.split(r"[.\-]", v))
+
+
+def econ_project(versions: dict) -> str:
+    """重放用的工程 = 装着的版本里最新、且带 scripts/referee/econ_replay.gd 的那个（经济规则同一周内不改，见方案书 R10）。"""
+    for v in sorted(versions, key=_ver_key, reverse=True):
+        if os.path.isfile(os.path.join(versions[v], "scripts", "referee", "econ_replay.gd")):
+            return versions[v]
+    return ""
+
+
+def claim_econ(limit: int = ECON_BATCH) -> list:
+    """领一批要重放的号；服务端没部署（404）⇒ 本进程以后不再领。"""
+    if _econ_off.is_set():
+        return []
+    try:
+        return rpc("econ_replay_claim", {"p_limit": limit}) or []
+    except urllib.error.HTTPError as ex:
+        if ex.code == 404:
+            _econ_off.set()
+            log("econ_replay_claim 404（服务端没上 20261106c）: 本进程不再领经济重放")
+            return []
+        raise
+
+
+def handle_econ(jobs: list, versions: dict, wdir: str, timeout_sec: int = 120) -> int:
+    """一批号交给一个 Godot 进程重放，结果回写。返回回写了几个号；整批算不出来 ⇒ 拆开一个一个算（一个号算不出来不堵别人）。"""
+    n = _replay_batch(jobs, versions, wdir, timeout_sec)
+    if n > 0 or len(jobs) < 2:
+        return n
+    return sum(_replay_batch([j], versions, wdir, timeout_sec) for j in jobs)
+
+
+def _replay_batch(jobs: list, versions: dict, wdir: str, timeout_sec: int) -> int:
+    proj = econ_project(versions)
+    if not proj or not jobs:
+        return 0
+    flags = rpc("referee_flags", {}) or {}
+    strict = bool(flags.get("econ_on", False)) if isinstance(flags, dict) else False   # 开关开着的那一周: 收入只认裁判结果来源
+    d = os.path.join(wdir, "econ")
+    ud = os.path.join(d, "userdata")
+    shutil.rmtree(d, ignore_errors=True)
+    os.makedirs(ud, exist_ok=True)
+    inp, outp = os.path.join(d, "in.json"), os.path.join(d, "out.json")
+    with open(inp, "w", encoding="utf-8") as f:
+        json.dump({"jobs": jobs, "strict": strict}, f, ensure_ascii=False)
+    e = dict(os.environ)
+    e.pop("SUPABASE_SERVICE_KEY", None)
+    e.update({"XDG_DATA_HOME": ud, "APPDATA": ud, "HOME": ud, "TURTLE_SUPABASE": " ", "TURTLE_BACKEND": " "})
+    cmd = [env("GODOT_BIN", "/opt/godot/godot"), "--headless", "--audio-driver", "Dummy", "--path", proj, SCENE,
+           "--quit-after", QUIT_AFTER_FRAMES, "--", "--econ-replay=" + inp, "--out=" + outp]
+    with open(os.path.join(d, "godot.log"), "w", encoding="utf-8") as lf:
+        p = subprocess.Popen(cmd, stdout=lf, stderr=subprocess.STDOUT, env=e)
+        try:
+            p.wait(timeout=timeout_sec)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            log("WARN 经济重放超时（%d 个号）" % len(jobs))
+            return 0
+    try:
+        with open(outp, encoding="utf-8") as f:
+            out = json.load(f)
+    except (OSError, ValueError):
+        log("WARN 经济重放没出结果（%d 个号）" % len(jobs))
+        return 0
+    items = out.get("results", []) if isinstance(out, dict) else []
+    if not items:
+        return 0
+    rpc("econ_replay_done", {"p_items": items})
+    bad = [i for i in items if int((i.get("result") or {}).get("bad_at", -1)) >= 0]
+    log("经济重放 %d 个号（不合法 %d）" % (len(items), len(bad)))
+    return len(items)
+
+
+def econ_loop() -> None:
+    """经济重放线程。有活接着领；没活时和比赛线程一样空闲放慢（IdlePacer，#23 出站流量）：
+    刚忙过 POLL_SEC 问一次，连续 IDLE_AFTER_SEC 没活才放慢到 IDLE_POLL_SEC。
+    开局遇 econ_pending 的客户端每 2 秒重交、最多 15 次（约 30 秒，referee_run.gd ECON_RETRY_*），放慢后最多多等几秒，够用。"""
+    wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "econ")
+    poll = float(env("POLL_SEC", "2"))
+    pacer = IdlePacer(poll, float(env("IDLE_POLL_SEC", "6")), float(env("IDLE_AFTER_SEC", "30")), 0.0)
+    while not _stop.is_set() and not _econ_off.is_set():
+        try:
+            if handle_econ(claim_econ(), discover_versions(env("VERSIONS_DIR", "/opt/turtle")), wdir) > 0:
+                pacer.busy()
+                continue
+        except (urllib.error.URLError, OSError, ValueError) as ex:
+            log("WARN 经济重放失败: %s" % ex)
+        _stop.wait(pacer.wait_sec())
 
 
 def worker_loop(idx: int, once: bool) -> None:
@@ -662,6 +757,8 @@ def main() -> int:
     ts = [threading.Thread(target=worker_loop, args=(i, a.once), daemon=True) for i in range(1 if a.once else n)]
     for t in ts:
         t.start()
+    if not a.once:
+        threading.Thread(target=econ_loop, daemon=True).start()
     for t in ts:
         while t.is_alive():
             t.join(1.0)

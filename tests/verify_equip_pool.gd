@@ -97,7 +97,7 @@ func _ready() -> void:
 	# 买 9 张 → 合成 3★ → 卖掉，池子必须【恰好】回到原样。
 	# ★这条是 D21(满3★冻结) 与 D22(卖出退张) 字面冲突的检出者：
 	#   第一版把"冻结"写成池里的 -1，于是卖掉 3★ 退不回来 ⇒ 池子永久少 31 张，这条当场红。
-	#   解法是不存冻结状态、改由库存(_maxed_item_ids)驱动，详见 equip_pool.gd 末尾。
+	#   解法是不存冻结状态、改由库存(EconLedger.maxed_ids, 原 ShopScene._maxed_item_ids)驱动，详见 equip_pool.gd 末尾。
 	var pool2: Dictionary = EquipPoolS.full_pool(eqs)
 	var base: int = int(pool2[eid1])
 	for i in range(9):

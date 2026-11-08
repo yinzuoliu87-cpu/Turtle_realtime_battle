@@ -366,6 +366,7 @@ frames_for () {
     verify_gauntlet_online_queue) echo 200000 ;;
     verify_wheel_referee) echo 90000 ;;   # 2026-11-06 命运之轮: 真裁判跑几局
     verify_gauntlet_queue_home) echo 30000 ;;   # 2026-10-29 排队时可回主页: 等心跳 / 遮罩 1.5 秒 / 换场景按墙钟等(无头一帧极快)
+    verify_econ_sync) echo 60000 ;;   # 2026-11-06 经济记账 S4b: econ_pending 自动重交按墙钟等两次 2 秒 + 对齐两轮(无头一帧极快, 按帧数会掐断)
     # 积分赛交给服务器(2026-11-01 · 方案书 20261101c): 匹配屏真入口 8 次(每次找对手动画 2.2 秒 + 每 2 秒查任务) + 主菜单对账 / 补记;
     #   全按墙钟等, 本地实测 3291 帧 / 35 秒(快机器上帧数会涨)
     verify_ranked_via_referee) echo 60000 ;;
@@ -1006,6 +1007,7 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 #   holo_aura_tick / ember_light_cast 全是零调用者), 而 64 条门禁全绿 —— 因为门禁直接调它们。
 #   存量 10 个记台账只减不增; 新增的当场红。
 run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有任何人调的函数)"
+run_audit "tools/econ_writer_audit.py"   "ALL OK" "econ_writer (经济字段只许经 EconLedger 记账口写·存量只减不增·20261106)"
 ## ★ zero_caller 的【反面】: 有读者却没有任何人写真值的字段(2026-09-28)。
 ##   实例 `GameState.battle_seed` —— 零写入点 ⇒ 那条 `if battle_seed != 0` 恒假,
 ##   且决赛结果的 `p_seed` 恒为 0、服务端复算不出任何一场。人工 grep 才发现的,

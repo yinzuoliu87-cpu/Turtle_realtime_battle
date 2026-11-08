@@ -34,6 +34,8 @@ const K_STREAM_VER := "stream_version"
 ##   交阵容(referee_ranked_start)→ 服务端挑对手 / 定种子 / 裁判机算 / 服务端记账 → 本机按服务器的数记账、看直播或录像。
 ##   关 / 问不到 / 服务端还没上 20261101d(回包里没有这个键)⇒ 现行行为(本机挑、本机算), 一字不变。
 const K_RANKED := "ranked_on"
+## 局外经济记账开关(方案书 20261106 装备与深海币服务器记账 §4.6, 服务端 20261106b): 开着 ⇒ 掷货 / 刷新 / 开罐向服务器要种子、流水往上传
+const K_ECON := "econ_on"
 
 ## 观测量(门禁分母): 本进程问过几次开关 / 交过几次阵容 / 查过几次任务。
 static var flag_asks := 0
@@ -68,6 +70,11 @@ static func ranked_on() -> bool:
 	return bool(flags().get(K_RANKED, false))
 
 
+## 局外经济记账交给服务器吗(EconNet 看它; 关着 ⇒ 本机种子、不上传, 与 0.22.8 一字不差)。
+static func econ_on() -> bool:
+	return bool(flags().get(K_ECON, false))
+
+
 ## 看服务器算的局要不要走状态流(开关开 且 本机版本 ≥ stream_version)。
 static func stream_on() -> bool:
 	var f := flags()
@@ -83,7 +90,7 @@ static func parse_flags(ok: bool, code: int, body: String) -> Dictionary:
 	if not ok:
 		return {}
 	if code == 404:
-		return {K_FINALS: false, K_GAUNTLET: false, K_STREAM: false, K_STREAM_VER: "", K_RANKED: false}
+		return {K_FINALS: false, K_GAUNTLET: false, K_STREAM: false, K_STREAM_VER: "", K_RANKED: false, K_ECON: false}
 	if code < 200 or code >= 300:
 		return {}
 	var j := JSON.new()
@@ -96,7 +103,9 @@ static func parse_flags(ok: bool, code: int, body: String) -> Dictionary:
 		K_STREAM: bool(d.get(K_STREAM, false)) if d.get(K_STREAM, false) is bool else false,
 		K_STREAM_VER: str(sv) if sv is String else "",
 		## ranked_on 缺(服务端还没上 20261101d)/ 不是布尔 ⇒ 关
-		K_RANKED: bool(d.get(K_RANKED, false)) if d.get(K_RANKED, false) is bool else false}
+		K_RANKED: bool(d.get(K_RANKED, false)) if d.get(K_RANKED, false) is bool else false,
+		## econ_on 缺(服务端还没上 20261106b)/ 不是布尔 ⇒ 关
+		K_ECON: bool(d.get(K_ECON, false)) if d.get(K_ECON, false) is bool else false}
 
 
 ## 问一次开关, 问到就写进存档(变了才存)。`done.call(flags)` 恰好一次({} = 没问到)。返回 false = 没发(没配后端)。
@@ -128,6 +137,7 @@ static func note_flags(f: Dictionary) -> void:
 	nf[K_STREAM_VER] = str(f.get(K_STREAM_VER, old.get(K_STREAM_VER, "")))
 	## 积分赛开关同理: 只改周日 / 周六的调用方不带它 ⇒ 沿用存档里那份
 	nf[K_RANKED] = bool(f.get(K_RANKED, old.get(K_RANKED, false)))
+	nf[K_ECON] = bool(f.get(K_ECON, old.get(K_ECON, false)))   # 经济记账开关同理
 	if nf == GameState.referee_flags:
 		return
 	GameState.referee_flags = nf
@@ -217,7 +227,10 @@ static func parse_queue(ok: bool, code: int, body: String) -> Dictionary:
 		var why := str(d.get("reason", "server"))
 		if why == Q_PAIRED:
 			return _paired_of(d, gw, gl)
-		return {"err": why if why != "" else "server", "gw": gw, "gl": gl}
+		var qout := {"err": why if why != "" else "server", "gw": gw, "gl": gl}
+		if d.has("at"):
+			qout["at"] = int(d["at"])          # econ_invalid: 服务器判第几条流水不合法(EconNet.adopt_async 用)
+		return qout
 	var st := str(d.get("status", ""))
 	match st:
 		Q_WAITING:
@@ -578,7 +591,10 @@ static func parse_ranked_start(ok: bool, code: int, body: String) -> Dictionary:
 	var led := parse_ledger(d.get("ledger", null))
 	if not bool(d.get("ok", false)):
 		var why := str(d.get("reason", "server"))
-		return {"err": why if why != "" else "server", "ledger": led}
+		var rout := {"err": why if why != "" else "server", "ledger": led}
+		if d.has("at"):
+			rout["at"] = int(d["at"])          # econ_invalid: 同上
+		return rout
 	var jid = d.get("job_id", null)
 	if not (jid is int or jid is float) or int(jid) <= 0:
 		return {"err": "server", "code": code}
