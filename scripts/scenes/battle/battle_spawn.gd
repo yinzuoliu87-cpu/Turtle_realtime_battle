@@ -349,10 +349,10 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		d = {"name": "训龟大师", "rarity": "C", "crit": 0.0,
 			"hp": 1.0, "atk": _trainer_atk_for(side), "def": 0.0, "mr": 0.0}
 		st = [false, 0.0, battle.TRAINER_ATK_INTERVAL, battle.TRAINER_RANGE]   # [近战?, 移速(U2: 不可移动), 攻击间隔, 射程]
-		var _appear: String = OS.get_environment("TRAINER_APPEAR") if OS.has_environment("TRAINER_APPEAR") else str(GameState.trainer_appearance)   # dev: TRAINER_APPEAR=mage 可强制预览某形象
-		if side != "left":
-			_appear = "default"   # 敌方大师用通用立绘(敌形象未跟踪)
-		sd = battle._trainer_sys._trainer_sprite_dict(_appear)   # 玩家侧用配置选的形象; 敌侧用通用立绘
+		var _mine: String = TrainerSystem.resolve_appearance(OS.get_environment("TRAINER_APPEAR") if OS.has_environment("TRAINER_APPEAR") else str(GameState.trainer_appearance))   # dev: TRAINER_APPEAR=mage 可强制预览某形象
+		## #22: 敌方原来固定 "default" ⇒ 旧潜水员图; 现在取现行形象里第一个和我方不同的(敌形象未跟踪, 两边一眼分得开)
+		var _appear: String = _mine if side == "left" else TrainerSystem.resolve_appearance("default", _mine)
+		sd = battle._trainer_sys._trainer_sprite_dict(_appear)
 		sd["_appearance"] = _appear   # 传给 u["_appearance"] → battle_render._update_trainer_anim(4方向)
 	elif is_egg:   # 龟蛋: 纯血包 fighter(atk/def/mr=0), 不动不攻击, 免控/斩/嘲讽, 走完整伤害管线; 围栏未破不可主动索敌(AoE穿栏)
 		d = {"name": "龟蛋", "rarity": "SSS", "crit": 0.0, "hp": maxf(1.0, float(spec.get("hp_max", spec.get("hp", 2100)))), "atk": 0.0, "def": 60.0, "mr": 60.0}   # maxHp=原始满血; 当前hp在下方按累积受损值覆盖(用户2026-07-12: 跨路掉血要可见); 60双抗
@@ -770,6 +770,7 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 	})
 	if minion != null:
 		minion["minion_kind"] = pick
+		_apply_pet_idle(minion, pick)   # #20: 待机换成这只龟本体同一套(原来读旧全身图 pets/<id>.png)
 		# (2026-07-17用户"除了血量以外其他东西应该和该龟一模一样"→撤掉曾加的评审场充能×4, 随从充能=真身原速)
 		# A方案·完整乌龟随从: 真·某龟种(id-keyed普攻/被动/技能触发) + 带自己技能/龟能/AI
 		minion["id"] = pick
@@ -789,6 +790,32 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 		minion["passive"] = d.get("passive", null)                      # 被动数据(特殊资源条/口径跟真龟一致)
 		_apply_spawn_passive_one(minion)                                # 实体完整龟: 对应登场被动正常生效(用户2026-07-17"什么被动什么显示和动画都得正常")
 		battle._hiding_sys._hiding_summon_vfx(minion["pos"])                               # 召唤法阵+光柱+星粒+落地尘(2026-07-17·原无演出)
+
+## #20(用户 11-07「有的时候会卡 bug，有的时候是旧出现旧形象」): 召唤通用路 `_resolve_summon_sprite` 读的是旧全身图
+##   pets/<id>.png, 而随从随后把 id 改成这只龟 ⇒ 动作走新帧条 ⇒ 待机旧图、动作新图, 大小也对不上。
+## 这里把待机换成本体同一套(pets.json img → `_resolve_pet_sprite`), 尺寸归一也同本体(帧高 → TARGET_BODY_H), 渲染读的四个键一起换。
+func _apply_pet_idle(m: Dictionary, pid: String) -> void:
+	var sd: Dictionary = battle._resolve_pet_sprite(pid)
+	var tex: Texture2D = sd.get("tex", null)
+	var spr = m.get("sprite", null)
+	if tex == null or not is_instance_valid(spr):
+		return
+	var fh: int = int(sd.get("frame_h", 64))
+	var px: float = battle.TARGET_BODY_H / float(maxi(1, fh))
+	spr.texture = tex
+	spr.frame = 0                       # 改 hframes/vframes 前先归零(setter 会用新乘积校验当前帧)
+	spr.hframes = int(sd.get("hframes", 1))
+	spr.vframes = int(sd.get("vframes", 1))
+	spr.frame = 0
+	spr.pixel_size = px
+	spr.offset = Vector2(0.0, fh * 0.5)
+	var gm: ShaderMaterial = battle._make_grounded_material(tex, sd)
+	spr.material_override = gm
+	m["grounded_mat"] = gm
+	m["idle_sd"] = sd
+	m["idle_px"] = px
+	m["idle_offy"] = spr.offset.y
+
 
 func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方持久演出船俯冲冲锋→撞击点转变为实体海盗船参战(用户2026-07-14设计)
 	var aim = tgt if (tgt != null and tgt.get("alive", false)) else battle._targeting._nearest_enemy(u)

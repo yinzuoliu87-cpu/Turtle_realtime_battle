@@ -394,7 +394,6 @@ const SpellDisc := preload("res://scripts/scenes/spell_disc.gd")
 const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技能图标(精修·带链条+青芒宝石); 飞行弹体仍用 trainer-hook.png
 ## 立绘: 用户要「像素风的冒险家」, 形象未定 —— 有真图就用, 没有则退回占位并 warning。
 ## ★不做成静默兜底: 占位图和最终形象长得完全不一样, 悄悄用会让人以为已经做完了。
-const TRAINER_SPRITE := "res://assets/sprites/pets/trainer.png"
 
 const SPRITE_DIR := "res://assets/sprites/"           # pets.json img 相对此根
 const RING_FRAMES := 8   # 冲击环烤好的扩散帧数(tools/assetgen/blender_ring.py 渲)

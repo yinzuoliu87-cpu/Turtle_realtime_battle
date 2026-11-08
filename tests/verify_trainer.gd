@@ -250,9 +250,16 @@ func _ready() -> void:
 	_ok("★★训龟大师关掉了 AI 默认普攻(no_basic=true, 否则会同时扔石头+发子弹)",
 		bool(tr.get("no_basic", false)), "no_basic=%s" % str(tr.get("no_basic", "(未设)")))
 
-	# 扔石头动作能触发(anim_action=throw, 播完自动回)
+	# 扔石头动作能触发: 照真实普攻流程(trainer_system 普攻那段)先记扔石头时间窗, 再调 _trainer_throw_anim, 走一次渲染。
+	#   ★#22(11-08)起所有大师都是现行形象的四方向表, 扔石头由 battle_render 按 _tr_throw_until 播本形象的 throw 表
+	#     (原来另切 pets/animations/trainer/throw.png = 旧护目镜男孩, 每扔一次闪一下旧形象)。
+	tr["_tr_throw_vec"] = Vector2.LEFT
+	tr["_tr_throw_t0"] = s._t
+	tr["_tr_throw_until"] = s._t + 0.64
 	s._trainer_sys._trainer_throw_anim(tr)
-	_ok("★普攻播扔石头动作(anim_action=throw)", str(tr.get("anim_action", "")) == "throw")
+	s._render._update_trainer_anim(tr, 0.016)
+	var tp_th: String = str((tr["sprite"] as Sprite3D).texture.resource_path) if (tr["sprite"] as Sprite3D).texture != null else ""
+	_ok("★普攻播扔石头动作(本形象四方向表的 throw)", tp_th.ends_with("trainer-%s-throw.png" % str(tr.get("_appearance", ""))), tp_th)
 	# 训龟大师自己会索敌开火(它不被别人锁, 但能锁别人 —— 两回事)
 	if not rock_foe.is_empty():
 		rock_foe["pos"] = tr["pos"] + Vector2(200.0, 0.0)
@@ -270,7 +277,31 @@ func _ready() -> void:
 	#   要真验, 必须【从像素测出图画的朝向】, 再和代码的登记对账。
 	# 判据: 3/4 侧视角色的头部重心会偏向朝向侧(脸凸出去), 躯干/背包在后。
 	#   判不出时【明确报"测不出"而不是默默通过】—— Q 版大圆盔那种左右对称的头就判不出。
-	var tex2 = s._trainer_sys._trainer_sprite_dict().get("tex")
+	## #22(11-08): 默认 / 敌方都落到现行形象的四方向表(朝向由 battle_render 按行切, 不再看单张图的头部重心)
+	var sd_def: Dictionary = s._trainer_sys._trainer_sprite_dict()
+	var p_def: String = str((sd_def.get("tex") as Texture2D).resource_path) if sd_def.get("tex") != null else ""
+	_ok("★#22 默认形象不是旧潜水员图(pets/trainer.png), 走四方向表", p_def != "" and not p_def.ends_with("pets/trainer.png") and int(sd_def.get("vframes", 1)) == 4, p_def)
+	_ok("★#22 旧潜水员图已删", not ResourceLoader.exists("res://assets/sprites/pets/trainer.png"))
+	## 比形象字段(不比当前帧贴图: 正在扔石头时贴图是 throw 表, 两边路径本来就不同 —— 首版就这么写, 改坏也照样绿)
+	var apps := {}
+	for u in s._units:
+		if u.get("is_trainer", false):
+			apps[str(u.get("side", ""))] = str(u.get("_appearance", ""))
+	_ok("★#22 场上双方大师都是现行形象、两边形象不同(分母 %d 个)" % apps.size(),
+		apps.size() == 2 and TrainerSystem.APPEARANCE_ORDER.has(apps.get("left", "")) and TrainerSystem.APPEARANCE_ORDER.has(apps.get("right", ""))
+		and apps.get("left") != apps.get("right"), str(apps))
+	## 扔石头不再切旧男孩 throw.png: 真入口 _trainer_throw_anim 之后贴图不是它(原来每扔一次闪一下旧形象)
+	var n_throw := 0
+	var old_hit := []
+	for u in s._units:
+		if u.get("is_trainer", false) and is_instance_valid(u.get("sprite", null)):
+			s._trainer_sys._trainer_throw_anim(u)
+			n_throw += 1
+			var tp: String = str((u["sprite"] as Sprite3D).texture.resource_path) if (u["sprite"] as Sprite3D).texture != null else ""
+			if tp.contains("pets/animations/trainer/"):
+				old_hit.append(tp)
+	_ok("★#22 大师扔石头不切旧形象的 throw 表(分母 %d 个)" % n_throw, n_throw >= 2 and old_hit.is_empty(), str(old_hit))
+	var tex2 = null   # 旧单张图的头部重心朝向判据(下面)只对单张立绘有意义; 四方向表跳过
 	if tex2 != null:
 		var img: Image = tex2.get_image()
 		var W := img.get_width()

@@ -970,6 +970,10 @@ func _trainer_throw_anim(u: Dictionary) -> void:
 	var spr = u.get("sprite", null)
 	if not is_instance_valid(spr):
 		return
+	## #22(11-08 查出): 有四方向表的形象, 扔石头由 battle_render._update_trainer_anim 按 _tr_throw_until 播本形象的 throw;
+	##   这里再切 pets/animations/trainer/throw.png(旧的护目镜男孩)⇒ 每扔一次石头闪一下旧形象。现在所有大师都落到现行形象, 这条旧表只剩兜底。
+	if not battle._render._trainer_sheets(str(u.get("_appearance", ""))).is_empty():
+		return
 	if not u.has("_throw_sd"):
 		u["_throw_sd"] = battle._resolve_action("pets/animations/trainer/throw.png", 10.0)
 	var tsd: Dictionary = u["_throw_sd"]
@@ -1159,7 +1163,22 @@ const _APPEARANCE_SPRITES := {
 	"girl": "res://assets/sprites/trainer/trainer-girl.png",
 }
 
+## #22(用户 11-07「旧的训龟大师形象有个潜水员」): 没选过形象(default)、敌方、裁判局原来都回退到旧潜水员图 pets/trainer.png。
+## 现在一律落到现行三个形象之一; avoid = 不要和这个撞(敌方传我方的形象 ⇒ 两边一眼分得开)。形象只管画面, 不进 sim。
+const APPEARANCE_ORDER := ["villager", "mage", "girl"]
+
+
+static func resolve_appearance(appearance_id: String, avoid: String = "") -> String:
+	if _APPEARANCE_SPRITES.has(appearance_id) and appearance_id != avoid:
+		return appearance_id
+	for a in APPEARANCE_ORDER:
+		if a != avoid:
+			return a
+	return APPEARANCE_ORDER[0]
+
+
 func _trainer_sprite_dict(appearance_id: String = "default") -> Dictionary:
+	appearance_id = resolve_appearance(appearance_id)   # #22: default / 未知 ⇒ 现行形象(不再回退旧潜水员图)
 	# R6-B: 有4方向动画帧表 → 用 idle 表(4行 S/E/N/W·48px格)当基准立绘, 战场由 battle_render._update_trainer_anim 逐帧切方向/动作。
 	var anim_idle: String = "res://assets/sprites/trainer/anim/trainer-" + appearance_id + "-idle.png"
 	if _APPEARANCE_SPRITES.has(appearance_id) and ResourceLoader.exists(anim_idle):
@@ -1169,8 +1188,6 @@ func _trainer_sprite_dict(appearance_id: String = "default") -> Dictionary:
 	var path: String = str(_APPEARANCE_SPRITES.get(appearance_id, ""))   # 选到三形象之一 → 用它; 否则(含"default"/敌方)回退通用立绘
 	if path != "" and ResourceLoader.exists(path):
 		tex = load(path)
-	if tex == null and ResourceLoader.exists(battle.TRAINER_SPRITE):
-		tex = load(battle.TRAINER_SPRITE)
 	if tex == null:
 		battle.push_warning("[训龟大师] 立绘未就绪 —— 用程序占位图。")
 		tex = battle._make_trainer_placeholder_tex()

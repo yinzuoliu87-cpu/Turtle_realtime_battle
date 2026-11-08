@@ -1126,7 +1126,7 @@ func _build_passive_ring(disc: Control) -> void:
 	tw.tween_property(ring, "rotation", TAU, 3.2).from(0.0)
 
 
-## 训龟大师立绘。用户要「像素风的冒险家」, 形象未定 —— 真图放到 battle.TRAINER_SPRITE 即自动生效。
+## 训龟大师立绘。现行三个形象见 TrainerSystem._APPEARANCE_SPRITES(#22: 旧潜水员图 pets/trainer.png 与 TRAINER_SPRITE 已删)。
 ## ★没真图时【退回占位并 push_warning】而不是静默兜底: 占位是小龟, 和冒险家长得完全不一样,
 ##   悄悄用会让人(包括我自己)以为形象已经做完了。门禁 verify_trainer 也断言这条 warning 存在。
 ## 这一局的结果**封存了吗** —— 封存 = 存档里记着一场「待揭晓」的决赛场。
@@ -1648,7 +1648,7 @@ func _build_brush_bar() -> void:
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:back", "", "火箭"))
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:elite", "", "精英"))
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:reserve", "", "援军"))   # 援军小将(2026-10-29): 正式对局只在终极战场名单为空时出现, 调试场直接摆
-	strip.add_child(battle._debug._edit_brush_cell(battle.TRAINER_ID, battle.TRAINER_SPRITE, "大师"))
+	strip.add_child(battle._debug._edit_brush_cell(battle.TRAINER_ID, "res://assets/sprites/trainer/trainer-villager.png", "大师"))   # #22: 旧潜水员图已删
 	var hint = Label.new()
 	hint.text = "← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板"
 	hint.add_theme_font_size_override("font_size", UIPalette.F_SUB)
