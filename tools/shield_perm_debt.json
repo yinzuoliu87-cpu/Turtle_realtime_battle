@@ -11,7 +11,6 @@
   "scripts/systems/equip/eq_food_batch.gd::_cake_eat",
   "scripts/systems/equip/equip_system.gd::_eq_broadsword",
   "scripts/systems/equip/equip_system.gd::_eq_ice_fissure",
-  "scripts/systems/equip/equip_system.gd::_eq_on_dodge",
   "scripts/systems/equip/equip_system.gd::_eq_water_wave",
   "scripts/systems/equip/equip_tick_system.gd::_egg_add_progress",
   "scripts/systems/equip/gun_synergy_system.gd::_turret_two",

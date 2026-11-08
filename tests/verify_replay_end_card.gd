@@ -1,4 +1,5 @@
 extends Node
+const _P2C_EC := preload("res://scripts/gamedata/phase2_config.gd")
 ## verify_replay_end_card.gd — 每场结束分三拍(2026-10-31 重做, 方案书 docs/plans/20261031c-周日赛事界面重做.md P1 / C 块 ②③④⑧ · G8 G18 G25 P16)
 ##
 ## 由来: 用户「比如这个框，这是商业游戏吗」—— 原来看完一场只弹「X 获胜 / A 对 B / 返回对阵图」三行字, 三种情况同一张卡。
@@ -8,7 +9,7 @@ extends Node
 ##   ② ★时长落在 G8 区间: 看别人约 4 秒 / 自己赢约 7 秒 / 自己输约 6 秒; 第一拍只压一条带(整屏不暗、双方卡还没出来)
 ##   ③ ★点一下只跳到这一拍的终态(不是跳完整段); 不点也会每帧自己往前走
 ##   ④ 第二拍: 比分从 0 逐路加; 三路灯一路一盏、灯在赢下它的那一边; 阵亡的统领划掉(按收尾那一刻的单位表); 赢家发光、输家压灰下沉
-##   ⑤ 第三拍: 自己赢 = 晋级那一行 + 本轮奖励(+8 深海币 +2 经验, 数字滚到终值); 自己输 = 出局卡「止步半决赛，不敌 X」+ 名次 + 奖励
+##   ⑤ 第三拍: 自己赢 = 晋级那一行 + 本轮奖励(+FINALS_COINS_PER_ROUND 深海币 +FINALS_XP_PER_ROUND 经验, 数字滚到终值); 自己输 = 出局卡「止步半决赛，不敌 X」+ 名次 + 奖励
 ##   ⑥ ★出局卡主按钮 =「去看 X 对 Y」(下一场, G25); 按下 ⇒ 回对阵图并挂上那一场(对阵图到点自动开播, G18); 下一场到点自动跟过去
 ##   ⑦ ★P16: 「返回对阵图」回到刚才在看的那一组(挂上 view / bucket); 看别人(决赛日)三拍走完自动回, 顺带挂上下一场
 ##   ⑧ 按钮: 一开始不可见且不吃点击; 皮 = card_button, 高 ≥ 81; 回放有「再看一遍」在左
@@ -356,10 +357,12 @@ func _t_one(c: Dictionary) -> void:
 	if cs != "watch":
 		var co := card.find_child("EndCoins", true, false) as Label
 		var xp := card.find_child("EndXp", true, false) as Label
-		_ok("%s ⑤ ★本轮奖励滚到终值「+8 深海币 / +2 经验」" % tag, co != null and co.text == "+8 深海币" and xp != null and xp.text == "+2 经验",
+		var want_co := "+%d 深海币" % int(_P2C_EC.FINALS_COINS_PER_ROUND)   # 11-08 用户 8 → 18 / 2 → 6: 读常量, 不写死
+		var want_xp := "+%d 经验" % int(_P2C_EC.FINALS_XP_PER_ROUND)
+		_ok("%s ⑤ ★本轮奖励滚到终值「%s / %s」" % [tag, want_co, want_xp], co != null and co.text == want_co and xp != null and xp.text == want_xp,
 			("%s / %s" % [co.text, xp.text]) if co != null and xp != null else "<无>")
 		bt.pose(float(times[2][1]) + 0.46)
-		_ok("%s ⑤ 奖励是滚出来的(中途不是终值: %s)" % [tag, co.text if co != null else ""], co != null and co.text != "+8 深海币")
+		_ok("%s ⑤ 奖励是滚出来的(中途不是终值: %s)" % [tag, co.text if co != null else ""], co != null and co.text != want_co)
 		var icons: Array = []
 		for tr in (card.find_child(EB.N_REWARD, true, false) as Node).find_children("*", "TextureRect", true, false):
 			icons.append(((tr as TextureRect).texture.resource_path.get_file()) if (tr as TextureRect).texture != null else "<空>")
