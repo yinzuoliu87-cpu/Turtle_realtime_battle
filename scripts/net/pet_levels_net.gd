@@ -9,7 +9,8 @@ extends RefCounted
 ## ★走 `FriendsNet.call_rpc`（supabase.gd 现成的 _spawn → _await_token → _http），supabase.gd 不改（它快到 3000 行）。
 ## ★问到了 ⇒ 写 GameState.pet_lv（28 只全表：拥有的按服务器等级，其余 1 级 —— 限免龟固定 1 级、不涨）。
 ##   问不到 ⇒ 什么都不动（选龟页照上次的显示）。服务器裁判开算时会按服务器等级表重新盖章，本机这份只管显示 / 本机对局。
-## ★网关 `/app/pets/refresh`（工作线 B 调）刷完主站拥有之后调 `adopt_owned(owned)`，选龟页立刻按新的拥有过滤。
+## ★B 的 `MainsiteLink`（设置页 / 绑定后 `mainsite_me` / 网关 `/app/pets/refresh`）每记一次当前号的拥有就调 `adopt_owned`，
+##   选龟页立刻按新的拥有过滤。下面这几样按号记：换号（GameState.account_id 变了）⇒ 清空，拥有先取 B 那份按号缓存的。
 
 const _FN := preload("res://scripts/net/friends_net.gd")
 
@@ -18,6 +19,8 @@ static var linked := false
 ## pet_key → {lv, xp}（只有服务器有记录的龟）
 static var levels: Dictionary = {}
 static var fetched := false
+## 上面这几样是哪个号的(初值 = 一个不可能是账号的串 ⇒ 第一次用时一定对一次号)
+static var _acc := "<unset>"
 static var _inflight := false
 static var _asked_at := -1000000
 ## 【门禁 / 实拍注入点】非空 ⇒ `fetch` 不联网、直接按它 adopt（形状同 `parse` 的产物）。
@@ -54,6 +57,7 @@ static func parse(res: Dictionary) -> Dictionary:
 static func adopt(p: Dictionary) -> void:
 	if p.is_empty():
 		return
+	_sync_acc()
 	linked = bool(p.get("linked", false))
 	owned = (p.get("owned", []) as Array).duplicate()
 	levels = (p.get("levels", {}) as Dictionary).duplicate(true)
@@ -62,8 +66,8 @@ static func adopt(p: Dictionary) -> void:
 
 
 ## 只换拥有（网关刷新主站拥有之后）。等级不动。
-# zero-caller-ok: 合并接线点 —— 工作线 B 的设置页调网关 /app/pets/refresh 回来后调它（B 还没合进来）
 static func adopt_owned(own: Array) -> void:
+	_sync_acc()
 	var o: Array = []
 	for p in own:
 		if WeeklyFree.ALL.has(str(p)) and not o.has(str(p)):
@@ -84,6 +88,7 @@ static func _write_table() -> void:
 
 ## 本机还没有等级表、而这一号要按拥有 ∪ 限免过滤 ⇒ 先按「全 1 级」(= 服务器眼里限免龟的等级), 问到了再换。
 static func ensure_default() -> void:
+	_sync_acc()
 	var gs = _gs()
 	if gs == null or not filter_on():
 		return
@@ -98,6 +103,7 @@ static func fetch(done: Callable = Callable()) -> void:
 		if done.is_valid():
 			done.call_deferred()
 		return
+	_sync_acc()
 	if _inflight or not filter_on():
 		return
 	var now := Time.get_ticks_msec() / 1000
@@ -129,6 +135,7 @@ static func filter_on() -> bool:
 
 ## 本周能上场的：拥有 ∪ 限免（`WeeklyFree.allowed_ids`，种子 = 我的账号 + 本周锚点）。
 static func allowed_now() -> Array:
+	_sync_acc()
 	var gs = _gs()
 	if gs == null:
 		return WeeklyFree.ALL.duplicate()
@@ -153,6 +160,21 @@ static func fill_allowed(want: Array, n: int = 3) -> Array:
 		if out.size() < n and not out.has(str(p)):
 			out.append(str(p))
 	return out
+
+
+## 换号了(删号 / 换号收尾 / 龟投账号登录)⇒ 上一个号的拥有 / 等级作废; 拥有先取 B 那份按号缓存的(上次 mainsite_me / pets/refresh)。
+static func _sync_acc() -> void:
+	var gs = _gs()
+	var a := str(gs.get("account_id")) if gs != null else ""
+	if a == _acc:
+		return
+	_acc = a
+	linked = false
+	levels = {}
+	fetched = false
+	_asked_at = -1000000
+	var ML = load("res://scripts/net/mainsite_link.gd")
+	owned = (ML.owned_ids() as Array).filter(func(k) -> bool: return WeeklyFree.ALL.has(str(k))) if ML != null else []
 
 
 static func _gs():

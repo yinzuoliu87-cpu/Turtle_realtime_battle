@@ -32,8 +32,10 @@ extends RefCounted
 ##                   (`WeeklyFree`, 种子 = 账号 + 周锚点 key.week)。
 ##   key.a_owned / key.b_owned  这一方开算那一刻拥有的龟(主站 /player 缓存 mainsite_pets); 没有 = 没绑定 ⇒ 只有限免 7 只。
 ##                   ★周赛局的账号和拥有只在 meta、不进快照: matches.left/right_snapshot 所有登录用户都读得到(机器人池那一侧没有账号, 放进快照就露馅)。
-##                   偷袭局另有 raid_create 盖在快照里的 account_id / owned(两侧都是真人), 没有 ① 时用它(`pets_allowed`)。
-##   a.lv / b.lv     按龟等级表 {pet_key: 1~10}, 领活时按服务器等级表盖章(`pet_stamp_snapshot`, 快照自报的作废)。没有 lv = 旧快照 ⇒ 整队等级。
+##                   偷袭局 raid_create 建任务时就把这四个键写进 meta(20261109c, 同名); 更早的偷袭任务把 account_id / owned 盖在快照里,
+##                   key 里没有时退回读它(`pets_allowed`)。
+##   key.a_lv / key.b_lv  按龟等级表 {pet_key: 1~10}: 领活那一刻按服务器等级表算的(`pet_lv_table`), 压过快照自报的 a.lv / b.lv(`state_for`)。
+##                   ★快照本身服务器一个字不改(决赛坏快照回退拿任务快照逐字比)。key 和快照都没有 lv = 旧快照 ⇒ 整队等级。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  左方为什么要「从快照推」
@@ -186,6 +188,11 @@ static func level_for(j: Dictionary) -> int:
 ## `normalize` = 战斗场的 `_foe_normalize_lane`(每路规整到 3 单位, 与右方同一条规则)。
 static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	var b: Dictionary = strip_private(j["b"])
+	## 按龟等级(R1, 2026-11-09): 领活时服务器盖的等级表(key.b_lv, 迁移 20261109b)压过 B 快照自报的 lv —— 写进对手快照这一份,
+	##   战斗场读 dual_ghost.lv(右方), 录像录的也是它 ⇒ 回放照样复现。没有 key.b_lv(旧任务)⇒ 快照原样。
+	var key: Dictionary = j.get("key", {}) if j.get("key") is Dictionary else {}
+	if key.get("b_lv") is Dictionary:
+		b["lv"] = (key["b_lv"] as Dictionary).duplicate()
 	var st: Dictionary
 	if j.get("a_state") is Dictionary:
 		st = {}
@@ -201,8 +208,9 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	st["tutorial_active"] = false
 	st["debug_level"] = 0
 	st["season_level"] = level_for(j)
-	## 按龟等级(R1, 2026-11-09): 左方的 lv 表 = A 快照里的(开算时服务器盖过章, 盖过章就压过 a_state 自报的); 都没有 ⇒ 空 = 整队等级(旧快照)。
-	var alv: Dictionary = TurtleLevel.table_of((j["a"] as Dictionary).get("lv", null))
+	## 按龟等级(R1, 2026-11-09): 左方的 lv 表 = 领活时服务器盖的 key.a_lv(压过 A 快照 / a_state 自报的);
+	##   旧任务没有 key.a_lv ⇒ A 快照里的; 都没有 ⇒ 空 = 整队等级(旧快照)。
+	var alv: Dictionary = TurtleLevel.table_of(key["a_lv"] if key.get("a_lv") is Dictionary else (j["a"] as Dictionary).get("lv", null))
 	if not alv.is_empty() or not st.has("pet_lv"):
 		st["pet_lv"] = alv
 	## 援军小将按左方已打场数成长(2026-10-29): 录像那条路已带(STATE_KEYS); 按快照建的这条从 A 快照取。

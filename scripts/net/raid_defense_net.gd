@@ -69,7 +69,11 @@ static func put_defense(done: Callable = Callable()) -> void:
 	if snap.is_empty():
 		_skip("not_open", cb)
 		return
-	var key := ("%s|%d|%s" % [str(gs.account_id), wk, JSON.stringify(snap, "", true)]).sha256_text()
+	## 按龟等级的 lv 表不进比较(工作线 C, 2026-11-09): 裁判开算时按服务器等级表重新盖章(迁移 20261109b),
+	##   本机等级表从空变成全 1 级 / 问到服务器换了等级都不是「阵容变了」, 不为它多传一次。
+	var ks: Dictionary = snap.duplicate()
+	ks.erase("lv")
+	var key := ("%s|%d|%s" % [str(gs.account_id), wk, JSON.stringify(ks, "", true)]).sha256_text()
 	if key == _last_key:
 		_skip("same", cb)
 		return

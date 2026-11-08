@@ -310,9 +310,19 @@ func _ready() -> void:
 	var nrm := func(specs: Array) -> Array: return specs
 	(ja["a"] as Dictionary)["lv"] = {"stone": 4, fa[0]: 1, fa[1]: 1}
 	var st: Dictionary = RefereeJob.state_for(ja, nrm)
-	_ok("★④ state_for: 左方等级表 = A 快照的 lv(盖过章的)", st.get("pet_lv", null) == {"stone": 4, fa[0]: 1, fa[1]: 1}, str(st.get("pet_lv", "缺")))
+	_ok("★④ state_for: 旧任务(key 里没有 a_lv) ⇒ 左方等级表 = A 快照的 lv", st.get("pet_lv", null) == {"stone": 4, fa[0]: 1, fa[1]: 1}, str(st.get("pet_lv", "缺")))
+	ja["key"]["a_lv"] = {"stone": 7, fa[0]: 1, fa[1]: 2}
+	ja["key"]["b_lv"] = {fb[0]: 5}
+	(ja["b"] as Dictionary)["lv"] = {fb[0]: 10}
+	var st2: Dictionary = RefereeJob.state_for(ja, nrm)
+	_ok("★④ state_for: 领活盖的 key.a_lv 压过 A 快照自报的; key.b_lv 写进对手快照(压过 B 自报的 10)",
+		st2.get("pet_lv", null) == {"stone": 7, fa[0]: 1, fa[1]: 2} and ((st2["dual_ghost"] as Dictionary).get("lv", {}) as Dictionary) == {fb[0]: 5},
+		"%s / %s" % [str(st2.get("pet_lv")), str((st2["dual_ghost"] as Dictionary).get("lv"))])
+	(ja["key"] as Dictionary).erase("a_lv")
+	(ja["key"] as Dictionary).erase("b_lv")
 	(ja["a"] as Dictionary).erase("lv")
-	_ok("★④ state_for: A 快照没有 lv ⇒ 空(整队等级)", (RefereeJob.state_for(ja, nrm).get("pet_lv", null) as Dictionary).is_empty())
+	_ok("★④ state_for: key 和 A 快照都没有 lv ⇒ 空(整队等级); 对手快照原样", (RefereeJob.state_for(ja, nrm).get("pet_lv", null) as Dictionary).is_empty()
+		and (RefereeJob.state_for(ja, nrm)["dual_ghost"] as Dictionary).get("lv", {}) == {fb[0]: 10})
 
 	# ── ⑤ 显示 ──
 	print("=== ⑤ 显示等级 ===")
@@ -350,6 +360,8 @@ func _ready() -> void:
 
 	# ── ⑧ 客户端缓存 ──
 	print("=== ⑧ 客户端 ===")
+	_gs.account_id = ACCT_A           # 缓存按号记: 先换到这个号, 再采用它的回包
+	_gs.week_anchor_ts = WEEK
 	var res := {"ok": true, "data": {"ok": true, "linked": true, "owned": ["stone", "lava", "nope"],
 		"levels": {"stone": {"lv": 4, "xp": 300}, "basic": {"lv": 9, "xp": 1200}}}}
 	var p := PetLevelsNet.parse(res)
@@ -360,11 +372,6 @@ func _ready() -> void:
 		and PetLevelsNet.owned == ["stone", "lava"], "%d 只 %s" % [tbl.size(), str(PetLevelsNet.owned)])
 	_ok("⑧ 回包不像(ok 假 / 没有 owned) ⇒ 不采用", PetLevelsNet.parse({"ok": false, "data": {}}).is_empty()
 		and PetLevelsNet.parse({"ok": true, "data": {"levels": {}}}).is_empty())
-	_gs.account_id = ""
-	_ok("⑧ 没登录后端 ⇒ 不过滤(门禁 / 本机开发)", not PetLevelsNet.filter_on()
-		and PetLevelsNet.fill_allowed(["ice", "ghost", "lava"]) == ["ice", "ghost", "lava"])
-	_gs.account_id = ACCT_A
-	_gs.week_anchor_ts = WEEK
 	var al := PetLevelsNet.allowed_now()
 	_ok("★⑧ 登录了 ⇒ 能上场的 = WeeklyFree.allowed_ids(我的账号, 本周, 拥有)",
 		PetLevelsNet.filter_on() and al == WeeklyFree.allowed_ids(ACCT_A, WEEK, ["stone", "lava"]), str(al))
@@ -380,6 +387,14 @@ func _ready() -> void:
 		pick_ok = pick_ok and al.has(x)
 	_ok("★⑧ 陪练号选龟: 槽位表里本周能上的留下(lava、%s)、不能上的(%s)换成能上的, 恰 3 只" % [y, not_al],
 		pick_ok and pick[0] == "lava" and pick[1] == y, str(pick))
+	PetLevelsNet.adopt_owned(["stone", "lava"])
+	_gs.account_id = "22222222-3333-4444-8555-666666666666"
+	_ok("★⑧ 换号 ⇒ 上一个号的拥有作废(这个号没有缓存 ⇒ 空, 只剩它自己的限免)",
+		PetLevelsNet.allowed_now() == WeeklyFree.allowed_ids("22222222-3333-4444-8555-666666666666", WEEK, [])
+		and PetLevelsNet.owned.is_empty(), str(PetLevelsNet.owned))
+	_gs.account_id = ""
+	_ok("⑧ 没登录后端 ⇒ 不过滤(门禁 / 本机开发)", not PetLevelsNet.filter_on()
+		and PetLevelsNet.fill_allowed(["ice", "ghost", "lava"]) == ["ice", "ghost", "lava"])
 	_gs.account_id = acct0
 	_gs.week_anchor_ts = wk0
 	_gs.pet_lv = {}

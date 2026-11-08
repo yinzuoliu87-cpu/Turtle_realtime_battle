@@ -4,10 +4,10 @@
 -- 判据（门禁名 = 本文件；方案书 20261107b §6 verify_pet_xp 那几条在这里）：
 --   C1 曲线：70 升 2 级、160 升 3 级、1350 满 10 级；69 还是 1 级、1349 还是 9 级
 --   C2 28 只齐（= WeeklyFree.ALL），不重复
---   S1 ★盖章：拥有的按 pet_levels（stone 4 级）、拥有但没记录的 1 级（lava）、没拥有的 1 级（basic，快照自报 10 级作废）
+--   S1 ★等级表：拥有的按 pet_levels（stone 4 级）、拥有但没记录的 1 级（lava）、没拥有的 1 级（basic，快照自报 10 级不认）
 --   S2 没有账号（机器人池）⇒ 全 1 级
---   K1 ★领活（BEFORE 触发器）：任务单 key 带 a_account / b_account / a_owned / b_owned；盖过章的快照与 meta 写回任务行；
---      快照里不放账号与拥有（matches 所有人读得到）
+--   K1 ★领活（BEFORE 触发器）：任务单 key 带 a_account / b_account / a_owned / b_owned / a_lv / b_lv，meta 写回任务行；
+--      ★快照一个字不改（决赛坏快照回退逐字比快照；也不在快照里放账号与拥有 —— matches 所有人读得到）
 --   K2 补流任务单的 key 同样带四个键（拥有取任务行里记的，不重算）
 --   K3 没账号那一侧（机器人池）：key.b_account = null、b_owned = []、全 1 级
 --   X1 ★真结算（referee_complete，闯关配对局，A 赢）：A 拥有的 stone / lava 各 +8，限免的 basic 不发；B（输）拥有的 bamboo +6
@@ -77,12 +77,12 @@ select pg_temp.ck('C2 28 只齐、不重复', cardinality(public.pet_all_ids()) 
 do $$
 declare s jsonb;
 begin
-  s := public.pet_stamp_snapshot(pg_temp.snap(array['stone', 'basic', 'lava']), pg_temp.u('a'));
-  perform pg_temp.ck('S1 ★盖章: stone=4(服务器) basic=1(没拥有, 自报 10 作废) lava=1(拥有没记录); 其余键不动',
-    (s -> 'lv' ->> 'stone')::int = 4 and (s -> 'lv' ->> 'basic')::int = 1 and (s -> 'lv' ->> 'lava')::int = 1
-    and (select count(*) from jsonb_object_keys(s -> 'lv')) = 3 and s -> 'leaders' = '["stone", "basic", "lava"]'::jsonb, s::text);
-  s := public.pet_stamp_snapshot(pg_temp.snap(array['stone', 'basic', 'lava']), null);
-  perform pg_temp.ck('S2 没有账号 ⇒ 全 1 级', (s -> 'lv' ->> 'stone')::int = 1 and (s -> 'lv' ->> 'basic')::int = 1, s::text);
+  s := public.pet_lv_table(pg_temp.snap(array['stone', 'basic', 'lava']), pg_temp.u('a'));
+  perform pg_temp.ck('S1 ★等级表: stone=4(服务器) basic=1(没拥有, 自报 10 不认) lava=1(拥有没记录), 恰好三只',
+    (s ->> 'stone')::int = 4 and (s ->> 'basic')::int = 1 and (s ->> 'lava')::int = 1
+    and (select count(*) from jsonb_object_keys(s)) = 3, s::text);
+  s := public.pet_lv_table(pg_temp.snap(array['stone', 'basic', 'lava']), null);
+  perform pg_temp.ck('S2 没有账号 ⇒ 全 1 级', (s ->> 'stone')::int = 1 and (s ->> 'basic')::int = 1, s::text);
   perform pg_temp.ck('S3 拥有只认 28 只(not_a_turtle 不算)、按名字排',
     public.pet_owned(pg_temp.u('a')) = array['lava', 'stone'], public.pet_owned(pg_temp.u('a'))::text);
 end $$;
@@ -100,14 +100,17 @@ begin
     and c -> 0 -> 'key' ->> 'b_account' = pg_temp.u('b')::text
     and c -> 0 -> 'key' -> 'a_owned' = '["lava", "stone"]'::jsonb and c -> 0 -> 'key' -> 'b_owned' = '["bamboo"]'::jsonb,
     left(c::text, 700));
-  perform pg_temp.ck('K1 ★任务单里的快照已盖章(A stone=1 那时 1 级, basic 自报 10 ⇒ 1; B bamboo=1); 快照里没有账号',
-    (c -> 0 -> 'a' -> 'lv' ->> 'basic')::int = 1 and (c -> 0 -> 'a' -> 'lv' ->> 'stone')::int = 1
-    and not (c -> 0 -> 'a' ? 'account_id') and not (c -> 0 -> 'a' ? 'a_account')
-    and (c -> 0 -> 'b' -> 'lv' ->> 'bamboo')::int = 1, (c -> 0 -> 'a')::text);
+  perform pg_temp.ck('K1 ★key 带等级表(A stone=1 那时 1 级, basic 自报 10 ⇒ 1; B bamboo=1)',
+    (c -> 0 -> 'key' -> 'a_lv' ->> 'basic')::int = 1 and (c -> 0 -> 'key' -> 'a_lv' ->> 'stone')::int = 1
+    and (c -> 0 -> 'key' -> 'b_lv' ->> 'bamboo')::int = 1 and (select count(*) from jsonb_object_keys(c -> 0 -> 'key' -> 'a_lv')) = 3,
+    (c -> 0 -> 'key')::text);
   select * into j from public.referee_jobs where job_id = jid;
-  perform pg_temp.ck('K1 ★盖过章的快照与拥有写回了任务行(补流 / 录像 / 发经验用同一份)',
-    j.a_snapshot -> 'lv' = c -> 0 -> 'a' -> 'lv' and j.meta -> 'a_owned' = '["lava", "stone"]'::jsonb
-    and j.meta -> 'b_owned' = '["bamboo"]'::jsonb and j.meta ->> 'pair' = 'true', j.meta::text);
+  perform pg_temp.ck('K1 ★快照一个字不改(任务行 / 任务单里的都 = 建任务时那份), 也不放账号',
+    j.a_snapshot = pg_temp.snap(array['stone', 'basic', 'lava']) and j.b_snapshot = pg_temp.snap(array['bamboo', 'ice', 'ninja'])
+    and c -> 0 -> 'a' = pg_temp.snap(array['stone', 'basic', 'lava']) and not (c -> 0 -> 'a' ? 'account_id'), (c -> 0 -> 'a')::text);
+  perform pg_temp.ck('K1 ★拥有 / 等级表写回了任务行 meta(补流 / 发经验用同一份)',
+    j.meta -> 'a_owned' = '["lava", "stone"]'::jsonb and j.meta -> 'b_owned' = '["bamboo"]'::jsonb
+    and j.meta -> 'a_lv' = c -> 0 -> 'key' -> 'a_lv' and j.meta ->> 'pair' = 'true', j.meta::text);
   -- 真结算
   r := public.referee_complete(jid, 'w-test', jsonb_build_object('ok', true, 'match_id', j.match_id::text, 'seed', 4242,
     'client_version', 'tv-c', 'winner', 'a', 'steps', 100, 'replay_b64', 'QUJD', 'score_code', 1,
@@ -135,22 +138,22 @@ begin
   -- K2 补流
   insert into public.referee_restream (match_id, job_id, client_version) values (j.match_id, jid, 'tv-c');
   c := public.referee_claim_restream('w-test', array['tv-c'], 1);
-  perform pg_temp.ck('K2 补流任务单 key 带四个键(拥有 = 任务行里记的)',
+  perform pg_temp.ck('K2 补流任务单 key 带同一份账号 / 拥有 / 等级表(任务行里记的, 不重算)',
     jsonb_array_length(c) = 1 and c -> 0 -> 'key' ->> 'a_account' = pg_temp.u('a')::text
-    and c -> 0 -> 'key' -> 'b_owned' = '["bamboo"]'::jsonb and c -> 0 -> 'a' -> 'lv' = jj.a_snapshot -> 'lv', left(c::text, 400));
+    and c -> 0 -> 'key' -> 'b_owned' = '["bamboo"]'::jsonb and c -> 0 -> 'key' -> 'a_lv' = jj.meta -> 'a_lv', left(c::text, 400));
   -- K3 没账号那一侧(机器人池): key.b_account = null、b_owned = []、lv 全 1
   jid := pg_temp.job('ranked', 'c:ranked:bot', pg_temp.u('a'), null,
     pg_temp.snap(array['stone', 'basic', 'lava']), pg_temp.snap(array['bamboo', 'ice', 'ninja']));
   c := public.referee_claim('w-test', array['tv-c'], 1);
   perform pg_temp.ck('K3 没账号那一侧: key.b_account = null、b_owned = []、lv 全 1(A 那一侧 stone 已是 2 级)',
     jsonb_array_length(c) = 1 and jsonb_typeof(c -> 0 -> 'key' -> 'b_account') = 'null' and c -> 0 -> 'key' -> 'b_owned' = '[]'::jsonb
-    and (c -> 0 -> 'b' -> 'lv' ->> 'bamboo')::int = 1 and (c -> 0 -> 'a' -> 'lv' ->> 'stone')::int = 2, left(c::text, 500));
+    and (c -> 0 -> 'key' -> 'b_lv' ->> 'bamboo')::int = 1 and (c -> 0 -> 'key' -> 'a_lv' ->> 'stone')::int = 2, left(c::text, 500));
   update public.referee_jobs set status = 'failed' where job_id = jid;
 end $$;
 
 -- X4 输 +6；满级封顶；X3 没绑定的号；X6 不给的几种
 do $$
-declare s jsonb := public.pet_stamp_snapshot(pg_temp.snap(array['stone', 'basic', 'lava']), pg_temp.u('a'));
+declare s jsonb := pg_temp.snap(array['stone', 'basic', 'lava']);
         m uuid; x0 int; ob0 int;
 begin
   perform public.pet_xp_grant(gen_random_uuid(), 'ranked', pg_temp.u('a'), s, '["lava", "stone"]', false);
@@ -173,7 +176,7 @@ begin
   m := gen_random_uuid();
   delete from public.mainsite_accounts where account_id = pg_temp.u('c');
   perform public.pet_xp_grant(m, 'ranked', pg_temp.u('c'),
-    public.pet_stamp_snapshot(pg_temp.snap(array['stone', 'ice', 'ninja']), pg_temp.u('c')), '["stone"]', true);
+    pg_temp.snap(array['stone', 'ice', 'ninja']), '["stone"]', true);
   perform pg_temp.ck('X3 ★开算后解绑 ⇒ 这一局不发(66 不动)、发件箱一条不写', pg_temp.xp('c', 'stone') = 66
     and (select count(*) from public.mainsite_outbox) = ob0, format('xp %s outbox %s→%s', pg_temp.xp('c', 'stone'), ob0,
       (select count(*) from public.mainsite_outbox)));
@@ -192,8 +195,8 @@ end $$;
 do $$
 declare jid bigint; s_a jsonb; s_b jsonb; x0 int; b0 int;
 begin
-  s_a := public.pet_stamp_snapshot(pg_temp.snap(array['stone', 'basic', 'lava']), pg_temp.u('a'));
-  s_b := public.pet_stamp_snapshot(pg_temp.snap(array['bamboo', 'ice', 'ninja']), pg_temp.u('b'));
+  s_a := pg_temp.snap(array['stone', 'basic', 'lava']);
+  s_b := pg_temp.snap(array['bamboo', 'ice', 'ninja']);
   x0 := pg_temp.xp('a', 'stone');
   b0 := pg_temp.xp('b', 'bamboo');
   jid := pg_temp.job('ranked', 'c:ranked:1', pg_temp.u('a'), pg_temp.u('b'), s_a, s_b,
@@ -224,7 +227,7 @@ begin
   update public.pet_levels set xp = 69 where account_id = pg_temp.u('a') and pet_key = 'stone';
   update public.pet_levels set level = 1 where account_id = pg_temp.u('a') and pet_key = 'stone';
   jid := pg_temp.job('ranked', 'c:ranked:err', pg_temp.u('a'), null,
-    public.pet_stamp_snapshot(pg_temp.snap(array['stone', 'basic', 'lava']), pg_temp.u('a')),
+    pg_temp.snap(array['stone', 'basic', 'lava']),
     pg_temp.snap(array['bamboo', 'ice', 'ninja']), '{"a_owned": ["lava", "stone"], "b_owned": []}');
   update public.referee_jobs set status = 'done', result = '{"winner": "a"}' where job_id = jid;
   select status into st from public.referee_jobs where job_id = jid;
@@ -254,7 +257,7 @@ select pg_temp.ck('P1 权限: pet_levels_me 只给 authenticated',
   and has_function_privilege('authenticated', 'public.pet_levels_me()', 'execute'));
 select pg_temp.ck('P1 内部函数 authenticated 调不了(发经验 / 盖章 / 拥有)',
   not has_function_privilege('authenticated', 'public.pet_xp_grant(uuid, text, uuid, jsonb, jsonb, boolean)', 'execute')
-  and not has_function_privilege('authenticated', 'public.pet_stamp_snapshot(jsonb, uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'public.pet_lv_table(jsonb, uuid)', 'execute')
   and not has_function_privilege('authenticated', 'public.pet_owned(uuid)', 'execute')
   and not has_function_privilege('anon', 'public.pet_xp_grant(uuid, text, uuid, jsonb, jsonb, boolean)', 'execute'));
 select pg_temp.ck('P1 两张表开了行级安全且没有策略(客户端直连读不到)',

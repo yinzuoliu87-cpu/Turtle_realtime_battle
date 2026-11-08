@@ -13,10 +13,12 @@ extends RefCounted
 ##  lv 表（快照 `lv` / GameState.pet_lv）
 ## ══════════════════════════════════════════════════════════════════════
 ##   {pet_key: 1 ~ 10}。**非空 = 这一方按龟等级**（表里没有的龟按 1 级）；**空 / 没有 = 旧快照 ⇒ 退回整队等级**（逐位同改之前）。
-##   · 右方：对手快照的 `lv`（`build_ghost_snapshot` 写三只统领；服务器裁判开算时按服务器等级表覆盖，迁移 20261109b `pet_stamp_snapshot`）。
-##   · 左方：GameState.pet_lv（本机 = 服务器等级的缓存，`PetLevelsNet` 写 28 只全表；裁判机 = A 快照的 `lv`，`RefereeJob.state_for`）。
+##   · 右方：对手快照的 `lv`（`build_ghost_snapshot` 写三只统领；服务器裁判 = 领活时按服务器等级表算的 key.b_lv 覆盖，
+##     迁移 20261109b `pet_lv_table` / `RefereeJob.state_for`）。
+##   · 左方：GameState.pet_lv（本机 = 服务器等级的缓存，`PetLevelsNet` 写 28 只全表；裁判机 = key.a_lv，没有 ⇒ A 快照的 `lv`）。
 ##     它在录像 STATE_KEYS 里 ⇒ 回放照样复现。
 
+const _BE := preload("res://scripts/net/backend.gd")   # 对手快照的赛季等级判据 ghost_level(与战斗场同一个)
 const MAX := 10
 ## 一局周赛上场的三只统领各得（用户 11-07）
 const WIN_XP := 8
@@ -80,6 +82,27 @@ static func level_of(gs, side: String, pid: String, dual: bool) -> int:
 	if pid == "":
 		return -1
 	return level_in(side_table(gs, side, dual), pid)
+
+
+## 单位等级(战斗场 `_unit_level` 的本体; 调试强制等级 / 评审场 1 级在战斗场那边先判过了):
+##   ① pid = 统领、查表那一方(tbl_side, 空 = side)带 lv 表 ⇒ 按龟等级(R1)
+##   ② 否则整队赛季等级: 左 = GameState.season_level(没有 ⇒ 1); 右 = 双路时对手快照自带的 season_level
+##      (用户 2026-10-19「赛季等级」双方各用各的), 旧快照 / 非双路 ⇒ 与左方同级(老口径)。②逐字搬自战斗场(2026-11-09 主文件行数预算)。
+static func unit_level(gs, side: String, pid: String, tbl_side: String, dual: bool) -> int:
+	var pl := level_of(gs, tbl_side if tbl_side != "" else side, pid, dual)
+	if pl >= 1:
+		return pl
+	if side == "left":
+		if gs != null:
+			var lv = gs.get("season_level")
+			if lv != null:
+				return maxi(1, int(lv))
+		return 1
+	var base := 1
+	if gs != null and gs.get("season_level") != null:
+		base = maxi(1, int(gs.get("season_level")))
+	var fl: int = _BE.ghost_level(gs.get("dual_ghost")) if gs != null and dual else -1
+	return fl if fl >= 1 else base
 
 
 ## 单位 → 查 lv 表用的龟 id：统领 = 自己；召唤物 = 顺着主人找到统领；小将 / 龟蛋 / 大师 = ""（整队等级）。

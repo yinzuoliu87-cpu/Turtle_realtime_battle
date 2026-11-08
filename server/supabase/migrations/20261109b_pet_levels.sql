@@ -13,11 +13,12 @@
 --   ① pet_levels（账号 × 龟：累计经验、等级）/ pet_xp_log（幂等键 = 对局 match_id + 账号 + 龟）：只由本段的函数写，客户端读不到表。
 --   ② 曲线：pet_xp_to_reach(等级) / pet_level_for_xp(经验) —— 与客户端 TurtleLevel 同一条（门禁 verify_pet_level_r1 对一遍）。
 --   ③ pet_owned(账号)：拥有 = mainsite_pets（主站 /player 的缓存）里、且是我们 28 只之一的龟。没绑定 / 缺表 ⇒ 空。
---   ④ pet_stamp_snapshot(快照, 账号)：开算盖章 —— lv = 三只统领各自的等级（拥有的按 pet_levels，其余 1），快照自报的 lv 作废。
---      没有账号（机器人池）⇒ 全 1 级。
---   ⑤ 触发器 pet_stamp_on_claim（BEFORE：任务变成 claimed 的那一句 update）：两侧快照盖章并**写回任务行**；任务 meta 记
---      a_account / b_account / a_owned / b_owned（这一刻的账号与拥有）⇒ 领活 / 补流回的任务单 key 里都有，裁判按它们算
---      这一侧本周的「拥有 ∪ 限免」（WeeklyFree，种子 = 账号 + 周锚点 key.week）。
+--   ④ pet_lv_table(快照, 账号)：开算盖章用的等级表 —— 三只统领各自的等级（拥有的按 pet_levels，其余 1）。没有账号（机器人池）⇒ 全 1 级。
+--   ⑤ 触发器 pet_stamp_on_claim（BEFORE：任务变成 claimed 的那一句 update）：任务 meta 记 a_account / b_account /
+--      a_owned / b_owned（这一刻的账号与拥有）和 a_lv / b_lv（这一刻的等级表）并**写回任务行** ⇒ 领活 / 补流回的任务单 key 里都有：
+--      裁判按账号 + 拥有算这一侧本周的「拥有 ∪ 限免」（WeeklyFree，种子 = 账号 + 周锚点 key.week），按 a_lv / b_lv 覆盖快照自报的 lv。
+--      ★快照本身一个字不改：决赛的坏快照回退（20261101b finals_advance）拿任务里的快照与参赛者那份逐字比，改了快照就永远「不同」⇒
+--        拒算的那一局会被反复退回重算（第一版直接改快照，20261101b 的检查脚本 E3 / R1 当场红）。
 --      ★账号和拥有只进 meta、不进快照：matches.left/right_snapshot 所有登录用户都读得到 —— 拥有放进去 = 谁都看得到别人在主站
 --        有哪些龟；账号放进去 = 机器人池那一侧没有账号、一眼看出是机器人（用户 10-04「不能让玩家知道是机器人」）。
 --      ★「周赛任务的 owned 字段」在这里统一填（积分赛 / 闯关 / 决赛 / 偷袭都经领活这一步），不去改五六个建任务函数。
@@ -30,7 +31,7 @@
 --      ★用触发器而不是改 referee_complete：那个函数 170 多行，偷袭线（20261109c）也要改它；整段重定义会互相顶掉。
 --      ★发经验出错只记 warning、不回滚结算（经验晚一点补得上，结算回滚了这一局就要重算）。
 --   ⑧ pet_levels_me()（authenticated）：mainsite_me() 那一份（拥有 / 是否绑定）+ levels: {pet_key: {lv, xp}} —— 客户端 PetLevelsNet 一次拿齐。
--- 回滚：drop trigger pet_xp_on_job_done / pet_stamp_on_claim；表与其余函数留着不影响（referee_claim 本段不改）。
+-- 回滚：drop trigger pet_xp_on_job_done / pet_stamp_on_claim；表与其余函数留着不影响（referee_claim / 快照本段都不改）。
 -- ★重复执行安全（create if not exists / create or replace / drop trigger if exists）。
 -- ─────────────────────────────────────────────────────────────
 
@@ -101,13 +102,13 @@ begin
 end $$;
 revoke all on function public.pet_owned(uuid) from public, anon, authenticated;
 
--- ④ 开算盖章（快照只改 lv；拥有记在任务 meta，见 ⑤）
-create or replace function public.pet_stamp_snapshot(p_snap jsonb, p_account uuid) returns jsonb
+-- ④ 开算盖章用的等级表（只算、不改快照；记在任务 meta，见 ⑤）
+create or replace function public.pet_lv_table(p_snap jsonb, p_account uuid) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare own text[]; lv jsonb := '{}'::jsonb; x text; l int;
 begin
   if p_snap is null or jsonb_typeof(p_snap) <> 'object' then
-    return p_snap;
+    return lv;
   end if;
   own := public.pet_owned(p_account);
   if jsonb_typeof(p_snap -> 'leaders') = 'array' then
@@ -120,24 +121,23 @@ begin
       lv := lv || jsonb_build_object(x, l);
     end loop;
   end if;
-  return p_snap || jsonb_build_object('lv', lv);
+  return lv;
 end $$;
-revoke all on function public.pet_stamp_snapshot(jsonb, uuid) from public, anon, authenticated;
+revoke all on function public.pet_lv_table(jsonb, uuid) from public, anon, authenticated;
 
 -- ⑤ 领活那一刻盖章（BEFORE 触发器：referee_claim 把任务改成 claimed 的那一句 update，同一行、同一个事务）
---   · 两侧快照的 lv 按服务器等级表重写（盖过章的这一份写回任务行 ⇒ 补流重算 / 录像 matches / 快照池用的都是它，结果可复现）；
---   · 任务 meta 记 a_account / b_account（账号，没有 = null）和 a_owned / b_owned（这一刻的拥有）。领活回的任务单 key = meta ∪ {week, match_key}
---     ⇒ 裁判从 key 里读（RefereeJob.pets_allowed）；补流任务单的 key 同样来自 meta ⇒ 补流重验用的是原来那一刻的。
+--   · 任务 meta 记 a_account / b_account（账号，没有 = null）、a_owned / b_owned（这一刻的拥有）、a_lv / b_lv（这一刻的等级表）。
+--     领活回的任务单 key = meta ∪ {week, match_key} ⇒ 裁判从 key 里读（RefereeJob.pets_allowed / state_for）；
+--     补流任务单的 key 同样来自 meta ⇒ 补流重算用的是原来那一刻的，结果可复现。快照本身不动（见文件头 ⑤）。
 --   ★用触发器而不是重写 referee_claim：偷袭线（20261109c）也重写了 referee_claim；两份整段重定义谁后执行谁算数，
 --     触发器与哪一版 referee_claim 都能一起用，也不改领活的排序 / 过滤。重领（租期过了）会按那一刻的服务器数据再盖一次。
 create or replace function public.pet_stamp_on_claim() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  new.a_snapshot := public.pet_stamp_snapshot(new.a_snapshot, new.a_account);
-  new.b_snapshot := public.pet_stamp_snapshot(new.b_snapshot, new.b_account);
   new.meta := coalesce(new.meta, '{}'::jsonb) || jsonb_build_object(
     'a_account', new.a_account, 'b_account', new.b_account,
-    'a_owned', to_jsonb(public.pet_owned(new.a_account)), 'b_owned', to_jsonb(public.pet_owned(new.b_account)));
+    'a_owned', to_jsonb(public.pet_owned(new.a_account)), 'b_owned', to_jsonb(public.pet_owned(new.b_account)),
+    'a_lv', public.pet_lv_table(new.a_snapshot, new.a_account), 'b_lv', public.pet_lv_table(new.b_snapshot, new.b_account));
   return new;
 end $$;
 revoke all on function public.pet_stamp_on_claim() from public, anon, authenticated;
