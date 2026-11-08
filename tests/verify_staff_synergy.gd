@@ -141,8 +141,8 @@ func _ready() -> void:
 	var hp0: float = float(b["hp"])
 	_s._staff_syn._t_tick = 0.0
 	_s._staff_syn.tick(2.6)
-	_ok("⑦ ★灵泉是【全队】: 一件法器都不带的队友也回血(已损失 ×5%%)",
-		float(b["hp"]) > hp0 + 1.0, "%.0f → %.0f" % [hp0, float(b["hp"])])
+	_ok("⑦ ★灵泉已删(用户 11-08「法器移除掉灵泉的效果」): 档2 过一个节拍, 队友一点不回血",
+		absf(float(b["hp"]) - hp0) < 0.01, "%.0f → %.0f" % [hp0, float(b["hp"])])
 	# 而法力条是【携带者】: B 身上没有任何法力条
 	_ok("⑦ ★法力条是【携带者】: 不带法器的队友身上没有任何法力条",
 		(b.get("eq_state", {}) as Dictionary).is_empty(), str(b.get("eq_state", {})))
@@ -182,14 +182,14 @@ func _ready() -> void:
 	# ★同样写死: maxHp 3000 × 15% = 450。
 	_ok("⑨ 共鸣(顶档): 回 15%% 最大生命 (%.0f → %.0f, 期望 +450)" % [dh0, float(d["hp"])],
 		absf(float(d["hp"]) - dh0 - 450.0) < 2.0)
-	# 再单独验它【真的挂在 tick 上】: 同样掉到 20%, 走 tick 要比只有灵泉回得多。
+	# 再单独验它【真的挂在 tick 上】: 同样掉到 20%, 走一次 7.5 秒节拍至少回共鸣那 450(灵泉 11-08 已删, 不再叠别的回血)。
 	var d3: Dictionary = _run([_mk("left", staffs.slice(0, 10))])[0]
 	d3["hp"] = float(d3["maxHp"]) * 0.2
 	_s._staff_syn._t_tick = 0.0
 	_s._staff_syn._t_reso = 0.0
 	_s._staff_syn.tick(7.6)
-	_ok("⑨ 共鸣挂在 tick 上(走一次 7.5 秒节拍, 回血 > 单靠灵泉的量)",
-		float(d3["hp"]) - float(d3["maxHp"]) * 0.2 > 450.0,
+	_ok("⑨ 共鸣挂在 tick 上(走一次 7.5 秒节拍, 回血 = 共鸣的 15%% = 450)",
+		absf(float(d3["hp"]) - float(d3["maxHp"]) * 0.2 - 450.0) < 2.0,
 		"回了 %.0f" % (float(d3["hp"]) - float(d3["maxHp"]) * 0.2))
 	_ok("⑨ ★净化的是 2 【种】不是 2 层: 眩晕+减速被清, 灼烧【还在】(顺序固定)",
 		float(d.get("stun_until", 0.0)) <= _s._t and float(d.get("slow_until", 0.0)) <= _s._t

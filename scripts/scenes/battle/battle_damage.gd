@@ -641,8 +641,7 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 			battle._equip_sys._eq_on_hit(src, u, dmg, basic, was_crit) # on-hit: 攻击者装备(★was_crit 是掷骰当时的快照, 别让它自己读全局: 中间的反伤/熔岩盾/雷盾会改写) (流血/灼烧/连锁/追击/穿透/标记 等; basic 闸【普攻】类)
 			battle._equip_sys.tally.pop(_tl0)
 			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
-			battle._potion_syn.try_behead(src, u)            # 药水顶档【斩首】: 攻击猎物且其 <20% 血 → 直接处决
-			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结 + 【僵硬】叠 1 层
+			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结
 			battle._staff_syn.add_mana(src, float(dmg) * StaffSynergySystem.MANA_FROM_DMG)   # 法器: 造成伤害 ×0.1 涨法力
 			battle._equip_sys._gremlin.on_hit(src, basic)                # 古灵精怪枪: 携带者每次【普攻】自伤 1%最大生命(真实·能打死自己)
 			battle._equip_sys._axe.on_hit(src, u, basic)      # 096 小木斧·被动2: 斧头普攻窃取目标 10% 护盾转普通护盾给自己

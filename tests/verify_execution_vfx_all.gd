@@ -20,7 +20,7 @@ extends Node
 const EXEC_SITES := {
 	"res://scripts/systems/equip/equip_system.gd": "004 暴君之牙",
 	"res://scripts/systems/equip/bow_synergy_system.gd": "弓箭【处决】",
-	"res://scripts/systems/equip/potion_synergy_system.gd": "药水【斩首】",
+	## 药水【斩首】11-08 用户删了(「药水移除这个斩首的效果」), 不再是处决点
 }
 
 var _fail := 0

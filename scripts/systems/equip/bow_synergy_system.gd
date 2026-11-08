@@ -31,8 +31,7 @@ const CRIT_TO_LINE := [0.05, 0.07, 0.10]
 ##   这是回到学派原设计的形状 —— 我之前把它拆成"档2 才有穿透、档3 才有叠层"，
 ##   那是我按「每档解锁一条新机制」的梯度原则**自己加的框架**，不是原设计。
 ##   原设计三条从首档就一直在（`docs/archive/学派效果-实装规格.md:33-37`）。
-## 穿透：全队攻击无视目标多少百分比的护甲与魔抗
-const PEN_PCT := [0.04, 0.10, 0.22]
+## ★2026-11-08 用户「弓箭移除穿透的效果」: 【穿透】(全队无视 4/10/22% 护甲与魔抗)整条删除, 连同开战写穿透的 apply_all()。
 ## 腐蚀：每 2.5 秒给全场敌人 +1 层，最多 5 层
 const CORRODE_PERIOD := 2.5
 const CORRODE_MAX := 5
@@ -46,25 +45,6 @@ var _t_corrode := 0.0
 
 func _init(b) -> void:
 	battle = b
-
-
-## 开战 / 换路后：把【穿透】写进休眠通道。
-## ★这是全表最划算的一条：`armor_pen_pct` / `magic_pen_pct` 是**已被消费、零写入**的通道
-##   （消费点 `battle_damage.gd:505,507` 与 `RealtimeBattle3DScene.gd:4221,4224,4243`）——
-##   **只需要往里写，消费侧一行都不用改。**
-func apply_all() -> void:
-	for u in battle._units:
-		if not (u is Dictionary):
-			continue
-		var tier: int = int(battle._synergy.tier_for(u, "弓箭"))
-		if tier <= 0:
-			continue
-		var pen: float = PEN_PCT[clampi(tier - 1, 0, 2)]
-		if pen <= 0.0:
-			continue
-		# ★用"加"不是"设": 别的来源(装备 038 的魔抗穿透等)也写这个字段, 直接赋值会把它们抹掉。
-		u["armor_pen_pct"] = float(u.get("armor_pen_pct", 0.0)) + pen
-		u["magic_pen_pct"] = float(u.get("magic_pen_pct", 0.0)) + pen
 
 
 ## 每次【攻击命中】后调（挂 `_apply_damage_from` 的 on-hit 处，与装备 on-hit 同一个位置）。

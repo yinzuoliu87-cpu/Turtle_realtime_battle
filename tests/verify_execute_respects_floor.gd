@@ -67,7 +67,7 @@ func _t_static() -> void:
 			if _fn_head(lines, i).find("execute_saved") < 0:
 				bad.append("%s:%d" % [str(f).get_file(), i + 1])
 	print("  [分母] 扫 %d 个 .gd, 直接把 hp 写成 0 的处决点 %d 处" % [files.size(), sites])
-	_ok("S 分母: 真的扫到了处决点(弓箭 / 药水 / 暴君之牙 / 猎人)", files.size() >= 200 and sites >= 4, "%d 文件 %d 处" % [files.size(), sites])
+	_ok("S 分母: 真的扫到了处决点(弓箭 / 暴君之牙 / 猎人; 药水斩首 11-08 已删)", files.size() >= 200 and sites >= 3, "%d 文件 %d 处" % [files.size(), sites])
 	_ok("S ★一整类: 每一处都先问 execute_saved", bad.is_empty(), str(bad))
 	var elite := FileAccess.get_file_as_string("res://scripts/systems/skills/elite_system.gd")
 	_ok("S 精英吞噬(直接 _kill, 不写 hp)也问了", elite.find("execute_saved(tref)") >= 0)
@@ -119,9 +119,7 @@ func _t_paths() -> void:
 		_s._hunter_sys._hunter_exec_arrow_hit(src, tgt))
 	_t_path("弓箭【处决】", func(src, tgt) -> void:
 		_s._bow_syn.on_hit(src, tgt))
-	_t_path("药水【斩首】", func(src, tgt) -> void:
-		_s._potion_syn._prey["left"] = tgt
-		_s._potion_syn.try_behead(src, tgt))
+	## 药水【斩首】11-08 用户删了(「药水移除这个斩首的效果」), 这条入口随之去掉
 	_s._synergy._by_side["left"] = keep_tier        # 恢复, 不能 erase: 场景下一帧还要读这个键
 
 

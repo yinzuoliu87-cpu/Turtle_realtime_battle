@@ -26,7 +26,7 @@ func _ready() -> void:
 	_ok("★分母: 找到 %d 件弓箭" % BW.size(), BW.size() >= 9)
 	print("=== 弓箭羁绊 ===")
 
-	# ── ① 腐蚀·穿透: 全队(不带弓箭的也吃), 且档1没有 ──
+	# ── ① 穿透: 用户 11-08「弓箭移除穿透的效果」⇒ 各档都不再给全队写穿透(反向守卫, 不许回来) ──
 	for cfg in [[3, 0.04], [6, 0.10], [9, 0.22]]:
 		var team_n: int = int(cfg[0])
 		var me := _mk("left", [])            # ★本龟【不带弓箭】—— 验"全队"
@@ -36,12 +36,18 @@ func _ready() -> void:
 			units.append(_mk("left", BW.slice(k, mini(k + 3, team_n)))); k += 3
 		units.append(_mk("right", []))
 		_run(s, units)
-		_ok("① 弓箭 %d 件: 不带弓箭的队友也吃 %.0f%% 穿透(全队)" % [team_n, float(cfg[1]) * 100.0],
-			absf(float(me.get("armor_pen_pct", 0.0)) - float(cfg[1])) < 0.001,
-			"实得 %.2f" % float(me.get("armor_pen_pct", 0.0)))
+		_ok("① 弓箭 %d 件: 队友不再吃穿透(原 %.0f%%)" % [team_n, float(cfg[1]) * 100.0],
+			absf(float(me.get("armor_pen_pct", 0.0))) < 0.001 and absf(float(me.get("magic_pen_pct", 0.0))) < 0.001,
+			"实得 护甲 %.2f 魔抗 %.2f" % [float(me.get("armor_pen_pct", 0.0)), float(me.get("magic_pen_pct", 0.0))])
 		if team_n == 9:
-			_ok("① 魔抗穿透与护甲穿透同值(%.0f%%)" % (float(cfg[1])*100.0), absf(float(me.get("magic_pen_pct", 0.0)) - float(cfg[1])) < 0.001, "实得 %.2f" % float(me.get("magic_pen_pct", 0.0)))
+			_ok("① 顶档也没有穿透(9 件 · 魔抗穿透 0)", absf(float(me.get("magic_pen_pct", 0.0))) < 0.001, "实得 %.2f" % float(me.get("magic_pen_pct", 0.0)))
 			_ok("① ★敌方【不】吃我方的穿透", absf(float(units[units.size()-1].get("armor_pen_pct", 0.0))) < 0.001)
+
+	## ① 源码层: 开战 / 换路 / 调试场三个入口都不再调写穿透的 apply_all, 弓箭系统也不再写穿透字段(只验数值的话, 有人把入口加回来这里抓不到)
+	var bsrc: String = FileAccess.get_file_as_string("res://scripts/systems/equip/bow_synergy_system.gd")
+	_ok("① 弓箭系统不再写 armor_pen_pct / magic_pen_pct", bsrc.find("armor_pen_pct\"] =") < 0 and bsrc.find("magic_pen_pct\"] =") < 0 and bsrc.find("func apply_all") < 0)
+	for ep in ["res://scripts/scenes/battle/battle_spawn.gd", "res://scripts/scenes/battle/dual_lane_flow.gd", "res://scripts/scenes/battle/battle_debug_arena.gd"]:
+		_ok("① %s 不再调 _bow_syn.apply_all()" % ep.get_file(), FileAccess.get_file_as_string(ep).find("_bow_syn.apply_all(") < 0)
 
 	# ── ② 处决: ★全队(用户改), 斩杀线按各自暴击率 ──
 	var arch := _mk("left", BW.slice(0, 3))      # 带 3 件弓箭
@@ -128,7 +134,7 @@ func _run(s, units: Array) -> void:
 	s._units.clear(); s._units.append_array(units)
 	s._synergy._by_side = {"left": {}, "right": {}}
 	s._synergy.apply_all()
-	s._bow_syn.apply_all()
+	## 弓箭【穿透】11-08 用户删了, 连同开战写穿透的 _bow_syn.apply_all() 一起删掉 ⇒ 这里不再调
 
 func _mk(side: String, ids: Array) -> Dictionary:
 	var c: Vector2 = _scene.ARENA.position + _scene.ARENA.size * 0.5

@@ -499,14 +499,7 @@ func _t066_whale_brew() -> void:
 	_s._equip_sys._potion_sys.tick_unit(im, 0.016)
 	_ok("066 ★不误伤增益: 同通道的【加速】(1.3, 熔岩/凤凰在用)一点不动",
 		absf(float(im.get("spd_move_mult", 1.0)) - 1.3) < 0.001, "spd_move_mult=%.3f 期望 1.300" % float(im.get("spd_move_mult", 1.0)))
-	# f) 僵硬(奇械羁绊的减攻速, 走 stiff_stacks 另一套)
-	_s._gadget_syn.add_stiff(im, 5)
-	_s._gadget_syn.add_stiff(ctl, 5)
-	_s._equip_sys._potion_sys.tick_unit(im, 0.016)
-	_ok("066 免疫⑦ 僵硬(奇械 stiff_stacks): 5 层 → 0 层",
-		int(im.get("stiff_stacks", 0)) == 0, "stiff_stacks=%d" % int(im.get("stiff_stacks", 0)))
-	_ok("066 免疫⑦ ★分母: 同样 5 层僵硬挂在没喝药的单位上【留得住】",
-		int(ctl.get("stiff_stacks", 0)) == 5, "对照 stiff_stacks=%d" % int(ctl.get("stiff_stacks", 0)))
+	# f) 僵硬: 奇械【僵硬】11-08 用户删了(「移除这个僵硬和易碎这两个效果」), 066 不再需要清它
 	# g) 嘲讽
 	_s._taunt(foe, [im, ctl], 5.0)
 	_s._equip_sys._potion_sys.tick_unit(im, 0.016)

@@ -198,9 +198,6 @@ func _brew_immune(u: Dictionary) -> void:
 		u["spd_move_mult"] = 1.0
 	if float(u.get("spd_aspd_mult", 1.0)) < 1.0:
 		u["spd_aspd_mult"] = 1.0
-	if int(u.get("stiff_stacks", 0)) > 0:
-		u["stiff_stacks"] = 0
-		battle._recalc_stats(u)
 	if float(u.get("taunt_until", 0.0)) > battle._t:
 		u["taunt_until"] = 0.0
 		u["taunt_by"] = null

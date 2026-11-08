@@ -125,21 +125,9 @@ func _ready() -> void:
 		"base_atk=%.0f" % float(hv2[0]["base_atk"]))
 	_ok("★整场结束 reset_match() 后清零", _harvest_reset_clears(po))
 
-	# 斩首: 顶档(9 件) 猎物 <20% 血 → 处决
-	var pc := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)),
-		_mk("left", po.slice(6, 9)), _mk("right", [])])
-	_s._potion_syn._t_mark = 0.0
-	_s._potion_syn.tick(2.6)
-	pc[3]["hp"] = float(pc[3]["maxHp"]) * 0.15
-	var beheaded: bool = _s._potion_syn.try_behead(pc[0], pc[3])
-	_ok("斩首(顶档): 猎物血 15% < 20% → 直接处决", beheaded and float(pc[3]["hp"]) <= 0.0,
-		"beheaded=%s hp=%.0f" % [str(beheaded), float(pc[3]["hp"])])
-	var pd := _run([_mk("left", po.slice(0, 3)), _mk("left", po.slice(3, 6)),
-		_mk("left", po.slice(6, 9)), _mk("right", [])])
-	_s._potion_syn._t_mark = 0.0
-	_s._potion_syn.tick(2.6)
-	pd[3]["hp"] = float(pd[3]["maxHp"]) * 0.25
-	_ok("★斩首不越线: 血 25% > 20% → 不处决", not _s._potion_syn.try_behead(pd[0], pd[3]))
+	# 斩首: 用户 11-08「药水移除这个斩首的效果」⇒ 实现与常量删掉; 守住不许回来
+	_ok("★药水斩首已删(用户 11-08): 没有 try_behead()", not _s._potion_syn.has_method("try_behead"))
+	_ok("★药水斩首已删: 常量 BEHEAD_TIER 不在了", not _s._potion_syn.get_script().get_script_constant_map().has("BEHEAD_TIER"))
 
 	# ═══════════════ 奇械 ═══════════════
 	print("── 奇械 ──")
@@ -166,41 +154,19 @@ func _ready() -> void:
 	_ok("铸币(档2): 每跳 2 枚, 停在上限 %d 枚" % int(_s._gadget_syn.COIN_CAP[1]), _s._gadget_syn.minted("left") == int(_s._gadget_syn.COIN_CAP[1]),
 		"铸了 %d 枚" % _s._gadget_syn.minted("left"))
 
-	# 僵硬: 档3(8 件) 每次命中叠 1 层, 20 层 = ×0.60 攻击力
-	var g3 := _run([_mk("left", ga.slice(0, 8)), _mk("right", [])])
+	# 僵硬 / 易碎: 用户 11-08「移除这个僵硬和易碎这两个效果」⇒ 顶档命中 25 次不叠层、攻击力不变; 被眩晕的敌人不再额外受伤
+	var g3 := _run([_mk("left", ga.slice(0, 10)), _mk("right", [])])
 	var foe: Dictionary = g3[1]
 	var fa0: float = float(foe["atk"])
 	for i3 in range(25):
 		_s._gadget_syn.on_hit(g3[0], foe)
-	_ok("僵硬(档3): 叠到 20 层封顶(打了 25 次)", int(foe.get("stiff_stacks", 0)) == 20,
-		"%d 层" % int(foe.get("stiff_stacks", 0)))
-	_ok("僵硬 20 层 → 攻击力 ×0.60", absf(float(foe["atk"]) - fa0 * 0.60) < 0.5,
-		"%.1f → %.1f (期望 %.1f)" % [fa0, float(foe["atk"]), fa0 * 0.60])
-	_s._gadget_syn._expire_stiff()
-	_ok("★僵硬未到期不清(5 秒内)", int(foe.get("stiff_stacks", 0)) == 20)
-	foe["stiff_until"] = _s._t - 1.0
-	_s._gadget_syn._expire_stiff()
-	_ok("僵硬到期 → 层数清零且攻击力还原",
-		int(foe.get("stiff_stacks", 0)) == 0 and absf(float(foe["atk"]) - fa0) < 0.5,
-		"atk=%.1f (原 %.1f)" % [float(foe["atk"]), fa0])
-	# 档2(5 件) 没有僵硬
-	var g4 := _run([_mk("left", ga.slice(0, 5)), _mk("right", [])])
-	for i4 in range(5):
-		_s._gadget_syn.on_hit(g4[0], g4[1])
-	_ok("★档2 没有僵硬(STIFF_TIER=3)", int(g4[1].get("stiff_stacks", 0)) == 0,
-		"%d 层" % int(g4[1].get("stiff_stacks", 0)))
-
-	# 易碎: 顶档(10 件) 对被眩晕的敌人 ×1.25
-	var g5 := _run([_mk("left", ga.slice(0, 10)), _mk("right", [])])
-	_ok("★易碎: 敌人【没被控】时不增伤 ×1.00",
-		absf(_s._gadget_syn.brittle_mult(g5[1]) - 1.0) < 0.001)
-	g5[1]["stun_until"] = _s._t + 5.0
-	_ok("易碎(顶档): 被眩晕/冻结的敌人受伤 ×1.25",
-		absf(_s._gadget_syn.brittle_mult(g5[1]) - 1.25) < 0.001,
-		"×%.3f" % _s._gadget_syn.brittle_mult(g5[1]))
-	var g6 := _run([_mk("left", ga.slice(0, 8)), _mk("right", [])])
-	g6[1]["stun_until"] = _s._t + 5.0
-	_ok("★档3 没有易碎(BRITTLE_TIER=4)", absf(_s._gadget_syn.brittle_mult(g6[1]) - 1.0) < 0.001)
+	_ok("★僵硬已删: 顶档命中 25 次, 不叠层、攻击力不变", int(foe.get("stiff_stacks", 0)) == 0 and absf(float(foe["atk"]) - fa0) < 0.5,
+		"%d 层 atk %.1f → %.1f" % [int(foe.get("stiff_stacks", 0)), fa0, float(foe["atk"])])
+	foe["stun_until"] = _s._t + 5.0
+	var m_stun: float = _s._mitigate_incoming(foe, 100.0, false, false)
+	_ok("★易碎已删: 顶档奇械下被眩晕的敌人受伤 ×1.00(原 ×1.25)", absf(m_stun - 100.0) < 0.01, "%.2f" % m_stun)
+	for m in ["add_stiff", "stiff_mult", "brittle_mult", "_expire_stiff"]:
+		_ok("★奇械没有 %s()(不留空壳)" % m, not _s._gadget_syn.has_method(m))
 
 	# ═══════════════ 食物 ═══════════════
 	print("── 食物 ──")
@@ -405,9 +371,20 @@ func _ready() -> void:
 	r1[0]["hp"] = float(r1[0]["maxHp"])
 	_s._recalc_stats(r1[0])
 	var ls_hi: float = float(r1[0]["lifesteal"]) + float(r1[0]["ls_bonus"])
-	# 首档每件 +3%, 带 2 件 = 6% ⇒ 满血 0.06 / 残血 0.12(期望值写死, 不读常量)
+	# 首档每件 +3%, 带 2 件 = 6% ⇒ 满血 0.06 / 残血 0.06 + 生死界 3% = 0.09(期望值写死, 不读常量)
+	#   11-08 起残血获得【该档每件遗物的生命偷取】(用户「全体成员按生命值高低…」), 不再是「携带者那份翻倍」(原 0.12)
 	_ok("生死界: 满血吸血 6%%(2 件 × 3%%)", absf(ls_hi - 0.06) < 0.0001, "%.4f" % ls_hi)
-	_ok("生死界: <50%% 时生命偷取【翻倍】→ 12%%", absf(ls_low - 0.12) < 0.0001, "%.4f" % ls_low)
+	_ok("生死界: ≤50%% 时再获得 3%% 生命偷取 → 9%%", absf(ls_low - 0.09) < 0.0001, "%.4f" % ls_low)
+	# 11-08 起【我方全体单位】: 一件遗物都不带的队友也吃生死界; 跨线由每帧的 _gate_tick 当帧重算(裁判机无演出也照样切)
+	var r1b := _run([_mk("left", re.slice(0, 2)), _mk("left", [])])
+	_s._relic_syn.apply_all()
+	var mate: Dictionary = r1b[1]
+	_ok("生死界(全体): 不带遗物的队友满血也 +3%% 攻 = 103", absf(float(mate["atk"]) - 103.0) < 0.01, "atk=%.2f" % float(mate["atk"]))
+	mate["hp"] = float(mate["maxHp"]) * 0.3
+	_s._relic_syn._gate_tick()
+	var mate_ls: float = float(mate["lifesteal"]) + float(mate["ls_bonus"])
+	_ok("生死界(全体): 队友掉到 30%% → 当帧不加攻(回 100)、获得 3%% 吸血",
+		absf(float(mate["atk"]) - 100.0) < 0.01 and absf(mate_ls - 0.03) < 0.0001, "atk=%.2f ls=%.4f" % [float(mate["atk"]), mate_ls])
 
 	# 远古之力: 档2(5 件) 每跳全队 +4 攻, 上限 +150
 	var r2 := _run([_mk("left", re.slice(0, 3)), _mk("left", re.slice(3, 5))])
@@ -513,11 +490,10 @@ func _ready() -> void:
 			["_food_syn.tick(", src_main], ["_spirit_syn.tick(", src_main],
 			["_relic_syn.tick(", src_main],
 			["_potion_syn.on_death(", src_main], ["_spirit_syn.on_death(", src_main],
-			["RelicSynergySystem.atk_mult(", src_main], ["GadgetSynergySystem.stiff_mult(", src_main],
-			["RelicSynergySystem.lifesteal_bonus(", src_main], ["_gadget_syn.brittle_mult(", src_main],
+			["_relic_syn.atk_mult(", src_main], ["_relic_syn.lifesteal_bonus(", src_main],
 			["EquipTickSystem.match_minted(", src_main], ["_gadget_syn.minted(", FileAccess.get_file_as_string("res://scripts/systems/equip/equip_tick_system.gd")], ["_potion_syn.reset_match(", src_main],
 			["_relic_syn.reset_match(", src_main],
-			["_potion_syn.amp_for(", src_dmg], ["_potion_syn.try_behead(", src_dmg],
+			["_potion_syn.amp_for(", src_dmg],
 			["_gadget_syn.on_hit(", src_dmg], ["_spirit_syn.on_dodge(", src_dmg]]:
 		_ok("★接线: %s 在活代码里" % str(pair[0]), str(pair[1]).find(str(pair[0])) >= 0)
 	# 三个 apply_all 入口都补齐了(开战 / 换路 / 调试场) —— 少一个就是"某条路上羁绊不生效"

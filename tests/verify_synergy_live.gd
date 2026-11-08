@@ -92,8 +92,8 @@ func _ready() -> void:
 	var hp_before: float = float(u5["hp"])
 	_s._staff_syn._t_tick = 0.0
 	_s._staff_syn.tick(2.6)                      # 推过一个 2.5 秒节拍(灵泉已归 staff_synergy_system 管)
-	_ok("⑤ 法器灵泉: 掉血后过一个节拍会回血(回 已损失的 5%%)",
-		float(u5["hp"]) > hp_before + 1.0,
+	_ok("⑤ 法器灵泉已删(用户 11-08): 掉血后过一个节拍【不】回血",
+		absf(float(u5["hp"]) - hp_before) < 0.01,
 		"%.0f → %.0f (已损失 %.0f)" % [hp_before, float(u5["hp"]), float(u5["maxHp"]) - hp_before])
 	# ★盾【圣光】已于 2026-08-03 从档位被动改成一件【羁绊赠送的装备】(3档送1件/6档送2件),
 	#   实装移到 shield_synergy_system.gd, 由 verify_shield_synergy 守着 —— 这里不再验。

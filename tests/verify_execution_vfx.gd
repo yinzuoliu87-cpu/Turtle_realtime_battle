@@ -94,31 +94,21 @@ func _ready() -> void:
 	_ok("★★碎片是【六种不同形状】而不是同一个圆(逐像素差 %d 个)" % diff, diff > 20,
 		"两片形状差 %d 像素" % diff)
 
-	# ── ② 药水【斩首】真的会放这套演出吗 ────────────────────────────────────
-	##   ★走真入口 `try_behead`, 不直接调演出 —— 直接调等于绕过"够不够条件"那条链。
+	# ── ② 弓箭【处决】真的会放这套演出吗 ─────────────────────────────────
+	##   药水【斩首】11-08 用户删了(「药水移除这个斩首的效果」), 行为层改走同族的弓箭【处决】; 走真入口 on_hit。
 	var before_b: int = _count(s, "exec_blade")
 	var src: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-100, 0))
 	var tgt: Dictionary = s._spawn._make_unit("basic", "right", c + Vector2(100, 0))
 	tgt["maxHp"] = 1000.0
-	tgt["hp"] = 50.0                       # 远低于斩首线
+	tgt["hp"] = 10.0                       # 1%: 远低于任何一档处决线
+	src["crit"] = 0.0
 	s._units.clear()
 	s._units.append_array([src, tgt])
-	## ★配齐斩首的两个前提, 否则 `try_behead` 直接 return false ——
-	##   第一版没配, 分母那条就红了(而且它红得对: 它就是用来抓"局面没配对"的)。
-	##   ① 药水羁绊要到 BEHEAD_TIER 档 ② 目标必须是本方的【猎物】
-	s._potion_syn._prey["left"] = tgt
-	## 直接把本方羁绊档位写进 `_by_side` —— `tier_for` 读的就是它。
-	## ★为什么不去凑 8 件药水装备: 那要连商店/阵容/roster 一起搭, 而这条门禁验的是
-	##   **"斩首成立时演出放不放"**, 不是"羁绊档位怎么算"(那是 verify_synergy_* 的地盘)。
-	##   走真入口 `try_behead` 才是重点, 前提条件用最短路径配齐即可。
-	s._synergy._by_side["left"] = {"药水": s._potion_syn.BEHEAD_TIER}
-	var _tier: int = int(s._synergy.tier_for(src, "药水"))
-	_ok("★分母: 药水羁绊已到斩首档(%d ≥ %d)" % [_tier, s._potion_syn.BEHEAD_TIER],
-		_tier >= s._potion_syn.BEHEAD_TIER, "档位=%d" % _tier)
-	_ok("★分母: 目标已被标为本方猎物", s._potion_syn.is_prey_of("left", tgt))
-	var fired: bool = s._potion_syn.try_behead(src, tgt)
-	_ok("★分母: 药水【斩首】在这个局面下确实触发了", fired, "try_behead=%s" % str(fired))
-	_ok("★★斩首触发 ⇒ 处决演出【真的放了】(不是只跳个字)",
+	s._synergy._by_side["left"] = {"弓箭": 3}
+	_ok("★分母: 弓箭羁绊已到 3 档", int(s._synergy.tier_for(src, "弓箭")) == 3)
+	s._bow_syn.on_hit(src, tgt)
+	_ok("★分母: 弓箭【处决】在这个局面下确实触发了", float(tgt.get("hp", 1.0)) <= 0.0, "hp=%.0f" % float(tgt.get("hp", 0.0)))
+	_ok("★★处决触发 ⇒ 处决演出【真的放了】(不是只跳个字)",
 		_count(s, "exec_blade") == before_b + 1,
 		"刀 %d → %d" % [before_b, _count(s, "exec_blade")])
 
@@ -128,8 +118,8 @@ func _ready() -> void:
 	tgt2["maxHp"] = 1000.0
 	tgt2["hp"] = 999.0                     # 满血
 	s._units.append(tgt2)
-	var fired2: bool = s._potion_syn.try_behead(src, tgt2)
-	_ok("★反面: 满血目标不该被斩首", not fired2, "try_behead=%s" % str(fired2))
+	s._bow_syn.on_hit(src, tgt2)
+	_ok("★反面: 满血目标不该被处决", float(tgt2.get("hp", 0.0)) > 0.0)
 	_ok("★★反面: 没触发就【一把刀都不许多】(否则是恒放)",
 		_count(s, "exec_blade") == before_n,
 		"刀 %d → %d" % [before_n, _count(s, "exec_blade")])
@@ -138,7 +128,7 @@ func _ready() -> void:
 	var src_bow := FileAccess.get_file_as_string("res://scripts/systems/equip/bow_synergy_system.gd")
 	var src_pot := FileAccess.get_file_as_string("res://scripts/systems/equip/potion_synergy_system.gd")
 	_ok("★★弓箭【处决】接的是同一个 `execution` 原语", src_bow.find("_syn.execution(") >= 0)
-	_ok("★★药水【斩首】接的也是它(同族同演出)", src_pot.find("_syn.execution(") >= 0)
+	_ok("★药水【斩首】已删(用户 11-08): 药水羁绊不再放处决演出", src_pot.find("_syn.execution(") < 0)
 
 	s._units.clear()
 	s.set_process(false)

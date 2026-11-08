@@ -312,7 +312,7 @@ func _g4_real_paths() -> void:
 
 	# ── 遗物·生死界跨线(★滞回 + 首次静默) ────────────────────────
 	await _reset()
-	left["_relic_atk_bonus"] = 0.05
+	_set_tiers("left", {"遗物": 1})           # 11-08 起生死界按阵营档位给全体单位(原来写单位上的 _relic_atk_bonus)
 	left.erase("_relic_gate_vfx")
 	left["hp"] = float(left["maxHp"])
 	_s._relic_syn._gate_tick()
@@ -453,19 +453,16 @@ func _g4_real_paths() -> void:
 	_ok("④ ★分母: 档 2 确实一层僵硬都没叠(证明上面那个环是冻结画的)",
 		int(right.get("stiff_stacks", 0)) == 0)
 
-	# ── 奇械·僵硬【不再有任何演出】(用户 2026-08-07 拍板拆掉阈值特效) ──
-	#    ★同样是【反向守卫】: 走 add_stiff 的真入口, 一路叠满 20 层, 断"一个节点都不建"。
+	# ── 奇械·僵硬 / 易碎【整条删了】(用户 2026-11-08「移除这个僵硬和易碎这两个效果」) ──
+	#    ★反向守卫: 顶档命中 25 次也不叠层; 函数与常量都不留空壳。
 	await _reset()
 	_set_tiers("left", {"奇械": 4})
 	right["stiff_stacks"] = 0
-	right.erase("_stiff_vfx")
-	for i in range(25):                            # 叠到封顶, 原来会跨完 5/10/20 三档
-		_s._gadget_syn.add_stiff(right, 1)
-	print("     ⛔ add_stiff ×25(僵硬 %d 层, 原本会跨完三档) → 本层节点 %d 个 (需求 0)" % [
-		int(right.get("stiff_stacks", 0)), _count()])
-	_ok("④ ⛔奇械·僵硬: 拆掉后【一个演出节点都不建】", _count() == 0)
-	_ok("④ ★分母: 层数确实叠满了(证明上面不是「函数没跑」)",
-		int(right.get("stiff_stacks", 0)) == _s._gadget_syn.STIFF_MAX)
+	for i in range(25):
+		_s._gadget_syn.on_hit(left, right)
+	_ok("④ ⛔奇械顶档命中 25 次: 不再叠僵硬", int(right.get("stiff_stacks", 0)) == 0)
+	for m in ["add_stiff", "stiff_mult", "brittle_mult", "_expire_stiff"]:
+		_ok("④ ⛔ gadget_synergy_system 里没有 %s()" % m, not _s._gadget_syn.has_method(m))
 
 	# ── 法器·法力条满 ──────────────────────────────────────────────
 	await _reset()
@@ -501,7 +498,7 @@ func _g4_real_paths() -> void:
 		_syn.has_method("relic_awaken") and _syn.has_method("food_academy")
 		and _syn.has_method("gadget_freeze") and _syn.has_method("tier_advance"))
 	_ok("④ ★反面: 留着的常量确实还在(证明常量表查得到东西)",
-		kg.has("STIFF_MAX") and kf.has("GROW_PER_FOOD") and kc.has("GATE_DEADBAND"))
+		kg.has("COIN_CAP") and kf.has("GROW_PER_FOOD") and kc.has("GATE_DEADBAND"))
 
 
 # ── ⑤ ★母题可分辨 ───────────────────────────────────────────────────────────

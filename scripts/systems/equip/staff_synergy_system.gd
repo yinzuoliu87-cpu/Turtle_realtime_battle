@@ -1,6 +1,6 @@
 class_name StaffSynergySystem
 extends RefCounted
-## 法器羁绊【法力条 / 灵泉 / 余韵 / 共鸣】（2026-08-03）
+## 法器羁绊【法力条 / 余韵 / 共鸣】（2026-08-03; 2026-11-08 用户「法器移除掉灵泉的效果」, 实现与常量删除）
 ##
 ## ★名字换过一轮：潮涌 / 退潮 / 大潮 是**学派「潮汐议会」**的叫法，
 ##   而这个类型现在叫【法器】—— 潮水主题跟它不搭。用户 2026-08-03 要求改成法器向的名字。
@@ -50,8 +50,6 @@ const MANA_FULL_BY_TIER := [200.0, 180.0, 150.0, 120.0, 80.0]
 const MANA_PER_TICK := 15.0        # 每 2.5 秒 +15 (用户 2026-08-13 削弱: 25 → 15)
 const MANA_FROM_DMG := 0.1         # 技能伤害 ×0.1
 const MANA_FROM_TAKEN := 0.1       # 受伤 ×0.1
-## 灵泉（全队）：每 2.5 秒全队回复「已损失生命」的比例
-const SPRING_PCT := [0.0, 0.05, 0.08, 0.12]
 ## 余韵（全队）：友军受到治疗时额外获得治疗量 N% 的护盾
 const ECHO_PCT := [0.0, 0.0, 0.30, 0.50]
 ## 共鸣（全队）：每 7.5 秒全队回复最大生命的 N%，并净化 M 个减益（仅顶档）
@@ -159,7 +157,7 @@ func _fire(u: Dictionary, iid: String, star: int) -> void:
 		battle._vfx._syn.staff_mana_full(Vector2(u.get("pos", Vector2.ZERO)))
 
 
-## 每帧节拍：法力自然增长（每 2.5 秒 +15）+ 灵泉（每 2.5 秒）+ 共鸣（每 7.5 秒）。
+## 每帧节拍：法力自然增长（每 2.5 秒 +15）+ 共鸣（每 7.5 秒）。
 var _t_tick := 0.0
 func tick(delta: float) -> void:
 	_t_tick += delta
@@ -170,15 +168,7 @@ func tick(delta: float) -> void:
 				continue
 			var ti: int = tier_of(u)
 			## ★自然增长(每 2.5 秒 +15)对【每个带法器的人】都跑, 不再要求档位 ≥1（同上）。
-			##   下面的灵泉才是全队收益, 那个仍然要档位。
 			add_mana(u, MANA_PER_TICK)
-			if ti <= 0:
-				continue
-			var pct: float = SPRING_PCT[clampi(ti - 1, 0, 3)]
-			if pct > 0.0:
-				var lost: float = maxf(0.0, float(u.get("maxHp", 0.0)) - float(u.get("hp", 0.0)))
-				if lost > 1.0:
-					battle._damage._heal(u, lost * pct)
 	_t_reso += delta
 	if _t_reso >= RESONANCE_PERIOD:
 		_t_reso -= RESONANCE_PERIOD

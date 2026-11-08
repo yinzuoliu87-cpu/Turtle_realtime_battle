@@ -120,14 +120,14 @@ const TYPE_NAME := {
 ##   · 数字一律用代码常量占位符(C 占位符, 数组带下标 [档] 取那一档)直接读代码; 只有下面几类仍是字面量:
 ##     每档首条的属性(读 TYPES.stats, 由 data_integrity 与 verify_synergy_text 逐档对账)、
 ##     圣光护盾 1/2 件(GameState.shield_grant_count 行内数组)与 +250 最大生命值(EquipStats.STATS 字典)、
-##     食物「双倍」、奇械【易碎】25%(代码存的是倍率 1.25)。
+##     食物「双倍」。
 ##   ★改这里先跑 python tools/copy_lol_style_lint.py 与 tests/verify_codex_synergy_card.tscn。
 const TYPE_INTRO := {
 	"剑": [
 		"剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位生命值越低，攻击力越高。",
 	],
 	"奇械": [
-		"奇械提高携带者的魔抗，并为全队铸造深海币。档位越高，全队攻击越能冰封与削弱敌人。",
+		"奇械提高携带者的魔抗，并为全队铸造深海币。档位越高，全队攻击越能冰封敌人。",
 	],
 	"食物": [
 		"队伍里每件装备为携带者提供最大生命值，食物提供双倍。食物还让最大生命值在战斗中持续成长。",
@@ -157,7 +157,7 @@ const TYPE_INTRO := {
 		"装备小木斧即激活。激活后商店更容易刷出小木斧。",
 	],
 	"遗物": [
-		"遗物提供生命偷取。携带者按生命值高低切换攻击与续航，全队增伤随战斗时间累积，龟蛋也加入战斗。",
+		"遗物提供生命偷取。我方全体单位按生命值高低切换攻击与续航，全队增伤随战斗时间累积，龟蛋也加入战斗。",
 	],
 }
 
@@ -171,8 +171,8 @@ const TIER_DESCS := {
 	"奇械": [
 		"每件奇械为携带者提供 +4 魔抗 · 【铸币】每 {C:GadgetSynergySystem.PERIOD} 秒铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[0]} 枚，本局结束时获得",
 		"每件奇械为携带者提供 +10 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚 · 【冰封】全队攻击有 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% 概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封",
-		"每件奇械为携带者提供 +16 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}% · 【僵硬】全队每段攻击使目标叠加 1 层僵硬，每层降低 {C:GadgetSynergySystem.STIFF_PER_STACK%}% 攻击力，至多 {C:GadgetSynergySystem.STIFF_MAX} 层，持续 {C:GadgetSynergySystem.STIFF_SEC} 秒，叠加时刷新",
-		"每件奇械为携带者提供 +23 魔抗 · 【铸币】每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}% · 【易碎】被冰封或眩晕的敌人受到的伤害提高 25%",
+		"每件奇械为携带者提供 +16 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%",
+		"每件奇械为携带者提供 +23 魔抗 · 【铸币】每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%",
 	],
 	"食物": [
 		"队伍每件装备为携带者提供 +30 最大生命值，每件食物 +60 · 【成长】每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久 +{C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值，无上限，持续到本局结束",
@@ -187,7 +187,7 @@ const TIER_DESCS := {
 	"药水": [
 		"每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%",
 		"每件药水为携带者提供 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[1]%}% · 【战利品】每击杀 1 名猎物，全队永久 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力，持续到本局结束",
-		"每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力 · 【斩首】攻击生命值低于 {C:PotionSynergySystem.BEHEAD_HP_PCT%}% 的猎物时直接处决",
+		"每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力",
 	],
 	"枪": [
 		"每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值",
@@ -195,15 +195,15 @@ const TIER_DESCS := {
 		"每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%",
 	],
 	"弓箭": [
-		"每件弓箭为携带者提供 +9% 暴击率 · 【处决】全队攻击生命值低于 {C:BowSynergySystem.EXEC_BASE[0]%}% 的敌人时直接处决。攻击者暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入这条处决线 · 【穿透】全队攻击无视目标 {C:BowSynergySystem.PEN_PCT[0]%}% 护甲与魔抗 · 【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层时受到的伤害有 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害",
-		"每件弓箭为携带者提供 +16% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% · 【穿透】提高至 {C:BowSynergySystem.PEN_PCT[1]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}%",
-		"每件弓箭为携带者提供 +22% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% · 【穿透】提高至 {C:BowSynergySystem.PEN_PCT[2]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}%",
+		"每件弓箭为携带者提供 +9% 暴击率 · 【处决】全队攻击生命值低于 {C:BowSynergySystem.EXEC_BASE[0]%}% 的敌人时直接处决。攻击者暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入这条处决线 · 【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层时受到的伤害有 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害",
+		"每件弓箭为携带者提供 +16% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}%",
+		"每件弓箭为携带者提供 +22% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}%",
 	],
 	"法器": [
 		"每件法器为携带者提供 +4 魔法穿透、+4 最大龟能 · 【法力】每件法器有独立的法力，充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点时释放该法器的主动效果。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒回复 {C:StaffSynergySystem.MANA_PER_TICK} 点，携带者造成或受到伤害时也会回复。未激活羁绊时需要 {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} 点",
-		"每件法器为携带者提供 +7 魔法穿透、+6 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]} 点 · 【灵泉】每 {C:RealtimeBattle3DScene.EQ_TICK} 秒，全队回复 {C:StaffSynergySystem.SPRING_PCT[1]%}% 已损失生命值",
-		"每件法器为携带者提供 +11 魔法穿透、+8 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点 · 【灵泉】提高至 {C:StaffSynergySystem.SPRING_PCT[2]%}% · 【余韵】友军受到治疗时，额外获得相当于治疗量 {C:StaffSynergySystem.ECHO_PCT[2]%}% 的护盾",
-		"每件法器为携带者提供 +14 魔法穿透、+10 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点 · 【灵泉】提高至 {C:StaffSynergySystem.SPRING_PCT[3]%}% · 【余韵】提高至 {C:StaffSynergySystem.ECHO_PCT[3]%}% · 【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益，依次为眩晕、减速、灼烧、中毒、诅咒",
+		"每件法器为携带者提供 +7 魔法穿透、+6 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]} 点",
+		"每件法器为携带者提供 +11 魔法穿透、+8 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点 · 【余韵】友军受到治疗时，额外获得相当于治疗量 {C:StaffSynergySystem.ECHO_PCT[2]%}% 的护盾",
+		"每件法器为携带者提供 +14 魔法穿透、+10 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点 · 【余韵】提高至 {C:StaffSynergySystem.ECHO_PCT[3]%}% · 【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益，依次为眩晕、减速、灼烧、中毒、诅咒",
 	],
 	"灵物": [
 		"每件灵物为携带者提供 +5% 闪避 · 【触手】召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% 攻击力与生命值，自动攻击最近的敌人",
@@ -218,10 +218,10 @@ const TIER_DESCS := {
 		"商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}% · 重复买到的小木斧转化为砍伐经验",
 	],
 	"遗物": [
-		"每件遗物为携带者提供 +3% 生命偷取 · 【生死界】携带遗物的单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时生命偷取翻倍",
-		"每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人",
-		"每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}",
-		"每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%",
+		"每件遗物为携带者提供 +3% 生命偷取 · 【生死界】我方全体单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取",
+		"每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人",
+		"每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}",
+		"每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%",
 	],
 }
 

@@ -1,6 +1,6 @@
 class_name GadgetSynergySystem
 extends RefCounted
-## 奇械羁绊【铸币 / 冰封 / 僵硬 / 易碎】（2026-08-03）
+## 奇械羁绊【铸币 / 冰封】（2026-08-03; 2026-11-08 用户「移除这个僵硬和易碎这两个效果」, 实现与常量整段删除）
 ##
 ## 来源：学派「寒霜工坊」（`docs/archive/学派效果-实装规格.md`）+ 类型原生的铸币。
 ## 类型原生属性是 `mr`（每件 +4/10/16/23 魔法抗性）。
@@ -8,8 +8,6 @@ extends RefCounted
 ## ── 四条的作用域 ─────────────────────────────────────────────────────
 ## | 铸币 | **队伍**（本场累积，战斗结算时一次性进深海币）|
 ## | 冰封 | **全队**（每段攻击都掷骰，不要求身上带奇械）  |
-## | 僵硬 | **全队**（同上）                              |
-## | 易碎 | **全队**（顶档；对被控的敌人增伤）            |
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  ★铸币：两处我按事实改了原文，都是【必须改】不是我随手改的
@@ -40,20 +38,6 @@ const FREEZE_SEC := 1.5
 const FREEZE_CD := 2.5
 ## 解冻后的免疫时长
 const FREEZE_IMMUNE := 1.5
-
-## 【僵硬】每段攻击叠 1 层，持续 5 秒（叠加刷新时长），每层 -2% 攻击力，最多 20 层
-const STIFF_TIER := 3
-const STIFF_SEC := 5.0
-const STIFF_PER_STACK := 0.02
-const STIFF_MAX := 20
-## ⛔【僵硬】跨 5/10/20 层的阈值提示：**用户 2026-08-07 拍板不做，别加回来**
-##   （方案书 docs/plans/20260807-表现层方案书.md §5 U4）。曾在 18379ba 实装过一版
-##   （`STIFF_VFX_STEPS` + `add_stiff()` 里的三行 + `_expire_stiff()`/`clear()` 里的 `_stiff_vfx` 归零
-##   + `SynergyVfx.gadget_stiff_step()`），本次一起拆净 —— 不留空壳。
-
-## 【易碎】顶档：被冻结或眩晕的敌人，受到的伤害 +25%
-const BRITTLE_TIER := 4
-const BRITTLE_MULT := 1.25
 
 var _t_coin := 0.0
 ## 本场已铸的深海币（各方各记一份；只有玩家那方会真的进账）
@@ -120,7 +104,6 @@ func tick(delta: float) -> void:
 		if cur >= cap:
 			continue
 		_coins[s] = mini(cap, cur + COIN_PER_TICK[clampi(ti - 1, 0, 3)])
-	_expire_stiff()
 
 
 ## 每段攻击命中后调（挂 on-hit，与弓箭处决同一个位置）。
@@ -145,56 +128,6 @@ func on_hit(src, tgt) -> void:
 			#   频率安全: 上面两道闸(同目标 2.5 秒 CD + 解冻后 1.5 秒免疫)已经把它压到全场 ≤1.5 次/秒。
 			if battle._vfx != null and battle._vfx._syn != null:
 				battle._vfx._syn.gadget_freeze(Vector2(tgt.get("pos", Vector2.ZERO)))
-	# ── 僵硬 ──────────────────────────────────────────────
-	if ti >= STIFF_TIER:
-		add_stiff(tgt, 1)
-
-
-## 给目标叠 N 层僵硬（刷新时长）。★攻击力的实际扣减在 `_recalc_stats` 里算，
-## 这里只写字段 + 触发一次重算 —— 单一写入点，和闪避上限同一条规矩。
-func add_stiff(tgt: Dictionary, n: int) -> void:
-	tgt["stiff_stacks"] = mini(STIFF_MAX, int(tgt.get("stiff_stacks", 0)) + n)
-	tgt["stiff_until"] = battle._t + STIFF_SEC
-	battle._recalc_stats(tgt)
-	# ⛔ 这里曾经有一段跨阈值提示(5/10/20 层各闪一次六边环) ——
-	#   用户 2026-08-07 拍板不做，已拆净，别加回来（见文件头 STIFF 那段注释）。
-
-
-## 僵硬到期 → 清零并重算。★不做"每帧检查"，跟着 2.5 秒节拍走就够了
-##   （5 秒时长 vs 2.5 秒检查 = 最多多留 2.5 秒，代价远小于每帧遍历全场）。
-func _expire_stiff() -> void:
-	for u in battle._units:
-		if not (u is Dictionary):
-			continue
-		if int(u.get("stiff_stacks", 0)) <= 0:
-			continue
-		if battle._t < float(u.get("stiff_until", 0.0)):
-			continue
-		u["stiff_stacks"] = 0
-		battle._recalc_stats(u)
-
-
-## 僵硬对攻击力的倍率（挂 `_recalc_stats`）。20 层 = ×0.60。
-static func stiff_mult(u: Dictionary) -> float:
-	var n: int = int(u.get("stiff_stacks", 0))
-	if n <= 0:
-		return 1.0
-	return maxf(0.0, 1.0 - float(mini(n, STIFF_MAX)) * STIFF_PER_STACK)
-
-
-## 【易碎】受伤倍率（挂 `_mitigate_incoming` —— 两条伤害路径共用的唯一入口）。
-## ★判据是"被冻结或眩晕" ⇒ 就是 `stun_until` 一个字段：`_freeze` 本身就是 `_stun` 加特效环，
-##   两者在存储上分不开（同法器净化那条注释）。
-func brittle_mult(u) -> float:
-	if not (u is Dictionary):
-		return 1.0
-	if battle._t >= float((u as Dictionary).get("stun_until", 0.0)):
-		return 1.0
-	# 易碎是【对面】的顶档奇械给的 ⇒ 查的是 u 的敌方
-	var foe: String = "right" if str((u as Dictionary).get("side", "")) == "left" else "left"
-	if _side_tier(foe) < BRITTLE_TIER:
-		return 1.0
-	return BRITTLE_MULT
 
 
 func clear() -> void:
@@ -203,7 +136,6 @@ func clear() -> void:
 	#   在换路时清零等于把上路铸的全丢了。结算时由 `_last_reward` 一次性取走。
 	for u in battle._units:
 		if u is Dictionary:
-			u["stiff_stacks"] = 0
 			u["_gad_freeze_cd"] = 0.0
 			u["_gad_freeze_immune"] = 0.0
 

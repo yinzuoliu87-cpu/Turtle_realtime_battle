@@ -596,7 +596,7 @@ func _dl_build_lane_field() -> void:
 	battle._shield_syn.clear()    # 换路: 怒气累计归零
 	battle._bow_syn.clear()       # 换路: 腐蚀层数归零
 	battle._gun_syn.clear()       # 换路: 炮台节拍与护盾/弹幕相位归零
-	battle._staff_syn.clear()     # 换路: 法力/灵泉/共鸣 节拍归零
+	battle._staff_syn.clear()     # 换路: 法力/共鸣 节拍归零
 	## ★换路把六件的累积余额清零 —— **用户 2026-08-26 拍板「清零」**, 覆盖全部六件:
 	##   064 溺者的浮囊(幽灵盾) / 068 深海气压罐(法力充能) / 070 压舱咸鱼砖(灰血条)
 	##   / 071 炼乳罐(奶油盾) / 072 铁皮蛋糕盒(终极盾) / 087 盗令潜水钟(压载舱)。
@@ -646,7 +646,7 @@ func _dl_build_lane_field() -> void:
 		elif _sysref.has_method("clear"):
 			_sysref.clear()
 	battle._potion_syn.clear()    # 换路: 猎物标记与节拍归零
-	battle._gadget_syn.clear()    # 换路: 僵硬/冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
+	battle._gadget_syn.clear()    # 换路: 冰封CD归零(铸币【不清】—— 一场 = 上路+下路+决胜)
 	battle._food_syn.clear()      # 换路: 成长节拍归零
 	battle._spirit_syn.clear()    # 换路: 触手节拍与追击次数归零
 	# ★★2026-08-06 补(压测抓到: 11 局刷了 1393 条 `Trying to assign invalid previously freed instance`)。
@@ -669,7 +669,6 @@ func _dl_build_lane_field() -> void:
 	##   potion/gadget/food 在本函数里全都 clear 了, 唯独这一个漏了(它当时没有 clear 方法)。
 	battle._synergy.clear()
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
-	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
 	battle._food_syn.apply_all()  # 食物【学院】: 队伍全体额外 +100/220 最大生命(只加一次)
 	battle._food_syn.restore()    # 食物【成长】: 上一路攒的最大生命重放回来(以场重置, 不是以路)

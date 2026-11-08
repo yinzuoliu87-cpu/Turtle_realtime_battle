@@ -6,7 +6,7 @@ extends RefCounted
 ## 类型原生属性是 `_lifestealPct`（每件 +3/5/8/10% 生命偷取）。
 ##
 ## ── 四条的作用域 ─────────────────────────────────────────────────────
-## | 生死界     | **携带者**（>50% 加攻 / <50% 吸血翻倍，按本体血量）|
+## | 生死界     | **我方全体单位**（统领 / 小将 / 召唤物 / 援军 / 炮台 / 龟蛋，按各自血量: >50% 加攻 / ≤50% 获得生命偷取; 2026-11-08 用户, 原来只给携带者）|
 ## | 远古之力   | **全队**（每 2.5 秒全队永久涨【增伤%】，本路累积）  |
 ## | 龟蛋加固   | **本方龟蛋**（加血 + 让蛋自己也能攻击）           |
 ## | 觉醒       | **全队**（顶档，开打满 20 秒后远古之力提速）       |
@@ -33,8 +33,9 @@ const PERIOD := 2.5
 ## 【生死界】血量 >50% 时的攻击力加成（逐档）
 const HP_GATE := 0.5
 const ATK_BONUS := [0.03, 0.05, 0.08, 0.12]
-## <50% 时生命偷取的倍率（原文"翻倍"）
-const LIFESTEAL_MULT := 2.0
+## ≤50% 时获得的生命偷取(逐档)。2026-11-08 用户「改为是全体成员按生命值高低…」: 原来是「携带者遗物那份吸血翻倍」,
+##   没带遗物的单位那份是 0、翻倍还是 0 ⇒ 全体化之后改成直接给一份 = 该档每件遗物的生命偷取(TYPES["遗物"].stats, 门禁对账)。
+const LOW_HP_LS := [0.03, 0.05, 0.08, 0.10]
 ## 【远古之力】每 2.5 秒全队永久 +N% **增伤**（档1 无）。
 ## ★用户 2026-08-04：「远古之力改为获得增伤」—— 原来是 +4/7/11 **攻击力**。
 ##   换掉的理由本身也成立：龟基础攻击力中位只有 40，+350 是 ×9.75，
@@ -106,20 +107,11 @@ func apply_all() -> void:
 	for u in battle._units:
 		if not (u is Dictionary):
 			continue
-		u["_relic_atk_bonus"] = 0.0
 		var ti: int = int(battle._synergy.tier_for(u, "遗物"))
 		if ti <= 0:
 			continue
-		# 生死界的系数写到单位上, 实际按血量分支在 _recalc_stats 里算(那里拿得到实时血量)
-		u["_relic_atk_bonus"] = ATK_BONUS[clampi(ti - 1, 0, 3)]
-		# 记下【遗物这个类型给了这只多少吸血】—— 生死界的"翻倍"只翻这一份。
-		var mine := 0
-		for e in u.get("equips", []):
-			if e is Dictionary and battle.Phase2Types.type_of(str((e as Dictionary).get("id", ""))) == "遗物":
-				mine += 1
-		var rs: Array = (battle.Phase2Types.TYPES.get("遗物", {}) as Dictionary).get("stats", [])
-		var per: float = float((rs[clampi(ti - 1, 0, rs.size() - 1)] as Dictionary).get("_lifestealPct", 0.0))
-		u["_relic_ls"] = per * float(mine) / 100.0
+		# 生死界(2026-11-08 起全体单位)不再往单位上写系数: atk_mult / lifesteal_bonus 现查阵营档位,
+		#   战斗中途才出场的召唤物 / 援军 / 炮台也吃得到。
 		# 龟蛋加固 + 龟蛋反击: 只加一次
 		if u.get("_isEgg", false) and not u.get("_relic_egg_done", false):
 			var add: float = EGG_HP[clampi(ti - 1, 0, 3)]
@@ -141,37 +133,34 @@ func apply_all() -> void:
 		battle._recalc_stats(u)
 
 
-## 【生死界】攻击力倍率（挂 `_recalc_stats`）。
+## 本阵营的遗物档位(生死界给全体单位; 大师是装饰, tier_for 对它回 0)。
+func gate_tier(u: Dictionary) -> int:
+	if battle == null or battle._synergy == null:
+		return 0
+	return int(battle._synergy.tier_for(u, "遗物"))
+
+
+## 【生死界】攻击力倍率（挂 `_recalc_stats`）: 血量 >50% 时 +3/5/8/12%。
 ## ★与血祭同一个乘区（都乘在 base_atk 上），不是独立乘区 —— 避免 R8 那种"多个乘区连乘"。
-static func atk_mult(u: Dictionary) -> float:
-	var b: float = float(u.get("_relic_atk_bonus", 0.0))
-	if b <= 0.0:
+func atk_mult(u: Dictionary) -> float:
+	var ti: int = gate_tier(u)
+	if ti <= 0:
 		return 1.0
 	var mx: float = float(u.get("maxHp", 0.0))
-	if mx <= 0.0:
-		return 1.0
-	if float(u.get("hp", 0.0)) / mx <= HP_GATE:
-		return 1.0                    # <50%: 不加攻, 改成吸血翻倍(见下)
-	return 1.0 + b
+	if mx <= 0.0 or float(u.get("hp", 0.0)) / mx <= HP_GATE:
+		return 1.0                    # ≤50%: 不加攻, 改给生命偷取(见下)
+	return 1.0 + ATK_BONUS[clampi(ti - 1, 0, 3)]
 
 
-## 【生死界】血量 <50% 时额外补的生命偷取（挂 `_recalc_stats` 的 `ls_bonus` 写入点）。
-##
-## ★为什么是"补一份"而不是"整体 ×2"：
-##   实际吸血 = `src.lifesteal + src.ls_bonus`（`battle_damage.gd:226`）。
-##   羁绊给的吸血进的是 **`lifesteal`**（`synergy_system._add` 的 `_lifestealPct` 分支），
-##   而 `_recalc_stats` 只算得出 **`ls_bonus`**（那是 buff 累加出来的）。
-##   ⇒ 拿倍率去乘 `ls_bonus` 等于乘了个不相干的数（实测两边都是 0，门禁当场红）。
-##   改成"把遗物那一份的量再补一份到 ls_bonus 上" —— 结果正好是【遗物提供的生命偷取翻倍】，
-##   而且**不会波及别的吸血来源**（技能吸血/装备吸血照旧），这正是原文的意思。
-static func lifesteal_bonus(u: Dictionary) -> float:
-	var base: float = float(u.get("_relic_ls", 0.0))
-	if base <= 0.0:
+## 【生死界】血量 ≤50% 时给的生命偷取（挂 `_recalc_stats` 的 `ls_bonus` 写入点）: 3/5/8/10%。
+func lifesteal_bonus(u: Dictionary) -> float:
+	var ti: int = gate_tier(u)
+	if ti <= 0:
 		return 0.0
 	var mx: float = float(u.get("maxHp", 0.0))
 	if mx <= 0.0:
 		return 0.0
-	return base * (LIFESTEAL_MULT - 1.0) if float(u.get("hp", 0.0)) / mx <= HP_GATE else 0.0
+	return LOW_HP_LS[clampi(ti - 1, 0, 3)] if float(u.get("hp", 0.0)) / mx <= HP_GATE else 0.0
 
 
 func tick(delta: float) -> void:
@@ -256,20 +245,29 @@ func _awaken_vfx(side: String) -> int:
 	return int(battle._vfx._syn.relic_awaken(lit))
 
 
-## 【生死界】每帧看有没有跨 50% 线。★带滞回, 且**第一次观测只记状态不放特效**
-##   —— 否则开局(或换路重建单位)那一帧全队都会闪一下, 而那时什么都没发生。
+## 【生死界】每帧: ① 结算 —— 跨过 50% 线(或第一次见到这只)就重算属性, 攻击 / 吸血当帧切换;
+##   纯 sim, 不看有没有演出(裁判机没有演出也照样切, 否则客户端与裁判结果对不上)。原来只靠别的原因碰巧重算才生效。
+##   ② 演出 —— 带滞回, 且第一次观测只记状态不放特效(开局那一帧全队闪一下是噪音)。
 func _gate_tick() -> void:
-	if battle == null or battle._vfx == null or battle._vfx._syn == null:
+	if battle == null:
 		return
+	var syn = battle._vfx._syn if battle._vfx != null else null
 	for u in battle._units:
 		if not (u is Dictionary) or not u.get("alive", false):
 			continue
-		if float(u.get("_relic_atk_bonus", 0.0)) <= 0.0:
-			continue                      # 没吃到遗物羁绊的不看(生死界只给携带者)
+		if gate_tier(u) <= 0:
+			continue                      # 本阵营没有遗物羁绊
 		var mx: float = float(u.get("maxHp", 0.0))
 		if mx <= 0.0:
 			continue
 		var r: float = float(u.get("hp", 0.0)) / mx
+		var side_now: int = 2 if r <= HP_GATE else 1
+		if int(u.get("_relic_gate", 0)) != side_now:
+			u["_relic_gate"] = side_now
+			if u.has("buffs") and u.has("base_atk"):
+				battle._recalc_stats(u)
+		if syn == null:
+			continue
 		var prev: int = int(u.get("_relic_gate_vfx", 0))     # 0=还没观测过 1=线上 2=线下
 		var now: int = prev
 		if r <= HP_GATE - GATE_DEADBAND:
@@ -281,7 +279,7 @@ func _gate_tick() -> void:
 		u["_relic_gate_vfx"] = now
 		if prev == 0:
 			continue                      # 第一次只记状态
-		battle._vfx._syn.relic_gate(Vector2(u.get("pos", Vector2.ZERO)), now == 2)
+		syn.relic_gate(Vector2(u.get("pos", Vector2.ZERO)), now == 2)
 
 
 ## 觉醒的一次性提升：把【已累积的】远古之力 ×(1+pct)，仍受上限约束。

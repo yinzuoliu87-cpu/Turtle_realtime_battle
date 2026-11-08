@@ -683,9 +683,9 @@ var _swordsman := SwordsmanSystem.new(self)   # 剑羁绊【剑士】追打(2026
 var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波/反击/收殓】(2026-08-03)
 var _bow_syn := BowSynergySystem.new(self)   # 弓箭羁绊【处决/穿透/腐蚀】(2026-08-03)
 var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控】(2026-08-03)
-var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/灵泉/余韵/共鸣】(2026-08-03)
-var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获/斩首】(2026-08-03)
-var _gadget_syn := GadgetSynergySystem.new(self)   # 奇械羁绊【铸币/冰封/僵硬/易碎】(2026-08-03)
+var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/余韵/共鸣】(2026-08-03)
+var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获】(2026-08-03)
+var _gadget_syn := GadgetSynergySystem.new(self)   # 奇械羁绊【铸币/冰封】(2026-08-03)
 var _food_syn := FoodSynergySystem.new(self)       # 食物羁绊【永久成长/学院】(2026-08-03)
 var _spirit_syn := SpiritSynergySystem.new(self)   # 灵物羁绊【触手/闪避追击/亡灵】(2026-08-03)
 ## ★特殊余额基建(2026-08-05): 独立于 u["shield"] 的第二条余额, 带各自的衰减曲线与破盾回调。
@@ -2178,9 +2178,9 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_crystal_sys.tick(dt) # 031 水晶球B 扫描推进(结算走 sim 时钟, 不走 tween)
 		_equip_tick_sys.tick_delayed(dt)  # 装备【延时结算】共享队列(024/025/026: 走 sim 钟不走 tween)
 		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击(每 2.5 秒·TICK) / 第二座能量循环(每 5 秒·T2_PERIOD)
-		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
+		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 共鸣(7.5s)
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
-		_gadget_syn.tick(dt)  # 奇械: 铸币累计 + 僵硬到期清理
+		_gadget_syn.tick(dt)  # 奇械: 铸币累计
 		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
 		_spirit_syn.tick(dt)  # 灵物: 触手拍击层数(每 SLAP_PERIOD=5 秒 +1, 闪避再 +1) + 空闲时消费 1 层拍一次
 		_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
@@ -4335,8 +4335,6 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 		d *= 1.2                                     # 靶向器055: 被标记目标受伤 +20%
 	if not is_self and int(u.get("corrode_stacks", 0)) > 0:
 		d *= BowSynergySystem.vuln_mult(u)           # 弓箭【腐蚀】: 每层受伤 +5%(最多 5 层)
-	if not is_self and _t < float(u.get("stun_until", 0.0)):
-		d *= _gadget_syn.brittle_mult(u)             # 奇械顶档【易碎】: 被冻结/眩晕的敌人受伤 +25%
 	# ★2026-07-30(需求3 大师技能审核抓到的): 这两行原本是【硬编码字面量】1.25 / 1.2,
 	#   而 HOOK_VULN_MULT 那个常量【在游戏代码里零读者】—— 它唯一的读者是门禁
 	#   verify_trainer_desc, 拿它推出文案该写"+25%"。两个 1.25 只是碰巧相等:
@@ -6409,12 +6407,9 @@ func _recalc_stats(u: Dictionary) -> void:
 	if float(u.get("_blood_rite", 0.0)) > 0.0 and float(u.get("maxHp", 0.0)) > 0.0:
 		var lost_pct: float = clampf(1.0 - float(u.get("hp", 0.0)) / float(u["maxHp"]), 0.0, 1.0) * 100.0
 		u["atk"] += u["base_atk"] * lost_pct * float(u["_blood_rite"]) / 100.0
-	# ★遗物【生死界】(羁绊·2026-08-03): 血量 >50% 时 +3/5/8/12% 攻击力。
+	# ★遗物【生死界】(羁绊·2026-08-03; 11-08 起我方全体单位): 血量 >50% 时 +3/5/8/12% 攻击力。
 	#   与血祭同一个乘区(都乘在 base_atk 上), 不是独立乘区 —— 避免 R8 那种"多个乘区连乘"。
-	u["atk"] *= RelicSynergySystem.atk_mult(u)
-	# ★奇械【僵硬】(羁绊·2026-08-03): 每层 -2% 攻击力, 最多 20 层(= ×0.60)。
-	#   ⚠ 放在【这个唯一写入点】—— 在各处攻击计算里自己乘必然漏掉一半路径。
-	u["atk"] *= GadgetSynergySystem.stiff_mult(u)
+	u["atk"] *= _relic_syn.atk_mult(u)
 	# ★★2026-08-06 加【削甲/削抗】通道 `def_shred` / `mr_shred`(089 蚀月符纸「每秒削减 1 魔抗」)。
 	#   背景: `DamageMath.resist_multiplier` 对**负**抗性是增伤(`1+|r|/(|r|+40)`, 上限 2.0),
 	#   `damage_math.gd:28` 注明这是**有意设计** —— 而这两行的 `maxf(0.0, …)` 把负值抹平了,
@@ -6438,9 +6433,8 @@ func _recalc_stats(u: Dictionary) -> void:
 	#     单只装备上限 3 件, 带 2 件 3★ 幽灵墨鱼(各 50%) → dodge_bonus = 1.00 = 100% 免疫。
 	#   上限加在这个【唯一写入点】, 不是加在判定处 —— 这样属性面板显示的也是真实生效值, 不骗人。
 	u["dodge_bonus"] = minf(dodge, DODGE_CAP)
-	# ★遗物【生死界】另一半: 血量 <50% 时生命偷取【翻倍】(原文括号里那串 10/20/40/64
-	#   四个档四种倍率、既不是翻倍也没规律, 见 relic_synergy_system.gd 文件头)。
-	u["ls_bonus"] = ls + RelicSynergySystem.lifesteal_bonus(u)
+	# ★遗物【生死界】另一半: 血量 ≤50% 时获得 3/5/8/10% 生命偷取(11-08 起我方全体单位, 原来是携带者那份翻倍)。
+	u["ls_bonus"] = ls + _relic_syn.lifesteal_bonus(u)
 
 # flat DoT (诅咒等). dps=每秒落血; 真伤穿护盾. 灼烧/中毒/流血改走 _damage._apply_dot_stacks 层数模型.
 func _add_dot(u: Dictionary, tag: String, dps: float, sec: float, src = null) -> void:

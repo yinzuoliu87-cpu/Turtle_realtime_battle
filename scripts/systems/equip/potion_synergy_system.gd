@@ -1,6 +1,6 @@
 class_name PotionSynergySystem
 extends RefCounted
-## 药水羁绊【猎物 / 战利品 / 斩首】（2026-08-03）
+## 药水羁绊【猎物 / 战利品】（2026-08-03; 2026-11-08 用户「药水移除这个斩首的效果」, 实现与常量删除）
 ##
 ## 来源：学派「猎人集会」（`docs/archive/学派效果-实装规格.md`），
 ## 类型原生是 `healAmp` / `shieldAmp` / `_maxEnergy`（每件 +6/12/20 治疗强度、+6/12/20 护盾强度、
@@ -10,7 +10,6 @@ extends RefCounted
 ## ── 三条的作用域 ─────────────────────────────────────────────────────
 ## | 猎物 | **全队**（标记是给整支队伍打的，所有人对猎物都增伤） |
 ## | 战利品 | **全队**（击杀猎物 → 全队永久涨攻，本场累积）        |
-## | 斩首 | **全队**（顶档；攻击猎物时残血直接处决）             |
 ##
 ## ★为什么猎物选「当前生命值最高」而不是最低：
 ##   选最低就是"补刀增伤"，等于把已经要死的敌人杀得更快，收益接近 0。
@@ -29,9 +28,6 @@ const PREY_AMP := [0.15, 0.25, 0.40]
 ##   原来那个量是"一场杀 3~4 只猎物就 +66~152 攻"，相当于凭空多出一件顶级装备；
 ##   现在是慢积累型 —— 打得越久越强，但单次击杀不再改变战局。
 const HARVEST_ATK := [0.0, 5.0, 8.0]
-## 斩首（仅顶档）：攻击猎物时，其生命低于这个比例 → 直接处决
-const BEHEAD_TIER := 3
-const BEHEAD_HP_PCT := 0.20
 const PERIOD := 2.5
 
 var _t_mark := 0.0
@@ -76,35 +72,6 @@ func amp_for(src, tgt) -> float:
 	if ti <= 0:
 		return 1.0
 	return 1.0 + PREY_AMP[clampi(ti - 1, 0, 2)]
-
-
-## 【斩首】攻击猎物时若其生命 < 20% → 直接处决（顶档）。挂在 on-hit，与弓箭处决同一个位置。
-## ★返回值没人用 —— 处决本身就是终态；但保留 bool 让门禁能一眼看出"这次到底斩没斩"。
-func try_behead(src, tgt) -> bool:
-	if not (src is Dictionary) or not (tgt is Dictionary) or not tgt.get("alive", false):
-		return false
-	var side: String = str(src.get("side", ""))
-	if _side_tier(side) < BEHEAD_TIER:
-		return false
-	if not is_prey_of(side, tgt):
-		return false
-	if tgt.get("eq_exec_immune", false):
-		return false          # 免疫处决(龟蛋/大师等) —— 与弓箭处决同一道闸
-	var mx: float = float(tgt.get("maxHp", 0.0))
-	if mx <= 0.0 or float(tgt.get("hp", 0.0)) >= mx * BEHEAD_HP_PCT:
-		return false
-	if battle._damage.execute_saved(tgt):
-		return false          # 免死(亡灵等)挡下斩首
-	## ★★处决演出(2026-08-14): 药水【斩首】与弓箭【处决】是同族 —— 都是"血线以下直接抹杀",
-	##   玩家看到的应当是**同一件事**, 所以共用 `SynergyVfx.execution`。
-	##   在此之前两条都只有一句 `-999999` 浮字, 与普通真伤大字长得一样, 读不出"这是处决"。
-	if battle._vfx != null and battle._vfx._syn != null:
-		battle._vfx._syn.execution(tgt["pos"], SynergyVfx.COL_POTION)
-	battle._vfx._float_text(tgt["pos"], "-999999",
-		battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")
-	tgt["hp"] = 0.0
-	battle._kill(tgt, src)
-	return true
 
 
 ## 【战利品】猎物阵亡 → 全队攻击力永久 +N。挂 `_kill`。
