@@ -11401,7 +11401,14 @@ grant execute on function public.account_delete_self() to authenticated;
 --      raid_defense_report：已绑定的号状态变了（有没有阵容 / rating / 设备号）⇒ 发件箱 defense
 --      raid_week_rollover：换周 ⇒ 上周报过「有阵容」的已绑定号一律报 hasDefense:false（pg_cron 每小时第 3 分钟，周一 00:03 UTC 起）
 --   ④ raid_jobs + raid_create（主站建任务，只给 service_role）：raidId 幂等回同一 jobId；没绑定 / 没有本周阵容 / 阵容不合法 ⇒
---      不排裁判、直接 settle void；否则锁定双方快照（带服务器的 owned = mainsite_pets）建 kind = 'raid' 的裁判任务
+--      不排裁判、直接 settle void；否则锁定双方快照建 kind = 'raid' 的裁判任务：
+--      ★本周等级与装备以服务器记账为准（raid_lock_snapshot，§4.9「背包里没有的件、超上限的件这场不认」）：
+--        等级 = econ_state 重放出的本周等级（没有这一行 = 1）；每件装备必须在账本里同一只身上（小将合在一起算），
+--        单只 ≤ 3、全队 ≤ (等级 − 1) × 2（= phase2_config.gd UNIT_EQUIP_CAP / team_equip_cap），多出来的按顺序不认；
+--        场次 = raid_rating；小木斧 / 宝箱 / 香火起点 = 重放结果（同 econ_check 比的那几样）
+--      ★服务器的 owned（mainsite_pets）与账号只进任务 meta（a_owned / b_owned / a_account / b_account，裁判从任务单 key 读，
+--        = 20261109b 领活盖章同一组键），不盖进快照 ⇒ 不跟着快照进 matches / 录像 / 直播
+--   ⑨ matches 写入前摘掉快照里的 owned / account_id（兜底：任何一条路带进来都不外泄；matches 任何登录用户都读得到）
 --   ⑤ referee_jobs 状态钩子（触发器）：raid 领到 ⇒ started；写回 ⇒ settle（a 赢 = attacker、b 赢 = defender）；
 --      失败（拒算 / 次数用尽 / 超时）⇒ settle void；周赛局（积分赛 / 闯关 / 决赛）写回 ⇒ 双方 rating 重算、变了就报 defense
 --   ⑥ raid_sweep：排队过了 expireAt 还没开算 ⇒ 不再算；开算 30 分钟没结果 ⇒ void。pg_cron 每分钟（领活本身也不领这两种）
@@ -11411,7 +11418,7 @@ grant execute on function public.account_delete_self() to authenticated;
 --   不发深海币 / 宝箱 / 香火 / 小木斧经验 / 命运之轮 / 龟经验，不计本大轮场数（raid_rating 不数 raid 局），不进快照池（ghosts /
 --   gauntlet_ghosts 不写）；只落一行 matches（phase = 'raid'，录像）。referee_complete 本身不改。
 -- ★时间：周锚点按 app_now()（与积分赛同一口径，内测服假时钟跟着走）；expireAt / 30 分钟按真时间 now()（主站的钟）。
--- 回滚：raid_on = false；trigger raid_job_status 可 drop；referee_claim / purge_old_matches 换回 20261101d / 20261008 版。
+-- 回滚：raid_on = false；trigger raid_job_status / matches_strip_private 可 drop；referee_claim / purge_old_matches 换回 20261101d / 20261008 版。
 -- ★重复执行安全（if not exists / create or replace / drop ... if exists）。
 -- ─────────────────────────────────────────────────────────────
 
@@ -11423,13 +11430,10 @@ alter table public.referee_jobs add constraint referee_jobs_kind_check
 alter table public.referee_config add column if not exists raid_on boolean not null default false;
 
 -- 偷袭开着没有。★§4.9：押的是龟币，本周等级与装备必须以服务器记账为准 ⇒ raid_on 只有在 econ_on（记账总开关，
---   econ/ledger 分支 20261106c 加的 referee_config.econ_on）也开着时才生效。
---   econ_on 那一列还没进 main ⇒ 按整行转 jsonb 取（列不存在 = null = 关），合并 econ/ledger 后不用改这里也自动接上
---   （想写得更直白可以换成 public.referee_econ_on()）。判断只在这一处。
+--   20261106b referee_econ_on()）也开着时才生效。判断只在这一处。
 create or replace function public.raid_enabled() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select c.raid_on and coalesce((to_jsonb(c) ->> 'econ_on')::boolean, false)
-                     from public.referee_config c where c.id = 1), false)
+  select coalesce((select c.raid_on from public.referee_config c where c.id = 1), false) and public.referee_econ_on()
 $$;
 revoke all on function public.raid_enabled() from public, anon, authenticated;
 
@@ -11626,7 +11630,7 @@ create table if not exists public.raid_jobs (
   season_week      bigint      not null,
   status           text        not null default 'queued' check (status in ('queued', 'started', 'done', 'void')),
   reason           text,                                                   -- void 的原因（attacker_unlinked / defender_no_defense / raid_timeout …）
-  a_snapshot       jsonb,                                                  -- 建任务那一刻锁定的攻方阵容（= 裁判任务的 a，含 owned）
+  a_snapshot       jsonb,                                                  -- 建任务那一刻锁定的攻方阵容（= 裁判任务的 a：已按记账改写，不含 owned）
   b_snapshot       jsonb,                                                  -- 守方（= b）
   a_owned          jsonb,                                                  -- 攻方拥有的龟（mainsite_pets 的 pet_key）
   b_owned          jsonb,
@@ -11666,6 +11670,125 @@ begin
   end if;
 end $$;
 revoke all on function public.raid_void(bigint, text, boolean) from public, anon, authenticated;
+
+-- 装备上限（= phase2_config.gd：UNIT_EQUIP_CAP 3；team_equip_cap(等级) = (clamp(等级, 1, MAX_LEVEL 10) − 1) × 2）。
+--   ★两边各一份 ⇒ 检查脚本 L0 把这里的 0 ~ 11 级钉成一张字面表，tests/verify_raid_private_fields.gd 拿同一张表对 GDScript。
+create or replace function public.raid_unit_equip_cap() returns int language sql immutable as $$ select 3 $$;
+revoke all on function public.raid_unit_equip_cap() from public, anon, authenticated;
+create or replace function public.raid_team_equip_cap(p_lv int) returns int language sql immutable as $$
+  select greatest(0, (least(greatest(coalesce(p_lv, 1), 1), 10) - 1) * 2)
+$$;
+revoke all on function public.raid_team_equip_cap(int) from public, anon, authenticated;
+
+-- 一件装备的比对键「id|星」（= econ_items_key 的口径：星缺 = 1、按整数比）；不是对象 / 没有 id / 星不是数 ⇒ null（这件不认）
+create or replace function public.raid_item_key(p_it jsonb) returns text language sql immutable as $$
+  select case when jsonb_typeof(p_it) = 'object' and coalesce(p_it ->> 'id', '') <> ''
+                   and (not (p_it ? 'star') or jsonb_typeof(p_it -> 'star') = 'number')
+              then (p_it ->> 'id') || '|' || coalesce(round((p_it ->> 'star')::numeric)::int, 1)::text end
+$$;
+revoke all on function public.raid_item_key(jsonb) from public, anon, authenticated;
+
+-- 一组装备 ⇒ {键: 件数}
+create or replace function public.raid_item_counts(p_items jsonb) returns jsonb language sql immutable as $$
+  select coalesce(jsonb_object_agg(k, n), '{}'::jsonb)
+    from (select public.raid_item_key(x) as k, count(*)::int as n
+            from jsonb_array_elements(case when jsonb_typeof(p_items) = 'array' then p_items else '[]'::jsonb end) x
+           group by 1) t
+   where k is not null
+$$;
+revoke all on function public.raid_item_counts(jsonb) from public, anon, authenticated;
+
+-- ★锁定快照：本周等级与装备改成服务器记账（econ_state，裁判机按流水重放的结果；§4.9 / 20261106 §4.5）。
+--   等级：econ_state.assets.lv（没有这一行 = 本周还没有任何流水 = 1；快照自报的不认）
+--   装备：统领每件必须在账本里这只身上（assets.worn[龟]，按件数扣）；小将每件必须在账本里某只小将身上（assets.minions 合起来按件数扣，
+--         小将之间换位不算错）；单只 ≤ raid_unit_equip_cap、全队 ≤ raid_team_equip_cap(等级)；
+--         不认的件直接拿掉；超上限按「统领按 leaders 顺序 → 上路小将 → 下路小将、每只按快照里的顺序」先到先留
+--   场次：season_total_battles = raid_rating（援军小将按场次成长，同 ranked_stamp_snapshot）
+--   小木斧 / 宝箱 / 香火：= 重放结果（同 econ_check 比的键；没有这一行 = 本周起点 0 / 空）
+--   其余（阵容、站位、技能、大师、头像名字）原样；owned / account_id 摘掉。
+--   ★不看 econ_on（开关在 raid_enabled 一处）；econ_state 有不合法的一条（bad_at ≥ 0）时 assets 是合法前缀的结果，照用。
+create or replace function public.raid_lock_snapshot(p_uid uuid, p_week bigint, p_snap jsonb) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare s public.econ_state%rowtype; v_a jsonb := '{}'::jsonb; v_p jsonb := '{}'::jsonb; v_lv int; v_cap int;
+        v_unit int := public.raid_unit_equip_cap(); v_used int := 0; v_out jsonb; v_pid text; v_avail jsonb; v_pool jsonb;
+        v_kept jsonb; v_eq jsonb := '{}'::jsonb; v_it jsonb; v_k text; v_lane text; v_m jsonb; v_new jsonb; v_mins jsonb := '{}'::jsonb;
+        v_mlist jsonb := '[]'::jsonb;
+begin
+  select * into s from public.econ_state where account_id = p_uid and week = p_week;
+  if found then
+    v_a := case when jsonb_typeof(s.assets) = 'object' then s.assets else '{}'::jsonb end;
+    v_p := case when jsonb_typeof(s.progress) = 'object' then s.progress else '{}'::jsonb end;
+  end if;
+  v_lv := least(greatest(coalesce(case when jsonb_typeof(v_a -> 'lv') = 'number' then round((v_a ->> 'lv')::numeric)::int end, 1), 1), 10);
+  v_cap := public.raid_team_equip_cap(v_lv);
+  v_out := (p_snap - 'owned' - 'account_id') || jsonb_build_object('season_level', v_lv,
+    'season_total_battles', public.raid_rating(p_uid, p_week),
+    'axe_exp_total', coalesce(case when jsonb_typeof(v_a -> 'axe' -> 1) = 'number' then round((v_a -> 'axe' ->> 1)::numeric)::int end, 0),
+    'axe_stage', coalesce(case when jsonb_typeof(v_a -> 'axe' -> 2) = 'number' then round((v_a -> 'axe' ->> 2)::numeric)::int end, 0),
+    'axe_final', coalesce(v_a -> 'axe' ->> 3, ''),
+    'chest_treasure_value', coalesce(case when jsonb_typeof(v_p -> 'cv') = 'number' then v_p -> 'cv' end, '0'::jsonb),
+    'chest_treasures_won', coalesce(case when jsonb_typeof(v_p -> 'cw') = 'array' then v_p -> 'cw' end, '[]'::jsonb),
+    'incense_marks', coalesce(case when jsonb_typeof(v_p -> 'im') = 'number' then round((v_p ->> 'im')::numeric)::int end, 0),
+    'incense_charge', coalesce(case when jsonb_typeof(v_p -> 'ic') = 'number' then round((v_p ->> 'ic')::numeric)::int end, 0));
+  -- 统领
+  for v_pid in select x from jsonb_array_elements_text(case when jsonb_typeof(p_snap -> 'leaders') = 'array'
+                                                            then p_snap -> 'leaders' else '[]'::jsonb end) with ordinality t(x, i)
+                order by i loop
+    continue when v_eq ? v_pid;
+    v_avail := public.raid_item_counts(v_a -> 'worn' -> v_pid);
+    v_kept := '[]'::jsonb;
+    for v_it in select x from jsonb_array_elements(case when jsonb_typeof(p_snap -> 'equipped' -> v_pid) = 'array'
+                                                        then p_snap -> 'equipped' -> v_pid else '[]'::jsonb end) with ordinality t(x, i)
+                 order by i loop
+      v_k := public.raid_item_key(v_it);
+      if v_k is not null and coalesce((v_avail ->> v_k)::int, 0) > 0 and jsonb_array_length(v_kept) < v_unit and v_used < v_cap then
+        v_kept := v_kept || jsonb_build_array(v_it || jsonb_build_object('star', (regexp_match(v_k, '[|](-?[0-9]+)$'))[1]::int));
+        v_avail := v_avail || jsonb_build_object(v_k, (v_avail ->> v_k)::int - 1);
+        v_used := v_used + 1;
+      end if;
+    end loop;
+    if jsonb_array_length(v_kept) > 0 then
+      v_eq := v_eq || jsonb_build_object(v_pid, v_kept);
+    end if;
+  end loop;
+  v_out := v_out || jsonb_build_object('equipped', v_eq);
+  -- 小将：账本里全部小将身上的件合成一个池（assets.minions = 每只一个 JSON 串 {"eq": [...], "lv": n}）
+  for v_m in select case when jsonb_typeof(x) = 'string' then (x #>> '{}')::jsonb else x end
+               from jsonb_array_elements(case when jsonb_typeof(v_a -> 'minions') = 'array' then v_a -> 'minions' else '[]'::jsonb end) x loop
+    if jsonb_typeof(v_m) = 'object' and jsonb_typeof(v_m -> 'eq') = 'array' then
+      v_mlist := v_mlist || (v_m -> 'eq');
+    end if;
+  end loop;
+  v_pool := public.raid_item_counts(v_mlist);
+  if jsonb_typeof(p_snap -> 'minions') = 'object' then
+    for v_lane in select key from jsonb_each(p_snap -> 'minions') order by (key <> 'top'), (key <> 'bottom'), key loop
+      v_new := '[]'::jsonb;
+      for v_m in select x from jsonb_array_elements(case when jsonb_typeof(p_snap -> 'minions' -> v_lane) = 'array'
+                                                         then p_snap -> 'minions' -> v_lane else '[]'::jsonb end) with ordinality t(x, i)
+                  order by i loop
+        if jsonb_typeof(v_m) = 'object' and v_m ? 'equips' then
+          v_kept := '[]'::jsonb;
+          for v_it in select x from jsonb_array_elements(case when jsonb_typeof(v_m -> 'equips') = 'array'
+                                                              then v_m -> 'equips' else '[]'::jsonb end) with ordinality t(x, i)
+                       order by i loop
+            v_k := public.raid_item_key(v_it);
+            if v_k is not null and coalesce((v_pool ->> v_k)::int, 0) > 0 and jsonb_array_length(v_kept) < v_unit and v_used < v_cap then
+              v_kept := v_kept || jsonb_build_array(v_it || jsonb_build_object('star', (regexp_match(v_k, '[|](-?[0-9]+)$'))[1]::int));
+              v_pool := v_pool || jsonb_build_object(v_k, (v_pool ->> v_k)::int - 1);
+              v_used := v_used + 1;
+            end if;
+          end loop;
+          v_m := v_m || jsonb_build_object('equips', v_kept);
+        end if;
+        v_new := v_new || jsonb_build_array(v_m);
+      end loop;
+      v_mins := v_mins || jsonb_build_object(v_lane, v_new);
+    end loop;
+    v_out := v_out || jsonb_build_object('minions', v_mins);
+  end if;
+  return v_out;
+end $$;
+revoke all on function public.raid_lock_snapshot(uuid, bigint, jsonb) from public, anon, authenticated;
 
 -- 主站建任务（raid_intake.handle_create 调；只给 service_role）。回 {ok:true, jobId} / {ok:false, error}。
 --   ok:false（主站立即作废退回）：bad_raidId / bad_userId / same_user / raid_conflict（同 raidId 双方不同）/ raid_off / expired / no_referee
@@ -11742,16 +11865,19 @@ begin
   end if;
   select coalesce(jsonb_agg(p.pet_key order by p.pet_key), '[]'::jsonb) into v_own_a from public.mainsite_pets p where p.account_id = ua;
   select coalesce(jsonb_agg(p.pet_key order by p.pet_key), '[]'::jsonb) into v_own_b from public.mainsite_pets p where p.account_id = ud;
-  -- 锁定：本周那份快照 + 服务器的 owned / 账号（C 的裁判校验「拥有 ∪ 限免」按这两个键读）
-  v_snap_a := (da.snapshot - 'owned' - 'account_id') || jsonb_build_object('owned', v_own_a, 'account_id', ua::text);
-  v_snap_b := (dd.snapshot - 'owned' - 'account_id') || jsonb_build_object('owned', v_own_b, 'account_id', ud::text);
+  -- 锁定：本周那份快照，等级 / 装备 / 场次 / 小木斧宝箱香火改成服务器记账（raid_lock_snapshot）。
+  --   服务器的 owned / 账号只进 meta（= 20261109b 领活盖章的 a_owned / b_owned / a_account / b_account；裁判从 key 读），
+  --   ★不盖进快照：快照会原样进 matches 与录像（任何登录用户都读得到）。
+  v_snap_a := public.raid_lock_snapshot(ua, wk, da.snapshot);
+  v_snap_b := public.raid_lock_snapshot(ud, wk, dd.snapshot);
   v_seed := case when p_seed between 1 and 9007199254740991 then p_seed else public.referee_new_seed() end;
   insert into public.referee_jobs (kind, match_key, season_week, client_version, seed,
       a_account, b_account, a_snapshot, b_snapshot, level, meta)
     values ('raid', format('raid:%s', p_raid_id), wk, v_ver, v_seed, ua, ud, v_snap_a, v_snap_b,
       public.referee_level_of(v_snap_a),
       jsonb_build_object('raid_id', p_raid_id, 'attacker', p_attacker, 'defender', p_defender,
-                         'account', ua, 'b_account', ud, 'expire_ms', p_expire_at))
+                         'account', ua, 'b_account', ud, 'expire_ms', p_expire_at,
+                         'a_account', ua, 'a_owned', v_own_a, 'b_owned', v_own_b))
     on conflict (match_key) do nothing
     returning job_id, match_id into jid, mid;
   if jid is null then
@@ -11915,4 +12041,23 @@ language sql security definer as $$
   delete from public.gauntlet_ghosts where season_week < extract(epoch from date_trunc('week', now() at time zone 'UTC'))::bigint;
 $$;
 revoke all on function public.purge_old_matches() from public, anon, authenticated;
+
+-- ⑨ matches 写入前摘私有字段（兜底）：快照里的 owned（拥有的龟）/ account_id 不进 matches。
+--   matches 任何登录用户都读得到（matches_read_all）；偷袭局的拥有与账号只该在任务单里（raid_create 已不往快照里盖，
+--   这一道管的是任何别的路 —— 旧任务、以后谁又往快照里塞 —— 带进来的）。客户端快照本来就没有这两个键 ⇒ 对它们一字不变。
+create or replace function public.matches_strip_private() returns trigger
+language plpgsql as $$
+begin
+  if jsonb_typeof(new.left_snapshot) = 'object' then
+    new.left_snapshot := new.left_snapshot - 'owned' - 'account_id';
+  end if;
+  if jsonb_typeof(new.right_snapshot) = 'object' then
+    new.right_snapshot := new.right_snapshot - 'owned' - 'account_id';
+  end if;
+  return new;
+end $$;
+revoke all on function public.matches_strip_private() from public, anon, authenticated;
+drop trigger if exists matches_strip_private on public.matches;
+create trigger matches_strip_private before insert or update of left_snapshot, right_snapshot on public.matches
+  for each row execute function public.matches_strip_private();
 -- <<< END raid 20261109c <<<
