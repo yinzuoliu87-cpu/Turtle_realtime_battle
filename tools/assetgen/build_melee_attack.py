@@ -5,7 +5,8 @@
 做法: 第 0 帧保留原帧(中性站姿, ANIM_NORM / verify_elite_anim 按它对账) + PixelLab animate_image 8 帧
   (「往后拉三叉戟蓄力 → 朝左刺到底 → 定住 → 收回」, 原始帧在 tools/assetgen/ai_src/melee_attack/), 锁回小将原调色板。
 命中帧 = 伸出量第一次达到最大值 85% 的那一帧(刚刺到), 打印出来抄进 scripts/gamedata/attack_hits.gd。
-输出: assets/sprites/pets/animations/melee/attack.png(9 帧 × 88)。确定性: 重跑逐字节相同。
+输出: tools/assetgen/ai_src/attack_rhythm/melee/orig.png(9 帧 × 88)—— 11-08 起是中间产物, 再由 build_attack_rhythm.py 重排成
+  「蓄力 → 挥动 → 命中 → 停 2 → 收回 4」写进游戏帧条(命中帧以那边为准)。确定性: 重跑逐字节相同。
 用法: python tools/assetgen/build_melee_attack.py
 """
 import os
@@ -19,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import build_spine_actions as A  # noqa: E402
 
-SHEET = os.path.join(ROOT, "assets", "sprites", "pets", "animations", "melee", "attack.png")
+SHEET = os.path.join(HERE, "ai_src", "attack_rhythm", "melee", "orig.png")   # 11-08 起: 中间产物, 游戏帧条由 build_attack_rhythm.py 写
 SRC = os.path.join(HERE, "ai_src", "melee_attack")
 PAL_FROM = [os.path.join(ROOT, "assets", "sprites", "pets", "animations", "melee", p) for p in ("idle.png", "run.png", "leap.png")]
 ORIG_F0 = os.path.join(SRC, "orig_f0.png")   # 原帧条第 0 帧(第一次运行时从旧帧条存下; 之后帧条已被覆盖, 以它为准)
