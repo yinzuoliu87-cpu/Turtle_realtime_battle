@@ -168,6 +168,12 @@ WHY = {
     "override": "全局决赛日层的数据注入(finals_day_feed.gd static `feeds()`: 非空就用它, 空 = 读 Supabase 本周缓存 = 玩家路径); "
                 "门禁不连后端, verify_finals_day_global / verify_finals_day_recap 把 fixture 的 feeds(某一刻) 写进来, "
                 "量开播前弹窗 / 小条每一阶段 / 收盘补看; 每段开头写回 {} 清场。2026-10-31 周日决赛日重做 9dd8444d 加",
+    "gateway_override": "龟投账号登录网关地址的门禁注入(mainsite_link.gd `gateway_base()`: 产品按构建特性选正式 / 内测网关, "
+                        "开发进程可用环境变量 TURTLE_ARENA_GATEWAY); verify_mainsite_link 指到假网关 https://gw.test, 量请求地址。2026-11-08 加",
+    "now_override": "龟投账号登录的「现在」注入(mainsite_link.gd `_now()`, unix 秒; 产品读系统时间): "
+                    "verify_mainsite_link 把它钉到 5 分钟上限之后, 量「本机到点不发请求直接过期」, 不用真等 5 分钟。2026-11-08 加",
+    "force_in_test": "偷袭防守阵容上传的门禁闸(raid_defense_net.gd `put_defense()`: test_mode 里一律不传 —— 回放 / 切磋时内存里不是玩家的阵容); "
+                     "verify_raid_defense_put 打开它, 才量得到「离开背包 / 选龟页 / 打完一局真的传」。只跳 test_mode 那一道。2026-11-08 加",
     ## ⚠ 这张表**只写核对过出处的理由** —— 一条实测教训, 留一句免得重犯:
     ##   2026-09-28 我顺手给 `_info_passive_lbl` / `_info_passive_tpl` 编了两条理由,
     ##   一查全错: 它们当时已经被删掉了, 而"tests 在写它"其实是判据把

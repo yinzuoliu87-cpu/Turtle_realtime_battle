@@ -1624,7 +1624,7 @@ func fetch_status() -> void:
 ##   (前者还没有身份, 后者的读策略是 `using (true)`)。
 func _headers(extra: String = "") -> PackedStringArray:
 	var k := anon_key()
-	var bearer := _token if _token != "" else k
+	var bearer: String = str(get_meta(&"bearer", "")) if has_meta(&"bearer") else (_token if _token != "" else k)   # 节点上挂了 bearer ⇒ 这一条用它(mainsite_link 登录已失效时的临时匿名会话)
 	var h := PackedStringArray([
 		"apikey: " + k,
 		"Authorization: Bearer " + bearer,

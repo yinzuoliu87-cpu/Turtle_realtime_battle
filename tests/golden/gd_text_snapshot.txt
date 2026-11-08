@@ -2135,6 +2135,7 @@ scripts/scenes/menu_queue.gd|lit|取消匹配后可使用背包。
 scripts/scenes/menu_queue.gd|lit|取消匹配后可使用邮箱登录。
 scripts/scenes/menu_queue.gd|lit|取消匹配后可删除账号。
 scripts/scenes/menu_queue.gd|lit|取消匹配后可开始新手教程。
+scripts/scenes/menu_queue.gd|lit|取消匹配后可绑定龟投账号。
 scripts/scenes/menu_queue.gd|lit|取消匹配后可设置训龟大师。
 scripts/scenes/menu_queue.gd|lit|正在匹配闯关赛对手，阵容已锁定。
 scripts/scenes/menu_queue.gd|lit|正在退出
@@ -2184,6 +2185,26 @@ scripts/scenes/settings/blocklist_panel.gd|lit|移出
 scripts/scenes/settings/blocklist_panel.gd|lit|黑名单
 scripts/scenes/settings/blocklist_panel.gd|lit|黑名单中的玩家昵称显示为默认昵称。名单仅保存在本设备。
 scripts/scenes/settings/blocklist_panel.gd|lit|黑名单为空
+scripts/scenes/settings/mainsite_link_dialog.gd|lit|切换后，本机将登录该账号。
+scripts/scenes/settings/mainsite_link_dialog.gd|lit|切换账号
+scripts/scenes/settings/mainsite_link_dialog.gd|lit|取消
+scripts/scenes/settings/mainsite_link_dialog.gd|lit|当前账号未绑定邮箱，切换后无法恢复。
+scripts/scenes/settings/mainsite_link_dialog.gd|lit|本机当前进度不会合并到该账号（切换前自动备份）。
+scripts/scenes/settings/mainsite_link_dialog.gd|lit|确认切换
+scripts/scenes/settings/mainsite_link_dialog.gd|lit|该龟投账号已绑定其他游戏账号。
+scripts/scenes/settings/mainsite_link_row.gd|lit|取消
+scripts/scenes/settings/mainsite_link_row.gd|lit|已绑定
+scripts/scenes/settings/mainsite_link_row.gd|lit|无法连接服务器
+scripts/scenes/settings/mainsite_link_row.gd|lit|未绑定
+scripts/scenes/settings/mainsite_link_row.gd|lit|登录失败
+scripts/scenes/settings/mainsite_link_row.gd|lit|登录已取消
+scripts/scenes/settings/mainsite_link_row.gd|lit|登录已失效
+scripts/scenes/settings/mainsite_link_row.gd|lit|登录码已过期
+scripts/scenes/settings/mainsite_link_row.gd|lit|等待确认
+scripts/scenes/settings/mainsite_link_row.gd|lit|绑定
+scripts/scenes/settings/mainsite_link_row.gd|lit|请更新游戏后重试
+scripts/scenes/settings/mainsite_link_row.gd|lit|连接中…
+scripts/scenes/settings/mainsite_link_row.gd|lit|龟投账号
 scripts/scenes/settings/selfcheck_panel.gd|lit|一致
 scripts/scenes/settings/selfcheck_panel.gd|lit|不一致
 scripts/scenes/settings/selfcheck_panel.gd|lit|共 %d 项 · 预计 5 分钟

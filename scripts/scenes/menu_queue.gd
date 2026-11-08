@@ -32,6 +32,7 @@ const K_TRAINER := "trainer"
 const K_TUTORIAL := "tutorial"
 const K_DELETE := "delete"
 const K_RECOVER := "recover"
+const K_MAINSITE := "mainsite"        # 设置页「龟投账号」绑定(可能换号, 同邮箱登录)
 
 const TXT_MATCHING := "匹配中"            # 主按钮第一行 = 锁着的入口底边短签
 const TXT_CANCELLING := "正在退出"        # 取消键按下后(灰)
@@ -43,6 +44,7 @@ const TXT_AFTER := {
 	K_TUTORIAL: "取消匹配后可开始新手教程。",
 	K_DELETE: "取消匹配后可删除账号。",
 	K_RECOVER: "取消匹配后可使用邮箱登录。",
+	K_MAINSITE: "取消匹配后可绑定龟投账号。",
 }
 ## 好友页那一行(Spar.my_side_check; 与「教程中无法切磋」同一种写法)
 const TXT_SPAR := "闯关赛匹配中，无法切磋"

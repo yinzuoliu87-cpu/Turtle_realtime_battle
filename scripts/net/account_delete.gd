@@ -28,7 +28,7 @@ const R_BLOCKED := "blocked"  # 写请求被出口拦下(开发包时间穿越 /
 
 ## 删号成功后要删掉的本机文件(存档本体由 GameState.save() 重写, `.bak` 里是旧身份, 单独删)。
 const WIPE_FILES := ["user://savegame.json.bak", "user://ghost_pool.json", "user://ghost_pool.json.tmp", "user://lastLineup.json",
-	"user://team_draft.json", "user://pending_match.bin", "user://last_errors.txt"]
+	"user://team_draft.json", "user://pending_match.bin", "user://last_errors.txt", "user://mainsite_link.json"]
 ## 删号后保留的存档键: 这台设备的偏好, 与账号无关。
 const KEEP_KEYS := ["bgm_volume", "sfx_volume", "fullscreen"]
 
@@ -140,6 +140,8 @@ static func _clear_session() -> void:
 	SB.finals_week_clear()
 	SB.finals_report_clear()
 	SB.opponent_clear()
+	## 龟投账号: 登录过程与绑定缓存一起清(文件在 WIPE_FILES; 用 load: mainsite_link 反过来 preload 本文件)
+	load("res://scripts/net/mainsite_link.gd").clear_local()
 
 
 static func _rm(path: String) -> void:
