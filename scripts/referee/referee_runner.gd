@@ -101,8 +101,12 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 		res["wheel_new"] = (battle._gambler_sys.drawn["left"] as Dictionary).duplicate()
 		res["wheel_new_b"] = (battle._gambler_sys.drawn["right"] as Dictionary).duplicate()
 	if rr != null and rr.stream != null:
+		## end.json 另带三样给网页录像播放器(2026-11-08 · 方案书 20261105c §4.7; 播放器不登录、拿不到 matches 那一行):
+		##   mode(保留期按它分: 偷袭局 30 天, server/stream/stream_ops.py purge)、names(两边名字, 收尾卡「<名字> 获胜」)、
+		##   fights(每一路开打的步号, 进度条的路名刻度)。只是元数据, 不进对局计算。
 		res["stream"] = rr.stream.finish({"match_id": str(job.get("match_id", "")), "ok": why == "",
-			"digest": str(res.get("digest", "")), "client_version": ReplayRecorder.client_version()})
+			"digest": str(res.get("digest", "")), "client_version": ReplayRecorder.client_version(),
+			"mode": str(job.get("mode", "")), "names": _names_of(job), "fights": _fights_of(rr)})
 		if bool(stream.get("keep", false)):
 			res["stream_chunks"] = rr.stream.chunks
 	battle.queue_free()
@@ -127,3 +131,26 @@ static func _incense_of(battle, side: String) -> Dictionary:
 static func _chest_of(battle, side: String) -> Dictionary:
 	var f: Dictionary = battle._chest_sys.ledger_final(side)
 	return {"value": float(f.get("chest_treasure_value", 0.0)), "won": (f.get("chest_treasures_won", []) as Array).duplicate()}
+
+
+## end.json 里的两边名字 {l: A 方, r: B 方}(任务单快照里的 profile.name; 没有就空串)。
+static func _names_of(job: Dictionary) -> Dictionary:
+	var out := {"l": "", "r": ""}
+	for pair in [["a", "l"], ["b", "r"]]:
+		var snap = job.get(pair[0], {})
+		var prof = (snap as Dictionary).get("profile", {}) if snap is Dictionary else {}
+		if prof is Dictionary:
+			out[pair[1]] = str((prof as Dictionary).get("name", ""))
+	return out
+
+
+## end.json 里每一路开打的步号(= 录像事件里的 fight, 与 stream_watch.enter 从录像取的同一个口径)。
+static func _fights_of(rr) -> Array:
+	var out: Array = []
+	var rec = rr.get("rec")
+	if not (rec is Dictionary):
+		return out
+	for e in (rec as Dictionary).get("events", []):
+		if e is Dictionary and str((e as Dictionary).get("k", "")) == "fight":
+			out.append(int((e as Dictionary).get("s", 0)))
+	return out

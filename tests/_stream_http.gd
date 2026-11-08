@@ -7,12 +7,15 @@ extends Node
 ##   GET /streams/<match_id>/end.json       ⇒ end 开着 ⇒ 200 元数据(含 chunks); 否则 404
 ##   mode = "426" ⇒ 一律 426(版本闸); "drop" ⇒ 收了请求不回话直接断开(断网 / 连接被重置); "500" ⇒ 500
 ##   req_version 非空 ⇒ 请求头 X-Client-Version 不等于它也回 426(与版本闸同口径: 不带头 / 不对 ⇒ 426)
+##   网页录像播放器(2026-11-08, verify_web_player): 路径前面可以多一段 /player(server/player/player.caddy 的口径, 块与 end.json 同上);
+##   GET /player/expired/<match_id> ⇒ 在 expired 里 ⇒ 200(过了保留期的记号), 否则 404
 ## 记账(reqs): 每个请求 [路径, 请求头里的版本, 回的码]。
 
 var port := 0
 var mode := "ok"
 var req_version := ""
 var streams := {}                 # match_id → {"chunks": Array[PackedByteArray], "meta": Dictionary, "served": int, "end": bool}
+var expired := {}                 # match_id → true(网页播放器的过期记号)
 var reqs: Array = []
 var _srv := TCPServer.new()
 var _conns: Array = []
@@ -98,6 +101,11 @@ func _answer(c: StreamPeerTCP, req: String) -> void:
 		_send(c, path, ver, 426, "{\"message\":\"update_required\"}".to_utf8_buffer())
 		return
 	var seg := path.split("/", false)       # streams / <mid> / <file>
+	if seg.size() >= 1 and seg[0] == "player":
+		seg = seg.slice(1)
+		if seg.size() == 2 and seg[0] == "expired":
+			_send(c, path, ver, 200 if expired.has(seg[1]) else 404, PackedByteArray())
+			return
 	if seg.size() != 3 or seg[0] != "streams" or not streams.has(seg[1]):
 		_send(c, path, ver, 404, PackedByteArray())
 		return

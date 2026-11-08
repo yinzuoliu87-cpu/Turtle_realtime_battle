@@ -32,6 +32,8 @@ config/custom_user_dir_name.offline_dev="斗龟场 测试包"
 config/name.beta_server="斗龟场 内测服"
 config/use_custom_user_dir.beta_server=true
 config/custom_user_dir_name.beta_server="斗龟场 内测服"
+config/name.web_player="斗龟场 对局录像"
+run/main_scene.web_player="res://scenes/WebPlayer.tscn"
 
 [autoload]
 

@@ -1491,13 +1491,19 @@ func _resolve_leader_slots(dl: Dictionary) -> void:
 
 
 func _ready() -> void:
+	## 网页录像播放器(2026-11-08 · WebPlayerMode 头注): 不登录、不连后端、不写存档 ⇒ 先停后端, 下面几样连网 / 写盘的一律不装。
+	var web_player := WebPlayerMode.active()
+	if web_player:
+		WebPlayerMode.silence_backend()
 	FontKit.strip_theme_system_fonts()   # iOS: 主题回退链去掉取不到的系统字体(否则每个界面刷字体报错); 见 font_kit.gd
 	SimShot.attach(self)   # 模拟窗口自拍(只在 SIM_SHOT_DIR 设了时; 见 sim_shot.gd 头注)
 	## 客户端报错上报(2026-10-11): 越早装越好 —— 读档时的报错也要接住。
-	ErrorReporter.install(self)
+	if not web_player:
+		ErrorReporter.install(self)
 	## 快照池缓存开机自愈(2026-11-01): 上次被杀在写缓存的半中间留下的坏文件挪走 ⇒ 之后读池不再报「Parse JSON failed」。
 	##   用 load 不用 preload: 同 wipe_week_snapshots 那一处(backend.gd 反过来读 GameState)。见 backend.gd heal_pool_cache。
-	load("res://scripts/net/backend.gd").heal_pool_cache()
+	if not web_player:
+		load("res://scripts/net/backend.gd").heal_pool_cache()
 	## ★这一句必须在 `_load()` / `ensure_season()` 之前 —— 2026-09-19 探针实证:
 	##   全新空 user:// 下, **场景脚本拿到控制权时 `savegame.json` 已经写出来了**
 	##   (`ensure_season()` 滚赛季会 `save()`), 所以任何台子在自己 `_ready` 里置
@@ -1508,16 +1514,18 @@ func _ready() -> void:
 	apply_save_guard(DisplayServer.get_name() == "headless" and OS.get_environment("SIM_DRIVER") != "1",
 		OS.has_environment(NO_SAVE_ENV),
 		cmdline_scene_override(OS.get_cmdline_args(),
-			str(ProjectSettings.get_setting("application/run/main_scene", ""))))
+			str(ProjectSettings.get_setting("application/run/main_scene", ""))), web_player)
 	_load()
 	if fullscreen and DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)   # 开机恢复全屏(设置持久化)
 	_pc_window_setup()
 	ensure_season()   # V2: 初始化/滚动赛季 (阶段4)
 	_P2.clock_listener = _on_clock_confirmed   # 服务器时刻到了 / 偏移变了 ⇒ 用核对过的钟再判一次(见该函数)
-	_start_net_keepalive()
-	## 强制最低版本(2026-10-19): 整屏挡墙常驻在这里(跨场景), 开机问一次服务状态、回前台再问。
-	VersionWall.install(self)
+	if not web_player:
+		_start_net_keepalive()
+		## 强制最低版本(2026-10-19): 整屏挡墙常驻在这里(跨场景), 开机问一次服务状态、回前台再问。
+		##   网页播放器不装: 它按录像的版本放在 /player/<版本>/, 旧版本的录像就该由旧版本的播放器播。
+		VersionWall.install(self)
 	# 把存档音量同步给 Audio autoload
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
 		Audio.bgm_volume = bgm_volume
@@ -1776,14 +1784,17 @@ static func cmdline_scene_override(args: PackedStringArray, main_scene: String) 
 	return ""
 
 
+## ★第四道闸(2026-11-08): 网页录像播放器(WebPlayerMode.active)—— 网页上只看录像, 一个字都不写。
 static func save_guard_reason(is_headless: bool, has_no_save_env: bool,
-		scene_override: String = "") -> String:
+		scene_override: String = "", web_player: bool = false) -> String:
 	if is_headless:
 		return "headless"
 	if has_no_save_env:
 		return NO_SAVE_ENV
 	if scene_override != "":
 		return "scene:" + scene_override
+	if web_player:
+		return WebPlayerMode.FEATURE
 	return ""
 
 ## 真正置位的那一步。返回原因("" = 没开闸)。
@@ -1791,8 +1802,8 @@ static func save_guard_reason(is_headless: bool, has_no_save_env: bool,
 ##   只验纯函数的话, 把 `_ready` 里的调用整条删掉门禁照样绿
 ##   —— 就是本项目记过的「写了没人读」/「判据没错但被测对象不在场」。
 func apply_save_guard(is_headless: bool, has_no_save_env: bool,
-		scene_override: String = "") -> String:
-	var reason := save_guard_reason(is_headless, has_no_save_env, scene_override)
+		scene_override: String = "", web_player: bool = false) -> String:
+	var reason := save_guard_reason(is_headless, has_no_save_env, scene_override, web_player)
 	if reason != "":
 		test_mode = true
 	return reason

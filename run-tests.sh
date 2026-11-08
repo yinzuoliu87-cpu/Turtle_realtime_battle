@@ -322,6 +322,7 @@ frames_for () {
     verify_stream_panels_parity) echo 20000 ;;   # 2026-11-03 播流时信息面板 / 统计四页签与原生逐字一致: 录一局 + 按跟播入口播到 6 个采样步
     verify_scroll_touch_sweep) echo 15000 ;;     # 2026-10-31 全屏手指滑动扫查: 两比例 44 屏、206 次实拖(本机约 4900 帧)
     verify_stream_end_exit) echo 20000 ;;
+    verify_web_player) echo 30000 ;;   # 网页录像播放器(2026-11-08): 录一局 + 本机 HTTP 拉流播到尾 + 错误态
     verify_stream_replay_controls) echo 20000 ;;   # 状态流回放操作条(2026-10-20): 录一局 + 播两遍到结尾   # 播放端收尾与退出(2026-10-19): 录一局 + 播两遍到结尾, 实测约 1000 帧
     verify_stream_no_sim) echo 20000 ;;
     verify_stream_seek) echo 20000 ;;
@@ -988,6 +989,9 @@ run_audit "tools/raid_intake_selftest.py" "ALL OK" "raid_intake_selftest (偷袭
 run_audit "tools/beta_server_selftest.py" "ALL OK" "beta_server_selftest (内测服工具链·拒正式服 ref·迁移先内测服同sha·裁判机/Caddy 两套分开)"
 # 裁判机外部探活的判据(2026-10-26 · docs/plans/20261026-裁判机外部监控.md): decide() 表每一行 + 重启限频, 不联网。
 run_audit "tools/referee_watch_selftest.py" "ALL OK" "referee_watch_selftest (裁判机外部探活判据·整机失联才重启·60 分钟限频)"
+# 网页录像播放器(2026-11-08 · 20261105c §4.7): 播放器路径不连网 / 不写存档(静态), 开机闸 / 导出预设 / 入口页与 Godot 侧同一套,
+#   服务器脚本自测(player_ops 按版本装清、保留期内的版本不删; stream_ops purge 偷袭局 30 天 + 过期记号)。运行时那一半在 verify_web_player。
+run_audit "tools/web_player_audit.py"     "ALL OK" "web_player (网页录像播放器·不连网不写存档·入口页同口径·保留期自测·20261108)"
 # 龟壳「复制」链路的四方对账(pets.json / _do_skill 分派 / _IMPL / 白名单 / 小将技)。
 #   2026-08-28 首跑报出 17 处: 白名单里 13 个**普攻位技能永远不会被执行**(占名额虚报可抄数)、
 #   1 个幽灵条目、3 个小将技漏掉。★判据落在 `_do_skill` 的 **match 块 case 标签**,

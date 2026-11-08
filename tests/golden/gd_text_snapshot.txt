@@ -2459,6 +2459,15 @@ scripts/systems/replay/replay_recorder.gd|lit|终局对不上
 scripts/systems/replay/replay_recorder.gd|lit|胜利
 scripts/systems/replay/stream_watch.gd|lit|版本过旧，请更新
 scripts/systems/replay/stream_watch.gd|lit|画面生成中
+scripts/systems/replay/web_player_core.gd|lit|录像已过期
+scripts/systems/replay/web_player_core.gd|lit|录像版本与播放器版本不一致
+scripts/systems/replay/web_player_core.gd|lit|播放结束
+scripts/systems/replay/web_player_core.gd|lit|未找到该对局的录像
+scripts/systems/replay/web_player_core.gd|lit|正在载入录像
+scripts/systems/replay/web_player_core.gd|lit|网络连接失败
+scripts/systems/replay/web_player_core.gd|lit|请在小游戏内观看
+scripts/systems/replay/web_player_core.gd|lit|重新播放
+scripts/systems/replay/web_player_core.gd|lit|重试
 scripts/systems/sim/sim_driver.gd|lit|(未进入)
 scripts/systems/sim/sim_driver.gd|lit|400 次没挑到纯英文昵称
 scripts/systems/sim/sim_driver.gd|lit|主菜单

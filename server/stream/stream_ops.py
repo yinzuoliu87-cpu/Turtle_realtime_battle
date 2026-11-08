@@ -10,7 +10,11 @@
   stream_ops.py purge      删过期的流目录。口径与库里录像 `purge_old_matches` 逐字同一条：
                            「每周二 00:00 UTC 删掉本周一 00:00 UTC 之前的」⇒ 任意时刻的截止线 =
                            「(现在 − 1 天) 所在 ISO 周的周一 00:00 UTC」。目录的时间取 mtime。
+                           ★偷袭局（end.json 的 mode = raid）另按 RAID_KEEP_DAYS = 30 天留（约定 docs/specs/主站对接约定.md §4.4）。
+                           删一局时在 <STREAM_ROOT>-expired/<对局号> 留一个记号（网页录像播放器据此说「录像已过期」，
+                           server/player/README.md）；记号 TOMB_KEEP_DAYS 天后删。
                            另删临时目录里超过 1 天的残留（裁判进程被杀时留下的）。
+  stream_ops.py purge-selftest   在临时目录里把 purge 的判据走一遍（门禁 tools/web_player_audit.py 调）
   stream_ops.py selftest   版本正则对拍：生成的正则 vs 与 SQL `semver_arr` / `client_version_ok` 同口径的
                            Python 参考实现，边界 + 随机共几万条，必须全同。
 
@@ -20,6 +24,7 @@
   STREAM_CADDYFILE   默认 /etc/caddy/Caddyfile
   STREAM_ROOT        默认 /var/lib/turtle-referee/streams（对外目录）
   STREAM_TMP         默认 <STREAM_ROOT>-tmp（裁判边算边写的临时目录，不对外）
+  STREAM_EXPIRED     默认 <STREAM_ROOT>-expired（过期记号，Caddy 只读；网页录像播放器 /player/expired/<对局号>）
   STREAM_GATE_PATH   默认 /streams/*（版本闸管的路径；内测服那份 = /beta/streams/*，2026-10-21 方案书 20261020-内测服.md §6）
   STREAM_MATCHER     默认 stream_old（片段里的具名匹配器；同一站点里两份片段必须不同名，内测服 = stream_old_beta）
 """
@@ -268,23 +273,60 @@ def purge_cutoff(now: dt.datetime) -> dt.datetime:
     return dt.datetime(monday.year, monday.month, monday.day, tzinfo=dt.timezone.utc)
 
 
-def cmd_purge(dry: bool = False) -> int:
+## 偷袭局（主站内嵌网页播放器看的那种）保留天数；过期记号保留天数（比任何一种录像都长）。
+RAID_KEEP_DAYS = 30
+TOMB_KEEP_DAYS = 400
+
+
+def _end_meta(p: str) -> dict:
+    try:
+        with open(os.path.join(p, "end.json"), encoding="utf-8") as f:
+            m = json.load(f)
+        return m if isinstance(m, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def purge_keep(meta: dict, mtime: float, now: dt.datetime) -> bool:
+    """纯函数：这一局目录（end.json 元数据 + mtime）现在还留不留。"""
+    if str(meta.get("mode", "")) == "raid":
+        return mtime >= (now - dt.timedelta(days=RAID_KEEP_DAYS)).timestamp()
+    return mtime >= purge_cutoff(now).timestamp()
+
+
+def cmd_purge(dry: bool = False, now: dt.datetime = None) -> int:
     root = os.environ.get("STREAM_ROOT", "/var/lib/turtle-referee/streams")
     tmp_root = os.environ.get("STREAM_TMP", root.rstrip("/") + "-tmp")
-    now = dt.datetime.now(dt.timezone.utc)
-    cut = purge_cutoff(now).timestamp()
-    n_del = n_keep = 0
+    tomb_root = os.environ.get("STREAM_EXPIRED", root.rstrip("/") + "-expired")
+    now = dt.datetime.now(dt.timezone.utc) if now is None else now
+    n_del = n_keep = n_tomb_del = 0
     if os.path.isdir(root):
         for name in sorted(os.listdir(root)):
             p = os.path.join(root, name)
             if not os.path.isdir(p) or not UUID_RE.match(name):
                 continue                      # 只动 UUID 命名的局目录，别的一概不碰
-            if os.stat(p).st_mtime < cut:
+            meta = _end_meta(p)
+            if not purge_keep(meta, os.stat(p).st_mtime, now):
                 n_del += 1
                 if not dry:
+                    ## 先留记号再删（顺序反了中途被杀 ⇒ 局没了、记号也没有 ⇒ 播放器说「找不到」而不是「过期」）
+                    os.makedirs(tomb_root, mode=0o755, exist_ok=True)
+                    tp = os.path.join(tomb_root, name)
+                    with open(tp + ".tmp", "w", encoding="utf-8") as f:
+                        json.dump({"client_version": str(meta.get("client_version", "")), "mode": str(meta.get("mode", "")),
+                                   "purged_at": int(now.timestamp())}, f)
+                    os.chmod(tp + ".tmp", 0o644)
+                    os.replace(tp + ".tmp", tp)
                     shutil.rmtree(p, ignore_errors=True)
             else:
                 n_keep += 1
+    if os.path.isdir(tomb_root):
+        for name in os.listdir(tomb_root):
+            tp = os.path.join(tomb_root, name)
+            if UUID_RE.match(name) and os.path.isfile(tp) and os.stat(tp).st_mtime < now.timestamp() - TOMB_KEEP_DAYS * 86400:
+                n_tomb_del += 1
+                if not dry:
+                    os.remove(tp)
     n_tmp = 0
     if os.path.isdir(tmp_root):
         for name in os.listdir(tmp_root):
@@ -293,9 +335,71 @@ def cmd_purge(dry: bool = False) -> int:
                 n_tmp += 1
                 if not dry:
                     shutil.rmtree(p, ignore_errors=True)
-    log("purge%s: 截止 %s ⇒ 删 %d 局、留 %d 局、删临时残留 %d" % (
-        "(dry)" if dry else "", purge_cutoff(now).isoformat(), n_del, n_keep, n_tmp))
+    log("purge%s: 截止 %s（偷袭局 %d 天）⇒ 删 %d 局、留 %d 局、删临时残留 %d、删旧记号 %d" % (
+        "(dry)" if dry else "", purge_cutoff(now).isoformat(), RAID_KEEP_DAYS, n_del, n_keep, n_tmp, n_tomb_del))
     return 0
+
+
+def purge_selftest() -> int:
+    """临时目录里造几局，跑真 cmd_purge：普通局按周截止、偷袭局按 30 天、删了的留记号、记号过期才删、别的目录不碰。"""
+    import tempfile
+    bad = []
+
+    def ok(name, cond):
+        print("  [%s] %s" % ("PASS" if cond else "FAIL", name))
+        if not cond:
+            bad.append(name)
+
+    now = dt.datetime(2026, 11, 18, 12, 0, tzinfo=dt.timezone.utc)      # 周三：本周一 = 11-16
+    day = 86400.0
+    with tempfile.TemporaryDirectory() as td:
+        root = os.path.join(td, "streams")
+        os.makedirs(root)
+        old_env = {k: os.environ.get(k) for k in ("STREAM_ROOT", "STREAM_TMP", "STREAM_EXPIRED")}
+        os.environ["STREAM_ROOT"] = root
+        os.environ.pop("STREAM_TMP", None)
+        os.environ.pop("STREAM_EXPIRED", None)
+        cases = {
+            "11111111-1111-4111-8111-111111111111": ("gauntlet", 3),    # 上周日 ⇒ 删
+            "22222222-2222-4222-8222-222222222222": ("gauntlet", 1),    # 本周二 ⇒ 留
+            "33333333-3333-4333-8333-333333333333": ("raid", 20),       # 偷袭 20 天 ⇒ 留
+            "44444444-4444-4444-8444-444444444444": ("raid", 31),       # 偷袭 31 天 ⇒ 删
+        }
+        for mid, (mode, age) in cases.items():
+            p = os.path.join(root, mid)
+            os.makedirs(p)
+            with open(os.path.join(p, "end.json"), "w", encoding="utf-8") as f:
+                json.dump({"client_version": "0.23.0", "mode": mode, "chunks": 1}, f)
+            t = now.timestamp() - age * day
+            os.utime(p, (t, t))
+        os.makedirs(os.path.join(root, "not-a-match"))
+        tomb = root + "-expired"
+        os.makedirs(tomb)
+        old_tomb = os.path.join(tomb, "55555555-5555-4555-8555-555555555555")
+        with open(old_tomb, "w") as f:
+            f.write("{}")
+        t = now.timestamp() - (TOMB_KEEP_DAYS + 1) * day
+        os.utime(old_tomb, (t, t))
+        cmd_purge(now=now)
+        left = sorted(n for n in os.listdir(root))
+        ok("普通局按周截止：上周的删、本周的留", "11111111-1111-4111-8111-111111111111" not in left and "22222222-2222-4222-8222-222222222222" in left)
+        ok("★偷袭局按 %d 天：20 天的留、31 天的删" % RAID_KEEP_DAYS,
+           "33333333-3333-4333-8333-333333333333" in left and "44444444-4444-4444-8444-444444444444" not in left)
+        ok("不是对局号的目录不碰", "not-a-match" in left)
+        tombs = sorted(os.listdir(tomb))
+        with open(os.path.join(tomb, tombs[0]), encoding="utf-8") if tombs else open(os.devnull) as f:
+            first = json.load(f) if tombs else {}
+        ok("★删掉的两局各留一个记号（带版本）、留着的没有记号",
+           tombs == ["11111111-1111-4111-8111-111111111111", "44444444-4444-4444-8444-444444444444"]
+           and first.get("client_version") == "0.23.0")
+        ok("超过 %d 天的旧记号删掉" % TOMB_KEEP_DAYS, not os.path.exists(old_tomb))
+        for k, v in old_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    print("ALL OK" if not bad else "FAILED %d" % len(bad))
+    return 0 if not bad else 1
 
 
 def main() -> int:
@@ -307,6 +411,8 @@ def main() -> int:
         return cmd_minver()
     if a[0] == "purge":
         return cmd_purge(dry="--dry-run" in a)
+    if a[0] == "purge-selftest":
+        return purge_selftest()
     if a[0] == "selftest":
         return selftest()
     if a[0] == "regex":           # 运维查看：stream_ops.py regex 0.20.1
