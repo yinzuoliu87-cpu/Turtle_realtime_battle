@@ -319,7 +319,8 @@ frames_for () {
     verify_stream_hud_parity) echo 20000 ;;   # 播放端 HUD(2026-10-19): 同 parity 两局裁判局, 每 30 步让一帧
     verify_stream_curtain_stats) echo 20000 ;;   # 2026-10-31 跟播 / 观赛幕布与统计: 录一局 + 按跟播入口播一遍到结尾
     verify_rules_fingerprint) echo 12000 ;;   # 2026-11-03 RULES_VER 门禁: 裁判真入口跑 5 局 + 同进程重跑一局, 实测约 800 帧 / 85 秒
-    verify_shell_vfx) echo 1500 ;;   # 2026-11-08 龟壳复制 / 暗影俯冲特效: 建场 30 帧 + 俯冲 360 步 + 复制 180 步(每帧恰一步), 实测约 600 帧
+    verify_shell_vfx) echo 1500 ;;   # 2026-11-08 龟壳复制 / 暗影俯冲特效: 建场 30 帧 + 俯冲 420 步 + 复制 180 步(每帧恰一步), 实测约 660 帧
+    verify_shell_dive_trail) echo 2000 ;;   # 2026-11-08 晚 龟壳暗影俯冲匀速飞 + 沿途火道: 建场 30 帧 + 两局各 420 步(每帧恰一步), 实测约 900 帧
     verify_stream_panels_parity) echo 20000 ;;   # 2026-11-03 播流时信息面板 / 统计四页签与原生逐字一致: 录一局 + 按跟播入口播到 6 个采样步
     verify_scroll_touch_sweep) echo 15000 ;;     # 2026-10-31 全屏手指滑动扫查: 两比例 44 屏、206 次实拖(本机约 4900 帧)
     verify_stream_end_exit) echo 20000 ;;

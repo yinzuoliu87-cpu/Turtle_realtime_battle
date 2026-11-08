@@ -1,6 +1,6 @@
 class_name ShellVfx
 extends RefCounted
-## 龟壳「复制」「暗影俯冲」的演出(2026-11-08 重做)。只管画面: 不改伤害 / 时机 / 范围 / 燃烧区结算, 不碰对局随机流
+## 龟壳「复制」「暗影俯冲」的演出(2026-11-08 重做)。只管画面: 不改伤害 / 时机 / 范围 / 火道结算, 不碰对局随机流
 ##   (落点全是确定性公式), 不往单位字典写东西(唯一例外是闪白: 走全项目共用的 battle._vfx._flash)。
 ##
 ## 用户 11-08:「龟壳的复制和暗影，这些需要优…需要设计。」复制参考用户指定的「谢老师(塞拉斯) R 偷别人大招」, 暗影俯冲对标库奇 W。
@@ -8,12 +8,12 @@ extends RefCounted
 ## 方向: docs/plans/20261108-训龟大师羁绊与画面一批.md 第二批「龟壳复制 / 暗影」。原来两个技能全是程序柔光团(_make_fire_glow_tex)。
 ## 帧表由 tools/assetgen/build_shell_vfx.py 画(硬边像素、零半透明), 补间一律走 battle._reg_tween()(跟 sim 步), 节点补间 bind_node。
 ##
-## 暗影俯冲(库奇的橙换成暗紫):
-##   ① 起飞喷焰: 起跳点身后, 黑紫烟团 2 帧 → 紫芯白亮火球 2 帧(公告板)
-##   ②~④ 贴地火团: 沿途 5 块在龟壳**身后**依次落(等龟壳冲过那一点再落), 间距 ≈ 火团宽(烟晕相接),
-##        生成 3 帧 → 定型后循环 1.8 秒 → 消散 4 帧, 先落先灭; 落地区 7 块与燃烧区同寿
-##   ⑤ 路径命中火球: 龟壳冲过被打中的敌人那一刻, 敌人身上 1 帧最亮 + 3 帧收
-##   ⑥ 落地不另放大爆炸(只留调用方现有的冲击环 + 落地区火团)
+## 暗影俯冲(库奇的橙换成暗紫; 11-08 晚起是「匀速飞 + 沿途火道」, 下面三个入口都由 ShellSystem 在 sim 回调里**当场**调):
+##   ① launch: 起飞那一刻, 起跳点身后, 黑紫烟团 2 帧 → 紫芯白亮火球 2 帧(公告板)
+##   ②~④ trail_patch: 龟壳飞过路线上第 k 个等分点那一刻落一块贴地火团(起点、落点各一块, 间距 ≤ PATCH_GAP),
+##        可见宽 = 火道宽(画面 = 判定), 生成 3 帧 → 循环 → 消散 4 帧, 从落下到消失 = 那一处的燃烧时长, 先落先灭
+##   ⑤ hit: 撞到一名敌人那一刻, 敌人身上 1 帧最亮 + 3 帧收
+##   ⑥ 落地不另放大爆炸(只留调用方现有的冲击环 + 落点那块火团)
 ## 复制(暗紫 + 白, 不用金):
 ##   ① 甩链月牙闪光 2 帧 ② 分节锁链(粗 → 细 → 只剩暗紫细线) + 原主身上紫旋涡 ③ 原主身后白色圆闪 + 脚下「已被偷」小圈
 ##   ④ 粗紫流从原主流回龟壳 3 帧, 末帧原主闪白 ⑤ 头顶图标底框(跟图标同步弹入 / 淡出) ⑥ 持有态碎电弧 ⑦ 每发放出那一刻龟壳闪白
@@ -35,10 +35,8 @@ const ARC := "res://assets/sprites/vfx/shell-copy-arc.png"
 
 const FPS := 10.0                    # 帧表统一 10 帧 / 秒(参考研究按 10 fps 抽帧对拍)
 ## ── 暗影俯冲 ──
-const TRAIL_N := 5                   # 沿途火团块数(原来就是 5 块)
-const TRAIL_HOLD := 1.8              # 沿途火团定型后停多久再消散(库奇约 2.0 秒)
+const PATCH_GAP := 100.0             # 沿途火团间距上限(码): 路线切成等分, 600 码 = 6 段 7 块(相邻烟晕叠一点, 连成一条火道)
 const PATCH_VIS := 58.0 / 64.0       # 火团烟晕可见宽占一格的比例(帧表 64 像素一格, 烟晕外沿约 58)
-const ZONE_VIS := 100.0              # 落地区每块火团的可见宽(码): 中心 1 块 + 外圈 6 块, 外沿 ≈ 燃烧区半径
 const LAUNCH_YD := 96.0              # 起飞喷焰世界大小(码) ≈ 龟身
 const HIT_YD := 120.0                # 命中火球 ≈ 1.5 倍龟身
 ## ── 复制 ──
@@ -159,52 +157,35 @@ func _patch(at: Vector2, cell_yd: float, hold: float, delay: float, kind: String
 	_seq(s, fr, FPS, delay)
 
 
-## 施放那一刻调(伤害已在调用方结算完)。dash: 冲刺秒数(与 sim 位移补间同一个数); hits: 被打中的敌人(只读位置)。
-func dive(start: Vector2, dest: Vector2, dir: Vector2, dash: float, hits: Array) -> void:
+## 一条路线切几等分(火团 = 等分数 + 1 块)。ShellSystem 用它决定龟壳飞到哪儿落下一块。
+static func patch_count(L: float) -> int:
+	return maxi(1, ceili(L / PATCH_GAP))
+
+
+## 起飞那一刻: 起跳点身后 20 码起飞喷焰(库奇第 9~10 帧: 先黑烟、后火球)。
+func launch(start: Vector2, dir: Vector2) -> void:
 	if not _live():
 		return
-	## ① 起飞喷焰: 起跳点身后 20 码(库奇第 9~10 帧: 先黑烟、后火球)
 	var ln := _bb(LAUNCH, 4, LAUNCH_YD, start - dir * 20.0, 0.9)
 	ln.set_meta("shell_fx", "launch")
 	_seq(ln, [0, 1, 2, 3], FPS)
-	## ②~④ 沿途: 等龟壳冲过那一点再落(冲刺是 EASE_IN 二次 ⇒ 第 q 段时间走到 q² 处 ⇒ 落在第 √f 段), 间距 ≈ 火团宽
-	var L: float = DetMath.dist(start, dest)
-	var gap: float = L / float(TRAIL_N)
-	var cell: float = clampf(gap / PATCH_VIS, 70.0, 150.0)
-	for i in range(TRAIL_N):
-		var f: float = (float(i) + 0.5) / float(TRAIL_N)
-		_patch(DetMath.vlerp(start, dest, f), cell, TRAIL_HOLD, dash * sqrt(f), "trail", 0.05 + 0.002 * float(i))
-	## ⑤ 路径命中火球: 龟壳冲到那名敌人的投影处那一刻炸(位置取那一刻的, 击退后也贴着人)
-	for o in hits:
-		var proj: float = clampf(DetMath.dot((o["pos"] as Vector2) - start, dir) / maxf(1.0, L), 0.0, 1.0)
-		var tw = battle._reg_tween()
-		tw.tween_interval(maxf(0.001, dash * sqrt(proj)))
-		tw.tween_callback(_hit_ball.bind(o))
 
 
-func _hit_ball(o: Dictionary) -> void:
+## 龟壳飞过第 k 个等分点那一刻: 一块贴地火团。width = 火道宽(烟晕可见宽对齐判定宽); life = 从落下到消失(= 那一处的燃烧时长)。
+## 总寿命 = 生成 3 格 + 循环 + 消散 4 格 ⇒ 循环段 = 寿命 - 0.7 秒。高度按 k 错开一点, 叠在一起的两块不闪。
+func trail_patch(at: Vector2, k: int, life: float, width: float) -> void:
+	if not _live():
+		return
+	_patch(at, width / PATCH_VIS, maxf(0.1, life - 0.7), 0.0, "trail", 0.05 + 0.002 * float(k % 8))
+
+
+## 撞到一名敌人那一刻: 敌人身上炸命中火球(库奇第 14 帧)。
+func hit(o: Dictionary) -> void:
 	if not _live():
 		return
 	var s := _bb(HIT, 4, HIT_YD, o["pos"], 1.0)
 	s.set_meta("shell_fx", "hit")
 	_seq(s, [0, 1, 2, 3], FPS)
-
-
-## 落地那一刻调: 落地区 7 块火团(中心 1 + 外圈 6, 按俯冲方向排, 确定性), 与燃烧区同寿。不另放爆炸。
-func land(dest: Vector2, dir: Vector2, life: float, radius: float) -> void:
-	if not _live():
-		return
-	var cell: float = ZONE_VIS / PATCH_VIS
-	var ring_r: float = radius * 0.6
-	var a0: float = DetMath.datan2(dir.y, dir.x)
-	for k in range(7):
-		var p: Vector2 = dest
-		if k > 0:
-			var a: float = a0 + TAU * float(k - 1) / 6.0
-			p = dest + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * ring_r
-		var dl: float = 0.03 * float(k)
-		## 总寿命 = 生成 3 格 + 循环 + 消散 4 格 ⇒ 循环段 = 寿命 - 0.7 秒
-		_patch(p, cell, maxf(0.1, life - dl - 0.7), dl, "zone", 0.052 + 0.002 * float(k))
 
 
 # ═══════════════════════════════ 复制 ═══════════════════════════════

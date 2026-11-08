@@ -6,14 +6,16 @@ extends Node
 ## 演出在 scripts/scenes/battle/shell_vfx.gd, 帧表由 tools/assetgen/build_shell_vfx.py 生成。
 ##
 ## 判据全落在【_world 里真的出现的精灵】上(按贴图路径数, 打印分母), 不数我自己插的调用:
-##   暗影俯冲: ① 起飞喷焰在起跳点、四格都播到 ②~④ 沿途 5 块火团按路径依次落、在龟壳身后落、相邻间距 ≈ 火团宽、
-##             约 2 秒(生成 + 1.8 秒 + 消散)先落先灭、生成 → 循环 → 消散三段都播到; 落地区 7 块与燃烧区同寿
-##             ⑤ 命中火球: 被打中的每名敌人身上各一个、按龟壳冲过的先后 ⑥ 落地没有大爆炸(冲击环 / 火团 / 命中火球以外, 落点附近
-##             不许新出现 ≥1.5 米的公告板 —— 旧版 `_shell_dark_flame(dest, 110)` 是 2.6 米的紫光团)
+##   暗影俯冲(11-08 晚起是「匀速飞 + 沿途火道」, 结算另有 verify_shell_dive_trail):
+##             ① 起飞喷焰在起跳点、四格都播到 ②~④ 沿途火团 = 路线等分数 + 1 块(起点、落点各一块), 按路径依次落、在龟壳身后落、
+##             间距 = 路程 / 等分数、可见宽 = 火道宽(画面 = 判定)、从落下到消失 = 那一处的燃烧时长、先落先灭、三段都播到;
+##             旧的落地区 7 块不再有 ⑤ 命中火球: 被打中的每名敌人身上各一个、和它掉血在同一刻、按龟壳飞过的先后
+##             ⑥ 落地没有大爆炸(冲击环 / 火团 / 命中火球以外, 落点附近不许新出现 ≥1.5 米的公告板)
 ##   复制: 每个原主各一条分节锁链(色阶由龟壳端暗紫到原主端白、粗 → 细 → 细线三态)、旋涡、身后白闪、脚下小圈(挂够)、紫流(三格);
 ##         甩链月牙; 头顶底框两个且依次出现(图标 1 收了图标 2 才出, 用户 08-27「图标1 收 → 头顶浮出图标2」); 持有态电弧挂到第二发;
 ##         第二发放出那一刻龟壳闪白(放招闪色)
-##   ★结算不变: 两个场景改前改后伤害 / 位置逐步相同(金标 tests/golden/shell_vfx_dmg.json 是改前的代码录的)。
+##   ★结算不变: 两个场景改前改后伤害 / 位置逐步相同(金标 tests/golden/shell_vfx_dmg.json)。
+##     暗影俯冲那一段 11-08 晚**有意**改了结算(瞬移 → 匀速飞 + 火道, 用户要的), 那一段按新代码重录; 复制那一段逐字不变。
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_shell_vfx.tscn
 ## 重录金标(只在【确实改了结果】时): SHELL_VFX_GOLDEN=write(只录结算轨迹, 不判画面)。
@@ -24,7 +26,7 @@ const ShellSystem := preload("res://scripts/systems/skills/shell_system.gd")
 const SVfx := preload("res://scripts/scenes/battle/shell_vfx.gd")
 const GOLDEN := "res://tests/golden/shell_vfx_dmg.json"
 const VFX := "res://assets/sprites/vfx/"
-const DIVE_STEPS := 360            # 6 秒: 冲刺 0.22 + 燃烧区 5 秒 + 余量
+const DIVE_STEPS := 420            # 7 秒: 飞 0.8 + 火道每一处 5 秒 + 余量
 const COPY_STEPS := 180            # 3 秒: 两发 + 演出全收
 
 var _n := 0
@@ -160,7 +162,7 @@ func _ready() -> void:
 	# ── 结算不变(金标 = 改前的代码录的) ──
 	if _write:
 		var f := FileAccess.open(GOLDEN, FileAccess.WRITE)
-		f.store_string(JSON.stringify({"_说明": "verify_shell_vfx 的结算轨迹金标(改特效前的代码录; 血量 ×1000 / 位置 ×100 取整)。只改画面时不许变。",
+		f.store_string(JSON.stringify({"_说明": "verify_shell_vfx 的结算轨迹金标(血量 ×1000 / 位置 ×100 取整)。只改画面时不许变。copy = 改特效前的代码录; dive = 2026-11-08 晚暗影俯冲改成匀速飞 + 沿途火道(用户要的规则改动)后重录。",
 			"dive": tr_dive, "copy": tr_copy}, "\t") + "\n")
 		f.close()
 		print("  金标已写: dive %d 条 / copy %d 条" % [tr_dive.size(), tr_copy.size()])
@@ -232,7 +234,9 @@ func _run_dive() -> Array:
 		ln.size() == 1 and ln[0]["first"] <= 1 and DetMath.dist(ln[0]["pos"], start) < 40.0 and ln[0]["frames"].size() == 4,
 		"分母 %d 个; %s" % [ln.size(), ("第 %d 步出现 / 离起跳点 %.0f 码 / 播到 %s 格" % [ln[0]["first"], DetMath.dist(ln[0]["pos"], start), str(ln[0]["frames"].keys())]) if ln.size() > 0 else ""])
 
-	## ②~④ 沿途火团
+	## ②~④ 沿途火团(路线等分数 + 1 块, 起点、落点各一块)
+	var L: float = DetMath.dist(start, dest)
+	var np: int = SVfx.patch_count(L)
 	var tr := _of("shell-dive-patch.png", "trail")
 	tr.sort_custom(func(a, b): return DetMath.dot(a["pos"] - start, dir) < DetMath.dot(b["pos"] - start, dir))
 	var appear: Array = []
@@ -252,53 +256,52 @@ func _run_dive() -> Array:
 		var fs: Dictionary = r["frames"]
 		if not (fs.has(0) and fs.has(2) and (fs.has(3) or fs.has(4) or fs.has(5) or fs.has(6)) and fs.has(10)):
 			phases_ok = false
-	_ok("★分母: 沿途火团 5 块", tr.size() == 5, "%d 块" % tr.size())
+	_ok("★分母: 沿途火团 %d 块(路线 %.0f 码切 %d 段, 起点落点各一块)" % [np + 1, L, np], tr.size() == np + 1 and np >= 3, "%d 块" % tr.size())
 	var distinct := {}
 	for a in appear:
 		distinct[a] = true
 	var sorted_app := appear.duplicate()
 	sorted_app.sort()
 	_ok("★★② 沿途火团按路径【依次】落(由近到远, 不是同一帧一起出)",
-		tr.size() == 5 and appear == sorted_app and distinct.size() >= 3, "出现步 %s" % str(appear))
-	_ok("★★② 每块都在龟壳【身后】落(龟壳冲过那一点之后)", tr.size() == 5 and behind_ok, behind_msg)
-	var gap_ok := tr.size() == 5
+		tr.size() == np + 1 and appear == sorted_app and distinct.size() >= np, "出现步 %s" % str(appear))
+	_ok("★★② 每块都在龟壳【身后】落(龟壳飞过那一点之后)", tr.size() == np + 1 and behind_ok, behind_msg)
+	_ok("★② 头一块在起点、末一块在落点(±5 码)", tr.size() == np + 1 and DetMath.dist(tr[0]["pos"], start) <= 5.0 and DetMath.dist(tr[-1]["pos"], dest) <= 5.0,
+		("头 %.0f / 尾 %.0f 码" % [DetMath.dist(tr[0]["pos"], start), DetMath.dist(tr[-1]["pos"], dest)]) if tr.size() > 0 else "")
+	var gap_ok := tr.size() == np + 1
 	var gaps: Array = []
 	for i in range(1, tr.size()):
 		var d: float = DetMath.dist(tr[i]["pos"], tr[i - 1]["pos"])
-		var vis: float = float(tr[i]["w"]) * SVfx.PATCH_VIS
-		gaps.append("%.0f/%.0f" % [d, vis])
-		if d < vis * 0.8 or d > vis * 1.15:
+		gaps.append("%.0f" % d)
+		if absf(d - L / float(np)) > 3.0:
 			gap_ok = false
-	_ok("★② 相邻火团烟晕相接(间距 ≈ 火团可见宽, 0.8~1.15 倍; 不再 ±20 码乱抖)", gap_ok, "间距/可见宽 %s" % str(gaps))
-	var life_ok := tr.size() == 5
+	_ok("★② 相邻火团等距(= 路程 / 段数 %.0f 码, ±3)" % (L / float(maxi(1, np))), gap_ok, "间距 %s" % str(gaps))
+	var w_ok := tr.size() > 0
+	var ws: Array = []
+	for r in tr:
+		var vis: float = float(r["w"]) * SVfx.PATCH_VIS
+		ws.append("%.0f" % vis)
+		if absf(vis - ShellSystem.TRAIL_WIDTH) > ShellSystem.TRAIL_WIDTH * 0.02:
+			w_ok = false
+	_ok("★★② 画面 = 判定: 每块烟晕可见宽 = 火道宽 %.0f 码(±2%%)" % ShellSystem.TRAIL_WIDTH, w_ok, "可见宽 %s" % str(ws))
+	var life_ok := tr.size() == np + 1
 	var lives: Array = []
 	for r in tr:
 		var sec: float = float(r["last"] - r["first"] + 1) / 60.0
 		lives.append("%.2f" % sec)
-		if sec < 1.9 or sec > 2.9:
+		if sec < ShellSystem.BURN_LIFE - 0.05 or sec > ShellSystem.BURN_LIFE + 0.1:
 			life_ok = false
 	var sorted_van := vanish.duplicate()
 	sorted_van.sort()
-	_ok("★★④ 沿途火团约 2 秒(生成 0.3 + 定型 1.8 + 消散 0.4)后【先落先灭】",
+	_ok("★★④ 每块从落下到消失 = 那一处的燃烧时长 %.1f 秒, 【先落先灭】" % ShellSystem.BURN_LIFE,
 		life_ok and vanish == sorted_van, "寿命 %s 秒; 消失步 %s" % [str(lives), str(vanish)])
-	_ok("★③ 每块都走完 生成 → 循环 → 消散 三段(第 0/2 格、循环格、末格 10 都播到)", tr.size() == 5 and phases_ok)
+	_ok("★③ 每块都走完 生成 → 循环 → 消散 三段(第 0/2 格、循环格、末格 10 都播到)", tr.size() == np + 1 and phases_ok)
 	_ok("★沿途火团是贴地的(躺平, 不是公告板)", tr.size() > 0 and tr.all(func(r): return r["ground"]))
-	## 11-08 实录第一版: 火团与站在上面的龟深度并列, 落地区 5 秒里落点敌人和龟壳整个被火团盖没。贴地层必须比立绘(渲染优先级 0)先画。
+	## 11-08 实录第一版: 火团与站在上面的龟深度并列, 落点敌人和龟壳整个被火团盖没。贴地层必须比立绘(渲染优先级 0)先画。
 	var ground_all := _of("shell-dive-patch.png")
 	var up: int = mini(_unit_prio(e1), _unit_prio(e2))
-	_ok("★★火团压在龟脚下: 全部火团渲染优先级 < 站在上面的立绘", up > -999 and ground_all.size() == 12 and ground_all.all(func(r): return int(r["prio"]) < up),
+	_ok("★★火团压在龟脚下: 全部火团渲染优先级 < 站在上面的立绘", up > -999 and ground_all.size() == np + 1 and ground_all.all(func(r): return int(r["prio"]) < up),
 		"%d 块, 火团优先级 %s / 立绘 %d" % [ground_all.size(), str(ground_all.map(func(r): return r["prio"]).reduce(func(a, x): return a if a.has(x) else a + [x], [])), up])
-
-	## 落地区
-	var zn := _of("shell-dive-patch.png", "zone")
-	var zl_ok := zn.size() == 7
-	var zls: Array = []
-	for r in zn:
-		var sec: float = float(r["last"] - r["first"] + 1) / 60.0
-		zls.append("%.2f" % sec)
-		if sec < ShellSystem.BURN_LIFE - 0.35 or sec > ShellSystem.BURN_LIFE + 0.1 or DetMath.dist(r["pos"], dest) > ShellSystem.BURN_RADIUS:
-			zl_ok = false
-	_ok("★分母+⑥ 落地区 7 块火团在燃烧区内、与燃烧区同寿(%.1f 秒)" % ShellSystem.BURN_LIFE, zl_ok, "%d 块, 寿命 %s" % [zn.size(), str(zls)])
+	_ok("★旧的落地区 7 块火团不再有(燃烧区改成整条火道)", _of("shell-dive-patch.png", "zone").is_empty(), "%d 块" % _of("shell-dive-patch.png", "zone").size())
 
 	## ⑤ 命中火球
 	var ht := _of("shell-dive-hit.png")
@@ -319,7 +322,20 @@ func _run_dive() -> Array:
 			far3 += 1
 	_ok("★★⑤ 路径上被打中的两名敌人身上各炸一个命中火球, 路径外那名没有", ht.size() == 2 and near1 == 1 and near2 == 1 and far3 == 0,
 		"分母 %d 个: 中段敌 %d / 落点敌 %d / 路径外 %d" % [ht.size(), near1, near2, far3])
-	_ok("★⑤ 先冲过的先炸(中段敌早于落点敌)", s1 >= 0 and s2 >= 0 and s1 < s2, "第 %d 步 / 第 %d 步" % [s1, s2])
+	_ok("★⑤ 先飞过的先炸(中段敌早于落点敌)", s1 >= 0 and s2 >= 0 and s1 < s2, "第 %d 步 / 第 %d 步" % [s1, s2])
+	## 命中火球和那名敌人掉血在同一刻(±2 步; 火球帧表下一步才显示) —— 不再是「出手那一帧全掉血、火球按预算时刻补放」
+	var hp1 := -1
+	var hp2 := -1
+	for x in trace:
+		var f: PackedStringArray = str(x).split("|")
+		if f.size() >= 4 and f[2] == "hp" and int(f[0]) > 0:
+			if f[1] == "1" and hp1 < 0:
+				hp1 = int(f[0])
+			if f[1] == "2" and hp2 < 0:
+				hp2 = int(f[0])
+	_ok("★★⑤ 命中火球与掉血同一刻(中段敌 / 落点敌各 ±2 步), 且都不在出手那一步",
+		hp1 > 1 and hp2 > 1 and s1 >= 0 and s2 >= 0 and absi(s1 - hp1) <= 2 and absi(s2 - hp2) <= 2,
+		"掉血第 %d / %d 步 · 火球第 %d / %d 步" % [hp1, hp2, s1, s2])
 
 	## ⑥ 落地没有大爆炸
 	var big: Array = []
@@ -332,7 +348,9 @@ func _run_dive() -> Array:
 		if nn["file"] == "fx-shock-ring.png":
 			shock += 1
 			continue
-		if nn["bb"] and float(nn["size"]) >= 1.5 and not (nn["file"] in ["shell-dive-hit.png", "shell-dive-patch.png"]):
+		## frost-chill.png = 被火道减速的敌人身上的「冰寒」状态标记(battle_vfx.chill_mark, 挂在 spd_dbf_until 上):
+		##   11-08 晚起落点那名是龟壳飞到才开始被烧 + 减速, 标记正好落在落地前后 —— 它是状态, 不是爆炸。
+		if nn["bb"] and float(nn["size"]) >= 1.5 and not (nn["file"] in ["shell-dive-hit.png", "shell-dive-patch.png", "frost-chill.png"]):
 			big.append("%s %.1f米%s" % [nn["file"] if nn["file"] != "" else "(程序贴图)", float(nn["size"]), " 柔光团" if nn["glow"] else ""])
 	_ok("★★⑥ 落地不另放大爆炸(落点附近没有新出现 ≥1.5 米的公告板)", land >= 0 and big.is_empty(),
 		"第 %d 步落地; 多出来的: %s" % [land, str(big)])

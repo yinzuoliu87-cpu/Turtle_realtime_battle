@@ -267,7 +267,7 @@ const REVIEW_DEMO_CFG := {
 	"shell:0": [ {"dx": 110.0, "dy": 0.0, "fixed": true}, {"dx": 190.0, "dy": 70.0, "fixed": true} ],   # 龟壳打击: 物/真逐击交替+副目标120码溅射50%
 	"shell:1": [ {"dx": 210.0, "dy": -70.0, "id": "lava", "skills": ["lavaQuake"], "fixed": true}, {"dx": 210.0, "dy": 70.0, "id": "ice", "skills": ["iceFreeze"], "fixed": true} ],   # ★复制(skillPool[1], 不是[2] —— 2026-08-30 修: 表里 shell:1/shell:2 的注释整个换反了)。假人必须【真带技能】: 审阅台默认清空 active_skills, 而复制是抄敌人的技 ⇒ 池子为空、一次都放不出来(实测空转)。给两只不同龟各一个好认的技, 才看得出抄到了谁的什么
 	"shell:2": [ {"dx": 150.0, "dy": 0.0, "fixed": true} ],   # 吸收(skillPool[2]): 4红珠鱼贯流向龟壳+maxHp转移
-	"shell:3": [ {"dx": 150.0, "dy": 0.0, "fixed": true}, {"dx": 500.0, "dy": 0.0, "fixed": true} ],   # 暗影俯冲: 沿线1近1远→起跳暗焰+冲刺+沿途暗焰痕+落地爆+斑块燃烧区→羽化入隐
+	"shell:3": [ {"dx": 150.0, "dy": 0.0, "fixed": true}, {"dx": 500.0, "dy": 0.0, "fixed": true} ],   # 暗影俯冲: 沿线1近1远→起飞喷焰+匀速飞(飞过才挨打)+沿途暗影火道+落地冲击环→羽化入隐
 	"shell:-1": [ {"dx": 130.0, "dy": -60.0}, {"dx": 130.0, "dy": 60.0} ],   # 气场觉醒/储能: 2假人还手(REVIEW_DUMMY_ATTACKS须true)→受伤储能→空气扭曲起手+黄色远古双层波带+6金星; 第10/20秒觉醒金光
 }
 func _review_dummy_layout() -> Array:   # 当前受审技的假人布局(空=用默认横排)

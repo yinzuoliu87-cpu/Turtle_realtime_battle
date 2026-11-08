@@ -41,17 +41,25 @@ const STEALTH_HEALCUT_SEC := 3.0    # 破隐首发: 治疗削减持续秒
 const STEALTH_HEALCUT_PCT := 0.5    # 破隐首发: 治疗削减比例
 ## 【暗影俯冲】主动的龟能消耗(理由同 TwoHeadSystem.FUSION_WAVE_ENERGY)。
 const SHADOW_ENERGY := 130.0
-const DIVE_RANGE := 600.0           # 暗影俯冲: 俯冲距离(码)
-const DIVE_DASH_SEC := 0.22         # 暗影俯冲: 冲刺滑行秒数(位移补间与沿途火团 / 命中火球的落点时刻共用这一份)
-const BURN_RADIUS := 150.0          # 暗影燃烧区: 半径(码)
-const BURN_TICK_SEC := 0.5          # 暗影燃烧区: 每几秒结算一次
-const BURN_TICKS := 10              # 暗影燃烧区: 结算几次 ⇒ 总时长 = TICKS × TICK_SEC
-const BURN_ATK_MULT := 0.1          # 暗影燃烧区: 每次灼烧层数 = ×ATK
+const DIVE_RANGE := 600.0           # 暗影俯冲: 飞行距离(码)
+## ★★2026-11-08 用户:「它并不是瞬移，而是它是慢慢飞到另外一个地方，然后在它飞行之间的那个…过道，
+##   留下一条…燃烧火道，持续造成灼烧伤害」(参考库奇 W「女武神」)。
+##   原来: 0.22 秒滑到落点(看着就是瞬移), 路径伤害在出手那一帧全部结算, 燃烧区只在落点一个 150 码圆。
+##   现在: 匀速飞过去; 飞过谁就在那一刻打谁; 身后留一条火道, 火道上每一处从龟壳飞过起烧 BURN_LIFE 秒(先落先灭)。
+##   速度对标库奇: 官方技能演示起飞到落地约 0.8 秒(docs/studies/20261108-龟壳暗影俯冲参考-库奇W逐帧.md 第 10~18 帧;
+##   LoL Wiki 写冲刺速度 650 + 100% 移速)。
+const DIVE_SPEED := 750.0           # 暗影俯冲: 匀速飞行(码/秒) ⇒ 飞满 600 码 = 0.8 秒
+const DIVE_HOVER := 0.5             # 飞行时离地多高(米; 只管画面: 两头贴地、中段最高)
+## 火道宽(码): 撞击与燃烧共用这一个宽度 —— 龟壳飞过的路线两侧各一半(原来路径撞击「带宽 75 码」= 两侧各 75)。
+const TRAIL_WIDTH := 150.0
+const BURN_TICK_SEC := 0.5          # 暗影火道: 每几秒结算一次
+const BURN_TICKS := 10              # 暗影火道: 火道上每一处结算几次 ⇒ 每一处持续 = TICKS × TICK_SEC(从龟壳飞过那一刻算)
+const BURN_ATK_MULT := 0.1          # 暗影火道: 每次灼烧层数 = ×ATK
 ## ★存**语义值**(减速 20%)而不是实现值(移速 ×0.8) —— 文案要写的是前者。
 ##   存 0.8 的话 {C:...%} 渲染出来是 80, 文案就得手写 20 ⇒ 又是一个没人验的字面量。
-const BURN_SLOW_PCT := 0.2          # 暗影燃烧区: 减速比例
+const BURN_SLOW_PCT := 0.2          # 暗影火道: 减速比例
 const BURN_SLOW_MULT := 1.0 - BURN_SLOW_PCT   # 移速乘数(由上面推导, 不另存一份)
-## 燃烧区总时长 = 次数 × 每次间隔。**推导出来**, 不手写第二份。
+## 火道每一处的持续时长 = 次数 × 每次间隔。**推导出来**, 不手写第二份。
 const BURN_LIFE := BURN_TICKS * BURN_TICK_SEC
 
 ## ★★2026-08-25 文案根除: 龟壳普攻的两个数原来一个在主场景(半径), 一个在本文件(溅射比例)。
@@ -224,61 +232,83 @@ func _shell_break_stealth(u: Dictionary) -> void:              # 破隐(自己�
 	if is_instance_valid(spr): spr.modulate.a = 1.0
 	_shell_dark_flame(u["pos"], 90.0, 0.4)
 
-func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影俯冲(封板·130龟能·Corki库奇式): 俯冲600码→落地2.0A魔法+击退(用户2026-07-28 2.5→2.0)+路径敌→暗影燃烧区150码5s(每0.5s 0.1A灼烧层+减速20%)→进入隐身
+## 龟壳·暗影俯冲(130 龟能·库奇 W 式, 用户 2026-11-08 重做): 朝目标匀速飞 DIVE_RANGE 码(DIVE_SPEED ⇒ 0.8 秒)
+##   → 飞过谁就在那一刻打谁 DIVE_MAGIC×ATK 魔法 + 击退(用户 2026-07-28 2.5→2.0)
+##   → 身后留一条宽 TRAIL_WIDTH 的暗影火道: 火道上每一处从龟壳飞过起烧 BURN_LIFE 秒(先落先灭),
+##     每 BURN_TICK_SEC 秒对火道里的敌人 BURN_ATK_MULT×ATK 层灼烧 + 减速 BURN_SLOW_PCT → 落地进入隐身。
+## ★全部结算都跟 sim 钟走: 飞行与撞击在 _reg_tween 的逐步回调里(每一步扫上一步 → 这一步扫过的那一段),
+##   燃烧是 _pending_shots 定时段(按自己排定的时刻 T 算火道哪一段还在烧, 不读 _t)。
+##   龟壳中途死了: 位置停住、火道只铺到它死的地方(st.reach 不再涨), 已经铺下的照烧完。
+func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var start: Vector2 = u["pos"]
 	var dir: Vector2 = tgt["pos"] - start
 	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
 	dir = DetMath.norm(dir)
-	var dest: Vector2 = start + dir * DIVE_RANGE
-	dest = ArenaShape.clamp_in(dest, battle.ARENA)
-	var hits: Array = []                                        # 被打中的人(只给演出读位置: 命中火球)
-	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.0A魔法+击退
-		if not o.get("alive", false): continue
-		if not battle._on_line(start, dir, o["pos"], 75.0): continue
-		if DetMath.dist(o["pos"], start) > 620.0: continue
-		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, DIVE_MAGIC, o, true), Color("#9b3bff"))
-		battle._damage._knockback(u, o, 60.0, 1.0, 1.4)
-		hits.append(o)
-	## 起飞喷焰 + 沿途火团(在身后依次落、烟晕相接、先落先灭) + 路径命中火球(2026-11-08 库奇 W 式像素帧表, 只管画面)
-	_fx.dive(start, dest, dir, DIVE_DASH_SEC, hits)
+	var dest: Vector2 = ArenaShape.clamp_in(start + dir * DIVE_RANGE, battle.ARENA)
+	var L: float = DetMath.dist(start, dest)
+	if L >= 1.0: dir = DetMath.norm(dest - start)               # 落点被场地边界夹过 ⇒ 按真实路线走
+	var fly: float = maxf(0.05, L / DIVE_SPEED)
+	var half_w: float = TRAIL_WIDTH * 0.5
+	var n_patch: int = ShellVfxScript.patch_count(L)
+	## 这一次俯冲的共享状态(只放数和单位引用, 不放节点): reach = 龟壳已经飞过的路程(码); hit = 已经撞过的敌人
+	var st := {"reach": 0.0, "prev": start, "hit": [], "patch": 0}
+	_fx.launch(start, dir)                                      # 起飞喷焰(像素帧表, 只管画面)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", start, 90.0, 0.1)
 	var uu: Dictionary = u
-	u["_slam"] = true                                           # 冲刺滑行0.22s(cyber dash先例·位移演出; 伤害仍施放帧结算=封板)
+	u["_slam"] = true                                           # 飞行期间锁住 AI / 普攻 / 移动(位置由下面的补间逐步写)
 	var dv = battle._reg_tween()
 	dv.tween_method(func(q: float) -> void:
-		if uu.get("alive", false): uu["pos"] = DetMath.vlerp(start, dest, DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_IN))
-	, 0.0, 1.0, DIVE_DASH_SEC)
+		if not uu.get("alive", false): return
+		var p: Vector2 = DetMath.vlerp(start, dest, q)
+		uu["pos"] = p
+		if not uu.get("airborne", false): uu["height"] = DIVE_HOVER * DetMath.dsin(PI * q)
+		st["reach"] = L * q
+		var a: Vector2 = st["prev"]
+		st["prev"] = p
+		## 撞击: 这一步扫过的那一段(上一步 → 这一步)两侧 half_w 内、在起点前方、还没撞过的敌人
+		for o in battle._targeting._enemies_of(uu):
+			if not o.get("alive", false) or battle._arr_has_unit(st["hit"], o): continue
+			if DetMath.dot((o["pos"] as Vector2) - start, dir) < 0.0: continue
+			if DetMath.dist(o["pos"], DetMath.seg_closest(o["pos"], a, p)) > half_w: continue
+			(st["hit"] as Array).append(o)
+			battle._audio_sys.skill_ctx = "shellShadow"; battle._audio_sys.skill_ctx_src = uu   # 技能章(只管声音): 这一下 = 这个技能的命中
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, DIVE_MAGIC, o, true), Color("#9b3bff"))
+			battle._damage._knockback(uu, o, 60.0, 1.0, 1.4)
+			battle._audio_sys.skill_ctx = ""; battle._audio_sys.skill_ctx_src = null
+			_fx.hit(o)
+		## 火团(只管画面): 路线切 n_patch 等分, 起点到落点共 n_patch + 1 块, 龟壳飞过那一点才落, 与那一处的燃烧同寿
+		while int(st["patch"]) <= n_patch and L * float(st["patch"]) / float(n_patch) <= float(st["reach"]) + 0.01:
+			var k: int = int(st["patch"])
+			_fx.trail_patch(DetMath.vlerp(start, dest, float(k) / float(n_patch)), k, BURN_LIFE, TRAIL_WIDTH)
+			st["patch"] = k + 1
+	, 0.0, 1.0, fly)
 	dv.tween_callback(func() -> void:
 		uu["_slam"] = false
+		if not uu.get("airborne", false): uu["height"] = 0.0
 		if not uu.get("alive", false): return
-		## 落地不另放大爆炸(库奇 W 落地那块和沿途一样大, 11-08 删掉原来 110 码的紫光团), 只留冲击环 + 落地区火团
+		## 落地不另放大爆炸(库奇 W 落地那块和沿途一样大), 只留冲击环; 落点那块火团由上面最后一步铺
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", dest, 200.0, 0.1)
 		battle._shake(0.1)
-		_fx.land(dest, dir, BURN_LIFE, BURN_RADIUS)            # 燃烧区 = 中心 1 + 外圈 6 块贴地火团, 与燃烧区同寿
-		var zring = Sprite3D.new()                             # 区界暗紫细环常驻5秒→渐隐
-		zring.texture = VfxTex._make_thin_ring_tex()
-		zring.billboard = BaseMaterial3D.BILLBOARD_DISABLED; zring.axis = Vector3.AXIS_Y
-		zring.shaded = false; zring.transparent = true
-		zring.modulate = Color(0.55, 0.2, 0.7, 0.55)
-		zring.pixel_size = (300.0 * battle.WS) / 256.0
-		zring.position = battle._world_pos(dest, 0.065)
-		battle._world.add_child(zring)
-		var zt = battle._reg_tween()
-		zt.tween_interval(4.5)
-		zt.tween_property(zring, "modulate:a", 0.0, 0.5)
-		zt.tween_callback(zring.queue_free)
-		_shell_enter_stealth(uu))                               # 落地才羽化入隐(原瞬移即隐)
-	var zc: Vector2 = dest
-	for i in range(BURN_TICKS):                                 # 暗影燃烧区(半径/时长/节拍全在常量里, 文案 {C:} 引用同一份)
+		_shell_enter_stealth(uu))                               # 落地才羽化入隐
+	## 暗影火道(宽 / 时长 / 节拍全在常量里, 文案 {C:} 引用同一份)。第 i 跳排在出手后 T = i × 间隔:
+	##   这时还在烧的 = 龟壳在 (T − BURN_LIFE, T] 之间飞过的那一段, 再截到龟壳真飞到的地方(st.reach)。
+	##   敌人投影到路线上的位置 s 落在这一段里、且离路线不超过 half_w ⇒ 在火里。每一处恰好烧 BURN_TICKS 跳。
+	var n_ticks: int = int(ceil((fly + BURN_LIFE) / BURN_TICK_SEC))
+	for i in range(n_ticks):
+		var T: float = float(i) * BURN_TICK_SEC
 		var fn = func():
+			var s_hi: float = minf(float(st["reach"]), DIVE_SPEED * T)
+			var s_lo: float = DIVE_SPEED * (T - BURN_LIFE)
 			for o in battle._targeting._enemies_of(u):
-				if o.get("alive", false) and DetMath.dist(o["pos"], zc) <= BURN_RADIUS:
-					battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * BURN_ATK_MULT))), u)
-					battle._damage.apply_chill(o, BURN_SLOW_MULT, 1.0, BURN_TICK_SEC)
-		battle._pending_shots.append({"delay": float(i) * BURN_TICK_SEC, "fn": fn, "src": u})
-	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", start, dest, 60.0, Color(0.62, 0.22, 0.72, 0.7), 0.34)   # 暗影猛扑拖影
+				if not o.get("alive", false): continue
+				var s: float = clampf(DetMath.dot((o["pos"] as Vector2) - start, dir), 0.0, L)
+				if s > s_hi or s <= s_lo: continue
+				if DetMath.dist(o["pos"], start + dir * s) > half_w: continue
+				battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * BURN_ATK_MULT))), u)
+				battle._damage.apply_chill(o, BURN_SLOW_MULT, 1.0, BURN_TICK_SEC)
+		battle._pending_shots.append({"delay": T, "fn": fn, "src": u})
 
 
 # ── 选3 多技能: 数据驱动伤害技 + 通用盾/治 (系数取自 pets.json detail 公式) ──
