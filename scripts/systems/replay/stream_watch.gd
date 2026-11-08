@@ -81,6 +81,7 @@ static var probe_codes: Array = []
 static var restreams := 0
 static var live_enters := 0
 static var own_enters := 0
+static var web_enters := 0
 
 
 static func base_url() -> String:
@@ -249,6 +250,43 @@ static func enter_live(tree: SceneTree, g: Dictionary, back: String, names: Dict
 	current = {"kind": KIND_LIVE, "id": id, "t_ms": Time.get_ticks_msec()}
 	enters += 1
 	live_enters += 1
+	_guard(tree)
+	if tree != null:
+		SceneNav.go(tree, ReplayRecorder.BATTLE_SCENE)
+	return ""
+
+
+# ─────────────────────────────── 网页录像播放器 ───────────────────────────────
+
+## 网页录像播放器(2026-11-08 · 方案书 docs/plans/20261105c-主站对接偷袭.md §4.7, 页面 scripts/scenes/WebPlayerScene.gd):
+##   电脑浏览器里按对局号看一局已打完的服务器局。不登录、不连后端(WebPlayerMode), 拿不到 matches 那一行 ⇒ 与 `enter_live` 同一套沙盒:
+##   开局状态只给「双路」, 阵容由流里的 `rs` 带来、换路幕布照建。与它不同的是:
+##     · 会话 kind = 回放 ⇒ 有操作条(暂停 / 倍速 / 进度条拖动), 播完出收尾卡;
+##     · 块来源由播放器页先建好(它已拉到第 0 块、从里面读出了地图种子), 名字 / 路名刻度 / 全场步数取自 end.json(`meta`);
+##     · 看完 / 退出回播放器页(`back`)。
+##   返回 "" = 已进场(tree 为 null 时只挂好待播)。
+static func enter_web(tree: SceneTree, id: String, src, map_seed: int, meta: Dictionary, back: String) -> String:
+	if src == null or map_seed <= 0:
+		return StreamPlayer.TXT_ERROR
+	load(LS_PATH).pending = {}
+	ReplayRecorder.return_scene = back
+	var names := {}
+	var nm = meta.get("names", null)
+	if nm is Dictionary and str((nm as Dictionary).get("l", "")) != "" and str((nm as Dictionary).get("r", "")) != "":
+		names = {"l": str(nm["l"]), "r": str(nm["r"])}
+	ReplayRecorder.play_names = names
+	ReplayRecorder.viewer_name = ""
+	ReplayRecorder.begin_play({"state": {"dual_active": true}})
+	ReplayRecorder.pending_play = {}
+	var fights: Array = []
+	if meta.get("fights", null) is Array:
+		for s in meta["fights"]:
+			fights.append(int(s))
+	StreamPlayer.pending = {"source": src, "seed": map_seed, "controls": controls_for(KIND_REPLAY), "speed": 1.0,
+		"no_curtain": true, "fights": fights, "total": int(meta.get("last_step", -1))}
+	current = {"kind": KIND_REPLAY, "web": true, "id": id, "t_ms": Time.get_ticks_msec()}
+	enters += 1
+	web_enters += 1
 	_guard(tree)
 	if tree != null:
 		SceneNav.go(tree, ReplayRecorder.BATTLE_SCENE)

@@ -1,0 +1,93 @@
+# 网页录像播放器 · Caddy 片段（2026-11-08 · server/player/README.md；方案书 docs/plans/20261105c-主站对接偷袭.md §4.7）。
+# 放到 /etc/caddy/turtle-player.caddy，在 arena / arena-beta 两个站点块里各 import 一次（三个参数 = 播放器根 / 流根 / 过期记号根）：
+#   arena.turtlearena.xyz {
+#   	import /etc/caddy/turtle-player.caddy /var/www/turtle-player/prod /var/lib/turtle-referee/streams /var/lib/turtle-referee/streams-expired
+#   	…（网关 /mainsite/* 另由网关那一份配置接）
+#   }
+#   arena-beta.turtlearena.xyz {
+#   	import /etc/caddy/turtle-player.caddy /var/www/turtle-player/beta /var/lib/turtle-referee-beta/streams /var/lib/turtle-referee-beta/streams-expired
+#   }
+# 改完一律：caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy
+#
+# 路径（全部同源 ⇒ 不用跨域头；只许 GET / HEAD；主站 iframe 内嵌，不设 frame-ancestors：页面只读、没有任何操作）：
+#   /player  /player/              → <播放器根>/index.html（入口页：读 end.json 的版本，跳到 /player/<版本>/）
+#   /player/<版本>/…               → <播放器根>/<版本>/…（导出预设 WebPlayer 的产物；wasm / js / html 现压 gzip）
+#   /player/streams/<id>/<n>.bin   → <流根>/<id>/<n>.bin（与 stream.turtlearena.xyz/streams 同一批文件；
+#                                     ★不过版本闸：版本由目录选，旧版本的录像就由旧版本的播放器播）
+#   /player/streams/<id>/end.json  → <流根>/<id>/end.json（★不压缩：浏览器已解压而响应头仍写 Content-Encoding 时，
+#                                     Godot 网页版 HTTPRequest 有可能再解一遍；end.json 只有几 KB，不值得冒这个险）
+#   /player/expired/<id>           → <过期记号根>/<id>（server/stream/stream_ops.py purge 删局目录时留下）
+# 正则不用花括号量词（Caddyfile 会把 {…} 当占位符），与 server/stream/Caddyfile 同一个写法。
+
+@turtle_player path /player /player/*
+handle @turtle_player {
+	header -Server
+	route {
+		@player_bad_method not method GET HEAD
+		header @player_bad_method Cache-Control no-store
+		respond @player_bad_method 405
+
+		@player_entry path /player /player/
+		handle @player_entry {
+			root * {args[0]}
+			rewrite * /index.html
+			header Content-Type "text/html; charset=utf-8"
+			header Cache-Control no-cache
+			file_server
+		}
+
+		@player_chunk path_regexp player_chunk `^/player/streams/[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+/[0-9]+\.bin$`
+		handle @player_chunk {
+			uri strip_prefix /player/streams
+			root * {args[1]}
+			header Content-Type application/octet-stream
+			header Cache-Control "public, max-age=604800, immutable"
+			file_server {
+				browse off
+			}
+		}
+
+		@player_end path_regexp player_end `^/player/streams/[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+/end\.json$`
+		handle @player_end {
+			uri strip_prefix /player/streams
+			root * {args[1]}
+			header Content-Type "application/json; charset=utf-8"
+			header Cache-Control "public, max-age=60"
+			file_server {
+				browse off
+			}
+		}
+
+		@player_expired path_regexp player_expired `^/player/expired/[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+$`
+		handle @player_expired {
+			uri strip_prefix /player/expired
+			root * {args[2]}
+			header Content-Type "application/json; charset=utf-8"
+			header Cache-Control "public, max-age=3600"
+			file_server {
+				browse off
+			}
+		}
+
+		# 版本目录：结尾必须带 / 或文件名（不带斜杠的目录不匹配 ⇒ 404，免得 file_server 按去掉前缀后的路径补斜杠跳错地方）。
+		# 一律 no-cache：浏览器照样缓存，只是每次用 ETag 问一下（304），同版本重装时 index.js 与 index.wasm 不会新旧混用。
+		# 压缩用 encode（默认只压文本 / wasm 这类，index.pck 是 octet-stream 不压：里面多半是已压缩的贴图与音频）。
+		# ★不用 file_server 的 precompressed：2026-11-08 本机 Caddy 2.10.2 实测，预压缩文件一律回 206 + Content-Range
+		#   （请求根本没带 Range），浏览器对 206 的缓存不可靠。encode 回 200、带 ETag、复访 304。
+		@player_ver path_regexp player_ver `^/player/[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?/`
+		handle @player_ver {
+			uri strip_prefix /player
+			root * {args[0]}
+			header Cache-Control no-cache
+			@player_wasm path *.wasm
+			header @player_wasm Content-Type application/wasm
+			encode gzip
+			file_server {
+				browse off
+			}
+		}
+
+		header Cache-Control no-store
+		respond 404
+	}
+}

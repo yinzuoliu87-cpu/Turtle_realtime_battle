@@ -58,6 +58,10 @@ Caddy 没有「版本号比大小」的匹配器。`stream_ops.py` 按最低版�
 `purge` 每小时跑，截止线 =「(现在 − 1 天) 所在 ISO 周的周一 00:00 UTC」：周一全天截止线是上周一（上个周末的还在），周二 00:00 起变成本周一。局目录的时间取 mtime（= 最后一块写入时）。
 只删名字是 UUID 的目录；临时目录里超过 1 天的残留一并删。按 R1 实测每局 0.9~2.5 MB，一周存量约 1~2.5 GB，盘 80 GB。
 
+**偷袭局另算（2026-11-08 · 网页录像播放器，[server/player/README.md](../player/README.md)）**：end.json 的 `mode` 是 `raid` 的局按 mtime 留 30 天（`RAID_KEEP_DAYS`，约定 docs/specs/主站对接约定.md §4.4）。
+删一局之前先在 `<STREAM_ROOT>-expired/<对局号>` 写一个小记号（版本 / 模式 / 删的时刻），网页播放器据此说「录像已过期」而不是「找不到」；记号 400 天后删。
+`stream_ops.py purge-selftest` 在临时目录里把这几条走一遍（门禁 tools/web_player_audit.py 调）。end.json 的 `mode` / `names` / `fights` 由 2026-11-08 起的裁判版本写，之前录的局没有 ⇒ 按普通局清。
+
 ## 部署步骤（第一次；2026-10-19 已照此做过）
 
 ```bash

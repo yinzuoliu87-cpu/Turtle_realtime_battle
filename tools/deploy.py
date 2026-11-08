@@ -11,6 +11,9 @@ server/deploy/deploy_version.sh（暂存目录装 tag 那一提交 → 导入两
   python tools/deploy.py 0.22.8 --only pools       只重跑对手池 + 回读（工程已在）
   python tools/deploy.py 0.22.8 --only bots-switch 登记 referee_versions 之后再切陪练号
   python tools/deploy.py 0.22.8 --env beta         内测服（/opt/turtle-beta；内测服陪练号停用中时自动不碰）
+  python tools/deploy.py 0.23.0 --only player      网页录像播放器（2026-11-08）：本机 `bash build-web.sh player` 在 tag 那一提交上打的包
+                                                   → 传上去 → server/player/player_ops.py install（按版本放 /player/<版本>/、
+                                                   换入口页、保留期内的旧版本不删）→ 回读。不碰裁判 / 陪练号 / 库。见 server/player/README.md
 
 本机前置检查（不过就停；--dry-run 照跑完、最后报红）：
   ① tag v<版本> 在本机且已推（远端 tag 剥皮后 = 本机）；--sha 给了就必须等于 tag 那一提交
@@ -58,11 +61,16 @@ EXPECT_POOLS = (2052, 396, 186)          # 闯关机器人池 / 积分赛内置�
 ENVS = {
     "prod": {"ref_root": "/opt/turtle", "bots_root": "/opt/turtle-bots-prod",
              "bots_env": "/etc/turtle-referee/env-bots-prod", "bots_off": "/etc/turtle-referee/bots-prod-off",
-             "planner": "turtle-gauntlet-planner-prod"},
+             "planner": "turtle-gauntlet-planner-prod", "player_host": "arena.turtlearena.xyz"},
     "beta": {"ref_root": "/opt/turtle-beta", "bots_root": "/opt/turtle-bots-beta",
              "bots_env": "/etc/turtle-referee/env-bots-beta", "bots_off": "/etc/turtle-referee/bots-beta-off",
-             "planner": ""},
+             "planner": "", "player_host": "arena-beta.turtlearena.xyz"},
 }
+## 网页录像播放器（--only player）：本机产物、服务器脚本与入口页、服务器上的落脚处
+PLAYER_BUILD = os.path.join(REPO, "build", "webplayer")
+PLAYER_OPS = os.path.join(REPO, "server", "player", "player_ops.py")
+PLAYER_ENTRY = os.path.join(REPO, "server", "player", "index.html")
+REMOTE_PLAYER = REMOTE_DIR + "/player"
 FINAL_RE = re.compile(r"^DEPLOY (OK|FAILED)")
 SSH_OPTS = ["-i", SSH_KEY, "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=5"]
 
@@ -299,6 +307,112 @@ def upload():
     print("  ✓ 已上传 %s（sha256 %s…，bash -n 过）" % (REMOTE_SCRIPT, want[:12]))
 
 
+# ── 网页录像播放器（--only player）──────────────────────────────
+def _scp(local, remote):
+    """传一个文件（相对路径 + cwd：Windows 的 scp 会把盘符里的冒号当主机名）。"""
+    r = subprocess.run(["scp", "-q"] + SSH_OPTS[:6] + [os.path.basename(local), "%s:%s" % (SSH_HOST, remote)],
+                       cwd=os.path.dirname(local), capture_output=True, timeout=900)
+    if r.returncode != 0:
+        raise SystemExit("scp %s 失败: %s" % (os.path.basename(local), r.stderr.decode("utf-8", "replace").strip()))
+
+
+def player_preflight(a):
+    """本机检查（只读）：tag 在、产物是 tag 那一提交上干净地打的、版本对、文件齐。返回 (Checks, zip 路径)。"""
+    c = Checks()
+    print("== 本机前置检查（网页录像播放器，只读）")
+    zpath = os.path.join(REPO, "build", "turtle-webplayer-%s.zip" % a.version)
+    sha = git("rev-parse", "-q", "--verify", "refs/tags/v%s^{commit}" % a.version)
+    if not sha:
+        c.fail("本机没有 tag v%s" % a.version)
+    want = git("rev-parse", "-q", "--verify", a.hotfix + "^{commit}") if a.hotfix else sha
+    try:
+        with open(os.path.join(PLAYER_BUILD, "webplayer.json"), encoding="utf-8") as f:
+            stamp = json.load(f)
+    except (OSError, ValueError):
+        stamp = {}
+        c.fail("没有产物戳 build/webplayer/webplayer.json（先在 tag 那一提交上 `bash build-web.sh player`）")
+    if stamp:
+        if str(stamp.get("version")) != a.version:
+            c.fail("产物版本 %s ≠ %s" % (stamp.get("version"), a.version))
+        if want and str(stamp.get("sha")) != want:
+            c.fail("产物是 %s 上打的 ≠ %s（tag%s 那一提交）" % (str(stamp.get("sha"))[:8], want[:8], "/热修" if a.hotfix else ""))
+        if stamp.get("dirty") is not False:
+            c.fail("产物打包时工作区有改动（dirty=%s）" % stamp.get("dirty"))
+        if not c.bad:
+            c.ok("产物 %s · 提交 %s · 干净 · %s" % (a.version, want[:8], stamp.get("built_at")))
+    try:
+        import zipfile
+        with zipfile.ZipFile(zpath) as z:
+            names = set(z.namelist())
+            zst = json.loads(z.read("webplayer.json").decode("utf-8")) if "webplayer.json" in names else {}
+        miss = [n for n in ("index.html", "index.js", "index.wasm", "index.pck", "webplayer.json") if n not in names]
+        if miss:
+            c.fail("%s 缺 %s" % (os.path.basename(zpath), miss))
+        elif zst != stamp:
+            c.fail("%s 里的产物戳与 build/webplayer/ 的不同（zip 是旧的？重打一次）" % os.path.basename(zpath))
+        else:
+            c.ok("%s（%.1f MB）文件齐、戳一致" % (os.path.basename(zpath), os.path.getsize(zpath) / 1048576.0))
+    except (OSError, ValueError, KeyError) as e:
+        c.fail("读不了 %s: %s" % (zpath, e))
+    if a.env == "prod" and time.gmtime().tm_wday >= 5 and not a.allow_weekend:
+        c.fail("周末不动裁判机（CLAUDE.md §3）；真要装加 --allow-weekend")
+    return c, zpath
+
+
+def deploy_player(a):
+    c, zpath = player_preflight(a)
+    host = ENVS[a.env]["player_host"]
+    rc, out, err = ssh("mkdir -p %s && echo READY" % REMOTE_PLAYER if not a.dry_run else "echo READY")
+    if rc != 0 or "READY" not in out:
+        c.fail("ssh %s 不通: %s" % (SSH_HOST, (err or out).strip()[:200]))
+    if c.bad and not a.dry_run:
+        print("\n✗ 前置检查没过（%d 条）⇒ 不部署" % len(c.bad))
+        return 1
+    ops = REMOTE_PLAYER + "/player_ops.py"
+    if a.dry_run:
+        print("== --dry-run：会做的事（服务器上什么都不改）")
+        print("  1. 传 %s、player_ops.py、index.html 到 %s/" % (os.path.basename(zpath), REMOTE_PLAYER))
+        print("  2. python3 %s install %s %s <zip> --entry <index.html>" % (ops, a.env, a.version))
+        print("  3. 回读 player_ops.py status %s + https://%s/player/%s/index.html" % (a.env, host, a.version))
+        rc, out, err = ssh("test -f %s && python3 %s status %s || echo '（服务器上还没有 player_ops.py）'" % (ops, ops, a.env))
+        print("== 现状\n" + (out or err).rstrip())
+        return 0 if not c.bad else 1
+    print("== 上传")
+    with tempfile.TemporaryDirectory() as td:
+        for src, name in ((PLAYER_OPS, "player_ops.py"), (PLAYER_ENTRY, "index.html")):
+            dst = os.path.join(td, name)
+            with open(src, "rb") as f, open(dst, "wb") as g:
+                g.write(f.read().replace(b"\r\n", b"\n"))   # 仓库工作区可能是 CRLF
+            _scp(dst, "%s/%s" % (REMOTE_PLAYER, name))
+    _scp(zpath, "%s/%s" % (REMOTE_PLAYER, os.path.basename(zpath)))
+    want = hashlib.sha256(open(zpath, "rb").read()).hexdigest()
+    rc, out, err = ssh("sha256sum %s/%s" % (REMOTE_PLAYER, os.path.basename(zpath)), timeout=60)
+    if rc != 0 or not out.startswith(want):
+        raise SystemExit("上传回读不对: %s ≠ %s" % (out.split()[0][:12] if out.split() else "?", want[:12]))
+    print("  ✓ 已上传（sha256 %s…）" % want[:12])
+    print("== 安装")
+    rc, out, err = ssh("python3 %s install %s %s %s/%s --entry %s/index.html" % (ops, a.env, a.version, REMOTE_PLAYER,
+                                                                             os.path.basename(zpath), REMOTE_PLAYER), timeout=120)
+    print((out + err).rstrip())
+    if rc != 0:
+        print("✗ 安装失败（换入之前停下 ⇒ 线上没变）")
+        return 1
+    print("== 回读（只读）")
+    rc, out, err = ssh("python3 %s status %s" % (ops, a.env))
+    print((out or err).rstrip())
+    probs = []
+    for path in ("/player/%s/index.html" % a.version, "/player/"):
+        url = "https://%s%s" % (host, path)
+        try:
+            with S.OPENER.open(urllib.request.Request(url, method="HEAD"), timeout=20) as r:
+                print("  ✓ %s → %d" % (url, r.status))
+        except (urllib.error.URLError, OSError) as e:
+            probs.append("%s 打不开: %s" % (url, e))
+    for p in probs:
+        print("  ✗ " + p)
+    return 0 if not probs else 1
+
+
 def server_args(a, info):
     args = [a.env, a.version, info["sha"], "--expect-pools", "%d,%d,%d" % EXPECT_POOLS]
     if info.get("rules_ver") is not None:
@@ -435,6 +549,8 @@ def readback(a, info, final):
         todo.append("周日用的版本（现在 %r；★非周日才改，= 当周锁定的客户端版本，必须已登记且 enabled）:\n"
                     "      update public.referee_config set finals_version = '%s', updated_at = now() where id = 1;" % (cfg.get("finals_version"), ver))
     todo.append("旧版本：任务清空后再删旧目录、update referee_versions set enabled = false（server/referee/README.md「发版时」第 5 步）")
+    todo.append("网页录像播放器：tag 那一提交上 `bash build-web.sh player`，再 `python tools/deploy.py %s --env %s --only player`"
+                "（server/player/README.md）" % (ver, a.env))
     return probs, todo
 
 
@@ -449,7 +565,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="本机检查 + 服务器只读演练 + 现状回读，什么都不改")
     ap.add_argument("--status", action="store_true", help="接着看上一次的日志直到结束，然后回读")
     ap.add_argument("--no-follow", action="store_true", help="起完就返回，不跟日志")
-    ap.add_argument("--only", choices=["pools", "bots-switch"])
+    ap.add_argument("--only", choices=["pools", "bots-switch", "player"])
     ap.add_argument("--skip-bots", action="store_true")
     ap.add_argument("--no-bots-switch", action="store_true")
     ap.add_argument("--no-pools", action="store_true")
@@ -460,6 +576,8 @@ def main():
     ap.add_argument("--skip-ci", action="store_true", help="★不看 CI（只给紧急修复用）")
     ap.add_argument("--max-wait-min", type=int, default=240, help="跟日志最多等几分钟（默认 240：陪练号退完最多要 2 小时）")
     a = ap.parse_args()
+    if a.only == "player":
+        return deploy_player(a)
 
     c, info = local_preflight(a)
     if a.status:
