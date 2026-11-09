@@ -10,7 +10,7 @@ extends Node
 ##      ★本机缓存改成新值(PetLevelsNet.levels 73 / GameState.pet_lv 2); ★同一局结算屏重建 ⇒ 不加第二次(还是 65 → 73)
 ##   ③ 积分赛·负: +6
 ##   ④ 不放: 周日封存(+8 / +6 一露就等于说了输赢) / 练习赛 / 表演赛 / 没拉到拥有表
-##   ⑤ 选龟卡片: 拥有的挂 XpBar, 填充像素 = 进度; 没拥有的不挂; 详情里限免的龟有「本周限免 · 不获得经验」, 拥有的没有
+##   ⑤ 选龟卡片: 拥有的挂 XpBar, 填充像素 = 进度; 没拥有的不挂; 详情里限免的龟有「限免龟不获得经验」, 拥有的没有
 ##   ⑥ 图鉴: 拥有的 Lv 签里挂 CodexXpBar(进度对); 没拥有的不挂
 ## ★分母: 每一段打印量了几只 / 几张卡。
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_pet_xp_ui.tscn
@@ -164,7 +164,7 @@ func _ready() -> void:
 			stone_card = true
 	_ok("★分母: 量了 %d 张卡, 拥有的石头龟那张真的挂了经验条" % n_cards, n_cards >= 3 and stone_card)
 	_ok("★拥有的挂经验条且进度对, 没拥有的不挂", bad.is_empty(), str(bad.slice(0, 4)))
-	## 详情里限免龟的说明(方案书 §4.5「限免龟不获得经验」): 点一只限免的 ⇒ 有「本周限免 · 不获得经验」; 点拥有的 ⇒ 没有
+	## 详情里限免龟的说明(方案书 §4.5「限免龟不获得经验」): 点一只限免的 ⇒ 有「限免龟不获得经验」; 点拥有的 ⇒ 没有
 	var free_pid := ""
 	for p in WeeklyFree.ALL:
 		if PetLevelsNet.is_free_pick(str(p)):
@@ -173,7 +173,7 @@ func _ready() -> void:
 	ts._set_detail_pet(free_pid)
 	await _frames(3)
 	var fnote := ts.find_child("FreeNote", true, false) as Label
-	_ok("★详情: 限免的 %s 写着「本周限免 · 不获得经验」" % free_pid, free_pid != "" and fnote != null and fnote.text.contains("不获得经验"))
+	_ok("★详情: 限免的 %s 写着「限免龟不获得经验」" % free_pid, free_pid != "" and fnote != null and fnote.text.contains("不获得经验"))
 	ts._set_detail_pet("stone")
 	await _frames(3)
 	_ok("详情: 拥有的石头龟没有限免说明", ts.find_child("FreeNote", true, false) == null)

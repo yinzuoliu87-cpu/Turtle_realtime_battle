@@ -184,7 +184,7 @@ func _refresh_detail() -> void:
 	role_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	role_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	## 限免龟的说明(2026-11-09 · 方案书 20261107b §4.5「限免龟长按说明『限免龟不获得经验』」): 点卡片就是看详情 ⇒ 说明放这一格,
-	##   定位词下面一行小字, 颜色同卡片上的限免角标。这一格是 PanelContainer(只能放一件) ⇒ 限免时换成竖排, 不限免照旧。
+	##   定位词下面一行小字(写成整句: 文案规则不许用「·」把状态与说明拼成一行, verify_ui_copy ③), 颜色同卡片上的限免角标。这一格是 PanelContainer(只能放一件) ⇒ 限免时换成竖排, 不限免照旧。
 	if PetLevelsNet.is_free_pick(host.detail_pet_id):
 		var rv := VBoxContainer.new()
 		rv.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -192,7 +192,7 @@ func _refresh_detail() -> void:
 		rv.add_child(role_lbl)
 		var fn := Label.new()
 		fn.name = "FreeNote"
-		fn.text = "本周限免 · 不获得经验"
+		fn.text = "限免龟不获得经验"
 		fn.add_theme_font_size_override("font_size", host._sf(16))
 		fn.add_theme_color_override("font_color", Color("#8fe3ff"))
 		fn.add_theme_color_override("font_outline_color", Color("#0d0805"))

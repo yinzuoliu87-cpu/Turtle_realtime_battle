@@ -2258,8 +2258,8 @@ scripts/scenes/social/player_menu.gd|lit|该玩家 ID 对应多位玩家，请�
 scripts/scenes/social/player_menu.gd|lit|黑名单已满
 scripts/scenes/social/player_menu.gd|text|玩家 ID %s
 scripts/scenes/stage_ceremony.gd|lit|点击任意处继续
-scripts/scenes/team_select/detail_panel.gd|text|本周限免 · 不获得经验
 scripts/scenes/team_select/detail_panel.gd|text|被动
+scripts/scenes/team_select/detail_panel.gd|text|限免龟不获得经验
 scripts/scenes/team_select/detail_panel.gd|tooltip_text|被动
 scripts/scenes/team_select/layout_editor.gd|lit|\n===== 复制以下 RL (含你拖动后的坐标) =====\nconst RL := {\n
 scripts/scenes/team_select/layout_editor.gd|lit|}\n===== 结束 =====\n
