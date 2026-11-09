@@ -448,11 +448,13 @@ func copy_steal_icon(u: Dictionary, stype: String, hold: float = 0.55) -> void:
 	var path: String = SkillIcons.path_of(stype, u)
 	if path == "":
 		return                                    # 没图标(小将技): 静默跳过, 不画空框
-	var tex: Texture2D = load(path)
+	## 11-09: 缩成 ShellVfx.ICON_PX 像素高的像素图(硬边零半透明, 与头顶像素底框同一像素大小), 取不到像素退回原图
+	var tex: Texture2D = ShellVfx.gen_icon_px(path, ShellVfx.ICON_PX)
 	if tex == null:
 		return
 	var s := Sprite3D.new()
 	s.texture = tex
+	s.set_meta("icon_src", path)                  # 缩出来的图没有资源路径: 门禁 / 调试按这个认是哪张图标
 	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	s.shaded = false
 	s.transparent = true
@@ -617,10 +619,11 @@ func _cut_slash(pos2d: Vector2, col: Color, size: float = 120.0, flip: bool = fa
 	tw.tween_property(s, "modulate:a", 0.0, 0.10)
 	tw.tween_callback(s.queue_free)
 
-func _flash(u: Dictionary, col: Color = battle.JUICE_FLASH_COLOR) -> void:
+## sec > 0: 闪这么久(渲染按 flash_t / JUICE_FLASH_SEC 插值 ⇒ 前 sec − 0.06 秒全白, 最后 0.06 秒淡回); 默认 = 受击闪白。
+func _flash(u: Dictionary, col: Color = battle.JUICE_FLASH_COLOR, sec: float = 0.0) -> void:
 	if u == null or not u.get("alive", false):
 		return
-	u["flash_t"] = battle.JUICE_FLASH_SEC
+	u["flash_t"] = sec if sec > 0.0 else battle.JUICE_FLASH_SEC
 	u["flash_col"] = col            # 受击闪光色 (默认过曝白; 可传绿等特殊色)
 	u["hitsq_t"] = battle.JUICE_HIT_SQUASH_SEC
 	# ★E1 黑屏排查(用户2026-07-11「按理压根不该用受伤动画」): 实时高频命中下, 受击帧动画会反复打断

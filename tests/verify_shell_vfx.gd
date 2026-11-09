@@ -28,6 +28,7 @@ const GOLDEN := "res://tests/golden/shell_vfx_dmg.json"
 const VFX := "res://assets/sprites/vfx/"
 const DIVE_STEPS := 420            # 7 秒: 飞 0.8 + 火道每一处 5 秒 + 余量
 const COPY_STEPS := 180            # 3 秒: 两发 + 演出全收
+const DRAIN_WAVE_MIN := 0.15       # 紫流一段在 0.3 秒里上下摆过多少米算「在扭」(ShellVfx.DRAIN_WAVE_H 0.22 × 中段包络)
 
 var _n := 0
 var _fail := 0
@@ -69,6 +70,9 @@ func _scan(step: int) -> void:
 		var path := ""
 		if sp.texture != null:
 			path = str(sp.texture.resource_path)
+		## 头顶图标 11-09 起是运行时缩成的像素图(没有资源路径), 按精灵上的 icon_src 认是哪张
+		if path == "" and sp.has_meta("icon_src"):
+			path = str(sp.get_meta("icon_src"))
 		## 新出现的精灵: 记出生步 + 【整个存活期里最大的】世界尺寸(爆炸类是从 0.4 倍胀开的, 只量出生那一刻会量小)
 		var th: int = sp.texture.get_height() if sp.texture != null else 0
 		var sz: float = sp.pixel_size * float(th) / float(maxi(1, sp.vframes)) * absf(sp.scale.y)
@@ -87,11 +91,34 @@ func _scan(step: int) -> void:
 			r = {"file": path.get_file(), "first": step, "last": step, "frames": {}, "kind": str(sp.get_meta("shell_fx", "")),
 				"pos": _arena_of(sp.position), "ground": sp.billboard == BaseMaterial3D.BILLBOARD_DISABLED and sp.axis == Vector3.AXIS_Y,
 				"w": sp.pixel_size * float(tw) / float(maxi(1, sp.hframes)) / _s.WS, "tier": int(sp.get_meta("tier", -1)),
-				"prio": sp.render_priority}
+				"prio": sp.render_priority, "y_min": sp.position.y, "y_max": sp.position.y,
+				"tex_h": sp.texture.get_height(), "semi": _semi_px(sp.texture) if sp.has_meta("icon_src") else -1}
 			_trk[iid] = r
 		r["last"] = step
 		r["frames"][sp.frame] = true
+		if not r.has("ff"):
+			r["ff"] = {}
+		if not (r["ff"] as Dictionary).has(sp.frame):
+			r["ff"][sp.frame] = step                      # 每一格第一次上屏的步
 		r["pos_last"] = _arena_of(sp.position)
+		r["y_min"] = minf(float(r["y_min"]), sp.position.y)
+		r["y_max"] = maxf(float(r["y_max"]), sp.position.y)
+
+
+## 贴图里半透明像素有几个(0 < α < 1)。读不出图像返回 -1。
+func _semi_px(t: Texture2D) -> int:
+	var img: Image = t.get_image() if t != null else null
+	if img == null or img.is_empty():
+		return -1
+	if img.is_compressed():
+		img.decompress()
+	var n := 0
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var a: float = img.get_pixel(x, y).a
+			if a > 0.004 and a < 0.996:
+				n += 1
+	return n
 
 
 func _of(file: String, kind: String = "") -> Array:
@@ -283,6 +310,28 @@ func _run_dive() -> Array:
 		if absf(vis - ShellSystem.TRAIL_WIDTH) > ShellSystem.TRAIL_WIDTH * 0.02:
 			w_ok = false
 	_ok("★★② 画面 = 判定: 每块烟晕可见宽 = 火道宽 %.0f 码(±2%%)" % ShellSystem.TRAIL_WIDTH, w_ok, "可见宽 %s" % str(ws))
+	## 11-09 实机逐帧问题 1「烟晕是不透明的近黑紫硬块」: 量帧表本身(持续段第 3 格) —— 外沿一圈(半径 26~29 像素)只剩抖点(≤ 45% 不透明),
+	##   芯(半径 ≤ 8)实心; 外沿那圈仍有像素(可见宽没缩, 画面 = 判定)
+	var pimg: Image = (load(VFX + "shell-dive-patch.png") as Texture2D).get_image()
+	if pimg.is_compressed():
+		pimg.decompress()
+	var ring_n := 0
+	var ring_o := 0
+	var core_n := 0
+	var core_o := 0
+	for y in range(64):
+		for x in range(64):
+			var dd: float = Vector2(x + 0.5 - 32.0, y + 0.5 - 32.0).length()
+			var op: bool = pimg.get_pixel(3 * 64 + x, y).a > 0.5
+			if dd >= 26.0 and dd < 29.0:
+				ring_n += 1
+				ring_o += 1 if op else 0
+			elif dd <= 8.0:
+				core_n += 1
+				core_o += 1 if op else 0
+	var ring_fr: float = float(ring_o) / float(maxi(1, ring_n))
+	_ok("★★② 火团软边: 外沿一圈只剩抖点(不透明 ≤ 45%%, 且 > 5%%)、芯实心", ring_n > 100 and ring_fr <= 0.45 and ring_fr > 0.05 and core_o == core_n,
+		"外沿 %d / %d = %.0f%% · 芯 %d / %d" % [ring_o, ring_n, ring_fr * 100.0, core_o, core_n])
 	var life_ok := tr.size() == np + 1
 	var lives: Array = []
 	for r in tr:
@@ -383,6 +432,7 @@ func _run_copy() -> Array:
 	var at := {}
 	_s._do_skill(sh, fa, "shellCopy")
 	var flash0 = sh.get("flash_col", null)
+	var flash_t0: float = float(sh.get("flash_t", 0.0))
 	for k in range(COPY_STEPS):
 		for u in units:
 			u["energy"] = 0.0
@@ -434,6 +484,24 @@ func _run_copy() -> Array:
 	_ok("★② 锁链三态都播到: 粗 → 细 → 只剩暗紫细线", states.has(0) and states.has(1) and states.has(2), "态 %s" % str(states.keys()))
 	_ok("★② 锁链 0.6 秒内收完(不常驻)", lk.size() > 0 and lk.all(func(r): return int(r["last"]) <= 36))
 
+	## ② 链头(11-09 实机逐帧问题 3「没有链头飞行的动作」): 每个原主各一个, 从龟壳身边出发、飞到原主身上, 扎中换亮格, 跟锁链一起收
+	var hd := _of("shell-copy-head.png")
+	var hd_ok := hd.size() == 2
+	var hd_msg: Array = []
+	for si in range(2):
+		var sp2: Vector2 = srcs[si]["pos"]
+		var mine := hd.filter(func(r): return DetMath.dist(r["pos_last"], sp2) < 40.0)
+		if mine.size() != 1:
+			hd_ok = false
+			hd_msg.append("原主 %s 认到 %d 个" % [["A", "B"][si], mine.size()])
+			continue
+		var r: Dictionary = mine[0]
+		var fly_steps: int = (int(r["ff"][1]) - int(r["first"])) if (r.get("ff", {}) as Dictionary).has(1) else -1   # 飞行格 → 扎中格
+		hd_msg.append("起点离龟壳 %.0f 码 / 终点离原主 %.0f 码 / 第 %d~%d 步 / 飞 %d 步 / 格 %s" % [DetMath.dist(r["pos"], me), DetMath.dist(r["pos_last"], sp2), r["first"], r["last"], fly_steps, str(r["frames"].keys())])
+		if DetMath.dist(r["pos"], me) > 40.0 or int(r["first"]) > 1 or not (r["frames"].has(0) and r["frames"].has(1)) or int(r["last"]) > 36 or fly_steps < 8:
+			hd_ok = false
+	_ok("★★② 链头: 每个原主一个, 从龟壳身边飞到原主身上(飞的那一段 ≥ 8 步 ≈ 0.13 秒看得见)、扎中换亮格、0.6 秒内收", hd_ok, "; ".join(hd_msg))
+
 	## ② 旋涡 / ③ 白闪 / ③ 小圈 / ④ 紫流 —— 每个原主各一套
 	var vx := _of("shell-copy-vortex.png")
 	var gb := _of("shell-copy-grab.png")
@@ -451,6 +519,8 @@ func _run_copy() -> Array:
 		var g := gb.filter(func(r): return DetMath.dist(r["pos"], o["pos"]) < 40.0)
 		_ok("★③ %s 身后白色圆闪一个(锁链连上之后, 约 0.3 秒; 渲染优先级比立绘低 ⇒ 在身后)" % tag, g.size() == 1 and int(g[0]["first"]) >= lk_first + 12 and int(g[0]["first"]) <= 22 and int(g[0]["prio"]) < _unit_prio(o),
 			("第 %d 步(锁链第 %d 步)" % [g[0]["first"], lk_first]) if g.size() == 1 else "%d 个" % g.size())
+		_ok("★③ %s 抓住爆闪三格都播到(爆闪 → 白环碎开 → 碎光; 11-09 原 2 格读成泡泡)" % tag, g.size() == 1 and g[0]["frames"].size() == 3,
+			str(g[0]["frames"].keys()) if g.size() == 1 else "")
 		var m := mk.filter(func(r): return DetMath.dist(r["pos"], o["pos"]) < 30.0)
 		var ml: float = (float(m[0]["last"] - m[0]["first"] + 1) / 60.0) if m.size() == 1 else 0.0
 		_ok("★③ %s 脚下「已被偷」小圈: 贴地且压在立绘下、挂到第二发放完之后(≥0.8 秒)、最后收掉" % tag,
@@ -469,6 +539,13 @@ func _run_copy() -> Array:
 		_ok("★④ %s → 龟壳 紫流(≥3 段、抓住之后才出、粗 → 粗 → 细锯齿三格都播到)" % tag,
 			d.size() >= 3 and g.size() == 1 and dfirst >= int(g[0]["first"]) and dfr.size() == 3,
 			"%d 段, 第 %d 步起, 格 %s" % [d.size(), dfirst, str(dfr.keys())])
+		## 11-09 实机逐帧问题 3「紫流是直的平铺带」: 中段那些段在流的 0.3 秒里上下摆过(两头贴身体可以不动)
+		var waved := 0
+		for r in d:
+			if float(r["y_max"]) - float(r["y_min"]) >= DRAIN_WAVE_MIN:
+				waved += 1
+		_ok("★★④ %s 紫流在扭: 至少一半的段上下摆过 ≥ %.2f 米(不是一根直带)" % [tag, DRAIN_WAVE_MIN], d.size() >= 3 and waved * 2 >= d.size(),
+			"%d / %d 段" % [waved, d.size()])
 
 	## ⑤ 头顶图标 + 底框: 依次(第一个收了第二个才出)
 	var bd := _of("shell-copy-badge.png")
@@ -485,6 +562,10 @@ func _run_copy() -> Array:
 	ic.sort_custom(func(a, b): return int(a["first"]) < int(b["first"]))
 	_ok("★★⑤ 图标本体也依次(图标 1 收 → 图标 2 出, 用户 08-27 的演出)", ic.size() == 2 and int(ic[0]["last"]) < int(ic[1]["first"]),
 		("图标 1 %d~%d 步 / 图标 2 第 %d 步起" % [ic[0]["first"], ic[0]["last"], ic[1]["first"]]) if ic.size() == 2 else "%d 个" % ic.size())
+	## 11-09 实机逐帧问题 5「框里是 256 像素手绘图, 缩下来有半透明边」: 上屏的图标贴图是 ICON_PX 像素高、零半透明(与底框同一像素粒度)
+	_ok("★★⑤ 头顶图标是 %d 像素高的像素图、零半透明(两个都是)" % SVfx.ICON_PX,
+		ic.size() == 2 and ic.all(func(r): return int(r["tex_h"]) == SVfx.ICON_PX and int(r["semi"]) == 0),
+		str(ic.map(func(r): return "%d 像素高 / 半透明 %d" % [r["tex_h"], r["semi"]])))
 
 	## ⑥ 持有态电弧
 	var ar := _of("shell-copy-arc.png")
@@ -495,6 +576,31 @@ func _run_copy() -> Array:
 
 	## ⑦ 放招闪白
 	_ok("★⑦ 第一发放出那一刻龟壳闪白(放招闪色)", flash0 is Color and (flash0 as Color).is_equal_approx(SVfx.RELEASE_FLASH), str(flash0))
+	## 11-09 实机逐帧问题 4「放招闪白只有 0.06 秒, 每 3 帧抽一张一次都没拍到」: 全白要挂过 3 帧抽一张的间隔(0.05 秒)两倍以上
+	var full_white: float = flash_t0 - _s.JUICE_FLASH_SEC
+	_ok("★★⑦ 放招闪白挂得住: 全白 ≥ 0.1 秒(再淡回 %.2f 秒)" % _s.JUICE_FLASH_SEC, full_white >= 0.1, "闪 %.2f 秒 · 全白 %.2f 秒" % [flash_t0, full_white])
+
+	## 11-09 实机逐帧问题 4「龟壳本体就是暗紫, 紫色碎电弧对比度低」: 量帧表本身 —— 每格电弧里近白像素(亮度 ≥ 0.9)占不透明像素 ≥ 15%(一行白芯 / 三行弧 + 描边 ≈ 20%; 旧图 0)
+	var arc_img: Image = (load(VFX + "shell-copy-arc.png") as Texture2D).get_image()
+	if arc_img.is_compressed():
+		arc_img.decompress()
+	var arc_w: Array = []
+	var arc_ok := true
+	for fi in range(4):
+		var opq := 0
+		var wh := 0
+		for y in range(48):
+			for x in range(48):
+				var ac: Color = arc_img.get_pixel(fi * 48 + x, y)
+				if ac.a > 0.5:
+					opq += 1
+					if ac.get_luminance() >= 0.9:
+						wh += 1
+		var fr: float = float(wh) / float(maxi(1, opq))
+		arc_w.append("%.0f%%" % (fr * 100.0))
+		if opq < 50 or fr < 0.15:
+			arc_ok = false
+	_ok("★★⑥ 持有态电弧四格都有白芯(近白像素 ≥ 15%), 贴在暗紫龟壳上看得见", arc_ok, str(arc_w))
 	var fl = sh.get("flash_col", null)
 	_ok("★⑦ 第二发(0.6 秒)放出那一刻龟壳再闪一次", fl is Color and (fl as Color).is_equal_approx(SVfx.RELEASE_FLASH), str(fl))
 

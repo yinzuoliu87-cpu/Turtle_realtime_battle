@@ -18,8 +18,9 @@
     shell-copy-crescent.png 2 帧 64×64 公告板: 甩链月牙闪光(白芯 + 暗紫外缘, 朝右; 朝左时 flip_h)
     shell-copy-link.png    12 帧 10×6: 分节锁链的一节。帧 = 状态 × 4 + 色阶;
                            状态 0 粗 / 1 细 / 2 只剩一条暗紫细线; 色阶 0 龟壳端暗紫 → 3 原主端白
+    shell-copy-head.png     2 帧 16×10: 锁链链头(尾环 + 白刃尖, 朝右; 0 飞行 / 1 扎中), 11-09 加
     shell-copy-vortex.png   2 帧 32×32 公告板: 原主身上的紫色小旋涡
-    shell-copy-grab.png     2 帧 64×64 公告板: 抓住时原主身后的白色圆闪(1 帧 + 收 1 帧)
+    shell-copy-grab.png     3 帧 64×64 公告板: 抓住时原主身后的爆闪(白芯 + 放射尖刺 → 白环碎开 → 碎光), 11-09 由 2 帧圆闪改
     shell-copy-mark.png     4 帧 32×32 贴地: 原主脚下「已被偷」紫色细圈 + 尾巴小环(出现 / 挂着 / 淡 2 帧)
     shell-copy-drain.png    3 帧 16×12: 抽能量的紫流一段(沿线平铺): 粗流 2 帧(白芯, 纹路错开半段 = 在流) → 细锯齿闪电
     shell-copy-badge.png    6 帧 32×32 公告板: 头顶技能图标的边框(2 像素暗紫描边 + 1 像素白外发光, 中间空出来露图标)
@@ -284,8 +285,15 @@ def _core(img, r, lit, dim=0, holes=0.0, hseed=0):
             px[x, y] = col
 
 
+BAYER2 = ((0, 2), (3, 1))     # 2×2 抖点阈值: 留下阈值 < 密度×4 的像素
+SMOKE_DITHER = ((0.5, 4), (0.68, 3), (0.84, 2), (1.01, 1))   # (归一半径上限, 2×2 里留几个): 里实心 → 3/4 → 1/2 → 1/4
+
+
 def _smoke(img, r, holes=0.0, hseed=0):
-    """烟晕: 近黑紫底 + 暗紫成团, 外沿不规则。"""
+    """烟晕: 近黑紫底 + 暗紫成团, 外沿不规则。
+    ★11-09 软边(实机逐帧 docs/studies/20261108-龟壳特效实机逐帧.md 问题 1「火团太重」): 第一版整块实心 + 外沿描黑边,
+      一块就是一个近黑紫硬饼; 库奇的烟晕是软边、半透、只比芯大一圈。像素画不许半透明 ⇒ 外沿用 2×2 抖点由密到疏
+      (SMOKE_DITHER), 不描边; 外沿那圈稀点仍画到 r(可见宽 = 火道宽, 画面 = 判定不变)。"""
     px = img.load()
     for y in range(64):
         for x in range(64):
@@ -294,17 +302,52 @@ def _smoke(img, r, holes=0.0, hseed=0):
                 continue
             if holes > 0.0 and h2(x, y, hseed) < holes:
                 continue
+            keep = 4
+            for lim, k in SMOKE_DITHER:
+                if f < lim:
+                    keep = k
+                    break
+            if BAYER2[y % 2][x % 2] >= keep:
+                continue
             n = (math.sin(x * 0.47 + 1.3) * math.sin(y * 0.53 + 0.4)
                  + 0.7 * math.sin((x + y) * 0.29 + 2.1) + 0.5 * math.sin((x - y) * 0.41 + 0.9))
-            px[x, y] = K2 if (n > 0.55 and f < 0.9) else K1      # 暗紫成团(固定相位正弦叠加, 不是方块)
+            px[x, y] = K2 if (n > 0.55 and f < 0.68) else K1     # 暗紫成团(固定相位正弦叠加, 不是方块)
+
+
+CORE_R = 14           # 裂纹芯半径(11-09 16 → 14: 「芯小而亮」, 烟晕只比芯大一圈抖点)
+
+
+def _patch_frame(smoke_r, core_r, lit, dim=0, smoke_holes=0.0, smoke_seed=0, core_holes=0.0, core_seed=0):
+    """一格火团: 软边烟晕在下(不描边), 裂纹芯单独描边后盖上去(芯边那圈近黑紫把亮芯和烟分开)。"""
+    im = new(64, 64)
+    if smoke_r > 0:
+        _smoke(im, smoke_r, holes=smoke_holes, hseed=smoke_seed)
+    core = new(64, 64)
+    _core(core, core_r, lit, dim=dim, holes=core_holes, hseed=core_seed)
+    outline(core)
+    im.alpha_composite(core)
+    return im
 
 
 def patch_frames():
     out = []
-    # 0 生成: 扁平亮紫火圈(边缘亮, 里面暗)
+    # 0 生成: 扁平亮紫火圈(边缘亮, 里面暗)。★11-09 里面那片暗紫改成 1/4 抖点: 实录里每块刚落下这一格是实心暗紫饼,
+    #   龟壳飞行时最前面永远顶着一块(实机逐帧问题 1 的同一类)
     im = new(64, 64)
     paint_blob(im, 32, 32, 20, 64, 0.06, [(0.62, K2), (0.8, P2), (0.93, P3), (1.01, L1)])
-    outline(im)
+    px = im.load()
+    for y in range(64):
+        for x in range(64):
+            if px[x, y] == K2 and BAYER2[y % 2][x % 2] >= 1:
+                px[x, y] = CLEAR
+    ring = new(64, 64)
+    rp = ring.load()
+    for y in range(64):
+        for x in range(64):
+            if px[x, y] in (P2, P3, L1):
+                rp[x, y] = px[x, y]
+    outline(ring)
+    im.alpha_composite(ring)
     out.append(im)
     # 1 暗紫细边圈 + 芯(圈和芯之间露地面)
     im = new(64, 64)
@@ -317,40 +360,22 @@ def patch_frames():
     paint_blob(im, 32, 32, 12, 66, 0.1, [(0.3, L1), (0.62, M1), (1.01, P2)], off=(-1, -1))
     outline(im)
     out.append(im)
-    # 2 定型: 烟晕 + 网状裂纹芯
-    im = new(64, 64)
-    _smoke(im, 29)
-    _core(im, 16, 0)
-    outline(im)
-    out.append(im)
+    # 2 定型: 软边烟晕 + 网状裂纹芯
+    out.append(_patch_frame(29, CORE_R, 0))
     # 3~6 持续循环: 裂纹亮块轮换 + 1~2 颗火星往上飘(俯视图里「上」= 远处, 镜头里就是往上)
     for i in range(4):
-        im = new(64, 64)
-        _smoke(im, 29)
-        _core(im, 16, i)
-        outline(im)
-        put(im, 26, 20 - 3 * i, L1)
-        put(im, 26, 21 - 3 * i, P3)
+        im = _patch_frame(29, CORE_R, i)
+        put(im, 27, 22 - 3 * i, L1)
+        put(im, 27, 23 - 3 * i, P3)
         j = (i + 2) % 4
-        put(im, 39, 22 - 3 * j, P3)
+        put(im, 38, 24 - 3 * j, P3)
         out.append(im)
     # 7 消散: 烟开始散(挖掉近一半), 芯还亮但不再有最亮块
-    im = new(64, 64)
-    _smoke(im, 29, holes=0.45, hseed=71)
-    _core(im, 16, 0, dim=1)
-    outline(im)
-    out.append(im)
+    out.append(_patch_frame(29, CORE_R, 0, dim=1, smoke_holes=0.45, smoke_seed=71))
     # 8 烟几乎散光, 芯变暗
-    im = new(64, 64)
-    _smoke(im, 28, holes=0.86, hseed=72)
-    _core(im, 15, 1, dim=1)
-    outline(im)
-    out.append(im)
+    out.append(_patch_frame(28, CORE_R - 1, 1, dim=1, smoke_holes=0.86, smoke_seed=72))
     # 9 没有烟, 芯缩小
-    im = new(64, 64)
-    _core(im, 10, 2, dim=2)
-    outline(im)
-    out.append(im)
+    out.append(_patch_frame(0, 9, 2, dim=2))
     # 10 一抹残芯
     im = new(64, 64)
     paint_blob(im, 32, 32, 5, 73, 0.2, [(0.5, P1), (1.01, K2)], holes=0.4, hseed=74)
@@ -463,14 +488,44 @@ def vortex_frames():
 
 
 # ═══════════════════════ 复制 ③ 抓住: 原主身后白色圆闪(公告板 64×64 × 2) ═══════════════════════
+def _rays(im, n, r0, r_long, r_short, rot_deg, core_col, edge_col):
+    """放射尖刺: n 道, 长短交替; 两像素粗(芯色 + 一侧边色)。"""
+    for k in range(n):
+        a = math.radians(rot_deg + k * 360.0 / n)
+        rr = r_long if k % 2 == 0 else r_short
+        x0, y0 = 32 + math.cos(a) * r0, 32 + math.sin(a) * r0
+        x1, y1 = 32 + math.cos(a) * rr, 32 + math.sin(a) * rr
+        line(im, x0 + 1, y0, x1 + 1, y1, edge_col)
+        line(im, x0, y0, x1, y1, core_col)
+
+
 def grab_frames():
+    """★11-09 三格(实机逐帧问题 3「抓住的白闪只有 2 格, 读起来更像一个泡泡而不是一下爆闪」):
+    0 爆闪(白芯 + 8 道放射尖刺) → 1 白环碎开、芯缩 → 2 碎光散点。原主立绘压在前面(身后那一层)。"""
     a = new(64, 64)
-    paint_blob(a, 32, 32, 30, 91, 0.05, [(0.78, W), (0.9, L1), (1.01, P3)])
+    _rays(a, 8, 10, 31, 22, 22.5, W, L1)
+    paint_blob(a, 32, 32, 14, 91, 0.06, [(0.72, W), (1.01, L1)])
     outline(a, P1)
     b = new(64, 64)
-    paint_blob(b, 32, 32, 20, 92, 0.08, [(0.5, W), (0.8, L1), (1.01, P3)], holes=0.3, hole_from=0.8, hseed=93)
+    px = b.load()
+    for y in range(64):
+        for x in range(64):
+            d = math.hypot(x + 0.5 - 32, y + 0.5 - 32)
+            if 21.0 <= d < 25.5 and h2(x, y, 94) >= 0.3:
+                px[x, y] = W if d < 23.5 else L1
+    _rays(b, 8, 26, 30, 28, 0.0, L1, P3)
+    paint_blob(b, 32, 32, 7, 92, 0.1, [(0.6, W), (1.01, L1)])
     outline(b, P1)
-    return [a, b]
+    c = new(64, 64)
+    for k in range(10):
+        ang = math.radians(k * 36 + 11 + 9 * h2(k, 3, 95))
+        rr = 26 + 4 * h2(k, 4, 95)
+        cx, cy = int(32 + math.cos(ang) * rr), int(32 + math.sin(ang) * rr)
+        put(c, cx, cy, W if k % 2 == 0 else L1)
+        put(c, cx + 1, cy, L1)
+    paint_blob(c, 32, 32, 3, 96, 0.1, [(1.01, L1)])
+    outline(c, P1)
+    return [a, b, c]
 
 
 # ═══════════════════════ 复制 ③ 「已被偷」小圈(贴地 32×32 × 4) ═══════════════════════
@@ -599,24 +654,63 @@ def badge_frames():
 
 # ═══════════════════════ 复制 ⑥ 持有态碎电弧(公告板 48×48 × 4) ═══════════════════════
 def arc_frames():
+    """★11-09 提对比(实机逐帧问题 4「龟壳本体就是暗紫, 紫色碎电弧对比度低」): 第一版亮紫 + 淡紫白两像素,
+    贴在暗紫龟壳上一抽帧就没了。改成 白芯 + 淡紫白 + 亮紫 三像素粗、外描近黑紫, 弧更长(5 → 6 节), 两端白火星。"""
     out = []
     for fi in range(4):
         im = new(48, 48)
         for k in range(4):
             a0 = math.radians(k * 90 + fi * 37 + 20 * h2(k, fi, 121))
             pts = []
-            for j in range(5):
+            for j in range(6):
                 a = a0 + math.radians(j * 9)
                 jit = 2.0 if j % 2 else -1.0
                 pts.append((24 + math.cos(a) * (19 + jit), 25 + math.sin(a) * (14 + jit * 0.7)))
-            for j in range(4):                                   # 两像素粗: 下沿亮紫 + 上沿淡紫白
-                line(im, pts[j][0], pts[j][1] + 1, pts[j + 1][0], pts[j + 1][1] + 1, P3)
-            for j in range(4):
-                line(im, pts[j][0], pts[j][1], pts[j + 1][0], pts[j + 1][1], L1 if j in (1, 2) else P3)
+            for j in range(5):                                   # 三像素粗: 下沿亮紫 / 中间淡紫白 / 上沿白芯
+                line(im, pts[j][0], pts[j][1] + 2, pts[j + 1][0], pts[j + 1][1] + 2, P3)
+            for j in range(5):
+                line(im, pts[j][0], pts[j][1] + 1, pts[j + 1][0], pts[j + 1][1] + 1, L1)
+            for j in range(5):
+                line(im, pts[j][0], pts[j][1], pts[j + 1][0], pts[j + 1][1], W)
+            put(im, int(pts[0][0]) - 1, int(pts[0][1]), W)
+            put(im, int(pts[-1][0]) + 1, int(pts[-1][1]), W)
         for k in range(3):
             a = math.radians(k * 120 + fi * 53 + 40)
-            put(im, int(24 + math.cos(a) * 22), int(25 + math.sin(a) * 17), P3)
+            put(im, int(24 + math.cos(a) * 22), int(25 + math.sin(a) * 17), W)
         outline(im)
+        out.append(im)
+    return out
+
+
+# ═══════════════════════ 复制 ② 锁链链头(16×10 × 2, 朝右) ═══════════════════════
+## ★11-09(实机逐帧问题 3「塞拉斯的链甩出去有链头在飞; 我们没有链头飞行的动作」): 链头 = 尾环 + 白刃尖, 朝右画,
+##   摆法同链节(rotation.z 转到连线方向)。0 飞行中(白刃) / 1 扎中(刃尖一闪更亮、尾环亮紫)。
+HEAD_ROWS = [
+    "......OOOO......",
+    "....OOWWLLOO....",
+    "OOOOOLWWWLLLOO..",
+    "OHHOOLWWWWLLLLOO",
+    "OB.BOLWWWWWWWWWO",
+    "OHHOOLLLLLLLLLOO",
+    "OOOOOLLLLLPPOO..",
+    "....OOPPPPOO....",
+    "......OOOO......",
+    "................",
+]
+
+
+def head_frames():
+    out = []
+    for fi in range(2):
+        im = new(16, 10)
+        px = im.load()
+        for y, row in enumerate(HEAD_ROWS):
+            for x, ch in enumerate(row):
+                col = {"O": K0, "W": W, "L": L1, "P": P3, "H": P3 if fi == 1 else P2, "B": P2 if fi == 1 else P1}.get(ch)
+                if fi == 1 and ch == "L" and y in (3, 4, 5) and x >= 9:
+                    col = W                                          # 扎中: 刃尖一段全白
+                if col is not None:
+                    px[x, y] = col
         out.append(im)
     return out
 
@@ -783,6 +877,7 @@ SHEETS = [
     ("shell-dive-hit.png", hit_frames),
     ("shell-copy-crescent.png", crescent_frames),
     ("shell-copy-link.png", link_frames),
+    ("shell-copy-head.png", head_frames),
     ("shell-copy-vortex.png", vortex_frames),
     ("shell-copy-grab.png", grab_frames),
     ("shell-copy-mark.png", mark_frames),

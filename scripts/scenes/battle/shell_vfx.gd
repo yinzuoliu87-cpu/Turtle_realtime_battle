@@ -27,6 +27,7 @@ const PATCH := "res://assets/sprites/vfx/shell-dive-patch.png"
 const HIT := "res://assets/sprites/vfx/shell-dive-hit.png"
 const CRESCENT := "res://assets/sprites/vfx/shell-copy-crescent.png"
 const LINK := "res://assets/sprites/vfx/shell-copy-link.png"
+const HEAD := "res://assets/sprites/vfx/shell-copy-head.png"
 const VORTEX := "res://assets/sprites/vfx/shell-copy-vortex.png"
 const GRAB := "res://assets/sprites/vfx/shell-copy-grab.png"
 const MARK := "res://assets/sprites/vfx/shell-copy-mark.png"
@@ -52,6 +53,19 @@ const BADGE_INNER := 22.0            # 底框定稿帧(第 3 帧)里图标那块
 const EMPTY_REACH := 120.0           # 原主找不到 / 已死: 朝正前方空甩多远(码)
 ## 闪白色(⑦ 放招 / ④ 原主被抽空)。比受击闪白(JUICE_FLASH_COLOR)略带淡紫, 门禁按它认「这一下是放招闪」。
 const RELEASE_FLASH := Color(2.4, 2.3, 2.6)
+## 闪白时长(秒): 渲染步按 flash_t / JUICE_FLASH_SEC 插值 ⇒ 前 (这个数 − 0.06) 秒全白、最后 0.06 秒淡回。
+## ★11-09(实机逐帧问题 4): 原来同受击闪白 0.06 秒, 每 3 帧抽一张时一次都没拍到; 塞拉斯放偷来的大招是整个人换色。
+const RELEASE_FLASH_SEC := 0.18
+## ── 锁链链头 / 紫流扭动(11-09 实机逐帧问题 3「锁链与紫流不够有劲」) ──
+const CHAIN_GROW := 0.15             # 锁链从龟壳甩到原主的秒数(链头飞这么久; 链节由近到远跟着亮)。原 0.1 秒链头还没看清就到了
+const HEAD_THICK := 20.0             # 链头高(码): 一像素与链节同大(链节 6 像素高 = LINK_THICK 12 码 ⇒ 10 像素 = 20 码)
+const DRAIN_WAVE_H := 0.22           # 紫流上下扭动幅度(米; 两头贴着身体, 中段最大)
+const DRAIN_WAVES := 2.0             # 整条紫流上的波数
+const DRAIN_FLOW := 1.5              # 紫流 0.3 秒里波峰往龟壳那头推进几个波长(= 在流)
+## 头顶图标: 运行时缩成 22 像素像素图(与底框定稿帧里那块空同宽 BADGE_INNER), 硬边零半透明 ——
+##   ★11-09(实机逐帧问题 5): 原图 186 ~ 923 像素手绘, 直接最近邻缩小有半透明毛边, 和像素底框并排风格对不上。
+const ICON_PX := 22
+const SELF := "res://scripts/scenes/battle/shell_vfx.gd"
 const GROUND_PRIO := -1              # 贴地层(火团 / 已被偷小圈)的渲染优先级: 比立绘(0)先画 ⇒ 永远压在龟脚下
 ## 复制演出节拍(秒, 从施放那一刻起; 10 fps 一格 0.1 秒): ① 0~0.2 ② 0~0.3(0.2 变细 / 0.3 只剩细线) ③ 0.3 ④ 0.4~0.7
 const T_THIN := 0.2
@@ -323,17 +337,36 @@ func _chain(me: Vector2, to: Vector2, toh: float) -> void:
 	var tex: Texture2D = load(LINK)
 	var ps: float = (LINK_THICK * battle.WS) / float(maxi(1, tex.get_height()))
 	var link_yd: float = 10.0 * ps / battle.WS
-	var links: Array = PullRopeVfx.shoot(battle, me, CH_H_SHELL, to, toh, tex, LINK_THICK, link_yd, 0.1, 0.4 - 0.12)
+	var links: Array = PullRopeVfx.shoot(battle, me, CH_H_SHELL, to, toh, tex, LINK_THICK, link_yd, CHAIN_GROW, 0.4 - 0.12)
 	for lk in links:
 		lk.hframes = 12
 		lk.set_meta("shell_fx", "link")
 		lk.set_meta("tier", clampi(int(float(lk.get_meta("rope_f", 0.0)) * 4.0), 0, 3))
 		lk.frame = int(lk.get_meta("tier"))
+	_chain_head(me, to, toh)
 	var tw = battle._reg_tween()
 	tw.tween_interval(T_THIN)
 	tw.tween_callback(_link_state.bind(links, 1))
 	tw.tween_interval(T_GRAB - T_THIN)
 	tw.tween_callback(_link_state.bind(links, 2))
+
+
+## ② 链头: 从龟壳身侧飞到原主(CHAIN_GROW 秒, 链节由近到远跟在后面亮), 扎中那一刻换亮格, 挂到锁链收(0.4 秒)。
+##   摆法同链节(公告板 + rotation.z 转到连线方向), 一像素与链节同大。
+func _chain_head(me: Vector2, to: Vector2, toh: float) -> void:
+	var hd := _bb(HEAD, 2, HEAD_THICK, me, CH_H_SHELL, 1)
+	hd.rotation.z = DetMath.datan2(-(to - me).y, (to - me).x)
+	hd.set_meta("shell_fx", "head")
+	hd.visible = true
+	var tw = battle._reg_tween()
+	tw.bind_node(hd)
+	tw.tween_method(func(q: float) -> void:
+		if is_instance_valid(hd):
+			hd.position = battle._world_pos(DetMath.vlerp(me, to, q), lerpf(CH_H_SHELL, toh, q))
+	, 0.0, 1.0, CHAIN_GROW)
+	tw.tween_callback(_show.bind(hd, 1))
+	tw.tween_interval(maxf(0.05, 0.4 - CHAIN_GROW))
+	tw.tween_callback(hd.queue_free)
 
 
 func _link_state(links: Array, state: int) -> void:
@@ -348,9 +381,9 @@ func _grab(u: Dictionary, o: Dictionary, mark_end: float) -> void:
 		return
 	var sp: Vector2 = o["pos"]
 	## 身后白色圆闪: 渲染优先级比立绘低, 原主立绘压在它前面
-	var g := _bb(GRAB, 2, GRAB_YD, sp, CH_H_SRC, -1)          # 比原主立绘先画 ⇒ 压在身后
+	var g := _bb(GRAB, 3, GRAB_YD, sp, CH_H_SRC, -1)          # 比原主立绘先画 ⇒ 压在身后
 	g.set_meta("shell_fx", "grab")
-	_seq(g, [0, 1], FPS)
+	_seq(g, [0, 1, 2], FPS)                                   # 爆闪 → 白环碎开 → 碎光(11-09 由 2 格圆闪改)
 	## 脚下「已被偷」小圈(贴地, 跟着原主走): 出现 1 格 → 挂着 → 淡 2 格
 	var mk := _ground(MARK, 4, MARK_YD, sp, 0.045)
 	mk.set_meta("shell_fx", "mark")
@@ -372,17 +405,41 @@ func _drain(u: Dictionary, o: Dictionary) -> void:
 	var tex: Texture2D = load(DRAIN)
 	var ps: float = (DRAIN_THICK * battle.WS) / float(maxi(1, tex.get_height()))
 	var seg_yd: float = 16.0 * ps / battle.WS
-	var segs: Array = PullRopeVfx.shoot(battle, o["pos"], CH_H_SRC, u["pos"], CH_H_SHELL, tex, DRAIN_THICK, seg_yd, 0.04, 0.3 - 0.12)
+	var from: Vector2 = o["pos"]
+	var to: Vector2 = u["pos"]
+	var segs: Array = PullRopeVfx.shoot(battle, from, CH_H_SRC, to, CH_H_SHELL, tex, DRAIN_THICK, seg_yd, 0.04, 0.3 - 0.12)
 	for sg in segs:
 		sg.hframes = 3
 		sg.frame = 0
 		sg.set_meta("shell_fx", "drain")
+	## 扭动(11-09): 每段按在流上的位置 f 上下摆(两头贴着身体、中段最大), 波峰 0.3 秒里往龟壳那头推 DRAIN_FLOW 个波长;
+	##   每段顺着波的切线转一点, 读起来是一股在扭的流, 不是一根直带。只动高度和朝向, 不动地面投影(门禁按地面投影认段)。
+	var ang0: float = DetMath.datan2(-(to - from).y, (to - from).x)
+	var len_m: float = maxf(1.0, DetMath.dist(from, to)) * battle.WS
+	var ww = battle._reg_tween()
+	ww.tween_method(_drain_wave.bind(segs, from, to, ang0, len_m), 0.0, 1.0, 0.3)
 	var tw = battle._reg_tween()
 	tw.tween_interval(1.0 / FPS)
 	tw.tween_callback(_segs_frame.bind(segs, 1))
 	tw.tween_interval(1.0 / FPS)
 	tw.tween_callback(_segs_frame.bind(segs, 2))
 	tw.tween_callback(_flash.bind(o))
+
+
+## q: 0 → 1 = 紫流这 0.3 秒。f = 段在流上的位置(0 原主 → 1 龟壳); 相位 k·f − 流速·q ⇒ 波峰随 q 往 f = 1(龟壳)走。
+func _drain_wave(q: float, segs: Array, from: Vector2, to: Vector2, ang0: float, len_m: float) -> void:
+	for sg in segs:
+		if not is_instance_valid(sg):
+			continue
+		var f: float = float(sg.get_meta("rope_f", 0.5))
+		var ph: float = TAU * (DRAIN_WAVES * f - DRAIN_FLOW * q)
+		var env: float = sin(PI * f)
+		var h: float = lerpf(CH_H_SRC, CH_H_SHELL, f) + DRAIN_WAVE_H * env * sin(ph)
+		sg.position = battle._world_pos(DetMath.vlerp(from, to, f), h)
+		## 切线: dh/df ÷ 流长(米)。忽略包络的导数(两头本来就平), 只取正弦那一项
+		var slope: float = DRAIN_WAVE_H * env * TAU * DRAIN_WAVES * cos(ph) / len_m
+		var dirx: float = signf(to.x - from.x) if absf(to.x - from.x) > 0.01 else 1.0
+		sg.rotation.z = ang0 + atan(slope) * dirx
 
 
 func _segs_frame(segs: Array, f: int) -> void:
@@ -393,12 +450,43 @@ func _segs_frame(segs: Array, f: int) -> void:
 
 func _flash(o: Dictionary) -> void:
 	if _live():
-		battle._vfx._flash(o, RELEASE_FLASH)
+		battle._vfx._flash(o, RELEASE_FLASH, RELEASE_FLASH_SEC)
 
 
-## ⑦ 每发被抄技能放出那一刻: 龟壳闪白 1 帧(之后原技能特效原样播)。
+## ⑦ 每发被抄技能放出那一刻: 龟壳闪白 RELEASE_FLASH_SEC 秒(全白 0.12 + 淡回 0.06; 之后原技能特效原样播)。
 func copy_release(u: Dictionary) -> void:
 	_flash(u)
+
+
+## 技能图标缩成 px 像素高的像素图: 先按面积缩(兰索斯, 不丢细节), 再把透明度二值化(≥ 0.5 实、否则空) ⇒ 硬边零半透明,
+##   一像素与头顶底框的一像素同大。纯函数(只看参数), 挂出处键 ⇒ 逐帧直播的手机按同名同参现生成(StreamMirror.gen_ok 认 gen_ 前缀)。
+##   取不到像素(贴图读不出图像)就退回原图。
+static var _icon_cache := {}
+static func gen_icon_px(path: String, px: int) -> Texture2D:
+	var key := "%s|%d" % [path, px]
+	if _icon_cache.has(key):
+		return _icon_cache[key]
+	var src: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	if src == null:
+		return null
+	var img: Image = src.get_image()
+	if img == null or img.is_empty():
+		return src
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
+	var h: int = maxi(1, px)
+	var w: int = maxi(1, int(round(float(h) * float(img.get_width()) / float(maxi(1, img.get_height())))))
+	img.resize(w, h, Image.INTERPOLATE_LANCZOS)
+	for y in range(h):
+		for x in range(w):
+			var c: Color = img.get_pixel(x, y)
+			img.set_pixel(x, y, Color(c.r, c.g, c.b, 1.0) if c.a >= 0.5 else Color(0, 0, 0, 0))
+	var tex := ImageTexture.create_from_image(img)
+	VfxTex.tag(tex, "gen_icon_px", [path, px], SELF)
+	_icon_cache[key] = tex
+	return tex
 
 
 ## ⑤ 头顶图标 + 边框(暗紫描边 + 白外发光, 中间空出来露图标)。图标本体仍由 battle._vfx.copy_steal_icon 出(弹入 / 保持 / 淡出秒数见 ShellSystem.COPY_ICON_*),
