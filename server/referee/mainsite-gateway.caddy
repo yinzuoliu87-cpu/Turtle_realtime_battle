@@ -7,7 +7,9 @@
 # 规则（只有这些）：
 #   /mainsite/*  /app/*   → 本机网关（正式 127.0.0.1:8790 / 内测 127.0.0.1:8791）；请求体原样转（★主站签的是原始字节，不许改写）
 #   /healthz             → 网关自己的 /healthz（顺带证明网关活着）
-#   /player*             → 网页播放器（E 线，路径与目录到时候接；现在 404）
+#   /player*             → 网页播放器（server/player/player.caddy 装成 /etc/caddy/turtle-player.caddy；2026-11-09 内测接上，
+#                          正式 11-16 随正式播放器一起接）。★Caddy 里 handle 排在 route 前 ⇒ /player* 先被播放器接走，其余照旧走下面的 route。
+#                          import 写成通配：片段没装（换新机 / 还没部署播放器）时 Caddy 不报错、/player* 照旧 404，不挡网关
 #   其余一律 404；带 .. 的原始路径一律 404（同 relay.caddy 那一课：path 匹配器看的是清理过的路径）
 #   请求体 ≤ 64 KB（主站 / App 的请求都是小 JSON）；上游连上 3 秒、等回包头 12 秒（主站那边 10 秒就放弃）
 #   不开访问日志（本文件没有 `log` 指令）；网关自己只记方法、路径、状态码
@@ -48,5 +50,6 @@ arena.turtlearena.xyz {
 }
 
 arena-beta.turtlearena.xyz {
+	import /etc/caddy/turtle-player*.caddy /var/www/turtle-player/beta /var/lib/turtle-referee-beta/streams /var/lib/turtle-referee-beta/streams-expired
 	import mainsite_gateway 127.0.0.1:8791
 }

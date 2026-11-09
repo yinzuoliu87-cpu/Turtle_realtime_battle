@@ -3,7 +3,11 @@
 > 方案书：[docs/plans/20261105c-主站对接偷袭.md](../../docs/plans/20261105c-主站对接偷袭.md) §4.7 · 约定 [docs/specs/主站对接约定.md](../../docs/specs/主站对接约定.md) §4.4 · [docs/plans/20261107-龟战主站对接.md](../../docs/plans/20261107-龟战主站对接.md) §4.5 / §4.7（`playerURL`）
 > 上游：[server/stream/README.md](../stream/README.md)（状态流块与 end.json 怎么来、保留期）、[server/deploy/README.md](../deploy/README.md)（裁判机部署）
 >
-> **2026-11-08 只写了文件，没有部署。** 子域名 `arena` / `arena-beta` 的 A 记录与站点块由网关那一条线建（20261107 §4.7）。
+> **2026-11-09 内测已上（0.23.0）；正式没上（11-16 随正式网关）。** 子域名 `arena` / `arena-beta` 的 A 记录与站点块由网关那一条线建（20261107 §4.7）。
+> 内测实况：上面「部署（第一次）」第 1 步建了目录（prod 目录也建了、空着）；第 2 步**只换了内测那份** `stream_ops.py`（正式那份 11-16 换）；
+> 第 3 步的 import 写在 `server/referee/mainsite-gateway.caddy` 的 arena-beta 块里（通配 `turtle-player*.caddy`：片段没装时 Caddy 只警告、不挡网关，11-09 在裁判机上实测）；
+> 第 4 步 `deploy.py 0.23.0 --only player --env beta` 过。无头 Chrome（软件 WebGL）打开 `/player/?match=<内测偷袭局>` ⇒ 跳 `/player/0.23.0/`、引擎起来、录像在播（进度条走、血条与伤害数字在变）。
+> 控制台唯一的 404 是浏览器自己要的站点根 `/favicon.ico`，不影响。
 
 ## 它是什么
 
