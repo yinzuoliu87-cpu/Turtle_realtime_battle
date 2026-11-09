@@ -57,7 +57,9 @@ func _init(b) -> void:
 	battle = b
 
 func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗姆酒(120龟能): 海盗船扔酒瓶→每秒回4%maxHP×6秒(HoT绿回血) + 护甲+0.7A/魔抗+0.2A×6秒(0.2A双抗 + 另给护甲 0.5A·见下方两行·暖色酒气护光)
-	u["rum_until"] = battle._t + RUM_SEC; u["rum_dps"] = u["maxHp"] * RUM_HOT_PCT   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
+	## 每秒回血量在施放这一刻定, 乘 _copy_fx_mult: 龟壳复制放的朗姆酒按 60%(2026-11-09 探针 _probe_copy_support: 原来 20000 / 20000 = 1)。
+	##   每帧回血在 _tick_effects 里结算、不在复制窗口里 ⇒ 只在这里乘一次(同 DoT 层数在施加那一刻缩)。海盗龟自己放 = ×1 不变。
+	u["rum_until"] = battle._t + RUM_SEC; u["rum_dps"] = u["maxHp"] * RUM_HOT_PCT * battle._copy_fx_mult   # 每秒回4%maxHP×6秒(分秒HoT·per-frame _heal结算)
 	u["rum_glow_until"] = battle._t + RUM_SEC                               # 暖色酒气护光标记
 	## ★11-05 增益演出(BuffVfx: 放出一把主题色火星 + 持续期火星往上飘; 审核片里这个技能放出后身上看不出任何东西)
 	BuffVfx.activate(battle, u, Color(0.55, 1.0, 0.45), RUM_SEC, 62.0)

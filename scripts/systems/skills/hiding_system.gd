@@ -555,7 +555,10 @@ func _sk_hiding_defend(u: Dictionary) -> void:                   # 缩头乌龟�
 	battle._damage._buff(u, "def", DEFEND_DEF_UP, true, DEFEND_DEF_SEC)
 	var uu: Dictionary = u
 	var cap: float = u["maxHp"] * DEFEND_SHIELD_PCT
-	battle._pending_shots.append({"delay": DEFEND_SHIELD_SEC - 0.05, "fn": func(): battle._damage._heal(uu, clampf(float(uu.get("shield", 0.0)) - float(uu.get("_hiding_floor", 0.0)), 0.0, cap) * DEFEND_CONVERT), "src": u})   # 到期前读【本技那份】剩余盾×20%转生命
+	## ★"_copy": null = 这一段不套龟壳复制的 60%(2026-11-09 探针 _probe_copy_support: 复制放时治疗 0.36 = 0.6 × 0.6):
+	##   它转的是【剩余护盾】—— 那份盾施放时已经按 60% 给了(_grant_shield 吃 _copy_fx_mult), 再套一次就是两次六折。
+	##   ShellSystem.ctx_exit 只给没有 "_copy" 键的延后条目打标, 显式写 null 就跳过。
+	battle._pending_shots.append({"delay": DEFEND_SHIELD_SEC - 0.05, "fn": func(): battle._damage._heal(uu, clampf(float(uu.get("shield", 0.0)) - float(uu.get("_hiding_floor", 0.0)), 0.0, cap) * DEFEND_CONVERT), "src": u, "_copy": null})   # 到期前读【本技那份】剩余盾×20%转生命
 	battle._pending_shots.append({"delay": DEFEND_SHIELD_SEC, "fn": func(): uu["_hidingShellVal"] = 0.0, "src": u})   # 到期清特殊段标记
 	_hiding_dome(u, Color(0.55, 0.85, 0.6, 1.0), DEFEND_SHIELD_SEC)          # 壳青绿护罩4秒呼吸→碎裂(2026-07-17: 原零画面)
 	battle._pending_shots.append({"delay": DEFEND_SHIELD_SEC, "fn": func(): _hiding_legacy_heal_vfx(uu), "src": u})   # 碎裂后: 绿光点流入(剩盾转血可视)

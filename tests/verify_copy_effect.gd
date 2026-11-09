@@ -16,7 +16,8 @@ extends Node
 ## ★分母：每个技能直接放都要真打出伤害（B > 0），否则这条断言是空的。
 ## ★改坏验证（2026-11-09 做过）：去掉 battle_ballistics 弹道命中那段 ctx_enter ⇒ iceFreeze 比值回到 1.000 变红；
 ##   去掉 _apply_damage 那段乘法 ⇒ 下面「两条伤害路径」那条红(★basicChiWave 不走这条路, 拿它当代表打不红)；
-##   去掉 _add_curse 缩时长 ⇒ ghostStorm 红；召唤物不写倍率 ⇒ pirateShipPassive 红。
+##   去掉 _add_curse 缩时长 ⇒ ghostStorm 红；召唤物不写倍率 ⇒ pirateShipPassive 红；
+##   朗姆酒每秒回血不乘倍率 ⇒ pirateRum 治疗 1.000 红；防守转治疗去掉 "_copy": null ⇒ hidingDefend 治疗 0.360 红。
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_copy_effect.tscn
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -44,6 +45,14 @@ const CASES := [
 	["crystalBarrier", "盾破放的延后子弹"],
 	["minionRocket", "延后子弹里起的协程"],
 	["pirateShipPassive", "召唤物"],
+]
+
+## 护盾 / 治疗(规则「60% 效果 = 伤害 + 护盾 / 治疗 / DoT」的后两样; 2026-11-09 整类探针 tests/probes/_probe_copy_support):
+##   [技能, 量哪样, 说明]。龟壳血量上限放大到 10 万、开局掉一半(第一版 412 血 ⇒ 朗姆酒两边都回满、比值被上限卡成 1)。
+const SUPPORT := [
+	["stoneRockShield", "shield", "对照: 施放时给盾(修之前就对)"],
+	["pirateRum", "heal", "每帧回血(施放时定每秒回多少)"],
+	["hidingDefend", "heal", "剩余护盾转治疗(护盾已打过折, 不许再折)"],
 ]
 
 var _pass := 0
@@ -135,6 +144,50 @@ func _paths_check() -> void:
 	await get_tree().process_frame
 
 
+func _case_support(skill: String, copy: bool) -> Dictionary:
+	var s = RB.new()
+	add_child(s)
+	for _i in range(30):
+		await get_tree().process_frame
+	s._deterministic = true
+	s._battle_rng.seed = SEED
+	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
+	var sh: Dictionary = s._spawn._make_unit("shell", "left", c + Vector2(-140, 0))
+	sh["no_basic"] = true
+	sh["no_move"] = true
+	sh["energy"] = 0.0
+	sh["maxHp"] = 100000.0
+	sh["hp"] = 50000.0
+	var foe: Dictionary = s._spawn._make_unit("basic", "right", c + Vector2(140, 0))
+	foe["active_skills"] = [skill]
+	foe["maxHp"] = HP
+	foe["hp"] = HP
+	foe["no_basic"] = true
+	foe["no_move"] = true
+	foe["energy"] = 0.0
+	s._units.clear()
+	s._units.append(sh)
+	s._units.append(foe)
+	s._over = false
+	var last := float(sh["hp"])
+	if copy:
+		s._shell_sys._sk_shell_copy(sh, foe)
+	else:
+		s._do_skill(sh, foe, skill)
+	var shield_max := float(sh.get("shield", 0.0))
+	var heal := 0.0
+	for _i in range(WINDOW):
+		await get_tree().process_frame
+		shield_max = maxf(shield_max, float(sh.get("shield", 0.0)))
+		var h := float(sh["hp"])
+		if h > last:
+			heal += h - last
+		last = h
+	s.queue_free()
+	await get_tree().process_frame
+	return {"shield": shield_max, "heal": heal}
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
@@ -164,6 +217,17 @@ func _ready() -> void:
 		_ok("分母: %d / %d 个技能直接放都打出了伤害" % [n_real, CASES.size()], n_real == CASES.size() and n_run == CASES.size())
 	elif n_run > 0:
 		_ok("分母: %d / %d 个技能直接放都打出了伤害" % [n_real, n_run], n_real == n_run)
+	for cs in SUPPORT:
+		var sk: String = str(cs[0])
+		if only != "" and not only.split(",").has(sk):
+			continue
+		var a: Dictionary = await _case_support(sk, true)
+		var b: Dictionary = await _case_support(sk, false)
+		var key: String = str(cs[1])
+		var r: float = (float(a[key]) / float(b[key])) if float(b[key]) > 0.5 else -1.0
+		_ok("分母 %s 直接放真给了%s" % [sk, "盾" if key == "shield" else "治疗"], float(b[key]) > 0.5, "%.0f" % float(b[key]))
+		_ok("★%s · %s: 复制 / 直接 %s = %.3f ≈ %s" % [sk, str(cs[2]), "盾" if key == "shield" else "治疗", r, ShellSystem.COPY_EFFECT],
+			absf(r - ShellSystem.COPY_EFFECT) <= TOL, "复制 %.0f · 直接 %.0f" % [float(a[key]), float(b[key])])
 	if only == "" or only.split(",").has("paths"):
 		await _paths_check()
 	print("")
