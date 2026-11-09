@@ -648,13 +648,6 @@ func _xp_item(pid: String, owned: bool, x0: int, g: int, tw: Tween, t0: float) -
 	return it
 
 
-static func _pet_name(pid: String) -> String:
-	for p in DataRegistry.launch_pets:
-		if str((p as Dictionary).get("id", "")) == pid:
-			return str((p as Dictionary).get("name", pid))
-	return pid
-
-
 ## 录像里的胜方(left / right)⇒ 看的人口径(left = 我方赢): 看的人是 B 时左右对调, 其余原样。平局等别的值原样。
 ## 各路结果里缺终极战场、但这一局确实打到了终极战场（当前路 = final，上下路一胜一负）。纯函数（门禁直接调）。
 ##   ★只认「当前路 = final」：练习赛只有两路，一胜一负也不打终极战场，不许补。
