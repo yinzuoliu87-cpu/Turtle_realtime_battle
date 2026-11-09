@@ -80,15 +80,24 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	gs.test_mode = true                                  # 不许写真存档
 	var keys := ["lane_results", "dual_active", "finals_pending_reveal", "week_phase", "hearts", "season_wins",
-		"ranked_used", "season_level", "gauntlet_wins", "gauntlet_losses", "gauntlet_backfill_paid", "current_lane"]
+		"ranked_used", "season_level", "gauntlet_wins", "gauntlet_losses", "gauntlet_backfill_paid", "current_lane",
+		"season_leaders", "account_id", "pet_lv"]
 	var bak := {}
 	for k in keys:
 		var v = gs.get(k)
 		bak[k] = v.duplicate() if v is Dictionary else v
 	var rp_bak := [RP.fail_count, RP.ok_count]
+	## 龟经验条(2026-11-09 · 方案书 20261107b §4.5): 积分赛 / 闯关的战果页多一行「上场三只龟的经验」 ⇒ 量最高那一版就得让它真的画出来:
+	##   有账号(才按拥有过滤)、拉到了拥有表、三只统领(两只拥有 + 一只没拥有)。不设这些这一行不出现, 挤不挤出去就量不到。
+	gs.account_id = "verify-settle-fit"
+	gs.season_leaders = ["stone", "bamboo", "ice"]
+	PetLevelsNet.adopt({"linked": true, "owned": ["stone", "bamboo"], "levels": {"stone": {"lv": 1, "xp": 65}, "bamboo": {"lv": 3, "xp": 200}}})
 	for c in CASES:
 		await _run(c[0], c[1], str(c[2]))
 	SafeArea.override_insets = Vector4(-1.0, -1.0, -1.0, -1.0)
+	PetLevelsNet.fetched = false
+	PetLevelsNet.owned = []
+	PetLevelsNet.levels = {}
 	RP.fail_count = rp_bak[0]
 	RP.ok_count = rp_bak[1]
 	for k in keys:
@@ -151,9 +160,28 @@ func _check_variant(scr, kind: String, vt: String) -> void:
 	var nl: int = lanes.get_child_count() if lanes != null else 0
 	var chips := 0
 	for c in p1.get_children():
-		if c is HBoxContainer and str(c.name) != "LaneResults" and str(c.name) != "MvpRow":
+		if c is HBoxContainer and str(c.name) != "LaneResults" and str(c.name) != "MvpRow" and str(c.name) != "PetXpRow":
 			chips = c.get_child_count()
 	var mvp: Node = p1.find_child("MvpRow", true, false)
+	## 「上场三只龟的经验」(左栏页签下面): 积分赛 / 闯关真的建出来三只; 封存(不宣布胜负) / 练习赛(不给经验)不放
+	var xr: Node = scr.find_child("PetXpRow", true, false)
+	var nxp := 0
+	if xr != null:
+		for c in xr.get_children():
+			if str(c.name).begins_with("PetXp_"):
+				nxp += 1
+	var want_xp: bool = kind in ["ranked", "ranked6", "gauntlet"]
+	_ok("[%s] ★分母: 上场三只龟的经验%s" % [vt, "建出来了(三只)" if want_xp else "不放"],
+		nxp == 3 if want_xp else xr == null, "有 %d 只" % nxp)
+	## 而且整块在可视区里(左栏最窄 150、最矮 720 也要放得下): 头像 / 字 / 条每一件的矩形都在安全区里
+	if xr != null:
+		var vis := (scr as Control).get_viewport_rect()
+		var bad: Array = []
+		for n in xr.find_children("*", "Control", true, false):
+			var r := (n as Control).get_global_rect()
+			if r.size.x > 0.0 and not vis.grow(TOL).encloses(r):
+				bad.append("%s %s" % [n.name, str(r)])
+		_ok("[%s] ★上场三只龟的经验整块在屏幕里" % vt, bad.is_empty(), str(bad.slice(0, 3)))
 	var det: Label = p1.find_child("ResultDetail", true, false) as Label
 	var flash: Label = scr.find_child("UploadFlash", true, false) as Label
 	var want_l: int = {"ranked": 3, "ranked6": 3, "gauntlet": 3, "sealed": 0, "practice": 2}[kind]

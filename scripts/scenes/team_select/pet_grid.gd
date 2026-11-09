@@ -164,6 +164,16 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	lv.size = Vector2(sz.x - 2.0 * b - 20.0, float(maxi(12, int(roundf(sz.y * 0.1)))) * 1.5)
 	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(lv)
+	## 经验条(2026-11-09 · 方案书 20261107b §4.5「拥有的龟挂等级牌和经验条」): 拥有的(不是限免)在等级牌正下方、右对齐,
+	##   与下面的限免角标同一个位置(一只龟要么拥有要么限免, 两者不会同时出现)。
+	if PetXp.shows_bar(pid):
+		var xb := PetXpBar.new()
+		xb.name = "XpBar"
+		xb.frac = float(PetXp.progress(PetXp.cached_xp(pid))["frac"])
+		var xbw: float = roundf(sz.x * 0.34)
+		xb.size = Vector2(xbw, maxf(5.0, roundf(sz.y * 0.035)))
+		xb.position = Vector2(sz.x - b - 10.0 - xbw, lv.position.y + lv.size.y - 1.0)
+		card.add_child(xb)
 	## 限免角标(2026-11-09 · 方案书 20261107b §4.5): 没拥有、本周限免的这只 ⇒ 等级牌下面挂一枚「限免」角标(固定 1 级, 不涨经验)。
 	##   样式照同一页技能格的「固有 / 已选」角标(`skill_picker._make_skill_corner`: 实色方底 + 深色字 + 下投影),
 	##   第一版是等级牌同款的描边字, 实拍压在立绘上读不清(2026-11-09 截图)。底色取冷青, 与金色等级牌、绿色「固有」分开。

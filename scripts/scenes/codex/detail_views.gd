@@ -308,6 +308,14 @@ func _left_header(name_txt: String, chips: Array) -> void:
 			_rarity_badge(cx + BADGE_PX / 2.0, cy, str(c["text"]), str(c["color"]))
 		else:
 			_tag_chip(cx, cy, str(c["text"]), str(c["color"]))
+			## Lv 签底部的经验条(2026-11-09 · 方案书 20261107b §4.5): 贴着签牌九宫格边带(4px)的里沿, 在字的下面。
+			if c.has("xp_frac"):
+				var xb := PetXpBar.new()
+				xb.name = "CodexXpBar"
+				xb.frac = float(c["xp_frac"])
+				xb.position = Vector2(cx + 7.0, cy + TAG_H / 2.0 - 9.0)
+				xb.size = Vector2(w - 14.0, 4.0)
+				host.detail.add_child(xb)
 		cx += w + 8.0
 
 ## ★★2026-10-08 右栏去框(用户:「这些框框真的丑，哪个游戏这么排的」)。参考 `docs/plans/ref/20261006-云顶装备弹窗/` 1、2:
@@ -360,8 +368,19 @@ func _show_pet(pet: Dictionary) -> void:
 	# ★tag 区已删(用户2026-07-23 点5): 守护/元素/物理/法术等 10 种标签全是凑羁绊的, 龟间羁绊已废 → 全去。
 	#   腾出的位置给【定位】(用户2026-07-28: 定位是移速/攻速的权威事实源, 玩家该看得到)。
 	var _role: String = str(host.TurtleStats.ROLE.get(str(pet.get("id", "")), ""))
-	var _chips: Array = [{"kind": "badge", "text": rarity, "color": rarity_color},
-		{"kind": "tag", "text": "Lv %d" % lv, "color": "#ffd93d"}]
+	## 经验(2026-11-09 · 方案书 20261107b §4.5): 拥有的龟 Lv 签底部挂经验条; 本周限免的龟多挂一块「限免」签(固定 1 级, 不涨经验)。
+	##   还没拉到拥有表 ⇒ 先问一次服务器, 问到了把这一页重画(PetLevelsNet.fetch 只在问到时回调; 离线 / 门禁不回调, 这一页照常)。
+	var _pid := str(pet.get("id", ""))
+	if not PetLevelsNet.fetched and PetLevelsNet.filter_on():
+		PetLevelsNet.fetch(func() -> void:
+			if _rerender.is_valid():
+				_rerender.call())
+	var _lv_chip := {"kind": "tag", "text": "Lv %d" % lv, "color": "#ffd93d"}
+	if PetXp.shows_bar(_pid):
+		_lv_chip["xp_frac"] = float(PetXp.progress(PetXp.cached_xp(_pid))["frac"])
+	var _chips: Array = [{"kind": "badge", "text": rarity, "color": rarity_color}, _lv_chip]
+	if PetLevelsNet.is_free_pick(_pid):
+		_chips.append({"kind": "tag", "text": "限免", "color": "#8fe3ff"})
 	if _role != "":
 		_chips.append({"kind": "tag", "text": _role, "color": "#9ad0ff"})
 	_left_header(str(pet.get("name", "?")), _chips)
