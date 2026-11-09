@@ -221,14 +221,17 @@ func _ready() -> void:
 		if s2.find("/") >= 0:
 			slash.append(s2)
 	_ok("T 两种形态的卡名都不带「/」拼名", slash.is_empty(), ", ".join(slash))
+	## 11-09 起图鉴立绘走界面待机帧(PetUiIdle: 近战静态图 → 近战那套 8 帧待机, 用户「变脸龟没有待机动画吗」)
+	var melee_ui: String = str(PetUiIdle.BY_IMG.get(str(TwoHeadSystem.FORM_ART["melee"]).trim_prefix("res://assets/sprites/"), ""))
 	var melee_art := false
+	var melee_hf := 0
 	for ch in _c.detail.get_children():
 		for n in [ch] + ch.get_children():
-			if n is Sprite2D and (n as Sprite2D).texture != null and (n as Sprite2D).texture.resource_path.ends_with("two_head_melee.png"):
+			if n is Sprite2D and (n as Sprite2D).texture != null and melee_ui != "" and (n as Sprite2D).texture.resource_path.ends_with(melee_ui):
 				melee_art = true
-			if n is TextureRect and (n as TextureRect).texture != null and (n as TextureRect).texture.resource_path.ends_with("two_head_melee.png"):
-				melee_art = true
-	_ok("T 近战页立绘 = 战斗近战形态那张(TwoHeadSystem.FORM_ART)", melee_art)
+				melee_hf = (n as Sprite2D).hframes
+	_ok("T 近战页立绘 = 近战形态那套待机帧(TwoHeadSystem.FORM_ART → PetUiIdle), 逐帧(8 帧)", melee_art and melee_hf == 8,
+		"%s · %d 帧" % [melee_ui, melee_hf])
 	## 拆名与 pets.json 详述里标的名字一致(拆错方向会把锤击挂到远程)
 	var sp: Array = th.get("skillPool", [])
 	var n_var := 0

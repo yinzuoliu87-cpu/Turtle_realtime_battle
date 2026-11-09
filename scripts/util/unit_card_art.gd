@@ -34,7 +34,8 @@ static func window(size: Vector2, border: float) -> ColorRect:
 ## 一只龟的全身立绘: [贴图, 取帧区域]。pets.json 的 img 按 sprite 的 frameW / frameH 取第 0 帧(与图鉴同一张);
 ##   没有全身图 ⇒ 退回 avatars/ 头像。都没有 ⇒ [null, Rect2()]。
 static func pet_body(pid: String) -> Array:
-	var pdef: Dictionary = DataRegistry.pet_by_id.get(pid, {})
+	## 界面待机帧补丁(变脸龟; PetUiIdle 头注释): 没登记逐帧待机图的龟换成界面那套, 不改 DataRegistry
+	var pdef: Dictionary = PetUiIdle.of(DataRegistry.pet_by_id.get(pid, {}))
 	var img_path := "res://assets/sprites/%s" % str(pdef.get("img", ""))
 	var region := Rect2()
 	var sm = pdef.get("sprite", null)
@@ -96,7 +97,7 @@ static func portrait_anim(pid: String, pw: Rect2, foot_y: float, autoplay: bool 
 	if body[0] == null:
 		return null
 	var tex: Texture2D = body[0]
-	var pdef: Dictionary = DataRegistry.pet_by_id.get(pid, {})
+	var pdef: Dictionary = PetUiIdle.of(DataRegistry.pet_by_id.get(pid, {}))
 	var sm = pdef.get("sprite", null)
 	if not (sm is Dictionary) or not (sm as Dictionary).has("frameW") or (body[1] as Rect2).size.x <= 0.0:
 		return _still_breathing(portrait(tex, body[1], pw, foot_y), autoplay)

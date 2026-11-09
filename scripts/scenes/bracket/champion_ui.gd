@@ -277,7 +277,8 @@ static var _bbox_cache := {}
 
 
 static func body(parent: Control, foot: Vector2, target_h: float, id: String, nm: String = "") -> Control:
-	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})
+	## 界面待机帧补丁(变脸龟; PetUiIdle 头注释): 没登记逐帧待机图的龟换成界面那套, 不改 DataRegistry
+	var pet: Dictionary = PetUiIdle.of(DataRegistry.pet_by_id.get(id, {}))
 	var img := str(pet.get("img", ""))
 	var path := "res://assets/sprites/%s" % img
 	if img == "" or not ResourceLoader.exists(path):

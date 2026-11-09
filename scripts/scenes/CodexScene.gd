@@ -748,7 +748,9 @@ func _add_image(cx: float, cy: float, path: String, w: float, h: float,
 ## 龟详情全身立绘 (1:1 PoC CodexScene.ts:285-296: 全身 spritesheet idle 动画, contain-fit 进 box, 非头像)。
 ##   有 sprite{frameW/H/frames/duration} → Sprite2D 多帧 + idle tween; 无 → 静态全身 img; 都缺 → 头像兜底。
 ##   帧/fps/缩放与 battle makeView 同算法 (BattleScene.gd:528-549), contain-fit = min(box/fw, box/fh)。
-func _add_pet_portrait(cx: float, cy: float, pet: Dictionary, box: float) -> void:
+func _add_pet_portrait(cx: float, cy: float, pet_in: Dictionary, box: float) -> void:
+	## 界面待机帧补丁(变脸龟; PetUiIdle 头注释): 没登记逐帧待机图的龟换成界面那套, 不改 DataRegistry
+	var pet: Dictionary = PetUiIdle.of(pet_in)
 	var fid: String = str(pet.get("id", ""))
 	var img: String = str(pet.get("img", ""))
 	var img_full := "res://assets/sprites/%s" % img
