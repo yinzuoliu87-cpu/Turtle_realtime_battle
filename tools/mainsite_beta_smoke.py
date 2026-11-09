@@ -19,6 +19,8 @@ server/referee/mainsite_sign.py，与主站 Go 代码逐字节）调我们的内
   S7 换号：第三个号 S 发起登录码，主站用 A 的 user_id 确认 ⇒ result = switched；S 轮询 ⇒ switched:true + A 的登录态
      （用这份登录态调 /auth/v1/user 得到 A 的账号 —— 证明网关签发登录态在真环境里通）
   S8 两个号存本周防守阵容：raid_defense_put（快照 = tests/golden/stream_heavy_pair.json 的 a / b，三统领齐的真实快照）⇒ has_defense
+  S8b 扮演主站 /player：快照三只统领写进两个号的拥有龟缓存（mainsite_pets_put）—— 裁判把关「拥有 ∪ 限免」，编的主站用户主站不认 ⇒
+      不写就 a_bad_snapshot（11-09 内测实测）；给了 --attacker-uid / --defender-uid 就不写
   S9 主站 POST /mainsite/raid {raidId, attacker, defender, seed, stake, isRevenge, expireAt} ⇒ {ok:true, jobId}；同 raidId 重发 ⇒ 同一 jobId
   S10 轮询（只读 SQL）raid_jobs 直到 done / void（默认最多 15 分钟）；打印裁判任务的状态与错误码
   S11 读发件箱（只读 SQL）这个 raidId 的 started / settle 两行：started 已发、settle 结果 = attacker / defender、matchId 非空
@@ -358,6 +360,23 @@ def scenario(a, be, gw, secret, base):
             sm.ok("S8 %s：raid_defense_put(本周 %s) → stored、has_defense" % (label, wk),
                   st == 200 and (r or {}).get("has_defense") is True and r.get("stored") is True, (st, r),
                   "404 = 迁移 20261109c 没上；wrong_week = 内测服假时钟（tools/beta_ops.py status）")
+        if not isinstance(be, MockBackend):
+            # ★0.23.0 起裁判把关「拥有 ∪ 本周限免」（20261109b · RefereeJob.pets_allowed）：脚本编的主站用户主站不认 ⇒
+            #   拥有龟缓存是空的 ⇒ 快照三只统领多半不在这个号的 7 只限免里 ⇒ 裁判拒算 a_bad_snapshot（11-09 内测实测）。
+            #   扮演主站 /player 的回包：把快照统领写进拥有龟缓存（= 网关刷新拥有龟时调的同一个 mainsite_pets_put）。
+            #   偷袭建任务（raid_create）从这份缓存盖 a_owned / b_owned。给了 --attacker-uid / --defender-uid（主站真测试号）⇒ 不写，以主站为准。
+            print("== S8b 扮演主站 /player：快照统领写进拥有龟缓存")
+            for label, acc, uid, snap, given in (("A", acc_a, uid_a, pair["a"], a.attacker_uid),
+                                                 ("D", acc_d, uid_d, pair["b"], a.defender_uid)):
+                if given:
+                    print("  · %s：用的是主站真测试号，拥有龟以主站 /player 为准（不写）" % label)
+                    continue
+                keys = sorted(set(str(p) for p in snap.get("leaders", [])))
+                r = S.one(S.query(be.ref, "select public.mainsite_pets_put('%s'::uuid, '%s', '%s'::jsonb) as r"
+                                  % (acc, uid, json.dumps(keys))) or [{}]).get("r") or {}
+                own = [x.get("k") for x in be.ro("select pet_key as k from public.mainsite_pets where account_id = '%s' order by 1" % acc)]
+                sm.ok("S8b %s：拥有龟缓存 = 快照统领 %s" % (label, keys), own == keys, (r, own),
+                      "not_linked / relinked = S5 绑定没成；拥有龟缓存表 mainsite_pets（迁移 20261109a）")
         print("== S9 主站建偷袭任务")
         raid_id = a.raid_id or (int(time.time() * 1000) * 1000 + secrets.randbelow(1000))
         body = {"raidId": raid_id, "attacker": uid_a, "defender": uid_d, "seed": 123456789, "stake": 0,

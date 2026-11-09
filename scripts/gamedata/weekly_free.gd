@@ -7,8 +7,8 @@ extends RefCounted
 ##   = 服务端 season_week）。
 ##
 ## ★纯函数：不读钟、不读存档、不用引擎随机。排序键 = FNV-1a 32 位（"账号|周锚点|龟 id" 的 UTF-8 字节），
-##   同键（概率约 1e-7）再按龟 id 逐码点比。同一个算法在 SQL 里有一份（迁移 20261109b `weekly_free_ids`），
-##   门禁 verify_weekly_free 拿同一组输入比两边逐只相同。
+##   同键（概率约 1e-7）再按龟 id 逐码点比。★SQL 里没有这个算法（只有 28 只名单 `pet_all_ids()`，迁移 20261109b）：
+##   限免只在客户端选龟页与裁判 validate 里算。门禁 verify_weekly_free 拿 28 只名单与 SQL 逐只比、拿独立 Python 实现算的金标比排序。
 ## ★「周中新得到一只只换那一只」不用另写：排序每周固定，已拥有的跳过 ⇒ 新拥有的那只让位给排序里的下一只，其余 6 只不动。
 ## 用的人：选龟页（只显示拥有 ∪ 限免）、裁判开算前校验（`RefereeJob.validate`）、陪练号选龟（sim_driver）、
 ##   兜底机器人（`Backend.make_bot`）。
