@@ -132,7 +132,7 @@ def run(argv, runner):
 
 
 def full_ledger(skip_new=True):
-    """账本：记账五份已上（sha256 与仓库同），20261109a / c 没上。"""
+    """账本：记账五份已上（sha256 与仓库同），20261109a / b / c / d 没上。"""
     import sb_migrate as M
     led = {}
     for name in D.MIGRATIONS:
@@ -210,10 +210,12 @@ def main():
         elif "MainPID" in cmd:
             seq.append("procenv-poller")
     migs = [x for x in seq if x.startswith("mig:")]
-    ok("C1 只上没上过的两份、每份先演练再上线（%s）" % migs,
+    ok("C1 只上没上过的四份、按清单顺序、每份先演练再上线（%s）" % migs,
        migs == ["mig:20261109a_mainsite_core:rehearse", "mig:20261109a_mainsite_core:apply",
-                "mig:20261109c_raid:rehearse", "mig:20261109c_raid:apply"])
-    ok("C2 账本里已上（sha256 相同）的五份记账迁移一条子进程都没起", not any("econ" in x for x in migs))
+                "mig:20261109b_pet_levels:rehearse", "mig:20261109b_pet_levels:apply",
+                "mig:20261109c_raid:rehearse", "mig:20261109c_raid:apply",
+                "mig:20261109d_econ_wheel:rehearse", "mig:20261109d_econ_wheel:apply"])
+    ok("C2 账本里已上（sha256 相同）的五份记账迁移一条子进程都没起", not any(x.startswith("mig:20261106") for x in migs))
     ok("C3 账本读了 1 次（= sb_migrate status 的判据）", r.ledger_reads == 1, r.ledger_reads)
     first_srv = min((i for i, x in enumerate(seq) if not x.startswith("mig:")), default=-1)
     ok("C4 迁移全部在裁判机第一条 ssh 之前", first_srv > 0 and all(i < first_srv for i, x in enumerate(seq) if x.startswith("mig:")), seq)

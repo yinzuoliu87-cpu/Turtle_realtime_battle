@@ -11,6 +11,8 @@ extends Node
 ##   E ★结算累积: 真回包 ⇒ 存档 +1 累积(不是覆盖); 回包不带这个键 ⇒ 不变
 ##   F ★整条链: 这一局带回来的 ⇒ 下一局快照带上 ⇒ 下一局裁判开局就吃到
 ##   G 换轮清零
+##   H ★服务器封顶(2026-11-09 · 迁移 20261109d): 任务单 key.a_wheel / b_wheel 给快照自报的封顶 ——
+##     两边自报 ♠3、服务器 A 只有 ♠1 / B 是空 ⇒ 左方只多 1 × WHEEL_SPADE_HP、右方一点不多; 服务器更多(♠5)⇒ 不往上抬
 
 const Backend := preload("res://scripts/net/backend.gd")
 const BP := preload("res://scripts/referee/bot_pool.gd")
@@ -18,6 +20,7 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const GS_SYS := preload("res://scripts/systems/skills/gambler_system.gd")
+const RJ := preload("res://scripts/referee/referee_job.gd")
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
 
 var _fails := 0
@@ -64,10 +67,10 @@ func _snap(gid: String, wheel: Dictionary) -> Dictionary:
 	return Backend.build_ghost_snapshot(gid, {"name": gid, "avatar": "gambler", "id": gid})
 
 
-func _run(a: Dictionary, b: Dictionary, sd: int) -> Dictionary:
+func _run(a: Dictionary, b: Dictionary, sd: int, key: Dictionary = {"week": 1}) -> Dictionary:
 	_b = null
 	_hp = {}
-	var job = JSON.parse_string(JSON.stringify({"v": 1, "job_id": 1, "match_id": MID, "mode": "gauntlet", "key": {"week": 1},
+	var job = JSON.parse_string(JSON.stringify({"v": 1, "job_id": 1, "match_id": MID, "mode": "gauntlet", "key": key,
 		"seed": sd, "client_version": ReplayRecorder.client_version(), "a": a, "b": b}))
 	var res: Dictionary = await RefereeRunner.run(self, job, _on_battle)
 	_b = null
@@ -121,6 +124,19 @@ func _ready() -> void:
 	var dr: float = float((r1["hp"] as Dictionary).get("right/gambler", 0.0)) - float((r0["hp"] as Dictionary).get("right/gambler", 0.0))
 	_ok("B ★左方累积 ♠3 ⇒ 最大生命多 %.0f" % want, absf(dl - want) < 1.0, "实测多 %.0f" % dl)
 	_ok("C ★右方同一条规则", absf(dr - want) < 1.0, "实测多 %.0f" % dr)
+
+	## ── H 服务器封顶(真裁判入口) ──
+	var r2: Dictionary = await _run(a3, b3, 77, {"week": 1, "a_wheel": {"spade": 1}, "b_wheel": {}})
+	var hl: float = float((r2["hp"] as Dictionary).get("left/gambler", 0.0)) - float((r0["hp"] as Dictionary).get("left/gambler", 0.0))
+	var hr: float = float((r2["hp"] as Dictionary).get("right/gambler", 0.0)) - float((r0["hp"] as Dictionary).get("right/gambler", 0.0))
+	_ok("H ★左方自报 ♠3、服务器 ♠1 ⇒ 只多 %.0f" % GS_SYS.WHEEL_SPADE_HP, absf(hl - GS_SYS.WHEEL_SPADE_HP) < 1.0, "实测多 %.0f" % hl)
+	_ok("H ★右方自报 ♠3、服务器没有 ⇒ 一点不多", absf(hr) < 1.0, "实测多 %.0f" % hr)
+	var r3: Dictionary = await _run(a3, b3, 77, {"week": 1, "a_wheel": {"spade": 5}, "b_wheel": {"spade": 5}})
+	var ul: float = float((r3["hp"] as Dictionary).get("left/gambler", 0.0)) - float((r0["hp"] as Dictionary).get("left/gambler", 0.0))
+	_ok("H 服务器更多(♠5)⇒ 不往上抬, 仍是自报的 ♠3", absf(ul - want) < 1.0, "实测多 %.0f" % ul)
+	_ok("H wheel_cap 形状: 取小、0 不留、服务器异常值按 ghost_wheel_stacks 夹",
+		RJ.wheel_cap({"spade": 3, "heart": 2}, {"spade": 1, "club": 4}) == {"spade": 1}
+		and RJ.wheel_cap({"spade": 3}, {"spade": "x"}) == {} and RJ.wheel_cap({"spade": 3}, null) == {})
 
 	## ── D 局内抽到的带回来(两边都抽到才算, 换种子找) ──
 	var res: Dictionary = {}

@@ -34,6 +34,8 @@ extends RefCounted
 ##                   ★周赛局的账号和拥有只在 meta、不进快照: matches.left/right_snapshot 所有登录用户都读得到(机器人池那一侧没有账号, 放进快照就露馅)。
 ##                   偷袭局 raid_create 建任务时就把这四个键写进 meta(20261109c, 同名); 更早的偷袭任务把 account_id / owned 盖在快照里,
 ##                   key 里没有时退回读它(`pets_allowed`)。
+##   key.a_wheel / key.b_wheel  命运之轮本周层数 {花色: 次数}: 领活那一刻服务器按结果单累加的(econ_on 开着才有, 迁移 20261109d),
+##                   给快照自报的封顶(`wheel_cap`)。
 ##   key.a_lv / key.b_lv  按龟等级表 {pet_key: 1~10}: 领活那一刻按服务器等级表算的(`pet_lv_table`), 压过快照自报的 a.lv / b.lv(`state_for`)。
 ##                   ★快照本身服务器一个字不改(决赛坏快照回退拿任务快照逐字比)。key 和快照都没有 lv = 旧快照 ⇒ 整队等级。
 ##
@@ -193,6 +195,10 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	var key: Dictionary = j.get("key", {}) if j.get("key") is Dictionary else {}
 	if key.get("b_lv") is Dictionary:
 		b["lv"] = (key["b_lv"] as Dictionary).duplicate()
+	## 命运之轮跨场层数(2026-11-09 · 记账, 迁移 20261109d): 领活时服务器按本周结果单累加的花色(key.b_wheel)给 B 快照自报的封顶。
+	##   没有 key.b_wheel(econ_on 关着 / 机器人池 / 旧任务)⇒ 快照原样。写进对手快照这一份 ⇒ 战斗场右方读到的、录像录的都是封顶后的。
+	if key.get("b_wheel") is Dictionary:
+		b["wheel_stacks"] = wheel_cap(BE.ghost_wheel_stacks(b), key["b_wheel"])
 	var st: Dictionary
 	if j.get("a_state") is Dictionary:
 		st = {}
@@ -203,6 +209,8 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 				st[k] = v.duplicate(true) if (v is Array or v is Dictionary) else v
 	else:
 		st = _state_from_snapshot(j["a"], normalize)
+	if key.get("a_wheel") is Dictionary:      # 左方同一条(key.a_wheel 压 A 快照 / a_state 自报的)
+		st["gambler_wheel_stacks"] = wheel_cap(BE.ghost_wheel_stacks({"wheel_stacks": st.get("gambler_wheel_stacks", {})}), key["a_wheel"])
 	st["dual_ghost"] = b
 	st["dual_active"] = true
 	st["tutorial_active"] = false
@@ -218,6 +226,18 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 		var a: Dictionary = j.get("a", {}) if j.get("a") is Dictionary else {}
 		st["season_total_battles"] = maxi(0, int(a.get("season_total_battles", 0)))
 	return st
+
+
+## 命运之轮层数封顶: 每种花色取「自报」与「服务器结果单合计」的较小值(迁移 20261109d)。
+##   封顶不是覆盖: 积分赛的 B 是旧快照, 快照之后主人又抽到的不该算进去; 本人漏收某局结果时自报偏少, 照旧不变多。
+static func wheel_cap(claimed: Dictionary, server) -> Dictionary:
+	var srv: Dictionary = BE.ghost_wheel_stacks({"wheel_stacks": server})
+	var out := {}
+	for k in claimed:
+		var n := mini(int(claimed[k]), int(srv.get(k, 0)))
+		if n > 0:
+			out[k] = n
+	return out
 
 
 ## 快照副本, 摘掉 `PRIVATE_KEYS`(原件不动: validate 读的是任务单里那一份)。
