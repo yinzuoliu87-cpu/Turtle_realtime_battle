@@ -113,6 +113,9 @@ static func raid_result_of(a_won: bool) -> String:
 ##   ② 没有 ①(20261109b 没上 / 旧任务)且是偷袭 ⇒ 快照里 raid_create 盖的 account_id / owned(20261109c)。
 ##   ③ 都没有 ⇒ 不查(与改之前相同)。
 ##   周锚点 = key.week(服务端 season_week)。
+##   ★key.<side>_kept(2026-11-09 · 迁移 20261109e): 本周已算完、当时验过拥有的周赛局里这个号上场过的统领 ⇒ 本周剩下的局都认。
+##     统领一周锁死, 周中卖掉一只拥有的龟(或少了一只拥有的、把锁定的限免龟挤出前 7)不该让整周打不了。
+##     卖掉的照样上场, 按 1 级、不涨经验(等级表 / 发经验都只认现在还拥有的, 服务端 pet_lv_table / pet_xp_grant)。
 static func pets_allowed(j: Dictionary, side: String) -> bool:
 	var snap = j.get(side, null)
 	if not (snap is Dictionary):
@@ -133,7 +136,12 @@ static func pets_allowed(j: Dictionary, side: String) -> bool:
 		for p in ow:
 			owned.append(str(p))
 	var wk = key.get("week", 0)
-	return WeeklyFree.all_allowed(str(acct), int(wk) if (wk is int or wk is float) else 0, owned, leaders_of(snap))
+	var kept: Array = key[side + "_kept"] if key.get(side + "_kept") is Array else []
+	var need: Array = []
+	for p in leaders_of(snap):
+		if not kept.has(str(p)):
+			need.append(p)
+	return WeeklyFree.all_allowed(str(acct), int(wk) if (wk is int or wk is float) else 0, owned, need)
 
 
 ## 种子: 1 ~ 2^53-1 的整数(JSON 解析出来是 float ⇒ 要求是整数值)。不合法 = -1。

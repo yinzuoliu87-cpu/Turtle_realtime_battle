@@ -8,7 +8,7 @@
   python tools/mainsite_deploy.py --apply --only readback   只做第 ③ 段回读（不改任何东西）
 
 做的事（顺序固定，前一步不过就停；门禁 tools/mainsite_deploy_selftest.py 量这个顺序）：
-  ① 内测服迁移：记账 20261106 / b / c / e / g + 20261109a / b / c / d，按这个顺序；
+  ① 内测服迁移：记账 20261106 / b / c / e / g + 20261109a / b / c / d / e，按这个顺序；
      先读内测服账本（= sb_migrate.py status 的判据：同名且 sha256 相同 ⇒ 已上，跳过；同名 sha256 不同 ⇒ 停，迁移在上内测服之后又改过）；
      没上的每份 `sb_migrate.py beta <名> --rehearse` → `sb_migrate.py beta <名> --apply`（apply 自己还会再演练一遍）
   ② 裁判机（root@49.13.166.188，每步一条短 ssh ≤ 25 秒）：
@@ -60,10 +60,11 @@ SECRET_FILE = os.path.join(os.path.expanduser("~"), ".config", "turtle", "secret
 
 ## 内测服要上的迁移（顺序 = 依赖顺序：记账在前，20261109c 的 raid_enabled 读 econ_on）
 ##   ★2026-11-09 补 20261109b（龟等级 + 领活盖章：拥有 / 等级表进任务 meta，联调要走升级与 pet-level）与
-##   20261109d（命运之轮层数按结果单封顶；它的检查脚本要看到 20261109b 盖的 a_lv ⇒ 排在 b 之后）。
+##   20261109d（命运之轮层数按结果单封顶）、20261109e（本周上场过的统领整周都认）—— 两份的检查脚本都要看到 20261109b
+##   盖的 a_owned / a_lv ⇒ 排在 b 之后。
 MIGRATIONS = ("20261106_econ_ops", "20261106b_econ_flag", "20261106c_econ_state", "20261106e_econ_facts",
               "20261106g_econ_axe_temp", "20261109a_mainsite_core", "20261109b_pet_levels", "20261109c_raid",
-              "20261109d_econ_wheel")
+              "20261109d_econ_wheel", "20261109e_pet_kept")
 NEW_MIGRATIONS = tuple(n for n in MIGRATIONS if n.startswith("20261109"))
 
 BETA = {
@@ -304,7 +305,7 @@ def plan(a, ctx, ledger=None):
                 ("rb:404", "= 404（Caddy 只放 /mainsite/* /app/* /healthz）", "GET", "/nope", {}, 404)):
             steps.append(Step(key, "③回读", "%s %s%s %s" % (method, base, path, title), "check",
                               fn=lambda m=method, p=path, h=hdr, c=code: http_expect(m, base + p, h, c)))
-        steps.append(Step("rb:ledger", "③回读", "内测服账本：20261109a / b / c / d 已上；referee_config raid_on / econ_on 现状（只读）", "check",
+        steps.append(Step("rb:ledger", "③回读", "内测服账本：20261109a / b / c / d / e 已上；referee_config raid_on / econ_on 现状（只读）", "check",
                           fn=lambda: readback_db(ctx)))
     return steps
 

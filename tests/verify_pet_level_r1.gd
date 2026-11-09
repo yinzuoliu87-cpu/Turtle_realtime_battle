@@ -11,6 +11,7 @@ extends Node
 ##      龟蛋满血 = 三只平均（左 4、右 6，不是 5 / 3）；_unit_level / _lvl_mult_for（统领、召唤物按主人、小将走整队）
 ##   ③ ★旧快照（两侧都没有 lv 表）⇒ 统领 / 小将 / 蛋全按整队等级（左 5 右 3），逐位同改之前的公式
 ##   ④ ★裁判：validate 三只统领都在「拥有 ∪ 限免」才收；不在 ⇒ a_bad_snapshot / b_bad_snapshot；拥有补进来就收；没账号（机器人池）不查；
+##      ★本周已上场过（key.a_kept / b_kept，迁移 20261109e）⇒ 卖掉了也收（统领一周锁死，周中失去不该整周被拒）；只放过 kept 里的那只；
 ##      state_for 左方等级表 = A 快照的 lv（没有 ⇒ 空）
 ##   ⑤ 显示：GameState.battle_level_for 统领按龟等级 + 临时等级器、小将("")按赛季等级、调试强制等级压过一切
 ##   ⑥ 录像：STATE_KEYS 有 pet_lv；没有 pet_lv 的旧录像 ⇒ 清空看的人的表
@@ -290,6 +291,19 @@ func _ready() -> void:
 	var je := _job([fa[0], fa[1], "stone"], [fb[0], fb[1], fb[2]])
 	je["key"]["a_owned"] = []
 	_ok("④ 盖章时没拥有(key.a_owned = [], 没绑定) ⇒ stone 不认", RefereeJob.validate(je) == "a_bad_snapshot", RefereeJob.validate(je))
+	## 周中卖掉 stone: 现在不拥有了, 但本周已经上场打过(服务器盖 key.a_kept)⇒ 照收; kept 只放过它自己
+	je["key"]["a_kept"] = ["stone"]
+	_ok("★★④ 周中卖掉 stone、本周上场过(key.a_kept) ⇒ 收", RefereeJob.validate(je) == "", RefereeJob.validate(je))
+	var jk := _job([fa[0], outside_a, "stone"], [fb[0], fb[1], fb[2]])
+	jk["key"]["a_owned"] = []
+	jk["key"]["a_kept"] = ["stone"]
+	_ok("★④ kept 只放过上场过的那只: 另一只既没拥有也不是限免也没上场过 ⇒ 仍拒", RefereeJob.validate(jk) == "a_bad_snapshot", RefereeJob.validate(jk))
+	var jkb := _job([fa[0], fa[1], "stone"], [fb[0], fb[1], outside_b])
+	jkb["key"]["b_kept"] = [outside_b]
+	_ok("★④ B 方同一条(key.b_kept)", RefereeJob.validate(jkb) == "", RefereeJob.validate(jkb))
+	jkb["key"].erase("b_kept")
+	(jkb["b"] as Dictionary)["kept"] = [outside_b]
+	_ok("★④ 快照里自报的 kept 不认(只认 key)", RefereeJob.validate(jkb) == "b_bad_snapshot", RefereeJob.validate(jkb))
 	## 偷袭局: 服务端没走领活盖章(key 里没有账号)时, 用 raid_create 盖在快照里的 account_id / owned(20261109c)
 	var jr := _job([fa[0], fa[1], "stone"], [fb[0], fb[1], fb[2]])
 	jr["mode"] = "raid"
