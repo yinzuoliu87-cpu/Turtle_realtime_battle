@@ -202,6 +202,11 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	if src != null and src is Dictionary and str((src as Dictionary).get("id", "")) == "basic" \
 			and not is_self and not is_same(src, u):
 		dmg = int(round(float(dmg) * (1.0 + battle._BASIC_RARITY_BONUS.get(str(u.get("rarity", "C")), 0.20))))
+	## 龟壳复制 60%(同 _apply_damage_from 那一段, 同样排在小龟增伤之后、减伤之前; CLAUDE.md §4.3 两条路都要加)。
+	##   2026-11-09 探针: 原来这条路不乘 ⇒ 复制来的真伤 / %生命值伤害照样 100%。DoT 跳伤不受影响: 层数在施加那一刻
+	##   已按 _copy_fx_mult 缩(_apply_dot_stacks), 之后每跳在复制窗口之外结算、龟壳 dmg_out_mult = 1。扣自己的血(is_self)不缩。
+	if src is Dictionary and not is_self and float((src as Dictionary).get("dmg_out_mult", 1.0)) != 1.0:
+		dmg = int(round(float(dmg) * float((src as Dictionary).get("dmg_out_mult", 1.0))))
 	# ★2026-07-22 全量对齐: 过与 _apply_damage_from 同一套受害者减伤(见 §MITIGATE)。
 	#   bucket=="tru" 视为真伤 → 与另一条路的 raw 语义一致(真伤只无视护甲/减伤, 护盾照吸)。
 	var _raw: bool = (bucket == "tru")
@@ -1066,6 +1071,10 @@ const CURSE_HP_PCT := 0.05
 func _add_curse(tgt: Dictionary, sec: float, src = null) -> void:
 	if battle._untouch_block(tgt, "curse"):
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
+	## 龟壳复制期施加的诅咒也按 60%(2026-11-09 探针: 复制灵魂风暴原来 100%)。缩【时长】不缩 dps ——
+	##   一个目标只留一条诅咒、dps 统一 5%, 缩 dps 会连同一条上别人施加的那段一起缩。
+	if battle._copy_fx_mult != 1.0:
+		sec *= battle._copy_fx_mult
 	var dps: float = float(tgt.get("maxHp", 0.0)) * CURSE_HP_PCT
 	for d in tgt.get("dots", []):
 		if str(d.get("tag", "")) == "curse":

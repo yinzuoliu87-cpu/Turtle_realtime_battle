@@ -96,6 +96,7 @@ func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火�
 	, "src": u})
 
 func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:   # 定向慢速追踪导弹(真导弹立绘·机头领飞+尾焰·−30%速)→命中/超时核爆
+	var _ct = battle._shell_sys.ctx_capture()   # 龟壳复制期放的: await 之后的结算照样按 60%
 	var mtex: Texture2D = load("res://assets/sprites/vfx/rocket-missile.png")   # 真导弹立绘(机头朝+X·用户2026-07-18"不是直的导弹"→换真弹身)
 	var miss = Sprite3D.new()
 	miss.texture = mtex if mtex != null else VfxTex._make_fire_glow_tex()
@@ -145,7 +146,9 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 	if is_instance_valid(miss): miss.queue_free()
 	if is_instance_valid(halo): halo.queue_free()
 	var boom: Vector2 = (tref["pos"] as Vector2) if tref.get("alive", false) else pos
+	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
 	_minion_rocket_nuke(u, boom)
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)
 
 func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用户2026-07-18"命中不够惊艳·再设计"): 全屏白闪+重震顿帧+白热核+膨胀火球+3冲击环+放射火焰+火花碎石+烟柱焦痕; 400码4A物理+4s50%治疗削减
 	if not battle.is_inside_tree(): return
@@ -352,6 +355,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	, "src": u})
 
 func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) -> void:   # 拉己向目标→接触10%maxHP→踩着目标滑行(coroutine)
+	var _ct = battle._shell_sys.ctx_capture()   # 龟壳复制期放的: await 之后的结算照样按 60%
 	var from: Vector2 = u["pos"]
 	var h0: float = float(u.get("height", 0.0))           # 从空中悬停高度俯冲下来
 	var dive_sec: float = surf_pull_sec(from, tref["pos"])   # 按速度飞(用户 11-08), 原固定 0.3 秒
@@ -371,7 +375,9 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 	PullRopeVfx.release(battle, rope)                    # 到了 / 作废: 剩下的绳段淡出
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
+	var _cp0: Array = battle._shell_sys.ctx_enter_opt(_ct)
 	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * SURF_CONTACT_MAXHP_PCT, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
+	battle._shell_sys.ctx_exit_opt(_ct, _cp0)
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
 	battle._vfx._hit_spark(tref); battle._shake(0.14)
 	var sdir: Vector2 = ((tref["pos"] as Vector2) - from)
@@ -405,12 +411,16 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 		dot_t += dt
 		if dot_t >= 0.1 and tref.get("alive", false):      # 对被踩目标逐渐2A物理(分摊·敌死则循环退出=自动结束·参考"血见底自动结束")
 			dot_t -= 0.1
+			var _cp1: Array = battle._shell_sys.ctx_enter_opt(_ct)
 			battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, SURF_RIDE_ATK_COEF * 0.1 / slide_dur, tref, false), Color("#ff4444"))
+			battle._shell_sys.ctx_exit_opt(_ct, _cp1)
 		for o in battle._targeting._enemies_of(u):                           # 沿途撞到的其他敌: 1.5A物理+撞飞(参考"撞飞其他敌")
 			if is_same(o, tref) or not o.get("alive", false) or battle._arr_has_unit(hit_others, o): continue
 			if DetMath.dist((o["pos"] as Vector2), mypos) <= 70.0:
 				hit_others.append(o)
+				var _cp2: Array = battle._shell_sys.ctx_enter_opt(_ct)
 				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, SURF_PASS_ATK_COEF, o, false), Color("#ff4444"))
+				battle._shell_sys.ctx_exit_opt(_ct, _cp2)
 				## ★2026-08-21: 免控的第三方**不被撞飞** —— 用户已定「推开就是控制技能」,
 				##   那免控就该免它。(伤害照吃, 免控 ≠ 免伤。)
 				if not battle._damage._is_cc_immune(o):

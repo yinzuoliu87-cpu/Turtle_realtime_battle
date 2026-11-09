@@ -79,6 +79,7 @@ func can_lift(tgt: Dictionary) -> bool:
 
 
 func _run(u: Dictionary, tgt: Dictionary) -> void:
+	u["_slam_copy"] = battle._shell_sys.ctx_capture()   # 龟壳复制期放的: 落地结算(await 之后, 跳砸那一支在 _hop_slam 里)照样按 60%
 	last_phase = "dash"
 	u["_slam"] = true
 	var owns_u := true
@@ -229,7 +230,9 @@ func _run(u: Dictionary, tgt: Dictionary) -> void:
 		if caught_air:
 			battle._equip_sys.on_unit_landed(tgt)
 	last_land = t_land
+	var _cp1: Array = battle._shell_sys.ctx_enter_opt(u.get("_slam_copy"))
 	_apply_damage(u, tgt, tmax, t_land)
+	battle._shell_sys.ctx_exit_opt(u.get("_slam_copy"), _cp1)
 	_land_fx(t_land, u_land)
 	_getup_later(tgt, tspr)   # 仰面砸在地上 TGT_GETUP_SEC 秒, 再翻过来(不再一帧翻正)
 	if owns_t:
@@ -275,7 +278,9 @@ func _hop_slam(u: Dictionary, tgt: Dictionary, owns_u: bool) -> void:
 	if tgt.get("alive", false) and not (tgt.get("_eggImmune", false) or tgt.get("_isEgg", false)):
 		stun_target(tgt)
 	last_land = c
+	var _cp2: Array = battle._shell_sys.ctx_enter_opt(u.get("_slam_copy"))
 	_apply_damage(u, tgt, tmax, c)
+	battle._shell_sys.ctx_exit_opt(u.get("_slam_copy"), _cp2)
 	_land_fx(c, u["pos"])
 	last_phase = "hop_land"
 	_release(u, owns_u)

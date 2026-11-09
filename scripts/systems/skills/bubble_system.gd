@@ -42,6 +42,14 @@ func _init(b) -> void:
 
 # 泡泡盾爆裂: 到期/被打破/挂盾对象死 触发 → 对施法者(src)全体敌2.0A魔法 + 泡沫冲击波 (封板L435·防静默过期丢爆裂)
 func _bubble_shield_burst(ally: Dictionary) -> void:
+	var _ct = ally.get("bubble_shield_copy")
+	ally.erase("bubble_shield_copy")
+	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
+	_bubble_shield_burst_body(ally)
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)
+
+
+func _bubble_shield_burst_body(ally: Dictionary) -> void:
 	if float(ally.get("bubble_shield_until", 0.0)) <= 0.0:
 		return
 	ally["bubble_shield_until"] = 0.0        # 先清(防再入本对象); 即使下面按深度截断, 盾也已消(不会残留再爆)
@@ -112,6 +120,7 @@ func _sk_bubble_shield(u: Dictionary, _tgt: Dictionary) -> void: # 泡泡龟·�
 	battle._damage._grant_shield(ally, u["atk"] * SHIELD_COEF, SHIELD_SEC)         # 1.8A泡泡盾·4秒限时(通用护盾原语)
 	ally["bubble_shield_until"] = battle._t + SHIELD_SEC           # 泡泡爆裂追踪(独立于通用shield_until): 到期/盾清零/对象死 任一→爆裂
 	ally["bubble_shield_src"] = u
+	ally["bubble_shield_copy"] = battle._shell_sys.ctx_capture()   # 龟壳复制期套的盾: 到期 / 被打破的爆裂照样按 60%
 	u["energy_lock_until"] = battle._t + SHIELD_SEC                # 泡泡盾期间锁龟能(用户2026-07-15·盾在=不充能不放其它·爆裂时解锁·复用energy_lock_until)
 	battle._skill_ring(ally["pos"], Color(0.7, 0.9, 1.0, 0.55), 46.0)
 	var dtex = load("res://assets/sprites/vfx/fx-hex-bubble.png")   # 泡泡盾罩(跟随友军·4秒)

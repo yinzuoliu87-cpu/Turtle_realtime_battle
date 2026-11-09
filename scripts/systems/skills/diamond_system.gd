@@ -65,6 +65,14 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 		battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.2 + 0.35 * sf), 28.0 + 22.0 * sf)
 
 func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
+	var _ct = u.get("_roll_copy")
+	u.erase("_roll_copy")
+	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
+	_diamond_roll_impact_body(u, cp, sf)
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)
+
+
+func _diamond_roll_impact_body(u: Dictionary, cp: Vector2, sf: float) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if DetMath.dist(o["pos"], cp) > ROLL_HIT_RADIUS: continue             # 撞击点120码小AOE
@@ -127,6 +135,7 @@ func _sk_diamond_powerball(u: Dictionary, tgt) -> void:          # 钻石龟·�
 	if battle._targeting._nearest_enemy(u) == null:
 		return
 	u["roll_active"] = true
+	u["_roll_copy"] = battle._shell_sys.ctx_capture()   # 龟壳复制期滚的: 撞击结算(每帧状态推进到撞上那一刻)照样按 60%
 	u["roll_start"] = battle._t
 	battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.5), 44.0)
 

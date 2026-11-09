@@ -2306,13 +2306,23 @@ func _step_sim_tweens(dt: float) -> void:
 	for tw in _sim_tweens.duplicate():   # duplicate: 回调里可能再建 tween 并 append, 边遍历边改会漏/错
 		if tw != null and tw.is_valid() and not (ts_on and tw in _timestop._ts_frozen_tweens):
 			_equip_sys.tally.use((tw.get_meta("_tl") if tw.has_meta("_tl") else null))   # ④ 演出链末尾的结算回调记回建 tween 时的装备
-			tw.custom_step(dt)
+			if tw.has_meta("_copy"):   # 龟壳复制期建的补间: 回调里落地的伤害 / 护盾照样按 60%(ShellSystem.ctx_capture)
+				var _ct: Array = tw.get_meta("_copy")
+				var _cp: Array = _shell_sys.ctx_enter(_ct)
+				tw.custom_step(dt)
+				_shell_sys.ctx_exit(_ct, _cp)
+			else:
+				tw.custom_step(dt)
 	_equip_sys.tally.use(null)
 
 # VFX tween 注册(时停暂停非active产生的用). 见 create_tween→_reg_tween 替换.
 func _reg_tween() -> Tween:
 	var t := create_tween()
 	t.set_meta("_tl", _equip_sys.tally.capture())   # ④ 装备统计: 记下建 tween 时的装备上下文
+	if _copy_fx_mult != 1.0:
+		var _ct = _shell_sys.ctx_capture()
+		if _ct != null:
+			t.set_meta("_copy", _ct)   # 龟壳复制期: 推这条补间时还原 60%(见 _step_sim_tweens)
 	t.pause()   # 不让 SceneTree 按真实 delta 推它, 改由 _step_sim_tweens 按 sim 步喂(回放 S1: 交互模式也一样)
 	_sim_tweens.append(t)
 	if _sim_tweens.size() > 512:
@@ -6259,6 +6269,7 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 
 const INK_BOMB_RADIUS := 300.0                                  # 墨水炸弹AOE半径(用户2026-07-15: 原全体→落点300码范围内)
 var _copy_fx_mult: float = 1.0
+var _copy_src = null   # 复制期上下文里的龟壳(ShellSystem.ctx_*; 只在复制窗口里非空)
 
 func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放射紫刺 + 紫环 + 紫字, 与普通金盾区分(用户2026-07-19"特殊颜色")
 ## ★刺: `urchin-spike.png` 16 向预烤(4 色/0 半透), 贴地 axis=AXIS_Y + rotation 恒 0

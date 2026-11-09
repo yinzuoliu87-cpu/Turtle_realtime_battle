@@ -111,7 +111,9 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 					if DetMath.dist(o["pos"], c) > r:
 						continue
 					## 每跳 = ATK×QUAKE_ATK_COEF + 目标maxHp×QUAKE_TGT_HP, 两段一起吃魔抗(魔法)
+					var _zcp: Array = battle._shell_sys.ctx_enter_opt(z.get("_copy"))
 					battle._damage._apply_damage_from(src, o, _quake_tick_dmg(src, o), Color("#ff7a33"))
+					battle._shell_sys.ctx_exit_opt(z.get("_copy"), _zcp)
 					## 减速取更强: 原来直接写 slow_mag=0.65, 会把别人给的更强减速冲淡(10-16)
 					var _qs: float = float(o.get("slow_mag", 1.0)) if battle._t < float(o.get("slow_until", 0.0)) else 1.0
 					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), battle._t + QUAKE_TICK_SEC + 0.1); o["slow_mag"] = minf(_qs, 1.0 - QUAKE_SLOW_PCT)   # 地裂减速35%(用户2026-07-09"35")
@@ -153,6 +155,7 @@ func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆�
 	_lava_zones.append({
 		"center": center, "radius": radius, "until": battle._t + QUAKE_SEC,
 		"next_tick": battle._t + 0.5, "src": u, "disc": disc,
+		"_copy": battle._shell_sys.ctx_capture(),   # 龟壳复制期放的地裂: 每跳照样按 60%
 	})
 	battle._skill_ring(center, Color(1.0, 0.45, 0.15, 0.5), radius)
 
@@ -375,6 +378,7 @@ static func gen_lava_wall(wall_w: float, wall_len: float, wall_h: float) -> Imme
 
 
 func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆涌动: 蓄力 → 目标脚下岩浆柱击飞 (1.5ATK魔 + 0.8ATK永久护盾)
+	var _ct = battle._shell_sys.ctx_capture()   # 龟壳复制期放的: 蓄力(await)之后的伤害与护盾照样按 60%
 	if tgt == null or not tgt.get("alive", false):
 		return
 	u["_slam"] = true
@@ -431,9 +435,11 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 		if not o.get("alive", false): continue
 		if DetMath.dist(o["pos"], center) > 120.0: continue
 		battle._knock_up(o, center, 9.0)
+	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
 	if tgt != null and tgt.get("alive", false):
 		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, SURGE_ATK_COEF, tgt, true), Color("#ff9d5c"))
 	battle._damage._grant_shield(u, u["atk"] * SURGE_SHIELD_COEF)
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)
 	u["_slam"] = false
 
 func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重击: 蓄力猛砸击飞 1.3ATK+8%自身maxHP物理 + 20%吸血

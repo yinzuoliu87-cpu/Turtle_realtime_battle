@@ -799,8 +799,10 @@ func cast_cross_slash(u: Dictionary, tgt) -> void:
 	## ★★2026-08-29 补【蓄力】(用户点名:「然后是蓄力, 你做了吗」—— 没有)。
 	##   出手到第一刀之间的 CROSS_T1 原来是**全空的**, 屏幕上什么都不发生 ⇒ 补剑气收拢 + 龟身预备形变。
 	vfx.cross_windup(u, dir, CROSS_T1)
-	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T1, "seg": 1})
-	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T3, "seg": 3})
+	## 龟壳复制期放的十字斩: 两段斩与波都在之后才结算 ⇒ 入队时记下复制上下文(ShellSystem.ctx_capture)
+	var _ct = battle._shell_sys.ctx_capture()
+	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T1, "seg": 1, "_copy": _ct})
+	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T3, "seg": 3, "_copy": _ct})
 
 
 ## 分段时刻表推进(用 battle._t —— 顿帧/时停时演出与结算一起停)。
@@ -818,9 +820,12 @@ func _step_pending() -> void:
 		var seg: int = int(p["seg"])
 		var dir: Vector2 = p["dir"]
 		var sx: int = int(p["si"])
+		var _pcp: Array = battle._shell_sys.ctx_enter_opt(p.get("_copy"))
 		cross_slash_hit(u, dir, sx, seg)
+		battle._shell_sys.ctx_exit_opt(p.get("_copy"), _pcp)
 		_waves.append({
 			"u": u, "from": u["pos"], "dir": dir, "si": sx,
+			"_copy": p.get("_copy"),   # 龟壳复制期放的十字斩: 波扫到谁照样按 60%(继承入队那一刻的复制上下文)
 			"seg": seg + 1, "half_w": WAVE_HALF_W,
 			"trav": 0.0, "hit": [],
 		})
@@ -906,7 +911,9 @@ func _step_waves(delta: float, only: Array = []) -> void:
 					continue
 				(w["hit"] as Array).append(o)
 				var d: int = battle._resolve_dmg(u, flat + float(u.get("atk", 0.0)) * sc, o, false)
+				var _wcp: Array = battle._shell_sys.ctx_enter_opt(w.get("_copy"))
 				battle._damage._apply_damage_from(u, o, d, Color("#bcd8ff"), 0.0, false, true)
+				battle._shell_sys.ctx_exit_opt(w.get("_copy"), _wcp)
 			battle._equip_sys.tally.pop(_tp)
 		if trav < WAVE_RANGE:
 			keep.append(w)

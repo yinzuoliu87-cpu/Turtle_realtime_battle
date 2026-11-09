@@ -43,6 +43,10 @@ func _push_proj(d: Dictionary) -> void:
 		d["_tl"] = battle._equip_sys.tally.capture()   # ④ 装备统计: 发射那一刻是哪件装备的上下文, 落地时切回去
 	if not d.has("_sk"):
 		d["_sk"] = battle._audio_sys.skill_ctx         # 技能章(只管声音): 技能射出的弹道落地时播这个技能的命中声
+	if battle._copy_fx_mult != 1.0 and not d.has("_copy"):
+		var _ct = battle._shell_sys.ctx_capture()
+		if _ct != null:
+			d["_copy"] = _ct                           # 龟壳复制期射出的弹道: 命中时照样按 60%(冰封冰锥等)
 	battle._projectiles.append(d)
 
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) -> void:
@@ -234,7 +238,12 @@ func _step_projectiles(delta: float) -> void:
 			keep.append(pr); continue   # 时停: 非active携带者的弹道悬空定格(不推进)
 		pr["t"] += delta
 		if pr.get("homing_arc", false):   # 猎人狩猎弹幕: 慢速抛物线追踪箭(自处理移动/命中/朝向)
-			if _step_homing_arrow(pr, node, delta):
+			## 龟壳复制期射出的追踪箭(猎人弹幕): 命中在这条分支里结算, 不走下面 frac >= 1 那段 ⇒ 这里单独还原
+			var _hcp: Array = battle._shell_sys.ctx_enter(pr["_copy"]) if pr.get("_copy") is Array else []
+			var _hkeep: bool = _step_homing_arrow(pr, node, delta)
+			if not _hcp.is_empty():
+				battle._shell_sys.ctx_exit(pr["_copy"], _hcp)
+			if _hkeep:
 				keep.append(pr)
 			continue
 		var tgt: Dictionary = pr["tgt"]
@@ -320,6 +329,7 @@ func _step_projectiles(delta: float) -> void:
 			sp3.frame = int(float(pr["t"]) * float(pr.get("anim_fps", 18.0))) % int(sp3.hframes)
 		if frac >= 1.0:
 			node.queue_free()
+			var _cp: Array = battle._shell_sys.ctx_enter(pr["_copy"]) if pr.get("_copy") is Array else []
 			if tgt["alive"]:
 				if pr.has("dtype"):
 					## ★对账(DMGSENTINEL 才记): drift = 还原【之前】全局的暴击与本弹发射时
@@ -412,6 +422,8 @@ func _step_projectiles(delta: float) -> void:
 					battle._trainer_sys._trainer_magicstone_onhit(pr["src"], tgt)   # 魔法石那段: 与物理【同帧】跳字
 				if pr.get("star_true", 0) > 0 and tgt.get("alive", false):
 					battle._damage._apply_damage_from(pr["src"], tgt, int(pr["star_true"]), Color("#ffffff"), 0.0, true)   # 星能追加真伤(白字·附普攻命中同帧·用户2026-07-16)
+			if not _cp.is_empty():
+				battle._shell_sys.ctx_exit(pr["_copy"], _cp)
 			continue
 		keep.append(pr)
 	battle._equip_sys.tally.pop(_tl0)
@@ -447,11 +459,10 @@ func _step_pending_shots(delta: float) -> void:
 			if fn is Callable and fn.is_valid():
 				battle._equip_sys.tally.use(s.get("_tl", null))
 				battle._audio_sys.skill_ctx = str(s.get("_sk", "")); battle._audio_sys.skill_ctx_src = s.get("src")   # 技能章切到这一段入队时的
-				if s.has("_copy") and s.get("src") is Dictionary:   # 龟壳复制出来的技能的延后段: 照样按 60% 结算(见 ShellSystem._mark_copy_tail)
-					var _cs: Dictionary = s["src"]
-					battle._copy_fx_mult = float(s["_copy"]); _cs["dmg_out_mult"] = float(s["_copy"])
+				if s.get("_copy") is Array:   # 龟壳复制出来的技能的延后段: 照样按 60% 结算(ShellSystem.ctx_*; 不带 src 的也算)
+					var _cp: Array = battle._shell_sys.ctx_enter(s["_copy"])
 					fn.call()
-					battle._copy_fx_mult = 1.0; _cs["dmg_out_mult"] = 1.0
+					battle._shell_sys.ctx_exit(s["_copy"], _cp)
 				else:
 					fn.call()
 				battle._equip_sys.tally.use(_tl0)

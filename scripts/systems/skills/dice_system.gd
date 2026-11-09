@@ -81,6 +81,13 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 	_dash_streak_update(u)                                   # 冲刺光带: 起点 → 当前位置(11-05 换掉每两帧一张的淡蓝残影)
 
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
+	var _ct = u.get("_dash_copy")
+	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
+	_dice_dash_hit_body(u, tgt, dir)
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)
+
+
+func _dice_dash_hit_body(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
 	var scale_i: float = FLASH_FIRST_COEF * DetMath.dpow(1.0 - FLASH_FALLOFF, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
 	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, FLASH_SHIELD_SEC)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)
@@ -273,6 +280,7 @@ func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia
 	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "稳定骰子 %d刺" % count, Color("#ffd93d"))
 	var t0 = _dice_pick_strike_target(u)
 	if t0 == null: return
+	u["_dash_copy"] = battle._shell_sys.ctx_capture()   # 龟壳复制期放的: 每段穿刺斩(每帧状态推进)照样按 60%; 每次开冲都重写, 不留旧值
 	u["dice_dash_active"] = true                    # 进入真冲刺连突态(逐帧穿刺, 见 _dice_dash_tick)
 	u["dice_dash_remaining"] = count
 	u["dice_dash_seg"] = 0

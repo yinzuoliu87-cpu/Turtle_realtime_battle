@@ -349,7 +349,15 @@ func _crystal_sweep_hits(u: Dictionary, si: int, reach: float, state: Dictionary
 				_crystal_spark(o["pos"])
 	state["prev"] = ang
 
-func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07-16逐帧): 砸地爆发→发光波头贴地冲出→波头过处水晶刺依次从地底弹出→碎晶地痕渐隐; 命中 1.5A真伤+2结晶+击飞0.8s+50%减速3s
+func _crystal_spike_line(u: Dictionary) -> void:
+	var _ct = u.get("_bulwark_copy")
+	u.erase("_bulwark_copy")
+	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
+	_crystal_spike_line_body(u)
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)   # 刺的延后段(_pending_shots)在这里带上 tag
+
+
+func _crystal_spike_line_body(u: Dictionary) -> void:   # 照小菊R第三击(2026-07-16逐帧): 砸地爆发→发光波头贴地冲出→波头过处水晶刺依次从地底弹出→碎晶地痕渐隐; 命中 1.5A真伤+2结晶+击飞0.8s+50%减速3s
 	var tgt = battle._targeting._acquire_target(u)
 	var dirv: Vector2 = Vector2.RIGHT if str(u.get("side", "left")) == "left" else Vector2.LEFT
 	if tgt != null:
@@ -550,6 +558,7 @@ func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·�
 	u["_bulwark_floor"] = float(u.get("shield", 0.0))   # 施放前已有的盾: 总池跌回这个数 = 壁垒那份被打光了(10-16: 原来看总盾, 带别的盾就永远「没破」)
 	battle._damage._grant_shield(u, u["atk"] * BULWARK_ATK + u["maxHp"] * BULWARK_HP_PCT, BULWARK_SEC)
 	u["bulwark_until"] = battle._t + BULWARK_SEC
+	u["_bulwark_copy"] = battle._shell_sys.ctx_capture()   # 龟壳复制期开的壁垒: 盾破 / 到期放的水晶刺照样按 60%
 	u["_bulwark_armed"] = true
 	var dome = Sprite3D.new()                                   # 冰蓝水晶罩(随身4秒)
 	var dtex: Texture2D = load("res://assets/sprites/vfx/fx-hex-bubble.png")

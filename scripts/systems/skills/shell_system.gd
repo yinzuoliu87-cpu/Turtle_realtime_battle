@@ -289,9 +289,44 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:
 #     半径=用户指定(回合制原"对全体敌方"无半径·用户2026-07-11「400码半径」)。放技射程2000码(远程扔·见 _SKILL_CAST_RANGE)。
 ## 复制出来的技能里【延后结算】的那几段(蓄力 / 错峰 / 落点…)原来出了 _do_skill 就按 100% 结算 ——
 ## 60% 只管住了立即那一段(10-16 第二批核查)。⇒ 施放期间新入队的延后条目打上 _copy, 到点结算时再套 60%。
-func _mark_copy_tail(from_idx: int) -> void:
-	for i in range(from_idx, battle._pending_shots.size()):
-		battle._pending_shots[i]["_copy"] = COPY_EFFECT
+## ★2026-11-09 扩成「复制期上下文」, 跟着所有延后结算走(探针 tests/probes/_probe_copy_ratio.gd:
+##   81 个可抄技能里有伤害的 57 个, 36 个复制后照样 100% —— 冰封冰锥是弹道、墨水炸弹在 sim 补间回调里落地、
+##   不少延后子弹不带 src(原来这条只认带 src 的), 结算那一刻龟壳的 dmg_out_mult 早已复位)。
+##   做法同装备统计 tally: 建的那一刻 ctx_capture(弹道 / sim 补间 / 延后子弹), 结算那一刻 ctx_enter / ctx_exit。
+##   tag = [倍率, 龟壳单位] —— 单位只存引用、从不当键(CLAUDE.md §4.2)。可嵌套: exit 还原成 enter 之前的值。
+func ctx_capture():
+	if battle._copy_fx_mult == 1.0 or not (battle._copy_src is Dictionary):
+		return null
+	return [battle._copy_fx_mult, battle._copy_src]
+
+
+func ctx_enter(tag: Array) -> Array:
+	var src: Dictionary = tag[1]
+	var prev: Array = [battle._copy_fx_mult, battle._copy_src, float(src.get("dmg_out_mult", 1.0)), battle._pending_shots.size()]
+	battle._copy_fx_mult = float(tag[0])
+	battle._copy_src = src
+	src["dmg_out_mult"] = float(tag[0])
+	return prev
+
+
+func ctx_exit(tag: Array, prev: Array) -> void:
+	## 这段结算期间新排进去的延后子弹也带上(延后段里再排延后段: 蓄力 → 落点 → 余波)
+	for i in range(int(prev[3]), battle._pending_shots.size()):
+		if not battle._pending_shots[i].has("_copy"):
+			battle._pending_shots[i]["_copy"] = tag
+	battle._copy_fx_mult = float(prev[0])
+	battle._copy_src = prev[1]
+	(tag[1] as Dictionary)["dmg_out_mult"] = float(prev[2])
+
+
+## 技能自己的状态 / 区域 / 协程用: tag 可以是 null(不在复制期建的 ⇒ 什么都不做)。
+func ctx_enter_opt(tag) -> Array:
+	return ctx_enter(tag) if tag is Array else []
+
+
+func ctx_exit_opt(tag, prev: Array) -> void:
+	if tag is Array and not prev.is_empty():
+		ctx_exit(tag, prev)
 
 
 func _sk_shell_copy(u: Dictionary, tgt) -> void:
@@ -330,14 +365,14 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 		##   原来是两团紫白柔光残影 + 一圈紫白环。只管画面(ShellVfx), 原主只读。
 		var two: bool = pool.size() >= 2
 		_fx.copy_begin(u, pool.slice(0, 2), (COPY_SECOND_DELAY + 0.3) if two else 0.8)
-		u["dmg_out_mult"] = COPY_EFFECT                                # 60%效果(封板)·即时伤害经_apply_damage_from乘数
-		battle._copy_fx_mult = COPY_EFFECT                                    # 60%效果·护盾/治疗/DoT
+		## 60%效果(封板): 即时伤害(龟壳 dmg_out_mult, 两条伤害路都乘)+ 护盾/治疗/DoT(battle._copy_fx_mult); 延后段见 ctx_capture
+		var tag0: Array = [COPY_EFFECT, u]
+		var prev0: Array = ctx_enter(tag0)
 		var s0: String = str(pool[0])
 		## ★同一个坑的第一发: `_sk_shell_copy(u, tgt)` 的 tgt 无类型标注, 上游可能给 null。
 		var t0 = tgt if (tgt is Dictionary and (tgt as Dictionary).get("alive", false)) else battle._targeting._nearest_enemy(u)
 		if t0 == null:
-			battle._copy_fx_mult = 1.0
-			u["dmg_out_mult"] = 1.0
+			ctx_exit(tag0, prev0)
 			return
 		if forms.has(s0):
 			SkillForms.pin_form(u, s0, int(forms[s0]))            # 按被偷者当时的形态放
@@ -347,12 +382,9 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 		##   ★两发时第一个图标保持段缩短: 它收掉了第二个才出(用户 08-27「图标1 收 → 头顶浮出图标2」; 原来两个叠在头顶 0.3 秒)。
 		_fx.copy_icon(u, s0, maxf(0.05, COPY_SECOND_DELAY - COPY_ICON_POP - COPY_ICON_FADE - 0.04) if two else COPY_ICON_HOLD)
 		_fx.copy_release(u)                                           # 放出那一刻龟壳闪白 1 帧(之后原技能特效原样播)
-		var _ps0: int = battle._pending_shots.size()
 		battle._do_skill(u, t0, s0)                                   # 第1个立即
-		_mark_copy_tail(_ps0)
 		SkillForms.unpin_form(u, s0)                                  # ★成对解钉, 否则形态卡住
-		battle._copy_fx_mult = 1.0
-		u["dmg_out_mult"] = 1.0
+		ctx_exit(tag0, prev0)                                         # 施放期间排进去的延后子弹带上 tag0
 	if pool.size() >= 2:                                       # 第2个错峰0.6s(轮流依次·不同时糊帧)
 		var p1: String = str(pool[1])
 		var uu: Dictionary = u
@@ -360,8 +392,8 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 		##   或者自己又放过一次改了形态; 用户要的是"偷的时候是哪个"。
 		var f1: int = int(forms.get(p1, -1))
 		var fn = func():
-			uu["dmg_out_mult"] = COPY_EFFECT
-			battle._copy_fx_mult = COPY_EFFECT
+			var tag1: Array = [COPY_EFFECT, uu]
+			var prev1: Array = ctx_enter(tag1)
 			## ★★2026-08-28 修一个【一直存在的运行时错】: 这里原本把
 			##   `_nearest_enemy(uu)` 直接塞进 `_do_skill(u, tgt: Dictionary, ...)`,
 			##   而 `_nearest_enemy` **会返回 null**(全场敌人都死了 / 本路已结束)。
@@ -370,8 +402,7 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 			##   而且 130 龟能已经扣了。表现是"复制有时候只放一个技能", 不报玩家可见的错。
 			var t2 = battle._targeting._nearest_enemy(uu)
 			if t2 == null:
-				battle._copy_fx_mult = 1.0
-				uu["dmg_out_mult"] = 1.0
+				ctx_exit(tag1, prev1)
 				return
 			if f1 >= 0:
 				SkillForms.pin_form(uu, p1, f1)
@@ -379,12 +410,9 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 			##   玩家看不出这一段是哪来的(①-E 记的三个硬伤之一)。
 			_fx.copy_icon(uu, p1, COPY_ICON_HOLD)
 			_fx.copy_release(uu)
-			var _ps1: int = battle._pending_shots.size()
 			battle._do_skill(uu, t2, p1)
-			_mark_copy_tail(_ps1)
 			SkillForms.unpin_form(uu, p1)
-			battle._copy_fx_mult = 1.0
-			uu["dmg_out_mult"] = 1.0
+			ctx_exit(tag1, prev1)
 		battle._pending_shots.append({"delay": COPY_SECOND_DELAY, "fn": fn, "src": u, "cc": {}})   # 等待期被控 / 阵亡即取消(10-16)
 
 # ============================================================================

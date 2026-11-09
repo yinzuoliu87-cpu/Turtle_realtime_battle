@@ -998,6 +998,11 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 	}
 	battle._equip_sys.tally.tag(su, owner)   # ④ 装备上下文里召出来的召唤物: 它之后造成的伤害记给那件装备
 	_TUT_BUFF.apply(su)   # 教程加成: 召唤体同样算我方单位
+	## 龟壳复制期召出的召唤物(海盗船…): 它之后造成的伤害一律按 60%(召唤物的伤害 src 是它自己, 不是龟壳)
+	if battle._copy_fx_mult != 1.0:
+		var _ct = battle._shell_sys.ctx_capture()
+		if _ct != null:
+			su["dmg_out_mult"] = float(_ct[0])
 	battle._units.append(su)
 	return su
 
