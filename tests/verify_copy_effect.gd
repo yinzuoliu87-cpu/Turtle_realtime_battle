@@ -91,7 +91,7 @@ func _case(skill: String, copy: bool) -> float:
 		await get_tree().process_frame
 	var dmg: float = HP - float(foe["hp"])
 	## 复制窗口外倍率必须复位: 龟壳 dmg_out_mult = 1、全局 _copy_fx_mult = 1(漏 exit 会让龟壳之后所有伤害都打六折)
-	if copy and (float(sh.get("dmg_out_mult", 1.0)) != 1.0 or float(s._copy_fx_mult) != 1.0 or s._copy_src != null):
+	if copy and (float(sh.get("dmg_out_mult", 1.0)) != 1.0 or float(s._copy_fx_mult) != 1.0 or s._shell_sys.copy_src != null):
 		dmg = -999.0
 	s.queue_free()
 	await get_tree().process_frame

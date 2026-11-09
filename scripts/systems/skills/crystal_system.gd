@@ -349,16 +349,11 @@ func _crystal_sweep_hits(u: Dictionary, si: int, reach: float, state: Dictionary
 				_crystal_spark(o["pos"])
 	state["prev"] = ang
 
-func _crystal_spike_line(u: Dictionary) -> void:
-	var _ct = u.get("_bulwark_copy")
+func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07-16逐帧): 砸地爆发→发光波头贴地冲出→波头过处水晶刺依次从地底弹出→碎晶地痕渐隐; 命中 1.5A真伤+2结晶+击飞0.8s+50%减速3s
+	var tgt = battle._targeting._acquire_target(u)
+	var _ct = u.get("_bulwark_copy")   # 龟壳复制期开的壁垒: 刺照样按 60%(ShellSystem.ctx_*; 本函数顶层没有 return, 出口在最后)
 	u.erase("_bulwark_copy")
 	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
-	_crystal_spike_line_body(u)
-	battle._shell_sys.ctx_exit_opt(_ct, _cp)   # 刺的延后段(_pending_shots)在这里带上 tag
-
-
-func _crystal_spike_line_body(u: Dictionary) -> void:   # 照小菊R第三击(2026-07-16逐帧): 砸地爆发→发光波头贴地冲出→波头过处水晶刺依次从地底弹出→碎晶地痕渐隐; 命中 1.5A真伤+2结晶+击飞0.8s+50%减速3s
-	var tgt = battle._targeting._acquire_target(u)
 	var dirv: Vector2 = Vector2.RIGHT if str(u.get("side", "left")) == "left" else Vector2.LEFT
 	if tgt != null:
 		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
@@ -486,6 +481,7 @@ func _crystal_spike_line_body(u: Dictionary) -> void:   # 照小菊R第三击(20
 				battle._knock_up(o, pref, 8.8)                               # 击飞0.8s(滞空=2×8.8/22)
 				battle._damage.apply_chill(o, SPIKE_SLOW_MULT, 1.0, SPIKE_SLOW_SEC)
 		, "src": u})
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)   # 刺的延后段(上面排进 _pending_shots 的)在这里带上 tag
 
 # 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+22%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆
 # 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+22%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆

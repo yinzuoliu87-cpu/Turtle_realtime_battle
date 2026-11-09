@@ -81,6 +81,7 @@ const SPLASH_PCT := 0.5        # 溅射给周围其他敌人的比例(类型跟�
 
 var battle
 var _fx = null           # ShellVfx: 复制 / 暗影俯冲的演出
+var copy_src = null      # 复制期上下文里的龟壳(只在复制窗口里非空; 见 ctx_capture)
 
 func _init(b) -> void:
 	battle = b
@@ -295,16 +296,16 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:
 ##   做法同装备统计 tally: 建的那一刻 ctx_capture(弹道 / sim 补间 / 延后子弹), 结算那一刻 ctx_enter / ctx_exit。
 ##   tag = [倍率, 龟壳单位] —— 单位只存引用、从不当键(CLAUDE.md §4.2)。可嵌套: exit 还原成 enter 之前的值。
 func ctx_capture():
-	if battle._copy_fx_mult == 1.0 or not (battle._copy_src is Dictionary):
+	if battle._copy_fx_mult == 1.0 or not (copy_src is Dictionary):
 		return null
-	return [battle._copy_fx_mult, battle._copy_src]
+	return [battle._copy_fx_mult, copy_src]
 
 
 func ctx_enter(tag: Array) -> Array:
 	var src: Dictionary = tag[1]
-	var prev: Array = [battle._copy_fx_mult, battle._copy_src, float(src.get("dmg_out_mult", 1.0)), battle._pending_shots.size()]
+	var prev: Array = [battle._copy_fx_mult, copy_src, float(src.get("dmg_out_mult", 1.0)), battle._pending_shots.size()]
 	battle._copy_fx_mult = float(tag[0])
-	battle._copy_src = src
+	copy_src = src
 	src["dmg_out_mult"] = float(tag[0])
 	return prev
 
@@ -315,8 +316,27 @@ func ctx_exit(tag: Array, prev: Array) -> void:
 		if not battle._pending_shots[i].has("_copy"):
 			battle._pending_shots[i]["_copy"] = tag
 	battle._copy_fx_mult = float(prev[0])
-	battle._copy_src = prev[1]
+	copy_src = prev[1]
 	(tag[1] as Dictionary)["dmg_out_mult"] = float(prev[2])
+
+
+## sim 补间(主文件 _reg_tween 建 / _step_sim_tweens 推)跟着复制上下文走: 建在复制窗口里 ⇒ 记下, 推的时候还原。
+##   收在这里而不在主文件: 主文件是上帝文件, arch_budget 冻结行数(11-09 第一版在主文件里写了 11 行 ⇒ 超预算)。
+func tag_tween(t: Tween) -> void:
+	if battle._copy_fx_mult != 1.0:
+		var ct = ctx_capture()
+		if ct != null:
+			t.set_meta("_copy", ct)
+
+
+func step_tween(t: Tween, dt: float) -> void:
+	if t.has_meta("_copy"):
+		var ct: Array = t.get_meta("_copy")
+		var cp: Array = ctx_enter(ct)
+		t.custom_step(dt)
+		ctx_exit(ct, cp)
+	else:
+		t.custom_step(dt)
 
 
 ## 技能自己的状态 / 区域 / 协程用: tag 可以是 null(不在复制期建的 ⇒ 什么都不做)。

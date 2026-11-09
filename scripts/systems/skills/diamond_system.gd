@@ -54,7 +54,11 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	if DetMath.vlen(to_t) <= ROLL_HIT_RADIUS:                                     # 进入120码→撞击结算
+		var _ct = u.get("_roll_copy")   # 龟壳复制期滚的: 撞击照样按 60%(ShellSystem.ctx_*)
+		u.erase("_roll_copy")
+		var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
 		_diamond_roll_impact(u, tgt["pos"], sf)
+		battle._shell_sys.ctx_exit_opt(_ct, _cp)
 		u["roll_active"] = false; u["state"] = "move"
 		return
 	var roll_spd: float = battle.DIAMOND_ROLL_MAX_SPD * (0.1 + 0.9 * sf)  # 0.1起步(避免完全不动)→满速
@@ -65,14 +69,6 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 		battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.2 + 0.35 * sf), 28.0 + 22.0 * sf)
 
 func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
-	var _ct = u.get("_roll_copy")
-	u.erase("_roll_copy")
-	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
-	_diamond_roll_impact_body(u, cp, sf)
-	battle._shell_sys.ctx_exit_opt(_ct, _cp)
-
-
-func _diamond_roll_impact_body(u: Dictionary, cp: Vector2, sf: float) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if DetMath.dist(o["pos"], cp) > ROLL_HIT_RADIUS: continue             # 撞击点120码小AOE

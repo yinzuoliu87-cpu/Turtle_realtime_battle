@@ -66,7 +66,9 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 	if DetMath.vlen(to_land) <= 26.0 or DetMath.dot(to_land, ddir) <= 0.0 or stuck:   # 到达落点/已穿过/卡住 → 挥剑斩结算
 		u["pos"] = land
 		u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
+		var _cp: Array = battle._shell_sys.ctx_enter_opt(u.get("_dash_copy"))   # 龟壳复制期冲的: 每段斩照样按 60%(ShellSystem.ctx_*)
 		_dice_dash_hit(u, tgt, ddir)
+		battle._shell_sys.ctx_exit_opt(u.get("_dash_copy"), _cp)
 		u["dice_dash_remaining"] = int(u.get("dice_dash_remaining", 1)) - 1
 		u["dice_dash_seg"] = int(u.get("dice_dash_seg", 0)) + 1
 		if int(u["dice_dash_remaining"]) <= 0:
@@ -81,13 +83,6 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 	_dash_streak_update(u)                                   # 冲刺光带: 起点 → 当前位置(11-05 换掉每两帧一张的淡蓝残影)
 
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
-	var _ct = u.get("_dash_copy")
-	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
-	_dice_dash_hit_body(u, tgt, dir)
-	battle._shell_sys.ctx_exit_opt(_ct, _cp)
-
-
-func _dice_dash_hit_body(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
 	var scale_i: float = FLASH_FIRST_COEF * DetMath.dpow(1.0 - FLASH_FALLOFF, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
 	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, FLASH_SHIELD_SEC)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)

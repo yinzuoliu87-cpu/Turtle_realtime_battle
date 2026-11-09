@@ -42,14 +42,6 @@ func _init(b) -> void:
 
 # 泡泡盾爆裂: 到期/被打破/挂盾对象死 触发 → 对施法者(src)全体敌2.0A魔法 + 泡沫冲击波 (封板L435·防静默过期丢爆裂)
 func _bubble_shield_burst(ally: Dictionary) -> void:
-	var _ct = ally.get("bubble_shield_copy")
-	ally.erase("bubble_shield_copy")
-	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
-	_bubble_shield_burst_body(ally)
-	battle._shell_sys.ctx_exit_opt(_ct, _cp)
-
-
-func _bubble_shield_burst_body(ally: Dictionary) -> void:
 	if float(ally.get("bubble_shield_until", 0.0)) <= 0.0:
 		return
 	ally["bubble_shield_until"] = 0.0        # 先清(防再入本对象); 即使下面按深度截断, 盾也已消(不会残留再爆)
@@ -59,6 +51,9 @@ func _bubble_shield_burst_body(ally: Dictionary) -> void:
 			printerr("[battle.GUARD] 泡泡/冰霜盾爆裂级联深度超32→截断(防卡死)")
 		return
 	battle._burst_depth += 1
+	var _ct = ally.get("bubble_shield_copy")   # 龟壳复制期套的盾: 爆裂照样按 60%(ShellSystem.ctx_*; 下面到 _burst_depth -= 1 之间没有 return)
+	ally.erase("bubble_shield_copy")
+	var _cp: Array = battle._shell_sys.ctx_enter_opt(_ct)
 	var src = ally.get("bubble_shield_src", null)
 	ally.erase("bubble_shield_src")
 	if src is Dictionary:
@@ -68,6 +63,7 @@ func _bubble_shield_burst_body(ally: Dictionary) -> void:
 				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, SHIELD_BURST_COEF, o, true), Color("#cdebff"))
 		battle._skill_ring(ally["pos"], Color(0.75, 0.92, 1.0, 0.6), 90.0)   # 泡沫破裂冲击波(全体敌)
 		for _bk in range(10): _bubble_rise(ally["pos"] + Vector2(randf_range(-60.0, 60.0), randf_range(-40.0, 40.0)))   # 泡沫爆裂四涌
+	battle._shell_sys.ctx_exit_opt(_ct, _cp)
 	battle._burst_depth -= 1
 
 func _bubble_gate(pos2d: Vector2) -> void:   # 泡沫门(bubble-burst立绘·涨开脉动淡出)
