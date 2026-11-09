@@ -1234,9 +1234,7 @@ func _refresh_all() -> void:
 	_detail._refresh_detail()
 
 
-func _apply_pet_idle_texture(tr: TextureRect, pet_in: Dictionary, autoplay: bool = true) -> void:
-	## 界面待机帧补丁(变脸龟; PetUiIdle 头注释): 没登记逐帧待机图的龟换成界面那套, 不改 DataRegistry
-	var pet: Dictionary = PetUiIdle.of(pet_in)
+func _apply_pet_idle_texture(tr: TextureRect, pet: Dictionary, autoplay: bool = true) -> void:
 	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var pid := str(pet.get("id", ""))
 	var img := str(pet.get("img", ""))

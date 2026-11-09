@@ -129,7 +129,9 @@ func _refresh_detail() -> void:
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host._apply_pet_idle_texture(portrait, pet)
+	## 界面待机帧补丁(变脸龟; PetUiIdle 头注释)。★在这里换不在 TeamSelectScene._apply_pet_idle_texture 里换:
+	##   那个函数在积分赛冻结表里(verify_gauntlet_online_queue R 段), 这只是画面
+	host._apply_pet_idle_texture(portrait, PetUiIdle.of(pet))
 	portrait_wrap.add_child(portrait)            # 立绘在辉光之上
 	host._dt_portrait.add_child(portrait_wrap)
 	## 没有逐帧待机图的龟(没挂 idle_tw): 立绘「呼吸」, 与统领卡同一种(UnitCardArt.breathe_idle; 2026-10-31 录屏量出 11 只一动不动)

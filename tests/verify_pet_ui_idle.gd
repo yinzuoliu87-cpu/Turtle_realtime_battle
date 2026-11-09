@@ -5,13 +5,13 @@ extends Node
 ##   战斗里它其实有两套 8 帧待机。修法 = scripts/gamedata/pet_ui_idle.gd 只给界面换成那两套(帧表 tools/assetgen/build_two_head_ui_idle.py)。
 ## 判据量在【真建出来的界面节点】上, 跑一段时间看帧有没有在换(不数我插的调用):
 ##   ① 分母 28 只; 统领卡立绘(UnitCardArt.portrait_anim, 选龟页网格 / 已选槽 / 决赛日卡)1.5 秒里换过 ≥ 3 个不同帧 —— 28 只全都是
-##   ② 选龟详情大立绘(TeamSelectScene._apply_pet_idle_texture)变脸龟 1.5 秒里换过 ≥ 3 帧
+##   ② 选龟详情大立绘(真开选龟页点变脸龟详情; detail_panel 先过 PetUiIdle 再交 _apply_pet_idle_texture)1.5 秒里换过 ≥ 3 帧
 ##   ③ 图鉴近战形态页取的是近战那套; 冠军页(ChampionUi.body)8 帧
 ##   ④ 界面那套第 0 帧的不透明部分逐像素 = 原静态立绘(界面大小 / 站位不变)
 ##   ⑤ 战斗不受影响: DataRegistry 里变脸龟仍是静态图、没有 sprite{}; 其余 27 只 PetUiIdle.of 原样返回同一个字典
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_pet_ui_idle.tscn
 
-const TeamSelect := preload("res://scripts/scenes/TeamSelectScene.gd")
+const TS := "res://scenes/TeamSelect.tscn"
 const FormVariants := preload("res://scripts/scenes/codex/form_variants.gd")
 const SAMPLE := 90                 # 1.5 秒(60 帧 / 秒)
 
@@ -73,16 +73,29 @@ func _ready() -> void:
 	_ok("★★① 统领卡立绘 28 只在 1.5 秒里都换过 ≥ 3 帧(逐帧待机, 不是整张缩放呼吸)", pids.size() == 28 and still.is_empty(), "不动的: %s" % str(still))
 	_ok("★① 变脸龟统领卡取的是界面那套远程待机", th_path.ends_with(str(PetUiIdle.BY_IMG["pets/two_head.png"])), th_path)
 
-	## ② 选龟详情大立绘
-	var ts = TeamSelect.new()
-	var tr := TextureRect.new()
-	tr.size = Vector2(200, 200)
-	host.add_child(tr)
-	ts._apply_pet_idle_texture(tr, DataRegistry.pet_by_id["two_head"])
-	var nd: int = await _distinct_regions(tr)
-	_ok("★★② 选龟详情大立绘: 变脸龟 1.5 秒里换过 ≥ 3 帧", nd >= 3, "%d 帧" % nd)
-	tr.queue_free()
-	ts.free()
+	## ② 选龟详情大立绘: 真开选龟页、点变脸龟的详情, 量详情里那张大立绘
+	host.queue_free()
+	var ts = (load(TS) as PackedScene).instantiate()
+	add_child(ts)
+	for _i in range(20):
+		await get_tree().process_frame
+	ts._set_detail_pet("two_head")
+	for _i in range(3):
+		await get_tree().process_frame
+	var big: TextureRect = null
+	for n in (ts._dt_portrait as Node).find_children("*", "TextureRect", true, false):
+		var t: Texture2D = (n as TextureRect).texture
+		if t is AtlasTexture and (t as AtlasTexture).atlas != null and str((t as AtlasTexture).atlas.resource_path).contains("two_head"):
+			big = n
+	var nd: int = await _distinct_regions(big) if big != null else 0
+	_ok("★★② 选龟详情大立绘: 变脸龟 1.5 秒里换过 ≥ 3 帧", big != null and nd >= 3,
+		"%s · %d 帧" % [str((big.texture as AtlasTexture).atlas.resource_path) if big != null else "没找到逐帧立绘", nd])
+	ts.queue_free()
+	for _i in range(3):
+		await get_tree().process_frame
+	host = Control.new()
+	host.size = Vector2(1600, 900)
+	add_child(host)
 
 	## ③ 图鉴近战形态页 / 冠军页
 	var th: Dictionary = DataRegistry.pet_by_id["two_head"]

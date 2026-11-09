@@ -48,6 +48,9 @@ func _world_tex_paths() -> Array:
 	for ch in _s._world.get_children():
 		if ch is Sprite3D and (ch as Sprite3D).texture != null:
 			var rp := str((ch as Sprite3D).texture.resource_path)
+			## 11-09 起头顶图标是运行时缩成的 22 像素像素图(ShellVfx.gen_icon_px, 没有资源路径), 按精灵上的 icon_src 认原图
+			if rp == "" and (ch as Sprite3D).has_meta("icon_src"):
+				rp = str((ch as Sprite3D).get_meta("icon_src"))
 			if rp != "":
 				out.append(rp)
 	return out
