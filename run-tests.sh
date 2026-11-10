@@ -36,6 +36,9 @@ if ! ( mkdir -p "$GATE_APPDATA/.wtest" && rmdir "$GATE_APPDATA/.wtest" ) 2>/dev/
 fi
 export GATE_APPDATA
 DIR="$(cd "$(dirname "$0")" && pwd)"
+## ★2026-11-10 定义处就导出: 审计器池(xargs bash -c run_audit_one)比下面的 export GODOT DIR RAW 先起跑,
+##   原来子进程里 $DIR 是空的 ⇒ cd "" —— 旧 bash 当没动(碰巧停在仓库根), CI 机器换了 bash 就报 null directory、80 个审计器整片空跑判红
+export DIR
 ## ★2026-11-02 开发产物一律落 .out/(点目录: Godot 不扫不导入; .gitignore 一条 /.out/)。
 ##   原来失败日志直接写仓库根目录 .gate-fail-<名>.log、转绿也不删, 两个月攒到 391 份
 ##   (方案书 docs/plans/20261102-文件管理与发版流程重整.md F1)。现在: 红了写 .out/gate/<名>.log, 转绿删掉。
@@ -768,7 +771,7 @@ run_audit_one () {
   key="$(basename "$script" .py)"
   local t0
   t0="$(date +%s%N)"
-  (cd "$DIR" && python "$script" 2>&1) > "$ARAW/$key.out"
+  (cd "$DIR" && python "$script") > "$ARAW/$key.out" 2>&1
   echo $(( ( $(date +%s%N) - t0 ) / 1000000 )) > "$ARAW/$key.ms"
 }
 export -f run_audit_one
