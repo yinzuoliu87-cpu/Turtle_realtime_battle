@@ -26,6 +26,11 @@
      ⑰ econ_replay_claim 404 ⇒ 本进程不再领  ⑱ 用的工程 = 最新且带 econ_replay.gd 的版本
      ⑲ 整批算不出来 ⇒ 拆开一个一个算: 算得出的回写, 算不出的不回写(不堵别人)
      ⑳ econ_loop 空闲也放慢(和 ⑨ 同一个 IdlePacer, 2026-11-08 合 main 时接上): 一小时约 610 次不是 1800 次
+  ㉑~㉔ 空闲省流量第二步(#23 · 2026-11-10, 内测服实测一个轮询器空转一天约 3.4 万次):
+     ㉑ econ_on 关着: econ_loop 一小时只领 12 次(5 分钟一次) + 读开关 60 次; 有积压仍一口气领完
+     ㉒ econ_on 中途打开: 一分钟内回到正常节奏(6 秒一次)
+     ㉓ econ_on 关着: 发件箱空闲 5 分钟才领一次; 开着仍 30 秒
+     ㉔ 三条比赛线程都闲着只有一条在问(真线程); 来了一对任务, 两条线程各领一份、同时算
 进 run-tests.sh 门禁(成功打印 ALL OK)。
 """
 import importlib.util
@@ -95,8 +100,11 @@ class Env:
         self.restream_404 = False
         self.restream_err = False
         self.on_complete = None
-        for k in ('POLL_SEC', 'IDLE_POLL_SEC', 'IDLE_AFTER_SEC', 'RESTREAM_POLL_SEC'):
+        for k in ('POLL_SEC', 'IDLE_POLL_SEC', 'IDLE_AFTER_SEC', 'RESTREAM_POLL_SEC', 'IDLE_FOLLOW_SEC', 'FLAGS_TTL_SEC',
+                  'ECON_OFF_POLL_SEC', 'OUTBOX_OFF_POLL_SEC'):
             os.environ.pop(k, None)
+        m._flags.reset()                 # 开关缓存是模块级的, 每份环境从头读
+        m._workers = 1
         os.environ['STREAM_ROOT'] = self.root
         os.environ.pop('STREAM_TMP', None)
         os.environ['JOB_TIMEOUT_SEC'] = '30'
@@ -451,14 +459,99 @@ def main():
     ok('⑲ ★整批算不出来 ⇒ 拆开算: 算得出的 a1 回写了, a2 没回写, 共起 3 个进程', n14 == 1 and e.popens == 3 and len(done) == 1
        and [i['account_id'] for i in done[0][1]['p_items']] == ['a1'], '%d popens=%d %s' % (n14, e.popens, str(done)[:160]))
     e.close()
-    # ⑳ econ_loop 空闲放慢: 一小时全空闲(econ_replay_claim 一直回空)
+    # ⑳ econ_loop 空闲放慢: 一小时全空闲(econ_replay_claim 一直回空); econ_on 开着(关着见 ㉑)
     e = Env(m)
+    e.flags = {'econ_on': True}
     m._econ_off.clear()
     st = run_sim(m, 3600, loop=m.econ_loop)
     c = len(e.names('econ_replay_claim'))
     ok('⑳ econ_loop 空闲一小时领 %d 次(不放慢是 1800, 应约 610)' % c, 560 <= c <= 660)
     ok('⑳ econ_loop 头 30 秒仍是 2 秒一次', st.waits[:15] == [2.0] * 15, str(st.waits[:16]))
     ok('⑳ econ_loop 空闲之后是 6 秒一次(分母 %d 次等待)' % len(st.waits), len(st.waits) > 500 and st.waits[-1] == 6.0)
+    e.close()
+    print('=== 空闲省流量第二步(#23) ===')
+    # ㉑ econ_on 关着: 5 分钟领一次, 开关 1 分钟读一次
+    e = Env(m)
+    st = run_sim(m, 3600, loop=m.econ_loop)
+    c, fr = len(e.names('econ_replay_claim')), len(e.names('referee_flags'))
+    ok('㉑ econ_on 关着: 一小时领 %d 次(开着约 610, 应 12)' % c, 11 <= c <= 13)
+    ok('㉑ econ_on 关着: 一小时读开关 %d 次(应约 60)' % fr, 55 <= fr <= 62)
+    ok('㉑ 合计 %d 次请求 < 开着时的八分之一' % (c + fr), c + fr < 610 / 8)
+    e.close()
+    e = Env(m)
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    e.claims['econ_replay_claim'] = [ejobs, ejobs, ejobs]
+    st = run_sim(m, 10, loop=m.econ_loop)
+    ok('㉑ econ_on 关着但有积压: 10 秒内三批都领完回写(回写 %d 批)' % len(e.names('econ_replay_done')),
+       len(e.names('econ_replay_done')) == 3)
+    e.close()
+    # ㉒ econ_on 第 600 秒打开: 一分钟内回到正常节奏
+    e = Env(m)
+    st = run_sim(m, 1800, [(600, lambda: e.flags.update({'econ_on': True}))], loop=m.econ_loop)
+    t, k = 0.0, 0
+    while t < 660 and k < len(st.waits):
+        t += st.waits[k]
+        k += 1
+    ok('㉒ 开关打开后一分钟内回到 ≤6 秒一次(之后 %d 次等待都 ≤6)' % len(st.waits[k:]),
+       len(st.waits[k:]) > 150 and max(st.waits[k:]) <= 6.0, str(st.waits[max(0, k - 3):k + 3]))
+    e.close()
+    # ㉓ 发件箱: econ_on 关着 5 分钟领一次, 开着 30 秒
+    for on, lo, hi, label in ((False, 18, 26, '关着 ⇒ 约 22 次'), (True, 120, 135, '开着 ⇒ 约 130 次')):
+        e = Env(m)
+        e.flags = {'econ_on': on}
+        e.claims['mainsite_outbox_claim'] = []
+        os.environ['MAINSITE_BASE'] = 'http://127.0.0.1:9'
+        os.environ['MAINSITE_HOOK_SECRET'] = 'f' * 64
+        m._outbox_off.clear()
+        try:
+            run_sim(m, 3600, loop=m.outbox_loop)
+        finally:
+            os.environ.pop('MAINSITE_BASE', None)
+            os.environ.pop('MAINSITE_HOOK_SECRET', None)
+        c = len(e.names('mainsite_outbox_claim'))
+        ok('㉓ 发件箱 econ_on %s: 一小时领 %d 次(%s)' % ('开' if on else '关', c, label), lo <= c <= hi)
+        e.close()
+    # ㉔ 三条比赛线程都闲着只有一条在问(真线程, 时间缩小 100 倍: 忙时 0.02 秒, 空闲 0.06 秒)
+    e = Env(m)
+    e.fake_res = res()
+    os.environ.update({'POLL_SEC': '0.02', 'IDLE_POLL_SEC': '0.06', 'IDLE_AFTER_SEC': '0', 'RESTREAM_POLL_SEC': '1000',
+                       'IDLE_FOLLOW_SEC': '30'})
+    m._workers = 3
+    m._stop.clear()
+    ths = [threading.Thread(target=m.worker_loop, args=(i, False), daemon=True) for i in range(3)]
+    for th in ths:
+        th.start()
+    time.sleep(1.2)
+    idle_claims = list(e.names('referee_claim'))
+    who = sorted({c[1]['p_worker'] for c in idle_claims})
+    ok('㉔ 三条线程都闲着 1.2 秒: 领活 %d 次(各问各的约 60 次, 应约 20)、问的只有 %s' % (len(idle_claims), who),
+       8 <= len(idle_claims) <= 30, str(who))
+    nj1, nj2 = job(), job(job_id=78)
+    nj1.pop('task')
+    nj2.pop('task')
+    busy = {}
+
+    def slow_complete():
+        busy[threading.current_thread().name] = time.time()
+        time.sleep(0.4)                  # 一局算 0.4 秒: 第二份要等第一份算完 ⇒ 说明没被叫醒
+    e.on_complete = slow_complete
+    t0 = time.time()
+    e.claims['referee_claim'] = [nj1, nj2]
+    while len(e.names('referee_complete')) < 2 and time.time() - t0 < 5:
+        time.sleep(0.01)
+    took = time.time() - t0
+    m._stop.set()
+    m._baton.poke()
+    for th in ths:
+        th.join(5)
+    ok('㉔ 来了一对任务: 两条线程各领一份(%d 条线程在算)、%.2f 秒两份都开算(没叫醒要等第一份算完 ≥0.4 秒)' % (len(busy), took),
+       len(busy) == 2 and took < 0.3)
+    ok('㉔ 停机后三条线程都退出(睡在接力棒上的也被叫醒)', not any(th.is_alive() for th in ths))
+    m._stop.clear()
+    m._workers = 1
+    for k in ('POLL_SEC', 'IDLE_POLL_SEC', 'IDLE_AFTER_SEC', 'RESTREAM_POLL_SEC', 'IDLE_FOLLOW_SEC'):
+        os.environ.pop(k, None)
     e.close()
     print('')
     if fails[0] == 0 and n[0] >= 40:

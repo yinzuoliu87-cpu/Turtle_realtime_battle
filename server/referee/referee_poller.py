@@ -28,6 +28,9 @@
   MAINSITE_BASE          发件箱发往的主站根地址（{MAINSITE_BASE}/api/arena-hook/{topic}）
   MAINSITE_HOOK_SECRET[_FILE]  签名密钥（同网关 mainsite_gateway.py；★不进仓库、不打印）
   OUTBOX_POLL_SEC / OUTBOX_IDLE_POLL_SEC / OUTBOX_IDLE_AFTER_SEC  发件箱忙时 / 空闲时多久领一次、多久算空闲，默认 5 / 30 / 60
+  FLAGS_TTL_SEC          记账开关 econ_on 多久重读一次，默认 60（开关打开后经济线程 / 发件箱最多这么久回到正常节奏）
+  ECON_OFF_POLL_SEC / OUTBOX_OFF_POLL_SEC  econ_on 关着时经济重放 / 发件箱多久领一次，默认 300 / 300（#23 出站流量）
+  IDLE_FOLLOW_SEC        多条比赛线程都闲着时只留一条问（IdleBaton），其余线程最多等这么久再去抢接力棒，默认 60
 
 补流（逐帧直播 §5，迁移 20261020_referee_live_list.sql，2026-10-20 · ★只改了仓库文件、未部署）：
   正常任务领不到时，再领一份「补流」任务（rpc/referee_claim_restream；任务单 = 原任务 + task = "restream"）。
@@ -418,8 +421,89 @@ class IdlePacer:
     def restream_asked(self, got: bool) -> None:
         self.next_restream = 0.0 if got else _now() + self.restream_poll
 
+    def idle(self) -> bool:
+        return _now() - self.last_job >= self.idle_after
+
     def wait_sec(self) -> float:
-        return self.idle_poll if _now() - self.last_job >= self.idle_after else self.poll
+        return self.idle_poll if self.idle() else self.poll
+
+
+## ── 空闲省流量第二步（#23 · 2026-11-10）──────────────────────────────────────────────
+## 实测（内测服 11-10 分接口计数，一个玩家都没有）：一个轮询器空转一天约 3.4 万次 —— econ_replay_claim 1.4 万、
+##   referee_claim 1.4 万、发件箱 2.8 千、补流 1.4 千；正式服 WORKERS=2，两条比赛线程各问一遍 ⇒ 约 4.9 万次。
+##   ① econ_on 关着（正式服 11-16 前）：开局不查账、没人等重放 ⇒ 经济线程 / 发件箱改成 *_OFF_POLL_SEC 才领一次，
+##      只为开关打开那天账已追平（领到活照常一口气领完）；开关每 FLAGS_TTL_SEC 读一次。偷袭要 econ_on，所以发件箱同理。
+##   ② 多条比赛线程都闲着时只留一条问（IdleBaton）；任何线程领到活立刻叫醒其余线程各领一次（一场两路成对来，不排队）。
+class FlagCache:
+    """rpc/referee_flags 的缓存：ttl 秒内不重读；读失败沿用上一次的值（一开始是 {} = 开关全关）。"""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._at = None
+        self._val = {}
+
+    def get(self, ttl: float) -> dict:
+        with self._lock:
+            if self._at is not None and _now() - self._at < ttl:
+                return self._val
+        try:
+            v = rpc("referee_flags", {})
+            v = v if isinstance(v, dict) else None
+        except (urllib.error.URLError, OSError, ValueError) as ex:
+            log("WARN 读开关失败（沿用上一次）: %s" % ex)
+            v = None
+        with self._lock:
+            self._at = _now()
+            if v is not None:
+                self._val = v
+            return self._val
+
+    def reset(self) -> None:
+        with self._lock:
+            self._at, self._val = None, {}
+
+
+_flags = FlagCache()
+
+
+def econ_on_now() -> bool:
+    return bool(_flags.get(float(env("FLAGS_TTL_SEC", "60"))).get("econ_on", False))
+
+
+class IdleBaton:
+    """多条比赛线程都闲着时只让拿着接力棒的那一条照 IdlePacer 节奏问；其余线程睡在这里。
+    任何线程领到活 ⇒ poke()：叫醒其余线程各领一次。停机时 main 也 poke，睡着的线程立刻退。"""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._cv = threading.Condition()
+        self._gen = 0
+
+    def try_take(self) -> bool:
+        return self._lock.acquire(blocking=False)
+
+    def give_back(self) -> None:
+        self._lock.release()
+
+    def gen(self) -> int:
+        with self._cv:
+            return self._gen
+
+    def poke(self) -> None:
+        with self._cv:
+            self._gen += 1
+            self._cv.notify_all()
+
+    def wait(self, gen: int, sec: float) -> bool:
+        """睡到被叫醒或 sec 秒；被叫醒（有活 / 停机）回 True。"""
+        with self._cv:
+            if self._gen == gen:
+                self._cv.wait(timeout=sec)
+            return self._gen != gen
+
+
+_baton = IdleBaton()
+_workers = 1                           # main 按 WORKERS 设；1 条线程时不用接力棒
 def _ver_key(v: str) -> tuple:
     return tuple(int(x) if x.isdigit() else 0 for x in re.split(r"[.\-]", v))
 
@@ -502,14 +586,26 @@ def econ_loop() -> None:
     wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "econ")
     poll = float(env("POLL_SEC", "2"))
     pacer = IdlePacer(poll, float(env("IDLE_POLL_SEC", "6")), float(env("IDLE_AFTER_SEC", "30")), 0.0)
+    flags_ttl = float(env("FLAGS_TTL_SEC", "60"))
+    off_poll = float(env("ECON_OFF_POLL_SEC", "300"))
+    next_off_claim = 0.0
     while not _stop.is_set() and not _econ_off.is_set():
+        off = not econ_on_now()
+        if off and _now() < next_off_claim:
+            ## econ_on 关着（#23）：没人等重放，隔 off_poll 才领；其间只按 flags_ttl 看开关有没有打开
+            _stop.wait(max(0.0, min(flags_ttl, next_off_claim - _now())))
+            continue
         try:
             if handle_econ(claim_econ(), discover_versions(env("VERSIONS_DIR", "/opt/turtle")), wdir) > 0:
                 pacer.busy()
                 continue
         except (urllib.error.URLError, OSError, ValueError) as ex:
             log("WARN 经济重放失败: %s" % ex)
-        _stop.wait(pacer.wait_sec())
+        if off:
+            next_off_claim = _now() + off_poll
+            _stop.wait(min(flags_ttl, off_poll))
+        else:
+            _stop.wait(pacer.wait_sec())
 
 
 def worker_loop(idx: int, once: bool) -> None:
@@ -518,16 +614,27 @@ def worker_loop(idx: int, once: bool) -> None:
     poll = float(env("POLL_SEC", "2"))
     pacer = IdlePacer(poll, float(env("IDLE_POLL_SEC", "6")), float(env("IDLE_AFTER_SEC", "30")),
                       float(env("RESTREAM_POLL_SEC", "60")))
+    follow = float(env("IDLE_FOLLOW_SEC", "60"))
     while not _stop.is_set():
         versions = discover_versions(env("VERSIONS_DIR", "/opt/turtle"))
         if not versions:
             log("WARN %s: VERSIONS_DIR 下没有工程, 不领活" % worker)
             _stop.wait(30)
             continue
+        holding = False
+        if _workers > 1 and not once and pacer.idle():
+            ## 都闲着时只留一条线程问（#23）：拿不到接力棒就睡，被叫醒（别的线程领到活）才领一次
+            g = _baton.gen()
+            if _baton.try_take():
+                holding = True
+            elif not _baton.wait(g, follow) or _stop.is_set():
+                continue
         try:
             jobs = rpc("referee_claim", {"p_worker": worker, "p_versions": sorted(versions), "p_limit": 1}) or []
         except (urllib.error.URLError, OSError, ValueError) as ex:
             log("WARN %s 领活失败: %s" % (worker, ex))
+            if holding:
+                _baton.give_back()
             _stop.wait(max(poll, 5))
             continue
         if not jobs and pacer.restream_due():
@@ -543,7 +650,13 @@ def worker_loop(idx: int, once: bool) -> None:
                 log("%s: 没有待算的任务" % worker)
                 return
             _stop.wait(pacer.wait_sec())
+            if holding:
+                _baton.give_back()
             continue
+        if holding:
+            _baton.give_back()
+        if _workers > 1:
+            _baton.poke()                # 领到活 ⇒ 叫醒睡着的线程各领一次（后面可能还有）
         pacer.busy()
         for job in jobs:
             try:
@@ -677,7 +790,11 @@ def outbox_loop(once: bool = False) -> int:
             pacer.busy()
         if once:
             return total
-        _stop.wait(0.2 if n >= OUTBOX_BATCH else (max(pacer.poll, 10.0) if n < 0 else pacer.wait_sec()))
+        w = 0.2 if n >= OUTBOX_BATCH else (max(pacer.poll, 10.0) if n < 0 else pacer.wait_sec())
+        if n == 0 and pacer.idle() and not econ_on_now():
+            ## econ_on 关着 ⇒ 偷袭也关着（raid_enabled = raid_on 且 econ_on），剩下的消息不急（#23）
+            w = max(w, float(env("OUTBOX_OFF_POLL_SEC", "300")))
+        _stop.wait(w)
     return total
 
 
@@ -885,8 +1002,15 @@ def main() -> int:
     n = int(env("WORKERS", str(os.cpu_count() or 1)))
     log("referee poller: %d workers, versions=%s, 龟投发件箱=%s" % (
         1 if a.once else n, sorted(versions), "开" if outbox_enabled() and not a.once else "关"))
-    signal.signal(signal.SIGTERM, lambda *_: _stop.set())
-    signal.signal(signal.SIGINT, lambda *_: _stop.set())
+    global _workers
+    _workers = 1 if a.once else n
+
+    def _on_signal(*_):
+        _stop.set()
+        _baton.poke()                    # 睡在接力棒上的线程立刻醒来退出
+
+    signal.signal(signal.SIGTERM, _on_signal)
+    signal.signal(signal.SIGINT, _on_signal)
     ts = [threading.Thread(target=worker_loop, args=(i, a.once), daemon=True) for i in range(1 if a.once else n)]
     if outbox_enabled() and not a.once:
         ts.append(threading.Thread(target=outbox_loop, daemon=True))
