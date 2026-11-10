@@ -58,7 +58,7 @@ create or replace function pg_temp.start(p_k text, p_snap jsonb) returns jsonb l
 declare r jsonb;
 begin
   perform pg_temp.as_user(pg_temp.u(p_k));
-  r := public.referee_ranked_start(pg_temp.wk(), p_snap, 0, '0.22.7', 1);
+  r := public.referee_ranked_start(pg_temp.wk(), p_snap, 0, '0.22.7', 990);
   perform pg_temp.as_user(null);
   return r;
 end $$;
@@ -80,7 +80,8 @@ update public.service_status set min_client_version = '0.0.0' where id = 1;
 insert into auth.users (id, aud, role, is_anonymous, created_at)
   select id, 'authenticated', 'authenticated', true, now() from _u;
 update public.referee_config set ranked_on = true, ranked_any_day = false, econ_on = false where id = 1;
-insert into public.referee_versions (client_version, enabled, rules_ver) values ('0.22.7', true, 1)
+-- 2026-11-10: 规则版本用 990(哪边都没有对手池)。原来用 1: 内测服池子只有 2 / 4 ⇒ 开局 no_opponent; 正式服还留着 rules_ver 1 的池子 582 行 ⇒ 真配到对手、建了任务, E2 / P2 / M2 / M6 假红(11-10 正式服演练)
+insert into public.referee_versions (client_version, enabled, rules_ver) values ('0.22.7', true, 990)
   on conflict (client_version) do update set enabled = true, rules_ver = excluded.rules_ver;
 select pg_temp.set_fake(2, 12);   -- 假周二 12:00(积分赛开着)
 -- 积分赛池子清空(本事务内)⇒ 过了比对的开局一律走到 no_opponent(不建任务), 拿它当「比对这一关过了」的信号
