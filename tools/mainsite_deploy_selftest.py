@@ -14,6 +14,9 @@ DNS / HTTPS 回读 / 账本回读三个本机判据打桩。真的部分是 main
   F 进程比 env 文件旧（没重启）/ 进程环境里的密钥与 env 不同 ⇒ 退出码 1（读进程环境这一关真会红）
   G 账本里同名迁移 sha256 与仓库不同 ⇒ 停在迁移段、一条 ssh 都不发
   H 内测主站地址只从 turtlebet docs/arena-plan.md §8 / 环境变量读（解析器两种写法 + 根不一致拒）
+  P 正式服（--env prod，2026-11-10 加）：不带 --yes-prod ⇒ 退出码 4、什么都没做；迁移一律 `sb_migrate.py prod … --yes-prod`、
+    一条内测服命令都没有；env 写 env-mainsite（不是 env-beta / env 本身）、密钥 = 正式密钥文件；没有一条 ssh 碰内测服的路径 / 单元；
+    轮询器重启那一步等 200 秒；正式服轮询器没在跑 = 红；回读打 arena.turtlearena.xyz + 正式密钥签名探针
 进 run-tests.sh 门禁（成功打印 ALL OK）。
 """
 import hashlib
@@ -28,6 +31,8 @@ import mainsite_deploy as D  # noqa: E402
 
 SECRET = "selftest-only-secret-0123456789abcdef"      # 假密钥（真密钥只在本机 ~/.config/turtle/secrets/）
 BASE = "http://mock-mainsite.invalid:8080"
+PROD_SECRET = "selftest-only-PROD-secret-fedcba9876543210"
+PROD_BASE = "https://mock-prod-mainsite.invalid"
 fails = [0]
 n = [0]
 
@@ -46,8 +51,10 @@ def sha(b):
 class FakeRunner:
     """记账的执行器。ssh 按命令认步骤、回最像真机的回显；env 那一步把标准输入里的 env 记下来，读进程环境时照它回 sha256。"""
 
-    def __init__(self, ledger=None, validate_ok=True, fresh=True, proc_secret=None):
+    def __init__(self, ledger=None, validate_ok=True, fresh=True, proc_secret=None, poller_nopid=False):
         self.calls = []          # (种类, 命令或 argv, 标准输入)
+        self.timeouts = {}       # ssh 命令 → 给的超时秒数
+        self.poller_nopid = poller_nopid
         self.led = ledger
         self.validate_ok = validate_ok
         self.fresh = fresh
@@ -62,10 +69,13 @@ class FakeRunner:
     def local(self, argv):
         self.calls.append(("local", list(argv), None))
         name = argv[3]
+        if argv[2] == "prod":
+            return 0, "  演练: ALL PASS（9 条）\n  回读函数体: 3 个, 不同 0 个 []\n"
         return 0, ("✓ 内测服演练过了" if "--rehearse" in argv else "✓ 内测服已上 %s" % name)
 
     def ssh(self, cmd, data=None, timeout=25):
         self.calls.append(("ssh", cmd, data))
+        self.timeouts[cmd] = timeout
         if "flock" in cmd:
             return 0, "FREE\n"
         if cmd.startswith("B="):
@@ -74,16 +84,18 @@ class FakeRunner:
             return 0, "COMPILE_OK\n"
         if cmd.startswith("install -m 644 -o root"):
             return 0, "INSTALLED\n"
-        if "env-mainsite-beta.part" in cmd:
+        if "umask 077" in cmd:                                 # 写 env 那一步（内测 env-mainsite-beta / 正式 env-mainsite）
             for ln in data.decode("utf-8").splitlines():
                 if "=" in ln and not ln.startswith("#"):
                     k, v = ln.split("=", 1)
                     self.env[k] = v
-            return 0, "MODE=600 root:root\n%s  /etc/turtle-referee/env-mainsite-beta\n" % sha(data)
+            return 0, "MODE=600 root:root\n%s  /etc/turtle-referee/env-mainsite\n" % sha(data)
         if data is not None:                                   # 传文件 / drop-in：回读 sha256
             return 0, "%s  x\n" % sha(data)
         if "daemon-reload" in cmd:
-            return 0, "EnvironmentFiles=/etc/turtle-referee/env-beta (ignore_errors=no) /etc/turtle-referee/env-mainsite-beta (ignore_errors=no)\n"
+            if "gateway-beta" in cmd:
+                return 0, "EnvironmentFiles=/etc/turtle-referee/env-beta (ignore_errors=no) /etc/turtle-referee/env-mainsite-beta (ignore_errors=no)\n"
+            return 0, "EnvironmentFiles=/etc/turtle-referee/env (ignore_errors=no) /etc/turtle-referee/env-mainsite (ignore_errors=no)\n"
         if "grep -cxF" in cmd:
             return 0, "1\n"
         if cmd.startswith("caddy validate"):
@@ -93,16 +105,19 @@ class FakeRunner:
         if "systemctl restart" in cmd:
             return 0, "GW=active POLLER=active\n"
         if "MainPID" in cmd:
+            if self.poller_nopid and "gateway" not in cmd:
+                return 0, "NOPID\n"
             env = dict(self.env)
             if self.proc_secret is not None:
                 env["MAINSITE_HOOK_SECRET"] = self.proc_secret
-            env["GATEWAY_PORT"] = "8791" if "gateway" in cmd else ""
+            env["GATEWAY_PORT"] = ("8791" if "gateway-beta" in cmd else "8790") if "gateway" in cmd else ""
             env["SUPABASE_URL"] = "https://beta.invalid"
             out = "pid=4242\n" + "".join("%s %s %d\n" % (k, sha(env.get(k, ""))[:16], len(env.get(k, "")))
                                          for k in ("MAINSITE_BASE", "MAINSITE_HOOK_SECRET", "MAINSITE_OUTBOX", "GATEWAY_PORT", "SUPABASE_URL"))
             return 0, out + ("fresh=1\n" if self.fresh else "fresh=0\n")
         if "journalctl" in cmd:
-            return 0, 'mainsite gateway: 127.0.0.1:8791, raid_intake=on\n{"ok": true}'
+            port = 8791 if "gateway-beta" in cmd else 8790
+            return 0, 'mainsite gateway: 127.0.0.1:%d, raid_intake=on\n{"ok": true}' % port
         if "RESTORED" in cmd:
             return 0, "RESTORED\n"
         return 1, "（假 Runner 不认识的命令）"
@@ -118,6 +133,7 @@ def stub_checks():
     D.check_dns = lambda hosts: (PROBES.append(("dns", tuple(hosts))) or True, "stub")
     D.http_expect = lambda m, url, h, code: (PROBES.append(("http", m, url, code)) or True, "stub HTTP %d" % code)
     D.readback_db = lambda ctx: (PROBES.append(("db",)) or True, "stub")
+    D.signed_probe = lambda base, secret: (PROBES.append(("signed", base, secret)) or True, "stub")
 
 
 def run(argv, runner):
@@ -149,6 +165,11 @@ def main():
         f.write(SECRET + "\n")
     os.environ["MAINSITE_BETA_SECRET_FILE"] = sp
     os.environ["MAINSITE_BETA_BASE"] = BASE
+    psp = os.path.join(td, "prod_secret.txt")
+    with open(psp, "w", encoding="utf-8") as f:
+        f.write(PROD_SECRET + "\n")
+    os.environ["MAINSITE_PROD_SECRET_FILE"] = psp
+    os.environ["MAINSITE_PROD_BASE"] = PROD_BASE
     stub_checks()
     WEEKDAY, SUNDAY, SATURDAY = "2026-11-09T09:00Z", "2026-11-08T12:00Z", "2026-11-14T23:59Z"
 
@@ -283,6 +304,60 @@ def main():
     src_text = open(os.path.join(D.REPO, "tools", "mainsite_deploy.py"), encoding="utf-8").read()
     hits = __import__("re").findall(r"https?://(?!127\.0\.0\.1)\d+\.\d+\.\d+\.\d+", src_text)
     ok("H4 部署脚本源码里没有写死 http(s)://<IP> 形式的地址（回环 127.0.0.1 除外）", not hits, hits)
+
+    print("=== P 正式服 ===")
+    r = FakeRunner(ledger={})
+    PROBES.clear()
+    rc, out = run(["--env", "prod", "--apply", "--now", WEEKDAY], r)
+    ok("P1 --env prod --apply 不带 --yes-prod ⇒ 退出码 4（实际 %s）" % rc, rc == 4, out[-200:])
+    ok("P2 被拒时什么都没做（调用 %d 条、账本读 %d 次、判据 %d 次）" % (len(r.calls), r.ledger_reads, len(PROBES)),
+       not r.calls and r.ledger_reads == 0 and not PROBES)
+    r = FakeRunner(ledger={})
+    rc, out = run(["--env", "prod", "--now", WEEKDAY], r)
+    ok("P3 --env prod 不带 --apply = 演练：一条调用都没有、提示 --yes-prod", rc == 0 and not r.calls and "--yes-prod" in out, out[-200:])
+    r = FakeRunner(ledger={})
+    PROBES.clear()
+    rc, out = run(["--env", "prod", "--apply", "--yes-prod", "--now", WEEKDAY], r)
+    ok("P4 --env prod --apply --yes-prod ⇒ 退出码 0", rc == 0, out[-500:])
+    locs = [c[1] for c in r.calls if c[0] == "local"]
+    ok("P5 迁移 10 份全按清单顺序、每份一条 `sb_migrate.py prod <名> --rehearse --apply --yes-prod`（N=%d）" % len(locs),
+       [x[3] for x in locs] == list(D.MIGRATIONS)
+       and all(x[2] == "prod" and x[4:] == ["--rehearse", "--apply", "--yes-prod"] for x in locs), [x[2:] for x in locs][:3])
+    sshs = r.ssh_cmds()
+    beta_touch = [c for c in sshs if "beta" in c]
+    ok("P6 没有一条 ssh 碰内测服（路径 / 单元 / env 里带 beta 的 %d 条；分母 %d 条）" % (len(beta_touch), len(sshs)),
+       sshs and not beta_touch, beta_touch[:2])
+    envw = [c for c in r.calls if c[0] == "ssh" and "umask 077" in c[1]]
+    ok("P7 env 写的是 /etc/turtle-referee/env-mainsite（不动 /etc/turtle-referee/env 本身）",
+       len(envw) == 1 and "/etc/turtle-referee/env-mainsite.part" in envw[0][1]
+       and not any(" /etc/turtle-referee/env " in c or "/etc/turtle-referee/env.part" in c for c in sshs), envw[0][1][:120] if envw else None)
+    ok("P8 env 里是正式主站地址 + 正式密钥（不是内测那份）+ MAINSITE_OUTBOX=1",
+       r.env.get("MAINSITE_BASE") == PROD_BASE and r.env.get("MAINSITE_HOOK_SECRET") == PROD_SECRET and r.env.get("MAINSITE_OUTBOX") == "1",
+       (r.env.get("MAINSITE_BASE"), r.env.get("MAINSITE_HOOK_SECRET") == SECRET))
+    inst = [c for c in sshs if c.startswith("install -m 644 -o root")]
+    ok("P9 代码装进 /opt/turtle/referee/", len(inst) == 1 and inst[0].rstrip().endswith("/opt/turtle/referee/ && echo INSTALLED"), inst)
+    rs = [c for c in sshs if "systemctl restart" in c]
+    ok("P10 重启的是 turtle-mainsite-gateway + turtle-referee，这一步等 %s 秒" % (r.timeouts.get(rs[0]) if rs else None),
+       len(rs) == 1 and "systemctl restart turtle-mainsite-gateway " in rs[0] and "try-restart turtle-referee;" in rs[0]
+       and r.timeouts.get(rs[0]) == 200, rs)
+    http = [p for p in PROBES if p[0] == "http"]
+    sig = [p for p in PROBES if p[0] == "signed"]
+    ok("P11 HTTPS 回读 5 条都打 https://arena.turtlearena.xyz/", len(http) == 5
+       and all(p[2].startswith("https://arena.turtlearena.xyz/") for p in http), http[:2])
+    ok("P12 签名探针跑了 1 次、用的是正式密钥、打正式网关", len(sig) == 1 and sig[0][1] == "https://arena.turtlearena.xyz"
+       and sig[0][2] == PROD_SECRET, [(p[0], p[1]) for p in sig])
+    ok("P13 输出里没有正式密钥 / 正式主站地址原文", PROD_SECRET not in out and PROD_BASE not in out)
+    carriers = [c for c in r.calls if c[2] is not None and PROD_SECRET.encode() in c[2]]
+    ok("P14 正式密钥只在写 env 那一条 ssh 的标准输入里", len(carriers) == 1 and "umask 077" in carriers[0][1], len(carriers))
+    r = FakeRunner(ledger={}, poller_nopid=True)
+    rc, out = run(["--env", "prod", "--apply", "--yes-prod", "--now", WEEKDAY], r)
+    ok("P15 正式服轮询器没在跑 ⇒ 退出码 1（内测服那边同样情况只记待办）", rc == 1 and "进程没在跑" in out, out[-300:])
+    r = FakeRunner(ledger=full_ledger(skip_new=False))
+    rc, out = run(["--env", "prod", "--apply", "--yes-prod", "--only", "migrations", "--now", WEEKDAY], r)
+    ok("P16 正式服账本里 10 份都已上（sha256 相同）⇒ 一条迁移子进程都不起", rc == 0 and not r.calls, r.calls[:2])
+    r = FakeRunner(ledger={})
+    rc, out = run(["--env", "prod", "--apply", "--yes-prod", "--now", SATURDAY], r)
+    ok("P17 正式服周末同样要 --weekend-ok（退出码 3、什么都没做）", rc == 3 and not r.calls, rc)
 
     print("\n%d 条断言, %d 条失败" % (n[0], fails[0]))
     if fails[0] == 0:

@@ -563,6 +563,9 @@ curl -s https://arena-beta.turtlearena.xyz/healthz                              
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://arena-beta.turtlearena.xyz/mainsite/link/confirm -d '{}'   # 401（不带签名）
 ```
 ★2026-11-09 起内测环境用 `python tools/mainsite_deploy.py`（下一节「内测环境部署与联调」）一条命令做上面这几行，差别：地址 / 密钥 / 发件箱开关写进单独的 `/etc/turtle-referee/env-mainsite-beta`（root 600），网关与内测服轮询器各加一个 drop-in 读它，`env-beta` 与已部署的单元文件一个字不动。
+★2026-11-10 正式服同一条命令加 `--env prod`：演练 `python tools/mainsite_deploy.py --env prod`，真执行 `… --env prod --apply --yes-prod`（正式服写入，先得到用户同意）。
+迁移 10 份每份一条 `sb_migrate.py prod <名> --rehearse --apply --yes-prod`；代码进 `/opt/turtle/referee/`；env 写 `/etc/turtle-referee/env-mainsite`（`/etc/turtle-referee/env` 不动），drop-in 加给 `turtle-mainsite-gateway`（8790）与 `turtle-referee`；
+轮询器重启等在跑的对局收尾（最多 200 秒）；回读多一条正式密钥签名探针。正式服 `raid_on` / `econ_on` 本工具不写（用户 11-10 定：保持关）。
 
 本机联调（不连主站）：`python tools/mock_mainsite.py serve` 起假主站，网关 / 发件箱的 `MAINSITE_BASE` 指过去；
 `mock_mainsite.py link-info / link-confirm / raid` 扮演主站调网关。门禁 `tools/mainsite_selftest.py`；数据库函数 `server/supabase/tests/20261109a_mainsite_core_check.sql`。
