@@ -182,7 +182,9 @@ const MINION_INFO := {
 		"growth_tag": "每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%",
 		"skill_desc": "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。",
 		"passives": [
-			{"name": "援军", "slot": "passive", "icon": "passive/reserve-reinforce-icon.png", "desc": "终极战场中，双方各有一名援军小将登场，并从所属玩家背包中未装备的装备里随机携带一件。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
+			## 2026-11-11 用户「它的被动是…描述他在最终战场会与幸存者一起登场，然后再一个被动呢就是。会携带一件在背包里未被装备的装备，就是随机携带」 ⇒ 拆成两条被动
+			{"name": "援军", "slot": "passive", "icon": "passive/reserve-reinforce-icon.png", "desc": "终极战场中，援军小将与幸存单位一起登场。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
+			{"name": "随身装备", "slot": "passive", "icon": "passive/reserve-supply-icon.png", "desc": "援军小将登场时，从所属玩家背包中未装备的装备里随机携带一件。"},
 			{"name": "普通攻击", "slot": "basic", "icon": "skills/reserve-basic.png", "desc": "援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
 		],
 	},

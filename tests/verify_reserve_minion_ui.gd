@@ -147,6 +147,7 @@ func _pure() -> void:
 	var desc := str(mi.get("skill_desc", ""))
 	var pv: Array = mi.get("passives", [])
 	var pdesc: String = str((pv[0] as Dictionary).get("desc", "")) if not pv.is_empty() else ""
+	var pdesc2: String = str((pv[1] as Dictionary).get("desc", "")) if pv.size() > 1 else ""   # 2026-11-11 拆出来的第二条「随身装备」
 	## ★2026-11-04 技能文案改成龟同款推导式(「（100%×攻击力({ATK}) = {N:…}）物理伤害」, 小将技能卡按龟的规矩走):
 	##   info() 只展开 {C:}; {N:…} / {ATK} 留给 render_bbcode 按单位算(图鉴详情页显示无残留由下面「详情页没有 {C:} 残留」守)。
 	_ok("★文案里 {C:} 全展开(技能 / 被动 / 签牌)", desc != "" and pdesc != "" and (desc + pdesc + str(mi.get("growth_tag", ""))).find("{C:") < 0,
@@ -157,9 +158,14 @@ func _pure() -> void:
 		desc.find("该敌人 %s%% 最大生命值的魔法伤害" % _pct(ReserveConsts.MAXHP_PCT)) >= 0)
 	_ok("技能文案: 前后左右 / 同时追向该敌人(追踪) / 命中的第一个敌人", desc.find("前后左右") >= 0 and desc.find("同时追向该敌人") >= 0 and desc.find("命中的第一个敌人") >= 0)
 	## 2026-11-11 用户「援护小将始终在终极战场登场…背我背包里的装备…随便抽取一件」⇒ 出场条件改成双方始终各一名, 并写随身装备
-	_ok("★被动「援军」: 出场条件(终极战场 · 双方各有一名)且不再写「没有任何幸存单位」",
-		pdesc.find("终极战场") >= 0 and pdesc.find("双方各有一名援军小将登场") >= 0 and pdesc.find("没有任何幸存单位") < 0, pdesc.substr(0, 40))
-	_ok("★被动「援军」: 随身装备(背包中未装备的装备里随机携带一件)", pdesc.find("背包中未装备的装备里随机携带一件") >= 0, pdesc.substr(0, 60))
+	## 2026-11-11 用户「描述他在最终战场会与幸存者一起登场…再一个被动…会携带一件在背包里未被装备的装备…随机携带」⇒ 两条被动
+	_ok("★被动「援军」: 终极战场与幸存单位一起登场, 不再写「没有任何幸存单位」",
+		pdesc.find("终极战场") >= 0 and pdesc.find("与幸存单位一起登场") >= 0 and pdesc.find("没有任何幸存单位") < 0, pdesc.substr(0, 40))
+	var pslots: Array = pv.filter(func(x): return str((x as Dictionary).get("slot", "")) == "passive")   # passives 表里还有「普通攻击」那一项(slot = basic)
+	_ok("★被动「随身装备」: 第二条被动 · 名字 / 图标 / 背包中未装备的装备里随机携带一件",
+		pslots.size() == 2 and str((pv[1] as Dictionary).get("name", "")) == "随身装备" and str((pv[1] as Dictionary).get("slot", "")) == "passive"
+		and ResourceLoader.exists("res://assets/sprites/" + str((pv[1] as Dictionary).get("icon", "")))
+		and pdesc2.find("背包中未装备的装备里随机携带一件") >= 0, pdesc2)
 	_ok("★被动「援军」: 每场 +%s%% == ReserveConsts.GROWTH_PER_BATTLE" % _pct(ReserveConsts.GROWTH_PER_BATTLE),
 		pdesc.find("每进行一场对局") >= 0 and pdesc.find("提升 %s%%" % _pct(ReserveConsts.GROWTH_PER_BATTLE)) >= 0)
 	_ok("签牌 = 「每场 +%s%%」" % _pct(ReserveConsts.GROWTH_PER_BATTLE), str(mi.get("growth_tag", "")) == "每场 +%s%%" % _pct(ReserveConsts.GROWTH_PER_BATTLE),
@@ -295,8 +301,9 @@ func _battle(gs, art: String) -> void:
 		if str((_e as Dictionary).get("stype", "")) == ReserveConsts.SKILL:
 			e0 = _e
 	var ent_nm: Array = ent.map(func(x): return str((x as Dictionary).get("name", "")))
-	_ok("③ 三条依次 = 被动「援军」/ 普通攻击 / 技能「%s」" % ReserveConsts.SKILL_NAME,
-		ent_nm == ["被动 · 援军", "普通攻击 (普攻)", ReserveConsts.SKILL_NAME], str(ent_nm))
+	## 多条被动并成一格(同精英小将三条被动的显示口径): 「被动 · 援军 · 随身装备」
+	_ok("③ 三格依次 = 被动「援军 · 随身装备」/ 普通攻击 / 技能「%s」(11-11 被动拆成两条, 并在一格里)" % ReserveConsts.SKILL_NAME,
+		ent_nm == ["被动 · 援军 · 随身装备", "普通攻击 (普攻)", ReserveConsts.SKILL_NAME], str(ent_nm))
 	_ok("③ 技能格「%s」· %d 龟能" % [ReserveConsts.SKILL_NAME, int(ReserveConsts.ENERGY)], not e0.is_empty()
 		and str(e0.get("name", "")) == ReserveConsts.SKILL_NAME and absf(float(e0.get("cost", -1.0)) - ReserveConsts.ENERGY) < 0.01, str(ent))
 	## ★2026-11-04 面板走 render_skill_text(算好数值 / 上色): 单一来源比的是渲染用的模板, 渲染结果另验无残留占位符。
