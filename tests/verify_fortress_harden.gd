@@ -1,13 +1,14 @@
 extends Node
-## verify_fortress_harden.gd — 014 深海堡垒甲: 每层硬化 +2/3/6 护甲和魔抗(2026-10-08)
+## verify_fortress_harden.gd — 014 深海堡垒甲: 每层硬化 +1.5/2.5/6 护甲和魔抗(2026-11-11; 原 2/3/6 · 2026-10-08)
 ##
 ## 用户原话:「每层硬化改为提供2/3/6护甲和魔抗」(原 2/4/6)
+## 11-11 用户原话:「改为每层叠加一型是一点五，二型是二点五，三型是六」(2/3/6 → 1.5/2.5/6)
 ## 方案书: docs/plans/20261008-冰冻药剂与堡垒甲.md
 ##
 ## 判据走真入口: 装备旗标走 `_eq_apply_flags`, 叠层走受击钩 `_eq_on_target`(两条伤害路径都调它)。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-const WANT := [2.0, 3.0, 6.0]
+const WANT := [1.5, 2.5, 6.0]
 
 var _n := 0
 var _fail := 0
@@ -53,8 +54,8 @@ func _ready() -> void:
 			edef = e
 	var full: String = SkillText.equip_full(edef)
 	var brief: String = SkillText.equip_brief(edef)
-	_ok("★文案详细 +2/3/6", full.find("每层提供 2/3/6 护甲和魔抗") >= 0, full)
-	_ok("★文案简述 2/3/6", brief.find("2/3/6 护甲和魔抗") >= 0, brief)   # 2026-10-08 技能/装备文案按 LoL 体例整体改写(copy_lol_style_lint)后, 句式变了、数值与归属没变
+	_ok("★文案详细 +1.5/2.5/6", full.find("每层提供 1.5/2.5/6 护甲和魔抗") >= 0, full)
+	_ok("★文案简述 1.5/2.5/6", brief.find("1.5/2.5/6 护甲和魔抗") >= 0, brief)   # 2026-10-08 技能/装备文案按 LoL 体例整体改写(copy_lol_style_lint)后, 句式变了、数值与归属没变
 	_ok("没有残留占位符", full.find("{C:") < 0 and brief.find("{C:") < 0)
 	print("--- %d 条, 失败 %d ---" % [_n, _fail])
 	if _fail == 0 and _n > 0:

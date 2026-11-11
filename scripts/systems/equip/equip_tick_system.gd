@@ -27,7 +27,7 @@ const BEAR_WAVE_PULL := 70.0    # 冲击波把命中者拉回身前(码)
 ## 【036 温泉蛋】孵化进度的五个来源 + 满进度阈值 + 每级成长
 ## 【014 深海堡垒甲】受击叠硬化, 满层后周期性汲取全体敌。
 const FORTRESS_CAP := 25       # 硬化层上限(013 是 20, 见 equip_stats_apply)
-const FORTRESS_HARDEN_INC := [2.0, 3.0, 6.0]   # 每层硬化 +护甲 / +魔抗(用户 2026-10-08: 2/4/6 → 2/3/6)
+const FORTRESS_HARDEN_INC := [1.5, 2.5, 6.0]   # 每层硬化 +护甲 / +魔抗(用户 2026-10-08: 2/4/6 → 2/3/6; 11-11: 2/3/6 → 1.5/2.5/6)
 const FORTRESS_IV := 8.0       # 满层后每几秒汲取一次
 const FORTRESS_HEAL_LOST := 0.05   # 每汲取 1 名敌人, 额外回复自身【已损】生命 ×
 const EGG_FULL := 100.0         # 进度满多少 → +1 临时等级
