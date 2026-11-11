@@ -52,7 +52,10 @@ func _init(b) -> void:
 	_bow_sys = EqBowBatch.new(b)
 	_venom = VENOM_DRONE.new(b)
 	_gremlin = GremlinGun.new(b)
-	_axe = AxeSystem.new(b)
+	## 运行时按路径 load 再 new(11-11): 「先进选龟页 → 再进战斗」这个顺序下(verify_tutorial 照真流程走), 这里编译时绑定的类名
+	##   引用会是循环加载中途的占位脚本 ⇒ 报「Nonexistent function 'new' in base 'GDScript'」、后面整串子系统为空。
+	##   插桩确认过脚本本身完好(can_instantiate 为真); 是哪条循环链路造成的待查(方案书 20261111 §8)。
+	_axe = (load("res://scripts/systems/equip/axe_system.gd") as GDScript).new(b)
 	_gun_sys = EqGunBatch.new(b)
 	_blade_sys = EqBladeBatch.new(b)
 	_gadget_sys = EqGadgetBatch.new(b)
