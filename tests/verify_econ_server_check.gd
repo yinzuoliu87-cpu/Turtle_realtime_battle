@@ -234,7 +234,7 @@ func _ready() -> void:
 	_ok("C ★编香火 ⇒ over:incense", str(_replay(gs, _with(log, {"op": "incense", "inc": {"marks": 9, "charge": 9}, "bt": bt}), facts).get("why", "")) == "over:incense")
 	_ok("C ★场次倒退(白拿免费换货)⇒ bt:back", str(_replay(gs, _with(log, {"op": "roll", "seed": 1, "bt": bt - 1}), facts).get("why", "")) == "bt:back")
 	_ok("C ★场次超过服务器记的 ⇒ bt:over", str(_replay(gs, _with(log, {"op": "lock", "on": true, "bt": 99}), facts).get("why", "")) == "bt:over")
-	_ok("C ★斧头经验超过账本 ⇒ over:axe_exp", str(_replay(gs, _with(log, {"op": "axe_exp", "n": 6, "bt": bt}), facts).get("why", "")) == "over:axe_exp")
+	_ok("C ★斧头经验超过账本 ⇒ over:axe_exp", str(_replay(gs, _with(log, {"op": "axe_exp", "n": AxeEvolution.EXP_ON_KILL, "bt": bt}), facts).get("why", "")) == "over:axe_exp")
 	_ok("C ★斧头经验不是击杀数的整数倍 ⇒ shape", str(_replay(gs, _with(log, {"op": "axe_exp", "n": 5, "bt": bt}), _bump(facts, "axe", "kills", 9)).get("why", "")) == "shape:axe_exp")
 	var r3 := _replay(gs, log, null)
 	_ok("C ★没拿到账本 ⇒ 什么收入都不认(fail closed)", int(r3.get("bad_at", -1)) >= 0 and (str(r3.get("why", "")).begins_with("over:") or str(r3.get("why", "")) == "bt:over"), str(r3.get("why", "")))

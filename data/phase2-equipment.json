@@ -555,13 +555,13 @@
     "id": "p2eq_047",
     "name": "重击锤",
     "cost": 2,
-    "baseStats1": "+生命100/200/400",
+    "baseStats1": "+生命120/250/500",
     "shopAvailable": 1,
     "emoji": "🔨",
-    "effectDesc1": "获得 4/6/8% 自身最大生命值的攻击力，该攻击力随最大生命值动态成长。",
+    "effectDesc1": "获得 1/2/3% 自身最大生命值的攻击力，该攻击力随最大生命值动态成长。",
     "effectDesc3": "",
     "img": "equip/dungeon-hammer.png",
-    "effectBrief": "获得自身 4/6/8% 最大生命值的攻击力，随最大生命值成长。"
+    "effectBrief": "获得自身 1/2/3% 最大生命值的攻击力，随最大生命值成长。"
   },
   {
     "id": "p2eq_048",

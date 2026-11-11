@@ -697,10 +697,11 @@ func _t11a_hammer() -> void:
 	var rows = ES.STATS.get("p2eq_047", [])
 	_ok("⑪a ★分母: 重击锤在属性表里有 3 档", rows is Array and (rows as Array).size() == 3)
 	if rows is Array and (rows as Array).size() == 3:
-		_ok("⑪a 3★ hp = 400 (需求字面值, 原 700)",
-			int((rows as Array)[2].get("hp", -1)) == 400, "实际 %s" % str((rows as Array)[2].get("hp", "缺")))
-		_ok("⑪a 1★/2★ 未被误改 (100 / 200)",
-			int((rows as Array)[0].get("hp", -1)) == 100 and int((rows as Array)[1].get("hp", -1)) == 200,
+		## 2026-11-11 用户再调: 100/200/400 → 120/250/500(本条原守 08-01 的 3★ 700 → 400)
+		_ok("⑪a 3★ hp = 500 (需求字面值, 08-01 700 → 400, 11-11 → 500)",
+			int((rows as Array)[2].get("hp", -1)) == 500, "实际 %s" % str((rows as Array)[2].get("hp", "缺")))
+		_ok("⑪a 1★/2★ = 120 / 250 (11-11)",
+			int((rows as Array)[0].get("hp", -1)) == 120 and int((rows as Array)[1].get("hp", -1)) == 250,
 			"%s / %s" % [str((rows as Array)[0].get("hp", "?")), str((rows as Array)[1].get("hp", "?"))])
 
 
