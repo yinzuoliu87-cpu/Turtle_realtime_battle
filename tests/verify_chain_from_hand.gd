@@ -72,6 +72,8 @@ func _ready() -> void:
 	for _i in range(6):
 		await get_tree().process_frame
 	s._deterministic = false
+	## 帧率锁 60(像真机): 无头不限帧时每帧只有零点几毫秒, 战斗按真实时间走 ⇒ 一段 3 秒的浪板要几千帧, 撞门禁帧数预算(首版就这么没跑完)
+	Engine.max_fps = 60
 	print("=== 铁链从手上出(11-11) ===")
 
 	## ① 精英小将·铁锁: 真单位进场, 嘲讽锁靶; 目标在右下方 280 码
