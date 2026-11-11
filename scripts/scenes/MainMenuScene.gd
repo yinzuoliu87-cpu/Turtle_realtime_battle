@@ -1086,11 +1086,11 @@ func _btn_press(holder: Control, frame_node: TextureRect, cb: Callable) -> void:
 		cb.call()
 
 
-# ─── 右上工具簇(设置/教程/龟币) + 右信息板(赛季进度/战绩) — 正式化重排(用户2026-07-18) ───
+# ─── 右上工具簇(设置/教程/货币) + 右信息板(赛季进度/战绩) — 正式化重排(用户2026-07-18) ───
 #   去掉旧的右侧 4 磁贴竖列 + 左上赛季裸条; 信息统一进右侧金边信息板, 设置/教程收进右上小磁贴.
 ## ★`now` = 本屏那一刻(`_ready` 里算一次)。自己不读钟 —— 它只负责往下传。
 func _right_column(now: int = 0) -> void:
-	# ── 右上一排(从右往左): [⚙][?] 小图标键 · [龟币][深海币] 货币牌 —— 都收在 RIGHT_EDGE 这条右沿上 ──
+	# ── 右上一排(从右往左): [⚙][?] 小图标键 · [深海币] 货币牌 —— 都收在 RIGHT_EDGE 这条右沿上 ──
 	## ★2026-10-05 第三轮: 货币在左、?/⚙ 在最右(五张横屏参考里设置/菜单键都是最靠角的那一颗),
 	##   ?/⚙ 看得见的方框从 82 缩到 ICON_VIS(用户「太大」), 点击区仍是 81(触摸线)。
 	var set_x := RIGHT_EDGE - ICON_TAP
@@ -1112,9 +1112,11 @@ func _right_column(now: int = 0) -> void:
 	## ★深海币先显示【旧值】: 这次进主菜单之前新进账的那一截(结算 / 收盘卡的奖励)要飞进来, 见 MenuWeekend.plan。
 	_wk().plan(now)
 	var real_c: int = int(GameState.meta_deepsea_coins)
+	## ★2026-11-11 用户「我们现在不显示龟币了…把那个显示龟币那个地方给去掉，我们就只显示深海币」(语音「规避」= 龟币):
+	##   货币条只剩深海币一段。原来第二段是绿色金币 + GameState 里旧的「龟币累计」字段(全游戏早已没有进账入口),
+	##   而龟币是主站的钱 —— App 里不出现龟币或金额(用户 11-06 / 11-07, 同 mainsite_link_row)。
 	var bar := _currency_bar([
 		["res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0), maxi(0, real_c - _wk().withheld()), real_c],
-		["res://assets/sprites/ui/coin.png", Color(0.122, 0.561, 0.247), int(GameState.coins)],
 	])
 	bar.position = Vector2(fr_x + (ICON_TAP - ICON_VIS) / 2.0 - CUR_GAP - bar.size.x, slot_y)
 	content_root.add_child(bar)

@@ -324,7 +324,7 @@ func _ready() -> void:
 		## 2026-10-06 用户「顶上那个斗龟场动画可以去掉」⇒ 主菜单不再有 Logo
 		_ok("ⓐ ★主菜单不再放标题图 Logo", _find_named(_menu, "Logo") == null)
 
-	# ── ⓑ ★右上 = 两种货币一条 + ? / ⚙ 小图标键 ──
+	# ── ⓑ ★右上 = 深海币一条 + ? / ⚙ 小图标键(2026-11-11 去掉龟币那一段) ──
 	## ★2026-10-06 货币区换成**一条**货币条 `CURRENCY_BAR_NAME`(照荒野乱斗: 每种货币一段 cur_seg.png 斜切暗底),
 	##   原来两块 chip.png 木牌已下线 ⇒ 量货币条里那两段。
 	var cbar: Control = _find_named(content, str(MENU_S.CURRENCY_BAR_NAME)) as Control
@@ -334,7 +334,13 @@ func _ready() -> void:
 			if n_b is NinePatchRect and (n_b as NinePatchRect).texture != null \
 					and str((n_b as NinePatchRect).texture.resource_path).get_file() == "cur_seg.png":
 				chips.append((n_b as Control).get_global_rect())
-	_ok("ⓑ ★分母: 货币条在场, 里面两段货币(cur_seg.png)", cbar != null and chips.size() == 2, "%d 段" % chips.size())
+	## ★2026-11-11 用户「我们现在不显示龟币了…只显示深海币」⇒ 货币条只剩深海币一段(原来两段: 深海币 + 龟币)。
+	_ok("ⓑ ★货币条在场, 只有一段货币 = 深海币(cur_seg.png 1 段, 没有第二个图标 / 数字)",
+		cbar != null and chips.size() == 1 and cbar.find_child("CurIcon0", true, false) != null
+		and cbar.find_child("CurIcon1", true, false) == null and cbar.find_child("CurNum1", true, false) == null, "%d 段" % chips.size())
+	var mm_src := FileAccess.get_file_as_string("res://scripts/scenes/MainMenuScene.gd")
+	_ok("ⓑ ★主菜单不读旧的龟币字段(GameState.coins)、不放龟币图标(ui/coin.png)",
+		mm_src.length() > 1000 and mm_src.find("GameState.coins") < 0 and mm_src.find("ui/coin.png") < 0, "源码 %d 字" % mm_src.length())
 	var icon_taps: Array = []
 	for t_b in taps:
 		var tg_b: String = _tag(t_b)

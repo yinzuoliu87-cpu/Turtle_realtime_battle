@@ -29,7 +29,7 @@ const THEME_TEX := "res://assets/sprites/map/themes/%s.png"
 ## 源码里 `func _ready` 那一行(拆成两截拼: 整串字面量会被 coroutine_await_audit 当成对本文件协程 _ready 的裸调用)。
 const READY_SIG := "func _ready" + "() -> void:"
 const SITES_TOTAL := 10
-const MIN_ASSERTS := 57
+const MIN_ASSERTS := 56   # 2026-11-11 57 → 56: 主菜单货币条去掉龟币那一段(用户「只显示深海币」), S6 逐个图标的断言少一条
 
 var _n := 0
 var _fail := 0
