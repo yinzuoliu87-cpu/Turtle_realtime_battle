@@ -2474,7 +2474,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	u["_has_target"] = true
 	u["_sep_target"] = tgt   # ★近战修: 供 _separation 对"自己的攻击目标"缩小分离半径(否则 SEP_RADIUS92 > 近战射程70 → 永远贴不进射程)
 	var _fdx: float = tgt["pos"].x - u["pos"].x   # 朝向跟战斗目标(非移动方向): 交战/风筝/走位都稳定朝敌, 根治近战分离回推"转身"
-	if absf(_fdx) > 8.0:                            # 死区: 目标明显在某侧才转向(贴脸x≈时保持上次朝向不抖翻)
+	if absf(_fdx) > 8.0 and not bool(u.get("_ninja_gliding", false)):   # 死区: 目标明显在某侧才转向; 忍者冲刺滑行中锁冲刺方向(11-11 用户「戳到空中还会回头」: 冲过目标身边时目标跑到身后, 这里把它转回去)
 		u["face_right"] = _fdx > 0.0
 	if stunned:                     # 麻痹: 不移动/不出手 (但冷却已走)
 		return
