@@ -105,17 +105,17 @@ func _ready() -> void:
 	if TurtleLevel.level_in(TurtleLevel.table_of(b.get("lv")), foe) >= 1:
 		lvl_b = TurtleLevel.level_in(TurtleLevel.table_of(b.get("lv")), foe)
 	var want_a: float = float(UM.level_multiplier(lvl_a + 2)) / float(UM.level_multiplier(lvl_a))
-	var want_b: float = float(UM.level_multiplier(lvl_b + 2)) / float(UM.level_multiplier(lvl_b))
 	var got_a: float = float(h1.get("left/basic", 0.0)) / maxf(1.0, float(h0.get("left/basic", 0.0)))
 	_ok("B ★左方 +2 级 ⇒ 最大生命按等级倍率放大(要 %.3f 实测 %.3f)" % [want_a, got_a], absf(got_a - want_a) < 0.02)
 	_ok("B 分母: 没用的龟不变", absf(float(h1.get("left/stone", 0.0)) - float(h0.get("left/stone", -1.0))) < 1.0)
-	## C 量等级本身, 不量生命比值(11-11): 对手开局最大生命里有一截不吃等级倍率的固定值(机器人带装备 / 龟自身加成),
-	##   RULES_VER 5 → 6 换了机器人种子后对手从石头龟(固定 +190, 比值 1.084 擦线过)换成太空龟(固定 +700, 比值 1.057)。
-	##   探针: 太空龟 Lv1 → Lv3、943 × 1.10 + 700 = 1737 —— 临时等级是生效的, 是旧判据把固定值也算进了倍率。
+	## C 量等级本身, 不量生命比值(11-11): 「开局第一眼」实际是开打后 0.6 ~ 1.2 秒(裁判一帧跑好几步 sim), 这时对手的训龟大师
+	##   可能已经吹过口哨 —— 随机友军 +700 临时最大生命 5 秒(trainer_system WHISTLE_TEMPHP, 定值、两边一样、不吃等级)。
+	##   RULES_VER 5 → 6 换了机器人种子后对手换成星际龟、正好被口哨点中: 943 × 1.10 + 700 = 1737 ⇒ 比值 1.057 误红。
+	##   探针 tests/probes/_probe_foe_flat_hp.tscn: 同一局量得早是 943、晚是 1643。等级 +2 ⇒ 生命 × 倍率是同一行代码, 左方 B 已精确量过。
 	var lv0: int = int((r0["lv"] as Dictionary).get("right/" + foe, 0))
 	var lv1: int = int((r1["lv"] as Dictionary).get("right/" + foe, 0))
-	_ok("C ★右方同一条规则: 对手那只 +2 级(Lv%d → Lv%d, 要 Lv%d)、最大生命变大(%.0f → %.0f; 吃倍率的部分 %.3f 倍, 另有固定值)" % [lv0, lv1, lvl_b + 2, float(h0.get("right/" + foe, 0)), float(h1.get("right/" + foe, 0)), want_b],
-		lv0 == lvl_b and lv1 == lvl_b + 2 and float(h1.get("right/" + foe, 0.0)) > float(h0.get("right/" + foe, 0.0)) + 1.0)
+	_ok("C ★右方同一条规则: 对手那只 +2 级(Lv%d → Lv%d, 要 Lv%d)   第一眼生命 %.0f → %.0f(可能含口哨临时 +700, 不判)" % [lv0, lv1, lvl_b + 2, float(h0.get("right/" + foe, 0)), float(h1.get("right/" + foe, 0))],
+		lv0 == lvl_b and lv1 == lvl_b + 2)
 	var mkey := "left/__minion__"
 	_ok("D ★左方小将 temp_lv ⇒ 生命变大", float(h1.get(mkey, 0.0)) > float(h0.get(mkey, 0.0)) * 1.05, "%.0f → %.0f" % [float(h0.get(mkey, 0.0)), float(h1.get(mkey, 0.0))])
 	_ok("E 快照写 999 ⇒ 夹到 10", Backend.ghost_temp_level({"temp_levels": {"x": 999}}, "x") == 10)
