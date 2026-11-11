@@ -457,12 +457,16 @@ static func decode_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictiona
 	var evs: Dictionary = out["events"]
 	var last_op := -1
 	var last_p := 0
+	var trail: Array = []          # 最近 16 个操作 [起始字节, 操作码]: 解不开时带回去(11-11 预检偶发「块解不开」, 复现不出来 ⇒ 下次撞上留证据)
 	while not r.eof() and r.err == "":
 		if last_op >= 0:
 			obs[last_op] = int(obs.get(last_op, 0)) + r.p - last_p
 		last_p = r.p
 		var op := r.u8()
 		last_op = op
+		trail.append([last_p, op])
+		if trail.size() > 16:
+			trail.pop_front()
 		ops[op] = int(ops.get(op, 0)) + 1
 		match op:
 			OP_STEP:
@@ -543,6 +547,9 @@ static func decode_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictiona
 		obs[last_op] = int(obs.get(last_op, 0)) + r.p - last_p
 	if r.err != "":
 		out["err"] = r.err
+		out["trail"] = trail
+		out["hex_at"] = maxi(0, r.p - 48)
+		out["hex"] = raw.slice(maxi(0, r.p - 48), mini(raw.size(), r.p + 16)).hex_encode()
 		return out
 	if int(out["step_marks"]) != int(out["steps"]):
 		out["err"] = "step marks %d != header %d" % [int(out["step_marks"]), int(out["steps"])]

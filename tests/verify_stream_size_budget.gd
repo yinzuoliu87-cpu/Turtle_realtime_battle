@@ -109,6 +109,15 @@ func _one(tag: String, job: Dictionary, dir: String) -> void:
 		var d := F.decode_chunk(data, st)
 		if not bool(d["ok"]):
 			bad.append("%s:%s" % [files[i], str(d["err"])])
+			if bad.size() == 1:
+				## 11-11 预检里偶发过一次(第 100 块 tag 200 @75000), 单跑 / 并行 18 次复现不出 ⇒ 撞上就留证据: 最近操作 + 出错点前后字节 + 整局块文件
+				print("  [证据] %s %s 最近操作 [起始字节, 操作码] %s" % [tag, files[i], str(d.get("trail", []))])
+				print("  [证据] 原始字节 @%d: %s" % [int(d.get("hex_at", 0)), str(d.get("hex", ""))])
+				var keep: String = ProjectSettings.globalize_path("res://.out/gate/stream_bad").path_join(str(tag).replace("(", "_").replace(")", ""))
+				DirAccess.make_dir_recursive_absolute(keep)
+				for f2 in files:
+					DirAccess.copy_absolute(ProjectSettings.globalize_path(adir.path_join(f2)), keep.path_join(f2))
+				print("  [证据] 整局块文件存到 %s" % keep)
 			continue
 		steps_sum += int(d["steps"])
 		for opk in (d["op_bytes"] as Dictionary):
