@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "c227b96e7d430b29155b33915e75f489d1a92c2451d101fa4c555376f4a1e13f",
+ "fingerprint": "f551cd5f21c38d1f65b9b3286afd08391e2141a320d3c975fe6c6270c5053018",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -15,7 +15,7 @@
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "cf067a41075df6e1c3f5c8910317803fd97d39bcc5d75fc4cbfece5911136f26",
+   "hash": "3fc9b2e6af6eebd67e23b292b31223a20ee0becfebea82ca93bed89542f72050",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
@@ -25,7 +25,7 @@
   },
   {
    "def": "99521fedd8b3b2c9",
-   "hash": "1c00ce63ca2c2357f14a269659c9b8b415f794c8b793cf0018cc53567c71688a",
+   "hash": "4b63ab7f49e8ac88c0401037900459925dc62d855dcbb4dc5a24efa2a10182a5",
    "tag": "⑤ 双方灵物触手 · 弓箭 vs 剑 · 复制/命运之轮/雷暴"
   },
   {

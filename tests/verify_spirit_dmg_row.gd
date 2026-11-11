@@ -2,11 +2,12 @@ extends Node
 ## verify_spirit_dmg_row.gd —— 灵物触手伤害在战报 / 结算表单列一行(2026-11-11)。
 ## 用户 11-11:「关于这个羁绊领悟，整个伤害面板都没有统计这个出手的伤害，反而是把这个伤害归类为了这个龟的伤害。
 ##   为什么不单独做一个就是羁绊，就是触手，触手造成的伤害呢？或者说你写这个灵物，然后伤害值也可以」。
-## 口径(方案书 docs/plans/20261111-忍者普攻与小将铁链与灵物统计.md §4 D): 拍击伤害仍记在来源龟的 _st_dealt(sim 账: 钩爆 /
-##   香炉石 / 猎龟令都读它, 改账会改对局结果), 另记 _st_spirit_dealt; 显示时龟那一行扣掉、本方多一行「灵物触手」、不评 MVP。
+## 口径(方案书 docs/plans/20261111-忍者普攻与小将铁链与灵物统计.md §4 D, 11-11 用户「出手要改成独立出手，对」): 触手是独立出手方 ——
+##   不借任何龟的暴击 / 穿甲 / 增伤, 不进任何龟的 _st_dealt(钩爆 / 香炉石 / 猎龟令都不再算它), 只记本方挂账单位的 _st_spirit_dealt;
+##   战报 / 结算表本方多一行「灵物触手」、不评 MVP。
 ## 判据: 走真拍击入口 spirit_synergy_system._slap_resolve 打一下(不是手写 _st_* 键)。
-##   ① sim 账: 来源龟 _st_dealt 涨了这一下全额(与改前同口径)
-##   ② 灵物份额 = 这一下; 龟显示值 = _st_dealt - 灵物份额(战报 val / 结算行 _st_row)
+##   ① 独立: 来源龟 _st_dealt 不涨; 把来源龟暴击 100% / 穿甲 / 增伤拉满, 拍出来的伤害不变
+##   ② 灵物份额 = 这一下; 龟显示值 = 它自己的 _st_dealt(战报 val / 结算行 _st_row)
 ##   ③ 每路快照多一行「灵物触手」= 份额; 合计页(_st_merge_all 再过一遍 _st_row)后标记与头像还在
 ##   ④ MVP 不评灵物行; 战报 render 也列出这一行
 var _n := 0
@@ -51,16 +52,25 @@ func _ready() -> void:
 	var hits: int = s._spirit_syn._slap_resolve("left", c + Vector2(-100, 0), Vector2.RIGHT, 600.0, 1.0)
 	var slap: int = int(round(hp0 - float(foe["hp"])))
 	_ok("分母: 真拍击入口打中 %d 个、掉血 %d" % [hits, slap], hits == 1 and slap > 0)
-	_ok("① sim 账: 来源龟 _st_dealt 涨了拍击全额(%d → %d)" % [d0, int(me.get("_st_dealt", 0))], int(me.get("_st_dealt", 0)) == d0 + slap)
+	_ok("① ★独立出手: 来源龟 _st_dealt 不涨(%d → %d)" % [d0, int(me.get("_st_dealt", 0))], int(me.get("_st_dealt", 0)) == d0)
+	## 来源龟属性拉满再拍一下(目标血量还原), 伤害必须一样
+	foe["hp"] = hp0
+	me["crit"] = 1.0; me["crit_dmg"] = 3.0; me["armor_pen"] = 999.0; me["armor_pen_pct"] = 1.0; me["damage_amp"] = 2.0
+	s._spirit_syn._slap_resolve("left", c + Vector2(-100, 0), Vector2.RIGHT, 600.0, 1.0)
+	var slap2: int = int(round(hp0 - float(foe["hp"])))
+	_ok("① ★不借龟的暴击 / 穿甲 / 增伤: 拉满后拍击伤害不变(%d vs %d)" % [slap2, slap], slap2 == slap)
+	me["crit"] = 0.0; me["armor_pen"] = 0.0; me["armor_pen_pct"] = 0.0; me["damage_amp"] = 0.0
+	me["_st_spirit_dealt"] = slap; me["_st_spirit_by_type"] = {"phy": slap}   # 第二下只用来比伤害, 账还原成一下
+	foe["hp"] = hp0 - float(slap)
 	_ok("② 灵物份额 = 拍击这一下", int(me.get("_st_spirit_dealt", 0)) == slap, "%d vs %d" % [int(me.get("_st_spirit_dealt", 0)), slap])
-	_ok("② 龟自己的 100 不算进灵物份额", int(me.get("_st_spirit_dealt", 0)) != d0 + slap)
-	_ok("② 战报龟那一行 = 扣掉灵物份额", DmgStatsPanel.val(me, "dealt") == d0, "%d" % DmgStatsPanel.val(me, "dealt"))
+	_ok("② 龟自己的 100 不算进灵物份额", int(me.get("_st_spirit_dealt", 0)) == slap)
+	_ok("② 战报龟那一行 = 它自己打的", DmgStatsPanel.val(me, "dealt") == d0, "%d" % DmgStatsPanel.val(me, "dealt"))
 	var pt: int = 0
 	for p in DmgStatsPanel.parts(me, "dealt"):
 		pt += int(p[0])
 	_ok("② 战报龟那一行分段条合计 = 显示值", pt == d0, "%d" % pt)
 	var row: Dictionary = s._st_row(me)
-	_ok("② 结算行龟 = 扣掉灵物份额", int(row["_st_dealt"]) == d0 and int(row["_st_phy"]) + int(row["_st_mag"]) + int(row["_st_tru"]) == d0, str([row["_st_dealt"], row["_st_phy"], row["_st_mag"], row["_st_tru"]]))
+	_ok("② 结算行龟 = 它自己打的", int(row["_st_dealt"]) == d0 and int(row["_st_phy"]) + int(row["_st_mag"]) + int(row["_st_tru"]) == d0, str([row["_st_dealt"], row["_st_phy"], row["_st_mag"], row["_st_tru"]]))
 	## ③ 每路快照
 	s._st_lane_hist.clear()
 	s._st_snapshot_lane("top")

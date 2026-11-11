@@ -1710,6 +1710,7 @@ scripts/scenes/battle/settle_screen.gd|lit|本场
 scripts/scenes/battle/settle_screen.gd|lit|本场 MVP
 scripts/scenes/battle/settle_screen.gd|lit|治疗
 scripts/scenes/battle/settle_screen.gd|lit|满级
+scripts/scenes/battle/settle_screen.gd|lit|灵物触手
 scripts/scenes/battle/settle_screen.gd|lit|胜
 scripts/scenes/battle/settle_screen.gd|lit|胜利
 scripts/scenes/battle/settle_screen.gd|lit|负

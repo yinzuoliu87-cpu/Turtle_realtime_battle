@@ -356,9 +356,12 @@ func _slap_resolve(side: String, origin: Vector2, dir: Vector2, rng: float, mult
 		##   走 `_resolve_dmg(..., false)` 后 `_last_dmg_type` 自动是物理 ⇒ 飘字自动是规则里的红。
 		##   (`col` 参数在两条伤害路里**都没被读**, 颜色一律查全局 —— 传什么都不影响。)
 		var base: float = float(f.get("maxHp", 0.0)) * HIT_HP_PCT + HIT_FLAT
-		var dmg: int = maxi(1, int(battle._resolve_dmg(shooter, base, f, false) * mult))
-		battle._damage.spirit_src = shooter   # 战报单列「灵物触手」(只打标, 伤害照常记在来源龟身上)
-		battle._damage._apply_damage_from(shooter, f, dmg, Color("#b388ff"))
+		## ★2026-11-11 触手 = 独立出手方(用户「所有触手打的伤害不都是归触手的吗？跟龟有什么关系」「出手要改成独立出手，对」):
+		##   原来借 shooter 当出手者走 _resolve_dmg + _apply_damage_from ⇒ 暴击 / 穿甲 / 增伤跟着被借的龟走、算进它的输出
+		##   (钩爆 / 香炉石 / 猎龟令读)、还能被反伤回敬。现在只过目标护甲走无出手者那条路; shooter 只用来挂战报的灵物份额。
+		var dmg: int = maxi(1, int(battle._damage.spirit_phys(base, f) * mult))
+		battle._damage.spirit_src = shooter
+		battle._damage._apply_damage(f, dmg, Color("#b388ff"), null, "phy")
 		battle._damage.spirit_src = null
 		## ★2026-08-21: 逐个被命中者各来一次撞击表现。
 		##   在这里调而不是在演出侧, 是因为**只有这里知道带上真正扫到了谁**

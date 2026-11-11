@@ -802,8 +802,8 @@ static func team_grid(b, h, rows: Array, header: String, hc: Color) -> GridConta
 ## ★三者之和 == `_st_dealt`(门禁 verify_settle_pages 走真伤害入口对这笔账)。
 ## 快照行(`_st_row`)已经拆好成 `_st_phy/_st_mag/_st_tru` 三个标量 ⇒ 直接读; 活单位读分桶字典。
 ## ── 灵物触手单列(用户 11-11「整个伤害面板都没有统计这个出手的伤害，反而是把这个伤害归类为了这个龟的伤害。为什么不单独做一个…触手造成的伤害呢？」) ──
-## 拍击伤害仍记在来源龟的 _st_dealt(sim 账), 另有一份 _st_spirit_dealt / _st_spirit_by_type(battle_damage.spirit_src)。
-## 显示: 龟那一行扣掉这份, 本方多一行「灵物触手」(不评 MVP)。快照行(_st_row 出的)已经扣过, 不再扣。
+## 触手是独立出手方(11-11): 拍击不进任何龟的 _st_dealt, 只记在本方挂账单位的 _st_spirit_dealt / _st_spirit_by_type(battle_damage.spirit_src)。
+## 显示: 本方多一行「灵物触手」(不评 MVP); 龟那一行就是它自己的 _st_dealt。
 const SPIRIT_NAME := "灵物触手"
 const SPIRIT_ICON := "res://assets/sprites/tags/tag-spirit.png"
 
@@ -814,15 +814,13 @@ static func spirit_split(u: Dictionary) -> Array:
 	return [int(bt.get("phy", 0)), int(bt.get("mag", 0)), int(bt.get("tru", 0)) + int(bt.get("dot", 0))]
 
 
-## 这只单位自己打出的伤害(扣掉灵物份额)
+## 这只单位自己打出的伤害(触手独立后 = _st_dealt; 留这一层是为了战报 / 结算行只有一个取数口)
 static func own_dealt(u: Dictionary) -> int:
-	return int(u.get("_st_dealt", 0)) - int(u.get("_st_spirit_dealt", 0))
+	return int(u.get("_st_dealt", 0))
 
 
 static func own_split(u: Dictionary) -> Array:
-	var a: Array = dealt_split(u)
-	var s: Array = spirit_split(u)
-	return [int(a[0]) - int(s[0]), int(a[1]) - int(s[1]), int(a[2]) - int(s[2])]
+	return dealt_split(u)
 
 
 ## 一方的「灵物触手」行(纯标量, 快照可存; 没有拍击伤害 ⇒ {})
