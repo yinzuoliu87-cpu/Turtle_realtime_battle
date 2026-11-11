@@ -275,15 +275,24 @@ func _local_settle(rec: Dictionary) -> Dictionary:
 	var sub = s.get("_sub")
 	if is_instance_valid(sub) and sub is SubViewport:
 		(sub as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
+	## ★11-11: 原来只逐帧读 ⇒ 最后一枚和结算落在同一帧(铸币 → `_settle_season` 清零)时读不到(本机 2 / 裁判 3, 同一局)。
+	##   改成每个 sim 步之后读(sim_stepped 在本步铸币之后、收尾协程醒来结算之前发; 本连接早于收尾协程每步重挂的 await)。
+	var mx := {"l": 0, "r": 0, "fl": 0, "fr": 0}
+	var on_step := func() -> void:
+		mx["l"] = maxi(int(mx["l"]), EquipTickSystem.match_minted(s, "left"))
+		mx["r"] = maxi(int(mx["r"]), EquipTickSystem.match_minted(s, "right"))
+	s.sim_stepped.connect(on_step)
 	var f := 0
-	var max_l := 0
-	var max_r := 0
 	while f < 20000 and not bool(s._replay.finished):
-		max_l = maxi(max_l, EquipTickSystem.match_minted(s, "left"))
-		max_r = maxi(max_r, EquipTickSystem.match_minted(s, "right"))
+		mx["fl"] = maxi(int(mx["fl"]), EquipTickSystem.match_minted(s, "left"))
+		mx["fr"] = maxi(int(mx["fr"]), EquipTickSystem.match_minted(s, "right"))
 		await get_tree().process_frame
 		f += 1
 	await get_tree().process_frame
+	s.sim_stepped.disconnect(on_step)
+	print("  [量] 逐步读 左 %d 右 %d · 逐帧读 左 %d 右 %d" % [int(mx["l"]), int(mx["r"]), int(mx["fl"]), int(mx["fr"])])
+	var max_l: int = maxi(int(mx["l"]), int(mx["fl"]))
+	var max_r: int = maxi(int(mx["r"]), int(mx["fr"]))
 	var out := {"finished": bool(s._replay.finished), "settled": str(s._replay.mode) == "resume" and bool(s.get("_had_season")),
 		"digest": str((s._replay.rec.get("end", {}) as Dictionary).get("h", "")),
 		"reward": int(s._last_reward), "minted": int(s._last_reward) - int(P2C.GAUNTLET_COINS_PER_MATCH),
