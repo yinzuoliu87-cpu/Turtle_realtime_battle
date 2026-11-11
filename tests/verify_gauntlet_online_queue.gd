@@ -130,21 +130,26 @@ const RANKED := {
 	##   raid_defense_net.put_defense()(阵容没变不传、本周没开轮 / 教程 / test_mode / 没配后端都不传, 失败静默; verify_raid_defense_put 守),
 	##   原来那几行(本地池 + 积分赛 ghosts 排队)一字没动 ⇒ 积分赛的流程与记下的数不变。55 个函数里只变这一个、没有新增 ⇒ 判据不变松。
 	##   基线 ee59a074 ⇒ eeb95b2c, 摘要按本表口径现算(同口径复算 ee59a074 得 fa0b601d…, 与原表一致)。
+	## ★2026-11-11 援军小将带背包装备(提交 e524c131 + 4013f5a0, 方案书 docs/plans/20261111b-援军小将始终登场并带背包装备.md;
+	##   用户 11-11「援护小将始终在终极战场登场…背我背包里的装备…随便抽取一件」): **有意**改积分赛会走的三个快照函数 ——
+	##   build_ghost_snapshot / make_bot / seed_as_human 各多写一个 reserve_pool 键(背包里没穿的装备; 机器人与陪练种子按 ghost_id 派生),
+	##   新加的 reserve_pool_of / derived_reserve_pool 是它们调用的(积分赛也走)⇒ 进 units(55 → 57)。基线 0130a607 ⇒ 4013f5a0,
+	##   摘要按本表口径从 git show 4013f5a0 现算(同口径复算旧基线得 c3051f7b…, 与原表一致); 没有挪走函数 ⇒ 判据不变松。
 	"scripts/net/backend.gd": {
-		"base": "0130a607",
-		"digest": "c3051f7b55b9e9045020ee4db4c2c755c708646065be21e3d9830d5d15cb5c4d",
+		"base": "4013f5a0",
+		"digest": "c68911733a2a3e8ef19cbe9da1e912a6093a8e1ec37616e80de37cfb4dade943",
 		"views": {},
 		"sat_only": [],
 		"units": [
 			"_bot_season_record", "_bot_trainer_skill", "_drop_stale_schema", "_ensure_seeded", "_is_self_ghost", "_load_seed",
 			"_migrate_brackets_to_battles", "_seed_level", "_seed_record", "_seed_season_id", "_shuffle", "_tally",
-			"_tally_exact", "build_ghost_snapshot", "drop_week_snapshots", "ensure_finals_entry",
+			"_tally_exact", "build_ghost_snapshot", "derived_reserve_pool", "drop_week_snapshots", "ensure_finals_entry",
 			"ensure_gauntlet_entry_snapshot", "fake_person_tag", "finals_push_snapshot", "find_gauntlet_opponent",
 			"find_opponent", "gauntlet_bot_battles", "gauntlet_pool_find", "ghost_lanes_broken", "ghost_level",
 			"ghost_owner_tag", "is_sparring", "lead_of", "leaderboard", "load_pool", "make_bot", "make_match_rng", "my_tag",
 			"owner_tag_of_id", "person_key", "player_display_name", "player_ghost_id", "pool_add", "pool_find_battles",
 			"pool_reach", "prefetch_gauntlet_pool", "profile_tag", "reach_of", "report_finals_entry", "report_finals_if_any",
-			"report_finals_result", "retry_finals_report", "save_pool", "seed_as_human", "seed_person_of", "self_prefix",
+			"report_finals_result", "reserve_pool_of", "retry_finals_report", "save_pool", "seed_as_human", "seed_person_of", "self_prefix",
 			"self_season_prefix", "upload_gauntlet_ghost", "upload_ghost", "wipe_week_snapshots",
 		],
 	},
