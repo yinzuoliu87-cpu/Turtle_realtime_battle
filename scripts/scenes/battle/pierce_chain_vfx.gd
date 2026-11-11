@@ -1,5 +1,6 @@
 class_name PierceChainVfx
 extends RefCounted
+const SpriteArt := preload("res://scripts/util/sprite_art.gd")
 ## 穿刺铁链演出(近战小将人体浪板; 精英铁锁后续换用)。只管画面, sim 不读: 两端每帧从单位的 pos / height 推。
 ## 用户 11-11:「不能说直接去把它拉伸吧」「我们的链头应该是那种尖的穿刺，就像一个尖的链头穿刺过敌人的身体」
 ##   「当他把自己拽过去的时候，这个铁链的尖头在哪里？」; 逐帧参考 docs/studies/20261111-链子穿刺拉人参考-锤石Q与天蝎绳镖逐帧.md:
@@ -29,6 +30,8 @@ var _head: Sprite3D = null
 var _tex: Array = []
 var _done := false
 var _t := 0.0
+var _tick_t := 0.0             # 补间最近一次给的时刻(画面阶段重摆用同一个时刻)
+var _closing := false          # 收尾中: 剩下的链子正收回手上
 var _ret_t0 := -1.0           # 开始收回的时刻(_t 口径); < 0 = 没在收
 var _ret_sec := 0.1
 ## 出手前阶段(精英铁锁后甩, 11-11): _pre 秒内链头拖在 _pre_tip(身后地面), 链子一头连 _pre_hand; 之后照常飞
@@ -65,6 +68,8 @@ static func fire(b, kind: String, px_m: float, head_left: bool, from_fn: Callabl
 	tw.tween_method(c._tick, 0.0, life_sec, life_sec)
 	tw.tween_callback(c.release)
 	c._tick(0.0)
+	if not RenderingServer.frame_pre_draw.is_connected(c._on_pre_draw):
+		RenderingServer.frame_pre_draw.connect(c._on_pre_draw)
 	return c
 
 
@@ -100,6 +105,7 @@ func retract(sec: float = 0.1) -> void:
 
 ## 每帧: 手腕 → 链头(飞行中按进度、到达后钉在目标上、收回时退回手腕)摆链节
 func _tick(t: float) -> void:
+	_tick_t = t
 	_t = t - _pre                 # 出手时刻起算(retract 记的也是这个口径)
 	if _done or not is_instance_valid(_head):
 		return
@@ -170,7 +176,21 @@ func _lay(a: Vector3, tip: Vector3, wave: float, t: float, dir: Vector3, sag: fl
 		lk.global_position = p
 		_orient(lk, p, p + tan)
 	_head.global_position = tip - hd * head_len * 0.5
+	_head.set_meta("chain_hand", a)                 # 门禁 verify_chain_from_hand 读: 这一刻链子手端在哪
 	_orient(_head, a, tip)
+
+
+## 画面已摆好人物图、开画之前再摆一次(11-11): 手端贴画面上真显示的那一格、那个位置的拳头 ——
+##   战斗推进时算的是战斗坐标, 画面按「上一步 ↔ 这一步」插值摆人物图, 被拽飞得快时差一截。无头(不画)时不触发, 推进时那一版就是最终版。
+func _on_pre_draw() -> void:
+	if _done:
+		return
+	if not is_instance_valid(battle) or not is_instance_valid(_head):
+		release(0.0)
+		return
+	SpriteArt.render_phase = true
+	_tick(_tick_t)
+	SpriteArt.render_phase = false
 
 
 ## 精灵沿屏幕上 p0 → p1 的方向摆(镜头基 × 绕视线转)
@@ -186,11 +206,27 @@ func _orient(s: Sprite3D, p0: Vector3, p1: Vector3) -> void:
 	s.global_transform = tf
 
 
-## 拉完 / 作废: 剩下的链节和链头淡出释放(fade_sec = 0 ⇒ 立刻释放)
+## 拉完 / 作废: 剩下的链子 fade_sec 秒内收回手上再释放(fade_sec = 0 ⇒ 立刻释放)。
+## ★11-11 不再原地淡出: 拽人结束时链子常常还没收完, 原地淡出那 0.12 秒链子停着、人在动 ⇒ 脱开拳头(门禁 verify_chain_from_hand 量出 9.9 像素)。
+##   收回期间照样每帧(含开画前重摆)贴拳头。
 func release(fade_sec: float = 0.12) -> void:
 	if _done:
 		return
+	if fade_sec > 0.0 and is_instance_valid(battle) and is_instance_valid(_head):
+		if _closing:
+			return
+		_closing = true
+		if _ret_t0 < 0.0:
+			_ret_t0 = maxf(0.0, _t)
+			_ret_sec = maxf(0.02, fade_sec)
+		var tc = battle._reg_tween()
+		tc.bind_node(_head)
+		tc.tween_method(_tick, _tick_t, _tick_t + fade_sec + 0.02, fade_sec + 0.02)
+		tc.tween_callback(release.bind(0.0))
+		return
 	_done = true
+	if RenderingServer.frame_pre_draw.is_connected(_on_pre_draw):
+		RenderingServer.frame_pre_draw.disconnect(_on_pre_draw)
 	for s in _links + [_head]:
 		if not is_instance_valid(s):
 			continue

@@ -115,6 +115,8 @@ func _whip_fist(u: Dictionary, fallback: Vector3) -> Vector3:
 func _whip_frame(u: Dictionary) -> int:
 	var fps: float = float((u.get("anim_sd", {}) as Dictionary).get("fps", 0.0))
 	var s = u.get("sprite", null)
+	if SpriteArt.render_phase and is_instance_valid(s) and s is Sprite3D:
+		return clampi((s as Sprite3D).frame, 0, WHIP_FIST_ART.size() - 1)   # 画面阶段: 读真显示的那一格
 	if fps <= 0.0:
 		return clampi((s as Sprite3D).frame if is_instance_valid(s) and s is Sprite3D else 0, 0, WHIP_FIST_ART.size() - 1)
 	var dt: float = float(battle._frame_sim_dt)        # 本帧推进的时长(战斗路径里不许读 get_process_delta_time, verify_determinism_b ⑧)

@@ -11,6 +11,8 @@ extends RefCounted
 ##   (ReplayRecorder.fingerprint 只收 hp / pos / alive / shield / energy), 所以只动画面, 不改对局结果。
 ## 用法: const SpriteArt := preload("res://scripts/util/sprite_art.gd")(不注册全局类名)
 
+## 画面阶段(RenderingServer.frame_pre_draw: 画面已把人物图摆好、换好格) ⇒ 直接读精灵节点; 战斗推进阶段 ⇒ 按战斗坐标推。
+static var render_phase := false
 static var _img_cache := {}      # 贴图路径 → Image
 static var _top_cache := {}      # "路径#帧" → 本体顶部那一行(帧内坐标)
 
@@ -35,7 +37,7 @@ static func point(b, u: Dictionary, art: Vector2, fallback: Vector3) -> Vector3:
 	## 人物图原点(脚底)按单位的战斗坐标推, 不读精灵节点位置: 一帧里先跑战斗推进、后跑画面(battle_render 才把精灵摆到 pos / height),
 	##   读节点会晚一帧; 无头门禁只推战斗不跑画面时节点根本不动(verify_minion_pull_speed 量出来手端停在原地)。不含待机起伏(几毫米)。
 	var o: Vector3 = s.global_position
-	if u.has("pos"):
+	if not render_phase and u.has("pos"):
 		o = b._world_pos(u["pos"], float(u.get("height", 0.0)) + float(b.GROUND_LIFT))
 	return o + (cb.x.normalized() * lx * s.scale.x + cb.y.normalized() * ly * s.scale.y) * s.pixel_size
 

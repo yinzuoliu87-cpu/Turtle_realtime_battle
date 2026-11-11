@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_chain_from_hand.gd" id="1_cfh"]
+
+[node name="VerifyChainFromHand" type="Node"]
+script = ExtResource("1_cfh")
