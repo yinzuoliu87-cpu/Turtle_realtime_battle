@@ -661,6 +661,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 ## ★U3(用户 2026-09-15「被装备打到应该算吧」): 敌方【装备】打出的一段伤害也算「受到攻击」,
 ##   走 `EquipSystem._b4_on_damaged_equip` —— 只喂 081 充能 / 082 反伤, 不连带老装备的 on-target 钩子。
 func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_crit, _bkt, from_equip: bool) -> void:
+	if src.get("_hit_as_basic", false):
+		basic = true   # 赌神赌注的牌算作攻击(11-11): 只对下面的装备钩子按普攻判; 音效 / 火花 / 统计在上游照旧(GamblerSystem.bet_card_land)
 	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
 	if not from_equip:
 		if src["alive"] and u["alive"]:

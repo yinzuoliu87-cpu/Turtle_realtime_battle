@@ -64,7 +64,8 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 		#   两者相乘会让赌神拿满剑达到普通龟的 2.1 倍(实测 576% vs 272%)。
 		#   这里标记"下一次普攻是连击产生的", swordsman_system.on_basic_attack 读它并跳过。
 		#   ⚠ 只跳过【连击那几发】—— 赌神正常节奏的第一发照常触发剑士, 它不该被开除出剑队。
-		#   ⚠ 赌注 barrage(_gambler_bet_multi) 不走 _basic_attack(直接结算伤害) ⇒ 本来就不触发, 无需处理。
+		#   ⚠ 赌注 barrage(_gambler_bet_multi) 不走 _basic_attack ⇒ 不触发剑士; 2026-11-11 起赌注的牌算作攻击,
+		#     只接攻击时 / 普攻命中的**装备**钩子(bet_card_on_throw / bet_card_land), 仍然不点剑士。
 		u["_chained_atk"] = true   # 也是画面判据: 连上的那一发普攻播「反手补牌」段(AttackRhythm.own_rows_of; 11-10 前在这里提前播, 牌和挥手对不上)
 		return maxf(0.06, u["atk_interval"] * MULTI_ASPD)   # 快攻速再打 (用户2026-07-28: ~3.3×→~6×攻速)
 	u["_multi_n"] = 0                                 # 没中→链断, 下次从当前基础概率(含命运之轮 0.60 / 赌注 +0.20)起
@@ -86,14 +87,16 @@ func _gambler_bet_multi(u: Dictionary, tgt: Dictionary, ch: float) -> void:
 	battle._damage._heal(u, u["atk"] * BET_MULTI_HEAL)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
 	var bdmg: int = battle._atk_dmg(u, CARD_ATK_COEF, tgt)   # 额外一发=普攻1.0A
 	battle._pending_shots.append({"delay": 0.09, "fn": func() -> void:
-		_gambler_throw_hit(u, tgt, bdmg, false, false)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·递归在下句续)
+		_gambler_throw_hit(u, tgt, bdmg, false, false, true)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·算作攻击·递归在下句续)
 		_gambler_bet_multi(u, tgt, ch * MULTI_DECAY)         # 连锁×0.8递减
 		, "src": u})
 
 # 赌神: 甩1张牌→命中结算dmg+金光pop (赌注barrage用·命中才跳伤害; roll_multi=每张触发多重打击)
 # 赌神: 甩1张牌→命中结算dmg+金光pop (赌注barrage用·命中才跳伤害; roll_multi=每张触发多重打击)
-func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bool = false, is_true: bool = true) -> void:
+func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bool = false, is_true: bool = true, as_attack: bool = false) -> void:
 	if tgt == null or not tgt.get("alive", false): return
+	if as_attack:
+		bet_card_on_throw(u, tgt)   # 甩出这一刻 = 一次攻击(攻击时的装备钩子)
 	var dcol: Color = Color("#ffd93d") if is_true else Color("#ff6b6b")   # 穿透金 / 普攻物理红
 	var from3 = battle._world_pos(u["pos"], 1.0)
 	var tp: Vector2 = tgt["pos"]
@@ -101,7 +104,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	var th: float = float(tgt.get("height", 0.0))
 	var t: Texture2D = load("res://assets/sprites/vfx/gambler-card.png")
 	if t == null:
-		battle._damage._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)
+		bet_card_land(u, tgt, dmg, dcol, is_true, as_attack)
 		if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))
 		return
 	var card = Sprite3D.new()
@@ -131,9 +134,30 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	ctw.tween_callback(func() -> void:
 		if is_instance_valid(card): card.queue_free()
 		if tgt.get("alive", false):
-			battle._damage._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)   # ★命中才跳伤害(穿透金/物理红)
+			bet_card_land(u, tgt, dmg, dcol, is_true, as_attack)   # ★命中才跳伤害(穿透金/物理红)
 			if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))  # 每张牌触发多重打击(B)
 		_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.9)))
+
+## ── 赌注的牌算作攻击(用户 2026-11-11「多重打击能不能触发攻击特效？…白鲸气环的三环应该是能触发…它是被算作普通攻击，能够触发攻击特效…鲨肝油的那个叠攻速，它这个也应该能触发…那这个七下和其他的多重打击是不是都应该能够触发攻击特效？啊，这个应该是能的呀」) ──
+## 7 张牌与它们判出来的追加牌, 每一张都视为一次攻击:
+##   · 甩出那一刻 = 攻击时的装备钩子(`_eq_on_basic_attack`: 065 鲨肝油 叠攻速 + 龟能 / 017 不沉之锚 / 027 电棍 …);
+##   · 落地命中时, 命中类装备按【普攻命中】判(`_hit_as_basic` ⇒ battle_damage._post_hit_hooks: 063 白鲸气环施环 …)。
+##   ★只对**装备钩子**算普攻: 命中音效 / 火花大小 / 伤害统计里的「技能伤害」分类都不变(仍是技能牌)。
+##   ★不点剑士: 08-03 用户拍板「连击不触发剑士」(两种连击相乘会到普通龟的 2 倍多), 这里同理 —— 不调 _swordsman.on_basic_attack。
+##   结算从演出里抽出来(CLAUDE.md §4.5): 补间回调与无贴图兜底都调它, 门禁 verify_gambler_bet_attack_fx 直接调。
+func bet_card_on_throw(u: Dictionary, tgt: Dictionary) -> void:
+	if not u.get("alive", false):
+		return
+	var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原(同 _basic_attack)
+	battle._equip_sys._eq_on_basic_attack(u, tgt)
+	battle._equip_sys.tally.pop(_tl0)
+
+
+func bet_card_land(u: Dictionary, tgt: Dictionary, dmg: int, dcol: Color, is_true: bool, as_attack: bool) -> void:
+	u["_hit_as_basic"] = as_attack
+	battle._damage._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)
+	u["_hit_as_basic"] = false
+
 
 # 命运之轮转盘: 花色♠♥♦♣老虎机式快转→减速→落定抽中花色+该色大爆
 # 命运之轮转盘: 花色♠♥♦♣老虎机式快转→减速→落定抽中花色+该色大爆
@@ -261,7 +285,7 @@ func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·�
 		# ★用户2026-07-28 报的 bug: 这里原来只传了 roll_multi=true, 而 _gambler_throw_hit 的
 		#   is_true 默认值是 true → 七段全走【真实伤害】穿透双抗, 与"七段物理伤害"的设定不符。
 		#   显式传 false 走物理。(另一处调用 :37 本来就显式传了 false,false, 只有这行漏了)
-		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, battle._phys_after_armor(u, per_raw, tgt) if tgt != null and tgt.get("alive", false) else 1, true, false), "src": u})
+		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, battle._phys_after_armor(u, per_raw, tgt) if tgt != null and tgt.get("alive", false) else 1, true, false, true), "src": u})   # 末位 true = 算作攻击(11-11)
 
 func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+3&血+10/♥护甲魔抗各+1/♦暴击+2%&护穿+1/♣吸血+0.5%&攻速+2%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
 	var _suit = battle._battle_rng.randi() % 4

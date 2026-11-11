@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "e9eae3bbffaadd4394701f9841b01ebd2d6af615fe1afba33d4fa448b2eb20b5",
+ "fingerprint": "0bca00c3f125aec9095102f5652e1cfb81fe9e7c3e5e5e11421053b906b95fae",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -20,7 +20,7 @@
   },
   {
    "def": "81cac5a557a2489f",
-   "hash": "8ab5063c60513ab19e72ee0459f91888958c0b7d88af84bb54b04acc23dbd699",
+   "hash": "7fc0076e516e81fb7edfa4542325a635db23d63cd8a1b0f602fe64bed4d60510",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
