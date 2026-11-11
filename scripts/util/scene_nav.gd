@@ -41,4 +41,5 @@ static func go(tree: SceneTree, path: String) -> void:
 	if DisplayServer.get_name() != "headless" or transition_in_headless:
 		SceneFader.instance(tree).go(path)   # 换场在暗幕盖满之后(已过了这一帧的输入分发)
 		return
+	SkillText.flush_prewarm()   # 同步换场前让文案常量的后台预加载收完(两边同时编同一批脚本会拿到半成品, 见 SkillText.prewarm_busy)
 	tree.change_scene_to_file.call_deferred(path)

@@ -15,7 +15,7 @@ extends RefCounted
 ## ── 分派落点(全部是**已有**钩子, 没有新增分发口) ────────────────────────
 ##   060 → EquipSystem._eq_tick 的每帧段(自管两相计时器)  · 演出 SpiritEqVfx.parasol_open
 ##   061 → EquipSystem._eq_on_hit                          · 演出 SpiritEqVfx.breach_marks
-##   062 → EquipSystem._eq_on_dodge(蓄) + _eq_on_hit(放)   · 演出 SpiritEqVfx.cavitation_strike
+##   062 → EquipSystem._eq_on_cast(蓄) + _eq_on_basic_attack(出手取) + _eq_on_hit(放) · 演出 SpiritEqVfx.mantis_ready / mantis_hit
 ##   063 → EquipSystem._eq_on_cast(攻速) + _eq_on_hit(环)  · 演出 SpiritEqVfx.bubble_ring
 ##   064 → EquipSystem._eq_tick 的每帧段(35% 线) + SpecialBalance 回调 · 演出 float_bladder
 ##
@@ -32,10 +32,7 @@ var _vfx: SpiritEqVfx = null
 
 func _init(b) -> void:
 	battle = b
-	## 运行时按路径 load 再 new(11-11): 「先进选龟页 → 再进战斗」这个顺序下(verify_tutorial 照真流程走), 这里编译时绑定的类名
-	##   引用会是循环加载中途的占位脚本 ⇒ 报「Nonexistent function 'new' in base 'GDScript'」、后面整串子系统为空。
-	##   插桩确认过脚本本身完好(can_instantiate 为真); 是哪条循环链路造成的待查(方案书 20261111 §8)。
-	_vfx = (load("res://scripts/scenes/battle/spirit_eq_vfx.gd") as GDScript).new(b)
+	_vfx = SpiritEqVfx.new(b)
 
 
 ## ★这里原有 `func _si(star)` (= clampi(star-1, 0, 2))。删了: 全仓零调用者 ——

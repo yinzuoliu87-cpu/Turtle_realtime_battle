@@ -188,6 +188,7 @@ static func resume_if_any(tree: SceneTree) -> bool:
 	if pending_resume.is_empty() or tree == null:
 		return false
 	print("[Abandoned] 上一局未结算(%s) ⇒ 复算" % act)
+	SkillText.flush_prewarm()   # 启动时主菜单已排上文案常量的后台预加载: 主线程同步进战斗前先让它收完(见 SkillText.prewarm_busy)
 	tree.change_scene_to_file(BATTLE_SCENE)
 	return true
 

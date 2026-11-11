@@ -1122,6 +1122,8 @@ static func text_of(d: Dictionary, want_detail: bool) -> String:
 static var _const_cache: Dictionary = {}
 ## 后台线程正在加载的脚本(path → true), 见 prewarm_consts。
 static var _warm_pending: Dictionary = {}
+## 无头(门禁 / 陪练号 / 裁判)没人点说明卡 ⇒ 默认不排后台预加载; 要量预加载本身的门禁打开它(static, 用完还原)。
+static var prewarm_in_headless := false
 
 
 ## ★文案常量预热(2026-11-05 用户「我任意点击屏幕上一个地方，都会使这个商店重置一下，于是所有图片都卡一下」):
@@ -1131,6 +1133,8 @@ static var _warm_pending: Dictionary = {}
 ##   玩家点开时已在缓存里; 还没加载完就在 const_of 里接着等它完成(不会比原来直接 load 慢)。
 ##   主菜单 / 商店 / 背包进页时调; 已经在加载或已经取过的类直接跳过。返回本次新排进后台的个数。
 static func prewarm_consts(texts: Array = []) -> int:
+	if DisplayServer.get_name() == "headless" and not prewarm_in_headless:
+		return 0
 	if texts.is_empty():
 		for f in DirAccess.get_files_at("res://data"):
 			if str(f).ends_with(".json"):
@@ -1160,6 +1164,20 @@ static func flush_prewarm() -> void:
 	for path in _warm_pending.keys():
 		ResourceLoader.load_threaded_get(path)   # 没加载完就等完
 	_warm_pending.clear()
+
+
+## 后台预加载还有没编完的脚本。
+## ★换场 / 主线程现场 load 之前必须等它变假(2026-11-11 查清的根因): 预加载排的是战斗那一整批脚本(EquipSystem、主场景……),
+##   两边同时编同一批互相引用的脚本, 引擎会把编到一半的半成品交给另一边(类名 .new() 报「Nonexistent function 'new'」),
+##   之后整局都坏。实测(tests/probes/_probe_prewarm_then_battle): 预加载没编完就进战斗 ——
+##   走 SceneFader 后台加载 306 条 SCRIPT ERROR、场上 0 个单位; 主线程直接 load 746 条、战斗时钟停在 0。
+##   守门的地方: SceneFader.go(逐帧等) · SceneNav.go 无头分支 / AbandonedMatch.resume_if_any(换场前 flush_prewarm) · const_of(现场 load 前 flush)。
+##   门禁 tests/verify_prewarm_scene_race.gd。
+static func prewarm_busy() -> bool:
+	for path in _warm_pending:
+		if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			return true
+	return false
 
 
 ## 读一个代码常量: "VenomDroneSystem.FOG_LIFE" → 6。
@@ -1203,6 +1221,8 @@ static func const_of(ref: String) -> String:
 			_warm_pending.erase(path)
 			scr = ResourceLoader.load_threaded_get(path) as Script
 		if scr == null:
+			if not _warm_pending.is_empty() and path != "" and not ResourceLoader.has_cached(path):
+				flush_prewarm()   # 主线程现场编之前先让后台收完(两边同时编同一批脚本会拿到半成品, 见 prewarm_busy)
 			scr = (load(path) as Script) if path != "" and ResourceLoader.exists(path) else null
 		_const_cache[cls] = scr.get_script_constant_map() if scr != null else {}
 	var m: Dictionary = _const_cache[cls]

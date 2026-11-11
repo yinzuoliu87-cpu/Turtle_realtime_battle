@@ -128,6 +128,7 @@ func _ready() -> void:
 	get_tree().root.content_scale_size = Vector2i(1280, 720)
 	get_tree().root.size = Vector2i(1280, 720)
 	await _frames(2)
+	SkillText.prewarm_in_headless = true   # 无头默认不排预加载(SkillText.prewarm_in_headless), ③ 量的就是它 ⇒ 打开, 取完还原
 	var sc: Control = SHOP.instantiate()
 	add_child(sc)
 	sc.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -142,6 +143,7 @@ func _ready() -> void:
 	## 等后台做完: 一次性阻塞取完(SkillText.flush_prewarm), 不按帧轮询 —— CI 无头跑帧极快, 轮询 15 秒会先把帧预算用光(11-05 CI 红过一次)
 	var tw := Time.get_ticks_msec()
 	SkillText.flush_prewarm()
+	SkillText.prewarm_in_headless = false
 	var eq_path := ""
 	for c in ProjectSettings.get_global_class_list():
 		if str(c.get("class", "")) == "EquipSystem":

@@ -486,6 +486,7 @@ frames_for () {
     verify_tween_capture_lane) echo 3000 ;;
     verify_ninja_dash_cc) echo 2500 ;;   # 逐帧采样 1200 帧真 sim(2026-10-16): 默认 500 帧会在一半处被掐断, 表现为没打 ALL PASS
     verify_scene_transition) echo 1500 ;;   # 2026-11-05 切页过场: 冷加载图鉴约 330 帧 + 多等 400 帧看连点的第二次请求有没有把页换走
+    verify_prewarm_scene_race) echo 3000 ;;   # 2026-11-11 预加载没编完就进战斗: 钉 60fps, 等后台编完 + 加载战斗约 5 秒真实时间 + 战斗 1 秒
     verify_minion_pull_speed) echo 2000 ;;   # 2026-11-08 小将拉人按速度飞 + 链子逐段收: 两个距离 × 两种小将各等到落地再等 30 帧, 实测约 650 帧(每帧恰一步)
     *)             echo 500  ;;
   esac

@@ -1,8 +1,8 @@
 extends RefCounted
 ## 造成伤害按类型拆 + 灵物触手单列 —— 纯数据(只读单位字典 / 快照行的标量键), 不依赖任何场景脚本。
 ## 由来(2026-11-11): 这些函数原写在 settle_screen.gd, 伤害统计面板为了用它们 preload 了整个结算页脚本(结算页依赖一长串
-##   UI / 联网 / 回放类) ⇒ 测试里用 `load(主场景脚本).new()` 建场景时形成循环加载, SpiritEqVfx / AxeSystem 实例化失败
-##   (verify_tutorial 报「Nonexistent function 'new' in base 'GDScript'」)。挪到这里, 面板只 preload 这一个无依赖文件;
+##   UI / 联网 / 回放类), 战斗场景因此连带编译一长串无关脚本。挪到这里, 面板只 preload 这一个无依赖文件;
+##   (当时 verify_tutorial 的「Nonexistent function 'new'」后来查清不是这条依赖, 是文案常量后台预加载与进战斗同时编译, 见 SkillText.prewarm_busy)
 ##   settle_screen 留同名函数转调这里(调用方不用改)。不设 class_name: 按路径 preload, 不吃全局类缓存。
 ## ── 灵物触手单列(用户 11-11「整个伤害面板都没有统计这个出手的伤害…为什么不单独做一个…触手造成的伤害呢？」) ──
 ## 触手是独立出手方(11-11): 拍击不进任何龟的 _st_dealt, 只记在本方挂账单位的 _st_spirit_dealt / _st_spirit_by_type(battle_damage.spirit_src)。

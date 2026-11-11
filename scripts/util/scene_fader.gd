@@ -65,8 +65,18 @@ func go(path: String) -> void:
 	var tree := get_tree()
 	visible = true
 	_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	var fade := create_tween()
+	fade.tween_property(_rect, "color:a", 1.0, FADE_OUT_SEC)
+	## 文案常量的后台预加载(SkillText.prewarm_consts)还在编 ⇒ 等它编完再排新页面(逐帧等, 暗幕照常淡入):
+	##   两边同时编同一批互相引用的脚本, 引擎会把编到一半的半成品交给另一边(类名 .new() 报「Nonexistent function 'new'」)。
+	##   11-11 实测: 进店后马上进战斗, 不等 ⇒ 306 条 SCRIPT ERROR、场上 0 个单位(见 SkillText.prewarm_busy)。
+	while SkillText.prewarm_busy() and Time.get_ticks_msec() - t0 < int(LOAD_TIMEOUT_SEC * 1000.0):
+		await tree.process_frame
+	var pw_wait_ms := Time.get_ticks_msec() - t0
+	var pw_busy := SkillText.prewarm_busy()
 	var req_ok: bool = ResourceLoader.load_threaded_request(path) == OK
-	await _fade_to(1.0, FADE_OUT_SEC)
+	if fade.is_running():
+		await fade.finished
 	var t1 := Time.get_ticks_msec()
 	var ps: PackedScene = null
 	if req_ok:
@@ -91,7 +101,8 @@ func go(path: String) -> void:
 	await _fade_to(0.0, FADE_IN_SEC)
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
-	last = {"path": path, "fade_out_ms": t1 - t0, "wait_load_ms": t2 - t1, "build_ms": t3 - t2, "total_ms": Time.get_ticks_msec() - t0, "ok": ps != null}
+	last = {"path": path, "fade_out_ms": t1 - t0, "wait_load_ms": t2 - t1, "build_ms": t3 - t2, "total_ms": Time.get_ticks_msec() - t0, "ok": ps != null,
+		"prewarm_wait_ms": pw_wait_ms, "prewarm_busy_at_request": pw_busy}
 	busy = false
 
 
