@@ -67,11 +67,25 @@ func _run() -> void:
 			st["steps"] = int(st["steps"]) + 1
 			if lane == "final":
 				st["fin_steps"] = int(st["fin_steps"]) + 1
+				if st["rv"] != null:
+					var _r: Dictionary = st["rv"]
+					var _dd: int = int(_r.get("_st_dealt", 0)) - int(st.get("pd", int(_r.get("_st_dealt", 0))))
+					var _dh: float = float(_r.get("_st_heal", 0.0)) - float(st.get("ph", float(_r.get("_st_heal", 0.0))))
+					if _dd > 0: st["hit_heal"] = float(st["hit_heal"]) + _dh
+					else: st["other_heal"] = float(st["other_heal"]) + _dh
+					st["pd"] = int(_r.get("_st_dealt", 0))
+					st["ph"] = float(_r.get("_st_heal", 0.0))
 				if st["rv"] == null:
 					for u in bt._units:
 						if u.get("alive", false) and str(u.get("side")) == "left" and str(u.get("minion_role", "")) == "reserve":
 							st["rv"] = u
 							u["hp"] = float(u["maxHp"]) * 0.3          # 留出回血空间
+							if OS.get_environment("PROBE_LS0") == "1":
+								u["lifesteal"] = 0.0                       # 对照组: 同一局把吸血清零
+							st["h0"] = float(u.get("_st_heal", 0.0))
+							st["d0"] = int(u.get("_st_dealt", 0))
+							st["hit_heal"] = 0.0
+							st["other_heal"] = 0.0
 							print("[LS] 终极开场 援军 equips=%s lifesteal=%.3f ls_bonus=%.3f maxHp=%.0f atk=%.1f" % [str(u.get("equips")), float(u.get("lifesteal", 0.0)), float(u.get("ls_bonus", 0.0)), float(u["maxHp"]), float(u["atk"])])
 							break
 				return
@@ -92,5 +106,6 @@ func _run() -> void:
 	else:
 		var dealt := int(rv.get("_st_dealt", 0))
 		var heal := float(rv.get("_st_heal", 0.0))
+		print("[LS] 出手那几步的回血 %.1f · 其余步的回血 %.1f" % [float(st.get("hit_heal", 0.0)), float(st.get("other_heal", 0.0))])
 		print("[LS] 终极战场 %d 步: 援军 打出 %d · 实际回血 %.1f · 回血/伤害 = %.3f · 结束时 lifesteal=%.3f alive=%s" % [int(st["fin_steps"]), dealt, heal, heal / maxf(1.0, float(dealt)), float(rv.get("lifesteal", 0.0)), str(rv.get("alive"))])
 	get_tree().quit(0)

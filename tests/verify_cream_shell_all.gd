@@ -108,6 +108,26 @@ func _ready() -> void:
 			foe_got += 1
 	_ok("③ 敌人一个都没拿到(不然是发错阵营)", foe_got == 0, "敌人拿到 %d" % foe_got)
 
+	# ── ⑤ 两条伤害路径都先扣奶油盾、不碰血(用户 11-11「出手拍击的时候, 他直接是血条掉了, 这个护盾没动」):
+	##   触手拍击 = 无出手者的 _apply_damage(11-11 起独立出手方); 普攻 / 技能 = _apply_damage_from。
+	var foe: Dictionary = {}
+	for u in _s._units:
+		if str(u.get("side", "")) == "right":
+			foe = u
+	var c5: float = _s._spec.val(a2, CREAM_KEY)
+	var hp5: float = float(a2["hp"])
+	_s._damage._apply_damage(a2, 200, Color.WHITE, null, "phy")
+	var c5b: float = _s._spec.val(a2, CREAM_KEY)
+	_ok("⑤ ★无出手者那条(触手拍击走的)先扣奶油盾、血不掉(盾 %.0f → %.0f · 血 %.0f → %.0f)" % [c5, c5b, hp5, float(a2["hp"])],
+		c5 > 200.0 and c5b < c5 and absf(float(a2["hp"]) - hp5) < 0.01)
+	_s._damage._apply_damage_from(foe, a2, 150, Color.WHITE, 0.0, false, true)
+	var c5c: float = _s._spec.val(a2, CREAM_KEY)
+	_ok("⑤ ★有出手者那条(普攻 / 技能)先扣奶油盾、血不掉(盾 %.0f → %.0f · 血 %.0f)" % [c5b, c5c, float(a2["hp"])],
+		not foe.is_empty() and c5c < c5b and absf(float(a2["hp"]) - hp5) < 0.01)
+	fb.tick_global(0.05)
+	_ok("⑤ 携带者活着时血条奶油段跟着掉(镜像 %.0f = 余额 %.0f)" % [float(a2.get("_creamShieldVal", -1.0)), c5c],
+		absf(float(a2.get("_creamShieldVal", -1.0)) - c5c) < 0.5)
+
 	# ── ④ ★携带者阵亡后, 友军的血条奶油段 / 壳仍跟着真实余额走(用户 11-11「护盾没有格挡到任何伤害…伤害只是通过这个护盾打到人」)
 	##   原来镜像只在携带者的 tick 里写 ⇒ 携带者死了就停在死前那一刻: 盾在扛、血条上的盾不掉; 盾打破了壳还亮着、血在掉。
 	##   走真入口 `tick_global`(EquipSystem 每步调的那个), 伤害走 SpecialBalance.absorb(两条伤害路径共用的那一步)。
