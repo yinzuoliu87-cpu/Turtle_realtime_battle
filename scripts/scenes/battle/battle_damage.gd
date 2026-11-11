@@ -845,7 +845,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if battle._untouch_block(u, "grant_shield"):
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	_holy_convert(u, amt, dur)      # 盾羁绊9档: 盾类装备给的护盾, 额外 20% 转成圣光护盾(★时长跟随母次)
-	amt *= battle._copy_fx_mult                          # 龟壳复制期: 护盾也按60%(封板"以60%效果释放")
+	amt *= _fx_of(u)                                     # 龟壳复制期: 护盾也按60%(封板"以60%效果释放"); 多重打击窗口只打折攻击者自己得到的(_fx_of)
 	amt *= shield_strength(u, battle._t)   # 护盾强度(受到方,所有来源) = (1 + shield_amp) × (1 − 015 反伤削弱)
 	var sb: float = u["shield"]
 	# ★★2026-08-05 用户拍板【删掉护盾上限】。
@@ -919,7 +919,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	if amt <= 0.0: return 0.0
 	if battle._untouch_block(u, "heal"):
 		return 0.0   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
-	amt *= battle._copy_fx_mult                        # 龟壳复制期: 治疗也按60%
+	amt *= _fx_of(u)                                   # 龟壳复制期: 治疗也按60%; 多重打击窗口只打折攻击者自己得到的(_fx_of)
 	amt *= heal_strength(u, battle._t)   # 治疗强度(受到方,所有来源) = (1 + heal_amp) × (1 − 015 反伤削弱)
 	amt *= battle._sd_heal_mult()                       # §SUDDEN 决胜期治疗 ×50%
 	if battle._t < float(u.get("heal_reduce_until", 0.0)):
@@ -1114,13 +1114,29 @@ func _add_curse(tgt: Dictionary, sec: float, src = null) -> void:
 	battle._add_dot(tgt, "curse", dps, sec, src)
 
 
+## 回血 / 护盾 / DoT 层的效果系数(2026-11-11)。
+##   · 龟壳复制窗口(窗口主人 = 龟壳): 照旧, 窗口里谁得到的都按系数(复制的治疗技能给队友也是 60%)。
+##   · 多重打击窗口(窗口主人 = 赌神, GamblerSystem.fx_enter): 只打折**窗口主人**自己得到的回血 / 护盾、和它施加的 DoT 层;
+##     被打方在这一瞬间的反应(受击回血、受击护盾、反打的流血…)照满额(用户 11-11「可以照你说的这个方案来」)。
+##     被打方反打的伤害本来就按它自己的 dmg_out_mult(= 1), 不受影响。`who` = 回血 / 护盾的得主, 或 DoT 的施加者。
+func _fx_of(who) -> float:
+	var m: float = battle._copy_fx_mult
+	if m == 1.0:
+		return 1.0
+	var cs = battle._shell_sys.copy_src
+	if cs is Dictionary and str((cs as Dictionary).get("id", "")) != "shell" and not (who is Dictionary and is_same(who, cs)):
+		return 1.0
+	return m
+
+
 func _apply_dot_stacks(u: Dictionary, type: String, stacks: int, src = null) -> void:
 	if battle._untouch_block(u, "dot_stacks"):
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	if u == null or not u.get("alive", false) or stacks <= 0:
 		return
-	if battle._copy_fx_mult != 1.0:
-		stacks = maxi(1, roundi(float(stacks) * battle._copy_fx_mult))   # 龟壳复制期: DoT层数也按60%
+	var _dm: float = _fx_of(src)
+	if _dm != 1.0:
+		stacks = maxi(1, roundi(float(stacks) * _dm))   # 龟壳复制期: DoT层数也按60%; 多重打击窗口只打折攻击者施加的(_fx_of)
 	if type == "burn":
 		if u.get("_burnImmune", false):
 			return

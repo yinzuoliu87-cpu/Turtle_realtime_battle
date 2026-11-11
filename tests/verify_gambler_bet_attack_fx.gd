@@ -199,3 +199,33 @@ func _multi_fx_checks(gsys) -> void:
 		"引爆 %.0f vs %.0f" % [drop_half - 10.0, drop_full - 10.0])
 	_ok("⑨ 环照样清零(触发不打折)", rings_half == 0, str(rings_half))
 	_ok("⑩ 落地之后多重打击标记已清掉", absf(float(g.get("_multi_fx_hit", 1.0)) - 1.0) < 1e-9 and absf(float(_s._copy_fx_mult) - 1.0) < 1e-9)
+
+	# ⑪ 窗口里只打折攻击者自己的: 被打方这一瞬间的反应(受击回血 / 护盾 / 反打的流血)照满额(用户 11-11「可以照你说的这个方案来」)
+	var v: Dictionary = _mk("basic", 760.0, "right")
+	_s._units.append(v)
+	g["hp"] = 50000.0; v["hp"] = 50000.0
+	g["shield"] = 0.0; v["shield"] = 0.0
+	var h: Array = gsys.fx_enter(g, true)
+	var gh: float = _s._damage._heal(g, 100.0, true)
+	var vh: float = _s._damage._heal(v, 100.0, true)
+	_s._damage._grant_shield(g, 100.0)
+	_s._damage._grant_shield(v, 100.0)
+	var sg: float = float(g.get("shield", 0.0))
+	var sv: float = float(v.get("shield", 0.0))
+	var bv0: int = int((v.get("dot_stacks", {}) as Dictionary).get("bleed", 0))
+	var bg0: int = int((g.get("dot_stacks", {}) as Dictionary).get("bleed", 0))
+	_s._damage._apply_dot_stacks(v, "bleed", 10, g)     # 攻击者施加的
+	_s._damage._apply_dot_stacks(g, "bleed", 10, v)     # 被打方反打的
+	var bv: int = int((v.get("dot_stacks", {}) as Dictionary).get("bleed", 0)) - bv0
+	var bg: int = int((g.get("dot_stacks", {}) as Dictionary).get("bleed", 0)) - bg0
+	gsys.fx_exit(h)
+	_ok("⑪ ★多重打击窗口: 攻击者自己的回血减半, 被打方的回血满额", absf(gh - 50.0) < 0.6 and absf(vh - 100.0) < 0.6, "攻 %.1f / 被打 %.1f" % [gh, vh])
+	_ok("⑪ ★护盾同理: 攻击者减半, 被打方满额", absf(sg - 50.0) < 0.6 and absf(sv - 100.0) < 0.6, "攻 %.1f / 被打 %.1f" % [sg, sv])
+	_ok("⑪ ★持续伤害层: 攻击者施加的减半(10 → 5), 被打方反打的满额(10)", bv == 5 and bg == 10, "攻击者施加 %d / 被打方反打 %d" % [bv, bg])
+	var h2: Array = gsys.fx_enter(g, true)
+	var fx_att: float = _s._damage._fx_of(g)
+	var fx_vic: float = _s._damage._fx_of(v)
+	gsys.fx_exit(h2)
+	_ok("⑪ 系数: 攻击者 %.1f / 被打方 %.1f(窗口外两者都是 1)" % [fx_att, fx_vic], absf(fx_att - GamblerSystem.MULTI_FX) < 1e-9 and absf(fx_vic - 1.0) < 1e-9
+		and absf(_s._damage._fx_of(g) - 1.0) < 1e-9)
+	_s._units.clear()   # 不用 erase: 单位字典按内容比较会递归(CLAUDE.md §4.2)
