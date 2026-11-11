@@ -427,7 +427,7 @@ func volley_shot(u: Dictionary, si: int) -> int:
 			Color("#ffb060"), 0.0, false, true)
 		battle._damage._apply_damage_from(u, o, maxi(1, int(round(tru * mult))),
 			Color("#ffffff"), 0.0, true, true, true)
-		var got: float = drain_energy(o, steal)
+		var got: float = drain_energy(o, steal * battle._copy_fx_mult)   # × 系数: 多重打击那一发按 50%(11-11)
 		if got > 0.0:
 			battle._equip_sys._eq_grant_energy(u, got)
 			stt["volley_stolen"] = float(stt.get("volley_stolen", 0.0)) + got

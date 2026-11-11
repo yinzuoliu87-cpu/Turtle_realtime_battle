@@ -38,6 +38,13 @@ const JOKER_DMG := 2.0       # 万能牌: ×ATK 物理 (1.0→2.0)
 const JOKER_HEAL := 0.05     # 万能牌: 回复自身最大生命 ×
 const JOKER_ATK_DOWN := 0.15 # 万能牌: 目标攻击力 −
 const JOKER_SHIELD := 1.0    # 万能牌: ×ATK 永久护盾 (0.25→1.0)
+## ★多重打击触发的攻击特效只有这么多效果(用户 2026-11-11「多重打击触发的攻击特效仅有百分之五十效果…类似于联盟里面…削弱它的攻击特效，只有百分之五十的效果」「数值减半…触发本身不打折」)。
+##   照联盟「以 X% 效果触发攻击特效」(厄加特 W / 阿兹尔沙兵…): **数值打折, 触发与计数不打折** —— 白鲸气环照样挂一层、照样算进引爆,
+##   眩晕 / 击退时长不变; 伤害 / 回血 / 护盾 / 持续伤害层数 / 龟能 / 攻速这类加成按这个系数。用户另定比联盟更宽: 不只伤害, 数值全按 50%。
+##   范围(用户 11-11 确认): 被动多重打击连出来的那几发(_chained_atk) + 赌注里多重打击追加的牌; 赌注本身那 7 张与剑士追打照满额。
+##   实现复用龟壳复制的「效果系数上下文」(ShellSystem.ctx_enter / ctx_exit: 伤害走 dmg_out_mult, 回血 / 护盾 / DoT 层读 _copy_fx_mult,
+##   窗口里新排的延后子弹 / 弹道 / 补间都带上系数, 到点再套); 直接给龟能 / 加攻速的几件在调用点乘 battle._copy_fx_mult(065 / 068 / 076)。
+const MULTI_FX := 0.5
 const BET_MULTI_HEAL := 0.3   # 赌注每张牌触发多重打击时回复 ×ATK(原写死 0.3·10-16); 追加的那一发 = 普攻系数 CARD_ATK_COEF
 
 const _BE := preload("res://scripts/net/backend.gd")
@@ -87,16 +94,16 @@ func _gambler_bet_multi(u: Dictionary, tgt: Dictionary, ch: float) -> void:
 	battle._damage._heal(u, u["atk"] * BET_MULTI_HEAL)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
 	var bdmg: int = battle._atk_dmg(u, CARD_ATK_COEF, tgt)   # 额外一发=普攻1.0A
 	battle._pending_shots.append({"delay": 0.09, "fn": func() -> void:
-		_gambler_throw_hit(u, tgt, bdmg, false, false, true)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·算作攻击·递归在下句续)
+		_gambler_throw_hit(u, tgt, bdmg, false, false, true, true)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·算作攻击·多重打击 ⇒ 特效按 MULTI_FX·递归在下句续)
 		_gambler_bet_multi(u, tgt, ch * MULTI_DECAY)         # 连锁×0.8递减
 		, "src": u})
 
 # 赌神: 甩1张牌→命中结算dmg+金光pop (赌注barrage用·命中才跳伤害; roll_multi=每张触发多重打击)
 # 赌神: 甩1张牌→命中结算dmg+金光pop (赌注barrage用·命中才跳伤害; roll_multi=每张触发多重打击)
-func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bool = false, is_true: bool = true, as_attack: bool = false) -> void:
+func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bool = false, is_true: bool = true, as_attack: bool = false, multi: bool = false) -> void:
 	if tgt == null or not tgt.get("alive", false): return
 	if as_attack:
-		bet_card_on_throw(u, tgt)   # 甩出这一刻 = 一次攻击(攻击时的装备钩子)
+		bet_card_on_throw(u, tgt, multi)   # 甩出这一刻 = 一次攻击(攻击时的装备钩子; 多重打击追加的牌按 MULTI_FX)
 	var dcol: Color = Color("#ffd93d") if is_true else Color("#ff6b6b")   # 穿透金 / 普攻物理红
 	var from3 = battle._world_pos(u["pos"], 1.0)
 	var tp: Vector2 = tgt["pos"]
@@ -104,7 +111,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	var th: float = float(tgt.get("height", 0.0))
 	var t: Texture2D = load("res://assets/sprites/vfx/gambler-card.png")
 	if t == null:
-		bet_card_land(u, tgt, dmg, dcol, is_true, as_attack)
+		bet_card_land(u, tgt, dmg, dcol, is_true, as_attack, multi)
 		if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))
 		return
 	var card = Sprite3D.new()
@@ -134,7 +141,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	ctw.tween_callback(func() -> void:
 		if is_instance_valid(card): card.queue_free()
 		if tgt.get("alive", false):
-			bet_card_land(u, tgt, dmg, dcol, is_true, as_attack)   # ★命中才跳伤害(穿透金/物理红)
+			bet_card_land(u, tgt, dmg, dcol, is_true, as_attack, multi)   # ★命中才跳伤害(穿透金/物理红)
 			if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))  # 每张牌触发多重打击(B)
 		_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.9)))
 
@@ -145,18 +152,36 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 ##   ★只对**装备钩子**算普攻: 命中音效 / 火花大小 / 伤害统计里的「技能伤害」分类都不变(仍是技能牌)。
 ##   ★不点剑士: 08-03 用户拍板「连击不触发剑士」(两种连击相乘会到普通龟的 2 倍多), 这里同理 —— 不调 _swordsman.on_basic_attack。
 ##   结算从演出里抽出来(CLAUDE.md §4.5): 补间回调与无贴图兜底都调它, 门禁 verify_gambler_bet_attack_fx 直接调。
-func bet_card_on_throw(u: Dictionary, tgt: Dictionary) -> void:
+func bet_card_on_throw(u: Dictionary, tgt: Dictionary, multi: bool = false) -> void:
 	if not u.get("alive", false):
 		return
 	var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原(同 _basic_attack)
+	var _mfx: Array = fx_enter(u, multi)                  # 多重打击追加的牌: 攻击时的装备效果按 MULTI_FX
 	battle._equip_sys._eq_on_basic_attack(u, tgt)
+	fx_exit(_mfx)
 	battle._equip_sys.tally.pop(_tl0)
 
 
-func bet_card_land(u: Dictionary, tgt: Dictionary, dmg: int, dcol: Color, is_true: bool, as_attack: bool) -> void:
+func bet_card_land(u: Dictionary, tgt: Dictionary, dmg: int, dcol: Color, is_true: bool, as_attack: bool, multi: bool = false) -> void:
 	u["_hit_as_basic"] = as_attack
+	u["_multi_fx_hit"] = MULTI_FX if multi else 1.0      # 牌本身的伤害照满; 命中时的装备钩子按 MULTI_FX(battle_damage._post_hit_hooks 读)
 	battle._damage._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)
 	u["_hit_as_basic"] = false
+	u["_multi_fx_hit"] = 1.0
+
+
+## 多重打击的「效果系数窗口」: on = false ⇒ 什么都不做(返回空)。嵌在龟壳复制窗口里(复制了赌注)⇒ 两个系数相乘。
+func fx_enter(u: Dictionary, on: bool) -> Array:
+	if not on:
+		return []
+	var tag: Array = [battle._copy_fx_mult * MULTI_FX, u]
+	return [tag, battle._shell_sys.ctx_enter(tag)]
+
+
+func fx_exit(h: Array) -> void:
+	if h.is_empty():
+		return
+	battle._shell_sys.ctx_exit(h[0], h[1])
 
 
 # 命运之轮转盘: 花色♠♥♦♣老虎机式快转→减速→落定抽中花色+该色大爆

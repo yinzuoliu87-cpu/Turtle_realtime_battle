@@ -1025,7 +1025,7 @@
       "name": "多重打击",
       "dmgScale": 0.5,
       "brief": "赌神龟每次攻击后有 {C:GamblerSystem.MULTI_BASE%}% 概率很快再攻击一次。连续触发时，每次触发概率乘以 {C:GamblerSystem.MULTI_DECAY%}%（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}%，以此类推），未触发时重置。",
-      "desc": "赌神龟每次攻击后有 {C:GamblerSystem.MULTI_BASE%}% 概率很快再攻击一次。连续触发时，每次触发概率乘以 {C:GamblerSystem.MULTI_DECAY%}%（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}%，以此类推），未触发时重置。\n<span style=\"color:#8a93a0\">多重打击追加的攻击同样触发攻击时的装备效果（【剑士】除外）。\n若选择【命运之轮】，基础概率变为 {C:GamblerSystem.MULTI_WHEEL%}%。若选择【赌注】，释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内概率额外提升 {C:GamblerSystem.MULTI_BET_BONUS%}%。</span>"
+      "desc": "赌神龟每次攻击后有 {C:GamblerSystem.MULTI_BASE%}% 概率很快再攻击一次。连续触发时，每次触发概率乘以 {C:GamblerSystem.MULTI_DECAY%}%（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}%，以此类推），未触发时重置。\n<span style=\"color:#8a93a0\">多重打击追加的攻击以 {C:GamblerSystem.MULTI_FX%}% 效果触发攻击时与命中时的装备效果（【剑士】除外）。\n若选择【命运之轮】，基础概率变为 {C:GamblerSystem.MULTI_WHEEL%}%。若选择【赌注】，释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内概率额外提升 {C:GamblerSystem.MULTI_BET_BONUS%}%。</span>"
     },
     "skillPool": [
       {
@@ -1059,8 +1059,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "赌神龟消耗自身 {C:GamblerSystem.BET_HP_COST%}% 当前生命值，化作 {C:GamblerSystem.BET_SEGMENTS} 张牌打向目标，共造成约等于所消耗生命值的物理伤害（受护甲减免）。\n每张牌命中时也会判定多重打击，每次触发回复 {E:GamblerSystem.BET_MULTI_HEAL*ATK} 生命值并追加一张牌，造成 {N:GamblerSystem.CARD_ATK_COEF*ATK} 物理伤害。\n每张牌（包括追加的牌）都视为一次攻击，触发攻击时的装备效果。\n释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率提升 {C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命值低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值时，不消耗生命值也不出牌，转而回复自身 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值的生命值，同样获得概率提升。</span>",
-        "detail": "赌神龟消耗自身 {C:GamblerSystem.BET_HP_COST%}% 当前生命值，化作 {C:GamblerSystem.BET_SEGMENTS} 张牌打向目标，共造成约等于所消耗生命值的物理伤害（受护甲减免）。\n每张牌命中时也会判定多重打击，每次触发回复（{C:GamblerSystem.BET_MULTI_HEAL%}%×攻击力({ATK}) = {E:GamblerSystem.BET_MULTI_HEAL*ATK}）生命值并追加一张牌，造成（{C:GamblerSystem.CARD_ATK_COEF%}%×攻击力({ATK}) = {N:GamblerSystem.CARD_ATK_COEF*ATK}）物理伤害。\n每张牌（包括追加的牌）都视为一次攻击，触发攻击时的装备效果。\n释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率提升 {C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命值低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值时，不消耗生命值也不出牌，转而回复自身 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值的生命值，同样获得概率提升。</span>"
+        "brief": "赌神龟消耗自身 {C:GamblerSystem.BET_HP_COST%}% 当前生命值，化作 {C:GamblerSystem.BET_SEGMENTS} 张牌打向目标，共造成约等于所消耗生命值的物理伤害（受护甲减免）。\n每张牌命中时也会判定多重打击，每次触发回复 {E:GamblerSystem.BET_MULTI_HEAL*ATK} 生命值并追加一张牌，造成 {N:GamblerSystem.CARD_ATK_COEF*ATK} 物理伤害。\n每张牌都视为一次攻击，触发攻击时的装备效果，其中多重打击追加的牌以 {C:GamblerSystem.MULTI_FX%}% 效果触发。\n释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率提升 {C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命值低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值时，不消耗生命值也不出牌，转而回复自身 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值的生命值，同样获得概率提升。</span>",
+        "detail": "赌神龟消耗自身 {C:GamblerSystem.BET_HP_COST%}% 当前生命值，化作 {C:GamblerSystem.BET_SEGMENTS} 张牌打向目标，共造成约等于所消耗生命值的物理伤害（受护甲减免）。\n每张牌命中时也会判定多重打击，每次触发回复（{C:GamblerSystem.BET_MULTI_HEAL%}%×攻击力({ATK}) = {E:GamblerSystem.BET_MULTI_HEAL*ATK}）生命值并追加一张牌，造成（{C:GamblerSystem.CARD_ATK_COEF%}%×攻击力({ATK}) = {N:GamblerSystem.CARD_ATK_COEF*ATK}）物理伤害。\n每张牌都视为一次攻击，触发攻击时的装备效果，其中多重打击追加的牌以 {C:GamblerSystem.MULTI_FX%}% 效果触发。\n释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率提升 {C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命值低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值时，不消耗生命值也不出牌，转而回复自身 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值的生命值，同样获得概率提升。</span>"
       },
       {
         "name": "命运之轮",

@@ -223,6 +223,8 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
+		## 多重打击连出来的那一发(出手这一刻 _chained_atk 指的就是这一发; 命中时它早被下一发的掷骰改写)⇒ 记在弹道上, 命中时装备效果按 50%
+		"multi_fx": GamblerSystem.MULTI_FX if (basic_onhit and src is Dictionary and bool(src.get("_chained_atk", false))) else 1.0,
 		"oriented": oriented, "card_spin": card_spin, "card_hand": card_hand, "dtype": battle._last_dmg_type,
 	})
 	if th_bolt:
@@ -453,7 +455,9 @@ func _step_projectiles(delta: float) -> void:
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, false)
 					battle._equip_sys._eq_drone_halve = false
 				elif pr["src"] != null:
+					pr["src"]["_multi_fx_hit"] = float(pr.get("multi_fx", 1.0))   # 多重打击那一发: 伤害照满, 命中时的装备钩子按 50%(battle_damage._post_hit_hooks 读)
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false), false, false, false, false, pr.get("basic_onhit", false))   # raw=手里剑暴击转真伤等; basic 随弹道标
+					pr["src"]["_multi_fx_hit"] = 1.0
 				else:
 					battle._damage._apply_damage(tgt, pr["dmg"], pr["col"])
 				battle._vfx._flash(tgt)

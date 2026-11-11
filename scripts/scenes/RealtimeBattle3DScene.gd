@@ -2815,7 +2815,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	AttackRhythm.on_hit(self, u)    # 普攻三段: 前摇里已开播 ⇒ 此刻正是命中帧不重播; 追打等无前摇的出手照旧(预备形变 + 开播)
 	_audio_sys.sfx_basic_swing(u)   # 普攻出手声(挥击破风 / 发射; 11-05 照云顶 BasicAttack_OnCast; 只管声音)
 	var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
+	var _mfx: Array = _gambler_sys.fx_enter(u, bool(u.get("_chained_atk", false)))   # 多重打击连出来的那一发: 攻击时的装备效果按 50%(GamblerSystem.MULTI_FX, 11-11)
 	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(不算多段)
+	_gambler_sys.fx_exit(_mfx)
 	_equip_sys.tally.pop(_tl0)
 		## ⚠ 这里原来写着"008每5次普攻射珊瑚刺" —— **早就不是了**: 那个计数器 2026-07-19 已删,
 		##   008 现在走 `_tick_coral` 的**每 9 秒**。过期注释比没注释更糟, 我自己就被它带偏过一次。

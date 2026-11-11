@@ -107,8 +107,9 @@ func _eq_shark_oil(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false):
 		return
 	var stt: Dictionary = u["eq_state"].get("p2eq_065", {})
-	battle._equip_sys._eq_grant_energy(u, LIVER_ENERGY)
-	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + OIL_ASPD_PER_HIT[si]
+	## × _copy_fx_mult: 多重打击那一发按 50%(GamblerSystem.MULTI_FX, 11-11); 平常为 1。层数照常 +1(触发与计数不打折)
+	battle._equip_sys._eq_grant_energy(u, LIVER_ENERGY * battle._copy_fx_mult)
+	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + OIL_ASPD_PER_HIT[si] * battle._copy_fx_mult
 	stt["oil_stacks"] = int(stt.get("oil_stacks", 0)) + 1
 	u["eq_state"]["p2eq_065"] = stt
 	# ★读数只走装备格右下角层数徽章(PANEL_COUNT 的 oil_stacks) —— 用户 2026-08-11:
@@ -406,7 +407,7 @@ func _eq_pressure_sip(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false):
 		return
 	var _s68: Dictionary = u["eq_state"].get("p2eq_068", {})
-	battle._equip_sys._eq_grant_energy(u, CAN_HIT_ENERGY)
+	battle._equip_sys._eq_grant_energy(u, CAN_HIT_ENERGY * battle._copy_fx_mult)   # × 系数: 多重打击那一发按 50%(11-11)
 	battle._damage._heal(u, [20.0, 35.0, 50.0][si])
 
 

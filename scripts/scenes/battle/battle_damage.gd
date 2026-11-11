@@ -667,7 +667,9 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 	if not from_equip:
 		if src["alive"] and u["alive"]:
 			var _tl0: Array = battle._equip_sys.tally.capture()   # ④ _eq_on_hit 循环里有中途 return(002/023/026 非普攻闸), 在调用方还原归因上下文
+			var _mfx: Array = battle._gambler_sys.fx_enter(src, float(src.get("_multi_fx_hit", 1.0)) < 1.0)   # 多重打击那一发 / 赌注追加的牌: 命中时的装备效果按 50%(11-11)
 			battle._equip_sys._eq_on_hit(src, u, dmg, basic, was_crit) # on-hit: 攻击者装备(★was_crit 是掷骰当时的快照, 别让它自己读全局: 中间的反伤/熔岩盾/雷盾会改写) (流血/灼烧/连锁/追击/穿透/标记 等; basic 闸【普攻】类)
+			battle._gambler_sys.fx_exit(_mfx)
 			battle._equip_sys.tally.pop(_tl0)
 			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
 			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结
