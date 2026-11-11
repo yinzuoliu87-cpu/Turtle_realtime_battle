@@ -543,6 +543,7 @@ static func apply_poll(d: Dictionary) -> String:
 				_note(_acc(), true)
 				_go(ST_CONFIRMED)
 				refresh_pets()
+				SB.maybe_push_save(true)   # 绑上就推一次云存档(11-11 E2: 原来绑定后从不推, 换号进来拉到空档); 之后照常 20 秒一拍
 		"expired":
 			_gen += 1
 			_go(ST_EXPIRED)

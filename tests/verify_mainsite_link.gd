@@ -214,6 +214,8 @@ func _t_confirm(gs) -> void:
 	var pl := _last(ML.P_POLL)
 	_ok("A 轮询 POST /app/link/poll {code}", str(pl.get("m", "")) == "POST" and _body(pl) == {"code": CODE1}, str(_body(pl)))
 	_ok("A 回 pending ⇒ 仍在等", ML.state() == ML.ST_PENDING)
+	var pu0 := _count("/rest/v1/rpc/push_save")
+	var mail0 := str(gs.account_email)
 	if p != null:
 		var n0 := _count(ML.P_POLL)
 		_poll_replies = [{"ok": true, "status": "confirmed", "switched": false}]
@@ -223,6 +225,9 @@ func _t_confirm(gs) -> void:
 	_ok("A ★confirmed + switched:false ⇒ 已绑定", ML.state() == ML.ST_CONFIRMED and ML.linked_state() == 1, ML.state())
 	_ok("A 身份没换", str(gs.account_id) == ACC1 and SB.access_token() == "probe-token")
 	_ok("A 绑完顺手刷新拥有的龟(/app/pets/refresh)", _count(ML.P_PETS) >= 1 and ML.owned_ids() == ["basic", "stone"], str(ML.owned_ids()))
+	## 2026-11-11 内测联调 E2: 绑定后的号原来从不推云存档(本机没邮箱 ⇒ sync_allowed 关着), 换号进来拉到空档(昵称变默认名、进度没带过来)
+	_ok("A 分母: 本机这个号没邮箱(匿名号绑的主站), 绑定前没推过云存档", mail0 == "" and pu0 == 0, "mail=%s push=%d" % [mail0, pu0])
+	_ok("A ★绑上就推一次云存档(主站绑过的号算能找回的号, 没邮箱也同步)", _count("/rest/v1/rpc/push_save") > pu0, str(_count("/rest/v1/rpc/push_save")))
 	var n1 := _count(ML.P_POLL)
 	ML.poll_now()
 	if p != null and is_instance_valid(p):
@@ -304,7 +309,11 @@ func _t_switch(gs) -> void:
 	_ok("C 换号不重走首次进入流程", bool(gs.onboarded))
 	_ok("C ★新号记成已绑定", ML.state() == ML.ST_CONFIRMED and ML.linked_state() == 1)
 	await _frames(3)
-	_ok("C 目标号没绑邮箱 ⇒ 不拉云存档(没有可拉的)", _count("/rest/v1/saves") == saves0)
+	## 2026-11-11 内测联调 E2: 原来「目标号没邮箱 ⇒ 不拉」, 而主站绑过的号从不推 ⇒ 换号进来是空档(昵称变默认名、进度丢)。
+	##   现在绑了主站就同步: 换号本身说明这个号绑着主站 ⇒ 照样拉它的云存档。
+	var sv2 := _last("/rest/v1/saves")
+	_ok("C ★目标号没邮箱但绑着主站 ⇒ 照样拉它的云存档(GET saves?account_id=eq.<新号>)", _count("/rest/v1/saves") > saves0
+		and str(sv2.get("m", "")) == "GET" and str(sv2.get("u", "")).contains("account_id=eq." + ACC2), str(sv2.get("u", "")))
 	## 目标号有邮箱 ⇒ 拉它的云存档(换设备那段收尾)
 	await _start_pending()
 	_poll_replies = [_switch_reply(ACC3, "c3@example.com", "rt-3")]
@@ -726,6 +735,11 @@ func _t_copy() -> void:
 # ⑤ ─────────────────────────────────────────────────────────
 func _t_pure() -> void:
 	print("── ⑤ 纯判据 ──")
+	_ok("⑤ ★同步闸: 没邮箱但绑了主站 ⇒ 能同步; 没邮箱也没绑 ⇒ 仍不同步(匿名号照旧)",
+		SB.sync_allowed("uid", "", "tok", true) and not SB.sync_allowed("uid", "", "tok", false) and not SB.sync_allowed("uid", "", "tok"))
+	_ok("⑤ 同步闸: 绑了主站也要有 token / account_id", not SB.sync_allowed("uid", "", "", true) and not SB.sync_allowed("", "", "tok", true))
+	var sbsrc := FileAccess.get_file_as_string("res://scripts/net/supabase.gd")
+	_ok("⑤ 推送与拉取两处都把「绑了主站」传进闸(不只改了一处)", sbsrc.count("_token, _mainsite_linked())") == 2, str(sbsrc.count("_token, _mainsite_linked())")))
 	_ok("⑤ parse: 2xx + ok:true ⇒ ok", bool(ML.parse({"ok": true, "code": 200, "body": "{\"ok\":true,\"code\":\"abcd\"}"})["ok"]))
 	_ok("⑤ parse: 2xx + ok:false ⇒ bad", ML.parse({"ok": true, "code": 200, "body": "{\"ok\":false}"})["reason"] == ML.R_BAD)
 	_ok("⑤ parse: 401 ⇒ auth / 500 ⇒ net / 连不上 ⇒ net / 被拦 ⇒ blocked",

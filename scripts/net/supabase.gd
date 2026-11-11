@@ -1185,8 +1185,13 @@ static func _reset_save_sync_for_test() -> void:
 
 
 ## 这个号现在该不该同步存档。★四个条件缺一不可, 缺了就**什么都不发**。
-static func sync_allowed(account_id: String, email: String, token: String) -> bool:
-	return enabled() and account_id != "" and email != "" and token != ""
+## ★11-11 联调 E2: 主站绑过的号本机没邮箱 ⇒ 原来从不推云存档、换号拉到空档 ⇒ 绑了主站也算能找回(mainsite_linked)。
+static func sync_allowed(account_id: String, email: String, token: String, mainsite_linked: bool = false) -> bool:
+	return enabled() and account_id != "" and (email != "" or mainsite_linked) and token != ""
+
+
+static func _mainsite_linked() -> bool:   # 当前号绑没绑主站(MainsiteLink 缓存; 运行时 load: 那边预载了本文件, 再 preload 成环)
+	return int(load("res://scripts/net/mainsite_link.gd").linked_state()) == 1
 
 
 static func payload_hash(p: Dictionary) -> String:
@@ -1245,7 +1250,7 @@ static func maybe_push_save(force: bool = false) -> void:
 		return          # ★教程沙盒: 内存里是教程状态, 不许推上云(结束后导演 save() 会再标脏)
 	if not (_save_dirty or force):
 		return
-	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token, _mainsite_linked()):
 		return
 	var p: Dictionary = gs.cloud_payload()
 	var h := payload_hash(p)
@@ -1304,7 +1309,7 @@ static func apply_push_response(ok: bool, code: int, body: String, h: String) ->
 ## 去拉云端存档。`tag` 写进备份文件名(recover / conflict)。
 static func pull_save_async(tag: String) -> void:
 	var gs = _gs()
-	if gs == null or not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+	if gs == null or not sync_allowed(str(gs.account_id), str(gs.account_email), _token, _mainsite_linked()):
 		return
 	var n = _spawn()
 	if n != null:
