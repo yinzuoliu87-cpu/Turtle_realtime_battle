@@ -83,6 +83,111 @@ func basic_hit_vfx(u: Dictionary, tgt: Dictionary) -> void:
 			s.frame = clampi(int(fv), 0, n - 1)
 	, 0.0, float(n) - 0.001, HIT_SLASH_FRAME_SEC * float(n))
 	tw.tween_callback(s.queue_free)
+
+
+## ── 被动冲击(自动冲刺斩)专属特效(11-11 用户「关于忍者龟被动，就是这个冲击，它的这个命中特效，你看看」「你想办法先改喽」)──
+## 原来: 冲刺前青色虚线方块 / 滑行糊的白蓝光条 / 命中深蓝大月牙 + 通用火花 / 落地蓝月牙盖在自己身上 0.6 秒。
+## 参考 Katana ZERO 冲刺斩(逐帧 docs/studies/20261111c-忍者普攻挥刀参考-KatanaZERO逐帧.md「冲刺命中」): 硬边速度拖影 + 斩中时
+##   一条细亮线穿过敌人(出现即全长, 最亮停一下, 再从冲来的那头缩短) + 碎光; 颜色接普攻刀光(白芯 / 浅金 / 金边)。
+## 图: tools/assetgen/build_ninja_dash_vfx.py(都画「朝右冲」; 这里按冲刺方向在屏幕上转角度, 朝左镜像)。只管画面, sim 不读。
+const DASH_TRAIL_TEX := "res://assets/sprites/vfx/ninja-dash-trail.png"
+const DASH_HIT_TEX := "res://assets/sprites/vfx/ninja-dash-hit.png"
+const DASH_DUST_TEX := "res://assets/sprites/vfx/ninja-dash-dust.png"
+const DASH_HIT_FW := 144
+const DASH_DUST_FW := 48
+const DASH_FX_PX := 2.0 / 64.0          # 与龟人物图同一个像素尺寸, 固定不缩放(拖影只横向拉长)
+const DASH_TRAIL_LEN := 170.0           # 拖影最长(码)
+const DASH_TRAIL_H := 0.7               # 拖影离地高(米, 腰)
+const DASH_TRAIL_BACK := 24.0           # 拖影头离忍者中心往后让(码), 不盖身体
+const DASH_HIT_SEC := 1.0 / 30.0        # 命中亮线每格
+const DASH_DUST_SEC := 1.0 / 25.0       # 扬尘每格
+
+
+## 屏幕上沿 dir 的朝向: [基(x 沿冲刺在屏幕上的方向, 面朝镜头), 是否镜像(朝屏幕左冲)]
+func _dash_screen_basis(at2d: Vector2, dir: Vector2) -> Array:
+	var cb: Basis = battle._vfx.cam_basis()
+	var d3: Vector3 = battle._world_pos(at2d + dir * 10.0, 0.0) - battle._world_pos(at2d, 0.0)
+	var sx: float = d3.dot(cb.x)
+	var sy: float = d3.dot(cb.y)
+	var flip: bool = sx < 0.0
+	if flip:
+		sx = -sx
+		sy = -sy
+	var ang: float = DetMath.datan2(sy, sx)
+	var bx: Vector3 = (cb.x * DetMath.dcos(ang) + cb.y * DetMath.dsin(ang)).normalized()
+	var by: Vector3 = (cb.y * DetMath.dcos(ang) - cb.x * DetMath.dsin(ang)).normalized()
+	return [Basis(bx, by, cb.z.normalized()), flip]
+
+
+func _dash_sprite(path: String, fw: int) -> Sprite3D:
+	var tex: Texture2D = load(path)
+	if tex == null or battle._world == null:
+		return null
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.hframes = maxi(1, tex.get_width() / fw) if fw > 0 else 1   # fw = 0: 单张图(拖影)
+	s.shaded = false
+	s.transparent = true
+	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.pixel_size = DASH_FX_PX
+	battle._world.add_child(s)
+	return s
+
+
+## 拖影: 从 tail 到 head(都是 2D 位置)横向拉长, 腰高, 面朝镜头
+func _dash_trail_set(s: Sprite3D, tail: Vector2, head: Vector2, dir: Vector2) -> void:
+	if not is_instance_valid(s):
+		return
+	var bf: Array = _dash_screen_basis(head, dir)
+	var b: Basis = bf[0]
+	var a3: Vector3 = battle._world_pos(tail, DASH_TRAIL_H)
+	var h3: Vector3 = battle._world_pos(head, DASH_TRAIL_H)
+	var L: float = absf((h3 - a3).dot(b.x))
+	s.visible = L > DASH_FX_PX * 4.0
+	s.flip_h = bool(bf[1])
+	var k: float = L / maxf(0.001, float(s.texture.get_width()) * DASH_FX_PX)
+	s.transform = Transform3D(Basis(b.x * maxf(0.001, k), b.y, b.z), (a3 + h3) * 0.5)
+
+
+func _dash_trail_ends(start: Vector2, cur: Vector2, dir: Vector2) -> Array:
+	var head: Vector2 = cur - dir * DASH_TRAIL_BACK
+	var back: float = clampf(DetMath.dot(head - start, dir), 0.0, DASH_TRAIL_LEN)
+	return [head - dir * back, head]
+
+
+## 命中亮线: 目标胸口, 沿冲刺方向; 6 格共 0.2 秒
+func dash_hit_vfx(o: Dictionary, dir: Vector2) -> void:
+	var s: Sprite3D = _dash_sprite(DASH_HIT_TEX, DASH_HIT_FW)
+	if s == null:
+		return
+	s.no_depth_test = true
+	s.render_priority = 12                 # 亮线穿过目标, 画在立绘前面
+	var bf: Array = _dash_screen_basis(o["pos"], dir)
+	s.flip_h = bool(bf[1])
+	s.transform = Transform3D(bf[0], battle._world_pos(o["pos"], float(o.get("height", 0.0)) + HIT_SLASH_UP))
+	_dash_play(s, DASH_HIT_SEC)
+
+
+## 落地扬尘: 脚下, 5 格
+func dash_dust_vfx(at2d: Vector2) -> void:
+	var s: Sprite3D = _dash_sprite(DASH_DUST_TEX, DASH_DUST_FW)
+	if s == null:
+		return
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.position = battle._world_pos(at2d, float(s.texture.get_height()) * 0.5 * DASH_FX_PX)
+	_dash_play(s, DASH_DUST_SEC)
+
+
+func _dash_play(s: Sprite3D, sec: float) -> void:
+	var n: int = s.hframes
+	var tw = battle._reg_tween()
+	tw.bind_node(s)
+	tw.tween_method(func(fv: float) -> void:
+		if is_instance_valid(s):
+			s.frame = clampi(int(fv), 0, n - 1)
+	, 0.0, float(n) - 0.001, sec * float(n))
+	tw.tween_callback(s.queue_free)
 const INSTINCT_CRIT := 0.20       # 暴击率 +
 const INSTINCT_CRIT_DMG := 0.15   # 暴击伤害 +
 const INSTINCT_ARMOR_PEN := 10.0  # 护甲穿透 +(flat)
@@ -138,7 +243,7 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 		if proj < 0.0 or proj > DASH_RANGE: continue
 		hits.append({"o": o, "proj": proj, "done": false})
 	hits.sort_custom(func(a, b): return float(a["proj"]) < float(b["proj"]))
-	battle._bolt_line(start, endp, Color(0.7, 0.95, 1.0, 0.5))         # 冲刺残影(淡)
+	## 原来这里 battle._bolt_line 画一排青色虚线方块标出路线(11-11 用户看冲击命中特效时去掉; 拖影改在滑行里跟着走)
 	_ninja_glide(u, start, endp, dir, target, hits)            # 滑行(async, fire-and-forget)
 
 ## 忍者冲击滑行 (亚索 E 式 · 600 码/秒 · 穿过路径敌逐个割). no_move 期间分离跳过, 每帧直接推 pos.
@@ -164,26 +269,19 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 			await battle._wait_sim(0.045, u)
 			if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 	var traveled = 0.0
-	# ★冲击特效(用户2026-07-11): 角色前方一道疾风拖影伴随滑行(fx-trail·贴地朝行进方向·每帧跟随身前)
-	var lead = Sprite3D.new()
-	lead.texture = load("res://assets/sprites/vfx/fx-trail.png")
-	lead.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-	lead.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	lead.axis = Vector3.AXIS_Y
-	lead.shaded = false; lead.transparent = true
-	lead.modulate = Color(0.72, 0.95, 1.0, 0.9)                # 疾风蓝白
-	var _lt = float(maxi(1, int(lead.texture.get_width())))
-	lead.pixel_size = (160.0 * battle.WS) / _lt
-	lead.rotation.y = -DetMath.datan2(dir.y, dir.x)                      # 朝行进方向
-	lead.position = battle._world_pos(start + dir * 60.0, 1.0)
-	battle._world.add_child(lead)
+	# ★冲击拖影(用户2026-07-11 要一道疾风拖影伴随滑行; 11-11 换成专属硬边像素拖影, 跟在身后、落地从尾巴往前收)
+	var lead: Sprite3D = _dash_sprite(DASH_TRAIL_TEX, 0)
+	if lead != null:
+		lead.visible = false
 	while is_instance_valid(battle) and traveled < total and u.get("alive", false) and battle.is_inside_tree():
 		await battle._dl_sys.lane_step()
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		traveled = minf(total, traveled + 600.0 * battle._frame_sim_dt)   # 恒速 600 码/秒
 		u["pos"] = start + dir * traveled
-		if is_instance_valid(lead): lead.position = battle._world_pos(u["pos"] + dir * 60.0, 1.0)   # 拖影跟在身前
+		if is_instance_valid(lead):
+			var _te: Array = _dash_trail_ends(start, u["pos"], dir)
+			_dash_trail_set(lead, _te[0], _te[1], dir)
 		# ★★2026-08-07 修: 这里原来写死 `4 + (…% 4)` = 取第 4~7 帧, 落地那段写死 range(8, 11) = 第 8~10 帧,
 		#   两处都按【≥11 帧的精灵表】算。而真实的忍者冲刺表只有 **7 帧(0~6)**
 		#   ⇒ 每次冲刺都刷 `ERROR: Index p_frame = 7/8/9/10 is out of bounds (…= 7)`。
@@ -197,18 +295,26 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 				h["done"] = true
 				var o: Dictionary = h["o"]
 				if o.get("alive", false):
+					battle._vfx.own_hit_vfx = true    # 有专属命中特效: 伤害与击飞都不叠通用星芒 / 起跳火花(只管画面)
 					battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, DASH_MAIN_COEF if is_same(o, target) else DASH_SIDE_COEF, o), Color("#9fe8ff"))
 					battle._damage._knockback(u, o, 40.0, 1.468, 1.0)          # 击飞 0.8s 滞空
+					battle._vfx.own_hit_vfx = false
 					if is_same(o, target): o["_ninja_dash_until"] = battle._t + DASH_TARGET_CD          # 只有【目标】进10s冷却·顺路割到的不占(用户2026-07-11)
-					battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", o["pos"], 88.0, 1.0)
+					dash_hit_vfx(o, dir)
 	u["pos"] = endp
 	u["no_move"] = was_nm
 	u["no_basic"] = was_nb
-	if is_instance_valid(lead):                                # 冲刺结束→拖影淡出
+	if is_instance_valid(lead):                                # 冲刺结束→拖影从尾巴往前收(实心, 不淡出)
+		var _e: Array = _dash_trail_ends(start, u["pos"], dir)
+		var _t0: Vector2 = _e[0]
+		var _h0: Vector2 = _e[1]
 		var _lw = battle._reg_tween()
-		_lw.tween_property(lead, "modulate:a", 0.0, 0.14)
+		_lw.bind_node(lead)
+		_lw.tween_method(func(fv: float) -> void:
+			_dash_trail_set(lead, _t0 + (_h0 - _t0) * fv, _h0, dir)
+		, 0.0, 1.0, 0.12)
 		_lw.tween_callback(lead.queue_free)
-	battle._burst_vfx("res://assets/sprites/vfx/ninja-slash.png", u["pos"], 98.0, 1.0)   # 落点疾风斩弧
+	dash_dust_vfx(u["pos"])                                    # 落地脚下扬尘(原来在自己身上弹一个蓝月牙 0.6 秒, 11-11 去掉)
 	if _ndash:
 		# 落地三帧: 取表的最后三帧(原来写死 8/9/10, 越界; 理由见上面滑行那段的注释)
 		# ★★2026-08-07 真根因(冒烟随机报 `p_frame = 16/17 out of bounds (…=7)` 追了很久):

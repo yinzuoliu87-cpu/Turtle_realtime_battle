@@ -12,6 +12,7 @@ var battle
 ## ★接在这里而不是主场景: CLAUDE.md §5「不在 _sim_step 调用链上的不进主文件」。
 ##   批 B/C 的每条羁绊只写一行 `battle._vfx._syn.xxx(...)`。
 var _syn: SynergyVfx = null
+var own_hit_vfx: bool = false   # 调用方有专属命中特效(忍者冲击)时置真: _impact 不叠通用星芒火花(11-11 用户「不要有通用命中特效」)
 
 const SkillIcons = preload("res://scripts/gamedata/skill_icons.gd")
 const ShellSystem = preload("res://scripts/systems/skills/shell_system.gd")
@@ -635,7 +636,7 @@ func _flash(u: Dictionary, col: Color = battle.JUICE_FLASH_COLOR, sec: float = 0
 # heavy=技能/暴击命中级; big=大招/击飞级. light(普攻小段)只闪白不顿帧不抖.
 # 命中重量分级: 单段伤害(或暴击/大招标志)决定 闪白/顿帧/震屏/粒子 强度.
 # heavy=技能/暴击命中级; big=大招/击飞级. light(普攻小段)只闪白不顿帧不抖.
-func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null, tier: int = VfxTiers.NORMAL) -> void:
+func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null, tier: int = VfxTiers.NORMAL, spark: bool = true) -> void:
 	if tgt == null:
 		return
 	var lvl = level
@@ -652,9 +653,10 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null, t
 			if battle.JUICE_HITSTOP_LIGHT > 0.0: battle._add_hitstop(battle.JUICE_HITSTOP_LIGHT)
 			if battle.JUICE_SHAKE_LIGHT > 0.0:   battle._shake(battle.JUICE_SHAKE_LIGHT)
 	# 命中特效 (Botworld式: 普攻不打断敌人, 反馈全靠特效) — 每次命中迸 Hit Spark + Impact Ring
-	_hit_spark(tgt, at_pos, tier)
+	if spark:   # 有专属命中特效的不叠(顿帧 / 震屏照旧)
+		_hit_spark(tgt, at_pos, tier)
 	# 冲击粒子: 只在重击/大招迸火花
-	if (lvl == "heavy" or lvl == "big") and float(dmg) >= battle.JUICE_PARTICLE_MIN_DMG:
+	if spark and (lvl == "heavy" or lvl == "big") and float(dmg) >= battle.JUICE_PARTICLE_MIN_DMG:
 		var p2d: Vector2 = at_pos if at_pos != null else tgt.get("pos", Vector2.ZERO)
 		_impact_particles(p2d, tgt.get("height", 0.0))
 
