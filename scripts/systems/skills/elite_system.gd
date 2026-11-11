@@ -2,6 +2,7 @@ class_name EliteSystem
 extends RefCounted
 const CopyRules := preload("res://scripts/gamedata/copy_rules.gd")   # 偷技/抄技共用同一道闸
 const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
+const SpriteArt := preload("res://scripts/util/sprite_art.gd")
 ## 吞噬演出: 目标被吸收时染黑 / 缩小的满程幅度(渲染步按 `_devour_k` ∈ [0,1] 插值, 见 battle_render._update_world_transforms)。
 const DEVOUR_DARKEN := 0.85
 const DEVOUR_SHRINK := 0.45
@@ -47,6 +48,12 @@ const WHIP_BACK_HAND_1 := 35.0
 const WHIP_BACK_UP_0 := 0.48
 const WHIP_BACK_UP_1 := 0.86
 const WHIP_BACK_TIP := 66.0            # 链头拖在身后地面多远(码): 拳头到链头约 1.1 米一节链
+## ★11-11 链子手端改按人物图像素(用户「射出这个锁链的时候…有从手上射出来吗？」): whip.png 11 格每格拳头最外沿(帧内坐标, 192×192 帧)。
+##   格 → 图: [0,1,2,2,2,3,4,4,4,4,5](build_minion_redo.py); 0 往地上甩(拳头垂在身后)/ 1 后拉 / 2~4 甩出 / 5 被拽前倾 / 6~9 拉平飞 / 10 落地砍。
+##   上面 WHIP_FIST_FWD / WHIP_BACK_HAND_* 只在拿不到人物图(或已不在播 whip)时兜底。
+const WHIP_FIST_ART := [Vector2(142, 145), Vector2(158, 121), Vector2(18, 110), Vector2(18, 110), Vector2(18, 110),
+	Vector2(46, 108), Vector2(28, 104), Vector2(28, 104), Vector2(28, 104), Vector2(28, 104), Vector2(162, 130)]
+const WHIP_BACK_TIP_ART := Vector2(212.0, 176.0)   # 身后拖地的链头: 后甩拳头再往后约 60 像素、脚底那一行(屏幕上一定在身后地上)
 
 ## 拉过去要飞多久: 距离 ÷ 速度。
 static func whip_pull_sec(from: Vector2, to: Vector2) -> float:
@@ -63,7 +70,7 @@ func whip_chain(u: Dictionary, tgt: Dictionary, life: float) -> Array:
 	var fist := func() -> Vector3:
 		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
 		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
-		return battle._world_pos((u["pos"] as Vector2) + dn * WHIP_FIST_FWD, float(u.get("height", 0.0)) + WHIP_FIST_UP)
+		return _whip_fist(u, battle._world_pos((u["pos"] as Vector2) + dn * WHIP_FIST_FWD, float(u.get("height", 0.0)) + WHIP_FIST_UP))
 	var chest := func() -> Vector3:
 		return battle._world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + WHIP_CHEST_UP)
 	## 后甩: 链头拖在身后地面, 一头连身后的拳头 —— 用户「往回这个地上甩一下，把这个链子带出来」
@@ -73,17 +80,45 @@ func whip_chain(u: Dictionary, tgt: Dictionary, life: float) -> Array:
 		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
 		var back: float = WHIP_BACK_HAND_0 if q < 0.5 else WHIP_BACK_HAND_1
 		var up: float = WHIP_BACK_UP_0 if q < 0.5 else WHIP_BACK_UP_1
-		return battle._world_pos((u["pos"] as Vector2) - dn * back, float(u.get("height", 0.0)) + up)
+		return _whip_fist(u, battle._world_pos((u["pos"] as Vector2) - dn * back, float(u.get("height", 0.0)) + up))
 	var back_tip := func(_q: float) -> Vector3:
 		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
 		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
-		return battle._world_pos((u["pos"] as Vector2) - dn * WHIP_BACK_TIP, 0.06)
+		var fb: Vector3 = battle._world_pos((u["pos"] as Vector2) - dn * WHIP_BACK_TIP, 0.06)
+		if str(u.get("anim_action", "")) != "whip":
+			return fb
+		if _whip_frame(u) >= 2:
+			return _whip_fist(u, fb)                                 # 人物已换到「甩出」那格: 链头收到拳头上, 下一步从这里飞(实录差一帧)
+		var p: Vector3 = SpriteArt.point(battle, u, WHIP_BACK_TIP_ART, fb)
+		p.y = maxf(p.y, 0.06)                                       # 贴地(人在空中时也躺在地上)
+		return p
 	## 出链 = 动作播到第 3 格「甩出」那刻(帧率随拉人距离变, 与 _tick_elite_whip 同一个 d); 链头仍在 WHIP_HIT_SEC 扎到
 	var pre: float = 2.0 / whip_anim_fps(DetMath.dist((tgt["pos"] as Vector2), u["pos"]))
 	var fly: float = clampf(WHIP_HIT_SEC - pre, 0.06, WHIP_CHAIN_FLY)
 	st["chain"] = PierceChainVfx.fire(battle, "elite-chain", WHIP_CHAIN_PX, false, fist, chest, fly, WHIP_PIERCE_OUT, life + pre,
 		pre, back_hand, back_tip)
 	return [st]
+
+
+## 链子手端 = 人物图当前这一格的拳头像素(只在播 whip 时; 别的动作 / 拿不到人物图 ⇒ fallback)
+func _whip_fist(u: Dictionary, fallback: Vector3) -> Vector3:
+	if str(u.get("anim_action", "")) != "whip":
+		return fallback
+	var s = u.get("sprite", null)
+	if not (s is Sprite3D) or not is_instance_valid(s):
+		return fallback
+	return SpriteArt.point(battle, u, WHIP_FIST_ART[_whip_frame(u)], fallback)
+
+
+## 这一帧人物图要显示第几格: 一帧里先跑战斗推进(链子在这时算)、后跑画面(battle_render._advance_anim 才 anim_t += delta 换格),
+##   读 sprite.frame 会晚一格(11-11 实录: 人物已甩出、链头还在身后多躺一帧) ⇒ 照 _advance_anim 的算法往前推这一帧的 delta。
+func _whip_frame(u: Dictionary) -> int:
+	var fps: float = float((u.get("anim_sd", {}) as Dictionary).get("fps", 0.0))
+	var s = u.get("sprite", null)
+	if fps <= 0.0:
+		return clampi((s as Sprite3D).frame if s is Sprite3D else 0, 0, WHIP_FIST_ART.size() - 1)
+	var dt: float = (battle as Node).get_process_delta_time() if battle is Node else 0.0
+	return clampi(int((float(u.get("anim_t", 0.0)) + dt) * fps), 0, WHIP_FIST_ART.size() - 1)
 
 
 ## 拉人进度 q(0 ~ 1): 链随人往前飞自己变短(PierceChainVfx 每帧从两端推); 最后 WHIP_RETRACT_SEC 秒把链头拔出收回拳头

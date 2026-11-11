@@ -199,7 +199,8 @@ func _rope_max_gap(s) -> float:
 	var pts: Array = []
 	var link_len := 0.0
 	for c in s._world.get_children():
-		if c is Sprite3D and c.has_meta("rope_f") and (c as Sprite3D).texture != null:
+		## 只量看得见的链环(11-11): 链子变短时手那端的链环藏起来、留在旧位置、rope_f 也是旧的, 混进来排序会量出几十码的假空档
+		if c is Sprite3D and c.has_meta("rope_f") and (c as Sprite3D).texture != null and (c as Sprite3D).visible and (c as Sprite3D).modulate.a > 0.5:
 			var sp := c as Sprite3D
 			pts.append([float(sp.get_meta("rope_f")), sp.global_position])
 			link_len = float(sp.texture.get_width()) * sp.pixel_size / float(s.WS)

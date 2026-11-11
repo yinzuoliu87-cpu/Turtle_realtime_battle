@@ -1,5 +1,6 @@
 class_name HidingSystem
 extends RefCounted
+const SpriteArt := preload("res://scripts/util/sprite_art.gd")
 ## 缩头龟(含随从小将)技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -84,6 +85,13 @@ const SURF_PIERCE_OUT := 0.6          # 尖端越过目标胸口多少米(从背
 const SURF_WRIST_FWD := 24.0          # 手腕在身体前方多少码(出链帧: 护手端在腰带扣前 38 像素 ≈ 0.58 米)
 const SURF_WRIST_UP := 0.74           # 手腕离脚底多高(米; 出链帧护手中线在脚底上 49 像素)
 const SURF_CHEST_UP := 0.9            # 目标胸口离脚底多高(米)
+## ★11-11 链子手端改按人物图像素(用户「射出这个锁链的时候…有从手上射出来吗？」): 手腕(三刺头射出后空着的护手口)帧内坐标。
+##   throw.png 6 格同一张图; dive.png 8 格手腕随身体前倾往下 2 ~ 5 像素。上面 SURF_WRIST_* 只在拿不到人物图时兜底。
+const SURF_WRIST_ART_THROW := Vector2(62, 123.6)
+const SURF_WRIST_ART_DIVE := [Vector2(62, 125.6), Vector2(62, 128.2), Vector2(62, 129.1), Vector2(62, 129.1),
+	Vector2(62, 129.1), Vector2(62, 129.1), Vector2(62, 129.1), Vector2(62, 129.1)]
+## 踩人高度(用户 11-11「应该踩在他身上…在他体型的上方」): 目标当前这一格本体顶部(SpriteArt.top_m); 拿不到人物图 ⇒ 这个兜底
+const SURF_RIDE_H_FALLBACK := 1.2
 
 ## 拉向目标要飞多久: 距离 ÷ 速度。
 static func surf_pull_sec(from: Vector2, to: Vector2) -> float:
@@ -386,7 +394,14 @@ func _fire_surf_chain(uu: Dictionary, tref: Dictionary, life: float) -> PierceCh
 	var wrist := func() -> Vector3:
 		var dv: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
 		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
-		return battle._world_pos((uu["pos"] as Vector2) + dn * SURF_WRIST_FWD, float(uu.get("height", 0.0)) + SURF_WRIST_UP)
+		var fb: Vector3 = battle._world_pos((uu["pos"] as Vector2) + dn * SURF_WRIST_FWD, float(uu.get("height", 0.0)) + SURF_WRIST_UP)
+		var act := str(uu.get("anim_action", ""))
+		var s = uu.get("sprite", null)
+		if act == "throw":
+			return SpriteArt.point(battle, uu, SURF_WRIST_ART_THROW, fb)
+		if act == "dive" and s is Sprite3D and is_instance_valid(s):
+			return SpriteArt.point(battle, uu, SURF_WRIST_ART_DIVE[clampi((s as Sprite3D).frame, 0, SURF_WRIST_ART_DIVE.size() - 1)], fb)
+		return fb
 	var chest := func() -> Vector3:
 		return battle._world_pos(tref["pos"], float(tref.get("height", 0.0)) + SURF_CHEST_UP)
 	return PierceChainVfx.fire(battle, "melee-chain", SURF_CHAIN_PX, true, wrist, chest, SURF_CHAIN_FLY, SURF_PIERCE_OUT, life)
@@ -403,6 +418,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 	var _ct = battle._shell_sys.ctx_capture()   # 龟壳复制期放的: await 之后的结算照样按 60%
 	var from: Vector2 = u["pos"]
 	var h0: float = float(u.get("height", 0.0))           # 从空中悬停高度俯冲下来
+	var ride_h: float = SpriteArt.top_m(tref, SURF_RIDE_H_FALLBACK)   # 落到目标背上(本体顶部), 不是和目标叠在一起
 	var dive_sec: float = surf_pull_sec(from, tref["pos"])   # 按速度飞(用户 11-08), 原固定 0.3 秒
 	battle._melee_anim(u, "dive", MELEE_DIVE_SLOTS / dive_sec)   # dive.png 8 格拉长到整段飞行, 播完才不会半空回站姿
 	var d = 0.0
@@ -416,7 +432,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 		if u.get("alive", false):
 			## 用户 11-11:「并不是直直的这样子落下来…应该有一个横的这个加速度…肯定是要向上面走一点点」: 水平先快后中速, 高度起步先往上带一点再弧线落到目标身上
 			u["pos"] = DetMath.vlerp(from, (tref["pos"] as Vector2), PullCurve.frac(kk))
-			u["height"] = PullCurve.dive_height(kk, h0, 0.3)
+			u["height"] = PullCurve.dive_height(kk, h0, ride_h)
 		if dive_sec - d <= SURF_CHAIN_RETRACT:                           # 撞上前拔出刺头收回手腕(画面; 链子随人往前飞自己变短)
 			for c in rope:
 				c.retract(SURF_CHAIN_RETRACT)
@@ -454,7 +470,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 		_sq = 1.0 - (1.0 - _sq) * (1.0 - _sq)             # ease-out减速: 俯冲惯性大→摩擦逐渐减速停下(非匀速·用户2026-07-18)
 		var mypos: Vector2 = DetMath.vlerp(slide_from, slide_to, _sq)
 		u["pos"] = mypos
-		u["height"] = 0.3                                  # 踩在目标身上(略高=站在冲浪板上·参考浪板)
+		u["height"] = ride_h                               # 踩在目标背上(用户 11-11「在他体型的上方」; 原 0.3 米 = 和目标叠在一起)
 		if tref.get("alive", false): tref["pos"] = mypos   # 踩着目标一起滑(目标=冲浪板)
 		dot_t += dt
 		if dot_t >= 0.1 and tref.get("alive", false):      # 对被踩目标逐渐2A物理(分摊·敌死则循环退出=自动结束·参考"血见底自动结束")
@@ -485,7 +501,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 	ho.tween_method(func(q: float) -> void:
 		if u.get("alive", false):
 			u["pos"] = DetMath.vlerp(land_from, land_to, q)       # 跳到目标周围
-			u["height"] = 0.3 + 1.5 * 4.0 * q * (1.0 - q)   # 跳弧
+			u["height"] = ride_h * (1.0 - q) + 1.5 * 4.0 * q * (1.0 - q)   # 从目标背上跳下来的弧
 	, 0.0, 1.0, 0.3)
 	ho.tween_callback(func() -> void:
 		if u.get("alive", false): u["height"] = 0.0)

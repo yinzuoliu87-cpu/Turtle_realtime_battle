@@ -10,7 +10,7 @@ extends RefCounted
 ## 链节 / 链头是一节节 Sprite3D(直播录得进流), 链节带 rope_f 标记(0 = 手, 1 = 链头; verify_minion_pull_speed 数它)。
 ## 补间走 battle._reg_tween()(跟 sim 步走, 与拉人位移同一个钟)。
 
-const WAVE_AMP := 0.45        # 飞行时波浪最大振幅(米)
+const WAVE_AMP := 0.15        # 飞行时波浪最大振幅(米)。11-11 实录: 0.45 时链环被甩散、看着不连在手上 ⇒ 0.15
 const WAVE_CYCLES := 1.6      # 整条链上同时有几个波
 const WAVE_SPEED := 9.0       # 波往链头传的速度(相位 / 秒)
 const OVERLAP_PX := 2.0       # 相邻两节压几像素(首尾相接)
