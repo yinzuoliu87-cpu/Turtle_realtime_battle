@@ -455,9 +455,12 @@ func _step_projectiles(delta: float) -> void:
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, false)
 					battle._equip_sys._eq_drone_halve = false
 				elif pr["src"] != null:
-					pr["src"]["_multi_fx_hit"] = float(pr.get("multi_fx", 1.0))   # 多重打击那一发: 伤害照满, 命中时的装备钩子按 50%(battle_damage._post_hit_hooks 读)
+					## 多重打击那一发: 伤害照满, 命中时的装备钩子按 50%(battle_damage._post_hit_hooks 读)。★只在那一发写、用完删键 ——
+					##   平常的弹道一个字段都不碰(训龟大师哨兵 verify_trainer_untouchable 盯着它的每个字段; 11-11 CI 第 7 片抓到)
+					var _mfh: float = float(pr.get("multi_fx", 1.0))
+					if _mfh < 1.0: pr["src"]["_multi_fx_hit"] = _mfh
 					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false), false, false, false, false, pr.get("basic_onhit", false))   # raw=手里剑暴击转真伤等; basic 随弹道标
-					pr["src"]["_multi_fx_hit"] = 1.0
+					if _mfh < 1.0: (pr["src"] as Dictionary).erase("_multi_fx_hit")
 				else:
 					battle._damage._apply_damage(tgt, pr["dmg"], pr["col"])
 				battle._vfx._flash(tgt)

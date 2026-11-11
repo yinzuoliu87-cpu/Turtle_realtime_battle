@@ -164,10 +164,11 @@ func bet_card_on_throw(u: Dictionary, tgt: Dictionary, multi: bool = false) -> v
 
 func bet_card_land(u: Dictionary, tgt: Dictionary, dmg: int, dcol: Color, is_true: bool, as_attack: bool, multi: bool = false) -> void:
 	u["_hit_as_basic"] = as_attack
-	u["_multi_fx_hit"] = MULTI_FX if multi else 1.0      # 牌本身的伤害照满; 命中时的装备钩子按 MULTI_FX(battle_damage._post_hit_hooks 读)
+	if multi:
+		u["_multi_fx_hit"] = MULTI_FX      # 牌本身的伤害照满; 命中时的装备钩子按 MULTI_FX(battle_damage._post_hit_hooks 读); 用完删键
 	battle._damage._apply_damage_from(u, tgt, dmg, dcol, 0.0, is_true)
 	u["_hit_as_basic"] = false
-	u["_multi_fx_hit"] = 1.0
+	u.erase("_multi_fx_hit")
 
 
 ## 多重打击的「效果系数窗口」: on = false ⇒ 什么都不做(返回空)。嵌在龟壳复制窗口里(复制了赌注)⇒ 两个系数相乘。
