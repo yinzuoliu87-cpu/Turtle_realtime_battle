@@ -79,6 +79,17 @@ static func clean_pool(raw) -> Array:
 	return out
 
 
+## 背包(persistent_bench) ⇒ 可抽清单: 只留数据表里查得到的装备(id 失效的丢掉), 再按 clean_pool 清洗。
+##   GameState 只存结果(`reserve_pool`), 取法放这里(GameState.gd 已顶到 3000 行预算)。
+static func candidates(bench) -> Array:
+	var raw: Array = []
+	if bench is Array:
+		for it in (bench as Array):
+			if it is Dictionary and DataRegistry.phase2_equipment_by_id.has(str((it as Dictionary).get("id", ""))):
+				raw.append(it)
+	return clean_pool(raw)
+
+
 ## 登场时从可抽清单里抽**一件**(用户: 「装备只会抽取一件」)。返回 [] 或 [{id, star}](直接当 spec.equips 用)。
 ## ★纯函数: 独立 PCG, 种子 = 对局种子 ^ 阵营盐 —— **不吃 `_battle_rng`**:
 ##   ① 对阵预览卡与开场生成各调一次也抽到同一件; ② 不改动战斗随机数序列里任何其他抽签;

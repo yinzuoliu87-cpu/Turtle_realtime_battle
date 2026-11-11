@@ -191,6 +191,7 @@ func start() -> void:
 		live = Live.take(self)      # 观赛会话(赛况板「观赛」/ 对阵图开播时挂上的); 没有 = 普通回放
 		return
 	if not pending_referee.is_empty():
+		pin_reserve_pool()   # 援军小将右方可抽清单写成显式键, 再抓开局状态(见函数头注)
 		_start_referee()
 		return
 	if not Abandoned.pending_resume.is_empty():
@@ -199,7 +200,8 @@ func start() -> void:
 	## ★实打(录 / 不录)走到这里: 援军小将的可抽清单从**此刻的背包**刷新(方案书 20261111b)。
 	##   回放 / 观赛 / 服务器裁判 / 补打在上面都 return 了 —— 它们用录像或任务带来的那份, 不能拿看的人自己的背包覆盖。
 	##   放在 capture_state 之前 ⇒ 录像里的就是这一份。
-	GameState.reserve_pool = GameState.reserve_candidates()
+	GameState.reserve_pool = ReserveConsts.candidates(GameState.persistent_bench)
+	pin_reserve_pool()
 	if should_record():
 		mode = "rec"
 		rec = {
@@ -251,6 +253,17 @@ func _start_resume() -> void:
 
 ## 服务器裁判开局: 种子从任务里来(同 "play": 此刻还没有人从 `_battle_rng` 取过数); GameState 已由裁判入口按 A 方快照摆好,
 ##   这里照录制那样抓一份 `capture_state()` 进录像 ⇒ 手机播的时候拿同一份状态。
+## 援军小将**右方**可抽清单钉成对手快照里的显式键(2026-11-11, 方案书 20261111b)。
+## ★为什么要钉: 快照缺 reserve_pool 键时按 ghost_id 派生(`Backend.reserve_pool_of`), 而录像 / 直播 / 补打里的 dual_ghost
+##   出站前摘掉了 ghost_id(`ReplayUploader.GHOST_STRIP`)⇒ 播放端派生不出来, 终极战场对阵卡与援军装备就和原局对不上
+##   (verify_stream_hud_parity 实测: 本机援军带 076, 播放「（无装备）」)。开局抓状态之前写成显式键 ⇒ 下游照抄、不再派生。
+## ★已经有键(真人 / 新机器人 / 陪练转换后都有)⇒ 不动。
+static func pin_reserve_pool() -> void:
+	var g = GameState.dual_ghost
+	if g is Dictionary and not ((g as Dictionary).get("reserve_pool") is Array):
+		(g as Dictionary)["reserve_pool"] = load("res://scripts/net/backend.gd").reserve_pool_of(g)
+
+
 func _start_referee() -> void:
 	var job: Dictionary = pending_referee
 	pending_referee = {}

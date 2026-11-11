@@ -2117,7 +2117,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"equipped": equipped,
 		## 援军小将可抽的装备(2026-11-11, 方案书 20261111b): 背包里未穿戴的那些。对手的援军小将从这份里按种子抽一件;
 		##   服务器裁判局里左方也读这份(referee_job)。没有这个键的老快照 ⇒ 空 ⇒ 援军不带装备。
-		"reserve_pool": GameState.reserve_candidates() if GameState != null else [],
+		"reserve_pool": ReserveConsts.candidates(GameState.persistent_bench) if GameState != null else [],
 		"pet_levels": levels,
 		## ★★★2026-09-29 第三个漏掉的字段: 训龟大师装配的那个技能。
 		##   消费侧 `battle_spawn.gd:575` 读 `dual_ghost.trainer_skill` 决定**敌方大师**用什么,

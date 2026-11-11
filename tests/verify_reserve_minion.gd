@@ -409,7 +409,7 @@ func _pure_checks(a: Dictionary, b: Dictionary) -> void:
 	var src := FileAccess.get_file_as_string("res://scripts/systems/replay/replay_recorder.gd").replace("\r\n", "\n")   # 行尾 CRLF / LF 都按 LF 比
 	var i_ref := src.find("_start_referee()\n\t\treturn")
 	var i_res := src.find("_start_resume()\n\t\treturn")
-	var i_set := src.find("GameState.reserve_pool = GameState.reserve_candidates()")
+	var i_set := src.find("GameState.reserve_pool = ReserveConsts.candidates(GameState.persistent_bench)")
 	var i_rec := src.find("\tif should_record():")
 	_ok("R 分母: 四处都找到了", i_ref > 0 and i_res > 0 and i_set > 0 and i_rec > 0, "%d %d %d %d" % [i_ref, i_res, i_set, i_rec])
 	_ok("R ★刷新在裁判 / 补打 return 之后、开始录制之前(录像里就是这一份)", i_ref < i_set and i_res < i_set and i_set < i_rec)
