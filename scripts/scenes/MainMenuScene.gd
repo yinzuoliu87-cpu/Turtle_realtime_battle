@@ -1112,9 +1112,7 @@ func _right_column(now: int = 0) -> void:
 	## ★深海币先显示【旧值】: 这次进主菜单之前新进账的那一截(结算 / 收盘卡的奖励)要飞进来, 见 MenuWeekend.plan。
 	_wk().plan(now)
 	var real_c: int = int(GameState.meta_deepsea_coins)
-	## ★2026-11-11 用户「我们现在不显示龟币了…把那个显示龟币那个地方给去掉，我们就只显示深海币」(语音「规避」= 龟币):
-	##   货币条只剩深海币一段。原来第二段是绿色金币 + GameState 里旧的「龟币累计」字段(全游戏早已没有进账入口),
-	##   而龟币是主站的钱 —— App 里不出现龟币或金额(用户 11-06 / 11-07, 同 mainsite_link_row)。
+	## ★2026-11-11 用户「我们现在不显示龟币了…我们就只显示深海币」: 只剩深海币一段(龟币是主站的钱, App 里不出现; 原第二段读 GameState 里早已不进账的旧龟币字段)。
 	var bar := _currency_bar([
 		["res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0), maxi(0, real_c - _wk().withheld()), real_c],
 	])
