@@ -15,6 +15,10 @@
      每一格按握刀拳头的位置用程序画同一把刀 —— 刀长 / 样子每格一致, 角度按挥砍路线单调走(命中前、命中后都不倒回)。
   ④ 刀光单独一层画在人物后面: 刀尖从上一格到这一格扫过的那片(第 5 / 6 / 7 格), 浅金外沿白, 接命中后原有的金色斩击特效。
   ⑤ 帧序 13 格、命中第 6 格不变(scripts/gamedata/attack_hits.gd), 节拍按代码: 前摇 6 格、后摇 6 格。
+★11-11 下午改节奏(用户「一个挥刀的感觉，你展现不出来」; 参考 Katana ZERO 出刀逐帧 docs/studies/20261111c):
+  原来刀从后举到劈下用 6 格匀速转 = 在「转刀」; 现在第 1~5 格往后拉到底并定住(身体后仰 0~3 像素),
+  第 6 格(命中)一格挥完 + 整道大月牙残影(draw_smear, 刀尖扫过的路, 以前肩为圆心) + 身体前冲 8 像素,
+  第 6~9 格同一张身体定格、月牙从起手端一段段收, 第 10~12 格收刀。SLOTS 第三项 = 身体横移像素。
 确定性: 重跑逐字节相同。用法: python tools/assetgen/build_ninja_slash.py [--check]
 """
 import math
@@ -30,6 +34,7 @@ SRC = os.path.join(HERE, "ai_src", "ninja_slash")
 OUT = os.path.join(ROOT, "assets", "sprites", "pets", "animations", "ninja", "slash.png")
 PAD = 16
 FW = 64 + 2 * PAD
+SHOULDER = (17.0, 30.0)                     # 前冲出刀那张(k4)的前肩(64 像素坐标): 大月牙残影的圆心
 FEET = 59                                   # 待机脚底行(64 像素坐标): 关键姿势按本体最下一行对齐到这里
 
 ## 关键姿势(64 像素坐标): 握刀点(刀柄穿过拳头的地方) / 要擦的 AI 刀身(两端 + 半宽) / 要擦的护手框
@@ -41,22 +46,25 @@ KEYS = {
 }
 ## 13 格: (身体, 刀角度°: 0 = 正前方(画面左), 90 = 正上, 180 = 正后; None = 刀在背上(待机原图))
 SLOTS = [
-	("idle", None),     # 0 站姿
-	("k1", 130.0),      # 1 拔刀后举
-	("k1", 145.0),      # 2 往后蓄
-	("k1", 155.0),      # 3 蓄到底
-	("k2", 95.0),       # 4 过头顶
-	("k3", 40.0),       # 5 往前下挥
-	("k3", 0.0),        # 6 ★命中: 正前方
-	("k4", -40.0),      # 7 顺势劈到前下方
-	("k4", -50.0),      # 8 停
-	("k4", -50.0),      # 9 停(同一张)
-	("k2", 95.0),       # 10 收刀上提
-	("k1", 165.0),      # 11 插回背上
-	("idle", None),     # 12 站姿
+	("idle", None, 0),      # 0 站姿
+	("k1", 130.0, 0),       # 1 拔刀后举
+	("k1", 150.0, 1),       # 2 往后蓄, 身体微后仰
+	("k1", 160.0, 2),       # 3 蓄到底
+	("k1", 160.0, 2),       # 4 停(同一张)
+	("k1", 168.0, 3),       # 5 最后再往后压一下(出刀前最大蓄力)
+	("k4", -48.0, -8),      # 6 ★命中: 一格挥完(后上 → 头顶 → 正前 → 前下), 身体往前冲 8 像素 + 大月牙残影
+	("k4", -52.0, -8),      # 7 保持前冲, 残影从尾端收
+	("k4", -52.0, -8),      # 8 停(同一张身体, 残影再收)
+	("k4", -52.0, -7),      # 9 残影只剩末梢
+	("k2", 95.0, -3),       # 10 收刀上提, 往回退
+	("k1", 165.0, 0),       # 11 插回背上
+	("idle", None, 0),      # 12 站姿
 ]
+## 大月牙残影(出刀那一格起): 格 → 留下刀路的哪一段(0 = 起手端 SMEAR_FROM, 1 = 收尾端 SMEAR_TO)
+SMEAR = {6: (0.0, 1.0), 7: (0.35, 1.0), 8: (0.62, 1.0), 9: (0.85, 1.0)}
+SMEAR_FROM, SMEAR_TO = 168.0, -48.0
 HIT = 6
-TRAIL = {5: (4, 0.70), 6: (4, 0.62), 7: (6, 0.82)}   # 格 → (从哪一格扫过来, 刀光内沿占刀长的比例): 只贴着刀尖那一截(第一版 0.4~0.5 像一面白旗)
+TRAIL = {}   # 格 → (从哪一格扫过来, 刀光内沿占刀长的比例): 只贴着刀尖那一截(第一版 0.4~0.5 像一面白旗)
 L_BLADE = 19.0
 C_HI = (232, 236, 242)
 C_MID = (141, 150, 163)
@@ -210,9 +218,48 @@ def _inside(x, y, poly):
 	return c
 
 
-def pad(im):
+def draw_smear(layer, pivot, a0, a1):
+	"""出刀一格挥完的大月牙: 刀尖扫过 SMEAR_FROM → SMEAR_TO 的整条路, 只留 [a0, a1] 这一段(0 起手端 / 1 收尾端)。
+	外沿白(刀尖最快)、中间浅金、内沿金; 起手那端参差碎开。"""
+	p = layer.load()
+	cx, cy = pivot[0] + PAD, pivot[1] + PAD
+	r_out = 4.0 + L_BLADE + 3.0
+	r_in = r_out * 0.30
+	span = SMEAR_FROM - SMEAR_TO
+	for y in range(FW):
+		for x in range(FW):
+			vx, vy = x + 0.5 - cx, y + 0.5 - cy
+			r = math.hypot(vx, vy)
+			if r < r_in or r > r_out:
+				continue
+			ang = math.degrees(math.atan2(-vy, -vx))
+			while ang < SMEAR_TO:
+				ang += 360.0
+			while ang > SMEAR_TO + 360.0:
+				ang -= 360.0
+			if ang > SMEAR_FROM:
+				continue
+			t = (SMEAR_FROM - ang) / span
+			if t < a0 or t > a1:
+				continue
+			k = (t - a0) / max(0.001, a1 - a0)
+			thick = r_out - (r_out - r_in) * (0.25 + 0.75 * k)
+			jag = ((x * 7 + y * 13) % 5) * 0.6
+			if r < thick + (jag if k < 0.35 else 0.0):
+				continue
+			rr = (r - r_in) / (r_out - r_in)
+			if rr > 0.70:
+				c = C_TRAIL_EDGE
+			elif rr > 0.38:
+				c = C_TRAIL
+			else:
+				c = (236, 178, 84)
+			put(p, x, y, c)
+
+
+def pad(im, dx=0):
 	c = Image.new("RGBA", (FW, FW), (0, 0, 0, 0))
-	c.paste(im, (PAD, PAD))
+	c.paste(im, (PAD + dx, PAD))
 	return c
 
 
@@ -230,19 +277,18 @@ def build():
 		bodies[kn] = body
 		grips[kn] = (k["grip"][0], k["grip"][1] + dy)
 	frames = []
-	for i, (bn, th) in enumerate(SLOTS):
+	for i, (bn, th, dx) in enumerate(SLOTS):
 		canvas = Image.new("RGBA", (FW, FW), (0, 0, 0, 0))
-		if i in TRAIL:
-			j, inner = TRAIL[i]
-			pb, pt = SLOTS[j]
-			tl = Image.new("RGBA", (FW, FW), (0, 0, 0, 0))
-			draw_trail(tl, grips[pb], pt, grips[bn], th, inner)
-			canvas.alpha_composite(tl)
+		if i in SMEAR:
+			a0, a1 = SMEAR[i]
+			sm = Image.new("RGBA", (FW, FW), (0, 0, 0, 0))
+			draw_smear(sm, (SHOULDER[0] + dx, SHOULDER[1]), a0, a1)
+			canvas.alpha_composite(sm)
 		if th is not None:
 			sw = Image.new("RGBA", (FW, FW), (0, 0, 0, 0))
-			draw_sword(sw, grips[bn], th)
+			draw_sword(sw, (grips[bn][0] + dx, grips[bn][1]), th)
 			canvas.alpha_composite(sw)
-		canvas.alpha_composite(pad(bodies[bn]))      # 身体压在刀上: 刀柄藏进拳头, 护手 / 刀身从拳头里伸出来
+		canvas.alpha_composite(pad(bodies[bn], dx))      # 身体压在刀上: 刀柄藏进拳头, 护手 / 刀身从拳头里伸出来
 		frames.append(canvas)
 	sheet = Image.new("RGBA", (FW * len(frames), FW), (0, 0, 0, 0))
 	for i, f in enumerate(frames):
