@@ -26,7 +26,7 @@ DST = os.path.join(ROOT, "assets", "sprites", "avatars")
 
 ## 源立绘 → 头像文件名(与 MinionCodex.AVATAR 同一张表), 裁框 (左, 上, 边长)。
 CROPS = [
-	("minion.png", "minion.png", (21, 9, 32)),           # 近战小将: 绿色面罩头盔 + 两角
+	("minion.png", "minion.png", (12, 2, 52)),           # 近战小将(11-11 珊瑚骑士): 鱼鳍头盔 + 面罩两点青光 + 两肩珊瑚
 	("minion-back.png", "minion-back.png", (30, 21, 36)),  # 远程小将: 红色头盔顶 + 肩扛炮口
 	("minion-elite.png", "minion-elite.png", (19, 5, 38)), # 精英小将: 紫色面罩头盔
 	("minion-reserve.png", "minion-reserve.png", (37, 28, 30)),  # 援军小将: 黄铜潜水头盔 + 青色舷窗

@@ -341,7 +341,6 @@ scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
 scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
-scripts/gamedata/minion_codex.gd|lit|小将
 scripts/gamedata/minion_codex.gd|lit|援军
 scripts/gamedata/minion_codex.gd|lit|援军 · 远程
 scripts/gamedata/minion_codex.gd|lit|援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
@@ -927,7 +926,6 @@ scripts/scenes/InventoryScene.gd|lit|前往商店
 scripts/scenes/InventoryScene.gd|lit|前排
 scripts/scenes/InventoryScene.gd|lit|后排
 scripts/scenes/InventoryScene.gd|lit|商店
-scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
 scripts/scenes/InventoryScene.gd|lit|战利品 %d/%d
 scripts/scenes/InventoryScene.gd|lit|打碎后随机获得以下奖励之一（每大轮限 1 次）：\n[ul bullet=·]%s[/ul]
@@ -950,6 +948,8 @@ scripts/scenes/InventoryScene.gd|lit|统领%d
 scripts/scenes/InventoryScene.gd|lit|背包
 scripts/scenes/InventoryScene.gd|lit|藏宝图
 scripts/scenes/InventoryScene.gd|lit|设置开战站位
+scripts/scenes/InventoryScene.gd|lit|近战小将
+scripts/scenes/InventoryScene.gd|lit|远程小将
 scripts/scenes/InventoryScene.gd|lit|阵容说明
 scripts/scenes/InventoryScene.gd|lit|魔抗
 scripts/scenes/InventoryScene.gd|lit|（无主动效果）
@@ -1448,7 +1448,6 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|我方
 scripts/scenes/battle/dual_lane_flow.gd|lit|敌军覆没
 scripts/scenes/battle/dual_lane_flow.gd|lit|破蛋 %d:%02d
 scripts/scenes/battle/dual_lane_flow.gd|lit|破蛋定胜负
-scripts/scenes/battle/dual_lane_flow.gd|lit|精英小将
 scripts/scenes/battle/dual_lane_flow.gd|lit|结算
 scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
 scripts/scenes/battle/dual_lane_flow.gd|text|%s  对阵

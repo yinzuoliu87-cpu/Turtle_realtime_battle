@@ -1,0 +1,175 @@
+class_name PierceChainVfx
+extends RefCounted
+## 穿刺铁链演出(近战小将人体浪板; 精英铁锁后续换用)。只管画面, sim 不读: 两端每帧从单位的 pos / height 推。
+## 用户 11-11:「不能说直接去把它拉伸吧」「我们的链头应该是那种尖的穿刺，就像一个尖的链头穿刺过敌人的身体」
+##   「当他把自己拽过去的时候，这个铁链的尖头在哪里？」; 逐帧参考 docs/studies/20261111-链子穿刺拉人参考-锤石Q与天蝎绳镖逐帧.md:
+##   ① 节铺不拉伸: 两种链环交替(a 正面环 / b 侧面环), 按长度增减节数(按需创建)
+##   ② 链头(近战 = 手上那个三刺头原图)先飞, 链子从手腕一节节跟出; 飞行时叠一道越飞越小的横向波, 到达那刻绷直
+##   ③ 扎穿: 尖端越过目标胸口 pierce_out 米(从背后透出); 拉人时链头钉住不动, 人往前飞 ⇒ 链子从手腕那端自然变短
+##   ④ retract(): 撞上前把刺头拔出收回手腕(踩上去那一帧人物图手上已是三刺, 不能同时有两个)
+## 链节 / 链头是一节节 Sprite3D(直播录得进流), 链节带 rope_f 标记(0 = 手, 1 = 链头; verify_minion_pull_speed 数它)。
+## 补间走 battle._reg_tween()(跟 sim 步走, 与拉人位移同一个钟)。
+
+const WAVE_AMP := 0.45        # 飞行时波浪最大振幅(米)
+const WAVE_CYCLES := 1.6      # 整条链上同时有几个波
+const WAVE_SPEED := 9.0       # 波往链头传的速度(相位 / 秒)
+const OVERLAP_PX := 2.0       # 相邻两节压几像素(首尾相接)
+const MAX_LINKS := 400        # 射程 2000 码 ≈ 48 米 / 每节 0.15 米 ≈ 320 节
+
+var battle
+var _from: Callable           # () -> Vector3 手腕世界坐标
+var _to: Callable             # () -> Vector3 目标胸口世界坐标
+var _fly_sec := 0.1
+var _px := 0.015
+var _pierce := 0.6
+var _links: Array = []
+var _head: Sprite3D = null
+var _tex: Array = []
+var _done := false
+var _t := 0.0
+var _ret_t0 := -1.0           # 开始收回的时刻(_t 口径); < 0 = 没在收
+var _ret_sec := 0.1
+
+
+## kind = 贴图前缀(<kind>-link-a.png / -link-b.png / -head.png); px_m = 每像素米数(与人物图同一个, 不出现粗细两种像素);
+## head_left = 链头图的尖朝左(近战三刺头原图朝左)⇒ 翻过来; fly_sec 链头飞到目标的秒数; life_sec 兜底寿命。
+static func fire(b, kind: String, px_m: float, head_left: bool, from_fn: Callable, to_fn: Callable, fly_sec: float, pierce_out: float, life_sec: float) -> PierceChainVfx:
+	var c := PierceChainVfx.new()
+	c.battle = b
+	c._from = from_fn
+	c._to = to_fn
+	c._fly_sec = maxf(0.02, fly_sec)
+	c._px = px_m
+	c._pierce = pierce_out
+	var ta: Texture2D = load("res://assets/sprites/vfx/%s-link-a.png" % kind)
+	var tb: Texture2D = load("res://assets/sprites/vfx/%s-link-b.png" % kind)
+	var th: Texture2D = load("res://assets/sprites/vfx/%s-head.png" % kind)
+	if ta == null or tb == null or th == null or b == null or b._world == null:
+		c._done = true
+		return c
+	c._tex = [ta, tb]
+	c._head = c._sprite(th)
+	c._head.flip_h = head_left
+	var tw = b._reg_tween()
+	tw.bind_node(c._head)
+	tw.tween_method(c._tick, 0.0, life_sec, life_sec)
+	tw.tween_callback(c.release)
+	c._tick(0.0)
+	return c
+
+
+func _sprite(tex: Texture2D) -> Sprite3D:
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 沿屏幕上的链方向手动摆(全朝镜头的公告板会丢掉节点自转)
+	s.shaded = false
+	s.transparent = true
+	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	s.pixel_size = _px
+	battle._world.add_child(s)
+	return s
+
+
+func _link(i: int) -> Sprite3D:
+	while _links.size() <= i:
+		var lk := _sprite(_tex[_links.size() % 2])
+		lk.visible = false
+		lk.set_meta("rope_f", 0.0)
+		_links.append(lk)
+	return _links[i]
+
+
+## 撞上前把刺头拔出、sec 秒内收回手腕, 收完释放
+func retract(sec: float = 0.1) -> void:
+	if _done or _ret_t0 >= 0.0:
+		return
+	_ret_t0 = _t
+	_ret_sec = maxf(0.02, sec)
+
+
+## 每帧: 手腕 → 链头(飞行中按进度、到达后钉在目标上、收回时退回手腕)摆链节
+func _tick(t: float) -> void:
+	_t = t
+	if _done or not is_instance_valid(_head):
+		return
+	var a: Vector3 = _from.call()
+	var tgt: Vector3 = _to.call()
+	var dir: Vector3 = tgt - a
+	var full: float = dir.length()
+	if full < 0.05:
+		return
+	dir /= full
+	var fly: float = clampf(t / _fly_sec, 0.0, 1.0)
+	var tip_end: Vector3 = tgt + dir * _pierce                       # 扎穿后尖端的位置(从背后透出)
+	var tip: Vector3 = a + (tip_end - a) * fly
+	if _ret_t0 >= 0.0:
+		var r: float = clampf((t - _ret_t0) / _ret_sec, 0.0, 1.0)
+		tip = tip_end + (a - tip_end) * r
+		if r >= 1.0:
+			release(0.0)
+			return
+	var head_len: float = float(_head.texture.get_width()) * _px
+	var hd: Vector3 = tip - a
+	var hl: float = hd.length()
+	if hl < 0.001:
+		hd = dir
+	else:
+		hd /= hl
+	var tail: Vector3 = tip - hd * head_len                           # 链头尾端 = 链子末端
+	var chain_len: float = maxf(0.0, (tail - a).dot(hd))
+	var cb: Basis = battle._vfx.cam_basis()
+	var side: Vector3 = cb.z.cross(hd).normalized()
+	var wave: float = WAVE_AMP * (1.0 - fly) * (1.0 - fly)          # 越接近目标越小, 到达那刻 0 = 绷直
+	var step: float = (float(_tex[0].get_width()) - OVERLAP_PX) * _px
+	var n: int = mini(MAX_LINKS, int(floor(chain_len / step)))
+	## 从链头这端往手这端排: 人往前飞时手这端的节先没(收链)
+	for i in range(maxi(n, _links.size())):
+		var lk: Sprite3D = _link(i) if i < n else _links[i]
+		if not is_instance_valid(lk):
+			continue
+		if i >= n:
+			lk.visible = false
+			continue
+		var d_from_tail: float = (float(i) + 0.5) * step
+		var s: float = clampf(1.0 - d_from_tail / maxf(0.001, chain_len), 0.0, 1.0)   # 0 = 手, 1 = 链头
+		var ph: float = TAU * s * WAVE_CYCLES - t * WAVE_SPEED
+		var off: float = wave * DetMath.dsin(PI * s) * DetMath.dsin(ph)
+		var p: Vector3 = tail - hd * d_from_tail + side * off
+		lk.visible = true
+		lk.set_meta("rope_f", s)
+		lk.global_position = p
+		_orient(lk, p, p + hd * 0.1 + side * (wave * DetMath.dsin(PI * s) * 0.6 * DetMath.dcos(ph)))
+	_head.global_position = tip - hd * head_len * 0.5
+	_orient(_head, a, tip)
+
+
+## 精灵沿屏幕上 p0 → p1 的方向摆(镜头基 × 绕视线转)
+func _orient(s: Sprite3D, p0: Vector3, p1: Vector3) -> void:
+	var cam = battle._cam
+	if cam == null or not is_instance_valid(cam) or not cam.is_inside_tree():
+		return
+	var a2: Vector2 = cam.unproject_position(p1) - cam.unproject_position(p0)
+	if a2.length() < 0.01:
+		return
+	var tf: Transform3D = s.global_transform
+	tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), DetMath.datan2(-a2.y, a2.x))
+	s.global_transform = tf
+
+
+## 拉完 / 作废: 剩下的链节和链头淡出释放(fade_sec = 0 ⇒ 立刻释放)
+func release(fade_sec: float = 0.12) -> void:
+	if _done:
+		return
+	_done = true
+	for s in _links + [_head]:
+		if not is_instance_valid(s):
+			continue
+		if fade_sec <= 0.0:
+			s.queue_free()
+			continue
+		var tw = battle._reg_tween()
+		tw.bind_node(s)
+		tw.tween_property(s, "modulate:a", 0.0, fade_sec)
+		tw.tween_callback(s.queue_free)
+	_links.clear()

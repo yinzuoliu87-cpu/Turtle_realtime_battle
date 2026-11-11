@@ -132,7 +132,7 @@ func _dl_spec_name(spec) -> String:
 	if not (spec is Dictionary): return "?"
 	if str(spec.get("kind", "")) == "minion" or spec.has("role"):
 		if MinionCodex.is_reserve(spec): return ReserveConsts.NAME   # 终极战场名单为空时上的援军小将(2026-10-29)
-		return "精英小将" if bool(spec.get("elite", false)) else "小将"
+		return str(MinionCodex.info(MinionCodex.kind_of(spec)).get("name", "小将"))   # 近战 / 远程 / 精英按种类叫全名(用户 11-11)
 	var id = str(spec.get("id", spec.get("kind", "")))
 	return str(battle._data_by_id.get(id, {}).get("name", id))
 

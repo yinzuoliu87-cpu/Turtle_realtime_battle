@@ -104,8 +104,8 @@ const RANGED_BEATS := {
 }
 
 const MELEE_BEATS := {
-	"leap": 0.64,    # 0.00-0.64 蓄力(tween_interval 0.3) + 起跳(tween_method 0.34)
-	"throw": 0.64,   # 0.64-1.28 滞空(_pending_shots delay 0.68 → 1.28)
+	"leap": 0.68,    # 0.00-0.68 蓄力(tween_interval 0.3) + 起跳(tween_method 0.34) + 到顶; 0.68 射链时才切 throw(11-11 原写 0.64 ⇒ 最后 0.04 秒回站姿)
+	"throw": 0.60,   # 0.68-1.28 刺头射出悬停(_pending_shots delay 0.68 → 1.28)
 	## "dive" 11-08 起按距离变长(按速度飞), 运行时按实际时长传 fps ⇒ 改由 verify_minion_pull_speed 量
 	"surf": 0.833,   # 1.58-2.41 踩滑(slide_dur = 0.833)
 	"land": 0.30,    # 2.41 侧跳落地

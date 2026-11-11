@@ -1181,7 +1181,7 @@ func _open_unit_card() -> void:
 		var front: bool = str(u.get("role", "front")) == "front"
 		var mlv: int = GameState.battle_level_for("") + int(u.get("temp_lv", 0))
 		pv = UnitStatPreview.minion(elite, front, mlv, eqs)
-		title = "精英小将" if elite else "小将"
+		title = "精英小将" if elite else ("近战小将" if front else "远程小将")   # 按种类叫全名(用户 11-11)
 		tag = "Lv %d  ·  %s" % [mlv, "精英" if elite else ("前排" if front else "后排")]
 		icon = "res://assets/sprites/%s" % Phase2Minion.minion_img(elite, not front)
 	_ui_layer = self

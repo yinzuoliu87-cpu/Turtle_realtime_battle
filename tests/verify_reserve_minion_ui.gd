@@ -330,11 +330,12 @@ func _battle(gs, art: String) -> void:
 	var cur_tex: PackedStringArray = _tex_paths(root) if root != null else PackedStringArray()
 	_ok("分母: 幕布建出来了", root != null and cur_txt.size() > 3, str(cur_txt.size()))
 	_ok("★④ 我方名单为空 ⇒ 幕布卡片写「援军小将」", cur_txt.has(ReserveConsts.NAME), str(cur_txt))
-	_ok("④ 对照: 对方幸存的普通 / 精英小将卡名不变", cur_txt.has("小将") and cur_txt.has("精英小将"))
+	_ok("④ 对照: 对方幸存的近战 / 精英小将按种类叫全名(11-11 原来近战 / 远程一律写「小将」)", cur_txt.has("近战小将") and cur_txt.has("精英小将"))
 	var want_cur: String = hd
 	_ok("★④ 援军卡头像 = 援军头像", cur_tex.has(want_cur), str(cur_tex))
 	_ok("④ 名字函数: 援军 / 普通 / 精英", s._dl_sys._dl_spec_name({"kind": "minion", "role": "reserve"}) == ReserveConsts.NAME
-		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "back"}) == "小将"
+		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "back"}) == "远程小将"
+		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "front"}) == "近战小将"
 		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "front", "elite": true}) == "精英小将")
 	s._dl_sys._dl_clear_present_overlay()
 	gs.current_lane = lane0

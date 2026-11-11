@@ -539,8 +539,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		##   **验不到"游戏里摆在哪"** ⇒ 用户当场看出没修好。
 		var _nk = battle.ANIM_NORM.get(battle._anim_key(u), null)
 		if _nk != null and tex != null:
-			u["idle_offy"] = float(_nk[1]) - float(frame_h) * 0.5
-			spr.offset = Vector2(0.0, float(u["idle_offy"]))
+			_apply_minion_norm(u, spr, _nk, frame_h)
 		# 精英小将: 主动技只有铁锤(100龟能·每第3次跃起强化), 另有三个被动(长手刃/吞噬/铁锁) —— 权威 minion_codex.gd "elite"; 详见方案书 20260827 §⑪
 		if u["is_elite"]:
 			u["active_skills"] = ["eliteHammer"]
@@ -760,6 +759,16 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			if "diamondSmash" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 强化钻石结构(技三打包·选中才有): 自身护甲/魔抗额外+100%
 				battle._damage._buff(u, "def", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)
 				battle._damage._buff(u, "mr", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)
+
+## 小将立绘按 ANIM_NORM 归一(_make_unit 抽出, 11-11): 脚底对齐 = 脚底行 - 半帧高;
+##   第 4 项 = 本体米数(11-11 起三种小将 192 方帧、本体只占一半): 按本体高归一, 不按帧高(那样人只有 1 米)
+func _apply_minion_norm(u: Dictionary, spr: Sprite3D, nk: Array, frame_h: int) -> void:
+	u["idle_offy"] = float(nk[1]) - float(frame_h) * 0.5
+	spr.offset = Vector2(0.0, float(u["idle_offy"]))
+	if nk.size() >= 4:
+		u["idle_px"] = float(nk[3]) / maxf(1.0, float(nk[2]))
+		spr.pixel_size = float(u["idle_px"])
+
 
 func _spawn_hiding_minion(u: Dictionary) -> void:
 	battle._audio_sys.sfx_passive(u, "hiding")   # 被动音效(11-05; 只管声音)

@@ -171,7 +171,7 @@ func ", wi + 10)
 	var wbody: String = main.substr(wi, wj - wi) if wi >= 0 and wj > wi else ""
 	_chk("② 分母: 读到 _tick_elite_whip 函数体", wbody.length() > 500, "%d 字" % wbody.length())
 	_chk("② ★铁锁不再画 _bolt_line 虚线方块 / fx-trail 软拖影(用户「这些像素方块是什么意思」)", not wbody.contains("_bolt_line(") and not wbody.contains("fx-trail.png"))
-	_chk("③ 俯冲动作按飞行时长拉长(_melee_anim(u, \"dive\", 4.0 / dive_sec))", src.contains("battle._melee_anim(u, \"dive\", 4.0 / dive_sec)"))
+	_chk("③ 俯冲动作按飞行时长拉长(_melee_anim(u, \"dive\", MELEE_DIVE_SLOTS / dive_sec))", src.contains("battle._melee_anim(u, \"dive\", MELEE_DIVE_SLOTS / dive_sec)"))
 
 	s.queue_free()
 	await get_tree().process_frame

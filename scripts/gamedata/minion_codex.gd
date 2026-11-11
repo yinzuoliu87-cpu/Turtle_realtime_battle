@@ -220,6 +220,7 @@ static func base_stats(elite: bool, front: bool, level: int) -> Dictionary:
 		return {"name": "精英小将", "rarity": "C", "crit": 0.0,
 			"hp": 1000.0 * mm, "atk": 50.0 * mm, "def": 16.0, "mr": 20.0}
 	# 普通小将: 750HP·前排1.4/后排1.5系数ATK; 近战(前排)双抗 7→13(用户2026-07-19), 远程保持7
-	return {"name": "小将", "rarity": "C", "crit": 0.0,
+	## 名字按种类(用户 11-11「怎么全是小将？不应该分类好吗？」): 单位字典的 name 就是全名, 统计面板 / 结算 / 头像框读到的都对
+	return {"name": "近战小将" if front else "远程小将", "rarity": "C", "crit": 0.0,
 		"hp": 250.0 * mm * 3.0, "atk": 30.0 * mm * (1.4 if front else 1.5),
 		"def": (13.0 if front else 7.0), "mr": (13.0 if front else 7.0)}

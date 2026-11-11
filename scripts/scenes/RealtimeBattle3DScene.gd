@@ -414,7 +414,7 @@ const ACTION_ATTACK := {
 	"ghost":  ["pets/animations/ghost/attack.png", 18.7],   # 12 帧 / 0.64s(原 9 帧 × 14)
 	"ninja":  ["pets/animations/ninja/slash.png", 40.0],   # 13 帧 / 0.33s(原 3 帧 × 16 = 0.19s 太急)
 	"__minion_elite__": ["pets/animations/elite/attack.png", 39.0],   # 13 帧 / 0.33s(原 4 帧 × 12)
-	"__minion_front__": ["pets/animations/melee/attack.png", 16.0],   # 12 帧 / 0.75s(原 9 帧 × 12)
+	"__minion_front__": ["pets/animations/melee/attack.png", 19.6],   # 11-11 珊瑚骑士: 13 格 / 0.66s(命中格 5 ÷ 前摇 0.255s)
 	"__minion_back__": ["pets/animations/ranged/attack.png", 28.8],   # 12 帧 / 0.42s(原 5 帧 × 12)
 	"__minion_reserve__": ["pets/animations/reserve/attack.png", 24.0],   # 援军小将(2026-10-29): 推掌放小气弹; 12 帧 / 0.5s(原 7 帧 × 14)
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
@@ -437,11 +437,11 @@ const ACTION_ATTACK := {
 #     改回 4帧@4.8fps: 每帧208ms, 项目现有区间是62-160ms, 略慢但同量级 —— 滑板保持平衡
 #     本来就是"摆一个姿势保持住"。
 const ACTION_MELEE := {
-	"leap":  ["pets/animations/melee/leap.png", 6.25],    # 4帧 / 0.64s(0.00-0.64 蓄力+起跳)
-	"throw": ["pets/animations/melee/throw.png", 6.25],   # 4帧 / 0.64s(0.64-1.28 滞空甩索)
-	"dive":  ["pets/animations/melee/dive.png", 13.0],    # 4帧 / 0.31s ≈ 节拍 0.30s
-	"surf":  ["pets/animations/melee/surf.png", 4.8],     # 4帧 / 0.833s = 每帧208ms(保持平衡姿势, 不是高频抖)
-	"land":  ["pets/animations/melee/land.png", 13.0],    # 4帧 / 0.31s ≈ 落地 0.30s
+	"leap":  ["pets/animations/melee/leap.png", 14.7],    # 11-11: 10格 / 0.68s(蹲 0~0.30 + 起跳; 0.68 出链)
+	"throw": ["pets/animations/melee/throw.png", 9.7],    # 11-11: 6格 / 0.62s(0.68-1.28 刺头射出·手腕空着悬停; 多 0.02s 免得切俯冲前闪一帧站姿)
+	"dive":  ["pets/animations/melee/dive.png", 13.0],    # 8格; 运行时按拉人秒数传 fps(hiding_system: 8 ÷ dive_sec)
+	"surf":  ["pets/animations/melee/surf.png", 4.7],     # 4格 / 0.85s(滑 0.833s; 多 0.02s 免得切落地前闪一帧站姿): 蹲稳姿势 + 呼吸
+	"land":  ["pets/animations/melee/land.png", 13.3],    # 4格 / 0.30s: 蹬离 / 下落 / 触地(专属动作挡普攻 ⇒ 不许长于 0.30s)
 }
 # ★fps 让【动画时长 == 技能节拍】。2026-07-22 复查发现精英五段有四段对不上,
 #   动画先播完 → _render._advance_anim 立刻回 idle → 剩下那段时间角色是站姿:
@@ -1916,7 +1916,7 @@ const ELITE_ACT_FEET_ROW := 71.0  # 动作帧里脚底所在行
 #   门禁 verify_elite_anim 会拿 png 的真实 bbox 跟这张表对账。
 const ANIM_NORM := {
 	"__minion_elite__": [47.0, 71.0, 71.0],
-	"__minion_front__": [45.0, 65.0, 60.0],
+	"__minion_front__": [99.0, 176.0, 99.0, 1.5],   # 11-11 珊瑚骑士: 192 方帧本体 99 脚底 176; 第 4 项 = 本体米数(帧里留白多, 不按帧高归一)
 	## 远程小将/亡魂(2026-08-21)。★立绘一律取**侧面(west)** ⇒ idle 等于动作第0帧, 不再有转身与大小跳变
 	##   (用户报过「站立的动作完全衔接不上」, 根因就是原来立绘取的是正面而动作图是侧面)。数值由门禁对账。
 	"__minion_back__": [52.0, 76.0, 52.0],   # 实测: 动作第0帧 本体52/脚底76; idle(侧面) 本体52
@@ -4754,26 +4754,6 @@ func _venom_splat(pos2d: Vector2) -> void:   # 蛇女毒液飞溅: 毒绿中心�
 ##   这里只留转发, 24 个调用点(battle._bolt_line)一个都不用改。
 func _bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	_vfx.bolt_line(a2d, b2d, col)
-
-func _surf_chain_shoot(from2d: Vector2, fromh: float, to2d: Vector2, col: Color) -> void:   # 从小将(空中)射铁链向目标: 端点快速伸长(射出感)→保持→淡出(用户2026-07-18"绳子从小将射向目标")
-	var im := MeshInstance3D.new()
-	im.mesh = VfxTex.gen_empty_mesh()
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = col; mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mat.vertex_color_use_as_albedo = true
-	im.material_override = mat
-	_world.add_child(im)
-	var a := _world_pos(from2d, fromh)
-	var b := _world_pos(to2d, 0.8)
-	var tw := _reg_tween()
-	tw.bind_node(im)
-	tw.tween_method(func(q: float) -> void:              # 伸长: 端点从小将→目标(射出)
-		if not is_instance_valid(im): return
-		im.mesh = VfxTex.gen_line(a, a.lerp(b, q), Color.WHITE, Color.WHITE, mat, false)   # 每次新建一份(逐帧直播 S3)
-	, 0.0, 1.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(UIPalette.T_TAP)
-	tw.tween_property(mat, "albedo_color:a", 0.0, UIPalette.T_BASE)
-	tw.tween_callback(im.queue_free)
 
 func _skill_vfx_tex(name: String) -> Texture2D:
 	if name == "":
