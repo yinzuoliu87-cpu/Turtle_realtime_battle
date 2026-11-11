@@ -19,6 +19,7 @@ var _n := 0
 var _gs
 var _b = null
 var _hp := {}
+var _lv := {}
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -40,6 +41,7 @@ func _process(_d: float) -> void:
 		var k := "%s/%s" % [str(u.get("side", "")), str(u.get("id", ""))]
 		if not _hp.has(k):
 			_hp[k] = float(u.get("maxHp", 0.0))
+			_lv[k] = int(u.get("level", 0))
 
 
 func _snap_a(tl: Dictionary, minion_tl: int) -> Dictionary:
@@ -60,11 +62,12 @@ func _snap_a(tl: Dictionary, minion_tl: int) -> Dictionary:
 func _run(a: Dictionary, b: Dictionary) -> Dictionary:
 	_b = null
 	_hp = {}
+	_lv = {}
 	var job = JSON.parse_string(JSON.stringify({"v": 1, "job_id": 1, "match_id": MID, "mode": "gauntlet", "key": {"week": 1},
 		"seed": 77, "client_version": ReplayRecorder.client_version(), "a": a, "b": b}))
 	var res: Dictionary = await RefereeRunner.run(self, job, _on_battle)
 	_b = null
-	return {"res": res, "hp": _hp.duplicate()}
+	return {"res": res, "hp": _hp.duplicate(), "lv": _lv.duplicate()}
 
 
 func _ready() -> void:
@@ -104,10 +107,15 @@ func _ready() -> void:
 	var want_a: float = float(UM.level_multiplier(lvl_a + 2)) / float(UM.level_multiplier(lvl_a))
 	var want_b: float = float(UM.level_multiplier(lvl_b + 2)) / float(UM.level_multiplier(lvl_b))
 	var got_a: float = float(h1.get("left/basic", 0.0)) / maxf(1.0, float(h0.get("left/basic", 0.0)))
-	var got_b: float = float(h1.get("right/" + foe, 0.0)) / maxf(1.0, float(h0.get("right/" + foe, 0.0)))
 	_ok("B ★左方 +2 级 ⇒ 最大生命按等级倍率放大(要 %.3f 实测 %.3f)" % [want_a, got_a], absf(got_a - want_a) < 0.02)
 	_ok("B 分母: 没用的龟不变", absf(float(h1.get("left/stone", 0.0)) - float(h0.get("left/stone", -1.0))) < 1.0)
-	_ok("C ★右方同一条规则(要 %.3f 实测 %.3f)" % [want_b, got_b], absf(got_b - want_b) < 0.02)
+	## C 量等级本身, 不量生命比值(11-11): 对手开局最大生命里有一截不吃等级倍率的固定值(机器人带装备 / 龟自身加成),
+	##   RULES_VER 5 → 6 换了机器人种子后对手从石头龟(固定 +190, 比值 1.084 擦线过)换成太空龟(固定 +700, 比值 1.057)。
+	##   探针: 太空龟 Lv1 → Lv3、943 × 1.10 + 700 = 1737 —— 临时等级是生效的, 是旧判据把固定值也算进了倍率。
+	var lv0: int = int((r0["lv"] as Dictionary).get("right/" + foe, 0))
+	var lv1: int = int((r1["lv"] as Dictionary).get("right/" + foe, 0))
+	_ok("C ★右方同一条规则: 对手那只 +2 级(Lv%d → Lv%d, 要 Lv%d)、最大生命变大(%.0f → %.0f; 吃倍率的部分 %.3f 倍, 另有固定值)" % [lv0, lv1, lvl_b + 2, float(h0.get("right/" + foe, 0)), float(h1.get("right/" + foe, 0)), want_b],
+		lv0 == lvl_b and lv1 == lvl_b + 2 and float(h1.get("right/" + foe, 0.0)) > float(h0.get("right/" + foe, 0.0)) + 1.0)
 	var mkey := "left/__minion__"
 	_ok("D ★左方小将 temp_lv ⇒ 生命变大", float(h1.get(mkey, 0.0)) > float(h0.get(mkey, 0.0)) * 1.05, "%.0f → %.0f" % [float(h0.get(mkey, 0.0)), float(h1.get(mkey, 0.0))])
 	_ok("E 快照写 999 ⇒ 夹到 10", Backend.ghost_temp_level({"temp_levels": {"x": 999}}, "x") == 10)
