@@ -15,6 +15,8 @@ const WAVE_CYCLES := 1.6      # 整条链上同时有几个波
 const WAVE_SPEED := 9.0       # 波往链头传的速度(相位 / 秒)
 const OVERLAP_PX := 2.0       # 相邻两节压几像素(首尾相接)
 const MAX_LINKS := 400        # 射程 2000 码 ≈ 48 米 / 每节 0.15 米 ≈ 320 节
+const PRE_SAG := 0.25         # 出手前那节链的下垂(米): 中间往下坠, 碰到地面就平躺(不是一根硬棍)
+const GROUND_Y := 0.05        # 链节最低贴到离地多少米(再低会被地面挡掉半截)
 
 var battle
 var _from: Callable           # () -> Vector3 手腕世界坐标
@@ -29,12 +31,20 @@ var _done := false
 var _t := 0.0
 var _ret_t0 := -1.0           # 开始收回的时刻(_t 口径); < 0 = 没在收
 var _ret_sec := 0.1
+## 出手前阶段(精英铁锁后甩, 11-11): _pre 秒内链头拖在 _pre_tip(身后地面), 链子一头连 _pre_hand; 之后照常飞
+var _pre := 0.0
+var _pre_hand: Callable
+var _pre_tip: Callable
 
 
 ## kind = 贴图前缀(<kind>-link-a.png / -link-b.png / -head.png); px_m = 每像素米数(与人物图同一个, 不出现粗细两种像素);
 ## head_left = 链头图的尖朝左(近战三刺头原图朝左)⇒ 翻过来; fly_sec 链头飞到目标的秒数; life_sec 兜底寿命。
-static func fire(b, kind: String, px_m: float, head_left: bool, from_fn: Callable, to_fn: Callable, fly_sec: float, pierce_out: float, life_sec: float) -> PierceChainVfx:
+static func fire(b, kind: String, px_m: float, head_left: bool, from_fn: Callable, to_fn: Callable, fly_sec: float, pierce_out: float, life_sec: float,
+		pre_sec: float = 0.0, pre_hand: Callable = Callable(), pre_tip: Callable = Callable()) -> PierceChainVfx:
 	var c := PierceChainVfx.new()
+	c._pre = pre_sec if pre_hand.is_valid() and pre_tip.is_valid() else 0.0
+	c._pre_hand = pre_hand
+	c._pre_tip = pre_tip
 	c.battle = b
 	c._from = from_fn
 	c._to = to_fn
@@ -90,9 +100,16 @@ func retract(sec: float = 0.1) -> void:
 
 ## 每帧: 手腕 → 链头(飞行中按进度、到达后钉在目标上、收回时退回手腕)摆链节
 func _tick(t: float) -> void:
-	_t = t
+	_t = t - _pre                 # 出手时刻起算(retract 记的也是这个口径)
 	if _done or not is_instance_valid(_head):
 		return
+	if _t < 0.0:                  # 出手前: 链头拖在身后地面, 一头连身后的拳头, 不波动
+		var q: float = clampf(t / maxf(0.001, _pre), 0.0, 1.0)
+		var ph: Vector3 = _pre_hand.call(q)
+		var pt: Vector3 = _pre_tip.call(q)
+		_lay(ph, pt, 0.0, t, (pt - ph).normalized(), PRE_SAG)
+		return
+	t = _t
 	var a: Vector3 = _from.call()
 	var tgt: Vector3 = _to.call()
 	var dir: Vector3 = tgt - a
@@ -109,6 +126,11 @@ func _tick(t: float) -> void:
 		if r >= 1.0:
 			release(0.0)
 			return
+	_lay(a, tip, WAVE_AMP * (1.0 - fly) * (1.0 - fly), t, dir)   # 越接近目标波越小, 到达那刻 0 = 绷直
+
+
+## 从手 a 到链头尖 tip 摆一串链节 + 链头(wave = 横向波浪振幅, 米; dir = 手与链头重合时的朝向; sag = 中间下垂米数)
+func _lay(a: Vector3, tip: Vector3, wave: float, t: float, dir: Vector3, sag: float = 0.0) -> void:
 	var head_len: float = float(_head.texture.get_width()) * _px
 	var hd: Vector3 = tip - a
 	var hl: float = hd.length()
@@ -120,7 +142,6 @@ func _tick(t: float) -> void:
 	var chain_len: float = maxf(0.0, (tail - a).dot(hd))
 	var cb: Basis = battle._vfx.cam_basis()
 	var side: Vector3 = cb.z.cross(hd).normalized()
-	var wave: float = WAVE_AMP * (1.0 - fly) * (1.0 - fly)          # 越接近目标越小, 到达那刻 0 = 绷直
 	var step: float = (float(_tex[0].get_width()) - OVERLAP_PX) * _px
 	var n: int = mini(MAX_LINKS, int(floor(chain_len / step)))
 	## 从链头这端往手这端排: 人往前飞时手这端的节先没(收链)
@@ -136,10 +157,18 @@ func _tick(t: float) -> void:
 		var ph: float = TAU * s * WAVE_CYCLES - t * WAVE_SPEED
 		var off: float = wave * DetMath.dsin(PI * s) * DetMath.dsin(ph)
 		var p: Vector3 = tail - hd * d_from_tail + side * off
+		var tan: Vector3 = hd * 0.1 + side * (wave * DetMath.dsin(PI * s) * 0.6 * DetMath.dcos(ph))
+		if sag > 0.0:                                                  # 下垂: 中间坠下, 贴地那段平躺
+			var sy: float = p.y - sag * DetMath.dsin(PI * s)
+			tan.y -= 0.1 * sag * PI * DetMath.dcos(PI * s) / maxf(0.001, chain_len)
+			if sy <= GROUND_Y:
+				sy = GROUND_Y
+				tan.y = 0.0
+			p.y = sy
 		lk.visible = true
 		lk.set_meta("rope_f", s)
 		lk.global_position = p
-		_orient(lk, p, p + hd * 0.1 + side * (wave * DetMath.dsin(PI * s) * 0.6 * DetMath.dcos(ph)))
+		_orient(lk, p, p + tan)
 	_head.global_position = tip - hd * head_len * 0.5
 	_orient(_head, a, tip)
 

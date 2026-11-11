@@ -5998,9 +5998,9 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	var to5: Vector2 = tgt["pos"]
 	_elite_sys._elite_mist(from5 + DetMath.norm((to5 - from5)) * 24.0, 0.8, 3)   # 手臂黑雾幻化
 	## 链节依次伸出(快), 留到被拽过去、途中逐段收(11-08; 链节只管画面, 不进单位字典; 兜底寿命 = 出手 + 拉完 + 余量)
-	var whip_links: Array = _elite_sys.whip_chain(u, tgt,   # 穿刺链(11-11): 后甩前摇 WHIP_WINDUP_SEC 后从拳头射出
+	var whip_links: Array = _elite_sys.whip_chain(u, tgt,   # 穿刺链(11-11): 后甩带出一节拖地, 甩出那格从拳头射出
 		EliteSystem.WHIP_SHOT_DELAY + EliteSystem.whip_pull_sec(from5, to5) + 0.4)
-	_pending_shots.append({"delay": EliteSystem.WHIP_WINDUP_SEC + 0.14, "fn": func() -> void:   # 命中(链头扎中): 顿一下+目标眩晕0.4s
+	_pending_shots.append({"delay": EliteSystem.WHIP_HIT_SEC, "fn": func() -> void:   # 命中(链头扎中): 顿一下+目标眩晕0.4s
 		if not tref.get("alive", false) or not uu.get("alive", false):
 			uu["_slam"] = false
 			_elite_sys.whip_chain_release(whip_links)

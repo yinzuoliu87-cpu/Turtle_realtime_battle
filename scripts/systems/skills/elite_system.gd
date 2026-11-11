@@ -31,6 +31,7 @@ const WHIP_SHOT_DELAY := 0.3            # 链射出手到开始拉体(与 _tick_
 ## 铁锁出手前摇(11-11 用户「你的手可以…往回这个地上甩一下，把这个链子带出来…紧接着手臂往前甩」): 后甩 + 后拉 0.2 秒后才出链。
 ##   改了对局结果(晕 / 拉人都晚 0.2 秒) ⇒ RULES_VER 本周已是 6, 规则指纹要刷。
 const WHIP_WINDUP_SEC := 0.2
+const WHIP_HIT_SEC := WHIP_WINDUP_SEC + 0.14   # 链头扎中(目标晕 + 闪)的时刻, 从出招算; _tick_elite_whip 用
 const WHIP_ANIM_SLOTS := 11.0           # whip.png 格数(tools/assetgen/build_minion_redo.py)
 ## 穿刺链(PierceChainVfx, 与近战同一套): 从拳头射出, 链头 = elite-chain-head(菱形紫刃), 扎穿目标胸口
 const WHIP_CHAIN_FLY := 0.12
@@ -40,6 +41,12 @@ const WHIP_FIST_FWD := 54.0            # 甩出那张拳头在身体前方 85 �
 const WHIP_FIST_UP := 1.0              # 拳头离地(米)
 const WHIP_CHEST_UP := 0.9
 const WHIP_RETRACT_SEC := 0.1
+## 后甩时拳头在身后多少码 / 离地多少米(whip.png 第 1 张: 腰带扣后 30 像素、离地 31 像素; 第 2 张: 55 / 56 像素; 1 像素 = 1.8 / 117 米, 1 码 = 0.024 米)
+const WHIP_BACK_HAND_0 := 19.0
+const WHIP_BACK_HAND_1 := 35.0
+const WHIP_BACK_UP_0 := 0.48
+const WHIP_BACK_UP_1 := 0.86
+const WHIP_BACK_TIP := 66.0            # 链头拖在身后地面多远(码): 拳头到链头约 1.1 米一节链
 
 ## 拉过去要飞多久: 距离 ÷ 速度。
 static func whip_pull_sec(from: Vector2, to: Vector2) -> float:
@@ -50,7 +57,7 @@ static func whip_anim_fps(d: float) -> float:
 	return WHIP_ANIM_SLOTS / (WHIP_WINDUP_SEC + WHIP_SHOT_DELAY + maxf(WHIP_PULL_MIN, (d + 46.0) / WHIP_PULL_SPD))
 
 
-## 铁锁的穿刺链(画面): 前摇后从拳头射出。返回句柄 [状态]; 前摇里就作废(目标死了等)⇒ 不再射。sim 不读。
+## 铁锁的穿刺链(画面): 前摇里链头拖在身后地面(后甩带出一节), 前摇完从拳头射出。返回句柄 [状态]; 作废 ⇒ whip_chain_release 立刻放掉。sim 不读。
 func whip_chain(u: Dictionary, tgt: Dictionary, life: float) -> Array:
 	var st := {"cancel": false, "chain": null}
 	var fist := func() -> Vector3:
@@ -59,10 +66,23 @@ func whip_chain(u: Dictionary, tgt: Dictionary, life: float) -> Array:
 		return battle._world_pos((u["pos"] as Vector2) + dn * WHIP_FIST_FWD, float(u.get("height", 0.0)) + WHIP_FIST_UP)
 	var chest := func() -> Vector3:
 		return battle._world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + WHIP_CHEST_UP)
-	battle._pending_shots.append({"delay": WHIP_WINDUP_SEC, "fn": func() -> void:
-		if not st["cancel"]:
-			st["chain"] = PierceChainVfx.fire(battle, "elite-chain", WHIP_CHAIN_PX, false, fist, chest, WHIP_CHAIN_FLY, WHIP_PIERCE_OUT, life)
-	, "src": u})
+	## 后甩: 链头拖在身后地面, 一头连身后的拳头 —— 用户「往回这个地上甩一下，把这个链子带出来」
+	## 拳头按 whip.png 前两格走(人物图逐格换, 链端也逐格跳): 第 1 格往地上甩 / 第 2 格后拉蓄力; q = 后甩进度 0 ~ 1
+	var back_hand := func(q: float) -> Vector3:
+		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
+		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
+		var back: float = WHIP_BACK_HAND_0 if q < 0.5 else WHIP_BACK_HAND_1
+		var up: float = WHIP_BACK_UP_0 if q < 0.5 else WHIP_BACK_UP_1
+		return battle._world_pos((u["pos"] as Vector2) - dn * back, float(u.get("height", 0.0)) + up)
+	var back_tip := func(_q: float) -> Vector3:
+		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
+		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
+		return battle._world_pos((u["pos"] as Vector2) - dn * WHIP_BACK_TIP, 0.06)
+	## 出链 = 动作播到第 3 格「甩出」那刻(帧率随拉人距离变, 与 _tick_elite_whip 同一个 d); 链头仍在 WHIP_HIT_SEC 扎到
+	var pre: float = 2.0 / whip_anim_fps(DetMath.dist((tgt["pos"] as Vector2), u["pos"]))
+	var fly: float = clampf(WHIP_HIT_SEC - pre, 0.06, WHIP_CHAIN_FLY)
+	st["chain"] = PierceChainVfx.fire(battle, "elite-chain", WHIP_CHAIN_PX, false, fist, chest, fly, WHIP_PIERCE_OUT, life + pre,
+		pre, back_hand, back_tip)
 	return [st]
 
 
@@ -384,7 +404,7 @@ func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(
 	spk.flip_h = randf() < 0.5
 	spk.position = battle._world_pos(pos2d, 0.05)
 	spk.rotation.z = randf_range(-0.35, 0.35)
-	spk.modulate = Color(1.05, 0.9, 1.35, 1.0)                      # 提亮(暗地上要明显)
+	spk.modulate = Color(1.25, 1.1, 1.1, 1.0)                      # 提亮(暗地上要明显)
 	battle._world.add_child(spk)
 	battle._skill_ring(pos2d, Color(0.385, 0.054, 0.605, 0.55), 22.0)         # 破土
 	var rgt2: Texture2D = VfxTex._make_fire_glow_tex()
@@ -439,7 +459,6 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			fs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			fs.shaded = false; fs.transparent = true
 			fs.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			fs.modulate = Color(0.8, 0.62, 1.2, 1.0)   # 11-11 深渊精英: 巨拳偏紫(贴图是旧红紫精英的黑红色)
 			fs.pixel_size = (26.0 * battle.WS) / float(maxi(1, ftex.get_height()))
 			fs.position = battle._world_pos(slam_p, 1.7)                  # 举高
 			battle._world.add_child(fs)
@@ -498,7 +517,6 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			fs2.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			fs2.shaded = false; fs2.transparent = true
 			fs2.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			fs2.modulate = Color(0.8, 0.62, 1.2, 1.0)   # 11-11 深渊精英: 巨拳偏紫(贴图是旧红紫精英的黑红色)
 			fs2.pixel_size = (30.0 * battle.WS) / float(maxi(1, ftex.get_height()))
 			fs2.position = battle._world_pos(center, 6.0)
 			battle._world.add_child(fs2)
