@@ -576,7 +576,6 @@ scripts/gamedata/vfxlab_cases.gd|lit|★★整套演出只有 0.9 秒(白核 0.2
 scripts/gamedata/vfxlab_cases.gd|lit|★★有效观察窗口是 1.0~4.5 秒: 6.5 秒之后小龟自己的技能 basicBarrage(台子给满龟能)会放出两颗大白球, 把电弧整个盖住 —— 别把那两颗白球当成 027 的演出(我第一轮就差点当它是 bug 去查)。 ★attacker 必须开 —— 它靠**普攻命中**才消耗充能(EQDEMO 默认不攻击, 不开就永远不触发)。 ★假人 5 万血且不还手: 要看满 5 层用完(★3 起手 5 层 × 每 3 秒一次 ⇒ 约 15 秒), 打死了就看不到层数归零那一刻。 ★拍点铺 1.0~7.75 每 0.25s: 覆盖前三次触发与之间的电火花。
 scripts/gamedata/vfxlab_cases.gd|lit|★★看点是那条**两段**的链: 竹箭飞出去命中 → 绿球从敌人身上飞**回**携带者 → **落到身上才结算**(回血 + 最大生命永久 +90)。所以拍点要把绿球的整段回程铺满(2.7~4.2 每 0.2 秒), 只拍命中那一刻会漏掉后半条。 ★`carrier_hp` 压到 45%: 回血看得见。 ★attacker 必开 + 只放一个敌人: 每第 3 段普攻才消耗一次充能, 敌人多了普攻会分散。 ★★拍点第一版押在 1.0~4.6 秒, 实拍**整段什么都没有** —— 第 3 段普攻要等到 t≈5.4 才到。现在铺 4.90~6.50 每 0.15 秒覆盖【竹箭出手 → 命中绿爆 → 绿球回程 → 落到身上吸收】。 ★注意小龟自己的 basicBarrage(台子给满龟能)会放两颗大白球, 别把那两颗当成 039 的绿球。
 scripts/gamedata/vfxlab_cases.gd|lit|★三个敌人: ★3 只发 2 颗火球 —— 三个靶子才看得出它是**挑了两个**而不是「全场都挨」。 ★前 8 张密排 0.15~1.80: 火球是抛物线, 出手→飞行→炸开总共不到 1.5 秒, 疏了就只剩爆炸。后面按秒铺到 8.20 = 摊付窗口(EARRING_HOT_SEC=8)的全程。 ★zoom 0.95: 镜头要同时装下携带者(绿光上浮)和两个挨火球的敌人。
-scripts/gamedata/vfxlab_cases.gd|lit|★三条件链: 假人还手 → 闪避(随机) → 下一次普攻强化。enemy_attacks + attacker 缺一不可, 且闪避是概率事件 ⇒ dur 给到 24 秒、拍点铺满, 否则可能整场一次都没触发而被误判成'没效果'。
 scripts/gamedata/vfxlab_cases.gd|lit|★三次触发(80/55/30%)要靠自然掉血走完 ⇒ 满血起手 + 三个敌人一起打 + dur 30 秒。拍点均匀铺满, 因为掉血速度不可预测, 密排也未必压在阈值上 —— 这件更适合看'吃了几块'的读数而不是抓单帧。
 scripts/gamedata/vfxlab_cases.gd|lit|★三道雷各劈【随机】敌人 ⇒ 三个假人排开才看得出它是随机选靶而不是固定打一个。 ★attacker 关掉: 这一件不靠命中触发, 普攻只会把雷盖住。 ★假人 5 万血: 真伤 1×ATK 打不死, 整段都能看。
 scripts/gamedata/vfxlab_cases.gd|lit|★两个时刻: ①开局套盾(0.3~1.2 秒 —— 它在战斗第一帧就发生, 拍晚了只剩结果) ②破盾爆发。★破盾时刻有 RNG 抖动(探针实测两跑 7.85/9.05), 而 TC 爆发只活 0.4 秒 ⇒ 7.45~9.25 按 0.2 秒铺网格保证网住; 第二次破盾(累计损失 50% 触发的补盾被打破)两跑都在 19.53 ⇒ 19.60/19.75 两张。allies=2 + enemy_attacks 缺一只剩一半。enemy_no_passive: 小龟泡泡盾罩是污染源(063 教训)。
@@ -662,6 +661,7 @@ scripts/gamedata/vfxlab_cases.gd|lit|成型慢是这件的设计核心 ⇒ 拍�
 scripts/gamedata/vfxlab_cases.gd|lit|拍点压在每 4 秒偷取节拍刚过 0.5 秒。★zoom 2.4 实拍时偷来的【冰川】斜穿出右上角出框 ⇒ 降到 1.9 才装得下整条冰路。
 scripts/gamedata/vfxlab_cases.gd|lit|挨打类。2 个敌人围殴让充能快一倍; 携带者默认血锁不死(mortal=false)。
 scripts/gamedata/vfxlab_cases.gd|lit|挨打类。转化本身是数字不是形状 ⇒ 这一件建议配 VFXLAB_TEXT=1 看飘字。
+scripts/gamedata/vfxlab_cases.gd|lit|放技能 → 身前钳形光弧(蓄好) → 下一次普攻出手收弧、命中打出钳斩 + 回血。fast_energy 让技能快速就绪。
 scripts/gamedata/vfxlab_cases.gd|lit|枪
 scripts/gamedata/vfxlab_cases.gd|lit|枪第一发的时刻 = 携带者走到最近敌人 400 码内的时刻; 之前 2 秒节拍攒满也不开。
 scripts/gamedata/vfxlab_cases.gd|lit|法器
