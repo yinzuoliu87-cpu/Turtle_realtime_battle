@@ -195,10 +195,13 @@ def load_secret(environ=None, env_name="beta"):
     return s, p
 
 
-def env_file_bytes(base, secret, stamp, label="内测服"):
-    """服务器上 env-mainsite(-beta) 的全部内容（只在内存里；经 ssh 标准输入写过去）。"""
+def env_file_bytes(base, secret, stamp, label="内测服", host=""):
+    """服务器上 env-mainsite(-beta) 的全部内容（只在内存里；经 ssh 标准输入写过去）。
+    主站根地址是 http（内测主站只有 http://IP:8088）⇒ 加 MAINSITE_LINK_BASE=https://<我们的站点>: App 只肯打开 https 确认页,
+    由 Caddy 片段里 arena-beta 那条 redir /game/link 302 到主站 http 确认页（2026-11-11 联调「绑定直接登录失败、浏览器不开」）。"""
+    link = ("MAINSITE_LINK_BASE=https://%s\n" % host) if (host and str(base).startswith("http://")) else ""
     return ("# 龟投（主站）对接 · %s —— tools/mainsite_deploy.py 写于 %s；root 600；★密钥不进仓库\n"
-            "MAINSITE_BASE=%s\nMAINSITE_HOOK_SECRET=%s\nMAINSITE_OUTBOX=1\n" % (label, stamp, base, secret)).encode("utf-8")
+            "MAINSITE_BASE=%s\nMAINSITE_HOOK_SECRET=%s\nMAINSITE_OUTBOX=1\n%s" % (label, stamp, base, secret, link)).encode("utf-8")
 
 
 def dropin_bytes(env_file):
@@ -521,7 +524,7 @@ def build_ctx(a, c):
         c.append("没有%s密钥文件 %s（或是空的）" % (b["label"], sp))
     ctx["secret_path"] = sp
     ctx["stamp"] = utc_now(a).strftime("%Y-%m-%dT%H:%MZ")
-    ctx["env_bytes"] = env_file_bytes(base, secret, ctx["stamp"], b["label"])
+    ctx["env_bytes"] = env_file_bytes(base, secret, ctx["stamp"], b["label"], b["host"])
     ctx["env_sha"] = sha(ctx["env_bytes"])
     return ctx
 

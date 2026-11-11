@@ -297,7 +297,8 @@ def link_one(sm, be, gw, secret, base, label, uid, device):
     code = (r or {}).get("code", "")
     sm.ok("S3 %s：/app/link/start → 码 + 确认页地址" % label,
           st == 200 and (r or {}).get("ok") is True and CODE_RE.match(code or "") and len(code) == 32
-          and str(r.get("url", "")).endswith("/game/link?code=" + code) and (not base or str(r.get("url", "")).startswith(base + "/")),
+          and str(r.get("url", "")).endswith("/game/link?code=" + code)
+          and (not base or str(r.get("url", "")).startswith(base + "/") or str(r.get("url", "")).startswith(gw + "/")),
           (st, {k: v for k, v in (r or {}).items() if k != "code"}),
           "网关日志 journalctl -u turtle-mainsite-gateway-beta；url 前缀不对 = env 里 MAINSITE_BASE / MAINSITE_LINK_BASE")
     st, r = site(gw, secret, "GET", "/mainsite/link/info?code=" + urllib.parse.quote(code))

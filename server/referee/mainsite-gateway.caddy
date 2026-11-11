@@ -50,6 +50,11 @@ arena.turtlearena.xyz {
 }
 
 arena-beta.turtlearena.xyz {
+	# 绑定确认页跳转(2026-11-11 联调): 主站内测确认页只有 http://45.125.219.123:8088/game/link(没有 https 域名), 而 App 正式包只肯打开
+	#   https 的确认页(mainsite_link.gd url_ok) ⇒ 绑定直接「登录失败」、浏览器不开。内测网关 env 设 MAINSITE_LINK_BASE=https://arena-beta.turtlearena.xyz,
+	#   App 打开我们这个 https 地址, 这里 302 到主站内测的 http 确认页(原样带 ?code=)。正式站主站是 https://turtlepoll.com, 不需要这条。
+	#   主站内测换成 https 域名后: 删这条 + env 里的 MAINSITE_LINK_BASE。
+	redir /game/link http://45.125.219.123:8088{uri} 302
 	import /etc/caddy/turtle-player*.caddy /var/www/turtle-player/beta /var/lib/turtle-referee-beta/streams /var/lib/turtle-referee-beta/streams-expired
 	import mainsite_gateway 127.0.0.1:8791
 }
