@@ -100,6 +100,7 @@ class Env:
         self.restream_404 = False
         self.restream_err = False
         self.on_complete = None
+        self.echo_mid = False            # 假 Godot 的结果单照任务单回填 match_id(真 Godot 就是这样); 默认 False = 一律写 fake_res 原样
         for k in ('POLL_SEC', 'IDLE_POLL_SEC', 'IDLE_AFTER_SEC', 'RESTREAM_POLL_SEC', 'IDLE_FOLLOW_SEC', 'FLAGS_TTL_SEC',
                   'ECON_OFF_POLL_SEC', 'OUTBOX_OFF_POLL_SEC'):
             os.environ.pop(k, None)
@@ -137,7 +138,7 @@ class Env:
         class FakePopen:
             def __init__(self, cmd, stdout=None, stderr=None, env=None):
                 me.popens += 1
-                stream = out = econ = None
+                stream = out = econ = jobp = None
                 if '--path' in cmd:
                     me.godot_proj = cmd[cmd.index('--path') + 1]
                 for a in cmd:
@@ -147,6 +148,8 @@ class Env:
                         stream = a[len('--stream='):]
                     if a.startswith('--out='):
                         out = a[len('--out='):]
+                    if a.startswith('--job='):
+                        jobp = a[len('--job='):]
                 if stream:
                     os.makedirs(stream, exist_ok=True)
                     for i in range(me.chunks):
@@ -163,8 +166,12 @@ class Env:
                                                     'result': {'upto': len(j['rows']), 'bad_at': -1, 'assets': {}}}
                                                    for j in me.econ_in['jobs']]}, f)
                 elif out:
+                    r = dict(me.fake_res)
+                    if me.echo_mid and jobp:
+                        with open(jobp, encoding='utf-8') as f:
+                            r['match_id'] = json.load(f).get('match_id')
                     with open(out, 'w', encoding='utf-8') as f:
-                        json.dump(me.fake_res, f)
+                        json.dump(r, f)
 
             def wait(self, timeout=None):
                 return 0
@@ -527,7 +534,10 @@ def main():
     who = sorted({c[1]['p_worker'] for c in idle_claims})
     ok('㉔ 三条线程都闲着 1.2 秒: 领活 %d 次(各问各的约 60 次, 应约 20)、问的只有 %s' % (len(idle_claims), who),
        8 <= len(idle_claims) <= 30, str(who))
-    nj1, nj2 = job(), job(job_id=78)
+    # 两份是两局 ⇒ match_id 也要不同(2026-11-11): 同一个 match_id 两条线程同时录同一个流目录, 先算完的那份收尾时把目录删了,
+    #   另一份 FileNotFoundError、永远算不完 ⇒ 等满 5 秒误红(Linux CI 上两次; 本机 Windows 时序撞不上)。正式环境一局只有一份任务。
+    nj1, nj2 = job(), job(job_id=78, match_id=MID[:-1] + 'c')
+    e.echo_mid = True
     nj1.pop('task')
     nj2.pop('task')
     busy = {}
