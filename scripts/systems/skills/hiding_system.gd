@@ -399,7 +399,7 @@ func _fire_surf_chain(uu: Dictionary, tref: Dictionary, life: float) -> PierceCh
 		var s = uu.get("sprite", null)
 		if act == "throw":
 			return SpriteArt.point(battle, uu, SURF_WRIST_ART_THROW, fb)
-		if act == "dive" and s is Sprite3D and is_instance_valid(s):
+		if act == "dive" and is_instance_valid(s) and s is Sprite3D:
 			return SpriteArt.point(battle, uu, SURF_WRIST_ART_DIVE[clampi((s as Sprite3D).frame, 0, SURF_WRIST_ART_DIVE.size() - 1)], fb)
 		return fb
 	var chest := func() -> Vector3:

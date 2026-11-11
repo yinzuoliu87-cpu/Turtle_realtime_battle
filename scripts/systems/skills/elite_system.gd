@@ -105,19 +105,19 @@ func _whip_fist(u: Dictionary, fallback: Vector3) -> Vector3:
 	if str(u.get("anim_action", "")) != "whip":
 		return fallback
 	var s = u.get("sprite", null)
-	if not (s is Sprite3D) or not is_instance_valid(s):
+	if not is_instance_valid(s) or not (s is Sprite3D):
 		return fallback
 	return SpriteArt.point(battle, u, WHIP_FIST_ART[_whip_frame(u)], fallback)
 
 
 ## 这一帧人物图要显示第几格: 一帧里先跑战斗推进(链子在这时算)、后跑画面(battle_render._advance_anim 才 anim_t += delta 换格),
-##   读 sprite.frame 会晚一格(11-11 实录: 人物已甩出、链头还在身后多躺一帧) ⇒ 照 _advance_anim 的算法往前推这一帧的 delta。
+##   读 sprite.frame 会晚一格(11-11 实录: 人物已甩出、链头还在身后多躺一帧) ⇒ 照 _advance_anim 的算法往前推这一帧的时长。
 func _whip_frame(u: Dictionary) -> int:
 	var fps: float = float((u.get("anim_sd", {}) as Dictionary).get("fps", 0.0))
 	var s = u.get("sprite", null)
 	if fps <= 0.0:
-		return clampi((s as Sprite3D).frame if s is Sprite3D else 0, 0, WHIP_FIST_ART.size() - 1)
-	var dt: float = (battle as Node).get_process_delta_time() if battle is Node else 0.0
+		return clampi((s as Sprite3D).frame if is_instance_valid(s) and s is Sprite3D else 0, 0, WHIP_FIST_ART.size() - 1)
+	var dt: float = float(battle._frame_sim_dt)        # 本帧推进的时长(战斗路径里不许读 get_process_delta_time, verify_determinism_b ⑧)
 	return clampi(int((float(u.get("anim_t", 0.0)) + dt) * fps), 0, WHIP_FIST_ART.size() - 1)
 
 

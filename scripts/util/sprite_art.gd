@@ -17,7 +17,7 @@ static var _top_cache := {}      # "路径#帧" → 本体顶部那一行(帧内
 
 static func _spr(u: Dictionary) -> Sprite3D:
 	var s = u.get("sprite", null)
-	if s is Sprite3D and is_instance_valid(s) and (s as Sprite3D).texture != null:
+	if is_instance_valid(s) and s is Sprite3D and (s as Sprite3D).texture != null:
 		return s
 	return null
 
