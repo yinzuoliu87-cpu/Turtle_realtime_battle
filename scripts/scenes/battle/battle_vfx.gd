@@ -97,7 +97,7 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 		return
 	if kind == "attack" and id == "ninja":
 		u["_art_px"] = float(u.get("idle_px", battle.PIXEL_SIZE)); u["_art_offy"] = float(u.get("idle_offy", 32.0))   # 普攻帧条 = 待机 64 画布四边补 16 的 96 方帧(build_ninja_slash.py, 给刀留地方): 沿用待机像素尺寸 / 贴地线
-		var _afr: float = float(asd.get("frames", 1))
+		var _afr: float = AttackHits.beats_before(asd.get("frame_w", []), int(asd.get("frames", 1)))   # 整段拍数(登记了每帧拍数的按拍数)
 		var _aiv: float = maxf(0.15, float(u.get("atk_interval", 0.85)))
 		asd["fps"] = clampf(_afr / (_aiv * 0.45), 10.0, 30.0)   # 斩击动作时长随攻速(LoL式·越快越短): 占攻击周期~45%
 	if fps_override > 0.0:

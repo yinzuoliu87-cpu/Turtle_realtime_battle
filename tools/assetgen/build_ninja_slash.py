@@ -1,35 +1,28 @@
 # -*- coding: utf-8 -*-
-"""tools/assetgen/build_ninja_slash.py — 忍者龟普攻帧条: 一刀从右上斜斩到左下(2026-11-11 第七版, 9 格, 第 5 格命中)。
+"""tools/assetgen/build_ninja_slash.py — 忍者龟普攻帧条(2026-11-11 第八版, 7 帧, 第 4 帧命中)。
 
-用户 11-11 定的节奏(原话):「在第二针的时候，他已经把剑扛到自己的右肩的这个上方…第四针起手斩，第五针命中，第六针斩到底，然后第七针去收」
-  「我从头到尾一直在说是右上角往左下角的一个斜砍」「收势…到底是多少？说清楚」(定 3 针)。
-  之前几版的毛病(用户逐条指出): 刀从头顶一格跳到底 / 同一张图重复凑格 / 刀在头顶绕圈不是斜砍 / 身体姿势前后错位(头上下乱跳、脚乱滑、朝向乱翻)。
-第七版改的(用户看第六版:「第二张…整个手臂和脑袋连起来了」「第六针，手和脑袋一样连在一起」「第七针到第八针…是一样的角色吗？」):
-  第六版每格以上一格为源接力出图, 细节一格比一格丢(红眼、米黄腹甲、腰带扣、黑描边), 到第 7 格已经不像同一只龟;
-  第 3~6 格改成「姿势取第六版那格、长相以待机原图为参照重画」(PixelLab edit_image_pro_flash method=reference, 参照 = 待机);
-  第 2 格换成双手在胸前握刀、刀斜过右肩指右上(脸完全露出来, 手臂在下巴以下);
-  第 4 格双手整个举到头顶以上(不再挡在额头前), 角色大小与脚位一像素不动(PixelLab edit_image_pixen)。
-  刀身: 重画的几格刀身被画成米黄, 在刀所在的框里改回待机那把刀的钢色(BLADE_BOX, 只认低饱和的亮色, 不碰腹甲的黄)。
+用户 11-11 挑的(原话, 按先后):「你把所有生成的这个忍者龟的图片都摆这里，然后选一些，干脆拼」
+  「三到五版的第十二帧和第十三帧可以作为第一帧、第二帧」「三到五版的第十八帧，可以作为第三帧…第二十二帧，可以作为第四帧…也是收尾了…
+  第五帧作为收刀」「第三到五版的第十五针，紧跟的插在我们命中针之后」「命中针还是用第三到五版的第十九针」
+  「(第十二帧)把它多复制一份，放到我们第三帧」「可以了，这一份出刀光，然后给我个视频」
+  「那还是把这第三帧给去掉吧…把一二的这个持续时间稍微拉长一点」;
+  「只要嘛把每一帧慢点播放就可以了，播放这个时间你处理好每一帧的时间」⇒ 每帧停多久在 scripts/gamedata/attack_hits.gd 的 FRAME_W。
+  编号 = 总图 .out/ninja_gallery/全部姿势_编号.png(生成过的全部姿势, 不出新图); 8 帧都是第三~五版以待机为源出的, 长相、大小与待机一致。
 
-9 格(96 坐标, 待机: 前脚 23 / 后脚 64 / 头顶 22 / 脚底第 74 行; 实测, 眼睛高度 52 53 62 62 51 51 52 52 52 = 压低蓄力 → 出刀弹起):
-  1 c1_lift      抬刀: 双手握刀到胸前、刀竖直                         前脚 23 后脚 64 头顶 22
-  2 c2_shoulder  双手胸前握刀、刀斜过右肩指右上                       前脚 23 后脚 64 头顶 25(腰以上下沉 2 像素, SINK)
-  3 c3_coil      再往后压: 下蹲、双手到右肩、刀拉到身后水平指右         前脚 19 后脚 64 头顶 29
-  4 c4_start     起手斩: 前脚踏出、双手举过头顶、刀尖指右上高处         前脚 14 后脚 64(头顶 17 是举起的手)
-  5 c5_hit       ★命中: 弓步、双手到胸前、刀水平朝左砍过               前脚 13 后脚 72 头顶 24(放大 9/8)
-  6 c6_end       斩到底: 双手到腰前、刀斜指左下贴地                     前脚 13 后脚 70 头顶 24(放大 9/8)
-  7 c7_rise      收: 起身一半(还屈膝)、右手握刀斜指左下                前脚 20 后脚 64 头顶 23
-  8 c8_stand     收: 站直、刀垂在前脚边(身体 = 待机)                     前脚 25 后脚 63 头顶 22
-  9 待机原图     收: 站姿, 刀回背上                                     前脚 23 后脚 64 头顶 22
-源图: c1 / c2 / c7 / c8 是 192 的 PixelLab 原图(2×2 取众数缩回 96; c2 / c7 是第四版以待机为源出的姿势), c3~c6 是 96 的 PixelLab 原图(直接用)。
-  第 7 格不用重画的那张: 它沿用了接力出图缩小的身体(头宽 22 像素, 待机 29), 接第 8 格会一下变大。
-横向按钉住的那只脚对齐(SLOTS 第二项)。对照图在 .out/ninja_fix/。
-刀光(SWEEP): 沿刀尖实际走过的路画一条带 —— 第 4 格刀尖在右上(98, 22) → 第 5 格到身前胸口高度(3, 57) → 第 6 格到左下贴地(13, 82)
-  (128 坐标, 逐格量刀尖), 是从右上往左下的斜线, 不在头顶绕圈; 第 5 格画右上 → 胸前那一段, 第 6 格画整条(老的一端变细), 第 7 格只剩末梢。
+7 帧(96 坐标, 待机: 前脚 23 / 后脚 64 / 脚底第 74 行):
+  1 f1_raise    12 号  双手握刀往右肩抬                 前脚 23 后脚 64(待机位)
+  2 f2_step     13 号  大跨步、刀举过右肩               前脚 18 后脚 74
+  3 f3_swing    18 号  刀往前上方挥                     前脚 18
+  4 f4_hit      19 号  ★命中: 弓步、刀水平朝左砍过     前脚 20(刀尖贴帧边, 再往左就被截)
+  5 f5_low      15 号  还蹲着、刀斜指左下               前脚 18
+  6 f6_down     22 号  砍到底(收尾)                     前脚 18 后脚 64
+  7 f7_sheath    5 号  收刀                             前脚 18 后脚 64
+源图都是 192 的 PixelLab 原图, 2×2 取众数缩回 96; 横向按前脚对齐(SLOTS 第二项)。
+刀光(SWEEP): 沿刀尖实际走过的路画一条带(128 坐标, 逐帧量刀尖): 第 2 帧刀尖(右上, 头后) → 头顶上方 → 第 3 帧刀尖(左上) → 第 4 帧刀尖(身前左边)
+  = 过头顶往前劈的一道弧; 第 3 帧画到第 3 帧刀尖, 第 4 帧(命中)画整道(老的一端变细), 第 5 帧只剩前面那段末梢。
   外沿金、里面浅金、中心白, 实心无半透明, 画在人物后面。
 画布 128 方帧(待机 64 画布四边各补 32; 四边对称 ⇒ 脚底与待机同一条贴地线, 游戏里 _art_px / _art_offy 沿用待机值)。
-命中第 5 格(下标 4, scripts/gamedata/attack_hits.gd); 命中前 4 格、命中后 4 格(用户定, verify_attack_rhythm 按这个查)。
-确定性: 重跑逐字节相同。用法: python tools/assetgen/build_ninja_slash.py [--check]
+命中第 4 帧(下标 3, scripts/gamedata/attack_hits.gd)。确定性: 重跑逐字节相同。用法: python tools/assetgen/build_ninja_slash.py [--check]
 """
 import math
 import os
@@ -44,56 +37,38 @@ SRC = os.path.join(HERE, "ai_src", "ninja_slash")
 OUT = os.path.join(ROOT, "assets", "sprites", "pets", "animations", "ninja", "slash.png")
 FW = 128
 PAD = 32                 # 64 画布四边补 32 = 128
-POSE_PAD = 16            # AI 图(96)本身是 64 画布四边补 16
+POSE_PAD = 16            # AI 图(缩回后 96)本身是 64 画布四边补 16
 FEET = 74                # 待机脚底行(96 坐标)
-SINK_ROW = 60            # 下沉: 这一行以上整体往下挪(大腿被压短 = 屈膝)
-POSES = ["c1_lift", "c2_shoulder", "c3_coil", "c4_start", "c5_hit", "c6_end", "c7_rise", "c8_stand"]
-SINK = {"c2_shoulder": 2}
-## 擦掉(96 坐标): 第 7、8 格垂下的刀尖穿过了地面线
+POSES = ["f1_raise", "f2_step", "f3_swing", "f4_hit", "f5_low", "f6_down", "f7_sheath"]
+## 擦掉(96 坐标, 对齐脚底之前): 垂下的刀尖穿过了地面线
 ERASE = {
-	"c7_rise": [(0, 76, 30, 96)],
-	"c8_stand": [(14, 76, 32, 96)],
+	"f5_low": [(0, 76, 30, 96)],
 }
-## 刀身改回钢色(96 坐标框, 只在框里改): 重画的几格把刀画成了米黄
-BLADE_BOX = {
-	"c3_coil": (38, 18, 96, 36),
-	"c4_start": (48, 0, 96, 25),
-	"c5_hit": (0, 38, 30, 52),
-	"c6_end": (0, 50, 25, 80),
-}
-STEEL_LIGHT = (221, 209, 182)   # 第 1 格(待机那把刀)刀身的亮色
-STEEL_MID = (210, 197, 169)     # 同上, 次亮色
-## 放大 9/8(每 8 行 / 8 列复制 1 行 / 列, (列相位, 行相位) 挑复制线压到描边 / 红眼最少的): 第六版接力出图一路缩小,
-## 第 5、6 格身体只有待机的七成面积(头宽约 26 / 24 像素, 待机 29), 不放大接第 7 格会一下变大一圈。
-## 以脚底行 + 前脚为锚点: 前脚从第 4 格起踩住不动, 放大多出来的步幅落在后脚(往后蹬约 6 像素);
-## 钉后脚的话前脚和刀会往左长出去, 第 5 格刀尖顶出帧边被截。
-UPSCALE = {
-	"c5_hit": (5, 2),
-	"c6_end": (7, 6),
-}
-## 9 格: (身体, 横移像素 —— 第 1~4 格后脚钉在 64; 第 5、6 格前脚钉在 13(第 4 格前脚 14); 第 7~9 格收脚回站姿)
+## 放大(没有; 8 帧都是以待机为源出的, 大小一致)
+UPSCALE = {}
+## 7 帧: (身体, 横移像素)
 SLOTS = [
-	("c1_lift", 0),
-	("c2_shoulder", -2),
-	("c3_coil", 0),
-	("c4_start", 0),
-	("c5_hit", -12),
-	("c6_end", -5),
-	("c7_rise", -13),
-	("c8_stand", -1),
-	("idle", 0),
+	("f1_raise", -2),
+	("f2_step", 3),
+	("f3_swing", -10),
+	("f4_hit", -16),
+	("f5_low", -15),
+	("f6_down", 0),
+	("f7_sheath", -5),
 ]
-HIT = 4
+HIT = 3
 ## 刀光: 格 → [(x, y, 宽度), …](128 坐标), 沿折线画带, 宽度按点插值、两端收尖
-T4 = (98.0, 22.0)        # 第 4 格刀尖(右上高处)
-M45 = (50.0, 34.0)       # 第 4 → 5 格之间(略往上拱, 从头顶前上方掠过)
-T5 = (3.0, 57.0)         # 第 5 格刀尖(身前胸口高度)
-M56 = (5.0, 70.0)
-T6 = (13.0, 82.0)        # 第 6 格刀尖(左下贴地)
+T2 = (106.0, 20.0)       # 第 2 帧刀尖(右上, 头后)
+A1 = (82.0, 9.0)         # 过头顶的弧(第 3 帧头顶在 40 行)
+A2 = (58.0, 5.0)
+A3 = (34.0, 9.0)
+T3 = (12.0, 21.0)        # 第 3 帧刀尖(左上)
+A4 = (3.0, 40.0)
+T4 = (2.0, 62.0)         # 第 4 帧刀尖(身前左边, 命中)
 SWEEP = {
-	4: [(T4, 1.0), (M45, 5.0), (T5, 9.0)],
-	5: [(T4, 0.5), (M45, 2.5), (T5, 6.0), (M56, 9.0), (T6, 7.0)],
-	6: [(T5, 1.0), (M56, 4.0), (T6, 3.5)],
+	2: [(T2, 1.0), (A1, 2.0), (A2, 4.0), (A3, 6.0), (T3, 8.0)],
+	3: [(T2, 0.5), (A1, 1.5), (A2, 3.0), (A3, 5.0), (T3, 7.0), (A4, 9.0), (T4, 8.0)],
+	4: [(A3, 0.5), (T3, 2.0), (A4, 4.0), (T4, 3.0)],
 }
 C_EDGE = (236, 178, 84)
 C_MID = (255, 236, 168)
@@ -134,18 +109,8 @@ def feet_row(im):
 	return max(y for y in range(h) for x in range(w) if is_green(px[x, y]))
 
 
-def sink(im, n):
-	if n <= 0:
-		return im
-	w, h = im.size
-	out = Image.new("RGBA", im.size, (0, 0, 0, 0))
-	out.paste(im.crop((0, 0, w, SINK_ROW)), (0, n))
-	out.paste(im.crop((0, SINK_ROW + n, w, h)), (0, SINK_ROW + n))
-	return out
-
-
 def upscale98(im, phase):
-	"""im 是 128 画布(身体在 (16, 16) 起的 96 区里); 9/8 最近邻放大后按「脚底行 + 前脚」对回原位, 仍是 128 画布。"""
+	"""im 是 128 画布; 9/8 最近邻放大后按「脚底行 + 前脚」对回原位, 仍是 128 画布。"""
 	fx, fy = phase
 	px = im.load()
 	xs = []
@@ -159,6 +124,7 @@ def upscale98(im, phase):
 	for j, y in enumerate(ys):
 		for i, x in enumerate(xs):
 			bp[i, j] = px[x + 16, y + 16]
+
 	def anchor(img, p):
 		w, h = img.size
 		f = max(y for y in range(h) for x in range(w) if is_green(p[x, y]))
@@ -172,32 +138,15 @@ def upscale98(im, phase):
 
 
 def load_pose(name):
-	p96 = os.path.join(SRC, "%s_96.png" % name)
-	if os.path.exists(p96):
-		im = Image.open(p96).convert("RGBA")
-	else:
-		im = down2(Image.open(os.path.join(SRC, "%s_192.png" % name)))
+	im = down2(Image.open(os.path.join(SRC, "%s_192.png" % name)))
 	px = im.load()
 	for (x0, y0, x1, y1) in ERASE.get(name, []):
 		for y in range(y0, y1):
 			for x in range(x0, x1):
 				px[x, y] = (0, 0, 0, 0)
-	if name in BLADE_BOX:
-		x0, y0, x1, y1 = BLADE_BOX[name]
-		for y in range(y0, y1):
-			for x in range(x0, x1):
-				c = px[x, y]
-				if is_blade(c):
-					lum = 0.30 * c[0] + 0.59 * c[1] + 0.11 * c[2]
-					px[x, y] = (STEEL_LIGHT if lum >= 160.0 else STEEL_MID) + (255,)
 	dy = FEET - feet_row(im)
-	if dy:
-		moved = Image.new("RGBA", im.size, (0, 0, 0, 0))
-		moved.paste(im, (0, dy))
-		im = moved
-	im = sink(im, SINK.get(name, 0))
 	c = Image.new("RGBA", (FW, FW), (0, 0, 0, 0))
-	c.paste(im, (PAD - POSE_PAD, PAD - POSE_PAD))
+	c.paste(im, (PAD - POSE_PAD, PAD - POSE_PAD + dy))
 	if name in UPSCALE:
 		c = upscale98(c, UPSCALE[name])
 	return c
@@ -234,7 +183,7 @@ def draw_sweep(layer, pts):
 
 
 def build():
-	bodies = {"idle": load_idle()}
+	bodies = {}
 	for n in POSES:
 		bodies[n] = load_pose(n)
 	sheet = Image.new("RGBA", (FW * len(SLOTS), FW), (0, 0, 0, 0))

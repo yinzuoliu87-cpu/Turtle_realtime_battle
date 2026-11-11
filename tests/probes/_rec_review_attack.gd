@@ -54,7 +54,7 @@ func _process(_d: float) -> void:
 		return
 	var cam = sc._cam
 	var sd: Dictionary = u.get("anim_sd", {})
-	var ai: int = int(float(u.get("anim_t", 0.0)) * float(sd.get("fps", 0.0)))
+	var ai: int = AttackHits.frame_of(sd, float(u.get("anim_t", 0.0)))
 	var line := "[ATK] %d act=%s fi=%d fps=%.1f flip=%s st=%s pend=%s st_t=%.2f cd=%.2f wind=%s multi=%d" % [f, str(u.get("anim_action", "")), ai, float(sd.get("fps", 0.0)), str((u["sprite"] as Sprite3D).flip_h),
 		str(u.get("state", "")), str(u.get("pending", "")), float(u.get("state_t", 0.0)), float(u.get("atk_cd", 0.0)), str(u.get("_atk_wind", false)), int(u.get("_multi_n", 0))]
 	var spr: Sprite3D = u["sprite"]

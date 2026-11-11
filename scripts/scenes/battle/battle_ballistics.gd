@@ -133,7 +133,7 @@ func _gambler_card_from(u: Dictionary, fallback: Vector3) -> Vector3:
 	var art = GAMBLER_CARD_ART.get(tex.resource_path.get_file() if tex is Texture2D else "", null)
 	if art == null:
 		return fallback
-	if int(float(u.get("anim_t", 0.0)) * float(sd.get("fps", 0.0))) < int(u.get("_atk_hit_frame", 1)) - 1:
+	if AttackHits.frame_of(sd, float(u.get("anim_t", 0.0))) < int(u.get("_atk_hit_frame", 1)) - 1:
 		return fallback   # 追打等没有前摇的出手: 动作刚从第 0 帧开播, 手还没甩出去
 	var s: Sprite3D = spr
 	var cb: Basis = battle._vfx.cam_basis()

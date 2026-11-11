@@ -113,7 +113,7 @@ func _advance_anim(u: Dictionary, delta: float) -> void:
 		spr.frame = 0
 		return
 	u["anim_t"] = float(u.get("anim_t", 0.0)) + delta
-	var idx = int(u["anim_t"] * fps)
+	var idx = AttackHits.frame_of(sd, float(u["anim_t"]))   # 匀速 = int(anim_t × fps); 登记了每帧拍数的按拍数走(AttackHits.FRAME_W)
 	if u.get("anim_action", "") != "":
 		# 动作播一次: 到末帧 → 回 idle
 		if idx >= frames:

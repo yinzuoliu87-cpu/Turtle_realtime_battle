@@ -298,7 +298,7 @@ func _check_windup_resync(scn, nj: Dictionary) -> void:
 	scn._set_anim_sheet(nj, nj.get("idle_sd", {}), "", true)   # 冲刺落地 / 被控结束那句: 回待机, 前摇还剩一半
 	AttackRhythm.resync_windup(scn, nj)
 	var sd: Dictionary = nj.get("anim_sd", {})
-	var hit_at: float = float(nj.get("_atk_hit_frame", 0)) / maxf(0.001, float(sd.get("fps", 0.0)))
+	var hit_at: float = AttackHits.beats_before(sd.get("frame_w", []), int(nj.get("_atk_hit_frame", 0))) / maxf(0.001, float(sd.get("fps", 0.0)))   # 命中帧之前的拍数 / 拍每秒
 	_ok("⑪ ★★前摇被打断后重开普攻段", _sheet(nj).ends_with("ninja/slash.png") and str(nj.get("anim_action", "")) == "attack", "%s %s" % [_sheet(nj), str(nj.get("anim_action", ""))])
 	_ok("⑪ ★命中帧落在剩余前摇结束那一刻(%.3f 秒 vs %.3f)" % [hit_at, float(nj["state_t"])], absf(hit_at - float(nj["state_t"])) <= 0.02)
 	_idle(scn, nj)

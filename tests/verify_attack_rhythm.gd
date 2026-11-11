@@ -48,9 +48,15 @@ func _ready() -> void:
 		var tx: Texture2D = load("res://assets/sprites/" + p5) if p5 != "" else null
 		var nf: int = (tx.get_width() / tx.get_height()) if tx != null else 0
 		var hf: int = AttackHits.hit_frame(p5, nf)
-		## 忍者例外(2026-11-11 用户定):「第四针起手斩，第五针命中，第六针斩到底，然后第七针去收」+ 收势 3 针 ⇒ 9 格、命中前 4 后 4
-		var need: Array = [4, 4] if k == "ninja" else [5, 6]
+		## 忍者例外(2026-11-11 用户挑): 12 / 13 / 18 / 19 / 15 / 22 / 5 号, 19 号命中 ⇒ 7 帧、第 4 帧命中、命中前 3 后 3
+		var need: Array = [3, 3] if k == "ninja" else [5, 6]
 		_ok("⑤ %s 普攻: 命中前 %d 帧 ≥ %d、命中后 %d 帧 ≥ %d(共 %d 帧)" % [k, hf, need[0], nf - hf - 1, need[1], nf], nf > 0 and hf >= int(need[0]) and nf - hf - 1 >= int(need[1]), p5)
+		var fw: Array = AttackHits.FRAME_W.get(p5, [])
+		if not fw.is_empty():
+			## 每帧拍数表与帧条同长(短了 ⇒ 末几帧被当成「播完」直接回待机); 命中后的拍数 ≥ 命中前(用户 11-11「每一帧慢点播放」: 收势放慢)
+			var pre: float = AttackHits.beats_before(fw, hf)
+			var post: float = AttackHits.beats_before(fw, fw.size()) - pre
+			_ok("⑥ %s 每帧拍数表 %d 项 = 帧条 %d 格; 命中后 %.1f 拍 ≥ 命中前 %.1f 拍" % [k, fw.size(), nf, post, pre], fw.size() == nf and post >= pre, str(fw))
 	for clip in ["melee_attack", "ranged_attack"]:
 		var ent: Array = TwoHeadArt.CLIPS[clip]
 		var tx2: Texture2D = load(TwoHeadArt.DIR + clip + ".png")
@@ -158,6 +164,33 @@ func _ready() -> void:
 			_ok("②★★ %s 伤害结算那一帧显示命中帧" % e["nm"], (e["bad"] as Array).is_empty(), str(e["bad"]).left(300))
 		else:
 			_ok("③ %s 没有帧条: 前摇期间形变蓄力" % e["nm"], int(e["juice"]) >= 2, "%d 次" % int(e["juice"]))
+	## ⑦ 每帧拍数真的按拍数播(用户 11-11「只要嘛把每一帧慢点播放就可以了，播放这个时间你处理好每一帧的时间」):
+	##   忍者进前摇(0.35 秒), 在每一帧拍数区间的正中间量画面上显示第几帧; 播过最后一拍要回待机。
+	##   匀速播的话(没按拍数)中段和收势几帧对不上, 最后两格早就回待机了 —— 这条就是抓那个。
+	var nj: Dictionary = scn._spawn._make_unit("ninja", "left", Vector2(cx - 80.0, cy))
+	scn._units.append(nj)
+	var nw: Array = AttackHits.FRAME_W.get("pets/animations/ninja/slash.png", [])
+	AttackRhythm.begin(scn, nj, 0.35)
+	var nsd: Dictionary = nj.get("anim_sd", {})
+	var nfps: float = float(nsd.get("fps", 0.0))
+	var cum: Array = []
+	var acc := 0.0
+	for x in nw:
+		acc += float(x)
+		cum.append(acc)
+	var wrong: Array = []
+	for i in range(nw.size()):
+		var mid: float = ((float(cum[i - 1]) if i > 0 else 0.0) + float(cum[i])) * 0.5
+		nj["anim_t"] = mid / maxf(0.001, nfps)
+		scn._render._advance_anim(nj, 0.0)
+		var spr_n: Sprite3D = nj["sprite"]
+		if str(nj.get("anim_action", "")) != "attack" or spr_n.frame != i:
+			wrong.append("%.2f 拍: 显示第 %d 帧(动作 %s), 该是第 %d 帧" % [mid, spr_n.frame, str(nj.get("anim_action", "")), i])
+	_ok("★分母: 忍者普攻在播、拍数表 %d 项、帧率 %.2f 拍/秒" % [nw.size(), nfps], nw.size() == 7 and nfps > 0.0 and str(nj.get("anim_action", "")) == "attack", str(nj.get("anim_action", "")))
+	_ok("⑦★★ 忍者每帧按拍数切换(每帧拍数区间正中都显示那一帧)", wrong.is_empty(), str(wrong).left(300))
+	nj["anim_t"] = (float(cum[cum.size() - 1]) + 0.05) / maxf(0.001, nfps)
+	scn._render._advance_anim(nj, 0.0)
+	_ok("⑦ 忍者播过最后一拍(%.2f 秒)回待机" % (float(cum[cum.size() - 1]) / maxf(0.001, nfps)), str(nj.get("anim_action", "")) == "", str(nj.get("anim_action", "")))
 	scn.queue_free()
 	print("%d passed, %d failed" % [_n - _fail, _fail])
 	print("ALL PASS — 普攻前摇开播、命中帧对上结算" if _fail == 0 else "FAIL")

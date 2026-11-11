@@ -40,7 +40,8 @@ static func action_sd(rel: String, tex: Texture2D, fps: float) -> Dictionary:
 	var fh: int = tex.get_height() / int(row[0])
 	var hframes: int = maxi(1, int(floor(float(tex.get_width()) / float(fh))))
 	var nf: int = int(row[1]) if int(row[1]) > 0 else hframes
-	return {"tex": tex, "frames": nf, "fps": fps, "frame_h": fh, "hframes": hframes, "vframes": int(row[0]), "loop": false}
+	return {"tex": tex, "frames": nf, "fps": fps, "frame_h": fh, "hframes": hframes, "vframes": int(row[0]), "loop": false,
+		"frame_w": AttackHits.FRAME_W.get(rel, [])}   # 每帧停留拍数(没登记 = 匀速)
 
 
 ## 进普攻前摇时调(sim 步里; 只写渲染专属键 anim_* / windup_t / swing_t / _windup_total / _atk_wind / _atk_hit_frame)
@@ -55,7 +56,8 @@ static func begin(battle, u: Dictionary, wsec: float) -> void:
 		var probe: Dictionary = battle._resolve_action(path, 1.0)
 		if not probe.is_empty():
 			var hit: int = AttackHits.hit_frame(path, int(probe.get("frames", 1)))
-			battle._vfx._play_action(u, "attack", clampf(float(maxi(1, hit)) / wsec, FPS_MIN, FPS_MAX))
+			var beats: float = AttackHits.beats_before(probe.get("frame_w", []), maxi(1, hit))   # 命中帧之前的拍数(匀速 = 帧数)
+			battle._vfx._play_action(u, "attack", clampf(beats / wsec, FPS_MIN, FPS_MAX))
 			if str(u.get("anim_action", "")) == "attack":
 				u["_atk_wind"] = true
 				u["_atk_hit_frame"] = hit
@@ -129,7 +131,7 @@ static func cast_cancelable(u: Dictionary) -> bool:
 	if str(u.get("anim_action", "")) != "cast":
 		return false
 	var sd: Dictionary = u.get("anim_sd", {})
-	return int(float(u.get("anim_t", 0.0)) * float(sd.get("fps", 0.0))) >= int(u.get("_cast_cancel", 9999))
+	return AttackHits.frame_of(sd, float(u.get("anim_t", 0.0))) >= int(u.get("_cast_cancel", 9999))
 
 
 ## 被动的一次性段(闪避 / 处决箭 / 吸取 / 连击 / 登场): 不打断技能、形态段, 也不打断普攻前摇; 这只龟没这一段就什么都不做
