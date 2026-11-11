@@ -3900,7 +3900,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		"burn":    _damage._apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
 		"atkdn":   _damage._buff_refresh(tgt, "atk", -CandySystem.PUNCH_ATK_DOWN, true, "candy_punch")   # 同来源刷新不叠(10-16)
 		"selfdef": _damage._buff(u, "def", 0.20, true)
-		"bleed":   _damage._apply_dot_stacks(tgt, "bleed", NinjaSystem.slash_bleed_stacks(u, _last_atk_crit), u)   # 忍者斩击: 4% 攻击力层流血, 暴击 6%(用户 2026-10-16; 原固定 2 / 3 层)
+		"bleed":   _damage._apply_dot_stacks(tgt, "bleed", NinjaSystem.slash_bleed_stacks(u, _last_atk_crit), u); _ninja_sys.basic_hit_vfx(u, tgt)   # 忍者斩击(+命中刀痕 11-11): 4% 攻击力层流血, 暴击 6%(用户 2026-10-16; 原固定 2 / 3 层)
 		"shrink":  _hiding_sys._hiding_shell_harden(u)                             # 缩头缩壳: 每击+1甲+1抗(永久)+0.1A盾
 	# 特殊机制
 	match str(spec.get("mech", "")):

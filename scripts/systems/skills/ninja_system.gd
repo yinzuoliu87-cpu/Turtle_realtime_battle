@@ -43,6 +43,46 @@ const SLASH_BLEED_ATK_CRIT := 0.06
 
 static func slash_bleed_stacks(u: Dictionary, crit: bool) -> int:
 	return maxi(1, roundi(float(u.get("atk", 0.0)) * (SLASH_BLEED_ATK_CRIT if crit else SLASH_BLEED_ATK)))
+
+## ── 普攻命中刀痕(11-11 用户「攻击的命中特效」「每个角色将有自己的…普攻和技能命中特效」)──
+## 参考外部商业游戏(LoL Battle Boss 亚索普攻命中 + Katana ZERO 刀斩, 逐帧研究 docs/studies/20261111b-忍者普攻命中刀痕逐帧.md):
+##   一条细长亮线斜穿目标、出现即全长再从起手端缩短 + 命中点星闪 1 ~ 2 格 + 像素碎片沿刀向迸出下落; 6 格共 0.2 秒。
+## 图画的是「出手方朝左」(刀路右上 → 左下, 接 build_ninja_slash.py 的挥刀), 朝右时镜像。只管画面, sim 不读。
+const HIT_SLASH_TEX := "res://assets/sprites/vfx/ninja-hit-slash.png"
+const HIT_SLASH_FW := 96
+const HIT_SLASH_FRAME_SEC := 1.0 / 30.0
+const HIT_SLASH_PX := 2.0 / 64.0       # 与龟人物图同一个像素尺寸(帧高 64 像素 = 2 米), 固定不缩放
+const HIT_SLASH_UP := 0.95             # 目标胸口离脚底多高(米)
+
+func basic_hit_vfx(u: Dictionary, tgt: Dictionary) -> void:
+	if str(u.get("id", "")) != "ninja" or battle._world == null or not tgt.get("alive", false):
+		return
+	var tex: Texture2D = load(HIT_SLASH_TEX)
+	if tex == null:
+		return
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.hframes = maxi(1, tex.get_width() / HIT_SLASH_FW)
+	s.frame = 0
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.no_depth_test = true
+	s.render_priority = 12                 # 画在目标身上(刀痕穿过目标, 被立绘挡住就看不出是砍中)
+	s.pixel_size = HIT_SLASH_PX
+	s.flip_h = bool(u.get("face_right", false))
+	s.position = battle._world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + HIT_SLASH_UP)
+	battle._world.add_child(s)
+	var n: int = s.hframes
+	var tw = battle._reg_tween()
+	tw.bind_node(s)
+	tw.tween_method(func(fv: float) -> void:
+		if is_instance_valid(s):
+			s.frame = clampi(int(fv), 0, n - 1)
+	, 0.0, float(n) - 0.001, HIT_SLASH_FRAME_SEC * float(n))
+	tw.tween_callback(s.queue_free)
 const INSTINCT_CRIT := 0.20       # 暴击率 +
 const INSTINCT_CRIT_DMG := 0.15   # 暴击伤害 +
 const INSTINCT_ARMOR_PEN := 10.0  # 护甲穿透 +(flat)

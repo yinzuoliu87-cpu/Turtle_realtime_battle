@@ -31,6 +31,11 @@ func _process(_d: float) -> void:
 			break
 	if u == null:
 		return
+	if OS.has_environment("REC_DUMMY_PASSIVE"):   # 假人不还手(11-11: 小龟假人的盾击金弧会被当成受审龟的命中特效)
+		for o2 in sc._units:
+			if str(o2.get("side", "")) == "right" and not o2.get("is_trainer", false):
+				o2["no_basic"] = true
+				o2["active_skills"] = []
 	if f >= WARMUP:
 		var c: Vector2 = sc.ARENA.position + sc.ARENA.size * 0.5
 		var p: Vector2 = u["pos"]
