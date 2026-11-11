@@ -108,6 +108,9 @@ SKIP_TYPE = re.compile(r":\s*(Vector[234]i?|Color|Rect2i?|Transform[23]D|Quatern
 ## 【测试缝】: 产品**只读**、**只有 tests/ 写** —— 那是设计如此(产品不该写它, 门禁要注入它)。
 ## 逐条都去看过声明处的头注, 不是按名字猜的。
 WHY = {
+    "prewarm_in_headless": "测试缝(2026-11-11 文案常量后台预加载, scripts/util/skill_text.gd): 产品侧只读 —— 有窗口时进商店 / 背包 / 主菜单照常排预加载, "
+                           "无头(门禁 / 陪练号 / 裁判)默认不排(没人点说明卡, 也免得测试里进店后直接 load 战斗撞上同一批脚本两边同时编); "
+                           "verify_shop_no_rebuild ③ 与 verify_prewarm_scene_race 把它打开来量预加载本身, 用完还原",
     "transition_in_headless": "测试缝(2026-11-05 切页过场, scripts/util/scene_nav.gd): 产品侧只读 —— 有窗口时一律走 SceneFader 过场, "
               "无头(门禁 / 陪练号 / 裁判)默认同步换场, 不让几百条按帧数等换屏的门禁跟着变; verify_scene_transition 把它打开来量过场本身, 用完还原",
     "debug_level": "强制全员等级的测试缝(GameState.gd 头注)。唯一的产品写入方 —— 图鉴右上角调试面板 —— "
