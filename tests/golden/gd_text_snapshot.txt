@@ -356,7 +356,7 @@ scripts/gamedata/minion_codex.gd|lit|精英小将每 {C:EliteSystem.WHIP_CD_SEC}
 scripts/gamedata/minion_codex.gd|lit|精英小将每第 {C:EliteSystem.WHIRL_EVERY} 次攻击挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。
 scripts/gamedata/minion_codex.gd|lit|精英小将的攻击、铁锁或铁锤命中生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 的敌人时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成时击杀该敌人，回复相当于其剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取该敌人的主动技能。
 scripts/gamedata/minion_codex.gd|lit|精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。
-scripts/gamedata/minion_codex.gd|lit|终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。
+scripts/gamedata/minion_codex.gd|lit|终极战场中，双方各有一名援军小将登场，并从所属玩家背包中未装备的装备里随机携带一件。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。
 scripts/gamedata/minion_codex.gd|lit|近战小将
 scripts/gamedata/minion_codex.gd|lit|近战小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
 scripts/gamedata/minion_codex.gd|lit|近战小将锁定一个敌人并跃起，起跳时回复（{C:HidingSystem.SURF_HEAL_COEF%}%×攻击力({ATK}) = {E:HidingSystem.SURF_HEAL_COEF*ATK}）生命值，距离过近时先向后跳开。随后射出铁链，将该敌人眩晕 {C:HidingSystem.SURF_STUN_SEC} 秒并将自身拉向目标，接触时造成其 {C:HidingSystem.SURF_CONTACT_MAXHP_PCT%}% 最大生命值的物理伤害。之后踩着目标滑行，对其持续造成（{C:HidingSystem.SURF_RIDE_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_RIDE_ATK_COEF*ATK}）物理伤害，并对沿途敌人造成（{C:HidingSystem.SURF_PASS_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_PASS_ATK_COEF*ATK}）物理伤害并将其击退，最后跳下。
