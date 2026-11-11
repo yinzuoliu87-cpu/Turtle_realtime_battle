@@ -34,8 +34,9 @@ func _init(b) -> void:
 # 小将立绘字典 (静态单帧: minion.png 前排 / minion-back.png 后排 / minion-elite.png 精英)
 func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
 	## 近战小将(11-11 珊瑚骑士)待机是一条帧表(呼吸 4 格), 与动作同一种 192 方帧 ⇒ 立绘 = 动作第 0 帧(verify_minion_idle_align)
-	if not is_elite and not is_back and ResourceLoader.exists(battle.SPRITE_DIR + MELEE_IDLE_SHEET):
-		var it: Texture2D = load(battle.SPRITE_DIR + MELEE_IDLE_SHEET)
+	var idle_sheet: String = "pets/animations/elite/idle.png" if is_elite else ("pets/animations/ranged/idle.png" if is_back else MELEE_IDLE_SHEET)   # 11-11 三种小将都重做
+	if ResourceLoader.exists(battle.SPRITE_DIR + idle_sheet):
+		var it: Texture2D = load(battle.SPRITE_DIR + idle_sheet)
 		var ih: int = it.get_height()
 		var nf: int = maxi(1, it.get_width() / ih)
 		return {"tex": it, "frames": nf, "fps": MELEE_IDLE_FPS, "frame_h": ih, "hframes": nf, "vframes": 1, "loop": true}
@@ -50,6 +51,11 @@ func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
 ## ★2026-11-04 进文案的数字从下面两个技能的字面量抽成常量(值一个不改, 规则指纹门禁证明对局结果不变)。
 ##   文案 scripts/gamedata/minion_codex.gd 用 {C:HidingSystem.X} / {N:HidingSystem.X*ATK} 引 —— 改数值只改这里,
 ##   面板 / 图鉴的数字跟着变(原来文案是手写的「400% 攻击力」, 与代码各写一份)。
+## 火箭炮口离地(米): 11-11 海螺炮手瞄准时炮口在脚底上 51 像素(本体 100 像素 = 1.5 米) ≈ 0.77 米; 原来 0.95 是旧红色炮手的肩炮
+const ROCKET_MUZZLE_H := 0.77
+## 远程小将普攻弹体从炮口出(11-11): 站姿炮口在腰带扣前 50 像素 ≈ 0.75 米 ≈ 31 码、脚底上 74 像素 ≈ 1.1 米
+const RANGED_MUZZLE_FWD := 31.0
+const RANGED_MUZZLE_UP := 1.1
 const ROCKET_CHARGE_SEC := 1.5          # 远程·追踪火箭筒: 蓄力(秒)。★动画 ACTION_RANGED 焊死等于它(verify_elite_anim 读这个常量)
 const ROCKET_ATK_COEF := 4.0            # 核爆 ×ATK 物理
 const ROCKET_HEALCUT_PCT := 0.5         # 核爆附带治疗削减
@@ -78,13 +84,6 @@ const SURF_PIERCE_OUT := 0.6          # 尖端越过目标胸口多少米(从背
 const SURF_WRIST_FWD := 24.0          # 手腕在身体前方多少码(出链帧: 护手端在腰带扣前 38 像素 ≈ 0.58 米)
 const SURF_WRIST_UP := 0.74           # 手腕离脚底多高(米; 出链帧护手中线在脚底上 49 像素)
 const SURF_CHEST_UP := 0.9            # 目标胸口离脚底多高(米)
-## 铁索(11-08 改成一节节小图, 留到被拽过去、途中逐段收; 见 scripts/scenes/battle/pull_rope_vfx.gd)
-# 第二版换成铁链环: 用户 11-08「你这个小将他丢出这个锁链的时候，什么是锁链？是一个个正方形的像素块。」
-# 旧的 16×8 麻绳段在战场上读成一串方块; 新图 26×12 一节 = 长椭圆平放链环 + 侧立链环(tools/assetgen/build_minion_chain.py)。
-# 粗 14 码对图高 12 像素; 一节 26 像素约 30 码, 间距 28 码 ⇒ 相邻两节微微交叠、链环咬合不留缝。
-const SURF_ROPE_TEX := "res://assets/sprites/vfx/minion-chain-link.png"
-const SURF_ROPE_THICK := 14.0
-const SURF_ROPE_SPACING := 28.0
 
 ## 拉向目标要飞多久: 距离 ÷ 速度。
 static func surf_pull_sec(from: Vector2, to: Vector2) -> float:
@@ -113,6 +112,7 @@ func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火�
 		uu["face_right"] = aim2.x >= 0.0
 		var muzzle: Vector2 = (uu["pos"] as Vector2) + aim2 * 34.0
 		battle._rocket_sys._rocket_muzzle_flash(uu, muzzle, aim2)          # 枪口特效动画(用户2026-07-18): 白热闪+锥形喷火+火星前喷+后坐
+		battle._melee_anim(uu, "fire")                                    # 11-11 海螺炮手: 火箭射出那一刻后坐
 		_minion_rocket_fly(uu, tref, muzzle)
 	, "src": u})
 
@@ -127,7 +127,7 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 	miss.pixel_size = (74.0 * battle.WS) / float(maxi(1, (miss.texture as Texture2D).get_width()))   # 按弹长~74码(横向立绘按宽定)
 	miss.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	var pos: Vector2 = from
-	var mh: float = 0.95
+	var mh: float = ROCKET_MUZZLE_H
 	miss.position = battle._world_pos(pos, mh)
 	battle._world.add_child(miss)
 	var halo: MeshInstance3D = battle._glow_bb(pos, mh, 42.0, Color(1.0, 0.58, 0.26, 0.7))   # 弹头发光晕(加性·跟随脉动)

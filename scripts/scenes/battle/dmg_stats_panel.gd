@@ -26,7 +26,7 @@ const UIPalette = preload("res://scripts/util/ui_palette.gd")
 ## ★★alpha 从 0.6/0.65 提到 0.92(2026-09-28)。原来的半透明是配合"色块压在半透明底板上"
 ##   那一版的; 现在分段条画在**真凹槽**里(见 `make_bar`), 底本来就是暗的 ——
 ##   再半透明就成了蒙一层灰纱, 三种伤害类型的色相全被拉到一起、分不出段。
-const _SS := preload("res://scripts/scenes/battle/settle_screen.gd")
+const _SS := preload("res://scripts/gamedata/dealt_stats.gd")   # 灵物触手 / 伤害拆分取数(无依赖小文件; 原 preload 整个结算页 ⇒ 循环加载, 11-11)
 const COL_PHY := Color(UIPalette.PHYS, 0.92)
 const COL_MAG := Color(UIPalette.MAGIC, 0.92)
 const COL_TRU := Color(UIPalette.TRUE_DMG, 0.92)

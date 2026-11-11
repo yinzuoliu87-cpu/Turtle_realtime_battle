@@ -72,6 +72,7 @@ scripts/gamedata/copy_rules.gd|lit|永久改属性: crit_fate_until=+999s(暴击
 scripts/gamedata/copy_rules.gd|lit|永久获得一件真装备: equips 多一件 · base_atk 44→54 · maxHp 6000→6200 · lifesteal +0.05 · echarge_perm 1.08
 scripts/gamedata/copy_rules.gd|lit|自我调用: 抄到【复制】会无限递归 → Stack overflow(实测 2026-08-30)
 scripts/gamedata/copy_rules.gd|lit|锁死龟壳: energy_lock_until=+999s 且 atk_range +60 —— 解锁在镰刀横扫里, 而镰刀要等 headless_soul_stacks 减到 0, 减层数的代码在 `u[\"id\"] == \"headless\"` 分支里, 龟壳永远减不掉 ⇒ 整场再也放不出任何技能(实测)
+scripts/gamedata/dealt_stats.gd|lit|灵物触手
 scripts/gamedata/equip_stats.gd|lit|初始龟能
 scripts/gamedata/equip_stats.gd|lit|反伤
 scripts/gamedata/equip_stats.gd|lit|射程
@@ -1709,7 +1710,6 @@ scripts/scenes/battle/settle_screen.gd|lit|本场
 scripts/scenes/battle/settle_screen.gd|lit|本场 MVP
 scripts/scenes/battle/settle_screen.gd|lit|治疗
 scripts/scenes/battle/settle_screen.gd|lit|满级
-scripts/scenes/battle/settle_screen.gd|lit|灵物触手
 scripts/scenes/battle/settle_screen.gd|lit|胜
 scripts/scenes/battle/settle_screen.gd|lit|胜利
 scripts/scenes/battle/settle_screen.gd|lit|负

@@ -109,6 +109,7 @@ func _ready() -> void:
 		var e: Dictionary = s._spawn._make_unit("__minion__", "left", Vector2(400, 300), {"minion": true, "elite": true, "level": 1})
 		var f: Dictionary = s._spawn._make_unit("stone", "right", Vector2(400 + gap, 300), {})
 		f["maxHp"] = 50000.0; f["hp"] = 50000.0
+		f["move_spd"] = 0.0; f["no_move"] = true   # 11-11 铁锁加了 0.2 秒后甩前摇(晕在扎中那一刻), 前摇里目标会走动 ⇒ 量的是拉人速度, 目标定住
 		s._units.append(e); s._units.append(f)
 		e["_whip_cd"] = 0.0; e["stun_until"] = 0.0; e["_slam"] = false
 		e["taunt_until"] = float(s._t) + 100.0; e["taunt_by"] = f

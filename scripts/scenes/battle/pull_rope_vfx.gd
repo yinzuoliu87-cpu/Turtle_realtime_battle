@@ -54,15 +54,6 @@ static func shoot(battle, from2d: Vector2, fromh: float, to2d: Vector2, toh: flo
 	return out
 
 
-## 精英小将铁锁的链节。11-11 用户「这个铁链…到底整个铁链长啥样？」: 原来每 55 码摆一节竖着画的 bio-chain(32×32 竖两节),
-##   按横向转 ⇒ 每节与链垂直、节与节之间全是空档。改成横向链环 bio-chain-h(build_bio_chain_h.py)按链环长度首尾相接、0.12 秒由近到远伸出。
-##   过渡件: 新链子(两种链环交替 + 尖穿刺链头)画好后换(方案书 20261111 §4 C)。
-const ELITE_THICK := 14.0     # 链子粗细(码) = 图高 14 像素 ⇒ 1 像素 1 码
-const ELITE_SPACING := 30.0   # 链环长 32 码, 相邻两节压 2 码
-static func elite_links(battle, from5: Vector2, to5: Vector2, ctex: Texture2D, hold_sec: float) -> Array:
-	return shoot(battle, from5, 0.8, to5, 0.8, ctex, ELITE_THICK, ELITE_SPACING, 0.12, hold_sec, 40)
-
-
 ## 链子在屏幕上的朝向: 镜头基 × 绕视线转到「射出点 → 目标」的屏幕角(镜头还没好 ⇒ null, 退回朝镜头的公告板)
 static func _screen_basis(battle, from2d: Vector2, fromh: float, to2d: Vector2, toh: float):
 	var cam = battle._cam

@@ -16,7 +16,7 @@ func _rocket_charge_vfx(u: Dictionary, aim: Vector2) -> void:
 	orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED; orb.shaded = false; orb.transparent = true
 	orb.pixel_size = (26.0 * battle.WS) / 128.0
 	orb.modulate = Color(1.0, 0.5, 0.18, 0.0)
-	orb.position = battle._world_pos(muzzle, 0.95); orb.scale = Vector3.ONE * 0.3
+	orb.position = battle._world_pos(muzzle, HidingSystem.ROCKET_MUZZLE_H); orb.scale = Vector3.ONE * 0.3
 	battle._world.add_child(orb)
 	var ot = battle._reg_tween(); ot.set_parallel(true)
 	ot.tween_property(orb, "scale", Vector3.ONE * 1.4, 1.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 越蓄越大
@@ -35,12 +35,12 @@ func _rocket_charge_vfx(u: Dictionary, aim: Vector2) -> void:
 			gl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gl.shaded = false; gl.transparent = true
 			gl.pixel_size = 0.015
 			gl.modulate = Color(1.0, 0.8, 0.45, 0.9)
-			gl.position = battle._world_pos(from2, 0.95)
+			gl.position = battle._world_pos(from2, HidingSystem.ROCKET_MUZZLE_H)
 			battle._world.add_child(gl)
 			var gt = battle._reg_tween()
 			gt.bind_node(gl)
 			gt.tween_method(func(t: float) -> void:
-				if is_instance_valid(gl): gl.position = battle._world_pos(from2.lerp(muzzle, t), 0.95)
+				if is_instance_valid(gl): gl.position = battle._world_pos(from2.lerp(muzzle, t), HidingSystem.ROCKET_MUZZLE_H)
 			, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 			gt.parallel().tween_property(gl, "modulate:a", 0.0, 0.3)
 			gt.tween_callback(gl.queue_free)
@@ -58,7 +58,7 @@ func _rocket_muzzle_flash(u: Dictionary, muzzle: Vector2, aim: Vector2) -> void:
 	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fl.shaded = false; fl.transparent = true
 	fl.pixel_size = (72.0 * battle.WS) / 128.0
 	fl.modulate = Color(1.0, 0.97, 0.85, 0.95)
-	fl.position = battle._world_pos(muzzle, 0.95); fl.scale = Vector3.ONE * 0.4
+	fl.position = battle._world_pos(muzzle, HidingSystem.ROCKET_MUZZLE_H); fl.scale = Vector3.ONE * 0.4
 	battle._world.add_child(fl)
 	var flt = battle._reg_tween(); flt.set_parallel(true)
 	flt.tween_property(fl, "scale", Vector3.ONE * 1.25, 0.09).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
@@ -76,13 +76,13 @@ func _rocket_muzzle_flash(u: Dictionary, muzzle: Vector2, aim: Vector2) -> void:
 		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
 		sp.pixel_size = randf_range(0.008, 0.016)
 		sp.modulate = Color(1.0, 0.82, 0.4, 1.0)
-		sp.position = battle._world_pos(muzzle, 0.95)
+		sp.position = battle._world_pos(muzzle, HidingSystem.ROCKET_MUZZLE_H)
 		battle._world.add_child(sp)
 		var dest: Vector2 = muzzle + a2 * reach
 		var spt = battle._reg_tween(); spt.set_parallel(true)
 		spt.bind_node(sp)
 		spt.tween_method(func(t: float) -> void:
-			if is_instance_valid(sp): sp.position = battle._world_pos(muzzle.lerp(dest, t), 0.95 + 0.25 * DetMath.dsin(t * PI))
+			if is_instance_valid(sp): sp.position = battle._world_pos(muzzle.lerp(dest, t), HidingSystem.ROCKET_MUZZLE_H + 0.25 * DetMath.dsin(t * PI))
 		, 0.0, 1.0, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		spt.tween_property(sp, "modulate:a", 0.0, 0.28)
 		spt.chain().tween_callback(sp.queue_free)

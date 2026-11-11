@@ -203,6 +203,9 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	p.shaded = false
 	p.transparent = true
 	var world_from = battle._world_pos(start2d, 1.0)   # 从胸口高度出
+	if from == null and src is Dictionary and str(src.get("minion_role", "")) == "back" and not bool(src.get("is_elite", false)):   # 11-11 海螺炮手: 从炮口出
+		var _md: Vector2 = DetMath.norm((tgt["pos"] as Vector2) - (src["pos"] as Vector2)) if DetMath.vlen((tgt["pos"] as Vector2) - (src["pos"] as Vector2)) > 1.0 else Vector2.LEFT
+		world_from = battle._world_pos((src["pos"] as Vector2) + _md * HidingSystem.RANGED_MUZZLE_FWD, HidingSystem.RANGED_MUZZLE_UP)
 	var card_hand := false
 	if card_spin and from == null:
 		var hand: Vector3 = _gambler_card_from(src, world_from)

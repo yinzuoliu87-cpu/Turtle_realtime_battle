@@ -413,9 +413,9 @@ const ACTION_ATTACK := {
 	##   按「整段时长不变」同比例调高; 有前摇的普攻帧率由 AttackRhythm 按 命中帧 / 前摇秒数 算。
 	"ghost":  ["pets/animations/ghost/attack.png", 18.7],   # 12 帧 / 0.64s(原 9 帧 × 14)
 	"ninja":  ["pets/animations/ninja/slash.png", 40.0],   # 13 帧 / 0.33s(原 3 帧 × 16 = 0.19s 太急)
-	"__minion_elite__": ["pets/animations/elite/attack.png", 39.0],   # 13 帧 / 0.33s(原 4 帧 × 12)
+	"__minion_elite__": ["pets/animations/elite/attack.png", 12.5],   # 11-11 深渊精英: 12 格 / 0.96s(命中格 5 ÷ 前摇 0.40s)
 	"__minion_front__": ["pets/animations/melee/attack.png", 19.6],   # 11-11 珊瑚骑士: 13 格 / 0.66s(命中格 5 ÷ 前摇 0.255s)
-	"__minion_back__": ["pets/animations/ranged/attack.png", 28.8],   # 12 帧 / 0.42s(原 5 帧 × 12)
+	"__minion_back__": ["pets/animations/ranged/attack.png", 19.6],   # 11-11 海螺炮手: 12 格 / 0.61s(命中格 5 ÷ 前摇 0.255s)
 	"__minion_reserve__": ["pets/animations/reserve/attack.png", 24.0],   # 援军小将(2026-10-29): 推掌放小气弹; 12 帧 / 0.5s(原 7 帧 × 14)
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
 	"_summon_axe": ["vfx/eq096-axe-wood-attack.png", 16.0],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时装到单位 _act_rows)
@@ -1915,11 +1915,11 @@ const ELITE_ACT_FEET_ROW := 71.0  # 动作帧里脚底所在行
 #   加新单位时在这里加一行即可, 不要再复制一份 _elite_sys._elite_fix_norm。
 #   门禁 verify_elite_anim 会拿 png 的真实 bbox 跟这张表对账。
 const ANIM_NORM := {
-	"__minion_elite__": [47.0, 71.0, 71.0],
+	"__minion_elite__": [117.0, 177.0, 117.0, 1.8],   # 11-11 深渊精英 192 方帧(本体 117 / 脚底 177 / 本体 1.8 米)
 	"__minion_front__": [99.0, 176.0, 99.0, 1.5],   # 11-11 珊瑚骑士: 192 方帧本体 99 脚底 176; 第 4 项 = 本体米数(帧里留白多, 不按帧高归一)
 	## 远程小将/亡魂(2026-08-21)。★立绘一律取**侧面(west)** ⇒ idle 等于动作第0帧, 不再有转身与大小跳变
 	##   (用户报过「站立的动作完全衔接不上」, 根因就是原来立绘取的是正面而动作图是侧面)。数值由门禁对账。
-	"__minion_back__": [52.0, 76.0, 52.0],   # 实测: 动作第0帧 本体52/脚底76; idle(侧面) 本体52
+	"__minion_back__": [100.0, 177.0, 100.0, 1.5],   # 11-11 海螺炮手 192 方帧(本体 100 / 脚底 177 / 本体 1.5 米)
 	"_summon_wraith": [48.0, 76.0, 48.0],   # 亡魂: idle 也取侧面 ⇒ 与动作第0帧同形(不再有转身跳变)
 	"__minion_reserve__": [79.0, 96.0, 79.0],   # 援军小将(2026-10-29): 帧高112 本体79(含旗) 脚底96; 立绘 = 动作第0帧
 }
@@ -5998,24 +5998,24 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	var to5: Vector2 = tgt["pos"]
 	_elite_sys._elite_mist(from5 + DetMath.norm((to5 - from5)) * 24.0, 0.8, 3)   # 手臂黑雾幻化
 	## 链节依次伸出(快), 留到被拽过去、途中逐段收(11-08; 链节只管画面, 不进单位字典; 兜底寿命 = 出手 + 拉完 + 余量)
-	var whip_links: Array = PullRopeVfx.elite_links(self, from5, to5, load("res://assets/sprites/vfx/bio-chain-h.png"),
+	var whip_links: Array = _elite_sys.whip_chain(u, tgt,   # 穿刺链(11-11): 后甩前摇 WHIP_WINDUP_SEC 后从拳头射出
 		EliteSystem.WHIP_SHOT_DELAY + EliteSystem.whip_pull_sec(from5, to5) + 0.4)
-	_pending_shots.append({"delay": 0.14, "fn": func() -> void:   # 命中: 顿一下+目标眩晕0.4s
+	_pending_shots.append({"delay": EliteSystem.WHIP_WINDUP_SEC + 0.14, "fn": func() -> void:   # 命中(链头扎中): 顿一下+目标眩晕0.4s
 		if not tref.get("alive", false) or not uu.get("alive", false):
 			uu["_slam"] = false
-			PullRopeVfx.release(self, whip_links)
+			_elite_sys.whip_chain_release(whip_links)
 			return
 		_damage._stun(tref, EliteSystem.WHIP_STUN_SEC, "_tick_elite_whip", true)
 		_vfx._flash(tref, Color(1.35, 1.2, 1.2))
 		_vfx._hit_spark(tref)
 	, "src": u})
-	_pending_shots.append({"delay": EliteSystem.WHIP_SHOT_DELAY, "fn": func() -> void:    # 拉体: 按速度飞到目标身后(11-08, 原固定 0.18s)
+	_pending_shots.append({"delay": EliteSystem.WHIP_WINDUP_SEC + EliteSystem.WHIP_SHOT_DELAY, "fn": func() -> void:    # 拉体: 按速度飞到目标身后
 		if not uu.get("alive", false):
-			PullRopeVfx.release(self, whip_links)
+			_elite_sys.whip_chain_release(whip_links)
 			return
 		if not tref.get("alive", false):
 			uu["_slam"] = false
-			PullRopeVfx.release(self, whip_links)
+			_elite_sys.whip_chain_release(whip_links)
 			return
 		var tp: Vector2 = tref["pos"]
 		var dirp: Vector2 = tp - (uu["pos"] as Vector2)
@@ -6029,10 +6029,10 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		pt5.tween_method(func(q: float) -> void:
 			var pq: float = PullCurve.frac(q)   # 先快后中速(用户 11-11; 原来线性)
 			if uu.get("alive", false): uu["pos"] = DetMath.vlerp(fromp, dest, pq)
-			PullRopeVfx.reel(whip_links, pq * pull_len / chain_len)   # 已经被拽过的链节收掉(画面)
+			_elite_sys.whip_chain_reel(whip_links, q, pull_len / maxf(1.0, chain_len))   # 链随人往前飞自己变短; 撞上前收回拳头
 		, 0.0, 1.0, EliteSystem.whip_pull_sec(fromp, dest))
 		pt5.tween_callback(func() -> void:
-			PullRopeVfx.release(self, whip_links)
+			_elite_sys.whip_chain_release(whip_links)
 			uu["_slam"] = false
 			if tref.get("alive", false) and uu.get("alive", false):
 				_damage._apply_damage_from(uu, tref, _atk_dmg(uu, EliteSystem.WHIP_ATK_COEF, tref, true), Color("#9bdcff"))   # 铁锁2A魔法(蓝字·用户2026-07-18: 1A→2A)

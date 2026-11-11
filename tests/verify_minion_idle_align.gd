@@ -12,8 +12,12 @@ extends Node
 ## ★量的是 PNG 的真实 alpha 像素, 不读任何配置表。
 
 const PAIRS := [
-	["远程小将", "res://assets/sprites/pets/minion-back.png",
-		"res://assets/sprites/pets/animations/ranged/run.png"],
+	## 11-11 三种小将重做: 待机改成 192 方帧呼吸帧条(第 0 帧 = 站姿底图), 拿它比普攻第 0 帧(同一张底图);
+	##   跑步第 0 帧本来就是跑的姿势, 不再等于站姿(原来比的是静态立绘 vs 跑步第 0 帧)
+	["远程小将", "res://assets/sprites/pets/animations/ranged/idle.png",
+		"res://assets/sprites/pets/animations/ranged/attack.png"],
+	["精英小将", "res://assets/sprites/pets/animations/elite/idle.png",
+		"res://assets/sprites/pets/animations/elite/attack.png"],
 	["亡魂", "res://assets/sprites/pets/wraith.png",
 		"res://assets/sprites/pets/animations/wraith/run.png"],
 	## 援军小将(2026-10-29 新画): 立绘/头像 = 每一张动作图的第 0 帧(含待机循环), 一张都不许差
@@ -69,6 +73,8 @@ func _ready() -> void:
 		if idle_t == null or act_t == null:
 			continue
 		var ii: Image = idle_t.get_image()
+		if ii.get_width() > ii.get_height():   # 待机是横排帧条 ⇒ 取第 0 帧
+			ii = ii.get_region(Rect2i(0, 0, ii.get_height(), ii.get_height()))
 		var ai: Image = act_t.get_image()
 		var fh: int = ai.get_height()
 		var f0: Image = ai.get_region(Rect2i(0, 0, fh, fh))
@@ -125,7 +131,7 @@ func _ready() -> void:
 	for _j in range(12):
 		await get_tree().process_frame
 		_sample(rs, rseen)
-	_anchor_check("远程小将", seen, ["minion-back.png"])
+	_anchor_check("远程小将", seen, ["animations/ranged/idle.png"])
 	_anchor_check("援军小将", rseen, ["animations/reserve/idle.png", "animations/reserve/attack.png",
 		"animations/reserve/skill.png", "animations/reserve/death.png"])
 	var borrowed: Array = []

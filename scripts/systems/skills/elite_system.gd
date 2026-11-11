@@ -28,6 +28,18 @@ const WHIP_ATK_COEF := 2.0              # 铁锁 ×ATK 魔法
 const WHIP_PULL_SPD := 500.0
 const WHIP_PULL_MIN := 0.12
 const WHIP_SHOT_DELAY := 0.3            # 链射出手到开始拉体(与 _tick_elite_whip 的 delay 0.3 同一个数)
+## 铁锁出手前摇(11-11 用户「你的手可以…往回这个地上甩一下，把这个链子带出来…紧接着手臂往前甩」): 后甩 + 后拉 0.2 秒后才出链。
+##   改了对局结果(晕 / 拉人都晚 0.2 秒) ⇒ RULES_VER 本周已是 6, 规则指纹要刷。
+const WHIP_WINDUP_SEC := 0.2
+const WHIP_ANIM_SLOTS := 11.0           # whip.png 格数(tools/assetgen/build_minion_redo.py)
+## 穿刺链(PierceChainVfx, 与近战同一套): 从拳头射出, 链头 = elite-chain-head(菱形紫刃), 扎穿目标胸口
+const WHIP_CHAIN_FLY := 0.12
+const WHIP_CHAIN_PX := 1.8 / 117.0     # 与人物图同一个像素大小(本体 117 像素 = 1.8 米)
+const WHIP_PIERCE_OUT := 0.6
+const WHIP_FIST_FWD := 54.0            # 甩出那张拳头在身体前方 85 像素 ≈ 1.3 米 ≈ 54 码
+const WHIP_FIST_UP := 1.0              # 拳头离地(米)
+const WHIP_CHEST_UP := 0.9
+const WHIP_RETRACT_SEC := 0.1
 
 ## 拉过去要飞多久: 距离 ÷ 速度。
 static func whip_pull_sec(from: Vector2, to: Vector2) -> float:
@@ -35,7 +47,40 @@ static func whip_pull_sec(from: Vector2, to: Vector2) -> float:
 
 ## 甩臂动作 whip.png 7 帧拉长到「出手 0.3 秒 + 拉过去」整段(出手时按当时距离 + 绕到身后 46 码估), 播完才不会回站姿。
 static func whip_anim_fps(d: float) -> float:
-	return 7.0 / (WHIP_SHOT_DELAY + maxf(WHIP_PULL_MIN, (d + 46.0) / WHIP_PULL_SPD))
+	return WHIP_ANIM_SLOTS / (WHIP_WINDUP_SEC + WHIP_SHOT_DELAY + maxf(WHIP_PULL_MIN, (d + 46.0) / WHIP_PULL_SPD))
+
+
+## 铁锁的穿刺链(画面): 前摇后从拳头射出。返回句柄 [状态]; 前摇里就作废(目标死了等)⇒ 不再射。sim 不读。
+func whip_chain(u: Dictionary, tgt: Dictionary, life: float) -> Array:
+	var st := {"cancel": false, "chain": null}
+	var fist := func() -> Vector3:
+		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
+		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
+		return battle._world_pos((u["pos"] as Vector2) + dn * WHIP_FIST_FWD, float(u.get("height", 0.0)) + WHIP_FIST_UP)
+	var chest := func() -> Vector3:
+		return battle._world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + WHIP_CHEST_UP)
+	battle._pending_shots.append({"delay": WHIP_WINDUP_SEC, "fn": func() -> void:
+		if not st["cancel"]:
+			st["chain"] = PierceChainVfx.fire(battle, "elite-chain", WHIP_CHAIN_PX, false, fist, chest, WHIP_CHAIN_FLY, WHIP_PIERCE_OUT, life)
+	, "src": u})
+	return [st]
+
+
+## 拉人进度 q(0 ~ 1): 链随人往前飞自己变短(PierceChainVfx 每帧从两端推); 最后 WHIP_RETRACT_SEC 秒把链头拔出收回拳头
+func whip_chain_reel(h: Array, q: float, _ratio: float) -> void:
+	if h.is_empty() or not (h[0] is Dictionary) or h[0]["chain"] == null:
+		return
+	if q >= 0.88:
+		(h[0]["chain"] as PierceChainVfx).retract(WHIP_RETRACT_SEC)
+
+
+func whip_chain_release(h: Array) -> void:
+	if h.is_empty() or not (h[0] is Dictionary):
+		return
+	h[0]["cancel"] = true
+	if h[0]["chain"] != null:
+		(h[0]["chain"] as PierceChainVfx).release()
+	h.clear()
 ## 精英龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -107,7 +152,7 @@ func _elite_mist(pos2d: Vector2, h: float, n: int = 3) -> void:  # 黑红雾团(
 		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		m.shaded = false; m.transparent = true
 		m.pixel_size = (randf_range(26.0, 46.0) * battle.WS) / float(maxi(1, glow.get_width()))
-		m.modulate = Color(0.12, 0.02, 0.03, 0.75) if k % 2 == 0 else Color(0.5, 0.07, 0.09, 0.6)
+		m.modulate = Color(0.084, 0.012, 0.132, 0.75) if k % 2 == 0 else Color(0.35, 0.042, 0.55, 0.6)
 		m.position = battle._world_pos(pos2d + Vector2(randf_range(-18.0, 18.0), randf_range(-12.0, 12.0)), h + randf_range(-0.15, 0.25))
 		battle._world.add_child(m)
 		var tw = battle._reg_tween(); tw.set_parallel(true)
@@ -123,7 +168,7 @@ func _elite_debris(pos2d: Vector2, n: int) -> void:             # 砸地碎块�
 		db.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		db.shaded = false; db.transparent = true
 		db.pixel_size = (randf_range(8.0, 16.0) * battle.WS) / float(maxi(1, glow.get_width()))
-		db.modulate = Color(0.1, 0.03, 0.03, 1.0) if k % 3 != 0 else Color(0.55, 0.1, 0.1, 0.95)
+		db.modulate = Color(0.07, 0.018, 0.11, 1.0) if k % 3 != 0 else Color(0.385, 0.06, 0.605, 0.95)
 		db.position = battle._world_pos(pos2d, 0.3)
 		battle._world.add_child(db)
 		var ang: float = randf() * TAU
@@ -147,7 +192,7 @@ func _elite_slash_arc(pos2d: Vector2, dirv: Vector2) -> void:    # 黑红刀光(
 	sl.pixel_size = (86.0 * battle.WS) / float(maxi(1, t.get_height()))
 	sl.position = battle._world_pos(pos2d, 0.8)
 	sl.rotation.z = DetMath.datan2(-dirv.y, dirv.x) + randf_range(-0.3, 0.3)
-	sl.modulate = Color(0.75, 0.12, 0.15, 0.95)
+	sl.modulate = Color(0.525, 0.072, 0.825, 0.95)
 	sl.flip_h = randf() < 0.5
 	battle._world.add_child(sl)
 	var tw = battle._reg_tween(); tw.set_parallel(true)
@@ -158,8 +203,8 @@ func _elite_slash_arc(pos2d: Vector2, dirv: Vector2) -> void:    # 黑红刀光(
 func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋刃(Blade Frenzy·2026-07-16重做: 专属双黑刃扫1.25圈+稠密拖影·不复用忍者刀光): 200码1.3A物理+吸血50%
 	_elite_anim(u, "whirl")
 	_elite_mist(u["pos"], 0.7, 5)
-	battle._skill_ring(u["pos"], Color(0.55, 0.08, 0.1, 0.7), 200.0)
-	battle._skill_ring(u["pos"], Color(0.3, 0.05, 0.06, 0.5), 120.0)
+	battle._skill_ring(u["pos"], Color(0.385, 0.048, 0.605, 0.7), 200.0)
+	battle._skill_ring(u["pos"], Color(0.21, 0.03, 0.33, 0.5), 120.0)
 	var uu = u
 	var btex: Texture2D = load("res://assets/sprites/vfx/bio-blade.png")
 	if btex != null:
@@ -198,7 +243,7 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 					gh.pixel_size = bps
 					gh.position = battle._world_pos((uu["pos"] as Vector2) + Vector2(DetMath.dcos(ga), DetMath.dsin(ga)) * 105.0, 0.65)
 					gh.rotation.z = -ga - PI * 0.5
-					gh.modulate = Color(0.7, 0.15, 0.18, 0.55)
+					gh.modulate = Color(0.49, 0.09, 0.77, 0.55)
 					battle._world.add_child(gh)
 					var gt = battle._reg_tween()
 					gt.bind_node(gh)
@@ -243,7 +288,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 		td.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		td.shaded = false; td.transparent = true
 		td.pixel_size = (randf_range(20.0, 30.0) * battle.WS) / float(maxi(1, glow.get_width()))
-		td.modulate = Color(0.15, 0.02, 0.03, 0.85) if k % 2 == 0 else Color(0.5, 0.07, 0.09, 0.7)
+		td.modulate = Color(0.105, 0.012, 0.165, 0.85) if k % 2 == 0 else Color(0.35, 0.042, 0.55, 0.7)
 		td.position = battle._world_pos(tgt["pos"], 0.5)
 		battle._world.add_child(td)
 		tends.append(td)
@@ -277,7 +322,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 			strand.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			strand.shaded = false; strand.transparent = true
 			strand.pixel_size = (randf_range(10.0, 18.0) * battle.WS) / float(maxi(1, glow.get_width()))
-			strand.modulate = Color(0.4, 0.05, 0.07, 0.9)
+			strand.modulate = Color(0.28, 0.03, 0.44, 0.9)
 			var sp0: Vector2 = tp + Vector2(randf_range(-26.0, 26.0), randf_range(-16.0, 16.0))
 			strand.position = battle._world_pos(sp0, randf_range(0.3, 0.9))
 			battle._world.add_child(strand)
@@ -296,7 +341,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 		uu["haste_until"] = battle._t + CONSUME_HASTE_SEC; uu["haste_mult"] = 1.0 + CONSUME_ASPD_BONUS       # 吞噬完成: 5秒+50%攻速(用户2026-07-19)
 		battle._vfx._float_text(uu["pos"] + Vector2(0, -62), "吞噬 +50% 攻击速度", Color("#ff6a6a"))
 		battle._vfx._flash(uu, Color(1.5, 0.95, 0.95))
-		battle._skill_ring(uu["pos"] as Vector2, Color(0.55, 0.08, 0.1, 0.7), 46.0)
+		battle._skill_ring(uu["pos"] as Vector2, Color(0.385, 0.048, 0.605, 0.7), 46.0)
 		if stype != "":                                            # 以自己属性立即放一次目标主动技(用户拍板: 只放主动)
 			battle._pending_shots.append({"delay": 0.35, "fn": func() -> void:
 				if not uu.get("alive", false): return
@@ -339,16 +384,16 @@ func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(
 	spk.flip_h = randf() < 0.5
 	spk.position = battle._world_pos(pos2d, 0.05)
 	spk.rotation.z = randf_range(-0.35, 0.35)
-	spk.modulate = Color(1.25, 1.1, 1.1, 1.0)                      # 提亮(暗地上要明显)
+	spk.modulate = Color(1.05, 0.9, 1.35, 1.0)                      # 提亮(暗地上要明显)
 	battle._world.add_child(spk)
-	battle._skill_ring(pos2d, Color(0.55, 0.09, 0.1, 0.55), 22.0)         # 破土
+	battle._skill_ring(pos2d, Color(0.385, 0.054, 0.605, 0.55), 22.0)         # 破土
 	var rgt2: Texture2D = VfxTex._make_fire_glow_tex()
 	var rg = Sprite3D.new()                                       # 根部暗红光晕(衬出刺)
 	rg.texture = rgt2
 	rg.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	rg.shaded = false; rg.transparent = true
 	rg.pixel_size = (randf_range(24.0, 34.0) * battle.WS) / float(maxi(1, rgt2.get_width()))
-	rg.modulate = Color(0.7, 0.1, 0.12, 0.6)
+	rg.modulate = Color(0.49, 0.06, 0.77, 0.6)
 	rg.position = battle._world_pos(pos2d, 0.12)
 	battle._world.add_child(rg)
 	var rgt = battle._reg_tween()
@@ -394,6 +439,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			fs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			fs.shaded = false; fs.transparent = true
 			fs.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			fs.modulate = Color(0.8, 0.62, 1.2, 1.0)   # 11-11 深渊精英: 巨拳偏紫(贴图是旧红紫精英的黑红色)
 			fs.pixel_size = (26.0 * battle.WS) / float(maxi(1, ftex.get_height()))
 			fs.position = battle._world_pos(slam_p, 1.7)                  # 举高
 			battle._world.add_child(fs)
@@ -406,8 +452,8 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			if not uu.get("alive", false): return
 			uu["_slam"] = false
 			battle._shake(0.11)
-			battle._skill_ring(slam_p, Color(0.55, 0.1, 0.12, 0.8), 46.0)
-			battle._skill_ring(slam_p, Color(0.35, 0.06, 0.08, 0.5), 110.0)
+			battle._skill_ring(slam_p, Color(0.385, 0.06, 0.605, 0.8), 46.0)
+			battle._skill_ring(slam_p, Color(0.245, 0.036, 0.385, 0.5), 110.0)
 			_elite_debris(slam_p, 9)
 			_elite_mist(slam_p, 0.25, 5)
 		, "src": u})
@@ -437,14 +483,14 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 		u["untargetable_until"] = battle._t + 1.6                         # 滞空不可索敌可受伤(照熔岩)
 		var center: Vector2 = u["pos"]
 		var tok2: int = battle._next_cast_tok()
-		battle._skill_ring(center, Color(0.55, 0.1, 0.12, 0.5), 700.0)   # 预警大圈
+		battle._skill_ring(center, Color(0.385, 0.06, 0.605, 0.5), 700.0)   # 预警大圈
 		var wr = battle._reg_tween()                                     # 蓄力期预警再脉动2次
 		wr.tween_interval(0.6)
 		wr.tween_callback(func() -> void:
-			if uu.get("alive", false): battle._skill_ring(uu["pos"] as Vector2, Color(0.6, 0.12, 0.14, 0.45), 700.0))
+			if uu.get("alive", false): battle._skill_ring(uu["pos"] as Vector2, Color(0.42, 0.072, 0.66, 0.45), 700.0))
 		wr.tween_interval(0.45)
 		wr.tween_callback(func() -> void:
-			if uu.get("alive", false): battle._skill_ring(uu["pos"] as Vector2, Color(0.65, 0.14, 0.16, 0.5), 700.0))
+			if uu.get("alive", false): battle._skill_ring(uu["pos"] as Vector2, Color(0.455, 0.084, 0.715, 0.5), 700.0))
 		var fs2: Sprite3D = null
 		if ftex != null:                                           # 空中巨拳(蓄力1s变大·悬在头顶)
 			fs2 = Sprite3D.new()
@@ -452,6 +498,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			fs2.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			fs2.shaded = false; fs2.transparent = true
 			fs2.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			fs2.modulate = Color(0.8, 0.62, 1.2, 1.0)   # 11-11 深渊精英: 巨拳偏紫(贴图是旧红紫精英的黑红色)
 			fs2.pixel_size = (30.0 * battle.WS) / float(maxi(1, ftex.get_height()))
 			fs2.position = battle._world_pos(center, 6.0)
 			battle._world.add_child(fs2)
@@ -478,8 +525,8 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			var c2: Vector2 = uu["pos"]
 			battle._shake(battle.JUICE_SHAKE_HEAVY)
 			battle._shake(0.16)
-			battle._skill_ring(c2, Color(0.65, 0.13, 0.15, 0.9), 100.0)
-			battle._skill_ring(c2, Color(0.45, 0.08, 0.1, 0.6), 240.0)
+			battle._skill_ring(c2, Color(0.455, 0.078, 0.715, 0.9), 100.0)
+			battle._skill_ring(c2, Color(0.315, 0.048, 0.495, 0.6), 240.0)
 			_elite_debris(c2, 16)
 			_elite_mist(c2, 0.3, 8)
 			for step2 in range(10):

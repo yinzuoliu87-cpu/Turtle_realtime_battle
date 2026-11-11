@@ -38,9 +38,9 @@ const TABLE := {
 	"axe_throw":   ["vfx/eq096-axe-wood-throw.png", 20.0],   # 炽天使·甩回旋镖(4 秒 10 把 ⇒ 每把 0.4 秒)
 	"axe_plant":   ["vfx/eq096-axe-wood-plant.png", 10.67],    # 全息·插地开法阵 4 秒(循环)
 	"axe_execute": ["vfx/eq096-axe-wood-execute.png", 10.67],  # 余烬·处决
-	"whirl":      ["pets/animations/elite/whirl.png", 9.52],      # 4帧 / 0.42s
-	"hammer":     ["pets/animations/elite/hammer.png", 9.30],     # 4帧 / 0.43s
-	"hammer_big": ["pets/animations/elite/hammer_big.png", 12.24],# 18帧 / 1.47s(含1s hold)
-	"whip":       ["pets/animations/elite/whip.png", 14.0],       # 7帧 / 0.50s ≈ 节拍 0.48s
-	"consume":    ["pets/animations/elite/consume.png", 6.0],     # 9帧 / 1.50s
+	"whirl":      ["pets/animations/elite/whirl.png", 14.3],      # 11-11: 6格 / 0.42s(正面 → 背面 → 转回)
+	"hammer":     ["pets/animations/elite/hammer.png", 13.95],    # 11-11: 6格 / 0.43s(砸地在最后一格)
+	"hammer_big": ["pets/animations/elite/hammer_big.png", 10.2], # 11-11: 15格 / 1.47s(蹲 / 起跳 / 空中举双拳 10 格 / 砸)
+	"whip":       ["pets/animations/elite/whip.png", 14.0],       # 11-11: 11格, 运行时按「前摇 + 出手 + 拉人」时长传 fps(EliteSystem.whip_anim_fps)
+	"consume":    ["pets/animations/elite/consume.png", 10.0],    # 11-11: 15格 / 1.50s
 }

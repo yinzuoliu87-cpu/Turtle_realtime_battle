@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "39e042216d262898d9310b77a2e9920cc0c9a0a354991b9b956bb2e2979cd41a",
+ "fingerprint": "078a519c7024358452ddd9bd292ef64787e4e41b1ac0337cea502d92aa033933",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -10,7 +10,7 @@
   },
   {
    "def": "302cbfd03fa4ff31",
-   "hash": "6f949186819c8419ec866ac952b4f26073678191ea018fea4315ebf8aaf53c54",
+   "hash": "bea2f5fa685d07896c87aac89299015b5ca27a8dafc99d760af5f5d6c312398f",
    "tag": "② 药水/枪 vs 弓箭/剑 · 3 统领同路 + 精英小将"
   },
   {
@@ -30,7 +30,7 @@
   },
   {
    "def": "static-tables",
-   "hash": "9169f66028ad63b0d390ca3e62e4ec659b724e80a8af2dfce52a611e3fd825a1",
+   "hash": "77900333c47f55b0a30bfdf6c579d6faa4933c46f16f79f36cc6ff78ba5be06b",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],

@@ -13,9 +13,9 @@ extends RefCounted
 const BY_PATH := {
 	"pets/animations/ghost/attack.png": 5,      # 12 帧(11-08 重排: 命中后定住 2 拍、收回 4 拍)
 	"pets/animations/ninja/slash.png": 6,       # 13 帧(11-08: 原 3 帧是旧画风, 从新形象待机整段重做)
-	"pets/animations/elite/attack.png": 6,      # 13 帧(11-08: 站姿起手 + AI 补拉镰 3 帧 / 收回 5 帧)
+	"pets/animations/elite/attack.png": 5,      # 12 格(11-11 深渊精英: 站 / 举过头 ×3 / 斜前上 / ★劈到前下 / 收)
 	"pets/animations/melee/attack.png": 5,      # 12 帧(11-05 重做 9 帧 → 11-08 重排: 蓄力补一拍、收回每帧两拍)
-	"pets/animations/ranged/attack.png": 5,     # 12 帧(11-08: AI 补收回 4 帧)
+	"pets/animations/ranged/attack.png": 5,     # 12 格(11-11 海螺炮手: 站 / 前压 ×4 / ★后坐 / 收)
 	"pets/animations/reserve/attack.png": 5,    # 12 帧(11-08: AI 补抬手 3 帧 / 收回 5 帧)
 	"pets/animations/wraith/attack.png": 2,     # 5 帧
 	"vfx/eq096-axe-wood-attack.png": 2,         # 8 帧(斧头兜底表; 按形态的表走 AxeArt._act_rows, 没登记的按 40% 算)
