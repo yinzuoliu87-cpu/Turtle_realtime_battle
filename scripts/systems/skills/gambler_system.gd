@@ -65,8 +65,7 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 		#   这里标记"下一次普攻是连击产生的", swordsman_system.on_basic_attack 读它并跳过。
 		#   ⚠ 只跳过【连击那几发】—— 赌神正常节奏的第一发照常触发剑士, 它不该被开除出剑队。
 		#   ⚠ 赌注 barrage(_gambler_bet_multi) 不走 _basic_attack(直接结算伤害) ⇒ 本来就不触发, 无需处理。
-		u["_chained_atk"] = true
-		AttackRhythm.play_passive(battle, u, "multi")   # 反手补牌(只管画面)
+		u["_chained_atk"] = true   # 也是画面判据: 连上的那一发普攻播「反手补牌」段(AttackRhythm.own_rows_of; 11-10 前在这里提前播, 牌和挥手对不上)
 		return maxf(0.06, u["atk_interval"] * MULTI_ASPD)   # 快攻速再打 (用户2026-07-28: ~3.3×→~6×攻速)
 	u["_multi_n"] = 0                                 # 没中→链断, 下次从当前基础概率(含命运之轮 0.60 / 赌注 +0.20)起
 	u["_chained_atk"] = false                         # 链断了 → 下一次是正常普攻, 照常触发剑士

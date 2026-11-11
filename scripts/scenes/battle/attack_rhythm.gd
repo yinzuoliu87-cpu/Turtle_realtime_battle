@@ -18,12 +18,19 @@ const CAST_CANCEL_AFTER := 3   # 释放帧之后几帧起可被走路 / 普攻�
 
 ## 这个单位自己的普攻帧表: 单位自带(九把斧按形态)优先; 灵魂打击强化的三下用拍爪(用户 11-07「三下强化攻击都用那个爪子向下拍的动作」)。
 ## 判据只读 headless_soul_stacks, 不往单位字典加键(单位字典进确定性摘要)。龟壳复制没有这段, 查不到就走自己的普攻。
+## 赌神多重打击连上的那一发用「反手补牌」段当普攻(第 5 帧反手甩出 = 命中帧, TurtleActions.HIT 登记)。用户 11-10「它什么动作到哪一帧
+##   的时候，它手上的牌才发出去」⇒ 量出来: 这段原来在上一发命中时就播(被动反应), 0.5 秒播完前连击那一发的前摇已开始、普攻开不了
+##   ⇒ 连击的牌在站着不动时从胸口飞出, 牌飞走才补播挥手。判据只读 _chained_atk(连上时 gambler_system 写, 断链清)。
 static func own_rows_of(battle, u: Dictionary) -> Dictionary:
 	var own: Dictionary = u.get("_act_rows", {})
 	if own.is_empty() and int(u.get("headless_soul_stacks", 0)) > 0:
 		var ent: Array = (TurtleActions.FORM.get(battle._anim_key(u), {}) as Dictionary).get("soul_attack", [])
 		if not ent.is_empty():
 			return {"attack": ent}
+	if own.is_empty() and bool(u.get("_chained_atk", false)):
+		var ment: Array = (TurtleActions.FORM.get(battle._anim_key(u), {}) as Dictionary).get("multi", [])
+		if not ment.is_empty():
+			return {"attack": ment}
 	return own
 
 

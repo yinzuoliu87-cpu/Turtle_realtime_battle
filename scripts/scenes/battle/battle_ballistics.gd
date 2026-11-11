@@ -108,6 +108,39 @@ func _fire_coral_spike(src: Dictionary, tgt: Dictionary, si: int) -> void:   # �
 		"coral_spike": true, "dirsel": true, "co_si": si,
 	})
 
+## 赌神普攻: 飞牌从手上那张牌的位置出手(用户 11-10「它什么动作到哪一帧的时候，它手上的牌才发出去」)。
+## 普攻帧条第 4 帧 = 命中帧(伤害结算 = 飞牌生成那一刻)手臂甩直; 原来飞牌从胸口中心出、手上的牌第 7 帧才消失
+##   ⇒ 0.3 秒里一张在手上一张在飞。帧条第 4~6 帧已去掉手上的牌(tools/oneoff/gambler_1110), 这里把起点挪到那张牌原来的中心:
+##   art 坐标 (38.5, 88.5), 本体中心 art x 73、脚底线 art y 124(build_turtle_seq.py 布局; 精灵原点 = 脚底线、水平中心),
+##   1 art 像素 = 精灵 pixel_size; 精灵是竖直公告板(局部 x/y = 镜头右/上)。
+##   多重打击连上的那一发播「反手补牌」段(AttackRhythm.own_rows_of), 第 5 帧反手甩出, 张开的手掌在 art (36, 81)。
+## 只改画面: 伤害在飞行时长(按 sim 坐标算)走完时结算, 起点只决定弹体从哪儿插值过去(RULES_VER 不动)。
+const GAMBLER_CARD_ART := {   # 帧条文件名 → 出手点(art 坐标)
+	"attack.png": Vector2(38.5, 88.5),
+	"multi.png": Vector2(36.0, 81.0),
+}
+const GAMBLER_ART_CX := 73.0
+const GAMBLER_ART_FEET := 124.0
+const GAMBLER_CARD_HAND_SCALE := 0.3   # 出手时的大小(手上那张约 0.2 米, 飞牌 0.9 米)
+const GAMBLER_CARD_GROW_SEC := 0.12    # 这么久展开到正常大小
+
+func _gambler_card_from(u: Dictionary, fallback: Vector3) -> Vector3:
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr) or not (spr is Sprite3D) or battle._cam == null or str(u.get("anim_action", "")) != "attack":
+		return fallback
+	var sd: Dictionary = u.get("anim_sd", {})
+	var tex = sd.get("tex", null)
+	var art = GAMBLER_CARD_ART.get(tex.resource_path.get_file() if tex is Texture2D else "", null)
+	if art == null:
+		return fallback
+	if int(float(u.get("anim_t", 0.0)) * float(sd.get("fps", 0.0))) < int(u.get("_atk_hit_frame", 1)) - 1:
+		return fallback   # 追打等没有前摇的出手: 动作刚从第 0 帧开播, 手还没甩出去
+	var s: Sprite3D = spr
+	var cb: Basis = battle._vfx.cam_basis()
+	var lx: float = ((art as Vector2).x - GAMBLER_ART_CX) * (-1.0 if s.flip_h else 1.0) * s.pixel_size * s.scale.x
+	var ly: float = (GAMBLER_ART_FEET - (art as Vector2).y) * s.pixel_size * s.scale.y
+	return s.global_position + cb.x.normalized() * lx + cb.y.normalized() * ly
+
 func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, basic_onhit: bool = false) -> void:
 	var start2d: Vector2 = from if from != null else (src["pos"] if src != null else tgt["pos"])
 	var p = Sprite3D.new()
@@ -170,6 +203,13 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	p.shaded = false
 	p.transparent = true
 	var world_from = battle._world_pos(start2d, 1.0)   # 从胸口高度出
+	var card_hand := false
+	if card_spin and from == null:
+		var hand: Vector3 = _gambler_card_from(src, world_from)
+		card_hand = hand != world_from
+		world_from = hand
+		if card_hand:
+			p.scale = Vector3.ONE * GAMBLER_CARD_HAND_SCALE
 	p.position = world_from
 	battle._world.add_child(p)
 	var pdur = clampf(DetMath.dist(start2d, tgt["pos"]) / 700.0, 0.22, 0.7)
@@ -180,7 +220,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
-		"oriented": oriented, "card_spin": card_spin, "dtype": battle._last_dmg_type,
+		"oriented": oriented, "card_spin": card_spin, "card_hand": card_hand, "dtype": battle._last_dmg_type,
 	})
 	if th_bolt:
 		battle._projectiles[battle._projectiles.size() - 1]["th_bolt"] = true   # 命中时播变脸龟灵能弹的命中特效
@@ -307,6 +347,10 @@ func _step_projectiles(delta: float) -> void:
 		if pr.get("card_spin", false) and battle._cam != null:            # 赌神: 面向相机+滚转(旋转扑克牌·复用wisp_dir的相机basis法)
 			var ctf: Transform3D = node.global_transform
 			ctf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), pr["t"] * 13.0)
+			if pr.get("card_hand", false):   # 从手上出手: 先是手上那么大, GROW_SEC 内展开(先快后慢)
+				var gk: float = clampf(float(pr["t"]) / GAMBLER_CARD_GROW_SEC, 0.0, 1.0)
+				var gs: float = GAMBLER_CARD_HAND_SCALE + (1.0 - GAMBLER_CARD_HAND_SCALE) * (1.0 - (1.0 - gk) * (1.0 - gk))
+				ctf.basis = ctf.basis.scaled(Vector3(gs, gs, gs))
 			node.global_transform = ctf
 		## ★★2026-08-29 改成通用: **只要弹体是多帧贴图就逐帧播**。
 		##   原来这个闸只对手里剑开(`shuriken_anim`), 所以猎人的 4 帧箭矢

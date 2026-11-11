@@ -286,6 +286,9 @@
   "fps": 15,
   "frame": 148,
   "hit": 4,
+  "hits": {
+   "pets/animations/gambler/multi.png": 5
+  },
   "rows": {},
   "run": 12
  },

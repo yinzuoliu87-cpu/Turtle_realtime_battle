@@ -246,12 +246,23 @@ func _check_real_entries(scn, mk: Callable, at: Vector2) -> void:
 	_ok("⑨ ★★目标进处决线 ⇒ 猎人播处决段", _sheet(hunter).ends_with("hunter/execute.png"), _sheet(hunter))
 	foe["hp"] = float(foe["maxHp"])
 	foe["_hunt_exec_pending"] = false
-	## 连击: 概率拉满, 走真冷却函数
+	## 连击: 概率拉满, 走真冷却函数 → 真普攻前摇入口。补牌段 = 连上的那一发的普攻(第 5 帧反手甩出 = 命中帧)。
+	##   11-10 前是连上那一刻就播(被动反应), 0.5 秒没播完连击前摇已开始、普攻开不了 ⇒ 连击的牌在站着时飞出、牌走了才挥手。
 	var gam: Dictionary = mk.call("gambler", 12)
 	_idle(scn, gam)
 	gam["multi_base"] = 9.0
 	scn._gambler_sys._gambler_multi_cd(gam)
-	_ok("⑨ ★★多重打击连上 ⇒ 赌神播补牌段", _sheet(gam).ends_with("gambler/multi.png"), _sheet(gam))
+	_ok("⑨ ★★多重打击连上那一刻不提前播补牌段(上一发的收手不被打断)", not _sheet(gam).ends_with("gambler/multi.png"), _sheet(gam))
+	scn._enter_basic_windup(gam)
+	_ok("⑨ ★★连上的那一发前摇 ⇒ 赌神播补牌段当普攻", _sheet(gam).ends_with("gambler/multi.png") and str(gam.get("anim_action", "")) == "attack", "%s %s" % [_sheet(gam), str(gam.get("anim_action", ""))])
+	_ok("⑨ ★★补牌段命中帧 = 第 5 帧(反手甩出、手已空)", int(gam.get("_atk_hit_frame", -1)) == 5, str(gam.get("_atk_hit_frame", -1)))
+	gam["_chained_atk"] = false
+	_idle(scn, gam)
+	scn._enter_basic_windup(gam)
+	_ok("⑨ ★★断链后的普攻 ⇒ 播普攻段", _sheet(gam).ends_with("gambler/attack.png"), _sheet(gam))
+	gam["state"] = "idle"
+	gam["pending"] = ""
+	_idle(scn, gam)
 	## 登场: 走真登场被动
 	for id in ["diamond", "pirate", "gambler"]:
 		var u: Dictionary = mk.call(id, 13)

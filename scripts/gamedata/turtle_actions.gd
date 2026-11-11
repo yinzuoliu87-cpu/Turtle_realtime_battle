@@ -102,6 +102,7 @@ const HIT := {
 	"pets/animations/dice/attack.png": 5,
 	"pets/animations/fortune/attack.png": 4,
 	"pets/animations/gambler/attack.png": 4,
+	"pets/animations/gambler/multi.png": 5,
 	"pets/animations/headless/attack.png": 5,
 	"pets/animations/headless/soul_attack.png": 5,
 	"pets/animations/hiding/attack.png": 5,
