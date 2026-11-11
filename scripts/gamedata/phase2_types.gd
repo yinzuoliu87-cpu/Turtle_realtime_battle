@@ -164,7 +164,7 @@ const TYPE_INTRO := {
 # 逐档效果: 该档新增 / 变化的内容(总述见 TYPE_INTRO)。条目之间用「 · 」分隔, 图鉴 / 背包按它拆行。
 const TIER_DESCS := {
 	"剑": [
-		"每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，可触发命中效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%",
+		"每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%",
 		"每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%",
 		"每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%",
 	],

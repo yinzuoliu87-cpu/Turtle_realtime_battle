@@ -15,7 +15,10 @@ extends RefCounted
 ##     （`gambler_system.gd:17` `_gambler_multi_cd`，40/60/80% 概率、连锁 ×0.8 递减、~6 倍攻速）。
 ##     它的每一发连击都是一次完整 `_basic_attack` ⇒ 若追打也走那条路，
 ##     赌神会为每一次追打【再掷一次连击骰】，两个"云顶剑士式连击"互相喂 ⇒ 组合爆炸。
-##   ⇒ 追打直接调 `_apply_damage_from`，绕开 `_basic_attack` 与 `_eq_on_basic_attack`。
+##   ⇒ 追打直接调 `_apply_damage_from`，绕开 `_basic_attack`(防递归的关键是不走它 —— 剑士自己就挂在它里面)。
+##   ★2026-11-11 用户「剑士的追打应该也算这个普通攻击啊，也能触发攻击特效」 ⇒ 追打另外**直接调** `_eq_on_basic_attack`
+##     (攻击时的装备钩子: 065 鲨肝油 / 017 不沉之锚 / 027 电棍 …)。它里面不点剑士(剑士是 `_basic_attack` 单独调的),
+##     而且追打期间 `_sw_busy` 一直挂着 ⇒ 不会因此再排追打, 两条防递归都还在。
 ##     （on-hit 由 `_apply_damage_from` 内部回钩，**不要在外面再调一次** ——
 ##       2026-08-05 前这里多调了一次，导致每发追打把 on-hit 点了两次。详见 tick() 里的注释）
 ##
@@ -95,11 +98,16 @@ func tick(_delta: float) -> void:
 		if not src.get("alive", false) or not tgt.get("alive", false):
 			continue                            # 谁死了就作废，不补刀
 		src["_sw_busy"] = true                  # ★进入追打：期间产生的普攻钩一律不点燃剑士
+		## ★追打算一次攻击(用户 2026-11-11「剑士的追打应该也算这个普通攻击啊，也能触发攻击特效」): 先走攻击时的装备钩子(同 `_basic_attack` 出手那一刻),
+		##   取代 08 月「追打不给 008 / 017 这类每普攻计数钩刷次数」的旧口径。剑士本身不在这个钩子里 ⇒ 不递归。
+		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原(同 _basic_attack)
+		battle._equip_sys._eq_on_basic_attack(src, tgt)
+		battle._equip_sys.tally.pop(_tl0)
+		if not src.get("alive", false) or not tgt.get("alive", false):
+			src["_sw_busy"] = false
+			continue                            # 攻击时的装备效果(017 锚击等)可能已经把目标打死了
 		var dmg: int = battle._atk_dmg(src, float(p["pct"]), tgt)
-		# ★追打【照常吃 on-hit】（用户明确要）：流血/溅射/连锁/标记这些都吃。
-		#   ⚠ 但它【不】触发 _eq_on_basic_attack —— 那条是"每普攻一次"的计数钩
-		#   （008 珊瑚刺每 5 次普攻、017 不沉之锚每普攻消耗充能），追打不该给它们刷次数。
-		#   ⇒ 靠 `_sw_busy` 挡住, 不是靠绕开这条伤害路径。
+		# ★追打【照常吃 on-hit】（用户明确要）：流血/溅射/连锁/标记这些都吃(按普攻命中, 见下一行的 basic 标)。
 		#
 		# ★★2026-08-05 删掉了这行后面原本显式的 `_eq_on_hit(src, tgt, dmg)` ——
 		#   它是**重复的**: `_apply_damage_from` 的 `from_equip` 默认 false,

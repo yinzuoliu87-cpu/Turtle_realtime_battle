@@ -71,8 +71,32 @@ func _ready() -> void:
 	_ok("① ★追打期间(_sw_busy)不再点燃剑士(防无限递归)", s._swordsman._pending.is_empty(),
 		"实得 %d" % s._swordsman._pending.size())
 	me3["_sw_busy"] = false
-	_ok("② 源码保证: 追打【不调】_basic_attack / _eq_on_basic_attack",
-		not FileAccess.get_file_as_string("res://scripts/systems/equip/swordsman_system.gd").contains("_basic_attack(src"))
+	_ok("② 源码保证: 追打【不调】_basic_attack(剑士挂在它里面, 走它就递归)",
+		not FileAccess.get_file_as_string("res://scripts/systems/equip/swordsman_system.gd").contains("._basic_attack(src"))
+
+	# ── ④ 追打算一次攻击, 触发攻击时的装备效果(用户 2026-11-11「剑士的追打应该也算这个普通攻击啊，也能触发攻击特效」) ──
+	var me4: Dictionary = s._spawn._make_unit("basic", "left", Vector2(500, 400))
+	var eq4: Array = []
+	for i4 in ALL9.slice(0, 3):
+		eq4.append({"id": str(i4), "star": 1})
+	eq4.append({"id": "p2eq_065", "star": 1})   # 鲨肝油: 每次攻击 +1 层(攻速 + 龟能)
+	me4["equips"] = eq4
+	me4["eq_state"] = {}
+	me4["hp"] = 100000.0; me4["maxHp"] = 100000.0; me4["alive"] = true
+	var tg4: Dictionary = s._spawn._make_unit("basic", "right", Vector2(560, 400))
+	tg4["hp"] = 100000.0; tg4["maxHp"] = 100000.0; tg4["alive"] = true; tg4["dodge"] = 0.0
+	_run(s, [me4, _mk(ALL9.slice(3, 6)), _mk(ALL9.slice(6, 9)), tg4])
+	s._swordsman._pending.clear()
+	s._swordsman.on_basic_attack(me4, tg4)
+	var n4: int = s._swordsman._pending.size()
+	var o4: int = int((me4["eq_state"].get("p2eq_065", {}) as Dictionary).get("oil_stacks", 0))
+	s._t = float(s._t) + 10.0
+	s._swordsman.tick(0.0)
+	var o5: int = int((me4["eq_state"].get("p2eq_065", {}) as Dictionary).get("oil_stacks", 0))
+	_ok("④ 分母: 顶档带 3 件剑 ⇒ 排了 2 次追打, 且都打出去了", n4 == 2 and s._swordsman._pending.is_empty(), "排 %d · 剩 %d" % [n4, s._swordsman._pending.size()])
+	_ok("④ ★追打算一次攻击 ⇒ 鲨肝油每次追打 +1 层(%d → %d)" % [o4, o5], o5 == o4 + n4)
+	_ok("④ 追打打完 _sw_busy 已放下(不把后面的正常普攻也挡掉)", not bool(me4.get("_sw_busy", false)))
+	s._swordsman._pending.clear()
 
 	# ── ③ ★连击不触发剑士(用户拍板) ──
 	s._swordsman._pending.clear()

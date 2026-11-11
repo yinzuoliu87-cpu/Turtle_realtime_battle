@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "0bca00c3f125aec9095102f5652e1cfb81fe9e7c3e5e5e11421053b906b95fae",
+ "fingerprint": "a3c6140672c522cbd2d9550f5aa1dec6e4cb5881649c5dffe64c09087139104a",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -10,7 +10,7 @@
   },
   {
    "def": "302cbfd03fa4ff31",
-   "hash": "bea2f5fa685d07896c87aac89299015b5ca27a8dafc99d760af5f5d6c312398f",
+   "hash": "777c015f94b645e64c46f0f3e2d0dc718964a5b7ac7e239d04c368dbc7179e77",
    "tag": "② 药水/枪 vs 弓箭/剑 · 3 统领同路 + 精英小将"
   },
   {

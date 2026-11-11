@@ -463,7 +463,7 @@ scripts/gamedata/phase2_types.gd|lit|枪·神枪手
 scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把枪定期射出金弹，档位越高，我方生成的炮台越多。
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%
-scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，可触发命中效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%
+scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +10 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚 · 【冰封】全队攻击有 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% 概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +16 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +23 魔抗 · 【铸币】每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%
