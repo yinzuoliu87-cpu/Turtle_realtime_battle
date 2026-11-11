@@ -177,10 +177,13 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 		#   后续两次写就是 frame=16、17 打在 7 帧的表上。**两条连续报错正是这么来的。**
 		#   ⇒ **每次写之前重新按精灵当前的 hframes×vframes 算上限**。
 		#   通则: **跨 await 的帧号上限一律不能缓存** —— await 中间世界会变。
-		for _step in [2, 1, 0]:
+		## ★2026-11-11 落地改用第 8 / 9 / 10 帧(双刀落地 → 收势 → 站姿)。原来取表末三帧 15 / 16 / 17, 而第 11~16 帧是一组「白闪淡出」
+		##   (平均亮度 126 / 160 / 234 / 179 / 140 / 93, 待机 64) ⇒ 每次落地身体发白闪一下(用户 11-10「整个动作播放是不是有问题」逐帧查到)。
+		##   帧号仍每次按精灵当前的表钳(上面 2026-08-07 的教训)。
+		for _lf in [8, 9, 10]:
 			if is_instance_valid(_nspr):
 				var _lim: int = _nspr_last(_nspr)
-				_nspr.frame = clampi(_lim - _step, 0, _lim)
+				_nspr.frame = clampi(_lf, 0, _lim)
 			await battle._wait_sim(0.05, u)
 			if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 		u["_manual_anim"] = false

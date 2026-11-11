@@ -357,7 +357,9 @@ func _slap_resolve(side: String, origin: Vector2, dir: Vector2, rng: float, mult
 		##   (`col` 参数在两条伤害路里**都没被读**, 颜色一律查全局 —— 传什么都不影响。)
 		var base: float = float(f.get("maxHp", 0.0)) * HIT_HP_PCT + HIT_FLAT
 		var dmg: int = maxi(1, int(battle._resolve_dmg(shooter, base, f, false) * mult))
+		battle._damage.spirit_src = shooter   # 战报单列「灵物触手」(只打标, 伤害照常记在来源龟身上)
 		battle._damage._apply_damage_from(shooter, f, dmg, Color("#b388ff"))
+		battle._damage.spirit_src = null
 		## ★2026-08-21: 逐个被命中者各来一次撞击表现。
 		##   在这里调而不是在演出侧, 是因为**只有这里知道带上真正扫到了谁**
 		##   (名单是命中那一刻由 `_band_foes` 重算的)。

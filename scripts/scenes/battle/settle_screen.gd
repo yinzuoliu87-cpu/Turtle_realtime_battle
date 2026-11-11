@@ -262,6 +262,7 @@ func lane_views() -> Array:
 		var sd = battle._eff_side(u)
 		if sd == "left" or sd == "right":
 			(cur[sd] as Array).append(battle._st_row(u))
+	add_spirit_rows(cur, battle._units, func(x) -> String: return str(battle._eff_side(x)))
 	if not ((cur["left"] as Array).is_empty() and (cur["right"] as Array).is_empty()):
 		var cl := str(GameState.current_lane) if GameState != null else ""
 		cur["title"] = battle._LANE_CN.get(cl, "本场") if not lanes.is_empty() else "本场"
@@ -800,6 +801,70 @@ static func team_grid(b, h, rows: Array, header: String, hc: Color) -> GridConta
 ##   (phy / mag / tru; 持续伤害走 `_apply_damage` 默认的 dot 桶, 与真伤同列 —— 同 `DmgStatsPanel` 的分段条)。
 ## ★三者之和 == `_st_dealt`(门禁 verify_settle_pages 走真伤害入口对这笔账)。
 ## 快照行(`_st_row`)已经拆好成 `_st_phy/_st_mag/_st_tru` 三个标量 ⇒ 直接读; 活单位读分桶字典。
+## ── 灵物触手单列(用户 11-11「整个伤害面板都没有统计这个出手的伤害，反而是把这个伤害归类为了这个龟的伤害。为什么不单独做一个…触手造成的伤害呢？」) ──
+## 拍击伤害仍记在来源龟的 _st_dealt(sim 账), 另有一份 _st_spirit_dealt / _st_spirit_by_type(battle_damage.spirit_src)。
+## 显示: 龟那一行扣掉这份, 本方多一行「灵物触手」(不评 MVP)。快照行(_st_row 出的)已经扣过, 不再扣。
+const SPIRIT_NAME := "灵物触手"
+const SPIRIT_ICON := "res://assets/sprites/tags/tag-spirit.png"
+
+static func spirit_split(u: Dictionary) -> Array:
+	var bt = u.get("_st_spirit_by_type", {})
+	if not (bt is Dictionary):
+		return [0, 0, 0]
+	return [int(bt.get("phy", 0)), int(bt.get("mag", 0)), int(bt.get("tru", 0)) + int(bt.get("dot", 0))]
+
+
+## 这只单位自己打出的伤害(扣掉灵物份额)
+static func own_dealt(u: Dictionary) -> int:
+	return int(u.get("_st_dealt", 0)) - int(u.get("_st_spirit_dealt", 0))
+
+
+static func own_split(u: Dictionary) -> Array:
+	var a: Array = dealt_split(u)
+	var s: Array = spirit_split(u)
+	return [int(a[0]) - int(s[0]), int(a[1]) - int(s[1]), int(a[2]) - int(s[2])]
+
+
+## 一方的「灵物触手」行(纯标量, 快照可存; 没有拍击伤害 ⇒ {})
+static func spirit_row(units: Array) -> Dictionary:
+	var tot := 0
+	var sp := [0, 0, 0]
+	for u in units:
+		if not (u is Dictionary) or int(u.get("_st_spirit_dealt", 0)) <= 0:
+			continue
+		tot += int(u["_st_spirit_dealt"])
+		var s: Array = spirit_split(u)
+		for i in range(3):
+			sp[i] = int(sp[i]) + int(s[i])
+	if tot <= 0:
+		return {}
+	return {"name": SPIRIT_NAME, "id": "__spirit__", "is_summon": false, "_st_spirit": true, "_st_multi": false, "_st_mkind": "",
+		"rarity": "C", "alive": true, "hp": 0.0, "maxHp": 0.0, "_st_dealt": tot, "_st_taken": 0, "_st_heal": 0, "_st_crit": 0,
+		"_st_kills": 0, "_st_shield": 0, "_st_phy": int(sp[0]), "_st_mag": int(sp[1]), "_st_tru": int(sp[2]),
+		"_st_portrait": SPIRIT_ICON, "_st_pf": "1,1"}
+
+
+## 快照行(纯标量)再过一遍 _st_row 时要留住的键: 灵物行标记、头像兜底(活单位没有这些键 ⇒ 空字典; merge 不覆盖已有键)
+static func keep_flags(u: Dictionary) -> Dictionary:
+	var out := {}
+	for k in ["_st_spirit", "_st_portrait", "_st_pf"]:
+		if u.has(k):
+			out[k] = u[k]
+	return out
+
+
+## 给一份 {left:[行], right:[行]} 按方补上「灵物触手」行; side_of(单位) → "left" / "right"
+static func add_spirit_rows(snap: Dictionary, units: Array, side_of: Callable) -> void:
+	for sd in ["left", "right"]:
+		var mine: Array = []
+		for u in units:
+			if u is Dictionary and str(side_of.call(u)) == sd:
+				mine.append(u)
+		var r: Dictionary = spirit_row(mine)
+		if not r.is_empty():
+			(snap[sd] as Array).append(r)
+
+
 static func dealt_split(u: Dictionary) -> Array:
 	if u.has("_st_phy"):
 		return [int(u["_st_phy"]), int(u.get("_st_mag", 0)), int(u.get("_st_tru", 0))]
@@ -823,6 +888,8 @@ static func avatar(r: Dictionary, sz: float) -> Control:
 	var p := ""
 	if bool(r.get("is_summon", false)):
 		p = ""
+	elif bool(r.get("_st_spirit", false)):
+		p = SPIRIT_ICON
 	elif MinionCodex.is_reserve(r):
 		p = MinionCodex.avatar_path("reserve")   # 援军小将(行里认 id + 名字)
 	elif bool(r.get("_st_multi", false)):

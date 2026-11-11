@@ -37,6 +37,9 @@ var _dt_wrongowner: Dictionary = {}     # 归属不符(比 fresh 更严)的记�
 ##     而文案很可能写着"物理伤害"。用户 2026-08-27:「物理伤害为啥不吃护甲啊」。
 ##   ⇒ 记账点仍在产品自己取用类型的那一行, 不是我插的标记: 新写的伤害代码
 ##     只要绕开 `_resolve_dmg` 就会被记上, 我不需要预先知道它存在。
+## 灵物触手拍击的来源(spirit_synergy_system._slap_resolve 结算时设, 结算完清): 这一下的伤害照常记进来源龟的 _st_dealt(sim 账,
+##   钩爆 / 香炉石 / 猎龟令都读它), 另记一份 _st_spirit_dealt / _st_spirit_by_type, 战报和结算表显示时从龟那行扣出来、单列「灵物触手」(用户 11-11)。
+var spirit_src = null
 var _dt_resolved := false               # 这份类型是 _resolve_dmg 算出来的(吃护甲), 还是 set_dtype 声明的(不吃)
 var _dt_unmitigated: Dictionary = {}     # "来源标签" → 没走 _resolve_dmg 的次数
 
@@ -138,6 +141,9 @@ func _record_buckets(src, u: Dictionary, dmg: int, bkt: String, was_crit: bool) 
 	if src is Dictionary and src.has("side") and not is_same(src, u):
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + dmg
 		battle._st_add_type(src, "_st_dealt_by_type", bkt, dmg)
+		if spirit_src != null and is_same(src, spirit_src):
+			src["_st_spirit_dealt"] = int(src.get("_st_spirit_dealt", 0)) + dmg
+			battle._st_add_type(src, "_st_spirit_by_type", bkt, dmg)
 		if was_crit:
 			src["_st_crit"] = int(src.get("_st_crit", 0)) + 1
 	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
@@ -157,6 +163,9 @@ func _record_extra_true(src, u: Dictionary, amt: int) -> void:
 	if src is Dictionary and src.has("side") and not is_same(src, u):
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + amt
 		battle._st_add_type(src, "_st_dealt_by_type", "tru", amt)
+		if spirit_src != null and is_same(src, spirit_src):
+			src["_st_spirit_dealt"] = int(src.get("_st_spirit_dealt", 0)) + amt
+			battle._st_add_type(src, "_st_spirit_by_type", "tru", amt)
 	battle._equip_sys.tally.on_damage(src, u, amt, "tru")   # ④ 装备统计: 额外真伤(金弹/腐蚀/墨迹)同口径进账
 
 

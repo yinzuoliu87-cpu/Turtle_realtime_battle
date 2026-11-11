@@ -89,7 +89,7 @@ const UKEYS_S2 := ["bar_head_h", "hp_w", "maxEnergy", "active_skills", "energy_c
 ##   原来一项都不在流里 ⇒ 播状态流时全是 0(探针 tests/probes/_probe_stream_stats.gd: 本机跑合计 1.65 万、流里 0)。
 ##   `_st_dealt_by_type` / `_st_taken_by_type` / `_st_eq` 是纯值字典(按类型 / 按装备分桶); `rarity` 给结算行的头像框配色。
 const UKEYS_ST := ["_st_dealt", "_st_taken", "_st_heal", "_st_shield", "_st_kills", "_st_crit", "_st_multi",
-	"_st_dealt_by_type", "_st_taken_by_type", "_st_eq", "rarity"]
+	"_st_dealt_by_type", "_st_taken_by_type", "_st_eq", "rarity", "_st_spirit_dealt", "_st_spirit_by_type"]
 ## ★2026-11-03 信息面板（用户「统计面板、伤害统计、装备统计、属性，全坏掉了」；积分赛第一天改服务器裁判、手机播流）：
 ##   点单位弹出的详情面板读的属性（攻击 / 魔抗 / 暴击 / 暴伤 / 攻击间隔 / 射程 / 移速 / 吸血 / 穿透 / 增减伤 / 状态计时 / 形态 / 装备充能 …）
 ##   原来一项都不在流里 ⇒ 播流时面板全是默认值（攻击 0 / 攻速 1.00 / 射程 70）。名单由静态扫 info_panel.gd 与它调用的战斗函数量出

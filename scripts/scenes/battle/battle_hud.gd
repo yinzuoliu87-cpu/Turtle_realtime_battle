@@ -2405,7 +2405,7 @@ func _st_mvp_index(rows: Array) -> int:
 	var best_dmg: int = 0
 	for i in range(rows.size()):
 		var r = rows[i]
-		if not (r is Dictionary) or bool((r as Dictionary).get("is_summon", false)):
+		if not (r is Dictionary) or bool((r as Dictionary).get("is_summon", false)) or bool((r as Dictionary).get("_st_spirit", false)):   # 灵物触手行不评 MVP
 			continue
 		var d: int = int((r as Dictionary).get("_st_dealt", 0))
 		if d > best_dmg:

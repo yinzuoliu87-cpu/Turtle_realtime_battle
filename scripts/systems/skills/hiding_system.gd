@@ -369,9 +369,10 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 		d += battle._frame_sim_dt
 		var kk: float = clampf(d / dive_sec, 0.0, 1.0)
 		if u.get("alive", false):
-			u["pos"] = DetMath.vlerp(from, (tref["pos"] as Vector2), kk)   # 水平接近目标
-			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")
-		PullRopeVfx.reel(rope, kk)                       # 已经被拽过的那段绳收掉(画面)
+			## 用户 11-11:「并不是直直的这样子落下来…应该有一个横的这个加速度…肯定是要向上面走一点点」: 水平先快后中速, 高度起步先往上带一点再弧线落到目标身上
+			u["pos"] = DetMath.vlerp(from, (tref["pos"] as Vector2), PullCurve.frac(kk))
+			u["height"] = PullCurve.dive_height(kk, h0, 0.3)
+		PullRopeVfx.reel(rope, PullCurve.frac(kk))                       # 已经被拽过的那段绳收掉(画面)
 	PullRopeVfx.release(battle, rope)                    # 到了 / 作废: 剩下的绳段淡出
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return

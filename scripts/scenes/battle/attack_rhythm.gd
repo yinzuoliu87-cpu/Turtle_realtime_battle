@@ -66,6 +66,18 @@ static func begin(battle, u: Dictionary, wsec: float) -> void:
 	u["_atk_wind"] = true
 
 
+## 普攻前摇被打断后补播(用户 11-10「有的时候忍者龟这个整个动作播放是不是有问题啊」): 探针 90 次普攻里 6 次结算时身上是待机 / 跑 ——
+##   忍者被动冲刺(或被控)在前摇中途把动作换掉, sim 的前摇计时冻住、之后接着走完, 而普攻动作早没了。
+##   sim 前摇分支每步调: 还在普攻前摇、动作槽却空着(不在手动逐帧)⇒ 按剩余前摇重开, 命中帧照样对上结算。只写渲染键。
+static func resync_windup(battle, u: Dictionary) -> void:
+	if str(u.get("pending", "")) != "B" or str(u.get("anim_action", "")) != "" or u.get("_manual_anim", false):
+		return
+	var left: float = float(u.get("state_t", 0.0))
+	if left <= 0.02 or not is_instance_valid(u.get("sprite", null)) or sheet_path(battle, u) == "":
+		return
+	begin(battle, u, left)
+
+
 ## 普攻结算(_basic_attack)时调: 前摇里已开播 ⇒ 此刻正是命中帧, 不重播; 追打等没有前摇的出手照旧(预备形变 + 开播)
 static func on_hit(battle, u: Dictionary) -> void:
 	if not u.get("_atk_wind", false):

@@ -2517,6 +2517,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			else:
 				_do_move(u, tgt, dist, rng, spd, delta)  # 不在射程 → 移动
 		"windup":
+			AttackRhythm.resync_windup(self, u)   # 前摇被冲刺 / 被控打断后普攻动作没了 ⇒ 按剩余前摇重开(只写渲染键)
 			u["state_t"] = float(u["state_t"]) - delta   # 前摇: 站定不动(施法锁)
 			if u["state_t"] <= 0.0:
 				var p := str(u.get("pending", "B"))
@@ -6016,9 +6017,8 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	var from5: Vector2 = u["pos"]
 	var to5: Vector2 = tgt["pos"]
 	_elite_sys._elite_mist(from5 + DetMath.norm((to5 - from5)) * 24.0, 0.8, 3)   # 手臂黑雾幻化
-	_bolt_line(from5, to5, Color(0.55, 0.1, 0.12, 0.9))
 	## 链节依次伸出(快), 留到被拽过去、途中逐段收(11-08; 链节只管画面, 不进单位字典; 兜底寿命 = 出手 + 拉完 + 余量)
-	var whip_links: Array = PullRopeVfx.elite_links(self, from5, to5, load("res://assets/sprites/vfx/bio-chain.png"),
+	var whip_links: Array = PullRopeVfx.elite_links(self, from5, to5, load("res://assets/sprites/vfx/bio-chain-h.png"),
 		EliteSystem.WHIP_SHOT_DELAY + EliteSystem.whip_pull_sec(from5, to5) + 0.4)
 	_pending_shots.append({"delay": 0.14, "fn": func() -> void:   # 命中: 顿一下+目标眩晕0.4s
 		if not tref.get("alive", false) or not uu.get("alive", false):
@@ -6043,13 +6043,13 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		var dest: Vector2 = tp + dirp * 46.0
 		dest = ArenaShape.clamp_in(dest, ARENA, 30, 20)
 		var fromp: Vector2 = uu["pos"]
-		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", fromp, dest, 40.0, Color(0.45, 0.08, 0.1, 0.6), EliteSystem.whip_pull_sec(fromp, dest) + 0.07)
 		var pt5 := _reg_tween()
 		var chain_len: float = maxf(1.0, DetMath.dist(from5, to5))
 		var pull_len: float = DetMath.dist(fromp, dest)
 		pt5.tween_method(func(q: float) -> void:
-			if uu.get("alive", false): uu["pos"] = DetMath.vlerp(fromp, dest, q)
-			PullRopeVfx.reel(whip_links, q * pull_len / chain_len)   # 已经被拽过的链节收掉(画面)
+			var pq: float = PullCurve.frac(q)   # 先快后中速(用户 11-11; 原来线性)
+			if uu.get("alive", false): uu["pos"] = DetMath.vlerp(fromp, dest, pq)
+			PullRopeVfx.reel(whip_links, pq * pull_len / chain_len)   # 已经被拽过的链节收掉(画面)
 		, 0.0, 1.0, EliteSystem.whip_pull_sec(fromp, dest))
 		pt5.tween_callback(func() -> void:
 			PullRopeVfx.release(self, whip_links)
@@ -6636,7 +6636,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 忍者·冲击(亚索E式被动auto-dash): 290码内有"可冲"敌(不在其10s冷却)且距上次冲刺≥0.4s → 自动朝最近敌冲刺斩(用户2026-07-06"半径500码，最近敌人") ---
 	## ★被控时不冲刺(用户 2026-10-16「被控住还能冲刺吗」): 原来只排除眩晕, 被击飞 / 施法定身中探针实测照冲。与主循环 stunned + airborne 同一口径。
 	if u["id"] == "ninja" and u.get("alive", false) and not _damage.is_controlled(u):
-		if _t - float(u.get("_ninja_last_dash", -99.0)) >= NinjaSystem.DASH_SELF_CD and not u.get("_ninja_gliding", false):
+		if _t - float(u.get("_ninja_last_dash", -99.0)) >= NinjaSystem.DASH_SELF_CD and not u.get("_ninja_gliding", false) and str(u.get("state", "")) != "windup":   # 前摇里不冲(11-11: 冲刺打断挥刀、落地后伤害凭空结算)
 			var _nbest = null
 			var _nbd := NinjaSystem.DASH_SENSE   # 被动冲击触发射程(用户2026-07-11: 500→290码; <冲刺距离300→冲刺会略穿过目标)
 			for o in _targeting._pick_enemies_of(u):
@@ -7628,7 +7628,7 @@ func _st_name(u: Dictionary) -> String:
 ## ★造成伤害按类型拆成三个【标量】(物理/魔法/真实) —— 快照行必须纯标量(verify_misc_guards),
 ##   拆法只认 `SettleScreen.dealt_split` 这一处(桶的键名只在那里读)。
 func _st_row(u: Dictionary) -> Dictionary:
-	var sp: Array = _SETTLE_S.dealt_split(u)
+	var sp: Array = _SETTLE_S.own_split(u)   # 灵物触手份额单列(11-11)
 	var row: Dictionary = {
 		"name": _st_name(u), "is_summon": bool(u.get("is_summon", false)),
 		"id": str(u.get("id", "")), "_st_mkind": MinionCodex.kind_of(u) if bool(u.get("_isMinion", false)) else str(u.get("_st_mkind", "")),
@@ -7636,7 +7636,7 @@ func _st_row(u: Dictionary) -> Dictionary:
 			bool(u.get("is_summon", false)) or bool(u.get("_isMinion", false)))),
 		"rarity": str(u.get("rarity", "C")), "alive": bool(u.get("alive", true)),
 		"hp": maxf(0.0, float(u.get("hp", 0))), "maxHp": float(u.get("maxHp", 0)),
-		"_st_dealt": int(u.get("_st_dealt", 0)), "_st_taken": int(u.get("_st_taken", 0)),
+		"_st_dealt": _SETTLE_S.own_dealt(u), "_st_taken": int(u.get("_st_taken", 0)),
 		"_st_heal": int(u.get("_st_heal", 0)), "_st_crit": int(u.get("_st_crit", 0)),
 		"_st_kills": int(u.get("_st_kills", 0)), "_st_shield": int(u.get("_st_shield", 0)),
 		"_st_phy": int(sp[0]), "_st_mag": int(sp[1]), "_st_tru": int(sp[2]),
@@ -7648,19 +7648,19 @@ func _st_row(u: Dictionary) -> Dictionary:
 	if _itx is Texture2D and str((_itx as Texture2D).resource_path) != "":
 		row["_st_portrait"] = str((_itx as Texture2D).resource_path)
 		row["_st_pf"] = "%d,%d" % [int(_isd.get("hframes", 1)), int(_isd.get("vframes", 1))]
-	row.merge(EquipTally.row_fields(u))   # ④ 每件装备的本局统计, 摊平成纯标量键 `_st_eq|<装备id>|<phy/mag/tru/heal/shield>`
+	row.merge(EquipTally.row_fields(u)); row.merge(_SETTLE_S.keep_flags(u))   # ④ 每件装备的本局统计(`_st_eq|<装备id>|…`); 快照行再过一遍时留住灵物行标记 / 头像
 	return row
 const _SETTLE_S := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 ## 本路打完 → 把当前 _units 的统计冻成快照存进 _st_lane_hist(供结算表翻页看前面战场).
 func _st_snapshot_lane(lane: String) -> void:
-	if lane == "" or lane == "done":
-		return
+	if lane == "" or lane == "done": return
 	var snap := {"lane": lane, "left": [], "right": []}
 	for u in _units:
 		var sd := str(u.get("side", ""))
 		if sd == "left" or sd == "right":
 			(snap[sd] as Array).append(_st_row(u))
+	_SETTLE_S.add_spirit_rows(snap, _units, func(x) -> String: return str(x.get("side", "")))   # 灵物触手单列(11-11)
 	_st_lane_hist.append(snap)
 
 ## 一行/一只单位在【本场】的身份键。`seen` 是调用方持有的「本路内同 id 计数器」。

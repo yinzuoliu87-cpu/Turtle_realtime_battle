@@ -4,6 +4,9 @@ extends Node
 ##   精英小将「把自己拉进敌人这个速度也是太快，而且为什么固定就不应该，你就要慢慢…飞过去」
 ## 判据量的是【时长随距离变】: 远的比近的多飞 (距离差 ÷ 速度) 秒 —— 固定时长时这个差是 0, 必红。
 ## 速度写需求外的我定值 500 码 / 秒(期望值写字面数, 不引用常量)。动作要跟着拉长: 量真单位上真播的那张表的时长。
+## ★11-11 先快后中速(用户「首先是一个快的…然后慢慢的到这个中等的这个平滑…再到这个敌人身上就是落脚」): 按时间采样拉人进度,
+##   前 20% 的时间至少走完 30% 的路(匀速 = 20%, 必红); 近战俯冲开头先往上带一点(「肯定是要向上面走一点点」): 前 40% 时间里最高点高过悬停点 0.3 米。
+##   精英链子(「这些像素方块是什么意思」「整个铁链长啥样」): 铁锁不再画 _bolt_line 虚线方块; 链环首尾相接(相邻两节间距 ≤ 链环长)。
 ## ★绳索(11-08 逐帧查出: 两个小将的链子都在拉人开始前 / 拉到一半就淡掉了): 量场上带 rope_f 标记、可见且不透明的链节数 ——
 ##   拉人开始那一刻 > 0(原 bug 下是 0)、飞到一半比开始时少(逐段收)、落地后 0。
 
@@ -47,14 +50,28 @@ func _ready() -> void:
 		var h_prev := 0.0
 		var rope_start := -1
 		var rope_mid := -1
+		var dive_t0 := -1.0
+		var hover := Vector2.INF
+		var foe_at_dive := Vector2.INF   # 俯冲开始时目标位置(目标被晕住不动; 采样结束时它已被踩着滑走 200 码, 不能拿那时的位置当终点)
+		var prev_pos := Vector2.INF
+		var apex_h := 0.0
+		var samp: Array = []   # [时间, 离悬停点的距离, 高度]
 		while w < 4000 and float(foe["hp"]) >= 50000.0:
 			await get_tree().process_frame
 			w += 1
 			var hh: float = float(mn.get("height", 0.0))
 			if apex == Vector2.INF and hh > 5.0:
 				apex = mn["pos"]
-			if rope_start < 0 and apex != Vector2.INF and hh < h_prev - 0.001:   # 高度开始往下 = 俯冲(被拽)开始
+			if dive_t0 < 0.0 and hh > 5.0 and (mn["pos"] as Vector2).distance_to(prev_pos) < 0.01:
+				hover = mn["pos"]   # 悬停: 高空且这一帧没挪(起跳补间往后上方挪的那几帧不算)
+				apex_h = hh
+			prev_pos = mn["pos"]
+			if rope_start < 0 and hover != Vector2.INF and (mn["pos"] as Vector2).distance_to(hover) > 0.5:   # 离开悬停点 = 俯冲(被拽)开始(11-11 起开头先往上带, 不能再用「高度开始往下」)
 				rope_start = _rope_visible(s)
+				dive_t0 = float(s._t) - float(s._frame_sim_dt)
+				foe_at_dive = foe["pos"]
+			if dive_t0 >= 0.0:
+				samp.append([float(s._t) - dive_t0, (mn["pos"] as Vector2).distance_to(hover), hh])
 			if rope_start >= 0 and rope_mid < 0 and apex != Vector2.INF and (mn["pos"] as Vector2).distance_to(apex) >= 0.5 * apex.distance_to(foe["pos"]):
 				rope_mid = _rope_visible(s)
 			h_prev = hh
@@ -69,6 +86,16 @@ func _ready() -> void:
 		var dist: float = apex.distance_to(foe["pos"])
 		print("    (战斗仍在进行: _dl_state=%s 呈现中=%s _over=%s · 等了 %d 帧)" % [str(s._dl_state), str(s._dl_sys._dl_is_present()), str(s._over), w])
 		surf.append([took, dist])
+		var dive_sec: float = float(samp[samp.size() - 1][0]) if not samp.is_empty() else 0.0
+		var f20 := _frac_at(samp, 0.2 * dive_sec, hover.distance_to(foe_at_dive) if hover != Vector2.INF and foe_at_dive != Vector2.INF else 0.0)
+		var hmax := 0.0
+		for sm in samp:
+			if float(sm[0]) <= 0.4 * dive_sec:
+				hmax = maxf(hmax, float(sm[2]))
+		print("  ① 目标距 %.0f: 俯冲 %.2f 秒 · 前 20%% 时间走完 %.0f%% · 前 40%% 时间最高 %.2f 米(悬停 %.2f)" % [gap, dive_sec, f20 * 100.0, hmax, apex_h])
+		_chk("① 距 %.0f 分母: 俯冲采到 %d 个样本" % [gap, samp.size()], samp.size() >= 6)
+		_chk("① 距 %.0f ★先快: 前 20%% 时间走完 ≥ 30%% 的路(匀速 20%%)" % gap, f20 >= 0.30, "%.0f%%" % (f20 * 100.0))
+		_chk("① 距 %.0f ★先往上带一点: 前 40%% 时间最高点 > 悬停高度 + 0.3 米" % gap, hmax > apex_h + 0.3, "%.2f vs %.2f" % [hmax, apex_h])
 		print("  ① 目标距 %.0f: 放技能到接触 %.2f 秒(悬停点到目标 %.0f 码)" % [gap, took, dist])
 	if surf.size() == 2:
 		var want: float = (float(surf[1][1]) - float(surf[0][1])) / WANT_SPD
@@ -96,12 +123,19 @@ func _ready() -> void:
 		var lk_start := -1
 		var lk_mid := -1
 		var pull_len: float = e0.distance_to(f["pos"]) + 46.0
+		var pull_t0 := -1.0
+		var esamp: Array = []
+		var spacing_bad := -1.0
 		while w < 2000 and bool(e.get("_slam", false)):
 			await get_tree().process_frame
 			w += 1
 			var moved: float = (e["pos"] as Vector2).distance_to(e0)
 			if lk_start < 0 and moved > 0.5:          # 开始被拽
 				lk_start = _rope_visible(s)
+				pull_t0 = float(s._t) - float(s._frame_sim_dt)
+				spacing_bad = _rope_max_gap(s)
+			if pull_t0 >= 0.0:
+				esamp.append([float(s._t) - pull_t0, moved])
 			if lk_mid < 0 and moved >= 0.5 * pull_len:
 				lk_mid = _rope_visible(s)
 		var took: float = float(s._t) - t0   # 先记时长再等链节淡完
@@ -113,6 +147,11 @@ func _ready() -> void:
 		_chk("② 距 %.0f ★飞到一半铁链还在、经过的已收掉(%d < %d; 原来链节亮起 0.3 秒就淡掉)" % [gap, lk_mid, lk_start], lk_mid > 0 and lk_mid < lk_start)
 		_chk("② 距 %.0f 拉完后链节清零" % gap, lk_end == 0, "%d 节" % lk_end)
 		whip.append([took, gap, anim_sec, str(e.get("anim_action", ""))])
+		var psec: float = float(esamp[esamp.size() - 1][0]) if not esamp.is_empty() else 0.0
+		var g20 := _frac_at(esamp, 0.2 * psec, pull_len)
+		print("  ② 目标距 %.0f: 拉人 %.2f 秒 · 前 20%% 时间走完 %.0f%% · 相邻链环最大空档 %.1f 码" % [gap, psec, g20 * 100.0, spacing_bad])
+		_chk("② 距 %.0f ★先快: 前 20%% 时间走完 ≥ 30%% 的路(匀速 20%%)" % gap, g20 >= 0.30, "%.0f%%" % (g20 * 100.0))
+		_chk("② 距 %.0f ★链环首尾相接(相邻两节空档 ≤ 0, 原来每 55 码一节)" % gap, spacing_bad >= -900.0 and spacing_bad <= 0.0, "%.1f 码" % spacing_bad)
 		print("  ② 目标距 %.0f: 出手到拉完 %.2f 秒 · 甩臂动作 %s 时长 %.2f 秒" % [gap, took, str(sd.get("frames", "?")), anim_sec])
 		e["alive"] = false; f["alive"] = false
 	if whip.size() == 2:
@@ -125,6 +164,13 @@ func _ready() -> void:
 
 	## ③ 人体浪板俯冲动作: 调用处按飞行时长传 fps(合成单位没贴图, 量不到真播 ⇒ 这里查接线, 录像验画面)
 	var src: String = FileAccess.get_file_as_string("res://scripts/systems/skills/hiding_system.gd")
+	var main: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var wi: int = main.find("func _tick_elite_whip(")
+	var wj: int = main.find("
+func ", wi + 10)
+	var wbody: String = main.substr(wi, wj - wi) if wi >= 0 and wj > wi else ""
+	_chk("② 分母: 读到 _tick_elite_whip 函数体", wbody.length() > 500, "%d 字" % wbody.length())
+	_chk("② ★铁锁不再画 _bolt_line 虚线方块 / fx-trail 软拖影(用户「这些像素方块是什么意思」)", not wbody.contains("_bolt_line(") and not wbody.contains("fx-trail.png"))
 	_chk("③ 俯冲动作按飞行时长拉长(_melee_anim(u, \"dive\", 4.0 / dive_sec))", src.contains("battle._melee_anim(u, \"dive\", 4.0 / dive_sec)"))
 
 	s.queue_free()
@@ -132,6 +178,38 @@ func _ready() -> void:
 	print("")
 	print("ALL PASS — 小将拉向目标按速度飞" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 采样 [[时间, 进度距离], …] 在时刻 t 的进度占比(线性插值)
+func _frac_at(samp: Array, t: float, total: float) -> float:
+	if samp.is_empty() or total <= 0.0:
+		return 0.0
+	var prev: Array = [0.0, 0.0]
+	for sm in samp:
+		if float(sm[0]) >= t:
+			var span: float = maxf(0.0001, float(sm[0]) - float(prev[0]))
+			return lerpf(float(prev[1]), float(sm[1]), clampf((t - float(prev[0])) / span, 0.0, 1.0)) / total
+		prev = sm
+	return float(prev[1]) / total
+
+
+## 场上链节相邻两节的最大空档(码) = 中心距 - 链环长; ≤ 0 = 首尾相接。没有链节 ⇒ -999
+func _rope_max_gap(s) -> float:
+	var pts: Array = []
+	var link_len := 0.0
+	for c in s._world.get_children():
+		if c is Sprite3D and c.has_meta("rope_f") and (c as Sprite3D).texture != null:
+			var sp := c as Sprite3D
+			pts.append([float(sp.get_meta("rope_f")), sp.global_position])
+			link_len = float(sp.texture.get_width()) * sp.pixel_size / float(s.WS)
+	if pts.size() < 2:
+		return -999.0
+	pts.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
+	var worst := -999.0
+	for i in range(1, pts.size()):
+		var d: float = ((pts[i][1] as Vector3) - (pts[i - 1][1] as Vector3)).length() / float(s.WS)
+		worst = maxf(worst, d - link_len)
+	return worst
 
 
 ## 场上可见的链节 / 绳节(PullRopeVfx 摆的, 带 rope_f 标记)数

@@ -16,6 +16,8 @@ extends Node
 ##   ⑧ 朝向: 缩头 / 无头换成朝左的新形象后, 不在 ART_FACES_RIGHT 里
 ##   ⑩ 动作开始不瞬移(用户 11-07「它怎么瞬移到别的地方去了」): 第 1 帧本体与第 0 帧(= 待机)脚底不飘、左右还重叠。
 ##      那次是糖果龟三段技能的裸帧按带特效舞台的偏移量摆, 一放技能就偏 60 多像素、往上飘 90 像素; 帧条自己的第 0 帧换成待机所以 ② 量不出。
+##   ⑪ 普攻前摇被打断后重开(用户 11-10「有的时候忍者龟这个整个动作播放是不是有问题啊」; 探针 90 次普攻 6 次结算时身上是待机 / 跑):
+##      前摇中途动作被换成待机(冲刺落地 / 被控) ⇒ AttackRhythm.resync_windup 按剩余前摇重开, 命中帧对上; 手动逐帧(冲刺滑行中)不抢
 ##   ⑨ 被动段走真入口: 不直接调 play_passive, 而是调游戏里真正触发它的函数(闪避结算 / 处决扫描 / 连击 / 吸取 / 登场 / 壁垒收尾 / 接瓶)
 const TA := preload("res://scripts/gamedata/turtle_actions.gd")
 const NEW14 := ["bubble", "candy", "chest", "crystal", "cyber", "diamond", "dice", "gambler", "headless", "hiding", "hunter", "line", "pirate", "space"]
@@ -89,6 +91,7 @@ func _ready() -> void:
 	_check_passive(scn, mk.call("hunter", 8))
 	_check_hammer(scn, mk.call("candy", 9), mk.call("shell", 10))
 	_check_real_entries(scn, mk, at)
+	_check_windup_resync(scn, mk.call("ninja", 16))
 	var cs: Dictionary = (load("res://scripts/scenes/RealtimeBattle3DScene.gd") as Script).get_script_constant_map()
 	var right: Array = cs.get("ART_FACES_RIGHT", [])
 	_ok("⑧ ★分母: 读到朝向表", not right.is_empty(), str(right))
@@ -285,6 +288,34 @@ func _check_real_entries(scn, mk: Callable, at: Vector2) -> void:
 	_ok("⑨ 朗姆酒接瓶段在表里", (TA.FORM.get("pirate", {}) as Dictionary).has("drink"))
 	var rum: Array = TA.CAST["pirate"]["pirateRum"]
 	_ok("⑨ 接瓶前不许被普攻打断(打断帧晚于最慢的瓶, 0.34 + 0.7 秒)", rum.size() > 3 and float(rum[3]) / (float(rum[2]) / 0.34) >= 1.0, str(rum))
+
+
+func _check_windup_resync(scn, nj: Dictionary) -> void:
+	_idle(scn, nj)
+	scn._enter_basic_windup(nj)
+	_ok("⑪ 分母: 忍者进前摇在播普攻段", _sheet(nj).ends_with("ninja/slash.png") and str(nj.get("anim_action", "")) == "attack", _sheet(nj))
+	nj["state_t"] = float(nj["state_t"]) * 0.5
+	scn._set_anim_sheet(nj, nj.get("idle_sd", {}), "", true)   # 冲刺落地 / 被控结束那句: 回待机, 前摇还剩一半
+	AttackRhythm.resync_windup(scn, nj)
+	var sd: Dictionary = nj.get("anim_sd", {})
+	var hit_at: float = float(nj.get("_atk_hit_frame", 0)) / maxf(0.001, float(sd.get("fps", 0.0)))
+	_ok("⑪ ★★前摇被打断后重开普攻段", _sheet(nj).ends_with("ninja/slash.png") and str(nj.get("anim_action", "")) == "attack", "%s %s" % [_sheet(nj), str(nj.get("anim_action", ""))])
+	_ok("⑪ ★命中帧落在剩余前摇结束那一刻(%.3f 秒 vs %.3f)" % [hit_at, float(nj["state_t"])], absf(hit_at - float(nj["state_t"])) <= 0.02)
+	_idle(scn, nj)
+	nj["_manual_anim"] = true
+	AttackRhythm.resync_windup(scn, nj)
+	_ok("⑪ 冲刺滑行中(手动逐帧)不抢动作", not _sheet(nj).ends_with("ninja/slash.png"), _sheet(nj))
+	nj["_manual_anim"] = false
+	var main: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var trig := ""
+	for ln in main.split("
+"):
+		if ln.contains("NinjaSystem.DASH_SELF_CD") and ln.contains("_ninja_last_dash"):
+			trig = ln
+	_ok("⑪ ★被动冲刺不在前摇里触发(触发条件排除 windup; 探针 3 × 60 秒冲刺 40 次前摇里 0 次)", trig.contains("!= \"windup\""), trig.strip_edges().substr(0, 80))
+	nj["state"] = "idle"
+	nj["pending"] = ""
+	_idle(scn, nj)
 
 
 func _check_no_teleport() -> void:

@@ -26,6 +26,7 @@ const UIPalette = preload("res://scripts/util/ui_palette.gd")
 ## ★★alpha 从 0.6/0.65 提到 0.92(2026-09-28)。原来的半透明是配合"色块压在半透明底板上"
 ##   那一版的; 现在分段条画在**真凹槽**里(见 `make_bar`), 底本来就是暗的 ——
 ##   再半透明就成了蒙一层灰纱, 三种伤害类型的色相全被拉到一起、分不出段。
+const _SS := preload("res://scripts/scenes/battle/settle_screen.gd")
 const COL_PHY := Color(UIPalette.PHYS, 0.92)
 const COL_MAG := Color(UIPalette.MAGIC, 0.92)
 const COL_TRU := Color(UIPalette.TRUE_DMG, 0.92)
@@ -119,7 +120,7 @@ func _to_front() -> void:
 ## 当前 Tab 的标量值 (排序/显示)
 static func val(u: Dictionary, tab: String) -> int:
 	match tab:
-		"dealt": return int(u.get("_st_dealt", 0))
+		"dealt": return _SS.own_dealt(u)   # 灵物触手份额单列(11-11)
 		"taken": return int(u.get("_st_taken", 0))
 		"heal": return int(u.get("_st_heal", 0))
 		"shield": return int(u.get("_st_shield", 0))
@@ -127,8 +128,11 @@ static func val(u: Dictionary, tab: String) -> int:
 
 ## 当前 Tab 的分段条 [[值,色],...]: 造成/承受按类型三段, 治疗/护盾单段.
 static func parts(u: Dictionary, tab: String) -> Array:
-	if tab == "dealt" or tab == "taken":
-		var bt: Dictionary = u.get("_st_dealt_by_type" if tab == "dealt" else "_st_taken_by_type", {})
+	if tab == "dealt":
+		var os: Array = _SS.own_split(u)
+		return [[int(os[0]), COL_PHY], [int(os[1]), COL_MAG], [int(os[2]), COL_TRU]]
+	if tab == "taken":
+		var bt: Dictionary = u.get("_st_taken_by_type", {})
 		return [
 			[int(bt.get("phy", 0)), COL_PHY],
 			[int(bt.get("mag", 0)), COL_MAG],
@@ -459,7 +463,11 @@ func render() -> void:
 		for c in rows_vb.get_children():
 			rows_vb.remove_child(c)
 			c.queue_free()
-		var list: Array = _units_of.call(side)
+		var list: Array = (_units_of.call(side) as Array).duplicate()
+		if _tab == "dealt":
+			var srow: Dictionary = _SS.spirit_row(list)   # 本方「灵物触手」一行(11-11)
+			if not srow.is_empty():
+				list.append(srow)
 		var tab := _tab
 		list.sort_custom(func(a, b): return val(a, tab) > val(b, tab))
 		var col_max := 1

@@ -22,6 +22,7 @@ static func shoot(battle, from2d: Vector2, fromh: float, to2d: Vector2, toh: flo
 	var n: int = clampi(int(ceil(d / maxf(1.0, spacing))), 3, max_links)
 	var ang: float = DetMath.datan2(-(to2d - from2d).y, (to2d - from2d).x)
 	var ps: float = (thick_px * battle.WS) / float(maxi(1, tex.get_height()))
+	var sbasis = _screen_basis(battle, from2d, fromh, to2d, toh)   # 链节沿屏幕上的链方向摆(全朝镜头的公告板会丢掉节点自转, 11-11 查出斜链每节都是水平的)
 	for i in range(n):
 		var f: float = (float(i) + 0.5) / float(n)
 		var lk := Sprite3D.new()
@@ -37,6 +38,11 @@ static func shoot(battle, from2d: Vector2, fromh: float, to2d: Vector2, toh: flo
 		lk.modulate = Color(1, 1, 1, 0.0)
 		lk.set_meta("rope_f", f)
 		battle._world.add_child(lk)
+		if sbasis is Basis:
+			lk.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			var tf: Transform3D = lk.global_transform
+			tf.basis = sbasis
+			lk.global_transform = tf
 		var tw = battle._reg_tween()
 		tw.bind_node(lk)                 # 节点先被 release 释放时, 这条兜底补间跟着失效(CLAUDE.md §6)
 		tw.tween_interval(grow_sec * f)
@@ -48,36 +54,24 @@ static func shoot(battle, from2d: Vector2, fromh: float, to2d: Vector2, toh: flo
 	return out
 
 
-## 精英小将铁锁的链节(原写在主文件 _tick_elite_whip 里, 11-08 搬来; 摆法逐字未改: 每 55 码一节、5 ~ 14 节、20 码高、
-## 每节晚 0.01 秒亮起)。只改了寿命: 原来亮起后只留 0.3 秒(拉人到一半链子就没了), 现在留 hold_sec, 途中由 reel 逐段收。
+## 精英小将铁锁的链节。11-11 用户「这个铁链…到底整个铁链长啥样？」: 原来每 55 码摆一节竖着画的 bio-chain(32×32 竖两节),
+##   按横向转 ⇒ 每节与链垂直、节与节之间全是空档。改成横向链环 bio-chain-h(build_bio_chain_h.py)按链环长度首尾相接、0.12 秒由近到远伸出。
+##   过渡件: 新链子(两种链环交替 + 尖穿刺链头)画好后换(方案书 20261111 §4 C)。
+const ELITE_THICK := 14.0     # 链子粗细(码) = 图高 14 像素 ⇒ 1 像素 1 码
+const ELITE_SPACING := 30.0   # 链环长 32 码, 相邻两节压 2 码
 static func elite_links(battle, from5: Vector2, to5: Vector2, ctex: Texture2D, hold_sec: float) -> Array:
-	var out: Array = []
-	if ctex == null:
-		return out
-	var d: float = DetMath.dist(to5, from5)
-	var links: int = clampi(int(d / 55.0), 5, 14)
-	for i in range(links):
-		var lp: Vector2 = DetMath.vlerp(from5, to5, float(i + 1) / float(links))
-		var lk := Sprite3D.new()
-		lk.texture = ctex
-		lk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		lk.shaded = false; lk.transparent = true
-		lk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		lk.pixel_size = (20.0 * battle.WS) / float(maxi(1, ctex.get_height()))
-		lk.position = battle._world_pos(lp, 0.8)
-		lk.rotation.z = DetMath.datan2(-(to5 - from5).y, (to5 - from5).x)
-		lk.modulate = Color(1, 1, 1, 0.0)
-		lk.set_meta("rope_f", float(i + 1) / float(links))
-		battle._world.add_child(lk)
-		out.append(lk)
-		var lt = battle._reg_tween()
-		lt.bind_node(lk)
-		lt.tween_interval(0.01 * float(i))
-		lt.tween_property(lk, "modulate:a", 1.0, 0.03)
-		lt.tween_interval(maxf(0.0, hold_sec - 0.01 * float(i)))
-		lt.tween_property(lk, "modulate:a", 0.0, 0.1)
-		lt.tween_callback(lk.queue_free)
-	return out
+	return shoot(battle, from5, 0.8, to5, 0.8, ctex, ELITE_THICK, ELITE_SPACING, 0.12, hold_sec, 40)
+
+
+## 链子在屏幕上的朝向: 镜头基 × 绕视线转到「射出点 → 目标」的屏幕角(镜头还没好 ⇒ null, 退回朝镜头的公告板)
+static func _screen_basis(battle, from2d: Vector2, fromh: float, to2d: Vector2, toh: float):
+	var cam = battle._cam
+	if cam == null or not is_instance_valid(cam) or not cam.is_inside_tree():
+		return null
+	var a2: Vector2 = cam.unproject_position(battle._world_pos(to2d, toh)) - cam.unproject_position(battle._world_pos(from2d, fromh))
+	if DetMath.vlen(a2) < 0.5:
+		return null
+	return battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), DetMath.datan2(-a2.y, a2.x))
 
 
 ## 拉人进度 frac(0 = 还在射出点, 1 = 到目标): 已经经过的链节收掉(由近到远)。
