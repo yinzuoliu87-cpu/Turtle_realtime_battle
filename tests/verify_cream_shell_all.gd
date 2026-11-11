@@ -108,6 +108,25 @@ func _ready() -> void:
 			foe_got += 1
 	_ok("③ 敌人一个都没拿到(不然是发错阵营)", foe_got == 0, "敌人拿到 %d" % foe_got)
 
+	# ── ④ ★携带者阵亡后, 友军的血条奶油段 / 壳仍跟着真实余额走(用户 11-11「护盾没有格挡到任何伤害…伤害只是通过这个护盾打到人」)
+	##   原来镜像只在携带者的 tick 里写 ⇒ 携带者死了就停在死前那一刻: 盾在扛、血条上的盾不掉; 盾打破了壳还亮着、血在掉。
+	##   走真入口 `tick_global`(EquipSystem 每步调的那个), 伤害走 SpecialBalance.absorb(两条伤害路径共用的那一步)。
+	carrier["alive"] = false
+	var v0: float = _s._spec.val(a1, CREAM_KEY)
+	var left_over: float = _s._spec.absorb(a1, v0 * 0.5)
+	fb.tick_global(0.05)
+	var v1: float = _s._spec.val(a1, CREAM_KEY)
+	_ok("④ 分母: 挨了一半盾量的伤害, 全被盾扛下(余额 %.0f → %.0f, 漏到血上 %.0f)" % [v0, v1, left_over],
+		v0 > 0.0 and absf(v1 - v0 * 0.5) < 0.5 and left_over <= 0.0)
+	_ok("④ ★携带者已阵亡, 友军血条上的奶油段跟着掉(镜像 %.0f = 余额 %.0f)" % [float(a1.get("_creamShieldVal", -1.0)), v1],
+		absf(float(a1.get("_creamShieldVal", -1.0)) - v1) < 0.5)
+	_s._spec.absorb(a1, v1 + 10.0)
+	fb.tick_global(0.05)
+	var sh_left = a1.get("_cream_shell", null)
+	_ok("④ ★盾打破后血条奶油段归零、壳收掉(携带者已阵亡)",
+		float(a1.get("_creamShieldVal", -1.0)) <= 0.0 and not (sh_left is Dictionary),
+		"镜像 %.0f 壳 %s" % [float(a1.get("_creamShieldVal", -1.0)), str(sh_left is Dictionary)])
+
 	_s.queue_free()
 	await get_tree().process_frame
 	print("")

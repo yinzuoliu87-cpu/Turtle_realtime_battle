@@ -62,6 +62,7 @@ func _si(star: int) -> int:
 ## ★原来在 tick_unit 里按【引擎帧号】去重: 30fps 一帧两步 sim 只推一步 ⇒ 整层演出慢一倍(同 060 探针)。
 ## ★顿帧期间不推(逐单位的效果计时在顿帧里也不走)。
 func tick_global(delta: float) -> void:
+	_cream_sync(float(battle._hitstop) > 0.0, delta)   # 071 血条镜像 / 壳: 不挂在携带者身上(携带者死了也要跟, 见函数头注)
 	if float(battle._hitstop) > 0.0:
 		return
 	_vfx.tick(delta)
@@ -378,24 +379,32 @@ func _cream_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
 		while float(stt["loss_acc"]) >= step and int(stt.get("given_n", 0)) < CREAM_TIMES:
 			stt["loss_acc"] = float(stt["loss_acc"]) - step
 			_cream_grant_all(u, si, stt)
-	## ★★壳的呼吸改成【逐个友军】推进(2026-08-11)。
-	##   改之前只推 `stt["shell"]` 那一个(建在携带者身上的) ——
-	##   现在壳分散在每个拿到盾的友军身上, 不改这里就变成"壳建了但不动"。
-	##   ★盾没了(被打破/撚场)就把壳收掉 —— 否则会出现"盾早没了壳还亮着"。
-	for o in battle._targeting._allies_of(u, true):
+	## 血条镜像 / 壳的呼吸与收壳不在这里推 —— 见 `_cream_sync`(11-11 挪走: 这里只在携带者活着时跑)。
+
+
+## ★每步把每个有奶油盾(或有壳)的单位的血条镜像、壳同步一次 —— 由 `tick_global` 调, **不挂在携带者身上**。
+## 用户 11-11 反馈「奶油护盾没有格挡到任何伤害，好像那个伤害只是通过这个护盾打到人了」:
+##   原来这段在 `_cream_tick` 里, 而 `tick_unit` 对死掉的携带者直接 return ⇒ 携带者一死, 友军身上的盾照样在扛
+##   (SpecialBalance 每次受伤都扣), 但血条上的奶油段与壳**停在死前那一刻** ⇒ 盾扛完以后看着盾还在、血在掉。
+##   顺带: 同一方两件 071 时原来每个携带者都推一遍壳 ⇒ 呼吸快一倍; 现在每步恰一次。
+## ★只动显示(`_creamShieldVal` 只有 hp_bar 与录流读), 不改对局结果。
+## `frozen` = 顿帧中: 镜像照写(血条要对), 壳的呼吸不推(与其他演出同一条)。
+func _cream_sync(frozen: bool, delta: float) -> void:
+	for o in battle._units:
+		if not (o.has("_creamShieldVal") or o.has("_cream_shell")):
+			continue
 		var cv: float = battle._spec.val(o, KEY_CREAM)
-		## ★盾量进血条(2026-08-11 补验收): 奶油盾是 SpecialBalance 余额, 不进 u["shield"] ⇒
-		##   血条上原本【没有任何读数】—— 玩家看得见壳、看不见"还剩多少/破没破"。
-		##   照 068 法力盾的规矩(特殊护盾给特殊颜色护盾条)每帧喂真实余额, 0 时自动隐藏。
+		## ★盾量进血条(2026-08-11 补验收): 奶油盾是 SpecialBalance 余额, 不进 u["shield"] ⇒ 每步喂真实余额, 0 时自动隐藏。
 		o["_creamShieldVal"] = cv
 		var osh = o.get("_cream_shell", null)
 		if not (osh is Dictionary):
 			continue
 		if not o.get("alive", false) or cv <= 0.0:
-			_vfx.cream_shell_free(osh)
+			_vfx.cream_shell_free(osh)     # ★盾没了(被打破 / 清场)就收壳 —— 否则「盾早没了壳还亮着」
 			o.erase("_cream_shell")
 			continue
-		_vfx.cream_shell_update(osh, delta)
+		if not frozen:
+			_vfx.cream_shell_update(osh, delta)
 
 
 ## 给【所有友军(含自己)】各上一层奶油护盾。★**同步入口**, 门禁直接调。
@@ -420,6 +429,7 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 			"on_break": func(uu, _k, reason): _cream_on_break(uu, si, str(reason), u),
 		})
 		o["_cream_given"] = float(o.get("_cream_given", 0.0)) + amt   # 同步证据
+		o["_creamShieldVal"] = battle._spec.val(o, KEY_CREAM)   # 血条镜像当场写上(之后 `_cream_sync` 每步跟)
 		## ④ 装备统计: 奶油盾是 SpecialBalance 余额、不走 `_grant_shield`(所以 on_shield 记不到) ⇒ 这里按发放量直接记给「携带者 · 071」
 		battle._equip_sys.tally.credit(u, "p2eq_071", "shield", amt)
 		## ★★每一个拿到盾的友军都要有壳(2026-08-11 修)。
