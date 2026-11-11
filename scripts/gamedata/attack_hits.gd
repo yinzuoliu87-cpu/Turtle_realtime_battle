@@ -12,7 +12,7 @@ extends RefCounted
 ##   然后中间就是就慢一点」), 生成脚本 tools/assetgen/build_attack_rhythm.py 打印命中帧, 抄到这里。
 const BY_PATH := {
 	"pets/animations/ghost/attack.png": 5,      # 12 帧(11-08 重排: 命中后定住 2 拍、收回 4 拍)
-	"pets/animations/ninja/slash.png": 5,       # 12 帧(11-11 第四版: 每格一个姿势, 刀每格往前走; build_ninja_slash.py)
+	"pets/animations/ninja/slash.png": 4,       # 9 帧(11-11 第六版, 用户定: 第 5 针命中、前 4 后 4; build_ninja_slash.py)
 	"pets/animations/elite/attack.png": 5,      # 12 格(11-11 深渊精英: 站 / 举过头 ×3 / 斜前上 / ★劈到前下 / 收)
 	"pets/animations/melee/attack.png": 5,      # 12 帧(11-05 重做 9 帧 → 11-08 重排: 蓄力补一拍、收回每帧两拍)
 	"pets/animations/ranged/attack.png": 5,     # 12 格(11-11 海螺炮手: 站 / 前压 ×4 / ★后坐 / 收)

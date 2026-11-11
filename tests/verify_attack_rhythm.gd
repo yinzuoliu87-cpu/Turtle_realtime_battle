@@ -48,7 +48,9 @@ func _ready() -> void:
 		var tx: Texture2D = load("res://assets/sprites/" + p5) if p5 != "" else null
 		var nf: int = (tx.get_width() / tx.get_height()) if tx != null else 0
 		var hf: int = AttackHits.hit_frame(p5, nf)
-		_ok("⑤ %s 普攻: 命中前 %d 帧 ≥ 5、命中后 %d 帧 ≥ 6(共 %d 帧)" % [k, hf, nf - hf - 1, nf], nf > 0 and hf >= 5 and nf - hf - 1 >= 6, p5)
+		## 忍者例外(2026-11-11 用户定):「第四针起手斩，第五针命中，第六针斩到底，然后第七针去收」+ 收势 3 针 ⇒ 9 格、命中前 4 后 4
+		var need: Array = [4, 4] if k == "ninja" else [5, 6]
+		_ok("⑤ %s 普攻: 命中前 %d 帧 ≥ %d、命中后 %d 帧 ≥ %d(共 %d 帧)" % [k, hf, need[0], nf - hf - 1, need[1], nf], nf > 0 and hf >= int(need[0]) and nf - hf - 1 >= int(need[1]), p5)
 	for clip in ["melee_attack", "ranged_attack"]:
 		var ent: Array = TwoHeadArt.CLIPS[clip]
 		var tx2: Texture2D = load(TwoHeadArt.DIR + clip + ".png")
