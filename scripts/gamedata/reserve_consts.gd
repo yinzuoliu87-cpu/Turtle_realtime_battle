@@ -1,6 +1,7 @@
 class_name ReserveConsts
 extends RefCounted
-## 援军小将 —— 终极战场里一方没有任何幸存单位时代替出战(方案书 docs/plans/20261029-终极战场援军小将.md)。数值单一来源:
+## 援军小将 —— 终极战场里双方始终各上一只(方案书 docs/plans/20261029-终极战场援军小将.md; 11-11 起不再只在没有幸存时才上,
+##   并从这一方背包里未穿戴的装备中随机带一件, 方案书 docs/plans/20261111b-援军小将始终登场并带背包装备.md)。数值单一来源:
 ##   战斗(battle_spawn._make_unit / reserve_system)与图鉴文案都读这里, 不许各抄一份。
 ## 用户 2026-10-29 拍板: 1000 血 / 50 攻击 / 15 双抗 / 远程; 「玩家所战斗的每一个场次, 会使他的基础属性提升百分之四」;
 ##   龟能 135; 敌人前后左右各出现一道气波、四道同时往敌人中间走; 每道 100% 攻击力物理 + 该敌人 10% 最大生命值魔法。
@@ -48,3 +49,44 @@ static func base_stats(battles: int) -> Dictionary:
 	var m := growth_mult(battles)
 	return {"name": NAME, "rarity": "C", "crit": 0.0,
 		"hp": HP * m, "atk": ATK * m, "def": DEF * m, "mr": MR * m}
+
+
+## ── 随身装备(用户 2026-11-11「援护小将始终在终极战场登场，并且他会携带…背我背包里的装备…随便抽取一件…在登场的时候装备只会抽取一件」) ──
+## 可抽清单(`GameState.reserve_pool` / 快照 `reserve_pool`)最多收这么多件: 防一条脏快照塞上万件拖慢开局。
+const POOL_CAP := 60
+## 阵营盐: 同一个对局种子下左右两方各抽各的(不加盐 ⇒ 两边背包一样时永远抽到同一格)。
+const PICK_SALT_LEFT := 0x51A7E
+const PICK_SALT_RIGHT := 0x2B0C3
+
+
+## 清洗一份可抽清单: 只留 {id, star}(id 非空; 星级夹 1~3), 保持原顺序, 最多 POOL_CAP 件。
+## ★不在这里查 id 存不存在于装备表 —— 调用方(GameState / 快照读出)各自有数据表; 这里只管形状, 纯函数可直接门禁。
+static func clean_pool(raw) -> Array:
+	var out: Array = []
+	if not (raw is Array):
+		return out
+	for it in (raw as Array):
+		if out.size() >= POOL_CAP:
+			break
+		if not (it is Dictionary):
+			continue
+		var id := str((it as Dictionary).get("id", ""))
+		if id == "":
+			continue
+		var st = (it as Dictionary).get("star", 1)
+		var star: int = clampi(int(st) if (st is int or st is float) else 1, 1, 3)
+		out.append({"id": id, "star": star})
+	return out
+
+
+## 登场时从可抽清单里抽**一件**(用户: 「装备只会抽取一件」)。返回 [] 或 [{id, star}](直接当 spec.equips 用)。
+## ★纯函数: 独立 PCG, 种子 = 对局种子 ^ 阵营盐 —— **不吃 `_battle_rng`**:
+##   ① 对阵预览卡与开场生成各调一次也抽到同一件; ② 不改动战斗随机数序列里任何其他抽签;
+##   ③ 录制 / 回放 / 服务器裁判拿同一个种子 ⇒ 同一件(RandomNumberGenerator 是 PCG32, 跨平台逐位一致)。
+static func pick_equip(pool: Array, battle_seed: int, side_lr: String) -> Array:
+	var p := clean_pool(pool)
+	if p.is_empty():
+		return []
+	var r := RandomNumberGenerator.new()
+	r.seed = battle_seed ^ (PICK_SALT_LEFT if side_lr == "left" else PICK_SALT_RIGHT)
+	return [(p[r.randi() % p.size()] as Dictionary).duplicate()]

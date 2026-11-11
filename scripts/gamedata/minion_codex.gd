@@ -170,7 +170,8 @@ const MINION_INFO := {
 		],
 	},
 	## 援军小将(用户 2026-10-29, 方案书 docs/plans/20261029-终极战场援军小将.md):
-	##   终极战场里一方没有任何幸存单位时代替出战。不按等级、按所属玩家本周已打场数成长(每场 +4%, 生命 / 攻击 / 双抗都长)。
+	##   终极战场里双方始终各上一只(11-11 起; 原来只在一方没有任何幸存单位时代替出战), 登场时从所属玩家背包未穿戴的装备里随机带一件。
+	##   不按等级、按所属玩家本周已打场数成长(每场 +4%, 生命 / 攻击 / 双抗都长)。
 	##   ★数字全部引 ReserveConsts(数值常量与 {C:ReserveConsts.X} 文案占位符), 本表不抄任何一个; 屏幕上读 info("reserve")。
 	##   `growth_tag` = 图鉴签牌那一格(其余三种小将是「每级 ×1.05」)。
 	"reserve": {
@@ -181,7 +182,7 @@ const MINION_INFO := {
 		"growth_tag": "每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%",
 		"skill_desc": "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。",
 		"passives": [
-			{"name": "援军", "slot": "passive", "icon": "passive/reserve-reinforce-icon.png", "desc": "终极战场中，若一方没有任何幸存单位，由援军小将代替该方出战。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
+			{"name": "援军", "slot": "passive", "icon": "passive/reserve-reinforce-icon.png", "desc": "终极战场中，双方各有一名援军小将登场，并从所属玩家背包中未装备的装备里随机携带一件。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"},
 			{"name": "普通攻击", "slot": "basic", "icon": "skills/reserve-basic.png", "desc": "援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
 		],
 	},

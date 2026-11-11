@@ -2,7 +2,7 @@ extends Node
 ## verify_reserve_minion_ui.gd —— 援军小将在图鉴与战斗界面上的样子(2026-10-29, 方案书 docs/plans/20261029-终极战场援军小将.md C 组)。
 ## 机制本身(谁上场 / 属性 / 技能伤害)在 verify_reserve_minion.gd; 这里量的是**玩家看到的字和图**:
 ##   ① 图鉴: 小将列表里有援军小将一行; 详情页名字 / 签牌(援军 · 不可编入 · 每场 +4%) / 七格属性 / 「主动 · 龟能 135」/
-##      技能卡「四面合围」/ 被动条「援军」(出场条件 + 每场成长)都在, 文案里 {C:} 全展开、数字 == ReserveConsts;
+##      技能卡「四面合围」/ 被动条「援军」(出场条件 + 随身装备 + 每场成长)都在, 文案里 {C:} 全展开、数字 == ReserveConsts;
 ##      签牌不出左栏、定高富文本没有被切成半截的行(排版不挤)。
 ##   ② 图鉴数值 == 真生成的援军小将(0 场): 血 / 攻 / 双抗 / 射程 / 攻击间隔 / 龟能。
 ##   ③ 战斗信息面板: 技能格取到「四面合围」+ 135 + 同一段文案(单一来源); 副标题「友军 · 后排」; 面板上写着「援军小将」。
@@ -156,7 +156,10 @@ func _pure() -> void:
 	_ok("★技能文案: 该敌人 %s%% 最大生命值魔法 == ReserveConsts.MAXHP_PCT(写明是谁的生命值)" % _pct(ReserveConsts.MAXHP_PCT),
 		desc.find("该敌人 %s%% 最大生命值的魔法伤害" % _pct(ReserveConsts.MAXHP_PCT)) >= 0)
 	_ok("技能文案: 前后左右 / 同时追向该敌人(追踪) / 命中的第一个敌人", desc.find("前后左右") >= 0 and desc.find("同时追向该敌人") >= 0 and desc.find("命中的第一个敌人") >= 0)
-	_ok("★被动「援军」: 出场条件(终极战场 · 没有任何幸存单位)", pdesc.find("终极战场") >= 0 and pdesc.find("没有任何幸存单位") >= 0, pdesc.substr(0, 30))
+	## 2026-11-11 用户「援护小将始终在终极战场登场…背我背包里的装备…随便抽取一件」⇒ 出场条件改成双方始终各一名, 并写随身装备
+	_ok("★被动「援军」: 出场条件(终极战场 · 双方各有一名)且不再写「没有任何幸存单位」",
+		pdesc.find("终极战场") >= 0 and pdesc.find("双方各有一名援军小将登场") >= 0 and pdesc.find("没有任何幸存单位") < 0, pdesc.substr(0, 40))
+	_ok("★被动「援军」: 随身装备(背包中未装备的装备里随机携带一件)", pdesc.find("背包中未装备的装备里随机携带一件") >= 0, pdesc.substr(0, 60))
 	_ok("★被动「援军」: 每场 +%s%% == ReserveConsts.GROWTH_PER_BATTLE" % _pct(ReserveConsts.GROWTH_PER_BATTLE),
 		pdesc.find("每进行一场对局") >= 0 and pdesc.find("提升 %s%%" % _pct(ReserveConsts.GROWTH_PER_BATTLE)) >= 0)
 	_ok("签牌 = 「每场 +%s%%」" % _pct(ReserveConsts.GROWTH_PER_BATTLE), str(mi.get("growth_tag", "")) == "每场 +%s%%" % _pct(ReserveConsts.GROWTH_PER_BATTLE),

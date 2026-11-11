@@ -60,6 +60,7 @@ const STATE_KEYS := [
 	"season_level",         # 必需(360): 等级 ⇒ 属性
 	"pet_lv",               # 必需(按龟等级 R1, 2026-11-09): 我方每只龟的等级表 ⇒ 统领属性 / 龟蛋血量(空 = 整队等级)
 	"season_total_battles", # 必需(2026-10-29): 终极战场援军小将按这一方已打场数成长(每场 +4%)
+	"reserve_pool",         # 必需(终极战场, 2026-11-11): 援军小将从这份里按种子抽一件装备; 背包本体(persistent_bench)不录
 	"candy_temp_levels",    # 必需(360): 糖果临时等级
 	"debug_level",          # 必需(360): >0 强制全体等级(正式版 0; 看的人那台若开着就会分叉)
 	"trainer_skill",        # 必需(480): 大师技能(U2 后自动放)
@@ -195,6 +196,10 @@ func start() -> void:
 	if not Abandoned.pending_resume.is_empty():
 		_start_resume()
 		return
+	## ★实打(录 / 不录)走到这里: 援军小将的可抽清单从**此刻的背包**刷新(方案书 20261111b)。
+	##   回放 / 观赛 / 服务器裁判 / 补打在上面都 return 了 —— 它们用录像或任务带来的那份, 不能拿看的人自己的背包覆盖。
+	##   放在 capture_state 之前 ⇒ 录像里的就是这一份。
+	GameState.reserve_pool = GameState.reserve_candidates()
 	if should_record():
 		mode = "rec"
 		rec = {
@@ -798,6 +803,9 @@ static func apply_state(st: Dictionary) -> void:
 	## 按龟等级之前录的(没有 pet_lv 键) ⇒ 当时左方就是整队等级 ⇒ 清空看的人自己的表, 不让它顶进去(播完按备份还原)。
 	if not st.has("pet_lv") and GameState != null:
 		GameState.pet_lv = {}
+	## 援军小将可抽清单(2026-11-11)之前录的 ⇒ 当时援军不带装备 ⇒ 清空, 不让看的人上一场留下的那份顶进去(播完按备份还原)。
+	if not st.has("reserve_pool") and GameState != null:
+		GameState.reserve_pool = []
 	for n in st:
 		if not str(n) in STATE_KEYS or str(n) in APPLY_SKIP:
 			continue

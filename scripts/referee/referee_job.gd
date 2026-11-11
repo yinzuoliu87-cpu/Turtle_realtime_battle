@@ -327,6 +327,7 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 		"dual_lineup": dl,
 		"season_leaders": leaders,
 		"persistent_equipped": pe,
+		"reserve_pool": BE.reserve_pool_of(a),   # 援军小将可抽的装备(2026-11-11): 左方读 A 快照; 右方由战斗场读 dual_ghost 同名键(同一个函数)
 		"loadouts": lo,
 		"candy_temp_levels": tl,          # 2026-11-06 快照带上了(原来恒空 ⇒ 服务器局里临时等级器用了等于没用); 右方读 dual_ghost 同一个键
 		"trainer_skill": ts if ts != "" else "hook",   # 与右方回落相同(battle_spawn: 老快照没有 ⇒ hook)

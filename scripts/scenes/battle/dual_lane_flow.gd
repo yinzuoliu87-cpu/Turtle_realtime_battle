@@ -131,7 +131,7 @@ func _dl_clear_present_overlay() -> void:
 func _dl_spec_name(spec) -> String:
 	if not (spec is Dictionary): return "?"
 	if str(spec.get("kind", "")) == "minion" or spec.has("role"):
-		if MinionCodex.is_reserve(spec): return ReserveConsts.NAME   # 终极战场名单为空时上的援军小将(2026-10-29)
+		if MinionCodex.is_reserve(spec): return ReserveConsts.NAME   # 终极战场双方始终各一只的援军小将(2026-10-29; 11-11 起始终登场)
 		return str(MinionCodex.info(MinionCodex.kind_of(spec)).get("name", "小将"))   # 近战 / 远程 / 精英按种类叫全名(用户 11-11)
 	var id = str(spec.get("id", spec.get("kind", "")))
 	return str(battle._data_by_id.get(id, {}).get("name", id))
@@ -715,15 +715,32 @@ func _dl_egg_hp(side_lr: String) -> float:
 
 # spawn 一路一侧: leaders 用 battle._spawn._make_unit(id); 小将用 minion spec; 0统领路首个小将=精英. 纵向排开.
 # 终极战场我方/敌方阵容 = 上下路累加的幸存(含小将+30%回血). 缺则兜底.
-## ★名单为空 ⇒ 援军小将(用户 2026-10-29)。会走到这里的三种情形(实测, 方案书 20261029-终极战场援军小将 §2.2):
-##   ① 上路战场赢了但一个活人都没有、下路又被团灭 ② 两边都没有幸存(两边各上一只) ③ 只剩召唤物赢下一路(快照不收召唤物)。
-##   原来这里顶一只完整小龟(注释写着「理论不会到」—— 错的), 左方那只还会带上背包里给小龟配的装备。
+## ★终极战场名单 = 这一方的幸存 + 末尾一只援军小将(用户 2026-11-11「援护小将始终在终极战场登场，并且他会携带…背我背包里的装备…随便抽取一件…在登场的时候装备只会抽取一件」)。
+##   10-29 版只在名单为空时才上援军(① 上路赢了但没活人、下路又团灭 ② 两边都没幸存 ③ 只剩召唤物赢下一路);
+##   现在不论有没有幸存都上, 幸存为空时名单里就只有它(与原来一致)。
+##   援军的随身装备: 从这一方的可抽清单里按对局种子抽一件(`ReserveConsts.pick_equip`, 不吃 _battle_rng ⇒
+##   对阵预览卡与开场生成各调一次也是同一件)。方案书 docs/plans/20261111b-援军小将始终登场并带背包装备.md。
+##   ★返回新数组: 不往 GameState.dual_survivors 里追加(那份还要给结算 / 下一次读)。
 func _dl_survivor_specs(side_lr: String) -> Array:
+	var out: Array = []
 	if GameState != null and GameState.dual_survivors is Dictionary:
-		var s: Array = GameState.dual_survivors.get(side_lr, [])
-		if not s.is_empty():
-			return s
-	return [{"kind": "minion", "role": "reserve", "battles": _dl_side_battles(side_lr)}]
+		out = (GameState.dual_survivors.get(side_lr, []) as Array).duplicate()
+	var rs := {"kind": "minion", "role": "reserve", "battles": _dl_side_battles(side_lr)}
+	var eq: Array = ReserveConsts.pick_equip(_dl_reserve_pool(side_lr), int(battle._battle_rng.seed), side_lr)
+	if not eq.is_empty():
+		rs["equips"] = eq
+	out.append(rs)
+	return out
+
+
+## 这一方援军小将的可抽清单: 左 = GameState.reserve_pool(实打开局从背包刷新 / 录像 / 裁判任务带来);
+##   右 = 对手快照(`Backend.reserve_pool_of`: 有键用它, 缺键按 ghost_id 派生 —— 与陪练转换 / 裁判同一个函数)。
+func _dl_reserve_pool(side_lr: String) -> Array:
+	if GameState == null:
+		return []
+	if side_lr == "left":
+		return GameState.reserve_pool if GameState.reserve_pool is Array else []
+	return _BE.reserve_pool_of(GameState.dual_ghost)
 
 
 ## 这一方本周已打场数(援军小将每场 +4% 属性): 左 = 我的 season_total_battles; 右 = 对手快照里的, 没带就同左方(匹配本来就要求双方场数相同)。

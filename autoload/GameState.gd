@@ -211,6 +211,11 @@ var side_controllers: Dictionary = {"left": "local", "right": "ai"}
 ##   (`finals_opponent` 下发的是快照与排位种子号, 不是 RNG 种子), 而全仓一个写入点都没有,
 ##   于是它恒为 0。0 的含义仍是「这一场没留下可复算的种子」(服务端 `coalesce(p_seed,0)` 收 0)。
 var battle_seed: int = 0
+## 援军小将可抽的装备(用户 2026-11-11「援护小将始终在终极战场登场，并且他会携带…背我背包里的装备…随便抽取一件…在登场的时候装备只会抽取一件」): 这一方背包里未穿戴的装备 [{id, star}]。
+##   **不存档**(不在 _save_dict)。每场实打开局由 `ReplayRecorder.start()` 从背包刷新(`reserve_candidates`);
+##   回放 / 补打从录像来, 服务器裁判从 A 的快照来(`referee_job`)。战斗只读它, 不读 persistent_bench ——
+##   背包本体不进录像(verify_replay_roundtrip V3b), 录像只录这份可抽清单(STATE_KEYS)。方案书 20261111b。
+var reserve_pool: Array = []
 
 const _DualLane := preload("res://scripts/gamedata/phase2_duallane.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
@@ -1140,6 +1145,7 @@ var season_level: int = 1                             # 大轮等级 1-10 (每�
 var equip_pool: Dictionary = {}
 const _EquipPool := preload("res://scripts/gamedata/equip_pool.gd")
 const _P2T := preload("res://scripts/gamedata/phase2_types.gd")   # 类型映射(圣光护盾按盾件数发)
+const _ReserveC := preload("res://scripts/gamedata/reserve_consts.gd")  # 援军小将可抽清单的形状(clean_pool)
 const _AxeEvo := preload("res://scripts/gamedata/axe_evolution.gd")  # 096 小木斧: 档位/阈值/出货概率的唯一事实源
 const _EconLedger := preload("res://scripts/gamedata/econ_ledger.gd")   # 局外经济记账口(买经验 / 开糖果罐走它落流水)
 var debug_level: int = 0                              # 调试器: >0 强制全体战斗单位等级(测试用, 正式版用外部快照); 0=用真实等级
@@ -2213,6 +2219,15 @@ func axe_synergy_active() -> bool:
 ## 已经拥有一把了没有(背包 + 装在身上)。未决点 ⑧「只能拥有一把」的判据。
 ## ⚠ 与 axe_synergy_active 口径【故意不同】: 那个只数装在身上的(羁绊要装上才算),
 ##   这个连背包也数 —— 买第二把时"背包里躺着一把"同样算已拥有。
+## 援军小将的可抽清单 = 背包里查得到的装备(数据表里没有的 id 丢掉), 保持背包顺序, 形状与上限见 ReserveConsts.clean_pool。
+func reserve_candidates() -> Array:
+	var raw: Array = []
+	for it in persistent_bench:
+		if it is Dictionary and DataRegistry.phase2_equipment_by_id.has(str((it as Dictionary).get("id", ""))):
+			raw.append(it)
+	return _ReserveC.clean_pool(raw)
+
+
 func axe_owned() -> bool:
 	for it in persistent_bench:
 		if it is Dictionary and str((it as Dictionary).get("id", "")) == "p2eq_096":

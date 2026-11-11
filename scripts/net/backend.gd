@@ -476,6 +476,9 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		##   同一个形状原本有三个生产者, 09-17 那次只补了"玩家上传"那一个。
 		"loadouts": loadouts,
 		"equipped": equipped,
+		## 援军小将可抽的装备(2026-11-11): 真人快照带这一键, 机器人也带(不带 = 一眼认得出)。
+		##   按 ghost_id 派生(`derived_reserve_pool`, 不消耗 rng ⇒ 已有机器人的其余内容逐位不变)。
+		"reserve_pool": derived_reserve_pool(ghost_id),
 		"pet_levels": levels,
 		## 按龟等级(R1, 2026-11-09): 限免龟一律 1 级(同没绑主站的真人; 服务器裁判开算时也会按 1 级盖章)
 		"lv": levels.duplicate(),
@@ -1127,6 +1130,38 @@ static func _seed_season_id() -> int:
 ## ★同一个「人」(ghost_id 去掉 `_b<场次>`)各场次: uid / 名字相同, 胜场随场次不减 ——
 ##   全部由这个人的 id 做种子确定性生成, 换机器/重开都一样。
 ## ★幂等: 对已经转过的再转一次, 只会换赛季号(换赛季时 `_ensure_seeded` 就靠这个就地重盖)。
+## 一份快照里援军小将的可抽清单(2026-11-11, 方案书 20261111b)。
+## ★有 `reserve_pool` 键(数组, 可以是空 = 真人背包里没有没穿的)⇒ 清洗后用它;
+##   缺键(机器人 / 陪练种子文件 / 新键出现之前的快照)⇒ `derived_reserve_pool(ghost_id)`。
+##   战斗侧(右方 dual_ghost)、裁判(左方 A 快照)、陪练转换(seed_as_human)都走这一个函数 ⇒ 同一份快照到哪都抽同一件,
+##   陪练「原样 vs 转换后」强度逐字相同(verify_bot_snapshot_shape)。
+static func reserve_pool_of(snap) -> Array:
+	if not (snap is Dictionary):
+		return []
+	if (snap as Dictionary).get("reserve_pool") is Array:
+		return ReserveConsts.clean_pool((snap as Dictionary)["reserve_pool"])
+	return derived_reserve_pool(str((snap as Dictionary).get("ghost_id", "")))
+
+
+## 按 ghost_id 派生 1~2 件 1 星商店装备(机器人 / 陪练「背包里没穿的」)。独立 PCG(种子 = ghost_id 的哈希)⇒ 不碰任何别的随机数;
+##   ghost_id 为空 ⇒ 空(调试 / 冷启动兜底, 不凭空造装备)。
+static func derived_reserve_pool(ghost_id: String) -> Array:
+	var out: Array = []
+	if ghost_id == "":
+		return out
+	var shop_ids: Array = []
+	for e in DataRegistry.phase2_equipment:
+		if int((e as Dictionary).get("shopAvailable", 0)) == 1:
+			shop_ids.append(str((e as Dictionary)["id"]))
+	if shop_ids.is_empty():
+		return out
+	var r := RandomNumberGenerator.new()
+	r.seed = hash("reserve_pool:" + ghost_id)
+	for _i in range(1 + r.randi() % 2):
+		out.append({"id": str(shop_ids[r.randi() % shop_ids.size()]), "star": 1})
+	return out
+
+
 static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 	var gid := str(g.get("ghost_id", ""))
 	var battles := maxi(0, int(g.get("season_total_battles", 0)))
@@ -1184,6 +1219,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"leader_off": (g.get("leader_off", {}) as Dictionary).duplicate(true) if g.get("leader_off") is Dictionary else {},
 		"loadouts": (g.get("loadouts", {}) as Dictionary).duplicate(true) if g.get("loadouts") is Dictionary else {},
 		"equipped": equipped,
+		"reserve_pool": reserve_pool_of(g),   # 援军小将可抽的装备(2026-11-11): 有就照抄; 种子文件没有 ⇒ 按 ghost_id 派生(与战斗侧缺键回落同一个函数 ⇒ 原样 vs 转换后强度相同)
 		"pet_levels": levels,
 		"lv": levels.duplicate(),      # 按龟等级(R1, 2026-11-09): 与真人同形(没绑主站的真人 = 全 1 级)
 		"trainer_skill": str(g.get("trainer_skill", "")),
@@ -2079,6 +2115,9 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"leader_off": leader_off,
 		"loadouts": lo_out,
 		"equipped": equipped,
+		## 援军小将可抽的装备(2026-11-11, 方案书 20261111b): 背包里未穿戴的那些。对手的援军小将从这份里按种子抽一件;
+		##   服务器裁判局里左方也读这份(referee_job)。没有这个键的老快照 ⇒ 空 ⇒ 援军不带装备。
+		"reserve_pool": GameState.reserve_candidates() if GameState != null else [],
 		"pet_levels": levels,
 		## ★★★2026-09-29 第三个漏掉的字段: 训龟大师装配的那个技能。
 		##   消费侧 `battle_spawn.gd:575` 读 `dual_ghost.trainer_skill` 决定**敌方大师**用什么,

@@ -1647,7 +1647,7 @@ func _build_brush_bar() -> void:
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:front", "", "浪板"))
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:back", "", "火箭"))
 	strip.add_child(battle._debug._edit_brush_cell("__minion__:elite", "", "精英"))
-	strip.add_child(battle._debug._edit_brush_cell("__minion__:reserve", "", "援军"))   # 援军小将(2026-10-29): 正式对局只在终极战场名单为空时出现, 调试场直接摆
+	strip.add_child(battle._debug._edit_brush_cell("__minion__:reserve", "", "援军"))   # 援军小将(2026-10-29): 正式对局只在终极战场出现(11-11 起双方始终各一只), 调试场直接摆
 	strip.add_child(battle._debug._edit_brush_cell(battle.TRAINER_ID, "res://assets/sprites/trainer/trainer-villager.png", "大师"))   # #22: 旧潜水员图已删
 	var hint = Label.new()
 	hint.text = "← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板"

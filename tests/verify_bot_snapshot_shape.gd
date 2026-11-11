@@ -158,6 +158,8 @@ func _setup_human(battles: int) -> void:
 	gs.persistent_equipped = {}
 	for i in range(3):
 		gs.persistent_equipped[ids[i]] = [gs.mk_eq(str(shop[0]), 1), gs.mk_eq(str(shop[2]), 3)]
+	## 援军小将可抽的装备(2026-11-11): 背包里有没穿的 ⇒ 真人快照的 reserve_pool 才有内层可比(空数组走不到 id / star 那一层)
+	gs.persistent_bench = [gs.mk_eq(str(shop[1]), 2)]
 	gs.loadouts = {ids[0]: 2, ids[1]: 1, ids[2]: 3}
 	gs.trainer_skill = "glacier"
 	gs.season_total_battles = battles
