@@ -293,14 +293,16 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["pa_open"] = false
 			stt["pa_units"] = []
 			stt["pa_dr"] = 0.0
-		"p2eq_062":   # 螳螂虾钳: 闪避蓄一发强化普攻(2 秒 CD 卡触发) —— 效果本体 EqSpiritBatch
+		"p2eq_062":   # 螳螂虾钳: 放技能后蓄一发强化普攻(11-11 重做, 无冷却) —— 效果本体 EqSpiritBatch
 			# ★★这里【必须】把 eq_state 的槽先建出来, 哪怕两个值都是默认值:
 			#   `_eq_on_hit` 的循环是 `var stt = src["eq_state"].get(iid, {})` … 末尾
 			#   `src["eq_state"][iid] = stt`。槽不存在时外层拿到的是一个**新的空字典**,
 			#   而效果函数里写进去的是**另一个**字典 ⇒ 循环末尾那一行会把效果写的东西整个盖掉。
 			#   槽存在时两边拿到的是同一个对象(Godot 的 Dictionary 是引用), 才不会互相覆盖。
 			stt["emp_ready"] = false
-			stt["emp_cd_until"] = 0.0
+			stt["emp_energy"] = 0.0
+			stt["emp_armed"] = false
+			stt["emp_armed_energy"] = 0.0
 		"p2eq_064":   # 溺者的浮囊: 首次跌破 35% 血 → 幽灵护盾(每路一次, eq_state 换路重建)
 			u["_bladder_si"] = maxi(int(u.get("_bladder_si", -1)), si)
 			stt["ghost_fired"] = false

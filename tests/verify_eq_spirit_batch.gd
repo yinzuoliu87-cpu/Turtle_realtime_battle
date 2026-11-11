@@ -191,9 +191,14 @@ func _t_wiring() -> void:
 	_ok("⓪ 061/062/063 挂在 _eq_on_hit 上且写成 \"id\": _sys._fn( 形状", miss.is_empty(), str(miss))
 
 	var dg: String = _fn_body(code, "func _eq_on_dodge")
-	_ok("⓪ 062 挂在 _eq_on_dodge 上", dg.contains("\"p2eq_062\": _spirit_sys._eq_mantis_ready("),
+	_ok("⓪ 062 不再挂闪避钩(11-11 重做成放技能后蓄)", dg.length() > 50 and not dg.contains("_eq_mantis_ready("),
 		"len=%d" % dg.length())
 	var ct: String = _fn_body(code, "func _eq_on_cast")
+	_ok("⓪ 062 挂在 _eq_on_cast 上(放技能蓄一发)", ct.contains("\"p2eq_062\": _spirit_sys._eq_mantis_ready("),
+		"len=%d" % ct.length())
+	var ba: String = _fn_body(code, "func _eq_on_basic_attack")
+	_ok("⓪ 062 挂在 _eq_on_basic_attack 上(出手即用掉)", ba.contains("_spirit_sys._eq_mantis_arm(u)"),
+		"len=%d" % ba.length())
 	_ok("⓪ 063 挂在 _eq_on_cast 上", ct.contains("\"p2eq_063\": _spirit_sys._eq_whale_haste("),
 		"len=%d" % ct.length())
 	var tk: String = _fn_body(code, "func _eq_tick")
@@ -411,68 +416,79 @@ func _t061_drill() -> void:
 
 
 # ─────────────────────────────────────────────────────────────
-# 062 螳螂虾钳: 闪避后强化下一次普攻(0.7/1/1.5 ATK + 6/8/13% 目标最大生命 物理),
-#               回复整次普攻总伤害的 40%; 强化有 2 秒 CD 且 **CD 卡的是触发**
+# 062 螳螂虾钳(11-11 用户重做): 放技能后下一次攻击额外 60/90/140% ATK + 3/5/9% 目标最大生命 物理,
+#   本次技能每消耗 1 点龟能 +1%; 回复【这段额外伤害】的 40%; 出手即用掉(被闪避也算); 无冷却;
+#   放两个技能才普攻只强化一次(龟能按最近那次)
 # ─────────────────────────────────────────────────────────────
+func _mantis_cast(u: Dictionary, cost: float) -> void:
+	u["energy_cost"] = {"mantisTest": cost}
+	u["pending"] = "K:mantisTest"
+	_s._equip_sys._eq_on_cast(u, u)
+	u["pending"] = ""
+
+
+func _mantis_swing(u: Dictionary, o: Dictionary, hit: bool) -> float:
+	var h0: float = float(o["hp"])
+	_s._equip_sys._eq_on_basic_attack(u, o)    # 出手
+	if hit:
+		_s._equip_sys._eq_on_hit(u, o, 50, true)   # 命中(假定普攻本体 50)
+	return h0 - float(o["hp"])
+
+
 func _t062_mantis() -> void:
 	print("── 062 螳螂虾钳 ──")
 	for si in range(3):
-		var atk_k: float = [0.7, 1.0, 1.5][si]
-		var hp_k: float = [0.06, 0.08, 0.13][si]
+		var atk_k: float = [0.6, 0.9, 1.4][si]
+		var hp_k: float = [0.03, 0.05, 0.09][si]
 		_s._units.clear()
 		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -20.0), 3000.0), "p2eq_062", si + 1)
 		u["atk"] = 100.0
 		u["hp"] = 1000.0
+		u["crit"] = 0.0
 		var o: Dictionary = _mk("fortune", "right", Vector2(-150.0, -20.0), 2000.0)
-		var want: float = 100.0 * atk_k + 2000.0 * hp_k
-		# ★没蓄力时: 普攻不产生任何额外伤害
-		var z0: float = float(o["hp"])
-		_s._equip_sys._eq_on_hit(u, o, 50, true)
-		_ok("062 si=%d ★分母: 没闪避过 → 普攻不带额外段(掉血 0)" % si,
-			absf(z0 - float(o["hp"])) < 0.01, "实掉 %.1f" % (z0 - float(o["hp"])))
-		# 闪避 → 蓄一发
-		_s._equip_sys._eq_on_dodge(u)
-		_ok("062 si=%d 闪避成功 → emp_ready 置起" % si,
+		_ok("062 si=%d ★分母: 没放技能 → 普攻不带额外段(掉血 0)" % si, absf(_mantis_swing(u, o, true)) < 0.01)
+		_mantis_cast(u, 50.0)
+		_ok("062 si=%d 放技能 → emp_ready 置起" % si,
 			bool((u["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)))
-		var h0: float = float(o["hp"])
+		var want: float = (100.0 * atk_k + 2000.0 * hp_k) * 1.5
 		var me0: float = float(u["hp"])
-		_s._equip_sys._eq_on_hit(u, o, 50, true)   # 假定普攻本体打了 50
-		var got: float = h0 - float(o["hp"])
-		_ok("062 si=%d 额外物理 = %.1f×ATK100 + %.0f%%×2000 = %.0f(护甲 0)" % [si, atk_k, hp_k * 100.0, want],
+		var got: float = _mantis_swing(u, o, true)
+		_ok("062 si=%d 额外物理 =(%.1f×ATK100 + %.0f%%×2000)×(1 + 50 龟能×1%%) = %.1f(护甲 0)" % [si, atk_k, hp_k * 100.0, want],
 			absf(got - want) < 0.51, "实掉 %.1f 期望 %.1f" % [got, want])
-		_ok("062 si=%d ★口径①: 回血 = 40%% ×(普攻本体 50 + 额外 %.0f) = %.1f" % [si, want, (50.0 + want) * 0.4],
-			absf(float(u["hp"]) - me0 - (50.0 + want) * 0.4) < 0.51,
-			"实回 %.1f 期望 %.1f" % [float(u["hp"]) - me0, (50.0 + want) * 0.4])
-	# ★★口径②: 2 秒 CD 卡的是【触发】—— 打出后 2 秒内闪避**不再蓄**
+		_ok("062 si=%d ★口径①: 回血只算额外段 40%% = %.1f(不含普攻本体 50)" % [si, want * 0.4],
+			absf(float(u["hp"]) - me0 - want * 0.4) < 0.51, "实回 %.1f" % (float(u["hp"]) - me0))
+		_ok("062 si=%d 用掉了: 再打一下没有额外段" % si, absf(_mantis_swing(u, o, true)) < 0.01)
 	_s._units.clear()
 	var c: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 20.0), 3000.0), "p2eq_062", 3)
 	c["atk"] = 100.0
+	c["crit"] = 0.0
 	var e: Dictionary = _mk("fortune", "right", Vector2(-150.0, 20.0), 2000.0)
-	var tsave: float = _s._t
-	_s._equip_sys._eq_on_dodge(c)
-	_s._equip_sys._eq_on_hit(c, e, 10, true)                       # 打出 → 进 CD
-	_s._t = tsave + 1.9
-	_s._equip_sys._eq_on_dodge(c)
-	_ok("062 ★★口径②: CD 内(1.9 秒)闪避成功也【不蓄】下一发(不是'蓄了但打不出')",
-		not bool((c["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)),
-		"emp_ready=%s" % str((c["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)))
-	var y0: float = float(e["hp"])
-	_s._equip_sys._eq_on_hit(c, e, 10, true)
-	_ok("062 ★★CD 内的普攻确实没有额外段(掉血 0)",
-		absf(y0 - float(e["hp"])) < 0.01, "实掉 %.1f" % (y0 - float(e["hp"])))
-	_s._t = tsave + 2.1
-	_s._equip_sys._eq_on_dodge(c)
-	_ok("062 CD 过了(2.1 秒)闪避又能蓄",
-		bool((c["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)))
-	_s._t = tsave
-	# ★★真入口: 走【中央伤害管线的闪避分支】触发蓄力
-	_s._units.clear()
-	var d: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 60.0), 3000.0), "p2eq_062", 3)
-	d["dodge_bonus"] = 1.0                       # randf() ∈ [0,1) 恒 < 1.0 ⇒ 必闪
-	var atkr: Dictionary = _mk("fortune", "right", Vector2(-150.0, 60.0), 9000.0)
-	_s._damage._apply_damage_from(atkr, d, 500, Color("#ffffff"))
-	_ok("062 ★★真入口: 经 _apply_damage_from 的闪避分支 → 真的蓄上了",
-		bool((d["eq_state"].get("p2eq_062", {}) as Dictionary).get("emp_ready", false)))
+	var base3: float = 100.0 * 1.4 + 2000.0 * 0.09
+	## ★口径②: 两次技能才普攻 → 只强化一次, 龟能按最近那次(20, 不是 100 也不是 120)
+	_mantis_cast(c, 100.0)
+	_mantis_cast(c, 20.0)
+	var g2: float = _mantis_swing(c, e, true)
+	_ok("062 ★★口径②: 连放两次技能 → 这一下按最近那次 20 龟能 = %.1f" % (base3 * 1.2),
+		absf(g2 - base3 * 1.2) < 0.51, "实掉 %.1f" % g2)
+	_ok("062 ★★口径②: 不叠 —— 下一下没有额外段", absf(_mantis_swing(c, e, true)) < 0.01)
+	## ★口径④: 被闪避算用掉 —— 出手没打中, 下一次命中也没有
+	_mantis_cast(c, 40.0)
+	_mantis_swing(c, e, false)
+	_ok("062 ★★口径④: 出手被闪避(没命中)→ 这一发已用掉, 下一次命中没有额外段",
+		absf(_mantis_swing(c, e, true)) < 0.01)
+	## ★口径⑤: 无冷却 —— 打出后马上再放技能, 立刻又能强化
+	_mantis_cast(c, 0.0)
+	var g5a: float = _mantis_swing(c, e, true)
+	_mantis_cast(c, 0.0)
+	var g5b: float = _mantis_swing(c, e, true)
+	_ok("062 ★口径⑤: 无冷却 —— 连续两次放技能各强化一下(%.1f / %.1f, 0 龟能 = 不加成)" % [g5a, g5b],
+		absf(g5a - base3) < 0.51 and absf(g5b - base3) < 0.51)
+	## 技能伤害不消费(只认普攻)
+	_mantis_cast(c, 0.0)
+	_s._equip_sys._eq_on_basic_attack(c, e)
+	var k0: float = float(e["hp"])
+	_s._equip_sys._eq_on_hit(c, e, 50, false)
+	_ok("062 技能命中(basic=false)不打出额外段", absf(k0 - float(e["hp"])) < 0.01)
 	_s._units.clear()
 
 

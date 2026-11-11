@@ -738,10 +738,10 @@
     "baseStats1": "+攻12/30/66·+移速5/9/15%",
     "shopAvailable": 1,
     "emoji": "🦐",
-    "effectDesc1": "闪避一次攻击后，下次攻击额外造成 70/100/150% 攻击力 + 6/8/13% 目标最大生命值的物理伤害，并回复此次攻击总伤害 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。\n此效果有 {C:EqSpiritBatch.MANTIS_CD} 秒冷却时间。",
+    "effectDesc1": "释放技能后，下次攻击额外造成 60/90/140% 攻击力 + 3/5/9% 目标最大生命值的物理伤害，并回复此伤害 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。\n本次技能每消耗 1 点龟能，此伤害提高 {C:EqSpiritBatch.MANTIS_PER_ENERGY%}%。",
     "effectDesc3": "",
     "img": "equip/p2eq_062.png",
-    "effectBrief": "闪避后，下次攻击额外造成伤害并回复其中 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。"
+    "effectBrief": "释放技能后，下次攻击额外造成物理伤害并回复其中 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值，伤害随技能消耗的龟能提高。"
   },
   {
     "id": "p2eq_063",

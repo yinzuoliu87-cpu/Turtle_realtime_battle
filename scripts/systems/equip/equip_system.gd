@@ -160,6 +160,8 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 					battle._damage._knockback(u, at, 60.0); battle._freeze(at, battle.CTRL_SEC)
 					battle._skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)
 					u["eq_state"]["p2eq_017"] = ast
+		if str(e["id"]) == "p2eq_062":   # 螳螂虾钳: 出手就取出蓄好的那一发(被闪避也算用掉, 用户 11-11), 命中在 _eq_on_hit 结算
+			_spirit_sys._eq_mantis_arm(u)
 		if str(e["id"]) == "p2eq_039":   # 竹制弓箭: 每第3段普攻消耗1次生长充能→射强化竹箭(用户2026-07-19)
 			var b39: Dictionary = u["eq_state"].get("p2eq_039", {})
 			b39["bamboo_hits"] = int(b39.get("bamboo_hits", 0)) + 1
@@ -2330,9 +2332,7 @@ func _eq_on_dodge(u: Dictionary) -> void:
 		# ── 灵物 5 件(2026-08-05 用户逐件重做·§0.5 定稿) ──────────────────
 		#    ★060/061 原来挂在这个钩子上的旧效果(闪避→魔法伤 / 闪避→移速)
 		#      已整条作废: 060 改成 7 秒周期开伞、061 改成 on-hit 破损。
-		#      现在挂闪避钩的是 062 螳螂虾钳(闪避后蓄一发强化普攻)。
-		match str(e["id"]):
-			"p2eq_062": _spirit_sys._eq_mantis_ready(u, _eq_si(int(e.get("star", 1))))
+		#    ★062 螳螂虾钳原来挂在这里(闪避后蓄一发), 2026-11-11 用户重做成「放技能后蓄一发」, 移到 _eq_on_cast。
 
 # ============================================================================
 #  on-cast (放主动技后)
@@ -2394,6 +2394,8 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 			# ══ 灵物(2026-08-05 用户逐件重做·§0.5 定稿) ═══════════════════════
 			#    063 白鲸气环第①段: 放技能后 +30/60/100% 攻速, 持续【本次消耗龟能 ×0.03】秒
 			"p2eq_063": _spirit_sys._eq_whale_haste(u, si)
+			#    062 螳螂虾钳(11-11 重做): 放技能后蓄一发强化普攻, 伤害随本次消耗龟能提高(每点 +1%)
+			"p2eq_062": _spirit_sys._eq_mantis_ready(u, si)
 			# ══ 弓箭(2026-08-05 用户逐件重做·§0.5 定稿) ══════════════════
 			#    076 连发弩机主动: 放完技能起一轮连射, 发数 = 本次技能消耗龟能 ÷ 8。
 			#    ★消耗查 `battle._skill_cost(u, stype)`, 不在任何地方抄一份消耗表。

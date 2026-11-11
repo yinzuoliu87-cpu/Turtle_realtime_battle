@@ -242,63 +242,72 @@ func _eq_drill_snail(src: Dictionary, tgt: Dictionary, si: int, basic: bool = fa
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  §062 螳螂虾钳 (灵物 · 2 费) —— 用户 §0.5 定稿(三条口径用户已确认)
+#  §062 螳螂虾钳 (灵物 · 2 费) —— 2026-11-11 用户大重做(取代 08-05 的「闪避后强化下一次普攻、2 秒冷却」)
 #
-#  「**闪避掉一次攻击后**, 强化自己的**下一次普攻**: 额外造成
-#    **0.7/1/1.5 ATK + 目标最大生命 6/8/13%** 的**物理伤害**,
-#    并回复**这次普攻造成伤害的 40%** 生命。强化普攻有 **2 秒 CD**。」
+#  「改为释放技能后下一次攻击造成额外的物理伤害…这一部分的物理伤害与技能释放消耗的龟能数有关。每消耗一点龟能，
+#    都会使该伤害提升百分之一，并且携带者会回复此次伤害造成的伤害值的百分之四十…一星是百分之六十攻击力加百分之三
+#    目标最大生命值，二星是百分之九十攻击力加上目标百分之五最大生命值，三星是百分之一百四十攻击力加上目标百分之九最大生命值」
 #
-#  ✅ 三条口径(用户 2026-08-05「62 按你的理解是这样的, 用方案书锁好, 保留所有细节」):
-#     ① 40% 回血按【整次强化普攻打出的总伤害】算 —— 含普攻本体 + 额外那段。
-#     ② **2 秒 CD 卡的是【触发】** —— 放出一次强化普攻之后, 2 秒内闪避成功**不再蓄下一发**。
-#        ★不是"照常蓄、只是打不出来"(那等于没有 CD)。
-#     ③ 额外那段物理伤害**不再触发 on-hit**(`from_equip = true`), 防与 061 破损 / 剑士追打自激。
+#  ✅ 用户确认的口径(11-11):
+#     ① 回血只算这段额外伤害的 40%(不含普攻本体)。
+#     ② 放了两个技能才普攻, 只强化一次; 龟能按最近那次技能算(不叠)。
+#     ③ 这段伤害可以暴击(走 _resolve_dmg: 吃护甲 + 掷暴击)。
+#     ④ 被闪避掉算用掉: 普攻【出手】时就取出这一发(_eq_on_basic_attack), 命中才结算; 没打中下一次出手时清掉。
+#     ⑤ 没有冷却(放一次技能最多强化一次普攻)。
+#     ⑥ 额外这段不再触发 on-hit(from_equip = true), 防与 061 破损 / 剑士追打自激(沿用 08-05 口径③)。
 # ══════════════════════════════════════════════════════════════════════════
 
-## 强化普攻的内置冷却(秒)
-const MANTIS_CD := 2.0
-## 回血占【整次强化普攻总伤害】的比例
+## 额外物理伤害: 攻击力系数 / 目标最大生命值比例(按星级)
+const MANTIS_ATK := [0.60, 0.90, 1.40]
+const MANTIS_HP := [0.03, 0.05, 0.09]
+## 这次技能每消耗 1 点龟能, 额外伤害提高的比例
+const MANTIS_PER_ENERGY := 0.01
+## 回血占【这段额外伤害】的比例
 const MANTIS_LEECH := 0.40
 
 
-## 闪避成功 → 蓄一发。★CD 内直接 return 且**不置 ready**(口径②)。
+## 放技能 → 蓄一发; 龟能记这次技能的消耗(再放技能就覆盖成最近那次, 不叠 —— 口径②)。
 func _eq_mantis_ready(u: Dictionary, _si: int) -> void:
 	var stt: Dictionary = u["eq_state"].get("p2eq_062", {})
-	if battle._t < float(stt.get("emp_cd_until", 0.0)):
-		u["eq_state"]["p2eq_062"] = stt
-		return
+	var stype: String = cast_stype(u)
 	stt["emp_ready"] = true
+	stt["emp_energy"] = float(battle._skill_cost(u, stype)) if stype != "" else 0.0
 	u["eq_state"]["p2eq_062"] = stt
 	_vfx.mantis_ready(u)   # 待发指示: 身前钳形光弧(玩家能看出下一击有强化)
 
 
-## 普攻命中 → 若已蓄好, 打出强化段并回血。
-## ★消费点放 on-hit, 与 015 荆棘海胆的「强化下一次普攻」同一个惯例。
-## ★(2026-08-11 已根治)旧注释曾记录「_eq_on_hit 会被技能调到, 这一发可能被技能吃掉」——
-##   v0.19.100 给伤害管线加了 `basic` 显式标(普攻链打标), 本函数由分派传入并在函数头闸住,
-##   「强化下一次普攻」现在严格只被普攻命中消费。仍留在 on-hit(而非 _eq_on_basic_attack):
-##   口径① 要按"整次普攻总伤害"回 40%, 只有命中时刻才拿得到 dmg(远程弹道尤其)。
-func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, dmg: int, si: int, basic: bool = false) -> void:
-	## ★规格「强化下一次普攻」(§0.5) —— 只在普攻命中时放强化(2026-08-11 用户报修)。
+## 普攻出手 → 取出这一发(口径④: 被闪避也算用掉 —— 这里就把 ready 清了, 没蓄的出手顺手清掉上一次没打中的)。
+func _eq_mantis_arm(u: Dictionary) -> void:
+	var stt: Dictionary = u["eq_state"].get("p2eq_062", {})
+	var go: bool = bool(stt.get("emp_ready", false))
+	stt["emp_armed"] = go
+	if go:
+		stt["emp_ready"] = false
+		stt["emp_armed_energy"] = float(stt.get("emp_energy", 0.0))
+		_vfx.mantis_consume(u)   # 收待发指示(出手即用掉)
+	u["eq_state"]["p2eq_062"] = stt
+
+
+## 普攻命中 → 这一发出手时取出了, 就打出额外段并回血。
+## ★消费点在 on-hit: 远程弹道命中时刻才拿得到目标; basic 由分派传入, 只认普攻(【普攻】规格·2026-08-11)。
+func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, _dmg: int, si: int, basic: bool = false) -> void:
 	if not basic:
 		return
 	var stt: Dictionary = src["eq_state"].get("p2eq_062", {})
-	if not bool(stt.get("emp_ready", false)) or not tgt.get("alive", false):
+	if not bool(stt.get("emp_armed", false)) or not tgt.get("alive", false):
 		src["eq_state"]["p2eq_062"] = stt
 		return
-	stt["emp_ready"] = false
-	stt["emp_cd_until"] = battle._t + MANTIS_CD
+	stt["emp_armed"] = false
 	src["eq_state"]["p2eq_062"] = stt
-	var base: float = float(src.get("atk", 0.0)) * [0.7, 1.0, 1.5][si] \
-		+ float(tgt.get("maxHp", 0.0)) * [0.06, 0.08, 0.13][si]
-	## 物理伤害 ⇒ 吃护甲(不是真伤); from_equip 防自激(口径③)
+	var mult: float = 1.0 + MANTIS_PER_ENERGY * float(stt.get("emp_armed_energy", 0.0))
+	var base: float = (float(src.get("atk", 0.0)) * MANTIS_ATK[si] + float(tgt.get("maxHp", 0.0)) * MANTIS_HP[si]) * mult
+	## 物理伤害 ⇒ 吃护甲、可暴击(口径③); from_equip 防自激(口径⑥)
 	var extra: int = battle._resolve_dmg(src, base, tgt, false)
 	battle._damage._apply_damage_from(src, tgt, extra, Color("#ffd27a"), 0.0, false, true)
-	## 口径①: 40% 按【普攻本体 + 额外段】的总伤害算
-	battle._damage._heal(src, float(dmg + extra) * MANTIS_LEECH)
+	## 口径①: 只回这段额外伤害的 40%
+	battle._damage._heal(src, float(extra) * MANTIS_LEECH)
 	src["_mantis_n"] = int(src.get("_mantis_n", 0)) + 1
-	_vfx.mantis_consume(src)      # 收待发指示
-	_vfx.mantis_hit(tgt["pos"])   # 钳斩→气泡簇聚缩→星形溃灭闪(旧圆盘+白球已废)
+	_vfx.mantis_hit(tgt["pos"])   # 钳斩→气泡簇聚缩→星形溃灭闪
 	_vfx.green_heal(src)          # 40% 吸血: 060 同支绿的恢复光点涌
 
 
