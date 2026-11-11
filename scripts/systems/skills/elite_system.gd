@@ -441,7 +441,7 @@ func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(
 	spk.flip_h = randf() < 0.5
 	spk.position = battle._world_pos(pos2d, 0.05)
 	spk.rotation.z = randf_range(-0.35, 0.35)
-	spk.modulate = Color(1.25, 1.1, 1.1, 1.0)                      # 提亮(暗地上要明显)
+	spk.modulate = Color(1.15, 1.1, 1.3, 1.0)                      # 提亮(暗地上要明显); 11-11 地刺重画成深蓝 + 紫光, 原来偏红的提亮会把紫光提成粉
 	battle._world.add_child(spk)
 	battle._skill_ring(pos2d, Color(0.385, 0.054, 0.605, 0.55), 22.0)         # 破土
 	var rgt2: Texture2D = VfxTex._make_fire_glow_tex()
