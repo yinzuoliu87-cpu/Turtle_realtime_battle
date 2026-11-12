@@ -966,7 +966,7 @@ func _t_vfx_art() -> void:
 		"满盾 scale=%.4f · 1点盾 scale=%.4f" % [sc_full, sc_low])
 	var live_tc0: int = _count_live_kind("tc")
 	_s._spec.absorb(nsu, 10.0)                # 打光 → SpecialBalance 触发 on_break
-	_food.tick_unit(nsu, 0.016)               # 壳回收在携带者 tick 的友军巡回里
+	_food.tick_global(0.016)                  # 壳回收在 tick_global 的 _cream_sync(11-12 起不挂在携带者身上: 携带者死了也要收)
 	_ok("⑦-6m 071 ★破盾走【炸开】路径: tc 破膜句柄 +1 且壳被整只收走(不是缩小消失)",
 		_count_live_kind("tc") == live_tc0 + 1 and not nsu.has("_cream_shell"),
 		"tc句柄 %d→%d · 壳键还在=%s" % [live_tc0, _count_live_kind("tc"), str(nsu.has("_cream_shell"))])

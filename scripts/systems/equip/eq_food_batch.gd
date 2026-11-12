@@ -360,7 +360,7 @@ const CREAM_TIMES := 3
 const CREAM_LOSS_STEP := 0.50
 
 
-func _cream_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
+func _cream_tick(u: Dictionary, si: int, stt: Dictionary, _delta: float) -> void:   # _delta: 壳的推进挪到 _cream_sync 后本函数不再读帧长(签名与另外三件 tick 一致)
 	# ── 开局那一次 ──
 	if not bool(stt.get("opened", false)):
 		stt["opened"] = true
