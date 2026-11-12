@@ -52,9 +52,9 @@ func _run() -> void:
 	var a := _snap(gs, [{"id": eq, "star": star}], "g_pl_a")
 	var b: Dictionary = a.duplicate(true)
 	b["ghost_id"] = "g_pl_b"
-	b["reserve_pool"] = [{"id": "p2eq_016", "star": 1}]
+	b["reserve_pool"] = [{"id": eq, "star": star}]   # 右方也带同一件吸血装备(两边都量)
 	var job: Dictionary = JSON.parse_string(JSON.stringify({"v": 1, "job_id": 1, "match_id": "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b", "mode": "gauntlet",
-		"key": {"week": 1, "account": "t"}, "seed": 2000023, "client_version": ReplayRecorder.client_version(), "level": 6, "a": a, "b": b}))
+		"key": {"week": 1, "account": "t"}, "seed": (int(OS.get_environment("PROBE_SEED")) if OS.get_environment("PROBE_SEED") != "" else 2000023), "client_version": ReplayRecorder.client_version(), "level": 6, "a": a, "b": b}))
 	var st := {"lane": "", "steps": 0, "done": {}, "rv": null, "fin_steps": 0}
 	await RefereeRunner.run(host, job, func(bt) -> void:
 		bt.sim_stepped.connect(func() -> void:
@@ -67,6 +67,24 @@ func _run() -> void:
 			st["steps"] = int(st["steps"]) + 1
 			if lane == "final":
 				st["fin_steps"] = int(st["fin_steps"]) + 1
+				for _u in bt._units:
+					if not (_u.get("alive", false) and str(_u.get("minion_role", "")) == "reserve"):
+						continue
+					var _k: String = str(_u.get("side"))
+					var _pd: int = int(st.get("pd_" + _k, int(_u.get("_st_dealt", 0))))
+					var _ph: float = float(st.get("ph_" + _k, float(_u.get("_st_heal", 0.0))))
+					var _phf: float = float(st.get("hf_" + _k, 1.0))
+					if int(_u.get("_st_dealt", 0)) > _pd:
+						if _phf < 0.999:
+							st["dmg_hit_" + _k] = int(st.get("dmg_hit_" + _k, 0)) + 1
+							if float(_u.get("_st_heal", 0.0)) > _ph + 0.001:
+								st["dmg_hit_heal_" + _k] = int(st.get("dmg_hit_heal_" + _k, 0)) + 1
+						else:
+							st["full_hit_" + _k] = int(st.get("full_hit_" + _k, 0)) + 1
+					st["pd_" + _k] = int(_u.get("_st_dealt", 0))
+					st["ph_" + _k] = float(_u.get("_st_heal", 0.0))
+					st["hf_" + _k] = float(_u["hp"]) / maxf(1.0, float(_u["maxHp"]))
+					st["ls_" + _k] = float(_u.get("lifesteal", 0.0))
 				if st["rv"] != null:
 					var _r: Dictionary = st["rv"]
 					var _dd: int = int(_r.get("_st_dealt", 0)) - int(st.get("pd", int(_r.get("_st_dealt", 0))))
@@ -79,7 +97,8 @@ func _run() -> void:
 					for u in bt._units:
 						if u.get("alive", false) and str(u.get("side")) == "left" and str(u.get("minion_role", "")) == "reserve":
 							st["rv"] = u
-							u["hp"] = float(u["maxHp"]) * 0.3          # 留出回血空间
+							if OS.get_environment("PROBE_NOHP") != "1":
+								u["hp"] = float(u["maxHp"]) * 0.3      # 留出回血空间
 							if OS.get_environment("PROBE_LS0") == "1":
 								u["lifesteal"] = 0.0                       # 对照组: 同一局把吸血清零
 							st["h0"] = float(u.get("_st_heal", 0.0))
@@ -106,6 +125,8 @@ func _run() -> void:
 	else:
 		var dealt := int(rv.get("_st_dealt", 0))
 		var heal := float(rv.get("_st_heal", 0.0))
+		for _k in ["left", "right"]:
+			print("[LS2] %s 援军 lifesteal=%.2f · 满血时打中 %d 步 · 掉血时打中 %d 步, 其中当步回了血 %d 步" % [_k, float(st.get("ls_" + _k, 0.0)), int(st.get("full_hit_" + _k, 0)), int(st.get("dmg_hit_" + _k, 0)), int(st.get("dmg_hit_heal_" + _k, 0))])
 		print("[LS] 出手那几步的回血 %.1f · 其余步的回血 %.1f" % [float(st.get("hit_heal", 0.0)), float(st.get("other_heal", 0.0))])
 		print("[LS] 终极战场 %d 步: 援军 打出 %d · 实际回血 %.1f · 回血/伤害 = %.3f · 结束时 lifesteal=%.3f alive=%s" % [int(st["fin_steps"]), dealt, heal, heal / maxf(1.0, float(dealt)), float(rv.get("lifesteal", 0.0)), str(rv.get("alive"))])
 	get_tree().quit(0)
