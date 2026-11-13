@@ -1809,7 +1809,7 @@ func apply_save_guard(is_headless: bool, has_no_save_env: bool,
 		scene_override: String = "", web_player: bool = false) -> String:
 	var reason := save_guard_reason(is_headless, has_no_save_env, scene_override, web_player)
 	if reason != "":
-		test_mode = true
+		test_mode = true; SaveIso.harness = reason   # 存档隔离闸(11-13): 测试 / 台子进程在玩家真目录上即使关了 test_mode 也不写
 	return reason
 
 ## ★D-8(2026-09-21): 存档的【全部字段】只在这一处列出 ——
@@ -1922,7 +1922,7 @@ func save() -> void:
 	_EconLedger.check(self, "save")   # 哨兵: 上一笔记账之后资产有没有被别处改过(只记不拦)
 	## ★教程沙盒(2026-10-07 用户「整个教程都不应该有当前存档的东西」): 教程期间内存里是教程专用状态,
 	##   一个字节都不许落到账号存档上。结束时导演先把账号状态换回来、关掉 tutorial_active, 再 save()。
-	if test_mode or tutorial_active:
+	if test_mode or tutorial_active or SaveIso.blocks_save():   # 最后一项见 scripts/util/save_iso.gd(11-13 真存档被测试假号覆盖)
 		return
 	var data := _save_dict()
 	var tmp := SAVE_PATH + ".tmp"

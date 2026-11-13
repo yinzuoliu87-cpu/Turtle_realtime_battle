@@ -23,6 +23,7 @@
 import os
 import subprocess
 import sys
+import tempfile
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -57,7 +58,13 @@ def shoot():
     if os.path.exists(OUT):
         os.remove(OUT)
     env = dict(os.environ)
+    ## ★隔离(2026-11-13): 原来继承本机 APPDATA ⇒ 每次预检都用玩家真存档目录开一局战斗、还连正式服对时钟
+    ##   (真目录 logs/ 里 06:01 / 06:31 / 08:39 / 08:50 那几条就是它)。存档本体有「命令行指定场景」那道闸挡着,
+    ##   但 server_clock.cfg 等别的文件照写。⇒ 一份临时 user:// + 不连服务器, 与 run-tests.sh 的测试同一套。
+    ud = tempfile.mkdtemp(prefix="bsc_")
     env.update({
+        "APPDATA": ud, "XDG_DATA_HOME": ud,
+        "TURTLE_SUPABASE": " ", "TURTLE_BACKEND": " ",
         "SHIP": "1",            # 关 demo 劫持, 否则假人永不死(CLAUDE.md §4)
         "QUIET": "1",           # ★开窗口也必须静音 —— 用户 2026-10-01 点名的那条
         "SELFSHOT": SHOT_SEC,

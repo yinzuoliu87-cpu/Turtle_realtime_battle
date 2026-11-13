@@ -37,7 +37,7 @@ SHARD=k/8 SHARD_LIST_ONLY=1 bash run-tests.sh   # 只看第 k 片分到哪几条
 - **推之前先过本机预检，CI 不是用来找小错的**（用户 11-06「每次跑个十分钟 CI，然后找个小问题，然后又跑个十分钟 CI…我不觉得这是很好的呀」，修订上一条的「本机只跑相关测试」）：`python tools/precheck.py` 跑全部审计器 + 全仓扫描类测试 + 碰到改动文件的测试，过了 `ship.py` 才放行（`--list` 看要跑哪些）。CI 红了不整轮重来：本机 `SHARD=k/8 bash run-tests.sh` 只跑红的那片，修好确认再推；攒齐一批再推，不是修一个推一个。
 - **美术迭代没被用户认可前不推、不跑预检 / CI**（用户 11-11「走了六遍，没有一遍合格的，你走 CI 走预检有啥意义」，补充上两条）：动作帧 / 特效 / 形象在本机改、出图或录像给用户看，只单跑直接相关的几条测试；用户点头后才提交，跑一次预检 + `ship.py`。预检和 CI 判断不了好不好看。
 - **只改文档 ⇒ 复用上次全绿**（用户 11-04「改」，修订上一条）：`run-tests.sh` 开头用 `tools/gate_input_key.py` 算测试输入哈希（docs/ 与根目录 .md 以外的全部文件 + 被 Godot 侧 `res://` 点名的文档 + Godot 可执行文件）；与 12 小时内上次全绿相同 ⇒ 自证测试 + 冒烟复用、不起 Godot，三方对账与审计器照跑，结尾打「其中 N 项复用」。输入变一个字节就跑全套。`GATE_NO_REUSE=1` 强制全套，`GATE_REUSE_CHECK=1` 只看判定。**不许扩大成「只跑相关测试」**（用户没同意）。（本机跑全套时才用得上；11-05 起常规流程走 CI，见上一条）
-- 手动跑单条测试一律隔离存档：`APPDATA=$U XDG_DATA_HOME=$U`（Windows 看 `APPDATA`，Linux/CI 看 `XDG_DATA_HOME`，两个都设；`verify_gate_isolation` 守）。并设 `TURTLE_SUPABASE=" "` 不连服务器。
+- 手动跑单条测试一律隔离存档：`APPDATA=$U XDG_DATA_HOME=$U`（Windows 看 `APPDATA`，Linux/CI 看 `XDG_DATA_HOME`，两个都设；`verify_gate_isolation` 守）。并设 `TURTLE_SUPABASE=" "` 不连服务器。兜底：测试 / 台子进程在默认目录上 `save()` 一律拒写（`scripts/util/save_iso.gd`，11-13 起）。**测试里绝不在进程内把 `APPDATA` / `XDG_DATA_HOME` 改成真目录**：Godot 按当时的值实时解析 `user://`，会真写进玩家存档（11-13 出过事，靠卷影副本救回）。
 - 判定 = 退出码 0 + 不命中 `run-tests.sh` 顶部 `FATAL` 致命报错正则 + 日志里有 `ALL PASS`。**新报错形态往 `FATAL` 里加**，漏一个模式就等于把 bug 判绿。
 - 测试**自动发现** `tests/verify_*.gd`（配好 `.tscn` 即纳入，无需登记）。慢测试在 `frames_for()` 登记帧预算 —— `--quit-after` 单位是**帧**；帧数不够表现为「没打 ALL PASS」，不是某条断言 FAIL。
 - 审计器（`tools/*.py`）登记方式：在 `run-tests.sh` 加一行 `run_audit "tools/x.py" "ALL OK" "说明"`，清单从这些行自动扫出来。
