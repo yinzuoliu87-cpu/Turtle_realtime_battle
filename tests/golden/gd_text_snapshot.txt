@@ -1546,6 +1546,7 @@ scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
 scripts/scenes/battle/info_panel.gd|lit|冰寒
 scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
+scripts/scenes/battle/info_panel.gd|lit|减免伤害 %d
 scripts/scenes/battle/info_panel.gd|lit|减速
 scripts/scenes/battle/info_panel.gd|lit|反伤
 scripts/scenes/battle/info_panel.gd|lit|反伤 
@@ -1585,7 +1586,7 @@ scripts/scenes/battle/info_panel.gd|lit|无
 scripts/scenes/battle/info_panel.gd|lit|星能
 scripts/scenes/battle/info_panel.gd|lit|普攻
 scripts/scenes/battle/info_panel.gd|lit|普通攻击
-scripts/scenes/battle/info_panel.gd|lit|暂无效果
+scripts/scenes/battle/info_panel.gd|lit|暂无记录
 scripts/scenes/battle/info_panel.gd|lit|暴伤
 scripts/scenes/battle/info_panel.gd|lit|暴伤 
 scripts/scenes/battle/info_panel.gd|lit|暴击
@@ -1635,6 +1636,7 @@ scripts/scenes/battle/info_panel.gd|lit|释放：冲击波 %d，护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|金币
 scripts/scenes/battle/info_panel.gd|lit|闪避
 scripts/scenes/battle/info_panel.gd|lit|闪避 
+scripts/scenes/battle/info_panel.gd|lit|闪避 %d 次
 scripts/scenes/battle/info_panel.gd|lit|闪避攻击的几率。
 scripts/scenes/battle/info_panel.gd|lit|降低受到的物理伤害。
 scripts/scenes/battle/info_panel.gd|lit|降低受到的魔法伤害。
@@ -2337,12 +2339,12 @@ scripts/systems/equip/eq_gun_batch.gd|lit|小手枪
 scripts/systems/equip/eq_gun_batch.gd|lit|急救塔
 scripts/systems/equip/eq_gun_batch.gd|lit|枪
 scripts/systems/equip/eq_potion_batch.gd|lit|浓浆
-scripts/systems/equip/equip_system.gd|lit|亡灵骷髅
+scripts/systems/equip/eq_summons.gd|lit|亡灵骷髅
+scripts/systems/equip/eq_summons.gd|lit|炮台
+scripts/systems/equip/equip_stats_apply.gd|lit|涨潮
+scripts/systems/equip/equip_stats_apply.gd|lit|退潮
 scripts/systems/equip/equip_system.gd|lit|墨遁
 scripts/systems/equip/equip_system.gd|lit|海螺虫
-scripts/systems/equip/equip_system.gd|lit|涨潮
-scripts/systems/equip/equip_system.gd|lit|炮台
-scripts/systems/equip/equip_system.gd|lit|退潮
 scripts/systems/equip/equip_tick_system.gd|lit|+%d 深海币
 scripts/systems/equip/food_synergy_system.gd|lit|食物
 scripts/systems/equip/gadget_synergy_system.gd|lit|奇械
