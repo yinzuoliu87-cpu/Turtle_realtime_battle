@@ -88,6 +88,19 @@ func val(u: Dictionary, key: String) -> float:
 	return float(slot[key]["val"]) if slot.has(key) else 0.0
 
 
+## key 以 prefix 开头的几份余额之和(同名装备多件各一份余额时合计用 · 11-13; 例: 071 奶油盾「p2eq_071_cream」「p2eq_071_cream#2」)。
+func val_prefix(u: Dictionary, prefix: String) -> float:
+	var uid: String = str(u.get("_spec_uid", ""))
+	if uid == "" or not _bal.has(uid):
+		return 0.0
+	var t: float = 0.0
+	var slot: Dictionary = _bal[uid]
+	for k in slot.keys():
+		if str(k).begins_with(prefix):
+			t += float(slot[k]["val"])
+	return t
+
+
 func has(u: Dictionary, key: String) -> bool:
 	return val(u, key) > EPS
 

@@ -99,6 +99,7 @@ func _fire(src: Dictionary, tgt: Dictionary, si: int, stt: Dictionary) -> void:
 	_waves.append({
 		"src": src, "from": src["pos"], "dir": dir, "half": deg_to_rad(deg * 0.5),
 		"deg": deg, "dmg": WAVE_DMG[si], "t": 0.0, "hit": [], "nodes": [],
+		"ck": battle._equip_sys.key_of(src, "p2eq_038"),   # 放出它的那一件(份号 · 11-13)
 	})
 	battle._skill_ring(src["pos"], Color(0.45, 0.9, 1.0, 0.8), 70.0)
 	battle._vfx._float_text(src["pos"] + Vector2(0, -62), "电磁波 %d°" % int(deg), Color("#7fe8ff"))
@@ -120,9 +121,11 @@ func tick(delta: float) -> void:
 			_free_nodes(w)
 			continue
 		_place_nodes(w, r)
+		var _cp: Array = battle._equip_sys.ck_enter(src, str(w.get("ck", "p2eq_038")))   # 命中记给放出它的那一件(11-13)
 		for o in _hit_at(w, r):
 			(w["hit"] as Array).append(o)
 			_apply(src, o, float(w["dmg"]))
+		battle._equip_sys.ck_leave(_cp)
 		keep.append(w)
 	_waves = keep
 
@@ -161,7 +164,7 @@ func _hit_at(w: Dictionary, r: float) -> Array:
 func _apply(src: Dictionary, o: Dictionary, dmg: float) -> void:
 	if not o.get("alive", false):
 		return
-	var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_038")   # ④ 装备统计: 电磁波在全局在途表里外推 ⇒ 命中记给「携带者 · 038」
+	var _tp: Array = battle._equip_sys.tally.push(src, battle._equip_sys.key_of(src, "p2eq_038"))   # ④ 装备统计: 电磁波在全局在途表里外推 ⇒ 命中记给「携带者 · 038」
 	battle._damage._apply_damage_from(src, o, battle._resolve_dmg(src, dmg, o, true),
 		Color("#7fe8ff"), 0.0, false, true)          # 魔法伤害(走魔抗·与文案一致)
 	battle._equip_sys.tally.pop(_tp)

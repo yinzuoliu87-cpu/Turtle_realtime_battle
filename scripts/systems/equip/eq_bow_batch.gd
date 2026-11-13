@@ -96,7 +96,7 @@ func on_basic_073(u: Dictionary, si: int) -> void:
 	var t: Dictionary = es[battle._battle_rng.randi() % es.size()]
 	if not t.get("alive", false):
 		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_073", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_073"), {})
 	var base: float = float(VINE_FLAT[si]) + float(u.get("atk", 0.0)) * float(VINE_ATK[si])
 	## 藤蔓箭【单独掷一次暴击】, 用的是携带者自己的暴击率(用户拍板)。
 	var crit: bool = battle._battle_rng.randf() < minf(float(u.get("crit", 0.0)), 1.0)
@@ -116,7 +116,7 @@ func on_basic_073(u: Dictionary, si: int) -> void:
 		battle._damage._apply_damage_from(u, t, battle._phys_after_armor(u, raw, t),
 			Color("#8ce860"), 0.0, false, true)
 	stt["vine_shots"] = int(stt.get("vine_shots", 0)) + 1   # 同步触发证据(供门禁, 不必等演出)
-	u["eq_state"]["p2eq_073"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_073")] = stt
 
 
 ## 给携带者上 2 秒攻速 buff。**刷新不叠加**。
@@ -137,12 +137,12 @@ func _vine_grant_aspd(u: Dictionary, si: int, stt: Dictionary) -> void:
 	stt["vine_aspd_until"] = battle._t + VINE_ASPD_SEC
 	stt["vine_crits"] = int(stt.get("vine_crits", 0)) + 1   # 同步触发证据(供门禁)
 	stt["vine_buff_pct"] = 100.0   # 读数镜像立即打满(每帧衰减见 _vine_mirror), 触发瞬间就看得见
-	u["eq_state"]["p2eq_073"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_073")] = stt
 
 
 ## 攻速 buff 到期 → 把增量原样收回(不是"设回 1.0" —— 别人加的还在里面)。
 func _vine_expire(u: Dictionary) -> void:
-	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_073", {})
+	var stt: Dictionary = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, "p2eq_073"), {})
 	var given: float = float(stt.get("vine_aspd_given", 0.0))
 	if given <= 0.0:
 		return
@@ -151,7 +151,7 @@ func _vine_expire(u: Dictionary) -> void:
 	u["aspd_perm"] = maxf(0.01, float(u.get("aspd_perm", 1.0)) - given)
 	stt["vine_aspd_given"] = 0.0
 	stt["vine_buff_pct"] = 0.0     # 读数镜像同步清零
-	u["eq_state"]["p2eq_073"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_073")] = stt
 
 
 ## 攻速 buff 的到期由**每帧** `tick()` 收(见 `_tick_orbs`), 不占周期口 ——
@@ -175,7 +175,7 @@ func _vine_expire(u: Dictionary) -> void:
 func on_basic_074(u: Dictionary, tgt, si: int) -> void:
 	if not u.get("alive", false):
 		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_074", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_074"), {})
 	## ★用户 2026-09-30 加强: 纯百分比 2/3/4% → 【固定 9/16/25 + 2.5/3.5/4.5% 自身最大生命值】。
 	##   两部分相加成一个护盾量, 不是两层盾 —— 文案写的是"获得 A+B% 的护盾"。
 	var amt: float = [9.0, 16.0, 25.0][si] + float(u.get("maxHp", 0.0)) * [0.025, 0.035, 0.045][si]
@@ -187,7 +187,7 @@ func on_basic_074(u: Dictionary, tgt, si: int) -> void:
 		var flat: float = [15.0, 30.0, 50.0][si]   # ★用户 2026-09-30: 10/20/30 → 15/30/50
 		battle._damage._apply_damage_from(u, tgt, _magic_after_mr(u, flat, tgt),
 			Color("#9be7ff"), 0.0, false, true)
-	u["eq_state"]["p2eq_074"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_074")] = stt
 	## 演出(2026-08-12 二轮 · 用户:「不需要这种叠一次给个特效的, 我要的是护盾罩子:
 	## 获得护盾 / 持续护盾 / 护盾破裂」): 罩子在 = 还有盾; 叠盾只走一次涟漪脉冲, 不加节点。
 	## 破裂由 `_tick_orbs` 的每帧看盾器发(盾归零那一帧), 不在这里判 —— 盾可能被任何伤害打光。
@@ -241,10 +241,10 @@ func rain_start(u: Dictionary, si: int) -> void:
 	if pts.is_empty():
 		return
 	var center: Vector2 = BowEqVfx.densest_point(pts, RAIN_RADIUS)
-	_rains.append({"src": u, "si": si, "center": center, "hops_left": RAIN_HOPS, "t_next": 0.0})
-	var stt: Dictionary = u["eq_state"].get("p2eq_075", {})
+	_rains.append({"src": u, "si": si, "center": center, "hops_left": RAIN_HOPS, "t_next": 0.0, "ck": battle._equip_sys.key_of(u, "p2eq_075")})   # ck: 放出它的那一件(份号 · 11-13)
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_075"), {})
 	stt["rain_n"] = int(stt.get("rain_n", 0)) + 1          # 同步触发证据(供门禁)
-	u["eq_state"]["p2eq_075"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_075")] = stt
 	## 圈的寿命 = 六跳时长 + 一支箭的飞行时间 ⇒ **最后一批箭落地之后圈才往中间关闭**
 	## (2026-08-12 用户点名的收尾; 只按 1.5 秒会在末批箭还在空中时就收掉)
 	_vfx.rain_marker(center, RAIN_RADIUS,
@@ -271,9 +271,9 @@ func rain_hop(u: Dictionary, si: int, center: Vector2) -> int:
 		battle._damage._apply_damage_from(u, o, battle._phys_after_armor(u, per * amp, o),
 			Color("#b6e86a"), 0.0, false, true)
 		battle._damage._apply_dot_stacks(o, "bleed", stacks, u)
-	var stt: Dictionary = u["eq_state"].get("p2eq_075", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_075"), {})
 	stt["rain_hops"] = int(stt.get("rain_hops", 0)) + 1
-	u["eq_state"]["p2eq_075"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_075")] = stt
 	_vfx.rain_arrows(center, RAIN_RADIUS, 7)
 	return n
 
@@ -331,13 +331,13 @@ const ENERGY_SEC := 0.075
 ## ★不吃星级: 用户写的是"施加 1 层腐蚀", 三星同值 ⇒ si 用不上(写成 `_si` 消未使用参数警告)。
 func on_basic_076(u: Dictionary, tgt, _si: int) -> void:
 	var tier: int = int(battle._synergy.tier_for(u, "弓箭"))
-	var stt: Dictionary = u["eq_state"].get("p2eq_076", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_076"), {})
 	var n: int = int(stt.get("cross_hits", 0)) + 1
 	stt["cross_hits"] = n
 	## 读数镜像(2026-08-11): 到"第三下"的进度(0/1/2), 给装备格充能条读(分母常量 3)。
 	## ★羁绊没激活时压回 0 —— 不给玩家一条永远兑不了现的进度条。
 	stt["cross_step"] = (n % CORRODE_EVERY) if tier > 0 else 0
-	u["eq_state"]["p2eq_076"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_076")] = stt
 	if tier <= 0:
 		return                                          # ★羁绊没激活 ⇒ 连计数都不该兑现
 	if n % CORRODE_EVERY != 0:
@@ -348,7 +348,7 @@ func on_basic_076(u: Dictionary, tgt, _si: int) -> void:
 	## ★取 max 不是直接赋值: 直接赋值会把目标身上羁绊打的更高档位降下去 = 自己削自己队伍。
 	tgt["corrode_tier"] = maxi(int(tgt.get("corrode_tier", 0)), tier)
 	stt["cross_corrode"] = int(stt.get("cross_corrode", 0)) + 1   # 同步触发证据(供门禁)
-	u["eq_state"]["p2eq_076"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_076")] = stt
 
 
 ## 本次施放的技能类型。
@@ -375,13 +375,13 @@ func on_cast_076(u: Dictionary, si: int) -> void:
 	var n: int = shots_for(u, cast_stype(u))
 	if n <= 0:
 		return
-	_volleys.append({"src": u, "si": si, "shots_left": n, "t_next": 0.0})
-	var stt: Dictionary = u["eq_state"].get("p2eq_076", {})
+	_volleys.append({"src": u, "si": si, "shots_left": n, "t_next": 0.0, "ck": battle._equip_sys.key_of(u, "p2eq_076")})   # ck: 份号(11-13)
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_076"), {})
 	stt["volley_planned"] = int(stt.get("volley_planned", 0)) + n   # 同步触发证据(供门禁)
 	## 读数镜像(2026-08-11): 待射发数, 给装备格右下角层数徽章读(`EquipReadouts.COUNT`) ——
 	## "射了几发读得出是几下"不能只靠反冲节奏, 数字倒数是最硬的读数。逐发递减在 _tick_volleys。
 	stt["volley_left"] = int(stt.get("volley_left", 0)) + n
-	u["eq_state"]["p2eq_076"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_076")] = stt
 
 
 ## 射一发贯穿箭。返回穿过的人数(门禁分母)。
@@ -419,7 +419,7 @@ func volley_shot(u: Dictionary, si: int) -> int:
 	## ★2026-08-12 用户削弱: 每穿一人偷 1/1/2 → 0.5/0.5/1 点龟能
 	var steal: float = [0.5, 0.5, 1.0][si]
 	var cuts: Array = []
-	var stt: Dictionary = u["eq_state"].get("p2eq_076", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_076"), {})
 	for k in range(line.size()):
 		var o: Dictionary = line[k]["u"]
 		var mult: float = BowEqVfx.pierce_mult(k)
@@ -434,7 +434,7 @@ func volley_shot(u: Dictionary, si: int) -> int:
 		cuts.append(clampf(float(line[k]["d"]) / PIERCE_RANGE, 0.0, 1.0))
 	stt["volley_fired"] = int(stt.get("volley_fired", 0)) + 1
 	stt["volley_pierced"] = int(stt.get("volley_pierced", 0)) + line.size()
-	u["eq_state"]["p2eq_076"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_076")] = stt
 	_vfx.pierce_tracer(u["pos"], dir, PIERCE_RANGE, cuts)
 	battle._muzzle_flash(u["pos"], dir, Color("#ffcf8a"))
 	return line.size()
@@ -527,14 +527,14 @@ func _dome_watch(u: Dictionary, delta: float) -> void:
 ## (`EquipReadouts.CHARGE["p2eq_073"]`)。★分母只能是常量 ⇒ 存归一百分比, 同 081 的 chg_pct。
 ## 2026-08-11 补验收: buff 挂没挂着以前完全不可见, 而"暴击 → 2 秒攻速"正是这件的核心机制。
 func _vine_mirror(u: Dictionary) -> void:
-	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_073", {})
+	var stt: Dictionary = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, "p2eq_073"), {})
 	if stt.is_empty():
 		return
 	var left: float = 0.0
 	if float(stt.get("vine_aspd_given", 0.0)) > 0.0:
 		left = float(stt.get("vine_aspd_until", 0.0)) - battle._t
 	stt["vine_buff_pct"] = clampf(left / VINE_ASPD_SEC * 100.0, 0.0, 100.0)
-	u["eq_state"]["p2eq_073"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_073")] = stt
 
 
 ## 登记一个"身上有常驻演出件"的携带者(幂等)。
@@ -574,9 +574,13 @@ func _sweep(delta: float) -> void:
 
 ## 这个单位带没带某件装备(只看 id, 不看星级)。
 func _has_eq(u: Dictionary, iid: String) -> bool:
+	var _ckp577: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		battle._equip_sys.ck_set(u, e)
 		if e is Dictionary and str((e as Dictionary).get("id", "")) == iid:
+			battle._equip_sys.ck_restore(_ckp577)
 			return true
+	battle._equip_sys.ck_restore(_ckp577)
 	return false
 
 
@@ -599,9 +603,9 @@ func _tick_rains(delta: float) -> void:
 			r["t_next"] = float(r["t_next"]) + RAIN_HOP_IV
 			## ④ 装备统计: 箭雨在全局在途表里推进(没有任何装备上下文) ⇒ 每跳切到「携带者 · 075」, 同 _tick_volleys。
 			##   原来不切: 箭雨伤害与它挂的流血一分都没进 075 的账(10-31 逐笔对账: 实发 5650 + 流血 1912, 记 0)。
-			var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_075")
+			var _tp: Array = battle._equip_sys.ck_enter(src, str(r.get("ck", "p2eq_075")))   # 切回放出它的那一件(份号 + 统计, 11-13)
 			rain_hop(src, int(r["si"]), r["center"])
-			battle._equip_sys.tally.pop(_tp)
+			battle._equip_sys.ck_leave(_tp)
 		if int(r["hops_left"]) > 0:
 			keep.append(r)
 	_rains = keep
@@ -613,17 +617,18 @@ func _tick_volleys(delta: float) -> void:
 	var keep: Array = []
 	for v in _volleys:
 		var src: Dictionary = v["src"]
+		var _vp: Array = battle._equip_sys.ck_enter(src, str(v.get("ck", "p2eq_076")))   # ④ 装备统计 + 份号: 连射在全局在途表里推进 ⇒ 切回放出它的那一件(11-13)
 		if not _alive_here(src) or not src.get("alive", false):
 			_volley_mirror_drop(src, int(v["shots_left"]))   # 读数镜像: 整条作废的发数一次扣掉
+			battle._equip_sys.ck_leave(_vp)
 			continue                                    # 携带者阵亡/离场 → 连射停(它是"携带者在射箭")
 		v["t_next"] = float(v["t_next"]) - delta
 		while float(v["t_next"]) <= 0.0 and int(v["shots_left"]) > 0:
 			v["shots_left"] = int(v["shots_left"]) - 1
 			v["t_next"] = float(v["t_next"]) + VOLLEY_IV
-			var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_076")   # ④ 装备统计: 连射在全局在途表里推进 ⇒ 每发切到「携带者 · 076」
 			volley_shot(src, int(v["si"]))
-			battle._equip_sys.tally.pop(_tp)
 			_volley_mirror_drop(src, 1)                 # 读数镜像逐发递减(打空/没目标也算射出这一发)
+		battle._equip_sys.ck_leave(_vp)
 		if int(v["shots_left"]) > 0:
 			keep.append(v)
 	_volleys = keep
@@ -634,9 +639,9 @@ func _tick_volleys(delta: float) -> void:
 func _volley_mirror_drop(src, n: int) -> void:
 	if n <= 0 or not (src is Dictionary) or not src.has("eq_state"):
 		return
-	var stt: Dictionary = (src["eq_state"] as Dictionary).get("p2eq_076", {})
+	var stt: Dictionary = (src["eq_state"] as Dictionary).get(battle._equip_sys.key_of(src, "p2eq_076"), {})
 	stt["volley_left"] = maxi(0, int(stt.get("volley_left", 0)) - n)
-	src["eq_state"]["p2eq_076"] = stt
+	src["eq_state"][battle._equip_sys.key_of(src, "p2eq_076")] = stt
 
 
 ## 换路 / 战斗结束: 在途的箭雨与连射一律作废, 演出节点全撤。

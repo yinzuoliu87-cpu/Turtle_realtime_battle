@@ -173,6 +173,17 @@ func spirit_phys(raw: float, tgt: Dictionary) -> float:
 ##   这一段落地时的伤害已经乘过总减伤 ⇒ 没有伞那份时本该是 dmg × dr_mult(总 − 伞) / dr_mult(总), 差值就是伞挡掉的。
 ##   真实伤害不吃减伤 ⇒ 不算。★只写统计(_st_eq), 不碰结算。
 ##   已知近似: 极少数不经五个减伤函数(_resolve_dmg / _phys_after_armor / _magic_after_mr / _dot_after_resist / spirit_phys)直接传进来的固定伤害也按这个比例折算。
+## 011 溢出转盾的「本局」账: 同名多件各一份上限(相加) ⇒ 按各件上限占比分(11-13 统计分开); 单件 = 全记给它。
+func _credit_o2s(u: Dictionary, cap_total: float, got: float) -> void:
+	var cps: Array = EquipStatsApply.copies(u, "p2eq_011")
+	if cps.size() <= 1 or cap_total <= 0.0:
+		battle._equip_sys.tally.credit(u, battle._equip_sys.key_of(u, "p2eq_011"), "shield", got)
+		return
+	for c in cps:
+		var cap_i: float = float(((u.get("eq_state", {}) as Dictionary).get(str(c[0]), {}) as Dictionary).get("o2s_cap", 0.0))
+		battle._equip_sys.tally.credit(u, str(c[0]), "shield", got * cap_i / cap_total)
+
+
 func _credit_parasol_block(u: Dictionary, dmg: int, true_dmg: bool) -> void:
 	if true_dmg or dmg <= 0:
 		return
@@ -187,8 +198,16 @@ func _credit_parasol_block(u: Dictionary, dmg: int, true_dmg: bool) -> void:
 	if m_with <= 0.0:
 		return
 	var blocked: float = float(dmg) * (DamageMath.dr_mult(maxf(0.0, tot - pdr)) / m_with - 1.0)
-	if blocked > 0.0:
+	if blocked <= 0.0:
+		return
+	## 同时罩着几把伞(同一携带者带两件 / 两个携带者) ⇒ 按各把伞的减伤占比分账(11-13 用户「统计那肯定是分开」)
+	var src: Array = u.get("_pa_src", [])
+	if src.is_empty():
 		battle._equip_sys.tally.credit(by, "p2eq_060", "blocked", blocked)
+		return
+	for ent in src:
+		if (ent as Array)[0] is Dictionary:
+			battle._equip_sys.tally.credit((ent as Array)[0], str((ent as Array)[1]), "blocked", blocked * float((ent as Array)[2]) / pdr)
 
 
 func _record_extra_true(src, u: Dictionary, amt: int) -> void:
@@ -500,8 +519,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		dmg = maxi(1, int(round(float(dmg) * _prey_amp)))
 	var d = battle._mitigate_incoming(u, float(dmg), raw)
 	# ★082 的旧减伤消费点已撤 —— 与 _apply_damage 同一位置的另一半(§3.3), 理由见那边。
-	dmg = maxi(1, int(round(d)))
-	_credit_parasol_block(u, dmg, raw)   # 060 伞下这一段被伞那份减伤挡掉的量 → 记给撑伞的(只动统计; §3.3 两路都接)
+	dmg = maxi(1, int(round(d))); _credit_parasol_block(u, dmg, raw)   # 后半: 060 伞下这一段被伞那份减伤挡掉的量 → 记给撑伞的(只动统计; §3.3 两路都接; 并一行 = 函数行数预算 250)
 	# 守护贝母021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
 	var _rd = u.get("dmg_redirect_to", null)
 	if _rd is Dictionary and battle._t < float(_rd.get("until", 0.0)):
@@ -977,7 +995,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 			u["shield"] = minf(_osc, u["shield"] + _ovf)   # 静默累积(吸血高频不刷飘字), 由携带者护盾条显示
 			## ④ 只补账(结算不变): 这份盾不走 _grant_shield, 原来「获得护盾」与 011 的装备统计都漏记它
 			u["_st_shield"] = float(u.get("_st_shield", 0)) + (float(u["shield"]) - _osb)
-			battle._equip_sys.tally.credit(u, "p2eq_011", "shield", float(u["shield"]) - _osb)
+			_credit_o2s(u, _osc, float(u["shield"]) - _osb)
 	_holy_convert(u, float(u["hp"] - hb))   # 盾羁绊9档: 盾类装备给的治疗, 额外 20% 转圣光护盾
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
 	var _act: float = float(u["hp"] - hb)   # 实际回血(满血=0, 超出满血/转盾部分不计入绿字)
@@ -1215,7 +1233,7 @@ func aspd_mult(u: Dictionary) -> float:
 
 
 func anchor_aspd(u: Dictionary) -> float:   # 不沉之锚017: 持有沉锚充能期间普攻+100%攻速(用户2026-07-19)
-	var ast: Dictionary = u.get("eq_state", {}).get("p2eq_017", {})
+	var ast: Dictionary = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, "p2eq_017"), {})
 	if ast.is_empty():
 		return 1.0
 	if int(ast.get("anchor_charges", 0)) > 0:

@@ -15,6 +15,55 @@ func _init(b) -> void:
 ##   中毒期间压载层一变, 缓速被抹掉; 先中毒再首次同步压载层, 毒清后留下永久减速。
 ## ⇒ 各件只写自己的倍率字段, 由这一处乘出来。`_mp_base` 在第一次合成时记下(那时还没有任何动态倍率)。
 ## ★以后再有「战斗中改 move_perm」的效果, 加一个 `_mp_xxx` 字段并走这里, 别再整体改写。
+## ── 份号(copy key · 2026-11-13 用户「两件相同装备…各自生效各自的效果…统计那肯定是分开」) ──
+## 同一只龟身上同名装备按装备栏顺序编号: 第 1 件 = 原 id, 第 2 件起 = 「id#2」「id#3」。
+## eq_state / 装备统计都按份号分槽 ⇒ 每件各自的计时 / 计数 / 召唤物 / 统计行。
+## ★第 1 件的键与原来一字不差 ⇒ 不带重复装备的对局结果不变(规则指纹守)。
+## 方案书 docs/plans/20261113-同名装备多件各自生效.md。
+const CK_SEP := "#"
+
+static func ck_name(iid: String, n: int) -> String:
+	return iid if n <= 1 else "%s%s%d" % [iid, CK_SEP, n]
+
+
+## 条目 e 在 u 身上的份号(按 is_same 定位; 不在身上 ⇒ 原 id)。
+static func ck_of(u: Dictionary, e) -> String:
+	if not (e is Dictionary):
+		return ""
+	var iid: String = str((e as Dictionary).get("id", ""))
+	var n: int = 0
+	for x in u.get("equips", []):
+		if x is Dictionary and str((x as Dictionary).get("id", "")) == iid:
+			n += 1
+			if is_same(x, e):
+				return ck_name(iid, n)
+	return iid
+
+
+## 遍历时逐件算份号: `var seen := {}` 放循环外, 每件调一次 `ck_next(seen, iid)`。
+static func ck_next(seen: Dictionary, iid: String) -> String:
+	var n: int = int(seen.get(iid, 0)) + 1
+	seen[iid] = n
+	return ck_name(iid, n)
+
+
+## 份号 → 装备 id(「p2eq_058#2」→「p2eq_058」)。
+static func base_id(ck: String) -> String:
+	var i: int = ck.find(CK_SEP)
+	return ck if i < 0 else ck.substr(0, i)
+
+
+## 某件装备在 u 身上的全部份: [[份号, 星级(1~3), 条目], ...](装备栏顺序)。
+static func copies(u: Dictionary, iid: String) -> Array:
+	var out: Array = []
+	var n: int = 0
+	for x in u.get("equips", []):
+		if x is Dictionary and str((x as Dictionary).get("id", "")) == iid:
+			n += 1
+			out.append([ck_name(iid, n), clampi(int((x as Dictionary).get("star", 1)), 1, 3), x])
+	return out
+
+
 ## 某单位身上【这件装备有几件】(至少按 1 算)。eq_state 按装备 id 只有一槽 ⇒
 ## 多件共槽的计数类(052 子弹)要按件数放大初值与上限(2026-10-16)。
 static func eq_copies(u: Dictionary, iid: String) -> int:
@@ -33,8 +82,16 @@ static func recompose_move_perm(u: Dictionary) -> void:
 
 func _eq_apply_all_stats() -> void:
 	for u in battle._units:
+		var _seen: Dictionary = {}
+		var _ckp86: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 		for e in u.get("equips", []):
-			_eq_apply_one_stats(u, str(e["id"]), int(e.get("star", 1)))
+			battle._equip_sys.ck_set(u, e)
+			var _iid: String = str(e["id"])
+			var _ck: String = ck_next(_seen, _iid)   # 份号: 同名第 2 件起各自一槽(11-13)
+			var _sv: Array = battle._equip_sys.uf_in(u, _ck)   # 第 2 件起: 写在龟身上的那几项换成这一件自己的
+			_eq_apply_one_stats(u, _iid, int(e.get("star", 1)), _ck)
+			battle._equip_sys.uf_out(u, _sv)
+		battle._equip_sys.ck_restore(_ckp86)
 	_b4_on_spawn_all()
 
 
@@ -62,7 +119,9 @@ func _b4_on_spawn_all() -> void:
 	for u in battle._units:
 		if not (u is Dictionary) or not (u.get("eq_state", null) is Dictionary):
 			continue
+		var _ckp116: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 		for e in u.get("equips", []):
+			battle._equip_sys.ck_set(u, e)
 			if not (e is Dictionary):
 				continue
 			var eid: String = str((e as Dictionary).get("id", ""))
@@ -71,21 +130,24 @@ func _b4_on_spawn_all() -> void:
 			u["_b4_eq"] = true   # 每帧 tick_unit 的常驻守卫(不遍历 equips, 见 EquipSystem._eq_tick)
 			var sys = battle._equip_sys._b4(eid)
 			if sys != null:
-				var _tl0: Array = battle._equip_sys.tally.push(u, eid)   # ④ 登场召出来的东西(手枪/炮台/直升机/碑…)盖上这件装备的章
+				var _tl0: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, eid))   # ④ 登场召出来的东西(手枪/炮台/直升机/碑…)盖上这件装备的章
+				var _sv: Array = battle._equip_sys.uf_in(u, battle._equip_sys.key_of(u, eid))   # 第 2 件起换装(11-13)
 				sys.on_spawn(u, eid, clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1)
+				battle._equip_sys.uf_out(u, _sv)
 				battle._equip_sys.tally.pop(_tl0)
+		battle._equip_sys.ck_restore(_ckp116)
 
 
 # 单件逐星属性 → 实时单位字段 (复用 battle.EquipStats.STATS; 字段口径换到实时引擎).
 # 单件逐星属性 → 实时单位字段 (复用 battle.EquipStats.STATS; 字段口径换到实时引擎).
-func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int) -> void:
+func _eq_apply_one_stats(u: Dictionary, item_id: String, star: int, ck: String = "") -> void:
 	var arr: Array = battle.EquipStats.STATS.get(item_id, [])
 	var i: int = clampi(star, 1, 3) - 1
 	if i < 0 or i >= arr.size():
-		_eq_apply_flags(u, item_id, star)
+		_eq_apply_flags(u, item_id, star, ck)
 		return
 	apply_stat_dict(u, arr[i], item_id)
-	_eq_apply_flags(u, item_id, star)
+	_eq_apply_flags(u, item_id, star, ck)
 
 
 ## ★2026-08-03 抽出的纯函数: 把一份属性 dict 施加到单位上。
@@ -182,9 +244,12 @@ func _eq_star_delta_stats(u: Dictionary, item_id: String, from_star: int, to_sta
 
 # 永久 flag / 初始充能 (受击/闪避/必中类被动开关 + 充能计数器初值).
 # 永久 flag / 初始充能 (受击/闪避/必中类被动开关 + 充能计数器初值).
-func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
+## ck = 份号(同名第 2 件起「id#2」…; 空 = 原 id)。状态一律写进 eq_state[ck] ⇒ 每件各自一槽。
+func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "") -> void:
 	var si: int = clampi(star, 1, 3) - 1
-	var stt: Dictionary = u["eq_state"].get(item_id, {})
+	if ck == "":
+		ck = item_id
+	var stt: Dictionary = u["eq_state"].get(ck, {})
 	match item_id:
 		"p2eq_046":   # 幽灵墨鱼: 永久闪避 buff (复用 dodge 系统)
 			# 闪避率改从 battle.EquipStats.STATS 取 —— 它此前是这里的内联字面量, 而图鉴/背包读 STATS,
@@ -237,18 +302,15 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_027":   # 电棍: 3/4/5 层电击(逐星)
 			stt["baton_charges"] = [3, 4, 5][si]
 		"p2eq_058":   # 穿甲遗弹(重做·用户2026-07-19): 登场召唤炮台 (延到首帧spawn, 同032)
-			u["_turret_pending"] = true
-			u["_turret_si"] = si
+			u["_turret_pending"] = true   # 首帧按【每一件】各召一座(各自星级, 11-13); 星级从条目现取, 不再写到龟身上(原来后一件覆盖前一件)
 		"p2eq_096":   # 小木斧: 登场召唤斧头 (延到首帧spawn, 同 058/032)
 			u["_axe_pending"] = true
 		"p2eq_040":   # FPGA板: 登场给【对方】随机 1/2/3 个敌人各一把古灵精怪枪(用户2026-08-31 新增的一条效果)
 			## ★延到首帧 —— 与 058/032 同样的理由: 开战 setup 期间敌方单位还没全进
 			##   `battle._units`, 这里挑不出人来。("登场时"每条路各触发一次。)
-			u["_gremlin_pending"] = true
-			u["_gremlin_si"] = si
+			u["_gremlin_pending"] = true   # 首帧按【每一件】各发一轮(各自星级, 11-13)
 		"p2eq_032":   # 唤灵骨符: 登场召唤亡灵骷髅 (延到首帧spawn, 避免开战setup中append battle._units)
-			u["_skele_pending"] = true
-			u["_skele_si"] = si
+			u["_skele_pending"] = true   # 首帧按【每一件】各召一只(各自星级, 11-13)
 		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
 			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.01, 0.02, 0.03][si]   # 重击锤(3★ 15%→8% 用户2026-10-10; 4/6/8% → 1/2/3% 用户2026-11-11): 随maxHp动态(在_recalc_stats累加), 多件叠加
 			battle._recalc_stats(u)
@@ -258,7 +320,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			var hp41: float = [500.0, 1100.0, 2000.0][si]   # 装备hp是最终值, 不乘HP_MULT
 			var atk41: float = [16.0, 31.0, 60.0][si]
 			var dur41: float = [12.0, 16.0, 22.0][si]
-			battle._pending_shots.append({"delay": EquipSystem.TIDE_DELAY, "fn": func(): battle._equip_sys._eq_ebb_surge(u, hp41, atk41, dur41), "src": u})
+			battle._pending_shots.append({"delay": EquipSystem.TIDE_DELAY, "fn": func(): battle._equip_sys._eq_ebb_surge(u, hp41, atk41, dur41, ck), "src": u})   # ck: 每件各涨各的(11-13)
 		"p2eq_035":   # 黄铜齿轮: 本局累计产币数(显示用)
 			stt["coins_made"] = 0
 		"p2eq_034":   # 玩偶小熊: 大熊层 + 已销毁标记 + 每4s派小熊计时 + 蓄力标记
@@ -272,8 +334,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			u["eq_exec_immune"] = true
 			stt["anchor_accum"] = 0.0    # 累积治疗, 满 ANCHOR_ACC_PER_CHARGE(250)→+1充能
 			stt["anchor_charges"] = 0    # 沉锚充能 (施法时消耗)
-		"p2eq_011":   # 饮血护符坠: 溢出治疗转血护盾 (累积上限200/350/500, 多件取最大上限)
-			u["overheal2shield_cap"] = maxf(float(u.get("overheal2shield_cap", 0.0)), [200.0, 350.0, 500.0][si])
+		"p2eq_011":   # 饮血护符坠: 溢出治疗转血护盾 (累积上限200/350/500; 11-13 起多件各一份上限、相加 —— 用户「各自生效」; 原取最大)
+			u["overheal2shield_cap"] = float(u.get("overheal2shield_cap", 0.0)) + [200.0, 350.0, 500.0][si]
+			stt["o2s_cap"] = [200.0, 350.0, 500.0][si]   # 这一件自己的那份(「本局」按上限占比分账)
 		# ══ 批③(2026-08-05) 常驻字段类 —— 值写在这里, 消费点在 EquipSystem / battle_damage ══
 		#    ★为什么走"常驻字段 + 中央管线守卫"而不是每次伤害遍历 equips:
 		#      伤害管线每帧跑成百上千次, 遍历 equips 是【所有 95 件装备的公共开销】;
@@ -285,8 +348,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		#      EquipSystem._eq_ink_sac 的头注: 调用点在 battle_damage 两条路上, 删不得)。
 		#    ★下面两件只写【常驻字段】: 消费点是 EqSpiritBatch.tick_unit(每帧, 在
 		#      EquipSystem._eq_tick 的 EQ_TICK 闸之前)。不带这两件的单位每帧只多两次 dict.get。
-		#    ★多件同带取【星级更高的那一件】: 两件 060 各跑一套 7 秒计时会让减伤几乎常驻,
-		#      那是另一个量级 —— 取 max 与 082/084/071 的口径一致。
+		#    ★11-13 起多件各自生效(用户「两件相同装备…各自生效」): 两件 060 各跑一套 7 秒计时、各自开伞
+		#      (原「取星级更高的那一件」作废; 强度上两把伞减伤覆盖率更高, 数值另调)。`_parasol_si` 按份换装(EquipSystem.UF)。
 		"p2eq_060":   # 磷光水母伞: 每 7 秒开伞 2.5 秒(减伤 + 闪避 + 结束回血), 自管两相计时
 			u["_parasol_si"] = maxi(int(u.get("_parasol_si", -1)), si)
 			stt["pa_t"] = 0.0
@@ -364,4 +427,50 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			stt["can_t0"] = battle._t
 			stt["can_charge"] = 0.0
 			stt["can_fired"] = 0
-	u["eq_state"][item_id] = stt
+	u["eq_state"][ck] = stt
+
+
+## ── 041 退潮浊液: 涨潮 / 退潮(2026-11-13 从 equip_system.gd 搬来 —— 那个文件到了 3000 行预算; 外部仍走 EquipSystem 的同名转发) ──
+## ck = 份号: 同名多件各涨各的、各退各的(11-13 用户「各自生效」; 原来 `_ebb_on` 一个开关 ⇒ 第二件被挡掉)。单件逐字不变。
+func ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float, ck: String = "p2eq_041") -> void:   # 退潮浊液041: 涨潮期开始
+	var act: Array = u.get("_ebb_cks", [])
+	if not u.get("alive", false) or act.has(ck): return
+	act.append(ck); u["_ebb_cks"] = act
+	var first: bool = not u.get("_ebb_on", false)
+	u["_ebb_on"] = true
+	battle._audio_sys.sfx_equip("p2eq_041")   # 装备触发声(11-05 音效 v2; 只管声音)
+	## ★涨潮**持续期**的演出靠这个字段(battle_render._tick_ebb_coat 逐帧扫):
+	##   用户 2026-09-14「最好做一个 buff 持续期间的特效, 整个身体怎么样」。
+	##   跟 `_pending_shots` 里那条还原走**同一条游戏钟**, 不另起计时。几件同时涨潮取最晚的那个到期。
+	u["_ebb_until"] = maxf(float(u.get("_ebb_until", 0.0)), battle._t + dur)
+	u["maxHp"] += hp_add; u["hp"] += hp_add
+	u["base_atk"] = float(u.get("base_atk", 0.0)) + atk_add
+	u["atk_range"] = float(u.get("atk_range", 70.0)) + EquipSystem.TIDE_RANGE_UP
+	u["size_mult"] = float(u.get("size_mult", 1.0)) * (1.0 + EquipSystem.TIDE_SIZE_UP)      # 体积+30%(走size_mult, 每帧juice从base起算不会覆盖)
+	battle._recalc_stats(u)
+	if first:
+		battle._ebb_tide_fx(u, true)
+		battle._vfx._float_text(u["pos"] + Vector2(0, -70), "涨潮", Color("#5fe0d0"))
+	battle._pending_shots.append({"delay": dur, "fn": func(): ebb_recede(u, hp_add, atk_add, ck), "src": u})
+
+func ebb_recede(u: Dictionary, hp_add: float, atk_add: float, ck: String = "p2eq_041") -> void:   # 退潮浊液041: 到期还原(只还这一件的)
+	if not u.get("_ebb_on", false): return
+	var act: Array = u.get("_ebb_cks", [])
+	if act.has(ck):
+		act.erase(ck)
+	elif not act.is_empty():
+		return                           # 这一件没在涨潮(别的件还在) ⇒ 不动
+	u["_ebb_cks"] = act
+	var last: bool = act.is_empty()
+	if last:
+		u["_ebb_on"] = false
+		u["_ebb_until"] = 0.0            # 提前退潮也要立刻把那层水收掉(最后一件退了才收)
+	u["maxHp"] = maxf(1.0, float(u["maxHp"]) - hp_add)
+	u["hp"] = minf(float(u["hp"]), float(u["maxHp"]))          # 退潮不致死, 只削到新上限
+	u["base_atk"] = maxf(0.0, float(u.get("base_atk", 0.0)) - atk_add)
+	u["atk_range"] = maxf(10.0, float(u.get("atk_range", 70.0)) - EquipSystem.TIDE_RANGE_UP)
+	u["size_mult"] = maxf(0.01, float(u.get("size_mult", 1.0)) / (1.0 + EquipSystem.TIDE_SIZE_UP))
+	battle._recalc_stats(u)
+	if u.get("alive", false) and last:
+		battle._ebb_tide_fx(u, false)
+		battle._vfx._float_text(u["pos"] + Vector2(0, -70), "退潮", Color("#8fb8c8"))

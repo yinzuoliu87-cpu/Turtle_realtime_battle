@@ -475,7 +475,7 @@ func sextant_shot(u: Dictionary, tgt: Dictionary, di: int = -1) -> Node3D:
 	var from2: Vector2 = u["pos"]
 	var lift: float = DRONE_LIFT
 	var nodes: Array = u.get("_sext_nodes", [])
-	var drones: Array = (u.get("eq_state", {}) as Dictionary).get("p2eq_086", {}).get("drones", [])
+	var drones: Array = (u.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_086"), {}).get("drones", [])   # 份号: 开火的是哪一件的炮(11-13)
 	if di >= 0 and di < drones.size():
 		var dd: Dictionary = drones[di]
 		if dd.has("_px"):
@@ -742,10 +742,22 @@ func tick(delta: float) -> void:
 ## 撤掉挂在某个单位身上的**常驻件**(浮游炮体; 087 头顶水位计第十批 E13 已删)。返回 free 了几个。
 func detach(u: Dictionary) -> int:
 	var freed: int = 0
-	for n in u.get("_sext_nodes", []):
-		if is_instance_valid(n):
-			(n as Node).queue_free()
-			freed += 1
+	var lists: Array = [u.get("_sext_nodes", [])]
+	## 同名第 2 件起的炮体存在 eq_state[份号]["_uf"] 里(EquipSystem.uf_in/uf_out · 11-13), 一并撤
+	var es = u.get("eq_state", {})
+	if es is Dictionary:
+		for k in (es as Dictionary).keys():
+			var st = (es as Dictionary)[k]
+			if st is Dictionary and ((st as Dictionary).get("_uf", null) is Dictionary):
+				var uf: Dictionary = (st as Dictionary)["_uf"]
+				if uf.has("_sext_nodes"):
+					lists.append(uf["_sext_nodes"])
+					uf.erase("_sext_nodes")
+	for lst in lists:
+		for n in lst:
+			if is_instance_valid(n):
+				(n as Node).queue_free()
+				freed += 1
 	u.erase("_sext_nodes")
 	return freed
 

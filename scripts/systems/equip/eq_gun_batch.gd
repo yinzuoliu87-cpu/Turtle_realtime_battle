@@ -315,6 +315,13 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.has("_g078_si"):
 		return
+	## ★每一件各自计时、各自开火(11-13 用户「各自生效」): `_g078_*` 按份换装(EquipSystem.UF)
+	battle._equip_sys.each_copy(u, "p2eq_078", func(_si: int) -> void: _tick_eel(u, delta))
+
+
+func _tick_eel(u: Dictionary, delta: float) -> void:
+	if not u.has("_g078_si"):
+		return
 	if not u.get("alive", false):
 		return
 	# ★自管累加器, 不读 battle._t(它跨路累加永不重置, CLAUDE.md §3.4)
@@ -702,6 +709,7 @@ func _spawn_tower(owner: Dictionary, si: int, hp: float, atk: float, res: float)
 	t["base_def"] = res; t["base_mr"] = res
 	battle._recalc_stats(t)
 	t["_g079"] = true
+	t["_eq_ck"] = battle._equip_sys.key_of(owner, "p2eq_079")   # 召它的那一件(份号 · 11-13): 治疗记账 / 金弹读数都认它
 	_towers.append({"u": t, "owner": owner, "si": si, "acc": 0.0})
 	vfx.tower_deploy(Vector2(t["pos"]))
 
@@ -735,7 +743,7 @@ func _owner_mirror(owner, eid: String, field: String, v: float) -> void:
 
 ## 080 直升机的独立龟能(分母是常量 HELI_EN_MAX = 100, 直接挂)。
 func _heli_en_mirror(h: Dictionary) -> void:
-	_owner_mirror(h.get("owner", null), "p2eq_080", "heli_en", float(h.get("energy", 0.0)))
+	_owner_mirror(h.get("owner", null), str(h.get("ck", "p2eq_080")), "heli_en", float(h.get("energy", 0.0)))
 
 
 ## 079 炮台 → 它的携带者(出弹函数只拿得到炮台单位)。is_same 比, 不用 ==(单位字典互相引用)。
@@ -811,7 +819,7 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 			t["_golden_pct"] = keep, t, "", Callable(), fly)
 	var low = lowest_ally(t)
 	if low is Dictionary:
-		var _tp: Array = battle._equip_sys.tally.push(_tower_owner(t), "p2eq_079")   # ④ 炮台的治疗记给「携带者 · 079」(炮台打的伤害靠召唤物标; 治疗只认上下文)
+		var _tp: Array = battle._equip_sys.tally.push(_tower_owner(t), str(t.get("_eq_ck", "p2eq_079")))   # ④ 炮台的治疗记给「携带者 · 召它的那一件」(炮台打的伤害靠召唤物标; 治疗只认上下文)
 		battle._damage._heal(low, heal * (2.0 if golden else 1.0))
 		battle._equip_sys.tally.pop(_tp)
 		# 束的两端各按自己的立绘取身体中段 —— 旧版两端都写死 1.2 米
@@ -820,7 +828,7 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 	vfx.tower_charge(t, int((t.get("_gun_shot_ct", {}) as Dictionary).get("p2eq_079", 0)), per_gold)
 	## ★图标框读数(D7): 金弹进度 0~100。每几发一金弹随枪羁绊档位变(4/3/2) ⇒ 分母不是常量, 归一化(同 081 chg_pct)。
 	##   用上面已经算好的 per_gold, 不再抄一份档位表; 羁绊没激活时 `_queue_shots` 不计数 ⇒ 恒 0。
-	_owner_mirror(_tower_owner(t), "p2eq_079", "gold_pct",
+	_owner_mirror(_tower_owner(t), str(t.get("_eq_ck", "p2eq_079")), "gold_pct",
 		float(int((t.get("_gun_shot_ct", {}) as Dictionary).get("p2eq_079", 0))) / float(maxi(1, per_gold)) * 100.0)
 
 
@@ -853,7 +861,7 @@ func _spawn_heli(owner: Dictionary, si: int, crash_phys: float) -> void:
 	battle._audio_sys.sfx_equip("p2eq_080")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var back: float = -160.0 if str(owner.get("side", "left")) == "left" else 160.0
 	var h: Dictionary = {
-		"owner": owner, "si": si,
+		"owner": owner, "si": si, "ck": battle._equip_sys.key_of(owner, "p2eq_080"),   # ck: 召它的那一件(份号 · 11-13)
 		"pos": Vector2(owner["pos"]) + Vector2(back, -90.0),
 		"energy": 0.0, "fire_t": 0.0, "state": "patrol",
 		"doom_t": 0.0, "run_t": 0.0, "bomb_t": 0.0, "bombs": 0,
@@ -869,7 +877,7 @@ func _tick_helis(delta: float) -> void:
 	for i in range(_helis.size() - 1, -1, -1):
 		var h: Dictionary = _helis[i]
 		## ④ 装备统计: 直升机不是单位(全局表) ⇒ 这一架的推进切到「携带者 · 080」; 它入队的机炮/炸弹靠 _flush 盖章
-		var _tp: Array = battle._equip_sys.tally.push(h.get("owner", null), "p2eq_080")
+		var _tp: Array = battle._equip_sys.ck_enter(h.get("owner", null), str(h.get("ck", "p2eq_080")))   # 份号 + 统计切到召它的那一件(11-13)
 		match str(h.get("state", "patrol")):
 			"patrol", "doom":
 				_heli_patrol(h, delta)
@@ -888,7 +896,7 @@ func _tick_helis(delta: float) -> void:
 			h["doom_t"] = float(h.get("doom_t", 0.0)) + delta
 			if float(h["doom_t"]) >= DOOM_SEC:
 				_heli_begin_crash(h)
-		battle._equip_sys.tally.pop(_tp)
+		battle._equip_sys.ck_leave(_tp)
 		if str(h.get("state", "")) == "dead":
 			vfx.heli_free(h)
 			_helis.remove_at(i)

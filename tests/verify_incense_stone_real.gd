@@ -542,9 +542,9 @@ func _ready() -> void:
 		absf(s._damage.aspd_mult(eu) - asp1) < 1e-6,
 		"aspd_mult=%.2f · aspd_perm=%.2f" % [s._damage.aspd_mult(eu), asp1])
 
-	# ── ⑪ 同一只龟带两块香火石: 一次攻击只消耗一次强化(2026-10-23) ──────────────
-	##   ★原来每件装备各调一次 on_basic、两块共用一份 eq_state ⇒ 一次攻击扣 2 次,
-	##     4 次强化 2 次攻击就用完、攻速提前撤。附带伤害按身上最高星那块算。
+	# ── ⑪ 同一只龟带两块香火石: 各自生效(2026-11-13 改; 10-23 原为「一次攻击只消耗一次强化、按最高星」) ──
+	##   ★10-23 的毛病是两块共用一份 eq_state(一次攻击扣 2 次、4 次强化 2 次攻击就用完)。
+	##     11-13 起 eq_state 按份号分槽 ⇒ 两块各一份强化窗, 用户「两件相同装备…各自生效」。
 	var du: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-140, 120))
 	du["atk"] = 100.0
 	du["crit"] = 0.0          # 关掉暴击: 附带伤害走 _resolve_dmg 会掷暴击, 量「按哪块星」时不要这份噪声
@@ -557,46 +557,52 @@ func _ready() -> void:
 	s._units.append_array([du, dt])
 	s._equip_sys._stats._eq_apply_all_stats()
 	var dstt: Dictionary = du["eq_state"][Inc.EID]
+	var dstt2: Dictionary = du["eq_state"].get(Inc.EID + "#2", {})   # 第 2 块自己的份号槽(11-13)
 	var das0: float = float(du.get("aspd_perm", 1.0))
 	dstt["emp_t"] = Inc.EMP_IV - 0.001
+	dstt2["emp_t"] = Inc.EMP_IV - 0.001
+	du["eq_state"][Inc.EID + "#2"] = dstt2
 	inc.tick_unit(du, 0.01)
-	_ok("★分母: 两块石头的龟进了强化窗(%d 次)" % Inc.EMP_SHOTS, int(dstt.get("emp", 0)) == Inc.EMP_SHOTS,
-		"emp=%d" % int(dstt.get("emp", 0)))
+	_ok("★分母: 两块石头各自进了强化窗(各 %d 次)" % Inc.EMP_SHOTS,
+		int(dstt.get("emp", 0)) == Inc.EMP_SHOTS and int(dstt2.get("emp", 0)) == Inc.EMP_SHOTS,
+		"emp=%d / #2 %d" % [int(dstt.get("emp", 0)), int(dstt2.get("emp", 0))])
 	var left_after: Array = []
 	var asp_after: Array = []
 	var extra: Array = []
 	var fired: Array = []
+	var tal0: Array = [_eq_dmg(du, Inc.EID), _eq_dmg(du, Inc.EID + "#2")]
 	for _k in range(Inc.EMP_SHOTS):
 		s._equip_sys._eq_on_basic_attack(du, dt)
-		left_after.append(int(dstt.get("emp", 0)))
+		left_after.append([int(dstt.get("emp", 0)), int(dstt2.get("emp", 0))])
 		asp_after.append(snappedf(float(du.get("aspd_perm", 1.0)) - das0, 0.01))
 		var h0: float = float(dt["hp"])
 		var n0: int = int(du.get("_incense_emp_n", 0))
 		s._equip_sys._eq_on_hit(du, dt, 0, true)     # 普攻命中(兑现附带伤害)
 		extra.append(snappedf(h0 - float(dt["hp"]), 0.1))
 		fired.append(int(du.get("_incense_emp_n", 0)) - n0)
-	_ok("★★两块石头: 每次攻击只扣 1 次强化(剩 3/2/1/0)", left_after == [3, 2, 1, 0], str(left_after))
-	_ok("★★攻速撑满 %d 次攻击, 第 %d 次之后才撤" % [Inc.EMP_SHOTS, Inc.EMP_SHOTS],
-		asp_after == [Inc.EMP_ASPD, Inc.EMP_ASPD, Inc.EMP_ASPD, 0.0], str(asp_after))
-	## 附带伤害的期望值走产品自己的结算(`_resolve_dmg`: 这只龟身上有前面攒下的刻痕增伤与遗物加成, 手算会漏)。
-	##   3★ 底数 = 80 + 目标最大生命 10000 × 2%; 1★ 底数 = 30 + 10000 × 1% —— 两个都算出来, 区分「按哪块」。
+	## ★11-13 同名多件【各自生效】(用户「两件相同装备…各自生效各自的效果」; 取代 10-23 D2「两块只扣一次 / 按最高星」):
+	##   两块各有自己的强化窗、每次攻击各扣各的、各兑现一次附带伤害、各按自己的星级。
+	_ok("★★两块石头各扣各的: 每次攻击两块各扣 1 次(各剩 3/2/1/0)",
+		left_after == [[3, 3], [2, 2], [1, 1], [0, 0]], str(left_after))
+	var e2: float = snappedf(2.0 * Inc.EMP_ASPD, 0.01)
+	_ok("★★攻速两块各给一份(=%.2f), 撑满 %d 次攻击后一起撤" % [e2, Inc.EMP_SHOTS],
+		asp_after == [e2, e2, e2, 0.0], str(asp_after))
 	var want3: float = float(s._resolve_dmg(du, 80.0 + 10000.0 * 0.02, dt, false))
 	var want1: float = float(s._resolve_dmg(du, 30.0 + 10000.0 * 0.01, dt, false))
 	_ok("★分母: 1★ 与 3★ 的附带伤害真的不同(%.0f / %.0f)" % [want1, want3], want3 > want1 + 1.0)
-	## ★「兑现几次」数产品自己的触发证据 `_incense_emp_n`(每兑现一次 +1), 不从掉血反推
-	##   (掉血里还有别的加成, 精确值会被它们带偏)。修之前两块石头 = 每次命中兑现 2 次。
-	_ok("★★每次命中只兑现一次附带伤害(两块石头不翻倍)", fired == [1, 1, 1, 1], str(fired))
-	var near3 := true
-	for x in extra:
-		if absf(float(x) - want3) >= absf(float(x) - want1):
-			near3 = false
-	_ok("★★附带伤害按最高星那块算(实测更接近 3★ 的 %.0f, 不是 1★ 的 %.0f)" % [want3, want1], near3, str(extra))
-	## ★积压: 前面的强化普攻没打中(闪避 / 目标先死)⇒ 待兑现的附带伤害留着, 之后每次命中兑现一次。
-	##   两块石头时这个命中钩子也被调两次 ⇒ 不去重就一次命中兑现两次(与一块石头时不一样)。
+	_ok("★★每次命中两块各兑现一次附带伤害", fired == [2, 2, 2, 2], str(fired))
+	## 各块自己的账(份号分开): 1★ 那块(装备栏第 1 件)与 3★ 那块(第 2 件)之比 = 附带伤害底数之比。
+	##   强化窗里还有一层两块共同的增伤(实测单块时也是 _resolve_dmg 的 1.2 倍), 比值不受它影响。
+	var d1: float = _eq_dmg(du, Inc.EID) - float(tal0[0])
+	var d3: float = _eq_dmg(du, Inc.EID + "#2") - float(tal0[1])
+	_ok("★★两份附带伤害各按自己的星级: 1★ 那块 / 3★ 那块 = %.3f(底数之比 %.3f)" % [d1 / maxf(d3, 1.0), want1 / want3],
+		d1 > 0.0 and d3 > 0.0 and absf(d1 / d3 - want1 / want3) < 0.03, "1★ %.0f · 3★ %.0f · 每次 %s" % [d1, d3, str(extra)])
+	## ★积压(每一块自己的): 第 1 块攒着 2 次待兑现 ⇒ 一次命中只兑现它的一次(按命中序号去重, 不连兑两次)
 	dstt["hit_pending"] = 2
+	dstt2["hit_pending"] = 0
 	var nq: int = int(du.get("_incense_emp_n", 0))
 	s._equip_sys._eq_on_hit(du, dt, 0, true)
-	_ok("★★有积压时一次命中也只兑现一次(两块石头不连兑两次)", int(du.get("_incense_emp_n", 0)) - nq == 1
+	_ok("★★有积压时一次命中也只兑现一次(同一块不连兑两次)", int(du.get("_incense_emp_n", 0)) - nq == 1
 		and int(dstt.get("hit_pending", -1)) == 1, "兑现 %d 次 · 剩 %d" % [int(du.get("_incense_emp_n", 0)) - nq, int(dstt.get("hit_pending", -1))])
 
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
@@ -633,3 +639,9 @@ func _amp_keys(u: Dictionary) -> Array:
 		if ks.find("amp") >= 0 or ks.find("bonus") >= 0 or ks.find("incense") >= 0:
 			out.append("%s=%s" % [ks, str(u[k])])
 	return out
+
+
+## 某件(份号)在这只龟「本局」统计里的伤害合计(物理 + 魔法 + 真实)
+func _eq_dmg(u: Dictionary, ck: String) -> float:
+	var r: Dictionary = (u.get("_st_eq", {}) as Dictionary).get(ck, {})
+	return float(r.get("phy", 0.0)) + float(r.get("mag", 0.0)) + float(r.get("tru", 0.0))

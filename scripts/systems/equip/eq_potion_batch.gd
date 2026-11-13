@@ -78,17 +78,20 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_first_of(u, EquipTally.POTION_IDS)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.get("alive", false):
 		return
+	var _ckp81: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		battle._equip_sys.ck_set(u, e)
 		if not (e is Dictionary):
 			continue
 		var iid: String = str((e as Dictionary).get("id", ""))
 		var si: int = clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1
 		if EquipTally.POTION_IDS.has(iid):
-			battle._equip_sys.tally.use([u, iid])   # 11-12 逐件记账(原来全记给这只身上第一件药水)
+			battle._equip_sys.tally.use([u, battle._equip_sys.key_of(u, iid)])   # 11-12 逐件记账(原来全记给这只身上第一件药水)
 		match iid:
 			"p2eq_066": _tick_whale_brew(u, si)
 			"p2eq_067": _tick_vial_field(u, si)
 			"p2eq_068": _tick_pressure_can(u, si, delta)
+	battle._equip_sys.ck_restore(_ckp81)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -108,12 +111,12 @@ const OIL_ASPD_PER_HIT := [0.03, 0.05, 0.07]
 func _eq_shark_oil(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false):
 		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_065", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_065"), {})
 	## × _copy_fx_mult: 多重打击那一发按 50%(GamblerSystem.MULTI_FX, 11-11); 平常为 1。层数照常 +1(触发与计数不打折)
 	battle._equip_sys._eq_grant_energy(u, LIVER_ENERGY * battle._copy_fx_mult)
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + OIL_ASPD_PER_HIT[si] * battle._copy_fx_mult
 	stt["oil_stacks"] = int(stt.get("oil_stacks", 0)) + 1
-	u["eq_state"]["p2eq_065"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_065")] = stt
 	# ★读数只走装备格右下角层数徽章(PANEL_COUNT 的 oil_stacks) —— 用户 2026-08-11:
 	#   「这个不要特效, 但图标那里要显示层数」。油膜光晕/飘字整条撤除。
 
@@ -135,19 +138,19 @@ const LIVER_ENERGY := 5.0
 
 ## 每帧: 没喝就看时候到没到; 喝过了就维持免疫 + 推进过冲回稳的体型曲线。
 func _tick_whale_brew(u: Dictionary, si: int) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_066", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_066"), {})
 	if not stt.has("brew_t0"):
 		stt["brew_t0"] = battle._t          # 兜底: 合成单位/老存档没走 _eq_apply_flags
 	if not bool(stt.get("brew_done", false)):
 		if battle._t - float(stt["brew_t0"]) >= BREW_AT:
 			_eq_whale_brew(u, si, stt)
-		u["eq_state"]["p2eq_066"] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_066")] = stt
 		return
 	var el: float = battle._t - float(stt.get("brew_at_t", battle._t))
 	u["size_mult"] = float(stt.get("brew_size0", 1.0)) * Vfx.ovr_size_at(el, BREW_SIZE)
 	_vfx.brew_glow_tick(u, el)   # 金红体光: 帧同步 + 强度/色相推进(常驻=免控标识)
 	_brew_immune(u)
-	u["eq_state"]["p2eq_066"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_066")] = stt
 
 
 ## 喝药: 一次性把整套属性灌下去。★走 `EquipStatsApply.apply_stat_dict` 这一个既有入口 ——
@@ -175,7 +178,7 @@ func _eq_whale_brew(u: Dictionary, si: int, stt: Dictionary) -> void:
 	}
 	battle._equip_sys._stats.apply_stat_dict(u, gain, "p2eq_066")
 	u["_brew_immune"] = true
-	u["eq_state"]["p2eq_066"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_066")] = stt
 	_brew_immune(u)
 	_vfx.brew_glow_start(u)   # 金红体光(金圈已废, 用户 2026-08-11)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -84), "浓浆", Color(1.0, 0.88, 0.55))
@@ -262,9 +265,9 @@ func _eq_poison_vial(u: Dictionary, si: int) -> void:
 func _eq_vial_land(u: Dictionary, si: int, pos: Vector2) -> void:
 	if not u.get("alive", false):
 		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_067", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_067"), {})
 	stt["vial_thrown"] = int(stt.get("vial_thrown", 0)) + 1
-	u["eq_state"]["p2eq_067"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_067")] = stt
 	_vfx.vial_cloud(pos)
 	battle._splash_ring_bold(pos, Color(0.42, 0.90, 0.38), VIAL_RADIUS)
 	for o in battle._targeting._enemies_of(u):
@@ -277,7 +280,7 @@ func _eq_vial_land(u: Dictionary, si: int, pos: Vector2) -> void:
 func _eq_poison_touch(u: Dictionary, tgt: Dictionary, si: int) -> void:
 	if not u.get("alive", false) or not tgt.get("alive", false):
 		return
-	var _s67: Dictionary = u["eq_state"].get("p2eq_067", {})
+	var _s67: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_067"), {})
 	battle._damage._apply_dot_stacks(tgt, "poison", [3, 5, 8][si], u)
 
 
@@ -333,7 +336,7 @@ func _vial_expire_sweep() -> void:
 
 ## 携带者阵亡 → 立刻撤掉自己挂出去的减益(不等悬挂窗口)。
 func _eq_vial_cleanse(u: Dictionary) -> void:
-	var _s: Dictionary = u.get("eq_state", {}).get("p2eq_067", {})
+	var _s: Dictionary = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, "p2eq_067"), {})
 	for o in battle._units:
 		if o is Dictionary:
 			_vial_debuff_off(o)
@@ -382,10 +385,14 @@ func _can_cap(u: Dictionary, si: int) -> float:
 func store_from_any_damage(u: Dictionary, dmg: int) -> void:
 	if dmg <= 0 or not u.get("alive", false) or not u.get("_potion_tick", false):
 		return
+	var _ckp385: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		battle._equip_sys.ck_set(u, e)
 		if str(e.get("id", "")) == "p2eq_068":
 			_eq_pressure_store(u, dmg, battle._equip_sys._eq_si(int(e.get("star", 1))))
+			battle._equip_sys.ck_restore(_ckp385)
 			return
+	battle._equip_sys.ck_restore(_ckp385)
 
 
 func _eq_pressure_store(u: Dictionary, dmg: int, si: int) -> void:
@@ -393,7 +400,7 @@ func _eq_pressure_store(u: Dictionary, dmg: int, si: int) -> void:
 		return
 	if battle._spec.has(u, CAN_MANA_KEY):
 		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_068", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_068"), {})
 	var cap: float = _can_cap(u, si)
 	stt["can_charge"] = minf(cap, float(stt.get("can_charge", 0.0)) + float(dmg) * [0.60, 1.00, 2.00][si])
 	# ★归一化镜像, 给局内装备格的充能条读(PANEL_CHARGE 的分母只能是常量,
@@ -401,14 +408,14 @@ func _eq_pressure_store(u: Dictionary, dmg: int, si: int) -> void:
 	#   2026-08-11 补: 在此之前 068 攒了一整条充能【局内零出口】, 玩家看不到自己攒到哪,
 	#   而它的效果恰恰就是"攒得越多打得越狠"。
 	stt["can_pct"] = clampf(float(stt["can_charge"]) / maxf(1.0, cap) * 100.0, 0.0, 100.0)
-	u["eq_state"]["p2eq_068"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_068")] = stt
 
 
 ## 每次普攻: +5 龟能 + 回复 20/35/50 生命。
 func _eq_pressure_sip(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false):
 		return
-	var _s68: Dictionary = u["eq_state"].get("p2eq_068", {})
+	var _s68: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_068"), {})
 	battle._equip_sys._eq_grant_energy(u, CAN_HIT_ENERGY * battle._copy_fx_mult)   # × 系数: 多重打击那一发按 50%(11-11)
 	battle._damage._heal(u, [20.0, 35.0, 50.0][si])
 
@@ -425,7 +432,7 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	var stored: float = float(stt.get("can_charge", 0.0))
 	stt["can_charge"] = 0.0
 	stt["can_pct"] = 0.0          # ★清空充能时读数也要归零, 否则条会停在满格骗人
-	u["eq_state"]["p2eq_068"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_068")] = stt
 	if stored <= 0.0:
 		return
 	# ★读数走血条第四段(hp_bar 的法力蓝段, 见 _tick_pressure_can 的 _manaShieldVal 镜像), 不飘字 ——
@@ -456,7 +463,7 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	#   这是 verify_mana_beam_steer ② 抓出来的真 bug, 不是假想。
 	stt["beam_ang_paid"] = DetMath.angle(dir)
 	stt["beam_tgt"] = far
-	u["eq_state"]["p2eq_068"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_068")] = stt
 	stt["beam_h"] = _beam_vfx.fire(u["pos"], DetMath.angle(dir), Vfx.BEAM_RANGE, Vfx.BEAM_HALF_W)
 
 
@@ -475,7 +482,7 @@ func _can_farthest(u: Dictionary):
 
 ## 每帧: 充能条 + 激光推进 + 到点释放。
 func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_068", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_068"), {})
 	if not stt.has("can_t0"):
 		stt["can_t0"] = battle._t          # 兜底: 合成单位/老存档没走 _eq_apply_flags
 	var cap: float = _can_cap(u, si)
@@ -484,7 +491,7 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 	# ★法力护盾余额每帧镜像进单位字段, 给血条第四段读(HpBar 只认 f 的字段, 拿不到 battle._spec)。
 	#   吸收/衰减/耗尽全走 SpecialBalance, 这里只抄读数 ⇒ 镜像永远收敛, 不会自己漂。
 	u["_manaShieldVal"] = battle._spec.val(u, CAN_MANA_KEY)
-	u["eq_state"]["p2eq_068"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_068")] = stt
 	_eq_beam_step(u, delta)
 	var due: float = float(stt["can_t0"]) + CAN_PERIOD * float(int(stt.get("can_fired", 0)) + 1)
 	if battle._t >= due:
@@ -506,7 +513,7 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 ##   ① 不再掷一次暴击(持续伤害每跳掷暴击会让总量随机化, 门禁量不准);
 ##   ② 那条路**结构上就不回钩 on-hit**, 比靠 from_equip 开关更硬(防自激)。
 func _eq_beam_step(u: Dictionary, delta: float) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_068", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_068"), {})
 	var total: float = float(stt.get("beam_total", 0.0))
 	if total <= 0.0:
 		return
@@ -561,7 +568,7 @@ func _eq_beam_step(u: Dictionary, delta: float) -> void:
 			_beam_vfx.finale(h)
 		stt["beam_h"] = null
 		stt["beam_tgt"] = null
-	u["eq_state"]["p2eq_068"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_068")] = stt
 
 
 ## 此刻**正被射线照到**的敌人(瞬时判定, 只给演出用 —— 伤害走扫掠, 见 `_beam_hit`)。

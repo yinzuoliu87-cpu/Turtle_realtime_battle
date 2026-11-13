@@ -113,7 +113,9 @@ func add_mana(u: Dictionary, n: float) -> void:
 	##   文案承诺的主动永远兑现不了。⇒ 法力条是【每件法器自带】的, 未激活羁绊时满值 200;
 	##   羁绊的作用是逐档把满值压下来 200→180→150→120→80(见 MANA_FULL_BY_TIER)。
 	##   ⚠ 只拆法力条这一道 —— 灵泉/共鸣是**全队**收益, 照旧要档位。
+	var _ckp116: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		battle._equip_sys.ck_set(u, e)
 		if not (e is Dictionary):
 			continue
 		var iid: String = str(e.get("id", ""))
@@ -122,7 +124,7 @@ func add_mana(u: Dictionary, n: float) -> void:
 		## ★满值【按件算】: 档位满值 × 该件自己的倍率(043 的负面被动 +50/25/0%)。
 		##   循环内取而不是循环外 —— 同一个单位身上两件法器的满值可以不一样。
 		var full: float = mana_full_for(u, iid, int(e.get("star", 1)))
-		var stt: Dictionary = u["eq_state"].get(iid, {})
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, iid), {})
 		stt["mana"] = float(stt.get("mana", 0.0)) + n
 		## ★★镜像一份【归一化百分比】给装备图标框的法力条(2026-08-10 补)。
 		##   用户实测:「5 费装备有个法器吧, 那我压根没看到装备图标那里有法力条,
@@ -131,7 +133,7 @@ func add_mana(u: Dictionary, n: float) -> void:
 		##     而 PANEL_CHARGE 的分母只能是**常量** ⇒ 直接拿 mana 会让高档永远填不满。
 		##     同 081 藤编圆盾那一行的做法(存 chg_pct), 这里存 mana_pct(0~100)。
 		stt["mana_pct"] = clampf(float(stt["mana"]) / maxf(1.0, full) * 100.0, 0.0, 100.0)
-		u["eq_state"][iid] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, iid)] = stt
 		if float(stt["mana"]) < full:
 			continue
 		if battle._damage.is_controlled(u):   # 携带者被控: 法力停在满值, 解控后下一次涨法力时放出(10-16 被控规则)
@@ -140,13 +142,14 @@ func add_mana(u: Dictionary, n: float) -> void:
 		stt["mana"] = 0.0
 		stt["mana_pct"] = 0.0
 		_fire(u, iid, int(e.get("star", 1)))
+	battle._equip_sys.ck_restore(_ckp116)
 
 
 ## 触发某件法器的效果 —— 走它在 `_tick_eq_intervals` 里的同一个分支，
 ## 所以"触发这件法器的效果"是字面意义上的同一件事，不会出现两套行为。
 func _fire(u: Dictionary, iid: String, star: int) -> void:
 	u["_staff_busy"] = true         # 期间产生的伤害不再涨法力（防自激循环）
-	var _tl0: Array = battle._equip_sys.tally.push(u, iid)   # ④ 装备统计: 法力满放主动 = 这件装备的效果
+	var _tl0: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, iid))   # ④ 装备统计: 法力满放主动 = 这件装备的效果
 	battle._equip_sys.fire_equip_effect(u, iid, star)
 	battle._equip_sys.tally.pop(_tl0)
 	u["_staff_busy"] = false

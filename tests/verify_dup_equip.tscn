@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tests/verify_dup_equip.gd" id="1"]
+[node name="VerifyDupEquip" type="Node"]
+script = ExtResource("1")

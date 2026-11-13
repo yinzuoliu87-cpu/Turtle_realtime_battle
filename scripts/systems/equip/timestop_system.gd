@@ -141,9 +141,12 @@ func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
 
 func _unit_hourglass_star(u: Dictionary) -> int:   # 该单位所装沙漏最高星(0=无)
 	var best := 0
+	var _ckp144: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		battle._equip_sys.ck_set(u, e)
 		if str(e.get("id", "")) == "p2eq_059":
 			best = maxi(best, int(e.get("star", 1)))
+	battle._equip_sys.ck_restore(_ckp144)
 	return best
 
 func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触发蓄力 → 蓄力满释放
@@ -222,9 +225,9 @@ func _end_timestop() -> void:
 	## ★抹成 0 —— 不抹的话图标框那根条会停在最后一格(044 深海项链踩过的原话教训)。
 	for c in _ts_active:
 		if c is Dictionary:
-			var st: Dictionary = (c.get("eq_state", {}) as Dictionary).get("p2eq_059", {})
+			var st: Dictionary = (c.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(c, "p2eq_059"), {})
 			st["ts_pct"] = 0.0
-			(c["eq_state"] as Dictionary)["p2eq_059"] = st
+			(c["eq_state"] as Dictionary)[battle._equip_sys.key_of(c, "p2eq_059")] = st
 	_ts_active = []
 	_ts_remaining = 0.0
 
@@ -411,9 +414,9 @@ func _ts_bar_mirror() -> void:
 	for c in _ts_active:
 		if not (c is Dictionary):
 			continue
-		var st: Dictionary = (c.get("eq_state", {}) as Dictionary).get("p2eq_059", {})
+		var st: Dictionary = (c.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(c, "p2eq_059"), {})
 		st["ts_pct"] = clampf(_ts_remaining / maxf(0.001, _ts_total), 0.0, 1.0) * 100.0
-		(c["eq_state"] as Dictionary)["p2eq_059"] = st
+		(c["eq_state"] as Dictionary)[battle._equip_sys.key_of(c, "p2eq_059")] = st
 
 
 ## 【释放一瞬】五段, 全部照参考逐帧(docs/studies/20260914g-059时停能量场逐帧.md「第五版」一节):

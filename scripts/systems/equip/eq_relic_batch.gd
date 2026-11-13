@@ -43,10 +43,8 @@ extends RefCounted
 ## ══════════════════════════════════════════════════════════════════════
 ##  ⚠ 诚实记录: 规格没写死、由我(实装侧)定的地方
 ## ══════════════════════════════════════════════════════════════════════
-## ① **091 多带同一件取【最高星】, 不叠加。**
-##    规格 §0.5 ★091 没提多件。取的是契约 §4 的全表通用口径「同一件装备装多把 →
-##    取星级更高的那一件, 不是相加」, 也与 ★094「一只龟装 3 件只立一座碑(取最高星)」同向。
-##    另一侧是"三件各回各的"(3★ 三件 = 每秒 108 + 0.6% 最大生命), 与全表口径冲突, 没取。
+## ① **091 多带同一件: 11-13 起三件各回各的**(用户「两件相同装备…各自生效各自的效果」)。
+##    原来取契约 §4「取星级更高的那一件, 不是相加」与 094「一只龟装 3 件只立一座碑」—— 两条都已作废。
 ##
 ## ② **091 的回血走 `silent = true`。**
 ##    规格只说"能被治疗削减影响"(已满足: 走标准 `_heal` 通道)。silent 只关**治疗音效**,
@@ -109,9 +107,11 @@ func _init(b) -> void:
 	vfx = RelicEqVfx.new(b)
 
 
-## 身上这件装备的【最高星】下标(0/1/2); 没带返回 -1。
-## ★契约 §4 全表通用口径:「同一件装备装多把 → 取星级更高的那一件, 不是相加」。
+## 份号上下文里(each_copy / 逐件钩子): 当前这一件的星级下标; 上下文以外: 身上这件的最高星(只当「带没带」用); 没带返回 -1。
 func _best_si(u: Dictionary, iid: String) -> int:
+	var cs: int = battle._equip_sys.copy_si(u, iid)   # 份号上下文里: 当前这一件的星级(11-13 用户「各自生效」)
+	if cs >= 0:
+		return cs
 	var best := -1
 	for e in u.get("equips", []):
 		if e is Dictionary and str((e as Dictionary).get("id", "")) == iid:
@@ -144,17 +144,18 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not (u is Dictionary) or not u.get("alive", false):
 		return
-	var si: int = _best_si(u, "p2eq_091")
-	if si < 0:
+	if _best_si(u, "p2eq_091") < 0:
 		return
-	var acc: float = float(u.get("_scute_acc", 0.0)) + maxf(delta, 0.0)
-	var n := 0
-	while acc >= SCUTE_IV and n < SCUTE_CATCHUP_CAP:
-		acc -= SCUTE_IV
-		n += 1
-	u["_scute_acc"] = acc
-	for _i in range(n):
-		scute_heal_once(u, si)
+	## ★每一份各自回血(11-13 用户「两件相同装备…各自生效」; 原来取最高星只回一份)。累加器 `_scute_*` 按份换装(EquipSystem.UF)。
+	battle._equip_sys.each_copy(u, "p2eq_091", func(si: int) -> void:
+		var acc: float = float(u.get("_scute_acc", 0.0)) + maxf(delta, 0.0)
+		var n := 0
+		while acc >= SCUTE_IV and n < SCUTE_CATCHUP_CAP:
+			acc -= SCUTE_IV
+			n += 1
+		u["_scute_acc"] = acc
+		for _i in range(n):
+			scute_heal_once(u, si))
 
 
 ## 一跳的**请求回复量**(治疗削减/治疗加成之前的量)。
@@ -208,14 +209,14 @@ const BOLT_COL := Color(0.86, 0.62, 0.36, 1.0)
 
 
 ## 携带者阵亡 → 立碑。
-## ★`_eq_on_death` 会按 equips **逐件**调本函数 ⇒ 装 3 件会进来 3 次,
-##   所以这里按【立碑者】去重并取最高星(用户口径:「一只龟装 3 件只立一座碑, 取最高星」)。
+## ★`_eq_on_death` 会按 equips **逐件**调本函数 ⇒ 装 3 件进来 3 次、各带自己的份号 ⇒ 立 3 座(11-13 用户「三件三个」;
+##   原「一只龟装 3 件只立一座碑, 取最高星」作废)。
 func on_death(u: Dictionary, eid: String, si: int) -> void:
 	if eid != "p2eq_094":
 		return
 	if not (u is Dictionary) or not u.has("pos"):
 		return
-	stele_raise(u, clampi(si, 0, 2))
+	stele_raise(u, clampi(si, 0, 2), battle._equip_sys.key_of(u, "p2eq_094"))   # 每一件各立一座(11-13)
 
 
 ## 碑给全体友军的**增伤**(百分比小数)。
@@ -234,12 +235,15 @@ func stele_bolt_base(si: int) -> float:
 
 
 ## 立一座碑(或把已有的那座升星)。返回这座碑的记录。
-func stele_raise(carrier: Dictionary, si: int) -> Dictionary:
+## ck = 份号: ★11-13 用户「两件相同装备…各自生效各自的效果」⇒ 同一只龟带几件就立几座碑(原「一只龟装 3 件只立一座、取最高星」作废);
+##   同一件重复触发(同 carrier + 同 ck)仍只立一座。光环照旧「多来源不叠加、取最高」(跨携带者本来就是这条)。
+func stele_raise(carrier: Dictionary, si: int, ck: String = "p2eq_094") -> Dictionary:
 	for st in _steles:
-		if is_same(st["carrier"], carrier):       # is_same: 单位字典互引成环, == 会深比较→卡死
+		if is_same(st["carrier"], carrier) and str(st.get("ck", "p2eq_094")) == ck:   # is_same: 单位字典互引成环, == 会深比较→卡死
 			st["si"] = maxi(int(st["si"]), si)
 			return st
 	var st2 := {
+		"ck": ck,
 		"carrier": carrier,
 		"si": clampi(si, 0, 2),
 		"pos": Vector2(carrier["pos"]),           # 原地: 阵亡那一刻的位置, 之后不再跟随
@@ -353,7 +357,7 @@ func stele_fire(st: Dictionary) -> Dictionary:
 		return {}
 	var si: int = int(st["si"])
 	var b := {
-		"carrier": carrier, "tgt": tgt, "si": si,
+		"carrier": carrier, "tgt": tgt, "si": si, "ck": str(st.get("ck", "p2eq_094")),
 		"t": 0.0, "T": maxf(RelicEqVfx.fall_time(RelicEqVfx.BOLT_H, RelicEqVfx.BOLT_G), 0.001),
 		"pos": Vector2(tgt["pos"]),
 	}
@@ -377,7 +381,7 @@ func stele_bolt_land(b: Dictionary) -> int:
 		return 0
 	var si: int = clampi(int(b.get("si", 0)), 0, 2)
 	var dmg: int = battle._resolve_dmg(carrier, stele_bolt_base(si), tgt, true)
-	var _tp: Array = battle._equip_sys.tally.push(carrier, "p2eq_094")   # ④ 装备统计: 碑/石块在全局表里, 携带者已阵亡 ⇒ 落地这一下记给「立碑者 · 094」
+	var _tp: Array = battle._equip_sys.tally.push(carrier, str(b.get("ck", "p2eq_094")))   # ④ 装备统计: 碑/石块在全局表里, 携带者已阵亡 ⇒ 落地这一下记给「立碑者 · 立它的那一件」(份号 · 11-13)
 	battle._damage._apply_damage_from(carrier, tgt, dmg, BOLT_COL, 0.0, false, true)
 	battle._equip_sys.tally.pop(_tp)
 	# 同步的落地证据(供门禁)。★不是"看演出多了几个节点"那种假断言 ——

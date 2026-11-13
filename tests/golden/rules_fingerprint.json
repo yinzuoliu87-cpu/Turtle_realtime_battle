@@ -1,11 +1,11 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "8df43fe2d74e6f064ff1a7f18743e3f23d16a6940350d072fc552388335b2176",
+ "fingerprint": "5d3fee3945036216d10afdb568b0c51e38987eedaba3b9e03ed71c2f19712501",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
-   "hash": "3419437db06a95d20a73879eedebaa4c937bc9959ff4619b37ee3cfb30269cdf",
+   "hash": "03ad4de118ed4af0fe1c97c22cb91c7acb1d2fa5dac0b190078526d091fe562e",
    "tag": "① 双方顶档盾(冲击波互打) · 剑 / 食物"
   },
   {
@@ -15,17 +15,17 @@
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "48163fef88d9be995dce8be39d6663e4480a728ae54251c9e7da4c45f9989b1a",
+   "hash": "c666498da46bc6f8b03e3e1a71ec607f5127919dd51fe5b6afbc53d8b15647af",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
    "def": "81cac5a557a2489f",
-   "hash": "98d8c60f6819f41404a779f3bd631ee76daab7550acbdd54b3ae5574f60c1962",
+   "hash": "24b02646abf5fcb92cd1cf949eac5188bee48fe62a52a06b53f94064f35e9e27",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
    "def": "99521fedd8b3b2c9",
-   "hash": "9668a9bd5e6bbed4a34b19b5c63cfa9a9057598c35081225da6056b2c3ff6222",
+   "hash": "05f33515ceaef952fe7e5521112937efc0e2e6af572bb9faa5b95ef3479127bb",
    "tag": "⑤ 双方灵物触手 · 弓箭 vs 剑 · 复制/命运之轮/雷暴"
   },
   {
@@ -34,5 +34,5 @@
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],
- "rules_ver": 6
+ "rules_ver": 7
 }

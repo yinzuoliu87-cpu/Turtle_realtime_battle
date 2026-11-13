@@ -440,10 +440,10 @@ func _t091_healcut() -> void:
 
 
 # ═════════════════════════════════════════════════════════════
-# ⑦ 091 多带同一件 → 取最高星, 不相加(契约 §4 全表通用口径)
+# ⑦ 091 多带同一件 → 每件各回一份(11-13 用户「两件相同装备…各自生效」; 取代 8 月契约 §4「取最高星, 不相加」)
 # ═════════════════════════════════════════════════════════════
 func _t091_multi_copy() -> void:
-	print("── ⑦ 091 多件取最高星 ──")
+	print("── ⑦ 091 多件各自生效 ──")
 	_reset_units()
 	var sys = _s._equip_sys._relic_sys
 	var one: Dictionary = _equip(_mk("left", Vector2(0, 40), 3000.0), [{"id": "p2eq_091", "star": 3}])
@@ -451,12 +451,16 @@ func _t091_multi_copy() -> void:
 		{"id": "p2eq_091", "star": 1}, {"id": "p2eq_091", "star": 3}, {"id": "p2eq_091", "star": 2}])
 	one["hp"] = 2000.0
 	three["hp"] = 2000.0
+	var want3: float = sys.scute_amount(three, 0) + sys.scute_amount(three, 2) + sys.scute_amount(three, 1)
+	var want1: float = sys.scute_amount(one, 2)
 	sys.tick_unit(one, 0.25)
 	sys.tick_unit(three, 0.25)
-	_ok("装 3 件也只跳一次", int(three.get("_scute_n", 0)) == 1, "n=%d" % int(three.get("_scute_n", 0)))
-	_ok("装 3 件 = 单件 3★ 的量(不相加)",
-		_near(float(three.get("_scute_last", -1.0)), float(one.get("_scute_last", -2.0)), 0.01),
-		"三件 %.2f vs 单件 %.2f" % [float(three.get("_scute_last", -1.0)), float(one.get("_scute_last", -2.0))])
+	var got3: float = float(three["hp"]) - 2000.0
+	var got1: float = float(one["hp"]) - 2000.0
+	_ok("⑦ 分母: 单件 3★ 这一跳回了 %.2f" % got1, _near(got1, want1, 0.01) and got1 > 0.0, "")
+	_ok("装 3 件(1★/3★/2★)各跳一次、各按自己的星级 ⇒ 三份相加", _near(got3, want3, 0.01),
+		"三件 %.2f vs 期望 %.2f(单件 3★ %.2f)" % [got3, want3, got1])
+	_ok("第 1 件自己的计数只跳一次(另两件的计数在各自的份号槽里)", int(three.get("_scute_n", 0)) == 1, "n=%d" % int(three.get("_scute_n", 0)))
 	# 没带这件的单位一跳都不跳
 	var none: Dictionary = _equip(_mk("left", Vector2(40, 40), 3000.0), [{"id": "p2eq_094", "star": 3}])
 	none["hp"] = 2000.0
@@ -503,17 +507,20 @@ func _t094_raise() -> void:
 	_ok("阵亡 → 立起 1 座碑", sys.stele_count() == 1, "N=%d" % sys.stele_count())
 	_ok("碑在【原地】", sys._steles[0]["pos"].distance_to(a["pos"]) < 0.01,
 		"碑 %s vs 死点 %s" % [str(sys._steles[0]["pos"]), str(a["pos"])])
-	# 装 3 件只立一座, 取最高星
+	# ★11-13 装 3 件立 3 座, 各自星级(用户「两件肯定召唤两个…三件三个」; 原「一只龟装 3 件只立一座、取最高星」作废)
 	sys.clear_all()
 	var b: Dictionary = _equip(_mk("left", Vector2(-100, 80)), [
 		{"id": "p2eq_094", "star": 1}, {"id": "p2eq_094", "star": 3}, {"id": "p2eq_094", "star": 2}])
 	_s._equip_sys._eq_on_death(b, null)
-	_ok("装 3 件只立 1 座", sys.stele_count() == 1, "N=%d" % sys.stele_count())
-	_ok("取最高星(si=2)", int(sys._steles[0]["si"]) == 2, "si=%d" % int(sys._steles[0]["si"]))
+	_ok("装 3 件立 3 座", sys.stele_count() == 3, "N=%d" % sys.stele_count())
+	var sis: Array = []
+	for st in sys._steles:
+		sis.append(int(st["si"]))
+	_ok("三座各按自己那件的星级(1★/3★/2★ ⇒ 0/2/1)", sis == [0, 2, 1], "si=%s" % str(sis))
 	# 不同携带者各自立碑
 	var c: Dictionary = _equip(_mk("left", Vector2(-80, 80)), [{"id": "p2eq_094", "star": 1}])
 	_s._equip_sys._eq_on_death(c, null)
-	_ok("第二个携带者另立一座", sys.stele_count() == 2, "N=%d" % sys.stele_count())
+	_ok("第二个携带者另立一座", sys.stele_count() == 4, "N=%d" % sys.stele_count())
 	# 真入口②: battle._kill 全链路
 	sys.clear_all()
 	var d: Dictionary = _equip(_mk("left", Vector2(-60, 80), 500.0), [{"id": "p2eq_094", "star": 2}])

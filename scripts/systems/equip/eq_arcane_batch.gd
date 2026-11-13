@@ -190,34 +190,34 @@ func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
 func _mana_lock(u: Dictionary, eid: String) -> void:
 	if not (u.get("eq_state", null) is Dictionary):
 		return
-	var stt: Dictionary = u["eq_state"].get(eid, {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, eid), {})
 	stt["mana_locked"] = true
 	stt["mana"] = 0.0
-	u["eq_state"][eid] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, eid)] = stt
 
 
 func _mana_unlock(u: Dictionary, eid: String) -> void:
 	if not (u.get("eq_state", null) is Dictionary):
 		return
-	var stt: Dictionary = u["eq_state"].get(eid, {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, eid), {})
 	stt["mana_locked"] = false
-	u["eq_state"][eid] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, eid)] = stt
 
 
 func mana_locked(u: Dictionary, eid: String) -> bool:
 	if not (u.get("eq_state", null) is Dictionary):
 		return false
-	return bool((u["eq_state"].get(eid, {}) as Dictionary).get("mana_locked", false))
+	return bool((u["eq_state"].get(battle._equip_sys.key_of(u, eid), {}) as Dictionary).get("mana_locked", false))
 
 
 ## 锁期内每帧把条压回 0 —— 「法力不增长」这句话的可断言形式。
 func _mana_hold(u: Dictionary, eid: String) -> void:
 	if not (u.get("eq_state", null) is Dictionary):
 		return
-	var stt: Dictionary = u["eq_state"].get(eid, {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, eid), {})
 	if bool(stt.get("mana_locked", false)):
 		stt["mana"] = 0.0
-		u["eq_state"][eid] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, eid)] = stt
 
 
 ## 让 tgt 滞空恰好 sec 秒: 击飞初速由 `_knockback` 给, 这里只配本次击飞的重力
@@ -334,14 +334,15 @@ func clear_all() -> void:
 ##   这样它们和本件的 `"p2eq_088"` 字面量同处一屏, `tools/tooltip_number_audit.py`
 ##   的 ±2500 字符窗口锚得到(契约 §6: 提到文件顶部会被判"远处命中"直接红)。
 func _stele_raise(u: Dictionary, si: int) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_088", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_088"), {})
 	var dmg_ps: float = [15.0, 25.0, 40.0][si]      # 碑内敌人每秒魔法伤害
 	var shd_ps: float = [20.0, 35.0, 55.0][si]      # 碑内友军每秒护盾(可叠加·到期不消失)
 	var aspd: float = [0.10, 0.15, 0.25][si]        # 碑内友军攻速加成(离圈即失)
 	stt["stele_raised"] = int(stt.get("stele_raised", 0)) + 1   # 同步触发证据(门禁数它, 不等演出)
-	u["eq_state"]["p2eq_088"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_088")] = stt
 	_mana_lock(u, "p2eq_088")                        # ★释放期间锁法力条
 	_steles.append({
+		"ck": battle._equip_sys.key_of(u, "p2eq_088"),   # 立碑的那一件(份号 · 11-13): 锁 / 解锁法力条、记账都认它
 		"src": u, "si": si, "pos": (u["pos"] as Vector2),
 		"el": 0.0, "ticks": 0, "hit": 0, "shd": shd_ps, "dmg": dmg_ps, "aspd": aspd,
 	})
@@ -355,6 +356,7 @@ func _tick_steles(delta: float) -> void:
 	var cap: int = int(STELE_SEC / STELE_TICK)
 	for i in range(_steles.size() - 1, -1, -1):
 		var st: Dictionary = _steles[i]
+		var _cp: Array = battle._equip_sys.ck_enter(st.get("src", null), str(st.get("ck", "p2eq_088")))   # 切回立碑的那一件(11-13)
 		st["el"] = float(st["el"]) + delta
 		var want: int = mini(int(floor(float(st["el"]) / STELE_TICK)), cap)
 		while int(st["ticks"]) < want:
@@ -370,6 +372,7 @@ func _tick_steles(delta: float) -> void:
 			_steles.remove_at(i)
 		elif src is Dictionary:
 			_mana_hold(src, "p2eq_088")               # ★锁期内条压回 0
+		battle._equip_sys.ck_leave(_cp)
 	_stele_aura()
 
 
@@ -384,7 +387,7 @@ func _stele_settle(st: Dictionary) -> void:
 	var c: Vector2 = st["pos"]
 	var r2: float = STELE_RADIUS * STELE_RADIUS
 	## ④ 装备统计: 碑是全局表里的常驻物(没有单位上下文) ⇒ 每跳切到「立碑者 · 088」, 函数末尾还原
-	var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_088")
+	var _tp: Array = battle._equip_sys.tally.push(src, battle._equip_sys.key_of(src, "p2eq_088"))
 	for o in battle._targeting._enemies_of(src):
 		if not o.get("alive", false):
 			continue
@@ -405,9 +408,9 @@ func _stele_settle(st: Dictionary) -> void:
 		battle._damage._grant_shield(a, float(st["shd"]))
 	battle._cur_eq_item = ""
 	battle._equip_sys.tally.pop(_tp)
-	var stt: Dictionary = (src as Dictionary)["eq_state"].get("p2eq_088", {})
+	var stt: Dictionary = (src as Dictionary)["eq_state"].get(battle._equip_sys.key_of((src as Dictionary), "p2eq_088"), {})
 	stt["stele_ticks"] = int(stt.get("stele_ticks", 0)) + 1   # 同步跳数证据(门禁数它, 不等演出)
-	(src as Dictionary)["eq_state"]["p2eq_088"] = stt
+	(src as Dictionary)["eq_state"][battle._equip_sys.key_of((src as Dictionary), "p2eq_088")] = stt
 	if vfx != null:
 		vfx.stele_pulse(c, STELE_RADIUS)
 
@@ -456,11 +459,12 @@ func _talisman_stick(u: Dictionary, si: int) -> void:
 	var tgt = battle._targeting._nearest_enemy(u)
 	if not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_089", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_089"), {})
 	var total: float = [400.0, 700.0, 1000.0][si]   # 15 秒内共造成的魔法伤害
 	stt["moon_stuck"] = int(stt.get("moon_stuck", 0)) + 1   # 同步触发证据(门禁数它)
-	u["eq_state"]["p2eq_089"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_089")] = stt
 	_talismans.append({
+		"ck": battle._equip_sys.key_of(u, "p2eq_089"),   # 贴符的那一件(份号 · 11-13)
 		"src": u, "si": si, "tgt": tgt, "el": 0.0, "ticks": 0, "hops": 0,
 		"per": total / TALISMAN_SEC,
 	})
@@ -473,8 +477,10 @@ func _tick_talismans(delta: float) -> void:
 	var cap: int = int(TALISMAN_SEC / TALISMAN_TICK)
 	for i in range(_talismans.size() - 1, -1, -1):
 		var tl: Dictionary = _talismans[i]
+		var _cp: Array = battle._equip_sys.ck_enter(tl.get("src", null), str(tl.get("ck", "p2eq_089")))   # 切回贴符的那一件(11-13)
 		if not _talisman_retarget(tl):
 			_talismans.remove_at(i)
+			battle._equip_sys.ck_leave(_cp)
 			continue
 		tl["el"] = float(tl["el"]) + delta
 		var want: int = mini(int(floor(float(tl["el"]) / TALISMAN_TICK)), cap)
@@ -484,6 +490,7 @@ func _tick_talismans(delta: float) -> void:
 		## ★同碑: 到期条件是【跳满 AND 时间到】, 浮点残差不许吃掉第 15 跳。
 		if int(tl["ticks"]) >= cap and float(tl["el"]) >= TALISMAN_SEC:
 			_talismans.remove_at(i)
+		battle._equip_sys.ck_leave(_cp)
 
 
 ## 目标死了 → 把符纸转到【最近的敌人】。返回 false = 没人可转, 这张符纸作废。
@@ -516,14 +523,14 @@ func _talisman_settle(tl: Dictionary) -> void:
 	var tgt = tl.get("tgt", null)
 	if not (src is Dictionary) or not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 		return
-	var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_089")   # ④ 装备统计: 符纸是全局表里的常驻物, 每跳切到「贴符者 · 089」
+	var _tp: Array = battle._equip_sys.tally.push(src, battle._equip_sys.key_of(src, "p2eq_089"))   # ④ 装备统计: 符纸是全局表里的常驻物, 每跳切到「贴符者 · 089」
 	battle._damage._apply_damage_from(src, tgt,
 		_magic_after_mr(src, float(tl["per"]), tgt), COL_MOON, 0.0, false, true)
 	battle._equip_sys.tally.pop(_tp)
 	_shred_mr(tgt, TALISMAN_MR_PER_TICK)
-	var stt: Dictionary = (src as Dictionary)["eq_state"].get("p2eq_089", {})
+	var stt: Dictionary = (src as Dictionary)["eq_state"].get(battle._equip_sys.key_of((src as Dictionary), "p2eq_089"), {})
 	stt["moon_ticks"] = int(stt.get("moon_ticks", 0)) + 1   # 同步跳数证据(门禁数它)
-	(src as Dictionary)["eq_state"]["p2eq_089"] = stt
+	(src as Dictionary)["eq_state"][battle._equip_sys.key_of((src as Dictionary), "p2eq_089")] = stt
 
 
 ## 削魔抗 —— 走 `_recalc_stats` 的 **`mr_shred` 通道**(主会话 2026-08-06 在共享文件里开的口子:
@@ -561,20 +568,29 @@ func _shred_mr(o: Dictionary, amt: float) -> void:
 
 ## 起跳。逐星数组就近声明并快照进在途记录(锚点 = 本函数里的 `"p2eq_090"`)。
 func _pestle_leap(u: Dictionary, si: int) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_090", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_090"), {})
 	var flat: float = [150.0, 300.0, 4000.0][si]    # 猛砸的固定魔法伤害段(另加 1 ATK) ★2026-09-06: 原 200/300/5000
 	var stun: float = [2.0, 3.0, 8.0][si]           # 猛砸的眩晕秒数
 	stt["pestle_leaps"] = int(stt.get("pestle_leaps", 0)) + 1   # 同步触发证据(门禁数它)
-	u["eq_state"]["p2eq_090"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_090")] = stt
 	_mana_lock(u, "p2eq_090")                        # ★砸出伤害之前, 法力条不增长
 	## ★`air_id`: 这一跳的专属编号。落地事件只认自己那一跳 —— 携带者在半空被【别人】
 	##   击飞再落地时, 不至于被误判成"我砸下来了"(方案书 20260809 风险 4)。
-	_pestle_air_seq += 1
-	u["_pestle_air_id"] = _pestle_air_seq
+	## 同一只龟带两件(11-13 各自生效): 两件同一步起跳 = 同一次腾空 ⇒ 沿用这一跳的编号, 落地时两下一起结算
+	##   (原来第二件换新编号, 第一件那一下只能等超时兜底才结算)。单件时法力条锁着, 不会碰到。
+	var _air: int = -1
+	for sl0 in _slams:
+		if is_same(sl0.get("u", null), u) and int(sl0.get("air_id", -1)) == int(u.get("_pestle_air_id", -2)):
+			_air = int(sl0["air_id"])
+			break
+	if _air < 0:
+		_pestle_air_seq += 1
+		_air = _pestle_air_seq
+	u["_pestle_air_id"] = _air
 	var _p0: Vector2 = Vector2(u["pos"])
 	var _dest: Vector2 = pestle_dest(u)
-	_slams.append({"u": u, "si": si, "flat": flat, "stun": stun,
-		"t_left": pestle_jump_sec(), "air_id": _pestle_air_seq,
+	_slams.append({"u": u, "si": si, "flat": flat, "stun": stun, "ck": battle._equip_sys.key_of(u, "p2eq_090"),
+		"t_left": pestle_jump_sec(), "air_id": _air,
 		"p0": _p0, "dest": _dest, "t_total": pestle_jump_sec()})
 	## 起跳: 直接写击飞物理字段, 由主循环那段 airborne 积分抛起再落回(不用 tween)。
 	## 峰高 h 与重力 g 是【给定的】, 滞空 T = 2√(2h/g) 由它们推出(pestle_jump_sec)。
@@ -618,6 +634,7 @@ func _tick_slams(delta: float) -> void:
 	for i in range(_slams.size() - 1, -1, -1):
 		var sl: Dictionary = _slams[i]
 		var u = sl.get("u", null)
+		var _cp: Array = battle._equip_sys.ck_enter(u, str(sl.get("ck", "p2eq_090")))   # 切回起跳的那一件(11-13)
 		if not (u is Dictionary) or not (u as Dictionary).get("alive", false):
 			if u is Dictionary:
 				_mana_unlock(u, "p2eq_090")
@@ -628,6 +645,7 @@ func _tick_slams(delta: float) -> void:
 				if vfx != null:
 					vfx.orphan_leap(u)
 			_slams.remove_at(i)
+			battle._equip_sys.ck_leave(_cp)
 			continue
 		sl["t_left"] = float(sl["t_left"]) - delta
 		## ★横向位移用【显式插值】而不是给 vx/vz 初速: 滞空积分每帧对横速做阻尼(_kdamp),
@@ -650,6 +668,7 @@ func _tick_slams(delta: float) -> void:
 			pestle_slam(sl)
 		else:
 			_mana_hold(u, "p2eq_090")   # ★还在半空 ⇒ 法力条压回 0(「造成伤害后才重新记录」)
+		battle._equip_sys.ck_leave(_cp)
 
 
 ## 【真实落地事件】—— 主循环在 `airborne` true→false 那一帧调。
@@ -668,7 +687,9 @@ func on_unit_landed(u: Dictionary) -> void:
 		if int(sl.get("air_id", -1)) != aid:
 			continue
 		_slams.remove_at(i)
+		var _cp: Array = battle._equip_sys.ck_enter(u, str(sl.get("ck", "p2eq_090")))   # 切回起跳的那一件(11-13)
 		pestle_slam(sl)
+		battle._equip_sys.ck_leave(_cp)
 
 
 ## 砸落结算。★独立具名函数: 演出末尾调它、门禁也直接调它 ——
@@ -683,7 +704,7 @@ func pestle_slam(sl: Dictionary) -> void:
 	var base: float = float((u as Dictionary).get("atk", 0.0)) * PESTLE_ATK_SCALE + float(sl["flat"])
 	var n: int = 0
 	## ④ 装备统计: 砸落由落地事件 / 全局倒计时触发, 都不在 090 的上下文里 ⇒ 这里自己切(10-31 逐笔对账: 实发 11 万记 3 千)。
-	var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_090")
+	var _tp: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_090"))
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
@@ -694,10 +715,10 @@ func pestle_slam(sl: Dictionary) -> void:
 		_knock_for(u, o, PESTLE_KB_SEC)
 		n += 1
 	battle._equip_sys.tally.pop(_tp)
-	var stt: Dictionary = (u as Dictionary)["eq_state"].get("p2eq_090", {})
+	var stt: Dictionary = (u as Dictionary)["eq_state"].get(battle._equip_sys.key_of((u as Dictionary), "p2eq_090"), {})
 	stt["pestle_slams"] = int(stt.get("pestle_slams", 0)) + 1
 	stt["pestle_slam_hit"] = n
-	(u as Dictionary)["eq_state"]["p2eq_090"] = stt
+	(u as Dictionary)["eq_state"][battle._equip_sys.key_of((u as Dictionary), "p2eq_090")] = stt
 	_mana_unlock(u, "p2eq_090")   # ★★造成伤害【之后】才重新开始记录法力值
 	if vfx != null:
 		vfx.drop_leap(u)              # ★同一事件里收起跳演出 —— 圈不许比人晚落地
@@ -706,24 +727,24 @@ func pestle_slam(sl: Dictionary) -> void:
 
 ## 每次普攻攒一下, 第三下发浪潮。
 func _pestle_on_basic(u: Dictionary, tgt, si: int) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_090", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_090"), {})
 	var n: int = int(stt.get("pestle_basics", 0)) + 1
 	if n < PESTLE_EVERY:
 		stt["pestle_basics"] = n
-		u["eq_state"]["p2eq_090"] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_090")] = stt
 		return
 	stt["pestle_basics"] = 0
 	var hops: int = [4, 5, 8][si]                   # 一片浪潮最多跳几次
 	var dmg: float = [40.0, 70.0, 140.0][si]        # 打到敌人的魔法伤害
 	var heal: float = [20.0, 40.0, 80.0][si]        # 打到友军的治疗
 	stt["pestle_waves"] = int(stt.get("pestle_waves", 0)) + 1
-	u["eq_state"]["p2eq_090"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_090")] = stt
 	var got: Array = wave_chain(u, tgt, hops, dmg, heal)
-	stt = u["eq_state"].get("p2eq_090", {})
+	stt = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_090"), {})
 	stt["wave_hits"] = int(got[0])
 	stt["wave_dmg_n"] = int(got[1])
 	stt["wave_heal_n"] = int(got[2])
-	u["eq_state"]["p2eq_090"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_090")] = stt
 
 
 ## 浪潮链: 从携带者出发, 第一跳打 `first`(普攻的那个目标), 之后每次跳向

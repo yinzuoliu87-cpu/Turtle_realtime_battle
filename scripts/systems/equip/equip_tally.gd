@@ -139,6 +139,9 @@ func _flush() -> void:
 func reset() -> void:
 	_owner = null
 	_iid = ""
+	var _es = battle.get("_equip_sys") if battle is Object else null
+	if _es != null:
+		_es.ck_restore([null, ""])   # 份号上下文同样每步清(11-13)
 	_as = null
 	_flush()
 	dot_mode = false
@@ -155,7 +158,10 @@ func reset() -> void:
 const KIND_EQ := {"turret": "p2eq_058", "skeleton": "p2eq_032", "axe": "p2eq_096"}
 func tag(d: Dictionary, who = null) -> Dictionary:
 	if who is Dictionary and KIND_EQ.has(str(d.get("summon_kind", ""))):
-		d["_eq_src"] = KIND_EQ[str(d["summon_kind"])]
+		var kid: String = str(KIND_EQ[str(d["summon_kind"])])
+		## 份号(11-13): 上下文正是这只龟的这种装备的某一件(「p2eq_058#2」)⇒ 记到那一件; 否则按种类记到第一件
+		var ctx_ck: bool = is_same(who, _owner) and EquipStatsApply.base_id(_iid) == kid
+		d["_eq_src"] = _iid if ctx_ck else kid
 		d["_eq_owner"] = who
 		return d
 	if who != null and not is_same(who, _owner):

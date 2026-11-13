@@ -87,10 +87,16 @@ func _eq_pick_distinct(u: Dictionary, n: int) -> Array:
 # 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
 func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派小熊+攒层; 满层→蓄力→召大熊(不与末只小熊同帧)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
+	if not (u.get("eq_state", {}) as Dictionary).has("p2eq_034"): return
+	## ★每一件各派各的小熊、各攒各的层、各召一只大熊(11-13 用户「两件肯定召唤两个…各自生效」)
+	battle._equip_sys.each_copy(u, "p2eq_034", func(_si: int) -> void: _tick_doll_copy(u, delta))
+
+
+func _tick_doll_copy(u: Dictionary, delta: float) -> void:
 	var es: Dictionary = u.get("eq_state", {})
-	if not es.has("p2eq_034"): return
-	battle._equip_sys.tally.push(u, "p2eq_034")   # ④ 这一段是这件装备的效果
-	var stt: Dictionary = es["p2eq_034"]
+	var ck: String = battle._equip_sys.key_of(u, "p2eq_034")
+	if not es.has(ck): return
+	var stt: Dictionary = es[ck]
 	if bool(stt.get("bear_done", false)) or bool(stt.get("bear_charging", false)): return
 	var si: int = int(stt.get("doll_si", 0))
 	var _iv: float = 1.0 if OS.has_environment("EQDEMO_FAST") else DOLL_IV   # FAST=快速看波
@@ -165,10 +171,12 @@ func _tick_bear_anim(u: Dictionary, delta: float) -> void:   # 大熊状态机: 
 func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2eq_014: 硬化满25层(harden_cap·见 equip_stats_apply)后每8秒汲取全体敌(魔伤0.8/1/2.5×(护甲+魔抗))+每敌回血 50/100/250+已损5%; 满层瞬间立即首次; 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp168: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_014": continue
-		battle._equip_sys.tally.push(u, "p2eq_014")   # ④ 这一段是这件装备的效果
-		var stt: Dictionary = u["eq_state"].get("p2eq_014", {})
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_014"))   # ④ 这一段是这件装备的效果
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_014"), {})
 		if int(stt.get("harden_stacks", 0)) < int(stt.get("harden_cap", FORTRESS_CAP)):
 			e["fortress_t"] = FORTRESS_IV   # 未叠满→预置一整个周期(叠满瞬间立即首次汲取)
 			continue
@@ -202,13 +210,16 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 			battle._vfx.drain_stream(o["pos"], u["pos"])
 			battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, k2 * (u["def"] + u["mr"]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 真·魔法伤害(走魔抗); 原 raw=true 是白字真伤·与文案"魔法伤害"不符(用户2026-07-19指出)
 			battle._damage._heal(u, heal_flat + maxf(0.0, u["maxHp"] - u["hp"]) * FORTRESS_HEAL_LOST)   # 已损生命 6% → 5%
+	battle._equip_sys.ck_restore(_ckp168)
 
 func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒放一个总护盾池(100/250/400 + 携带者8%最大生命)由全队(含自己)均分(用户2026-07-19; 原每人固定15/20/25); 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp209: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_016": continue
-		battle._equip_sys.tally.push(u, "p2eq_016")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_016"))   # ④ 这一段是这件装备的效果
 		e["ironwall_t"] = float(e.get("ironwall_t", 0.0)) + delta
 		if float(e["ironwall_t"]) < IRONWALL_IV: continue
 		e["ironwall_t"] = 0.0
@@ -219,6 +230,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 		var each: float = pool / float(mates.size())                      # 全队(含自己·除大师/龟蛋)均分
 		for o in mates:
 			battle._damage._grant_shield(o, each, BattleDamage.COMMON_SHIELD_SEC)   # 通用护盾=4秒(文案没写时长); 周期 IRONWALL_IV=5s 大于它 ⇒ 每轮中间有 1 秒空窗
+	battle._equip_sys.ck_restore(_ckp209)
 
 
 ## 【017 不沉之锚】回血攒充能 → 充能期加攻速 → 普攻消耗充能击飞。
@@ -272,14 +284,16 @@ func _tick_anchor(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	if not u.get("alive", false): return
+	var _ckp275: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_017": continue
-		battle._equip_sys.tally.push(u, "p2eq_017")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_017"))   # ④ 这一段是这件装备的效果
 		e["anchor_t"] = float(e.get("anchor_t", 0.0)) + delta
 		if float(e["anchor_t"]) < ANCHOR_IV: continue
 		e["anchor_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		var stt: Dictionary = u["eq_state"].get("p2eq_017", {})
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_017"), {})
 		## 用户 2026-08-12 削弱:「巨沉之锚的每 0.25 回血削弱为 0.1/0.2/3% 最大生命值」
 		## (原 1/2/15%)。★注意这条回血还兼着充能来源(累积治疗满 250 → +1 沉锚充能),
 		##   所以削回血 = 连带把沉锚充能的攒速一起削了, 不是只削治疗量。
@@ -297,7 +311,8 @@ func _tick_anchor(u: Dictionary, delta: float) -> void:
 			acc -= ANCHOR_ACC_PER_CHARGE
 			stt["anchor_charges"] = int(stt.get("anchor_charges", 0)) + 1
 		stt["anchor_accum"] = acc
-		u["eq_state"]["p2eq_017"] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_017")] = stt
+	battle._equip_sys.ck_restore(_ckp275)
 
 
 const HOTSPRING_IV := 1.0    # 温泉蛋回血节拍(秒) —— 用户 2026-08-01「携带者每秒回复 5/7/10 生命值」
@@ -316,13 +331,15 @@ func _tick_hotspring(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	if not u.get("alive", false): return
+	var _ckp319: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_036": continue
-		battle._equip_sys.tally.push(u, "p2eq_036")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_036"))   # ④ 这一段是这件装备的效果
 		e["hotspring_t"] = float(e.get("hotspring_t", 0.0)) + delta
 		if float(e["hotspring_t"]) < HOTSPRING_IV: continue
 		e["hotspring_t"] = 0.0
-		var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_036"), {})
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var ps: float = float(stt.get("heal_ps", 0.0))
 		if ps <= 0.0:
@@ -332,6 +349,7 @@ func _tick_hotspring(u: Dictionary, delta: float) -> void:
 		##   而 `heal_ps` 是登场时算一次的定额。放进 heal_ps 会把它冻在开局那个血量上。
 		ps += float(u.get("maxHp", 0.0)) * HOTSPRING_PCT[si]
 		battle._damage._heal(u, ps)
+	battle._equip_sys.ck_restore(_ckp319)
 
 
 ## 靶向器 p2eq_055: 携带者【首次】累计造成 TRIGGER_DMG(400) 伤害 → 向最近 1/1/2 名敌人挂钩索炸弹。
@@ -342,9 +360,11 @@ func _tick_targeter(u: Dictionary, _delta: float) -> void:
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	if not u.get("alive", false): return
+	var _ckp345: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_055": continue
-		battle._equip_sys.tally.push(u, "p2eq_055")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_055"))   # ④ 这一段是这件装备的效果
 		# ★★"每件独立": 触发标记存在【装备条目 e】上, 不是 u["eq_state"]["p2eq_055"]。
 		#   后者是按【装备 id】的槽 —— 带两件靶向器时两件共用一个标记, 第一件放完置 true,
 		#   第二件永远被跳过 = 第二件完全不生效(探针实测: 带两件的挂弹数与带一件一样都是 1)。
@@ -357,14 +377,17 @@ func _tick_targeter(u: Dictionary, _delta: float) -> void:
 		e["hb_fired"] = true
 		for o in tg:
 			battle._hookbomb_sys._hb_attach(u, o, si)
+	battle._equip_sys.ck_restore(_ckp345)
 
 func _tick_thunder(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	## (延时队列的排空已移到 tick_delayed —— 那条无条件每帧调)
 	if u.get("equips", []).is_empty(): return
+	var _ckp365: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_025": continue
-		battle._equip_sys.tally.push(u, "p2eq_025")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_025"))   # ④ 这一段是这件装备的效果
 		e["thunder_t"] = float(e.get("thunder_t", 0.0)) + delta
 		if float(e["thunder_t"]) < THUNDER_IV: continue
 		if ctl_hold(u):
@@ -385,6 +408,7 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:
 		for d in range([1, 2, 3][si]):                # 道间错峰
 			_bolt_q.append({"at": battle._t + float(d) * BOLT_GAP, "u": u,
 				"kind": "bolt", "o": null, "_tl": battle._equip_sys.tally.capture()})
+	battle._equip_sys.ck_restore(_ckp365)
 
 # 029 冰封水母(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
 ## ★029 冰封水母的「每 12 秒」驱动 `_tick_ice_fissure` 已整体删除(2026-08-12):
@@ -444,16 +468,18 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 	if u.get("equips", []).is_empty(): return
 	var side := str(u.get("side", ""))
 	if side != "left" and side != "right": return   # 召唤物等没有阵营的不产币
+	var _ckp447: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_035": continue
-		battle._equip_sys.tally.push(u, "p2eq_035")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_035"))   # ④ 这一段是这件装备的效果
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		var stt: Dictionary = u["eq_state"].get("p2eq_035", {})
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_035"), {})
 		stt["gear_t"] = float(stt.get("gear_t", 0.0)) + delta
 		var iv: float = float(GEAR_IV[si])
 		var gkey := "%s|%s|%d" % [str(u.get("side", "")), str(u.get("id", "")), (u["equips"] as Array).find(e)]
 		if int(_gear_made.get(gkey, 0)) >= int(GEAR_CAP[si]):
-			u["eq_state"]["p2eq_035"] = stt
+			u["eq_state"][battle._equip_sys.key_of(u, "p2eq_035")] = stt
 			continue                     # 这件本场已满额
 		if float(stt["gear_t"]) >= iv:
 			stt["gear_t"] = float(stt["gear_t"]) - iv   # ★读常量不写死
@@ -465,32 +491,38 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 				battle._vfx.coin_pop(u, coins)   # 头顶旋转金币(用户2026-09-13: 「做一个头顶获得金币旋转的特效」)
 				battle._audio_sys.sfx_equip("p2eq_035")   # 装备触发声(11-05 音效 v2; 只管声音)
 				stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
-		u["eq_state"]["p2eq_035"] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_035")] = stt
+	battle._equip_sys.ck_restore(_ckp447)
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp473: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_018": continue
-		battle._equip_sys.tally.push(u, "p2eq_018")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_018"))   # ④ 这一段是这件装备的效果
 		e["shell_t"] = float(e.get("shell_t", 0.0)) + delta
 		if float(e["shell_t"]) < SHELL_IV: continue
 		e["shell_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		battle._damage._heal(u, [30, 45, 60][si] + u["maxHp"] * [0.05, 0.09, 0.15][si])
 		battle._shell_sys._shell_guard_fx(u)   # 半壳合拢护罩演出(用户2026-07-19)
+	battle._equip_sys.ck_restore(_ckp473)
 
 func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp486: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_019": continue
-		battle._equip_sys.tally.push(u, "p2eq_019")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_019"))   # ④ 这一段是这件装备的效果
 		e["anemone_t"] = float(e.get("anemone_t", 0.0)) + delta
 		if float(e["anemone_t"]) < ANEMONE_IV: continue
 		e["anemone_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-		var stt: Dictionary = u["eq_state"].get("p2eq_019", {})
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_019"), {})
 		# 海葵层的+治疗/护盾强度已经在获得层时真的加进 u.heal_amp/shield_amp (见下), battle._damage._heal 会自己乘, 这里不能再乘一遍
 		var h1: float = [30, 45, 60][si] + (u["maxHp"] - u["hp"]) * [0.12, 0.14, 0.18][si]
 		var prov19: float = battle._damage._heal(u, h1)                     # 按【实际】回血计数(同017口径·用户2026-07-19)
@@ -516,14 +548,17 @@ func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_01
 			u["heal_amp"] = float(u.get("heal_amp", 0.0)) + inc19       # 海葵层原来只放大019自己的回血, 文案说的"治疗与护盾强度"根本没生效 → 真的加进全局(用户2026-07-19)
 			u["shield_amp"] = float(u.get("shield_amp", 0.0)) + inc19   # 一局内累计不封顶, 单位每场重建 eq_state/heal_amp → 天然重置
 			battle._skill_ring(u["pos"], Color(0.55, 0.9, 0.7, 0.5), 44.0)
-		u["eq_state"]["p2eq_019"] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_019")] = stt
+	battle._equip_sys.ck_restore(_ckp486)
 
 func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: 每8秒一套(原地锻炼锁攻锁充能→+锻炼层→蓄力掷哑铃击退); 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp524: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_020": continue
-		battle._equip_sys.tally.push(u, "p2eq_020")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_020"))   # ④ 这一段是这件装备的效果
 		e["dumbbell_t"] = float(e.get("dumbbell_t", 0.0)) + delta
 		if float(e["dumbbell_t"]) < DUMBBELL_IV: continue   # 每10秒→每8秒(用户2026-07-19)
 		if ctl_hold(u):
@@ -532,17 +567,20 @@ func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: �
 		e["dumbbell_t"] = 0.0
 		if u.get("_slam", false): continue   # 正在别的channel中→跳过本次
 		battle._equip_sys._eq_dumbbell_routine(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
+	battle._equip_sys.ck_restore(_ckp524)
 
 # 027 电棍: 每3s就绪→下次普攻消耗1层(附魔法伤+眩晕); 就绪时身上冒电光
 func _tick_baton(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp540: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_027": continue
-		battle._equip_sys.tally.push(u, "p2eq_027")   # ④ 这一段是这件装备的效果
-		var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_027"))   # ④ 这一段是这件装备的效果
+		var bst: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_027"), {})
 		if int(bst.get("baton_charges", 0)) <= 0:
-			bst["baton_ready"] = false; u["eq_state"]["p2eq_027"] = bst; continue
+			bst["baton_ready"] = false; u["eq_state"][battle._equip_sys.key_of(u, "p2eq_027")] = bst; continue
 		if not bst.get("baton_ready", false):
 			bst["baton_cd"] = float(bst.get("baton_cd", 0.0)) + delta
 			if float(bst["baton_cd"]) >= 3.0:
@@ -552,15 +590,18 @@ func _tick_baton(u: Dictionary, delta: float) -> void:
 			if float(bst["baton_spark_t"]) >= 0.16:
 				bst["baton_spark_t"] = 0.0
 				battle._vfx.baton_spark(u)
-		u["eq_state"]["p2eq_027"] = bst
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_027")] = bst
+	battle._equip_sys.ck_restore(_ckp540)
 
 func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp560: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_021": continue
-		battle._equip_sys.tally.push(u, "p2eq_021")   # ④ 这一段是这件装备的效果
-		var stt: Dictionary = u["eq_state"].get("p2eq_021", {})
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_021"))   # ④ 这一段是这件装备的效果
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_021"), {})
 		e["barnacle_t"] = float(e.get("barnacle_t", 0.0)) + delta
 		## ★2026-10-11 全项目通读 A13: 「首次立即连」原来用 link_target == null 判 ⇒ 没友军时 best 又写回 null,
 		##   下一帧条件仍成立 ⇒ 每帧 +10 龟能 +10% 攻速(实测 2 秒叠 +1200%)。改用独立的「连过了」标记(门禁 verify_barnacle_solo)。
@@ -575,7 +616,7 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 				if is_same(o, u): continue   # is_same: 单位字典深比较有卡死风险(同053)
 				if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
 			stt["link_target"] = best
-			u["eq_state"]["p2eq_021"] = stt
+			u["eq_state"][battle._equip_sys.key_of(u, "p2eq_021")] = stt
 			var benef: Array = [u]
 			if best != null: benef.append(best)
 			for o in benef:
@@ -584,18 +625,27 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 				battle._skill_ring(o["pos"], Color(0.55, 1.0, 0.78, 0.5), 44.0)
 			if best != null:   # 连接友军: 盾 + 伤害转移(25/40/60%受伤转给携带者); 不净化(用户)
 				battle._damage._grant_shield(best, [60.0, 110.0, 180.0][si], BattleDamage.COMMON_SHIELD_SEC)   # 用户2026-07-19: 40/60/90→60/110/180; 通用护盾=4秒
-				best["dmg_redirect_to"] = {"carrier": u, "pct": [0.25, 0.40, 0.60][si], "until": battle._t + 5.5}
+				## 伤害转移只有一个槽: 同一携带者带两件时取比例高的那份(两份相加会超过 100%), 盾 / 龟能 / 攻速各给各的(11-13)
+				var _rd = best.get("dmg_redirect_to", null)
+				var _p21: float = [0.25, 0.40, 0.60][si]
+				if _rd is Dictionary and is_same((_rd as Dictionary).get("carrier", null), u) and float((_rd as Dictionary).get("until", 0.0)) > battle._t:
+					_p21 = maxf(_p21, float((_rd as Dictionary).get("pct", 0.0)))
+				best["dmg_redirect_to"] = {"carrier": u, "pct": _p21, "until": battle._t + 5.5}
 		battle._update_barnacle_line(u, stt.get("link_target", null))   # 每帧: 持续绿色绑定线(跟随移动/能量脉动)
-		break   # 只处理一件(共享绑定线)
+		## ★11-13 删掉原来的 `break  # 只处理一件(共享绑定线)`: 用户「两件相同装备…各自生效各自的效果」⇒ 每件各连一次、各给一份。
+		##   绑定线按携带者只有一条(两件连的是同一个最高攻友军, 画一条就够)。
+	battle._equip_sys.ck_restore(_ckp560)
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 海藻p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	var _k := -1
+	var _ckp595: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		_k += 1
 		if str(e["id"]) != "p2eq_012": continue
-		battle._equip_sys.tally.push(u, "p2eq_012")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_012"))   # ④ 这一段是这件装备的效果
 		## 登场魔法护盾(用户 2026-10-08): 本路第一次 tick 给一次(羁绊加的最大生命此时都已写完);
 		##   标记记在单位字典上 ⇒ 换路重建单位后自然再给一次。每件各给一份。
 		var _msk: String = "_kelp_ms_%d" % _k
@@ -609,14 +659,17 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 海藻p2eq_012: 每4s
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		battle._vfx.kelp_burst(u)   # ★来源标识: 脚下长一丛海藻(通用六棱护罩由 _grant_shield 另罩一层)
 		battle._damage._grant_shield(u, JELLY_SHIELD[si] + u["maxHp"] * JELLY_MAXHP_PCT[si], BattleDamage.COMMON_SHIELD_SEC)   # 用户2026-10-08: 40/60/90 + 3/4/5.5%最大生命; 通用护盾=4秒(恰好接上下一轮 JELLY_IV=4s·不断层也不无限叠)
+	battle._equip_sys.ck_restore(_ckp595)
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	var t = null; var got = false; var rng: float = RUST_RANGE   # 全场覆盖(用户2026-07-19: 近战→远程「裂空飞斩」)
+	var _ckp617: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_001": continue
-		battle._equip_sys.tally.push(u, "p2eq_001")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_001"))   # ④ 这一段是这件装备的效果
 		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
 		if float(e["rust_t"]) < RUST_IV: continue           # 该件未就绪(每3s就绪一次)
 		if ctl_hold(u): continue
@@ -627,14 +680,17 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var dmg01: int = battle._resolve_dmg(u, u["atk"] * [0.6, 0.75, 1.0][si] + [40.0, 60.0, 100.0][si] * u["crit"], t, false)
 		battle._ballistics.fire_flyslash(u, t, dmg01, Color("#ffd27a"))   # 剑气飞到目标才结算伤(命中判定在_projectiles arrival)
+	battle._equip_sys.ck_restore(_ckp617)
 
 
 func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_008: 每9秒对最远敌射珊瑚尖刺(用户2026-07-19: 6→9); 命中才结算; 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp635: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_008": continue
-		battle._equip_sys.tally.push(u, "p2eq_008")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_008"))   # ④ 这一段是这件装备的效果
 		e["coral_t"] = float(e.get("coral_t", 0.0)) + delta
 		if float(e["coral_t"]) < CORAL_IV: continue
 		if ctl_hold(u): continue
@@ -645,39 +701,48 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 		if far == null: continue
 		e["coral_t"] = 0.0
 		battle._ballistics._fire_coral_spike(u, far, battle._equip_sys._eq_si(int(e.get("star", 1))))
+	battle._equip_sys.ck_restore(_ckp635)
 
 func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq_007: 每6秒触发(用户); 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp652: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_007": continue
-		battle._equip_sys.tally.push(u, "p2eq_007")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_007"))   # ④ 这一段是这件装备的效果
 		e["bsw_t"] = float(e.get("bsw_t", 0.0)) + delta
 		if float(e["bsw_t"]) < BROADSWORD_IV: continue
 		if ctl_hold(u): continue
 		if battle._targeting._nearest_enemy(u) == null: continue
 		e["bsw_t"] = 0.0
 		battle._equip_sys._eq_broadsword(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
+	battle._equip_sys.ck_restore(_ckp652)
 
 func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2eq_006: 每7秒触发; 每件独立计时
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp665: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_006": continue
-		battle._equip_sys.tally.push(u, "p2eq_006")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_006"))   # ④ 这一段是这件装备的效果
 		e["storm_t"] = float(e.get("storm_t", 0.0)) + delta
 		if float(e["storm_t"]) < SWORD_STORM_IV: continue
 		if ctl_hold(u): continue
 		if battle._targeting._nearest_enemy(u) == null: continue
 		e["storm_t"] = 0.0
 		battle._equip_sys._eq_sword_storm(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
+	battle._equip_sys.ck_restore(_ckp665)
 
 func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010: 独立计时器(按携带者攻速)每次扇形斩(用户)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _ckp678: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		battle._equip_sys.ck_set(u, e)
 		if str(e["id"]) != "p2eq_010": continue
-		battle._equip_sys.tally.push(u, "p2eq_010")   # ④ 这一段是这件装备的效果
+		battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_010"))   # ④ 这一段是这件装备的效果
 		e["laser_t"] = float(e.get("laser_t", 0.0)) + delta
 		if float(e["laser_t"]) < maxf(0.3, float(u.get("atk_interval", 1.0))): continue
 		if ctl_hold(u): continue
@@ -685,6 +750,7 @@ func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010:
 		if t == null: continue
 		e["laser_t"] = 0.0
 		battle._equip_sys._eq_laser_sweep(u, t, battle._equip_sys._eq_si(int(e.get("star", 1))))
+	battle._equip_sys.ck_restore(_ckp678)
 
 # ============================================================================
 #  温泉蛋 036 的孵化进度与临时等级 —— 2026-08-01 从 RealtimeBattle3DScene 搬来。
@@ -697,7 +763,7 @@ func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010:
 func _egg_replay_levels(u: Dictionary, n: int) -> void:
 	if n <= 0 or not u.get("alive", false):
 		return
-	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_036"), {})
 	if not stt.has("ref_atk"):
 		stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
 		stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
@@ -708,13 +774,13 @@ func _egg_replay_levels(u: Dictionary, n: int) -> void:
 	u["maxHp"] += hpg; u["hp"] += hpg
 	u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + EGG_LV_ASPD * float(n)))
 	stt["egg_levels"] = n
-	u["eq_state"]["p2eq_036"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_036")] = stt
 	battle._recalc_stats(u)
 
 
 func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): 累积孵化进度→每100+1临时等级(线性+5%基础+攻速2%/级,同统领,上限3/4/5随星级)→孵满全队均摊护盾一次
 	if amt <= 0.0 or not u.get("has_egg", false) or not u.get("alive", false): return
-	var stt: Dictionary = u["eq_state"].get("p2eq_036", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_036"), {})
 	# 等级上限随星级 3/4/5(用户2026-08-01); 缺省 3 = 老存档/未走 apply 的合成单位仍按原行为
 	var cap: int = int(stt.get("egg_cap", 3))
 	stt["incub"] = float(stt.get("incub", 0.0)) + amt
@@ -740,7 +806,7 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 			for o in allies: battle._damage._grant_shield(o, per)
 			battle._particle_burst(u["pos"])
 	if int(stt.get("egg_levels", 0)) >= cap: stt["incub"] = minf(float(stt["incub"]), EGG_FULL)   # ★原来写死 100.0
-	u["eq_state"]["p2eq_036"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_036")] = stt
 
 ## ── 025 雷鸣贝壳: 从主文件搬来(CLAUDE.md §5「装备效果去 scripts/systems/equip/」) ──
 ## ★两层延时原来都是 tween; 现在都挂 `_bolt_q`, 由 `_drain_bolts()` 按 `battle._t` 结算。

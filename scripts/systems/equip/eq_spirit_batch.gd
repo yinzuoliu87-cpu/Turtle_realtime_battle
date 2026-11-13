@@ -63,12 +63,15 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		return
 	## ★11-12 逐件切统计上下文: 原来整段记给「这只身上第一件灵物」, 同一只带 064 + 060 时伞的回血全记给 064
 	##   (用户「水母伞一直都是暂无效果」, 真实两号切磋查实: 两个号都是 064 排在 060 前面)。
+	## ★11-13 每一件各推一次(用户「两件相同装备…各自生效」): 各自 7 秒开伞 / 各自跌破 35% 起幽灵护盾。
+	##   each_copy 切好份号 / 统计 / 龟身字段(`_parasol_si` `_bladder_si` 按份换装, EquipSystem.UF); 单件逐字不变。
+	var es = battle._equip_sys
 	if int(u.get("_parasol_si", -1)) >= 0:
-		battle._equip_sys.tally.use([u, "p2eq_060"])
-		_tick_parasol(u, delta)
+		es.each_copy(u, "p2eq_060", func(_si: int) -> void:
+			if int(u.get("_parasol_si", -1)) >= 0: _tick_parasol(u, delta))
 	if int(u.get("_bladder_si", -1)) >= 0:
-		battle._equip_sys.tally.use([u, "p2eq_064"])
-		_tick_bladder(u, delta)
+		es.each_copy(u, "p2eq_064", func(_si: int) -> void:
+			if int(u.get("_bladder_si", -1)) >= 0: _tick_bladder(u, delta))
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -100,7 +103,7 @@ const PARASOL_BUFF_SRC := "p2eq_060"
 
 func _tick_parasol(u: Dictionary, delta: float) -> void:
 	var si: int = int(u["_parasol_si"])
-	var stt: Dictionary = u["eq_state"].get("p2eq_060", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_060"), {})
 	var t: float = float(stt.get("pa_t", 0.0)) + delta
 	var open: bool = bool(stt.get("pa_open", false))
 	if not open:
@@ -115,7 +118,7 @@ func _tick_parasol(u: Dictionary, delta: float) -> void:
 			_parasol_close(u, si, stt)
 	stt["pa_t"] = t
 	stt["pa_open"] = open
-	u["eq_state"]["p2eq_060"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_060")] = stt
 
 
 ## 伞打开: 自身 + 200 码内队友拿 11/22/35% 减伤 + 15% 闪避
@@ -131,6 +134,10 @@ func _parasol_open(u: Dictionary, si: int, stt: Dictionary) -> void:
 		o["damage_reduction"] = float(o.get("damage_reduction", 0.0)) + dr
 		o["_pa_dr"] = float(o.get("_pa_dr", 0.0)) + dr   # 「本局」减伤挡下: 伞那份减伤 + 撑伞的是谁(battle_damage._credit_parasol_block 读; 只动统计)
 		o["_pa_by"] = u
+		## 来源表 [撑伞者, 份号, 这把伞的减伤](11-13): 同时罩着好几把伞时按各自减伤占比分「减免伤害」账
+		var _src: Array = o.get("_pa_src", [])
+		_src.append([u, battle._equip_sys.key_of(u, "p2eq_060"), dr])
+		o["_pa_src"] = _src
 		(o["buffs"] as Array).append({
 			"stat": "dodge", "amount": PARASOL_DODGE, "pct": false,
 			"until": battle._t + 1.0e9, "src_eq": PARASOL_BUFF_SRC,
@@ -157,7 +164,7 @@ func on_owner_death(u: Dictionary, si: int, stt: Dictionary) -> void:
 		return
 	_parasol_close(u, si, stt)
 	stt["pa_open"] = false
-	u["eq_state"]["p2eq_060"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_060")] = stt
 
 
 ## 伞收拢: 摘掉减伤/闪避, 携带者回复 50/80/130 生命
@@ -168,11 +175,20 @@ func _parasol_close(u: Dictionary, si: int, stt: Dictionary) -> void:
 			continue
 		o["damage_reduction"] = maxf(0.0, float(o.get("damage_reduction", 0.0)) - dr)
 		var _pdr: float = float(o.get("_pa_dr", 0.0)) - dr
+		var _src: Array = o.get("_pa_src", [])
+		var _ck60: String = battle._equip_sys.key_of(u, "p2eq_060")
+		for j in range(_src.size()):
+			if is_same(_src[j][0], u) and str(_src[j][1]) == _ck60:
+				_src.remove_at(j)
+				break
 		if _pdr <= 1e-6:
 			o.erase("_pa_dr")
 			o.erase("_pa_by")
+			o.erase("_pa_src")
 		else:
 			o["_pa_dr"] = _pdr
+			if not _src.is_empty():
+				o["_pa_by"] = _src[0][0]
 		var bl: Array = o.get("buffs", [])
 		for i in range(bl.size() - 1, -1, -1):
 			var b = bl[i]
@@ -200,8 +216,11 @@ func on_parasol_dodge(u: Dictionary) -> void:
 			break
 	if not has_buff:
 		return
-	if u.get("_pa_by", null) is Dictionary:
-		battle._equip_sys.tally.credit(u["_pa_by"], "p2eq_060", "dodge", 1.0)   # 「本局」伞下闪避次数(每次都记, 不吃下面的演出节流)
+	var _src: Array = u.get("_pa_src", [])
+	if not _src.is_empty() and _src[0][0] is Dictionary:
+		battle._equip_sys.tally.credit(_src[0][0], str(_src[0][1]), "dodge", 1.0)   # 「本局」伞下闪避次数(每次都记, 不吃下面的演出节流; 几把伞同罩记给最早撑开的那一把)
+	elif u.get("_pa_by", null) is Dictionary:
+		battle._equip_sys.tally.credit(u["_pa_by"], "p2eq_060", "dodge", 1.0)
 	if battle._t - float(u.get("_pflash_t", -10.0)) < 0.25:
 		return
 	u["_pflash_t"] = battle._t
@@ -279,24 +298,24 @@ const MANTIS_LEECH := 0.40
 
 ## 放技能 → 蓄一发; 龟能记这次技能的消耗(再放技能就覆盖成最近那次, 不叠 —— 口径②)。
 func _eq_mantis_ready(u: Dictionary, _si: int) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_062", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_062"), {})
 	var stype: String = cast_stype(u)
 	stt["emp_ready"] = true
 	stt["emp_energy"] = float(battle._skill_cost(u, stype)) if stype != "" else 0.0
-	u["eq_state"]["p2eq_062"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_062")] = stt
 	_vfx.mantis_ready(u)   # 待发指示: 身前钳形光弧(玩家能看出下一击有强化)
 
 
 ## 普攻出手 → 取出这一发(口径④: 被闪避也算用掉 —— 这里就把 ready 清了, 没蓄的出手顺手清掉上一次没打中的)。
 func _eq_mantis_arm(u: Dictionary) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_062", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_062"), {})
 	var go: bool = bool(stt.get("emp_ready", false))
 	stt["emp_armed"] = go
 	if go:
 		stt["emp_ready"] = false
 		stt["emp_armed_energy"] = float(stt.get("emp_energy", 0.0))
 		_vfx.mantis_consume(u)   # 收待发指示(出手即用掉)
-	u["eq_state"]["p2eq_062"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_062")] = stt
 
 
 ## 普攻命中 → 这一发出手时取出了, 就打出额外段并回血。
@@ -304,12 +323,12 @@ func _eq_mantis_arm(u: Dictionary) -> void:
 func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, _dmg: int, si: int, basic: bool = false) -> void:
 	if not basic:
 		return
-	var stt: Dictionary = src["eq_state"].get("p2eq_062", {})
+	var stt: Dictionary = src["eq_state"].get(battle._equip_sys.key_of(src, "p2eq_062"), {})
 	if not bool(stt.get("emp_armed", false)) or not tgt.get("alive", false):
-		src["eq_state"]["p2eq_062"] = stt
+		src["eq_state"][battle._equip_sys.key_of(src, "p2eq_062")] = stt
 		return
 	stt["emp_armed"] = false
-	src["eq_state"]["p2eq_062"] = stt
+	src["eq_state"][battle._equip_sys.key_of(src, "p2eq_062")] = stt
 	var mult: float = 1.0 + MANTIS_PER_ENERGY * float(stt.get("emp_armed_energy", 0.0))
 	var base: float = (float(src.get("atk", 0.0)) * MANTIS_ATK[si] + float(tgt.get("maxHp", 0.0)) * MANTIS_HP[si]) * mult
 	## 物理伤害 ⇒ 吃护甲、可暴击(口径③); from_equip 防自激(口径⑥)
@@ -465,21 +484,25 @@ const GHOST_BUFF_SRC := "p2eq_064"
 ##   但我实现到这里时它**还不存在**; 而本件本来就要一个每帧钩(与 060 共用),
 ##   所以就地判了。若将来统一到 hp_line, 把这四行换成一次注册即可, 行为完全相同。
 func _tick_bladder(u: Dictionary, _delta: float) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_064", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_064"), {})
 	if not bool(stt.get("ghost_fired", false)):
 		if float(u.get("maxHp", 0.0)) > 0.0 and float(u["hp"]) < float(u["maxHp"]) * GHOST_HP_LINE:
 			stt["ghost_fired"] = true
-			u["eq_state"]["p2eq_064"] = stt
+			u["eq_state"][battle._equip_sys.key_of(u, "p2eq_064")] = stt
 			_ghost_grant(u, int(u["_bladder_si"]))
-			stt = u["eq_state"].get("p2eq_064", {})
-	u["eq_state"]["p2eq_064"] = stt
+			stt = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_064"), {})
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_064")] = stt
 	## ★血条浮囊珊瑚段: 余额每帧镜像进单位字段(HpBar 只认 f 的字段, 拿不到 battle._spec)。
 	##   吸收 / 衰减 / 破盾全走 SpecialBalance, 这里只抄读数; 开盾那一步就有值(上面不 return)。
-	u["_ghostShieldVal"] = battle._spec.val(u, GHOST_KEY)
+	## 血条上的幽灵护盾段 = 各件之和(11-13: 每件一份余额, 键见 _ghost_key_of)
+	var _gsum: float = 0.0
+	for _c in EquipStatsApply.copies(u, "p2eq_064"):
+		_gsum += battle._spec.val(u, _ghost_key_of(str(_c[0])))
+	u["_ghostShieldVal"] = _gsum if _gsum > 0.0 else battle._spec.val(u, GHOST_KEY)
 	## 浮囊演出跟着真实余额瘪下去 —— 演出不自己算衰减(两套真相会打架)
 	var h = stt.get("ghost_vfx", null)
 	if h is Dictionary and not (h as Dictionary).is_empty():
-		var v: float = battle._spec.val(u, GHOST_KEY)
+		var v: float = battle._spec.val(u, _ghost_key_of(battle._equip_sys.key_of(u, "p2eq_064")))
 		var m: float = maxf(float(stt.get("ghost_max", 1.0)), 0.001)
 		_vfx.set_bladder_frac(h, v / m)
 
@@ -487,10 +510,10 @@ func _tick_bladder(u: Dictionary, _delta: float) -> void:
 func _ghost_grant(u: Dictionary, si: int) -> void:
 	var amt: float = float(u["maxHp"]) * [0.50, 0.80, 1.60][si]
 	var res: float = [30.0, 60.0, 120.0][si]
-	var stt: Dictionary = u["eq_state"].get("p2eq_064", {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_064"), {})
 	stt["ghost_max"] = amt
 	stt["ghost_res"] = res
-	u["eq_state"]["p2eq_064"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_064")] = stt
 	## 双抗走 base_def/base_mr(= _recalc_stats 的唯一入料口), 闪避走 buffs 通道
 	u["base_def"] = float(u.get("base_def", 0.0)) + res
 	u["base_mr"] = float(u.get("base_mr", 0.0)) + res
@@ -499,24 +522,33 @@ func _ghost_grant(u: Dictionary, si: int) -> void:
 		"until": battle._t + 1.0e9, "src_eq": GHOST_BUFF_SRC,
 	})
 	battle._recalc_stats(u)
-	battle._spec.grant(u, GHOST_KEY, amt, {
+	var _gck: String = battle._equip_sys.key_of(u, "p2eq_064")   # 份号: 每件一份余额, 破盾只撤这一件给的(11-13)
+	battle._spec.grant(u, _ghost_key_of(_gck), amt, {
 		"decay_sec": GHOST_DECAY,
-		"on_break": func(uu, _k, _reason): _ghost_break(uu, si),
+		"on_break": func(uu, _k, _reason): _ghost_break(uu, si, _gck),
 	})
-	battle._equip_sys.tally.credit(u, "p2eq_064", "shield", amt)   # ④ 装备统计: 幽灵护盾是 SpecialBalance 余额、不走 `_grant_shield` ⇒ 按发放量直接记
-	stt = u["eq_state"].get("p2eq_064", {})
+	battle._equip_sys.tally.credit(u, battle._equip_sys.key_of(u, "p2eq_064"), "shield", amt)   # ④ 装备统计: 幽灵护盾是 SpecialBalance 余额、不走 `_grant_shield` ⇒ 按发放量直接记
+	stt = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_064"), {})
 	## ★★颜色从 (0.72, 0.86, 1.00) 推深到 (0.30, 0.62, 1.00)。
 	##   原色饱和度只有 0.28 —— **对黑底来说就是白**。A/B 实测(2026-08-11):
 	##   即使改成只画正面, 它自己画的像素里仍有 **42% 低饱和**。
 	##   095 那一轮的结论: **亮度要靠 alpha 给, 不能靠把颜色推淡** ——
 	##   半透明的近白在黑底上合成出来就是灰/白。
 	stt["ghost_vfx"] = _vfx.float_bladder(u["pos"], Color(0.30, 0.62, 1.00, 0.85), u)   # ★颜色推深: 见下
-	u["eq_state"]["p2eq_064"] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_064")] = stt
+
+
+## 份号 → 这一件的幽灵护盾余额键(第 1 件 = 原键, 逐字不变)。
+func _ghost_key_of(ck: String) -> String:
+	var i: int = ck.find(EquipStatsApply.CK_SEP)
+	return GHOST_KEY if i < 0 else GHOST_KEY + ck.substr(i)
 
 
 ## 破盾(被打光 **或** 自然衰减完 —— 两种都炸)
-func _ghost_break(u: Dictionary, _star_i: int) -> void:
-	var stt: Dictionary = u["eq_state"].get("p2eq_064", {})
+func _ghost_break(u: Dictionary, _star_i: int, ck: String = "") -> void:
+	if ck == "":
+		ck = battle._equip_sys.key_of(u, "p2eq_064")
+	var stt: Dictionary = u["eq_state"].get(ck, {})
 	var res: float = float(stt.get("ghost_res", 0.0))
 	u["base_def"] = maxf(0.0, float(u.get("base_def", 0.0)) - res)
 	u["base_mr"] = maxf(0.0, float(u.get("base_mr", 0.0)) - res)
@@ -533,14 +565,14 @@ func _ghost_break(u: Dictionary, _star_i: int) -> void:
 	stt["ghost_vfx"] = null
 	stt["ghost_res"] = 0.0
 	u["_ghostShieldVal"] = 0.0   # 破盾同一步血条段归零(不等下一帧镜像)
-	u["eq_state"]["p2eq_064"] = stt
+	u["eq_state"][ck] = stt
 	var n := 0
 	for o in battle._targeting._enemies_of(u):
 		if not (o is Dictionary) or not o.get("alive", false):
 			continue
 		if float(DetMath.dist((o["pos"] as Vector2), u["pos"])) > GHOST_BURST_R:
 			continue
-		var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_064")   # ④ 装备统计: 破盾可能发生在对方的伤害结算里 ⇒ 诅咒 DoT 条目打「携带者 · 064」的标
+		var _tp: Array = battle._equip_sys.tally.push(u, ck)   # ④ 装备统计: 破盾可能发生在对方的伤害结算里 ⇒ 诅咒 DoT 条目打「携带者 · 064」的标
 		battle._damage._add_curse(o, GHOST_CURSE_SEC, u)
 		battle._equip_sys.tally.pop(_tp)
 		n += 1

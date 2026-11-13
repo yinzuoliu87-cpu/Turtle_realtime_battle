@@ -259,7 +259,7 @@ func _refresh_info_panel() -> void:
 				var elb = (ent2 as Dictionary).get("lbl", null)
 				if elb == null or not is_instance_valid(elb):
 					continue
-				var etx := _equip_readout_text(ud, str((ent2 as Dictionary).get("eid", "")))
+				var etx := _equip_readout_text(ud, str((ent2 as Dictionary).get("eid", "")), str((ent2 as Dictionary).get("ck", "")))
 				if elb.text != etx:
 					elb.text = etx
 	_refresh_eq_stats()
@@ -907,6 +907,10 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		if not filled:
 			continue
 		var eid := str((it as Dictionary).get("id", ""))
+		## 份号(11-13 用户「两个相同装备…统计那肯定是分开」): 同名第 2 件起读数 / 本局统计取「id#2」那一槽
+		var ck := EquipStatsApply.ck_of(u, it)
+		if ck == "":
+			ck = eid
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 		var inner = Control.new()
 		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -933,7 +937,7 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.add_child(st)
 		# 局内读数(压图标下沿) —— 与装备图标框同一个数据源
-		var ro := _equip_readout_text(u, eid)
+		var ro := _equip_readout_text(u, eid, ck)
 		if ro != "":
 			var rl = Label.new(); rl.text = ro
 			rl.add_theme_font_size_override("font_size", UIPalette.F_MICRO)
@@ -944,12 +948,12 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 			rl.clip_text = true
 			rl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			inner.add_child(rl)
-			_info_eq_readouts.append({"lbl": rl, "eid": eid})
+			_info_eq_readouts.append({"lbl": rl, "eid": eid, "ck": ck})
 		## ★2026-10-06: 点装备 → 面板左侧弹独立小卡(照云顶装备卡), 不再在面板里盖浮层。
 		var _star: int = maxi(1, int((it as Dictionary).get("star", 1)))
 		slot.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				_open_equip_card(u, eid, _star, slot))
+				_open_equip_card(u, eid, _star, slot, ck))
 
 
 ## 宝箱龟「战利品」一排 5 格(用户 2026-10-22「换」: 原来是一条「战利品 x/5 ▸」入口, 不点开看不到开了哪几件)。
@@ -1069,8 +1073,9 @@ func _refresh_eq_stats() -> void:
 		_eq_stats_lbl.text = tx
 
 
-func _equip_readout_text(u: Dictionary, eid: String) -> String:
-	var stt: Dictionary = (u.get("eq_state", {}) as Dictionary).get(eid, {})
+## ck = 份号(同名第 2 件起「id#2」; 空 = 原 id): 状态按这一件取, 读数表仍按装备 id 查。
+func _equip_readout_text(u: Dictionary, eid: String, ck: String = "") -> String:
+	var stt: Dictionary = (u.get("eq_state", {}) as Dictionary).get(ck if ck != "" else eid, {})
 	var parts: Array = []
 	if EquipReadouts.CHARGE.has(eid):
 		var c: Array = EquipReadouts.CHARGE[eid]
@@ -2162,7 +2167,9 @@ func _insp_slot_box() -> StyleBox:
 const _EQ_STAT_ICON := InspectCard.EQ_STAT_ICON
 
 
-func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) -> void:
+func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control, ck: String = "") -> void:
+	if ck == "":
+		ck = eid
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 	var img := str(edef.get("img", ""))
 	var stats: Array = []
@@ -2170,7 +2177,7 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 		var ik := str(_EQ_STAT_ICON.get(str(kv[0]), ""))
 		var ip := ("res://assets/sprites/stats/%s-icon.png" % ik) if ik != "" else ""
 		stats.append([ip, str(kv[1]) if ip != "" else "%s %s" % [kv[0], kv[1]], Color("#f4ead8")])
-	var st_txt := eq_stats_text_live(u, eid)
+	var st_txt := eq_stats_text_live(u, ck)   # 本局统计按这一件(份号)取
 	## ★对局里按结果写(用户 10-15「对局内就是按结果的写法」): 正文只留这一星的数、公式换成穿戴者算出来的结果,
 	##   公式进拆解行(与龟技能卡底部同一个样子)。图鉴那边没有穿戴者, 写公式不写结果。
 	var live: Dictionary = SkillText.equip_live_bb(edef, star, SkillText.build_vars(u, {}), 14)
@@ -2189,5 +2196,5 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 	})
 	if lv.has("extra"):
 		_eq_stats_lbl = lv["extra"]
-		_eq_stats_eid = eid
+		_eq_stats_eid = ck
 		_eq_stats_unit = u

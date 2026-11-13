@@ -27,6 +27,8 @@ var _gadget_sys: EqGadgetBatch   # 奇械 3 件(085~087)·eq_gadget_batch.gd
 var _arcane_sys: EqArcaneBatch   # 法器 3 件(088~090)·eq_arcane_batch.gd
 var _relic_sys: EqRelicBatch     # 遗物 2 件(091/094)·eq_relic_batch.gd
 var _incense: IncenseStoneSystem # 093 香火石(跨对局养成·要落存档)·incense_stone_system.gd
+var _summons   # 058 / 032 登场召唤(eq_summons.gd)
+var cp   # 份号上下文(equip_copies.gd · 11-13 同名装备多件各自生效)
 ## 092 剧毒飞行物(2026-08-05·遗物·2费): 常驻召唤飞行体 + 地面毒雾场 + 剧毒缓速叠层, 单独成文件。
 ## ★每帧驱动接在 RelicSynergySystem.tick()、撤场接在它的 clear() —— 理由见 eq_venom_drone.gd 文件头判断 ③。
 const VENOM_DRONE := preload("res://scripts/systems/equip/eq_venom_drone.gd")
@@ -60,6 +62,31 @@ func _init(b) -> void:
 	_blood_sys = EqBloodCombo.new(b)
 	_relic_sys = EqRelicBatch.new(b)
 	_incense = IncenseStoneSystem.new(b); tally = EquipTally.new(b)
+	_summons = EqSummons.new(b)
+	cp = EquipCopies.new(b)
+
+
+## ── 份号上下文(11-13 同名装备多件各自生效)整套在 equip_copies.gd(EquipCopies); 这里是同名转发, 调用方不用改 ──
+func ck_save() -> Array:
+	return cp.save()
+func ck_restore(p: Array) -> void:
+	cp.restore(p)
+func ck_set(u, e) -> String:
+	return cp.set_e(u, e)
+func ck_enter(u, ck: String) -> Array:
+	return cp.enter(u, ck)
+func ck_leave(p: Array) -> void:
+	cp.leave(p)
+func key_of(u, iid: String) -> String:
+	return cp.key_of(u, iid)
+func copy_si(u, iid: String) -> int:
+	return cp.copy_si(u, iid)
+func each_copy(u: Dictionary, iid: String, fn: Callable) -> int:
+	return cp.each_copy(u, iid, fn)
+func uf_in(u: Dictionary, ck: String) -> Array:
+	return cp.uf_in(u, ck)
+func uf_out(u: Dictionary, sv: Array) -> void:
+	cp.uf_out(u, sv)
 
 
 ## 批④ 的六个批系统, 按【本批装备 id → 系统】路由。派发点全都先查这张表再调统一钩子。
@@ -110,13 +137,16 @@ func _b4_on_damaged_any(u: Dictionary, src, dmg: int) -> void:
 	if u.get("equips", []).is_empty():
 		return
 	u["_b4_dot"] = true
+	var _ckp127: Array = ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		ck_set(u, e)
 		if not (e is Dictionary):
 			continue
 		var iid: String = str((e as Dictionary).get("id", ""))
 		var sys = _b4(iid)
 		if sys != null:
-			tally.use([u, iid]); sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
+			tally.use([u, key_of(u, iid)]); var _sv: Array = uf_in(u, key_of(u, iid)); sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1)))); uf_out(u, _sv)
+	ck_restore(_ckp127)
 	u["_b4_dot"] = false
 
 ## ★U3(用户 2026-09-15「被装备打到应该算吧」): 敌方装备打出的一段伤害(`from_equip = true`)也算「受到攻击」。
@@ -129,7 +159,9 @@ func _b4_on_damaged_equip(u: Dictionary, src, dmg: int) -> void:
 	if u.get("equips", []).is_empty():
 		return
 	u["_b4_dot"] = false
+	var _ckp146: Array = ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		ck_set(u, e)
 		if not (e is Dictionary):
 			continue
 		var iid: String = str((e as Dictionary).get("id", ""))
@@ -137,15 +169,18 @@ func _b4_on_damaged_equip(u: Dictionary, src, dmg: int) -> void:
 			continue
 		var sys = _b4(iid)
 		if sys != null:
-			tally.use([u, iid]); sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
+			tally.use([u, key_of(u, iid)]); var _sv: Array = uf_in(u, key_of(u, iid)); sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1)))); uf_out(u, _sv)
+	ck_restore(_ckp146)
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
 	u["_basic_serial"] = int(u.get("_basic_serial", 0)) + 1   # 这一次攻击的序号: 同龟多件同名装备共用一份状态的, 靠它认「同一次」(093)
+	var _ckp159: Array = ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
-		tally.use([u, str(e["id"])])   # ④ 装备统计: 这一圈是这件装备的普攻钩
+		ck_set(u, e)
+		tally.use([u, key_of(u, str(e["id"]))])   # ④ 装备统计: 这一圈是这件装备的普攻钩
 		if str(e["id"]) == "p2eq_017":   # 不沉之锚: 每次普攻消耗1沉锚充能→击飞最前敌+眩晕(用户2026-07-02)
-			var ast: Dictionary = u["eq_state"].get("p2eq_017", {})
+			var ast: Dictionary = u["eq_state"].get(key_of(u, "p2eq_017"), {})
 			if int(ast.get("anchor_charges", 0)) > 0:
 				var at = battle._targeting._nearest_enemy(u)
 				if at != null:
@@ -156,11 +191,11 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 					battle._damage._apply_damage_from(u, at, adm, Color("#9be7ff"), 0.0, false, true)
 					battle._damage._knockback(u, at, 60.0); battle._freeze(at, battle.CTRL_SEC)
 					battle._skill_ring(at["pos"], Color(0.6, 0.85, 1.0, 0.6), 60.0)
-					u["eq_state"]["p2eq_017"] = ast
+					u["eq_state"][key_of(u, "p2eq_017")] = ast
 		if str(e["id"]) == "p2eq_062":   # 螳螂虾钳: 出手就取出蓄好的那一发(被闪避也算用掉, 用户 11-11), 命中在 _eq_on_hit 结算
 			_spirit_sys._eq_mantis_arm(u)
 		if str(e["id"]) == "p2eq_039":   # 竹制弓箭: 每第3段普攻消耗1次生长充能→射强化竹箭(用户2026-07-19)
-			var b39: Dictionary = u["eq_state"].get("p2eq_039", {})
+			var b39: Dictionary = u["eq_state"].get(key_of(u, "p2eq_039"), {})
 			b39["bamboo_hits"] = int(b39.get("bamboo_hits", 0)) + 1
 			if int(b39["bamboo_hits"]) >= 3 and int(b39.get("bamboo_charges", 0)) > 0:
 				var t39 = battle._targeting._nearest_enemy(u)
@@ -170,14 +205,14 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 					var si39: int = _eq_si(int(e.get("star", 1)))
 					# 回血+永久成长延到绿球落回自己身上才生效(竹叶龟同款)
 					battle._spawn_bamboo_arrow(u, t39, [25, 30, 35][si39] + int(u["maxHp"] * BAMBOO_ARROW_MAXHP_PCT), [50.0, 70.0, 90.0][si39])
-			u["eq_state"]["p2eq_039"] = b39
+			u["eq_state"][key_of(u, "p2eq_039")] = b39
 		if str(e["id"]) == "p2eq_027" and tgt != null and tgt is Dictionary and tgt.get("alive", false):   # 电棍: 就绪→本次普攻消耗1层附魔法伤+眩晕(用户2026-07-03)
-			var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
+			var bst: Dictionary = u["eq_state"].get(key_of(u, "p2eq_027"), {})
 			if bst.get("baton_ready", false) and int(bst.get("baton_charges", 0)) > 0:
 				var si27: int = _eq_si(int(e.get("star", 1)))
 				bst["baton_charges"] = int(bst["baton_charges"]) - 1
 				bst["baton_ready"] = false; bst["baton_cd"] = 0.0
-				u["eq_state"]["p2eq_027"] = bst
+				u["eq_state"][key_of(u, "p2eq_027")] = bst
 				battle._damage._apply_damage_from(u, tgt, battle._resolve_dmg(u, float([30, 40, 50][si27]), tgt, true), Color("#7ecbff"), 0.0, false, true)
 				var _zsec: float = [2.5, 2.5, 3.0][si27]
 				battle._freeze(tgt, _zsec)   # 眩晕 1.5s(CTRL_SEC默认) → 2.5/2.5/3 按星级(用户2026-07-19)
@@ -192,7 +227,7 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 		#      旧分支整段删除, 不是搬家。别把它加回来 —— 加回来就是两套效果叠着生效。
 		var _b4o = _b4(str(e["id"]))
 		if _b4o != null:
-			_b4o.on_basic(u, tgt, str(e["id"]), _eq_si(int(e.get("star", 1))))
+			var _sv: Array = uf_in(u, key_of(u, str(e["id"]))); _b4o.on_basic(u, tgt, str(e["id"]), _eq_si(int(e.get("star", 1)))); uf_out(u, _sv)
 		# ── 药水 3 件(2026-08-05 用户逐件重做·§0.5 定稿) ─────────────────────
 		#    ★效果本体在 eq_potion_batch.gd, 这里只留一行分派(同批②的口径:
 		#      tooltip_number_audit 认 `"id": _fn(` 这种分派并把函数定义处也当锚点)。
@@ -210,6 +245,7 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 			"p2eq_074": _bow_sys.on_basic_074(u, tgt, _eq_si(int(e.get("star", 1))))
 			"p2eq_076": _bow_sys.on_basic_076(u, tgt, _eq_si(int(e.get("star", 1))))
 		# 珊瑚刺008: 旧「每5次普攻」计数器已删(与_tick_coral每9秒重复触发·用户2026-07-19)
+	ck_restore(_ckp159)
 
 
 
@@ -278,69 +314,14 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	battle._crystal_sys.sweep_begin(u, si, reach, state, im, imesh, mat, start_a)
 
 # 032: 登场召唤亡灵骷髅 (双抗为 0, 靠 _dmg_cap_one 把任何一击钳成 1 = 近乎免疫; 存活 13/17/23s 自灭, 死亡 200 码内 8/13/20% 最大生命真伤)
-func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重做): 登场召唤不可移动的炮台
-	if not u.get("alive", false): return
-	battle._audio_sys.sfx_equip("p2eq_058")   # 装备触发声(11-05 音效 v2; 只管声音)
-	var tr = battle._spawn._spawn_summon(u, "turret", [650.0, 1400.0, 2500.0][si] + TURRET_HP_PER_ATK * float(u.get("atk", 0.0)), [70.0, 120.0, 180.0][si] + float(u.get("atk", 0.0)),
-		{"label": "炮台", "spr_id": "turret", "col_size": 44.0, "hp_w": 32.0,
-		 "atk_interval": 1.0 / TURRET_ASPD, "atk_range": TURRET_RANGE, "move_spd": 0.0, "melee": false})
-	if tr == null: return
-	tr["eq_state"] = {}; tr["equips"] = []
-	tr["_eq_turret"] = true; tr["_turret_si"] = si
-	tr["move_spd"] = 0.0; tr["no_move"] = true      # 移速为0
-	tr["crit"] = 0.0; tr["armor_pen"] = 0.0
-	u["_turret_ref"] = tr                            # 只用 is_same 比较, 绝不当Dict键/深比较
-	# 登场演出: 蓝白部署环 + 起降形变
-	battle._splash_ring_bold(tr["pos"], Color(0.42, 0.82, 1.0), 110.0)
-	battle._skill_ring(tr["pos"], Color(0.5, 0.88, 1.0, 0.7), 62.0)
-	if is_instance_valid(tr["sprite"]):
-		var bs: Vector3 = tr["sprite"].scale
-		tr["sprite"].scale = Vector3(bs.x * 1.3, 0.05, bs.z)
-		var dtw = battle._reg_tween()
-		dtw.tween_property(tr["sprite"], "scale", bs, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+## 058 / 032 的召唤与炮台每帧推进已搬到 eq_summons.gd(11-13 架构预算); 这里只留转发。
+func _eq_summon_turret(u: Dictionary, si: int, ck: String = "p2eq_058") -> void:
+	_summons.turret(u, si, ck)
+func _tick_eq_turret(u: Dictionary, _delta: float) -> void:
+	_summons.tick_turret(u)
+func _eq_summon_skeleton(u: Dictionary, si: int, ck: String = "p2eq_032") -> void:
+	_summons.skeleton(u, si, ck)
 
-func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗随携带者存活 / 携带者在400码内得攻速 / 锁定红线
-	var tr = u.get("_turret_ref", null)
-	if not (tr is Dictionary):
-		return
-	if not tr.get("alive", false):
-		u["_turret_aspd_mult"] = 1.0
-		battle._update_turret_line(tr)
-		return
-	var si: int = int(u.get("_turret_si", 0))
-	var res: float = ([70.0, 85.0, 100.0][si] if u.get("alive", false) else 0.0)   # 携带者阵亡→双抗归零
-	if absf(float(tr.get("base_def", -1.0)) - res) > 0.01:
-		tr["base_def"] = res; tr["base_mr"] = res
-		battle._recalc_stats(tr)
-	var near: bool = u.get("alive", false) and DetMath.vlen((u["pos"] - tr["pos"])) <= TURRET_BUFF_R
-	## ★用户 2026-09-14 拍板加强: 20/30/40% → **三档统一 100%**(「携带者在自己附近时, 攻速加 100%」)。
-	u["_turret_aspd_mult"] = (1.0 + TURRET_BUFF_ASPD) if near else 1.0   # 直接赋值(不累加·不会泄漏)
-	battle._update_turret_line(tr)
-
-func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
-	if not u.get("alive", false): return
-	battle._audio_sys.sfx_equip("p2eq_032")   # 装备触发声(11-05 音效 v2; 只管声音)
-	# 亡灵骷髅移速=近战斗士档110(用户2026-07-28移速定位化: 原 130 比全表任何龟都快)
-	# ★2026-08-01 用户重定义: 血 16/31/55 · 攻 3/5/8 · 双抗 0 · 受任何伤害(含真伤)恒为 1 · 存活 13/17/23 秒。
-	#   ★血【不乘 HP_MULT】: 用户给的是"拥有 16/31/55 最大生命值", 那是游戏里能看见的最终值。
-	#     旧写法 [19,21,25]×3 = 57/63/75, 属于 CLAUDE.md §3.1 那类"多乘一次"的旧账 —— 顺手清掉。
-	#   ★双抗 20000 → 0: 免伤改由 _dmg_cap_one 走减伤收口实现。用双抗堆到 20000 的老办法【拦不住真伤】,
-	#     而用户点名"包括真实伤害"。两者并存还会让"受 1 点"变成"受 0 点"(被抗性吃光后再钳)。
-	var sk = battle._spawn._spawn_summon(u, "skeleton", [16.0, 31.0, 55.0][si], [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 110.0})
-	if sk == null: return
-	sk["base_def"] = 0.0; sk["base_mr"] = 0.0; sk["def"] = 0.0; sk["mr"] = 0.0
-	sk["_dmg_cap_one"] = true             # 收到的任何攻击(含真伤)降为 1 —— 闸在 _mitigate_incoming 末尾, 两条伤害路径共用
-	sk["summon_life"] = [13.0, 17.0, 23.0][si]
-	sk["boom_pct_true"] = [0.08, 0.13, 0.20][si]
-	sk["boom_radius"] = 200.0
-	battle._skill_ring(sk["pos"], Color(0.4, 1.0, 0.55, 0.6), 40.0)
-	for k in range(5):
-		battle._bone_speck(sk["pos"] + Vector2(randf_range(-24, 24), randf_range(-24, 24)))
-	if is_instance_valid(sk["sprite"]):
-		var base_sc: Vector3 = sk["sprite"].scale
-		sk["sprite"].scale = Vector3(base_sc.x, 0.05, base_sc.z)
-		var tw = battle._reg_tween()
-		tw.tween_property(sk["sprite"], "scale", base_sc, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 ## 批① 周期类新装备(2026-08-04)的触发间隔(秒)。
 ## ★为什么另开一张表而不是往主场景的 `_EQ_CUSTOM_IV` 里加:
@@ -383,41 +364,35 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	## 040 FPGA板登场发枪 / 096 小木斧召唤与每帧推进: 各自系统的每帧入口(借这个每单位每帧的车, 不进主场景)。
 	_gremlin.tick_owner(u)
 	_axe.tick_owner(u, delta)
-	## ★同一件带了几份: 计时器【每种只推一次】, 到点时【每一份各放一次】(同一时刻)。
-	##   用户 2026-09-15 看 075:「如果装备两个75，应该各做各的吧，也就是同时在某个时刻放两个箭雨」。
-	##   原来 eq_state 按装备 id 共用一份 iv_t, 循环里每一份都给它加一次 delta ⇒ 两份 = 计时器双倍速,
-	##   变成「每 3 秒放一轮」而不是「每 6 秒同时放两轮」。所有周期件都走这里, 一起改。
-	var _iv_seen: Dictionary = {}
+	## ★同一件带了几份 ⇒ 每一份各自的计时器、各自的状态(份号 eq_state[ck] · 11-13 用户「两件相同装备…各自生效各自的效果」;
+	##   09-15 用户对 075「如果装备两个75，应该各做各的吧，也就是同时在某个时刻放两个箭雨」)。
+	##   原来计时器每种只推一次、到点每份各放一次, 但状态共用 ⇒ 阶段类(037)/弹药类(052)两份互相干扰, 统计也合成一行。
+	##   各份计时器同时起算 ⇒ 仍在同一时刻各放一次; 单件时逐字不变。
+	var _ckp: Array = ck_save()
 	for e in u["equips"]:
 		var iid: String = str(e["id"])
-		if _iv_seen.has(iid):
-			continue
-		_iv_seen[iid] = true
 		var iv: float = float(battle._EQ_CUSTOM_IV.get(iid, 0.0))
 		if iv <= 0.0:
 			iv = float(EQ_IV_BATCH1.get(iid, 0.0))
 		if iv <= 0.0: continue
+		var ck: String = ck_set(u, e)
 		if iid == "p2eq_037": battle._ensure_candle(u)   # 蜡烛从开局就悬在头顶(不等首次tick)
-		var stt: Dictionary = u["eq_state"].get(iid, {})
+		var stt: Dictionary = u["eq_state"].get(ck, {})
 		stt["iv_t"] = float(stt.get("iv_t", 0.0)) + delta
 		## ★携带者被控(眩晕 / 定身 / 击飞)时周期装备不出手, 到点的那一发留到解控后立即补(10-16 被控规则, 与龟的被动同一口径)。
 		##   计时封顶在一个周期: 晕 6 秒不会攒出两发。
 		if battle._damage.is_controlled(u):
 			stt["iv_t"] = minf(float(stt["iv_t"]), iv)
-			u["eq_state"][iid] = stt
+			u["eq_state"][ck] = stt
 			continue
 		if float(stt["iv_t"]) >= iv:
 			stt["iv_t"] = float(stt["iv_t"]) - iv
-			for e2 in u["equips"]:
-				if str(e2["id"]) != iid:
-					continue
-				# ★盾羁绊 9 档要认"这次护盾/治疗是哪件装备给的"(_holy_convert 读 _cur_eq_item,
-				#   且它自己只认【盾类】装备)。原来这条路没标 → 藤编圆盾 081 拿不到圣光转化。
-				battle._cur_eq_item = iid; var _tp: Array = tally.push(u, iid)
-				fire_equip_effect(u, iid, int(e2.get("star", 1)), stt)
-				stt["_dup"] = true   # 同一时刻的第二件起: 阶段类装备(037)同一阶段再触发, 不再往前推
-				battle._cur_eq_item = ""; tally.pop(_tp)   # ④ 装备统计 · 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
-		stt.erase("_dup"); u["eq_state"][iid] = stt
+			# ★盾羁绊 9 档要认"这次护盾/治疗是哪件装备给的"(_holy_convert 读 _cur_eq_item, 认的是种类 ⇒ 写原 id)
+			battle._cur_eq_item = iid; var _tp: Array = tally.push(u, ck)
+			fire_equip_effect(u, iid, int(e.get("star", 1)), stt)
+			battle._cur_eq_item = ""; tally.pop(_tp)   # ④ 装备统计 · 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
+		u["eq_state"][ck] = stt
+	ck_restore(_ckp)
 
 # 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军
 func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 每8秒连打20/30/60发随机分布+永久减甲(单目标累计上限)
@@ -513,9 +488,10 @@ func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	battle._ensure_candle(u)
 	var c = u.get("_candle_spr", null)
-	var dup: bool = bool(stt.get("_dup", false))   # 带两件: 第二件同一阶段再触发一次(10-16: 原来共用计数各推一次, 一个周期跳两个阶段)
-	var ph: int = (int(stt.get("candle", 0)) + CANDLE_PHASES - 1) % CANDLE_PHASES if dup else int(stt.get("candle", 0))
-	if not dup: stt["candle"] = (ph + 1) % CANDLE_PHASES
+	## 带两件: 11-13 起每件各自一份阶段计数(份号 eq_state[ck]); 同一时刻第二支蜡烛的回血【叠加】在第一支上(判据: 这一步已经有蜡烛写过到期时刻)
+	var ph: int = int(stt.get("candle", 0))
+	stt["candle"] = (ph + 1) % CANDLE_PHASES
+	var t_end37: float = battle._t + CANDLE_IV
 	if ph == 0:   # 熄灭: 蜡烛变暗(火苗弱下去, 无效果)
 		if c != null and is_instance_valid(c): battle._reg_tween().tween_property(c, "modulate", Color(0.5, 0.5, 0.58, 1.0), 0.35)
 	elif ph == 1:   # 微弱: 蜡烛点亮 + 250码光圈 + 圈内友军5s逐渐回血
@@ -523,11 +499,11 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			battle._reg_tween().tween_property(c, "modulate", Color(1, 1, 1, 1), 0.35)
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
 		battle._heal_circle_vfx(u["pos"], CANDLE_HEAL_R, CANDLE_IV)   # AI生成回血阵动画
-		u["candle_hot_rate"] = hv37 / CANDLE_IV + (float(u.get("candle_hot_rate", 0.0)) if dup else 0.0)
+		u["candle_hot_rate"] = hv37 / CANDLE_IV + (float(u.get("candle_hot_rate", 0.0)) if is_equal_approx(float(u.get("candle_hot_until", -1.0)), t_end37) else 0.0)
 		u["candle_hot_until"] = battle._t + CANDLE_IV
 		for a37 in battle._targeting._allies_of(u, false):
 			if DetMath.dist(a37["pos"], u["pos"]) <= CANDLE_HEAL_R:
-				a37["candle_hot_rate"] = (hv37 * CANDLE_ALLY_HALF) / CANDLE_IV + (float(a37.get("candle_hot_rate", 0.0)) if dup else 0.0)
+				a37["candle_hot_rate"] = (hv37 * CANDLE_ALLY_HALF) / CANDLE_IV + (float(a37.get("candle_hot_rate", 0.0)) if is_equal_approx(float(a37.get("candle_hot_until", -1.0)), t_end37) else 0.0)
 				a37["candle_hot_until"] = battle._t + CANDLE_IV
 	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 500码内敌各受魔法伤+灼烧
 		if c != null and is_instance_valid(c):
@@ -769,36 +745,12 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 				battle._pending_shots.append({"delay": FPGA_BUFF_SEC, "fn": func(): u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - FPGA_11_DR), "src": u})
 
 
-func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> void:   # 退潮浊液041: 涨潮期开始
-	if not u.get("alive", false) or u.get("_ebb_on", false): return
-	u["_ebb_on"] = true
-	battle._audio_sys.sfx_equip("p2eq_041")   # 装备触发声(11-05 音效 v2; 只管声音)
-	## ★涨潮**持续期**的演出靠这个字段(battle_render._tick_ebb_coat 逐帧扫):
-	##   用户 2026-09-14「最好做一个 buff 持续期间的特效, 整个身体怎么样」。
-	##   跟 `_pending_shots` 里那条还原走**同一条游戏钟**, 不另起计时。
-	u["_ebb_until"] = battle._t + dur
-	u["maxHp"] += hp_add; u["hp"] += hp_add
-	u["base_atk"] = float(u.get("base_atk", 0.0)) + atk_add
-	u["atk_range"] = float(u.get("atk_range", 70.0)) + TIDE_RANGE_UP
-	u["size_mult"] = float(u.get("size_mult", 1.0)) * (1.0 + TIDE_SIZE_UP)      # 体积+30%(走size_mult, 每帧juice从base起算不会覆盖)
-	battle._recalc_stats(u)
-	battle._ebb_tide_fx(u, true)
-	battle._vfx._float_text(u["pos"] + Vector2(0, -70), "涨潮", Color("#5fe0d0"))
-	battle._pending_shots.append({"delay": dur, "fn": func(): _eq_ebb_recede(u, hp_add, atk_add), "src": u})
+## 041 退潮浊液的涨潮 / 退潮已搬到 equip_stats_apply.gd(11-13 架构预算); 这里只留转发(门禁直调它们)。
+func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float, ck: String = "p2eq_041") -> void:
+	_stats.ebb_surge(u, hp_add, atk_add, dur, ck)
 
-func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # 退潮浊液041: 到期还原
-	if not u.get("_ebb_on", false): return
-	u["_ebb_on"] = false
-	u["_ebb_until"] = 0.0            # 提前退潮也要立刻把那层水收掉
-	u["maxHp"] = maxf(1.0, float(u["maxHp"]) - hp_add)
-	u["hp"] = minf(float(u["hp"]), float(u["maxHp"]))          # 退潮不致死, 只削到新上限
-	u["base_atk"] = maxf(0.0, float(u.get("base_atk", 0.0)) - atk_add)
-	u["atk_range"] = maxf(10.0, float(u.get("atk_range", 70.0)) - TIDE_RANGE_UP)
-	u["size_mult"] = maxf(0.01, float(u.get("size_mult", 1.0)) / (1.0 + TIDE_SIZE_UP))
-	battle._recalc_stats(u)
-	if u.get("alive", false):
-		battle._ebb_tide_fx(u, false)
-		battle._vfx._float_text(u["pos"] + Vector2(0, -70), "退潮", Color("#8fb8c8"))
+func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float, ck: String = "p2eq_041") -> void:
+	_stats.ebb_recede(u, hp_add, atk_add, ck)
 
 ## 020 哑铃: 【瞬间】+1 锻炼层(maxHp, 局内每场重置) → 当场掷哑铃击退。
 ## ★★2026-09-12 用户:「**020现在不要有锻炼阶段，直接投掷哑铃了**」
@@ -812,9 +764,9 @@ func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # �
 ##   (CLAUDE.md §3.5: 一个测数值的用例不该依赖任何动画跑完)。
 func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	var stt: Dictionary = u["eq_state"].get("p2eq_020", {})   # 锻炼层(eq_state局内计数, 每场战斗重置)
+	var stt: Dictionary = u["eq_state"].get(key_of(u, "p2eq_020"), {})   # 锻炼层(eq_state局内计数, 每场战斗重置)
 	stt["exercise"] = int(stt.get("exercise", 0)) + 1
-	u["eq_state"]["p2eq_020"] = stt
+	u["eq_state"][key_of(u, "p2eq_020")] = stt
 	var gain: float = [40.0, 75.0, 110.0][si]   # 锻炼层+maxHp&当前生命(用户2026-07-19: 20/25/30→40/75/110)。★不乘HP_MULT: 装备hp已是最终值(见L45规则), 原来乘了→实发120/225/330=文案的3倍
 	u["maxHp"] += gain; u["hp"] += gain
 	battle._skill_ring(u["pos"], Color(0.8, 0.9, 1.0, 0.42), 48.0)   # 锻炼强化光(瞬间, 不再有站桩)
@@ -1548,10 +1500,12 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 	elif bool(crit) != bool(battle._last_atk_crit):
 		_eq_crit_gap += 1
 	var was_crit: bool = bool(crit) if crit != null else bool(battle._last_atk_crit)
+	var _ckp1507: Array = ck_save()   # 份号上下文(11-13)
 	for e in src["equips"]:
+		ck_set(src, e)
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid; tally.push(src, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
-		var stt: Dictionary = src["eq_state"].get(iid, {})
+		battle._cur_eq_item = iid; tally.push(src, key_of(src, iid))   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		var stt: Dictionary = src["eq_state"].get(key_of(src, iid), {})
 		# ── 批④(2026-08-06) 统一路由: 放在 match 之前而不是当成 match 的一条臂 ──
 		#    十七件分属六个系统, 写成 match 臂就要把十七个 id 抄进【每一个钩子】的 match 里
 		#    (十个钩子 × 十七行), 那正是"手抄的副本必然落后"。这里查一次 B4_OWNER 表就够。
@@ -1559,7 +1513,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 		if _b4h != null:
 			## 批④钩子不带 basic(改签名要动六个系统) ⇒ 同 `_b4_dot` 的做法挂在攻击者身上(082 附带魔伤只认普攻命中·D5)
 			src["_b4_basic"] = basic
-			_b4h.on_hit(src, tgt, float(dmg), iid, si)
+			var _sv: Array = uf_in(src, key_of(src, iid)); _b4h.on_hit(src, tgt, float(dmg), iid, si); uf_out(src, _sv)
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决<斩杀线敌 (削弱·用户2026-07-23: 斩杀线 4/6/12% ×(1+暴击率), 原 5/7/10%+10/15/40%×暴击)
 				var line: float = [0.04, 0.06, 0.12][si] * (1.0 + float(src["crit"]))
@@ -1577,14 +1531,14 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				# ★整套(层数/增伤/攻速/发波/张角递增/魔抗穿透)在 SignalWaveSystem。
 				#   原来的实现是"每 6 秒随机一段 3.5 秒增伤", 已整个替换。
 				_sigwave.on_hit(src, tgt, si, stt)
-				src["eq_state"][iid] = stt
+				src["eq_state"][key_of(src, iid)] = stt
 			"p2eq_056":   # 飞镖(用户2026-07-30): 每 5 下普攻, 下一击强化 → 击飞目标 1 秒
 				if not basic: continue   # ★规格是【普攻】—— 技能不触发(2026-08-11)
 				# ★计数【每 5 下触发一次】—— 用取模而不是"攒到 5 再清零", 两者等价但取模不会
 				#   因为中途有别的分支 return 而漏清。第 5/10/15… 下命中即触发。
 				var dh: int = int(stt.get("dart_hits", 0)) + 1
 				stt["dart_hits"] = dh
-				src["eq_state"][iid] = stt
+				src["eq_state"][key_of(src, iid)] = stt
 				if dh % DART_EVERY == 0 and tgt.get("alive", false):
 					# ★本项目没有独立的"击飞"函数 —— 击飞 = _knockback(位移+抛物演出) + stun_until(期间不能动不能打)。
 					#   我一开始写了 _knockup 并用 has_method 兜底 —— 那是【假设 API 存在】, 查了才知道只有 _knockback。
@@ -1599,7 +1553,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				var emp: int = int(stt.get("thorn_empower", 0))
 				if emp > 0 and tgt.get("alive", false):
 					stt["thorn_empower"] = emp - 1
-					src["eq_state"][iid] = stt
+					src["eq_state"][key_of(src, iid)] = stt
 					battle._damage._apply_dot_stacks(tgt, "bleed", THORN_BLEED[si], src)
 					battle._skill_ring(tgt["pos"], Color(0.9, 0.35, 0.35, 0.75), 46.0)
 			"p2eq_002":   # 辣椒: **只有携带者的普攻**命中才施加流血层 (3★流血层数天然可叠)
@@ -1690,7 +1644,8 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 			"p2eq_063": _spirit_sys._eq_whale_ring(src, tgt, si, basic)   # ★basic 在函数内闸(【普攻】规格·2026-08-11); 单行保审计锚点形状
 			# 食物(本体在 eq_food_batch.gd)
 			"p2eq_070": _food_sys._eq_ballast_brick(src, tgt, si, basic)   # ★普攻规格·闸在函数内(v0.19.100 六件漏了它, 070 补验收时抓到)
-		src["eq_state"][iid] = stt
+		src["eq_state"][key_of(src, iid)] = stt
+	ck_restore(_ckp1507)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
@@ -2239,17 +2194,19 @@ func _fire_coral_wave_hit(src: Dictionary, origin: Vector2, dir: Vector2,
 func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 	if u.get("equips", []).is_empty():
 		return
+	var _ckp2198: Array = ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		ck_set(u, e)
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
-		var stt: Dictionary = u["eq_state"].get(iid, {})
+		battle._cur_eq_item = iid; tally.push(u, key_of(u, iid))   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		var stt: Dictionary = u["eq_state"].get(key_of(u, iid), {})
 		# ── 批④(2026-08-06) 统一路由(理由同 _eq_on_hit: 十七件六个系统, 不抄进每个 match) ──
 		#    ★这条钩子挂在【两条伤害路径】上(CLAUDE.md §3.3), 所以 081 的充能条 / 082 的护心反伤 /
 		#      085 的受伤转龟能 / 087 的压载舱 都在这里各自收自己那一份。
 		var _b4t = _b4(iid)
 		if _b4t != null:
 			u["_b4_dot"] = false   # ★口径标志: 这一段来自【普攻/技能】路(另一条见 _b4_on_damaged_any)
-			_b4t.on_damaged(u, src, float(dmg), iid, si)
+			var _sv: Array = uf_in(u, key_of(u, iid)); _b4t.on_damaged(u, src, float(dmg), iid, si); uf_out(u, _sv)
 		match iid:
 			"p2eq_013", "p2eq_014":   # 受击硬化: +def/mr (层上限读 stt["harden_cap"]: 013=20 / 014=25, 见 equip_stats_apply); 013满层给护盾
 				var cur: int = int(stt.get("harden_stacks", 0))
@@ -2301,14 +2258,15 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 					##   由 `probe_noui` 脚本重扫 eq_state 写入字段扫出来(上一次是人眼扫的, 漏了)。
 					##   阈值随星级变(300/270/230) ⇒ 按 EquipReadouts 表头的规矩存归一化镜像。
 					stt["thorn_pct"] = clampf(acc / maxf(1.0, thr), 0.0, 1.0) * 100.0
-					u["eq_state"][iid] = stt
+					u["eq_state"][key_of(u, iid)] = stt
 			"p2eq_017":   # 不沉之锚: 回血移到 _tick_anchor(每0.25秒, 用户2026-08-01); on-hurt 不再处理
 				# ★别在这里加回"受伤即回血" —— 那会变成"定时 + 受伤"双份触发。
 				#   verify_equip_batch_20260801 ⑫组焊死: on-hurt 不得产生任何治疗。
 				pass
 			# ── 药水 068 深海气压罐(2026-08-05 用户重做): 受到的伤害存进专属充能条 ──
 			"p2eq_068": _potion_sys._eq_pressure_store(u, dmg, si)
-		u["eq_state"][iid] = stt
+		u["eq_state"][key_of(u, iid)] = stt
+	ck_restore(_ckp2198)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
@@ -2321,15 +2279,20 @@ func _eq_on_dodge(u: Dictionary) -> void:
 	## 060 磷光水母伞: 伞的闪避真挡下一击时闪一记迷你伞残影 —— 按【buff 来源】判,
 	## 不遍历 equips: 被罩的队友自己不带这件装备(光环给的), 遍历装备会漏掉他们。
 	_spirit_sys.on_parasol_dodge(u)
+	var _ckp2280: Array = ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		ck_set(u, e)
 		if str(e["id"]) == "p2eq_046":   # 幽灵墨鱼: 闪避→护盾, 通用护盾 4 秒(用户 2026-11-08「幽灵墨鱼提供的护盾值改为是通用护盾的持续时间, 也就是四秒」; 原永久)
-			var stt: Dictionary = u["eq_state"].get("p2eq_046", {})
+			var stt: Dictionary = u["eq_state"].get(key_of(u, "p2eq_046"), {})
+			var _tp46: Array = tally.push(u, key_of(u, "p2eq_046"))   # 统计记到这一件(11-13; 原来没切上下文, 记到哪全看上一个钩子)
 			battle._damage._grant_shield(u, float(stt.get("ghost_shield", 30.0)), BattleDamage.COMMON_SHIELD_SEC)
+			tally.pop(_tp46)
 			battle._shield_dome(u)   # 专属护盾罩(原注释说的 `_shield_bubble` 已于 2026-09-13 删除)
 		# ── 灵物 5 件(2026-08-05 用户逐件重做·§0.5 定稿) ──────────────────
 		#    ★060/061 原来挂在这个钩子上的旧效果(闪避→魔法伤 / 闪避→移速)
 		#      已整条作废: 060 改成 7 秒周期开伞、061 改成 on-hit 破损。
 		#    ★062 螳螂虾钳原来挂在这里(闪避后蓄一发), 2026-11-11 用户重做成「放技能后蓄一发」, 移到 _eq_on_cast。
+	ck_restore(_ckp2280)
 
 # ============================================================================
 #  on-cast (放主动技后)
@@ -2339,9 +2302,11 @@ func _eq_on_dodge(u: Dictionary) -> void:
 func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 	if u.get("equips", []).is_empty():
 		return
+	var _ckp2298: Array = ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		ck_set(u, e)
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(u, key_of(u, iid))   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		if battle._stress or battle._wd_on: battle._dbg_op = "eqcast:" + iid   # 卡死猎手: 定位是哪件装备on-cast卡住(用户2026-07-19)
 		match iid:
 			"p2eq_027":   # 电棍: 电击已移到 _eq_on_basic_attack(普攻命中消耗1层, 用户2026-07-03); on_cast不处理
@@ -2397,6 +2362,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 			#    076 连发弩机主动: 放完技能起一轮连射, 发数 = 本次技能消耗龟能 ÷ 8。
 			#    ★消耗查 `battle._skill_cost(u, stype)`, 不在任何地方抄一份消耗表。
 			"p2eq_076": _bow_sys.on_cast_076(u, si)
+	ck_restore(_ckp2298)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
@@ -2479,10 +2445,12 @@ func _eq_sniper(u: Dictionary, si: int, depth: int, locked = null) -> void:
 #  on-kill (击杀者视角) — 暴君之牙
 # ============================================================================
 func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
+	var _ckp2438: Array = ck_save()   # 份号上下文(11-13)
 	for e in killer.get("equips", []):
+		ck_set(killer, e)
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		if battle._stress or battle._wd_on: battle._dbg_op = "eqkill:%s:%d:%d" % [iid, si, 1 if victim.get("alive", false) else 0]   # 卡死猎手: 定位是哪件装备on-kill卡住(同 _eq_on_cast)
-		var _tp: Array = tally.push(killer, iid)   # ④ 装备统计: 处决回血是这件的; 原来借用击杀那一下的上下文(普攻杀的就漏记)
+		var _tp: Array = tally.push(killer, key_of(killer, iid))   # ④ 装备统计: 处决回血是这件的; 原来借用击杀那一下的上下文(普攻杀的就漏记)
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决后回20龟能 (无龟能单位改回40血)
 				if battle._has_energy_system(killer):
@@ -2494,6 +2462,7 @@ func _eq_on_kill(killer: Dictionary, victim: Dictionary) -> void:
 			#   新效果落在【受伤充能 + 每 12 秒释放】上, on-kill 不再有它。
 			#   ⚠ 这里原来有一个 `var victim` 的唯一使用点; 参数保留是因为 004 之外将来还会用到。
 		tally.pop(_tp)
+	ck_restore(_ckp2438)
 
 # ============================================================================
 #  on-death (阵亡者视角) — 复活海螺 / 黄铜齿轮 (+ 左轮052 敌亡补弹)
@@ -2510,14 +2479,16 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 	##   也就是说亡灵之斧**死了根本不会重生**, 而门禁全绿因为它直接调那个函数)。
 	if u.get("_eq_axe", false):
 		_axe._fin.undead_on_death(u)
+	var _ckp2469: Array = ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		ck_set(u, e)
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
-		var stt: Dictionary = u["eq_state"].get(iid, {})
+		battle._cur_eq_item = iid; tally.push(u, key_of(u, iid))   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		var stt: Dictionary = u["eq_state"].get(key_of(u, iid), {})
 		# ── 批④(2026-08-06) 统一路由 —— 094 祖龟碑在这里立碑; 077/080 在这里改召唤物的状态 ──
 		var _b4d = _b4(iid)
 		if _b4d != null:
-			_b4d.on_death(u, iid, si)
+			var _sv: Array = uf_in(u, key_of(u, iid)); _b4d.on_death(u, iid, si); uf_out(u, _sv)
 		match iid:
 			"p2eq_060": _spirit_sys.on_owner_death(u, si, stt)   # 磷光水母伞: 携带者阵亡时收伞(见那个函数头注)
 			"p2eq_033":   # 复活海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
@@ -2549,16 +2520,20 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 			#   `_eq_cake_split` 头一行就用 `_cake_is_box` 挡住, 链条到此终止, 不会无限分裂。
 			"p2eq_072": _food_sys._eq_cake_split(u, si, int(e.get("star", 1)))
 	# 左轮052: 任何敌人阵亡 → 对方(u的敌方)持左轮的存活单位 +1发子弹 (上限6)
+	ck_restore(_ckp2469)
 	for o in battle._units:
 		if o["alive"] and battle._eff_side(o) != battle._eff_side(u):
+			var _ckp2510: Array = ck_save()   # 份号上下文(11-13)
 			for e2 in o.get("equips", []):
+				ck_set(o, e2)
 				if str(e2["id"]) == "p2eq_052":
-					var rst: Dictionary = o["eq_state"].get("p2eq_052", {})
+					var rst: Dictionary = o["eq_state"].get(key_of(o, "p2eq_052"), {})
 					rst["revolver_bullets"] = mini(REVOLVER_AMMO * EquipStatsApply.eq_copies(o, "p2eq_052"), int(rst.get("revolver_bullets", 0)) + 1)
-					o["eq_state"]["p2eq_052"] = rst
+					o["eq_state"][key_of(o, "p2eq_052")] = rst
 	# ★这里原来是「064 深渊招魂螺: 友方阵亡 → 额外召一只亡魂」。2026-08-05 用户把 064
 	#   整条重做成【溺者的浮囊】(残血幽灵护盾 + 破盾诅咒爆炸), 新设计里**没有亡魂** ——
 	#   用户原话「064 亡魂立绘到时候再重做」那条待办也随之作废。效果本体见 eq_spirit_batch.gd。
+			ck_restore(_ckp2510)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
@@ -2574,7 +2549,7 @@ const EARRING_HOT_SEC := 8.0     # 珍珠耳环 045: 回复摊在 8 秒内(用�
 ## 这里只剩一层转发 —— 归属取 `battle._cur_eq_item`(调用点在 `_eq_check_hp_threshold` 的
 ## `match iid` 里, 那一行已经把它设好了)。
 func _eq_start_hot(u: Dictionary, total: float, secs: float) -> void:
-	battle._equip_tick_sys.start_hot(u, str(battle._cur_eq_item), total, secs)
+	battle._equip_tick_sys.start_hot(u, key_of(u, str(battle._cur_eq_item)), total, secs)   # 按份号: 同名两件各一条摊付(11-13; 原来按 id 共用一条, 第二件被「剩余量更大」挡掉)
 
 
 
@@ -2582,9 +2557,11 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	if u.get("hp50_fired", false) or u["hp"] > u["maxHp"] * LOWHP_GATE or not u["alive"]:
 		return
 	var fired := false
+	var _ckp2541: Array = ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		ck_set(u, e)
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(u, key_of(u, iid))   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		match iid:
 			"p2eq_044":   # 深海项链: 首次<50%触发, 【16秒内】回复 40/85/130% maxHp(2026-08-01 定 6秒/20-40-80; 2026-09-14 用户两次上调)
 				_eq_start_hot(u, u["maxHp"] * [0.40, 0.85, 1.30][si], NECKLACE_HOT_SEC); fired = true   # 用户2026-09-14: 20/40/80 → 25/50/85 → 40/85/130
@@ -2597,6 +2574,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 				for o in battle._equip_tick_sys._eq_pick_distinct(u, balls):
 					battle._spawn_fireball(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), [30, 70, 150][si])
 				fired = true
+	ck_restore(_ckp2541)
 	if fired:
 		u["hp50_fired"] = true
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
@@ -2675,10 +2653,12 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 	if u["eq_timer"] < battle.EQ_TICK:
 		return
 	u["eq_timer"] = 0.0
+	var _ckp2634: Array = ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
+		ck_set(u, e)
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
-		var stt: Dictionary = u["eq_state"].get(iid, {})
+		battle._cur_eq_item = iid; tally.push(u, key_of(u, iid))   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		var stt: Dictionary = u["eq_state"].get(key_of(u, iid), {})
 		match iid:
 			"p2eq_001":   # 木制长剑: 移到每帧 _tick_rustblade (每3s就绪 + 2000码(全场)射程内有敌即劈·用户2026-07-19 近战→远程剑气); 周期tick不处理
 				pass
@@ -2729,11 +2709,14 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 						if _e.get("alive", false):
 							battle._mark_vfx(_e, 5.0, Color("#ffa040")); _e["eq_target_until"] = battle._t + 5.0
 				for o in battle._targeting._enemies_of(u):
-					if battle._t < o.get("eq_target_until", 0.0):
-						o["eq_target_until"] = 0.0
+					## 同名两件(11-13 各自生效): 第一件射完会清靶子 ⇒ 记下「这一步被【这只龟】射过」, 同一步它身上后面的件照样射这批靶子
+					##   (只认同一只龟: 两只龟各带一件时照旧, 不动单件对局的结果)
+					if battle._t < o.get("eq_target_until", 0.0) or (float(o.get("_dart_volley_t", -1.0)) == battle._t and is_same(o.get("_dart_volley_by", null), u)):
+						o["eq_target_until"] = 0.0; o["_dart_volley_t"] = battle._t; o["_dart_volley_by"] = u
 						o["_mark_until"] = battle._t   # 靶子锁定框消失
 						battle._spawn_eq_bolt(u, o, battle._resolve_dmg(u, u["atk"] * [1.5, 3.0, 9.0][si] + [130.0, 190.0, 600.0][si], o, false), "res://assets/sprites/vfx/dart.png", Color("#ffe0b0"), true, maxi(1, roundi(u["atk"] * DART_BLEED_COEF)))
-		u["eq_state"][iid] = stt
+		u["eq_state"][key_of(u, iid)] = stt
+	ck_restore(_ckp2634)
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
@@ -2799,7 +2782,7 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> void:
 	var si: int = _eq_si(star)
 	if stt == null:
-		stt = u["eq_state"].get(iid, {})
+		stt = u["eq_state"].get(key_of(u, iid), {})
 	## ★A1 技能积木化(2026-11-04 · 方案书 20261102b §8.4): 写成数据的装备走解释器 —— 「哪个触发 → 哪个动作 → 什么参数」
 	##   在 scripts/gamedata/equip_effects.gd, 执行在 scripts/systems/equip/effect_runner.gd。样板 048 / 049
 	##   (原 _eq_pistol_volley / _eq_crossbow_volley 已删, 调用顺序逐行搬进解释器 ⇒ verify_rules_fingerprint 逐字相同)。
@@ -2845,7 +2828,7 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 		#      由 StaffSynergySystem 调 fire_equip_effect。所以这三件在这里路由到 on_mana_full;
 		#      其余十四件已从 EQ_IV_BATCH1 摘掉, 根本不会走到这个函数。
 		"p2eq_088", "p2eq_089", "p2eq_090":
-			_arcane_sys.on_mana_full(u, iid, si)
+			var _sv: Array = uf_in(u, key_of(u, iid)); _arcane_sys.on_mana_full(u, iid, si); uf_out(u, _sv)
 		# ── 法器【补齐】(2026-08-12) ────────────────────────────────────────
 		#   ★这五件此前【不在这张表里】= 法力条满了只清零 + 放一根光柱, 效果零触发。
 		#     而规格(staff_synergy_system.gd 头注逐字)是「满 200/180/150/120/80 →
@@ -2921,11 +2904,11 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 ##   定型了), 而实际只掉 1 点血。要让数字也跟着变得把钩子提到 `dmg = maxi(...)` 之前,
 ##   那样又会漏掉护盾这一段, 两害相权取"判定准确"。
 func _eq_ink_sac(u: Dictionary, d: float) -> float:
-	var stt: Dictionary = u["eq_state"].get("p2eq_063", {})
+	var stt: Dictionary = u["eq_state"].get(key_of(u, "p2eq_063"), {})
 	if bool(stt.get("ink_used", false)):
 		return d
 	stt["ink_used"] = true
-	u["eq_state"]["p2eq_063"] = stt
+	u["eq_state"][key_of(u, "p2eq_063")] = stt
 	var si: int = int(u.get("_ink_sac_si", 0))
 	u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), battle._t + [1.5, 2.0, 2.5][si])
 	battle._skill_ring(u["pos"], Color(0.32, 0.26, 0.42, 0.75), 70.0)
@@ -2949,7 +2932,9 @@ func _eq_ink_sac(u: Dictionary, d: float) -> float:
 func _eq_on_magic_hurt(u: Dictionary, src, dmg: int, bkt: String) -> void:
 	if bkt != "mag":
 		return
+	var _ckp2908: Array = ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		ck_set(u, e)
 		if not (e is Dictionary):
 			continue
 		var si: int = _eq_si(int((e as Dictionary).get("star", 1)))
@@ -2960,7 +2945,8 @@ func _eq_on_magic_hurt(u: Dictionary, src, dmg: int, bkt: String) -> void:
 		#      085 的新效果吃【所有伤害】不只法术 ⇒ 它的收账点在 `_eq_on_target`, 不在这里。
 		var _b4m = _b4(str((e as Dictionary).get("id", "")))
 		if _b4m != null:
-			_b4m.on_magic_hurt(u, src, float(dmg), str((e as Dictionary).get("id", "")), si)
+			var _sv: Array = uf_in(u, key_of(u, str((e as Dictionary).get("id", "")))); _b4m.on_magic_hurt(u, src, float(dmg), str((e as Dictionary).get("id", "")), si); uf_out(u, _sv)
+	ck_restore(_ckp2908)
 
 
 ## ★【已作废】这里原是 086「极地反冲装置」的两个常量(`RECOIL_ICD := 4.0` / `RECOIL_SLOW_MULT := 0.7`)

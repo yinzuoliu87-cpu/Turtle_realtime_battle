@@ -10,7 +10,6 @@ res://scripts/scenes/battle/axe_passive_vfx.gd	slam	h
 res://scripts/scenes/battle/battle_vfx.gd	_vfx_preview_sigwave	dir
 res://scripts/scenes/battle/bow_eq_vfx.gd	_plant_arrow	yaw
 res://scripts/systems/equip/equip_system.gd	_eq_on_cast	tgt
-res://scripts/systems/equip/equip_system.gd	_tick_eq_turret	delta
 res://scripts/systems/skills/bamboo_system.gd	_sk_bamboo_smack	tgt
 res://scripts/systems/skills/diamond_system.gd	_sk_diamond_powerball	tgt
 res://scripts/systems/skills/dice_system.gd	_dice_scythe_sweep	u

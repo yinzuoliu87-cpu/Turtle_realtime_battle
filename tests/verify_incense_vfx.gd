@@ -325,10 +325,12 @@ func _t_wired() -> void:
 	_ok("⑦ ★换路撤场也撤演出(clear_all 里调 _incense_vfx.clear())",
 		_fn_body(sys, "func clear_all()").contains("_incense_vfx.clear()"))
 	# 一帧只结算一次: while 里不许再直接调演出/结算
-	var tb: String = _fn_body(sys, "func tick_unit(")
-	_ok("⑦ ★★tick_unit 的 while 里不再逐道调 _on_mark_scored(只累加 gained)",
-		tb.contains("gained += 1") and not tb.contains("_on_mark_scored(u, side)"),
-		"tick_unit 体 %d 字符" % tb.length())
+	## 11-13 起 tick_unit 按份号逐块调 _tick_copy(同名多件各自生效), 累加刻痕那段搬进了 _tick_copy
+	var tb: String = _fn_body(sys, "func _tick_copy(")
+	_ok("⑦ ★★tick_unit → _tick_copy 的 while 里不再逐道调 _on_mark_scored(只累加 gained)",
+		_fn_body(sys, "func tick_unit(").contains("_tick_copy(u, delta)")
+			and tb.contains("gained += 1") and not tb.contains("_on_mark_scored(u, side)"),
+		"_tick_copy 体 %d 字符" % tb.length())
 
 
 # ─────────────────────────────────────────────────────────────

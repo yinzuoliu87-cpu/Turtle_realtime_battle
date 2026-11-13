@@ -297,8 +297,13 @@ func _rescan_carriers() -> void:
 		for d in _drones:
 			if is_same(d["owner"], u):
 				have += 1
+		## 每一件一只, 各按自己那件的星级、各记各的账(11-13 用户「两件相同装备…各自生效…统计分开」; 原来全用最高星)
+		var cps: Array = EquipStatsApply.copies(u, IID)
 		while have < want:
-			_spawn_drone(u, _star_of(u))
+			if have < cps.size():
+				_spawn_drone(u, int(cps[have][1]), str(cps[have][0]))
+			else:
+				_spawn_drone(u, _star_of(u))
 			have += 1
 
 
@@ -323,7 +328,7 @@ func _apply_fog_field() -> void:
 		var stacks: int = POISON_STACKS[clampi(si, 0, 2)]
 		# ★AOE 语义走 _enemies_of 不走 _pick_enemies_of: 毒雾是"范围扫到谁算谁"
 		#   (battle_targeting.gd §PICK-TARGET 的用法铁律: 定向选靶才用 _pick_)。
-		var _tp: Array = battle._equip_sys.tally.push(owner, IID)   # ④ 装备统计: 毒雾在全局表里 ⇒ 加进去的中毒层算「携带者 · 092」的份额
+		var _tp: Array = battle._equip_sys.tally.push(owner, str(head.get("ck", IID)))   # ④ 装备统计: 毒雾在全局表里 ⇒ 加进去的中毒层算「携带者 · 放这只飞虫的那一件」的份额
 		for e in battle._targeting._enemies_of(owner):
 			if not _in_any_fog(arr, e["pos"]):
 				continue
@@ -400,9 +405,10 @@ func _set_vslow(u: Dictionary, n: int) -> void:
 #  §飞行物生老病死
 # ══════════════════════════════════════════════════════════════════
 
-func _spawn_drone(u: Dictionary, star: int) -> void:
+func _spawn_drone(u: Dictionary, star: int, ck: String = IID) -> void:
 	var d := {
 		"owner": u,
+		"ck": ck,   # 放它的那一件(份号 · 11-13)
 		"si": clampi(star, 1, 3) - 1,
 		"did": _next_did,
 		"pos": _clamp_arena(u["pos"]),
@@ -453,6 +459,7 @@ func _drop_fog(d: Dictionary) -> void:
 	var f := {
 		"did": int(d["did"]),
 		"owner": d["owner"],
+		"ck": str(d.get("ck", IID)),
 		"si": int(d["si"]),
 		"t": 0.0,
 		"pos": Vector2(d["pos"]),

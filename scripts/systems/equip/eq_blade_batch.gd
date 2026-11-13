@@ -53,9 +53,11 @@ extends RefCounted
 ## ⚠ 082 的另外两条口径(同日拍板): 多段攻击每段独立计数; 反伤走 `from_equip = true` 不触发对方反伤。
 ##
 ## ══════════════════════════════════════════════════════════════════════
-##  ★多件同带一律【取星级更高的那一件】(契约 §4), 不是相加
+##  ★11-13 起多件同带【各自生效】(用户「两件相同装备…各自生效各自的效果」; 原契约 §4「取更高星」作废)
 ## ══════════════════════════════════════════════════════════════════════
-## 做法: `on_spawn` 只记 `u["_b8X_si"] = maxi(旧, si)`, **所有效果读这个字段而不是钩子传进来的 si**。
+## 现做法: 每件一个份号槽(eq_state[ck]), 写在龟身上的 `_b8X_*` 由 EquipSystem.UF 按份换装, tick_unit 用 each_copy 逐件推;
+##   下面这段是 8 月「取更高星」时的旧做法说明, 留作来历 ——
+## 旧做法: `on_spawn` 只记 `u["_b8X_si"] = maxi(旧, si)`, **所有效果读这个字段而不是钩子传进来的 si**。
 ## 但钩子是在 `for e in u["equips"]` 里逐件调的 ⇒ 带两把同款会被调两次。
 ## 去重用**事件序号**, 不是帧号(一帧内可能有多段伤害):
 ##   · `on_damaged` → `u["_st_taken"]`(两条路都在调钩子【之前】累加, 且单段伤害恒 ≥1 ⇒ 严格递增)
@@ -196,15 +198,10 @@ func _init(b) -> void:
 ## 「这一次调用是本次事件的第几份」—— 身上带 n 份同一件装备时, 分派循环会连着调 n 次。
 ## 返回 true 表示这是**第一份**(第 0、n、2n… 次), 后面 n−1 次直接跳过。
 ## ★不依赖帧号/时钟, 只依赖"一次事件必定连着调 n 次"这个分派事实 ⇒ 高攻速 + 一帧多 sim 步也不漏。
-func _nth_copy(u: Dictionary, eid: String, st: Dictionary) -> bool:
-	var n: int = 0
-	for e in u.get("equips", []):
-		if e is Dictionary and str((e as Dictionary).get("id", "")) == eid:
-			n += 1
-	n = maxi(1, n)
-	var c: int = int(st.get("call_n", 0))
-	st["call_n"] = (c + 1) % n
-	return c % n == 0
+## ★11-13 起不再去重: 用户「两件相同装备…各自生效各自的效果」⇒ 每一份各自结算(状态按份号各存一槽)。
+##   保留函数与 call_n 计数只为不动调用点; 恒返回 true。
+func _nth_copy(_u: Dictionary, _eid: String, _st: Dictionary) -> bool:
+	return true
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -255,12 +252,17 @@ func tick_ts(delta: float, holders: Array) -> void:
 ## 每帧逐单位推进(守卫是常驻字段 `_b4_eq`, 在 EQ_TICK 闸之前 ⇒ 每帧精度)
 func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
+	## ★每一份各推一次(11-13 用户「各自生效」): each_copy 切好份号 / 统计 / 龟身字段(EquipSystem.UF), 单件逐字不变
+	var es = battle._equip_sys
 	if u.has("_b81_si"):
-		_t081(u, delta)
+		es.each_copy(u, "p2eq_081", func(_si: int) -> void:
+			if u.has("_b81_si"): _t081(u, delta))
 	if u.has("_b83_si"):
-		_t083(u, delta)
+		es.each_copy(u, "p2eq_083", func(_si: int) -> void:
+			if u.has("_b83_si"): _t083(u, delta))
 	if u.has("_b84_si"):
-		_t084(u, delta)
+		es.each_copy(u, "p2eq_084", func(_si: int) -> void:
+			if u.has("_b84_si"): _t084(u, delta))
 
 
 ## 携带者登场(每路开战、全队属性写完之后跑一次)
@@ -327,25 +329,25 @@ func clear_all() -> void:
 #      举盾结束后重新开始计数」★举盾【不扣攻速】(用户 2026-08-06 最终拍板)
 # ══════════════════════════════════════════════════════════════════════
 func _spawn081(u: Dictionary, si: int) -> void:
-	u["_b81_si"] = maxi(int(u.get("_b81_si", -1)), si)   # 多件同带取更高星
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_081", {})
+	u["_b81_si"] = maxi(int(u.get("_b81_si", -1)), si)   # 11-13 起第 2 件换装后这里读到的是它自己的(-1) ⇒ 就是自己的星级
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_081"), {})
 	st["charge"] = 0.0
 	st["up_until"] = 0.0      # 到期时刻(绝对), 不是"还剩几秒" —— _t 跨路累加(§3.4)
 	st["res_given"] = 0.0
 	st["raised"] = 0
 	st["ev"] = -1
-	u["eq_state"]["p2eq_081"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_081")] = st
 
 
 ## 充能条累计。★两条伤害路径都收(规格是"受到…的伤害", DoT 也算) ⇒ 不看 `_b4_dot`。
 func _damaged081(u: Dictionary, dmg: float) -> void:
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_081", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_081"), {})
 	var ev: int = int(u.get("_st_taken", 0))
 	if int(st.get("ev", -1)) == ev:
 		return                                   # 同一段伤害被第二把 081 又调了一次
 	st["ev"] = ev
 	if battle._t < float(st.get("up_until", 0.0)):
-		u["eq_state"]["p2eq_081"] = st
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_081")] = st
 		vfx.guard_block(u)                       # ★盾真的吃下了这一下 ⇒ 盾面闪一下(实拍时零反馈)
 		return                                   # ★举盾期间受到的伤害【不计入】充能条
 	var sx: int = int(u.get("_b81_si", 0))
@@ -354,17 +356,17 @@ func _damaged081(u: Dictionary, dmg: float) -> void:
 	# ★归一后的百分比: 装备图标框那张表(PANEL_CHARGE)的分母只能是**常量**,
 	#   而这件的需求是 maxHp×40/35/30% ⇒ 在这里就把它化成 0~100。
 	st["chg_pct"] = clampf(float(st["charge"]) / maxf(1.0, need) * 100.0, 0.0, 100.0)
-	u["eq_state"]["p2eq_081"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_081")] = st
 	if float(st["charge"]) >= need:
 		st["charge"] = 0.0                       # 决定②: 满了归零, 不保留溢出
 		st["chg_pct"] = 0.0
-		u["eq_state"]["p2eq_081"] = st
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_081")] = st
 		_b81_raise(u, sx)
 
 
 ## 举盾。★同步入口, 门禁直接调 —— 不依赖任何演出 tween 跑完(CLAUDE.md §3.5)。
 func _b81_raise(u: Dictionary, sx: int) -> void:
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_081", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_081"), {})
 	var up_sec: float = [2.5, 3.0, 3.5][sx]       # 举盾时长: 到期判定与护盾时限共用这一份
 	st["up_until"] = battle._t + up_sec
 	st["raised"] = int(st.get("raised", 0)) + 1   # 同步触发证据(门禁看它, 不看有没有建节点)
@@ -372,7 +374,7 @@ func _b81_raise(u: Dictionary, sx: int) -> void:
 	u["base_def"] = float(u.get("base_def", 0.0)) + res
 	u["base_mr"] = float(u.get("base_mr", 0.0)) + res
 	st["res_given"] = res
-	u["eq_state"]["p2eq_081"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_081")] = st
 	battle._recalc_stats(u)
 	# ★护盾要让盾羁绊 9 档【圣光·强化】认得出是"盾类装备给的" ⇒ 先标 _cur_eq_item(用完还原)
 	var prev = battle._cur_eq_item
@@ -388,7 +390,7 @@ func _b81_raise(u: Dictionary, sx: int) -> void:
 ## 落盾(到期或阵亡)。★演出节点【无论哪条路都收】—— 阵亡那条不收的话, 盾面会一直挂在
 ## 死人身上直到换路(演出泄漏)。show_vfx 只控制"落盾的那一下有没有反馈", 不控制清理。
 func _b81_lower(u: Dictionary, show_vfx: bool = true) -> void:
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_081", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_081"), {})
 	var res: float = float(st.get("res_given", 0.0))
 	st["up_until"] = 0.0
 	st["charge"] = 0.0                            # 「举盾结束后重新开始计数充能条」
@@ -397,26 +399,32 @@ func _b81_lower(u: Dictionary, show_vfx: bool = true) -> void:
 		u["base_def"] = maxf(0.0, float(u.get("base_def", 0.0)) - res)
 		u["base_mr"] = maxf(0.0, float(u.get("base_mr", 0.0)) - res)
 		st["res_given"] = 0.0
-		u["eq_state"]["p2eq_081"] = st
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_081")] = st
 		battle._recalc_stats(u)
 	else:
-		u["eq_state"]["p2eq_081"] = st
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_081")] = st
 	vfx.guard_lower(u, show_vfx)
 
 
 func _t081(u: Dictionary, _delta: float) -> void:
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_081", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_081"), {})
 	var uu: float = float(st.get("up_until", 0.0))
 	if uu > 0.0 and battle._t >= uu:
 		_b81_lower(u)
 
 
 ## 现在是不是举着盾。★纯查询, 门禁与演出都调它(不各自抄一遍判据)。
+## 份号上下文里: 这一件在不在举盾; 上下文以外: 身上任一件在举盾(11-13 同名多件各自生效)。
 func b81_guarding(u: Dictionary) -> bool:
 	if not (u.get("eq_state", null) is Dictionary):
 		return false
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_081", {})
-	return battle._t < float(st.get("up_until", 0.0))
+	var ck: String = battle._equip_sys.key_of(u, "p2eq_081")
+	if ck.contains(EquipStatsApply.CK_SEP):
+		return battle._t < float(((u["eq_state"] as Dictionary).get(ck, {}) as Dictionary).get("up_until", 0.0))
+	for c in EquipStatsApply.copies(u, "p2eq_081"):
+		if battle._t < float(((u["eq_state"] as Dictionary).get(str(c[0]), {}) as Dictionary).get("up_until", 0.0)):
+			return true
+	return battle._t < float(((u["eq_state"] as Dictionary).get("p2eq_081", {}) as Dictionary).get("up_until", 0.0))
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -432,12 +440,12 @@ const CLAM_BAR_COL := Color(0.62, 0.95, 0.90, 0.95)
 
 func _spawn082(u: Dictionary, si: int) -> void:
 	u["_b82_si"] = maxi(int(u.get("_b82_si", -1)), si)
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_082", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_082"), {})
 	st["refl_n"] = 0
 	st["charges"] = 0
 	st["ev"] = -1
 	st["call_n"] = 0   # 普攻钩的"第几份"计数(见 _nth_copy)
-	u["eq_state"]["p2eq_082"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 
 
 ## 护心反伤。★DoT 每跳【不算】"一段攻击" ⇒ 读 `_b4_dot` 直接 return(用户明确拍板)。
@@ -448,12 +456,12 @@ func _damaged082(u: Dictionary, src) -> void:
 	##   而反伤本身就是装备伤害 ⇒ 两个都带 082 的单位会互相反伤成死循环。反伤打出去的那一下不再触发反伤。
 	if _refl082_depth > 0:
 		return
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_082", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_082"), {})
 	var ev: int = int(u.get("_st_taken", 0))
 	if int(st.get("ev", -1)) == ev:
 		return                                   # 多件同带去重(同一段攻击只反一次)
 	st["ev"] = ev
-	u["eq_state"]["p2eq_082"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 	if not (src is Dictionary) or not src.get("alive", false) or is_same(src, u):
 		return                                   # is_same: 单位字典互引成环, == 会深比较→卡死
 	if battle._is_untouchable(src):
@@ -468,7 +476,7 @@ func _damaged082(u: Dictionary, src) -> void:
 	if int(st["refl_n"]) >= CLAM_PER_CHARGE:
 		st["refl_n"] = int(st["refl_n"]) - CLAM_PER_CHARGE
 		st["charges"] = int(st.get("charges", 0)) + 1
-	u["eq_state"]["p2eq_082"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 	vfx.clam_reflect(u, src)
 	# ★充能进度(refl_n/15)与层数(charges)都已写进 `eq_state`,
 	#   由**装备图标框**那套现成机制显示(PANEL_CHARGE / PANEL_COUNT), 不再在头顶另画一套
@@ -477,16 +485,16 @@ func _damaged082(u: Dictionary, src) -> void:
 
 ## 普攻消耗一层充能: 回复 5/7/10% 最大生命 + 附带 100% 魔抗的魔法伤害。
 func _basic082(u: Dictionary, _tgt) -> void:
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_082", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_082"), {})
 	if not _nth_copy(u, "p2eq_082", st):
-		u["eq_state"]["p2eq_082"] = st
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 		return                                   # 多件同带: 一次普攻只消耗一层
 	if int(st.get("charges", 0)) <= 0:
-		u["eq_state"]["p2eq_082"] = st
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 		return
 	st["charges"] = int(st["charges"]) - 1
 	st["spent"] = int(st.get("spent", 0)) + 1    # 同步触发证据
-	u["eq_state"]["p2eq_082"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 	var sx: int = int(u.get("_b82_si", 0))
 	var prev = battle._cur_eq_item
 	battle._cur_eq_item = "p2eq_082"             # 盾类装备的治疗 → 盾羁绊 9 档转 20% 圣光盾
@@ -496,16 +504,16 @@ func _basic082(u: Dictionary, _tgt) -> void:
 	##   远程携带者出手当帧目标就掉血, 弹体要过一会儿才到, 普攻被闪避 / 弹体打空也照样掉。
 	##   ⇒ 这里只记「下一次普攻命中要附带一次」, 由 `_hit082`(on_hit · 普攻)兑现。
 	st["mag_pending"] = int(st.get("mag_pending", 0)) + 1
-	u["eq_state"]["p2eq_082"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 
 
 ## 普攻命中: 兑现一次附带魔伤。多件同带时命中钩子会连着调 n 次, 但出手只记了一次 ⇒ 第一次兑现、其余读到 0 直接返回。
 func _hit082(u: Dictionary, tgt: Dictionary) -> void:
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_082", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_082"), {})
 	if int(st.get("mag_pending", 0)) <= 0 or not tgt.get("alive", false):
 		return
 	st["mag_pending"] = int(st["mag_pending"]) - 1
-	u["eq_state"]["p2eq_082"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_082")] = st
 	# ★「相当于自身 100% 魔抗」取【命中这一刻】的魔抗(含举盾/硬化/羁绊给的) —— 决定④
 	var d: int = battle._resolve_dmg(u, float(u.get("mr", 0.0)), tgt, true)
 	battle._damage._apply_damage_from(u, tgt, d, Color("#7fe8ff"), 0.0, false, true)
@@ -514,11 +522,11 @@ func _hit082(u: Dictionary, tgt: Dictionary) -> void:
 
 ## 当前充能层数 / 累计反伤次数。★纯查询, 门禁用。
 func b82_charges(u: Dictionary) -> int:
-	return int(((u.get("eq_state", {}) as Dictionary).get("p2eq_082", {}) as Dictionary).get("charges", 0))
+	return int(((u.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_082"), {}) as Dictionary).get("charges", 0))
 
 
 func b82_reflects(u: Dictionary) -> int:
-	var st: Dictionary = (u.get("eq_state", {}) as Dictionary).get("p2eq_082", {})
+	var st: Dictionary = (u.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_082"), {})
 	return int(st.get("charges", 0)) * CLAM_PER_CHARGE + int(st.get("refl_n", 0))
 
 
@@ -536,20 +544,20 @@ const RAPIER_LS_PER := 0.005  # 每层 0.5% 生命偷取(★不随星级变, §0
 func _spawn083(u: Dictionary, si: int) -> void:
 	u["_b83_si"] = maxi(int(u.get("_b83_si", -1)), si)
 	u["_b83_tgt"] = null
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_083", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_083"), {})
 	st["stacks"] = 0
 	st["amp_given"] = 0.0
 	st["ls_given"] = 0.0
 	st["aspd_given"] = 0.0
 	st["ev"] = -1
-	u["eq_state"]["p2eq_083"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_083")] = st
 
 
 ## 连续命中同一目标叠层。
 ## ★剑士追打天然走这条钩 —— 追打调 `_apply_damage_from`(from_equip 默认 false), 管线内部回钩
 ##   `_eq_on_hit` ⇒ 本函数照常被调。**不需要在这里认追打**, 也不该认(认了就是手抄副本)。
 func _hit083(src: Dictionary, tgt: Dictionary) -> void:
-	var st: Dictionary = (src["eq_state"] as Dictionary).get("p2eq_083", {})
+	var st: Dictionary = (src["eq_state"] as Dictionary).get(battle._equip_sys.key_of(src, "p2eq_083"), {})
 	var ev: int = int(src.get("_st_dealt", 0))
 	if int(st.get("ev", -1)) == ev:
 		return                                   # 多件同带去重
@@ -558,7 +566,7 @@ func _hit083(src: Dictionary, tgt: Dictionary) -> void:
 	var same: bool = prev is Dictionary and is_same(prev, tgt)
 	var stacks: int = mini(RAPIER_CAP, (int(st.get("stacks", 0)) if same else 0) + 1)
 	st["stacks"] = stacks
-	src["eq_state"]["p2eq_083"] = st
+	src["eq_state"][battle._equip_sys.key_of(src, "p2eq_083")] = st
 	src["_b83_tgt"] = tgt
 	_b83_reapply(src, stacks, int(src.get("_b83_si", 0)))
 	vfx.rapier_stack(src, stacks)
@@ -568,7 +576,7 @@ func _hit083(src: Dictionary, tgt: Dictionary) -> void:
 ## ★先撤掉本件上一次的贡献再加新的 —— 不撤就是在旧值上叠, 20 层会翻好几倍
 ##   (SignalWaveSystem._reapply_stack_bonus 是同一个写法, 本项目既有惯例)。
 func _b83_reapply(u: Dictionary, stacks: int, sx: int) -> void:
-	var st: Dictionary = (u.get("eq_state", {}) as Dictionary).get("p2eq_083", {})
+	var st: Dictionary = (u.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_083"), {})
 	var old_amp: float = float(st.get("amp_given", 0.0))
 	var old_ls: float = float(st.get("ls_given", 0.0))
 	u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - old_amp)
@@ -580,13 +588,13 @@ func _b83_reapply(u: Dictionary, stacks: int, sx: int) -> void:
 	st["amp_given"] = amp
 	st["ls_given"] = ls
 	st["stacks"] = stacks
-	u["eq_state"]["p2eq_083"] = st
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_083")] = st
 
 
 ## 每帧: ① 目标死了就清层 ② 被动攻速跟着当前血量实时走。
 func _t083(u: Dictionary, _delta: float) -> void:
 	var sx: int = int(u.get("_b83_si", 0))
-	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_083", {})
+	var st: Dictionary = (u["eq_state"] as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_083"), {})
 	var t = u.get("_b83_tgt", null)
 	if t is Dictionary and not (t as Dictionary).get("alive", false):
 		u["_b83_tgt"] = null                     # 「目标死亡也算切换目标」⇒ 清空
@@ -600,11 +608,11 @@ func _t083(u: Dictionary, _delta: float) -> void:
 	if absf(want - given) > 1e-6:
 		u["aspd_perm"] = maxf(0.01, float(u.get("aspd_perm", 1.0)) - given) + want
 		st["aspd_given"] = want
-		u["eq_state"]["p2eq_083"] = st
+		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_083")] = st
 
 
 func b83_stacks(u: Dictionary) -> int:
-	return int(((u.get("eq_state", {}) as Dictionary).get("p2eq_083", {}) as Dictionary).get("stacks", 0))
+	return int(((u.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(u, "p2eq_083"), {}) as Dictionary).get("stacks", 0))
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -854,7 +862,7 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 	var sc: float = ([0.6, 0.9, 1.4][sx] if seg == 1 else [0.7, 1.1, 1.7][sx])
 	var n: int = 0
 	_last_hit_pos.clear()
-	var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_084")   # ④ 装备统计: 十字斩走自己的分段时刻表 ⇒ 记给「携带者 · 084」
+	var _tp: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_084"))   # ④ 装备统计: 十字斩走自己的分段时刻表 ⇒ 记给「携带者 · 084」
 	for o in battle._targeting._enemies_of(u):
 		if not (o is Dictionary) or not (o as Dictionary).get("alive", false):
 			continue
@@ -898,7 +906,7 @@ func _step_waves(delta: float, only: Array = []) -> void:
 			var dir: Vector2 = w["dir"]
 			var org: Vector2 = w["from"]
 			var perp: Vector2 = Vector2(-dir.y, dir.x)
-			var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_084")   # ④ 装备统计: 横波/竖波在本系统的在途表里推进
+			var _tp: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_084"))   # ④ 装备统计: 横波/竖波在本系统的在途表里推进
 			for o in battle._targeting._enemies_of(u):
 				if not (o is Dictionary) or not (o as Dictionary).get("alive", false):
 					continue

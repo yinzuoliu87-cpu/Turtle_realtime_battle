@@ -484,7 +484,8 @@ func _t081_dot_and_stars() -> void:
 		_blade().b81_guarding(u2) and absf(float(u2["def"]) - 80.0) < 0.01
 			and absf(float(u2["shield"]) - 100.0) < 0.51,
 		"def=%.1f shield=%.1f" % [float(u2["def"]), float(u2["shield"])])
-	## ★多件同带取【星级更高的那一件】, 且同一段伤害只累计一次
+	## ★11-13 同名多件【各自生效】(用户「两件相同装备…各自生效各自的效果」; 取代 8 月契约 §4「取更高星」):
+	##   1★+3★ 各有一条充能条、各自的阈值(40% / 30%)、各自举盾各给一份双抗
 	_s._units.clear()
 	var um: Dictionary = _mk("fortune", "left", Vector2(-200.0, 0.0), 10000.0)
 	var am: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
@@ -492,12 +493,16 @@ func _t081_dot_and_stars() -> void:
 	um["eq_state"] = {}
 	_spawn_all()
 	_hit(am, um, 1000)
-	_ok("① ★带两把 081(1★+3★): 一段 1000 伤害只累计【一次】(不是 2000)",
-		absf(_charge081(um) - 1000.0) < 0.51, "charge=%.1f" % _charge081(um))
+	var c2: float = float(((um["eq_state"] as Dictionary).get("p2eq_081#2", {}) as Dictionary).get("charge", -1.0))
+	_ok("① ★带两把 081(1★+3★): 一段 1000 伤害每把各记一次(各 1000, 不是一条 2000)",
+		absf(_charge081(um) - 1000.0) < 0.51 and absf(c2 - 1000.0) < 0.51, "charge=%.1f / #2 %.1f" % [_charge081(um), c2])
 	_hit(am, um, 2000)
-	_ok("① ★两把同带取更高星: 阈值按 3★ 的 30%(3000) 触发, 且只举一次盾",
+	_ok("① ★★两把各自: 累计 3000 时只有 3★ 那把(阈值 30%)举盾 ⇒ +140 双抗, 1★ 那把(40%)还没到",
 		_blade().b81_guarding(um) and absf(float(um["def"]) - 140.0) < 0.01,
-		"def=%.1f (若两把各加一份会是 190)" % float(um["def"]))
+		"def=%.1f" % float(um["def"]))
+	_hit(am, um, 1000)
+	_ok("① ★★两把各自: 再挨 1000(1★ 那把累计 4000)也举盾 ⇒ 两份双抗相加 140 + 50 = 190",
+		absf(float(um["def"]) - 190.0) < 0.01, "def=%.1f" % float(um["def"]))
 
 
 # ═════════════════════════════════════════════════════════════
@@ -1049,15 +1054,15 @@ func _t084_realtime() -> void:
 		_s._equip_sys._eq_tick(u, 0.016)
 	_ok("④ ★连跑 20 帧属性纹丝不动(差量施加, 不是每帧再加一遍)",
 		absf(float(u["maxHp"]) - mh) < 0.51, "maxHp %.0f → %.0f" % [mh, float(u["maxHp"])])
-	## 多件同带取更高星
+	## ★11-13 同名多件各自生效: 两把各给一份(1★ + 3★), 不再取更高星
 	_s._units.clear()
 	var um: Dictionary = _mk("cyber", "left", Vector2(-200.0, 0.0), 3000.0)
 	var h0m: float = float(um["maxHp"])
 	um["equips"] = [{"id": "p2eq_084", "star": 1}, {"id": "p2eq_084", "star": 3}]
 	um["eq_state"] = {}
 	_spawn_all()
-	_ok("④ ★带两把 084(1★+3★): 按 3★ 给一份, 不是两份相加",
-		absf(float(um["maxHp"]) - h0m - float(EqBladeBatch.HH_RANGED_HP[2]) * 1.70) < 1.51,
+	_ok("④ ★★带两把 084(1★+3★): 两把各按自己的星级给一份, 相加",
+		absf(float(um["maxHp"]) - h0m - (float(EqBladeBatch.HH_RANGED_HP[0]) + float(EqBladeBatch.HH_RANGED_HP[2])) * 1.70) < 1.51,
 		"maxHp+%.0f" % (float(um["maxHp"]) - h0m))
 
 

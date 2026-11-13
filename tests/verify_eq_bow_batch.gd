@@ -1539,8 +1539,8 @@ func _t075_twin() -> void:
 		for k in range(61):
 			_s._equip_sys._tick_eq_intervals(u, 0.1)
 			if k == 30:
-				at3 = int((u["eq_state"].get("p2eq_075", {}) as Dictionary).get("rain_n", 0))
-		var at6: int = int((u["eq_state"].get("p2eq_075", {}) as Dictionary).get("rain_n", 0))
+				at3 = _rain_n_all(u)
+		var at6: int = _rain_n_all(u)   # 11-13 起每份一个份号槽(「p2eq_075#2」), 两份各记各的 ⇒ 合计
 		var sis: Array = []
 		for r in _s._equip_sys._bow_sys._rains:
 			sis.append(int((r as Dictionary).get("si", -1)))
@@ -1554,3 +1554,12 @@ func _t075_twin() -> void:
 		"6.1 秒 %d 轮 · 在途星级下标 %s" % [got[2][1], str(got[2][2])])
 	_s._units.clear()
 	_s._equip_sys._bow_sys.clear()
+
+
+## 075 各份箭雨计数之和(份号: 第 1 份「p2eq_075」, 第 2 份起「p2eq_075#2」…)
+func _rain_n_all(u: Dictionary) -> int:
+	var n: int = 0
+	for k in (u.get("eq_state", {}) as Dictionary).keys():
+		if EquipStatsApply.base_id(str(k)) == "p2eq_075":
+			n += int(((u["eq_state"] as Dictionary)[k] as Dictionary).get("rain_n", 0))
+	return n

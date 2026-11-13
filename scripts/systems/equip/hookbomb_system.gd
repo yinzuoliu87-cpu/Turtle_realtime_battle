@@ -168,6 +168,7 @@ func _hb_attach(u: Dictionary, o: Dictionary, si: int) -> void:
 	o["hookbomb_pct"] = float(o.get("hookbomb_pct", 0.0)) + BOMB_DPS_PCT[si]
 	if not (o.get("hookbomb_src", null) is Dictionary):
 		o["hookbomb_src"] = u          # 引爆归属给【第一颗】的携带者
+		o["hookbomb_ck"] = battle._equip_sys.key_of(u, "p2eq_055")   # …与挂它的那一件(份号 · 11-13: 同名多件统计分开)
 	o["hookbomb_si"] = maxi(int(o.get("hookbomb_si", 0)), si)   # 聚爆按更高星级那颗
 	o["hookbomb_t"] = float(o.get("hookbomb_t", 0.0))
 	_bomb_vfx(o)
@@ -192,7 +193,7 @@ func _hb_tick(o: Dictionary, delta: float) -> void:
 	##   减甲/增伤/减伤/虚化, **不掷暴击** —— 这两段本来就没有暴击, 用 `_resolve_dmg`
 	##   会平白多出一层随机。
 	battle._damage.set_dtype("physical", o, null, true)
-	var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_055")   # ④ 装备统计: 炸弹挂在敌人身上自己跳 ⇒ 记给「挂弹者 · 055」
+	var _tp: Array = battle._equip_sys.tally.push(src, str(o.get("hookbomb_ck", "p2eq_055")))   # ④ 装备统计: 炸弹挂在敌人身上自己跳 ⇒ 记给「挂弹者 · 挂它的那一件」
 	battle._damage._apply_damage_from(src, o,
 		maxi(1, battle._phys_after_armor(src, float(o["maxHp"]) * pct, o)),
 		Color("#ff8a3c"), 0.0, false, true, false, false, true)
@@ -215,7 +216,7 @@ func _hb_tick(o: Dictionary, delta: float) -> void:
 ##   CLAUDE.md §3.5: 数值不能依赖演出 tween 跑完。
 ##
 ## 返回被卷入的单位数(供门禁当分母; N=0 是空检查不是通过)。
-func _hb_detonate(carrier: Dictionary, si: int, epicenter_in = null, husk_in = null) -> int:
+func _hb_detonate(carrier: Dictionary, si: int, epicenter_in = null, husk_in = null, ck: String = "p2eq_055") -> int:
 	if not (carrier is Dictionary):
 		return 0
 	var epi: Vector2 = (epicenter_in as Vector2) if epicenter_in != null else (carrier["pos"] as Vector2)
@@ -255,7 +256,7 @@ func _hb_detonate(carrier: Dictionary, si: int, epicenter_in = null, husk_in = n
 	var sii: int = si
 	var ep2: Vector2 = epi
 	# ★等【最慢的那条触须】收完再炸 —— 否则最远那只还在半路上就爆了, 白拉一趟
-	_pending.append({"t": PULL_STUN + slowest, "fn": func(): _hb_blast(cc, lst, sii, ep2)})
+	_pending.append({"t": PULL_STUN + slowest, "fn": func(): _hb_blast(cc, lst, sii, ep2, ck)})
 	# ★病毒巢: 触手的【来源物】, 活到爆炸那一刻(否则触手从虚空长出来)
 	_virus_nest(epi, PULL_STUN + slowest)
 	_husk_writhe(husk_in, PULL_STUN + slowest)
@@ -263,7 +264,7 @@ func _hb_detonate(carrier: Dictionary, si: int, epicenter_in = null, husk_in = n
 
 
 ## 聚拢后的那一下爆炸(纯结算 —— 门禁直接调它, 不等任何演出)。
-func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
+func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2, ck: String = "p2eq_055") -> int:
 	var hit := 0
 	for oi in range(list.size()):
 		var o = list[oi]
@@ -278,7 +279,7 @@ func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
 		#   我少写一个 false, no_popup 落到了 no_dodge 上 ⇒ 通用红字根本没关, 和自发飘字【双份】
 		#   (实拍: 4 个目标出了 5 个数字、大小还不一样)。
 		battle._damage.set_dtype("physical", o, null, true)
-		var _tp: Array = battle._equip_sys.tally.push(carrier, "p2eq_055")   # ④ 装备统计: 引爆走自己的延时表 ⇒ 记给「挂弹者 · 055」
+		var _tp: Array = battle._equip_sys.tally.push(carrier, ck)   # ④ 装备统计: 引爆走自己的延时表 ⇒ 记给「挂弹者 · 挂它的那一件」(份号)
 		battle._damage._apply_damage_from(carrier, o, dmg, Color("#ff5a2a"), 0.0, false, true, false, false, true)
 		battle._equip_sys.tally.pop(_tp)
 		var ang: float = TAU * float(oi) / maxf(1.0, float(list.size())) - PI * 0.5
@@ -338,6 +339,7 @@ func _hb_on_death(o: Dictionary) -> void:
 		return
 	var src = o.get("hookbomb_src", null)
 	var si: int = int(o.get("hookbomb_si", 0))
+	var ck: String = str(o.get("hookbomb_ck", "p2eq_055"))
 	o["hookbomb_pct"] = 0.0
 	o["hookbomb_src"] = null
 	if not (src is Dictionary):
@@ -351,7 +353,7 @@ func _hb_on_death(o: Dictionary) -> void:
 	var srcd: Dictionary = src
 	var epi: Vector2 = o["pos"]
 	var husk = o.get("sprite", null)      # ★尸壳 = 宿主自己的立绘, 触手的来源物
-	_pending.append({"t": CONVULSE_SEC, "fn": func(): _hb_detonate(srcd, si, epi, husk)})
+	_pending.append({"t": CONVULSE_SEC, "fn": func(): _hb_detonate(srcd, si, epi, husk, ck)})
 
 
 ## ① 抽搐: 尸体原地高频颤抖, 幅度与红度随时间升到顶, 最后一下猛涨 —— "它要炸了"。

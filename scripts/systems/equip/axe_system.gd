@@ -97,11 +97,23 @@ func _gs_int(prop: String, dflt: int) -> int:
 func tick_owner(u: Dictionary, delta: float) -> void:
 	if u.get("_axe_pending", false):
 		u["_axe_pending"] = false
-		summon(u)
+		## 每一件各召一把(11-13 用户「两件肯定召唤两个…各自生效」); 份号上下文 ⇒ 斧头的账记到召它那一件
+		var _cs: Array = EquipStatsApply.copies(u, "p2eq_096")
+		if _cs.is_empty():
+			summon(u)   # 门禁手搓的携带者(没挂装备条目)
+		for _c in _cs:
+			var _tp0: Array = battle._equip_sys.tally.push(u, str(_c[0]))
+			summon(u)
+			battle._equip_sys.tally.pop(_tp0)
 	if u.has("_axe_ref"):
-		var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_096")   # ④ 装备统计: 斧头主动的回血/护盾记给「携带者 · 096」(斧头自己打的伤害靠召唤物标)
+		var _tp: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_096"))   # ④ 装备统计: 斧头主动的回血/护盾记给「携带者 · 096」(斧头自己打的伤害靠召唤物标)
 		tick(u, delta)
 		battle._equip_sys.tally.pop(_tp)
+		for ax2 in u.get("_axe_extra", []):   # 第 2 件起的斧头(11-13), 各自记到自己那一件
+			if ax2 is Dictionary:
+				var _tp2: Array = battle._equip_sys.tally.push(u, str((ax2 as Dictionary).get("_eq_src", "p2eq_096")))
+				tick_axe(ax2, delta)
+				battle._equip_sys.tally.pop(_tp2)
 
 
 ## 【全局】每个模拟步推进(由 `EquipSystem.tick_global` 调, 与"谁带着小木斧、斧头死没死"无关):
@@ -198,7 +210,13 @@ func summon(u: Dictionary) -> Variant:
 	AxeArt.apply(battle, ax, AxeArt.form_of(fin, str(AE.stage(si)["key"])))
 	battle._recalc_stats(ax)
 	ax["hp"] = float(ax["maxHp"])
-	u["_axe_ref"] = ax                       # ★只用 is_same 比较, 绝不当 Dictionary 的键(CLAUDE.md §3.2)
+	if u.get("_axe_ref", null) is Dictionary and str(ax.get("_eq_src", "")).contains(EquipStatsApply.CK_SEP):
+		## 同名第 2 件起(份号带 #)召的斧头: 另存一份, 每帧逐把推进(11-13)。`_axe_ref` 仍是第一把(老门禁 / 面板读它)。
+		var ex: Array = u.get("_axe_extra", [])
+		ex.append(ax)
+		u["_axe_extra"] = ex
+	else:
+		u["_axe_ref"] = ax                   # ★只用 is_same 比较, 绝不当 Dictionary 的键(CLAUDE.md §3.2)
 	return ax
 
 
@@ -391,7 +409,7 @@ func steal_shield(ax: Dictionary, tgt: Dictionary) -> float:
 	var holy: float = float(tgt.get("_holyShieldVal", 0.0))
 	if holy > 0.0:
 		tgt["_holyShieldVal"] = minf(holy, float(tgt["shield"]))   # 标记不许超过池子
-	var _tp: Array = battle._equip_sys.tally.push(ax.get("_eq_owner", ax.get("summon_owner", null)), "p2eq_096")   # ④ 偷来的盾记给「携带者 · 096」(普攻钩子里没有装备上下文)
+	var _tp: Array = battle._equip_sys.tally.push(ax.get("_eq_owner", ax.get("summon_owner", null)), str(ax.get("_eq_src", "p2eq_096")))   # ④ 偷来的盾记给「携带者 · 096」(普攻钩子里没有装备上下文)
 	battle._damage._grant_shield(ax, take)
 	battle._equip_sys.tally.pop(_tp)
 	return take

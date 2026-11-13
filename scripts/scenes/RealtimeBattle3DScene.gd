@@ -2403,12 +2403,14 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			_pirate_sys._pirate_rum_bubble(u)
 	if not u["alive"]:
 		return
-	if u.get("_skele_pending", false):                    # 032: 登场召唤亡灵骷髅(首帧)
+	if u.get("_skele_pending", false):                    # 032: 登场召唤亡灵骷髅(首帧) · 每一件各召一只(11-13)
 		u["_skele_pending"] = false
-		_equip_sys._eq_summon_skeleton(u, int(u.get("_skele_si", 0)))
-	if u.get("_turret_pending", false):                   # 058: 登场召唤炮台(首帧)
+		for _c in EquipStatsApply.copies(u, "p2eq_032"):
+			_equip_sys._eq_summon_skeleton(u, int(_c[1]) - 1, str(_c[0]))
+	if u.get("_turret_pending", false):                   # 058: 登场召唤炮台(首帧) · 每一件各召一座(11-13)
 		u["_turret_pending"] = false
-		_equip_sys._eq_summon_turret(u, int(u.get("_turret_si", 0)))
+		for _c in EquipStatsApply.copies(u, "p2eq_058"):
+			_equip_sys._eq_summon_turret(u, int(_c[1]) - 1, str(_c[0]))
 	if u.get("_slam", false):   # 火山砸地演出中: 锁AI/移动 (height/pos由slam tween驱动)
 		return
 	var stunned: bool = _t < u["stun_until"] or _t < float(u.get("channel_until", 0.0)) or u.get("_assembling", false)   # channel = 施法定身(不是眩晕, 见 battle_damage.channel); _assembling = 机甲组装 / 凤凰涅槃演出期(10-16: 原来免伤却照常走动出手)
@@ -2926,7 +2928,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	# (原: 无条件 _on_basic_hit 被动钩子 (竹叶强化/墨迹/结晶/斩杀/审判/多重/彩虹附色 等) — 改 _do_basic 时漏调, 已补
 
 func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携带者蓄力(金光聚1.2s)→召大熊(与末只小熊错开)
-	var glow := Sprite3D.new()
+	var _bck: String = _equip_sys.key_of(u, "p2eq_034"); var glow := Sprite3D.new()   # _bck: 召它的那一件(份号 · 11-13), await 之后上下文就没了
 	glow.texture = VfxTex._make_fire_glow_tex()
 	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED; glow.shaded = false; glow.transparent = true
 	glow.modulate = Color(1.0, 0.82, 0.4, 0.0); glow.pixel_size = 0.02
@@ -2944,15 +2946,15 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	await _wait_sim(EquipTickSystem.DOLL_CHARGE_SEC, u)
 	if not is_instance_valid(self): return
 	if is_instance_valid(glow): glow.queue_free()
-	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_034", {})
-	stt["bear_done"] = true
+	var stt: Dictionary = u.get("eq_state", {}).get(_bck, {})
+	stt["bear_done"] = true; var _btp: Array = _equip_sys.tally.push(u, _bck)   # 大熊打的伤害记到召它那一件
 	# ★用户 2026-07-30 加强大熊:
 	#   · 攻速 0.5 → 0.7 次/秒  → atk_interval = 1/0.7 = 1.4286(原来 2.0)
 	#     ★他先问"代码上是不是 0.5, 还是文案不对" —— 实测代码就是 2.0 秒 = 0.5 次/秒, 文案没错。
 	#   · 最大生命 650/1100/10000 → 1600/3000/15000
 	#   · 双抗 20 → 70(护甲与魔抗各 70)
 	#   ★攻击力用户没提 → 不动(70/120/2000)。
-	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": EquipTickSystem.BEAR_COL_SIZE, "hp_w": 52.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE})
+	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": EquipTickSystem.BEAR_COL_SIZE, "hp_w": 52.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE}); _equip_sys.tally.pop(_btp)
 	if bear != null:
 		bear["eq_state"] = {}; bear["equips"] = []
 		bear["base_def"] = EquipTickSystem.BEAR_RESIST; bear["def"] = EquipTickSystem.BEAR_RESIST
@@ -6293,7 +6295,7 @@ func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升�
 # 统领显示等级 = 基础等级 + 温泉蛋036临时孵化等级(egg_levels), 用于等级框实时跳字
 func _effective_level(u: Dictionary) -> int:
 	var lv: int = int(u.get("level", 1))
-	var st = u.get("eq_state", {}).get("p2eq_036", {})
+	var st = u.get("eq_state", {}).get(_equip_sys.key_of(u, "p2eq_036"), {})
 	return lv + int(st.get("egg_levels", 0))
 
 
@@ -6963,7 +6965,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 				u["worm_split_t"] = 0.0
 				var nw = _spawn._spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
 				if nw != null:
-					nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true; nw["atk_interval"] = 1.0 / EquipSystem.WORM_ASPD
+					nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true; nw["atk_interval"] = 1.0 / EquipSystem.WORM_ASPD; nw["_eq_src"] = u.get("_eq_src", ""); nw["_eq_owner"] = u.get("_eq_owner", null)   # 后两项: 分裂虫的伤害也记到放海螺的那一件(只动统计 · 11-13)
 					_conch_transform(nw["pos"])
 			else:
 				u["worm_split_t"] = EquipSystem.WORM_SPLIT_IV   # 满员: 等空位再分裂

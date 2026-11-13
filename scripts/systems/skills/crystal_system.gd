@@ -245,7 +245,8 @@ const BURST_MR_SHRED := 0.20    ## 引爆同时削目标魔抗(走 _buff, 默认
 func sweep_begin(u: Dictionary, si: int, reach: float, state: Dictionary,
 		im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D, start_a: float) -> void:
 	_sweeps.append({"u": u, "si": si, "reach": reach, "state": state,
-		"im": im, "imesh": imesh, "mat": mat, "a0": start_a, "el": 0.0})
+		"im": im, "imesh": imesh, "mat": mat, "a0": start_a, "el": 0.0,
+		"ck": battle._equip_sys.key_of(u, "p2eq_031")})   # ck: 发起扫射的那一件(份号 · 11-13 同名多件各自生效 / 统计分开)
 
 
 func tick(delta: float) -> void:
@@ -259,7 +260,7 @@ func tick(delta: float) -> void:
 		var t: float = clampf(float(sw["el"]) / SWEEP_SEC, 0.0, 1.0)
 		## Godot TRANS_CUBIC / EASE_IN_OUT 的原式 —— 不近似, 保证观感不变
 		var k: float = 4.0 * t * t * t if t < 0.5 else 1.0 - DetMath.dpow(-2.0 * t + 2.0, 3.0) / 2.0
-		var _tp: Array = battle._equip_sys.tally.push(sw["u"], "p2eq_031")   # ④ 装备统计: 扫射只有 031 会发起, 在本表里逐帧推进
+		var _tp: Array = battle._equip_sys.tally.push(sw["u"], str(sw.get("ck", "p2eq_031")))   # ④ 装备统计: 扫射只有 031 会发起, 在本表里逐帧推进; 记给发起它的那一件(份号)
 		_crystal_sweep_step(float(sw["a0"]) + SWEEP_ARC_RAD * k, sw["u"], int(sw["si"]),
 			float(sw["reach"]), sw["state"], im2, sw["imesh"], sw["mat"])
 		battle._equip_sys.tally.pop(_tp)

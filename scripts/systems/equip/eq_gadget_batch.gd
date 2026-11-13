@@ -120,10 +120,13 @@ func _init(b) -> void:
 	vfx = GadgetEqVfx.new(b)
 
 
-## 这只龟身上这件装备的最高星级(0/1/2); 没带返回 -1。
-## ★`tick_unit` 只拿得到 (u, delta), 星级要自己查 —— 顺手实现了契约 §4
-##   「同一件装备装多把 ⇒ 取星级更高的那一件」。
+## 这只龟身上这件装备的星级(0/1/2); 没带返回 -1。
+## ★11-13 起: 在份号上下文里(each_copy / 钩子逐件派发)返回【当前这一件】的星级 —— 用户「两件相同装备…各自生效」;
+##   上下文以外(没有份号)仍取最高星, 只当「带没带」的判断用。原契约 §4「取星级更高的那一件」作废。
 func _star_of(u: Dictionary, eid: String) -> int:
+	var cs: int = battle._equip_sys.copy_si(u, eid)
+	if cs >= 0:
+		return cs
 	var best: int = -1
 	for e in u.get("equips", []):
 		if e is Dictionary and str((e as Dictionary).get("id", "")) == eid:
@@ -134,10 +137,10 @@ func _star_of(u: Dictionary, eid: String) -> int:
 func _stt(u: Dictionary, eid: String) -> Dictionary:
 	if not (u.get("eq_state", null) is Dictionary):
 		u["eq_state"] = {}
-	var d = u["eq_state"].get(eid, null)
+	var d = u["eq_state"].get(battle._equip_sys.key_of(u, eid), null)
 	if not (d is Dictionary):
 		d = {}
-		u["eq_state"][eid] = d
+		u["eq_state"][battle._equip_sys.key_of(u, eid)] = d
 	return d
 
 
@@ -166,15 +169,14 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not (u is Dictionary) or not u.get("alive", false):
 		return
-	var s85: int = _star_of(u, PIEZO)
-	if s85 >= 0:
-		piezo_settle(u)
-	var s86: int = _star_of(u, SEXT)
-	if s86 >= 0:
-		_tick_sextant(u, delta, s86)
-	var s87: int = _star_of(u, DIVE)
-	if s87 >= 0:
-		_tick_dive(u, delta, s87)
+	## ★每一份各推一次、用各自的星级(11-13 用户「各自生效」; 原来取最高星只推一份)
+	var es = battle._equip_sys
+	if _star_of(u, PIEZO) >= 0:
+		es.each_copy(u, PIEZO, func(_si: int) -> void: piezo_settle(u))
+	if _star_of(u, SEXT) >= 0:
+		es.each_copy(u, SEXT, func(si: int) -> void: _tick_sextant(u, delta, si))
+	if _star_of(u, DIVE) >= 0:
+		es.each_copy(u, DIVE, func(si: int) -> void: _tick_dive(u, delta, si))
 
 
 ## 携带者登场(每路开战跑一次)
@@ -496,11 +498,11 @@ func _sext_apply_mr(u: Dictionary, n: int, per: float) -> void:
 	var bl: Array = u.get("buffs", [])
 	for i in range(bl.size() - 1, -1, -1):
 		var b = bl[i]
-		if b is Dictionary and str((b as Dictionary).get("src_eq", "")) == "p2eq_086":
+		if b is Dictionary and str((b as Dictionary).get("src_eq", "")) == battle._equip_sys.key_of(u, "p2eq_086"):   # 按份号: 每件各挂各的(11-13)
 			bl.remove_at(i)
 	if want > 0.0:
 		bl.append({"stat": "mr", "amount": want, "pct": false,
-			"until": battle._t + 1.0e9, "src_eq": "p2eq_086"})
+			"until": battle._t + 1.0e9, "src_eq": battle._equip_sys.key_of(u, "p2eq_086")})
 	battle._recalc_stats(u)
 
 
@@ -607,11 +609,11 @@ func _dive_sync_stacks(u: Dictionary, si: int) -> void:
 	var bl: Array = u.get("buffs", [])
 	for i in range(bl.size() - 1, -1, -1):
 		var b = bl[i]
-		if b is Dictionary and str((b as Dictionary).get("src_eq", "")) == "p2eq_087":
+		if b is Dictionary and str((b as Dictionary).get("src_eq", "")) == battle._equip_sys.key_of(u, "p2eq_087"):   # 按份号: 每件各挂各的(11-13)
 			bl.remove_at(i)
 	if n > 0:
 		bl.append({"stat": "def", "amount": DIVE_DEF_PER * float(n), "pct": false,
-			"until": battle._t + 1.0e9, "src_eq": "p2eq_087"})
+			"until": battle._t + 1.0e9, "src_eq": battle._equip_sys.key_of(u, "p2eq_087")})
 	battle._recalc_stats(u)
 
 

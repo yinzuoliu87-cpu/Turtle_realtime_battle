@@ -72,18 +72,21 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_first_of(u, EquipTally.FOOD_IDS)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.get("alive", false):
 		return
+	var _ckp75: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
 	for e in u.get("equips", []):
+		battle._equip_sys.ck_set(u, e)
 		var iid: String = str(e["id"])
 		var si: int = _si(int(e.get("star", 1)))
-		var stt: Dictionary = u["eq_state"].get(iid, {})
+		var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, iid), {})
 		if EquipTally.FOOD_IDS.has(iid):
-			battle._equip_sys.tally.use([u, iid])   # 11-12 逐件记账(原来全记给这只身上第一件食物)
+			battle._equip_sys.tally.use([u, battle._equip_sys.key_of(u, iid)])   # 11-12 逐件记账(原来全记给这只身上第一件食物)
 		match iid:
 			"p2eq_069": _cake_tick(u, si, stt, delta)
 			"p2eq_070": _brick_tick(u, si, stt, delta)
 			"p2eq_071": _cream_tick(u, si, stt, delta)
 			"p2eq_072": _box_tick(u, si, stt, delta)
-		u["eq_state"][iid] = stt
+		u["eq_state"][battle._equip_sys.key_of(u, iid)] = stt
+	battle._equip_sys.ck_restore(_ckp75)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -395,7 +398,7 @@ func _cream_sync(frozen: bool, delta: float) -> void:
 	for o in battle._units:
 		if not (o.has("_creamShieldVal") or o.has("_cream_shell")):
 			continue
-		var cv: float = battle._spec.val(o, KEY_CREAM)
+		var cv: float = battle._spec.val_prefix(o, KEY_CREAM)   # 同名多件各一份余额(11-13) ⇒ 合计
 		## ★盾量进血条(2026-08-11 补验收): 奶油盾是 SpecialBalance 余额, 不进 u["shield"] ⇒ 每步喂真实余额, 0 时自动隐藏。
 		o["_creamShieldVal"] = cv
 		var osh = o.get("_cream_shell", null)
@@ -427,13 +430,16 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 		# ⚠ 同 key 再 grant 会【叠加余额并换掉 on_break】(SpecialBalance 的既有语义) ⇒
 		#   两只不同星级的携带者都带 071 时, 破盾时用的是【最后一次 grant 的那个 si】。
 		#   这是共用基建的行为, 不在这里另造一套多来源记账 —— 记一笔, 不当 bug 查。
-		battle._spec.grant(o, KEY_CREAM, amt, {
-			"on_break": func(uu, _k, reason): _cream_on_break(uu, si, str(reason), u),
+		## 同一只龟带两件(11-13 用户「各自生效」): 每件给每个友军各上一层、各自的余额键(第 1 件 = 原键), 各破各的
+		var _ck71: String = battle._equip_sys.key_of(u, "p2eq_071")
+		var _key71: String = KEY_CREAM if _ck71.find(EquipStatsApply.CK_SEP) < 0 else KEY_CREAM + _ck71.substr(_ck71.find(EquipStatsApply.CK_SEP))
+		battle._spec.grant(o, _key71, amt, {
+			"on_break": func(uu, _k, reason): _cream_on_break(uu, si, str(reason), u, _ck71),
 		})
 		o["_cream_given"] = float(o.get("_cream_given", 0.0)) + amt   # 同步证据
-		o["_creamShieldVal"] = battle._spec.val(o, KEY_CREAM)   # 血条镜像当场写上(之后 `_cream_sync` 每步跟)
+		o["_creamShieldVal"] = battle._spec.val_prefix(o, KEY_CREAM)   # 血条镜像当场写上(之后 `_cream_sync` 每步跟; 几份合计)
 		## ④ 装备统计: 奶油盾是 SpecialBalance 余额、不走 `_grant_shield`(所以 on_shield 记不到) ⇒ 这里按发放量直接记给「携带者 · 071」
-		battle._equip_sys.tally.credit(u, "p2eq_071", "shield", amt)
+		battle._equip_sys.tally.credit(u, battle._equip_sys.key_of(u, "p2eq_071"), "shield", amt)
 		## ★★每一个拿到盾的友军都要有壳(2026-08-11 修)。
 		##   改之前壳只建一个、而且建在**携带者**身上(下面那行 `cream_shell_make(u)`) ⇒
 		##   友军拿到了盾、身上却什么都没有 ⇒ 用户实拍:「全队奶油护盾完全没表达」。
@@ -449,13 +455,13 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 ## 奶油护盾被打破 → 300 码 AOE + 给【持有者】整路加成。
 ## ★reason: "damage"(被打光) / "decay"(自然衰减完·本件不衰减所以不会走) / "clear"(撤场·不算破)
 ## (装备 "p2eq_071" —— tooltip_number_audit 的就近锚点)
-func _cream_on_break(holder: Dictionary, si: int, reason: String, carrier = null) -> void:
+func _cream_on_break(holder: Dictionary, si: int, reason: String, carrier = null, ck: String = "p2eq_071") -> void:
 	if reason == "clear" or not holder.get("alive", false):
 		return
 	holder["_cream_broke_n"] = int(holder.get("_cream_broke_n", 0)) + 1   # 同步触发证据
 	var dmg: float = [70.0, 100.0, 150.0][si]   # 300 码内敌人 70/100/150 魔法伤害
 	## ④ 装备统计: 破盾回调发生在【对方的】伤害结算里 ⇒ 切到「发盾的携带者 · 071」(伤害源仍是持有者, 不改结算)
-	var _tp: Array = battle._equip_sys.tally.push_for(holder, carrier if carrier is Dictionary else holder, "p2eq_071")
+	var _tp: Array = battle._equip_sys.tally.push_for(holder, carrier if carrier is Dictionary else holder, ck)   # ck: 发这一层盾的那一件(份号 · 11-13)
 	for o in battle._targeting._enemies_of(holder):
 		if not o.get("alive", false):
 			continue
@@ -735,8 +741,14 @@ func _box_unbox(u: Dictionary, reason: String) -> void:
 ##   我只往里写用户点名的那三样(生命 / 攻击力 / 双抗)。复制携带者字典会把
 ##   暴击、吸血、装备、eq_state、召唤物列表一并带过去 —— 那不是用户说的"其他都是 0"。
 func _eq_cake_split(u: Dictionary, si: int, star: int) -> void:
-	if u.get("_cake_is_box", false) or bool(u.get("_cake_split_done", false)):
-		return   # 分裂盒不再分裂(链条终止), 每只携带者也只分裂一次
+	## 每一件各分裂一次(11-13 用户「两件相同装备…各自生效」; 原来记在龟身上 ⇒ 带两件也只分一次)。分裂盒不再分裂(链条终止)。
+	var _sk: String = battle._equip_sys.key_of(u, "p2eq_072")
+	var _sst: Dictionary = (u.get("eq_state", {}) as Dictionary).get(_sk, {})
+	if u.get("_cake_is_box", false) or bool(_sst.get("split_done", false)) or (_sk == "p2eq_072" and bool(u.get("_cake_split_done", false))):
+		return
+	_sst["split_done"] = true
+	if u.get("eq_state", null) is Dictionary:
+		u["eq_state"][_sk] = _sst
 	u["_cake_split_done"] = true
 	var hp_pct: float = [0.20, 0.40, 1.00][si]   # 携带者最大生命的 20/40/100%
 	var hp: float = maxf(1.0, float(u["maxHp"]) * hp_pct)

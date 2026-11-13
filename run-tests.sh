@@ -323,6 +323,7 @@ frames_for () {
     verify_stream_hud_parity) echo 20000 ;;   # 播放端 HUD(2026-10-19): 同 parity 两局裁判局, 每 30 步让一帧
     verify_stream_curtain_stats) echo 20000 ;;   # 2026-10-31 跟播 / 观赛幕布与统计: 录一局 + 按跟播入口播一遍到结尾
     verify_rules_fingerprint) echo 12000 ;;   # 2026-11-03 RULES_VER 门禁: 裁判真入口跑 5 局 + 同进程重跑一局, 实测约 800 帧 / 85 秒
+    verify_dup_equip) echo 6000 ;;   # 2026-11-13 同名装备多件各自生效: 4 场召唤 + 10 件代表件各跑 1500 步(每 8 步让一帧), 约 2000 帧
     verify_shell_vfx) echo 1500 ;;   # 2026-11-08 龟壳复制 / 暗影俯冲特效: 建场 30 帧 + 俯冲 420 步 + 复制 180 步(每帧恰一步), 实测约 660 帧
     verify_shell_stealth_look) echo 1000 ;;   # 2026-11-08 晚 龟壳潜影形态: 建场 30 帧 + 约 170 步(每帧恰一步), 实测约 210 帧
     verify_pet_xp_ui) echo 3000 ;;   # 2026-11-09 龟经验条三处界面: 钉 60fps, 结算屏按墙钟等 2.6 秒动画 × 5 次建屏 + 选龟页 + 图鉴, 实测约 900 帧

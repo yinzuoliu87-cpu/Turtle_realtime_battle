@@ -1057,15 +1057,16 @@ func _dl_save_eq_carry() -> void:
 			continue
 		var key: String = _eq_carry_key(u, seen)
 		for iid in EQ_CARRY.keys():
-			var stt = u["eq_state"].get(iid, null)
-			if not (stt is Dictionary):
-				continue
-			var rec: Dictionary = {}
-			for f in EQ_CARRY[iid]:
-				if (stt as Dictionary).has(f):
-					rec[f] = (stt as Dictionary)[f]
-			if not rec.is_empty():
-				battle._eq_carry["%s|%s" % [key, iid]] = rec
+			for c in EquipStatsApply.copies(u, iid):   # 同名多件各抄各的(份号 · 11-13); 单件时键与原来相同
+				var stt = u["eq_state"].get(str(c[0]), null)
+				if not (stt is Dictionary):
+					continue
+				var rec: Dictionary = {}
+				for f in EQ_CARRY[iid]:
+					if (stt as Dictionary).has(f):
+						rec[f] = (stt as Dictionary)[f]
+				if not rec.is_empty():
+					battle._eq_carry["%s|%s" % [key, str(c[0])]] = rec
 
 
 ## 重建单位并跑完装备管线【之后】把层数写回, 并把层数换来的永久属性一起补上。
@@ -1085,14 +1086,15 @@ func _dl_restore_eq_carry() -> void:
 			var iid: String = str(e.get("id", ""))
 			if not EQ_CARRY.has(iid):
 				continue
-			var rec = battle._eq_carry.get("%s|%s" % [key, iid], null)
+			var ck: String = EquipStatsApply.ck_of(u, e)   # 份号(11-13)
+			var rec = battle._eq_carry.get("%s|%s" % [key, ck], null)
 			if not (rec is Dictionary):
 				continue
 			var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
-			var stt: Dictionary = u["eq_state"].get(iid, {})
+			var stt: Dictionary = u["eq_state"].get(ck, {})
 			for f in (rec as Dictionary).keys():
 				stt[f] = (rec as Dictionary)[f]
-			u["eq_state"][iid] = stt
+			u["eq_state"][ck] = stt
 			_eq_carry_reapply(u, iid, si, stt)
 
 

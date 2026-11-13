@@ -29,12 +29,9 @@ extends RefCounted
 ##       (我最早给用户的量级表写的是携带者 +60%/+30% —— 只算了装备那一份、漏了羁绊那份
 ##        也落在携带者身上。那个数是错的, 别按它去做平衡。)
 ##
-## D2【同一只龟装 2 件香火石】→ 装备那一份 **只给一次**(不叠), 但**两件各自攒充能**。
-##    另一侧是"装备那份也翻倍"。选前者: 与全表通用口径「多件同带取星级更高的那一件」一致
-##    (082/084/071 都是这么定的); 而"各自攒充能"是用户明说的(「多个香火石…各自攒」)。
-##    ⚠ 实现限制(诚实记录): `eq_state` 是按 **item id** 存的, 同一只龟上的两件共用一个槽
-##    ⇒ 同龟两件实际上是**共用一条充能条**。要真正各攒需要把 eq_state 改成按槽位存,
-##    那是全 95 件装备的公共结构改动, 不在本批范围。**不同龟各带一件是各攒各的**(常见情形)。
+## D2【同一只龟装 2 件香火石】→ 11-13 起两块各自生效(用户「两件相同装备…各自生效各自的效果」):
+##    各自往本方共享的刻痕条里攒、装备那份增伤 / 减伤按件数给、各一份强化普攻窗与附带伤害(各按自己的星级)。
+##    原 D2「装备那一份只给一次、按最高星」与「共用一条充能条(eq_state 按 id 只有一槽)」的实现限制都已作废(份号分槽)。
 ##
 ## D3【敌方(right)的刻痕】→ **从对手快照起算**(2026-10-23 改; 原为「每场从 0 开始」), 不写存档。
 ##    原来的理由「bot 对手是即时生成的」早已不成立: 对手是真人快照(宝箱龟 2026-08-14 就改成按对手真实进度)。
@@ -118,7 +115,7 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 	var side := _side_of(u)
 	if side == "left" and GameState != null:
 		_marks["left"] = clampi(int(GameState.incense_marks), 0, MARK_CAP)
-	var stt: Dictionary = u["eq_state"].get(EID, {})
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, EID), {})
 	## 充能条: 从【羁绊池】带进来(用户 2026-08-13:「羁绊里有多少刻痕和充能都是重新激活
 	## 状态…就接着激活啊」)。★这里【曾经】读装备实例的 `chg` ⇒ 卖掉再买充能归零、
 	## 刻痕却还在, 同一条香火线两半各走各的。现在与刻痕同一个池子。
@@ -135,7 +132,7 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 	# 登场就把刻痕数镜像进来 —— 装备格的层数徽章第一帧就要显示存量, 不能等第一次刻痕
 	# (⚠ 消费侧尚未接线, 见 tick_unit 里同名字段旁边那段说明)
 	stt["marks"] = int(_marks.get(side, 0))
-	u["eq_state"][EID] = stt
+	u["eq_state"][battle._equip_sys.key_of(u, EID)] = stt
 	_reapply(side)
 
 
@@ -146,7 +143,12 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.get("alive", false):
 		return
-	var stt = u.get("eq_state", {}).get(EID, null)
+	## ★每一件各推一次(11-13 用户「两件相同装备…各自生效」): 各自往本方共享的刻痕条里攒、各自的强化普攻节拍
+	battle._equip_sys.each_copy(u, EID, func(_si: int) -> void: _tick_copy(u, delta))
+
+
+func _tick_copy(u: Dictionary, delta: float) -> void:
+	var stt = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, EID), null)
 	if not (stt is Dictionary) or not stt.has("dealt0"):
 		return
 	var side := _side_of(u)
@@ -232,7 +234,7 @@ func _on_mark_scored(u: Dictionary, side: String, gained: int) -> void:
 func on_basic(u: Dictionary, tgt, eid: String, _si: int) -> void:
 	if eid != EID or tgt == null or not (tgt is Dictionary) or not tgt.get("alive", false):
 		return
-	var stt = u.get("eq_state", {}).get(EID, null)
+	var stt = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, EID), null)
 	if not (stt is Dictionary) or int(stt.get("emp", 0)) <= 0:
 		return
 	## ★同一只龟带几块香火石, 这个钩子每次攻击被调几次(每件一次), 而几块共用一份 eq_state
@@ -253,7 +255,7 @@ func on_basic(u: Dictionary, tgt, eid: String, _si: int) -> void:
 
 ## 普攻命中: 兑现一次附带伤害 + 生命偷取。多件同带时出手记了 n 次、命中钩子也连调 n 次, 一一对应。
 func _hit093(u: Dictionary, tgt: Dictionary, _si_of_this_copy: int) -> void:
-	var stt = u.get("eq_state", {}).get(EID, null)
+	var stt = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, EID), null)
 	if not (stt is Dictionary) or int(stt.get("hit_pending", 0)) <= 0 or not tgt.get("alive", false):
 		return
 	## 同一次命中只兑现一次(同 on_basic: 同龟多块时这里也被调几次), 星级取身上最高的那块
@@ -261,7 +263,9 @@ func _hit093(u: Dictionary, tgt: Dictionary, _si_of_this_copy: int) -> void:
 	if int(stt.get("hit_serial", -1)) == hs:
 		return
 	stt["hit_serial"] = hs
-	var si: int = _lead_si(u)
+	var si: int = battle._equip_sys.copy_si(u, EID)   # 份号上下文里: 这一件自己的星级(11-13)
+	if si < 0:
+		si = _lead_si(u)
 	stt["hit_pending"] = int(stt["hit_pending"]) - 1
 	# 附带 30/50/80 + 目标最大生命 1/1.5/2% 的【物理】伤害(用户 2026-08-06「可以分星」后的定稿)
 	# ★这两行旁边必须有一个 "p2eq_093" 字面量: tooltip_number_audit 靠 id 字面量 ±2500 字符
@@ -310,9 +314,10 @@ func _reapply(side: String) -> void:
 			continue
 		var amp: float = TEAM_AMP * m
 		var dr: float = TEAM_DR * m
-		if _has_stone(o):
-			amp += ITEM_AMP * m     # D2: 装备那一份只给一次, 同龟两件不叠
-			dr += ITEM_DR * m
+		var nst: int = _stone_n(o)
+		if nst > 0:
+			amp += ITEM_AMP * m * nst     # 装备那一份按件数给(11-13 用户「各自生效」; 原 D2「同龟两件只给一次」作废)
+			dr += ITEM_DR * m * nst
 		o["damage_amp"] = float(o.get("damage_amp", 0.0)) + amp
 		o["damage_reduction"] = float(o.get("damage_reduction", 0.0)) + dr
 		(_given[side] as Array).append({"u": o, "amp": amp, "dr": dr})
@@ -363,6 +368,14 @@ func _load_right() -> void:
 	_roster_n["right"] = -1               # 逼 tick 那段重发一次(全队加成)
 
 
+func _stone_n(o: Dictionary) -> int:
+	var n: int = 0
+	for e in o.get("equips", []):
+		if e is Dictionary and str((e as Dictionary).get("id", "")) == EID:
+			n += 1
+	return n
+
+
 func _has_stone(o: Dictionary) -> bool:
 	for e in o.get("equips", []):
 		if e is Dictionary and str((e as Dictionary).get("id", "")) == EID:
@@ -377,7 +390,7 @@ func _has_stone(o: Dictionary) -> bool:
 func _persist_chg(u: Dictionary) -> void:
 	if _side_of(u) != "left" or GameState == null:
 		return
-	var stt = u.get("eq_state", {}).get(EID, null)
+	var stt = u.get("eq_state", {}).get(battle._equip_sys.key_of(u, EID), null)
 	if not (stt is Dictionary):
 		return
 	var chg: int = clampi(int(_chg.get(_side_of(u), 0)), 0, PER_MARK)
