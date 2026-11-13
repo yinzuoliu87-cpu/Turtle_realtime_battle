@@ -258,7 +258,17 @@ func _t_fetch() -> void:
 		"%s · %s" % [str(r.get("reason", "")), last_url])
 	_ghost_rows = [{"snapshot": _snap(["lava", "stone", "basic"]), "rules_ver": rv - 1, "battles": 7}]
 	r = await _fetch(OTHER, WEEK)
-	_ok("F ★对方规则版本旧 ⇒ 不能打, 说是对方旧", not bool(r.get("ok", true)) and str(r.get("reason", "")) == "rules_old_theirs", str(r))
+	## ★11-16 起放开(用户 11-12「我现在在排行榜上面怎么都切磋不了啊」→「下一次吧」): 榜上那份是旧规则版本也照样打
+	_ok("F ★对方规则版本旧 ⇒ 照样能打(榜上那份)", bool(r.get("ok", false))
+		and str((r.get("data", {}) as Dictionary).get("source", "")) == "board", str(r))
+	var bad_eq: Dictionary = _snap(["lava", "stone", "basic"])
+	bad_eq["equipped"] = {"lava": [{"id": "p2eq_999", "star": 1}]}
+	_ghost_rows = [{"snapshot": bad_eq, "rules_ver": rv - 1, "battles": 7}]
+	r = await _fetch(OTHER, WEEK)
+	_ok("F ★榜上那份带了本版没有的装备 ⇒ 不能打, 说是对方旧", not bool(r.get("ok", true)) and str(r.get("reason", "")) == "rules_old_theirs", str(r))
+	_ghost_rows = [{"snapshot": _snap(["lava", "stone", "basic"]), "rules_ver": rv + 1, "battles": 7}]
+	r = await _fetch(OTHER, WEEK)
+	_ok("F ★榜上那份比我新 ⇒ 不能打, 请我先更新", not bool(r.get("ok", true)) and str(r.get("reason", "")) == "rules_old_mine", str(r))
 	_ghost_rows = []
 	r = await _fetch(OTHER, WEEK)
 	_ok("F 这一周没有快照 ⇒ 对方尚未配置阵容", not bool(r.get("ok", true)) and str(r.get("reason", "")) == "no_lineup", str(r))

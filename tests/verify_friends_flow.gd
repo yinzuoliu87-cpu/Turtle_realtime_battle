@@ -174,7 +174,27 @@ func _t_parse() -> void:
 func _t_lineup_check() -> void:
 	var rv := int(P2C.RULES_VER)
 	_ok("B 对上 ⇒ 能打", FN.lineup_check({"rules_ver": rv, "snapshot": _good_snap()}) == "")
-	_ok("B 对方规则版本旧 ⇒ 说对方", FN.lineup_check({"rules_ver": rv - 1, "snapshot": _good_snap()}) == "rules_old_theirs")
+	## ★11-16 起: 对方快照规则版本旧也让打(用户 11-12「排行榜上面怎么都切磋不了」→「下一次吧」), 切磋不计成绩
+	_ok("B ★对方规则版本旧 ⇒ 照样能打", FN.lineup_check({"rules_ver": rv - 1, "snapshot": _good_snap()}) == "")
+	_ok("B ★对方规则版本旧很多(rv=1) ⇒ 照样能打", FN.lineup_check({"rules_ver": 1, "snapshot": _good_snap()}) == "")
+	var bad_t := _good_snap()
+	bad_t["leaders"] = ["lava", "no_such_turtle"]
+	bad_t["lane_assign"] = {"top": ["lava"], "bottom": ["no_such_turtle"]}
+	_ok("B ★快照里有本版没有的龟 ⇒ 说对方旧", FN.lineup_check({"rules_ver": rv - 1, "snapshot": bad_t}) == "rules_old_theirs",
+		FN.unknown_id(bad_t))
+	var bad_e := _good_snap()
+	bad_e["equipped"] = {"lava": [{"id": "p2eq_001", "star": 1}, {"id": "p2eq_999", "star": 2}]}
+	_ok("B ★统领带了本版没有的装备 ⇒ 说对方旧", FN.lineup_check({"rules_ver": rv - 1, "snapshot": bad_e}) == "rules_old_theirs"
+		and FN.unknown_id(bad_e) == "p2eq_999", FN.unknown_id(bad_e))
+	var bad_m := _good_snap()
+	bad_m["minions"] = {"top": [{"role": "front", "equips": [{"id": "p2eq_998", "star": 1}]}], "bottom": []}
+	_ok("B ★小将带了本版没有的装备 ⇒ 说对方旧", FN.lineup_check({"rules_ver": rv - 1, "snapshot": bad_m}) == "rules_old_theirs"
+		and FN.unknown_id(bad_m) == "p2eq_998", FN.unknown_id(bad_m))
+	var ok_e := _good_snap()
+	ok_e["equipped"] = {"lava": [{"id": "p2eq_001", "star": 1}]}
+	ok_e["minions"] = {"top": [{"role": "front", "equips": [{"id": "p2eq_058", "star": 3}]}], "bottom": []}
+	_ok("B 分母: 装备都认识 ⇒ 能打(上面三条红是因为那一个 id)", FN.lineup_check({"rules_ver": rv - 1, "snapshot": ok_e}) == ""
+		and FN.unknown_id(ok_e) == "", FN.unknown_id(ok_e))
 	_ok("B 我的规则版本旧 ⇒ 说我", FN.lineup_check({"rules_ver": rv + 1, "snapshot": _good_snap()}) == "rules_old_mine")
 	var old := _good_snap()
 	old["schema_ver"] = BE.SCHEMA_VER - 1
@@ -303,10 +323,16 @@ func _t_page() -> void:
 	await _wait(10)
 	rows = _rows(fb)
 	_lineup = {"ok": true, "source": "lineup", "name": "好友甲", "tag": P2C.player_tag(F1), "snapshot": _good_snap(),
-		"rules_ver": int(P2C.RULES_VER) - 1, "client_version": "0.21.9"}
+		"rules_ver": int(P2C.RULES_VER) + 1, "client_version": "9.9.9"}
 	((rows[0] as Node).find_child("SparBtn", true, false) as Button).pressed.emit()
 	await _wait(10)
-	_ok("★G 对方规则版本旧 ⇒ 屏上说原因、不开局", started.is_empty() and page.last_msg == FN.msg("rules_old_theirs"), page.last_msg)
+	_ok("★G 对方比我新 ⇒ 屏上说原因(请先更新)、不开局", started.is_empty() and page.last_msg == FN.msg("rules_old_mine"), page.last_msg)
+	_lineup["rules_ver"] = int(P2C.RULES_VER) - 1
+	_lineup["client_version"] = "0.21.9"
+	((rows[0] as Node).find_child("SparBtn", true, false) as Button).pressed.emit()
+	await _wait(10)
+	_ok("★G 对方规则版本旧 ⇒ 照样开局(11-16 起)", started.size() == 1, "%d · %s" % [started.size(), page.last_msg])
+	started.clear()
 	_lineup["rules_ver"] = int(P2C.RULES_VER)
 	((rows[0] as Node).find_child("SparBtn", true, false) as Button).pressed.emit()
 	await _wait(10)

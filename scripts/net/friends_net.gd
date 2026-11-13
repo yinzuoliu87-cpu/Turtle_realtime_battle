@@ -15,6 +15,8 @@ const SB := preload("res://scripts/net/supabase.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const BackendS := preload("res://scripts/net/backend.gd")
 const RR := preload("res://scripts/systems/replay/replay_recorder.gd")
+const _TS := preload("res://scripts/gamedata/turtle_stats.gd")
+const _ES := preload("res://scripts/gamedata/equip_stats.gd")
 
 const RPC := "/rest/v1/rpc/"
 ## 好友上限(与服务端 friend_request / friend_respond 里的 100 同一个数; 服务端 friend_list 也回 cap)。
@@ -156,13 +158,15 @@ static func list(done: Callable) -> void:
 
 # ─────────────────────────── 切磋取阵容 ───────────────────────────
 
-## 纯判据: 好友的阵容能不能打。"" = 能; 否则是 MSG 的键。
-##   规则版本不同 ⇒ 不打(同一份快照在两套规则下不是同一支队伍): 谁旧说谁。
-##   快照结构版本旧(< SCHEMA_VER, 匹配池载入时也整批丢) / 没统领 / 分路坏 ⇒ 读取失败。
+## 纯判据: 好友 / 榜上的阵容能不能打。"" = 能; 否则是 MSG 的键。
+##   ★11-16 起**对方快照规则版本旧也让打**(用户 11-12「我现在在排行榜上面怎么都切磋不了啊」→「下一次吧」):
+##     切磋不计成绩, 这支阵容按本机现行规则打。原来规则版本不同一律不打 ⇒ 0.23.2 升 rv6 后榜上 195/199 个号切磋不了。
+##   仍然拦的: 对方比我新(rules_ver 更大: 快照里可能有我这版没有的东西 ⇒ 提示我更新) /
+##     快照结构版本旧(< SCHEMA_VER, 匹配池载入时也整批丢) / 快照里有本版不认识的龟或装备(说对方旧) /
+##     没统领 / 分路坏(读取失败)。
 static func lineup_check(d: Dictionary) -> String:
-	var rv := int(d.get("rules_ver", -1))
-	if rv != int(_P2.RULES_VER):
-		return "rules_old_theirs" if rv < int(_P2.RULES_VER) else "rules_old_mine"
+	if int(d.get("rules_ver", -1)) > int(_P2.RULES_VER):
+		return "rules_old_mine"
 	var s = d.get("snapshot", null)
 	if not (s is Dictionary):
 		return "bad_lineup"
@@ -172,6 +176,36 @@ static func lineup_check(d: Dictionary) -> String:
 	var ldr = snap.get("leaders", null)
 	if not (ldr is Array) or (ldr as Array).is_empty() or BackendS.ghost_lanes_broken(snap):
 		return "bad_lineup"
+	if unknown_id(snap) != "":
+		return "rules_old_theirs"
+	return ""
+
+
+## 快照里第一个本版不认识的龟 / 装备 id("" = 都认识)。统领、统领装备、小将装备都查
+##   (白名单同匹配池 `RemotePool.snapshot_valid`: 龟 = turtle_stats.STATS, 装备 = equip_stats.STATS)。
+##   旧规则快照能放行的前提就是这一道: 删掉的装备 / 龟在本版没有定义, 放进对局会出错。
+static func unknown_id(snap: Dictionary) -> String:
+	for pid in (snap.get("leaders", []) as Array):
+		if not _TS.STATS.has(str(pid)):
+			return str(pid)
+	var lists: Array = []
+	var eqp = snap.get("equipped", {})
+	if eqp is Dictionary:
+		lists.append_array((eqp as Dictionary).values())
+	var mn = snap.get("minions", {})
+	if mn is Dictionary:
+		for lane in (mn as Dictionary).values():
+			if lane is Array:
+				for m in (lane as Array):
+					if m is Dictionary:
+						lists.append((m as Dictionary).get("equips", []))
+	for arr in lists:
+		if not (arr is Array):
+			continue
+		for e in (arr as Array):
+			var eid := str((e as Dictionary).get("id", "")) if e is Dictionary else str(e)
+			if not _ES.STATS.has(eid):
+				return eid
 	return ""
 
 
