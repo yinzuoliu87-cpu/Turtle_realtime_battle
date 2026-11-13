@@ -15,53 +15,8 @@ func _init(b) -> void:
 ##   中毒期间压载层一变, 缓速被抹掉; 先中毒再首次同步压载层, 毒清后留下永久减速。
 ## ⇒ 各件只写自己的倍率字段, 由这一处乘出来。`_mp_base` 在第一次合成时记下(那时还没有任何动态倍率)。
 ## ★以后再有「战斗中改 move_perm」的效果, 加一个 `_mp_xxx` 字段并走这里, 别再整体改写。
-## ── 份号(copy key · 2026-11-13 用户「两件相同装备…各自生效各自的效果…统计那肯定是分开」) ──
-## 同一只龟身上同名装备按装备栏顺序编号: 第 1 件 = 原 id, 第 2 件起 = 「id#2」「id#3」。
-## eq_state / 装备统计都按份号分槽 ⇒ 每件各自的计时 / 计数 / 召唤物 / 统计行。
-## ★第 1 件的键与原来一字不差 ⇒ 不带重复装备的对局结果不变(规则指纹守)。
-## 方案书 docs/plans/20261113-同名装备多件各自生效.md。
-const CK_SEP := "#"
-
-static func ck_name(iid: String, n: int) -> String:
-	return iid if n <= 1 else "%s%s%d" % [iid, CK_SEP, n]
-
-
-## 条目 e 在 u 身上的份号(按 is_same 定位; 不在身上 ⇒ 原 id)。
-static func ck_of(u: Dictionary, e) -> String:
-	if not (e is Dictionary):
-		return ""
-	var iid: String = str((e as Dictionary).get("id", ""))
-	var n: int = 0
-	for x in u.get("equips", []):
-		if x is Dictionary and str((x as Dictionary).get("id", "")) == iid:
-			n += 1
-			if is_same(x, e):
-				return ck_name(iid, n)
-	return iid
-
-
-## 遍历时逐件算份号: `var seen := {}` 放循环外, 每件调一次 `ck_next(seen, iid)`。
-static func ck_next(seen: Dictionary, iid: String) -> String:
-	var n: int = int(seen.get(iid, 0)) + 1
-	seen[iid] = n
-	return ck_name(iid, n)
-
-
-## 份号 → 装备 id(「p2eq_058#2」→「p2eq_058」)。
-static func base_id(ck: String) -> String:
-	var i: int = ck.find(CK_SEP)
-	return ck if i < 0 else ck.substr(0, i)
-
-
-## 某件装备在 u 身上的全部份: [[份号, 星级(1~3), 条目], ...](装备栏顺序)。
-static func copies(u: Dictionary, iid: String) -> Array:
-	var out: Array = []
-	var n: int = 0
-	for x in u.get("equips", []):
-		if x is Dictionary and str((x as Dictionary).get("id", "")) == iid:
-			n += 1
-			out.append([ck_name(iid, n), clampi(int((x as Dictionary).get("star", 1)), 1, 3), x])
-	return out
+## 份号工具(ck_of / ck_next / copies / base_id)在 scripts/util/equip_ck.gd(EquipCk): 纯函数、零依赖 ——
+##   放在这里会让「谁用份号谁就牵出整套 EquipSystem」(11-13 CI: 启动时就把装备系统全加载了, verify_shop_no_rebuild 红)。
 
 
 ## 某单位身上【这件装备有几件】(至少按 1 算)。eq_state 按装备 id 只有一槽 ⇒
@@ -87,7 +42,7 @@ func _eq_apply_all_stats() -> void:
 		for e in u.get("equips", []):
 			battle._equip_sys.ck_set(u, e)
 			var _iid: String = str(e["id"])
-			var _ck: String = ck_next(_seen, _iid)   # 份号: 同名第 2 件起各自一槽(11-13)
+			var _ck: String = EquipCk.ck_next(_seen, _iid)   # 份号: 同名第 2 件起各自一槽(11-13)
 			var _sv: Array = battle._equip_sys.uf_in(u, _ck)   # 第 2 件起: 写在龟身上的那几项换成这一件自己的
 			_eq_apply_one_stats(u, _iid, int(e.get("star", 1)), _ck)
 			battle._equip_sys.uf_out(u, _sv)

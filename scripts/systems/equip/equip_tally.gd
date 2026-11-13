@@ -160,7 +160,7 @@ func tag(d: Dictionary, who = null) -> Dictionary:
 	if who is Dictionary and KIND_EQ.has(str(d.get("summon_kind", ""))):
 		var kid: String = str(KIND_EQ[str(d["summon_kind"])])
 		## 份号(11-13): 上下文正是这只龟的这种装备的某一件(「p2eq_058#2」)⇒ 记到那一件; 否则按种类记到第一件
-		var ctx_ck: bool = is_same(who, _owner) and EquipStatsApply.base_id(_iid) == kid
+		var ctx_ck: bool = is_same(who, _owner) and EquipCk.base_id(_iid) == kid
 		d["_eq_src"] = _iid if ctx_ck else kid
 		d["_eq_owner"] = who
 		return d

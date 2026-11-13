@@ -11,7 +11,7 @@ extends Node
 ##   ③ 代表件(每类一件: on-hit / 周期 / 灵物每帧 / 奇械批④(084 远程只给属性、不记账 ⇒ 由 verify_eq_blade_batch ④ 验相加) / 遗物 / 低血触发 / 每帧 tick / 在途表 / 法器 / 召唤):
 ##      [3★, 1★] 两件各自都有「本局」账, 且 3★ 那件的账 > 1★ 那件(星级没被另一件覆盖)。
 ##   ④ 面板: 「本局」按份号取 ⇒ 第 2 件那一格读得到它自己的统计。
-## 反向验证(11-13 做过): 把 EquipStatsApply.ck_name 改成恒返回原 id ⇒ ①②③④ 变红; 逐字节还原。
+## 反向验证(11-13 做过): 把 EquipCk.ck_name 改成恒返回原 id ⇒ ①②③④ 变红; 逐字节还原。
 ## 跑法: SHIP=1 <godot> --headless --audio-driver Dummy --path . res://tests/verify_dup_equip.tscn
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -58,11 +58,11 @@ func _t_ck() -> void:
 	print("── ① 份号 ──")
 	var u: Dictionary = {"equips": [{"id": "p2eq_058", "star": 3}, {"id": "p2eq_001", "star": 1}, {"id": "p2eq_058", "star": 1}]}
 	var es: Array = u["equips"]
-	_ok("① 第 1 件 = 原 id(单件逐字不变)", EquipStatsApply.ck_of(u, es[0]) == "p2eq_058")
-	_ok("① 第 2 件同名 = 「p2eq_058#2」", EquipStatsApply.ck_of(u, es[2]) == "p2eq_058#2", EquipStatsApply.ck_of(u, es[2]))
-	_ok("① 别的件不受影响", EquipStatsApply.ck_of(u, es[1]) == "p2eq_001")
-	_ok("① base_id 还原", EquipStatsApply.base_id("p2eq_058#2") == "p2eq_058" and EquipStatsApply.base_id("p2eq_058") == "p2eq_058")
-	var cps: Array = EquipStatsApply.copies(u, "p2eq_058")
+	_ok("① 第 1 件 = 原 id(单件逐字不变)", EquipCk.ck_of(u, es[0]) == "p2eq_058")
+	_ok("① 第 2 件同名 = 「p2eq_058#2」", EquipCk.ck_of(u, es[2]) == "p2eq_058#2", EquipCk.ck_of(u, es[2]))
+	_ok("① 别的件不受影响", EquipCk.ck_of(u, es[1]) == "p2eq_001")
+	_ok("① base_id 还原", EquipCk.base_id("p2eq_058#2") == "p2eq_058" and EquipCk.base_id("p2eq_058") == "p2eq_058")
+	var cps: Array = EquipCk.copies(u, "p2eq_058")
 	_ok("① copies: 两份、按装备栏顺序、各自星级", cps.size() == 2 and str(cps[0][0]) == "p2eq_058" and int(cps[0][1]) == 3
 		and str(cps[1][0]) == "p2eq_058#2" and int(cps[1][1]) == 1, str(cps))
 

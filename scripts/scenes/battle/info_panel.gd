@@ -908,7 +908,7 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 			continue
 		var eid := str((it as Dictionary).get("id", ""))
 		## 份号(11-13 用户「两个相同装备…统计那肯定是分开」): 同名第 2 件起读数 / 本局统计取「id#2」那一槽
-		var ck := EquipStatsApply.ck_of(u, it)
+		var ck := EquipCk.ck_of(u, it)
 		if ck == "":
 			ck = eid
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})

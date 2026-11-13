@@ -1057,7 +1057,7 @@ func _dl_save_eq_carry() -> void:
 			continue
 		var key: String = _eq_carry_key(u, seen)
 		for iid in EQ_CARRY.keys():
-			for c in EquipStatsApply.copies(u, iid):   # 同名多件各抄各的(份号 · 11-13); 单件时键与原来相同
+			for c in EquipCk.copies(u, iid):   # 同名多件各抄各的(份号 · 11-13); 单件时键与原来相同
 				var stt = u["eq_state"].get(str(c[0]), null)
 				if not (stt is Dictionary):
 					continue
@@ -1086,7 +1086,7 @@ func _dl_restore_eq_carry() -> void:
 			var iid: String = str(e.get("id", ""))
 			if not EQ_CARRY.has(iid):
 				continue
-			var ck: String = EquipStatsApply.ck_of(u, e)   # 份号(11-13)
+			var ck: String = EquipCk.ck_of(u, e)   # 份号(11-13)
 			var rec = battle._eq_carry.get("%s|%s" % [key, ck], null)
 			if not (rec is Dictionary):
 				continue

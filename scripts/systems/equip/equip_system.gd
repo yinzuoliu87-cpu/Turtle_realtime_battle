@@ -2652,7 +2652,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 	u["eq_timer"] = u.get("eq_timer", 0.0) + delta
 	if u["eq_timer"] < battle.EQ_TICK:
 		return
-	u["eq_timer"] = 0.0
+	u["eq_timer"] = 0.0; u["_eqt_n"] = int(u.get("_eqt_n", 0)) + 1   # 后半: 这只龟第几次过 EQ_TICK 闸(056 同一轮多件共享靶子用 · 11-13)
 	var _ckp2634: Array = ck_save()   # 份号上下文(11-13)
 	for e in u["equips"]:
 		ck_set(u, e)
@@ -2709,10 +2709,10 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 						if _e.get("alive", false):
 							battle._mark_vfx(_e, 5.0, Color("#ffa040")); _e["eq_target_until"] = battle._t + 5.0
 				for o in battle._targeting._enemies_of(u):
-					## 同名两件(11-13 各自生效): 第一件射完会清靶子 ⇒ 记下「这一步被【这只龟】射过」, 同一步它身上后面的件照样射这批靶子
-					##   (只认同一只龟: 两只龟各带一件时照旧, 不动单件对局的结果)
-					if battle._t < o.get("eq_target_until", 0.0) or (float(o.get("_dart_volley_t", -1.0)) == battle._t and is_same(o.get("_dart_volley_by", null), u)):
-						o["eq_target_until"] = 0.0; o["_dart_volley_t"] = battle._t; o["_dart_volley_by"] = u
+					## 同名两件(11-13 各自生效): 第一件射完会清靶子 ⇒ 记下「这一轮(这只龟第几次过 EQ_TICK)被【这只龟】射过」,
+					##   同一轮它身上后面的件照样射这批靶子(只认同一只龟: 两只龟各带一件时照旧, 不动单件对局的结果)
+					if battle._t < o.get("eq_target_until", 0.0) or (int(o.get("_dart_volley_n", -1)) == int(u.get("_eqt_n", 0)) and is_same(o.get("_dart_volley_by", null), u)):
+						o["eq_target_until"] = 0.0; o["_dart_volley_n"] = int(u.get("_eqt_n", 0)); o["_dart_volley_by"] = u
 						o["_mark_until"] = battle._t   # 靶子锁定框消失
 						battle._spawn_eq_bolt(u, o, battle._resolve_dmg(u, u["atk"] * [1.5, 3.0, 9.0][si] + [130.0, 190.0, 600.0][si], o, false), "res://assets/sprites/vfx/dart.png", Color("#ffe0b0"), true, maxi(1, roundi(u["atk"] * DART_BLEED_COEF)))
 		u["eq_state"][key_of(u, iid)] = stt

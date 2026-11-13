@@ -98,7 +98,7 @@ func tick_owner(u: Dictionary, delta: float) -> void:
 	if u.get("_axe_pending", false):
 		u["_axe_pending"] = false
 		## 每一件各召一把(11-13 用户「两件肯定召唤两个…各自生效」); 份号上下文 ⇒ 斧头的账记到召它那一件
-		var _cs: Array = EquipStatsApply.copies(u, "p2eq_096")
+		var _cs: Array = EquipCk.copies(u, "p2eq_096")
 		if _cs.is_empty():
 			summon(u)   # 门禁手搓的携带者(没挂装备条目)
 		for _c in _cs:
@@ -210,7 +210,7 @@ func summon(u: Dictionary) -> Variant:
 	AxeArt.apply(battle, ax, AxeArt.form_of(fin, str(AE.stage(si)["key"])))
 	battle._recalc_stats(ax)
 	ax["hp"] = float(ax["maxHp"])
-	if u.get("_axe_ref", null) is Dictionary and str(ax.get("_eq_src", "")).contains(EquipStatsApply.CK_SEP):
+	if u.get("_axe_ref", null) is Dictionary and str(ax.get("_eq_src", "")).contains(EquipCk.CK_SEP):
 		## 同名第 2 件起(份号带 #)召的斧头: 另存一份, 每帧逐把推进(11-13)。`_axe_ref` 仍是第一把(老门禁 / 面板读它)。
 		var ex: Array = u.get("_axe_extra", [])
 		ex.append(ax)

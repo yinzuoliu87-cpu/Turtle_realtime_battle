@@ -496,7 +496,7 @@ func _tick_bladder(u: Dictionary, _delta: float) -> void:
 	##   吸收 / 衰减 / 破盾全走 SpecialBalance, 这里只抄读数; 开盾那一步就有值(上面不 return)。
 	## 血条上的幽灵护盾段 = 各件之和(11-13: 每件一份余额, 键见 _ghost_key_of)
 	var _gsum: float = 0.0
-	for _c in EquipStatsApply.copies(u, "p2eq_064"):
+	for _c in EquipCk.copies(u, "p2eq_064"):
 		_gsum += battle._spec.val(u, _ghost_key_of(str(_c[0])))
 	u["_ghostShieldVal"] = _gsum if _gsum > 0.0 else battle._spec.val(u, GHOST_KEY)
 	## 浮囊演出跟着真实余额瘪下去 —— 演出不自己算衰减(两套真相会打架)
@@ -540,7 +540,7 @@ func _ghost_grant(u: Dictionary, si: int) -> void:
 
 ## 份号 → 这一件的幽灵护盾余额键(第 1 件 = 原键, 逐字不变)。
 func _ghost_key_of(ck: String) -> String:
-	var i: int = ck.find(EquipStatsApply.CK_SEP)
+	var i: int = ck.find(EquipCk.CK_SEP)
 	return GHOST_KEY if i < 0 else GHOST_KEY + ck.substr(i)
 
 

@@ -175,7 +175,7 @@ func spirit_phys(raw: float, tgt: Dictionary) -> float:
 ##   已知近似: 极少数不经五个减伤函数(_resolve_dmg / _phys_after_armor / _magic_after_mr / _dot_after_resist / spirit_phys)直接传进来的固定伤害也按这个比例折算。
 ## 011 溢出转盾的「本局」账: 同名多件各一份上限(相加) ⇒ 按各件上限占比分(11-13 统计分开); 单件 = 全记给它。
 func _credit_o2s(u: Dictionary, cap_total: float, got: float) -> void:
-	var cps: Array = EquipStatsApply.copies(u, "p2eq_011")
+	var cps: Array = EquipCk.copies(u, "p2eq_011")
 	if cps.size() <= 1 or cap_total <= 0.0:
 		battle._equip_sys.tally.credit(u, battle._equip_sys.key_of(u, "p2eq_011"), "shield", got)
 		return

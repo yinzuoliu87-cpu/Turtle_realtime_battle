@@ -298,7 +298,7 @@ func _rescan_carriers() -> void:
 			if is_same(d["owner"], u):
 				have += 1
 		## 每一件一只, 各按自己那件的星级、各记各的账(11-13 用户「两件相同装备…各自生效…统计分开」; 原来全用最高星)
-		var cps: Array = EquipStatsApply.copies(u, IID)
+		var cps: Array = EquipCk.copies(u, IID)
 		while have < want:
 			if have < cps.size():
 				_spawn_drone(u, int(cps[have][1]), str(cps[have][0]))

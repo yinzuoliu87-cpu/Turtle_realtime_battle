@@ -161,7 +161,7 @@ func _run(iid: String, stars: Array) -> Dictionary:
 			out += float(xd.get("_st_heal", 0)) + float(xd.get("_st_shield", 0))
 		var allr: Dictionary = xd.get("_st_eq", {})
 		for ck in allr.keys():
-			if EquipStatsApply.base_id(str(ck)) != iid or iid == "":
+			if EquipCk.base_id(str(ck)) != iid or iid == "":
 				continue
 			var row: Dictionary = allr[ck]
 			for kk in row.keys():

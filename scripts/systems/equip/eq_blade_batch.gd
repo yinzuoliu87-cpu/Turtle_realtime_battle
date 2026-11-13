@@ -419,9 +419,9 @@ func b81_guarding(u: Dictionary) -> bool:
 	if not (u.get("eq_state", null) is Dictionary):
 		return false
 	var ck: String = battle._equip_sys.key_of(u, "p2eq_081")
-	if ck.contains(EquipStatsApply.CK_SEP):
+	if ck.contains(EquipCk.CK_SEP):
 		return battle._t < float(((u["eq_state"] as Dictionary).get(ck, {}) as Dictionary).get("up_until", 0.0))
-	for c in EquipStatsApply.copies(u, "p2eq_081"):
+	for c in EquipCk.copies(u, "p2eq_081"):
 		if battle._t < float(((u["eq_state"] as Dictionary).get(str(c[0]), {}) as Dictionary).get("up_until", 0.0)):
 			return true
 	return battle._t < float(((u["eq_state"] as Dictionary).get("p2eq_081", {}) as Dictionary).get("up_until", 0.0))

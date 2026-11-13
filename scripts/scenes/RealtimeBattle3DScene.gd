@@ -2405,11 +2405,11 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		return
 	if u.get("_skele_pending", false):                    # 032: 登场召唤亡灵骷髅(首帧) · 每一件各召一只(11-13)
 		u["_skele_pending"] = false
-		for _c in EquipStatsApply.copies(u, "p2eq_032"):
+		for _c in EquipCk.copies(u, "p2eq_032"):
 			_equip_sys._eq_summon_skeleton(u, int(_c[1]) - 1, str(_c[0]))
 	if u.get("_turret_pending", false):                   # 058: 登场召唤炮台(首帧) · 每一件各召一座(11-13)
 		u["_turret_pending"] = false
-		for _c in EquipStatsApply.copies(u, "p2eq_058"):
+		for _c in EquipCk.copies(u, "p2eq_058"):
 			_equip_sys._eq_summon_turret(u, int(_c[1]) - 1, str(_c[0]))
 	if u.get("_slam", false):   # 火山砸地演出中: 锁AI/移动 (height/pos由slam tween驱动)
 		return

@@ -141,6 +141,8 @@ func _t011_cap() -> void:
 	m["equips"] = [{"id": "p2eq_011", "star": 3}, {"id": "p2eq_011", "star": 1}]
 	m["eq_state"] = {"p2eq_011": {}}
 	_s._equip_sys._stats._eq_apply_all_stats()
-	_ok("011 多件同款【取最大上限】(3★ 在前 1★ 在后 ⇒ 必须是 500 不是 200)",
-		is_equal_approx(float(m.get("overheal2shield_cap", -1.0)), 500.0),
+	## ★11-13 起同名多件【各自生效】(用户「两件相同装备…各自生效各自的效果」; 原「取最大上限」作废):
+	##   两件各一份上限、相加 = 500 + 200 = 700。取最大(500) / 取最后一件(200) / 只算一件 都会红。
+	_ok("011 多件同款【各一份上限、相加】(3★ + 1★ ⇒ 700, 不是取最大的 500 / 最后一件的 200)",
+		is_equal_approx(float(m.get("overheal2shield_cap", -1.0)), 700.0),
 		"实得 %.0f" % float(m.get("overheal2shield_cap", -1.0)))

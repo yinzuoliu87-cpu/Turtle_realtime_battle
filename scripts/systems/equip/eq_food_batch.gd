@@ -432,7 +432,7 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 		#   这是共用基建的行为, 不在这里另造一套多来源记账 —— 记一笔, 不当 bug 查。
 		## 同一只龟带两件(11-13 用户「各自生效」): 每件给每个友军各上一层、各自的余额键(第 1 件 = 原键), 各破各的
 		var _ck71: String = battle._equip_sys.key_of(u, "p2eq_071")
-		var _key71: String = KEY_CREAM if _ck71.find(EquipStatsApply.CK_SEP) < 0 else KEY_CREAM + _ck71.substr(_ck71.find(EquipStatsApply.CK_SEP))
+		var _key71: String = KEY_CREAM if _ck71.find(EquipCk.CK_SEP) < 0 else KEY_CREAM + _ck71.substr(_ck71.find(EquipCk.CK_SEP))
 		battle._spec.grant(o, _key71, amt, {
 			"on_break": func(uu, _k, reason): _cream_on_break(uu, si, str(reason), u, _ck71),
 		})

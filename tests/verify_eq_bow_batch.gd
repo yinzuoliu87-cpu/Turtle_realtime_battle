@@ -1560,6 +1560,6 @@ func _t075_twin() -> void:
 func _rain_n_all(u: Dictionary) -> int:
 	var n: int = 0
 	for k in (u.get("eq_state", {}) as Dictionary).keys():
-		if EquipStatsApply.base_id(str(k)) == "p2eq_075":
+		if EquipCk.base_id(str(k)) == "p2eq_075":
 			n += int(((u["eq_state"] as Dictionary)[k] as Dictionary).get("rain_n", 0))
 	return n

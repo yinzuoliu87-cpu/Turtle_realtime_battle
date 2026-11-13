@@ -4,7 +4,7 @@ extends RefCounted
 ## 方案书 docs/plans/20261113-同名装备多件各自生效.md。
 ## ★EquipSystem 里有同名转发(`battle._equip_sys.key_of` / `ck_set` / `each_copy` …), 调用方不用改。
 ##
-## 份号: 同一只龟身上同名装备按装备栏顺序编号, 第 1 件 = 原 id, 第 2 件起 =「id#2」「id#3」(EquipStatsApply.ck_name)。
+## 份号: 同一只龟身上同名装备按装备栏顺序编号, 第 1 件 = 原 id, 第 2 件起 =「id#2」「id#3」(EquipCk.ck_name)。
 ## 用法:
 ##   · 逐件循环: 循环前 save(), 每件开头 set_e(u, e), 循环后 restore(快照)。
 ##   · 效果代码取状态 / 记账一律 key_of(u, "p2eq_xxx"): 只在「同一只龟 + 同一种装备」时换成当前这一件的份号, 其余原样 ⇒ 单件逐字不变。
@@ -31,7 +31,7 @@ func restore(p: Array) -> void:
 
 func set_e(u, e) -> String:
 	_u = u
-	_k = EquipStatsApply.ck_of(u, e) if u is Dictionary else ""
+	_k = EquipCk.ck_of(u, e) if u is Dictionary else ""
 	return _k
 
 
@@ -49,16 +49,16 @@ func leave(p: Array) -> void:
 
 
 func key_of(u, iid: String) -> String:
-	if _k != "" and is_same(u, _u) and EquipStatsApply.base_id(_k) == iid:
+	if _k != "" and is_same(u, _u) and EquipCk.base_id(_k) == iid:
 		return _k
 	return iid
 
 
 ## 当前份号上下文正是 (u, iid) 的某一件 ⇒ 那一件的星级下标(0~2); 否则 -1(调用方按原口径取)。
 func copy_si(u, iid: String) -> int:
-	if _k == "" or not is_same(u, _u) or EquipStatsApply.base_id(_k) != iid:
+	if _k == "" or not is_same(u, _u) or EquipCk.base_id(_k) != iid:
 		return -1
-	for c in EquipStatsApply.copies(u, iid):
+	for c in EquipCk.copies(u, iid):
 		if str(c[0]) == _k:
 			return int(c[1]) - 1
 	return -1
@@ -67,7 +67,7 @@ func copy_si(u, iid: String) -> int:
 ## 某件装备按份逐个跑 fn(si)。单件 = 跑一次、与原来逐字相同。返回跑了几份。
 func each_copy(u: Dictionary, iid: String, fn: Callable) -> int:
 	var n := 0
-	for c in EquipStatsApply.copies(u, iid):
+	for c in EquipCk.copies(u, iid):
 		var sv: Array = uf_in(u, str(c[0]))
 		var cp: Array = enter(u, str(c[0]))
 		fn.call(int(c[1]) - 1)
@@ -87,7 +87,7 @@ const UF := {"p2eq_078": ["_g078"], "p2eq_081": ["_b81"], "p2eq_082": ["_b82"], 
 
 
 func uf_in(u: Dictionary, ck: String) -> Array:
-	var base: String = EquipStatsApply.base_id(ck)
+	var base: String = EquipCk.base_id(ck)
 	if base == ck or not UF.has(base) or not (u.get("eq_state", null) is Dictionary):
 		return []
 	var pre: Array = UF[base]

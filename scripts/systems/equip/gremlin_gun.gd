@@ -94,7 +94,7 @@ func on_hit(src: Dictionary, basic: bool) -> void:
 func tick_owner(u: Dictionary) -> void:
 	if u.get("_gremlin_pending", false):
 		u["_gremlin_pending"] = false
-		for _c in EquipStatsApply.copies(u, "p2eq_040"):   # 每一件各发一轮, 各自星级(11-13 用户「各自生效」)
+		for _c in EquipCk.copies(u, "p2eq_040"):   # 每一件各发一轮, 各自星级(11-13 用户「各自生效」)
 			var _tp: Array = battle._equip_sys.tally.push(u, str(_c[0]))
 			hand_out(u, int(_c[1]) - 1)
 			battle._equip_sys.tally.pop(_tp)
