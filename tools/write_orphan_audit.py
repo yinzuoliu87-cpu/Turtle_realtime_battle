@@ -108,6 +108,9 @@ SKIP_TYPE = re.compile(r":\s*(Vector[234]i?|Color|Rect2i?|Transform[23]D|Quatern
 ## 【测试缝】: 产品**只读**、**只有 tests/ 写** —— 那是设计如此(产品不该写它, 门禁要注入它)。
 ## 逐条都去看过声明处的头注, 不是按名字猜的。
 WHY = {
+    "assume_default_for_test": "测试缝(2026-11-13 存档隔离闸, scripts/util/save_iso.gd): 产品侧只读 —— 恒 false 时按 APPDATA / XDG_DATA_HOME 判是不是玩家默认目录; "
+                               "verify_save_iso ③④ 拨上它来模拟「默认目录」, 用完拨回。★不能改环境变量来模拟: Windows 上 Godot 按当时的 APPDATA 实时解析 user://, "
+                               "第一版这么做真写进了用户存档(已从卷影副本救回)",
     "prewarm_in_headless": "测试缝(2026-11-11 文案常量后台预加载, scripts/util/skill_text.gd): 产品侧只读 —— 有窗口时进商店 / 背包 / 主菜单照常排预加载, "
                            "无头(门禁 / 陪练号 / 裁判)默认不排(没人点说明卡, 也免得测试里进店后直接 load 战斗撞上同一批脚本两边同时编); "
                            "verify_shop_no_rebuild ③ 与 verify_prewarm_scene_race 把它打开来量预加载本身, 用完还原",
