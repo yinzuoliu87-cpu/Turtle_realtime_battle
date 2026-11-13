@@ -83,6 +83,8 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 			continue
 		var iid: String = str((e as Dictionary).get("id", ""))
 		var si: int = clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1
+		if EquipTally.POTION_IDS.has(iid):
+			battle._equip_sys.tally.use([u, iid])   # 11-12 逐件记账(原来全记给这只身上第一件药水)
 		match iid:
 			"p2eq_066": _tick_whale_brew(u, si)
 			"p2eq_067": _tick_vial_field(u, si)

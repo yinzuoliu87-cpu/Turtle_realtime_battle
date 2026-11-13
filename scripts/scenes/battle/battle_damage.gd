@@ -168,6 +168,29 @@ func spirit_phys(raw: float, tgt: Dictionary) -> float:
 	return d
 
 
+## 060 磷光水母伞「本局」的「减伤挡下」(用户 11-12「补个回血…补个格挡，以减免伤害」):
+##   伞下单位身上记着伞那份减伤 `_pa_dr` 和撑伞的 `_pa_by`(eq_spirit_batch 开伞写、收伞撤)。
+##   这一段落地时的伤害已经乘过总减伤 ⇒ 没有伞那份时本该是 dmg × dr_mult(总 − 伞) / dr_mult(总), 差值就是伞挡掉的。
+##   真实伤害不吃减伤 ⇒ 不算。★只写统计(_st_eq), 不碰结算。
+##   已知近似: 极少数不经五个减伤函数(_resolve_dmg / _phys_after_armor / _magic_after_mr / _dot_after_resist / spirit_phys)直接传进来的固定伤害也按这个比例折算。
+func _credit_parasol_block(u: Dictionary, dmg: int, true_dmg: bool) -> void:
+	if true_dmg or dmg <= 0:
+		return
+	var pdr: float = float(u.get("_pa_dr", 0.0))
+	if pdr <= 0.0:
+		return
+	var by = u.get("_pa_by", null)
+	if not (by is Dictionary):
+		return
+	var tot: float = float(u.get("damage_reduction", 0.0))
+	var m_with: float = DamageMath.dr_mult(tot)
+	if m_with <= 0.0:
+		return
+	var blocked: float = float(dmg) * (DamageMath.dr_mult(maxf(0.0, tot - pdr)) / m_with - 1.0)
+	if blocked > 0.0:
+		battle._equip_sys.tally.credit(by, "p2eq_060", "blocked", blocked)
+
+
 func _record_extra_true(src, u: Dictionary, amt: int) -> void:
 	if amt <= 0:
 		return
@@ -238,6 +261,8 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	#   + 普攻消耗一层回血) —— 新设计里**没有减伤这一半** ⇒ 两条路的消费点一并撤掉。
 	#   ⚠ 撤要两条路一起撤(CLAUDE.md §3.3), 另一半在 _apply_damage_from 的同一位置。
 	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
+	if not is_self:
+		_credit_parasol_block(u, dmg, _raw)          # 060 伞下挡掉的量(只动统计; §3.3 另一半在 _apply_damage_from 同一位置)
 	var shield_before: float = u["shield"]
 	d = MagicShield.absorb(u, d, bucket == "mag")   # 魔法护盾(012): 只挡魔法, 先于普通盾; §3.3 两路都接
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
@@ -476,6 +501,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	var d = battle._mitigate_incoming(u, float(dmg), raw)
 	# ★082 的旧减伤消费点已撤 —— 与 _apply_damage 同一位置的另一半(§3.3), 理由见那边。
 	dmg = maxi(1, int(round(d)))
+	_credit_parasol_block(u, dmg, raw)   # 060 伞下这一段被伞那份减伤挡掉的量 → 记给撑伞的(只动统计; §3.3 两路都接)
 	# 守护贝母021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
 	var _rd = u.get("dmg_redirect_to", null)
 	if _rd is Dictionary and battle._t < float(_rd.get("until", 0.0)):

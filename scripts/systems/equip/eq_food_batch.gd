@@ -76,6 +76,8 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		var iid: String = str(e["id"])
 		var si: int = _si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get(iid, {})
+		if EquipTally.FOOD_IDS.has(iid):
+			battle._equip_sys.tally.use([u, iid])   # 11-12 逐件记账(原来全记给这只身上第一件食物)
 		match iid:
 			"p2eq_069": _cake_tick(u, si, stt, delta)
 			"p2eq_070": _brick_tick(u, si, stt, delta)

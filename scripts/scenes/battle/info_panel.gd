@@ -1021,6 +1021,10 @@ func eq_stats_text_live(u: Dictionary, eid: String) -> String:
 	return eq_stats_text({"_st_eq": {eid: merged}}, eid)
 
 
+## 「本局」全零时那一句。★11-12 原来写「暂无效果」⇒ 玩家读成「装备没生效」(水母伞那次: 其实是统计口径没覆盖 + 记到了别的件上)。
+const EQ_STATS_EMPTY := "暂无记录"
+
+
 static func eq_stats_text(u: Dictionary, eid: String) -> String:
 	var all = u.get("_st_eq", {})
 	var st = (all as Dictionary).get(eid, {}) if all is Dictionary else {}
@@ -1043,6 +1047,13 @@ static func eq_stats_text(u: Dictionary, eid: String) -> String:
 	var shield: int = int(round(float(st.get("shield", 0.0))))
 	if shield > 0:
 		lines.append("护盾 %d" % shield)
+	## 060 磷光水母伞(11-12 用户「补个回血…补个格挡，以减免伤害」): 伞那份减伤挡掉的量 / 伞下闪避次数
+	var blocked: int = int(round(float(st.get("blocked", 0.0))))
+	if blocked > 0:
+		lines.append("减免伤害 %d" % blocked)
+	var dodge: int = int(round(float(st.get("dodge", 0.0))))
+	if dodge > 0:
+		lines.append("闪避 %d 次" % dodge)
 	return "\n".join(lines)
 
 
@@ -1053,7 +1064,7 @@ func _refresh_eq_stats() -> void:
 	var tx := eq_stats_text_live(_eq_stats_unit, _eq_stats_eid)
 	## ★2026-10-06 统计搬进左侧小卡的「本局」段: 全零时写一句而不是整块藏掉(段标题还在, 空着像坏了)。
 	if tx == "":
-		tx = "暂无效果"
+		tx = EQ_STATS_EMPTY
 	if _eq_stats_lbl.text != tx:
 		_eq_stats_lbl.text = tx
 
@@ -2174,7 +2185,7 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 		"body": str(live["body"]),
 		"table": live["rows"],
 		"extra_title": "本局",
-		"extra": st_txt if st_txt != "" else "暂无效果",
+		"extra": st_txt if st_txt != "" else EQ_STATS_EMPTY,
 	})
 	if lv.has("extra"):
 		_eq_stats_lbl = lv["extra"]

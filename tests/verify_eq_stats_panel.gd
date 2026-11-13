@@ -16,6 +16,7 @@ extends Node
 ## 反向验证见报告: 拿掉 `_refresh_eq_stats()` 调用 ⇒ ④ 红; 统计块不建 ⇒ ②③ 红。
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const _IP := preload("res://scripts/scenes/battle/info_panel.gd")   # 「本局」全零那一句(EQ_STATS_EMPTY)
 const EA := "p2eq_004"
 const EB := "p2eq_021"
 
@@ -160,7 +161,7 @@ func _ready() -> void:
 		if _ch >= "0" and _ch <= "9":
 			_digit = true
 	_ok("⑤ 全零那件: 统计块写「还没有产生效果」, 不印任何数字",
-		sl2 != null and sl2.is_visible_in_tree() and _t2 == "暂无效果" and not _digit,
+		sl2 != null and sl2.is_visible_in_tree() and _t2 == _IP.EQ_STATS_EMPTY and not _digit,
 		"" if sl2 == null else "visible=%s text=%s" % [str(sl2.is_visible_in_tree()), _t2])
 	## ⑤b 全零 → 后来有了数 ⇒ 统计块换成真数字(刷新路径能把那句占位换掉)
 	(u["_st_eq"][EB] as Dictionary)["mag"] = 88.0

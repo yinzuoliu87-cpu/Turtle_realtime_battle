@@ -148,6 +148,7 @@ func _ready() -> void:
 	_t_wiring()
 	_t_basic_gate()
 	_t060_parasol()
+	_t060_stats()
 	_t061_drill()
 	_t062_mantis()
 	_t063_whale()
@@ -336,6 +337,67 @@ func _t060_parasol() -> void:
 	_ok("060 ★★「效果结束后才重新计时」: 收伞后又整整 7 秒才第二次开伞(实测再等 %.1f 秒)" % acc,
 		opened_again and absf(acc - 7.0) < 0.16, "再等 %.2f 秒, 期望 7.0" % acc)
 	_ok("060 ★分母: 第二次确实开了(不是循环跑完了才判)", opened_again)
+	_s._units.clear()
+
+
+## 060「本局」统计(用户 11-12「水母伞一直都是暂无效果」→「补个回血…补个格挡，以减免伤害」):
+##   ① 同一只带 064 + 060(064 在前, 用户两个号都是这样): 伞的回血记在 060, 不记到 064(原来全记给第一件灵物)
+##   ② 伞下挨一段非真伤: 060 记「减免伤害」= 落地伤害 × (dr_mult(总 − 伞) / dr_mult(总) − 1); 真伤不记
+##   ③ 伞下闪避一次: 060 记 1 次; ④ 收伞后不再记
+func _t060_stats() -> void:
+	print("── 060 本局统计 ──")
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-300.0, -300.0), 1000.0)
+	u["equips"] = [{"id": "p2eq_064", "star": 1}, {"id": "p2eq_060", "star": 3}]
+	u["eq_state"] = {}
+	_s._equip_sys._stats._eq_apply_flags(u, "p2eq_064", 1)
+	_s._equip_sys._stats._eq_apply_flags(u, "p2eq_060", 3)
+	var ally: Dictionary = _mk("fortune", "left", Vector2(-250.0, -300.0), 1000.0)
+	var foe: Dictionary = _mk("fortune", "right", Vector2(200.0, -300.0), 1000.0)
+	u["hp"] = 400.0
+	u["_st_eq"] = {}
+	_sp.tick_unit(u, 7.05)                         # 开伞
+	_ok("060 统计 ★分母: 伞开了, 队友在伞下(_pa_by = 携带者)",
+		float(u["damage_reduction"]) > 0.3 and is_same(ally.get("_pa_by", null), u),
+		"dr=%.3f" % float(u["damage_reduction"]))
+	# ② 伞下挨一段物理(无出手者那条路 = 两条路之一; 另一条用 _apply_damage_from)
+	var tot: float = float(ally["damage_reduction"])
+	var hp0: float = float(ally["hp"])
+	_s._damage._apply_damage(ally, 100, Color.WHITE, null, "phy")
+	var landed: float = hp0 - float(ally["hp"])
+	var want: float = landed * (DamageMath.dr_mult(tot - 0.35) / DamageMath.dr_mult(tot) - 1.0)
+	var got: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("blocked", 0.0))
+	_ok("060 统计 ② 伞下挨 %.0f(无出手者那条路) ⇒ 减免伤害记 %.1f(期望 %.1f)" % [landed, got, want],
+		landed > 0.0 and want > 0.0 and absf(got - want) < 0.6)
+	_s._damage._apply_damage_from(foe, ally, 100, Color.WHITE)
+	var got2: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("blocked", 0.0))
+	_ok("060 统计 ② 有出手者那条路也记(%.1f → %.1f)" % [got, got2], got2 > got + 0.5)
+	_s._damage._apply_damage(ally, 100, Color.WHITE, null, "tru")
+	var got3: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("blocked", 0.0))
+	_ok("060 统计 ② 真实伤害不吃减伤 ⇒ 不记(%.1f → %.1f)" % [got2, got3], absf(got3 - got2) < 0.01)
+	# ③ 伞下闪避
+	_sp.on_parasol_dodge(ally)
+	var dg: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("dodge", 0.0))
+	_ok("060 统计 ③ 伞下闪避一次 ⇒ 记 1 次(%.0f)" % dg, absf(dg - 1.0) < 0.01)
+	# ① 收伞回血记在 060, 不在 064
+	_s._equip_sys.tally.use_first_of(u, EquipTally.SPIRIT_IDS)   # 与主循环一样先切到「第一件」(= 064)
+	_sp.tick_unit(u, 2.5)
+	var t: Dictionary = u.get("_st_eq", {})
+	var h060: float = float((t.get("p2eq_060", {}) as Dictionary).get("heal", 0.0))
+	var h064: float = float((t.get("p2eq_064", {}) as Dictionary).get("heal", 0.0))
+	_s._equip_sys.tally.use(null)
+	_ok("060 统计 ① ★064 排在 060 前面: 收伞回血 130 记在 060(%.0f), 064 没分到(%.0f)" % [h060, h064],
+		absf(h060 - 130.0) < 0.6 and h064 < 0.01)
+	# ④ 收伞后不在伞下
+	var got4: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("blocked", 0.0))
+	_s._damage._apply_damage(ally, 100, Color.WHITE, null, "phy")
+	var got5: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("blocked", 0.0))
+	_ok("060 统计 ④ 收伞后: 伞下标记撤掉、再挨打不记(%.1f → %.1f)" % [got4, got5],
+		not ally.has("_pa_dr") and not ally.has("_pa_by") and absf(got5 - got4) < 0.01)
+	_ok("060 统计 本局栏写出「减免伤害」「闪避」「治疗」三行",
+		InfoPanel.eq_stats_text(u, "p2eq_060").contains("减免伤害") and InfoPanel.eq_stats_text(u, "p2eq_060").contains("闪避 1 次")
+		and InfoPanel.eq_stats_text(u, "p2eq_060").contains("治疗 130"), InfoPanel.eq_stats_text(u, "p2eq_060").replace("
+", " / "))
 	_s._units.clear()
 
 

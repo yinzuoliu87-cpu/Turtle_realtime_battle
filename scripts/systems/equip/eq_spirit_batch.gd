@@ -61,9 +61,13 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use_first_of(u, EquipTally.SPIRIT_IDS)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.get("alive", false):
 		return
+	## ★11-12 逐件切统计上下文: 原来整段记给「这只身上第一件灵物」, 同一只带 064 + 060 时伞的回血全记给 064
+	##   (用户「水母伞一直都是暂无效果」, 真实两号切磋查实: 两个号都是 064 排在 060 前面)。
 	if int(u.get("_parasol_si", -1)) >= 0:
+		battle._equip_sys.tally.use([u, "p2eq_060"])
 		_tick_parasol(u, delta)
 	if int(u.get("_bladder_si", -1)) >= 0:
+		battle._equip_sys.tally.use([u, "p2eq_064"])
 		_tick_bladder(u, delta)
 
 
@@ -125,6 +129,8 @@ func _parasol_open(u: Dictionary, si: int, stt: Dictionary) -> void:
 		if float(DetMath.dist((o["pos"] as Vector2), u["pos"])) > PARASOL_RADIUS:
 			continue
 		o["damage_reduction"] = float(o.get("damage_reduction", 0.0)) + dr
+		o["_pa_dr"] = float(o.get("_pa_dr", 0.0)) + dr   # 「本局」减伤挡下: 伞那份减伤 + 撑伞的是谁(battle_damage._credit_parasol_block 读; 只动统计)
+		o["_pa_by"] = u
 		(o["buffs"] as Array).append({
 			"stat": "dodge", "amount": PARASOL_DODGE, "pct": false,
 			"until": battle._t + 1.0e9, "src_eq": PARASOL_BUFF_SRC,
@@ -161,6 +167,12 @@ func _parasol_close(u: Dictionary, si: int, stt: Dictionary) -> void:
 		if not (o is Dictionary):
 			continue
 		o["damage_reduction"] = maxf(0.0, float(o.get("damage_reduction", 0.0)) - dr)
+		var _pdr: float = float(o.get("_pa_dr", 0.0)) - dr
+		if _pdr <= 1e-6:
+			o.erase("_pa_dr")
+			o.erase("_pa_by")
+		else:
+			o["_pa_dr"] = _pdr
 		var bl: Array = o.get("buffs", [])
 		for i in range(bl.size() - 1, -1, -1):
 			var b = bl[i]
@@ -188,6 +200,8 @@ func on_parasol_dodge(u: Dictionary) -> void:
 			break
 	if not has_buff:
 		return
+	if u.get("_pa_by", null) is Dictionary:
+		battle._equip_sys.tally.credit(u["_pa_by"], "p2eq_060", "dodge", 1.0)   # 「本局」伞下闪避次数(每次都记, 不吃下面的演出节流)
 	if battle._t - float(u.get("_pflash_t", -10.0)) < 0.25:
 		return
 	u["_pflash_t"] = battle._t
