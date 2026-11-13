@@ -6961,7 +6961,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 	if u.get("worm_split", false):                        # 033复活海螺3★: 小虫每2.5s在空位分裂一只(自身周期, 非携带者eq_tick)
 		u["worm_split_t"] = float(u.get("worm_split_t", 0.0)) + delta
 		if u["worm_split_t"] >= EquipSystem.WORM_SPLIT_IV:
-			if _count_summons(u["side"], "worm") < EquipSystem.WORM_CAP:
+			if _equip_sys._summons.worm_count(u) < EquipSystem.WORM_CAP:   # 上限按件算(同一携带者同一份号, 11-13)
 				u["worm_split_t"] = 0.0
 				var nw = _spawn._spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
 				if nw != null:
@@ -7973,13 +7973,6 @@ func _side_has_equip(side: String, item_id: String) -> bool:
 				if str(e["id"]) == item_id:
 					return true
 	return false
-
-func _count_summons(side: String, kind: String) -> int:
-	var c := 0
-	for o in _units:
-		if o.get("is_summon", false) and _eff_side(o) == side and o["alive"] and str(o.get("summon_kind", "")) == kind:
-			c += 1
-	return c
 
 # 充能助手: 累加 amt, 达 cap → 清零(保留溢出)并触发 on_full.
 func _cyeq_n(n: int) -> int:   # 装备叠层数: 浮游炮触发→减半(下限1); 本体触发→原值

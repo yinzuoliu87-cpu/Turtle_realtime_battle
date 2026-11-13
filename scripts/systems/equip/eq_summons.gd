@@ -93,3 +93,18 @@ func skeleton(u: Dictionary, si: int, ck: String = "p2eq_032") -> void:   # ck =
 		sk["sprite"].scale = Vector3(base_sc.x, 0.05, base_sc.z)
 		var tw = battle._reg_tween()
 		tw.tween_property(sk["sprite"], "scale", base_sc, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## 033 复活海螺: 和 w 同一件海螺的虫(同一携带者 · 同一份号「p2eq_033#2」)现存几只。
+## ★分裂上限 WORM_CAP 按【件】算(用户 11-13「不应该出两个吗？」): 两件 3★ 各自分裂到 4 只 = 8 只;
+##   两只龟各带一件也各算各的。原来按「我方场上所有海螺虫」算, 第二件的虫会占掉第一件的名额。
+## 分裂虫在主场景 _tick_summon_special 里继承 `_eq_src` / `_eq_owner`, 所以整条分裂链都认得出属于哪一件。
+func worm_count(w: Dictionary) -> int:
+	var c := 0
+	for o in battle._units:
+		if not (o.get("is_summon", false) and o["alive"] and str(o.get("summon_kind", "")) == "worm"):
+			continue
+		if battle._eff_side(o) != battle._eff_side(w) or str(o.get("_eq_src", "")) != str(w.get("_eq_src", "")):
+			continue
+		if is_same(o.get("_eq_owner", null), w.get("_eq_owner", null)):
+			c += 1
+	return c

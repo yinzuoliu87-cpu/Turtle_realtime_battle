@@ -44,6 +44,7 @@ func _ready() -> void:
 	print("=== verify_dup_equip: 同名装备多件各自生效 ===")
 	_t_ck()
 	await _t_summons()
+	await _t_conch()
 	await _t_cases()
 	print("合计 %d 条" % _n)
 	if _fail == 0 and _n > 0:
@@ -146,6 +147,60 @@ func _t_summons() -> void:
 			if iid == "p2eq_058" and sm.size() == 2:
 				var src: Array = [str(sm[0].get("_eq_src", "")), str(sm[1].get("_eq_src", ""))]
 				_ok("② 058 %s: 两座炮台的账各记各的那一件" % str(order), src == ["p2eq_058", "p2eq_058#2"], str(src))
+
+
+## 033 复活海螺: 某一件(携带者 + 份号)的虫现存几只。
+func _worms_of(owner: Dictionary, ck: String) -> int:
+	var n := 0
+	for x in s._units:
+		var xd: Dictionary = x
+		if xd.get("alive", false) and str(xd.get("summon_kind", "")) == "worm" and str(xd.get("_eq_src", "")) == ck \
+				and is_same(xd.get("_eq_owner", null), owner):
+			n += 1
+	return n
+
+
+## ⑤ 033: 用户 11-13「不应该出两个吗？」—— 3★ 分裂上限 WORM_CAP 按【件】算。
+##   一只龟两件 3★ ⇒ 两条分裂链各到 4 只(共 8); 两只龟各带一件同理。原来按「我方场上全部海螺虫」算, 两件合计也只到 4。
+func _t_conch() -> void:
+	print("── ⑤ 033 复活海螺: 分裂上限按件 ──")
+	var cap: int = EquipSystem.WORM_CAP
+	for mode in ["一只龟两件", "两只龟各一件"]:
+		await _new_scene()
+		var u: Dictionary = _arena("p2eq_033", [3, 3] if mode == "一只龟两件" else [3])
+		var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
+		var keep: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-260, 80))   # 撑住单路判定(单路模式召唤物不计存活)
+		keep["maxHp"] = 1.0e7; keep["hp"] = 1.0e7; keep["no_basic"] = true; keep["no_move"] = true
+		s._units.append(keep)
+		var owners: Array = [[u, "p2eq_033"], [u, "p2eq_033#2"]]
+		var al: Dictionary = {}
+		for x in s._units:
+			if not is_same(x, u) and not is_same(x, keep) and str((x as Dictionary).get("side", "")) == "left":
+				al = x
+		if mode == "两只龟各一件":
+			al["equips"] = [{"id": "p2eq_033", "star": 3}]
+			al["eq_state"] = {"p2eq_033": {}}
+			owners = [[u, "p2eq_033"], [al, "p2eq_033"]]
+		for k in range(30):
+			s._sim_step(DT, false, false)
+		u["hp"] = 1.0
+		s._kill(u, null)
+		if mode == "两只龟各一件":
+			al["hp"] = 1.0
+			s._kill(al, null)
+		var mx: Array = [0, 0]
+		var mx_all := 0
+		for k in range(int(EquipSystem.WORM_SPLIT_IV * 60.0 * 5.0)):
+			s._sim_step(DT, false, false)
+			for i in range(2):
+				mx[i] = maxi(int(mx[i]), _worms_of(owners[i][0], str(owners[i][1])))
+			mx_all = maxi(mx_all, _worms_of(owners[0][0], str(owners[0][1])) + _worms_of(owners[1][0], str(owners[1][1])))
+			if k % 30 == 0:
+				await get_tree().process_frame
+		_ok("⑤ %s: 分母 —— 对局没提前判完(%s)" % [mode, str(s._over)], not s._over)
+		_ok("⑤ %s: 两条分裂链各到上限 %d 只(实测 %s)" % [mode, cap, str(mx)], int(mx[0]) == cap and int(mx[1]) == cap)
+		_ok("⑤ %s: 合计 %d 只(实测最多同时 %d 只)" % [mode, 2 * cap, mx_all], mx_all == 2 * cap,
+			"原来按我方场上全部海螺虫算上限 ⇒ 合计只有 %d" % cap)
 
 
 func _eq_total(u: Dictionary, ck: String) -> float:
