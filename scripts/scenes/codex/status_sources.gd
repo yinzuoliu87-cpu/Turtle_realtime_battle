@@ -37,7 +37,7 @@ const SRC := {
 			"link": "^func _diamond_roll_tick[\\s\\S]{0,2500}_diamond_roll_impact\\("},
 		{"k": "pet", "id": "ice", "sk": "iceFreeze", "at": "systems/skills/ice_system.gd:_sk_ice_freeze"},
 		{"k": "pet", "id": "headless", "sk": "headlessTendrils", "at": "systems/skills/headless_system.gd:_sk_headless_tendrils", "v": "{C:HeadlessSystem.TENDRIL_STUN_SEC} 秒"},
-		{"k": "pet", "id": "stone", "sk": "rockShockwave", "at": "systems/skills/stone_system.gd:_sk_rock_shockwave", "v": "{C:StoneSystem.ROCK_WAVE_STUN} 秒"},
+		{"k": "pet", "id": "stone", "sk": "rockShockwave", "at": "systems/skills/stone_system.gd:rock_wave_hit", "link": "## 石头龟岩脊冲击波: 波前碰到敌人那一刻[^\\n]*\\nfunc rock_wave_hit", "v": "{C:StoneSystem.ROCK_WAVE_STUN} 秒"},   # 11-14 改逐步碰撞: 眩晕挪进波前碰到那一刻
 		{"k": "pet", "id": "pirate", "sk": "pirateShipPassive", "at": "scenes/battle/battle_spawn.gd:_spawn_pirate_ship", "v": "{C:PirateSystem.SHIP_CHARGE_STUN} 秒"},
 		{"k": "pet", "id": "pirate", "sk": "pirateBarrage", "at": "systems/skills/pirate_system.gd:_pirate_death_grapple", "v": "{C:PirateSystem.HOOK_STUN} 秒",
 			"lf": MAIN, "link": "== \"pirate\"[^\\n]*killer[^\\n]*\\n[^\\n]*_pirate_death_grapple\\(u, killer\\)"},
@@ -87,7 +87,7 @@ const SRC := {
 			"link": "func _lava_transform[\\s\\S]{0,1500}_lava_volcano_slam\\(u\\)"},
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_sk_shell_shadow_dive"},
 		{"k": "pet", "id": "stone", "sk": "stoneTaunt", "at": "systems/skills/stone_system.gd:_sk_stone_taunt"},
-		{"k": "pet", "id": "stone", "sk": "rockShockwave", "at": "systems/skills/stone_system.gd:_sk_rock_shockwave"},
+		{"k": "pet", "id": "stone", "sk": "rockShockwave", "at": "systems/skills/stone_system.gd:rock_wave_hit", "link": "## 石头龟岩脊冲击波: 波前碰到敌人那一刻[^\\n]*\\nfunc rock_wave_hit"},
 		{"k": "pet", "id": "two_head", "sk": "twoHeadFusion", "at": "systems/skills/two_head_system.gd:_two_head_fusion_wave_hit"},
 		{"k": "minion", "id": "front", "sk": "minionBodysurf", "at": "systems/skills/hiding_system.gd:_minion_bodysurf_ride"},
 		{"k": "minion", "id": "elite", "sk": "eliteHammer", "at": "systems/skills/elite_system.gd:_sk_elite_hammer"},

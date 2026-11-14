@@ -126,6 +126,15 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 		battle._shake(0.06)
 	battle._pending_shots.append({"delay": SLAM_DELAY, "fn": slam, "src": u, "cc": {}})   # 蓄力期被控 / 阵亡即取消(10-16)
 
+## 石头龟岩脊冲击波: 波前碰到敌人那一刻(由 EquipTickSystem._tick_rock_waves 调; 11-14 从出手时排队改成每步碰撞)
+func rock_wave_hit(uu: Dictionary, oo: Dictionary, dmgv: int) -> void:
+	battle._damage._apply_damage_from(uu, oo, battle._phys_after_armor(uu, float(dmgv), oo), Color("#c8a878"))
+	battle._damage._stun(oo, ROCK_WAVE_STUN, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
+	battle._damage._knockback(uu, oo, 60.0)
+	_rock_chunk_erupt(oo["pos"])                     # 命中点额外破土
+	battle._vfx._flash(oo)
+
+
 ## 撤掉嘲讽给的那份减伤(只撤自己记的数, 不碰别的来源); 重复调用无害。
 func _taunt_dr_off(u: Dictionary) -> void:
 	var g: float = float(u.get("_taunt_dr", 0.0))
@@ -173,22 +182,11 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 			var fb = func() -> void: _rock_chunk_erupt(pb)
 			battle._pending_shots.append({"delay": dl, "src": u, "fn": fb})
 		d += step
-	# ── 伤害: 前方带状(几何不变)·随波前经过逐个同步结算 ──
+	# ── 伤害: 前方带状(几何不变)·**波前每步碰各人当前位置**才结算 ──
+	## ★11-14 改(同 043 海浪 / 034 大熊冲击波): 原来出手那一刻就按敌人**当时**的位置定好谁挨打、几秒后挨打
+	##   ⇒ 之后走进岩脊的打不到, 已经走出去的照样挨打 + 眩晕 2 秒。用户 11-14「整个游戏难道你搞了很多这种不合理的地方吗」「做吧」。
+	##   伤害数值仍按出手时的双抗与岩层算(与原来一致); 带宽 ±90、只前方、只到岩脊铺到的 reach 都不变。
 	var dmgv: int = int((u["def"] * ROCK_WAVE_DEF_COEF + u["mr"] * ROCK_WAVE_MR_COEF) * (1.0 + ROCK_WAVE_PER_LAYER * layers))
-	for o in battle._targeting._enemies_of(u):
-		if not o.get("alive", false): continue
-		var rel: Vector2 = o["pos"] - origin
-		if DetMath.dot(rel, dir) <= 0.0: continue                     # 只前方
-		if absf(DetMath.dot(rel, perp)) > 90.0: continue              # 带宽~180
-		if DetMath.dot(rel, dir) > reach: continue                    # ★10-11: 只到岩脊铺到的地方(原来无距离上限, 1500 码外也被打+眩晕; 门禁 verify_rock_wave_reach)
-		var oo = o
-		var hit_delay: float = windup + maxf(0.0, DetMath.dot(rel, dir)) / wave_spd
-		var hf = func() -> void:
-			if not oo.get("alive", false): return
-			battle._damage._apply_damage_from(uu, oo, battle._phys_after_armor(uu, float(dmgv), oo), Color("#c8a878"))
-			battle._damage._stun(oo, ROCK_WAVE_STUN, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
-			battle._damage._knockback(uu, oo, 60.0)
-			_rock_chunk_erupt(oo["pos"])                     # 命中点额外破土
-			battle._vfx._flash(oo)
-		battle._pending_shots.append({"delay": hit_delay, "src": u, "fn": hf})
+	battle._equip_tick_sys.rock_wave_start({"src": uu, "origin": origin, "dir": dir, "perp": perp, "reach": reach,
+		"windup": windup, "spd": wave_spd, "dmg": dmgv, "t": 0.0, "hit": []})
 

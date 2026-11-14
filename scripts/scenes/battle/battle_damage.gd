@@ -758,6 +758,40 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 ##   想调距离请改 `push_mult`。25 处调用点都在传一个被忽略的数 —— 谁去"调"它都不会有任何反应,
 ##   这比没有参数更坑。保留形参是为了不动那 25 处(GDScript 参数个数不匹配是**运行时**才炸, 批量改风险大),
 ##   但名字改成自说明的, 并且删掉了那个假装能调距离的 `DART_KNOCKUP_DIST` 常量。
+## ★★击退 / 击飞统一成**匀速抛物线**(2026-11-14, 用户「你这击飞是抛物线吗」「怎么击飞击退，正常人家会这么设计」「做吧」)。
+##   原来所有击退 / 击飞的横向速度每步 ×0.9 衰减 ⇒ 0.35 秒冲完九成距离、剩下大半段竖着掉, 不是抛物线。
+##   LoL wiki: 击退 = 沿方向、固定距离 + 固定时长的强制位移(李青 R 800 码 / 0.8 秒)。
+##   做法(每个空中单位每步先调一次): 横向速度一旦被(重新)设定, 按**原衰减模型**算出它本来会走的总距离
+##   (截到落地那一步), 改成在剩余滞空里匀速走完 ⇒ 34 处调用点的落点距离与滞空时长都不变, 只换轨迹形状,
+##   不用逐处改数。调用方自己给了 knock_damp = 1.0 的(043 海浪击退)本来就是匀速, 不动。
+func knock_to_parabola(u: Dictionary, delta: float) -> void:
+	var vx: float = float(u.get("vx", 0.0))
+	var vz: float = float(u.get("vz", 0.0))
+	if vx == 0.0 and vz == 0.0:
+		return
+	var conv: bool = bool(u.get("_kconv", false))
+	if not conv and float(u.get("knock_damp", 0.9)) >= 1.0:
+		return                                   # 调用方自己要匀速(043)
+	if conv and vx == float(u.get("_kvx", 0.0)) and vz == float(u.get("_kvz", 0.0)):
+		return                                   # 换算过、之后没人重新设定
+	var g: float = float(u.get("knock_g", battle.GRAVITY))
+	var h: float = float(u.get("height", 0.0))
+	var vy: float = float(u.get("vy", 0.0))
+	var disc: float = vy * vy - 2.0 * g * h
+	if g >= 0.0 or disc < 0.0 or delta <= 0.0:
+		return
+	var t_rem: float = (-vy - sqrt(disc)) / g                    # 剩余滞空(h + vy·t + ½g·t² = 0 的正根)
+	var n: int = maxi(1, int(ceil(t_rem / delta)))
+	var r: float = DetMath.dpow(0.9, delta * 60.0)               # 原模型每步衰减(与主场景积分同一个式子)
+	var k: float = (1.0 - DetMath.dpow(r, float(n))) / ((1.0 - r) * float(n))   # 原模型 n 步总位移 ÷ 匀速 n 步总位移
+	u["vx"] = vx * k
+	u["vz"] = vz * k
+	u["knock_damp"] = 1.0
+	u["_kconv"] = true
+	u["_kvx"] = u["vx"]
+	u["_kvz"] = u["vz"]
+
+
 func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
 	if battle._untouch_block(tgt, "knockback"):
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)

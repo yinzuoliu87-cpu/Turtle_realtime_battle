@@ -1991,6 +1991,7 @@ scripts/scenes/codex/status_page.gd|lit|龟
 scripts/scenes/codex/status_sources.gd|lit|# 028 冰冻药剂[^\\n]*\\nfunc _eq_ice_throw
 scripts/scenes/codex/status_sources.gd|lit|## 043 海浪护符: 浪碰到友军那一刻[^\n]*\nfunc wave_hit_ally
 scripts/scenes/codex/status_sources.gd|lit|## 043 海浪护符: 浪碰到敌人那一刻[^\n]*\nfunc wave_hit_enemy
+scripts/scenes/codex/status_sources.gd|lit|## 石头龟岩脊冲击波: 波前碰到敌人那一刻[^\\n]*\\nfunc rock_wave_hit
 scripts/scenes/codex/status_sources.gd|lit|1.6 秒
 scripts/scenes/codex/status_sources.gd|lit|1.7 秒
 scripts/scenes/codex/status_sources.gd|lit|1/1.8/2.5 秒

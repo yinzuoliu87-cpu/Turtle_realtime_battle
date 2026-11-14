@@ -866,12 +866,13 @@ func schedule(delay: float, fn: Callable) -> void:
 ##   换路清空一致: 上一路已经结束, 它没落地的一律作废。
 ## ★浪墙的网格节点已由换路兜底扫 `_world` 释放, 这里只丢登记(那张表本来也只管演出)。
 func reset_for_lane() -> int:
-	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size() + _tide_hits.size()
+	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size() + _tide_hits.size() + _rock_waves.size()
 	_bolt_q.clear()
 	_bear_waves.clear()
 	_pulls.clear()
 	_tide_walls.clear()
 	_tide_hits.clear()
+	_rock_waves.clear()
 	return n
 
 
@@ -885,6 +886,7 @@ func tick_delayed(_dt: float) -> void:
 	_tick_pulls(_dt)        # 击飞态平滑拉回(同上, 原来也挂在 process delta 上)
 	_tick_tide_walls(_dt)   # 043 浪墙: 蓄浪→推进→退去(3D 网格逐帧重建, 同一条游戏钟)
 	_tick_tide_hits(_dt)    # 043 浪墙判定: 推进量逐步碰各人当前位置(11-14, 原来放浪时一次排好挨打时刻)
+	_tick_rock_waves(_dt)   # 石头龟岩脊冲击波: 波前逐步碰各人当前位置(11-14, 原来出手时一次排好)
 
 ## 大熊熊掌挥击接触那一瞬: 此刻才结算伤害 + 跳数字 + 金爪痕。
 ## ★★2026-09-13 从主文件搬过来, 同时把延时从 tween 换成共享原语 `schedule`:
@@ -1038,6 +1040,45 @@ var _tide_walls: Array = []
 ## 043 浪墙的**结算**表(与上面那张演出表分开: 演出在 `_world` 为空时不建, 结算不能跟着没了)。
 ## 每项 = {src, si, start, dir, dist, windup, travel, t, allies, enemies, hit}; 由 EquipSystem._eq_water_wave 登记。
 var _tide_hits: Array = []
+## 石头龟岩脊冲击波的在途表(11-14): 每项 = {src, origin, dir, perp, reach, windup, spd, dmg, t, hit}; 由 StoneSystem._sk_rock_shockwave 登记。
+var _rock_waves: Array = []
+
+
+func rock_wave_start(w: Dictionary) -> void:
+	_rock_waves.append(w)
+
+
+## 每个 sim 步: 波前推进量 = (t − 起手) × 波速; 敌人当前在前方带内(|横向| ≤ 90)、0 < 前向 ≤ min(推进量, reach) ⇒ 结算, 每人一次。
+## 带宽 / 只前方 / reach 与原来出手时那一套判据逐条一致, 只是从「出手那一刻的位置」换成「波前扫到那一刻的位置」。
+func _tick_rock_waves(dt: float) -> void:
+	if _rock_waves.is_empty():
+		return
+	for i in range(_rock_waves.size() - 1, -1, -1):
+		var w: Dictionary = _rock_waves[i]
+		w["t"] = float(w["t"]) + dt
+		var t: float = float(w["t"])
+		var wind: float = float(w["windup"])
+		if t < wind:
+			continue
+		var reach: float = float(w["reach"])
+		var trav: float = minf((t - wind) * float(w["spd"]), reach)
+		var origin: Vector2 = w["origin"]
+		var dir: Vector2 = w["dir"]
+		var perp: Vector2 = w["perp"]
+		var src: Dictionary = w["src"]
+		for o in battle._targeting._enemies_of(src):
+			if not o.get("alive", false) or battle._arr_has_unit(w["hit"], o):
+				continue
+			var rel: Vector2 = (o["pos"] as Vector2) - origin
+			var f: float = DetMath.dot(rel, dir)
+			if f <= 0.0 or f > trav:
+				continue
+			if absf(DetMath.dot(rel, perp)) > 90.0:
+				continue
+			(w["hit"] as Array).append(o)
+			battle._stone_sys.rock_wave_hit(src, o, int(w["dmg"]))
+		if trav >= reach:
+			_rock_waves.remove_at(i)
 
 
 func tide_hits_start(h: Dictionary) -> void:

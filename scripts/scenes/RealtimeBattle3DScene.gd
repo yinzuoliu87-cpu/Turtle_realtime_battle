@@ -2424,6 +2424,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			if _side_has_equip(_foe_side, "p2eq_056"):
 				u["eq_target_until"] = _t + 99999.0
 				_mark_vfx(u, 99999.0, Color("#ffa040"))
+		_damage.knock_to_parabola(u, delta)   # 横向速度换成匀速走完原距离 ⇒ 真抛物线(11-14, 落点 / 滞空不变)
 		u["vy"] += float(u.get("knock_g", GRAVITY)) * delta   # 每次击飞可覆写重力(解耦滞空时长与抛高·如嘲讽砸地 -13.2); 缺省=GRAVITY
 		u["height"] += u["vy"] * delta
 		# 横向滑行换算回像素 (vx/vz 是米/s → /WS = 像素/s)
@@ -2435,7 +2436,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		if u["height"] <= 0.0:
 			u["height"] = 0.0; u["vy"] = 0.0; u["vx"] = 0.0; u["vz"] = 0.0
 			u["airborne"] = false
-			u.erase("knock_g"); u.erase("knock_damp")   # 落地 → 清本次击飞的重力 / 横向阻尼覆写(下次默认 GRAVITY / 0.9)
+			u.erase("knock_g"); u.erase("knock_damp"); u.erase("_kconv")   # 落地 → 清本次击飞的重力 / 横向阻尼覆写 / 抛物线换算标记
 			# Phase4: 落地 → 压扁回弹 + 小尘 + 轻震屏 (重量感)
 			u["land_t"] = JUICE_LAND_SEC
 			_shake(JUICE_SHAKE_HEAVY)
