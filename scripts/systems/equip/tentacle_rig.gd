@@ -68,11 +68,21 @@ const SLAM_EASE := 2.2
 const BOUNCE_DEG := 8.0
 const BOUNCE_DECAY := 12.0
 const BOUNCE_W := 30.0
-## 收回(11-13 用户手标 31.1 s 那一击刀光之后 8 帧): 贴地后一直趴到约 +0.6 s(整个收回态都趴着、全长不缩),
-##   +0.6 s 起梢端才先翘起 ⇒ 抬起放在进待机后的头 REC_LIFT 秒: 梢端先抬(根部晚 RECOVER_ROOT_DELAY), 身长同时缩回待机长度。
-##   (原来贴地 0.33 s 就开始抬, 是我早前目测的, 手标推翻了)
-const REC_LIFT := 0.45
-const RECOVER_ROOT_DELAY := 0.15
+## 收回(11-14 用户「拍下去我们这蹲很久啊，我们这怎么一动不动啊？人家是已经慢慢起来了，你仔细看看」;
+##   逐帧看 LoL 31.11 / 62.80 两击刀光之后, 两击一致): 刀光后 0–0.33 秒沿刀光趴着(在变淡) → 0.35–0.40 秒就从根部、中段先拱起成一道拱,
+##   梢端还拖在目标那边 → 0.6–0.8 秒拱高、梢端卷成钩 → 约 1.1 秒卷回待机。
+##   原来整个收回态平趴、进待机后才梢端先抬 ⇒ 刀光后 +0.05–0.58 秒一动不动约半秒, 时间晚、方向也反了
+##   (那条按 31.1 那一击刀光后 8 帧手标推的; 「抬起收回」那批 24 张没存下来, 是估的)。
+## 起身时钟: 进收回态 REC_HOLD 秒(= 刀光后约 0.33 秒)起算, 跨收回态和之后的待机连续走; 两段:
+##   ① 趴着 → 拱(REC_UP 秒): 根部往前上方拱起、梢端还垂在目标那边, 身长同时缩回待机长度(LoL 0.4–0.7 秒)
+##   ② 拱 → 待机(REC_CURL 秒): 梢端卷成钩、往回卷成待机的「?」(LoL 0.7–1.1 秒)
+##   第 u 节晚 REC_SPREAD·u 秒(根先梢后)。11-14 第一版只在「趴着」和「待机」两个姿势之间按节插值 ⇒ 根一抬, 后面平着的整截被撬到空中, 像根撬棍
+const REC_HOLD := 0.15
+const REC_UP := 0.25
+const REC_CURL := 0.40
+const REC_SPREAD := 0.12
+## 拱(画面平面里的角度, 0 = 朝目标水平, 90 = 竖直): 照 LoL 31.11 / 62.80 刀光后 0.7 秒那一帧 —— 根部陡起、过了一半往前弯下、梢端垂向地面
+const P_ARCH := [80.0, 72.0, 45.0, 0.0, -50.0, -85.0]
 ## 出土尖芽: 竖着时只露出这么长(录屏尖芽和卷好的待机差不多高), 张开卷钩时才长满; 鳍先半合着贴在身上
 ## 尖芽冒出来的高度(占长满时的比例) —— 11-13 用户手标两次出土光柱后 0–1.2 秒(第四批 + 第三批), 两次取平均:
 ##   光柱那一刻已经冒出 4 成多(前 0.1 秒里拱出来), 之后一直慢慢长, 约 1.2 秒才长满(原来 0.22 秒就冒到 7 成、再停住, 是我设计的)
@@ -357,6 +367,36 @@ static func _py_vec(p_deg: float, y_deg: float) -> Vector3:
 	return Vector3(cos(y) * cos(p), sin(p), sin(y) * cos(p))
 
 
+## 起身时钟(秒, 起身开始那一刻 = 0): 收回态里 = ts − REC_HOLD; 之后的待机里接着走
+static func _rec_clock(stt: int, ts: float) -> float:
+	if stt == TentacleVfx.ST_RECOVER:
+		return ts - REC_HOLD
+	return (TentacleVfx.T_RECOVER - REC_HOLD) + ts
+
+
+## 第 u 节在起身里的俯仰角(趴着 → 拱 → 待机, 根先梢后)。idle_p = 这一节此刻的待机角。
+##   拱 → 待机那段把拱的角换成离待机角最近的那一圈(同一个方向, 差 360° 的写法), 免得绕远路转一整圈
+static func _rec_pitch(clk: float, u: float, idle_p: float) -> float:
+	var c: float = clk - REC_SPREAD * u
+	var g: float = _ctrl_interp(P_GROUND, u)
+	var a: float = _ctrl_interp(P_ARCH, u)
+	var k2: float = smoothstep(REC_UP, REC_UP + REC_CURL, c)
+	if k2 <= 0.0:
+		return lerpf(g, a, smoothstep(0.0, REC_UP, c))
+	var a2: float = a + 360.0 * round((idle_p - a) / 360.0)
+	return lerpf(a2, idle_p, k2)
+
+
+## 第 u 节回到待机(侧偏等)的进度: 拱 → 待机那段
+static func _rec_k(clk: float, u: float) -> float:
+	return smoothstep(REC_UP, REC_UP + REC_CURL, clk - REC_SPREAD * u)
+
+
+## 进待机后还要接着抬多久(= 起身总长 − 收回态里已经走掉的部分)
+static func rec_lift() -> float:
+	return REC_HOLD + REC_UP + REC_CURL + REC_SPREAD - TentacleVfx.T_RECOVER
+
+
 ## 待机姿势(每节俯仰角): 根部取离 ref_root 最近的那一圈, 往梢逐节取离上一节最近的 ⇒ 沿身长连续,
 ## 和设计姿势插值时每一节转的方向一致(不会相邻两节一个往前转、一个往后转打结)。
 ## (各根不同步靠触手自己的相位 t["phase"] 进 tl; 原来另传一个由相位算的种子, 早已不用, 11-14 删)
@@ -474,9 +514,14 @@ static func _targets(v, t: Dictionary, stt: int, ts: float) -> Dictionary:
 						root_y = y
 					continue
 				elif bool(t.get("rig_rec", false)):
-					## 拍下后从贴地抬回待机: 梢端先抬
-					uf2 = smoothstep(0.0, REC_LIFT - RECOVER_ROOT_DELAY, ts - RECOVER_ROOT_DELAY * (1.0 - u))
-					p_from = _ctrl_interp(P_GROUND, u)
+					## 拍下后起身(收回态里已经开始, 见 REC_HOLD): 接着从拱卷回待机
+					var clk_i: float = _rec_clock(stt, ts)
+					pitch[i] = _rec_pitch(clk_i, u, idle_c[i])
+					yaw[i] = TentacleIdleKeys.yaw_at(tl, u) * _rec_k(clk_i, u)
+					if i == 0:
+						root_p = pitch[i]
+						root_y = yaw[i]
+					continue
 				p = lerpf(p_from, idle_c[i], uf2)
 				y = TentacleIdleKeys.yaw_at(tl, u) * uf2
 			TentacleVfx.ST_WARN, TentacleVfx.ST_REAR, TentacleVfx.ST_SLAM:
@@ -497,7 +542,10 @@ static func _targets(v, t: Dictionary, stt: int, ts: float) -> Dictionary:
 					var x2: float = clampf(ts / 0.10, 0.0, 1.0)
 					p = lerpf(_ctrl_interp(from, u), _ctrl_interp(P_GROUND, u), pow(x2, SLAM_EASE))
 			TentacleVfx.ST_RECOVER:
-				p = _ctrl_interp(P_GROUND, u)       # 整个收回态都贴地趴着(手标)
+				## 先趴 REC_HOLD 秒, 然后根先梢后拱起(LoL 刀光后 0.35–0.40 秒就开始)
+				var clk_r: float = _rec_clock(stt, ts)
+				p = _rec_pitch(clk_r, u, idle_c[i])
+				y = TentacleIdleKeys.yaw_at(tl, u) * _rec_k(clk_r, u)
 			TentacleVfx.ST_RETRACT:
 				p = TentacleIdleKeys.angle_at(tl, u)
 				y = TentacleIdleKeys.yaw_at(tl, u)
@@ -519,7 +567,7 @@ static func _targets(v, t: Dictionary, stt: int, ts: float) -> Dictionary:
 				expose = hp_len if tg < HP_END else lerpf(l70, 1.0, smoothstep(HP_END, HP_END + GROW_HAND, tg))
 				fin = lerpf(BUD_FIN, 1.0, smoothstep(GROW_HOLD, GROW_UNFURL - 0.1, ts))
 			elif bool(t.get("rig_rec", false)):
-				len_k = lerpf(1.0, idle_k, smoothstep(0.0, REC_LIFT, ts))
+				len_k = lerpf(1.0, idle_k, smoothstep(0.0, REC_UP, _rec_clock(stt, ts)))
 		TentacleVfx.ST_WARN, TentacleVfx.ST_REAR, TentacleVfx.ST_SLAM:
 			if full:
 				len_k = lerpf(idle_k, 1.0, 1.0 - smoothstep(LEN_T1, LEN_T0, tau))
@@ -528,7 +576,7 @@ static func _targets(v, t: Dictionary, stt: int, ts: float) -> Dictionary:
 				##   11-13 夜 verify_tentacle_continuity 抓到: 原来直接 1.0 ⇒ 待机(0.6)→ 点刺一帧之内整根从 5.8 米变 9.6 米, 梢端一下跳 2 米多
 				len_k = lerpf(float(t.get("rig_len_from", idle_k)), 1.0, pow(clampf(ts / 0.10, 0.0, 1.0), SLAM_EASE))
 		TentacleVfx.ST_RECOVER:
-			len_k = 1.0
+			len_k = lerpf(1.0, idle_k, smoothstep(0.0, REC_UP, _rec_clock(stt, ts)))
 		TentacleVfx.ST_RETRACT:
 			expose = 1.0 - clampf(ts / TentacleVfx.T_RETRACT, 0.0, 1.0)
 	return {"pitch": pitch, "yaw": yaw, "len_k": len_k, "expose": expose, "fin": fin,
@@ -584,7 +632,7 @@ static func solve(v, t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, 
 	## 收回态 → 待机那一刻起播「从贴地抬回」
 	if stt == TentacleVfx.ST_IDLE and prev_st == TentacleVfx.ST_RECOVER:
 		t["rig_rec"] = true
-	if stt != TentacleVfx.ST_IDLE or ts > REC_LIFT:
+	if stt != TentacleVfx.ST_IDLE or ts > rec_lift():
 		t["rig_rec"] = false
 	t["rig_st"] = stt
 	var tg: Dictionary = _targets(v, t, stt, ts)
