@@ -83,6 +83,9 @@ func _ready() -> void:
 	## 名单里的「粗细」类(半径 / 宽度; 恢复版是每个控制点一个半径 `ctrl_r`): 允许跟着姿态慢慢变(8 月那版粗细随抻直度,
 	##   待机呼吸 3.6 秒一个来回), 但**不许逐帧起伏** —— 方案书 §2.2 嫌疑③ 的形状是叠在姿态上的高频起伏。
 	##   判据: 待机稳态(进待机 0.5 秒以后)每个元素的变化方向每秒最多换 2 次(呼吸是 0.56 次; 逐帧起伏是几十次)。
+	##   ★2026-11-14: 出土的展开在「待机」状态里一直播到 TentacleRig.GROW_T(2.65 秒; 用户 11-13~14 逐帧验收的出土, 身子在长、在钻出地面,
+	##     半径跟着变是出土本身) ⇒ 出土后那一段的稳态从 GROW_T + 0.5 秒算起, 出手前多站 GROW_T 秒(稳态仍 ≥ 3.5 秒, 够一个呼吸周期)。
+	##     原来按「进待机 0.5 秒」算, 量进了出土的后半段, 报 2.45 次/秒。
 	var radius_like: Array = []
 	for nm0 in hot:
 		var lw := str(nm0).to_lower()
@@ -93,10 +96,10 @@ func _ready() -> void:
 	var bad: Array = []
 	var seen := {}
 	## 待机先站 4 秒(稳态 3.5 秒, 够一个呼吸周期 3.6 秒左右) —— 太短的话换向次数按秒折算是噪声(第一版只站 0.47 秒, 2 次换向折成 4.3 次/秒)
-	var total := int((TV.T_EMERGE + 4.2 + TV.T_WARN + TV.T_REAR + TV.T_SLAM + TV.T_RECOVER + 0.5) / G.SIM_DT)
+	var total := int((TV.T_EMERGE + TentacleRig.GROW_T + 4.2 + TV.T_WARN + TV.T_REAR + TV.T_SLAM + TV.T_RECOVER + 0.5) / G.SIM_DT)
 	var struck := false
 	for _i in range(total):
-		if not struck and int(_v.state_of("left", 0)) == 1 and rows.size() > int((TV.T_EMERGE + 4.0) / G.SIM_DT):
+		if not struck and int(_v.state_of("left", 0)) == 1 and rows.size() > int((TV.T_EMERGE + TentacleRig.GROW_T + 4.0) / G.SIM_DT):
 			_v.strike("left", 0, _v.root_pos("left", 0) + Vector2(400.0, 30.0), 1.0, func() -> void: touch_step[0] = rows.size())
 			struck = true
 		G.step(_v)
@@ -105,7 +108,7 @@ func _ready() -> void:
 		rows.append([int(_v.state_of("left", 0)), float(fl) if fl != null else 0.0])
 		if int(_v.state_of("left", 0)) == 1:
 			idle_t += G.SIM_DT
-			if idle_t > 0.5:
+			if idle_t > 0.5 + (0.0 if struck else TentacleRig.GROW_T):
 				for rn in radius_like:
 					(idle_series.get_or_add(rn, []) as Array).append(G.uni(mi, rn))
 		else:

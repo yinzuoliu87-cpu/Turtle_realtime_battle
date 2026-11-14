@@ -14,7 +14,6 @@ extends RefCounted
 ##   (右边 / 墙根 / 左上那几根有、A 里没有的: 低伏长弧 · 贴地卷圈 · 从根部往回弯的 C 钩)。两段都从同一个「?」起落 ⇒ 接缝不跳。
 ##   依据: tools/oneoff/idle_match.py 把 LoL 9 段待机 76 张中心线(用户手标 + 我标的)逐张在我们循环里找最像的一刻,
 ##   A 单独时 64 / 76 对上, 对不上的 12 张就是上面三类。
-const PERIOD_A := 18.0
 const PERIOD := 33.0
 ## 11-13: 关键姿势改成每秒一张量出来的整根快照(梢端滞后已经在快照里了) ⇒ 不再另加沿身长的时间滞后
 const LAG_U := 0.0
@@ -192,9 +191,10 @@ const USE_YAW := false
 
 
 static func yaw_at(tl: float, u: float) -> float:
-	if not USE_YAW:
+	if USE_YAW:
+		return _yaw_at_keys(tl, u)
+	else:
 		return 0.0
-	return _yaw_at_keys(tl, u)
 
 
 static func _yaw_at_keys(tl: float, u: float) -> float:

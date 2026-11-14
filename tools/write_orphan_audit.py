@@ -152,6 +152,10 @@ WHY = {
                    "门禁跑在 Windows/Linux, verify_drag_lift D4 只能靠它把「手机」那一支真跑出来)",
     "platform_override": "平台注入: FontKit(iOS 不挂系统字体, verify_ios_no_system_font) 与 CursorTheme(Mac 改用系统光标, "
                          "verify_cursor_mac_os_cursor) 两处同名同义 —— 门禁跑在 Windows/Linux, 只能靠它走 iOS/macOS 那一支",
+    "hold_idle": "测试缝(2026-11-13 灵物触手调试场, tentacle_vfx.gd): 产品侧只读 —— 恒 false 时触手照常接拍击 / 搬家; "
+                 "tests/demo_tentacle_side.gd 的 SIDE_IDLE 拨上它, 只播出土 + 待机来逐帧和 LoL 对照(用户 11-13「把待机动画播放给我」)",
+    "palette_override": "测试缝(2026-11-13 灵物触手外形自己设计, tentacle_mesh_vfx.gd): 产品侧只读 —— 空串时用默认配色; "
+                        "tests/demo_tentacle_side.gd 的 SIDE_PAL 拨上它比较几套配色(用户 11-13「自己设计一款外形呢」), 用户认可后改默认、去掉这条缝",
     "save_path_override": "多入口选路的存盘位置注入(net_route.gd `_path()`; 产品存 user://net_route.cfg, "
                           "verify_net_route_failover 指到自己那一份, 才能造出「第一次启动没存过 / 上次存的是中转」两种开局)",
     "clock_hook_in_test": "时钟核对钩子的门禁开关(GameState.gd `_on_clock_confirmed`; 产品不走 test_mode, 钩子恒开; "

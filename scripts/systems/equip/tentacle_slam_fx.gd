@@ -44,20 +44,6 @@ static func life() -> float:
 	return maxf(SMEAR_HOLD + SMEAR_FADE, CRACK_LIFE)
 
 
-## 刀光亮度包络(age = 贴地后秒数)。贴地前 0。
-static func smear_env(age: float) -> float:
-	if age < 0.0:
-		return 0.0
-	return 1.0 - smoothstep(SMEAR_HOLD, SMEAR_HOLD + SMEAR_FADE, age)
-
-
-## 速度线亮度(贴地前 LEAD 秒满亮, 贴地后 LINES_AFTER 秒内褪掉)。
-static func lines_env(age: float) -> float:
-	if age < -LEAD or age > LINES_AFTER:
-		return 0.0
-	return 1.0 if age < 0.0 else 1.0 - age / LINES_AFTER
-
-
 static var _mesh: ArrayMesh = null
 
 

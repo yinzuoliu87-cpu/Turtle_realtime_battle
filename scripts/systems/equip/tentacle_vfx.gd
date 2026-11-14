@@ -203,7 +203,6 @@ const R_TIP := 0.212                 # 梢端半径
 const ARC_LEN := 9.60                 # ＝ ATTACK_LEN，恒定不变
 ## ★前摇【长大】的倍率 —— 官方前摇 5 帧投影臂长 0.097→0.167（+72%）、青覆盖 +76%。
 ##   做成常量是为了让门禁上限跟着它走（门禁量的仍是**真实网格弧长**，不是这个数）。
-const REAR_GROW := 2.15
 ## 带宽包络的峰值倍率 —— 标定值：1.36 时实测带宽 0.0510，官方峰 0.0508
 const W_PEAK := 1.36
 
@@ -313,7 +312,6 @@ const CURL_TIGHT := 160.0            # 待机：弧长恒定后靠【大卷曲�
 ## 从 1.2% 跳到 10.6%（官方 <1.5%）⇒ 摆幅再砍一半。
 ## ★2026-10-31 对齐 LoL(用户「动作也得调」): 待机实测周期 3.5 秒、梢端摆幅占高 9% ⇒ LoL 被动待机主频约 0.45 Hz(参考笔记 §4)
 ##   ⇒ 呼吸周期 3.6 → 2.2 秒, 舒展量 240 → 222(摆幅略加大, 仍在「≤ 触手高 15%」以内)。
-const CURL_LOOSE := 136.0            # 舒展到底：只松一点点（官方待机基本不动）
 const BREATH_PERIOD := 4.6           # 一次完整起伏的秒数(2026-11-13 对照 LoL 实机 4–6 秒; 原 2.2)
 ## 待机起伏幅度(2026-11-13; 原 −1.8° / +3° / 卷曲 160→136 ⇒ 几乎不动)
 const IDLE_A0_SWING := -16.0
@@ -340,11 +338,9 @@ const REAR_END_CURL := 68.0
 ## 抽直波前从梢端扫到根部要多久。官方 f040→f042 约 2 帧完成 ⇒ 0.07 秒。
 ## ★0.075 那档太快(2.25 帧)：波前扫过时端点距离剧烈跳（实测 8.99→6.27→8.49），
 ##   节奏门禁的"不许定格"反被这种抖动带红。放缓到 0.13 秒(≈4 帧)。
-const WHIP_PROPAGATE := 0.13
 ## 待机摇曳的横向摆幅（度）
 const S_AMP := 3.5                   # ★实机摆得很轻, 原画那种 S 形是艺术加工
 ## 梢端相位滞后（鞭子感 —— 整条一起动就是根棍子）
-const LAG := 0.26
 ## ★逐段发力滞后（秒）：梢端比根部晚这么久收到动作。
 ##   这是"中下部发力带动全身"的实现 —— 0 就退化成整条同相位的单调弯曲。
 ## ⚠ 这个值和【余振周期】是同量级的（余振约 2~3 帧 = 0.07~0.10 秒）——
@@ -437,7 +433,6 @@ const INERTIA_MAXLAG := 62.0     # 滞后角上限(度)
 const INERTIA_OMEGA_REF := 45.0  # 饱和参考角速度(度/秒)
 const INERTIA_STIFF := 250.0      # 弹簧刚度 —— 越大回弹越快
 const INERTIA_DAMP := 9.0        # 阻尼 —— 太小像橡皮, 太大就没有甩尾了
-const INERTIA_P := 3.0
 ## ★★下砸期的增益要单独压低 —— 这里有一条**硬约束**: 用户 2026-08-05 报过「拍下去两次」,
 ##   门禁 `RISE_CAP` 焊着"梢端在下砸期不许回抬"。
 ##   实测吃满幅度时下砸期梢端 y 2.11→2.69 **又抬起来**(最高点之后回抬 15 次) = 就是那个病;
@@ -446,44 +441,9 @@ const INERTIA_P := 3.0
 ## ⇒ 抬起/起身吃满(那里没这条约束, 正是用户要看的地方), 下砸按比例压低。
 const INERTIA_GAIN_SLAM := 0.28
 
-## ★★★2026-08-22【重力垂头】用户原话:「抬起到最高处时…头部会向后弯**由于重力**」
-## 惯性(上面那套弹簧)只能给"追不上", 给不了"到顶之后自己倒过去" —— 后者是**重力**。
-## 物理: 单摆力矩 ∝ sin(偏离竖直的角度)。梢端一旦**越过竖直**(仰角 > 90°),
-##   重力就把它**继续往后按**(角度继续增大); 还没到竖直则把它往前按。
-##   这正好就是"举到最高处(仰角 99°)时头自己向后倒"的机制。
-## ★与惯性是**两个独立的项**: 惯性由速度驱动(动的时候才有), 重力由姿态驱动(停着也有)。
-##   所以到顶停住时惯性归零、而重力仍在把头往后按 —— 这才是用户看到的那一下。
-## ══════════════════════════════════════════════════════════════════
-##  ★★★2026-08-22【链式模拟】—— 把驱动层从"画形状"换成"解方程"
-## ══════════════════════════════════════════════════════════════════
-## 用户:「一条触手我把他举起来时…每部分的运动轨迹到底怎么实现」+「直接全改」
-##
-## 【为什么非换不可】原来是**运动学**: 我写一个姿态函数 θ(u,t) 直接画出形状,
-##   各段之间**没有真的互相拉扯**。于是不管叠多少修正项(行波前沿/惯性弹簧/重力垂头),
-##   都出不来自然 —— 因为自然本身就是"各部分互相作用的结果", 而我把结果直接画了出来。
-##   今晚在这条路上失败了五六次, 每次都只能再加一个补丁去追。**病在模型层。**
-##
-## 【新模型: Verlet 链 + PBD 约束】每个子步做四件事:
-##   ① Verlet 积分 —— `p += (p - p_prev)*damp + g*dt²`。
-##      `(p - p_prev)` 就是速度 ⇒ **惯性不用写, 是积分格式自带的**。
-##   ② 重力 —— 每个节点无条件受力, 不看状态、不看姿态。
-##   ③ 距离约束 —— 反复把相邻节点拉回 ds ⇒ **弧长守恒**(不可伸长)。
-##   ④ 形状约束(肌肉) —— 往"指定姿势"拉, **权重沿长度衰减**:
-##      根部几乎完全跟随(触手要能自己立起来, 纯鞭子是被动的、立不起来),
-##      梢端权重≈0 ⇒ 完全由惯性+重力支配 ⇒ **拖尾/到顶后倒/甩尾全是它自己长出来的**。
-##
-## 【为什么不是 1000 段】用户问的是理论极限。实际 36 段 + 8 次迭代已经够:
-##   段越短越容易数值抖动(要更多迭代压)、而屏幕上这条触手只有几百像素, 肉眼分不出。
-## 【确定性】固定子步长推进(不吃可变 delta), 否则不同机器结果不同, 会破 rng_discipline。
-const SIM_H := 1.0 / 120.0         # 固定子步长
-const SIM_SUBMAX := 6              # 单帧最多几个子步(卡顿时别追太多)
 ## 下砸期的子步长缩放。★实测 0.25 能把弧长波动从 35%%压到 9%%, **但把折角从 29.3° 压到 16.6°**
 ## —— 用户已经验收过 29.3° 那个手感, 不能为了指标偷偷改掉。定为 1.0(不缩), 缺口见门禁登记。
-const SIM_H_SLAM_K := 1.0
-const SIM_ITER := 20
 ## 地面钳位之后补的距离迭代次数(收回被钳位破坏的弧长)
-const SIM_GRAV := 26.0             # 重力加速度(世界单位/秒²)
-const SIM_DAMP := 0.95
 ## ══════════════════════════════════════════════════════════════════
 ##  ★★2026-10-31 抽搐修复(只修探针定位到的两处来源, 抬起 / 拍下 / 收回的姿势与节奏不动)
 ## ══════════════════════════════════════════════════════════════════
@@ -507,34 +467,22 @@ const SIM_DAMP := 0.95
 const CALM_OMEGA := 16.0
 const SWITCH_BLEND := 0.15
 ## 拖尾拍下(见 `_sim_chain` 里 ST_SLAM 那段): 梢端比根部晚起步几秒 / 根部比梢端早落地几秒 / 跟随滞后补偿 / 下落加速指数 / 落地仰角(根→梢, 度)
-const SLAM_TRAIL := 0.10
 ## 抬起在 T_WARN 的这个比例处到顶(三次缓出: 开头最快、一路减到 0); 后弯跟着抬起先到 LEAN_FAST, 余下的蓄力期慢慢加满
 const LIFT_TOP := 0.62
 const LEAN_FAST := 0.82
-const SLAM_LAND_SPREAD := 0.06
-const SLAM_TOUCH_LEAD := 0.0
 const SLAM_EASE := 2.6
-const SLAM_END_ROOT_DEG := 20.0
-const SLAM_END_TIP_DEG := -2.0
 ## 跟随模式每子步补几次段长约束(保弧长)
-const CALM_LEN_ITER := 6
 ## 拍下那一档跟随的角频率: 跟随斜坡的滞后 ≈ 2/ω 秒, 用来把贴地压在伤害帧(verify_tentacle_soft ④ 差 ≤ 0.05 秒)
-const SLAM_FOLLOW_OMEGA := 50.0
 ## ⚠【试过并撤掉】沿链条的速度空间低通(粘性): 想用它"降速度不降幅度"。
 ##   实测 0.35 没效果(9.4→9.8 次/秒)、**0.55 以上直接 inf/nan** ——
 ##   那个平滑核是显式扩散算子, 系数 > 0.5 就发散。此路不通, 别再走。
 
 ## 主动力(肌肉)的基准速率与沿长度分布。★用户「整个是鞭子」⇒ **整根都软, 分布尽量均匀**,
 ## 不做成"根部硬棍+梢端面条"。FALL 控制衰减到梢端还剩多少(0.75 = 梢端仍有 25% 的基准)。
-const SIM_MUSCLE_RATE := 30.0
 ## 下拍期的肌肉速率(2026-10-31 对齐 LoL 下拍, 见 `_phase_at` ST_SLAM 的注): 15 时链条跟不上挥动, 梢端中途悬停
-const SIM_MUSCLE_RATE_SLAM := 40.0
-const SIM_MUSCLE_P := 0.5
-const SIM_MUSCLE_FALL := 0.40
 ## ★弯曲刚度 —— 用户「太软了」的解药在这里, **不在肌肉**。
 ##   纯距离约束是"绳子"(允许任意折角); 触手/鞭子有截面刚度, 弯有半径。
 ##   每子步把每个节点往相邻两点的中线拉这么多。太大 → 变回硬棍。
-const SIM_BEND := 0.55
 
 
 ## 2026-11-01 用户「首先根部先举起来，然后上部举起来」: 0 → 0.30(抬起行波, 梢端比根部晚起)
@@ -553,7 +501,6 @@ const SLAM_WAVY_MIN := 0.22
 ## 待机摇曳
 ## ★2026-10-31 对齐 LoL 被动待机(约 0.45 Hz): 待机梢端实测周期 3.5 秒主要来自这两项横摆 / 波纹(不是呼吸) ⇒ 1.15 × 3.5 / 2.2
 const SWAY_SPEED := 1.25            # 2026-11-13: 原 1.82(周期 3.5 秒) ⇒ 约 5 秒, 与待机起伏同一量级
-const SWAY_AMP := 0.30
 ## ★2026-10-31(用户意见「拍下时梢端带一点弯」): 6 → 35。仍从前摇末 68° 单调松开、不回卷(不会「拍两次」), 收回从这里接(连续)。
 const CURL_SLAM := 35.0
 
@@ -634,7 +581,6 @@ func ensure(side: String, n: int) -> void:
 			if int(t["state"]) != ST_RETRACT:
 				t["state"] = ST_RETRACT
 				t["ts"] = 0.0
-
 
 
 ## 登场一根: 建节点(外观全在 TentacleMeshVfx: 共用的固定网格 + 各自一份着色器材质)、登记状态。
@@ -1226,9 +1172,6 @@ func relocate(side: String, idx: int, to2: Vector2) -> bool:
 	return true
 
 
-
-
-
 ## 当前这根触手的「动作进度」→ [露出比例 emerge, 根部切角(度), 梢端切角(度), 卷曲量(度)]
 ## ★不再返回"高度/前伸" —— 那套做出来是"沿地面伸长"，不是砸下。见形状常量那节。
 func _phase(t: Dictionary) -> Array:
@@ -1635,231 +1578,6 @@ func _inertia_step(t: Dictionary, delta: float) -> void:
 ## 【真鞭子怎么做】打到地面会**沿着地面摊开** ⇒ 触地时把切向的向下分量清零再归一化:
 ##   方向改成贴地走, |tan| 仍是 1, 弧长精确守恒, 多出来的长度自然摊在地面上。
 ## 门禁 `verify_tentacle_soft` 焊住这条(反向验证退回旧写法: 7 个点在地下、最深 0.400)。
-
-## 链式模拟一帧(内部按 SIM_H 固定子步推进)。返回 SEG+1 个节点的世界坐标。
-## ★见文件头 SIM_ON 的长注: 惯性/弧长/拖尾/甩尾**都不是这里写出来的**, 是约束解出来的。
-func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: Vector3,
-		ds: float, ts_now: float, stt: int, swayt: float) -> PackedVector3Array:
-	var n: int = SEG + 1
-	## ── 指定姿势(肌肉的目标) ── 仍然用原来的姿态函数, 但它现在只是"意图"不是"结果"
-	var dirs := PackedVector3Array()
-	var kacc := 0.0
-	for i in range(n):
-		var u: float = float(i) / float(SEG)
-		var seg: Array = _seg_angle(t, stt, u, ts_now, swayt, kacc)
-		kacc = float(seg[3])
-		var ar: float = deg_to_rad(float(seg[0]))
-		var yw: float = float(seg[1])
-		dirs.append((fwd * cos(ar) * cos(yw) + lat * sin(yw) * cos(ar) + up * sin(ar)).normalized())
-	## ── 抽搐修复②: 状态切换后目标方向平滑过渡(见 SWITCH_BLEND 注) ──
-	## ★2026-11-13 待机 = 我们自己的关键帧(TentacleIdleKeys: 照 LoL 录屏量出的 8 个阶段 / 关键姿势 / 节奏 / 梢端滞后摆的, 14.5 秒一个循环):
-	##   每一节方向按关键帧播, 进待机头 IDLE_BLEND 秒从参数姿势渐变过去(收回末的姿势连续); 两根触手按各自相位错开、不同步。
-	if stt == ST_IDLE:
-		var wr: float = smoothstep(0.0, IDLE_BLEND, ts_now)
-		var tl: float = battle._t + float(t["phase"]) / TAU * TentacleIdleKeys.period()
-		for i in range(n):
-			var ar2: float = deg_to_rad(TentacleIdleKeys.angle_at(tl, (float(mini(i, SEG - 1)) + 0.5) / float(SEG)))
-			var rd: Vector3 = (fwd * cos(ar2) + up * sin(ar2)).normalized()
-			dirs[i] = dirs[i].slerp(rd, wr) if dirs[i].length() > 0.5 else rd
-	var d_prev: PackedVector3Array = t.get("sim_dirs", PackedVector3Array())
-	var switched: bool = stt != int(t.get("sim_st", stt)) or ts_now < float(t.get("sim_ts", ts_now)) - 0.000001
-	if switched and stt != ST_SLAM and d_prev.size() == n:
-		t["sim_dirs0"] = d_prev
-		t["sim_blend"] = 0.0
-		## 离开待机(描帧姿势)时过渡拉长: 表里的姿势可能离预警起手姿势很远, 0.15 秒会读成一跳
-		t["sim_blend_len"] = 0.35 if int(t.get("sim_st", -1)) == ST_IDLE else SWITCH_BLEND
-	var bl: float = float(t.get("sim_blend", SWITCH_BLEND))
-	var bln: float = float(t.get("sim_blend_len", SWITCH_BLEND))
-	if bl < bln and stt != ST_SLAM and t.has("sim_dirs0"):
-		var d0: PackedVector3Array = t["sim_dirs0"]
-		var kb: float = smoothstep(0.0, 1.0, bl / bln)
-		for i in range(n):
-			var dm: Vector3 = d0[i].lerp(dirs[i], kb)
-			if dm.length() > 0.0001:
-				dirs[i] = dm.normalized()
-	## ★2026-11-01 拍下改成「拖尾」(用户「拍下去，途中为什么这个尖会比他身子更快到啊」):
-	##   探针 [hgt] 实测旧姿态表下梢端 6 帧里从根部后 1.5 米翻过头顶甩到前 7.5 米, 身子中段才从 3.8 米降到 2.3 米, 之后整根再慢慢沉十几帧。
-	##   现在: 从前摇最后一帧的形状出发, 每段的仰角往「平贴地面」转; 越靠梢起步越晚(SLAM_TRAIL)、根部先落地(SLAM_LAND_SPREAD),
-	##   任何时刻梢端的进度都不超过身子 ⇒ 整根始终是往后拖的弧(甩钓竿), 不会翻到前面; 下落加速(SLAM_EASE), 一下拍实。
-	##   只管整套拍击(share ≥ 0.9); 追击点刺第 0 帧就要命中, 仍走姿态表。
-	if stt == ST_SLAM and float(t.get("share", 1.0)) >= 0.9:
-		if switched and d_prev.size() == n:
-			t["slam_from"] = d_prev
-		var df: PackedVector3Array = t.get("slam_from", PackedVector3Array())
-		if df.size() == n:
-			for i in range(n):
-				var uu: float = float(i) / float(SEG)
-				var a0: float = atan2(df[i].dot(up), df[i].dot(fwd))
-				if a0 < -PI * 0.5:
-					a0 += TAU
-				var a1: float = deg_to_rad(lerpf(SLAM_END_ROOT_DEG, SLAM_END_TIP_DEG, smoothstep(0.0, 0.18, uu)))
-				var t_on: float = SLAM_TRAIL * uu
-				var t_off: float = T_TOUCH - SLAM_TOUCH_LEAD - SLAM_LAND_SPREAD * (1.0 - uu)
-				var xx: float = clampf((ts_now - t_on) / maxf(t_off - t_on, 0.01), 0.0, 1.0)
-				var ee: float = pow(xx, SLAM_EASE)
-				var aa: float = lerpf(a0, a1, ee)
-				var lk: float = df[i].dot(lat) * (1.0 - ee)
-				dirs[i] = (fwd * cos(aa) + up * sin(aa) + lat * lk).normalized()
-	t["sim_blend"] = bl + float(t.get("dt", 0.0))
-	t["sim_dirs"] = dirs
-	t["sim_st"] = stt
-	t["sim_ts"] = ts_now
-
-	var pp: PackedVector3Array = t.get("simP", PackedVector3Array())
-	var qq: PackedVector3Array = t.get("simQ", PackedVector3Array())
-	## 首帧 / 换过路 / 搬过家 ⇒ 直接摆到指定姿势(速度归零), 不要从旧位置弹过去
-	if pp.size() != n or bool(t.get("sim_reset", false)):
-		pp = PackedVector3Array()
-		qq = PackedVector3Array()
-		var p0: Vector3 = root3
-		for i2 in range(n):
-			pp.append(p0)
-			qq.append(p0)
-			p0 += dirs[i2] * ds
-		t["sim_reset"] = false
-
-	var gy: float = root3.y
-	## ★★下砸是**冲击运动**(0.07 秒转 130°), 用待机那档子步长解不动 ——
-	##   实测弧长被拉到 11.87(目标 9.60, +24%)。物理上正确的解法是**缩小步长**,
-	##   不是加迭代(会变硬)、更不是硬钳位(实测把折角从 30° 压到 10.8°)。
-	var h: float = SIM_H * (SIM_H_SLAM_K if int(t["state"]) == ST_SLAM else 1.0)
-	var submax: int = SIM_SUBMAX * (2 if int(t["state"]) == ST_SLAM else 1)
-	var acc: float = float(t.get("sim_acc", 0.0)) + float(t.get("dt", 0.0))
-	## 抽搐修复①: 端着姿势的状态不跑链式模拟, 节点用临界阻尼弹簧跟随目标姿势(见 CALM_OMEGA 注)
-	## ★2026-11-01 用户「动作你这个太柔软了，这个出手一直在抽搐」: 探针(_probe_tentacle_jitter_src [jflip])量出
-	##   出手四段(预警 / 抬起 / 拍下 / 收回)链式模拟的速度方向反转 33 次, 它追的目标姿势只有 12 次 ⇒ 抖是链条甩出来的。
-	##   出手也改走临界阻尼跟随(不过冲); 拍下用更快的一档 SLAM_FOLLOW_OMEGA(直接贴目标姿势会在切换处跳: 点刺从待机进拍下一帧跳 7.8 米)。
-	var calm := true
-	t["dt"] = 0.0                       # 消费掉, 免得重复计入
-	var steps: int = 0
-	while acc >= h and steps < submax:
-		acc -= h
-		steps += 1
-		## 整套拍击直接贴目标姿势: 跟随会把撞地前那几帧磨成减速(探针 [spd] 实测梢端 1579 → 412 mm/帧 才落地 = 软着陆)
-		if stt == ST_SLAM and t.has("slam_from") and float(t.get("share", 1.0)) >= 0.9:
-			var tk: Vector3 = root3
-			for ik in range(1, n):
-				tk += dirs[ik - 1] * ds
-				qq[ik] = pp[ik]
-				var nk: Vector3 = tk
-				if nk.y < gy:
-					nk.y = gy
-				pp[ik] = nk
-			pp[0] = root3
-			continue
-		if calm:
-			var om: float = CALM_OMEGA
-			if stt == ST_WARN or stt == ST_RECOVER:
-				om = 30.0
-			elif stt == ST_REAR:
-				om = SLAM_FOLLOW_OMEGA
-			elif stt == ST_SLAM:
-				om = SLAM_FOLLOW_OMEGA
-			## 目标点 = 根部沿目标方向逐段积分(与上面「首帧直接摆到指定姿势」同一个式子)
-			var tp: Vector3 = root3
-			for ic in range(1, n):
-				tp += dirs[ic - 1] * ds
-				var cc: Vector3 = pp[ic]
-				var vc: Vector3 = (cc - qq[ic]) / h
-				vc += ((tp - cc) * (om * om) - vc * (2.0 * om)) * h
-				qq[ic] = cc
-				var nx: Vector3 = cc + vc * h
-				if nx.y < gy:
-					nx.y = gy
-				pp[ic] = nx
-			pp[0] = root3
-			## 段长约束: 各点各跟各的会在快速甩动时把整根压短(verify_tentacle_vfx ⑤ 实测 9.6 → 8.28 米, 贴地再伸回去 = 「戳出去」)。
-			##   根部逆质量 0 钉住, 其余两端平分修正量(与链式模拟 ③ 同一种做法)。
-			for _ic in range(CALM_LEN_ITER):
-				for i8 in range(n - 1):
-					var d8: Vector3 = pp[i8 + 1] - pp[i8]
-					var l8: float = d8.length()
-					if l8 <= 0.0001:
-						continue
-					var c8: Vector3 = d8 * (1.0 - ds / l8)
-					if i8 == 0:
-						pp[i8 + 1] -= c8
-					else:
-						pp[i8] += c8 * 0.5
-						pp[i8 + 1] -= c8 * 0.5
-				pp[0] = root3
-			for i9 in range(n):
-				if pp[i9].y < gy:
-					pp[i9].y = gy
-			continue
-		## ① Verlet 积分 + 重力 —— 惯性就在 (p - q) 里, 不用另写
-		for i3 in range(1, n):
-			var cur: Vector3 = pp[i3]
-			var vel: Vector3 = (cur - qq[i3]) * SIM_DAMP
-			qq[i3] = cur
-			pp[i3] = cur + vel + Vector3(0.0, -SIM_GRAV, 0.0) * h * h
-		## ② 驱动 —— ★★★**只驱动根部那一节(手)**, 其余全是链。
-		## 用户 2026-08-22:「你不能整根都用连锁的吗, 我一直说的整个是鞭子啊」——
-		##   我在自己写的理论里说过"只有根部的运动是我指定的, 其余由牛顿定律推出来",
-		##   实现时却怕它立不起来、加了一条**沿长度的肌肉** ⇒ 根部 14 毫秒贴死指定姿势
-		##   = **根部是硬棍、只有外面那段在鞭** = 「棍子接鞭子」, 不是一根鞭子。
-		## ⇒ 现在只把节点 1 拉向根部指定的朝向(那是"手腕"), 2..n 全部自由。
-		##   立不立得起来交给**根部甩得够不够快** —— 真鞭子也是甩起来的, 不是自己站起来的。
-		## ★★★实测: 只驱动根部 ⇒ **整条塌成一根直杆躺在地上**(弯折度 0.004 ≈ 全直,
-		##   根/中/梢位移几乎相同 = 刚性移动)。物理事实: 真鞭子是**手在空间里大幅甩**上去的,
-		##   而这条触手的根部是地上一个**固定的洞** —— 只在固定点铰接、其余完全被动的链
-		##   **不可能自己站起来**。所以"整根零主动力"这条路走不通。
-		## ⇒ 折中(也是用户真正要的): 整根都有主动力, 但**弱而且分布均匀** ——
-		##   不是「根部硬棍 + 梢端面条」, 是**整条一起软**。
-		##   衰减指数从 1.5 降到 0.5(接近均匀), 速率从 70 降到 22(整体放软)。
-		for i4 in range(n - 1):
-			var u4: float = float(i4) / float(SEG)
-			## ★★待机时肌肉要**紧**得多 —— 那时触手是"端着姿势"不是鞭子。
-			##   用户 2026-08-22:「触手在疯狂的扭动」。除了 12Hz 降频造成的跳动之外,
-			##   还有一半是**待机期链条绕着呼吸目标持续振荡**(有惯性有重力, 它停不下来):
-			##   实测待机每帧位移 0.1035, 而旧的运动学版本是 **0.0000**(基本静止)。
-						## ★★三档分开(用户 2026-08-22:「待机可以晃但别很剧烈的晃, 然后是破土生成也扭动很剧烈」):
-			##   · 破土/钻地 —— 最紧。那时链条一边被拉长一边甩, 松了就乱扭
-			##     (实测松档 幅度 0.072 / 换向 6.1 次每秒 → 紧档 0.035 / **0.5 次每秒**)
-			##   · 待机 —— 中等。要"轻微晃"不是"死住"(140: 幅度 0.0050 / 3.9 次每秒;
-			##     调到 200 就只剩 0.0010 = 万分之一, 看着是死的)
-			##   · 攻击 —— 最松, 那时它才是鞭子
-			## ★用户问「怎么降低扭动速度」: 这里降的是**频率**不是幅度 ——
-			##   肌肉越紧, 链条被拉回目标越快、自由振荡的余地越小 ⇒ 换向次数(每秒)直接掉。
-			##   (另外两个旋钮试过: 加阻尼/降重力确实降频, **但会把攻击手感一起带走**
-			##    —— 实测折角 29.3 → 15.4, 那是用户已经验收过的东西, 不动。)
-			## (2026-10-31: 待机 / 出土 / 撤场不再走到这里 —— 见 CALM_OMEGA 注; 原来那两档弱肌肉 3.0 / 5.0 随之删掉)
-			var rate: float = (SIM_MUSCLE_RATE_SLAM if (stt == ST_SLAM or stt == ST_RECOVER) else SIM_MUSCLE_RATE) * pow(1.0 - u4 * SIM_MUSCLE_FALL, SIM_MUSCLE_P)
-			var w: float = 1.0 - exp(-maxf(rate, 0.5) * h)
-			pp[i4 + 1] = pp[i4 + 1].lerp(pp[i4] + dirs[i4] * ds, w)
-		## ③ 距离约束(弧长守恒) —— 这个才需要迭代
-		## ★★两端**按逆质量分摊**修正量, 不能只推外侧那个点。
-		##   我第一版只动外侧 ⇒ 修正量一路往梢端累积, 8 次迭代把梢端甩飞:
-		##   探针实测梢端 0.167 秒里飞 6~9 个单位(触手全长才 9.6), 弯折度到段长的 20%
-		##   —— 那就是用户看到的「异常乱扭动」。
-		##   根部用**逆质量 0** 钉住(标准 PBD 做法), 而不是每次迭代硬写回去。
-		for _it in range(SIM_ITER):
-			for i5 in range(n - 1):
-				var d: Vector3 = pp[i5 + 1] - pp[i5]
-				var L: float = d.length()
-				if L <= 0.0001:
-					continue
-				var corr: Vector3 = d * (1.0 - ds / L)
-				if i5 == 0:
-					pp[i5 + 1] -= corr            # 根部不动, 全给外侧
-				else:
-					pp[i5] += corr * 0.5
-					pp[i5 + 1] -= corr * 0.5
-			pp[0] = root3
-		## ③b 弯曲刚度: 压掉高频锯齿(相邻三点往中线靠一点点)。
-		##   ★纯距离约束是"绳子", 允许任意折角; 触手不该出现一节一节的锯齿。
-		for i7 in range(1, n - 1):
-			var mid: Vector3 = (pp[i7 - 1] + pp[i7 + 1]) * 0.5
-			pp[i7] = pp[i7].lerp(mid, SIM_BEND)
-		## ④ 地面 —— ★放在主迭代**之外**: 放在里面会和距离约束互相顶(那是"乱扭"的一半原因)。
-		for i6 in range(n):
-			if pp[i6].y < gy:
-				pp[i6].y = gy
-	t["sim_acc"] = acc
-	t["simP"] = pp
-	t["simQ"] = qq
-	return pp
-
 
 ## 触手所在的局部标架(根部世界点 / 前 / 侧 / 上)。
 ## ★从 `_rebuild` 抽出来 —— 那个函数第三次撞架构预算的 250 行上限。

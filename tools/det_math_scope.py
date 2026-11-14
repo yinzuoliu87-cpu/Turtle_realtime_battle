@@ -17,7 +17,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RENDER = re.compile(r'(_vfx\.gd$|/battle_hud\.gd$|/battle_render\.gd$|/battle_vfx\.gd$|/info_panel\.gd$|/inspect_card\.gd$'
                     r'|/settle_screen\.gd$|/replay_controls\.gd$|/review_console\.gd$|/dmg_stats_panel\.gd$|/battle_vfx_lab\.gd$'
                     r'|/arena_outer\.gd$|/map_field\.gd$|/topbar_status\.gd$|/sword_3d\.gd$|/battle_world_builder\.gd$'
-                    r'|/equip/hp_lines\.gd$)')
+                    r'|/equip/hp_lines\.gd$'
+                    ## 2026-11-14 灵物触手动画控制器 / 待机关键帧 / 拍下特效: 纯画面, 只被 tentacle_vfx 的绘制调(伤害按固定时刻 T_TOUCH 结算, 不读它们)
+                    r'|/equip/tentacle_rig\.gd$|/equip/tentacle_idle_keys\.gd$|/equip/tentacle_slam_fx\.gd$)')
 ## 整个不算(网络/音频/回放校验: 不算战斗数值)
 SKIP = re.compile(r'(/systems/audio/|/systems/replay/|/systems/sim/sim_driver\.gd$|/systems/sim/sim_shot\.gd$'
                   r'|/gamedata/(vfxlab_cases|skill_icons|axe_art|glossary|menu_arena_layout|bracket_layout|arena_theme)\.gd$)')

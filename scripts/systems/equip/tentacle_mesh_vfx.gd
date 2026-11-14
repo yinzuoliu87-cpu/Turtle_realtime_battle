@@ -167,18 +167,6 @@ static func palette() -> Dictionary:
 	return PALETTES[k]
 
 
-## 尖芽的宽 / 身长(从根 u=0 到梢 u=1), 量出来的两次出土的平均
-const BUD_W_U := [0.0, 0.08, 0.30, 0.50, 0.70, 0.85, 1.0]
-const BUD_W := [0.10, 0.18, 0.27, 0.24, 0.18, 0.12, 0.05]
-
-
-static func _bud_width(u: float) -> float:
-	for i in range(BUD_W_U.size() - 1):
-		if u <= float(BUD_W_U[i + 1]):
-			return lerpf(float(BUD_W[i]), float(BUD_W[i + 1]), (u - float(BUD_W_U[i])) / (float(BUD_W_U[i + 1]) - float(BUD_W_U[i])))
-	return float(BUD_W[BUD_W.size() - 1])
-
-
 ## 建一根触手的节点(挂到 world 下)。网格共用、材质各自一份(各写各的 uniform)。
 static func make_node(world: Node, nm: String, len_full: float) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -225,13 +213,6 @@ static func portal_at(st: int, ts: float) -> float:
 	return smoothstep(0.50, 0.70, ts) * (1.0 - smoothstep(1.2, 1.9, ts) * 0.85) * (1.0 - smoothstep(1.85, 2.0, ts))
 
 
-## 棱鳍张开(0..1): 出土时尖芽合拢长出, 展开那 0.4 秒(EMERGE_RISE_T0 + 0.5 起)才张开; 其余状态全开。
-static func fin_open_at(st: int, ts: float) -> float:
-	if st != TentacleVfx.ST_EMERGE:
-		return 1.0
-	return smoothstep(TentacleVfx.EMERGE_RISE_T0 + 0.45, TentacleVfx.EMERGE_RISE_T0 + 0.90, ts)
-
-
 ## 贴地余辉(0..GLOW0), `tau` = 命中后经过的秒数(负 = 还没命中过)。
 static func glow_at(tau: float) -> float:
 	if tau < 0.0:
@@ -249,7 +230,6 @@ static func trail_at(tau: float) -> float:
 ## 这一击贴地的时刻(状态计时): 正常拍击 T_TOUCH, 点刺第 0 帧。
 static func touch_ts(share: float) -> float:
 	return 0.0 if share < 0.9 else TentacleVfx.T_TOUCH
-
 
 
 ## 每帧: 收下旧版算好的中心线(世界坐标, SEG+1 点)与每点半径 → 重采样成 NCP 个控制点 → 写 uniform。
@@ -276,6 +256,9 @@ static func apply(t: Dictionary, root3: Vector3, pts_w: PackedVector3Array, radi
 	var arc := 0.0
 	for i2 in range(1, n):
 		arc += pts_w[i2].distance_to(pts_w[i2 - 1])
+	## 量到 1 毫米: 36 段求和的末位抖动(待机身长 5.76 米 ± 1e-7)会经粗细系数让半径在 float32 末位来回翻,
+	##   着色器参数每帧都「在变」、录流每帧都要发(11-14 verify_tentacle_rhythm ⑤ 抓到: 待机 ctrl_r 每秒换向 3.8 次, 幅度 1.2e-7)
+	arc = snappedf(arc, 0.001)
 	## 2026-11-13: 身子还短(出土刚冒头)时半径跟着收 —— 原来弧长≈0 半径满额 ⇒ 根部冒出一团扁的; 出土时芽身更细, 张开时才长到满
 	var fo: float = float(t.get("rig_fin", 1.0))
 	## 尖芽是胖的(录屏: 合拢的花苞, 不是针)

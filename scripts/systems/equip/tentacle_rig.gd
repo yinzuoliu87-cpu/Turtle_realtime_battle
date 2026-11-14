@@ -74,13 +74,9 @@ const BOUNCE_W := 30.0
 const REC_LIFT := 0.45
 const RECOVER_ROOT_DELAY := 0.15
 ## 出土尖芽: 竖着时只露出这么长(录屏尖芽和卷好的待机差不多高), 张开卷钩时才长满; 鳍先半合着贴在身上
-const BUD_EXPOSE := 0.7
 ## 尖芽冒出来的高度(占长满时的比例) —— 11-13 用户手标两次出土光柱后 0–1.2 秒(第四批 + 第三批), 两次取平均:
 ##   光柱那一刻已经冒出 4 成多(前 0.1 秒里拱出来), 之后一直慢慢长, 约 1.2 秒才长满(原来 0.22 秒就冒到 7 成、再停住, 是我设计的)
-const BUD_RISE_T := [0.0, 0.10, 0.20, 0.30, 0.45, 0.60, 0.75, 0.90, 1.05, 1.20]
-const BUD_RISE_H := [0.42, 0.50, 0.54, 0.58, 0.64, 0.68, 0.76, 0.84, 0.93, 1.0]
 ## 光柱之前多少秒开始拱出来
-const BUD_PRE := 0.10
 const BUD_FIN := 0.3
 ## 预警 / 收回沿身长的滞后(秒 / 单位身长): 根部先动, 梢端跟上
 ## (0.08 时 C 形躺倒那一下梢端还卷着、全身已经拉长 ⇒ 拉成一个大圈; 录屏 τ 0.30 已经整根躺平)
@@ -96,7 +92,6 @@ const SUB_H := 1.0 / 120.0
 ## 光柱之后的长出(待机头 GROW_T 秒, 照 LoL 录屏): 长到全高 → 竖着停 → 卷钩张鳍 → 放倒(放倒由弹簧自然完成)
 ## 11-13 两次出土(墙根 17.6 s / 中间 70 s)每秒 30 帧量, 以光柱那一刻为 0: 尖芽 0.2 秒就冒到全高 · 竖着站到 0.7–0.8 秒 ·
 ##   之后从梢端卷开、身子倾倒, 慢慢来, 约 1.9 秒卷成第一个待机姿势(原来冒得慢 0.55、卷得急 1.0→1.35, 正好反了)
-const GROW_RISE := 0.22
 const GROW_HOLD := 0.75
 ## 交给待机: LoL 1.88 秒卷成的圈一直保持到 75.0 秒(光柱后 2.65 秒)待机 A 段的第二个关键姿势(同一个圈), 那以后才是待机自己的动作。
 ##   11-13 夜: 原来 1.9–2.4 秒就混进待机 74→75 秒之间「拱形 → 圈」的过渡 ⇒ 圈先打开、头翻到左上成「?」再合上(用户「二十四之后还有啊」)
@@ -110,7 +105,6 @@ const IDLE_FROM_BEAM := 1.65
 ##   墙根那根作核对):
 ##   0.7–1.0 竖着、梢端往下勾成小圈 → 1.2–1.5 整根朝一侧拱成倒 U → 1.7–1.9 卷下去、梢端打圈 = 第一个待机姿势。
 ##   0.5 秒前竖直; 1.88 的圈保持到 IDLE_FROM_BEAM + IDLE_JOIN(2.65 秒), GROW_UNFURL → GROW_T 交给待机。
-const GROW_KEY_T0 := 0.86
 ## 弹簧会让姿势慢约 0.1 秒 ⇒ 关键姿势提前取
 ## 出土后打开了跟随(弹簧): 每一节慢 2·ZETA / ω(u) 秒(根部约 0.09、梢端约 0.2 —— 梢端弹簧软) ⇒ 关键姿势每一节按自己的慢量提前取。
 ##   11-13 晚: 原来一律提前 0.09 ⇒ 梢端还慢 0.1 秒, 1.68 秒头该卷下来时还平着(和用户的线差 0.10)
@@ -166,13 +160,6 @@ static func _ctrl_interp(c: Array, u: float) -> float:
 	var p2: float = float(c[j + 1])
 	var p3: float = float(c[mini(j + 2, m - 1)])
 	return 0.5 * (2.0 * p1 + (p2 - p0) * s + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * s * s + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * s * s * s)
-
-
-static func _lerp_pose(a: Array, b: Array, k: float) -> Array:
-	var o: Array = []
-	for i in range(a.size()):
-		o.append(lerpf(float(a[i]), float(b[i]), k))
-	return o
 
 
 ## ── 出土前段 = 对折的发卡(11-13 用户逐张讲解光柱后 0–0.68 秒) ──
@@ -358,33 +345,6 @@ static func _grow_vec(tg: float, u: float) -> Vector3:
 	return Vector3(cos(ee) * cos(az2), sin(ee), cos(ee) * sin(az2)).normalized()
 
 
-static func _grow_vec_old(tg: float, u: float) -> Vector3:
-	var n: int = GROW_KEYS.size()
-	var i0 := 0
-	for k in range(n - 1):
-		if tg >= float(GROW_KEYS[k][0]):
-			i0 = k
-	var i1: int = mini(i0 + 1, n - 1)
-	var ta: float = float(GROW_KEYS[i0][0])
-	var tb: float = float(GROW_KEYS[i1][0])
-	var x: float = clampf((tg - ta) / maxf(tb - ta, 0.001), 0.0, 1.0)
-	x = x * x * (3.0 - 2.0 * x)
-	var pa: float = deg_to_rad(_ctrl_interp(GROW_KEYS[i0][1], u))
-	var pb: float = deg_to_rad(_ctrl_interp(GROW_KEYS[i1][1], u))
-	var ha: float = cos(pa)
-	var hb: float = cos(pb)
-	var sv: float = lerpf(sin(pa), sin(pb), x)
-	var hm: float = lerpf(absf(ha), absf(hb), x)
-	var hv: Vector3
-	if ha * hb >= 0.0:
-		hv = Vector3(lerpf(ha, hb, x), 0.0, 0.0)
-	else:
-		## 前后换边: 水平分量绕竖直轴从身后(−z)转过去
-		var th: float = PI * x
-		hv = Vector3(signf(ha) * cos(th), 0.0, -sin(th)) * hm
-	return (hv + Vector3(0.0, sv, 0.0)).normalized()
-
-
 ## 局部方向 → [俯仰, 侧偏](度), 与 _dir 互逆
 static func _vec_py(v: Vector3) -> Vector2:
 	var vv: Vector3 = v.normalized()
@@ -397,69 +357,10 @@ static func _py_vec(p_deg: float, y_deg: float) -> Vector3:
 	return Vector3(cos(y) * cos(p), sin(p), sin(y) * cos(p))
 
 
-## 尖芽高度曲线(手标两次出土的平均, 见 BUD_RISE_T / H)
-static func _bud_rise(ts: float) -> float:
-	var n: int = BUD_RISE_T.size()
-	if ts >= float(BUD_RISE_T[n - 1]):
-		return 1.0
-	for i in range(n - 1):
-		if ts < float(BUD_RISE_T[i + 1]):
-			return lerpf(float(BUD_RISE_H[i]), float(BUD_RISE_H[i + 1]), (ts - float(BUD_RISE_T[i])) / (float(BUD_RISE_T[i + 1]) - float(BUD_RISE_T[i])))
-	return 1.0
-
-
-## 出土卷开: ts(进待机后的秒数)时 6 个控制点的俯仰角。关键姿势按「根部角 + 逐段弯折角」通道沿时间插值(不会沿身长翻)
-static var _gk: Array = []
-
-
-static func _grow_pose(ts: float) -> Array:
-	if _gk.is_empty():
-		var keys: Array = [[GROW_KEY_T0, P_UP]] + GROW_KEYS
-		for i in range(keys.size()):
-			var raw: Array = keys[i][1]
-			var row: Array = [float(raw[0])]
-			for j in range(1, raw.size()):
-				## 弯折角收进 (−210°, 150°]: 折得很深(接近 180°)时优先算成往前折(翻回正确朝向后, 手标的小钩朝正面那侧勾);
-				##   收进 ±180 的话 −169° 和 +191° 二选一会挑成往前折, 梢端扫过前面再落下
-				row.append(wrapf(float(raw[j]) - float(raw[j - 1]), -210.0, 150.0))
-			## 只有根部角沿时间展开; 弯折角保持在 ±180° 以内直接插值 —— 弯折角也沿时间展开的话会累积到 ±360°,
-			##   沿身长插值时身子中段凭空多绕一圈(11-13 对照图实测)
-			if i > 0:
-				var v0: float = float(row[0])
-				var pv0: float = float(_gk[i - 1][1][0])
-				while v0 - pv0 > 180.0:
-					v0 -= 360.0
-				while pv0 - v0 > 180.0:
-					v0 += 360.0
-				row[0] = v0
-			_gk.append([float(keys[i][0]), row])
-	var n: int = _gk.size()
-	var i0 := 0
-	for k in range(n - 1):
-		if ts >= float(_gk[k][0]):
-			i0 = k
-	var t0: float = float(_gk[i0][0])
-	var t1: float = float(_gk[mini(i0 + 1, n - 1)][0])
-	var x: float = clampf((ts - t0) / maxf(t1 - t0, 0.001), 0.0, 1.0)
-	x = x * x * (3.0 - 2.0 * x)
-	var a: Array = _gk[i0][1]
-	var b: Array = _gk[mini(i0 + 1, n - 1)][1]
-	var out: Array = []
-	var acc := 0.0
-	for j in range(a.size()):
-		acc += lerpf(float(a[j]), float(b[j]), x)
-		out.append(acc)
-	return out
-
-
 ## 待机姿势(每节俯仰角): 根部取离 ref_root 最近的那一圈, 往梢逐节取离上一节最近的 ⇒ 沿身长连续,
 ## 和设计姿势插值时每一节转的方向一致(不会相邻两节一个往前转、一个往后转打结)。
-## 种子: 由触手的相位(0..TAU)定, 各根不同
-static func _seed_of(phase: float) -> int:
-	return int(phase * 100000.0) + 1
-
-
-static func _idle_chain(sd: int, tl: float, ref_root: float) -> PackedFloat32Array:
+## (各根不同步靠触手自己的相位 t["phase"] 进 tl; 原来另传一个由相位算的种子, 早已不用, 11-14 删)
+static func _idle_chain(tl: float, ref_root: float) -> PackedFloat32Array:
 	var o := PackedFloat32Array()
 	o.resize(SEG)
 	var prev: float = ref_root
@@ -506,7 +407,6 @@ static func _targets(v, t: Dictionary, stt: int, ts: float) -> Dictionary:
 	## 待机 = 按标注量出来的关键姿势(TentacleIdleKeys)。11-13 试过「按统计规律随机生成」(TentacleIdleGen),
 	##   用户「不行，比上次按标注走的差多了」⇒ 退回; 规律只用来改进标注版, 不取代标注
 	var tl: float = v.battle._t + float(t["phase"]) / TAU * TentacleIdleKeys.period()
-	var sd: int = _seed_of(float(t["phase"]))
 	var idle_k: float = TentacleVfx.IDLE_ARC_K
 	var len_k: float = idle_k
 	var expose := 1.0
@@ -525,9 +425,9 @@ static func _targets(v, t: Dictionary, stt: int, ts: float) -> Dictionary:
 				tau = TentacleVfx.T_TOUCH - ts
 	var idle_c := PackedFloat32Array()
 	if stt == TentacleVfx.ST_RECOVER:
-		idle_c = _idle_chain(sd, tl, float(P_GROUND[0]))
+		idle_c = _idle_chain(tl, float(P_GROUND[0]))
 	elif stt != TentacleVfx.ST_EMERGE:
-		idle_c = _idle_chain(sd, tl, 90.0)
+		idle_c = _idle_chain(tl, 90.0)
 	## 根部那一节的姿势(决定鳍朝哪边): 俯仰 / 侧偏 / 表示法(横扫用「仰角 + 水平朝向」= -1)
 	var root_p := 90.0
 	var root_y := 0.0
