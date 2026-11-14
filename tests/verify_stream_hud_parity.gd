@@ -176,6 +176,9 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	_charge_tot += int(tot["charge"])
 	print("  [量] %s HUD 采样点 %d · 元素 %d · 文本 %d · 贴图键 %d · 头顶血条 %d · 头像框 %d · 装备格图标 %d · 充能条 %d · 圆盘出现 %d 次" % [tag, cmp, elems,
 		int(tot["texts"]), int(tot["texs"]), int(tot["units"]), int(tot["frames"]), int(tot["icons"]), int(tot["charge"]), int(tot["disc"])])
+	## 头顶血条比例压在第三位小数 .5 上、两边取整各落一边(取整前只差 float32 往返量级)的次数与原值 —— 放过的看得见
+	print("  [量] %s 头顶血条取整边界放过 %d 次 %s" % [tag, H.edges.size(), str(H.edges.slice(0, 4))])
+	H.edges.clear()
 	_ok("分母 · %s 播到结尾、比过的采样点 %d ≥ %d" % [tag, cmp, maxi(3, steps / EVERY - 1)], p.state == "ended" and cmp >= maxi(3, steps / EVERY - 1), "%s %s" % [p.state, p.err])
 	_ok("分母 · %s HUD 各类元素都比到了(文本 %d / 头像框 %d / 装备格图标 %d / 头顶血条 %d / 圆盘 %d)" % [tag,
 		int(tot["texts"]), int(tot["frames"]), int(tot["icons"]), int(tot["units"]), int(tot["disc"])],

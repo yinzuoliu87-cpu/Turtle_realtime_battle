@@ -16,6 +16,10 @@ extends RefCounted
 
 const DIG := 1000.0
 const CHG_TOL := 0.03
+## 头顶血条比例取整前允许的差: 血量 / 最大血量 float32 往返(相对 6e-8)× 两个量, 留余量到 1e-6; 真差(哪怕 0.1%)远大于它
+const RAW_TOL := 1.0e-6
+## 取整边界放过的记录(门禁打印出来, 看得见放过了几次、原值是多少)
+static var edges: Array = []
 
 
 static func _tex_key(t) -> String:
@@ -44,7 +48,7 @@ static func _r(v: float) -> float:
 
 
 static func snap(b, units_by_idx: Dictionary, skip: Array = []) -> Dictionary:
-	var out := {"texts": {}, "texs": {}, "units": {}, "frames": {}, "disc": [], "pk": [], "names": [], "plate": []}
+	var out := {"texts": {}, "texs": {}, "units": {}, "uraw": {}, "frames": {}, "disc": [], "pk": [], "names": [], "plate": []}
 	var ui: Node = b._ui_layer
 	if ui == null:
 		return out
@@ -115,6 +119,7 @@ static func snap(b, units_by_idx: Dictionary, skip: Array = []) -> Dictionary:
 			enw = _r((en as Control).size.x)
 		var vis: bool = root != null and is_instance_valid(root) and (root as CanvasItem).visible
 		out["units"][int(idx)] = [_r(float(hb._hp) / maxf(1.0, float(hb._max_hp))), _r(float(hb._shield)), enw, vis]
+		out["uraw"][int(idx)] = float(hb._hp) / maxf(1.0, float(hb._max_hp))   # 取整前的血条比例(只在取整后不同时用, 见 diff)
 	## 头像框栏
 	for side in ["left", "right"]:
 		var col = b._team_panel_left if side == "left" else b._team_panel_right
@@ -189,7 +194,16 @@ static func diff(a: Dictionary, b: Dictionary, tag: String, fresh_panels: bool =
 	for idx in ua:
 		n += 1
 		if not ub.has(idx) or str(ua[idx]) != str(ub[idx]):
-			bad.append("%s 头顶血条 单位%d 本机 %s / 播放 %s" % [tag, int(idx), str(ua[idx]), str(ub.get(idx, "-"))])
+			## ★11-14: 血量进流是 float32(StreamRecorder 单位字段), 本机是双精度; 比例恰好压在第三位小数的 .5 上时两边取整各落一边
+			##   (击退抛物线那批之后真实快照局步 4440 单位 7: 本机 0.796 / 播放 0.795)。只有「其余三项相同、取整前只差 float32 往返量级」才算取整边界。
+			var ra = (a.get("uraw", {}) as Dictionary).get(idx)
+			var rb = (b.get("uraw", {}) as Dictionary).get(idx)
+			var edge: bool = ub.has(idx) and ra != null and rb != null and absf(float(ra) - float(rb)) <= RAW_TOL \
+				and str((ua[idx] as Array).slice(1)) == str((ub[idx] as Array).slice(1))
+			if edge:
+				edges.append("%s 单位%d 本机 %.9f / 播放 %.9f" % [tag, int(idx), float(ra), float(rb)])
+			else:
+				bad.append("%s 头顶血条 单位%d 本机 %s / 播放 %s(取整前 %s / %s)" % [tag, int(idx), str(ua[idx]), str(ub.get(idx, "-")), str(ra), str(rb)])
 	for idx in ub:
 		if not ua.has(idx):
 			bad.append("%s 头顶血条 单位%d 本机没有 / 播放 %s" % [tag, int(idx), str(ub[idx])])
