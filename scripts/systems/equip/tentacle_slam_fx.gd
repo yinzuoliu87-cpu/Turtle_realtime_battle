@@ -166,7 +166,9 @@ static func fx_cols() -> Dictionary:
 static var _beam_tex: Texture2D = null
 
 
-static func _beam_texture() -> Texture2D:
+## ★出处键(11-14 CI verify_stream_parity / verify_stream_coverage 抓到): 纯函数(只看常量), 生成后挂 stream_gen ⇒
+##   逐帧直播的手机按同名现生成(StreamMirror.gen_ok 认 gen_ 前缀); 原来没挂, 手机上光柱画成占位的白色软圆。
+static func gen_beam_texture() -> Texture2D:
 	if _beam_tex == null:
 		var img := Image.create(32, 8, false, Image.FORMAT_RGBA8)
 		for x in range(32):
@@ -175,7 +177,7 @@ static func _beam_texture() -> Texture2D:
 			var core: float = exp(-fx * fx * 60.0)
 			for yy in range(8):
 				img.set_pixel(x, yy, Color(1.0, 1.0, 1.0, clampf(a * 0.75 + core * 0.5, 0.0, 1.0)))
-		_beam_tex = ImageTexture.create_from_image(img)
+		_beam_tex = VfxTex.tag(ImageTexture.create_from_image(img), "gen_beam_texture", [], "res://scripts/systems/equip/tentacle_slam_fx.gd")
 	return _beam_tex
 
 
@@ -192,7 +194,7 @@ const BEAM_RAMP := 0.07
 
 static func spawn_beam(battle, pos2: Vector2) -> void:
 	var b := Sprite3D.new()
-	b.texture = _beam_texture()
+	b.texture = gen_beam_texture()
 	b.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	b.shaded = false
 	b.transparent = true
