@@ -189,6 +189,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|横斩基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|横波伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|横波基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|每 # 龟能射一箭
 scripts/gamedata/equip_tier_labels.gd|lit|每个魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层增伤 #%
