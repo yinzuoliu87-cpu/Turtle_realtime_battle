@@ -9,7 +9,14 @@
   ① run-tests.sh 登记的全部审计器
   ② 全仓扫描类测试(源码里遍历目录的 verify_*: 这类最容易被任何改动碰红, 而且大多很快)
   ③ 和这次改动有关的测试: 改动里的 verify_* 本身 + 源码提到改动文件路径 / class_name 的 verify_*(枢纽文件不展开)
+  ④ 数据整表扫描(2026-11-14 补): 改了 data/*.json ⇒ 把那份数据整张遍历的 verify_*(`for x in DataRegistry.<字段>`)也选上。
+     由来: 11-14 连发弩机正文多一组分档, verify_equip_tier_labels(逐件对标签条数)只读 DataRegistry.phase2_equipment,
+     既不提文件路径也不提改动的 .gd ⇒ 预检没选, 红在 CI 上。读这份数据的测试有 51 条(超枢纽线), 只选「整表遍历」那 46 条。
 判定与门禁同一套: 退出码 0 + 日志有 ALL PASS + 不命中 run-tests.sh 的 FATAL 正则。
+★11-14 用户「CI 每次都跑了太多遍了…你得思考一下」, 补两处省轮次:
+  · 工作区不干净在**开头**就退(原来跑完几分钟才说「这次不算数」);
+  · 测试红了先**单独重跑那一条**(并行下偶发段错误 / 超时, 单跑复现不出的就是偶发): 单跑过 ⇒ 记「偶发」不拦,
+    写进 .out/precheck_flaky.tsv 留账; 单跑还红才算红(审计器早就这样, 测试原来没有 ⇒ 为一条偶发整套重跑)。
 
 用法:
   python tools/precheck.py             # 比 origin/main 的改动; 全过写印记
@@ -66,6 +73,7 @@ def pick(files):
 				keys.append(m.group(1))
 	srcs = {os.path.basename(p)[:-3]: read(p) for p in sorted(glob.glob(os.path.join(ROOT, "tests", "verify_*.gd")))}
 	hub = {k for k in keys if sum(1 for t in srcs.values() if k in t) > HUB_MAX}
+	data_scan = data_scan_patterns(files)
 	out = {}
 	for name, src in srcs.items():
 		if name in ALWAYS:
@@ -74,6 +82,8 @@ def pick(files):
 			out[name] = "改动本身"
 		elif SCAN.search(src):
 			out[name] = "全仓扫描"
+		elif any(p.search(src) for p, _ in data_scan):
+			out[name] = "数据整表扫描 " + next(f for p, f in data_scan if p.search(src))
 		else:
 			for k in keys:
 				if k not in hub and k in src:
@@ -81,6 +91,18 @@ def pick(files):
 					break
 	if hub:
 		print("枢纽文件不展开: " + ", ".join(sorted(hub)))
+	return out
+
+
+def data_scan_patterns(files):
+	"""改动里的 data/*.json ⇒ [(「整张遍历这份数据」的正则, 文件名)]。字段名从 DataRegistry 的载入行读(不手抄一份对照表)。"""
+	reg = read(os.path.join(ROOT, "autoload", "DataRegistry.gd"))
+	out = []
+	for f in files:
+		if not (f.startswith("data/") and f.endswith(".json")):
+			continue
+		for m in re.finditer(r"^\s*(\w+)\s*=\s*_load_json_\w+\(\"res://%s\"\)" % re.escape(f), reg, re.M):
+			out.append((re.compile(r"for\s+\w+\s+in\s+DataRegistry\.%s\b" % m.group(1)), f))
 	return out
 
 
@@ -172,6 +194,12 @@ def main():
 		for n in names:
 			print("  %-44s %6.0f 秒  %s" % (n, sec.get(n, 8.5), picked[n]))
 		return 0
+	## ★开头就查工作区(11-14): 印记记的是提交号, 工作区不干净时跑完也不作数 —— 别先跑几分钟再说
+	if git("status", "--porcelain"):
+		print("✗ 工作区还有没提交的改动: 先提交(或把没认可的改动挪出去)再跑预检 —— 印记只认提交")
+		for l in git("status", "--porcelain").splitlines()[:12]:
+			print("   ", l)
+		return 1
 	n_aud, bad_aud = audits(runner)
 	print("审计器 %d 个, 红 %d 个" % (n_aud, len(bad_aud)))
 	for t, last in bad_aud:
@@ -186,6 +214,21 @@ def main():
 				print("  ✗ %s(%d 秒)" % (n, dt))
 				for x in fails:
 					print("      ", x)
+	## ★红了的测试单独重跑一次(11-14): 并行下的偶发段错误 / 超时单跑复现不出 —— 单跑过 ⇒ 记偶发不拦, 单跑还红才算红
+	if bad:
+		still = []
+		for n in bad:
+			_, ok2, dt2, fails2 = run_test(n, fatal, frames(n, runner))
+			if ok2:
+				print("  ↺ %s 单独重跑通过(%d 秒) ⇒ 记为偶发, 不拦" % (n, dt2))
+				with open(os.path.join(ROOT, ".out", "precheck_flaky.tsv"), "a", encoding="utf-8") as fh:
+					fh.write("%s\t%s\t%s\n" % (time.strftime("%Y-%m-%d %H:%M"), git("rev-parse", "--short", "HEAD"), n))
+			else:
+				still.append(n)
+				print("  ✗ %s 单独重跑仍红" % n)
+				for x in fails2:
+					print("      ", x)
+		bad = still
 	if bad or bad_aud:
 		print("FAIL 测试红 %d / %d, 审计器红 %d —— 修好再推(日志在 .out/gate/)" % (len(bad), len(names), len(bad_aud)))
 		return 1

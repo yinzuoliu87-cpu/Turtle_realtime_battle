@@ -166,6 +166,10 @@ func _ready() -> void:
 				_ok("★★★%s · 摘要 == 金标" % tag, same,
 					("实得 %s / 金标 %s%s" % [dig.substr(0, 16), want.substr(0, 16),
 						("  " + det) if det != "" else ""]) if not same else dig.substr(0, 16))
+				## 对不上时把**完整**摘要单独打一行(11-14): 有意的平衡改动后 tools/regen_goldens.py 一遍就能写回金标,
+				##   原来只打 16 位, 要删掉那一项再跑一遍才拿得到全长(多跑一轮)
+				if not same:
+					print("  [新摘要] %s\t%s" % [tag, dig])
 		else:
 			missing.append(tag)
 			print("  [MISS] %s · 金标里没有这一条 ⇒ 摘要 = %s" % [tag, dig])
