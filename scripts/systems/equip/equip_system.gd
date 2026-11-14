@@ -575,6 +575,17 @@ const WAVE_HALF_W := 900.0
 ## 行程也固定: 从身后 1200 码起推 3000 码, 足够穿过整个战场。
 ## ★它同时是伤害延时的分母(`fwd / tdist * travel`) —— 演出与判定必须共用同一个数。
 const WAVE_DIST := 3000.0   # 起浪点后移到 1200 后, 行程要同步加长才够穿过整个战场
+## 浪速(码/秒)。用户 11-14「海浪速度太快了」⇒ 先照娜美大招 `NamiRMissile.missileSpeed = 850`(CommunityDragon nami.bin);
+##   看完又说「海浪速度还要再慢点」⇒ 600(比娜美再慢约三成)。最早是 3000 码 / 2 秒 = 1500。
+##   推进时长 = WAVE_DIST / WAVE_SPEED = 5 秒, 演出与伤害延时共用同一个数。
+const WAVE_SPEED := 600.0
+## 击飞初速(米/秒)。用户 11-14「击飞不够高」⇒ 6.5 → 11: 滞空 2×11/22 = 1.0 秒、最高约 2.75 米(龟约 1.4 米);
+##   原 6.5 = 滞空 0.59 秒 / 最高 0.96 米。娜美大招击飞 0.5~1.5 秒(按浪走过的距离), 取中间 1 秒。
+const WAVE_KNOCK_VY := 11.0
+## 击退距离(码), 顺浪的方向。用户 11-14「应该是击飞击退吧」: 原来只靠 `_knock_up` 自带的横推(初速 3.85 米/秒、每帧 ×0.9 衰减)
+##   实际只滑 ≈ 27 码, 画面上看不出。再问「你这击飞是抛物线吗」⇒ 横向**不衰减、匀速**(knock_damp = 1.0):
+##   水平速度 = 距离 / 滞空 1 秒 ⇒ 轨迹是真抛物线: 0.5 秒到最高点(约 2.75 米)时走了一半, 1 秒落在 150 码外。150 码 ≈ 两三个龟身。
+const WAVE_KNOCK_BACK := 150.0
 const CANDLE_PHASES := 3       # 几个阶段
 const CANDLE_IV := 5.0         # 每几秒切一次(主场景 _EQ_CUSTOM_IV 引用本常量)·也是回血铺开的秒数
 const CANDLE_HEAL_R := 250.0   # 微弱阶段: 友军回血光圈半径(码)
@@ -1310,37 +1321,44 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 	var startc: Vector2 = u["pos"] - dir * WAVE_BACK    # 敌人反方向(身后)涌起
 	var tdist: float = WAVE_DIST
 	var windup: float = 0.5
-	var travel: float = 2.0                             # 慢速(用户)
+	var travel: float = WAVE_DIST / WAVE_SPEED         # 照娜美浪速(11-14 用户「太快了」; 原固定 2.0 秒)
 	battle._anticipate(u)
 	## ★演出换成**真 3D 海浪**(生成网格·逐帧在 sim 钟上重建顶点), 分段表见 battle_vfx 同名段。
 	##   旧版是 4~16 片 `Sprite3D` 立牌沿 perp 排开、整排 tween 平移 —— 既不是 3D、
 	##   宽度每次都不一样, 而且 tween 走未钳制 delta(与伤害的 sim 钟是两条钟)。
 	##   蓄浪那颗 `_water_charge_windup` 白球一并删掉: 它是 `VfxTex._make_fire_glow_tex()`
 	##   程序生成光球(禁区), 而且浪自己的①蓄浪段已经在说同一件事。
-	battle._equip_tick_sys.tide_wall_start(startc, dir, WAVE_HALF_W, tdist, windup, travel)
-	for o in allies:
-		var oo: Dictionary = o
-		var fwd: float = clampf(DetMath.dot((o["pos"] - startc), dir), 0.0, tdist)
-		var d: float = windup + fwd / tdist * travel
-		var fn := func():
-			if not oo.get("alive", false): return
-			## 11-14 用户: 护盾 40/95/120 → 70/160/400, 且改成通用护盾(4 秒后消失, 原「直到被打破」); 双抗增减一场内跨路保留(eq_wave_amulet.gd)
-			battle._damage._grant_shield(oo, [70.0, 160.0, 400.0][si], BattleDamage.COMMON_SHIELD_SEC)
-			_wave.add_resist(oo, float([2, 3, 5][si]))
-			battle._vfx.wave_splash(oo["pos"], true)
-		battle._pending_shots.append({"delay": d, "fn": fn, "src": u})
-	for o in enemies:
-		var oo2: Dictionary = o
-		var fwd2: float = clampf(DetMath.dot((o["pos"] - startc), dir), 0.0, tdist)
-		var d2: float = windup + fwd2 / tdist * travel
-		var fn2 := func():
-			if not oo2.get("alive", false): return
-			battle._damage._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([200, 400, 800][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字) · 11-14 用户 60/110/200 → 200/400/800
-			_wave.add_resist(oo2, -float([2, 3, 5][si]))
-			battle._vfx.wave_splash(oo2["pos"], false)
-			battle._knock_up(oo2, oo2["pos"] - dir * 60.0, 6.5)   # 娜美式击飞: 顺浪方向往前推(非直上)
-			battle._vfx._hit_spark(oo2)
-		battle._pending_shots.append({"delay": d2, "fn": fn2, "src": u})
+	battle._equip_tick_sys.tide_wall_start(startc, dir, WAVE_HALF_W, tdist, windup, travel, u["pos"])   # 末参: 施法者脚下(起手水环 / 水柱, 11-14)
+	## ★★判定 = **每个 sim 步拿浪的当前推进量去碰各人的当前位置**, 碰到才结算、每人一次(同 034 大熊冲击波)。
+	##   用户 11-14「这个视屏里3个敌人被同时击飞？怎么可能，怎么判定的」: 原来放浪那一刻就按各人**当时**的位置
+	##   算好挨打时刻排进 `_pending_shots` ⇒ 浪要走好几秒(浪速 600 后约 5 秒), 这期间单位会走动, 到点挨打时浪早不在它身上
+	##   (录像里三只走散的敌人同时挨打)。站着不动的单位挨打时刻与原来一样(推进量 = 它离起浪点的距离那一步)。
+	##   结算表与演出表分开(演出那张在 `_world` 为空时不建), 推进走 `tick_delayed` 同一条游戏钟, 换路清空。
+	battle._equip_tick_sys.tide_hits_start({"src": u, "si": si, "start": startc, "dir": dir, "dist": tdist,
+		"windup": windup, "travel": travel, "t": 0.0, "allies": (allies as Array).duplicate(), "enemies": (enemies as Array).duplicate(), "hit": []})
+
+
+## 浪碰到友军那一刻(由 EquipTickSystem._tick_tide_hits 调)
+func wave_hit_ally(u: Dictionary, oo: Dictionary, si: int) -> void:
+	## 11-14 用户: 护盾 40/95/120 → 70/160/400, 且改成通用护盾(4 秒后消失, 原「直到被打破」); 双抗增减一场内跨路保留(eq_wave_amulet.gd)
+	battle._damage._grant_shield(oo, [70.0, 160.0, 400.0][si], BattleDamage.COMMON_SHIELD_SEC)
+	_wave.add_resist(oo, float([2, 3, 5][si]))
+	battle._vfx.wave_splash(oo["pos"], true)
+
+
+## 浪碰到敌人那一刻(由 EquipTickSystem._tick_tide_hits 调)
+func wave_hit_enemy(u: Dictionary, oo2: Dictionary, si: int, dir: Vector2) -> void:
+	battle._damage._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([200, 400, 800][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字) · 11-14 用户 60/110/200 → 200/400/800
+	_wave.add_resist(oo2, -float([2, 3, 5][si]))
+	battle._vfx.wave_splash(oo2["pos"], false)
+	var was_air: bool = bool(oo2.get("airborne", false))
+	battle._knock_up(oo2, oo2["pos"] - dir * 60.0, WAVE_KNOCK_VY)   # 击飞: 滞空 1 秒
+	if not was_air and bool(oo2.get("airborne", false)):   # 这次真被击飞了(免控 / 已在空中的不改) ⇒ 顺浪方向击退 WAVE_KNOCK_BACK 码
+		var kv: float = WAVE_KNOCK_BACK * battle.WS / (2.0 * WAVE_KNOCK_VY / -battle.GRAVITY)   # 米/秒 = 距离 / 滞空
+		oo2["knock_damp"] = 1.0
+		oo2["vx"] = dir.x * kv
+		oo2["vz"] = dir.y * kv
+	battle._vfx._hit_spark(oo2)
 
 # 潮浪墙: 沿perp(垂直行进)铺一排大浪crest拼成连续宽墙, 整墙从startc沿dir推进tdist; 翻涌帧循环
 # 开战: 全装备纯属性 + 永久 flag 加到携带者 (在 spawn 被动之后, 让属性叠上不被覆盖).

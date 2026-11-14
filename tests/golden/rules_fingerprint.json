@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "65329637a050213fb299083fb94dd140c78a05f43da3a5ead9672f7124a97d47",
+ "fingerprint": "e6652771f1235010f266dfe04db6a89652d65914684db7cc220c303a2636d942",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -15,7 +15,7 @@
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "03368a47b8130488a72583fb0ff7bd5e707ae35e9714306bd09ca4c7e99352d0",
+   "hash": "c2a5e85a1860f01cae294cb57e9b8f5c4a40ee076fd1e0eb5df49bc4011bf6c0",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {

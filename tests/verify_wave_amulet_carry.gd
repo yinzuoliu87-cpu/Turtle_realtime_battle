@@ -45,13 +45,15 @@ func _find(side: String, pid: String) -> Dictionary:
 	return {}
 
 
-## 浪墙结算全部立刻跑完(只跑浪墙排进去的那几项, 不推整场 sim —— 推 sim 会混进普攻 / 技能)。
+## 浪墙结算全部立刻跑完(只推浪墙自己的结算表, 不推整场 sim —— 推 sim 会混进普攻 / 技能)。
+## 11-14 起浪墙判定是逐步碰撞(EquipTickSystem._tide_hits): 把每道浪的钟拨到推完, 再 tick 一次 ⇒ 推完那一步结算所有还没碰到的人。
 func _flush_wave() -> int:
-	var q: Array = _s._pending_shots.duplicate()
-	_s._pending_shots.clear()
-	for p in q:
-		(p["fn"] as Callable).call()
-	return q.size()
+	var n := 0
+	for h in _s._equip_tick_sys._tide_hits:
+		n += (h["allies"] as Array).size() + (h["enemies"] as Array).size()
+		h["t"] = float(h["windup"]) + float(h["travel"])
+	_s._equip_tick_sys._tick_tide_hits(0.0)
+	return n
 
 
 func _ready() -> void:

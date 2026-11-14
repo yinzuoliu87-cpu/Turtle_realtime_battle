@@ -56,9 +56,10 @@ description: 斗龟场（turtle-realtime-godot）整个项目的工作方式 —
 
 ## 4. 美术 / 特效 / 界面交付
 
-- **素材不复用**，除非用户点名；同一只龟的技能和普攻也不共用。跨屏同义要登记理由。
+- **招牌部分不复用**：每个角色 / 技能 / 装备的招牌特效专属，同一只龟的技能和普攻也不共用；**底层小元素（水滴、烟、光晕、水花碎片）可以跨特效共用**（用户 11-14「可以按你说的思路」，依据娜美大招配方里大量 `common_*` 通用图；取代旧的「素材一律不复用」）。跨屏同义要登记理由。
 - 研究参考要**逐帧**看（写 `docs/studies/` 研究记录，`frame_study_audit` 守格式）；特效"到底画了什么"用染色法核实。
-- **像素画**：硬边、零半透明、小尺寸（`tools/pixel_art_audit.py`）；生成脚本确定性、重跑逐字节相同（例：`tools/assetgen/build_lb_heart.py`、`tools/assetgen/build_basic_slam_vfx.py`）。
+- **像素画**（龟 / 界面 / 地图 / 图标）：硬边、零半透明、小尺寸（`tools/pixel_art_audit.py` 查装备图标）；生成脚本确定性、重跑逐字节相同（例：`tools/assetgen/build_lb_heart.py`、`tools/assetgen/build_basic_slam_vfx.py`）。
+- **特效**（11-14 起）：可以柔边、半透明、叠加发光；**发光一律用画好的贴图分层做**，不用程序随手生成的软光球（`tools/glow_ball_audit.py` 只减不增）。做法照商业配方拆：网格 + 滚动贴图 + 多种粒子 + 发光层（娜美大招拆解见 memory `ref-lol-vfx-files-communitydragon`）。
 - **实拍验收**：两个比例（1560×720 手机 / 960×720 iPad）、等动画落位再拍；发给用户前**自己先挑完一整类毛病**；只交最终成果，不给对比草稿。动作类交视频（Movie Maker 60fps → ffmpeg）。
 - 卡片 / 弹框里的按钮一律 `UISkin.card_button`，不用木牌按钮。文案不口语化，技能文案照 LoL 体例（`copy_lol_style_lint`）。
 

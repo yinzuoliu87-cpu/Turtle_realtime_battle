@@ -248,6 +248,7 @@ func _ready() -> void:
 	for si in [0, 2]:
 		_s._units.clear()
 		_s._pending_shots.clear()
+		_s._equip_tick_sys._tide_hits.clear()
 		var c4: Dictionary = _mk(500.0, 400.0, "left")
 		var ally4: Dictionary = _mk(560.0, 400.0, "left")
 		var foe4: Dictionary = _mk(900.0, 400.0, "right")
@@ -261,12 +262,51 @@ func _ready() -> void:
 		var fd0: float = float(foe4["base_def"])
 		var fh0: float = float(foe4["hp"])
 		_s._equip_sys._eq_water_wave(c4, si)
-		_ok("④ ★分母(%d 星): 浪墙把敌我都排进了队列(%d 项)" % [si + 1, _s._pending_shots.size()],
-			_s._pending_shots.size() >= 3,
+		var th: Array = _s._equip_tick_sys._tide_hits
+		var n_in: int = 0 if th.is_empty() else (th[0]["allies"] as Array).size() + (th[0]["enemies"] as Array).size()
+		_ok("④ ★分母(%d 星): 浪墙结算表登记了 1 道浪、敌我共 %d 人(判定是逐步碰撞, 11-14 起不再排 _pending_shots)" % [si + 1, n_in],
+			th.size() == 1 and n_in >= 3,
 			"文案明写「敌我双方都会被扫到」")
-		## 推够 前摇 + 横扫全场
-		for _k in range(240):
+		## 推够 前摇 + 横扫全场; 顺手量敌人挨打的那一步与最高飞多高(11-14 用户「海浪速度太快了，击飞不够高」)
+		var hit_step := -1
+		var hmax := 0.0
+		var fx0 := 0.0             # 挨打那一刻的位置(敌人开打后会自己走, 不能拿开局位置量)
+		var fx_prev: float = float((foe4["pos"] as Vector2).x)
+		var apex_dx := -1.0        # 到最高点那一刻水平走了多远(真抛物线 = 一半)
+		var h_prev := 0.0
+		var land_dx := -1.0        # 落地那一刻的击退距离(落地后它会自己走, 不能等循环结束再量)
+		var was_air := false
+		for _k in range(300):     # 挨打在第 ~191 步, 滞空 1 秒 ⇒ 第 ~251 步落地; 推到 300 步量完整个击退
 			_s._sim_step(_s.SIM_DT, false, false)
+			if hit_step < 0 and float(foe4["hp"]) < fh0:
+				hit_step = _k + 1
+				fx0 = fx_prev       # 这一步里挨打 + 击退开始滑 ⇒ 取上一步末的位置当起点
+			fx_prev = float((foe4["pos"] as Vector2).x)
+			var hh: float = float(foe4.get("height", 0.0))
+			if hit_step > 0 and apex_dx < 0.0 and hh < h_prev and h_prev > 1.0:
+				apex_dx = fx_prev - fx0
+			h_prev = hh
+			var air_now: bool = bool(foe4.get("airborne", false))
+			if hit_step > 0 and was_air and not air_now and land_dx < 0.0:
+				land_dx = float((foe4["pos"] as Vector2).x) - fx0
+			was_air = air_now
+			hmax = maxf(hmax, hh)
+		## ★★判定 = 浪的推进点碰到它**挨打那一刻的位置**(11-14 用户「3个敌人被同时击飞？怎么可能，怎么判定的」):
+		##   敌人开打后会自己走, 所以挨打时刻不能按开局位置推算; 要量的是「挨打那一步, 推进量 ≈ 它当时离起浪点多远」。
+		##   起浪点 = 500 − 1200 = −700; 推进量 = (挨打秒数 − 前摇 0.5) × 浪速; 一步最多走 600/60 = 10 码。
+		var trav_at_hit: float = (float(hit_step) * _s.SIM_DT - 0.5) * ES.WAVE_SPEED
+		var fwd_at_hit: float = fx0 - (-700.0)
+		_ok("④ ★★%d 星判定 = 浪碰到它当时的位置: 第 %d 步挨打, 那一刻推进 %.0f 码 / 它离起浪点 %.0f 码(差 %.1f, 应 0~11); 浪速 %.0f 码/秒" % [si + 1, hit_step, trav_at_hit, fwd_at_hit, trav_at_hit - fwd_at_hit, ES.WAVE_SPEED],
+			absf(ES.WAVE_SPEED - 600.0) < 0.01 and trav_at_hit - fwd_at_hit >= -1.0 and trav_at_hit - fwd_at_hit <= 11.0)
+		_ok("④ ★★%d 星击飞最高 %.2f 米(应 2.5~3.0: 初速 11、重力 22 ⇒ 约 2.75 米、滞空 1 秒)" % [si + 1, hmax],
+			hmax >= 2.5 and hmax <= 3.0)
+		## 击退: 浪往右推(敌在右) ⇒ 敌人顺浪往右滑 WAVE_KNOCK_BACK 码(用户 11-14「应该是击飞击退吧」; 原来只滑约 27 码)
+		var kb: float = land_dx
+		_ok("④ ★★%d 星击退 %.0f 码(应约 %.0f, 顺浪方向)" % [si + 1, kb, ES.WAVE_KNOCK_BACK],
+			absf(kb - ES.WAVE_KNOCK_BACK) <= 15.0)
+		## 真抛物线(11-14 用户「你这击飞是抛物线吗」): 水平匀速 ⇒ 到最高点时正好走了一半; 原来每帧衰减一成 ⇒ 最高点前已走完九成
+		_ok("④ ★★%d 星轨迹是抛物线: 到最高点时水平走了 %.0f 码(应约 %.0f = 总距离一半)" % [si + 1, apex_dx, ES.WAVE_KNOCK_BACK * 0.5],
+			absf(apex_dx - ES.WAVE_KNOCK_BACK * 0.5) <= 12.0)
 		_ok("④ ★★★%d 星友军: 护盾 +%.0f(应 %.0f) 且 +%.0f 双抗(应 %d)"
 			% [si + 1, float(ally4["shield"]), WAVE_SHIELD[si],
 			   float(ally4["base_def"]) - ad0, WAVE_RESIST[si]],
@@ -284,9 +324,7 @@ func _ready() -> void:
 			% [si + 1, fh0 - float(foe4["hp"]), WAVE_DMG[si], want_dmg, fd0 - float(foe4["base_def"]), WAVE_RESIST[si]],
 			want_dmg >= WAVE_DMG[si] * 0.99 and absf(fh0 - float(foe4["hp"]) - want_dmg) < 0.5
 				and absf(fd0 - float(foe4["base_def"]) - float(WAVE_RESIST[si])) < 0.01)
-		_ok("④ %d 星队列已排空" % [si + 1], _s._pending_shots.is_empty(),
-			"剩 %d 项" % _s._pending_shots.size())
-		## 护盾是通用护盾: 打到后 4 秒消失(原来是「直到被打破」)。再推 4 秒(浪最晚 2.5 秒内打到 ⇒ 此时一定过期)。
+		## 护盾是通用护盾: 打到后 4 秒消失(原来是「直到被打破」)。再推 4 秒(本局单位离起浪点最远 1600 码 ⇒ 0.5 + 1600/600 ≈ 3.2 秒内打到, 到期 ≈ 7.2 秒 < 8 秒 ⇒ 此时一定过期)。
 		var su: float = float(ally4.get("shield_until", 0.0))
 		for _k2 in range(240):
 			_s._sim_step(_s.SIM_DT, false, false)
@@ -294,6 +332,8 @@ func _ready() -> void:
 			% [si + 1, WAVE_SHIELD_SEC, su, float(ally4["shield"]), float(ally4["base_def"]) - ad0],
 			su > 0.0 and float(ally4["shield"]) < 0.5
 				and absf(float(ally4["base_def"]) - ad0 - float(WAVE_RESIST[si])) < 0.01)
+		_ok("④ %d 星浪墙结算表已清(推完自动移除; 蓄浪 0.5 + 推进 5 秒后查)" % [si + 1], _s._equip_tick_sys._tide_hits.is_empty(),
+			"剩 %d 道" % _s._equip_tick_sys._tide_hits.size())
 
 	# ══════════════ 044 / 045 残血触发 ══════════════
 	_ok("⑤ ★分母: 触发线 %.0f%% / 044 摊 %.0f 秒 / 045 摊 %.0f 秒"

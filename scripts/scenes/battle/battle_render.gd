@@ -285,14 +285,28 @@ func _tick_anim_fx() -> void:
 			battle._anim_fx.remove_at(i)
 			continue
 		var n: int = int(f.get("n", 1))
-		var fr: int = int((battle._t - float(f.get("t0", 0.0))) * float(f.get("fps", 20.0)))
-		if fr >= n:
+		var el: float = battle._t - float(f.get("t0", 0.0))
+		var fr: int = int(el * float(f.get("fps", 20.0)))
+		## `life`(秒): 粒子按寿命收, 帧放完停在最后一帧(043 海浪水滴 / 闪光, 2026-11-14)。没有 `life` 的照旧放完 n 帧就收。
+		var life: float = float(f.get("life", -1.0))
+		if (life > 0.0 and el >= life) or (life <= 0.0 and fr >= n):
 			spr.queue_free()
 			battle._anim_fx.remove_at(i)
 			continue
 		## `base`: 同一张精灵表里放了不止一段动画时, 这一段从第几帧起(默认 0)。
 		## 041 的 `tide-swell.png` 就是 0~5 涨 / 6~11 退 —— 两段是同一件效果的两个方向。
-		spr.frame = int(f.get("base", 0)) + maxi(0, fr)
+		spr.frame = int(f.get("base", 0)) + clampi(fr, 0, n - 1)
+		## 粒子运动(全按游戏钟算, 是时间的函数 ⇒ 直播录得到、重放一致): 抛物线 + 寿命内缩放 / 变淡
+		if f.has("vel") and el >= 0.0:
+			var p0: Vector3 = f["p0"]
+			var v: Vector3 = f["vel"]
+			spr.position = p0 + v * el + Vector3(0.0, -0.5 * float(f.get("grav", 0.0)) * el * el, 0.0)
+		if life > 0.0 and el >= 0.0:
+			var k: float = clampf(el / life, 0.0, 1.0)
+			if f.has("s1"):
+				spr.scale = Vector3.ONE * lerpf(float(f.get("s0", 1.0)), float(f["s1"]), k)
+			if f.has("a1"):
+				spr.modulate.a = lerpf(float(f.get("a0", 1.0)), float(f["a1"]), k * k)
 		## `show_at`: 延后开播的那几张(t0 在未来)在开播前藏起来, 否则会钳在第 0 帧提前露出(变脸龟锤击圈边尘团)
 		if not spr.visible and f.has("show_at") and battle._t >= float(f["show_at"]):
 			spr.visible = true

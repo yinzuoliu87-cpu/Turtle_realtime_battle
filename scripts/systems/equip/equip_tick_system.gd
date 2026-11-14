@@ -866,11 +866,12 @@ func schedule(delay: float, fn: Callable) -> void:
 ##   换路清空一致: 上一路已经结束, 它没落地的一律作废。
 ## ★浪墙的网格节点已由换路兜底扫 `_world` 释放, 这里只丢登记(那张表本来也只管演出)。
 func reset_for_lane() -> int:
-	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size()
+	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size() + _tide_hits.size()
 	_bolt_q.clear()
 	_bear_waves.clear()
 	_pulls.clear()
 	_tide_walls.clear()
+	_tide_hits.clear()
 	return n
 
 
@@ -883,6 +884,7 @@ func tick_delayed(_dt: float) -> void:
 	_tick_bear_waves(_dt)   # 034 大熊冲击波: 波前推进+命中结算(同一条游戏钟, 不再走 process delta)
 	_tick_pulls(_dt)        # 击飞态平滑拉回(同上, 原来也挂在 process delta 上)
 	_tick_tide_walls(_dt)   # 043 浪墙: 蓄浪→推进→退去(3D 网格逐帧重建, 同一条游戏钟)
+	_tick_tide_hits(_dt)    # 043 浪墙判定: 推进量逐步碰各人当前位置(11-14, 原来放浪时一次排好挨打时刻)
 
 ## 大熊熊掌挥击接触那一瞬: 此刻才结算伤害 + 跳数字 + 金爪痕。
 ## ★★2026-09-13 从主文件搬过来, 同时把延时从 tween 换成共享原语 `schedule`:
@@ -1033,11 +1035,54 @@ func _tick_pulls(dt: float) -> void:
 ##   `_pending_shots`(sim 钟) ⇒ **两条钟**: 无头下浪一动不动, 伤害照样结算。
 ##   memory [[fb-second-clock-drops-events]] 那一族。现在两边同一条钟。
 var _tide_walls: Array = []
+## 043 浪墙的**结算**表(与上面那张演出表分开: 演出在 `_world` 为空时不建, 结算不能跟着没了)。
+## 每项 = {src, si, start, dir, dist, windup, travel, t, allies, enemies, hit}; 由 EquipSystem._eq_water_wave 登记。
+var _tide_hits: Array = []
+
+
+func tide_hits_start(h: Dictionary) -> void:
+	_tide_hits.append(h)
+
+
+## 每个 sim 步: 推进量 trav = 已推进的比例 × 行程(与演出 `_tick_tide_walls` 同一个线性口径);
+## 谁在推进方向上离起浪点 ≤ trav(= 浪前沿已碰到它, 画面对齐见 battle_vfx TIDE_LEAD)就结算谁, 每人一次。
+## 起浪点身后的(fwd < 0)蓄浪一结束就挨打; 推完还没碰到的(行程外)推完那一步一起结算 —— 与原来按距离排时刻的两端口径一致。
+func _tick_tide_hits(dt: float) -> void:
+	if _tide_hits.is_empty():
+		return
+	for i in range(_tide_hits.size() - 1, -1, -1):
+		var h: Dictionary = _tide_hits[i]
+		h["t"] = float(h["t"]) + dt
+		var t: float = float(h["t"])
+		var wind: float = float(h["windup"])
+		if t < wind:
+			continue
+		var trav_sec: float = float(h["travel"])
+		var trav: float = minf(1.0, (t - wind) / maxf(0.001, trav_sec)) * float(h["dist"])
+		var done: bool = t >= wind + trav_sec
+		var src: Dictionary = h["src"]
+		var si: int = int(h["si"])
+		var start: Vector2 = h["start"]
+		var dir: Vector2 = h["dir"]
+		for side in ["allies", "enemies"]:
+			for o in h[side]:
+				if not (o is Dictionary) or not o.get("alive", false) or battle._arr_has_unit(h["hit"], o):
+					continue
+				var fwd: float = DetMath.dot(((o["pos"] as Vector2) - start), dir)
+				if fwd > trav and not done:
+					continue
+				(h["hit"] as Array).append(o)
+				if side == "allies":
+					battle._equip_sys.wave_hit_ally(src, o, si)
+				else:
+					battle._equip_sys.wave_hit_enemy(src, o, si, dir)
+		if done:
+			_tide_hits.remove_at(i)
 
 
 func tide_wall_start(start: Vector2, dir: Vector2, half: float, dist: float,
-					 windup: float, travel: float) -> void:
-	var w: Dictionary = battle._vfx.tide_wall_spawn(start, dir, half, dist, windup, travel)
+					 windup: float, travel: float, origin: Vector2) -> void:
+	var w: Dictionary = battle._vfx.tide_wall_spawn(start, dir, half, dist, windup, travel, origin)
 	if not w.is_empty():
 		_tide_walls.append(w)
 

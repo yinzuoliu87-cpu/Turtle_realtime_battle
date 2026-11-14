@@ -2383,35 +2383,10 @@ func coin_pop(u: Dictionary, n: int) -> void:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  043 海浪护符 · 浪墙扫到谁那一下的水花
+#  043 海浪护符 · 浪墙扫到谁那一下的水花 —— 实现在 tide_vfx.gd(11-14 拆出: 本文件超 3000 行上限)
 # ════════════════════════════════════════════════════════════════════════════
-## 原 `_water_splash`(主场景) = `_skill_ring` 一圈**程序生成的椭圆环** + 4 颗
-## `VfxTex._make_glow_texture()` 上飘光点 —— 圆环与光球都在禁区里, 实拍在每个被扫到的
-## 单位脚下留下两个蓝圈, 读不出"被浪打到"。⇒ 换成真水花: 王冠状水冠 + 往外崩的水滴。
-const SPLASH_TEX := "res://assets/sprites/vfx/wave-splash.png"
-const SPLASH_FRAMES := 6
-const SPLASH_FPS := 15.0
-const SPLASH_YARDS := 42.6        # 24 texel × 1.775 码/texel —— 1:1 不缩放
-const SPLASH_H := 0.34
-var _splash_tex: Texture2D = null
-
-
 func wave_splash(at2d: Vector2, ally: bool) -> void:
-	if battle._world == null:
-		return
-	if _splash_tex == null:
-		_splash_tex = load(SPLASH_TEX)
-	if _splash_tex == null:
-		return                            # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
-	var sp := _sheet_sprite(_splash_tex, SPLASH_FRAMES, SPLASH_YARDS)
-	sp.render_priority = 5
-	## 友军偏亮、敌人偏冷 —— 同一张图两种染色是"同一件效果的两侧", 不是拿别的图顶替
-	sp.modulate = Color(1.0, 1.0, 1.0) if ally else Color(0.72, 0.86, 1.0)
-	sp.position = battle._world_pos(at2d, SPLASH_H)
-	battle._world.add_child(sp)
-	battle._anim_fx.append({
-		"spr": sp, "fps": SPLASH_FPS, "n": SPLASH_FRAMES, "t0": battle._t,
-	})
+	_tide_fx().splash(at2d, ally)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -2707,34 +2682,40 @@ func ebb_tide_coat(u: Dictionary) -> void:
 ##  |---|---|---|---|---|
 ##  | ① 蓄浪 | 身后 400 码水位在涨 | 0.5s | 水脊整体高度 0→1, 还没有前进 | 同一张网格, 高度整体缩放 |
 ##  | ② 推进 | 一道浪墙推过全场 | 2.0s | 前坡陡(迎面)/顶上卷唇/背面拖长水体; 沿 perp 有相位差 ⇒ 浪脊不是直尺 | 每个 **sim step** 重建顶点 |
-##  | ③ 白沫 | 浪头在卷 | 与②同步 | 顶端一条亮白泡沫带, 随卷曲强度呼吸 | 顶点色 ramp 的最亮档 |
-##  | ④ 拍到 | 谁被扫到了 | 各自 | 现有 `wave_splash`(友/敌两种) | 不动 |
+##  | ③ 浪身 / 前沿 | 水在流、浪头甩水 | 与②同步 | 半透明水体 + 往后流的水纹 + 轻焦散 + 前沿亮带水刺; 粒子: 泡沫带 / 水雾刺 / 小卷浪 / 水珠 | 着色器区 0 + `_tide_emit` |
+##  | ④ 拍到 | 谁被扫到了 | 各自 | 4 帧扇形水花 + 光晕 + 星形闪光 + 气泡 + 水珠(照娜美 R_tar + splash) | `wave_splash` |
+##  | ⓪ 起手 | 施法者召浪 | 0.6s | 星形闪光 + 两层光晕(最亮) → 一团白雾往外扩 + 水雾刺 + 水珠喷泉 | `tide_cast` |
+##  | ⑥ 水雾(11-14 加) | 浪身后方 | 跟着浪 | 贴地白雾, 贴着浪尾最浓 | 着色器区 2 |
 ##  | ⑤ 退去 | 浪过去了 | 0.35s | **整体高度落回 0**, 不是 alpha 淡出(淡出病) | 高度缩放 |
 ##
 ## ★为什么用生成网格而不是贴图: 用户要的就是"3D 的海浪" —— 要有体积、要被单位正确遮挡。
 ##   而且网格没有"像素贴图跟着任意方向旋转 ⇒ 被重采样成糊"的问题(像素风硬约束)。
-##   像素感靠**按高度把颜色量化成 5 档**保住: 渲出来仍是平涂色块, 不是光滑渐变。
+##   像素感: 11-14 起由着色器把最终颜色量化成 8 档保住(旧版是顶点色按高度 5 档平涂, 读成一条平色带)。
 const TIDE_NL := 33               # 沿浪墙方向(perp)取几列
-const TIDE_NC := 19               # 浪的横截面取几片(加密: 平涂色带才够细)
-const TIDE_CREST_H := 1.95        # 浪峰高度(世界单位·米)。一只龟约 1.4 ⇒ 浪比龟高一头
-const TIDE_BODY := 230.0          # 浪体往后拖多长(码)
-const TIDE_FACE := 74.0           # 迎面那一坡多长(码)
-## 高度 ramp(低→高), 5 档量化 —— 平涂, 不做光滑渐变
-## ★★★**必须不透明**。第一版给了 alpha 0.90~0.98 + `TRANSPARENCY_ALPHA`,
-##   实拍量出来 **92.7% 的浪是同一个色**(最暗那档) —— 而顶点色数组明明是均匀分布的
-##   (探针: 深水 26% / 白沫 28%)。根因: 透明物体**不写深度**, 整片浪只能按三角形
-##   提交顺序涂, 后提交的那一列的深水把前一列的浪尖直接盖掉。
-##   海浪本来就是实体 ⇒ 关掉透明, 交给深度缓冲正常排序。
-##   (memory [[fb-clean-vfx-stage-not-squint]]: 拿不准就量, 别眯眼看)
-## 分档阈值(归一化高度)。**不均匀** —— 最亮那档门槛抬到 0.93, 免得浪峰平台整片发白。
-const TIDE_STEPS: Array[float] = [0.0, 0.18, 0.42, 0.70, 0.93]
-const TIDE_RAMP: Array[Color] = [
-	Color(0.05, 0.18, 0.32, 1.0),   # 深水
-	Color(0.09, 0.32, 0.50, 1.0),   # 水体
-	Color(0.16, 0.52, 0.70, 1.0),   # 浪面
-	Color(0.36, 0.78, 0.88, 1.0),   # 浪唇
-	Color(0.92, 0.99, 1.00, 1.0),   # 白沫
-]
+const TIDE_NC := 19               # 浪的横截面取几片
+const TIDE_CREST_H := 0.85        # 浪峰高度(米)。★第三版(11-14 晚)照娜美实拆: 浪体是**矮水丘**(英雄约半身高), 读浪靠表面滚动贴图 + 粒子, 不靠墙高。龟约 1.4 米
+const TIDE_BODY := 260.0          # 浪体往后拖多长(码)。第三版 150 → 260: 矮水丘要有体量(判定点对齐见下方 TIDE_LEAD)
+const TIDE_FACE := 70.0           # 迎面那一坡多长(码)
+## ★判定点 = **前沿碰到身体边缘**(用户 11-14「海浪的判定击中点在哪？合适吗」; 照 LoL 直线技能: 碰撞边缘一接触就命中)。
+##   结算是「推进量 trav 走到单位那一刻」挨打(equip_system `_eq_water_wave`, 不动)。探针 tests/probes/_probe_tide_hitpoint 实测:
+##   原来那一刻前沿已越过单位中心 63~77 码、浪峰 6~21 码 ⇒ 画面上浪先盖过龟约 0.15 秒才出水花。
+##   ⇒ 只把画面整道往后挪 TIDE_LEAD: 前沿 ≈ 单位中心 −30 码(龟身半径)时挨打, 浪峰随后从被击飞的龟底下推过去。纯画面, 不改结算。
+const TIDE_LEAD := 100.0
+## ── 2026-11-14 重做(方案书 docs/plans/20261114-海浪护符浪墙重做.md; 用户「海浪护符整个这个特效，我们可能需要重做一遍了」) ──
+## 旧版(09-14)是不透明 + 顶点色按高度 5 档平涂: 俯视镜头下读成一条平的锯齿色带, 浪高看不出来。
+## 照参考(河灵娜美大招 / 风格化浪潮样片)改成: 半透明水体 + 浪头碎边泡沫 + 浪身流水纹 + 浪峰上方飞溅的水沫帘 + 身后贴地水雾,
+##   外加起手(施法者脚下水环 + 往上喷的水柱)。全部画在 `assets/shaders/tide_wall.gdshader`(一张网格分区, UV2.y = 区号)。
+## ★09-14 那个透明排序坑(不写深度 ⇒ 92.7% 的浪被最暗那档盖住): 着色器 `depth_draw_always`, 透明也写深度(触手 11-14 同一招)。
+## ★结算一行不动: 推进仍是 sim 钟线性推进, 伤害时刻仍是 windup + fwd / dist × travel。
+const TIDE_SHADER: Shader = preload("res://assets/shaders/tide_wall.gdshader")
+const TIDE_SP := ["t_wave", "fade"]   # 每步会变的着色器参数(直播按它跟踪)
+const TIDE_MIST := 260.0          # 身后水雾拖多长(码)
+const TIDE_MIST_H := 0.06         # 水雾离地(米)
+## 浪身三张贴图(手画灰度, tools/assetgen/paint_tide_fx.py; ★第三版 11-14 晚照娜美配方: 网格 + 滚动贴图 + 粒子 + 叠加发光)
+const TIDE_STREAK_TEX := "res://assets/sprites/vfx/tide-streak.png"
+const TIDE_CAUSTIC_TEX := "res://assets/sprites/vfx/tide-caustic.png"
+const TIDE_EDGE_TEX := "res://assets/sprites/vfx/tide-edge.png"
+const TIDE_TILE_YARDS := 192.0     # 浪身贴图沿墙一遍多长(64 texel × 3 码)
 
 
 ## 浪的横截面: t ∈ [0,1] 从**背面最尾**到**迎面最前**, 返回归一化高度 [0,1]。
@@ -2751,33 +2732,65 @@ static func _tide_profile(t: float) -> float:
 
 
 ## 重建这道浪的网格。`rise` = 整体高度倍率(蓄浪/退去用), `trav` = 已推进多少码。
-## ★S3(逐帧直播): 每步**新建一份**网格赋给节点(原来是同一份 clear_surfaces 再画 —— 录流按网格对象判「换了没有」, 原地画看不见),
-##   网格本身由纯函数 `gen_tide_wall` 按参数算, 手机按出处键调同一个函数(3456 个顶点不进流, 只进 9 个参数)。
+## ★S3(逐帧直播): 每步**新建一份**网格赋给节点(录流按网格对象判「换了没有」),
+##   网格本身由纯函数 `gen_tide_wall` 按参数算, 手机按出处键调同一个函数(顶点不进流, 只进 8 个参数);
+##   会动的着色器参数(t_wave / fade)走节点上的 `stream_shader_params` 跟踪。
 func tide_wall_build(w: Dictionary, rise: float, trav: float) -> void:
 	var im = w.get("im", null)
 	if not is_instance_valid(im):
 		return
 	var mesh: Mesh = VfxTex.gen_empty_mesh() if rise <= 0.001 else gen_tide_wall(w["start"], w["dir"], w["perp"],
-		float(w["half"]), rise, trav, w["mat"], battle._arena_center, battle.WS)
+		float(w["half"]), rise, trav, battle._arena_center, battle.WS)
 	w["mesh"] = mesh
 	(im as MeshInstance3D).mesh = mesh
+	var tw: float = float(w.get("t", 0.0))
+	var mat: ShaderMaterial = w["mat"]
+	mat.set_shader_parameter("t_wave", tw)
+	mat.set_shader_parameter("fade", minf(1.0, rise * 1.4))
+	## 照娜美配方往浪上撒粒子: 泡沫(往后留一条泡沫带) / 水雾刺(前沿往上冒) / 小卷浪(骑在浪身上) / 水珠(往前上甩)
+	if rise > 0.5 and trav > 0.0:
+		_tide_fx().emit(w, rise, trav)
 
 
 static func gen_tide_wall(start: Vector2, dir: Vector2, perp: Vector2, half: float, rise: float, trav: float,
-		mat: Material, center: Vector2, ws: float) -> ImmediateMesh:
+		center: Vector2, ws: float) -> ImmediateMesh:
 	var mesh := ImmediateMesh.new()
-	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	## 区 0 浪身
 	for li in range(TIDE_NL - 1):
 		var u0: float = float(li) / float(TIDE_NL - 1)
 		var u1: float = float(li + 1) / float(TIDE_NL - 1)
 		for ci in range(TIDE_NC - 1):
 			var t0: float = float(ci) / float(TIDE_NC - 1)
 			var t1: float = float(ci + 1) / float(TIDE_NC - 1)
-			_tide_quad(mesh, start, dir, perp, half, rise, trav, u0, u1, t0, t1, center, ws)
+			var a: Array = _tide_vert(start, dir, perp, half, rise, trav, u0, t0)
+			var b: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t0)
+			var c: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t1)
+			var d: Array = _tide_vert(start, dir, perp, half, rise, trav, u0, t1)
+			_tide_quad(mesh, center, ws,
+				[[a[0], float(a[1]) * TIDE_CREST_H, Vector2(u0, t0), Vector2(a[2], 0.0)],
+				 [b[0], float(b[1]) * TIDE_CREST_H, Vector2(u1, t0), Vector2(b[2], 0.0)],
+				 [c[0], float(c[1]) * TIDE_CREST_H, Vector2(u1, t1), Vector2(c[2], 0.0)],
+				 [d[0], float(d[1]) * TIDE_CREST_H, Vector2(u0, t1), Vector2(d[2], 0.0)]])
+	## 区 2 身后水雾(浪尾后面贴地一片)。区 1 旧水沫帘第三版不再生成(娜美是粒子: 水雾刺 / 泡沫, 见 `_tide_emit`)
+	for li in range(TIDE_NL - 1):
+		var u0: float = float(li) / float(TIDE_NL - 1)
+		var u1: float = float(li + 1) / float(TIDE_NL - 1)
+		var ta: Vector2 = _tide_vert(start, dir, perp, half, rise, trav, u0, 0.0)[0]
+		var tb: Vector2 = _tide_vert(start, dir, perp, half, rise, trav, u1, 0.0)[0]
+		var back: Vector2 = dir * TIDE_MIST
+		_tide_quad(mesh, center, ws,
+			[[ta - back, TIDE_MIST_H, Vector2(u0, 0.0), Vector2(0.0, 2.0)],
+			 [tb - back, TIDE_MIST_H, Vector2(u1, 0.0), Vector2(0.0, 2.0)],
+			 [tb, TIDE_MIST_H, Vector2(u1, 1.0), Vector2(0.0, 2.0)],
+			 [ta, TIDE_MIST_H, Vector2(u0, 1.0), Vector2(0.0, 2.0)]])
 	mesh.surface_end()
-	return VfxTex.tag(mesh, "gen_tide_wall", [start, dir, perp, half, rise, trav, mat, center, ws], SRC)
+	return VfxTex.tag(mesh, "gen_tide_wall", [start, dir, perp, half, rise, trav, center, ws], SRC)
 
 
+
+
+## 返回 [2D 位置, 实际高度(归一, 已乘 rise), 形状高度(归一, 不乘 rise —— 着色器按它定深浅)]。
 static func _tide_vert(start: Vector2, dir: Vector2, perp: Vector2, half: float,
 				rise: float, trav: float, u: float, t: float) -> Array:
 	## 沿浪墙方向的相位: 让浪脊起伏、峰位左右错开 ⇒ 不是一把直尺。
@@ -2791,55 +2804,58 @@ static func _tide_vert(start: Vector2, dir: Vector2, perp: Vector2, half: float,
 	if t > 0.74:
 		var q: float = (t - 0.74) / 0.26
 		lip = 34.0 * sin(q * PI)
-	var along: float = trav + shift + lip - TIDE_BODY + t * (TIDE_BODY + TIDE_FACE)
-	var hn: float = _tide_profile(t) * amp
+	var along: float = trav + shift + lip - TIDE_BODY + t * (TIDE_BODY + TIDE_FACE) - TIDE_LEAD
+	var hn: float = clampf(_tide_profile(t) * amp, 0.0, 1.35)
 	var p2: Vector2 = start + dir * along + perp * lat
-	return [p2, clampf(hn, 0.0, 1.35) * rise]
+	return [p2, hn * rise, hn]
 
 
-static func _tide_quad(mesh: ImmediateMesh, start: Vector2, dir: Vector2, perp: Vector2,
-				half: float, rise: float, trav: float,
-				u0: float, u1: float, t0: float, t1: float, center: Vector2, ws: float) -> void:
-	var a: Array = _tide_vert(start, dir, perp, half, rise, trav, u0, t0)
-	var b: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t0)
-	var c: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t1)
-	var d: Array = _tide_vert(start, dir, perp, half, rise, trav, u0, t1)
-	## ★★**平涂**: 一个面片一个色。第一版是逐顶点给色, 结果被 Gouraud 插值成光滑渐变 ——
-	##   实拍读成"一段 3D 渲染掉进了像素游戏里", 五档量化等于白做。
-	##   取四角的平均高度定档, 六个顶点同一个色 ⇒ 渲出来是一块一块的色带。
-	var hmean: float = (float(a[1]) + float(b[1]) + float(c[1]) + float(d[1])) * 0.25
-	## ★分档**不均匀**: 等分(idx = hmean/1.02*5)会让浪峰那一大片平台全进最亮档,
-	##   实拍白沫占了整条浪的一半, 读成"一条冰河"而不是海浪。白沫只留给真正的顶。
-	var idx: int = 0
-	for k in range(TIDE_STEPS.size()):
-		if hmean >= TIDE_STEPS[k]:
-			idx = k
-	## 浪唇那一小段无条件给白沫 —— 浪之所以读成浪, 靠的就是顶上那条**窄**白线。
-	if t0 >= 0.80 and t1 <= 0.90:
-		idx = TIDE_RAMP.size() - 1
-	var col: Color = TIDE_RAMP[idx]
-	for q in [[a, b, c], [a, c, d]]:
-		for e in q:
-			mesh.surface_set_color(col)
-			mesh.surface_add_vertex(VfxTex.wpos(center, ws, e[0] as Vector2,
-								   float(e[1]) * TIDE_CREST_H))
+## 一个四边形 = 两个三角形。每角 [2D 位置, 离地高(米), UV, UV2]。逐顶点给 UV, 着色器插值(不再逐面片平涂)。
+static func _tide_quad(mesh: ImmediateMesh, center: Vector2, ws: float, q: Array) -> void:
+	for tri in [[0, 1, 2], [0, 2, 3]]:
+		for k in tri:
+			var e: Array = q[k]
+			mesh.surface_set_uv(e[2] as Vector2)
+			mesh.surface_set_uv2(e[3] as Vector2)
+			mesh.surface_add_vertex(VfxTex.wpos(center, ws, e[0] as Vector2, float(e[1])))
+
+
+## 起手召浪 / 浪上撒粒子 —— 实现在 tide_vfx.gd(11-14 拆出)
+func tide_cast(at2d: Vector2) -> void:
+	_tide_fx().cast(at2d)
+
+
+const TIDE_FX := preload("res://scripts/scenes/battle/tide_vfx.gd")
+var _tide: RefCounted = null
+
+
+func _tide_fx() -> RefCounted:
+	if _tide == null:
+		_tide = TIDE_FX.new(battle)
+	return _tide
 
 
 ## 起一道浪 —— 建节点, 推进交给 `EquipTickSystem._tick_tide_walls`(sim 钟)。
+## `origin` = 施法者脚下(起手召浪水花画在这里; 起浪点在身后 1200 码, 常在画面外)。
 func tide_wall_spawn(start: Vector2, dir: Vector2, half: float, dist: float,
-					 windup: float, travel: float) -> Dictionary:
+					 windup: float, travel: float, origin: Vector2) -> Dictionary:
 	if battle._world == null:
 		return {}
 	var im := MeshInstance3D.new()
 	var mesh: Mesh = VfxTex.gen_empty_mesh()
 	im.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED   # ★见 TIDE_RAMP 上面那段
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.vertex_color_use_as_albedo = true
+	var mat := ShaderMaterial.new()
+	mat.shader = TIDE_SHADER
+	mat.set_shader_parameter("streak_tex", _tide_fx().tex(TIDE_STREAK_TEX))
+	mat.set_shader_parameter("caustic_tex", _tide_fx().tex(TIDE_CAUSTIC_TEX))
+	mat.set_shader_parameter("edge_tex", _tide_fx().tex(TIDE_EDGE_TEX))
+	mat.set_shader_parameter("tiles_u", maxf(1.0, round(half * 2.0 / TIDE_TILE_YARDS)))
+	im.material_override = mat
+	im.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	im.set_meta(&"stream_shader_params", PackedStringArray(TIDE_SP))
 	battle._world.add_child(im)
+	_tide_fx().rng.seed = 43000 + int(battle._t * 60.0)   # 纯演出随机: 每道浪按起浪时刻固定种子
+	tide_cast(origin)
 	var w: Dictionary = {
 		"im": im, "mesh": mesh, "mat": mat,
 		"start": start, "dir": dir, "perp": dir.orthogonal(),

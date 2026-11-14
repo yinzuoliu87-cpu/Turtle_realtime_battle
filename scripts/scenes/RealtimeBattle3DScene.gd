@@ -2429,13 +2429,13 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		# 横向滑行换算回像素 (vx/vz 是米/s → /WS = 像素/s)
 		u["pos"].x += u["vx"] / WS * delta
 		u["pos"].y += u["vz"] / WS * delta
-		var _kdamp: float = DetMath.dpow(0.9, delta * 60.0)   # ★帧率无关阻尼(2026-07-25): 原每帧×0.9 假设60fps; 高帧率下每秒衰减快数倍→击飞竖直照抛(vy走delta)但横向vx几乎不滑="飞不出去"。按时间衰减·60fps下=0.9原值
+		var _kdamp: float = DetMath.dpow(float(u.get("knock_damp", 0.9)), delta * 60.0)   # `knock_damp` 可按次覆写(1.0 = 不衰减 ⇒ 水平匀速真抛物线, 043 海浪击退 11-14) · ★帧率无关阻尼(2026-07-25): 原每帧×0.9 假设60fps; 高帧率下每秒衰减快数倍→击飞竖直照抛(vy走delta)但横向vx几乎不滑="飞不出去"。按时间衰减·60fps下=0.9原值
 		u["vx"] *= _kdamp; u["vz"] *= _kdamp
 		u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 		if u["height"] <= 0.0:
 			u["height"] = 0.0; u["vy"] = 0.0; u["vx"] = 0.0; u["vz"] = 0.0
 			u["airborne"] = false
-			u.erase("knock_g")   # 落地 → 清本次击飞的重力覆写(下次默认 GRAVITY)
+			u.erase("knock_g"); u.erase("knock_damp")   # 落地 → 清本次击飞的重力 / 横向阻尼覆写(下次默认 GRAVITY / 0.9)
 			# Phase4: 落地 → 压扁回弹 + 小尘 + 轻震屏 (重量感)
 			u["land_t"] = JUICE_LAND_SEC
 			_shake(JUICE_SHAKE_HEAVY)
