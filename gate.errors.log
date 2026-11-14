@@ -1,0 +1,7 @@
+270:  FAIL  verify_stream_parity  (rc=1, 致命报错=0)
+271:          [FAIL] ★★真实快照局(最重) 镜像节点: id 集合 / 类名 / 显隐 / 帧号 / 贴图一致, 变换与颜色在量化容差内   缺 0 多 0 · ["步720 节点221(Sprite3D) 贴图 <gen:ImageTexture:32x8#65191672>/<gen:ImageTexture:32x8#2089587963>", "步720 节点222(Sprite3D) 贴图 <gen:ImageTexture:32x8#65191672>/<gen:ImageTexture:32x8#2089587963>", "步2220 节点3070(Sprite3D) 贴图 <gen:ImageTexture:32x8#65191672>/<gen:ImageTexture:32x8#2089587963>", "步4020 节点8789(Sprite3D) 贴图 <gen:ImageTexture:32x8#65191672>/<gen:ImageTexture:32x8#2089587963>"]
+272:          [FAIL] ★★真实快照局(最重) 占位 = 0: 程序贴图 9 / 程序网格 0 / 其它 0 / 生成失败 0 {  }; 现生成 9069 次、复用 172 次   
+303:FAIL x1  (PASS 81)
+904:  FAIL  verify_stream_coverage_2  (rc=1, 致命报错=0)
+905:          [FAIL] ★★报警 / 占位 / 第三条钟的出处 ⊆ 已知清单(新出处即红; S3 补一项删一项)   1 个新出处
+939:FAIL x1  (PASS 83)

@@ -1,0 +1,120 @@
+    101119ms  verify_abandoned_match
+     40598ms  verify_tutorial_flow_v3
+     34279ms  verify_no_combat_juice
+     34264ms  verify_referee_watch_stream
+     34130ms  verify_web_player
+     22111ms  verify_chest_ledger
+     21730ms  verify_finals_coins
+     19085ms  verify_econ_sync
+     17451ms  verify_spirit_slap_range
+=== 只读数据审计 ===
+
+ALL PASS (84/84)
+========== 门禁分片 8/8 ==========
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  分片 8/8: 全套 667 个里跑这 84 个
+  PASS  verify_account
+  PASS  verify_action_coverage
+  PASS  verify_arena_layers_drawn
+  PASS  verify_axe
+  PASS  verify_axe_anim_runtime
+  PASS  verify_axe_finals
+  PASS  verify_b4_persist_across_lane
+  PASS  verify_b4_wiring
+  PASS  verify_barnacle_line
+  PASS  verify_boot_season_clock
+  PASS  verify_cam_mac_gestures
+  PASS  verify_candy_axe_unique
+  PASS  verify_chain_from_hand
+  PASS  verify_chain_lightning
+  PASS  verify_champion_show
+  PASS  verify_codex_stats
+  PASS  verify_codex_status_sources
+  PASS  verify_conch_worm_033
+  PASS  verify_copy_no_lock
+  PASS  verify_determinism_ulp_replay
+  PASS  verify_dot_mitigation
+  PASS  verify_drag_lift
+  PASS  verify_drain_stream
+  PASS  verify_dual_egg_decider
+  PASS  verify_econ_net
+  PASS  verify_eq_blade_batch
+  PASS  verify_eq_food_batch
+  PASS  verify_eq_potion_batch
+  PASS  verify_equip_batch3
+  PASS  verify_exact_match
+  PASS  verify_finals_premiere
+  PASS  verify_finals_round_grant
+  PASS  verify_finals_settle_once
+  PASS  verify_fortune_final_carry
+  PASS  verify_gauntlet
+  PASS  verify_gauntlet_match
+  PASS  verify_gauntlet_via_referee
+  PASS  verify_ghost_chest
+  PASS  verify_gremlin_gun
+  PASS  verify_heal_burst
+  PASS  verify_hitstop_freezes_global
+  PASS  verify_ice_fissure
+  PASS  verify_ice_vs_fire_basic
+  PASS  verify_info_panel_stats
+  PASS  verify_interactive_determinism
+  PASS  verify_keyword_false_positive
+  PASS  verify_line_band_vfx
+  PASS  verify_map_field
+  PASS  verify_minion_text_single_source
+  PASS  verify_minion_unstoppable
+  PASS  verify_nickname
+  PASS  verify_ninja_backstab
+  PASS  verify_no_emoji_icons
+  PASS  verify_pet_ui_idle
+  PASS  verify_phoenix_flame_onhit
+  PASS  verify_pirate_hook
+  PASS  verify_pirate_shot_knock_immune
+  PASS  verify_present_click_anywhere
+  PASS  verify_ranked_close
+  PASS  verify_referee_coins
+  PASS  verify_referee_incense
+  PASS  verify_replay_queue_art
+  PASS  verify_replay_window
+  PASS  verify_ring_team_rim
+  PASS  verify_salvo_trainer
+  PASS  verify_scene_change_on_release
+  PASS  verify_settings
+  PASS  verify_shell_vfx
+  PASS  verify_spawn_busy_root
+  FAIL  verify_stream_coverage_2  (rc=1, 致命报错=0)
+          [FAIL] ★★报警 / 占位 / 第三条钟的出处 ⊆ 已知清单(新出处即红; S3 补一项删一项)   1 个新出处
+        ↳ 完整日志已留在 .out/gate/verify_stream_coverage_2.log
+  PASS  verify_stream_coverage_3
+  PASS  verify_stream_edge_parity
+  PASS  verify_stream_no_sim
+  PASS  verify_stream_referee_paths
+  PASS  verify_talisman_089
+  PASS  verify_tame_defection
+  PASS  verify_true_dmg_shield
+  PASS  verify_turtle_balance_r5
+  PASS  verify_tutorial_guide_timing
+  PASS  verify_two_head_enhanced
+  PASS  verify_two_head_fusion
+  PASS  verify_two_head_strike
+  PASS  verify_uncovered_equips
+  PASS  verify_week_phase_write
+  (发现 84 个测试, 并行度 4)
+  ── 耗时 ──
+  核秒总和 1359s ÷ 并行度 4 ≈ 339s 理论墙钟
+  平均 16188ms/个 · 最慢 12 个:
+    181414ms  verify_determinism_ulp_replay
+    159074ms  verify_stream_coverage_2
+    141411ms  verify_stream_coverage_3
+     92364ms  verify_exact_match
+     58809ms  verify_gauntlet_via_referee
+     57689ms  verify_stream_referee_paths
+     32859ms  verify_ring_team_rim
+     32451ms  verify_referee_coins
+     30791ms  verify_stream_no_sim
+     22990ms  verify_referee_incense
+     22928ms  verify_pet_ui_idle
+     22200ms  verify_finals_premiere
+=== 只读数据审计 ===
+
+FAIL x1  (PASS 83)
