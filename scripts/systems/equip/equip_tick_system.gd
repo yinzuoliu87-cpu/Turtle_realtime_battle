@@ -1073,7 +1073,7 @@ func _tick_tide_hits(dt: float) -> void:
 					continue
 				(h["hit"] as Array).append(o)
 				if side == "allies":
-					battle._equip_sys.wave_hit_ally(src, o, si)
+					battle._equip_sys.wave_hit_ally(o, si)
 				else:
 					battle._equip_sys.wave_hit_enemy(src, o, si, dir)
 		if done:

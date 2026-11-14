@@ -1338,15 +1338,15 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		"windup": windup, "travel": travel, "t": 0.0, "allies": (allies as Array).duplicate(), "enemies": (enemies as Array).duplicate(), "hit": []})
 
 
-## 浪碰到友军那一刻(由 EquipTickSystem._tick_tide_hits 调)
-func wave_hit_ally(u: Dictionary, oo: Dictionary, si: int) -> void:
+## 043 海浪护符: 浪碰到友军那一刻(由 EquipTickSystem._tick_tide_hits 调)
+func wave_hit_ally(oo: Dictionary, si: int) -> void:
 	## 11-14 用户: 护盾 40/95/120 → 70/160/400, 且改成通用护盾(4 秒后消失, 原「直到被打破」); 双抗增减一场内跨路保留(eq_wave_amulet.gd)
 	battle._damage._grant_shield(oo, [70.0, 160.0, 400.0][si], BattleDamage.COMMON_SHIELD_SEC)
 	_wave.add_resist(oo, float([2, 3, 5][si]))
 	battle._vfx.wave_splash(oo["pos"], true)
 
 
-## 浪碰到敌人那一刻(由 EquipTickSystem._tick_tide_hits 调)
+## 043 海浪护符: 浪碰到敌人那一刻(由 EquipTickSystem._tick_tide_hits 调)
 func wave_hit_enemy(u: Dictionary, oo2: Dictionary, si: int, dir: Vector2) -> void:
 	battle._damage._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([200, 400, 800][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字) · 11-14 用户 60/110/200 → 200/400/800
 	_wave.add_resist(oo2, -float([2, 3, 5][si]))

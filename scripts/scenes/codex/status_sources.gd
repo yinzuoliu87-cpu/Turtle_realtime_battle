@@ -99,7 +99,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_029", "at": "systems/skills/ice_system.gd:_ice_fissure_hit", "lf": EQS, "link": "\"p2eq_029\": _eq_ice_fissure"},
 		{"k": "eq", "id": "p2eq_034", "at": MAIN + ":_summon_walking_bear", "link": "玩偶小熊仔"},
 		{"k": "eq", "id": "p2eq_034", "at": "systems/equip/equip_tick_system.gd:_tick_bear_waves", "link": "_tick_bear_waves\\(_dt\\)   # 034"},
-		{"k": "eq", "id": "p2eq_043", "at": EQS + ":_eq_water_wave"},
+		{"k": "eq", "id": "p2eq_043", "at": EQS + ":wave_hit_enemy", "link": "## 043 海浪护符: 浪碰到敌人那一刻[^\n]*\nfunc wave_hit_enemy"},   # 11-14 判定改逐步碰撞: 击飞挪进浪碰到敌人那一刻的函数(由 _tick_tide_hits 调)
 		{"k": "eq", "id": "p2eq_056", "at": EQS + ":_eq_on_hit", "arm": "p2eq_056"},
 		{"k": "eq", "id": "p2eq_090", "at": "systems/equip/eq_arcane_batch.gd:_knock_for"},
 		{"k": "eq", "id": "p2eq_096", "at": "systems/equip/axe_passives.gd:smash_on_hit", "link": "小木斧"},
@@ -201,7 +201,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_021", "at": "systems/equip/equip_tick_system.gd:_tick_barnacle", "to": "ally"},
 		{"k": "eq", "id": "p2eq_029", "at": EQS + ":_eq_ice_fissure", "to": "self", "link": "\"p2eq_029\": _eq_ice_fissure"},
 		{"k": "eq", "id": "p2eq_036", "at": "systems/equip/equip_tick_system.gd:_egg_add_progress", "to": "ally", "link": "温泉蛋\\(036\\)"},
-		{"k": "eq", "id": "p2eq_043", "at": EQS + ":_eq_water_wave", "to": "ally"},
+		{"k": "eq", "id": "p2eq_043", "at": EQS + ":wave_hit_ally", "to": "ally", "link": "## 043 海浪护符: 浪碰到友军那一刻[^\n]*\nfunc wave_hit_ally"},   # 同上: 护盾挪进浪碰到友军那一刻
 		{"k": "eq", "id": "p2eq_046", "at": EQS + ":_eq_on_dodge", "arm": "p2eq_046", "to": "self"},
 		{"k": "eq", "id": "p2eq_069", "at": "systems/equip/eq_food_batch.gd:_cake_eat", "to": "self"},
 		{"k": "eq", "id": "p2eq_074", "at": "systems/equip/eq_bow_batch.gd:on_basic_074", "to": "self"},
