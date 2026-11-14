@@ -11,7 +11,9 @@ const ALARM_072 := "res://tests/golden/stream_alarm_pair_072.json"
 const LEVEL := 6
 ## 2026-11-08 2000023 → 2000026: RULES_VER 4(训龟大师钩锁朝随机敌人等, 方案书 20261108)后 2000023 只打两路;
 ##   2000024~2000060 用裁判入口复算(tests/probes/_probe_heavy_seed_scan.gd SCAN_MODE=mirror), 取最近的三路打满 2000026(8002 步, 最大块 18 KB)。
-const SEED := 2000026
+## 2026-11-14 2000026 → 2000027: 击退统一成匀速抛物线(RULES_VER 7 内, 方案见提交 4fee7175)后 2000026 只打两路;
+##   同一探针复算 2000026~2000040, 取最近的三路打满 2000027(9251 步, 最大块 20.5 KB)。
+const SEED := 2000027
 
 
 static func job(a: Dictionary, b: Dictionary, seed: int) -> Dictionary:
