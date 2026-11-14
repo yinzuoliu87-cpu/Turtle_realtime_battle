@@ -456,6 +456,7 @@ static func match_minted(battle, side: String = "left") -> int:
 func reset_match() -> void:
 	_gear_coins = {"left": 0, "right": 0}
 	_gear_made.clear()
+	battle._equip_sys._wave.reset_match()   # 043 海浪护符跨路双抗账: 同一个「整场结束」时机清(11-14)
 
 
 ## 每件齿轮本场已产几枚(上限按件算)。★换路单位会重建、eq_state 跟着重来 ⇒ 计数放在本系统里, 跨路保留, 整场结束清。

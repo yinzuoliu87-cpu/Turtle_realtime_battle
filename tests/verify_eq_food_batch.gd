@@ -347,16 +347,16 @@ func _t070() -> void:
 		_ok("070 si=%d 灰条存下 受到伤害的 30/40/50%% = %.0f" % [si, want],
 			absf(_s._spec.val(g, "p2eq_070_grey") - want) < 0.51,
 			"实测 %.1f" % _s._spec.val(g, "p2eq_070_grey"))
-		# 每秒把灰条的 5% 转回生命
+		# 每秒把灰条的 10% 转回生命(11-14 用户 5% → 10%)
 		g["hp"] = 1000.0
 		var before: float = _s._spec.val(g, "p2eq_070_grey")
 		_food._brick_convert(g, g["eq_state"]["p2eq_070"])
-		_ok("070 si=%d 每秒转回灰条的 5%% = %.2f 生命" % [si, before * 0.05],
-			absf((float(g["hp"]) - 1000.0) - before * 0.05) < 0.51,
+		_ok("070 si=%d 每秒转回灰条的 10%% = %.2f 生命" % [si, before * 0.10],
+			absf((float(g["hp"]) - 1000.0) - before * 0.10) < 0.51,
 			"回血 %.2f · 灰条剩 %.2f" % [float(g["hp"]) - 1000.0, _s._spec.val(g, "p2eq_070_grey")])
-		_ok("070 si=%d 转化后灰条只剩 95%%(不是清零也不是不动)" % si,
-			absf(_s._spec.val(g, "p2eq_070_grey") - before * 0.95) < 0.51,
-			"剩 %.2f / 应 %.2f" % [_s._spec.val(g, "p2eq_070_grey"), before * 0.95])
+		_ok("070 si=%d 转化后灰条只剩 90%%(不是清零也不是不动)" % si,
+			absf(_s._spec.val(g, "p2eq_070_grey") - before * 0.90) < 0.51,
+			"剩 %.2f / 应 %.2f" % [_s._spec.val(g, "p2eq_070_grey"), before * 0.90])
 
 	# ②-c 额外攻速 = 最大生命 × 0.01(%)  —— 用户拍板【最大生命】不是当前生命
 	for pair in [[945.0, 0.0945], [3000.0, 0.30], [6000.0, 0.60], [10000.0, 1.00]]:

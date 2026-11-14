@@ -698,10 +698,10 @@ func _t076_passive() -> void:
 
 
 # ═════════════════════════════════════════════════════════════
-# ④b 076 的主动: 发数 = 消耗 ÷ 8 · 2000 码贯穿 · 每穿一人 ×0.75(最低 25%)
+# ④b 076 的主动: 发数 = 消耗 ÷ 8/5/3(按星级, 11-14) · 2000 码贯穿 · 每穿一人 ×0.75(最低 25%)
 # ═════════════════════════════════════════════════════════════
 func _t076_volley() -> void:
-	print("── ④b 076 · 连射(发数=消耗÷8 · 2000 码贯穿 · 衰减 0.75) ──")
+	print("── ④b 076 · 连射(发数=消耗÷8/5/3 · 2000 码贯穿 · 衰减 0.75) ──")
 	## ★发数查的是 battle._skill_cost, 不是抄的表
 	_s._units.clear()
 	_s._equip_sys._bow_sys.clear()
@@ -713,30 +713,33 @@ func _t076_volley() -> void:
 	_ok("④b ★分母: battle._skill_cost 查到本次消耗 90 龟能",
 		absf(float(_s._skill_cost(u, "fakeSkill")) - 90.0) < 0.01,
 		"cost=%.1f" % float(_s._skill_cost(u, "fakeSkill")))
-	_ok("④b 90 龟能 → 11 发(每 8 龟能一发, 向下取整)",
-		_s._equip_sys._bow_sys.shots_for(u, "fakeSkill") == 11,
-		"shots=%d" % _s._equip_sys._bow_sys.shots_for(u, "fakeSkill"))
+	## ★逐星除数 8/5/3(用户 11-14「一星是龟能除以八，二星是龟能除以五，三星是龟能除以三」), 期望值手算写死
+	var got90: Array = []
+	for si9 in range(3):
+		got90.append(_s._equip_sys._bow_sys.shots_for(u, "fakeSkill", si9))
+	_ok("④b 90 龟能 → 11/18/30 发(÷8/÷5/÷3, 向下取整)", got90 == [11, 18, 30], str(got90))
 	u["energy_cost"] = {"bigSkill": 210.0}
 	u["pending"] = "K:bigSkill"
-	_ok("④b 210 龟能 → 26 发(削弱后的量级: 210 ÷ 8 = 26.25)",
-		_s._equip_sys._bow_sys.shots_for(u, "bigSkill") == 26,
-		"shots=%d" % _s._equip_sys._bow_sys.shots_for(u, "bigSkill"))
+	var got210: Array = []
+	for si2 in range(3):
+		got210.append(_s._equip_sys._bow_sys.shots_for(u, "bigSkill", si2))
+	_ok("④b 210 龟能 → 26/42/70 发(÷8/÷5/÷3)", got210 == [26, 42, 70], str(got210))
 	## ★真入口: 经 _eq_on_cast 排队, 再同步喂 tick 逐发射出
 	var e1: Dictionary = _mk("basic", "right", Vector2(-500.0, -420.0), 1.0e9)
 	u["energy_cost"] = {"fakeSkill": 50.0}
 	u["pending"] = "K:fakeSkill"
 	_s._equip_sys._eq_on_cast(u, e1)
-	_ok("④b ★★真入口: 经 _eq_on_cast 排了 6 发(50 ÷ 8 = 6.25)",
-		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_planned", 0)) == 6,
+	_ok("④b ★★真入口(3★): 经 _eq_on_cast 排了 16 发(50 ÷ 3 = 16.7)",
+		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_planned", 0)) == 16,
 		"planned=%d" % int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_planned", 0)))
-	for _k in range(300):                                # 同步喂 3 秒(6 发 × 0.15 = 0.9 秒, 富余)
+	for _k in range(300):                                # 同步喂 3 秒(16 发 × 0.15 = 2.4 秒, 富余)
 		_s._equip_sys._bow_sys.tick(0.01)
 	var fired: int = int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0))
-	_ok("④b ★真的射出了 6 发(不多不少 · 全同步喂 tick, 不等演出)", fired == 6, "fired=%d" % fired)
+	_ok("④b ★真的射出了 16 发(不多不少 · 全同步喂 tick, 不等演出)", fired == 16, "fired=%d" % fired)
 	for _k2 in range(300):
 		_s._equip_sys._bow_sys.tick(0.01)
-	_ok("④b ★分母: 再喂 3 秒仍是 6 发(连射真的停了)",
-		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0)) == 6,
+	_ok("④b ★分母: 再喂 3 秒仍是 16 发(连射真的停了)",
+		int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0)) == 16,
 		"fired=%d" % int((u["eq_state"].get("p2eq_076", {}) as Dictionary).get("volley_fired", 0)))
 	## ★贯穿 + 衰减: 五个敌人排成一条直线, 一发箭穿过去伤害应是 25.6→19.2→14.4→10.8→8.1
 	##   (3★ / ATK 120: 0.08×120 + 16 = 25.6, 每穿一人 ×0.75)
@@ -1377,7 +1380,7 @@ func _t_readouts_fixture() -> void:
 	var _qe: Dictionary = _mk("basic", "right", Vector2(-500.0, -240.0), 1.0e9)
 	_s._equip_sys._eq_on_cast(q, _qe)
 	var q_st: Dictionary = q["eq_state"]["p2eq_076"]
-	_ok("⑦f 排队瞬间徽章 = 6(50 龟能 ÷ 8)", int(q_st.get("volley_left", -1)) == 6,
+	_ok("⑦f 排队瞬间徽章 = 16(3★: 50 龟能 ÷ 3)", int(q_st.get("volley_left", -1)) == 16,
 		"left=%d" % int(q_st.get("volley_left", -1)))
 	for _k2 in range(60):                                # 0.6 秒: 射了 2~3 发
 		_s._equip_sys._bow_sys.tick(0.01)
@@ -1385,7 +1388,7 @@ func _t_readouts_fixture() -> void:
 	var q_mid: int = int(q_st.get("volley_left", -1))
 	## ★不钉死"0.6 秒 = 正好 N 发"(0.01 的二进制误差会让边界发漂一格) ——
 	##   判据换成时刻恒等式: 徽章 ≡ 排的 − 射出的(对任意时刻成立, 帧率无关)
-	_ok("⑦f ★逐发倒数中(0<left<6, 实测 %d)" % q_mid, q_mid > 0 and q_mid < 6, "left=%d" % q_mid)
+	_ok("⑦f ★逐发倒数中(0<left<16, 实测 %d)" % q_mid, q_mid > 0 and q_mid < 16, "left=%d" % q_mid)
 	_ok("⑦f ★★恒等式: 徽章 = volley_planned − volley_fired(%d = %d − %d)"
 			% [q_mid, int(q_st.get("volley_planned", -1)), int(q_st.get("volley_fired", -1))],
 		q_mid == int(q_st.get("volley_planned", -1)) - int(q_st.get("volley_fired", -1)),
@@ -1452,25 +1455,25 @@ func _t_readouts_fixture() -> void:
 		cb["energy_cost"] = {"probeSkill": cost}
 		cb["pending"] = "K:probeSkill"
 		var real_cost: float = float(_s._skill_cost(cb, "probeSkill"))
-		var got: int = _s._equip_sys._bow_sys.shots_for(cb, "probeSkill")
+		var got: int = _s._equip_sys._bow_sys.shots_for(cb, "probeSkill", 0)   # 1★ ÷8
 		_ok("⑦i 消耗 %.0f 龟能 → %d 发(= %.0f ÷ 8 向下取整; 战斗侧实测消耗 %.0f)"
 				% [cost, want_shots, cost, real_cost],
 			got == want_shots and absf(real_cost - cost) < 0.001, "实测 %d 发" % got)
 	## ★分母: 没在放技能(pending 不是 K:) ⇒ 一发都不排(不会平白连射)
 	cb["pending"] = ""
 	_ok("⑦i ★分母: 没放技能时 0 发(cast_stype 空 ⇒ 不排连射)",
-		_s._equip_sys._bow_sys.shots_for(cb, _s._equip_sys._bow_sys.cast_stype(cb)) == 0, "")
+		_s._equip_sys._bow_sys.shots_for(cb, _s._equip_sys._bow_sys.cast_stype(cb), 2) == 0, "")
 	## ★真入口一遍: on_cast_076 排的发数 = shots_for 给的数(徽章/计数都对得上)
 	cb["energy_cost"] = {"probeSkill": 80.0}
 	cb["pending"] = "K:probeSkill"
 	_s._equip_sys._bow_sys.on_cast_076(cb, 2)
 	var cst: Dictionary = (cb.get("eq_state", {}) as Dictionary).get("p2eq_076", {})
-	_ok("⑦i ★★走真入口: 80 龟能的技能排了 %d 发, 徽章也是 %d(读数与机制同源)"
+	_ok("⑦i ★★走真入口(3★): 80 龟能的技能排了 %d 发(80 ÷ 3), 徽章也是 %d(读数与机制同源)"
 			% [int(cst.get("volley_planned", -1)), int(cst.get("volley_left", -1))],
-		int(cst.get("volley_planned", -1)) == 10 and int(cst.get("volley_left", -1)) == 10, str(cst))
-	## ★分母: 除数本身就是 8 —— 谁把它改回 5, 上面整张表连同这条一起红
-	_ok("⑦i ★除数焊死为 8 龟能/发", absf(EqBowBatch.ENERGY_PER_SHOT - 8.0) < 1e-9,
-		"ENERGY_PER_SHOT=%.2f" % EqBowBatch.ENERGY_PER_SHOT)
+		int(cst.get("volley_planned", -1)) == 26 and int(cst.get("volley_left", -1)) == 26, str(cst))
+	## ★分母: 除数逐星焊死为 8/5/3(用户 11-14) —— 谁改了它, 上面整张表连同这条一起红
+	_ok("⑦i ★除数逐星焊死为 8/5/3 龟能/发", EqBowBatch.ENERGY_PER_SHOT == [8.0, 5.0, 3.0],
+		"ENERGY_PER_SHOT=%s" % str(EqBowBatch.ENERGY_PER_SHOT))
 
 	# ⑦g 贯穿命中记号: **弩矢飞到谁, 谁那一刻才炸**(2026-08-12 重做; 旧版一发射出就全亮=激光读法)
 	_s._equip_sys._bow_sys.clear()

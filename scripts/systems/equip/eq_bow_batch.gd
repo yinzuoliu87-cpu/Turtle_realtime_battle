@@ -24,8 +24,8 @@ extends RefCounted
 ## ② **本文件打出的每一段伤害都 `from_equip = true`** ⇒ 不回钩 on-hit
 ##    (`battle_damage.gd` 里 `if not from_equip` 才回钩 on-hit / 弓箭处决 / 冰封 / 僵硬)。
 ##    用户对 073/075/076 三件都明确写了"不触发 on-hit", 074 的附带魔伤同口径(契约 §5.7)。
-##    ⚠ 076 一次连射最多 26 发(全表最贵技能 210 龟能 ÷ ENERGY_PER_SHOT 8) × 每发贯穿数人,
-##    回钩 on-hit 会直接自激炸掉。(旧注写 42 发, 那是"每 5 龟能一发"时代的数, 2026-08-12 已改 8。)
+##    ⚠ 076 一次连射最多 70 发(全表最贵技能 210 龟能 ÷ 3★ 的 ENERGY_PER_SHOT 3) × 每发贯穿数人,
+##    回钩 on-hit 会直接自激炸掉。(2026-11-14 起除数按星级 8/5/3; 之前恒为 8 ⇒ 最多 26 发。)
 ## ③ **`_t` 跨路累加永不重置**(CLAUDE.md §3.4) ⇒ 本文件所有"持续 N 秒 / 每 N 秒"
 ##    都存**到期时刻**或**自管累加器**, 没有一处拿 `_t` 直接和常数比。
 ##
@@ -311,9 +311,10 @@ func on_hit_075(src: Dictionary, tgt: Dictionary, dmg: int, si: int) -> void:
 
 ## 被动: 第几下普攻触发
 const CORRODE_EVERY := 3
-## 主动: 每消耗这么多龟能 → 多射一发(用户 2026-08-12 削弱为每 8 龟能一发)
+## 主动: 每消耗这么多龟能 → 多射一发, 逐星(1★/2★/3★)。
 ## ★2026-08-12 用户削弱: 每 5 龟能一发 → 每 8 龟能一发(80 龟能的技能 16 发 → 10 发)。
-const ENERGY_PER_SHOT := 8.0
+## ★2026-11-14 用户「现在件数是恒定的，也就是龟能除以八，需要改为随星级变化，一星是龟能除以八，二星是龟能除以五，三星是龟能除以三」。
+const ENERGY_PER_SHOT := [8.0, 5.0, 3.0]
 ## 主动: 发间隔(秒)。★与演出的 `BowEqVfx.RECOIL_IV` 是同一个数, 门禁 ④ 焊住两者相等。
 ## ★2026-08-12 用户拍板: 0.25 → 0.15 秒一发(连射就该像连射)。
 ##   反冲振子 BowEqVfx.RECOIL_IV 必须同步(门禁 ⓪ 焊死两者相等)。
@@ -361,18 +362,18 @@ func cast_stype(u: Dictionary) -> String:
 	return p.substr(2) if p.begins_with("K:") else ""
 
 
-## 发数 = 本次技能消耗的龟能 ÷ 8(向下取整)。
+## 发数 = 本次技能消耗的龟能 ÷ 8/5/3(按星级, 向下取整)。
 ## ★消耗**查 `battle._skill_cost(u, stype)`**, 绝不在这里抄一份消耗表 ——
 ##   抄一次就永远落后一次(memory [[fb-hand-rolled-copies-drift]])。
-func shots_for(u: Dictionary, stype: String) -> int:
+func shots_for(u: Dictionary, stype: String, si: int) -> int:
 	if stype == "":
 		return 0
-	return int(floorf(float(battle._skill_cost(u, stype)) / ENERGY_PER_SHOT))
+	return int(floorf(float(battle._skill_cost(u, stype)) / float(ENERGY_PER_SHOT[clampi(si, 0, 2)])))
 
 
 ## 放完技能 → 排一轮连射。
 func on_cast_076(u: Dictionary, si: int) -> void:
-	var n: int = shots_for(u, cast_stype(u))
+	var n: int = shots_for(u, cast_stype(u), si)
 	if n <= 0:
 		return
 	_volleys.append({"src": u, "si": si, "shots_left": n, "t_next": 0.0, "ck": battle._equip_sys.key_of(u, "p2eq_076")})   # ck: 份号(11-13)

@@ -683,6 +683,7 @@ func _dl_build_lane_field() -> void:
 	battle._relic_syn.apply_all() # 遗物【生死界】系数 + 龟蛋加固(+500/900/1500)
 	_dl_restore_eq_carry()   # ★跨路保留的装备层数写回(竹弓/哑铃/温泉蛋, 用户2026-08-01)。
 						  #   必须在 _eq_apply_all_stats 之【后】: 它会把 eq_state 重置成初始值, 放前面会被它盖掉。
+	battle._equip_sys._wave.restore()   # 043 海浪护符: 贴身份键 + 补回前几路的双抗增减(一场内跨路保留, 用户 11-14)
 	battle._hud._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
 
 ## egg_hp 缺则按 3000+300×等级 初始化(用户2026-07-19)。

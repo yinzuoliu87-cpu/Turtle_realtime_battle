@@ -17,12 +17,14 @@ extends Node
 ## 【043】法力满时从身后 `WAVE_BACK`(1200) 码涌起浪墙横扫全场, **敌我双方都会被扫到**:
 ##   ★2026-09-14 用户拍板从 400 挪到 1200(「动演出不动原结算代码」): 原来站在携带者身后
 ##   670 码以外的单位会被一道**从未碰到它的浪**打到。结算代码一行没动, 只是起浪点后移。
-##   友军 +40/95/120 护盾并**永久** +2/3/5 双抗; 敌人受 60/110/200 魔法伤害并**永久** -2/3/5 双抗。
+##   友军 +70/160/400 护盾(通用护盾 4 秒)并 +2/3/5 双抗; 敌人受 200/400/800 魔法伤害并 -2/3/5 双抗。
+##   ★11-14 用户改: 护盾 40/95/120 → 70/160/400 且改成 4 秒通用护盾(原「直到被打破」), 魔伤 60/110/200 → 200/400/800;
+##     双抗增减改成【一局内跨战场保留】—— 跨路那条由 verify_wave_amulet_carry 走真换路入口验, 本文件只验单路结算。
 ##   负面被动: 该法器的法力条上限提升 50/25/0%。
 ## 【044】生命首次降至 `LOWHP_GATE`(50)% 以下时, 在 `NECKLACE_HOT_SEC`(6) 秒内
 ##   逐渐回复 40/85/130% 最大生命(每场一次)。★用户 2026-09-14 两次上调: 6秒/20-40-80 → 8秒/25-50-85 → 16秒/40-85-130。
 ## 【045】同样的触发线, `EARRING_HOT_SEC`(8) 秒内逐渐回复 30/60/100% 最大生命,
-##   并向 1/1/2 名随机敌人发火球: 8/17/30% 目标最大生命的魔法伤害 + 30/70/150 层灼烧(每场一次)。
+##   并向 1/1/2 名随机敌人发火球: 8/17/30% 目标最大生命的魔法伤害 + 30/70/100 层灼烧(每场一次; 11-14 三星 150 → 100)。
 ##
 ## ★这六件**结算层全都健康** —— 延时一律走 `_pending_shots`(sim 时钟), 没有一处埋在 tween 上。
 ##   它们的缺口是**六件里五件没有台子、全部没有属于自己的门禁**。
@@ -36,8 +38,9 @@ const TIDE_HP := [250.0, 400.0, 650.0]
 const TIDE_ATK := [10.0, 16.0, 25.0]
 const TIDE_DUR := [8.0, 11.0, 15.0]
 const RIPPLE_PCT := [0.03, 0.06, 0.10]
-const WAVE_SHIELD := [40.0, 95.0, 120.0]
-const WAVE_DMG := [60.0, 110.0, 200.0]
+const WAVE_SHIELD := [70.0, 160.0, 400.0]
+const WAVE_DMG := [200.0, 400.0, 800.0]
+const WAVE_SHIELD_SEC := 4.0
 const WAVE_RESIST := [2, 3, 5]
 const NECK_PCT := [0.40, 0.85, 1.30]
 const EAR_PCT := [0.30, 0.60, 1.00]
@@ -264,17 +267,33 @@ func _ready() -> void:
 		## 推够 前摇 + 横扫全场
 		for _k in range(240):
 			_s._sim_step(_s.SIM_DT, false, false)
-		_ok("④ ★★★%d 星友军: 护盾 +%.0f(应 %.0f) 且**永久** +%.0f 双抗(应 %d)"
+		_ok("④ ★★★%d 星友军: 护盾 +%.0f(应 %.0f) 且 +%.0f 双抗(应 %d)"
 			% [si + 1, float(ally4["shield"]), WAVE_SHIELD[si],
 			   float(ally4["base_def"]) - ad0, WAVE_RESIST[si]],
 			absf(float(ally4["shield"]) - WAVE_SHIELD[si]) < 0.5
 				and absf(float(ally4["base_def"]) - ad0 - float(WAVE_RESIST[si])) < 0.01)
-		_ok("④ ★★★%d 星敌人: 掉血 %.0f 且**永久** -%.0f 双抗(应 -%d)"
-			% [si + 1, fh0 - float(foe4["hp"]), fd0 - float(foe4["base_def"]), WAVE_RESIST[si]],
-			fh0 - float(foe4["hp"]) > 0.0
+		## 期望掉血 = 一只同样的敌人(浪打到那一刻: 50 双抗底子, 还没减)走【产品同一条魔伤管线】挨一下文案上的数。
+		##   ★不拿手算的 200/800 直接比: 携带者是小龟, 被动「不屈」按目标稀有度增伤(C 档 +20%), 那是管线里的事, 对照组同样会吃到。
+		var ctl: Dictionary = _mk(900.0, 460.0, "right")
+		ctl["base_def"] = 50.0
+		ctl["base_mr"] = 50.0
+		var ch0: float = float(ctl["hp"])
+		_s._damage._apply_damage_from(c4, ctl, _s._resolve_dmg(c4, WAVE_DMG[si], ctl, true), Color("#9be7ff"), 0.0, false, true)
+		var want_dmg: float = ch0 - float(ctl["hp"])
+		_ok("④ ★★★%d 星敌人: 掉血 %.0f(文案 %.0f 魔伤走同一条管线应掉 %.0f) 且 -%.0f 双抗(应 -%d)"
+			% [si + 1, fh0 - float(foe4["hp"]), WAVE_DMG[si], want_dmg, fd0 - float(foe4["base_def"]), WAVE_RESIST[si]],
+			want_dmg >= WAVE_DMG[si] * 0.99 and absf(fh0 - float(foe4["hp"]) - want_dmg) < 0.5
 				and absf(fd0 - float(foe4["base_def"]) - float(WAVE_RESIST[si])) < 0.01)
 		_ok("④ %d 星队列已排空" % [si + 1], _s._pending_shots.is_empty(),
 			"剩 %d 项" % _s._pending_shots.size())
+		## 护盾是通用护盾: 打到后 4 秒消失(原来是「直到被打破」)。再推 4 秒(浪最晚 2.5 秒内打到 ⇒ 此时一定过期)。
+		var su: float = float(ally4.get("shield_until", 0.0))
+		for _k2 in range(240):
+			_s._sim_step(_s.SIM_DT, false, false)
+		_ok("④ ★★★%d 星友军护盾是 %.0f 秒通用护盾: 记了到期时刻(%.2f), 再过 4 秒归零(剩 %.0f); 双抗仍在(+%.0f)"
+			% [si + 1, WAVE_SHIELD_SEC, su, float(ally4["shield"]), float(ally4["base_def"]) - ad0],
+			su > 0.0 and float(ally4["shield"]) < 0.5
+				and absf(float(ally4["base_def"]) - ad0 - float(WAVE_RESIST[si])) < 0.01)
 
 	# ══════════════ 044 / 045 残血触发 ══════════════
 	_ok("⑤ ★分母: 触发线 %.0f%% / 044 摊 %.0f 秒 / 045 摊 %.0f 秒"
@@ -320,6 +339,27 @@ func _ready() -> void:
 				% _s._projectiles.size(),
 				_s._projectiles.size() == 2,
 				"文案: 向 1/1/2 名随机敌人发射火球; ★3 是 2 个")
+
+	## ★★045 火球灼烧层数逐星(用户 11-14「三星时施加的灼烧层数现在是一百五十，需要削弱至一百层」⇒ 30/70/100)。
+	##   读的是火球投射物身上带的层数(`_spawn_fireball` 的 fire_burst, 命中时按它上灼烧), 不是文案。
+	var got_burn: Array = []
+	for si in range(3):
+		_s._units.clear()
+		_s._pending_shots.clear()
+		_s._projectiles.clear()
+		var c6: Dictionary = _mk(500.0, 400.0, "left")
+		c6["equips"] = [{"id": "p2eq_045", "star": si + 1}]
+		c6["eq_state"] = {}
+		_s._units.append(c6)
+		_s._units.append(_mk(900.0, 400.0, "right"))
+		c6["hp"] = float(c6["maxHp"]) * (ES.LOWHP_GATE - 0.02)
+		_s._equip_sys._eq_check_hp_threshold(c6)
+		var bs: Array = []
+		for pj in _s._projectiles:
+			if pj is Dictionary and bool(pj.get("fireball", false)):
+				bs.append(int(pj.get("fire_burst", -1)))
+		got_burn.append(bs)
+	_ok("⑤ ★★★045 火球灼烧 30/70/100 层(★3 两个火球各 100)", got_burn == [[30], [70], [100, 100]], str(got_burn))
 
 	_done()
 

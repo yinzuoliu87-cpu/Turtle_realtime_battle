@@ -157,7 +157,10 @@ const PALETTES := {
 		"c_flash": Color(1.0, 0.97, 0.95), "c_hole": Color(0.08, 0.02, 0.03),
 		"fx_core": Color(1.0, 0.95, 0.90), "fx_mid": Color(1.0, 0.45, 0.40), "fx_edge": Color(0.70, 0.12, 0.18)},
 }
-const PALETTE_DEFAULT := "illaoi"
+## 待机短身时粗细打几折(拍下甩到全长时 1.0) / 新外形根部加粗量 —— 11-14 用户要整体与底部都再粗
+const IDLE_THIN := 0.88
+const BASE_BULGE := 0.4
+const PALETTE_DEFAULT := "abyss_neon"
 ## 调试场 / 实验台换配色用(不进 sim, 不进快照)
 static var palette_override := ""
 
@@ -264,7 +267,8 @@ static func apply(t: Dictionary, root3: Vector3, pts_w: PackedVector3Array, radi
 	## 尖芽是胖的(录屏: 合拢的花苞, 不是针)
 	var rk: float = smoothstep(0.0, 1.6, arc) * lerpf(0.85, 1.0, fo)
 	## 2026-11-13 待机短身(IDLE_ARC_K)时跟着变细: 只缩身长不缩粗细 ⇒ 卷起来是一团, 读不出 LoL 那种细身子 + 尖钩的「?」; 拍下甩到全长时恢复
-	rk *= lerpf(0.72, 1.0, clampf((arc / TentacleVfx.ARC_LEN - TentacleVfx.IDLE_ARC_K) / (1.0 - TentacleVfx.IDLE_ARC_K), 0.0, 1.0))
+	## 11-14 用户「出手加粗，你只加粗了…拍击的时候吗？…其他时间段你不加粗吗？」: 待机比拍下细的那一截 0.72 → 0.88(待机 / 出土 / 收回跟着粗)
+	rk *= lerpf(IDLE_THIN, 1.0, clampf((arc / TentacleVfx.ARC_LEN - TentacleVfx.IDLE_ARC_K) / (1.0 - TentacleVfx.IDLE_ARC_K), 0.0, 1.0))
 	## 自己设计的外形身子收细: 11-13 自评「太胖, 像一团」; LoL 那种细长利落 ⇒ 粗细 × 0.72
 	if float(palette().get("style", 0.0)) > 0.5:
 		rk *= 0.72
@@ -277,7 +281,9 @@ static func apply(t: Dictionary, root3: Vector3, pts_w: PackedVector3Array, radi
 		for k5 in range(NCP):
 			var u5: float = float(k5) / float(NCP - 1)
 			var pinch: float = 1.0 - 0.75 * smoothstep(0.92, 1.0, u5)
-			cr[k5] = r_ref * lerpf(1.0, 0.5, u5) * pinch
+			## 11-14 用户「底部还是可以再粗一点吧」: 根部加粗(贴地 ×(1+BASE_BULGE), 往上 35% 内过渡回 1)
+			var base_k: float = 1.0 + BASE_BULGE * (1.0 - smoothstep(0.0, 0.35, u5))
+			cr[k5] = r_ref * lerpf(1.0, 0.5, u5) * pinch * base_k
 	## 出土是对折的发卡(11-13 用户逐张讲解): 不再套「尖芽」的粗细曲线(那是把对折的身子当成了一根往上长的芽量出来的), 用正常粗细
 	## 底 = 倒沙漏(用户「它是由周围汇聚成这个身体」): 贴地那一截往外张开, 出土时张得更大
 	## 11-13 晚用户「中间为什么会细」: 底下这圈张开原来 ×1.45–1.55, 底部鼓成一坨 ⇒ 中间显得细; 收到 ×1.15

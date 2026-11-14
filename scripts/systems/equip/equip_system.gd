@@ -42,6 +42,7 @@ var _gremlin: GremlinGun
 var _axe: AxeSystem
 ## 011 饮血护符坠(2026-09-10 重做): 连斩本体 + 斩痕演出。单独成文件 —— 见 eq_blood_combo.gd 文件头。
 var _blood_sys: EqBloodCombo
+var _wave: EqWaveAmulet   # 043 海浪护符双抗增减的跨路账(eq_wave_amulet.gd · 11-14)
 var tally: EquipTally
 
 func _init(b) -> void:
@@ -62,7 +63,7 @@ func _init(b) -> void:
 	_blood_sys = EqBloodCombo.new(b)
 	_relic_sys = EqRelicBatch.new(b)
 	_incense = IncenseStoneSystem.new(b); tally = EquipTally.new(b)
-	_summons = EqSummons.new(b)
+	_summons = EqSummons.new(b); _wave = EqWaveAmulet.new(b)
 	cp = EquipCopies.new(b)
 
 
@@ -1323,8 +1324,9 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		var d: float = windup + fwd / tdist * travel
 		var fn := func():
 			if not oo.get("alive", false): return
-			battle._damage._grant_shield(oo, [40.0, 95.0, 120.0][si])
-			oo["base_def"] += [2, 3, 5][si]; oo["base_mr"] += [2, 3, 5][si]; battle._recalc_stats(oo)
+			## 11-14 用户: 护盾 40/95/120 → 70/160/400, 且改成通用护盾(4 秒后消失, 原「直到被打破」); 双抗增减一场内跨路保留(eq_wave_amulet.gd)
+			battle._damage._grant_shield(oo, [70.0, 160.0, 400.0][si], BattleDamage.COMMON_SHIELD_SEC)
+			_wave.add_resist(oo, float([2, 3, 5][si]))
 			battle._vfx.wave_splash(oo["pos"], true)
 		battle._pending_shots.append({"delay": d, "fn": fn, "src": u})
 	for o in enemies:
@@ -1333,8 +1335,8 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		var d2: float = windup + fwd2 / tdist * travel
 		var fn2 := func():
 			if not oo2.get("alive", false): return
-			battle._damage._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
-			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); battle._recalc_stats(oo2)
+			battle._damage._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([200, 400, 800][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字) · 11-14 用户 60/110/200 → 200/400/800
+			_wave.add_resist(oo2, -float([2, 3, 5][si]))
 			battle._vfx.wave_splash(oo2["pos"], false)
 			battle._knock_up(oo2, oo2["pos"] - dir * 60.0, 6.5)   # 娜美式击飞: 顺浪方向往前推(非直上)
 			battle._vfx._hit_spark(oo2)
@@ -2571,8 +2573,9 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 				_eq_start_hot(u, u["maxHp"] * [0.30, 0.60, 1.00][si], EARRING_HOT_SEC)
 				battle._heal_ascend(u)   # 绿光环上浮(045专属, 不复用044)
 				var balls: int = [1, 1, 2][si]
+				## 灼烧层数 30/70/100(用户 2026-11-14「三星时施加的灼烧层数现在是一百五十，需要削弱至一百层」; 原 30/70/150)
 				for o in battle._equip_tick_sys._eq_pick_distinct(u, balls):
-					battle._spawn_fireball(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), [30, 70, 150][si])
+					battle._spawn_fireball(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), [30, 70, 100][si])
 				fired = true
 	ck_restore(_ckp2541)
 	if fired:

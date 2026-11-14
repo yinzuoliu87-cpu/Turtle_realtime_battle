@@ -251,7 +251,8 @@ const BRICK_SPLASH_R := 250.0   # 070 压舱咸鱼砖: 溅射半径(码)
 const CREAM_BURST_R := 300.0    # 盾破的伤害半径(码) —— 演出 `cream_burst()` 也读这一个
 const CREAM_RESIST := 10.0      # 盾破之后 +双抗
 const CREAM_RANGE := 50.0       # 盾破之后 +射程(码)
-const GREY_CONVERT := 0.05
+## 灰条每秒转回生命的比例。★用户 2026-11-14「每秒将灰色生命条的百分之五…改为将灰色生命值的百分之十每秒去回复」: 0.05 → 0.10
+const GREY_CONVERT := 0.10
 ## 额外攻速系数: 最大生命 × 0.01 得到的是【百分数】⇒ 转成倍率要再 /100
 const BRICK_ASPD_PER_HP := 0.0001
 
@@ -277,7 +278,7 @@ func _brick_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
 		var store: float = float(dtk) * GREY_STORE[si]
 		battle._spec.grant(u, KEY_GREY, store, {"absorb": false})
 		stt["grey_stored"] = float(stt.get("grey_stored", 0.0)) + store   # 同步证据
-	# ── ③ 每秒把灰条的 5% 转回生命 ──
+	# ── ③ 每秒把灰条的 GREY_CONVERT(10%) 转回生命 ──
 	stt["grey_t"] = float(stt.get("grey_t", 0.0)) + delta
 	while float(stt["grey_t"]) >= 1.0:
 		stt["grey_t"] = float(stt["grey_t"]) - 1.0
