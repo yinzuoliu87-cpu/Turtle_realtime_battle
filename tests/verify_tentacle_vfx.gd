@@ -168,6 +168,10 @@ func _ready() -> void:
 		G.step(_v, int(ceil(TV.SNAP_T / G.SIM_DT)) + 3)
 		var p_slam: PackedVector3Array = G.world_pts(mi5)
 		var m_slam = mi5.mesh
+		## 趴好以后(伤害后约 0.12 秒, 仍在拍击态): 量「够到射程」用这一刻 —— 见下面 ⑤ 够射程那条的注释
+		G.step(_v, int(round(0.07 / G.SIM_DT)))
+		var p_lie: PackedVector3Array = G.world_pts(mi5)
+		var st_lie: int = int(_v.state_of("left", 0))
 		var a_idle: float = G.arc(p_idle)
 		var a_hang: float = G.arc(p_hang)
 		var a_slam: float = G.arc(p_slam)
@@ -187,8 +191,14 @@ func _ready() -> void:
 		_ok("⑤ ★拍下那一下弧长不变(悬停末 %.2f → 贴地 %.2f, 差 ≤ 12%%) —— 不许「戳出去」" % [a_hang, a_slam],
 			absf(a_slam - a_hang) <= a_hang * 0.12 and a_hang > 1.0)
 		## 2026-11-01 用户「初始状态下…太弯了，得把它搞直一点」⇒ 待机拉直, 端点距根本来就远了(实测 6.60 米), 倍数 1.6 → 1.25
-		_ok("⑤ ★端点距离甩直了显著变远(待机 %.2f → 贴地 %.2f 米, ≥ 1.25 倍)" % [tip_idle, tip_slam],
-			tip_slam > tip_idle * 1.25 and tip_slam > 2.0)
+		## 2026-11-13 最后一版: 待机改成照 LoL 实机的慢速大幅起伏(卷钩会张开、整根会横过来), 某一刻的待机端点可以伸到 9 米
+		##   ⇒ 拿「某一刻的待机」当基准比倍数不再成立。这条要守的是「拍下真够到射程」: 贴地时梢端离根 ≥ 攻击长度 9 成, 且不比待机近。
+		##   2026-11-14: 拍下改成照用户手标的 LoL(刀光 = 伤害那一刻本体还卷着, 晚约 2 帧才甩直贴地; 方案书 20261113b §7)⇒
+		##   伤害后 0.05 秒那一帧梢端刚落地、身子还没铺开(实测 7.50 米), 拿它量射程是量早了。用户 11-13 同意「删 / 改『落地梢端离根 ≥ 8.64 m』」:
+		##   标准不放松(仍是攻击长度 9 成), 改在趴好以后(伤害后约 0.12 秒、仍在拍击态)量。
+		var tip_lie: float = (p_lie[p_lie.size() - 1] - r3).length() if not p_lie.is_empty() else 0.0
+		_ok("⑤ ★拍下够到射程(趴好时端点距根 %.2f ≥ 攻击长度 9 成 %.2f 米, 刚落地 %.2f, 待机这一刻 %.2f; 那一刻在拍击态 = %s)" % [tip_lie, TV.ATTACK_LEN * 0.9, tip_slam, tip_idle, str(st_lie == 3)],
+			st_lie == 3 and tip_lie >= TV.ATTACK_LEN * 0.9 and tip_lie >= tip_idle)
 
 	# ★★攻击长度【不随目标距离变】—— 用户 2026-08-04 点名纠正的（我中途做过一版
 	#   "按到目标的实际距离伸长"，那样就没有"安全距离"这条规则了）。

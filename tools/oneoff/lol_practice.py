@@ -77,7 +77,11 @@ def start_client():
     if os.path.exists(LOL_LOCK):
         print("英雄联盟客户端已在运行")
         return
-    if not os.path.exists(RC_LOCK):
+    ## 11-13: Riot 客户端上次退出留下旧 lockfile ⇒ 原来当成「已开」, 去连本机接口被拒(10061)。进程不在就当没开。
+    rc_up = "riotclientservices" in subprocess.run("tasklist", capture_output=True, text=True, errors="ignore").stdout.lower()
+    if not os.path.exists(RC_LOCK) or not rc_up:
+        if os.path.exists(RC_LOCK):
+            os.remove(RC_LOCK)
         subprocess.Popen([RC_EXE], close_fds=True)
         for _ in range(10):
             time.sleep(3)

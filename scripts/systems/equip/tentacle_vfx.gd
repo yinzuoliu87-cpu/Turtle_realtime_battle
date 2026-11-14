@@ -40,6 +40,10 @@ enum { ST_EMERGE, ST_IDLE, ST_REAR, ST_SLAM, ST_RECOVER, ST_RETRACT, ST_WARN }
 
 ## 各态时长（秒）。EMERGE / REAR / SLAM 三个取自官方数值，见文件头。
 const T_EMERGE := 2.0
+## 出土里尖芽开始长出的时刻(之前是漩涡; 2026-11-13 照 LoL 实机)
+## 2026-11-13 照 LoL 录屏逐帧(19.6–21.5 s): 被动触发 → 漩涡 → 黑影 → **第 2 秒冲起光柱**(= 我们出土结束、可以出手) →
+##   之后 1.6 秒: 尖芽 0.3 秒长到全高 → 竖着停 0.4 秒 → 0.5 秒卷钩张鳍 → 0.4 秒放倒进待机(TentacleRig 在待机头 1.6 秒播)。
+const EMERGE_RISE_T0 := 2.0
 ## ★★★以下三个时长【逐帧量出来的】(W 技能预览 `ImiPef9gzoE` 2.2~4.2s @30fps)：
 ##   2.80s  爆发 —— **2 帧内(≈0.07s)猛地伸直** + 命中点白色爆闪
 ##   2.87~3.20s  **保持一条笔直的粗光带**(0.33s)，亮度是待机的好几倍
@@ -255,7 +259,11 @@ const ANG_IDLE := [84.0, 45.0]       # 待机: 升起后大幅弧过去（牧羊
 ##   而本作是俯角相机 ⇒ 竖直方向被压扁，**越立投影越短**：
 ##   实测前摇 −3→−2 投影臂长 0.134 → 0.085（塌了 37%），而官方是 0.167（在长）。
 ##   官方那个形状是**后仰 + 梢端回勾的「?」形立环**，在屏幕上占得高又占得长。
-const ANG_REAR := [104.0, 106.0]     # 蓄势: 举到位再往后压一点，随后直接拍下
+const ANG_REAR := [134.0, 118.0]     # 蓄势末(2026-11-13 对照 LoL: 抡到身后压低; 原 104/106 = 竖着往后仰)
+## 预警(抬起)末的姿势与卷曲(2026-11-13: 原 101° / 99° / 卷曲 50 = 一根松开的高杆)
+const WARN_A0 := 128.0
+const WARN_A1 := 112.0
+const WARN_CURL := 150.0
 ## ★砸下：根部保持较立（58°）、梢端扎到地里（−80°）——
 ##   【自截图看出来的】根部倒到 30° 时整条【平躺】在地上，像一条海带，
 ##   而参考里是"根立着、梢抽下来"的一道弧。差别就在根部这个角。
@@ -284,6 +292,8 @@ const ANG_EMERGE := [90.0, 86.0]     # 出土: ★近乎竖直的一道光柱（
 ##   再大的 `curl` 也只能在梢端勾一小下，弯不出一个 C。
 ##   ⇒ 改成【按状态分】：待机/预警从 0.30 就开始卷（大半条参与，才成 C）；
 ##     拍击仍是 0.68（那时它要绷直，只有梢端稍勾）。
+## 螺旋钩头的额外曲率(度 / 单位弧长比例; 见 _curvature)
+const HOOK_EXTRA := 1000.0
 const CURL_FROM := 0.68              # 拍击：上段三分之一才回勾
 const CURL_FROM_CURLY := 0.30        # 待机/预警：大半条参与卷曲，才能弯成 C
 ## ★★★待机的卷曲量 —— 【逐帧看 idle 段】之后的第三次修正：
@@ -304,7 +314,15 @@ const CURL_TIGHT := 160.0            # 待机：弧长恒定后靠【大卷曲�
 ## ★2026-10-31 对齐 LoL(用户「动作也得调」): 待机实测周期 3.5 秒、梢端摆幅占高 9% ⇒ LoL 被动待机主频约 0.45 Hz(参考笔记 §4)
 ##   ⇒ 呼吸周期 3.6 → 2.2 秒, 舒展量 240 → 222(摆幅略加大, 仍在「≤ 触手高 15%」以内)。
 const CURL_LOOSE := 136.0            # 舒展到底：只松一点点（官方待机基本不动）
-const BREATH_PERIOD := 2.2           # 一次完整呼吸的秒数（慢而轻）
+const BREATH_PERIOD := 4.6           # 一次完整起伏的秒数(2026-11-13 对照 LoL 实机 4–6 秒; 原 2.2)
+## 待机起伏幅度(2026-11-13; 原 −1.8° / +3° / 卷曲 160→136 ⇒ 几乎不动)
+const IDLE_A0_SWING := -16.0
+const IDLE_A1_SWING := 42.0
+const IDLE_CURL_OPEN := 40.0
+## 进待机头几秒渐入起伏 / 侧摆(收回、出土都结束在 br=0 的姿势)
+const IDLE_BLEND := 0.9
+## 待机侧摆幅度(度; 其余状态仍 S_AMP)
+const S_AMP_IDLE := 14.0
 ## 余振行波的参数（曲率密度模型）
 const RING_AMP := 210.0        # 脉冲峰值曲率(度/单位弧长)
 const RING_WIDTH := 0.20       # 脉冲宽度(占全长比例)
@@ -369,8 +387,20 @@ const SLAM_FRONT_SPAN := 0.46
 ## 三组实测(梢端最高 → 贴地帧数 / 贴地 ts / 中途悬停): 原速 14 帧 / 0.35 / 悬停 2~3 帧 · 2.5 倍 + 肌肉 40: 12 帧 / 0.40(晚于伤害) ·
 ##   **1.6 倍 + 肌肉 40: 9 帧 / 0.35(= 伤害帧) / 逐帧下落 0.24 → 0.40 → 0.51 → 0.79 → 1.23 → 1.56 一路加速** ← 取这一组
 ## 2026-11-01 用户「拍下去的速度为什么这么快？不应该有这么快」⇒ 回到 8 月验收过的原速(梢端最高→贴地约 14 帧), 贴地时刻仍是 T_TOUCH
-const SLAM_SPEED := 1.0
-const SLAM_HOLD := 0.0
+## ★2026-11-13 最后一版(用户「动作…拍下去的时候还有特效都要改」, 对照 LoL 实机 60fps): 实机本体从竖着到贴地约 7 帧,
+##   前面有刀光拖影先到(TentacleSlamFx) ⇒ 再快也读得出是「拍」而不是瞬移。11-01 那句「太快」是在没有拖影时说的。
+##   ⇒ 回到 1.6 倍(梢端最高→贴地约 9 帧, 贴地仍 = T_TOUCH), hold 期间不定格: 继续往后压(见 ST_SLAM 的 ANT_*)。
+const SLAM_SPEED := 1.6
+const SLAM_HOLD := T_TOUCH * (1.0 - 1.0 / SLAM_SPEED)
+## hold 期间的蓄力后压(度): 根部 / 梢端再往后压这么多, 拍下开始后随抽直归零(边界连续)
+const ANT_A0 := 4.0
+const ANT_A1 := 12.0
+## 蓄力时弧长缩到攻击长度的这么多倍(实机蓄力时不长高, 拍下才甩长); 拍下时在贴地前甩回全长
+const REAR_ARC_K := 0.60
+## 待机身长 = 攻击长度 × 这个倍数(2026-11-13 对照 LoL 录屏: 触手待机时约是假人高的 2.5 倍、只有拍击射程的一半左右, 拍下才甩长;
+##   原来待机也是满射程 9.6 米 ⇒ 同样的弯法看起来是一根长鞭, 不是卷着的「?」)
+const IDLE_ARC_K := 0.60
+const STRETCH_T := 0.24
 ## 前沿的加速度: <1 ⇒ 到达时间是**凹**的 = 前沿越跑越快(鞭子渐细的直接后果)。
 ##   =1 是匀速(那是绳子不是鞭子), >1 是越跑越慢(反了)。
 const SLAM_FRONT_P := 0.60
@@ -522,7 +552,7 @@ const SLAM_LAG_K := 0.0
 const SLAM_WAVY_MIN := 0.22
 ## 待机摇曳
 ## ★2026-10-31 对齐 LoL 被动待机(约 0.45 Hz): 待机梢端实测周期 3.5 秒主要来自这两项横摆 / 波纹(不是呼吸) ⇒ 1.15 × 3.5 / 2.2
-const SWAY_SPEED := 1.82
+const SWAY_SPEED := 1.25            # 2026-11-13: 原 1.82(周期 3.5 秒) ⇒ 约 5 秒, 与待机起伏同一量级
 const SWAY_AMP := 0.30
 ## ★2026-10-31(用户意见「拍下时梢端带一点弯」): 6 → 35。仍从前摇末 68° 单调松开、不回卷(不会「拍两次」), 收回从这里接(连续)。
 const CURL_SLAM := 35.0
@@ -552,6 +582,8 @@ func _slam_curl(ts: float) -> float:
 
 ## 常驻触手：key = "side|idx" → 状态字典
 var _tents: Dictionary = {}
+## 调试场专用: true ⇒ 不接出手 / 搬家指令, 只播待机(tests/demo_tentacle_side.gd 的 SIDE_IDLE=1; 2026-11-13 用户「把待机动画播放给我」)
+var hold_idle := false
 ## 【调试台专用】锁住根数：预览自己 ensure 之后，别让 `spirit_synergy_system` 每帧
 ## 按真实档位把它撤掉（真实档位在调试台里是 0）。只有 VFXPREVIEW 会打开它。
 var preview_lock := false
@@ -625,7 +657,7 @@ func _render(t: Dictionary) -> void:
 	var g: Array = _geom(t)
 	t["root3"] = g[0]
 	t["center"] = g[1]
-	TentacleMeshVfx.apply(t, g[0], g[1], g[2], g[3], g[4], float(battle._t))
+	TentacleMeshVfx.apply(t, g[0], g[1], g[2], g[3], g[4], float(battle._t), g[5])
 
 
 ## 旧 `_rebuild` 的几何部分(原样, 只是不再建网格): 返回 [根部世界点, 中心线(世界坐标, SEG+1 点), 每点半径, 前, 侧]。
@@ -643,12 +675,10 @@ func _geom(t: Dictionary) -> Array:
 	var fwd: Vector3 = bas[1]
 	var lat: Vector3 = bas[2]
 	var up: Vector3 = bas[3]
-	var swayt: float = battle._t * SWAY_SPEED + float(t["phase"])
 	var stt: int = int(t["state"])
-	var arc: float = _arc_for(t, stt)
-	var ds: float = arc * emerge / float(SEG)     # 出土 = 露出的弧长在长
-	var pts: PackedVector3Array = _sim_chain(t, root3, fwd, lat, up, ds, ts_now, stt, swayt)
-	return [root3, pts, _radii(stt, ts_now), fwd, lat]
+	## ★2026-11-13 动作只由 TentacleRig 一个控制器决定(不锁平面 / 不叠物理补丁 / 不硬钳), 见那个文件头。
+	var rr: Array = TentacleRig.solve(self, t, root3, fwd, lat, up, stt, ts_now)
+	return [root3, rr[0], _radii(stt, ts_now), fwd, lat, rr[1]]
 
 
 ## 请求一次拍击：进入蓄势(REAR) → 拍击(SLAM) → 回位。
@@ -662,9 +692,14 @@ func strike(side: String, idx: int, aim2: Vector2, share: float = 1.0, on_touch:
 		return
 	var t: Dictionary = _tents[k]
 	var s: int = int(t["state"])
+	if hold_idle:
+		return
 	if s == ST_EMERGE or s == ST_RETRACT:
 		return                                  # 还没站稳 / 正在撤 → 不接指令
 	t["aim"] = aim2
+	## 2026-11-13: 预警 / 点刺从【此刻看得见的姿势】起(在新的拍击方向下重新量), 不跳
+	var bas_s: Array = _basis_of(root_pos(side, idx), aim2)
+	TentacleRig.capture_from(t, bas_s[1], bas_s[2], bas_s[3])
 	t["share"] = share
 	# ★追击走【点刺】（不立起、不预告），正常拍击走【蓄势】——
 	#   只有触手常驻，玩家才看得出"是它反应了一下"，所以追击不该复用整套拍击。
@@ -721,6 +756,11 @@ func tick(delta: float) -> void:
 		# ── 状态转移 ──────────────────────────────────
 		match st:
 			ST_EMERGE:
+				## 2026-11-13: 尖芽开始长出那一刻冲起一道竖直光柱(LoL 实机 2.3 s 那一下)
+				## 11-13 夜: 提前 BEAM_IN 秒生成、淡入, 光柱那一刻正好最亮(原来那一帧直接满亮度冒出来, 用户「有个闪现」)
+				var tb: float = EMERGE_RISE_T0 - TentacleSlamFx.BEAM_IN
+				if ts >= tb and ts - delta < tb:
+					TentacleSlamFx.spawn_beam(battle, root_pos(str(t["side"]), int(t["idx"])))
 				if ts >= T_EMERGE:
 					t["state"] = ST_IDLE; t["ts"] = 0.0
 			ST_WARN:
@@ -793,14 +833,54 @@ func tick(delta: float) -> void:
 						t["state"] = ST_EMERGE
 						t["ts"] = T_EMERGE - T_EMERGE_MOVE   # 搬家的破土比【登场】快
 						continue
-					for kk in ["mi", "warn_mi"]:
+					for kk in ["mi", "warn_mi", "smear_mi"]:
 						var n = t.get(kk, null)
 						if is_instance_valid(n):
 							n.queue_free()
 					_tents.erase(k)
 					continue
+		_smear_tick(t, delta)
 		# ── 画这一帧: 姿态是 (状态, 计时) 的纯函数, 每帧只写几个 uniform, 不建网格 ──
 		_render(t)
+
+
+## 拍下特效(速度线 + 刀光, TentacleSlamFx)。0 时刻 = 贴地 = 伤害时刻; 起来之后跨状态按自己的秒表走完。
+## 每一击只起一次(按 serial 记); 点刺(share<0.9)不画。
+func _smear_tick(t: Dictionary, delta: float) -> void:
+	var st: int = int(t["state"])
+	var ts: float = float(t["ts"])
+	var fresh: bool = st == ST_SLAM and float(t["share"]) >= 0.9 and int(t.get("smear_serial", -1)) != int(t.get("serial", 0))
+	if fresh and ts >= T_TOUCH - TentacleSlamFx.LEAD and ts < T_TOUCH + TentacleSlamFx.life():
+		t["smear_serial"] = int(t.get("serial", 0))
+		t["smear_age"] = ts - T_TOUCH
+		t["smear_aim"] = t["aim"]
+		## 目标闪光和速度线一起先到(录屏: 本体还在半空, 目标身上已经亮起白光圈), 贴地那一刻最亮
+		var r2: Vector2 = root_pos(str(t["side"]), int(t["idx"]))
+		var dd: Vector2 = (t["aim"] as Vector2) - r2
+		if dd.length() >= 1.0:
+			TentacleSlamFx.target_bloom(battle, r2 + dd.normalized() * minf(dd.length(), attack_range_2d), true, T_TOUCH - ts)
+	elif t.has("smear_age"):
+		t["smear_age"] = float(t["smear_age"]) + delta
+	if not t.has("smear_age"):
+		return
+	var age: float = float(t["smear_age"])
+	var mi = t.get("smear_mi", null)
+	if age > TentacleSlamFx.life():
+		t.erase("smear_age")
+		if is_instance_valid(mi):
+			mi.visible = false
+		return
+	var from2: Vector2 = root_pos(str(t["side"]), int(t["idx"]))
+	var to2: Vector2 = t["smear_aim"]
+	var dir: Vector2 = to2 - from2
+	if dir.length() < 1.0:
+		return
+	dir = dir.normalized()
+	if not is_instance_valid(mi):
+		mi = TentacleSlamFx.make_node(battle._world, "TentacleSmear_%s_%d" % [str(t["side"]), int(t["idx"])], attack_range_2d)
+		t["smear_mi"] = mi
+	TentacleSlamFx.place(mi, from2, from2 + dir * attack_range_2d, 1.0 if str(t["side"]) == "left" else -1.0, age,
+		battle._arena_center, battle.WS, battle.GROUND_LIFT + TentacleSlamFx.SMEAR_LIFT)
 
 
 ## 命中冲击（贴地版）。
@@ -1084,9 +1164,12 @@ func _impact(t: Dictionary) -> void:
 	##   原来这里还有: 目标处 120 码青环、沿途 3 个青色扬尘环、一条根部→目标的青色直线 ——
 	##   新触手本身就趴在这条通道上、拍痕又画出了整条通道, 那三样成了叠在触手身上的「无含义圆环」(实拍: 青环压在紫触手上), 删掉。
 	_flash(hit2, 1.6 if big else 1.0, d.normalized())
+	## 2026-11-13: 目标处正对镜头的白核爆闪 + 淡紫光盘。整套拍下在 `_smear_tick` 里提前 LEAD 秒起(特效先到); 点刺这里起
+	if not big:
+		TentacleSlamFx.target_bloom(battle, hit2, big)
 	## ★沿途那条【直线命中范围】(用户 2026-08-04 点名要的: 机制上打的是"根部到目标直线上所有敌人", 不画玩家永远不知道扫到的是一条线)。
 	##   时机与位置照旧(命中那一刻, 根部 → 命中点); 颜色换成灵物紫一族的亮淡紫。
-	battle._bolt_line(from2, hit2, Color(0.86, 0.76, 1.0, 0.60))
+	## 2026-11-13: 原来这里一条淡紫细线(根部 → 命中点); 刀光(TentacleSlamFx)已经画出整条路径, 细线删掉
 	if big:
 		battle._shake(battle.JUICE_SHAKE_HEAVY * 0.55)   # 砸地要有分量, 但别抢戏
 	battle._vfx._impact_particles(hit2, 0.0)
@@ -1131,7 +1214,7 @@ func default_root(side: String, idx: int) -> Vector2:
 ## ★只搬**待机中**的（正在出土/预警/拍击/撤场的不打断）。返回是否受理。
 func relocate(side: String, idx: int, to2: Vector2) -> bool:
 	var k: String = _key(side, idx)
-	if not _tents.has(k):
+	if not _tents.has(k) or hold_idle:
 		return false
 	var t: Dictionary = _tents[k]
 	if int(t["state"]) != ST_IDLE:
@@ -1163,9 +1246,12 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 	ts = maxf(ts, 0.0)
 	match st:
 		ST_EMERGE:
-			var e: float = clampf(ts / T_EMERGE, 0.0, 1.0)
-			var k: float = smoothstep(0.0, 1.0, e)
-			return [e, lerpf(ANG_EMERGE[0], ANG_IDLE[0], k), lerpf(ANG_EMERGE[1], ANG_IDLE[1], k), CURL_TIGHT * k]
+			## ★2026-11-13 照 LoL 实机出土(17.6–21.6 s 墙根那根, 60fps): 落点先一个暗紫漩涡(头 1 秒, 着色器 portal) →
+			##   第 1 秒冲起一道竖直光柱(TentacleSlamFx.spawn_beam) → 尖芽**竖直**长出、不卷(1.0–1.6 s) → 顶端展开卷成钩、落进待机(1.6–2.0 s)。
+			##   原来是 2 秒匀速一边长一边弯。总时长 T_EMERGE 不动; 搬家从 1.0 秒起播(T_EMERGE_MOVE), 正好跳过漩涡。
+			var er: float = smoothstep(0.0, 1.0, clampf((ts - EMERGE_RISE_T0) / 0.6, 0.0, 1.0))
+			var uf: float = smoothstep(0.0, 1.0, clampf((ts - EMERGE_RISE_T0 - 0.6) / 0.4, 0.0, 1.0))
+			return [er, lerpf(ANG_EMERGE[0], ANG_IDLE[0], uf), lerpf(ANG_EMERGE[1], ANG_IDLE[1], uf), CURL_TIGHT * uf]
 		ST_IDLE:
 			## ★呼吸：卷成环 ⇄ 舒展。用触手自己的相位错开，两根不同步。
 			## ★★★2026-08-22 用户:「待机你是把整个触手给了个姿势吗, 能不能优化?」—— 是的,
@@ -1179,10 +1265,12 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 				0.58 * cos(TAU * bt / BREATH_PERIOD)
 				+ 0.27 * cos(TAU * bt / (BREATH_PERIOD * 0.618) + 1.7)
 				+ 0.15 * cos(TAU * bt / (BREATH_PERIOD * 0.377) + 3.9))
-			# 舒展时不只是松卷，整条也会更斜地伸出去（逐帧看到的）
-			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] - 1.8, br),
-				lerpf(ANG_IDLE[1], ANG_IDLE[1] + 3.0, br),
-				lerpf(CURL_TIGHT, CURL_LOOSE, br)]
+			## ★2026-11-13 对照 LoL 实机待机(75–81 s, 60fps): 不是「基本不动」—— 慢速大幅整根起伏, 卷钩一张一合, 4–6 秒一个循环。
+			##   ⇒ 幅度放大到 IDLE_*_SWING; 进待机头 IDLE_BLEND 秒从 0 渐入(收回 / 出土结束在 br=0 的姿势, 不能一帧跳到别的相位)。
+			br *= smoothstep(0.0, IDLE_BLEND, ts)
+			return [1.0, lerpf(ANG_IDLE[0], ANG_IDLE[0] + IDLE_A0_SWING, br),
+				lerpf(ANG_IDLE[1], ANG_IDLE[1] + IDLE_A1_SWING, br),
+				lerpf(CURL_TIGHT, IDLE_CURL_OPEN, br)]
 		ST_WARN:
 			# ★★★2026-08-05【用户："整个过程是先高高举起并有点后仰然后直接拍下去啊"】
 			#   我之前照官方 f016~f036 做成"立钩 → 摊平 → 再立起"三段。
@@ -1216,8 +1304,12 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 			##   ⇒ 猛举 + 长减速: 三次缓出, LIFT_TOP 处到顶(速度最大在开头、一路减到 0); 之后不定格 —— 蓄力的后弯还在慢慢加(见 _lean_back)。
 			var wp: float = clampf(ts / (T_WARN * LIFT_TOP), 0.0, 1.0)
 			var q: float = 1.0 - pow(1.0 - wp, 3.0)
-			return [1.0, lerpf(ANG_IDLE[0], 101.0, q), lerpf(ANG_IDLE[1], 99.0, q),
-				lerpf(CURL_TIGHT, 50.0, q)]
+			## ★2026-11-13 对照 LoL 实机 7 次拍下逐帧(31.1 / 45.2 s 最清楚): 竖起 → 卷成钩 → **整根抡到身后、压得很低**
+			##   (钩头一直卷着、背鳍朝上) → 往前甩。原来抬到 101°/99° 再后弯 = 一根高杆往后仰。
+			##   ⇒ 根部更往后倒(WARN_A0)、卷曲只松到 WARN_CURL(留钩); 起点接住进预警那一刻的姿势(待机幅度放大后不能从 ANG_IDLE 硬起)。
+			var wf: Array = t.get("warn_from", [1.0, ANG_IDLE[0], ANG_IDLE[1], CURL_TIGHT])
+			return [1.0, lerpf(float(wf[1]), WARN_A0, q), lerpf(float(wf[2]), WARN_A1, q),
+				lerpf(float(wf[3]), WARN_CURL, q)]
 		ST_REAR:
 			# ★★★2026-08-04【整条曲线逐帧对齐之后的重做】
 			#   官方前摇 5 帧（−5→−1）：青覆盖 **1.55 → 2.73（+76%）**、
@@ -1229,7 +1321,7 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 			# ★接住预警末"举到位"的姿态(108°/142°)，只再往后压一点点就出手。
 			#   原来从 ANG_IDLE 起插值 ⇒ 前摇一开始高度先掉回去，又是一次多余的落。
 			var r: float = smoothstep(0.0, 1.0, clampf(ts / T_REAR, 0.0, 1.0))
-			return [1.0, lerpf(101.0, ANG_REAR[0], r), lerpf(99.0, ANG_REAR[1], r),
+			return [1.0, lerpf(WARN_A0, ANG_REAR[0], r), lerpf(WARN_A1, ANG_REAR[1], r),
 				# 前摇要【张开】不是卷死 —— 卷死 = 缩成一团 = 投影塌(实测 −3→−2 掉 24%)
 				# ★★2026-08-05：196 那档 ⇒ 前摇末 196° 一帧跳到拍击的 6°，
 				#   帧间形状差异率 **0.923**（官方同处只有 0.208）。
@@ -1237,13 +1329,16 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 				#   ⇒ 前摇末直接松到 68°，把 190° 的跳变拆成 194→68→6 两步。
 				# ★卷曲量也要接住预警末的 50° —— 原来这里是 CURL_TIGHT(262°)，
 				#   进前摇第一帧整条又卷回去，0.13 秒内再放开。角度接上了、这一项忘了。
-				lerpf(50.0, 68.0, r)]
+				lerpf(WARN_CURL, 68.0, r)]
 		ST_SLAM:
 			## ★2026-10-31 对齐 LoL 下拍(用户「动作也得调」): 实测梢端从最高到贴地 14 帧(60fps), 中途悬停 2~3 帧再加速
 			##   (逐帧下落 0.38 0.44 0.37 0.27 0.18 0.10 0.03 0.00 0.26 1.11 1.37 …) —— 「拍击中段定格」那一族;
 			##   LoL Q 是 4 帧(30fps)一路加速。⇒ 先顶在高处蓄力 SLAM_HOLD 秒, 再把这条拍击曲线(含行波前沿)以 SLAM_SPEED 倍速播完;
 			##   SLAM_HOLD = T_TOUCH × (1 − 1/SLAM_SPEED) ⇒ 贴地仍落在 T_TOUCH(伤害时刻不动)。点刺(share<0.9)第 0 帧命中, 不蓄力。
+			## 2026-11-13: hold 期间不定格 —— 继续往后压(ant 0→1), 拍下开始后随抽直归零(见下面 a0v/a1v)
+			var ant: float = 0.0
 			if float(t["share"]) >= 0.9:
+				ant = smoothstep(0.0, 1.0, clampf(ts / maxf(SLAM_HOLD, 0.001), 0.0, 1.0))
 				ts = maxf(ts - SLAM_HOLD, 0.0) * SLAM_SPEED
 			# ★★★官方拍击【一帧都没有停过】：
 			#     覆盖 +0 7.06 → +2 峰值 8.53 → +6 5.47 → +9 4.11（**每帧都在降**）
@@ -1276,8 +1371,8 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 			#   ⇒ 角度必须**同步下压**，把抻直带来的抬升抵消掉。
 			#     下压量 ≈ curl 的降幅（REAR_END_CURL − CURL_SLAM = 62°）。
 			var comp: float = (REAR_END_CURL - CURL_SLAM) * settle * 0.45
-			var a0v: float = lerpf(ANG_REAR[0], ANG_SLAM[0], e2) - 10.0 * settle - comp * 0.35
-			var a1v: float = lerpf(ANG_REAR[1], ANG_SLAM[1], e2) - 8.0 * settle - comp
+			var a0v: float = lerpf(ANG_REAR[0], ANG_SLAM[0], e2) - 10.0 * settle - comp * 0.35 + ANT_A0 * ant * (1.0 - e2)
+			var a1v: float = lerpf(ANG_REAR[1], ANG_SLAM[1], e2) - 8.0 * settle - comp + ANT_A1 * ant * (1.0 - e2)
 			return [1.0, a0v, a1v, _slam_curl(ts)]
 		ST_RECOVER:
 			# ★官方恢复是 **19 帧的长尾**（+10 3.91 缓降到 +28 1.72），
@@ -1321,7 +1416,13 @@ func _phase_at(t: Dictionary, ts: float) -> Array:
 func _arc_for(t: Dictionary, stt: int) -> float:
 	var reach_arc: float = ARC_LEN            # ★弧长恒定（= ATTACK_LEN），鞭子不会变长
 	match stt:
+		ST_EMERGE, ST_IDLE, ST_RETRACT:
+			return ARC_LEN * IDLE_ARC_K       # 2026-11-13: 待机短身(LoL 实机), 拍下才甩长
 		ST_WARN:
+			## ★2026-11-13: 蓄力时缩短(实机蓄力不长高; 原来弧长恒定 9.6 ⇒ 松开卷曲就立成一根 9.6 米的杆子)
+			var wk: float = smoothstep(0.0, 1.0, clampf(float(t["ts"]) / T_WARN, 0.0, 1.0))
+			if wk >= 0.0:
+				return ARC_LEN * lerpf(IDLE_ARC_K, REAR_ARC_K, wk)
 			# ★弧长跟着【两次起伏】走：立钩 ×1.45 → 摊平 ×1.10 → 再立起卷环 ×1.55
 			var wq: float = clampf(float(t["ts"]) / T_WARN, 0.0, 1.0)
 			# ★官方摊平段(f024~f036)面积**回落到待机的 0.72~0.75 倍** —— 是缩小不是涨。
@@ -1331,12 +1432,16 @@ func _arc_for(t: Dictionary, stt: int) -> float:
 			#   预警期的"长大/摊平"改由**卷曲量**表达（见 `_phase` 的 ST_WARN）。
 			return ARC_LEN
 		ST_REAR:
-			# 前摇【长大】：不是缩，官方那 5 帧面积涨了 76%
-			return ARC_LEN          # ★弧长恒定 —— 前摇的"长大"同样改由卷曲量表达
+			return ARC_LEN * REAR_ARC_K   # 2026-11-13: 蓄力保持短身(见 ST_WARN)
 		ST_SLAM:
-			return ARC_LEN          # ★弧长恒定（投影长度的变化由卷曲量产生，见 _slam_curl）
+			## 2026-11-13: 拍下时甩回全长 —— 在贴地之前(拍击曲线自己的时间 STRETCH_T 内)甩满; 点刺不缩不甩
+			if float(t["share"]) < 0.9:
+				return ARC_LEN
+			var lt: float = maxf(float(t["ts"]) - SLAM_HOLD, 0.0) * SLAM_SPEED
+			return ARC_LEN * lerpf(REAR_ARC_K, 1.0, smoothstep(0.0, 1.0, clampf(lt / STRETCH_T, 0.0, 1.0)))
 		ST_RECOVER:
-			return ARC_LEN          # ★同上 —— 收回是"卷回来"不是"变短"
+			## 2026-11-13: 收回时从全长缩回待机短身(LoL 实机: 梢端先抬起卷回, 身子收短)
+			return ARC_LEN * lerpf(1.0, IDLE_ARC_K, smoothstep(0.0, 1.0, clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)))
 	return ARC_LEN
 
 
@@ -1365,6 +1470,11 @@ func _curvature(t: Dictionary, stt: int, u: float, curl_u: float, cfrom: float) 
 	if u > cfrom:
 		var cu: float = (u - cfrom) / (1.0 - cfrom)
 		k = 2.0 * curl_u * cu / (1.0 - cfrom)
+	## ★2026-11-13 螺旋钩头(照 LoL 实机待机「?」形, 顶端卷成螺旋): 只在最后约 28% 身长多卷 HOOK_EXTRA,
+	##   权重按「卷了多少」算(卷曲 ≥ CURL_TIGHT 满额, ≤ 100 为 0) —— 卷紧的待机 / 出土末 / 收回末有钩, 张开、蓄力末、拍击自然没有;
+	##   卷曲量本身连续, 这一项跟着连续, 状态切换不跳。
+	var hk: float = clampf((curl_u - 100.0) / (CURL_TIGHT - 100.0), 0.0, 1.0)
+	k += HOOK_EXTRA * hk * smoothstep(0.72, 1.0, u)
 	# 行波包：只在拍击/收回期
 	# ★★行波【不在拍击期开】：脉冲经过中段会把梢端顶高 ——
 	#   实测 SLAM/0.05 高度 0.681 被顶回 0.771，那就是用户看到的第二次拍击。
@@ -1436,11 +1546,15 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 	kacc += _curvature(t, stt, u, curl_u, cfrom) / float(SEG)
 	## 松开按「离拍下行波前沿到达本段还有多久」算; 前摇期也按这把尺子(否则松开从拍下第 0 帧才起, 切换处一跳)
 	var tl_lean: float = ts_now - lag_u
+	## 2026-11-13: 拍击先 hold SLAM_HOLD 秒 ⇒ 松开也按同一把尺子往后推(点刺不 hold)
+	if stt == ST_SLAM and float(t["share"]) >= 0.9:
+		tl_lean -= SLAM_HOLD
 	if stt == ST_REAR:
-		tl_lean = ts_now - T_REAR - T_SLAM * SLAM_FRONT_SPAN * pow(u, SLAM_FRONT_P) / SLAM_SPEED
+		tl_lean = ts_now - T_REAR - SLAM_HOLD - T_SLAM * SLAM_FRONT_SPAN * pow(u, SLAM_FRONT_P) / SLAM_SPEED
 	var lean_k: float = _lean_back(stt, tl_lean) / LEAN_DEG
 	## 往后折的同时把往前勾的卷曲收掉(用户 11-01「最顶端…还是往前面吊着的」)
-	ang -= kacc * (1.0 - 0.9 * lean_k)
+	## 2026-11-13: 0.9 → 0.35 —— LoL 实机抡到身后时钩头一直卷着(原来几乎全收掉 = 一根直杆)
+	ang -= kacc * (1.0 - 0.35 * lean_k)
 	## ★2026-11-01 用户「抬起是出手根部带动上部…最末端应该是往后仰…猛拍…同样的是有个先从下到上抽动的这个顺序…跟鞭子一样」:
 	##   出手改走跟随(不再跑会抽的链式模拟)之后, 惯性拖尾不会自己长出来 ⇒ 画进目标姿势(见 LEAN_DEG)。
 	## 弧: 从底到顶每段多转一点 ⇒ 整根往后弯成一条弧(LEAN_P = 1 是等曲率)。
@@ -1456,11 +1570,25 @@ func _seg_angle(t: Dictionary, stt: int, u: float, ts_now: float,
 		## ★2026-08-21 句7: 原来拍击期把摆动**压到 0**(整条锁死在一个竖直平面)。
 		##   现在留一个地板值 SLAM_WAVY_MIN —— 砸下去仍有轻微横摆, 不再像一根铁棍。
 		wavy = maxf(SLAM_WAVY_MIN, 1.0 - clampf(float(t["ts"]) / SNAP_T, 0.0, 1.0))
-	var yaw: float = deg_to_rad(S_AMP * sin(u * TAU * 0.6 + swayt) * wavy)
+	var yaw: float = deg_to_rad(_sway_amp(t, stt) * sin(u * TAU * 0.6 + swayt) * wavy)
 	# ★主干的波浪起伏 —— 逐帧看官方 idle，主干【不是光滑的弧】，
 	#   沿长度有明显的一波一波（像水流）。叠在切角上，幅度不大但读得出来。
 	ang += 7.0 * wavy * sin(u * TAU * 2.1 + swayt * 1.7)
 	return [ang, yaw, curl_u, kacc]
+
+
+## 待机侧摆的权重(0..1): 进待机 IDLE_BLEND 秒渐入; 预警头 0.35 秒从进预警那一刻的权重渐出; 其余 0。
+func _sway_k(t: Dictionary, stt: int) -> float:
+	var ts: float = float(t["ts"])
+	if stt == ST_IDLE:
+		return smoothstep(0.0, IDLE_BLEND, ts)
+	if stt == ST_WARN:
+		return float(t.get("sway_k0", 0.0)) * (1.0 - smoothstep(0.0, 0.35, ts))
+	return 0.0
+
+
+func _sway_amp(t: Dictionary, stt: int) -> float:
+	return lerpf(S_AMP, S_AMP_IDLE, _sway_k(t, stt))
 
 
 ## 上半截后仰量(度): 跟着抬起猛弯到 LEAN_FAST(三次缓出), 到顶后蓄力再慢慢加满, 到拍下那刻最满(用户 11-01「从抬头到劈下去…不连贯不自然」: 原来前 45% 弯完就定住 0.6 秒) → 前摇满额 → 拍下时本段在行波前沿到达前 0.08 秒起松开、到达后 0.02 秒松完(从后面甩回来路程长, 晚松会让落地晚于伤害帧)。tl = 本段的局部时间。
@@ -1524,15 +1652,27 @@ func _sim_chain(t: Dictionary, root3: Vector3, fwd: Vector3, lat: Vector3, up: V
 		var yw: float = float(seg[1])
 		dirs.append((fwd * cos(ar) * cos(yw) + lat * sin(yw) * cos(ar) + up * sin(ar)).normalized())
 	## ── 抽搐修复②: 状态切换后目标方向平滑过渡(见 SWITCH_BLEND 注) ──
+	## ★2026-11-13 待机 = 我们自己的关键帧(TentacleIdleKeys: 照 LoL 录屏量出的 8 个阶段 / 关键姿势 / 节奏 / 梢端滞后摆的, 14.5 秒一个循环):
+	##   每一节方向按关键帧播, 进待机头 IDLE_BLEND 秒从参数姿势渐变过去(收回末的姿势连续); 两根触手按各自相位错开、不同步。
+	if stt == ST_IDLE:
+		var wr: float = smoothstep(0.0, IDLE_BLEND, ts_now)
+		var tl: float = battle._t + float(t["phase"]) / TAU * TentacleIdleKeys.period()
+		for i in range(n):
+			var ar2: float = deg_to_rad(TentacleIdleKeys.angle_at(tl, (float(mini(i, SEG - 1)) + 0.5) / float(SEG)))
+			var rd: Vector3 = (fwd * cos(ar2) + up * sin(ar2)).normalized()
+			dirs[i] = dirs[i].slerp(rd, wr) if dirs[i].length() > 0.5 else rd
 	var d_prev: PackedVector3Array = t.get("sim_dirs", PackedVector3Array())
 	var switched: bool = stt != int(t.get("sim_st", stt)) or ts_now < float(t.get("sim_ts", ts_now)) - 0.000001
 	if switched and stt != ST_SLAM and d_prev.size() == n:
 		t["sim_dirs0"] = d_prev
 		t["sim_blend"] = 0.0
+		## 离开待机(描帧姿势)时过渡拉长: 表里的姿势可能离预警起手姿势很远, 0.15 秒会读成一跳
+		t["sim_blend_len"] = 0.35 if int(t.get("sim_st", -1)) == ST_IDLE else SWITCH_BLEND
 	var bl: float = float(t.get("sim_blend", SWITCH_BLEND))
-	if bl < SWITCH_BLEND and stt != ST_SLAM and t.has("sim_dirs0"):
+	var bln: float = float(t.get("sim_blend_len", SWITCH_BLEND))
+	if bl < bln and stt != ST_SLAM and t.has("sim_dirs0"):
 		var d0: PackedVector3Array = t["sim_dirs0"]
-		var kb: float = smoothstep(0.0, 1.0, bl / SWITCH_BLEND)
+		var kb: float = smoothstep(0.0, 1.0, bl / bln)
 		for i in range(n):
 			var dm: Vector3 = d0[i].lerp(dirs[i], kb)
 			if dm.length() > 0.0001:
@@ -1872,7 +2012,7 @@ func clear() -> void:
 		#   下一根触手新建的同名节点被 Godot 自动改名成 `@TentacleWarn_left_0@…`，
 		#   于是按名字找节点的代码（门禁）**找到的是那个已隐藏的旧节点** ——
 		#   报出来是"预警带没建出来"，实际是建了两个、找错了一个。
-		for kk in ["mi", "warn_mi"]:
+		for kk in ["mi", "warn_mi", "smear_mi"]:
 			var n = (_tents[k] as Dictionary).get(kk, null)
 			if is_instance_valid(n):
 				n.queue_free()

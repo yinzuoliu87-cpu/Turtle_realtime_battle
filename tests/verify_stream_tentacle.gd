@@ -105,6 +105,10 @@ func _record() -> Dictionary:
 			var tn: StreamRecorder.TN = t
 			if not is_instance_valid(tn.n) or not tn.n.has_meta(F.SP_META):
 				continue
+			## 2026-11-13: 拍下刀光节点(TentacleSlamFx)也带热参数标记, 但它不是触手本体(没有控制点) —— 本体 / 接触阴影才进这张表;
+			##   刀光走同一套热参数录法, 它「不每步重建网格」由下面 gen_smear_unit 那条单独守。
+			if not PackedStringArray(tn.n.get_meta(F.SP_META)).has("ctrl_pts"):
+				continue
 			var mi := tn.n as MeshInstance3D
 			var mat := mi.material_override as ShaderMaterial
 			if mat == null:
@@ -202,6 +206,10 @@ func _record() -> Dictionary:
 	var keys := int(ceil(float(STEPS) / float(F.KEY_STEPS)))
 	_ok("★流里触手网格只定义 %d 次(≤ keyframe 段数 %d), 没有每步一代的旧出处键(%d)" % [tube_n, keys, old_gen],
 		tube_n >= 1 and tube_n <= keys and old_gen == 0)
+	## 2026-11-13 拍下刀光(TentacleSlamFx): 同一条规矩 —— 整局一份网格, 每步只改 age。
+	##   第一版每步重建, 这条量到 245 份定义(那就是「回放掉帧」那一族)。没拍下过的局分母为 0, 不判。
+	var smear_n: int = int((gb.get("gen_smear_unit", [0, 0]) as Array)[0])
+	_ok("★流里刀光网格只定义 %d 次(≤ keyframe 段数 %d), 不每步重建" % [smear_n, keys], smear_n <= keys)
 	return {"chunks": rec.chunks, "meta": m, "snaps": snaps, "seed": seed, "ids": ids_seen, "shared_v": shared_v}
 
 

@@ -3,11 +3,15 @@ extends Node
 ## (2026-08-20 立 · 2026-10-31 随灵物触手重做改写; 方案书 docs/plans/20261031d-灵物触手重做.md §4.3)
 ##
 ## ── 留下来的(新做法同样成立, 判据换成量着色器拿到的 24 个控制点, tests/_tentacle_geo.gd) ──
-##   ① ★梢端【过了下落半程之后】再不许回抬 —— 用户 2026-08-05「明明我看到了两次拍击」(拍两次 = 落下去又抬起来)
-##   ② ★没有任何一段扎进地面以下 —— 用户 2026-08-21「拍下去的时候鞭子有一部分直接在地下了」
+##   ① ★目标那一侧只落地一次(= 不拍两次) —— 用户 2026-08-05「明明我看到了两次拍击」
+##   ② ★落地之后整根不埋进地下 —— 用户 2026-08-21「拍下去的时候鞭子有一部分直接在地下了」
+##   ★2026-11-14 ①② ④ 的量法改了(用户 11-13 同意「删 / 改『拍下过半程回抬 1 mm 就红』等旧补丁判据, 保留『伤害时刻 = 梢端贴地那一帧 ±0.05 秒』」,
+##     方案书 20261113b §7): 拍下改成照用户手标的 LoL 4 击(往后抡过头顶 → 刀光时本体还卷着 → 晚约 2 帧甩直贴地 → 梢端回弹一下),
+##     往后抡时梢端会扫到根部身后的地面(落差里多出地下 1.9 米)⇒ 旧量法「过落差半程后回抬 1 mm」「任何一段在地下」「走完 90% 落差」
+##     把身后那一下当成落地, 全部失真。改成只看【目标那一侧】(梢端朝目标伸出 ≥ FWD_MIN 米): 落地 = 梢端从 LAND_H 以上落到以下并停住。
 ##   ③ ★拍击全程弧长恒定 —— 用户 2026-08-05「戳出去」= 拍击中途变长。阈值沿用旧门禁的棘轮 36%(旧版链式模拟的收敛残差,
 ##      只降不升): 10-31 用户否了第一版成品, 第一路改成以旧版中心线为起点原样恢复 ⇒ 尺子回到旧版验收过的那一把, 修好了再往下收
-##   ④ ★梢端真正落地的时刻 = 伤害结算时刻(`hit_delay`, 差 ≤ 0.05 秒) —— 用户 2026-08-21「肯定是落地伤害」
+##   ④ ★梢端在目标那一侧最终落地的时刻 = 伤害结算时刻(`hit_delay`, 差 ≤ 0.05 秒) —— 用户 2026-08-21「肯定是落地伤害」
 ##   ⑤ ★点刺(闪避追击, share < 0.9)同样不回抬、不扎地
 ##
 ## ── 删掉的(★未决, 已登记方案书 §5 U5; 第一路恢复旧版中心线后按它交回的样子再定要不要找回来) ──
@@ -25,8 +29,14 @@ const G := preload("res://tests/_tentacle_geo.gd")
 const TV := preload("res://scripts/systems/equip/tentacle_vfx.gd")
 ## 拍击全程弧长允许的相对波动 —— 旧门禁的棘轮值(只降不升; 旧版实测 35.5%)
 const ARC_TOL := 0.36
-## 梢端落地口径: 走完全程落差的这个比例就算砸到了
-const TOUCH_FRAC := 0.90
+## 梢端落地口径(2026-11-14): 梢端从 LAND_H 米以上落到以下(≈ 身子粗 + 落地回弹), 那一帧朝目标伸出 ≥ FWD_MIN 米;
+##   落过一次之后要先抬回 LAND_H + REARM 米以上, 再落下才算新的一次(正常那一下落地后回弹最高 0.59 米, 不会被数成两次;
+##   起初要求落地后连着 3 帧贴地 ⇒ 「碰一下马上弹起再落」的第一下不算, 变异自证抓不到拍两次, 已改)
+const LAND_H := 0.6
+const FWD_MIN := 3.0
+const REARM := 0.4
+## 落地之后「埋进地下」的容差(米)
+const BURY_EPS := 0.1
 ## 伤害结算与梢端真正落地之间允许的最大时差(秒)
 const HIT_GAP_MAX := 0.05
 ## 判「回抬」的最小抬高(米): 着色器拿到的是姿态表算出来的点, 没有模拟噪声, 1 毫米就算
@@ -47,7 +57,12 @@ func _ok(t: String, c: bool, ex: String = "") -> void:
 func _strike_rows(tv, mi: MeshInstance3D, share: float) -> Array:
 	var rows: Array = []
 	var root_y: float = mi.position.y
-	tv.strike("left", 0, tv.root_pos("left", 0) + Vector2(380.0, 20.0), share)
+	var aim2: Vector2 = tv.root_pos("left", 0) + Vector2(380.0, 20.0)
+	## 朝目标的水平方向(世界): 量梢端朝目标伸出多远(往后抡到身后 = 负)
+	var dir3: Vector3 = tv.battle._world_pos(aim2, 0.0) - tv.battle._world_pos(tv.root_pos("left", 0), 0.0)
+	dir3.y = 0.0
+	dir3 = dir3.normalized()
+	tv.strike("left", 0, aim2, share)
 	for i in range(400):
 		G.step(tv)
 		var pts := G.world_pts(mi)
@@ -56,13 +71,34 @@ func _strike_rows(tv, mi: MeshInstance3D, share: float) -> Array:
 		var lo := 1.0e9
 		for p in pts:
 			lo = minf(lo, p.y)
-		rows.append([int(tv.state_of("left", 0)), pts[pts.size() - 1].y - root_y, lo - root_y, G.arc(pts), float(i + 1) * G.SIM_DT])
+		var tip: Vector3 = pts[pts.size() - 1]
+		rows.append([int(tv.state_of("left", 0)), tip.y - root_y, lo - root_y, G.arc(pts), float(i + 1) * G.SIM_DT,
+			Vector3(tip.x - mi.position.x, 0.0, tip.z - mi.position.z).dot(dir3)])
 		if int(tv.state_of("left", 0)) == 1 and i > 10:
 			break
 	return rows
 
 
 ## 拍击态(ST_SLAM)那一段里, 梢端过了下落半程之后的回抬次数与最大回抬
+## 目标那一侧的落地事件(拍击 + 收回态): [[落地时刻(两帧之间插值), 行号], ...]。口径见 LAND_H / REARM。
+func _landings(rows: Array) -> Array:
+	var out: Array = []
+	var armed := true
+	for k in range(1, rows.size()):
+		var r: Array = rows[k]
+		var pr: Array = rows[k - 1]
+		if not (int(r[0]) == 3 or int(r[0]) == 4):
+			continue
+		if float(r[1]) >= LAND_H + REARM:
+			armed = true
+		if armed and float(pr[1]) >= LAND_H and float(r[1]) < LAND_H and float(r[5]) >= FWD_MIN:
+			var y0: float = float(pr[1])
+			var y1: float = float(r[1])
+			out.append([float(pr[4]) + (y0 - LAND_H) / maxf(y0 - y1, 1.0e-6) * G.SIM_DT, k])
+			armed = false
+	return out
+
+
 func _late_rise(rows: Array) -> Array:
 	var ys: Array = []
 	for r in rows:
@@ -133,38 +169,34 @@ func _ready() -> void:
 	_ok("★分母: 采到拍击态 %d 帧(= 0.5 秒)" % slam_n, slam_n >= 28)
 
 	var lr: Array = _late_rise(rows)
-	print("     梢端 %.2f → %.2f 米 · 过半程之后回抬 %d 次(最大 %.4f 米)" % [y_hi, y_lo, int(lr[0]), float(lr[1])])
+	var lands: Array = _landings(rows)
+	var land_str := PackedStringArray()
+	for e in lands:
+		land_str.append("%.3f 秒" % float(e[0]))
+	print("     梢端 %.2f → %.2f 米 · 目标那一侧落地 %d 次(%s)" % [y_hi, y_lo, lands.size(), ", ".join(land_str)])
 	_ok("★分母: 梢端真的过了下落半程", int(lr[0]) >= 0)
-	_ok("★★★① 梢端过了下落半程之后再不许回抬(= 不许拍两次)", int(lr[0]) == 0, "回抬 %d 次, 最大 %.4f" % [int(lr[0]), float(lr[1])])
+	_ok("★★★① 目标那一侧只落地一次(= 不拍两次)", lands.size() == 1, "%d 次" % lands.size())
 
-	print("     拍击 / 收回期 有 %d 帧有点在地面以下, 最深 %.3f 米" % [under, under_deep])
-	_ok("★★② 没有任何一段扎进地面以下(拍击 + 收回全程)", under == 0, "%d 帧, 最深 %.3f" % [under, under_deep])
+	## ② 落地之后(那一帧起)拍击 + 收回态整根不埋进地下
+	var k_land: int = int(lands[lands.size() - 1][1]) if lands.size() > 0 else rows.size()
+	var bury := 0
+	var bury_deep := 0.0
+	for k3 in range(k_land + 1, rows.size()):
+		var r4: Array = rows[k3]
+		if (int(r4[0]) == 3 or int(r4[0]) == 4) and float(r4[2]) < -BURY_EPS:
+			bury += 1
+			bury_deep = maxf(bury_deep, -float(r4[2]))
+	print("     落地之后 有 %d 帧有点埋在地下 %.2f 米以下, 最深 %.3f 米(往后抡时扫到身后地面 %d 帧、最深 %.3f 米, 不算)" % [bury, BURY_EPS, bury_deep, under, under_deep])
+	_ok("★★② 落地之后整根不埋进地下(拍击 + 收回全程)", lands.size() > 0 and bury == 0, "%d 帧, 最深 %.3f" % [bury, bury_deep])
 
 	print("     拍击期弧长 %.2f ~ %.2f 米(攻击长度 %.1f, 差 %.1f%%)" % [arc_lo, arc_hi, TV.ATTACK_LEN, (arc_hi - arc_lo) / maxf(arc_lo, 0.01) * 100.0])
 	_ok("★★③ 拍击全程弧长恒定(波动 ≤ %.0f%%) —— 不许「戳出去」, 也不许缩回去" % (ARC_TOL * 100.0),
 		arc_hi > 1.0 and arc_hi - arc_lo <= arc_lo * ARC_TOL, "%.2f ~ %.2f" % [arc_lo, arc_hi])
 
-	## ④ 真落地时刻(梢端走完 90% 落差) vs 伤害时刻
-	## ★落地时刻在两帧之间线性插出来(旧门禁按 1/120 秒采样; 这里按真实 sim 步 1/60 秒走, 不插的话会多算最多一帧)
-	var t_geo := -1.0
-	var passed_hi := false
-	var thr: float = y_hi - (y_hi - y_lo) * TOUCH_FRAC
-	var prev_r: Array = []
-	for r2 in rows:
-		if int(r2[0]) != 3:
-			continue
-		if float(r2[1]) >= y_hi - 1.0e-6:
-			passed_hi = true
-		if passed_hi and float(r2[1]) <= thr:
-			t_geo = float(r2[4])
-			if not prev_r.is_empty() and float(prev_r[1]) > thr:
-				var y0: float = float(prev_r[1])
-				var y1: float = float(r2[1])
-				t_geo = float(prev_r[4]) + (y0 - thr) / maxf(y0 - y1, 1.0e-6) * G.SIM_DT
-			break
-		prev_r = r2
+	## ④ 目标那一侧最终落地的时刻 vs 伤害时刻
+	var t_geo: float = float(lands[lands.size() - 1][0]) if lands.size() > 0 else -1.0
 	var t_hit: float = float(TV.hit_delay(1.0))
-	print("     梢端真正落地 %.3f 秒 / 伤害结算 %.3f 秒(差 %.3f)" % [t_geo, t_hit, absf(t_geo - t_hit)])
+	print("     梢端在目标那一侧落地 %.3f 秒 / 伤害结算 %.3f 秒(差 %.3f)" % [t_geo, t_hit, absf(t_geo - t_hit)])
 	_ok("★★④ 落地那一刻就是伤害那一刻(差 ≤ %.2f 秒)" % HIT_GAP_MAX, t_geo > 0.0 and absf(t_geo - t_hit) <= HIT_GAP_MAX)
 
 	## ── ⑤ 点刺 ──
