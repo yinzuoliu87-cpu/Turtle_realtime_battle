@@ -260,7 +260,8 @@ func _ready() -> void:
 	var wroster: Dictionary = _roster()
 	_s._equip_sys._eq_water_wave(cw, 2)
 	var tt: float = 0.0
-	for _k in range(180):
+	## 推 6 秒: 11-14 起浪速 600 码/秒 ⇒ 蓄浪 0.5 + 推进 5 秒(最远的 +1100 那个约 4.3 秒才到; 原来 180 步 = 3 秒是按 2 秒浪写的)
+	for _k in range(360):
 		var t0w: float = _s._t
 		_s._sim_step(_s.SIM_DT, false, false)
 		if absf(_s._t - t0w) < 1e-6:
@@ -274,6 +275,7 @@ func _ready() -> void:
 			pr["t"] = tt
 			var span: Array = _wave_span(wroster, startc, dir)
 			var mf: float = ((pr["u"]["pos"] as Vector2) - startc).dot(dir)
+			## 11-14 判定点改成「浪前沿碰到身体边缘」(battle_vfx TIDE_LEAD)后实测: 挨打时人在整道浪最前缘内侧 11 码 ⇒ 原判据照旧成立, 不放宽
 			pr["ok"] = bool(span[0]) and mf >= float(span[1]) and mf <= float(span[2])
 			pr["gap"] = mf - float(span[2])
 	var hit_n: int = 0

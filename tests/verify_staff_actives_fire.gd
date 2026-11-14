@@ -135,8 +135,10 @@ func _ready() -> void:
 		##     它自己就能把条攒满并触发(实测 6 件在对照期 `条余 0.0` = 真的放了)。
 		##     用产品自己的防连放闸 `_staff_busy` —— `add_mana` 开头就 return, 不另造机关。
 		u["_staff_busy"] = true
+		## 观察窗: 一般 90 帧; 043 浪速 600 码/秒(11-14), 浪从携带者身后 1200 码推过来约 3 秒才碰到人 ⇒ 给 240 帧(对照组同长)
+		var win: int = 240 if iid == "p2eq_043" else 90
 		var ctl0: Array = _snap(s, u, es)
-		for _cf in range(90):
+		for _cf in range(win):
 			s._sim_step(1.0 / 60.0, false, false)
 			if _cf % 3 == 0:
 				await get_tree().process_frame
@@ -150,7 +152,7 @@ func _ready() -> void:
 		##   023 灼热火珊瑚走的是 `await battle._wait_sim(0.4)` + `await process_frame`
 		##   的**协程**, 同步循环里真实帧一帧都没过 ⇒ 协程永远不恢复 ⇒ 我一度把它误判成
 		##   "效果埋在 tween 里量不到"。分类错了, 判据自然也就错了。
-		for _f in range(90):
+		for _f in range(win):
 			s._sim_step(1.0 / 60.0, false, false)
 			if _f % 3 == 0:
 				await get_tree().process_frame

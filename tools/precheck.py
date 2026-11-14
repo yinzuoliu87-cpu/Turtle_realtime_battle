@@ -74,6 +74,11 @@ def pick(files):
 	srcs = {os.path.basename(p)[:-3]: read(p) for p in sorted(glob.glob(os.path.join(ROOT, "tests", "verify_*.gd")))}
 	hub = {k for k in keys if sum(1 for t in srcs.values() if k in t) > HUB_MAX}
 	data_scan = data_scan_patterns(files)
+	## ★枢纽文件不按文件展开, 但按「这次改了它里面哪些函数 / 常量 / 装备」展开(2026-11-14 加):
+	##   改 043 时 equip_system.gd 是枢纽 ⇒ 点名 `_eq_water_wave` 的 verify_line_band_vfx、按类型表遍历全部法器的
+	##   verify_staff_actives_fire 都没被选上, 红在 CI 上(用户 11-06「CI 不是用来找小错的」)。
+	syms, eq_ids = hub_symbols([f for f in files if f in hub])
+	syms = {s for s in syms if sum(1 for t in srcs.values() if s in t) <= HUB_MAX}
 	out = {}
 	for name, src in srcs.items():
 		if name in ALWAYS:
@@ -84,14 +89,46 @@ def pick(files):
 			out[name] = "全仓扫描"
 		elif any(p.search(src) for p, _ in data_scan):
 			out[name] = "数据整表扫描 " + next(f for p, f in data_scan if p.search(src))
+		elif eq_ids and EQ_TABLE.search(src):
+			out[name] = "装备整表遍历(改了 %s)" % ",".join(sorted(eq_ids)[:3])
 		else:
 			for k in keys:
 				if k not in hub and k in src:
 					out[name] = "提到 " + k
 					break
+			else:
+				for s in sorted(syms):
+					if re.search(r"\b%s\b" % re.escape(s), src):
+						out[name] = "提到枢纽里改动的 " + s
+						break
 	if hub:
-		print("枢纽文件不展开: " + ", ".join(sorted(hub)))
+		print("枢纽文件不展开: " + ", ".join(sorted(hub)) + (" · 但按改动的符号展开 %d 个" % len(syms) if syms else ""))
 	return out
+
+
+## 测试里「按装备表把全部装备 / 某一类装备挨个跑」的写法: 改了某件装备的玩法就要跑它们
+EQ_TABLE = re.compile(r"p2eq-types\.json|phase2-equipment\.json|for\s+\w+\s+in\s+DataRegistry\.equip\w*|EquipStats\.STATS\b")
+
+
+def hub_symbols(hub_files):
+	"""枢纽文件这次 diff 里动到的函数名 / 常量名 / 装备 id(取 hunk 头所在函数 + 改动行里定义或点名的)。"""
+	syms, eq_ids = set(), set()
+	if not hub_files:
+		return syms, eq_ids
+	base = git("merge-base", "origin/main", "HEAD")
+	for f in hub_files:
+		diff = git("diff", "-U0", base, "--", f) + "\n" + git("diff", "-U0", "--", f)
+		for line in diff.splitlines():
+			if line.startswith("@@"):
+				m = re.search(r"@@[^@]*@@\s*(?:static\s+)?func\s+(\w+)", line)
+				if m:
+					syms.add(m.group(1))
+			elif line[:1] in "+-" and not line.startswith(("+++", "---")):
+				for m in re.finditer(r"\b(?:func|const|var)\s+(\w+)", line):
+					syms.add(m.group(1))
+				eq_ids.update(re.findall(r"\bp2eq_\d{3}\b", line))
+	syms = {s for s in syms if len(s) >= 6}   # 太短的名字(如 `u` / `dir`)到处都是, 不当信号
+	return syms, eq_ids
 
 
 def data_scan_patterns(files):
