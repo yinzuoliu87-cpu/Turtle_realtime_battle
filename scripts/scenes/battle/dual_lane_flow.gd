@@ -8,6 +8,7 @@ extends RefCounted
 const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 const _BE := preload("res://scripts/net/backend.gd")   # 对手快照的赛季等级判据(ghost_level)
+const LaneMapIntro := preload("res://scripts/scenes/battle/lane_map_intro.gd")   # 换路幕布三段演出 + 开战横幅(2026-11-15)
 
 var battle
 
@@ -83,18 +84,6 @@ func _dl_enter_present(mode: String) -> void:
 		tw.tween_property(battle._dl_present_root, "modulate:a", 1.0, 0.28) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
-## 等布局算出 size 之后把这些浮层的缩放轴心挪到中心。
-## ★存成员而不是闭包捕获: 见上面那段病历(闭包捕获 Node 会变野捕获)。
-var _pivot_pending: Array = []
-
-
-func _fix_pending_pivots() -> void:
-	for c in _pivot_pending:
-		if c != null and is_instance_valid(c):
-			(c as Control).pivot_offset = (c as Control).size * 0.5
-	_pivot_pending.clear()
-
-
 ## 点掉呈现幕布 —— **人为输入, 改结果**: 它决定下一路在第几个 sim 步建场。
 ## ★回放: 录下步号; 播放时人点不动(只认记录里那一下, 由 ReplayRecorder 在同一步重放)。
 func _dl_present_click() -> void:
@@ -161,90 +150,17 @@ func _dl_build_present_overlay(mode: String) -> void:
 	back.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _dl_present_click())
 	battle._ui_layer.add_child(back)
 	battle._dl_present_root = back
-	var center = CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	## 看回放时底部有一条操作条(replay_controls, 高 ReplayControls.STRIP_H): 幕布上的牌子在它上面那块里居中, 不被它压住。
 	var _rp_inset: float = 0.0
 	if battle._replay != null and ((battle._replay.is_playing() and not battle._replay.is_live())
 			or (battle._replay.player != null and battle._replay.player.controls)):   # 观赛没有操作条; 状态流回放有
 		_rp_inset = ReplayControls.STRIP_H + 4.0
-	center.offset_bottom = -_rp_inset
-	back.add_child(center)
-	var panel = PanelContainer.new()
-	panel.name = "PresentPanel"
-	# 撑大呈现面板(用户2026-07-12「预览这么小」), 但按视口收口 ——
-	#   原来死写 980x560, 窄屏(手机竖屏/小窗)直接顶出屏幕外, 卡片被裁掉看不全。
-	var _vp: Vector2 = battle.get_viewport().get_visible_rect().size   # ★Node3D 没有 get_viewport_rect()
-	panel.custom_minimum_size = Vector2(minf(980.0, _vp.x - 48.0), minf(560.0, _vp.y - 48.0 - _rp_inset))
-	## ★2026-10-05(回放体验打磨 · 主会话实玩): 原来是 StyleBoxFlat 圆角 18 + 3px 黄边 + 纯黑底 = 网页卡片。
-	##   换成战斗信息面板 / 结算屏同一张九宫格金属框(`SettleScreen.frame_style()`), 不新增素材。
-	var sb: StyleBox = SettleScreenS.frame_style().duplicate()
-	sb.content_margin_left = 46; sb.content_margin_right = 46; sb.content_margin_top = 36; sb.content_margin_bottom = 36
-	panel.add_theme_stylebox_override("panel", sb)
-	center.add_child(panel)
-	var vb = VBoxContainer.new(); vb.add_theme_constant_override("separation", 24); vb.alignment = BoxContainer.ALIGNMENT_CENTER; panel.add_child(vb)
-	var cur_lane = str(GameState.current_lane) if GameState != null else "top"
-	## ★路名只有一个出处 `battle._LANE_CN`(上路 / 下路 / 决胜) —— 原来这里写「终极」、顶上写「上半场/终极战场」, 同一件事三个叫法。
-	var lane_cn: Dictionary = battle._LANE_CN
-	var title = Label.new()
-	title.name = "PresentTitle"
-	title.add_theme_font_size_override("font_size", 48); title.add_theme_color_override("font_color", Color("#ffd93d"))
-	UISkin.title_label(title, 48)   # 过场标题: 像素标题字 48 号(docs/plans/20261027-UI美术规矩.md §4.1)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(title)
-	if mode == "overview":
-		## ★★文案改过两次, 两次错得不一样 —— 记下来免得第三次又改回去:
-		##   v1 "⚔ 三路对阵总览"   —— 「总览」是 Overview 直译, 仪表盘词。
-		##   v2 "⚔ 三个战场都要打" —— 我 2026-09-28 改的, **把标题写成了一句规则说明**,
-		##      读起来像教学提示。用户 2026-09-29 当场指出:「任何别人的商业游戏会这样子写吗」—— 不会。
-		##   ★两次的共同病因: **拿标题去解释屏幕上已经看得见的东西**。
-		##      三路对手就摆在下面, 标题该说的是【此刻发生什么】, 不是【你得做什么】。
-		## v3(2026-10-05): 去掉「⚔」—— 它在本项目字体链里是单色 emoji 兜底画的细线条, 贴在像素框上是两套画法。
-		title.text = "三路开战"
-		for ln in ["top", "bottom", "final"]:
-			vb.add_child(_dl_overview_lane_row(ln, str(lane_cn.get(ln, ln))))
-	elif mode == "preview":
-		## ★原文案 "对阵预览" —— 「预览」是编辑器/网页词。这一幕的两列阵容+VS 本身就说清了
-		##   "谁对谁", 标题该说的是【接下来要发生什么】。
-		title.text = "%s  对阵" % lane_cn.get(cur_lane, cur_lane)   # 2026-10-06 原「马上开打」口语(60 人实操台账 M3)
-		vb.add_child(_dl_matchup_row(cur_lane))
-	elif mode == "lane_settle":
-		var win_lr = "right" if battle._dl_pending_loser == "left" else "left"
-		## 「我方」= 录像里看的人那一侧(周六配对局我是 B ⇒ 右边; 其余一律左边, 与改之前相同)
-		var me_lr: String = ReplayRecorder.my_side(battle)
-		title.text = "%s  战果" % lane_cn.get(cur_lane, cur_lane)
-		var r = Label.new(); r.add_theme_font_size_override("font_size", 36)
-		UISkin.title_label(r, 36)   # 比上面的过场标题低一级
-		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == me_lr else Color("#ff9b9b"))
-		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		r.name = "LaneSettleResult"
-		r.text = "本战场胜利" if win_lr == me_lr else "本战场失败"
-		vb.add_child(r)
-		var rec = Label.new(); rec.add_theme_font_size_override("font_size", 19); rec.add_theme_color_override("font_color", Color("#ffe9a8"))
-		rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		rec.name = "LaneSettleRecord"
-		rec.text = _dl_record_line(cur_lane, win_lr)   # 带本路待记结果 → 赢上路即显1-0(record在5秒后才调)
-		vb.add_child(rec)
-		if GameState != null and GameState.egg_hp is Dictionary:
-			var e = Label.new(); e.add_theme_font_size_override("font_size", 16); e.add_theme_color_override("font_color", Color("#cfe6ff"))
-			e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			e.name = "LaneSettleEggs"
-			e.text = "龟蛋生命  我方 %d  ·  对方 %d" % [int(GameState.egg_hp.get(me_lr, 0.0)), int(GameState.egg_hp.get(ReplayRecorder.foe_side(battle), 0.0))]
-			vb.add_child(e)
-	var hint = Label.new(); hint.add_theme_font_size_override("font_size", 13); hint.add_theme_color_override("font_color", Color("#7a8a96"))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	## ★原文案 "（自动 5 秒 · 点击跳过）" —— 「自动 5 秒」是实现参数(玩家不需要知道那个 5),
-	##   「点击」也是网页动词。两个可能的行为都还在, 只是不再报数。
-	## ⚠ 别把后半句写成"自己开打": 这行 hint 三幕共用(overview/preview/lane_settle),
-	##   而 lane_settle 那幕点下去是【进结算】不是开打 —— 写死"开打"就有一幕是假的。
-	## ★v2(2026-10-05): 「（点一下接着来 · 不点也一样）」读起来像在跟玩家解释机制 —— 商业游戏就写「点击继续」。
-	##   回放里点了也没用(只认录像里那一下) ⇒ 回放不出这一行。
-	hint.name = "PresentHint"
-	hint.text = "点击继续"
-	if not battle._replay.is_playing() and str(battle._replay.mode) != "stream":   # 逐帧直播播放端也点不动(只认服务器那一下)
-		vb.add_child(hint)
+	## ★2026-11-15 整块换成「战场地图 / 对阵 / 一路战果」三段演出(用户「三路开战这个…这种描述其实不符合一种商业游戏啊…
+	##   是否可以通过…地图一样的形式去展现出来，就是做多做点动画啥的」; 方案书 docs/plans/20261115d-三路战场地图开场.md)。
+	##   原来: 金属框面板里一张表格(标题「三路开战」+ 三行小头像)、两列单位卡、几行结算字。版面与动画全在 lane_map_intro.gd,
+	##   这里只留幕布本身(不透明底板 / 点哪都继续 / 回放内缩)。文案教训照旧: 标题不写规则说明(10-05「三个战场都要打」被否)。
+	LaneMapIntro.new(battle, self).build(back, mode, _rp_inset)
 	_dl_pass_clicks_to(back)
-	_dl_stagger_in(vb)
 
 
 ## ★2026-10-14 内测反馈「切换下半战场时点中间的区域继续，没反应」:
@@ -260,36 +176,6 @@ func _dl_pass_clicks_to(back: Control) -> void:
 		if c is Control and (c as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
 			(c as Control).mouse_filter = Control.MOUSE_FILTER_PASS
 
-
-## 幕布内容逐个弹入 (2026-07-21): 原本整块一次性出现, 信息一股脑砸脸上。
-##   ★只能 tween alpha/scale —— 这些是 VBoxContainer 的子项, position 由布局接管, tween 它会被布局覆盖回去。
-##   ★不能过 battle._reg_tween(): 后者会进 battle._sim_tweens, 而 _dl_clear_units() 换路时会把 battle._sim_tweens
-##     全 kill 掉 —— 跨路的幕布动画会被连坐杀掉。
-func _dl_stagger_in(vb: VBoxContainer) -> void:
-	var i = 0
-	for c in vb.get_children():
-		var ctrl = c as Control
-		if ctrl == null:
-			continue
-		ctrl.modulate.a = 0.0
-		# pivot 要等布局算出 size 才能定 —— 这里 size 还是 0, 直接乘会把轴心钉在左上角,
-		#   缩放就变成"从左边长出来"而不是原地弹。挂 resized 一次性回调。
-		## ★★2026-08-21: 原来是 `_c.resized.connect(func(): _c.pivot_offset = ...)` ——
-		##   闭包**捕获了局部的 `_c`(一个 Control 节点)**。场景被立即释放(`free()`)时,
-		##   若 `resized` 恰在拆除过程中发出, 引擎去绑那个已释放的捕获就报
-		##   `Lambda capture at index 0 was freed`。★报错在【绑定捕获】那一刻,
-		##   函数体没执行 ⇒ 在闭包里加 is_instance_valid 救不了。
-		##   ⇒ 改成只捕获 `self`(本类是 RefCounted, 被 Callable 引用着不会没),
-		##     节点引用存成员数组, 回调里再逐个 is_instance_valid。
-		_pivot_pending.append(ctrl)
-		ctrl.resized.connect(_fix_pending_pivots, CONNECT_ONE_SHOT)
-		ctrl.scale = Vector2(0.88, 0.88)
-		# tween 绑在 ctrl 上而不是场景上: 幕布被提前点掉时随节点一起销毁, 不会对着已释放的目标报错。
-		var tw = ctrl.create_tween()
-		tw.tween_interval(0.07 * float(i))
-		tw.tween_property(ctrl, "modulate:a", 1.0, 0.16)
-		tw.parallel().tween_property(ctrl, "scale", Vector2.ONE, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		i += 1
 
 # 本场分路比分行: "本场比分  我方 X - Y 对方".
 #   extra_lane/extra_winner: 结算幕布显示时本路结果尚未 record(record在5秒后的lane_over才调) → 传入待记结果, 让「赢上路→显1-0」而非0-0(用户2026-07-12).
@@ -309,98 +195,12 @@ func _dl_record_line(extra_lane: String = "", extra_winner: String = "") -> Stri
 		else: rw += 1
 	return "各路战果    我方 %d : %d 对方" % [lw, rw]   # ★"本场比分…-…"改成冒号比分, 与结算页口径一致
 
-# 对阵预览一行: [我方阵容列]  VS  [对方阵容列] (各带头像/等级/名字/装备图+星级)
-# 对阵预览一行: [我方阵容列]  VS  [对方阵容列] (各带头像/等级/名字/装备图+星级)
-func _dl_matchup_row(lane: String) -> Control:
-	var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 44); row.alignment = BoxContainer.ALIGNMENT_CENTER
-	## 回放里看别人的录像时「我方」是录像方, 对看的人是错话 ⇒ 知道名字就写名字(ReplayRecorder.side_names)。
-	var hdr := _side_headers()
-	## 名字颜色跟「我方」走: 绿 = 我、红 = 对面(周六配对局我是 B ⇒ 右边那一列是绿; 其余与改之前相同)。只改字色, 卡片照旧按左右建。
-	var mine_l: bool = ReplayRecorder.my_side(battle) == "left"
-	row.add_child(_dl_side_column(_dl_lane_specs(lane), true, str(hdr["l"]), Color("#9ae6b0") if mine_l else Color("#ff9b9b")))
-	var vs = Label.new(); vs.text = "VS"; vs.add_theme_font_size_override("font_size", 56); vs.add_theme_color_override("font_color", Color("#ffd93d")); vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(vs)
-	row.add_child(_dl_side_column(_dl_foe_specs(lane), false, str(hdr["r"]), Color("#ff9b9b") if mine_l else Color("#9ae6b0")))
-	return row
-
-
 func _side_headers() -> Dictionary:
 	var _stream: bool = str(battle._replay.mode) == "stream"
 	if not (battle._replay.is_playing() or _stream) or ReplayRecorder.play_names.is_empty():
 		return {"l": "我方", "r": "对方"}
 	var nm: Dictionary = StreamHud.side_names() if _stream else ReplayRecorder.side_names(battle._replay.rec)
 	return {"l": str(nm["l"]) if str(nm["l"]) != "" else "我方", "r": str(nm["r"]) if str(nm["r"]) != "" else "对方"}
-
-# 总览一路: 【上路】 [我方小头像…] vs [对方小头像…]
-# 总览一路: 【上路】 [我方小头像…] vs [对方小头像…]
-func _dl_overview_lane_row(lane: String, cn: String) -> Control:
-	var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 18); row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var tag = Label.new(); tag.text = cn; tag.add_theme_font_size_override("font_size", 26); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
-	tag.custom_minimum_size = Vector2(108, 0); row.add_child(tag)
-	if lane == "final":
-		var fl = Label.new(); fl.text = "上下路幸存单位"; fl.add_theme_font_size_override("font_size", 22); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
-		row.add_child(fl)
-		return row
-	row.add_child(_dl_mini_avatars(_dl_lane_specs(lane)))
-	var vs = Label.new(); vs.text = "vs"; vs.add_theme_font_size_override("font_size", 24); vs.add_theme_color_override("font_color", Color("#ffd93d")); row.add_child(vs)
-	row.add_child(_dl_mini_avatars(_dl_foe_specs(lane)))
-	return row
-
-func _dl_mini_avatars(specs: Array) -> Control:
-	var h = HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
-	for s in specs:
-		h.add_child(_dl_avatar_node(s, 64))
-	return h
-
-# 一侧阵容列: 标题 + 逐单位卡片
-# 一侧阵容列: 标题 + 逐单位卡片
-func _dl_side_column(specs: Array, is_mine: bool, header: String, col: Color) -> Control:
-	var vb = VBoxContainer.new(); vb.add_theme_constant_override("separation", 14); vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	var h = Label.new(); h.text = header; h.add_theme_font_size_override("font_size", 26); h.add_theme_color_override("font_color", col); h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(h)
-	if specs.is_empty():
-		var em = Label.new(); em.text = "—"; em.add_theme_color_override("font_color", Color("#7a8a96")); vb.add_child(em)
-	for s in specs:
-		vb.add_child(_dl_unit_card(s, is_mine))
-	return vb
-
-# 单位卡: [头像(稀有度描边)] [名字 / Lv] + 装备图标行(带★星级)
-# 单位卡: [头像(稀有度描边)] [名字 / Lv] + 装备图标行(带★星级)
-func _dl_unit_card(spec, is_mine: bool) -> Control:
-	var card = PanelContainer.new()
-	card.custom_minimum_size = Vector2(320, 0)
-	var csb = StyleBoxFlat.new(); csb.bg_color = Color(0.08, 0.12, 0.18, 0.9)
-	csb.set_border_width_all(1); csb.border_color = Color(1, 1, 1, 0.08)
-	## ★2026-10-05: 圆角 10 的半透明块 → 槽框九宫格(与左右栏单位卡同一族皮), 压暗一档免得抢标题。
-	var cst: StyleBox = UISkin.slot(csb, Color(0.80, 0.86, 0.95))
-	cst.content_margin_left = 14; cst.content_margin_right = 18; cst.content_margin_top = 11; cst.content_margin_bottom = 11
-	card.add_theme_stylebox_override("panel", cst)
-	var hb = HBoxContainer.new(); hb.add_theme_constant_override("separation", 14); card.add_child(hb)
-	hb.add_child(_dl_avatar_node(spec, 84))
-	var info = VBoxContainer.new(); info.add_theme_constant_override("separation", 5); info.alignment = BoxContainer.ALIGNMENT_CENTER; hb.add_child(info)
-	var nr = HBoxContainer.new(); nr.add_theme_constant_override("separation", 10); info.add_child(nr)
-	var nm = Label.new(); nm.text = _dl_spec_name(spec); nm.add_theme_font_size_override("font_size", 24); nm.add_theme_color_override("font_color", Color("#e6edf3"))
-	nr.add_child(nm)
-	var lvl = 1
-	if GameState != null and GameState.season_level != null: lvl = maxi(1, int(GameState.season_level))
-	if not is_mine: lvl = _dl_foe_level(lvl)   # 对手卡写对手自己的等级(快照带; 旧快照 = 与我同级)
-	## 按龟等级(R1, 2026-11-09): 统领卡写这只龟自己的等级(这一方带 lv 表时; 与战斗 `_unit_level(side, id)` 同一个取法)
-	var _pl: int = TurtleLevel.level_of(GameState, "left" if is_mine else "right", str(spec.get("id", "")) if str(spec.get("kind", "")) == "leader" else "", true)
-	if _pl >= 1: lvl = _pl
-	var lv = Label.new(); lv.text = "Lv.%d" % lvl; lv.add_theme_font_size_override("font_size", 17); lv.add_theme_color_override("font_color", Color("#ffd93d")); lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	## 援军小将不按等级成长(按本周场数), 卡上不挂「Lv」(同信息面板 / 头像框的口径)
-	if str(spec.get("role", "")) != "reserve":
-		nr.add_child(lv)
-	var eqs = _dl_spec_equips(spec, is_mine)
-	if not eqs.is_empty():
-		var er = HBoxContainer.new(); er.add_theme_constant_override("separation", 4)
-		for e in eqs:
-			if e is Dictionary:
-				er.add_child(_dl_equip_chip(str(e.get("id", "")), int(e.get("star", 1))))
-		info.add_child(er)
-	else:
-		var ne = Label.new(); ne.text = "（无装备）"; ne.add_theme_font_size_override("font_size", 15); ne.add_theme_color_override("font_color", Color("#5f6f7c")); info.add_child(ne)
-	return card
 
 # 头像节点(稀有度描边). spec 为 leader→avatars/<id>.png; minion→该种小将的头像(MinionCodex.avatar_path)
 func _dl_avatar_node(spec, sz: int) -> Control:
@@ -521,12 +321,19 @@ func _dl_fight_start_dramatize() -> void:
 	battle._shake_force(battle.JUICE_SHAKE_HEAVY)
 	_dl_flash_screen(Color(1.0, 0.92, 0.55), 0.22)      # 淡金起手闪
 	battle._audio_sys._sfx_simple("fight_start")        # 开战声(整局最响的一声; 2026-11-04 对标云顶开战横幅那一声)
-	battle._vfx._float_text(battle._arena_center + Vector2(0.0, -120.0), "开 战", Color("#ffd93d"), true, "label")
+	## ★2026-11-15 原来是场中一个飘字「开 战」⇒ 横贯屏幕的开战横幅(荒野乱斗「BRAWL」/ 陷阵之志「PLAYER TURN」那一拍;
+	##   方案书 docs/plans/20261115d-三路战场地图开场.md)。手机直播靠 fight_banner 事件播同一条。
+	show_fight_banner(str(GameState.current_lane) if GameState != null else "top")
 	# 两侧战线各炸一圈, 强调"两边同时压上来"
 	var half_w: float = battle.ARENA.size.x * 0.5
 	var cy: float = battle._arena_center.y
 	battle._splash_ring_bold(Vector2(battle._arena_center.x - half_w * 0.55, cy), Color(0.36, 0.66, 1.0), 150.0)
 	battle._splash_ring_bold(Vector2(battle._arena_center.x + half_w * 0.55, cy), Color(1.0, 0.42, 0.42), 150.0)
+
+## 开战横幅: 本机建 + 直播录事件; 手机端 stream_player 收到 fight_banner 调回这里(record = false)。
+func show_fight_banner(ln: String, record: bool = true) -> void:
+	if record and StreamRecorder.cur != null: StreamRecorder.cur.ev("fight_banner", [ln])
+	LaneMapIntro.fight_banner(battle, ln)
 
 ## 开打站位夹取(双方都用这一个)。★2026-10-19: 背包里摆好的站位(`LineupPos`)在建场时按这张图夹一遍 ⇒ 带上 side。
 ##   背包站位编辑(`InvFormation.clamp_world`)用同一组数(岛形 pad 60 / 中线 120), 只是不管障碍(每张图不同)。

@@ -341,8 +341,15 @@ func _battle(gs, art: String) -> void:
 	_ok("分母: 幕布建出来了", root != null and cur_txt.size() > 3, str(cur_txt.size()))
 	_ok("★④ 我方名单为空 ⇒ 幕布卡片写「援军小将」", cur_txt.has(ReserveConsts.NAME), str(cur_txt))
 	_ok("④ 对照: 对方幸存的近战 / 精英小将按种类叫全名(11-11 原来近战 / 远程一律写「小将」)", cur_txt.has("近战小将") and cur_txt.has("精英小将"))
-	var want_cur: String = hd
-	_ok("★④ 援军卡头像 = 援军头像", cur_tex.has(want_cur), str(cur_tex))
+	## 2026-11-15 对阵幕布改成双方全身立绘斜切对峙(方案书 20261115d): 援军那一张 = 援军自己的全身图(待机帧表), 不是通用小将的图。
+	##   本局两边各一只援军(我方名单空 + 对方两只小将之后补一只) ⇒ 援军全身图恰好 2 张。
+	var want_body: String = str((s._reserve_sys.sprite_dict()["tex"] as Texture2D).resource_path)
+	var n_res := 0
+	for p in cur_tex:
+		if p == want_body:
+			n_res += 1
+	_ok("★④ 对阵幕布里援军那一张 = 援军自己的全身图(两边各一张)", n_res == 2 and want_body.contains("reserve"), "%s × %d / %s" % [want_body, n_res, str(cur_tex)])
+	var want_cur: String = hd   # ⑤ 结算表 / ⑥ 顶栏仍是头像框(头部特写)
 	_ok("④ 名字函数: 援军 / 普通 / 精英", s._dl_sys._dl_spec_name({"kind": "minion", "role": "reserve"}) == ReserveConsts.NAME
 		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "back"}) == "远程小将"
 		and s._dl_sys._dl_spec_name({"kind": "minion", "role": "front"}) == "近战小将"

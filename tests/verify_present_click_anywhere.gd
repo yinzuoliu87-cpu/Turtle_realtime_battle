@@ -8,7 +8,8 @@ extends Node
 ## 判据(真点击, 经 Viewport.push_input 走引擎自己的 GUI 拾取):
 ##   ① 对阵幕布(preview)里每个可见控件的中心点一下 ⇒ 幕布都被点掉
 ##   ② 装备格悬停提示仍在(改成 PASS 不能把 tooltip 弄没)
-##   分母: 点过的控件数 ≥ 10, 且其中有头像框 Panel。
+##   分母: 点过的控件数 ≥ 10, 且其中有单位立绘(2026-11-15 对阵屏换成双方全身立绘斜切对峙, 原来的头像框 Panel 没了 ——
+##   立绘 TextureRect 盖在屏幕中间一大片, 是现在最可能吃掉点击的那一层)。
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_present_click_anywhere.tscn
 
@@ -97,22 +98,22 @@ func _ready() -> void:
 	var tg := _targets(root)
 	## 只记位置与种类: 每点一次幕布就换一张, 节点引用会失效
 	var pts: Array = []
-	var n_panel := 0
+	var n_body := 0
 	var tips := 0
 	var seen := {}
 	for c in tg:
 		var ctr: Vector2 = (c as Control).get_global_rect().get_center()
 		## 同一点(±12px)只点一次: 卡片 / 卡内 HBox / 头像框中心常常重合, 重复点不多验任何东西
 		var key := Vector2i(roundi(ctr.x / 12.0), roundi(ctr.y / 12.0))
-		if c.get_class() == "Panel":
-			n_panel += 1
+		if c is TextureRect and (c as TextureRect).texture is AtlasTexture:
+			n_body += 1
 		if seen.has(key):
 			continue
 		seen[key] = true
 		pts.append([ctr, c.get_class(), str(c.name)])
 		if (c as Control).tooltip_text != "":
 			tips += 1
-	_ok("分母: 幕布里可点的控件 ≥ 10 个(含头像框 Panel)", pts.size() >= 10 and n_panel >= 1, "控件 %d · Panel %d" % [pts.size(), n_panel])
+	_ok("分母: 幕布里可点的控件 ≥ 10 个(含单位立绘)", pts.size() >= 10 and n_body >= 1, "控件 %d · 立绘 %d" % [pts.size(), n_body])
 
 	## ① 真点击端到端: 点正中间一次 ⇒ 幕布推进(下路开始建场 → place)
 	root = await _enter_preview()

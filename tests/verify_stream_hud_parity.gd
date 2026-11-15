@@ -147,13 +147,15 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 					tx[k1] = int(tx.get(k1, 0)) + int(tx[k0])
 					tx.erase(k0)
 					hdr_swaps += 1
-			## 「点击继续」: 播放端点不动(只认服务器那一下) ⇒ 不出这一行; 本机那边有 ⇒ 记分母后从本机拿掉
+			## 「点击继续」: 2026-11-15 起幕布上一律不出这一行(用户「全程在服务器上运行…应该没有说用户可以点击的东西」)。
+			##   分母 = 本机采到幕布的采样点数(有 PresentPanel 下的文字), 两边都不许出现「点击继续」。
 			var hint_k := "PresentPanel|点击继续"
-			if tx.has(hint_k):
+			if tx.has(hint_k) or (snaps[nxt]["texts"] as Dictionary).has(hint_k):
 				hint_bad += 1
-			if (snaps[nxt]["texts"] as Dictionary).has(hint_k):
-				hint_n += 1
-				(snaps[nxt]["texts"] as Dictionary).erase(hint_k)
+			for kk in (snaps[nxt]["texts"] as Dictionary).keys():
+				if str(kk).begins_with("PresentPanel|"):
+					hint_n += 1
+					break
 			var dd: Dictionary = H.diff(snaps[nxt], mine, "步%d" % nxt, fresh)
 			if fresh:
 				fresh_n += 1
@@ -199,7 +201,7 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	_ok("★%s 幕布对阵行列头写的是入口给的名字(%d 次)" % [tag, hdr_swaps], hdr_swaps > 0)
 	print("  [量] %s 建栏当步(只不比头像框血条比例)%d 个采样点 · 头像框栏重建 %d 次 · 装备字段收到 %d 次" % [tag, fresh_n, p.hud.panels_built, p.hud.equips_set])
 	_ok("分母 · %s 头像框栏重建过(%d 次, 每路至少一次)、建栏当步 %d ≤ 3" % [tag, p.hud.panels_built, fresh_n], p.hud.panels_built >= 3 and fresh_n <= 3)
-	_ok("★%s 幕布不出「点击继续」(本机有它的采样点 %d 个, 播放端出现 %d 次)" % [tag, hint_n, hint_bad], hint_n > 0 and hint_bad == 0)
+	_ok("★%s 幕布上两边都不出「点击继续」(采到幕布的采样点 %d 个, 出现 %d 次)" % [tag, hint_n, hint_bad], hint_n > 0 and hint_bad == 0)
 	b.queue_free()
 	ReplayRecorder.play_names = pn0
 	await get_tree().process_frame

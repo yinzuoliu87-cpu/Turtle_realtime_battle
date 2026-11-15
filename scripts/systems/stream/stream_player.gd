@@ -646,6 +646,9 @@ func _event(kind: String, a: Array) -> void:
 		"curtain_in":
 			if not DualLaneFlow.NO_PRESENT and _curtain_ok():
 				battle._dl_sys._dl_enter_present(str(a[0]))
+		"fight_banner":
+			## 开战横幅(2026-11-15 起服务器开打那一步发; 老裁判机不发 ⇒ 不出横幅, 不报错)
+			battle._dl_sys.show_fight_banner(str(a[0]) if a.size() >= 1 else "top", false)
 		"curtain_out":
 			battle._dl_sys._dl_clear_present_overlay()
 		"lane_clear":
