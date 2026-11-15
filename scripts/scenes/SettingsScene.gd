@@ -1609,6 +1609,7 @@ func _open_time_travel() -> void:
 
 func _open_debug_arena() -> void:
 	_RB_DEBUG.DEBUG_EDIT = true    # 调试场=自由摆位编辑器(左键摆龟/拖拽/右键删/装备笔刷/开始暂停·用户2026-07-12恢复)
+	BattleDebugArena.enter_with_saved_theme()   # 新地图(用户 11-15「这个旧的调试场怎么还用的是旧地图啊」): 存档选的那张, 默认暗林
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null: gs.set("dual_active", false)   # 清双路态
 	SceneNav.go(get_tree(), "res://scenes/RealtimeBattle3D.tscn")

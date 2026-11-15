@@ -10,6 +10,55 @@ var _edit_press_at: Vector2 = Vector2.ZERO
 func _init(b) -> void:
 	battle = b
 
+
+## ── 调试场用哪张地图 ──
+## 用户 11-15:「这个旧的调试场怎么还用的是旧地图啊？麻烦你换成新地图好吗？我们现在在新地图上，它这个特效在新地图上看不到啊。
+##   你这个调试场落后了，请你把这个调试场优化一下。」
+## 正式对局 10-04 起从四张新图(暗林 / 深礁 / 紫墟 / 赤林, `ArenaTheme.MATCH_POOL`)里随机, 旧图 V0_BASE 已退役;
+## 调试场却一直沿用「进场前那张」= 旧图 ⇒ 特效在旧地面上调好, 到新地图的暗色地面上可能看不清。
+## ⇒ 进调试场(设置页入口 `SettingsScene._open_debug_arena`)时先把地图设成存档里选的那张新图(默认 DEV_THEME 暗林);
+##   编辑面板「地图」键在四张新图之间轮换, 记进 debug_setup.json 的 "theme", 并重开调试场(摆位照旧自动恢复)。
+## ★选图规则本身不改(`ArenaTheme.choose_for_battle`: 开发工具场次沿用进场前那张): 门禁先设 `ArenaTheme.active` 再建调试场
+##   看指定主题的那些(verify_arena_theme_pick ③ / verify_cam_extent …)照旧成立。
+const DEV_THEME := ArenaTheme.V1_DUSK
+const SETUP_PATH := "user://debug_setup.json"
+
+
+## 存档里选的调试场地图(不在四张新图里 / 没存过 ⇒ 暗林)。
+static func saved_theme() -> String:
+	if FileAccess.file_exists(SETUP_PATH):
+		var data = JSON.parse_string(FileAccess.get_file_as_string(SETUP_PATH))
+		if data is Dictionary:
+			var t: String = str((data as Dictionary).get("theme", ""))
+			if ArenaTheme.MATCH_POOL.has(t):
+				return t
+	return DEV_THEME
+
+
+## 进调试场之前调: 地图设成存档那张新图。★顺手清掉「上一场正式对局选的图」标记 ——
+##   否则存档那张恰好等于上一场正式对局随机到的那张时, `choose_for_battle` 会当成「正式对局留下的」还原回进场前的旧图。
+static func enter_with_saved_theme() -> void:
+	ArenaTheme.active = saved_theme()
+	ArenaTheme._picked = ""
+
+
+func _edit_map_label() -> String:
+	return "地图：%s ▸" % str(ArenaTheme.cfg_of(ArenaTheme.active).get("label", ArenaTheme.active))
+
+
+## 「地图」键: 换到下一张新图, 存档, 重开调试场(地图是进场时搭的, 换图要重开; 摆位从存档自动恢复)。
+func _edit_cycle_map() -> void:
+	var pool: Array = ArenaTheme.MATCH_POOL
+	var i: int = pool.find(ArenaTheme.active)
+	var nxt: String = str(pool[(i + 1) % pool.size()]) if i >= 0 else DEV_THEME
+	if battle._edit_mode and not battle._units.is_empty():
+		_edit_snapshot_setup()             # 编辑中刚摆的也带上(战斗中就用开打那一刻的摆位)
+	ArenaTheme.active = nxt
+	ArenaTheme._picked = ""
+	_edit_save_setup()
+	Engine.time_scale = 1.0
+	SceneNav.go(battle.get_tree(), "res://scenes/RealtimeBattle3D.tscn")
+
 func _edit_handle_mouse_button(ev: InputEventMouseButton) -> void:
 	var screen = ev.position
 	if ev.button_index == MOUSE_BUTTON_RIGHT and ev.pressed:
@@ -673,9 +722,10 @@ func _edit_save_setup() -> void:
 		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1))})
 		var _id = str(s.get("id", ""))
 		if GameState != null and GameState.loadouts.has(_id): lds[_id] = GameState.loadouts[_id]
-	var f = FileAccess.open("user://debug_setup.json", FileAccess.WRITE)
+	var f = FileAccess.open(SETUP_PATH, FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify({"units": arr, "loadouts": lds})); f.close()
+		var th: String = ArenaTheme.active if ArenaTheme.MATCH_POOL.has(ArenaTheme.active) else saved_theme()
+		f.store_string(JSON.stringify({"units": arr, "loadouts": lds, "theme": th})); f.close()
 
 func _edit_load_setup() -> void:
 	if not FileAccess.file_exists("user://debug_setup.json"): return

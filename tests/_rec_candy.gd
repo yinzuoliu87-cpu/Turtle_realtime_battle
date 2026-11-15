@@ -31,6 +31,9 @@ func _ready() -> void:
 	if OS.has_environment("REC_SECS"):
 		_secs = float(OS.get_environment("REC_SECS"))
 	OS.set_environment("TURTLE_SEED", "424242")
+	## 新地图(用户 11-15「这个旧的调试场怎么还用的是旧地图啊」): 默认暗林, REC_THEME 可指定 dusk / reef / shoal / storm
+	ArenaTheme.active = OS.get_environment("REC_THEME") if ArenaTheme.MATCH_POOL.has(OS.get_environment("REC_THEME")) else BattleDebugArena.DEV_THEME
+	ArenaTheme._picked = ""
 	var RB = load("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	RB.DEBUG_EDIT = true
 	_scn = load(BATTLE_SCENE).instantiate()

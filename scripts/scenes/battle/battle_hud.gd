@@ -1587,6 +1587,8 @@ func _build_edit_palette() -> void:
 	var row_ctl2 = HBoxContainer.new(); row_ctl2.add_theme_constant_override("separation", 8); vb.add_child(row_ctl2)
 	row_ctl2.add_child(battle._debug._edit_mk_btn("清空", func(): battle._debug._edit_clear(), 90))
 	row_ctl2.add_child(battle._debug._edit_mk_btn("返回菜单", func(): battle._debug._edit_exit_to_menu(), 120))
+	## 地图: 在正式对局那四张新图之间轮换(用户 11-15「这个旧的调试场怎么还用的是旧地图啊…请你把这个调试场优化一下」)
+	row_ctl2.add_child(battle._debug._edit_mk_btn(battle._debug._edit_map_label(), func(): battle._debug._edit_cycle_map(), 150))
 
 	battle._edit_lbl_status = Label.new()
 	battle._edit_lbl_status.add_theme_font_size_override("font_size", 15)

@@ -12,8 +12,9 @@ local cel = spr.cels[1]
 
 local DARK = Color{ r = 58, g = 30, b = 46, a = 235 }     -- 裂缝(深紫褐)
 local DENT = Color{ r = 74, g = 44, b = 58, a = 120 }     -- 坑底(半透明, 压暗草地)
-local RIM = Color{ r = 150, g = 104, b = 112, a = 150 }   -- 坑沿翻起的土(亮一点)
-local SYRUP = Color{ r = 238, g = 120, b = 160, a = 230 } -- 缝里的粉色糖浆光
+local RIM = Color{ r = 226, g = 182, b = 174, a = 210 }   -- 坑沿翻起的土(亮; 11-15 新地图暗色地面上原来那档看不见)
+local EDGE = Color{ r = 246, g = 214, b = 200, a = 230 }  -- 裂缝受光的翻边(左上一格): 暗地面上靠它读出缝, 亮地面上靠深缝
+local SYRUP = Color{ r = 255, g = 140, b = 186, a = 255 } -- 缝里的粉色糖浆光(11-15 提亮)
 local CHIP = Color{ r = 96, g = 60, b = 74, a = 220 }     -- 碎屑
 
 local function P(t) local out = {} for i = 1, #t, 2 do out[#out + 1] = Point(t[i], t[i + 1]) end return out end
@@ -37,7 +38,10 @@ local cracks = {
 	{ 2, { 24, 47, 17, 45, 11, 49, 5, 47 },               1, {} },
 	{ 2, { 57, 58, 63, 66, 61, 73, 67, 80 },              1, { 67, 80, 72, 87 } },
 }
+local function shifted(pts) local o = {} for i = 1, #pts, 2 do o[#o + 1] = pts[i] - 1; o[#o + 1] = pts[i + 1] - 1 end return o end
 for _, c in ipairs(cracks) do
+	stroke(EDGE, 1, shifted(c[2]))                 -- 先画受光翻边(往左上挪一格), 再压深缝 ⇒ 缝的左上沿留一道亮边
+	if #c[4] > 0 then stroke(EDGE, 1, shifted(c[4])) end
 	stroke(DARK, c[1], c[2])
 	if #c[4] > 0 then stroke(DARK, c[3], c[4]) end
 end
@@ -46,7 +50,7 @@ for _, b in ipairs({ { 72, 47, 76, 52, 80, 54 }, { 95, 40, 98, 34, 102, 31 }, { 
 	stroke(DARK, 1, b)
 end
 -- ③ 缝里的糖浆光: 贴着主裂缝根部那一段, 偏下一像素(光从缝里透出来)
-for _, s in ipairs({ { 60, 47, 66, 45, 72, 48 }, { 62, 53, 68, 56, 74, 54 }, { 57, 41, 62, 35 }, { 45, 33, 47, 27 } }) do
+for _, s in ipairs({ { 60, 47, 66, 45, 72, 48, 80, 44 }, { 62, 53, 68, 56, 74, 54, 83, 58 }, { 57, 41, 62, 35, 68, 32 }, { 45, 33, 47, 27 }, { 43, 63, 45, 69 } }) do
 	stroke(SYRUP, 1, s)
 end
 -- ④ 坑沿外的碎屑
