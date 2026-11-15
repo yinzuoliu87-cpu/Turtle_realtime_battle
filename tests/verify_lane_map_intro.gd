@@ -87,6 +87,7 @@ func _ready() -> void:
 	get_window().size = win
 	await get_tree().process_frame
 	load("res://tests/_setup_appstore.gd").run()
+	GameState.dual_active = true   # 双路对局(门禁不带 DUALLANE 环境变量跑)
 	await get_tree().process_frame
 	_b = load(BATTLE_SCENE).instantiate()
 	add_child(_b)

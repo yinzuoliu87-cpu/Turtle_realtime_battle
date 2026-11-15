@@ -81,6 +81,7 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    verify_lane_map_intro) echo 4000 ;;   # 2026-11-15 三路开场桌面地图: 真流程走开场 5 秒 + 对阵 5 秒 + 开打 + 两次战果幕, 实测 1400~2000 帧之间跑完, 给一倍余量
     verify_chain_from_hand) echo 1200 ;;   # 2026-11-11 铁链从手上出: 精英铁锁 + 近战浪板两段真放, 测试里锁 60 帧(像真机), 实测约 300 帧
     verify_no_combat_juice) echo 9000 ;;   # 2026-11-04 战斗中不屏震不顿帧: 双路自动战真打 60 秒(每帧恰一步)数屏震 / 顿帧
     verify_ring_team_rim) echo 9000 ;;   # 2026-11-04 地面环敌我描边: 左右真施放 + 双路自动战 60 秒量覆盖率
