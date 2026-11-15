@@ -14,10 +14,13 @@
   ⑤ 护盾台账     tools/shield_duration_audit.py              ★只在「还了债(永久盾变限时)」时销账; 新增永久盾 ⇒ 报告, 不自动认
   ⑥ 规则指纹     tools/rules_fingerprint.py --update          ★它自己核 RULES_VER(没升过就拒写 ⇒ 先去升版本)
   ⑦ 跨平台确定性 data/determinism_cross.json                  跑 verify_determinism_cross, 只把对不上的那几项换成新摘要
+  ⑦b 结算轨迹    tests/golden/shell_vfx_dmg.json              verify_shell_vfx 录金标模式(龟壳复制 / 暗影俯冲逐步伤害与位置)
+  ⑨ 定种子对局形状 只报告: 镜像快照局三路打满 / 宝箱龟跨两路 / 两局块预算 —— 规则一改那局就可能 2:0, 换种子要人挑
   ⑧ 只检查不改   tooltip_number_audit / verify_equip_tier_labels(分星短标签要人写, 对不上只报告)
 用法:
   python tools/regen_goldens.py            # 全做
-  python tools/regen_goldens.py --skip-det # 跳过 ⑦(要跑 Godot 约 5 分钟; 只改文案、没改对局结果时用)
+  python tools/regen_goldens.py --skip-det # 跳过 ⑦ ⑦b ⑨(要跑 Godot 约 8 分钟; 只改文案、没改对局结果时用)
+由来补记(11-15): 击退改抛物线那批, ⑦b 与 ⑨ 这两类漏到了 CI(暗影俯冲金标 / 宝箱龟那局只上一路 / 镜像局只打两路), 补进来。
 做完看 `git diff --stat`, 再提交 → `python tools/precheck.py` 一次 → `tools/ship.py`。
 """
 import json
@@ -46,9 +49,11 @@ def last(out, n=1):
 	return " / ".join(l.strip() for l in out.splitlines()[-n:])
 
 
-def godot_test(name, budget):
+def godot_test(name, budget, extra=None):
 	u = tempfile.mkdtemp(prefix="rg_")
 	env = dict(os.environ, APPDATA=u, XDG_DATA_HOME=u, TURTLE_SUPABASE=" ", TURTLE_BACKEND=" ", QUIET="1")
+	if extra:
+		env.update(extra)
 	env.pop("SHIP", None)
 	r = subprocess.run([GODOT, "--headless", "--audio-driver", "Dummy", "--path", ROOT, "res://tests/%s.tscn" % name, "--quit-after", str(budget)],
 	                   capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=1800)
@@ -100,6 +105,30 @@ def main():
 			json.loads(raw)
 			open(DET_GOLDEN, "wb").write(raw.encode("utf-8"))
 			report.append("⑦ 跨平台确定性: 换了 %d 项 %s(其余不动; CI 的 Linux 会再核一遍两平台一致)" % (len(new), list(new)))
+	## ⑦b 结算轨迹金标: 测试自带录金标开关(只录结算轨迹, 不判画面); 有意改了对局结果才该变, 变了在 git diff 里看
+	## ⑨ 定种子对局形状: 三条并行跑, 只报告(换种子的做法写在各自文件头注: tests/_stream_jobs.gd SEED / verify_chest_ledger CHEST_LEDGER_SEED)
+	if "--skip-det" not in sys.argv:
+		from concurrent.futures import ThreadPoolExecutor
+		jobs = {"shell": ("verify_shell_vfx", 20000, {"SHELL_VFX_GOLDEN": "write"}),
+		        "verify_web_player": ("verify_web_player", 20000, None),
+		        "verify_chest_ledger": ("verify_chest_ledger", 8000, None),
+		        "verify_stream_size_budget": ("verify_stream_size_budget", 20000, None)}
+		with ThreadPoolExecutor(max_workers=4) as ex:
+			fut = {k: ex.submit(godot_test, *v) for k, v in jobs.items()}
+			res = {k: f.result() for k, f in fut.items()}
+		ok_w = "ALL PASS" in res["shell"][1]
+		changed = subprocess.run(["git", "diff", "--quiet", "--", "tests/golden/shell_vfx_dmg.json"], cwd=ROOT).returncode != 0
+		report.append("⑦b 结算轨迹(龟壳): %s" % (("已重录 tests/golden/shell_vfx_dmg.json" if changed else "不用动") if ok_w else "★录金标没跑完, 去看日志"))
+		if not ok_w:
+			attention.append("⑦b")
+		for k in ("verify_web_player", "verify_chest_ledger", "verify_stream_size_budget"):
+			out = res[k][1]
+			if "ALL PASS" in out:
+				report.append("⑨ 定种子对局 %s: ALL PASS" % k)
+			else:
+				bad = [l.strip() for l in out.splitlines() if "[FAIL]" in l]
+				report.append("⑨ 定种子对局 %s: ★要换种子? —— %s" % (k, " | ".join(bad[:2]) or last(out, 2)))
+				attention.append("⑨ " + k)
 	## ⑧ 只检查
 	rc, out = tool(["tools/tooltip_number_audit.py"])
 	report.append("⑧ 文案数值三元组: %s" % ("ALL OK" if rc == 0 else "★要看 —— " + last(out, 3)))

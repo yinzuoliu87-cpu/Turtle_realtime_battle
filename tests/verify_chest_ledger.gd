@@ -30,7 +30,9 @@ const Backend := preload("res://scripts/net/backend.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const BATTLE := "res://scenes/RealtimeBattle3D.tscn"
 const MID := "5c3e9a71-2b4d-4e6f-8a1b-3c5d7e9f1a2b"
-const SEED := 2000023
+## 2026-11-15 2000023 → 2000024: 击退统一成匀速抛物线(提交 4fee7175)后 2000023 那局敌方宝箱龟只上了一路;
+##   CHEST_LEDGER_SEED 扫 2000023~2000030, 取最近的全过 2000024。
+const SEED := 2000024
 ## 对局里双方宝箱龟的起点(审计那局同一个数): 离第 1 箱 3000 只差 200, 第一路就会开箱
 const BASE_REAL := 2800.0
 
@@ -416,9 +418,15 @@ func _snap(leaders: Array, top: Array, bottom: Array, val: float, gid: String) -
 	return Backend.build_ghost_snapshot(gid, {"name": gid, "avatar": leaders[0], "id": gid})
 
 
+## 换种子扫描用(规则一改这局就可能不再「敌方宝箱龟跨两路」): CHEST_LEDGER_SEED=<种子> 覆盖, 平时就是 SEED
+func _seed() -> int:
+	var e := OS.get_environment("CHEST_LEDGER_SEED")
+	return int(e) if e != "" else SEED
+
+
 func _job(a: Dictionary, b: Dictionary) -> Dictionary:
 	return JSON.parse_string(JSON.stringify({"v": 1, "job_id": 1, "match_id": MID, "mode": "gauntlet",
-		"key": {"week": 1}, "seed": SEED, "client_version": ReplayRecorder.client_version(), "a": a, "b": b}))
+		"key": {"week": 1}, "seed": _seed(), "client_version": ReplayRecorder.client_version(), "a": a, "b": b}))
 
 
 ## 每一步末尾采一次(sim_stepped 在步尾发): 认出每个宝箱龟实例(is_same), 记它登场那一刻身上的战利品、
