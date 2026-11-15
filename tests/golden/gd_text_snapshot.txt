@@ -1565,6 +1565,9 @@ scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
 scripts/scenes/battle/info_panel.gd|lit|已开 %d/%d，下一箱：第 %d 箱
+scripts/scenes/battle/info_panel.gd|lit|当前提供攻击力 %d
+scripts/scenes/battle/info_panel.gd|lit|当前攻速 +%d%%
+scripts/scenes/battle/info_panel.gd|lit|当前连击 %d 层 · 增伤 +%d%%
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
 scripts/scenes/battle/info_panel.gd|lit|战利品 %d/%d
@@ -1613,6 +1616,8 @@ scripts/scenes/battle/info_panel.gd|lit|治疗强度
 scripts/scenes/battle/info_panel.gd|lit|治疗效果的倍率。
 scripts/scenes/battle/info_panel.gd|lit|泡泡
 scripts/scenes/battle/info_panel.gd|lit|流血
+scripts/scenes/battle/info_panel.gd|lit|涨潮 %d 次
+scripts/scenes/battle/info_panel.gd|lit|涨潮中 · 最大生命 +%d · 攻击 +%d
 scripts/scenes/battle/info_panel.gd|lit|潜伏中：无法被选为目标
 scripts/scenes/battle/info_panel.gd|lit|火山形态：剩余 %.1f 秒
 scripts/scenes/battle/info_panel.gd|lit|灼烧

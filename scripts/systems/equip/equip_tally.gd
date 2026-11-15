@@ -36,7 +36,7 @@ extends RefCounted
 ##    075 箭雨与流血 · 090 猛砸 · 079 炮台治疗 · 096 斧头偷盾 · 004 处决回血 · 011 溢出转盾(不走 _grant_shield)。
 
 const KEYS := ["phy", "mag", "tru", "heal", "shield", "blocked", "dodge",   # blocked / dodge: 060 伞「减伤挡下」「闪避次数」(11-12)
-	"energy", "coins", "ts_sec", "stun", "knock", "cc_block", "dot_bleed", "dot_burn", "dot_poison"]
+	"energy", "coins", "ts_sec", "stun", "knock", "cc_block", "dot_bleed", "dot_burn", "dot_poison", "surge"]   # surge: 041 涨潮次数
 ## ★11-15 补齐(用户「压电陶瓷片…已获得龟能」「辣椒…施加流血层数是多少多少层」): 每件装备的「本局」= 结果数 + 次数 / 层数。
 ##   energy 龟能(085 / 065 / 076 / 059 …, `EquipSystem._eq_grant_energy` 唯一入口) · coins 深海币(035) · ts_sec 时停秒数(059)
 ##   stun / knock 控制上身次数(`_stun` / `_knockback` / `_knock_up` 过了免疫才记) · cc_block 被免掉的控制(066 免控 / 017 免击飞)

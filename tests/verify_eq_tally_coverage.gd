@@ -26,9 +26,13 @@ const CASES := [
 	["p2eq_090", ["stun"], "眩晕"],
 	["p2eq_029", ["stun"], "冰封"],
 	["p2eq_020", ["knock"], "击飞"],
+	["p2eq_041", ["surge"], "涨潮"],
 ]
+## 属性型(11-15 用户「047 重击锤…lol里有个装备叫血手，人家怎么描述的」): 面板读单位此刻的状态 —— [装备, 打完那一刻面板该有的字]
+const LIVE := [["p2eq_047", "当前提供攻击力"], ["p2eq_083", "当前攻速"]]
 
 var _n := 0
+var _live: Array = []   # 上一次 _one 打完那一刻的 eq_live_lines
 var _fail := 0
 
 
@@ -48,6 +52,11 @@ func _ready() -> void:
 	gs.test_mode = true
 	gs.tutorial_active = false
 	print("=== 装备「本局」统计: 结果数 + 次数 / 层数 ===")
+	for lv in LIVE:
+		var lid: String = str(lv[0])
+		var lrow: Dictionary = await _one(lid)
+		var ltx: String = "\n".join(_live)
+		_ok("%s 面板「本局」有「%s」(此刻的加成)" % [lid, str(lv[1])], ltx.contains(str(lv[1])), ltx.replace("\n", " / "))
 	for cs in CASES:
 		var eid: String = str(cs[0])
 		var row: Dictionary = await _one(eid)
@@ -120,6 +129,7 @@ func _one(eid: String) -> Dictionary:
 		if i % 300 == 0:
 			await get_tree().process_frame
 	var out: Dictionary = {}
+	_live = _IP.eq_live_lines(c, eid) if c is Dictionary else []
 	if c is Dictionary:
 		var t: Dictionary = c.get("_st_eq", {})
 		for iid in t:

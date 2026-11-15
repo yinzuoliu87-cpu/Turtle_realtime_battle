@@ -267,7 +267,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 		"p2eq_032":   # 唤灵骨符: 登场召唤亡灵骷髅 (延到首帧spawn, 避免开战setup中append battle._units)
 			u["_skele_pending"] = true   # 首帧按【每一件】各召一只(各自星级, 11-13)
 		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
-			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.01, 0.02, 0.03][si]   # 重击锤(3★ 15%→8% 用户2026-10-10; 4/6/8% → 1/2/3% 用户2026-11-11): 随maxHp动态(在_recalc_stats累加), 多件叠加
+			stt["hammer_pct"] = [0.01, 0.02, 0.03][si]   # 这一件自己的比例(面板「当前提供攻击力」读它; eq_state 随直播下发, 观战照样显示)
+			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + float(stt["hammer_pct"])   # 重击锤(3★ 15%→8% 用户2026-10-10; 4/6/8% → 1/2/3% 用户2026-11-11): 随maxHp动态(在_recalc_stats累加), 多件叠加
 			battle._recalc_stats(u)
 		"p2eq_041":   # 退潮浊液: 登场5秒后涨潮(临时+maxHp/+攻击/+体积/+射程), 到期退潮还原(用户2026-07-19)
 			## ★用户 2026-09-30 加强: 250/400/650 → 500/1100/2000 maxHp ·
@@ -400,6 +401,11 @@ func ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float, ck: Str
 	u["_ebb_until"] = maxf(float(u.get("_ebb_until", 0.0)), battle._t + dur)
 	u["maxHp"] += hp_add; u["hp"] += hp_add
 	u["base_atk"] = float(u.get("base_atk", 0.0)) + atk_add
+	## 面板「本局」: 涨潮中这一件给了多少(读 eq_state, 随直播下发) + 涨潮次数(装备账)。纯显示, 不进结算。
+	var es41: Dictionary = (u["eq_state"] as Dictionary).get(ck, {})
+	es41["tide_on"] = true; es41["tide_hp"] = hp_add; es41["tide_atk"] = atk_add
+	u["eq_state"][ck] = es41
+	battle._equip_sys.tally.credit(u, ck, "surge", 1.0)
 	u["atk_range"] = float(u.get("atk_range", 70.0)) + EquipSystem.TIDE_RANGE_UP
 	u["size_mult"] = float(u.get("size_mult", 1.0)) * (1.0 + EquipSystem.TIDE_SIZE_UP)      # 体积+30%(走size_mult, 每帧juice从base起算不会覆盖)
 	battle._recalc_stats(u)
@@ -413,6 +419,8 @@ func ebb_recede(u: Dictionary, hp_add: float, atk_add: float, ck: String = "p2eq
 	var act: Array = u.get("_ebb_cks", [])
 	if act.has(ck):
 		act.erase(ck)
+		if (u["eq_state"] as Dictionary).get(ck, null) is Dictionary:
+			u["eq_state"][ck]["tide_on"] = false
 	elif not act.is_empty():
 		return                           # 这一件没在涨潮(别的件还在) ⇒ 不动
 	u["_ebb_cks"] = act

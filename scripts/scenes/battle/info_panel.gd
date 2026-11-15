@@ -1022,7 +1022,37 @@ func eq_stats_text_live(u: Dictionary, eid: String) -> String:
 				var prev: Dictionary = EquipTally.from_row(r).get(eid, {})
 				for k in prev:
 					merged[k] = float(merged.get(k, 0.0)) + float(prev[k])
-	return eq_stats_text({"_st_eq": {eid: merged}}, eid)
+	var tx: String = eq_stats_text({"_st_eq": {eid: merged}}, eid)
+	var live: Array = eq_live_lines(u, eid)
+	if live.is_empty():
+		return tx
+	return "\n".join(live) if tx == "" else tx + "\n" + "\n".join(live)
+
+
+## 属性型装备此刻提供了多少(用户 11-15「047 重击锤，你想想看，lol里有个装备叫血手，人家怎么描述的」:
+##   血手把「按基础攻击力换算的额外攻击力」当成装备效果本身写 ⇒ 这类装备的「本局」该写它现在给了多少, 不是「暂无记录」)。
+## 读单位当前状态(`eq_state` 随直播下发 ⇒ 观战 / 回放与本机一致), 不是累计账; ck = 份号, 同名多件各报各的。
+static func eq_live_lines(u: Dictionary, ck: String) -> Array:
+	var out: Array = []
+	var st = (u.get("eq_state", {}) as Dictionary).get(ck, null)
+	if not (st is Dictionary):
+		return out
+	match EquipCk.base_id(ck):
+		"p2eq_047":   # 重击锤: 最大生命 × 这一件的比例
+			var a47: int = int(round(float(u.get("maxHp", 0.0)) * float(st.get("hammer_pct", 0.0))))
+			if a47 > 0:
+				out.append("当前提供攻击力 %d" % a47)
+		"p2eq_083":   # 潮汐细剑: 按损失生命给的攻速 + 连续命中同一目标的层数增伤
+			var sp83: int = int(round(float(st.get("aspd_given", 0.0)) * 100.0))
+			if sp83 > 0:
+				out.append("当前攻速 +%d%%" % sp83)
+			var n83: int = int(st.get("stacks", 0))
+			if n83 > 0:
+				out.append("当前连击 %d 层 · 增伤 +%d%%" % [n83, int(round(float(st.get("amp_given", 0.0)) * 100.0))])
+		"p2eq_041":   # 退潮浊液: 涨潮中这一件给的生命 / 攻击
+			if bool(st.get("tide_on", false)):
+				out.append("涨潮中 · 最大生命 +%d · 攻击 +%d" % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])
+	return out
 
 
 ## 「本局」全零时那一句。★11-12 原来写「暂无效果」⇒ 玩家读成「装备没生效」(水母伞那次: 其实是统计口径没覆盖 + 记到了别的件上)。
@@ -1076,7 +1106,7 @@ static func eq_stats_text(u: Dictionary, eid: String) -> String:
 ## 「本局」里伤害 / 治疗 / 护盾 / 减免 / 闪避之后的各行(键见 EquipTally.KEYS): [键, 文字]
 const EQ_STAT_LINES := [["energy", "获得龟能 %d"], ["coins", "获得深海币 %d 枚"],
 	["dot_bleed", "施加流血 %d 层"], ["dot_burn", "施加灼烧 %d 层"], ["dot_poison", "施加中毒 %d 层"],
-	["stun", "眩晕 %d 次"], ["knock", "击飞 %d 次"], ["cc_block", "免疫控制 %d 次"], ["ts_sec", "时停 %d 秒"]]
+	["stun", "眩晕 %d 次"], ["knock", "击飞 %d 次"], ["cc_block", "免疫控制 %d 次"], ["ts_sec", "时停 %d 秒"], ["surge", "涨潮 %d 次"]]
 
 
 ## 描述框开着且是装备时, 每帧把统计改成最新(只改文字不重建); 由显隐变化时重算框高。
