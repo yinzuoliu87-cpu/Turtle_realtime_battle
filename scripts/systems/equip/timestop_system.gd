@@ -108,6 +108,10 @@ func reset_for_lane() -> void:
 	_ts_charge_t = 0.0
 	_ts_charge_casters = []
 	_ts_maxstar = 0
+	## 11-15 换路通扫(verify_lane_carryover): 「这一步时停里 tick 了的携带者」名单只在同一步认人, 换路后永远对不上新单位,
+	##   但留着就是上一路单位的悬空引用 ⇒ 一并清掉(不改结果: carrier_credit 只认 _carrier_step == 当前步)。
+	_carrier_units = []
+	_carrier_step = -1
 
 func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
 	# 时停期间全局 battle._t 冻结, 但 active 携带者仍在行动 —— 它身上所有"时间戳型"状态

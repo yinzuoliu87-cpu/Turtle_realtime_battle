@@ -491,6 +491,10 @@ func _dl_build_lane_field() -> void:
 						  #   必须在 _eq_apply_all_stats 之【后】: 它会把 eq_state 重置成初始值, 放前面会被它盖掉。
 	battle._equip_sys._wave.restore()   # 043 海浪护符: 贴身份键 + 补回前几路的双抗增减(一场内跨路保留, 用户 11-14)
 	battle._hud._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
+	if on_lane_cleared.is_valid() and not _carry_olds.is_empty():
+		var olds: Array = _carry_olds
+		_carry_olds = []
+		on_lane_cleared.call(olds)
 
 ## egg_hp 缺则按 3000+300×等级 初始化(用户2026-07-19)。
 ## ★2026-10-19 起**各按各的等级**(左 = 我的 season_level, 右 = 对手快照的): 原来两侧共用左方一个数
@@ -931,6 +935,12 @@ func _dl_clear_units() -> void:
 	battle._equip_tick_sys.reset_for_lane()   # 装备延时队列/大熊冲击波/拉回: 上一路的在途项一律丢弃(同 _pending_shots)
 	battle._equip_sys._axe.reset_for_lane()   # 096 斧头的蓄力/余烬之光/插地/在途镖: 由斧头系统自己收(同样要在清 _units 之前)
 	battle._cyber_sys.reset_for_lane()   # 赛博「机甲组装中仍算存活」的按阵营到期时刻: 上一路的不许带进下一路
+	battle._equip_sys._sigwave.reset_for_lane()   # 038 在途电磁波(11-15 冠军杯决赛: 上路最后一道波带进下路打人)
+	## ★下面三样是 11-15 换路通扫(verify_lane_carryover)扫出来还拿着上一路单位的: 都不改对局结果(只认 is_same, 旧字典对不上新单位),
+	##   但留着就是悬空引用、逐路越攒越多; 门禁要「一处都不许」才有意义 ⇒ 一并在这里收掉。
+	battle._equip_sys._spirit_sys._vfx.clear_all()   # 060~075 灵物装备演出句柄(浮囊 / 咬 / 盖子…跟着上一路单位走)
+	battle._audio_sys.reset_for_lane()   # 音效: 每只龟最近放的技能 / 被动声标记
+	battle._damage._dt_owner = null      # 飘字取色哨兵的「这份类型算给谁」(只在 DMGSENTINEL 时读)
 	for u in battle._units:
 		for k in ["sprite", "shadow", "contact", "ring", "flame_sector"]:   # +flame_sector: 凤凰喷火扇形常驻MeshInstance3D·换路不清会残留下半场(用户2026-07-18"换到下半场没清掉")
 			var n = u.get(k, null)
@@ -999,8 +1009,15 @@ func _dl_clear_units() -> void:
 		print("XDBG_DL 换路清扫遗留节点: world=", _swept, " ui=", _swept_ui)
 	_dl_clear_present_overlay()
 
+## 门禁钩子(verify_lane_carryover): 下一路战场搭好、开打之前(_dl_build_lane_field 末尾 —— 各系统的换路撤场都跑完了),
+##   把上一路的单位交给门禁去扫「谁还拿着它们」。正式对局 / 裁判机不设(无效 Callable ⇒ 连单位表都不复制)。
+##   由来: 11-15 冠军杯决赛 038 电磁波带进下路。
+var on_lane_cleared: Callable = Callable()
+var _carry_olds: Array = []
+
 func _dl_next_lane(finished_lane: String = "") -> void:
 	battle._st_snapshot_lane(finished_lane)   # ★必须在 _dl_clear_units 之前: 清场后 battle._units 就空了
+	_carry_olds = battle._units.duplicate() if on_lane_cleared.is_valid() else []
 	_dl_clear_units()
 	battle._over = false
 	battle._dl_state = ""

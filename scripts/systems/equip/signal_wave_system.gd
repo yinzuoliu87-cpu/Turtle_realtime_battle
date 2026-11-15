@@ -130,6 +130,19 @@ func tick(delta: float) -> void:
 	_waves = keep
 
 
+## 【换路重置】由 `DualLaneFlow._dl_clear_units` 调。返回丢掉了几道(门禁 / 探针用)。
+## ★2026-11-15 正式服冠军杯决赛(referee_jobs 8845)抓到: 这张表原来换路不清 —— 上路最后一刻放出的波,
+##   放波的龟活着进下路, tick 用 `_pick_enemies_of(src)` 扫到的就是下路的敌人(本机逐字复现: 下路 5 个单位吃魔伤 + 眩晕)。
+##   口径与 EquipTickSystem.reset_for_lane 一致: 上一路已经结束, 没打完的一律作废(演出网格一并释放)。
+##   门禁 verify_lane_carryover(换路那一刻通扫「谁还拿着上一路的单位」)。
+func reset_for_lane() -> int:
+	var n: int = _waves.size()
+	for w in _waves:
+		_free_nodes(w)
+	_waves.clear()
+	return n
+
+
 ## 此刻波前扫到的、还没打过的敌人。
 ## ★命中条件两条都要: ①径向落在波前厚度内 ②角向落在张角内。
 ## ★已命中名单用 is_same 比对, 绝不拿单位字典当 Dictionary 的键(CLAUDE.md §3.2 递归哈希卡死)。

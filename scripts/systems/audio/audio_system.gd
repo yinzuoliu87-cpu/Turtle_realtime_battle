@@ -84,6 +84,13 @@ const EQ_GAP := 0.5              # 同一件装备的声音最小间隔
 const QUIET_AUX := ["p2eq_036", "p2eq_044", "p2eq_070", "p2eq_074", "p2eq_091", "p2eq_060"]
 
 
+## 换路(DualLaneFlow._dl_clear_units 调): 按单位记的两张表丢掉 —— 只用 is_same 认人, 上一路的单位换路后永远对不上,
+##   留着只是悬空引用(11-15 换路通扫 verify_lane_carryover 扫出来的)。不碰对局结果。
+func reset_for_lane() -> void:
+	_cast_by.clear()
+	_ps_mark.clear()
+
+
 func _hit_slot() -> bool:
 	while not _hit_ts.is_empty() and battle._t - float(_hit_ts[0]) > HIT_WINDOW:
 		_hit_ts.pop_front()
