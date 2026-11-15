@@ -73,15 +73,15 @@ func _hunter_roll_best_dest(from2d: Vector2, pref_dir: Vector2) -> Vector2:
 	pref_dir = DetMath.norm(pref_dir)
 	const ROLL := ROLL_DIST
 	const ALIGN_W := 90.0              # 对齐权重: 开阔时优先意图方向; 撞墙时"实际位移"主导→自动沿墙/朝内
-	var pad = 40.0                    # 离墙内缩(不贴死边线)
-	var xlo = battle.ARENA.position.x + pad; var xhi = battle.ARENA.end.x - pad
-	var ylo = battle.ARENA.position.y + pad; var yhi = battle.ARENA.end.y - pad
+	## 离墙内缩: 与 KiteDash 同一组留边(11-15 用户「这翻墙里面的那就是 bug 喽」: 原来 40 码, 贴上墙时立绘压在砖上)
+	var xlo = battle.ARENA.position.x + KiteDash.EDGE_PAD_X; var xhi = battle.ARENA.end.x - KiteDash.EDGE_PAD_X
+	var ylo = battle.ARENA.position.y + KiteDash.EDGE_PAD_Y; var yhi = battle.ARENA.end.y - KiteDash.EDGE_PAD_Y
 	var best = from2d
 	var best_score = -1.0e9
 	for deg in [0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180]:
 		var d: Vector2 = DetMath.rotated(pref_dir, deg_to_rad(float(deg)))
 		var raw: Vector2 = from2d + d * ROLL
-		var cl = Vector2(clampf(raw.x, xlo, xhi), clampf(raw.y, ylo, yhi))
+		var cl = ArenaShape.clamp_in(Vector2(clampf(raw.x, xlo, xhi), clampf(raw.y, ylo, yhi)), battle.ARENA, KiteDash.EDGE_PAD_X, KiteDash.EDGE_PAD_Y)   # 场地是圆角超椭圆: 只按矩形夹, 四角会夹到墙外
 		var reached: float = DetMath.dist(cl, from2d)          # clamp后真实位移(贴墙方向→接近0)
 		var align = 0.0
 		if reached > 1.0: align = DetMath.dot(DetMath.norm((cl - from2d)), pref_dir)   # 落点方向与意图的一致度[-1,1]

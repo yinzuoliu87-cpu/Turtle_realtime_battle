@@ -92,6 +92,38 @@ func _ready() -> void:
 	_ok("D ★★背靠墙 ⇒ 真走出去(%.0f 码 ≥ 125)" % DetMath.dist(dD, h["pos"]), DetMath.dist(dD, h["pos"]) >= 125.0)
 	_ok("D 落点在场内", ar.grow(-1.0).has_point(dD))
 
+	# ── D2 贴着上墙(远处那面, 画面里有高度)被近战贴脸 ⇒ 落点离上边至少 EDGE_PAD_Y、且在圆角场地形状的留边以内 ──
+	##   用户 11-15 看录像「这翻墙里面的那就是 bug 喽」: 原来上下只留 40 码, 翻滚落在 y≈155(上边 110)整只压在砖上。
+	##   猎人已经贴在上墙边(离上边 60 码), 近战从侧面贴脸 ⇒ 横着一走, 旧留边(40)下还是贴在墙边; 新留边把落点推回 110 码以内
+	h["pos"] = Vector2(ar.position.x + ar.size.x * 0.5, ar.position.y + 60.0)
+	var mel3: Dictionary = _mk("basic", "right", Vector2(ar.position.x + ar.size.x * 0.5 + 80.0, ar.position.y + 60.0), true)
+	_reset([h, mel3])
+	var dT: Vector2 = KiteDash.pick(_s, h, 250.0)
+	_ok("D2 ★★贴上墙被贴脸 ⇒ 落点离上边 %.0f 码 ≥ %.0f" % [dT.y - ar.position.y, KiteDash.EDGE_PAD_Y], dT.y - ar.position.y >= KiteDash.EDGE_PAD_Y - 0.5)
+	## 性质: 全场 5×4 网格起点 × (远程目标在左 / 右) × (有 / 没有近战贴脸) × 左右交替两次 = 160 次落点, 全部在圆角场地的留边以内。
+	##   录像里那次(起点 (696,357) 往上冲到 y≈155)是真实混战叠出来的, 单个摆好的场景复现不出来 ⇒ 用整张网格扫。
+	var n_pick := 0
+	var worst := INF
+	for gx in range(5):
+		for gy in range(4):
+			var hp0 := Vector2(ar.position.x + ar.size.x * (0.1 + 0.2 * float(gx)), ar.position.y + ar.size.y * (0.08 + 0.28 * float(gy)))
+			for sgn in [-1.0, 1.0]:
+				for with_mel in [false, true]:
+					h["pos"] = hp0
+					var tgt2: Dictionary = _mk("hunter", "right", hp0 + Vector2(sgn * 520.0, 0.0), false)
+					var us: Array = [h, tgt2]
+					if with_mel:
+						us.append(_mk("basic", "right", hp0 + Vector2(-sgn * 60.0, 30.0), true))
+					_reset(us)
+					for _r in range(2):
+						var dk: Vector2 = KiteDash.pick(_s, h, 250.0)
+						n_pick += 1
+						worst = minf(worst, 1.0 - ArenaShape.t_of(dk, ar, ArenaShape.N, KiteDash.EDGE_PAD_X - 1.0, KiteDash.EDGE_PAD_Y - 1.0))
+	_ok("D2 ★★全场 %d 次落点都在圆角场地的留边以内(最贴边那次余量 %.3f ≥ 0)" % [n_pick, worst], n_pick == 160 and worst >= 0.0)
+	h["pos"] = Vector2(ar.position.x + 150.0, ar.position.y + 140.0)   # 左上角(圆角处)
+	var dC: Vector2 = _s._hunter_sys._hunter_roll_best_dest(h["pos"], Vector2(-1.0, -1.0).normalized())
+	_ok("D2 ★处决翻滚朝左上角滚 ⇒ 落点也在圆角场地的留边以内", ArenaShape.inside(dC, ar, ArenaShape.N, KiteDash.EDGE_PAD_X - 1.0, KiteDash.EDGE_PAD_Y - 1.0), str(dC))
+
 	# ── E 残血撤到队友身后 ──
 	h["pos"] = Vector2(x0, cy - 150.0)
 	var ally: Dictionary = _mk("stone", "left", Vector2(x0 + 150.0, cy + 100.0), true)

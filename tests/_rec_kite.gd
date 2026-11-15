@@ -24,6 +24,11 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:
 		gs.test_mode = true
+		## 技能选成这次改的那两个: 猎人「隐蔽」(翻滚, skillPool 下标 2)、赛博「智能AI」(下标 3); 默认是精准射击 / 能量大炮
+		var lo: Dictionary = (gs.loadouts as Dictionary).duplicate()
+		lo["hunter"] = 2
+		lo["cyber"] = 3
+		gs.loadouts = lo
 	if OS.has_environment("REC_SECS"):
 		_secs = float(OS.get_environment("REC_SECS"))
 	OS.set_environment("TURTLE_SEED", "424242")
@@ -59,6 +64,11 @@ func _process(delta: float) -> void:
 	if _scn == null:
 		return
 	_el += delta
+	## 调试场的编辑面板(左侧)与底部笔刷栏挡住半个场地 ⇒ 录像时藏掉(只留战场、血条、顶栏)
+	for nm in ["_edit_palette", "_edit_brush_bar", "_edit_grid_popup"]:
+		var c = _scn.get(nm)
+		if c != null and is_instance_valid(c) and (c as CanvasItem).visible:
+			(c as CanvasItem).visible = false
 	for u in _scn._units:
 		if not (u is Dictionary) or str(u.get("side", "")) != "left":
 			continue
@@ -73,5 +83,11 @@ func _process(delta: float) -> void:
 			print("[DASH] %.2f 秒 %s 从 %s 离最近敌人 %.0f 码" % [_el, id, str((u["pos"] as Vector2).round()),
 				DetMath.dist(u["pos"], ne["pos"]) if ne != null else -1.0])
 		_last[id] = flag
+		## 整局离场地四边最近多少(用户 11-15「这翻墙里面的那就是 bug 喽」: 看还贴不贴墙)
+		var ar: Rect2 = _scn.ARENA
+		var p: Vector2 = u["pos"]
+		var e: float = minf(minf(p.x - ar.position.x, ar.end.x - p.x), minf(p.y - ar.position.y, ar.end.y - p.y))
+		_last[id + "_edge"] = minf(float(_last.get(id + "_edge", INF)), e)
 	if _el >= _secs:
+		print("[EDGE] 整局离场地边最近: 猎人 %.0f 码 · 赛博 %.0f 码" % [float(_last.get("hunter_edge", -1.0)), float(_last.get("cyber_edge", -1.0))])
 		get_tree().quit(0)

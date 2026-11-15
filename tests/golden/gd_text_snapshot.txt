@@ -1538,6 +1538,9 @@ scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后爆炸：治疗 %d，伤害 %
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %d%%
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %s/%s
 scripts/scenes/battle/info_panel.gd|lit|%s %d 层
+scripts/scenes/battle/info_panel.gd|lit|%s%%×最大生命值(%d) = %d
+scripts/scenes/battle/info_panel.gd|lit|%s%%×连击层数(%d) = %d%%
+scripts/scenes/battle/info_panel.gd|lit|%s×已损失生命值百分比(%d) = %d%%
 scripts/scenes/battle/info_panel.gd|lit|%s攻击当前目标，造成 (%d%% 攻击力) 物理伤害。
 scripts/scenes/battle/info_panel.gd|lit|(普攻)
 scripts/scenes/battle/info_panel.gd|lit|不可选中
@@ -1634,17 +1637,16 @@ scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果�
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|窃取护盾
+scripts/scenes/battle/info_panel.gd|lit|获得 %d 额外攻击力
 scripts/scenes/battle/info_panel.gd|lit|获得 %d%% 增伤
 scripts/scenes/battle/info_panel.gd|lit|获得 %d%% 攻击速度
 scripts/scenes/battle/info_panel.gd|lit|获得深海币 %d 枚
-scripts/scenes/battle/info_panel.gd|lit|获得相当于 %s%% 最大生命值的 %d 攻击力
 scripts/scenes/battle/info_panel.gd|lit|获得龟能 %d
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
 scripts/scenes/battle/info_panel.gd|lit|财宝
 scripts/scenes/battle/info_panel.gd|lit|近战形态：锤击
 scripts/scenes/battle/info_panel.gd|lit|远程形态：灵能弹
-scripts/scenes/battle/info_panel.gd|lit|连击 %d 层
 scripts/scenes/battle/info_panel.gd|lit|造成伤害 %d
 scripts/scenes/battle/info_panel.gd|lit|造成伤害时，按比例回复自身生命。
 scripts/scenes/battle/info_panel.gd|lit|造成物理伤害时无视目标的护甲值。

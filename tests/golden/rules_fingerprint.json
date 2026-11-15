@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "6ab25e97bacd4848f6babb24d19471472599ae422ef6cca3dda409cb2c8350a8",
+ "fingerprint": "356178d8d5eeed72052edf5b172fe86b62a7574afe8a6db15c1df4ccd7e074e3",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -20,7 +20,7 @@
   },
   {
    "def": "f3854e0ad5fcd50a",
-   "hash": "3ff9a879655004679c93d61d882d1645ac8c7fab27c8075a06b047154c58d5e8",
+   "hash": "947c50ff02ba32f97edd60a1b2c48eac7de6b849e56d9deb1cccc33c10708ba2",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
@@ -30,7 +30,7 @@
   },
   {
    "def": "static-tables",
-   "hash": "1e621a9c8b8bc73286399204baf69dbf997a65557c93fcd606d541712b2bbd9f",
+   "hash": "4290ee749d326d1e27fae42ecf3f95a0240fdb7176cd56c1143385ddfa2e99ba",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],

@@ -27,6 +27,10 @@ const W_SIDE := 40.0          # 侧移偏好(本次这一边)
 const W_WALL := 0.5           # 离墙每码加 0.5 分(封顶 WALL_CAP)
 const WALL_CAP := 160.0
 const BEHIND := 90.0          # 残血撤到队友身后多远
+## 落点离场地边界留多少(码)。★11-15 用户看录像「这翻墙里面的那就是 bug 喽」: 原来只留 50 / 40 码,
+##   上方远处的墙在画面里有高度, 龟的立绘从脚底往上画 ⇒ 落点 y 贴上边时整只压在砖上像翻进了墙。上下多留一些。
+const EDGE_PAD_X := 90.0
+const EDGE_PAD_Y := 110.0
 
 
 ## u: 冲刺者 · dist: 冲多远 · opts: {target(默认最近敌人), retreat(bool)}
@@ -86,7 +90,7 @@ static func pick(battle, u: Dictionary, dist: float, opts: Dictionary = {}) -> V
 	for i in range(N_DIRS):
 		var ang: float = TAU * float(i) / float(N_DIRS)
 		var dv := Vector2(DetMath.dcos(ang), DetMath.dsin(ang))
-		var c: Vector2 = ArenaShape.clamp_in(me + dv * dist, ar, 50, 40)
+		var c: Vector2 = ArenaShape.clamp_in(me + dv * dist, ar, EDGE_PAD_X, EDGE_PAD_Y)
 		var mv: Vector2 = c - me
 		var dt: float = DetMath.dist(c, tp)
 		var s: float = 0.0

@@ -581,7 +581,9 @@ func _b83_reapply(u: Dictionary, stacks: int, sx: int) -> void:
 	var old_ls: float = float(st.get("ls_given", 0.0))
 	u["damage_amp"] = maxf(0.0, float(u.get("damage_amp", 0.0)) - old_amp)
 	u["lifesteal"] = maxf(0.0, float(u.get("lifesteal", 0.0)) - old_ls)
-	var amp: float = [0.01, 0.015, 0.02][sx] * float(stacks)
+	var per: float = [0.01, 0.015, 0.02][sx]
+	var amp: float = per * float(stacks)
+	st["amp_coef"] = per        # 面板公式行读; 纯显示
 	var ls: float = RAPIER_LS_PER * float(stacks)
 	u["damage_amp"] = float(u.get("damage_amp", 0.0)) + amp
 	u["lifesteal"] = float(u.get("lifesteal", 0.0)) + ls
@@ -603,11 +605,14 @@ func _t083(u: Dictionary, _delta: float) -> void:
 	# 被动: 每损失 1% 生命 → +0.2/0.3/0.4% 攻速。走 aspd_perm(项目的永久攻速加法通道)。
 	var mx: float = maxf(1.0, float(u.get("maxHp", 1.0)))
 	var lost_pct: float = clampf(1.0 - float(u.get("hp", 0.0)) / mx, 0.0, 1.0) * 100.0
-	var want: float = lost_pct * [0.2, 0.3, 0.4][sx] / 100.0
+	var coef: float = [0.2, 0.3, 0.4][sx]
+	var want: float = lost_pct * coef / 100.0
 	var given: float = float(st.get("aspd_given", 0.0))
 	if absf(want - given) > 1e-6:
 		u["aspd_perm"] = maxf(0.01, float(u.get("aspd_perm", 1.0)) - given) + want
 		st["aspd_given"] = want
+		st["aspd_coef"] = coef      # 面板「本局」的公式行读(11-15 用户「上面写获得多少…下面是公式」); 纯显示
+		st["aspd_lost"] = lost_pct
 		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_083")] = st
 
 

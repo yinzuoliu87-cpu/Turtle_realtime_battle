@@ -29,7 +29,8 @@ const CASES := [
 	["p2eq_041", ["surge"], "涨潮"],
 ]
 ## 属性型(11-15 用户「047 重击锤…lol里有个装备叫血手，人家怎么描述的」): 面板读单位此刻的状态 —— [装备, 打完那一刻面板该有的字]
-const LIVE := [["p2eq_047", "获得相当于 3% 最大生命值的"], ["p2eq_083", "攻击速度"]]
+##   上一行写结果、下一行写公式(用户 11-15「你上面就写获得多少多少额外攻击力，然后下面是公式」) —— [装备, 结果行开头, 公式行开头]
+const LIVE := [["p2eq_047", "获得 ", "3%×最大生命值("], ["p2eq_083", "获得 ", "0.4×已损失生命值百分比("]]
 
 var _n := 0
 var _live: Array = []   # 上一次 _one 打完那一刻的 eq_live_lines
@@ -55,8 +56,9 @@ func _ready() -> void:
 	for lv in LIVE:
 		var lid: String = str(lv[0])
 		var lrow: Dictionary = await _one(lid)
-		var ltx: String = "\n".join(_live)
-		_ok("%s 面板「本局」有「%s」(此刻的加成)" % [lid, str(lv[1])], ltx.contains(str(lv[1])), ltx.replace("\n", " / "))
+		var ltx: String = " / ".join(_live)
+		var ok_lines: bool = _live.size() >= 2 and str(_live[0]).begins_with(str(lv[1])) and str(_live[1]).begins_with(str(lv[2]))
+		_ok("%s 面板「本局」上一行结果「%s…」、下一行公式「%s…」" % [lid, str(lv[1]), str(lv[2])], ok_lines, ltx)
 	for cs in CASES:
 		var eid: String = str(cs[0])
 		var row: Dictionary = await _one(eid)

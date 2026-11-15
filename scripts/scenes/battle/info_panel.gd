@@ -1038,23 +1038,34 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 	if not (st is Dictionary):
 		return out
 	match str(EqStatLabels.LIVE.get(EquipCk.base_id(ck), "")):
-		"hp_to_atk":   # 照 LoL 霸王血铠「获得相当于你3%额外生命值的【N】攻击力」
+		## 上一行写结果、下一行写公式(用户 11-15「你上面就写获得多少多少额外攻击力，然后下面是公式」;
+		##   句式取 LoL 霸王血铠「获得相当于你3%额外生命值的【N】攻击力」, 公式照本项目技能详情「系数×属性(当前值) = 结果」)
+		"hp_to_atk":
 			var pc: float = float(st.get("hammer_pct", 0.0))
-			var add: int = int(round(float(u.get("maxHp", 0.0)) * pc))
+			var mhp: float = float(u.get("maxHp", 0.0))
+			var add: int = int(round(mhp * pc))
 			if add > 0:
-				out.append("获得相当于 %s%% 最大生命值的 %d 攻击力" % [String.num(pc * 100.0, 1).trim_suffix(".0"), add])
+				out.append("获得 %d 额外攻击力" % add)
+				out.append("%s%%×最大生命值(%d) = %d" % [_num(pc * 100.0), int(round(mhp)), add])
 		"rapier":
 			var sp: int = int(round(float(st.get("aspd_given", 0.0)) * 100.0))
 			if sp > 0:
 				out.append("获得 %d%% 攻击速度" % sp)
+				out.append("%s×已损失生命值百分比(%d) = %d%%" % [_num(float(st.get("aspd_coef", 0.0))), int(round(float(st.get("aspd_lost", 0.0)))), sp])
 			var n: int = int(st.get("stacks", 0))
-			if n > 0:
-				out.append("连击 %d 层" % n)
-				out.append("获得 %d%% 增伤" % int(round(float(st.get("amp_given", 0.0)) * 100.0)))
+			var amp: int = int(round(float(st.get("amp_given", 0.0)) * 100.0))
+			if n > 0 and amp > 0:
+				out.append("获得 %d%% 增伤" % amp)
+				out.append("%s%%×连击层数(%d) = %d%%" % [_num(float(st.get("amp_coef", 0.0)) * 100.0), n, amp])
 		"tide":
 			if bool(st.get("tide_on", false)):
 				out.append("涨潮中：获得 %d 最大生命值、%d 攻击力" % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])
 	return out
+
+
+## 公式里的系数: 去掉多余的 0(3.0 → 3, 1.50 → 1.5)
+static func _num(v: float) -> String:
+	return String.num(v, 2).trim_suffix("0").trim_suffix("0").trim_suffix(".") if String.num(v, 2).contains(".") else String.num(v, 2)
 
 
 ## 「本局」全零时那一句。★11-12 原来写「暂无效果」⇒ 玩家读成「装备没生效」(水母伞那次: 其实是统计口径没覆盖 + 记到了别的件上)。
