@@ -2888,9 +2888,9 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_fortune_sys._fortune_strike_fx(u, tgt)
 	if u["id"] == "pirate":                                         # 海盗普攻·弯刀劈砍: 钢色新月斩弧+命中环(伤害走 _do_basic·1A物理+自愈0.2A)
 		_weapon_slash(u["pos"], tgt["pos"], Color(0.88, 0.93, 1.0))
-	if u["id"] == "candy":                                          # 糖果普攻·糖果拳: 命中糖爆粉星(伤害走 _do_basic·1.1A+3%maxHp物理+减攻15%)
+	if u["id"] == "candy":                                          # 糖果普攻·横扫大锤: 专属命中特效(伤害走 _do_basic·1.1A+3%maxHp物理+减攻15%)
 		var _cdir: Vector2 = DetMath.norm((tgt["pos"] - u["pos"])) if DetMath.vlen((tgt["pos"] - u["pos"])) > 1.0 else Vector2.RIGHT
-		_burst_vfx("res://assets/sprites/vfx/candy-burst.png", tgt["pos"] - _cdir * 8.0, 95.0, 0.35)
+		_candy_sys.fx.sweep_hit(tgt, _cdir)                        # 横扫大锤命中: 薄荷风车糖闪光 + 奶油圆罩 + 放射线 + 糖块碎屑(11-15 重做, candy_vfx.gd)
 	if u["id"] == "bubble":                                         # 泡泡普攻·泡泡三连击: 命中泡泡爆+泡沫(伤害走 _do_basic·0.5A×3物理)
 		_burst_vfx("res://assets/sprites/skills/bubble-attack.png", tgt["pos"], 80.0, 0.9)
 		_bubble_sys._bubble_rise(tgt["pos"] + Vector2(randf_range(-14.0, 14.0), 0.0))

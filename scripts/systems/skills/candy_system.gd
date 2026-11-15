@@ -15,6 +15,7 @@ const HAMMER_ATK_COEF := 1.8     # 总伤 = ×ATK + ×自身最大生命(下一�
 const HAMMER_HP_PCT := 0.12
 const HAMMER_LIFESTEAL := 0.40   # 回复造成伤害的比例
 const HAMMER_RANGE := 200.0      # 猛砸的直线长度(码)
+const HAMMER_SWING_SEC := 0.38   # 技能生效(释放帧)到锤头砸地结算的秒数(糖果龟自己的锤在动作帧里: 第 5 帧 → 第 10 帧落地)
 ## 【糖衣炮弹】
 const BARRAGE_TICKS := 8         # 共几跳
 const BARRAGE_TICK_SEC := 0.42   # 每跳间隔(秒)
@@ -42,9 +43,13 @@ const PUNCH_SELF_HP := 0.03     # + 【自身】最大生命 ×
 const PUNCH_ATK_DOWN := 0.15    # 目标攻击力 −(走通用 atkdn·时长吃 BUFF_SEC)
 
 var battle
+## 普攻【横扫大锤】命中 / 糖果锤砸地的专属特效(2026-11-15 重做, 只管画面)
+const CandyVfx := preload("res://scripts/scenes/battle/candy_vfx.gd")
+var fx
 
 func _init(b) -> void:
 	battle = b
+	fx = CandyVfx.new(b)
 
 func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技能一糖果锤(封板·80龟能): 举糖果锤蓄力→猛砸直线200码·总(1.8A+12%自maxHp)物理由命中敌均分·回血40%(用户2026-07-14做举锤蓄力+落砸)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
@@ -70,21 +75,22 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 		battle._world.add_child(hammer)
 		_candy_hammer_pose(hammer, u["pos"], dir, false, 0.0)
 	var uu: Dictionary = u; var d2: Vector2 = dir
+	var energy: Array = fx.hammer_energy(u)                    # 锤头能量: 蓄力聚能 → 劈下光轨 → 砸地炸开 → 余光(11-15 用户「这一股能量砸下去」)
 	var tw = battle._reg_tween()
 	if hammer != null:
 		tw.tween_method(func(p: float) -> void: _candy_hammer_pose(hammer, uu["pos"], d2, false, p), 0.0, 1.0, 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)   # 举锤上抬后仰
 		tw.tween_method(func(p: float) -> void: _candy_hammer_pose(hammer, uu["pos"], d2, true, p), 0.0, 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 猛砸下挥
 	else:
-		tw.tween_interval(0.38)
+		tw.tween_interval(HAMMER_SWING_SEC)
 	tw.tween_callback(func() -> void:   # 砸中: 沿线糖爆冲击+震屏+均分伤+回血
 		if hammer != null and is_instance_valid(hammer):
 			var ht = battle._reg_tween(); ht.tween_interval(0.06); ht.tween_property(hammer, "modulate:a", 0.0, 0.16); ht.tween_callback(hammer.queue_free)
-		if battle._damage.is_controlled(uu): return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手
+		if battle._damage.is_controlled(uu):   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手
+			for en in energy:                    # 这一锤没砸下去 ⇒ 排好的锤头能量一并删掉(不然空中还在亮)
+				if is_instance_valid(en): en.queue_free()
+			return
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
-		for k in range(4):                                     # 沿线糖爆冲击带(从锤头往前铺·200码)
-			var at: Vector2 = uu["pos"] + d2 * (55.0 + float(k) * 48.0)
-			var bt = battle._reg_tween(); bt.tween_interval(float(k) * 0.03)
-			bt.tween_callback(func() -> void: battle._burst_vfx("res://assets/sprites/vfx/candy-burst.png", at, 150.0, 0.35))
+		fx.slam(uu["pos"], d2)                                 # 砸地: 落点闪光 + 地面冲击环 + 判定区糖果框 + 奶油糖云 + 糖块崩飞(11-15 重做, 原来沿线 4 张同样的糖爆)
 		if not uu.get("alive", false): return
 		var hits: Array = []
 		for o in battle._targeting._enemies_of(uu):
@@ -95,7 +101,10 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 		var dealt: int = 0
 		for o in hits:
 			var dm: int = battle._mitigate(uu, per_raw, o, false)
+			battle._vfx.own_hit_vfx = true    # 有专属命中特效: 不叠通用星芒火花(11-11「不要有通用命中特效」; 只管画面)
 			battle._damage._apply_damage_from(uu, o, dm, Color("#ff9ed6")); dealt += dm
+			battle._vfx.own_hit_vfx = false
+			fx.slam_hit(o, d2)
 		battle._damage._heal(uu, float(dealt) * HAMMER_LIFESTEAL))
 
 func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming: bool, p: float) -> void:   # 糖果锤姿态: raise=从身侧升头顶后方后仰 / slam=挥到前方下落
