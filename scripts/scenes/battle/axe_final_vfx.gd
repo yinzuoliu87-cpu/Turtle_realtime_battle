@@ -121,9 +121,16 @@ static func _mat(col: Color, solid: bool, prio: int = 8) -> StandardMaterial3D:
 
 
 ## 一圈贴地的细环（内外双圆环带）。整局只建一次网格。
+## ★★逐帧直播出处键(2026-11-15): 原来现拼不挂出处键, 直播流里手机只收到空壳 ⇒ 余烬种子 / 余烬之光在直播、回放里画不出来
+##   (探针 tests/probes/_probe_stream_diamond_axe.gd AXE_FINAL=ember: 占位 2)。拼网格挪成静态纯函数 `gen_axe_ring`, 挂 VfxTex.tag。
 func _ring_mesh() -> ArrayMesh:
 	if _mesh_ring != null:
 		return _mesh_ring
+	_mesh_ring = gen_axe_ring()
+	return _mesh_ring
+
+
+static func gen_axe_ring() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var seg := 72
@@ -137,8 +144,7 @@ func _ring_mesh() -> ArrayMesh:
 		var q1: Vector3 = p1 * inner
 		for v in [q0, p0, p1, q0, p1, q1]:
 			st.add_vertex(v)
-	_mesh_ring = st.commit()
-	return _mesh_ring
+	return VfxTex.tag(st.commit(), "gen_axe_ring", [], "res://scripts/scenes/battle/axe_final_vfx.gd")
 
 
 func _adopt(n: Node3D) -> void:

@@ -135,6 +135,12 @@ const HEX_R := 32.0
 
 var battle = null
 var _mesh_cache: Dictionary = {}      # h(取整到 CHARGE_H_PER_STEP) → ArrayMesh
+## ★★逐帧直播出处键(2026-11-15): 下面几张现拼的网格(六边形网格 / 三层边线 / 跑动光点 / 砸地光盘)原来没挂出处键,
+##   直播流里手机只收到「一份网格」空壳(探针 tests/probes/_probe_stream_diamond_axe.gd: 占位 65、镜像网格 0 面) ⇒
+##   用户 11-15「小木斧的钻石技能…整个技能特效都没出现」(周末赛 / 直播 / 回放都是服务器算、手机按流重放)。
+##   ⇒ 拼网格的逻辑挪成**静态纯函数** `gen_axe_*`(只看参数 + 常量), 生成时挂 `VfxTex.tag`, 手机按白名单调同一个函数现生成。
+##   直播覆盖扫描当年没抓到: 它跑小木斧用默认木斧档位, 被动 6 根本不触发。
+const SRC := "res://scripts/scenes/battle/axe_passive_vfx.gd"
 
 
 func _init(b) -> void:
@@ -229,20 +235,26 @@ func _field_mesh(h: float) -> ArrayMesh:
 	var key: int = int(round(h / AE.CHARGE_H_PER_STEP))
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var cs: Array = field_corners(float(key) * AE.CHARGE_H_PER_STEP)
+	var mesh: ArrayMesh = gen_axe_field(float(key) * AE.CHARGE_H_PER_STEP)
+	if mesh == null:
+		return null
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+## 梯形地面面片(纯函数, 直播出处键见 `SRC` 那段)。局部坐标: x = 纵深(码) / z = 横向(码)。摆位时再乘 WS 转成世界尺度。
+static func gen_axe_field(h: float) -> ArrayMesh:
+	var cs: Array = field_corners(h)
 	if cs.is_empty():
 		return null
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	## 局部坐标: x = 纵深(码) / z = 横向(码)。摆位时再乘 WS 转成世界尺度。
 	var v: Array = []
 	for c in cs:
 		v.append(Vector3(float((c as Vector2).x), 0.0, float((c as Vector2).y)))
 	for idx in [0, 1, 2, 0, 2, 3]:
 		st.add_vertex(v[idx])
-	var mesh: ArrayMesh = st.commit()
-	_mesh_cache[key] = mesh
-	return mesh
+	return VfxTex.tag(st.commit(), "gen_axe_field", [h], SRC)
 
 
 ## 被动 6【蓄力梯形预警】—— 每 `AE.CHARGE_STEP` 秒长一格(2026-09-15 起 0.25 秒 +30 码), 一直画到砸下。
@@ -345,6 +357,15 @@ func _edge_mesh_w(h: float, wmul: float) -> ArrayMesh:
 	var key: int = -int(round(h / AE.CHARGE_H_PER_STEP)) - 1000 * int(round(wmul * 10.0))
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
+	var mesh: ArrayMesh = gen_axe_edge(h, wmul)
+	if mesh == null:
+		return null
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+## 梯形边线(纯函数): `wmul` = 宽度倍数(三层辉光: 外晕 3.4 / 中 1.9 / 芯 1.0)。
+static func gen_axe_edge(h: float, wmul: float) -> ArrayMesh:
 	var cs: Array = field_corners(h)
 	if cs.size() != 4:
 		return null
@@ -375,9 +396,7 @@ func _edge_mesh_w(h: float, wmul: float) -> ArrayMesh:
 		for idx in [0, 1, 2, 0, 2, 3]:
 			var p: Vector2 = q[idx]
 			st.add_vertex(Vector3(p.x, 0.0, p.y))
-	var mesh: ArrayMesh = st.commit()
-	_mesh_cache[key] = mesh
-	return mesh
+	return VfxTex.tag(st.commit(), "gen_axe_edge", [h, wmul], SRC)
 
 
 ## 蓄力推进: 高度变了就换 mesh(8 种, 有缓存) + 每帧推进"预警"的活体感。
@@ -444,6 +463,15 @@ func _hex_mesh(h: float, full: bool = false) -> ArrayMesh:
 	var key: int = (30000 if full else 20000) + int(round(h / AE.CHARGE_H_PER_STEP))
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
+	var m: ArrayMesh = gen_axe_hex(h, full)
+	if m == null:
+		return null
+	_mesh_cache[key] = m
+	return m
+
+
+## 六边形网格(纯函数, 直播出处键见 `SRC` 那段)。
+static func gen_axe_hex(h: float, full: bool) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	## ★★格子大小是**量参考定的**, 不是拍的:
@@ -512,9 +540,7 @@ func _hex_mesh(h: float, full: bool = false) -> ArrayMesh:
 		col += 1
 	if n == 0:
 		return null
-	var m: ArrayMesh = st.commit()
-	_mesh_cache[key] = m
-	return m
+	return VfxTex.tag(st.commit(), "gen_axe_hex", [h, full], SRC)
 
 
 ## 砸击点的【中心聚光】—— 一个快速涨大又消失的白光盘, 对应参考里释放前那一瞬。
@@ -552,6 +578,13 @@ func _slam_core_flash(root: Node3D) -> void:
 func _ring_disc_mesh() -> ArrayMesh:
 	if _mesh_cache.has(8888):
 		return _mesh_cache[8888]
+	var m: ArrayMesh = gen_axe_disc()
+	_mesh_cache[8888] = m
+	return m
+
+
+## 半径 1 的实心圆盘(纯函数)。
+static func gen_axe_disc() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var seg := 28
@@ -561,9 +594,7 @@ func _ring_disc_mesh() -> ArrayMesh:
 		st.add_vertex(Vector3.ZERO)
 		st.add_vertex(Vector3(cos(a0), 0.0, sin(a0)))
 		st.add_vertex(Vector3(cos(a1), 0.0, sin(a1)))
-	var m: ArrayMesh = st.commit()
-	_mesh_cache[8888] = m
-	return m
+	return VfxTex.tag(st.commit(), "gen_axe_disc", [], SRC)
 
 
 ## 命中时铺一层六边形网格并渐隐。★挂在梯形根节点下, 跟着它一起被收掉。
@@ -608,6 +639,13 @@ func hex_burst(root: Node3D, h: float) -> MeshInstance3D:
 func _runner_mesh() -> ArrayMesh:
 	if _mesh_cache.has(9999):
 		return _mesh_cache[9999]
+	var m: ArrayMesh = gen_axe_runner()
+	_mesh_cache[9999] = m
+	return m
+
+
+## 流动光点菱形(纯函数)。
+static func gen_axe_runner() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var L := 26.0     # 沿线方向的长(码)
@@ -616,9 +654,7 @@ func _runner_mesh() -> ArrayMesh:
 			  Vector3(L * 0.5, 0.0, 0.0), Vector3(0.0, 0.0, W)]
 	for idx in [0, 1, 2, 0, 2, 3]:
 		st.add_vertex(v[idx])
-	var m: ArrayMesh = st.commit()
-	_mesh_cache[9999] = m
-	return m
+	return VfxTex.tag(st.commit(), "gen_axe_runner", [], SRC)
 
 
 ## 每帧推进梯形的"活着"的部分: 呼吸 / 步进闪光 / 临砸加速闪 / **流动光点**。
