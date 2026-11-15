@@ -15,6 +15,8 @@ extends RefCounted
 const DUR := 5.0
 ## 设计画布(按屏幕等比缩放居中; 背景另铺满全屏)
 const CW := 1200.0
+const TITLE_PX_S := 24
+const TITLE_PX_L := 36
 const CH := 720.0
 const AV := 52.0
 ## 地图幕顶上留一条: 场地名牌 + 战果幕的比分 / 蛋血两行(不压上路圆章)
@@ -221,7 +223,11 @@ func _label(txt: String, fs: int, col: Color, parent: Control, center: Vector2, 
 		l.name = nm
 	l.text = txt
 	if title:
-		UISkin.title_label(l, fs)
+		## 像素标题字只有 12 的倍数是整像素(verify_title_font ③): 两档, 写成常量
+		if fs >= TITLE_PX_L:
+			UISkin.title_label(l, TITLE_PX_L)
+		else:
+			UISkin.title_label(l, TITLE_PX_S)
 	else:
 		l.add_theme_font_size_override("font_size", fs)
 	l.add_theme_color_override("font_color", col)
@@ -247,7 +253,7 @@ func _label(txt: String, fs: int, col: Color, parent: Control, center: Vector2, 
 func photo() -> Texture2D:
 	if battle.has_meta(PHOTO_META):
 		var v = battle.get_meta(PHOTO_META)
-		if v is SubViewport and is_instance_valid(v):
+		if is_instance_valid(v) and v is SubViewport:
 			return (v as SubViewport).get_texture()
 	if DisplayServer.get_name() == "headless":
 		return null
@@ -310,17 +316,6 @@ func _sfx(name: String, t0: float, vol: float = 1.0, pitch: float = 1.0) -> void
 
 
 
-static func _ease_out(x: float) -> float:
-	return 1.0 - pow(1.0 - clampf(x, 0.0, 1.0), 3.0)
-
-
-static func _ease_back(x: float) -> float:
-	var c1 := 1.70158
-	var c3 := c1 + 1.0
-	var u := clampf(x, 0.0, 1.0) - 1.0
-	return 1.0 + c3 * u * u * u + c1 * u * u
-
-
 static func _ease_in_out(x: float) -> float:
 	var u := clampf(x, 0.0, 1.0)
 	return u * u * (3.0 - 2.0 * u)
@@ -339,17 +334,17 @@ func pose(tt: float) -> void:
 			"pop":
 				var k := clampf(x, 0.0, 1.0)
 				(node as CanvasItem).modulate.a = clampf(x * 2.5, 0.0, 1.0)
-				(node as Control).scale = Vector2.ONE * (_ease_back(k) if k > 0.0 else 0.01)
+				(node as Control).scale = Vector2.ONE * (ChampionUi.ease_back(k) if k > 0.0 else 0.01)
 			"fade":
-				(node as CanvasItem).modulate.a = lerpf(float(tr["a0"]), float(tr["a1"]), _ease_out(x))
+				(node as CanvasItem).modulate.a = lerpf(float(tr["a0"]), float(tr["a1"]), ChampionUi.ease_out(x))
 			"slide":
-				var e: float = _ease_back(x) if bool(tr["back"]) else _ease_out(x)
+				var e: float = ChampionUi.ease_back(x) if bool(tr["back"]) else ChampionUi.ease_out(x)
 				(node as Control).position = (tr["from"] as Vector2).lerp(tr["to"], e)
 				(node as CanvasItem).modulate.a = clampf(x * 3.0, 0.0, 1.0)
 			"slam":
 				var k3 := clampf(x, 0.0, 1.0)
 				(node as CanvasItem).modulate.a = clampf(x * 4.0, 0.0, 1.0)
-				(node as Control).scale = Vector2.ONE * lerpf(float(tr["s0"]), 1.0, _ease_out(k3)) if x > 0.0 else Vector2.ONE * float(tr["s0"])
+				(node as Control).scale = Vector2.ONE * lerpf(float(tr["s0"]), 1.0, ChampionUi.ease_out(k3)) if x > 0.0 else Vector2.ONE * float(tr["s0"])
 			"sfx":
 				if not bool(tr["fired"]) and t >= float(tr["t0"]) and t < float(tr["t0"]) + 0.5:
 					tr["fired"] = true
@@ -364,36 +359,36 @@ func pose(tt: float) -> void:
 				(node as Dust).queue_redraw()
 			"pop3":
 				var kp := clampf(x, 0.0, 1.0)
-				(node as Node3D).scale = Vector3.ONE * maxf(0.001, _ease_back(kp)) if x > 0.0 else Vector3.ONE * 0.001
+				(node as Node3D).scale = Vector3.ONE * maxf(0.001, ChampionUi.ease_back(kp)) if x > 0.0 else Vector3.ONE * 0.001
 			"drop3":
 				var spr: Sprite3D = node
 				spr.visible = x >= 0.0
 				var kd := clampf(x, 0.0, 1.0)
-				spr.position = (tr["to"] as Vector3) + Vector3(0, 2.2 * (1.0 - _ease_out(kd)) - (sin(kd * PI) * 0.0), 0)
+				spr.position = (tr["to"] as Vector3) + Vector3(0, 2.2 * (1.0 - ChampionUi.ease_out(kd)) - (sin(kd * PI) * 0.0), 0)
 			"hop3":
 				var k3 := _ease_in_out(x)
 				var p3: Vector3 = (tr["from"] as Vector3).lerp(tr["to"], k3)
 				p3.y += sin(PI * clampf(x, 0.0, 1.0)) * float(tr["h"])
 				(node as Sprite3D).position = p3
 			"grey3":
-				(node as Sprite3D).modulate = Color.WHITE.lerp(Color(0.42, 0.42, 0.48), _ease_out(x))
+				(node as Sprite3D).modulate = Color.WHITE.lerp(Color(0.42, 0.42, 0.48), ChampionUi.ease_out(x))
 			"path3":
 				(node as ShaderMaterial).set_shader_parameter("prog", clampf(x, 0.0, 1.0))
 			"pulse3":
 				var w3 := 0.5 + 0.5 * sin((t - float(tr["t0"])) * TAU * 0.9)
 				(node as ShaderMaterial).set_shader_parameter("a", 0.0 if t < float(tr["t0"]) else clampf((t - float(tr["t0"])) * 4.0, 0.0, 1.0) * (0.45 + 0.55 * w3))
 			"fade3":
-				(node as ShaderMaterial).set_shader_parameter("a", float(tr["a1"]) * (_ease_out(x) if float(tr["dur"]) > 0.0 else 1.0))
+				(node as ShaderMaterial).set_shader_parameter("a", float(tr["a1"]) * (ChampionUi.ease_out(x) if float(tr["dur"]) > 0.0 else 1.0))
 			"slash3":
-				(node as ShaderMaterial).set_shader_parameter("prog", (_ease_out(x) if float(tr["dur"]) > 0.0 else 1.0) if x >= 0.0 or float(tr["dur"]) <= 0.0 else 0.0)
+				(node as ShaderMaterial).set_shader_parameter("prog", (ChampionUi.ease_out(x) if float(tr["dur"]) > 0.0 else 1.0) if x >= 0.0 or float(tr["dur"]) <= 0.0 else 0.0)
 			"dim3":
-				(node as ShaderMaterial).set_shader_parameter("dim", 0.42 * (_ease_out(x) if float(tr["dur"]) > 0.0 else 1.0))
+				(node as ShaderMaterial).set_shader_parameter("dim", 0.42 * (ChampionUi.ease_out(x) if float(tr["dur"]) > 0.0 else 1.0))
 			"tint3":
 				var tc3: Color = tr["col"]
-				(node as ShaderMaterial).set_shader_parameter("tint", Color(tc3.r, tc3.g, tc3.b, 0.30 * (_ease_out(x) if float(tr["dur"]) > 0.0 else 1.0)))
+				(node as ShaderMaterial).set_shader_parameter("tint", Color(tc3.r, tc3.g, tc3.b, 0.30 * (ChampionUi.ease_out(x) if float(tr["dur"]) > 0.0 else 1.0)))
 			"lit3":
 				var dl: Dictionary = tr["d"]
-				var kl := _ease_out(x)
+				var kl := ChampionUi.ease_out(x)
 				(dl["top_mat"] as ShaderMaterial).set_shader_parameter("lit", kl)
 				## 镜头开始推近(3.7 秒)起光柱淡掉: 贴近看一圈半透明的柱壁像个罐子罩在台子上
 				var k_dive: float = 1.0 - clampf((t - 3.7) / 0.5, 0.0, 1.0)
@@ -408,14 +403,14 @@ func pose(tt: float) -> void:
 					var rad: float = rr * (0.92 + 0.12 * float(si % 3) / 2.0)
 					sp3.position = Vector3(cos(ang) * rad, WarTable.TOP_Y + 0.1 + ph * 2.6, sin(ang) * rad)
 					sp3.modulate = Color(1, 1, 1, kl * (1.0 - ph) * (0.6 + 0.4 * float(si % 2)))
-				(dl["node"] as Node3D).position.y = 0.35 * _ease_back(clampf(x, 0.0, 1.0)) if x > 0.0 else 0.0   # 台子微微升起
+				(dl["node"] as Node3D).position.y = 0.35 * ChampionUi.ease_back(clampf(x, 0.0, 1.0)) if x > 0.0 else 0.0   # 台子微微升起
 				## 外扩光环: 0.6 秒从台沿推到 1.8 倍并淡出
 				var kw: float = clampf((t - float(tr["t0"])) / 0.6, 0.0, 1.0)
-				(dl["wave"] as Node3D).scale = Vector3.ONE * lerpf(1.0, 1.8, _ease_out(kw))
+				(dl["wave"] as Node3D).scale = Vector3.ONE * lerpf(1.0, 1.8, ChampionUi.ease_out(kw))
 				(dl["wave_mat"] as ShaderMaterial).set_shader_parameter("a", (1.0 - kw) * 1.2 if x > 0.0 else 0.0)
 				(dl["rim_mat"] as StandardMaterial3D).albedo_color = Color(0.86, 0.66, 0.24).lerp(Color(1.0, 0.92, 0.55), kl)
 			"bands":
-				(node as Bands).prog = _ease_out(x)
+				(node as Bands).prog = ChampionUi.ease_out(x)
 				(node as Bands).queue_redraw()
 	for af in anim_frames:
 		var tr2: TextureRect = af["node"]
@@ -730,7 +725,7 @@ func _settle_marks3() -> void:
 	var win_lr := "right" if str(battle._dl_pending_loser) == "left" else "left"
 	_mark_result3(lane, win_lr, 0.8)
 	var won := win_lr == me_lr
-	var res := _label("本战场胜利" if won else "本战场失败", 30, COL_WIN if won else COL_LOSE, root, Vector2.ZERO, true, "LaneSettleResult")
+	var res := _label("本战场胜利" if won else "本战场失败", 36, COL_WIN if won else COL_LOSE, root, Vector2.ZERO, true, "LaneSettleResult")
 	res.add_theme_constant_override("outline_size", 10)
 	res.rotation = -0.14
 	_anchor(res, (WarTable.LANE_POS[lane] as Vector3) + Vector3(0, 1.2, 0))
@@ -909,7 +904,7 @@ func _build_vs() -> void:
 		var specs: Array = specs_l if side_lr == "left" else specs_r
 		var team: Color = COL_BLUE if side_lr == "left" else COL_RED
 		## 双方名字放顶上与路名同一行的两侧(放中间会和后排头顶的名牌挤在一起)
-		var hd := _label(str(hdr["l"] if side_lr == "left" else hdr["r"]), 28, COL_WIN if side_lr == me_lr else COL_LOSE, map,
+		var hd := _label(str(hdr["l"] if side_lr == "left" else hdr["r"]), 24, COL_WIN if side_lr == me_lr else COL_LOSE, map,
 			Vector2(CW * (0.17 if side_lr == "left" else 0.83), 54), true)
 		_slide(hd, hd.position + Vector2(-140.0 if side_lr == "left" else 140.0, 0), hd.position, 0.3, 0.35, false)
 		var cnt := specs.size()

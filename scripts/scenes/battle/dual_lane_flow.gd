@@ -6,7 +6,6 @@ extends RefCounted
 ## 能渲染 BBCode 的 tooltip 宿主(背包 2026-07-22 起就在用的那一份) —— 对阵预览里那个
 ## 44×44 装备格的 tooltip 正文带颜色与内联属性图标, 不挂它就是纯 Label 原样印标记。
 const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
-const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 const _BE := preload("res://scripts/net/backend.gd")   # 对手快照的赛季等级判据(ghost_level)
 const LaneMapIntro := preload("res://scripts/scenes/battle/lane_map_intro.gd")   # 换路幕布三段演出 + 开战横幅(2026-11-15)
 

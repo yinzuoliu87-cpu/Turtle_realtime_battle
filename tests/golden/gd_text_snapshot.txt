@@ -1450,22 +1450,12 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|加时 %s
 scripts/scenes/battle/dual_lane_flow.gd|lit|各路战果    我方 %d : %d 对方
 scripts/scenes/battle/dual_lane_flow.gd|lit|对方
 scripts/scenes/battle/dual_lane_flow.gd|lit|小将
-scripts/scenes/battle/dual_lane_flow.gd|lit|开 战
 scripts/scenes/battle/dual_lane_flow.gd|lit|我方
 scripts/scenes/battle/dual_lane_flow.gd|lit|敌军覆没
 scripts/scenes/battle/dual_lane_flow.gd|lit|破蛋 %d:%02d
 scripts/scenes/battle/dual_lane_flow.gd|lit|破蛋定胜负
 scripts/scenes/battle/dual_lane_flow.gd|lit|结算
 scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
-scripts/scenes/battle/dual_lane_flow.gd|text|%s  对阵
-scripts/scenes/battle/dual_lane_flow.gd|text|%s  战果
-scripts/scenes/battle/dual_lane_flow.gd|text|三路开战
-scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存单位
-scripts/scenes/battle/dual_lane_flow.gd|text|本战场失败
-scripts/scenes/battle/dual_lane_flow.gd|text|本战场胜利
-scripts/scenes/battle/dual_lane_flow.gd|text|点击继续
-scripts/scenes/battle/dual_lane_flow.gd|text|龟蛋生命  我方 %d  ·  对方 %d
-scripts/scenes/battle/dual_lane_flow.gd|text|（无装备）
 scripts/scenes/battle/finals_ctx.gd|lit|%s 对 %s
 scripts/scenes/battle/finals_ctx.gd|lit|上路
 scripts/scenes/battle/finals_ctx.gd|lit|上路战场
@@ -1700,6 +1690,10 @@ scripts/scenes/battle/inspect_card.gd|lit|闪避
 scripts/scenes/battle/inspect_card.gd|lit|魔抗
 scripts/scenes/battle/inspect_card.gd|lit|魔法穿透
 scripts/scenes/battle/inspect_card.gd|lit|龟能充能速率
+scripts/scenes/battle/lane_map_intro.gd|lit|本战场失败
+scripts/scenes/battle/lane_map_intro.gd|lit|本战场胜利
+scripts/scenes/battle/lane_map_intro.gd|lit|龟蛋生命  我方 %d  ·  对方 %d
+scripts/scenes/battle/lane_map_intro.gd|text|被驯服
 scripts/scenes/battle/replay_controls.gd|lit|上路战场
 scripts/scenes/battle/replay_controls.gd|lit|下路战场
 scripts/scenes/battle/replay_controls.gd|lit|决赛日

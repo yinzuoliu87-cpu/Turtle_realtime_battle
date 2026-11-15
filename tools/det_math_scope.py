@@ -19,7 +19,10 @@ RENDER = re.compile(r'(_vfx\.gd$|/battle_hud\.gd$|/battle_render\.gd$|/battle_vf
                     r'|/arena_outer\.gd$|/map_field\.gd$|/topbar_status\.gd$|/sword_3d\.gd$|/battle_world_builder\.gd$'
                     r'|/equip/hp_lines\.gd$'
                     ## 2026-11-14 灵物触手动画控制器 / 待机关键帧 / 拍下特效: 纯画面, 只被 tentacle_vfx 的绘制调(伤害按固定时刻 T_TOUCH 结算, 不读它们)
-                    r'|/equip/tentacle_rig\.gd$|/equip/tentacle_idle_keys\.gd$|/equip/tentacle_slam_fx\.gd$)')
+                    r'|/equip/tentacle_rig\.gd$|/equip/tentacle_idle_keys\.gd$|/equip/tentacle_slam_fx\.gd$'
+                    ## 2026-11-15 换路幕布三段演出 / 桌面作战地图: 幕布是 sim 步里到点建的(dual_lane_flow._dl_present_advance), 但这两份只画画面 ——
+                    ##   读谁还活着来摆立牌, 不写任何单位状态、不取 _battle_rng; 幕布时长 / 点击 / 回放输入仍在 dual_lane_flow
+                    r'|/battle/lane_map_intro\.gd$|/battle/lane_war_table\.gd$)')
 ## 整个不算(网络/音频/回放校验: 不算战斗数值)
 SKIP = re.compile(r'(/systems/audio/|/systems/replay/|/systems/sim/sim_driver\.gd$|/systems/sim/sim_shot\.gd$'
                   r'|/gamedata/(vfxlab_cases|skill_icons|axe_art|glossary|menu_arena_layout|bracket_layout|arena_theme)\.gd$)')

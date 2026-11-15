@@ -39,7 +39,7 @@ const FILES := [
 	"res://scripts/scenes/MainMenuScene.gd",
 	"res://scripts/scenes/battle/settle_screen.gd",
 	"res://scripts/scenes/battle/replay_controls.gd",
-	"res://scripts/scenes/battle/dual_lane_flow.gd",
+	"res://scripts/scenes/battle/lane_map_intro.gd",   # 2026-11-15 换路幕布的标题 / 印章 / 比分从 dual_lane_flow 搬到这里
 	"res://scripts/scenes/battle/topbar_status.gd",
 	"res://scripts/scenes/FirstLaunchScene.gd",
 	"res://scripts/scenes/tutorial_choice.gd",

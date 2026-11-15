@@ -60,11 +60,11 @@ BASELINE = {
     "scripts/scenes/battle/battle_hud.gd": 3,       # HUD 面板动效(UI 层)·2026-10-04 5→3: 结算屏两处随结算屏搬到 settle_screen.gd
     "scripts/scenes/battle/settle_screen.gd": 2,    # 结算屏暗幕淡入 + 胜负大字弹出(UI 层·战斗已结束·理由见 tween_freeze_audit ALLOW)
     "scripts/scenes/battle/battle_vfx.gd": 4,       # 飘字(CanvasLayer) + 全屏轻白闪(2026-10-14·内测白屏, 理由见 tween_freeze_audit ALLOW)
-    "scripts/scenes/battle/dual_lane_flow.gd": 4,   # 换路转场 UI(跨路存活, 不能进 _sim_tweens 被连坐清掉)
+    "scripts/scenes/battle/dual_lane_flow.gd": 3,   # 换路转场 UI(跨路存活, 不能进 _sim_tweens 被连坐清掉); 4 → 3(2026-11-15 旧幕布「逐个弹入」随表格幕布删掉, 新幕布按 pose(t) 摆)
     "scripts/scenes/hp_bar.gd": 3,                  # 血条拖尾/横抖/白闪
     "scripts/systems/equip/timestop_system.gd": 4,  # 时停自己的演出(冻了就没画面)·2026-10-19 5→4: 逐帧直播 S3 沙漏虚影改走 _reg_tween
 }
-BASELINE_TOTAL = 20
+BASELINE_TOTAL = 19
 
 # 结算动作：出现在"含裸 tween 的函数"里就红（裸 tween 走真实钟，结算挨着它 = 结算时刻跟着漂的高危形状）。
 SETTLE = re.compile(r"\b(_apply_damage_from|_apply_damage|_kill|_heal|_grant_shield|_battle_rng|_sk_dmg\w*)\b")

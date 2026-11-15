@@ -40,6 +40,7 @@ const THEME_READERS := {
 	"res://scripts/scenes/battle/arena_outer.gd": "场外装饰",
 	"res://scripts/systems/stream/stream_recorder.gd": "录流时记下主题名给手机核对",
 	"res://scripts/systems/stream/stream_player.gd": "手机核对自己建的是不是同一张图",
+	"res://scripts/scenes/battle/lane_map_intro.gd": "换路幕布左上角场地名牌(11-15 三路开场桌面地图): 只读 label 显示, 不改 active、不在 _sim_step 的结算里",
 	"res://scripts/scenes/battle/battle_debug_arena.gd": "调试场选图(11-15 用户「这个旧的调试场怎么还用的是旧地图啊」): 进场前 / 「地图」键设 active、存档记图名; 只在开发工具里、不在 _sim_step 调用链上",
 }
 

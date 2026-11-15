@@ -72,7 +72,7 @@ ALLOW = {
            "3 → 4（2026-10-14）: 全屏轻白闪 `screen_flash_light`（CanvasLayer 55, 0.18 秒纯画面）—— "
            "走 `_reg_tween` 时换路 kill 全部 sim tween ⇒ 淡出与 queue_free 不执行, 内测「整个画面变白」(b250de29)"),
     "scripts/scenes/battle/dual_lane_flow.gd": (
-        4, "双路换路流程的转场 UI，不在 `_world` 里"),
+        3, "双路换路流程的转场 UI，不在 `_world` 里。4 → 3（2026-11-15）: 旧幕布「逐个弹入」随表格幕布删掉, 新幕布 lane_map_intro 按 pose(t) 摆、不用 tween"),
 }
 
 CALL = re.compile(r"(?<!_reg_tween\(\)\.)\bcreate_tween\s*\(\s*\)")
