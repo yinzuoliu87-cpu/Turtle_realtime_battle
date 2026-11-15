@@ -430,7 +430,9 @@ func volley_shot(u: Dictionary, si: int) -> int:
 			Color("#ffffff"), 0.0, true, true, true)
 		var got: float = drain_energy(o, steal * battle._copy_fx_mult)   # × 系数: 多重打击那一发按 50%(11-11)
 		if got > 0.0:
+			var _tp76: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_076"))   # ④ 偷来的龟能记给这一件(箭在飞行途中结算, 没有分发上下文)
 			battle._equip_sys._eq_grant_energy(u, got)
+			battle._equip_sys.tally.pop(_tp76)
 			stt["volley_stolen"] = float(stt.get("volley_stolen", 0.0)) + got
 		cuts.append(clampf(float(line[k]["d"]) / PIERCE_RANGE, 0.0, 1.0))
 	stt["volley_fired"] = int(stt.get("volley_fired", 0)) + 1

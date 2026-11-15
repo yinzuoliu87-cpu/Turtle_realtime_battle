@@ -501,11 +501,11 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
 		battle._heal_circle_vfx(u["pos"], CANDLE_HEAL_R, CANDLE_IV)   # AI生成回血阵动画
 		u["candle_hot_rate"] = hv37 / CANDLE_IV + (float(u.get("candle_hot_rate", 0.0)) if is_equal_approx(float(u.get("candle_hot_until", -1.0)), t_end37) else 0.0)
-		u["candle_hot_until"] = battle._t + CANDLE_IV
+		u["candle_hot_until"] = battle._t + CANDLE_IV; u["candle_hot_by"] = [u, key_of(u, "p2eq_037")]   # ④ HoT 每跳记给这一件(11-15 原来漏记)
 		for a37 in battle._targeting._allies_of(u, false):
 			if DetMath.dist(a37["pos"], u["pos"]) <= CANDLE_HEAL_R:
 				a37["candle_hot_rate"] = (hv37 * CANDLE_ALLY_HALF) / CANDLE_IV + (float(a37.get("candle_hot_rate", 0.0)) if is_equal_approx(float(a37.get("candle_hot_until", -1.0)), t_end37) else 0.0)
-				a37["candle_hot_until"] = battle._t + CANDLE_IV
+				a37["candle_hot_until"] = battle._t + CANDLE_IV; a37["candle_hot_by"] = [u, key_of(u, "p2eq_037")]
 	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 500码内敌各受魔法伤+灼烧
 		if c != null and is_instance_valid(c):
 			var ct = battle._reg_tween(); ct.set_parallel(true)
@@ -1306,6 +1306,7 @@ func _eq_grant_energy(u: Dictionary, amount: float) -> void:   # 给龟能=存"�
 		return
 	u["energy_bank"] = float(u.get("energy_bank", 0.0)) + amount
 	battle._apply_energy_bank(u)
+	tally.on_energy(u, amount)   # ④ 装备统计:「获得龟能 N」(085 / 065 / 076 / 059 …; 只认上下文)
 
 # 娜美式潮浪(海浪护符043): 朝敌人2D方向的对角潮浪 — 从敌人反方向(身后)400码涌起 → 沿"朝敌人"方向慢速推过全场 → 连续宽浪墙(垂直于行进方向铺开)翻涌 → 命中击飞(用户2026-07-04: 全场横扫+2D对角朝敌)
 func _eq_water_wave(u: Dictionary, si: int) -> void:
@@ -1334,7 +1335,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 	##   算好挨打时刻排进 `_pending_shots` ⇒ 浪要走好几秒(浪速 600 后约 5 秒), 这期间单位会走动, 到点挨打时浪早不在它身上
 	##   (录像里三只走散的敌人同时挨打)。站着不动的单位挨打时刻与原来一样(推进量 = 它离起浪点的距离那一步)。
 	##   结算表与演出表分开(演出那张在 `_world` 为空时不建), 推进走 `tick_delayed` 同一条游戏钟, 换路清空。
-	battle._equip_tick_sys.tide_hits_start({"src": u, "si": si, "start": startc, "dir": dir, "dist": tdist,
+	battle._equip_tick_sys.tide_hits_start({"tl": [u, key_of(u, "p2eq_043")], "src": u, "si": si, "start": startc, "dir": dir, "dist": tdist,
 		"windup": windup, "travel": travel, "t": 0.0, "allies": (allies as Array).duplicate(), "enemies": (enemies as Array).duplicate(), "hit": []})
 
 

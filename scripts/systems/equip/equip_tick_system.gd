@@ -486,6 +486,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 			stt["gear_t"] = float(stt["gear_t"]) - iv   # ★读常量不写死
 			var coins: int = 1
 			_gear_made[gkey] = int(_gear_made.get(gkey, 0)) + coins
+			battle._equip_sys.tally.credit(u, battle._equip_sys.key_of(u, "p2eq_035"), "coins", float(coins))   # ④ 装备统计:「获得深海币 N 枚」
 			_gear_coins[side] = int(_gear_coins.get(side, 0)) + coins   # ★进【本场账本】(各方一份), 不直接写 meta —— 见 _gear_coins 上方长注释
 			if side == "left":   # 深海币=玩家侧meta货币: 画面反馈只给左方(右方只记数, 供周日裁判结果单 coins_b)
 				battle._vfx._float_text(u["pos"], "+%d 深海币" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
@@ -1105,6 +1106,9 @@ func _tick_tide_hits(dt: float) -> void:
 		var si: int = int(h["si"])
 		var start: Vector2 = h["start"]
 		var dir: Vector2 = h["dir"]
+		## ④ 装备统计: 逐步碰撞挪出了装备分发(11-14), 要自己切回放浪那一件的上下文 —— 否则护盾 / 伤害 / 击飞一笔都记不上(11-15 盘点才发现)
+		var _tl: Array = h.get("tl", [null, ""])
+		var _tp: Array = battle._equip_sys.tally.push(_tl[0], str(_tl[1]))
 		for side in ["allies", "enemies"]:
 			for o in h[side]:
 				if not (o is Dictionary) or not o.get("alive", false) or battle._arr_has_unit(h["hit"], o):
@@ -1117,6 +1121,7 @@ func _tick_tide_hits(dt: float) -> void:
 					battle._equip_sys.wave_hit_ally(o, si)
 				else:
 					battle._equip_sys.wave_hit_enemy(src, o, si, dir)
+		battle._equip_sys.tally.pop(_tp)
 		if done:
 			_tide_hits.remove_at(i)
 
@@ -1198,6 +1203,13 @@ func start_hot(u: Dictionary, owner: String, total: float, secs: float) -> void:
 ## 每帧: 把所有还在生效的摊付一次性喂进去, 并维护给演出/读数用的镜像。
 ## ★由主场景 sim tick **无条件**调一次 —— 到期那一帧要把条子抹成 0、把镜像清掉。
 func tick_hots(u: Dictionary, dt: float) -> void:
+	## 037 蛋糕蜡烛光圈的 HoT(11-15 从主场景 _tick_unit 原样挪来, 原来就紧挨着本函数的调用 ⇒ 结算顺序不变):
+	##   每跳切到给这份 HoT 的那一件(`candle_hot_by`)⇒ 回血记进它的「本局」(原来没有上下文, 一笔都没记)。
+	if battle._t < float(u.get("candle_hot_until", 0.0)):
+		var _cb = u.get("candle_hot_by", null)
+		var _tc: Array = battle._equip_sys.tally.push(_cb[0], str(_cb[1])) if _cb is Array else battle._equip_sys.tally.push(null, "")
+		battle._damage._heal(u, float(u.get("candle_hot_rate", 0.0)) * dt, true)
+		battle._equip_sys.tally.pop(_tc)
 	if not (u.get("eq_hots", null) is Dictionary):
 		hot_bar_mirror(u)
 		return

@@ -204,6 +204,8 @@ func _ts_fire() -> void:
 	var _si: int = clampi(_ts_maxstar, 1, 3) - 1
 	_ts_remaining = TS_DUR[_si]                        # 2026-09-06: 5/10/30 → 4/7/20
 	for _c in casters:
+		var _tp59: Array = battle._equip_sys.tally.push(_c, battle._equip_sys.key_of(_c, "p2eq_059"))   # ④ 装备统计: 时停秒数 + 瞬间龟能记给这一件
+		battle._equip_sys.tally.credit(_c, battle._equip_sys.key_of(_c, "p2eq_059"), "ts_sec", float(TS_DUR[_si]))
 		_c["_ts_echarge"] = TS_ECHARGE_MULT[_si]       # 2026-09-06: 2.0 全星同值 → 1.5/2/3
 		if battle._has_energy_system(_c):
 			var _ie: float = TS_INSTANT_ENERGY[_si]    # 2026-09-06: 15 全星同值 → 40/150/300
@@ -211,6 +213,7 @@ func _ts_fire() -> void:
 			## ★飘字**不许写死数字** —— 原来这里是硬编码的 "+15龟能"，
 			##   常量改成三档后它会漂（同族 memory [[fb-system-coefficient-1-hides-missing-placeholder]]）。
 			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+%d龟能" % int(_ie), Color("#8fd4ff"))
+		battle._equip_sys.tally.pop(_tp59)
 	_ts_total = _ts_remaining
 	_ts_sand_t = 0.0
 	_ts_wave_t = 0.0

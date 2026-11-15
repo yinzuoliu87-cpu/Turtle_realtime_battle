@@ -2378,8 +2378,6 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
 	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
 	_damage._heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
-	if _t < float(u.get("candle_hot_until", 0.0)):   # 蜡烛光圈037: 圈内逐渐回血(HoT)
-		_damage._heal(u, float(u.get("candle_hot_rate", 0.0)) * delta, true)
 	# 装备救命回血 HoT (044深海项链6秒 / 045珍珠耳环8秒; 用户2026-08-01「改为在N秒内回复X%最大生命值」)。
 	# ★用【固定速率×delta】而不是"每帧 maxHp×比例": 携带者在回复期间可能被温泉蛋/升级顶高 maxHp,
 	#   按当前 maxHp 现算会让总量随之膨胀 —— 触发瞬间锁死 rate, 总量才等于文案写的那个数。
@@ -6075,11 +6073,12 @@ func _slam_debris(at2d: Vector2) -> void:
 func _knock_up(o: Dictionary, center: Vector2, vy: float) -> void:
 	if _untouch_block(o, "knock_up"):
 		return   # §UNTOUCHABLE
-	if o == null or not o.get("alive", false) or o.get("airborne", false) or o.get("_knock_immune", false) or _damage._is_cc_immune(o):   # 免击飞(017不沉之锚) / ★免控也免击飞(10-16): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
+	if o == null or not o.get("alive", false) or o.get("airborne", false) or _damage.knock_blocked(o):   # 免击飞(017不沉之锚) / ★免控也免击飞(10-16): 与 _knockback 同一个判据(用户2026-07-19"修吧")
 		return
 	var dir: Vector2 = (o["pos"] - center)
 	dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.1 else Vector2.RIGHT
 	o["airborne"] = true
+	_equip_sys.tally.on_cc(o, "knock")   # ④ 装备统计:「击飞 N 次」
 	o["vy"] = vy
 	o["vx"] = dir.x * KNOCK_PUSH * 0.7
 	o["vz"] = dir.y * KNOCK_PUSH * 0.7

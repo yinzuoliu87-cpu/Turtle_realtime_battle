@@ -1544,11 +1544,15 @@ scripts/scenes/battle/info_panel.gd|lit|主动
 scripts/scenes/battle/info_panel.gd|lit|储能
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
+scripts/scenes/battle/info_panel.gd|lit|免疫击飞 %d 次
+scripts/scenes/battle/info_panel.gd|lit|免疫控制 %d 次
 scripts/scenes/battle/info_panel.gd|lit|冰寒
+scripts/scenes/battle/info_panel.gd|lit|冰封 %d 次
 scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
 scripts/scenes/battle/info_panel.gd|lit|减免伤害 %d
 scripts/scenes/battle/info_panel.gd|lit|减速
+scripts/scenes/battle/info_panel.gd|lit|击飞 %d 次
 scripts/scenes/battle/info_panel.gd|lit|反伤
 scripts/scenes/battle/info_panel.gd|lit|反伤 
 scripts/scenes/battle/info_panel.gd|lit|受到伤害时，按比例反弹给攻击者。
@@ -1583,7 +1587,11 @@ scripts/scenes/battle/info_panel.gd|lit|攻击打出暴击的几率。
 scripts/scenes/battle/info_panel.gd|lit|攻击距离。
 scripts/scenes/battle/info_panel.gd|lit|攻速
 scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 次
+scripts/scenes/battle/info_panel.gd|lit|施加中毒 %d 层
+scripts/scenes/battle/info_panel.gd|lit|施加流血 %d 层
+scripts/scenes/battle/info_panel.gd|lit|施加灼烧 %d 层
 scripts/scenes/battle/info_panel.gd|lit|无
+scripts/scenes/battle/info_panel.gd|lit|时停 %d 秒
 scripts/scenes/battle/info_panel.gd|lit|星能
 scripts/scenes/battle/info_panel.gd|lit|普攻
 scripts/scenes/battle/info_panel.gd|lit|普通攻击
@@ -1619,10 +1627,13 @@ scripts/scenes/battle/info_panel.gd|lit|真实
 scripts/scenes/battle/info_panel.gd|lit|真实伤害
 scripts/scenes/battle/info_panel.gd|lit|真火
 scripts/scenes/battle/info_panel.gd|lit|眩晕
+scripts/scenes/battle/info_panel.gd|lit|眩晕 %d 次
 scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果影响。
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|窃取护盾
+scripts/scenes/battle/info_panel.gd|lit|获得深海币 %d 枚
+scripts/scenes/battle/info_panel.gd|lit|获得龟能 %d
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
 scripts/scenes/battle/info_panel.gd|lit|财宝

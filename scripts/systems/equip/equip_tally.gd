@@ -35,7 +35,12 @@ extends RefCounted
 ##    同一次排查补上的漏记(都是「结算在全局表 / 落地事件 / 召唤物普攻里跑, 没有装备上下文」):
 ##    075 箭雨与流血 · 090 猛砸 · 079 炮台治疗 · 096 斧头偷盾 · 004 处决回血 · 011 溢出转盾(不走 _grant_shield)。
 
-const KEYS := ["phy", "mag", "tru", "heal", "shield", "blocked", "dodge"]   # blocked / dodge: 060 伞「减伤挡下」「闪避次数」(11-12)
+const KEYS := ["phy", "mag", "tru", "heal", "shield", "blocked", "dodge",   # blocked / dodge: 060 伞「减伤挡下」「闪避次数」(11-12)
+	"energy", "coins", "ts_sec", "stun", "knock", "cc_block", "dot_bleed", "dot_burn", "dot_poison"]
+## ★11-15 补齐(用户「压电陶瓷片…已获得龟能」「辣椒…施加流血层数是多少多少层」): 每件装备的「本局」= 结果数 + 次数 / 层数。
+##   energy 龟能(085 / 065 / 076 / 059 …, `EquipSystem._eq_grant_energy` 唯一入口) · coins 深海币(035) · ts_sec 时停秒数(059)
+##   stun / knock 控制上身次数(`_stun` / `_knockback` / `_knock_up` 过了免疫才记) · cc_block 被免掉的控制(066 免控 / 017 免击飞)
+##   dot_* 施加的层数(`on_dot_add` 归到装备的那一份)。都是纯记账, 不读不改任何结算字段。
 const ROW_PREFIX := "_st_eq|"
 
 var battle
@@ -247,6 +252,38 @@ func on_shield(u: Dictionary, got: float) -> void:
 	_add(_owner, _iid, "shield", got)
 
 
+## 龟能(`EquipSystem._eq_grant_energy` 末尾调; 只认上下文, 同 on_heal): 给自己或队友的都记给这件
+func on_energy(u: Dictionary, amt: float) -> void:
+	if amt <= 0.0 or _iid == "" or not (_owner is Dictionary):
+		return
+	if _hostile(_owner, u):
+		return
+	_add(_owner, _iid, "energy", amt)
+
+
+## 控制真的上身了(各入口过了免疫判定之后调): kind ∈ stun / knock。只记敌对目标、只认上下文。
+func on_cc(u: Dictionary, kind: String) -> void:
+	var a: Array = _attrib(null)
+	if a.is_empty() or is_same(a[0], u) or not _hostile(a[0], u):
+		return
+	_add(a[0], str(a[1]), kind, 1.0)
+
+
+## 控制被免掉了(各入口的免疫分支调): 066 鲸涎浓浆喝药后的免控 / 017 不沉之锚的免击飞, 记在被保护的携带者自己身上。
+func on_cc_block(u: Dictionary, kind: String) -> void:
+	if bool(u.get("_brew_immune", false)) and _carries(u, "p2eq_066"):
+		_add(u, battle._equip_sys.key_of(u, "p2eq_066"), "cc_block", 1.0)
+	elif kind == "knock" and _carries(u, "p2eq_017"):
+		_add(u, battle._equip_sys.key_of(u, "p2eq_017"), "cc_block", 1.0)
+
+
+func _carries(u: Dictionary, eid: String) -> bool:
+	for e in u.get("equips", []):
+		if e is Dictionary and str((e as Dictionary).get("id", "")) == eid:
+			return true
+	return false
+
+
 # ─────────────────────────────── 层数 DoT 份额 ───────────────────────────────
 ## u["_dot_eq"][type] = {"other": float, "list": [[携带者, iid, 份额], ...]}
 ## 份额与层数同量纲; 每次加层前先把旧份额按「当前层数 / 份额合计」缩放(层数每跳按比例衰减,
@@ -284,6 +321,7 @@ func on_dot_add(u: Dictionary, type: String, stacks: int, before: int, src) -> v
 				break
 		if not hit:
 			lst.append([a[0], str(a[1]), float(stacks)])
+		_add(a[0], str(a[1]), "dot_" + type, float(stacks))   # 11-15: 施加了多少层(「施加流血 N 层」)
 	p["list"] = lst
 	all[type] = p
 	u["_dot_eq"] = all

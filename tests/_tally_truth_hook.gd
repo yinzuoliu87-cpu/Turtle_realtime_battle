@@ -182,8 +182,13 @@ func on_dot_add(u: Dictionary, type: String, stacks: int, before: int, src) -> v
 	super.on_dot_add(u, type, stacks, before, src)
 
 
+## 只对「金额」类的账(伤害 / 治疗 / 护盾)逐笔对; 11-15 新加的次数 / 层数 / 龟能 / 深海币不是金额, 不进这张对账表
+##   (它们由 verify_eq_tally_coverage 逐件验), 否则会被当成伤害额加进「已记」里。
+const MONEY_KEYS := ["phy", "mag", "tru", "heal", "shield"]
+
+
 func _add(owner: Dictionary, iid: String, key: String, amt: float) -> void:
-	if iid != "" and amt > 0.0:
+	if iid != "" and amt > 0.0 and key in MONEY_KEYS:
 		if _cur != null:
 			var c: Dictionary = _cur["credited"]
 			c[iid + "|" + key] = float(c.get(iid + "|" + key, 0.0)) + amt

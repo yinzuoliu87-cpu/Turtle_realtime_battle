@@ -1058,7 +1058,25 @@ static func eq_stats_text(u: Dictionary, eid: String) -> String:
 	var dodge: int = int(round(float(st.get("dodge", 0.0))))
 	if dodge > 0:
 		lines.append("闪避 %d 次" % dodge)
+	## 11-15 补齐(用户「压电陶瓷片…已获得龟能」「辣椒…施加流血层数是多少多少层」): 结果数 + 次数 / 层数, 只列非零
+	for row in EQ_STAT_LINES:
+		var v: int = int(round(float(st.get(str(row[0]), 0.0))))
+		if v > 0:
+			var fmt: String = str(row[1])
+			if str(row[0]) == "cc_block" and EquipCk.base_id(eid) == "p2eq_017":
+				fmt = "免疫击飞 %d 次"   # 017 不沉之锚只免击飞; 066 是全部控制
+			elif str(row[0]) == "stun" and EquipCk.base_id(eid) == "p2eq_029":
+				fmt = "冰封 %d 次"       # 029 冰封水母的眩晕是冰封(同一个 stun_until)
+			elif str(row[0]) == "stun" and EquipCk.base_id(eid) == "p2eq_056":
+				continue                 # 056 飞镖的「击飞」= 击退 + 期间眩晕两步实现, 只报击飞一行
+			lines.append(fmt % v)
 	return "\n".join(lines)
+
+
+## 「本局」里伤害 / 治疗 / 护盾 / 减免 / 闪避之后的各行(键见 EquipTally.KEYS): [键, 文字]
+const EQ_STAT_LINES := [["energy", "获得龟能 %d"], ["coins", "获得深海币 %d 枚"],
+	["dot_bleed", "施加流血 %d 层"], ["dot_burn", "施加灼烧 %d 层"], ["dot_poison", "施加中毒 %d 层"],
+	["stun", "眩晕 %d 次"], ["knock", "击飞 %d 次"], ["cc_block", "免疫控制 %d 次"], ["ts_sec", "时停 %d 秒"]]
 
 
 ## 描述框开着且是装备时, 每帧把统计改成最新(只改文字不重建); 由显隐变化时重算框高。

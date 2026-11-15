@@ -792,6 +792,14 @@ func knock_to_parabola(u: Dictionary, delta: float) -> void:
 	u["_kvz"] = u["vz"]
 
 
+## 击飞被免掉了吗(免控 或 017 免击飞) —— `_knockback` 与主场景 `_knock_up` 两条击飞路共用这一个判据; 免掉时记一笔装备统计(066 / 017)。
+func knock_blocked(o: Dictionary) -> bool:
+	if _is_cc_immune(o) or o.get("_knock_immune", false):
+		battle._equip_sys.tally.on_cc_block(o, "knock")
+		return true
+	return false
+
+
 func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: float = 1.0, push_mult: float = 1.0) -> void:
 	if battle._untouch_block(tgt, "knockback"):
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
@@ -804,15 +812,14 @@ func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: 
 		return
 	if tgt["airborne"]:
 		return
-	if _is_cc_immune(tgt):   # ★免控也免击飞(用户 10-16 十只龟核查: 财神梭哈写「免疫控制」, 原来只挡得住眩晕, 被击飞后免控还会断)
-		return
-	if tgt.get("_knock_immune", false):   # 不沉之锚017免击飞(原flag只写不读=死标记, 用户2026-07-19"说好的免疫呢"补)
+	if knock_blocked(tgt):   # ★免控也免击飞(用户 10-16 十只龟核查: 财神梭哈写「免疫控制」) + 不沉之锚017免击飞(用户2026-07-19"说好的免疫呢"补)
 		return
 	var dir: Vector2 = (tgt["pos"] - by["pos"])
 	if DetMath.vlen(dir) < 0.1:
 		dir = Vector2.RIGHT
 	dir = DetMath.norm(dir)
 	tgt["airborne"] = true
+	battle._equip_sys.tally.on_cc(tgt, "knock")   # ④ 装备统计:「击飞 N 次」
 	tgt["vy"] = battle.KNOCK_VY * vy_mult
 	tgt["vx"] = dir.x * battle.KNOCK_PUSH * push_mult
 	tgt["vz"] = dir.y * battle.KNOCK_PUSH * push_mult
@@ -1110,6 +1117,7 @@ func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false
 	#   加在【唯一入口】而不是各技能自己判 —— 财神梭哈投币期免控是第一个用例, 但这是通用能力,
 	#   写进技能里就等于下一个要用的人再写一遍(眩晕收口前正是 17 处各写各的)。
 	if battle._t < float(u.get("cc_immune_until", 0.0)):
+		battle._equip_sys.tally.on_cc_block(u, "stun")   # ④ 装备统计: 066「免疫控制 N 次」
 		return
 	var d: float = sec if no_tenacity else battle._cc_dur(u, sec)
 	if battle._audit:
@@ -1120,8 +1128,11 @@ func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false
 		ch[src_tag] = int(ch.get(src_tag, 0)) + 1
 		u["_stun_chain"] = ch
 		u["_stun_n"] = int(u.get("_stun_n", 0)) + 1
+	var _was_stun: bool = float(u.get("stun_until", 0.0)) > battle._t
 	u["_stun_src"] = src_tag
 	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), battle._t + d)
+	if not _was_stun and u.get("alive", false):   # ④ 装备统计:「眩晕 / 冰封 N 次」—— 数「从没晕到晕上」的次数, 续时长不算(有的效果每步重施); 已经被这一下打死的不算(不沉之锚 3★ 一击常直接打死)
+		battle._equip_sys.tally.on_cc(u, "stun")   # `_freeze` 也是眩晕(电棍 / 霰弹 / 不沉之锚都走它) ⇒ 同一个键, 冰封水母在面板上改叫「冰封」
 
 func _buff(u: Dictionary, stat: String, amount: float, pct: bool, sec: float = battle.BUFF_SEC) -> void:
 	if battle._untouch_block(u, "buff"):
