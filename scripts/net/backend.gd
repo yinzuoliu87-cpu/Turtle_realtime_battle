@@ -1509,25 +1509,48 @@ static func report_finals_entry() -> void:
 		snap, int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 
 
-## 周日购物窗内把当前阵容推给服务端(2026-10-12 统一结算)。对阵图轮询时调, 15 秒最多一次。
+## 周日购物窗内把当前阵容推给服务端(2026-10-12 统一结算)。对阵图轮询 + 全局层 FinalsDay 每拍都调(2026-11-15 起;
+##   原来只有对阵图 ⇒ 背包里改完不回对阵图就永远推不上, 见 finals_lineup_push.gd 头注)。
+##   节流: 阵容没变 15 秒最多一次; ★阵容一变(指纹不同)隔 ≥ 2 秒就推(背包里拖完一下, 不用干等 15 秒)。
 ##   快照与 `report_finals_entry` 同一个构造(同一套阵容口径)。窗外服务端不收, 这里不另判 —— 判据只在服务端一处。
 static var _finals_snap_at: int = 0
+static var _finals_snap_sig := ""
 static func finals_push_snapshot(bucket: int, now_unix: int) -> bool:
-	if GameState == null or bucket < 0 or now_unix - _finals_snap_at < 15:
+	if GameState == null or bucket < 0:
 		return false
-	var leaders = GameState.season_leaders
+	var snap := _finals_snap()
+	if snap.is_empty():
+		return false
+	var sig := snap_sig_of(snap)
+	var gap := now_unix - _finals_snap_at
+	if gap < 15 and not (sig != _finals_snap_sig and gap >= 2):
+		return false
+	_finals_snap_at = now_unix
+	_finals_snap_sig = sig
+	load("res://scripts/net/supabase.gd").finals_update_snapshot_async(int(GameState.week_anchor_ts), bucket, snap)
+	return true
+
+
+## 决赛要交的那一份(背包里此刻的阵容)。统领不满 3 只 ⇒ {}。
+static func _finals_snap() -> Dictionary:
+	var leaders = GameState.season_leaders if GameState != null else []
 	## ★2026-10-12 实跑抓到: 本机阵容是空的(重装 / 赛季被重置)时推上去会把服务端里周六那份正式阵容覆盖成空阵容
 	##   ⇒ 统领不满 3 只一律不推(服务端 finals_update_snapshot 同样拒收没有统领的快照)。
 	if not (leaders is Array) or (leaders as Array).size() < 3:
-		return false
+		return {}
 	var gid := player_ghost_id(int(GameState.season_id), leaders, -1)
-	var av := str(leaders[0]) if (leaders is Array and (leaders as Array).size() > 0) else "basic"
-	var snap := build_ghost_snapshot(gid, {"name": player_display_name(), "avatar": av, "id": gid})
-	if snap.is_empty():
-		return false
-	_finals_snap_at = now_unix
-	load("res://scripts/net/supabase.gd").finals_update_snapshot_async(int(GameState.week_anchor_ts), bucket, snap)
-	return true
+	var av := str(leaders[0])
+	return build_ghost_snapshot(gid, {"name": player_display_name(), "avatar": av, "id": gid})
+
+
+## 阵容指纹: 同一套阵容 = 同一个指纹(快照里没有随时间变的字段)。空 ⇒ ""。
+static func snap_sig_of(snap: Dictionary) -> String:
+	return "" if snap.is_empty() else str(JSON.stringify(snap).hash())
+
+
+## 背包里此刻那一套的指纹(全局层每拍看它变没变)。
+static func finals_snap_sig() -> String:
+	return snap_sig_of(_finals_snap()) if GameState != null else ""
 
 
 ## ★★★补报: 周六晋级了但那一刻没报上去 ⇒ 下次打开主菜单时补一次。

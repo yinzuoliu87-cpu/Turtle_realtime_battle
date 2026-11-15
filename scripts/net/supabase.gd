@@ -1569,8 +1569,8 @@ func finals_update_snapshot(week: int, bucket: int, snapshot: Dictionary) -> voi
 	finals_snapshot_posts += 1
 	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_update_snapshot",
 		JSON.stringify({"p_week": week, "p_bucket": bucket, "p_snapshot": snapshot}),
-		func(_res):
-			_bye(),
+		func(res):
+			load("res://scripts/net/finals_lineup_push.gd").note_result(res, snapshot); _bye(),
 		"Content-Type: application/json")
 
 

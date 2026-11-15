@@ -692,6 +692,10 @@ scripts/net/error_reporter.gd|lit|上次启动:
 scripts/net/error_reporter.gd|lit|上次运行没有正常退出(闪退 / 卡死被结束 / 前台被系统杀)
 scripts/net/error_reporter.gd|lit|手指按下的控件(抬起或拖动时已离树): 
 scripts/net/feedback_net.gd|lit|请填写问题描述
+scripts/net/finals_lineup_push.gd|lit|下一轮备战开始时，会按这套阵容提交
+scripts/net/finals_lineup_push.gd|lit|这套阵容没有生效，本轮沿用上一次提交的阵容
+scripts/net/finals_lineup_push.gd|lit|阵容已提交，本轮按这套阵容出战
+scripts/net/finals_lineup_push.gd|lit|阵容提交失败，正在重试
 scripts/net/friends_net.gd|lit|今日好友申请次数已达上限
 scripts/net/friends_net.gd|lit|双方尚未成为好友
 scripts/net/friends_net.gd|lit|好友数量已达上限 %d 人
@@ -2632,8 +2636,8 @@ scripts/ui/finals_day_model.gd|lit|%s 晋级%s%s
 scripts/ui/finals_day_model.gd|lit|%s%s开播%s
 scripts/ui/finals_day_model.gd|lit|%s开播%s
 scripts/ui/finals_day_model.gd|lit|%s第 %d 场
+scripts/ui/finals_day_model.gd|lit|以备战结束时背包里的阵容出战
 scripts/ui/finals_day_model.gd|lit|并列第 %d 名
-scripts/ui/finals_day_model.gd|lit|未调整阵容时沿用当前阵容
 scripts/ui/finals_day_model.gd|lit|第 %d 名
 scripts/ui/finals_day_model.gd|lit|，%d 组同时进行
 scripts/ui/finals_day_popup.gd|lit|%s %d 秒后开播

@@ -23,6 +23,7 @@ const _BAR := preload("res://scripts/ui/finals_day_bar.gd")
 const _POP := preload("res://scripts/ui/finals_day_popup.gd")
 const _MQ := preload("res://scripts/ui/finals_day_marquee.gd")
 const _RC := preload("res://scripts/ui/finals_day_recap.gd")
+const _FLP := preload("res://scripts/net/finals_lineup_push.gd")
 
 const LAYER := 80
 const POLL_SEC := 30
@@ -158,6 +159,11 @@ func tick() -> void:
 	var cup: Dictionary = f["cup"]
 	var groups: Array = f["groups"]
 	var ent := _F.entered()
+	## ★2026-11-15 背包里调的阵容在哪一屏都交上去(原来只有对阵图推)+ 回执弹一句(finals_lineup_push.gd 头注)
+	if ent:
+		var lmsg: String = _FLP.tick(group, cup, int(Time.get_unix_time_from_system()))
+		if lmsg != "":
+			_lineup_toast(lmsg)
 	var mn: Dictionary = _M.my_next(ent, group, cup, now)
 	## 我的场快到 / 等翻面 ⇒ 问勤一点(开播时刻要准)
 	var at := int(mn.get("at", 0))
@@ -171,6 +177,31 @@ func tick() -> void:
 	_popup_tick(now, mn)
 	_marquee_tick(now, groups, cup, int(group.get("bucket", -1)) if ent else -1)
 	_recap_mark(now, cup)
+
+
+## 阵容回执那一句: 条下方居中, 金字黑描边, 3 秒后淡出; 新的一句来了把旧的收掉。
+var _ltoast: Label = null
+func _lineup_toast(msg: String) -> void:
+	if _ltoast != null and is_instance_valid(_ltoast):
+		_ltoast.queue_free()
+	var l := Label.new()
+	l.name = "LineupToast"
+	l.text = msg
+	l.add_theme_font_size_override("font_size", 18)
+	l.add_theme_color_override("font_color", Color("#ffd93d"))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	l.add_theme_constant_override("outline_size", 5)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vp := _vp()
+	l.size = Vector2(minf(720.0, vp.x - 40.0), 30)
+	l.position = Vector2((vp.x - l.size.x) * 0.5, 110.0)
+	add_child(l)
+	_ltoast = l
+	var tw := l.create_tween()
+	tw.tween_interval(3.0)
+	tw.tween_property(l, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(l.queue_free)
 
 
 ## 条上那一行: {"head", "live", "body", "cd", "act", "tap", "target"}。纯函数(门禁穷举)。
