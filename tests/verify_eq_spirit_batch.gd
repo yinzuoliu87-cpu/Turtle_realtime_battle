@@ -369,7 +369,11 @@ func _t060_stats() -> void:
 	var got: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("blocked", 0.0))
 	_ok("060 统计 ② 伞下挨 %.0f(无出手者那条路) ⇒ 减免伤害记 %.1f(期望 %.1f)" % [landed, got, want],
 		landed > 0.0 and want > 0.0 and absf(got - want) < 0.6)
+	## ★2026-11-15 CI 偶发红(run 43747930863): 伞下队友带 15% 闪避, 有出手者那条路会掷闪避 ⇒ 约 15% 的概率这一下被闪掉,
+	##   伤害没落地、「减免伤害」不涨, 闪避还多记一次(③ 变 2)。这一条量的是「减免伤害记没记」⇒ 出手者必中(瞄准镜那个标记), 伞的闪避不动。
+	foe["eq_cannot_be_dodged"] = true
 	_s._damage._apply_damage_from(foe, ally, 100, Color.WHITE)
+	foe.erase("eq_cannot_be_dodged")
 	var got2: float = float(((u.get("_st_eq", {}) as Dictionary).get("p2eq_060", {}) as Dictionary).get("blocked", 0.0))
 	_ok("060 统计 ② 有出手者那条路也记(%.1f → %.1f)" % [got, got2], got2 > got + 0.5)
 	_s._damage._apply_damage(ally, 100, Color.WHITE, null, "tru")
