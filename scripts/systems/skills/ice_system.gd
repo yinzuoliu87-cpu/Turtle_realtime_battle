@@ -15,18 +15,12 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 	var width: float = FISSURE_HALF_W
 	var fdur: float = FISSURE_SWEEP_SEC
 	_ice_fissure_vfx(start, dir, reach, fdur)      # 冰道: 一排冰刺racing forward
-	for o in battle._targeting._enemies_of(u):
-		var along: float = DetMath.dot((o["pos"] - start), dir)
-		if along < 0.0 or along > reach:
-			continue
-		if not battle._on_line(start, dir, o["pos"], width):
-			continue
-		## ★「冰道推进到谁才结算谁」这条**文案写死的节拍**从 tween 挪到游戏钟(2026-09-13)。
-		##   原来是 `tween_interval(d)` + `tween_callback` —— tween 走未钳制真实 delta,
-		##   无头下推不动(§3.5) ⇒ **整条冰道一个人都不结算**: 伤害 / 击飞 / 冰封全不落。
-		##   节拍一个数没动: 仍是 (沿线距离 ÷ 冰道长) × FISSURE_SWEEP_SEC。
-		var d: float = clampf(along / reach, 0.0, 1.0) * fdur
-		battle._equip_tick_sys.schedule(d, _ice_fissure_hit.bind(u, o, si))
+	## ★「冰道推进到谁才结算谁」: 2026-09-13 从 tween 挪到游戏钟; ★11-15 再改成**每步碰各人当前位置**
+	##   (EquipTickSystem._tick_sweeps): 原来出手那一刻按位置排好谁、几秒后被冻 ⇒ 之后走进冰道的冻不到、走出去的照样被冻
+	##   (用户 11-15「修」, 同 11-14 石头龟岩脊)。冰道长 / 半宽 / 推进时长、只算前方到冰道末端都不变。
+	battle._equip_tick_sys.sweep_start({"src": u, "start": start, "dir": dir, "reach": reach, "dur": fdur,
+		"half_w": width, "cap": true,
+		"on_enemy": func(o: Dictionary) -> void: _ice_fissure_hit(u, o, si)})
 
 func _ice_fissure_hit(u: Dictionary, o: Dictionary, si: int) -> void:
 	if not o.get("alive", false):
@@ -141,11 +135,13 @@ func _ice_throw_go(u: Dictionary, si: int) -> void:
 	## 瓶子的抛物线是**纯观感**, 留在 tween 没关系; 但**结算不许挂在它末尾** ——
 	## tween 无头下推不动(§3.5) ⇒ 伤害 / 冰寒 / 击退会整个不落。落点判定改走游戏钟。
 	var tw = battle._reg_tween()
-	tw.tween_method(_ice_bottle_arc.bind(spr, from2d, t["pos"]), 0.0, 1.0, VIAL_FLY_SEC)
+	## ★11-15 瓶子追着目标**当前**位置飞(伤害本来就锁定这个目标): 原来飞向出手那一刻的位置, 目标走开了瓶子落在空地、人却挨打
+	tw.tween_method(_ice_bottle_arc.bind(spr, from2d, t), 0.0, 1.0, VIAL_FLY_SEC)
 	battle._equip_tick_sys.schedule(VIAL_FLY_SEC, _ice_bottle_hit.bind(spr, u, t, si))
 
-func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
+func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, t: Dictionary) -> void:
 	if is_instance_valid(spr):
+		var to2d: Vector2 = t["pos"]
 		spr.position = battle._world_pos(from2d.lerp(to2d, pf), 1.0 + DetMath.dsin(pf * PI) * 2.4)
 
 func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:

@@ -145,6 +145,39 @@ func _ready() -> void:
 	_ok("④ 共享延时队列已排空(没有漏结算的项)", _s._equip_tick_sys._bolt_q.is_empty(),
 		"剩 %d 项" % _s._equip_tick_sys._bolt_q.size())
 
+	# ── ⑤ ★★11-15 火柱每步碰各人当前位置(用户 11-15「修」, 同 11-14 石头龟岩脊) ──────────
+	##   walk_out 出手时在线上、最靠近敌方质心(决定火柱朝向), 火柱扫到之前走出线外 ⇒ 不该挨打(旧写法照样挨打)
+	##   walk_in  出手时在线外, 火柱扫到之前走进线内 ⇒ 该挨打(旧写法出手时没选它 ⇒ 打不到)
+	_s._units.clear()
+	_s._equip_tick_sys._bolt_q.clear()
+	var c5: Dictionary = _mk(500.0, 400.0, "left")
+	var e5: Dictionary = _mk(800.0, 400.0, "right")
+	var walk_out: Dictionary = _mk(650.0, 400.0, "right")
+	var walk_in: Dictionary = _mk(700.0, 650.0, "right")
+	for _u5 in [c5, e5, walk_out, walk_in]:
+		_u5["no_move"] = true
+		_u5["no_basic"] = true   # 携带者会平 A 最近的敌人(走出去的那个), 那份伤害不是火柱的
+		_u5["active_skills"] = []   # 同理: 7 秒里携带者攒满龟能会放技能打到它
+		_s._units.append(_u5)
+	## ★判据只看火柱特有的: 魔法伤害 + 灼烧(场上还有别的物理伤害来源, 与这条无关; 11-15 诊断: 第 39 步那 36 点物理不是火柱)
+	var burn_max := {"in": 0, "out": 0}
+	_s._equip_sys._eq_dragon_breath(c5, 2)
+	for _k in range(420):
+		_s._sim_step(_s.SIM_DT, false, false)
+		## ★第 40 步才挪: 前摇约 0.55 秒(33 步)结束、火柱已经放出来(旧写法这一刻已按位置排好谁挨打)之后,
+		##   火柱扫到 walk_out(沿线 150 / 全长 560 × 1.6 秒 ≈ 第 59 步)之前。在前摇里挪的话新旧一样, 测不出来(11-15 反向验证当场发现)。
+		if _k == 40:
+			walk_out["pos"] = Vector2(650.0, 650.0)   # 走出火柱
+			walk_in["pos"] = Vector2(700.0, 400.0)    # 走进火柱
+		burn_max["in"] = maxi(int(burn_max["in"]), int(walk_in["dot_stacks"].get("burn", 0)))
+		burn_max["out"] = maxi(int(burn_max["out"]), int(walk_out["dot_stacks"].get("burn", 0)))
+	_ok("⑤ ★分母: 线上那个敌人挨打了(%.0f)" % (90000.0 - float(e5["hp"])), float(e5["hp"]) < 90000.0)
+	var wi_mag: float = float((walk_in.get("_st_taken_by_type", {}) as Dictionary).get("mag", 0.0))
+	var wo_mag: float = float((walk_out.get("_st_taken_by_type", {}) as Dictionary).get("mag", 0.0))
+	_ok("⑤ ★★出手后走进火柱的敌人挨了火柱(魔法 %.0f · 灼烧最多 %d 层)" % [wi_mag, int(burn_max["in"])], wi_mag > 0.0 and int(burn_max["in"]) > 0)
+	_ok("⑤ ★★出手后走出火柱的敌人没挨火柱(魔法 %.0f · 灼烧最多 %d 层)" % [wo_mag, int(burn_max["out"])], wo_mag <= 0.0 and int(burn_max["out"]) == 0)
+	_ok("⑤ 扫荡表推完收干净", _s._equip_tick_sys._sweeps.is_empty(), "剩 %d 项" % _s._equip_tick_sys._sweeps.size())
+
 	_done()
 
 

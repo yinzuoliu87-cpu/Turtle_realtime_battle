@@ -131,6 +131,10 @@ func _ready() -> void:
 	_s._units.append(inside)
 	_s._units.append(outside)
 	_s._units.append(beyond)
+	## ★11-15 判定改成冰道每步碰各人**当前**位置 ⇒ 这一组量的是几何(带宽 / 冰道长), 四个都站住不动:
+	##   会走的话「偏离 160 码」那个朝携带者走着走着就进了带, 按新判定挨打是对的(走进 / 走出另见 ⑦)。
+	for _u4 in [c4, inside, outside, beyond]:
+		_u4["no_move"] = true
 	var hi: float = float(inside["hp"])
 	var ho: float = float(outside["hp"])
 	var hb: float = float(beyond["hp"])
@@ -214,6 +218,32 @@ func _ready() -> void:
 		"0 个 = 没走通用原语; 2 个 = 叠了两层")
 	_ok("⑥ ★★携带者身上没有第二层自绘的护盾演出(多出来 %d 个)" % others, others == 0,
 		"自绘的球会把通用罩整个盖住")
+
+	# ── ⑦ ★★11-15 冰道每步碰各人当前位置(用户 11-15「修」, 同 11-14 石头龟岩脊) ──────────
+	##   walk_out 出手时在带内、是最近的敌人(决定冰道朝向), 冰道推到之前走出带外 ⇒ 不该被冻(旧写法照样被冻)
+	##   walk_in  出手时在带外, 冰道推到之前走进带内 ⇒ 该被冻(旧写法出手时没选它 ⇒ 冻不到)
+	_s._units.clear()
+	ets._bolt_q.clear()
+	var c7: Dictionary = _mk(500.0, 400.0, "left")
+	var walk_out: Dictionary = _mk(650.0, 400.0, "right")
+	var walk_in: Dictionary = _mk(800.0, 650.0, "right")
+	for _u7 in [c7, walk_out, walk_in]:
+		_u7["no_move"] = true
+		_s._units.append(_u7)
+	var wo0: float = float(walk_out["hp"])
+	var wi0: float = float(walk_in["hp"])
+	_s._equip_sys._eq_ice_fissure(c7, 2)
+	for _k in range(150):
+		_s._sim_step(_s.SIM_DT, false, false)
+		## ★第 22 步才挪: 前摇 0.3 秒(18 步)结束、冰道已经推出来(旧写法这一刻已按位置排好谁挨打)之后, 波前扫到 walk_out(沿线 150 码 ≈ 第 34 步)之前。
+		##   在前摇里挪的话旧写法也是按挪后的位置选人 ⇒ 新旧一样, 测不出来(11-15 反向验证当场发现)。
+		if _k == 22:
+			walk_out["pos"] = Vector2(650.0, 650.0)   # 走出冰道
+			walk_in["pos"] = Vector2(800.0, 400.0)    # 走进冰道
+	_ok("⑦ ★★出手后走进冰道的敌人被打到(%.0f)" % (wi0 - float(walk_in["hp"])), wi0 - float(walk_in["hp"]) > 0.0)
+	_ok("⑦ ★★出手后走出冰道的敌人没被打、没被冻(%.0f · 眩晕到 %.2f)" % [wo0 - float(walk_out["hp"]), float(walk_out.get("stun_until", 0.0))],
+		absf(wo0 - float(walk_out["hp"])) < 0.01 and float(walk_out.get("stun_until", 0.0)) <= 0.0)
+	_ok("⑦ 扫荡表推完收干净", ets._sweeps.is_empty(), "剩 %d 项" % ets._sweeps.size())
 
 	_done()
 

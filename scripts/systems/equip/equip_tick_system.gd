@@ -867,13 +867,14 @@ func schedule(delay: float, fn: Callable) -> void:
 ##   换路清空一致: 上一路已经结束, 它没落地的一律作废。
 ## ★浪墙的网格节点已由换路兜底扫 `_world` 释放, 这里只丢登记(那张表本来也只管演出)。
 func reset_for_lane() -> int:
-	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size() + _tide_hits.size() + _rock_waves.size()
+	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size() + _tide_hits.size() + _rock_waves.size() + _sweeps.size()
 	_bolt_q.clear()
 	_bear_waves.clear()
 	_pulls.clear()
 	_tide_walls.clear()
 	_tide_hits.clear()
 	_rock_waves.clear()
+	_sweeps.clear()
 	return n
 
 
@@ -888,6 +889,7 @@ func tick_delayed(_dt: float) -> void:
 	_tick_tide_walls(_dt)   # 043 浪墙: 蓄浪→推进→退去(3D 网格逐帧重建, 同一条游戏钟)
 	_tick_tide_hits(_dt)    # 043 浪墙判定: 推进量逐步碰各人当前位置(11-14, 原来放浪时一次排好挨打时刻)
 	_tick_rock_waves(_dt)   # 石头龟岩脊冲击波: 波前逐步碰各人当前位置(11-14, 原来出手时一次排好)
+	_tick_sweeps(_dt)       # 024 喷火龙 / 029 冰道: 同上(11-15)
 
 ## 大熊熊掌挥击接触那一瞬: 此刻才结算伤害 + 跳数字 + 金爪痕。
 ## ★★2026-09-13 从主文件搬过来, 同时把延时从 tween 换成共享原语 `schedule`:
@@ -1043,6 +1045,58 @@ var _tide_walls: Array = []
 var _tide_hits: Array = []
 ## 石头龟岩脊冲击波的在途表(11-14): 每项 = {src, origin, dir, perp, reach, windup, spd, dmg, t, hit}; 由 StoneSystem._sk_rock_shockwave 登记。
 var _rock_waves: Array = []
+
+
+## ★11-15 会走的直线扫荡(024 龙蛋喷火龙 / 029 冰封水母冰道)。用户 11-15「修」(接 11-14「3个敌人被同时击飞？怎么可能」
+##   「整个游戏难道你搞了很多这种不合理的地方吗」): 这两处原来出手那一刻就按各人**当时**的位置排好挨打时刻
+##   (`schedule(沿线距离 ÷ 全长 × 时长, …)`) ⇒ 之后走进线里的打不到、走出去的照样挨打。11-14 全仓扫只扫了 `_pending_shots`, 漏了这两处。
+## 每项 = {src, start, dir, reach, dur, half_w, cap(true ⇒ 只算 0 ≤ 沿线距离 ≤ reach), on_enemy / on_ally(Callable(o), 可空), t, hit, tl}
+## 判据与原来逐条一致: 在线上(`_on_line` 半宽)、沿线距离折成的到达比例 clampf(沿线 / reach) ≤ 已推进比例 ⇒ 结算, 每人一次;
+##   只是从「出手那一刻的位置」换成「扫到那一刻的位置」。推完(t ≥ dur)那一步把还没碰到的按原口径(比例钳到 1)一起判完再收。
+var _sweeps: Array = []
+
+
+func sweep_start(w: Dictionary) -> void:
+	w["t"] = 0.0
+	w["hit"] = []
+	w["tl"] = battle._equip_sys.tally.capture()   # ④ 出手时的装备上下文, 每步切回去(同 schedule)
+	_sweeps.append(w)
+
+
+func _tick_sweeps(dt: float) -> void:
+	if _sweeps.is_empty():
+		return
+	for i in range(_sweeps.size() - 1, -1, -1):
+		var w: Dictionary = _sweeps[i]
+		w["t"] = float(w["t"]) + dt
+		var dur: float = maxf(0.001, float(w["dur"]))
+		var frac: float = clampf(float(w["t"]) / dur, 0.0, 1.0)
+		var src: Dictionary = w["src"]
+		var start: Vector2 = w["start"]
+		var dir: Vector2 = w["dir"]
+		var reach: float = maxf(0.001, float(w["reach"]))
+		var tl: Array = w["tl"]
+		var tp: Array = battle._equip_sys.tally.push(tl[0], str(tl[1]))
+		for side in ["on_enemy", "on_ally"]:
+			var fn = w.get(side, null)
+			if not (fn is Callable) or not (fn as Callable).is_valid():
+				continue
+			var pool: Array = battle._targeting._enemies_of(src) if side == "on_enemy" else battle._targeting._allies_of(src)
+			for o in pool:
+				if not (o is Dictionary) or not o.get("alive", false) or battle._arr_has_unit(w["hit"], o):
+					continue
+				var along: float = DetMath.dot(((o["pos"] as Vector2) - start), dir)
+				if bool(w.get("cap", false)) and (along < 0.0 or along > reach):
+					continue
+				if not battle._on_line(start, dir, o["pos"], float(w["half_w"])):
+					continue
+				if clampf(along / reach, 0.0, 1.0) > frac:
+					continue
+				(w["hit"] as Array).append(o)
+				(fn as Callable).call(o)
+		battle._equip_sys.tally.pop(tp)
+		if float(w["t"]) >= dur:
+			_sweeps.remove_at(i)
 
 
 func rock_wave_start(w: Dictionary) -> void:

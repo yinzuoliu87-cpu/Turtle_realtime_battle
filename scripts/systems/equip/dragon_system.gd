@@ -27,15 +27,12 @@ func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: 
 	##   门禁 verify_dragon_breath ④「走真入口后敌人确实掉血」**实测 0 伤害**, 当场确诊。
 	##   改成挂进**游戏钟队列** `_pending`, 由 tick(dt) 按 battle._t 到点结算 ——
 	##   与 031 水晶球B 同一条路(「结算走 sim 时钟, 不走 tween」)。
-	for o in battle._targeting._enemies_of(u):
-		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
-			var d_e: float = clampf(DetMath.dot((o["pos"] - start), dir) / total, 0.0, 1.0) * dur
-			battle._equip_tick_sys.schedule(d_e,
-				_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
-	for o in battle._targeting._allies_of(u):
-		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
-			var d_a: float = clampf(DetMath.dot((o["pos"] - start), dir) / total, 0.0, 1.0) * dur
-			battle._equip_tick_sys.schedule(d_a, _dragon_heal_ally.bind(u, o, si))
+	## ★11-15 改成火柱**每步碰各人当前位置**(EquipTickSystem._tick_sweeps): 原来出手那一刻按位置排好谁、几秒后挨打 ⇒
+	##   之后走进火柱的打不到、已经走出去的照样挨打(用户 11-15「修」, 同 11-14 石头龟岩脊)。线宽 / 全长 / 时长与比例口径不变。
+	battle._equip_tick_sys.sweep_start({"src": u, "start": start, "dir": dir, "reach": total, "dur": dur,
+		"half_w": BREATH_HALF_W, "cap": false,
+		"on_enemy": func(o: Dictionary) -> void: _dragon_hit_enemy(u, o, si, expl, burn_tex),
+		"on_ally": func(o: Dictionary) -> void: _dragon_heal_ally(u, o, si)})
 
 # 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)
 # 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)

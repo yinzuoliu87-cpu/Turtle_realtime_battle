@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "fa23f6f58351696256561272011c616708cbbadd602e118733ceea5c6f5f9d4a",
+ "fingerprint": "4a7249960c8e6fae7ec864695640c7e1b53c8be0bf64b71e0645fe774ceaedc8",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -15,12 +15,12 @@
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "b77825f303c4f38e7fa4eba11dea2b82586b98b723311876d72e7c00bc1590d9",
+   "hash": "4daab294cb80c02f4ceba0e7f704701de4b5aadf503144769564914726016e97",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
    "def": "81cac5a557a2489f",
-   "hash": "abcb7037977fabe2336977902648559865377d709378f1e370d26feeb39dd800",
+   "hash": "335a86e7f232a8b5fb439b0268ae279ab5e5e6a003e933c234fc203dce49d77f",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
