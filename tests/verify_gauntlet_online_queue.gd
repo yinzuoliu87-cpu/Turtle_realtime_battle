@@ -138,22 +138,28 @@ const RANKED := {
 	##   build_ghost_snapshot / make_bot / seed_as_human 各多写一个 reserve_pool 键(背包里没穿的装备; 机器人与陪练种子按 ghost_id 派生),
 	##   新加的 reserve_pool_of / derived_reserve_pool 是它们调用的(积分赛也走)⇒ 进 units(55 → 57)。基线 0130a607 ⇒ 4013f5a0,
 	##   摘要按本表口径从 git show 4013f5a0 现算(同口径复算旧基线得 c3051f7b…, 与原表一致); 没有挪走函数 ⇒ 判据不变松。
+	## ★2026-11-15 决赛阵容在哪一屏都交上去(提交 37ef91bc, 方案书 docs/plans/20261115e-决赛阵容提交修复.md;
+	##   用户 11-15「明明在背包里面调了阵容，为什么在比赛里面的阵容不是这个备赛的呢？」): **有意**改 finals_push_snapshot ——
+	##   周日决赛把背包阵容推给服务端的那个函数(积分赛不调它): 节流加「阵容指纹变了 ≥ 2 秒就推」, 构造快照抽成 _finals_snap,
+	##   指纹抽成 snap_sig_of / finals_snap_sig(全局层 finals_lineup_push.gd 用)。新加的三个进 units(57 → 60)钉住逐字。
+	##   4013f5a0 → 37ef91bc 之间这个文件只有这一次提交, 57 个里只变 finals_push_snapshot、没有挪走函数 ⇒ 挪基线判据不变松。
+	##   基线 4013f5a0 ⇒ 37ef91bc, 摘要按本表口径从 git show 37ef91bc 现算(同口径复算 4013f5a0 得 c6891173…, 与原表一致)。
 	"scripts/net/backend.gd": {
-		"base": "4013f5a0",
-		"digest": "c68911733a2a3e8ef19cbe9da1e912a6093a8e1ec37616e80de37cfb4dade943",
+		"base": "37ef91bc",
+		"digest": "f43610f8f16402cbf91a952f0c8d7200dc7b341f3bbd74812719c6de24c797ea",
 		"views": {},
 		"sat_only": [],
 		"units": [
-			"_bot_season_record", "_bot_trainer_skill", "_drop_stale_schema", "_ensure_seeded", "_is_self_ghost", "_load_seed",
+			"_bot_season_record", "_bot_trainer_skill", "_drop_stale_schema", "_ensure_seeded", "_finals_snap", "_is_self_ghost", "_load_seed",
 			"_migrate_brackets_to_battles", "_seed_level", "_seed_record", "_seed_season_id", "_shuffle", "_tally",
 			"_tally_exact", "build_ghost_snapshot", "derived_reserve_pool", "drop_week_snapshots", "ensure_finals_entry",
-			"ensure_gauntlet_entry_snapshot", "fake_person_tag", "finals_push_snapshot", "find_gauntlet_opponent",
+			"ensure_gauntlet_entry_snapshot", "fake_person_tag", "finals_push_snapshot", "finals_snap_sig", "find_gauntlet_opponent",
 			"find_opponent", "gauntlet_bot_battles", "gauntlet_pool_find", "ghost_lanes_broken", "ghost_level",
 			"ghost_owner_tag", "is_sparring", "lead_of", "leaderboard", "load_pool", "make_bot", "make_match_rng", "my_tag",
 			"owner_tag_of_id", "person_key", "player_display_name", "player_ghost_id", "pool_add", "pool_find_battles",
 			"pool_reach", "prefetch_gauntlet_pool", "profile_tag", "reach_of", "report_finals_entry", "report_finals_if_any",
 			"report_finals_result", "reserve_pool_of", "retry_finals_report", "save_pool", "seed_as_human", "seed_person_of", "self_prefix",
-			"self_season_prefix", "upload_gauntlet_ghost", "upload_ghost", "wipe_week_snapshots",
+			"self_season_prefix", "snap_sig_of", "upload_gauntlet_ghost", "upload_ghost", "wipe_week_snapshots",
 		],
 	},
 	## ★2026-10-30 选龟页整页重做: 这一页的画法 / 版式是用户点名要改的(选人 / 存档 / 出战进匹配的流程一行没动),
