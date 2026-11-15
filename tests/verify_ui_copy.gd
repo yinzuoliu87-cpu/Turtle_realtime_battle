@@ -53,7 +53,7 @@ const ALLOW_DOT_LIT := {
 	"scripts/scenes/TeamSelectScene.gd|测试被动·不屈": "门禁专用的假被动名(只在测试里造)",
 	"scripts/scenes/battle/battle_hud.gd|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板": "调试场(开发工具, 正式包不出)",
 	"scripts/scenes/battle/battle_hud.gd|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果": "调试场(开发工具, 正式包不出)",
-	"scripts/scenes/battle/dual_lane_flow.gd|龟蛋生命  我方 %d  ·  对方 %d": "两个并列读数(我方 / 对方)",
+	"scripts/scenes/battle/lane_map_intro.gd|龟蛋生命  我方 %d  ·  对方 %d": "两个并列读数(我方 / 对方); 2026-11-15 随换路幕布从 dual_lane_flow 搬到 lane_map_intro",
 	"scripts/scenes/battle/info_panel.gd|%d层 · %d%%": "层数与数值两个并列读数",
 	"scripts/scenes/battle/info_panel.gd|%d层 · %s/%s": "层数与数值两个并列读数",
 	"scripts/scenes/battle/info_panel.gd|技能 · %d 龟能": "技能类别 · 消耗",
