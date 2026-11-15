@@ -43,7 +43,7 @@ static func enter_with_saved_theme() -> void:
 
 
 func _edit_map_label() -> String:
-	return "地图：%s ▸" % str(ArenaTheme.cfg_of(ArenaTheme.active).get("label", ArenaTheme.active))
+	return "换地图：%s" % str(ArenaTheme.cfg_of(ArenaTheme.active).get("label", ArenaTheme.active))   # 不用 ▸: 打包字体里没有(verify_fonts 豆腐块)
 
 
 ## 「地图」键: 换到下一张新图, 存档, 重开调试场(地图是进场时搭的, 换图要重开; 摆位从存档自动恢复)。

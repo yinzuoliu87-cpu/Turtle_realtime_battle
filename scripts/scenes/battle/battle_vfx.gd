@@ -235,8 +235,9 @@ func _egg_shards_burst(pos2d: Vector2) -> void:
 
 
 func _float_num_font() -> Font:
+	## ★11-15 苹果手机飘字乱码: 原来直接 m6x11(只有英文数字), 中文飘字靠系统字体补, iOS 补不上 ⇒ 换成只用打包字体的链(FontKit 头注)
 	if battle._num_font == null:
-		battle._num_font = load("res://assets/fonts/m6x11.ttf")
+		battle._num_font = FontKit.bundled_pixel_chain()
 	return battle._num_font
 
 # #1 字号按伤害量级缩放 (暴击×1.2) — 1:1 回合制 VisualConstants.size_by_amount

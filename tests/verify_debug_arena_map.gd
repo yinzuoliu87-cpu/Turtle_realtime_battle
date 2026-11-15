@@ -58,7 +58,7 @@ func _ready() -> void:
 	var r1: Dictionary = await _build()
 	_ok("① 没存档 ⇒ 调试场是暗林(建场后 %s)" % str(r1["theme"]), str(r1["theme"]) == AT.V1_DUSK)
 	_ok("① 场上有新图才有的主题环(旧图没有)", bool(r1["ring"]))
-	_ok("④ 「地图」键写的是当前图名(%s)" % str(r1["label"]), str(r1["label"]).contains("暗林"))
+	_ok("④ 「换地图」键写的是当前图名(%s)" % str(r1["label"]), str(r1["label"]).contains("暗林"))
 	## ② 存档选了深礁 / 存档写坏
 	_write_theme(AT.V2_REEF)
 	AT.active = AT.V0_BASE

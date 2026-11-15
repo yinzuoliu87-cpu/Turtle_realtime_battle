@@ -1329,6 +1329,7 @@ scripts/scenes/battle/battle_debug_arena.gd|lit|战斗中 ... (点 ⏸编辑 暂
 scripts/scenes/battle/battle_debug_arena.gd|lit|技%d
 scripts/scenes/battle/battle_debug_arena.gd|lit|技能
 scripts/scenes/battle/battle_debug_arena.gd|lit|技能 → %s
+scripts/scenes/battle/battle_debug_arena.gd|lit|换地图：%s
 scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 %s (%s) · 共 %d 单位
 scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 训龟大师·%s (%s) · 双方自动放(U2) · 共 %d 单位
 scripts/scenes/battle/battle_debug_arena.gd|lit|敌方

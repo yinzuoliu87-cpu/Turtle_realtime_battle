@@ -1022,6 +1022,7 @@ func _hb_counter_refresh(o: Dictionary) -> void:
 	var lbl: Label3D = _raw_lbl if (is_instance_valid(_raw_lbl) and _raw_lbl is Label3D) else null
 	if lbl == null:
 		lbl = Label3D.new()
+		lbl.font = FontKit.bundled_pixel_chain()   # 11-15 iOS 不靠系统字体补字(FontKit.bundled_pixel_chain 头注)
 		lbl.name = "HookBombNum"
 		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		lbl.no_depth_test = true

@@ -191,6 +191,7 @@ func _gambler_wheel_vfx(u: Dictionary, suit: int) -> void:
 	var suits = ["♠", "♥", "♦", "♣"]
 	var scols = [Color("#ffd93d"), Color("#ff5b6b"), Color("#ff9f43"), Color("#5be08a")]
 	var lbl = Label3D.new()
+	lbl.font = FontKit.bundled_pixel_chain()   # 11-15 iOS 不靠系统字体补字(FontKit.bundled_pixel_chain 头注)
 	lbl.text = "♠"
 	lbl.font_size = 180
 	lbl.pixel_size = 0.011

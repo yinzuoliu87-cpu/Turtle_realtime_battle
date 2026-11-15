@@ -386,6 +386,7 @@ func _whistle_note(u: Dictionary) -> void:
 	if battle._world == null:
 		return
 	var lb := Label3D.new()
+	lb.font = FontKit.bundled_pixel_chain()   # 11-15 iOS 不靠系统字体补字(FontKit.bundled_pixel_chain 头注)
 	lb.text = "♪"
 	lb.font_size = 110
 	lb.pixel_size = 0.012

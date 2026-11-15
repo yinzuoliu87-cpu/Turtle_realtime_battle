@@ -46,3 +46,18 @@ static func strip_from(f: Font) -> int:
 	if f is FontVariation and (f as FontVariation).base_font != null:
 		n += strip_from((f as FontVariation).base_font)
 	return n
+
+
+## ── 只用打包字体的回退链(不靠系统字体) ──
+## ★★苹果手机对局里字变乱码(用户 11-15「在我的苹果手机上显示…对局内的那个…字体…全部会变成乱码，这个东西一直没解决」):
+##   飘字的字体原来直接换成 m6x11(只有英文数字), 中文飘字(闪避 / 亡灵 / 眩晕…)和 3D 标签(♠ / ♪)里没有的字全靠**系统字体补字** ——
+##   电脑上 Windows / macOS 自带中文字体补上了, 看着正常; iOS 上 Godot 取不到系统字体(见本文件头注) ⇒ 补不上 ⇒ 乱码 / 方块。
+## ⇒ m6x11 打底(英文数字像素字) → 打包的思源黑体(中文) → 打包的 Noto Emoji(符号), 电脑和手机显示完全一样。门禁 verify_battle_font_bundled。
+static var _bundled: FontVariation = null
+
+static func bundled_pixel_chain() -> Font:
+	if _bundled == null:
+		_bundled = FontVariation.new()
+		_bundled.base_font = load("res://assets/fonts/m6x11.ttf")
+		_bundled.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf"), load("res://assets/fonts/NotoEmoji-Regular.ttf")]
+	return _bundled
