@@ -154,7 +154,7 @@ func slam(pos2d: Vector2, dir: Vector2) -> void:
 func hammer_energy(u: Dictionary) -> Array:
 	var out: Array = []
 	var spr = u.get("sprite", null)
-	if battle._world == null or not (spr is Sprite3D) or not is_instance_valid(spr):
+	if battle._world == null or not is_instance_valid(spr) or not (spr is Sprite3D):
 		return out
 	var ent: Array = AttackRhythm.cast_entry(battle, u, "candyHammer")
 	if ent.is_empty():
@@ -243,7 +243,7 @@ func _head_world(k: float, g: Dictionary) -> Vector3:
 
 
 ## 糖果锤打中的每个敌人身上: 一团果酱色暖光(参考第 9~11 帧被砸的单位身上那团暖光)
-func slam_hit(o: Dictionary, dir: Vector2) -> void:
+func slam_hit(o: Dictionary) -> void:
 	if battle._world == null:
 		return
 	var glow: Texture2D = tex(GLOW_TEX)

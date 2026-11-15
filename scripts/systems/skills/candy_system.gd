@@ -104,7 +104,7 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 			battle._vfx.own_hit_vfx = true    # 有专属命中特效: 不叠通用星芒火花(11-11「不要有通用命中特效」; 只管画面)
 			battle._damage._apply_damage_from(uu, o, dm, Color("#ff9ed6")); dealt += dm
 			battle._vfx.own_hit_vfx = false
-			fx.slam_hit(o, d2)
+			fx.slam_hit(o)
 		battle._damage._heal(uu, float(dealt) * HAMMER_LIFESTEAL))
 
 func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming: bool, p: float) -> void:   # 糖果锤姿态: raise=从身侧升头顶后方后仰 / slam=挥到前方下落
