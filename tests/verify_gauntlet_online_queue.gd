@@ -100,9 +100,12 @@ const RANKED := {
 			"_player_profile", "_radar_ping", "_ref_label", "_shockwave", "card_id_text", "class _RingFx",
 		],
 	},
+	## ★2026-11-15 **有意**改积分赛会走的 `_do_team`(提交 fd7ee730, 11-14 周六「结算失败」根治①): 陪练号统领已锁、锁里有本周不能上场的龟
+	##   ⇒ 本轮不排队(PetLevelsNet.bad_locked)。锁着的统领都合规时(真陪练号一向如此)这一支不进, 往下走的每一行与原来逐字相同;
+	##   没有新增 / 挪走函数 ⇒ 基线挪到 fd7ee730、摘要按本表口径现算。
 	"scripts/systems/sim/sim_driver.gd": {
-		"base": "0130a607",
-		"digest": "cdcddea787fbdf0533378dd35fa6e56cc5ded8dfff2a95542e2cbabe38c0d6ae",
+		"base": "fd7ee730",
+		"digest": "a45917301993d0495b6387c47b477471f2cbccfb5f9312ad9b99b043097959fc",
 		"views": {"stuck_limit": "249c0a8120123e0922fcd539dd090b34a6c7f3d0b40a590947a134823e5be79a", "_do_match": "ba0505964df1b434b7f0ec774d2371d9cb95b6869140166520e8a5b475f9676b", "_do_menu": "8243b94af82a11179bd8693000515a524d5a0346f4ec46b641e1ddecab015139", "_do_shop": "366a597e0ab76a1d45f40d2532021528328e34c2555a7c6f64b58e4d06a805f6"},
 		"sat_only": [],
 		"units": [
@@ -1062,7 +1065,7 @@ func _t_r() -> void:
 					bad.append(nm)
 		print("    %s 比了 %d 个: %s" % [f, names.size(), ", ".join(PackedStringArray(names))])
 		_ok("★R %s: 积分赛走的 %d 个函数与改动前逐字节相同" % [str(f).get_file(), names.size()],
-			names.size() > 0 and missing.is_empty() and dg == str(spec["digest"]), "缺 %s · 变了 %s" % [str(missing), str(bad)])
+			names.size() > 0 and missing.is_empty() and dg == str(spec["digest"]), "缺 %s · 变了 %s · 现摘要 %s(有意改了才拿它更新表)" % [str(missing), str(bad), dg])
 		var views: Dictionary = spec["views"]
 		for vn in views.keys():
 			_ok("★R %s::%s 去掉闯关日那一段后与改动前逐字节相同(积分赛日走的那几行一字没动)" % [str(f).get_file(), vn],
@@ -1760,6 +1763,10 @@ func _t_s() -> void:
 	for k in env.keys():
 		OS.set_environment(k, str(env[k]))
 	_ok("S 分母: 逛店区间 = [12, 14] 秒、调度器以为的格子 = 1-0", Drv.shop_dwell_range() == Vector2(12, 14) and Drv.expect_cell() == Vector2i(1, 0))
+	## ★11-15 陪练号开打前把关(sim_driver._do_team · PetLevelsNet.bad_locked): 锁着的统领本周不能上场 ⇒ 不排队。
+	##   夹具锁的 basic / stone / bamboo 不一定在本测试号的本周限免里 ⇒ 记成「拥有」(真陪练号锁的统领都是 fill_allowed 挑的, 本来就合规)。
+	PetLevelsNet.allowed_now()                          # 先按本测试号同步一次(换号会清空拥有)
+	PetLevelsNet.owned = Array(_gs.season_leaders)
 	var ev0 := _ev_size()
 	var d = await _start_driver()
 	var stage := 0

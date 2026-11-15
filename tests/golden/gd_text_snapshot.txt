@@ -2513,6 +2513,7 @@ scripts/systems/sim/sim_driver.gd|lit|均衡
 scripts/systems/sim/sim_driver.gd|lit|坦克
 scripts/systems/sim/sim_driver.gd|lit|奇械
 scripts/systems/sim/sim_driver.gd|lit|完成新手教学
+scripts/systems/sim/sim_driver.gd|lit|已锁统领本周不能上场, 本轮不排队
 scripts/systems/sim/sim_driver.gd|lit|帮助?
 scripts/systems/sim/sim_driver.gd|lit|开打钮不可点
 scripts/systems/sim/sim_driver.gd|lit|弓箭
