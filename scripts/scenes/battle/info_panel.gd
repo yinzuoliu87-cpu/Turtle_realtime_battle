@@ -1037,21 +1037,23 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 	var st = (u.get("eq_state", {}) as Dictionary).get(ck, null)
 	if not (st is Dictionary):
 		return out
-	match EquipCk.base_id(ck):
-		"p2eq_047":   # 重击锤: 最大生命 × 这一件的比例
-			var a47: int = int(round(float(u.get("maxHp", 0.0)) * float(st.get("hammer_pct", 0.0))))
-			if a47 > 0:
-				out.append("当前提供攻击力 %d" % a47)
-		"p2eq_083":   # 潮汐细剑: 按损失生命给的攻速 + 连续命中同一目标的层数增伤
-			var sp83: int = int(round(float(st.get("aspd_given", 0.0)) * 100.0))
-			if sp83 > 0:
-				out.append("当前攻速 +%d%%" % sp83)
-			var n83: int = int(st.get("stacks", 0))
-			if n83 > 0:
-				out.append("当前连击 %d 层 · 增伤 +%d%%" % [n83, int(round(float(st.get("amp_given", 0.0)) * 100.0))])
-		"p2eq_041":   # 退潮浊液: 涨潮中这一件给的生命 / 攻击
+	match str(EqStatLabels.LIVE.get(EquipCk.base_id(ck), "")):
+		"hp_to_atk":   # 照 LoL 霸王血铠「获得相当于你3%额外生命值的【N】攻击力」
+			var pc: float = float(st.get("hammer_pct", 0.0))
+			var add: int = int(round(float(u.get("maxHp", 0.0)) * pc))
+			if add > 0:
+				out.append("获得相当于 %s%% 最大生命值的 %d 攻击力" % [String.num(pc * 100.0, 1).trim_suffix(".0"), add])
+		"rapier":
+			var sp: int = int(round(float(st.get("aspd_given", 0.0)) * 100.0))
+			if sp > 0:
+				out.append("获得 %d%% 攻击速度" % sp)
+			var n: int = int(st.get("stacks", 0))
+			if n > 0:
+				out.append("连击 %d 层" % n)
+				out.append("获得 %d%% 增伤" % int(round(float(st.get("amp_given", 0.0)) * 100.0)))
+		"tide":
 			if bool(st.get("tide_on", false)):
-				out.append("涨潮中 · 最大生命 +%d · 攻击 +%d" % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])
+				out.append("涨潮中：获得 %d 最大生命值、%d 攻击力" % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])
 	return out
 
 
@@ -1093,12 +1095,11 @@ static func eq_stats_text(u: Dictionary, eid: String) -> String:
 		var v: int = int(round(float(st.get(str(row[0]), 0.0))))
 		if v > 0:
 			var fmt: String = str(row[1])
-			if str(row[0]) == "cc_block" and EquipCk.base_id(eid) == "p2eq_017":
-				fmt = "免疫击飞 %d 次"   # 017 不沉之锚只免击飞; 066 是全部控制
-			elif str(row[0]) == "stun" and EquipCk.base_id(eid) == "p2eq_029":
-				fmt = "冰封 %d 次"       # 029 冰封水母的眩晕是冰封(同一个 stun_until)
-			elif str(row[0]) == "stun" and EquipCk.base_id(eid) == "p2eq_056":
-				continue                 # 056 飞镖的「击飞」= 击退 + 期间眩晕两步实现, 只报击飞一行
+			var ov = (EqStatLabels.LINE_FMT.get(EquipCk.base_id(eid), {}) as Dictionary).get(str(row[0]), null)   # 逐件特例(表在 gamedata, 面板不抄装备 id)
+			if ov is String:
+				if ov == "":
+					continue
+				fmt = ov
 			lines.append(fmt % v)
 	return "\n".join(lines)
 

@@ -1132,8 +1132,8 @@
         "dmgScale": 0.9,
         "dodgePct": 25,
         "dodgeTurns": 5,
-        "brief": "猎人龟翻滚：被近战敌人贴近时拉开距离，残血时撤退，否则远离最近的敌人。\n下次攻击命中时额外造成 {N:HunterSystem.ROLL_ATK_COEF*ATK} 物理伤害，并获得 {C:HunterSystem.ROLL_DODGE%}% 闪避，持续 {C:HunterSystem.ROLL_DODGE_SEC} 秒，同时获得 {E:HunterSystem.ROLL_SHIELD_COEF*ATK} 护盾。",
-        "detail": "猎人龟翻滚：被近战敌人贴近时拉开距离，残血时撤退，否则远离最近的敌人。\n下次攻击命中时额外造成（{C:HunterSystem.ROLL_ATK_COEF%}%×攻击力({ATK}) = {N:HunterSystem.ROLL_ATK_COEF*ATK}）物理伤害，并获得 {C:HunterSystem.ROLL_DODGE%}% 闪避，持续 {C:HunterSystem.ROLL_DODGE_SEC} 秒，同时获得（{C:HunterSystem.ROLL_SHIELD_COEF%}%×攻击力({ATK}) = {E:HunterSystem.ROLL_SHIELD_COEF*ATK}）护盾。"
+        "brief": "猎人龟翻滚：被近战敌人贴近时斜着拉开距离，残血时撤到队友身后，目标残血时朝它翻滚，否则翻滚到与目标保持射程的位置。\n下次攻击命中时额外造成 {N:HunterSystem.ROLL_ATK_COEF*ATK} 物理伤害，并获得 {C:HunterSystem.ROLL_DODGE%}% 闪避，持续 {C:HunterSystem.ROLL_DODGE_SEC} 秒，同时获得 {E:HunterSystem.ROLL_SHIELD_COEF*ATK} 护盾。",
+        "detail": "猎人龟翻滚：被近战敌人贴近时斜着拉开距离，残血时撤到队友身后，目标残血时朝它翻滚，否则翻滚到与目标保持射程的位置。\n下次攻击命中时额外造成（{C:HunterSystem.ROLL_ATK_COEF%}%×攻击力({ATK}) = {N:HunterSystem.ROLL_ATK_COEF*ATK}）物理伤害，并获得 {C:HunterSystem.ROLL_DODGE%}% 闪避，持续 {C:HunterSystem.ROLL_DODGE_SEC} 秒，同时获得（{C:HunterSystem.ROLL_SHIELD_COEF%}%×攻击力({ATK}) = {E:HunterSystem.ROLL_SHIELD_COEF*ATK}）护盾。"
       },
       {
         "name": "狩猎弹幕",
@@ -1799,8 +1799,8 @@
         "pierce": 0,
         "cd": 0,
         "selfCast": true,
-        "brief": "赛博龟登场时获得 {C:CyberSystem.AI_START_CHARGE} 层充能与 {C:CyberSystem.AI_MOVE_UP%}% 移动速度。敌人靠近时，赛博龟消耗 1 层充能冲刺躲开。\n每次释放获得 1 层充能，并冲刺到射程内合适的距离。",
-        "detail": "赛博龟登场时获得 {C:CyberSystem.AI_START_CHARGE} 层充能与 {C:CyberSystem.AI_MOVE_UP%}% 移动速度。敌人靠近时，赛博龟消耗 1 层充能冲刺躲开。\n每次释放获得 1 层充能，并冲刺到射程内合适的距离。\n<span style=\"color:#8a93a0\">被控制时不会冲刺。</span>",
+        "brief": "赛博龟登场时获得 {C:CyberSystem.AI_START_CHARGE} 层充能与 {C:CyberSystem.AI_MOVE_UP%}% 移动速度。近战敌人靠近时，赛博龟消耗 1 层充能冲刺躲开。\n每次释放获得 1 层充能，并冲刺到射程内合适的距离。",
+        "detail": "赛博龟登场时获得 {C:CyberSystem.AI_START_CHARGE} 层充能与 {C:CyberSystem.AI_MOVE_UP%}% 移动速度。近战敌人靠近时，赛博龟消耗 1 层充能冲刺躲开。\n每次释放获得 1 层充能，并冲刺到射程内合适的距离。\n<span style=\"color:#8a93a0\">被控制时不会冲刺。</span>",
         "energyCost": 110
       }
     ],

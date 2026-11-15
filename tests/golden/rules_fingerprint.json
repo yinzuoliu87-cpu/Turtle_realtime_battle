@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "4a7249960c8e6fae7ec864695640c7e1b53c8be0bf64b71e0645fe774ceaedc8",
+ "fingerprint": "6ab25e97bacd4848f6babb24d19471472599ae422ef6cca3dda409cb2c8350a8",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -19,8 +19,8 @@
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
-   "def": "81cac5a557a2489f",
-   "hash": "335a86e7f232a8b5fb439b0268ae279ab5e5e6a003e933c234fc203dce49d77f",
+   "def": "f3854e0ad5fcd50a",
+   "hash": "3ff9a879655004679c93d61d882d1645ac8c7fab27c8075a06b047154c58d5e8",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
@@ -30,7 +30,7 @@
   },
   {
    "def": "static-tables",
-   "hash": "b5f27285e1c9a279ff46457aeb54cf80ae8ca2b8fb207c5d6710a3bcb19ecc8e",
+   "hash": "1e621a9c8b8bc73286399204baf69dbf997a65557c93fcd606d541712b2bbd9f",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],

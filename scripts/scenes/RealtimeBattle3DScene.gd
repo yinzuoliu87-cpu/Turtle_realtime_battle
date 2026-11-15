@@ -6663,7 +6663,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		_tick_cyber_drones(u, delta)
 		if not u.get("_slam", false) and not _damage.is_controlled(u) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
 			var _ne5 = _targeting._nearest_enemy(u)
-			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and DetMath.dist((u["pos"] as Vector2), _ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
+			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and KiteDash.melee_within(self, u, 130.0) and _t >= float(u.get("_ai_dodge_cd", 0.0)):   # 11-15: 只躲近战贴身(远程靠近不躲)
 				u["_ai_dodge_cd"] = _t + 2.5
 				u["cyber_ai_charge"] = int(u["cyber_ai_charge"]) - 1
 				_cyber_sys._cyber_smart_dash(u)

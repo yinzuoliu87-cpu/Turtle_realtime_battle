@@ -43,29 +43,18 @@ func _init(b) -> void:
 
 func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·隐蔽(封板·薇恩Q Tumble·80龟能): 智能翻滚~250码→下次普攻附带0.9A物理(吃吸血)+25%闪避+0.7A护盾
 	BuffVfx.activate(battle, u, Color(0.55, 0.95, 0.6), 0.0, 0.0)   # ★11-05 翻滚起手一把绿色火星(BuffVfx)
-	var dir = Vector2.RIGHT
-	var nm = null
-	var nmd = 150.0
-	for o in battle._targeting._enemies_of(u):                                     # ① 近战/刺客贴近(<150码)→朝远离最近近战威胁滚(拉距保远程)
-		if o.get("alive", false) and o.get("melee", false):
-			var dd: float = DetMath.dist(u["pos"], o["pos"])
-			if dd < nmd: nmd = dd; nm = o
-	if nm != null:
-		dir = DetMath.norm((u["pos"] - nm["pos"]))
-	elif u["hp"] < u["maxHp"] * 0.35:                           # ② 残血→朝敌质心反向撤退
-		var cen = Vector2.ZERO
-		var cn = 0
-		for o in battle._targeting._enemies_of(u):
-			if o.get("alive", false): cen += o["pos"]; cn += 1
-		if cn > 0: cen /= float(cn); dir = DetMath.norm((u["pos"] - cen))
-	else:                                                       # ③ 安全→朝当前目标最佳射程滚(目标<14%凑近确保处决,否则拉开保持射程)
-		var tg = battle._targeting._nearest_enemy(u)
-		if tg != null:
-			if float(tg["hp"]) < float(tg["maxHp"]) * 0.14: dir = DetMath.norm((tg["pos"] - u["pos"]))
-			else: dir = DetMath.norm((u["pos"] - tg["pos"]))
-	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
-	var dest: Vector2 = _hunter_roll_best_dest(u["pos"], dir)   # 墙感翻滚: 贴墙沿墙滚/角落朝内滚(避免撞墙位移浪费·用户2026-07-14)
-	var rdir: Vector2 = DetMath.norm(dir)
+	## ★11-15 落点改走 KiteDash(用户「…一个劲的往后退…不是很合理」「按你思路做吧」): 原来三种情况都背离敌人直线滚 250 码,
+	##   射程 400 的猎人常一滚就把目标甩出射程、再走回来。现在: 近战贴身 ⇒ 斜着拉开但目标仍在射程; 残血(无近战贴身)⇒ 撤到最近队友身后;
+	##   目标残血(<14%)⇒ 照旧朝它滚去处决; 其余 ⇒ 保持约 0.8 射程(太远追上去 / 合适侧移换角度)。
+	var melee_near: bool = KiteDash.melee_within(battle, u, 150.0)
+	var low: bool = float(u["hp"]) < float(u["maxHp"]) * 0.35
+	var tg = battle._targeting._nearest_enemy(u)
+	var dest: Vector2
+	if not melee_near and not low and tg != null and float(tg["hp"]) < float(tg["maxHp"]) * 0.14:
+		dest = _hunter_roll_best_dest(u["pos"], DetMath.norm((tg["pos"] - u["pos"])))   # 处决: 朝它滚(墙感)
+	else:
+		dest = KiteDash.pick(battle, u, ROLL_DIST, {"retreat": low and not melee_near})
+	var rdir: Vector2 = Vector2.RIGHT if not (tg is Dictionary) else DetMath.norm((tg["pos"] - u["pos"]))
 	if DetMath.dist(u["pos"], dest) > 1.0: rdir = DetMath.norm((dest - u["pos"]))
 	battle._skill_ring(u["pos"], Color(0.45, 1.0, 0.68, 0.6), 60.0)                       # 起手灵巧绿环(闪避激活)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", u["pos"], 175.0, 0.12)  # 起跳轻尘

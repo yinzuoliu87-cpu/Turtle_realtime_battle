@@ -156,21 +156,9 @@ func _sk_cyber_smart(u: Dictionary) -> void:                   # 赛博龟·智�
 func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主动放技+被动躲避共用·用户2026-07-16): 绕自身200码采样16候选打分(离敌远+离墙远)·800码/s真位移
 	var ne = battle._targeting._nearest_enemy(u)
 	if ne == null: return
-	var best: Vector2 = u["pos"]
-	var best_score = -INF
-	var es = battle._targeting._enemies_of(u)
-	for i in range(16):
-		var aa: float = TAU * float(i) / 16.0
-		var cand: Vector2 = u["pos"] + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * 200.0
-		cand = ArenaShape.clamp_in(cand, battle.ARENA, 50, 40)
-		var d_enemy = INF
-		for o in es:
-			if o.get("alive", false): d_enemy = minf(d_enemy, DetMath.dist(cand, o["pos"]))
-		var d_wall: float = minf(minf(cand.x - battle.ARENA.position.x, battle.ARENA.end.x - cand.x), minf(cand.y - battle.ARENA.position.y, battle.ARENA.end.y - cand.y))
-		var score: float = minf(d_enemy, 420.0) + minf(d_wall, 160.0) * 0.8
-		if score > best_score:
-			best_score = score
-			best = cand
+	## ★11-15 落点改走 KiteDash(用户「智能 AI…一个劲的往后退」「碰到远程的、别人朝你跑, 不应该就追上去吗」「按你思路做吧」):
+	##   原来 16 个候选点只按「离最近敌人越远越好」打分 ⇒ 每次都往后冲。现在保持约 0.8 射程(太远追上去 / 合适侧移)、只躲近战、冲完目标仍在射程内。
+	var best: Vector2 = KiteDash.pick(battle, u, 200.0)
 	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], best, 44.0, Color(0.3, 0.9, 1.0, 0.6), 0.28)
 	var from4: Vector2 = u["pos"]
 	var uu4 = u

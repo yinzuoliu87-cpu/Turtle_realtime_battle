@@ -73,6 +73,8 @@ scripts/gamedata/copy_rules.gd|lit|永久获得一件真装备: equips 多一件
 scripts/gamedata/copy_rules.gd|lit|自我调用: 抄到【复制】会无限递归 → Stack overflow(实测 2026-08-30)
 scripts/gamedata/copy_rules.gd|lit|锁死龟壳: energy_lock_until=+999s 且 atk_range +60 —— 解锁在镰刀横扫里, 而镰刀要等 headless_soul_stacks 减到 0, 减层数的代码在 `u[\"id\"] == \"headless\"` 分支里, 龟壳永远减不掉 ⇒ 整场再也放不出任何技能(实测)
 scripts/gamedata/dealt_stats.gd|lit|灵物触手
+scripts/gamedata/eq_stat_labels.gd|lit|免疫击飞 %d 次
+scripts/gamedata/eq_stat_labels.gd|lit|冰封 %d 次
 scripts/gamedata/equip_stats.gd|lit|初始龟能
 scripts/gamedata/equip_stats.gd|lit|反伤
 scripts/gamedata/equip_stats.gd|lit|射程
@@ -1544,10 +1546,8 @@ scripts/scenes/battle/info_panel.gd|lit|主动
 scripts/scenes/battle/info_panel.gd|lit|储能
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
-scripts/scenes/battle/info_panel.gd|lit|免疫击飞 %d 次
 scripts/scenes/battle/info_panel.gd|lit|免疫控制 %d 次
 scripts/scenes/battle/info_panel.gd|lit|冰寒
-scripts/scenes/battle/info_panel.gd|lit|冰封 %d 次
 scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
 scripts/scenes/battle/info_panel.gd|lit|减免伤害 %d
@@ -1565,9 +1565,6 @@ scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
 scripts/scenes/battle/info_panel.gd|lit|已开 %d/%d，下一箱：第 %d 箱
-scripts/scenes/battle/info_panel.gd|lit|当前提供攻击力 %d
-scripts/scenes/battle/info_panel.gd|lit|当前攻速 +%d%%
-scripts/scenes/battle/info_panel.gd|lit|当前连击 %d 层 · 增伤 +%d%%
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
 scripts/scenes/battle/info_panel.gd|lit|战利品 %d/%d
@@ -1617,7 +1614,7 @@ scripts/scenes/battle/info_panel.gd|lit|治疗效果的倍率。
 scripts/scenes/battle/info_panel.gd|lit|泡泡
 scripts/scenes/battle/info_panel.gd|lit|流血
 scripts/scenes/battle/info_panel.gd|lit|涨潮 %d 次
-scripts/scenes/battle/info_panel.gd|lit|涨潮中 · 最大生命 +%d · 攻击 +%d
+scripts/scenes/battle/info_panel.gd|lit|涨潮中：获得 %d 最大生命值、%d 攻击力
 scripts/scenes/battle/info_panel.gd|lit|潜伏中：无法被选为目标
 scripts/scenes/battle/info_panel.gd|lit|火山形态：剩余 %.1f 秒
 scripts/scenes/battle/info_panel.gd|lit|灼烧
@@ -1637,13 +1634,17 @@ scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果�
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|窃取护盾
+scripts/scenes/battle/info_panel.gd|lit|获得 %d%% 增伤
+scripts/scenes/battle/info_panel.gd|lit|获得 %d%% 攻击速度
 scripts/scenes/battle/info_panel.gd|lit|获得深海币 %d 枚
+scripts/scenes/battle/info_panel.gd|lit|获得相当于 %s%% 最大生命值的 %d 攻击力
 scripts/scenes/battle/info_panel.gd|lit|获得龟能 %d
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
 scripts/scenes/battle/info_panel.gd|lit|财宝
 scripts/scenes/battle/info_panel.gd|lit|近战形态：锤击
 scripts/scenes/battle/info_panel.gd|lit|远程形态：灵能弹
+scripts/scenes/battle/info_panel.gd|lit|连击 %d 层
 scripts/scenes/battle/info_panel.gd|lit|造成伤害 %d
 scripts/scenes/battle/info_panel.gd|lit|造成伤害时，按比例回复自身生命。
 scripts/scenes/battle/info_panel.gd|lit|造成物理伤害时无视目标的护甲值。

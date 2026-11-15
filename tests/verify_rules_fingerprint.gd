@@ -128,7 +128,9 @@ const CASES := [
 	## ④ 奇械顶档 / 药水 8 件 vs 遗物顶档(含 093 香火石, 带刻痕) / 枪 8 件 · 宝箱龟带财宝值
 	##   ★2026-11-08 B 的上下路对调(原上路赌徒 / 下路赛博 + 宝箱): RULES_VER 4 删了奇械僵硬 / 易碎与药水斩首后, A 上路被一边倒碎蛋、
 	##     整场在第一路就结束, 下路的彩虹 / 赛博 / 宝箱和 047/085/092/093 从没上过场(覆盖分母抓到)。
-	{"tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱", "seed": 7140004,
+	##   ★2026-11-15 种子 7140004 → 7140006: 猎人翻滚 / 赛博智能AI 改冲刺落点(方案书 20261115b)后 7140004 又在第一路碎蛋 1:0 结束;
+	##     RULES_FP_ONLY=3 RULES_FP_SEED 扫 7140004~7140011, 取最近的三路打满 7140006。
+	{"tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱", "seed": 7140006,
 		"a": {"lv": 7, "tr": "tame", "top": ["two_head", "fortune"], "bottom": ["rainbow"],
 			"lo": {"two_head": 3, "fortune": 2, "rainbow": 1},
 			"eq": [["p2eq_008", "p2eq_020", "p2eq_027"], ["p2eq_035", "p2eq_038", "p2eq_040"],
@@ -217,6 +219,10 @@ func _ready() -> void:
 		if only >= 0 and i != only:
 			continue
 		var c: Dictionary = CASES[i]
+		## 换种子扫描用(规则一改那局就可能一路碎蛋 1:0 结束、第二路的单位与装备没上场): RULES_FP_ONLY=<下标> RULES_FP_SEED=<种子>
+		if only >= 0 and OS.get_environment("RULES_FP_SEED") != "":
+			c = c.duplicate(true)
+			c["seed"] = int(OS.get_environment("RULES_FP_SEED"))
 		var t0 := Time.get_ticks_msec()
 		var r: Dictionary = await _run_case(c)
 		results.append(r)
