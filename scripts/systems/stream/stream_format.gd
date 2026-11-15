@@ -139,6 +139,49 @@ const PTS_DZ := 1.0
 
 
 ## 每点 roundi(× Q_PTS)(绝对整数串, 3 × 点数)
+## ★11-14 粒子出生参数 `@afx`(节点伪属性, 只在建节点 / keyframe 整份重发里出现一次):
+##   `_anim_fx` 里带 p0 + life 的粒子(043 浪第三版的水沫 / 水珠 / 光晕 …)位置 / 缩放 / 变淡 / 帧号 / 显隐全是游戏钟的函数
+##   (battle_render._tick_anim_fx)⇒ 服务器只发出生参数, 手机渲染步按同一个函数算; 原来这些量 30 Hz 逐采样进流,
+##   一道浪 8 秒 173 KB(不带浪 25 KB), 解码也跟着慢(用户 11-14 朋友手机看直播「卡卡的」)。
+##   双精度原样(T_RAW): t0 / show_at 要与流里的全局 `t`(双精度)逐位对得上, 否则手机早一步或晚一步显出 / 收掉。
+##   旧播放器不认 `@afx`(Node.set 未知属性 = 不做事): 粒子停在出生位置, 不报错; 格式版本不升(同 `@par` / `@mp` 的先例)。
+const AFX_KEY := &"@afx"
+const AFX_N := 18
+
+
+## 这条 `_anim_fx` 记录是不是「出生参数决定一切」的粒子(由 `_tick_anim_fx` 全权驱动)
+static func afx_is(f: Dictionary) -> bool:
+	return f.has("p0") and f.has("life") and float(f["life"]) > 0.0
+
+
+static func afx_pack(f: Dictionary) -> PackedFloat64Array:
+	var p0: Vector3 = f["p0"]
+	var v: Vector3 = f.get("vel", Vector3.ZERO)
+	var flags := (1 if f.has("vel") else 0) | (2 if f.has("s1") else 0) | (4 if f.has("a1") else 0) | (8 if f.has("show_at") else 0)
+	return PackedFloat64Array([float(f.get("t0", 0.0)), float(f.get("fps", 20.0)), float(f.get("n", 1)), float(f.get("base", 0)),
+		float(f["life"]), p0.x, p0.y, p0.z, v.x, v.y, v.z, float(f.get("grav", 0.0)),
+		float(f.get("s0", 1.0)), float(f.get("s1", 1.0)), float(f.get("a0", 1.0)), float(f.get("a1", 0.0)),
+		float(f.get("show_at", 0.0)), float(flags)])
+
+
+## 手机: 出生参数 → `_anim_fx` 记录(与服务器那条逐键相同, 外加 keep: 寿命到了不自己删节点, 等流里的删除)。坏数据 ⇒ {}。
+static func afx_unpack(a, spr: Node) -> Dictionary:
+	if not (a is PackedFloat64Array) or (a as PackedFloat64Array).size() != AFX_N:
+		return {}
+	var flags := int(a[17])
+	var f := {"spr": spr, "t0": a[0], "fps": a[1], "n": int(a[2]), "base": int(a[3]), "life": a[4],
+		"p0": Vector3(a[5], a[6], a[7]), "grav": a[11], "s0": a[12], "a0": a[14], "keep": true}
+	if flags & 1:
+		f["vel"] = Vector3(a[8], a[9], a[10])
+	if flags & 2:
+		f["s1"] = a[13]
+	if flags & 4:
+		f["a1"] = a[15]
+	if flags & 8:
+		f["show_at"] = a[16]
+	return f
+
+
 static func q_abs(v: PackedVector3Array) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	out.resize(v.size() * 3)

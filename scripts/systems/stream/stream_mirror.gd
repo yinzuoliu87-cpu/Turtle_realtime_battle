@@ -308,6 +308,7 @@ func node_del(id: int) -> void:
 	nodes.erase(id)
 	_truth.erase(id)
 	_lerped.erase(id)
+	_afx_ids.erase(id)
 	if n != null and is_instance_valid(n):
 		(n as Node).queue_free()
 		deleted += 1
@@ -400,6 +401,9 @@ func _apply_node_props(n: Node, id: int, props: Array) -> void:
 		if spr and nm == "frame":
 			fr = v
 			continue
+		if nm == "@afx":
+			_afx_reg(n, id, v)
+			continue
 		if nm == "@par":
 			## 服务器那边换了父节点(先挪到世界上让粒子放完再删原父节点那一类)
 			var np := _parent(int(v[0]), int(v[1]), str(v[2]))
@@ -418,6 +422,24 @@ func _apply_node_props(n: Node, id: int, props: Array) -> void:
 		sp.frame = clampi(int(fr), 0, maxi(0, sp.hframes * sp.vframes - 1))
 	_truth[id] = tr
 	_lerped.erase(id)
+
+
+## ★11-14 粒子(`@afx`): 按出生参数登记进战斗场的 `_anim_fx`, 由手机自己的渲染步 `_tick_anim_fx` 驱动(同服务器同一个函数);
+##   keyframe 整份重发同一个节点时不重复登记。寿命到了不自己删节点(keep), 等流里的删除。
+var _afx_ids := {}
+var afx_reg := 0
+
+
+func _afx_reg(n: Node, id: int, v) -> void:
+	if _afx_ids.has(id):
+		return
+	var f := F.afx_unpack(v, n)
+	var b := _battle()
+	if f.is_empty() or b == null:
+		return
+	(b.get("_anim_fx") as Array).append(f)
+	_afx_ids[id] = true
+	afx_reg += 1
 
 
 func _apply_props(o: Object, props: Array, rid: int = 0) -> void:

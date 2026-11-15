@@ -152,6 +152,7 @@ class TN extends RefCounted:
 	var ukey := ""            # S2: 它是主人的哪一件(sprite / shadow …); 主人换了这一件之后它就不归渲染步管了
 	var uidx := -1            # S2: 主人的单位 idx; 主人不在 battle._units 里了(被移出场)渲染步也不管它
 	var ren := false          # 上一次采样时它归不归渲染步管(主人活着 / 还是这一件 / 还在场); 由真变假的那一步整份交接, 见 `_samp`
+	var afx := false          # 11-14: 它是 `_tick_anim_fx` 按出生参数驱动的粒子(只发 `@afx`, 变换 / 颜色 / 帧号 / 显隐手机自己算)
 	var mats := PackedInt32Array()
 	var base: Array = []      # 报警基线: 与类规格逐项对齐的原值(只核白名单外那些项)
 	var base_x := {}          # 报警基线: 规格外的伪属性(MeshInstance3D 的 surface_material_override/i)
@@ -240,6 +241,9 @@ var _lc_pos := PackedVector3Array()   # S2: 换路建场时删掉的地图摆件
 var _lane_clears := 0                 # S2: 换路清场次数(全局 lcn; 跳转时手机据此决定地图前景带还在不在)
 ## 事件
 var _evs: Array = []
+## 11-14 粒子: 节点 iid → 驱动它的那条 `_anim_fx` 记录(StreamFormat.afx_is); 每步第一次用时重建。
+var _afx := {}
+var _afx_step := -1
 ## 计时(微秒)
 var _us_render := 0
 var _us_units := 0
@@ -999,14 +1003,19 @@ func _samp(t: TN, cont: bool) -> void:
 	##     (精英怪「吞噬」tween 每步写目标立绘的 scale / modulate, 偶数步被渲染步盖回去)会把中间值带进 keyframe
 	##     (verify_stream_seek 最重局: keyframe 6601 发了亡魂 scale 0.581, 亡魂 6623 死, 跳播一直停在 0.58, 顺播 1.0)。
 	##   缓存只在「之后有没有再变」上可信; 交接这一下必须把服务器的真值整份给手机。
+	## ★11-14 粒子(`@afx`): 变换 / 颜色 / 帧号 / 显隐全是手机渲染步 `_tick_anim_fx` 按出生参数算的(与服务器同一个函数) ⇒ 同「主人活着的外观」不发、缓存跟着走
+	var drv: bool = _afx_of(t) != null
+	t.afx = drv
+	ren = ren or drv
 	var hand := t.ren and not ren
 	t.ren = ren
 	if t.kind != K_OTHER:
 		var v3: Node3D = t.n
-		if v3.visible != t.vis:
+		if v3.visible != t.vis or (hand and t.kind == K_SPRITE):
 			t.vis = v3.visible
-			_k(&"visible")
-			enc.val(t.vis)
+			if not drv:
+				_k(&"visible")
+				enc.val(t.vis)
 		if ren:
 			## 不发, 但缓存要跟着走: 手机的渲染步此刻算出来的就是这些值(主人死了之后从这里开始比)
 			var rx := v3.transform
@@ -1045,10 +1054,11 @@ func _samp(t: TN, cont: bool) -> void:
 				_k(&"material_override")
 				enc.res(mo_rid)
 				meta["smo_sets"] = int(meta.get("smo_sets", 0)) + 1
-			if sp.frame != t.fr:
+			if sp.frame != t.fr or hand:
 				t.fr = sp.frame
-				_k(&"frame")
-				enc.val(t.fr)
+				if not drv:
+					_k(&"frame")
+					enc.val(t.fr)
 			if sp.hframes != t.hf:
 				t.hf = sp.hframes
 				_k(&"hframes")
@@ -1185,6 +1195,19 @@ func _cache_tracked(t: TN) -> void:
 
 
 ## 节点建立(或 keyframe 重发): 只发与类默认值不同的属性; 同时记下白名单外属性的比较键(报警基线)。
+## 驱动这个节点的粒子记录(不是粒子 ⇒ null)。
+func _afx_of(t: TN):
+	if _afx_step != _step_n:
+		_afx_step = _step_n
+		_afx.clear()
+		var fx = battle.get("_anim_fx")
+		if fx is Array:
+			for f in (fx as Array):
+				if f is Dictionary and F.afx_is(f) and is_instance_valid(f.get("spr")):
+					_afx[(f["spr"] as Object).get_instance_id()] = f
+	return _afx.get(t.iid)
+
+
 func _node_new(t: TN) -> void:
 	var n: Node = t.n
 	var spec: Array = _spec(t.cls, t.kind != K_OTHER)
@@ -1217,6 +1240,10 @@ func _node_new(t: TN) -> void:
 				var rid2 := _rid(m)
 				_ensure(rid2)
 				vals.append([nm, null, rid2])
+	var af = _afx_of(t)
+	if af != null:
+		vals.append([F.AFX_KEY, F.afx_pack(af), -1])
+		meta["afx"] = int(meta.get("afx", 0)) + 1
 	_cache_tracked(t)
 	t.mats = _collect_mats(n)
 	t.sp = _sp_rids(t.mats)
@@ -1250,6 +1277,8 @@ func _node_new(t: TN) -> void:
 			enc.v3q(F.T_ROT, e[1], F.Q_ROT)
 		elif nm2 == &"scale":
 			enc.v3q(F.T_SCALE, e[1], F.Q_SCALE)
+		elif nm2 == F.AFX_KEY:
+			enc.gval(e[1])               # 双精度原样(var_to_bytes)
 		else:
 			enc.val(e[1])
 

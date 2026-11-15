@@ -290,8 +290,9 @@ func _tick_anim_fx() -> void:
 		## `life`(秒): 粒子按寿命收, 帧放完停在最后一帧(043 海浪水滴 / 闪光, 2026-11-14)。没有 `life` 的照旧放完 n 帧就收。
 		var life: float = float(f.get("life", -1.0))
 		if (life > 0.0 and el >= life) or (life <= 0.0 and fr >= n):
-			spr.queue_free()
-			battle._anim_fx.remove_at(i)
+			if not bool(f.get("keep", false)):
+				spr.queue_free()
+			battle._anim_fx.remove_at(i)     # keep(直播手机端按 `@afx` 登记的粒子): 节点归流里的删除管, 这里只停止驱动
 			continue
 		## `base`: 同一张精灵表里放了不止一段动画时, 这一段从第几帧起(默认 0)。
 		## 041 的 `tide-swell.png` 就是 0~5 涨 / 6~11 退 —— 两段是同一件效果的两个方向。

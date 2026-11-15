@@ -83,6 +83,10 @@ var _bad := ""                    # 解到一块坏的: 原因(播放头走到�
 var _theme_seen := ""
 ## 计数(门禁分母)
 var chunks_decoded := 0
+## 其中有几块是后台线程提前解好、主线程直接取的(门禁 / 探针读)
+var chunks_bg := 0
+## 播放中(不是缓冲 / 同步中 / 跳转)在主线程当场解的块数
+var sync_playing := 0
 var steps_applied := 0
 var events := {}                  # 已触发的事件: 类型 → 次数
 var sim_calls := 0                # 播放模式下 `_sim_step` 被调用的次数(ReplayRecorder.pre_step 里数; 必须恒 0)
@@ -120,6 +124,26 @@ var opened := false
 var state_from_stream := false
 ## 正在应用的这一步里有没有「幕布进场」事件(`_take_state` 判要不要补幕布)
 var _cur_ops_curtain := false
+
+## ★11-14 后台解码(用户 11-14 朋友手机看直播「卡卡的」): 原来一块(1 秒 60 步)在主线程一帧里解完 ——
+##   台式机中位 20 ms、最慢 91 ms, 手机慢几倍 ⇒ 每到块交界卡一下(探针 tests/probes/_probe_stream_perf.gd, 正式服 job 8653)。
+##   现在主线程每接上一块, 就把**下一块**交给 WorkerThreadPool 解(字符串表顺着传一份深拷贝); 播放头真要它时多半早解好了, 只取结果。
+##   ★取结果的时机与原来同步解码逐字相同(只在 `_pump` 需要时才接上) ⇒ 缓冲 / 同步中 / 跳转的判据不变; 没解完就等它(不会比同步慢)。
+##   没有线程的平台(OS 不带 "threads" 特性)与 STREAM_SYNC_DECODE=1 走原来的同步解码。跳转(seek)先丢掉在途那块。
+var _bg_task := -1
+var _bg_job: _DecodeJob = null
+var _bg_on := OS.has_feature("threads") and OS.get_environment("STREAM_SYNC_DECODE") != "1"
+
+
+## 后台解一块: 只碰自己手里的字节和字符串表拷贝(parse_chunk 是纯函数: StreamPeerBuffer / 解压 / 读值, 不碰场景树)
+class _DecodeJob extends RefCounted:
+	var seq := -1
+	var data: PackedByteArray
+	var st: Dictionary
+	var out: Dictionary = {}
+
+	static func run(j: _DecodeJob) -> void:
+		j.out = preload("res://scripts/systems/stream/stream_format.gd").parse_chunk(j.data, j.st)
 
 
 ## 这一帧的推进倍率（纯函数，门禁直接调）：没有幕布且正处在幕布那几段 ⇒ GAP_FF；否则 1。
@@ -180,7 +204,15 @@ func _tick(rd: float) -> void:
 	if src == null:
 		_fail("no source")
 		return
-	_pump(int(maxf(head, 0.0)) + START_STEPS + 2)
+	var want := int(maxf(head, 0.0)) + START_STEPS + 2
+	## ★11-14 播放中只有「这一帧真要播到的那几步 + 插值要的下一个采样」必须当场解, 其余交给后台、解好了才取:
+	##   跟播直播时缓冲只有 3 秒, 新块一到就落进 want ⇒ 原来当场在主线程解 ⇒ 每到一块卡一下(用户朋友手机看直播「卡卡的」)。
+	##   缓冲 / 同步中 / 跳转 / 跳开场仍按 want 当场解(画面本来就停着, 与原来逐字相同)。追上了才停的判据不变:
+	##   能拿到的块里, 这一帧要播到的那几步一定已经解好(没解好就当场解) ⇒ 只有块真没到才「同步中」。
+	var need_now := want
+	if state == "playing" and _bg_on and first_step >= 0 and head >= 0.0:
+		need_now = int(head + rd * 60.0 * speed * gap_mul(_no_curtain, str(battle._dl_state))) + F.CONT_EVERY + 1
+	_pump(want, need_now)
 	if first_step < 0:
 		if _bad != "":
 			_fail(_bad)
@@ -242,19 +274,64 @@ func _skip_opening() -> void:
 
 
 ## 把能解的块解出来, 直到已解码的步号 ≥ want(或者块来源暂时没有更多)。
-func _pump(want: int) -> void:
+##   `need`(默认 = want): 解到 need 之前当场解(后台在解这一块就等它); 过了 need 只取后台已经解好的, 没好就下一帧再看。
+func _pump(want: int, need: int = -1) -> void:
+	if need < 0:
+		need = want
 	while _bad == "" and _last_step < want and _next_seq < src.available():
+		if _last_step >= need and _bg_on:
+			_prefetch()
+			if _bg_task < 0 or not WorkerThreadPool.is_task_completed(_bg_task):
+				break                # 不急: 后台还在解, 主线程不等
 		if not _decode(_next_seq):
 			return
+	_prefetch()
+
+
+## 下一块已经到了、后台没在解 ⇒ 交给后台解(每次只在途一块: 字符串表要按块顺序接力)。
+func _prefetch() -> void:
+	if not _bg_on or _bg_task >= 0 or _bad != "" or _next_seq >= src.available():
+		return
+	var data: PackedByteArray = src.chunk(_next_seq)
+	if data.is_empty():
+		return                       # 缺块: 留给同步那条路报「chunk N missing」
+	var j := _DecodeJob.new()
+	j.seq = _next_seq
+	j.data = data
+	j.st = _strtab.duplicate(true)
+	_bg_job = j
+	_bg_task = WorkerThreadPool.add_task(_DecodeJob.run.bind(j), false, "stream decode")
+
+
+## 后台那块的结果(没解完就等它); 不是这一块 ⇒ 丢掉, 返回空。
+func _bg_take(seq: int) -> Dictionary:
+	if _bg_task < 0:
+		return {}
+	WorkerThreadPool.wait_for_task_completion(_bg_task)
+	var j := _bg_job
+	_bg_task = -1
+	_bg_job = null
+	return j.out if j.seq == seq else {}
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and _bg_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_bg_task)   # 播放器先走了: 等在途那块收完, 任务不留给线程池
 
 
 func _decode(seq: int) -> bool:
 	## 解不开的块: 先记下, 前面已经解好的照常播完, 播放头走到这里才停在「无法播放」
-	var data: PackedByteArray = src.chunk(seq)
-	if data.is_empty():
-		_bad = "chunk %d missing" % seq
-		return false
-	var d := F.parse_chunk(data, _strtab.duplicate())
+	var d := _bg_take(seq)
+	if d.is_empty():
+		var data: PackedByteArray = src.chunk(seq)
+		if data.is_empty():
+			_bad = "chunk %d missing" % seq
+			return false
+		d = F.parse_chunk(data, _strtab.duplicate())
+		if state == "playing":
+			sync_playing += 1         # 播放中在主线程当场解了一块(门禁: 跟播直播时应为 0)
+	else:
+		chunks_bg += 1
 	if not bool(d.get("ok", false)):
 		_bad = "chunk %d: %s" % [seq, str(d.get("err", ""))]
 		return false
@@ -775,6 +852,7 @@ func seek(target: int) -> bool:
 	if kseq < 0:
 		return false
 	seeks += 1
+	_bg_take(-1)                  # 在途那块按旧的接力解的, 丢掉
 	_reset_all()
 	_next_seq = kseq
 	_strtab = {}
