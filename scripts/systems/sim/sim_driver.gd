@@ -472,6 +472,15 @@ func _do_team(t: Node) -> void:
 		## ★陪练号只用自己的「拥有 ∪ 本周限免」(没绑主站 = 限免 7 只, 1 级; 2026-11-09 · 方案书 20261107 §4.9):
 		##   槽位表里本周能上的按原顺序留下, 不够 3 只按限免顺序补(补上的不改招, 用默认招)。不登录后端 ⇒ 原样。
 		want = PetLevelsNet.fill_allowed(_roster.get("pets", []))
+	## ★11-14 根治①: 统领已锁、锁里却有本周不能上场的龟(旧版锁的, 新规则「拥有 ∪ 本周限免」不认)⇒ 这一号本轮不排队 ——
+	##   排上了裁判照样拒(b_bad_snapshot), 真人配到它就弹「结算失败」(周六 p01 / p02)。换周重锁按新规则锁, 自然恢复;
+	##   调度器连拉几次局数不涨会把它放进冷却(server/referee/gauntlet_bot_planner.py dud_ids), 不会空转。
+	if locked and not tut:
+		var bad: Array = PetLevelsNet.bad_locked(Array(GameState.season_leaders))
+		if not bad.is_empty():
+			_ev("ANOMALY", {"where": "team", "what": "已锁统领本周不能上场, 本轮不排队", "leaders": Array(GameState.season_leaders), "bad": bad})
+			_finish("locked_leaders_not_allowed")
+			return
 	if not locked:
 		t.call("_on_clear_all")
 		for pid in want:

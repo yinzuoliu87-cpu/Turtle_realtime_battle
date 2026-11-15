@@ -147,6 +147,20 @@ static func is_free_pick(pid: String) -> bool:
 	return filter_on() and not owned.has(pid) and allowed_now().has(pid)
 
 
+## 已锁的本周统领里，本周不能上场的那几只（拥有 ∪ 限免都不含）。不过滤 ⇒ []。
+## ★11-14 周六「结算失败，请重新开战」: 陪练号 p01 / p02 用旧版(0.22.9)锁了统领, 新规则不认 ⇒ 排上闯关被裁判拒(b_bad_snapshot),
+##   真人配到它就弹「结算失败」(memory project-bot-locked-leaders-1114 根治①)。陪练号开打前用它把关(sim_driver._do_team)。
+static func bad_locked(leaders: Array) -> Array:
+	if not filter_on():
+		return []
+	var ok := allowed_now()
+	var out: Array = []
+	for p in leaders:
+		if not ok.has(str(p)):
+			out.append(str(p))
+	return out
+
+
 ## 陪练号 / 自动选龟：want 里能上场的按原顺序留下，不够 n 只再按 allowed 的顺序补。不过滤 ⇒ 原样。
 static func fill_allowed(want: Array, n: int = 3) -> Array:
 	if not filter_on():
