@@ -144,16 +144,20 @@ const RANKED := {
 	##   指纹抽成 snap_sig_of / finals_snap_sig(全局层 finals_lineup_push.gd 用)。新加的三个进 units(57 → 60)钉住逐字。
 	##   4013f5a0 → 37ef91bc 之间这个文件只有这一次提交, 57 个里只变 finals_push_snapshot、没有挪走函数 ⇒ 挪基线判据不变松。
 	##   基线 4013f5a0 ⇒ 37ef91bc, 摘要按本表口径从 git show 37ef91bc 现算(同口径复算 4013f5a0 得 c6891173…, 与原表一致)。
+	## ★2026-11-16 周末决赛「确定阵容」(提交 499da8ef, 方案书 docs/plans/20261116b-周末确定阵容按钮.md; 用户 11-16「加个按钮，就加在背包里面…
+	##   加个确定阵容」): **有意删掉** finals_push_snapshot(对阵图 / 全局层每拍自动推决赛阵容; 积分赛不调它), 交阵容改走
+	##   scripts/net/finals_confirm.gd。37ef91bc → 499da8ef 只删这一个、没有新加函数 ⇒ 挪基线判据不变松; units 60 → 59,
+	##   摘要按本表口径从 git show 499da8ef 现算(同口径复算 37ef91bc 得 f43610f8…, 与原表一致)。
 	"scripts/net/backend.gd": {
-		"base": "37ef91bc",
-		"digest": "f43610f8f16402cbf91a952f0c8d7200dc7b341f3bbd74812719c6de24c797ea",
+		"base": "499da8ef",
+		"digest": "bf880f7bf5b4771604f4dd543c24a036faed7722b793c5e3e1e37ec2211c4cec",
 		"views": {},
 		"sat_only": [],
 		"units": [
 			"_bot_season_record", "_bot_trainer_skill", "_drop_stale_schema", "_ensure_seeded", "_finals_snap", "_is_self_ghost", "_load_seed",
 			"_migrate_brackets_to_battles", "_seed_level", "_seed_record", "_seed_season_id", "_shuffle", "_tally",
 			"_tally_exact", "build_ghost_snapshot", "derived_reserve_pool", "drop_week_snapshots", "ensure_finals_entry",
-			"ensure_gauntlet_entry_snapshot", "fake_person_tag", "finals_push_snapshot", "finals_snap_sig", "find_gauntlet_opponent",
+			"ensure_gauntlet_entry_snapshot", "fake_person_tag", "finals_snap_sig", "find_gauntlet_opponent",
 			"find_opponent", "gauntlet_bot_battles", "gauntlet_pool_find", "ghost_lanes_broken", "ghost_level",
 			"ghost_owner_tag", "is_sparring", "lead_of", "leaderboard", "load_pool", "make_bot", "make_match_rng", "my_tag",
 			"owner_tag_of_id", "person_key", "player_display_name", "player_ghost_id", "pool_add", "pool_find_battles",
@@ -170,9 +174,14 @@ const RANKED := {
 	## ★2026-11-01 全游戏文案按商业口吻(方案书 docs/plans/20261101f-全游戏文案按商业口吻.md): 锁定提示改两行、截止提示去掉「·」——
 	##   `_build_locked_hint`(画锁定提示签)与 `_lockout_toast`(弹截止提示)只管画字, 不在选人 / 存档 / 出战进匹配的流程上,
 	##   从 units 里拿掉(70 个); 基线不动(1f8baa93), 摘要按同一口径从那次提交现算(72 → 70 个, da5ef1b1… → a5a3820f…)。
+	## ★2026-11-16 周末决赛「确定阵容」(提交 499da8ef, 方案书同上): 背包按钮进本页时是「决赛模式」(_fc_mode, 只由背包按钮置,
+	##   按钮只在本周已晋级时出现): 页名「决赛阵容」、主按钮「提交阵容」⇒ 新加的 _fc_submit 存档 + 交阵容 + 回背包, 不进匹配。
+	##   积分赛那条(_fc_mode 恒假)一行没变: _ready / _build_ui / _refresh_confirm / _on_start / _on_back 只多一个 `_fc_mode` 判断
+	##   (_build_locked_hint 不在 units)。0130a607 → 499da8ef 只加 _fc_submit(决赛专用, 不进 units)。基线挪到 499da8ef,
+	##   units 不变(70 个), 摘要按本表口径现算(同口径复算 0130a607 得 0f1bc33a…, 与原表一致)。
 	"scripts/scenes/TeamSelectScene.gd": {
-		"base": "0130a607",
-		"digest": "0f1bc33aa4409dec3c1b43130c9769a55677eda57d1de97e5d0ec9ec5f57bd4d",
+		"base": "499da8ef",
+		"digest": "86ed83c8cfcc7e26b45a4f4f61a8cea5791b6fce0d8adad71425c63d71b6d749",
 		"views": {},
 		"sat_only": [],
 		"units": [
