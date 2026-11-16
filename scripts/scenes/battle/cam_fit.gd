@@ -28,7 +28,8 @@ const K_MAX := 2.2
 static func scale_for(pts: Array, vp: Vector2, left_edge: float, right_edge: float, fov_deg: float) -> float:
 	if vp.x < 2.0 or vp.y < 2.0:
 		return 1.0
-	var f: float = (vp.y * 0.5) / tan(deg_to_rad(fov_deg) * 0.5)
+	var hf: float = deg_to_rad(fov_deg) * 0.5
+	var f: float = (vp.y * 0.5) * DetMath.dcos(hf) / DetMath.dsin(hf)   ## = (vp.y/2) / tan(半视场角); 走 DetMath(det_math_lint)
 	var cx: float = vp.x * 0.5
 	var k := 1.0
 	for p in pts:
@@ -66,9 +67,9 @@ static func panel_edges(b, vp: Vector2) -> Vector2:
 	var re: float = vp.x - PANEL_FALLBACK_W
 	var pl = b.get("_team_panel_left")
 	var pr = b.get("_team_panel_right")
-	if pl is Control and is_instance_valid(pl) and (pl as Control).is_inside_tree() and (pl as Control).size.x > 1.0:
+	if is_instance_valid(pl) and pl is Control and (pl as Control).is_inside_tree() and (pl as Control).size.x > 1.0:
 		le = (pl as Control).get_global_rect().end.x
-	if pr is Control and is_instance_valid(pr) and (pr as Control).is_inside_tree() and (pr as Control).size.x > 1.0:
+	if is_instance_valid(pr) and pr is Control and (pr as Control).is_inside_tree() and (pr as Control).size.x > 1.0:
 		re = (pr as Control).get_global_rect().position.x
 	return Vector2(le, re)
 
@@ -90,21 +91,39 @@ static func apply(b) -> void:
 	b._cam_base = BattleCam.TARGET + (BattleCam.POS - BattleCam.TARGET) * k
 	b.set_meta("cam_fit_k", k)
 	b._apply_cam_zoom()
-	if not b.has_meta("cam_fit_hooked"):
-		b.set_meta("cam_fit_hooked", true)
-		var vpn: Viewport = b.get_viewport()
-		if vpn != null:
-			vpn.size_changed.connect(_apply_if_alive.bind(b))
 
 
-## 头像栏建好后调: 本帧先按兜底宽度摆一次(不闪), 下一帧栏排好版再按真实内沿量一次。
+## 头像栏建好后调: 本帧先按兜底宽度摆一次(不闪), 下一帧栏排好版再按真实内沿量一次; 之后画面尺寸变了也重算。
+## ★「下一帧」与「尺寸变了」都交给挂在对局节点下的 Watch 子节点 —— 信号连在它自己的方法上, 对局释放时随它一起断开。
+##   (第一版把静态函数 bind 了对局再连到根视口的 size_changed: 网页播放器里同一帧建两次头像栏 ⇒
+##    「Signal 'size_changed' is already connected」, verify_web_player 抓到。)
 static func apply_now_and_next_frame(b) -> void:
 	apply(b)
-	var tree: SceneTree = b.get_tree() if b != null and is_instance_valid(b) and b.is_inside_tree() else null
-	if tree != null:
-		tree.process_frame.connect(_apply_if_alive.bind(b), CONNECT_ONE_SHOT)
+	if b == null or not is_instance_valid(b):
+		return
+	var w = b.get_meta("cam_fit_watch", null)
+	if not is_instance_valid(w):
+		w = Watch.new()
+		w.name = "CamFitWatch"
+		w.b = b
+		b.set_meta("cam_fit_watch", w)
+		b.add_child.call_deferred(w)
+	(w as Watch).pending = true
 
 
-static func _apply_if_alive(b) -> void:
-	if is_instance_valid(b):
-		apply(b)
+class Watch extends Node:
+	var b = null
+	var pending := false
+
+	func _ready() -> void:
+		get_viewport().size_changed.connect(_on_size_changed)
+
+	func _on_size_changed() -> void:
+		pending = true
+
+	func _process(_d: float) -> void:
+		if not pending:
+			return
+		pending = false
+		if is_instance_valid(b):
+			CamFit.apply(b)
