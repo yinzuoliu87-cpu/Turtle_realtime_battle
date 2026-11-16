@@ -31,6 +31,12 @@
      ㉒ econ_on 中途打开: 一分钟内回到正常节奏(6 秒一次)
      ㉓ econ_on 关着: 发件箱空闲 5 分钟才领一次; 开着仍 30 秒
      ㉔ 三条比赛线程都闲着只有一条在问(真线程); 来了一对任务, 两条线程各领一份、同时算
+  ㉕~㉚ 空闲省流量第三步(#23 · 2026-11-16 · 迁移 20261116b): 比赛线程一次请求 rpc/referee_poll 问完
+     (正常任务 → 补流 → 开关 → 有没有经济重放 / 发件); ⑥~⑬ 默认就走这条路(假服务端把库内两步也记进 calls), ⑦⑬ 走旧库路径
+     ㉕ 空闲一小时只发 referee_poll(约 610 个, 其中约 60 个要补流); 旧库(404)问一次就退回分开问、节奏同 ⑨
+     ㉖ 回包里的开关进缓存(不再读 referee_flags); 要了补流却领到正常任务 ⇒ 下一轮仍要; 回包里的补流交给 handle_restream
+     ㉗ 经济线程: 合并轮询说「没有」⇒ 一小时不发请求(旧做法约 610 次); 说「有」⇒ 当秒领走  ㉘ 消息过期 ⇒ 20 秒后照旧自己问
+     ㉙ 发件箱同 ㉗(旧做法 econ_on 开着约 130 次)  ㉚ 回包不是对象 ⇒ 当领活失败(等 ≥5 秒); worker_loop 真走 claim_work
 进 run-tests.sh 门禁(成功打印 ALL OK)。
 """
 import importlib.util
@@ -101,10 +107,17 @@ class Env:
         self.restream_err = False
         self.on_complete = None
         self.echo_mid = False            # 假 Godot 的结果单照任务单回填 match_id(真 Godot 就是这样); 默认 False = 一律写 fake_res 原样
+        self.poll_404 = False            # True = 旧库(没有 referee_poll): 轮询器退回分开问
+        self.econ_pending = False        # 假 referee_poll 回包里的 econ / outbox
+        self.outbox_pending = False
+        self.times = []                  # (函数名, 当时的 _now()) —— 量「多快领到」
         for k in ('POLL_SEC', 'IDLE_POLL_SEC', 'IDLE_AFTER_SEC', 'RESTREAM_POLL_SEC', 'IDLE_FOLLOW_SEC', 'FLAGS_TTL_SEC',
-                  'ECON_OFF_POLL_SEC', 'OUTBOX_OFF_POLL_SEC'):
+                  'ECON_OFF_POLL_SEC', 'OUTBOX_OFF_POLL_SEC', 'HINT_STALE_SEC'):
             os.environ.pop(k, None)
         m._flags.reset()                 # 开关缓存是模块级的, 每份环境从头读
+        m._poll_off.clear()
+        m._hint_econ.reset()
+        m._hint_outbox.reset()
         m._workers = 1
         os.environ['STREAM_ROOT'] = self.root
         os.environ.pop('STREAM_TMP', None)
@@ -117,6 +130,21 @@ class Env:
 
         def fake_rpc(fn, body, timeout=20.0):
             env.calls.append((fn, body))
+            env.times.append((fn, env.m._now()))
+            if fn == 'referee_poll':
+                ## 假服务端 20261116b: 库里照 referee_claim → (空了且 p_restream) referee_claim_restream 的顺序领;
+                ##   库内这两步也记进 calls(三元组, 第三项 'in_poll'), 好让「领了几次 / 问了几次补流」的老断言照样量; HTTP 请求数看 http()
+                if env.poll_404:
+                    raise urllib.error.HTTPError('http://x/rpc/' + fn, 404, 'Not Found', None, None)
+                env.calls.append(('referee_claim', body, 'in_poll'))
+                got = []
+                if env.claims['referee_claim']:
+                    got = [env.claims['referee_claim'].pop(0)]
+                elif body.get('p_restream'):
+                    env.calls.append(('referee_claim_restream', body, 'in_poll'))
+                    if env.claims['referee_claim_restream']:
+                        got = [env.claims['referee_claim_restream'].pop(0)]
+                return {'v': 1, 'jobs': got, 'flags': dict(env.flags), 'econ': env.econ_pending, 'outbox': env.outbox_pending}
             if fn == 'referee_complete' and env.on_complete:
                 env.on_complete()
             if fn == 'econ_replay_claim' and env.econ_404:
@@ -186,6 +214,10 @@ class Env:
     def names(self, fn):
         return [c for c in self.calls if c[0] == fn]
 
+    def http(self, fn=None):
+        """真发出去的请求(不含 referee_poll 库内那两步)。"""
+        return [c for c in self.calls if len(c) == 2 and (fn is None or c[0] == fn)]
+
     def pub(self):
         return os.path.join(self.root, MID)
 
@@ -226,8 +258,9 @@ class FakeStop:
                 h[1]()
 
 
-def run_sim(m, sec, hooks=(), e=None, job_sec=0.0, loop=None):
-    """跑真 worker_loop(或 loop 给的那条循环), 时钟是假的。hooks = [(第几秒, 函数)]。job_sec = 一局在假时钟上算多久。"""
+def run_sim(m, sec, hooks=(), e=None, job_sec=0.0, loop=None, pre=None):
+    """跑真 worker_loop(或 loop 给的那条循环), 时钟是假的。hooks = [(第几秒, 函数)]。job_sec = 一局在假时钟上算多久。
+    pre = 换好假时钟之后、循环开始之前调一次(第 0 秒就该在的状态)。"""
     clock = [1000.0]
     if e is not None:
         e.on_complete = lambda: clock.__setitem__(0, clock[0] + job_sec)
@@ -235,6 +268,8 @@ def run_sim(m, sec, hooks=(), e=None, job_sec=0.0, loop=None):
     old_now, old_stop = m._now, m._stop
     m._now, m._stop = (lambda: clock[0]), st
     try:
+        if pre is not None:
+            pre()
         if loop is None:
             m.worker_loop(0, False)
         else:
@@ -242,6 +277,125 @@ def run_sim(m, sec, hooks=(), e=None, job_sec=0.0, loop=None):
     finally:
         m._now, m._stop = old_now, old_stop
     return st
+
+
+def every(step, end, fn, start=0):
+    """FakeStop 的 hooks: 从 start 到 end 每 step 秒调一次 fn(t)。"""
+    return [(t, (lambda t=t: fn(t))) for t in range(start, end, step)]
+
+
+def third_step(m, ejobs):
+    print('=== 空闲省流量第三步(#23 · 合并轮询 referee_poll) ===')
+    # ㉕ 比赛线程一小时全空闲: 每轮只发一个请求; 补流跟在同一个请求里
+    e = Env(m)
+    run_sim(m, 3600)
+    h = e.http()
+    hp = e.http('referee_poll')
+    rs = [c for c in hp if c[1].get('p_restream')]
+    ok('㉕ 空闲一小时比赛线程发了 %d 个请求, 全是 referee_poll(%d 个)' % (len(h), len(hp)), len(h) == len(hp) and 560 <= len(hp) <= 660,
+       str(sorted({c[0] for c in h})))
+    ok('㉕ 其中要补流的 %d 个(约 60, 同旧节奏)、库里真问补流 %d 次' % (len(rs), len(e.names('referee_claim_restream'))),
+       55 <= len(rs) <= 66 and len(e.names('referee_claim_restream')) == len(rs))
+    ok('㉕ ★不再单独发 referee_claim / referee_claim_restream / referee_flags',
+       not e.http('referee_claim') and not e.http('referee_claim_restream') and not e.http('referee_flags'))
+    e.close()
+    # ㉕ 旧库(404): 问一次 referee_poll 之后退回分开问, 节奏同 ⑨
+    e = Env(m)
+    e.poll_404 = True
+    run_sim(m, 3600)
+    ok('㉕ 旧库: referee_poll 只问 1 次(%d), 之后 referee_claim %d 次 / 补流 %d 次(同 ⑨)' % (
+        len(e.http('referee_poll')), len(e.http('referee_claim')), len(e.http('referee_claim_restream'))),
+       len(e.http('referee_poll')) == 1 and 560 <= len(e.http('referee_claim')) <= 660
+       and 55 <= len(e.http('referee_claim_restream')) <= 66 and m._poll_off.is_set())
+    e.close()
+    # ㉖ 回包里的开关进缓存: 之后 econ_on_now() 不再单独读
+    e = Env(m)
+    e.flags = {'econ_on': True}
+    m.worker_loop(0, True)
+    on = m.econ_on_now()
+    ok('㉖ 合并轮询带回 econ_on = 开 ⇒ econ_on_now() 为真、没发 referee_flags', on is True and not e.http('referee_flags'),
+       str([c[0] for c in e.http()]))
+    e.close()
+    # ㉖ 要了补流却领到正常任务 ⇒ 不算问过补流(下一轮仍要)
+    e = Env(m)
+    e.fake_res = res()
+    nj = job()
+    nj.pop('task')
+    e.claims['referee_claim'] = [nj]
+    run_sim(m, 4)
+    hp = e.http('referee_poll')
+    ok('㉖ 第一轮领到正常任务、第二轮仍要补流(p_restream: %s)' % [c[1].get('p_restream') for c in hp],
+       len(hp) >= 2 and hp[0][1].get('p_restream') is True and hp[1][1].get('p_restream') is True
+       and len(e.names('referee_complete')) == 1)
+    e.close()
+    # ㉖ 回包里的补流交给 handle_restream
+    e = Env(m)
+    e.fake_res = res()
+    e.claims['referee_claim_restream'] = [job()]
+    m.worker_loop(0, True)
+    ok('㉖ 合并轮询领到的补流交给 handle_restream(done 一次、没有 complete)',
+       len(e.names('referee_restream_done')) == 1 and not e.names('referee_complete'))
+    e.close()
+    # ㉗ 经济线程: 合并轮询每 6 秒说一次「没有」⇒ 一小时一个请求都不发; 第 600 秒起说「有」⇒ 一两秒内领走
+    e = Env(m)
+    os.makedirs(os.path.join(e.proj, 'scripts', 'referee'), exist_ok=True)
+    open(os.path.join(e.proj, 'scripts', 'referee', 'econ_replay.gd'), 'w').close()
+    e.flags = {'econ_on': True}
+    m._econ_off.clear()
+
+    def econ_tick(t):
+        m._flags.put(e.flags)
+        m._hint_econ.put(600 <= t < 612)
+        if t == 600:
+            e.claims['econ_replay_claim'].append(ejobs)
+    run_sim(m, 3600, every(6, 3600, econ_tick), loop=m.econ_loop, pre=lambda: econ_tick(0))
+    cl = [t for fn, t in e.times if fn == 'econ_replay_claim']
+    fr = [t for fn, t in e.times if fn == 'referee_flags' and t < 1600.0]
+    ok('㉗ 空闲一小时经济线程只在「有」的那十几秒里发请求(领 %d 次, 旧做法约 610 次; 之前读开关 %d 次)' % (len(cl), len(fr)),
+       1 <= len(cl) <= 8 and not fr and min(cl or [0]) >= 1600.0, str(cl))
+    ok('㉗ 第 600 秒说「有」⇒ %.1f 秒内领走并回写' % ((cl[0] - 1600.0) if cl else -1),
+       bool(cl) and 1600.0 <= cl[0] <= 1602.0 and len(e.names('econ_replay_done')) == 1)
+    e.close()
+    # ㉘ 消息过期(只在第 0 秒说过一次「没有」, 之后比赛线程一直在算长局)⇒ 20 秒后照旧自己问
+    e = Env(m)
+    e.flags = {'econ_on': True}
+    m._econ_off.clear()
+    run_sim(m, 3600, loop=m.econ_loop, pre=lambda: m._hint_econ.put(False))
+    cl = [t for fn, t in e.times if fn == 'econ_replay_claim']
+    ok('㉘ 消息过期 ⇒ 照旧自己问(一小时 %d 次, 应约 600)、第一次在第 %.0f 秒(应 ≥20)' % (len(cl), (cl[0] - 1000.0) if cl else -1),
+       550 <= len(cl) <= 660 and cl[0] - 1000.0 >= 20.0)
+    e.close()
+    # ㉙ 发件箱: 合并轮询说「没有」⇒ 一小时不发请求(旧做法 econ_on 开着约 130 次); 第 600 秒说「有」⇒ 一两秒内领
+    e = Env(m)
+    e.flags = {'econ_on': True}
+    e.claims['mainsite_outbox_claim'] = []
+    os.environ['MAINSITE_BASE'] = 'http://127.0.0.1:9'
+    os.environ['MAINSITE_HOOK_SECRET'] = 'f' * 64
+    m._outbox_off.clear()
+
+    def ob_tick(t):
+        m._flags.put(e.flags)
+        m._hint_outbox.put(600 <= t < 606)
+    try:
+        run_sim(m, 3600, every(6, 3600, ob_tick), loop=m.outbox_loop, pre=lambda: ob_tick(0))
+    finally:
+        os.environ.pop('MAINSITE_BASE', None)
+        os.environ.pop('MAINSITE_HOOK_SECRET', None)
+    cl = [t for fn, t in e.times if fn == 'mainsite_outbox_claim']
+    ok('㉙ 发件箱空闲一小时只在说「有」时领(%d 次)、第一次在第 %.0f 秒(应 600~602)' % (len(cl), (cl[0] - 1000.0) if cl else -1),
+       1 <= len(cl) <= 3 and 1600.0 <= cl[0] <= 1602.0 and not e.http('referee_flags'), str(cl))
+    e.close()
+    # ㉚ 回包坏了(不是对象)⇒ 当领活失败处理(等 ≥5 秒再问), 不当成「没活」也不崩
+    e = Env(m)
+    real = m.rpc
+    m.rpc = lambda fn, body, timeout=20.0: (e.calls.append((fn, body)) or ['oops']) if fn == 'referee_poll' else real(fn, body, timeout)
+    st = run_sim(m, 30)
+    m.rpc = real
+    ok('㉚ 回包不是对象 ⇒ 记一行 WARN、每次等 ≥5 秒(%s)' % st.waits[:3], len(st.waits) >= 3 and min(st.waits) >= 5.0)
+    e.close()
+    src = open(m.__file__, encoding='utf-8').read()
+    ok('㉚ ★worker_loop 真用 claim_work(不是直接 rpc referee_claim)',
+       'claim_work(worker, versions, want_rs)' in src and 'jobs = rpc("referee_claim"' not in src)
 
 
 def main():
@@ -307,9 +461,10 @@ def main():
     ok('⑥ 补流任务交给 handle_restream(done 一次、没有 complete)', len(e.names('referee_restream_done')) == 1
        and not e.names('referee_complete'))
     e.close()
-    # ⑦ 404
+    # ⑦ 404(旧库路径: 没有 referee_poll 才会分开问补流)
     e = Env(m)
     m._restream_off.clear()
+    e.poll_404 = True
     e.restream_404 = True
     m.worker_loop(0, True)
     m.worker_loop(0, True)
@@ -373,8 +528,9 @@ def main():
     run_sim(m, 170, [(100, lambda: e.claims['referee_claim_restream'].append(job()))])
     ok('⑫ 窗口内来的补流下一次询问就领到(done %d 次)' % len(e.names('referee_restream_done')), len(e.names('referee_restream_done')) == 1)
     e.close()
-    # ⑬ 领补流失败也限频
+    # ⑬ 领补流失败也限频(旧库路径)
     e = Env(m)
+    e.poll_404 = True
     e.restream_err = True
     run_sim(m, 600)
     r = len(e.names('referee_claim_restream'))
@@ -563,6 +719,7 @@ def main():
     for k in ('POLL_SEC', 'IDLE_POLL_SEC', 'IDLE_AFTER_SEC', 'RESTREAM_POLL_SEC', 'IDLE_FOLLOW_SEC'):
         os.environ.pop(k, None)
     e.close()
+    third_step(m, ejobs)
     print('')
     if fails[0] == 0 and n[0] >= 40:
         print('ALL OK — 补流只产出状态流、不写回结果; 重算对不上就撤流; 空闲放慢; 经济重放单开线程批量做 (%d 条)' % n[0])

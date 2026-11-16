@@ -31,6 +31,8 @@
   FLAGS_TTL_SEC          记账开关 econ_on 多久重读一次，默认 60（开关打开后经济线程 / 发件箱最多这么久回到正常节奏）
   ECON_OFF_POLL_SEC / OUTBOX_OFF_POLL_SEC  econ_on 关着时经济重放 / 发件箱多久领一次，默认 300 / 300（#23 出站流量）
   IDLE_FOLLOW_SEC        多条比赛线程都闲着时只留一条问（IdleBaton），其余线程最多等这么久再去抢接力棒，默认 60
+  HINT_STALE_SEC         合并轮询（rpc/referee_poll）带回的「有没有经济重放 / 发件」多久内算数，默认 20；
+                         过期（比赛线程都在算长局）⇒ 经济线程 / 发件箱照旧自己问
 
 补流（逐帧直播 §5，迁移 20261020_referee_live_list.sql，2026-10-20 · ★只改了仓库文件、未部署）：
   正常任务领不到时，再领一份「补流」任务（rpc/referee_claim_restream；任务单 = 原任务 + task = "restream"）。
@@ -87,6 +89,8 @@ _restream_off = threading.Event()      # rpc/referee_claim_restream 回过 404�
 ##   ★不排在比赛后面：开局要等重放追上，排在后面 ⇒ 工作线程越忙开局越卡（一局约 42 秒，客户端只等 30 秒）。
 _econ_off = threading.Event()          # rpc/econ_replay_claim 回过 404（服务端没上 20261106c）⇒ 本进程不再领
 ECON_BATCH = 20
+_poll_off = threading.Event()          # rpc/referee_poll 回过 404（库里没上 20261116b）⇒ 本进程退回分开问
+HINT_CHECK_SEC = 1.0                   # 经济线程 / 发件箱「合并轮询说没有」时多久看一眼消息（只看内存，不发请求）
 
 
 _now = time.monotonic                  # 自测换成假时钟
@@ -458,12 +462,74 @@ class FlagCache:
                 self._val = v
             return self._val
 
+    def put(self, v: dict) -> None:
+        """合并轮询（rpc/referee_poll）顺带带回的开关：当作刚读过一次。"""
+        with self._lock:
+            self._at, self._val = _now(), dict(v)
+
     def reset(self) -> None:
         with self._lock:
             self._at, self._val = None, {}
 
 
 _flags = FlagCache()
+
+
+## ── 空闲省流量第三步（#23 · 2026-11-16，迁移 20261116b）──────────────────────────────────────
+## 11-10 之后正式服空转仍约 3.5 万次 / 天：比赛线程、经济线程（econ_on 开着 6 秒一次）、发件箱、开关各问各的。
+## 现在比赛线程一次请求 rpc/referee_poll 问完：正常任务 → 补流（到点才要）→ 开关 → 有没有经济重放 / 发件；
+## 经济线程 / 发件箱看最近一次合并轮询说「没有」就不自己问（WorkHint），消息过期才照旧自己问。
+class WorkHint:
+    """合并轮询带回的「某类活有没有」。quiet(stale) = 最近 stale 秒内有消息、且消息说没有 ⇒ 这一轮不用自己去问。
+    从没收到过 / 过期（比赛线程都在算长局、或库里没有 referee_poll）⇒ 不算 quiet，线程照旧自己问。"""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._at = None
+        self._pending = True
+
+    def put(self, pending: bool) -> None:
+        with self._lock:
+            self._at, self._pending = _now(), bool(pending)
+
+    def quiet(self, stale: float) -> bool:
+        with self._lock:
+            return self._at is not None and _now() - self._at < stale and not self._pending
+
+    def reset(self) -> None:
+        with self._lock:
+            self._at, self._pending = None, True
+
+
+_hint_econ = WorkHint()
+_hint_outbox = WorkHint()
+
+
+def hint_stale_sec() -> float:
+    return float(env("HINT_STALE_SEC", "20"))
+
+
+def claim_work(worker: str, versions: dict, restream: bool) -> tuple:
+    """比赛线程领活：一次请求 rpc/referee_poll（正常任务；空了且 restream ⇒ 补流）。顺带刷新开关缓存与两个 WorkHint。
+    返回 (jobs, 这次问没问补流)。库里没有 referee_poll（404）⇒ 本进程以后退回 rpc/referee_claim（补流由调用方另问）。"""
+    body = {"p_worker": worker, "p_versions": sorted(versions)}
+    if not _poll_off.is_set():
+        try:
+            r = rpc("referee_poll", dict(body, p_restream=bool(restream)))
+        except urllib.error.HTTPError as ex:
+            if ex.code != 404:
+                raise
+            _poll_off.set()
+            log("referee_poll 404（库里没上 20261116b）: 本进程退回分开问")
+        else:
+            if not isinstance(r, dict):
+                raise ValueError("referee_poll 回包不是对象: %r" % (r,))
+            if isinstance(r.get("flags"), dict):
+                _flags.put(r["flags"])
+            _hint_econ.put(bool(r.get("econ", True)))
+            _hint_outbox.put(bool(r.get("outbox", True)))
+            return list(r.get("jobs") or []), bool(restream)
+    return rpc("referee_claim", dict(body, p_limit=1)) or [], False
 
 
 def econ_on_now() -> bool:
@@ -595,6 +661,10 @@ def econ_loop() -> None:
             ## econ_on 关着（#23）：没人等重放，隔 off_poll 才领；其间只按 flags_ttl 看开关有没有打开
             _stop.wait(max(0.0, min(flags_ttl, next_off_claim - _now())))
             continue
+        if _hint_econ.quiet(hint_stale_sec()):
+            ## 合并轮询刚说过本周没有待重放的号（#23 第三步）：不发请求，隔一秒再看消息
+            _stop.wait(HINT_CHECK_SEC)
+            continue
         try:
             if handle_econ(claim_econ(), discover_versions(env("VERSIONS_DIR", "/opt/turtle")), wdir) > 0:
                 pacer.busy()
@@ -629,16 +699,24 @@ def worker_loop(idx: int, once: bool) -> None:
                 holding = True
             elif not _baton.wait(g, follow) or _stop.is_set():
                 continue
+        want_rs = pacer.restream_due() and not _restream_off.is_set()
         try:
-            jobs = rpc("referee_claim", {"p_worker": worker, "p_versions": sorted(versions), "p_limit": 1}) or []
+            jobs, asked_rs = claim_work(worker, versions, want_rs)
         except (urllib.error.URLError, OSError, ValueError) as ex:
             log("WARN %s 领活失败: %s" % (worker, ex))
             if holding:
                 _baton.give_back()
             _stop.wait(max(poll, 5))
             continue
-        if not jobs and pacer.restream_due():
-            ## 正常任务空了才领补流（真比赛永远优先）
+        if asked_rs:
+            ## 合并轮询里要了补流（服务端保证正常任务优先）：领到补流 ⇒ 立刻接着问；什么都没领到 ⇒ 隔 RESTREAM_POLL_SEC；
+            ## 领到的是正常任务 ⇒ 服务端这次没看补流，不算问过（同旧路径：有正常任务时根本不问补流）
+            if not jobs:
+                pacer.restream_asked(False)
+            elif any(str(j.get("task", "")) == TASK_RESTREAM for j in jobs):
+                pacer.restream_asked(True)
+        elif not jobs and pacer.restream_due():
+            ## 旧库（没有 referee_poll）：正常任务空了才另问补流（真比赛永远优先）
             try:
                 jobs = claim_restream(worker, versions)
             except (urllib.error.URLError, OSError, ValueError) as ex:
@@ -778,6 +856,10 @@ def outbox_loop(once: bool = False) -> int:
                       float(env("OUTBOX_IDLE_AFTER_SEC", "60")), 0.0)
     total = 0
     while not _stop.is_set():
+        if not once and _hint_outbox.quiet(hint_stale_sec()):
+            ## 合并轮询刚说过没有到点该发的（#23 第三步）：不发请求，隔一秒再看消息
+            _stop.wait(HINT_CHECK_SEC)
+            continue
         try:
             n = outbox_pass(base, secret)
         except Exception as ex:      # 意外（回包形状不对等）：记一行、照常等下一轮 —— 线程不能悄悄死掉

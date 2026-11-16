@@ -993,7 +993,7 @@ run_audit "tools/server_rule_sync.py"     "ALL OK" "server_rule_sync (服务端�
 run_audit "tools/server_logic_gate.py"    "ALL OK" "server_logic_gate (云函数逻辑·V2往返/V3六类伪造/去重)"
 # 裁判机轮询器的「补流」任务(逐帧直播 §5, 2026-10-20): 假 rpc + 假 Godot 子进程, 发布 / 撤流 / 领活顺序是真代码。
 #   ★补流只产出状态流, 一次 referee_complete 都不许有(不写回结果、不改账); 重算胜方 / 指纹对不上 ⇒ 撤流。
-run_audit "tools/referee_poller_selftest.py" "ALL OK" "referee_poller_selftest (补流只录流不记账·对不上撤流·正常任务优先)"
+run_audit "tools/referee_poller_selftest.py" "ALL OK" "referee_poller_selftest (补流只录流不记账·对不上撤流·正常任务优先·一次请求问完所有活)"
 # 龟投（主站）对接服务器侧(2026-11-09 · docs/plans/20261107-龟战主站对接.md §4.8): 不连库不连主站, 签名 / 网关 / 发件箱 / 假主站是真代码。
 #   ★签名与主站 Go 代码逐字节(已知向量); 过期 / 签名错 / 改字段被拒; ok:false 不重试、5xx·401 重试; settle 等 started。
 #   数据库函数本身由 server/supabase/tests/20261109a_mainsite_core_check.sql 守(sb_migrate.py sandbox)。
