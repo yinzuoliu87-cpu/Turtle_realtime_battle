@@ -2,7 +2,7 @@
 
 用户 11-16「那到时候安排个日子换喽…你看安排哪天，你给它搞好」。
 CAX21(ARM 4 核 8G)11-16 傍晚三个机房都没货; 主 IPv4 只能在同一机房里从旧机挪到新机 ⇒ 只等纽伦堡(nbg1)。
-.github/workflows/referee-arm-grab.yml 每 30 分钟跑一次 `--run`: nbg1 有货、且还没有 labels.purpose=referee-arm 的机子
+.github/workflows/referee-arm-grab.yml 每小时跑一次 `--run`(用户 11-16「你每一个小时查就好了」): nbg1 有货、且还没有 labels.purpose=referee-arm 的机子
 ⇒ 当场开一台 turtle-referee-2(开出来就按小时计费 €0.0168 不含税, 等装机); 已经有了就什么都不做(最多一台)。
 换完机之后删掉那个定时任务。
 
