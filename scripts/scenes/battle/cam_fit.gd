@@ -101,7 +101,7 @@ static func apply_now_and_next_frame(b) -> void:
 	apply(b)
 	if b == null or not is_instance_valid(b):
 		return
-	var w = b.get_meta("cam_fit_watch", null)
+	var w = b.get_meta("cam_fit_watch") if b.has_meta("cam_fit_watch") else null   ## 不能写 get_meta(k, null): 默认值 null 等于没给, 键不存在就报错(get_meta_null_lint)
 	if not is_instance_valid(w):
 		w = Watch.new()
 		w.name = "CamFitWatch"
