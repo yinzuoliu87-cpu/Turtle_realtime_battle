@@ -136,6 +136,21 @@ def sha(b):
     return hashlib.sha256(b).hexdigest()
 
 
+## Caddy 片段里的主站内测地址占位符(2026-11-16): 本仓库公开, 主站内测地址不许写进来(只在 turtlebet docs/arena-plan.md §8)
+##   ⇒ 片段里写 __MAINSITE_BETA_BASE__, 上传 / 算 sha 时换成 beta_mainsite_base() 读到的真实地址。
+CADDY_PLACEHOLDER = b"__MAINSITE_BETA_BASE__"
+
+
+def upload_bytes(rel, beta_base=""):
+    """要传上服务器的字节: 一律 LF; Caddy 片段再把占位符换成主站内测地址(换不到 ⇒ 抛错, 不传半成品)。"""
+    data = read_lf(rel)
+    if rel == CADDY_FILE and CADDY_PLACEHOLDER in data:
+        if not beta_base:
+            raise ValueError("Caddy 片段里有 __MAINSITE_BETA_BASE__ 但拿不到主站内测地址")
+        data = data.replace(CADDY_PLACEHOLDER, beta_base.encode("utf-8"))
+    return data
+
+
 def mask_url(u):
     m = re.match(r"^(https?://)([^/]+)(.*)$", u or "")
     if not m:
@@ -299,7 +314,7 @@ def plan(a, ctx, ledger=None):
             steps.append(Step("srv:put:%s" % name, "②裁判机", "传 %s → %s/%s（LF，sha256 %s…）" % (rel, st, name, ctx["file_sha"][rel][:12]),
                               "ssh_in", cmd="mkdir -p %s && cat > %s/%s.part && mv %s/%s.part %s/%s && sha256sum %s/%s"
                               % (st, st, name, st, name, st, name, st, name),
-                              data=lambda r=rel: read_lf(r), expect=ctx["file_sha"][rel], note="（标准输入 = 文件内容）"))
+                              data=lambda r=rel: upload_bytes(r, ctx.get("beta_base", "")), expect=ctx["file_sha"][rel], note="（标准输入 = 文件内容）"))
         steps.append(Step("srv:compile", "②裁判机", "暂存目录里 py_compile 四个 .py", "ssh",
                           cmd="cd %s && python3 -m py_compile %s && echo COMPILE_OK" % (st, " ".join(os.path.basename(x) for x in CODE_FILES)),
                           expect="COMPILE_OK"))
@@ -508,11 +523,15 @@ def build_ctx(a, c):
         ctx["mig_sha"][name] = M.sha256_lf(p)
         if not M.chk_path(name):
             c.append("迁移 %s 缺检查脚本（sb_migrate 会拒）" % name)
+    ## 片段里 arena-beta 的 redir 要主站内测地址(正式部署也传同一份片段, 所以两个环境都要)
+    ctx["beta_base"], beta_src = beta_mainsite_base()
+    if not ctx["beta_base"]:
+        c.append("Caddy 片段要的主站内测地址: %s" % beta_src)
     for rel in CODE_FILES + (b["unit_file"], CADDY_FILE):
         try:
-            ctx["file_sha"][rel] = sha(read_lf(rel))
-        except OSError:
-            c.append("仓库里没有 %s" % rel)
+            ctx["file_sha"][rel] = sha(upload_bytes(rel, ctx["beta_base"]))
+        except (OSError, ValueError) as ex:
+            c.append("仓库里没有 %s(或片段占位符换不了: %s)" % (rel, ex))
             ctx["file_sha"][rel] = "?"
     base, src = prod_mainsite_base() if b["env"] == "prod" else beta_mainsite_base()
     ctx["base"], ctx["base_src"] = base, src

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""2026-11-11 联调「绑定直接登录失败、浏览器不开」: 内测主站确认页只有 http://45.125.219.123:8088, App 只肯打开 https。
+"""2026-11-11 联调「绑定直接登录失败、浏览器不开」: 内测主站确认页只有 http 地址(见 turtlebet docs/arena-plan.md §8), App 只肯打开 https。
 修法(只动内测): Caddy arena-beta 站点 redir /game/link → 主站 http 确认页; 内测网关 env 加 MAINSITE_LINK_BASE=https://arena-beta.turtlearena.xyz。
 这个脚本把仓库里两处跟上:
   ① tools/mainsite_deploy.py 写 env 时, 主站根地址是 http ⇒ 自动带上 MAINSITE_LINK_BASE(否则下次部署会把手工加的那行冲掉)
