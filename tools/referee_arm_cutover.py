@@ -255,7 +255,7 @@ def cmd_verify(n):
 			## 库里没有算完的对局(刚发的版本 / 内测老版本)⇒ 跑这个版本自带的规则指纹门禁: 金标是 Windows x86 生成的, 新机上过 = 跨架构一致
 			vdir = "%s/v%s" % (base, v)
 			out = ssh(new_ip, "test -f %s/tests/verify_rules_fingerprint.tscn || { echo NO_GATE; exit 0; }; rm -rf /tmp/rf; mkdir -p /tmp/rf; "
-							  "cd /tmp; XDG_DATA_HOME=/tmp/rf APPDATA=/tmp/rf HOME=/tmp/rf TURTLE_SUPABASE=' ' timeout 900 /opt/godot/godot "
+							  "cd /tmp; XDG_DATA_HOME=/tmp/rf APPDATA=/tmp/rf HOME=/tmp/rf TURTLE_SUPABASE=' ' TURTLE_BACKEND=' ' timeout 900 /opt/godot/godot "
 							  "--headless --audio-driver Dummy --path %s res://tests/verify_rules_fingerprint.tscn --quit-after 12000 2>&1 "
 							  "| grep -E 'ALL PASS|FAIL' | tail -2" % (vdir, vdir), timeout=1000, check=False)
 			if "NO_GATE" in out:
