@@ -19,6 +19,10 @@ const PANEL_FALLBACK_W := 170.0
 const EGG_INSET := 70.0
 ## 最多退到原距离的这么多倍(再远蛋就太小; 4:3 实算约 1.7)
 const K_MAX := 2.2
+## 只给横屏画幅取景: 宽 / 高 低于这个数(方窗、竖屏)不动镜头。游戏锁横屏, 最窄的真机是 iPad 4:3 = 1.333。
+## ★无头测试的根视口默认 1280×1280(正方形): 第一版不设这条 ⇒ 测试里镜头一律退到 2.2 倍,
+##   verify_axe_ember_laser / verify_tutorial_battle_tips 量的画面全变了(CI 抓到)。
+const MIN_ASPECT := 1.3
 
 
 ## 镜头要退的倍数(≥ 1)。pts = 要放进两栏之间的世界点; left_edge / right_edge = 两栏内沿的画面 x(像素);
@@ -79,6 +83,8 @@ static func fit_k(b) -> float:
 	if b == null or not is_instance_valid(b) or b._cam == null or not is_instance_valid(b._cam):
 		return 1.0
 	var vp: Vector2 = (b._cam as Camera3D).get_viewport().get_visible_rect().size
+	if vp.x < vp.y * MIN_ASPECT:
+		return 1.0
 	var e: Vector2 = panel_edges(b, vp)
 	return scale_for(egg_points(b), vp, e.x, e.y, (b._cam as Camera3D).fov)
 

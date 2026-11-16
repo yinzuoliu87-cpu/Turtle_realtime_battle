@@ -103,6 +103,15 @@ func _ready() -> void:
 			_ok("② %s 宽屏: 镜头基准 == BattleCam.POS(一个像素不变)" % asp, Vector3(s._cam_base).is_equal_approx(BattleCam.POS),
 				"%s" % str(s._cam_base))
 	_ok("★分母: 量了 %d 种画幅" % n_asp, n_asp == ASPECTS.size())
+	## 方窗 / 竖屏不在支持画幅内(游戏锁横屏) ⇒ 不动镜头。无头测试根视口默认就是 1280×1280, 这条保住全仓测试量的画面不变。
+	get_tree().root.size = Vector2i(1280, 1280)
+	if s._sub != null and is_instance_valid(s._sub):
+		s._sub.size = Vector2i(1280, 1280)
+	await get_tree().process_frame
+	CamFit.apply(s)
+	_ok("② 方窗 1280×1280(宽高比 < MIN_ASPECT): k = 1, 镜头基准 == BattleCam.POS",
+		is_equal_approx(float(s.get_meta("cam_fit_k", -1.0)), 1.0) and Vector3(s._cam_base).is_equal_approx(BattleCam.POS),
+		"k=%.3f" % float(s.get_meta("cam_fit_k", -1.0)))
 	get_tree().root.size = Vector2i(1280, 720)
 	s.queue_free()
 	await get_tree().process_frame
