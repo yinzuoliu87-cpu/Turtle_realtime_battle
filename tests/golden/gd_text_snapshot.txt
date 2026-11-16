@@ -1914,7 +1914,6 @@ scripts/scenes/bracket/champion_wall.gd|lit|%d 人参赛
 scripts/scenes/bracket/champion_wall.gd|lit|亚军：
 scripts/scenes/bracket/champion_wall.gd|lit|冠军墙
 scripts/scenes/bracket/champion_wall.gd|lit|冠军杯赛
-scripts/scenes/bracket/champion_wall.gd|lit|决赛录像
 scripts/scenes/bracket/champion_wall.gd|lit|历届冠军杯赛冠军
 scripts/scenes/bracket/champion_wall.gd|lit|最新
 scripts/scenes/bracket/champion_wall.gd|lit|第 %d 届
