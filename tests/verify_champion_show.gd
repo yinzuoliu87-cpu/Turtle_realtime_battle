@@ -11,7 +11,7 @@ extends Node
 ##   ⑦ 组冠军缩短版: 没有亚军拍; 大字「组冠军」; 定格卡写晋级冠军杯
 ##   ⑧ 冠军杯开场(G7): 组冠军依次亮相(每人约 1 s, 来历「A 组冠军」), 上届冠军单独挂「卫冕」; 全程无按钮; 结束自删
 ##   ⑨ 奖励一件一页(G11): 先物件后数字; 按钮在这一页动画播完才出; 深海币**飞到**才入账(飞到之前顶栏数字不涨)
-##   ⑩ 冠军墙(G12): 列出往届(新的在上)、届数日期冠军名; 有录像坐标的「决赛录像」能点, 发出 (周, 组, 决赛轮, 0)
+##   ⑩ 冠军墙(G12): 列出往届(新的在上)、届数日期冠军名; ★不放「决赛录像」(11-16 用户: 往届换版后播不了, 干脆不显示)
 ##   ⑪ 纯函数: 冠军 / 亚军 / 来历 / 规模 / 夺冠之路(轮空、比分方向)/ 最快一场 / 届数日期 / 头衔「至下周日」/ 奖励页
 ##   ⑫ 版式: 手机 1560×720 / iPad 逻辑 1280×960 两种比例, 定格卡与各拍文字都在屏内
 ##   ⑬ 第二轮(主会话 10-31 逐帧审): 缎带字读得出(字 / 描边 / 缎带本体三方对比 + 字号)· 揭晓中有大字、呼吸、光束收拢 ·
@@ -548,15 +548,13 @@ func _t_wall() -> void:
 		and w.node("WallRow2") == null)
 	_ok("⑩ 铭牌: 冠军名 / 来历（规模）/ 亚军 / 夺冠阵容三只", _text(w, "WallName0") == "凤凰之羽" and _text(w, "WallInfo0") == "E 组冠军（24 人参赛）"
 		and _text(w, "WallRunner0") == "亚军：火山岩" and w.node("WallTurtle0_2") != null and w.node("WallTurtle1_0") == null)
-	var b0 := w.node("WallReplay0") as Button
-	var b1 := w.node("WallReplay1") as Button
-	var asked: Array = []
-	w.replay_requested.connect(func(rp: Dictionary) -> void: asked.append(rp))
-	b0.pressed.emit()
-	_ok("⑩ 「决赛录像」⇒ replay_requested(周, 杯组号, 决赛轮, 0); 没有录像坐标的那届按钮不可点",
-		asked.size() == 1 and asked[0] == {"week": FIX.WEEK, "bucket": 99, "round": 3, "match": 0} and b1.disabled and not b0.disabled, str(asked))
-	var sb = b0.get_theme_stylebox("normal")
-	_ok("⑩ 按钮皮 = card_button, 高 ≥ 81", sb is StyleBoxFlat and (sb as StyleBoxFlat).bg_color == Color("#6a3f1c") and b0.size.y >= 81.0)
+	## ★铭牌里一颗按钮都没有(「决赛录像」整个不放; 即使这届带录像坐标 —— es[0] 带, older 不带)
+	var row_btns: Array = []
+	for nm in ["WallRow0", "WallRow1"]:
+		for b in w.node(nm).find_children("*", "BaseButton", true, false):
+			row_btns.append(str(b.name))
+	_ok("⑩ ★不放「决赛录像」: 两届铭牌里 0 颗按钮(带录像坐标的那届也没有)",
+		row_btns.is_empty() and not es[0].get("replay", {}).is_empty() and w.node("WallReplay0") == null, str(row_btns))
 	var w2 = _mk(WALL, {"entries": [], "vp": Vector2(1560, 720)})
 	await get_tree().process_frame
 	_ok("⑩ 一届都没有 ⇒ 写「暂无往届冠军」(不画空框)", _text(w2, "WallState") == "暂无往届冠军")

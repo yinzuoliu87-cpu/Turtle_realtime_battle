@@ -1,26 +1,24 @@
 class_name ChampionWall
 extends CanvasLayer
-## champion_wall.gd —— 冠军墙(G12 · 名人堂): 历届冠军杯冠军, 一届一块铭牌(第几届 · 日期 · 冠军 · 来历 · 夺冠阵容 · 决赛录像)。
+## champion_wall.gd —— 冠军墙(G12 · 名人堂): 历届冠军杯冠军, 一届一块铭牌(第几届 · 日期 · 冠军 · 来历 · 夺冠阵容)。
+## ★不放「决赛录像」(用户 2026-11-16「干脆不要去显示那个决赛录像好了」): 录像按版本播, 每周一换版后往届决赛全是
+##   「版本不同」播不了; 墙上只留名人堂信息。`wall_entry` 仍带 `replay` 坐标(数据层不动), 这里不画。
 ## 依据 学到的.md 4-5(赛事入口常驻「历周冠军名单」)、6-7(冠军墙 = 名人堂)、J-8(往届对阵图永久保留)、1-8 / 8-9(名次进永久展示位)。
 ## ★数据全部用现成的读接口, 服务端一个字不改:
 ##   · 每一届 = `finals_week_view(那一周)` 的 `cup`(`SupabaseNet.fetch_finals_week_cb`, 排行榜「上周终榜」也走它)
-##   · 决赛录像 = `ReplayFetcher.open_finals(周, 杯组号, 决赛轮, 0)`(对阵图点格子同一条路)
 ##   · 夺冠阵容 = `matches` 行(ChampionData.finals_rows_query); **这条现在没有现成的取数函数** ⇒ 拿不到时铭牌只画冠军头像,
 ##     不画阵容那一格(见报告「需要补的」)。
 ##
 ## 用法:
 ##   var w := ChampionWall.open(host, {"entries": [...]})        # 已有数据
 ##   var w := ChampionWall.open(host, {"loading": true}); w.load_weeks(本周周锚点, 8)   # 自己去取近 8 届
-##   w.replay_requested.connect(func(rp): ...)   # 不接就自己调 ReplayFetcher.open_finals 去播
 ##   w.finished.connect(...)                     # 点「返回」(层已自删)
 
-signal replay_requested(rp: Dictionary)
 signal finished
 
 const UI := preload("res://scripts/scenes/bracket/champion_ui.gd")
 const DATA := preload("res://scripts/scenes/bracket/champion_data.gd")
 const SB := preload("res://scripts/net/supabase.gd")
-const RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
 
 const LAYER := 98
 const ROW_H := 132.0
@@ -155,30 +153,10 @@ func _row(e: Dictionary, i: int) -> Control:
 	for k in range(mini(3, lu.size())):
 		var id := str(lu[k])
 		UI.portrait(body, Vector2(nx + 320 + k * 66, bh * 0.5), 60, id, UI.RARITY.get(UI.pet_rarity(id), UI.BRONZE), "WallTurtle%d_%d" % [i, k])
-	## 决赛录像
-	var rp: Dictionary = e.get("replay", {}) if e.get("replay", {}) is Dictionary else {}
-	var b := UI.button("决赛录像", 200, "WallReplay%d" % i, latest)
-	b.position = Vector2(w - 8 - 200 - 18, (bh - UI.BTN_H) * 0.5)
-	b.disabled = rp.is_empty()
-	b.pressed.connect(_on_replay.bind(rp))
-	body.add_child(b)
 	if latest:
 		var tag := UI.label_in(body, Rect2(158, 98, 80, 24), "最新", 18, UI.GOLD, false, "WallLatest")
 		tag.add_theme_constant_override("outline_size", 4)
 	return row
-
-
-func _on_replay(rp: Dictionary) -> void:
-	if rp.is_empty():
-		return
-	if not replay_requested.get_connections().is_empty():
-		replay_requested.emit(rp)
-		return
-	_msg.text = "正在载入"
-	RF.open_finals(get_tree(), int(rp["week"]), int(rp["bucket"]), int(rp["round"]), int(rp["match"]),
-		func(code: String, msg: String) -> void:
-			if is_instance_valid(_msg):
-				_msg.text = msg if code != "" else "")
 
 
 ## 自己去取最近 n 届(本周起往回数, 每周一次 finals_week_view)。取到一届画一届; 都没取到 = 空墙那句话。
