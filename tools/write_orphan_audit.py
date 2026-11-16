@@ -178,6 +178,7 @@ WHY = {
     "override": "全局决赛日层的数据注入(finals_day_feed.gd static `feeds()`: 非空就用它, 空 = 读 Supabase 本周缓存 = 玩家路径); "
                 "门禁不连后端, verify_finals_day_global / verify_finals_day_recap 把 fixture 的 feeds(某一刻) 写进来, "
                 "量开播前弹窗 / 小条每一阶段 / 收盘补看; 每段开头写回 {} 清场。2026-10-31 周日决赛日重做 9dd8444d 加",
+    "override_stage": "周末决赛「确定阵容」按钮该不该出现的门禁 / 实拍注入(finals_confirm.gd `stage()`: 非空就用它, 空 = 按「本周已晋级 + 赛程阶段 + 决赛日分组」现算 = 玩家路径; 晋级要真打满周六 4 胜、分组要服务端下发, 门禁进程到不了); verify_finals_lineup_push 写 pre / none 量背包按钮两态与选龟页决赛模式, reset_for_test 清回空。2026-11-16 方案书 20261116b 加",
     "gateway_override": "龟投账号登录网关地址的门禁注入(mainsite_link.gd `gateway_base()`: 产品按构建特性选正式 / 内测网关, "
                         "开发进程可用环境变量 TURTLE_ARENA_GATEWAY); verify_mainsite_link 指到假网关 https://gw.test, 量请求地址。2026-11-08 加",
     "now_override": "龟投账号登录的「现在」注入(mainsite_link.gd `_now()`, unix 秒; 产品读系统时间): "
