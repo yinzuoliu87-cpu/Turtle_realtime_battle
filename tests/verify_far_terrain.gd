@@ -11,7 +11,8 @@ extends Node
 #   阈值会随美术调色漂。几何覆盖是纯算术: 把最坏机位的可见地面范围算出来,
 #   断言地形网格必须罩得住。
 #
-# 相机: pos(0,28,22) look_at(0,0.6,0) fov40 → 俯角 51.2°, 画面上沿仍在水平线【下方】31.2°
+# 相机: 机位从 BattleCam 取(2026-11-16 起俯角 40°: pos≈(0,23.19,26.92) look_at(0,0.6,0) fov40),
+#       画面上沿仍在水平线【下方】20°(51° 那时是 31.2°)
 #       (所以 Godot 的程序天空一个像素都进不了画面, 上方那条带其实是"远处地面")
 # 缩放范围 CAM_ZOOM_MIN=0.72 / 平移上限 PAN_LIMIT=9.0
 
@@ -114,8 +115,8 @@ func _check_coverage(src: String) -> void:
 	# 最坏机位: zoom=0.72 + 后移9m + 侧移9m。相机沿视轴远离 CAM_TARGET 1/zoom 倍。
 	var zoom := 0.72
 	var pan := 9.0
-	var cam_y: float = 0.6 + 27.4 / zoom
-	var cam_z: float = 22.0 / zoom - pan
+	var cam_y: float = BattleCam.TARGET.y + BattleCam.DIST * BattleCam.SIN_P / zoom
+	var cam_z: float = BattleCam.DIST * BattleCam.COS_P / zoom - pan
 	var pitch := rad_to_deg(atan2(cam_y - 0.6, cam_z + pan))
 	var top_ang: float = pitch - 20.0                      # 画面上沿(半 FOV=20°)
 	var d_top: float = cam_y / tan(deg_to_rad(top_ang))    # 上沿射线打到地面的水平距离

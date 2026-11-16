@@ -1659,8 +1659,8 @@ func _apply_bladder(h: Dictionary) -> void:
 	var hgt: float = float((uu as Dictionary).get("height", 0.0)) if uu is Dictionary else 0.0
 	var mult: float = maxf(0.2, float((uu as Dictionary).get("size_mult", 1.0))) if uu is Dictionary else 1.0
 	## 视线方向: 相机 basis.z 指向观察者 ⇒ +z 往前(近), −z 往后(远); 相机 basis.y = 立绘平面里往上长的方向
-	var toward: Vector3 = Vector3(0.0, 0.78, 0.626)
-	var up: Vector3 = Vector3(0.0, 0.626, -0.78)
+	var toward: Vector3 = -BattleCam.FORWARD
+	var up: Vector3 = Vector3(0.0, BattleCam.COS_P, -BattleCam.SIN_P)
 	if battle._cam != null and is_instance_valid(battle._cam):
 		toward = battle._cam.global_transform.basis.z.normalized()
 		up = battle._cam.global_transform.basis.y.normalized()
@@ -1690,8 +1690,8 @@ func _apply_body_fx(h: Dictionary, key: String, u: float) -> void:
 	var p2: Vector2 = (uu as Dictionary).get("pos", h["p2"]) if uu is Dictionary else h["p2"]
 	var hgt: float = float((uu as Dictionary).get("height", 0.0)) if uu is Dictionary else 0.0
 	var mult: float = maxf(0.2, float((uu as Dictionary).get("size_mult", 1.0))) if uu is Dictionary else 1.0
-	var toward: Vector3 = Vector3(0.0, 0.78, 0.626)
-	var up: Vector3 = Vector3(0.0, 0.626, -0.78)
+	var toward: Vector3 = -BattleCam.FORWARD
+	var up: Vector3 = Vector3(0.0, BattleCam.COS_P, -BattleCam.SIN_P)
 	if battle._cam != null and is_instance_valid(battle._cam):
 		toward = battle._cam.global_transform.basis.z.normalized()
 		up = battle._cam.global_transform.basis.y.normalized()

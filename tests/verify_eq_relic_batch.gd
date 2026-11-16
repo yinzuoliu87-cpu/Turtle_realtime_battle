@@ -33,9 +33,9 @@ const WANT_PLATE_R_PX := 21.0
 ## ★2026-08-09 碑体重做后 2.95 → 3.60 米: 屏幕 63.4 px 高(龟立绘 44 px), 碑该是地标。
 const WANT_STELE_H := 3.60
 ## 实战默认视角的两把尺子(字面值, 与 verify_eq_vfx_visibility 同源):
-## 相机 (0,28,22) look_at (0,0.6,0) fov40 ⇒ 横向 28.14758 px/米、世界竖直 17.62155 px/米。
+## 俯角 40°(2026-11-16 起, 视距不变) ⇒ 横向 28.14758 px/米、世界竖直 21.56230 px/米(51° 时 17.62155)。
 const PX_PER_M_LIT := 28.147577
-const PX_PER_M_VERT_LIT := 17.621551
+const PX_PER_M_VERT_LIT := 21.562295
 
 var _n := 0
 var _fail := 0
@@ -996,7 +996,7 @@ func _t_vfx_geometry() -> void:
 		var s_h: float = th * (spr as Sprite3D).pixel_size * (spr as Sprite3D).scale.y * PX_PER_M_VERT_LIT
 		_ok("★碑体屏幕长宽比 == 立绘长宽比", _near(s_w / maxf(s_h, 1e-6), tw / th, 0.02),
 			"屏幕 %.1f×%.1f=%.3f vs 立绘 %.0f×%.0f=%.3f" % [s_w, s_h, s_w / maxf(s_h, 1e-6), tw, th, tw / th])
-		_ok("碑体屏幕高 = 碑高 × 17.62(≥ 龟立绘 44 px)", s_h >= 44.0, "%.1f px" % s_h)
+		_ok("碑体屏幕高 = 碑高 × 世界竖直尺子(≥ 龟立绘 44 px)", s_h >= 44.0, "%.1f px" % s_h)
 	# ⑯-e3 ★root 从头到尾不动 + 碑基石台**钉在地面**
 	#   (旧版石台挂在会上下移动的 root 下, 实拍量到它在屏幕上整整跑了 148 px)
 	var y_root0: float = (sh["root"] as Node3D).position.y

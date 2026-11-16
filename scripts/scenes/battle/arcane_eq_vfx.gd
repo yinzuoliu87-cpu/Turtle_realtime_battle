@@ -70,7 +70,7 @@ const TALISMAN_ROLL_MAX := 0.22
 const TALISMAN_ROLL_OMEGA := 2.0943951023931953
 ## 符纸尺寸(码)与悬停高度(米)
 ## ★2026-08-07 放大 ——【实战下只有 10.8×9.3 屏幕像素】
-##   实战默认视角(1280×720·相机 (0,28,22) look_at (0,0.6,0)·fov 40)的标尺:
+##   实战默认视角(1280×720·相机 (0,28,22) look_at (0,0.6,0)·fov 40)的标尺(当时 51°; 11-16 起 40°, 竖直系数 0.766):
 ##     · 与视轴垂直的方向  28.148 px/米 = **0.6755 px/码**
 ##     · **世界竖直**方向还要乘 22/35.139 = 0.6261 ⇒ 只有 **0.4229 px/码**
 ##   旧版符纸是【世界竖直】的片 ⇒ 16 码宽 → 10.8 px、22 码高 → 9.3 px, 低于头顶徽章的 16 px。
@@ -333,14 +333,14 @@ static func face_basis(cam_fwd: Vector3, roll: float) -> Basis:
 
 
 ## 镜头前向(单位向量)。
-## ★拿不到相机时退回**默认战斗机位的视轴**(0,28,22) → (0,0.6,0) —— 本项目相机方向恒定
+## ★拿不到相机时退回**默认战斗机位的视轴** BattleCam.FORWARD —— 本项目相机方向恒定
 ##   (缩放只改 fov、平移只挪机位, 见 `RB._cam_zoom_base` 的算法), 所以这个退路是真值不是凑数。
 ## ★静态版: 别的演出文件(如 084 的十字斩)也要"正对镜头 + 面内 roll", 走同一份实现,
 ##   免得手抄一份从此各自漂(memory [[fb-hand-rolled-copies-drift]])。
 static func cam_forward_of(b) -> Vector3:
 	if b != null and is_instance_valid(b._cam):
 		return -((b._cam as Camera3D).global_transform.basis.z).normalized()
-	return Vector3(0.0, -27.4, -22.0).normalized()
+	return BattleCam.FORWARD
 
 
 func _cam_forward() -> Vector3:

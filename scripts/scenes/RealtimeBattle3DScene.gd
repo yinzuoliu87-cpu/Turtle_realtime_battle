@@ -755,7 +755,7 @@ var _cam_base := Vector3.ZERO             # 镜头基准位(默认·未缩放); 
 var _cam_zoom := 1.0                      # 战场缩放(用户2026-07-18): 1=默认·>1拉近放大·<1拉远; PC滚轮/移动双指捏合
 const CAM_ZOOM_MIN := 0.72
 const CAM_ZOOM_MAX := 2.3
-const CAM_TARGET := Vector3(0.0, 0.6, 0.0)   # look_at 目标(缩放=沿视轴向它推拉·方向不变故无需重look_at)
+const CAM_TARGET := BattleCam.TARGET   # look_at 目标(缩放=沿视轴向它推拉·方向不变故无需重look_at); 机位事实源 BattleCam
 var _cam_zoom_base := Vector3.ZERO        # 缩放后的镜头基准(shake 围绕它·= CAM_TARGET + (_cam_base-CAM_TARGET)/zoom)
 var _touch_pts := {}                      # 多点触摸 {index: pos}(移动双指捏合缩放)
 var _pinch_prev := -1.0                   # 上帧双指间距(捏合比例基线)

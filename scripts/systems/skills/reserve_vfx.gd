@@ -44,7 +44,7 @@ const TRAIL_SORT := -0.2             ## 尾迹排序往后垫: 永远画在弹�
 const HIT_BACK := 16.0               ## 命中爆点往气波来的那一侧挪多少码(四道同时打一个人 ⇒ 四个面各一朵)
 const HIT_TOWARD_CAM := 0.3          ## 再朝镜头挪这么多米
 const HIT_PRIORITY := 10             ## 命中爆点不做深度测试 + 画在最上层: 被打者立绘 / 地面都挡不住它(用户要「一眼看到」)
-const CAM_DIR_FALLBACK := Vector3(0.0, 0.780, 0.626)   ## 没有相机时(裁判进程)用默认机位 (0,28,22)→(0,0.6,0) 的反方向
+const CAM_DIR_FALLBACK := Vector3(0.0, BattleCam.SIN_P, BattleCam.COS_P)   ## 没有相机时(裁判进程)用默认机位视轴的反方向(BattleCam)
 
 var battle
 var _puffs: Array = []               ## 还活着的尾迹团 [instance_id, 游戏坐标]

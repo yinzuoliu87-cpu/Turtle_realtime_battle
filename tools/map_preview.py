@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw
 
 WS = 0.024
 CX, CY = 868.0, 474.0
-CAM = (0.0, 28.0, 22.0)
+CAM = (0.0, 23.187, 26.918)   # 2026-11-16 起俯角 40°, 同 scripts/gamedata/battle_camera.gd 的 BattleCam.POS
 TGT = (0.0, 0.6, 0.0)
 FOV = 40.0
 SW, SH = 1280, 720

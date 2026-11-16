@@ -983,10 +983,14 @@ const SWORD_UP_FRAME := 2
 ##   改走 `_wait_sim` 之后, **演出的口径和量它的口径是同一条时钟**, 实拍量到多少就是多少。
 const SWORD_TURN_STEP := 0.05
 const SWORD_FLY_H := 1.0          # 飞行高度(米) —— 龟立绘 2.0 米, 所以是胸高
-## 场地 y 轴投到屏幕的压缩系数。战斗相机 pos(0,28,22) look_at(0,0.6,0) ⇒ 俯角 ≈51°。
+## 场地 y 轴投到屏幕的压缩系数 = sin(俯角)。2026-11-16 起俯角 40°, 从 BattleCam 取(原写死 0.78 = 51°)。
 ## ★8 个方向每格 45°, 对这个系数**很不敏感**(0.78 与 1.0 算出来的角落在同一格),
 ##   但仍焊了一条门禁量真实投影比 —— 相机哪天改了要有人知道。
-const SWORD_SCREEN_SQUASH := 0.78
+const SWORD_SCREEN_SQUASH := BattleCam.SIN_P
+## ★对局口径(钉死, 不跟镜头): 剑从立姿转到飞行方向要等几格(每格 SWORD_TURN_STEP 游戏秒)按这个系数算。
+##   2026-11-16 镜头 51° → 40° 时 verify_rules_fingerprint 红了: 格数原来跟着屏幕压缩系数走 ⇒ 改镜头 = 改出手时机。
+##   镜头是演出, 不许改对局结果 ⇒ 等几格用 51° 时的 0.78 钉住; 画面转到哪一帧才用 SWORD_SCREEN_SQUASH。
+const SWORD_TURN_SQUASH_SIM := 0.78
 const SLIT_TEX_PATH := "res://assets/sprites/vfx/eq006-groundslit.png"
 const GROUND_SLIT_FRAMES := 6   # 地缝裂开的帧数(tools/assetgen/blender_groundslit.py 渲)
 const SWORD_CELL := 48          # 剑贴图单元格边长(像素) —— 遮罩式"升起"要按它算
@@ -1046,12 +1050,12 @@ func _sword_fly_frame(dir: Vector2) -> int:
 
 ## 场地方向 → 【屏幕投影角】的第几格。006 与 007 共用这一份, 别各抄一份
 ## (memory fb-hand-rolled-copies-drift: 手抄的副本必然落后)。
-## ★量的是屏幕投影角不是场地角: 相机俯角 ≈51°, 场地 y 投到屏幕要乘 SWORD_SCREEN_SQUASH。
+## ★量的是屏幕投影角不是场地角: 相机有俯角(BattleCam.PITCH_DEG), 场地 y 投到屏幕要乘 SWORD_SCREEN_SQUASH。
 ##   屏幕 y 向下、场地 y 也向下 ⇒ 数学角取负。
-func _screen_dir_frame(dir: Vector2, n: int) -> int:
+func _screen_dir_frame(dir: Vector2, n: int, squash: float = SWORD_SCREEN_SQUASH) -> int:
 	if DetMath.vlen(dir) < 0.001 or n <= 0:
 		return 0
-	var ang: float = DetMath.datan2(-dir.y * SWORD_SCREEN_SQUASH, dir.x)
+	var ang: float = DetMath.datan2(-dir.y * squash, dir.x)
 	var idx: int = int(round(ang / (TAU / float(n))))
 	return posmod(idx, n)
 
@@ -1227,6 +1231,8 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	##   第一版这里是 `sf.frame = fly_frame` 一次赋值 —— 立姿 90° 到水平 0° 一帧跳完。
 	##   而方向表里**本来就有 45° 那一格**, 白跳的。现在从"朝上"那格出发逐格转到目标格。
 	var arc: int = _frame_arc(SWORD_UP_FRAME, fly_frame)
+	## 等几格是对局口径(SWORD_TURN_SQUASH_SIM 钉死), 画面在这几格里从立姿转到 fly_frame(跟镜头)。
+	var turn_steps: int = absi(_frame_arc(SWORD_UP_FRAME, _screen_dir_frame(dir, SWORD_FLY_DIRS, SWORD_TURN_SQUASH_SIM)))
 	## 出生高度: 立姿是"下沿钉地"(offset=半格), 飞行姿态以自身为中心 ⇒
 	## 换算过来中心要在半格高, 才不会在换装那一瞬间往下掉半把剑。
 	var swap_h: float = float(SWORD_CELL) * SWORD_PIXEL_SIZE * 0.5
@@ -1243,16 +1249,20 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			sword_turn(sf, SWORD_UP_FRAME, arc, 0.0)   # 起手 = 立姿那一格, 与上一拍无缝
 			var lt: Tween = battle._reg_tween()
 			lt.tween_property(sf, "position:y", SWORD_FLY_H,
-				SWORD_TURN_STEP * float(maxi(1, absi(arc)))
+				SWORD_TURN_STEP * float(maxi(1, turn_steps))
 				).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	## 逐格转, **走游戏时钟**(见 SWORD_TURN_STEP 头注)。第 0 格上面已经摆好了。
-	for step in range(1, absi(arc) + 1):
+	for step in range(1, turn_steps + 1):
 		await battle._wait_sim(SWORD_TURN_STEP, u)
 		if not is_instance_valid(battle): return
 		if not u.get("alive", false): return
 		for spr4 in swords:
 			if is_instance_valid(spr4):
-				sword_turn(spr4, SWORD_UP_FRAME, arc, float(step) / float(maxi(1, absi(arc))))
+				sword_turn(spr4, SWORD_UP_FRAME, arc, float(step) / float(maxi(1, turn_steps)))
+	## 对局格数是 0 而画面要转(两个系数恰好落在相邻两格)时, 也得落到目标帧
+	for spr5 in swords:
+		if is_instance_valid(spr5):
+			sword_turn(spr5, SWORD_UP_FRAME, arc, 1.0)
 	await battle._wait_sim(SWORD_TURN_STEP, u)   # 转到位再停一格, 让"刃朝前"这一下看得见
 	if not is_instance_valid(battle): return
 	if not u.get("alive", false): return
