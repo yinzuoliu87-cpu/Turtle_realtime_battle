@@ -159,7 +159,7 @@ func tick() -> void:
 	var cup: Dictionary = f["cup"]
 	var groups: Array = f["groups"]
 	var ent := _F.entered()
-	## ★2026-11-15 背包里调的阵容在哪一屏都交上去(原来只有对阵图推)+ 回执弹一句(finals_lineup_push.gd 头注)
+	## ★每轮备战开着、背包有没提交的改动 ⇒ 提醒一次(2026-11-16 起交阵容走背包「确定阵容」, 不再自动推; finals_lineup_push.gd 头注)
 	if ent:
 		var lmsg: String = _FLP.tick(group, cup, int(Time.get_unix_time_from_system()))
 		if lmsg != "":

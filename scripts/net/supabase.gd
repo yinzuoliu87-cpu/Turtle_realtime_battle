@@ -1551,29 +1551,6 @@ static func _spawn():
 	return n
 
 
-## 周日购物窗内把当前阵容推上去(2026-10-12 统一结算 · 服务端 finals_update_snapshot)。发完就忘。
-##   购物结束后服务端不再收 ⇒ 那一刻的这一份就是本轮锁定的阵容(原稿「最后锁定的阵容」)。
-static var finals_snapshot_posts: int = 0   ## 观测量: 真交给 _http 的次数(门禁分母)
-static func finals_update_snapshot_async(week: int, bucket: int, snapshot: Dictionary) -> void:
-	if not enabled() or bucket < 0 or snapshot.is_empty():
-		return
-	var n = _spawn()
-	if n != null:
-		n.finals_update_snapshot(week, bucket, snapshot)
-
-
-func finals_update_snapshot(week: int, bucket: int, snapshot: Dictionary) -> void:
-	if not await _await_token():
-		_bye()
-		return
-	finals_snapshot_posts += 1
-	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_update_snapshot",
-		JSON.stringify({"p_week": week, "p_bucket": bucket, "p_snapshot": snapshot}),
-		func(res):
-			load("res://scripts/net/finals_lineup_push.gd").note_result(res, snapshot); _bye(),
-		"Content-Type: application/json")
-
-
 ## 客户端报错上报(2026-10-11 · scripts/net/error_reporter.gd)。发完就忘; 没配后端 = 什么都不做。
 ## ★发不出去就丢 —— 报错上报不重试、不落盘排队(它不是玩家数据, 丢几条只少一个线索)。
 static var client_error_posts: int = 0   ## 观测量: 真交给 _http 的条数(门禁分母)

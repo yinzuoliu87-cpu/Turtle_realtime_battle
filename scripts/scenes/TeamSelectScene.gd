@@ -135,6 +135,8 @@ var _clear_btn: Button = null   # 「撤下」: 没有可撤的时候置灰(_ref
 ## 大轮阵容锁定模式 (用户 2026-07-11): season_leaders 已有 3 龟 = 本大轮已锁定 →
 ##   阵容不可改(灰显/点=只看), 仅 3选1 技能可切; 确认出战直接进匹配. 新赛季(过期清 season_leaders)才回到全选模式.
 var _roster_locked: bool = false
+## 决赛「确定阵容」模式(背包按钮 → 本页 → 提交阵容; 方案书 20261116b, scripts/net/finals_confirm.gd)
+var _fc_mode: bool = false
 
 # ─── 布局编辑器 (F9 开/关 · 拖动=移动 · 右下角把手=缩放 · F10=导出RL到控制台 · 用户2026-07-18) ───
 #   右侧信息区/技能区等区块拖到跟背景框对齐后, 屏上标签直接显示 POC(1647×955) 的 x/y/w/h, 抄回给我 bake 进 RL。
@@ -177,6 +179,9 @@ func _ready() -> void:
 		return
 	# 大轮已锁定? = season_leaders 已是有效 3 龟. 锁定→预填不清; 未锁(新赛季/首次)→清空全选.
 	_roster_locked = _season_roster_ready()
+	## ★决赛「确定阵容」: 背包按钮置的标记取一次就清; 只在大轮已锁定时成立(进决赛的人一定打过周六)
+	_fc_mode = FinalsConfirm.pick_mode and _roster_locked
+	FinalsConfirm.pick_mode = false
 	GameState.clear_team()                       # 归零 left_team/left_slots (内部 typed 赋值; 避免外部给 Array[String] 属性赋无类型 [] 崩)
 	if _roster_locked:
 		var _lead_typed: Array[String] = []
@@ -698,7 +703,7 @@ func _build_ui() -> void:
 	var title := Label.new()
 	## ★教程(v5 B1「从这里选出 3 只龟组成你的队伍」): 页名与引导用同一个词 ——「统领」在教程里没有任何一句解释过。
 	## 锁定后不是在「选」了 ⇒ 页名换成「本大轮统领」(2026-10-30)
-	title.text = TUT_TITLE if _tut_on() else ("本大轮统领" if _roster_locked else "选择统领")
+	title.text = TUT_TITLE if _tut_on() else (FinalsConfirm.PAGE_TITLE if _fc_mode else ("本大轮统领" if _roster_locked else "选择统领"))
 	## ★2026-10-30 重做: 页名 = 像素标题字(与其余各页顶栏 TopBar 同一种), 左对齐紧跟「←」。
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1157,7 +1162,7 @@ func _add_text_shadow(lbl: Label, ofs: Vector2, col: Color) -> void:
 func _build_locked_hint() -> void:
 	var l := Label.new()
 	l.name = "LockedHint"
-	l.text = LOCKED_HINT
+	l.text = FinalsConfirm.PAGE_HINT if _fc_mode else LOCKED_HINT
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("#120d09")
 	sb.border_color = Color("#a5751d")
@@ -1174,7 +1179,7 @@ func _build_locked_hint() -> void:
 	root.add_child(l)
 	var rc := _rect("lockedHint")
 	## 2026-11-01 两行(状态一行、说明一行, 方案书 20261101f): 高度按行数算, 落在 lockedHint 框(高 96)里。
-	var _rows := LOCKED_HINT.count("\n") + 1
+	var _rows := l.text.count("\n") + 1
 	var h := float(_sf(26)) * (1.6 if _rows == 1 else 1.35 * float(_rows)) + 16.0
 	l.size = Vector2(rc.size.x, h)
 	l.position = Vector2(rc.position.x, rc.get_center().y - h * 0.5)
@@ -1308,7 +1313,7 @@ func _make_rarity_badge(rarity: String, rcolor: Color, font_px: int = 11) -> Con
 func _refresh_confirm() -> void:
 	if _roster_locked:
 		_start_btn.disabled = false
-		_start_btn.text = "出战"
+		_start_btn.text = FinalsConfirm.PAGE_SUBMIT if _fc_mode else "出战"
 		if _last_btn != null:
 			_last_btn.disabled = true          # 锁定态禁"上次阵容"
 		if _clear_btn != null:
@@ -1540,6 +1545,9 @@ func _on_restore_last() -> void:
 # 开始 / 返回
 # ══════════════════════════════════════════════════════════════
 func _on_start() -> void:
+	if _fc_mode:
+		_fc_submit()
+		return
 	var picked: Array = []
 	var slots: Array = []
 	for i in range(3):
@@ -1662,7 +1670,18 @@ func _exit_tree() -> void:
 func _on_back() -> void:
 	GameState.reset_dungeon()
 	GameState.clear_team()
-	SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
+	SceneNav.go(get_tree(), "res://scenes/Inventory.tscn" if _fc_mode else "res://scenes/MainMenu.tscn")
+
+
+## 决赛「确定阵容」: 先把这一页换的技能存档(原来只在「出战」时存), 再把背包里此刻那一套交给服务端;
+##   回包到了回背包, 回执由背包按钮弹(FinalsConfirm.take_receipt)。不开打、不进匹配。
+func _fc_submit() -> void:
+	_start_btn.disabled = true
+	_start_btn.text = FinalsConfirm.PAGE_SENDING
+	GameState.save()
+	FinalsConfirm.submit(func(_msg: String, _ok: bool) -> void:
+		if is_inside_tree():
+			SceneNav.go(get_tree(), "res://scenes/Inventory.tscn"))
 
 
 

@@ -172,6 +172,7 @@ var _insp_anchor: Control = null     # 小卡贴着谁弹(被点的那一格 / �
 ## 点了单位卡上的哪一件 {lane, idx, cell(真实下标)}; 空 = 没点
 var _sel_worn: Dictionary = {}
 var _inv_synergy := InvSynergy.new(self)   # 背包·类型羁绊面板+详情弹框(2026-07-25 抽出)
+var _fc_btn = preload("res://scripts/scenes/inventory/finals_confirm_btn.gd").new(self)   # 周末决赛「确定阵容」(方案书 20261116b)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
 ## 背包格「点 vs 滑」(可滑动列表): 松手且手指没挪出 16px 才算点选。
@@ -365,6 +366,8 @@ func _rebuild() -> void:
 			_shop_btn.expand_icon = true
 			_shop_btn.add_theme_constant_override("icon_max_width", ICON_PX)
 			_shop_btn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	## ★周末决赛「确定阵容」(方案书 20261116b): 本周已晋级、决赛还没打完才有, 紧跟在「背包」页签右边
+	_fc_btn.build(_top_bar)
 
 	## ── 右上角这一组: 深海币 / 全队装备容量 / 「?」 **排成横着一条**(用户 2026-08-15)──
 	##   原来是"币在上、装备上限在下"竖着堆在最右 232px 里, 而「?」还单独浮在它们左边 ——

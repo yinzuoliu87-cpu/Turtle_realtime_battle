@@ -1509,28 +1509,8 @@ static func report_finals_entry() -> void:
 		snap, int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 
 
-## 周日购物窗内把当前阵容推给服务端(2026-10-12 统一结算)。对阵图轮询 + 全局层 FinalsDay 每拍都调(2026-11-15 起;
-##   原来只有对阵图 ⇒ 背包里改完不回对阵图就永远推不上, 见 finals_lineup_push.gd 头注)。
-##   节流: 阵容没变 15 秒最多一次; ★阵容一变(指纹不同)隔 ≥ 2 秒就推(背包里拖完一下, 不用干等 15 秒)。
-##   快照与 `report_finals_entry` 同一个构造(同一套阵容口径)。窗外服务端不收, 这里不另判 —— 判据只在服务端一处。
-static var _finals_snap_at: int = 0
-static var _finals_snap_sig := ""
-static func finals_push_snapshot(bucket: int, now_unix: int) -> bool:
-	if GameState == null or bucket < 0:
-		return false
-	var snap := _finals_snap()
-	if snap.is_empty():
-		return false
-	var sig := snap_sig_of(snap)
-	var gap := now_unix - _finals_snap_at
-	if gap < 15 and not (sig != _finals_snap_sig and gap >= 2):
-		return false
-	_finals_snap_at = now_unix
-	_finals_snap_sig = sig
-	load("res://scripts/net/supabase.gd").finals_update_snapshot_async(int(GameState.week_anchor_ts), bucket, snap)
-	return true
-
-
+## ★2026-11-16 删掉 finals_push_snapshot(对阵图 / 全局层每拍自动推): 决赛阵容改由背包「确定阵容」交(scripts/net/finals_confirm.gd,
+##   服务端 finals_confirm_snapshot), 只认玩家点过「提交阵容」的那一份(方案书 20261116b)。
 ## 决赛要交的那一份(背包里此刻的阵容)。统领不满 3 只 ⇒ {}。
 static func _finals_snap() -> Dictionary:
 	var leaders = GameState.season_leaders if GameState != null else []

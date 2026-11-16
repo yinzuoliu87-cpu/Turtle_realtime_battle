@@ -2867,10 +2867,7 @@ func _on_poll() -> void:
 	##   两者共用 `_tip`，而"拿不到对手阵容"是**当下要处理的事**，
 	##   优先级高于"还能买多久"，所以下面那句有内容时会盖掉这一句。
 	if _shop_row != null:
-		## ★2026-10-12 统一结算: 购物窗内把我当前的阵容推上去(购物结束那一刻服务端锁定)。
-		var lv := _live_dict()
-		if _SB.finals_shop_open_of(lv, _delta_now()) and int(lv.get("me", -1)) >= 0 and shop_row_applies(lv):
-			load("res://scripts/net/backend.gd").finals_push_snapshot(int(lv.get("bucket", -1)), int(Time.get_unix_time_from_system()))
+		## ★2026-11-16 不再在这里推阵容(方案书 20261116b): 只认背包「确定阵容」→「提交阵容」交上去的那一份(FinalsConfirm)。
 		var st := shop_row_text()
 		_shop_row.text = st
 		_shop_row.visible = st != ""

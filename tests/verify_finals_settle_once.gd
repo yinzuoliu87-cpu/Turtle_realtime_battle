@@ -7,7 +7,7 @@ extends Node
 ## ② 对阵图真入口: 同一场、同一时刻, 上半区能开打而下半区不能(每场只有一个人在算)
 ## ③ 上报带侧别: report_finals_if_any 把 finals_match.side 带进请求体与补报单
 ## ④ 服务端拒收「时候没到」⇒ 不记成报过了(留着补报); 其他拒收 ⇒ 记成结束
-## ⑤ 购物窗内对阵图把我的阵容推上去(finals_update_snapshot); 窗外不推
+## ⑤ 对阵图不再推阵容(2026-11-16 起交阵容只走背包「确定阵容」, 方案书 20261116b): 购物窗内外都 0 个决赛写请求
 ## ⑥ 下半区等待时那一行说「本场结算中」
 ## ⑦ 服务端迁移: 购物窗内不给对手快照 / 不收上报; 下半区宽限; 不带侧别拒收; 快照只在购物窗内可改
 
@@ -120,10 +120,8 @@ func _ready() -> void:
 		await get_tree().process_frame
 	_ok("④ 收了 ⇒ 记成报过了", SB.finals_reported(1, 0, 4))
 
-	## ⑤ 购物窗内推阵容(真入口: 对阵图轮询)
+	## ⑤ 对阵图轮询(真入口)不再推阵容: 购物窗内外都 0 个决赛写请求(2026-11-16 起只认背包「确定阵容」交的那一份)
 	sent.clear()
-	SB.finals_snapshot_posts = 0
-	BE._finals_snap_at = 0
 	## 空阵容不推(防覆盖周六那份正式阵容) ⇒ 这里要有 3 只统领, 测完还原
 	var leaders0 = GameState.season_leaders.duplicate(true)
 	GameState.season_leaders = ["basic", "stone", "bamboo"]
@@ -138,20 +136,16 @@ func _ready() -> void:
 	mp._on_poll()
 	for _i in range(6):
 		await get_tree().process_frame
-	_ok("⑤ ★★购物窗内对阵图把我的阵容推上去", SB.finals_snapshot_posts >= 1, "posts=%d" % SB.finals_snapshot_posts)
-	var snap_req: Array = sent.filter(func(x): return str(x["u"]).ends_with("/rpc/finals_update_snapshot"))
-	_ok("⑤ 推的是 finals_update_snapshot 且带组号与快照", snap_req.size() >= 1
-		and str(snap_req[0]["b"]).find("\"p_bucket\":4") >= 0 and str(snap_req[0]["b"]).find("p_snapshot") >= 0,
-		str(snap_req.map(func(x): return str(x["b"]).left(80))))
-	SB.finals_snapshot_posts = 0
-	BE._finals_snap_at = 0
+	var snap_req: Array = sent.filter(func(x): return str(x["u"]).find("/rpc/finals_update_snapshot") >= 0 or str(x["u"]).find("/rpc/finals_confirm_snapshot") >= 0)
+	_ok("⑤ ★★购物窗内对阵图不推阵容(交阵容只走背包「确定阵容」)", snap_req.is_empty(), str(snap_req.map(func(x): return str(x["u"]))))
 	mp.set_bucket({"size": 2, "round": 1, "me": 0, "names": ["甲龟", "乙龟"], "done": {}, "bucket": 4,
 		"round_at": srv - S - 30, "srv_now": srv, "recv_at": srv})
 	mp._bucket = mp.cur()
 	mp._on_poll()
 	for _i in range(6):
 		await get_tree().process_frame
-	_ok("⑤ ★购物结束后不再推(阵容已锁定)", SB.finals_snapshot_posts == 0, "posts=%d" % SB.finals_snapshot_posts)
+	var snap_req2: Array = sent.filter(func(x): return str(x["u"]).find("/rpc/finals_update_snapshot") >= 0 or str(x["u"]).find("/rpc/finals_confirm_snapshot") >= 0)
+	_ok("⑤ 购物结束后也不推", snap_req2.is_empty(), str(snap_req2.size()))
 	mp.queue_free()
 	GameState.season_leaders = leaders0
 	SB._transport_for_test = Callable()

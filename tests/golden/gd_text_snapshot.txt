@@ -692,10 +692,21 @@ scripts/net/error_reporter.gd|lit|上次启动:
 scripts/net/error_reporter.gd|lit|上次运行没有正常退出(闪退 / 卡死被结束 / 前台被系统杀)
 scripts/net/error_reporter.gd|lit|手指按下的控件(抬起或拖动时已离树): 
 scripts/net/feedback_net.gd|lit|请填写问题描述
-scripts/net/finals_lineup_push.gd|lit|下一轮备战开始时，会按这套阵容提交
-scripts/net/finals_lineup_push.gd|lit|这套阵容没有生效，本轮沿用上一次提交的阵容
-scripts/net/finals_lineup_push.gd|lit|阵容已提交，本轮按这套阵容出战
-scripts/net/finals_lineup_push.gd|lit|阵容提交失败，正在重试
+scripts/net/finals_confirm.gd|lit|决赛阵容
+scripts/net/finals_confirm.gd|lit|已提交：下一轮起按这套阵容出战
+scripts/net/finals_confirm.gd|lit|已提交：冠军杯赛按这套阵容出战
+scripts/net/finals_confirm.gd|lit|已提交：决赛按这套阵容出战
+scripts/net/finals_confirm.gd|lit|已提交：本轮按这套阵容出战
+scripts/net/finals_confirm.gd|lit|提交中
+scripts/net/finals_confirm.gd|lit|提交后按这套阵容出战\n点击统领卡可更换技能
+scripts/net/finals_confirm.gd|lit|提交阵容
+scripts/net/finals_confirm.gd|lit|没有提交：三只统领要各不相同，并且都要排进上路或下路
+scripts/net/finals_confirm.gd|lit|没有提交：你的决赛已经结束
+scripts/net/finals_confirm.gd|lit|没有提交：本周没有晋级决赛
+scripts/net/finals_confirm.gd|lit|没有提交：网络不通，请稍后重试
+scripts/net/finals_confirm.gd|lit|确定阵容
+scripts/net/finals_confirm.gd|lit|阵容已确定
+scripts/net/finals_confirm.gd|lit|阵容有改动还没提交，点背包里的「确定阵容」提交
 scripts/net/friends_net.gd|lit|今日好友申请次数已达上限
 scripts/net/friends_net.gd|lit|双方尚未成为好友
 scripts/net/friends_net.gd|lit|好友数量已达上限 %d 人
@@ -2113,6 +2124,7 @@ scripts/scenes/inventory/equip_ops.gd|lit|临时等级器 → 小将(%s路第%d�
 scripts/scenes/inventory/equip_ops.gd|lit|全队装备已达上限 %d/%d
 scripts/scenes/inventory/equip_ops.gd|lit|羁绊赠送装备不可出售
 scripts/scenes/inventory/equip_ops.gd|lit|装备栏已满（%d 件）
+scripts/scenes/inventory/finals_confirm_btn.gd|lit|背包
 scripts/scenes/inventory/formation_editor.gd|lit|上战场
 scripts/scenes/inventory/formation_editor.gd|lit|下战场
 scripts/scenes/inventory/formation_editor.gd|lit|完成
@@ -2635,7 +2647,7 @@ scripts/ui/finals_day_model.gd|lit|%s 晋级%s%s
 scripts/ui/finals_day_model.gd|lit|%s%s开播%s
 scripts/ui/finals_day_model.gd|lit|%s开播%s
 scripts/ui/finals_day_model.gd|lit|%s第 %d 场
-scripts/ui/finals_day_model.gd|lit|以备战结束时背包里的阵容出战
+scripts/ui/finals_day_model.gd|lit|以最后一次提交的阵容出战
 scripts/ui/finals_day_model.gd|lit|并列第 %d 名
 scripts/ui/finals_day_model.gd|lit|第 %d 名
 scripts/ui/finals_day_model.gd|lit|，%d 组同时进行
