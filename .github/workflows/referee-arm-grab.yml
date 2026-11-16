@@ -1,0 +1,39 @@
+name: 裁判机换 ARM · 抢货
+
+# 2026-11-16 · 方案书 docs/plans/20261116c-裁判机换ARM.md §4.1
+# 用户 11-16「那到时候安排个日子换喽…你看安排哪天，你给它搞好」。
+# CAX21 三个机房都没货; 主 IPv4 只能同机房挪 ⇒ 只等纽伦堡(nbg1)。每 30 分钟看一次:
+#   nbg1 有货、且还没开过 ⇒ 开一台 turtle-referee-2(按小时计费, 最多一台); 已开过 ⇒ 什么都不做。
+# 判据在 tools/referee_arm_grab.py 的 decide(), 自测进提交门禁。★换完机删掉本文件。
+
+on:
+  schedule:
+    - cron: '23,53 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: referee-arm-grab
+  cancel-in-progress: false
+
+jobs:
+  grab:
+    name: 看纽伦堡有没有 ARM 货
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/referee_arm_grab.py
+          sparse-checkout-cone-mode: false
+
+      - name: 自测
+        run: python3 tools/referee_arm_grab.py
+
+      - name: 有货就开机
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: python3 tools/referee_arm_grab.py --run | tee -a "$GITHUB_STEP_SUMMARY"

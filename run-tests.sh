@@ -1012,6 +1012,7 @@ run_audit "tools/mainsite_deploy_selftest.py" "ALL OK" "mainsite_deploy_selftest
 run_audit "tools/beta_server_selftest.py" "ALL OK" "beta_server_selftest (内测服工具链·拒正式服 ref·迁移先内测服同sha·裁判机/Caddy 两套分开)"
 # 裁判机外部探活的判据(2026-10-26 · docs/plans/20261026-裁判机外部监控.md): decide() 表每一行 + 重启限频, 不联网。
 run_audit "tools/referee_watch_selftest.py" "ALL OK" "referee_watch_selftest (裁判机外部探活判据·整机失联才重启·60 分钟限频)"
+run_audit "tools/referee_arm_grab.py" "ALL OK" "referee_arm_grab (换 ARM 抢货: 只在 nbg1 有货且没开过时开一台)"
 # 网页录像播放器(2026-11-08 · 20261105c §4.7): 播放器路径不连网 / 不写存档(静态), 开机闸 / 导出预设 / 入口页与 Godot 侧同一套,
 #   服务器脚本自测(player_ops 按版本装清、保留期内的版本不删; stream_ops purge 偷袭局 30 天 + 过期记号)。运行时那一半在 verify_web_player。
 run_audit "tools/web_player_audit.py"     "ALL OK" "web_player (网页录像播放器·不连网不写存档·入口页同口径·保留期自测·20261108)"
