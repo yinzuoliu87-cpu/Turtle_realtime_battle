@@ -1699,6 +1699,8 @@ func _build_team_panels() -> void:
 	battle._team_panel_right = battle._info_sys._make_team_column("right")
 	battle._ui_layer.add_child(battle._team_panel_left)
 	battle._ui_layer.add_child(battle._team_panel_right)
+	## ★2026-11-16 画幅取景: 两栏建好后按真实画幅 + 栏内沿 + 蛋的位置算镜头退多远(16:9 / iPad 蛋别钻到栏底下, 手机不变), 见 cam_fit.gd
+	CamFit.apply_now_and_next_frame(battle)
 
 func _make_team_frame(u: Dictionary) -> Control:
 	var side = battle._eff_side(u)   # ★有效阵营(驯服归顺的龟按新阵营配色), 不是原 side

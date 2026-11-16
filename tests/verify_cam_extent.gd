@@ -114,6 +114,9 @@ func _ready() -> void:
 			if absf(vs.x / vs.y - want) > 0.01:
 				_ok("[%s] ★分母: 视口画幅设得进去 %s" % [th, asp], false, "实际 %s" % vs)
 				continue
+			## ★2026-11-16 画幅取景: 窄画幅镜头基准会沿视轴退远(CamFit, 16:9 约 1.26 倍 / 4:3 约 1.68 倍),
+			##   极限机位要按【退远后的基准】量 —— 再叠最远缩放 0.72 就是全游戏最远的机位。
+			CamFit.apply(s)
 			for cfgc in _cam_configs(s):
 				_set_cam(s, cfgc[1], cfgc[2])
 				var res: Array = _rays(s, ab, sea_ok, meta, vs.x / vs.y)
@@ -127,6 +130,7 @@ func _ready() -> void:
 			"落空 %d/%d %s" % [bad, tot, worst])
 		## ── ③ 平移夹紧 ──
 		_set_view(s, Vector2i(1560, 720))
+		CamFit.apply(s)
 		for zz in [[RB.CAM_ZOOM_MIN, "最远"], [1.0, "默认"]]:
 			_set_cam(s, zz[0], Vector2(1, 1))
 			var p: Vector3 = s._cam_pan
