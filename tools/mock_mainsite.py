@@ -212,6 +212,16 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if topic not in TOPICS:
             self._reply(404, {"ok": False, "error": "not found"})
             return
+        ## 2026-11-17: 正式主站前面的 Cloudflare 按浏览器特征拦 Python 默认 UA(403, 回包「error code: 1010」不是 JSON),
+        ##   偷袭 #1 的 started / settle 就这样被拦成终态 ⇒ 假主站照做: 发件箱不自带 UA 就和正式环境一样过不去。
+        if (self.headers.get("User-Agent") or "").startswith("Python-urllib"):
+            with st.lock:
+                st.calls.append((topic, None, 403, None))
+            self.send_response(403)
+            self.send_header("Content-Length", "17")
+            self.end_headers()
+            self.wfile.write(b"error code: 1010\n")
+            return
         fault = st.take_fault(topic)
         if fault == "drop":
             with st.lock:

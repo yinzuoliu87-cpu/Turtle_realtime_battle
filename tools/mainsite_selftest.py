@@ -264,8 +264,10 @@ class FakeAuth:
 
 
 def raw(method, url, body=None, headers=None):
-    """返回 (HTTP 状态, 解析后的回包)。"""
-    req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
+    """返回 (HTTP 状态, 解析后的回包)。★自带 UA: 假主站照正式 Cloudflare 拦 Python 默认 UA(2026-11-17)。"""
+    headers = dict(headers or {})
+    headers.setdefault('User-Agent', 'mainsite-selftest/1.0')
+    req = urllib.request.Request(url, data=body, method=method, headers=headers)
     try:
         with OP.open(req, timeout=10) as r:
             return r.status, json.loads(r.read().decode('utf-8') or 'null')

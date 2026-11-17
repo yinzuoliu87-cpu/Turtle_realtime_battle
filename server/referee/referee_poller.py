@@ -760,6 +760,7 @@ OUTBOX_BATCH = 20
 OUTBOX_LEASE_SEC = 120
 OUTBOX_RETRY_MAX_SEC = 300
 OUTBOX_HTTP_TIMEOUT = 10.0
+OUTBOX_UA = "turtle-arena-outbox/1.0"            # 不能用 Python 默认 UA: 主站 Cloudflare 1010 拦(2026-11-17)
 _outbox_off = threading.Event()          # rpc/mainsite_outbox_claim 回过 404（库里没上 20261109a）⇒ 本进程不再领
 
 
@@ -787,6 +788,9 @@ def outbox_send(base: str, secret: str, topic: str, body: dict, timeout: float =
     data = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     hdr = MS.headers(secret, data)
     hdr["Content-Type"] = "application/json"
+    ## 2026-11-17: 主站前面的 Cloudflare 按浏览器特征拦 Python 默认 UA(Python-urllib/x.y ⇒ 403「error code: 1010」, 回包不是 JSON),
+    ##   偷袭 #1 的 started 就这样被拦成终态。自带 UA 就放行(实测回正常的 401 签名错误)。
+    hdr["User-Agent"] = OUTBOX_UA
     req = urllib.request.Request(base.rstrip("/") + "/api/arena-hook/" + topic, data=data, method="POST", headers=hdr)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))   # 代理会改写 POST body ⇒ 签名对不上
     try:

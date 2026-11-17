@@ -70,6 +70,9 @@ def _json(raw: bytes):
 def _http(method, url, headers, body=None, timeout=10.0):
     """返回 (HTTP 状态, 解析后的回包或 None)。连不上 ⇒ 抛 Upstream。"""
     data = None if body is None else (body if isinstance(body, bytes) else json.dumps(body).encode("utf-8"))
+    ## 2026-11-17: 主站 Cloudflare 按浏览器特征拦 Python 默认 UA(403 error code 1010)⇒ 一律自带 UA(调用方给了就用调用方的)
+    headers = dict(headers or {})
+    headers.setdefault("User-Agent", "turtle-arena-gateway/1.0")
     req = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with OPENER.open(req, timeout=timeout) as r:
