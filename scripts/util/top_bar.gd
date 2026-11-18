@@ -164,6 +164,8 @@ func _init(host: Node, opts: Dictionary) -> void:
 	## ── 左上：返回薄片 ─────────────────────────────────────
 	var back_text := str(opts.get("back_text", "←"))
 	back_btn = _chip(back_text, opts.get("on_back", Callable()))
+	## 安卓返回键 / 返回手势按的就是这一枚(scripts/util/back_key.gd ②)。
+	BackKey.tag(back_btn)
 	back_btn.position = Vector2(sl, (BAR_H - TOUCH_MIN) / 2.0)
 	bar.add_child(back_btn)
 

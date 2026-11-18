@@ -1256,6 +1256,7 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 	var mb: Button = battle._make_result_btn("返回主菜单", menu_tint, menu_fc,
 		func() -> void: SceneNav.go(battle.get_tree(), "res://scenes/MainMenu.tscn"))
 	SettleScreenS.dress_btn(mb, menu_fc)
+	BackKey.tag(mb)           # 结算屏上按安卓返回键 = 返回主菜单
 	btn_row.add_child(mb)
 
 

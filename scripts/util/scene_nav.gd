@@ -24,11 +24,15 @@ static var nav_for_test: Callable = Callable()
 ##   照旧同步换场 —— 几百条门禁按帧数等换屏, 不让它们跟着变; 过场本身由 verify_scene_transition 把这个开关打开来量。
 ## ⚠ static, 门禁用完必须还原。
 static var transition_in_headless := false
+## 调过几次 go()(含被联网那一道拦下的)。安卓返回键据此判断「发出去的 ui_cancel 有没有人接」:
+##   老页面的 Esc 返回直接换屏、不标记已处理(scripts/util/back_key.gd ①)。
+static var go_count := 0
 
 
 static func go(tree: SceneTree, path: String) -> void:
 	if tree == null:
 		return
+	go_count += 1
 	if path in ONLINE_ONLY and not OnlineGate.check(tree.current_scene, OnlineGate.WHAT_MATCH,
 			func() -> void: go(tree, path)):
 		return

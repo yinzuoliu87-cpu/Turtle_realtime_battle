@@ -140,6 +140,7 @@ func _build() -> void:
 	bh.add_child(_retry)
 	_back = _card_btn("Back", TXT_BACK)
 	_back.pressed.connect(_on_back)
+	BackKey.tag(_back)
 	bh.add_child(_back)
 
 

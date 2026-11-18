@@ -731,6 +731,7 @@ func _build_ui() -> void:
 	_place_clamped(back, "back")
 	_grow_to_touch(back)
 	back.pressed.connect(_on_back)
+	BackKey.tag(back)        # 安卓返回键按它(scripts/util/back_key.gd)
 
 	# 清空 (PoC .ts-frame-btn: 透明底无边, 白字阴影, 坐在画好的框上)
 	var clear := Button.new()

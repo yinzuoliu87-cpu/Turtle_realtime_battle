@@ -210,6 +210,7 @@ func _build_strip(vp: Vector2, m: Vector4) -> void:
 	exit_btn = _key(N_EXIT, KEY_RED, KEY_RED_DOWN, ICON_EXIT)
 	exit_btn.position = Vector2(0.0, y_key - top)
 	exit_btn.pressed.connect(_ask_exit)
+	BackKey.tag(exit_btn)     # 安卓返回键 = 点「退出」(先问; scripts/util/back_key.gd)
 	strip.add_child(exit_btn)
 	speed_btn = _key(N_SPEED, KEY_NEUTRAL, KEY_NEUTRAL_DOWN, str(ICON_SPEED[1]))
 	speed_btn.position = Vector2(strip.size.x - key, y_key - top)
@@ -363,6 +364,7 @@ func _build_stream_exit(vp: Vector2, m: Vector4) -> void:
 	exit_btn = _key(N_EXIT, KEY_RED, KEY_RED_DOWN, ICON_EXIT)
 	exit_btn.position = Vector2(m.x, vp.y - m.w - PixelKey.KEY_PX)
 	exit_btn.pressed.connect(_ask_exit)
+	BackKey.tag(exit_btn)
 	root.add_child(exit_btn)
 
 
@@ -444,6 +446,7 @@ func _ask_exit() -> void:
 	var stay := _btn(TXT_ASK_STAY, 160.0)
 	stay.name = N_EXIT_NO
 	stay.pressed.connect(_close_ask)
+	BackKey.tag(stay)         # 问框开着时再按返回 = 继续观看
 	hb.add_child(stay)
 	var leave := _btn(TXT_ASK_LEAVE, 160.0)
 	leave.name = N_EXIT_YES

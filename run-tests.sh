@@ -183,6 +183,8 @@ frames_for () {
     verify_click_targets_alive) echo 12000 ;;
     verify_info_panel_fits)   echo 20000 ;;
     verify_mainmenu_layout)   echo 6000 ;;
+    # 安卓返回键: 12 个页各挂 40 帧等建完再按返回 + 主菜单, 合计约 650 帧(> 默认 500)。
+    verify_back_key)          echo 3000 ;;
     verify_inventory_layout)  echo 4000 ;;
     verify_team_slot_drag) echo 1000 ;;   # 2026-10-29 选统领页编队槽拖动 / 点选: 实测 175 帧, 给足余量
     verify_inventory_minion_drag) echo 9000 ;;   # 2026-10-29 小将卡逐点按下横拖(9 张卡 × 63 点 × 8 帧) + 63 次整趟拖放; 实测 5875 帧 / 52 秒

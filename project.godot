@@ -21,6 +21,7 @@ config/description="斗龟场 实时自走棋版 (Botworld 式实时战斗) — 
 为了上 App Store / Steam / 工业级编辑体验。"
 config/version="0.23.4"
 run/main_scene="res://scenes/MainMenu.tscn"
+config/quit_on_go_back=false
 config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/bg_color=Color(0.0392, 0.0549, 0.0941, 1)
 boot_splash/show_image=false
@@ -46,6 +47,7 @@ ShotDiff="*res://autoload/shot_diff.gd"
 CursorTheme="*res://autoload/CursorTheme.gd"
 TutorialDirector="*res://autoload/tutorial_director.gd"
 FinalsDay="*res://scripts/ui/finals_day_layer.gd"
+BackKeyHook="*res://autoload/back_key_hook.gd"
 
 [debug]
 
