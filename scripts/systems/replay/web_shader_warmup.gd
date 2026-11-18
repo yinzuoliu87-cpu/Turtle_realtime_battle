@@ -39,7 +39,7 @@ var bad_chunks := 0
 var ms_parse := 0.0
 var ms_total := 0.0
 
-var _st := {}
+var _strtab := {}
 var _i := 0
 var _rdef := {}                        # rid → [种类, a, b](RES_DEF 原样)
 var _built := {}                       # rid → Resource(本次预热现建的)
@@ -77,7 +77,7 @@ func _parse_some() -> void:
 	var t := Time.get_ticks_usec()
 	var n := 0
 	while _i < chunks.size() and n < CHUNKS_PER_FRAME:
-		var r := F.parse_chunk(chunks[_i] as PackedByteArray, _st)
+		var r := F.parse_chunk(chunks[_i] as PackedByteArray, _strtab)
 		_i += 1
 		n += 1
 		if not bool(r.get("ok", false)):
