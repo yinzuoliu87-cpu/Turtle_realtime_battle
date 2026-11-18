@@ -45,7 +45,7 @@ const WATCH_BUSY := "载入中"
 const WATCH_SIZE := Vector2(140, 84)   # 短边 ≥ 81 = 44pt 触控线(verify_replay_watch ⑤)
 const LIST_TITLE := "最近对局"
 const MORE_LABEL := "加载更多"
-const TXT_LOADING := "正在读取服务器上的对局…"
+const TXT_LOADING := "正在载入…"
 const TXT_OFFLINE := "连不上服务器，只显示这台设备上的对局"
 const TXT_EMPTY := "暂无战绩"
 const TXT_EMPTY_SUB := "参加积分赛、闯关赛、决赛或偷袭后，对局将显示在这里。"

@@ -48,7 +48,7 @@ const ALLOW_DOT_LIT := {
 	"scripts/gamedata/minion_codex.gd|精英 · 近战": "小将定位(并列名词)",
 	"scripts/scenes/InventoryScene.gd|打碎后随机获得以下奖励之一（每大轮限 1 次）：\\n[ul bullet=·]%s[/ul]": "列表项目符号",
 	"scripts/scenes/InventoryScene.gd|· 统领：本大轮出战龟　小将：补位单位\\n· 上路、下路独立作战\\n· 依次点击两个单位，或把一个拖到另一个上：交换位置\\n· 小将卡上【前排 / 后排】：切换近战 / 远程\\n· 右上「站位」：拖动单位设置开战站位\\n· 点击单位：查看属性；点击单位身上的装备：卸下\\n· 选择背包装备后点击单位，或拖动装备到单位：装备\\n· 3 件同名同星装备自动合成升星": "说明面板的项目符号(每行一条)",
-	"scripts/scenes/RecordScene.gd|%s · %d 回合": "战绩条目的并列元信息(模式 · 回合数)",
+	"scripts/scenes/record/battle_log_card.gd| · 第%d轮": "对局记录卡的赛事签: 赛事 · 轮次两个并列字段(11-18 对局记录重做, 取代原 RecordScene「模式 · 回合数」)",
 	"scripts/scenes/SettingsScene.gd| · 玩家 ID %s": "设置页底栏: 版本与玩家 ID 两个并列字段",
 	"scripts/scenes/TeamSelectScene.gd|测试被动·不屈": "门禁专用的假被动名(只在测试里造)",
 	"scripts/scenes/battle/battle_hud.gd|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板": "调试场(开发工具, 正式包不出)",

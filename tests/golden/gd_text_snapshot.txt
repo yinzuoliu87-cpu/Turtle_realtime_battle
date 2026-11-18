@@ -1147,7 +1147,7 @@ scripts/scenes/RecordScene.gd|lit|指定首领
 scripts/scenes/RecordScene.gd|lit|昨天
 scripts/scenes/RecordScene.gd|lit|暂无战绩
 scripts/scenes/RecordScene.gd|lit|最近对局
-scripts/scenes/RecordScene.gd|lit|正在读取服务器上的对局…
+scripts/scenes/RecordScene.gd|lit|正在载入…
 scripts/scenes/RecordScene.gd|lit|测试
 scripts/scenes/RecordScene.gd|lit|深海闯关
 scripts/scenes/RecordScene.gd|lit|积分赛
