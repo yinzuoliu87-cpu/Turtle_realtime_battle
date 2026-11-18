@@ -10,6 +10,9 @@ extends Control
 
 const WC := preload("res://scripts/systems/replay/web_player_core.gd")
 const SW := preload("res://scripts/systems/replay/stream_watch.gd")
+## 网址带 `perf=1`(桌面调试: 环境变量 WEBPLAYER_PERF=1)⇒ 左上角挂性能读数(11-18 量网页播放卡顿; 头注见该文件)。
+const PERF := preload("res://scripts/systems/replay/web_perf_overlay.gd")
+const ENV_PERF := "WEBPLAYER_PERF"
 const TIMEOUT_SEC := 15.0
 ## 网络一直不通时, 等第 0 块等多久改说网络失败那一句(WebPlayerCore.TXT_OFFLINE)(块来源自己按退避一直重试)。
 const FIRST_CHUNK_WAIT_SEC := 20.0
@@ -40,6 +43,7 @@ func _ready() -> void:
 	if gs != null:
 		gs.test_mode = true             # 存档保护(网页上开机已开; 桌面直接跑本页时这里补上)
 	_build_ui()
+	_maybe_perf()
 	_req = HTTPRequest.new()
 	_req.timeout = TIMEOUT_SEC
 	add_child(_req)
@@ -174,6 +178,15 @@ func _js(expr: String) -> String:
 		return ""
 	var v = JavaScriptBridge.eval(expr, true)
 	return "" if v == null else str(v)
+
+
+func _maybe_perf() -> void:
+	var on := WC.query_param(_js("window.location.search"), "perf") if OS.has_feature("web") else OS.get_environment(ENV_PERF)
+	if on != "1" or get_tree().root.get_node_or_null(PERF.NAME) != null:
+		return
+	var o: CanvasLayer = PERF.new()
+	o.name = PERF.NAME
+	get_tree().root.add_child.call_deferred(o)
 
 
 func _read_match() -> String:
