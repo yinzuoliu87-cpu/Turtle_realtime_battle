@@ -12,7 +12,7 @@ import urllib.request
 
 import websocket
 
-ROOT, URL = sys.argv[1], sys.argv[2]
+ROOT, URL = os.path.abspath(sys.argv[1]), sys.argv[2]   # ★绝对路径: --user-data-dir 给相对路径时 Chrome 起不来(11-18 实测)
 SEC = int(sys.argv[3]) if len(sys.argv) > 3 else 140
 PORT = 9333
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -49,9 +49,25 @@ def wait_id(i):
             return m
 
 
-cats = ["gpu", "gpu.service", "gpu.angle", "disabled-by-default-gpu.service", "disabled-by-default-gpu.device",
-        "toplevel", "viz", "blink", "devtools.timeline"]
-wait_id(send("Tracing.start", {"traceConfig": {"includedCategories": cats, "recordMode": "recordContinuously"},
+## ★默认只录显卡那几类(11-18: 带上 blink / toplevel / viz 一局 208 万条, 环形缓冲把前两分半的编译事件挤掉了); 要别的用环境变量 CATS=a,b,c
+cats = [c for c in os.environ.get("CATS", "gpu,gpu.service,gpu.angle,disabled-by-default-gpu.service,disabled-by-default-gpu.device").split(",") if c]
+## ★边收边写(11-18: 一局 40 万条事件攒成一个列表再 json.dump, Python 3.14 当场崩「Executing a cache」, 文件只写了一半)
+_out = open(OUT, "w", encoding="utf-8")
+_out.write("[\n")
+_n = [0]
+
+
+def emit(batch):
+    for e in batch:
+        _out.write((",\n" if _n[0] else "") + json.dumps(e, ensure_ascii=False))
+        _n[0] += 1
+
+
+## 环形缓冲默认只装得下约 220 万条(一局开打前那段会被挤掉); BUF_KB=1500000 之类放大
+_tc = {"includedCategories": cats, "recordMode": "recordContinuously"}
+if os.environ.get("BUF_KB"):
+    _tc["traceBufferSizeInKb"] = int(os.environ["BUF_KB"])
+wait_id(send("Tracing.start", {"traceConfig": _tc,
                                "transferMode": "ReportEvents", "bufferUsageReportingInterval": 2000}))
 wait_id(send("Target.createTarget", {"url": URL}))
 events = []
@@ -63,7 +79,7 @@ while time.time() < t_end:
     except websocket.WebSocketTimeoutException:
         continue
     if m.get("method") == "Tracing.dataCollected":
-        events += m["params"]["value"]
+        emit(m["params"]["value"])
 ws.settimeout(60)
 try:
     pages = [t for t in json.loads(op.open("http://127.0.0.1:%d/json" % PORT, timeout=5).read()) if t.get("type") == "page" and t.get("url", "").startswith("http")]
@@ -83,7 +99,7 @@ send("Tracing.end")
 while True:
     m = json.loads(ws.recv())
     if m.get("method") == "Tracing.dataCollected":
-        events += m["params"]["value"]
+        emit(m["params"]["value"])
     elif m.get("method") == "Tracing.tracingComplete":
         break
 try:
@@ -93,5 +109,6 @@ except Exception:
 time.sleep(2)
 if proc.poll() is None:
     proc.terminate()
-json.dump(events, open(OUT, "w"))
-print("events %d -> %s" % (len(events), OUT))
+_out.write("\n]\n")
+_out.close()
+print("events %d -> %s" % (_n[0], OUT))
