@@ -38,6 +38,7 @@ var _n := 0
 var _gs
 var _mode := "ok"
 var _reqs: Array = []
+var _log_reqs := 0                 # 战绩页取对局列表的次数(不算取录像)
 var _rows: Dictionary = {}          # 假服务器的 matches 表: match_id → replay(base64)
 var _bad_rows: Dictionary = {}      # 各失败模式下回的那一列
 var _hang_cbs: Array = []
@@ -67,6 +68,12 @@ func _bearer(h) -> String:
 ## 假服务器。
 func _transport(m, u, h, b, cb) -> void:
 	var url := str(u)
+	## 2026-11-18 战绩页重做: 页面一打开就取服务器对局列表(my_battle_log)。那是页面自己的数据, 不是取录像 ⇒
+	##   单独接住(回空列表 = 只剩本机那几行, 与改之前同一个画面), 不算进 _reqs(本文件量的是「取录像发了几个请求」)。
+	if url.ends_with("/rest/v1/rpc/my_battle_log"):
+		_log_reqs += 1
+		cb.call({"ok": true, "code": 200, "body": "[]"})
+		return
 	_reqs.append({"m": str(m), "u": url, "bearer": _bearer(h)})
 	if url.find("/auth/v1/token") >= 0 or url.find("/auth/v1/signup") >= 0:
 		if _mode == "authfail":
