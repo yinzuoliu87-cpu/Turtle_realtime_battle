@@ -352,6 +352,7 @@ def asc_split_checks():
     A.group_builds = lambda: {b: ("9.9.8", "7") for b in st["grp"]}
     A.review_state = lambda bid: st["review"]
     A.zh_localization = lambda bid: {"id": "L1", "attributes": {"whatsNew": "说明"}}
+    A.referee_ready = lambda ver: (st.get("ref", True), "桩: 正式服 referee_versions %s" % ("已登记" if st.get("ref", True) else "没有"))
     PF.snapshot = lambda env: {"status": {"min_client_version": "9.9.7"}}
     PF.enabled_versions = lambda snap: {"9.9.8": {"rules_ver": 1}}
     PF._write = lambda env, sql: pf_writes.append(sql)
@@ -391,8 +392,8 @@ def asc_split_checks():
         chk("submit：★没往公开测试组加构建（周五只提审）", not any("/betaGroups/" in c[1] for c in writes()) and not st["grp"],
            writes())
 
-        def gadd(review, now, in_grp=False, **kw):
-            st.update(grp={"B1"} if in_grp else set(), review=review)
+        def gadd(review, now, in_grp=False, ref=True, **kw):
+            st.update(grp={"B1"} if in_grp else set(), review=review, ref=ref)
             del calls[:]
             ns = argparse.Namespace(version="9.9.8", build=None, force=False, any_time=False, dry_run=False)
             for k, v in kw.items():
@@ -417,6 +418,15 @@ def asc_split_checks():
         chk("group-add：已在组里 ⇒ 不重复加", rc == 0 and not writes(), out[-200:])
         rc, out = gadd("APPROVED", mon, dry_run=True)
         chk("group-add：演练 ⇒ 零写入", rc == 0 and not writes(), out[-200:])
+        ## ★11-18 安卓模拟器走查: 裁判机还不认新版就放包 ⇒ 新包玩家开积分赛被「需要更新」挡住 ⇒ 正式服没登记就拒
+        rc, out = gadd("APPROVED", mon, ref=False)
+        chk("group-add：正式服 referee_versions 没登记 ⇒ 拒（先 deploy 并登记），零写入", rc == 1 and not writes() and "deploy.py 9.9.8" in out, out[-200:])
+        rc, out = gadd("APPROVED", mon, ref=None)
+        chk("group-add：查不到正式服 ⇒ 也拒（不把「不知道」当「已登记」），零写入", rc == 1 and not writes(), out[-200:])
+        rc, out = gadd("APPROVED", mon, ref=False, before_deploy=True)
+        chk("group-add：没登记 + --before-deploy ⇒ 放行", rc == 0 and len(posted()) == 1, out[-200:])
+        rc, out = gadd("APPROVED", mon, ref=False, any_time=True, force=True)
+        chk("group-add：--force / --any-time 不顶替 --before-deploy（没登记仍拒）", rc == 1 and not writes(), out[-200:])
 
         st.update(grp=set(), review="APPROVED")
         del pf_writes[:]
@@ -448,8 +458,8 @@ def checklist_checks():
         t = f.read()
     ## ★11-05 推送改成经 CI 把关(tools/ship.py), 不再「本机全套 + git push origin main」(CLAUDE.md §2)
     steps = ["release.py bump %s" % ver, "ship.py release-%s" % ver, "release.py tag %s" % ver,
-             "asc.py status %s" % ver, "asc.py submit %s" % ver, "asc.py group-add %s" % ver, "deploy.py %s" % ver, "deploy.py %s --only android" % ver,
-             "prod_flags.py show", "prod_flags.py force-update %s" % ver, "asc.py group-remove"]
+             "asc.py status %s" % ver, "asc.py submit %s" % ver, "deploy.py %s" % ver, "prod_flags.py show",
+             "asc.py group-add %s" % ver, "deploy.py %s --only android" % ver, "prod_flags.py force-update %s" % ver, "asc.py group-remove"]
     pos = [t.find(s) for s in steps]
     ok("清单 %d 步都在（分母）" % len(steps), all(x >= 0 for x in pos), [s for s, x in zip(steps, pos) if x < 0])
     ok("清单步骤按发版顺序排", pos == sorted(pos), pos)

@@ -15,9 +15,11 @@
         ③ 本次更新内容（zh-Hans）= CHANGELOG 里这一版那段压成纯文本（### 小标题变一行【…】，上限 4000 字）
         ④ ★先作废【同一版本】里其他还在审（WAITING_FOR_REVIEW / IN_REVIEW）的构建 —— 否则 422 ANOTHER_BUILD_IN_REVIEW
         ⑤ 提交 Beta 版审核，回读 betaReviewState
-  group-add <版本> [--build N] [--dry-run] [--force] [--any-time]   【周一换版窗口里做】把过审的构建放进公开测试组
-        ★默认拒绝：这份构建没过审（betaReviewState ≠ APPROVED）/ 现在不在周一 21:00–23:00 英国时间窗口里
-        （--force 放过前者：没过审也进组，苹果一批就推给玩家；--any-time 放过后者：紧急修复）
+  group-add <版本> [--build N] [--dry-run] [--force] [--any-time] [--before-deploy]   【周一换版窗口里做】把过审的构建放进公开测试组
+        ★默认拒绝：这份构建没过审（betaReviewState ≠ APPROVED）/ 现在不在周一 21:00–23:00 英国时间窗口里 /
+          正式服 referee_versions 里这一版还没登记或没启用（裁判机要先装好、登记：玩家先拿到新包而裁判机还不认 ⇒
+          开积分赛回 update_required ⇒ 新包玩家被「需要更新」挡住；11-18 安卓模拟器走查在内测服实测到）
+        （--force 放过没过审；--any-time 放过不在窗口；--before-deploy 放过没登记 —— 三个各管各的）
   expire <构建号> [--ver x.y.z] [--dry-run] [--force]   作废一份构建（不可撤回）
   group-remove <版本> [--dry-run] [--force]             把这一版的构建撤出公开测试组
         ★默认拒绝：组里没有更高版本、已过审、没作废的构建时（撤了公测玩家就没包可装）
@@ -478,8 +480,23 @@ def in_switch_window(t):
     return t.weekday() == SWITCH_WEEKDAY and SWITCH_FROM <= t.hour < SWITCH_TO
 
 
+def referee_ready(ver):
+    """正式服 referee_versions 里这一版登记了且启用（只读）。返回 (True / False / None, 说明)；None = 查不到。"""
+    try:
+        import sb_common as S
+        rows = S.query_ro(S.PROD_REF, "select enabled, rules_ver from public.referee_versions where client_version = '%s'"
+                          % ".".join(str(x) for x in R.vtuple(ver)))
+    except Exception as e:  # noqa: BLE001  查不到就当没登记(不放行), 原因打出来
+        return None, "查不到正式服 referee_versions（%s）" % str(e)[:120]
+    if not rows:
+        return False, "正式服 referee_versions 里还没有 %s" % ver
+    if not rows[0].get("enabled"):
+        return False, "正式服 referee_versions 里 %s 没启用" % ver
+    return True, "正式服 referee_versions：%s 已登记、启用、rules_ver=%s" % (ver, rows[0].get("rules_ver"))
+
+
 def cmd_group_add(a, now=None):
-    """周一换版窗口里第一步：把这一版过了 Beta 审核的构建放进公开测试组（之后 deploy.py → prod_flags force-update）。"""
+    """周一换版窗口里：deploy.py 装好并登记之后，把这一版过了 Beta 审核的构建放进公开测试组（之后 prod_flags force-update）。"""
     global DRY_RUN
     DRY_RUN = bool(a.dry_run)
     ver = a.version
@@ -507,12 +524,17 @@ def cmd_group_add(a, now=None):
         probs.append("构建 %s 审核 = %s，还没过审（确实要先进组、一批就推给玩家，加 --force）" % (tgt["number"], tgt["review"] or "未提交"))
     if not win:
         probs.append("不在周一 %02d:00–%02d:00 英国时间换版窗口里（紧急修复确实要现在放，加 --any-time）" % (SWITCH_FROM, SWITCH_TO))
-    probs = [p for p in probs if not ((a.force and "--force" in p) or (a.any_time and "--any-time" in p))]
+    ready, why = referee_ready(ver)
+    print(("✓ " if ready else "· ") + why)
+    if not ready:
+        probs.append("%s —— 先 deploy.py %s 并登记（新包玩家会被「需要更新」挡住；确实要先放加 --before-deploy）" % (why, ver))
+    probs = [p for p in probs if not ((a.force and "--force" in p) or (a.any_time and "--any-time" in p)
+                                      or (getattr(a, "before_deploy", False) and "--before-deploy" in p))]
     for p in probs:
         print("✗ " + p)
     if probs:
         return 1
-    print("计划: 把 %s (%s) 加进公开测试组 —— 公测玩家马上能装到新版；接着 deploy.py %s → prod_flags.py force-update %s" % (
+    print("计划: 把 %s (%s) 加进公开测试组 —— 公测玩家马上能装到新版；接着 deploy.py %s --only android → prod_flags.py force-update %s" % (
         ver, tgt["number"], ver, ver))
     if a.dry_run:
         print("（演练: GET %d 次，写 0 次）" % COUNTS["GET"])
@@ -661,6 +683,7 @@ def main(argv=None):
     x.add_argument("--build", help="指定构建号（默认最新的已过审构建）")
     x.add_argument("--force", action="store_true", help="没过审也进组")
     x.add_argument("--any-time", action="store_true", help="不在周一 21:00–23:00 窗口也放（紧急修复）")
+    x.add_argument("--before-deploy", action="store_true", help="正式服还没登记这一版也放（玩家会被挡；只给明知后果时用）")
     x.add_argument("--dry-run", action="store_true")
     x.set_defaults(fn=cmd_group_add)
     x = sp.add_parser("expire", help="作废一份构建（不可撤回）")

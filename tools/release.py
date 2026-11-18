@@ -451,17 +451,19 @@ CHECKLIST = """# 发版清单 · v{ver}
 
 ## 5. 周一 21:00–23:00（英国时间）换版窗口
 
-苹果没在周一 21:00 前过审 ⇒ 这周不换，顺延下周一（CLAUDE.md §3）。窗口里按顺序：
+苹果没在周一 21:00 前过审 ⇒ 这周不换，顺延下周一（CLAUDE.md §3）。窗口里按顺序 —— **先让裁判机认得新版，再放包**
+（反过来的话，先更新的玩家开积分赛会回 update_required、被「需要更新」挡住；11-18 安卓模拟器走查在内测服实测到）：
 
 - [ ] `python tools/asc.py status {ver}`
   - 回读：betaReviewState = APPROVED
-- [ ] `python tools/asc.py group-add {ver}`（先 `--dry-run`；不在窗口里会拒）
-  - 回读：「回读: {ver} (…) 在公开测试组 ✓」
 - [ ] `python tools/deploy.py {ver}`（先 `--dry-run`）
-- [ ] `python tools/deploy.py {ver} --only android`（先 `--dry-run`；安卓真机走查没过 ⇒ 跳过这步，下载链接留在上一版 / 即将开放）
-  - 回读：`https://dl.turtlearena.xyz/android → 302 → …/turtle-arena-{ver}.apk` + 「跟到底下载得到：… 字节（= Release）」
+- [ ] 登记版本：deploy 结尾打印的 `insert into public.referee_versions …`（正式服写入，用户点头）；再 `python tools/deploy.py {ver} --only bots-switch`
 - [ ] `python tools/prod_flags.py show`
   - 回读：referee_versions 有 {ver}、enabled、rules_ver = 本版 RULES_VER；gauntlet_bot_pool 这个 rules_ver 2052 行；ranked_pool seed 396 / bot 186
+- [ ] `python tools/asc.py group-add {ver}`（先 `--dry-run`；不在窗口里 / 正式服还没登记这一版都会拒）
+  - 回读：「回读: {ver} (…) 在公开测试组 ✓」
+- [ ] `python tools/deploy.py {ver} --only android`（先 `--dry-run`；安卓真机走查没过 ⇒ 跳过这步，下载链接留在上一版 / 即将开放）
+  - 回读：`https://dl.turtlearena.xyz/android → 302 → …/turtle-arena-{ver}.apk` + 「跟到底下载得到：… 字节（= Release）」
 - [ ] `python tools/prod_flags.py force-update {ver}`（不带 `--yes-prod` 先看计划；用户点头后加 `--yes-prod`）
   - `RULES_VER` 变了 ⇒ **必须**做（旧包与新包打不出同一局）；没变 ⇒ 按需
   - 回读：service_status.min_client_version = {ver}
