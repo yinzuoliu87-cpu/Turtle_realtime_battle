@@ -2098,6 +2098,9 @@ scripts/scenes/codex/synergy_view.gd|lit|同类装备
 scripts/scenes/codex/synergy_view.gd|lit|激活：%s 件
 scripts/scenes/codex/synergy_view.gd|lit|现有装备：%d 件
 scripts/scenes/codex/synergy_view.gd|lit|羁绊效果
+scripts/scenes/exit_confirm_dialog.gd|lit|取消
+scripts/scenes/exit_confirm_dialog.gd|lit|退出
+scripts/scenes/exit_confirm_dialog.gd|lit|退出游戏
 scripts/scenes/feedback_panel.gd|lit|其他
 scripts/scenes/feedback_panel.gd|lit|已提交
 scripts/scenes/feedback_panel.gd|lit|提交

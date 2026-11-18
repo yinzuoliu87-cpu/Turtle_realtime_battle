@@ -179,9 +179,12 @@ const RANKED := {
 	##   积分赛那条(_fc_mode 恒假)一行没变: _ready / _build_ui / _refresh_confirm / _on_start / _on_back 只多一个 `_fc_mode` 判断
 	##   (_build_locked_hint 不在 units)。0130a607 → 499da8ef 只加 _fc_submit(决赛专用, 不进 units)。基线挪到 499da8ef,
 	##   units 不变(70 个), 摘要按本表口径现算(同口径复算 0130a607 得 0f1bc33a…, 与原表一致)。
+	## ★2026-11-18 安卓返回键(提交 8c8f7a3a, 方案书 20261118b A4): `_build_ui` 里返回键多一行 `BackKey.tag(back)`(给按钮挂一个
+	##   元数据记号, 安卓返回键据此按它)—— 不改选人 / 存档 / 出战进匹配的任何一步。499da8ef → 8c8f7a3a 只动这一行;
+	##   基线挪到 8c8f7a3a, units 不变(70 个), 摘要按本表口径现算(86ed83c8… → 8f72a496…)。
 	"scripts/scenes/TeamSelectScene.gd": {
-		"base": "499da8ef",
-		"digest": "86ed83c8cfcc7e26b45a4f4f61a8cea5791b6fce0d8adad71425c63d71b6d749",
+		"base": "8c8f7a3a",
+		"digest": "8f72a4962b39a0da4a8a00ecab1b0fe5a514edd9ff8fa56d6c3ad4774fc5a494",
 		"views": {},
 		"sat_only": [],
 		"units": [
