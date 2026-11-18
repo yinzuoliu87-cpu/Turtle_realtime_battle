@@ -245,7 +245,9 @@ func _render_tabs() -> void:
 	for t in TABS:
 		var key := str(t[0])
 		var n := all.size() if key == "all" else all.filter(func(r) -> bool: return str((r as Dictionary).get("kind", "")) == key).size()
-		var bt := MatchCard.big_btn("%s %d" % [str(t[1]), n], N_TAB + key, Vector2(132, 44),
+		## 五个页签平分卡片宽(每个约 205): 长边 ≥ 200 才算好点(verify_ui_consistency 热区; 132×44 在 CI 抓过)。
+		var tab_w: float = floorf((PANEL_W - 8.0 * (TABS.size() - 1)) / TABS.size())
+		var bt := MatchCard.big_btn("%s %d" % [str(t[1]), n], N_TAB + key, Vector2(tab_w, 44),
 			UISkin.PX_GOLD if key == tab else UISkin.PX_SLATE, 17)
 		bt.pressed.connect(func() -> void:
 			tab = key
@@ -283,14 +285,8 @@ func _overview(rows: Array) -> Control:
 	var losses: int = maxi(0, total - wins)
 	var rate: int = int(round(float(wins) / total * 100.0)) if total > 0 else 0
 	var overview := PanelContainer.new()
-	var ovsb := StyleBoxFlat.new()
-	ovsb.bg_color = Color("#0e1824e6")
-	ovsb.border_color = Color("#2c3a4c")
-	ovsb.set_border_width_all(2)
-	ovsb.set_corner_radius_all(0)
-	ovsb.content_margin_left = 20; ovsb.content_margin_right = 20
-	ovsb.content_margin_top = 6; ovsb.content_margin_bottom = 6
-	overview.add_theme_stylebox_override("panel", ovsb)
+	## 实底 + 右下两条边(与卡片同一套 MatchCard.bevel); 四边框 + 半透明底 = 网页盒(verify_ui_consistency)。
+	overview.add_theme_stylebox_override("panel", MatchCard.bevel(Color("#0e1824"), Color("#2c3a4c"), 20, 6))
 	overview.custom_minimum_size = Vector2(PANEL_W, 0)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)

@@ -14,6 +14,7 @@ const PAGE := 20
 const KINDS := ["ranked", "gauntlet", "finals", "raid"]
 
 static var fetches := 0        # 发出去几次(门禁量)
+static var dropped := 0        # 回包时回调方已释放、丢掉的次数(门禁量)
 
 
 ## 纯函数: my_battle_log 回包 → {ok, rows}。看不懂 / 断网 ⇒ ok false(rows 空)。一行不合法(没有 id / 不认识的种类)就丢掉那一行。
@@ -104,23 +105,32 @@ static func from_local(m: Dictionary, my_name: String) -> Dictionary:
 ## 取一页。`before` = 上一页最后一行的 id(0 = 第一页)。`done(res: {ok, rows, reason})` 恰好一次。
 static func fetch(before: int, done: Callable) -> void:
 	if not SB.enabled():
-		done.call({"ok": false, "rows": [], "reason": "off"})
+		_reply(done, {"ok": false, "rows": [], "reason": "off"})
 		return
 	var n = SB._spawn()
 	if n == null:
-		done.call({"ok": false, "rows": [], "reason": "net"})
+		_reply(done, {"ok": false, "rows": [], "reason": "net"})
 		return
 	fetches += 1
 	_send(n, JSON.stringify({"p_limit": PAGE, "p_before": (before if before > 0 else null)}), done)
 
 
+## 回调方(对局记录页)可能在回包之前就被关掉了(等登录令牌 / 网络那几秒里点了返回) ⇒ 对象已释放的回调直接丢掉。
+## 2026-11-18 CI 抓到: verify_replay_window 进页后立刻换屏, 回包时 `null::_on_fetched` 报 SCRIPT ERROR。
+static func _reply(done: Callable, r: Dictionary) -> void:
+	if done.is_valid():
+		done.call(r)
+	else:
+		dropped += 1
+
+
 static func _send(n, body: String, done: Callable) -> void:
 	if not await n._await_token():
 		n._bye()
-		done.call({"ok": false, "rows": [], "reason": "not_signed_in" if SB.session_lost() else "net"})
+		_reply(done, {"ok": false, "rows": [], "reason": "not_signed_in" if SB.session_lost() else "net"})
 		return
 	n._http("POST", SB.base_url().rstrip("/") + RPC, body, func(res: Dictionary) -> void:
 		var r := parse(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")))
 		n._bye()
-		done.call(r),
+		_reply(done, r),
 		"Content-Type: application/json")

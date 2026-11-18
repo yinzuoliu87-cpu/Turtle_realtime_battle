@@ -95,6 +95,14 @@ func _ready() -> void:
 	_ok("① 我在 b 方有记号(决赛 / 闯关), a 方没有", bool(got[1]["b_side"]) and bool(got[2]["b_side"]) and not bool(got[0]["b_side"]))
 	_ok("① 断网 ⇒ ok false、没有行", not bool(BLN.parse(false, 0, "").get("ok", true)) and (BLN.parse(false, 0, "")["rows"] as Array).is_empty())
 
+	## ★11-18 CI 抓到: 进页后立刻换屏, 回包时回调方已释放 ⇒ `null::_on_fetched` SCRIPT ERROR(run-tests FATAL 正则会抓)。
+	var gone := Node.new()
+	var cb := Callable(gone, "get_name")
+	gone.free()
+	var d0: int = BLN.dropped
+	BLN._reply(cb, {"ok": true, "rows": []})
+	_ok("① 回调方已释放 ⇒ 回包丢掉、不报错", BLN.dropped == d0 + 1, str(BLN.dropped - d0))
+
 	print("=== ② 时间 ===")
 	var d := P2C.local_dict(now)
 	var noon := now - (int(d.get("hour", 0)) * 3600 + int(d.get("minute", 0)) * 60 + int(d.get("second", 0))) + 12 * 3600
