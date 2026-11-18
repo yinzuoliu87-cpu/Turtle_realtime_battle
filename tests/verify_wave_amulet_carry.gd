@@ -50,7 +50,8 @@ func _find(side: String, pid: String) -> Dictionary:
 func _flush_wave() -> int:
 	var n := 0
 	for h in _s._equip_tick_sys._tide_hits:
-		n += (h["allies"] as Array).size() + (h["enemies"] as Array).size()
+		## 11-18 起名单每步现读(结算表不再带名单) ⇒ 分母按此刻的友军 + 可选中敌人数
+		n += _s._targeting._allies_of(h["src"]).size() + _s._targeting._pick_enemies_of(h["src"]).size()
 		h["t"] = float(h["windup"]) + float(h["travel"])
 	_s._equip_tick_sys._tick_tide_hits(0.0)
 	return n

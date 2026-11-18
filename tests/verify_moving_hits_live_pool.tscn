@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_moving_hits_live_pool.gd" id="1_mh"]
+
+[node name="VerifyMovingHitsLivePool" type="Node"]
+script = ExtResource("1_mh")

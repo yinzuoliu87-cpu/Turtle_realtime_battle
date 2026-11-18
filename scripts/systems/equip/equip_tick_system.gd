@@ -867,7 +867,7 @@ func schedule(delay: float, fn: Callable) -> void:
 ##   换路清空一致: 上一路已经结束, 它没落地的一律作废。
 ## ★浪墙的网格节点已由换路兜底扫 `_world` 释放, 这里只丢登记(那张表本来也只管演出)。
 func reset_for_lane() -> int:
-	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size() + _tide_hits.size() + _rock_waves.size() + _sweeps.size()
+	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size() + _tide_hits.size() + _rock_waves.size() + _sweeps.size() + _rings.size()
 	_bolt_q.clear()
 	_bear_waves.clear()
 	_pulls.clear()
@@ -875,6 +875,7 @@ func reset_for_lane() -> int:
 	_tide_hits.clear()
 	_rock_waves.clear()
 	_sweeps.clear()
+	_rings.clear()
 	return n
 
 
@@ -890,6 +891,7 @@ func tick_delayed(_dt: float) -> void:
 	_tick_tide_hits(_dt)    # 043 浪墙判定: 推进量逐步碰各人当前位置(11-14, 原来放浪时一次排好挨打时刻)
 	_tick_rock_waves(_dt)   # 石头龟岩脊冲击波: 波前逐步碰各人当前位置(11-14, 原来出手时一次排好)
 	_tick_sweeps(_dt)       # 024 喷火龙 / 029 冰道: 同上(11-15)
+	_tick_rings(_dt)        # 枪羁绊第二座炮台星浪: 环形扩散逐步碰各人当前位置、名单现读(11-18)
 
 ## 大熊熊掌挥击接触那一瞬: 此刻才结算伤害 + 跳数字 + 金爪痕。
 ## ★★2026-09-13 从主文件搬过来, 同时把延时从 tween 换成共享原语 `schedule`:
@@ -1041,7 +1043,8 @@ func _tick_pulls(dt: float) -> void:
 ##   memory [[fb-second-clock-drops-events]] 那一族。现在两边同一条钟。
 var _tide_walls: Array = []
 ## 043 浪墙的**结算**表(与上面那张演出表分开: 演出在 `_world` 为空时不建, 结算不能跟着没了)。
-## 每项 = {src, si, start, dir, dist, windup, travel, t, allies, enemies, hit}; 由 EquipSystem._eq_water_wave 登记。
+## 每项 = {src, si, start, dir, dist, windup, travel, t, hit}; 由 EquipSystem._eq_water_wave 登记。
+## ★11-18 敌友名单每步现读(不在放浪时拍下): 浪走到一半蛋罩破了 / 新召唤出来的, 浪前沿碰到就算(用户「那肯定要啊」)。
 var _tide_hits: Array = []
 ## 石头龟岩脊冲击波的在途表(11-14): 每项 = {src, origin, dir, perp, reach, windup, spd, dmg, t, hit}; 由 StoneSystem._sk_rock_shockwave 登记。
 var _rock_waves: Array = []
@@ -1054,6 +1057,39 @@ var _rock_waves: Array = []
 ## 判据与原来逐条一致: 在线上(`_on_line` 半宽)、沿线距离折成的到达比例 clampf(沿线 / reach) ≤ 已推进比例 ⇒ 结算, 每人一次;
 ##   只是从「出手那一刻的位置」换成「扫到那一刻的位置」。推完(t ≥ dur)那一步把还没碰到的按原口径(比例钳到 1)一起判完再收。
 var _sweeps: Array = []
+## ★11-18 从一点往外扩散的环形波(枪羁绊第二座炮台的星浪): 半径 = 已走秒数 × 波速, 每步拿【现读】的名单碰各人【当前】位置, 每人一次。
+## 每项 = {origin, speed, max_r, pool: Callable() -> Array, on_hit: Callable(o), t, hit, tl}; 半径过了 max_r 收掉。
+var _rings: Array = []
+
+
+func ring_start(w: Dictionary) -> void:
+	w["t"] = 0.0
+	w["hit"] = []
+	if not w.has("tl"):
+		w["tl"] = [null, ""]
+	_rings.append(w)
+
+
+func _tick_rings(dt: float) -> void:
+	if _rings.is_empty():
+		return
+	for i in range(_rings.size() - 1, -1, -1):
+		var w: Dictionary = _rings[i]
+		w["t"] = float(w["t"]) + dt
+		var r: float = float(w["t"]) * float(w["speed"])
+		var origin: Vector2 = w["origin"]
+		var tl: Array = w["tl"]
+		var tp: Array = battle._equip_sys.tally.push(tl[0], str(tl[1]))
+		for o in (w["pool"] as Callable).call():
+			if not (o is Dictionary) or not o.get("alive", false) or battle._arr_has_unit(w["hit"], o):
+				continue
+			if DetMath.dist(origin, o["pos"] as Vector2) > r:
+				continue
+			(w["hit"] as Array).append(o)
+			(w["on_hit"] as Callable).call(o)
+		battle._equip_sys.tally.pop(tp)
+		if r >= float(w["max_r"]):
+			_rings.remove_at(i)
 
 
 func sweep_start(w: Dictionary) -> void:
@@ -1164,7 +1200,9 @@ func _tick_tide_hits(dt: float) -> void:
 		var _tl: Array = h.get("tl", [null, ""])
 		var _tp: Array = battle._equip_sys.tally.push(_tl[0], str(_tl[1]))
 		for side in ["allies", "enemies"]:
-			for o in h[side]:
+			## 现读: 友军 = 当前友军; 敌人 = 当前可被选中的敌人(围栏没破的蛋不在里面, 破了就在) —— 与放浪那一刻用的是同两个函数
+			var pool: Array = battle._targeting._allies_of(src) if side == "allies" else battle._targeting._pick_enemies_of(src)
+			for o in pool:
 				if not (o is Dictionary) or not o.get("alive", false) or battle._arr_has_unit(h["hit"], o):
 					continue
 				var fwd: float = DetMath.dot(((o["pos"] as Vector2) - start), dir)

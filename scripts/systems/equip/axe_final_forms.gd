@@ -300,9 +300,13 @@ func _boom_sweep(rec: Dictionary, pts: Array) -> int:
 	var src: Dictionary = rec["src"]
 	var n := 0
 	for o in battle._targeting._targetable_enemies(src):
-		if not battle._arr_has_unit(rec["cands"], o) or battle._arr_has_unit(rec["hits"], o):
-			continue                       # 不在出手时的身前名单 / 这把已经打过它(每把每敌一次)
+		if battle._arr_has_unit(rec["hits"], o):
+			continue                       # 这把已经打过它(每把每敌一次)
 		var p: Vector2 = o.get("pos", Vector2.ZERO)
+		## ★11-18 「身前那一侧」每步按【当前】位置现读(原来拿出手那一刻拍下的名单 ⇒ 之后才走进身前的 / 蛋罩刚破的打不到;
+		##   用户「那肯定要啊」)。`cands` 只留着定飞多远。
+		if DetMath.dot(p - (rec["org"] as Vector2), rec["dir"] as Vector2) < 0.0:
+			continue
 		var near := false
 		for i in range(pts.size() - 1):
 			if DetMath.dist(DetMath.seg_closest(p, pts[i], pts[i + 1]), p) <= AF.SERAPH_BOOM_R:

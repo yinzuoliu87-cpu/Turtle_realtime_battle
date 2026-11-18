@@ -1321,7 +1321,6 @@ func _eq_grant_energy(u: Dictionary, amount: float) -> void:   # 给龟能=存"�
 # 娜美式潮浪(海浪护符043): 朝敌人2D方向的对角潮浪 — 从敌人反方向(身后)400码涌起 → 沿"朝敌人"方向慢速推过全场 → 连续宽浪墙(垂直于行进方向铺开)翻涌 → 命中击飞(用户2026-07-04: 全场横扫+2D对角朝敌)
 func _eq_water_wave(u: Dictionary, si: int) -> void:
 	var enemies = battle._targeting._pick_enemies_of(u)
-	var allies = battle._targeting._allies_of(u)
 	var ec: Vector2 = u["pos"] + Vector2(500.0, 0.0)   # 敌人质心(默认右)
 	if not enemies.is_empty():
 		ec = Vector2.ZERO
@@ -1346,7 +1345,9 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 	##   (录像里三只走散的敌人同时挨打)。站着不动的单位挨打时刻与原来一样(推进量 = 它离起浪点的距离那一步)。
 	##   结算表与演出表分开(演出那张在 `_world` 为空时不建), 推进走 `tick_delayed` 同一条游戏钟, 换路清空。
 	battle._equip_tick_sys.tide_hits_start({"tl": [u, key_of(u, "p2eq_043")], "src": u, "si": si, "start": startc, "dir": dir, "dist": tdist,
-		"windup": windup, "travel": travel, "t": 0.0, "allies": (allies as Array).duplicate(), "enemies": (enemies as Array).duplicate(), "hit": []})
+		"windup": windup, "travel": travel, "t": 0.0, "hit": []})
+	## ★11-18 名单不在放浪时拍下, 改由 `_tick_tide_hits` 每步现读(用户「那肯定要啊」: 浪走的约 5 秒里对面团灭、蛋罩破了,
+	##   原来那颗蛋不在放浪时的名单里 ⇒ 浪扫过去不伤蛋)。`enemies` 只用来定浪的朝向, `allies` 不再用。
 
 
 ## 043 海浪护符: 浪碰到友军那一刻(由 EquipTickSystem._tick_tide_hits 调)

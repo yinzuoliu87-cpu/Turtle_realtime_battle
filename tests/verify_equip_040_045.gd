@@ -263,7 +263,8 @@ func _ready() -> void:
 		var fh0: float = float(foe4["hp"])
 		_s._equip_sys._eq_water_wave(c4, si)
 		var th: Array = _s._equip_tick_sys._tide_hits
-		var n_in: int = 0 if th.is_empty() else (th[0]["allies"] as Array).size() + (th[0]["enemies"] as Array).size()
+		## 11-18 起名单每步现读(结算表不再带名单) ⇒ 分母按此刻的友军 + 可选中敌人数
+		var n_in: int = 0 if th.is_empty() else _s._targeting._allies_of(th[0]["src"]).size() + _s._targeting._pick_enemies_of(th[0]["src"]).size()
 		_ok("④ ★分母(%d 星): 浪墙结算表登记了 1 道浪、敌我共 %d 人(判定是逐步碰撞, 11-14 起不再排 _pending_shots)" % [si + 1, n_in],
 			th.size() == 1 and n_in >= 3,
 			"文案明写「敌我双方都会被扫到」")

@@ -88,6 +88,7 @@ func _ready() -> void:
 	foe2["pos"] = s._gun_syn._turret_pos("left", 0) + Vector2(0, 400)   # 挪出直线, 隔离炮台一
 	_run(s, [c2, ally2, _mk("left", G.slice(3, 6)), foe2])
 	s._gun_syn.clear()
+	s._equip_tick_sys.reset_for_lane()   # 11-18: 上一段没扫完的星浪环要清掉(实战里换路清)
 	ally2["shield"] = 0.0
 	s._gun_syn._t2_acc = 0.0
 	s._gun_syn.tick(5.1)
@@ -104,6 +105,7 @@ func _ready() -> void:
 	var steps: int = int(ceil(need / 0.02))
 	for _i in range(steps):
 		s._ballistics._step_pending_shots(0.02)
+		s._equip_tick_sys._tick_rings(0.02)   # 11-18: 星浪改成环形波逐步扩散(EquipTickSystem._tick_rings)
 	_ok("③ 炮台二(每5秒)·第一拍: 波扫到后转护盾均摊全队", float(ally2.get("shield", 0.0)) > 0.0,
 		"护盾 %.0f(等了 %.2f 秒: 蓄力 %.2f + 波程 %.0f 码)"
 		% [float(ally2.get("shield", 0.0)), need, SynergyVfx.CHARGE_SEC, d_ally])
@@ -116,16 +118,19 @@ func _ready() -> void:
 	far_a["shield"] = 0.0
 	_run(s, [c2, near_a, far_a, _mk("left", G.slice(3, 6)), foe2])
 	s._gun_syn.clear()
+	s._equip_tick_sys.reset_for_lane()   # 11-18: 上一段没扫完的星浪环要清掉(实战里换路清)
 	s._gun_syn._t2_shield_phase["left"] = true
 	s._gun_syn._t2_acc = 0.0
 	s._gun_syn.tick(5.1)
 	for _j in range(int(ceil((SynergyVfx.CHARGE_SEC + 0.16) / 0.02))):
 		s._ballistics._step_pending_shots(0.02)
+		s._equip_tick_sys._tick_rings(0.02)   # 11-18: 星浪改成环形波逐步扩散(EquipTickSystem._tick_rings)
 	var near_first: bool = float(near_a.get("shield", 0.0)) > 0.0 and absf(float(far_a.get("shield", 0.0))) < 0.01
 	_ok("③ ★★波扫到才生效: 近的(60 码)已拿到盾 %.0f, 远的(560 码)还没 %.0f"
 			% [float(near_a.get("shield", 0.0)), float(far_a.get("shield", 0.0))], near_first, "")
 	for _k in range(int(ceil(560.0 / SynergyVfx.WAVE_SPEED / 0.02)) + 6):
 		s._ballistics._step_pending_shots(0.02)
+		s._equip_tick_sys._tick_rings(0.02)   # 11-18: 星浪改成环形波逐步扩散(EquipTickSystem._tick_rings)
 	_ok("③ ★波走到远处后, 远的也拿到盾 %.0f" % float(far_a.get("shield", 0.0)),
 		float(far_a.get("shield", 0.0)) > 0.0, "")
 	## 第二拍: 相位翻成弹幕(红波打人)
@@ -135,6 +140,7 @@ func _ready() -> void:
 	var d_foe: float = s._gun_syn._turret_pos("left", 1).distance_to(Vector2(foe2["pos"]))
 	for _m in range(int(ceil((SynergyVfx.CHARGE_SEC + d_foe / SynergyVfx.WAVE_SPEED + 0.06) / 0.02))):
 		s._ballistics._step_pending_shots(0.02)
+		s._equip_tick_sys._tick_rings(0.02)   # 11-18: 星浪改成环形波逐步扩散(EquipTickSystem._tick_rings)
 	_ok("③ 炮台二(每5秒)·第二拍: 化弹幕打敌方全体(波扫到才掉血)", float(foe2["hp"]) < fh,
 		"敌掉 %.0f" % (fh - float(foe2["hp"])))
 	# 对照: 3 件时没有第二座
@@ -144,12 +150,14 @@ func _ready() -> void:
 	foe3["pos"] = s._gun_syn._turret_pos("left", 0) + Vector2(0, 400)
 	_run(s, [c3, ally3, foe3])
 	s._gun_syn.clear()
+	s._equip_tick_sys.reset_for_lane()   # 11-18: 上一段没扫完的星浪环要清掉(实战里换路清)
 	ally3["shield"] = 0.0
 	s._gun_syn._t2_acc = 0.0
 	s._gun_syn.tick(5.1)
 	## ★对照组也要把定时器推完 —— 否则"没护盾"可能只是"还没到账", 那就是个假对照
 	for _n in range(int(ceil((SynergyVfx.CHARGE_SEC + 2.0) / 0.02))):
 		s._ballistics._step_pending_shots(0.02)
+		s._equip_tick_sys._tick_rings(0.02)   # 11-18: 星浪改成环形波逐步扩散(EquipTickSystem._tick_rings)
 	_ok("③ ★对照: 3 件时【没有】第二座炮台(不给护盾)",
 		absf(float(ally3.get("shield", 0.0))) < 0.5, "护盾 %.0f" % float(ally3.get("shield", 0.0)))
 

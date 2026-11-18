@@ -38,6 +38,8 @@ const T1_LINE_LEN := 900.0
 ## 第二座：每周期产的能量 = 基数 + 每件枪 × N
 const T2_BASE_ENERGY := 100.0
 const T2_PER_GUN := 20.0
+## 星浪环形扩散的最大半径(码): 比战场对角线还长, 保证全场每个人都会被扫到(11-18 改成逐步扩散时加)。
+const T2_RING_MAX_R := 6000.0
 ## 第三座（火控）：带枪者额外造成 `(10 + 【携带者身上】枪件数 × 10)%` 真实伤害（用户 2026-08-03 定）。
 ## ★口径是【携带者身上】不是全队 —— 单只上限 3 件 ⇒ 最高 **40%**，而不是原学派"全队每件×5%"
 ##   在 9 件时的 55%。这条是 R8 点名的形状（乘算 + 所有伤害都吃它），上限锁死才不会失控。
@@ -232,15 +234,6 @@ func _turret_one(side: String) -> void:
 ## 第二座：每周期产能量，交替【转护盾均摊全队】/【化弹幕敌方全体均摊魔法】。
 func _turret_two(side: String) -> void:
 	var energy: float = T2_BASE_ENERGY + T2_PER_GUN * float(gun_count(side))
-	var allies: Array = []
-	var foes: Array = []
-	for u in battle._units:
-		if not (u is Dictionary) or not u.get("alive", false) or battle._is_untouchable(u):   # §UNTOUCHABLE: 训龟大师既不是友也不是敌
-			continue
-		if str(u.get("side", "")) == side:
-			allies.append(u)
-		else:
-			foes.append(u)
 	var is_shield: bool = bool(_t2_shield_phase.get(side, true))
 	var origin: Vector2 = _turret_pos(side, 1)
 	var sv = null
@@ -252,7 +245,7 @@ func _turret_two(side: String) -> void:
 	##     ② 释放星浪(白=转护盾 / 红=化弹幕)
 	##     ③ 每个目标的效果延到【波扫到它】那一刻(距离 ÷ 波速), 与 070 咸鱼砖同一条纪律。
 	##   ⇒ 能量/均摊口径一个字没改: 均摊分母仍是这一拍的目标数, 只是到账时刻跟着波走。
-	var targets: Array = allies if is_shield else foes
+	var targets: Array = _t2_pool(side, is_shield)
 	if targets.is_empty():
 		return
 	var each: float = energy / float(targets.size())
@@ -261,18 +254,15 @@ func _turret_two(side: String) -> void:
 		sv.gun_wave_charge("%s|1" % side, is_shield)
 	## 蓄力结束才释放 —— 用 sim 内定时器(_pending_shots), 不用 tween(CLAUDE.md §3.5)
 	var charge_sec: float = SynergyVfx.CHARGE_SEC
+	## ★11-18 释放后的星浪改成环形扩散、每步碰各人当前位置、名单现读(EquipTickSystem._tick_rings):
+	##   原来蓄力那一刻定名单、释放那一刻按各人当时的距离排好到达时刻 ⇒ 走开的照样挨、蛋罩刚破的不挨(用户「那肯定要啊」)。
+	##   均摊口径不变: 每人一份 = 蓄力那一刻的能量 ÷ 那一刻的人数。
 	battle._pending_shots.append({"delay": charge_sec, "src": shooter, "fn": func() -> void:
 		if sv != null:
 			sv.gun_wave_release("%s|1" % side, is_shield)
-		for t in targets:
-			if not (t is Dictionary) or not (t as Dictionary).get("alive", false):
-				continue
-			## 到达时刻 = 距离 ÷ 波速(与演出同一个常量 —— 波扫到谁, 谁那一刻才吃效果)
-			var d: float = DetMath.dist(origin, Vector2((t as Dictionary)["pos"]))
-			battle._pending_shots.append({"delay": d / SynergyVfx.WAVE_SPEED, "src": shooter,
-				"fn": func() -> void:
-					if not (t as Dictionary).get("alive", false):
-						return
+		battle._equip_tick_sys.ring_start({"origin": origin, "speed": SynergyVfx.WAVE_SPEED, "max_r": T2_RING_MAX_R,
+			"pool": func() -> Array: return _t2_pool(side, is_shield),
+			"on_hit": func(t: Dictionary) -> void:
 					if is_shield:
 						battle._damage._grant_shield(t, each)
 					else:
@@ -284,6 +274,24 @@ func _turret_two(side: String) -> void:
 	})
 	_t2_shield_phase[side] = not is_shield
 	_t2_last[side] = {"shield": is_shield, "energy": energy, "n": targets.size()}
+
+
+## 第二座炮台星浪的受益 / 挨打名单(现读)。
+## ★11-18 两处补漏: 转护盾时排除龟蛋(均分型护盾的受益名单不含蛋, 同 `_allies_share_pool` · 用户 2026-08-01「铁壁盾分摊不应该包括龟蛋」);
+##   化弹幕时排除围栏没破的蛋(「单体 + AoE 都不锁」, 同 `_enemies_of`)。原来按 side 全收, 蛋罩没破也挨弹幕、护盾也分给蛋。
+## 敌我按【有效阵营】(`_eff_side`, 被侵入的龟算它现在那边; 同 `_pick_enemies_of_side`)。训龟大师两边都不算。
+func _t2_pool(side: String, is_shield: bool) -> Array:
+	var out: Array = []
+	for u in battle._units:
+		if not (u is Dictionary) or not u.get("alive", false) or battle._is_untouchable(u):
+			continue
+		var mine: bool = str(battle._eff_side(u)) == side
+		if is_shield:
+			if mine and not u.get("_isEgg", false):
+				out.append(u)
+		elif not mine and not u.get("_egg_fence", false):
+			out.append(u)
+	return out
 
 
 ## 炮台位置：按阵营的场地方向排在后方（idx 0=最前 1=中 2=后）。

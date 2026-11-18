@@ -119,7 +119,7 @@ func _nearest_enemy(u: Dictionary):
 			continue
 		if battle._is_untargetable(o):   # 黑洞 → 不可被选
 			continue
-		if o.get("_egg_fence", false):   # 龟蛋围栏未破 → 不可被主动索敌(但AoE/增益穿栏, 走_enemies_of不受此限)
+		if o.get("_egg_fence", false):   # 龟蛋围栏未破 → 不可被主动索敌(AoE 也打不到: _enemies_of 同样排它, 用户 2026-07-12; 11-18 更正此处旧注释)
 			continue
 		if battle._is_untouchable(o):   # 训龟大师: 装饰单位(§UNTOUCHABLE)
 			# ★2026-10-31 口径变了: 原来这里只挡「主动索敌」, AoE 走 _enemies_of 故意不跳过它(「吃 AOE 波及」)。
