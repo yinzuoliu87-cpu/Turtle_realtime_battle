@@ -1133,30 +1133,33 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|驯服
 scripts/scenes/RecordScene.gd|lit|%d 分钟前
 scripts/scenes/RecordScene.gd|lit|%d 天前
 scripts/scenes/RecordScene.gd|lit|%d 小时前
-scripts/scenes/RecordScene.gd|lit|%s · %d 回合
-scripts/scenes/RecordScene.gd|lit|出战
+scripts/scenes/RecordScene.gd|lit|偷袭
+scripts/scenes/RecordScene.gd|lit|全部
+scripts/scenes/RecordScene.gd|lit|决赛
 scripts/scenes/RecordScene.gd|lit|切磋
 scripts/scenes/RecordScene.gd|lit|刚刚
 scripts/scenes/RecordScene.gd|lit|前天
-scripts/scenes/RecordScene.gd|lit|失败
-scripts/scenes/RecordScene.gd|lit|实时
+scripts/scenes/RecordScene.gd|lit|加载更多
+scripts/scenes/RecordScene.gd|lit|参加积分赛、闯关赛、决赛或偷袭后，对局将显示在这里。
+scripts/scenes/RecordScene.gd|lit|场次
 scripts/scenes/RecordScene.gd|lit|战绩
 scripts/scenes/RecordScene.gd|lit|指定首领
-scripts/scenes/RecordScene.gd|lit|时长 %d:%02d
 scripts/scenes/RecordScene.gd|lit|昨天
+scripts/scenes/RecordScene.gd|lit|暂无战绩
 scripts/scenes/RecordScene.gd|lit|最近对局
+scripts/scenes/RecordScene.gd|lit|正在读取服务器上的对局…
 scripts/scenes/RecordScene.gd|lit|测试
 scripts/scenes/RecordScene.gd|lit|深海闯关
+scripts/scenes/RecordScene.gd|lit|积分赛
 scripts/scenes/RecordScene.gd|lit|胜
-scripts/scenes/RecordScene.gd|lit|胜利
 scripts/scenes/RecordScene.gd|lit|胜率
 scripts/scenes/RecordScene.gd|lit|观看
 scripts/scenes/RecordScene.gd|lit|负
 scripts/scenes/RecordScene.gd|lit|载入中
+scripts/scenes/RecordScene.gd|lit|连不上服务器，只显示这台设备上的对局
 scripts/scenes/RecordScene.gd|lit|野生
+scripts/scenes/RecordScene.gd|lit|闯关赛
 scripts/scenes/RecordScene.gd|lit|首领
-scripts/scenes/RecordScene.gd|text|完成一场对战后，记录会显示在这里。
-scripts/scenes/RecordScene.gd|text|暂无战绩
 scripts/scenes/RecordScene.gd|text|胜
 scripts/scenes/RecordScene.gd|text|负
 scripts/scenes/SettingsScene.gd|lit| · 玩家 ID %s
@@ -2206,6 +2209,25 @@ scripts/scenes/queue_wait_view.gd|lit|再负 %d 场出局
 scripts/scenes/queue_wait_view.gd|lit|可返回主页，匹配成功后自动进入对局
 scripts/scenes/queue_wait_view.gd|lit|已锁定
 scripts/scenes/queue_wait_view.gd|lit|闯关赛  第 %d 场
+scripts/scenes/record/battle_log_card.gd|lit| · 第%d轮
+scripts/scenes/record/battle_log_card.gd|lit|上路 
+scripts/scenes/record/battle_log_card.gd|lit|下路 
+scripts/scenes/record/battle_log_card.gd|lit|今天 
+scripts/scenes/record/battle_log_card.gd|lit|偷袭
+scripts/scenes/record/battle_log_card.gd|lit|周六闯关赛
+scripts/scenes/record/battle_log_card.gd|lit|周日决赛
+scripts/scenes/record/battle_log_card.gd|lit|失败
+scripts/scenes/record/battle_log_card.gd|lit|对局
+scripts/scenes/record/battle_log_card.gd|lit|时长 %d:%02d
+scripts/scenes/record/battle_log_card.gd|lit|昨天 
+scripts/scenes/record/battle_log_card.gd|lit|积分赛
+scripts/scenes/record/battle_log_card.gd|lit|胜
+scripts/scenes/record/battle_log_card.gd|lit|胜利
+scripts/scenes/record/battle_log_card.gd|lit|负
+scripts/scenes/record/battle_log_card.gd|lit|进攻
+scripts/scenes/record/battle_log_card.gd|lit|防守
+scripts/scenes/record/battle_log_card.gd|text|上
+scripts/scenes/record/battle_log_card.gd|text|下
 scripts/scenes/record/match_card.gd|lit|版本不同
 scripts/scenes/settings/account_delete_dialog.gd|lit|下一步
 scripts/scenes/settings/account_delete_dialog.gd|lit|删除中

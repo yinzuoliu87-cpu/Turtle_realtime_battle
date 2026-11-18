@@ -48,7 +48,7 @@ const MORE_LABEL := "加载更多"
 const TXT_LOADING := "正在读取服务器上的对局…"
 const TXT_OFFLINE := "连不上服务器，只显示这台设备上的对局"
 const TXT_EMPTY := "暂无战绩"
-const TXT_EMPTY_SUB := "打完一场积分赛、闯关赛、决赛或偷袭，记录会显示在这里。"
+const TXT_EMPTY_SUB := "参加积分赛、闯关赛、决赛或偷袭后，对局将显示在这里。"
 ## 赛事页签: [键, 字]。键 = 行的 kind(all = 全部)。
 const TABS := [["all", "全部"], ["ranked", "积分赛"], ["gauntlet", "闯关赛"], ["finals", "决赛"], ["raid", "偷袭"]]
 ## 节点名 —— 门禁按名字找。
