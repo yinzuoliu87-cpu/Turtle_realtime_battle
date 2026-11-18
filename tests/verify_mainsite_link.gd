@@ -447,8 +447,18 @@ func _t_settings(gs) -> void:
 	_me_reply = {"linked": true, "user_id": "GEACjjPJERy", "owned": ["basic"]}
 	var s2: Control = await _open_settings()
 	var b2 = s2.find_child(ROW.N_BTN, true, false)
-	_ok("② ★已绑定: 「龟投账号」+「已绑定」、没有按钮", _txt(s2, ROW.N_HEAD) == "龟投账号" and _txt(s2, ROW.N_STATE) == "已绑定"
-		and b2 is Button and not (b2 as Button).visible, _txt(s2, ROW.N_STATE))
+	## 2026-11-18 用户「游戏里能加跳主站的入口吗？但设置里面可以加」⇒ 已绑定时右边是「打开龟投」(原来没有按钮)。
+	_ok("② ★已绑定: 「龟投账号」+「已绑定」+「打开龟投」可点", _txt(s2, ROW.N_HEAD) == "龟投账号" and _txt(s2, ROW.N_STATE) == "已绑定"
+		and b2 is Button and (b2 as Button).visible and (b2 as Button).text == "打开龟投" and not (b2 as Button).disabled,
+		"%s | %s" % [_txt(s2, ROW.N_STATE), (b2 as Button).text if b2 is Button else "?"])
+	if b2 is Button:
+		var n_open := _opened.size()
+		var st_before := _count(ML.P_START)
+		(b2 as Button).pressed.emit()
+		await _frames(2)
+		_ok("② ★点「打开龟投」= 浏览器打开龟投龟战页一次、不发绑定请求", _opened.size() == n_open + 1
+			and str(_opened.back()) == "https://turtlepoll.com/arena" and _count(ML.P_START) == st_before
+			and ML.linked_state() == 1, str(_opened.slice(n_open)))
 	s2.queue_free()
 	await _frames(2)
 	await _t_internal_mail(gs)

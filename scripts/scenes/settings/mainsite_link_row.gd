@@ -2,7 +2,9 @@ extends Control
 ## mainsite_link_row.gd —— 设置页账号框里「龟投账号」那一行(2026-11-08 · 方案书 docs/plans/20261107-龟战主站对接.md §4.1)。
 ##
 ## 长相: 与上面「未绑定邮箱」状态卡同一种(压暗底 + 左边一道状态色竖条), 左边两行字、右边一颗按钮:
-##   「龟投账号」(小字标签) / 状态(未绑定 · 等待确认 · 已绑定 · 登录码已过期 …)  +  [绑定] / [取消]; 已绑定时没有按钮。
+##   「龟投账号」(小字标签) / 状态(未绑定 · 等待确认 · 已绑定 · 登录码已过期 …)  +  [绑定] / [取消] / [打开龟投]。
+## ★2026-11-18 已绑定时右边给「打开龟投」(用户「游戏里能加跳主站的入口吗？但设置里面可以加，我感觉」):
+##   打开系统浏览器到 `MainsiteLink.SITE_URL`。原来已绑定时没有按钮。没绑的号点「绑定」本来就会去龟投网站。
 ## ★用户 11-07 定的叫法是「龟投账号」+「未绑定 / 已绑定」+「绑定」。标签与状态分两行写, 不拼成「龟投账号 · 未绑定」——
 ##   「·」把两件事拼成一行是 verify_ui_copy 禁用模式第 2 条(用户 11-01 文案规矩), 一行一件事。
 ## ★不出现「主站」「龟币」「金额」(用户 11-06 / 11-07); 这一行只在设置页, 选龟页不放任何龟投的入口或提示。
@@ -35,6 +37,7 @@ const S_ERR := {
 }
 const L_BIND := "绑定"
 const L_CANCEL := "取消"
+const L_OPEN := "打开龟投"
 
 const C_UNBOUND := "#ffb454"     # 与「未绑定邮箱」同一种警示橙
 const C_BOUND := "#7fe0b0"       # 与「已绑定：邮箱」同一种绿
@@ -71,7 +74,7 @@ static func view_of(st: String, linked: int, why: String, me_busy: bool, lost: i
 	if lost == 2:
 		return {"state": S_ERR[ML.R_AUTH], "col": C_ERR, "btn": "", "btn_on": false, "act": ""}
 	if linked == 1 and lost == 0:
-		return {"state": S_BOUND, "col": C_BOUND, "btn": "", "btn_on": false, "act": ""}
+		return {"state": S_BOUND, "col": C_BOUND, "btn": L_OPEN, "btn_on": true, "act": "open"}
 	match st:
 		ML.ST_EXPIRED:
 			return {"state": S_EXPIRED, "col": C_ERR, "btn": L_BIND, "btn_on": true, "act": "bind"}
@@ -181,6 +184,8 @@ func _on_btn() -> void:
 			ML.start_link()
 		"cancel":
 			ML.cancel_link()
+		"open":
+			ML.open_site()
 	_refresh()
 
 

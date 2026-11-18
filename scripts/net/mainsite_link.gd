@@ -489,6 +489,15 @@ static func cancel_link() -> void:
 	_go(ST_CANCELLED)
 
 
+## 龟投网站的龟战页(用户 11-18「游戏里能加跳主站的入口吗？但设置里面可以加」; 已绑定时设置页那一行的「打开龟投」)。
+## 主站公开域名(tools/mainsite_deploy.py PROD_BASE_DEFAULT); 内测服也跳正式站(内测站地址不进公开仓库)。
+const SITE_URL := "https://turtlepoll.com/arena"
+
+
+static func open_site() -> void:
+	_open(SITE_URL)
+
+
 static func _open(url: String) -> void:
 	opened.append(url)
 	if open_url_sink.is_valid():
