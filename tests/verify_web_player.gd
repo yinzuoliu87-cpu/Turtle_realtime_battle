@@ -73,6 +73,26 @@ func _ready() -> void:
 # ── ① 判据纯函数 ────────────────────────────────────────
 func _pure() -> void:
 	print("=== ① 判据 ===")
+	## 2026-11-18 网页播放器关粒子湍流(用户「可以关吧」; 方案书 20261118d P2): 镜像在网页播放器进程里把 ParticleProcessMaterial 的湍流关掉,
+	##   别的进程(App 回放)照原样。本门禁进程不是网页播放器 ⇒ 默认不关; 两种都量。
+	var SF := preload("res://scripts/systems/stream/stream_format.gd")
+	var turb := [["turbulence_enabled", true, false], ["spread", 22.0, false]]
+	var w3 := Node3D.new()
+	var mw := StreamMirror.new(w3)
+	var app_default: bool = mw.no_turb
+	mw.res_def(1, SF.RES_PARAM, "ParticleProcessMaterial", turb, null)
+	var kept: bool = (mw.res[1] as ParticleProcessMaterial).turbulence_enabled
+	var mw2 := StreamMirror.new(w3)
+	mw2.no_turb = true
+	mw2.res_def(1, SF.RES_PARAM, "ParticleProcessMaterial", turb, null)
+	mw2.res_def(2, SF.RES_PARAM, "ParticleProcessMaterial", [["spread", 10.0, false]], null)
+	mw2.res_set(1, [["turbulence_enabled", true, false]])
+	var m1 := mw2.res[1] as ParticleProcessMaterial
+	_ok("★网页播放器关粒子湍流: 定义 / 后改都关掉、别的属性照设(扩散 22); 不是网页进程(App 回放)默认不关、照原样开着",
+		not app_default and kept and not m1.turbulence_enabled and is_equal_approx(m1.spread, 22.0) and mw2.turb_off == 2
+		and not (mw2.res[2] as ParticleProcessMaterial).turbulence_enabled,
+		"本进程默认 %s · 不关时 %s · 关后 %s · 关了 %d 次" % [app_default, kept, m1.turbulence_enabled, mw2.turb_off])
+	w3.free()
 	_ok("手机 UA: iPhone / Android 判为手机", WC.is_mobile(UA_IPHONE, 5) and WC.is_mobile(UA_ANDROID, 5))
 	_ok("★iPadOS(报桌面 Mac UA + 多点触控)判为手机; 真 Mac(没有触控)不是", WC.is_mobile(UA_MAC, 5) and not WC.is_mobile(UA_MAC, 0))
 	_ok("电脑浏览器(带触屏的 Windows 也算电脑)不是手机", not WC.is_mobile(UA_DESK, 0) and not WC.is_mobile(UA_DESK, 10))

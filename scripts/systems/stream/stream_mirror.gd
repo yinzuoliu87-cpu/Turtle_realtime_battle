@@ -38,6 +38,10 @@ var _gen_cache := {}          # 没有资源参数的出处键(贴图为主) →
 var _gen_sig := {}            # rid → 出处键签名(同 rid 的 keyframe 重发对得上就复用)
 var _gen_raw := {}            # rid → 原始参数表(参数差分查它; keyframe 清零)
 var gen_delta := 0            # 参数差分次数
+## 网页播放器关粒子湍流(用户 11-18「可以关吧，应该影响也不大吧」; 方案书 docs/plans/20261118d-网页播放器卡顿.md P2):
+##   浏览器第一次编「开了湍流的粒子运算着色器」一次 6 秒(第一次来看的人 15 秒), 关掉降到 1 秒以内。只在网页播放器进程里关, App 回放照原样。
+var no_turb := WebPlayerMode.active()
+var turb_off := 0             # 关掉了几份(门禁分母)
 var parent_fallback := 0      # 父节点找不到、挂到 _world 的
 var reparents := 0            # 跟着服务器换过父节点的次数
 var kf_dropped := 0           # keyframe 里没出现、被兜底删掉的(顺播时应为 0)
@@ -459,6 +463,9 @@ func _apply_props(o: Object, props: Array, rid: int = 0) -> void:
 		if bool(e[2]):
 			v = res.get(int(v))
 		o.set(str(e[0]), v)
+	if no_turb and o is ParticleProcessMaterial and (o as ParticleProcessMaterial).turbulence_enabled:
+		(o as ParticleProcessMaterial).turbulence_enabled = false
+		turb_off += 1
 
 
 ## v4: plist 里点数组那一项的 [0 整份(sdiff) / 1 差分(对前两份的线性外推), 整数串] → 绝对整数串(不改记录; 插值预看下一个采样点也用它)。

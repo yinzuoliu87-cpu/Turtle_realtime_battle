@@ -1,5 +1,7 @@
 """另起一个独立 Chrome(独立临时配置目录、静音、右屏), 用 DevTools 协议抓 GPU 追踪, 统计着色器编译 / 链接 / 贴图上传耗时。
 用法: python gputrace.py <仓库根> <网址> [录多少秒=140]
+环境变量 COLD=1 ⇒ 关掉 Chrome 的着色器磁盘缓存 / 程序缓存(每次都真编译 = 模拟第一次来看的人; 本机缓存会跨配置目录留存, 不关就量不到首次)。
+结束前对页面截一张图(.out/webperf/gputrace_end.png: perf=1 读数里的长帧清单)。
 不碰用户自己的 Chrome 配置; 结束时关掉这个独立实例。"""
 import json
 import os
@@ -20,7 +22,8 @@ op = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 proc = subprocess.Popen([CHROME, "--user-data-dir=" + PROF, "--remote-debugging-port=%d" % PORT, "--no-first-run",
                          "--no-default-browser-check", "--mute-audio", "--window-position=2000,80", "--window-size=1280,860",
-                         "--disable-features=Translate", "about:blank"])
+                         "--disable-features=Translate"] + (["--disable-gpu-shader-disk-cache", "--disable-gpu-program-cache"]
+                                                            if os.environ.get("COLD") == "1" else []) + ["about:blank"])
 ver = None
 for _ in range(60):
     try:
@@ -62,6 +65,20 @@ while time.time() < t_end:
     if m.get("method") == "Tracing.dataCollected":
         events += m["params"]["value"]
 ws.settimeout(60)
+try:
+    pages = [t for t in json.loads(op.open("http://127.0.0.1:%d/json" % PORT, timeout=5).read()) if t.get("type") == "page" and t.get("url", "").startswith("http")]
+    if pages:
+        pw = websocket.create_connection(pages[0]["webSocketDebuggerUrl"], timeout=30, suppress_origin=True)
+        pw.send(json.dumps({"id": 1, "method": "Page.captureScreenshot", "params": {"format": "png"}}))
+        while True:
+            m = json.loads(pw.recv())
+            if m.get("id") == 1:
+                break
+        import base64
+        open(os.path.join(ROOT, ".out", "webperf", "gputrace_end.png"), "wb").write(base64.b64decode(m["result"]["data"]))
+        pw.close()
+except Exception as e:  # noqa: BLE001
+    print("screenshot failed:", e)
 send("Tracing.end")
 while True:
     m = json.loads(ws.recv())
