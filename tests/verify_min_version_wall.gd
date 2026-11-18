@@ -193,6 +193,12 @@ func _t_decision() -> void:
 		VersionWall.ios_store_url("", "abc"))
 	_ok("② iOS 链接位: 都空 ⇒ TestFlight 首页", VersionWall.ios_store_url("", "") == VersionWall.STORE_URL_IOS)
 	_ok("② 桌面 / 网页退回 iOS 那一条", VersionWall.store_url_for("Windows") == VersionWall.store_url_for("iOS"))
+	## 2026-11-18(方案书 20261118b-安卓直装包): 真链接, 不是占位。iOS 去公开测试链接(不是 TestFlight 首页);
+	## 安卓不在 Google Play ⇒ 去自家域名的直装包下载(不许再指 play.google.com)。
+	_ok("② iOS 撞墙去 TestFlight 公开链接", VersionWall.store_url_for("iOS") == "https://testflight.apple.com/join/tx8zK2Gu",
+		VersionWall.store_url_for("iOS"))
+	_ok("② 安卓撞墙去直装包下载链接", VersionWall.store_url_for("Android") == "https://dl.turtlearena.xyz/android",
+		VersionWall.store_url_for("Android"))
 
 
 ## 让墙自己去问一次服务状态(走产品的 `_fetch` → `fetch_status_async`), 等回包落地。

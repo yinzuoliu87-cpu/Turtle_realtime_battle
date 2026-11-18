@@ -8,12 +8,16 @@
 
   status [<版本>]                     这一版每个构建：构建号 / processingState / expired / betaReviewState /
                                       externalBuildState / 在不在公开测试组 / 有没有中文更新说明；不给版本 ⇒ 列公开测试组
-  submit <版本> [--build N] [--dry-run] [--notes 文件] [--wait-min 90]
+  submit <版本> [--build N] [--dry-run] [--notes 文件] [--wait-min 90]      【周五做】只提审，不进公开测试组
         ① 等一份没作废的构建 VALID（默认取最新构建号；--build 指定）
-        ② 加进公开测试组
+        ② ★不加进公开测试组（11-18 起正式开跑：每周一 21:00–23:00 英国时间统一换版，之前玩家留在当前版本、
+           TestFlight 不推新版；进组是周一窗口里 group-add 那一步，CLAUDE.md §3）
         ③ 本次更新内容（zh-Hans）= CHANGELOG 里这一版那段压成纯文本（### 小标题变一行【…】，上限 4000 字）
         ④ ★先作废【同一版本】里其他还在审（WAITING_FOR_REVIEW / IN_REVIEW）的构建 —— 否则 422 ANOTHER_BUILD_IN_REVIEW
         ⑤ 提交 Beta 版审核，回读 betaReviewState
+  group-add <版本> [--build N] [--dry-run] [--force] [--any-time]   【周一换版窗口里做】把过审的构建放进公开测试组
+        ★默认拒绝：这份构建没过审（betaReviewState ≠ APPROVED）/ 现在不在周一 21:00–23:00 英国时间窗口里
+        （--force 放过前者：没过审也进组，苹果一批就推给玩家；--any-time 放过后者：紧急修复）
   expire <构建号> [--ver x.y.z] [--dry-run] [--force]   作废一份构建（不可撤回）
   group-remove <版本> [--dry-run] [--force]             把这一版的构建撤出公开测试组
         ★默认拒绝：组里没有更高版本、已过审、没作废的构建时（撤了公测玩家就没包可装）
@@ -24,6 +28,7 @@
 网络默认绕开系统代理（memory fb-local-proxy-corrupts-post-body）；真要走代理设 USE_PROXY=1。
 """
 import argparse
+import datetime
 import json
 import os
 import re
@@ -43,6 +48,8 @@ BASE = "https://api.appstoreconnect.apple.com"
 WHATS_NEW_MAX = 4000            # 苹果 whatsNew 上限
 FOOTER = "遇到问题请在设置 → 问题反馈中提交，或截图反馈。"
 IN_REVIEW = ("WAITING_FOR_REVIEW", "IN_REVIEW")
+
+SWITCH_WEEKDAY, SWITCH_FROM, SWITCH_TO = 0, 21, 23   # 周一 21:00–23:00 英国时间统一换版（用户 11-16，CLAUDE.md §3）
 
 DRY_RUN = False
 COUNTS = {"GET": 0, "WRITE": 0}
@@ -394,8 +401,10 @@ def cmd_submit(a):
     # ★已有的中文说明不拿 CHANGELOG 生成的去盖（可能是手改过的精简版）；要改就显式给 --notes
     write_notes = cur_notes != notes and (not cur_notes.strip() or bool(a.notes))
     plan = []
-    if bid not in grp:
-        plan.append("② 加进公开测试组")
+    if bid in grp:
+        plan.append("② ⚠ 这份构建已经在公开测试组里（谁手动加的？）—— 一过审玩家就收到新版；不想要就 group-remove")
+    else:
+        plan.append("② 不进公开测试组（周一换版窗口里 python tools/asc.py group-add %s）" % ver)
     if write_notes:
         plan.append("③ %s本次更新内容（现在 %d 字）" % ("改写" if loc else "新建", len(cur_notes)))
     elif cur_notes != notes:
@@ -416,12 +425,6 @@ def cmd_submit(a):
         print("（演练: GET %d 次，写 0 次）" % COUNTS["GET"])
         return 0
 
-    if bid not in grp:
-        code, js = call("POST", "/v1/betaGroups/%s/relationships/builds" % cfg()["public_group"],
-                        {"data": [{"type": "builds", "id": bid}]})
-        print("② 加进公开测试组: %s %s" % (code, "ok" if code < 300 else err(js)))
-        if code >= 300:
-            return 1
     if write_notes:
         if loc:
             code, js = call("PATCH", "/v1/betaBuildLocalizations/%s" % loc["id"],
@@ -453,11 +456,75 @@ def cmd_submit(a):
     got = ((loc or {}).get("attributes") or {}).get("whatsNew") or ""
     same = bool(got.strip()) and (got == notes or not write_notes)
     left = [r["number"] for r in builds_of(ver) if r["id"] != bid and not r["expired"] and review_state(r["id"]) in IN_REVIEW]
-    ok = st in ("WAITING_FOR_REVIEW", "IN_REVIEW", "APPROVED") and in_grp and same and not left
+    ok = st in ("WAITING_FOR_REVIEW", "IN_REVIEW", "APPROVED") and same and not left
     print("回读: 审核 %s / 公开组 %s / 中文说明 %d 字%s / 同版本其他在审 %s  %s" % (
-        st, "在" if in_grp else "不在", len(got), "" if same else "（✗ 与要写的不一致）", left or "无", "✓" if ok else "✗"))
+        st, "在（⚠ 一过审就推给玩家）" if in_grp else "不在（周一 group-add）", len(got),
+        "" if same else "（✗ 与要写的不一致）", left or "无", "✓" if ok else "✗"))
     print("（GET %d 次，写 %d 次）" % (COUNTS["GET"], COUNTS["WRITE"]))
     return 0 if ok else 1
+
+
+def london_now():
+    return datetime.datetime.now(datetime.timezone.utc).astimezone(_london())
+
+
+def _london():
+    from zoneinfo import ZoneInfo
+    return ZoneInfo("Europe/London")
+
+
+def in_switch_window(t):
+    """t = 英国当地时间。周一 21:00 ≤ t < 23:00。"""
+    return t.weekday() == SWITCH_WEEKDAY and SWITCH_FROM <= t.hour < SWITCH_TO
+
+
+def cmd_group_add(a, now=None):
+    """周一换版窗口里第一步：把这一版过了 Beta 审核的构建放进公开测试组（之后 deploy.py → prod_flags force-update）。"""
+    global DRY_RUN
+    DRY_RUN = bool(a.dry_run)
+    ver = a.version
+    R.vtuple(ver)
+    t = now or london_now()
+    win = in_switch_window(t)
+    print("英国时间 %s 周%s：%s周一 %02d:00–%02d:00 换版窗口里" % (
+        t.strftime("%m-%d %H:%M"), "一二三四五六日"[t.weekday()], "在" if win else "不在", SWITCH_FROM, SWITCH_TO))
+    rows = build_rows(ver, detail=False)
+    print("%s 构建: %s" % (ver, ", ".join("%s %s%s%s" % (r["number"], r["review"] or "未提交", " 已作废" if r["expired"] else "",
+                                                       " 在组" if r["in_group"] else "") for r in rows) or "无"))
+    if a.build:
+        tgt = _pick(rows, a.build)
+    else:
+        appr = [r for r in rows if not r["expired"] and r["review"] == "APPROVED"]
+        tgt = appr[-1] if appr else _pick(rows, None)
+    if not tgt:
+        print("✗ 这一版没有没作废的构建")
+        return 1
+    if tgt["in_group"]:
+        print("构建 %s 已经在公开测试组里，不用再加" % tgt["number"])
+        return 0
+    probs = []
+    if tgt["review"] != "APPROVED":
+        probs.append("构建 %s 审核 = %s，还没过审（确实要先进组、一批就推给玩家，加 --force）" % (tgt["number"], tgt["review"] or "未提交"))
+    if not win:
+        probs.append("不在周一 %02d:00–%02d:00 英国时间换版窗口里（紧急修复确实要现在放，加 --any-time）" % (SWITCH_FROM, SWITCH_TO))
+    probs = [p for p in probs if not ((a.force and "--force" in p) or (a.any_time and "--any-time" in p))]
+    for p in probs:
+        print("✗ " + p)
+    if probs:
+        return 1
+    print("计划: 把 %s (%s) 加进公开测试组 —— 公测玩家马上能装到新版；接着 deploy.py %s → prod_flags.py force-update %s" % (
+        ver, tgt["number"], ver, ver))
+    if a.dry_run:
+        print("（演练: GET %d 次，写 0 次）" % COUNTS["GET"])
+        return 0
+    code, js = call("POST", "/v1/betaGroups/%s/relationships/builds" % cfg()["public_group"],
+                    {"data": [{"type": "builds", "id": tgt["id"]}]})
+    print("加进公开测试组: %s %s" % (code, "ok" if code < 300 else err(js)))
+    if code >= 300:
+        return 1
+    inside = tgt["id"] in group_builds()
+    print("回读: %s (%s) %s公开测试组 %s" % (ver, tgt["number"], "在" if inside else "不在", "✓" if inside else "✗"))
+    return 0 if inside else 1
 
 
 def cmd_expire(a):
@@ -582,13 +649,20 @@ def main(argv=None):
     x = sp.add_parser("status", help="一版的构建 / 不给版本 ⇒ 公开测试组")
     x.add_argument("version", nargs="?")
     x.set_defaults(fn=cmd_status)
-    x = sp.add_parser("submit", help="等 VALID → 进公开组 → 更新内容 → 作废同版本在审旧构建 → 提审")
+    x = sp.add_parser("submit", help="周五：等 VALID → 更新内容 → 作废同版本在审旧构建 → 提审（不进公开组）")
     x.add_argument("version")
     x.add_argument("--build", help="指定构建号（默认最新）")
     x.add_argument("--notes", help="用这个文件当本次更新内容（默认取 CHANGELOG）")
     x.add_argument("--wait-min", type=int, default=90)
     x.add_argument("--dry-run", action="store_true")
     x.set_defaults(fn=cmd_submit)
+    x = sp.add_parser("group-add", help="周一换版窗口：把过审的构建放进公开测试组")
+    x.add_argument("version")
+    x.add_argument("--build", help="指定构建号（默认最新的已过审构建）")
+    x.add_argument("--force", action="store_true", help="没过审也进组")
+    x.add_argument("--any-time", action="store_true", help="不在周一 21:00–23:00 窗口也放（紧急修复）")
+    x.add_argument("--dry-run", action="store_true")
+    x.set_defaults(fn=cmd_group_add)
     x = sp.add_parser("expire", help="作废一份构建（不可撤回）")
     x.add_argument("build")
     x.add_argument("--ver", help="构建号对上多份时指定版本")

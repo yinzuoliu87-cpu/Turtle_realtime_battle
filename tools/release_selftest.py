@@ -10,6 +10,7 @@
   ④ 缺 --rules / 版本不升 / 五处本来就不一致 / --rules same 而 sim 文件动过（临时 git 仓库）⇒ 拒，且一个字节都不写
   ⑤ tag 的前置检查（假 facts）：已存在的 tag 拒绝挪动、CI 不绿 / 没推送 / 有占位都拒；全好时不拒（分母）
   ⑥ asc.py 演练里发写请求当场抛异常；CHANGELOG → 更新说明的转换；checklist 步骤齐全有序
+  ⑦ 11-18 拆两步：submit 不进公开组；group-add 只在周一 21:00–23:00 英国时间放过审构建；force-update 要求已进组（桩）
 成功最后一行 `ALL OK`；任何一条不过退出码非 0。只读仓库，写只发生在临时目录。
 """
 import os
@@ -97,7 +98,10 @@ def check_bytes(tag, before, after, old, new, rules_changed):
         k0, k1 = key + b'="' + o + b'"', key + b'="' + n + b'"'
         ok("%s 导出预设 %s=\"%s\" 原来恰好 1 处" % (tag, key.decode(), old), b.count(k0) == 1, b.count(k0))
         exp = exp.replace(k0, k1)
-    ok("%s ③④ 导出预设只改 iOS / Android 两行，其余字节不变" % tag, a == exp)
+    # ④′ 安卓 versionCode(2026-11-18): 跟着新版本号按算法改(android_release.version_code), 值不带引号
+    ok("%s 导出预设 version/code 原来恰好 1 处" % tag, len(re.findall(rb"(?m)^version/code=\d+", b)) == 1)
+    exp = re.sub(rb"(?m)^version/code=\d+", b"version/code=%d" % R.AR.version_code(new), exp)
+    ok("%s ③④ 导出预设只改 iOS / Android 版本名 + 安卓 versionCode 三行，其余字节不变" % tag, a == exp)
     ok("%s macOS 预设空的 short_version 没被碰" % tag,
        a.count(b'application/short_version=""') == b.count(b'application/short_version=""') >= 1)
     # ② CHANGELOG
@@ -313,6 +317,124 @@ def asc_checks(bumped_root, bumped_ver):
     ok("超过 %d 字 ⇒ 截断到上限以内并提醒" % A.WHATS_NEW_MAX, len(notes) <= A.WHATS_NEW_MAX and warn, len(notes))
 
 
+def asc_split_checks():
+    """11-18 正式开跑：submit 只提审不进公开组；group-add 只在周一 21:00–23:00 英国时间、只放过审构建；
+    prod_flags force-update 要求过审构建已进组。全程打桩，不联网、不碰正式服。"""
+    print("— asc.py submit / group-add 拆两步（桩，不联网）")
+    import argparse
+    import contextlib
+    import datetime
+    import io
+    import asc as A
+    import prod_flags as PF
+    lon = A._london()
+
+    def chk(name, cond, detail=""):
+        ok(name, cond, "" if cond else detail)
+    st = {"grp": set(), "review": None}
+    calls = []
+
+    def fake_call(method, path, body=None):
+        m = method.upper()
+        calls.append((m, path))
+        if m == "POST" and "/betaGroups/" in path:
+            st["grp"].update(d["id"] for d in body["data"])
+        if m == "POST" and path == "/v1/betaAppReviewSubmissions":
+            st["review"] = "WAITING_FOR_REVIEW"
+        return 201, {}
+    names = ("call", "cfg", "builds_of", "group_builds", "review_state", "zh_localization")
+    saved = {k: getattr(A, k) for k in names}
+    saved_pf = (PF.snapshot, PF.enabled_versions, PF._write)
+    pf_writes = []
+    A.call = fake_call
+    A.cfg = lambda: {"public_group": "G", "app_id": "X", "key_id": "k", "issuer": "i"}
+    A.builds_of = lambda ver: [{"id": "B1", "ver": ver, "number": "7", "state": "VALID", "expired": False, "uploaded": ""}]
+    A.group_builds = lambda: {b: ("9.9.8", "7") for b in st["grp"]}
+    A.review_state = lambda bid: st["review"]
+    A.zh_localization = lambda bid: {"id": "L1", "attributes": {"whatsNew": "说明"}}
+    PF.snapshot = lambda env: {"status": {"min_client_version": "9.9.7"}}
+    PF.enabled_versions = lambda snap: {"9.9.8": {"rules_ver": 1}}
+    PF._write = lambda env, sql: pf_writes.append(sql)
+    notes = os.path.join(tempfile.mkdtemp(prefix="asc_split_"), "notes.txt")
+    TMPS.append(os.path.dirname(notes))
+    with open(notes, "w", encoding="utf-8") as f:
+        f.write("说明")
+
+    def cap(fn, *args, **kw):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = fn(*args, **kw)
+        return rc, buf.getvalue()
+
+    def writes():
+        return [c for c in calls if c[0] != "GET"]
+    try:
+        mon = datetime.datetime(2026, 11, 23, 21, 30, tzinfo=lon)
+        tue = datetime.datetime(2026, 11, 24, 21, 30, tzinfo=lon)
+        for t, want in ((datetime.datetime(2026, 11, 23, 20, 59, tzinfo=lon), False),
+                        (datetime.datetime(2026, 11, 23, 21, 0, tzinfo=lon), True),
+                        (datetime.datetime(2026, 11, 23, 22, 59, tzinfo=lon), True),
+                        (datetime.datetime(2026, 11, 23, 23, 0, tzinfo=lon), False),
+                        (tue, False), (datetime.datetime(2026, 11, 22, 21, 30, tzinfo=lon), False)):
+            chk("换版窗口 %s 周%s ⇒ %s" % (t.strftime("%m-%d %H:%M"), "一二三四五六日"[t.weekday()], "在" if want else "不在"),
+               A.in_switch_window(t) == want)
+        utc = datetime.datetime(2026, 11, 23, 21, 30, tzinfo=datetime.timezone.utc).astimezone(lon)
+        chk("11 月英国时间 = UTC（冬令时；窗口按当地钟点算）", utc.hour == 21)
+        bst = datetime.datetime(2026, 6, 1, 20, 30, tzinfo=datetime.timezone.utc).astimezone(lon)
+        chk("夏令时 UTC 20:30 = 英国 21:30 ⇒ 在窗口（周一）", bst.weekday() == 0 and A.in_switch_window(bst))
+
+        st.update(grp=set(), review=None)
+        del calls[:]
+        rc, out = cap(A.cmd_submit, argparse.Namespace(version="9.9.8", build=None, notes=notes, wait_min=1, dry_run=False))
+        chk("submit：提审成功（退出码 0）", rc == 0, out[-300:])
+        chk("submit：发了提审 POST /v1/betaAppReviewSubmissions", ("POST", "/v1/betaAppReviewSubmissions") in calls, writes())
+        chk("submit：★没往公开测试组加构建（周五只提审）", not any("/betaGroups/" in c[1] for c in writes()) and not st["grp"],
+           writes())
+
+        def gadd(review, now, in_grp=False, **kw):
+            st.update(grp={"B1"} if in_grp else set(), review=review)
+            del calls[:]
+            ns = argparse.Namespace(version="9.9.8", build=None, force=False, any_time=False, dry_run=False)
+            for k, v in kw.items():
+                setattr(ns, k, v)
+            return cap(A.cmd_group_add, ns, now=now)
+
+        def posted():
+            return [c for c in writes() if c[0] == "POST" and "/betaGroups/G/relationships/builds" in c[1]]
+        rc, out = gadd("APPROVED", mon)
+        chk("group-add：过审 + 周一窗口里 ⇒ 进组（POST 一次、回读在组）", rc == 0 and len(posted()) == 1 and "B1" in st["grp"], out[-200:])
+        rc, out = gadd("WAITING_FOR_REVIEW", mon)
+        chk("group-add：没过审 ⇒ 拒，零写入", rc == 1 and not writes(), out[-200:])
+        rc, out = gadd("WAITING_FOR_REVIEW", mon, force=True)
+        chk("group-add：没过审 + --force ⇒ 放行", rc == 0 and len(posted()) == 1, out[-200:])
+        rc, out = gadd("APPROVED", tue)
+        chk("group-add：周二 ⇒ 拒（不在换版窗口），零写入", rc == 1 and not writes(), out[-200:])
+        rc, out = gadd("APPROVED", tue, any_time=True)
+        chk("group-add：周二 + --any-time ⇒ 放行", rc == 0 and len(posted()) == 1, out[-200:])
+        rc, out = gadd("APPROVED", tue, force=True)
+        chk("group-add：--force 不顶替 --any-time（周二仍拒）", rc == 1 and not writes(), out[-200:])
+        rc, out = gadd("APPROVED", mon, in_grp=True)
+        chk("group-add：已在组里 ⇒ 不重复加", rc == 0 and not writes(), out[-200:])
+        rc, out = gadd("APPROVED", mon, dry_run=True)
+        chk("group-add：演练 ⇒ 零写入", rc == 0 and not writes(), out[-200:])
+
+        st.update(grp=set(), review="APPROVED")
+        del pf_writes[:]
+        rc, out = cap(PF.cmd_force_update, argparse.Namespace(env="prod", version="9.9.8", yes_prod=True))
+        chk("force-update：过审但没进公开组 ⇒ 拒（叫你先 group-add），零写入",
+           rc == 1 and "group-add 9.9.8" in out and not pf_writes, out[-300:])
+        st.update(grp={"B1"})
+        del pf_writes[:]
+        rc, out = cap(PF.cmd_force_update, argparse.Namespace(env="prod", version="9.9.8", yes_prod=False))
+        chk("force-update：过审且在组 ⇒ 前置全过（不带 --yes-prod 只打计划，不写）",
+           "计划: update" in out and "不抬" not in out and not pf_writes, out[-300:])
+    finally:
+        for k, v in saved.items():
+            setattr(A, k, v)
+        PF.snapshot, PF.enabled_versions, PF._write = saved_pf
+        A.DRY_RUN = False
+
+
 def checklist_checks():
     print("— checklist")
     root = make_root()
@@ -326,8 +448,8 @@ def checklist_checks():
         t = f.read()
     ## ★11-05 推送改成经 CI 把关(tools/ship.py), 不再「本机全套 + git push origin main」(CLAUDE.md §2)
     steps = ["release.py bump %s" % ver, "ship.py release-%s" % ver, "release.py tag %s" % ver,
-             "asc.py status %s" % ver, "asc.py submit %s" % ver, "deploy.py %s" % ver, "prod_flags.py show",
-             "prod_flags.py force-update %s" % ver, "asc.py group-remove"]
+             "asc.py status %s" % ver, "asc.py submit %s" % ver, "asc.py group-add %s" % ver, "deploy.py %s" % ver,
+             "prod_flags.py show", "prod_flags.py force-update %s" % ver, "asc.py group-remove"]
     pos = [t.find(s) for s in steps]
     ok("清单 %d 步都在（分母）" % len(steps), all(x >= 0 for x in pos), [s for s, x in zip(steps, pos) if x < 0])
     ok("清单步骤按发版顺序排", pos == sorted(pos), pos)
@@ -357,6 +479,7 @@ def main():
         rules_same_git()
         tag_checks()
         asc_checks(broot, bver)
+        asc_split_checks()
         checklist_checks()
     finally:
         cleanup()

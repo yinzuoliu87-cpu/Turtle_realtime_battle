@@ -74,10 +74,11 @@ python tools/release.py bump <版本> --rules same|changed   # 五处版本号 +
 python tools/release.py checklist <版本>                    # 生成 docs/releases/<版本>.md 发版清单，逐步勾
 python tools/ship.py <主题> --wait                         # 推 wip/<主题> → CI 全绿自动快进 main（11-05 起，取代本机全套 + 直接 push）
 python tools/release.py tag <版本>                          # 前置检查(干净/已推/CI 绿/五处一致) 后只推这一个 tag
-# 推 tag ⇒ testflight.yml 自动签名、核 tag=版本号、上传
-python tools/asc.py submit <版本>                           # 进公开测试组 + 说明(取 CHANGELOG) + 作废同版本在审旧构建 + 提审
+# 推 tag ⇒ testflight.yml 自动签名、核 tag=版本号、上传；android.yml 出正式签名安卓包挂到该 tag 的 GitHub Release
+python tools/asc.py submit <版本>                           # 周五：说明(取 CHANGELOG) + 作废同版本在审旧构建 + 提审；不进公开测试组
+python tools/asc.py group-add <版本>                        # 周一 21:00–23:00 窗口：过审构建放进公开测试组（窗口外 / 没过审都拒）
 python tools/deploy.py <版本>                               # 裁判机 + 陪练号：暂存目录 → 导入 → 两条一致性门禁 → 原子切换 → 对手池 → 回读
-python tools/prod_flags.py force-update <版本> --yes-prod   # 苹果 Beta 审核通过后才放行，抬 min_client_version
+python tools/prod_flags.py force-update <版本> --yes-prod   # 过审且已进公开测试组才放行，抬 min_client_version
 ```
 
 - **五处版本号**：`project.godot` / `CHANGELOG.md` 顶部 / `export_presets.cfg` 的 iOS `short_version` 与 Android `version/name` / `docs/实时版-路线图与待办.md`。`verify_version` 管前四处，路线图那处在 `tools/docs_authority_lint.py`。用 `release.py bump` 就不会漏。
@@ -88,7 +89,7 @@ python tools/prod_flags.py force-update <版本> --yes-prod   # 苹果 Beta 审�
 - **正式服写入**（迁移、开关、强制更新、`referee_versions`）每次都要用户点头；`--yes-prod` 不是授权，用户的话才是。
 - 周末（周六闯关赛、周日决赛日）不动生产库与裁判机，除非用户明说。
 - 不要求装机就不出包；攒批合并发（用户 10-23）。
-- **正式开跑后：每周一 21:00–23:00（英国时间）统一换版**（用户 11-16「在这个时间段之前呢，我们就让玩家待在当前那个版本…不要有版本更新的提示」）：周五只提审、不进公开测试组（正式上架后 App Store 选手动发布）→ 周一窗口里依次放包 → `deploy.py` → `force-update`。苹果没在窗口前过审 ⇒ 这周不换、顺延下周一。游戏内没有软更新提示，只有低于最低版本的挡墙。内测期仍是过审即强更。
+- **正式开跑后：每周一 21:00–23:00（英国时间）统一换版**（用户 11-16「在这个时间段之前呢，我们就让玩家待在当前那个版本…不要有版本更新的提示」）：周五只提审、不进公开测试组（正式上架后 App Store 选手动发布）→ 周一窗口里依次放包（`asc.py group-add`）→ `deploy.py` → `force-update`。苹果没在窗口前过审 ⇒ 这周不换、顺延下周一。游戏内没有软更新提示，只有低于最低版本的挡墙。用户 11-18 定：11-16 龟战上线那周起就算正式开跑（取代「内测期过审即强更」）。
 
 ---
 

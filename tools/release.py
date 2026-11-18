@@ -37,6 +37,9 @@ import sys
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import android_release as AR  # noqa: E402  安卓 versionCode 的算法(2026-11-18)
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GH_REPO = "yinzuoliu87-cpu/Turtle_realtime_battle"
 GH_WORKFLOW = "tests.yml"
@@ -280,6 +283,13 @@ def plan_bump(root, new, rules, date, why=None):
             raise ReleaseError("%s 里 %s 预设的 %s 要恰好 1 条且 = %s，实际 %d 条 / 值 %r" % (
                 F_PRESETS, plat, key, old, len(idx), val))
         lines[idx[0]] = lines[idx[0]].replace('%s="%s"' % (key, old), '%s="%s"' % (key, new), 1)
+    # ④′ 安卓 versionCode：由版本名算(tools/android_release.version_code；方案书 20261118b-安卓直装包 A2)，
+    #    单调递增、不依赖 CI 运行号；值不带引号，行尾原样。
+    idx = preset_lines_for(lines, "Android", "version/code")
+    if len(idx) != 1:
+        raise ReleaseError("%s 里 Android 预设的 version/code 要恰好 1 条，实际 %d 条" % (F_PRESETS, len(idx)))
+    cr = "\r" if lines[idx[0]].endswith("\r") else ""
+    lines[idx[0]] = "version/code=%d%s" % (AR.version_code(new), cr)
     out[F_PRESETS] = "\n".join(lines).encode("utf-8")
 
     # ② CHANGELOG 骨架（换行跟文件走）
@@ -410,7 +420,7 @@ CHECKLIST = """# 发版清单 · v{ver}
 ## 1. 版本号
 
 - [ ] `python tools/release.py bump {ver} --rules same|changed --dry-run` 看改动，再去掉 `--dry-run` 真跑
-  - `--rules changed`：这一版改了会改变对局结果的东西（龟 / 装备数值、技能、羁绊、sim 步进、确定性数学）⇒ `RULES_VER` +1，第 6 步**必须**强制更新
+  - `--rules changed`：这一版改了会改变对局结果的东西（龟 / 装备数值、技能、羁绊、sim 步进、确定性数学）⇒ `RULES_VER` +1，第 5 步**必须**强制更新
   - `--rules same`：会列出上个 tag 以来动过的 sim 路径文件；非空时逐个看过再加 `--yes-rules-same`
   - 回读：末尾一行「回读: 五处 = {ver}」
 - [ ] 填 CHANGELOG.md 的 `## {ver}` 段、路线图 `- **v{ver}**` 那一行（`--rules changed` 时还有 RULES_VER 上方的注释），删掉所有「{ph}」
@@ -433,30 +443,30 @@ CHECKLIST = """# 发版清单 · v{ver}
 - [ ] `python tools/asc.py status {ver}`
   - 回读：新构建 processingState = VALID、expired = False
 
-## 4. 提审（公开测试组）
+## 4. 提审（周五；只提审、不进公开测试组）
 
 - [ ] `python tools/asc.py submit {ver} --dry-run` —— 看「本次更新内容」全文、要作废的同版本在审旧构建
 - [ ] `python tools/asc.py submit {ver}`
-  - 回读：betaReviewState = WAITING_FOR_REVIEW（或 IN_REVIEW / APPROVED）、在公开测试组里
-  - v{prev} 先留在组里：v{ver} 过审之前公测玩家还要有包可装
+  - 回读：betaReviewState = WAITING_FOR_REVIEW（或 IN_REVIEW / APPROVED）、**不在**公开测试组（周一窗口前玩家留在 v{prev}，不推新版）
 
-## 5. 服务器（裁判机 / 陪练号 / 对手池）
+## 5. 周一 21:00–23:00（英国时间）换版窗口
 
-- [ ] `python tools/deploy.py {ver}`（先 `--dry-run`）
-- [ ] `python tools/prod_flags.py show`
-  - 回读：referee_versions 有 {ver}、enabled、rules_ver = 本版 RULES_VER；gauntlet_bot_pool 这个 rules_ver 2052 行；ranked_pool seed 396 / bot 186
-
-## 6. 苹果审核通过之后
+苹果没在周一 21:00 前过审 ⇒ 这周不换，顺延下周一（CLAUDE.md §3）。窗口里按顺序：
 
 - [ ] `python tools/asc.py status {ver}`
   - 回读：betaReviewState = APPROVED
+- [ ] `python tools/asc.py group-add {ver}`（先 `--dry-run`；不在窗口里会拒）
+  - 回读：「回读: {ver} (…) 在公开测试组 ✓」
+- [ ] `python tools/deploy.py {ver}`（先 `--dry-run`）
+- [ ] `python tools/prod_flags.py show`
+  - 回读：referee_versions 有 {ver}、enabled、rules_ver = 本版 RULES_VER；gauntlet_bot_pool 这个 rules_ver 2052 行；ranked_pool seed 396 / bot 186
 - [ ] `python tools/prod_flags.py force-update {ver}`（不带 `--yes-prod` 先看计划；用户点头后加 `--yes-prod`）
   - `RULES_VER` 变了 ⇒ **必须**做（旧包与新包打不出同一局）；没变 ⇒ 按需
   - 回读：service_status.min_client_version = {ver}
 - [ ] `python tools/asc.py group-remove {prev}`（先 `--dry-run`）
   - 回读：`python tools/asc.py status {prev}` 那一列「公开组」= 否
 
-## 7. 收尾
+## 6. 收尾
 
 - [ ] 相关方案书回填上线记录；本清单全部打勾后随下一个提交进仓库
 """

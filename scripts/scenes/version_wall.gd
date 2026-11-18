@@ -30,10 +30,14 @@ const TXT_VER := "当前版本 %s　·　最低版本 %s"
 ##   · APP_STORE_APP_ID: App Store Connect → App 信息 → 「Apple ID」那串纯数字; 上架后填。
 ##   · TESTFLIGHT_JOIN_CODE: TestFlight 外部测试组开「公开链接」后 join/ 后面那段; 公测期填。
 ##   两个都空 ⇒ 退回 STORE_URL_IOS(TestFlight 首页)。拿到真值之前不许乱填。
+## ★2026-11-18 填上公开链接代码(11-18 curl 实测 200, 标题「Join the 斗龟场 beta」): 之前一直空着,
+##   iOS 玩家撞墙去的是 TestFlight 首页。
+## ★2026-11-18 安卓不在 Google Play(方案书 docs/plans/20261118b-安卓直装包.md): 改成自家域名的直装包下载链接,
+##   服务器那边 302 跳到当前版本的安装包; 换版时换跳转目标, 这条链接永远不变。
 const APP_STORE_APP_ID := ""
-const TESTFLIGHT_JOIN_CODE := ""
+const TESTFLIGHT_JOIN_CODE := "tx8zK2Gu"
 const STORE_URL_IOS := "https://testflight.apple.com/"
-const STORE_URL_ANDROID := "https://play.google.com/store/apps/details?id=com.turtlebattle.realtime"
+const STORE_URL_ANDROID := "https://dl.turtlearena.xyz/android"
 ## 从后台回前台(或重新拿到焦点)后再问服务状态的最小间隔: 焦点在桌面上会频繁进出。
 const REFETCH_MIN_SEC := 5.0
 

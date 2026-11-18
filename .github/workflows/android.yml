@@ -1,0 +1,170 @@
+# 安卓直装包（2026-11-18 · 方案书 docs/plans/20261118b-安卓直装包.md A2）
+#
+# 路线: ubuntu runner → Java 17 + Android SDK(build-tools 36) → Godot 4.6.3 + 导出模板 → 导入资源 →
+#   正式证书 `--export-release "Android"` → tools/android_release.py verify(签名指纹 = 固定的正式证书 /
+#   包名 / versionName = 版本 / versionCode = 版本算法) → 推 v* tag 时挂到这个 tag 的 GitHub Release(预发布)。
+#
+# ── Secrets(仓库 Settings → Secrets and variables → Actions; `python tools/android_release.py gh-secrets` 上传) ──
+#   ANDROID_KEYSTORE_B64   正式证书库(PKCS12)的 base64(本机 ~/.config/turtle/secrets/android/release.keystore)
+#   ANDROID_KEY_PASSWORD   证书库 = 密钥密码(Godot 要求两个相同)
+#   别名固定 turtlearena(tools/android_release.py ALIAS), 不是秘密。缺任何一项 ⇒ 红(出不了能覆盖安装的包, 不假装成功)。
+#
+# ── 发布 ──
+#   推 v* tag: 建(或复用)这个 tag 的 Release, 标 prerelease, 上传 turtle-arena-<版本>.apk(--clobber: 重跑覆盖同一版本的包)。
+#   玩家点的是 https://dl.turtlearena.xyz/android(服务器 302 跳到当前版本那个文件), 换版窗口里由
+#   tools/deploy.py 换跳转目标 ⇒ 周五推 tag 提审时, 新包不会提前到玩家手里。
+#   ci/android-* 分支: 照样出包、核对, 只存成 7 天的 artifact, 不发布(验证流水线用)。
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - 'ci/android-*'
+
+permissions:
+  contents: write   # 推 tag 时建 Release、传安装包
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GODOT_VERSION: "4.6.3-stable"
+      BUILD_TOOLS: "36.0.0"
+      PLATFORM: "android-36"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 核对 tag 与 project.godot 版本(只在推 tag 时)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER=$(sed -n 's/^config\/version="\(.*\)".*/\1/p' project.godot | tr -d '\r')
+          if [ "$TAG" != "$VER" ]; then
+            echo "::error title=Android::tag 与 project.godot 版本不一致（tag v$TAG ≠ project.godot $VER），不出包"
+            exit 1
+          fi
+          echo "tag v$TAG = project.godot $VER"
+
+      - name: 版本号 + 自测(versionCode 算法 / 正式证书指纹已固定 / 预设里的 version/code)
+        id: ver
+        run: |
+          VER=$(sed -n 's/^config\/version="\(.*\)".*/\1/p' project.godot | tr -d '\r')
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "版本 $VER · versionCode $(python3 tools/android_release.py code "$VER")"
+          python3 tools/android_release.py | tail -3
+          python3 tools/android_release.py | grep -q "ALL OK"
+
+      - name: 正式证书在不在(只看在不在, 不打印内容)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          MISSING=""
+          [ -n "$KS" ] || MISSING="$MISSING ANDROID_KEYSTORE_B64"
+          [ -n "$PW" ] || MISSING="$MISSING ANDROID_KEY_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error title=Android::缺正式证书 secrets（缺:$MISSING）—— 本机 python tools/android_release.py gh-secrets 上传"
+            exit 1
+          fi
+          echo "正式证书 secrets 齐全"
+
+      - name: Java 17 + Android SDK
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "SDK=$SDK" >> "$GITHUB_ENV"
+          SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SM" --licenses > /dev/null || true
+          "$SM" "platform-tools" "build-tools;$BUILD_TOOLS" "platforms;$PLATFORM" > /dev/null
+          ls "$SDK/build-tools"
+          ls "$SDK/platforms"
+
+      - name: 装 Godot + 导出模板(linux)
+        run: |
+          curl -fL --retry 3 --retry-all-errors -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip
+          BIN="$(ls Godot_v*_linux.x86_64 | head -1)"
+          chmod +x "$BIN"
+          echo "GODOT=$PWD/$BIN" >> "$GITHUB_ENV"
+          curl -fL --retry 3 --retry-all-errors -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          TPL_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION/-stable/.stable}"
+          mkdir -p "$TPL_DIR"
+          unzip -q templates.tpz -d /tmp/tpl
+          cp -R /tmp/tpl/templates/. "$TPL_DIR/"
+          ls "$TPL_DIR" | grep -i android
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.6.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$SDK"
+          export/android/java_sdk_path = "$JAVA_HOME_17_X64"
+          EOF
+          cat "$HOME/.config/godot/editor_settings-4.6.tres"
+
+      - name: 导入资源(重试到导够为止, 同 tests.yml)
+        run: |
+          for i in 1 2 3 4 5; do
+            "$GODOT" --headless --import --path . && rc=0 || rc=$?
+            n=$(ls .godot/imported/ 2>/dev/null | wc -l)
+            echo "导入第 $i 遍: rc=$rc 产物 $n 个"
+            if [ "$n" -ge 50 ]; then break; fi
+          done
+          if [ "$(ls .godot/imported/ 2>/dev/null | wc -l)" -lt 50 ]; then
+            echo "::error title=Android::导入产物过少, 不出包"; exit 1
+          fi
+
+      - name: 出包(正式证书)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VER: ${{ steps.ver.outputs.ver }}
+        run: |
+          mkdir -p build/android
+          OUT="$PWD/build/android/turtle-arena-$VER.apk"
+          KSF="$RUNNER_TEMP/release.keystore"
+          echo "$KS" | base64 -d > "$KSF"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$KSF"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_USER=turtlearena
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$PW"
+          "$GODOT" --headless --path . --export-release "Android" "$OUT" > /tmp/export.log 2>&1 && rc=0 || rc=$?
+          rm -f "$KSF"
+          tail -40 /tmp/export.log
+          if [ "$rc" -ne 0 ] || [ ! -f "$OUT" ]; then
+            echo "::error title=Android::Godot 导出失败(rc=$rc), 没有产出 APK"; exit 1
+          fi
+          echo "APK=$OUT" >> "$GITHUB_ENV"
+
+      - name: 核对安装包(签名指纹 / 包名 / 版本名 / versionCode)
+        env:
+          VER: ${{ steps.ver.outputs.ver }}
+        run: |
+          python3 tools/android_release.py verify "$APK" --version "$VER"
+          echo "::notice title=Android::$(basename "$APK") $(du -m "$APK" | cut -f1) MB · 正式证书 · versionCode $(python3 tools/android_release.py code "$VER")"
+
+      - name: 挂到这个 tag 的 Release(只在推 tag 时)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --prerelease --title "$GITHUB_REF_NAME" --notes "斗龟场安卓直装包（与 TestFlight 同一版本）。玩家下载链接：https://dl.turtlearena.xyz/android"
+          fi
+          gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
+          gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[] | "\(.name) \(.size)"'
+
+      - name: 分支上只存成 artifact(不发布)
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/android/*.apk
+          retention-days: 7

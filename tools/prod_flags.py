@@ -10,6 +10,7 @@
                                             只认白名单里的键（FLAGS）；正式服要 --yes-prod；写完回读
   force-update <版本> [--env] [--yes-prod]  service_status.min_client_version 抬到 <版本>。前置检查：
                                             ① 只升不降 ② tools/asc.py 查到这一版有构建 betaReviewState = APPROVED
+                                              且已在公开测试组里（11-18 起提审不进组，周一 asc.py group-add 才进）
                                             ③ referee_versions 里有这一版且 enabled（裁判机装好了，tools/deploy.py）
                                             不带 --yes-prod ⇒ 只打计划
 
@@ -187,6 +188,8 @@ def cmd_force_update(a):
         if not okb:
             probs.append("苹果还没批 %s 的 Beta 审核（要有一份没作废、betaReviewState = APPROVED 的构建）"
                          "—— 早抬会把公测玩家关在门外" % ver)
+        elif not any(r.get("in_group") for r in okb):
+            probs.append("%s 过审的构建还没进公开测试组（公测玩家装不到）—— 先 python tools/asc.py group-add %s" % (ver, ver))
     except Exception as e:  # noqa: BLE001 —— 查不到 = 不放行
         probs.append("查不到苹果审核状态: %s" % e)
     # ③ 裁判机装了这一版
