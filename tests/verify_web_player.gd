@@ -23,6 +23,7 @@ const WC := preload("res://scripts/systems/replay/web_player_core.gd")
 const RC := preload("res://scripts/scenes/battle/replay_controls.gd")
 const SB := preload("res://scripts/net/supabase.gd")
 const WPS := preload("res://scripts/scenes/WebPlayerScene.gd")
+const WARM := preload("res://scripts/systems/replay/web_shader_warmup.gd")
 const SIM_DT := 1.0 / 60.0
 const UA_DESK := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 const UA_IPHONE := "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1"
@@ -193,6 +194,14 @@ func _full_play() -> void:
 	var wp := await _open(mid, UA_DESK, 0, 2400)
 	_ok("分母 · 进页前后端是开着的(这条不成立, 下一条就是空检查)", sb_before)
 	_ok("★★进了播放器页 ⇒ 后端整层停用(不登录)", not SB.enabled())
+	## 2026-11-18 开播前预热粒子着色器(方案书 20261118d P1 第二版): 进场之前把整局的块解了一遍(一块不落), 照流里每个粒子节点原样复刻、按签名去重、
+	##   每种都真放进小视口(放了的 = 种数)
+	var wl: Dictionary = WARM.last
+	_ok("★开播前预热: 整局 %d 块都解了、粒子节点 %d 个 → %d 种、放了 %d(解块 %.0f ms, 合计 %.0f ms)" % [int(wl.get("chunks", 0)), int(wl.get("nodes", 0)),
+			int(wl.get("kinds", 0)), int(wl.get("placed", 0)), float(wl.get("ms_parse", 0.0)), float(wl.get("ms_total", 0.0))],
+		int(wl.get("chunks", 0)) > 0 and int(wl.get("parsed", -1)) == int(wl.get("chunks", 0)) and int(wl.get("kinds", 0)) <= int(wl.get("nodes", 0))
+		and int(wl.get("placed", -1)) == int(wl.get("kinds", -2)) and (int(wl.get("nodes", 0)) == 0 or int(wl.get("kinds", 0)) > 0),
+		str(wl))
 	_ok("★播放器页取了 end.json、拉到第 0 块读出地图种子、换去战斗场",
 		wp.state == "playing" and _codes(wp) == [200] and int(wp.map_seed) == int(nat.get("seed", -1)) and _nav == [ReplayRecorder.BATTLE_SCENE],
 		"state=%s 种子 %d(任务单 %d) 换屏 %s 请求 %s 服务端收到 %d" % [wp.state, int(wp.map_seed), int(nat.get("seed", -1)), str(_nav), str(wp.requests), _srv.reqs.size() - r0])
@@ -311,7 +320,7 @@ func _open(mid: String, ua: String, touch: int, max_frames: int = 600) -> Node:
 func _settle(wp: Node, max_frames: int = 600) -> void:
 	for _i in range(max_frames):
 		await get_tree().process_frame
-		if not (str(wp.state) in ["", "checking", "loading"]):
+		if not (str(wp.state) in ["", "checking", "loading", "warming"]):
 			return
 
 

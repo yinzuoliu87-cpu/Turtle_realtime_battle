@@ -13,6 +13,9 @@ const SW := preload("res://scripts/systems/replay/stream_watch.gd")
 ## 网址带 `perf=1`(桌面调试: 环境变量 WEBPLAYER_PERF=1)⇒ 左上角挂性能读数(11-18 量网页播放卡顿; 头注见该文件)。
 const PERF := preload("res://scripts/systems/replay/web_perf_overlay.gd")
 const ENV_PERF := "WEBPLAYER_PERF"
+## 开播前预热粒子着色器(方案书 20261118d P1; 头注见该文件)。拿到第 0 块后等整局拉完再预热, 最多等这么久(秒), 到点拿已有的块预热。
+const WARM := preload("res://scripts/systems/replay/web_shader_warmup.gd")
+const FULL_WAIT_SEC := 8.0
 const TIMEOUT_SEC := 15.0
 ## 网络一直不通时, 等第 0 块等多久改说网络失败那一句(WebPlayerCore.TXT_OFFLINE)(块来源自己按退避一直重试)。
 const FIRST_CHUNK_WAIT_SEC := 20.0
@@ -20,7 +23,7 @@ const BG := Color(0.0392, 0.0549, 0.0941)
 const N_STATUS := "WebPlayerStatus"
 const N_BUTTON := "WebPlayerButton"
 
-## 页面状态: checking / loading / playing(已交给战斗场)/ ended / mobile / not_found / expired / version / offline / error
+## 页面状态: checking / loading / warming(预热粒子着色器, 字仍是「正在载入录像」)/ playing(已交给战斗场)/ ended / mobile / not_found / expired / version / offline / error
 var state := ""
 var match_id := ""
 var origin := ""
@@ -35,6 +38,7 @@ var _lbl: Label = null
 var _btn: Button = null
 var _wait := 0.0
 var _pulse := 0.0
+var _full_wait := 0.0
 
 
 func _ready() -> void:
@@ -129,10 +133,11 @@ func _start_stream() -> void:
 	_show("loading", WC.TXT_LOADING)
 	src = StreamSource.Http.new(WC.streams_base(origin), match_id, {"finished": true, "version": _ver()})
 	_wait = 0.0
+	_full_wait = 0.0
 
 
 func _process(dt: float) -> void:
-	if _lbl != null and state in ["checking", "loading"]:
+	if _lbl != null and state in ["checking", "loading", "warming"]:
 		_pulse += dt
 		_lbl.modulate.a = 0.65 + 0.35 * cos(_pulse * 3.0)
 	if state != "loading" or src == null:
@@ -143,7 +148,9 @@ func _process(dt: float) -> void:
 		if map_seed <= 0:
 			_show("error", StreamPlayer.TXT_ERROR)
 			return
-		_enter()
+		_full_wait += dt
+		if str(src.state) == StreamSource.Http.ST_COMPLETE or _full_wait >= FULL_WAIT_SEC:
+			_warm()
 	elif str(src.state) == StreamSource.Http.ST_GONE:
 		_show("not_found", WC.TXT_NOT_FOUND)
 	elif str(src.state) == StreamSource.Http.ST_UPDATE:
@@ -151,6 +158,21 @@ func _process(dt: float) -> void:
 	elif _wait > FIRST_CHUNK_WAIT_SEC and int(src.net_fail) > 0:
 		src = null
 		_show("offline", WC.TXT_OFFLINE, WC.BTN_RETRY)
+
+
+func _warm() -> void:
+	state = "warming"
+	## 测量用(只认带 perf=1 的那一页): warm=0 跳过预热, 同一局 A/B 比。
+	if get_tree().root.get_node_or_null(PERF.NAME) != null and _param("warm", "WEBPLAYER_WARM") == "0":
+		_enter()
+		return
+	var w = WARM.new()
+	for i in range(src.fetched()):
+		w.chunks.append(src.chunk(i))
+	w.done.connect(func() -> void:
+		if state == "warming":
+			_enter())
+	add_child(w)
 
 
 func _enter() -> void:
@@ -187,6 +209,10 @@ func _maybe_perf() -> void:
 	var o: CanvasLayer = PERF.new()
 	o.name = PERF.NAME
 	get_tree().root.add_child.call_deferred(o)
+
+
+func _param(key: String, env: String) -> String:
+	return WC.query_param(_js("window.location.search"), key) if OS.has_feature("web") else OS.get_environment(env)
 
 
 func _read_match() -> String:
