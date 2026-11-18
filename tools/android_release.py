@@ -66,7 +66,13 @@ def norm_hex(s):
 
 def parse_apksigner(text):
     """`apksigner verify --print-certs` 的输出 → 每个签名者证书的 SHA-256（规范化十六进制）。"""
-    return [norm_hex(m.group(1)) for m in re.finditer(r"(?m)^Signer #\d+ certificate SHA-256 digest:\s*([0-9a-fA-F:]+)\s*$", text)]
+    ## 「Signer #1 …」或按 SDK 段分组的「Signer (minSdkVersion=24, maxSdkVersion=…) …」两种写法都认; 同一张证书只算一次。
+    out = []
+    for m in re.finditer(r"(?m)^Signer (?:#\d+|\([^)]*\)) certificate SHA-256 digest:\s*([0-9a-fA-F:]+)\s*$", text):
+        h = norm_hex(m.group(1))
+        if h not in out:
+            out.append(h)
+    return out
 
 
 def parse_badging(text):
@@ -157,12 +163,18 @@ def keytool():
 
 
 def build_tool(name):
-    """Android SDK build-tools 里最新版本的 apksigner / aapt2。"""
+    """Android SDK build-tools 里的 apksigner / aapt2: 环境变量 BUILD_TOOLS 指定版本就用它(CI 固定 36.0.0, 与本机同一版),
+    否则取最新版本。"""
     for base in (os.environ.get("ANDROID_HOME", ""), os.environ.get("ANDROID_SDK_ROOT", ""), LOCAL_SDK):
         bt = os.path.join(base, "build-tools") if base else ""
         if bt and os.path.isdir(bt):
             vers = sorted((d for d in os.listdir(bt) if re.fullmatch(r"\d+\.\d+\.\d+", d)),
                           key=lambda d: tuple(int(x) for x in d.split(".")))
+            pick = os.environ.get("BUILD_TOOLS", "")
+            if pick:
+                if pick not in vers:
+                    raise AndroidError("BUILD_TOOLS=%s 不在 %s 里(有 %s)" % (pick, bt, vers))
+                vers = [pick]
             for v in reversed(vers):
                 for cand in ([name + ".bat", name + ".exe", name] if os.name == "nt" else [name]):
                     p = os.path.join(bt, v, cand)
@@ -289,6 +301,8 @@ def verify_apk(apk, ver):
     if code2 != 0:
         return ["aapt2 dump badging 失败（退出码 %d）" % code2]
     signers, badging = parse_apksigner(out), parse_badging(out2)
+    if len(signers) != 1:
+        print("── apksigner 原始输出(签名者解析出 %d 个) ──\n%s" % (len(signers), out.strip()[-2500:]))
     print("签名者 %d 个 %s / 包名 %s / versionName %s / versionCode %s / %.1f MB" % (
         len(signers), [s[:16] + "…" for s in signers], badging.get("name"), badging.get("versionName"),
         badging.get("versionCode"), os.path.getsize(apk) / 1048576.0))
@@ -360,6 +374,9 @@ def selftest():
     signer_txt = "Signer #1 certificate DN: CN=Turtle Arena\nSigner #1 certificate SHA-256 digest: %s\nSigner #1 certificate SHA-1 digest: 00\n" % pin
     ok("apksigner 解析", parse_apksigner(signer_txt) == [pin])
     ok("apksigner 冒号写法也认", parse_apksigner("Signer #1 certificate SHA-256 digest: AB:AB\n") == ["abab"])
+    ok("apksigner 按 SDK 段分组的写法也认、同一张证书只算一次", parse_apksigner(
+        "Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: %s\n"
+        "Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: %s\n" % (pin, pin)) == [pin])
     bad_txt = "package: name='%s' versionCode='23005' versionName='0.23.5' platformBuildVersionName='14'\nsdkVersion:'24'\n" % PACKAGE
     bd = parse_badging(bad_txt)
     ok("badging 解析", bd.get("name") == PACKAGE and bd.get("versionCode") == "23005" and bd.get("versionName") == "0.23.5")
