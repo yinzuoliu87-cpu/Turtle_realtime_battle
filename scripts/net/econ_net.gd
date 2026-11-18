@@ -21,6 +21,7 @@ static var busy := false      # 同一时刻只有一个提交在路上(两个�
 static var commits := 0       # 发出去几次(门禁量「真发了」)
 static var last_error := ""   # 最近一次失败的原因(mismatch / taken = 本机与服务器账不一致, S4 对齐)
 static var adopts := 0       # 按服务器流水对齐了几次(门禁量)
+static var stale_rolls := 0  # 发现本机流水是上一周的、先换了周的次数(门禁量)
 
 
 static func on() -> bool:
@@ -37,9 +38,25 @@ static func conflict() -> bool:
 	return last_error == "mismatch" or last_error == "taken"
 
 
-## 本周锚点(与服务端 econ_week_now 同一个口径: 周一 00:00 UTC)。
+## 本机这份流水属于哪一周(= GameState.week_anchor_ts, 周一 00:00 UTC; 还没有锚点 ⇒ 当前周)。
+## ★2026-11-17 改: 原来取「现在」的周 ⇒ App 挂后台跨了周一 0 点(回前台不换周, 只有冷启动 / 打完一局才换),
+##   上周没传完的流水被盖上本周的周号补传, 服务器重放整周判 bt:over、客户端「装备已同步」死循环(正式服 iPad 号, 339 条)。
+##   现在周号跟着流水走; 上传 / 要种子 / 对齐之前先 `roll_if_stale()` 换周(清掉旧流水), 旧流水一条都不上传。
+##   服务端 econ_commit 另有一道闸(迁移 20261117: bt 超过本周总场次 ⇒ mismatch)。
 static func week() -> int:
-	return P2C.week_anchor_utc(int(P2C.now_utc()))
+	var w := int(GameState.week_anchor_ts) if GameState != null else 0
+	return w if w > 0 else P2C.week_anchor_utc(int(P2C.now_utc()))
+
+
+## 本机这份流水是上一周的(App 挂后台跨了周一 0 点)⇒ 先换周再说。换周 = 冷启动那一步 GameState.ensure_season()
+##   (清空 econ_log / econ_up / 场次…); 判据用 GameState.is_season_expired(), 不另写一份。返回是否换了。
+static func roll_if_stale() -> bool:
+	var gs = GameState
+	if gs == null or not gs.is_season_expired():
+		return false
+	stale_rolls += 1
+	gs.ensure_season()
+	return true
 
 
 ## 纯函数: econ_commit 回包 → {ok, reason, next, seq, seed, again, at}。
@@ -94,6 +111,7 @@ static func seeded(op: Dictionary, local_seed: int, done: Callable) -> Dictionar
 		return {"ok": false, "reason": "bad_kind"}
 	if busy:
 		return {"ok": false, "reason": "busy"}
+	roll_if_stale()                    # 上一周的流水不跟着这一趟传(换周后从本周空账起)
 	## 先过一次哨兵: 它可能要补一条 prog(宝箱 / 香火终值)—— 那一条必须排在种子那一条前面、跟着这一趟一起传
 	EL.check(gs, "seeded")
 	var from := clampi(int(gs.econ_up), 0, (gs.econ_log as Array).size())
@@ -130,6 +148,8 @@ static func adopt_async(at: int, done: Callable) -> void:
 	if not on() or busy or not SB.enabled():
 		done.call(false)
 		return
+	if roll_if_stale():
+		at = -1                        # 换了周: 服务器说的「第 at 条」是上一周的账, 本周从头拉
 	busy = true
 	if at < 0:
 		_fetch_adopt(done)
@@ -139,9 +159,33 @@ static func adopt_async(at: int, done: Callable) -> void:
 		busy = false
 		done.call(false)
 		return
+	## ★2026-11-17: 看截断结果再拉流水。原来不看 ⇒ 截断没生效(断网 / 5xx)也照拉, 把服务器判了不合法的那几条在本机重放
+	##   (iPad 号背包冒出 4 件装备 + 6 深海币)。没生效 ⇒ 这次不对齐(done false = 「请连上服务器」), 下次开战再来;
+	##   服务器回 not_invalid(账已经不是不合法的了, 比如另一台设备刚截过)⇒ 照常拉。
 	n._get_once("/rest/v1/rpc/econ_truncate", "POST", JSON.stringify({"p_week": week(), "p_at": at}),
-		func(_r: Dictionary) -> void: _fetch_adopt(done),
-		func(res: Dictionary) -> Dictionary: return res)
+		func(r: Dictionary) -> void:
+			if bool(r.get("ok", false)):
+				_fetch_adopt(done)
+				return
+			busy = false
+			last_error = str(r.get("reason", "net"))
+			done.call(false),
+		func(res: Dictionary) -> Dictionary:
+			return parse_truncate(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+
+
+## 纯函数: econ_truncate 回包 → {ok, reason}。服务端 ok:true ⇒ 截了; ok:false + not_invalid ⇒ 账本来就没被判不合法, 也算可以拉;
+##   别的(断网 / 5xx / 没登录 / 看不懂)⇒ 不行。
+static func parse_truncate(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok or code < 200 or code >= 300:
+		return {"ok": false, "reason": "net"}
+	var j = JSON.parse_string(body)
+	if not (j is Dictionary):
+		return {"ok": false, "reason": "net"}
+	var why := str((j as Dictionary).get("reason", ""))
+	if bool((j as Dictionary).get("ok", false)) or why == "not_invalid":
+		return {"ok": true, "reason": why}
+	return {"ok": false, "reason": why if why != "" else "server"}
 
 
 static func _fetch_adopt(done: Callable) -> void:
@@ -187,6 +231,8 @@ static func pump() -> bool:
 	var gs = GameState
 	if not on() or busy:
 		return false
+	if roll_if_stale():
+		return false                   # 上一周的流水随换周清掉了, 一条都不传
 	var ops: Array = pending_rows(gs)
 	if ops.is_empty():
 		return false

@@ -10,12 +10,15 @@ extends Node
 ##     · ★服务器那份流水从本周开局重放 = 本机状态(S4 服务器重放的前提在客户端这一侧成立)
 ##     · 断号(本机以为传过了、服务器没有)⇒ 回到服务器说的位置补传; 同时只有一个在路上(忙 ⇒ 当场拒)
 ##   ③ ★反向: 本机把已拿到种子的那一条改成别的种子再传 ⇒ 服务器拒(mismatch), 流水停在原处
+##   ④ ★跨周(2026-11-17 正式服 iPad 号「装备已同步」死循环): App 挂后台跨了周一 0 点, 本机流水还是上一周的 ⇒
+##     pump / 要种子之前先换周(清掉旧流水), 旧流水一条都不传、周号是本周; 对齐时截断没生效 ⇒ 不拉流水重放
 ## 假服务器 = 本文件 `_server`(照 20261106_econ_ops.sql 的判据逐条写; 只用来驱动客户端, 判据本身由 SQL 检查脚本守)。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
 const EL := preload("res://scripts/gamedata/econ_ledger.gd")
 const EN := preload("res://scripts/net/econ_net.gd")
+const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const DEAD_URL := "http://127.0.0.1:9"
 const KEYS := ["meta_deepsea_coins", "persistent_bench", "persistent_equipped", "dual_lineup", "equip_pool",
 	"meta_shop_offer", "meta_shop_locked", "meta_shop_battles", "season_level", "season_xp", "season_leaders",
@@ -31,6 +34,8 @@ var _reqs: Array = []          # 收到的 econ_commit 请求体
 var _seed_k := 0
 var _hold: Array = []          # 扣着不回的回包(量「等种子」那一刻)
 var _holding := false
+var _trunc_resp := {"ok": true, "code": 200, "body": '{"ok": true}'}   # econ_truncate 的回包(④ 改它)
+var _truncs := 0
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -60,7 +65,7 @@ func _server(body: Dictionary) -> Dictionary:
 	var ops: Array = body.get("p_ops", []) if body.get("p_ops") is Array else []
 	var kind = body.get("p_kind", null)
 	var nxt := _rows.size()
-	if int(body.get("p_week", 0)) != EN.week():
+	if int(body.get("p_week", 0)) != P2C.week_anchor_utc(int(P2C.now_utc())):   # 同服务端 econ_week_now(): 现在的周
 		return {"ok": false, "reason": "week"}
 	if from < 0 or from > nxt:
 		return {"ok": false, "reason": "gap", "next": nxt}
@@ -98,6 +103,16 @@ func _server(body: Dictionary) -> Dictionary:
 
 
 func _fake(method, url, _headers, body, cb) -> void:
+	if str(url).ends_with("/rest/v1/rpc/econ_truncate"):
+		_truncs += 1
+		cb.call(_trunc_resp)
+		return
+	if str(url).find("/rest/v1/econ_ops?") >= 0:
+		var out: Array = []
+		for i in range(_rows.size()):
+			out.append({"seq": i, "op": _rows[i]})
+		cb.call({"ok": true, "code": 200, "body": JSON.stringify(out)})
+		return
 	if not str(url).ends_with("/rest/v1/rpc/econ_commit"):
 		cb.call({"ok": true, "code": 200, "body": "{}"})
 		return
@@ -272,6 +287,59 @@ func _ready() -> void:
 	_ok("③ ★本机改了服务器发的种子再传 ⇒ mismatch, 服务器那份一条没多", EN.last_error == "mismatch" and _rows.size() == n_srv,
 		"err=%s rows %d→%d" % [EN.last_error, n_srv, _rows.size()])
 	t["seed"] = real_seed
+
+	## ── ④ 跨周: App 挂后台跨了周一 0 点, 本机流水还是上一周的(正式服 11-17 iPad 号) ──
+	var cur_wk := P2C.week_anchor_utc(int(P2C.now_utc()))
+	_ok("④ 分母: 本机现在是本周 ⇒ 不换周、week() = 本周", not gs.is_season_expired() and EN.week() == cur_wk,
+		"anchor=%d cur=%d" % [int(gs.week_anchor_ts), cur_wk])
+	_rows.clear()                                       # 服务器: 新的一周, 一条都还没有
+	_src.clear()
+	var old_rows: Array = []
+	for i in range(5):
+		old_rows.append({"op": "lock", "on": i % 2 == 0, "bt": 22, "seq": i})
+	gs.week_anchor_ts = cur_wk - 7 * 86400
+	gs.season_start_ts = cur_wk - 7 * 86400
+	gs.econ_log = old_rows.duplicate(true)
+	gs.econ_up = 0
+	gs.season_total_battles = 22
+	var c4 := EN.commits
+	var q4 := _reqs.size()
+	var roll4 := EN.stale_rolls
+	var sent4 := EN.pump()
+	_ok("④ ★上一周的流水: pump 先换周、一个请求都不发", not sent4 and EN.commits == c4 and _reqs.size() == q4
+		and EN.stale_rolls == roll4 + 1, "sent=%s commits %d→%d rolls %d→%d" % [str(sent4), c4, EN.commits, roll4, EN.stale_rolls])
+	_ok("④ ★换周之后: 本机流水清空、场次归零、锚点 = 本周", (gs.econ_log as Array).is_empty() and int(gs.econ_up) == 0
+		and int(gs.season_total_battles) == 0 and int(gs.week_anchor_ts) == cur_wk,
+		"log=%d up=%d bt=%d anchor=%d" % [(gs.econ_log as Array).size(), int(gs.econ_up), int(gs.season_total_battles), int(gs.week_anchor_ts)])
+	## 要种子那一趟(进店换货)碰上上一周的流水: 同样先换周, 请求里不带旧流水、周号是本周
+	gs.week_anchor_ts = cur_wk - 7 * 86400
+	gs.season_start_ts = cur_wk - 7 * 86400
+	gs.econ_log = old_rows.duplicate(true)
+	gs.econ_up = 0
+	var q5 := _reqs.size()
+	EN.seeded({"op": "refresh"}, 1, func(_r: Dictionary) -> void: pass)
+	await _wait(func() -> bool: return not EN.busy)
+	var b5: Dictionary = _reqs[-1] if _reqs.size() > q5 else {}
+	_ok("④ ★上一周的流水碰上要种子: 请求里一条旧流水都没有、周号 = 本周", _reqs.size() == q5 + 1
+		and int(b5.get("p_week", 0)) == cur_wk and int(b5.get("p_from", -1)) == 0 and (b5.get("p_ops", []) as Array).is_empty(),
+		JSON.stringify(b5).left(200))
+	_ok("④ 服务器那边也没收进任何旧流水(bt 22 那几条)", _rows.all(func(r) -> bool: return int((r as Dictionary).get("bt", 0)) != 22),
+		str(_rows.size()))
+	## 对齐: 截断没生效 ⇒ 不拉流水、不在本机重放(原来不看截断结果, 照拉照放 ⇒ 背包冒出服务器判了不合法的东西)
+	_trunc_resp = {"ok": false, "code": 0, "body": ""}
+	var a6 := EN.adopts
+	var t6 := _truncs
+	var res6 := [null]
+	EN.adopt_async(0, func(ok: bool) -> void: res6[0] = ok)
+	await _wait(func() -> bool: return res6[0] != null)
+	_ok("④ ★截断没生效(断网)⇒ 对齐失败、不拉流水", res6[0] == false and _truncs == t6 + 1 and EN.adopts == a6 and not EN.busy,
+		"res=%s truncs %d→%d adopts %d→%d" % [str(res6[0]), t6, _truncs, a6, EN.adopts])
+	_trunc_resp = {"ok": true, "code": 200, "body": '{"ok": false, "reason": "not_invalid"}'}
+	res6[0] = null
+	EN.adopt_async(0, func(ok: bool) -> void: res6[0] = ok)
+	await _wait(func() -> bool: return res6[0] != null)
+	_ok("④ 截断回 not_invalid(账本来就没被判坏)⇒ 照常拉流水对齐", res6[0] == true and EN.adopts == a6 + 1, str(res6[0]))
+	_trunc_resp = {"ok": true, "code": 200, "body": '{"ok": true}'}
 
 	## 收尾
 	SB._transport_for_test = Callable()
