@@ -1,0 +1,24 @@
+# 安卓直装包下载跳转 · Caddy 片段（2026-11-18 · 方案书 docs/plans/20261118b-安卓直装包.md A3；部署见同目录 README.md）。
+# 放到 /etc/caddy/turtle-dl.caddy，在 /etc/caddy/Caddyfile 末尾 import 一次（tools/deploy.py --only android 会自己加）。
+#
+#   https://dl.turtlearena.xyz/android  → 302 → 当前版本那个 GitHub Release 文件（turtle-arena-<版本>.apk）
+#
+# 跳转目标在第二个文件 /etc/caddy/turtle-dl-target.caddy（一行 `redir @android <网址> 302`），
+#   换版窗口里由 `python tools/deploy.py <版本> --only android` 重写 → caddy validate → systemctl reload caddy → 回读 Location。
+#   还没放过任何版本时那个文件是空的 ⇒ /android 回「即将开放」(404)。
+# 下载流量走 GitHub 的 CDN，不经过裁判机（开服当天集中下载不挤直播带宽）。
+# 给玩家 / 主站的链接永远是 https://dl.turtlearena.xyz/android，不随版本变。
+
+dl.turtlearena.xyz {
+	header -Server
+	header Cache-Control no-store
+
+	@android path /android /android/
+	import /etc/caddy/turtle-dl-target.caddy
+
+	@health path /healthz
+	respond @health "ok" 200
+
+	respond @android "斗龟场安卓版即将开放 / Turtle Arena for Android is coming soon" 404
+	respond 404
+}

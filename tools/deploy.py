@@ -14,6 +14,8 @@ server/deploy/deploy_version.sh（暂存目录装 tag 那一提交 → 导入两
   python tools/deploy.py 0.23.0 --only player      网页录像播放器（2026-11-08）：本机 `bash build-web.sh player` 在 tag 那一提交上打的包
                                                    → 传上去 → server/player/player_ops.py install（按版本放 /player/<版本>/、
                                                    换入口页、保留期内的旧版本不删）→ 回读。不碰裁判 / 陪练号 / 库。见 server/player/README.md
+  python tools/deploy.py 0.23.5 --only android     安卓下载跳转（2026-11-18）：dl.turtlearena.xyz/android 302 到 Release v<版本> 上的
+                                                   turtle-arena-<版本>.apk（validate 过了才 reload → 回读 Location 与包大小）。见 server/dl/README.md
 
 本机前置检查（不过就停；--dry-run 照跑完、最后报红）：
   ① tag v<版本> 在本机且已推（远端 tag 剥皮后 = 本机）；--sha 给了就必须等于 tag 那一提交
@@ -413,6 +415,197 @@ def deploy_player(a):
     return 0 if not probs else 1
 
 
+# ── 安卓直装包下载跳转（--only android）──────────────────────────
+## https://dl.turtlearena.xyz/android → 302 → 这一版 GitHub Release 上的 turtle-arena-<版本>.apk（方案书 20261118b A3；server/dl/README.md）
+DL_HOST = "dl.turtlearena.xyz"
+DL_SNIPPET = os.path.join(REPO, "server", "dl", "turtle-dl.caddy")
+REMOTE_DL = REMOTE_DIR + "/dl"
+DL_ASSET_RE = re.compile(r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/turtle-arena-[0-9]+\.[0-9]+\.[0-9]+\.apk$")
+DL_MIN_BYTES = 50 * 1048576              # 正式包约 167 MB；小于 50 MB 当成传坏了
+DL_WAIT_SEC = 90                         # 第一次 reload 要现签证书
+
+
+def dl_asset_name(ver):
+    return "turtle-arena-%s.apk" % ver
+
+
+def dl_target_line(url):
+    """/etc/caddy/turtle-dl-target.caddy 的内容。url 不合形状就抛（写进 Caddy 配置的东西不许有空格 / 花括号）。"""
+    if not DL_ASSET_RE.match(url or ""):
+        raise ValueError("跳转目标不像 GitHub Release 的安装包网址: %r" % url)
+    return "redir @android %s 302\n" % url
+
+
+def dl_parse_target(text):
+    """从目标文件读出当前跳到哪；空 / 没有 ⇒ None（「即将开放」）。"""
+    m = re.search(r"^\s*redir\s+@android\s+(\S+)\s+302\s*$", text or "", re.M)
+    return m.group(1) if m else None
+
+
+def gh_release_asset(ver):
+    """GitHub Release v<版本> 上的安装包：返回 (asset dict | None, 错误)。只读。"""
+    url = "https://api.github.com/repos/%s/releases/tags/v%s" % (repo_slug(), ver)
+    hdr = {"Accept": "application/vnd.github+json", "User-Agent": "turtle-deploy", "X-GitHub-Api-Version": "2022-11-28"}
+    tok = gh_token()
+    if tok:
+        hdr["Authorization"] = "Bearer " + tok
+    try:
+        with S.OPENER.open(urllib.request.Request(url, headers=hdr), timeout=30) as r:
+            rel = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        return None, "Release v%s 不在（HTTP %s）—— 推 tag 后 android.yml 跑完才有" % (ver, e.code)
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        return None, str(e)
+    for asset in rel.get("assets") or []:
+        if asset.get("name") == dl_asset_name(ver):
+            return asset, None
+    return None, "Release v%s 上没有 %s（android.yml 那次红了？）" % (ver, dl_asset_name(ver))
+
+
+def dl_dns_ok():
+    import socket
+    try:
+        ips = sorted({ai[4][0] for ai in socket.getaddrinfo(DL_HOST, 443, socket.AF_INET)})
+    except OSError as e:
+        return False, "解析不了 %s: %s" % (DL_HOST, e)
+    want = SSH_HOST.split("@", 1)[1]
+    return ips == [want], "%s → %s（要 %s）" % (DL_HOST, ",".join(ips) or "无", want)
+
+
+def android_preflight(a):
+    c = Checks()
+    print("== 本机前置检查（安卓下载跳转，只读）")
+    asset = None
+    if a.env != "prod":
+        c.fail("安卓下载跳转只有一份（正式）；不带 --env")
+    if not a.init:
+        asset, err = gh_release_asset(a.version)
+        if err:
+            c.fail(err)
+        elif int(asset.get("size") or 0) < DL_MIN_BYTES or asset.get("state") != "uploaded":
+            c.fail("%s 大小 %s / 状态 %s 不对" % (asset.get("name"), asset.get("size"), asset.get("state")))
+            asset = None
+        else:
+            try:
+                dl_target_line(asset.get("browser_download_url"))
+                c.ok("Release v%s 上有 %s（%.1f MB）" % (a.version, asset["name"], asset["size"] / 1048576.0))
+            except ValueError as e:
+                c.fail(str(e))
+                asset = None
+    ok, msg = dl_dns_ok()
+    (c.ok if ok else c.fail)("DNS " + msg + ("" if ok else " —— Porkbun 加 A 记录 dl → 裁判机（要用户本人登录）"))
+    if a.env == "prod" and time.gmtime().tm_wday >= 5 and not a.allow_weekend:
+        c.fail("周末不动裁判机（CLAUDE.md §3）；真要装加 --allow-weekend")
+    return c, asset
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kw):
+        return None
+
+
+def dl_probe(path="/android"):
+    """HEAD https://dl…<path>，不跟跳转。返回 (状态码, Location) 或 (None, 错误)。"""
+    op = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    try:
+        with op.open(urllib.request.Request("https://%s%s" % (DL_HOST, path), method="HEAD"), timeout=20) as r:
+            return r.status, r.headers.get("Location")
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers.get("Location")
+    except (urllib.error.URLError, OSError) as e:
+        return None, str(e)
+
+
+def dl_server_state():
+    rc, out, err = ssh("cat /etc/caddy/turtle-dl-target.caddy 2>/dev/null; echo '@@'; "
+                       "grep -c '^import /etc/caddy/turtle-dl.caddy' /etc/caddy/Caddyfile 2>/dev/null || true")
+    tgt, _, imp = out.partition("@@")
+    return dl_parse_target(tgt), imp.strip() not in ("", "0")
+
+
+def deploy_android(a):
+    """--only android：换跳转目标（--init：只装片段 + 空目标 = 「即将开放」）→ validate → reload → 回读。"""
+    c, asset = android_preflight(a)
+    url = asset["browser_download_url"] if asset else None
+    cur, imported = dl_server_state()
+    print("== 现状：import %s · 目标 %s" % ("在" if imported else "没加", cur or "（空 = 即将开放）"))
+    if a.dry_run:
+        print("== --dry-run：会做的事（服务器上什么都不改）")
+        print("  1. 传 server/dl/turtle-dl.caddy → /etc/caddy/turtle-dl.caddy；Caddyfile 末尾没有 import 就加一行（先备份）")
+        print("  2. /etc/caddy/turtle-dl-target.caddy ← %s" % (dl_target_line(url).strip() if url else "（空）"))
+        print("  3. caddy validate 过了才 reload；不过 ⇒ 三个文件按备份还原")
+        print("  4. 回读 https://%s/android → %s" % (DL_HOST, ("302 → " + url) if url else "404 即将开放"))
+        return 0 if not c.bad else 1
+    if c.bad:
+        print("\n✗ 前置检查没过（%d 条）⇒ 不动服务器" % len(c.bad))
+        return 1
+    body = dl_target_line(url) if url else "# 还没放过安卓版本 ⇒ /android 回「即将开放」\n"
+    print("== 上传")
+    ssh("mkdir -p %s" % REMOTE_DL)
+    with tempfile.TemporaryDirectory() as td:
+        dst = os.path.join(td, "turtle-dl.caddy")
+        with open(DL_SNIPPET, "rb") as f, open(dst, "wb") as g:
+            g.write(f.read().replace(b"\r\n", b"\n"))
+        tgt = os.path.join(td, "turtle-dl-target.caddy")
+        with open(tgt, "wb") as g:
+            g.write(body.encode("utf-8"))
+        _scp(dst, REMOTE_DL + "/turtle-dl.caddy")
+        _scp(tgt, REMOTE_DL + "/turtle-dl-target.caddy")
+    print("== 换入（validate 过了才 reload）")
+    script = r"""set -u
+cd /etc/caddy
+ts=$(date +%Y%m%d%H%M%S)
+cp -a Caddyfile Caddyfile.bak-dl-$ts
+for f in turtle-dl.caddy turtle-dl-target.caddy; do [ -f $f ] && cp -a $f $f.bak-$ts; done
+install -m 644 {R}/turtle-dl.caddy turtle-dl.caddy
+install -m 644 {R}/turtle-dl-target.caddy turtle-dl-target.caddy
+grep -q '^import /etc/caddy/turtle-dl.caddy' Caddyfile || printf '\nimport /etc/caddy/turtle-dl.caddy\n' >> Caddyfile
+if caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile > /tmp/turtle-dl-validate.log 2>&1; then
+  systemctl reload caddy && echo DL_RELOADED || echo DL_RELOAD_FAILED
+else
+  cp -a Caddyfile.bak-dl-$ts Caddyfile
+  for f in turtle-dl.caddy turtle-dl-target.caddy; do if [ -f $f.bak-$ts ]; then cp -a $f.bak-$ts $f; else rm -f $f; fi; done
+  tail -5 /tmp/turtle-dl-validate.log
+  echo DL_INVALID_RESTORED
+fi
+""".replace("{R}", REMOTE_DL)
+    rc, out, err = ssh("bash -s", timeout=60, data=script.encode("utf-8"))
+    print((out + err).rstrip())
+    if "DL_RELOADED" not in out:
+        print("✗ 没换入（validate 不过已还原 / reload 失败）")
+        return 1
+    print("== 回读（只读）")
+    now, imported = dl_server_state()
+    probs = []
+    if now != url:
+        probs.append("服务器上的目标 %s ≠ %s" % (now, url))
+    want_code = 302 if url else 404
+    t0 = time.time()
+    while True:
+        code, loc = dl_probe()
+        if code == want_code and (loc == url if url else True):
+            break
+        if time.time() - t0 > DL_WAIT_SEC:
+            probs.append("https://%s/android → %s %s（要 %d %s）" % (DL_HOST, code, loc or "", want_code, url or ""))
+            break
+        time.sleep(5)
+    if not probs:
+        print("  ✓ https://%s/android → %d%s" % (DL_HOST, want_code, (" → " + url) if url else "（即将开放）"))
+    if url and not probs:
+        try:
+            with S.OPENER.open(urllib.request.Request(url, method="HEAD"), timeout=30) as r:
+                n = int(r.headers.get("Content-Length") or 0)
+            if n != int(asset["size"]):
+                probs.append("安装包下载回读大小 %d ≠ Release 记的 %d" % (n, asset["size"]))
+            else:
+                print("  ✓ 跟到底下载得到：%d 字节（= Release）" % n)
+        except (urllib.error.URLError, OSError) as e:
+            probs.append("安装包网址打不开: %s" % e)
+    for p in probs:
+        print("  ✗ " + p)
+    return 0 if not probs else 1
+
+
 def server_args(a, info):
     args = [a.env, a.version, info["sha"], "--expect-pools", "%d,%d,%d" % EXPECT_POOLS]
     if info.get("rules_ver") is not None:
@@ -565,7 +758,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="本机检查 + 服务器只读演练 + 现状回读，什么都不改")
     ap.add_argument("--status", action="store_true", help="接着看上一次的日志直到结束，然后回读")
     ap.add_argument("--no-follow", action="store_true", help="起完就返回，不跟日志")
-    ap.add_argument("--only", choices=["pools", "bots-switch", "player"])
+    ap.add_argument("--only", choices=["pools", "bots-switch", "player", "android"])
+    ap.add_argument("--init", action="store_true", help="--only android：还没放过安卓版本时只把站点搭起来（目标为空 = 即将开放）")
     ap.add_argument("--skip-bots", action="store_true")
     ap.add_argument("--no-bots-switch", action="store_true")
     ap.add_argument("--no-pools", action="store_true")
@@ -578,6 +772,8 @@ def main():
     a = ap.parse_args()
     if a.only == "player":
         return deploy_player(a)
+    if a.only == "android":
+        return deploy_android(a)
 
     c, info = local_preflight(a)
     if a.status:

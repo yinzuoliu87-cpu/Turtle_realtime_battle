@@ -458,6 +458,8 @@ CHECKLIST = """# 发版清单 · v{ver}
 - [ ] `python tools/asc.py group-add {ver}`（先 `--dry-run`；不在窗口里会拒）
   - 回读：「回读: {ver} (…) 在公开测试组 ✓」
 - [ ] `python tools/deploy.py {ver}`（先 `--dry-run`）
+- [ ] `python tools/deploy.py {ver} --only android`（先 `--dry-run`；安卓真机走查没过 ⇒ 跳过这步，下载链接留在上一版 / 即将开放）
+  - 回读：`https://dl.turtlearena.xyz/android → 302 → …/turtle-arena-{ver}.apk` + 「跟到底下载得到：… 字节（= Release）」
 - [ ] `python tools/prod_flags.py show`
   - 回读：referee_versions 有 {ver}、enabled、rules_ver = 本版 RULES_VER；gauntlet_bot_pool 这个 rules_ver 2052 行；ranked_pool seed 396 / bot 186
 - [ ] `python tools/prod_flags.py force-update {ver}`（不带 `--yes-prod` 先看计划；用户点头后加 `--yes-prod`）

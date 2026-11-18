@@ -448,7 +448,7 @@ def checklist_checks():
         t = f.read()
     ## ★11-05 推送改成经 CI 把关(tools/ship.py), 不再「本机全套 + git push origin main」(CLAUDE.md §2)
     steps = ["release.py bump %s" % ver, "ship.py release-%s" % ver, "release.py tag %s" % ver,
-             "asc.py status %s" % ver, "asc.py submit %s" % ver, "asc.py group-add %s" % ver, "deploy.py %s" % ver,
+             "asc.py status %s" % ver, "asc.py submit %s" % ver, "asc.py group-add %s" % ver, "deploy.py %s" % ver, "deploy.py %s --only android" % ver,
              "prod_flags.py show", "prod_flags.py force-update %s" % ver, "asc.py group-remove"]
     pos = [t.find(s) for s in steps]
     ok("清单 %d 步都在（分母）" % len(steps), all(x >= 0 for x in pos), [s for s, x in zip(steps, pos) if x < 0])

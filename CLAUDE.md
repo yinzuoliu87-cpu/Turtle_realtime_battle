@@ -78,6 +78,7 @@ python tools/release.py tag <版本>                          # 前置检查(干
 python tools/asc.py submit <版本>                           # 周五：说明(取 CHANGELOG) + 作废同版本在审旧构建 + 提审；不进公开测试组
 python tools/asc.py group-add <版本>                        # 周一 21:00–23:00 窗口：过审构建放进公开测试组（窗口外 / 没过审都拒）
 python tools/deploy.py <版本>                               # 裁判机 + 陪练号：暂存目录 → 导入 → 两条一致性门禁 → 原子切换 → 对手池 → 回读
+python tools/deploy.py <版本> --only android               # 安卓下载链接 dl.turtlearena.xyz/android 跳到这一版 Release 上的安装包（安卓真机走查过了才做）
 python tools/prod_flags.py force-update <版本> --yes-prod   # 过审且已进公开测试组才放行，抬 min_client_version
 ```
 
