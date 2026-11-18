@@ -1,6 +1,7 @@
 extends Control
 
 const TopBar = preload("res://scripts/util/top_bar.gd")
+const _LANG := preload("res://scripts/util/lang.gd")
 var _top_bar = null
 
 ## SettingsScene — 设置 (1:1 PoC SettingsScene.ts): BGM/SFX 音量 + 全屏 + 重置存档.
@@ -81,6 +82,12 @@ const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 var _seg_display: Array = []
 
 
+## 切语言: 存到设备上、整页重建(拼出来的字也跟着换)。门禁按名字找这颗: TopBar 的右侧动作。
+func _on_lang() -> void:
+	_LANG.toggle()
+	get_tree().reload_current_scene()
+
+
 func _ready() -> void:
 	_bg()
 
@@ -100,6 +107,9 @@ func _ready() -> void:
 		##   ★用**具名方法**不用匿名闭包: 字典字面里放不下多行闭包(语法错),
 		##   而且具名之后门禁量得到它接的是谁。
 		"on_back": _on_back,
+		## ★语言(2026-11-18 · scripts/util/lang.gd): 右上角一颗, 按钮上的字用【当前语言自己的话】写(「语言：简体中文」/「Language: English」),
+		##   点一下两种语言来回切、整页重建。用户 11-18「在设置里面应该是有语言的切换按钮，点击一下游戏的整个语言都会被切换」。
+		"actions": [[_LANG.BUTTON[_LANG.code], _on_lang]],
 	})
 
 	# ── 左框「账号」。没配后端 = 有意关掉, 整块不建(见 `_account_panel` 头注) ──

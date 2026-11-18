@@ -1,0 +1,9 @@
+# 斗龟场 英文译文(gettext)。msgid = 游戏里的中文原文; 由 tools/i18n_extract.py 对账(缺译 / 占位符对不上)。
+# 方案书 docs/plans/20261118c-语言选项.md
+msgid ""
+msgstr ""
+"Language: en\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "设置"
+msgstr "Settings"
