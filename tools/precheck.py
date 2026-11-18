@@ -65,9 +65,13 @@ def read(p):
 def pick(files):
 	"""返回 {测试名: 入选原因}。★枢纽文件(被很多测试提到, 如主战斗文件)不算「相关」: 否则选出来就是全套, 占满机器又不多抓问题。"""
 	keys = []
+	scenes = []          # 改动的脚本是哪些场景的根脚本 ⇒ 场景名(Record / Settings…)
 	for f in files:
 		if f.endswith(".gd") and f.startswith(("scripts/", "autoload/")):
 			keys.append(f)
+			for tscn in scenes_rooted_on(f):
+				keys.append(tscn)
+				scenes.append(os.path.basename(tscn)[:-5])
 			m = re.search(r"^class_name\s+(\w+)", read(os.path.join(ROOT, f)), re.M)
 			if m:
 				keys.append(m.group(1))
@@ -97,6 +101,12 @@ def pick(files):
 					out[name] = "提到 " + k
 					break
 			else:
+				## 按场景名逐屏走的测试(`"res://scenes/%s.tscn" % scn` + 表里写 "Record"): 改了那一屏的根脚本就选上
+				##   (2026-11-18 对局记录页重做: verify_ui_consistency 量 Record 屏的热区 / 网页盒, 预检没选上, 红在 CI)
+				hit = next((sc for sc in scenes if SCENE_TMPL.search(src) and ('"%s"' % sc) in src), None)
+				if hit:
+					out[name] = "逐屏走到改动的场景 " + hit
+					continue
 				for s in sorted(syms):
 					if re.search(r"\b%s\b" % re.escape(s), src):
 						out[name] = "提到枢纽里改动的 " + s
@@ -104,6 +114,20 @@ def pick(files):
 	if hub:
 		print("枢纽文件不展开: " + ", ".join(sorted(hub)) + (" · 但按改动的符号展开 %d 个" % len(syms) if syms else ""))
 	return out
+
+
+SCENE_TMPL = re.compile(r'res://scenes/%s\.tscn')
+_TSCN = None
+
+
+def scenes_rooted_on(f):
+	"""f(仓库相对路径的 .gd)是哪些 scenes/*.tscn 的脚本 ⇒ 那些 .tscn 的仓库相对路径。"""
+	global _TSCN
+	if _TSCN is None:
+		_TSCN = {os.path.relpath(t, ROOT).replace(os.sep, "/"): read(t)
+				 for t in glob.glob(os.path.join(ROOT, "scenes", "**", "*.tscn"), recursive=True)}
+	pat = 'path="res://%s"' % f
+	return sorted(t for t, src in _TSCN.items() if pat in src)
 
 
 ## 测试里「按装备表把全部装备 / 某一类装备挨个跑」的写法: 改了某件装备的玩法就要跑它们
