@@ -31,7 +31,7 @@ SH = "run-tests.sh"
 YML = ".github/workflows/tests.yml"
 
 ## import 名 → pip 包名(不一致的才登记)
-PIP_NAME = {"PIL": "pillow", "yaml": "pyyaml", "cv2": "opencv-python", "np": "numpy"}
+PIP_NAME = {"PIL": "pillow", "yaml": "pyyaml", "cv2": "opencv-python", "np": "numpy", "nacl": "pynacl"}
 
 ## ★★规则②【本地专属审计】的白名单 —— 2026-08-30 新增。
 ##   有的审计**在无显示设备的机器上根本跑不了**(开真窗口截图), CI 就是这种机器。

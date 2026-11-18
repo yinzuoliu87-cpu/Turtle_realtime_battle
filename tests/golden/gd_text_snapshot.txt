@@ -2234,6 +2234,7 @@ scripts/scenes/settings/mainsite_link_dialog.gd|lit|确认切换
 scripts/scenes/settings/mainsite_link_dialog.gd|lit|该龟投账号已绑定其他游戏账号。
 scripts/scenes/settings/mainsite_link_row.gd|lit|取消
 scripts/scenes/settings/mainsite_link_row.gd|lit|已绑定
+scripts/scenes/settings/mainsite_link_row.gd|lit|打开龟投
 scripts/scenes/settings/mainsite_link_row.gd|lit|无法连接服务器
 scripts/scenes/settings/mainsite_link_row.gd|lit|未绑定
 scripts/scenes/settings/mainsite_link_row.gd|lit|登录失败
