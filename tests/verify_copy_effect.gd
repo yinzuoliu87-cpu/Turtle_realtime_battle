@@ -10,7 +10,7 @@ extends Node
 ##   修法：ShellSystem.ctx_capture / ctx_enter / ctx_exit —— 建的那一刻记下复制上下文，结算那一刻还原（同装备统计 tally）。
 ##
 ## 判据（需求原文的字面值：复制「以 60% 效果释放」，ShellSystem.COPY_EFFECT）：
-##   每个技能两局：A = 走真入口 `_sk_shell_copy`（敌人身上只挂这一个技能 ⇒ 候选池确定）；B = 龟壳直接 `_do_skill`。
+##   每个技能两局：A = 走真入口 `_sk_shell_copy`（敌人身上只挂这一个技能 ⇒ 候选池确定；11-19 起它会放两次, 拿掉第二发只比第一发）；B = 龟壳直接 `_do_skill`。
 ##   全新战斗场、同一随机种子、每帧恰一步 sim、同一窗口 ⇒ 敌人掉血 A / B = COPY_EFFECT（±0.05，整数取整误差）。
 ##   每种结算方式挑一个代表（下面 CASES 第二列），外加两个修之前就对的（同步段 / 带 src 的延后子弹）当对照。
 ## ★分母：每个技能直接放都要真打出伤害（B > 0），否则这条断言是空的。
@@ -68,6 +68,19 @@ func _ok(name: String, cond: bool, info: String = "") -> void:
 		print("  FAIL  ", name, ("  (" + info + ")") if info != "" else "")
 
 
+## ★2026-11-19 起候选池只有 1 个技能 ⇒ 复制把它放两次(用户「龟壳偷进来不是偷两个吗」), 第二发是 `_sk_shell_copy`
+##   最后排进去的那条延后子弹(隔 COPY_SECOND_DELAY · 带 cc)。这里量的是「每一发 60%」⇒ 拿掉第二发, 只比第一发;
+##   放两次本身由 verify_shell_copy_two 守。找不到第二发 ⇒ 记一笔, 收尾判红(不许悄悄变成空检查)。
+var _drop_miss := 0
+func _drop_second_copy(s, sh: Dictionary) -> void:
+	var q: Array = s._pending_shots
+	if not q.is_empty() and is_same((q.back() as Dictionary).get("src"), sh) and (q.back() as Dictionary).has("cc") \
+			and is_equal_approx(float((q.back() as Dictionary).get("delay", -1.0)), ShellSystem.COPY_SECOND_DELAY):
+		q.pop_back()
+	else:
+		_drop_miss += 1
+
+
 func _case(skill: String, copy: bool) -> float:
 	var s = RB.new()
 	add_child(s)
@@ -94,6 +107,7 @@ func _case(skill: String, copy: bool) -> float:
 	s._over = false
 	if copy:
 		s._shell_sys._sk_shell_copy(sh, foe)
+		_drop_second_copy(s, sh)
 	else:
 		s._do_skill(sh, foe, skill)
 	for _i in range(WINDOW):
@@ -172,6 +186,7 @@ func _case_support(skill: String, copy: bool) -> Dictionary:
 	var last := float(sh["hp"])
 	if copy:
 		s._shell_sys._sk_shell_copy(sh, foe)
+		_drop_second_copy(s, sh)
 	else:
 		s._do_skill(sh, foe, skill)
 	var shield_max := float(sh.get("shield", 0.0))
@@ -230,6 +245,7 @@ func _ready() -> void:
 			absf(r - ShellSystem.COPY_EFFECT) <= TOL, "复制 %.0f · 直接 %.0f" % [float(a[key]), float(b[key])])
 	if only == "" or only.split(",").has("paths"):
 		await _paths_check()
+	_ok("分母: 每个复制局都找到并拿掉了第二发(11-19 起放两次)", _drop_miss == 0, "没找到 %d 次" % _drop_miss)
 	print("")
 	if _fail == 0:
 		print("ALL PASS (%d 条)" % _pass)

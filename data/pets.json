@@ -2220,7 +2220,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "龟壳随机复制敌方的 2 个技能并依次释放，每个技能只发挥 {C:ShellSystem.COPY_EFFECT%}% 的效果。",
-        "detail": "龟壳随机复制敌方的 2 个技能并依次释放，每个技能只发挥 {C:ShellSystem.COPY_EFFECT%}% 的效果。\n<span style=\"color:#8a93a0\">会永久改变属性或形态的技能不会被复制。已阵亡的敌人的技能同样可以复制；可复制的技能只有 1 个时，将其释放两次。</span>",
+        "detail": "龟壳随机复制敌方的 2 个技能并依次释放，每个技能只发挥 {C:ShellSystem.COPY_EFFECT%}% 的效果。\n<span style=\"color:#8a93a0\">会永久改变属性或形态的技能不会被复制。已阵亡的敌人的技能同样可以复制。可复制的技能只有 1 个时，将其释放两次。</span>",
         "energyCost": 130
       },
       {

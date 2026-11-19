@@ -1,5 +1,6 @@
 -- 20261119 竹叶龟【生长】一大轮内跨场累积 —— 上线前验证（整段一个事务，结尾必抛异常 ⇒ 回滚）
 -- 用法：python tools/sb_migrate.py sandbox|beta --rehearse|prod --rehearse 20261119_bamboo_growth
+-- ★周号用 2099-01-01(4070908800)：正式服演练时 1793577600(2026-11-02)那一周有真实决赛分组, 插测试分组撞主键(11-19 实测)。
 -- 判据：
 --   A1 A 方查 referee_job_status ⇒ bamboo_new = 结果单 bamboo_new
 --   A2 ★配对局 B 方查 ⇒ bamboo_new = 结果单 bamboo_new_b（按视角换好）
@@ -48,7 +49,7 @@ create or replace function pg_temp.fc(p_k text, p_b int) returns jsonb language 
 declare r jsonb;
 begin
   perform pg_temp.as_user(pg_temp.u(p_k));
-  r := public.referee_finals_coins(1793577600, p_b, 1, 0);
+  r := public.referee_finals_coins(4070908800, p_b, 1, 0);
   perform pg_temp.as_user(null);
   return r;
 end $$;
@@ -61,10 +62,10 @@ grant select on _j to public;
 
 -- ── 回包 ──
 insert into _j values
-  ('pair', pg_temp.job('gauntlet', 'chk:bm:p', 1793577600, 'c', 'a', 'done', '{"pair":"true"}',
+  ('pair', pg_temp.job('gauntlet', 'chk:bm:p', 4070908800, 'c', 'a', 'done', '{"pair":"true"}',
      '{"ledger":{"won":true,"coins":1,"coins_b":2,"gw_b":0,"gl_b":1},"wheel_new":{"spade":2},"bamboo_new":7.5,"bamboo_new_b":3.25}')),
-  ('old',  pg_temp.job('gauntlet', 'chk:bm:o', 1793577600, 'c', 'a', 'done', '{"pair":"true"}', '{"ledger":{"won":true,"coins":1}}')),
-  ('bad',  pg_temp.job('gauntlet', 'chk:bm:x', 1793577600, 'c', 'a', 'done', '{"pair":"true"}', '{"ledger":{"won":true,"coins":1},"bamboo_new":"9","bamboo_new_b":{"v":1}}'));
+  ('old',  pg_temp.job('gauntlet', 'chk:bm:o', 4070908800, 'c', 'a', 'done', '{"pair":"true"}', '{"ledger":{"won":true,"coins":1}}')),
+  ('bad',  pg_temp.job('gauntlet', 'chk:bm:x', 4070908800, 'c', 'a', 'done', '{"pair":"true"}', '{"ledger":{"won":true,"coins":1},"bamboo_new":"9","bamboo_new_b":{"v":1}}'));
 
 select pg_temp.ck('A1 A 方 ⇒ bamboo_new 自己那一份(7.5)', (pg_temp.st('c', (select id from _j where k = 'pair')) ->> 'bamboo_new')::numeric = 7.5,
   pg_temp.st('c', (select id from _j where k = 'pair'))::text);
@@ -76,38 +77,38 @@ select pg_temp.ck('A3 ★没这个键 / 不是数 ⇒ A / B 回包都不带',
 select pg_temp.ck('S1 现有的键原样还在(wheel_new / 币 / 胜负)', pg_temp.st('c', (select id from _j where k = 'pair')) @> '{"coins":1,"won":true,"wheel_new":{"spade":2}}'::jsonb,
   pg_temp.st('c', (select id from _j where k = 'pair'))::text);
 
-insert into public.finals_buckets (season_week, bucket_no, n, round, closed) values (1793577600, 0, 2, 2, false), (1793577600, 1, 2, 2, false);
-insert into public.finals_results (season_week, bucket_no, round, match_no, winner_side, seed_used) values (1793577600, 0, 1, 0, 0, 1), (1793577600, 1, 1, 0, 0, 1);
+insert into public.finals_buckets (season_week, bucket_no, n, round, closed) values (4070908800, 0, 2, 2, false), (4070908800, 1, 2, 2, false);
+insert into public.finals_results (season_week, bucket_no, round, match_no, winner_side, seed_used) values (4070908800, 0, 1, 0, 0, 1), (4070908800, 1, 1, 0, 0, 1);
 insert into _j values
-  ('f0', pg_temp.job('finals', 'finals:1793577600:0:1:0', 1793577600, 'c', 'a', 'done', '{"bucket":0,"round":1,"match":0}',
+  ('f0', pg_temp.job('finals', 'finals:4070908800:0:1:0', 4070908800, 'c', 'a', 'done', '{"bucket":0,"round":1,"match":0}',
      '{"ledger":{"won":true,"coins":3,"coins_b":4},"bamboo_new":5,"bamboo_new_b":2}')),
-  ('f1', pg_temp.job('finals', 'finals:1793577600:1:1:0', 1793577600, 'c', 'a', 'done', '{"bucket":1,"round":1,"match":0}', '{"ledger":{"won":true,"coins":3,"coins_b":4}}'));
+  ('f1', pg_temp.job('finals', 'finals:4070908800:1:1:0', 4070908800, 'c', 'a', 'done', '{"bucket":1,"round":1,"match":0}', '{"ledger":{"won":true,"coins":3,"coins_b":4}}'));
 select pg_temp.ck('F1 决赛 A 方 ⇒ bamboo_new 5、币 3', pg_temp.fc('c', 0) @> '{"bamboo_new":5,"coins":3}'::jsonb, pg_temp.fc('c', 0)::text);
 select pg_temp.ck('F2 ★决赛 B 方 ⇒ 取 bamboo_new_b 2、币 4', pg_temp.fc('a', 0) @> '{"bamboo_new":2,"coins":4}'::jsonb, pg_temp.fc('a', 0)::text);
 select pg_temp.ck('F3 没这个键 ⇒ 不带', not (pg_temp.fc('c', 1) ? 'bamboo_new') and (pg_temp.fc('c', 1) ->> 'coins')::int = 3, pg_temp.fc('c', 1)::text);
 
 -- ── 记账合计(a 的账): A 方积分赛 9.5 + 上面配对局 B 方 3.25 + 上面决赛 B 方 2 = 14.75 ──
-select pg_temp.job('ranked', 'chk:bm:r1', 1793577600, 'a', 'b', 'done', '{}', '{"bamboo_new":9.5,"bamboo_new_b":70}');
+select pg_temp.job('ranked', 'chk:bm:r1', 4070908800, 'a', 'b', 'done', '{}', '{"bamboo_new":9.5,"bamboo_new_b":70}');
 -- 不该算进 a 的：
-select pg_temp.job('ranked', 'chk:bm:r2', 1793577600, 'c', 'a', 'done', '{}', '{"bamboo_new":1,"bamboo_new_b":60}');   -- a 是积分赛的 B（快照）
-select pg_temp.job('raid', 'chk:bm:x1', 1793577600, 'a', 'c', 'done', '{}', '{"bamboo_new":80}');                       -- 偷袭
-select pg_temp.job('ranked', 'chk:bm:o1', 1792972800, 'a', 'b', 'done', '{}', '{"bamboo_new":80}');                     -- 上一周
-select pg_temp.job('ranked', 'chk:bm:n1', 1793577600, 'a', 'b', 'claimed', '{}', '{"bamboo_new":80}');                  -- 没算完
-select pg_temp.job('ranked', 'chk:bm:j1', 1793577600, 'a', 'b', 'done', '{}', '{"bamboo_new":"80"}');                   -- 不是数
+select pg_temp.job('ranked', 'chk:bm:r2', 4070908800, 'c', 'a', 'done', '{}', '{"bamboo_new":1,"bamboo_new_b":60}');   -- a 是积分赛的 B（快照）
+select pg_temp.job('raid', 'chk:bm:x1', 4070908800, 'a', 'c', 'done', '{}', '{"bamboo_new":80}');                       -- 偷袭
+select pg_temp.job('ranked', 'chk:bm:o1', 4070304000, 'a', 'b', 'done', '{}', '{"bamboo_new":80}');                     -- 上一周
+select pg_temp.job('ranked', 'chk:bm:n1', 4070908800, 'a', 'b', 'claimed', '{}', '{"bamboo_new":80}');                  -- 没算完
+select pg_temp.job('ranked', 'chk:bm:j1', 4070908800, 'a', 'b', 'done', '{}', '{"bamboo_new":"80"}');                   -- 不是数
 
 select pg_temp.ck('W1 ★合计 = 积分赛 A 9.5 + 配对局 B 3.25 + 决赛 B 2 = 14.75',
-  public.econ_bamboo_sum(pg_temp.u('a'), 1793577600) = 14.75, public.econ_bamboo_sum(pg_temp.u('a'), 1793577600)::text);
+  public.econ_bamboo_sum(pg_temp.u('a'), 4070908800) = 14.75, public.econ_bamboo_sum(pg_temp.u('a'), 4070908800)::text);
 select pg_temp.ck('W2 ★积分赛的 B / 偷袭 / 别的周 / 没算完 / 不是数都不算(合计没有 60 / 80 那些)',
-  public.econ_bamboo_sum(pg_temp.u('a'), 1793577600) < 20, public.econ_bamboo_sum(pg_temp.u('a'), 1793577600)::text);
+  public.econ_bamboo_sum(pg_temp.u('a'), 4070908800) < 20, public.econ_bamboo_sum(pg_temp.u('a'), 4070908800)::text);
 select pg_temp.ck('W3 账号为空 ⇒ 0；b 只当过积分赛的 B ⇒ 0',
-  public.econ_bamboo_sum(null, 1793577600) = 0 and public.econ_bamboo_sum(pg_temp.u('b'), 1793577600) = 0,
-  public.econ_bamboo_sum(pg_temp.u('b'), 1793577600)::text);
+  public.econ_bamboo_sum(null, 4070908800) = 0 and public.econ_bamboo_sum(pg_temp.u('b'), 4070908800) = 0,
+  public.econ_bamboo_sum(pg_temp.u('b'), 4070908800)::text);
 
 -- ── 盖章 ──
 update public.referee_config set econ_on = true where id = 1;
 insert into _j values
-  ('on',  pg_temp.job('gauntlet', 'chk:bm:s1', 1793577600, 'a', 'c', 'pending', '{"pair":"true"}', null)),
-  ('off', pg_temp.job('ranked', 'chk:bm:s3', 1793577600, 'a', 'b', 'pending', '{}', null));
+  ('on',  pg_temp.job('gauntlet', 'chk:bm:s1', 4070908800, 'a', 'c', 'pending', '{"pair":"true"}', null)),
+  ('off', pg_temp.job('ranked', 'chk:bm:s3', 4070908800, 'a', 'b', 'pending', '{}', null));
 update public.referee_jobs set status = 'claimed' where job_id = (select id from _j where k = 'on');
 select pg_temp.ck('T1 ★开着: a_bamboo = a 的合计 14.75、b_bamboo = c 的合计(配对局 A 7.5 + 决赛 A 5 + 积分赛 A 1 = 13.5)',
   (select (meta ->> 'a_bamboo')::numeric = 14.75 and (meta ->> 'b_bamboo')::numeric = 13.5 from public.referee_jobs where job_id = (select id from _j where k = 'on')),

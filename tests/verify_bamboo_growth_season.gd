@@ -147,10 +147,13 @@ func _ready() -> void:
 	gs._apply_save_dict({"bamboo_growth_hp": 77.0})
 	_ok("⑦ 读档读回来", absf(float(gs.bamboo_growth_hp) - 77.0) < 0.001, "%.2f" % float(gs.bamboo_growth_hp))
 	var wsrc := FileAccess.get_file_as_string("res://autoload/GameState.gd").replace("\r\n", "\n")
-	var fi := wsrc.find("
-func start_new_season()")
+	var fi := wsrc.find("\nfunc start_new_season()")
 	var fj := wsrc.find("\nfunc ", fi + 5)
-	_ok("⑦ ★新大轮清零(start_new_season 里 bamboo_growth_hp = 0.0)", fi > 0 and wsrc.substr(fi, (fj - fi) if fj > fi else -1).find("bamboo_growth_hp = 0.0") > 0)   # start_new_season 是文件最后一个函数(fj = -1)
+	var ci := wsrc.find("\nfunc _clear_week_carry()")
+	var cj := wsrc.find("\nfunc ", ci + 5)
+	_ok("⑦ ★新大轮清零(start_new_season 调 _clear_week_carry, 里面 bamboo_growth_hp = 0.0)",
+		fi > 0 and wsrc.substr(fi, (fj - fi) if fj > fi else -1).find("_clear_week_carry()") > 0
+		and ci > 0 and wsrc.substr(ci, (cj - ci) if cj > ci else -1).find("bamboo_growth_hp = 0.0") > 0)   # 是文件最后一个函数时 find 返回 -1
 	_ok("⑦ 录像 STATE_KEYS 带 bamboo_growth_hp", "bamboo_growth_hp" in ReplayRecorder.STATE_KEYS)
 	gs.bamboo_growth_hp = 55.0
 	ReplayRecorder.apply_state({"season_level": int(gs.season_level)})
@@ -175,5 +178,5 @@ func start_new_season()")
 		print("ALL PASS")
 	get_tree().quit(1 if _fail > 0 else 0)
 
-## 反向验证(11-19): 底数写回 base_atk ⇒ ① 红; 登场不套用 ⇒ ③④ 红; apply_bamboo 不累加 ⇒ ⑥ 红; start_new_season 不清 ⇒ ⑦ 红;
+## 反向验证(11-19): 底数写回 base_atk ⇒ ① 红; 登场不套用 ⇒ ③④ 红; apply_bamboo 不累加 ⇒ ⑥ 红; _clear_week_carry 不清 ⇒ ⑦ 红;
 ##   apply_state 不清 ⇒ ⑦ 红; 终极战场不加 grown ⇒ ④ 红。

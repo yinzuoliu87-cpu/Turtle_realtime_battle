@@ -2306,21 +2306,7 @@ func reset_save() -> void:
 	persistent_bench = []
 	persistent_equipped = {}
 	equip_pool = {}                   # 池随之清空, 下次用到时补满(D6: 赛季重置)
-	## 096 小木斧: 砍伐经验【随大轮重置】(用户 2026-08-31) —— 进度条与累计值**都**清,
-	##   档位退回木斧、最终造物的选择也作废(未决点 ⑩「本大轮锁定」的另一半)。
-	axe_exp_bar = 0
-	axe_exp_total = 0
-	axe_stage = 0
-	axe_final = ""
-	axe_syn_matches = 0
-	axe_evo_pending = []
-	candy_jar_count = 0
-	candy_jar_broken = false
-	candy_temp_levels = {}
-	gambler_wheel_stacks = {}
-	bamboo_growth_hp = 0.0
-	lane_loadout = {}
-	dual_lineup = {}
+	_clear_week_carry()   # 本大轮跨场累积的那一串(小木斧 / 糖果罐 / 命运之轮 / 竹叶龟 / 阵容), reset_save 与这里共用
 	trainer_appearance = "default"   # 训龟大师装配回默认(形象/钩锁)
 	trainer_skill = "hook"
 	## ★这一行【必须在 save() 之前】。它原来在文件下方 —— 被两行注释和空行隔开、
@@ -2987,6 +2973,11 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	equip_pool = {}                   # 池随之清空, 下次用到时补满(D6: 赛季重置)
 	## 对手池: 上周的真人快照不许当本周对手(用户 2026-10-08「每周快照会刷掉对吧」「改」)。只留内置陪练。
 	load("res://scripts/net/backend.gd").wipe_week_snapshots()
+	_clear_week_carry()   # 本大轮跨场累积的那一串(小木斧 / 糖果罐 / 命运之轮 / 竹叶龟 / 阵容), reset_save 与这里共用
+	_EconLedger.rebase(self)   # 本周开局 = 服务器重放的起点
+
+## 本大轮跨场累积的那一串, 清档(reset_save)与新大轮(start_new_season)共用(2026-11-19 从两处一模一样的 15 行抽出; 顺序原样)。
+func _clear_week_carry() -> void:
 	## 096 小木斧: 砍伐经验【随大轮重置】(用户 2026-08-31) —— 进度条与累计值**都**清,
 	##   档位退回木斧、最终造物的选择也作废(未决点 ⑩「本大轮锁定」的另一半)。
 	axe_exp_bar = 0
@@ -3002,4 +2993,3 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	bamboo_growth_hp = 0.0
 	lane_loadout = {}
 	dual_lineup = {}
-	_EconLedger.rebase(self)   # 本周开局 = 服务器重放的起点

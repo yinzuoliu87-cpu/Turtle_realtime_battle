@@ -148,9 +148,13 @@ const RANKED := {
 	##   加个确定阵容」): **有意删掉** finals_push_snapshot(对阵图 / 全局层每拍自动推决赛阵容; 积分赛不调它), 交阵容改走
 	##   scripts/net/finals_confirm.gd。37ef91bc → 499da8ef 只删这一个、没有新加函数 ⇒ 挪基线判据不变松; units 60 → 59,
 	##   摘要按本表口径从 git show 499da8ef 现算(同口径复算 37ef91bc 得 f43610f8…, 与原表一致)。
+	## ★2026-11-19 竹叶龟【生长】一大轮内跨场累积(提交 9046cdd3, 方案书 docs/plans/20261119-竹叶龟生长随大轮保留.md;
+	##   用户 11-19「希望改为随一大轮保留…就跟命运之轮一一样的」): **有意**改积分赛会走的 build_ghost_snapshot —— 只在长过时多带
+	##   bamboo_hp(没长过的快照一字不变, 同 11-06 命运之轮 wheel_stacks); 新加的 ghost_bamboo_hp 是它调用的(积分赛也走)⇒ 进 units(59 → 60),
+	##   不算周六专用。499da8ef → 9046cdd3 只改这一个、只加这一个、没有挪走函数 ⇒ 挪基线判据不变松; 摘要按本表口径现算。
 	"scripts/net/backend.gd": {
-		"base": "499da8ef",
-		"digest": "bf880f7bf5b4771604f4dd543c24a036faed7722b793c5e3e1e37ec2211c4cec",
+		"base": "9046cdd3",
+		"digest": "76d7da63922be8c5fbc5d160fa2430e6a1ce00cc8a1ab8b07235035fce3b8fa0",
 		"views": {},
 		"sat_only": [],
 		"units": [
@@ -158,7 +162,7 @@ const RANKED := {
 			"_migrate_brackets_to_battles", "_seed_level", "_seed_record", "_seed_season_id", "_shuffle", "_tally",
 			"_tally_exact", "build_ghost_snapshot", "derived_reserve_pool", "drop_week_snapshots", "ensure_finals_entry",
 			"ensure_gauntlet_entry_snapshot", "fake_person_tag", "finals_snap_sig", "find_gauntlet_opponent",
-			"find_opponent", "gauntlet_bot_battles", "gauntlet_pool_find", "ghost_lanes_broken", "ghost_level",
+			"find_opponent", "gauntlet_bot_battles", "gauntlet_pool_find", "ghost_bamboo_hp", "ghost_lanes_broken", "ghost_level",
 			"ghost_owner_tag", "is_sparring", "lead_of", "leaderboard", "load_pool", "make_bot", "make_match_rng", "my_tag",
 			"owner_tag_of_id", "person_key", "player_display_name", "player_ghost_id", "pool_add", "pool_find_battles",
 			"pool_reach", "prefetch_gauntlet_pool", "profile_tag", "reach_of", "report_finals_entry", "report_finals_if_any",
