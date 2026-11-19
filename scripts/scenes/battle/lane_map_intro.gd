@@ -38,6 +38,8 @@ const KAIZHAN := "res://assets/sprites/finals/bt-kaizhan.png"
 ##   tools/assetgen/build_vs_crest_shell.py 由决赛日那枚 vs-crest.png 改盾面(铜边 / 铆钉 / 交叉剑原样)。地图上「本路」那枚同一个。
 const CREST := "res://assets/sprites/finals/vs-crest-shell.png"
 const PHOTO_META := "_lane_map_photo"
+## 幕布底板上挂着本实例(dual_lane_flow 换幕时问闪白到哪了, 见 flash_alpha_of)
+const INTRO_META := "_lane_map_intro"
 const WarTable := preload("res://scripts/scenes/battle/lane_war_table.gd")
 
 const SEA_SHADER := """
@@ -171,8 +173,21 @@ func build(back: Control, mode_: String, inset_bottom: float) -> Control:
 	var clk := Clock.new()
 	clk.intro = self
 	back.add_child(clk)
+	back.set_meta(INTRO_META, self)
 	pose(0.0)
 	return root
+
+
+## 这块幕布此刻闪白层的不透明度(不是本演出的幕布 / 没有闪白层 = 0)。
+## dual_lane_flow 换幕时看它: 旧幕停在闪白上 ⇒ 硬切, 不交叉淡化(见 dual_lane_flow.FLASH_CUT_MIN)。
+static func flash_alpha_of(back: Node) -> float:
+	if back == null or not is_instance_valid(back) or not back.has_meta(INTRO_META):
+		return 0.0
+	var it = back.get_meta(INTRO_META)
+	if it == null or not (it.zoom as Dictionary).has("flash"):
+		return 0.0
+	var fl = it.zoom["flash"]
+	return (fl as ColorRect).modulate.a if is_instance_valid(fl) else 0.0
 
 
 func tick(dt: float) -> void:

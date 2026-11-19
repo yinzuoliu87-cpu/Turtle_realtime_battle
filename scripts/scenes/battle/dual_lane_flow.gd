@@ -38,6 +38,14 @@ func _init(b) -> void:
 var lane_epoch: int = 0
 ## 正在淡出的对阵幕布(淡出完自己 queue_free ⇒ is_instance_valid 变假)。
 var present_fading: Node = null
+## 换幕硬切(2026-11-18): 旧幕(开场地图 / 一路战果)推近末尾停在闪白上, 且同一帧就进新幕 ⇒ 直接换, 不交叉淡化。
+## 用户 11-18「进入上路战场…那边闪白，从闪白跳到那个双方角色对立的那个。中间过渡有点不自然」:
+##   录帧量出闪白最亮那帧亮度 194, 下一帧掉到 106 —— 新幕整块 modulate 从 0.32 淡入时, 它底下几层整屏的图
+##   (底板 / 战场照片 / 蓝红斜带…)是各自乘 0.32 叠上去的, 叠三四层就盖掉旧幕八成, 而新幕自己那层白只剩 0.72×0.32
+##   ⇒ 白光一帧塌掉、露出暗底, 再慢慢亮回对阵屏。硬切: 新幕满不透明出场, 开头那层 0.72 的白接住旧幕的 0.72, 再照常褪掉。
+##   同一帧没有新幕进来(2:0 横扫后直接结算)⇒ 旧幕照常淡出。门禁 tests/verify_lane_flash_cut.gd。
+const FLASH_CUT_MIN := 0.5
+var _flash_cut: Dictionary = {}
 
 ## 等一个 sim 步; 这一步里换了路 ⇒ 永不返回(调用方那条协程就此作废)。
 func lane_step() -> void:
@@ -78,14 +86,31 @@ func _dl_enter_present(mode: String) -> void:
 	#   ★★必须用裸 battle.create_tween 而不是 battle._reg_tween: 换路时 _dl_clear_units 会 kill 掉
 	#     全部 battle._sim_tweens, 跨路存活的过场动画会被连坐清掉(注册契约见文件头)。
 	if battle._dl_present_root != null and is_instance_valid(battle._dl_present_root):
-		battle._dl_present_root.modulate.a = 0.0
-		var tw = battle.create_tween()
-		tw.tween_property(battle._dl_present_root, "modulate:a", 1.0, 0.28) \
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		if int(_flash_cut.get("f", -1)) == Engine.get_process_frames():
+			## 硬切(见 FLASH_CUT_MIN): 旧幕当帧拿掉, 新幕满不透明出场, 由它开头那层白接住旧幕的白
+			var _old_tw = _flash_cut.get("tw")
+			if _old_tw is Tween and (_old_tw as Tween).is_valid():
+				(_old_tw as Tween).kill()
+			var _old = _flash_cut.get("old")
+			if is_instance_valid(_old):
+				(_old as Node).queue_free()
+			present_fading = null
+			battle._dl_present_root.modulate.a = 1.0
+		else:
+			battle._dl_present_root.modulate.a = 0.0
+			var tw = battle.create_tween()
+			tw.tween_property(battle._dl_present_root, "modulate:a", 1.0, 0.28) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		_flash_cut = {}
 
 ## 点掉呈现幕布 —— **人为输入, 改结果**: 它决定下一路在第几个 sim 步建场。
 ## ★回放: 录下步号; 播放时人点不动(只认记录里那一下, 由 ReplayRecorder 在同一步重放)。
 func _dl_present_click() -> void:
+	## ★切磋点了不跳(用户 11-18「切磋的时候…按来说是不是已经不可以点击去跳过了那些页面…不可以去点击」):
+	##   积分赛 / 闯关 / 决赛都是看服务器直播, 幕布本来就点不动(11-15「全程在服务器上运行，那应该没有说用户可以点击的东西」);
+	##   切磋在本机算, 原来点一下就跳到下一幕 ⇒ 改成同样自己播完。教程仍可点(新手引导要它)。
+	if Spar.is_active():
+		return
 	if battle._replay.allow_input("present"):
 		_dl_present_advance()
 
@@ -114,6 +139,8 @@ func _dl_clear_present_overlay() -> void:
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		tw.tween_callback(old.queue_free)
 		present_fading = old      # 教程引导要等它淡出完才出现(对阵卡上不许压提示, 方案书 B1)
+		if LaneMapIntro.flash_alpha_of(old) >= FLASH_CUT_MIN:
+			_flash_cut = {"f": Engine.get_process_frames(), "old": old, "tw": tw}
 	battle._dl_present_root = null
 
 func _dl_spec_name(spec) -> String:
