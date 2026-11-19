@@ -33,6 +33,9 @@ const StreamWatchS := preload("res://scripts/systems/replay/stream_watch.gd")   
 const _RL := preload("res://scripts/systems/replay/referee_live.gd")   # 跟播自己那一局(2026-10-29): 收尾等结果的上限 / 等不到时回主菜单
 ## 顶部栏的头像/名字/路点/计时牌/加时/团灭/蛋碎那一层(2026-10-07 拆出去: 本文件只留血条本体)
 const TopbarStatusS := preload("res://scripts/scenes/battle/topbar_status.gd")
+## 好友切磋对局里左下角那颗「退出」(2026-11-19 用户「切磋这个按钮应该做吧」; 只在切磋, 正式对局局内不放退出)
+const SparExitS := preload("res://scripts/scenes/battle/spar_exit.gd")
+var spar_exit: SparExitS = null
 
 ## 第二行资源条的节点引用 —— 每帧按下标对位改数, 不重建节点。
 ## ★存在 hud 这个 RefCounted 上而不是主战斗文件里: 主文件有 arch_budget 冻结的行数台账,
@@ -81,6 +84,9 @@ func _build_ui_layer() -> void:
 	##   它们摆在 VS 下面, 跟着条的宽度走; 换视口时随条一起重建(原来是这里单独建一块牌子)。
 	_build_pk_bar()   # 顶部双方总血量 PK 条 (用户2026-07-30 需求1)
 	_build_topright_btns()   # 📊 统计 (原 ⏸暂停/📜日志 已移除·用户2026-07-30; 🏳 投降 2026-10-19 移除)
+	if Spar.is_active():
+		spar_exit = SparExitS.new(battle)
+		spar_exit.build()
 
 
 ## 右上角顶栏按钮.
@@ -1231,6 +1237,8 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 	## ★好友切磋: 「再来一局」(同一份对方快照) +「返回好友」。不给商店 —— 切磋不发奖, 也不是「打 → 买」那一环。
 	##   2026-10-30 排行榜上也能切磋 ⇒ 这颗键回发起的那一页(`Spar.back_scene` / `back_label`: 「返回排行榜」/「返回好友」)。
 	if Spar.is_active():
+		if spar_exit != null:
+			spar_exit.hide()   # 结算屏上有「再来一局 / 返回」, 左下角那颗收起
 		var ab: Button = battle._make_result_btn("再来一局", shop_tint, shop_fc,
 			func() -> void: Spar.again(battle.get_tree()))
 		ab.name = "SparAgain"
