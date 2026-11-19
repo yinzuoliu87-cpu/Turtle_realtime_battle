@@ -178,16 +178,19 @@ func _t_reset(gs) -> void:
 func _t_single_writer(gs) -> void:
 	print("--- ④ 同源写入 ---")
 	var src: String = FileAccess.get_file_as_string("res://autoload/GameState.gd")
-	## 赋值给 axe_exp_bar 的地方应当**恰好 5 处**, 各有各的正当理由:
-	##   ① _load 读档回填 ② axe_add_exp 唯一写入口 ③ reset_save ④ start_new_season
+	## 赋值给 axe_exp_bar 的地方应当**恰好 4 处**, 各有各的正当理由:
+	##   ① _load 读档回填 ② axe_add_exp 唯一写入口 ③ _clear_week_carry —— reset_save 与 start_new_season 共用的那串清零
+	##     (2026-11-19 两处一模一样的 15 行抽出来, 原来这里数 5 处 = 两个重置各一处; 下面另查它只被这两处调)
 	##   ⑤ axe_pick_final —— 选完最终造物把进度条清零(2026-09-01 新增; 它同样在
 	##     GameState 里, UI 侧只是转发, 所以"状态只归 GameState 管"这条纪律没破)
-	## 多出第五处 = 有人绕过 axe_add_exp 偷偷写它, 那正是"两个字段各写各的"必漂的形状。
+	## 多出一处 = 有人绕过 axe_add_exp 偷偷写它, 那正是"两个字段各写各的"必漂的形状。
 	## (`var axe_exp_bar: int = 0` 是声明, 不会匹配 —— 正则要求行首直接是变量名)
 	var re := RegEx.create_from_string("(?m)^\\s*axe_exp_bar\\s*=")
 	var hits: int = re.search_all(src).size()
-	_ok("★GameState 里写 axe_exp_bar 的地方 == 5(读档/add_exp/两个重置/选最终造物)",
-		hits == 5, "实测 %d 处" % hits)
+	_ok("★GameState 里写 axe_exp_bar 的地方 == 4(读档/add_exp/两个重置共用的 _clear_week_carry/选最终造物)",
+		hits == 4, "实测 %d 处" % hits)
+	var calls: int = RegEx.create_from_string("(?m)^\\t_clear_week_carry\\(\\)").search_all(src.replace("\r\n", "\n")).size()
+	_ok("★_clear_week_carry 只被清档 / 换周两处调(别处调就是绕过记账口清零)", calls == 2, "实测 %d 处" % calls)
 	## 全仓扫描: scripts/ 下不许有任何文件绕过 axe_add_exp 直接改这三个字段
 	var others: Array = []
 	for f in _all_gd("res://scripts"):

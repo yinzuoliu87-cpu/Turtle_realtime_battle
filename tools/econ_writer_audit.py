@@ -52,6 +52,7 @@ ALLOW = {
 	("autoload/GameState.gd", "_apply_save_dict"): "读档(之后 EconLedger.rebase = 新起点)",
 	("autoload/GameState.gd", "reset_save"): "清档(同上)",
 	("autoload/GameState.gd", "start_new_season"): "换周清零(本周开局 = 服务器重放的起点)",
+	("autoload/GameState.gd", "_clear_week_carry"): "清档 / 换周共用的那串清零(2026-11-19 从 reset_save / start_new_season 原样抽出; 只由这两处调, verify_axe_evolution ④ 守调用点)",
 	("autoload/GameState.gd", "ensure_equip_pool"): "卡池懒补齐: 资产指纹本来就按「补齐之后」算(EconLedger._eff_pool), 落地不改资产",
 	("autoload/tutorial_director.gd", "*"): "教程沙盒(tutorial_active 期间哨兵静音, 退出整份还原)",
 	("autoload/shot_diff.gd", "*"): "截图工具",
