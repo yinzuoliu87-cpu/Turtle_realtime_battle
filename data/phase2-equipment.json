@@ -510,7 +510,7 @@
     "baseStats1": "+生命80/200/5000·盾疗10/20/30%",
     "shopAvailable": 1,
     "emoji": "🌊",
-    "effectDesc1": "【法力】充满时，掀起一道横贯战场的浪墙。友军获得 70/160/400 护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，并获得 2/3/5 护甲与魔抗。敌人受到 200/400/800 魔法伤害并被击飞，且失去 2/3/5 护甲与魔抗。护甲与魔抗的增减在本局对局中保留到下路与终极战场，开始新对局时重置。\n负面被动：充满所需的法力提高 50/25/0%。",
+    "effectDesc1": "【法力】充满时，掀起一道横贯战场的浪墙。友军获得 65/150/400 护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，并获得 2/3/5 护甲与魔抗。敌人受到 190/350/800 魔法伤害并被击飞，且失去 2/3/5 护甲与魔抗。护甲与魔抗的增减在本局对局中保留到下路与终极战场，开始新对局时重置。\n负面被动：充满所需的法力提高 50/25/0%。",
     "effectDesc3": "",
     "img": "equip/dungeon-wave.png",
     "effectBrief": "【法力】充满时掀起横贯全场的浪墙：友军获得护盾与双抗，敌人被击飞并失去双抗。"
@@ -570,10 +570,10 @@
     "baseStats1": "+攻12/25/41",
     "shopAvailable": 1,
     "emoji": "🔫",
-    "effectDesc1": "每 {C:EquipSystem.HANDGUN_IV} 秒依次射出 4/5/6 发子弹，每发命中沿途第一个敌人，各造成 50/54/60% 攻击力的物理伤害。",
+    "effectDesc1": "每 {C:EquipSystem.HANDGUN_IV} 秒依次射出 4/5/6 发子弹，每发命中沿途第一个敌人，各造成 50/90/150% 攻击力的物理伤害。",
     "effectDesc3": "",
     "img": "equip/brass-pistol.png",
-    "effectBrief": "每 {C:EquipSystem.HANDGUN_IV} 秒射出 4/5/6 发子弹，每发造成 50/54/60% 攻击力物理伤害。"
+    "effectBrief": "每 {C:EquipSystem.HANDGUN_IV} 秒射出 4/5/6 发子弹，每发造成 50/90/150% 攻击力物理伤害。"
   },
   {
     "id": "p2eq_049",
