@@ -13,11 +13,11 @@ const GROW_CD := 6.0             # 每几秒蓄力一次
 const GROW_ATK_COEF := 0.75      # 追加魔法 = ×ATK + ×最大生命(下一行)
 const GROW_HP_PCT := 0.08
 const GROW_HEAL_PCT := 0.08      # 命中后生命球回复 = 最大生命 ×
-const GROW_MAXHP_PER_ATK := 0.60 # 永久 + 最大生命 = 基础攻击力 ×(攻击力本身不涨)
+const GROW_MAXHP_PER_ATK := 0.18 # 永久 + 最大生命 = 攻击力 ×(吸收那一刻的 u["atk"]; 11-19 用户「不应该是基础攻击力，就是攻击力的百分比…百分之十八」, 原 0.60×基础攻击力)
 const GROW_SMACK_ATK_COEF := 1.0   # ↓ 选「竹击」后的四个强化值
 const GROW_SMACK_HP_PCT := 0.13
 const GROW_SMACK_HEAL_PCT := 0.12
-const GROW_SMACK_MAXHP_PER_ATK := 1.05
+const GROW_SMACK_MAXHP_PER_ATK := 0.25   # 11-19 用户「携带了足迹(竹击)…百分之二十五乘攻击力」, 原 1.05×基础攻击力
 
 ## ★★2026-08-24 文案根除: 【竹刺阵】原来这几个数散在函数体里(半径写了两遍)。
 ## 【自然恢复】治自己 + 给每名队友按【队友自己的】最大生命上盾; 无队友则改治自己更多。
@@ -37,10 +37,76 @@ const SPIKE_ATK_COEF := 0.9     # ×ATK 物理
 const SPIKE_MAXHP_PCT := 0.15   # + 自身最大生命 ×
 const SPIKE_KNOCK_SEC := 1.5    # 击飞滞空(秒)·真值由 _knockback(70, 2.75) 的抛物线给出
 
+const _BE := preload("res://scripts/net/backend.gd")
 var battle
 
 func _init(b) -> void:
 	battle = b
+
+
+## ══ 【生长】永久最大生命: 一大轮内跨场累积、切轮清零(用户 11-19「希望改为随一大轮保留，呃，新的一大轮会重置…玩家在一直打下去的时候，
+##    这个竹叶龟获得永久生命值会越来越多」· 方案书 docs/plans/20261119-竹叶龟生长随大轮保留.md) ══
+##   照赌神命运之轮那条链(GamblerSystem.drawn / _gambler_apply_wheel_stacks):
+##   · 这一局每一方长了多少记在 `grown`(裁判写进结果单 bamboo_new / bamboo_new_b, 客户端 RefereeWatch.apply_bamboo 累积进存档);
+##   · 登场 `apply_season_growth`: 左方读存档 GameState.bamboo_growth_hp, 右方读对手快照 bamboo_hp, 再加上**这一局已经长的**
+##     (用户 11-19「一直的上路成长，那肯定是在对」: 上路 / 下路长的进终极战场还在 —— 终极战场按幸存名单重建单位, 不接就丢);
+##   · 不设上限(用户「没有上限啊，不用上限」)。039 竹制弓箭的绿球不进这里(用户「竹制弓箭…不要动啊」)。
+var grown := {"left": 0.0, "right": 0.0}
+
+
+## 这只竹叶龟算哪一方的: 驯服进终极战场的按原主人 lv_side; 缩头随从 / 召唤物不算(它们不是玩家那只竹叶龟) ⇒ ""。
+static func owner_side(u: Dictionary) -> String:
+	if u.get("minion_kind", null) != null or bool(u.get("is_summon", false)):
+		return ""
+	return str(u.get("lv_side", u.get("side", "")))
+
+
+func grow_coef(u: Dictionary) -> float:
+	return GROW_SMACK_MAXHP_PER_ATK if "bambooSmack" in battle._chosen_skill_types(u["id"], u["side"] == "left") else GROW_MAXHP_PER_ATK
+
+
+## 绿球落到竹叶龟身上那一刻: 永久 + 最大生命 = 系数 × **当时的攻击力**; 记进这一局的 grown。
+func grow_absorb(u: Dictionary) -> void:
+	var g: float = float(u["atk"]) * grow_coef(u)
+	if g <= 0.0:
+		return
+	u["maxHp"] += g
+	u["hp"] += g
+	battle._recalc_stats(u)
+	var sd := owner_side(u)
+	if grown.has(sd):
+		grown[sd] = float(grown[sd]) + g
+
+
+## 本大轮已累积(这一局开打前): 左方 = 存档, 右方 = 对手快照(同命运之轮口径)。
+static func season_hp(side: String) -> float:
+	if side == "left":
+		return maxf(0.0, float(GameState.bamboo_growth_hp))
+	if side == "right":
+		return _BE.ghost_bamboo_hp(GameState.dual_ghost)
+	return 0.0
+
+
+## 登场: + 本大轮累积 + 这一局已长的; 血量按原比例(带血进终极战场的幸存者不被回满)。
+func apply_season_growth(u: Dictionary) -> void:
+	var sd := owner_side(u)
+	if sd == "":
+		return
+	var g: float = season_hp(sd) + float(grown.get(sd, 0.0))
+	if g <= 0.0:
+		return
+	var mx: float = float(u["maxHp"])
+	var frac: float = clampf(float(u["hp"]) / mx, 0.0, 1.0) if mx > 0.0 else 1.0
+	u["maxHp"] = mx + g
+	u["hp"] = maxf(1.0, (mx + g) * frac)
+	battle._recalc_stats(u)
+
+
+## 说明里那一行(选龟页 / 图鉴 / 对局信息面板; 用户 11-19「说明你要显示」): 本大轮已累积多少。没有就空串。
+static func season_note(v: float) -> String:
+	if v < 0.5:
+		return ""
+	return "\n<span style=\"color:#7fd88a\">本大轮已累积：最大生命值 +%d</span>" % int(round(v))
 
 # 竹叶强化命中: 敌人身上爆一下大淡绿命中特效(≈上半身大小·一下即散·用户2026-07-11).
 func _bamboo_hit_splash(tgt: Dictionary) -> void:

@@ -375,8 +375,8 @@ pet|石头龟/磐石之躯|brief|被动：石头龟每次受到攻击或技能�
 pet|石头龟/磐石之躯|detail|被动：石头龟每次受到攻击或技能伤害获得 1 层岩层，至多 30 层。每层岩层提供 1% 减伤与 2% 体型。\n\n主动：石头龟向前释放岩石冲击波，对前方一排敌人造成（50%×护甲({DEF}) + 50%×魔抗({MR}) = {N:StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR}）物理伤害，每层岩层使此伤害提高 4%，并将其击退、眩晕 2 秒。
 pet|竹叶龟/一叶刃|brief|竹叶龟甩出一道叶刃，造成 {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT} 物理伤害。
 pet|竹叶龟/一叶刃|detail|竹叶龟甩出叶刃，造成（40%×攻击力({ATK}) + 3%×最大生命值({HP}) = {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT}）物理伤害。
-pet|竹叶龟/生长|brief|竹叶龟每 6 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，回复 8% 自身最大生命值并永久提升最大生命值。
-pet|竹叶龟/生长|desc|竹叶龟每 6 秒蓄力一次，下次攻击额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害，回复（8%×最大生命值({HP}) = {E:BambooSystem.GROW_HEAL_PCT*HP}）生命值，并永久提升（60%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若携带【竹击】，强化效果提升为：造成（100%×攻击力({ATK}) + 13%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_SMACK_ATK_COEF+HP*BambooSystem.GROW_SMACK_HP_PCT}）魔法伤害，回复（12%×最大生命值({HP}) = {E:BambooSystem.GROW_SMACK_HEAL_PCT*HP}）生命值，并永久提升（105%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_SMACK_MAXHP_PER_ATK}）最大生命值。\n<span style="color:#8a93a0">蓄力完成后放出这次攻击，才开始计算下一次蓄力。</span>
+pet|竹叶龟/生长|brief|竹叶龟每 6 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，回复 8% 自身最大生命值并永久提升最大生命值（本大轮内跨场累积）。
+pet|竹叶龟/生长|desc|竹叶龟每 6 秒蓄力一次，下次攻击额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害，回复（8%×最大生命值({HP}) = {E:BambooSystem.GROW_HEAL_PCT*HP}）生命值，并永久提升（18%×攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若携带【竹击】，强化效果提升为：造成（100%×攻击力({ATK}) + 13%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_SMACK_ATK_COEF+HP*BambooSystem.GROW_SMACK_HP_PCT}）魔法伤害，回复（12%×最大生命值({HP}) = {E:BambooSystem.GROW_SMACK_HEAL_PCT*HP}）生命值，并永久提升（25%×攻击力({ATK}) = {E:ATK*BambooSystem.GROW_SMACK_MAXHP_PER_ATK}）最大生命值。\n<span style="color:#8a93a0">蓄力完成后放出这次攻击，才开始计算下一次蓄力。\n永久提升的最大生命值会带进终极战场，并在本大轮内跨场累积，进入新大轮时重置。</span>
 pet|竹叶龟/竹击|brief|竹叶龟伸出竹藤钩住全场最远的敌人，造成 {N:BambooSystem.SMACK_ATK_COEF*ATK} 物理伤害并眩晕 0.5 秒，同时将其拉拽到自己身前。\n被钩中的敌人陷入冰寒，攻击力和移动速度各降低 20%，持续 4 秒。
 pet|竹叶龟/竹击|detail|竹叶龟伸出一条竹藤，钩住全场最远的敌人，造成 {N:BambooSystem.SMACK_ATK_COEF*ATK} 物理伤害、眩晕 0.5 秒，并将其拉至竹叶龟身前。\n同时施加冰寒，使其攻击力和移动速度各降低 20%，持续 4 秒。\n<span style="color:#8a93a0">龟蛋免疫控制，仅受到伤害。</span>
 pet|竹叶龟/竹刺阵|brief|竹叶龟以目标为中心蓄力 0.6 秒，随后竹刺破地而出，对范围内的敌人造成 {N:BambooSystem.SPIKE_ATK_COEF*ATK} 外加 15% 自身最大生命值的物理伤害，并将其击飞 1.5 秒。
@@ -476,7 +476,7 @@ pet|骰子龟/骰子攻击|detail|骰子龟攻击目标，造成（90%×攻击�
 pet|龟壳/吸收|brief|龟壳夺取目标 10% 最大生命值：目标的最大生命值降低这一数值，龟壳的最大生命值与当前生命值增加这一数值。
 pet|龟壳/吸收|detail|龟壳夺取目标 10% 最大生命值：目标的最大生命值降低这一数值，龟壳的最大生命值与当前生命值增加这一数值。\n<span style="color:#8a93a0">目标当前生命值超出新上限的部分以真实伤害扣除。</span>
 pet|龟壳/复制|brief|龟壳随机复制敌方的 2 个技能并依次释放，每个技能只发挥 60% 的效果。
-pet|龟壳/复制|detail|龟壳随机复制敌方的 2 个技能并依次释放，每个技能只发挥 60% 的效果。\n<span style="color:#8a93a0">会永久改变属性或形态的技能不会被复制。</span>
+pet|龟壳/复制|detail|龟壳随机复制敌方的 2 个技能并依次释放，每个技能只发挥 60% 的效果。\n<span style="color:#8a93a0">会永久改变属性或形态的技能不会被复制。已阵亡的敌人的技能同样可以复制；可复制的技能只有 1 个时，将其释放两次。</span>
 pet|龟壳/攻击|brief|龟壳打击目标，造成 {N:ShellSystem.BASIC_COEF*ATK} 伤害，伤害类型在物理与真实之间逐次交替，并对主目标周围的其他敌人造成 50% 的溅射伤害。\n<span style="color:#8a93a0">溅射伤害的类型与本次攻击相同。\n</span>
 pet|龟壳/攻击|detail|龟壳攻击目标，造成（100%×攻击力({ATK}) = {N:ShellSystem.BASIC_COEF*ATK}）伤害，伤害类型在物理与真实之间交替，第一次为物理伤害。\n每次攻击对主目标附近的其他敌人造成 50% 的溅射伤害，类型与本次攻击相同。
 pet|龟壳/暗影|brief|被动：龟壳 6 秒内未受到伤害时进入潜影，变为不可选中。龟壳攻击或释放技能时解除潜影，范围伤害不会解除潜影。\n解除潜影后的首次攻击额外造成 {M:ShellSystem.STEALTH_BREAK_MAGIC*ATK} 魔法伤害，施加 {E:ShellSystem.STEALTH_POISON_MULT*ATK} 层中毒与 50% 治疗削减，持续 3 秒。\n\n主动：龟壳朝目标方向飞行，对途经的敌人造成 {M:ShellSystem.DIVE_MAGIC*ATK} 魔法伤害并将其击退。龟壳沿途留下一条暗影火道，持续 5 秒，每 0.5 秒对火道内的敌人施加 {E:ShellSystem.BURN_ATK_MULT*ATK} 层灼烧并减速 20%。龟壳落地后进入潜影。

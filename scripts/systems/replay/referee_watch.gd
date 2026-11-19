@@ -247,6 +247,7 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 	apply_incense(gs, st.get("incense", {}))   # 服务器那一局里 093 香火石的刻痕 / 充能(2026-10-23)
 	apply_axe_kills(gs, st)                    # 服务器那一局里斧头的击杀 + 助攻(2026-11-06)
 	apply_wheel(gs, st)                        # 服务器那一局里命运之轮新抽到的花色(2026-11-06)
+	apply_bamboo(gs, st)                       # 服务器那一局里竹叶龟长的最大生命(2026-11-19)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -639,7 +640,8 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 			var in_c: bool = apply_incense(GameState, res.get("incense", {}))   # 093 香火石(2026-10-23), 同一张单子同一道闸
 			apply_axe_kills(GameState, res)
 			apply_wheel(GameState, res)
-			if ch_c or in_c:
+			var bm_c: bool = apply_bamboo(GameState, res)   # 竹叶龟生长(2026-11-19), 同一张单子同一道闸
+			if ch_c or in_c or bm_c:
 				GameState.save()
 	else:
 		return -1                             # 问不到 / 还没翻面: 留着下次
@@ -736,6 +738,16 @@ static func apply_axe_kills(gs, st: Dictionary) -> bool:
 
 ## 服务器那一局我方命运之轮新抽到的花色 ⇒ 累积进本大轮存档(设计: 一大轮内逐渐成长, 换轮清零)。
 ##   ★服务端没传这个键(迁移没上 / 老裁判)⇒ 什么都不发。服务端回的是「我这一侧」(B 方取 wheel_new_b, 回包按视角换好)。
+## 服务器那一局我方竹叶龟【生长】长的最大生命 ⇒ 累积进本大轮存档(2026-11-19 · 方案书 20261119; 一大轮内越打越多, 换轮清零, 不设上限)。
+##   ★服务端没传这个键(迁移没上 / 老裁判)⇒ 什么都不发。服务端回的是「我这一侧」(B 方取 bamboo_new_b, 回包按视角换好)。
+static func apply_bamboo(gs, st: Dictionary) -> bool:
+	var v = st.get("bamboo_new", 0.0)
+	if not (v is int or v is float) or float(v) <= 0.0:
+		return false
+	gs.bamboo_growth_hp = snappedf(float(gs.bamboo_growth_hp) + float(v), 0.01)
+	return true
+
+
 static func apply_wheel(gs, st: Dictionary) -> bool:
 	var w = st.get("wheel_new", {})
 	if not (w is Dictionary) or (w as Dictionary).is_empty():
@@ -782,6 +794,7 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 	apply_incense(gs, st.get("incense", {}))
 	apply_axe_kills(gs, st)
 	apply_wheel(gs, st)
+	apply_bamboo(gs, st)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1

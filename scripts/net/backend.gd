@@ -204,6 +204,18 @@ static func ghost_minion_extras(m: Dictionary, spec: Dictionary) -> void:
 
 
 ## 快照里的命运之轮累积 {花色: 次数}(裁判左方 / 战斗右方同一个口径)。快照是别人传上来的 ⇒ 只认四种花色, 夹到 0 ~ 99。
+## 快照里的竹叶龟【生长】本大轮累积(最大生命; 裁判左方 / 战斗右方同一个口径, 2026-11-19)。快照是别人传上来的 ⇒ 只认有限正数, 夹到 0 ~ BAMBOO_HP_MAX, 留两位小数。
+const BAMBOO_HP_MAX := 1000000.0
+static func ghost_bamboo_hp(g) -> float:
+	var v = (g as Dictionary).get("bamboo_hp", 0.0) if g is Dictionary else 0.0
+	if not (v is int or v is float):
+		return 0.0
+	var f := float(v)
+	if is_nan(f) or is_inf(f) or f <= 0.0:
+		return 0.0
+	return snappedf(minf(f, BAMBOO_HP_MAX), 0.01)
+
+
 static func ghost_wheel_stacks(g) -> Dictionary:
 	var t = (g as Dictionary).get("wheel_stacks", null) if g is Dictionary else null
 	var out := {}
@@ -2176,4 +2188,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	var wh := ghost_wheel_stacks({"wheel_stacks": GameState.gambler_wheel_stacks})   # 命运之轮本大轮累积: 同样只有抽过才带
 	if not wh.is_empty():
 		out["wheel_stacks"] = wh
+	var bh := ghost_bamboo_hp({"bamboo_hp": GameState.bamboo_growth_hp})   # 竹叶龟生长本大轮累积(11-19): 同样只有长过才带
+	if bh > 0.0:
+		out["bamboo_hp"] = bh
 	return out

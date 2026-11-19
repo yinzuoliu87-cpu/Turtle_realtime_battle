@@ -360,7 +360,14 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 	##   ★存的是【形态下标】不是单位引用 —— 单位字典互相引用成环, 存进别的字典会递归哈希卡死
 	##     (CLAUDE.md §3.2); 而且被偷者可能在 0.6 秒错峰之前就死了。
 	var forms: Dictionary = {}
-	for o in battle._targeting._enemies_of(u):
+	## ★★2026-11-19 用户「龟壳偷进来不是偷两个吗？为什么我只看到一个？然后偷的图标也只有一个…不是偷两次吗？」:
+	##   原来只从**活着的**敌人身上取(_enemies_of), 而每只龟只带 1 个主动 ⇒ 对面只剩 1 只就只偷到 1 个、放 1 次、出 1 个图标
+	##   (探针 tests/probes/_probe_shell_copy_count.gd: 3 / 2 只活 ⇒ 2 发, 1 只活 ⇒ 1 发; 复制 130 龟能, 常在后半段才放)。
+	##   ⇒ 改成这一路上过场的**全部**敌方单位(活着或已阵亡, 训龟大师照旧不算 —— _is_hostile 不看死活、不认大师),
+	##     仍不够 2 个就同一个放两次(见洗牌之后)。门禁 verify_shell_copy_two。
+	for o in battle._units:
+		if not battle._is_hostile(u, o):
+			continue
 		for st in o.get("active_skills", []):
 			var s = str(st)
 			## ★2026-08-29 白名单 → 黑名单(用户:「那个规则是有问题的啊」)。
@@ -382,6 +389,8 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 		var _tmp = pool[_i]
 		pool[_i] = pool[_j]
 		pool[_j] = _tmp
+	if pool.size() == 1:
+		pool.append(pool[0])   # ★11-19: 能抄的只有一个 ⇒ 同一个放两次(形态下标按技能名存在 forms 里, 两发同一份)
 	if pool.size() >= 1:
 		## ★2026-11-08 塞拉斯 R 式偷招演出(甩链 → 分节锁链 → 抓住 + 已被偷小圈 → 抽紫流 → 持有态电弧), 与第一发同时开始、不推迟它。
 		##   原来是两团紫白柔光残影 + 一圈紫白环。只管画面(ShellVfx), 原主只读。

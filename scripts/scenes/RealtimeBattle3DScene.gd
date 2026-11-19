@@ -6539,7 +6539,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 					if not u.get("alive", false):
 						return
 					_damage._heal(u, u["maxHp"] * (BambooSystem.GROW_SMACK_HEAL_PCT if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_HEAL_PCT))
-					var _gr := (BambooSystem.GROW_SMACK_MAXHP_PER_ATK if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_MAXHP_PER_ATK); u["maxHp"] += u["base_atk"] * _gr; u["hp"] += u["base_atk"] * _gr; _recalc_stats(u); _vfx._flash(u, Color(0.5, 1.7, 0.65)))   # 永久+maxHp=系数×ATK + 吸收瞬间竹叶龟再绿闪(得到生命·不灭之握=绿闪非环)
+					_bamboo_sys.grow_absorb(u); _vfx._flash(u, Color(0.5, 1.7, 0.65)))   # 永久+maxHp = 系数×攻击力(11-19 起底数是攻击力、一大轮内累积, 见 BambooSystem.grow_absorb) + 吸收瞬间竹叶龟再绿闪
 		"rainbow":                                        # 棱镜(改造): 普攻附当前颜色效果(红真伤/蓝小盾/绿回血)
 			match int(u.get("prism_color", -1)):
 				0: _damage._apply_damage_from(u, tgt, int(u["atk"] * RainbowSystem.PRISM_RED_TRUE), Color("#ff6b6b"), 0.0, true)   # 红: 额外真伤

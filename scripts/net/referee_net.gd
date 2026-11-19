@@ -336,7 +336,18 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		"incense": parse_incense(d.get("incense", null)),
 		"axe_kills": parse_axe_kills(d.get("axe_kills", null)),
 		"wheel_new": parse_wheel(d.get("wheel_new", null)),
+		"bamboo_new": parse_bamboo(d.get("bamboo_new", null)),
 		"error": str(d.get("error", "")) if d.get("error", null) is String else ""}
+
+
+## 纯函数: 回包里的 `bamboo_new`(20261119 起: 这一局我方竹叶龟长的最大生命)→ 浮点。缺 / 形状不对 ⇒ 0(什么都不发)。
+static func parse_bamboo(v) -> float:
+	if not (v is int or v is float):
+		return 0.0
+	var f := float(v)
+	if is_nan(f) or is_inf(f) or f <= 0.0:
+		return 0.0
+	return snappedf(minf(f, 100000.0), 0.01)
 
 
 ## 纯函数: 回包里的 `wheel_new`(20261106h 起: 这一局我方新抽到的花色)→ {花色: 次数}。缺 / 形状不对 ⇒ {}(什么都不发)。
@@ -510,7 +521,8 @@ static func parse_finals_coins(ok: bool, code: int, body: String) -> Dictionary:
 	var c = d.get("coins", null)
 	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0,
 		"chest": parse_chest(d.get("chest", null)), "incense": parse_incense(d.get("incense", null)),
-		"axe_kills": parse_axe_kills(d.get("axe_kills", null)), "wheel_new": parse_wheel(d.get("wheel_new", null))}
+		"axe_kills": parse_axe_kills(d.get("axe_kills", null)), "wheel_new": parse_wheel(d.get("wheel_new", null)),
+		"bamboo_new": parse_bamboo(d.get("bamboo_new", null))}
 
 
 static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Callable) -> bool:

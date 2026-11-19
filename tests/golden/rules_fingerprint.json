@@ -1,11 +1,11 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 6,
- "fingerprint": "6b53a7dac3c77f0c7398a61f28708e3a2f4fd961853cf54e29d6e1f284701951",
+ "fingerprint": "bf4157471f70ab6843036e591c6cc76b84a46db3c1109675e784832bae843813",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
-   "hash": "acc64113c08867dd9a6a0ba401019f2da9e7eae630a9df070bb5c8f4d4898366",
+   "hash": "bb5fe7b9cd665b73a6aae5cb650669a974cf64266e89b36270915497ac465ef1",
    "tag": "① 双方顶档盾(冲击波互打) · 剑 / 食物"
   },
   {
@@ -30,7 +30,7 @@
   },
   {
    "def": "static-tables",
-   "hash": "c95e7bd019c2444fa9868d87cc44f1b463fce15b1f64faaaeaf39d435df0dbb3",
+   "hash": "70d7462a9eb2f9d47a75b1018b57a63987148f7d5b7a08885c69a9632e97698b",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],

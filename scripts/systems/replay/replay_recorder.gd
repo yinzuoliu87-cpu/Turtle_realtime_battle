@@ -65,6 +65,7 @@ const STATE_KEYS := [
 	"debug_level",          # 必需(360): >0 强制全体等级(正式版 0; 看的人那台若开着就会分叉)
 	"trainer_skill",        # 必需(480): 大师技能(U2 后自动放)
 	"gambler_wheel_stacks", # 必需(360): 赌神命运之轮跨场累积(★回放那一遍没读到它 —— 是静态扫补进来的, 选了命运之轮才读)
+	"bamboo_growth_hp",     # 必需(登场): 竹叶龟生长本大轮累积的最大生命(2026-11-19); 旧录像没有 ⇒ apply_state 清 0
 	"chest_treasure_value", # 必需(2640): 宝箱财宝值(开箱阈值)
 	"chest_treasures_won",  # 必需(2640): 已开战利品开局回装
 	"incense_marks",        # 必需(420): 093 香火石刻痕
@@ -819,6 +820,9 @@ static func apply_state(st: Dictionary) -> void:
 	## 援军小将可抽清单(2026-11-11)之前录的 ⇒ 当时援军不带装备 ⇒ 清空, 不让看的人上一场留下的那份顶进去(播完按备份还原)。
 	if not st.has("reserve_pool") and GameState != null:
 		GameState.reserve_pool = []
+	## 竹叶龟生长累积(2026-11-19)之前录的 ⇒ 当时没有跨场累积 ⇒ 清 0, 不让看的人自己的累积顶进去(播完按备份还原)。
+	if not st.has("bamboo_growth_hp") and GameState != null:
+		GameState.bamboo_growth_hp = 0.0
 	for n in st:
 		if not str(n) in STATE_KEYS or str(n) in APPLY_SKIP:
 			continue

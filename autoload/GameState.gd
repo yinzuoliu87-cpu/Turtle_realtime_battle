@@ -1440,6 +1440,7 @@ var candy_jar_count: int = 0                          # 糖果罐计数 0-CANDY_
 var candy_jar_broken: bool = false                    # 本赛季糖果罐已打碎领奖 (一大轮1颗)
 var candy_temp_levels: Dictionary = {}               # 临时等级器已用 {pet_id: +级数} (本大轮永久·切轮重置)
 var gambler_wheel_stacks: Dictionary = {}            # 赌神·命运之轮抽花色跨场累积 {"spade"/"heart"/"diamond"/"club": 抽中次数} (本大轮永久·切轮重置·方案B·用户2026-07-09)
+var bamboo_growth_hp: float = 0.0                    # 竹叶龟【生长】永久最大生命·本大轮跨场累积(切轮清零·用户 11-19「随一大轮保留…新的一大轮会重置」; 只由裁判结果单 bamboo_new 累加 = RefereeWatch.apply_bamboo)
 var lane_loadout: Dictionary = {}                    # (旧, 弃用) 阵容格子; 双路改用 dual_lineup
 # 双路布阵: 上/下战场各3单位(3统领+3小将分3+3). unit = {"kind":"leader","id":X} 或 {"kind":"minion","role":"front"/"back"}
 # front小将=近战挥砍×1.4 / back小将=远程射击×1.5; 某路0统领→首个小将自动精英(spawn时判). 位置=场内自由放置(此处只定分路+小将类型)
@@ -1897,6 +1898,7 @@ func _save_dict() -> Dictionary:
 		"candy_jar_broken": candy_jar_broken,
 		"candy_temp_levels": candy_temp_levels,
 		"gambler_wheel_stacks": gambler_wheel_stacks,
+		"bamboo_growth_hp": bamboo_growth_hp,
 		"lane_loadout": lane_loadout,
 		"dual_lineup": dual_lineup,
 		"onboarded": onboarded,   # 走完首次教学 → 不再触发
@@ -2107,6 +2109,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	candy_jar_broken = bool(data.get("candy_jar_broken", false))
 	candy_temp_levels = data.get("candy_temp_levels", {})
 	gambler_wheel_stacks = data.get("gambler_wheel_stacks", {})
+	bamboo_growth_hp = maxf(0.0, float(data.get("bamboo_growth_hp", 0.0)))
 	lane_loadout = data.get("lane_loadout", {})
 	dual_lineup = data.get("dual_lineup", {})
 	# 装备库: Array[String] (Variant default → assign 后再强转)
@@ -2315,6 +2318,7 @@ func reset_save() -> void:
 	candy_jar_broken = false
 	candy_temp_levels = {}
 	gambler_wheel_stacks = {}
+	bamboo_growth_hp = 0.0
 	lane_loadout = {}
 	dual_lineup = {}
 	trainer_appearance = "default"   # 训龟大师装配回默认(形象/钩锁)
@@ -2995,6 +2999,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	candy_jar_broken = false
 	candy_temp_levels = {}
 	gambler_wheel_stacks = {}
+	bamboo_growth_hp = 0.0
 	lane_loadout = {}
 	dual_lineup = {}
 	_EconLedger.rebase(self)   # 本周开局 = 服务器重放的起点

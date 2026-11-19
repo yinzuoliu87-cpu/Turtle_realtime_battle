@@ -1062,6 +1062,8 @@ func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary, top: float)
 	if passive.is_empty():
 		return
 	var full_desc: String = str(passive.get("desc", passive.get("brief", "")))
+	if str(pet.get("id", "")) == "bamboo":
+		full_desc += BambooSystem.season_note(BambooSystem.season_hp("left"))   # 竹叶龟: 本大轮已累积(11-19「说明你要显示」)
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true
 	rt.fit_content = true

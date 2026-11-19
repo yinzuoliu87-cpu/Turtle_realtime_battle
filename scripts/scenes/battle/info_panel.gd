@@ -1389,6 +1389,8 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 	var passive: Dictionary = u.get("passive", {})
 	if passive is Dictionary and not (passive as Dictionary).is_empty():
 		var ptpl = battle.SkillText.text_of(passive, battle._skill_detail())
+		if str(u.get("id", "")) == "bamboo":
+			ptpl += BambooSystem.season_note(BambooSystem.season_hp(BambooSystem.owner_side(u)))   # 本大轮已累积(11-19「说明你要显示」)
 		var pic := ""
 		var praw := str(DataRegistry.passive_icons.get(str(passive.get("type", "")), ""))
 		if praw.ends_with(".png"):

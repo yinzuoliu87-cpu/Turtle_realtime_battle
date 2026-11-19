@@ -682,6 +682,8 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			if "diceFlashStrike" in battle._chosen_skill_types(u["id"], u["side"] == "left"):
 				u["armor_pen"] += u["base_def"] + u["base_mr"]   # 真正的赌徒(打包稳定骰子): 登场双抗全转等量护穿(纯物理)
 				u["base_def"] = 0.0; u["base_mr"] = 0.0; battle._recalc_stats(u)
+		"bamboo":
+			battle._bamboo_sys.apply_season_growth(u)   # 生长: + 本大轮累积的最大生命 + 这一局已长的(进终极战场接回来)·11-19
 		"gambler":
 			if "gamblerFateWheel" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 命运之轮(技三打包被动·选中才有)·用户2026-07-09重设计
 				u["hp"] = maxf(1.0, u["hp"] - u["maxHp"] * GamblerSystem.WHEEL_HP_COST)   # 登场损30%当前血(=30%maxHp·上限不变)

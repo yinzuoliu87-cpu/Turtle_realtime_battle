@@ -36,6 +36,8 @@ extends RefCounted
 ##                   key 里没有时退回读它(`pets_allowed`)。
 ##   key.a_wheel / key.b_wheel  命运之轮本周层数 {花色: 次数}: 领活那一刻服务器按结果单累加的(econ_on 开着才有, 迁移 20261109d),
 ##                   给快照自报的封顶(`wheel_cap`)。
+##   key.a_bamboo / key.b_bamboo  竹叶龟【生长】本周累积的最大生命(数): 领活那一刻服务器按结果单 bamboo_new 累加的(econ_on 开着才有,
+##                   迁移 20261119_bamboo_growth), 给快照自报的封顶(`bamboo_cap`)。
 ##   key.a_lv / key.b_lv  按龟等级表 {pet_key: 1~10}: 领活那一刻按服务器等级表算的(`pet_lv_table`), 压过快照自报的 a.lv / b.lv(`state_for`)。
 ##                   ★快照本身服务器一个字不改(决赛坏快照回退拿任务快照逐字比)。key 和快照都没有 lv = 旧快照 ⇒ 整队等级。
 ##
@@ -207,6 +209,9 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	##   没有 key.b_wheel(econ_on 关着 / 机器人池 / 旧任务)⇒ 快照原样。写进对手快照这一份 ⇒ 战斗场右方读到的、录像录的都是封顶后的。
 	if key.get("b_wheel") is Dictionary:
 		b["wheel_stacks"] = wheel_cap(BE.ghost_wheel_stacks(b), key["b_wheel"])
+	## 竹叶龟生长本大轮累积(2026-11-19 · 迁移 20261119_bamboo_growth): 领活时服务器按本周结果单累加的(key.b_bamboo)给 B 快照自报的封顶; 没有 ⇒ 快照原样。
+	if key.get("b_bamboo") is float or key.get("b_bamboo") is int:
+		b["bamboo_hp"] = bamboo_cap(BE.ghost_bamboo_hp(b), key["b_bamboo"])
 	var st: Dictionary
 	if j.get("a_state") is Dictionary:
 		st = {}
@@ -219,6 +224,10 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 		st = _state_from_snapshot(j["a"], normalize)
 	if key.get("a_wheel") is Dictionary:      # 左方同一条(key.a_wheel 压 A 快照 / a_state 自报的)
 		st["gambler_wheel_stacks"] = wheel_cap(BE.ghost_wheel_stacks({"wheel_stacks": st.get("gambler_wheel_stacks", {})}), key["a_wheel"])
+	## 竹叶龟生长(2026-11-19): ★一律写这个键 —— a_state 是旧客户端交的(没有这个键)时, 不写就沿用这台裁判上一局留在 GameState 里的值。
+	st["bamboo_growth_hp"] = BE.ghost_bamboo_hp({"bamboo_hp": st.get("bamboo_growth_hp", (j["a"] as Dictionary).get("bamboo_hp", 0.0) if j.get("a") is Dictionary else 0.0)})
+	if key.get("a_bamboo") is float or key.get("a_bamboo") is int:   # 左方同一条封顶
+		st["bamboo_growth_hp"] = bamboo_cap(float(st["bamboo_growth_hp"]), key["a_bamboo"])
 	st["dual_ghost"] = b
 	st["dual_active"] = true
 	st["tutorial_active"] = false
@@ -234,6 +243,11 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 		var a: Dictionary = j.get("a", {}) if j.get("a") is Dictionary else {}
 		st["season_total_battles"] = maxi(0, int(a.get("season_total_battles", 0)))
 	return st
+
+
+## 竹叶龟生长封顶(2026-11-19 · 迁移 20261119_bamboo_growth): 取「自报」与「服务器结果单合计」的较小值(同 wheel_cap 的理由)。
+static func bamboo_cap(claimed: float, server) -> float:
+	return snappedf(minf(maxf(0.0, claimed), maxf(0.0, float(server))), 0.01)
 
 
 ## 命运之轮层数封顶: 每种花色取「自报」与「服务器结果单合计」的较小值(迁移 20261109d)。
@@ -332,6 +346,7 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 		"candy_temp_levels": tl,          # 2026-11-06 快照带上了(原来恒空 ⇒ 服务器局里临时等级器用了等于没用); 右方读 dual_ghost 同一个键
 		"trainer_skill": ts if ts != "" else "hook",   # 与右方回落相同(battle_spawn: 老快照没有 ⇒ hook)
 		"gambler_wheel_stacks": BE.ghost_wheel_stacks(a),   # 2026-11-06 快照带上了(原来恒空 ⇒ 服务器局里命运之轮不累积); 右方读 dual_ghost 同一个键
+		"bamboo_growth_hp": BE.ghost_bamboo_hp(a),          # 竹叶龟生长本大轮累积(2026-11-19); 右方读 dual_ghost.bamboo_hp 同一个函数
 		"chest_treasure_value": float(cv) if (cv is int or cv is float) else 0.0,
 		"chest_treasures_won": cw,
 		## 093 香火石(2026-10-23): 从 A 的快照起算(原来写死 0 ⇒ 周末服务器局里我方刻痕不生效)。

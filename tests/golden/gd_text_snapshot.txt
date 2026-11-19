@@ -2578,6 +2578,7 @@ scripts/systems/sim/sim_driver.gd|lit|遗物
 scripts/systems/sim/sim_driver.gd|lit|食物
 scripts/systems/sim/sim_driver.gd|lit|首启选择框里找不到按钮
 scripts/systems/sim/sim_driver.gd|text|返回主菜单
+scripts/systems/skills/bamboo_system.gd|lit|\n<span style=\"color:#7fd88a\">本大轮已累积：最大生命值 +%d</span>
 scripts/systems/skills/candy_system.gd|lit|投喂
 scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -
 scripts/systems/skills/candy_system.gd|lit|糖果炸弹
