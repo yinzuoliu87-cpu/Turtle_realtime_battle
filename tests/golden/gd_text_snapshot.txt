@@ -1757,6 +1757,7 @@ scripts/scenes/battle/settle_screen.gd|lit|造成魔法伤害
 scripts/scenes/battle/settle_screen.gd|lit|阵亡
 scripts/scenes/battle/settle_screen.gd|lit|限免
 scripts/scenes/battle/settle_screen.gd|lit|龟经验
+scripts/scenes/battle/spar_exit.gd|lit|退出切磋？
 scripts/scenes/battle/topbar_status.gd|lit|加时
 scripts/scenes/battle/topbar_status.gd|lit|加时：每 %d 秒全场伤害 +%d%%
 scripts/scenes/battle/topbar_status.gd|lit|加时：治疗效果 -%d%%
