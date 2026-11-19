@@ -27,7 +27,7 @@ const SKILL_COST := {
 	# 通用
 	"shield": 50.0, 
 	# 数据驱动伤害
-	"basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 60.0,
+	"basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0, "bambooSmack": 120.0, "bambooSpikes": 130.0, "angelEquality": 90.0,
 	"ninjaShuriken": 95.0, "ninjaBomb": 120.0, 
 	"ghostPhantom": 95.0, "diamondPowerball": 100.0, "diamondSmash": 80.0, 
 	"rainbowStorm": 80.0, "gamblerDraw": 80.0, "gamblerFateWheel": 110.0,

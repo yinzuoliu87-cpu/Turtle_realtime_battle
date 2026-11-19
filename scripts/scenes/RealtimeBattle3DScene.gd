@@ -6520,7 +6520,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 			_damage._apply_damage_from(u, tgt, _damage._magic_after_mr(u, tgt["maxHp"] * CrystalSystem.BASIC_MAXHP_MAGIC, tgt), Color("#9bdcff"), 0.0, false, false, true)   # 10-16: 定额段不掷暴击(原走 _mitigate 与物理段各掷一次)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
 			_crystal_sys._crystal_stack(u, tgt, CrystalSystem.BASIC_STACKS)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 8% 魔法(2026-07-22订正: 注释原写11%, 代码一直是 0.08)
-			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * AngelSystem.JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
+			_angel_sys.judge_hit(u, tgt)   # 魔法(吃魔抗+蓝字); 11-19 起与平等每一段共用这一个函数
 			if u.get("_ascend_growth", false):
 				_angel_sys._ascend_growth_tick(u)   # 飞升打包被动(用户2026-07-28): 每次攻击 +5龟能 +1%攻击力·持续到战斗结束
 		# gambler 多重打击改云顶剑士式连击(见状态机 _gambler_sys._gambler_multi_cd), 不在这里追加

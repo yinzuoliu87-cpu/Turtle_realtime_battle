@@ -7,7 +7,7 @@ extends RefCounted
 const BLESS_SHIELD := 2.5   # 祝福: 护盾 = ×ATK (1.2→2.5)
 ## 【祝福】给当前输出最高的友军: 盾 + 攻速, 同一时长; 打包被动是自身首死复活。
 ## 【审判(被动)】每段攻击命中额外打一发按目标【当前】生命计的魔法。
-## ★这个系数在【两个文件各写一遍】: 主场景 _on_basic_hit + 本文件的技能路径。
+## ★11-19 起只在 `judge_hit` 一处结算: 普攻命中(主场景 _on_basic_hit)与平等每一段 / 审判光柱都调它(用户「天使龟本身它的被动也是一个攻击特效…你把它归为一类」)。
 const JUDGE_CURHP := 0.08   # 额外魔法 = 目标当前生命 ×
 ## 【裁决(普攻)】真值在主场景普攻表。
 const VERDICT_COEF := 1.0   # ×ATK 物理
@@ -67,7 +67,35 @@ func _sk_angel_ascend(u: Dictionary) -> void:                   # 天使龟·飞
 	u["atk_range"] = float(u["atk_range"]) + ASCEND_RANGE              # +25码射程(永久·叠加)
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 88.0, Color(1.0, 0.92, 0.55, 0.62), 2.4)   # 金光飞升圣环(施法瞬间圣环渐亮)
 
-# 天使龟·平等 ✅ (封板2026-07-06 选A远程投射·60龟能): 站原地射4道圣光斩弧各50%ATK·合计200%物理·带10%施法吸血; 目标A级及以上追加从天而降审判光柱=(50%ATK+目标已损生命10%)真伤·无视双抗·同10%吸血
+## 【审判(被动)】= 天使龟自己的一个「攻击命中时」效果: 额外造成目标当前生命 JUDGE_CURHP 的魔法伤害(独立结算, 不再连带别的被动)。
+##   调用方: 主场景 `_on_basic_hit`(普攻命中) + 本文件 `_equality_hit`(平等每一段 / 审判光柱)。
+func judge_hit(u: Dictionary, tgt: Dictionary) -> void:
+	battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字)
+
+
+## 平等的一段(4 道圣光各一段 + A 级以上目标的审判光柱)= **一次攻击**(用户 11-19「它不是四段打击嘛…还可能会触发额外一段打击…
+##   每段打击都应该是能够触发攻击特效的。比如说能够触发三环，或者有个二费叫钻孔螺…同样，天使龟本身它的被动也是一个攻击特效」):
+##   ① 出手 = 攻击时的装备钩子 `_eq_on_basic_attack`(065 鲨肝油 / 017 不沉之锚 / 027 电棍 / 062 螳螂虾钳取出 …);
+##   ② 伤害落地时命中类装备按【普攻命中】判(`_hit_as_basic` ⇒ battle_damage._post_hit_hooks: 061 钻孔螺 / 063 白鲸气环 …);
+##   ③ 审判被动(judge_hit)。
+##   同赌神赌注的牌(11-11 GamblerSystem.bet_card_on_throw / bet_card_land): 只对**装备钩子**算普攻, 音效 / 伤害统计仍是技能;
+##   不点剑士(08-03「连击不触发剑士」同口径)。结算从演出里抽出来, 门禁 verify_angel_equality_attack_fx 直接调。
+func _equality_hit(u: Dictionary, tgt: Dictionary, dmg_fn: Callable, col: Color, ls: float, raw: bool) -> void:
+	if tgt == null or not tgt.get("alive", false):
+		return
+	if u.get("alive", false):   # 施法者在几段之间阵亡: 已出手的圣光照样落地(原样), 只是不再有「攻击时」的装备效果
+		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原(同 _basic_attack)
+		battle._equip_sys._eq_on_basic_attack(u, tgt)
+		battle._equip_sys.tally.pop(_tl0)
+		if not tgt.get("alive", false):
+			return   # 攻击时的装备(锚击 / 电棍)已经把它打死了
+	u["_hit_as_basic"] = true
+	battle._damage._apply_damage_from(u, tgt, int(dmg_fn.call()), col, ls, raw)
+	u["_hit_as_basic"] = false
+	judge_hit(u, tgt)
+
+
+# 天使龟·平等 ✅ (封板2026-07-06 选A远程投射; 11-19 用户「需要削弱，削弱到九十龟能」60 → 90 龟能): 站原地射4道圣光斩弧各50%ATK·合计200%物理·带10%施法吸血; 目标A级及以上追加从天而降审判光柱=(50%ATK+目标已损生命10%)真伤·无视双抗·同10%吸血
 func _sk_angel_equality(u: Dictionary, tgt) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
@@ -82,18 +110,17 @@ func _sk_angel_equality(u: Dictionary, tgt) -> void:
 			battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], tgt["pos"], 30.0, Color(1.0, 0.9, 0.55, 0.85), 0.22)
 			battle._vfx._cut_slash(tgt["pos"], Color(1.0, 0.92, 0.55), 160.0, i % 2 == 1)
 			battle._skill_ring(tgt["pos"], Color(1.0, 0.9, 0.6, 0.5), 44.0)
-			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, EQUAL_SEG_COEF, tgt, false), Color("#ffe9a8"), EQUAL_LIFESTEAL)   # 单道50%物理(4道合计200%)·10%吸血
-			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 审判(每段攻击命中都吃·独立结算不触发其他被动·用户2026-07-10"每次攻击都要吃")
+			## 单道50%物理(4道合计200%)·10%吸血 + 审判(每段攻击命中都吃·用户2026-07-10"每次攻击都要吃"); 11-19 起每道算一次攻击
+			_equality_hit(u, tgt, func() -> int: return battle._atk_dmg(u, EQUAL_SEG_COEF, tgt, false), Color("#ffe9a8"), EQUAL_LIFESTEAL, false)
 		})
 	# A级及以上→第3段从天而降审判光柱: (50%ATK + 目标已损生命10%)真伤·无视双抗·同10%吸血
 	if int(order.get(str(tgt.get("rarity", "C")), 0)) >= 2:
 		battle._pending_shots.append({"delay": 0.42, "src": u, "fn": func():
 			if tgt == null or not tgt.get("alive", false): return
 			_angel_judgment_pillar(tgt["pos"])
-			var lost: float = maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"]))
-			var tru: int = maxi(1, int(float(u["atk"]) * EQUAL_JUDGE_COEF + lost * EQUAL_JUDGE_LOST))
-			battle._damage._apply_damage_from(u, tgt, tru, Color(1.0, 0.96, 0.76), 0.10, true)   # 真伤无视双抗·10%吸血
-			battle._damage._apply_damage_from(u, tgt, battle._mitigate(u, tgt["hp"] * JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 光柱也带审判(用户2026-07-11:附带被动·8%当前HP·与上面每段斩弧同一系数)
+			## 真伤无视双抗·10%吸血 + 光柱也带审判(用户2026-07-11:附带被动); 11-19 起光柱同样算一次攻击
+			_equality_hit(u, tgt, func() -> int: return maxi(1, int(float(u["atk"]) * EQUAL_JUDGE_COEF + maxf(0.0, float(tgt["maxHp"]) - float(tgt["hp"])) * EQUAL_JUDGE_LOST)),
+				Color(1.0, 0.96, 0.76), 0.10, true)
 			battle._vfx._flash(tgt, Color(1.0, 0.96, 0.76))
 		})
 

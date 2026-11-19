@@ -317,9 +317,9 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "天使龟对目标斩出 {C:AngelSystem.EQUAL_SEGMENTS} 道圣光，共造成 {N:AngelSystem.EQUAL_TOTAL*ATK} 物理伤害，本次施法获得 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n若目标稀有度为 A 级及以上，额外造成 {T:AngelSystem.EQUAL_JUDGE_COEF*ATK} 外加 {C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损失生命值的真实伤害。",
-        "detail": "天使龟对目标斩出 {C:AngelSystem.EQUAL_SEGMENTS} 道圣光，共造成（{C:AngelSystem.EQUAL_TOTAL%}%×攻击力({ATK}) = {N:AngelSystem.EQUAL_TOTAL*ATK}）物理伤害，本次施法获得 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n若目标稀有度为 A 级及以上，额外造成（{C:AngelSystem.EQUAL_JUDGE_COEF%}%×攻击力({ATK}) = {T:AngelSystem.EQUAL_JUDGE_COEF*ATK}）外加 {C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损失生命值的真实伤害。",
-        "energyCost": 60
+        "brief": "天使龟对目标斩出 {C:AngelSystem.EQUAL_SEGMENTS} 道圣光，共造成 {N:AngelSystem.EQUAL_TOTAL*ATK} 物理伤害，本次施法获得 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n若目标稀有度为 A 级及以上，额外造成 {T:AngelSystem.EQUAL_JUDGE_COEF*ATK} 外加 {C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损失生命值的真实伤害。\n每道圣光和对 A 级及以上目标的额外伤害都视为一次攻击，触发攻击时与命中时的装备效果。",
+        "detail": "天使龟对目标斩出 {C:AngelSystem.EQUAL_SEGMENTS} 道圣光，共造成（{C:AngelSystem.EQUAL_TOTAL%}%×攻击力({ATK}) = {N:AngelSystem.EQUAL_TOTAL*ATK}）物理伤害，本次施法获得 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n若目标稀有度为 A 级及以上，额外造成（{C:AngelSystem.EQUAL_JUDGE_COEF%}%×攻击力({ATK}) = {T:AngelSystem.EQUAL_JUDGE_COEF*ATK}）外加 {C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损失生命值的真实伤害。\n每道圣光和对 A 级及以上目标的额外伤害都视为一次攻击，触发攻击时与命中时的装备效果。",
+        "energyCost": 90
       },
       {
         "name": "飞升",
