@@ -154,6 +154,13 @@ func _ready() -> void:
 	_ok("③ ★点「偷袭」页签: 只剩偷袭那一张", cards2.size() == 1 and str((cards2[0] as Node).get_meta("row_kind", "")) == "raid", str(cards2.size()))
 	_ok("③ 页签上的数: 全部 5 / 偷袭 1 / 闯关赛 1", _btn(rs, "Tab_all") == "全部 5" and _btn(rs, "Tab_raid") == "偷袭 1" and _btn(rs, "Tab_gauntlet") == "闯关赛 1",
 		_btn(rs, "Tab_all") + " " + _btn(rs, "Tab_raid"))
+	## 专属底图(11-19 用户「行」): 真铺上了、盖满不变形、最近邻不糊, 且在卡片底下(是本页第一批子节点)
+	var art: TextureRect = rs.find_child("RecordBgArt", false, false) as TextureRect
+	var art_ok: bool = art != null and art.texture != null and art.texture.resource_path == rs.BG_TEX \
+		and art.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED and art.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST \
+		and art.get_index() <= 1 and art.mouse_filter == Control.MOUSE_FILTER_IGNORE
+	_ok("③ ★专属底图「海底战绩馆」铺在最底层(盖满 / 最近邻 / 不吃点击)", art_ok,
+		"无" if art == null else "%s idx=%d" % [str(art.texture.resource_path) if art.texture else "无图", art.get_index()])
 	rs.queue_free()
 	await get_tree().process_frame
 

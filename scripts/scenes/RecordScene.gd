@@ -15,7 +15,7 @@ var _top_bar = null
 ##     + 本机老记录里服务器没有的那几行(按录像号去重; 没联网时只剩本机那几行)。
 ##   · 版式: 顶上一排赛事页签(全部 / 积分赛 / 闯关赛 / 决赛 / 偷袭) + 一行总览(场次 / 胜 / 负 / 胜率 + 最近胜负小方块);
 ##     下面每场一张卡(`BattleLogCard`: 云顶对局记录式「头像下一排装备」+ 皇室 Battle Log 式左右对照 + 观看)。
-##   · 背景: 深色底占位(满屏底图都被别的页面用着, 不借; 专属底图 11-19 PixelLab 额度重置后出)。
+##   · 背景: 专属底图「海底战绩馆」(11-19, 见 _bg; 满屏底图都被别的页面用着, 不借)。
 ## ★「观看」只在有录像的那一行出(不放死按钮): 服务器行看 `replay`(matches 里有), 决赛行走 `open_finals`, 本机行沿用 `ReplayFetcher.has_replay`。
 ## ★录像版本与本机不同(`ReplayRecorder.version_differs`)⇒ 本机行的「观看」换成灰签「版本不同」。
 
@@ -456,16 +456,33 @@ func _rel_time(ts: int) -> String:
 
 # ─────────────────────────────── 背景 ───────────────────────────────
 
-## 深色底 + 上下暗角(占位: 专属底图 11-19 出)。
+## 专属底图「海底战绩馆」(2026-11-19, 方案书 R2): 两侧架子摆奖杯 / 卷轴、顶上水母灯、中间暗墙(卡片压在中间, 两侧露出来)。
+## 出处: PixelLab Pixen 文生图 520×240(seed 1119, job 3c62b270), 3 选 1, 未手改; 73 色、零半透。
+## 520×240 = 手机 1560×720 的整 1/3; 其它比例按「盖满」裁中间。压暗 + 上下暗角, 不跟卡片抢。
+const BG_TEX := "res://assets/sprites/ui/record/bg.png"
+const BG_DIM := Color(0.62, 0.66, 0.74)
+
 func _bg() -> void:
 	var base := ColorRect.new()
 	base.set_anchors_preset(Control.PRESET_FULL_RECT)
 	base.color = Color("#0b1622")
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(base)
+	if ResourceLoader.exists(BG_TEX):
+		var art := TextureRect.new()
+		art.name = "RecordBgArt"
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.texture = load(BG_TEX)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		art.modulate = BG_DIM
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(art)
 	var grad := Gradient.new()
-	grad.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
-	grad.colors = PackedColorArray([Color("#16304a"), Color("#0e1e30"), Color("#070d15")])
+	grad.offsets = PackedFloat32Array([0.0, 0.18, 0.6, 1.0])
+	grad.colors = PackedColorArray([Color(0.03, 0.06, 0.1, 0.75), Color(0.03, 0.06, 0.1, 0.2),
+		Color(0.03, 0.06, 0.1, 0.25), Color(0.02, 0.04, 0.07, 0.8)])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
 	gt.fill_from = Vector2(0, 0)
