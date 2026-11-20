@@ -1,0 +1,64 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 25 status
+[Audio] QUIET=1 ⇒ 主总线已静音(mute=true, -80 dB)
+=== 059 沙漏: 时停期间世界到底冻没冻 ===
+   尺子: 参考里定格段帧间运动 0.00~0.81 / 动态段 1.25~90.47 ⇒ 定格 = 一帧都不动
+[CP] 我方: 小龟 技能=["basicBarrage"] 龟能=0.0/0 cost={ "physical": 0.0, "basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0 }
+[CP] 我方: 石头龟 技能=["stoneRockShield"] 龟能=0.0/0 cost={ "physical": 0.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0 }
+[CP] 我方: 闪电龟 技能=["lightningSurgeBuff"] 龟能=0.0/0 cost={ "lightningStrike": 0.0, "lightningSurgeBuff": 110.0, "lightningBarrage": 110.0, "lightningShield": 90.0 }
+  [OK] ★分母⑤: 触手(2 根)与直升机(1 架)真的在场上
+  [FAIL] ★分母①: 时停【之前】_world 里 10 个节点在动(其中背景远景 0 个)  背景远景一个都不动 ⇒ 下面「冻住了」是空检查, 不是产品的功劳
+  [OK] ★分母②: 非携带者那只的立绘(/@Sprite3D@686)在时停【之前】是会动的
+  [OK] ★分母⑧: 手动触发之前时停【没有】自己放过(_ts_fired=false)
+  [OK] ⑫a 蓄力一开始携带者身上就冒金火气(1 个 · 贴图 ts-aura.png)
+  [OK] ★分母⑫d: 携带者立绘走透明管线(depth_prepass_alpha), 渲染优先级才参与排序
+  [OK] ⑫d 金火气画在龟身后: 火的渲染优先级 -1 < 立绘 0
+  [OK] ★分母⑫: 推了 0.3 秒之后还在蓄力、剩余 0.70 秒 > 光点提前量 0.17 秒
+  [OK] ⑫b 蓄力中段胸口光点【还没】亮(参考: 光点只在释放前 0.17 秒)(0 个)
+  [OK] ⑫c 释放那一刻金火气收掉、胸口光点在场(火剩 0 · 光点 1)
+  [OK] ★分母⑥: 触手的内部钟在时停【之前】是会走的(0 0.167 → 0 1.667)
+  [OK] ★分母⑦: 直升机在时停【之前】是会飞的(移了 313.53 码)
+  [OK] ★分母④: 那笔余额在时停【之前】是会掉的(1000.0 → 962.5)
+  [OK] ★分母③: 时停真的进了(active=1, 剩 20.0 秒)
+  [OK] ⑩a 释放演出的钟由真入口推着走(_ts_wave_t 0.0000 → 0.0417)
+  [OK] ⑩b 五段(出去/染紫/翻转/收回/白光)每段 8 个量都喂进了 shader(对不上 0 处 [])
+  [OK] ⑩c 整段放完后胸口光点收干净(剩 0 个)
+  [OK] ⑬a 段序 = 出去 → 染紫 → 色相翻转 → 收回 → 白光 → 定格(实测 ["out", "violet", "flip", "in", "flash", "done"])
+  [OK] ⑬b 出去【一道】环先快后慢冲出屏: 0.10 秒时半径 0.88(参考那一刻已到画面边 0.88) · 出去结束 2.10(屏角最远 2.04) · 单调=true · 用时 0.240 秒
+  [OK] ⑬h 出去的环在画面里露 3 帧(30fps · 参考 #001~#003 = 3 帧, 少于 3 帧读成一闪)
+  [OK] ⑬c 出去 + 染紫 = 0.530 秒(参考 #001→#017 = 0.53 秒 ±0.05)
+  [OK] ⑬d 色相翻转 0.430 秒(参考 #017~#029 = 0.43 秒 ±0.04)
+  [OK] ⑬e 收回从屏外(2.15)一路收到人物(0.00) · 单调=true · 中段速度 3.57 屏高/秒(参考 ≈3.4, 容 2.5~4.5)
+  [OK] ⑬f 中心白光 0.330 秒(参考 #035~#044 = 0.33 秒 ±0.04)
+  [OK] ⑬g 每段该开的开、该关的关(801 个采样点, 违反 0 处 [])
+  [OK] ⑭a 色相翻转用的是【保亮度】的 2y - c(不是 RGB 全反 1 - c)
+  [OK] ⑭b 波环只有【一道】(三个参考样本出去/收回都是一道; 不许回到 3 道同心环)
+  [OK] ① 时停期间【背景远景】0 个节点在动(实测 0 个, 时停前是 0 个)
+  [OK] ② 时停期间【非携带者那只的立绘】一动不动(位置/帧号/颜色)
+     [探针] 时停期间仍在动的全部节点(应当只剩时停自己的演出 + 携带者自己): ["/@Sprite3D@761"]
+  [OK] ⑥ 时停期间【非携带者的护盾余额】一点都不掉(962.50 → 962.50)
+  [OK] ⑧ 时停期间【触手】的内部钟一动不动(1.667 → 1.667)
+  [OK] ⑨ 时停期间【直升机】一码都不飞(移了 0.00 码)
+  [OK] ⑦ 时停期间【携带者 3 米以外】的节点数不再生灭(445 → 445)
+  [OK] ⑪ 释放演出放完后环/扭曲/染紫/翻转/拖影/白光全归零、灰世界满值(还开着 [] · amount=1.0)
+  [OK] ④ 压暗褪色在整段时停里**一直**满值(6 次采样最小 1.00)
+  [FAIL] ⑤ 解除时停后【背景远景】重新动起来(实测 0 个, 时停前 0 个)  只验「冻得住」会放过「再也不动了」—— _ts_resume_freeze 必须把 tween play 回来
+
+FAIL x2 / 36 条
+ERROR: Pages in use exist at exit in PagedAllocator: N20RasterizerSceneDummy21GeometryInstanceDummyE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:169)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2663)
+ERROR: 57 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)
+ERROR: 15 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 2 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+ERROR: 9 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 2 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+ERROR: 2 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.
