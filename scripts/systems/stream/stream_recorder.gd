@@ -63,6 +63,8 @@ const N3D_TRACKED := ["position", "rotation", "scale", "visible"]
 const SKIP_PROPS := ["frame_coords", "resource_local_to_scene", "resource_path", "resource_name",
 	"resource_scene_unique_id", "script", "draw_pass_2", "draw_pass_3", "draw_pass_4"]
 
+## 渲染步里立绘帧推进分几小段(battle_render._render_step 的 anim_sub; 2026-11-20 动作「一抽一抽」): 换帧落在第几段随帧号发 `@fat`。
+const ANIM_SUB := 8
 ## 单位层字段: S0 静态扫 battle_render.gd + hp_bar.gd 读到的键(2026-10-19)。
 ## ★方案要求最终名单由「读记录」量出来(S2 门禁 verify_stream_render_fields), 这里先用这份。
 const UKEYS := ["_active_cd", "_anemoneShield", "_appearance", "_atk_voff", "_auraEnergy", "_auraShieldVal",
@@ -297,7 +299,7 @@ func post_step() -> void:
 	if _step_n % F.CONT_EVERY == 0:
 		_ph = PH_REN
 		battle._render._render_step(F.CONT_EVERY * SIM_DT, float(battle._hitstop) > 0.0,
-			not (battle._timestop._ts_active as Array).is_empty())
+			not (battle._timestop._ts_active as Array).is_empty(), ANIM_SUB)
 		_ph = PH_OUT
 		_cache_after_render()
 	var t2 := Time.get_ticks_usec()
@@ -1065,6 +1067,9 @@ func _samp(t: TN, cont: bool) -> void:
 				if not drv:
 					_k(&"frame")
 					enc.val(t.fr)
+					if sp.has_meta(&"_fat") and not hand:
+						_k(&"@fat")
+						enc.val(int(sp.get_meta(&"_fat")))
 			if sp.hframes != t.hf:
 				t.hf = sp.hframes
 				_k(&"hframes")

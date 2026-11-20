@@ -400,6 +400,7 @@ func _apply_until(s: int, fire: bool) -> void:
 func _apply_step(st: Array, fire: bool) -> void:
 	var key := bool(st[1])
 	cur_step = int(st[0])          # 这一步的事件放的时候, 「现在是第几步」= 服务器 sim 那一步(_sim_step 开头就 +1 了)
+	mirror.now_head = float(cur_step)   # 立绘换帧最短停留的尺子(StreamMirror._fr_at)
 	firing = fire
 	mirror.restore()
 	if key:
@@ -745,6 +746,8 @@ func gs_sandboxed() -> bool:
 # ═══════════════════════════════════════════════════════════════════════
 func _interp() -> void:
 	mirror.restore()
+	mirror.now_head = head
+	mirror.observe_frames()
 	## 单位代理先回真值
 	for idx in _utruth:
 		var u = units.get(idx)
@@ -756,12 +759,14 @@ func _interp() -> void:
 			u["_prev_height"] = tr[1]
 	battle._t = _gt
 	var base := floorf(head)
+	var kf_before := false
 	for j in range(mini(2, _steps.size())):
 		var st: Array = _steps[j]
 		var s := int(st[0])
 		if s > int(base) + 2:
 			break
 		if bool(st[1]):
+			kf_before = true      # 中间夹着 keyframe: 它会把服务器那一步的帧号重发一遍(偶数步才推帧 ⇒ 还是旧帧), 提前换上的会被拉回 ⇒ 这一次不提前换帧
 			continue              # keyframe 步是全量重发(不是 30 Hz 采样点), 不拿它插
 		var k := clampf((head - float(_last_cont)) / float(maxi(1, s - _last_cont)), 0.0, 1.0)
 		if k <= 0.0:
@@ -769,7 +774,8 @@ func _interp() -> void:
 		for op in (st[2] as Array):
 			match int(op[0]):
 				F.OP_NODE_SET:
-					mirror.lerp_to(int(op[1]), op[2] as Array, k)
+					## 立绘提前换帧只看紧挨着的下一个采样(再往后那个的帧号提前换上, 到下一个采样又被拉回 ⇒ 闪一帧; 2026-11-20 实测)
+					mirror.lerp_to(int(op[1]), op[2] as Array, k, s - _last_cont == F.CONT_EVERY and not kf_before)
 				F.OP_RES_SET:
 					mirror.res_lerp_to(int(op[1]), op[2] as Array, k)   # v4 着色器热参数里的点数组(触手控制点)
 				F.OP_UNIT_SET:

@@ -337,6 +337,7 @@ frames_for () {
     verify_shell_dive_trail) echo 2000 ;;   # 2026-11-08 晚 龟壳暗影俯冲匀速飞 + 沿途火道: 建场 30 帧 + 两局各 420 步(每帧恰一步), 实测约 900 帧
     verify_stream_panels_parity) echo 20000 ;;   # 2026-11-03 播流时信息面板 / 统计四页签与原生逐字一致: 录一局 + 按跟播入口播到 6 个采样步
     verify_stream_parity_wide) echo 60000 ;;   # 2026-11-20 看直播时面板 / 小卡 / 统计宽覆盖: 3 局各录一遍 + 按跟播入口播到 8 个采样步, 每步点开全部单位的面板与每张小卡
+    verify_stream_anim_timing) echo 60000 ;;   # 2026-11-20 直播立绘换帧时刻 / 闪帧: 录 heavy 一局(共用录像) + 播放头每帧 1/240 秒手推到底
     verify_scroll_touch_sweep) echo 15000 ;;     # 2026-10-31 全屏手指滑动扫查: 两比例 44 屏、206 次实拖(本机约 4900 帧)
     verify_stream_end_exit) echo 20000 ;;
     verify_web_player) echo 30000 ;;   # 网页录像播放器(2026-11-08): 录一局 + 本机 HTTP 拉流播到尾 + 错误态

@@ -99,6 +99,27 @@ func _update_run_anim(u: Dictionary, delta: float) -> void:
 	elif speed <= 48.0 and is_run_now:   # 停下 → 回 idle
 		battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)   # 回 idle: 该分支会自己还原 idle_px/idle_offy
 
+## 分小段推立绘帧(见 _render_step 的 anim_sub)。小段数 ≤ 1 ⇒ 与 _advance_anim 完全相同。
+func _advance_anim_sub(u: Dictionary, delta: float, n: int) -> void:
+	if n <= 1:
+		_advance_anim(u, delta)
+		return
+	var spr = u.get("sprite", null)
+	var ok: bool = spr is Sprite3D and is_instance_valid(spr)
+	var f0: int = (spr as Sprite3D).frame if ok else -1
+	var at := -1
+	for i in range(n):
+		_advance_anim(u, delta / float(n))
+		if ok and is_instance_valid(spr) and (spr as Sprite3D).frame != f0:
+			f0 = (spr as Sprite3D).frame
+			at = i
+	if ok and is_instance_valid(spr):
+		if at >= 0:
+			(spr as Sprite3D).set_meta(&"_fat", at)
+		elif (spr as Sprite3D).has_meta(&"_fat"):
+			(spr as Sprite3D).remove_meta(&"_fat")
+
+
 func _advance_anim(u: Dictionary, delta: float) -> void:
 	if u.get("_manual_anim", false):
 		return   # 手动逐帧动画期(忍者冲刺分段)不自动推进帧
@@ -194,7 +215,8 @@ func _update_trainer_anim(u: Dictionary, delta: float) -> void:
 	# ② 状态 + 方向 (扔 > 走 > 待机)
 	var anim := "idle"; var cols := 1; var fps := 1.0
 	var face: String = str(u.get("_tr_face", "east" if str(u.get("side", "")) == "left" else "west"))
-	if battle._t < float(u.get("_tr_throw_until", 0.0)):
+	var _tu: float = float(u.get("_tr_throw_until", 0.0))
+	if battle._t < _tu:
 		anim = "throw"; cols = 7; fps = 11.0
 		face = _dir_to_cardinal(u.get("_tr_throw_vec", Vector2.RIGHT))
 	elif speed > 20.0:
@@ -204,7 +226,14 @@ func _update_trainer_anim(u: Dictionary, delta: float) -> void:
 	# ③ 帧列
 	var col := 0
 	if anim == "throw":
-		col = clampi(int((battle._t - float(u.get("_tr_throw_t0", battle._t))) * fps), 0, cols - 1)
+		## 按扔这一下的整段时长平均分 7 帧(2026-11-20): 原来按 11 帧/秒走, 7 帧要 0.64 秒, 而扔一下比这短 ⇒
+		##   最后一帧只露几毫秒下一扔就开始(连扔时每 0.3 秒一抽, 本机打也一样)。没有时长(老流)才退回按帧率。
+		var _t0: float = float(u.get("_tr_throw_t0", battle._t))
+		var _dur: float = _tu - _t0
+		if _dur > 0.05:
+			col = clampi(int((battle._t - _t0) / _dur * float(cols)), 0, cols - 1)
+		else:
+			col = clampi(int((battle._t - _t0) * fps), 0, cols - 1)
 	elif anim == "walk":
 		u["_tr_anim_t"] = float(u.get("_tr_anim_t", 0.0)) + delta
 		col = int(float(u["_tr_anim_t"]) * fps) % cols
@@ -223,7 +252,11 @@ func _update_trainer_anim(u: Dictionary, delta: float) -> void:
 
 # 切换当前播放的帧表 (idle 或动作): 换 texture + Sprite3D.hframes/vframes/frame + 复位计时/pixel_size/offset.
 #   is_idle=true 时复原 idle 的 px/offy; 动作图帧高可能不同, 按其帧高重算归一.
-func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
+## anim_sub > 1(只有录流器传): 立绘帧推进按 rd / anim_sub 分小段推, 记下这一段里最后一次换帧落在第几小段(Sprite3D 元数据 `_fat`),
+##   录流器随帧号一起发 `@fat` ⇒ 播放端在采样区间里那个时刻换帧(StreamMirror.lerp_to), 不再全挤在 33ms 的采样点上。
+##   2026-11-20 用户「人物角色的那个动画…感觉有时候一抽一抽的」: 实测看直播时立绘帧停留挤在 67 / 100 / 133ms(本机打连续铺开)。
+##   本机打 / 手机播放端的渲染步都是 1(不变)。
+func _render_step(rd: float, frozen: bool, in_ts: bool, anim_sub: int = 1) -> void:
 	if frozen:
 		pass   # 顿帧: 冻结演出(juice/立绘定格保持冲击姿势), 只下方震屏照常
 	elif in_ts:
@@ -235,7 +268,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 				elif str(u.get("id", "")) == "two_head" and battle._two_head_sys.art.tick(u):
 					pass                                            # 变脸龟: 动作按游戏钟对齐结算时刻(TwoHeadArt)
 				else:
-					_advance_anim(u, rd)
+					_advance_anim_sub(u, rd, anim_sub)
 		battle._timestop._ts_tick_visual(rd)                 # 时停视觉维持(钟表脉动/暗角等)
 	else:
 		battle._vfx._juice_decay(rd)        # squash/闪白/挥击 等计时衰减
@@ -249,7 +282,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 					pass                                            # 变脸龟: 两套形态的站/走/攻击/技能/变脸(TwoHeadArt)
 				else:
 					_update_run_anim(u, rd)
-					_advance_anim(u, rd)
+					_advance_anim_sub(u, rd, anim_sub)
 	_update_camera_shake(rd)    # 震屏始终推进 (含冻结期)
 	_update_world_transforms()
 	_tick_true_fire()              # 022 真火: 谁把 true_fire_until 写上去, 身上就自动烧起来

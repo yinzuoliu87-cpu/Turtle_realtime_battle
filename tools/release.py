@@ -443,7 +443,7 @@ CHECKLIST = """# 发版清单 · v{ver}
 - [ ] `python tools/asc.py status {ver}`
   - 回读：新构建 processingState = VALID、expired = False
 
-## 4. 提审（周五；只提审、不进公开测试组）
+## 4. 提审（周日上午；只提审、不进公开测试组）
 
 - [ ] `python tools/asc.py submit {ver} --dry-run` —— 看「本次更新内容」全文、要作废的同版本在审旧构建
 - [ ] `python tools/asc.py submit {ver}`

@@ -20,6 +20,27 @@ var res := {}                 # rid → Resource(本 keyframe 段)
 var _res_prev := {}           # keyframe 重建时: 上一段的资源表(同一个 rid 复用同一个对象, 不闪)
 var _truth := {}              # id → [position, rotation, scale, modulate](只记流里给过的)
 var _lerped := {}             # 这一帧插过值的 id
+## 立绘提前换帧(_pre_frame): 播放头此刻在第几步(播放器每步 / 每帧写) + 每个精灵上一次换帧时的播放头。
+##   每一帧至少停 1 步(≈17ms, 本机打时最短也是一步)才许提前换下一帧 —— 出招刚起手时服务器那次渲染步一口气补 33ms,
+##   算出来的下一次换帧落得很靠前, 不设下限起手那一帧只露 4ms(2026-11-20 verify_stream_anim_timing 抓到)。
+var now_head := 0.0
+var _fr_at := {}
+## 登记过 `@fat` 的精灵 id → 上一次看到的帧号。每帧 observe_frames() 比一次: 不论谁改的帧号(流 / 播放端自己的出招起手重置)
+##   都记下换帧时刻 ⇒ 最短停留对所有来源都管用(起手重置成 0 那一下原来绕过了 _fr_at, 第 0 帧只露 4ms)。
+var _fr_seen := {}
+
+
+func observe_frames() -> void:
+	for id in _fr_seen.keys():
+		var n = nodes.get(id)
+		if n == null or not is_instance_valid(n) or not (n is Sprite3D):
+			_fr_seen.erase(id)
+			_fr_at.erase(id)
+			continue
+		var f: int = (n as Sprite3D).frame
+		if f != int(_fr_seen[id]):
+			_fr_seen[id] = f
+			_fr_at[id] = now_head
 var _kf_seen := {}            # keyframe 期间出现过的节点 id
 var _ph_tex_cache := {}       # "宽x高" → 占位贴图
 ## 计数(门禁的分母 / 已知例外)
@@ -405,6 +426,8 @@ func _apply_node_props(n: Node, id: int, props: Array) -> void:
 		if spr and nm == "frame":
 			fr = v
 			continue
+		if nm == "@fat":
+			continue
 		if nm == "@afx":
 			_afx_reg(n, id, v)
 			continue
@@ -423,7 +446,10 @@ func _apply_node_props(n: Node, id: int, props: Array) -> void:
 		n.set(nm, v)
 	if fr != null:
 		var sp := n as Sprite3D
-		sp.frame = clampi(int(fr), 0, maxi(0, sp.hframes * sp.vframes - 1))
+		var nf := clampi(int(fr), 0, maxi(0, sp.hframes * sp.vframes - 1))
+		if nf != sp.frame:
+			_fr_at[id] = now_head
+		sp.frame = nf
 	_truth[id] = tr
 	_lerped.erase(id)
 
@@ -534,8 +560,13 @@ func restore() -> void:
 
 
 ## 在「当前真值」和「下一次采样的值」之间插: k ∈ [0, 1]。角度用 lerp_angle; 只插 position / rotation / scale / modulate。
-func lerp_to(id: int, props: Array, k: float) -> void:
+func lerp_to(id: int, props: Array, k: float, frames: bool = true) -> void:
 	var n = nodes.get(id)
+	## 立绘换帧提前到采样区间里真正换帧的那一刻(录流器发的 `@fat` = 第几小段, 共 StreamRecorder.ANIM_SUB 段)。
+	##   同一采样里换了贴图 / 帧表的不提前(新帧号配旧贴图会闪一帧错图), 照旧到步再换。2026-11-20 动作「一抽一抽」。
+	##   放在真值检查之前: 活单位的立绘归渲染步管, 镜像里可能没有它的变换真值, 但帧号仍走流。
+	if frames and n != null and is_instance_valid(n) and n is Sprite3D:
+		_pre_frame(id, n as Sprite3D, props, k)
 	var tr = _truth.get(id)
 	if n == null or not is_instance_valid(n) or tr == null:
 		return
@@ -567,6 +598,31 @@ func lerp_to(id: int, props: Array, k: float) -> void:
 	if any:
 		_write(n as Node, out)
 		_lerped[id] = done
+
+
+func _pre_frame(id: int, sp: Sprite3D, props: Array, k: float) -> void:
+	var fr = null
+	var at := -1
+	for e in props:
+		match str(e[0]):
+			"frame":
+				fr = e[1]
+			"@fat":
+				at = int(e[1])
+			"texture", "hframes", "vframes", "region_enabled", "region_rect":
+				return
+	if fr == null or at < 0:
+		return
+	if not _fr_seen.has(id):
+		_fr_seen[id] = sp.frame
+		_fr_at[id] = now_head
+	if k + 1.0e-6 >= float(at + 1) / float(StreamRecorder.ANIM_SUB):
+		var nf := clampi(int(fr), 0, maxi(0, sp.hframes * sp.vframes - 1))
+		if nf == sp.frame or now_head - float(_fr_at.get(id, -1.0e9)) < 1.0:
+			return
+		sp.frame = nf
+		_fr_at[id] = now_head
+		_fr_seen[id] = nf
 
 
 ## v4 热参数点数组 / 浮点数组(触手控制点 / 每点半径)的插值: 当前真值(材质上此刻的值)与下一个采样点之间逐个线性插; 标量到步就换。
