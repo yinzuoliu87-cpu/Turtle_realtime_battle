@@ -982,7 +982,7 @@ run_audit "tools/vfx_ref_match.py"     "ALL OK" "vfx_ref_match (084 三张特效
 # 2026-10-18 移出门禁: 084 十字斩「斩击面积 ≥ 剑波 60%」在干净 HEAD 上也红(48%), 量的是一张旧实拍的像素比例,
 #   不是玩家能感知的毛病; 用户问「这检查有啥意义啊」, 发版前由我拍板移出。工具留着, 想看时手动跑:
 #   python tools/vfx_ingame_check.py
-run_audit "tools/battle_scene_check.py" "ALL OK" "battle_scene_check (战场实拍 5 条: 中间调/色数/亮部饱和/亮坡比/中带噪声)"
+run_audit "tools/battle_scene_check.py" "ALL OK" "battle_scene_check (四张正式地图实拍 × 5 项: 中间调/色数/亮部饱和/亮坡比/中带噪声 · 未达标的守台账只减不增)"
 run_audit "tools/workflow_lint.py"        "ALL OK" "workflow_lint (CI 工作流 YAML 语法)"
 run_audit "tools/ci_deps_audit.py"        "ALL OK" "ci_deps_audit (门禁审计器的第三方依赖 ↔ CI 安装清单)"
 run_audit "tools/arch_budget.py"          "ALL OK" "arch_budget (架构预算·不许上帝对象·欠债只减不增)"
