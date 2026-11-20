@@ -284,11 +284,12 @@ func _t_c_panel() -> void:
 	_ok("★★② C 我方: 当前 = 存档累计 4500, 分母 = 第 2 箱阈值 %.0f" % float(RB._CHEST_THRESH[1]),
 		_approx(float(bl.get("cur", -1)), 4500.0) and _approx(float(bl.get("cap", -1)), float(RB._CHEST_THRESH[1])),
 		"%s / %s" % [str(bl.get("cur")), str(bl.get("cap"))])
-	_ok("★② C 我方已开数印出来了(已开 1/5)", str(bl.get("hint", "")).find("已开 1/5") >= 0, str(bl.get("hint", "")))
+	## 11-20 结论句改成「攒满开第 N 箱（共 5 箱）」(用户「这个描述是？」): 已开 1 ⇒ 下一箱是第 2 箱
+	_ok("★② C 我方已开数印出来了(已开 1 ⇒ 攒满开第 2 箱)", str(bl.get("hint", "")).find("攒满开第 2 箱") >= 0, str(bl.get("hint", "")))
 	_ok("★★② C 敌方: 当前 = 快照累计 7000, 分母 = 第 3 箱阈值 %.0f" % float(RB._CHEST_THRESH[2]),
 		_approx(float(br.get("cur", -1)), 7000.0) and _approx(float(br.get("cap", -1)), float(RB._CHEST_THRESH[2])),
 		"%s / %s" % [str(br.get("cur")), str(br.get("cap"))])
-	_ok("★② C 敌方已开数印出来了(已开 2/5)", str(br.get("hint", "")).find("已开 2/5") >= 0, str(br.get("hint", "")))
+	_ok("★② C 敌方已开数印出来了(已开 2 ⇒ 攒满开第 3 箱)", str(br.get("hint", "")).find("攒满开第 3 箱") >= 0, str(br.get("hint", "")))
 	## 数会跟着走: 记一段持续伤害后, 条上的当前值 + 面板重建签名都要变(签名不变 = 面板不刷新)
 	var e := _dummy("right", _c0 + Vector2(150, 120))
 	var sig0: String = _s._info_sys._status_sig_own(lc)

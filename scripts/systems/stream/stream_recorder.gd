@@ -98,7 +98,7 @@ const UKEYS_ST := ["_st_dealt", "_st_taken", "_st_heal", "_st_shield", "_st_kill
 const UKEYS_INFO := [
 	"_academy_done", "_ancient", "_ancient_restored", "_angel_revive", "_ascend_growth", "_axe_eff_n", "_axe_eff_until",
 	"_axe_final", "_axe_pv", "_b4_dot", "_bbtimer", "_blood_rite", "_blood_rite_bucket", "_bone_dome", "_bone_plates",
-	"_chest_gain", "_chest_sec", "_corrode_vfx", "_dl_equips", "_eb_n", "_eggImmune", "_egg_fence", "_enh_prism",
+	"_chest_gain", "_chest_open_n", "_chest_sec", "_chest_value", "_corrode_vfx", "_dl_equips", "_eb_n", "_eggImmune", "_egg_fence", "_enh_prism",
 	"_enh_rebirth", "_eq_axe", "_fire_ctrl", "_food_grown", "_food_key", "_gad_freeze_cd", "_gad_freeze_immune",
 	"_hammer_n", "_harvest_atk", "_harvest_restored", "_hijack_orig_side", "_relic_egg_done",
 	"_shield_rage", "_sig_fired_n", "_spec_uid", "_staff_busy", "_tha_clip", "_tha_t0", "_tha_tk",

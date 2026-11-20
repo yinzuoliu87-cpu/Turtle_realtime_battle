@@ -21,6 +21,11 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 	##   原来这里分三支各算各的 —— 我方读存档并在这里补记、敌方读单位字典上的快照基数 + 本路 dmg_dealt,
 	##   于是敌方换路就丢进度(B)、持续伤害不计(F)、阵亡后的几跳漏记(G)。
 	var tp: Dictionary = treasure_progress(u)
+	## ★镜像到单位上, 随直播流发出(2026-11-20 用户「我在玩的时候没看到进度条啊」):
+	##   本场宝箱账挂在本系统上、不在单位字典里, 而看直播的一端一步 sim 都不跑 ⇒ 面板拿不到财宝值, 整条不画。
+	##   这两个字段只给显示用(info_panel 播流时读), sim 从不读回 ⇒ 不改对局结果。录流器名单 UKEYS_INFO 带上它们。
+	u["_chest_value"] = float(tp["value"])
+	u["_chest_open_n"] = int(tp["opened"])
 	var opened: int = int(tp["opened"])
 	if opened >= CHEST_MAX_OPEN:
 		return

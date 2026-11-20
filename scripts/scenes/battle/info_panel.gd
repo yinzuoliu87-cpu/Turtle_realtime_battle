@@ -751,17 +751,31 @@ func _resource_bars(u: Dictionary) -> Array:
 	#     而且本路还没出手(0 伤害)就整条不显示 —— 累计值从开局就在, 应当一直看得见。
 	#   ⚠ 逐帧直播的播放端(ReplayRecorder.mode == "stream")一步 sim 都不跑, 这本账是空的、流里也不带财宝值
 	#     ⇒ 那里不画这条(与改之前一样: 原来读的 dmg_dealt 也不在流里), 免得把开局起点当成实时数。
-	var _streaming: bool = battle._replay != null and str(battle._replay.mode) == "stream"
-	if str(u.get("id", "")) == "chest" and not _streaming:
-		var tp: Dictionary = battle._chest_sys.treasure_progress(u)
+	## ★2026-11-20 播流也画(用户「我在玩的时候没看到进度条啊」): 积分赛 / 周末都是看直播, 原来这条在直播里从不出现。
+	##   服务器算的那一端每步把账镜像到单位上(chest_system `_chest_value` / `_chest_open_n`, 随流发); 旧裁判机不发 ⇒ 照旧不画。
+	## ★结论句改成「攒满会怎样」(与储能「释放：…」同一体例; 原来「已开 0/5，下一箱：第 1 箱」两半句说的是同一件事)。
+	var tp: Dictionary = chest_progress(u)
+	if not tp.is_empty():
 		var opened: int = int(tp["opened"])
 		var th: Array = battle._CHEST_THRESH
 		if opened < th.size():
 			out.append({
 				"name": "财宝", "cur": float(tp["value"]), "cap": float(th[opened]),
-				"hint": "已开 %d/%d，下一箱：第 %d 箱" % [opened, th.size(), opened + 1], "color": Color("#ffcf6b"),
+				"hint": "攒满开第 %d 箱（共 %d 箱）" % [opened + 1, th.size()], "color": Color("#ffcf6b"),
 			})
 	return out
+
+
+## 面板上宝箱龟的财宝进度 {value, opened}; 不是宝箱龟 / 播流但流里没带(旧裁判机)⇒ {}。
+##   本机跑(含裁判、回放重算)读本场宝箱账; 播状态流时读服务器镜像到单位上的那两个字段。
+func chest_progress(u: Dictionary) -> Dictionary:
+	if str(u.get("id", "")) != "chest":
+		return {}
+	if battle._replay != null and str(battle._replay.mode) == "stream":
+		if not u.has("_chest_value"):
+			return {}
+		return {"value": float(u.get("_chest_value", 0.0)), "opened": int(u.get("_chest_open_n", 0))}
+	return battle._chest_sys.treasure_progress(u)
 
 
 func _energy_state(u: Dictionary, stype: String) -> Array:
@@ -1296,7 +1310,7 @@ func _status_sig_own(u: Dictionary) -> String:
 		str(u.get("two_form", "")),
 		1 if bool(u.get("shell_stealth", false)) else 0,
 		int(float(u.get("gold", 0.0))),
-		int(float(battle._chest_sys.treasure_progress(u)["value"])) if str(u.get("id", "")) == "chest" else 0,   # 财宝条印的那个数(累计财宝值)
+		int(float(chest_progress(u).get("value", 0.0))),   # 财宝条印的那个数(累计财宝值)
 	]
 
 

@@ -1576,7 +1576,6 @@ scripts/scenes/battle/info_panel.gd|lit|增伤
 scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
-scripts/scenes/battle/info_panel.gd|lit|已开 %d/%d，下一箱：第 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
 scripts/scenes/battle/info_panel.gd|lit|战利品 %d/%d
@@ -1591,6 +1590,7 @@ scripts/scenes/battle/info_panel.gd|lit|护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|护盾强度
 scripts/scenes/battle/info_panel.gd|lit|护盾强度 
 scripts/scenes/battle/info_panel.gd|lit|护盾效果的倍率。
+scripts/scenes/battle/info_panel.gd|lit|攒满开第 %d 箱（共 %d 箱）
 scripts/scenes/battle/info_panel.gd|lit|攻击
 scripts/scenes/battle/info_panel.gd|lit|攻击 %d
 scripts/scenes/battle/info_panel.gd|lit|攻击 (普攻)
