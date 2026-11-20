@@ -462,6 +462,26 @@ func _apply_props(o: Object, props: Array, rid: int = 0) -> void:
 			continue
 		if bool(e[2]):
 			v = res.get(int(v))
+		## ★2026-11-20 全量直播排查(第 2 局, 晶石 / 赛博 / 钻石 vs 骰子 / 财神 / 赌神)抓到:
+		##   「Cannot assign contents of Array[Object] to Array[Object]」—— 目标属性是带元素类型的数组(字体的 fallbacks: Array[Font]),
+		##   流里那份数组只有对象编号(EncodedObjectAsID), 播放端还原不出那几个对象 ⇒ 不设, 留资源原值(每播一次刷一段报错, 11-20 玩家日志 18 次)。
+		##   元素都是真对象、只是数组类型对不上的: 按目标属性现有数组的类型重建一份再设。
+		if v is Array:
+			var _unres := false
+			for _x in (v as Array):
+				if _x is EncodedObjectAsID:
+					_unres = true
+					break
+			if _unres:
+				continue
+			var cur = o.get(str(e[0]))
+			if cur is Array and (cur as Array).is_typed() and not (v as Array).is_same_typed(cur as Array):
+				var raw: Array = []
+				raw.append_array(v as Array)
+				var ta: Array = (cur as Array).duplicate()
+				ta.clear()
+				ta.assign(raw)
+				v = ta
 		o.set(str(e[0]), v)
 	if no_turb and o is ParticleProcessMaterial and (o as ParticleProcessMaterial).turbulence_enabled:
 		(o as ParticleProcessMaterial).turbulence_enabled = false

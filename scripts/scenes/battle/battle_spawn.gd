@@ -462,6 +462,10 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
 		# 选3 多技能: loadout 的非基础技(physical/magic 是普攻=自动) → 主动技轮转, 龟能满放下一个
 		"active_skills": ([] if (is_minion or is_egg) else battle._resolve_active_skills(id, side == "left")), "skill_idx": 0,
+		## 选中的那一招(含被动型), 出生时就记在单位上 —— 只给详情面板读(InfoPanel.picked_types), sim 不读。
+		##   2026-11-20 全量直播排查(用户「直播的时候什么东西没显示，你再看一遍」): 面板原来开面板时现读
+		##   GameState.loadouts / foe_loadouts, 看直播的一端没有对手的选择 ⇒ 对面海盗龟选「霰弹」却显示默认的「海盗船·冲锋」。
+		"_picked": ([] if (is_minion or is_egg) else battle._chosen_skill_types(id, side == "left")),
 		"skill_cd": {}, "skill_gcd_until": 0.0,   # 逐技各自冷却剩余秒(懒填) + 同龟连放最小间隔
 		# 永久护盾 / 控制 / 旧式灼烧(保留兼容) ----
 		"shield": 0.0, "stun_until": 0.0, "slow_until": 0.0,
@@ -721,6 +725,10 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			##   开发工具场起点为空: 调试场不再把真存档里的战利品装上(E)。
 			for _tw in battle._chest_sys.spawn_loot(u):
 				battle._chest_sys._chest_apply_treasure(u, str(_tw))
+			## 出生这一刻也把财宝进度镜像到单位上(否则流里第一帧没有, 播流面板那一帧不画财宝条; 之后由 _chest_treasure_tick 每步写)
+			var _ctp: Dictionary = battle._chest_sys.treasure_progress(u)
+			u["_chest_value"] = float(_ctp["value"])
+			u["_chest_open_n"] = int(_ctp["opened"])
 			if "chestCannon" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 贪婪(技三打包被动)选中才有
 				u["chest_greed"] = true
 				u["chest_greed_atk_unit"] = u["base_atk"] * ChestSystem.GREED_ATK_PER_EQ

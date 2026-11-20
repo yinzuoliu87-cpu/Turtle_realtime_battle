@@ -522,7 +522,7 @@ func _info_stat_rows_main(u: Dictionary) -> Array:
 	var sic := "res://assets/sprites/stats/"
 	var W := Color("#d6e4f0")
 	## ★石头龟叠出来的护甲标在护甲这一行后面 —— 它是【累计增量】不是"攒满触发"型资源。
-	var def_now: int = int(u.get("def", 0))
+	var def_now: int = _ti(u.get("def", 0))
 	var def_gain: int = int(round(float(u.get("def", 0.0)) - float(u.get("stone_init_def", u.get("def", 0.0)))))
 	var def_txt: String = "护甲 %d" % def_now
 	if def_gain > 0:
@@ -609,8 +609,19 @@ func _eff_move_spd(u: Dictionary) -> float:
 ##   坏的只是这一行显示。这正是"数值对了但玩家看不见" —— 与没生效在体感上没区别。
 ## ★为什么不无脑一位小数: 大数值(决胜增伤 60%)写成 "60.0%" 反而啰嗦。
 ##   分界放在 10%: 小于它保留一位, 大于等于它取整。
+## 显示前先对齐到千分位(2026-11-20 全量直播排查): 直播流里的数是单精度, 与本机的双精度差 1e-7 级,
+##   正好落在 .5 边界上的(减伤 0.75% / 移速 73.5 / 增伤 31.5%)四舍五入就差 1 ⇒ 播流面板「0.7%」本机「0.8%」。
+static func _sn(x) -> float:
+	return snappedf(float(x), 0.001)
+
+
+## 截断取整(攻击 / 护甲 / 穿透这类原来就是 int() 截断的), 只是先对齐 ⇒ 73.99999 不会被截成 73。
+static func _ti(x) -> int:
+	return int(_sn(x))
+
+
 func _pct(v: float) -> String:
-	var p: float = v * 100.0
+	var p: float = _sn(v * 100.0)
 	if absf(p) < 10.0 and absf(p) > 0.0:
 		return "%.1f%%" % p
 	return "%d%%" % int(round(p))
@@ -621,10 +632,10 @@ func _pct(v: float) -> String:
 ##   "100%", 加成又被抹没了。乘算类要看的是【离基准差多少】, 所以分界落在 (v−1)。
 ##   (这正是用户 2026-08-14 骂的那个 bug 的第三种长相: 前两次是加算类的 `%d`。)
 func _pct_mult(v: float) -> String:
-	var d: float = absf(v - 1.0) * 100.0
+	var d: float = _sn(absf(v - 1.0) * 100.0)
 	if d < 10.0 and d > 0.0:
-		return "%.1f%%" % (v * 100.0)
-	return "%d%%" % int(round(v * 100.0))
+		return "%.1f%%" % _sn(v * 100.0)
+	return "%d%%" % int(round(_sn(v * 100.0)))
 
 
 # ============================================================================
@@ -764,6 +775,15 @@ func _resource_bars(u: Dictionary) -> Array:
 				"hint": "攒满开第 %d 箱，共 %d 箱" % [opened + 1, th.size()], "color": Color("#ffcf6b"),
 			})
 	return out
+
+
+## 这只单位选中的那一招(类型数组)。出生时记在单位上的 `_picked`(随直播流发)优先;
+##   老流 / 没记的单位才退回现读存档的选择(看直播时读不到对手的选择 ⇒ 会退回默认那一招)。
+func picked_types(u: Dictionary) -> Array:
+	var p = u.get("_picked")
+	if p is Array:
+		return p
+	return battle._chosen_skill_types(str(u.get("id", "")), str(u.get("side", "")) == "left")
 
 
 ## 面板上宝箱龟的财宝进度 {value, opened}; 不是宝箱龟 / 播流但流里没带(旧裁判机)⇒ {}。
@@ -1407,7 +1427,7 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 	if passive is Dictionary and not (passive as Dictionary).is_empty():
 		var ptpl = battle.SkillText.text_of(passive, battle._skill_detail())
 		if str(u.get("id", "")) == "bamboo":
-			ptpl += BambooSystem.season_note(BambooSystem.season_hp(BambooSystem.owner_side(u)))   # 本大轮已累积(11-19「说明你要显示」)
+			ptpl += BambooSystem.season_note(float(u["_bamboo_season"]) if u.has("_bamboo_season") else BambooSystem.season_hp(BambooSystem.owner_side(u)))   # 本大轮已累积(11-19「说明你要显示」)
 		var pic := ""
 		var praw := str(DataRegistry.passive_icons.get(str(passive.get("type", "")), ""))
 		if praw.ends_with(".png"):
@@ -1437,7 +1457,7 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 	if pool.is_empty():
 		out.append_array(_minion_skill_entries(u))
 	else:
-		for t in battle._chosen_skill_types(id, str(u.get("side", "")) == "left"):
+		for t in picked_types(u):
 			for sk in pool:
 				if sk is Dictionary and str(sk.get("type", "")) == str(t):
 					var stpl = battle.SkillText.text_of(sk, battle._skill_detail())
@@ -1849,7 +1869,7 @@ func _panel_skill_entries(u: Dictionary) -> Array:
 					"desc": battle._render._render_skill_text(_mt, u, {"type": str(t)}) if _mt != "" else str(md["desc"])})
 		if not out.is_empty():
 			return out
-	var chosen: Array = battle._chosen_skill_types(id, str(u.get("side", "")) == "left")
+	var chosen: Array = picked_types(u)
 	# 已选主动技 (按 type 在 pool 里找名/描述)
 	for t in chosen:
 		for sk in pool:
@@ -1911,25 +1931,25 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 	var dr: float = minf(float(u.get("damage_reduction", 0.0)), DamageMath.DR_CAP)   # 显示真实生效值(封顶 90%)
 	var ls: float = float(u.get("lifesteal", 0.0)) + float(u.get("ls_bonus", 0.0))
 	var crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
-	var def_now: int = int(u.get("def", 0))
+	var def_now: int = _ti(u.get("def", 0))
 	var def_gain: int = int(round(float(u.get("def", 0.0)) - float(u.get("stone_init_def", u.get("def", 0.0)))))
 	var aspd: float = battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))
 	var dim := Color("#7d7264")
 	return [
-		[sic + "atk-icon.png", "攻击", "%d" % int(u.get("atk", 0)), W, "攻击和大多数技能伤害的基础。"],
+		[sic + "atk-icon.png", "攻击", "%d" % _ti(u.get("atk", 0)), W, "攻击和大多数技能伤害的基础。"],
 		[sic + "aspd-icon.png", "攻速", "%.2f" % aspd, W, "每秒攻击次数。"],
 		[sic + "crit-icon.png", "暴击", _pct(minf(float(u.get("crit", 0.0)), 1.0)), W, "攻击打出暴击的几率。"],
 		[sic + "crit-dmg-icon.png", "暴伤", _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), W, "暴击时造成的伤害倍率。暴击率超过 100% 的部分会折算进来。"],
 		[sic + "def-icon.png", "护甲", ("%d" % def_now) + ("+%d" % def_gain if def_gain > 0 else ""), W, "降低受到的物理伤害。"],
-		[sic + "mr-icon.png", "魔抗", "%d" % int(u.get("mr", 0)), W, "降低受到的魔法伤害。"],
+		[sic + "mr-icon.png", "魔抗", "%d" % _ti(u.get("mr", 0)), W, "降低受到的魔法伤害。"],
 		[sic + "dmg-red-icon.png", "减伤", _pct(dr), W if dr > 0.0005 else dim, "受到的所有伤害按比例降低。"],
 		[sic + "dmg-amp-icon.png", "增伤", _pct(amp), W if amp > 0.0005 else dim, "造成的所有伤害按比例提高。"],
-		[sic + "range-icon.png", "射程", "%d" % int(round(battle._eff_range(u))), W, "攻击距离。"],
-		[sic + "move-icon.png", "移速", "%d" % int(round(_eff_move_spd(u))), W, "移动速度，受减速、加速效果影响。"],
+		[sic + "range-icon.png", "射程", "%d" % int(round(_sn(battle._eff_range(u)))), W, "攻击距离。"],
+		[sic + "move-icon.png", "移速", "%d" % int(round(_sn(_eff_move_spd(u)))), W, "移动速度，受减速、加速效果影响。"],
 		[sic + "lifesteal-icon.png", "生命偷取", _pct(ls), W if ls > 0.0005 else dim, "造成伤害时，按比例回复自身生命。"],
 		[sic + "dodge-icon.png", "闪避", _pct(float(u.get("dodge_bonus", 0.0))), W if float(u.get("dodge_bonus", 0.0)) > 0.0005 else dim, "闪避攻击的几率。"],
-		[sic + "armorpen-icon.png", "护甲穿透", "%d" % int(u.get("armor_pen", 0.0)), W if int(u.get("armor_pen", 0.0)) > 0 else dim, "造成物理伤害时无视目标的护甲值。"],
-		[sic + "magicpen-icon.png", "魔法穿透", "%d" % int(u.get("magic_pen", 0.0)), W if int(u.get("magic_pen", 0.0)) > 0 else dim, "造成魔法伤害时无视目标的魔抗值。"],
+		[sic + "armorpen-icon.png", "护甲穿透", "%d" % _ti(u.get("armor_pen", 0.0)), W if int(u.get("armor_pen", 0.0)) > 0 else dim, "造成物理伤害时无视目标的护甲值。"],
+		[sic + "magicpen-icon.png", "魔法穿透", "%d" % _ti(u.get("magic_pen", 0.0)), W if int(u.get("magic_pen", 0.0)) > 0 else dim, "造成魔法伤害时无视目标的魔抗值。"],
 		[sic + "healamp-icon.png", "治疗强度", _pct_mult(BattleDamage.heal_strength(u, battle._t)), W, "治疗效果的倍率。"],
 		[sic + "shieldamp-icon.png", "护盾强度", _pct_mult(BattleDamage.shield_strength(u, battle._t)), W, "护盾效果的倍率。"],
 		[sic + "echarge-icon.png", "龟能充能", _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), W, "龟能积攒速度倍率。龟能满时释放技能。"],

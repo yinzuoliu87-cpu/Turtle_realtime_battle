@@ -192,7 +192,26 @@ func apply_unit(u: Dictionary, k: String, v) -> void:
 				if not es.has(eid2):
 					es[eid2] = {}
 				es[eid2][str(spec[0])] = float(d[key]) / CHG_Q * float(spec[1])
-		u["eq_state"] = es
+		## ★2026-11-20 并进去, 不整张替换(全量直播排查 tests/probes/_probe_stream_unit_fields.gd 抓到):
+		##   完整的 eq_state 另走单位层(UKEYS_INFO, 11-03 起), 这里原来 `u["eq_state"] = es` 每收到一次 @hud 就把它盖成
+		##   只剩头像框那几个读数 ⇒ 播流时详情面板的装备「本局」全是「暂无记录」(猎人 047 / 双头 083)、糖果反伤 48% → 8%。
+		var cur = u.get("eq_state")
+		if not (cur is Dictionary):
+			cur = {}
+		for eid3 in es:
+			var sub = (cur as Dictionary).get(eid3)
+			if not (sub is Dictionary):
+				sub = {}
+			for kk in (es[eid3] as Dictionary):
+				var hv = es[eid3][kk]
+				var ev = (sub as Dictionary).get(kk)
+				## 充能是按 CHG_Q 级量化过的: 单位层送来的精确值与它差不到一级 ⇒ 留精确值(否则「13/15」被盖成「12.99/15」)
+				var tol: float = float((EquipReadouts.CHARGE[eid3] as Array)[1]) / CHG_Q * 1.01 if EquipReadouts.CHARGE.has(eid3) else -1.0
+				if (ev is float or ev is int) and (hv is float) and absf(float(ev) - float(hv)) <= tol:
+					continue
+				sub[kk] = hv
+			(cur as Dictionary)[eid3] = sub
+		u["eq_state"] = cur
 
 
 ## 播放器 `_globals` 收到全局 `hud` 时调

@@ -97,10 +97,10 @@ const UKEYS_ST := ["_st_dealt", "_st_taken", "_st_heal", "_st_shield", "_st_kill
 ##   这一组里的数组 / 字典只在**整层都是纯数据**时才发（`_plain_deep`），混进节点就不发。
 const UKEYS_INFO := [
 	"_academy_done", "_ancient", "_ancient_restored", "_angel_revive", "_ascend_growth", "_axe_eff_n", "_axe_eff_until",
-	"_axe_final", "_axe_pv", "_b4_dot", "_bbtimer", "_blood_rite", "_blood_rite_bucket", "_bone_dome", "_bone_plates",
+	"_axe_final", "_axe_pv", "_b4_dot", "_bamboo_season", "_bbtimer", "_blood_rite", "_blood_rite_bucket", "_bone_dome", "_bone_plates",
 	"_chest_gain", "_chest_open_n", "_chest_sec", "_chest_value", "_corrode_vfx", "_dl_equips", "_eb_n", "_eggImmune", "_egg_fence", "_enh_prism",
 	"_enh_rebirth", "_eq_axe", "_fire_ctrl", "_food_grown", "_food_key", "_gad_freeze_cd", "_gad_freeze_immune",
-	"_hammer_n", "_harvest_atk", "_harvest_restored", "_hijack_orig_side", "_relic_egg_done",
+	"_hammer_n", "_harvest_atk", "_harvest_restored", "_hijack_orig_side", "_picked", "_relic_egg_done",
 	"_shield_rage", "_sig_fired_n", "_spec_uid", "_staff_busy", "_tha_clip", "_tha_t0", "_tha_tk",
 	"_turret_aspd_mult", "_whip_cd", "anchor_swing_t", "armor_pen", "armor_pen_pct", "aspd_perm", "atk", "atk_interval",
 	"atk_range", "base_atk", "base_mr", "battles", "buffs", "buyequip_cost", "buyequip_id", "buyequip_star",
@@ -110,7 +110,7 @@ const UKEYS_INFO := [
 	"heal_reduce_until", "hijacked", "hp_frac", "icicle", "idle_offy", "kind", "lifesteal", "ls_bonus", "magic_pen",
 	"magic_pen_pct", "melee", "mi", "minion_kind", "move_buff_mult", "move_buff_until", "move_perm", "move_spd", "mr",
 	"mr_shred", "no_basic", "no_move", "off", "passive", "range_add", "range_perm", "reflect", "role", "shell_stealth",
-	"shield_amp", "slow_mag", "slow_until", "spd_aspd_mult", "spd_move_mult", "stiff_stacks", "stun_until", "tame_used",
+	"shield_amp", "ship_summoned", "slow_mag", "slow_until", "spd_aspd_mult", "spd_move_mult", "stiff_stacks", "stun_until", "tame_used",
 	"taunt_until", "temp_lv", "two_form", "volcano", "volcano_until"]
 ## 允许整份发的数组键(纯值数组; 其余数组键里装的是单位字典 / 节点, 一律不发)。
 const UARR := {"active_skills": true}
@@ -690,6 +690,12 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 	for k in (_ukeys_all if cont else _ukeys_step):
 		var v = u.get(k)
 		var t := typeof(v)
+		## ★2026-11-20 混进对象的表只去掉对象那几格, 其余照发(用户「直播的时候什么东西没显示，你再看一遍」):
+		##   原来 `_plain_deep` 不过就整份不发 —— 021 连线目标 / 060 罩住的单位 / 064 幽灵特效 / 068 光束 / 069 环绕
+		##   往 eq_state 里存了单位或节点, 带着其中一件 ⇒ 这只龟整张 eq_state 不进流, 播流时它所有装备的「本局」/ 充能 / 层数全没
+		##   (探针 tests/probes/_probe_eqstate_plain.gd 点名; 全量排查 _probe_stream_parity_all: 猎人 047 / 双头 083「暂无记录」、糖果反伤 48% → 8%)。
+		if (t == TYPE_DICTIONARY or (t == TYPE_ARRAY and not UARR.has(k))) and _info_set.has(k) and not _plain_deep(v):
+			v = _plain_copy(v)
 		var old = c.get(k)
 		if typeof(old) == t and (t == TYPE_NIL or old == v):
 			continue
@@ -1970,6 +1976,40 @@ func _events() -> void:
 
 
 ## 值里有没有节点 / 对象 / 回调（信息面板那组键的数组 / 字典只在整层纯数据时才进流）。
+## 纯数据副本: 对象 / 可调用 / RID / 信号那几格去掉(字典去掉那个键、数组去掉那个元素), 超过 6 层的整格去掉。
+##   只给 `_info_set` 里的表用(面板读的是数字和字符串, 单位 / 节点引用播放端本来也用不上)。
+static func _plain_copy(v, depth: int = 0):
+	var t := typeof(v)
+	if t == TYPE_DICTIONARY:
+		var d := {}
+		if depth > 6:
+			return d
+		for kk in v:
+			if not _plain_deep(kk, depth + 1):
+				continue
+			var x = v[kk]
+			var tx := typeof(x)
+			if tx == TYPE_OBJECT or tx == TYPE_CALLABLE or tx == TYPE_RID or tx == TYPE_SIGNAL:
+				continue
+			if (tx == TYPE_DICTIONARY or tx == TYPE_ARRAY) and depth + 1 > 6:
+				continue
+			d[kk] = _plain_copy(x, depth + 1) if (tx == TYPE_DICTIONARY or tx == TYPE_ARRAY) else x
+		return d
+	if t == TYPE_ARRAY:
+		var a: Array = []
+		if depth > 6:
+			return a
+		for x in v:
+			var tx := typeof(x)
+			if tx == TYPE_OBJECT or tx == TYPE_CALLABLE or tx == TYPE_RID or tx == TYPE_SIGNAL:
+				continue
+			if (tx == TYPE_DICTIONARY or tx == TYPE_ARRAY) and depth + 1 > 6:
+				continue
+			a.append(_plain_copy(x, depth + 1) if (tx == TYPE_DICTIONARY or tx == TYPE_ARRAY) else x)
+		return a
+	return v
+
+
 static func _plain_deep(v, depth: int = 0) -> bool:
 	if depth > 6:
 		return false

@@ -92,6 +92,9 @@ func apply_season_growth(u: Dictionary) -> void:
 	var sd := owner_side(u)
 	if sd == "":
 		return
+	## 说明里「本大轮已累积」那个数记在单位上(只给详情面板读, 随直播流发; sim 不读) —— 看直播的一端没有对手快照,
+	##   自己当乙方时本机存档也不是左边那只的(2026-11-20 全量直播排查)。
+	u["_bamboo_season"] = season_hp(sd)
 	var g: float = season_hp(sd) + float(grown.get(sd, 0.0))
 	if g <= 0.0:
 		return

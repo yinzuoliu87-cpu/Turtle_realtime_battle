@@ -299,12 +299,23 @@ func _t_c_panel() -> void:
 	_ok("② 分母: 这一段真的打出去了(%.0f)" % dt, dt > 0.0)
 	_ok("★② C 条上的当前值跟着涨(4500 + %.0f)" % dt, _approx(float(_bar(lc).get("cur", -1)), 4500.0 + dt))
 	_ok("② C 面板重建签名跟着变(否则停在开面板那一刻)", _s._info_sys._status_sig_own(lc) != sig0)
-	## 逐帧直播播放端不画: 那里一步 sim 都不跑(账是空的), 流里也不带财宝值 ⇒ 画出来就是把开局起点当实时数
+	## 逐帧直播播放端(2026-11-20 起改): 那里一步 sim 都不跑、账是空的 ⇒ 读服务器镜像到单位上的 _chest_value / _chest_open_n(随流发);
+	##   单位上没有这两个字段(旧裁判机的流)⇒ 照旧不画, 不拿空账的 0 冒充。用户 11-20「我在玩的时候没看到进度条啊」。
 	var m0 := str(_s._replay.mode)
 	_s._replay.mode = "stream"
 	var bs := _bar(lc)
+	var mv: float = float(lc.get("_chest_value", -1.0))
+	var keep_v = lc.get("_chest_value")
+	var keep_n = lc.get("_chest_open_n")
+	lc.erase("_chest_value")
+	lc.erase("_chest_open_n")
+	var bs_old := _bar(lc)
+	lc["_chest_value"] = keep_v
+	lc["_chest_open_n"] = keep_n
 	_s._replay.mode = m0
-	_ok("② C 逐帧直播播放端不画财宝条(与改之前同: 那里本来就拿不到实时财宝值)", bs.is_empty())
+	_ok("② 分母: 出生时财宝进度已镜像到单位上(存档起点 4500)", _approx(mv, 4500.0), str(mv))
+	_ok("★② C 播流时按单位上的镜像画财宝条(%.0f)" % mv, not bs.is_empty() and _approx(float(bs.get("cur", -1)), mv), str(bs))
+	_ok("② C 播流且单位上没有镜像(旧裁判机的流)⇒ 不画", bs_old.is_empty(), str(bs_old))
 	## 登场回装: 存档那件 / 快照那两件真的装在身上
 	_ok("② 登场回装: 我方身上 = [dagger], 敌方 = [chain, rum]", _loot(lc) == ["dagger"] and _loot(rc) == ["chain", "rum"],
 		"%s / %s" % [str(_loot(lc)), str(_loot(rc))])
