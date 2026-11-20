@@ -778,6 +778,8 @@ func _resource_bars(u: Dictionary) -> Array:
 
 
 ## 这只单位选中的那一招(类型数组)。出生时记在单位上的 `_picked`(随直播流发)优先;
+##   2026-11-20 全量直播排查(用户「直播的时候什么东西没显示，你再看一遍」): 原来开面板时现读 GameState.loadouts / foe_loadouts,
+##   看直播的一端没有对手的选择 ⇒ 对面海盗龟选「霰弹」却显示默认的「海盗船·冲锋」。
 ##   老流 / 没记的单位才退回现读存档的选择(看直播时读不到对手的选择 ⇒ 会退回默认那一招)。
 func picked_types(u: Dictionary) -> Array:
 	var p = u.get("_picked")

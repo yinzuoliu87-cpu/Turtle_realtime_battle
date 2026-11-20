@@ -462,10 +462,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		"atk_cd": 0.0, "energy": 0.0, "alive": true,
 		# 选3 多技能: loadout 的非基础技(physical/magic 是普攻=自动) → 主动技轮转, 龟能满放下一个
 		"active_skills": ([] if (is_minion or is_egg) else battle._resolve_active_skills(id, side == "left")), "skill_idx": 0,
-		## 选中的那一招(含被动型), 出生时就记在单位上 —— 只给详情面板读(InfoPanel.picked_types), sim 不读。
-		##   2026-11-20 全量直播排查(用户「直播的时候什么东西没显示，你再看一遍」): 面板原来开面板时现读
-		##   GameState.loadouts / foe_loadouts, 看直播的一端没有对手的选择 ⇒ 对面海盗龟选「霰弹」却显示默认的「海盗船·冲锋」。
-		"_picked": ([] if (is_minion or is_egg) else battle._chosen_skill_types(id, side == "left")),
+		"_picked": ([] if (is_minion or is_egg) else battle._chosen_skill_types(id, side == "left")),   # 选中那一招: 只给面板读、随直播发(InfoPanel.picked_types 头注)
 		"skill_cd": {}, "skill_gcd_until": 0.0,   # 逐技各自冷却剩余秒(懒填) + 同龟连放最小间隔
 		# 永久护盾 / 控制 / 旧式灼烧(保留兼容) ----
 		"shield": 0.0, "stun_until": 0.0, "slow_until": 0.0,
@@ -807,6 +804,7 @@ func _spawn_hiding_minion(u: Dictionary) -> void:
 		minion["crit_dmg"] = 1.5
 		minion["level"] = int(u.get("level", 1))
 		minion["active_skills"] = battle._resolve_active_skills(pick, false)   # 带自己技能(默认3选1·resolve为1个active)
+		minion["_picked"] = battle._chosen_skill_types(pick, false)   # 与上一行同一个口径(面板读; verify_minion_is_full_turtle: 随从不比真龟少键)
 		minion["skill_cd"] = {}                                         # 施法需(防u["skill_cd"][stype]崩)
 		minion["skill_gcd_until"] = 0.0
 		minion["skill_idx"] = 0
