@@ -2,19 +2,19 @@ extends Node
 ## verify_arena_theme_pick.gd — 正式对局「每场随机一张图」(用户 2026-10-04 拍板)
 ##
 ## 用户原话(从选项里选):「每场随机一张」—— 每场对局从 暗林 / 深礁 / 紫墟 / 赤林 四张里随机一张,
-##   原来的 V0_BASE 默认图从正式对局退役。
+##   原来的默认图(旧图 V0_BASE)从正式对局退役; 11-20 整个删掉(用户「能不能把旧地图都删掉」), 开发工具默认改暗林。
 ## 方案书: docs/plans/20261003-四版完整地图.md §6。
 ##
 ## 这把尺子量五件事(编号对应派活单的门禁 ①~⑤):
 ##   ★0 主题只改外观(2026-11-04 改成「开场比数字」, 用户:「一串数字可以表示一张地图, 开场比较这串数字就可以了」):
 ##      战斗读到的地形只有 `_obstacles`(开路时 `_build_map_props` 写死, 主题只换贴图不换占地)。
 ##      ⇒ (a) 每张图开到正式对局【开打第一帧】, 「战斗相关那串数字」= 障碍物表(去掉只管外观的 img) + 全场单位 + 随机流状态,
-##            五张图(含 V0_BASE)逐字相同; 调试场同理比开场那一帧。
+##            四张图逐字相同(以暗林为基准); 调试场同理比开场那一帧。
 ##         (b) 静态白名单: 读地图主题的文件只许是 建场 / 场外装饰 / 录流核对 那几个 —— 战斗逻辑、技能、装备一旦读主题 ⇒ 红。
 ##      原来五张图各真打 1500 步 + 调试场两个场景五张图各跑一遍 + ④ 端到端再打两局(实测 146 / 162 秒), 换成上面两条后不用真打。
 ##   ①  多种子下四张都出现、分布大致均匀(打分母)
 ##   ②  同种子 ⇒ 同主题(纯函数算两遍 + 真建场等于纯函数; 「真建场两次」由这两条推出, 11-04 删掉第二次建场)
-##   ③  正式对局不出 V0_BASE; 调试场照旧是进场前那张(开发工具不被弄坏)
+##   ③  主题表只剩四张新图; 调试场照旧是进场前那张(开发工具不被弄坏)
 ##   ④a 选图不消耗战斗随机流: 产品选图入口前后 `_battle_rng.state` 逐位不变
 ##      (原 ④ 端到端「自己选 vs 强制同一张, 逐步指纹」10-04 反向验证实测抓不到「吃流」, 只有 ④a 抓得到 ⇒ 11-04 删掉 ④ 那两局)
 ##   ⑤  回放一致在 `verify_replay_roundtrip` 里量(录与播的 ArenaTheme.active 相同)
@@ -31,7 +31,8 @@ const Backend := preload("res://scripts/net/backend.gd")
 
 const FORMAL_SEED := 4242             # 正式双路那一局的种子
 const FORMAL_FRAMES := 1500           # 开到「开打第一帧」的帧数上限(摆位 → 开打; 到不了开打 ⇒ 分母红)
-const ALL5: Array = [AT.V0_BASE, AT.V1_DUSK, AT.V2_REEF, AT.V3_SHOAL, AT.V4_STORM]
+## 四张图(11-20 旧图删掉前是五张、拿旧图当基准; 现在拿第一张暗林当基准, 另三张跟它比)
+const ALL_MAPS: Array = [AT.V1_DUSK, AT.V2_REEF, AT.V3_SHOAL, AT.V4_STORM]
 ## ★0(b) 允许读地图主题的文件(scripts/ autoload/ 下按「ArenaTheme / arena_theme.gd」字样扫)。
 ##   新增一个读主题的文件 ⇒ 红: 先确认它只管外观(不在 `_sim_step` 调用链上), 再加进这里并写明理由。
 const THEME_READERS := {
@@ -266,12 +267,12 @@ func _ready() -> void:
 	var keep_active: String = AT.active
 	var keep_forced: String = AT.forced
 	AT.forced = ""
-	_ok("分母 · 进场前 active 是默认 V0_BASE(下面「调试场照旧」才有对照)", AT.active == AT.V0_BASE, AT.active)
+	_ok("分母 · 进场前 active 是默认暗林(11-20 起)", AT.active == AT.V1_DUSK, AT.active)
 
 	# ═══ ① 纯函数分布 ═══
 	print("=== ① 种子 → 地图: 分布 ===")
-	_ok("① 地图池 = 暗林/深礁/紫墟/赤林 四张, 不含 V0_BASE",
-		AT.MATCH_POOL == [AT.V1_DUSK, AT.V2_REEF, AT.V3_SHOAL, AT.V4_STORM] and not AT.MATCH_POOL.has(AT.V0_BASE),
+	_ok("① 地图池 = 暗林/深礁/紫墟/赤林 四张; 主题表里也只有这四张(旧图 base 11-20 已删)",
+		AT.MATCH_POOL == [AT.V1_DUSK, AT.V2_REEF, AT.V3_SHOAL, AT.V4_STORM] and AT.THEMES.size() == 4 and not AT.THEMES.has("base"),
 		str(AT.MATCH_POOL))
 	for kind in ["连续种子 1..4000", "随机 53 位种子 ×4000(= randomize 后 note_battle_seed 的形状)"]:
 		var cnt := {}
@@ -319,34 +320,34 @@ func _ready() -> void:
 	for idx in [1, 7]:            # ② 3v3 裸装(骰子吃随机) / ⑧ 受控 PRNG 落点(落点会不会碰到障碍)
 		var sc: Dictionary = scs[idx]
 		var base: Dictionary = {}
-		for th in ALL5:
+		for th in ALL_MAPS:
 			var r: Dictionary = await _run_debug(sc, str(th))
 			_ok("分母 · %s · %s · 建场时 active 真的是它(themed=%s 有 ThemeRing) · 场上有单位(%d)" % [sc["tag"], th, str(r["ring"]), int(r["units"])],
-				str(r["theme"]) == str(th) and bool(r["ring"]) == (str(th) != AT.V0_BASE) and int(r["units"]) >= 2 and str(r["sig"]) != "")
-			if th == AT.V0_BASE:
+				str(r["theme"]) == str(th) and bool(r["ring"]) and int(r["units"]) >= 2 and str(r["sig"]) != "")
+			if base.is_empty():
 				base = r
 			else:
 				var d: String = _first_diff([base["sig"]], [r["sig"]])
-				_ok("★★0a %s · %s 与 V0_BASE 开打那一帧的数字逐字相同" % [sc["tag"], th], d == "", d)
+				_ok("★★0a %s · %s 与暗林开打那一帧的数字逐字相同" % [sc["tag"], th], d == "", d)
 
 	# ═══ ★0(a) 正式双路对局: 五张图(强制指定)开到开打第一帧, 「战斗相关那串数字」逐字相同 ═══
-	AT.active = AT.V0_BASE        # 上面调试场逐张手动切过; 还原成「玩家进场前」的默认, ③ 才有对照
+	AT.active = AT.V1_DUSK        # 上面调试场逐张手动切过; 还原成「玩家进场前」的默认(暗林), ③ 才有对照
 	print("=== ★0 主题不影响模拟(正式双路对局, 种子 %d, 比开打第一帧) ===" % FORMAL_SEED)
 	var fbase: Dictionary = {}
-	for th in ALL5:
+	for th in ALL_MAPS:
 		AT.forced = str(th)
 		var r: Dictionary = await _run_formal(FORMAL_SEED, FORMAL_FRAMES, false, true)
 		AT.forced = ""
 		_ok("分母 · 正式对局 · %s · 是正式对局(formal=%s) · 用的是它 · 走了 MapProps 那条路 · 第 %d 帧开打 · 场上活着 %d 个" % [th, str(r["formal"]), int(r["fight_frame"]), int(r["units"])],
-			bool(r["formal"]) and str(r["theme"]) == str(th) and bool(r["props"]) and bool(r["ring"]) == (str(th) != AT.V0_BASE)
+			bool(r["formal"]) and str(r["theme"]) == str(th) and bool(r["props"]) and bool(r["ring"])
 				and bool(r["fought"]) and int(r["units"]) >= 6,
 			"theme=%s props=%s ring=%s" % [r["theme"], str(r["props"]), str(r["ring"])])
-		if th == AT.V0_BASE:
+		if fbase.is_empty():
 			fbase = r
 			_ok("分母 · 开打那一帧障碍物表非空(比的不是空表): %s" % str(r["sig"]).left(120), str(r["sig"]).find("obs=0|") < 0 and str(r["sig"]).find("|ob0{") >= 0)
 		else:
 			var d2: String = _first_diff([fbase["sig"]], [r["sig"]])
-			_ok("★★0a 正式对局 · %s 与 V0_BASE 开打第一帧的数字逐字相同(障碍物 / 单位 / 随机流)" % th, d2 == "", d2)
+			_ok("★★0a 正式对局 · %s 与暗林开打第一帧的数字逐字相同(障碍物 / 单位 / 随机流)" % th, d2 == "", d2)
 
 	# ④a 直接量随机流状态: 正式对局建好后, 把种子换成 X、记下 state, 调产品的选图入口, state 必须一个位不差。
 	#   ★为什么要这一条: ④ 的端到端指纹对「从流里吃掉一个数」不够敏感 —— 2026-10-04 反向验证实测,
@@ -389,7 +390,7 @@ func _ready() -> void:
 		if str(a["theme"]) != AT.theme_for_seed(sd) or not AT.MATCH_POOL.has(str(a["theme"])):
 			all_ok = false
 		detail += "%d→%s " % [sd, a["theme"]]
-	_ok("★②③ 每一场正式对局真建场 == 种子算出的那张、且在四张池里(没有一场是 V0_BASE)", all_ok, detail)
+	_ok("★②③ 每一场正式对局真建场 == 种子算出的那张、且在四张池里", all_ok, detail)
 	_ok("分母 · 这 8 个种子覆盖到 ≥3 张不同的图(否则 ② 量不出随机)", seen.size() >= 3, str(seen.keys()))
 
 	# ═══ ③ 开发工具不被弄坏 ═══
@@ -419,7 +420,8 @@ func _ready() -> void:
 
 	print("=== ③ 开发工具 ===")
 	var dbg: Dictionary = await _run_debug(scs[0], AT.active)   # 不手动改: 用上一场正式对局留下的值进调试场
-	_ok("★③ 正式对局之后进调试场 ⇒ 回到进场前那张(V0_BASE), 不带上一场的选图", str(dbg["theme"]) == AT.V0_BASE, str(dbg["theme"]))
+	## 上一场正式对局(⑥ 末尾)强制指定的是赤林 ≠ 进场前的暗林 ⇒ 停在赤林 = 把上一场的图带进来了, 回到暗林 = 还原对
+	_ok("★③ 正式对局(上一场赤林)之后进调试场 ⇒ 回到进场前那张(暗林), 不带上一场的选图", str(tf["theme"]) == AT.V4_STORM and str(dbg["theme"]) == AT.V1_DUSK, str(dbg["theme"]))
 	AT.active = AT.V2_REEF
 	var dbg2: Dictionary = await _run_debug(scs[0], AT.V2_REEF)
 	_ok("③ 调试场里手动指定的主题照旧生效(门禁切主题的老用法)", str(dbg2["theme"]) == AT.V2_REEF, str(dbg2["theme"]))

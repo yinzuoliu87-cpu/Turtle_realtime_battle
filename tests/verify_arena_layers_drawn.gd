@@ -32,17 +32,16 @@ func _ready() -> void:
 	RB.DEBUG_EDIT = true
 	_ok("★分母: 至少有一版标成「已画出来」", AT.DRAWN.size() >= 1, str(AT.DRAWN))
 
-	## ── base: 证明「找光柱」这件事本身找得到(否则下面「主题 0 道」恒真) ──
-	AT.active = AT.V0_BASE
-	var sb = RB.new()
-	add_child(sb)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	sb._world_builder._build_map_props()
-	var base_shafts: int = _count_meta(sb._world, "light_shaft")
-	_ok("[base] ★分母: 真对局那条路在 base 下画 4 道水面光柱(看得见才能断言主题里没有)", base_shafts == 4, "%d 道" % base_shafts)
-	sb.queue_free()
-	await get_tree().process_frame
+	## ── 对照: 「数光柱」这把尺子数得到东西(否则下面「主题 0 道」恒真)。原来拿旧图 V0_BASE(4 道)当对照, 11-20 旧图删了 ⇒ 人造对照 ──
+	var probe_root := Node3D.new()
+	var probe_shaft := Sprite3D.new()
+	probe_shaft.set_meta("light_shaft", true)
+	probe_root.add_child(probe_shaft)
+	_ok("★分母: 计数器数得到带光柱记号的节点(人造对照 1 道)", _count_meta(probe_root, "light_shaft") == 1)
+	probe_root.free()
+	var wb_src: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_world_builder.gd")
+	_ok("★建场代码里没有生成水面光柱的地方(旧图的 _build_lightshafts 11-20 删掉, 不许加回来)",
+		wb_src.length() > 1000 and wb_src.find("set_meta(\"light_shaft\"") < 0 and wb_src.find("_make_lightshaft_texture") < 0)
 
 	for th in AT.DRAWN:
 		AT.active = str(th)

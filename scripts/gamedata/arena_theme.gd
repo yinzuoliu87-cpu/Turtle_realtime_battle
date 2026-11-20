@@ -18,27 +18,24 @@ extends RefCounted
 ## ⚠ 本文件只放**配置**, 不放构建逻辑 —— 构建在 `battle_world_builder.gd`,
 ##   它读这里的表。配置与实现混在一起就没法"换一个数看四版"。
 
-## ★★★`V0_BASE` = **现在这套已验收的画面**(TILE_COLS 的暖石台调色板 + 青水),
-##   它是**默认值**。为什么不拿四个新版当默认:
-##   四版还没建完(周边装饰环/前景框边/带灯具的灯光/氛围粒子都没接),
-##   实测它们各差一两条画面判据 —— 把没建完的东西设成默认 = 让门禁红着过夜。
-##   ⇒ 默认走已验收的那套, 四版是**可切换的预览**, 用户选中哪版再把它扶正。
-const V0_BASE := "base"        # 现状(已验收·默认)
+## ★2026-11-20 旧图 `V0_BASE`(石墙 + 珊瑚 + 海星的深海场)删除(用户「我看你这个…地方怎么还是用的旧地图啊？能不能把旧地图都删掉」):
+##   正式对局 10-04 起就只从下面四张随机, 旧图只剩开发工具(调试场 / 审阅台 / 装备演示台 / 特效实验台)的默认 ⇒ 开发工具改用暗林(与教学同一张),
+##   主题表与只被它走到的建场代码 / 素材一并删掉(方案书 docs/plans/20261120b-删除旧地图.md)。
 const V1_DUSK := "dusk"        # 黄昏孤岛
 const V2_REEF := "reef"        # 夜礁
 const V3_SHOAL := "shoal"      # 白昼浅滩
 const V4_STORM := "storm"      # 风暴
 
-## ★`ALL` 只列【四个新版】—— 判据按它数"3到4版"。`V0_BASE` 是现状基线, 不参与评比。
+## ★`ALL` = 四张图(判据按它逐层验)。
 const ALL: Array = [V1_DUSK, V2_REEF, V3_SHOAL, V4_STORM]
 
 ## ★当前生效的主题。改这一个值 = 换一整张地图。
 ## ⚠ 地形生成器 `tools/assetgen/gen_arena_map.py` 也要跟着跑一次(它按主题换地面类型与岸线扰动)。
 ## ★★2026-10-04 起**正式对局不读这个默认值**: 开局由 `choose_for_battle()` 按战斗种子改写(见文件尾)。
-##   `V0_BASE` 只剩开发工具(调试场/审阅台/EQDEMO/VFXLAB)与单测的默认。
-static var active: String = V0_BASE
+##   这个默认值只给开发工具(调试场 / 审阅台 / EQDEMO / VFXLAB)与单测 —— 11-20 起是暗林(原来是已删的旧图 V0_BASE)。
+static var active: String = V1_DUSK
 
-## ★★正式对局的地图池(用户 2026-10-04 拍板「每场随机一张」: 暗林/深礁/紫墟/赤林, V0_BASE 从正式对局退役)。
+## ★★正式对局的地图池(用户 2026-10-04 拍板「每场随机一张」: 暗林/深礁/紫墟/赤林)。
 ## ★刻意不写成 `= DRAWN` / `= ALL`: 那两张表的意义是「判据逐层验哪几版」, 哪天加了第五版进 DRAWN 验画面,
 ##   不等于它就该进玩家对局 —— 进不进池是**另一个**拍板(memory `fb-new-table-doesnt-inherit-old-rules`)。
 const MATCH_POOL: Array = [V1_DUSK, V2_REEF, V3_SHOAL, V4_STORM]
@@ -53,33 +50,6 @@ static var forced: String = ""
 
 ## 每一版的完整配置。★键名就是那九层, 缺一层判据会红。
 const THEMES: Dictionary = {
-	## ★★`base` 的四个颜色**必须与 `battle_world_builder.TILE_COLS` 和
-	##   `ground_water.gdshader` 的默认 `shallow_col` 逐值相同** —— 它的全部意义就是
-	##   「什么都没换」。判据 `verify_arena_themes` 不检查它(它不在 ALL 里),
-	##   所以这里写错了不会红 ⇒ 下面逐条标出它对应的源, 改任一侧都要回来看一眼。
-	V0_BASE: {
-		"label": "现状(已验收)",
-		"ground_col": Color(0.169, 0.184, 0.118),    # = TILE_COLS[0]
-		"stone_col": Color(0.361, 0.318, 0.259),     # = TILE_COLS[2]
-		"water_col": Color(0.122, 0.722, 0.769),     # = TILE_COLS[1] / shallow_col 默认
-		"shore_col": Color(0.290, 0.251, 0.188),     # = TILE_COLS[3]
-		"ring_props": ["(现状)"], "ring_density": 1.0,
-		"fg_band": "(现状·无)", "obstacles": ["(现状)"], "mid_props": ["(现状)"],
-		## ★★base **刻意不给** `bg_top`/`bg_horizon` —— 给了就会走那条斜坡, 而五个远景色
-		##   本来不在一条线上, 推出来和原字面值对不上 = 悄悄改掉已验收的画面。
-		##   不给 ⇒ `_bg_ramp` 走各调用点的原字面值 ⇒ 逐值不变。
-		"bg_kind": "undersea",
-		"light_col": Color(1.0, 0.96, 0.86), "light_energy": 1.0,
-		"light_fixture": "(现状·无灯具)",
-		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
-		## ★★base **刻意不给** `ambient_col` —— 原值是 `Color(1,1,1,0.55)`(白·半透),
-		##   我一度在这里填了 (0.58,0.84,1.0,0.85), 那会**悄悄改掉已验收的粒子颜色**,
-		##   而五条画面判据量不到这么小的东西 ⇒ 照样全绿。
-		##   ★这是今晚**第四次**同一个形状(远景斜坡 / 沙地映射 / 墙色 / 这里):
-		##     「顺手给 base 也填一个相近的值」, 而**相近 ≠ 相等**。
-		##   ⇒ 凡是 base 该保持原样的键, 一律**不给**, 让代码侧走原字面值兜底。
-		"ambient_kind": "bubbles",
-	},
 	V1_DUSK: {
 		"outer_sea": true,   # 2026-10-05 外海铺到镜头看得见的最远处(ArenaOuter); 拉远/平移不再露出岛外的纯黑
 		"sea_edge_floor": 1.0,   # 2026-10-05 格子海板沿不再压到近黑(0.18), 与外海同色接上 ⇒ 海外沿那圈格子台阶消失
@@ -654,7 +624,7 @@ static func _check_env() -> void:
 		return
 	_env_checked = true
 	var _e: String = OS.get_environment("ARENA_THEME")
-	_e = {"V0_BASE": V0_BASE, "V1_DUSK": V1_DUSK, "V2_REEF": V2_REEF, "V3_SHOAL": V3_SHOAL, "V4_STORM": V4_STORM}.get(_e, _e)
+	_e = {"V1_DUSK": V1_DUSK, "V2_REEF": V2_REEF, "V3_SHOAL": V3_SHOAL, "V4_STORM": V4_STORM}.get(_e, _e)
 	if THEMES.has(_e):
 		active = _e
 		forced = _e
@@ -695,7 +665,7 @@ static func theme_for_seed(seed: int) -> String:
 
 ## 上一次 `choose_for_battle` 写进 active 的值, 和写之前 active 是什么(开发工具场次要还原)。
 static var _picked: String = ""
-static var _pre_pick: String = V0_BASE
+static var _pre_pick: String = V1_DUSK
 
 ## 开局选图 —— **唯一调用点**: `battle_world_builder._build_environment()` 第一行
 ##   (种子已由 `_build_camera` 播好、`GameState.note_battle_seed` 登记、回放 `_replay.start()` 覆盖之后,

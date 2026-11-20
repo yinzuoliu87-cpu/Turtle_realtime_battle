@@ -53,7 +53,7 @@ func _ready() -> void:
 	if FileAccess.file_exists(BattleDebugArena.SETUP_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(BattleDebugArena.SETUP_PATH))
 	## ① 没存档
-	AT.active = AT.V0_BASE
+	AT.active = AT.V4_STORM            # 进场前随便一张不是暗林的(原来是旧图 V0_BASE, 11-20 删了)
 	BattleDebugArena.enter_with_saved_theme()
 	var r1: Dictionary = await _build()
 	_ok("① 没存档 ⇒ 调试场是暗林(建场后 %s)" % str(r1["theme"]), str(r1["theme"]) == AT.V1_DUSK)
@@ -61,17 +61,17 @@ func _ready() -> void:
 	_ok("④ 「换地图」键写的是当前图名(%s)" % str(r1["label"]), str(r1["label"]).contains("暗林"))
 	## ② 存档选了深礁 / 存档写坏
 	_write_theme(AT.V2_REEF)
-	AT.active = AT.V0_BASE
+	AT.active = AT.V4_STORM            # 进场前随便一张不是暗林的(原来是旧图 V0_BASE, 11-20 删了)
 	BattleDebugArena.enter_with_saved_theme()
 	var r2: Dictionary = await _build()
 	_ok("② 存档选深礁 ⇒ 调试场是深礁(%s)" % str(r2["theme"]), str(r2["theme"]) == AT.V2_REEF)
-	_write_theme(AT.V0_BASE)
+	_write_theme("base")                 # 老存档里可能还写着旧图(11-20 删了)
 	_ok("② 存档写旧图 ⇒ 回落暗林(%s)" % BattleDebugArena.saved_theme(), BattleDebugArena.saved_theme() == AT.V1_DUSK)
 	_write_theme("no_such_map")
 	_ok("② 存档写坏 ⇒ 回落暗林(%s)" % BattleDebugArena.saved_theme(), BattleDebugArena.saved_theme() == AT.V1_DUSK)
 	## ③ 存档那张 = 上一场正式对局随机到的那张
 	_write_theme(AT.V3_SHOAL)
-	AT.active = AT.V0_BASE
+	AT.active = AT.V4_STORM            # 进场前随便一张不是暗林的(原来是旧图 V0_BASE, 11-20 删了)
 	AT.choose_for_battle(1, true)                  # 模拟上一场正式对局: 随机到某张(记进 _picked)
 	var picked: String = AT.active
 	_write_theme(picked)

@@ -55,23 +55,7 @@ func _ready() -> void:
 	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/maps/arena.json"))
 	_ok("★分母: 地图 json 读得到", meta != null and meta.has("grid"))
 
-	## ── ⑤ base: 不建外海, 海 shader 参数全是原默认 ──
-	AT.active = AT.V0_BASE
-	var sb = RB.new()
-	add_child(sb)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	sb._world_builder._build_map_props()
-	_ok("⑤[base] 没有外海节点(默认画面一个像素不动)", sb._world.find_child("OuterSea", true, false) == null)
-	var bw: ShaderMaterial = _grid_water_mat(sb)
-	_ok("⑤[base] ★分母: 找得到格子海材质", bw != null)
-	if bw != null:
-		_ok("⑤[base] 格子海 edge_floor / crest_deep / wave_style 没被设置(= shader 原默认 0.18 / 0.25 / 0)",
-			bw.get_shader_parameter("edge_floor") == null and bw.get_shader_parameter("crest_deep") == null and bw.get_shader_parameter("wave_style") == null,
-			"%s / %s / %s" % [bw.get_shader_parameter("edge_floor"), bw.get_shader_parameter("crest_deep"), bw.get_shader_parameter("wave_style")])
-	sb.queue_free()
-	await get_tree().process_frame
-
+	## (⑤ 原来验「旧图 V0_BASE 不建外海」; 11-20 旧图删了, 只剩下面四张新图逐张验外海)
 	var n_themes := 0
 	for th in AT.MATCH_POOL:
 		AT.active = str(th)

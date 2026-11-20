@@ -291,81 +291,8 @@ func _build_tilemap_ground() -> void:
 	battle._tilemap_add(xf_water, Vector3(maxf(0.02, tw_m - TILE_GAP_M), battle.TILE_THICK, maxf(0.02, tw_m - TILE_GAP_M)), Color(0.12, 0.72, 0.78))   # 青水(凹)
 	battle._tilemap_add(xf_stone, Vector3(maxf(0.02, tw_m - TILE_GAP_M), battle.TILE_THICK, maxf(0.02, tw_m - TILE_GAP_M)), Color(0.24, 0.26, 0.38))   # 石台(凸)
 
-# 阶段4: 边框密植发光水草/珊瑚(确定性种子·只非战斗区=ARENA外) + 氛围辉光粒子
-## 海岸线的边界段 —— 【陆地格 ↔ 非陆地格】那条界, 不是「非虚空 ↔ 虚空」。
-##
-## ★★★2026-10-03 用户:「要么中间就是可活动的陆地，外边为海，以此为边界」「**墙移到海岸线吧**」
-##
-## 【改前跟的是哪条界】`非void ↔ void` —— 也就是「所有渲染出来的东西」的最外沿。
-##   在改前那张图上(岛心→潟湖→浅滩→虚空)那条界画在**浅滩的外缘**, 离玩家走得到的地方
-##   外扩 左298/右334/上192/下194 px ⇒ 玩家看见的最明显的构件**不是**玩法边界。
-##   翻成「岛→海→虚空」之后它会落在**海的外缘** —— 更远, 更不是边界。
-##
-## 【现在跟的是】陆地(grass/stone/sand) ↔ 非陆地(water/void)。
-##   因为岛 == 可活动区(`tools/assetgen/gen_arena_map.py` 的 `ISLE` 与 `ArenaShape.N` 同一个超椭圆),
-##   所以这条界**就是**玩法边界, 一条线同时是"看得见的"和"走得到的"。
-##
-## ⚠ 竖面高度的标定值 `WALL_H`(照 TFT 实测: 竖面 ÷ 角色屏幕高 = 0.81 ⇒ 31px ⇒ 世界高 1.11 米)
-##   **一个字没动** —— 本次只换"画在哪条界上", 不换"画多高"。
-##   `tests/verify_edge_wall.gd` 里那条独立重算同步改成同一口径, 并反向验证过会红。
-const _LAND_TYPES := [0, 2, 3]            # grass / stone / sand (water=1 void=4 不是陆)
-
-func _coast_edge_segs(at: Callable, w: int, h: int, ox: float, oy: float, tile: float) -> Array:
-	var segs: Array = []                              # [[Vector2 a, Vector2 b], ...] 像素口径
-	for r in range(h):
-		for c in range(w):
-			if not (int(at.call(r, c)) in _LAND_TYPES):
-				continue
-			var x0 := ox + float(c) * tile
-			var y0 := oy + float(r) * tile
-			var x1 := x0 + tile
-			var y1 := y0 + tile
-			if not (int(at.call(r - 1, c)) in _LAND_TYPES):
-				segs.append([Vector2(x0, y0), Vector2(x1, y0)])
-			if not (int(at.call(r + 1, c)) in _LAND_TYPES):
-				segs.append([Vector2(x1, y1), Vector2(x0, y1)])
-			if not (int(at.call(r, c - 1)) in _LAND_TYPES):
-				segs.append([Vector2(x0, y1), Vector2(x0, y0)])
-			if not (int(at.call(r, c + 1)) in _LAND_TYPES):
-				segs.append([Vector2(x1, y0), Vector2(x1, y1)])
-	return segs
-
-
-## ═══ 场地边界的体积(P1-5) ═════════════════════════════════════════════
-## 用户 2026-09-18 说战斗场景很烂; 对标 30 款同类型好游戏后, 边界是差距最明确的一条:
-## 好游戏的场地边界从来不是「颜色换一下」, 而是一个**能看见侧面的构件**。
-## 本项目现在 tile 板厚只有 `TILE_THICK = 0.15 米` ⇒ 投到屏上 **2.63 px**(实测, 见
-## `tests/probes/_probe_pxm.gd`), 等于一张贴纸直接切进黑色虚空。
-##
-## ★数值全部来自实测标定, 不是拍脑袋(方案书 R15):
-##   · 参考(TFT 实测·做过透视校正): 竖面 ÷ 角色屏幕高 = 0.81
-##   · 本项目: 龟屏幕高中位 38 px ⇒ 目标竖面 ≈ 31 px
-##   · 龟与本构件都是**朝相机的 billboard**(不吃 cos50.8° 俯角压缩)
-##     ⇒ 世界高 = 31 ÷ 27.78 = **1.11 米**
-##     ⚠ 若哪天改成真实竖直几何, 同样 31 px 要 **1.75 米** —— 差 1.58 倍, 别混用。
-##   · 贴图 64×32(由 128×64 整数降半), 渲染高 31 px ≈ 1:1, 不打烂像素网格。
-##   · 结构照实测: 亮竖面被**上下两条暗缝**夹住(顶沿投影 + 落地接触影) ——
-##     实测里竖面是全场【最亮】的, 不是我原先以为的「一段暗侧面」。
-##
-## ★只做南北向(屏幕上的水平边)的连续条带 —— 实测 49 个可见边界格里 **42 个在画面上 1/3**,
-##   全是远端的南北向边; 东西向边基本落在左右 185px 的 UI 栏后面, 按格单发即可。
-const WALL_TEX := "res://assets/sprites/map/wall-edge.png"
-const WALL_H_M := 1.11          # 世界高(米) —— billboard 口径, 见上
-const WALL_TEX_H := 32.0        # 贴图原生高(texel)
-const WALL_COL := Color(0.227, 0.247, 0.361)   # = TILE_COLS[2] 石台色, **不新增颜色**(调色板硬锁·只在下面调明度)
-## ★光照补偿。墙卡是 UNSHADED(明暗由贴图给), 而地面是**吃光的**(主光 1.15 + 补光 0.45 + 环境光 0.85)
-##   ⇒ 同一个调色板色, 墙比地面暗一大截。第一版实拍就是这么栽的: 标定要求墙比场内地面
-##   **亮 23%~40%**, 实测反而更暗。
-##   ★★这个数只能【实拍量】不能算。我手算过一版: 贴图竖面均值 171/255 ⇒ 预测 ×2.34 落在 +30%,
-##     实拍复量却是 **+97%**(墙像素中位 152 vs 地面 77) —— 整整过头一倍。
-##     原因是"贴图均值"不等于"渲染出来的墙像素中位"(亮砖块占多数, 暗缝把均值拉低了)。
-##     ⇒ 按实拍反解 ×1.55。★同族教训见 memory「我拍的阈值会把好素材改坏」。
-##   ★只乘明度不动色相 —— 三通道同比例缩放, 调色板的 hue 一个度都没转。
-##   ⚠ 这个数依赖【地面有多亮】。若哪天动了灯光(见 R13), 必须重量一次, 不能照抄。
-##   ⚠ 复量方法: 拿"加墙前/后同种子两张实拍"做差分分割出墙像素(别用我拍的亮度阈值),
-##     取中位与场内地面中位比 —— 用方框平均会被段间空隙稀释(第一次就读成 +2%)。
-const WALL_H_M_GEO := 1.75    # 真实竖直几何口径(同样读出 31px 要 1.75 米, billboard 只要 1.11)
-const WALL_COL_LIT := Color(0.62, 0.66, 0.86)   # 吃光后的基色(不再乘 WALL_GAIN)
+## ★2026-11-20 旧图的石墙边(EdgeWall: 沿海岸线一圈连续竖直墙带, wall-edge.png)随旧图删掉(用户「能不能把旧地图都删掉」)——
+##   四张新图都有 ground_tileset(崖边画在图块里), build_edge_wall 一进门就返回, 只有旧图画。
 
 ## ═══ 场内暖色点光源（2026-09-20）═══════════════════════════════════
 ## ★★为什么有它：全仓 `OmniLight3D`/`SpotLight3D` **一个都没有**。
@@ -559,161 +486,6 @@ void fragment() {
 	battle._world.add_child(mi)
 	made.append(mi)
 	return made
-
-
-func build_edge_wall(grid: Array, w: int, h: int, tile: float, ox: float, oy: float) -> Array:
-	var made: Array = []
-	if str(ArenaTheme.cfg().get("ground_tileset", "")) != "":
-		return made    # ★崖边已经画在图块里, 不再立代码墙
-	var tex: Texture2D = load(WALL_TEX) if ResourceLoader.exists(WALL_TEX) else null
-	if tex == null:
-		push_warning("[edge_wall] 贴图缺失: %s —— 不画边界墙(不做静默兜底)" % WALL_TEX)
-		return made
-
-	## 取格子类型; 越界当 void(4)
-	var at := func(r: int, c: int) -> int:
-		if r < 0 or r >= h or c < 0 or c >= w:
-			return 4
-		var row: Array = grid[r]
-		if c >= row.size():
-			return 4
-		return int(row[c])
-
-	## ── 把「岛↔void」的每条格边收成线段, 再串成连续折线 ───────────────
-	## ★★2026-09-19 换实现。原来是【逐格墙卡】(每段 run 一张 QuadMesh billboard),
-	##   2026-09-18 实拍四向全画当场否掉 ——「一层层错开互相重叠的砖带」, 只好退到只画朝北一圈。
-	##   ★根因不是"岛的轮廓是阶梯", 是**卡片各自独立**: 斜边上相邻 run 分属不同行,
-	##     每张卡各自发卡、各自朝相机, 于是读成一堆错开的砖。
-	##   ★参考里 15 张边界裁图(shapecal/edge/)**没有一张是逐格卡**:
-	##     Arknights_4/BrawlStars_3 是台地挤出侧面; BrawlStars_2/4 绿篱; ClashOfClans_2 城墙件排成一条;
-	##     CultOfTheLamb_1 白石 curb; HadesII_1/Hades_1 栏杆女儿墙; Hades_0 骨柱环; TFT_1 植被带。
-	##     **共同点是「边界上有一条连续构件」, 不是「轮廓必须是直边」** ——
-	##     C 类(格子化阶梯)在参考里有 8 张, 格子阶梯本身不是病, **裸着的阶梯边**才是。
-	##   ⇒ 现在: 整圈边界抽成折线, 生成**一个 ArrayMesh 的连续竖直带**(连续 UV、不断开)。
-	var segs: Array = _coast_edge_segs(at, w, h, ox, oy, tile)
-	if segs.is_empty():
-		push_warning("[edge_wall] 一条边界段都没收到 —— 地图全是 void? 不画(不做静默兜底)")
-		return made
-
-	var loops := _chain_loops(segs)
-	var root := Node3D.new()
-	root.name = "EdgeWall"
-	battle._world.add_child(root)
-	made.append(root)
-	var mi := _edge_band_mesh(loops, tex)
-	if mi != null:
-		root.add_child(mi)
-		made.append(mi)
-	return made
-
-
-## 把零散线段串成首尾相接的折线环。返回 [[Vector2...], ...]。
-## ★串不起来的(孤立段)单独成一条开口折线 —— **不静默丢掉**, 丢了就是边界缺口。
-func _chain_loops(segs: Array) -> Array:
-	var start_map: Dictionary = {}                        # key(起点) -> [段下标...]
-	var key := func(p: Vector2) -> String:
-		return "%.1f_%.1f" % [p.x, p.y]
-	for i in range(segs.size()):
-		var k: String = key.call((segs[i] as Array)[0])
-		if not start_map.has(k):
-			start_map[k] = []
-		(start_map[k] as Array).append(i)
-	var used := {}
-	var loops: Array = []
-	for i in range(segs.size()):
-		if used.has(i):
-			continue
-		var poly: Array = [(segs[i] as Array)[0], (segs[i] as Array)[1]]
-		used[i] = true
-		var guard := 0
-		while guard < segs.size() + 4:
-			guard += 1
-			var k: String = key.call(poly[poly.size() - 1])
-			if not start_map.has(k):
-				break
-			var nxt := -1
-			for j in start_map[k]:
-				if not used.has(int(j)):
-					nxt = int(j)
-					break
-			if nxt < 0:
-				break
-			used[nxt] = true
-			poly.append((segs[nxt] as Array)[1])
-			if poly[poly.size() - 1].is_equal_approx(poly[0]):
-				break
-		if poly.size() >= 3:
-			loops.append(poly)
-	return loops
-
-
-## 沿折线生成一条连续竖直带(单个 ArrayMesh)。
-## ★高度用 WALL_H_M_GEO 不是 WALL_H_M: 前者是**真实竖直几何**口径, 后者是 billboard 口径 ——
-##   同样要在屏幕上读出 31px, 真几何要 1.75 米、billboard 只要 1.11 米(差 1.58 倍, 见上一篇标定)。
-## ★双面不剔除: 远端(北)那一圈的外表面背对相机, 不关剔除就看不见 ——
-##   而 42/49 个可见边界格恰恰都在那一圈。绿篱/栏杆类构件本来也都是双面片。
-func _edge_band_mesh(loops: Array, tex: Texture2D) -> MeshInstance3D:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var tex_w_m: float = WALL_H_M_GEO * (float(tex.get_width()) / WALL_TEX_H)
-	## ★主题可压低海岸竖面(wall_h, 默认 1.0 = 原值): 墙沿格子走成台阶, 一高就是一排方块;
-	##   参考的平台边沿是一道矮边 + 草丛, 不是一圈围墙。
-	var _wh: float = float(ArenaTheme.cfg().get("wall_h", 1.0))
-	var quads := 0
-	for poly in loops:
-		var pts: Array = poly
-		var run := 0.0
-		for i in range(pts.size() - 1):
-			var a: Vector2 = pts[i]
-			var b: Vector2 = pts[i + 1]
-			var seg_m: float = a.distance_to(b) * battle.WS
-			if seg_m <= 0.0001:
-				continue
-			var u0: float = run / tex_w_m
-			var u1: float = (run + seg_m) / tex_w_m
-			run += seg_m
-			var a_lo: Vector3 = battle._world_pos(a, 0.0)
-			var b_lo: Vector3 = battle._world_pos(b, 0.0)
-			var a_hi: Vector3 = a_lo + Vector3(0.0, WALL_H_M_GEO * _wh, 0.0)
-			var b_hi: Vector3 = b_lo + Vector3(0.0, WALL_H_M_GEO * _wh, 0.0)
-			st.set_uv(Vector2(u0, 1.0)); st.add_vertex(a_lo)
-			st.set_uv(Vector2(u1, 1.0)); st.add_vertex(b_lo)
-			st.set_uv(Vector2(u1, 0.0)); st.add_vertex(b_hi)
-			st.set_uv(Vector2(u0, 1.0)); st.add_vertex(a_lo)
-			st.set_uv(Vector2(u1, 0.0)); st.add_vertex(b_hi)
-			st.set_uv(Vector2(u0, 0.0)); st.add_vertex(a_hi)
-			quads += 1
-	if quads == 0:
-		push_warning("[edge_wall] 折线串起来了但一个四边形都没生成 —— 不画")
-		return null
-	st.generate_normals()
-	var mi := MeshInstance3D.new()
-	mi.name = "EdgeBand"
-	mi.mesh = st.commit()
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = tex
-	## ★★★2026-10-03 海岸线竖面按主题上色。
-	##   实拍四版拼图照出来的: 这道墙**四版一模一样**, 而它是画面上最显眼的构件之一
-	##   ⇒ 四个世界共用同一道边界, 看着就像"同一张图换了个滤镜"。
-	##   咩咩每个生态区的边界也都不一样(地牢是石 curb、沼泽是木栈、营地是草坡)。
-	## ★★用**专用键 `wall_col`**, 而且 `base` **刻意不给** —— 与远景端点同一套做法。
-	##   我第一版图省事直接拿 `stone_col` 推: 算出来 base 会变成 (0.629,0.604,0.570),
-	##   而原值 `WALL_COL_LIT` 是 (0.620,0.660,0.860) —— **不相等**, 等于悄悄改掉已验收的画面。
-	##   (这已经是今晚第三次差点这样: 远景斜坡、沙地映射、这里。
-	##    形状都一样 —— "顺手复用一个相近的键", 而相近 ≠ 相等。)
-	var _wt: Dictionary = ArenaTheme.cfg()
-	m.albedo_color = _wt.get("wall_col", WALL_COL_LIT)
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST     # 像素画不许插值成糊
-	m.texture_repeat = true
-	## ★★吃光(W8): 原来是 UNSHADED + 手工标定的 `WALL_GAIN` —— 那个数被地面亮度牵着走,
-	##   2026-09-18 一天内重标定了三次(1.55→1.70→2.05)。真实几何吃光之后, 亮度跟着灯光走,
-	##   不再需要那个常量。**W8 关闭。**
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	mi.material_override = m
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	return mi
 
 
 ## 场内暖色点光源。返回建出来的节点（调用方登记/清场用）。
@@ -1221,63 +993,8 @@ func build_detritus(grid: Array, w: int, h: int, tile: float, ox: float, oy: flo
 
 func _build_tilemap_decor() -> void:
 	var root = Node3D.new(); root.name = "TileDecor"; battle._world.add_child(root)
-	var rng = RandomNumberGenerator.new(); rng.seed = 20260714
-	var A = battle.ARENA
-	var cx = A.position.x + A.size.x * 0.5
-	var cy = A.position.y + A.size.y * 0.5
-	# ★点2(用户2026-07-23: 测试反馈太密+很多相同装饰): 去掉原glow-coral/glow-kelp各2遍的人为加权刷屏,
-	#   并补 PixelLab 生成的 4 种新装饰(扇贝/石头/海星/海草·壳石生植不同类)增加种类, 现共 11 种。
-	## ★★2026-10-03 这一层(边框密植)也按主题换素材。原来写死的是**海底系**
-	##   (海草/珊瑚/海星/扇贝) —— 用户 2026-10-02:「这些珊瑚海草不适合你听明白了吗」。
-	##   主题给了 `ring_props` 就用主题的; `base`(现状) 仍用原来这张表, 一个像素不动。
-	var _tc: Dictionary = ArenaTheme.cfg()
-	var _tp: Array = _tc.get("ring_props", [])
-	var kelp = ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks", "deco_scallop", "deco_boulder", "deco_starfish", "deco_seagrass", "glow-kelp", "glow-anem", "glow-coral"]
-	if not _tp.is_empty() and not str(_tp[0]).begins_with("("):
-		kelp = []
-		for _p in _tp:
-			kelp.append("themes/" + str(_p))
-	var mg = 200.0   # ★装饰带收窄 288→200(点2: 太密)
-	## ★主题不铺这一圈: 它在岛外 200px 宽的黑海面上种东西, 主题素材(贝壳等)脚下没地,
-	##   实拍飘在画面上方(用户 2026-10-03:「装饰物乱飞到上面」)。主题外围只留站在边沿上的 ThemeRing。
-	if bool(_tc.get("no_base_midground", false)):
-		mg = -1.0e9
-	var step = 120.0   # ★网格放大 80→120(点2: 稀疏)
-	var placed: Array = []   # ★防扎堆: 记已放点, 太近(<70px)跳过(点2: 原无间距检查→成簇)
-	var py = A.position.y - mg
-	while py < A.end.y + mg:
-		var px = A.position.x - mg
-		while px < A.end.x + mg:
-			var outside_arena = not A.has_point(Vector2(px, py))
-			var do = pow((px - cx) / (A.size.x * 0.72), 2.0) + pow((py - cy) / (A.size.y * 0.92), 2.0)   # <1=地图内有tile
-			if outside_arena and do < 0.98 and rng.randf() < 0.30:   # ★概率 0.58→0.30(点2: 稀疏一半)
-				var jx = px + rng.randf_range(-26.0, 26.0)
-				var jy = py + rng.randf_range(-26.0, 26.0)
-				var jp = Vector2(jx, jy)
-				var too_close = false
-				for pp in placed:
-					if (pp as Vector2).distance_to(jp) < 70.0:
-						too_close = true; break
-				if not too_close:
-					placed.append(jp)
-					var img: String = kelp[rng.randi() % kelp.size()]
-					var spr = battle._map_billboard("res://assets/sprites/map/%s.png" % img, jp, rng.randf_range(1.5, 2.7))
-					var s = rng.randf_range(0.82, 1.28) * (1.15 if do > 0.7 else 1.0)   # 越靠边框越大(框边压)
-					spr.scale = Vector3(s * (-1.0 if rng.randf() < 0.5 else 1.0), s, s)   # ★随机水平镜像破"一模一样"(点2)
-					var _b: float = rng.randf_range(0.82, 1.08)   # ★明暗/色相抖动(点2: 原modulate死值Color(0.5,0.68,0.92)→全同)
-					## ★★2026-09-18 环境色偏从 (0.50,0.68,0.92) 放松到 (0.88,0.94,1.00)。
-					## 原值把【红通道砍掉一半】, 11 种颜色各异的装饰全被拉进同一个暗蓝紫区间(实测):
-					##   deco_coral_orange #f0d060 亮金黄 → #788d58 暗橄榄
-					##   deco_starfish     #e07000 亮橙   → #704c00 暗棕
-					##   deco_scallop      #f0d0f0 亮粉白 → #788ddc 灰蓝紫
-					## 这不是在遵守硬锁调色板 —— 调色板(场景地图方案.md §4)明确写着
-					## 「发光点缀(珊瑚/水草) 粉#ff6ba3 / 紫#7c5cff / 青#3be0c0」, 装饰【本来就该是彩色的】。
-					## 同一文件的 _build_decorations 用的也是 (0.92,0.96,1.0), 0.50 那个是异常值。
-					spr.modulate = Color(clampf(0.88 * _b + rng.randf_range(-0.05, 0.05), 0.0, 1.0), clampf(0.94 * _b, 0.0, 1.0), clampf(1.00 * _b + rng.randf_range(-0.04, 0.04), 0.0, 1.0))
-					root.add_child(spr)
-			px += step
-		py += step
-	_build_midground(root)      # P2: 中距离地标(补远景与边框装饰带之间那段空白)
+	## ★2026-11-20 旧图(V0_BASE)删除(用户「能不能把旧地图都删掉」): 这里原来先铺一圈海底系边框装饰(海草 / 珊瑚 / 海星 / 扇贝)
+	##   + 默认中景(沉船 / 珊瑚柱 / 断石柱)—— 四张新图都设了 no_base_midground、一样都不走(装饰圈循环 0 次, 中景进门就返回), 只有旧图画; 随旧图删掉。
 	## ★★★2026-10-03 前景框边挂在这里, 理由有两条:
 	##   ① **这条路才跑**: 地图是数据驱动的, `_build_tilemap_ground` 载入 json 后就 return,
 	##      程序化那条路(`_build_map_props`)根本不跑 —— 我第一版挂在那里, 探针实测一行都没打出来
@@ -1295,123 +1012,12 @@ func _build_tilemap_decor() -> void:
 	##   `verify_arena_density` 的分母断言「找得到 ThemeRing 容器吗」把它抓出来的。
 	##   ★同一个坑今晚踩了两次 ⇒ 以后往世界里加层, **第一件事是确认这条路跑不跑**。
 	_build_theme_decorations(root)
-	## ★2026-10-04 主题: 中景灌木团 + 挂在巨树干上的吊灯 + 灯旁火星。base 不给 ⇒ 三个都一件不加。
+	## ★2026-10-04 主题: 中景灌木团 + 挂在巨树干上的吊灯 + 灯旁火星。
 	_build_theme_midground(root)
 	_build_hang_lamps(root)
-	## ★主题不画那层冰蓝上飘辉光(100 粒·满场·缓上飘 = 水下气泡的另一副面孔), 换成灯旁火星。base 照旧。
-	if bool(_tc.get("no_base_midground", false)):
-		_build_theme_ambient(root)
-	else:
-		_build_tilemap_ambient(root)
+	## 氛围: 灯旁火星(旧图那层冰蓝上飘辉光 _build_tilemap_ambient 随旧图删掉, 11-20)
+	_build_theme_ambient(root)
 
-
-## ═══ P2 · 中景地标 (用户 2026-07-30「地图再度需要提升」· 拍板 U7 顺序 P1→P2→P4→P3) ═══
-##
-## ★为什么要这一层: 现在只有【远景三层】(渐变水幕/远礁剪影/水面光柱, 在 z≈-19)
-##   和【边框装饰带】(ARENA 外 0~200px 的小水草珊瑚)。两者之间是空的 ——
-##   画面上从"贴着场地的小装饰"直接跳到"很远的剪影", 中间没有过渡, 纵深断层。
-##   本层补的就是那段: ARENA 外 200~520px 的环带, 放少量【大件】地标。
-##
-## ★别往边框装饰带里加密度 —— 2026-07-23 测试反馈「太密 + 很多相同装饰」已经调稀过一轮
-##   (概率 0.58→0.30、步长 80→120、带宽 288→200)。所以这里是【另起一层】且数量很少。
-##
-## ★大气透视: 越远 → 越暗、越偏背景蓝、alpha 越低。这是"读出距离"的关键 ——
-##   远景礁石那边的注释也记着同一条(前景尺度的礁石拉到远处会因细节密度不对而读不出距离)。
-##
-## ★确定性: 用【播种】RNG。裸随机会被 rng_discipline 门禁拦(护确定性回放)。
-const MID_OBJS := [
-	{"img": "mid_shipwreck", "h": 3.9, "w": 1.25},      # 沉船船体(宽扁)
-	{"img": "mid_coral_pillar", "h": 5.4, "w": 0.55},   # 珊瑚礁柱(高瘦·尖端微发光)
-	{"img": "mid_stone_column", "h": 5.0, "w": 0.45},   # 断裂石柱(高瘦)
-]
-const MID_BAND_IN := 280.0     # 环带内沿(留在边框装饰带外沿之外一截, 不重叠也不挤)
-## ★环带宽度调过两轮: 200~520 时沉船在画面上沿又大又黑抢戏; 推到 260~640 又太远,
-##   珊瑚礁柱/石柱全跑出画面, 只剩两个船体剪影。280~480 是"看得见但不抢戏"的那一档。
-const MID_BAND_OUT := 480.0    # 环带外沿
-const MID_COUNT := 13          # 总件数。少而大 = 地标; 多了就变回"装饰刷屏"
-const MID_MIN_GAP := 260.0     # 两件之间最小间距(码), 防扎堆
-
-func _build_midground(root: Node3D) -> void:
-	## ★主题不摆默认中景(沉船/紫海葵等): 那是默认画面的素材, 不看主题照摆 ⇒ 漏进四版,
-	##   而且摆在岛外的黑海面上, 实拍读作「悬在半空乱飞」(用户 2026-10-03 指出)。
-	if bool(ArenaTheme.cfg().get("no_base_midground", false)):
-		return
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260730                       # 播种(不用裸随机·护 rng_discipline 棘轮)
-	var A: Rect2 = battle.ARENA      # ★不能用 := —— battle 是无类型变量, 推不出 A 的类型(编译直接红)
-	var cx: float = A.position.x + A.size.x * 0.5
-	var cy: float = A.position.y + A.size.y * 0.5
-	var placed: Array = []
-	var tries := 0
-	while placed.size() < MID_COUNT and tries < 400:
-		tries += 1
-		# 极坐标撒点: 角度均匀, 半径落在环带内(按椭圆缩放, 贴合场地长宽比)
-		var a: float = rng.randf() * TAU
-		var t: float = rng.randf()
-		var band: float = MID_BAND_IN + (MID_BAND_OUT - MID_BAND_IN) * t
-		var p := Vector2(cx + cos(a) * (A.size.x * 0.5 + band),
-						cy + sin(a) * (A.size.y * 0.5 + band))
-		var too_close := false
-		for q in placed:
-			if (q as Vector2).distance_to(p) < MID_MIN_GAP:
-				too_close = true
-				break
-		if too_close:
-			continue
-		placed.append(p)
-		var ob: Dictionary = MID_OBJS[rng.randi() % MID_OBJS.size()]
-		var path: String = "res://assets/sprites/map/%s.png" % str(ob["img"])
-		if not ResourceLoader.exists(path):
-			push_warning("[midground] 中景素材缺失: %s" % path)
-			continue
-		# 远近: t=0 贴场地(大而清), t=1 最远(小而暗)。★同时缩尺寸和压色, 只压色会显得"贴纸"
-		var far: float = t
-		var hh: float = float(ob["h"]) * lerpf(1.0, 0.72, far)
-		var spr: Sprite3D = battle._map_billboard(path, p, hh)
-		if spr.texture == null:
-			continue
-		# 大气透视: 往背景蓝里压, 越远越狠; alpha 也降(让远景水幕透一点上来)
-		# ★第一版压得不够: 沉船在画面上沿又大又黑, 抢戏且贴着 HUD 带, 读起来像"悬在水中"
-		#   而不是远处地标。往外推 + 压小 + 再压暗一档后才退回背景层。
-		var k: float = lerpf(0.50, 0.24, far)
-		spr.modulate = Color(k * 0.72, k * 0.86, k * 1.12, lerpf(0.80, 0.45, far))
-		if rng.randf() < 0.5:
-			spr.scale = Vector3(-1.0, 1.0, 1.0)   # 随机水平镜像, 破"一模一样"
-		root.add_child(spr)
-
-func _build_tilemap_ambient(root: Node3D) -> void:   # 氛围辉光粒子: 覆盖场地·冰蓝→白·缓上飘·ADD发光
-	var p = GPUParticles3D.new()
-	p.amount = 100
-	p.lifetime = 6.5
-	p.local_coords = false
-	p.position = Vector3(0.0, 2.0, 0.0)
-	var pm = ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(battle.ARENA.size.x * battle.WS * 0.55, 4.0, battle.ARENA.size.y * battle.WS * 0.55)
-	pm.direction = Vector3(0.0, 1.0, 0.0)
-	pm.spread = 28.0
-	pm.initial_velocity_min = 0.12
-	pm.initial_velocity_max = 0.5
-	pm.gravity = Vector3(0.0, 0.12, 0.0)
-	pm.scale_min = 0.3
-	pm.scale_max = 0.95
-	var grad = Gradient.new()
-	grad.set_color(0, Color(0.40, 0.70, 1.0, 0.0))
-	grad.add_point(0.3, Color(0.58, 0.84, 1.0, 0.85))
-	grad.add_point(0.7, Color(0.86, 0.95, 1.0, 0.7))
-	grad.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
-	var gtex = GradientTexture1D.new(); gtex.gradient = grad
-	pm.color_ramp = gtex
-	p.process_material = pm
-	var dm = StandardMaterial3D.new()
-	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	dm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	dm.vertex_color_use_as_albedo = true
-	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	var qm = QuadMesh.new(); qm.size = Vector2(0.1, 0.1); qm.material = dm
-	p.draw_pass_1 = qm
-	root.add_child(p)
 
 func _build_camera() -> void:
 	battle._cam = Camera3D.new()
@@ -1456,7 +1062,7 @@ func _build_environment() -> void:
 	##   ★★V3 的优势**跑了 5 次基线确认过不是噪声**(同一份代码):
 	##     亮部饱和 0.542~0.621(极差 0.079) → V3 0.486 落在区间外; 色数 113~116 → 125; 中间调 52.6~54.5 → 55.7。
 	##     而"近中性"基线 1.6~3.0、V3 2.7 **落在噪声内 ⇒ 这一项不算改善, 不许拿它邀功**。
-	##   ⚠ 动这两个数就要重标定 `WALL_GAIN`(见本文件 WALL_GAIN 处的长注)。
+	##   (原注「动这两个数要重标定旧图石墙边的 WALL_GAIN」: 石墙边 11-20 随旧图删掉, 不再有这个约束)
 	## ★★★2026-10-03 **试过按主题调主光, 撤回了。**
 	##   实测: dusk 在动它之前是「中间调 49.9% / 色数 96」, 按主题给系数之后扫了三档,
 	##   最好只有 38.9% / 74 —— 四版全部低于阈值。
@@ -1619,7 +1225,7 @@ func _is_tutorial_battle() -> bool:
 
 
 ## 这一场算不算**正式对局**(地图按种子随机): 双路对局(积分赛/周六/周日), 且不是教学、不是开发工具。
-## ★调试场(DEBUG_EDIT)/特效台(VFXLAB)/地图编辑器(MAPEDIT)不算 ⇒ 它们保持进场前的 active(默认 V0_BASE,
+## ★调试场(DEBUG_EDIT)/特效台(VFXLAB)/地图编辑器(MAPEDIT)不算 ⇒ 它们保持进场前的 active(默认暗林 —— 11-20 起; 原来是已删的旧图 V0_BASE,
 ##   环境变量 ARENA_THEME 仍可强制)。审阅台/EQDEMO 在双路下本来就被绕过, 不双路时自然不算。
 ## ★教学也走双路, 但不算(固定 ArenaTheme.TUTORIAL_THEME, 见 `_is_tutorial_battle`)。
 func _is_formal_battle() -> bool:
@@ -1677,7 +1283,7 @@ func _build_map_props() -> void:
 	]
 	## ★主题换障碍的**外观**(obstacle_tex = {原图名: 主题素材名 | [素材名...]}), 不换 footprint:
 	##   碰撞椭圆 rx/ry 是 2026-07-21 按「视觉半宽」标定的玩法尺寸 ⇒ 主题素材按**同一视觉半宽**反推高度,
-	##   看起来多宽就挡多宽。base 不给 ⇒ 原礁石, 一个像素不动。
+	##   看起来多宽就挡多宽。四张图都给了(旧图的原礁石贴图 11-20 随旧图删掉)。
 	var _otex: Dictionary = ArenaTheme.cfg().get("obstacle_tex", {})
 	var _oi := 0
 	for ob in battle._obstacles:
@@ -1686,7 +1292,7 @@ func _build_map_props() -> void:
 			root.add_child(_theme_obstacle(ob, _otex[_on], _oi))
 			_oi += 1
 		else:
-			root.add_child(battle._map_billboard("res://assets/sprites/map/%s.png" % _on, ob["c"], float(ob["h"])))
+			push_warning("[map] 主题 %s 没给障碍物 %s 的外观(obstacle_tex) —— 不画(原礁石贴图随旧图删掉, 11-20)" % [ArenaTheme.active, _on])
 	_clear_layout_on_obstacles()
 	# 基地穹顶围栏(加性发光, 罩蛋) — 两端基地
 	for pair in [["left", battle.ARENA.position.x + 70.0], ["right", battle.ARENA.end.x - 70.0]]:
@@ -1700,15 +1306,10 @@ func _build_map_props() -> void:
 	##     ② 顶上 4 道水面光柱照画(用户 2026-10-03「还有顶上那4个光柱？」指的就是这 4 道 ——
 	##        远景那 6 道当时关了, 这 4 道在另一条路上, 门禁只量调试场所以一直没抓到)
 	##     ③ 满场往上飘的气泡照画(方案书 §4.5-2 点名要删的那个)
-	##   ⇒ 主题: 环已存在就不重建; 光柱/气泡不画(只删错的)。base 三行照旧, 一个像素不动。
-	var _themed: bool = bool(ArenaTheme.cfg().get("no_base_midground", false))
-	if not (_themed and battle._world.find_child("ThemeRing", true, false) != null):
+	##   ⇒ 环已存在就不重建; 光柱 / 气泡不画(旧图的 _build_lightshafts / _build_bubbles 11-20 随旧图删掉)。
+	if battle._world.find_child("ThemeRing", true, false) == null:
 		_build_theme_decorations(root)
-	# 珊瑚/海草/礁石 铺边框住战场+填空地(纯装饰无footprint)
-	if not _themed:
-		_build_lightshafts(root)   # 水面光柱(加性发光, 深海氛围)
-		_build_bubbles(root)       # 漂浮气泡颗粒
-	elif battle._world.find_child("ThemeAmbient", true, false) == null:
+	if battle._world.find_child("ThemeAmbient", true, false) == null:
 		_build_theme_ambient(root)
 
 # 装饰景物: 珊瑚/海草/礁石 沿上下边框+四角+基地周围铺 (纯装饰, 无导航footprint, 不挡移动). 固定布局(可复现).
@@ -1748,7 +1349,7 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 	var cfg: Dictionary = ArenaTheme.cfg()
 	var img: String = str(cfg.get("fg_band", ""))
 	if img == "" or img.begins_with("("):
-		return                                   # `base`(现状) 没有这一层, 保持原样
+		return                                   # 主题没给这一层就不画
 	var path: String = "res://assets/sprites/map/themes/%s.png" % img
 	if not ResourceLoader.exists(path):
 		return
@@ -1907,8 +1508,8 @@ func _fg_band_layer_lift(tex: Texture2D, lg: Array) -> Array:
 func _build_theme_decorations(root: Node3D) -> void:
 	var cfg: Dictionary = ArenaTheme.cfg()
 	var props: Array = cfg.get("ring_props", [])
-	if props.is_empty() or str(props[0]).begins_with("("):
-		_build_decorations(root)       # ★`base`(现状) 走老的那张坐标表, 一个像素不动
+	if props.is_empty():
+		push_warning("[map] 主题 %s 没给 ring_props —— 不画装饰环(旧图那张坐标表 11-20 随旧图删掉)" % ArenaTheme.active)
 		return
 	var A: Rect2 = battle.ARENA
 	var c: Vector2 = A.position + A.size * 0.5
@@ -2395,37 +1996,13 @@ func _build_theme_ambient(root: Node3D) -> void:
 		e.global_position = sprite_px_world(f, fp.x, fp.y)
 
 
-func _build_decorations(root: Node3D) -> void:
-	var A = battle.ARENA
-	var top: float = A.position.y + 46.0
-	var bot: float = A.end.y - 40.0
-	var cx: float = battle._arena_center.x
-	var decos = [
-		[A.position.x+190, top+8, "deco_kelp", 2.4, 1.0], [A.position.x+430, top+34, "deco_coral_pink", 1.9, 1.1],
-		[cx-300, top, "deco_rocks", 1.2, 1.0], [cx-40, top+22, "deco_coral_orange", 1.7, 1.0],
-		[cx+300, top, "deco_kelp", 2.2, 0.9], [A.end.x-430, top+30, "deco_coral_pink", 1.8, 1.0], [A.end.x-190, top+6, "deco_rocks", 1.3, 1.1],
-		[A.position.x+320, bot, "deco_coral_orange", 1.8, 1.15], [cx-380, bot-12, "deco_rocks", 1.2, 1.0],
-		[cx-70, bot, "deco_kelp", 2.3, 1.0], [cx+300, bot-16, "deco_coral_pink", 1.9, 1.0], [A.end.x-350, bot, "deco_kelp", 2.2, 0.95],
-		[A.position.x+165, battle._arena_center.y-165, "deco_coral_orange", 1.5, 0.9], [A.position.x+165, battle._arena_center.y+165, "deco_coral_pink", 1.6, 0.9],
-		[A.end.x-165, battle._arena_center.y-165, "deco_coral_pink", 1.6, 0.9], [A.end.x-165, battle._arena_center.y+165, "deco_coral_orange", 1.5, 0.9],
-	]
-	var drng = RandomNumberGenerator.new(); drng.seed = 20260723   # ★点2: 给固定装饰加随机镜像/抖动破重复
-	for de in decos:
-		var spr = battle._map_billboard("res://assets/sprites/map/%s.png" % str(de[2]), Vector2(float(de[0]), float(de[1])), float(de[3]))
-		var sc: float = float(de[4])
-		spr.scale = Vector3(sc * (-1.0 if drng.randf() < 0.5 else 1.0), sc, sc)   # ★随机水平镜像(点2)
-		var _b: float = drng.randf_range(0.86, 1.0)   # ★明暗抖动(点2: 原死值Color(0.92,0.96,1.0)→全同)
-		spr.modulate = Color(0.92 * _b + drng.randf_range(-0.04, 0.04), 0.96 * _b, 1.0 * _b)
-		root.add_child(spr)
-
-# 水面光柱: 几道加性发光的柔和光束(billboard竖条), 打进深海竞技场 → 氛围/纵深.
 ## ═══ 远景背景层(「天空」) ═══ 用户 2026-07-21:「天空背景没有任何东西, 需要设计天空」
 ##
 ## 相机俯角约 51°(2026-11-16 起 40°, 上沿射线仍在水平线下 20°), 地平线【永远不在画面里】, 所以真正要填的不是天空半球, 而是
 ## 画面上沿那片「地砖以外的远处」。这里造三层, 由远及近:
 ##   ①渐变水幕: 一面大幕布, 上浅下深(越靠上越接近水面透光) —— 给纵深底色, 取代原来的纯黑
 ##   ②远礁剪影: 一排压暗的礁石轮廓, 高低错落 —— 让远处有"地形"而不是一块平色
-##   ③水面光柱: 复用已有的 _build_lightshafts 手法, 从上方斜射
+##   (③水面光柱 / 鱼群 / 气泡是旧图的水下远景, 11-20 随旧图删掉)
 ## 全部 unshaded + 关阴影, 不参与光照计算(纯背景, 不该被战场光影影响)。
 func _build_far_backdrop(root: Node3D) -> void:
 	var holder = Node3D.new()
@@ -2461,96 +2038,8 @@ func _build_far_backdrop(root: Node3D) -> void:
 	#   因为远景海床只铺到 z=-30 而最坏机位要看到 z=-42.2(差 12.2 米)。
 	#   现在改成【一张真地形网格】: 有真实高低与透视, 平移缩放都不穿帮。
 	_build_far_terrain(holder)
-	## ★主题(no_base_midground)关掉以下全部水下专用远景: 海带剪影带 / 水面光柱 / 鱼群 / 气泡柱。
-	##   它们是默认画面(水下)的东西, 不看主题照画 ⇒ 四版顶上一直挂着光柱(用户 2026-10-03 指出)。
-	var _uw: bool = not bool(ArenaTheme.cfg().get("no_base_midground", false))
-	if _uw:
-		_build_backdrop_thicket(holder)     # ★②a 密集竖直剪影带(2026-09-18, 见该函数长注)
-
-	# ── ②b 远景发光群(珊瑚/海葵/海带) ──────────────────────────
-	# 剪影只有轮廓没有"生气"。加一层加性发光的小点缀, 让远处天际线有光斑闪烁感,
-	# 这也是深海题材最能出氛围的一笔。
-	var glows = ["glow-coral", "glow-anem", "glow-kelp"]
-	## ★海底发光群(珊瑚/海葵/海带)只属于水下设定。主题的远景是「沉进黑」就不画 ——
-	##   V1 实拍顶上还飘着鱼和紫色光点, 就是这一层。base(现状) 照画, 一个像素不动。
-	## ★只有水下类远景(base 的 undersea / 深礁的 deep_glow)才画; 其余主题(暗林/紫墟/赤林)一律不画。
-	##   第一版只判 into_black, V3/V4 换了别的远景做法就会把珊瑚光点又放出来。
-	if not (str(ArenaTheme.cfg().get("bg_kind", "undersea")) in ["undersea", "deep_glow"]):
-		glows = []
-	## ★主题一律不画: 远处半空的紫海葵/珊瑚光点读作「悬在天上」(用户 2026-10-03 指出)。
-	if bool(ArenaTheme.cfg().get("no_base_midground", false)):
-		glows = []
-	var grng = RandomNumberGenerator.new()
-	grng.seed = 20260722
-	for i in range(14 if not glows.is_empty() else 0):   # ★远景发光 22→14(点2: 减重复的发光刷屏); 主题清空时整段不跑(否则 i % 0)
-		var gp = "res://assets/sprites/map/%s.png" % glows[i % glows.size()]
-		if not ResourceLoader.exists(gp):
-			continue
-		var gtex: Texture2D = load(gp)
-		var gs = Sprite3D.new()
-		gs.texture = gtex
-		gs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		gs.shaded = false
-		gs.transparent = true
-		var gm = StandardMaterial3D.new()
-		gm.albedo_texture = gtex        # ★★必须给覆盖材质设贴图!
-		# material_override 会【整个替换】Sprite3D 自己的材质, 不设 albedo_texture
-		# 就渲染成一块【纯白方块】—— 我在这和远景光柱上连犯两次, 都是截图才看出来
-		# (用户 2026-07-21 看到顶部一排白方块)。现有的 _build_lightshafts 是对的, 可对照。
-		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD      # 加性=发光
-		gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		gm.disable_fog = true
-		gs.material_override = gm
-		var gsc = grng.randf_range(0.7, 1.7)
-		gs.pixel_size = gsc / float(maxi(1, gtex.get_height()))
-		var gd = grng.randf()
-		# 冷青→蓝紫 随机, 远的更淡
-		var gcol = Color(0.35, 0.95, 1.00).lerp(Color(0.62, 0.45, 1.00), grng.randf())
-		gcol.a = 0.50 - gd * 0.22
-		gs.modulate = gcol
-		gs.position = Vector3(grng.randf_range(-29.0, 29.0), gsc * 0.45 + 0.15, -16.0 - gd * 6.8)
-		gs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		holder.add_child(gs)
-
-	# ── ③远景水面光柱 ─────────────────────────────────────────
-	# ★注: 第一次加这个渲染成了几根"死白竖条", 我当时以为是可见带太窄、把它删了 —— 判断错了。
-	#   真因是【material_override 没设 albedo_texture】(见上), 修好后光柱是正常的。
-	#   教训: 看到渲染异常先查材质/贴图有没有接上, 别急着归因于"角度/尺寸不合适"。
-	var stex = VfxTex._make_lightshaft_texture()
-	for i in range(6 if _uw else 0):
-		var sh = Sprite3D.new()
-		sh.texture = stex
-		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		sh.shaded = false
-		sh.transparent = true
-		var sm = StandardMaterial3D.new()
-		sm.albedo_texture = stex        # ★同上, 不能漏
-		sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		sm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		sm.disable_fog = true
-		sh.material_override = sm
-		sh.pixel_size = 0.030
-		sh.modulate = Color(0.42, 0.80, 1.0, 0.22)
-		sh.position = Vector3(-26.0 + float(i) * 10.5, 1.6, -18.5)
-		# ★2026-07-21 第二版: 原来 billboard=ENABLED 且不带倾角 → 渲染成一排【笔直的竖白条打在地板上】,
-		#   像聚光灯不像水下光柱。真实的丁达尔光是从【水面斜射下来】的。
-		#   billboard 关掉才能转; 远景本来就正对相机(相机在 +z 看向 -z), 不转也朝向对。
-		sh.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-		sm.billboard_mode = BaseMaterial3D.BILLBOARD_DISABLED
-		sh.rotation_degrees = Vector3(0.0, 0.0, 11.0 if (i % 2 == 0) else -8.0)
-		sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		holder.add_child(sh)
-
-	# ── ④鱼群 + ⑤气泡柱: 背景"活起来"的关键 ────────────────────
-	# ★这才是第一版最大的漏 —— 整条远景带零动态。前景在打架、背景一动不动,
-	#   再多装饰也读作"贴了张图"(用户 2026-07-21)。
-	if _uw:
-		_build_far_fish(holder)
-		_build_far_bubbles(holder)
+	## ★2026-11-20 旧图(V0_BASE)的水下专用远景随旧图删掉(用户「能不能把旧地图都删掉」): 海带剪影带 / 远处珊瑚海葵光点 /
+	##   6 道水面光柱 / 鱼群 / 气泡柱 —— 四张新图都设了 no_base_midground, 原来就一样都不画。远景只剩真地形网格(各图按 bg_top / bg_horizon 上色)。
 
 
 ## 程序生成一条山脊剪影贴图: 通宽锯齿轮廓, 下方实心上方透明, 顶沿带一道亮边(轮廓可读).
@@ -2571,28 +2060,6 @@ func _build_far_backdrop(root: Node3D) -> void:
 #    近处恒为 0。
 # ----------------------------------------------------------------------------
 
-## ═══ 远景【密集竖直剪影带】(2026-09-18 · 用户「咩咩启示录是个很好的场景参考」) ═══
-##
-## ★由来: 用户看过 v0.19.407 后说「还是不能细看」, 并问「岛以外的部分怎么搞, 背景怎么做」。
-##   去把咩咩启示录的官方发售预告抽了 **167 帧**逐帧看(docs/studies/20260918-咩咩启示录场景与特效逐帧.md),
-##   量出来的结论只有一条最关键:
-##     **全片 167 帧里没有任何一帧是「场地 + 纯黑虚空」。**
-##     外面要么是密集竖直剪影(帧 153-158)、要么是建筑(帧 16)、要么地形直接铺满出画(帧 1-5/43-44/73-82)。
-##
-## ★照着量出来的做(帧 155 做过 1:1 逐像素测量):
-##   · 背景是**密集的竖直元素一层层往后叠**(石柱/树干), 不是稀疏几个剪影
-##   · 参差**交给素材**不交给几何 —— 本素材实测逐列顶端参差 **59 px**
-##   · 高饱和色极少: 参考里红烛只占全画面 **0.99%**(14 个离散块)
-##
-## ★为什么是"加一层"而不是改 `_build_far_terrain`: 那条路已经被用户否过三次
-##   (「太弱了」/「你直接这样贴一个图也不太行」/「感觉你还是在贴一个墙就完事？」),
-##   它现在是一张真地形网格、负责**天际线轮廓**。本层负责的是**中近景的密度**, 两件事。
-##
-## ★三层由近及远, 越远越矮越淡 —— 可见高度上限是算得出来的(见上方 _build_far_backdrop 的注):
-##   y_top = 28 - 0.606×(22-z) ⇒ z=-16 → 4.97m / z=-19 → 3.15m / z=-22 → 1.33m。
-##   每层只占各自上限的一半左右, 才叠得出纵深(顶满就是一整块色斑, 后层全被挡住)。
-const BACKDROP_THICKET := "res://assets/sprites/map/backdrop-kelpband.png"
-
 ## 远景的【深度→颜色】斜坡: 0 = 最近(贴 bg_top), 1 = 最远(贴 bg_horizon)。
 ## 允许传 <0 / >1 外推, 因为远地形与天际光斑本来就比三层剪影更近/更远。
 ##
@@ -2600,8 +2067,8 @@ const BACKDROP_THICKET := "res://assets/sprites/map/backdrop-kelpband.png"
 ##   中间全自动跟着走 —— 手填 N 个色必然有一个忘了改(memory `fb-hand-rolled-copies-drift`)。
 ## ★规律照搬 2026-07-22 第三版的标定结论:「越远越亮、越贴雾色」(水下/雾中远山同理),
 ##   所以 bg_horizon 必须比 bg_top 亮; 四版的配置都满足这一条。
-## ★★★`fallback` 是**必填**的: 主题没给远景端点时, 原样返回该调用点的原字面值。
-##   为什么必须这样: `V0_BASE`(现状·已验收) 的全部意义是「什么都没换」, 而这五个远景色
+## ★★★`fallback` 是**必填**的: 主题没给远景端点时, 原样返回该调用点的原字面值(四张新图都给了; 11-20 前是给旧图 V0_BASE 用的)。
+##   当时为什么必须这样: `V0_BASE`(现状·已验收) 的全部意义是「什么都没换」, 而这五个远景色
 ##   (三层剪影 + 远地形近/远 + 天际光斑)**本来就不在一条直线上** —— 拿两个端点的斜坡
 ##   怎么都推不出它们。我第一版给斜坡填了兜底端点, 结果 base 的远景整体被压暗了,
 ##   而五条画面判据**照样全绿**(它们量的是统计量, 不是具体某个色) —— 差一点就悄悄改掉了
@@ -2614,56 +2081,6 @@ func _bg_ramp(f: float, fallback: Color) -> Color:
 	var b: Color = c.get("bg_horizon", fallback)
 	return Color(a.r + (b.r - a.r) * f, a.g + (b.g - a.g) * f, a.b + (b.b - a.b) * f, 1.0)
 
-
-func _build_backdrop_thicket(holder: Node3D) -> void:
-	var tex: Texture2D = load(BACKDROP_THICKET) if ResourceLoader.exists(BACKDROP_THICKET) else null
-	if tex == null:
-		push_warning("[backdrop] 剪影带贴图缺失: %s —— 不画(不做静默兜底)" % BACKDROP_THICKET)
-		return
-	var th: int = maxi(1, tex.get_height())
-	## z / 世界高(米) / 颜色 —— 越远越淡越贴雾色(★不是"越远越暗": 水下远景是雾里的亮轮廓,
-	##   做成暗剪影会被 filmic tonemap 再吃一半、糊成一条纯黑带, 这是本文件上方记过的老坑)。
-	## ★2026-11-16 镜头改 40°(BattleCam.POS ≈ (0,23.19,26.92)): 按下面同一个算法重算,
-	##   z=-16/-19/-22 横向可见 63.1/66.6/70.1 米, +20% ⇒ span 76/80/85(原 73/78/82)。
-	## ★铺多宽是【算出来的】不是估的: 相机在 (0,28,22)、fov 40(竖直)、16:9。
-	##   到 z 层的距离 d = hypot(28, 22-z); 可见竖向 = 2·d·tan(20°); 可见横向 = 竖向 × 16/9。
-	##     z=-16 → d=47.2 → 竖 34.4m → **横 61.1m**
-	##     z=-19 → d=50.0 → 竖 36.4m → **横 64.7m**
-	##     z=-22 → d=52.8 → 竖 38.4m → **横 68.3m**
-	##   ★第一版每层只铺 5~7 张(约 31m), 实拍只盖住画面上方中间一小段、两侧仍是空的。
-	##   现在按上面的横向可见宽 + 20% 余量算张数(镜头还能缩放/平移)。
-	var layers := [
-		## ★★2026-10-03 三层剪影的颜色改从**主题**推(四版完整地图)。
-		##   原值 (0.20,0.30,0.44)/(0.24,0.35,0.48)/(0.28,0.40,0.52) 是 2026-07-22 第三版标定的,
-		##   规律是「越远越亮、越贴雾色」(水下远景 = 雾里的亮轮廓, 同雾中远山)。
-		##   ⇒ 这里**保住那条规律**, 只把端点换成主题色: 近层贴 bg_top, 远层贴 bg_horizon。
-		##   ⚠ 不许各层手填三个色 —— 那样换主题必有一层忘了改(memory `fb-hand-rolled-copies-drift`)。
-		{"z": -16.0, "h": 2.5, "col": _bg_ramp(0.00, Color(0.20, 0.30, 0.44)), "span": 76.0},
-		{"z": -19.0, "h": 1.7, "col": _bg_ramp(0.50, Color(0.24, 0.35, 0.48)), "span": 80.0},
-		{"z": -22.0, "h": 0.9, "col": _bg_ramp(1.00, Color(0.28, 0.40, 0.52)), "span": 85.0},
-	]
-	for L in layers:
-		var zz: float = float(L["z"])
-		var hh: float = float(L["h"])
-		var w_m: float = hh * (float(tex.get_width()) / float(th))   # 按图比例定宽
-		var cnt: int = maxi(3, int(ceil(float(L["span"]) / maxf(0.01, w_m * 0.92))))
-		for i in range(cnt):
-			var s := Sprite3D.new()
-			s.name = "Thicket_%d_%d" % [int(-zz), i]
-			s.texture = tex
-			s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			s.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 远景是背景板, 不该跟着镜头转
-			s.shaded = false
-			s.transparent = true
-			s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD      # 剪影边缘不要半透拖尾
-			s.pixel_size = hh / float(th)
-			s.modulate = L["col"]
-			## 相邻两张各偏半张宽, 拼成通宽的一条; 左右各多铺一张防镜头缩放时露边
-			var x: float = (float(i) - float(cnt - 1) * 0.5) * w_m * 0.92
-			s.position = Vector3(x, hh * 0.5 - 0.15, zz)
-			if i % 2 == 1:
-				s.scale = Vector3(-1.0, 1.0, 1.0)              # 隔一张镜像, 破"同一个印章"
-			holder.add_child(s)
 
 func _build_far_terrain(holder: Node3D) -> void:
 	var st = SurfaceTool.new()
@@ -2711,152 +2128,6 @@ func _build_far_terrain(holder: Node3D) -> void:
 	holder.add_child(mi)
 
 
-func _build_far_fish(holder: Node3D) -> void:
-	var ftex = battle._make_fish_texture()
-	var rng = RandomNumberGenerator.new()
-	rng.seed = 20260723                       # 确定性: 每局一致
-	var span = 84.0                          # 横向行程 (比可见宽度大, 出画外才回卷)
-	for s in range(5):                        # 5 群
-		var school = Node3D.new()
-		holder.add_child(school)
-		var zz: float = rng.randf_range(-17.0, -22.5)
-		var depth: float = inverse_lerp(-17.0, -22.5, zz)        # 0=近 1=远
-		var yy: float = rng.randf_range(0.6, 2.0) * (1.0 - depth * 0.45)
-		var dir: float = 1.0 if rng.randf() < 0.5 else -1.0
-		# 尺寸/亮度: 40m 外 0.32m 高只有 6px, 太小认不出是鱼 —— 放大到 10~18px 这一档
-		var scl: float = rng.randf_range(0.55, 0.95) * (1.0 - depth * 0.35)
-		# ★要比背景水色【亮】才看得见(背景实测 #0D3349 ~ (0.05,0.20,0.28));
-		#   暗鱼在 filmic tonemap 下会直接糊进背景, 同山脊那次的坑
-		var col = _bg_ramp(1.55, Color(0.46, 0.72, 0.86)).lerp(_bg_ramp(0.95, Color(0.30, 0.50, 0.66)), depth)
-		var n = rng.randi_range(5, 9)
-		for i in range(n):
-			var fs = Sprite3D.new()
-			fs.texture = ftex
-			fs.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-			fs.shaded = false
-			fs.transparent = true
-			fs.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-			fs.pixel_size = scl / float(ftex.get_height())
-			fs.modulate = col
-			# 群内错位: 不要排成一条直线
-			fs.position = Vector3(rng.randf_range(-2.2, 2.2), rng.randf_range(-0.5, 0.5),
-								  rng.randf_range(-0.5, 0.5))
-			fs.scale.x = -1.0 if dir < 0.0 else 1.0   # 朝向跟着游动方向(贴图默认朝右)
-			fs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			school.add_child(fs)
-		var x0: float = -span * 0.5 * dir + rng.randf_range(-14.0, 14.0)
-		school.position = Vector3(x0, yy, zz)
-		var dur: float = span / rng.randf_range(1.4, 2.6)         # 远的慢 → 视差
-		var tw = battle._reg_tween().bind_node(school).set_loops()
-		tw.tween_property(school, "position:x", x0 + span * dir, dur)
-		tw.tween_callback(func() -> void:
-			if is_instance_valid(school):
-				school.position.x = x0)
-		# ★随机初相位: 不给的话所有群都从行程起点(画面外 ±42)出发, 而那个深度可见范围只有 ±30,
-		#   单圈 32~60 秒 —— 开局几十秒内一条鱼都看不到(第一次就是这么"做了等于没做")。
-		tw.custom_step(rng.randf() * dur)
-
-
-## 远景气泡柱: 几处海床喷口不断冒泡上升, 给"水体"以垂直方向的动.
-##   可见高度有限(z≈-19 处约 3.8m), 所以升到 ~2.6m 就淡出, 不做更高。
-func _build_far_bubbles(holder: Node3D) -> void:
-	var btex = VfxTex._make_lightshaft_texture()   # 复用: 上下渐隐的软条, 缩到很小就是一颗软光点
-	var rng = RandomNumberGenerator.new()
-	rng.seed = 20260724
-	for v in range(3):                              # 3 处喷口
-		var vx: float = rng.randf_range(-24.0, 24.0)
-		var vz: float = rng.randf_range(-17.5, -21.0)
-		for i in range(7):                          # 每口 7 颗, 用延迟错开成一串
-			var bs = Sprite3D.new()
-			bs.texture = btex
-			bs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			bs.shaded = false
-			bs.transparent = true
-			var bm = StandardMaterial3D.new()
-			bm.albedo_texture = btex          # ★material_override 必须设贴图, 否则渲成纯白方块(本文件踩过两次)
-			bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-			bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-			bm.disable_fog = true
-			bs.material_override = bm
-			var bsc: float = rng.randf_range(0.10, 0.22)
-			bs.pixel_size = bsc / float(btex.get_height())
-			bs.modulate = Color(0.55, 0.88, 1.0, 0.34)
-			bs.position = Vector3(vx + rng.randf_range(-0.5, 0.5), 0.05, vz)
-			bs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			holder.add_child(bs)
-			var rise: float = rng.randf_range(2.0, 2.7)
-			var dur: float = rng.randf_range(3.2, 5.0)
-			var tw = battle._reg_tween().bind_node(bs).set_loops()
-			tw.tween_interval(float(i) * dur / 7.0)          # 同口内错峰 → 连成一串而不是齐射
-			tw.tween_property(bs, "position:y", rise, dur)
-			tw.parallel().tween_property(bs, "modulate:a", 0.0, dur).set_delay(dur * 0.55)
-			tw.tween_callback(func() -> void:
-				if is_instance_valid(bs):
-					bs.position.y = 0.05
-					bs.modulate.a = 0.34)
-
-
-func _build_lightshafts(root: Node3D) -> void:
-	var tex = VfxTex._make_lightshaft_texture()
-	var cx: float = battle._arena_center.x
-	var shafts = [[cx-520.0, 0.26], [cx-150.0, 0.34], [cx+250.0, 0.24], [cx+560.0, 0.3]]
-	for sh in shafts:
-		var spr = Sprite3D.new()
-		spr.set_meta("light_shaft", true)   # 打标: 判据 verify_arena_layers_drawn 数「主题里 0 道」(只是元数据, 画面不变)
-		spr.texture = tex
-		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		spr.shaded = false
-		spr.transparent = true
-		var m = StandardMaterial3D.new()
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		m.albedo_texture = tex
-		spr.material_override = m
-		spr.pixel_size = 9.0 / float(tex.get_height())   # 光柱高 ≈9米
-		spr.modulate = Color(1, 1, 1, float(sh[1]))
-		spr.position = battle._world_pos(Vector2(float(sh[0]), battle._arena_center.y), 4.2)
-		root.add_child(spr)
-
-
-# 漂浮气泡颗粒: CPUParticles3D 缓缓上升的小圆点, 满场飘 → 深海有生气.
-# 漂浮气泡颗粒: CPUParticles3D 缓缓上升的小圆点, 满场飘 → 深海有生气.
-func _build_bubbles(root: Node3D) -> void:
-	var p = CPUParticles3D.new()
-	p.amount = 20
-	p.lifetime = 9.0
-	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	p.emission_box_extents = Vector3(battle.ARENA.size.x * battle.WS * 0.5, 0.3, battle.ARENA.size.y * battle.WS * 0.5)
-	## ★★2026-10-04 这一层**只属于 base**(现状·已验收): 主题在 `_build_map_props` 里根本不进这里
-	##   (满场往上飘的气泡在岛上是错的, 方案书 §4.5-2 点名要删)。主题的氛围粒子在 `_build_theme_ambient`。
-	##   原来这里有一张按 ambient_kind 分支的表(沙尘/火星/反光/斜雨), 四版都不再走到这里 ⇒ 删掉, 免得读着像还在生效。
-	##   base 的四个值**逐值不变**。
-	p.direction = Vector3(0, 1, 0)
-	p.gravity = Vector3(0, 0.28, 0)
-	p.initial_velocity_min = 0.2
-	p.initial_velocity_max = 0.55
-	p.scale_amount_min = 0.018
-	p.scale_amount_max = 0.05
-	var bm = StandardMaterial3D.new()
-	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX   # 普通alpha混合(非加性实心球)→ 真气泡(透明+亮环+高光点)
-	bm.albedo_texture = VfxTex._make_bubble_texture()
-	## ★颜色也按主题(base 不给 ⇒ 原值 (1,1,1,0.55) 逐值不变)
-	bm.albedo_color = ArenaTheme.cfg().get("ambient_col", Color(1, 1, 1, 0.55))
-	bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	var qm = QuadMesh.new(); qm.size = Vector2(1.0, 1.0)
-	p.mesh = qm
-	p.material_override = bm
-	p.position = battle._world_pos(battle._arena_center, 0.2)
-	root.add_child(p)
-
-
-# 每路重置基地围栏(恢复显示+满尺寸) — 障碍复用但围栏每路重新罩住.
-# 建 2D navmesh: 外边界=ARENA内缩(单位半径), 挖洞=障碍footprint+margin. 幂等. 只挡移动.
 func _build_navmesh() -> void:
 	if battle._nav_ready:
 		return

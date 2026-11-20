@@ -57,17 +57,13 @@ func _ready() -> void:
 	var keep: String = AT.active
 	RB.DEBUG_EDIT = true
 
-	## ── base: 证明两把尺子都找得到东西 ──
-	AT.active = AT.V0_BASE
-	var sb = await _build()
-	var bc: Array = _corals(sb)
-	_ok("[base] ★分母: 默认画面数得出珊瑚/海草(%d 株) —— 数不出来, 下面「主题 0 株」就是空检查" % bc.size(),
-		bc.size() >= 5, str(_hist(bc)))
-	var bsh: int = _all_shadows(sb._world).size()
-	_ok("[base] ★分母: base 没配 prop_shadow ⇒ 一块接地影都没有(%d 块)" % bsh,
-		not AT.cfg_of(AT.V0_BASE).has("prop_shadow") and bsh == 0, "%d 块" % bsh)
-	sb.queue_free()
-	await get_tree().process_frame
+	## ── 对照: 「数珊瑚」那把尺子认得出珊瑚类文件名(否则下面「主题 0 株」恒真)。原来拿旧图 V0_BASE 当对照, 11-20 旧图删了 ⇒ 直接验正则 ──
+	_ok("★分母: 珊瑚尺子认得出 deco_coral_pink / glow-kelp / deco_seagrass, 认不出 grasstuft",
+		_rx.search("deco_coral_pink.png") != null and _rx.search("glow-kelp.png") != null and _rx.search("deco_seagrass.png") != null
+		and _rx.search("deco_grasstuft.png") == null)
+	_ok("★旧图的海底装饰素材已删(map/ 下没有 deco_coral_* / glow-* / deco_kelp)",
+		not ResourceLoader.exists("res://assets/sprites/map/deco_coral_pink.png") and not ResourceLoader.exists("res://assets/sprites/map/glow-coral.png")
+		and not ResourceLoader.exists("res://assets/sprites/map/deco_kelp.png"))
 
 	_ok("★分母: 主题表里四版都在 DRAWN(普查覆盖全部四版)", AT.ALL.size() == 4 and AT.DRAWN.size() == 4,
 		"ALL %s / DRAWN %s" % [str(AT.ALL), str(AT.DRAWN)])

@@ -103,15 +103,11 @@ func _ready() -> void:
 		"rim_light_mod", "rim_halo_col", "rim_halo_size",   # 光点着色 / 光晕
 		"field_tufts", "field_tufts_clusters", "field_tufts_h", "field_tufts_mod", "field_piles", "field_piles_clusters", "field_piles_h", "field_piles_mod", "lamp_tex", "lamp_h", "wall_h", "detail_tex", "detail_scale", "ring_mod", "ring_h_of", "ring_glow_of", "ring_lanterns", "ring_lantern_col", "smooth_shade", "prop_shadow", "no_base_midground", "ring_r", "ring_spread", "fg_band_col", "use_layout", "ground_tileset", "ground_tileset_tint", "ground_tileset_hsv", "edge_tufts_r", "edge_tufts_mod", "ring_per", "fg_band_y", "fg_band_px", "fg_band_gain", "fg_band_layer_gain",   # 场内成簇草丛 / 框边每簇件数
 	]
-	var base_cfg: Dictionary = AT.cfg_of(AT.V0_BASE)
-	var leaked: Array = []
-	for k in BASE_MUST_NOT_SET:
-		if base_cfg.has(k):
-			leaked.append(str(k))
-	_ok("④b★分母: 这张「不许覆盖」的清单非空", BASE_MUST_NOT_SET.size() >= 5,
-		"%d 个键" % BASE_MUST_NOT_SET.size())
-	_ok("④b★★`base`(现状·已验收) 不许覆盖这些键（填了=悄悄改掉已验收的画面, 而画面判据量不到）",
-		leaked.is_empty(), str(leaked))
+	## ④b 原来守「旧图 V0_BASE 不许覆盖这些键」; 11-20 旧图删了(用户「能不能把旧地图都删掉」)⇒ 改守「主题表里只有四张新图」
+	_ok("④b★★主题表里只有四张新图(旧图 base 已删), 与正式对局地图池同一组",
+		AT.THEMES.size() == 4 and not AT.THEMES.has("base") and AT.ALL.size() == 4 and AT.MATCH_POOL.size() == 4,
+		str(AT.THEMES.keys()))
+	_ok("④b★开发工具默认(进场前)是新图暗林", AT.THEMES.has(AT.active), str(AT.active))
 
 	# ── ⑤ 切换真的生效 ────────────────────────────────────────────
 	var keep: String = AT.active

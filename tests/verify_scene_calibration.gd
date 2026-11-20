@@ -66,17 +66,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("── 战斗场景标定常量 ──")
 
-	## ── ① 边界带(v0.19.405 标定 → 2026-09-20 换实现后改账) ──
-	## ★★**改账不是加白名单**: 实现从【逐格 billboard 墙卡】换成【沿整圈边界的连续 mesh】,
-	##   原来那两个常量的含义变了:
-	##   · `WALL_H_M`(1.11) 是 **billboard 口径** —— 不吃俯角压缩, 31px 只要 1.11 米;
-	##     真实竖直几何同样读出 31px 要 **1.75 米**(差 1.58 倍, 别混用)。
-	##   · `WALL_GAIN`(2.05) 是 **UNSHADED 的补偿** —— 被地面亮度牵着走,
-	##     2026-09-18 一天内重标定三次(1.55→1.70→2.05)。新带**吃光**, 这个常量已删(W8 关闭)。
-	## ★几何与材质的活判据在 `tests/verify_edge_wall.gd`(17 条, 走真场景树量 mesh);
-	##   本文件只留一条**标定值钉子**, 防它被惄悄改掉。
-	_chk("① 带高 WALL_H_M_GEO == 1.75 米(真几何口径·不是 billboard 的 1.11)",
-		absf(BWB.WALL_H_M_GEO - 1.75) < 0.001, "%.3f" % BWB.WALL_H_M_GEO)
+	## (① 原来钉旧图石墙边的带高 WALL_H_M_GEO == 1.75; 石墙边 11-20 随旧图 V0_BASE 删掉, 这一条随之删)
 
 	const W := "res://scripts/scenes/battle/shaders/ground_water.gdshader"
 	## ── ①b 水体压暗系数(v0.19.413·153 帧真实游戏内画面标定) ──
@@ -130,9 +120,7 @@ func _ready() -> void:
 		src_f.close()
 		_chk("④ 主光 light_energy == 1.55(A/B 变体 V3)", s.contains("light.light_energy = 1.55"))
 		_chk("④ 环境光 ambient_light_energy == 0.55(与主光是一对)", s.contains("env.ambient_light_energy = 0.55"))
-		## ★背景剪影带三层的 z 是按【可见宽度】算的, 不是估的。
-		_chk("⑤ 远景剪影带三层都在(z=-16/-19/-22)",
-			s.contains("\"z\": -16.0") and s.contains("\"z\": -19.0") and s.contains("\"z\": -22.0"))
+		## (⑤ 原来钉旧图远景海带剪影带三层的 z; 剪影带 11-20 随旧图删掉, 这一条随之删)
 	print("")
 	if _fail == 0:
 		print("ALL PASS — 场景标定常量 (%d/%d)" % [_ok, _ok])

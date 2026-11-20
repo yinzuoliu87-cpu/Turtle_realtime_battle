@@ -33,27 +33,10 @@ func _ready() -> void:
 	var keep: String = AT.active
 	RB.DEBUG_EDIT = true
 
-	## ── base: 两层都在, 参数逐值不变 ──
-	AT.active = AT.V0_BASE
-	var sb = RB.new()
-	add_child(sb)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	sb._world_builder._build_map_props()
-	var bp: Array = _particles(sb._world)
-	var bubbles: Array = bp.filter(func(p): return p is CPUParticles3D)
-	var glows: Array = bp.filter(func(p): return p is GPUParticles3D)
-	_ok("[base] ★分母: 气泡层(CPUParticles3D)在", bubbles.size() == 1, "%d" % bubbles.size())
-	_ok("[base] ★分母: 冰蓝辉光层(GPUParticles3D)在", glows.size() == 1, "%d" % glows.size())
-	if bubbles.size() == 1:
-		var b: CPUParticles3D = bubbles[0]
-		var same: bool = b.direction == Vector3(0, 1, 0) and b.gravity == Vector3(0, 0.28, 0) \
-			and is_equal_approx(b.initial_velocity_min, 0.2) and is_equal_approx(b.initial_velocity_max, 0.55) \
-			and (b.material_override as StandardMaterial3D).albedo_color == Color(1, 1, 1, 0.55)
-		_ok("[base] ★★气泡的方向/重力/初速/颜色逐值不变(默认画面绝不能变)", same,
-			"dir %s g %s v %.2f~%.2f" % [b.direction, b.gravity, b.initial_velocity_min, b.initial_velocity_max])
-	sb.queue_free()
-	await get_tree().process_frame
+	## ── 原来拿旧图 V0_BASE(气泡 + 冰蓝辉光两层都在)当对照; 11-20 旧图删了, 那两层的代码一起删 ⇒ 源码检查不许加回来 ──
+	var wb_src: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_world_builder.gd")
+	_ok("★旧图的满场气泡 / 冰蓝上飘辉光已删(建场代码里没有 _build_bubbles / _build_tilemap_ambient)",
+		wb_src.length() > 1000 and wb_src.find("func _build_bubbles(") < 0 and wb_src.find("func _build_tilemap_ambient(") < 0)
 
 	_ok("★分母: 至少有一版标成「已画出来」", AT.DRAWN.size() >= 1, str(AT.DRAWN))
 	for th in AT.DRAWN:

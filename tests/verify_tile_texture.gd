@@ -141,10 +141,11 @@ func _wiring(s) -> void:
 		_chk("④ ★★type %d 按世界坐标采样(调了 world_xz(INV_VIEW_MATRIX, VERTEX))" % ti,
 			sm.shader != null and sm.shader.code.contains("world_xz(INV_VIEW_MATRIX, VERTEX)"))
 
-		# 调色板没动: base_col 必须仍等于 TILE_COLS 里锁死的值
-		var want: Color = BWB.TILE_COLS.get(ti, Color.BLACK)
+		# 调色板接线: base_col 必须等于「当前地图的配色」(theme_tile_col: 主题给的优先, 没给才用锁死的 TILE_COLS)。
+		#   ★11-20 旧图 V0_BASE 删掉前, 默认图就是 TILE_COLS 本身, 所以这里直接比 TILE_COLS; 现在默认是暗林 ⇒ 比解析出来的那个色。
+		var want: Color = BWB.theme_tile_col(ti)
 		var got = sm.get_shader_parameter("base_col")
-		_chk("④ ★type %d 调色板未动(TILE_COLS 是锁死的·场景地图方案.md§4)" % ti,
+		_chk("④ ★type %d 材质颜色 = 当前地图配色(调色板真的接上了)" % ti,
 			got != null and (got as Color).is_equal_approx(want),
 			"%s vs 期望 %s" % [str(got), str(want)])
 	# 水: 保留滚动波纹 shader, 且把新水纹作为 detail 乘进去

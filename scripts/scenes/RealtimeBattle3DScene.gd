@@ -1016,13 +1016,7 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh - TILE_SINK)))
 	for ti in buckets:
 		_tilemap_add(buckets[ti], Vector3(maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M), TILE_THICK, maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M)), BattleWorldBuilder.TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), BattleWorldBuilder.tile_material(ti, WS, _arena_center.x, _arena_center.y))
-	# ★场地边界的体积(P1-5·2026-09-18): 在「非void 且 四邻有void」的格子外沿立一圈朝相机的墙卡。
-	#   生成逻辑与实测依据全在 `_world_builder.build_edge_wall` 的长注里。
-	#   ★放这里不放 `_build_tilemap_ground`: grid 只活在本函数里, 而且 MAPEDIT 刷格是重调本函数 ⇒
-	#     刷完格子边界墙会跟着重算; 挂进 `_tile_nodes` ⇒ 重绘时和地砖一起被释放, 不会越堆越多。
 	if _world_builder != null:
-		for n in _world_builder.build_edge_wall(grid, w, h, tile, ox, oy):
-			_tile_nodes.append(n)
 		for n in _world_builder.build_tileset_ground(grid, w, h, tile, ox, oy):   # 主题: 画出来的地面+崖边
 			_tile_nodes.append(n)
 		# ★场内暖色点光源(2026-09-20): 全仓此前 **0 个** `OmniLight3D`/`SpotLight3D`。
@@ -1316,38 +1310,6 @@ func _far_terrain_height(x: float, z: float) -> float:
 	return h * w
 
 
-## 小鱼剪影贴图 (远景只需要轮廓: 椭圆身 + 三角尾).
-func _make_fish_texture() -> ImageTexture:
-	var w := 22
-	var h := 12
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	# ★头在右、尾在左 = 贴图朝右(与下方 scale.x 逻辑的"默认朝右"一致)。
-	#   2026-07-23 用户报「背景的鱼方向反了」: 原来头在左(cx=8)、尾在右(x>=14),
-	#   实际是【朝左】的, 而 scale.x 按"默认朝右"翻 → 两个游动方向都变成倒着游。
-	var cx := float(w) - 8.0                                     # 身体中心靠右
-	var cy := float(h) * 0.5
-	var tail_x := 8                                             # 尾根: 靠左
-	for x in range(w):
-		for y in range(h):
-			var inside := false
-			var dx := (float(x) - cx) / 7.5
-			var dy := (float(y) - cy) / 3.4
-			if dx * dx + dy * dy <= 1.0:
-				inside = true                                   # 身体
-			elif x <= tail_x:
-				var span := float(tail_x - x) / 7.0 * 4.6       # 尾: 越往前(左)张得越开
-				if absf(float(y) - cy) <= span:
-					inside = true
-			if inside:
-				img.set_pixel(x, y, Color(1, 1, 1, 1))
-	return ImageTexture.create_from_image(img)
-
-
-## 远景鱼群: 若干小群横向漂过, 到边界回卷.
-##   ★用【裸 create_tween】驱动, 不进 _sim_tweens ——
-##     ①_dl_clear_units() 换路时会把 _sim_tweens 全 kill, 背景鱼会集体停住
-##     ②战斗定格(hitstop)不该冻住环境, 环境停了反而穿帮
 func _reset_domes() -> void:
 	for side in _base_domes:
 		var d = _base_domes[side]
