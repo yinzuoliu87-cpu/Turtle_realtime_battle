@@ -1590,7 +1590,7 @@ scripts/scenes/battle/info_panel.gd|lit|护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|护盾强度
 scripts/scenes/battle/info_panel.gd|lit|护盾强度 
 scripts/scenes/battle/info_panel.gd|lit|护盾效果的倍率。
-scripts/scenes/battle/info_panel.gd|lit|攒满开第 %d 箱（共 %d 箱）
+scripts/scenes/battle/info_panel.gd|lit|攒满开第 %d 箱，共 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|攻击
 scripts/scenes/battle/info_panel.gd|lit|攻击 %d
 scripts/scenes/battle/info_panel.gd|lit|攻击 (普攻)

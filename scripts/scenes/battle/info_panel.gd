@@ -761,7 +761,7 @@ func _resource_bars(u: Dictionary) -> Array:
 		if opened < th.size():
 			out.append({
 				"name": "财宝", "cur": float(tp["value"]), "cap": float(th[opened]),
-				"hint": "攒满开第 %d 箱（共 %d 箱）" % [opened + 1, th.size()], "color": Color("#ffcf6b"),
+				"hint": "攒满开第 %d 箱，共 %d 箱" % [opened + 1, th.size()], "color": Color("#ffcf6b"),
 			})
 	return out
 

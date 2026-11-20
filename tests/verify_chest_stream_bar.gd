@@ -4,7 +4,7 @@ extends Node
 ##   查实: info_panel 在播状态流(ReplayRecorder.mode == "stream")时整条不画 —— 本场宝箱账挂在 ChestSystem 上、
 ##   不在单位字典里, 流里没有财宝值; 而积分赛 / 周末 11-03 起全是看服务器直播 ⇒ 玩家从来看不到这条。
 ## 改法: 服务器算的那一端每步把账镜像到单位上(chest_system `_chest_value` / `_chest_open_n`), 录流器 UKEYS_INFO 带上,
-##   面板播流时读它们(`InfoPanel.chest_progress`); 旧裁判机不发 ⇒ 照旧不画。结论句改成「攒满开第 N 箱（共 5 箱）」。
+##   面板播流时读它们(`InfoPanel.chest_progress`); 旧裁判机不发 ⇒ 照旧不画。结论句改成「攒满开第 N 箱，共 5 箱」(对局界面不用全角括号, verify_hud_gamefeel ②)。
 ## 判据:
 ##   ① 本机跑: 进账后 tick 一次, 单位身上的镜像 == 本场宝箱账(值 / 已开数)
 ##   ② 录流器真的发这两个字段
@@ -70,7 +70,7 @@ func _ready() -> void:
 	var b0: Dictionary = _bar(s, u)
 	_ok("③ 本机面板有财宝条: 1234 / 第 1 箱阈值", not b0.is_empty() and int(b0.get("cur", -1)) == 1234
 		and is_equal_approx(float(b0.get("cap", -1.0)), float(th[0])), str(b0))
-	_ok("③ 结论句「攒满开第 1 箱（共 %d 箱）」" % th.size(), str(b0.get("hint", "")) == "攒满开第 1 箱（共 %d 箱）" % th.size(),
+	_ok("③ 结论句「攒满开第 1 箱，共 %d 箱」" % th.size(), str(b0.get("hint", "")) == "攒满开第 1 箱，共 %d 箱" % th.size(),
 		str(b0.get("hint", "")))
 
 	## ── ④⑤ 播流 ──
