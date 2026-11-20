@@ -438,8 +438,6 @@ func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 	var cards_y := 16.0   # 无被动的龟(目前 0 只)从右栏顶起
 	for k in range(plist.size()):
 		cards_y = _passive_bar(plist[k], k, cards_y, ctx)
-	if str(pet.get("id", "")) == "chest":
-		cards_y = _chest_loot_strip(cards_y)   # 藏宝图能开出的全部战利品(2026-11-20)
 	if host._codex_passive_view and plist.size() > 1:
 		pet = pet.duplicate()
 		pet["passive"] = plist[clampi(host._codex_passive_idx, 0, plist.size() - 1)]   # 下方展开的是被点的那一条
@@ -450,103 +448,6 @@ func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 
 	# 10) 技能卡 — 4 卡 1 行, 铺满板宽, 每卡高度按自己的正文收(见 _render_skill_cards)
 	_render_skill_cards(pet, ctx, cards_y)
-
-
-# ─── 宝箱龟: 藏宝图能开出的全部战利品 ───
-## 用户 2026-11-20「宝箱龟的…被动装备…需要在图鉴里面去显示」(方案书 docs/plans/20261120-宝箱龟图鉴战利品与普攻特效.md)。
-## 被动条下面一节: 抬头「战利品」→ 三个池子并排(池名 · 第几箱, 下面图标每排 LOOT_COLS 个), 图标框按池子上色;
-##   点一个图标 ⇒ 这一节底下展开它的名字 + 说明, 再点同一个收起。件数 / 分组 / 第几箱全读 ChestLoot, 不写死。
-const LOOT_ICON := 44.0          # 与技能卡图标槽同大; 图标 32 原尺寸居中(整数倍不糊)
-const LOOT_GAP := 6.0
-const LOOT_COLS := 3
-const LOOT_GROUP_GAP := 18.0
-const LOOT_HEAD_H := 28.0        # 池子抬头那一行(14px 字的 Label 实高约 24, 图标从它下面起)
-const LOOT_COL := {"basic": "#c6ced8", "adv": "#58d3ff", "legend": "#ffd93d"}
-
-
-func _chest_loot_strip(top: float) -> float:
-	var y: float = top
-	host._add_text(RCOL_X + 2.0, y + 13.0, "战利品", SECTION_PX, "#ffd93d", 0.0, 0.5, true)
-	y += 26.0
-	var gx: float = RCOL_X
-	var rows_max := 0
-	for g in ChestLoot.POOL.keys():
-		var ids: Array = ChestLoot.POOL[g]
-		var gl: Label = host._add_text(gx, y + 10.0, _loot_group_text(str(g)), CARD_CHIP_PX, str(LOOT_COL.get(g, "#ffffff")), 0.0, 0.5)
-		gl.name = "LootGroup_%s" % g
-		rows_max = maxi(rows_max, ceili(float(ids.size()) / float(LOOT_COLS)))
-		for i in range(ids.size()):
-			_loot_slot(str(ids[i]), str(g), Vector2(gx + float(i % LOOT_COLS) * (LOOT_ICON + LOOT_GAP),
-				y + LOOT_HEAD_H + float(i / LOOT_COLS) * (LOOT_ICON + LOOT_GAP)))
-		gx += float(LOOT_COLS) * (LOOT_ICON + LOOT_GAP) - LOOT_GAP + LOOT_GROUP_GAP
-	y += LOOT_HEAD_H + float(rows_max) * (LOOT_ICON + LOOT_GAP) - LOOT_GAP + 8.0
-	if str(host._codex_loot_sel) != "":
-		y = _loot_detail(str(host._codex_loot_sel), y)
-	_row_rule(y + 3.0)
-	return y + 8.0
-
-
-## 「基础池 · 第 1-2 箱」
-func _loot_group_text(g: String) -> String:
-	return "%s · %s" % [ChestLoot.POOL_NAME.get(g, g), ChestLoot.box_text(g)]
-
-
-func _loot_slot(tid: String, g: String, pos: Vector2) -> void:
-	var on: bool = str(host._codex_loot_sel) == tid
-	var p := Panel.new()
-	p.name = "LootSlot_%s" % tid
-	var sb := StyleBoxFlat.new()
-	var gc := Color(str(LOOT_COL.get(g, "#ffffff")))
-	sb.bg_color = gc.darkened(0.6) if on else Color("#0c141c")   # 点开的那件: 底色铺池子色的暗调(一眼看出说明是哪件的)
-	sb.border_color = gc.lightened(0.3) if on else gc
-	sb.set_border_width_all(3 if on else 2)
-	p.add_theme_stylebox_override("panel", sb)
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.detail.add_child(p)
-	p.position = pos
-	p.custom_minimum_size = Vector2(LOOT_ICON, LOOT_ICON)
-	p.size = p.custom_minimum_size
-	host._add_image(pos.x + LOOT_ICON / 2.0, pos.y + LOOT_ICON / 2.0, ChestLoot.icon_path(tid), 32, 32)
-	var hit := Control.new()
-	hit.name = "LootHit_%s" % tid
-	hit.position = pos
-	hit.size = Vector2(LOOT_ICON, LOOT_ICON)
-	hit.set_meta("loot_id", tid)
-	_tap_hit(hit, func() -> void:
-		host._codex_loot_sel = "" if str(host._codex_loot_sel) == tid else tid
-		_redraw())
-	host.detail.add_child(hit)
-
-
-## 点开的那件: 名字(池子色) + 右边池名 · 第几箱, 下面一段说明(与背包 / 对局面板同一条上色管线 ChestLoot.desc_bb)。返回下沿。
-func _loot_detail(tid: String, top: float) -> float:
-	var g := ""
-	for k in ChestLoot.POOL.keys():
-		if (ChestLoot.POOL[k] as Array).has(tid):
-			g = str(k)
-	if g == "":
-		return top
-	var nl: Label = host._add_text(RCOL_X + 2.0, top + 12.0, str(ChestLoot.NAME.get(tid, tid)), CARD_NAME_PX,
-		str(LOOT_COL.get(g, "#ffffff")), 0.0, 0.5, true)
-	nl.name = "LootName"
-	host._add_text(RCOL_X + 2.0 + nl.get_combined_minimum_size().x + 12.0, top + 13.0, _loot_group_text(g),
-		CARD_CHIP_PX, "#8a93a0", 0.0, 0.5)
-	var rt := RichTextLabel.new()
-	rt.name = "LootDesc"
-	rt.bbcode_enabled = true
-	rt.fit_content = true
-	rt.scroll_active = false
-	rt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	for fs in ["normal_font_size", "bold_font_size", "italics_font_size"]:
-		rt.add_theme_font_size_override(fs, 17)
-	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
-	rt.set_meta("loot_id", tid)
-	host.detail.add_child(rt)
-	rt.position = Vector2(RCOL_X + 2.0, top + 28.0)
-	rt.custom_minimum_size = Vector2(_rw() - 4.0, 0)
-	rt.size = Vector2(_rw() - 4.0, 0)
-	rt.text = ChestLoot.desc_bb(tid, 17)
-	return rt.position.y + rt.get_content_height() + 4.0
 
 
 ## 一根被动条(第 k 条, 从 top 起), 返回下面内容的起点。
@@ -1181,10 +1082,56 @@ func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary, top: float)
 # ─── 其余 tab 详情 (沿用同详情容器, 数据 1:1) ───
 # 装备详情: 消耗品(all_equipment, 有 category=consumable+desc) 与 p2eq(phase2_equipment, 有 cost) 两种数据形态。
 func _show_equip(eq: Dictionary) -> void:
-	if eq.get("category", "") == "consumable":
+	if eq.has("_loot"):
+		_show_loot(str(eq["_loot"]))
+	elif eq.get("category", "") == "consumable":
 		_show_consumable(eq)
 	else:
 		_show_p2eq(eq)
+
+
+# ── 宝箱龟战利品详情(2026-11-20) ──
+## 用户 11-20「宝箱龟的…被动装备…需要在图鉴里面去显示」→「十几件装备其实可以放在装备那一栏不用塞到龟里面吧」:
+##   装备栏末尾一组「宝箱龟战利品」(list_builder._add_equip_rows), 点开是这一页。版式照装备页(_show_p2eq):
+##   头图 + 名字 + 副标(哪个池 · 第几箱) → 效果(ChestLoot.desc_bb, 与背包 / 对局面板同一条上色管线) → 获得方式。
+##   件数 / 分组 / 第几箱全读 ChestLoot, 不写死。
+const LOOT_COL := {"basic": "#c6ced8", "adv": "#58d3ff", "legend": "#ffd93d"}   # 基础银 / 进阶蓝 / 传说金(列表行描边同色)
+
+
+func _show_loot(tid: String) -> void:
+	host._clear_detail()
+	_rerender = _show_loot.bind(tid)
+	var g: String = ChestLoot.pool_of(tid)
+	var col: String = str(LOOT_COL.get(g, "#ffd93d"))
+	host._add_rect(60, 70, 90, 90, "#12202a", 0.55, col, 2.0, 0.9)
+	host._add_image(60, 70, ChestLoot.icon_path(tid), 64, 64)   # 32 像素原图 × 2(整数倍不糊)
+	var nl: Label = host._add_text(130, 34, str(ChestLoot.NAME.get(tid, tid)), 30, "#ffd93d", 0.0, 0.5, true)
+	nl.name = "LootName"
+	var sl: Label = host._add_text(130, 74, "宝箱龟战利品 · %s · %s" % [ChestLoot.POOL_NAME.get(g, g), ChestLoot.box_text(g)], 17, col, 0.0, 0.5)
+	sl.name = "LootSub"
+	var y := 130.0
+	host._add_text(20, y, "效果", 17, "#58d3ff", 0.0, 0.0, true)
+	y += 26.0
+	y = _loot_body(y, ChestLoot.desc_bb(tid, 19), "LootDesc") + 20.0
+	host._add_text(20, y, "获得方式", 17, "#58d3ff", 0.0, 0.0, true)
+	y += 26.0
+	_loot_body(y, ChestLoot.source_text(g), "LootSource")
+
+
+func _loot_body(y: float, bb: String, nm: String) -> float:
+	var rt := RichTextLabel.new()
+	rt.name = nm
+	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
+	rt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rt.position = Vector2(20, y)
+	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+	for fs in ["normal_font_size", "bold_font_size", "italics_font_size"]:
+		rt.add_theme_font_size_override(fs, 19)
+	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
+	rt.add_theme_constant_override("line_separation", 6)
+	rt.text = bb
+	host.detail.add_child(rt)
+	return y + maxf(24.0, rt.get_combined_minimum_size().y)
 
 
 # ── p2eq 装备详情 (data/phase2-equipment.json 字段) ──

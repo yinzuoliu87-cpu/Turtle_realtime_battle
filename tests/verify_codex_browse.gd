@@ -101,8 +101,13 @@ func _ready() -> void:
 	for eq in DataRegistry.all_equipment:
 		if eq is Dictionary and str(eq.get("category", "")) == "consumable":
 			n_cons += 1
-	var want_eq: int = n_p2
-	_ok("★分母: 数据源里 %d 件装备(消耗品 %d 件【有意不列】)" % [n_p2, n_cons],
+	## ★2026-11-20 新契约: 装备栏末尾另有一组「宝箱龟战利品」(ChestLoot.POOL; 用户「十几件装备其实可以放在装备那一栏」)。
+	##   行数 = 装备 + 战利品; 消耗品仍不许列进来(多一件就超 ⇒ 下面那条照样红)。
+	var n_loot := 0
+	for _g in ChestLoot.POOL.keys():
+		n_loot += (ChestLoot.POOL[_g] as Array).size()
+	var want_eq: int = n_p2 + n_loot
+	_ok("★分母: 数据源里 %d 件装备 + %d 件宝箱龟战利品(消耗品 %d 件【有意不列】)" % [n_p2, n_loot, n_cons],
 		n_p2 >= 90 and n_cons > 0,
 		"n_cons=0 的话下面那条反向断言就是空检查")
 	_ok("★★装备页列出的行数 = 数据源条数(一件都不许被静默丢掉)",
@@ -209,6 +214,8 @@ func _ready() -> void:
 		var want: Color
 		if str(eq.get("category", "")) == "consumable":
 			want = Color("#06d6a0")         # 消耗品单独一组, 固定绿
+		elif (eq as Dictionary).has("_loot"):   # 宝箱龟战利品(2026-11-20): 没有费用, 按池子上色(基础银 / 进阶蓝 / 传说金)
+			want = Color(str(CodexDetail.LOOT_COL.get(ChestLoot.pool_of(str(eq["_loot"])), "")))
 		else:
 			want = Color(inst.COST_COLOR.get(int(eq.get("cost", 0)), "#4cc9f0"))
 		want.a = 0.7                        # _add_simple_row 里描边统一压到 0.7
@@ -227,8 +234,8 @@ func _ready() -> void:
 			bad.append("%s 的行没有样式" % str(eq.get("name", "?")))
 			continue
 		if not got.is_equal_approx(want):
-			bad.append("%s 期望 %s 实得 %s" % [str(eq.get("name", "?")), want.to_html(), got.to_html()])
-	_ok("⑤ ★逐行框色 == 费用色(%d 行全对)" % rows.size(), bad.is_empty(),
+			bad.append("%s 期望 %s 实得 %s" % [str(eq.get("name", eq.get("_loot", "?"))), want.to_html(), got.to_html()])
+	_ok("⑤ ★逐行框色 == 费用色 / 战利品池子色(%d 行全对)" % rows.size(), bad.is_empty(),
 		"不符 %d 行: %s" % [bad.size(), str(bad.slice(0, 3))])
 	# 五档色必须两两不同 —— 全一样的话上面那条照样绿, 但玩家一档也分不出。
 	var seen: Array = []

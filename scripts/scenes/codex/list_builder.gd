@@ -204,6 +204,15 @@ func _add_equip_rows() -> void:
 			##     一个 NotoEmoji 的彩色字符 —— 而行里本来就有名字, 不写 emoji 不会开天窗。
 			var rname: String = str(eq.get("name", "?"))
 			_add_simple_row(rname, "#ffffff", Color(stroke), ipath, host._items.size() - 1)
+	## ★2026-11-20 宝箱龟【藏宝图】的战利品(用户「十几件装备其实可以放在装备那一栏不用塞到龟里面吧」):
+	##   不在商店卖、只能宝箱龟开箱开出 ⇒ 单独一组放在末尾; 行描边按池子上色(基础银 / 进阶蓝 / 传说金), 点开 CodexDetail._show_loot。
+	##   件数 / 顺序读 ChestLoot.POOL(基础 → 进阶 → 传说), 不写死。图标 32 像素原尺寸画(icon_native)。
+	_add_header("宝箱龟战利品", "#ffd93d")
+	for g in ChestLoot.POOL.keys():
+		for tid in ChestLoot.POOL[g]:
+			host._items.append({"_loot": str(tid)})
+			_add_simple_row(str(ChestLoot.NAME.get(tid, tid)), "#ffffff", Color(str(CodexDetail.LOOT_COL.get(g, "#ffd93d"))),
+				ChestLoot.icon_path(str(tid)), host._items.size() - 1, true)
 	## ★★2026-10-02 删掉【消耗品分组】—— 它在教一个玩家永远遇不到的机制。
 	##
 	## 【证据】`grep -rn consumable scripts/ --include=*.gd` 去掉图鉴三处之后 **命中 0**:

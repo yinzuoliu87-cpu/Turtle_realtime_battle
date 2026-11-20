@@ -42,6 +42,7 @@ scripts/gamedata/chest_loot.gd|lit|嗜血之刃
 scripts/gamedata/chest_loot.gd|lit|坚固木盾
 scripts/gamedata/chest_loot.gd|lit|基础池
 scripts/gamedata/chest_loot.gd|lit|宝石铠甲
+scripts/gamedata/chest_loot.gd|lit|宝箱龟被动【藏宝图】%s开箱时从%s中随机获得，同一大轮内不会重复。获得后在本大轮的每局对局中自动生效，新的大轮开始时重置。
 scripts/gamedata/chest_loot.gd|lit|攻击和技能伤害转化为真实伤害。
 scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时为目标叠加 1 层金色闪电。在 {C:ChestSystem.THUNDER_STACKS} 层时，金色闪电会引爆，造成 {C:ChestSystem.THUNDER_ATK_COEF%}% 攻击力的真实伤害。
 scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时，对目标施加 {C:ChestSystem.POISON_CUT%}% 治疗削减，持续 {C:ChestSystem.POISON_SEC} 秒。
@@ -1956,11 +1957,11 @@ scripts/scenes/codex/detail_views.gd|lit|切换至远程形态
 scripts/scenes/codex/detail_views.gd|lit|初始龟能
 scripts/scenes/codex/detail_views.gd|lit|反伤
 scripts/scenes/codex/detail_views.gd|lit|外加
+scripts/scenes/codex/detail_views.gd|lit|宝箱龟战利品 · %s · %s
 scripts/scenes/codex/detail_views.gd|lit|射程
 scripts/scenes/codex/detail_views.gd|lit|属性
 scripts/scenes/codex/detail_views.gd|lit|并
 scripts/scenes/codex/detail_views.gd|lit|并且
-scripts/scenes/codex/detail_views.gd|lit|战利品
 scripts/scenes/codex/detail_views.gd|lit|技能
 scripts/scenes/codex/detail_views.gd|lit|护甲
 scripts/scenes/codex/detail_views.gd|lit|护甲穿透
@@ -1988,6 +1989,7 @@ scripts/scenes/codex/detail_views.gd|lit|移动速度
 scripts/scenes/codex/detail_views.gd|lit|移速
 scripts/scenes/codex/detail_views.gd|lit|羁绊
 scripts/scenes/codex/detail_views.gd|lit|羁绊赠送
+scripts/scenes/codex/detail_views.gd|lit|获得方式
 scripts/scenes/codex/detail_views.gd|lit|被动
 scripts/scenes/codex/detail_views.gd|lit|被动 · %s
 scripts/scenes/codex/detail_views.gd|lit|费用 %d
@@ -2004,6 +2006,7 @@ scripts/scenes/codex/form_variants.gd|lit|随形态变体：
 scripts/scenes/codex/list_builder.gd|lit|%d 费
 scripts/scenes/codex/list_builder.gd|lit|减益
 scripts/scenes/codex/list_builder.gd|lit|增益
+scripts/scenes/codex/list_builder.gd|lit|宝箱龟战利品
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送

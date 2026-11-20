@@ -38,7 +38,7 @@ func _ready() -> void:
 	## CODEX_ID=minion:front|back|elite —— 深海小将(虚拟条目, 没有 id, 按 _minion 认)
 	for i in range(items.size()):
 		var _it: Dictionary = items[i]
-		if str(_it.get("id", _it.get("_type", ""))) == want or (want.begins_with("minion:") and str(_it.get("_minion", "")) == want.substr(7)):
+		if str(_it.get("id", _it.get("_type", _it.get("_loot", "")))) == want or (want.begins_with("minion:") and str(_it.get("_minion", "")) == want.substr(7)):
 			cs.call("_select", i)
 			break
 	## CODEX_IDX=N: 直接按左栏序号选(中文类型名走环境变量在 Windows 上会被代码页弄乱)
@@ -63,11 +63,6 @@ func _ready() -> void:
 		if _ki >= 0 and _ki < _pool.size():
 			cs.set("_codex_skill_detail", _pool[_ki])
 			cs.get("_codex_detail").call("_show_pet", _pp)
-	## CODEX_LOOT=<战利品 id>: 宝箱龟页点开那件战利品的说明(与点图标同一个状态位 _codex_loot_sel)
-	if OS.get_environment("CODEX_LOOT") != "" and tab == "pets":
-		await get_tree().process_frame
-		cs.set("_codex_loot_sel", OS.get_environment("CODEX_LOOT"))
-		cs.get("_codex_detail").call("_show_pet", _find_pet(want))
 	## CODEX_STAR=1|2|3: 装备页切到那一档再截(走 CodexDetail._set_eq_star, 与点签牌同一个入口)
 	var want_star := OS.get_environment("CODEX_STAR")
 	if want_star != "" and tab == "equips":
@@ -86,6 +81,14 @@ func _ready() -> void:
 			p = p.get_parent()
 		if p is ScrollContainer:
 			(p as ScrollContainer).scroll_vertical = int(want_scroll)
+		for _i in range(6):
+			await get_tree().process_frame
+	## CODEX_LIST_END=1: 左边列表滚到底(看列表末尾的分组, 如装备栏的宝箱龟战利品)
+	if OS.get_environment("CODEX_LIST_END") == "1":
+		var ls: ScrollContainer = cs.get("list_scroll")
+		if ls != null:
+			## CODEX_LIST_UP=像素: 从底往回滚一点(滚动条 max_value 是内容总高, 到底 = 总高 − 可视高)
+			ls.scroll_vertical = int(ls.get_v_scroll_bar().max_value - ls.size.y) - int(OS.get_environment("CODEX_LIST_UP"))
 		for _i in range(6):
 			await get_tree().process_frame
 	var img := get_viewport().get_texture().get_image()
