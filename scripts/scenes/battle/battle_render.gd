@@ -13,6 +13,23 @@ const SKILL_TEXT_FS := 13
 const BAR_HEAD_H := 2.8
 ## 持续伤害数字离脚底多高: 比血条高一截(原 2.7 配血条 2.4; 血条抬 0.4 它跟着抬)
 const DOT_FLOAT_H := BAR_HEAD_H + 0.3
+## 等级牌挂在血条左边(宽 13 + 间距 3, 见主场景 _make_status_bar)⇒ 牌 + 血条整体居中要往右挪一半
+const BADGE_SHIFT := 8.0
+
+
+## 血条锚点(世界坐标): 脚底沿【镜头上方】抬起, 不沿世界竖直。
+## ★用户 11-20「这个血条中心和人物中心不一样吗」: 探针 tests/probes/_probe_bar_center 量出原来血条偏人物 10 ~ 20 像素 ——
+##   镜头带透视且往下俯 40°, 脚底正上方 2.8 米的点离屏幕中线越远被往外甩得越多(左边的往左、右边的往右, 约离中线距离的 5%),
+##   而立绘是正对镜头的公告板、它的竖直方向就是镜头上方 ⇒ 沿镜头上方抬, 画面上正好落在人物正上方。
+##   抬多少 = 世界高度 × cos(俯角)(画面上与原来同高)。腾空 / 演出抬高(height / _slam_voff)照旧加在脚底(立绘也这么动)。
+## 血条、头顶状态层(主场景)、持续伤害数字都读这一个点。h_world < 0 = 用单位的 bar_head_h(默认 BAR_HEAD_H)。
+static func bar_anchor(battle, u: Dictionary, h_world: float = -1.0) -> Vector3:
+	var hw: float = float(u.get("bar_head_h", BAR_HEAD_H)) if h_world < 0.0 else h_world
+	var feet: Vector3 = battle._world_pos(u["pos"], float(u.get("height", 0.0))) + (u.get("_slam_voff", Vector3.ZERO) as Vector3)
+	var up := Vector3.UP
+	if battle._cam != null and is_instance_valid(battle._cam) and battle._cam.is_inside_tree():
+		up = battle._cam.global_transform.basis.y.normalized()
+	return feet + up * (hw * BattleCam.COS_P)
 
 ## ★渲染这一层【允许写】的单位字典键(2026-10-04 立, 门禁 `verify_render_writeback`)。
 ## 渲染按真实帧跑、sim 按固定步长跑 ⇒ 渲染写、sim 读的字段会让对局结果随帧率/渲染节奏变
@@ -560,7 +577,7 @@ func _update_dot_floats() -> void:
 			elif not u.get("alive", false) or not battle._damage._dot_bucket_active(u, bucket):
 				battle._damage._dot_float_flyaway(u, bucket, st)
 				dead.append(bucket); continue
-			var head = battle._world_pos(u["pos"], DOT_FLOAT_H)   # 比伤害飘字(2.2)与血条都高一截, 不挡血条
+			var head = bar_anchor(battle, u, DOT_FLOAT_H)   # 比伤害飘字(2.2)与血条都高一截, 不挡血条; 与血条同一条镜头上方线(不被透视甩歪)
 			if battle._cam.is_position_behind(head):
 				(node as Control).visible = false; continue
 			(node as Control).visible = true
@@ -772,15 +789,15 @@ func _update_overlay() -> void:
 				enf.size.x = battle.BAR_W * prog
 		# 头顶世界坐标 → 屏幕 (bar_head_h 可按单位覆写·大单位如海盗船抬高)
 		## ★血条跟着演出抬高走(`_slam_voff`, 2026-10-24 过肩摔体检 B7: 原来腾空时立绘升到血条上方、血条留在地面)。
-		var head = battle._world_pos(u["pos"], u["height"] + float(u.get("bar_head_h", BAR_HEAD_H))) + (u.get("_slam_voff", Vector3.ZERO) as Vector3)
+		var head = bar_anchor(battle, u)   # 沿镜头上方抬, 画面上落在人物正上方(11-20, 见 bar_anchor)
 		if battle._cam.is_position_behind(head):
 			root.visible = false
 			continue
 		root.visible = true
 		var screen: Vector2 = battle._cam.unproject_position(head)
 		var _bx: float = battle.BAR_W * 0.5
-		if u.get("_isEgg", false):
-			_bx -= 8.0   # 蛋: 补偿等级牌左突(bw13+3的一半), 让"牌+血条"整体居中在蛋上(条本身仍对准蛋心)
+		if is_instance_valid(u.get("level_badge", null)):
+			_bx -= BADGE_SHIFT   # 补偿等级牌左突(bw13+3 的一半), 让「牌 + 血条」整体居中在人物上(原来只有蛋这么做; 11-20 全体单位)
 		root.position = screen - Vector2(_bx, 8)   # 居中 (条宽 battle.BAR_W)
 
 # ============================================================================

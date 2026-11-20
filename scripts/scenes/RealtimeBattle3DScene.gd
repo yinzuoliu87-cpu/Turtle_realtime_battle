@@ -5653,7 +5653,7 @@ func _layout_head_badges(u: Dictionary) -> void:
 	var vis: bool = u.get("alive", false) and _cam != null
 	var anchor := Vector2.ZERO
 	if vis:
-		var head := _world_pos(u["pos"], float(u.get("height", 0.0)) + float(u.get("bar_head_h", BattleRender.BAR_HEAD_H)))   # 锚血条同一世界点→整层随角色·大单位自动抬
+		var head := BattleRender.bar_anchor(self, u)   # 锚血条同一世界点→整层随角色·大单位自动抬(沿镜头上方抬, 不被透视甩歪; 11-20)
 		if _cam.is_position_behind(head): vis = false
 		else: anchor = _cam.unproject_position(head)
 	_layout_head_row(u, "_hbrow_stack", stacks, anchor, HEAD_STACK_DY, vis, false)
