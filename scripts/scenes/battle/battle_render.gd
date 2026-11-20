@@ -105,7 +105,7 @@ func _advance_anim_sub(u: Dictionary, delta: float, n: int) -> void:
 		_advance_anim(u, delta)
 		return
 	var spr = u.get("sprite", null)
-	var ok: bool = spr is Sprite3D and is_instance_valid(spr)
+	var ok: bool = is_instance_valid(spr) and spr is Sprite3D
 	var f0: int = (spr as Sprite3D).frame if ok else -1
 	var at := -1
 	for i in range(n):
