@@ -864,6 +864,9 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		return
 	var equips: Array = u.get("equips", [])
 	var cap: int = maxi(3, equips.size())
+	## 一排放不下 cap 格就同一行缩格(见 EQ_GAP_TIGHT): 总宽始终 = 3 格 + 2 个格距 = 面板内容宽。
+	var eq_gap: float = SLOT_GAP if cap <= 3 else EQ_GAP_TIGHT
+	var eq_cell: float = SLOT if cap <= 3 else floorf((SLOT * 3.0 + SLOT_GAP * 2.0 - eq_gap * float(cap - 1)) / float(cap))
 	var wrap = VBoxContainer.new()
 	wrap.add_theme_constant_override("separation", 4)
 	vb.add_child(wrap)
@@ -872,7 +875,7 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 	## ★2026-10-06 照云顶检视面板去掉「装备：」小标签 —— 装备槽一眼就认得出, 标签只吃高度。
 	var rowc = HBoxContainer.new()
 	rowc.name = "EquipRow"
-	rowc.add_theme_constant_override("separation", int(SLOT_GAP))
+	rowc.add_theme_constant_override("separation", int(eq_gap))
 	wrap.add_child(rowc)
 	for i in range(cap):
 		var it = equips[i] if i < equips.size() else null
@@ -898,8 +901,8 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 			_slot_sb = _cost_slot_box(int((DataRegistry.phase2_equipment_by_id.get(
 				str((it as Dictionary).get("id", "")), {}) as Dictionary).get("cost", 1)))
 		slot.add_theme_stylebox_override("panel", _slot_sb)
-		## ★与技能槽同一口径(SLOT), 面板宽度跟着槽走。
-		slot.custom_minimum_size = Vector2(SLOT, SLOT)
+		## ★与技能槽同一口径(SLOT), 面板宽度跟着槽走; 带满 4 件时整排一起缩(eq_cell)。
+		slot.custom_minimum_size = Vector2(eq_cell, eq_cell)
 		slot.mouse_filter = Control.MOUSE_FILTER_STOP if filled else Control.MOUSE_FILTER_IGNORE
 		if filled:
 			slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -1868,6 +1871,11 @@ const _EquipStatsT = preload("res://scripts/gamedata/equip_stats.gd")
 const STAT_COLS := 6                  # 用户 2026-10-06「改为每行显示6个属性吧」(19 项 = 6/6/6/1)
 const SLOT := 88.0                    # 技能/装备槽边长(用户 10-06「稍微小一点」104→88; 触控下限 44pt = 81 视口像素)
 const SLOT_GAP := 18.0                # 3×88 + 2×18 = 300 = 面板内容宽
+## 装备排带满 4 件(3 件 + 盾羁绊送的圣光护盾, 它不占 UNIT_EQUIP_CAP)时的格距。
+## 用户 11-20 截图「第四件呢」: 原来一排固定 88 宽 ⇒ 4×88 + 3×18 = 406 > 300, 第 4 件被面板截掉。
+##   面板要求不用上下滑(verify_info_panel_fits「用户明令」)⇒ 不换行, 改成同一行缩格: 4×69 + 3×8 = 284 ≤ 300。
+##   69 仍高于可点下限 32(⑤), 低于理想 81(与战利品格 54 同一档妥协)。
+const EQ_GAP_TIGHT := 8.0
 
 var _card = null                      # InspectCard, 懒建
 

@@ -161,6 +161,8 @@ func _ready() -> void:
 	var tap_seen := 0
 	var tap_min := 99999.0
 	var measured := 0
+	var eq_seen := 0
+	var eq_cut: Array = []
 
 	for pid in ids:
 		var u: Dictionary = s._spawn._make_unit(str(pid), "left", c)
@@ -175,8 +177,10 @@ func _ready() -> void:
 		##   ⇒ 下面的字号档数、读数宽度这些判据**扫不到那一档**, 断言看着绿实际没覆盖。
 		##   (今晚第三次栽在同一形状: 判据本身没错, 是被测对象没造出来。)
 		##   093 香火石两张表都有 ⇒ 走紧凑式那条路径, 是最能撑爆槽的一件。
+		## ★★带满 4 件(2026-11-20 用户截图「第四件呢」): 3 件 + 盾羁绊送的圣光护盾(095 不占 UNIT_EQUIP_CAP)才是装备排的最坏情况;
+		##   原来只喂 3 件 ⇒ 第 4 件被面板截掉这件事门禁从没量到。
 		u["equips"] = [{"id": "p2eq_004", "star": 2}, {"id": "p2eq_093", "star": 1},
-			{"id": "p2eq_040", "star": 3}]
+			{"id": "p2eq_040", "star": 3}, {"id": "p2eq_095", "star": 1}]
 		u["shield"] = 240.0
 		u["burn_stacks"] = 7.0
 		u["slow_until"] = s._t + 99.0
@@ -563,6 +567,17 @@ func _ready() -> void:
 		var pw: float = (panel as Control).size.x
 		if px < -1.0 or px + pw > pa.x + 1.0:
 			offscreen.append("%s [x %.0f..%.0f] 可用宽 %.0f" % [pid, px, px + pw, pa.x])
+		## 装备排每一格都在可视区(滚动容器 ∩ 屏幕)内 —— 带满 4 件时第 4 件曾把面板撑宽、滑出屏幕右边被截掉(11-20)
+		var _eqr := (panel as Control).find_child("EquipRow", true, false) as Control
+		var _vis: Rect2 = (sc as Control).get_global_rect()
+		if _eqr == null or _eqr.get_child_count() != (u["equips"] as Array).size():
+			eq_cut.append("%s 装备格 %d 个(应 %d)" % [pid, _eqr.get_child_count() if _eqr != null else -1, (u["equips"] as Array).size()])
+		else:
+			eq_seen += 1
+			for _ec in _eqr.get_children():
+				var _er4: Rect2 = (_ec as Control).get_global_rect()
+				if _er4.position.x < _vis.position.x - 1.0 or _er4.end.x > minf(_vis.end.x, pa.x) + 1.0 or _er4.size.x < 32.0:
+					eq_cut.append("%s 第 %d 格 x %.0f..%.0f 宽 %.0f / 可视 %.0f..%.0f" % [pid, _ec.get_index() + 1, _er4.position.x, _er4.end.x, _er4.size.x, _vis.position.x, _vis.end.x])
 		s._hud._close_info_panel()
 		await get_tree().process_frame
 
@@ -747,6 +762,9 @@ func _ready() -> void:
 		_filled_n >= 1 and _filled_bad.is_empty(), str(_filled_bad))
 
 	_ok("★分母: 真的量到了每一只(不是 0 只)", measured >= 20, "量了 %d 只" % measured)
+	_ok("★分母: 每只都带满 4 件(3 件 + 圣光护盾)量了装备排", eq_seen == measured and eq_seen >= 20, "%d / %d" % [eq_seen, measured])
+	_ok("★★装备排每一格都在面板可视区内、不小于 32px(带满 4 件时第 4 件不许被截掉 · 用户 11-20「第四件呢」)", eq_cut.is_empty(),
+		str(eq_cut.slice(0, 4)))
 
 	# ── ① 装得下 ────────────────────────────────────────────────────────────
 	_ok("★★每只龟的面板内容都【装得进视口】—— 不用上下滑动(用户明令)",
