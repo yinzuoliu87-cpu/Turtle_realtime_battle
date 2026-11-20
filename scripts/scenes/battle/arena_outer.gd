@@ -20,6 +20,18 @@ const VIEW_Z_EXT := 11.0
 ## 再收也给一点手感: 视野已经大过内容时(默认/拉远)仍能平移这么多(米)。
 ## ★x ≥ 2.2: `verify_cam_pan` 的「拖 100px 再拖回来回到原位」在默认缩放下走 2.1 米, 下限比它小就被夹住、回不到原位。
 const PAN_MIN := Vector2(3.0, 2.0)
+## ── 两端要推得到(用户 2026-11-20「想看龟蛋血条，最左边都看不到」) ──
+## 龟蛋站 ARENA 边往里 70 px、训龟大师往里 40 px(`BattleSpawn.TRAINER_INSET`), 屏幕两侧各压一列队伍卡片(手机约占屏宽 11%)。
+## 探针 `tests/probes/_probe_egg_reach.gd` 量到: 原来拉近后推到最左, 蛋只到屏幕 12 ~ 16%, 血条压在卡片边上
+##   —— 上面「视野半宽超过内容就不许推」只管「别看到虚空」, 没管「两端的东西推不推得进来」。
+## ⇒ 横向上限再算一个「把训龟大师推到屏幕 SAFE_F 处要平移多少」, 两者取大。
+##   默认 / 拉远时它比 PAN_MIN 还小(那时整座岛都在画面里), 原手感不变; 只在拉近时放宽。
+const SAFE_F := 0.2
+
+
+## 训龟大师(两端最靠外、要看得见的东西)离场地中心多少米。
+static func reach_x(b) -> float:
+	return (float(b.ARENA.size.x) * 0.5 - BattleSpawn.TRAINER_INSET) * float(b.WS)
 
 
 ## 当前缩放/画幅下的平移上限 (x = 左右, y = 前后/世界 z)。
@@ -39,7 +51,8 @@ static func pan_limits(b) -> Vector2:
 	var sin_pitch: float = clampf(off.y / L, 0.2, 1.0)
 	var hw: float = dist * t * aspect                            # 注视点处画面半宽
 	var hd: float = dist * t / sin_pitch                         # 注视点处地面上的半纵深
-	return Vector2(clampf(VIEW_X_EXT - hw, PAN_MIN.x, cap), clampf(VIEW_Z_EXT - hd, PAN_MIN.y, cap))
+	var need_x: float = reach_x(b) - (0.5 - SAFE_F) * 2.0 * hw   # 大师落在屏幕 SAFE_F 处时的平移量
+	return Vector2(clampf(maxf(VIEW_X_EXT - hw, need_x), PAN_MIN.x, cap), clampf(VIEW_Z_EXT - hd, PAN_MIN.y, cap))
 
 
 ## ── 外海 ─────────────────────────────────────────────────────────────────

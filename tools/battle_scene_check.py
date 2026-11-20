@@ -175,6 +175,18 @@ def main():
         if bad and ledger:
             print("FAILED: 有图比台账变差, 拒写台账(台账只许往好的方向改)")
             return 1
+        ## ★没达标的项只记「旧台账与这次实测里更好的那个」(2026-11-20): 第一版直接写实测值,
+        ##   容差以内的抖动(深礁有效色数 56 → 54、紫墟中间调 8.2 → 7.6)就这么被写进台账 ⇒ 一次次更新会慢慢松掉。
+        for key, m in cur.items():
+            base = ledger.get(key) or {}
+            for k, _src in METRICS:
+                v, bv = m.get(k), base.get(k)
+                if v is None or bv is None:
+                    continue
+                tgt, better, _tol, _fmt = TARGETS[k]
+                hit = (v >= tgt) if better == "hi" else (v <= tgt)
+                if not hit:
+                    m[k] = max(v, float(bv)) if better == "hi" else min(v, float(bv))
         _save_ledger(cur)
         print("ALL OK — 已写台账 %s" % LEDGER)
         return 0

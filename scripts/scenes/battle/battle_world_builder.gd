@@ -1017,6 +1017,132 @@ func _build_tilemap_decor() -> void:
 	_build_hang_lamps(root)
 	## 氛围: 灯旁火星(旧图那层冰蓝上飘辉光 _build_tilemap_ambient 随旧图删掉, 11-20)
 	_build_theme_ambient(root)
+	_clear_base_sightlines()
+
+
+## ══ 两端龟蛋 / 训龟大师前面不留会挡住它们的装饰 ══
+## 用户 2026-11-20:「龟蛋和训练大师这个基本上都被啊都被一个东西遮住了，都被挡住了，看都看不到。」
+## 实拍(docs/plans/img-20261120c-地图优化/现状-龟蛋与训龟大师被挡.png): 边草沿场地椭圆边 0.86 ~ 0.99 半径随机撒,
+##   蛋在 0.91、大师在 0.95 —— 正好站在装饰圈里; 左边大师只露头顶, 右边整只看不见, 蛋罩被大树干 / 草丛切掉一块。
+## ★挂在建场最后一步(`_build_tilemap_decor` 末尾): 服务器与直播播放端都各自建同一张图、都走这里 ⇒ 只按地图几何算,
+##   两边藏掉的一模一样, 不用发直播事件(对照 `_clear_layout_on_obstacles`: 那个在 sim 换路时删, 所以要发 layout_clear)。
+## ★藏(visible = false)不删: `_flames` 等登记表还引用着这些节点, 删了就是悬空引用。
+## ★几何: 在「镜头平面」里比框(正交近似, 俯角 BattleCam.PITCH_DEG): 横向 = 世界 x, 纵向 up(p) = y·cosP − z·sinP。
+##   ★★装饰与人物立绘都是**广告牌**(永远正对镜头) ⇒ 屏幕上的高 = 它整个本地高度, **不乘 cosP**
+##     (第一版按「竖直物件」乘了 cosP, 把边草能盖到多高算矮了三成, 门禁量出来还剩一大半挡着)。
+##   装饰在目标前面(底部 z 更大 = 离镜头更近)且两个框相交 ⇒ 挡。透视会让近处的东西显得更大, 框各放 SIGHT_PAD。
+##   目标框: 龟蛋 = 蛋罩那么宽、地面往上 EGG_UP 米; 训龟大师 = 半宽 TRAINER_HALF_W、往上 TRAINER_UP 米(站位同 `BattleSpawn._spawn_trainers`)。
+##   门禁 `verify_egg_trainer_unblocked` 按真镜头透视投影 + 贴图有颜色的区域量。
+const BASE_EGG_INSET := 70.0          # 与 dual_lane_flow 生成龟蛋、`_build_map_props` 建蛋罩同一个数
+const TRAINER_BACK_PX := 150.0        # 训龟大师在中线往里(远处)多少像素(同 `BattleSpawn._spawn_trainers`)
+const EGG_HALF_W := 1.4
+const EGG_UP := 2.4
+const TRAINER_HALF_W := 0.7
+const TRAINER_UP := 2.8
+const SIGHT_PAD := 0.2
+const SIGHT_ROOTS := ["EdgeTufts", "LayoutProps", "TileDecor", "Detritus", "FieldLamps", "RimLights"]
+
+
+static func _cam_up(p: Vector3) -> float:
+	return p.y * BattleCam.COS_P - p.z * BattleCam.SIN_P
+
+
+## 精灵这一帧的四边形(本地 2D, 米; y 向上)。★不用 `get_aabb()`: 广告牌精灵的包围盒是个**立方体**
+##   (要包住任意朝向), 而且看不出 `offset`(单位 / 装饰都「上抬半帧」让脚底贴地)—— 拿它算会以为东西一半埋在地下。
+##   与 Godot `SpriteBase3D` 同式: 帧大小 × pixel_size, centered 先减半帧, 再加 offset(像素, y 向上)。
+static func sprite_quad(sp: Sprite3D) -> Rect2:
+	if sp.texture == null:
+		var ab: AABB = sp.get_aabb()
+		return Rect2(ab.position.x, ab.position.y, ab.size.x, ab.size.y)
+	var fs := Vector2(sp.texture.get_width(), sp.texture.get_height())
+	if sp.region_enabled:
+		fs = sp.region_rect.size
+	elif sp.hframes * sp.vframes > 1:
+		fs = Vector2(fs.x / float(sp.hframes), fs.y / float(sp.vframes))
+	var o: Vector2 = sp.offset
+	if sp.centered:
+		o -= fs * 0.5
+	return Rect2(o * sp.pixel_size, fs * sp.pixel_size)
+
+
+static func _is_billboard(gi: GeometryInstance3D) -> bool:
+	if not (gi is SpriteBase3D):
+		return false
+	if (gi as SpriteBase3D).billboard != BaseMaterial3D.BILLBOARD_DISABLED:
+		return true
+	var mo = gi.material_override
+	return mo is BaseMaterial3D and (mo as BaseMaterial3D).billboard_mode != BaseMaterial3D.BILLBOARD_DISABLED
+
+
+## 镜头平面里的框 [x0, x1, up0, up1]。广告牌按这一帧的四边形正对镜头立起来, 其余取全局包围盒 8 角。
+static func _plane_box(gi: GeometryInstance3D) -> Array:
+	var ab: AABB = gi.get_aabb()
+	if _is_billboard(gi) and gi is Sprite3D:
+		var q: Rect2 = sprite_quad(gi as Sprite3D)
+		var gp: Vector3 = gi.global_position
+		var sc: Vector3 = gi.global_transform.basis.get_scale()
+		var xa: float = gp.x + q.position.x * absf(sc.x)
+		var xb: float = gp.x + q.end.x * absf(sc.x)
+		return [minf(xa, xb), maxf(xa, xb), _cam_up(gp) + q.position.y * absf(sc.y), _cam_up(gp) + q.end.y * absf(sc.y)]
+	var g: AABB = gi.global_transform * ab
+	var r: Array = [INF, -INF, INF, -INF]
+	for i in range(8):
+		var p: Vector3 = g.get_endpoint(i)
+		r = [minf(r[0], p.x), maxf(r[1], p.x), minf(r[2], _cam_up(p)), maxf(r[3], _cam_up(p))]
+	return r
+
+
+func _clear_base_sightlines() -> int:
+	var A: Rect2 = battle.ARENA
+	var cy: float = A.position.y + A.size.y * 0.5
+	var targets: Array = []   # [底部世界坐标, 半宽, 往上多高]
+	for ex in [A.position.x + BASE_EGG_INSET, A.end.x - BASE_EGG_INSET]:
+		targets.append([battle._world_pos(Vector2(ex, cy), 0.0), EGG_HALF_W, EGG_UP])
+	for tx in [A.position.x + BattleSpawn.TRAINER_INSET, A.end.x - BattleSpawn.TRAINER_INSET]:
+		targets.append([battle._world_pos(Vector2(tx, cy - TRAINER_BACK_PX), 0.0), TRAINER_HALF_W, TRAINER_UP])
+	var hidden := 0
+	for rn in SIGHT_ROOTS:
+		var r: Node = battle._world.find_child(rn, true, false)
+		if r == null:
+			continue
+		var gone: Array = []
+		for n in r.find_children("*", "GeometryInstance3D", true, false):
+			var gi := n as GeometryInstance3D
+			if gi == null or gi is MultiMeshInstance3D or not gi.visible:
+				continue
+			var g: AABB = gi.global_transform * gi.get_aabb()
+			if g.size.y < 0.05:
+				continue                                   # 平贴在地上的(接地影 / 地面光斑)挡不住人
+			var bp: Vector3 = gi.global_position
+			var bx: Array = _plane_box(gi)
+			for t in targets:
+				var tp: Vector3 = t[0]
+				## 前后按**视线深度**比, 不只比 z: 挂在树上的吊灯(赤林)在大师后面 0.9 米, 但高 1.6 米 ⇒ 沿视线反而更近, 实际画在大师身上
+				if (bp.y - tp.y) * BattleCam.SIN_P + (bp.z - tp.z) * BattleCam.COS_P <= 0.0:
+					continue                               # 在目标后面(离镜头更远)
+				var tu: float = _cam_up(tp)
+				if float(bx[1]) < tp.x - float(t[1]) - SIGHT_PAD or float(bx[0]) > tp.x + float(t[1]) + SIGHT_PAD:
+					continue
+				if float(bx[3]) < tu - SIGHT_PAD or float(bx[2]) > tu + float(t[2]) + SIGHT_PAD:
+					continue
+				gi.visible = false
+				gi.set_meta("base_sightline", true)
+				gone.append(Vector2(bp.x, bp.z))
+				hidden += 1
+				break
+		## 被藏掉的那件身边的附属物(接地影 / 光晕 / 点光)一起藏, 不留「没有东西的影子」
+		if not gone.is_empty():
+			for n in r.find_children("*", "Node3D", true, false):
+				var nd := n as Node3D
+				if not nd.visible or nd.has_meta("base_sightline") or not (nd is GeometryInstance3D or nd is Light3D):
+					continue
+				var q := Vector2(nd.global_position.x, nd.global_position.z)
+				for gp in gone:
+					if q.distance_to(gp) < 0.35:
+						nd.visible = false
+						nd.set_meta("base_sightline", true)
+						break
+	return hidden
 
 
 func _build_camera() -> void:

@@ -768,7 +768,7 @@ var _pan_from := Vector2.ZERO             # 按下时的屏幕位置(判定"是�
 var _pan_moved := false                   # 已超过阈值 → 本次抬起不当点选处理
 var _touch_seen := false                  # 收到过真触屏事件 → 忽略 emulate_mouse_from_touch 的模拟鼠标平移
 const PAN_THRESHOLD := 10.0               # 超过这么多像素才算拖动(以下算点选, 免得点单位变成误拖)
-const PAN_LIMIT := 9.0                    # 平移上限(米), 防止把视野拖到看不见战场
+const PAN_LIMIT := 12.0                   # 平移上限(米)·总闸; 实际上限按缩放/画幅算(ArenaOuter.pan_limits)。9 → 12(11-20): 拉近时要推得到两端龟蛋 / 训龟大师
 var _mech_incoming := {}                  # {side: 到期_t} 赛博机甲组装过渡: 死→机甲spawn空档此侧仍算存活(防提前破蛋·用户2026-07-18)
 # ── 卡死猎手(STRESS env·用户2026-07-18「几十把发生一把·你自己找」): 看门狗线程+操作追踪, 主循环冻结时报出最后操作 ──
 var _stress := false

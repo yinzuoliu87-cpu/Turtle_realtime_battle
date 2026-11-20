@@ -7,6 +7,8 @@ extends RefCounted
 ## 原默认 120 会让无名召唤物比大多数龟都快, 与"近战>远程"的结构保证冲突。
 ## 有明确设计理由的召唤物照旧各自硬写(水晶球90 / 海盗船40 —— 注释里有出处)。
 const SUMMON_DEFAULT_SPD := 100.0
+## 训龟大师站在场地左 / 右边往里多少像素(`_spawn_trainers`)。镜头平移上限按它算「两端推不推得进来」(`ArenaOuter.reach_x`)。
+const TRAINER_INSET := 40.0
 const _BE := preload("res://scripts/net/backend.gd")
 const _TUT_BUFF := preload("res://scripts/systems/onboarding/tutorial_buff.gd")   # 新手教程加成(只在教程那一把生效)
 
@@ -594,8 +596,8 @@ func _spawn_trainers() -> void:
 	#   (这类"位置对不对"只有真截图才看得出来, 门禁 100% 绿也照样是错的。)
 	var _tcy: float = battle.ARENA.position.y + battle.ARENA.size.y * 0.5
 	var back_y: float = _tcy - 150.0
-	battle._units.append(_make_unit(battle.TRAINER_ID, "left", Vector2(battle.ARENA.position.x + 40.0, back_y), {"trainer": true}))
-	battle._units.append(_make_unit(battle.TRAINER_ID, "right", Vector2(battle.ARENA.end.x - 40.0, back_y), {"trainer": true}))
+	battle._units.append(_make_unit(battle.TRAINER_ID, "left", Vector2(battle.ARENA.position.x + TRAINER_INSET, back_y), {"trainer": true}))
+	battle._units.append(_make_unit(battle.TRAINER_ID, "right", Vector2(battle.ARENA.end.x - TRAINER_INSET, back_y), {"trainer": true}))
 	# 装配(用户2026-07-23): 我方(left)读 GameState 局外配置; 敌方(right)默认钩锁(将来接快照 loadout)。
 	for u in battle._units:
 		if not u.get("is_trainer", false):
