@@ -1093,7 +1093,7 @@ func _show_equip(eq: Dictionary) -> void:
 # ── 宝箱龟战利品详情(2026-11-20) ──
 ## 用户 11-20「宝箱龟的…被动装备…需要在图鉴里面去显示」→「十几件装备其实可以放在装备那一栏不用塞到龟里面吧」:
 ##   装备栏末尾一组「宝箱龟战利品」(list_builder._add_equip_rows), 点开是这一页。版式照装备页(_show_p2eq):
-##   头图 + 名字 + 副标(哪个池 · 第几箱) → 效果(ChestLoot.desc_bb, 与背包 / 对局面板同一条上色管线) → 获得方式。
+##   头图 + 名字 + 副标「宝箱龟战利品：某池，第几箱开出」(一行一件事, 不用「·」拼; verify_ui_copy ③) → 效果(ChestLoot.desc_bb, 与背包 / 对局面板同一条上色管线) → 获得方式。
 ##   件数 / 分组 / 第几箱全读 ChestLoot, 不写死。
 const LOOT_COL := {"basic": "#c6ced8", "adv": "#58d3ff", "legend": "#ffd93d"}   # 基础银 / 进阶蓝 / 传说金(列表行描边同色)
 
@@ -1107,7 +1107,7 @@ func _show_loot(tid: String) -> void:
 	host._add_image(60, 70, ChestLoot.icon_path(tid), 64, 64)   # 32 像素原图 × 2(整数倍不糊)
 	var nl: Label = host._add_text(130, 34, str(ChestLoot.NAME.get(tid, tid)), 30, "#ffd93d", 0.0, 0.5, true)
 	nl.name = "LootName"
-	var sl: Label = host._add_text(130, 74, "宝箱龟战利品 · %s · %s" % [ChestLoot.POOL_NAME.get(g, g), ChestLoot.box_text(g)], 17, col, 0.0, 0.5)
+	var sl: Label = host._add_text(130, 74, "宝箱龟战利品：%s，%s开出" % [ChestLoot.POOL_NAME.get(g, g), ChestLoot.box_text(g)], 17, col, 0.0, 0.5)
 	sl.name = "LootSub"
 	var y := 130.0
 	host._add_text(20, y, "效果", 17, "#58d3ff", 0.0, 0.0, true)

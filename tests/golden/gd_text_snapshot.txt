@@ -1957,7 +1957,7 @@ scripts/scenes/codex/detail_views.gd|lit|切换至远程形态
 scripts/scenes/codex/detail_views.gd|lit|初始龟能
 scripts/scenes/codex/detail_views.gd|lit|反伤
 scripts/scenes/codex/detail_views.gd|lit|外加
-scripts/scenes/codex/detail_views.gd|lit|宝箱龟战利品 · %s · %s
+scripts/scenes/codex/detail_views.gd|lit|宝箱龟战利品：%s，%s开出
 scripts/scenes/codex/detail_views.gd|lit|射程
 scripts/scenes/codex/detail_views.gd|lit|属性
 scripts/scenes/codex/detail_views.gd|lit|并
