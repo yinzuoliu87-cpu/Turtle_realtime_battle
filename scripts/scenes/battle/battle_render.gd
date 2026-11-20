@@ -7,6 +7,12 @@ extends RefCounted
 ## ★和 `info_panel._show_detail` 里那个 RichTextLabel 的 `normal_font_size` 是同一个数;
 ##   `verify_battle_skill_text_bb` 会回读源码对账, 那边改了这里不跟就红。
 const SKILL_TEXT_FS := 13
+## 血条锚点: 离脚底多高(米; 单位可用 bar_head_h 覆写, 海盗船 4.6)。用户 11-20「所有角色的这个血条…高度好像低了点…全部要调高一点」⇒ 2.4 → 2.8。
+##   11-20 逐只量待机图头顶(公告板米, 40° 镜头下世界高度 × cos40): 2.4 时锚点 1.84, 双头 1.98 / 幽灵 1.94 / 凤凰 1.90 / 竹叶·忍者 1.88 / 熔岩 1.84 六只头顶高过血条;
+##   2.8 ⇒ 锚点 2.14, 最高的双头头顶上也空出一截。读这个点的: 血条(_update_overlays)、头顶状态层(主场景 _update_status_icons 一带)、持续伤害数字(DOT_FLOAT_H)。
+const BAR_HEAD_H := 2.8
+## 持续伤害数字离脚底多高: 比血条高一截(原 2.7 配血条 2.4; 血条抬 0.4 它跟着抬)
+const DOT_FLOAT_H := BAR_HEAD_H + 0.3
 
 ## ★渲染这一层【允许写】的单位字典键(2026-10-04 立, 门禁 `verify_render_writeback`)。
 ## 渲染按真实帧跑、sim 按固定步长跑 ⇒ 渲染写、sim 读的字段会让对局结果随帧率/渲染节奏变
@@ -554,7 +560,7 @@ func _update_dot_floats() -> void:
 			elif not u.get("alive", false) or not battle._damage._dot_bucket_active(u, bucket):
 				battle._damage._dot_float_flyaway(u, bucket, st)
 				dead.append(bucket); continue
-			var head = battle._world_pos(u["pos"], 2.7)   # 比伤害飘字(2.2)高一截, 不挡血条
+			var head = battle._world_pos(u["pos"], DOT_FLOAT_H)   # 比伤害飘字(2.2)与血条都高一截, 不挡血条
 			if battle._cam.is_position_behind(head):
 				(node as Control).visible = false; continue
 			(node as Control).visible = true
@@ -766,7 +772,7 @@ func _update_overlay() -> void:
 				enf.size.x = battle.BAR_W * prog
 		# 头顶世界坐标 → 屏幕 (bar_head_h 可按单位覆写·大单位如海盗船抬高)
 		## ★血条跟着演出抬高走(`_slam_voff`, 2026-10-24 过肩摔体检 B7: 原来腾空时立绘升到血条上方、血条留在地面)。
-		var head = battle._world_pos(u["pos"], u["height"] + float(u.get("bar_head_h", 2.4))) + (u.get("_slam_voff", Vector3.ZERO) as Vector3)
+		var head = battle._world_pos(u["pos"], u["height"] + float(u.get("bar_head_h", BAR_HEAD_H))) + (u.get("_slam_voff", Vector3.ZERO) as Vector3)
 		if battle._cam.is_position_behind(head):
 			root.visible = false
 			continue

@@ -891,7 +891,7 @@ func _spawn_pirate_ship_entity(u: Dictionary, at2d: Vector2):   # 实体海盗�
 	if ship == null:
 		return null
 	ship["pos"] = at2d
-	ship["bar_head_h"] = 4.2   # 血条抬高(用户2026-07-14·大船血条不压船身)
+	ship["bar_head_h"] = BattleRender.BAR_HEAD_H + 1.8   # 血条抬高(用户2026-07-14·大船血条不压船身; 11-20 全体血条抬 0.4 后同步 4.2 → 4.6)
 	var spr = ship.get("sprite", null)
 	if spr != null and is_instance_valid(spr):             # 立绘调大到船尺度(比召唤体大·船该大) + 落场淡入砸落回弹
 		if spr.texture != null:
