@@ -23,8 +23,11 @@ extends Node
 ## ══════════════════════════════════════════════════════════════════
 ##  ★判据形状（三条，各自配分母）
 ## ══════════════════════════════════════════════════════════════════
-## ① **背景远景**（鱼群/气泡，`FarBackdrop` 子树）时停期间 **0 个节点变化**。
-##    分母：时停**之前**同样采样必须有一大把在动 —— 否则是空检查。
+## ① **携带者 3 米以外**的节点时停期间 **0 个变化**（和判据⑦ 同一把尺子）。
+##    分母：时停**之前**同样采样必须有一把在动 —— 否则是空检查。
+##    ★2026-11-20 改: 原来只量背景远景（旧图 `FarBackdrop` 的鱼群/气泡，时停前 20+ 个在动）。
+##      旧图删掉后四张新图的远景/边草/装饰/灯**一个都不动**（`tests/probes/_probe_world_movers.gd` 实测 0 个）⇒
+##      分母成了 0。改量「携带者以外的整个世界」: 包住原来的背景, 以后地图加的会动的背景也自动归它管。
 ## ② **非携带者单位的立绘**时停期间位置/帧号/颜色一个都不变。
 ##    分母：它在时停前是会动的。
 ## ③ **解除后必须恢复**：`_end_timestop()` 之后背景重新动起来。
@@ -47,6 +50,7 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 var _s = null
+var _amb: Array = []   # 人造背景物件的快照路径(判据⑤b)
 var _n := 0
 var _fail := 0
 
@@ -109,14 +113,20 @@ func _wait(nf: int) -> void:
 		await get_tree().process_frame
 
 
-## 跑 nf 帧, 返回这段时间里 `_world` 下变化的节点(按前缀过滤)。
-func _window(nf: int, pfx: String) -> Array:
+## 跑 nf 帧, 返回这段时间里 `_world` 下变化的节点(按前缀过滤)。`keep` 给了就把起点快照留给调用方(判远近用)。
+func _window(nf: int, pfx: String, keep: Dictionary = {}) -> Array:
 	var a: Dictionary = {}
 	_snap(_s._world, a, "")
+	keep.merge(a, true)
 	await _wait(nf)
 	var b: Dictionary = {}
 	_snap(_s._world, b, "")
 	return _moved(a, b, pfx)
+
+
+## 变化节点里起点离携带者 3 米以外的(判据①⑤): 携带者是唯一能动的人, 它身上的演出 / 它自己不算。
+func _far_of(keys: Array, snap: Dictionary, cp: Vector3) -> Array:
+	return keys.filter(func(k): return snap.has(k) and ((snap[k] as Array)[0] as Vector3).distance_to(cp) > 3.0)
 
 
 func _mk(id: String, side: String, dx: float, star: int) -> Dictionary:
@@ -171,6 +181,22 @@ func _ready() -> void:
 	_s._tentacle_vfx.ensure_forced("right", 2)
 	var gun = _s._equip_sys._gun_sys
 	gun._spawn_heli(other, 2, 300.0)
+	## ★人造背景(2026-11-20): 旧图的鱼群 / 气泡是「`_world` 下靠 `_reg_tween()` 循环动的环境物件」, 删图后四张新图
+	##   没有一个背景物件这样动(探针 `_probe_world_movers` 实测 0 个) ⇒ 场上剩的远处动的东西(直升机 / 触手 / 对面立绘)
+	##   都是 sim 每步推的, 「`_ts_resume_freeze` 把 tween 放回来」没有被测对象(反向验证: 解冻不放回照样全绿)。
+	##   照环境物件的正规写法摆 4 个, 离携带者 6 米以上 —— 判据①⑤ 自动把它们算进去, ⑤b 单独点名。
+	_amb = []
+	var ac: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	for ai in range(4):
+		var sp := Sprite3D.new()
+		sp.name = "TsProbeAmbient%d" % ai
+		_s._world.add_child(sp)
+		sp.position = _s._world_pos(ac + Vector2(420.0 + 60.0 * ai, -180.0), 0.5)
+		var y0: float = sp.position.y
+		var atw: Tween = _s._reg_tween().bind_node(sp).set_loops()
+		atw.tween_property(sp, "position:y", y0 + 0.4, 0.5).set_trans(Tween.TRANS_SINE)
+		atw.tween_property(sp, "position:y", y0, 0.5).set_trans(Tween.TRANS_SINE)
+		_amb.append("/" + str(sp.name))
 	await _wait(10)
 
 	## 给【非携带者】种一笔会线性衰减的余额(幽灵护盾/奶油护盾就是这么存的) —— 判据⑥ 的被测对象。
@@ -191,11 +217,16 @@ func _ready() -> void:
 	var hp0: Vector2 = (helis[0] as Dictionary).get("pos", Vector2.ZERO) if helis.size() > 0 else Vector2.ZERO
 
 	# ── ① 分母: 时停【之前】世界在动 ──
-	var pre: Array = await _window(90, "")
-	var pre_bg: Array = pre.filter(func(k): return str(k).begins_with("/FarBackdrop"))
-	_ok("★分母①: 时停【之前】_world 里 %d 个节点在动(其中背景远景 %d 个)" % [pre.size(), pre_bg.size()],
-		pre_bg.size() >= 20,
-		"背景远景一个都不动 ⇒ 下面「冻住了」是空检查, 不是产品的功劳")
+	var cp0: Vector3 = _s._world_pos(carrier["pos"], 0.8)
+	var pre_snap: Dictionary = {}
+	var pre: Array = await _window(90, "", pre_snap)
+	var pre_bg: Array = _far_of(pre, pre_snap, cp0)
+	_ok("★分母①: 时停【之前】_world 里 %d 个节点在动(其中携带者 3 米以外 %d 个: %s)" % [pre.size(), pre_bg.size(), str(pre_bg.slice(0, 4))],
+		pre_bg.size() >= 3,
+		"携带者以外的世界一个都不动 ⇒ 下面「冻住了」是空检查, 不是产品的功劳")
+	var pre_amb: Array = pre.filter(func(k): return k in _amb)
+	_ok("★分母⑤b: 人造背景(循环 _reg_tween)在时停【之前】4 个都在动(实测 %d 个)" % pre_amb.size(),
+		pre_amb.size() == 4, "它本来就不动 ⇒ ⑤b「解除后重新动」是恒真式")
 	## ★分母②必须验「它在时停【之前】是会动的」, 光验"节点在场"守不住 ——
 	##   那只龟配了 no_move/no_basic, 若它本来就一动不动, 判据② 就是恒真式。
 	var pre_other: Array = pre.filter(func(k): return str(k) == other_path)
@@ -415,9 +446,10 @@ func _ready() -> void:
 		sh_code.contains("float ring = clamp(max(core, halo)") and not sh_code.contains("float(k) * 0.17"), "")
 
 	# ── ③ 判据: 时停期间, 背景一个都不许动 ──
-	var dur: Array = await _window(90, "")
-	var dur_bg: Array = dur.filter(func(k): return str(k).begins_with("/FarBackdrop"))
-	_ok("① 时停期间【背景远景】0 个节点在动(实测 %d 个, 时停前是 %d 个)"
+	var dur_snap: Dictionary = {}
+	var dur: Array = await _window(90, "", dur_snap)
+	var dur_bg: Array = _far_of(dur, dur_snap, cp0)
+	_ok("① 时停期间【携带者 3 米以外】0 个节点在动(实测 %d 个, 时停前是 %d 个)"
 		% [dur_bg.size(), pre_bg.size()],
 		dur_bg.is_empty(),
 		"这些还在动: %s" % str(dur_bg.slice(0, 6)))
@@ -499,12 +531,17 @@ func _ready() -> void:
 	# ── ⑤ 判据: 解除后必须恢复 —— 冻死了也是 bug ──
 	ts._end_timestop()
 	await _wait(20)
-	var post: Array = await _window(90, "")
-	var post_bg: Array = post.filter(func(k): return str(k).begins_with("/FarBackdrop"))
-	_ok("⑤ 解除时停后【背景远景】重新动起来(实测 %d 个, 时停前 %d 个)"
+	var post_snap: Dictionary = {}
+	var post: Array = await _window(90, "", post_snap)
+	var post_bg: Array = _far_of(post, post_snap, cp0)
+	_ok("⑤ 解除时停后【携带者 3 米以外】重新动起来(实测 %d 个, 时停前 %d 个)"
 		% [post_bg.size(), pre_bg.size()],
-		post_bg.size() >= maxi(20, pre_bg.size() / 2),
+		post_bg.size() >= maxi(3, pre_bg.size() / 2),
 		"只验「冻得住」会放过「再也不动了」—— _ts_resume_freeze 必须把 tween play 回来")
+	var post_amb: Array = post.filter(func(k): return k in _amb)
+	_ok("⑤b 解除时停后【人造背景】4 个全部重新动起来(实测 %d 个)" % post_amb.size(),
+		post_amb.size() == 4,
+		"靠 tween 动的背景解除后不动了 —— 冻结名单里的 tween 没人再喂(_ts_resume_freeze 清名单 / _step_sim_tweens 只在时停中跳过, 两道都失守)")
 
 	print("")
 	if _fail == 0:
