@@ -16,6 +16,10 @@ const POOL := {
 	"adv":    ["long_sword", "bloodblade", "flint", "gem_armor", "poison", "phoenix_statue"],
 	"legend": ["crown", "thunder", "starlight"],
 }
+## 开第几箱从哪个池子抽(下标 = 已开件数)。`ChestSystem._chest_treasure_tick` 与图鉴战利品分组读同一张。
+const OPEN_ORDER := ["basic", "basic", "adv", "adv", "legend"]
+## 池子的叫法 = 藏宝图说明里的词(pets.json chest 被动 desc「基础池 / 进阶池 / 传说池」)。
+const POOL_NAME := {"basic": "基础池", "adv": "进阶池", "legend": "传说池"}
 ## 名字 = 回合制版原名(`docs/design/回合制原始数值-对照表.md` 宝箱龟 pools 的 name)。
 ##   2026-07-09 移植实时版时被缩成两三个字(「星辉」「雷刃」…), 没经过拍板; 用户 2026-10-22「就叫星辉？不对啊」⇒ 全部恢复原名。
 const NAME := {
@@ -62,6 +66,20 @@ static func desc_plain(tid: String) -> String:
 ## 说明的 BBCode 版: 与装备说明同一条上色 / 内联属性图标管线(`SkillText.plain_to_bb`)。
 static func desc_bb(tid: String, font_px: int = 0) -> String:
 	return SkillText.plain_to_bb(desc_plain(tid), font_px)
+
+
+## 某个池子在第几箱开出:「第 1-2 箱」/「第 5 箱」(从 OPEN_ORDER 推, 不写死)。不在表里 ⇒ ""。
+static func box_text(group: String) -> String:
+	var first := -1
+	var last := -1
+	for i in range(OPEN_ORDER.size()):
+		if str(OPEN_ORDER[i]) == group:
+			if first < 0:
+				first = i
+			last = i
+	if first < 0:
+		return ""
+	return "第 %d 箱" % (first + 1) if first == last else "第 %d-%d 箱" % [first + 1, last + 1]
 
 
 static func icon_path(tid: String) -> String:

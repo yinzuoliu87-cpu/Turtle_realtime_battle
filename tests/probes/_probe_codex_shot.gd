@@ -63,6 +63,11 @@ func _ready() -> void:
 		if _ki >= 0 and _ki < _pool.size():
 			cs.set("_codex_skill_detail", _pool[_ki])
 			cs.get("_codex_detail").call("_show_pet", _pp)
+	## CODEX_LOOT=<战利品 id>: 宝箱龟页点开那件战利品的说明(与点图标同一个状态位 _codex_loot_sel)
+	if OS.get_environment("CODEX_LOOT") != "" and tab == "pets":
+		await get_tree().process_frame
+		cs.set("_codex_loot_sel", OS.get_environment("CODEX_LOOT"))
+		cs.get("_codex_detail").call("_show_pet", _find_pet(want))
 	## CODEX_STAR=1|2|3: 装备页切到那一档再截(走 CodexDetail._set_eq_star, 与点签牌同一个入口)
 	var want_star := OS.get_environment("CODEX_STAR")
 	if want_star != "" and tab == "equips":
