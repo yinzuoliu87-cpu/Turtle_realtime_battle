@@ -113,8 +113,13 @@ var _wave_flights: Array = []   # 口哨②灵体气波的在途弹(逐帧推进
 ##     ⇒ 实战不可复现。U2 一落地这一整类输入就不存在了。
 
 
+## 钩锁的锁链(新画法, 用户 11-20「现在这个锁链完全不行，你需要新设计一种方法」): 一根链 = 一张常驻四边形, 见 TrainerChainVfx。
+var chain_fx: TrainerChainVfx = null
+
+
 func _init(b) -> void:
 	battle = b
+	chain_fx = TrainerChainVfx.new(b)
 
 
 ## 大师的攻击/施法 tick 现在该不该跑: 战斗结束/摆位/呈现/编辑期都不跑(用户2026-07-23 点6)。
@@ -292,12 +297,13 @@ func _tick_hook_flights(delta: float) -> void:
 		if is_instance_valid(nd) and nd is Sprite3D:
 			(nd as Sprite3D).position = battle._world_pos(p, 1.0)
 		if battle._world != null:
-			_hook_chain(src["pos"], p)                         # 链条: 大师 ↔ 钩头当前位置
+			chain_fx.fly(f, src["pos"], p)                     # 链条: 大师手 ↔ 钩头(飞行段画成拖影带)
 		# ② ★每帧碰撞 —— 这一行就是"能躲"的全部: 判的是钩头此刻的位置, 不是出手时选的人
 		var v = _hook_hit_at(src, p)
 		if v != null:
 			_hook_grab(src, v)
 			_hook_hit_fx(p)
+			chain_fx.latch(f, v)                               # 同一步收成直链 + 一道亮光跑回大师
 			_hook_head_free(f)
 			continue
 		keep.append(f)
@@ -310,6 +316,7 @@ func _tick_hook_flights(delta: float) -> void:
 ##   原来这两张表只有逐帧推进那里改写, 换路后上一路的钩子还在飞(探针: 换路后仍 3 根, 发射者是上一路的旧大师),
 ##   新一路的大师冷却一好再放 ⇒ 同时两根。
 func clear_flights() -> void:
+	chain_fx.clear()
 	for f in _flights:
 		_hook_head_free(f)
 	_flights = []
@@ -809,6 +816,7 @@ func _hook_grab(trainer: Dictionary, target: Dictionary) -> void:
 ## 每帧: 大师钩锁冷却扣减; 被钩单位【一段段】朝大师拽(每 battle.HOOK_PULL_INTERVAL 秒里, 前 battle.HOOK_TUG_DUR 秒快速位移一段, 其余停顿)。
 ## ★非匀速(用户2026-07-24: 锤石钩住是一下一下拽, 不是匀速)。在 _process 战斗门内调。
 func _tick_hooks(delta: float) -> void:
+	chain_fx.begin_step()          # 锁链: 这一步谁还在画; 没人画的在 end_step 收回
 	_tick_hook_flights(delta)      # ★真 skillshot: 钩头逐帧推进 + 每帧碰撞(见 _cast_hook 注释)
 	var tug_spd: float = battle.HOOK_TUG_DIST / battle.HOOK_TUG_DUR         # 拽的那一下的速度(码/秒)
 	for u in battle._units:
@@ -817,14 +825,16 @@ func _tick_hooks(delta: float) -> void:
 		if battle._t < float(u.get("_hook_pull_until", 0.0)):
 			var by = u.get("_hook_pull_by", null)
 			if by is Dictionary and by.get("alive", false):
-				if battle._world != null:
-					_hook_chain(by["pos"], u["pos"])   # R3 全程钩链(专属铁链·每帧重画=连续绷紧·连着大师↔被钩目标·补"拖拽4秒里链条断了")
 				var ph: float = battle._t - float(u.get("_hook_tug_t0", battle._t))   # 相对第一下拽的相位
-				if ph >= 0.0 and fmod(ph, battle.HOOK_PULL_INTERVAL) < battle.HOOK_TUG_DUR:   # 处在"拽"的窗口内
+				var in_tug: bool = ph >= 0.0 and fmod(ph, battle.HOOK_PULL_INTERVAL) < battle.HOOK_TUG_DUR
+				if battle._world != null:
+					chain_fx.hold(u, by["pos"], in_tug)   # 全程钩链: 大师 ↔ 被钩目标(每拽一下跑一道亮光)
+				if in_tug:   # 处在"拽"的窗口内
 					var to: Vector2 = by["pos"] - u["pos"]
 					if DetMath.vlen(to) > 24.0:                    # 留 24 码不重叠
 						u["pos"] += DetMath.norm(to) * tug_spd * delta
 						u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
+	chain_fx.end_step(delta)       # 锁链: 推亮光 / 收回; 没人画的收回到手里再删
 
 ## 训龟大师自动施法(U2·**敌我同规则**): 冷却一好 → 朝【最近的敌人】放已装配的那一个主动技。
 ##   节奏 = 各技能自己的冷却(D2「用各自冷却」)。不移动、不游走 —— 原敌方 AI 的随机游走已随 U2 删掉
@@ -962,10 +972,7 @@ func _hook_hit_fx(pos2d: Vector2) -> void:
 	ct.tween_property(core.material_override, "albedo_color", Color(0.8, 0.95, 1.0, 0.0), 0.14)
 	ct.chain().tween_callback(core.queue_free)
 
-## R3 钩链(专属铁链·替海盗电光 chain-bolt·连续调=连续绷紧): 横向铁链贴图从 A 拉到 B。
-func _hook_chain(from2d: Vector2, to2d: Vector2) -> void:
-	## 11-05 宽 20→30 码: 审核片里 20 码的链节缩得太细, 读成「两条深色虚线横穿场地」(用户以为是 bug)
-	battle._beam_vfx("res://assets/sprites/vfx/hook-chain.png", from2d, to2d, 30.0, Color(0.92, 0.94, 0.98, 1.0), 0.13)
+## (旧 `_hook_chain` 11-20 删: 每步在地上平铺一条拉长的铁链贴图、几条叠着闪 —— 用户「现在这个锁链完全不行」; 换成 TrainerChainVfx)
 
 ## 训龟大师【自己】的索敌: 射程内最近的敌人。不复用 _nearest_enemy ——
 ## 那个会跳过 is_trainer(别人锁不到它), 但没有射程限制、也不该被别的规则牵连。
