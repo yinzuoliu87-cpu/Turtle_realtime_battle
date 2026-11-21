@@ -341,6 +341,12 @@ func _ready() -> void:
 	_ok("④ 截断回 not_invalid(账本来就没被判坏)⇒ 照常拉流水对齐", res6[0] == true and EN.adopts == a6 + 1, str(res6[0]))
 	_trunc_resp = {"ok": true, "code": 200, "body": '{"ok": true}'}
 
+	## ⑤ 上传前整数值浮点还原(11-21 周六: 存档读回来种子 583806406.0, 服务器字面比判 mismatch ⇒ 陪练号死循环)
+	var iv = EN.ints([{"op": "refresh", "seed": 583806406.0, "bt": 16.0, "seq": 186.0, "x": 0.5}])
+	var s5: String = JSON.stringify(iv)
+	_ok("⑤ 上传体里整数值浮点写成整数(种子 / bt / seq), 真小数不动", s5.contains("\"seed\":583806406") and not s5.contains("583806406.0")
+		and s5.contains("\"bt\":16") and not s5.contains("16.0") and s5.contains("0.5"), s5)
+
 	## 收尾
 	SB._transport_for_test = Callable()
 	OS.set_environment("TURTLE_SUPABASE", " ")

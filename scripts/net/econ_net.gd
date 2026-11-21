@@ -84,6 +84,25 @@ static func pending_rows(gs) -> Array:
 	return led.slice(from, mini(led.size(), from + BATCH))
 
 
+## 整数值的浮点还原成整数(递归)。存档 JSON 读回来整数都成了浮点(种子 583806406 → 583806406.0),
+##   原样上传字面是「583806406.0」; 服务器那份是「583806406」⇒ 11-21 周六服务器字面比判 mismatch, 陪练号「装备已同步」死循环
+##   (服务器已改按数比: 迁移 20261121_econ_seed_numeric; 这里在源头再堵一道)。
+static func ints(v):
+	if v is float and is_finite(v) and v == floorf(v) and absf(v) < 9.0e15:
+		return int(v)
+	if v is Array:
+		var a: Array = []
+		for x in v:
+			a.append(ints(x))
+		return a
+	if v is Dictionary:
+		var d: Dictionary = {}
+		for k in v:
+			d[k] = ints(v[k])
+		return d
+	return v
+
+
 static func _send(from: int, ops: Array, kind: String, done: Callable) -> bool:
 	if not SB.enabled():
 		return false
@@ -91,7 +110,7 @@ static func _send(from: int, ops: Array, kind: String, done: Callable) -> bool:
 	if n == null:
 		return false
 	commits += 1
-	var body := {"p_week": week(), "p_from": from, "p_ops": ops, "p_kind": (kind if kind != "" else null)}
+	var body := {"p_week": week(), "p_from": from, "p_ops": ints(ops), "p_kind": (kind if kind != "" else null)}
 	n._get_once(RPC, "POST", JSON.stringify(body), done,
 		func(res: Dictionary) -> Dictionary:
 			return parse_commit(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))

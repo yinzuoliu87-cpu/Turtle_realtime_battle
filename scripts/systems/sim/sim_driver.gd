@@ -203,6 +203,13 @@ func _ready() -> void:
 	_run()
 
 
+## 「装备已同步，请重新开战」: 真人看到会再点一次开战(同步已经把本机账对齐到服务器那份)⇒ 陪练号也回去重开, 不当失败下线。
+##   只接在周六闯关排队(_do_match_queue)那条: 积分赛那条一行不动(verify_gauntlet_online_queue ★R)。
+##   ★每个进程最多重开 1 次: 真对不上的账(同步后还是拒)不能在主菜单 ↔ 匹配屏之间无限空转。
+##   由来: 11-21 周六 0-0 陪练号全卡在这一句(服务器种子行字面比, 迁移 20261121_econ_seed_numeric 已修), 脚本当失败下线、调度器反复派。
+var _econ_retries := 0
+
+
 # ═══════════════════════════════ 主循环 ═══════════════════════════════
 
 func _run() -> void:
@@ -716,6 +723,9 @@ func _do_match_queue(mm: Node) -> void:
 				err0 = Time.get_ticks_msec()
 			elif (Time.get_ticks_msec() - err0) / 1000.0 > ERROR_LEAVE_SEC:
 				var again: bool = not (run.view as Dictionary).is_empty() or str(run.msg) == rw.TXT_STALE
+				if not again and str(run.msg) == str(rw.TXT_ECON_SYNCED) and _econ_retries < 1:
+					_econ_retries += 1                 # 「装备已同步」: 回去重开一次(见 _econ_retries 头注)
+					again = true
 				_ev("match_error", {"msg": str(run.msg), "again": again})
 				_shot("match_error")
 				mm.call("_on_queue_back")
