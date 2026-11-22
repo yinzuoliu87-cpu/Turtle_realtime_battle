@@ -347,6 +347,43 @@ func _ready() -> void:
 	_ok("⑤ 上传体里整数值浮点写成整数(种子 / bt / seq), 真小数不动", s5.contains("\"seed\":583806406") and not s5.contains("583806406.0")
 		and s5.contains("\"bt\":16") and not s5.contains("16.0") and s5.contains("0.5"), s5)
 
+	## ⑥ 商店「换一批」没成要说为什么 / 「忙」卡死自愈(11-22 LouisT01 反馈「刷新不了啊」)
+	##   原来: EconNet.seeded 当场回 busy / backlog / net 时商店不提示、直接重画原货架 ⇒「点了没反应」;
+	##   busy 只有回调能解开, 回调不来就一直忙到重开 App; 种子回来但钱不够也一律说「无法连接服务器」。
+	await _wait(func() -> bool: return not EN.busy)
+	EN.busy = true
+	EN.busy_since = Time.get_ticks_msec()
+	var r6a: Dictionary = EN.seeded({"op": "refresh"}, 1, func(_r: Dictionary) -> void: pass)
+	_ok("⑥ 分母: 刚忙起来 ⇒ 再要种子照样回 busy(没到卡死)", str(r6a.get("reason", "")) == "busy", str(r6a))
+	var sr0 := EN.stale_resets
+	EN.busy_since = Time.get_ticks_msec() - EN.BUSY_STALE_MS - 1000
+	var r6b: Dictionary = EN.seeded({"op": "refresh"}, 1, func(_r: Dictionary) -> void: pass)
+	_ok("⑥ ★忙了超过 %d 毫秒还没解开 ⇒ 当它卡死: 自己解开、这一趟照常发出去(不再回 busy)" % EN.BUSY_STALE_MS,
+		str(r6b.get("reason", "")) != "busy" and EN.stale_resets == sr0 + 1, "%s stale %d→%d" % [str(r6b), sr0, EN.stale_resets])
+	await _wait(func() -> bool: return not EN.busy)
+	var shop6 = load("res://scripts/scenes/ShopScene.gd").new()
+	add_child(shop6)
+	await _wait(func() -> bool: return not bool(shop6._econ_wait) and not EN.busy)
+	gs.meta_deepsea_coins = 20
+	EN.busy = true
+	EN.busy_since = Time.get_ticks_msec()
+	shop6._on_refresh()
+	var tn = shop6._toast_node
+	_ok("⑥ ★「换一批」撞上正在同步 ⇒ 弹「正在与服务器同步，请稍后再试」(原来什么都不说)",
+		tn != null and is_instance_valid(tn) and str((tn as Label).text) == "正在与服务器同步，请稍后再试",
+		str((tn as Label).text) if tn != null and is_instance_valid(tn) else "没有提示")
+	EN.busy = false
+	shop6._econ_wait = true
+	shop6._econ_wait_t0 = Time.get_ticks_msec() - EN.BUSY_STALE_MS - 1000
+	_ok("⑥ ★商店等种子等太久 ⇒ 放开货架(刷新 / 购买不再被一直挡着)", not shop6._waiting() and not bool(shop6._econ_wait))
+	shop6._after_seeded({"ok": false, "reason": "coins"}, true)
+	tn = shop6._toast_node
+	_ok("⑥ 种子回来了但钱不够 ⇒ 说「深海币不足」, 不说「无法连接服务器」",
+		tn != null and is_instance_valid(tn) and str((tn as Label).text).begins_with("深海币不足"),
+		str((tn as Label).text) if tn != null and is_instance_valid(tn) else "没有提示")
+	shop6.queue_free()
+	await get_tree().process_frame
+
 	## 收尾
 	SB._transport_for_test = Callable()
 	OS.set_environment("TURTLE_SUPABASE", " ")

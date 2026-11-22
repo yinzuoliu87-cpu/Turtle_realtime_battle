@@ -134,6 +134,9 @@ var _rolls_here := 0   # 本场景掷过几次货(test_mode 的固定种子按�
 ## 正在等服务器发种子(记账开关 econ_on 开着时掷货 / 换一批要等这一下, 约 0.1~0.3 秒): 货架上还是上一批,
 ##   这时候点买 / 锁 / 再换一批都不理 —— 否则买到的是服务器账上已经换掉的那一批。
 var _econ_wait := false
+var _econ_wait_t0 := 0       # 开始等种子的时刻(毫秒); 等太久当它卡死(见 _waiting)
+var _roll_retry := 0         # 进店掷货撞上「正在同步」⇒ 隔一秒再掷, 最多 ROLL_RETRY_MAX 次
+const ROLL_RETRY_MAX := 10
 var _tut_coin: Label = null   # 教学高亮"深海币"锚点(每次 _rebuild 重设)
 var _tut_xp_btn: Button = null   # 教程高亮「买经验」钮(每次 _rebuild 重设)
 var _tut_buy_btn: Button = null  # 教程手势指针: 详情面板里买得起时的「购买」钮
@@ -291,17 +294,47 @@ func _roll() -> void:
 	var r: Dictionary = EconNet.seeded({"op": "roll"}, _next_seed(), _after_seeded.bind(false))
 	if bool(r.get("pending", false)):
 		_econ_wait = true
+		_econ_wait_t0 = Time.get_ticks_msec()
 		_offer = []
 		return
+	## 撞上「正在同步」(上一趟提交还在路上 / 积压先传一批)⇒ 隔一秒自己再掷, 不让玩家看着上一场的旧货架
+	var why := str(r.get("reason", ""))
+	if not bool(r.get("ok", true)) and why in ["busy", "backlog"] and _roll_retry < ROLL_RETRY_MAX:
+		_roll_retry += 1
+		get_tree().create_timer(1.0).timeout.connect(_roll_again)
+	elif not bool(r.get("ok", true)) and why != "not_due":
+		_toast(_seeded_fail_text(why))
 	_offer_from_gs()
+
+func _roll_again() -> void:
+	if is_instance_valid(self) and is_inside_tree() and not _econ_wait:
+		_roll()
+		_rebuild()
+
+## 还在等服务器的种子吗。等了超过 EconNet.BUSY_STALE_MS 还没回话 ⇒ 当它卡死, 放开货架(原来会一直锁着, 刷新 / 购买都没反应)。
+func _waiting() -> bool:
+	if _econ_wait and Time.get_ticks_msec() - _econ_wait_t0 > EconNet.BUSY_STALE_MS:
+		_econ_wait = false
+		ErrorReporter.report("econ", "shop seed wait stuck", "busy=%s last=%s" % [str(EconNet.busy), EconNet.last_error], "shop_wait_stale")
+		_offer_from_gs()
+	return _econ_wait
+
+## 要种子的操作没成, 跟玩家说的那句(按原因)。
+func _seeded_fail_text(why: String) -> String:
+	match why:
+		"coins":
+			return "深海币不足（需要 %d）" % REFRESH_COST
+		"busy", "backlog", "moved":
+			return "正在与服务器同步，请稍后再试"
+	return "无法连接服务器。请检查网络连接后重试。"   # 全游戏联网失败同一句(好友 / 回放 / 对阵图 / 登录)
 
 ## 服务器发的种子到了、这一笔已成交(或没成): 换上新货架重画。`refresh` = 是不是「换一批」那一下(要清选中、存盘)。
 func _after_seeded(r: Dictionary, refresh: bool) -> void:
 	if not is_instance_valid(self) or not is_inside_tree():
 		return
 	_econ_wait = false
-	if not bool(r.get("ok", false)):
-		_toast("无法连接服务器。请检查网络连接后重试。")   # 全游戏联网失败同一句(好友 / 回放 / 对阵图 / 登录)
+	if not bool(r.get("ok", false)) and str(r.get("reason", "")) != "not_due":
+		_toast(_seeded_fail_text(str(r.get("reason", ""))))
 	_offer_from_gs()
 	if refresh:
 		_sel = -1
@@ -1163,7 +1196,7 @@ func _online_or_wait(resume: Callable) -> bool:
 
 
 func _on_buy(idx: int) -> void:
-	if _econ_wait or idx < 0 or idx >= _offer.size() or _offer[idx] == null:
+	if _waiting() or idx < 0 or idx >= _offer.size() or _offer[idx] == null:
 		return
 	if not _online_or_wait(_on_buy.bind(idx)):
 		return
@@ -1364,7 +1397,7 @@ func _build_level_row(btn_pos: Vector2) -> void:
 
 
 func _on_buy_xp() -> void:
-	if _econ_wait:
+	if _waiting():
 		return
 	if not _online_or_wait(_on_buy_xp):
 		return
@@ -1483,7 +1516,7 @@ func _coin_after_text(b: Button) -> void:
 
 
 func _on_toggle_lock() -> void:
-	if _econ_wait:
+	if _waiting():
 		return
 	## 锁 / 解锁并把戳对齐当前场次(货架就是本场次的货), 记账在 EconLedger
 	EconLedger.do(GameState, {"op": "lock", "on": not bool(GameState.meta_shop_locked)})
@@ -1493,7 +1526,7 @@ func _on_toggle_lock() -> void:
 
 
 func _on_refresh() -> void:
-	if _econ_wait:
+	if _waiting():
 		return
 	if not _online_or_wait(_on_refresh):
 		return
@@ -1507,6 +1540,17 @@ func _on_refresh() -> void:
 	var rr: Dictionary = EconNet.seeded({"op": "refresh"}, _next_seed(), _after_seeded.bind(true))
 	if bool(rr.get("pending", false)):
 		_econ_wait = true
+		_econ_wait_t0 = Time.get_ticks_msec()
+		return
+	## ★当场没成(正在同步 / 积压 / 发不出去 / 钱不够)原来不提示, 直接重画原货架 ⇒ 玩家看到的是「点了没反应」
+	##   (11-22 LouisT01 反馈「刷新不了啊」)。现在每种原因说一句。
+	if not bool(rr.get("ok", true)):
+		_toast(_seeded_fail_text(str(rr.get("reason", ""))))
+		## 报一条诊断(哪一种原因): 下次再有人说「点刷新没反应」, 报错表里直接看得到是哪条路
+		ErrorReporter.report("econ", "shop refresh fail: " + str(rr.get("reason", "")),
+			"busy=%s up=%d log=%d last=%s" % [str(EconNet.busy), int(GameState.econ_up), (GameState.econ_log as Array).size(), EconNet.last_error],
+			"refresh|" + str(rr.get("reason", "")))
+		_rebuild()
 		return
 	_offer_from_gs()
 	## ★换了一批货, 原来选着的那件已经不在了 ⇒ 不选任何一件(原来下标留着, 新货架同一格的货被自动选中)。

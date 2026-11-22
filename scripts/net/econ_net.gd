@@ -22,6 +22,13 @@ static var commits := 0       # 发出去几次(门禁量「真发了」)
 static var last_error := ""   # 最近一次失败的原因(mismatch / taken = 本机与服务器账不一致, S4 对齐)
 static var adopts := 0       # 按服务器流水对齐了几次(门禁量)
 static var stale_rolls := 0  # 发现本机流水是上一周的、先换了周的次数(门禁量)
+## ★「忙」卡死自愈(11-22 LouisT01 反馈「刷新不了啊」): 每一趟提交的回调都会解开 busy, 但回调要等请求节点进树、拿到令牌;
+##   万一回调永远不来(节点没进树 / 令牌一直等不到), busy 一直是真 ⇒ 之后每次刷新 / 掷货都当场「正忙」失败, 直到重开 App。
+##   超过 BUSY_STALE_MS(请求看门狗 15 秒 + 等令牌 15 秒 + 余量)还没解开 ⇒ 当它卡死: 解开、计数、报一条诊断。
+const BUSY_STALE_MS := 35000
+static var busy_since := 0
+static var stale_resets := 0  # 卡死自愈了几次(门禁量)
+static var _drift_reported := 0  # 已经报过的哨兵漂移次数(只报新增的)
 
 
 static func on() -> bool:
@@ -30,7 +37,7 @@ static func on() -> bool:
 
 ## 开局前还要等吗: 有没传的流水 / 有提交在路上。开关关着恒 false。
 static func unsynced() -> bool:
-	return on() and (busy or int(GameState.econ_up) < (GameState.econ_log as Array).size())
+	return on() and (_busy_now() or int(GameState.econ_up) < (GameState.econ_log as Array).size())
 
 
 ## 上传被服务器拒了(本机与服务器两份账不一致, 传多少次都一样)⇒ 只能按服务器那份对齐。
@@ -128,7 +135,7 @@ static func seeded(op: Dictionary, local_seed: int, done: Callable) -> Dictionar
 		return EL.do(gs, row)
 	if not str(row.get("op", "")) in KINDS:
 		return {"ok": false, "reason": "bad_kind"}
-	if busy:
+	if _busy_now():
 		return {"ok": false, "reason": "busy"}
 	roll_if_stale()                    # 上一周的流水不跟着这一趟传(换周后从本周空账起)
 	## 先过一次哨兵: 它可能要补一条 prog(宝箱 / 香火终值)—— 那一条必须排在种子那一条前面、跟着这一趟一起传
@@ -139,7 +146,7 @@ static func seeded(op: Dictionary, local_seed: int, done: Callable) -> Dictionar
 	if want != (gs.econ_log as Array).size():
 		pump()                         # 积压超过一批: 先传一批, 这一下请玩家再点一次
 		return {"ok": false, "reason": "backlog"}
-	busy = true
+	_take()
 	var sent := _send(from, ops, str(row["op"]), func(r: Dictionary) -> void:
 		busy = false
 		if not bool(r.get("ok", false)):
@@ -164,12 +171,12 @@ static func seeded(op: Dictionary, local_seed: int, done: Callable) -> Dictionar
 ## 本机按服务器那份流水对齐(S4b: 开局回 econ_mismatch / econ_invalid)。`at` ≥ 0 = 服务器判第 at 条不合法 ⇒ 先认它、把那条起作废
 ##   (econ_truncate), 再拉流水在本机重放(EconReplay.adopt)。`done.call(对齐了没有)` 恰好一次。
 static func adopt_async(at: int, done: Callable) -> void:
-	if not on() or busy or not SB.enabled():
+	if not on() or _busy_now() or not SB.enabled():
 		done.call(false)
 		return
 	if roll_if_stale():
 		at = -1                        # 换了周: 服务器说的「第 at 条」是上一周的账, 本周从头拉
-	busy = true
+	_take()
 	if at < 0:
 		_fetch_adopt(done)
 		return
@@ -248,7 +255,8 @@ static func parse_rows(ok: bool, code: int, body: String) -> Dictionary:
 ## 把还没传的流水传上去(开关关 / 正忙 / 没有要传的 ⇒ 不发)。返回是否发了。
 static func pump() -> bool:
 	var gs = GameState
-	if not on() or busy:
+	_report_drift(gs)
+	if not on() or _busy_now():
 		return false
 	if roll_if_stale():
 		return false                   # 上一周的流水随换周清掉了, 一条都不传
@@ -256,7 +264,7 @@ static func pump() -> bool:
 	if ops.is_empty():
 		return false
 	var from := clampi(int(gs.econ_up), 0, (gs.econ_log as Array).size())
-	busy = true
+	_take()
 	var sent := _send(from, ops, "", func(r: Dictionary) -> void:
 		busy = false
 		if bool(r.get("ok", false)):
@@ -269,3 +277,32 @@ static func pump() -> bool:
 	if not sent:
 		busy = false
 	return sent
+
+
+static func _take() -> void:
+	busy = true
+	busy_since = Time.get_ticks_msec()
+
+
+## busy 还算不算数: 卡了超过 BUSY_STALE_MS ⇒ 当它卡死, 解开并报一条诊断(见 BUSY_STALE_MS 头注)。
+static func _busy_now() -> bool:
+	if busy and Time.get_ticks_msec() - busy_since > BUSY_STALE_MS:
+		busy = false
+		stale_resets += 1
+		last_error = "stale_busy"
+		ErrorReporter.report("econ", "econ busy stuck %d ms" % (Time.get_ticks_msec() - busy_since),
+			"commits=%d adopts=%d up=%d log=%d" % [commits, adopts, int(GameState.econ_up), (GameState.econ_log as Array).size()],
+			"busy_stale")
+	return busy
+
+
+## 本机账本哨兵记到了流水之外的改动(econ_drift)⇒ 把那一条(哪个时刻、哪几块资产)报上来。
+##   由来(11-22): 测试号 alex1997 服务器重放第 327 条「equip shell」判 full, 手机上却装上了 —— 两边账在更早就分岔了,
+##   而漂移记录只存在手机存档里(GameState.econ_drift_note), 服务器这边看不到从哪一步开始。同一条记录每进程只报一次。
+static func _report_drift(gs) -> void:
+	if gs == null or int(gs.econ_drift) <= _drift_reported:
+		return
+	_drift_reported = int(gs.econ_drift)
+	ErrorReporter.report("econ", "econ drift: " + str(gs.econ_drift_note),
+		"drift=%d up=%d log=%d bt=%d" % [int(gs.econ_drift), int(gs.econ_up), (gs.econ_log as Array).size(), int(gs.season_total_battles)],
+		"drift|" + str(gs.econ_drift_note))
