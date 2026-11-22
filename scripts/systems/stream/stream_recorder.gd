@@ -77,7 +77,9 @@ const UKEYS := ["_active_cd", "_anemoneShield", "_appearance", "_atk_voff", "_au
 	"face_right", "flash_col", "flash_t", "height", "hp", "is_big_bear", "is_summon", "is_trainer",
 	"magic_shield", "maxChargePct", "maxEnergy", "maxHp", "phase_until", "pos", "rage", "rageMax", "rum_glow_until",
 	"shield", "size_mult", "skill_cd", "spd_dbf_until", "star_energy", "stone_init_def", "store_energy",
-	"true_fire_until", "type", "urchin_sh_left", "stacks", "_eff_side", "level"]
+	"true_fire_until", "type", "urchin_sh_left", "stacks", "_eff_side", "level",
+	## 11-22 头顶徽章要的(播放端原来一个徽章都不画, 补排版时量出这两项不在流里): 赛博龟智能 AI 充能层 / 猎杀印记到期时刻
+	"cyber_ai_charge", "hunt_mark_until"]
 ## (S2 拿掉了 anim_t / anim_t0: 渲染步每次都推它、每次采样都在变, 而手机不推立绘帧(帧号走镜像), 用不上。)
 const UKEYS_STEP := ["alive", "anim_action", "side"]   # 逐步(离散)
 ## S2 补(2026-10-19, 手机播放端实测缺的): 血条 / 龟能条 / 等级牌要的、小将 / 召唤物身份。

@@ -421,6 +421,7 @@ func build() -> void:
 		colv.add_child(rows)
 		cols.add_child(colv)
 		_cols.append(rows)
+	panel.z_index = 15   # 常驻界面升到 z 2(battle_hud.HUD_Z, 11-22)后仍盖住顶栏与两侧卡片(同信息面板 15)
 	_ui_layer.add_child(panel)
 	var t := Timer.new()
 	t.wait_time = 0.4

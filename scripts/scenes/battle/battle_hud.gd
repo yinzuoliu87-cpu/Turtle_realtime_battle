@@ -8,6 +8,11 @@ const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 教�
 ## 结算屏等"阵容已上传"回执的轮询节奏。总等待 = 0.4 × 20 = 8 秒,
 ## 比 RemotePool.TIMEOUT_SEC(6 秒) 略长 —— 请求要么在这之前回来, 要么已经放弃了。
 const UPLOAD_FLASH_POLL := 0.4
+## 常驻界面(两侧队伍卡片 / 顶栏 / 计时盘 / 战报按钮 / 日志)画在战斗飘字(0)上面(11-22 全场排查):
+##   它们与飘字同在 _ui_layer、z 都是 0 ⇒ 后冒的飘字画在上面, 战场边上打出来的伤害 / 治疗数字压住卡片上的装备与头像
+##   (探针 tests/probes/_probe_cover_sweep)。取 2: 仍在装备闪屏(3)与信息面板(15)之下, 不改它们原来盖住全部界面的样子。
+##   层级: 飘字 / 血条 / 头顶徽章 0 < 常驻界面 2 < 装备闪屏 3 < 信息面板 15 < 技能小卡 16 < 顶栏弹层 19~20 < 结算 / 换路幕布 50。
+const HUD_Z := 2
 const UPLOAD_FLASH_TRIES := 20
 
 const _P2T_HUD := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 的类型图标
@@ -129,6 +134,7 @@ func _build_topright_btns() -> void:
 	##   (原来是 无标题 / 伤害统计 / 战斗数据 三个名字指同一件事)。
 	_stats_btn = _mk_icon_btn(ICON_STATS, _pos["stats"], "战报")
 	_stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
+	_stats_btn.z_index = HUD_Z
 	battle._ui_layer.add_child(_stats_btn)
 
 	## ★2026-10-19 用户「投降不要了」: 认输键与确认框整个删掉(服务器算的对局里没有投降)。
@@ -434,6 +440,7 @@ func _build_pk_bar() -> void:
 	bar.offset_top = _top
 	bar.offset_bottom = _top + PK_H + PK_EGG_GAP + PK_TAG_H
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 纯显示, 别吃战场点击
+	bar.z_index = HUD_Z
 	battle._ui_layer.add_child(bar)
 	_pk_bar = bar
 
@@ -1067,6 +1074,7 @@ func _build_log_panel() -> void:
 	battle._log_rt.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	battle._log_rt.add_theme_font_size_override("normal_font_size", 14)
 	vb.add_child(battle._log_rt)
+	battle._log_panel.z_index = HUD_Z
 	battle._ui_layer.add_child(battle._log_panel)
 
 
@@ -1102,6 +1110,7 @@ func _build_spell_disc(act = null, pas = null) -> void:
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var m: Vector4 = SafeArea.margins(vp, 18.0)
 	battle._spell_disc.position = Vector2(vp.x - battle.SpellDisc.R * 2.0 - m.z, vp.y - battle.SpellDisc.R * 2.0 - m.w)
+	battle._spell_disc.z_index = HUD_Z
 	battle._ui_layer.add_child(battle._spell_disc)
 	if sid == "" and _pas != "":
 		_build_passive_ring(battle._spell_disc)
@@ -1706,6 +1715,8 @@ func _build_team_panels() -> void:
 			_old.queue_free()
 	battle._team_panel_left = battle._info_sys._make_team_column("left")
 	battle._team_panel_right = battle._info_sys._make_team_column("right")
+	battle._team_panel_left.z_index = HUD_Z
+	battle._team_panel_right.z_index = HUD_Z
 	battle._ui_layer.add_child(battle._team_panel_left)
 	battle._ui_layer.add_child(battle._team_panel_right)
 	## ★2026-11-16 画幅取景: 两栏建好后按真实画幅 + 栏内沿 + 蛋的位置算镜头退多远(16:9 / iPad 蛋别钻到栏底下, 手机不变), 见 cam_fit.gd
@@ -2564,6 +2575,7 @@ func _await_own_result(won: bool) -> void:
 		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 		lb.add_theme_constant_override("outline_size", 6)
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lb.z_index = 15   # 常驻界面升到 z 2(battle_hud.HUD_Z, 11-22)后仍在顶栏 / 卡片上面(同信息面板)
 		battle._ui_layer.add_child(lb)
 	var t := Timer.new()
 	t.name = N_LIVE_CONFIRM

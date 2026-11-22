@@ -700,6 +700,7 @@ func _dl_flash_screen(col: Color, dur: float) -> void:
 	r.color = Color(col.r, col.g, col.b, 0.0)
 	r.set_anchors_preset(Control.PRESET_FULL_RECT)
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.z_index = 3   # 同装备闪屏: 常驻界面升到 z 2(battle_hud.HUD_Z, 11-22)后仍盖住全部常驻界面
 	battle._ui_layer.add_child(r)
 	var tw = battle.create_tween()
 	tw.tween_property(r, "color:a", 0.34, dur * 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -976,6 +977,10 @@ func _dl_clear_units() -> void:
 		var br = u.get("bar_root", null)
 		if is_instance_valid(br):
 			br.queue_free()
+		## 头顶叠层 / 状态徽章(电击 / 墨迹 / 结晶 / 芯片…)也是挂在 _ui_layer 上的节点, 跟血条一样要收:
+		##   原来只有死亡时收(_on_unit_death), 活着进下一路的单位的徽章留在原地 ——
+		##   探针 tests/probes/_probe_cover_sweep 量到 5 局里约四分之一的采样画面上挂着没有主人的徽章(11-22)。
+		battle._free_head_badges(u)
 	battle._units.clear()
 	for pr in battle._projectiles:
 		var pn = pr.get("node", null)

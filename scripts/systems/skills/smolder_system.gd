@@ -68,6 +68,7 @@ func _smolder_flash() -> void:
 	rect.color = Color(1.0, 0.85, 0.6, 0.0)
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.z_index = 3   # 同装备闪屏: 常驻界面升到 z 2(battle_hud.HUD_Z, 11-22)后仍盖住全部常驻界面
 	battle._ui_layer.add_child(rect)
 	var tw = battle._reg_tween()
 	tw.tween_property(rect, "color:a", 0.3, 0.05)

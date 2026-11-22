@@ -572,6 +572,7 @@ func _unit_del(idx: int) -> void:
 	var root = (u as Dictionary).get("bar_root")
 	if root != null and is_instance_valid(root):
 		(root as Node).queue_free()
+	battle._free_head_badges(u)   # 头顶叠层 / 状态徽章(播放端 `_render` 每帧排的, 见那里)
 	var ul: Array = battle._units
 	for i in range(ul.size()):
 		if is_same(ul[i], u):
@@ -835,6 +836,13 @@ func _render(dt: float) -> void:
 			if dt > 0.0:
 				fx.ts.ts_screen_tick(dt)
 	battle._render._render_step(dt, float(battle._hitstop) > 0.0, false)
+	## 头顶叠层 / 状态徽章(电击 / 墨迹 / 结晶 / 赛博充能 / 猎杀印记 / 侵入芯片): 本机是 sim 步里 `_tick_unit` 排的,
+	##   播放端不跑 sim ⇒ 原来一个都不画(11-22 用户「闪电龟被动的图标现在是看不到吗」;
+	##   探针 tests/probes/_probe_stream_badges: 同一局本机可见 149 个、播放端 0 个, 而层数字段流里一直有)。
+	##   放在渲染步之后: 锚点读的是这一帧刚插值好的位置; 排版本身只摆 _ui_layer 上的节点, 不碰对局。
+	for u in units.values():
+		if u is Dictionary:
+			battle._layout_head_badges(u)
 
 
 func _set_ts_active() -> void:
@@ -948,6 +956,7 @@ func _update_label() -> void:
 			return
 		_sync_lbl = Label.new()
 		_sync_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_sync_lbl.z_index = 15   # 摆在屏幕正上方、跟顶栏叠着; 常驻界面升到 z 2(battle_hud.HUD_Z, 11-22)后仍要画在顶栏上面
 		_sync_lbl.position = Vector2(-60, 96)
 		_sync_lbl.size = Vector2(120, 28)
 		_sync_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
