@@ -184,6 +184,32 @@ func _ready() -> void:
 	_ok("⑥b ★过冲峰值仍塞得进格子(%.2f px < 间距 %.0f)" % [foot, step_min], foot < step_min,
 		"弹到 %.2f px 超过间距 %.0f —— 弹的时候会撞邻居" % [foot, step_min])
 
+	# ── ⑦ 层数数字只挂在图标右下角, 不盖住图标本身 ──
+	# 由来(11-22 用户「闪电龟被动的图标现在是看不到吗」): 数字偏移原来写死 (sz-15, sz-20),
+	#   是按 34px 图标定的; 08-05 图标缩到 24px 后数字落到图标正中, 细长的闪电图标被「1」整个挡住。
+	#   上面 ①~⑥ 只量图标方块, 数字盖不盖图标没人量 —— 所以一直绿。
+	# 量的是节点上真实的标签框(位置 + 大小), 走真入口 `_layout_head_badges`; 一位数 / 两位数各量一次。
+	var sz: float = RB.HEAD_ITEM_SZ
+	var icon_r := Rect2(0, 0, sz, sz)
+	var icon_c := Vector2(sz * 0.5, sz * 0.5)
+	for nn in [1, 8, 12]:
+		var u4: Dictionary = s._spawn._make_unit("basic", "left", o)
+		u4["alive"] = true
+		u4["pos"] = o
+		u4["stacks"] = {"electric": nn}
+		s._units.append(u4)
+		s._layout_head_badges(u4)
+		var b4 = (u4.get("_hbrow_stack", []) as Array)[0]
+		var lb := b4.get_node("num") as Label
+		var lr := Rect2(lb.position, lb.size)
+		var cover: float = lr.intersection(icon_r).get_area() / icon_r.get_area()
+		_ok("⑦a ★层数 %d: 数字框只占图标右下角(框 %s, 盖住图标 %.0f%% ≤ 35%%)" % [nn, str(lr), cover * 100.0],
+			lb.text == str(nn) and cover <= 0.35 and lr.end.x > sz and lr.end.y > sz,
+			"文字「%s」框 %s 盖住图标 %.0f%% —— 数字压在图标上, 细图标(闪电)会整个看不见" % [lb.text, str(lr), cover * 100.0])
+		if nn < 10:
+			_ok("⑦b ★层数 %d: 数字框不罩住图标中心" % nn, not lr.has_point(icon_c),
+				"框 %s 罩住了图标中心 %s" % [str(lr), str(icon_c)])
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 头顶徽章几何" if _fail == 0 else "FAIL x%d" % _fail)

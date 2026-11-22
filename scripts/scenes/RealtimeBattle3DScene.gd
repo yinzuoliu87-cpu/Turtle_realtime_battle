@@ -5596,6 +5596,8 @@ const HEAD_COLS := 3              # 每行列数
 const HEAD_ROW_CAP := 6           # 最多项数(3 列 × 2 行)
 const HEAD_ITEM_SZ := 24.0        # 网格里每项的边长(原来 32~44 摆不下)·★24 而不是 26: 弹入过冲峰值 1.12 倍 → 26.9px, 必须仍 < 列距 27
 const HEAD_POP_T := 0.20          # 徽章出现的弹入时长(秒)
+const HEAD_NUM_FONT := 13         # 叠层数字字号(图标 24px; 原 17 号压满半个图标)
+const HEAD_NUM_OVER := 3.0        # 数字框右下角探出图标右下角的像素(只盖住图标一角, verify_head_badges ⑦ 守)
 const HEAD_POP_BACK := 1.70158    # 弹入回弹系数(标准 easeOutBack)·峰值约 1.099 倍 → 24*1.099=26.4 < 列距 27
 
 func _layout_head_badges(u: Dictionary) -> void:
@@ -5660,7 +5662,12 @@ func _layout_head_row(u: Dictionary, store: String, items: Array, anchor: Vector
 		var lbl := b.get_node("num") as Label
 		var nn: int = int(it.get("n", 0))
 		lbl.text = str(nn) if nn > 0 else ""
-		lbl.position = Vector2(sz - 15.0, sz - 20.0)   # 数字挂图标右下角(叠加数样式)→图标+数字紧凑居中一体·不外扩偏心
+		# 数字挂图标右下角(叠加数样式), 右下各探出 HEAD_NUM_OVER。★按标签实际大小算, 不写死偏移:
+		#   原来写死 (sz-15, sz-20) 是按 34px 图标定的, 08-05 图标缩到 24px 后数字落到图标正中,
+		#   细长的闪电图标被「1」整个挡住(用户 11-22「闪电龟被动的图标现在是看不到吗」)。
+		var nms: Vector2 = lbl.get_minimum_size()
+		lbl.size = nms
+		lbl.position = Vector2(sz + HEAD_NUM_OVER - nms.x, sz + HEAD_NUM_OVER - nms.y)
 		b.visible = true
 		b.modulate.a = pa
 		# 网格坐标：本行的列数可能少于 HEAD_COLS（最后一行），要按本行自己居中
@@ -5701,10 +5708,10 @@ func _make_head_badge() -> Control:
 	root.add_child(icon)
 	var lbl := Label.new()
 	lbl.name = "num"
-	lbl.add_theme_font_size_override("font_size", 17)
+	lbl.add_theme_font_size_override("font_size", HEAD_NUM_FONT)
 	lbl.add_theme_color_override("font_color", Color(1, 1, 1))
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	lbl.add_theme_constant_override("outline_size", 5)
+	lbl.add_theme_constant_override("outline_size", 4)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(lbl)
 	return root
