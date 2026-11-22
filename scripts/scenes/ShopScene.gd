@@ -301,7 +301,14 @@ func _roll() -> void:
 	var why := str(r.get("reason", ""))
 	if not bool(r.get("ok", true)) and why in ["busy", "backlog"] and _roll_retry < ROLL_RETRY_MAX:
 		_roll_retry += 1
-		get_tree().create_timer(1.0).timeout.connect(_roll_again)
+		## 挂在自己身上的一次性 Timer(离场跟着没, 不用树级计时器 —— tools/tree_timer_audit)
+		var rt := Timer.new()
+		rt.one_shot = true
+		rt.wait_time = 1.0
+		rt.autostart = true
+		rt.timeout.connect(_roll_again)
+		rt.timeout.connect(rt.queue_free)
+		add_child(rt)
 	elif not bool(r.get("ok", true)) and why != "not_due":
 		_toast(_seeded_fail_text(why))
 	_offer_from_gs()
