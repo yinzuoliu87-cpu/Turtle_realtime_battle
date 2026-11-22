@@ -28,7 +28,6 @@ static var stale_rolls := 0  # 发现本机流水是上一周的、先换了周�
 const BUSY_STALE_MS := 35000
 static var busy_since := 0
 static var stale_resets := 0  # 卡死自愈了几次(门禁量)
-static var _drift_reported := 0  # 已经报过的哨兵漂移次数(只报新增的)
 
 
 static func on() -> bool:
@@ -174,6 +173,7 @@ static func adopt_async(at: int, done: Callable) -> void:
 	if not on() or _busy_now() or not SB.enabled():
 		done.call(false)
 		return
+	_report_adopt(GameState, at)
 	if roll_if_stale():
 		at = -1                        # 换了周: 服务器说的「第 at 条」是上一周的账, 本周从头拉
 	_take()
@@ -255,7 +255,6 @@ static func parse_rows(ok: bool, code: int, body: String) -> Dictionary:
 ## 把还没传的流水传上去(开关关 / 正忙 / 没有要传的 ⇒ 不发)。返回是否发了。
 static func pump() -> bool:
 	var gs = GameState
-	_report_drift(gs)
 	if not on() or _busy_now():
 		return false
 	if roll_if_stale():
@@ -296,13 +295,13 @@ static func _busy_now() -> bool:
 	return busy
 
 
-## 本机账本哨兵记到了流水之外的改动(econ_drift)⇒ 把那一条(哪个时刻、哪几块资产)报上来。
-##   由来(11-22): 测试号 alex1997 服务器重放第 327 条「equip shell」判 full, 手机上却装上了 —— 两边账在更早就分岔了,
-##   而漂移记录只存在手机存档里(GameState.econ_drift_note), 服务器这边看不到从哪一步开始。同一条记录每进程只报一次。
-static func _report_drift(gs) -> void:
-	if gs == null or int(gs.econ_drift) <= _drift_reported:
+## 服务器判本机账不对、要按服务器那份对齐的那一刻: 把服务器判坏的序号 + 本机账本哨兵记到的漂移(econ_drift_note)报上来。
+##   由来(11-22): 测试号 alex1997 服务器重放第 327 条「equip shell」判 full, 手机上却装上了 —— 两边账更早就分岔,
+##   而漂移记录原来只在手机存档里, 看不到从哪一步开始。只在对齐时报(罕见、正是要查的那一刻); 平时上传不报 ——
+##   测试 / 看录像里直接摆状态也会让哨兵记一笔, 每次上传都报全是噪声(verify_replay_watch「一个请求都不发」抓到过)。
+static func _report_adopt(gs, at: int) -> void:
+	if gs == null:
 		return
-	_drift_reported = int(gs.econ_drift)
-	ErrorReporter.report("econ", "econ drift: " + str(gs.econ_drift_note),
-		"drift=%d up=%d log=%d bt=%d" % [int(gs.econ_drift), int(gs.econ_up), (gs.econ_log as Array).size(), int(gs.season_total_battles)],
-		"drift|" + str(gs.econ_drift_note))
+	ErrorReporter.report("econ", "econ adopt at=%d drift=%d: %s" % [at, int(gs.econ_drift), str(gs.econ_drift_note)],
+		"up=%d log=%d bt=%d last=%s" % [int(gs.econ_up), (gs.econ_log as Array).size(), int(gs.season_total_battles), last_error],
+		"adopt|%d|%s" % [at, str(gs.econ_drift_note)])
