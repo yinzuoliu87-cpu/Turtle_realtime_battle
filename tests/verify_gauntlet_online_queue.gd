@@ -152,9 +152,12 @@ const RANKED := {
 	##   用户 11-19「希望改为随一大轮保留…就跟命运之轮一一样的」): **有意**改积分赛会走的 build_ghost_snapshot —— 只在长过时多带
 	##   bamboo_hp(没长过的快照一字不变, 同 11-06 命运之轮 wheel_stacks); 新加的 ghost_bamboo_hp 是它调用的(积分赛也走)⇒ 进 units(59 → 60),
 	##   不算周六专用。499da8ef → 9046cdd3 只改这一个、只加这一个、没有挪走函数 ⇒ 挪基线判据不变松; 摘要按本表口径现算。
+	## ★2026-11-23 每个号永久拥有 basic(提交 3effe0d1, 方案书 docs/plans/20261123b-新号送basic.md; 用户 11-22 拍板「新玩家一进游戏
+	##   永久送一只 basic」): **有意**改积分赛会走的 make_bot —— 兜底机器人从「basic ∪ 限免 7 只」(WeeklyFree.allowed_ids)里抽统领,
+	##   与真人同一池; 洗牌消耗的随机数个数不变。9046cdd3 → 3effe0d1 只改这一个、没有新加 / 挪走函数 ⇒ 挪基线判据不变松; 摘要现算。
 	"scripts/net/backend.gd": {
-		"base": "9046cdd3",
-		"digest": "76d7da63922be8c5fbc5d160fa2430e6a1ce00cc8a1ab8b07235035fce3b8fa0",
+		"base": "3effe0d1",
+		"digest": "b49647f2875abf821f9292209a485adf455c47cf9fa2d1816bd7810850569897",
 		"views": {},
 		"sat_only": [],
 		"units": [
