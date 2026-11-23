@@ -168,7 +168,7 @@ static func round_line(b: Dictionary, now: int, fmt: Callable, watched_keys: Dic
 				next_i = i
 		elif now < int(it[2]) and not watched_keys.has(int(it[0])):
 			live.append(i)
-	var shop_tail := ("距下一轮备战 %s" % fmt.call(shop_at - now)) if (not closed and shop_at > now) else ""
+	var shop_tail := (Lang.t("距下一轮备战 %s") % fmt.call(shop_at - now)) if (not closed and shop_at > now) else ""
 	if not live.is_empty():
 		var head := ""
 		if single:

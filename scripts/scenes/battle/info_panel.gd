@@ -828,10 +828,10 @@ func _skill_status_line(u: Dictionary, sk) -> String:
 	var es: Array = _energy_state(u, stype)
 	var head := Lang.t("龟能 %d / %d") % [int(es[0]), int(es[1])]
 	if battle._t < float(u.get("energy_lock_until", 0.0)):
-		return head + "，锁定 %.1f 秒\n" % (float(u.get("energy_lock_until", 0.0)) - battle._t)
+		return head + Lang.t("，锁定 %.1f 秒\n") % (float(u.get("energy_lock_until", 0.0)) - battle._t)
 	if float(es[2]) <= 0.001:
 		return head + "，已就绪\n"
-	return head + "，剩余 %.1f 秒\n" % float(es[2])
+	return head + Lang.t("，剩余 %.1f 秒\n") % float(es[2])
 
 
 ## 技能描述框里印的那一段字 —— 【建面板 / 点开 / 每帧刷新】三处同源(2026-09-28)。
@@ -1084,21 +1084,21 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 			var mhp: float = float(u.get("maxHp", 0.0))
 			var add: int = int(round(mhp * pc))
 			if add > 0:
-				out.append("获得 %d 额外攻击力" % add)
-				out.append("%s%%×最大生命值(%d) = %d" % [_num(pc * 100.0), int(round(mhp)), add])
+				out.append(Lang.t("获得 %d 额外攻击力") % add)
+				out.append(Lang.t("%s%%×最大生命值(%d) = %d") % [_num(pc * 100.0), int(round(mhp)), add])
 		"rapier":
 			var sp: int = int(round(float(st.get("aspd_given", 0.0)) * 100.0))
 			if sp > 0:
-				out.append("获得 %d%% 攻击速度" % sp)
-				out.append("%s×已损失生命值百分比(%d) = %d%%" % [_num(float(st.get("aspd_coef", 0.0))), int(round(float(st.get("aspd_lost", 0.0)))), sp])
+				out.append(Lang.t("获得 %d%% 攻击速度") % sp)
+				out.append(Lang.t("%s×已损失生命值百分比(%d) = %d%%") % [_num(float(st.get("aspd_coef", 0.0))), int(round(float(st.get("aspd_lost", 0.0)))), sp])
 			var n: int = int(st.get("stacks", 0))
 			var amp: int = int(round(float(st.get("amp_given", 0.0)) * 100.0))
 			if n > 0 and amp > 0:
-				out.append("获得 %d%% 增伤" % amp)
-				out.append("%s%%×连击层数(%d) = %d%%" % [_num(float(st.get("amp_coef", 0.0)) * 100.0), n, amp])
+				out.append(Lang.t("获得 %d%% 增伤") % amp)
+				out.append(Lang.t("%s%%×连击层数(%d) = %d%%") % [_num(float(st.get("amp_coef", 0.0)) * 100.0), n, amp])
 		"tide":
 			if bool(st.get("tide_on", false)):
-				out.append("涨潮中：获得 %d 最大生命值、%d 攻击力" % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])
+				out.append(Lang.t("涨潮中：获得 %d 最大生命值、%d 攻击力") % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])
 	return out
 
 
@@ -1126,20 +1126,20 @@ static func eq_stats_text(u: Dictionary, eid: String) -> String:
 		if int(dmg[k]) > 0:
 			split.append("%s %d" % [k, int(dmg[k])])
 	if total > 0:
-		lines.append("造成伤害 %d" % total + ("（%s）" % " · ".join(split) if split.size() >= 2 else ""))
+		lines.append(Lang.t("造成伤害 %d") % total + ("（%s）" % " · ".join(split) if split.size() >= 2 else ""))
 	var heal: int = int(round(float(st.get("heal", 0.0))))
 	if heal > 0:
-		lines.append("治疗 %d" % heal)
+		lines.append(Lang.t("治疗 %d") % heal)
 	var shield: int = int(round(float(st.get("shield", 0.0))))
 	if shield > 0:
-		lines.append("护盾 %d" % shield)
+		lines.append(Lang.t("护盾 %d") % shield)
 	## 060 磷光水母伞(11-12 用户「补个回血…补个格挡，以减免伤害」): 伞那份减伤挡掉的量 / 伞下闪避次数
 	var blocked: int = int(round(float(st.get("blocked", 0.0))))
 	if blocked > 0:
-		lines.append("减免伤害 %d" % blocked)
+		lines.append(Lang.t("减免伤害 %d") % blocked)
 	var dodge: int = int(round(float(st.get("dodge", 0.0))))
 	if dodge > 0:
-		lines.append("闪避 %d 次" % dodge)
+		lines.append(Lang.t("闪避 %d 次") % dodge)
 	## 11-15 补齐(用户「压电陶瓷片…已获得龟能」「辣椒…施加流血层数是多少多少层」): 结果数 + 次数 / 层数, 只列非零
 	for row in EQ_STAT_LINES:
 		var v: int = int(round(float(st.get(str(row[0]), 0.0))))
@@ -1181,11 +1181,11 @@ func _equip_readout_text(u: Dictionary, eid: String, ck: String = "") -> String:
 		var cap: float = float(c[1])
 		var cur: float = clampf(float(stt.get(str(c[0]), 0.0)), 0.0, cap)
 		if absf(cap - 100.0) < 0.001:
-			parts.append("充能 %d%%" % int(round(cur)))
+			parts.append(Lang.t("充能 %d%%") % int(round(cur)))
 		else:
-			parts.append("充能 %s / %s" % [battle._fmt_num(cur), battle._fmt_num(cap)])
+			parts.append(Lang.t("充能 %s / %s") % [battle._fmt_num(cur), battle._fmt_num(cap)])
 	if EquipReadouts.COUNT.has(eid):
-		parts.append("层数 %d" % int(stt.get(str(EquipReadouts.COUNT[eid]), 0)))
+		parts.append(Lang.t("层数 %d") % int(stt.get(str(EquipReadouts.COUNT[eid]), 0)))
 	if parts.is_empty():
 		return ""
 	## ★★两种读数【都有】的那 5 件要走紧凑式(2026-08-17 实拍抓到)。
@@ -1404,7 +1404,7 @@ func _axe_entries(u: Dictionary) -> Array:
 		"desc": str(b["body"]), "rows": b["rows"], "tpl": "", "sk": {}})
 	## 模板用半角括号: 换算正则(SkillText.equip_formula_re)全角半角都认, 换算后括号整个换成结果数字;
 	##   战斗界面源码字面量不许有全角括号(verify_hud_gamefeel ②)。
-	var k: Dictionary = battle.SkillText.live_formula_bb("%s攻击当前目标，造成 (%d%% 攻击力) 物理伤害。" % [
+	var k: Dictionary = battle.SkillText.live_formula_bb(Lang.t("%s攻击当前目标，造成 (%d%% 攻击力) 物理伤害。") % [
 		nm, roundi(BasicConsts.DEFAULT_BASIC_COEF * 100.0)], vars, 14)
 	out.append({"name": "攻击 (普攻)", "cost": -1.0, "icon": icon,
 		"desc": str(k["body"]), "rows": k["rows"], "tpl": "", "sk": {}})

@@ -1483,7 +1483,7 @@ static func champion_summary(buckets: Array, complete: bool) -> Dictionary:
 		var nm := str(names[sd]) if sd < names.size() else "神秘龟"
 		## ★冠军一律带 #玩家ID(用户 2026-10-04「名字 + #ID」): 这是全服名单, 不是一组里比重名。
 		var tg := str(tags[sd]) if sd < tags.size() else ""
-		lines.append(_CP.kv("%s冠军" % _CD.group_name(int(b.get("bucket", total - 1))), _CP.who(nm, tg)))
+		lines.append(_CP.kv(Lang.t("%s冠军") % _CD.group_name(int(b.get("bucket", total - 1))), _CP.who(nm, tg)))
 	var st := CH_NONE
 	if total > 0 and lines.size() == total:
 		st = CH_ALL
@@ -1513,7 +1513,7 @@ static func champion_text(cs: Dictionary) -> String:
 	## 太多组就收尾一行, 不让框顶出屏幕(10 人规模下最多 3 组, 这是防将来)。
 	var show: Array = lines.slice(0, 8)
 	if lines.size() > show.size():
-		show.append("…还有 %d 组" % (lines.size() - show.size()))
+		show.append(Lang.t("…还有 %d 组") % (lines.size() - show.size()))
 	var parts := PackedStringArray([head])
 	for ln in show:
 		parts.append(str(ln))
@@ -1557,7 +1557,7 @@ func _empty_text() -> String:
 		EK_NOT_SEATED:
 			return Lang.t("%s 公布分组") % _P2C.local_hhmm(feed_week() + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
-			return "本周决赛日取消\n晋级人数不足（%d 人），晋级记录保留" % int(_feed_view().get("entered", 0))
+			return Lang.t("本周决赛日取消\n晋级人数不足（%d 人），晋级记录保留") % int(_feed_view().get("entered", 0))
 		EK_FINALS_SOON:
 			## 开赛倒计时 + 已产生的组冠军(谁会进冠军杯赛)。
 			var left: int = _cup_start_ts() - _clock()
@@ -1565,20 +1565,20 @@ func _empty_text() -> String:
 				_week_view().has("buckets")))
 		EK_FINALS_LOCAL:
 			## 到点了还没成表: 说清在等开赛, 再列组冠军(★2026-10-04 的老规矩: 打完了就报出来, 不让人干等)。
-			return "%s即将开始\n" % _P2C.STAGE_CUP + champion_text(champion_summary(_champ_buckets(),
+			return Lang.t("%s即将开始\n") % _P2C.STAGE_CUP + champion_text(champion_summary(_champ_buckets(),
 				_week_view().has("buckets")))
 		EK_CUP_SOLO:
 			return cup_solo_text(_finals)
 		EK_GROUP_SOLO:
 			## 1 人组: 没有对局 ⇒ 说清去向与开赛时刻(本地时间)。
-			return "%s仅 1 人，直接晋级%s\n%s %s 开赛" % [sheet_name(_bucket), _P2C.STAGE_CUP, _P2C.STAGE_CUP,
+			return Lang.t("%s仅 1 人，直接晋级%s\n%s %s 开赛") % [sheet_name(_bucket), _P2C.STAGE_CUP, _P2C.STAGE_CUP,
 				_P2C.local_hhmm(_cup_start_ts())]
 		EK_SEATED:
 			return "正在生成对阵"
 		EK_SPECTATE:
 			return "本周未晋级决赛日"
 	## ★资格写成条件, 不写指令(原来「未晋级 · 需通过周六闯关赛」: 周日的观众做不到; Dota「…的玩家具有参赛资格。」)
-	return "本周未晋级决赛日\n%s" % _CP.kv("参赛资格", Lang.t("周六闯关赛 %d 胜") % int(_P2C.GAUNTLET_WINS_IN))
+	return Lang.t("本周未晋级决赛日\n%s") % _CP.kv("参赛资格", Lang.t("周六闯关赛 %d 胜") % int(_P2C.GAUNTLET_WINS_IN))
 
 
 ## 冠军杯赛开赛倒计时那一行。`left` = 距冠军杯赛开赛(FINALS_START_HOUR_UTC)还有几秒。
@@ -1594,7 +1594,7 @@ static func cup_solo_text(cup: Dictionary) -> String:
 	var tags: Array = cup.get("tags", []) if cup.get("tags", []) is Array else []
 	var nm := str(names[0]) if not names.is_empty() else "神秘龟"
 	var tg := str(tags[0]) if not tags.is_empty() else ""
-	return "本周仅 1 名组冠军，直接夺冠\n%s" % _CP.kv("冠军", _CP.who(nm, tg))
+	return Lang.t("本周仅 1 名组冠军，直接夺冠\n%s") % _CP.kv("冠军", _CP.who(nm, tg))
 
 
 ## 冠军杯赛已收盘且决赛不在开播窗口里 ⇒ 顶上那一行「冠军 · 名字 #ID」; 否则 ""。
@@ -2175,7 +2175,7 @@ func _open_popup(r: int, m: int) -> void:
 		vb.add_child(MatchCard.banner(_LS.TAG_PREMIERE, info, PREMIERE_RED, Color("#4a0f0b"), Color.WHITE, Color("#ffe1dc")))
 	else:
 		var wn := str(competitor(r, m, ws).get("name", "?")) if ws >= 0 else "?"
-		vb.add_child(MatchCard.banner("%s 获胜" % wn, info, Color("#3a2c1e"), Color("#1d1208"), _Hero.GOLD, Color("#e9d6a8")))
+		vb.add_child(MatchCard.banner(Lang.t("%s 获胜") % wn, info, Color("#3a2c1e"), Color("#1d1208"), _Hero.GOLD, Color("#e9d6a8")))
 	var body := HBoxContainer.new()
 	body.alignment = BoxContainer.ALIGNMENT_CENTER
 	body.add_theme_constant_override("separation", 24)
@@ -2618,7 +2618,7 @@ func _check_referee_watch() -> void:
 		return
 	if st == ST_UPCOMING:
 		var left := _PS.start_of(cur(), await_watch.x, await_watch.y) - srv_now()
-		_show_replay_msg("你的比赛 %s 开播" % _CP.at(srv_now() + left), ACCENT)
+		_show_replay_msg(Lang.t("你的比赛 %s 开播") % _CP.at(srv_now() + left), ACCENT)
 	_fetch_left = minf(_fetch_left, _RW.FINALS_POLL_SEC)
 
 

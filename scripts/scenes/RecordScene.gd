@@ -247,7 +247,7 @@ func _render_tabs() -> void:
 		var n := all.size() if key == "all" else all.filter(func(r) -> bool: return str((r as Dictionary).get("kind", "")) == key).size()
 		## 五个页签平分卡片宽(每个约 205): 长边 ≥ 200 才算好点(verify_ui_consistency 热区; 132×44 在 CI 抓过)。
 		var tab_w: float = floorf((PANEL_W - 8.0 * (TABS.size() - 1)) / TABS.size())
-		var bt := MatchCard.big_btn("%s %d" % [str(t[1]), n], N_TAB + key, Vector2(tab_w, 44),
+		var bt := MatchCard.big_btn("%s %d" % [Lang.t(str(t[1])), n], N_TAB + key, Vector2(tab_w, 44),
 			UISkin.PX_GOLD if key == tab else UISkin.PX_SLATE, 17)
 		bt.pressed.connect(func() -> void:
 			tab = key

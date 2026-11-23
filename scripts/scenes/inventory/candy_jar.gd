@@ -66,9 +66,9 @@ func _show_jar_reward(r: Dictionary) -> void:
 	for e in r.get("equips", []):
 		var eid := str((e as Dictionary).get("id", ""))
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-		lines.append("获得 %s %s" % [str(edef.get("name", eid)), "★".repeat(int((e as Dictionary).get("star", 1)))])
+		lines.append(Lang.t("获得 %s %s") % [str(edef.get("name", eid)), "★".repeat(int((e as Dictionary).get("star", 1)))])
 	if int(r.get("xp", 0)) > 0:
-		lines.append("大轮经验 +%d" % int(r.get("xp", 0)))
+		lines.append(Lang.t("大轮经验 +%d") % int(r.get("xp", 0)))
 	if int(r.get("levelers", 0)) > 0:
 		## ★原文是"🔼 临时等级器 ×1 → 进背包 (点它再点一只龟/小将, 本大轮 +1 级)":
 		##   箭头 + 括号注解 = 说明书腔(之后又删掉「×1」: 文案规矩不写 ×)。

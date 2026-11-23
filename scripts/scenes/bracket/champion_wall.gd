@@ -128,7 +128,7 @@ func _row(e: Dictionary, i: int) -> Control:
 	var bh := ROW_H - 8
 	## 届数 + 日期
 	var ed := int(e.get("edition", 0))
-	UI.label_in(body, Rect2(14, 18, 140, 40), ("第 %d 届" % ed) if ed > 0 else "冠军杯赛", 24, UI.GOLD, true, "WallEdition%d" % i)
+	UI.label_in(body, Rect2(14, 18, 140, 40), (Lang.t("第 %d 届") % ed) if ed > 0 else "冠军杯赛", 24, UI.GOLD, true, "WallEdition%d" % i)
 	UI.label_in(body, Rect2(14, 62, 140, 30), str(e.get("date", "")), 20, UI.TXT_DIM, false, "WallDate%d" % i)
 	## 奖杯 + 冠军头像 + 名字 / 来历 / 亚军
 	var trh := Control.new()
@@ -141,7 +141,7 @@ func _row(e: Dictionary, i: int) -> Control:
 	UI.portrait(body, Vector2(296, bh * 0.5), 88, str(e.get("avatar", "")), UI.GOLD if latest else UI.BRONZE_HI, "WallFace%d" % i)
 	var nx := 356.0
 	UI.label_in(body, Rect2(nx, 14, 330, 46), str(e.get("name", "")), 36, UI.GOLD, true, "WallName%d" % i, HORIZONTAL_ALIGNMENT_LEFT)
-	var info := ("%d 人参赛" % int(e["entrants"])) if int(e.get("entrants", 0)) > 0 else ""
+	var info := (Lang.t("%d 人参赛") % int(e["entrants"])) if int(e.get("entrants", 0)) > 0 else ""
 	if str(e.get("origin", "")) != "":
 		info = str(e["origin"]) + (("（%s）" % info) if info != "" else "")
 	UI.label_in(body, Rect2(nx, 62, 330, 28), info, 20, UI.TXT, false, "WallInfo%d" % i, HORIZONTAL_ALIGNMENT_LEFT)

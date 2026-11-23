@@ -143,7 +143,7 @@ func hero_state(now: int) -> Dictionary:
 			out["sub"] = Lang.t("%s备战 %s 开始") % [rn, _P2.local_hhmm(at)]
 		_M.K_WAIT:
 			## 与全局小条同一句(知道时刻就写时刻; 原来这里写「即将开播」、小条写「18:08 开播」)
-			out["sub"] = ("%s %s 开播" % [rn, _P2.local_hhmm(at)]) if at > now else ("%s即将开播" % rn)
+			out["sub"] = (Lang.t("%s %s 开播") % [rn, _P2.local_hhmm(at)]) if at > now else (Lang.t("%s即将开播") % rn)
 		_M.K_CUP_WAIT:
 			out["sub"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
 	if str(out["sub"]) == "":
@@ -160,7 +160,7 @@ func hero_state(now: int) -> Dictionary:
 			out["sub"] = Lang.t("%s已结束") % _P2.STAGE_CUP
 		elif not live.is_empty():
 			var t: Dictionary = live[0]
-			out["sub"] = ("%s开播中" % _M.stage_line(t["b"], int(t["r"]))) if live.size() == 1 else ("%d 场开播中" % live.size())
+			out["sub"] = (Lang.t("%s开播中") % _M.stage_line(t["b"], int(t["r"]))) if live.size() == 1 else (Lang.t("%d 场开播中") % live.size())
 			out["target"] = t
 		elif ph == _M.PH_INTER:
 			out["sub"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(_M.cup_ts(now))]     # 「已止步」写在模式卡上, 不在这里再拼

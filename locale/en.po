@@ -7906,3 +7906,51 @@ msgstr "Tutorial: Damage Amp %d%%, Damage Reduction %d%%"
 
 msgid "本轮 %d 场%s"
 msgstr "%d matches this round%s"
+
+msgid "近战 · 斗士"
+msgstr "Melee · Fighter"
+
+msgid "近战 · 坦克"
+msgstr "Melee · Tank"
+
+msgid "近战 · 刺客"
+msgstr "Melee · Assassin"
+
+msgid "近战 · 射手"
+msgstr "Melee · Marksman"
+
+msgid "近战射手"
+msgstr "Melee Marksman"
+
+msgid "近战 · 法师"
+msgstr "Melee · Mage"
+
+msgid "近战 · 辅助"
+msgstr "Melee · Support"
+
+msgid "远程 · 斗士"
+msgstr "Ranged · Fighter"
+
+msgid "远程斗士"
+msgstr "Ranged Fighter"
+
+msgid "远程 · 坦克"
+msgstr "Ranged · Tank"
+
+msgid "远程 · 刺客"
+msgstr "Ranged · Assassin"
+
+msgid "远程 · 射手"
+msgstr "Ranged · Marksman"
+
+msgid "远程 · 法师"
+msgstr "Ranged · Mage"
+
+msgid "远程 · 辅助"
+msgstr "Ranged · Support"
+
+msgid "未晋级"
+msgstr "Not Qualified"
+
+msgid "删除内容：账号与玩家 ID、云端存档、阵容快照、\n排行榜与赛事记录、举报与反馈记录、本机存档。\n已完成对局的录像保留，其中的昵称与头像显示为「已注销玩家」。\n删除后无法恢复。"
+msgstr "Deletes: your account and Player ID, cloud save, team snapshots,\nleaderboard and tournament records, reports and feedback, and the local save.\nReplays of finished matches are kept, with your nickname and avatar shown as \"Deleted Player\".\nThis can't be undone."

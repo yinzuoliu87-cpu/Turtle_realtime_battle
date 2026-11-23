@@ -130,9 +130,9 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			d["record"] = [r.x, r.y]
 			d["status"] = "已晋级周六闯关赛"
 			if n > 0:
-				(d["body"] as Array).append("未进行场次奖励（积分赛每周 %d 场，未进行的 %d 场按场发放）" % [int(_P2.RANKED_QUOTA), n])
+				(d["body"] as Array).append(Lang.t("未进行场次奖励（积分赛每周 %d 场，未进行的 %d 场按场发放）") % [int(_P2.RANKED_QUOTA), n])
 			if now < g_close:
-				(d["body"] as Array).append("闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。" % [
+				(d["body"] as Array).append(Lang.t("闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。") % [
 					int(_P2.GAUNTLET_WINS_IN), int(_P2.GAUNTLET_LOSSES_OUT), _P2.local_wd_hhmm(g_close)])
 			if n > 0:
 				d["coins"] = int(bf.get("coins", 0))
@@ -166,7 +166,7 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			d["record"] = [int(gs.gauntlet_wins), int(gs.gauntlet_losses)]
 			d["status"] = "已晋级周日决赛日"
 			if now < seat:
-				(d["body"] as Array).append("决赛日%s：%s 开始。" % [_P2.STAGE_GROUP, _P2.local_wd_hhmm(seat)])
+				(d["body"] as Array).append(Lang.t("决赛日%s：%s 开始。") % [_P2.STAGE_GROUP, _P2.local_wd_hhmm(seat)])
 			else:
 				(d["body"] as Array).append("决赛日已开始，比赛在对阵图中进行。")
 			d["primary"] = [TXT_BRACKET, DOOR_BRACKET]
@@ -413,7 +413,7 @@ static func _record(cap: String, w: int, l: int) -> Control:
 	rt.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	rt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 	rt.add_theme_constant_override("outline_size", 6)
-	rt.text = "[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]" % [w, l]
+	rt.text = Lang.t("[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]") % [w, l]
 	v.add_child(rt)
 	return v
 

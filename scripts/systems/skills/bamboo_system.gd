@@ -109,7 +109,7 @@ func apply_season_growth(u: Dictionary) -> void:
 static func season_note(v: float) -> String:
 	if v < 0.5:
 		return ""
-	return "\n<span style=\"color:#7fd88a\">本大轮已累积：最大生命值 +%d</span>" % int(round(v))
+	return Lang.t("\n<span style=\"color:#7fd88a\">本大轮已累积：最大生命值 +%d</span>") % int(round(v))
 
 # 竹叶强化命中: 敌人身上爆一下大淡绿命中特效(≈上半身大小·一下即散·用户2026-07-11).
 func _bamboo_hit_splash(tgt: Dictionary) -> void:

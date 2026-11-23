@@ -262,7 +262,7 @@ func name_wall(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 	var pairs: Array = d.get("pairs", [])
 	var lines := PackedStringArray()
 	for p in pairs:
-		lines.append("%s  对  %s" % [str((p[0] as Dictionary).get("name", "")), str((p[1] as Dictionary).get("name", ""))])
+		lines.append(Lang.t("%s  对  %s") % [str((p[0] as Dictionary).get("name", "")), str((p[1] as Dictionary).get("name", ""))])
 	var pl := _lb("    ".join(lines), 20, _H.TXT)
 	pl.name = "WallPairs"
 	pl.position = Vector2(0, ny + 34.0)
@@ -342,7 +342,7 @@ func prep(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 	##   同一屏顶上那行同时写「下一轮 8 分 0 秒后开播」, 两个「开播」差 5 分钟。⇒ 这里写「剩余」, 标题写「半决赛备战」。
 	var fn := func() -> String:
 		var lf: int = left_fn.call()
-		return ("剩余 %s" % _FC.dur(lf)) if lf > 0 else "备战结束"
+		return (Lang.t("剩余 %s") % _FC.dur(lf)) if lf > 0 else "备战结束"
 	big.text = fn.call()
 	big.set_meta("left_fn", left_fn)
 	live_texts.append([big, fn])
@@ -640,7 +640,7 @@ func upcoming_card(vp: Vector2, title: String, a: Dictionary, b: Dictionary, lef
 	var av := 56.0
 	_avatar(card, Rect2(Vector2(40, 52), Vector2(av, av)), a)
 	_avatar(card, Rect2(Vector2(w - 40 - av, 52), Vector2(av, av)), b)
-	var pv := _lb("%s  对  %s" % [s._fit_name(str(a.get("name", "")), 130.0, false, 18.0),
+	var pv := _lb(Lang.t("%s  对  %s") % [s._fit_name(str(a.get("name", "")), 130.0, false, 18.0),
 		s._fit_name(str(b.get("name", "")), 130.0, false, 18.0)], 18, _H.TXT)
 	pv.position = Vector2(100, 52)
 	pv.size = Vector2(w - 200, av)
@@ -655,7 +655,7 @@ func upcoming_card(vp: Vector2, title: String, a: Dictionary, b: Dictionary, lef
 	card.add_child(big)
 	var fn := func() -> String:
 		var lf := int(left_fn.call())
-		return ("距开播 %s" % _FC.dur(lf)) if lf > 0 else "即将开播"
+		return (Lang.t("距开播 %s") % _FC.dur(lf)) if lf > 0 else "即将开播"
 	big.text = fn.call()
 	live_texts.append([big, fn])
 	var cl := Button.new()

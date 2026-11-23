@@ -276,12 +276,12 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 		if idx < melee.size():
 			var ms: Dictionary = melee[idx]
 			if str(ms.get("name", "")) != sk_name and ms.get("name", "") != "":
-				body += "\n近战：%s：%s" % [ms.get("name", ""), SkillText.render_bbcode_formula(str(ms.get("brief", "")), fake_f, ms, 14)]
+				body += Lang.t("\n近战：%s：%s") % [ms.get("name", ""), SkillText.render_bbcode_formula(str(ms.get("brief", "")), fake_f, ms, 14)]
 		var volcano: Array = pet.get("volcanoSkills", [])
 		if idx < volcano.size() and not sk.get("passiveSkill", false):
 			var vs: Dictionary = volcano[idx]
 			if not vs.get("passiveSkill", false) and str(vs.get("name", "")) != sk_name and vs.get("name", "") != "":
-				body += "\n火山：%s：%s" % [vs.get("name", ""), SkillText.render_bbcode_formula(str(vs.get("brief", "")), fake_f, vs, 14)]
+				body += Lang.t("\n火山：%s：%s") % [vs.get("name", ""), SkillText.render_bbcode_formula(str(vs.get("brief", "")), fake_f, vs, 14)]
 	return "%s\n%s" % [head, body]
 
 

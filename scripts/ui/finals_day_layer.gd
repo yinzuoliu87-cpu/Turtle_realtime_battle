@@ -273,7 +273,7 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 			if not live.is_empty():
 				var t: Dictionary = live[0]
 				out["body"] = _M.stage_line(t["b"], int(t["r"])) if live.size() == 1 \
-					else ("%s %d 场" % [stage, live.size()])
+					else (Lang.t("%s %d 场") % [stage, live.size()])
 				out["live"] = true
 				out["act"] = "观看"
 				out["target"] = t

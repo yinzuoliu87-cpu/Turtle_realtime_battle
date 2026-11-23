@@ -262,7 +262,7 @@ func card_head_text(r: int, m: int) -> String:
 	if st == str(s.ST_BYE) or bool(s.competitor(r, m, 0).get("bye", false)) or bool(s.competitor(r, m, 1).get("bye", false)):
 		return "轮空"
 	var k := seq_index(r, m)
-	var who := ("第 %d 场" % k) if (k > 0 and not fin) else ("决赛" if fin else _H.round_name(n, r))
+	var who := (Lang.t("第 %d 场") % k) if (k > 0 and not fin) else ("决赛" if fin else _H.round_name(n, r))
 	if st == str(s.ST_UPCOMING):
 		return Lang.t("%s %s 开播") % [who, _FC.at(_PS.start_of(c, r, m))]
 	if fin or st == str(s.ST_PREMIERE):
@@ -314,7 +314,7 @@ func hero_status_line() -> String:
 		for b in s._spectate_list():
 			if group_live_rm(b).x >= 0:
 				lv += 1
-		return ("%d 个小组开播中" % lv) if lv > 0 else "选择小组查看对阵"
+		return (Lang.t("%d 个小组开播中") % lv) if lv > 0 else "选择小组查看对阵"
 	var c: Dictionary = s.cur()
 	var n := int(c.get("size", 0))
 	if n < 2:
@@ -329,7 +329,7 @@ func hero_status_line() -> String:
 			return ("你获得%s冠军！" if is_cup() else "你获得 %s冠军！") % where
 		if is_cup():
 			return Lang.t("%s已结束") % _P2C.STAGE_CUP
-		return _FC.kv("%s冠军" % where, str(champ.get("name", "")))
+		return _FC.kv(Lang.t("%s冠军") % where, str(champ.get("name", "")))
 	var lr := live_rm()
 	var now := int(s.srv_now())
 	var ra := int(c.get("round_at", 0))
@@ -687,7 +687,7 @@ func grid_cells() -> Array:
 					k = i + 1                    # 同一轮同时开播(小组赛)不写「第 k 场」
 			cell.merge({"state": "live", "chip": "开播中", "a": _group_seat(b, lr.x, lr.y, 0, now),
 				"b": _group_seat(b, lr.x, lr.y, 1, now),
-				"line": _H.round_name(n, lr.x) + (("第 %d 场" % k) if k > 0 and lr.x < total else "")})
+				"line": _H.round_name(n, lr.x) + ((Lang.t("第 %d 场") % k) if k > 0 and lr.x < total else "")})
 		else:
 			var r := int(b.get("round", 1))
 			var shop: bool = ra > 0 and _P2C.finals_shop_open(ra, now) and not _PS.before_shop(b, now)

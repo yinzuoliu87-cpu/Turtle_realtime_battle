@@ -98,7 +98,7 @@ func build(parent: Control, vp: Vector2, top: float, d: Dictionary) -> Control:
 			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			root.add_child(tr)
 	var stage_name: String = _P2.STAGE_CUP if cup_mode else _P2.STAGE_GROUP
-	var tl := _lb("距%s开始" % stage_name, 20, _H.GOLD)
+	var tl := _lb(Lang.t("距%s开始") % stage_name, 20, _H.GOLD)
 	tl.name = N_TITLE
 	tl.position = pr.position + Vector2(0, 12)
 	tl.size = Vector2(pw, 28)
@@ -117,7 +117,7 @@ func build(parent: Control, vp: Vector2, top: float, d: Dictionary) -> Control:
 		return _FC.dur(left) if left > 0 else "即将开始"
 	big.text = fn.call()
 	s._stage.live_texts.append([big, fn])
-	var sub := _lb((_FC.at(end_ts) + " 开赛") if cup_mode else ("%s 公布分组" % _FC.at(end_ts)), 16, Color("#e9d6a8"), false)
+	var sub := _lb((_FC.at(end_ts) + " 开赛") if cup_mode else (Lang.t("%s 公布分组") % _FC.at(end_ts)), 16, Color("#e9d6a8"), false)
 	sub.name = N_SUB
 	sub.position = pr.position + Vector2(0, 108)
 	sub.size = Vector2(pw, 26)
@@ -233,7 +233,7 @@ func _list(root: Control, r: Rect2, d: Dictionary) -> void:
 				"right": record_text(int(it.get("gw", 0)), int(it.get("gl", 0))), "me": bool(it.get("me", false))})
 	var n := int(d.get("n", rows.size())) if not cup_mode else rows.size()
 	if n > 0:
-		var cl := _lb("%d 人" % n, 17, _H.TXT, false)
+		var cl := _lb(Lang.t("%d 人") % n, 17, _H.TXT, false)
 		cl.name = N_LIST_COUNT
 		cl.position = r.position + Vector2(18, 10)
 		cl.size = Vector2(r.size.x - 36, 26)

@@ -232,14 +232,14 @@ func _account_panel(x: float, w: float) -> void:
 		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮, 并把它染成主操作。
 		status = "登录已失效，请重新登录"
 		status_col = "#ff8a94"
-		note = ("邮箱 %s" % mail) if mail != "" else ""
+		note = (Lang.t("邮箱 %s") % mail) if mail != "" else ""
 		## 只有内部邮箱(龟投的号)时「邮箱登录」用不上 —— 那种号用下面龟投那一行的「绑定」重新登录, 不染主操作。
 		primary = "BtnRecover" if mail != "" else ""
 	elif _SB_ACC.save_conflict():
 		## D-8: 两台设备交替玩 ⇒ 云端版本和这台对不上。**不自动选**, 等玩家二选一。
 		status = "云端存档与本地存档不一致"
 		status_col = "#ffb454"
-		note = ("邮箱 %s" % mail) if mail != "" else ""
+		note = (Lang.t("邮箱 %s") % mail) if mail != "" else ""
 		primary = "BtnConflict"
 	elif mail != "":
 		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
@@ -274,7 +274,7 @@ func _account_panel(x: float, w: float) -> void:
 	## ★玩家 ID(2026-10-04): 名字允许重复, 别人靠这串分开同名的人 —— 自己也得看得见自己是哪一串。
 	##   只在拿到账号之后显示: 「连接中」那会儿算出来的是安装号的号, 一会儿就要换, 不给人看。
 	if aid != "":
-		var idl := _stroked_label("玩家 ID %s" % str(_BE_ID.my_tag()), 14, "#8fa6bd", "", 0)
+		var idl := _stroked_label(Lang.t("玩家 ID %s") % str(_BE_ID.my_tag()), 14, "#8fa6bd", "", 0)
 		idl.name = ACCT_ROW_PREFIX + "Id"
 		y = _place_left(idl, cx, y, cw)
 	## ── 状态卡: 一块压暗的底 + 左边一道状态色竖条(Adorable Home 那块「云存档」提示框) ──
@@ -1009,7 +1009,7 @@ func _email_set_step(step: int) -> void:
 			var _to: String = str(_SB_ACC.email_pending()).strip_edges()
 			if _to == "" and _email_edit != null and is_instance_valid(_email_edit):
 				_to = str(_email_edit.text).strip_edges()
-			_email_hint.text = ("验证码已发送至 %s" % _to) if _to != "" else "请输入邮件中的验证码"
+			_email_hint.text = (Lang.t("验证码已发送至 %s") % _to) if _to != "" else "请输入邮件中的验证码"
 	_email_relayout()
 
 ## ★绑定屏与「设置里主动绑定」共用这一个对话框 —— 另做一份就要把昵称那一行
@@ -2031,7 +2031,7 @@ func _open_rename_dialog() -> void:
 			st.text = err
 			return
 		_close_rename_dialog()
-		_toast("昵称已修改为「%s」" % str(GameState.nickname)))
+		_toast(Lang.t("昵称已修改为「%s」") % str(GameState.nickname)))
 	box.add_child(ok)
 
 

@@ -192,7 +192,7 @@ func _add_equip_rows() -> void:
 			##   ★字面跟详情页对齐(detail_views 副标写的就是「羁绊赠送」)。
 			_add_header("羁绊赠送", "#ffd93d")
 		else:
-			_add_header("%d 费" % cost, ccol)
+			_add_header(Lang.t("%d 费") % cost, ccol)
 		for eq in items:
 			host._items.append(eq)
 			var stroke: String = ccol

@@ -349,7 +349,7 @@ func _beat_champion() -> void:
 		Lang.t("本周决赛日 %d 人参赛，分为 %d 组") % [(data["rows"] as Array).size(), (data["groups"] as Array).size()],
 		24, UI.TXT, false, "RecapScale")
 	_anim(sc, "modulate:a", 1.6, 1.95, 0.0, 1.0, "lin")
-	beats.append("冠军 %s" % nm)
+	beats.append(Lang.t("冠军 %s") % nm)
 
 
 # ══════════════════════════════ ② 最终名次(领奖台) ══════════════════════════════
@@ -425,7 +425,7 @@ func _beat_standings() -> void:
 		_rolls.append([you, float(rows.size()), float(rk_me), 2.0, 2.8, Lang.t("你的名次：%s第 %%d 名") % ("并列" if tie else "")])
 		_anim(plate, "scale", 1.9, 2.1, Vector2(1.0, 0.0), Vector2.ONE, "back")
 		_anim(you, "modulate:a", 1.95, 2.1, 0.0, 1.0, "lin")
-	beats.append("名次 %s / %s" % [" | ".join(lines), you_txt])
+	beats.append(Lang.t("名次 %s / %s") % [" | ".join(lines), you_txt])
 	if _last() == 1:
 		_close_btn(Vector2(cx + 300.0 - 150.0, oy + 24.0))
 
@@ -489,7 +489,7 @@ func _beat_mine() -> void:
 		card.add_child(rb)
 		lines.append("%s %s %s %s" % ["胜" if bool(it["won"]) else "负", lb.text, on.text, sc.text])
 	beat_end[2] = 0.15 + 0.2 * ms.size() + 0.6
-	beats.append("我的比赛 %s" % " | ".join(lines))
+	beats.append(Lang.t("我的比赛 %s") % " | ".join(lines))
 
 
 func _close_btn(pos: Vector2) -> void:

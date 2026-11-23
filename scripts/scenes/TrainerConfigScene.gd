@@ -438,6 +438,9 @@ func _refresh_desc() -> void:
 ##   · 冷却那一句另起一行 —— 参考里技能说明都把冷却单独放, 玩家扫一眼就找得到。
 ##   · 「随机召唤以下一种」那类说明, 每个分支另起一行(口哨 150 字挤成一坨时找不到分支从哪开始)。
 func _layout_desc(d: String) -> String:
+	## 英文(2026-11-23): 先查整句译文; 英文的冷却句以 " Cooldown" 起头, 一样另起一行
+	if Lang.is_en():
+		return Lang.t(d).replace(". Cooldown", ".\nCooldown")
 	var out := d.replace("。冷却", "。\n冷却")
 	if out.contains("以下一种"):
 		var re := RegEx.create_from_string("。([^。： ]{2,4})：")

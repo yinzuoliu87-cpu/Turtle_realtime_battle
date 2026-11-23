@@ -70,7 +70,7 @@ static func time_text(at: int, secs: int, now: int) -> String:
 		else:
 			parts.append("%d-%02d %s" % [int(d.get("month", 1)), int(d.get("day", 1)), hm])
 	if secs > 0:
-		parts.append("时长 %d:%02d" % [secs / 60, secs % 60])
+		parts.append(Lang.t("时长 %d:%02d") % [secs / 60, secs % 60])
 	return "  ·  ".join(parts)
 
 

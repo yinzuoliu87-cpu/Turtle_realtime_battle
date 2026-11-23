@@ -12,6 +12,7 @@ const SC := preload("res://tests/_ui_copy_screens.gd")
 const TP := preload("res://tests/_finals_text_probe.gd")
 const SIZES := {"phone": Vector2i(1560, 720), "ipad": Vector2i(960, 720)}
 const OUT := "res://.out/i18n/visible_zh.tsv"
+const OUT_OVER := "res://.out/i18n/overflow.tsv"
 
 var _han := RegEx.new()
 
@@ -30,6 +31,8 @@ func _ready() -> void:
 		await get_tree().process_frame
 	var seen := {}
 	var rows: Array = []
+	var over_seen := {}
+	var over_rows: Array = []
 	var n_items := 0
 	for nm in want:
 		SC.setup(str(nm))
@@ -46,6 +49,14 @@ func _ready() -> void:
 			var nd := get_tree().root.get_node_or_null(NodePath(str(it["path"])))
 			if nd != null and nd.can_auto_translate():
 				t = String(nd.atr(t))
+			## 溢出(2026-11-23): 不折行的 Label / Button, 一行字的宽度超过控件宽 ⇒ 记下来(英文比中文长, 无头也能量)
+			var ow := _overflow_px(nd, t)
+			if ow > 2.0:
+				var ok_key := "%s|%s" % [t, str(nm)]
+				if not over_seen.has(ok_key):
+					over_seen[ok_key] = true
+					over_rows.append("%d	%s	%s	%s" % [int(ow), t.replace("
+", "⏎").replace("	", " "), str(nm), str(it["path"])])
 			if _han.search(t) == null:
 				continue
 			if seen.has(t):
@@ -61,5 +72,42 @@ func _ready() -> void:
 	for r in rows:
 		f.store_line(r)
 	f.close()
+	var f2 := FileAccess.open(OUT_OVER, FileAccess.WRITE)
+	for r in over_rows:
+		f2.store_line(r)
+	f2.close()
+	print("溢出(超出控件宽 > 2px) %d 处 → %s" % [over_rows.size(), OUT_OVER])
 	print("ALL DONE 屏 %d · 句 %d · 含汉字(去重) %d → %s" % [want.size(), n_items, rows.size(), OUT])
 	get_tree().quit(0)
+
+
+## 一行字超出控件宽多少像素(不折行、不裁剪省略的 Label / Button; 其余返回 0)。
+func _overflow_px(nd: Node, t: String) -> float:
+	if nd == null or not (nd is Label or nd is Button):
+		return 0.0
+	var c := nd as Control
+	if nd is Label:
+		var lb := nd as Label
+		if lb.autowrap_mode != TextServer.AUTOWRAP_OFF or lb.text_overrun_behavior != TextServer.OVERRUN_NO_TRIMMING or lb.clip_text:
+			return 0.0
+	if nd is Button:
+		var bt := nd as Button
+		if bt.clip_text or bt.text_overrun_behavior != TextServer.OVERRUN_NO_TRIMMING or bt.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			return 0.0
+	var f: Font = c.get_theme_font("font")
+	var fs: int = c.get_theme_font_size("font_size")
+	if f == null:
+		return 0.0
+	var w := 0.0
+	for line in t.split("
+"):
+		w = maxf(w, f.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x)
+	var avail := c.size.x
+	if nd is Button:
+		var sb: StyleBox = c.get_theme_stylebox("normal")
+		if sb != null:
+			avail -= sb.get_margin(SIDE_LEFT) + sb.get_margin(SIDE_RIGHT)
+		var ic: Texture2D = (nd as Button).icon
+		if ic != null:
+			avail -= ic.get_width()
+	return w - avail

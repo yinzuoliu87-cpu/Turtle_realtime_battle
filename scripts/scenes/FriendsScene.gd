@@ -224,7 +224,7 @@ func _find() -> void:
 			return
 		var ppl: Array = (r["data"] as Dictionary).get("people", [])
 		## ★玩家 ID 不唯一(方案书 R2): 回了几个就列几个, 让玩家按昵称认人。
-		_say("找到 %d 位玩家，请核对昵称" % ppl.size() if ppl.size() > 1 else "")
+		_say(Lang.t("找到 %d 位玩家，请核对昵称") % ppl.size() if ppl.size() > 1 else "")
 		for c in ppl:
 			if c is Dictionary:
 				_find_box.add_child(_person_row(c, [[TXT_ASK, func() -> void: _ask(c), "AskBtn"]], "")))

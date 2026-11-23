@@ -35,7 +35,7 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 		var rl: Dictionary = GameState.econ({"op": "leveler", "pid": pet_id, "bench": bench_idx})
 		host._sel_bench = -1
 		if bool(rl.get("ok", false)):
-			host._toast("%s 本大轮等级 +1（当前 +%d）" % [pet_id, GameState.temp_level_bonus(pet_id)])
+			host._toast(Lang.t("%s 本大轮等级 +1（当前 +%d）") % [pet_id, GameState.temp_level_bonus(pet_id)])
 		host._rebuild(); return
 	## ★羁绊赠送件不占容量也不被「已装满」拦; 两种「装不了」(单只 / 全队)分开告诉玩家 —— 判据在 EconInv.equip。
 	var r: Dictionary = GameState.econ({"op": "equip", "pid": pet_id, "bench": bench_idx})
@@ -51,7 +51,7 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 		host._sel_bench = -1; host._rebuild(); return
 	if EconInv.is_leveler(GameState, bench_idx):   # 临时等级器 → 该小将本大轮永久+1级
 		if bool(GameState.econ({"op": "leveler", "lane": lane, "idx": idx, "bench": bench_idx}).get("ok", false)):
-			host._toast("临时等级器 → 小将(%s路第%d格) 本大轮 +1 级" % [lane, idx + 1])
+			host._toast(Lang.t("临时等级器 → 小将(%s路第%d格) 本大轮 +1 级") % [lane, idx + 1])
 		host._sel_bench = -1
 		host._rebuild(); return
 	# 小将与统领【同一套容量规则】(用户 2026-07-27:「单只统领或小将的上限固定为3」)
@@ -65,10 +65,10 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 func _toast_refusal(r: Dictionary) -> bool:
 	match str(r.get("reason", "")):
 		"full":
-			host._toast("装备栏已满（%d 件）" % host.P2.UNIT_EQUIP_CAP)
+			host._toast(Lang.t("装备栏已满（%d 件）") % host.P2.UNIT_EQUIP_CAP)
 			return true
 		"team_full":
-			host._toast("全队装备已达上限 %d/%d" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
+			host._toast(Lang.t("全队装备已达上限 %d/%d") % [GameState.team_equipped_count(), GameState.team_equip_cap()])
 			return true
 	return false
 

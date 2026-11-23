@@ -583,5 +583,5 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 	## 观众: 各组同一轮同时开播 ⇒ 一句「小组赛半决赛开播，6 组同时进行」(不逐组刷屏)
 	for gk in gw:
 		var nb := (gw[gk][1] as Dictionary).size()
-		out["gwave:%s" % gk] = Lang.t("%s%s开播%s") % [_P2.STAGE_GROUP, str(gw[gk][0]), ("，%d 组同时进行" % nb) if nb > 1 else ""]
+		out["gwave:%s" % gk] = Lang.t("%s%s开播%s") % [_P2.STAGE_GROUP, str(gw[gk][0]), (Lang.t("，%d 组同时进行") % nb) if nb > 1 else ""]
 	return out

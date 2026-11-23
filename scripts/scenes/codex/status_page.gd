@@ -205,9 +205,9 @@ func describe(e: Dictionary) -> Dictionary:
 			var info: Dictionary = MinionCodex.MINION_INFO.get(id, {})
 			var bits2: PackedStringArray = []
 			if str(e.get("sk", "")) != "" and str(info.get("skill_name", "")) != "":
-				bits2.append("%s · 技能" % str(info.get("skill_name", "")))
+				bits2.append(Lang.t("%s · 技能") % Lang.t(str(info.get("skill_name", ""))))
 			elif str(e.get("pv", "")) != "":
-				bits2.append("%s · 被动" % str(e["pv"]))
+				bits2.append(Lang.t("%s · 被动") % Lang.t(str(e["pv"])))
 			if to_lbl != "":
 				bits2.append(to_lbl)
 			out["sub"] = "  ".join(bits2)

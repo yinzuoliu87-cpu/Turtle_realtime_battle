@@ -389,7 +389,7 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 		var mark: String = "  ◀ 当前" if (i + 1) == cur_tier else ""
 		bb += ("" if bb == "" else "
 
-") + "[color=%s][b]%d 件[/b][/color][color=%s]%s[/color]\n[color=%s]%s[/color]" % [
+") + Lang.t("[color=%s][b]%d 件[/b][/color][color=%s]%s[/color]\n[color=%s]%s[/color]") % [
 			tcol, th, tcol, mark, col, txt]
 
 	var bw := 760.0   # 2026-10-21 正文 15 → 20 号字: 620 → 760

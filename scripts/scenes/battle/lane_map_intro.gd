@@ -770,7 +770,7 @@ func _settle_marks3() -> void:
 	_sfx("ui_click", 1.3, 0.8, 1.25)
 	if gs != null and gs.egg_hp is Dictionary:
 		var foe := ReplayRecorder.foe_side(battle)
-		var e := _label("龟蛋生命  我方 %d  ·  对方 %d" % [int(gs.egg_hp.get(me_lr, 0.0)), int(gs.egg_hp.get(foe, 0.0))], 16, Color("#cfe6ff"), root, Vector2(vp.x * 0.5, 50), false, "LaneSettleEggs")
+		var e := _label(Lang.t("龟蛋生命  我方 %d  ·  对方 %d") % [int(gs.egg_hp.get(me_lr, 0.0)), int(gs.egg_hp.get(foe, 0.0))], 16, Color("#cfe6ff"), root, Vector2(vp.x * 0.5, 50), false, "LaneSettleEggs")
 		_fade(e, 1.3, 0.3)
 
 

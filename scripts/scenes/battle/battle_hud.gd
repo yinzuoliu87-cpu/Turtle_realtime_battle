@@ -1757,7 +1757,7 @@ func _make_team_frame(u: Dictionary) -> Control:
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉点击 (别穿到战场)
 	## ★2026-09-28「点击看详情」→「点开细看」: "点击…" 是网页的 call-to-action 句式
 	##   (Click for details 的直译), 而且"详情"和面板里的"详细"是两个词指一件事。
-	frame.tooltip_text = "%s\n点击查看详情" % str(u.get("name", u.get("id", "")))
+	frame.tooltip_text = Lang.t("%s\n点击查看详情") % str(u.get("name", u.get("id", "")))
 
 	var main_col = VBoxContainer.new()   # 头像行 + 装备格行
 	main_col.add_theme_constant_override("separation", 5)

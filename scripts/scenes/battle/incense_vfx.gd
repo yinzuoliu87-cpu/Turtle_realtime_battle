@@ -341,7 +341,7 @@ func mark_carved(u: Dictionary, marks: int, gained: int = 1) -> void:
 			var sp := _board(spark_tex(), p + Vector2(dx, 0.0), TALLY_Y, SPARK_PX, Color(1, 1, 1, 1.0))
 			_adopt(sp, SPARK_SEC, "spark", {"p": p + Vector2(dx, 0.0), "y0": TALLY_Y})
 	# 飘字。★满 300 改文案 —— 到顶了还在跳 "+1" 是最容易被当成 bug 的那种表现
-	var txt: String = "香火 满" if marks >= IncenseStoneSystem.MARK_CAP else ("香火 +%d" % n)
+	var txt: String = "香火 满" if marks >= IncenseStoneSystem.MARK_CAP else (Lang.t("香火 +%d") % n)
 	battle._vfx._float_text(p + Vector2(0.0, -18.0), txt, GOLD, false, "buff", "")
 
 

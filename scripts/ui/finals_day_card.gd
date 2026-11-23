@@ -290,7 +290,7 @@ static func spectator_lines(now: int, groups: Array, cup: Dictionary) -> Array:
 		l1 = Lang.t("本周晋级 %d 人，分为 %d 组") % [n, groups.size()]
 	else:
 		var qn := int(_FQ.cached(_P2.week_anchor_utc(now)).get("n", 0))
-		l1 = ("本周晋级 %d 人" % qn) if qn > 0 else ""
+		l1 = (Lang.t("本周晋级 %d 人") % qn) if qn > 0 else ""
 	var l2 := ""
 	var ph := _M.phase(now, groups, cup)
 	var live: Array = _M.live_all(groups, cup, now)

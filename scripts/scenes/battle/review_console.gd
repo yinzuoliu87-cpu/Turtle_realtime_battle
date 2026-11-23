@@ -32,7 +32,7 @@ func _build_debug_panel() -> void:
 	bar.add_child(tnext)
 	var cur_sk: int = battle._review_skill_idx()
 	for si in range(4):
-		var b = _dbg_btn("技%d%s" % [si, ("•" if si == cur_sk else "")])
+		var b = _dbg_btn(Lang.t("技%d%s") % [si, ("•" if si == cur_sk else "")])
 		b.pressed.connect(_dbg_set_skill.bind(si))
 		bar.add_child(b)
 	var _eqnm = "关"

@@ -731,7 +731,7 @@ func _build_card() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT)
 	UI.label_in(card, Rect2(rx, 64, rw, 60), str(ch.get("name", "")), 48, UI.GOLD, true, "CardName", HORIZONTAL_ALIGNMENT_LEFT)
 	## 一行一件事: 来历(冠军杯) / 参赛规模; 头衔一行
-	var scale := ("%d 人参赛" % int(data["entrants"])) if int(data.get("entrants", 0)) > 0 else ""
+	var scale := (Lang.t("%d 人参赛") % int(data["entrants"])) if int(data.get("entrants", 0)) > 0 else ""
 	if str(ch.get("origin", "")) != "" and cup:
 		scale = str(ch["origin"]) + (("（%s）" % scale) if scale != "" else "")
 	## 组冠军: 这一行写去向(「晋级冠军杯赛（19:00 开赛）」), 规模那一组只有几个人不值一行

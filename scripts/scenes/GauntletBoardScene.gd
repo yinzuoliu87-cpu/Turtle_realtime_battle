@@ -535,7 +535,7 @@ func _game_card(g: Dictionary, idx: int) -> Control:
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pc.add_child(vb)
 	var mine := _is_me(g["l"]) or _is_me(g["r"])
-	vb.add_child(MatchCard.banner("%s 获胜" % Board.winner_name(g), _rel_time(int(g.get("t", 0))),
+	vb.add_child(MatchCard.banner(Lang.t("%s 获胜") % Board.winner_name(g), _rel_time(int(g.get("t", 0))),
 		Color("#5a4a1c") if mine else Color("#24394e"), Color("#2a2008") if mine else Color("#0f1c28"),
 		MINE, Color("#c9d6e4")))
 	var body := HBoxContainer.new()

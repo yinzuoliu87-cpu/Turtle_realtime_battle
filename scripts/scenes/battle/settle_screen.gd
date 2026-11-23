@@ -410,7 +410,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		var nm := _lbl(battle._st_name(r), F_MVP, Color("#ffffff"))
 		nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(nm)
-		var dl := _lbl("造成伤害 %d" % int(r.get("_st_dealt", 0)), F_MVP, COL_GOLD)
+		var dl := _lbl(Lang.t("造成伤害 %d") % int(r.get("_st_dealt", 0)), F_MVP, COL_GOLD)
 		dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(dl)
 		v.add_child(mv)

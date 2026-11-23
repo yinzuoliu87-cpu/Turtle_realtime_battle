@@ -40,7 +40,7 @@ func _redraw() -> void:
 ## 形态拆出来的技能(FormVariants.pool)与小将页的合成技能, 角色 / 龟能 / 默认技都按 pets.json 里那一条认。
 ## 普通攻击那一条的标题: 「攻击 · 龟派气波」; 攻击名本身就叫「攻击」时只写一次(原来出「攻击 · 攻击」, 2026-11-01 走查)。
 static func attack_head(nm: String) -> String:
-	return "攻击" if nm == "攻击" or nm == "" else Lang.t("攻击 · %s") % nm
+	return "攻击" if nm == "攻击" or nm == "" else Lang.t("攻击 · %s") % Lang.t(nm)
 
 
 static func _base_of(sk: Dictionary) -> Dictionary:
@@ -470,7 +470,7 @@ func _passive_bar(passive: Dictionary, k: int, top: float, ctx: Dictionary) -> f
 		else:
 			host._add_text(RCOL_X + ROW_ICON_CX, mid_y, pi_path, 28, "#ffffff", 0.5, 0.5)
 			text_x = RCOL_X + ROW_TEXT_X
-	host._add_text(text_x, mid_y, Lang.t("被动 · %s") % passive.get("name", ""), 17, "#58d3ff", 0.0, 0.5, true)
+	host._add_text(text_x, mid_y, Lang.t("被动 · %s") % Lang.t(str(passive.get("name", ""))), 17, "#58d3ff", 0.0, 0.5, true)
 	## ★★被动的简述【就画在条上】(2026-08-15, 用户点名的"同一屏两种交互"):
 	##   与技能卡同构 —— **条上给简述, 点开看全文**。
 	## ★2026-10-08 两栏后右栏只剩 494 宽, 简述从「标题右边横着放」改成标题下面一整行。
@@ -1015,7 +1015,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能自动施放
 		## ★2026-10-01: 「龟能100」→「龟能 100」。codex_text_lint 有一条「汉字贴着数字」,
 		##   它只扫 data/*.json 的玩家文案, 扫不到这里拼出来的屏幕串 —— 所以这处一直漏着。
-		bb += "　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]" % _energy_of(pet, sk)
+		bb += Lang.t("　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]") % _energy_of(pet, sk)
 	var title = RichTextLabel.new()
 	title.bbcode_enabled = true
 	title.fit_content = true
@@ -1290,7 +1290,7 @@ func _synergy_block(tname: String, tiers: Array, y: float) -> float:
 		parts.append(SkillText.render_consts(str(il)))
 	for i in range(tiers.size()):
 		var txt: String = SkillText.render_consts(str(descs[i])) if i < descs.size() else ""
-		parts.append("[color=%s][b]%d 件[/b][/color]  %s" % [tcol, int(tiers[i]), txt])
+		parts.append(Lang.t("[color=%s][b]%d 件[/b][/color]  %s") % [tcol, int(tiers[i]), txt])
 	var body := RichTextLabel.new()
 	body.bbcode_enabled = true; body.fit_content = true; body.scroll_active = false
 	body.position = Vector2(20, y)

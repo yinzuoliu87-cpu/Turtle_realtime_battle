@@ -79,7 +79,7 @@ static func open(host: Control, email: String, on_deleted: Callable) -> Control:
 
 	var body := Label.new()
 	body.name = BODY
-	body.text = BODY_STEP1
+	body.text = Lang.t(BODY_STEP1)
 	body.add_theme_font_size_override("font_size", 16)
 	body.add_theme_color_override("font_color", Color("#c9d6e2"))
 	## 中文按字断行(理由见设置页 `_ask_reset` 同一处注释)。

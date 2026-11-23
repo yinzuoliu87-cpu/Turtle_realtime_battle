@@ -304,7 +304,7 @@ func _on_slot_click(idx: int) -> void:
 			var target = idx if other_is_mark else other
 			var mark_value = host.team[mark_from]
 			if host.team[target] != null:
-				host._flash_status("%s 不能被替换" % host._mark_label(mark_value))
+				host._flash_status(Lang.t("%s 不能被替换") % host._mark_label(mark_value))
 				host._selected_slot_idx = -1
 				_refresh_slots()
 				return

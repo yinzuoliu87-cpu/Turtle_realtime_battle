@@ -232,7 +232,7 @@ class Http extends RefCounted:
 					## end.json 也没有(还在算 / 没有这份流), 或 end.json 说还有块而块不在(被清了 / 撤回重录)
 					_want_end = false
 					if (finished or _total >= 0) and long_gone:
-						_gone("404 %.0f 秒" % (float(now - _nf_since_ms) / 1000.0))
+						_gone(Lang.t("404 %.0f 秒") % (float(now - _nf_since_ms) / 1000.0))
 					else:
 						_retry()
 				else:

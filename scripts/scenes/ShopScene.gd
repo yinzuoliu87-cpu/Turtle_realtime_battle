@@ -1223,10 +1223,10 @@ func _on_buy(idx: int) -> void:
 		##   (同 `_toast` 头注记的那次真机实测)。
 		match str(r.get("reason", "")):
 			"coins":
-				_toast("深海币不足，购买「%s」还差 %d" % [_nm, price - int(GameState.meta_deepsea_coins)])
+				_toast(Lang.t("深海币不足，购买「%s」还差 %d") % [_nm, price - int(GameState.meta_deepsea_coins)])
 			"pool":
 				## 货架是异步持久化的, 同一件被别的路径抽空时摊上那张卡还挂着: 钱没扣、货没来, 必须说为什么。
-				_toast("「%s」已失效，请刷新商店" % _nm)
+				_toast(Lang.t("「%s」已失效，请刷新商店") % _nm)
 		return
 	var _axe_dup: bool = bool(r.get("axe_dup", false))
 	var _axe_evolved: bool = bool(r.get("axe_evolved", false))
@@ -1244,14 +1244,14 @@ func _on_buy(idx: int) -> void:
 	##   ★三种成交各有各的话: 合成到 ★N / 小木斧重复买(化成砍伐经验) / 普通进背包。
 	##     合成那条最要紧 —— 卡片消失了而背包里【多出来的是另一件东西】, 不说就是"我的钱去哪了"。
 	if _will_star >= 2:
-		_toast("购买成功，「%s」合成为 ★%d" % [_nm, _will_star])
+		_toast(Lang.t("购买成功，「%s」合成为 ★%d") % [_nm, _will_star])
 		## 首次提示「3 件同名同星装备自动合成升星」, 圈左下宝箱里升星的那一格(教程中不出)。
 		##   ★不圈顶栏「背包」: 那里提示条只能放进顶栏, 压住深海币读数(10-20 实拍)。宝箱放不下那一件(溢出)时才退回顶栏。
 		FirstTips.show(self, FirstTips.FIRST_MERGE, merge_tip_target(_eid, _will_star))
 	elif _axe_dup:
-		_toast("已拥有「%s」，转化为砍伐经验 +%d" % [_nm, int(AxeEvo.EXP_ON_BUY)])
+		_toast(Lang.t("已拥有「%s」，转化为砍伐经验 +%d") % [_nm, int(AxeEvo.EXP_ON_BUY)])
 	else:
-		_toast("购买成功，「%s」已放入背包" % _nm)
+		_toast(Lang.t("购买成功，「%s」已放入背包") % _nm)
 	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
 	Audio.play_sfx("coin_buy")   # 成交音(音效事件表; 2026-11-04 A5)
 	if _axe_evolved:
@@ -1358,7 +1358,7 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	var bar_w := 180.0
 	_wood_bar(lvhit, Vector2(bar_x, ROW_INFO_Y + 6.0) - o, Vector2(bar_w, 24), 1.0 if _maxed else (float(_have) / float(_need)))
 	var xpn := Label.new(); xpn.name = "XpLabel"
-	xpn.text = "已满级" if _maxed else ("经验 %d/%d" % [_have, _need])
+	xpn.text = "已满级" if _maxed else (Lang.t("经验 %d/%d") % [_have, _need])
 	xpn.add_theme_font_size_override("font_size", MIN_FONT_PX); xpn.add_theme_color_override("font_color", Color("#fff4dc"))
 	xpn.add_theme_color_override("font_outline_color", Color("#1a0e05")); xpn.add_theme_constant_override("outline_size", 6)
 	xpn.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1380,7 +1380,7 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	capn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; lvhit.add_child(capn)
 	## 「装备 N/M」(全队已装 / 上限)挪到左栏宝箱标题那一行(ShopChest.build_bench) —— 它说的是装备, 跟宝箱放一起。
 
-	var bxp := _icon_button("ShopBuyXpBtn", XP_ICON, "等级已满" if _maxed else ("买经验 %d" % int(P2.BUY_XP_COST)),
+	var bxp := _icon_button("ShopBuyXpBtn", XP_ICON, "等级已满" if _maxed else (Lang.t("买经验 %d") % int(P2.BUY_XP_COST)),
 		btn_pos, Vector2(ROW_BTN_W, ROW_BTN_H))
 	if not _maxed:
 		_coin_after_text(bxp)
@@ -1414,9 +1414,9 @@ func _on_buy_xp() -> void:
 		if int(GameState.season_level) > _lv0:
 			_tut_notify("level_up")   # 教程「购买经验，升到 2 级」
 	elif int(GameState.season_level) >= int(P2.MAX_LEVEL):
-		_toast("已达最高等级 Lv%d" % int(P2.MAX_LEVEL))
+		_toast(Lang.t("已达最高等级 Lv%d") % int(P2.MAX_LEVEL))
 	else:
-		_toast("深海币不足（需要 %d）" % int(P2.BUY_XP_COST))
+		_toast(Lang.t("深海币不足（需要 %d）") % int(P2.BUY_XP_COST))
 
 
 ## 教程导引每进一步就告诉宿主当前高亮的是谁(TutorialGuide 调)。到「买经验」那一步才把按钮放出来。
@@ -1540,7 +1540,7 @@ func _on_refresh() -> void:
 	if int(GameState.meta_deepsea_coins) < REFRESH_COST:
 		## ★同 `_on_buy`: 原来是裸 return。而「换一批」那颗按钮**一直是亮的**
 		##   (实测 coins=0 时 `disabled=false`) ⇒ 玩家点得下去、什么也不发生。
-		_toast("深海币不足（需要 %d）" % REFRESH_COST)
+		_toast(Lang.t("深海币不足（需要 %d）") % REFRESH_COST)
 		return
 	## 扣钱 + 顺带解锁(照云顶: 锁的是「这批货」, 换掉了锁就没有对象; 方案书 20261004 §⑤ U5-1) + 掷新货, 全在 EconLedger。
 	## 种子同 _roll(开关开着向服务器要: 等的这一下货架锁住)。

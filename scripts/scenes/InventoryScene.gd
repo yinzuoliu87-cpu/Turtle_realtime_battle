@@ -428,9 +428,9 @@ func _rebuild() -> void:
 	var _nxt := int(GameState.season_level) + 1
 	## ★原文"全队 6 只合计上限随赛季等级提升。当前 Lv3 → 5 件"是规则书的写法("上限""提升"
 	##   加一个箭头)。改成跟玩家说话: 现在能装几件、再升一级能装几件。
-	capl.tooltip_text = "单位装备上限 %d 件\n全队上限由赛季等级决定（当前 Lv%d：%d 件）%s" % [
+	capl.tooltip_text = Lang.t("单位装备上限 %d 件\n全队上限由赛季等级决定（当前 Lv%d：%d 件）%s") % [
 		P2.UNIT_EQUIP_CAP, int(GameState.season_level), cap,
-		("\nLv%d 可装备 %d 件" % [_nxt, P2.team_equip_cap(_nxt)]) if _nxt <= P2.MAX_LEVEL else "\n已达上限"]
+		(Lang.t("\nLv%d 可装备 %d 件") % [_nxt, P2.team_equip_cap(_nxt)]) if _nxt <= P2.MAX_LEVEL else "\n已达上限"]
 	add_child(capl)
 
 	## ★糖果罐已改为【背包格子里的一张卡】(用户 2026-08-14「以一个装备的形式」),
@@ -856,7 +856,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		else:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 空格透传
-			cell.tooltip_text = ("全队装备已达上限 %d/%d" % [
+			cell.tooltip_text = (Lang.t("全队装备已达上限 %d/%d") % [
 				GameState.team_equipped_count(), GameState.team_equip_cap()]) if team_full \
 				else "空槽位"
 		box.add_child(cell)
@@ -901,7 +901,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		gcell.add_child(corner)
 		## 原文"羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回": 括号注解 + "掉档"这种表述。
-		gcell.tooltip_text = "%s\n盾羁绊赠送，不占装备位，羁绊失效时移除" % str(gdef.get("name", ""))
+		gcell.tooltip_text = Lang.t("%s\n盾羁绊赠送，不占装备位，羁绊失效时移除") % str(gdef.get("name", ""))
 		## ★2026-10-21: 徽章同装备格, 不单独当靶子(30px = 16pt) —— 点它 = 点这张单位卡。
 		gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(gcell)
@@ -1347,7 +1347,7 @@ func _treasure_map_section(vb: VBoxContainer) -> void:
 	head.add_child(hl)
 	## 说法照对局信息面板(用户 2026-10-22「已开满5件，这又是你从哪里学的描述？」—— 那句是我编的):
 	##   战利品浮层标题写「战利品 x/5」, 财宝条写「当前 / 下一箱阈值」, 开满之后财宝条不画(info_panel ⑦ 财宝)。
-	var cl := _stat_lbl("战利品 %d/%d" % [opened, ChestLoot.THRESH.size()], InspectCard.C_TITLE)
+	var cl := _stat_lbl(Lang.t("战利品 %d/%d") % [opened, ChestLoot.THRESH.size()], InspectCard.C_TITLE)
 	cl.name = "TreasureCount"
 	head.add_child(cl)
 	var nxt: float = ChestLoot.next_threshold(opened)
@@ -1798,12 +1798,12 @@ func _show_equip_detail(item: Dictionary) -> void:
 	##   而商店详情面板(`ShopScene._build_stat_rows` 的「属性」标题)和图鉴
 	##   (`detail_views.gd:857` 的「属性」)本来就都只写两个字 —— 同一段信息三个界面
 	##   现在一个词。★下面那份【量高用的平文】必须跟着改, 否则量的高度和渲染的不是同一段字。
-	var bb := "[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]" % [bbody, eff]
+	var bb := Lang.t("[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]") % [bbody, eff]
 	## 框高按【字体自己排出来的高度】算, 不是按"每行几个字"估 ——
 	## 估的那一版实拍下面空了 160px(估多了), 而估少了就会把文案切掉。
 	## 估不准还有个更隐蔽的坏处: 每件装备的框高都对不上内容, 看起来就是"随便拍的"。
 	var bw := 700.0
-	var body_plain := "属性\n%s\n\n效果\n%s" % [
+	var body_plain := Lang.t("属性\n%s\n\n效果\n%s") % [
 		("无属性加成" if rows.is_empty() else _stat_block(eid, star)),
 		SkillText.equip_full(edef)]
 	var bh: float = clampf(_measured_text_h(body_plain, bw - 48.0, DETAIL_BODY_FS) + 180.0,
@@ -1880,7 +1880,7 @@ func _open_jar_card() -> void:
 		"tag": Lang.t("第 %d 档") % tier, "tag_col": Color("#e8dcc4"),
 		## 每套一个「·」开头、折行缩进(列表排版): 一套长了会折行, 不缩进时折下来的半行像新的一套。
 		##   「·」不用 [ul] 默认的「•」—— 「·」本来就在游戏字体里用着(「糖果罐 · 第 N 档」), 「•」不在。
-		"body": "打碎后随机获得以下奖励之一（每大轮限 1 次）：\n[ul bullet=·]%s[/ul]" % GameState.candy_jar_tier_preview(tier),
+		"body": Lang.t("打碎后随机获得以下奖励之一（每大轮限 1 次）：\n[ul bullet=·]%s[/ul]") % GameState.candy_jar_tier_preview(tier),
 		"body_px": MIN_FONT_PX,
 		"width": ITEM_CARD_W, "min_px": MIN_FONT_PX,
 	})
@@ -1964,7 +1964,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	##   是彩色带图标的, 而鼠标悬在格子上弹出来的是一片白字。两个入口两套长相。
 	## ★`highlight_star` 认的是 `数/数/数`, 上色产出的 `[img width=15 color=#xxxxxx]`
 	##   里没有这个形状, 不会误伤 —— 与 `_show_equip_detail` 里那次同一条理由。
-	box.tooltip_text = "[b]%s[/b]  ★%d  %d费\n\n属性\n%s\n\n效果\n%s" % [
+	box.tooltip_text = Lang.t("[b]%s[/b]  ★%d  %d费\n\n属性\n%s\n\n效果\n%s") % [
 		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
 		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief_bb(edef, 13) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
 	_wire_bench_tap(box, idx)

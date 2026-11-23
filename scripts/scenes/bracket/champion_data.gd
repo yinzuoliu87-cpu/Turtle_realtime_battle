@@ -63,7 +63,7 @@ static func edition_line(week: int, edition: int = -1) -> String:
 	var ed := edition if edition >= 0 else edition_of(week)
 	var parts: Array = []
 	if ed > 0:
-		parts.append("第 %d 届" % ed)
+		parts.append(Lang.t("第 %d 届") % ed)
 	var dt := date_text(week)
 	if dt != "":
 		parts.append(dt)

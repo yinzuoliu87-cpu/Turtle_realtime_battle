@@ -473,7 +473,7 @@ func _center(canvas: Control, total: int, lay: Dictionary, anim: bool, podium: b
 		_box(canvas, plate.grow(2.0), INK)
 		_box(canvas, plate.grow(1.0), GOLD_DEEP if not decided else GOLD)
 		_box(canvas, plate, Color("#2b2016"))
-		var pl := _label("晋级%s" % _P2C.STAGE_CUP, 16, GOLD if decided else TXT, true)
+		var pl := _label(Lang.t("晋级%s") % _P2C.STAGE_CUP, 16, GOLD if decided else TXT, true)
 		pl.name = "PromoPlate"
 		pl.position = plate.position
 		pl.size = plate.size

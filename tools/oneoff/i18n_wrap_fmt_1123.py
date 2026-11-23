@@ -6,7 +6,7 @@ import i18n_extract as X
 ROOT = X.ROOT
 SKIP = ("scripts/referee/", "scripts/net/remote_pool.gd", "scripts/systems/replay/replay_recorder.gd",
         "scripts/systems/sim/", "scripts/gamedata/copy_rules.gd")
-LIT = re.compile(r'(?<![\w.(])("(?:[^"\\n]|\.)*")(\s*%\s*)')
+LIT = re.compile(r'(?<![\w.])("(?:[^"\\\n]|\\.)*")(\s*%\s*)')
 FMT = X.FMT
 HAN = X.HAN
 total = 0

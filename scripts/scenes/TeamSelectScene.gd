@@ -1478,12 +1478,12 @@ func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 		return
 	# 拒绝把龟拖到 mark 占位上
 	if existing != null and _is_special_mark(existing) and not _is_special_mark(pet_id):
-		_flash_status("%s 不能被替换" % _mark_label(existing))
+		_flash_status(Lang.t("%s 不能被替换") % _mark_label(existing))
 		return
 	# 拖 mark 自己: 只能放空格
 	if _is_special_mark(pet_id):
 		if existing != null:
-			_flash_status("%s 只能拖到空格" % _mark_label(pet_id))
+			_flash_status(Lang.t("%s 只能拖到空格") % _mark_label(pet_id))
 			return
 		if old_idx >= 0:
 			team[old_idx] = null
