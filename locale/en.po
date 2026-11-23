@@ -5782,3 +5782,99 @@ msgstr "Fortune Turtle charges up, then throws all its Gold one coin at a time. 
 
 msgid "财神龟首次释放时随机获得 1 件 1~3 费的 1★ 临时装备，龟能消耗随之变为 {C:FortuneSystem.BUY_COST}。\n之后每次释放使该装备提升 1 星，升至 {C:FortuneSystem.BUY_MAX_STAR}★ 后龟能消耗降至 {C:FortuneSystem.BUY_COST_MAXED}，此后每次释放回复（{C:FortuneSystem.BUY_FULL_HEAL_COEF%}%×攻击力({ATK}) = {E:ATK*FortuneSystem.BUY_FULL_HEAL_COEF}）生命值。\n<span style=\"color:#8a93a0\">临时装备不占背包栏位，战斗结束后消失。</span>"
 msgstr "On its first cast, Fortune Turtle gains a random 1–3 cost 1★ temporary item, and its Energy cost becomes {C:FortuneSystem.BUY_COST}.\nEach later cast raises that item by 1 star. At {C:FortuneSystem.BUY_MAX_STAR}★, the Energy cost drops to {C:FortuneSystem.BUY_COST_MAXED}, and each cast from then on heals ({C:FortuneSystem.BUY_FULL_HEAL_COEF%}% × Attack ({ATK}) = {E:ATK*FortuneSystem.BUY_FULL_HEAL_COEF}).\n<span style=\"color:#8a93a0\">Temporary items take no Inventory slot and disappear after the battle.</span>"
+
+msgid "赛博龟登场时获得 {C:CyberSystem.AI_START_CHARGE} 层充能与 {C:CyberSystem.AI_MOVE_UP%}% 移动速度。近战敌人靠近时，赛博龟消耗 1 层充能冲刺躲开。\n每次释放获得 1 层充能，并冲刺到射程内合适的距离。"
+msgstr "On spawn, Cyber Turtle gains {C:CyberSystem.AI_START_CHARGE} charges and {C:CyberSystem.AI_MOVE_UP%}% move speed. When a melee enemy closes in, it spends 1 charge to dash away.\nEach cast grants 1 charge and dashes to a good spot within range."
+
+msgid "水晶龟受到的魔法伤害降低 {C:CrystalSystem.MAGIC_DR%}%。\n水晶龟的攻击为目标叠加结晶印记，满 {C:CrystalSystem.STACK_MAX} 层时引爆，造成目标 {C:CrystalSystem.BURST_MAXHP_PCT%}% 最大生命值的魔法伤害，并使其魔抗降低 {C:CrystalSystem.BURST_MR_SHRED%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。"
+msgstr "Crystal Turtle takes {C:CrystalSystem.MAGIC_DR%}% less magic damage.\nIts attacks apply Crystal Marks to targets. At {C:CrystalSystem.STACK_MAX} stacks, they detonate for magic damage equal to {C:CrystalSystem.BURST_MAXHP_PCT%}% of the target's max health and reduce its Magic Resist by {C:CrystalSystem.BURST_MR_SHRED%}% for {C:RealtimeBattle3DScene.BUFF_SEC} seconds."
+
+msgid "水晶龟刺出水晶刺，造成 {N:CrystalSystem.BASIC_ATK_COEF*ATK} 物理伤害外加目标 {C:CrystalSystem.BASIC_MAXHP_MAGIC%}% 最大生命值的魔法伤害，并叠加 {C:CrystalSystem.BASIC_STACKS} 层结晶印记。"
+msgstr "Crystal Turtle thrusts a crystal spike, dealing {N:CrystalSystem.BASIC_ATK_COEF*ATK} physical damage plus {C:CrystalSystem.BASIC_MAXHP_MAGIC%}% of the target's max health as magic damage, and applying {C:CrystalSystem.BASIC_STACKS} Crystal Mark stacks."
+
+msgid "水晶龟竖起水晶壁垒，获得 {E:CrystalSystem.BULWARK_ATK*ATK} 外加自身 {C:CrystalSystem.BULWARK_HP_PCT%}% 最大生命值的护盾，持续 {C:CrystalSystem.BULWARK_SEC} 秒，并使全体友方的护甲与魔抗提升 {C:CrystalSystem.BULWARK_TEAM_RESIST%}%，持续 {C:CrystalSystem.BULWARK_SEC} 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:CrystalSystem.SPIKE_TRUE_COEF*ATK} 真实伤害，叠加 {C:CrystalSystem.SPIKE_STACKS} 层结晶印记，被击飞 {C:CrystalSystem.SPIKE_KNOCK_SEC} 秒并被减速 {C:CrystalSystem.SPIKE_SLOW_PCT%}%，持续 {C:CrystalSystem.SPIKE_SLOW_SEC} 秒。"
+msgstr "Crystal Turtle raises a Crystal Bulwark, gaining a {E:CrystalSystem.BULWARK_ATK*ATK} + {C:CrystalSystem.BULWARK_HP_PCT%}% max health shield for {C:CrystalSystem.BULWARK_SEC} seconds, and giving all allies {C:CrystalSystem.BULWARK_TEAM_RESIST%}% Armor and Magic Resist for {C:CrystalSystem.BULWARK_SEC} seconds.\nWhen the shield ends or breaks, it sends a line of crystal spikes at the target. Enemies hit take {T:CrystalSystem.SPIKE_TRUE_COEF*ATK} true damage, gain {C:CrystalSystem.SPIKE_STACKS} Crystal Mark stacks, are knocked up for {C:CrystalSystem.SPIKE_KNOCK_SEC} seconds, and are slowed by {C:CrystalSystem.SPIKE_SLOW_PCT%}% for {C:CrystalSystem.SPIKE_SLOW_SEC} seconds."
+
+msgid "水晶龟对目标周围的敌人连续释放 {C:CrystalSystem.BURST_SEGMENTS} 段碎晶，共造成 {M:CrystalSystem.BURST_MAGIC*ATK} 魔法伤害和 {T:CrystalSystem.BURST_TRUE*ATK} 真实伤害，每一段都为命中的敌人叠加一层结晶印记。"
+msgstr "Crystal Turtle releases {C:CrystalSystem.BURST_SEGMENTS} bursts of crystal shards at enemies around the target, dealing {M:CrystalSystem.BURST_MAGIC*ATK} magic damage and {T:CrystalSystem.BURST_TRUE*ATK} true damage in total. Each burst applies a Crystal Mark stack to enemies hit."
+
+msgid "被动：水晶龟登场时召唤一颗水晶球。水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒射出一道贯穿光线，分两段对直线上的所有敌人共造成 {M:CrystalSystem.ORB_RAY_COEF*ATK} 魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。\n\n主动：水晶龟射出一道相同的光线。"
+msgstr "Passive: on spawn, Crystal Turtle summons a crystal ball. Every {C:CrystalSystem.ORB_RAY_IV} seconds, the ball fires a piercing ray that deals {M:CrystalSystem.ORB_RAY_COEF*ATK} magic damage over two hits to all enemies on the line and applies {C:CrystalSystem.ORB_RAY_STACKS} Crystal Mark stacks.\n\nActive: Crystal Turtle fires the same ray."
+
+msgid "宝箱龟根据造成的伤害积累财宝值，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style=\"color:#8a93a0\"><b>一大轮</b>内最多获得 {C:ChestSystem.CHEST_MAX_OPEN} 件装备，跨场累积，新的大轮开始时重置。\n</span>"
+msgstr "Treasure Chest Turtle builds Treasure from damage dealt. Each time it reaches a threshold, it gets a random item from the loot pool and heals.\n<span style=\"color:#8a93a0\">Up to {C:ChestSystem.CHEST_MAX_OPEN} items per <b>Season</b>, building up across matches and resetting when a new Season starts.\n</span>"
+
+msgid "宝箱龟朝目标猛砸宝箱，对前方短直线上的所有敌人造成 {N:BasicConsts.DEFAULT_BASIC_COEF*ATK} 物理伤害。"
+msgstr "Treasure Chest Turtle slams its chest at the target, dealing {N:BasicConsts.DEFAULT_BASIC_COEF*ATK} physical damage to all enemies in a short line in front."
+
+msgid "宝箱龟回复 {E:HP*ChestSystem.COUNT_HEAL_PCT} 生命值并获得 {E:ChestSystem.COUNT_SHIELD_COEF*ATK} 护盾。\n宝箱龟每拥有 {C:ChestSystem.COUNT_PER_TREASURE} 点财宝值，治疗效果提升 {C:ChestSystem.COUNT_HEAL_BONUS%}%。"
+msgstr "Treasure Chest Turtle heals {E:HP*ChestSystem.COUNT_HEAL_PCT} and gains a {E:ChestSystem.COUNT_SHIELD_COEF*ATK} shield.\nHealing increases by {C:ChestSystem.COUNT_HEAL_BONUS%}% for every {C:ChestSystem.COUNT_PER_TREASURE} Treasure it has."
+
+msgid "宝箱龟在目标位置卷起财宝风暴，每 {C:ChestSystem.STORM_TICK_SEC} 秒对范围内的敌人造成 {N:ChestSystem.STORM_ATK_COEF*ATK} 物理伤害，共 {C:ChestSystem.STORM_TICKS} 次。"
+msgstr "Treasure Chest Turtle whips up a treasure storm at the target's location, dealing {N:ChestSystem.STORM_ATK_COEF*ATK} physical damage to enemies inside every {C:ChestSystem.STORM_TICK_SEC} seconds, {C:ChestSystem.STORM_TICKS} times."
+
+msgid "被动：宝箱龟每携带一件装备，便永久获得 {C:ChestSystem.GREED_ATK_PER_EQ%}% 攻击力与 {C:ChestSystem.GREED_HP_PER_EQ%}% 自身最大生命值。藏宝图开出的战利品也计入。\n\n主动：宝箱龟蓄力后朝一条直线发射能量射线，对直线上的所有敌人造成 {N:ChestSystem.CANNON_COEF*ATK} 物理伤害并将其击飞。"
+msgstr "Passive: for each item it carries, Treasure Chest Turtle permanently gains {C:ChestSystem.GREED_ATK_PER_EQ%}% attack damage and {C:ChestSystem.GREED_HP_PER_EQ%}% max health. Loot from the Treasure Map counts too.\n\nActive: Treasure Chest Turtle charges up and fires an energy ray in a line, dealing {N:ChestSystem.CANNON_COEF*ATK} physical damage to all enemies on it and knocking them up."
+
+msgid "星际龟将攻击与技能造成伤害的 {C:StarSystem.ENERGY_GAIN%}% 转化为星能，星能上限为 {C:StarSystem.ENERGY_CAP_PCT%}% 自身最大生命值。\n星际龟每次攻击或释放技能后，对目标额外造成相当于星能 {C:StarSystem.ENERGY_TRUE_PCT%}% 的真实伤害。\n若携带【星波】或【扭曲空间】，星能充满时释放强化版本并消耗全部星能。"
+msgstr "Space Turtle converts {C:StarSystem.ENERGY_GAIN%}% of attack and ability damage into Star Power, capped at {C:StarSystem.ENERGY_CAP_PCT%}% of its max health.\nAfter each attack or ability, it deals bonus true damage to the target equal to {C:StarSystem.ENERGY_TRUE_PCT%}% of its Star Power.\nWith [Star Wave] or [Warp Space], full Star Power casts the empowered version and spends it all."
+
+msgid "星际龟发射星光弹，造成 {M:StarSystem.BOLT_MAGIC*ATK} 外加目标 {C:StarSystem.BOLT_CURHP%}% 当前生命值的魔法伤害。"
+msgstr "Space Turtle fires a starlight shot, dealing {M:StarSystem.BOLT_MAGIC*ATK} + {C:StarSystem.BOLT_CURHP%}% of the target's current health as magic damage."
+
+msgid "星际龟蓄力 {C:StarSystem.WORM_WINDUP} 秒后朝目标发射一个缓慢移动的虫洞。虫洞沿直线飞向场地边缘，将沿途的敌人吸向虫洞，附近的敌人被捕获并随虫洞移动。\n虫洞抵达边缘时爆炸，对被捕获的敌人与附近的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK} 魔法伤害，本战场每进行 1 秒，伤害提高 {C:StarSystem.WORM_BOOM_PER_SEC%}%。"
+msgstr "Space Turtle charges for {C:StarSystem.WORM_WINDUP} seconds, then launches a slow-moving wormhole at the target. It flies straight to the edge of the field, pulling in enemies along its path; nearby enemies are captured and carried along.\nWhen it reaches the edge, it explodes, dealing {M:StarSystem.WORM_BOOM_COEF*ATK} magic damage to captured and nearby enemies, +{C:StarSystem.WORM_BOOM_PER_SEC%}% for every second the battle has lasted."
+
+msgid "星际龟释放一圈向外扩散的星波，对命中的所有敌人造成 {M:StarSystem.WAVE_COEF*ATK} 魔法伤害。\n星能充满时，额外召唤一颗彗星砸向敌阵中心，消耗全部星能，对中心附近的敌人造成与消耗星能等量的真实伤害。"
+msgstr "Space Turtle releases an expanding star wave, dealing {M:StarSystem.WAVE_COEF*ATK} magic damage to all enemies hit.\nWith full Star Power, it also calls a comet down on the center of the enemy group, spending all Star Power to deal that much true damage to enemies near the center."
+
+msgid "星际龟在敌阵中心制造一个引力点，对周围的所有敌人造成 {M:StarSystem.WARP_ATK_COEF*ATK} 魔法伤害。\n星能充满时，引力点额外将范围内的敌人甩过中心点，落到对面一侧，并消耗全部星能。"
+msgstr "Space Turtle creates a gravity point at the center of the enemy group, dealing {M:StarSystem.WARP_ATK_COEF*ATK} magic damage to all enemies around it.\nWith full Star Power, the gravity point also flings enemies in range across the center to the opposite side, spending all Star Power."
+
+msgid "缩头乌龟登场时，从全部 A / B / C 稀有度的龟中随机召唤一只作为随从。随从拥有原龟 {C:HidingSystem.MINION_HP_SCALE%}% 的最大生命值与 {C:HidingSystem.MINION_ATK_SCALE%}% 的攻击力，带着原龟的被动与一个技能自主作战。"
+msgstr "On spawn, Hiding Turtle summons a random A / B / C rarity turtle as a follower. The follower has {C:HidingSystem.MINION_HP_SCALE%}% of the original's max health and {C:HidingSystem.MINION_ATK_SCALE%}% of its attack damage, and fights on its own with the original's passive and one ability."
+
+msgid "缩头乌龟攻击目标，造成 {N:HidingSystem.BASIC_COEF*ATK} 物理伤害。\n每次攻击使自身永久获得 {C:HidingSystem.HARDEN_RESIST} 护甲与 {C:HidingSystem.HARDEN_RESIST} 魔抗，并获得 {E:ATK*HidingSystem.HARDEN_SHIELD} 护盾。"
+msgstr "Hiding Turtle attacks the target, dealing {N:HidingSystem.BASIC_COEF*ATK} physical damage.\nEach attack permanently grants {C:HidingSystem.HARDEN_RESIST} Armor and {C:HidingSystem.HARDEN_RESIST} Magic Resist, plus a {E:ATK*HidingSystem.HARDEN_SHIELD} shield."
+
+msgid "缩头乌龟立即为随从提供 {C:HidingSystem.SHRINK_MINION_ENERGY%}% 龟能，随后自身缩入壳中 {C:HidingSystem.SHRINK_SEC} 秒，期间获得 {C:HidingSystem.SHRINK_DR%}% 减伤。\n<span style=\"color:#8a93a0\">缩壳期间缩头乌龟无法攻击或移动。\n</span>"
+msgstr "Hiding Turtle instantly gives its follower {C:HidingSystem.SHRINK_MINION_ENERGY%}% Energy, then ducks into its shell for {C:HidingSystem.SHRINK_SEC} seconds, gaining {C:HidingSystem.SHRINK_DR%}% Damage Reduction.\n<span style=\"color:#8a93a0\">Hiding Turtle can't attack or move while in its shell.\n</span>"
+
+msgid "缩头乌龟获得 {E:HP*HidingSystem.DEFEND_SHIELD_PCT} 护盾，持续 {C:HidingSystem.DEFEND_SHIELD_SEC} 秒，并使护甲提升 {C:HidingSystem.DEFEND_DEF_UP%}%，持续 {C:HidingSystem.DEFEND_DEF_SEC} 秒。\n护盾到期时，剩余护盾的 {C:HidingSystem.DEFEND_CONVERT%}% 转化为生命值。持有此护盾期间龟能不再充能。"
+msgstr "Hiding Turtle gains a {E:HP*HidingSystem.DEFEND_SHIELD_PCT} shield for {C:HidingSystem.DEFEND_SHIELD_SEC} seconds and {C:HidingSystem.DEFEND_DEF_UP%}% Armor for {C:HidingSystem.DEFEND_DEF_SEC} seconds.\nWhen the shield expires, {C:HidingSystem.DEFEND_CONVERT%}% of what's left turns into healing. Energy doesn't charge while it holds this shield."
+
+msgid "缩头乌龟为随从注入力量，持续 {C:HidingSystem.EMPOWER_SEC} 秒：攻击力 +{C:HidingSystem.EMPOWER_STAT%}%、护甲与魔抗 +{C:HidingSystem.EMPOWER_STAT%}%、生命偷取 +{C:HidingSystem.EMPOWER_STAT%}% 和暴击率 +{C:HidingSystem.EMPOWER_CRIT%}%。"
+msgstr "Hiding Turtle empowers its follower for {C:HidingSystem.EMPOWER_SEC} seconds: Attack +{C:HidingSystem.EMPOWER_STAT%}%, Armor and Magic Resist +{C:HidingSystem.EMPOWER_STAT%}%, Lifesteal +{C:HidingSystem.EMPOWER_STAT%}% and Crit Chance +{C:HidingSystem.EMPOWER_CRIT%}%."
+
+msgid "无头龟撕咬目标，造成 {N:BasicConsts.DEFAULT_BASIC_COEF*ATK} 物理伤害外加目标 {C:BasicConsts.HEADLESS_BITE_MAXHP%}% 最大生命值的魔法伤害。"
+msgstr "Headless Turtle bites the target, dealing {N:BasicConsts.DEFAULT_BASIC_COEF*ATK} physical damage plus {C:BasicConsts.HEADLESS_BITE_MAXHP%}% of the target's max health as magic damage."
+
+msgid "无头龟发出咆哮威吓周围的所有敌人，施加恐惧 3 秒，期间敌人无法移动、攻击或释放技能。\n<span style=\"color:#8a93a0\">恐惧期间敌人的龟能也停止充能。\n</span>"
+msgstr "Headless Turtle roars at all nearby enemies, applying Fear for 3 seconds, during which they can't move, attack or cast abilities.\n<span style=\"color:#8a93a0\">Feared enemies' Energy also stops charging.\n</span>"
+
+msgid "无头龟从自身爆发出覆盖几乎整个战场的触须，持续 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，期间无法移动或攻击，并获得 {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n触须伸出时，对敌人造成 {N:HeadlessSystem.TENDRIL_PASS_FOE*ATK} 物理伤害，对友军造成 {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK} 物理伤害，并眩晕所有命中的单位。\n触须收回时，对敌人造成 {N:HeadlessSystem.TENDRIL_DETACH_FOE*ATK} 物理伤害，对友军造成 {N:HeadlessSystem.TENDRIL_DETACH_ALLY*ATK} 物理伤害，并解除触须造成的眩晕。"
+msgstr "Headless Turtle bursts out tendrils covering almost the whole battlefield for {C:HeadlessSystem.TENDRIL_SELF_STUN} seconds, unable to move or attack meanwhile, and gains {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% Lifesteal.\nWhen the tendrils lash out, they deal {N:HeadlessSystem.TENDRIL_PASS_FOE*ATK} physical damage to enemies and {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK} to allies, stunning every unit hit.\nWhen they pull back, they deal {N:HeadlessSystem.TENDRIL_DETACH_FOE*ATK} physical damage to enemies and {N:HeadlessSystem.TENDRIL_DETACH_ALLY*ATK} to allies, ending the tendril stun."
+
+msgid "无头龟的接下来 {C:HeadlessSystem.SOUL_HITS} 次攻击额外造成 {M:HeadlessSystem.SOUL_ATK_COEF*ATK} 外加目标 {C:HeadlessSystem.SOUL_CURHP_PCT%}% 当前生命值的魔法伤害。\n第 {C:HeadlessSystem.SOUL_HITS} 次攻击后，无头龟挥出镰刀横扫正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形范围，击退命中的敌人并施加 {C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒。诅咒每秒造成目标 {C:BattleDamage.CURSE_HP_PCT%}% 最大生命值的真实伤害。"
+msgstr "Headless Turtle's next {C:HeadlessSystem.SOUL_HITS} attacks deal {M:HeadlessSystem.SOUL_ATK_COEF*ATK} + {C:HeadlessSystem.SOUL_CURHP_PCT%}% of the target's current health as bonus magic damage.\nAfter the {C:HeadlessSystem.SOUL_HITS}th attack, it sweeps its scythe across a {C:HeadlessSystem.SCYTHE_ARC_DEG}° cone in front, knocking back enemies hit and cursing them for {C:HeadlessSystem.SCYTHE_CURSE_SEC} seconds. Curse deals true damage equal to {C:BattleDamage.CURSE_HP_PCT%}% of the target's max health each second."
+
+msgid "龟壳在登场后第 {C:ShellSystem.AWAKEN_AT_1} 秒与第 {C:ShellSystem.AWAKEN_AT_2} 秒各自动觉醒一次，每次使六项属性各提升 {C:ShellSystem.AWAKEN_PCT%}%，暴击率提升 {C:ShellSystem.AWAKEN_CRIT%}%。\n龟壳受到伤害时将伤害转化为储能，储能 {C:RealtimeBattle3DScene.SHELL_STORE_SEC} 秒后发出一道缓慢移动的冲击波，对触碰到的敌人造成相当于储能 {C:ShellSystem.RELEASE_DMG_PCT%}% 的物理伤害，\n同时获得相当于储能 {C:ShellSystem.RELEASE_SHIELD_PCT%}% 的护盾，随后进入 {C:RealtimeBattle3DScene.SHELL_CD_SEC} 秒冷却，之后重新开始储能。\n<span style=\"color:#8a93a0\">储能来自受到的伤害，上限为自身最大生命值的 {C:ShellSystem.STORE_CAP_PCT%}%。护盾在 {C:RealtimeBattle3DScene.SHELL_SHIELD_SEC} 秒内逐渐衰减。\n</span>"
+msgstr "Turtle Shell awakens automatically at {C:ShellSystem.AWAKEN_AT_1} and {C:ShellSystem.AWAKEN_AT_2} seconds after spawning, each time raising six stats by {C:ShellSystem.AWAKEN_PCT%}% and Crit Chance by {C:ShellSystem.AWAKEN_CRIT%}%.\nTurtle Shell turns damage taken into Stored Energy. After storing for {C:RealtimeBattle3DScene.SHELL_STORE_SEC} seconds, it releases a slow-moving shockwave that deals physical damage equal to {C:ShellSystem.RELEASE_DMG_PCT%}% of Stored Energy to enemies it touches,\nand gains a shield equal to {C:ShellSystem.RELEASE_SHIELD_PCT%}% of Stored Energy, then cools down for {C:RealtimeBattle3DScene.SHELL_CD_SEC} seconds before storing again.\n<span style=\"color:#8a93a0\">Stored Energy comes from damage taken, up to {C:ShellSystem.STORE_CAP_PCT%}% of max health. The shield decays over {C:RealtimeBattle3DScene.SHELL_SHIELD_SEC} seconds.\n</span>"
+
+msgid "龟壳打击目标，造成 {N:ShellSystem.BASIC_COEF*ATK} 伤害，伤害类型在物理与真实之间逐次交替，并对主目标周围的其他敌人造成 {C:ShellSystem.SPLASH_PCT%}% 的溅射伤害。\n<span style=\"color:#8a93a0\">溅射伤害的类型与本次攻击相同。\n</span>"
+msgstr "Turtle Shell strikes the target for {N:ShellSystem.BASIC_COEF*ATK} damage, alternating between physical and true each hit, and splashes {C:ShellSystem.SPLASH_PCT%}% of it to other enemies around the main target.\n<span style=\"color:#8a93a0\">The splash has the same damage type as the attack.\n</span>"
+
+msgid "龟壳随机复制敌方的 2 个技能并依次释放，每个技能只发挥 {C:ShellSystem.COPY_EFFECT%}% 的效果。"
+msgstr "Turtle Shell copies 2 random enemy abilities and casts them in turn, each at {C:ShellSystem.COPY_EFFECT%}% effect."
+
+msgid "龟壳夺取目标 {C:ShellSystem.ABSORB_PCT%}% 最大生命值：目标的最大生命值降低这一数值，龟壳的最大生命值与当前生命值增加这一数值。"
+msgstr "Turtle Shell takes {C:ShellSystem.ABSORB_PCT%}% of the target's max health: the target's max health drops by that much, and Turtle Shell's max and current health rise by that much."
+
+msgid "被动：龟壳 {C:ShellSystem.STEALTH_IDLE_SEC} 秒内未受到伤害时进入潜影，变为不可选中。龟壳攻击或释放技能时解除潜影，范围伤害不会解除潜影。\n解除潜影后的首次攻击额外造成 {M:ShellSystem.STEALTH_BREAK_MAGIC*ATK} 魔法伤害，施加 {E:ShellSystem.STEALTH_POISON_MULT*ATK} 层中毒与 {C:ShellSystem.STEALTH_HEALCUT_PCT%}% 治疗削减，持续 {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒。\n\n主动：龟壳朝目标方向飞行，对途经的敌人造成 {M:ShellSystem.DIVE_MAGIC*ATK} 魔法伤害并将其击退。龟壳沿途留下一条暗影火道，持续 {C:ShellSystem.BURN_LIFE} 秒，每 {C:ShellSystem.BURN_TICK_SEC} 秒对火道内的敌人施加 {E:ShellSystem.BURN_ATK_MULT*ATK} 层灼烧并减速 {C:ShellSystem.BURN_SLOW_PCT%}%。龟壳落地后进入潜影。"
+msgstr "Passive: if Turtle Shell takes no damage for {C:ShellSystem.STEALTH_IDLE_SEC} seconds, it enters Shadow and becomes untargetable. Attacking or casting ends Shadow; area damage doesn't.\nThe first attack after leaving Shadow deals {M:ShellSystem.STEALTH_BREAK_MAGIC*ATK} bonus magic damage and applies {E:ShellSystem.STEALTH_POISON_MULT*ATK} Poison and {C:ShellSystem.STEALTH_HEALCUT_PCT%}% Grievous Wounds for {C:ShellSystem.STEALTH_HEALCUT_SEC} seconds.\n\nActive: Turtle Shell flies toward the target, dealing {M:ShellSystem.DIVE_MAGIC*ATK} magic damage to enemies it passes and knocking them back. It leaves a trail of shadow fire for {C:ShellSystem.BURN_LIFE} seconds that applies {E:ShellSystem.BURN_ATK_MULT*ATK} Burn and a {C:ShellSystem.BURN_SLOW_PCT%}% slow to enemies inside every {C:ShellSystem.BURN_TICK_SEC} seconds. Turtle Shell enters Shadow after landing."
+
+msgid "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，回复 {C:BambooSystem.GROW_HEAL_PCT%}% 自身最大生命值并永久提升最大生命值（本大轮内跨场累积）。"
+msgstr "Every {C:BambooSystem.GROW_CD} seconds, Bamboo Turtle charges up. Its next attack deals {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} bonus magic damage, heals {C:BambooSystem.GROW_HEAL_PCT%}% of its max health, and permanently raises its max health (building up across matches this Season)."
+
+msgid "竹叶龟甩出一道叶刃，造成 {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT} 物理伤害。"
+msgstr "Bamboo Turtle flings a leaf blade, dealing {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT} physical damage."
