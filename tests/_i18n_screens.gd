@@ -42,6 +42,10 @@ func _ready() -> void:
 		for it in TP.collect(get_tree().root, vp):
 			n_items += 1
 			var t := str(it["text"])
+			## 控件自动翻译: 屏上显示的是 atr(text), 不是 text 本身(采集器读的是 text)
+			var nd := get_tree().root.get_node_or_null(NodePath(str(it["path"])))
+			if nd != null and nd.can_auto_translate():
+				t = String(nd.atr(t))
 			if _han.search(t) == null:
 				continue
 			if seen.has(t):
