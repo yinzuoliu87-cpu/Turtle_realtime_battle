@@ -1585,7 +1585,7 @@ func _empty_text() -> String:
 static func cup_soon_head(left: int) -> String:
 	if left <= 0:
 		return Lang.t("%s即将开始") % _P2C.STAGE_CUP
-	return Lang.t("距%s开始 %s") % [_P2C.STAGE_CUP, _CP.dur(left)]
+	return Lang.t("距%s开始 %s") % [Lang.t(_P2C.STAGE_CUP), _CP.dur(left)]
 
 
 ## 冠军杯赛只有 1 人那一页(本周只有一个组: 那个组的冠军直接夺冠)。

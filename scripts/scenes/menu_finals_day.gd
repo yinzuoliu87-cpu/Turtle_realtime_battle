@@ -188,9 +188,9 @@ func band_text(now: int) -> String:
 	var cup: int = _M.cup_ts(now)
 	## 倒计时写法与全局小条同一份(`finals_copy.dur`; 原来走主菜单 `_left_text`: 满一小时不带秒, 同屏两种写法)
 	if now < seat:
-		return Lang.t("距%s开始 %s") % [_P2.STAGE_GROUP, _FC.dur(seat - now)]
+		return Lang.t("距%s开始 %s") % [Lang.t(_P2.STAGE_GROUP), _FC.dur(seat - now)]
 	if now < cup:
-		return Lang.t("距%s开始 %s") % [_P2.STAGE_CUP, _FC.dur(cup - now)]
+		return Lang.t("距%s开始 %s") % [Lang.t(_P2.STAGE_CUP), _FC.dur(cup - now)]
 	if _M.champion_visible(feeds(now)["cup"], now) >= 0:
 		return Lang.t("%s已结束") % _P2.STAGE_CUP
 	return Lang.t("%s进行中") % _P2.STAGE_CUP
