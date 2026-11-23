@@ -390,7 +390,7 @@ static func local_wd_hhmm(utc_ts: int) -> String:
 	var d: Dictionary = local_dict(utc_ts)
 	var w: int = int(d.get("weekday", 0))
 	var wi: int = 7 if w == 0 else w
-	return Lang.t("周%s %02d:%02d") % [WEEKDAY_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
+	return Lang.t("周%s %02d:%02d") % [Lang.t(WEEKDAY_CN[wi - 1]), int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 
 ## 周日分组(finals_seat)第一次跑之前吗? 服务端在这之前对「报了名还没分组」的人回 too_few, 不能照字面念给玩家。

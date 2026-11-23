@@ -2094,8 +2094,8 @@ static func _phase_days_text(ph: String) -> String:
 	if d.x <= 0:
 		return ""
 	if d.x == d.y:
-		return Lang.t("周%s") % _WD_CN[d.x - 1]
-	return Lang.t("周%s ~ 周%s") % [_WD_CN[d.x - 1], _WD_CN[d.y - 1]]
+		return Lang.t("周%s") % Lang.t(_WD_CN[d.x - 1])
+	return Lang.t("周%s ~ 周%s") % [Lang.t(_WD_CN[d.x - 1]), Lang.t(_WD_CN[d.y - 1])]
 
 
 ## 决赛日玩法上线了没有(门禁/实拍可用 `strip_finals_live_override` 按成是/否; -1 = 问规则)。
