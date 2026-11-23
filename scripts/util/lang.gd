@@ -69,3 +69,25 @@ static func t(s: String) -> String:
 
 static func is_en() -> bool:
 	return code == "en"
+
+
+## 英文比中文长: 不折行的 Label / Button 一行放不下时, 把字号往下缩到放得下(最小 min_px)。中文不动。
+##   max_w = 留给文字的宽(去掉内边距)。返回最后用的字号。
+static func fit_font(c: Control, max_w: float, start_px: int, min_px: int = 12) -> int:
+	if code == "zh" or c == null:
+		return start_px
+	var f: Font = c.get_theme_font("font")
+	if f == null:
+		return start_px
+	var t := String(c.atr(c.get("text"))) if c.get("text") != null else ""
+	var fs := start_px
+	while fs > min_px:
+		var w := 0.0
+		for line in t.split("
+"):
+			w = maxf(w, f.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x)
+		if w <= max_w:
+			break
+		fs -= 1
+	c.add_theme_font_size_override("font_size", fs)
+	return fs

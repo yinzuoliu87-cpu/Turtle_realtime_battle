@@ -1179,6 +1179,7 @@ func _build_locked_hint() -> void:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(l)
 	var rc := _rect("lockedHint")
+	Lang.fit_font(l, rc.size.x - 40.0, _sf(26), _sf(16))
 	## 2026-11-01 两行(状态一行、说明一行, 方案书 20261101f): 高度按行数算, 落在 lockedHint 框(高 96)里。
 	var _rows := l.text.count("\n") + 1
 	var h := float(_sf(26)) * (1.6 if _rows == 1 else 1.35 * float(_rows)) + 16.0
