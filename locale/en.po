@@ -5974,3 +5974,183 @@ msgstr "Fortune Turtle charges up, then throws all its Gold one coin at a time. 
 
 msgid "财神龟首次释放时随机获得 1 件 1~3 费的 1★ 临时装备，龟能消耗随之变为 {C:FortuneSystem.BUY_COST}。\n之后每次释放使该装备提升 1 星，升至 {C:FortuneSystem.BUY_MAX_STAR}★ 后龟能消耗降至 {C:FortuneSystem.BUY_COST_MAXED}，此后每次释放回复 {E:ATK*FortuneSystem.BUY_FULL_HEAL_COEF} 生命值。\n<span style=\"color:#8a93a0\">临时装备不占背包栏位，战斗结束后消失。</span>"
 msgstr "On its first cast, Fortune Turtle gains a random 1–3 cost 1★ temporary item, and its Energy cost becomes {C:FortuneSystem.BUY_COST}.\nEach later cast raises that item by 1 star. At {C:FortuneSystem.BUY_MAX_STAR}★, the Energy cost drops to {C:FortuneSystem.BUY_COST_MAXED}, and each cast from then on heals {E:ATK*FortuneSystem.BUY_FULL_HEAL_COEF}.\n<span style=\"color:#8a93a0\">Temporary items take no Inventory slot and disappear after the battle.</span>"
+
+msgid "食物"
+msgstr "Food"
+
+msgid "枪"
+msgstr "Gun"
+
+msgid "灵物"
+msgstr "Spirit"
+
+msgid "奇械"
+msgstr "Gadget"
+
+msgid "剑"
+msgstr "Sword"
+
+msgid "遗物"
+msgstr "Relic"
+
+msgid "弓箭"
+msgstr "Bow"
+
+msgid "法器"
+msgstr "Artifact"
+
+msgid "药水"
+msgstr "Potion"
+
+msgid "香火"
+msgstr "Incense"
+
+msgid "涅槃"
+msgstr "Rebirth"
+
+msgid "棱镜"
+msgstr "Prism"
+
+msgid "亡灵"
+msgstr "Undead"
+
+msgid "掠夺"
+msgstr "Plunder"
+
+msgid "墨迹"
+msgstr "Ink"
+
+msgid "藏宝图"
+msgstr "Treasure Map"
+
+msgid "星能"
+msgstr "Star Power"
+
+msgid "气场觉醒"
+msgstr "Aura Awakening"
+
+msgid "不屈"
+msgstr "Unyielding"
+
+msgid "赌徒之血"
+msgstr "Gambler's Blood"
+
+msgid "多重打击"
+msgstr "Multi-Strike"
+
+msgid "猎杀"
+msgstr "Hunt"
+
+msgid "甜蜜掠夺"
+msgstr "Sweet Plunder"
+
+msgid "泡沫"
+msgstr "Foam"
+
+msgid "雷电"
+msgstr "Thunder"
+
+msgid "坚壁"
+msgstr "Bulwark"
+
+msgid "熔岩之心"
+msgstr "Heart of Lava"
+
+msgid "浮游炮"
+msgstr "Drones"
+
+msgid "水晶共鸣"
+msgstr "Crystal Resonance"
+
+msgid "喊龟"
+msgstr "Call for Backup"
+
+msgid "生长"
+msgstr "Growth"
+
+msgid "审判"
+msgstr "Judgment"
+
+msgid "寒域"
+msgstr "Frost Domain"
+
+msgid "忍术"
+msgstr "Ninjutsu"
+
+msgid "双生"
+msgstr "Twin Forms"
+
+msgid "怨灵"
+msgstr "Vengeful Spirit"
+
+msgid "钻石结构"
+msgstr "Diamond Structure"
+
+msgid "聚宝盆"
+msgstr "Treasure Bowl"
+
+msgid "毒蛾茧"
+msgstr "Venom Moth Cocoon"
+
+msgid "香火石"
+msgstr "Incense Stone"
+
+msgid "祖龟碑"
+msgstr "Ancestor Turtle Stele"
+
+msgid "圣光护盾"
+msgstr "Holy Light Shield"
+
+msgid "激光长刃"
+msgstr "Laser Longblade"
+
+msgid "充能"
+msgstr "Charge"
+
+msgid "结晶印记"
+msgstr "Crystal Mark"
+
+msgid "电击标记"
+msgstr "Shock Mark"
+
+msgid "猎杀印记"
+msgstr "Hunt Mark"
+
+msgid "击飞"
+msgstr "Knock-up"
+
+msgid "3 星：变虫后每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新小虫（上限 {C:EquipSystem.WORM_CAP} 只）。"
+msgstr "3 stars: after becoming a bug, it splits off a new bug into an open slot every {C:EquipSystem.WORM_SPLIT_IV} seconds (up to {C:EquipSystem.WORM_CAP})."
+
+msgid "拖到友方单位上使用，立即回复 (50 + 10% 目标最大生命值) 生命值。"
+msgstr "Drag onto an ally to use: instantly heals (50 + 10% of the target's max health)."
+
+msgid "拖到友方单位上使用，其所有技能的剩余冷却时间 -1 回合 (最低 0)。"
+msgstr "Drag onto an ally to use: reduces the remaining cooldown of all its abilities by 1 turn (minimum 0)."
+
+msgid "拖到敌方单位上使用，造成 60 物理伤害 (不归属任何龟，不触发生命偷取与 on-hit 链，仅按目标护甲减免)。"
+msgstr "Drag onto an enemy to use: deals 60 physical damage (not attributed to any turtle, doesn't trigger Lifesteal or on-hit effects, reduced only by the target's armor)."
+
+msgid "拖到友方单位上使用，攻击力 +25%，持续 3 回合。"
+msgstr "Drag onto an ally to use: +25% attack damage for 3 turns."
+
+msgid "拖到友方单位上使用，立即添加 +80 护盾。"
+msgstr "Drag onto an ally to use: instantly grants an 80 shield."
+
+msgid "拖到友方单位上使用，立即回复 15% 目标最大生命值。"
+msgstr "Drag onto an ally to use: instantly heals 15% of the target's max health."
+
+msgid "拖到友方单位上使用，立即清除身上所有负面状态。\n※ 负面效果包括：灼烧 / 中毒 / 流血 / 诅咒 DoT / 冰寒 / 攻防魔抗削减 / 治疗削减 / 易伤标记 / 泡泡束缚"
+msgstr "Drag onto an ally to use: instantly removes all debuffs.\n※ Debuffs include: Burn / Poison / Bleed / Curse DoT / Chill / Attack, Armor and Magic Resist reduction / Grievous Wounds / Vulnerable mark / Bubble Bind"
+
+msgid "拖到敌方单位上使用，标记 2 回合，期间受到的所有伤害 +20% (任何来源)。"
+msgstr "Drag onto an enemy to use: marks it for 2 turns, during which it takes 20% more damage from all sources."
+
+msgid "登场时召唤【斧头】。\n主动：【斧头】会持续积累龟能，龟能达到 {C:AxeEvolution.ACTIVE_ENERGY} 时，回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。\n被动：【斧头】的攻击会窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。\n【砍伐经验】：每次购买小木斧获得 {C:AxeEvolution.EXP_ON_BUY} 点，持有小木斧时每场对局结束后获得 {C:AxeEvolution.EXP_ON_MATCH} 点，【斧头】每次参与击杀获得 {C:AxeEvolution.EXP_ON_KILL} 点。\n小木斧获得 {C:AxeEvolution.STAGE_NEEDS[0]} 点【砍伐经验】后进化为【石斧】，之后再获得 {C:AxeEvolution.STAGE_NEEDS[1]}、{C:AxeEvolution.STAGE_NEEDS[2]}、{C:AxeEvolution.STAGE_NEEDS[3]} 点，依次进化为【铁斧】、【金斧】、【钻石斧】。每次进化，小木斧的售价提高 1 费。成为【钻石斧】后再获得 {C:AxeEvolution.FINAL_NEED} 点【砍伐经验】，可以在商店中选择一个最终造物。\n<span style=\"color:#8a93a0\">参与击杀：【斧头】击杀目标，或在目标阵亡前 {C:AxeEvolution.ASSIST_WINDOW} 秒内命中过该目标。\n只能持有 1 把小木斧，再次购买时转而获得 {C:AxeEvolution.EXP_ON_BUY} 点砍伐经验。无法升星。\n每次进化时，超出的砍伐经验不计入下一次进化。\n选定最终造物后本大轮内不可更改，并且不再获得砍伐经验。每个大轮开始时，砍伐经验与进化全部重置。\n【斧头】拥有：</span>\n（{C:AxeEvolution.MINION_HP_BASE}＋{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值\n（{C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力\n{C:AxeEvolution.MINION_DEF} 护甲\n{C:AxeEvolution.MINION_MR} 魔抗"
+msgstr "On spawn, summons [Axe].\nActive: [Axe] keeps building Energy. At {C:AxeEvolution.ACTIVE_ENERGY} Energy, it heals {C:AxeEvolution.ACTIVE_HEAL_PCT%}% of its max health and gains a shield equal to {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% of its max health.\nPassive: [Axe]'s attacks steal {C:AxeEvolution.SHIELD_STEAL_PCT%}% of the target's shield as its own.\n[Chopping XP]: {C:AxeEvolution.EXP_ON_BUY} for each Little Wooden Axe bought, {C:AxeEvolution.EXP_ON_MATCH} after each match while holding one, and {C:AxeEvolution.EXP_ON_KILL} each time [Axe] takes part in a kill.\nAt {C:AxeEvolution.STAGE_NEEDS[0]} [Chopping XP], the Little Wooden Axe evolves into [Stone Axe]; then at another {C:AxeEvolution.STAGE_NEEDS[1]}, {C:AxeEvolution.STAGE_NEEDS[2]} and {C:AxeEvolution.STAGE_NEEDS[3]}, into [Iron Axe], [Gold Axe] and [Diamond Axe]. Each evolution raises its sell price by 1. Once it's a [Diamond Axe], another {C:AxeEvolution.FINAL_NEED} [Chopping XP] lets you choose a Final Creation in the shop.\n<span style=\"color:#8a93a0\">Taking part in a kill: [Axe] kills the target, or hit it within {C:AxeEvolution.ASSIST_WINDOW} seconds before it died.\nYou can hold only 1 Little Wooden Axe; buying another gives {C:AxeEvolution.EXP_ON_BUY} Chopping XP instead. It can't be starred up.\nExcess Chopping XP doesn't carry over to the next evolution.\nOnce chosen, the Final Creation can't be changed this Season and no more Chopping XP is earned. Chopping XP and evolutions reset at the start of each Season.\n[Axe] has:</span>\n({C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × Chopping XP) Health\n({C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × Chopping XP) Attack\n{C:AxeEvolution.MINION_DEF} Armor\n{C:AxeEvolution.MINION_MR} Magic Resist"
+
+msgid "小木斧每次进化，【斧头】额外获得 {C:AxeEvolution.PASSIVE_HP} 生命值、{C:AxeEvolution.PASSIVE_ATK} 攻击力、{C:AxeEvolution.PASSIVE_DEF} 护甲和 {C:AxeEvolution.PASSIVE_MR} 魔抗，并获得以下效果：\n【石斧】：每 {C:AxeEvolution.SMASH_IV} 秒，【斧头】的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}% 攻击力）物理伤害，并将目标击飞和短暂击退。\n【铁斧】：【斧头】每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。\n【金斧】：【斧头】的攻击在 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫和竖劈之间交替，横扫命中前方所有敌人。每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。\n【钻石斧】：龟能达到 {C:AxeEvolution.ACTIVE_ENERGY} 时，【斧头】还会开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}% 攻击力）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。"
+msgstr "Each time the Little Wooden Axe evolves, [Axe] gains {C:AxeEvolution.PASSIVE_HP} Health, {C:AxeEvolution.PASSIVE_ATK} Attack, {C:AxeEvolution.PASSIVE_DEF} Armor and {C:AxeEvolution.PASSIVE_MR} Magic Resist, plus these effects:\n[Stone Axe]: every {C:AxeEvolution.SMASH_IV} seconds, [Axe]'s next attack deals ({C:AxeEvolution.SMASH_ATK%}% Attack) bonus physical damage and knocks the target up and briefly back.\n[Iron Axe]: every 2nd attack from [Axe] becomes a downward cleave that deals bonus true damage equal to {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% of the target's max health and applies {C:AxeEvolution.CLEAVE_BLEED} Bleed.\n[Gold Axe]: [Axe]'s attacks alternate between a {C:AxeEvolution.SWEEP_ARC_DEG}° sweep, which hits all enemies in front, and a downward cleave. Each attack hit grants 1 [Efficiency] stack for {C:AxeEvolution.EFF_DUR} seconds, stacking infinitely and refreshing on each stack. Each [Efficiency] stack grants {C:AxeEvolution.EFF_ASPD%}% attack speed and {C:AxeEvolution.EFF_MOVE%}% move speed.\n[Diamond Axe]: at {C:AxeEvolution.ACTIVE_ENERGY} Energy, [Axe] also starts a [Charged Slam], charging for {C:AxeEvolution.CHARGE_TIME} seconds with {C:AxeEvolution.CHARGE_DR%}% Damage Reduction. When the charge ends, it slams down, dealing ({C:AxeEvolution.SLAM_ATK%}% Attack) physical damage to every enemy in the area in front, knocking them up and stunning them for {C:AxeEvolution.SLAM_STUN} seconds."
+
+msgid "【亡灵之斧】：额外获得 {C:AxeFinalStats.UNDEAD_HP} 生命值、{C:AxeFinalStats.UNDEAD_ATK} 攻击力、{C:AxeFinalStats.UNDEAD_DEF} 护甲和 {C:AxeFinalStats.UNDEAD_DEF} 魔抗。附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，【斧头】每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。【斧头】阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。\n【炽天使】：额外获得 {C:AxeFinalStats.SERAPH_HP} 生命值、{C:AxeFinalStats.SERAPH_ATK} 攻击力、{C:AxeFinalStats.SERAPH_DEF} 护甲和 {C:AxeFinalStats.SERAPH_DEF} 魔抗，射程变为 {C:AxeFinalStats.SERAPH_RANGE} 码。攻击施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。【蓄力猛砸】替换为在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投出 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，期间不获得减伤。回旋镖飞出后返回，命中时造成（{C:AxeFinalStats.SERAPH_BOOM_ATK%}% 攻击力）魔法伤害，并施加 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。\n【全息斧】：额外获得 {C:AxeFinalStats.HOLO_HP} 生命值、{C:AxeFinalStats.HOLO_ATK} 攻击力、{C:AxeFinalStats.HOLO_DEF} 护甲、{C:AxeFinalStats.HOLO_DEF} 魔抗和 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。【蓄力猛砸】替换为插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒，期间获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，附近的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值和 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 {C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。\n【余烬】：额外获得 {C:AxeFinalStats.EMBER_HP} 生命值、{C:AxeFinalStats.EMBER_ATK} 攻击力、{C:AxeFinalStats.EMBER_ASPD%}% 攻击速度和 {C:AxeFinalStats.EMBER_MOVE%}% 移动速度。攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。【蓄力猛砸】替换为【余烬之光】：{C:AxeFinalStats.EMBER_LIGHT_TIME} 秒内获得 {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤和 {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，并免疫控制效果。期间仍会积累龟能，再次释放时效果独立叠加。"
+msgstr "[Undead Axe]: gains {C:AxeFinalStats.UNDEAD_HP} Health, {C:AxeFinalStats.UNDEAD_ATK} Attack, {C:AxeFinalStats.UNDEAD_DEF} Armor and {C:AxeFinalStats.UNDEAD_DEF} Magic Resist. Nearby enemies take magic damage equal to {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% of their max health each second. For each nearby enemy, [Axe] heals {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% of its max health per second. {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} seconds after [Axe] dies, it revives with {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% of its max health, once per battle.\n[Seraph]: gains {C:AxeFinalStats.SERAPH_HP} Health, {C:AxeFinalStats.SERAPH_ATK} Attack, {C:AxeFinalStats.SERAPH_DEF} Armor and {C:AxeFinalStats.SERAPH_DEF} Magic Resist, and its range becomes {C:AxeFinalStats.SERAPH_RANGE}. Attacks apply {C:AxeFinalStats.SERAPH_BURN_ON_HIT} Burn. [Charged Slam] is replaced by throwing {C:AxeFinalStats.SERAPH_BOOMERANGS} boomerangs over {C:AxeFinalStats.SERAPH_CAST_TIME} seconds, with no Damage Reduction meanwhile. The boomerangs fly out and return, dealing ({C:AxeFinalStats.SERAPH_BOOM_ATK%}% Attack) magic damage on hit and applying {C:AxeFinalStats.SERAPH_BOOM_BURN} Burn.\n[Holo Axe]: gains {C:AxeFinalStats.HOLO_HP} Health, {C:AxeFinalStats.HOLO_ATK} Attack, {C:AxeFinalStats.HOLO_DEF} Armor, {C:AxeFinalStats.HOLO_DEF} Magic Resist and {C:AxeFinalStats.HOLO_ENERGY_RATE%}% Energy Charge. Attacks give the ally with the lowest health percentage a {C:AxeFinalStats.HOLO_ONHIT_SHIELD} shield and {C:AxeFinalStats.HOLO_ONHIT_ENERGY} Energy. [Charged Slam] is replaced by planting itself in the ground for {C:AxeFinalStats.HOLO_PLANT_TIME} seconds with {C:AxeFinalStats.HOLO_PLANT_DR%}% Damage Reduction; every {C:AxeFinalStats.HOLO_AURA_TICK} seconds, nearby allies heal {C:AxeFinalStats.HOLO_AURA_HEAL}, gain {C:AxeFinalStats.HOLO_AURA_ENERGY} Energy and {C:AxeFinalStats.HOLO_AURA_ASPD%}% attack speed.\n[Ember]: gains {C:AxeFinalStats.EMBER_HP} Health, {C:AxeFinalStats.EMBER_ATK} Attack, {C:AxeFinalStats.EMBER_ASPD%}% attack speed and {C:AxeFinalStats.EMBER_MOVE%}% move speed. Attack hits apply {C:AxeFinalStats.EMBER_SEED_PER_HIT} [Ember Seed] stacks and execute targets below the execute threshold. Each [Ember Seed] stack raises that target's execute threshold by {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% of its max health, with no cap. Each execution grants {C:AxeFinalStats.EMBER_EXEC_ENERGY} Energy. [Charged Slam] is replaced by [Ember Light]: for {C:AxeFinalStats.EMBER_LIGHT_TIME} seconds, gains {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% Lifesteal, {C:AxeFinalStats.EMBER_LIGHT_DR%}% Damage Reduction and {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% attack speed, and is immune to crowd control. It still builds Energy meanwhile, and recasts stack independently."
