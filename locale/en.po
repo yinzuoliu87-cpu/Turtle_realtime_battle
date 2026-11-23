@@ -7954,3 +7954,6 @@ msgstr "Not Qualified"
 
 msgid "删除内容：账号与玩家 ID、云端存档、阵容快照、\n排行榜与赛事记录、举报与反馈记录、本机存档。\n已完成对局的录像保留，其中的昵称与头像显示为「已注销玩家」。\n删除后无法恢复。"
 msgstr "Deletes: your account and Player ID, cloud save, team snapshots,\nleaderboard and tournament records, reports and feedback, and the local save.\nReplays of finished matches are kept, with your nickname and avatar shown as \"Deleted Player\".\nThis can't be undone."
+
+msgid "追播中 ×2"
+msgstr "Catching up ×2"
