@@ -117,6 +117,54 @@ const KEYWORD_RULES := [
 	["(?<!\">)额外伤害(?!<)", "val-extra"],
 ]
 
+## 英文版关键词上色(2026-11-23 · 方案书 20261118c): 与上表同一套颜色 / 图标, 按英文措辞写。
+##   ★英文有大小写与词形; 且这一步跑在 HTML 上 —— class 名(val-shield)、图标路径(shield-icon.png)里也有这些词,
+##     一律用 (?<![-/\w]) … (?![-\w"]) 挡住, 只认正文里的整词。顺序同上: 专名 → 段标记 → 控制 → 伤害类型 → 属性。
+const _W0 := "(?<![-/\\w\">])"
+const _W1 := "(?![-\\w\"<])"
+const KEYWORD_RULES_EN := [
+	["\\[[^\\[\\]<>]{1,28}\\]", "val-keyword"],
+	["(?<!\">)(?:Active|Passive):", "val-section"],
+	[_W0 + "(?i:knock(?:s|ed|ing)? (?:\\w+ ){0,2}?up|knock-ups?)" + _W1, "val-stun"],
+	[_W0 + "(?i:knock(?:s|ed|ing)? (?:\\w+ ){0,2}?back)" + _W1, "val-stun"],
+	[_W0 + "(?i:slow(?:s|ed|ing)?)" + _W1, "val-stun"],
+	[_W0 + "(?i:taunt(?:s|ed|ing)?)" + _W1, "val-stun"],
+	[_W0 + "(?i:stun(?:s|ned|ning)?)" + _W1, "val-stun"],
+	[_W0 + "(?i:fear(?:ed)?)" + _W1, "val-stun"],
+	[_W0 + "(?i:chill(?:ed)?)" + _W1, "val-stun"],
+	[_W0 + "(?i:freez(?:e|es|ing)|frozen)" + _W1, "val-stun"],
+	[_W0 + "Time Stop" + _W1, "val-stun"],
+	[_W0 + "(?i:physical damage)" + _W1, "val-normal"],
+	[_W0 + "(?i:magic damage)" + _W1, "val-magic"],
+	[_W0 + "(?i:true damage)" + _W1, "val-true"],
+	[_W0 + "Armor Pen" + _W1, "val-burn", "armorpen"],
+	[_W0 + "Armor" + _W1, "val-def", "def"],
+	[_W0 + "Magic Pen" + _W1, "val-dot", "magicpen"],
+	[_W0 + "Magic Resist" + _W1, "val-magic", "mr"],
+	["(?<=target's |enemy's |its )(?i:max health)" + _W1, "val-emph", ""],
+	[_W0 + "(?i:max health)" + _W1, "val-heal", "hp"],
+	[_W0 + "Grievous Wounds" + _W1, "val-heal-reduce"],
+	[_W0 + "Burn" + _W1, "val-burn"],
+	[_W0 + "Lifesteal" + _W1, "val-lifesteal", "lifesteal"],
+	[_W0 + "(?i:curse[ds]?)" + _W1, "val-dot"],
+	[_W0 + "(?:Holy )?(?i:shield)" + _W1, "val-shield", "shield"],
+	[_W0 + "Poison" + _W1, "val-dot"],
+	[_W0 + "Bleed" + _W1, "val-lifesteal"],
+	[_W0 + "Thorns" + _W1, "val-reflect", "reflect"],
+	[_W0 + "Crit Chance" + _W1, "val-crit", "crit"],
+	[_W0 + "Crit Damage" + _W1, "val-crit-dmg", "crit-dmg"],
+	[_W0 + "Dodge" + _W1, "val-buff", "dodge"],
+	[_W0 + "(?i:move speed)" + _W1, "val-move", "move"],
+	[_W0 + "(?i:attack speed)" + _W1, "val-aspd", "aspd"],
+	[_W0 + "(?i:attack damage)" + _W1, "val-normal", "atk"],
+	[_W0 + "Attack(?! [Ss]peed)" + _W1, "val-normal", "atk"],
+	[_W0 + "Energy Charge" + _W1, "val-extra", "echarge"],
+	[_W0 + "Energy" + _W1, "val-extra", "maxenergy"],
+	[_W0 + "Damage Amp" + _W1, "val-normal", "dmg-amp"],
+	[_W0 + "Damage Reduction" + _W1, "val-reflect", "dmg-red"],
+	[_W0 + "(?i:bonus damage)" + _W1, "val-extra"],
+]
+
 
 ## 属性图标的「固定身份色」—— 2026-10-01 全套图标改成【纯白模板】后, 消费点必须染色,
 ## 否则 22 张图标在屏幕上是同一个白(重做方案书 docs/plans/20260930-属性图标重做.md)。
@@ -305,6 +353,17 @@ static func build_vars(f: Dictionary, s: Dictionary) -> Dictionary:
 static var _token_re: RegEx
 static var _span_re: RegEx
 static var _keyword_re: Array = []
+static var _keyword_lang := ""
+
+
+## 关键词规则按当前语言编一次; 换了语言再编(设置里来回切)。
+static func _ensure_kw() -> void:
+	if _keyword_lang == Lang.code and not _keyword_re.is_empty():
+		return
+	_keyword_lang = Lang.code
+	_keyword_re.clear()
+	for rule in (KEYWORD_RULES_EN if Lang.is_en() else KEYWORD_RULES):
+		_keyword_re.append([RegEx.create_from_string(rule[0]), rule[1], (rule[2] if rule.size() > 2 else "")])
 
 
 static func _ensure_re() -> void:
@@ -320,8 +379,6 @@ static func _ensure_re() -> void:
 		_letters += "C"   # C = 直接读代码常量, 不走 COLOR_CLASS
 		_token_re = RegEx.create_from_string("\\{([%s]):([^}]+)\\}|\\{([^}]+)\\}" % _letters)
 		_span_re = RegEx.create_from_string("<span\\s+(?:class=\"([^\"]+)\"|style=\"color:\\s*(#[0-9a-fA-F]+)[^\"]*\")[^>]*>([^<]*)</span>|([^<]+)")
-		for rule in KEYWORD_RULES:
-			_keyword_re.append([RegEx.create_from_string(rule[0]), rule[1], (rule[2] if rule.size() > 2 else "")])
 
 
 ## 占位符 `{X:expr}` 的**唯一**解析口径。
@@ -491,6 +548,7 @@ static func _mark_target_hp(t: String) -> String:
 
 static func colorize_keywords(result: String) -> String:
 	_ensure_re()
+	_ensure_kw()
 	result = _mark_target_hp(result)
 	for kr in _keyword_re:
 		var re: RegEx = kr[0]
