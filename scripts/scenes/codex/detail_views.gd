@@ -1518,7 +1518,7 @@ static func tier_label_lines(plain: String, star: int, eid: String) -> PackedStr
 	if labels.is_empty() or labels.size() != vals.size():
 		return out
 	for i in range(labels.size()):
-		var parts: PackedStringArray = str(labels[i]).split("#")
+		var parts: PackedStringArray = Lang.t(str(labels[i])).split("#")
 		var pre: String = parts[0].strip_edges()
 		var post: String = parts[1] if parts.size() > 1 else ""
 		## 「最大生命值 +#」: 正负号贴到每一档数上(与属性行「+150 / +420 / +1200」同一写法), 不悬在标签后面

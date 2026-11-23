@@ -6514,3 +6514,564 @@ msgstr "+20 Health · +10 Attack · +2 Armor · +2 MR"
 
 msgid "+攻30/75/200·护穿10/18/30·生命50/120/1300"
 msgstr "+30/75/200 Attack · +10/18/30 Armor Pen · +50/120/1300 Health"
+
+msgid "基础伤害 #"
+msgstr "Base Damage #"
+
+msgid "伤害 #% 攻击力"
+msgstr "Damage #% Attack"
+
+msgid "额外伤害 #% 目标最大生命值"
+msgstr "Bonus Damage #% target Max Health"
+
+msgid "伤害加成 #% 攻击力"
+msgstr "Damage Bonus #% Attack"
+
+msgid "攻击速度 +#%"
+msgstr "Attack Speed +#%"
+
+msgid "基础护盾 #"
+msgstr "Base Shield #"
+
+msgid "最大生命值 +#"
+msgstr "Max Health +#"
+
+msgid "双抗 +#"
+msgstr "Armor & MR +#"
+
+msgid "护盾加成 #% 最大生命值"
+msgstr "Shield Bonus #% Max Health"
+
+msgid "基础回复 #"
+msgstr "Base Healing #"
+
+msgid "回复加成 #% 最大生命值"
+msgstr "Healing Bonus #% Max Health"
+
+msgid "灼烧层数 # 层"
+msgstr "Burn # stacks"
+
+msgid "伤害 #"
+msgstr "Damage #"
+
+msgid "回复 #% 最大生命值"
+msgstr "Healing #% Max Health"
+
+msgid "流血层数 #% 攻击力"
+msgstr "Bleed #% Attack"
+
+msgid "伤害 #% 护甲与魔抗之和"
+msgstr "Damage #% Armor + MR"
+
+msgid "护盾 # 点"
+msgstr "Shield #"
+
+msgid "流血层数 # 层"
+msgstr "Bleed # stacks"
+
+msgid "基础灼烧层数 #"
+msgstr "Base Burn #"
+
+msgid "灼烧加成 #% 攻击力"
+msgstr "Burn Bonus #% Attack"
+
+msgid "基础治疗 #"
+msgstr "Base Heal #"
+
+msgid "眩晕时长 # 秒"
+msgstr "Stun Duration # s"
+
+msgid "护盾 #"
+msgstr "Shield #"
+
+msgid "每层增伤 #%"
+msgstr "Damage Amp per stack #%"
+
+msgid "攻击力 +#"
+msgstr "Attack +#"
+
+msgid "持续时间 # 秒"
+msgstr "Duration # s"
+
+msgid "子弹数 # 发"
+msgstr "Bullets #"
+
+msgid "炮台生命值 #"
+msgstr "Turret Health #"
+
+msgid "炮台攻击力 #"
+msgstr "Turret Attack #"
+
+msgid "炮台双抗 #"
+msgstr "Turret Armor & MR #"
+
+msgid "回复 #"
+msgstr "Healing #"
+
+msgid "生命偷取 #%"
+msgstr "Lifesteal #%"
+
+msgid "中毒层数 # 层"
+msgstr "Poison # stacks"
+
+msgid "金弹真实伤害 #%"
+msgstr "Golden Bullet True Damage #%"
+
+msgid "近战增伤 #%"
+msgstr "Melee Damage Amp #%"
+
+msgid "横斩基础伤害 #"
+msgstr "Horizontal Slash Base #"
+
+msgid "横斩伤害加成 #% 攻击力"
+msgstr "Horizontal Slash Bonus #% Attack"
+
+msgid "横波基础伤害 #"
+msgstr "Horizontal Wave Base #"
+
+msgid "横波伤害加成 #% 攻击力"
+msgstr "Horizontal Wave Bonus #% Attack"
+
+msgid "竖斩基础伤害 #"
+msgstr "Vertical Slash Base #"
+
+msgid "竖斩伤害加成 #% 攻击力"
+msgstr "Vertical Slash Bonus #% Attack"
+
+msgid "竖波基础伤害 #"
+msgstr "Vertical Wave Base #"
+
+msgid "竖波伤害加成 #% 攻击力"
+msgstr "Vertical Wave Bonus #% Attack"
+
+msgid "远程减伤 #%"
+msgstr "Ranged Damage Reduction #%"
+
+msgid "额外攻击力 #% 攻击力"
+msgstr "Bonus Attack #% Attack"
+
+msgid "转化比例 #%"
+msgstr "Conversion #%"
+
+msgid "每秒上限 # 龟能"
+msgstr "Cap # Energy/s"
+
+msgid "浮游炮伤害 #% 攻击力"
+msgstr "Drone Damage #% Attack"
+
+msgid "每个魔抗 +#"
+msgstr "Per drone MR +#"
+
+msgid "射线所需攻击 # 次"
+msgstr "Attacks per Ray #"
+
+msgid "射线基础伤害 #"
+msgstr "Ray Base Damage #"
+
+msgid "偷取间隔 # 秒"
+msgstr "Steal Interval # s"
+
+msgid "压载舱容量 #% 最大生命值"
+msgstr "Ballast Tank #% Max Health"
+
+msgid "每秒伤害 #"
+msgstr "Damage per second #"
+
+msgid "每秒护盾 #"
+msgstr "Shield per second #"
+
+msgid "总伤害 #"
+msgstr "Total Damage #"
+
+msgid "猛砸伤害 #"
+msgstr "Slam Damage #"
+
+msgid "浪潮弹跳 # 次"
+msgstr "Wave Bounces #"
+
+msgid "浪潮伤害 #"
+msgstr "Wave Damage #"
+
+msgid "浪潮治疗 #"
+msgstr "Wave Healing #"
+
+msgid "基础回复 # 点"
+msgstr "Base Healing #"
+
+msgid "增伤 #%"
+msgstr "Damage Amp #%"
+
+msgid "暴击加成 #×暴击率"
+msgstr "Crit Bonus # × Crit Chance"
+
+msgid "溅射比例 #%"
+msgstr "Splash #%"
+
+msgid "斩杀线 #% 最大生命值"
+msgstr "Execute Threshold #% Max Health"
+
+msgid "追加概率 #%"
+msgstr "Proc Chance #%"
+
+msgid "护盾比例 #% 本次伤害"
+msgstr "Shield #% of damage"
+
+msgid "每段充能 # 点"
+msgstr "Charge per hit #"
+
+msgid "基础真实伤害 #"
+msgstr "Base True Damage #"
+
+msgid "单体伤害提高 #%"
+msgstr "Single-Target Bonus #%"
+
+msgid "回复比例 #% 本次伤害"
+msgstr "Healing #% of damage"
+
+msgid "连斩次数 # 次"
+msgstr "Slashes #"
+
+msgid "血护盾上限 #"
+msgstr "Blood Shield Cap #"
+
+msgid "护盾比例 #% 最大生命值"
+msgstr "Shield #% Max Health"
+
+msgid "每层护甲和魔抗 +#"
+msgstr "Armor & MR per stack +#"
+
+msgid "每层双抗 +#"
+msgstr "Armor & MR per stack +#"
+
+msgid "回复 # 生命值"
+msgstr "Healing #"
+
+msgid "反伤阈值 # 点"
+msgstr "Thorns Threshold #"
+
+msgid "减伤 # 点"
+msgstr "Damage Reduction #"
+
+msgid "治疗 #% 最大生命值"
+msgstr "Heal #% Max Health"
+
+msgid "回复加成 #% 已损失生命值"
+msgstr "Healing Bonus #% missing Health"
+
+msgid "每层所需治疗 # 点"
+msgstr "Healing per stack #"
+
+msgid "每层强化 +#%"
+msgstr "Bonus per stack +#%"
+
+msgid "每层生命值 +#"
+msgstr "Health per stack +#"
+
+msgid "伤害 #% 最大生命值"
+msgstr "Damage #% Max Health"
+
+msgid "伤害转移 #%"
+msgstr "Damage Transfer #%"
+
+msgid "真实伤害 #"
+msgstr "True Damage #"
+
+msgid "扫击灼烧 # 层"
+msgstr "Sweep Burn # stacks"
+
+msgid "落雷数 # 道"
+msgstr "Lightning Bolts #"
+
+msgid "命中次数 #"
+msgstr "Hits #"
+
+msgid "追加伤害 #"
+msgstr "Bonus Damage #"
+
+msgid "电击层数 # 层"
+msgstr "Shock # charges"
+
+msgid "冰道伤害 #"
+msgstr "Ice Path Damage #"
+
+msgid "冰封时长 # 秒"
+msgstr "Freeze Duration # s"
+
+msgid "光束数 # 道"
+msgstr "Beams #"
+
+msgid "光束伤害 #"
+msgstr "Beam Damage #"
+
+msgid "射线伤害 #"
+msgstr "Ray Damage #"
+
+msgid "骷髅生命值 #"
+msgstr "Skeleton Health #"
+
+msgid "骷髅攻击力 #"
+msgstr "Skeleton Attack #"
+
+msgid "爆炸时间 # 秒"
+msgstr "Explodes after # s"
+
+msgid "爆炸伤害 #% 最大生命值"
+msgstr "Explosion #% Max Health"
+
+msgid "小虫生命值 #"
+msgstr "Bug Health #"
+
+msgid "小虫攻击力 #"
+msgstr "Bug Attack #"
+
+msgid "装备星级 # 星"
+msgstr "Item Stars #★"
+
+msgid "小熊伤害 #% 攻击力"
+msgstr "Little Bear Damage #% Attack"
+
+msgid "小熊基础伤害 #"
+msgstr "Little Bear Base Damage #"
+
+msgid "召唤所需层数 # 层"
+msgstr "Stacks to Summon #"
+
+msgid "大熊生命值 #"
+msgstr "Big Bear Health #"
+
+msgid "大熊攻击力 #"
+msgstr "Big Bear Attack #"
+
+msgid "每 # 秒"
+msgstr "Every # s"
+
+msgid "至多 # 枚"
+msgstr "Up to #"
+
+msgid "临时等级上限 # 级"
+msgstr "Temporary Level Cap #"
+
+msgid "孵化护盾 # 点"
+msgstr "Hatch Shield #"
+
+msgid "治疗加成 #% 攻击力"
+msgstr "Heal Bonus #% Attack"
+
+msgid "魔法穿透 +# 点"
+msgstr "Magic Pen +#"
+
+msgid "生长充能 # 次"
+msgstr "Growth Charges #"
+
+msgid "抽取数量 # 个"
+msgstr "Draws #"
+
+msgid "持枪敌人 # 名"
+msgstr "Armed Enemies #"
+
+msgid "回复 #% 已损失生命值"
+msgstr "Healing #% missing Health"
+
+msgid "友军护盾 #"
+msgstr "Ally Shield #"
+
+msgid "友军双抗 +#"
+msgstr "Ally Armor & MR +#"
+
+msgid "敌人伤害 #"
+msgstr "Enemy Damage #"
+
+msgid "敌人双抗 −#"
+msgstr "Enemy Armor & MR −#"
+
+msgid "法力需求 +#%"
+msgstr "Mana Needed +#%"
+
+msgid "火球目标 # 名"
+msgstr "Fireball Targets #"
+
+msgid "火球伤害 #% 目标最大生命值"
+msgstr "Fireball Damage #% target Max Health"
+
+msgid "永久护盾 # 点"
+msgstr "Permanent Shield #"
+
+msgid "攻击力 #% 最大生命值"
+msgstr "Attack #% Max Health"
+
+msgid "连射数 # 发"
+msgstr "Volley #"
+
+msgid "每次破甲 #"
+msgstr "Armor Shred per hit #"
+
+msgid "破甲上限 #"
+msgstr "Armor Shred Cap #"
+
+msgid "弹珠数 # 颗"
+msgstr "Pellets #"
+
+msgid "目标数 # 名"
+msgstr "Targets #"
+
+msgid "持续伤害 #% 最大生命值"
+msgstr "Damage over Time #% Max Health"
+
+msgid "爆炸伤害 #"
+msgstr "Explosion Damage #"
+
+msgid "龟能充能 #×"
+msgstr "Energy Charge #×"
+
+msgid "龟能 # 点"
+msgstr "Energy #"
+
+msgid "伤害减免 #%"
+msgstr "Damage Reduction #%"
+
+msgid "破损层数 # 层"
+msgstr "Fracture # stacks"
+
+msgid "幽灵护盾 #% 最大生命值"
+msgstr "Ghost Shield #% Max Health"
+
+msgid "每层攻击速度 +#%"
+msgstr "Attack Speed per stack +#%"
+
+msgid "护甲与魔抗 +#"
+msgstr "Armor & MR +#"
+
+msgid "暴击率 +#%"
+msgstr "Crit Chance +#%"
+
+msgid "暴击伤害 +#%"
+msgstr "Crit Damage +#%"
+
+msgid "龟能充能 +#%"
+msgstr "Energy Charge +#%"
+
+msgid "双穿 +#"
+msgstr "Armor & Magic Pen +#"
+
+msgid "攻击附毒 # 层"
+msgstr "Poison on attack # stacks"
+
+msgid "充能比例 #% 受到伤害"
+msgstr "Charge #% of damage taken"
+
+msgid "充能上限 #% 最大生命值"
+msgstr "Charge Cap #% Max Health"
+
+msgid "法力护盾 #% 充能值"
+msgstr "Mana Shield #% of charge"
+
+msgid "伤害 #% 充能值"
+msgstr "Damage #% of charge"
+
+msgid "第一块 最大生命值 +#"
+msgstr "Slice 1 Max Health +#"
+
+msgid "第一块 每秒回复 #% 最大生命值"
+msgstr "Slice 1 Heal #% Max Health/s"
+
+msgid "第二块 攻击力 +#"
+msgstr "Slice 2 Attack +#"
+
+msgid "第三块 护盾 #"
+msgstr "Slice 3 Shield #"
+
+msgid "第三块 攻击速度 +#%"
+msgstr "Slice 3 Attack Speed +#%"
+
+msgid "第三块 每秒回复 #% 最大生命值"
+msgstr "Slice 3 Heal #% Max Health/s"
+
+msgid "攻击附伤 #% 最大生命值"
+msgstr "On-Attack Damage #% Max Health"
+
+msgid "范围伤害 #% 最大生命值"
+msgstr "Area Damage #% Max Health"
+
+msgid "灰血比例 #%"
+msgstr "Gray Health #%"
+
+msgid "奶油护盾 #% 最大生命值"
+msgstr "Cream Shield #% Max Health"
+
+msgid "终极护盾 #% 最大生命值"
+msgstr "Ultimate Shield #% Max Health"
+
+msgid "每秒回复 #"
+msgstr "Healing per second #"
+
+msgid "每秒龟能 #"
+msgstr "Energy per second #"
+
+msgid "分身属性 #%"
+msgstr "Split Stats #%"
+
+msgid "额外伤害 #% 攻击力"
+msgstr "Bonus Damage #% Attack"
+
+msgid "附带伤害 #"
+msgstr "Bonus Damage #"
+
+msgid "增伤 +#%"
+msgstr "Damage Amp +#%"
+
+msgid "每 # 龟能射一箭"
+msgstr "1 arrow per # Energy"
+
+msgid "真实伤害 # 点"
+msgstr "True Damage #"
+
+msgid "偷取龟能 # 点"
+msgstr "Energy Stolen #"
+
+msgid "小手枪生命值 #"
+msgstr "Pistol Health #"
+
+msgid "小手枪攻击力 #"
+msgstr "Pistol Attack #"
+
+msgid "霰弹基础伤害 #"
+msgstr "Buckshot Base Damage #"
+
+msgid "霰弹伤害加成 #% 攻击力"
+msgstr "Buckshot Bonus #% Attack"
+
+msgid "电击伤害 #"
+msgstr "Shock Damage #"
+
+msgid "每跳衰减 #%"
+msgstr "Falloff per bounce #%"
+
+msgid "治疗 #"
+msgstr "Heal #"
+
+msgid "金弹间隔 # 次"
+msgstr "Golden Bullet every # shots"
+
+msgid "机炮数 # 发"
+msgstr "Cannon Rounds #"
+
+msgid "炸弹数 # 枚"
+msgstr "Bombs #"
+
+msgid "炸弹伤害 #% 攻击力"
+msgstr "Bomb Damage #% Attack"
+
+msgid "炸弹魔法伤害 #"
+msgstr "Bomb Magic Damage #"
+
+msgid "坠毁伤害 #"
+msgstr "Crash Damage #"
+
+msgid "举盾阈值 #% 最大生命值"
+msgstr "Shield-Up Threshold #% Max Health"
+
+msgid "举盾时长 # 秒"
+msgstr "Shield-Up Duration # s"
+
+msgid "反击伤害 # 点"
+msgstr "Counter Damage #"
