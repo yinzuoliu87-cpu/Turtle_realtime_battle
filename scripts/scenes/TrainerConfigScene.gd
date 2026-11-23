@@ -445,41 +445,14 @@ func _layout_desc(d: String) -> String:
 	return out
 
 
-## 背景 = 全屏共用的平铺底 + 一层更深的压暗(这一页的主角是面板里的立绘与图标)。
+## 背景 = 本屏专属底图「训练场」(11-22 换掉主菜单那张绿色平铺底; 用户「那个绿色的画布…彻底的不要了吧」)。
+## 出处: PixelLab Pixen 文生图 520×240(job 9a36364e), 4 张候选选 1, 未手改; 69 色、零半透。
+## 两侧箭靶 / 药水架 / 木桩露在面板外, 中间开阔水域被面板盖住(前两张候选挂着像绞索的绳圈, 弃用重出)。
+const BG_TEX := "res://assets/sprites/ui/trainer/bg.png"
+const BG_DIM := Color(0.62, 0.66, 0.74)
+
 func _bg() -> void:
-	var base := ColorRect.new()
-	base.set_anchors_preset(Control.PRESET_FULL_RECT)
-	base.color = Color(0.102, 0.227, 0.165)
-	add_child(base)
-	if ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-		var tile := TextureRect.new()
-		tile.texture = PreloadCache.menu_bg_tile_tex()
-		tile.stretch_mode = TextureRect.STRETCH_TILE
-		tile.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var vp := get_viewport_rect().size
-		tile.size = Vector2(vp.x + 512, vp.y + 512)
-		tile.position = Vector2(-512, -512)
-		add_child(tile)
-		var drift := TweenKit.loop_on(tile)
-		drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
-	var grad := Gradient.new()
-	grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
-	grad.colors = PackedColorArray([
-		Color(0.031, 0.047, 0.078, 0.55),
-		Color(0.031, 0.047, 0.078, 0.66),
-		Color(0.031, 0.047, 0.078, 0.78),
-	])
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad; gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1)
-	gt.width = 8; gt.height = 128
-	var ov := TextureRect.new()
-	ov.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ov.texture = gt
-	ov.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	ov.stretch_mode = TextureRect.STRETCH_SCALE
-	ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(ov)
+	SceneBackdrop.add(self, BG_TEX, BG_DIM, "TrainerBgArt")
 
 
 ## 写回 GameState + 存盘(抽出来便于门禁测, 不含切场景)。
