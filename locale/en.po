@@ -1384,3 +1384,1791 @@ msgstr "Finals Day has started. Matches are played in the bracket."
 
 msgid "下一轮积分赛：下周二开始。"
 msgstr "Next Ranked: starts next Tuesday."
+
+msgid "冠军"
+msgstr "Champion"
+
+msgid "决赛日"
+msgstr "Finals Day"
+
+msgid "组冠军"
+msgstr "Group Winner"
+
+msgid "龟"
+msgstr "Turtle"
+
+msgid "冠军杯赛"
+msgstr "Champions Cup"
+
+msgid "积分赛"
+msgstr "Ranked"
+
+msgid "闯关赛"
+msgstr "Gauntlet"
+
+msgid "涨潮"
+msgstr "High Tide"
+
+msgid "退潮"
+msgstr "Low Tide"
+
+msgid "古灵精怪枪"
+msgstr "Trickster Gun"
+
+msgid "亚军"
+msgstr "Runner-up"
+
+msgid "规则同积分赛"
+msgstr "Same rules as Ranked"
+
+msgid "登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型变大。"
+msgstr "An empowered state entered some time after spawning: greatly increased max health and attack damage, and a bigger body."
+
+msgid "【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。"
+msgstr "Removes all [High Tide] bonuses when it ends. This can't kill; health drops to the new maximum."
+
+msgid "气环"
+msgstr "Bubble Ring"
+
+msgid "攻击对敌人施加的层数。达到最大层数时引爆，造成基于该敌人最大生命值的真实伤害。"
+msgstr "Stacks applied to enemies by attacks. At max stacks it detonates, dealing true damage based on the enemy's max health."
+
+msgid "破损"
+msgstr "Fracture"
+
+msgid "叠加在同一名敌人身上的层数，不会随时间衰减。达到最大层数后，此装备造成的伤害转为真实伤害。"
+msgstr "Stacks on a single enemy that don't decay. At max stacks, this item's damage becomes true damage."
+
+msgid "弓箭系叠加在敌人身上的层数，与弓箭羁绊共用同一份层数。"
+msgstr "Stacks Bow items apply to enemies. Shared with the Bow synergy."
+
+msgid "持续伤害的负面状态：每秒造成基于目标最大生命值百分比的真实伤害，无视护甲与魔抗。不可叠加，重复施加时累加剩余持续时间。"
+msgstr "A damage-over-time debuff: deals true damage each second equal to a percentage of the target's max health, ignoring armor and magic resist. Doesn't stack; reapplying adds to the remaining duration."
+
+msgid "幽灵护盾"
+msgstr "Ghost Shield"
+
+msgid "生命值低于阈值时获得的一次性护盾，在数秒内线性衰减。"
+msgstr "A one-time shield gained when health drops below a threshold. Decays steadily over a few seconds."
+
+msgid "奶油护盾"
+msgstr "Cream Shield"
+
+msgid "每个战场开始时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。"
+msgstr "A shield given to the whole team at the start of each battle. Never decays. Damages nearby enemies when broken."
+
+msgid "终极护盾"
+msgstr "Ultimate Shield"
+
+msgid "永久不衰减的护盾。护盾存在期间，自身变为蛋糕礼盒：射程变为近战，攻击与技能也替换为礼盒专属版本。"
+msgstr "A shield that never decays. While it holds, the holder becomes a Cake Box: range becomes melee, and attacks and abilities are replaced with Cake Box versions."
+
+msgid "护心反伤"
+msgstr "Heartguard Thorns"
+
+msgid "每次受到一段攻击时，对攻击者反弹一次魔法伤害。持续伤害不会触发此效果，多段攻击的每一段单独触发。"
+msgstr "Each hit taken reflects magic damage to the attacker. Damage over time doesn't trigger it; each hit of a multi-hit attack triggers separately."
+
+msgid "金弹"
+msgstr "Golden Bullet"
+
+msgid "枪羁绊：每发射若干发普通子弹后发射一发金弹，金弹继承该发子弹的全部效果并额外造成真实伤害。"
+msgstr "Gun synergy: after a number of normal shots, fires a Golden Bullet that keeps all of that shot's effects and deals bonus true damage."
+
+msgid "剑士"
+msgstr "Swordsman"
+
+msgid "剑羁绊：连续命中同一个目标时触发追打。"
+msgstr "Sword synergy: hitting the same target triggers follow-up strikes."
+
+msgid "地毯轰炸"
+msgstr "Carpet Bombing"
+
+msgid "直升机龟的龟能充满时施放的大招：沿覆盖敌人最多的航线飞行，沿途投弹。"
+msgstr "The Gyrocopter Turtle's ultimate at full Energy: flies the route covering the most enemies, bombing along the way."
+
+msgid "十字斩"
+msgstr "Cross Slash"
+
+msgid "手半剑替换原技能的招式：先横斩并释放一道横波，随后竖斩。"
+msgstr "The Bastard Sword's replacement move: a horizontal slash that sends out a horizontal wave, then a vertical slash."
+
+msgid "登场时给予敌人的枪。持枪者属性提升，但每次攻击会损失生命值。"
+msgstr "A gun handed to enemies at spawn. The holder gains stats but loses health on every attack."
+
+msgid "小木斧召唤的近战随从。生命值与攻击力随砍伐经验提升。"
+msgstr "A melee follower summoned by the Little Wooden Axe. Its health and attack damage grow with Chopping XP."
+
+msgid "蓄力猛砸"
+msgstr "Charged Slam"
+
+msgid "钻石斧的技能：蓄力后砸下，对前方区域内的敌人造成物理伤害，并将其击飞和眩晕。"
+msgstr "The Diamond Axe's ability: charges up and slams down, dealing physical damage to enemies in front, knocking them up and stunning them."
+
+msgid "效率"
+msgstr "Efficiency"
+
+msgid "金斧攻击命中时叠加的层数，提供攻击速度与移动速度，叠加时刷新持续时间。"
+msgstr "Stacks gained when the Gold Axe hits. Grants attack speed and move speed; stacking refreshes the duration."
+
+msgid "余烬种子"
+msgstr "Ember Seed"
+
+msgid "余烬攻击命中时叠加在目标身上的层数，每层提高该目标的斩杀线。"
+msgstr "Stacks Ember applies to targets on hit. Each stack raises that target's execute threshold."
+
+msgid "法力"
+msgstr "Mana"
+
+msgid "每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。法器羁绊档位越高，充满所需的法力越少。"
+msgstr "Each Artifact has its own mana bar: regenerates 15 every 2.5 seconds, and also when the holder deals ability damage or takes damage. When full, it casts that Artifact's active effect, then refills. Damage from Artifact effects doesn't restore mana. Higher Artifact synergy tiers need less mana to fill."
+
+msgid "迷你水晶"
+msgstr "Mini Crystal"
+
+msgid "迷你水晶球施加在敌人身上的层数。达到最大层数时引爆，造成基于该敌人最大生命值的魔法伤害，并重置层数。"
+msgstr "Stacks the Mini Crystal Ball applies to enemies. At max stacks it detonates, dealing magic damage based on the enemy's max health, and resets."
+
+msgid "符纸"
+msgstr "Talisman"
+
+msgid "蚀月符纸贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。"
+msgstr "A damage-over-time effect from the Eclipse Talisman that also lowers magic resist each second. Stacks. When the target dies, it moves to the nearest enemy with its remaining duration."
+
+msgid "星际龟的技能：以自身为中心释放一圈向外扩散的环形波。"
+msgstr "Space Turtle's ability: releases a ring wave that expands outward from itself."
+
+msgid "星际龟的技能：扭曲一片区域的空间。"
+msgstr "Space Turtle's ability: warps space in an area."
+
+msgid "寒冰龟在地面留下的减速领域。冰柱层数会同时提升其范围与持续时间。"
+msgstr "A slowing zone Ice Turtle leaves on the ground. Ice Pillar stacks increase both its size and duration."
+
+msgid "海胆护盾"
+msgstr "Urchin Shield"
+
+msgid "海胆每次受到伤害时叠加一层硬化，层数达到上限时为自身提供的护盾，随后在数秒内逐渐衰减。"
+msgstr "The urchin gains a Harden stack each time it takes damage. At max stacks it shields itself, and the shield decays over a few seconds."
+
+msgid "余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。对龟蛋的灼烧伤害会降低，数值见余烬燃油瓶。"
+msgstr "A status from Ember: Burn damage this enemy takes becomes true damage (not reduced by magic resist). Reduced against Turtle Eggs; see Ember Oil Flask for values."
+
+msgid "靶子"
+msgstr "Target"
+
+msgid "敌人被己方击飞时获得的标记，不会自然消失。飞镖每个周期向所有带有标记的敌人各发射一枚，命中后移除标记。"
+msgstr "A mark enemies get when your team knocks them up. It doesn't expire on its own. Each cycle, Darts fires one dart at every marked enemy; a hit removes the mark."
+
+msgid "时间停止"
+msgstr "Time Stop"
+
+msgid "沙漏释放的全场定格：除持有全场最高星级沙漏的龟之外，所有单位、弹道与特效全部静止。"
+msgstr "The Hourglass freezes the whole field: every unit, projectile and effect stops, except the turtle holding the highest-star Hourglass."
+
+msgid "四强"
+msgstr "Top 4"
+
+msgid "进入决赛日"
+msgstr "Enter Finals Day"
+
+msgid "满配额"
+msgstr "Full quota"
+
+msgid "双方同时开赛，结果于本轮开播时公布。\n可在对阵图查看。"
+msgstr "Both sides start at the same time. Results are revealed when this round goes live.\nSee them in the bracket."
+
+msgid "换一个"
+msgstr "Shuffle"
+
+msgid "云端同步已暂停，请处理存档冲突"
+msgstr "Cloud sync paused. Please resolve the save conflict."
+
+msgid "绑定账号，保存进度"
+msgstr "Link an account to save your progress"
+
+msgid "绑定邮箱，跨设备同步进度"
+msgstr "Link an email to sync progress across devices"
+
+msgid "绑定邮箱后，更换设备或重新安装可恢复进度。"
+msgstr "With a linked email, you can restore your progress on a new device or after reinstalling."
+
+msgid "\n未绑定时进度仅保存在本设备。邮箱与昵称可随时修改。"
+msgstr "\nWithout a linked account, progress is saved on this device only. You can change your email and nickname anytime."
+
+msgid "\n未收到验证码？请检查垃圾邮件，或返回更换邮箱。"
+msgstr "\nNo code? Check your spam folder, or go back and change the email."
+
+msgid "已晋级周日决赛日。"
+msgstr "Qualified for Sunday's Finals Day."
+
+msgid "本周闯关赛已结束。"
+msgstr "This week's Gauntlet has ended."
+
+msgid "下一场胜利即晋级决赛日，失败即淘汰。"
+msgstr "Win the next match to reach Finals Day. Lose and you're out."
+
+msgid "再胜 1 场即可晋级决赛日。"
+msgstr "1 more win to reach Finals Day."
+
+msgid "再负 1 场即淘汰。"
+msgstr "1 more loss and you're out."
+
+msgid "小组赛"
+msgstr "Group Stage"
+
+msgid "休赛日不开放对战"
+msgstr "No matches on off days"
+
+msgid "今日决赛日，比赛在对阵图中进行。"
+msgstr "It's Finals Day. Matches are played in the bracket."
+
+msgid "今日决赛日。本周止步闯关赛，可观战。下一轮积分赛：下周二开始。"
+msgstr "It's Finals Day. You went out in the Gauntlet this week and can spectate. Next Ranked: starts next Tuesday."
+
+msgid "今日决赛日。本周未晋级闯关赛，可观战。下一轮积分赛：下周二开始。"
+msgstr "It's Finals Day. You didn't qualify for the Gauntlet this week and can spectate. Next Ranked: starts next Tuesday."
+
+msgid "一"
+msgstr "Mon"
+
+msgid "二"
+msgstr "Tue"
+
+msgid "三"
+msgstr "Wed"
+
+msgid "四"
+msgstr "Thu"
+
+msgid "五"
+msgstr "Fri"
+
+msgid "六"
+msgstr "Sat"
+
+msgid "日"
+msgstr "Sun"
+
+msgid "周一"
+msgstr "Monday"
+
+msgid "周二"
+msgstr "Tuesday"
+
+msgid "周三"
+msgstr "Wednesday"
+
+msgid "周四"
+msgstr "Thursday"
+
+msgid "周五"
+msgstr "Friday"
+
+msgid "周六"
+msgstr "Saturday"
+
+msgid "周日"
+msgstr "Sunday"
+
+msgid " · 不联网"
+msgstr " · Offline"
+
+msgid "休赛"
+msgstr "Off Day"
+
+msgid "剑系"
+msgstr "Sword"
+
+msgid "奇械·魔抗"
+msgstr "Gadget · Magic Resist"
+
+msgid "食物·增益"
+msgstr "Food · Buffs"
+
+msgid "盾·守护"
+msgstr "Shield · Guard"
+
+msgid "药水·龟能"
+msgstr "Potion · Energy"
+
+msgid "枪·神枪手"
+msgstr "Gun · Gunslinger"
+
+msgid "弓箭·神射手"
+msgstr "Bow · Sharpshooter"
+
+msgid "法器·法师"
+msgstr "Artifact · Mage"
+
+msgid "灵物·召唤"
+msgstr "Spirit · Summoner"
+
+msgid "遗物·古物"
+msgstr "Relic · Antiquity"
+
+msgid "香火·刻痕"
+msgstr "Incense · Engraving"
+
+msgid "斧头·砍伐"
+msgstr "Axe · Chopping"
+
+msgid "剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位生命值越低，攻击力越高。"
+msgstr "Swords grant attack damage and make the holder follow up after attacking. The lower your team's health, the higher its attack damage."
+
+msgid "奇械提高携带者的魔抗，并为全队铸造深海币。档位越高，全队攻击越能冰封敌人。"
+msgstr "Gadgets grant magic resist and mint Abyss Coins for the team. Higher tiers let your team's attacks freeze enemies."
+
+msgid "队伍里每件装备为携带者提供最大生命值，食物提供双倍。食物还让最大生命值在战斗中持续成长。"
+msgstr "Every item on your team gives the holder max health; Food gives double. Food also keeps growing max health during battle."
+
+msgid "盾提高携带者的护甲。全队承受伤害后对敌人释放冲击波，并获得圣光护盾装备。"
+msgstr "Shields grant armor. As your team takes damage, it releases shockwaves at enemies, and you gain Holy Light Shield items."
+
+msgid "药水提高携带者的治疗与护盾强度。全队集火被标记的猎物，击杀猎物后攻击力提高。"
+msgstr "Potions grant Heal Power and Shield Power. Your team focuses the marked Prey and gains attack damage after killing it."
+
+msgid "枪提高携带者的攻击速度。每把枪定期射出金弹，档位越高，我方生成的炮台越多。"
+msgstr "Guns grant attack speed. Each gun periodically fires a Golden Bullet. Higher tiers build more turrets for your side."
+
+msgid "弓箭提高携带者的暴击率。全队攻击可处决低生命值的敌人，并持续腐蚀敌方全体。"
+msgstr "Bows grant Crit Chance. Your team's attacks execute low-health enemies and steadily corrode the whole enemy team."
+
+msgid "法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位越高充满越快。"
+msgstr "Artifacts grant Magic Pen and max Energy. Each Artifact casts its own active effect when its mana is full; higher tiers fill faster."
+
+msgid "灵物提高携带者的闪避。无法被击杀的触手为我方作战，阵亡的友军化为亡魂继续战斗。"
+msgstr "Spirits grant Dodge. Unkillable tentacles fight for your side, and fallen allies rise as wraiths to keep fighting."
+
+msgid "香火石的携带者造成伤害时刻下刻痕。刻痕跨对局保留，每道刻痕永久提高全队的增伤与减伤。"
+msgstr "The Incense Stone's holder carves Engravings by dealing damage. Engravings carry over between matches, and each one permanently raises your team's Damage Amp and Damage Reduction."
+
+msgid "装备小木斧即激活。激活后商店更容易刷出小木斧。"
+msgstr "Activates when a Little Wooden Axe is equipped. Once active, the shop offers Little Wooden Axes more often."
+
+msgid "遗物提供生命偷取。我方全体单位按生命值高低切换攻击与续航，全队增伤随战斗时间累积，龟蛋也加入战斗。"
+msgstr "Relics grant Lifesteal. Your units switch between offense and sustain based on their health, your team's Damage Amp builds over time, and your Turtle Egg joins the fight."
+
+msgid "每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%"
+msgstr "Each Sword gives its holder +8 Attack · [Swordsman] After each attack, the holder strikes the target {C:SwordsmanSystem.HITS[0]} more times; each Sword on it makes follow-ups deal {C:SwordsmanSystem.PCT[0]%}% attack damage. Follow-ups happen at {C:SwordsmanSystem.ASPD_MULT%}% of attack speed and count as attacks, triggering on-attack and on-hit item effects · [Blood Rite] For every 1% health your units have lost, they gain {C:SynergySystem.BLOOD_RITE[0]}% attack damage"
+
+msgid "每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%"
+msgstr "Each Sword gives its holder +15 Attack · [Swordsman] Each Sword on the holder makes follow-ups deal {C:SwordsmanSystem.PCT[1]%}% attack damage · [Blood Rite] +{C:SynergySystem.BLOOD_RITE[1]}% attack damage for every 1% health lost"
+
+msgid "每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%"
+msgstr "Each Sword gives its holder +25 Attack · [Swordsman] {C:SwordsmanSystem.HITS[2]} follow-up strikes; each Sword on the holder makes each one deal {C:SwordsmanSystem.PCT[2]%}% attack damage · [Blood Rite] +{C:SynergySystem.BLOOD_RITE[2]}% attack damage for every 1% health lost"
+
+msgid "每件奇械为携带者提供 +4 魔抗 · 【铸币】每 {C:GadgetSynergySystem.PERIOD} 秒铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[0]} 枚，本局结束时获得"
+msgstr "Each Gadget gives its holder +4 Magic Resist · [Minting] Mints {C:GadgetSynergySystem.COIN_PER_TICK[0]} Abyss Coins every {C:GadgetSynergySystem.PERIOD} seconds, up to {C:GadgetSynergySystem.COIN_CAP[0]} per match, paid out when the match ends"
+
+msgid "每件奇械为携带者提供 +10 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚 · 【冰封】全队攻击有 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% 概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封"
+msgstr "Each Gadget gives its holder +10 Magic Resist · [Minting] {C:GadgetSynergySystem.COIN_PER_TICK[1]} coins each time, up to {C:GadgetSynergySystem.COIN_CAP[1]} per match · [Freeze] Your team's attacks have a {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% chance to freeze the target for {C:GadgetSynergySystem.FREEZE_SEC} seconds. A target can be frozen at most once every {C:GadgetSynergySystem.FREEZE_CD} seconds and is immune to freezing for {C:GadgetSynergySystem.FREEZE_IMMUNE} seconds afterward"
+
+msgid "每件奇械为携带者提供 +16 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%"
+msgstr "Each Gadget gives its holder +16 Magic Resist · [Minting] {C:GadgetSynergySystem.COIN_PER_TICK[2]} coins each time, up to {C:GadgetSynergySystem.COIN_CAP[2]} per match · [Freeze] Chance increased to {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%"
+
+msgid "每件奇械为携带者提供 +23 魔抗 · 【铸币】每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%"
+msgstr "Each Gadget gives its holder +23 Magic Resist · [Minting] Up to {C:GadgetSynergySystem.COIN_CAP[3]} coins per match · [Freeze] Chance increased to {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%"
+
+msgid "队伍每件装备为携带者提供 +30 最大生命值，每件食物 +60 · 【成长】每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久 +{C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值，无上限，持续到本局结束"
+msgstr "Each item on your team gives its holder +30 Max Health, each Food +60 · [Growth] Every {C:FoodSynergySystem.PERIOD} seconds, each Food permanently gives its holder +{C:FoodSynergySystem.GROW_PER_FOOD[0]} Max Health, with no cap, until the match ends"
+
+msgid "队伍每件装备为携带者提供 +70 最大生命值，每件食物 +140 · 【成长】每次 +{C:FoodSynergySystem.GROW_PER_FOOD[1]} 最大生命值 · 【学院】全队 +{C:FoodSynergySystem.ACADEMY[1]} 最大生命值"
+msgstr "Each item on your team gives its holder +70 Max Health, each Food +140 · [Growth] +{C:FoodSynergySystem.GROW_PER_FOOD[1]} Max Health each time · [Academy] Whole team +{C:FoodSynergySystem.ACADEMY[1]} Max Health"
+
+msgid "队伍每件装备为携带者提供 +130 最大生命值，每件食物 +260 · 【成长】每次 +{C:FoodSynergySystem.GROW_PER_FOOD[2]} 最大生命值 · 【学院】全队 +{C:FoodSynergySystem.ACADEMY[2]} 最大生命值 · 【盛宴】每 {C:SynergySystem.PULSE} 秒，全队回复 {C:SynergySystem.FEAST_PCT[2]%}% 已损失生命值"
+msgstr "Each item on your team gives its holder +130 Max Health, each Food +260 · [Growth] +{C:FoodSynergySystem.GROW_PER_FOOD[2]} Max Health each time · [Academy] Whole team +{C:FoodSynergySystem.ACADEMY[2]} Max Health · [Feast] Every {C:SynergySystem.PULSE} seconds, your team heals {C:SynergySystem.FEAST_PCT[2]%}% of missing health"
+
+msgid "每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，档位降低时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害"
+msgstr "Each Shield gives its holder +5 Armor · [Rage] For every {C:ShieldSynergySystem.RAGE_THRESHOLD} damage a unit on your team takes, it releases a shockwave at the nearest enemy, dealing true damage equal to {C:ShieldSynergySystem.WAVE_PCT[0]%}% of its own max health and gaining a shield for {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% of that damage · [Holy Light Shield] Gain 1 Holy Light Shield item. It takes no item slot and is removed if the tier drops. Holder gets +250 Max Health and {C:ShieldSynergySystem.HOLY_AMOUNT} Holy Shield every {C:ShieldSynergySystem.HOLY_PERIOD} seconds. While it has Holy Shield, each hit taken deals {C:ShieldSynergySystem.RIPOSTE_FLAT} true damage to the attacker"
+
+msgid "每件盾为携带者提供 +13 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 自身最大生命值 · 【圣光护盾】再获得 1 件，共 2 件 · 【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾"
+msgstr "Each Shield gives its holder +13 Armor · [Rage] Shockwave damage increased to {C:ShieldSynergySystem.WAVE_PCT[1]%}% of own max health · [Holy Light Shield] Gain 1 more, 2 in total · [Reap] When an enemy unit dies, the nearest Shield holder gains a shield equal to {C:ShieldSynergySystem.REAP_PCT%}% of that unit's max health"
+
+msgid "每件盾为携带者提供 +22 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 自身最大生命值 · 【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值。圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%"
+msgstr "Each Shield gives its holder +22 Armor · [Rage] Shockwave damage increased to {C:ShieldSynergySystem.WAVE_PCT[2]%}% of own max health · [Holy Light · Empowered] When Shield items grant a shield or heal, they also grant {C:ShieldSynergySystem.T3_CONVERT%}% of it as Holy Shield. Holy Light Shield items generate {C:ShieldSynergySystem.T3_SHIELD_BONUS%}% more Holy Shield"
+
+msgid "每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%"
+msgstr "Each Potion gives its holder +6% Heal Power, +6% Shield Power and +2 Max Energy · [Prey] Marks the enemy with the highest health as Prey (Turtle Eggs excluded). A new Prey is marked within {C:PotionSynergySystem.PERIOD} seconds after it dies. Your team deals {C:PotionSynergySystem.PREY_AMP[0]%}% more damage to Prey"
+
+msgid "每件药水为携带者提供 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[1]%}% · 【战利品】每击杀 1 名猎物，全队永久 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力，持续到本局结束"
+msgstr "Each Potion gives its holder +12% Heal Power, +12% Shield Power and +4 Max Energy · [Prey] Bonus damage increased to {C:PotionSynergySystem.PREY_AMP[1]%}% · [Spoils] Each Prey killed gives your team a permanent +{C:PotionSynergySystem.HARVEST_ATK[1]} Attack until the match ends"
+
+msgid "每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力"
+msgstr "Each Potion gives its holder +20% Heal Power, +20% Shield Power and +6 Max Energy · [Prey] Bonus damage increased to {C:PotionSynergySystem.PREY_AMP[2]%}% · [Spoils] +{C:PotionSynergySystem.HARVEST_ATK[2]} Attack per Prey killed"
+
+msgid "每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值"
+msgstr "Each Gun gives its holder +20% Attack Speed · [Golden Bullet] Every {C:GunSynergySystem.GOLD_EVERY[0]} shots, each gun fires 1 extra Golden Bullet. It keeps all of that gun's bullet effects and deals bonus true damage equal to {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% of the hit · [Turret I] A turret appears at your front. Every {C:GunSynergySystem.TICK} seconds it deals {C:GunSynergySystem.T1_DMG} physical damage, ignoring armor, to all enemies on the line to the nearest enemy, and heals your lowest-health ally for {C:GunSynergySystem.T1_HEAL_SHARE%}% of the damage dealt"
+
+msgid "每件枪为携带者提供 +40% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[1]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% 真实伤害 · 【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害"
+msgstr "Each Gun gives its holder +40% Attack Speed · [Golden Bullet] 1 every {C:GunSynergySystem.GOLD_EVERY[1]} shots, dealing {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% bonus true damage · [Turret II] A second turret appears at your center. Every {C:GunSynergySystem.T2_PERIOD} seconds it produces {C:GunSynergySystem.T2_BASE_ENERGY} energy, +{C:GunSynergySystem.T2_PER_GUN} per Gun on your team. The energy alternates between a shield split across your team and true damage split across all enemies"
+
+msgid "每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%"
+msgstr "Each Gun gives its holder +66% Attack Speed · [Golden Bullet] 1 every {C:GunSynergySystem.GOLD_EVERY[2]} shots, dealing {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% bonus true damage · [Turret III · Fire Control] A third turret appears at your rear. Gun holders deal {C:GunSynergySystem.T3_BASE%}% bonus true damage, +{C:GunSynergySystem.T3_PER_GUN%}% per Gun on them"
+
+msgid "每件弓箭为携带者提供 +9% 暴击率 · 【处决】全队攻击生命值低于 {C:BowSynergySystem.EXEC_BASE[0]%}% 的敌人时直接处决。攻击者暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入这条处决线 · 【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层时受到的伤害有 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害"
+msgstr "Each Bow gives its holder +9% Crit Chance · [Execute] Your team's attacks execute enemies below {C:BowSynergySystem.EXEC_BASE[0]%}% health. {C:BowSynergySystem.CRIT_TO_LINE[0]%}% of the attacker's Crit Chance is added to this threshold · [Corrosion] Every {C:BowSynergySystem.CORRODE_PERIOD} seconds, all enemies gain 1 Corrosion stack, up to {C:BowSynergySystem.CORRODE_MAX}. Each stack makes them take {C:BowSynergySystem.CORRODE_PER_STACK[0]%}% more damage; at max stacks, {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% of damage they take becomes true damage"
+
+msgid "每件弓箭为携带者提供 +16% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}%"
+msgstr "Each Bow gives its holder +16% Crit Chance · [Execute] Threshold raised to {C:BowSynergySystem.EXEC_BASE[1]%}%, plus {C:BowSynergySystem.CRIT_TO_LINE[1]%}% of Crit Chance · [Corrosion] {C:BowSynergySystem.CORRODE_PER_STACK[1]%}% per stack; {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}% converted at max stacks"
+
+msgid "每件弓箭为携带者提供 +22% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}%"
+msgstr "Each Bow gives its holder +22% Crit Chance · [Execute] Threshold raised to {C:BowSynergySystem.EXEC_BASE[2]%}%, plus {C:BowSynergySystem.CRIT_TO_LINE[2]%}% of Crit Chance · [Corrosion] {C:BowSynergySystem.CORRODE_PER_STACK[2]%}% per stack; {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}% converted at max stacks"
+
+msgid "每件法器为携带者提供 +4 魔法穿透、+4 最大龟能 · 【法力】每件法器有独立的法力，充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点时释放该法器的主动效果。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒回复 {C:StaffSynergySystem.MANA_PER_TICK} 点，携带者造成或受到伤害时也会回复。未激活羁绊时需要 {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} 点"
+msgstr "Each Artifact gives its holder +4 Magic Pen and +4 Max Energy · [Mana] Each Artifact has its own mana and casts its active effect at {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} mana. Regenerates {C:StaffSynergySystem.MANA_PER_TICK} every {C:RealtimeBattle3DScene.EQ_TICK} seconds, and also when the holder deals or takes damage. Needs {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} without the synergy active"
+
+msgid "每件法器为携带者提供 +7 魔法穿透、+6 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]} 点"
+msgstr "Each Artifact gives its holder +7 Magic Pen and +6 Max Energy · [Mana] Mana needed reduced to {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]}"
+
+msgid "每件法器为携带者提供 +11 魔法穿透、+8 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点 · 【余韵】友军受到治疗时，额外获得相当于治疗量 {C:StaffSynergySystem.ECHO_PCT[2]%}% 的护盾"
+msgstr "Each Artifact gives its holder +11 Magic Pen and +8 Max Energy · [Mana] Mana needed reduced to {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} · [Echo] When an ally is healed, it also gains a shield equal to {C:StaffSynergySystem.ECHO_PCT[2]%}% of the heal"
+
+msgid "每件法器为携带者提供 +14 魔法穿透、+10 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点 · 【余韵】提高至 {C:StaffSynergySystem.ECHO_PCT[3]%}% · 【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益，依次为眩晕、减速、灼烧、中毒、诅咒"
+msgstr "Each Artifact gives its holder +14 Magic Pen and +10 Max Energy · [Mana] Mana needed reduced to {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} · [Echo] Increased to {C:StaffSynergySystem.ECHO_PCT[3]%}% · [Resonance] Every {C:StaffSynergySystem.RESONANCE_PERIOD} seconds, your team heals {C:StaffSynergySystem.RESONANCE_HEAL%}% max health and cleanses {C:StaffSynergySystem.RESONANCE_DISPEL[3]} debuffs, in order: Stun, Slow, Burn, Poison, Curse"
+
+msgid "每件灵物为携带者提供 +5% 闪避 · 【触手】召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% 攻击力与生命值，自动攻击最近的敌人"
+msgstr "Each Spirit gives its holder +5% Dodge · [Tentacles] Summons {C:SpiritSynergySystem.TENTACLES[0]} unkillable tentacles. Each gains 1 Slap stack every {C:SpiritSynergySystem.SLAP_PERIOD} seconds, with no cap. With an enemy in range, it spends 1 stack to slam toward the nearest enemy, dealing {C:SpiritSynergySystem.HIT_FLAT} + {C:SpiritSynergySystem.HIT_HP_PCT%}% of the target's max health as physical damage to enemies in the path · [Undead] When an allied unit dies, a wraith rises in its place with {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% of its attack damage and health, and attacks the nearest enemy"
+
+msgid "每件灵物为携带者提供 +9% 闪避 · 【触手】增加至 {C:SpiritSynergySystem.TENTACLES[1]} 根 · 【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击 · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%。亡魂阵亡后可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%"
+msgstr "Each Spirit gives its holder +9% Dodge · [Tentacles] Increased to {C:SpiritSynergySystem.TENTACLES[1]} · [Dodge Charge] Whenever any of your units dodges, each tentacle gains 1 Slap stack · [Undead] Inheritance increased to {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%. A dead wraith can rise {C:SpiritSynergySystem.WRAITH_LOOPS[1]} more times, each time with {C:SpiritSynergySystem.WRAITH_DECAY%}% of the previous stats"
+
+msgid "每件灵物为携带者提供 +13% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[2]} 次"
+msgstr "Each Spirit gives its holder +13% Dodge · [Tentacles] Slap damage becomes {C:SpiritSynergySystem.HIT_MULT[2]%}% · [Undead] Inheritance increased to {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%, can rise {C:SpiritSynergySystem.WRAITH_LOOPS[2]} more times"
+
+msgid "每件灵物为携带者提供 +18% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次"
+msgstr "Each Spirit gives its holder +18% Dodge · [Tentacles] Slap damage becomes {C:SpiritSynergySystem.HIT_MULT[3]%}% · [Undead] Inheritance increased to {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%, can rise {C:SpiritSynergySystem.WRAITH_LOOPS[3]} more times"
+
+msgid "【刻痕】携带者每造成 {C:IncenseStoneSystem.PER_MARK} 点伤害，刻下 1 道刻痕，至多 {C:IncenseStoneSystem.MARK_CAP} 道，跨对局保留，赛季重置。多件香火石共用同一份刻痕 · 每道刻痕使携带者获得 {C:IncenseStoneSystem.ITEM_AMP%}% 增伤与 {C:IncenseStoneSystem.ITEM_DR%}% 减伤，全队获得 {C:IncenseStoneSystem.TEAM_AMP%}% 增伤与 {C:IncenseStoneSystem.TEAM_DR%}% 减伤"
+msgstr "[Engraving] For every {C:IncenseStoneSystem.PER_MARK} damage the holder deals, it carves 1 Engraving, up to {C:IncenseStoneSystem.MARK_CAP}. Engravings carry over between matches and reset each Season. Multiple Incense Stones share the same Engravings · Each Engraving gives the holder {C:IncenseStoneSystem.ITEM_AMP%}% Damage Amp and {C:IncenseStoneSystem.ITEM_DR%}% Damage Reduction, and the whole team {C:IncenseStoneSystem.TEAM_AMP%}% Damage Amp and {C:IncenseStoneSystem.TEAM_DR%}% Damage Reduction"
+
+msgid "商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}% · 重复买到的小木斧转化为砍伐经验"
+msgstr "Each shop refresh has a {C:AxeEvolution.SHELF_P_BASE%}% chance to offer at least one Little Wooden Axe, +{C:AxeEvolution.SHELF_P_PER_MATCH%}% per match played this Season, up to {C:AxeEvolution.SHELF_P_CAP%}% · Duplicate Little Wooden Axes turn into Chopping XP"
+
+msgid "每件遗物为携带者提供 +3% 生命偷取 · 【生死界】我方全体单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取"
+msgstr "Each Relic gives its holder +3% Lifesteal · [Life and Death] Your units gain {C:RelicSynergySystem.ATK_BONUS[0]%}% attack damage above {C:RelicSynergySystem.HP_GATE%}% health, and {C:RelicSynergySystem.LOW_HP_LS[0]%}% Lifesteal below {C:RelicSynergySystem.HP_GATE%}%"
+
+msgid "每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人"
+msgstr "Each Relic gives its holder +5% Lifesteal · [Life and Death] Attack damage bonus increased to {C:RelicSynergySystem.ATK_BONUS[1]%}%, Lifesteal to {C:RelicSynergySystem.LOW_HP_LS[1]%}% · [Ancient Power] Every {C:RelicSynergySystem.PERIOD} seconds, your team permanently gains +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% Damage Amp, up to {C:RelicSynergySystem.ANCIENT_CAP[1]%}%, until the match ends · [Fortified Egg] Your Turtle Egg gains +{C:RelicSynergySystem.EGG_HP[1]} Max Health and strikes back at enemies within {C:RelicSynergySystem.EGG_RANGE} range with {C:RelicSynergySystem.EGG_ATK[1]} Attack"
+
+msgid "每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}"
+msgstr "Each Relic gives its holder +8% Lifesteal · [Life and Death] Attack damage bonus increased to {C:RelicSynergySystem.ATK_BONUS[2]%}%, Lifesteal to {C:RelicSynergySystem.LOW_HP_LS[2]%}% · [Ancient Power] +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}% each time, up to {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · [Fortified Egg] +{C:RelicSynergySystem.EGG_HP[2]} Max Health, strike-back Attack {C:RelicSynergySystem.EGG_ATK[2]}"
+
+msgid "每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%"
+msgstr "Each Relic gives its holder +10% Lifesteal · [Life and Death] Attack damage bonus increased to {C:RelicSynergySystem.ATK_BONUS[3]%}%, Lifesteal to {C:RelicSynergySystem.LOW_HP_LS[3]%}% · [Ancient Power] +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}% each time, up to {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · [Fortified Egg] +{C:RelicSynergySystem.EGG_HP[3]} Max Health, strike-back Attack {C:RelicSynergySystem.EGG_ATK[3]} · [Awakening] {C:RelicSynergySystem.AWAKEN_SEC} seconds into each battle, accumulated Ancient Power is increased by {C:RelicSynergySystem.AWAKEN_BOOST%}%"
+
+msgid "盾"
+msgstr "Shield"
+
+msgid "斧头"
+msgstr "Axe"
+
+msgid "取消"
+msgstr "Cancel"
+
+msgid "你的"
+msgstr "Your"
+
+msgid "无法连接服务器。请检查网络连接后重试。"
+msgstr "Can't reach the server. Check your connection and try again."
+
+msgid "未解锁"
+msgstr "Locked"
+
+msgid "羁绊"
+msgstr "Synergy"
+
+msgid "我方"
+msgstr "Your Team"
+
+msgid "冠军杯赛冠军"
+msgstr "Champions Cup Champion"
+
+msgid "上路战场"
+msgstr "Top Lane"
+
+msgid "下路战场"
+msgstr "Bottom Lane"
+
+msgid "切磋"
+msgstr "Friendly Match"
+
+msgid "确认"
+msgstr "Confirm"
+
+msgid "终极战场"
+msgstr "Final Battle"
+
+msgid "返回"
+msgstr "Back"
+
+msgid "冠军墙"
+msgstr "Hall of Champions"
+
+msgid "下一场"
+msgstr "Next Match"
+
+msgid "等待开播"
+msgstr "Waiting to go live"
+
+msgid "效果"
+msgstr "Effect"
+
+msgid "深海小将"
+msgstr "Abyss Minion"
+
+msgid "提交中"
+msgstr "Submitting"
+
+msgid "对战"
+msgstr "Battle"
+
+msgid "排行榜"
+msgstr "Leaderboard"
+
+msgid "图鉴"
+msgstr "Codex"
+
+msgid "输入昵称"
+msgstr "Enter Nickname"
+
+msgid "钩锁"
+msgstr "Grappling Hook"
+
+msgid "怒火药水"
+msgstr "Fury Potion"
+
+msgid "冰川"
+msgstr "Glacier"
+
+msgid "猎龟令"
+msgstr "Hunt Order"
+
+msgid "驯服"
+msgstr "Tame"
+
+msgid "实时"
+msgstr "Live"
+
+msgid "治疗"
+msgstr "Heal"
+
+msgid "全军覆没"
+msgstr "Wiped Out"
+
+msgid "敌军覆没"
+msgstr "Enemy Wiped Out"
+
+msgid "龟蛋破碎"
+msgstr "Egg Destroyed"
+
+msgid "击碎敌蛋"
+msgstr "Enemy Egg Destroyed"
+
+msgid "等待中"
+msgstr "Waiting"
+
+msgid "卫冕"
+msgstr "Defending Champion"
+
+msgid "备战中"
+msgstr "Preparing"
+
+msgid "未开始"
+msgstr "Not Started"
+
+msgid "轮空晋级"
+msgstr "Advanced on a Bye"
+
+msgid "完成"
+msgstr "Done"
+
+msgid "属性"
+msgstr "Stats"
+
+msgid "无法连接服务器"
+msgstr "Can't reach the server"
+
+msgid "小龟"
+msgstr "Little Turtle"
+
+msgid "石头龟"
+msgstr "Stone Turtle"
+
+msgid "竹叶龟"
+msgstr "Bamboo Turtle"
+
+msgid "对方阵容读取失败"
+msgstr "Couldn't load their team"
+
+msgid "购买"
+msgstr "Buy"
+
+msgid "新手教程"
+msgstr "Tutorial"
+
+msgid "缺"
+msgstr "Missing"
+
+msgid "请输入邮件中的验证码"
+msgstr "Enter the code from the email"
+
+msgid "邮箱绑定成功"
+msgstr "Email linked"
+
+msgid "邮箱格式错误"
+msgstr "Invalid email address"
+
+msgid "验证失败"
+msgstr "Verification failed"
+
+msgid "装备"
+msgstr "Items"
+
+msgid "跳过"
+msgstr "Skip"
+
+msgid "口哨"
+msgstr "Whistle"
+
+msgid "海螺虫"
+msgstr "Conch Bug"
+
+msgid "随从"
+msgstr "Follower"
+
+msgid "造成总伤害"
+msgstr "Total Damage Dealt"
+
+msgid "受到伤害"
+msgstr "Damage Taken"
+
+msgid "对方"
+msgstr "Opponent"
+
+msgid "战果"
+msgstr "Results"
+
+msgid "回放"
+msgstr "Replay"
+
+msgid "判负"
+msgstr "Loss"
+
+msgid "直接晋级"
+msgstr "Advanced Directly"
+
+msgid "结算中"
+msgstr "Settling"
+
+msgid "即将开始"
+msgstr "Starting Soon"
+
+msgid "冠军奖励"
+msgstr "Champion Rewards"
+
+msgid "半决赛"
+msgstr "Semifinal"
+
+msgid "下一个"
+msgstr "Next"
+
+msgid "夺冠阵容"
+msgstr "Winning Team"
+
+msgid "夺冠之路"
+msgstr "Road to the Title"
+
+msgid "羁绊赠送"
+msgstr "Synergy Gift"
+
+msgid "每秒攻击"
+msgstr "Attacks per second"
+
+msgid "持续伤害"
+msgstr "Damage over Time"
+
+msgid "控制"
+msgstr "Crowd Control"
+
+msgid "增益"
+msgstr "Buffs"
+
+msgid "减益"
+msgstr "Debuffs"
+
+msgid "同上"
+msgstr "Same as above"
+
+msgid "退出"
+msgstr "Exit"
+
+msgid "我的比赛"
+msgstr "My Matches"
+
+msgid "观看开播"
+msgstr "Watch Live"
+
+msgid "已锁定"
+msgstr "Locked"
+
+msgid "登录已失效"
+msgstr "Session expired"
+
+msgid "开始"
+msgstr "Start"
+
+msgid "开打时场上单位与录制时不同"
+msgstr "Units on the field differ from the recording"
+
+msgid "重试"
+msgstr "Retry"
+
+msgid "处决"
+msgstr "Execute"
+
+msgid "并列"
+msgstr "Tied"
+
+msgid "临时等级器"
+msgstr "Level Booster"
+
+msgid "教程完成"
+msgstr "Tutorial Complete"
+
+msgid "练习木桩"
+msgstr "Practice Dummy"
+
+msgid "深礁"
+msgstr "Deep Reef"
+
+msgid "紫墟"
+msgstr "Violet Ruins"
+
+msgid "赤林"
+msgstr "Crimson Forest"
+
+msgid "暗林"
+msgstr "Dark Forest"
+
+msgid "石斧"
+msgstr "Stone Axe"
+
+msgid "铁斧"
+msgstr "Iron Axe"
+
+msgid "金斧"
+msgstr "Gold Axe"
+
+msgid "钻石斧"
+msgstr "Diamond Axe"
+
+msgid "亡灵之斧"
+msgstr "Undead Axe"
+
+msgid "炽天使"
+msgstr "Seraph"
+
+msgid "全息斧"
+msgstr "Holo Axe"
+
+msgid "余烬"
+msgstr "Ember"
+
+msgid "灵物触手"
+msgstr "Spirit Tentacle"
+
+msgid "整排挥砍"
+msgstr "Row Cleave"
+
+msgid "挥砍"
+msgstr "Slash"
+
+msgid "射击"
+msgstr "Shoot"
+
+msgid "深海小将精英"
+msgstr "Elite Abyss Minion"
+
+msgid "四面合围"
+msgstr "Encircle"
+
+msgid "援军小将"
+msgstr "Reinforcements"
+
+msgid "玩家阵容"
+msgstr "Player Team"
+
+msgid "已删掉"
+msgstr "Deleted"
+
+msgid "请填写问题描述"
+msgstr "Please describe the problem"
+
+msgid "确定阵容"
+msgstr "Confirm Team"
+
+msgid "阵容已确定"
+msgstr "Team confirmed"
+
+msgid "决赛阵容"
+msgstr "Finals Team"
+
+msgid "提交后按这套阵容出战\n点击统领卡可更换技能"
+msgstr "Once submitted, this team will fight\nTap a Leader card to change abilities"
+
+msgid "提交阵容"
+msgstr "Submit Team"
+
+msgid "已提交：决赛按这套阵容出战"
+msgstr "Submitted: this team will fight in the Finals"
+
+msgid "已提交：本轮按这套阵容出战"
+msgstr "Submitted: this team will fight this round"
+
+msgid "已提交：下一轮起按这套阵容出战"
+msgstr "Submitted: this team will fight from the next round"
+
+msgid "已提交：冠军杯赛按这套阵容出战"
+msgstr "Submitted: this team will fight in the Champions Cup"
+
+msgid "没有提交：三只统领要各不相同，并且都要排进上路或下路"
+msgstr "Not submitted: all three Leaders must be different and placed in the Top or Bottom Lane"
+
+msgid "没有提交：你的决赛已经结束"
+msgstr "Not submitted: your Finals are already over"
+
+msgid "没有提交：本周没有晋级决赛"
+msgstr "Not submitted: you didn't qualify for the Finals this week"
+
+msgid "没有提交：网络不通，请稍后重试"
+msgstr "Not submitted: no connection. Try again later."
+
+msgid "阵容有改动还没提交，点背包里的「确定阵容」提交"
+msgstr "Your team has unsubmitted changes. Tap \"Confirm Team\" in the Inventory to submit."
+
+msgid "未连接服务器"
+msgstr "Not connected to the server"
+
+msgid "账号未登录，请稍后再试"
+msgstr "Not signed in. Try again later."
+
+msgid "玩家 ID 格式不正确"
+msgstr "Invalid Player ID"
+
+msgid "这是你自己的玩家 ID"
+msgstr "That's your own Player ID"
+
+msgid "未找到该玩家"
+msgstr "Player not found"
+
+msgid "已是好友"
+msgstr "Already friends"
+
+msgid "对方好友数量已达上限"
+msgstr "Their friend list is full"
+
+msgid "今日好友申请次数已达上限"
+msgstr "Daily friend request limit reached"
+
+msgid "双方尚未成为好友"
+msgstr "You're not friends yet"
+
+msgid "对方尚未配置阵容"
+msgstr "They haven't set up a team yet"
+
+msgid "当前版本较旧，请先更新游戏"
+msgstr "Your version is out of date. Please update the game first."
+
+msgid "对方版本较旧，待对方更新后再切磋"
+msgstr "Their version is out of date. You can play once they update."
+
+msgid "昵称已被重置为默认昵称"
+msgstr "Nickname reset to a default name"
+
+msgid "内测服"
+msgstr "Beta Server"
+
+msgid "账号恢复失败"
+msgstr "Account recovery failed"
+
+msgid "服务暂不可用"
+msgstr "Service unavailable"
+
+msgid "正在连接服务器，请稍后重试"
+msgstr "Connecting to the server. Try again shortly."
+
+msgid "账号已恢复"
+msgstr "Account restored"
+
+msgid "邮箱绑定服务不可用"
+msgstr "Email linking is unavailable"
+
+msgid "不支持该邮箱域名"
+msgstr "This email domain isn't supported"
+
+msgid "该邮箱未绑定账号"
+msgstr "No account is linked to this email"
+
+msgid "该邮箱已绑定其他账号"
+msgstr "This email is linked to another account"
+
+msgid "操作过于频繁，请稍后再试"
+msgstr "Too many attempts. Try again later."
+
+msgid "验证码错误或已过期"
+msgstr "Wrong or expired code"
+
+msgid "正在连接服务器，请稍后重新发送"
+msgstr "Connecting to the server. Resend in a moment."
+
+msgid "绑定失败：账号不匹配（进度未受影响）"
+msgstr "Linking failed: account mismatch (your progress is unaffected)"
+
+msgid "状态"
+msgstr "Status"
+
+msgid "欢迎来到斗龟场"
+msgstr "Welcome to Turtle Wars"
+
+msgid "在这里，你将组建一支由 3 只龟组成的队伍，为它们搭配装备、安排站位，与其他玩家的队伍自动对战。"
+msgstr "Build a team of 3 turtles, give them items, set their positions, and auto-battle other players' teams."
+
+msgid "大熊"
+msgstr "Big Bear"
+
+msgid "命运生命偷取"
+msgstr "Fate Lifesteal"
+
+msgid "海胆盾"
+msgstr "Urchin Shield"
+
+msgid "归队"
+msgstr "Rejoin"
+
+msgid "未知龟"
+msgstr "Unknown Turtle"
+
+msgid "龟蛋"
+msgstr "Turtle Egg"
+
+msgid "命运之轮 -30% 生命值"
+msgstr "Wheel of Fate -30% Health"
+
+msgid "口哨·灵体气波"
+msgstr "Whistle · Spirit Wave"
+
+msgid "魔法石·投石"
+msgstr "Magic Stone · Throw"
+
+msgid "复活"
+msgstr "Revive"
+
+msgid "结算"
+msgstr "Results"
+
+msgid "破蛋定胜负"
+msgstr "Egg Decides the Winner"
+
+msgid "小将"
+msgstr "Minion"
+
+msgid "从头看"
+msgstr "Watch from Start"
+
+msgid "回到直播"
+msgstr "Back to Live"
+
+msgid "香火 满"
+msgstr "Incense Full"
+
+msgid "本战场胜利"
+msgstr "Battle Won"
+
+msgid "本战场失败"
+msgstr "Battle Lost"
+
+msgid "被驯服"
+msgstr "Tamed"
+
+msgid "已暂停"
+msgstr "Paused"
+
+msgid "返回赛况"
+msgstr "Back to Results"
+
+msgid "返回对阵图"
+msgstr "Back to Bracket"
+
+msgid "返回战绩"
+msgstr "Back to Match History"
+
+msgid "退出回放？"
+msgstr "Exit Replay?"
+
+msgid "退出观看？"
+msgstr "Stop Watching?"
+
+msgid "继续观看"
+msgstr "Keep Watching"
+
+msgid "关"
+msgstr "Off"
+
+msgid "退出切磋？"
+msgstr "Exit Friendly Match?"
+
+msgid "加时"
+msgstr "Overtime"
+
+msgid "团灭"
+msgstr "Team Wipe"
+
+msgid "我的晋级路线"
+msgstr "My Path"
+
+msgid "阵容无效，判负"
+msgstr "Invalid team. Counted as a loss."
+
+msgid "（卫冕）"
+msgstr "(Defending)"
+
+msgid "卫冕冠军"
+msgstr "Defending Champion"
+
+msgid "选择小组查看对阵"
+msgstr "Pick a group to view matchups"
+
+msgid "你止步"
+msgstr "You went out"
+
+msgid "首轮轮空，直接晋级"
+msgstr "First-round bye. Advanced directly."
+
+msgid "你已晋级"
+msgstr "You advanced"
+
+msgid "观看我的比赛"
+msgstr "Watch My Match"
+
+msgid "重看决赛"
+msgstr "Rewatch the Final"
+
+msgid "等待下一轮"
+msgstr "Waiting for the next round"
+
+msgid "直接夺冠"
+msgstr "Won the Title Directly"
+
+msgid "全部小组"
+msgstr "All Groups"
+
+msgid "胜者进入"
+msgstr "Winner goes to"
+
+msgid "今晚赛程"
+msgstr "Tonight's Schedule"
+
+msgid "本周晋级选手"
+msgstr "This Week's Qualifiers"
+
+msgid "组冠军单败淘汰，决出冠军"
+msgstr "Group winners play single elimination to decide the champion"
+
+msgid "出局"
+msgstr "Out"
+
+msgid "下一轮"
+msgstr "Next Round"
+
+msgid "备战结束"
+msgstr "Prep Over"
+
+msgid "至下周日"
+msgstr "Until next Sunday"
+
+msgid "组"
+msgstr "Group"
+
+msgid "最快结束的一场"
+msgstr "Fastest-finishing match"
+
+msgid "组决赛"
+msgstr "Group Final"
+
+msgid "1/4 决赛"
+msgstr "Quarterfinal"
+
+msgid "点击任意处继续"
+msgstr "Tap anywhere to continue"
+
+msgid "限免龟不获得经验"
+msgstr "Free turtles don't earn XP"
+
+msgid "已上阵"
+msgstr "In Team"
+
+msgid "放置"
+msgstr "Place"
+
+msgid "空位"
+msgstr "Empty"
+
+msgid "固有"
+msgstr "Innate"
+
+msgid "已选"
+msgstr "Selected"
+
+msgid "固有技能不可更换"
+msgstr "Innate abilities can't be changed"
+
+msgid "选择 1 个技能"
+msgstr "Choose 1 ability"
+
+msgid "攻击（自动释放）"
+msgstr "Attack (auto-cast)"
+
+msgid "开始教程"
+msgstr "Start Tutorial"
+
+msgid "跳过教程"
+msgstr "Skip Tutorial"
+
+msgid "需要更新"
+msgstr "Update Required"
+
+msgid "当前版本已停止服务，请更新到最新版本后继续。"
+msgstr "This version is no longer supported. Please update to the latest version to continue."
+
+msgid "前往更新"
+msgstr "Update"
+
+msgid "护盾+"
+msgstr "Shield+"
+
+msgid "蛋糕礼盒"
+msgstr "Cake Box"
+
+msgid "小手枪"
+msgstr "Little Pistol"
+
+msgid "急救塔"
+msgstr "Aid Tower"
+
+msgid "浓浆"
+msgstr "Syrup"
+
+msgid "炮台"
+msgstr "Turret"
+
+msgid "亡灵骷髅"
+msgstr "Undead Skeleton"
+
+msgid "墨遁"
+msgstr "Ink Escape"
+
+msgid "猎物"
+msgstr "Prey"
+
+msgid "亡魂"
+msgstr "Wraith"
+
+msgid "开始第一场对战"
+msgstr "Start Your First Battle"
+
+msgid "羁绊已激活\n点击查看详情"
+msgstr "Synergy active\nTap for details"
+
+msgid "3 件同名同星装备自动合成升星"
+msgstr "3 copies of the same item at the same star level combine into a higher star"
+
+msgid "本场由服务器判定，退出不影响结果"
+msgstr "The server decides this match. Leaving won't change the result."
+
+msgid "训龟大师在战斗中施放所选技能"
+msgstr "The Turtle Trainer casts the chosen abilities in battle"
+
+msgid "教程加成"
+msgstr "Tutorial Bonus"
+
+msgid "上一局结算中"
+msgstr "Settling your last match"
+
+msgid "上一局已结算"
+msgstr "Last match settled"
+
+msgid "版本已更新，上一局判负"
+msgstr "Version updated. Your last match counts as a loss."
+
+msgid "结算异常，上一局判负"
+msgstr "Settlement error. Your last match counts as a loss."
+
+msgid "已进入新的一周，上一局已作废"
+msgstr "A new week has started. Your last match was voided."
+
+msgid "结算异常，上一局已作废"
+msgstr "Settlement error. Your last match was voided."
+
+msgid "直播"
+msgstr "Live"
+
+msgid "开播"
+msgstr "Go Live"
+
+msgid "下路准备中"
+msgstr "Bottom Lane getting ready"
+
+msgid "同步中"
+msgstr "Syncing"
+
+msgid "直播中断"
+msgstr "Stream interrupted"
+
+msgid "信号中断"
+msgstr "Signal lost"
+
+msgid "版本不同，无法观赛"
+msgstr "Different version. Can't spectate."
+
+msgid "正在连接…"
+msgstr "Connecting…"
+
+msgid "观赛"
+msgstr "Spectate"
+
+msgid "取消匹配"
+msgstr "Cancel"
+
+msgid "正在退出排队"
+msgstr "Leaving the queue"
+
+msgid "已退出排队"
+msgstr "Left the queue"
+
+msgid "连接中断，已退出排队"
+msgstr "Connection lost. Left the queue."
+
+msgid "正在提交阵容"
+msgstr "Submitting team"
+
+msgid "正在结算"
+msgstr "Settling"
+
+msgid "连接服务器后才能比赛"
+msgstr "Connect to the server to play"
+
+msgid "对局结果计算中，稍后自动记入战绩"
+msgstr "Calculating the result. It will be added to your Match History shortly."
+
+msgid "结算失败，请重新开战"
+msgstr "Settlement failed. Please start a new battle."
+
+msgid "当前不在闯关赛时段"
+msgstr "The Gauntlet isn't running right now"
+
+msgid "本周闯关已结束"
+msgstr "This week's Gauntlet is over"
+
+msgid "阵容无效，请检查背包"
+msgstr "Invalid team. Check your Inventory."
+
+msgid "录像无法在本设备播放"
+msgstr "This replay can't play on this device"
+
+msgid "战绩已同步，请重新开战"
+msgstr "Match History synced. Please start a new battle."
+
+msgid "装备已同步，请重新开战"
+msgstr "Items synced. Please start a new battle."
+
+msgid "匹配失败，请稍后重试"
+msgstr "Matchmaking failed. Try again later."
+
+msgid "备战阶段结束后开赛"
+msgstr "The match starts after prep"
+
+msgid "上一场闯关：胜利"
+msgstr "Last Gauntlet match: Victory"
+
+msgid "上一场闯关：失败"
+msgstr "Last Gauntlet match: Defeat"
+
+msgid "当前不在积分赛时段"
+msgstr "Ranked isn't running right now"
+
+msgid "本周积分赛场次已用完"
+msgstr "No Ranked games left this week"
+
+msgid "上一场积分赛：胜利"
+msgstr "Last Ranked match: Victory"
+
+msgid "上一场积分赛：失败"
+msgstr "Last Ranked match: Defeat"
+
+msgid "等待服务器开始对局"
+msgstr "Waiting for the server to start the match"
+
+msgid "正在确认结果"
+msgstr "Confirming the result"
+
+msgid "正在建立对局"
+msgstr "Setting up the match"
+
+msgid "正在载入对局"
+msgstr "Loading the match"
+
+msgid "当前版本仅支持本地回放"
+msgstr "This version only supports local replays"
+
+msgid "回放不存在（每周二清理上周回放）"
+msgstr "Replay not found (last week's replays are cleared every Tuesday)"
+
+msgid "回放数据损坏"
+msgstr "Replay data is corrupted"
+
+msgid "请求超时，请稍后重试"
+msgstr "Request timed out. Try again later."
+
+msgid "回放暂不可用"
+msgstr "Replay unavailable"
+
+msgid "结果未公布"
+msgstr "Result not announced"
+
+msgid "暂无结果"
+msgstr "No result yet"
+
+msgid "暂无回放"
+msgstr "No replay yet"
+
+msgid "分组已失效"
+msgstr "Group expired"
+
+msgid "回放读取失败"
+msgstr "Failed to load replay"
+
+msgid "回放格式无效"
+msgstr "Invalid replay format"
+
+msgid "终局对不上"
+msgstr "Final result mismatch"
+
+msgid "版本过旧，请更新"
+msgstr "Version too old. Please update."
+
+msgid "画面生成中"
+msgstr "Rendering"
+
+msgid "请在小游戏内观看"
+msgstr "Please watch in the mini-game"
+
+msgid "录像已过期"
+msgstr "Replay expired"
+
+msgid "未找到该对局的录像"
+msgstr "No replay found for this match"
+
+msgid "录像版本与播放器版本不一致"
+msgstr "Replay version doesn't match the player version"
+
+msgid "正在载入录像"
+msgstr "Loading replay"
+
+msgid "播放结束"
+msgstr "Playback finished"
+
+msgid "重新播放"
+msgstr "Replay"
+
+msgid "投喂"
+msgstr "Feed"
+
+msgid "机甲"
+msgstr "Mech"
+
+msgid "吞噬 +50% 攻击速度"
+msgstr "Devour +50% Attack Speed"
+
+msgid "招财·满 回复生命"
+msgstr "Fortune Full: Heal"
+
+msgid "♠ 攻击+3 生命+10"
+msgstr "♠ Attack+3 Health+10"
+
+msgid "♥ 护甲+1 魔抗+1"
+msgstr "♥ Armor+1 Magic Resist+1"
+
+msgid "♦ 暴击+2% 护穿+1"
+msgstr "♦ Crit+2% Armor Pen+1"
+
+msgid "♣ 生命偷取+0.5% 攻速+2%"
+msgstr "♣ Lifesteal+0.5% Attack Speed+2%"
+
+msgid "幻影"
+msgstr "Phantom"
+
+msgid "橙·全体生命偷取"
+msgstr "Orange: Team Lifesteal"
+
+msgid "破隐"
+msgstr "Revealed"
+
+msgid "觉醒"
+msgstr "Awakened"
+
+msgid "切磋不计入赛季进度。"
+msgstr "Friendly Matches don't count toward Season progress."
+
+msgid "返回排行榜"
+msgstr "Back to Leaderboard"
+
+msgid "返回好友"
+msgstr "Back to Friends"
+
+msgid "存档未就绪"
+msgstr "Save not ready"
+
+msgid "教程中无法切磋"
+msgstr "Can't start a Friendly Match during the tutorial"
+
+msgid "请先在选龟页选定本大轮的三只统领"
+msgstr "Pick your three Leaders for this Season on the turtle select screen first"
+
+msgid "画面无法播放"
+msgstr "Can't play the video"
+
+msgid "归顺"
+msgstr "Converted"
+
+msgid "本届冠军"
+msgstr "Champion"
+
+msgid "上周冠军"
+msgstr "Last Week's Champion"
+
+msgid "正在开播"
+msgstr "Live Now"
+
+msgid "「冠军」头衔"
+msgstr "\"Champion\" Title"
+
+msgid "你获得冠军杯赛冠军"
+msgstr "You won the Champions Cup"
+
+msgid "以最后一次提交的阵容出战"
+msgstr "Your last submitted team will fight"
+
+msgid "稍后"
+msgstr "Later"
+
+msgid "开播后自动进入"
+msgstr "Joins automatically when live"
+
+msgid "比赛"
+msgstr "Match"
+
+msgid "点击继续"
+msgstr "Tap to continue"
+
+msgid "最终名次"
+msgstr "Final Placement"
+
+msgid "重看"
+msgstr "Rewatch"
+
+msgid "正在连接服务器…"
+msgstr "Connecting to the server…"
+
+msgid "服务器维护中"
+msgstr "Server Maintenance"
+
+msgid "服务器正在维护，请稍后再试。"
+msgstr "The server is under maintenance. Please try again later."
+
+msgid "请在设置页用邮箱重新登录。"
+msgstr "Please sign in again with your email in Settings."
+
+msgid "加载中"
+msgstr "Loading"
+
+msgid "冠军杯赛即将开播"
+msgstr "The Champions Cup is about to go live"
+
+msgid "获得头衔"
+msgstr "Title Earned"
+
+msgid "已获得"
+msgstr "Earned"
+
+msgid "深海币入账"
+msgstr "Abyss Coins Received"
+
+msgid "已入账"
+msgstr "Received"
+
+msgid "决赛完成"
+msgstr "Final Complete"
+
+msgid "揭晓中"
+msgstr "Revealing"
+
+msgid "冠军杯赛亚军"
+msgstr "Champions Cup Runner-up"
+
+msgid "第 2 名"
+msgstr "2nd Place"
+
+msgid "今晚之最"
+msgstr "Tonight's Best"
+
+msgid "领取奖励"
+msgstr "Claim Rewards"
+
+msgid "暂无往届冠军"
+msgstr "No past champions yet"
+
+msgid "亚军："
+msgstr "Runner-up:"
+
+msgid "最新"
+msgstr "Latest"
+
+msgid "历届冠军杯赛冠军"
+msgstr "Champions Cup Winners"
+
+msgid "获得方式"
+msgstr "How to Get"
+
+msgid "[color=#8c9cab]无属性加成[/color]"
+msgstr "[color=#8c9cab]No stat bonus[/color]"
+
+msgid "作用于友方"
+msgstr "Affects allies"
+
+msgid "作用于敌方"
+msgstr "Affects enemies"
+
+msgid "消耗品"
+msgstr "Consumable"
+
+msgid "不可编入"
+msgstr "Can't be added"
+
+msgid "每级 ×1.05"
+msgstr "×1.05 per level"
+
+msgid "切换至远程形态"
+msgstr "Switch to Ranged Form"
+
+msgid "切换至近战形态"
+msgstr "Switch to Melee Form"
+
+msgid "切换至普通形态"
+msgstr "Switch to Normal Form"
+
+msgid "切换至火山形态"
+msgstr "Switch to Volcano Form"
+
+msgid "← 返回"
+msgstr "← Back"
+
+msgid "远程形态"
+msgstr "Ranged Form"
+
+msgid "近战形态"
+msgstr "Melee Form"
+
+msgid "随形态变体："
+msgstr "Form variants:"
+
+msgid "宝箱龟战利品"
+msgstr "Treasure Chest Turtle Loot"
+
+msgid "自身"
+msgstr "Self"
+
+msgid "来源"
+msgstr "Sources"
+
+msgid "羁绊效果"
+msgstr "Synergy Effects"
+
+msgid "同类装备"
+msgstr "Items of This Type"
+
+msgid "退出游戏"
+msgstr "Quit Game"
+
+msgid "获得 临时等级器"
+msgstr "Got a Level Booster"
+
+msgid "羁绊赠送装备不可出售"
+msgstr "Synergy gift items can't be sold"
+
+msgid "拖动单位设置开战站位。实际站位避开当局地形。"
+msgstr "Drag units to set starting positions. Actual positions avoid the terrain in each match."
+
+msgid "恢复默认"
+msgstr "Reset to Default"
+
+msgid "中线"
+msgstr "Midline"
+
+msgid "蛋"
+msgstr "Egg"
+
+msgid "查看羁绊详情"
+msgstr "View Synergy Details"
+
+msgid "  可进化"
+msgstr "  Can evolve"
+
+msgid "  ◀ 当前"
+msgstr "  ◀ Current"
+
+msgid "   未激活"
+msgstr "   Inactive"
+
+msgid "查看结果"
+msgstr "View Results"
+
+msgid "查看赛况"
+msgstr "View Results"
+
+msgid "已止步"
+msgstr "Eliminated"
+
+msgid "观看全场赛况 »"
+msgstr "Watch Full Results »"
+
+msgid "观看对阵图 »"
+msgstr "View Bracket »"
+
+msgid "本周积分赛已截止。闯关赛周六开始。"
+msgstr "This week's Ranked has closed. The Gauntlet starts Saturday."
+
+msgid "本周积分赛已截止。下周二开始新一轮。"
+msgstr "This week's Ranked has closed. A new round starts next Tuesday."
+
+msgid "已晋级闯关赛，周六可继续参赛。"
+msgstr "Qualified for the Gauntlet. Keep playing on Saturday."
+
+msgid "胜场已达晋级线，可参加周六闯关赛。"
+msgstr "You've reached the qualifying wins and can play in Saturday's Gauntlet."
+
+msgid "即将进入对局"
+msgstr "Entering the match"
+
+msgid "可返回主页，匹配成功后自动进入对局"
+msgstr "You can go back to the main menu. You'll join the match automatically once one is found."
+
+msgid "确认删除账号"
+msgstr "Confirm Account Deletion"
+
+msgid "删除内容：账号与玩家 ID、云端存档、阵容快照、\n排行榜与赛事记录、举报与反馈记录、本机存档。\n"
+msgstr "Deletes: your account and Player ID, cloud save, team snapshots,\nleaderboard and tournament records, reports and feedback, and the local save.\n"
+
+msgid "已完成对局的录像保留，其中的昵称与头像显示为「已注销玩家」。\n"
+msgstr "Replays of finished matches are kept, with your nickname and avatar shown as \"Deleted Player\".\n"
+
+msgid "删除后无法恢复。"
+msgstr "This can't be undone."
+
+msgid "账号删除后无法恢复，进度不可找回。"
+msgstr "Once deleted, your account and progress can't be recovered."
+
+msgid "下一步"
+msgstr "Next"
+
+msgid "删除中"
+msgstr "Deleting"
+
+msgid "账号已删除"
+msgstr "Account deleted"
+
+msgid "删除失败：无法连接服务器，账号未删除"
+msgstr "Deletion failed: can't reach the server. Your account was not deleted."
+
+msgid "登录已失效，请先通过「邮箱登录」重新登录"
+msgstr "Session expired. Please sign in again with \"Email Sign-In\" first."
+
+msgid "删除失败：当前版本不可提交，请更新后重试"
+msgstr "Deletion failed: this version can't submit. Please update and try again."
+
+msgid "删除失败：无法连接服务器"
+msgstr "Deletion failed: can't reach the server"
+
+msgid "黑名单中的玩家昵称显示为默认昵称。名单仅保存在本设备。"
+msgstr "Blocked players' nicknames show as default names. The list is saved on this device only."
+
+msgid "黑名单为空"
+msgstr "No blocked players"
+
+msgid "移出"
+msgstr "Remove"
+
+msgid "切换账号"
+msgstr "Switch Account"
+
+msgid "该龟投账号已绑定其他游戏账号。"
+msgstr "This TurtlePoll account is linked to another game account."
+
+msgid "切换后，本机将登录该账号。"
+msgstr "After switching, this device will sign in to that account."
+
+msgid "本机当前进度不会合并到该账号（切换前自动备份）。"
+msgstr "Current progress on this device won't be merged into that account (it's backed up automatically before switching)."
+
+msgid "当前账号未绑定邮箱，切换后无法恢复。"
+msgstr "Your current account has no linked email and can't be recovered after switching."
+
+msgid "确认切换"
+msgstr "Confirm Switch"
+
+msgid "龟投账号"
+msgstr "TurtlePoll Account"
+
+msgid "未绑定"
+msgstr "Not Linked"
+
+msgid "已绑定"
+msgstr "Linked"
+
+msgid "等待确认"
+msgstr "Waiting for confirmation"
+
+msgid "登录码已过期"
+msgstr "Sign-in code expired"
+
+msgid "登录已取消"
+msgstr "Sign-in canceled"
+
+msgid "请更新游戏后重试"
+msgstr "Please update the game and try again"
+
+msgid "登录失败"
+msgstr "Sign-in failed"
+
+msgid "绑定"
+msgstr "Link"
+
+msgid "打开龟投"
+msgstr "Open TurtlePoll"
+
+msgid "设备自检"
+msgstr "Device Check"
+
+msgid "已取消"
+msgstr "Canceled"
+
+msgid "一致"
+msgstr "Match"
+
+msgid "不一致"
+msgstr "Mismatch"
+
+msgid "最终造物"
+msgstr "Final Creation"
+
+msgid "选择最终造物（本大轮不可更改）"
+msgstr "Choose a Final Creation (can't be changed this Season)"
