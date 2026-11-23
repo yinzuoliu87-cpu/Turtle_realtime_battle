@@ -65,6 +65,7 @@ func _ready() -> void:
 	add_child(host)
 	_t_active()
 	_t_lines()
+	_t_same_match()
 	await _t_width()
 	await _t_place()
 	await _t_popup()
@@ -139,6 +140,20 @@ func _line(ts: int, kind: String) -> Dictionary:
 	var f: Dictionary = fx.feeds(ts)
 	var mn: Dictionary = M.my_next(kind != "plain", f["group"], f["cup"], ts)
 	return L.bar_line(ts, f["group"], f["cup"], f["groups"], mn)
+
+
+## B' 观战页上条说的正是眼前这一场 ⇒ 条收起(2026-11-23 · 方案书 20261122 B「同一件事说好几遍」)
+func _t_same_match() -> void:
+	print("--- B' 条说的就是正在看的这一场 ⇒ 收起 ---")
+	var LSx := preload("res://scripts/systems/replay/live_spectate.gd")
+	var b := {"bucket": 3, "flip": 1795000000, "size": 4}
+	var t := {"b": b, "r": 2, "m": 1}
+	var cur := {"kind": "premiere", "premiere": {"key": LSx.premiere_key(b, 2, 1)}}
+	_ok("B' ★同一场(开播 key 相同) ⇒ 收起", L.watching_same(t, cur), LSx.premiere_key(b, 2, 1))
+	_ok("B' 另一场(m 不同) ⇒ 不收", not L.watching_same({"b": b, "r": 2, "m": 0}, cur))
+	_ok("B' 另一组(bucket 不同) ⇒ 不收", not L.watching_same({"b": {"bucket": 4, "flip": 1795000000, "size": 4}, "r": 2, "m": 1}, cur))
+	_ok("B' 不是开播会话(回放 / 自己跟播) ⇒ 不收", not L.watching_same(t, {"kind": "replay", "premiere": {"key": LSx.premiere_key(b, 2, 1)}}))
+	_ok("B' 条上没有目标(倒计时那几档) ⇒ 不收", not L.watching_same({}, cur))
 
 
 func _t_lines() -> void:

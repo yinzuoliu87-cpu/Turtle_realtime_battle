@@ -2462,6 +2462,7 @@ scripts/systems/replay/live_spectate.gd|lit|版本不同，无法观赛
 scripts/systems/replay/live_spectate.gd|lit|直播
 scripts/systems/replay/live_spectate.gd|lit|直播中断
 scripts/systems/replay/live_spectate.gd|lit|观赛
+scripts/systems/replay/live_spectate.gd|lit|追播中 ×2
 scripts/systems/replay/premiere_schedule.gd|lit|%s距开播 %s
 scripts/systems/replay/premiere_schedule.gd|lit|决赛
 scripts/systems/replay/premiere_schedule.gd|lit|即将开播

@@ -24,6 +24,8 @@ const _POP := preload("res://scripts/ui/finals_day_popup.gd")
 const _MQ := preload("res://scripts/ui/finals_day_marquee.gd")
 const _RC := preload("res://scripts/ui/finals_day_recap.gd")
 const _FLP := preload("res://scripts/net/finals_lineup_push.gd")
+const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
+const _SW := preload("res://scripts/systems/replay/stream_watch.gd")
 
 const LAYER := 80
 const POLL_SEC := 30
@@ -171,8 +173,14 @@ func tick() -> void:
 		_next_poll = mini(_next_poll, now + POLL_FAST_SEC)
 	line = bar_line(now, group, cup, groups, mn, scene_key(host()) == BATTLE)
 	_target = line.get("target", {})
-	bar.paint(line)
-	_hit.visible = bool(line.get("tap", false))
+	## ★2026-11-23(方案书 20261122 B「同一件事说好几遍」): 观战页左上已经写着「开播中 · 冠军杯赛半决赛第 1 场」,
+	##   条上说的若正是眼前这一场 ⇒ 条收起(说的是别的场 / 我的下一场 ⇒ 照旧显示)。
+	if scene_key(host()) == BATTLE and watching_same(_target, _SW.current):
+		bar.visible = false
+		_hit.visible = false
+	else:
+		bar.paint(line)
+		_hit.visible = bool(line.get("tap", false))
 	_place()
 	_popup_tick(now, mn)
 	_marquee_tick(now, groups, cup, int(group.get("bucket", -1)) if ent else -1)
@@ -285,6 +293,16 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 				else:
 					out["body"] = "%s进行中" % stage
 	return _battle_trim(out, in_battle)
+
+
+## 条上那一场(bar_line 的 target)就是正在看的这一场(观战会话的开播 key 相同)? 纯函数, 门禁直接调。
+static func watching_same(t: Dictionary, cur: Dictionary) -> bool:
+	if t.is_empty() or not (t.get("b", null) is Dictionary):
+		return false
+	if str(cur.get("kind", "")) != str(_SW.KIND_PREMIERE):
+		return false
+	var key := str((cur.get("premiere", {}) as Dictionary).get("key", ""))
+	return key != "" and key == _LS.premiere_key(t["b"], int(t.get("r", 0)), int(t.get("m", -1)))
 
 
 ## 观战页上点条不跳走 ⇒ 不写「观看」(写了点不动 = 骗人)。
