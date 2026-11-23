@@ -113,8 +113,8 @@ func _init(f: Font = null) -> void:
 	add_child(_state_lb)
 	## 两张子卡
 	var sw := (SIZE.x - PAD * 2.0 - 12.0) / 2.0
-	_subs["g"] = _sub(N_SUB_G, _P2.STAGE_GROUP, Vector2(PAD, SUB_Y), Vector2(sw, SUB_H))
-	_subs["c"] = _sub(N_SUB_C, _P2.STAGE_CUP, Vector2(PAD + sw + 12.0, SUB_Y), Vector2(sw, SUB_H))
+	_subs["g"] = _sub(N_SUB_G, Lang.t(_P2.STAGE_GROUP), Vector2(PAD, SUB_Y), Vector2(sw, SUB_H))
+	_subs["c"] = _sub(N_SUB_C, Lang.t(_P2.STAGE_CUP), Vector2(PAD + sw + 12.0, SUB_Y), Vector2(sw, SUB_H))
 	_path_box = Control.new()
 	_path_box.name = N_PATH
 	_path_box.position = Vector2(PAD, PATH_Y)
@@ -295,7 +295,7 @@ static func spectator_lines(now: int, groups: Array, cup: Dictionary) -> Array:
 	var ph := _M.phase(now, groups, cup)
 	var live: Array = _M.live_all(groups, cup, now)
 	if ph == _M.PH_DONE:
-		l2 = Lang.t("%s已结束") % _P2.STAGE_CUP      # 冠军是谁写在下面「本届冠军」那一行, 这里不说第二遍
+		l2 = Lang.t("%s已结束") % Lang.t(_P2.STAGE_CUP)      # 冠军是谁写在下面「本届冠军」那一行, 这里不说第二遍
 	elif not live.is_empty():
 		var t: Dictionary = live[0]
 		var pr := _M.pair_names(t["b"], int(t["r"]), int(t["m"]), now)
@@ -303,7 +303,7 @@ static func spectator_lines(now: int, groups: Array, cup: Dictionary) -> Array:
 	elif ph == _M.PH_PRE:
 		l2 = Lang.t("%s 公布分组") % _P2.local_hhmm(_M.seat_ts(now))
 	else:
-		l2 = Lang.t("%s进行中") % (_P2.STAGE_CUP if ph in [_M.PH_CUP, _M.PH_INTER] else _P2.STAGE_GROUP)
+		l2 = Lang.t("%s进行中") % (_P2.STAGE_CUP if ph in [_M.PH_CUP, _M.PH_INTER] else Lang.t(_P2.STAGE_GROUP))
 	if l1 == "":
 		return [l2, ""]
 	return [l1, l2]
@@ -348,7 +348,7 @@ func _build_cells() -> void:
 		x += CELL.x + 6.0
 	## 段名(小组赛 / 冠军杯赛)写在那几格上面
 	for k in sec_x:
-		var t := _lb("FcSec_" + str(k), _P2.STAGE_GROUP if str(k) == "group" else _P2.STAGE_CUP, 15, Color("#d8c9a8"),
+		var t := _lb("FcSec_" + str(k), Lang.t(_P2.STAGE_GROUP) if str(k) == "group" else Lang.t(_P2.STAGE_CUP), 15, Color("#d8c9a8"),
 			Vector2(float(sec_x[k]), 0), Vector2(200, 20))
 		t.add_theme_constant_override("outline_size", 4)
 		_path_box.add_child(t)
@@ -426,17 +426,23 @@ func _paint_champ(pc: Dictionary) -> void:
 		var av := MatchCard.avatar(str(pc.get("avatar", "")), 32.0, false, false, str(pc["name"]).left(1))
 		av.position = Vector2(0, 1)
 		_champ_box.add_child(av)
-		var a := _lb("FcChampHead", str(pc.get("head", "")), 16, DIM, Vector2(42, 3), Vector2(80, 28))
+		## 说明「上周冠军」占四个字的位(80); 英文「Last Week's Champion」长得多 ⇒ 按译文实际宽度排, 名字跟在后面(2026-11-23 实拍压字)
+		var hw := 80.0
+		var a := _lb("FcChampHead", str(pc.get("head", "")), 16, DIM, Vector2(42, 3), Vector2(hw, 28))
 		_champ_box.add_child(a)
-		var nw := _champ_box.size.x - 124 - (WALL_W + 8.0 if bool(pc.get("wall", false)) else 0.0)
-		var b := _lb("FcChampName", str(pc["name"]), 20, Color("#ffe27a"), Vector2(124, 2), Vector2(nw, 30))
+		if Lang.is_en():
+			hw = ceilf(a.get_theme_font("font").get_string_size(Lang.t(a.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x) + 8.0
+			a.size.x = hw
+		var nx := 42.0 + hw + 2.0
+		var nw := _champ_box.size.x - nx - (WALL_W + 8.0 if bool(pc.get("wall", false)) else 0.0)
+		var b := _lb("FcChampName", str(pc["name"]), 20, Color("#ffe27a"), Vector2(nx, 2), Vector2(nw, 30))
 		b.clip_text = true
 		_champ_box.add_child(b)
 		if bool(pc.get("wall", false)):
 			_wall_btn()
 	else:
 		## 拿不到上周冠军 ⇒ 写今天的看点(冠军拿什么)
-		var c := _lb("FcChampHead", _FC.kv("冠军奖励", "「冠军」头衔"), 17, DIM, Vector2(0, 3), Vector2(_champ_box.size.x, 28))
+		var c := _lb("FcChampHead", _FC.kv("冠军奖励", Lang.t("「%s」头衔") % Lang.t("冠军")), 17, DIM, Vector2(0, 3), Vector2(_champ_box.size.x, 28))
 		_champ_box.add_child(c)
 
 

@@ -250,16 +250,16 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 			else:
 				out["body"] = Lang.t("%s即将开播") % _FC.join("你的", rn)
 		_M.K_CUP_WAIT:
-			out["body"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
+			out["body"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_CUP), _P2.local_hhmm(at)]
 			out["cd"] = at - now
 	if str(out["body"]) != "":
 		return _battle_trim(out, in_battle)
 	match ph:
 		_M.PH_PRE:
-			out["body"] = Lang.t("%s %s 开赛") % [_P2.STAGE_GROUP, _P2.local_hhmm(_M.seat_ts(now))]
+			out["body"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_GROUP), _P2.local_hhmm(_M.seat_ts(now))]
 			out["cd"] = _M.seat_ts(now) - now
 		_M.PH_INTER:
-			out["body"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(_M.cup_ts(now))]
+			out["body"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_CUP), _P2.local_hhmm(_M.cup_ts(now))]
 			out["cd"] = _M.cup_ts(now) - now
 		_M.PH_DONE:
 			var sd := _M.champion_visible(cup, now)
@@ -269,7 +269,7 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 			## 我那一组排前面(组里输了的人最关心的还是自己那一组)
 			var mine := int(group.get("bucket", -9))
 			live.sort_custom(func(a, b): return int((a["b"] as Dictionary).get("bucket", 0)) == mine and int((b["b"] as Dictionary).get("bucket", 0)) != mine)
-			var stage := _P2.STAGE_CUP if ph == _M.PH_CUP else _P2.STAGE_GROUP
+			var stage := Lang.t(_P2.STAGE_CUP) if ph == _M.PH_CUP else Lang.t(_P2.STAGE_GROUP)
 			if not live.is_empty():
 				var t: Dictionary = live[0]
 				out["body"] = _M.stage_line(t["b"], int(t["r"])) if live.size() == 1 \

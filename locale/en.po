@@ -2472,7 +2472,7 @@ msgid "本周晋级选手"
 msgstr "This Week's Qualifiers"
 
 msgid "组冠军单败淘汰，决出冠军"
-msgstr "Group winners play single elimination to decide the champion"
+msgstr "Group winners play off for the title"
 
 msgid "出局"
 msgstr "Out"
@@ -3282,7 +3282,7 @@ msgid "第 %d 届"
 msgstr "Edition %d"
 
 msgid "1/%d 决赛"
-msgstr "Round of %d"
+msgstr "1/%d Finals"
 
 msgid "%s冠军（%d 人参赛）"
 msgstr "%s Champion (%d players)"
@@ -7677,7 +7677,7 @@ msgid "%s 公布"
 msgstr "Announced %s"
 
 msgid "分组单败淘汰，组冠军晋级%s"
-msgstr "Single elimination in groups; group winners advance to the %s"
+msgstr "Group knockouts. Winners go to the %s"
 
 msgid "%d 胜 %d 负"
 msgstr "%dW %dL"
@@ -7978,3 +7978,12 @@ msgstr "Free This Week"
 
 msgid "本周免费的龟不获得经验"
 msgstr "Free-this-week turtles don't earn XP"
+
+msgid "已晋级%s"
+msgstr "Qualified for the %s"
+
+msgid "%s 开赛"
+msgstr "Starts %s"
+
+msgid "%s：%s"
+msgstr "%s: %s"

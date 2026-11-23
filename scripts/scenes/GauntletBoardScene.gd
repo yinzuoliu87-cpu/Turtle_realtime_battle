@@ -313,7 +313,7 @@ func _set_status(code: String) -> void:
 				t += "。"
 				if _closed and not past:
 					var seat: int = P2C.weekend_view_week(P2C.now_utc()) + 6 * 86400 + int(P2C.FINALS_SEAT_HOUR_UTC) * 3600
-					t += Lang.t("%s周日 %s 开赛。") % [P2C.STAGE_GROUP, P2C.local_hhmm(seat)]
+					t += Lang.t("%s周日 %s 开赛。") % [Lang.t(P2C.STAGE_GROUP), P2C.local_hhmm(seat)]
 			c = Color("#9fb0c4")
 		"unavailable":
 			t = "赛况暂无"

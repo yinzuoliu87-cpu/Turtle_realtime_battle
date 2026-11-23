@@ -145,25 +145,25 @@ func hero_state(now: int) -> Dictionary:
 			## 与全局小条同一句(知道时刻就写时刻; 原来这里写「即将开播」、小条写「18:08 开播」)
 			out["sub"] = (Lang.t("%s %s 开播") % [rn, _P2.local_hhmm(at)]) if at > now else (Lang.t("%s即将开播") % rn)
 		_M.K_CUP_WAIT:
-			out["sub"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
+			out["sub"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_CUP), _P2.local_hhmm(at)]
 	if str(out["sub"]) == "":
 		var live: Array = _M.live_all(groups, cup, now)
 		var mine := int(group.get("bucket", -9))
 		live.sort_custom(func(a, b): return int((a["b"] as Dictionary).get("bucket", 0)) == mine and int((b["b"] as Dictionary).get("bucket", 0)) != mine)
 		## 开赛前 / 两段之间: 倒计时只在卡上那张子卡里数(带秒、在走), 主按钮不再重复一遍(一屏一个倒计时)
 		if ph == _M.PH_PRE:
-			out["sub"] = Lang.t("%s %s 开赛") % [_P2.STAGE_GROUP, _P2.local_hhmm(_M.seat_ts(now))]
+			out["sub"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_GROUP), _P2.local_hhmm(_M.seat_ts(now))]
 		elif end == 1:
-			out["sub"] = Lang.t("已夺得%s冠军") % _P2.STAGE_CUP
+			out["sub"] = Lang.t("已夺得%s冠军") % Lang.t(_P2.STAGE_CUP)
 		elif ph == _M.PH_DONE:
 			## 冠军是谁写在卡上那一行 + 全局小条上, 主按钮不再说第三遍
-			out["sub"] = Lang.t("%s已结束") % _P2.STAGE_CUP
+			out["sub"] = Lang.t("%s已结束") % Lang.t(_P2.STAGE_CUP)
 		elif not live.is_empty():
 			var t: Dictionary = live[0]
 			out["sub"] = (Lang.t("%s开播中") % _M.stage_line(t["b"], int(t["r"]))) if live.size() == 1 else (Lang.t("%d 场开播中") % live.size())
 			out["target"] = t
 		elif ph == _M.PH_INTER:
-			out["sub"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(_M.cup_ts(now))]     # 「已止步」写在模式卡上, 不在这里再拼
+			out["sub"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_CUP), _P2.local_hhmm(_M.cup_ts(now))]     # 「已止步」写在模式卡上, 不在这里再拼
 		else:
 			## 下一场的时刻与全局小条同一个答案(`premiere_eta`)
 			var eta := 0
@@ -177,7 +177,7 @@ func hero_state(now: int) -> Dictionary:
 			elif prep > now:
 				out["sub"] = Lang.t("下一轮备战 %s 开始") % _P2.local_hhmm(prep)
 			else:
-				out["sub"] = Lang.t("%s进行中") % (_P2.STAGE_CUP if ph == _M.PH_CUP else _P2.STAGE_GROUP)
+				out["sub"] = Lang.t("%s进行中") % (_P2.STAGE_CUP if ph == _M.PH_CUP else Lang.t(_P2.STAGE_GROUP))
 	out["sig"] = "%s|%s|%d" % [ph, k, end]
 	return out
 
@@ -192,8 +192,8 @@ func band_text(now: int) -> String:
 	if now < cup:
 		return Lang.t("距%s开始 %s") % [Lang.t(_P2.STAGE_CUP), _FC.dur(cup - now)]
 	if _M.champion_visible(feeds(now)["cup"], now) >= 0:
-		return Lang.t("%s已结束") % _P2.STAGE_CUP
-	return Lang.t("%s进行中") % _P2.STAGE_CUP
+		return Lang.t("%s已结束") % Lang.t(_P2.STAGE_CUP)
+	return Lang.t("%s进行中") % Lang.t(_P2.STAGE_CUP)
 
 
 ## 模式卡第二行(进了决赛日的人)「决赛日 · 」后半句: 跟着赛果走(只认已揭晓的)。
@@ -207,10 +207,10 @@ func entered_word(now: int) -> String:
 		return TXT_W_OUT
 	for c in cells:
 		if str(c["sec"]) == "group" and str(c["st"]) == _M.C_WON and int(c["r"]) == _group_rounds(cells):
-			return "%s%s" % [TXT_W_IN, _P2.STAGE_CUP]
+			return Lang.t("已晋级%s") % Lang.t(_P2.STAGE_CUP)
 	if bool(GameState.finals_champion):
-		return "%s%s" % [TXT_W_IN, _P2.STAGE_CUP]
-	return TXT_W_IN
+		return Lang.t("已晋级%s") % Lang.t(_P2.STAGE_CUP)
+	return Lang.t(TXT_W_IN)
 
 
 static func _group_rounds(cells: Array) -> int:
@@ -378,9 +378,9 @@ func _announce(prev: String, st: String) -> void:
 	var s0 := st.get_slice("|", 0)
 	var stage := ""
 	if p0 == _M.PH_PRE and s0 != _M.PH_PRE:
-		stage = _P2.STAGE_GROUP
+		stage = Lang.t(_P2.STAGE_GROUP)
 	elif p0 in [_M.PH_GROUP, _M.PH_INTER] and s0 == _M.PH_CUP:
-		stage = _P2.STAGE_CUP
+		stage = Lang.t(_P2.STAGE_CUP)
 	if stage == "":
 		return
 	var msg := Lang.t("%s已开赛") % stage        # 一件事(原来「点「观看开播」进入。」教程腔)

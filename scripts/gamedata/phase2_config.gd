@@ -367,7 +367,7 @@ const FINALS_SEAT_HOUR_UTC := 18
 ## 周日这一场是哪一段赛: 冠军杯赛那张(保留组号) ⇒「冠军杯赛」, 其余 ⇒「小组赛」。
 ## ★结算副标题 / 对阵图共用(组号来自 `finals_match` / `finals_pending_reveal` 的 bucket)。
 static func finals_stage_name(bucket: int) -> String:
-	return STAGE_CUP if bucket == FINALS_CUP_BUCKET else STAGE_GROUP
+	return Lang.t(STAGE_CUP) if bucket == FINALS_CUP_BUCKET else Lang.t(STAGE_GROUP)
 
 
 ## ★★全仓唯一的时区换算点(E2/E4): 判定层永远是 UTC, 只有【说给玩家听】的时候才翻译。

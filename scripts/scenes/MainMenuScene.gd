@@ -2178,11 +2178,11 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 			_P2C.PHASE_FINALS:
 				chips = [[1, "负淘汰"], [int(_P2C.FINALS_SHOP_SEC / 60.0), "分钟备战"]]
 				## ★2026-10-07 用户「那么上午就叫小组赛啊，晚上叫冠军杯赛」: 两段各自的开赛时刻都写出来。
-				pts = ["%s %s · %s %s" % [_P2C.STAGE_GROUP,
+				pts = ["%s %s · %s %s" % [Lang.t(_P2C.STAGE_GROUP),
 						_P2C.local_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_SEAT_HOUR_UTC))),
-						_P2C.STAGE_CUP,
+						Lang.t(_P2C.STAGE_CUP),
 						_P2C.local_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_START_HOUR_UTC)))],
-					Lang.t("组冠军进入%s，单败决出冠军") % _P2C.STAGE_CUP,
+					Lang.t("组冠军进入%s，单败决出冠军") % Lang.t(_P2C.STAGE_CUP),
 					"冠军、亚军、四强、组冠军获得头衔"]
 	## ── 锁(只锁现在和以后; 过去的阶段只说「已结束」) ──
 	if state != "past":

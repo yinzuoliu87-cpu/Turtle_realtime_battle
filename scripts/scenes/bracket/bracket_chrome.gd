@@ -212,6 +212,12 @@ func _wall_button(vp: Vector2, sm: Vector4, rib: Rect2) -> void:
 	plate_button(b, w, false, true)
 	b.pressed.connect(func(): s._ceremony.open_wall())
 	hdr.add_child(b)
+	## 英文「Hall of Champions」比三个汉字宽得多 ⇒ 按译文实际宽度加宽(2026-11-23 实拍左边被切)
+	if Lang.is_en():
+		var need := ceilf(b.get_theme_font("font").get_string_size(Lang.t(b.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x) + 24.0
+		if need > w:
+			w = need
+			plate_button(b, w, false, true)
 	var tx: float = s._tabs.position.x if s._tabs != null else vp.x - 16.0 - sm.z
 	var x := tx - w - 8.0
 	var y := -8.0

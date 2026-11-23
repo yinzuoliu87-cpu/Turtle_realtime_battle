@@ -1340,7 +1340,7 @@ static func promotion_for(sk: String, won: bool, exhibition: bool, gs) -> Array:
 			Lang.t("闯关赛：%s 开始") % _P2C_HUD.local_wd_hhmm(_P2C_HUD.phase_window_utc(_P2C_HUD.PHASE_GAUNTLET, anchor).x)]
 	if sk == _P2C_HUD.SETTLE_GAUNTLET and str(gs.gauntlet_state()) == _P2C_HUD.GAUNTLET_IN:
 		return [_P2C_HUD.PHASE_GAUNTLET, _P2C_HUD.PHASE_FINALS, "晋级决赛日！",
-			Lang.t("决赛日%s：%s 开始") % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(_P2C_HUD.finals_seat_ts(anchor))]]
+			Lang.t("决赛日%s：%s 开始") % [Lang.t(_P2C_HUD.STAGE_GROUP), _P2C_HUD.local_wd_hhmm(_P2C_HUD.finals_seat_ts(anchor))]]
 	return []
 
 
@@ -1353,7 +1353,7 @@ func _result_detail(gs) -> String:
 	var st: String = str(gs.gauntlet_state())
 	if st == _P2C_HUD.GAUNTLET_IN:
 		var seat: int = _P2C_HUD.finals_seat_ts(_P2C_HUD.week_anchor_utc(int(_P2C_HUD.now_utc())))
-		var t: String = Lang.t("决赛日%s：%s 开始。") % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
+		var t: String = Lang.t("决赛日%s：%s 开始。") % [Lang.t(_P2C_HUD.STAGE_GROUP), _P2C_HUD.local_wd_hhmm(seat)]
 		## 提前晋级奖励第 4 胜当场就发了(GameState.gauntlet_promote_bonus) ⇒ 读已发的账, 括号里说清这几场从哪来:
 		##   玩家心里只有「4 胜晋级 3 负淘汰」, 不知道闯关赛共 6 场(用户 10-26「他是不明白为什么会有未打完的2场的」)。
 		##   两句各占一行(窄屏 960 实拍: 连成一句会在「深海币」中间折断)。

@@ -319,7 +319,7 @@ func msg_gauntlet_block(ts: int = 0) -> String:
 	if st == _P2.GAUNTLET_IN:
 		## 明天(周日)几点开打: 按玩家设备时区说(用户 2026-10-26「根据机子的时间去显示正确时间」)。
 		return Lang.t("已晋级决赛日（%s），闯关赛已完成。决赛日%s：%s 开始。") % [_P2.gauntlet_label(
-			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)), _P2.STAGE_GROUP,
+			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)), Lang.t(_P2.STAGE_GROUP),
 			_P2.local_wd_hhmm(_P2.finals_seat_ts(_P2.week_anchor_utc(ts if ts > 0 else menu._now_ts())))]
 	if st == _P2.GAUNTLET_OUT:
 		return Lang.t("本周闯关赛已结束（%s）。决赛日开放观战。%s") % [_P2.gauntlet_label(

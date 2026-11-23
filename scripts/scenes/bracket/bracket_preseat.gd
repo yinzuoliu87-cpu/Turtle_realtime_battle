@@ -62,9 +62,9 @@ static func mode_for(kind: String, before_seating: bool, viewing_past: bool) -> 
 static func schedule_rows(now: int, groups: Array, cup: Dictionary) -> Array:
 	var word := {_M.S3_COUNT: "未开始", _M.S3_LIVE: "进行中", _M.S3_END: "已结束"}
 	return [
-		{"time": _FC.at(_M.seat_ts(now)), "name": _P2.STAGE_GROUP, "state": str(word.get(_M.group_state(now, groups), "")),
-			"rule": Lang.t("分组单败淘汰，组冠军晋级%s") % _P2.STAGE_CUP},
-		{"time": _FC.at(_M.cup_ts(now)), "name": _P2.STAGE_CUP, "state": str(word.get(_M.cup_state(now, cup), "")),
+		{"time": _FC.at(_M.seat_ts(now)), "name": Lang.t(_P2.STAGE_GROUP), "state": str(word.get(_M.group_state(now, groups), "")),
+			"rule": Lang.t("分组单败淘汰，组冠军晋级%s") % Lang.t(_P2.STAGE_CUP)},
+		{"time": _FC.at(_M.cup_ts(now)), "name": Lang.t(_P2.STAGE_CUP), "state": str(word.get(_M.cup_state(now, cup), "")),
 			"rule": "组冠军单败淘汰，决出冠军"},
 	]
 
@@ -97,7 +97,7 @@ func build(parent: Control, vp: Vector2, top: float, d: Dictionary) -> Control:
 			tr.position = Vector2(pr.position.x + 22.0 if k == 0 else pr.end.x - 102.0, pr.position.y + 36.0)
 			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			root.add_child(tr)
-	var stage_name: String = _P2.STAGE_CUP if cup_mode else _P2.STAGE_GROUP
+	var stage_name: String = Lang.t(_P2.STAGE_CUP) if cup_mode else Lang.t(_P2.STAGE_GROUP)
 	var tl := _lb(Lang.t("距%s开始") % stage_name, 20, _H.GOLD)
 	tl.name = N_TITLE
 	tl.position = pr.position + Vector2(0, 12)
@@ -117,7 +117,7 @@ func build(parent: Control, vp: Vector2, top: float, d: Dictionary) -> Control:
 		return _FC.dur(left) if left > 0 else "即将开始"
 	big.text = fn.call()
 	s._stage.live_texts.append([big, fn])
-	var sub := _lb((_FC.at(end_ts) + " 开赛") if cup_mode else (Lang.t("%s 公布分组") % _FC.at(end_ts)), 16, Color("#e9d6a8"), false)
+	var sub := _lb((Lang.t("%s 开赛") % _FC.at(end_ts)) if cup_mode else (Lang.t("%s 公布分组") % _FC.at(end_ts)), 16, Color("#e9d6a8"), false)
 	sub.name = N_SUB
 	sub.position = pr.position + Vector2(0, 108)
 	sub.size = Vector2(pw, 26)
@@ -195,6 +195,7 @@ func _schedule(root: Control, r: Rect2, d: Dictionary) -> void:
 		ru.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		ru.clip_text = true
 		box.add_child(ru)
+		Lang.fit_font(ru, ru.size.x, 14, 11)   # 英文规则句比中文长, 缩到放得下
 		y += 66.0
 	## 资格(写成条件, 不写指令 —— Dota「勇士联赛积分名列前茅的玩家具有参赛资格。」)
 	var notes := PackedStringArray([
@@ -216,7 +217,7 @@ func _list(root: Control, r: Rect2, d: Dictionary) -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(box)
 	var cup_mode := str(d.get("mode", "")) == MODE_CUP
-	_card_head(box, r, Lang.t("%s参赛选手") % _P2.STAGE_CUP if cup_mode else "本周晋级选手", N_LIST_HEAD)
+	_card_head(box, r, Lang.t("%s参赛选手") % Lang.t(_P2.STAGE_CUP) if cup_mode else "本周晋级选手", N_LIST_HEAD)
 	var rows: Array = []
 	if cup_mode:
 		for ln in (d.get("champs", []) as Array):

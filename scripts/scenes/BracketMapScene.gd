@@ -248,7 +248,7 @@ func _ready() -> void:
 	_tabs.position = Vector2(24, 96)
 	_tabs.add_theme_constant_override("separation", 10)
 	add_child(_tabs)
-	for pair in [[_L.VIEW_BUCKET, _P2C.STAGE_GROUP], [_L.VIEW_FINALS, _P2C.STAGE_CUP]]:
+	for pair in [[_L.VIEW_BUCKET, Lang.t(_P2C.STAGE_GROUP)], [_L.VIEW_FINALS, Lang.t(_P2C.STAGE_CUP)]]:
 		var b := Button.new()
 		b.text = str(pair[1])
 		b.custom_minimum_size = Vector2(132, 81)    # 触控下限 81px(=44pt)
@@ -1501,7 +1501,7 @@ static func champion_text(cs: Dictionary) -> String:
 	if total <= 0:
 		return "组冠军产生后公布"
 	if not bool(cs.get("complete", false)):
-		head = "已产生的组冠军" if not lines.is_empty() else Lang.t("%s进行中") % _P2C.STAGE_GROUP
+		head = "已产生的组冠军" if not lines.is_empty() else Lang.t("%s进行中") % Lang.t(_P2C.STAGE_GROUP)
 	else:
 		match str(cs.get("state", CH_NONE)):
 			CH_ALL:
@@ -1509,7 +1509,7 @@ static func champion_text(cs: Dictionary) -> String:
 			CH_PARTIAL:
 				head = Lang.t("已产生的组冠军（%d/%d）") % [int(cs.get("decided", 0)), total]
 			_:
-				head = Lang.t("%s进行中") % _P2C.STAGE_GROUP
+				head = Lang.t("%s进行中") % Lang.t(_P2C.STAGE_GROUP)
 	## 太多组就收尾一行, 不让框顶出屏幕(10 人规模下最多 3 组, 这是防将来)。
 	var show: Array = lines.slice(0, 8)
 	if lines.size() > show.size():
@@ -1565,13 +1565,13 @@ func _empty_text() -> String:
 				_week_view().has("buckets")))
 		EK_FINALS_LOCAL:
 			## 到点了还没成表: 说清在等开赛, 再列组冠军(★2026-10-04 的老规矩: 打完了就报出来, 不让人干等)。
-			return Lang.t("%s即将开始\n") % _P2C.STAGE_CUP + champion_text(champion_summary(_champ_buckets(),
+			return Lang.t("%s即将开始\n") % Lang.t(_P2C.STAGE_CUP) + champion_text(champion_summary(_champ_buckets(),
 				_week_view().has("buckets")))
 		EK_CUP_SOLO:
 			return cup_solo_text(_finals)
 		EK_GROUP_SOLO:
 			## 1 人组: 没有对局 ⇒ 说清去向与开赛时刻(本地时间)。
-			return Lang.t("%s仅 1 人，直接晋级%s\n%s %s 开赛") % [sheet_name(_bucket), _P2C.STAGE_CUP, _P2C.STAGE_CUP,
+			return Lang.t("%s仅 1 人，直接晋级%s\n%s %s 开赛") % [sheet_name(_bucket), Lang.t(_P2C.STAGE_CUP), Lang.t(_P2C.STAGE_CUP),
 				_P2C.local_hhmm(_cup_start_ts())]
 		EK_SEATED:
 			return "正在生成对阵"
@@ -1584,7 +1584,7 @@ func _empty_text() -> String:
 ## 冠军杯赛开赛倒计时那一行。`left` = 距冠军杯赛开赛(FINALS_START_HOUR_UTC)还有几秒。
 static func cup_soon_head(left: int) -> String:
 	if left <= 0:
-		return Lang.t("%s即将开始") % _P2C.STAGE_CUP
+		return Lang.t("%s即将开始") % Lang.t(_P2C.STAGE_CUP)
 	return Lang.t("距%s开始 %s") % [Lang.t(_P2C.STAGE_CUP), _CP.dur(left)]
 
 
@@ -1626,7 +1626,7 @@ func _sync_tabs() -> void:
 	if kids.size() < 2:
 		return
 	var names := [
-		_P2C.STAGE_GROUP + bucket_tab_suffix(_bucket_kind()),
+		Lang.t(_P2C.STAGE_GROUP) + bucket_tab_suffix(_bucket_kind()),
 		finals_tab_text(int(_finals.get("size", 0))),
 	]
 	var views := [_L.VIEW_BUCKET, _L.VIEW_FINALS]
@@ -1641,7 +1641,7 @@ func _sync_tabs() -> void:
 
 ## 第二张页签叫什么。★没成表 ⇒ 「· 未开赛」; 1 人表(直接夺冠)与成表一样不缀。
 static func finals_tab_text(_finals_size: int) -> String:
-	return _P2C.STAGE_CUP
+	return Lang.t(_P2C.STAGE_CUP)
 
 
 ## 页签宽度**按字量**, 不拍脑袋。
@@ -2216,7 +2216,7 @@ func _open_popup(r: int, m: int) -> void:
 static func sheet_name(b: Dictionary) -> String:
 	var bk := int(b.get("bucket", 0))
 	if bk == int(_P2C.FINALS_CUP_BUCKET):
-		return _P2C.STAGE_CUP
+		return Lang.t(_P2C.STAGE_CUP)
 	return _CD.group_name(bk)
 
 

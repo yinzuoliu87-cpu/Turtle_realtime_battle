@@ -14,6 +14,7 @@ extends RefCounted
 
 const _B := preload("res://scripts/gamedata/bracket.gd")
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const _FCJ := preload("res://scripts/ui/finals_copy.gd")   # 拼赛名 + 轮次(英文下各自翻译再空格连)
 const DL_SCORE := preload("res://scripts/gamedata/phase2_duallane.gd")
 const _BE := preload("res://scripts/net/backend.gd")
 
@@ -80,6 +81,9 @@ static func round_name(n: int, r: int, group: bool = false) -> String:
 		return "半决赛"
 	if back == 2:
 		return "1/4 决赛"
+	## 英文: 「1/N 决赛」是 2N 人那一轮(1/4 决赛 = 八强 = Quarterfinal), 译文没法做乘法 ⇒ 这里分支(2026-11-23 实拍「Round of 4」错)
+	if Lang.is_en():
+		return "Round of %d" % (2 << back)
 	return Lang.t("1/%d 决赛") % (1 << back)        # 与全决赛日同一套(finals_copy.round_name); 原来写「第 r 轮」
 
 
@@ -409,11 +413,11 @@ static func best_cards(view: Dictionary, rows: Array) -> Array:
 	var where := ""
 	var cup = view.get("cup", null)
 	if cup is Dictionary and int((cup as Dictionary).get("bucket", -9)) == fb:
-		where = _P2C.STAGE_CUP + round_name(int((cup as Dictionary).get("size", 0)), fr, false)
+		where = _FCJ.join(_P2C.STAGE_CUP, round_name(int((cup as Dictionary).get("size", 0)), fr, false))
 	else:
 		for b in (view.get("buckets", []) as Array):
 			if b is Dictionary and int((b as Dictionary).get("bucket", -9)) == fb:
-				where = group_name(fb) + round_name(int((b as Dictionary).get("size", 0)), fr, true).trim_prefix("组")
+				where = _FCJ.join(group_name(fb), round_name(int((b as Dictionary).get("size", 0)), fr, true).trim_prefix("组"))
 	var ln := str(((best.get("lp", {}) if best.get("lp", {}) is Dictionary else {}) as Dictionary).get("name", ""))
 	var rn := str(((best.get("rp", {}) if best.get("rp", {}) is Dictionary else {}) as Dictionary).get("name", ""))
 	var won := bool(res.get("won", true))
@@ -421,7 +425,7 @@ static func best_cards(view: Dictionary, rows: Array) -> Array:
 	var lu := _leaders(best.get("la", null) if won else best.get("ra", null))
 	return [{"kind": "fast", "title": "最快结束的一场", "value_sec": float(best_steps) / float(SIM_HZ),
 		"value": mmss(float(best_steps) / float(SIM_HZ)), "who": winner,
-		"sub": ("%s：" % where if where != "" else "") + ("%s 对 %s" % [ln, rn]),
+		"sub": (Lang.t("%s：%s") % [where, Lang.t("%s 对 %s") % [ln, rn]]) if where != "" else (Lang.t("%s 对 %s") % [ln, rn]),
 		"turtle": str(lu[0]) if not lu.is_empty() else ""}]
 
 

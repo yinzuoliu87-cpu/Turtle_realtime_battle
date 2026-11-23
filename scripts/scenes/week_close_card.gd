@@ -166,7 +166,7 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			d["record"] = [int(gs.gauntlet_wins), int(gs.gauntlet_losses)]
 			d["status"] = "已晋级周日决赛日"
 			if now < seat:
-				(d["body"] as Array).append(Lang.t("决赛日%s：%s 开始。") % [_P2.STAGE_GROUP, _P2.local_wd_hhmm(seat)])
+				(d["body"] as Array).append(Lang.t("决赛日%s：%s 开始。") % [Lang.t(_P2.STAGE_GROUP), _P2.local_wd_hhmm(seat)])
 			else:
 				(d["body"] as Array).append("决赛日已开始，比赛在对阵图中进行。")
 			d["primary"] = [TXT_BRACKET, DOOR_BRACKET]

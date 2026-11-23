@@ -44,6 +44,11 @@ static func round_name(n: int, r: int) -> String:
 		return "决赛"
 	if back == 1:
 		return "半决赛"
+	if back == 2:
+		return "1/4 决赛"
+	## 英文: 「1/N 决赛」是 2N 人那一轮(1/4 决赛 = 八强 = Quarterfinal), 译文没法做乘法 ⇒ 这里分支(2026-11-23 实拍「Round of 4」错)
+	if Lang.is_en():
+		return "Round of %d" % (2 << back)
 	return Lang.t("1/%d 决赛") % (1 << back)
 
 
@@ -74,6 +79,8 @@ static func _alnum(c: int) -> bool:
 
 ## 「标签：值」(全角冒号; 商业游戏「参赛人数：24」「冠军奖励：…」那一种)。
 static func kv(label: String, value: String) -> String:
+	if Lang.is_en():
+		return "%s: %s" % [Lang.t(label), value]
 	return "%s：%s" % [label, value]
 
 

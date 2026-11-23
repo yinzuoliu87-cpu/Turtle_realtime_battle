@@ -61,13 +61,13 @@ func is_cup() -> bool:
 
 func hero_title() -> String:
 	if is_cup():
-		return _P2C.STAGE_CUP
+		return Lang.t(_P2C.STAGE_CUP)
 	if bool(s._grid_on):
 		return "全部小组"
 	var c: Dictionary = s.cur()
 	if int(c.get("size", 0)) >= 1 and int(c.get("bucket", -1)) >= 0:
-		return "%s %s" % [_P2C.STAGE_GROUP, s.sheet_name(c)]
-	return _P2C.STAGE_GROUP
+		return "%s %s" % [Lang.t(_P2C.STAGE_GROUP), s.sheet_name(c)]
+	return Lang.t(_P2C.STAGE_GROUP)
 
 
 func champion_title() -> String:
@@ -79,7 +79,7 @@ func champion_title() -> String:
 ##   「本轮奖励」里另有一拍。⇒ 这里只写冠军奖励。
 func reward_line() -> String:
 	var t := _P2C.TITLE_CHAMPION if is_cup() else _P2C.TITLE_GROUP_CHAMPION
-	return _FC.kv("冠军奖励", Lang.t("「%s」头衔") % str(_P2C.TITLE_LABEL.get(t, "")))
+	return _FC.kv("冠军奖励", Lang.t("「%s」头衔") % Lang.t(str(_P2C.TITLE_LABEL.get(t, ""))))
 
 
 ## 哪一列标题点亮(C02): 正在一场接一场开播的那一轮; 没有在播的 = 当前轮。收盘 = 不点。
@@ -321,14 +321,14 @@ func hero_status_line() -> String:
 		return ""
 	var total := _B.rounds_for(n)
 	var me := int(c.get("me", -1))
-	var where: String = _P2C.STAGE_CUP if is_cup() else str(s.sheet_name(c))
+	var where: String = Lang.t(_P2C.STAGE_CUP) if is_cup() else str(s.sheet_name(c))
 	var cws := int(s.winner_side(total, 0))
 	if cws >= 0:
 		var champ: Dictionary = s.competitor(total, 0, cws)
 		if me >= 0 and int(champ.get("seed", -1)) == me:
 			return ("你获得%s冠军！" if is_cup() else "你获得 %s冠军！") % where
 		if is_cup():
-			return Lang.t("%s已结束") % _P2C.STAGE_CUP
+			return Lang.t("%s已结束") % Lang.t(_P2C.STAGE_CUP)
 		return _FC.kv(Lang.t("%s冠军") % where, str(champ.get("name", "")))
 	var lr := live_rm()
 	var now := int(s.srv_now())
@@ -458,8 +458,8 @@ func cta_spec() -> Dictionary:
 		if is_cup():
 			return {"text": "重看决赛", "enabled": bool(s.can_open(total, 0)), "rm": Vector2i(total, 0), "kind": "replay"}
 		if int(s._finals.get("size", 0)) >= 1:
-			return {"text": Lang.t("前往%s") % _P2C.STAGE_CUP, "enabled": true, "kind": "cup"}
-		return {"text": Lang.t("%s %s 开赛") % [_P2C.STAGE_CUP, cup_start_hhmm()], "enabled": false, "kind": "wait"}
+			return {"text": Lang.t("前往%s") % Lang.t(_P2C.STAGE_CUP), "enabled": true, "kind": "cup"}
+		return {"text": Lang.t("%s %s 开赛") % [Lang.t(_P2C.STAGE_CUP), cup_start_hhmm()], "enabled": false, "kind": "wait"}
 	var now := int(s.srv_now())
 	var ra := int(c.get("round_at", 0))
 	if upcoming_rm().x >= 1:
@@ -785,7 +785,7 @@ func prep_data() -> Dictionary:
 	var rn := _H.round_name(n, r)
 	var stake := ""
 	if r >= total:
-		stake = Lang.t("胜者夺得%s冠军") % _P2C.STAGE_CUP if is_cup() else Lang.t("胜者获得%s冠军，晋级%s") % [s.sheet_name(c), _P2C.STAGE_CUP]
+		stake = Lang.t("胜者夺得%s冠军") % Lang.t(_P2C.STAGE_CUP) if is_cup() else Lang.t("胜者获得%s冠军，晋级%s") % [s.sheet_name(c), Lang.t(_P2C.STAGE_CUP)]
 	else:
 		stake = _FC.join("胜者进入", _H.round_name(n, r + 1))
 	return {"key": key, "title": Lang.t("%s备战") % rn, "end_ts": ra + int(_P2C.FINALS_SHOP_SEC),

@@ -122,7 +122,7 @@ static func is_cup(b: Dictionary) -> bool:
 ## 「C 组」/「冠军杯赛」。★组名唯一来源 ChampionData.group_name(主会话 10-31 定: 玩家可见的组名一律字母「A 组 / B 组 …」)。
 static func sheet_name(b: Dictionary) -> String:
 	if is_cup(b):
-		return _P2.STAGE_CUP
+		return Lang.t(_P2.STAGE_CUP)
 	return ChampionData.group_name(int(b.get("bucket", 0)))
 
 
@@ -510,9 +510,9 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 	var out := {}
 	## 开赛前 10 分钟: 「冠军杯赛 20:00 开赛」(时刻是常量, 不是编的)
 	if now >= seat_ts(now) - 600 and now < seat_ts(now):
-		out["start:g"] = Lang.t("%s %s 开赛") % [_P2.STAGE_GROUP, _P2.local_hhmm(seat_ts(now))]
+		out["start:g"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_GROUP), _P2.local_hhmm(seat_ts(now))]
 	if now >= cup_ts(now) - 600 and now < cup_ts(now):
-		out["start:c"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(cup_ts(now))]
+		out["start:c"] = Lang.t("%s %s 开赛") % [Lang.t(_P2.STAGE_CUP), _P2.local_hhmm(cup_ts(now))]
 	var all: Array = groups.duplicate()
 	if not cup.is_empty():
 		all.push_front(cup)
@@ -539,9 +539,9 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 				continue
 			if r == total:
 				if cupb:
-					out["res:%d:%s" % [bk, k]] = Lang.t("%s 夺得%s冠军") % [wn, _P2.STAGE_CUP]
+					out["res:%d:%s" % [bk, k]] = Lang.t("%s 夺得%s冠军") % [wn, Lang.t(_P2.STAGE_CUP)]
 				else:
-					out["res:%d:%s" % [bk, k]] = Lang.t("%s 夺得 %s冠军，晋级%s") % [wn, sheet_name(bd), _P2.STAGE_CUP]
+					out["res:%d:%s" % [bk, k]] = Lang.t("%s 夺得 %s冠军，晋级%s") % [wn, sheet_name(bd), Lang.t(_P2.STAGE_CUP)]
 			elif cupb or minec:
 				out["res:%d:%s" % [bk, k]] = ("%s 晋级%s%s" if cupb else "%s 晋级 %s%s") % [wn, sheet_name(bd), round_name(n, r + 1)]
 		## 开播(只收冠军杯赛 + 我那一组; 观众另有一句「小组赛 半决赛开播 · N 组同时进行」, 见循环后)
@@ -583,5 +583,5 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 	## 观众: 各组同一轮同时开播 ⇒ 一句「小组赛半决赛开播，6 组同时进行」(不逐组刷屏)
 	for gk in gw:
 		var nb := (gw[gk][1] as Dictionary).size()
-		out["gwave:%s" % gk] = Lang.t("%s%s开播%s") % [_P2.STAGE_GROUP, str(gw[gk][0]), (Lang.t("，%d 组同时进行") % nb) if nb > 1 else ""]
+		out["gwave:%s" % gk] = Lang.t("%s%s开播%s") % [Lang.t(_P2.STAGE_GROUP), str(gw[gk][0]), (Lang.t("，%d 组同时进行") % nb) if nb > 1 else ""]
 	return out

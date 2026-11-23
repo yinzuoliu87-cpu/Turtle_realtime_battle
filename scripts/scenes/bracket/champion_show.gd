@@ -436,7 +436,7 @@ func _build_crown() -> void:
 	var n := int(data.get("entrants", 0))
 	var scale_line := ""
 	if cup:
-		scale_line = Lang.t("%s冠军（%d 人参赛）") % [_P2C.STAGE_CUP, n] if n > 0 else Lang.t("%s冠军") % _P2C.STAGE_CUP
+		scale_line = Lang.t("%s冠军（%d 人参赛）") % [Lang.t(_P2C.STAGE_CUP), n] if n > 0 else Lang.t("%s冠军") % Lang.t(_P2C.STAGE_CUP)
 	else:
 		scale_line = Lang.t("%s冠军（%d 人参赛）") % [str(data.get("group", "")), n] if n > 0 else str(data.get("group", "")) + "冠军"
 	_n["l1"] = UI.label_in(_stage, Rect2(0, c.y + 244, vp.x, 32), scale_line, 24, UI.TXT, false, "ScaleLine")
