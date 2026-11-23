@@ -17,7 +17,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PO = os.path.join(ROOT, "locale", "en.po")
-FMT = re.compile(r"%(?:%|[-+ 0#]*\d*(?:\.\d+)?[sdifxXcv])")
+FMT = re.compile(r"%(?:%|[-+0]*\d*(?:\.\d+)?[sdifxXcv])")
 TPL = re.compile(r"\{[A-Za-z]+:[^{}]*\}")
 BB = re.compile(r"\[/?(?:b|i|u|s|color|font_size|outline_size|outline_color|center|right|img|url|ul|ol|wave|shake|bgcolor|fgcolor|table|cell)\b[^\]]*\]")
 HAN = re.compile(r"[一-鿿]")

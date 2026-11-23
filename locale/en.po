@@ -7,3 +7,1380 @@ msgstr ""
 
 msgid "设置"
 msgstr "Settings"
+
+msgid "已晋级"
+msgstr "Qualified"
+
+msgid "查看对阵图"
+msgstr "View Bracket"
+
+msgid "训龟大师"
+msgstr "Turtle Trainer"
+
+msgid "出战"
+msgstr "Battle"
+
+msgid "选择 3 只龟"
+msgstr "Pick 3 Turtles"
+
+msgid "暂无羁绊"
+msgstr "No Synergies"
+
+msgid "剩余生命"
+msgstr "Lives"
+
+msgid "积分赛终榜"
+msgstr "Ranked Final Standings"
+
+msgid "周日对阵图"
+msgstr "Sunday Bracket"
+
+msgid "本大轮已出局"
+msgstr "Eliminated this Season"
+
+msgid "场上限"
+msgstr "Field Cap"
+
+msgid "胜晋级"
+msgstr "Wins to Qualify"
+
+msgid "已出局"
+msgstr "Eliminated"
+
+msgid "满级"
+msgstr "Max Level"
+
+msgid "匹配中"
+msgstr "Matchmaking"
+
+msgid "匹配成功"
+msgstr "Match Found"
+
+msgid "连接中…"
+msgstr "Connecting…"
+
+msgid "云端同步已开启，可在其他设备登录恢复进度"
+msgstr "Cloud sync is on. Sign in on another device to restore your progress."
+
+msgid "未绑定邮箱"
+msgstr "No Email Linked"
+
+msgid "绑定邮箱"
+msgstr "Link Email"
+
+msgid "邮箱登录"
+msgstr "Email Sign-In"
+
+msgid "删除账号"
+msgstr "Delete Account"
+
+msgid "黑名单"
+msgstr "Blocked"
+
+msgid "阵容已满"
+msgstr "Team Full"
+
+msgid "胜场"
+msgstr "Wins"
+
+msgid "总场次"
+msgstr "Games"
+
+msgid "上周终榜"
+msgstr "Last Week's Final Standings"
+
+msgid "本周排行"
+msgstr "This Week"
+
+msgid "（暂无其他玩家，对战后更新）"
+msgstr "(No other players yet. Updates after battles.)"
+
+msgid "（无法连接服务器）"
+msgstr "(Can't reach the server)"
+
+msgid "（暂无对手数据）"
+msgstr "(No opponent data yet)"
+
+msgid "（暂无其他玩家）"
+msgstr "(No other players yet)"
+
+msgid "本地记录，非实时排名"
+msgstr "Local record, not live ranking"
+
+msgid "闯关赛未晋级"
+msgstr "Not qualified for Gauntlet"
+
+msgid "决赛日 未晋级"
+msgstr "Finals Day: Not qualified"
+
+msgid "晋级闯关赛"
+msgstr "Qualified for Gauntlet"
+
+msgid "维护中"
+msgstr "Under Maintenance"
+
+msgid "今日已截止"
+msgstr "Closed for Today"
+
+msgid "本周赛程"
+msgstr "This Week's Schedule"
+
+msgid "版本更新在本日进行"
+msgstr "Version updates happen today"
+
+msgid "条生命"
+msgstr "Lives"
+
+msgid "每负一场扣 1 条生命，耗尽即本周出局"
+msgstr "Each loss costs 1 life. Run out and you're out for the week."
+
+msgid "负出局"
+msgstr "Losses to Eliminate"
+
+msgid "不消耗生命"
+msgstr "No lives lost"
+
+msgid "晋级者参加周日决赛日"
+msgstr "Qualifiers play Sunday's Finals Day"
+
+msgid "负淘汰"
+msgstr "Losses to Eliminate"
+
+msgid "分钟备战"
+msgstr "min to prepare"
+
+msgid "冠军、亚军、四强、组冠军获得头衔"
+msgstr "Champion, runner-up, top 4 and group winners earn titles"
+
+msgid "生命已耗尽，下周二可参加"
+msgstr "Out of lives. Play again next Tuesday."
+
+msgid "积分赛生命耗尽，本周无法参加"
+msgstr "Out of Ranked lives. Can't enter this week."
+
+msgid "版本维护中"
+msgstr "Version Maintenance"
+
+msgid "全场赛况"
+msgstr "Full Results"
+
+msgid "场次已用完"
+msgstr "No games left"
+
+msgid "首战后解锁"
+msgstr "Unlocks after first battle"
+
+msgid "今日休赛。积分赛周二开始。"
+msgstr "Off day. Ranked starts Tuesday."
+
+msgid "开始战斗"
+msgstr "Start Battle"
+
+msgid "正在匹配对手…"
+msgstr "Finding an opponent…"
+
+msgid "未绑定时，进度仅保存在本设备。"
+msgstr "Without a linked account, progress is saved on this device only."
+
+msgid "本地进度将被替换（替换前自动备份）。"
+msgstr "Local progress will be replaced (backed up automatically first)."
+
+msgid "输入邮箱"
+msgstr "Enter Email"
+
+msgid "发送验证码"
+msgstr "Send Code"
+
+msgid "输入验证码"
+msgstr "Enter Code"
+
+msgid "粘贴"
+msgstr "Paste"
+
+msgid "修改邮箱"
+msgstr "Change Email"
+
+msgid "正在发送…"
+msgstr "Sending…"
+
+msgid "正在验证…"
+msgstr "Verifying…"
+
+msgid "输入邮箱并完成验证"
+msgstr "Enter your email and verify it"
+
+msgid "重置存档？"
+msgstr "Reset Save?"
+
+msgid "此操作不可撤销。音量、画面设置不受影响。"
+msgstr "This can't be undone. Volume and display settings are kept."
+
+msgid "确认重置"
+msgstr "Confirm Reset"
+
+msgid "存档已重置"
+msgstr "Save reset"
+
+msgid "修改昵称"
+msgstr "Change Nickname"
+
+msgid "登录已失效，请重新登录"
+msgstr "Session expired. Please sign in again."
+
+msgid "云端存档与本地存档不一致"
+msgstr "Cloud save and local save don't match"
+
+msgid "更换设备后无法恢复进度"
+msgstr "Progress can't be restored on a new device"
+
+msgid "账号"
+msgstr "Account"
+
+msgid "处理存档冲突"
+msgstr "Resolve Save Conflict"
+
+msgid "更换邮箱"
+msgstr "Change Email"
+
+msgid "声音"
+msgstr "Sound"
+
+msgid "音乐"
+msgstr "Music"
+
+msgid "音效"
+msgstr "Sound Effects"
+
+msgid "画面"
+msgstr "Display"
+
+msgid "显示"
+msgstr "Display"
+
+msgid "窗口"
+msgstr "Windowed"
+
+msgid "全屏"
+msgstr "Fullscreen"
+
+msgid "支持"
+msgstr "Support"
+
+msgid "联系我们"
+msgstr "Contact Us"
+
+msgid "已复制"
+msgstr "Copied"
+
+msgid "重置存档"
+msgstr "Reset Save"
+
+msgid "存档冲突"
+msgstr "Save Conflict"
+
+msgid "云端存档已被其他设备更新，与本地存档不一致。请选择要保留的存档。"
+msgstr "Your cloud save was updated on another device and no longer matches this one. Choose which save to keep."
+
+msgid "使用云端存档"
+msgstr "Use Cloud Save"
+
+msgid "本地未同步的进度将被替换\n（替换前自动备份）"
+msgstr "Unsynced local progress will be replaced\n(backed up automatically first)"
+
+msgid "使用本地存档"
+msgstr "Use Local Save"
+
+msgid "云端进度将被本地覆盖"
+msgstr "Cloud progress will be overwritten by this device"
+
+msgid "稍后处理"
+msgstr "Later"
+
+msgid "[color=#5b7a92]暂无说明[/color]"
+msgstr "[color=#5b7a92]No description[/color]"
+
+msgid "锁定"
+msgstr "Lock"
+
+msgid "已锁定：下场战斗后不刷新"
+msgstr "Locked: won't refresh after the next battle"
+
+msgid "锁定商品：下场战斗后不刷新"
+msgstr "Lock items: won't refresh after the next battle"
+
+msgid "各费用出货概率"
+msgstr "Odds by Cost"
+
+msgid "已满级"
+msgstr "Max Level"
+
+msgid "等级已满"
+msgstr "Level maxed"
+
+msgid "已锁定商品，下场战斗后不刷新"
+msgstr "Items locked. They won't refresh after the next battle."
+
+msgid "已解锁商品，下场战斗后刷新"
+msgstr "Items unlocked. They'll refresh after the next battle."
+
+msgid "商店未解锁\n\n本大轮首战后解锁"
+msgstr "Shop Locked\n\nUnlocks after your first battle this Season"
+
+msgid "正在与服务器同步，请稍后再试"
+msgstr "Syncing with the server. Try again shortly."
+
+msgid "商品"
+msgstr "Items"
+
+msgid "随从位"
+msgstr "Follower Slot"
+
+msgid "水晶球位"
+msgstr "Crystal Ball Slot"
+
+msgid "糖果炸弹位"
+msgstr "Candy Bomb Slot"
+
+msgid "本大轮阵容已锁定"
+msgstr "Team locked for this Season"
+
+msgid "数据加载失败，请重启游戏"
+msgstr "Failed to load data. Please restart the game."
+
+msgid "本大轮阵容已锁定\n点击统领卡可查看详情、更换技能"
+msgstr "Team locked for this Season\nTap a Leader card to view details or change abilities"
+
+msgid "本大轮统领"
+msgstr "This Season's Leaders"
+
+msgid "选择统领"
+msgstr "Choose Leaders"
+
+msgid "撤下"
+msgstr "Remove"
+
+msgid "沿用上次"
+msgstr "Use Last Team"
+
+msgid "正在退出"
+msgstr "Exiting"
+
+msgid "正在匹配闯关赛对手，阵容已锁定。"
+msgstr "Finding a Gauntlet opponent. Team locked."
+
+msgid "取消匹配后可使用背包。"
+msgstr "Cancel matchmaking to use the Inventory."
+
+msgid "取消匹配后可使用商店。"
+msgstr "Cancel matchmaking to use the Shop."
+
+msgid "取消匹配后可设置训龟大师。"
+msgstr "Cancel matchmaking to set up the Turtle Trainer."
+
+msgid "取消匹配后可开始新手教程。"
+msgstr "Cancel matchmaking to start the tutorial."
+
+msgid "取消匹配后可删除账号。"
+msgstr "Cancel matchmaking to delete your account."
+
+msgid "取消匹配后可使用邮箱登录。"
+msgstr "Cancel matchmaking to sign in with email."
+
+msgid "取消匹配后可绑定龟投账号。"
+msgstr "Cancel matchmaking to link a TurtlePoll account."
+
+msgid "闯关赛匹配中，无法切磋"
+msgstr "Can't start a Friendly Match during Gauntlet matchmaking"
+
+msgid "被动"
+msgstr "Passive"
+
+msgid "关闭"
+msgstr "Close"
+
+msgid "胜"
+msgstr "W"
+
+msgid "胜利"
+msgstr "Victory"
+
+msgid "失败"
+msgstr "Defeat"
+
+msgid "已结束"
+msgstr "Ended"
+
+msgid "负"
+msgstr "L"
+
+msgid "决赛"
+msgstr "Finals"
+
+msgid "主动"
+msgstr "Active"
+
+msgid "开播中"
+msgstr "Live"
+
+msgid "技能"
+msgstr "Ability"
+
+msgid "神秘龟"
+msgstr "Mystery Turtle"
+
+msgid "观看"
+msgstr "Watch"
+
+msgid "即将开播"
+msgstr "Starting Soon"
+
+msgid "进行中"
+msgstr "In Progress"
+
+msgid "背包"
+msgstr "Inventory"
+
+msgid "你"
+msgstr "You"
+
+msgid "（我）"
+msgstr "(Me)"
+
+msgid "被动 · "
+msgstr "Passive ·"
+
+msgid "正在载入"
+msgstr "Loading"
+
+msgid "正在载入…"
+msgstr "Loading…"
+
+msgid "查看全部"
+msgstr "View All"
+
+msgid "商店"
+msgstr "Shop"
+
+msgid "全部"
+msgstr "All"
+
+msgid "敌方"
+msgstr "Enemy"
+
+msgid " (普攻)"
+msgstr " (Basic Attack)"
+
+msgid "物理伤害"
+msgstr "Physical Damage"
+
+msgid "魔法伤害"
+msgstr "Magic Damage"
+
+msgid "真实伤害"
+msgstr "True Damage"
+
+msgid "收起"
+msgstr "Collapse"
+
+msgid "深海币"
+msgstr "Abyss Coins"
+
+msgid "经验"
+msgstr "XP"
+
+msgid "观战"
+msgstr "Spectate"
+
+msgid "待定"
+msgstr "TBD"
+
+msgid "开始对战"
+msgstr "Start Match"
+
+msgid "对手"
+msgstr "Opponent"
+
+msgid "已成为好友"
+msgstr "Now friends"
+
+msgid "刚刚"
+msgstr "Just now"
+
+msgid "闯关赛况"
+msgstr "Gauntlet Results"
+
+msgid "知道了"
+msgstr "Got it"
+
+msgid "前往商店"
+msgstr "Go to Shop"
+
+msgid "前排"
+msgstr "Front Row"
+
+msgid "后排"
+msgstr "Back Row"
+
+msgid "无"
+msgstr "None"
+
+msgid "移速"
+msgstr "Move Speed"
+
+msgid "限免"
+msgstr "Free"
+
+msgid "组冠军产生后公布"
+msgstr "Announced once group winners are decided"
+
+msgid "参赛资格"
+msgstr "Eligibility"
+
+msgid "轮空"
+msgstr "Bye"
+
+msgid "观看回放"
+msgstr "Watch Replay"
+
+msgid "上一组"
+msgstr "Previous Group"
+
+msgid "下一组"
+msgstr "Next Group"
+
+msgid "我的位置"
+msgstr "My Position"
+
+msgid "已发送好友申请，等待对方同意"
+msgstr "Friend request sent. Waiting for them to accept."
+
+msgid "确认删除"
+msgstr "Confirm Delete"
+
+msgid "已截止"
+msgstr "Closed"
+
+msgid "载入中"
+msgstr "Loading"
+
+msgid "最近对局"
+msgstr "Recent Matches"
+
+msgid "（无主动效果）"
+msgstr "(No active effect)"
+
+msgid "精英"
+msgstr "Elite"
+
+msgid "本大轮首战后解锁"
+msgstr "Unlocks after your first battle this Season"
+
+msgid "阵容说明"
+msgstr "Team Guide"
+
+msgid "站位"
+msgstr "Positions"
+
+msgid "上战场"
+msgstr "Top Lane"
+
+msgid "下战场"
+msgstr "Bottom Lane"
+
+msgid "空槽位"
+msgstr "Empty Slot"
+
+msgid "野生"
+msgstr "Wild"
+
+msgid "偷袭"
+msgstr "Raid"
+
+msgid "再来一局"
+msgstr "Play Again"
+
+msgid "返回主菜单"
+msgstr "Main Menu"
+
+msgid "结果已封存"
+msgstr "Result sealed"
+
+msgid "已晋级！"
+msgstr "Qualified!"
+
+msgid "战报"
+msgstr "Battle Report"
+
+msgid "友军"
+msgstr "Ally"
+
+msgid "惜败"
+msgstr "Narrow Defeat"
+
+msgid "开战"
+msgstr "Fight"
+
+msgid "晋级冠军杯赛"
+msgstr "Advanced to the Champions Cup"
+
+msgid "晋级"
+msgstr "Advanced"
+
+msgid "普攻"
+msgstr "Basic Attack"
+
+msgid "详细"
+msgstr "Details"
+
+msgid "生命值"
+msgstr "Health"
+
+msgid "龟能"
+msgstr "Energy"
+
+msgid "已封存"
+msgstr "Sealed"
+
+msgid "本场"
+msgstr "This Match"
+
+msgid "平"
+msgstr "D"
+
+msgid "提交"
+msgstr "Submit"
+
+msgid "问题反馈"
+msgstr "Feedback"
+
+msgid "对局"
+msgstr "Matches"
+
+msgid "积分赛已结束"
+msgstr "Ranked has ended"
+
+msgid "积分赛战绩"
+msgstr "Ranked Record"
+
+msgid "决赛日开放观战。"
+msgstr "Finals Day is open to spectators."
+
+msgid "闯关赛已结束"
+msgstr "Gauntlet has ended"
+
+msgid "闯关赛战绩"
+msgstr "Gauntlet Record"
+
+msgid "领取"
+msgstr "Claim"
+
+msgid "确定"
+msgstr "OK"
+
+msgid "选择一场开播中的对局"
+msgstr "Pick a live match"
+
+msgid "点击对局观看"
+msgstr "Tap a match to watch"
+
+msgid "本组"
+msgstr "This Group"
+
+msgid "已产生的组冠军"
+msgstr "Group Winners So Far"
+
+msgid "无法连接服务器。\n请检查网络连接后重试。"
+msgstr "Can't reach the server.\nCheck your connection and try again."
+
+msgid "正在生成对阵"
+msgstr "Generating bracket"
+
+msgid "本周未晋级决赛日"
+msgstr "Not qualified for Finals Day this week"
+
+msgid "本轮对战"
+msgstr "This Round"
+
+msgid "本场结算中，结果于开播时公布"
+msgstr "Result pending. Revealed when the match goes live."
+
+msgid "阵容已锁定"
+msgstr "Team locked"
+
+msgid "对手阵容已就位"
+msgstr "Opponent's team is ready"
+
+msgid "本轮已结束"
+msgstr "Round over"
+
+msgid "观战模式"
+msgstr "Spectator Mode"
+
+msgid "对手未提交阵容，判对手弃权"
+msgstr "Opponent didn't submit a team and forfeits"
+
+msgid "备战中，备战结束后开赛"
+msgstr "Preparing. The match starts when prep ends."
+
+msgid "当前版本过低，请更新游戏"
+msgstr "Your version is out of date. Please update the game."
+
+msgid "对手阵容加载失败，请稍后重试"
+msgstr "Couldn't load the opponent's team. Try again later."
+
+msgid "上周决赛日"
+msgstr "Last Week's Finals Day"
+
+msgid "已复制玩家 ID"
+msgstr "Player ID copied"
+
+msgid "阵容更新于 "
+msgstr "Team updated"
+
+msgid "已拒绝该申请"
+msgstr "Request declined"
+
+msgid "已撤回好友申请"
+msgstr "Friend request withdrawn"
+
+msgid "已解除好友关系"
+msgstr "Friend removed"
+
+msgid "正在载入对方阵容…"
+msgstr "Loading their team…"
+
+msgid "玩家"
+msgstr "Player"
+
+msgid "好友"
+msgstr "Friends"
+
+msgid "我的玩家 ID"
+msgstr "My Player ID"
+
+msgid "添加好友"
+msgstr "Add Friend"
+
+msgid "查找"
+msgstr "Search"
+
+msgid "输入对方的玩家 ID"
+msgstr "Enter their Player ID"
+
+msgid "申请好友"
+msgstr "Send Request"
+
+msgid "好友申请"
+msgstr "Friend Requests"
+
+msgid "同意"
+msgstr "Accept"
+
+msgid "拒绝"
+msgstr "Decline"
+
+msgid "等待对方同意"
+msgstr "Waiting for them to accept"
+
+msgid "撤回"
+msgstr "Withdraw"
+
+msgid "删除"
+msgstr "Remove"
+
+msgid "暂无好友"
+msgstr "No friends yet"
+
+msgid "暂无好友申请"
+msgstr "No friend requests"
+
+msgid "尚未配置阵容"
+msgstr "No team set up yet"
+
+msgid "战绩榜"
+msgstr "Standings"
+
+msgid "暂无已完成对局"
+msgstr "No finished matches yet"
+
+msgid "闯关赛对局结束后在此显示"
+msgstr "Shows here after Gauntlet matches finish"
+
+msgid "赛况暂无"
+msgstr "No results yet"
+
+msgid "当前版本不支持在线赛况"
+msgstr "This version doesn't support live results"
+
+msgid "另一场"
+msgstr "Other Match"
+
+msgid "本周闯关赛"
+msgstr "This Week's Gauntlet"
+
+msgid "上周闯关赛"
+msgstr "Last Week's Gauntlet"
+
+msgid "开赛"
+msgstr "Start"
+
+msgid "无录像"
+msgstr "No Replay"
+
+msgid "卸下"
+msgstr "Unequip"
+
+msgid "详情"
+msgstr "Details"
+
+msgid "暴击率超过 100% 的部分，每 1% 转化为 {C:DamageMath.CRIT_OVERFLOW}% 暴击伤害。"
+msgstr "Each 1% Crit Chance above 100% converts into {C:DamageMath.CRIT_OVERFLOW}% Crit Damage."
+
+msgid "· 统领：本大轮出战龟　小将：补位单位\n· 上路、下路独立作战\n· 依次点击两个单位，或把一个拖到另一个上：交换位置\n· 小将卡上【前排 / 后排】：切换近战 / 远程\n· 右上「站位」：拖动单位设置开战站位\n· 点击单位：查看属性；点击单位身上的装备：卸下\n· 选择背包装备后点击单位，或拖动装备到单位：装备\n· 3 件同名同星装备自动合成升星"
+msgstr "· Leaders: your turtles this Season. Minions: fill-in units\n· Top and Bottom Lanes fight separately\n· Tap two units in turn, or drag one onto another: swap positions\n· [Front / Back] on a Minion card: switch Melee / Ranged\n· \"Positions\" (top right): drag units to set starting positions\n· Tap a unit: view stats. Tap an item on a unit: unequip it\n· Pick an item from the Inventory, then tap a unit (or drag it onto a unit): equip\n· 3 copies of the same item at the same star level combine into a higher star"
+
+msgid "装备背包"
+msgstr "Item Inventory"
+
+msgid "背包为空"
+msgstr "Inventory is empty"
+
+msgid "选择单位：本大轮等级 +1"
+msgstr "Choose a unit: +1 level this Season"
+
+msgid "[color=#8fa6bb]无属性加成[/color]"
+msgstr "[color=#8fa6bb]No stat bonus[/color]"
+
+msgid "[color=#8fa6bb]无特殊效果[/color]"
+msgstr "[color=#8fa6bb]No special effect[/color]"
+
+msgid "糖果罐"
+msgstr "Candy Jar"
+
+msgid "打碎"
+msgstr "Smash"
+
+msgid "  无属性加成"
+msgstr "  No stat bonus"
+
+msgid "临时等级器\n指定单位本大轮等级 +1"
+msgstr "Level Booster\nChosen unit gets +1 level this Season"
+
+msgid "完成教程"
+msgstr "Finish Tutorial"
+
+msgid "\n已达上限"
+msgstr "\nLimit reached"
+
+msgid "设置开战站位"
+msgstr "Set Starting Positions"
+
+msgid "切换站位：前排近战 / 后排远程"
+msgstr "Switch position: Front Melee / Back Ranged"
+
+msgid "深海闯关"
+msgstr "Abyss Gauntlet"
+
+msgid "首领"
+msgstr "Boss"
+
+msgid "指定首领"
+msgstr "Choose Boss"
+
+msgid "场次"
+msgstr "Games"
+
+msgid "胜率"
+msgstr "Win Rate"
+
+msgid "昨天"
+msgstr "Yesterday"
+
+msgid "前天"
+msgstr "2 days ago"
+
+msgid "加载更多"
+msgstr "Load More"
+
+msgid "连不上服务器，只显示这台设备上的对局"
+msgstr "Can't reach the server. Showing matches on this device only."
+
+msgid "暂无战绩"
+msgstr "No matches yet"
+
+msgid "参加积分赛、闯关赛、决赛或偷袭后，对局将显示在这里。"
+msgstr "Play Ranked, Gauntlet, Finals or a Raid and your matches will show up here."
+
+msgid "战绩"
+msgstr "Match History"
+
+msgid "魔法石"
+msgstr "Magic Stone"
+
+msgid "训龟大师的攻击额外造成 2% 目标最大生命值的魔法伤害。每次攻击获得 3% 攻击速度，可无限叠加。层数达到 10、25、50 时亮起共鸣光效。"
+msgstr "The Turtle Trainer's attacks deal bonus magic damage equal to 2% of the target's max health. Each attack grants 3% attack speed, stacking infinitely. A resonance glow lights up at 10, 25 and 50 stacks."
+
+msgid "训龟大师朝随机一个敌人射出钩索，命中第一个敌人时将其眩晕 2.5 秒并拉向训龟大师。冷却 30 秒，未命中时冷却 15 秒。"
+msgstr "The Turtle Trainer fires a grappling hook at a random enemy. The first enemy hit is stunned for 2.5 seconds and pulled to the Trainer. Cooldown 30 seconds (15 seconds on a miss)."
+
+msgid "训龟大师朝友军最密集的地方投掷药水。落点附近的友军获得 5 秒狂热：攻击速度提高 30%，移动速度提高 25%，龟能充能速度提高 25%。冷却 16 秒。"
+msgstr "The Turtle Trainer throws a potion at the densest group of allies. Nearby allies gain Frenzy for 5 seconds: +30% attack speed, +25% move speed and +25% Energy charge rate. Cooldown 16 seconds."
+
+msgid "训龟大师吹响口哨，随机召唤以下一种。护盾：全体友军获得 700 护盾，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出一道贯穿气波，对命中的敌人造成 100 点 + 15% 目标最大生命值的真实伤害并将其击飞，护甲降低 30%，持续 5 秒。狂暴：全体友军 4 秒内攻击力提高 20%，获得 20% 生命偷取，且不会死亡。冷却 14 秒。"
+msgstr "The Turtle Trainer blows a whistle and summons one of the following at random. Shield: all allies gain a 700 shield that decays after 5 seconds. Spirit Turtle: summons a spirit turtle that charges up and fires a piercing wave, dealing 100 + 15% of the target's max health as true damage to enemies hit, knocking them up and reducing their armor by 30% for 5 seconds. Rampage: for 4 seconds, all allies gain 20% attack damage and 20% lifesteal, and can't die. Cooldown 14 seconds."
+
+msgid "训龟大师在敌人最密集的地方生成一条冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害提高 20%。冷却 17 秒。"
+msgstr "The Turtle Trainer creates a glacier at the densest group of enemies for 6 seconds. Enemies on the ice are slowed by 40% and take 20% more damage. Cooldown 17 seconds."
+
+msgid "形象"
+msgstr "Look"
+
+msgid "每个战场开始 10 秒后，训龟大师锁定敌方造成伤害最高的单位，持续 15 秒：目标受到的伤害提高 15%，全体友军优先攻击该目标。冷却 40 秒，未命中时冷却 20 秒。"
+msgstr "10 seconds into each battle, the Turtle Trainer marks the enemy unit that has dealt the most damage for 15 seconds: it takes 15% more damage and all allies focus it. Cooldown 40 seconds (20 seconds on a miss)."
+
+msgid "训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 5% 最大生命值，持续作战至终极战场。冷却 999 秒，未命中时冷却 30 秒。"
+msgstr "The Turtle Trainer marks the nearest enemy. The next time it dies, it revives with 30% max health and joins your side. It is invulnerable for 2.5 seconds after reviving, then loses 5% max health per second, fighting on into the Final Battle. Cooldown 999 seconds (30 seconds on a miss)."
+
+msgid "村民"
+msgstr "Villager"
+
+msgid "被动与主动只能装配其一"
+msgstr "Only one of Passive or Active can be equipped"
+
+msgid "魔法师"
+msgstr "Mage"
+
+msgid "少女"
+msgstr "Maiden"
+
+msgid "已装配"
+msgstr "Equipped"
+
+msgid "战斗日志"
+msgstr "Battle Log"
+
+msgid "练习赛不计入赛季进度。"
+msgstr "Practice matches don't count toward Season progress."
+
+msgid "生命已耗尽，本大轮已出局。"
+msgstr "Out of lives. You're eliminated this Season."
+
+msgid "表演赛不消耗生命。"
+msgstr "Exhibition matches don't cost lives."
+
+msgid "赛季胜场 +1"
+msgstr "Season Wins +1"
+
+msgid "消耗 1 点生命"
+msgstr "Lost 1 life"
+
+msgid "晋级闯关赛！"
+msgstr "Qualified for the Gauntlet!"
+
+msgid "晋级决赛日！"
+msgstr "Qualified for Finals Day!"
+
+msgid "决赛日开放观战。下一轮积分赛：下周二开始。"
+msgstr "Finals Day is open to spectators. Next Ranked: starts next Tuesday."
+
+msgid "闯关赛不消耗生命。"
+msgstr "Gauntlet matches don't cost lives."
+
+msgid "闯关战绩"
+msgstr "Gauntlet Record"
+
+msgid "赛季胜场"
+msgstr "Season Wins"
+
+msgid "本周场次"
+msgstr "Games This Week"
+
+msgid "赛季等级"
+msgstr "Season Level"
+
+msgid "阵容上传"
+msgstr "Team Upload"
+
+msgid "上传失败"
+msgstr "Upload failed"
+
+msgid "阵容已上传"
+msgstr "Team uploaded"
+
+msgid "止步"
+msgstr "Out at"
+
+msgid "上路"
+msgstr "Top Lane"
+
+msgid "下路"
+msgstr "Bottom Lane"
+
+msgid "终极"
+msgstr "Final"
+
+msgid "双方阵容已锁定，由服务器实时演算"
+msgstr "Both teams locked. The server is simulating live."
+
+msgid "获胜"
+msgstr "Wins"
+
+msgid "晋级决赛"
+msgstr "Advanced to the Final"
+
+msgid "晋级半决赛"
+msgstr "Advanced to the Semifinals"
+
+msgid "晋级8强"
+msgstr "Advanced to the Top 8"
+
+msgid "晋级16强"
+msgstr "Advanced to the Top 16"
+
+msgid "晋级 1/4 决赛"
+msgstr "Advanced to the Quarterfinals"
+
+msgid "晋级 1/8 决赛"
+msgstr "Advanced to the Round of 16"
+
+msgid "小组第 2 名"
+msgstr "Group 2nd Place"
+
+msgid "小组"
+msgstr "Group"
+
+msgid "小组第 1 名，晋级冠军杯赛"
+msgstr "Group Winner. Advanced to the Champions Cup."
+
+msgid "晋级下一轮"
+msgstr "Advanced to the next round"
+
+msgid "回放中断"
+msgstr "Replay interrupted"
+
+msgid "回放异常，无法继续播放"
+msgstr "Replay error. Can't continue playback."
+
+msgid "比赛结束"
+msgstr "Match Over"
+
+msgid "再看一遍"
+msgstr "Watch Again"
+
+msgid "本轮奖励"
+msgstr "Round Rewards"
+
+msgid "即将返回对阵图"
+msgstr "Returning to the bracket"
+
+msgid "暂无记录"
+msgstr "No records yet"
+
+msgid "物理"
+msgstr "Physical"
+
+msgid "魔法"
+msgstr "Magic"
+
+msgid "真实"
+msgstr "True"
+
+msgid "窃取护盾"
+msgstr "Stolen Shield"
+
+msgid "攻击 (普攻)"
+msgstr "Attack (Basic Attack)"
+
+msgid "攻击和大多数技能伤害的基础。"
+msgstr "The base for attacks and most ability damage."
+
+msgid "攻速"
+msgstr "Attack Speed"
+
+msgid "每秒攻击次数。"
+msgstr "Attacks per second."
+
+msgid "攻击打出暴击的几率。"
+msgstr "Chance for an attack to crit."
+
+msgid "暴伤"
+msgstr "Crit Damage"
+
+msgid "暴击时造成的伤害倍率。暴击率超过 100% 的部分会折算进来。"
+msgstr "Damage multiplier on crits. Crit Chance above 100% is converted into this."
+
+msgid "降低受到的物理伤害。"
+msgstr "Reduces physical damage taken."
+
+msgid "降低受到的魔法伤害。"
+msgstr "Reduces magic damage taken."
+
+msgid "减伤"
+msgstr "Damage Reduction"
+
+msgid "受到的所有伤害按比例降低。"
+msgstr "Reduces all damage taken by a percentage."
+
+msgid "增伤"
+msgstr "Damage Amp"
+
+msgid "造成的所有伤害按比例提高。"
+msgstr "Increases all damage dealt by a percentage."
+
+msgid "攻击距离。"
+msgstr "Attack range."
+
+msgid "移动速度，受减速、加速效果影响。"
+msgstr "Movement speed. Affected by slows and speed-ups."
+
+msgid "造成伤害时，按比例回复自身生命。"
+msgstr "Heals for a percentage of damage dealt."
+
+msgid "闪避攻击的几率。"
+msgstr "Chance to dodge attacks."
+
+msgid "造成物理伤害时无视目标的护甲值。"
+msgstr "Ignores this much of the target's armor when dealing physical damage."
+
+msgid "造成魔法伤害时无视目标的魔抗值。"
+msgstr "Ignores this much of the target's magic resist when dealing magic damage."
+
+msgid "治疗强度"
+msgstr "Heal Power"
+
+msgid "治疗效果的倍率。"
+msgstr "Multiplier on healing."
+
+msgid "护盾强度"
+msgstr "Shield Power"
+
+msgid "护盾效果的倍率。"
+msgstr "Multiplier on shields."
+
+msgid "龟能充能"
+msgstr "Energy Charge"
+
+msgid "龟能积攒速度倍率。龟能满时释放技能。"
+msgstr "Multiplier on Energy gain. The ability casts when Energy is full."
+
+msgid "受到伤害时，按比例反弹给攻击者。"
+msgstr "Reflects a percentage of damage taken back to the attacker."
+
+msgid "(普攻)"
+msgstr "(Basic Attack)"
+
+msgid "物理 / 魔法伤害"
+msgstr "Physical / Magic Damage"
+
+msgid "回复"
+msgstr "Healing"
+
+msgid "本局"
+msgstr "This Match"
+
+msgid "暴击 "
+msgstr "Crit"
+
+msgid "增伤 "
+msgstr "Damage Amp"
+
+msgid "减伤 "
+msgstr "Damage Reduction"
+
+msgid "暴伤 "
+msgstr "Crit Damage"
+
+msgid "生命偷取 "
+msgstr "Lifesteal"
+
+msgid "闪避 "
+msgstr "Dodge"
+
+msgid "治疗强度 "
+msgstr "Heal Power"
+
+msgid "护盾强度 "
+msgstr "Shield Power"
+
+msgid "龟能充能 "
+msgstr "Energy Charge"
+
+msgid "反伤 "
+msgstr "Thorns"
+
+msgid "怒气"
+msgstr "Rage"
+
+msgid "储能"
+msgstr "Stored Energy"
+
+msgid "泡泡"
+msgstr "Bubbles"
+
+msgid "金币"
+msgstr "Gold"
+
+msgid "每点 +2% 攻击"
+msgstr "+2% Attack per stack"
+
+msgid "财宝"
+msgstr "Treasure"
+
+msgid "熔岩形态"
+msgstr "Lava Form"
+
+msgid "近战形态：锤击"
+msgstr "Melee Form: Hammer"
+
+msgid "远程形态：灵能弹"
+msgstr "Ranged Form: Psi Bolt"
+
+msgid "潜伏中：无法被选为目标"
+msgstr "Lurking: untargetable"
+
+msgid "← 滑动翻页 →"
+msgstr "← Swipe to turn pages →"
+
+msgid "合计"
+msgstr "Total"
+
+msgid "本场 MVP"
+msgstr "Match MVP"
+
+msgid "龟经验"
+msgstr "Turtle XP"
+
+msgid "暂无战报"
+msgstr "No battle report"
+
+msgid "阵亡"
+msgstr "Died"
+
+msgid "造成物理伤害"
+msgstr "Physical Damage Dealt"
+
+msgid "造成魔法伤害"
+msgstr "Magic Damage Dealt"
+
+msgid "击杀数"
+msgstr "Kills"
+
+msgid "问题描述"
+msgstr "Description"
+
+msgid "问题描述（必填，500 字以内）"
+msgstr "Description (required, up to 500 characters)"
+
+msgid "已提交"
+msgstr "Submitted"
+
+msgid "提交失败。请检查网络连接后重试。"
+msgstr "Submit failed. Check your connection and try again."
+
+msgid "闪退 / 卡顿"
+msgstr "Crash / Lag"
+
+msgid "画面 / 显示"
+msgstr "Graphics / Display"
+
+msgid "玩法 / 数值"
+msgstr "Gameplay / Balance"
+
+msgid "其他"
+msgstr "Other"
+
+msgid "上路 "
+msgstr "Top Lane"
+
+msgid "下路 "
+msgstr "Bottom Lane"
+
+msgid "上"
+msgstr "Top"
+
+msgid "下"
+msgstr "Bottom"
+
+msgid "周六闯关赛"
+msgstr "Saturday Gauntlet"
+
+msgid "周日决赛"
+msgstr "Sunday Finals"
+
+msgid "进攻"
+msgstr "Attack"
+
+msgid "防守"
+msgstr "Defense"
+
+msgid "今天 "
+msgstr "Today"
+
+msgid "昨天 "
+msgstr "Yesterday"
+
+msgid "版本不同"
+msgstr "Different Version"
+
+msgid "加好友"
+msgstr "Add Friend"
+
+msgid "正在载入对方阵容"
+msgstr "Loading their team"
+
+msgid "举报昵称"
+msgstr "Report Nickname"
+
+msgid "拉黑"
+msgstr "Block"
+
+msgid "移出黑名单"
+msgstr "Unblock"
+
+msgid "举报 / 拉黑"
+msgstr "Report / Block"
+
+msgid "已举报"
+msgstr "Reported"
+
+msgid "24 小时内已举报过该玩家"
+msgstr "You already reported this player in the last 24 hours"
+
+msgid "今日举报次数已达上限"
+msgstr "Daily report limit reached"
+
+msgid "无法举报自己"
+msgstr "You can't report yourself"
+
+msgid "举报失败。请检查网络连接后重试。"
+msgstr "Report failed. Check your connection and try again."
+
+msgid "已拉黑，该玩家昵称显示为默认昵称"
+msgstr "Blocked. This player's nickname now shows as a default name."
+
+msgid "已移出黑名单"
+msgstr "Unblocked"
+
+msgid "黑名单已满"
+msgstr "Block list is full"
+
+msgid "该玩家 ID 对应多位玩家，请前往好友页添加"
+msgstr "This Player ID matches several players. Add them from the Friends page."
+
+msgid "已晋级周六闯关赛"
+msgstr "Qualified for Saturday's Gauntlet"
+
+msgid "生命已耗尽，未晋级闯关赛"
+msgstr "Out of lives. Didn't qualify for the Gauntlet."
+
+msgid "闯关赛与决赛日开放观战。"
+msgstr "The Gauntlet and Finals Day are open to spectators."
+
+msgid "已晋级周日决赛日"
+msgstr "Qualified for Sunday's Finals Day"
+
+msgid "决赛日已开始，比赛在对阵图中进行。"
+msgstr "Finals Day has started. Matches are played in the bracket."
+
+msgid "下一轮积分赛：下周二开始。"
+msgstr "Next Ranked: starts next Tuesday."
