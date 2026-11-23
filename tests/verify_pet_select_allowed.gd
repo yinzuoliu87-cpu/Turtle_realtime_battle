@@ -107,7 +107,7 @@ func _ready() -> void:
 	for pid in c2:
 		var owned: bool = pid == "stone" or pid == "lava" or pid == "basic"
 		var want_lv: String = "Lv.4" if pid == "stone" else "Lv.1"
-		var want_free: String = "" if owned else "限免"
+		var want_free: String = "" if owned else WeeklyFree.TAG
 		if str(c2[pid]["lv"]) != want_lv or str(c2[pid]["free"]) != want_free:
 			bad3.append("%s %s/%s" % [pid, str(c2[pid]["lv"]), str(c2[pid]["free"])])
 	_ok("S3 ★拥有的: 服务器等级(stone Lv.4、lava / 赠送的 basic Lv.1)不挂角标; 限免的 7 只: Lv.1 +「限免」", bad3.is_empty()
@@ -140,7 +140,7 @@ func _ready() -> void:
 		if s.contains("主站") or s.contains("龟币") or s.contains("金额") or s.begins_with("你") or s.begins_with("您"):
 			bad5.append(s)
 	_ok("S5 角标字 = 「限免」; 页面上没有「主站 / 龟币 / 金额」、没有「你 / 您」开头(%d 段字)" % txt.size(),
-		bad5.is_empty() and txt.has("限免") and txt.size() >= 20, str(bad5))
+		bad5.is_empty() and txt.has(WeeklyFree.TAG) and txt.size() >= 20, str(bad5))
 	ts.queue_free()
 	await _frames(3)
 

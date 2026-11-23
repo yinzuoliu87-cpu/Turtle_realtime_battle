@@ -380,7 +380,7 @@ func _show_pet(pet: Dictionary) -> void:
 		_lv_chip["xp_frac"] = float(PetXp.progress(PetXp.cached_xp(_pid))["frac"])
 	var _chips: Array = [{"kind": "badge", "text": rarity, "color": rarity_color}, _lv_chip]
 	if PetLevelsNet.is_free_pick(_pid):
-		_chips.append({"kind": "tag", "text": "限免", "color": "#8fe3ff"})
+		_chips.append({"kind": "tag", "text": WeeklyFree.TAG, "color": "#8fe3ff"})
 	if _role != "":
 		_chips.append({"kind": "tag", "text": _role, "color": "#9ad0ff"})
 	_left_header(str(pet.get("name", "?")), _chips)

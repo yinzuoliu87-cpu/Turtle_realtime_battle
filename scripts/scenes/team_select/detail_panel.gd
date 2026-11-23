@@ -194,7 +194,7 @@ func _refresh_detail() -> void:
 		rv.add_child(role_lbl)
 		var fn := Label.new()
 		fn.name = "FreeNote"
-		fn.text = "限免龟不获得经验"
+		fn.text = "本周免费的龟不获得经验"
 		fn.add_theme_font_size_override("font_size", host._sf(16))
 		fn.add_theme_color_override("font_color", Color("#8fe3ff"))
 		fn.add_theme_color_override("font_outline_color", Color("#0d0805"))

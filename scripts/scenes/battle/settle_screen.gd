@@ -608,7 +608,7 @@ func _xp_item(pid: String, owned: bool, x0: int, g: int, tw: Tween, t0: float) -
 	top.add_child(lv)
 	var note: Label
 	if not owned:
-		note = _lbl("限免", F_XP, COL_SUB)
+		note = _lbl(WeeklyFree.TAG, F_XP, COL_SUB)
 	elif bool(p0["maxed"]):
 		note = _lbl("满级", F_XP, COL_GOLD)
 	else:

@@ -174,7 +174,7 @@ func _make_pet_card(pet: Dictionary) -> Control:
 		xb.size = Vector2(xbw, maxf(5.0, roundf(sz.y * 0.035)))
 		xb.position = Vector2(sz.x - b - 10.0 - xbw, lv.position.y + lv.size.y - 1.0)
 		card.add_child(xb)
-	## 限免角标(2026-11-09 · 方案书 20261107b §4.5): 没拥有、本周限免的这只 ⇒ 等级牌下面挂一枚「限免」角标(固定 1 级, 不涨经验)。
+	## 本周免费角标(2026-11-09 · 方案书 20261107b §4.5; 11-23 由「限免」改名并挪位): 没拥有、本周免费的这只挂一枚(固定 1 级, 不涨经验)。
 	##   样式照同一页技能格的「固有 / 已选」角标(`skill_picker._make_skill_corner`: 实色方底 + 深色字 + 下投影),
 	##   第一版是等级牌同款的描边字, 实拍压在立绘上读不清(2026-11-09 截图)。底色取冷青, 与金色等级牌、绿色「固有」分开。
 	if PetLevelsNet.is_free_pick(pid):
@@ -189,19 +189,21 @@ func _make_pet_card(pet: Dictionary) -> Control:
 		fb.add_theme_stylebox_override("panel", fsb)
 		var ft := Label.new()
 		ft.name = "FreeTag"
-		ft.text = "限免"
-		ft.add_theme_font_size_override("font_size", maxi(11, int(roundf(sz.y * 0.09))))
+		ft.text = WeeklyFree.TAG
+		## ★2026-11-23 改「本周免费」(用户: 新玩家看不懂「限免」): 四个字挂在右上会压住龟脸、iPad 比例小到读不出(实拍)
+		##   ⇒ 改成名字横幅正上方一条与窗口同宽的窄条, 字号按条宽算(四个字 + 边距放得下, 下限 11)。
+		var fh: float = roundf(maxf(14.0, bn.size.y * 0.52))
+		var fw: float = pw.size.x - 6.0
+		ft.add_theme_font_size_override("font_size", maxi(11, int(minf(fh * 0.8, (fw - 8.0) / 4.6))))
 		ft.add_theme_color_override("font_color", Color("#06222b"))
 		ft.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ft.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		ft.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fb.add_child(ft)
-		## 右上(窗口里), 紧贴等级牌下沿、与它右对齐: 锚在卡片右上角, 往左长
-		fb.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		fb.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		fb.offset_right = -(b + 10.0)
-		fb.offset_left = fb.offset_right
-		fb.offset_top = lv.position.y + lv.size.y - 2.0
+		## 横幅图案比 bn 高出约四分之一(实拍压住了名字上沿) ⇒ 再往上让开 0.3 个横幅高
+		fb.position = Vector2(pw.position.x + 3.0, bn.position.y - fh - roundf(bn.size.y * 0.3))
+		fb.custom_minimum_size = Vector2(fw, fh)
+		fb.size = Vector2(fw, fh)
 		card.add_child(fb)
 	if selected:
 		var tag := Label.new()

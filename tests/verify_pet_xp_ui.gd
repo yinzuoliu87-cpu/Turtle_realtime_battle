@@ -109,7 +109,7 @@ func _ready() -> void:
 	var bn := bam.find_child("XpNote", true, false) as Label if bam != null else null
 	var inn := ice.find_child("XpNote", true, false) as Label if ice != null else null
 	_ok("满级竹叶龟「满级」不涨", bn != null and bn.text == "满级" and (bam.get_meta("xp") as Array) == [1350, 1350])
-	_ok("没拥有的寒冰龟「限免」不涨", inn != null and inn.text == "限免" and (ice.get_meta("xp") as Array) == [0, 0])
+	_ok("没拥有的寒冰龟「限免」不涨", inn != null and inn.text == WeeklyFree.TAG and (ice.get_meta("xp") as Array) == [0, 0])
 	_ok("★本机缓存改成新值: PetLevelsNet 73 / GameState.pet_lv 2",
 		PetXp.cached_xp("stone") == 73 and int((gs.pet_lv as Dictionary).get("stone", 0)) == 2,
 		"%d / %s" % [PetXp.cached_xp("stone"), str((gs.pet_lv as Dictionary).get("stone"))])
