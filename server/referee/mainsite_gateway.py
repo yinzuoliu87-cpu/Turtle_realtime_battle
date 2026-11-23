@@ -9,6 +9,11 @@ arena.turtlearena.xyz / arena-beta.turtlearena.xyz → 本机回环端口）。�
   POST /mainsite/link/confirm {code, user_id} → {ok:true, result} / {ok:false, error}
   POST /mainsite/raid {raidId, attacker, defender, seed, stake, isRevenge, expireAt}
                                         → raid_intake.handle_create(body, rpc) 的返回原样（A2 线的模块；没部署 ⇒ 503）
+  GET  /mainsite/stats/daily?day=YYYY-MM-DD        → {ok, day, tz:"UTC", final, new_players, dau}（不带 day = 昨天 UTC）
+  GET  /mainsite/stats/leaderboard?week=YYYY-MM-DD → {ok, week, total, rows:[{rank, nickname, wins, hearts, battles}]}
+                                        （week = 那周周一；不带 = 上一周）。两条都是 2026-11-23 给主站的运营数字
+                                        （迁移 20261123_mainsite_stats；方案书 20261123-主站数据接口）；每条路径每分钟最多
+                                        STATS_PER_MIN 次，超了 429；陪练号算不算看 MAINSITE_STATS_HUMANS（默认 1 = 只算真人）
 App → 我们（Authorization: Bearer <Supabase access_token>，向 Supabase /auth/v1/user 换出账号）
   POST /app/link/start {device}         → {ok, code, url, expires_in}   url = {MAINSITE_LINK_BASE}/game/link?code=<code>
   POST /app/link/poll {code}            → {ok, status: pending|confirmed|expired, switched, result?, session?}
@@ -25,10 +30,12 @@ App → 我们（Authorization: Bearer <Supabase access_token>，向 Supabase /a
   MAINSITE_LINK_BASE                    App 打开的确认页根地址，默认 = MAINSITE_BASE
   MAINSITE_HOOK_SECRET[_FILE]           签名密钥（内测 / 正式各一套；★不进仓库、不打印）
   GATEWAY_BIND / GATEWAY_PORT           默认 127.0.0.1 / 8790（内测服那份 8791，见 -beta.service）
+  MAINSITE_STATS_HUMANS                 1（默认）= 运营数字只算真人（去掉 bot_accounts 陪练号）；0 = 含陪练号（与游戏内排行榜一致）
   LOGIN_EMAIL_DOMAIN                    匿名号补内部邮箱用的域名，默认 link.turtlearena.xyz（见 SupabaseAdmin）
 
 ★日志只记方法、路径、状态码、耗时；不记请求体、令牌、签名。
 """
+import calendar
 import hashlib
 import http.server
 import json
@@ -51,6 +58,8 @@ CODE_RE = re.compile(r"^[A-Za-z0-9_-]{4,64}$")
 MAX_BODY = 64 * 1024
 LINK_TTL_SEC = 300
 PETS_MIN_GAP_SEC = 10.0
+STATS_PER_MIN = 30                       # 运营数字两条路径各自每分钟最多几次（告诉主站的数，改了要通知他们）
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 RPC_TIMEOUT_SEC = 8.0
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
@@ -170,11 +179,16 @@ def load_raid_handler():
     return getattr(raid_intake, "handle_create", None)
 
 
+def _utc_epoch(st) -> int:
+    """time.struct_time（按 UTC 读）→ epoch 秒。不用 mktime（它按本机时区算）。"""
+    return int(calendar.timegm(st))
+
+
 class Gateway:
     """路由与业务。HTTP 外壳（_Handler）只管读写字节；门禁可以把 rpc / auth / 主站 换成假的。"""
 
     def __init__(self, secret, mainsite_base, link_base=None, rpc=None, auth=None, raid_handler=None,
-                 now=None, post=None):
+                 now=None, post=None, stats_humans=True):
         self.secret = secret
         self.base = (mainsite_base or "").rstrip("/")
         self.link_base = (link_base or self.base).rstrip("/")
@@ -186,6 +200,9 @@ class Gateway:
         self._pets_last = {}                  # 账号 → 上次调主站 /player 的时刻（同一个号 10 秒内只调一次）
         self._pets_lock = threading.Lock()
         self.rpc_timeout = RPC_TIMEOUT_SEC
+        self.stats_humans = bool(stats_humans)
+        self._stats_hits = {}                 # 路径 → 最近 60 秒内各次的时刻
+        self._stats_lock = threading.Lock()
 
     # ── 入口 ──
     def handle(self, method, path, query, headers, body):
@@ -195,6 +212,8 @@ class Gateway:
         route = {("GET", "/mainsite/link/info"): self.link_info,
                  ("POST", "/mainsite/link/confirm"): self.link_confirm,
                  ("POST", "/mainsite/raid"): self.raid,
+                 ("GET", "/mainsite/stats/daily"): self.stats_daily,
+                 ("GET", "/mainsite/stats/leaderboard"): self.stats_leaderboard,
                  ("POST", "/app/link/start"): self.app_link_start,
                  ("POST", "/app/link/poll"): self.app_link_poll,
                  ("POST", "/app/pets/refresh"): self.app_pets_refresh}
@@ -209,6 +228,8 @@ class Gateway:
             if path.startswith("/mainsite/"):
                 if not MS.verify(self.secret, headers(MS.HDR_TS), headers(MS.HDR_SIG), body, now=self.now()):
                     return 401, {"ok": False, "error": "bad arena signature"}
+                if path.startswith("/mainsite/stats/") and not self._stats_take(path):
+                    return 429, {"ok": False, "error": "rate_limited", "per_minute": STATS_PER_MIN}
                 if method == "GET":
                     return fn(query, None)
                 data = _json(body)
@@ -247,6 +268,66 @@ class Gateway:
         r = self._rpc("mainsite_link_info", {"p_code": code}) or {}
         return 200, {"ok": True, "device": str(r.get("device") or "")} if r.get("ok") is True \
             else {"ok": False, "error": str(r.get("error") or "bad_code")}
+
+    # ── 运营数字（2026-11-23）──
+    def _stats_take(self, path):
+        """每条路径一个 60 秒滑动窗口；满了返回 False（不记这一次）。"""
+        t = self.now()
+        with self._stats_lock:
+            hits = [x for x in self._stats_hits.get(path, []) if t - x < 60.0]
+            if len(hits) >= STATS_PER_MIN:
+                self._stats_hits[path] = hits
+                return False
+            hits.append(t)
+            self._stats_hits[path] = hits
+            return True
+
+    @staticmethod
+    def _date_arg(query, key):
+        """取 YYYY-MM-DD；没给 ⇒ (None, None)；格式 / 日期不对 ⇒ (None, 错误码)。"""
+        v = (query.get(key) or [""])[0].strip()
+        if v == "":
+            return None, None
+        if not DATE_RE.match(v):
+            return None, "bad_" + key
+        try:
+            return time.strptime(v, "%Y-%m-%d"), None
+        except ValueError:
+            return None, "bad_" + key
+
+    def stats_daily(self, query, _):
+        d, err = self._date_arg(query, "day")
+        if err:
+            return 200, {"ok": False, "error": err}
+        r = self._rpc("mainsite_stats_daily", {"p_day": time.strftime("%Y-%m-%d", d) if d else None,
+                                                "p_humans": self.stats_humans}) or {}
+        if r.get("ok") is not True:
+            return 200, {"ok": False, "error": str(r.get("error") or "unavailable")}
+        return 200, {"ok": True, "day": str(r.get("day")), "tz": "UTC", "final": bool(r.get("final")),
+                     "new_players": int(r.get("new_players") or 0), "dau": int(r.get("dau") or 0)}
+
+    def stats_leaderboard(self, query, _):
+        d, err = self._date_arg(query, "week")
+        if err:
+            return 200, {"ok": False, "error": err}
+        if d is None:
+            ## 上一周的周一：今天 UTC 往回退到本周一，再退 7 天
+            today = int(self.now() // 86400)
+            monday = today - (today + 3) % 7            # 1970-01-01 是周四 ⇒ (天数 + 3) % 7 = 距周一几天
+            week_epoch = (monday - 7) * 86400
+        else:
+            if d.tm_wday != 0:
+                return 200, {"ok": False, "error": "week_not_monday"}
+            week_epoch = _utc_epoch(d)
+        r = self._rpc("mainsite_stats_leaderboard", {"p_week": week_epoch, "p_limit": 100,
+                                                      "p_humans": self.stats_humans}) or {}
+        if r.get("ok") is not True:
+            return 200, {"ok": False, "error": str(r.get("error") or "unavailable")}
+        rows = [{"rank": int(x.get("rank") or 0), "nickname": str(x.get("nickname") or "?"),
+                 "wins": int(x.get("wins") or 0), "hearts": int(x.get("hearts") or 0),
+                 "battles": int(x.get("battles") or 0)} for x in (r.get("rows") or []) if isinstance(x, dict)]
+        return 200, {"ok": True, "week": time.strftime("%Y-%m-%d", time.gmtime(week_epoch)),
+                     "total": int(r.get("total") or 0), "rows": rows}
 
     def link_confirm(self, _, data):
         code, uid = data.get("code"), data.get("user_id")
@@ -426,7 +507,8 @@ def main() -> int:
         return 2
     auth = SupabaseAdmin(e("SUPABASE_URL"), e("SUPABASE_SERVICE_KEY"), e("LOGIN_EMAIL_DOMAIN", "link.turtlearena.xyz"))
     raid = load_raid_handler()
-    gw = Gateway(secret, e("MAINSITE_BASE"), e("MAINSITE_LINK_BASE") or None, auth=auth, raid_handler=raid)
+    gw = Gateway(secret, e("MAINSITE_BASE"), e("MAINSITE_LINK_BASE") or None, auth=auth, raid_handler=raid,
+                 stats_humans=(e("MAINSITE_STATS_HUMANS", "1").strip() != "0"))
     bind, port = e("GATEWAY_BIND", "127.0.0.1"), int(e("GATEWAY_PORT", "8790"))
     srv = serve(gw, bind, port)
     RP.log("mainsite gateway: %s:%d, raid_intake=%s" % (bind, port, "on" if raid else "off(503)"))

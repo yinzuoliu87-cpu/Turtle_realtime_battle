@@ -39,6 +39,11 @@ create table auth.users (
   is_anonymous boolean not null default false,
   created_at timestamptz default now(), last_sign_in_at timestamptz
 );
+-- 2026-11-23 mainsite_stats 日活用: 列照正式服真表(user_id 是 varchar)
+create table auth.refresh_tokens (
+  instance_id uuid, id bigserial primary key, token varchar(255), user_id varchar(255), revoked boolean,
+  created_at timestamptz default now(), updated_at timestamptz, parent varchar(255), session_id uuid
+);
 create or replace function auth.uid() returns uuid language sql stable as $f$
   select coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
                   (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'))::uuid

@@ -126,6 +126,15 @@ class FakeDB:
             raise urllib.error.HTTPError('http://x/rpc/' + fn, 404, 'Not Found', None, None)
         return json.loads(json.dumps(getattr(self, fn)(**body)))
 
+    # ── 运营数字（迁移 20261123）──
+    def mainsite_stats_daily(self, p_day, p_humans):
+        return {'ok': True, 'day': p_day or '2026-11-22', 'tz': 'UTC', 'final': True,
+                'new_players': 2 if p_humans else 5, 'dau': 4 if p_humans else 104}
+
+    def mainsite_stats_leaderboard(self, p_week, p_limit, p_humans):
+        rows = [{'rank': 1, 'nickname': '甲', 'wins': 6, 'hearts': 4, 'battles': 7, 'account_id': ACC_A}]
+        return {'ok': True, 'week': p_week, 'total': 1, 'rows': rows}
+
     # ── 登录码 ──
     def mainsite_link_start(self, p_account, p_code, p_device):
         if not CODE_RE.match(p_code or ''):
@@ -523,6 +532,71 @@ def part_c():
         msrv.shutdown()
 
 
+def part_e():
+    print('=== E 运营数字（2026-11-23）===')
+    db = FakeDB()
+    MON = 1795392000                      # 2026-11-23 周一 00:00 UTC
+    gw = GW.Gateway(SECRET, 'https://turtlepoll.example', rpc=db.rpc, auth=FakeAuth({}))
+    gsrv = GW.serve(gw, port=0, quiet=True)
+    threading.Thread(target=gsrv.serve_forever, daemon=True).start()
+    g = 'http://127.0.0.1:%d' % gsrv.server_address[1]
+
+    def get(path, t, secret=SECRET):
+        gw.now = lambda: t
+        return MOCK._call('GET', g + path, secret, None, ts=int(t))
+    try:
+        t = MON + 3600
+        c, r = raw('GET', g + '/mainsite/stats/daily')
+        ok('E1 不带签名 ⇒ 401', c == 401 and r == {'ok': False, 'error': 'bad arena signature'}, '%s %s' % (c, r))
+        c, r = get('/mainsite/stats/daily', t, secret='wrong')
+        ok('E1 签错密钥 ⇒ 401、库一次没问', c == 401 and not db.names('mainsite_stats_daily'), '%s %s' % (c, r))
+        c, r = get('/mainsite/stats/daily', t)
+        ok('E2 不带 day ⇒ p_day=null、默认只算真人; 回包六个字段', c == 200
+           and db.names('mainsite_stats_daily')[-1][1] == {'p_day': None, 'p_humans': True}
+           and r == {'ok': True, 'day': '2026-11-22', 'tz': 'UTC', 'final': True, 'new_players': 2, 'dau': 4}, '%s %s' % (c, r))
+        c, r = get('/mainsite/stats/daily?day=2026-11-20', t)
+        ok('E3 day=2026-11-20 原样传给库', db.names('mainsite_stats_daily')[-1][1] == {'p_day': '2026-11-20', 'p_humans': True}
+           and r.get('day') == '2026-11-20', str(r))
+        n0 = len(db.names('mainsite_stats_daily'))
+        bad = [get('/mainsite/stats/daily?day=' + v, t)[1] for v in ('20261120', '2026-13-01', '2026-02-30', '2026-11-20%27')]
+        ok('E4 day 格式 / 日期不对 ⇒ bad_day、不问库', all(x == {'ok': False, 'error': 'bad_day'} for x in bad)
+           and len(db.names('mainsite_stats_daily')) == n0, str(bad))
+        c, r = get('/mainsite/stats/leaderboard', t)
+        ok('E5 不带 week（周一 01:00）⇒ 上一周 2026-11-16 = epoch 1794787200', c == 200
+           and db.names('mainsite_stats_leaderboard')[-1][1] == {'p_week': MON - 7 * 86400, 'p_limit': 100, 'p_humans': True}
+           and r.get('week') == '2026-11-16', '%s %s' % (db.names('mainsite_stats_leaderboard')[-1], r))
+        c, r = get('/mainsite/stats/leaderboard', MON + 7 * 86400 - 60)
+        ok('E5 不带 week（周日 23:59）⇒ 仍是上一周 2026-11-16', db.names('mainsite_stats_leaderboard')[-1][1]['p_week'] == MON - 7 * 86400,
+           str(db.names('mainsite_stats_leaderboard')[-1]))
+        c, r = get('/mainsite/stats/leaderboard?week=2026-11-23', t)
+        ok('E6 week=2026-11-23 ⇒ p_week = 1795392000', db.names('mainsite_stats_leaderboard')[-1][1]['p_week'] == MON, str(r))
+        c, r = get('/mainsite/stats/leaderboard?week=2026-11-24', t)
+        ok('E6 week 不是周一 ⇒ week_not_monday', r == {'ok': False, 'error': 'week_not_monday'}, str(r))
+        c, r = get('/mainsite/stats/leaderboard?week=2026-11-16', t)
+        ok('E7 每行只有 rank/nickname/wins/hearts/battles（库多给的 account_id 不漏出去）',
+           r.get('rows') == [{'rank': 1, 'nickname': '甲', 'wins': 6, 'hearts': 4, 'battles': 7}] and r.get('total') == 1, str(r))
+        gw.stats_humans = False
+        c, r = get('/mainsite/stats/daily', t)
+        ok('E8 MAINSITE_STATS_HUMANS=0 ⇒ p_humans=false（含陪练号那一套）',
+           db.names('mainsite_stats_daily')[-1][1]['p_humans'] is False and r.get('dau') == 104, str(r))
+        gw.stats_humans = True
+        # 频率：换一个新网关（窗口从零开始）
+        gw2 = GW.Gateway(SECRET, 'https://turtlepoll.example', rpc=db.rpc, auth=FakeAuth({}))
+        gsrv.gw = gw2
+        gw = gw2
+        t2 = MON + 7200
+        codes = [get('/mainsite/stats/daily', t2 + i * 0.5)[0] for i in range(GW.STATS_PER_MIN + 1)]
+        ok('E9 同一路径一分钟内第 %d 次 ⇒ 429，前 %d 次 200' % (GW.STATS_PER_MIN + 1, GW.STATS_PER_MIN),
+           codes[:-1] == [200] * GW.STATS_PER_MIN and codes[-1] == 429, str(codes))
+        c, r = get('/mainsite/stats/leaderboard', t2 + 20)
+        ok('E9 另一条路径各算各的 ⇒ 200', c == 200, str(c))
+        c, r = get('/mainsite/stats/daily', t2 + 61)
+        ok('E9 过了 60 秒 ⇒ 恢复 200', c == 200, str(c))
+        ok('E9 告诉主站的数 = 30', GW.STATS_PER_MIN == 30)
+    finally:
+        gsrv.shutdown()
+
+
 def part_d():
     print('=== D 发件箱 ===')
     ok('D0 开关默认关（MAINSITE_OUTBOX 没设）', RP.outbox_enabled() is False)
@@ -612,8 +686,9 @@ def main():
     part_b()
     part_c()
     part_d()
+    part_e()
     print('')
-    if fails[0] == 0 and n[0] >= 77:
+    if fails[0] == 0 and n[0] >= 94:
         print('ALL OK — 签名与主站 Go 逐字节相同; 网关三种篡改被拒、重放同结果; 发件箱 ok:false 停 / 5xx·401 重试 / settle 等 started (%d 条)' % n[0])
         return 0
     print('FAIL x%d (断言 %d 条)' % (fails[0], n[0]))
