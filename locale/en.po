@@ -5878,3 +5878,99 @@ msgstr "Every {C:BambooSystem.GROW_CD} seconds, Bamboo Turtle charges up. Its ne
 
 msgid "竹叶龟甩出一道叶刃，造成 {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT} 物理伤害。"
 msgstr "Bamboo Turtle flings a leaf blade, dealing {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT} physical damage."
+
+msgid "竹叶龟回复 {E:HP*BambooSystem.REGEN_SELF} 生命值，并为每名龟队友提供其 {C:BambooSystem.REGEN_ALLY_SHIELD%}% 最大生命值的护盾，持续 {C:BambooSystem.REGEN_SHIELD_SEC} 秒。若没有其他龟队友存活，转而回复 {E:HP*BambooSystem.REGEN_SOLO} 生命值。"
+msgstr "Bamboo Turtle heals {E:HP*BambooSystem.REGEN_SELF} and gives each turtle teammate a shield equal to {C:BambooSystem.REGEN_ALLY_SHIELD%}% of its max health for {C:BambooSystem.REGEN_SHIELD_SEC} seconds. If no other turtle teammates are alive, it heals {E:HP*BambooSystem.REGEN_SOLO} instead."
+
+msgid "竹叶龟伸出竹藤钩住全场最远的敌人，造成 {N:BambooSystem.SMACK_ATK_COEF*ATK} 物理伤害并眩晕 {C:BambooSystem.SMACK_STUN} 秒，同时将其拉拽到自己身前。\n被钩中的敌人陷入冰寒，攻击力和移动速度各降低 {C:BambooSystem.SMACK_CHILL_DOWN%}%，持续 {C:BambooSystem.SMACK_CHILL_SEC} 秒。"
+msgstr "Bamboo Turtle hooks the farthest enemy on the field with a bamboo vine, dealing {N:BambooSystem.SMACK_ATK_COEF*ATK} physical damage, stunning it for {C:BambooSystem.SMACK_STUN} seconds and pulling it in front of itself.\nThe hooked enemy is Chilled, losing {C:BambooSystem.SMACK_CHILL_DOWN%}% attack damage and move speed for {C:BambooSystem.SMACK_CHILL_SEC} seconds."
+
+msgid "竹叶龟以目标为中心蓄力 {C:BambooSystem.SPIKE_WINDUP} 秒，随后竹刺破地而出，对范围内的敌人造成 {N:BambooSystem.SPIKE_ATK_COEF*ATK} 外加 {C:BambooSystem.SPIKE_MAXHP_PCT%}% 自身最大生命值的物理伤害，并将其击飞 {C:BambooSystem.SPIKE_KNOCK_SEC} 秒。"
+msgstr "Bamboo Turtle charges for {C:BambooSystem.SPIKE_WINDUP} seconds around the target, then bamboo spikes burst from the ground, dealing {N:BambooSystem.SPIKE_ATK_COEF*ATK} + {C:BambooSystem.SPIKE_MAXHP_PCT%}% of its own max health as physical damage to enemies in the area and knocking them up for {C:BambooSystem.SPIKE_KNOCK_SEC} seconds."
+
+msgid "天使龟每段攻击命中敌人时，额外造成 {C:AngelSystem.JUDGE_CURHP%}% 目标当前生命值的魔法伤害。\n<span style=\"color:#8a93a0\">选择【平等】时，其每段伤害也会触发此效果。</span>"
+msgstr "Each of Angel Turtle's attack hits deals bonus magic damage equal to {C:AngelSystem.JUDGE_CURHP%}% of the target's current health.\n<span style=\"color:#8a93a0\">With [Equality], each of its hits also triggers this.</span>"
+
+msgid "天使龟攻击目标，造成 {N:AngelSystem.VERDICT_COEF*ATK} 物理伤害。"
+msgstr "Angel Turtle attacks the target, dealing {N:AngelSystem.VERDICT_COEF*ATK} physical damage."
+
+msgid "被动：天使龟首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的己方单位获得 {E:AngelSystem.BLESS_SHIELD*ATK} 护盾和 {C:AngelSystem.BLESS_HASTE%}% 攻击速度，持续 {C:AngelSystem.BLESS_SEC} 秒。"
+msgstr "Passive: the first time Angel Turtle dies, it revives once with {C:AngelSystem.REVIVE_HP_PCT%}% of its max health.\n\nActive: Angel Turtle gives the ally with the highest damage dealt a {E:AngelSystem.BLESS_SHIELD*ATK} shield and {C:AngelSystem.BLESS_HASTE%}% attack speed for {C:AngelSystem.BLESS_SEC} seconds."
+
+msgid "天使龟对目标斩出 {C:AngelSystem.EQUAL_SEGMENTS} 道圣光，共造成 {N:AngelSystem.EQUAL_TOTAL*ATK} 物理伤害，本次施法获得 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n若目标稀有度为 A 级及以上，额外造成 {T:AngelSystem.EQUAL_JUDGE_COEF*ATK} 外加 {C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损失生命值的真实伤害。\n每道圣光和对 A 级及以上目标的额外伤害都视为一次攻击，触发攻击时与命中时的装备效果。"
+msgstr "Angel Turtle slashes the target with {C:AngelSystem.EQUAL_SEGMENTS} strokes of holy light, dealing {N:AngelSystem.EQUAL_TOTAL*ATK} total physical damage, with {C:AngelSystem.EQUAL_LIFESTEAL%}% Lifesteal for this cast.\nIf the target's rarity is A or higher, it deals {T:AngelSystem.EQUAL_JUDGE_COEF*ATK} + {C:AngelSystem.EQUAL_JUDGE_LOST%}% of the target's missing health as bonus true damage.\nEach stroke and the bonus damage against A-or-higher targets count as attacks, triggering on-attack and on-hit item effects."
+
+msgid "寒冰龟射出冰锥，交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每个战场结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>"
+msgstr "Ice Turtle fires icicles that alternate between {P:IceSystem.CONE_ATK_COEF*ATK} physical and magic damage, gaining 1 Ice Pillar stack per attack.\nEach Ice Pillar stack grants {C:IceSystem.ICICLE_DEFMR%}% Armor and {C:IceSystem.ICICLE_DEFMR%}% Magic Resist, up to {C:IceSystem.ICICLE_MAX} stacks, reset at the end of each battle.\n<span style=\"color:#8a93a0\">With [Frost], each Ice Pillar stack gives it +{C:IceSystem.ICICLE_FROST_RADIUS%}% size and +{C:IceSystem.ICICLE_FROST_SEC} seconds of duration.</span>"
+
+msgid "寒冰龟在目标处降下冰霜领域，持续 {C:IceSystem.FROST_BASE_SEC} 秒。领域内的敌人魔抗降低 {C:IceSystem.FROST_MR_DOWN%}%，并每 {C:IceSystem.FROST_TICK_SEC} 秒受到 {M:IceSystem.FROST_ATK_COEF*ATK} 魔法伤害。\n每层冰柱使领域范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。"
+msgstr "Ice Turtle brings down a frost zone at the target for {C:IceSystem.FROST_BASE_SEC} seconds. Enemies inside lose {C:IceSystem.FROST_MR_DOWN%}% Magic Resist and take {M:IceSystem.FROST_ATK_COEF*ATK} magic damage every {C:IceSystem.FROST_TICK_SEC} seconds.\nEach Ice Pillar stack gives the zone +{C:IceSystem.ICICLE_FROST_RADIUS%}% size and +{C:IceSystem.ICICLE_FROST_SEC} seconds of duration."
+
+msgid "寒冰龟冰封目标，造成 {M:IceSystem.FREEZE_DMG*ATK} 魔法伤害，并回复相当于自身护甲与魔抗之和的生命值。\n拥有 {C:IceSystem.ICICLE_MAX} 层冰柱后，额外眩晕目标 {C:IceSystem.FREEZE_STUN_SEC} 秒。"
+msgstr "Ice Turtle freezes the target, dealing {M:IceSystem.FREEZE_DMG*ATK} magic damage and healing for its combined Armor and Magic Resist.\nAt {C:IceSystem.ICICLE_MAX} Ice Pillar stacks, it also stuns the target for {C:IceSystem.FREEZE_STUN_SEC} seconds."
+
+msgid "寒冰龟使包括自身在内的全体友军获得 {E:IceSystem.TEAM_SHIELD_PCT*HP} 护盾，持续 {C:IceSystem.TEAM_SHIELD_SEC} 秒。\n护盾到期、被打破或持盾者阵亡时爆裂，对其附近的敌人造成 {M:IceSystem.TEAM_BURST_COEF*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">场上没有其他友军时，护盾为 {E:IceSystem.TEAM_SHIELD_SOLO_PCT*HP}，爆裂伤害为 {M:IceSystem.TEAM_BURST_SOLO_COEF*ATK}。</span>"
+msgstr "Ice Turtle gives all allies, including itself, a {E:IceSystem.TEAM_SHIELD_PCT*HP} shield for {C:IceSystem.TEAM_SHIELD_SEC} seconds.\nWhen a shield expires, breaks or its holder dies, it bursts, dealing {M:IceSystem.TEAM_BURST_COEF*ATK} magic damage to nearby enemies.\n<span style=\"color:#8a93a0\">With no other allies on the field, the shield is {E:IceSystem.TEAM_SHIELD_SOLO_PCT*HP} and the burst deals {M:IceSystem.TEAM_BURST_SOLO_COEF*ATK}.</span>"
+
+msgid "忍者龟获得 {C:NinjaSystem.INSTINCT_CRIT%}% 暴击率、{C:NinjaSystem.INSTINCT_CRIT_DMG%}% 暴击伤害和 {C:NinjaSystem.INSTINCT_ARMOR_PEN} 护甲穿透。\n附近有敌人时，忍者龟自动冲刺斩击最近的敌人，对其造成 {N:NinjaSystem.DASH_MAIN_COEF*ATK} 物理伤害，对路径上的其他敌人造成 {N:NinjaSystem.DASH_SIDE_COEF*ATK} 物理伤害，并将命中的敌人击飞 {C:NinjaSystem.DASH_KNOCK_SEC} 秒。\n<span style=\"color:#8a93a0\">同一敌人 {C:NinjaSystem.DASH_TARGET_CD} 秒内只会被冲刺一次。</span>"
+msgstr "Ninja Turtle gains {C:NinjaSystem.INSTINCT_CRIT%}% Crit Chance, {C:NinjaSystem.INSTINCT_CRIT_DMG%}% Crit Damage and {C:NinjaSystem.INSTINCT_ARMOR_PEN} Armor Pen.\nWith enemies nearby, Ninja Turtle automatically dashes through the nearest one, dealing {N:NinjaSystem.DASH_MAIN_COEF*ATK} physical damage to it and {N:NinjaSystem.DASH_SIDE_COEF*ATK} physical damage to other enemies in the path, knocking those hit up for {C:NinjaSystem.DASH_KNOCK_SEC} seconds.\n<span style=\"color:#8a93a0\">The same enemy can be dashed at most once every {C:NinjaSystem.DASH_TARGET_CD} seconds.</span>"
+
+msgid "忍者龟斩击目标，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害并施加 {E:NinjaSystem.SLASH_BLEED_ATK*ATK} 层流血，暴击时转而施加 {E:NinjaSystem.SLASH_BLEED_ATK_CRIT*ATK} 层。"
+msgstr "Ninja Turtle slashes the target, dealing {N:NinjaSystem.SLASH_ATK_COEF*ATK} physical damage and applying {E:NinjaSystem.SLASH_BLEED_ATK*ATK} Bleed, or {E:NinjaSystem.SLASH_BLEED_ATK_CRIT*ATK} on a crit."
+
+msgid "被动：忍者龟获得 {C:NinjaSystem.FOOT_DODGE%}% 闪避和 {C:NinjaSystem.FOOT_CRIT%}% 暴击率。\n\n主动：忍者龟向目标投掷手里剑，造成 {N:NinjaSystem.SHURIKEN_COEF*ATK} 物理伤害。暴击时其中 {E:NinjaSystem.SHURIKEN_TRUE_BASE+NinjaSystem.SHURIKEN_TRUE_PER_LV*LV}% 转为真实伤害。"
+msgstr "Passive: Ninja Turtle gains {C:NinjaSystem.FOOT_DODGE%}% Dodge and {C:NinjaSystem.FOOT_CRIT%}% Crit Chance.\n\nActive: Ninja Turtle throws a shuriken at the target, dealing {N:NinjaSystem.SHURIKEN_COEF*ATK} physical damage. On a crit, {E:NinjaSystem.SHURIKEN_TRUE_BASE+NinjaSystem.SHURIKEN_TRUE_PER_LV*LV}% of it becomes true damage."
+
+msgid "忍者龟扔出炸弹，对落点附近的敌人造成 {N:NinjaSystem.BOMB_ATK_COEF*ATK} 物理伤害并使其护甲降低 {C:NinjaSystem.BOMB_DEF_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。"
+msgstr "Ninja Turtle throws a bomb that deals {N:NinjaSystem.BOMB_ATK_COEF*ATK} physical damage to enemies near where it lands and reduces their Armor by {C:NinjaSystem.BOMB_DEF_DOWN%}% for {C:RealtimeBattle3DScene.BUFF_SEC} seconds."
+
+msgid "忍者龟获得 {C:NinjaSystem.BACKSTAB_PEN} 护甲穿透，持续 {C:NinjaSystem.BACKSTAB_PEN_SEC} 秒，随后闪现到全场最远的敌人身后背刺 {C:NinjaSystem.BACKSTAB_SEGMENTS} 段，共造成 {N:NinjaSystem.BACKSTAB_SEG_COEF*ATK*NinjaSystem.BACKSTAB_SEGMENTS} 物理伤害，之后继续攻击该敌人。"
+msgstr "Ninja Turtle gains {C:NinjaSystem.BACKSTAB_PEN} Armor Pen for {C:NinjaSystem.BACKSTAB_PEN_SEC} seconds, then blinks behind the farthest enemy on the field and backstabs it {C:NinjaSystem.BACKSTAB_SEGMENTS} times for {N:NinjaSystem.BACKSTAB_SEG_COEF*ATK*NinjaSystem.BACKSTAB_SEGMENTS} total physical damage, then keeps attacking that enemy."
+
+msgid "变脸龟有远程和近战两种形态。释放技能时自动切换形态，再施放该形态的技能。\n近战形态获得额外的最大生命值、护甲、魔抗和护盾，但攻击力降低。\n切换形态后的下一次攻击会得到强化。"
+msgstr "Two-Face Turtle has a ranged form and a melee form. Casting an ability automatically switches forms, then casts that form's ability.\nMelee form gains bonus max health, Armor, Magic Resist and a shield, but loses attack damage.\nThe next attack after switching forms is empowered."
+
+msgid "变脸龟远程形态射出灵能弹，近战形态挥砍，分别造成 {N:TwoHeadSystem.BASIC_RANGED_COEF*ATK} 和 {N:TwoHeadSystem.BASIC_MELEE_COEF*ATK} 物理伤害。"
+msgstr "Two-Face Turtle fires a psi bolt in ranged form and slashes in melee form, dealing {N:TwoHeadSystem.BASIC_RANGED_COEF*ATK} and {N:TwoHeadSystem.BASIC_MELEE_COEF*ATK} physical damage respectively."
+
+msgid "远程形态：变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} 外加 {N:TwoHeadSystem.STRIKE_RANGED_MAXHP*100+TwoHeadSystem.STRIKE_RANGED_MAXHP_PER_ATK*100*ATK}% 目标最大生命值的物理伤害。\n近战形态：变脸龟跃向目标并锤击地面，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK+HP*TwoHeadSystem.STRIKE_MELEE_SELF_MAXHP} 物理伤害，并获得相当于对目标所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。"
+msgstr "Ranged form: Two-Face Turtle fires a psi shell that explodes on the first enemy hit, dealing {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} + {N:TwoHeadSystem.STRIKE_RANGED_MAXHP*100+TwoHeadSystem.STRIKE_RANGED_MAXHP_PER_ATK*100*ATK}% of the target's max health as physical damage to nearby enemies.\nMelee form: Two-Face Turtle leaps at the target and hammers the ground, dealing {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK+HP*TwoHeadSystem.STRIKE_MELEE_SELF_MAXHP} physical damage to nearby enemies, and gains a shield equal to {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% of the damage dealt to the target for {C:TwoHeadSystem.STRIKE_SHIELD_SEC} seconds."
+
+msgid "远程形态：变脸龟对目标造成 {T:TwoHeadSystem.DISRUPT_TRUE*ATK} 真实伤害，施加 {C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% 治疗削减，持续 {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒，并破坏其 {C:TwoHeadSystem.DISRUPT_SHIELD_BREAK%}% 护盾。\n近战形态：变脸龟对目标造成 {N:TwoHeadSystem.ABSORB_ATK_COEF*ATK} 外加 {C:TwoHeadSystem.ABSORB_MAXHP_PCT%}% 目标最大生命值的物理伤害，并回复 {E:ATK*TwoHeadSystem.ABSORB_HEAL_ATK} 外加 {C:TwoHeadSystem.ABSORB_HEAL_LOST%}% 自身已损失生命值。"
+msgstr "Ranged form: Two-Face Turtle deals {T:TwoHeadSystem.DISRUPT_TRUE*ATK} true damage to the target, applies {C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% Grievous Wounds for {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} seconds, and destroys {C:TwoHeadSystem.DISRUPT_SHIELD_BREAK%}% of its shield.\nMelee form: Two-Face Turtle deals {N:TwoHeadSystem.ABSORB_ATK_COEF*ATK} + {C:TwoHeadSystem.ABSORB_MAXHP_PCT%}% of the target's max health as physical damage and heals {E:ATK*TwoHeadSystem.ABSORB_HEAL_ATK} + {C:TwoHeadSystem.ABSORB_HEAL_LOST%}% of its missing health."
+
+msgid "被动：变脸龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。变脸龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：变脸龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成 {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 物理伤害和 {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 真实伤害并击飞目标。每次释放后段数 +1，持续到本战场结束。"
+msgstr "Passive: after spawning, Two-Face Turtle no longer switches forms and always fights at range, without the post-switch empowered attacks. It gains the melee form's max health, Armor, Magic Resist and shield bonuses, and its attack damage is likewise reduced by {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%. Each attack or ability hit it takes permanently grants 1 Armor and 1 Magic Resist, up to {C:TwoHeadSystem.FUSION_TOUGH_CAP} each.\n\nActive: Two-Face Turtle fires {C:TwoHeadSystem.FUSION_WAVE_BASE} psi waves, alternating between {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK} physical damage and {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK} true damage, and knocking up the target. Each cast adds 1 more wave until the battle ends."
+
+msgid "幽灵龟攻击目标，造成 {N:GhostSystem.BASIC_PHYS*ATK} 物理伤害和 {T:GhostSystem.BASIC_TRUE*ATK} 真实伤害。"
+msgstr "Ghost Turtle attacks the target, dealing {N:GhostSystem.BASIC_PHYS*ATK} physical damage and {T:GhostSystem.BASIC_TRUE*ATK} true damage."
+
+msgid "幽灵龟对目标造成 {M:GhostSystem.RAID_MAGIC*ATK} 魔法伤害并将其击飞，回复相当于该伤害 {C:GhostSystem.RAID_LIFESTEAL%}% 的生命值，并获得 {C:GhostSystem.RAID_DODGE%}% 闪避，持续 {C:GhostSystem.RAID_DODGE_SEC} 秒。"
+msgstr "Ghost Turtle deals {M:GhostSystem.RAID_MAGIC*ATK} magic damage to the target and knocks it up, heals for {C:GhostSystem.RAID_LIFESTEAL%}% of that damage, and gains {C:GhostSystem.RAID_DODGE%}% Dodge for {C:GhostSystem.RAID_DODGE_SEC} seconds."
+
+msgid "幽灵龟对目标释放灵魂风暴，造成两段共 {M:GhostSystem.STORM_DMG*ATK} 魔法伤害并施加 {C:GhostSystem.STORM_CURSE_SEC} 秒诅咒。\n若目标已被诅咒，转而造成 {T:GhostSystem.STORM_CURSED_TRUE*ATK} 真实伤害，并使诅咒持续时间延长 {C:GhostSystem.STORM_CURSE_SEC} 秒。"
+msgstr "Ghost Turtle unleashes a soul storm on the target, dealing {M:GhostSystem.STORM_DMG*ATK} magic damage over two hits and cursing it for {C:GhostSystem.STORM_CURSE_SEC} seconds.\nIf the target is already cursed, it deals {T:GhostSystem.STORM_CURSED_TRUE*ATK} true damage instead and extends the Curse by {C:GhostSystem.STORM_CURSE_SEC} seconds."
+
+msgid "幽灵龟进入虚化状态，持续 {C:GhostSystem.PHASE_SEC} 秒，期间受到的物理伤害降低 {C:GhostSystem.PHASE_PHYS_CUT%}%，并对目标攻击 {C:GhostSystem.PHASE_SEGMENTS} 段，共造成 {T:GhostSystem.PHASE_TOTAL*ATK} 真实伤害。\n<span style=\"color:#8a93a0\">虚化期间龟能停止充能。</span>"
+msgstr "Ghost Turtle becomes Phased for {C:GhostSystem.PHASE_SEC} seconds, taking {C:GhostSystem.PHASE_PHYS_CUT%}% less physical damage, and strikes the target {C:GhostSystem.PHASE_SEGMENTS} times for {T:GhostSystem.PHASE_TOTAL*ATK} total true damage.\n<span style=\"color:#8a93a0\">Energy stops charging while Phased.</span>"
+
+msgid "钻石龟攻击目标，造成 {N:DiamondSystem.CUT_ATK_COEF*ATK+DiamondSystem.CUT_DEF_COEF*DEF+DiamondSystem.CUT_MR_COEF*MR} 物理伤害。"
+msgstr "Diamond Turtle attacks the target, dealing {N:DiamondSystem.CUT_ATK_COEF*ATK+DiamondSystem.CUT_DEF_COEF*DEF+DiamondSystem.CUT_MR_COEF*MR} physical damage."
+
+msgid "钻石龟获得 {E:HP*DiamondSystem.FORTIFY_SHIELD_PCT} 护盾，持续 {C:DiamondSystem.FORTIFY_SHIELD_SEC} 秒，并提升 {E:ATK*DiamondSystem.FORTIFY_RESIST_COEF} 护甲和 {M:ATK*DiamondSystem.FORTIFY_RESIST_COEF} 魔抗，持续 {C:DiamondSystem.FORTIFY_RESIST_SEC} 秒。"
+msgstr "Diamond Turtle gains a {E:HP*DiamondSystem.FORTIFY_SHIELD_PCT} shield for {C:DiamondSystem.FORTIFY_SHIELD_SEC} seconds, plus {E:ATK*DiamondSystem.FORTIFY_RESIST_COEF} Armor and {M:ATK*DiamondSystem.FORTIFY_RESIST_COEF} Magic Resist for {C:DiamondSystem.FORTIFY_RESIST_SEC} seconds."
+
+msgid "被动：钻石龟登场时自身护甲与魔抗再提升 {C:DiamondSystem.SMASH_SELF_RESIST_BONUS%}%。\n\n主动：钻石龟短暂蓄力后冲撞目标，造成 {N:DiamondSystem.SMASH_RESIST_COEF*(DEF+MR)+DiamondSystem.SMASH_ATK_COEF*ATK} 物理伤害，将其击退并击飞，同时施加 {E:DiamondSystem.SMASH_BLEED_ATK*ATK+DiamondSystem.SMASH_BLEED_RESIST*(DEF+MR)} 层流血与 {C:DiamondSystem.SMASH_SLOW_PCT%}% 减速，减速持续 {C:DiamondSystem.SMASH_SLOW_SEC} 秒。"
+msgstr "Passive: on spawn, Diamond Turtle's own Armor and Magic Resist increase by another {C:DiamondSystem.SMASH_SELF_RESIST_BONUS%}%.\n\nActive: Diamond Turtle briefly charges, then rams the target, dealing {N:DiamondSystem.SMASH_RESIST_COEF*(DEF+MR)+DiamondSystem.SMASH_ATK_COEF*ATK} physical damage, knocking it back and up, and applying {E:DiamondSystem.SMASH_BLEED_ATK*ATK+DiamondSystem.SMASH_BLEED_RESIST*(DEF+MR)} Bleed and a {C:DiamondSystem.SMASH_SLOW_PCT%}% slow for {C:DiamondSystem.SMASH_SLOW_SEC} seconds."
+
+msgid "财神龟攻击目标，造成 {N:ATK*FortuneSystem.SWORD_ATK_COEF + ATK*FortuneSystem.SWORD_GOLD_COEF*goldCoins} 物理伤害。"
+msgstr "Fortune Turtle attacks the target, dealing {N:ATK*FortuneSystem.SWORD_ATK_COEF + ATK*FortuneSystem.SWORD_GOLD_COEF*goldCoins} physical damage."
+
+msgid "财神龟掷出骰子，获得 {C:FortuneSystem.DICE_MIN}~{C:FortuneSystem.DICE_MAX} 枚金币并回复 {E:HP*FortuneSystem.DICE_HEAL_PCT} 生命值。"
+msgstr "Fortune Turtle rolls dice for {C:FortuneSystem.DICE_MIN}–{C:FortuneSystem.DICE_MAX} Gold and heals {E:HP*FortuneSystem.DICE_HEAL_PCT}."
+
+msgid "财神龟蓄力后逐枚投出全部金币，每枚造成 {N:ATK*FortuneSystem.ALLIN_COIN_COEF} 物理伤害和 {T:ATK*FortuneSystem.ALLIN_COIN_COEF} 真实伤害。目标阵亡时改投最近的敌人，投币期间免疫控制。\n首次释放时获得等于金币数的护盾，持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒。\n<span style=\"color:#8a93a0\">每个战场只能投一次。此后本技能变为：消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，获得金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的护盾，持续 {C:FortuneSystem.GOLD_SHIELD_SEC} 秒，不消耗金币，没有金币时不释放。持有该护盾期间龟能停止充能。</span>"
+msgstr "Fortune Turtle charges up, then throws all its Gold one coin at a time. Each coin deals {N:ATK*FortuneSystem.ALLIN_COIN_COEF} physical damage and {T:ATK*FortuneSystem.ALLIN_COIN_COEF} true damage. If the target dies, it switches to the nearest enemy. Immune to crowd control while throwing.\nThe first cast grants a shield equal to its Gold for {C:FortuneSystem.ALLIN_SHIELD_SEC} seconds.\n<span style=\"color:#8a93a0\">It can only throw once per battle. After that, this ability becomes: spend {C:FortuneSystem.GOLD_SHIELD_COST} Energy to gain a Gold × {C:FortuneSystem.GOLD_SHIELD_MULT} shield for {C:FortuneSystem.GOLD_SHIELD_SEC} seconds without spending Gold; it won't cast with no Gold. Energy stops charging while it holds that shield.</span>"
+
+msgid "财神龟首次释放时随机获得 1 件 1~3 费的 1★ 临时装备，龟能消耗随之变为 {C:FortuneSystem.BUY_COST}。\n之后每次释放使该装备提升 1 星，升至 {C:FortuneSystem.BUY_MAX_STAR}★ 后龟能消耗降至 {C:FortuneSystem.BUY_COST_MAXED}，此后每次释放回复 {E:ATK*FortuneSystem.BUY_FULL_HEAL_COEF} 生命值。\n<span style=\"color:#8a93a0\">临时装备不占背包栏位，战斗结束后消失。</span>"
+msgstr "On its first cast, Fortune Turtle gains a random 1–3 cost 1★ temporary item, and its Energy cost becomes {C:FortuneSystem.BUY_COST}.\nEach later cast raises that item by 1 star. At {C:FortuneSystem.BUY_MAX_STAR}★, the Energy cost drops to {C:FortuneSystem.BUY_COST_MAXED}, and each cast from then on heals {E:ATK*FortuneSystem.BUY_FULL_HEAL_COEF}.\n<span style=\"color:#8a93a0\">Temporary items take no Inventory slot and disappear after the battle.</span>"
