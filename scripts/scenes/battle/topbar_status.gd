@@ -498,8 +498,8 @@ func _build_popup() -> void:
 ## 一行说明。数字从战斗常量来(SD_STEP / SD_AMP_PER / SD_HEAL_MULT), 不写死。
 func badge_text(kind: String) -> String:
 	if kind == "amp":
-		return "加时：每 %d 秒全场伤害 +%d%%" % [int(battle.SD_STEP), int(round(float(battle.SD_AMP_PER) * 100.0))]
-	return "加时：治疗效果 -%d%%" % int(round((1.0 - float(battle.SD_HEAL_MULT)) * 100.0))
+		return Lang.t("加时：每 %d 秒全场伤害 +%d%%") % [int(battle.SD_STEP), int(round(float(battle.SD_AMP_PER) * 100.0))]
+	return Lang.t("加时：治疗效果 -%d%%") % int(round((1.0 - float(battle.SD_HEAL_MULT)) * 100.0))
 
 
 func _is_press(ev: InputEvent) -> bool:

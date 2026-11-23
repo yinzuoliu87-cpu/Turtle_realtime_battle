@@ -127,7 +127,7 @@ static func stage_tag(st: Dictionary) -> String:
 	var mi := int(st.get("match_i", 0))
 	var mn := int(st.get("match_n", 0))
 	if mi >= 1 and mn > 1:
-		t += "第 %d 场" % mi
+		t += Lang.t("第 %d 场") % mi
 	return t
 
 
@@ -135,20 +135,20 @@ static func stage_tag(st: Dictionary) -> String:
 static func go_label(nx: Dictionary) -> String:
 	if str(nx.get("a", "")) == "" or str(nx.get("b", "")) == "":
 		return ""
-	return "观看 %s 对 %s" % [str(nx["a"]), str(nx["b"])]
+	return Lang.t("观看 %s 对 %s") % [str(nx["a"]), str(nx["b"])]
 
 
 ## 下一场条: 「下一场 20:14 开播：X 对 Y」(时刻按设备时区; 结算中 ⇒ 「下一场即将开播：X 对 Y」; 没排上时刻只写对阵)。
 static func next_line(nx: Dictionary) -> String:
 	if str(nx.get("a", "")) == "" or str(nx.get("b", "")) == "":
 		return ""
-	var pair := "%s 对 %s" % [str(nx["a"]), str(nx["b"])]
+	var pair := Lang.t("%s 对 %s") % [str(nx["a"]), str(nx["b"])]
 	var at := int(nx.get("at", 0))
 	if at > 0:
-		return "下一场 %s 开播：%s" % [P2C.local_hhmm(at), pair]
+		return Lang.t("下一场 %s 开播：%s") % [P2C.local_hhmm(at), pair]
 	if bool(nx.get("settling", false)):
-		return "下一场即将开播：%s" % pair
-	return "下一场：%s" % pair
+		return Lang.t("下一场即将开播：%s") % pair
+	return Lang.t("下一场：%s") % pair
 
 
 ## 出局卡那一句(G18): 「止步半决赛，不敌 X」; 没给轮次 ⇒ 「不敌 X」。

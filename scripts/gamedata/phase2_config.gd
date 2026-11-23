@@ -284,7 +284,7 @@ static func gauntlet_label(w: int, l: int) -> String:
 ##   玩家心里只有「4 胜晋级、3 负淘汰」, 不知道闯关赛共 6 场 ⇒ 括号里把规则说出来(共几场 / 未进行几场 / 按场发放)。
 ##   ★写法照商业游戏: 名词标签 + 数值 + 括号规则(荒野乱斗「您的挑战获胜奖励：<REWARD>」), 不写「你用 4 场就晋级了 / 省下的 / 照发」这类口语。
 static func gauntlet_bonus_line(saved: int, coins: int, xp: int) -> String:
-	return "提前晋级奖励：深海币 +%d、经验 +%d（闯关赛共 %d 场，未进行的 %d 场按场发放）" % [
+	return Lang.t("提前晋级奖励：深海币 +%d、经验 +%d（闯关赛共 %d 场，未进行的 %d 场按场发放）") % [
 		coins, xp, GAUNTLET_QUOTA, saved]
 
 
@@ -293,7 +293,7 @@ static func gauntlet_bonus_line(saved: int, coins: int, xp: int) -> String:
 ##   结束那一句不写「出局 / 失败」, 写「本周闯关赛已结束」(荒野乱斗 / 皇室战争结果页「挑战结束」)。
 static func gauntlet_settle_line(w: int, l: int) -> String:
 	var st: String = gauntlet_state(w, l)
-	var head: String = "闯关赛战绩 %s，" % gauntlet_label(w, l)
+	var head: String = Lang.t("闯关赛战绩 %s，") % gauntlet_label(w, l)
 	if st == GAUNTLET_IN:
 		return head + "已晋级周日决赛日。"
 	if st == GAUNTLET_OUT:
@@ -306,7 +306,7 @@ static func gauntlet_settle_line(w: int, l: int) -> String:
 		return head + "再胜 1 场即可晋级决赛日。"
 	if need_l == 1:
 		return head + "再负 1 场即淘汰。"
-	return head + "再胜 %d 场晋级决赛日，再负 %d 场淘汰。" % [need_w, need_l]
+	return head + Lang.t("再胜 %d 场晋级决赛日，再负 %d 场淘汰。") % [need_w, need_l]
 
 
 ## 这个战绩现在是什么状态。
@@ -390,7 +390,7 @@ static func local_wd_hhmm(utc_ts: int) -> String:
 	var d: Dictionary = local_dict(utc_ts)
 	var w: int = int(d.get("weekday", 0))
 	var wi: int = 7 if w == 0 else w
-	return "周%s %02d:%02d" % [WEEKDAY_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
+	return Lang.t("周%s %02d:%02d") % [WEEKDAY_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 
 ## 周日分组(finals_seat)第一次跑之前吗? 服务端在这之前对「报了名还没分组」的人回 too_few, 不能照字面念给玩家。
@@ -707,7 +707,7 @@ static func beta_badge_text() -> String:
 		return _SE.BADGE_TEXT
 	var ts: int = now_utc()
 	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
-	return "%s · 服务端时间 周%s %02d:%02d UTC" % [_SE.BADGE_TEXT, WEEKDAY_CN[iso_weekday_utc(ts) - 1],
+	return Lang.t("%s · 服务端时间 周%s %02d:%02d UTC") % [_SE.BADGE_TEXT, WEEKDAY_CN[iso_weekday_utc(ts) - 1],
 		int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 ## 门禁用: 清掉内存与落盘(回到「从没连上过」)。
@@ -873,7 +873,7 @@ static func travel_reset() -> void:
 ## 「测试时间 周六 15:00 UTC」—— 主菜单角标与设置页共用。
 static func travel_label(ts: int) -> String:
 	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
-	return "测试时间 周%s %02d:%02d UTC" % [WEEKDAY_CN[iso_weekday_utc(ts) - 1],
+	return Lang.t("测试时间 周%s %02d:%02d UTC") % [WEEKDAY_CN[iso_weekday_utc(ts) - 1],
 		int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 ## 主菜单角标要显示的字: 没穿越 ⇒ ""(角标不建)。
@@ -1331,9 +1331,9 @@ static func nickname_valid(raw: String) -> bool:
 static func nickname_error(raw: String) -> String:
 	var s := nickname_clean(raw)
 	if s.length() < NICK_MIN:
-		return "昵称至少 %d 个字" % NICK_MIN
+		return Lang.t("昵称至少 %d 个字") % NICK_MIN
 	if s.length() > NICK_MAX:
-		return "昵称最多 %d 个字（当前 %d 个）" % [NICK_MAX, s.length()]
+		return Lang.t("昵称最多 %d 个字（当前 %d 个）") % [NICK_MAX, s.length()]
 	return ""
 
 

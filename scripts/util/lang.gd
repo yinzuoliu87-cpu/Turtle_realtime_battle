@@ -59,5 +59,13 @@ static func toggle() -> String:
 	return code
 
 
+## 显示用的字先查译文（中文时原样返回，零开销）。带数字的句子先查模板再填数：`Lang.t("%d 胜") % n`。
+##   控件上的整句 Godot 会自动按译文表换，不用调这个；只有拼出来的句子（模板 % 值）要先过它。
+static func t(s: String) -> String:
+	if code == "zh":
+		return s
+	return String(TranslationServer.translate(s))
+
+
 static func is_en() -> bool:
 	return code == "en"

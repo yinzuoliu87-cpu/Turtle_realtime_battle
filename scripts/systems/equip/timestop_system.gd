@@ -216,7 +216,7 @@ func _ts_fire() -> void:
 			battle._equip_sys._eq_grant_energy(_c, _ie)
 			## ★飘字**不许写死数字** —— 原来这里是硬编码的 "+15龟能"，
 			##   常量改成三档后它会漂（同族 memory [[fb-system-coefficient-1-hides-missing-placeholder]]）。
-			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+%d龟能" % int(_ie), Color("#8fd4ff"))
+			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), Lang.t("+%d龟能") % int(_ie), Color("#8fd4ff"))
 		battle._equip_sys.tally.pop(_tp59)
 	_ts_total = _ts_remaining
 	_ts_sand_t = 0.0

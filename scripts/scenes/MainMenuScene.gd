@@ -1314,10 +1314,10 @@ func _gauntlet_status_line(now: int = 0) -> String:
 	##   模式卡这一行定宽, 那条长尾折行后中间一段被裁掉(实拍两比例都读不全), 而且「折算」是运营词。
 	##   ⇒ 这件事改由积分赛收盘后第一次进主菜单弹的那张卡说(WeekCloseCard.KIND_RANKED_IN), 这一行只留战绩读数。
 	if st == _P2C.GAUNTLET_IN:
-		return "闯关赛已晋级决赛日（%s）" % lab
+		return Lang.t("闯关赛已晋级决赛日（%s）") % lab
 	if st == _P2C.GAUNTLET_OUT:
-		return "闯关赛已出局（%s）" % lab
-	return "闯关赛胜场 %d/%d　负场 %d/%d" % [
+		return Lang.t("闯关赛已出局（%s）") % lab
+	return Lang.t("闯关赛胜场 %d/%d　负场 %d/%d") % [
 		w, int(_P2C.GAUNTLET_WINS_IN), l, int(_P2C.GAUNTLET_LOSSES_OUT)]
 
 
@@ -1345,13 +1345,13 @@ func _finals_status_line(now: int = 0) -> String:
 	if not _P2C.phase_mode_live(_P2C.PHASE_FINALS):
 		return ""
 	if GameState.gauntlet_state() == _P2C.GAUNTLET_IN:
-		return "决赛日 %s" % _wk().fd.entered_word(ts)   # 已晋级 / 已晋级冠军杯赛 / 已止步 / 本周冠军(跟着赛果走)
+		return Lang.t("决赛日 %s") % _wk().fd.entered_word(ts)   # 已晋级 / 已晋级冠军杯赛 / 已止步 / 本周冠军(跟着赛果走)
 	var lab: String = _P2C.gauntlet_label(
 		int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if GameState.gauntlet_eligible():
 		## ★打过闯关赛但没打进 —— **不许说他「没晋级」**(周一~五刚夸过他已过晋级线),
 		##   与 `finals_block_msg(false, true)` 同一个口径。
-		return "决赛日 闯关赛止步 %s" % lab
+		return Lang.t("决赛日 闯关赛止步 %s") % lab
 	return "决赛日 未晋级"
 
 
@@ -1409,7 +1409,7 @@ func today_counter_texts(now: int) -> Array:
 	if _phase_status_line(now) != "":
 		return []
 	return ["♥ %d/%d" % [int(GameState.hearts), int(_P2C.HEARTS_MAX)],
-		"本周对战 %d/%d" % [int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]]
+		Lang.t("本周对战 %d/%d") % [int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]]
 
 
 ## ★`now` = 本屏那一刻(由 `_status_row` 传入), 原样转给 `_goal_box` —— 一屏只读一次钟(verify_quota_clock ④)。
@@ -1420,7 +1420,7 @@ func _player_card(now: int) -> void:
 	var name_s := str(_BE.player_display_name())
 	## `my_tag()` 自己就带「#」(#XXXXXX) ⇒ 原样摆, 不再加前缀。
 	var tag_txt := tag_s
-	var season_txt := "第 %d 大轮" % int(GameState.season_id)
+	var season_txt := Lang.t("第 %d 大轮") % int(GameState.season_id)
 	var xp: Array = xp_readout()
 	var bf := _bold_font()
 	var name_w: float = bf.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, CARD_L0_FONT).x
@@ -1652,14 +1652,14 @@ func _mode_countdown(now: int) -> String:
 	##   开打时刻 = 周日分组那一刻(`FINALS_SEAT_HOUR_UTC`), 与赛程页决赛日卡「X 开始」同一个常量。
 	if _P2C.phase_at_utc(now) == _P2C.PHASE_GAUNTLET and str(GameState.gauntlet_state()) == _P2C.GAUNTLET_IN:
 		var seat: int = _P2C.finals_seat_ts(_P2C.week_anchor_utc(now))
-		return "距%s开始 %s" % [_P2C.STAGE_GROUP, _left_text(seat - now)]
+		return Lang.t("距%s开始 %s") % [_P2C.STAGE_GROUP, _left_text(seat - now)]
 	var left: int = _P2C.close_left_sec(now)
 	var kind := _close_kind_at(now)
 	match kind:
 		BK_MAINTENANCE:
 			return "维护中"
 		BK_COUNTDOWN:
-			return "距截止 %s" % _left_text(left)
+			return Lang.t("距截止 %s") % _left_text(left)
 		BK_LOCKED:
 			return "已截止"
 		BK_CLOSED_TODAY:
@@ -1668,7 +1668,7 @@ func _mode_countdown(now: int) -> String:
 			## 2026-10-31 P18: 17:30 收盘后也是倒计时 / 当前阶段; 对阵图的门在决赛日卡与主按钮上(menu_finals_day.gd)。
 			return _wk().fd.band_text(now)
 	var nxt: int = _next_phase_start(now)
-	return "距%s开始 %s" % [str(_P2C.PHASE_LABEL.get(_P2C.phase_at_utc(nxt), "")), _left_text(nxt - now)]
+	return Lang.t("距%s开始 %s") % [str(_P2C.PHASE_LABEL.get(_P2C.phase_at_utc(nxt), "")), _left_text(nxt - now)]
 
 
 ## 模式卡三行字: [今天的赛制, 第二行, 倒计时]。门禁直接喂时间戳调它。
@@ -1680,7 +1680,7 @@ func mode_card_lines(now: int) -> Array:
 	var title := str(_P2C.PHASE_LABEL.get(ph, ph))
 	## ★2026-10-06 照荒野乱斗开战按钮旁的模式卡(模式名 + 下面一行副标题 + 上沿倒计时), 不写规则句
 	##   (用户「每周最多16场，周五截止，这是什么意味呢」「哪个游戏这么说」)。规则收进赛程弹层。
-	var second := "第 %d 大轮" % int(GameState.season_id)
+	var second := Lang.t("第 %d 大轮") % int(GameState.season_id)
 	var st: String = _phase_status_line(now)
 	if st != "":
 		second = _strip_phase_head(st, title)
@@ -2094,8 +2094,8 @@ static func _phase_days_text(ph: String) -> String:
 	if d.x <= 0:
 		return ""
 	if d.x == d.y:
-		return "周%s" % _WD_CN[d.x - 1]
-	return "周%s ~ 周%s" % [_WD_CN[d.x - 1], _WD_CN[d.y - 1]]
+		return Lang.t("周%s") % _WD_CN[d.x - 1]
+	return Lang.t("周%s ~ 周%s") % [_WD_CN[d.x - 1], _WD_CN[d.y - 1]]
 
 
 ## 决赛日玩法上线了没有(门禁/实拍可用 `strip_finals_live_override` 按成是/否; -1 = 问规则)。
@@ -2150,7 +2150,7 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 		var start: int = anchor + (days.x - 1) * 86400
 		if ph == _P2C.PHASE_FINALS:
 			start = _utc_today_at(start, int(_P2C.FINALS_SEAT_HOUR_UTC))     # 决赛日按分组开赛那一刻(原赛程条「X 开赛」同一个时刻)
-		info["time"] = "%s 开始" % _local_wd_hhmm(start)
+		info["time"] = Lang.t("%s 开始") % _local_wd_hhmm(start)
 	## ── 要点 ──
 	var live: bool = _finals_live() if ph == _P2C.PHASE_FINALS else _P2C.phase_mode_live(ph)
 	var chips: Array = []
@@ -2159,7 +2159,7 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 		## 玩法没上线的阶段(周一休赛): 直说这天按什么规矩 —— 那一句只有 `phase_pending_note` 一处。
 		var note: String = _P2C.phase_pending_note(ph)
 		if note == "":
-			note = "规则同%s" % str(_P2C.PHASE_LABEL[_P2C.PHASE_RANKED])   # 手动按成「没上线」而表里查不到时的兜底
+			note = Lang.t("规则同%s") % str(_P2C.PHASE_LABEL[_P2C.PHASE_RANKED])   # 手动按成「没上线」而表里查不到时的兜底
 		pts.append(note)
 		if ph == _P2C.PHASE_REST:
 			pts.append("版本更新在本日进行")
@@ -2168,7 +2168,7 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 			_P2C.PHASE_RANKED:
 				chips = [[int(_P2C.HEARTS_MAX), "条生命"], [int(_P2C.RANKED_QUOTA), "场上限"], [int(_P2C.PROMOTE_WINS), "胜晋级"]]
 				pts = ["每负一场扣 1 条生命，耗尽即本周出局",
-					"%d 胜获得周六闯关赛资格" % int(_P2C.PROMOTE_WINS),
+					Lang.t("%d 胜获得周六闯关赛资格") % int(_P2C.PROMOTE_WINS),
 					_local_stamp(_P2C.ranked_close_ts(anchor))]
 			_P2C.PHASE_GAUNTLET:
 				chips = [[int(_P2C.GAUNTLET_WINS_IN), "胜晋级"], [int(_P2C.GAUNTLET_LOSSES_OUT), "负出局"], [int(_P2C.GAUNTLET_QUOTA), "场上限"]]
@@ -2182,7 +2182,7 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 						_P2C.local_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_SEAT_HOUR_UTC))),
 						_P2C.STAGE_CUP,
 						_P2C.local_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_START_HOUR_UTC)))],
-					"组冠军进入%s，单败决出冠军" % _P2C.STAGE_CUP,
+					Lang.t("组冠军进入%s，单败决出冠军") % _P2C.STAGE_CUP,
 					"冠军、亚军、四强、组冠军获得头衔"]
 	## ── 锁(只锁现在和以后; 过去的阶段只说「已结束」) ──
 	if state != "past":
@@ -2198,11 +2198,11 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 					if GameState.is_eliminated() and int(GameState.season_wins) >= int(_P2C.PROMOTE_WINS):
 						info["lock_text"] = "积分赛生命耗尽，本周无法参加"
 					else:
-						info["lock_text"] = "积分赛 %d 胜可参加" % int(_P2C.PROMOTE_WINS)
+						info["lock_text"] = Lang.t("积分赛 %d 胜可参加") % int(_P2C.PROMOTE_WINS)
 			_P2C.PHASE_FINALS:
 				if live and not (GameState.gauntlet_eligible() and GameState.gauntlet_state() == _P2C.GAUNTLET_IN):
 					info["locked"] = true
-					info["lock_text"] = "闯关赛 %d 胜可参加" % int(_P2C.GAUNTLET_WINS_IN)
+					info["lock_text"] = Lang.t("闯关赛 %d 胜可参加") % int(_P2C.GAUNTLET_WINS_IN)
 	## ── 门(只在当天): 周六「全场赛况」/ 周日「对阵图」—— 档位与原赛程条收盘块同一个分类 ──
 	if state == "now":
 		var kind: String = _close_kind_at(now)
@@ -2545,10 +2545,10 @@ func _open_bracket_map() -> void:
 ## 剩余秒 → 人话。跨天时说"天/小时"比说 47:00:00 好读。
 func _left_text(sec: int) -> String:
 	if sec >= 86400:
-		return "%d 天 %d 小时" % [sec / 86400, (sec % 86400) / 3600]
+		return Lang.t("%d 天 %d 小时") % [sec / 86400, (sec % 86400) / 3600]
 	if sec >= 3600:
-		return "%d 小时 %d 分" % [sec / 3600, (sec % 3600) / 60]
-	return "%d 分 %02d 秒" % [sec / 60, sec % 60]
+		return Lang.t("%d 小时 %d 分") % [sec / 3600, (sec % 3600) / 60]
+	return Lang.t("%d 分 %02d 秒") % [sec / 60, sec % 60]
 
 
 ## 当天(UTC)的某个整点 → unix 秒。用来把 FINALS_START_HOUR_UTC 变成一个具体时刻。
@@ -2559,7 +2559,7 @@ func _utc_today_at(ts: int, hour: int) -> int:
 
 
 func _local_stamp(utc_ts: int) -> String:
-	return "%s 截止" % _local_wd_hhmm(utc_ts)
+	return Lang.t("%s 截止") % _local_wd_hhmm(utc_ts)
 
 
 # ─── 路由 ───

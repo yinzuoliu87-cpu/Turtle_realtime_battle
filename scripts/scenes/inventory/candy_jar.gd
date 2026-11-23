@@ -47,7 +47,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	##   它只是因为这个弹框不在静止态的屏上才没被数到。改成「第 N 档」两不相犯。
 	## ★2026-09-28 去掉句首的 🍬 —— 纯装饰(「糖果罐」三个字就在后面),
 	##   而 emoji 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
-	ttl.text = "糖果罐第 %d 档奖励" % int(r.get("tier", 1))
+	ttl.text = Lang.t("糖果罐第 %d 档奖励") % int(r.get("tier", 1))
 	## 弹框标题: 像素标题字 24 号(原 22; docs/plans/20261027-UI美术规矩.md §4.1 D11)。框高 32 = 行高(字号 × 4/3)。
 	##   2026-10-27 标题字体换成缝合像素后「奖」字本身就有, 不再由平滑的后备字补(方案书 §8-4)。
 	ttl.add_theme_font_size_override("font_size", 24)
@@ -61,7 +61,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	##   `verify_inventory_layout` ④b 专门守着"界面上没有留下拿字符当币的旧写法"
 	##   (它扫的是静止态的屏, 所以这个弹框里的漏网之鱼它数不到)。图标画在文字前面。
 	var has_coins: bool = int(r.get("coins", 0)) > 0          # 每档随机给一套, 有的套没有深海币(2026-10-22)
-	var lines: Array = ["深海币 +%d" % int(r.get("coins", 0))] if has_coins else []
+	var lines: Array = [Lang.t("深海币 +%d") % int(r.get("coins", 0))] if has_coins else []
 	## 2026-10-22 改 12 档: 一档最多 2 件装备 + 大轮经验 + 临时等级器(每档 2~4 项)
 	for e in r.get("equips", []):
 		var eid := str((e as Dictionary).get("id", ""))
@@ -72,7 +72,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	if int(r.get("levelers", 0)) > 0:
 		## ★原文是"🔼 临时等级器 ×1 → 进背包 (点它再点一只龟/小将, 本大轮 +1 级)":
 		##   箭头 + 括号注解 = 说明书腔(之后又删掉「×1」: 文案规矩不写 ×)。
-		lines.append("获得 临时等级器" if int(r.get("levelers", 0)) == 1 else "获得 临时等级器 %d 个" % int(r.get("levelers", 0)))
+		lines.append("获得 临时等级器" if int(r.get("levelers", 0)) == 1 else Lang.t("获得 临时等级器 %d 个") % int(r.get("levelers", 0)))
 	## 框高跟着行数走(原来固定 300 高只排得下 3 行; 第 8~12 档有 4 项)
 	var box_h: float = 80.0 + float(lines.size()) * 50.0 + 70.0
 	box.position = Vector2(host.W / 2.0 - 260, host.H / 2.0 - box_h / 2.0); box.size = Vector2(520, box_h)

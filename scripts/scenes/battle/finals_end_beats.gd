@@ -182,7 +182,7 @@ static func place_text(rnd: int, rounds: int, cup: bool) -> String:
 		return "亚军" if cup else "小组第 2 名"
 	var lo := (1 << (rounds - rnd)) + 1
 	var hi := 1 << (rounds - rnd + 1)
-	return "%s第 %d~%d 名" % ["" if cup else "小组", lo, hi]
+	return Lang.t("%s第 %d~%d 名") % ["" if cup else "小组", lo, hi]
 
 
 ## 赢了之后那一行(晋级哪一轮 / 夺冠)。没给轮次 = ""(不编)。

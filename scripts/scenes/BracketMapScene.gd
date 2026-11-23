@@ -1143,7 +1143,7 @@ func pick_chip(key) -> void:
 ## 即将开播那一格点开: 只写「X 后开播」的小卡(S 清单第 7 条)。
 func _open_upcoming_card(r: int, m: int) -> void:
 	var vp := get_viewport().get_visible_rect().size
-	_stage.upcoming_card(vp, "%s %s 开播" % [_info.match_label(r, m), _CP.at(_PS.start_of(cur(), r, m))], competitor(r, m, 0), competitor(r, m, 1),
+	_stage.upcoming_card(vp, Lang.t("%s %s 开播") % [_info.match_label(r, m), _CP.at(_PS.start_of(cur(), r, m))], competitor(r, m, 0), competitor(r, m, 1),
 		func() -> int: return _PS.start_of(cur(), r, m) - srv_now())
 
 
@@ -1501,15 +1501,15 @@ static func champion_text(cs: Dictionary) -> String:
 	if total <= 0:
 		return "组冠军产生后公布"
 	if not bool(cs.get("complete", false)):
-		head = "已产生的组冠军" if not lines.is_empty() else "%s进行中" % _P2C.STAGE_GROUP
+		head = "已产生的组冠军" if not lines.is_empty() else Lang.t("%s进行中") % _P2C.STAGE_GROUP
 	else:
 		match str(cs.get("state", CH_NONE)):
 			CH_ALL:
-				head = "组冠军（共 %d 组）" % total
+				head = Lang.t("组冠军（共 %d 组）") % total
 			CH_PARTIAL:
-				head = "已产生的组冠军（%d/%d）" % [int(cs.get("decided", 0)), total]
+				head = Lang.t("已产生的组冠军（%d/%d）") % [int(cs.get("decided", 0)), total]
 			_:
-				head = "%s进行中" % _P2C.STAGE_GROUP
+				head = Lang.t("%s进行中") % _P2C.STAGE_GROUP
 	## 太多组就收尾一行, 不让框顶出屏幕(10 人规模下最多 3 组, 这是防将来)。
 	var show: Array = lines.slice(0, 8)
 	if lines.size() > show.size():
@@ -1555,7 +1555,7 @@ func _empty_text() -> String:
 		EK_UNREACHABLE:
 			return "无法连接服务器。\n请检查网络连接后重试。"
 		EK_NOT_SEATED:
-			return "%s 公布分组" % _P2C.local_hhmm(feed_week() + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
+			return Lang.t("%s 公布分组") % _P2C.local_hhmm(feed_week() + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
 			return "本周决赛日取消\n晋级人数不足（%d 人），晋级记录保留" % int(_feed_view().get("entered", 0))
 		EK_FINALS_SOON:
@@ -1578,14 +1578,14 @@ func _empty_text() -> String:
 		EK_SPECTATE:
 			return "本周未晋级决赛日"
 	## ★资格写成条件, 不写指令(原来「未晋级 · 需通过周六闯关赛」: 周日的观众做不到; Dota「…的玩家具有参赛资格。」)
-	return "本周未晋级决赛日\n%s" % _CP.kv("参赛资格", "周六闯关赛 %d 胜" % int(_P2C.GAUNTLET_WINS_IN))
+	return "本周未晋级决赛日\n%s" % _CP.kv("参赛资格", Lang.t("周六闯关赛 %d 胜") % int(_P2C.GAUNTLET_WINS_IN))
 
 
 ## 冠军杯赛开赛倒计时那一行。`left` = 距冠军杯赛开赛(FINALS_START_HOUR_UTC)还有几秒。
 static func cup_soon_head(left: int) -> String:
 	if left <= 0:
-		return "%s即将开始" % _P2C.STAGE_CUP
-	return "距%s开始 %s" % [_P2C.STAGE_CUP, _CP.dur(left)]
+		return Lang.t("%s即将开始") % _P2C.STAGE_CUP
+	return Lang.t("距%s开始 %s") % [_P2C.STAGE_CUP, _CP.dur(left)]
 
 
 ## 冠军杯赛只有 1 人那一页(本周只有一个组: 那个组的冠军直接夺冠)。
@@ -2813,7 +2813,7 @@ static func shop_tip(shop_open: bool, left_sec: int, has_bucket: bool) -> String
 	if not has_bucket:
 		return ""
 	if shop_open:
-		return "备战剩余 %s" % countdown_text(left_sec)
+		return Lang.t("备战剩余 %s") % countdown_text(left_sec)
 	return "阵容已锁定"
 
 
@@ -2834,7 +2834,7 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 		return _CP.kv("对手阵容已就位", str(res.get("name", "对手")))
 	match str(res.get("reason", "")):
 		"already_asked":
-			return "每轮仅可查看 1 名对手（已查看 %d 号）" % int(res.get("asked", -1))
+			return Lang.t("每轮仅可查看 1 名对手（已查看 %d 号）") % int(res.get("asked", -1))
 		"wrong_round":
 			return "本轮已结束"
 		"not_in_bucket":
@@ -2962,7 +2962,7 @@ static func round_tip(_cur_round: int, _size: int, left_sec: int) -> String:
 	## ★2026-10-31 彩排: 服务端每分钟推进一次、这里每 30 秒重拉 ⇒ 归零后最多停一分半, 原来一直写「0 秒后开播」像卡住了。
 	if left_sec <= 0:
 		return "即将开播"
-	return "距开播 %s" % countdown_text(left_sec)
+	return Lang.t("距开播 %s") % countdown_text(left_sec)
 
 
 ## 顶上那行「下一轮 X 分 Y 秒后开」。★秒数来自**服务端的时间差**, 不看本机时钟绝对值。

@@ -2708,7 +2708,7 @@ static func candy_jar_pack_text(sp: Dictionary) -> String:
 	var parts: Array = []
 	if sp.has("coins"):
 		var c: Array = sp["coins"]
-		parts.append("深海币 %d" % int(c[0]) if int(c[0]) == int(c[1]) else "深海币 %d~%d" % [int(c[0]), int(c[1])])
+		parts.append("深海币 %d" % int(c[0]) if int(c[0]) == int(c[1]) else Lang.t("深海币 %d~%d") % [int(c[0]), int(c[1])])
 	## 同一种装备给两件 ⇒ 写「2 件 X 费 Y★ 装备」(不写 ×2), 其余每件一项
 	var eq_n := {}
 	var eq_order: Array = []
@@ -2716,16 +2716,16 @@ static func candy_jar_pack_text(sp: Dictionary) -> String:
 		var costs := []
 		for x in (es as Dictionary)["cost"]:
 			costs.append(str(int(x)))
-		var key := "%s 费 %d★ 装备" % ["/".join(costs), int((es as Dictionary)["star"])]
+		var key := Lang.t("%s 费 %d★ 装备") % ["/".join(costs), int((es as Dictionary)["star"])]
 		if not eq_n.has(key):
 			eq_order.append(key)
 		eq_n[key] = int(eq_n.get(key, 0)) + 1
 	for key in eq_order:
-		parts.append(key if int(eq_n[key]) == 1 else "%d 件 %s" % [int(eq_n[key]), key])
+		parts.append(key if int(eq_n[key]) == 1 else Lang.t("%d 件 %s") % [int(eq_n[key]), key])
 	if int(sp.get("xp", 0)) > 0:
 		parts.append("大轮经验 %d" % int(sp["xp"]))
 	if int(sp.get("leveler", 0)) > 0:
-		parts.append("临时等级器" if int(sp["leveler"]) == 1 else "临时等级器 %d 个" % int(sp["leveler"]))
+		parts.append("临时等级器" if int(sp["leveler"]) == 1 else Lang.t("临时等级器 %d 个") % int(sp["leveler"]))
 	return " + ".join(parts)
 
 ## 买经验: 4 深海币 = 4 XP (设计§五). 满级/币不足 → false.

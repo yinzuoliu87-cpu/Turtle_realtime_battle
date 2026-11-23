@@ -510,9 +510,9 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 	var out := {}
 	## 开赛前 10 分钟: 「冠军杯赛 20:00 开赛」(时刻是常量, 不是编的)
 	if now >= seat_ts(now) - 600 and now < seat_ts(now):
-		out["start:g"] = "%s %s 开赛" % [_P2.STAGE_GROUP, _P2.local_hhmm(seat_ts(now))]
+		out["start:g"] = Lang.t("%s %s 开赛") % [_P2.STAGE_GROUP, _P2.local_hhmm(seat_ts(now))]
 	if now >= cup_ts(now) - 600 and now < cup_ts(now):
-		out["start:c"] = "%s %s 开赛" % [_P2.STAGE_CUP, _P2.local_hhmm(cup_ts(now))]
+		out["start:c"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(cup_ts(now))]
 	var all: Array = groups.duplicate()
 	if not cup.is_empty():
 		all.push_front(cup)
@@ -539,9 +539,9 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 				continue
 			if r == total:
 				if cupb:
-					out["res:%d:%s" % [bk, k]] = "%s 夺得%s冠军" % [wn, _P2.STAGE_CUP]
+					out["res:%d:%s" % [bk, k]] = Lang.t("%s 夺得%s冠军") % [wn, _P2.STAGE_CUP]
 				else:
-					out["res:%d:%s" % [bk, k]] = "%s 夺得 %s冠军，晋级%s" % [wn, sheet_name(bd), _P2.STAGE_CUP]
+					out["res:%d:%s" % [bk, k]] = Lang.t("%s 夺得 %s冠军，晋级%s") % [wn, sheet_name(bd), _P2.STAGE_CUP]
 			elif cupb or minec:
 				out["res:%d:%s" % [bk, k]] = ("%s 晋级%s%s" if cupb else "%s 晋级 %s%s") % [wn, sheet_name(bd), round_name(n, r + 1)]
 		## 开播(只收冠军杯赛 + 我那一组; 观众另有一句「小组赛 半决赛开播 · N 组同时进行」, 见循环后)
@@ -571,17 +571,17 @@ static func facts(groups: Array, cup: Dictionary, now: int, mine: int) -> Dictio
 				(wv[2] as Array).append(int(it[0]))
 		for i in range(waves.size()):
 			var wv: Array = waves[i]
-			var which := round_name(n, fr) if waves.size() == 1 else "%s第 %d 场" % [round_name(n, fr), i + 1]
+			var which := round_name(n, fr) if waves.size() == 1 else Lang.t("%s第 %d 场") % [round_name(n, fr), i + 1]
 			var who := ""
 			if (wv[2] as Array).size() == 1:
 				var pr := pair_names(bd, fr, int(wv[2][0]), now)
-				who = "%s 对 %s" % [pr[0], pr[1]] if str(pr[0]) != "" and str(pr[1]) != "" else ""
+				who = Lang.t("%s 对 %s") % [pr[0], pr[1]] if str(pr[0]) != "" and str(pr[1]) != "" else ""
 			if now < int(wv[0]):
-				out["up:%d:%d@%d" % [bk, fr, int(wv[0])]] = "%s %s 开播" % [_FC.join(sheet_name(bd), which), _P2.local_hhmm(int(wv[0]))]
+				out["up:%d:%d@%d" % [bk, fr, int(wv[0])]] = Lang.t("%s %s 开播") % [_FC.join(sheet_name(bd), which), _P2.local_hhmm(int(wv[0]))]
 			elif now < int(wv[1]):
-				out["live:%d:%d@%d" % [bk, fr, int(wv[0])]] = "%s开播%s" % [_FC.join(sheet_name(bd), which), ("：" + who) if who != "" else ""]
+				out["live:%d:%d@%d" % [bk, fr, int(wv[0])]] = Lang.t("%s开播%s") % [_FC.join(sheet_name(bd), which), ("：" + who) if who != "" else ""]
 	## 观众: 各组同一轮同时开播 ⇒ 一句「小组赛半决赛开播，6 组同时进行」(不逐组刷屏)
 	for gk in gw:
 		var nb := (gw[gk][1] as Dictionary).size()
-		out["gwave:%s" % gk] = "%s%s开播%s" % [_P2.STAGE_GROUP, str(gw[gk][0]), ("，%d 组同时进行" % nb) if nb > 1 else ""]
+		out["gwave:%s" % gk] = Lang.t("%s%s开播%s") % [_P2.STAGE_GROUP, str(gw[gk][0]), ("，%d 组同时进行" % nb) if nb > 1 else ""]
 	return out

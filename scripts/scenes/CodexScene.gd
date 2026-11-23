@@ -196,7 +196,7 @@ func _ready() -> void:
 	##   (页签就写着 龟(28) / 装备(103) / 羁绊(11) / 状态(13) / 规则(7)),
 	##   而且它浮在左边列表上面 —— 实拍压在最后一只龟「财神龟」那一行上(判据 12 逮到)。
 	##   纯冗余 + 遮挡 ⇒ 平时收起来; 只有**数据没加载出来**时才需要它(上面那个 ❌ 分支)。
-	status_bar.text = "✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态" % [
+	status_bar.text = Lang.t("✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态") % [
 		DataRegistry.all_pets.size(), _equip_tab_count(),
 		Phase2Types.TYPES.size(), DataRegistry.status_defs.size()]
 	status_bar.visible = false

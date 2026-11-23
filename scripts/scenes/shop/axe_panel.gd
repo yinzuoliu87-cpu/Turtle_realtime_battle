@@ -94,7 +94,7 @@ func build(parent: Node, x: float, y: float, w: float, compact: bool = false) ->
 		var tot := Label.new()
 		## ★"历史累计"要显示 —— 召唤物的血/攻公式读的是它(未决点 ⑥), 玩家看不到它
 		##   就不知道自己的斧头为什么越打越强。
-		tot.text = "累计 %d" % total
+		tot.text = Lang.t("累计 %d") % total
 		tot.add_theme_font_size_override("font_size", fpx)
 		tot.add_theme_color_override("font_color", Color("#9fb4c8"))
 		tot.position = Vector2(x + w * 0.55, y)

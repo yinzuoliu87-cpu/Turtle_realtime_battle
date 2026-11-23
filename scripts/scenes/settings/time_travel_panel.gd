@@ -135,7 +135,7 @@ func _refresh() -> void:
 		return
 	for i in range(_day_btns.size()):
 		UISkin.button(_day_btns[i] as Button, Color("#ffd93d") if i + 1 == wd else Color.WHITE)
-	_hm.text = "周%s %02d:%02d UTC" % [_P2C.WEEKDAY_CN[wd - 1], hour, minute]
+	_hm.text = Lang.t("周%s %02d:%02d UTC") % [_P2C.WEEKDAY_CN[wd - 1], hour, minute]
 	_status.text = ("现在: " + _P2C.travel_label(_P2C.now_utc())) if _P2C.travel_active() \
 		else "现在: 真实时间"
 

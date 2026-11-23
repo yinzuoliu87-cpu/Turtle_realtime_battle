@@ -353,9 +353,9 @@ static func play_settled_route(tree: SceneTree, rec: Dictionary, view: Dictionar
 ## 结算之后的一句话(播不了录像时屏上写它)。
 static func result_line(view: Dictionary) -> String:
 	if str(view.get("kind", "")) == KIND_RANKED:
-		return "积分赛：%s" % ("胜利" if bool(view.get("won", false)) else "失败")
+		return Lang.t("积分赛：%s") % ("胜利" if bool(view.get("won", false)) else "失败")
 	var gl := P2C.gauntlet_label(int(view.get("gw", 0)), int(view.get("gl", 0)))
-	return "闯关赛 %s：%s" % [gl, "胜利" if bool(view.get("won", false)) else "失败"]
+	return Lang.t("闯关赛 %s：%s") % [gl, "胜利" if bool(view.get("won", false)) else "失败"]
 
 
 # ─────────────────────────────── 主菜单补记 ───────────────────────────────

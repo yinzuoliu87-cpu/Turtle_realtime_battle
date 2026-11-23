@@ -346,7 +346,7 @@ func _beat_champion() -> void:
 	var rb := UI.ribbon(_stage, Vector2(cx, oy + 455.0), 560.0, nm, 48, "gold", "RecapChampRibbon")
 	_anim(rb, "scale", 1.3, 1.65, Vector2(0.0, 1.0), Vector2.ONE, "back")
 	var sc := UI.label_in(_stage, Rect2(cx - 400.0, oy + 540.0, 800.0, 36.0),
-		"本周决赛日 %d 人参赛，分为 %d 组" % [(data["rows"] as Array).size(), (data["groups"] as Array).size()],
+		Lang.t("本周决赛日 %d 人参赛，分为 %d 组") % [(data["rows"] as Array).size(), (data["groups"] as Array).size()],
 		24, UI.TXT, false, "RecapScale")
 	_anim(sc, "modulate:a", 1.6, 1.95, 0.0, 1.0, "lin")
 	beats.append("冠军 %s" % nm)
@@ -420,9 +420,9 @@ func _beat_standings() -> void:
 		var you := UI.label_in(_stage, yr, "", 28, Color("#ffe27a"), false, "RecapYou")
 		var rk_me := int(me["rank"])
 		var tie := _M.rank_text(rk_me, rows).begins_with("并列")
-		you.text = "你的名次：%s" % _M.rank_text(rk_me, rows)
+		you.text = Lang.t("你的名次：%s") % _M.rank_text(rk_me, rows)
 		you_txt = you.text
-		_rolls.append([you, float(rows.size()), float(rk_me), 2.0, 2.8, "你的名次：%s第 %%d 名" % ("并列" if tie else "")])
+		_rolls.append([you, float(rows.size()), float(rk_me), 2.0, 2.8, Lang.t("你的名次：%s第 %%d 名") % ("并列" if tie else "")])
 		_anim(plate, "scale", 1.9, 2.1, Vector2(1.0, 0.0), Vector2.ONE, "back")
 		_anim(you, "modulate:a", 1.95, 2.1, 0.0, 1.0, "lin")
 	beats.append("名次 %s / %s" % [" | ".join(lines), you_txt])
@@ -465,7 +465,7 @@ func _beat_mine() -> void:
 			if _M.name_of(b, sd) == str(it["opp"]):
 				opp_sd = sd
 		UI.portrait(card, Vector2(282, 46), 60.0, _F.avatar_of(wk, _M.tag_of(b, opp_sd)), UI.BRONZE_HI, "RecapOpp")
-		var on := UI.label_in(card, Rect2(322, 0, 200, 92), "对 %s" % str(it["opp"]), 22, UI.TXT, false, "RecapOppName", HORIZONTAL_ALIGNMENT_LEFT)
+		var on := UI.label_in(card, Rect2(322, 0, 200, 92), Lang.t("对 %s") % str(it["opp"]), 22, UI.TXT, false, "RecapOppName", HORIZONTAL_ALIGNMENT_LEFT)
 		on.clip_text = true
 		## 比分(胜方路数 : 败方路数, 按我这一侧摆); 服务端没给比分 ⇒ 不写
 		var sp: Array = _DL.score_pair(int(it.get("score", -1))) if int(it.get("score", -1)) != -1 else []

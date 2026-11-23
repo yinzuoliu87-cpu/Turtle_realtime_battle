@@ -307,13 +307,13 @@ func _set_status(code: String) -> void:
 				var past: bool = P2C.weekend_view_is_past(P2C.now_utc())
 				var head: String = WEEK_PAST if past else WEEK_NOW
 				var st: String = "已结束" if past else ("已截止" if _closed else "进行中")
-				t = "%s%s。%d 人参赛，共 %d 场对局，晋级 %d 人，出局 %d 人" % [head, st, pn, gn, n_in, n_out]
+				t = Lang.t("%s%s。%d 人参赛，共 %d 场对局，晋级 %d 人，出局 %d 人") % [head, st, pn, gn, n_in, n_out]
 				if ln > 0 and not past:
-					t += "，%d 场正在进行" % ln
+					t += Lang.t("，%d 场正在进行") % ln
 				t += "。"
 				if _closed and not past:
 					var seat: int = P2C.weekend_view_week(P2C.now_utc()) + 6 * 86400 + int(P2C.FINALS_SEAT_HOUR_UTC) * 3600
-					t += "%s周日 %s 开赛。" % [P2C.STAGE_GROUP, P2C.local_hhmm(seat)]
+					t += Lang.t("%s周日 %s 开赛。") % [P2C.STAGE_GROUP, P2C.local_hhmm(seat)]
 			c = Color("#9fb0c4")
 		"unavailable":
 			t = "赛况暂无"
@@ -370,7 +370,7 @@ func _render_games() -> void:
 		for p in data.get("players", []):
 			if str(p["tag"]) == focus_tag:
 				nm = "%s %s" % [str(p["name"]), focus_tag]
-		_games_title.text = "%s 的对局" % nm
+		_games_title.text = Lang.t("%s 的对局") % nm
 	else:
 		_games_title.text = LIVE_HEAD if not lives.is_empty() else ALL_GAMES
 	_all_btn.visible = focus_tag != ""
@@ -415,7 +415,7 @@ func _missing_card(g: Dictionary, idx: int) -> Control:
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pc.add_child(hb)
 	var res := str(g.get("res", ""))
-	var head := "第 %d 场" % int(g.get("n", 0)) if int(g.get("n", 0)) > 0 else "另一场"
+	var head := Lang.t("第 %d 场") % int(g.get("n", 0)) if int(g.get("n", 0)) > 0 else "另一场"
 	var rt := "胜" if res == "w" else ("负" if res == "l" else "")
 	var l1 := _label("%s%s" % [head, (" · " + rt) if rt != "" else ""], 18, Color("#c9d6e4"))
 	l1.custom_minimum_size = Vector2(0, 48)
@@ -704,10 +704,10 @@ func _rel_time(t: int) -> String:
 	if d < 60:
 		return "刚刚"
 	if d < 3600:
-		return "%d 分钟前" % (d / 60)
+		return Lang.t("%d 分钟前") % (d / 60)
 	if d < 86400:
-		return "%d 小时前" % (d / 3600)
-	return "%d 天前" % (d / 86400)
+		return Lang.t("%d 小时前") % (d / 3600)
+	return Lang.t("%d 天前") % (d / 86400)
 
 
 # ─────────────────────────────── 点 ───────────────────────────────

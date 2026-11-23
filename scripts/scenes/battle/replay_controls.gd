@@ -690,7 +690,7 @@ func intro_info() -> Dictionary:
 	var st := CtxS.stage_of(pn)
 	var sub := ""
 	if int(st.get("match_i", 0)) >= 1 and int(st.get("match_n", 0)) > 1:
-		sub = "第 %d / %d 场" % [int(st["match_i"]), int(st["match_n"])]
+		sub = Lang.t("第 %d / %d 场") % [int(st["match_i"]), int(st["match_n"])]
 	var ghost: Dictionary = GameState.dual_ghost if GameState != null and GameState.dual_ghost is Dictionary else {}
 	var ld: Array = GameState.season_leaders if GameState != null and GameState.season_leaders is Array else []
 	var lu: Dictionary = GameState.dual_lineup if GameState != null and GameState.dual_lineup is Dictionary else {}

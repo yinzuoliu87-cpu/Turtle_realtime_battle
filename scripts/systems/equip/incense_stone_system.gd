@@ -92,8 +92,8 @@ func _init(b) -> void:
 static func progress_text(marks: int, charge: int) -> String:
 	var m: int = clampi(marks, 0, MARK_CAP)
 	if m >= MARK_CAP:
-		return "刻痕 %d / %d（已满）" % [m, MARK_CAP]
-	return "刻痕 %d / %d · 充能 %d / %d" % [m, MARK_CAP, clampi(charge, 0, PER_MARK), PER_MARK]
+		return Lang.t("刻痕 %d / %d（已满）") % [m, MARK_CAP]
+	return Lang.t("刻痕 %d / %d · 充能 %d / %d") % [m, MARK_CAP, clampi(charge, 0, PER_MARK), PER_MARK]
 
 
 func _side_of(u: Dictionary) -> String:

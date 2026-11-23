@@ -287,7 +287,7 @@ static func spectator_lines(now: int, groups: Array, cup: Dictionary) -> Array:
 		n += int((g as Dictionary).get("size", 0)) if g is Dictionary else 0
 	var l1 := ""
 	if n > 0:
-		l1 = "本周晋级 %d 人，分为 %d 组" % [n, groups.size()]
+		l1 = Lang.t("本周晋级 %d 人，分为 %d 组") % [n, groups.size()]
 	else:
 		var qn := int(_FQ.cached(_P2.week_anchor_utc(now)).get("n", 0))
 		l1 = ("本周晋级 %d 人" % qn) if qn > 0 else ""
@@ -295,15 +295,15 @@ static func spectator_lines(now: int, groups: Array, cup: Dictionary) -> Array:
 	var ph := _M.phase(now, groups, cup)
 	var live: Array = _M.live_all(groups, cup, now)
 	if ph == _M.PH_DONE:
-		l2 = "%s已结束" % _P2.STAGE_CUP      # 冠军是谁写在下面「本届冠军」那一行, 这里不说第二遍
+		l2 = Lang.t("%s已结束") % _P2.STAGE_CUP      # 冠军是谁写在下面「本届冠军」那一行, 这里不说第二遍
 	elif not live.is_empty():
 		var t: Dictionary = live[0]
 		var pr := _M.pair_names(t["b"], int(t["r"]), int(t["m"]), now)
-		l2 = _FC.kv("正在开播", "%s 对 %s" % [pr[0], pr[1]]) if str(pr[0]) != "" else "%s开播中" % _M.stage_line(t["b"], int(t["r"]))
+		l2 = _FC.kv("正在开播", Lang.t("%s 对 %s") % [pr[0], pr[1]]) if str(pr[0]) != "" else "%s开播中" % _M.stage_line(t["b"], int(t["r"]))
 	elif ph == _M.PH_PRE:
-		l2 = "%s 公布分组" % _P2.local_hhmm(_M.seat_ts(now))
+		l2 = Lang.t("%s 公布分组") % _P2.local_hhmm(_M.seat_ts(now))
 	else:
-		l2 = "%s进行中" % (_P2.STAGE_CUP if ph in [_M.PH_CUP, _M.PH_INTER] else _P2.STAGE_GROUP)
+		l2 = Lang.t("%s进行中") % (_P2.STAGE_CUP if ph in [_M.PH_CUP, _M.PH_INTER] else _P2.STAGE_GROUP)
 	if l1 == "":
 		return [l2, ""]
 	return [l1, l2]

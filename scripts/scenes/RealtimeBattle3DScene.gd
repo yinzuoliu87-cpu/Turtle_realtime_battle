@@ -3062,7 +3062,7 @@ func _audit_tick() -> void:
 		if is_nan(hp) or is_inf(hp) or is_nan(mx) or is_inf(mx):
 			_audit_flag("hp_nan", "%s hp=%s maxHp=%s" % [nm, str(hp), str(mx)])
 		elif hp > mx + 1.0:
-			_audit_flag("hp_over_max", "%s %.0f/%.0f (治疗/加血没夹上限)" % [nm, hp, mx])
+			_audit_flag("hp_over_max", Lang.t("%s %.0f/%.0f (治疗/加血没夹上限)") % [nm, hp, mx])
 		for k in ["atk", "def", "mr"]:
 			var v := float(u.get(k, 0.0))
 			if v < 0.0 or is_nan(v):
@@ -3071,7 +3071,7 @@ func _audit_tick() -> void:
 		if u.get("airborne", false):
 			u["_ad_air"] = float(u.get("_ad_air", 0.0)) + 1.0
 			if float(u["_ad_air"]) > 6.0:
-				_audit_flag("airborne_stuck", "%s 连续浮空 %.0fs" % [nm, float(u["_ad_air"])])
+				_audit_flag("airborne_stuck", Lang.t("%s 连续浮空 %.0fs") % [nm, float(u["_ad_air"])])
 		else:
 			u["_ad_air"] = 0.0
 		if float(u.get("stun_until", 0.0)) > _t:
@@ -3081,7 +3081,7 @@ func _audit_tick() -> void:
 			if float(u["_ad_stun"]) > 10.0:
 				# 【观测项, 不是缺陷】用户2026-07-19 拍板不加控制递减(DR) → 控制链锁死是已知且接受的行为。
 				# 保留只为看有没有异常长的锁, 不要当 bug 去修。见 docs/design/实时版-系统机制权威.md §8
-				_audit_flag("观测:stun_chain", "%s 被控锁 %.0fs(采样) 期间共被上控 %d 次  剩余=%.1f 最后来源=%s 全场来源=%s" % [
+				_audit_flag("观测:stun_chain", Lang.t("%s 被控锁 %.0fs(采样) 期间共被上控 %d 次  剩余=%.1f 最后来源=%s 全场来源=%s") % [
 					nm, float(u["_ad_stun"]), int(u.get("_stun_n", 0)) - int(u.get("_ad_stun_n0", 0)),
 					float(u.get("stun_until", 0.0)) - _t,
 					str(u.get("_stun_src", "?")), str(u.get("_stun_chain", {}))])
@@ -3100,18 +3100,18 @@ func _audit_tick() -> void:
 		var b_hp: float = float(u.get("_ad_b_hp", mx))
 		var b_atk: float = float(u.get("_ad_b_atk", 1.0))
 		if b_hp > 1.0 and mx > b_hp * 5.0:
-			_audit_flag("maxhp_runaway", "%s 最大生命 %.0f → %.0f (%.1f×)" % [nm, b_hp, mx, mx / b_hp])
+			_audit_flag("maxhp_runaway", Lang.t("%s 最大生命 %.0f → %.0f (%.1f×)") % [nm, b_hp, mx, mx / b_hp])
 		if b_atk > 1.0 and float(u.get("atk", 0.0)) > b_atk * 5.0:
-			_audit_flag("atk_runaway", "%s 攻击 %.0f → %.0f (%.1f×)" % [nm, b_atk, float(u.get("atk", 0.0)), float(u.get("atk", 0.0)) / b_atk])
+			_audit_flag("atk_runaway", Lang.t("%s 攻击 %.0f → %.0f (%.1f×)") % [nm, b_atk, float(u.get("atk", 0.0)), float(u.get("atk", 0.0)) / b_atk])
 		if float(u.get("shield", 0.0)) > mx * 3.0:
-			_audit_flag("shield_runaway", "%s 护盾 %.0f = %.1f× 最大生命" % [nm, float(u.get("shield", 0.0)), float(u.get("shield", 0.0)) / maxf(1.0, mx)])
+			_audit_flag("shield_runaway", Lang.t("%s 护盾 %.0f = %.1f× 最大生命") % [nm, float(u.get("shield", 0.0)), float(u.get("shield", 0.0)) / maxf(1.0, mx)])
 		var pos: Vector2 = u.get("pos", Vector2.ZERO)
 		if absf(pos.x) > 6000.0 or absf(pos.y) > 6000.0 or is_nan(pos.x) or is_nan(pos.y):
 			_audit_flag("out_of_arena", "%s pos=%s" % [nm, str(pos)])
 	if _projectiles.size() > 400:
-		_audit_flag("projectile_pileup", "弹道数=%d (可能没回收)" % _projectiles.size())
+		_audit_flag("projectile_pileup", Lang.t("弹道数=%d (可能没回收)") % _projectiles.size())
 	if is_instance_valid(_world) and _world.get_child_count() > 1200:
-		_audit_flag("world_node_leak", "_world 子节点=%d (特效没清)" % _world.get_child_count())
+		_audit_flag("world_node_leak", Lang.t("_world 子节点=%d (特效没清)") % _world.get_child_count())
 
 func _audit_report(tag: String) -> void:
 	if not _audit:
@@ -6258,7 +6258,7 @@ func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升�
 	##   `_make_fire_glow_tex` 光球 + **5 次 `_gold_chunk_erupt`(034 大熊的金块素材)**。
 	##   现在用 036 自己的 `egg-hatch-levelup.png`, 详见 `battle_vfx.egg_hatch_levelup` 头注。
 	_vfx.egg_hatch_levelup(u["pos"])
-	_vfx._float_text(u["pos"] + Vector2(0, -74), "升级 Lv%d" % total_lvl, Color("#ffe08a"))
+	_vfx._float_text(u["pos"] + Vector2(0, -74), Lang.t("升级 Lv%d") % total_lvl, Color("#ffe08a"))
 	_shake(0.05)
 
 # 统领显示等级 = 基础等级 + 温泉蛋036临时孵化等级(egg_levels), 用于等级框实时跳字

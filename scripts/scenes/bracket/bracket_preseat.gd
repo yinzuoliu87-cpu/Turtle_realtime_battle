@@ -63,7 +63,7 @@ static func schedule_rows(now: int, groups: Array, cup: Dictionary) -> Array:
 	var word := {_M.S3_COUNT: "未开始", _M.S3_LIVE: "进行中", _M.S3_END: "已结束"}
 	return [
 		{"time": _FC.at(_M.seat_ts(now)), "name": _P2.STAGE_GROUP, "state": str(word.get(_M.group_state(now, groups), "")),
-			"rule": "分组单败淘汰，组冠军晋级%s" % _P2.STAGE_CUP},
+			"rule": Lang.t("分组单败淘汰，组冠军晋级%s") % _P2.STAGE_CUP},
 		{"time": _FC.at(_M.cup_ts(now)), "name": _P2.STAGE_CUP, "state": str(word.get(_M.cup_state(now, cup), "")),
 			"rule": "组冠军单败淘汰，决出冠军"},
 	]
@@ -71,7 +71,7 @@ static func schedule_rows(now: int, groups: Array, cup: Dictionary) -> Array:
 
 ## 名单一行的战绩(「4 胜 1 负」= 周六闯关赛战绩)。
 static func record_text(gw: int, gl: int) -> String:
-	return "%d 胜 %d 负" % [gw, gl]
+	return Lang.t("%d 胜 %d 负") % [gw, gl]
 
 
 ## 整页。`d` = {"mode", "end_ts", "now", "me_in", "list": [{name, tag, gw, gl, me}] 或 null(拿不到), "n",
@@ -198,7 +198,7 @@ func _schedule(root: Control, r: Rect2, d: Dictionary) -> void:
 		y += 66.0
 	## 资格(写成条件, 不写指令 —— Dota「勇士联赛积分名列前茅的玩家具有参赛资格。」)
 	var notes := PackedStringArray([
-		_FC.kv("参赛资格", "周六闯关赛 %d 胜" % int(d.get("wins_in", 4))),
+		_FC.kv("参赛资格", Lang.t("周六闯关赛 %d 胜") % int(d.get("wins_in", 4))),
 	])
 	var ny := maxf(y + 8.0, r.end.y - 30.0 * float(notes.size()) - 10.0)
 	for nt in notes:
@@ -216,7 +216,7 @@ func _list(root: Control, r: Rect2, d: Dictionary) -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(box)
 	var cup_mode := str(d.get("mode", "")) == MODE_CUP
-	_card_head(box, r, "%s参赛选手" % _P2.STAGE_CUP if cup_mode else "本周晋级选手", N_LIST_HEAD)
+	_card_head(box, r, Lang.t("%s参赛选手") % _P2.STAGE_CUP if cup_mode else "本周晋级选手", N_LIST_HEAD)
 	var rows: Array = []
 	if cup_mode:
 		for ln in (d.get("champs", []) as Array):
@@ -241,7 +241,7 @@ func _list(root: Control, r: Rect2, d: Dictionary) -> void:
 		box.add_child(cl)
 	var inner := Rect2(r.position + Vector2(10, 50), r.size - Vector2(20, 58))
 	if rows.is_empty():
-		var el := _lb(("组冠军产生后公布" if cup_mode else "%s 公布" % _FC.at(int(d.get("end_ts", 0)))), 17, _H.TXT_DIM, false)
+		var el := _lb(("组冠军产生后公布" if cup_mode else Lang.t("%s 公布") % _FC.at(int(d.get("end_ts", 0)))), 17, _H.TXT_DIM, false)
 		el.name = N_EMPTY
 		el.position = inner.position
 		el.size = inner.size

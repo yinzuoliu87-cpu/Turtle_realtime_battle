@@ -443,6 +443,8 @@ static func wrap_damage_phrases(t: String) -> String:
 ## 渲染模板 → HTML (1:1 PoC renderSkillTemplate: token 展开 + 关键词上色).
 static func render_html(template: String, f: Dictionary, s: Dictionary) -> String:
 	_ensure_re()
+	## ★先换语言(2026-11-23): 译文表里的模板保留 {N:expr} 等占位, 换完再展开 / 上色。中文时原样。
+	template = Lang.t(template)
 	template = wrap_damage_phrases(collapse_formulas(template))
 	var vars := build_vars(f, s)
 	# 1) token 展开
@@ -1265,6 +1267,8 @@ static func _fmt_num(v) -> String:
 ## ★{C:...} 不需要单位/技能上下文, 所以可以在任何地方安全展开 —— {N:1.5*ATK} 不行, 那才是
 ##   那些消费方不敢渲染的原因。⇒ 给它们一条只做常量替换的轻量入口。
 static func render_consts(t: String) -> String:
+	## ★先换语言(2026-11-23 · 方案书 20261118c): 译文表里的模板保留 {C:…}, 换完再展开常量。中文时原样。
+	t = Lang.t(t)
 	if not t.contains("{C:"):
 		return t
 	## 用字符类 [{] [}] 而不是转义 —— GDScript 字符串里 \{ 是**非法转义**, 直接 Parse Error。

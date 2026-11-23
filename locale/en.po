@@ -3172,3 +3172,1326 @@ msgstr "Final Creation"
 
 msgid "选择最终造物（本大轮不可更改）"
 msgstr "Choose a Final Creation (can't be changed this Season)"
+
+msgid "%s %s 开播"
+msgstr "%s %s goes live"
+
+msgid "%s %s 开赛"
+msgstr "%s %s starts"
+
+msgid "%s进行中"
+msgstr "%s in progress"
+
+msgid "距开播 %s"
+msgstr "Live in %s"
+
+msgid "%s 对 %s"
+msgstr "%s vs %s"
+
+msgid "%s冠军"
+msgstr "%s Champion"
+
+msgid "距%s开始 %s"
+msgstr "%s starts in %s"
+
+msgid "第 %d 场"
+msgstr "Match %d"
+
+msgid "%s 获胜"
+msgstr "%s wins"
+
+msgid "%s开播中"
+msgstr "%s is live"
+
+msgid "%s已结束"
+msgstr "%s has ended"
+
+msgid "%s 公布分组"
+msgstr "Groups announced %s"
+
+msgid "%d 分钟前"
+msgstr "%d min ago"
+
+msgid "%d 小时前"
+msgstr "%d h ago"
+
+msgid "%d 天前"
+msgstr "%d days ago"
+
+msgid "深海币不足（需要 %d）"
+msgstr "Not enough Abyss Coins (need %d)"
+
+msgid "距下一轮备战 %s"
+msgstr "Next round's prep in %s"
+
+msgid "%s备战 %s 开始"
+msgstr "%s prep starts %s"
+
+msgid "周六闯关赛 %d 胜"
+msgstr "Saturday Gauntlet: %d wins"
+
+msgid "备战剩余 %s"
+msgstr "Prep time left %s"
+
+msgid "%d~%d 个字，显示于排行榜"
+msgstr "%d–%d characters, shown on the leaderboard"
+
+msgid "战利品 %d/%d"
+msgstr "Loot %d/%d"
+
+msgid "统领%d"
+msgstr "Leader %d"
+
+msgid "全队装备已达上限 %d/%d"
+msgstr "Team item limit reached %d/%d"
+
+msgid "第 %d 大轮"
+msgstr "Season %d"
+
+msgid "%d 天 %d 小时"
+msgstr "%dd %dh"
+
+msgid "%d 分 %02d 秒"
+msgstr "%dm %02ds"
+
+msgid "邮箱 %s"
+msgstr "Email %s"
+
+msgid "玩家 ID %s"
+msgstr "Player ID %s"
+
+msgid "%s 不能被替换"
+msgstr "%s can't be replaced"
+
+msgid "生命  %d / %d"
+msgstr "Health  %d / %d"
+
+msgid "造成伤害 %d"
+msgstr "Damage Dealt %d"
+
+msgid "护盾 %d"
+msgstr "Shield %d"
+
+msgid "%s第 %d 场"
+msgstr "%s Match %d"
+
+msgid "%s  对  %s"
+msgstr "%s  vs  %s"
+
+msgid "第 %d 届"
+msgstr "Edition %d"
+
+msgid "1/%d 决赛"
+msgstr "Round of %d"
+
+msgid "%s冠军（%d 人参赛）"
+msgstr "%s Champion (%d players)"
+
+msgid "%d 人参赛"
+msgstr "%d players"
+
+msgid "%s备战中"
+msgstr "%s preparing"
+
+msgid "%s即将开播"
+msgstr "%s going live soon"
+
+msgid "决赛日%s：%s 开始。"
+msgstr "Finals Day %s: starts %s."
+
+msgid "金盾 +%d"
+msgstr "Gold Shield +%d"
+
+msgid "深海币 %d"
+msgstr "Abyss Coins %d"
+
+msgid "深海币 %d~%d"
+msgstr "Abyss Coins %d–%d"
+
+msgid "%s 费 %d★ 装备"
+msgstr "%s-cost %d★ item"
+
+msgid "%d 件 %s"
+msgstr "%d× %s"
+
+msgid "大轮经验 %d"
+msgstr "Season XP %d"
+
+msgid "临时等级器 %d 个"
+msgstr "%d Level Booster(s)"
+
+msgid "第 %d 箱"
+msgstr "Chest %d"
+
+msgid "第 %d-%d 箱"
+msgstr "Chests %d–%d"
+
+msgid "宝箱龟被动【藏宝图】%s开箱时从%s中随机获得，同一大轮内不会重复。获得后在本大轮的每局对局中自动生效，新的大轮开始时重置。"
+msgstr "Treasure Chest Turtle's passive [Treasure Map]: %s, a random reward is drawn from %s when a chest opens, with no repeats in the same Season. Once obtained, it takes effect automatically in every match this Season and resets when a new Season starts."
+
+msgid "冰封 %d 次"
+msgstr "Froze %d times"
+
+msgid "免疫击飞 %d 次"
+msgstr "Ignored %d knock-ups"
+
+msgid "昵称至少 %d 个字"
+msgstr "Nickname must be at least %d characters"
+
+msgid "昵称最多 %d 个字（当前 %d 个）"
+msgstr "Nickname can be at most %d characters (currently %d)"
+
+msgid "提前晋级奖励：深海币 +%d、经验 +%d（闯关赛共 %d 场，未进行的 %d 场按场发放）"
+msgstr "Early qualification reward: Abyss Coins +%d, XP +%d (the Gauntlet has %d matches; the %d unplayed ones are paid out per match)"
+
+msgid "闯关赛战绩 %s，"
+msgstr "Gauntlet record %s,"
+
+msgid "再胜 %d 场晋级决赛日，再负 %d 场淘汰。"
+msgstr "%d more wins to reach Finals Day; %d more losses and you're out."
+
+msgid "%d 胜获得周六闯关赛资格"
+msgstr "%d wins to qualify for Saturday's Gauntlet"
+
+msgid "好友数量已达上限 %d 人"
+msgstr "Friend list full (%d)"
+
+msgid "验证码已发送至 %s（如未收到，请检查垃圾邮件）"
+msgstr "Code sent to %s (check your spam folder if it doesn't arrive)"
+
+msgid "发送失败（%d），请稍后重试"
+msgstr "Send failed (%d). Try again later."
+
+msgid "验证失败（%d）"
+msgstr "Verification failed (%d)"
+
+msgid "组冠军（共 %d 组）"
+msgstr "Group Winners (%d groups)"
+
+msgid "已产生的组冠军（%d/%d）"
+msgstr "Group Winners So Far (%d/%d)"
+
+msgid "…还有 %d 组"
+msgstr "…%d more groups"
+
+msgid "本周决赛日取消\n晋级人数不足（%d 人），晋级记录保留"
+msgstr "This week's Finals Day is canceled\nNot enough qualifiers (%d). Qualification records are kept."
+
+msgid "%s即将开始\n"
+msgstr "%s starting soon\n"
+
+msgid "%s即将开始"
+msgstr "%s starting soon"
+
+msgid "本周未晋级决赛日\n%s"
+msgstr "Not qualified for Finals Day this week\n%s"
+
+msgid "本周仅 1 名组冠军，直接夺冠\n%s"
+msgstr "Only 1 group winner this week, who takes the title directly\n%s"
+
+msgid "你的比赛 %s 开播"
+msgstr "Your match goes live %s"
+
+msgid "每轮仅可查看 1 名对手（已查看 %d 号）"
+msgstr "You can view only 1 opponent per round (already viewed #%d)"
+
+msgid "找到 %d 位玩家，请核对昵称"
+msgstr "Found %d players. Check the nickname."
+
+msgid "，%d 场正在进行"
+msgstr ", %d matches in progress"
+
+msgid "%s周日 %s 开赛。"
+msgstr "%s Sunday, starts %s."
+
+msgid "%s 的对局"
+msgstr "%s's Matches"
+
+msgid "[color=#ffd93d]%s[/color]  %d费"
+msgstr "[color=#ffd93d]%s[/color]  %d-cost"
+
+msgid "卖出 +%d"
+msgstr "Sell +%d"
+
+msgid "[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]"
+msgstr "[color=#9fb6c9][b]Stats[/b][/color]\n%s\n\n[color=#9fb6c9][b]Effect[/b][/color]\n[color=#cfe0ef]%s[/color]"
+
+msgid "属性\n%s\n\n效果\n%s"
+msgstr "Stats\n%s\n\nEffect\n%s"
+
+msgid "[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]"
+msgstr "[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d-cost%s[/color]"
+
+msgid "第 %d 档"
+msgstr "Tier %d"
+
+msgid "打碎后随机获得以下奖励之一（每大轮限 1 次）：\n[ul bullet=·]%s[/ul]"
+msgstr "Smash it for one of these random rewards (once per Season):\n[ul bullet=·]%s[/ul]"
+
+msgid "[b]%s[/b]  ★%d  %d费\n\n属性\n%s\n\n效果\n%s"
+msgstr "[b]%s[/b]  ★%d  %d-cost\n\nStats\n%s\n\nEffect\n%s"
+
+msgid "糖果 %d 颗 · 第 %d 档"
+msgstr "%d Candy · Tier %d"
+
+msgid "%d 档"
+msgstr "Tier %d"
+
+msgid "全队装备 %d/%d"
+msgstr "Team Items %d/%d"
+
+msgid "单位装备上限 %d 件\n全队上限由赛季等级决定（当前 Lv%d：%d 件）%s"
+msgstr "Up to %d items per unit\nThe team limit depends on Season Level (now Lv%d: %d items)%s"
+
+msgid "\nLv%d 可装备 %d 件"
+msgstr "\nLv%d: %d items"
+
+msgid "%s\n盾羁绊赠送，不占装备位，羁绊失效时移除"
+msgstr "%s\nGift from the Shield synergy. Takes no item slot and is removed if the synergy deactivates"
+
+msgid "上周共 %d 人上榜"
+msgstr "%d players ranked last week"
+
+msgid "本周共 %d 人上榜"
+msgstr "%d players ranked this week"
+
+msgid "闯关赛已晋级决赛日（%s）"
+msgstr "Gauntlet: qualified for Finals Day (%s)"
+
+msgid "闯关赛已出局（%s）"
+msgstr "Gauntlet: eliminated (%s)"
+
+msgid "闯关赛胜场 %d/%d　负场 %d/%d"
+msgstr "Gauntlet Wins %d/%d　Losses %d/%d"
+
+msgid "决赛日 %s"
+msgstr "Finals Day %s"
+
+msgid "决赛日 闯关赛止步 %s"
+msgstr "Finals Day: out in the Gauntlet %s"
+
+msgid "本周对战 %d/%d"
+msgstr "Games This Week %d/%d"
+
+msgid "距截止 %s"
+msgstr "Closes in %s"
+
+msgid "%s 开始"
+msgstr "Starts %s"
+
+msgid "规则同%s"
+msgstr "Same rules as %s"
+
+msgid "组冠军进入%s，单败决出冠军"
+msgstr "Group winners go to the %s; single elimination decides the champion"
+
+msgid "积分赛 %d 胜可参加"
+msgstr "Ranked: %d wins to enter"
+
+msgid "闯关赛 %d 胜可参加"
+msgstr "Gauntlet: %d wins to enter"
+
+msgid "%d 小时 %d 分"
+msgstr "%dh %dm"
+
+msgid "%s 截止"
+msgstr "Closes %s"
+
+msgid "升级 Lv%d"
+msgstr "Level Up Lv%d"
+
+msgid "验证码已发送至 %s"
+msgstr "Code sent to %s"
+
+msgid "设置昵称（%d~%d 个字）。昵称显示于排行榜，可随时修改。"
+msgstr "Set a nickname (%d–%d characters). It's shown on the leaderboard and can be changed anytime."
+
+msgid "昵称已修改为「%s」"
+msgstr "Nickname changed to \"%s\""
+
+msgid "已绑定：%s"
+msgstr "Linked: %s"
+
+msgid "版本 v%s"
+msgstr "Version v%s"
+
+msgid " · 玩家 ID %s"
+msgstr " · Player ID %s"
+
+msgid "深海币不足，购买「%s」还差 %d"
+msgstr "Not enough Abyss Coins for \"%s\": %d short"
+
+msgid "「%s」已失效，请刷新商店"
+msgstr "\"%s\" is no longer available. Refresh the shop."
+
+msgid "购买成功，「%s」合成为 ★%d"
+msgstr "Bought. \"%s\" combined into ★%d"
+
+msgid "已拥有「%s」，转化为砍伐经验 +%d"
+msgstr "Already own \"%s\". Converted to Chopping XP +%d"
+
+msgid "购买成功，「%s」已放入背包"
+msgstr "Bought. \"%s\" added to your Inventory"
+
+msgid "经验 %d/%d"
+msgstr "XP %d/%d"
+
+msgid "可装备 %d 件"
+msgstr "%d item slots"
+
+msgid "（Lv%d：%d 件）"
+msgstr "(Lv%d: %d items)"
+
+msgid "买经验 %d"
+msgstr "Buy XP %d"
+
+msgid "经验 +%d"
+msgstr "XP +%d"
+
+msgid "已达最高等级 Lv%d"
+msgstr "Max level reached: Lv%d"
+
+msgid "刷新 %d"
+msgstr "Refresh %d"
+
+msgid "%d 费 %d%%"
+msgstr "%d-cost %d%%"
+
+msgid "%d 深海币"
+msgstr "%d Abyss Coins"
+
+msgid "购买  %d"
+msgstr "Buy  %d"
+
+msgid "还差 %d 枚深海币"
+msgstr "Need %d more Abyss Coins"
+
+msgid "还需 %d 只"
+msgstr "Need %d more"
+
+msgid "%s 只能拖到空格"
+msgstr "%s can only go in an empty slot"
+
+msgid "已截止：截止前 %d 分钟停止匹配"
+msgstr "Closed: matchmaking stops %d minutes before the deadline"
+
+msgid "技能（%d 选 1）"
+msgstr "Abilities (choose 1 of %d)"
+
+msgid "+%d 盾"
+msgstr "+%d Shield"
+
+msgid "%s不消耗生命，结果于下轮开播时公布。"
+msgstr "%s doesn't cost lives. Results are revealed when the next round goes live."
+
+msgid "积分赛 %d 胜，已晋级周六闯关赛。"
+msgstr "%d Ranked wins. Qualified for Saturday's Gauntlet."
+
+msgid "闯关赛：%s 开始"
+msgstr "Gauntlet: starts %s"
+
+msgid "决赛日%s：%s 开始"
+msgstr "Finals Day %s: starts %s"
+
+msgid "%s\n点击查看详情"
+msgstr "%s\nTap for details"
+
+msgid "%s：第 %d 档"
+msgstr "%s: Tier %d"
+
+msgid "破蛋 %d:%02d"
+msgstr "Egg Break %d:%02d"
+
+msgid "加时 %s"
+msgstr "Overtime %s"
+
+msgid "各路战果    我方 %d : %d 对方"
+msgstr "Lane Results    You %d : %d Opponent"
+
+msgid "观看 %s 对 %s"
+msgstr "Watch %s vs %s"
+
+msgid "下一场 %s 开播：%s"
+msgstr "Next match live %s: %s"
+
+msgid "下一场即将开播：%s"
+msgstr "Next match going live: %s"
+
+msgid "下一场：%s"
+msgstr "Next: %s"
+
+msgid "%s第 %d~%d 名"
+msgstr "%s Places %d–%d"
+
+msgid "%s战果"
+msgstr "%s Results"
+
+msgid "%s 赢得%s"
+msgstr "%s wins the %s"
+
+msgid "接下来：%s"
+msgstr "Up next: %s"
+
+msgid "香火 +%d"
+msgstr "Incense +%d"
+
+msgid "获得 %d 额外攻击力"
+msgstr "Gained %d bonus Attack"
+
+msgid "%s%%×最大生命值(%d) = %d"
+msgstr "%s%% × Max Health (%d) = %d"
+
+msgid "获得 %d%% 攻击速度"
+msgstr "Gained %d%% Attack Speed"
+
+msgid "%s×已损失生命值百分比(%d) = %d%%"
+msgstr "%s × Missing Health (%d) = %d%%"
+
+msgid "获得 %d%% 增伤"
+msgstr "Gained %d%% Damage Amp"
+
+msgid "%s%%×连击层数(%d) = %d%%"
+msgstr "%s%% × Combo Stacks (%d) = %d%%"
+
+msgid "涨潮中：获得 %d 最大生命值、%d 攻击力"
+msgstr "High Tide: gained %d Max Health and %d Attack"
+
+msgid "治疗 %d"
+msgstr "Healed %d"
+
+msgid "减免伤害 %d"
+msgstr "Damage Prevented %d"
+
+msgid "闪避 %d 次"
+msgstr "Dodged %d times"
+
+msgid "获得龟能 %d"
+msgstr "Energy Gained %d"
+
+msgid "获得深海币 %d 枚"
+msgstr "Abyss Coins Gained %d"
+
+msgid "施加流血 %d 层"
+msgstr "Applied %d Bleed"
+
+msgid "施加灼烧 %d 层"
+msgstr "Applied %d Burn"
+
+msgid "施加中毒 %d 层"
+msgstr "Applied %d Poison"
+
+msgid "眩晕 %d 次"
+msgstr "Stunned %d times"
+
+msgid "击飞 %d 次"
+msgstr "Knocked up %d times"
+
+msgid "免疫控制 %d 次"
+msgstr "Ignored CC %d times"
+
+msgid "时停 %d 秒"
+msgstr "Time Stop %d s"
+
+msgid "涨潮 %d 次"
+msgstr "High Tide %d times"
+
+msgid "充能 %d%%"
+msgstr "Charge %d%%"
+
+msgid "充能 %s / %s"
+msgstr "Charge %s / %s"
+
+msgid "层数 %d"
+msgstr "Stacks %d"
+
+msgid "%d层 · %s/%s"
+msgstr "%d stacks · %s/%s"
+
+msgid "%d层 · %d%%"
+msgstr "%d stacks · %d%%"
+
+msgid "%s %d 层"
+msgstr "%s %d stacks"
+
+msgid "魔法护盾 %d"
+msgstr "Magic Shield %d"
+
+msgid "%s攻击当前目标，造成 (%d%% 攻击力) 物理伤害。"
+msgstr "%s attacks the current target, dealing (%d%% Attack) physical damage."
+
+msgid "技能 · %d 龟能"
+msgstr "Ability · %d Energy"
+
+msgid "护甲 %d"
+msgstr "Armor %d"
+
+msgid "攻击 %d"
+msgstr "Attack %d"
+
+msgid "攻速 每秒 %s 次"
+msgstr "Attack Speed %s/s"
+
+msgid "魔抗 %d"
+msgstr "Magic Resist %d"
+
+msgid "射程 %d"
+msgstr "Range %d"
+
+msgid "移速 %d"
+msgstr "Move Speed %d"
+
+msgid "护甲穿透 %d"
+msgstr "Armor Pen %d"
+
+msgid "魔法穿透 %d"
+msgstr "Magic Pen %d"
+
+msgid "攻击"
+msgstr "Attack"
+
+msgid "灼烧"
+msgstr "Burn"
+
+msgid "小木斧"
+msgstr "Little Wooden Axe"
+
+msgid "闪避"
+msgstr "Dodge"
+
+msgid "反伤"
+msgstr "Thorns"
+
+msgid "护盾"
+msgstr "Shield"
+
+msgid "糖果炸弹"
+msgstr "Candy Bomb"
+
+msgid "减速"
+msgstr "Slow"
+
+msgid "中毒"
+msgstr "Poison"
+
+msgid "诅咒"
+msgstr "Curse"
+
+msgid "眩晕"
+msgstr "Stun"
+
+msgid "打击"
+msgstr "Strike"
+
+msgid "嘲讽"
+msgstr "Taunt"
+
+msgid "水晶球"
+msgstr "Crystal Ball"
+
+msgid "真火"
+msgstr "True Flame"
+
+msgid "炸弹"
+msgstr "Bomb"
+
+msgid "海盗船"
+msgstr "Pirate Ship"
+
+msgid "侵入"
+msgstr "Invade"
+
+msgid "星波"
+msgstr "Star Wave"
+
+msgid "扭曲空间"
+msgstr "Warp Space"
+
+msgid "复制"
+msgstr "Copy"
+
+msgid "冰霜"
+msgstr "Frost"
+
+msgid "虚化"
+msgstr "Phased"
+
+msgid "哑铃"
+msgstr "Dumbbell"
+
+msgid "不可选中"
+msgstr "Untargetable"
+
+msgid "冰寒"
+msgstr "Chill"
+
+msgid "治疗削减"
+msgstr "Grievous Wounds"
+
+msgid "龟能锁"
+msgstr "Energy Lock"
+
+msgid "腐蚀"
+msgstr "Corrosion"
+
+msgid "流血"
+msgstr "Bleed"
+
+msgid "恐惧"
+msgstr "Fear"
+
+msgid "治疗药水"
+msgstr "Healing Potion"
+
+msgid "加速药水"
+msgstr "Speed Potion"
+
+msgid "🔥 怒火药水"
+msgstr "🔥 Fury Potion"
+
+msgid "⛑ 应急护盾"
+msgstr "⛑ Emergency Shield"
+
+msgid "🌿 急救包"
+msgstr "🌿 First Aid Kit"
+
+msgid "✨ 净化"
+msgstr "✨ Cleanse"
+
+msgid "🎯 必中标记"
+msgstr "🎯 Sure-Hit Mark"
+
+msgid "龟派气波"
+msgstr "Turtle Wave"
+
+msgid "过肩摔"
+msgstr "Shoulder Throw"
+
+msgid "骰子龟"
+msgstr "Dice Turtle"
+
+msgid "骰子攻击"
+msgstr "Dice Attack"
+
+msgid "孤注一掷"
+msgstr "All In"
+
+msgid "命运骰子"
+msgstr "Dice of Fate"
+
+msgid "稳定骰子"
+msgstr "Steady Dice"
+
+msgid "彩虹龟"
+msgstr "Rainbow Turtle"
+
+msgid "七彩光束"
+msgstr "Rainbow Beam"
+
+msgid "棱镜护盾"
+msgstr "Prism Shield"
+
+msgid "全色风暴"
+msgstr "Spectrum Storm"
+
+msgid "反射"
+msgstr "Reflect"
+
+msgid "赌神龟"
+msgstr "Gambler Turtle"
+
+msgid "卡牌射击"
+msgstr "Card Shot"
+
+msgid "万能牌"
+msgstr "Wild Card"
+
+msgid "赌注"
+msgstr "Wager"
+
+msgid "命运之轮"
+msgstr "Wheel of Fate"
+
+msgid "猎人龟"
+msgstr "Hunter Turtle"
+
+msgid "射箭"
+msgstr "Arrow Shot"
+
+msgid "精准射击"
+msgstr "Precision Shot"
+
+msgid "隐蔽"
+msgstr "Camouflage"
+
+msgid "狩猎弹幕"
+msgstr "Hunting Barrage"
+
+msgid "海盗龟"
+msgstr "Pirate Turtle"
+
+msgid "弯刀"
+msgstr "Cutlass"
+
+msgid "火炮齐射"
+msgstr "Cannon Broadside"
+
+msgid "朗姆酒"
+msgstr "Rum"
+
+msgid "糖果龟"
+msgstr "Candy Turtle"
+
+msgid "横扫大锤"
+msgstr "Sweeping Mallet"
+
+msgid "糖果锤"
+msgstr "Candy Mallet"
+
+msgid "糖衣炮弹"
+msgstr "Sugarcoated Shell"
+
+msgid "泡泡龟"
+msgstr "Bubble Turtle"
+
+msgid "泡泡攻击"
+msgstr "Bubble Attack"
+
+msgid "泡泡盾"
+msgstr "Bubble Shield"
+
+msgid "泡泡束缚"
+msgstr "Bubble Bind"
+
+msgid "泡泡爆破"
+msgstr "Bubble Burst"
+
+msgid "线条龟"
+msgstr "Line Turtle"
+
+msgid "素描"
+msgstr "Sketch"
+
+msgid "连笔"
+msgstr "Linked Strokes"
+
+msgid "画龙点睛"
+msgstr "Finishing Touch"
+
+msgid "墨水炸弹"
+msgstr "Ink Bomb"
+
+msgid "闪电龟"
+msgstr "Lightning Turtle"
+
+msgid "闪电"
+msgstr "Lightning"
+
+msgid "涌动"
+msgstr "Surge"
+
+msgid "雷暴"
+msgstr "Thunderstorm"
+
+msgid "雷盾"
+msgstr "Thunder Shield"
+
+msgid "凤凰龟"
+msgstr "Phoenix Turtle"
+
+msgid "熔岩盾"
+msgstr "Lava Shield"
+
+msgid "烫伤"
+msgstr "Scald"
+
+msgid "强化涅槃"
+msgstr "Empowered Rebirth"
+
+msgid "岩石护盾"
+msgstr "Rock Shield"
+
+msgid "磐石之躯"
+msgstr "Bedrock Body"
+
+msgid "熔岩龟"
+msgstr "Lava Turtle"
+
+msgid "熔岩弹"
+msgstr "Lava Ball"
+
+msgid "地裂"
+msgstr "Fissure"
+
+msgid "岩浆涌动"
+msgstr "Magma Surge"
+
+msgid "熔岩爆发"
+msgstr "Lava Eruption"
+
+msgid "熔岩弹（火山形态）"
+msgstr "Lava Ball (Volcano Form)"
+
+msgid "火山爆发"
+msgstr "Volcanic Eruption"
+
+msgid "重击"
+msgstr "Heavy Strike"
+
+msgid "烈焰暴走"
+msgstr "Blazing Rampage"
+
+msgid "赛博龟"
+msgstr "Cyber Turtle"
+
+msgid "激光枪"
+msgstr "Laser Gun"
+
+msgid "能量大炮"
+msgstr "Energy Cannon"
+
+msgid "智能AI"
+msgstr "Smart AI"
+
+msgid "水晶龟"
+msgstr "Crystal Turtle"
+
+msgid "水晶刺"
+msgstr "Crystal Spike"
+
+msgid "水晶壁垒"
+msgstr "Crystal Bulwark"
+
+msgid "碎晶爆破"
+msgstr "Shatter Blast"
+
+msgid "宝箱龟"
+msgstr "Treasure Chest Turtle"
+
+msgid "宝箱砸击"
+msgstr "Chest Smash"
+
+msgid "清点财宝"
+msgstr "Count the Treasure"
+
+msgid "财宝风暴"
+msgstr "Treasure Storm"
+
+msgid "财宝炮击"
+msgstr "Treasure Barrage"
+
+msgid "星际龟"
+msgstr "Space Turtle"
+
+msgid "星光弹"
+msgstr "Starlight Shot"
+
+msgid "虫洞"
+msgstr "Wormhole"
+
+msgid "缩头乌龟"
+msgstr "Hiding Turtle"
+
+msgid "缩头"
+msgstr "Duck In"
+
+msgid "防御"
+msgstr "Defend"
+
+msgid "强化随从"
+msgstr "Empower Followers"
+
+msgid "无头龟"
+msgstr "Headless Turtle"
+
+msgid "撕咬"
+msgstr "Bite"
+
+msgid "恐吓"
+msgstr "Intimidate"
+
+msgid "万千触须"
+msgstr "Myriad Tendrils"
+
+msgid "灵魂打击"
+msgstr "Soul Strike"
+
+msgid "龟壳"
+msgstr "Turtle Shell"
+
+msgid "吸收"
+msgstr "Absorb"
+
+msgid "暗影"
+msgstr "Shadow"
+
+msgid "一叶刃"
+msgstr "Leaf Blade"
+
+msgid "自然恢复"
+msgstr "Natural Recovery"
+
+msgid "竹击"
+msgstr "Bamboo Strike"
+
+msgid "竹刺阵"
+msgstr "Bamboo Spikes"
+
+msgid "天使龟"
+msgstr "Angel Turtle"
+
+msgid "裁决"
+msgstr "Judgment"
+
+msgid "祝福"
+msgstr "Blessing"
+
+msgid "平等"
+msgstr "Equality"
+
+msgid "飞升"
+msgstr "Ascension"
+
+msgid "寒冰龟"
+msgstr "Ice Turtle"
+
+msgid "冰锥"
+msgstr "Icicle"
+
+msgid "冰封"
+msgstr "Freeze"
+
+msgid "团队护盾"
+msgstr "Team Shield"
+
+msgid "忍者龟"
+msgstr "Ninja Turtle"
+
+msgid "斩击"
+msgstr "Slash"
+
+msgid "手里剑"
+msgstr "Shuriken"
+
+msgid "背刺"
+msgstr "Backstab"
+
+msgid "变脸龟"
+msgstr "Two-Face Turtle"
+
+msgid "变脸攻击"
+msgstr "Face Swap Attack"
+
+msgid "灵能冲击/锤击"
+msgstr "Psi Blast / Hammer"
+
+msgid "精神干扰/吸收"
+msgstr "Mind Disrupt / Absorb"
+
+msgid "融合"
+msgstr "Fusion"
+
+msgid "幽灵龟"
+msgstr "Ghost Turtle"
+
+msgid "幽魂触碰"
+msgstr "Ghostly Touch"
+
+msgid "幽冥突袭"
+msgstr "Netherworld Raid"
+
+msgid "灵魂风暴"
+msgstr "Soul Storm"
+
+msgid "钻石龟"
+msgstr "Diamond Turtle"
+
+msgid "钻石切割"
+msgstr "Diamond Cut"
+
+msgid "坚不可摧"
+msgstr "Unbreakable"
+
+msgid "钻石滚球"
+msgstr "Diamond Roll"
+
+msgid "钻石冲撞"
+msgstr "Diamond Charge"
+
+msgid "财神龟"
+msgstr "Fortune Turtle"
+
+msgid "骰子"
+msgstr "Dice"
+
+msgid "梭哈"
+msgstr "All-In Bet"
+
+msgid "招财进宝"
+msgstr "Fortune Flows In"
+
+msgid "木制长剑"
+msgstr "Wooden Longsword"
+
+msgid "饮血护符坠"
+msgstr "Bloodthirst Pendant"
+
+msgid "海藻"
+msgstr "Seaweed"
+
+msgid "炙烤海胆"
+msgstr "Grilled Sea Urchin"
+
+msgid "深海堡垒甲"
+msgstr "Abyssal Fortress Armor"
+
+msgid "荆棘海胆"
+msgstr "Thorny Sea Urchin"
+
+msgid "铁壁盾"
+msgstr "Iron Wall Shield"
+
+msgid "不沉之锚"
+msgstr "Unsinkable Anchor"
+
+msgid "守护贝壳"
+msgstr "Guardian Seashell"
+
+msgid "海葵药膏"
+msgstr "Anemone Salve"
+
+msgid "辣椒"
+msgstr "Chili Pepper"
+
+msgid "守护贝母"
+msgstr "Guardian Nacre"
+
+msgid "余烬燃油瓶"
+msgstr "Ember Oil Flask"
+
+msgid "灼热火珊瑚"
+msgstr "Scorching Fire Coral"
+
+msgid "龙蛋"
+msgstr "Dragon Egg"
+
+msgid "雷鸣贝壳"
+msgstr "Thunder Seashell"
+
+msgid "雷电法杖"
+msgstr "Lightning Staff"
+
+msgid "电棍"
+msgstr "Stun Baton"
+
+msgid "冰冻药剂"
+msgstr "Freezing Potion"
+
+msgid "冰封水母"
+msgstr "Frozen Jellyfish"
+
+msgid "迷你水晶球A"
+msgstr "Mini Crystal Ball A"
+
+msgid "锋利鲨齿"
+msgstr "Sharp Shark Tooth"
+
+msgid "迷你水晶球B"
+msgstr "Mini Crystal Ball B"
+
+msgid "唤灵骨符"
+msgstr "Spirit-Calling Bone Charm"
+
+msgid "复活海螺"
+msgstr "Revival Conch"
+
+msgid "玩偶小熊"
+msgstr "Teddy Bear"
+
+msgid "黄铜齿轮"
+msgstr "Brass Gear"
+
+msgid "温泉蛋"
+msgstr "Hot Spring Egg"
+
+msgid "蛋糕蜡烛"
+msgstr "Cake Candle"
+
+msgid "信号放大器"
+msgstr "Signal Amplifier"
+
+msgid "竹制弓箭"
+msgstr "Bamboo Bow"
+
+msgid "FPGA板"
+msgstr "FPGA Board"
+
+msgid "暴君之牙"
+msgstr "Tyrant's Fang"
+
+msgid "退潮浊液"
+msgstr "Ebb-Tide Sludge"
+
+msgid "涟漪药剂"
+msgstr "Ripple Potion"
+
+msgid "海浪护符"
+msgstr "Wave Amulet"
+
+msgid "深海项链"
+msgstr "Abyssal Necklace"
+
+msgid "地狱护盾"
+msgstr "Hellfire Shield"
+
+msgid "幽灵墨鱼"
+msgstr "Ghost Cuttlefish"
+
+msgid "重击锤"
+msgstr "Heavy Hammer"
+
+msgid "黄铜手铳"
+msgstr "Brass Hand Cannon"
+
+msgid "连发弩"
+msgstr "Repeating Crossbow"
+
+msgid "幽灵加特林"
+msgstr "Ghost Gatling"
+
+msgid "双生匕首"
+msgstr "Twin Daggers"
+
+msgid "激光手枪"
+msgstr "Laser Pistol"
+
+msgid "左轮手枪"
+msgstr "Revolver"
+
+msgid "霰弹贝古"
+msgstr "Scattershell Blunderbuss"
+
+msgid "瞄准镜"
+msgstr "Scope"
+
+msgid "病毒箭头"
+msgstr "Virus Arrowhead"
+
+msgid "飞镖"
+msgstr "Darts"
+
+msgid "狙击长管"
+msgstr "Sniper Barrel"
+
+msgid "远古炮台"
+msgstr "Ancient Turret"
+
+msgid "沙漏"
+msgstr "Hourglass"
+
+msgid "磷光水母伞"
+msgstr "Phosphor Jelly Umbrella"
+
+msgid "千刃风暴"
+msgstr "Thousand-Blade Storm"
+
+msgid "钻孔螺"
+msgstr "Drill Snail"
+
+msgid "螳螂虾钳"
+msgstr "Mantis Shrimp Claw"
+
+msgid "白鲸气环"
+msgstr "Beluga Bubble Ring"
+
+msgid "溺者的浮囊"
+msgstr "Drowned Man's Float"
+
+msgid "鲨肝油"
+msgstr "Shark Liver Oil"
+
+msgid "鲸涎浓浆"
+msgstr "Ambergris Syrup"
+
+msgid "毒药瓶"
+msgstr "Poison Vial"
+
+msgid "深海气压罐"
+msgstr "Deep-Sea Pressure Tank"
+
+msgid "草莓蛋糕"
+msgstr "Strawberry Cake"
+
+msgid "压舱咸鱼砖"
+msgstr "Ballast Saltfish Brick"
+
+msgid "锈蚀阔剑"
+msgstr "Rusted Broadsword"
+
+msgid "炼乳罐"
+msgstr "Condensed Milk Can"
+
+msgid "铁皮蛋糕盒"
+msgstr "Tin Cake Box"
+
+msgid "藤蔓弓弦"
+msgstr "Vine Bowstring"
+
+msgid "魔法胸甲"
+msgstr "Magic Breastplate"
+
+msgid "银色箭袋"
+msgstr "Silver Quiver"
+
+msgid "连发弩机"
+msgstr "Auto-Crossbow"
+
+msgid "铜管手铳"
+msgstr "Copper Hand Cannon"
+
+msgid "电鳗双管铳"
+msgstr "Eel Double-Barrel"
+
+msgid "珊瑚急救塔"
+msgstr "Coral Aid Tower"
+
+msgid "打捞旋翼机"
+msgstr "Salvage Gyrocopter"
+
+msgid "双穿珊瑚刺"
+msgstr "Twinpierce Coral Spike"
+
+msgid "藤编圆盾"
+msgstr "Wicker Round Shield"
+
+msgid "护心甲"
+msgstr "Heartguard Plate"
+
+msgid "潮汐细剑"
+msgstr "Tidal Rapier"
+
+msgid "手半剑"
+msgstr "Bastard Sword"
+
+msgid "压电陶瓷片"
+msgstr "Piezo Ceramic Plate"
+
+msgid "六分仪浮游炮"
+msgstr "Sextant Drone Cannon"
+
+msgid "盗令潜水钟"
+msgstr "Thief's Diving Bell"
+
+msgid "涨潮碑"
+msgstr "Rising Tide Stele"
+
+msgid "蚀月符纸"
+msgstr "Eclipse Talisman"
+
+msgid "镇海杵"
+msgstr "Sea-Calming Pestle"
+
+msgid "月之刃"
+msgstr "Moon Blade"
+
+msgid "远古龟甲片"
+msgstr "Ancient Shell Shard"

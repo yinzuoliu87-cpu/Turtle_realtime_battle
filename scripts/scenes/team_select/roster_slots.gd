@@ -147,7 +147,7 @@ func _refresh_slots() -> void:
 			bn_txt = host._mark_label(id)
 			bn_col = BANNER_ACTIVE_COL
 		else:
-			bn_txt = "统领%d" % (i + 1)
+			bn_txt = Lang.t("统领%d") % (i + 1)
 			bn_col = BANNER_ACTIVE_COL if act else BANNER_EMPTY_COL
 		card.add_child(UnitCardArt.banner(bn_txt, bn_col, bn, g["fs"]))
 		card.add_child(_strip(strip, pet))

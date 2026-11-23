@@ -198,7 +198,7 @@ func _show_page(i: int) -> void:
 	var p: Dictionary = pages()[i] if i < pages().size() else {}
 	var n := pages().size()
 	var w := card_rect.size.x
-	UI.label_in(_page_root, Rect2(0, 30, w, 28), "奖励 %d / %d" % [i + 1, n], 22, UI.TXT_DIM, false, "PageCount")
+	UI.label_in(_page_root, Rect2(0, 30, w, 28), Lang.t("奖励 %d / %d") % [i + 1, n], 22, UI.TXT_DIM, false, "PageCount")
 	for k in range(n):
 		UI.box(_page_root, Rect2(w * 0.5 - (n * 22) * 0.5 + k * 22 + 4, 62, 12, 12), UI.GOLD if k <= i else Color(UI.GOLD, 0.25),
 			"PageDot%d" % k)

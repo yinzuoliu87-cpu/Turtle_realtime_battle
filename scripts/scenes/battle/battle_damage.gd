@@ -333,7 +333,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	var _lethal: bool = u["hp"] <= 0.0
 	var _kill_n0: int = int(u.get("_kill_n", 0))   # 见 RealtimeBattle3DScene._kill 开头
 	if battle._audit and dmg > 100000:
-		battle._audit_flag("huge_hit", "%s 单次承伤 %d (%s)" % [str(u.get("name", "?")), dmg, bucket])
+		battle._audit_flag("huge_hit", Lang.t("%s 单次承伤 %d (%s)") % [str(u.get("name", "?")), dmg, bucket])
 	# §STATS 修(用户2026-07-19"统计面板感觉很多伤害没统计"): DoT(灼烧/中毒/流血)此前【只计承受方】,
 	#   施加者的"造成"完全没算 —— 而 dot_src 一直有记来源, 只是结算时没用。
 	## ★★★2026-09-04: 这里原来是**自己抄了一遍**记账(而不是调 `_record_buckets`),
@@ -955,7 +955,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if not _holy_busy:
 		battle._equip_sys.tally.on_shield(u, float(got))   # ④ 装备统计: 同 _st_shield 口径; 盾羁绊 9 档圣光转化那份是羁绊给的, 不记
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
-		battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, battle._VC.color_of("shield-num"), false, "shield")   # 走飘字色表, 不再手抄 #ffffff
+		battle._vfx._float_text(u["pos"] + Vector2(0, -52), Lang.t("+%d 盾") % got, battle._VC.color_of("shield-num"), false, "shield")   # 走飘字色表, 不再手抄 #ffffff
 	## ★★两轮用户意见否的是同一个东西:
 	##   2026-08-09 看 095:「又是程序生成的环？哪个商业游戏是你这么做啊」
 	##   2026-09-11 看 012:「我不明白 lol 里获得护盾都是你这样在地上搞一下的吗」

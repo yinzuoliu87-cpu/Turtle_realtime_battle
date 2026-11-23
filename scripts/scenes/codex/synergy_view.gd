@@ -103,8 +103,8 @@ func show(item: Dictionary) -> void:
 	for i in range(tiers.size()):
 		thresh += ("" if i == 0 else " / ") + str(int(tiers[i]))
 	## 两件事各占一行(文案规则 2: 不拿「·」把两个读数拼成一行)
-	host._add_text(130, 80, "激活：%s 件" % thresh, 16, color, 0.0, 0.5, true)
-	host._add_text(130, 104, "现有装备：%d 件" % members.size(), 16, color, 0.0, 0.5, true)
+	host._add_text(130, 80, Lang.t("激活：%s 件") % thresh, 16, color, 0.0, 0.5, true)
+	host._add_text(130, 104, Lang.t("现有装备：%d 件") % members.size(), 16, color, 0.0, 0.5, true)
 
 	## 逐档: 左列「N 件」, 右列一条一行。
 	var y := 132.0
@@ -139,7 +139,7 @@ func show(item: Dictionary) -> void:
 		if i > 0:
 			host._add_rect(float(host.DETAIL_W) / 2.0, y - TIER_GAP / 2.0, float(host.DETAIL_W) - 40.0, 1, color, 0.25)
 		var th: int = int(tiers[i]) if i < tiers.size() else 0
-		var badge_lbl = host._add_text(20, y + 11.0, "%d 件" % th, 18, color, 0.0, 0.5, true)
+		var badge_lbl = host._add_text(20, y + 11.0, Lang.t("%d 件") % th, 18, color, 0.0, 0.5, true)
 		if badge_lbl != null:
 			badge_lbl.set_meta("codex_syn_tier", th)
 		var ly: float = y

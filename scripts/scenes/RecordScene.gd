@@ -444,14 +444,14 @@ func _rel_time(ts: int) -> String:
 	if d < 60:
 		return "刚刚"
 	if d < 3600:
-		return "%d 分钟前" % int(d / 60.0)
+		return Lang.t("%d 分钟前") % int(d / 60.0)
 	if d < 86400:
-		return "%d 小时前" % int(d / 3600.0)
+		return Lang.t("%d 小时前") % int(d / 3600.0)
 	if d < 172800:
 		return "昨天"
 	if d < 259200:
 		return "前天"
-	return "%d 天前" % int(d / 86400.0)
+	return Lang.t("%d 天前") % int(d / 86400.0)
 
 
 # ─────────────────────────────── 背景 ───────────────────────────────

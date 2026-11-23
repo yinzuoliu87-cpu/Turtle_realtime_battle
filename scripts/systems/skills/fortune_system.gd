@@ -80,7 +80,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 				break
 		u["buyequip_star"] = star + 1
 		if star + 1 >= BUY_MAX_STAR: u["energy_cost"]["fortuneBuyEquip"] = BUY_COST_MAXED   # 满星→价回60
-		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·升星 %d★" % (star + 1), Color("#ffd93d"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -72), Lang.t("招财·升星 %d★") % (star + 1), Color("#ffd93d"))
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 104.0, 0.7)   # 招财: 金币聚宝爆(用户2026-07-12)
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.6), 56.0)
 	battle._refresh_panel_equips(u)   # ★抽到/升星的临时装备图标即时显进左右信息框(用户2026-07-12)
@@ -91,7 +91,7 @@ func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·�
 	battle._damage._heal(u, u["maxHp"] * DICE_HEAL_PCT)   # 骰子回血 8%→10%→15% 最大生命(用户2026-07-29 第五轮·财神实测33秒就死, 回血=活久点)
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.55), 52.0)
-	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "掷骰 +%d金币" % g, Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -66), Lang.t("掷骰 +%d金币") % g, Color("#ffd93d"))
 	for _k in range(5):   # 金块从脚下冒出(聚财)
 		battle._gold_chunk_erupt(u["pos"] + Vector2(randf_range(-30.0, 30.0), randf_range(-14.0, 14.0)))
 	# (删: "放梭哈后给护盾"=4选1下死逻辑, 不可能同时有骰子+梭哈, 用户指出)
@@ -114,7 +114,7 @@ func _sk_fortune_goldshield(u: Dictionary) -> void:   # 财神·金盾(梭哈用
 	u["gold_shield_until"] = battle._t + GOLD_SHIELD_SEC          # 持盾期锁龟能(与shield同4s·盾破/到期即恢复·同钻石坚不可摧节奏)
 	battle._vfx._flash(u, Color(1.6, 1.35, 0.5))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 60.0)
-	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "金盾 +%d" % int(amt), Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -66), Lang.t("金盾 +%d") % int(amt), Color("#ffd93d"))
 	for _k in range(4):                        # 金块绕身聚成盾
 		battle._gold_chunk_erupt(u["pos"] + Vector2(randf_range(-26.0, 26.0), randf_range(-12.0, 12.0)))
 
@@ -133,7 +133,7 @@ func _fortune_lowhp_burst(u: Dictionary) -> void:
 	var d: float = LOWHP_ENERGY * battle.SkillEnergy.CD_FACTOR
 	for k in cds:
 		cds[k] = maxf(0.0, float(cds[k]) - d)
-	battle._vfx._float_text(u["pos"] + Vector2(0, -70), "龟能 +%d" % int(LOWHP_ENERGY), Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -70), Lang.t("龟能 +%d") % int(LOWHP_ENERGY), Color("#ffd93d"))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 58.0)
 
 func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟·梭哈 ✅ (蓄力→持续投金币, 目标死换下个; 用过后该技变金盾)
@@ -153,7 +153,7 @@ func _sk_fortune_allin(u: Dictionary, tgt) -> void:                 # 财神龟�
 	#   实测 8.4%(第83/84)、释放仅 1.3 次/场。金盾这里【不锁龟能】(与变身后的金盾不同):
 	#   梭哈一场限一次, 放完就只剩金盾可放, 再锁龟能等于自断后路。
 	battle._damage._grant_shield(u, float(coins), ALLIN_SHIELD_SEC)
-	battle._vfx._float_text(u["pos"] + Vector2(0, -66), "金盾 +%d" % coins, Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -66), Lang.t("金盾 +%d") % coins, Color("#ffd93d"))
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.65), 66.0)   # 蓄力金环
 	battle._vfx._flash(u, Color(1.5, 1.3, 0.6))
 

@@ -174,17 +174,17 @@ static func round_line(b: Dictionary, now: int, fmt: Callable, watched_keys: Dic
 		if single:
 			head = "决赛" + TXT_LIVE
 		elif together(ln) or live.size() > 1:
-			head = "本轮 %d 场%s" % [live.size(), TXT_LIVE]
+			head = Lang.t("本轮 %d 场%s") % [live.size(), TXT_LIVE]
 		else:
 			head = _name(int(live[0]), false) + TXT_LIVE
 		## ★2026-11-01 一行一件事: 有一场在播就只说在播(下一场几点在底部「下一场」卡 / 下一行倒计时)
 		return head
 	if next_i >= 0:
-		return "%s距开播 %s" % [_name(next_i, single), fmt.call(int(ln[next_i][1]) - now)]
+		return Lang.t("%s距开播 %s") % [_name(next_i, single), fmt.call(int(ln[next_i][1]) - now)]
 	if shop_tail != "":
 		return shop_tail
 	return TXT_SETTLE if settling(b, now) else ""
 
 
 static func _name(i: int, single: bool) -> String:
-	return "决赛" if single else "第 %d 场" % (i + 1)
+	return "决赛" if single else Lang.t("第 %d 场") % (i + 1)

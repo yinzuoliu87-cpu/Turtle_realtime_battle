@@ -219,7 +219,7 @@ func _dl_record_line(extra_lane: String = "", extra_winner: String = "") -> Stri
 	if extra_lane != "" and not seen.has(extra_lane):   # 补上本路待记结果(结算幕布用)
 		if extra_winner == me_lr: lw += 1
 		else: rw += 1
-	return "各路战果    我方 %d : %d 对方" % [lw, rw]   # ★"本场比分…-…"改成冒号比分, 与结算页口径一致
+	return Lang.t("各路战果    我方 %d : %d 对方") % [lw, rw]   # ★"本场比分…-…"改成冒号比分, 与结算页口径一致
 
 func _side_headers() -> Dictionary:
 	var _stream: bool = str(battle._replay.mode) == "stream"
@@ -1104,10 +1104,10 @@ func _dl_update_hud() -> void:   # 双路 HUD: VS 下面那块路名计时牌(�
 			col = DL_PLATE_EGG_COL
 		else:
 			var rs: int = int(ceil(maxf(0.0, rem)))
-			txt = "破蛋 %d:%02d" % [rs / 60, rs % 60]
+			txt = Lang.t("破蛋 %d:%02d") % [rs / 60, rs % 60]
 			col = DL_PLATE_URGENT_COL if rem <= DL_EGG_URGENT_SEC else DL_PLATE_EGG_COL
 	elif live and battle._sd_stacks > 0:
-		txt = "加时 %s" % clock
+		txt = Lang.t("加时 %s") % clock
 		col = DL_PLATE_OT_COL
 	elif live:
 		txt = "%s %s" % [lane_cn, clock]

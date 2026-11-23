@@ -1296,14 +1296,14 @@ func _result_subtitle(won: bool, gs) -> String:
 		## ★2026-10-07: 说清是哪一段(小组赛 / 冠军杯赛) —— 组号在待揭晓那一单上(结算时 finals_match 已清)。
 		var _pr = gs.get("finals_pending_reveal")
 		var _bk: int = int((_pr as Dictionary).get("bucket", -1)) if _pr is Dictionary else -1
-		return "%s不消耗生命，结果于下轮开播时公布。" % _P2C_HUD.finals_stage_name(_bk)
+		return Lang.t("%s不消耗生命，结果于下轮开播时公布。") % _P2C_HUD.finals_stage_name(_bk)
 	if gs.is_eliminated():
 		return "生命已耗尽，本大轮已出局。"   # 2026-10-06 与主菜单「本大轮已出局」同一个词(60 人实操台账)
 	if battle._last_was_exhibition:
 		return "表演赛不消耗生命。"
 	## ★2026-10-26 积分赛晋级那一局(第 11 胜): 说清已经晋级(原来只写「赛季胜场 +1」, 晋级这件事一个字没有)。
 	if not _promotion_moment(won, false, gs).is_empty():
-		return "积分赛 %d 胜，已晋级周六闯关赛。" % int(gs.season_wins)
+		return Lang.t("积分赛 %d 胜，已晋级周六闯关赛。") % int(gs.season_wins)
 	return "赛季胜场 +1" if won else "消耗 1 点生命"
 
 
@@ -1337,10 +1337,10 @@ static func promotion_for(sk: String, won: bool, exhibition: bool, gs) -> Array:
 	if sk == _P2C_HUD.SETTLE_RANKED and not exhibition \
 			and int(gs.season_wins) == int(_P2C_HUD.PROMOTE_WINS) and not gs.is_eliminated():
 		return [_P2C_HUD.PHASE_RANKED, _P2C_HUD.PHASE_GAUNTLET, "晋级闯关赛！",
-			"闯关赛：%s 开始" % _P2C_HUD.local_wd_hhmm(_P2C_HUD.phase_window_utc(_P2C_HUD.PHASE_GAUNTLET, anchor).x)]
+			Lang.t("闯关赛：%s 开始") % _P2C_HUD.local_wd_hhmm(_P2C_HUD.phase_window_utc(_P2C_HUD.PHASE_GAUNTLET, anchor).x)]
 	if sk == _P2C_HUD.SETTLE_GAUNTLET and str(gs.gauntlet_state()) == _P2C_HUD.GAUNTLET_IN:
 		return [_P2C_HUD.PHASE_GAUNTLET, _P2C_HUD.PHASE_FINALS, "晋级决赛日！",
-			"决赛日%s：%s 开始" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(_P2C_HUD.finals_seat_ts(anchor))]]
+			Lang.t("决赛日%s：%s 开始") % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(_P2C_HUD.finals_seat_ts(anchor))]]
 	return []
 
 
@@ -1353,7 +1353,7 @@ func _result_detail(gs) -> String:
 	var st: String = str(gs.gauntlet_state())
 	if st == _P2C_HUD.GAUNTLET_IN:
 		var seat: int = _P2C_HUD.finals_seat_ts(_P2C_HUD.week_anchor_utc(int(_P2C_HUD.now_utc())))
-		var t: String = "决赛日%s：%s 开始。" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
+		var t: String = Lang.t("决赛日%s：%s 开始。") % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
 		## 提前晋级奖励第 4 胜当场就发了(GameState.gauntlet_promote_bonus) ⇒ 读已发的账, 括号里说清这几场从哪来:
 		##   玩家心里只有「4 胜晋级 3 负淘汰」, 不知道闯关赛共 6 场(用户 10-26「他是不明白为什么会有未打完的2场的」)。
 		##   两句各占一行(窄屏 960 实拍: 连成一句会在「深海币」中间折断)。
@@ -2094,7 +2094,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	# HP 条(阵营色)
 	## ★「生命」不是「HP」(2026-08-17): 实测全游戏只有面板这两处写 HP,
 	##   别处一律「生命 / 最大生命值」。一个界面里同一件事两种叫法, 是最省事也最没必要的不一致。
-	var _hpref: Array = battle._info_sys._info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, "生命  %d / %d" % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
+	var _hpref: Array = battle._info_sys._info_bar(vb, float(u.get("hp", 0.0)), float(u.get("maxHp", 1.0)), side_col, Lang.t("生命  %d / %d") % [int(u.get("hp", 0)), int(u.get("maxHp", 0))])
 	battle._info_hp_bar = _hpref[0]; battle._info_hp_lbl = _hpref[1]
 	## ── 第二行【资源区】(2026-08-16 用户「龟能条放血条下面啊」)──────────────
 	##   龟能恒在第一条; 专属资源(怒气/星能/储能/泡泡/财宝)有才出现, 每条都带分母。
@@ -2315,7 +2315,7 @@ func make_synergy_chip_row(side: String) -> Control:
 		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
 		lb.add_theme_constant_override("outline_size", 4)
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lb.tooltip_text = "%s：第 %d 档" % [str(t), tier]
+		lb.tooltip_text = Lang.t("%s：第 %d 档") % [str(t), tier]
 		## ★★`HBoxContainer` 里必须自己给宽: `RichTextLabel` 最小宽 **0**(Label 自带文字宽)
 		##   ⇒ 不给就全挤成一条竖线。拿控件自己的主题字体量, 不硬编码。
 		var _lf: Font = lb.get_theme_font("normal_font")

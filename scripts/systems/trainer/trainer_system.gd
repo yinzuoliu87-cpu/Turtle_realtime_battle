@@ -1136,7 +1136,7 @@ func _ms_place_aura(u: Dictionary, tier: int) -> void:
 func _ms_tier_burst(u: Dictionary, tier: int) -> void:
 	var roman := ["", "I", "II", "III"]
 	battle._vfx._float_text(u["pos"] + Vector2(0, -78),
-		"魔法石·共鸣 %s" % roman[clampi(tier, 0, 3)], MS_TIER_TINT[clampi(tier, 0, 3)])
+		Lang.t("魔法石·共鸣 %s") % roman[clampi(tier, 0, 3)], MS_TIER_TINT[clampi(tier, 0, 3)])
 	# ★JUICE_SHAKE_SMALL 不存在 —— 本项目只有 LIGHT(0.0)/HEAVY(0.10)/BIG(0.22)/MAX(0.30)。
 	battle._shake(minf(battle.JUICE_SHAKE_BIG, battle.JUICE_SHAKE_HEAVY * float(tier)))   # tier1 0.10 / tier2 0.20 / tier3 封顶 0.22
 	u["_ms_burst_n"] = int(u.get("_ms_burst_n", 0)) + 1   # 同步的触发证据(供门禁断言, 不看"有没有建 tween")

@@ -499,10 +499,10 @@ static func ago(iso: String, now: int) -> String:
 	if d < 60:
 		return "刚刚"
 	if d < 3600:
-		return "%d 分钟前" % (d / 60)
+		return Lang.t("%d 分钟前") % (d / 60)
 	if d < 86400:
-		return "%d 小时前" % (d / 3600)
-	return "%d 天前" % (d / 86400)
+		return Lang.t("%d 小时前") % (d / 3600)
+	return Lang.t("%d 天前") % (d / 86400)
 
 
 ## 背景 = 本屏专属底图「海底酒馆」(11-22 换掉主菜单那张绿色平铺底; 用户「那个绿色的画布…彻底的不要了吧」)。

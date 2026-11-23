@@ -962,7 +962,7 @@ static func send_code_result(ok: bool, code: int, body: String) -> Dictionary:
 		return {"ok": false, "reason": "该邮箱已绑定其他账号"}
 	if code == 429 or ec == "over_email_send_rate_limit":
 		return {"ok": false, "reason": "操作过于频繁，请稍后再试"}
-	return {"ok": false, "reason": "发送失败（%d），请稍后重试" % code}
+	return {"ok": false, "reason": Lang.t("发送失败（%d），请稍后重试") % code}
 
 
 ## 纯函数: 一次「验码」回包 → 结果。
@@ -981,7 +981,7 @@ static func verify_code_result(ok: bool, code: int, body: String) -> Dictionary:
 		return {"ok": false, "reason": "无法连接服务器。请检查网络连接后重试。", "account_id": ""}
 	if ec == "otp_expired" or code == 403:
 		return {"ok": false, "reason": "验证码错误或已过期", "account_id": ""}
-	return {"ok": false, "reason": "验证失败（%d）" % code, "account_id": ""}
+	return {"ok": false, "reason": Lang.t("验证失败（%d）") % code, "account_id": ""}
 
 
 ## ★★补绑专用: 验码成功之后，**还要问一句「这是不是同一个号」**。
@@ -1079,7 +1079,7 @@ func send_code(email: String, flow: String) -> void:
 				int(res.get("code", 0)), str(res.get("body", "")))
 			if bool(r["ok"]):
 				_email_state = EM_SENT
-				_email_msg = "验证码已发送至 %s（如未收到，请检查垃圾邮件）" % email
+				_email_msg = Lang.t("验证码已发送至 %s（如未收到，请检查垃圾邮件）") % email
 			else:
 				_email_state = EM_ERR
 				_email_msg = str(r["reason"])

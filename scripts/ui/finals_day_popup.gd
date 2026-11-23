@@ -126,7 +126,7 @@ func set_pair(me_av: String, opp_av: String) -> void:
 func paint(secs: int, line: String) -> void:
 	var t := ""
 	if secs >= 0:
-		t = "%s %d 秒后开播" % [_FC.join("你的", stage_name), maxi(1, secs)]
+		t = Lang.t("%s %d 秒后开播") % [_FC.join("你的", stage_name), maxi(1, secs)]
 	elif secs == -2:
 		t = _FC.join("你的", stage_name) + "即将开播"
 	else:

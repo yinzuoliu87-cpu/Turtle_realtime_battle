@@ -334,7 +334,7 @@ func _on_root_input(ev: InputEvent) -> void:
 # ═══════════════════════════════════════════════════════════════════
 func _build_reveal() -> void:
 	var cup := is_cup()
-	var head := "决赛完成" if cup else "%s决赛完成" % str(data.get("group", ""))
+	var head := "决赛完成" if cup else Lang.t("%s决赛完成") % str(data.get("group", ""))
 	_n["sil_c"] = Vector2(c.x, c.y - 150)
 	_n["sil"] = UI.tex_at(_stage, UI.TEX_TROPHY if cup else UI.TEX_MEDAL, _n["sil_c"],
 		Vector2(192, 192) if cup else Vector2(128, 128), "Silhouette")
@@ -388,7 +388,7 @@ func _build_runner() -> void:
 	_n["name"] = UI.label_in(_stage, Rect2(0, c.y + 100, vp.x, 60), str(ru.get("name", "")), 48, UI.SILVER, true, "RunnerName")
 	var sub := "第 2 名"
 	if str(ru.get("origin", "")) != "":
-		sub = "第 2 名（%s）" % str(ru["origin"])          # 来历作补充放括号里, 不用「·」拼
+		sub = Lang.t("第 2 名（%s）") % str(ru["origin"])          # 来历作补充放括号里, 不用「·」拼
 	_n["sub"] = UI.label_in(_stage, Rect2(0, c.y + 160, vp.x, 32), sub, 24, UI.TXT_DIM, false, "RunnerSub")
 	_n["rib_y"] = (_n["rib"] as Control).position.y
 	_n["face_x"] = (_n["face"] as Control).position.x
@@ -436,9 +436,9 @@ func _build_crown() -> void:
 	var n := int(data.get("entrants", 0))
 	var scale_line := ""
 	if cup:
-		scale_line = "%s冠军（%d 人参赛）" % [_P2C.STAGE_CUP, n] if n > 0 else "%s冠军" % _P2C.STAGE_CUP
+		scale_line = Lang.t("%s冠军（%d 人参赛）") % [_P2C.STAGE_CUP, n] if n > 0 else Lang.t("%s冠军") % _P2C.STAGE_CUP
 	else:
-		scale_line = "%s冠军（%d 人参赛）" % [str(data.get("group", "")), n] if n > 0 else str(data.get("group", "")) + "冠军"
+		scale_line = Lang.t("%s冠军（%d 人参赛）") % [str(data.get("group", "")), n] if n > 0 else str(data.get("group", "")) + "冠军"
 	_n["l1"] = UI.label_in(_stage, Rect2(0, c.y + 244, vp.x, 32), scale_line, 24, UI.TXT, false, "ScaleLine")
 	_n["l2"] = UI.label_in(_stage, Rect2(0, c.y + 276, vp.x, 28),
 		DATA.edition_line(int(data.get("week", 0)), int(data.get("edition", -1))), 20, UI.TXT_DIM, false, "DateLine")
@@ -506,7 +506,7 @@ func _apply_crown(t: float) -> void:
 func _build_lineup() -> void:
 	var ids := lineup()
 	UI.label_in(_stage, Rect2(0, c.y - 262, vp.x, 52), "夺冠阵容", 36, UI.GOLD, true, "LineupTitle")
-	UI.label_in(_stage, Rect2(0, c.y - 214, vp.x, 30), "%s 的三统领" % str((data.get("champion", {}) as Dictionary).get("name", "")),
+	UI.label_in(_stage, Rect2(0, c.y - 214, vp.x, 30), Lang.t("%s 的三统领") % str((data.get("champion", {}) as Dictionary).get("name", "")),
 		20, UI.TXT_DIM, false, "LineupSub")
 	var n := ids.size()
 	var gap := minf(380.0, (vp.x - 100.0) / maxf(1.0, float(n)))
@@ -738,7 +738,7 @@ func _build_card() -> void:
 	if not cup and str(data.get("next_text", "")) != "":
 		scale = str(data["next_text"])
 	UI.label_in(card, Rect2(rx, 124, rw, 30), scale, 24, UI.TXT, false, "CardScale", HORIZONTAL_ALIGNMENT_LEFT)
-	var tl := "获得「%s」头衔（%s）" % ["冠军" if cup else "组冠军", DATA.title_until_line()]
+	var tl := Lang.t("获得「%s」头衔（%s）") % ["冠军" if cup else "组冠军", DATA.title_until_line()]
 	UI.label_in(card, Rect2(rx, 156, rw, 30), tl, 22, UI.GOLD, false, "CardTitleLine", HORIZONTAL_ALIGNMENT_LEFT)
 	## 夺冠阵容(小)
 	var ids := lineup()

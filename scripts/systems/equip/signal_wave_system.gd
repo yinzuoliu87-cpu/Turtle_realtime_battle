@@ -102,7 +102,7 @@ func _fire(src: Dictionary, tgt: Dictionary, si: int, stt: Dictionary) -> void:
 		"ck": battle._equip_sys.key_of(src, "p2eq_038"),   # 放出它的那一件(份号 · 11-13)
 	})
 	battle._skill_ring(src["pos"], Color(0.45, 0.9, 1.0, 0.8), 70.0)
-	battle._vfx._float_text(src["pos"] + Vector2(0, -62), "电磁波 %d°" % int(deg), Color("#7fe8ff"))
+	battle._vfx._float_text(src["pos"] + Vector2(0, -62), Lang.t("电磁波 %d°") % int(deg), Color("#7fe8ff"))
 
 
 ## 每帧推进所有在途弧形波(由 RealtimeBattle3DScene 的 sim tick 调)。

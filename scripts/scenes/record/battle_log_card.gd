@@ -49,7 +49,7 @@ static func kind_text(row: Dictionary) -> String:
 	elif k == "finals":
 		var r := int((row.get("finals", {}) as Dictionary).get("round", 0))
 		if r > 0:
-			t += " · 第%d轮" % r
+			t += Lang.t(" · 第%d轮") % r
 	return t
 
 

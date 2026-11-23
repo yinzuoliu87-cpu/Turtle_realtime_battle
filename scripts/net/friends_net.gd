@@ -31,7 +31,7 @@ const MSG := {
 	"self": "这是你自己的玩家 ID",
 	"not_found": "未找到该玩家",
 	"already": "已是好友",
-	"full": "好友数量已达上限 %d 人" % CAP,
+	"full": Lang.t("好友数量已达上限 %d 人") % CAP,
 	"their_full": "对方好友数量已达上限",
 	"limit": "今日好友申请次数已达上限",
 	"not_friends": "双方尚未成为好友",

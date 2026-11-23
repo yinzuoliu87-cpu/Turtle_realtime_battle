@@ -420,7 +420,7 @@ func _rebuild() -> void:
 	##   (memory `fb-tests-pin-screen-words` / `fb-gate-tautological-when-it-spans-a-frame`)。
 	##   ⇒ 判据平移到【这一族节点在不在、在哪】, 文案以后怎么改都不影响它。
 	capl.name = CAP_ROW_NAME
-	capl.text = "全队装备 %d/%d" % [used, cap]
+	capl.text = Lang.t("全队装备 %d/%d") % [used, cap]
 	capl.add_theme_font_size_override("font_size", 24)
 	capl.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#b9cbdc"))
 	capl.position = Vector2(HDR_GROUP_X + 176 + ICON_PX + 6 - _tsh, 22); capl.size = Vector2(190 - ICON_PX - 6, 40)
@@ -635,7 +635,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		var ntxt: String
 		var ncol: Color
 		if is_ph:
-			ntxt = "统领%d" % (int(unit.get("slot", idx)) + 1)
+			ntxt = Lang.t("统领%d") % (int(unit.get("slot", idx)) + 1)
 			ncol = BANNER_EMPTY_COL
 		elif kind == "leader":
 			var pet: Dictionary = DataRegistry.pet_by_id.get(pid, {})
@@ -1093,7 +1093,7 @@ func _open_item_card() -> void:
 		stats.append(["", "无属性加成", Color("#a89c86")])
 	var img := str(edef.get("img", ""))
 	var tp := str(Phase2Types.type_of(eid))
-	var tag_bb := "[color=#ffd93d]%s[/color]  %d费" % ["★".repeat(clampi(star, 1, 3)), int(edef.get("cost", 1))]
+	var tag_bb := Lang.t("[color=#ffd93d]%s[/color]  %d费") % ["★".repeat(clampi(star, 1, 3)), int(edef.get("cost", 1))]
 	if tp != "":
 		tag_bb += "  ·  " + Phase2Types.icon_bb(tp, 16) + " " + tp
 	var body := SkillText.highlight_star(SkillText.equip_brief_bb(edef, MIN_FONT_PX), star) \
@@ -1130,7 +1130,7 @@ func _open_item_card() -> void:
 		row.add_child(un)
 	else:
 		var sell := Button.new(); sell.name = "SellBtn"
-		sell.text = "卖出 +%d" % _inv_ops._sell_value(it)
+		sell.text = Lang.t("卖出 +%d") % _inv_ops._sell_value(it)
 		_card_btn(sell)
 		sell.pressed.connect(func() -> void: _inv_ops._sell_selected())
 		row.add_child(sell)
@@ -1824,7 +1824,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 	ttl.scroll_active = false
 	ttl.add_theme_font_size_override("normal_font_size", 22)
 	ttl.add_theme_font_size_override("bold_font_size", 22)
-	ttl.text = "[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]" % [
+	ttl.text = Lang.t("[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]") % [
 		str(edef.get("name", eid)), "★".repeat(star), int(edef.get("cost", 1)),
 		("  ·  " + tname) if tname != "" else ""]
 	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 34); box.add_child(ttl)
@@ -1877,7 +1877,7 @@ func _open_jar_card() -> void:
 		"icon": CANDY_JAR_ICON,
 		"title": "糖果罐", "title_col": col,
 		"icon_border": col, "frame_col": col,
-		"tag": "第 %d 档" % tier, "tag_col": Color("#e8dcc4"),
+		"tag": Lang.t("第 %d 档") % tier, "tag_col": Color("#e8dcc4"),
 		## 每套一个「·」开头、折行缩进(列表排版): 一套长了会折行, 不缩进时折下来的半行像新的一套。
 		##   「·」不用 [ul] 默认的「•」—— 「·」本来就在游戏字体里用着(「糖果罐 · 第 N 档」), 「•」不在。
 		"body": "打碎后随机获得以下奖励之一（每大轮限 1 次）：\n[ul bullet=·]%s[/ul]" % GameState.candy_jar_tier_preview(tier),
@@ -2229,7 +2229,7 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	##   **一大轮只能碎一次**; `candy_jar_count` 是累积糖数、**决定档位**, 不是"N 个罐子"。
 	##   写成 ×N 会被读成一叠可碎 N 次的消耗品。改成显示【档位】, 糖数放 tooltip。
 	## 2026-10-21: 格子里只留档位(20 号字), 「糖果罐」三个字在选中后的说明小卡里。
-	jnm.text = "%d 档" % GameState.candy_jar_tier()
+	jnm.text = Lang.t("%d 档") % GameState.candy_jar_tier()
 	jnm.name = "CellName"
 	jnm.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	jnm.add_theme_color_override("font_color", Color("#e79bd6"))

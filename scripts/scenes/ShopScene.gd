@@ -330,7 +330,7 @@ func _waiting() -> bool:
 func _seeded_fail_text(why: String) -> String:
 	match why:
 		"coins":
-			return "深海币不足（需要 %d）" % REFRESH_COST
+			return Lang.t("深海币不足（需要 %d）") % REFRESH_COST
 		"busy", "backlog", "moved":
 			return "正在与服务器同步，请稍后再试"
 	return "无法连接服务器。请检查网络连接后重试。"   # 全游戏联网失败同一句(好友 / 回放 / 对阵图 / 登录)
@@ -606,7 +606,7 @@ func _rebuild() -> void:
 	## ★2026-10-18 用户「说了几遍了不要用之前的金木框按钮，重新设计一个更好的」:
 	##   刷新 / 锁定改成【无框图标钮】—— 新画的像素图标在上、描边字在下, 悬停 / 按下靠亮度变化,
 	##   立在货架下沿的沙地上。图标: assets/sprites/shop/icon-refresh / icon-lock-closed / icon-lock-open。
-	var rf := _icon_button("ShopRefreshBtn", REFRESH_ICON, "刷新 %d" % REFRESH_COST,
+	var rf := _icon_button("ShopRefreshBtn", REFRESH_ICON, Lang.t("刷新 %d") % REFRESH_COST,
 		Vector2(ROW_BTN_X, ROW_BTN_Y), Vector2(ROW_BTN_W, ROW_BTN_H))
 	_coin_after_text(rf)
 	## ★★买不起时: disabled + 整颗压暗(价钱那枚币是子节点, 只有 modulate 会往下传)。
@@ -751,7 +751,7 @@ func _build_odds_row() -> void:
 		var chip := Label.new()
 		## ★数字与汉字之间要有空格 —— json 侧的文案门禁焊了这条, UI 侧一直没人管,
 		##   于是同一个游戏里「1 费」和「费用1」两种写法并存。跟 json 的口径。
-		chip.text = "%d 费 %d%%" % [c + 1, pct]
+		chip.text = Lang.t("%d 费 %d%%") % [c + 1, pct]
 		chip.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		var cc := Color(cost_cols[c])
 		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(0.55, 0.5, 0.45))
@@ -976,11 +976,11 @@ func _open_detail_card() -> void:
 		buy.custom_minimum_size = Vector2(BUY_W, MIN_TOUCH_H)
 		buy.size_flags_horizontal = Control.SIZE_SHRINK_END
 		if coins >= price:
-			buy.text = "购买  %d" % price
+			buy.text = Lang.t("购买  %d") % price
 			buy.pressed.connect(func(): _on_buy(_sel))
 			_tut_buy_btn = buy
 		else:
-			buy.text = "还差 %d 枚深海币" % (price - coins)
+			buy.text = Lang.t("还差 %d 枚深海币") % (price - coins)
 			buy.disabled = true
 	var lv: Dictionary = _insp.open(("own:" if own else "shop:") + eid, null, {
 		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
@@ -1369,9 +1369,9 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	## 等级的用处写在等级旁边: 全队可装备件数 = (等级 − 1) × 2(P2.team_equip_cap) —— 1 级是 0 件。
 	var capn := Label.new(); capn.name = "EquipCapLabel"
 	var _cap_now: int = int(P2.team_equip_cap(int(GameState.season_level)))
-	capn.text = "可装备 %d 件" % _cap_now
+	capn.text = Lang.t("可装备 %d 件") % _cap_now
 	if not _maxed:
-		capn.text += "（Lv%d：%d 件）" % [int(GameState.season_level) + 1, int(P2.team_equip_cap(int(GameState.season_level) + 1))]
+		capn.text += Lang.t("（Lv%d：%d 件）") % [int(GameState.season_level) + 1, int(P2.team_equip_cap(int(GameState.season_level) + 1))]
 	capn.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	capn.add_theme_color_override("font_color", Color("#ffb454") if _cap_now == 0 else Color("#e8dcc4"))
 	capn.add_theme_color_override("font_outline_color", Color("#1a0e05")); capn.add_theme_constant_override("outline_size", 6)
@@ -1390,7 +1390,7 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	var _xp_dead: bool = _maxed or int(GameState.meta_deepsea_coins) < int(P2.BUY_XP_COST)
 	bxp.disabled = _xp_dead
 	bxp.modulate = Color(1, 1, 1, 0.42) if _xp_dead else Color(1, 1, 1, 1)
-	bxp.tooltip_text = "经验 +%d" % int(P2.BUY_XP_AMOUNT)
+	bxp.tooltip_text = Lang.t("经验 +%d") % int(P2.BUY_XP_AMOUNT)
 	bxp.pressed.connect(_on_buy_xp)
 	## disabled 的按钮不发 pressed ⇒ 真点到压暗的它, 原来一句话都没有(满级 / 钱不够那两句只有程序直调才到得了)
 	if _xp_dead:

@@ -19,12 +19,12 @@ const _B := preload("res://scripts/gamedata/bracket.gd")
 static func dur(sec: int) -> String:
 	var s := maxi(0, sec)
 	if s >= 86400:
-		return "%d 天 %d 小时" % [s / 86400, (s % 86400) / 3600]
+		return Lang.t("%d 天 %d 小时") % [s / 86400, (s % 86400) / 3600]
 	if s >= 3600:
-		return "%d 小时 %02d 分 %02d 秒" % [s / 3600, (s % 3600) / 60, s % 60]
+		return Lang.t("%d 小时 %02d 分 %02d 秒") % [s / 3600, (s % 3600) / 60, s % 60]
 	if s >= 60:
-		return "%d 分 %02d 秒" % [s / 60, s % 60]
-	return "%d 秒" % s
+		return Lang.t("%d 分 %02d 秒") % [s / 60, s % 60]
+	return Lang.t("%d 秒") % s
 
 
 ## 时刻(设备时区)。
@@ -44,7 +44,7 @@ static func round_name(n: int, r: int) -> String:
 		return "决赛"
 	if back == 1:
 		return "半决赛"
-	return "1/%d 决赛" % (1 << back)
+	return Lang.t("1/%d 决赛") % (1 << back)
 
 
 ## 拼两段: 汉字挨着数字 / 字母的地方补一个空格(「冠军杯赛」+「1/4 决赛」⇒「冠军杯赛 1/4 决赛」; 「你的」+「半决赛」照旧连写)。

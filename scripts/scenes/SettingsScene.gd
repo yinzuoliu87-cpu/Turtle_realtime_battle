@@ -243,7 +243,7 @@ func _account_panel(x: float, w: float) -> void:
 		primary = "BtnConflict"
 	elif mail != "":
 		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
-		status = "已绑定：%s" % mail
+		status = Lang.t("已绑定：%s") % mail
 		status_col = "#7fe0b0"
 		note = "云端同步已开启，可在其他设备登录恢复进度"
 	elif _ML.is_internal_email(str(GameState.account_email)):
@@ -470,11 +470,11 @@ func _copy_contact() -> void:
 ## 底部一条。左: 版本 · 玩家 ID(小字, 报问题时对得上号 —— Angry Birds Journey 同位置);
 ##   右: 开发工具(仅开发包) + 「重置存档」(破坏性 ⇒ 最右下角, 与普通选项分开两块框的距离)。
 func _footer() -> void:
-	var ver := "版本 v%s" % str(ProjectSettings.get_setting("application/config/version", ""))
+	var ver := Lang.t("版本 v%s") % str(ProjectSettings.get_setting("application/config/version", ""))
 	## 玩家 ID: 有账号用账号算的; 没配后端时用安装号算的(本地就这一个身份, 不会再换)。
 	##   ★「连接中」那会儿不写 —— 那时算出来的是安装号的号, 一会儿就要换。
 	if not _acct_on() or str(GameState.account_id) != "":
-		ver += " · 玩家 ID %s" % str(_BE_ID.my_tag())
+		ver += Lang.t(" · 玩家 ID %s") % str(_BE_ID.my_tag())
 	var fl := _stroked_label(ver, 13, "#a9b8c8", "#0a0d16", 3)
 	fl.name = FOOT_LABEL
 	fl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1248,7 +1248,7 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 		## ★★昵称(只有绑定流程要填)。用户 2026-09-24:「这个在创建账号应该一起吧」——
 		##   这个项目里玩家感知得到的「创建账号」只有这一处(首启建匈名号是**静默**的)。
 		##   取回流程不填: 那个号已经有昵称了, 跟着账号一起回来。
-		_email_hint1 = "设置昵称（%d~%d 个字）。昵称显示于排行榜，可随时修改。" % [
+		_email_hint1 = Lang.t("设置昵称（%d~%d 个字）。昵称显示于排行榜，可随时修改。") % [
 			_P2C.NICK_MIN, _P2C.NICK_MAX]
 		_nick_edit = LineEdit.new()
 		_nick_edit.placeholder_text = "输入昵称"
@@ -1976,7 +1976,7 @@ func _open_rename_dialog() -> void:
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)
 	var rule := Label.new()
-	rule.text = "%d~%d 个字，显示于排行榜" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
+	rule.text = Lang.t("%d~%d 个字，显示于排行榜") % [_P2C.NICK_MIN, _P2C.NICK_MAX]
 	rule.add_theme_font_size_override("font_size", 13)
 	rule.add_theme_color_override("font_color", Color("#9fb4c8"))
 	rule.position = Vector2(0, 56); rule.size = Vector2(520, 22)

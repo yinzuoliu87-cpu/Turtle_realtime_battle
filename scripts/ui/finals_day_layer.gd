@@ -230,10 +230,10 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 		rn = short_stage(mn["b"], int(mn["r"]))
 	match str(mn.get("k", "")):
 		_M.K_SHOP:
-			out["body"] = "%s备战剩余" % rn
+			out["body"] = Lang.t("%s备战剩余") % rn
 			out["cd"] = at - now
 		_M.K_UPCOMING:
-			out["body"] = "%s %s 开播" % [_FC.join("你的", rn), _P2.local_hhmm(at)]
+			out["body"] = Lang.t("%s %s 开播") % [_FC.join("你的", rn), _P2.local_hhmm(at)]
 			out["cd"] = at - now
 		_M.K_LIVE:
 			out["body"] = _FC.join("你的", rn)         # 「开播中」由左边红签说, 正文不再说一遍
@@ -241,25 +241,25 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 			out["act"] = "观看"
 			out["target"] = mn
 		_M.K_NEXT:
-			out["body"] = "%s备战 %s 开始" % [rn, _P2.local_hhmm(at)]
+			out["body"] = Lang.t("%s备战 %s 开始") % [rn, _P2.local_hhmm(at)]
 			out["cd"] = at - now
 		_M.K_WAIT:
 			if at > now:
-				out["body"] = "%s %s 开播" % [_FC.join("你的", rn), _P2.local_hhmm(at)]
+				out["body"] = Lang.t("%s %s 开播") % [_FC.join("你的", rn), _P2.local_hhmm(at)]
 				out["cd"] = at - now
 			else:
 				out["body"] = _FC.join("你的", rn) + "即将开播"
 		_M.K_CUP_WAIT:
-			out["body"] = "%s %s 开赛" % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
+			out["body"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
 			out["cd"] = at - now
 	if str(out["body"]) != "":
 		return _battle_trim(out, in_battle)
 	match ph:
 		_M.PH_PRE:
-			out["body"] = "%s %s 开赛" % [_P2.STAGE_GROUP, _P2.local_hhmm(_M.seat_ts(now))]
+			out["body"] = Lang.t("%s %s 开赛") % [_P2.STAGE_GROUP, _P2.local_hhmm(_M.seat_ts(now))]
 			out["cd"] = _M.seat_ts(now) - now
 		_M.PH_INTER:
-			out["body"] = "%s %s 开赛" % [_P2.STAGE_CUP, _P2.local_hhmm(_M.cup_ts(now))]
+			out["body"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(_M.cup_ts(now))]
 			out["cd"] = _M.cup_ts(now) - now
 		_M.PH_DONE:
 			var sd := _M.champion_visible(cup, now)
@@ -285,13 +285,13 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 						eta = int(e["at"])
 				var prep := _M.prep_eta([cup] if ph == _M.PH_CUP else groups, now)
 				if eta > now:
-					out["body"] = "%s下一场 %s 开播" % [stage, _P2.local_hhmm(eta)]
+					out["body"] = Lang.t("%s下一场 %s 开播") % [stage, _P2.local_hhmm(eta)]
 					out["cd"] = eta - now
 				elif prep > now:
-					out["body"] = "%s下一轮备战 %s 开始" % [stage, _P2.local_hhmm(prep)]
+					out["body"] = Lang.t("%s下一轮备战 %s 开始") % [stage, _P2.local_hhmm(prep)]
 					out["cd"] = prep - now
 				else:
-					out["body"] = "%s进行中" % stage
+					out["body"] = Lang.t("%s进行中") % stage
 	return _battle_trim(out, in_battle)
 
 
@@ -488,7 +488,7 @@ static func popup_secs(k: String, at: int, now: int) -> int:
 ## 横幅第二行那句: 「吃货一枚 对 Kiki」(哪一场写在横幅标题「你的 C 组半决赛…」里, 不在这一行再拼一遍)。
 static func popup_line(mn: Dictionary) -> String:
 	var b: Dictionary = mn.get("b", {})
-	return "%s 对 %s" % [_M.name_of(b, int(mn.get("me_sd", -1))), str(mn.get("opp", ""))]
+	return Lang.t("%s 对 %s") % [_M.name_of(b, int(mn.get("me_sd", -1))), str(mn.get("opp", ""))]
 
 
 func _popup_tick(now: int, mn: Dictionary) -> void:

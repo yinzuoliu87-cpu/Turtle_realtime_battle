@@ -97,7 +97,7 @@ func _ready() -> void:
 	_root.add_child(_fx)
 	_title = UI.ribbon(_root, Vector2(c.x, TITLE_Y), 480, "冠军杯赛", 48, "gold", "IntroTitle")
 	var n := entrants().size()
-	var sub := "%d 位组冠军登场" % n
+	var sub := Lang.t("%d 位组冠军登场") % n
 	var ed := DATA.edition_line(int(data.get("week", 0)), int(data.get("edition", -1)))
 	if ed != "":
 		sub = ed + "　" + sub

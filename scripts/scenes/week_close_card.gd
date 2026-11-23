@@ -148,7 +148,7 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			if bool(gs.is_eliminated()):
 				d["status"] = "生命已耗尽，未晋级闯关赛"
 			else:
-				d["status"] = "距晋级还差 %d 胜，未晋级闯关赛" % maxi(1, int(_P2.PROMOTE_WINS) - r2.x)
+				d["status"] = Lang.t("距晋级还差 %d 胜，未晋级闯关赛") % maxi(1, int(_P2.PROMOTE_WINS) - r2.x)
 			if now < g_close:
 				(d["body"] as Array).append("闯关赛与决赛日开放观战。" + TXT_NEXT_WEEK)
 				d["primary"] = [TXT_WATCH, DOOR_BOARD]
@@ -177,7 +177,7 @@ static func spec(kind: String, gs, now: int) -> Dictionary:
 			d["title"] = "闯关赛战绩"
 			d["dim"] = true
 			d["record"] = [int(gs.gauntlet_wins), int(gs.gauntlet_losses)]
-			d["status"] = "闯关赛已于%s 截止，未晋级决赛日" % _P2.local_wd_hhmm(g_close)
+			d["status"] = Lang.t("闯关赛已于%s 截止，未晋级决赛日") % _P2.local_wd_hhmm(g_close)
 			d["body"] = ["决赛日开放观战。" + TXT_NEXT_WEEK]
 			d["primary"] = [TXT_WATCH, DOOR_BRACKET]
 			d["secondary"] = [TXT_CLOSE, DOOR_NONE]

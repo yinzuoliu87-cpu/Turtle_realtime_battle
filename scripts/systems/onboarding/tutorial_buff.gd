@@ -26,7 +26,7 @@ static func active() -> bool:
 
 ## 说明句(数字读常量, 不手抄)。
 static func text() -> String:
-	return "新手教程：增伤 %d%%，减伤 %d%%" % [int(round(_TD.TUTORIAL_DMG_AMP * 100.0)), int(round(_TD.TUTORIAL_DR * 100.0))]
+	return Lang.t("新手教程：增伤 %d%%，减伤 %d%%") % [int(round(_TD.TUTORIAL_DMG_AMP * 100.0)), int(round(_TD.TUTORIAL_DR * 100.0))]
 
 
 ## 单位刚建出来时调(battle_spawn 的 `_make_unit` / `_spawn_summon` 末尾)。只给我方; 训龟大师不算(它不参与伤害)。★幂等。

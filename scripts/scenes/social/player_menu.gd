@@ -127,7 +127,7 @@ static func open(host: Node, info: Dictionary, on_change: Callable = Callable())
 	box.add_child(ttl)
 	ttl.position = Vector2(24, 20); ttl.size = Vector2(BOX.x - 48.0, 34)
 	var tl := Label.new()
-	tl.text = "玩家 ID %s" % tag
+	tl.text = Lang.t("玩家 ID %s") % tag
 	tl.add_theme_font_size_override("font_size", 14)
 	tl.add_theme_color_override("font_color", Color("#8fa6bd"))
 	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

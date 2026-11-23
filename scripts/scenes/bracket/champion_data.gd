@@ -39,8 +39,8 @@ static func group_name(bucket_no: int) -> String:
 	if bucket_no < 0:
 		return ""
 	if bucket_no < 26:
-		return "%s 组" % char(65 + bucket_no)
-	return "第 %d 组" % (bucket_no + 1)
+		return Lang.t("%s 组") % char(65 + bucket_no)
+	return Lang.t("第 %d 组") % (bucket_no + 1)
 
 
 ## 第几届冠军杯。周锚点不对 / 早于第一届 ⇒ 0(屏幕不写届数)。
@@ -55,7 +55,7 @@ static func date_text(week: int) -> String:
 	if week <= 0:
 		return ""
 	var d: Dictionary = Time.get_datetime_dict_from_unix_time(week + 6 * 86400)
-	return "%d 月 %d 日" % [int(d.get("month", 0)), int(d.get("day", 0))]
+	return Lang.t("%d 月 %d 日") % [int(d.get("month", 0)), int(d.get("day", 0))]
 
 
 ## 「第 4 届　11 月 1 日」(届次与日期两个并列名词, 全角空格隔开; 不用「·」)。缺哪样省哪样。
@@ -80,7 +80,7 @@ static func round_name(n: int, r: int, group: bool = false) -> String:
 		return "半决赛"
 	if back == 2:
 		return "1/4 决赛"
-	return "1/%d 决赛" % (1 << back)        # 与全决赛日同一套(finals_copy.round_name); 原来写「第 r 轮」
+	return Lang.t("1/%d 决赛") % (1 << back)        # 与全决赛日同一套(finals_copy.round_name); 原来写「第 r 轮」
 
 
 ## 毫秒级时长 → 「1:52」。
@@ -92,7 +92,7 @@ static func mmss(sec: float) -> String:
 ## 头衔页那一行: 「有效期至下周日」。★永久记录(`GameState.titles` 里那条 {id, week})不随周清;
 ##   「至下周日」说的是**名字旁那块牌**: 排行榜 / 对阵图按「上周终榜」贴冠军 / 亚军 / 四强, 下一届冠军诞生就换人。
 static func title_until_line() -> String:
-	return "有效期至%s" % TITLE_UNTIL.trim_prefix("至")
+	return Lang.t("有效期至%s") % TITLE_UNTIL.trim_prefix("至")
 
 
 # ═══════════════════════════════════════════════════════════════════

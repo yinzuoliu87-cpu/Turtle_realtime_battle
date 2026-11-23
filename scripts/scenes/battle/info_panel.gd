@@ -147,7 +147,7 @@ func _refresh_info_panel() -> void:
 		battle._info_hp_bar.max_value = mx
 		battle._info_hp_bar.value = clampf(float(ud.get("hp", 0.0)), 0.0, mx)
 	if battle._info_hp_lbl != null and is_instance_valid(battle._info_hp_lbl):
-		battle._info_hp_lbl.text = "生命  %d / %d" % [int(ud.get("hp", 0)), int(ud.get("maxHp", 0))]
+		battle._info_hp_lbl.text = Lang.t("生命  %d / %d") % [int(ud.get("hp", 0)), int(ud.get("maxHp", 0))]
 	## 资源条(龟能 + 专属) —— 每帧按下标对位改数, 不重建节点。
 	## ★条目数会变(储能从 0 变非 0、宝箱开完第 5 箱就没有下一箱了) ⇒ 数量对不上就整块重建,
 	##   否则引用错位会把"星能"的数写进"怒气"那条(属性行那边踩过同一个坑, 见下面几行)。
@@ -524,14 +524,14 @@ func _info_stat_rows_main(u: Dictionary) -> Array:
 	## ★石头龟叠出来的护甲标在护甲这一行后面 —— 它是【累计增量】不是"攒满触发"型资源。
 	var def_now: int = _ti(u.get("def", 0))
 	var def_gain: int = int(round(float(u.get("def", 0.0)) - float(u.get("stone_init_def", u.get("def", 0.0)))))
-	var def_txt: String = "护甲 %d" % def_now
+	var def_txt: String = Lang.t("护甲 %d") % def_now
 	if def_gain > 0:
 		def_txt += " (+%d)" % def_gain
 	## ★增伤/减伤非 0 时标色 —— 不为 0 就说明此刻正被强化或削弱, 得能一眼扫到。
 	var amp: float = float(u.get("damage_amp", 0.0))
 	var dr: float = minf(float(u.get("damage_reduction", 0.0)), DamageMath.DR_CAP)   # 显示的是真实生效值(封顶 90%)
 	return [
-		[sic + "atk-icon.png",   "攻击 %d" % int(u.get("atk", 0)),                 Color("#ff9d8a")],
+		[sic + "atk-icon.png",   Lang.t("攻击 %d") % int(u.get("atk", 0)),                 Color("#ff9d8a")],
 		## ★★2026-09-28「次/秒」→「每秒 N 下」(用户点名的工程单位)。
 		##   `X/Y` 是规格表里写单位的写法(m/s、次/秒), 玩家嘴里说的是"每秒打几下"。
 		##   ★前缀「攻速」**不许动**: `verify_aspd_panel_live.gd:44` / `verify_info_panel_stats.gd:40`
@@ -545,13 +545,13 @@ func _info_stat_rows_main(u: Dictionary) -> Array:
 		##   两处印的**数和含义完全一致**(都是每秒攻击次数), 差的只是单位那几个字 ——
 		##   与 2026-08-10 那次「面板印间隔 / 图鉴印速率」的语义分叉不是一回事, 但仍是
 		##   "同一件事两种写法", 该收。
-		[sic + "aspd-icon.png",  "攻速 每秒 %s 次" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
+		[sic + "aspd-icon.png",  Lang.t("攻速 每秒 %s 次") % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
 		[sic + "crit-icon.png",  "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)), W],
 		[sic + "dmg-amp-icon.png", "增伤 " + _pct(amp), Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
 		[sic + "def-icon.png",   def_txt,                                          W],
-		[sic + "mr-icon.png",    "魔抗 %d" % int(u.get("mr", 0)),                  Color("#9bdcff")],
+		[sic + "mr-icon.png",    Lang.t("魔抗 %d") % int(u.get("mr", 0)),                  Color("#9bdcff")],
 		[sic + "dmg-red-icon.png", "减伤 " + _pct(dr),  Color("#9bdcff") if dr > 0.0005 else Color("#7a8694")],
-		[sic + "range-icon.png", "射程 %d" % int(round(battle._eff_range(u))),     W],
+		[sic + "range-icon.png", Lang.t("射程 %d") % int(round(battle._eff_range(u))),     W],
 	]
 
 ## 属性【次要 11 项】—— 基本是装备/羁绊给的固定值, 开局定了就不动。小字排。
@@ -564,7 +564,7 @@ func _info_stat_rows_minor(u: Dictionary) -> Array:
 	var crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
 	return [
 		[sic + "crit-dmg-icon.png", "暴伤 " + _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), Color("#ffb37a")],
-		[sic + "move-icon.png",     "移速 %d" % int(round(_eff_move_spd(u))),      Color("#d6e4f0")],
+		[sic + "move-icon.png",     Lang.t("移速 %d") % int(round(_eff_move_spd(u))),      Color("#d6e4f0")],
 		[sic + "lifesteal-icon.png", "生命偷取 " + _pct(ls),                           Color("#ff8fb0")],
 		## ★2026-10-04 补图标: 下面 7 行原来图标路径全是空串 —— 而 `assets/sprites/stats/` 里
 		##   这 7 张(10-01 重做的那套)一直都在, 浮层里只有字。韧性没有图标, 留空不硬配。
@@ -574,8 +574,8 @@ func _info_stat_rows_minor(u: Dictionary) -> Array:
 		[sic + "healamp-icon.png",   "治疗强度 " + _pct_mult(BattleDamage.heal_strength(u, battle._t)), Color("#7fe39a")],
 		[sic + "shieldamp-icon.png", "护盾强度 " + _pct_mult(BattleDamage.shield_strength(u, battle._t)), Color("#ffd93d")],
 		[sic + "echarge-icon.png",   "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), Color("#ffce4d")],
-		[sic + "armorpen-icon.png",  "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                 Color("#ffc48a")],
-		[sic + "magicpen-icon.png",  "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                 Color("#c9a0ff")],
+		[sic + "armorpen-icon.png",  Lang.t("护甲穿透 %d") % int(u.get("armor_pen", 0.0)),                 Color("#ffc48a")],
+		[sic + "magicpen-icon.png",  Lang.t("魔法穿透 %d") % int(u.get("magic_pen", 0.0)),                 Color("#c9a0ff")],
 		[sic + "reflect-icon.png",   "反伤 " + _pct(StoneSystem.reflect_of(u)),                 Color("#ff9d8a")],
 		## ★「韧性」这一格拿掉了(用户 2026-10-22「拿掉」): 全游戏没有任何装备 / 龟 / 羁绊给韧性, 这一格永远是 0%。
 		##   控制时长公式(battle._cc_dur)照旧保留, 韧性恒为 0 ⇒ 结果不变。
@@ -728,7 +728,7 @@ func _resource_bars(u: Dictionary) -> Array:
 			"name": "储能", "cur": se, "cap": mhp * 0.50,
 			## ★半角冒号换 `·` —— 同一块面板里两条资源的结论句必须一个写法(泡泡那条同日改),
 			##   一条带冒号一条不带, 就是"同一件事两种写法"那类不一致。
-			"hint": "释放：冲击波 %d，护盾 %d" % [int(se * ShellSystem.RELEASE_DMG_PCT), int(se * ShellSystem.RELEASE_SHIELD_PCT)],   # ★10-11: 读常量(原写死 0.40, 常量 8-29 已改 0.60)
+			"hint": Lang.t("释放：冲击波 %d，护盾 %d") % [int(se * ShellSystem.RELEASE_DMG_PCT), int(se * ShellSystem.RELEASE_SHIELD_PCT)],   # ★10-11: 读常量(原写死 0.40, 常量 8-29 已改 0.60)
 			"color": Color("#ffd93d"),
 		})
 
@@ -742,7 +742,7 @@ func _resource_bars(u: Dictionary) -> Array:
 			##   ①「结算」是后台词(它在这个项目里还专指战斗结束那一屏 ⇒ 一个词两个意思);
 			##     泡泡到点做的事就是**炸开**(回血 + 溅最近的敌人), 说它在干什么比说"结算"准。
 			##   ② 半角冒号换 `·`, 与上面储能那条同一个写法。
-			"hint": "%.1f 秒后爆炸：治疗 %d，伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
+			"hint": Lang.t("%.1f 秒后爆炸：治疗 %d，伤害 %d") % [nxt, int(bs * 0.10), int(bs * 0.10)],
 			"color": Color("#aef1ff"),
 		})
 
@@ -772,7 +772,7 @@ func _resource_bars(u: Dictionary) -> Array:
 		if opened < th.size():
 			out.append({
 				"name": "财宝", "cur": float(tp["value"]), "cap": float(th[opened]),
-				"hint": "攒满开第 %d 箱，共 %d 箱" % [opened + 1, th.size()], "color": Color("#ffcf6b"),
+				"hint": Lang.t("攒满开第 %d 箱，共 %d 箱") % [opened + 1, th.size()], "color": Color("#ffcf6b"),
 			})
 	return out
 
@@ -826,7 +826,7 @@ func _skill_status_line(u: Dictionary, sk) -> String:
 	if not hit:
 		return ""
 	var es: Array = _energy_state(u, stype)
-	var head := "龟能 %d / %d" % [int(es[0]), int(es[1])]
+	var head := Lang.t("龟能 %d / %d") % [int(es[0]), int(es[1])]
 	if battle._t < float(u.get("energy_lock_until", 0.0)):
 		return head + "，锁定 %.1f 秒\n" % (float(u.get("energy_lock_until", 0.0)) - battle._t)
 	if float(es[2]) <= 0.001:
@@ -860,7 +860,7 @@ func _form_chip(u: Dictionary) -> Array:
 		"lava":
 			if bool(u.get("volcano", false)):
 				var left: float = maxf(0.0, float(u.get("volcano_until", 0.0)) - battle._t)
-				return ["火山形态：剩余 %.1f 秒" % left, "#ff7a3d"]
+				return [Lang.t("火山形态：剩余 %.1f 秒") % left, "#ff7a3d"]
 			## ★这里【不再写"攒满怒气变火山"】(2026-08-17 实拍): 怒气条自己带着这句
 			##   「攒满变火山形态」, 而怒气条【恰好只在非火山形态时出现】—— 也就是说
 			##   这个 chip 和那句提示【永远同屏】, 同一件事在一屏上说了两遍。
@@ -1036,7 +1036,7 @@ func _info_loot_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		slot.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				_show_detail(battle._info_panel, "chest_loot", "战利品 %d/%d" % [ids.size(), n],
+				_show_detail(battle._info_panel, "chest_loot", Lang.t("战利品 %d/%d") % [ids.size(), n],
 					battle._chest_sys.loot_detail_text(owned), {}, u))
 
 
@@ -1200,8 +1200,8 @@ func _equip_readout_text(u: Dictionary, eid: String, ck: String = "") -> String:
 		var ccap: float = float(cc[1])
 		var ccur: float = clampf(float(stt.get(str(cc[0]), 0.0)), 0.0, ccap)
 		if ccap <= 20.0:
-			return "%d层 · %s/%s" % [cnt, battle._fmt_num(ccur), battle._fmt_num(ccap)]
-		return "%d层 · %d%%" % [cnt, int(round(ccur / maxf(1.0, ccap) * 100.0))]
+			return Lang.t("%d层 · %s/%s") % [cnt, battle._fmt_num(ccur), battle._fmt_num(ccap)]
+		return Lang.t("%d层 · %d%%") % [cnt, int(round(ccur / maxf(1.0, ccap) * 100.0))]
 	return "  ".join(parts)
 
 
@@ -1258,11 +1258,11 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 			["bleed", "流血", "#ff6b6b", "bleed-icon.png"]]:
 		var n: int = int(_ds.get(str(d[0]), 0))
 		if n > 0:
-			chips.append(["%s %d 层" % [str(d[1]), n], str(d[2]), sic + str(d[3])])
+			chips.append([Lang.t("%s %d 层") % [str(d[1]), n], str(d[2]), sic + str(d[3])])
 	if float(u.get("shield", 0.0)) > 0.0:
-		chips.append(["护盾 %d" % int(u.get("shield", 0.0)), "#7fe0ff", sic + "shield-icon.png"])
+		chips.append([Lang.t("护盾 %d") % int(u.get("shield", 0.0)), "#7fe0ff", sic + "shield-icon.png"])
 	if float(u.get("magic_shield", 0.0)) >= 1.0:
-		chips.append(["魔法护盾 %d" % int(u.get("magic_shield", 0.0)), "#9a8cff", sic + "magic-shield-icon.png"])
+		chips.append([Lang.t("魔法护盾 %d") % int(u.get("magic_shield", 0.0)), "#9a8cff", sic + "magic-shield-icon.png"])
 	var flow = HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 6); flow.add_theme_constant_override("v_separation", 4)
 	vb.add_child(flow)
@@ -2087,7 +2087,7 @@ func _open_skill_card(u: Dictionary, k: String, nm: String, role: String, cost: 
 	var body := (_skill_body_text(u, sk, tpl) if tpl != "" else str(ent.get("desc", "")))
 	var tag := role
 	if role == "技能" and cost >= 0.0:
-		tag = "技能 · %d 龟能" % int(cost)
+		tag = Lang.t("技能 · %d 龟能") % int(cost)
 	var src := str(battle.SkillText.text_of(sk, battle._skill_detail())) if not sk.is_empty() else tpl
 	## 小将那条分支 sk 是空的(没有 pets.json 技能字典) ⇒ 用 stype 补一个, 否则 _skill_breakdown 见空就返回 ——
 	##   2026-11-04 用户「点到它技能里面都没按的规律走」: 原来小将技能卡永远没有底部公式行。

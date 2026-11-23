@@ -40,7 +40,7 @@ func _redraw() -> void:
 ## 形态拆出来的技能(FormVariants.pool)与小将页的合成技能, 角色 / 龟能 / 默认技都按 pets.json 里那一条认。
 ## 普通攻击那一条的标题: 「攻击 · 龟派气波」; 攻击名本身就叫「攻击」时只写一次(原来出「攻击 · 攻击」, 2026-11-01 走查)。
 static func attack_head(nm: String) -> String:
-	return "攻击" if nm == "攻击" or nm == "" else "攻击 · %s" % nm
+	return "攻击" if nm == "攻击" or nm == "" else Lang.t("攻击 · %s") % nm
 
 
 static func _base_of(sk: Dictionary) -> Dictionary:
@@ -470,7 +470,7 @@ func _passive_bar(passive: Dictionary, k: int, top: float, ctx: Dictionary) -> f
 		else:
 			host._add_text(RCOL_X + ROW_ICON_CX, mid_y, pi_path, 28, "#ffffff", 0.5, 0.5)
 			text_x = RCOL_X + ROW_TEXT_X
-	host._add_text(text_x, mid_y, "被动 · %s" % passive.get("name", ""), 17, "#58d3ff", 0.0, 0.5, true)
+	host._add_text(text_x, mid_y, Lang.t("被动 · %s") % passive.get("name", ""), 17, "#58d3ff", 0.0, 0.5, true)
 	## ★★被动的简述【就画在条上】(2026-08-15, 用户点名的"同一屏两种交互"):
 	##   与技能卡同构 —— **条上给简述, 点开看全文**。
 	## ★2026-10-08 两栏后右栏只剩 494 宽, 简述从「标题右边横着放」改成标题下面一整行。
@@ -725,7 +725,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			## ★★2026-10-01: 原来写「3选1候选 · 龟能N」。用户:「3选1候选，这又是什么 ai 味描述」——
 			##   LoL 的技能头上只写**名字 + 消耗**。⇒ 与兄弟分支对齐成「角色 · 代价」;
 			##   「龟能 100」中间留空格(codex_text_lint「汉字贴着数字」)。
-			_: chip_text = "主动 · 龟能 %d" % _energy_of(pet, sk); chip_color = "#06d6a0"
+			_: chip_text = Lang.t("主动 · 龟能 %d") % _energy_of(pet, sk); chip_color = "#06d6a0"
 		var chip_lbl = host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, CARD_CHIP_PX, chip_color, 0.0, 0.5)
 		if chip_lbl != null:
 			chip_lbl.set_meta("codex_chip", true)   # 门禁认卡片签用(「攻击」与属性栏「攻击」同字, 不能按文字认; 2026-10-13)
@@ -1107,7 +1107,7 @@ func _show_loot(tid: String) -> void:
 	host._add_image(60, 70, ChestLoot.icon_path(tid), 64, 64)   # 32 像素原图 × 2(整数倍不糊)
 	var nl: Label = host._add_text(130, 34, str(ChestLoot.NAME.get(tid, tid)), 30, "#ffd93d", 0.0, 0.5, true)
 	nl.name = "LootName"
-	var sl: Label = host._add_text(130, 74, "宝箱龟战利品：%s，%s开出" % [ChestLoot.POOL_NAME.get(g, g), ChestLoot.box_text(g)], 17, col, 0.0, 0.5)
+	var sl: Label = host._add_text(130, 74, Lang.t("宝箱龟战利品：%s，%s开出") % [ChestLoot.POOL_NAME.get(g, g), ChestLoot.box_text(g)], 17, col, 0.0, 0.5)
 	sl.name = "LootSub"
 	var y := 130.0
 	host._add_text(20, y, "效果", 17, "#58d3ff", 0.0, 0.0, true)
@@ -1158,7 +1158,7 @@ func _show_p2eq(eq: Dictionary) -> void:
 	##   (那里同时写每档给什么), 副标只留费用 —— 同一个类型标签一屏只出现一次(verify_codex_layout ⑥)。
 	## ★费用 0 = 盾羁绊赠送的圣光护盾, 它不上商店所以没有费用; 写"费用 0"读起来像"免费"。
 	##   左栏分组标题早就写的是"羁绊赠送"(list_builder.gd:178), 详情跟着对齐。
-	var sub: String = ("羁绊赠送" if cost <= 0 else "费用 %d" % cost)
+	var sub: String = ("羁绊赠送" if cost <= 0 else Lang.t("费用 %d") % cost)
 	var sub_bb: String = sub
 	var subrt := RichTextLabel.new()
 	subrt.bbcode_enabled = true

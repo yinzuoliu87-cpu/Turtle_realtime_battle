@@ -79,7 +79,7 @@ static func box_text(group: String) -> String:
 			last = i
 	if first < 0:
 		return ""
-	return "第 %d 箱" % (first + 1) if first == last else "第 %d-%d 箱" % [first + 1, last + 1]
+	return Lang.t("第 %d 箱") % (first + 1) if first == last else Lang.t("第 %d-%d 箱") % [first + 1, last + 1]
 
 
 ## 这件战利品在哪个池子("basic" / "adv" / "legend"); 不是战利品 ⇒ ""。
@@ -92,7 +92,7 @@ static func pool_of(tid: String) -> String:
 
 ## 图鉴「获得方式」一句(措辞与藏宝图被动说明一致: pets.json chest passive desc)。
 static func source_text(group: String) -> String:
-	return "宝箱龟被动【藏宝图】%s开箱时从%s中随机获得，同一大轮内不会重复。获得后在本大轮的每局对局中自动生效，新的大轮开始时重置。" % [
+	return Lang.t("宝箱龟被动【藏宝图】%s开箱时从%s中随机获得，同一大轮内不会重复。获得后在本大轮的每局对局中自动生效，新的大轮开始时重置。") % [
 		box_text(group), POOL_NAME.get(group, group)]
 
 

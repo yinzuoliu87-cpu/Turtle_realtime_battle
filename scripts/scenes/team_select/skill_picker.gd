@@ -267,7 +267,7 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 	var brief: String = SkillText.render_bbcode_formula(str(sk.get("brief", "")), fake_f, sk, 14)
 	var head: String = str(sk.get("name", "?"))
 	if host.SkillEnergy.is_active(str(sk.get("type", ""))):   # 龟能口径(无"CD"): 主动技显龟能花费, 攒满才放
-		head += " (龟能%d)" % host._skill_energy(sk)
+		head += Lang.t(" (龟能%d)") % host._skill_energy(sk)
 	var body = brief
 	# 双形态配对技能 (PoC TeamSelectScene.ts:860-874): 换形龟显近战/火山对应技能
 	if idx >= 0:

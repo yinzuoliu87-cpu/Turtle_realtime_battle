@@ -258,7 +258,7 @@ func _show(step: Dictionary) -> void:
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_name)
 	_sub = Label.new(); _sub.name = "SubLine"
-	_sub.text = "最终造物" if _final else "售价 %d 费" % int(disp["cost"])
+	_sub.text = "最终造物" if _final else Lang.t("售价 %d 费") % int(disp["cost"])
 	_sub.add_theme_font_size_override("font_size", 24)
 	_sub.add_theme_color_override("font_color", Color("#e8dcc4"))
 	_sub.add_theme_color_override("font_outline_color", Color("#1a0e05")); _sub.add_theme_constant_override("outline_size", 5)
