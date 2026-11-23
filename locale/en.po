@@ -7075,3 +7075,489 @@ msgstr "Shield-Up Duration # s"
 
 msgid "反击伤害 # 点"
 msgstr "Counter Damage #"
+
+msgid "{C:GhostSystem.PHASE_SEC} 秒"
+msgstr "{C:GhostSystem.PHASE_SEC} s"
+
+msgid "1.7 秒"
+msgstr "1.7 s"
+
+msgid "{C:RealtimeBattle3DScene.CTRL_SEC} 秒"
+msgstr "{C:RealtimeBattle3DScene.CTRL_SEC} s"
+
+msgid "{C:StoneSystem.TAUNT_SEC} 秒"
+msgstr "{C:StoneSystem.TAUNT_SEC} s"
+
+msgid "{C:GhostSystem.SPAWN_CURSE_SEC} 秒"
+msgstr "{C:GhostSystem.SPAWN_CURSE_SEC} s"
+
+msgid "{C:GhostSystem.STORM_CURSE_SEC} 秒"
+msgstr "{C:GhostSystem.STORM_CURSE_SEC} s"
+
+msgid "{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒"
+msgstr "{C:HeadlessSystem.SCYTHE_CURSE_SEC} s"
+
+msgid "{C:RainbowSystem.PRISM_BUFF_SEC} 秒"
+msgstr "{C:RainbowSystem.PRISM_BUFF_SEC} s"
+
+msgid "{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒"
+msgstr "{C:EqSpiritBatch.GHOST_CURSE_SEC} s"
+
+msgid "{C:GhostSystem.RAID_DODGE%}% · {C:GhostSystem.RAID_DODGE_SEC} 秒"
+msgstr "{C:GhostSystem.RAID_DODGE%}% · {C:GhostSystem.RAID_DODGE_SEC} s"
+
+msgid "{C:HunterSystem.ROLL_DODGE%}% · {C:HunterSystem.ROLL_DODGE_SEC} 秒"
+msgstr "{C:HunterSystem.ROLL_DODGE%}% · {C:HunterSystem.ROLL_DODGE_SEC} s"
+
+msgid "{C:PhoenixSystem.NIRVANA_SHOW_SEC} 秒"
+msgstr "{C:PhoenixSystem.NIRVANA_SHOW_SEC} s"
+
+msgid "1.6 秒"
+msgstr "1.6 s"
+
+msgid "攻速 移速 龟能 −{C:IceSystem.AURA_SLOW%}% · {C:IceSystem.AURA_SEC} 秒"
+msgstr "Attack Speed, Move Speed, Energy −{C:IceSystem.AURA_SLOW%}% · {C:IceSystem.AURA_SEC} s"
+
+msgid "移速 −{C:BambooSystem.SMACK_CHILL_DOWN%}% · {C:BambooSystem.SMACK_CHILL_SEC} 秒"
+msgstr "Move Speed −{C:BambooSystem.SMACK_CHILL_DOWN%}% · {C:BambooSystem.SMACK_CHILL_SEC} s"
+
+msgid "移速 −{C:CrystalSystem.SPIKE_SLOW_PCT%}% · {C:CrystalSystem.SPIKE_SLOW_SEC} 秒"
+msgstr "Move Speed −{C:CrystalSystem.SPIKE_SLOW_PCT%}% · {C:CrystalSystem.SPIKE_SLOW_SEC} s"
+
+msgid "攻速 −{C:RainbowSystem.PRISM_CHILL_DOWN%}% · {C:RainbowSystem.PRISM_BUFF_SEC} 秒"
+msgstr "Attack Speed −{C:RainbowSystem.PRISM_CHILL_DOWN%}% · {C:RainbowSystem.PRISM_BUFF_SEC} s"
+
+msgid "移速 −{C:IceSystem.VIAL_MOVE_DOWN%}% · 攻速 −{C:IceSystem.VIAL_ASPD_DOWN%}% · {C:IceSystem.VIAL_CHILL_SEC} 秒"
+msgstr "Move Speed −{C:IceSystem.VIAL_MOVE_DOWN%}% · Attack Speed −{C:IceSystem.VIAL_ASPD_DOWN%}% · {C:IceSystem.VIAL_CHILL_SEC} s"
+
+msgid "−{C:CandySystem.BARRAGE_SLOW_PCT%}% · {C:CandySystem.BARRAGE_SLOW_SEC} 秒"
+msgstr "−{C:CandySystem.BARRAGE_SLOW_PCT%}% · {C:CandySystem.BARRAGE_SLOW_SEC} s"
+
+msgid "−{C:DiamondSystem.SMASH_SLOW_PCT%}% · {C:DiamondSystem.SMASH_SLOW_SEC} 秒"
+msgstr "−{C:DiamondSystem.SMASH_SLOW_PCT%}% · {C:DiamondSystem.SMASH_SLOW_SEC} s"
+
+msgid "{C:HunterSystem.SHOT_HEALCUT_PCT%}% · {C:HunterSystem.SHOT_HEALCUT_SEC} 秒"
+msgstr "{C:HunterSystem.SHOT_HEALCUT_PCT%}% · {C:HunterSystem.SHOT_HEALCUT_SEC} s"
+
+msgid "{C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% · {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒"
+msgstr "{C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% · {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} s"
+
+msgid "{C:PhoenixSystem.NIRVANA_HEALCUT%}% · {C:RealtimeBattle3DScene.BUFF_SEC} 秒"
+msgstr "{C:PhoenixSystem.NIRVANA_HEALCUT%}% · {C:RealtimeBattle3DScene.BUFF_SEC} s"
+
+msgid "{C:ShellSystem.STEALTH_HEALCUT_PCT%}% · {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒"
+msgstr "{C:ShellSystem.STEALTH_HEALCUT_PCT%}% · {C:ShellSystem.STEALTH_HEALCUT_SEC} s"
+
+msgid "{C:ChestSystem.POISON_CUT%}% · {C:ChestSystem.POISON_SEC} 秒"
+msgstr "{C:ChestSystem.POISON_CUT%}% · {C:ChestSystem.POISON_SEC} s"
+
+msgid "{C:HidingSystem.ROCKET_HEALCUT_PCT%}% · {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒"
+msgstr "{C:HidingSystem.ROCKET_HEALCUT_PCT%}% · {C:HidingSystem.ROCKET_HEALCUT_SEC} s"
+
+msgid "{C:StoneSystem.SLAM_DELAY} 秒"
+msgstr "{C:StoneSystem.SLAM_DELAY} s"
+
+msgid "{C:BubbleSystem.SHIELD_SEC} 秒"
+msgstr "{C:BubbleSystem.SHIELD_SEC} s"
+
+msgid "{C:CyberSystem.HIJACK_SEC} 秒"
+msgstr "{C:CyberSystem.HIJACK_SEC} s"
+
+msgid "{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒"
+msgstr "{C:EquipSystem.EMBER_TRUEFIRE_SEC} s"
+
+msgid "{C:BasicConsts.SLAM_STUN_SEC} 秒"
+msgstr "{C:BasicConsts.SLAM_STUN_SEC} s"
+
+msgid "{C:HunterSystem.MARK_SEC} 秒"
+msgstr "{C:HunterSystem.MARK_SEC} s"
+
+msgid "{C:BambooSystem.SMACK_STUN} 秒"
+msgstr "{C:BambooSystem.SMACK_STUN} s"
+
+msgid "{C:BubbleSystem.BIND_SEC} 秒"
+msgstr "{C:BubbleSystem.BIND_SEC} s"
+
+msgid "{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒"
+msgstr "{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} s"
+
+msgid "{C:HeadlessSystem.TENDRIL_STUN_SEC} 秒"
+msgstr "{C:HeadlessSystem.TENDRIL_STUN_SEC} s"
+
+msgid "{C:StoneSystem.ROCK_WAVE_STUN} 秒"
+msgstr "{C:StoneSystem.ROCK_WAVE_STUN} s"
+
+msgid "{C:PirateSystem.SHIP_CHARGE_STUN} 秒"
+msgstr "{C:PirateSystem.SHIP_CHARGE_STUN} s"
+
+msgid "{C:PirateSystem.HOOK_STUN} 秒"
+msgstr "{C:PirateSystem.HOOK_STUN} s"
+
+msgid "{C:HidingSystem.SURF_STUN_SEC} 秒"
+msgstr "{C:HidingSystem.SURF_STUN_SEC} s"
+
+msgid "{C:EliteSystem.WHIP_STUN_SEC} 秒"
+msgstr "{C:EliteSystem.WHIP_STUN_SEC} s"
+
+msgid "1/1.8/2.5 秒"
+msgstr "1/1.8/2.5 s"
+
+msgid "{C:SignalWaveSystem.WAVE_STUN} 秒"
+msgstr "{C:SignalWaveSystem.WAVE_STUN} s"
+
+msgid "{C:EquipSystem.DART_KNOCKUP_SEC} 秒"
+msgstr "{C:EquipSystem.DART_KNOCKUP_SEC} s"
+
+msgid "{C:AxeEvolution.SLAM_STUN} 秒"
+msgstr "{C:AxeEvolution.SLAM_STUN} s"
+
+msgid "{C:GadgetSynergySystem.FREEZE_SEC} 秒"
+msgstr "{C:GadgetSynergySystem.FREEZE_SEC} s"
+
+msgid "3 秒"
+msgstr "3 s"
+
+msgid "护甲"
+msgstr "Armor"
+
+msgid "魔抗"
+msgstr "Magic Resist"
+
+msgid "最大生命值"
+msgstr "Max Health"
+
+msgid "攻击力"
+msgstr "Attack"
+
+msgid "射程"
+msgstr "Range"
+
+msgid "近战斗士"
+msgstr "Melee Fighter"
+
+msgid "近战坦克"
+msgstr "Melee Tank"
+
+msgid "无属性加成"
+msgstr "No stat bonus"
+
+msgid "精英小将"
+msgstr "Elite Minion"
+
+msgid "远程法师"
+msgstr "Ranged Mage"
+
+msgid "暴击率"
+msgstr "Crit Chance"
+
+msgid "暴击伤害"
+msgstr "Crit Damage"
+
+msgid "护甲穿透"
+msgstr "Armor Pen"
+
+msgid "魔法穿透"
+msgstr "Magic Pen"
+
+msgid "生命偷取"
+msgstr "Lifesteal"
+
+msgid "近战小将"
+msgstr "Melee Minion"
+
+msgid "远程小将"
+msgstr "Ranged Minion"
+
+msgid "普通攻击"
+msgstr "Basic Attack"
+
+msgid "近战法师"
+msgstr "Melee Mage"
+
+msgid "远程射手"
+msgstr "Ranged Marksman"
+
+msgid "治疗增幅"
+msgstr "Heal Power"
+
+msgid "护盾增幅"
+msgstr "Shield Power"
+
+msgid "治疗与护盾增幅"
+msgstr "Heal & Shield Power"
+
+msgid "初始龟能"
+msgstr "Starting Energy"
+
+msgid "龟能充能速率"
+msgstr "Energy Charge"
+
+msgid "攻击速度"
+msgstr "Attack Speed"
+
+msgid "移动速度"
+msgstr "Move Speed"
+
+msgid "攻击射程"
+msgstr "Attack Range"
+
+msgid "吞噬"
+msgstr "Devour"
+
+msgid "生命"
+msgstr "Health"
+
+msgid "近战刺客"
+msgstr "Melee Assassin"
+
+msgid "近战辅助"
+msgstr "Melee Support"
+
+msgid "远程坦克"
+msgstr "Ranged Tank"
+
+msgid "铁锤"
+msgstr "Iron Hammer"
+
+msgid "铁锁"
+msgstr "Iron Chain"
+
+msgid "援军"
+msgstr "Reinforcements"
+
+msgid "暴击"
+msgstr "Crit"
+
+msgid "远程刺客"
+msgstr "Ranged Assassin"
+
+msgid "远程辅助"
+msgstr "Ranged Support"
+
+msgid "基础池"
+msgstr "Basic Pool"
+
+msgid "进阶池"
+msgstr "Advanced Pool"
+
+msgid "传说池"
+msgstr "Legendary Pool"
+
+msgid "锋利短刃"
+msgstr "Sharp Dagger"
+
+msgid "坚固木盾"
+msgstr "Sturdy Wooden Shield"
+
+msgid "海盗龟的小瓶朗姆酒"
+msgstr "Pirate Turtle's Rum Flask"
+
+msgid "骰子龟的血筛子"
+msgstr "Dice Turtle's Blood Die"
+
+msgid "锁链"
+msgstr "Chain"
+
+msgid "神奇石头"
+msgstr "Magic Rock"
+
+msgid "精钢长剑"
+msgstr "Steel Longsword"
+
+msgid "嗜血之刃"
+msgstr "Bloodthirsty Blade"
+
+msgid "灼热火石"
+msgstr "Scorching Flint"
+
+msgid "宝石铠甲"
+msgstr "Gem Armor"
+
+msgid "淬毒箭矢"
+msgstr "Poisoned Arrows"
+
+msgid "凤凰龟雕像"
+msgstr "Phoenix Turtle Statue"
+
+msgid "王者之冠"
+msgstr "Crown of Kings"
+
+msgid "闪电龟的雷刃"
+msgstr "Lightning Turtle's Thunder Blade"
+
+msgid "星际龟的星辉"
+msgstr "Space Turtle's Starlight"
+
+msgid "获得 {C:ChestSystem.DAGGER_ATK%}% 攻击力。"
+msgstr "Gain {C:ChestSystem.DAGGER_ATK%}% attack damage."
+
+msgid "获得 {C:ChestSystem.WOOD_RES%}% 护甲与魔抗。"
+msgstr "Gain {C:ChestSystem.WOOD_RES%}% Armor and Magic Resist."
+
+msgid "每秒回复自身 {C:ChestSystem.RUM_HEAL_PCT%}% 最大生命值。"
+msgstr "Heal {C:ChestSystem.RUM_HEAL_PCT%}% of max health per second."
+
+msgid "获得 {C:ChestSystem.DICE_CRIT%}% 暴击率。"
+msgstr "Gain {C:ChestSystem.DICE_CRIT%}% Crit Chance."
+
+msgid "【宝箱砸击】的范围提高 {C:ChestSystem.CHAIN_AOE_UP%}%。"
+msgstr "[Chest Smash] area increased by {C:ChestSystem.CHAIN_AOE_UP%}%."
+
+msgid "【宝箱砸击】额外造成（{C:ChestSystem.STONE_RES_COEF%}% 护甲与魔抗之和）物理伤害。"
+msgstr "[Chest Smash] deals bonus physical damage equal to {C:ChestSystem.STONE_RES_COEF%}% of combined Armor and Magic Resist."
+
+msgid "获得 {C:ChestSystem.SWORD_ATK%}% 攻击力。"
+msgstr "Gain {C:ChestSystem.SWORD_ATK%}% attack damage."
+
+msgid "获得 {C:ChestSystem.BLADE_LS%}% 生命偷取。"
+msgstr "Gain {C:ChestSystem.BLADE_LS%}% Lifesteal."
+
+msgid "攻击和技能命中时，施加（{C:ChestSystem.FLINT_BURN_COEF%}% 攻击力）层灼烧。"
+msgstr "Attack and ability hits apply ({C:ChestSystem.FLINT_BURN_COEF%}% Attack) Burn."
+
+msgid "获得 {C:ChestSystem.GEM_HP} 最大生命值、{C:ChestSystem.GEM_RES%}% 护甲与魔抗。"
+msgstr "Gain {C:ChestSystem.GEM_HP} Max Health and {C:ChestSystem.GEM_RES%}% Armor and Magic Resist."
+
+msgid "攻击和技能命中时，对目标施加 {C:ChestSystem.POISON_CUT%}% 治疗削减，持续 {C:ChestSystem.POISON_SEC} 秒。"
+msgstr "Attack and ability hits apply {C:ChestSystem.POISON_CUT%}% Grievous Wounds for {C:ChestSystem.POISON_SEC} seconds."
+
+msgid "首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。"
+msgstr "The first time it dies, revives once with {C:AngelSystem.REVIVE_HP_PCT%}% of its max health."
+
+msgid "获得 {C:ChestSystem.CROWN_ATK%}% 攻击力、{C:ChestSystem.CROWN_CRIT%}% 暴击率、{C:ChestSystem.CROWN_CRIT_DMG%}% 暴击伤害与 {C:ChestSystem.CROWN_LS%}% 生命偷取。"
+msgstr "Gain {C:ChestSystem.CROWN_ATK%}% attack damage, {C:ChestSystem.CROWN_CRIT%}% Crit Chance, {C:ChestSystem.CROWN_CRIT_DMG%}% Crit Damage and {C:ChestSystem.CROWN_LS%}% Lifesteal."
+
+msgid "攻击和技能命中时为目标叠加 1 层金色闪电。在 {C:ChestSystem.THUNDER_STACKS} 层时，金色闪电会引爆，造成 {C:ChestSystem.THUNDER_ATK_COEF%}% 攻击力的真实伤害。"
+msgstr "Attack and ability hits apply 1 Golden Lightning stack. At {C:ChestSystem.THUNDER_STACKS} stacks, it detonates for {C:ChestSystem.THUNDER_ATK_COEF%}% Attack as true damage."
+
+msgid "攻击和技能伤害转化为真实伤害。"
+msgstr "Attack and ability damage becomes true damage."
+
+msgid "前排 · 近战"
+msgstr "Front Row · Melee"
+
+msgid "人体浪板"
+msgstr "Body Surf"
+
+msgid "近战小将锁定一个敌人并跃起，起跳时回复（{C:HidingSystem.SURF_HEAL_COEF%}%×攻击力({ATK}) = {E:HidingSystem.SURF_HEAL_COEF*ATK}）生命值，距离过近时先向后跳开。随后射出铁链，将该敌人眩晕 {C:HidingSystem.SURF_STUN_SEC} 秒并将自身拉向目标，接触时造成其 {C:HidingSystem.SURF_CONTACT_MAXHP_PCT%}% 最大生命值的物理伤害。之后踩着目标滑行，对其持续造成（{C:HidingSystem.SURF_RIDE_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_RIDE_ATK_COEF*ATK}）物理伤害，并对沿途敌人造成（{C:HidingSystem.SURF_PASS_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.SURF_PASS_ATK_COEF*ATK}）物理伤害并将其击退，最后跳下。"
+msgstr "The Melee Minion locks onto an enemy and leaps, healing ({C:HidingSystem.SURF_HEAL_COEF%}% × Attack ({ATK}) = {E:HidingSystem.SURF_HEAL_COEF*ATK}) on takeoff, hopping back first if too close. It then fires a chain that stuns the enemy for {C:HidingSystem.SURF_STUN_SEC} seconds and pulls itself to the target, dealing physical damage equal to {C:HidingSystem.SURF_CONTACT_MAXHP_PCT%}% of its max health on contact. It then rides the target like a surfboard, dealing ({C:HidingSystem.SURF_RIDE_ATK_COEF%}% × Attack ({ATK}) = {N:HidingSystem.SURF_RIDE_ATK_COEF*ATK}) physical damage to it over time and ({C:HidingSystem.SURF_PASS_ATK_COEF%}% × Attack ({ATK}) = {N:HidingSystem.SURF_PASS_ATK_COEF*ATK}) physical damage to enemies along the way, knocking them back, before jumping off."
+
+msgid "近战小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+msgstr "The Melee Minion's attacks deal ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage."
+
+msgid "后排 · 远程"
+msgstr "Back Row · Ranged"
+
+msgid "追踪火箭筒"
+msgstr "Homing Rocket Launcher"
+
+msgid "远程小将锁定一名敌人，蓄力 {C:HidingSystem.ROCKET_CHARGE_SEC} 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成（{C:HidingSystem.ROCKET_ATK_COEF%}%×攻击力({ATK}) = {N:HidingSystem.ROCKET_ATK_COEF*ATK}）物理伤害，并施加 {C:HidingSystem.ROCKET_HEALCUT_PCT%}% 治疗削减，持续 {C:HidingSystem.ROCKET_HEALCUT_SEC} 秒。"
+msgstr "The Ranged Minion locks onto an enemy, charges for {C:HidingSystem.ROCKET_CHARGE_SEC} seconds, then fires a slow homing missile that explodes on hit, dealing ({C:HidingSystem.ROCKET_ATK_COEF%}% × Attack ({ATK}) = {N:HidingSystem.ROCKET_ATK_COEF*ATK}) physical damage to nearby enemies and applying {C:HidingSystem.ROCKET_HEALCUT_PCT%}% Grievous Wounds for {C:HidingSystem.ROCKET_HEALCUT_SEC} seconds."
+
+msgid "远程小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+msgstr "The Ranged Minion's attacks deal ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage."
+
+msgid "精英 · 近战"
+msgstr "Elite · Melee"
+
+msgid "精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成（{C:EliteSystem.HAMMER_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_ATK_COEF*ATK}）魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成（{C:EliteSystem.HAMMER_BIG_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.HAMMER_BIG_ATK_COEF*ATK}）魔法伤害。"
+msgstr "With enemies nearby, the Elite Minion raises its fist for 0.35 seconds, then smashes the ground, dealing ({C:EliteSystem.HAMMER_ATK_COEF%}% × Attack ({ATK}) = {M:EliteSystem.HAMMER_ATK_COEF*ATK}) magic damage to enemies in a cone in front. Every 3rd cast, it leaps high instead, charges in the air for 1 second and slams down, dealing ({C:EliteSystem.HAMMER_BIG_ATK_COEF%}% × Attack ({ATK}) = {M:EliteSystem.HAMMER_BIG_ATK_COEF*ATK}) magic damage to all nearby enemies."
+
+msgid "旋刃"
+msgstr "Whirling Blade"
+
+msgid "精英小将每第 {C:EliteSystem.WHIRL_EVERY} 次攻击挥出旋刃，对周围的敌人造成（{C:EliteSystem.WHIRL_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}）物理伤害，并回复相当于所造成伤害 {C:EliteSystem.WHIRL_HEAL_PCT%}% 的生命值。"
+msgstr "Every {C:EliteSystem.WHIRL_EVERY}th attack, the Elite Minion swings a whirling blade, dealing ({C:EliteSystem.WHIRL_ATK_COEF%}% × Attack ({ATK}) = {N:EliteSystem.WHIRL_ATK_COEF*ATK}) physical damage to enemies around it and healing for {C:EliteSystem.WHIRL_HEAL_PCT%}% of the damage dealt."
+
+msgid "精英小将每 {C:EliteSystem.WHIP_CD_SEC} 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 {C:EliteSystem.WHIP_STUN_SEC} 秒并拉至自身后方，造成（{C:EliteSystem.WHIP_ATK_COEF%}%×攻击力({ATK}) = {M:EliteSystem.WHIP_ATK_COEF*ATK}）魔法伤害。"
+msgstr "Every {C:EliteSystem.WHIP_CD_SEC} seconds, the Elite Minion locks onto an enemy that isn't next to it and fires a chain. On hit, it stuns the enemy for {C:EliteSystem.WHIP_STUN_SEC} seconds and pulls it behind itself, dealing ({C:EliteSystem.WHIP_ATK_COEF%}% × Attack ({ATK}) = {M:EliteSystem.WHIP_ATK_COEF*ATK}) magic damage."
+
+msgid "精英小将的攻击、铁锁或铁锤命中生命值低于 {C:EliteSystem.CONSUME_HP_PCT%}% 的敌人时发动吞噬，持续 {C:EliteSystem.CONSUME_SEC} 秒，期间获得 {C:EliteSystem.CONSUME_DR%}% 减伤。吞噬完成时击杀该敌人，回复相当于其剩余生命值 {C:EliteSystem.CONSUME_HEAL_MULT} 倍的生命值，获得 {C:EliteSystem.CONSUME_ASPD_BONUS%}% 攻击速度，持续 {C:EliteSystem.CONSUME_HASTE_SEC} 秒，并窃取该敌人的主动技能。"
+msgstr "When the Elite Minion's attack, Iron Chain or Iron Hammer hits an enemy below {C:EliteSystem.CONSUME_HP_PCT%}% health, it Devours it over {C:EliteSystem.CONSUME_SEC} seconds, gaining {C:EliteSystem.CONSUME_DR%}% Damage Reduction meanwhile. When the Devour completes, it kills the enemy, heals {C:EliteSystem.CONSUME_HEAL_MULT}× that enemy's remaining health, gains {C:EliteSystem.CONSUME_ASPD_BONUS%}% attack speed for {C:EliteSystem.CONSUME_HASTE_SEC} seconds, and steals its active ability."
+
+msgid "长手刃"
+msgstr "Long Arm Blade"
+
+msgid "精英小将的攻击造成（{C:EliteSystem.BLADE_ATK_COEF%}%×攻击力({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}）物理伤害。"
+msgstr "The Elite Minion's attacks deal ({C:EliteSystem.BLADE_ATK_COEF%}% × Attack ({ATK}) = {N:EliteSystem.BLADE_ATK_COEF*ATK}) physical damage."
+
+msgid "援军 · 远程"
+msgstr "Reinforcements · Ranged"
+
+msgid "每场 +{C:ReserveConsts.GROWTH_PER_BATTLE%}%"
+msgstr "+{C:ReserveConsts.GROWTH_PER_BATTLE%}% per match"
+
+msgid "援军小将锁定一名敌人，在其前后左右各出现一道气波，同时追向该敌人。每道气波对命中的第一个敌人造成（{C:ReserveConsts.ATK_COEF%}%×攻击力({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}）物理伤害，外加相当于该敌人 {C:ReserveConsts.MAXHP_PCT%}% 最大生命值的魔法伤害。"
+msgstr "The Reinforcement Minion locks onto an enemy, and waves appear on all four sides of it, closing in at once. Each wave deals ({C:ReserveConsts.ATK_COEF%}% × Attack ({ATK}) = {N:ReserveConsts.ATK_COEF*ATK}) physical damage plus magic damage equal to {C:ReserveConsts.MAXHP_PCT%}% of that enemy's max health to the first enemy it hits."
+
+msgid "终极战场中，援军小将与幸存单位一起登场。所属玩家本周每进行一场对局，援军小将的生命值、攻击力、护甲和魔抗提升 {C:ReserveConsts.GROWTH_PER_BATTLE%}%。"
+msgstr "In the Final Battle, the Reinforcement Minion enters alongside the surviving units. For every match its player has played this week, its health, Attack, Armor and Magic Resist increase by {C:ReserveConsts.GROWTH_PER_BATTLE%}%."
+
+msgid "随身装备"
+msgstr "Carried Item"
+
+msgid "援军小将登场时，从所属玩家背包中未装备的装备里随机携带一件。"
+msgstr "On entering, the Reinforcement Minion carries one random unequipped item from its player's Inventory."
+
+msgid "援军小将的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+msgstr "The Reinforcement Minion's attacks deal ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage."
+
+msgid "护甲魔抗"
+msgstr "Armor & MR"
+
+msgid "双穿"
+msgstr "Armor & Magic Pen"
+
+msgid "魔穿"
+msgstr "Magic Pen"
+
+msgid "盾疗"
+msgstr "Heal & Shield"
+
+msgid "攻"
+msgstr "Attack"
+
+msgid "海盗船·冲锋"
+msgstr "Pirate Ship · Charge"
+
+msgid "召出实体船并冲锋撞击, 撞到的第一个敌人受魔法伤害并被击飞; 船留在场上"
+msgstr "Summons the ship and rams with it. The first enemy hit takes magic damage and is knocked up; the ship stays on the field"
+
+msgid "霰弹"
+msgstr "Buckshot"
+
+msgid "朝目标喷出扇面弹丸, 每颗对命中的第一个敌人造成物理伤害并击退"
+msgstr "Fires a fan of pellets at the target; each deals physical damage to the first enemy hit and knocks it back"
+
+msgid "举拳蓄力后砸地, 对身前锥形范围造成魔法伤害"
+msgstr "Raises its fist, then smashes the ground, dealing magic damage in a cone in front"
+
+msgid "铁锤·跃击"
+msgstr "Iron Hammer · Leap"
+
+msgid "高高跃起、空中蓄力后下锤, 覆盖更大范围并造成更高魔法伤害"
+msgstr "Leaps high, charges in the air, then hammers down over a larger area for more magic damage"
+
+msgid "玩偶小熊仔"
+msgstr "Little Teddy Bear"
+
+msgid "赛博龟阵亡 → 浮游炮组装成机甲"
+msgstr "Cyber Turtle dies → drones assemble into a mech"
+
+msgid "{C:StoneSystem.REFLECT_BASE%}% + 护甲 / 魔抗加成"
+msgstr "{C:StoneSystem.REFLECT_BASE%}% + Armor / MR bonus"
+
+msgid "每次觉醒 +{C:ShellSystem.AWAKEN_PCT%}%"
+msgstr "+{C:ShellSystem.AWAKEN_PCT%}% per awakening"
+
+msgid "登场 {C:CyberSystem.AI_START_CHARGE} 层"
+msgstr "{C:CyberSystem.AI_START_CHARGE} on spawn"
+
+msgid "移速 −{C:ShellSystem.BURN_SLOW_PCT%}%"
+msgstr "Move Speed −{C:ShellSystem.BURN_SLOW_PCT%}%"
+
+msgid "盾羁绊9档"
+msgstr "Shield synergy tier 9"
+
+msgid "精英小将铁锁"
+msgstr "Elite Minion Iron Chain"
