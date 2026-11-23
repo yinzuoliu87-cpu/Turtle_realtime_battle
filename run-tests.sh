@@ -993,6 +993,7 @@ run_audit "tools/style_lint.py"           "ALL OK" "style_lint (代码风格·�
 run_audit "tools/rng_discipline.py"        "ALL OK" "rng_discipline (裸随机冻结·护确定性不回退)"
 run_audit "tools/det_math_lint.py"         "ALL OK" "det_math_lint (sim 路径不许绕过 DetMath 裸调 FMA/libm 数学·跨芯片确定性)"
 run_audit "tools/docs_authority_lint.py"  "ALL OK" "docs_authority_lint (单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名)"
+run_audit "tools/i18n_audit.py"  "ALL OK" "i18n_audit (英文译文表: 占位符 / 标签 / 无重复 / 无半译 / 工程后备语言=中文)"
 # 服务端(Node)【手抄】的客户端规则 —— 四个常量 + 龟/装备白名单逐条对账。
 #   服务端读不了 .gd, 只能抄; 而抄的副本落后时是**静默的**: 它会把合法快照判成伪造,
 #   玩家只看到"我的阵容传不上去", 没人会去翻那份 JS。新增一只龟就会踩。

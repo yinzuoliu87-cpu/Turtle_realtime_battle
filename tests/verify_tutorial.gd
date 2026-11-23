@@ -838,6 +838,9 @@ func _text_literal_with(path: String, want: String) -> String:
 		var j := p
 		while j < src.length() and (src[j] == " " or src[j] == "=" or src[j] == "+"):
 			j += 1
+		## 2026-11-23 语言: 带数字的按钮字写成 `.text = Lang.t("购买  %d") % n`, 先查译文再填数 —— 一样认
+		if src.substr(j, 7) == "Lang.t(":
+			j += 7
 		if j >= src.length() or src[j] != '"':
 			continue
 		var k := src.find('"', j + 1)

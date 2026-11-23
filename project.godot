@@ -92,4 +92,5 @@ stream_base.beta_server="https://stream.turtlearena.xyz/beta/streams"
 [internationalization]
 
 locale/translations=PackedStringArray("res://locale/en.po")
+locale/fallback="zh"
 locale/include_text_server_data=true

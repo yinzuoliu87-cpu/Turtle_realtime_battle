@@ -115,6 +115,11 @@ def main():
         return 1
     entries = parse(io.open(PO, encoding="utf-8").read())
     bad, missing = check(entries)
+    ## ④ 工程后备语言必须是中文(2026-11-23 实测): Godot 在当前语言(zh)没有译文表时退回 fallback(默认 en)
+    ##    ⇒ 中文玩家的控件会被 en.po 换成英文。只要工程里挂了译文表, 就必须 locale/fallback="zh"。
+    proj = io.open(os.path.join(ROOT, "project.godot"), encoding="utf-8").read()
+    if "locale/translations=" in proj and not re.search(r'^locale/fallback="zh"\s*$', proj, re.M):
+        bad.append('project.godot 缺 locale/fallback="zh"(中文玩家会看到英文)')
     print("[分母] en.po %d 条 · 已译 %d · 没译 %d" % (len(entries), len(entries) - missing, missing))
     if len(entries) == 0:
         print("FAIL — 一条都没读到(解析坏了 = 空检查)")
