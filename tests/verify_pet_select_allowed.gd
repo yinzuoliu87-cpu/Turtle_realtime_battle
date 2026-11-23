@@ -101,15 +101,17 @@ func _ready() -> void:
 	keys2.sort()
 	var want2: Array = allowed.duplicate()
 	want2.sort()
-	_ok("S2 ★龟池 = 拥有 ∪ 本周限免(%d 只, 逐只相同)" % allowed.size(), keys2 == want2 and allowed.size() == 9, "%s" % str(keys2))
+	_ok("S2 ★龟池 = 拥有 ∪ 赠送 basic ∪ 本周限免(%d 只, 逐只相同)" % allowed.size(), keys2 == want2 and allowed.size() == 10
+		and keys2.has("basic"), "%s" % str(keys2))
 	var bad3: Array = []
 	for pid in c2:
-		var owned: bool = pid == "stone" or pid == "lava"
+		var owned: bool = pid == "stone" or pid == "lava" or pid == "basic"
 		var want_lv: String = "Lv.4" if pid == "stone" else "Lv.1"
 		var want_free: String = "" if owned else "限免"
 		if str(c2[pid]["lv"]) != want_lv or str(c2[pid]["free"]) != want_free:
 			bad3.append("%s %s/%s" % [pid, str(c2[pid]["lv"]), str(c2[pid]["free"])])
-	_ok("S3 ★拥有的: 服务器等级(stone Lv.4、lava Lv.1)不挂角标; 限免的 7 只: Lv.1 +「限免」", bad3.is_empty() and c2.size() == 9, str(bad3))
+	_ok("S3 ★拥有的: 服务器等级(stone Lv.4、lava / 赠送的 basic Lv.1)不挂角标; 限免的 7 只: Lv.1 +「限免」", bad3.is_empty()
+		and c2.size() == 10, str(bad3))
 	_ok("S3 右栏默认看的那只也是能上场的(不是龟池里没有的小龟)", allowed.has(str(ts.detail_pet_id)), str(ts.detail_pet_id))
 	## S4
 	var outside := ""

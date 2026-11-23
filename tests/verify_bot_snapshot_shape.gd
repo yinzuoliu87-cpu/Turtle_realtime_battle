@@ -241,8 +241,8 @@ func _ready() -> void:
 			var st0: int = r.state
 			var b: Dictionary = BE.make_bot(n, r)
 			var why := _value_problem(b, n, -1, -1, skill_ids)
-			## 统领只从它自己那组限免 7 只里抽(2026-11-09 · 方案书 20261107 §4.9)
-			var fr: Array = WeeklyFree.free_ids("bot:%d" % st0, 0, [])
+			## 统领只从它自己那组「赠送 basic ∪ 限免 7 只」里抽(2026-11-09 · 方案书 20261107 §4.9; 11-23 起每个号都送 basic)
+			var fr: Array = WeeklyFree.allowed_ids("bot:%d" % st0, 0, [])
 			for p in (b.get("leaders", []) as Array):
 				if why == "" and not fr.has(str(p)):
 					why = "统领 %s 不在它那组限免里 %s" % [str(p), str(fr)]

@@ -406,7 +406,9 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 	##   没绑主站的真人 / 陪练号能上场的就是这 7 只, 1 级)。种子 = 这个机器人自己的号(`bot:<rng 当前状态>`, 只读不消耗随机数)
 	##   + 周锚点 0(机器人池是离线按版本生成的, 不跟着周变 ⇒ 同一版本重跑逐字节相同)。
 	##   ★28 只照旧整副洗一遍、再按洗出来的先后取限免里的前 3 只 ⇒ 消耗的随机数个数与改之前相同, 后面装备 / 名字 / 技能的随机序列不变。
-	var free: Array = WeeklyFree.free_ids("bot:%d" % rng.state, 0, [])
+	##   ★2026-11-23 改成「拥有 ∪ 限免」(allowed_ids, 8 只): 每个号都送 basic(WeeklyFree.GIFT), 真人能上的就是这 8 只 ⇒ 机器人一样。
+	##   抽法不变(还是整副洗、按先后取), 消耗的随机数个数不变。
+	var free: Array = WeeklyFree.allowed_ids("bot:%d" % rng.state, 0, [])
 	var all_ids: Array = []
 	for p in DataRegistry.launch_pets:
 		all_ids.append(str((p as Dictionary)["id"]))

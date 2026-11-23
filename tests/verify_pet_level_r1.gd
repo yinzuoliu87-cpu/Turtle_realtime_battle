@@ -177,7 +177,7 @@ func _ready() -> void:
 		r.seed = 7000 + k
 		var st0: int = r.state
 		var b: Dictionary = BE.make_bot(k % 25, r)
-		var fr := WeeklyFree.free_ids("bot:%d" % st0, 0, [])
+		var fr := WeeklyFree.allowed_ids("bot:%d" % st0, 0, [])
 		var ld: Array = b.get("leaders", [])
 		var lvt: Dictionary = TurtleLevel.table_of(b.get("lv", null))
 		var ok := ld.size() == 3 and lvt.size() == 3
@@ -186,7 +186,7 @@ func _ready() -> void:
 				ok = false
 		if not ok:
 			bad_bot.append("%d: %s / %s" % [k, str(ld), str(fr)])
-	_ok("★① make_bot 30 个: 三只统领都在它自己那组限免 7 只里、lv 全 1", bad_bot.is_empty(), str(bad_bot.slice(0, 2)))
+	_ok("★① make_bot 30 个: 三只统领都在它自己那组「basic ∪ 限免 7 只」里、lv 全 1", bad_bot.is_empty(), str(bad_bot.slice(0, 2)))
 	var raw := {"ghost_id": "seed_x_b10", "leaders": ["basic", "stone", "bamboo"], "season_total_battles": 10, "season_level": 7,
 		"lane_assign": {"top": ["basic"], "bottom": ["stone", "bamboo"]}, "minions": {"top": [{"role": "front"}, {"role": "back"}], "bottom": [{"role": "back"}]}}
 	_ok("① 陪练 seed_as_human: lv 全 1", TurtleLevel.table_of(BE.seed_as_human(raw, 1).get("lv")) == {"basic": 1, "stone": 1, "bamboo": 1})
@@ -263,7 +263,7 @@ func _ready() -> void:
 	var fb := WeeklyFree.free_ids(ACCT_B, WEEK, [])
 	var outside_a := ""
 	for p in WeeklyFree.ALL:
-		if not fa.has(p) and p != "stone":
+		if not fa.has(p) and p != "stone" and not WeeklyFree.GIFT.has(p):
 			outside_a = p
 			break
 	var ja := _job([fa[0], fa[1], "stone"], [fb[0], fb[1], fb[2]])
@@ -278,7 +278,7 @@ func _ready() -> void:
 	_ok("★④ 周赛局快照里自报的 owned 不认(只认 key 里服务器盖的)", RefereeJob.validate(jf) == "a_bad_snapshot", RefereeJob.validate(jf))
 	var outside_b := ""
 	for p in WeeklyFree.ALL:
-		if not fb.has(p):
+		if not fb.has(p) and not WeeklyFree.GIFT.has(p):
 			outside_b = p
 			break
 	var jc := _job([fa[0], fa[1], "stone"], [fb[0], fb[1], outside_b])
@@ -382,9 +382,9 @@ func _ready() -> void:
 	var p := PetLevelsNet.parse(res)
 	PetLevelsNet.adopt(p)
 	var tbl: Dictionary = _gs.pet_lv
-	_ok("★⑧ 回包 ⇒ 28 只全表: 拥有的 stone 4、拥有没记录的 lava 1、没拥有的 basic 1(服务器有记录也不认)",
-		tbl.size() == 28 and int(tbl["stone"]) == 4 and int(tbl["lava"]) == 1 and int(tbl["basic"]) == 1
-		and PetLevelsNet.owned == ["stone", "lava"], "%d 只 %s" % [tbl.size(), str(PetLevelsNet.owned)])
+	_ok("★⑧ 回包 ⇒ 28 只全表: 拥有的 stone 4、拥有没记录的 lava 1、赠送的 basic 按服务器 9、没拥有的 ice 1",
+		tbl.size() == 28 and int(tbl["stone"]) == 4 and int(tbl["lava"]) == 1 and int(tbl["basic"]) == 9 and int(tbl["ice"]) == 1
+		and PetLevelsNet.owned == ["basic", "stone", "lava"], "%d 只 %s" % [tbl.size(), str(PetLevelsNet.owned)])
 	_ok("⑧ 回包不像(ok 假 / 没有 owned) ⇒ 不采用", PetLevelsNet.parse({"ok": false, "data": {}}).is_empty()
 		and PetLevelsNet.parse({"ok": true, "data": {"levels": {}}}).is_empty())
 	var al := PetLevelsNet.allowed_now()
@@ -404,9 +404,9 @@ func _ready() -> void:
 		pick_ok and pick[0] == "lava" and pick[1] == y, str(pick))
 	PetLevelsNet.adopt_owned(["stone", "lava"])
 	_gs.account_id = "22222222-3333-4444-8555-666666666666"
-	_ok("★⑧ 换号 ⇒ 上一个号的拥有作废(这个号没有缓存 ⇒ 空, 只剩它自己的限免)",
+	_ok("★⑧ 换号 ⇒ 上一个号的拥有作废(这个号没有缓存 ⇒ 只剩赠送的 basic + 它自己的限免)",
 		PetLevelsNet.allowed_now() == WeeklyFree.allowed_ids("22222222-3333-4444-8555-666666666666", WEEK, [])
-		and PetLevelsNet.owned.is_empty(), str(PetLevelsNet.owned))
+		and PetLevelsNet.owned == ["basic"], str(PetLevelsNet.owned))
 	_gs.account_id = ""
 	_ok("⑧ 没登录后端 ⇒ 不过滤(门禁 / 本机开发)", not PetLevelsNet.filter_on()
 		and PetLevelsNet.fill_allowed(["ice", "ghost", "lava"]) == ["ice", "ghost", "lava"])

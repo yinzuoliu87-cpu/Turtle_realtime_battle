@@ -19,6 +19,10 @@ const ALL: Array[String] = ["basic", "stone", "bamboo", "angel", "ice", "ninja",
 	"lava", "cyber", "crystal", "chest", "space", "hiding", "headless", "shell"]
 ## 每周限免几只
 const COUNT := 7
+## 每个号永久拥有的（2026-11-23 · 用户 11-22 拍板「新玩家一进游戏永久送一只 basic」，随 0.23.6；
+##   = 服务端 pet_gift_ids()，迁移 20261123b —— 服务器的拥有 pet_owned 已并上它 ⇒ 领活盖章 / 等级表 / 发经验都把它当拥有）。
+##   这里并进「拥有」：限免跳过它（7 只另外选）、能上场的里一定有它。旧任务 / 偷袭快照里盖的拥有没有它也照样放行。
+const GIFT: Array[String] = ["basic"]
 
 const _FNV_OFFSET := 2166136261
 const _FNV_PRIME := 16777619
@@ -45,7 +49,7 @@ static func order(account_id: String, week_anchor: int) -> Array:
 	return out
 
 
-## 本周限免：排序里跳过已拥有的，取前 COUNT 只（按排序先后）。
+## 本周限免：排序里跳过已拥有的（含赠送 GIFT），取前 COUNT 只（按排序先后）。
 static func free_ids(account_id: String, week_anchor: int, owned: Array) -> Array:
 	var own := _owned_set(owned)
 	var out: Array = []
@@ -58,7 +62,7 @@ static func free_ids(account_id: String, week_anchor: int, owned: Array) -> Arra
 	return out
 
 
-## 能上场的：拥有 ∪ 本周限免（按 ALL 的顺序；拥有里不在 28 只之内的不算）。
+## 能上场的：拥有（含赠送 GIFT）∪ 本周限免（按 ALL 的顺序；拥有里不在 28 只之内的不算）。
 static func allowed_ids(account_id: String, week_anchor: int, owned: Array) -> Array:
 	var own := _owned_set(owned)
 	var fr := free_ids(account_id, week_anchor, owned)
@@ -82,4 +86,17 @@ static func _owned_set(owned: Array) -> Dictionary:
 	var s := {}
 	for p in owned:
 		s[str(p)] = true
+	for p in GIFT:
+		s[p] = true
 	return s
+
+
+## 拥有 ∪ 赠送（只认 28 只、去重；先赠送、再按原顺序）。客户端记「我拥有哪些」统一过这一道（服务器回的 owned = 主站真拥有，不含赠送）。
+static func with_gift(owned: Array) -> Array:
+	var out: Array = []
+	for p in GIFT:
+		out.append(p)
+	for p in owned:
+		if ALL.has(str(p)) and not out.has(str(p)):
+			out.append(str(p))
+	return out

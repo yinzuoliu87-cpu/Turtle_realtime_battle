@@ -14,6 +14,7 @@ extends RefCounted
 
 const _FN := preload("res://scripts/net/friends_net.gd")
 
+## 拥有（= 主站真拥有 ∪ 赠送 WeeklyFree.GIFT；2026-11-23 起每个号都有 basic）
 static var owned: Array = []
 static var linked := false
 ## pet_key → {lv, xp}（只有服务器有记录的龟）
@@ -59,7 +60,7 @@ static func adopt(p: Dictionary) -> void:
 		return
 	_sync_acc()
 	linked = bool(p.get("linked", false))
-	owned = (p.get("owned", []) as Array).duplicate()
+	owned = WeeklyFree.with_gift(p.get("owned", []) as Array)
 	levels = (p.get("levels", {}) as Dictionary).duplicate(true)
 	fetched = true
 	_write_table()
@@ -68,11 +69,7 @@ static func adopt(p: Dictionary) -> void:
 ## 只换拥有（网关刷新主站拥有之后）。等级不动。
 static func adopt_owned(own: Array) -> void:
 	_sync_acc()
-	var o: Array = []
-	for p in own:
-		if WeeklyFree.ALL.has(str(p)) and not o.has(str(p)):
-			o.append(str(p))
-	owned = o
+	owned = WeeklyFree.with_gift(own)
 	_write_table()
 
 
@@ -188,7 +185,7 @@ static func _sync_acc() -> void:
 	fetched = false
 	_asked_at = -1000000
 	var ML = load("res://scripts/net/mainsite_link.gd")
-	owned = (ML.owned_ids() as Array).filter(func(k) -> bool: return WeeklyFree.ALL.has(str(k))) if ML != null else []
+	owned = WeeklyFree.with_gift(ML.owned_ids() as Array) if ML != null else WeeklyFree.with_gift([])
 
 
 static func _gs():
