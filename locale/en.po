@@ -7561,3 +7561,348 @@ msgstr "Shield synergy tier 9"
 
 msgid "精英小将铁锁"
 msgstr "Elite Minion Iron Chain"
+
+msgid "周%s %02d:%02d"
+msgstr "%s %02d:%02d"
+
+msgid "周%s"
+msgstr "%s"
+
+msgid "周%s ~ 周%s"
+msgstr "%s – %s"
+
+msgid "%s仅 1 人，直接晋级%s\n%s %s 开赛"
+msgstr "%s has only 1 player, who advances directly to the %s\n%s starts %s"
+
+msgid "%s%s。%d 人参赛，共 %d 场对局，晋级 %d 人，出局 %d 人"
+msgstr "%s%s. %d players, %d matches, %d advanced, %d eliminated"
+
+msgid "%s 单次承伤 %d (%s)"
+msgstr "%s took %d in one hit (%s)"
+
+msgid "释放：冲击波 %d，护盾 %d"
+msgstr "Release: shockwave %d, shield %d"
+
+msgid "%.1f 秒后爆炸：治疗 %d，伤害 %d"
+msgstr "Explodes in %.1f s: heal %d, damage %d"
+
+msgid "攒满开第 %d 箱，共 %d 箱"
+msgstr "Fill up to open chest %d of %d"
+
+msgid "龟能 %d / %d"
+msgstr "Energy %d / %d"
+
+msgid "，锁定 %.1f 秒\n"
+msgstr ", locked %.1f s\n"
+
+msgid "，剩余 %.1f 秒\n"
+msgstr ", %.1f s left\n"
+
+msgid "火山形态：剩余 %.1f 秒"
+msgstr "Volcano Form: %.1f s left"
+
+msgid "龟蛋生命  我方 %d  ·  对方 %d"
+msgstr "Egg Health  You %d  ·  Opponent %d"
+
+msgid "第 %d / %d 场"
+msgstr "Match %d / %d"
+
+msgid "▼ 另有 %d 个单位"
+msgstr "▼ %d more units"
+
+msgid "加时：每 %d 秒全场伤害 +%d%%"
+msgstr "Overtime: every %d s, all damage +%d%%"
+
+msgid "加时：治疗效果 -%d%%"
+msgstr "Overtime: healing -%d%%"
+
+msgid "晋级%s（%s 开赛）"
+msgstr "Advanced to the %s (starts %s)"
+
+msgid "晋级%s"
+msgstr "Advanced to the %s"
+
+msgid "%d 个小组开播中"
+msgstr "%d groups live"
+
+msgid "你获得%s冠军！"
+msgstr "You won the %s!"
+
+msgid "你获得 %s冠军！"
+msgstr "You won the %s!"
+
+msgid "%s %d 场开播中"
+msgstr "%s: %d matches live"
+
+msgid "距下一场开播 %s"
+msgstr "Next match live in %s"
+
+msgid "观看 %s"
+msgstr "Watch %s"
+
+msgid "前往%s"
+msgstr "Go to %s"
+
+msgid "%s结果"
+msgstr "%s Results"
+
+msgid "胜者夺得%s冠军"
+msgstr "The winner takes the %s"
+
+msgid "胜者获得%s冠军，晋级%s"
+msgstr "The winner becomes %s Champion and advances to the %s"
+
+msgid "%s备战"
+msgstr "%s Prep"
+
+msgid "本轮 %d 场，剩余 %d 人"
+msgstr "%d matches this round, %d players left"
+
+msgid "「%s」头衔"
+msgstr "\"%s\" Title"
+
+msgid "本周决赛日参赛选手（%d 人）　%s"
+msgstr "This Week's Finals Day Players (%d)　%s"
+
+msgid "距%s开始"
+msgstr "Until %s"
+
+msgid "%s参赛选手"
+msgstr "%s Players"
+
+msgid "%d 人"
+msgstr "%d players"
+
+msgid "%s 公布"
+msgstr "Announced %s"
+
+msgid "分组单败淘汰，组冠军晋级%s"
+msgstr "Single elimination in groups; group winners advance to the %s"
+
+msgid "%d 胜 %d 负"
+msgstr "%dW %dL"
+
+msgid "剩余 %s"
+msgstr "%s left"
+
+msgid "%s 组"
+msgstr "Group %s"
+
+msgid "第 %d 组"
+msgstr "Group %d"
+
+msgid "%d 月 %d 日"
+msgstr "%d/%d"
+
+msgid "有效期至%s"
+msgstr "Valid until %s"
+
+msgid "%d 位组冠军登场"
+msgstr "%d group winners take the stage"
+
+msgid "奖励 %d / %d"
+msgstr "Reward %d / %d"
+
+msgid "%s决赛完成"
+msgstr "%s Final complete"
+
+msgid "第 2 名（%s）"
+msgstr "2nd Place (%s)"
+
+msgid "%s 的三统领"
+msgstr "%s's Three Leaders"
+
+msgid "获得「%s」头衔（%s）"
+msgstr "Earned the \"%s\" title (%s)"
+
+msgid "　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]"
+msgstr "　[color=#06d6a0][font_size=20]Energy %d[/font_size][/color]"
+
+msgid "宝箱龟战利品：%s，%s开出"
+msgstr "Treasure Chest Turtle loot: %s, from %s"
+
+msgid "费用 %d"
+msgstr "Cost %d"
+
+msgid "[color=%s][b]%d 件[/b][/color]  %s"
+msgstr "[color=%s][b]%d items[/b][/color]  %s"
+
+msgid "攻击 · %s"
+msgstr "Attack · %s"
+
+msgid "被动 · %s"
+msgstr "Passive · %s"
+
+msgid "主动 · 龟能 %d"
+msgstr "Active · Energy %d"
+
+msgid "%d 费"
+msgstr "%d-cost"
+
+msgid "%s · 技能"
+msgstr "%s · Ability"
+
+msgid "%s · 被动"
+msgstr "%s · Passive"
+
+msgid "激活：%s 件"
+msgstr "Activates at: %s items"
+
+msgid "现有装备：%d 件"
+msgstr "Current items: %d"
+
+msgid "%d 件"
+msgstr "%d items"
+
+msgid "糖果罐第 %d 档奖励"
+msgstr "Candy Jar Tier %d Reward"
+
+msgid "深海币 +%d"
+msgstr "Abyss Coins +%d"
+
+msgid "获得 %s %s"
+msgstr "Got %s %s"
+
+msgid "大轮经验 +%d"
+msgstr "Season XP +%d"
+
+msgid "获得 临时等级器 %d 个"
+msgstr "Got %d Level Booster(s)"
+
+msgid "%s 本大轮等级 +1（当前 +%d）"
+msgstr "%s: +1 level this Season (now +%d)"
+
+msgid "临时等级器 → 小将(%s路第%d格) 本大轮 +1 级"
+msgstr "Level Booster → Minion (%s Lane, slot %d): +1 level this Season"
+
+msgid "装备栏已满（%d 件）"
+msgstr "Item slots full (%d)"
+
+msgid "已夺得%s冠军"
+msgstr "Won the %s"
+
+msgid "%d 场开播中"
+msgstr "%d matches live"
+
+msgid "下一场 %s 开播"
+msgstr "Next match live %s"
+
+msgid "下一轮备战 %s 开始"
+msgstr "Next round's prep starts %s"
+
+msgid "%s已开赛"
+msgstr "%s has started"
+
+msgid "积分赛生命已耗尽。%s"
+msgstr "Out of Ranked lives. %s"
+
+msgid "生命已耗尽，本周无法参加积分赛。闯关赛周六开放观战。%s"
+msgstr "Out of lives; you can't play Ranked this week. The Gauntlet is open to spectators on Saturday. %s"
+
+msgid "本周积分赛 %d 场已全部完成。%s"
+msgstr "All %d Ranked matches this week are done. %s"
+
+msgid "本周积分赛 %d 场已全部完成，未晋级闯关赛。闯关赛周六开放观战。%s"
+msgstr "All %d Ranked matches this week are done, without qualifying for the Gauntlet. The Gauntlet is open to spectators on Saturday. %s"
+
+msgid "积分赛生命已耗尽，本周未晋级闯关赛，可观战。%s"
+msgstr "Out of Ranked lives and not qualified for the Gauntlet this week; you can spectate. %s"
+
+msgid "闯关赛仅限积分赛 %d 胜晋级的玩家参加。本周未晋级，可观战。%s"
+msgstr "The Gauntlet is only for players with %d Ranked wins. You didn't qualify this week but can spectate. %s"
+
+msgid "已晋级决赛日（%s），闯关赛已完成。决赛日%s：%s 开始。"
+msgstr "Qualified for Finals Day (%s); the Gauntlet is done. Finals Day %s: starts %s."
+
+msgid "本周闯关赛已结束（%s）。决赛日开放观战。%s"
+msgstr "This week's Gauntlet has ended (%s). Finals Day is open to spectators. %s"
+
+msgid "闯关赛  第 %d 场"
+msgstr "Gauntlet  Match %d"
+
+msgid "再胜 %d 场晋级决赛日"
+msgstr "%d more wins to reach Finals Day"
+
+msgid "再负 %d 场出局"
+msgstr "%d more losses and you're out"
+
+msgid " · 第%d轮"
+msgstr " · Round %d"
+
+msgid "时长 %d:%02d"
+msgstr "Duration %d:%02d"
+
+msgid "绑定的邮箱 %s 同时解除。"
+msgstr "The linked email %s will be unlinked too."
+
+msgid "共 %d 项 · 预计 5 分钟"
+msgstr "%d checks · about 5 minutes"
+
+msgid "进行中 %d / %d"
+msgstr "Running %d / %d"
+
+msgid "售价 %d 费"
+msgstr "Sells for %d"
+
+msgid "砍伐经验 %d/%d（可最终进化）"
+msgstr "Chopping XP %d/%d (ready for final evolution)"
+
+msgid "砍伐经验 %d/%d"
+msgstr "Chopping XP %d/%d"
+
+msgid "累计 %d"
+msgstr "Total %d"
+
+msgid " (龟能%d)"
+msgstr " (Energy %d)"
+
+msgid "\n近战：%s：%s"
+msgstr "\nMelee: %s: %s"
+
+msgid "\n火山：%s：%s"
+msgstr "\nVolcano: %s: %s"
+
+msgid "当前版本 %s　·　最低版本 %s"
+msgstr "Current version %s　·　Minimum version %s"
+
+msgid "未进行场次奖励（积分赛每周 %d 场，未进行的 %d 场按场发放）"
+msgstr "Rewards for unplayed matches (Ranked has %d matches a week; the %d unplayed ones are paid out per match)"
+
+msgid "闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。"
+msgstr "Gauntlet: %d wins to reach Finals Day, %d losses and you're out. Closes %s."
+
+msgid "距晋级还差 %d 胜，未晋级闯关赛"
+msgstr "%d wins short of qualifying; not in the Gauntlet"
+
+msgid "闯关赛已于%s 截止，未晋级决赛日"
+msgstr "The Gauntlet closed %s; didn't qualify for Finals Day"
+
+msgid "[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]"
+msgstr "[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] W [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] L[/color][/font_size]"
+
+msgid "+%d 深海币"
+msgstr "+%d Abyss Coins"
+
+msgid "刻痕 %d / %d（已满）"
+msgstr "Engravings %d / %d (full)"
+
+msgid "刻痕 %d / %d · 充能 %d / %d"
+msgstr "Engravings %d / %d · Charge %d / %d"
+
+msgid "电磁波 %d°"
+msgstr "EM Wave %d°"
+
+msgid "+%d龟能"
+msgstr "+%d Energy"
+
+msgid "%s\n点击查看规则"
+msgstr "%s\nTap to see the rules"
+
+msgid "斗龟场每周是一个赛季：周二到周五是%s，周六到周日是%s和%s，争夺冠军。每到周一，所有人从同一起点重新开始。"
+msgstr "Each week in Turtle Wars is a Season: Tuesday to Friday is %s, and Saturday to Sunday is the %s and %s, where players fight for the title. Every Monday, everyone starts over from the same line."
+
+msgid "新手教程：增伤 %d%%，减伤 %d%%"
+msgstr "Tutorial: Damage Amp %d%%, Damage Reduction %d%%"
+
+msgid "本轮 %d 场%s"
+msgstr "%d matches this round%s"
