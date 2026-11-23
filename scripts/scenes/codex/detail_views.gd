@@ -1454,7 +1454,7 @@ static func stat_row_bb(eid: String, star: int, font_px: int) -> String:
 		var seg := ""
 		if key != "" and ResourceLoader.exists(ip):
 			seg += "[img width=%d color=#%s]%s[/img] " % [ipx, SkillText.stat_icon_color_of(ip).to_html(false), ip]
-		seg += "%s [font_size=%d][color=#8c9cab]%s[/color][/font_size]" % [str(kv[1]), maxi(14, font_px - 4), str(kv[0])]
+		seg += "%s [font_size=%d][color=#8c9cab]%s[/color][/font_size]" % [str(kv[1]), maxi(14, font_px - 4), Lang.t(str(kv[0]))]
 		ps.append(seg)
 	return "      ".join(ps)
 
@@ -1468,7 +1468,7 @@ static func tier_breakdown_lines(plain: String, stat_rows: Array, star: int, eid
 		var v: String = str(kv[1])
 		if not v.contains("/"):
 			continue
-		out.append("[color=#c8d4e0]%s[/color]  %s" % [str(kv[0]), tier_triplet_bb(Array(v.split("/")), star)])
+		out.append("[color=#c8d4e0]%s[/color]  %s" % [Lang.t(str(kv[0])), tier_triplet_bb(Array(v.split("/")), star)])
 	## ★2026-10-14 效果行改「短标签 + 各档数值」(EquipTierLabels, 照 LoL 分档表: 标签字数中位 4)。
 	##   条数与正文里的分档数对不上 ⇒ 不用标签, 退回下面的整句显示(门禁 verify_equip_tier_labels 会红)。
 	var labeled := tier_label_lines(plain, star, eid)

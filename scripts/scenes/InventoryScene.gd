@@ -1782,7 +1782,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 	else:
 		var parts: Array = []
 		for kv in rows:
-			parts.append("[color=#9fb6c9]%s[/color]  [color=#7fe39a][b]%s[/b][/color]" % [kv[0], kv[1]])
+			parts.append("[color=#9fb6c9]%s[/color]  [color=#7fe39a][b]%s[/b][/color]" % [Lang.t(str(kv[0])), kv[1]])
 		bbody = "  　　".join(parts)
 	## 详情弹窗是"点开看全部"那一层, 给**全文**; 操作栏/tooltip 才给一句话简述。
 	## ★先上色再 highlight_star: highlight_star 认的是 `数/数/数`, 而上色产出的
@@ -1987,7 +1987,7 @@ func _stat_block(eid: String, star: int) -> String:
 		return "  无属性加成"
 	var out: Array = []
 	for kv in rows:
-		out.append("  · %s  %s" % [kv[0], kv[1]])
+		out.append("  · %s  %s" % [Lang.t(str(kv[0])), kv[1]])
 	return "\n".join(out)
 
 

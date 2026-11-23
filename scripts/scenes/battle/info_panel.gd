@@ -2282,7 +2282,7 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control, ck
 	for kv in _EquipStatsT.stat_lines(eid, star):
 		var ik := str(_EQ_STAT_ICON.get(str(kv[0]), ""))
 		var ip := ("res://assets/sprites/stats/%s-icon.png" % ik) if ik != "" else ""
-		stats.append([ip, str(kv[1]) if ip != "" else "%s %s" % [kv[0], kv[1]], Color("#f4ead8")])
+		stats.append([ip, str(kv[1]) if ip != "" else "%s %s" % [Lang.t(str(kv[0])), kv[1]], Color("#f4ead8")])
 	var st_txt := eq_stats_text_live(u, ck)   # 本局统计按这一件(份号)取
 	## ★对局里按结果写(用户 10-15「对局内就是按结果的写法」): 正文只留这一星的数、公式换成穿戴者算出来的结果,
 	##   公式进拆解行(与龟技能卡底部同一个样子)。图鉴那边没有穿戴者, 写公式不写结果。

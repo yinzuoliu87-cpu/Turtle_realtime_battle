@@ -81,7 +81,7 @@ func show(st: Dictionary) -> void:
 		var items: Array = srcs.filter(func(e): return str(e.get("k", "")) == str(g[0]))
 		if items.is_empty():
 			continue
-		col.add_child(_label("%s  %d" % [str(g[1]), items.size()], 15, "#9fb3c8"))
+		col.add_child(_label("%s  %d" % [Lang.t(str(g[1])), items.size()], 15, "#9fb3c8"))
 		var grid := GridContainer.new()
 		grid.columns = 2
 		grid.add_theme_constant_override("h_separation", int(TILE_GAP))
@@ -182,7 +182,7 @@ func _on_tile_input(ev: InputEvent, e: Dictionary) -> void:
 func describe(e: Dictionary) -> Dictionary:
 	var k := str(e.get("k", ""))
 	var id := str(e.get("id", ""))
-	var to_lbl: String = str(TO_LABEL.get(str(e.get("to", "")), ""))
+	var to_lbl: String = Lang.t(str(TO_LABEL.get(str(e.get("to", "")), "")))
 	var out := {"name": id, "sub": to_lbl, "color": "#7a8a96", "icon": null}
 	match k:
 		"pet":
@@ -192,7 +192,7 @@ func describe(e: Dictionary) -> Dictionary:
 			var sk := skill_of(pet, str(e.get("sk", "")))
 			var bits: PackedStringArray = []
 			if not sk.is_empty():
-				bits.append("%s · %s" % [str(sk.get("name", "")), _role(pet, sk)])
+				bits.append("%s · %s" % [Lang.t(str(sk.get("name", ""))), Lang.t(_role(pet, sk))])
 			if to_lbl != "":
 				bits.append(to_lbl)
 			out["sub"] = "  ".join(bits)
