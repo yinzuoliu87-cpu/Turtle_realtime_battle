@@ -281,43 +281,19 @@ func _codex_selfshot() -> void:
 	get_tree().quit()
 
 
+const BG_TEX := "res://assets/sprites/ui/codex/bg.png"
+const BG_DIM := Color(0.62, 0.66, 0.74)
+
 # ── 背景铺满 + 内容居中 (1:1 PoC menu-bg-active 边距 + 1280×720 画布居中) ──
 func _fill_bg_and_center() -> void:
 	var vp := Vector2(get_viewport().get_visible_rect().size)
-	# UI/Background (全锚 ColorRect, EXPAND 下自动填满窗口) 叠 menu 平铺 + 暗渐变
+	# UI/Background (全锚, EXPAND 下自动填满窗口) 上铺本屏专属底图「海底研究馆」
+	#   (11-22 换掉主菜单那张绿色平铺底; 用户「那个绿色的画布…彻底的不要了吧」)。
+	#   出处: PixelLab Pixen 文生图 520×240(seed 1122, job 156a34b8), 4 张候选选 1, 未手改; 87 色、零半透。
+	#   两侧是养着龟的大水缸(露在列表 / 详情面板外), 中间书桌被面板盖住。
 	var bg := get_node_or_null("UI/Background")
-	if bg != null and not bg.has_node("Tile"):
-		if ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-			var tile := TextureRect.new()
-			tile.name = "Tile"
-			tile.texture = PreloadCache.menu_bg_tile_tex()   # 复用缓存512²纹理 (resize只做一次, 消除进场景LANCZOS卡顿)
-			tile.stretch_mode = TextureRect.STRETCH_TILE
-			tile.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			# 比视口大一格(512) + 漂移循环 (1:1 PoC @keyframes menuBgDrift 25s linear) — 图鉴画布也会动, 与主菜单一致
-			tile.size = Vector2(vp.x + 512, vp.y + 512)
-			tile.position = Vector2(-512, -512)
-			bg.add_child(tile)
-			var drift := TweenKit.loop_on(tile)
-			drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
-		var grad := Gradient.new()
-		grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
-		grad.colors = PackedColorArray([
-			Color(0.031, 0.047, 0.078, 0.15),
-			Color(0.031, 0.047, 0.078, 0.25),
-			Color(0.031, 0.047, 0.078, 0.40)])
-		var gt := GradientTexture2D.new()
-		gt.gradient = grad
-		gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1)
-		gt.width = 8; gt.height = 128
-		var ov := TextureRect.new()
-		ov.name = "Grad"
-		ov.set_anchors_preset(Control.PRESET_FULL_RECT)
-		ov.texture = gt
-		ov.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ov.stretch_mode = TextureRect.STRETCH_SCALE
-		ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bg.add_child(ov)
+	if bg != null and not bg.has_node("CodexBgArt"):
+		SceneBackdrop.add(bg, BG_TEX, BG_DIM, "CodexBgArt")
 	# 绝对定位面板补居中偏移 (Title/TabBar 全宽锚已自动居中, StatusBar 底部不动)
 	var dx := maxf(0.0, (vp.x - 1280.0) / 2.0)
 	var dy := maxf(0.0, (vp.y - 720.0) / 2.0)

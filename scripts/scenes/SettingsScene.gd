@@ -523,7 +523,8 @@ func _on_foot_input(ev: InputEvent) -> void:
 ##   全算成它的子孙(`verify_ios_ui` SETTINGS_NO_OVERLAP 按最外层去重), 还会吞掉框里空白处的点击。
 func _frame_panel(x: float, y: float, w: float, h: float) -> Panel:
 	var p := Panel.new()
-	p.add_theme_stylebox_override("panel", SettleScreenS.frame_style())
+	p.add_theme_stylebox_override("panel", SceneBackdrop.stone_style(SettleScreenS.frame_style()))   # 11-22 青石框配专属底图
+	SceneBackdrop.add_well(p)
 	p.position = Vector2(x, y)
 	p.size = Vector2(w, h)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1907,50 +1908,14 @@ func _toast(msg: String) -> void:
 	tw.tween_callback(l.queue_free)
 
 
+## 背景 = 本屏专属底图「海底机房」(11-22 换掉主菜单那张绿色平铺底; 用户「那个绿色的画布…彻底的不要了吧」)。
+## 出处: PixelLab Pixen 文生图 520×240(seed 1122/2233, job 08bb37f5), 2 张候选选 1, 未手改; 41 色、零半透。
+## 两侧齿轮 / 铜管 / 压力表露在面板外, 中间舱门被面板盖住。
+const BG_TEX := "res://assets/sprites/ui/settings/bg.png"
+const BG_DIM := Color(0.62, 0.66, 0.74)
+
 func _bg() -> void:
-	# PoC (index.html menu-bg-active + BootScene:579): 菜单背景 = menu-bg-tile.png 平铺 (512px repeat)
-	#   over 深绿底 #1a3a2a, 上叠暗渐变 ::after rgba(8,12,20,.15→.40). 不是 menu-bg.png 废墟图!
-	#   1:1 复刻 MainMenuScene._bg(), 与主菜单无缝衔接.
-	var base := ColorRect.new()
-	base.set_anchors_preset(Control.PRESET_FULL_RECT)
-	base.color = Color(0.102, 0.227, 0.165)   # #1a3a2a 深绿底
-	add_child(base)
-	if ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-		var tile := TextureRect.new()
-		# PoC CSS background-size:512px → 把 tile 缩到 512² 再平铺 (图标密度对齐 Phaser)
-		tile.texture = PreloadCache.menu_bg_tile_tex()   # 复用缓存512²纹理 (resize只做一次, 消除进场景LANCZOS卡顿)
-		tile.stretch_mode = TextureRect.STRETCH_TILE
-		tile.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		# 漂移 -512→0 / 25s linear 循环 (1:1 PoC menuBgDrift index.html:79/90, 同MainMenu) — 原静态不动是bug
-		var vp := get_viewport_rect().size
-		tile.size = Vector2(vp.x + 512, vp.y + 512)
-		tile.position = Vector2(-512, -512)
-		add_child(tile)
-		var drift := TweenKit.loop_on(tile)
-		drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
-	# ::after 暗渐变遮罩 (顶 alpha.15 → 底 .40), 压暗背景
-	# 显式设 offsets+colors (别用 set_color/add_point — Gradient 默认 offset1 是白点, 会漏成底部白光)
-	var grad := Gradient.new()
-	grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
-	grad.colors = PackedColorArray([
-		Color(0.031, 0.047, 0.078, 0.15),
-		Color(0.031, 0.047, 0.078, 0.25),
-		Color(0.031, 0.047, 0.078, 0.40),
-	])
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad
-	gt.fill_from = Vector2(0, 0)
-	gt.fill_to = Vector2(0, 1)
-	gt.width = 8
-	gt.height = 128
-	var ov := TextureRect.new()
-	ov.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ov.texture = gt
-	ov.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	ov.stretch_mode = TextureRect.STRETCH_SCALE
-	ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(ov)
+	SceneBackdrop.add(self, BG_TEX, BG_DIM, "SettingsBgArt")
 
 
 # ─── 改昵称 (2026-10-04 · E 阶段方案书 ③「还没做: 改名(现在设了就不能改)」) ───

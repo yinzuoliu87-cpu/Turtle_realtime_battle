@@ -213,9 +213,9 @@ const MEDAL_BAND := [
 ## 奖牌里的名次数字: 白字 + 牌色的深描边(亮牌面上白字要靠描边才读得出)。
 const MEDAL_NUM_OUTLINE := ["#5a3a06", "#2e3644", "#4e260e"]
 ## 面板(装行卡的槽)的染色: 比原来(0.74/0.94/1.14)压暗一档 —— 槽要比卡暗, 卡才浮得起来。
-const PANEL_TINT := Color(0.58, 0.74, 0.96, 1.0)
+const PANEL_TINT := Color(0.60, 0.80, 0.82, 1.0)   # 11-22 冷蓝 → 青石(配专属底图「冠军殿堂」)
 ## 普通行卡: 深蓝石板色, 与面板同一个色系(面板芯 (40,41,66) × 面板染色)。
-const ROW_BAND := Color(0.34, 0.40, 0.58)
+const ROW_BAND := Color(0.28, 0.42, 0.46)
 ## 自己那张: 全屏最亮的一张(亮橙金, 照荒野乱斗自己那行的橙底; 和 MEDAL_BAND 三条都不一样 —— 门禁就是这么判"你看得出来"的)。
 const SELF_BAND := Color(1.42, 0.94, 0.36)
 const SELF_TAG := Color(1.34, 1.14, 0.56)
@@ -364,7 +364,7 @@ func _ready() -> void:
 		(ptex as StyleBoxTexture).draw_center = false
 		well = ColorRect.new()
 		well.name = "LbWell"
-		well.color = Color(40.0 / 255.0 * PANEL_TINT.r, 41.0 / 255.0 * PANEL_TINT.g, 66.0 / 255.0 * PANEL_TINT.b, 1.0)
+		well.color = Color(0.045, 0.085, 0.10, 0.94)   # 11-22 深青石, 底图隐约透一点
 		well.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		well.position = Vector2(20.0, 20.0)
 		well.size = Vector2(PANEL_W - 40.0, PANEL_H - 40.0)
@@ -1010,45 +1010,14 @@ func _update_jump() -> void:
 	jump_btn.modulate = Color(1, 1, 1, 1.0 if can else 0.45)
 
 
-## 背景 = 主菜单那张平铺底(深绿 #1a3a2a + menu-bg-tile + 暗渐变遮罩)。
-##
-## ★这不是"给新内容挑素材", 是**补上一处漏做的统一**: 主菜单/图鉴/战绩/设置四屏早就是这张底了,
-##   只有本屏还是一块纯 #0a1622 —— 实拍看就是"一片空的深色屏"。
-##   (素材铁律说的是"新内容一律新素材"; 这里连新内容都不是, 就是同一层壳没铺全。)
+## 背景 = 本屏专属底图「冠军殿堂」(11-22 换掉主菜单那张绿色平铺底; 用户「那个绿色的画布…彻底的不要了吧」)。
+## 出处: PixelLab Pixen 文生图 520×240(seed 1122, job 3596358f), 4 张候选(排行 2 / 图鉴 2)选 1, 未手改; 60 色、零半透。
+## 中间是刻名次的石板 + 领奖台, 被榜单面板盖住; 两侧旗帜 / 灯 / 龟像露在面板外。
+const BG_TEX := "res://assets/sprites/ui/leaderboard/bg.png"
+const BG_DIM := Color(0.62, 0.66, 0.74)
+
 func _bg() -> void:
-	var base := ColorRect.new()
-	base.set_anchors_preset(Control.PRESET_FULL_RECT)
-	base.color = Color(0.102, 0.227, 0.165)
-	add_child(base)
-	if ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-		var tile := TextureRect.new()
-		tile.texture = PreloadCache.menu_bg_tile_tex()   # 复用缓存 512² 纹理(resize 只做一次)
-		tile.stretch_mode = TextureRect.STRETCH_TILE
-		tile.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var vp := get_viewport_rect().size
-		tile.size = Vector2(vp.x + 512, vp.y + 512)
-		tile.position = Vector2(-512, -512)
-		add_child(tile)
-		var drift := TweenKit.loop_on(tile)
-		drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
-	var grad := Gradient.new()
-	grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
-	grad.colors = PackedColorArray([
-		Color(0.031, 0.047, 0.078, 0.20),
-		Color(0.031, 0.047, 0.078, 0.32),
-		Color(0.031, 0.047, 0.078, 0.46),
-	])
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad; gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1)
-	gt.width = 8; gt.height = 128
-	var ov := TextureRect.new()
-	ov.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ov.texture = gt
-	ov.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	ov.stretch_mode = TextureRect.STRETCH_SCALE
-	ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(ov)
+	SceneBackdrop.add(self, BG_TEX, BG_DIM, "LeaderboardBgArt")
 
 
 ## 底部提示行说哪一句 —— 纯函数, 四档全可穷举。

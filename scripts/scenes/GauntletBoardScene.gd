@@ -777,24 +777,13 @@ func _set_busy(id: String, busy: bool) -> void:
 			bt.text = WATCH_BUSY if busy else str(bt.get_meta("label", WATCH_LABEL))
 
 
+## 背景 = 本屏专属底图「试炼长廊」(11-22 换掉主菜单那张绿色平铺底; 用户「那个绿色的画布…彻底的不要了吧」)。
+## 出处: PixelLab Pixen 文生图 520×240(seed 1122/2233, job bc3bf3f5), 2 张候选选 1, 未手改; 36 色、零半透。
+## 一道道石拱门通向深处, 两侧火把 / 战旗 / 龟像守门。
+const BG_TEX := "res://assets/sprites/ui/gauntlet/bg.png"
+const BG_DIM := Color(0.62, 0.66, 0.74)
+
 func _bg() -> void:
-	var base := ColorRect.new()
-	base.set_anchors_preset(Control.PRESET_FULL_RECT)
-	base.color = Color(0.102, 0.227, 0.165)
-	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(base)
-	if ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-		var tile := TextureRect.new()
-		tile.texture = PreloadCache.menu_bg_tile_tex()
-		tile.stretch_mode = TextureRect.STRETCH_TILE
-		tile.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var vp := get_viewport_rect().size
-		tile.size = Vector2(vp.x + 512, vp.y + 512)
-		tile.position = Vector2(-512, -512)
-		add_child(tile)
-	var ov := ColorRect.new()
-	ov.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ov.color = Color(0.031, 0.047, 0.078, 0.35)
-	ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(ov)
+	SceneBackdrop.add(self, BG_TEX, BG_DIM, "GauntletBgArt")
+
+
