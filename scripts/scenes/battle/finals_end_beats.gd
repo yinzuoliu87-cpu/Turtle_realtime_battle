@@ -562,7 +562,7 @@ func _build_sides(dim: Control, vp: Vector2) -> void:
 		if nm == "":
 			nm = "—"
 		if side == me:
-			nm += TXT_ME
+			nm += Lang.t(TXT_ME)
 		var nl := SettleScreenS._lbl(nm, 30, Color("#ffe7a0") if side == win else Color("#b4c0d0"), HORIZONTAL_ALIGNMENT_CENTER)
 		nl.name = N_NAME + side
 		Ctx.outline(nl, 6)
@@ -650,7 +650,7 @@ func _build_score(dim: Control, cx: float) -> void:
 		lamp.pivot_offset = Vector2(lw * 0.5, 14)
 		lamp.set_meta("side", str(won_map.get(ln, "")))
 		lamp.set_meta("lit", 0.0)
-		lamp.draw.connect(_draw_lamp.bind(lamp, str(Ctx.LANE_SHORT[ln])))
+		lamp.draw.connect(_draw_lamp.bind(lamp, Ctx.lane_short(ln)))
 		dim.add_child(lamp)
 		if won_map.has(ln):
 			_plates.append(lamp)
@@ -694,12 +694,12 @@ func _build_third(dim: Control, vp: Vector2) -> void:
 		row.add_child(cap)
 		row.add_child(_icon(TEX_COIN, 32.0))
 
-		var cl := SettleScreenS._lbl("+0 " + TXT_COINS, 30, COL_GOLD)
+		var cl := SettleScreenS._lbl("+0 " + Lang.t(TXT_COINS), 30, COL_GOLD)
 		Ctx.outline(cl, 8)
 		cl.name = "EndCoins"
 		row.add_child(cl)
 		row.add_child(_icon(TEX_XP, 24.0))
-		var xl := SettleScreenS._lbl("+0 " + TXT_XP, 30, Color("#9ae6b0"))
+		var xl := SettleScreenS._lbl("+0 " + Lang.t(TXT_XP), 30, Color("#9ae6b0"))
 		Ctx.outline(xl, 8)
 		xl.name = "EndXp"
 		row.add_child(xl)
@@ -1006,8 +1006,8 @@ func _pose_third(x: float, t0: float) -> void:
 		rw.modulate.a = Ctx.k01(x, t0 + 0.35, 0.2)
 		## 数字滚出来(0.8 秒), 落定弹一下
 		var q := Ctx.k01(x, t0 + 0.45, 0.8)
-		(_n["coins"] as Label).text = "+%d %s" % [int(roundf(float(P2C.FINALS_COINS_PER_ROUND) * Ctx.ease_out(q))), TXT_COINS]
-		(_n["xp"] as Label).text = "+%d %s" % [int(roundf(float(P2C.FINALS_XP_PER_ROUND) * Ctx.ease_out(q))), TXT_XP]
+		(_n["coins"] as Label).text = "+%d %s" % [int(roundf(float(P2C.FINALS_COINS_PER_ROUND) * Ctx.ease_out(q))), Lang.t(TXT_COINS)]
+		(_n["xp"] as Label).text = "+%d %s" % [int(roundf(float(P2C.FINALS_XP_PER_ROUND) * Ctx.ease_out(q))), Lang.t(TXT_XP)]
 		rw.pivot_offset = rw.size * 0.5
 		rw.scale = Vector2.ONE * (1.0 + 0.08 * (1.0 - Ctx.ease_out(Ctx.k01(x, t0 + 1.25, 0.25))) if q >= 1.0 else 1.0)
 	if _n.has("go_when"):
@@ -1022,7 +1022,7 @@ func _go_when_text() -> String:
 	if at <= 0:
 		return ""
 	var now := int(Time.get_unix_time_from_system()) + int(ReplayRecorder.play_names.get("srv_off", 0))
-	return (TXT_NEXT_AT % Ctx.span_text(at - now)) if at > now else "开播中"
+	return (Lang.t(TXT_NEXT_AT) % Ctx.span_text(at - now)) if at > now else Lang.t("开播中")
 
 
 func _tick(dt: float) -> void:

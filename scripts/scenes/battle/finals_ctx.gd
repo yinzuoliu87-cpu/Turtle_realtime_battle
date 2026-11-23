@@ -26,6 +26,8 @@ const ChampionDataS := preload("res://scripts/scenes/bracket/champion_data.gd")
 const LANES := ["top", "bottom", "final"]
 ## 三路灯下的小字用短名(全称「上路战场 / 下路战场 / 终极战场」写在路间幕布上, 用户 10-07)
 const LANE_SHORT := {"top": "上路", "bottom": "下路", "final": "终极"}
+## 英文的短名(三路灯 / 开场 VS 阵容行的位置只放得下一个词; 「Top Lane」那种全称写在路间幕布上)
+const LANE_SHORT_EN := {"top": "Top", "bottom": "Bot", "final": "Final"}
 const TXT_ORIGIN_CUP := "组冠军"          # 冠军杯的每一位都是组冠军(入口没给组号时的写法, 不编组号)
 const TXT_LOCKED := "双方阵容已锁定，由服务器实时演算"
 
@@ -92,6 +94,11 @@ static func _pair_at(b: Dictionary, r: int, m: int, at: int) -> Dictionary:
 	return {"a": a, "b": c, "at": at, "r": r, "m": m}
 
 
+## 三路灯 / 阵容行用的路名短名(按当前语言)。
+static func lane_short(ln: String) -> String:
+	return str((LANE_SHORT_EN if Lang.is_en() else LANE_SHORT).get(ln, ln))
+
+
 ## 入口给的轮次(没给 / 形状不对 = {})。
 static func stage_of(pn: Dictionary) -> Dictionary:
 	var st = pn.get("stage", {})
@@ -115,7 +122,7 @@ static func round_title(st: Dictionary) -> String:
 	if bool(st.get("cup", false)):
 		return _FCP.join(P2C.STAGE_CUP, rn)
 	if int(st.get("group", 0)) > 0:
-		return "%s %s" % [P2C.STAGE_GROUP, _FCP.join(ChampionDataS.group_name(int(st["group"]) - 1), rn)]
+		return "%s %s" % [Lang.t(P2C.STAGE_GROUP), _FCP.join(ChampionDataS.group_name(int(st["group"]) - 1), rn)]
 	return ""
 
 
@@ -127,7 +134,7 @@ static func stage_tag(st: Dictionary) -> String:
 	var mi := int(st.get("match_i", 0))
 	var mn := int(st.get("match_n", 0))
 	if mi >= 1 and mn > 1:
-		t += Lang.t("第 %d 场") % mi
+		t = Lang.t("%s第 %d 场") % [t, mi]
 	return t
 
 
@@ -157,7 +164,7 @@ static func out_line(st: Dictionary, foe: String) -> String:
 	var head := _FCP.join("止步", rn) if rn != "" else ""
 	if foe == "":
 		return head
-	return (head + "，不敌 " + foe) if head != "" else ("不敌 " + foe)
+	return (Lang.t("%s，不敌 %s") % [head, foe]) if head != "" else (Lang.t("不敌 %s") % foe)
 
 
 ## 名牌下的来历: 入口给的字优先; 给了组号 ⇒「B 组冠军」(组名 ChampionData.group_name); 冠军杯都没给 ⇒「组冠军」
@@ -167,7 +174,7 @@ static func origin_of(card: Dictionary, st: Dictionary) -> String:
 	if o != "":
 		return o
 	if card.has("group") and int(card["group"]) >= 0 and bool(st.get("cup", false)):
-		return ChampionDataS.group_name(int(card["group"])) + "冠军"
+		return Lang.t("%s冠军") % ChampionDataS.group_name(int(card["group"]))
 	return TXT_ORIGIN_CUP if bool(st.get("cup", false)) else ""
 
 
@@ -332,6 +339,10 @@ const ART := {"惜败": "bt-xibai", "开战": "bt-kaizhan", "获胜": "bt-huoshe
 
 ## 一张美术字(×3 最近邻, 不吃点击)。没有这张图 ⇒ null。
 static func art_rect(file: String) -> TextureRect:
+	## 英文界面只贴 <名>_en.png(tools/assetgen/build_big_titles_en.py); 没有 ⇒ null, 调用方显示标签自己翻好的字。
+	##   比分数字(bt-n* / bt-g*)不分语言, 照旧。
+	if Lang.is_en() and not (file.begins_with("bt-n") or file.begins_with("bt-g")):
+		file += "_en"
 	var p := ART_DIR + file + ".png"
 	if not ResourceLoader.exists(p):
 		return null

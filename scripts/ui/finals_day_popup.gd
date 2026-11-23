@@ -128,9 +128,9 @@ func paint(secs: int, line: String) -> void:
 	if secs >= 0:
 		t = Lang.t("%s %d 秒后开播") % [_FC.join("你的", stage_name), maxi(1, secs)]
 	elif secs == -2:
-		t = _FC.join("你的", stage_name) + "即将开播"
+		t = Lang.t("%s即将开播") % _FC.join("你的", stage_name)
 	else:
-		t = _FC.join("你的", stage_name) + "开播中"
+		t = Lang.t("%s开播中") % _FC.join("你的", stage_name)
 	if t != _last_title:
 		_last_title = t
 		title.text = t

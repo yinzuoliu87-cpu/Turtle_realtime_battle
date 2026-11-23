@@ -444,7 +444,7 @@ msgid "你"
 msgstr "You"
 
 msgid "（我）"
-msgstr "(Me)"
+msgstr " (Me)"
 
 msgid "被动 · "
 msgstr "Passive ·"
@@ -1008,7 +1008,7 @@ msgid "阵容已上传"
 msgstr "Team uploaded"
 
 msgid "止步"
-msgstr "Out at"
+msgstr "Out in the"
 
 msgid "上路"
 msgstr "Top Lane"
@@ -1968,7 +1968,7 @@ msgid "等待中"
 msgstr "Waiting"
 
 msgid "卫冕"
-msgstr "Defending Champion"
+msgstr "Defending"
 
 msgid "备战中"
 msgstr "Preparing"
@@ -2439,13 +2439,13 @@ msgid "选择小组查看对阵"
 msgstr "Pick a group to view matchups"
 
 msgid "你止步"
-msgstr "You went out"
+msgstr "You went out in the"
 
 msgid "首轮轮空，直接晋级"
-msgstr "First-round bye. Advanced directly."
+msgstr "First-round bye, straight into the"
 
 msgid "你已晋级"
-msgstr "You advanced"
+msgstr "You advanced to the"
 
 msgid "观看我的比赛"
 msgstr "Watch My Match"
@@ -2463,7 +2463,7 @@ msgid "全部小组"
 msgstr "All Groups"
 
 msgid "胜者进入"
-msgstr "Winner goes to"
+msgstr "Winner goes to the"
 
 msgid "今晚赛程"
 msgstr "Tonight's Schedule"
@@ -3273,7 +3273,7 @@ msgid "护盾 %d"
 msgstr "Shield %d"
 
 msgid "%s第 %d 场"
-msgstr "%s Match %d"
+msgstr "%s · Match %d"
 
 msgid "%s  对  %s"
 msgstr "%s  vs  %s"
@@ -3450,10 +3450,10 @@ msgid "%s\n盾羁绊赠送，不占装备位，羁绊失效时移除"
 msgstr "%s\nGift from the Shield synergy. Takes no item slot and is removed if the synergy deactivates"
 
 msgid "上周共 %d 人上榜"
-msgstr "%d players ranked last week"
+msgstr "Players ranked last week: %d"
 
 msgid "本周共 %d 人上榜"
-msgstr "%d players ranked this week"
+msgstr "Players ranked this week: %d"
 
 msgid "闯关赛已晋级决赛日（%s）"
 msgstr "Gauntlet: qualified for Finals Day (%s)"
@@ -7957,3 +7957,24 @@ msgstr "Deletes: your account and Player ID, cloud save, team snapshots,\nleader
 
 msgid "追播中 ×2"
 msgstr "Catching up ×2"
+
+msgid "%s，不敌 %s"
+msgstr "%s, lost to %s"
+
+msgid "不敌 %s"
+msgstr "Lost to %s"
+
+msgid "%s（%s）"
+msgstr "%s (%s)"
+
+msgid "%s（卫冕）"
+msgstr "%s (Defending)"
+
+msgid "%s对手"
+msgstr "%s opponent"
+
+msgid "本周免费"
+msgstr "Free This Week"
+
+msgid "本周免费的龟不获得经验"
+msgstr "Free-this-week turtles don't earn XP"

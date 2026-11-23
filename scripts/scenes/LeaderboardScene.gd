@@ -751,6 +751,7 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 	cap_line.text = LOADING_TEXT if src == SRC_LOADING else (OnlineWall.TXT_TITLE if src == SRC_OFFLINE
 		else (Lang.t("上周共 %d 人上榜" if day_phase == _P2C.PHASE_REST else "本周共 %d 人上榜") % n_on_board))
 	cap_line.add_theme_font_size_override("font_size", 17)
+	Lang.fit_font(cap_line, CAP_W - 4.0, 17, 11)   # 英文「N players ranked this week」比中文长, 不许越进右边「本机记录」那一段
 	cap_line.add_theme_color_override("font_color", Color("#c9b58a"))
 	cap_line.position = Vector2(PAD + 6.0, HEAD_Y)
 	cap_line.size = Vector2(CAP_W, HEAD_H)

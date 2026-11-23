@@ -248,7 +248,7 @@ static func bar_line(now: int, group: Dictionary, cup: Dictionary, groups: Array
 				out["body"] = Lang.t("%s %s 开播") % [_FC.join("你的", rn), _P2.local_hhmm(at)]
 				out["cd"] = at - now
 			else:
-				out["body"] = _FC.join("你的", rn) + "即将开播"
+				out["body"] = Lang.t("%s即将开播") % _FC.join("你的", rn)
 		_M.K_CUP_WAIT:
 			out["body"] = Lang.t("%s %s 开赛") % [_P2.STAGE_CUP, _P2.local_hhmm(at)]
 			out["cd"] = at - now

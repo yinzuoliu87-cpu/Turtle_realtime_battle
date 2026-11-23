@@ -41,6 +41,12 @@ func _ready() -> void:
 		await SC.settle(1.6)
 		await SC.post(str(nm), n)
 		await SC.settle(1.2)
+		## 开窗口跑时每屏存一张(I18N_SHOT=1; 无头没有画面, 不存)
+		if OS.get_environment("I18N_SHOT") == "1" and DisplayServer.get_name() != "headless":
+			await RenderingServer.frame_post_draw
+			var sd := "res://.out/i18n/shots"
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(sd))
+			get_viewport().get_texture().get_image().save_png("%s/%s_%d.png" % [sd, str(nm), int(get_viewport().get_visible_rect().size.x)])
 		var vp := Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)
 		for it in TP.collect(get_tree().root, vp):
 			n_items += 1
@@ -55,8 +61,7 @@ func _ready() -> void:
 				var ok_key := "%s|%s" % [t, str(nm)]
 				if not over_seen.has(ok_key):
 					over_seen[ok_key] = true
-					over_rows.append("%d	%s	%s	%s" % [int(ow), t.replace("
-", "⏎").replace("	", " "), str(nm), str(it["path"])])
+					over_rows.append("%d\t%s\t%s\t%s" % [int(ow), t.replace("\n", "⏎").replace("\t", " "), str(nm), str(it["path"])])
 			if _han.search(t) == null:
 				continue
 			if seen.has(t):

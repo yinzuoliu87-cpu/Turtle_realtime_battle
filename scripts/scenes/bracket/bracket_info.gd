@@ -147,7 +147,7 @@ func origin_label(sd: int) -> String:
 			out = Lang.t("%s冠军") % _CD.group_name(int(bd.get("bucket", 0)))
 			break
 	if str(s.defending_acc) != "" and str(s.defending_acc) == acc:
-		out = (out + "（卫冕）") if out != "" else "卫冕冠军"
+		out = (Lang.t("%s（卫冕）") % out) if out != "" else "卫冕冠军"
 	return out
 
 
@@ -369,7 +369,7 @@ func hero_status_line() -> String:
 	var rn := _H.round_name(n, f.x)
 	var st := str(s.match_state(f.x, f.y))
 	if st == str(s.ST_PREMIERE):
-		return _FC.join("你的", rn) + "开播中"
+		return Lang.t("%s开播中") % _FC.join("你的", rn)
 	if st == str(s.ST_UPCOMING):
 		return Lang.t("%s %s 开播") % [_FC.join("你的", rn), _FC.at(_PS.start_of(c, f.x, f.y))]
 	var a: Dictionary = s.competitor(f.x, f.y, 0)
@@ -377,7 +377,7 @@ func hero_status_line() -> String:
 	var foe: Dictionary = b if int(a.get("seed", -1)) == me else a
 	if int(foe.get("seed", -1)) < 0:
 		return _FC.join("你已晋级", rn)
-	return _FC.kv(_FC.join("你的", rn) + "对手", str(foe.get("name", "")))
+	return _FC.kv(Lang.t("%s对手") % _FC.join("你的", rn), str(foe.get("name", "")))
 
 
 ## ★★这一屏「下一次开播」的唯一答案: 正在看的那张图 → `FinalsDayModel.premiere_eta`(全局小条 / 主菜单同一个函数)。

@@ -50,6 +50,11 @@ static func round_name(n: int, r: int) -> String:
 ## 拼两段: 汉字挨着数字 / 字母的地方补一个空格(「冠军杯赛」+「1/4 决赛」⇒「冠军杯赛 1/4 决赛」; 「你的」+「半决赛」照旧连写)。
 ##   ★只用在**我们自己的词**之间(轮次名 / 组名 / 赛名), 不用在玩家名字上(名字原样)。
 static func join(a: String, b: String) -> String:
+	## 英文(2026-11-23): 两段各自先翻译、再用空格连(「你的」+「半决赛」⇒ Your Semifinal); 前缀词的译文本身带介词(止步 ⇒ Out in the)。
+	if Lang.is_en():
+		var ea := Lang.t(a)
+		var eb := Lang.t(b)
+		return ea + eb if ea == "" or eb == "" else ea + " " + eb
 	if a == "" or b == "":
 		return a + b
 	var la := a.unicode_at(a.length() - 1)

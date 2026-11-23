@@ -29,6 +29,16 @@ func _shot(name: String) -> void:
 	var img: Image = get_viewport().get_texture().get_image()
 	img.save_png("%s/%s_%s.png" % [_dir, name, _tag])
 	print("[shot] ", name)
+	## I18N_DUMP=1(英文走查): 屏上还含汉字的句子逐条打出来
+	if OS.get_environment("I18N_DUMP") == "1":
+		var han := RegEx.create_from_string("[\\x{4e00}-\\x{9fff}]")
+		for it in preload("res://tests/_finals_text_probe.gd").collect(get_tree().root, Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)):
+			var nd := get_tree().root.get_node_or_null(NodePath(str(it["path"])))
+			var t := str(it["text"])
+			if nd != null and nd.can_auto_translate():
+				t = String(nd.atr(t))
+			if han.search(t) != null:
+				print("[zh] %s\t%s\t%s" % [name, t.replace("\n", "/"), str(it["path"])])
 
 
 func _ready() -> void:

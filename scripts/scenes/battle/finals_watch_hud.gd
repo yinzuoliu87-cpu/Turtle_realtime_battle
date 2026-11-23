@@ -380,7 +380,7 @@ func _build_break(vp: Vector2) -> void:
 		lp.set_meta("side", "")
 		lp.set_meta("cur", false)
 		lp.set_meta("px", LAMP_BIG)
-		lp.draw.connect(_draw_lamp.bind(lp, str(Ctx.LANE_SHORT[ln])))
+		lp.draw.connect(_draw_lamp.bind(lp, Ctx.lane_short(ln)))
 		lr.add_child(lp)
 		_n["blamp_" + str(ln)] = lp
 	var t4 := Label.new()
@@ -498,16 +498,16 @@ func refresh() -> void:
 		var w := str((ls["lr"] as Dictionary).get(cur, ""))
 		var names: Dictionary = ctl._names if ctl != null else {}
 		var who := str(names.get("l" if w == "left" else "r", ""))
-		(_n["break_title"] as Label).text = TXT_LANE_RESULT % str(LANE_NAMES.get(cur, cur))
+		(_n["break_title"] as Label).text = Lang.t(TXT_LANE_RESULT) % Lang.t(str(LANE_NAMES.get(cur, cur)))
 		_set_break_title(cur)
-		(_n["break_who"] as Label).text = (TXT_LANE_TAKE % [who, str(Ctx.LANE_SHORT.get(cur, ""))]) if who != "" else ""
+		(_n["break_who"] as Label).text = (Lang.t(TXT_LANE_TAKE) % [who, Lang.t(str(Ctx.LANE_SHORT.get(cur, "")))]) if who != "" else ""
 		Ctx.set_digit(_n["bdg_left"], int(sc[0]), int(sc[0]) >= int(sc[1]))
 		Ctx.set_digit(_n["bdg_right"], int(sc[1]), int(sc[1]) >= int(sc[0]))
 		(_n["break_left"] as Label).text = str(names.get("l", ""))
 		var nxt := ""
 		if int(sc[0]) < 2 and int(sc[1]) < 2:
 			var i := Ctx.LANES.find(cur)
-			nxt = TXT_LANE_NEXT % str(LANE_NAMES.get(str(Ctx.LANES[i + 1]), "")) if i >= 0 and i + 1 < Ctx.LANES.size() else ""
+			nxt = Lang.t(TXT_LANE_NEXT) % Lang.t(str(LANE_NAMES.get(str(Ctx.LANES[i + 1]), ""))) if i >= 0 and i + 1 < Ctx.LANES.size() else ""
 		(_n["break_next"] as Label).text = nxt
 		(_n["break_right"] as Label).text = str(names.get("r", ""))
 	## 顶上那几样在幕布 / 收尾时收起(幕布上有自己的那一块)

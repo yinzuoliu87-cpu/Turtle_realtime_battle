@@ -15,13 +15,18 @@ const ART_NODE := "BigTitleArt"
 const BIG := {"胜利": "big_win", "失败": "big_lose", "已晋级！": "big_promoted", "结果已封存": "big_sealed"}
 const RAIL := {"胜利": "rail_win", "失败": "rail_lose", "已封存": "rail_sealed"}
 const LANE := {"胜": "lane_win", "负": "lane_lose", "平": "lane_draw"}
+## 英文界面只贴 <名>_en.png(tools/assetgen/build_big_titles_en.py); 没有英文图 ⇒ 不贴, 标签显示自己翻好的字。绝不在英文下贴中文图。
+const _EN := "_en"
 
 
 ## 给标签贴上 table 里对应的图。true = 贴上了; false = 这句话没有图(标签照旧显示自己的字)。
 static func apply(l: Label, table: Dictionary) -> bool:
 	if not table.has(l.text):
 		return false
-	var tex := load(DIR + str(table[l.text]) + ".png") as Texture2D
+	var p := DIR + str(table[l.text]) + (_EN if Lang.is_en() else "") + ".png"
+	if not ResourceLoader.exists(p):
+		return false
+	var tex := load(p) as Texture2D
 	if tex == null:
 		return false
 	var art := TextureRect.new()

@@ -244,7 +244,7 @@ func _build_card(side: String, r: Rect2) -> void:
 	y += nm.size.y                                  # 进树后按字体的最小高撑开 ⇒ 按实际高往下排
 	var badge := str(cd.get("title", ""))
 	var origin := str(cd.get("origin", ""))
-	var line := origin if badge == "" else (("%s（%s）" % [origin, badge]) if origin != "" else badge)
+	var line := origin if badge == "" else ((Lang.t("%s（%s）") % [Lang.t(origin), Lang.t(badge)]) if origin != "" else badge)
 	if line != "":
 		var ol := SettleScreenS._lbl(line, 28, COL_GOLD if gold else Color("#ffd668"), HORIZONTAL_ALIGNMENT_CENTER)
 		ol.name = N_ORIGIN + side
@@ -275,10 +275,10 @@ func _build_lineup(side: String, ccx: float, y0: float) -> void:
 		var units: Array = row[1]
 		if units.is_empty():
 			continue
-		var lab_w := 64.0
+		var lab_w := 84.0 if Lang.is_en() else 64.0   # 英文「Final」比「上路」宽
 		var w: float = lab_w + float(units.size()) * (_cp + CHIP_SEP) - CHIP_SEP
 		var x: float = roundf(ccx - w * 0.5)
-		var ll := SettleScreenS._lbl(str(Ctx.LANE_SHORT.get(ln, ln)), 24, Color("#c9d8ea"), HORIZONTAL_ALIGNMENT_LEFT)
+		var ll := SettleScreenS._lbl(Ctx.lane_short(ln), 24, Color("#c9d8ea"), HORIZONTAL_ALIGNMENT_LEFT)
 		Ctx.outline(ll, 6)
 		ll.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		ll.size = Vector2(lab_w, _cp)

@@ -1091,7 +1091,7 @@ func _dl_update_hud() -> void:   # 双路 HUD: VS 下面那块路名计时牌(�
 	##   · 破蛋窗口(定局路, 窗口无限): 「破蛋定胜负」。
 	##   ★"打到第几路"交给牌子上面那三颗路点(topbar_status), 加时/破蛋时牌子上不再写路名。
 	var lane = str(GameState.current_lane) if GameState != null else "top"
-	var lane_cn: String = str(battle._LANE_CN.get(lane, "结算" if lane == "done" else lane))   # 唯一出处
+	var lane_cn: String = Lang.t(str(battle._LANE_CN.get(lane, "结算" if lane == "done" else lane)))   # 唯一出处
 	var live: bool = lane != "done" and (battle._dl_state == "fight" or battle._dl_state == "eggwindow")
 	var el: float = maxf(0.0, battle._t - battle._sd_t0)
 	var clock := "%d:%02d" % [int(el) / 60, int(el) % 60]

@@ -254,7 +254,7 @@ func build(b, h, won: bool, sealed: bool) -> void:
 func lane_views() -> Array:
 	var lanes: Array = []
 	for snap in battle._st_lane_hist:
-		lanes.append({"lane": snap["lane"], "title": battle._LANE_CN.get(snap["lane"], str(snap["lane"])),
+		lanes.append({"lane": snap["lane"], "title": Lang.t(str(battle._LANE_CN.get(snap["lane"], str(snap["lane"])))),
 			"left": snap["left"], "right": snap["right"]})
 	var cur := {"lane": "cur", "title": "", "left": [], "right": []}
 	for u in battle._units:
@@ -265,7 +265,7 @@ func lane_views() -> Array:
 	add_spirit_rows(cur, battle._units, func(x) -> String: return str(battle._eff_side(x)))
 	if not ((cur["left"] as Array).is_empty() and (cur["right"] as Array).is_empty()):
 		var cl := str(GameState.current_lane) if GameState != null else ""
-		cur["title"] = battle._LANE_CN.get(cl, "本场") if not lanes.is_empty() else "本场"
+		cur["title"] = Lang.t(str(battle._LANE_CN.get(cl, "本场"))) if not lanes.is_empty() else Lang.t("本场")
 		lanes.append(cur)
 	if lanes.size() > 1:
 		return [{"lane": "all", "title": "合计",
@@ -373,12 +373,12 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		row.add_theme_constant_override("separation", 22)
 		for ln in ["top", "bottom", "final"]:
 			if (lr as Dictionary).has(ln):
-				row.add_child(_lane_plate(str(battle._LANE_CN.get(ln, ln)), _as_viewer(str(lr[ln]))))
+				row.add_child(_lane_plate(Lang.t(str(battle._LANE_CN.get(ln, ln))), _as_viewer(str(lr[ln]))))
 			elif ln == "final" and final_implied(lr as Dictionary, str(gs.get("current_lane"))):
 				## 打到了终极战场（上下路一胜一负）⇒ 它的胜方就是整场胜方（`won` 已是看的人口径）。
 				##   ★直播流（跟播 / 看服务器那一局）在全场结束那一步不再发 HUD 全局量 ⇒ 播放端拿不到终极战场那一条，原来只画两块牌、
 				##   一胜一负却写「胜利」看着自相矛盾（用户 2026-10-29 看录屏）。
-				row.add_child(_lane_plate(str(battle._LANE_CN.get(ln, ln)), "left" if won else "right"))
+				row.add_child(_lane_plate(Lang.t(str(battle._LANE_CN.get(ln, ln))), "left" if won else "right"))
 		v.add_child(row)
 		hud._banner_fade_in(row, 0.34)
 	## ④ 奖励块(产品自己的那一排, 只是字号放大)
