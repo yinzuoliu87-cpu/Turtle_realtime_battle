@@ -71,6 +71,15 @@ static func is_en() -> bool:
 	return code == "en"
 
 
+## 写着字的美术图(大字): 英文下换成同目录的 <名>_en.png(tools/assetgen/build_big_titles_en.py 出的), 没有就原图。
+static func art(path: String) -> String:
+	if code == "en" and path.ends_with(".png"):
+		var en := path.trim_suffix(".png") + "_en.png"
+		if ResourceLoader.exists(en):
+			return en
+	return path
+
+
 ## 英文比中文长: 不折行的 Label / Button 一行放不下时, 把字号往下缩到放得下(最小 min_px)。中文不动。
 ##   max_w = 留给文字的宽(去掉内边距)。返回最后用的字号。
 static func fit_font(c: Control, max_w: float, start_px: int, min_px: int = 12) -> int:

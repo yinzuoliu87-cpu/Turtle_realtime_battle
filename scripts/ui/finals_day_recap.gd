@@ -317,7 +317,7 @@ func _beat_champion() -> void:
 	_fx.rays_radius = maxf(vp.x, vp.y) * 0.6
 	_fx.rays_col = Color("#ffd772")
 	## 「冠军杯赛冠军」像素大字(×3), 盖章落下
-	var tt := UI.tex_at(_stage, TEX_CUP_TITLE, Vector2(cx, oy + 82.0), Vector2(300, 60), "RecapCupTitle")
+	var tt := UI.tex_at(_stage, Lang.art(TEX_CUP_TITLE), Vector2(cx, oy + 82.0), _art_sz(TEX_CUP_TITLE, Vector2(300, 60)), "RecapCupTitle")
 	tt.stretch_mode = TextureRect.STRETCH_SCALE
 	_anim(tt, "scale", 1.05, 1.3, Vector2(2.2, 2.2), Vector2.ONE, "out")
 	_anim(tt, "modulate:a", 1.05, 1.15, 0.0, 1.0, "lin")
@@ -476,7 +476,8 @@ func _beat_mine() -> void:
 			sc.text = "%d : %d" % [mine, theirs]
 			_rolls.append([sc, 0.0, float(mine), t0 + 0.3, t0 + 0.6, "%%d : %d" % theirs])
 		## 胜 / 负章(结算屏那一套美术字 ×3), 盖下来
-		var st := UI.tex_at(card, STAMP_WIN if bool(it["won"]) else STAMP_LOSE, Vector2(690, 46), Vector2(57, 60), "RecapStamp")
+		var stp := STAMP_WIN if bool(it["won"]) else STAMP_LOSE
+		var st := UI.tex_at(card, Lang.art(stp), Vector2(690, 46), _art_sz(stp, Vector2(57, 60)), "RecapStamp")
 		st.stretch_mode = TextureRect.STRETCH_SCALE
 		st.set_meta("won", bool(it["won"]))
 		_anim(st, "scale", t0 + 0.4, t0 + 0.55, Vector2(2.6, 2.6), Vector2.ONE, "in")
@@ -506,3 +507,11 @@ func _replay(it: Dictionary) -> void:
 func close() -> void:
 	beat = 99
 	queue_free()
+
+
+## 大字图的摆放尺寸: 中文用原来定好的 sz(= 源图 ×3); 英文换了 _en 图 ⇒ 按它自己的源图 ×3(宽度不同, 不能套中文的框)。
+static func _art_sz(path: String, sz: Vector2) -> Vector2:
+	var p := Lang.art(path)
+	if p == path:
+		return sz
+	return Vector2((load(p) as Texture2D).get_size()) * 3.0

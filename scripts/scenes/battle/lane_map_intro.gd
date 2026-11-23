@@ -215,6 +215,7 @@ func _add_sea() -> void:
 
 
 func _tex(path: String) -> Texture2D:
+	path = Lang.art(path)   # 大字图英文下换 _en 版
 	return load(path) as Texture2D if ResourceLoader.exists(path) else null
 
 
@@ -1059,25 +1060,25 @@ static func fight_banner(b, ln: String) -> Control:
 		ln2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		band.add_child(ln2)
 		ln2.position.y = yy - band.position.y
-	var kz: Texture2D = load(KAIZHAN) if ResourceLoader.exists(KAIZHAN) else null
+	var kz: Texture2D = load(Lang.art(KAIZHAN)) as Texture2D
 	var word := TextureRect.new()
 	word.texture = kz
 	word.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	word.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	word.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	word.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	word.size = Vector2(240, 128) * s
+	word.size = (Vector2(kz.get_size()) * 4.0 if kz != null else Vector2(240, 128)) * s   # 中文 60×32 ⇒ 240×128; 英文按自己的宽
 	word.pivot_offset = word.size * 0.5
 	word.position = Vector2(vp2.x * 0.5, cy - 14.0 * s) - word.size * 0.5
 	holder.add_child(word)
-	var la: Texture2D = load(str(LANE_ART.get(ln, ""))) if ResourceLoader.exists(str(LANE_ART.get(ln, ""))) else null
+	var la: Texture2D = load(Lang.art(str(LANE_ART.get(ln, "")))) as Texture2D if ResourceLoader.exists(str(LANE_ART.get(ln, ""))) else null
 	var sub := TextureRect.new()
 	sub.texture = la
 	sub.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	sub.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sub.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sub.size = Vector2(132, 40) * s
+	sub.size = (Vector2(la.get_size()) * 2.0 if la != null else Vector2(132, 40)) * s
 	sub.position = Vector2(vp2.x * 0.5, cy + 52.0 * s) - sub.size * 0.5
 	holder.add_child(sub)
 	var clk := BannerClock.new()
