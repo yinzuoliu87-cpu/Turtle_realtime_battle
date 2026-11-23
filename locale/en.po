@@ -6154,3 +6154,363 @@ msgstr "Each time the Little Wooden Axe evolves, [Axe] gains {C:AxeEvolution.PAS
 
 msgid "【亡灵之斧】：额外获得 {C:AxeFinalStats.UNDEAD_HP} 生命值、{C:AxeFinalStats.UNDEAD_ATK} 攻击力、{C:AxeFinalStats.UNDEAD_DEF} 护甲和 {C:AxeFinalStats.UNDEAD_DEF} 魔抗。附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，【斧头】每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。【斧头】阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。\n【炽天使】：额外获得 {C:AxeFinalStats.SERAPH_HP} 生命值、{C:AxeFinalStats.SERAPH_ATK} 攻击力、{C:AxeFinalStats.SERAPH_DEF} 护甲和 {C:AxeFinalStats.SERAPH_DEF} 魔抗，射程变为 {C:AxeFinalStats.SERAPH_RANGE} 码。攻击施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。【蓄力猛砸】替换为在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投出 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，期间不获得减伤。回旋镖飞出后返回，命中时造成（{C:AxeFinalStats.SERAPH_BOOM_ATK%}% 攻击力）魔法伤害，并施加 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。\n【全息斧】：额外获得 {C:AxeFinalStats.HOLO_HP} 生命值、{C:AxeFinalStats.HOLO_ATK} 攻击力、{C:AxeFinalStats.HOLO_DEF} 护甲、{C:AxeFinalStats.HOLO_DEF} 魔抗和 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。【蓄力猛砸】替换为插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒，期间获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，附近的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值和 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 {C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。\n【余烬】：额外获得 {C:AxeFinalStats.EMBER_HP} 生命值、{C:AxeFinalStats.EMBER_ATK} 攻击力、{C:AxeFinalStats.EMBER_ASPD%}% 攻击速度和 {C:AxeFinalStats.EMBER_MOVE%}% 移动速度。攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。【蓄力猛砸】替换为【余烬之光】：{C:AxeFinalStats.EMBER_LIGHT_TIME} 秒内获得 {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤和 {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，并免疫控制效果。期间仍会积累龟能，再次释放时效果独立叠加。"
 msgstr "[Undead Axe]: gains {C:AxeFinalStats.UNDEAD_HP} Health, {C:AxeFinalStats.UNDEAD_ATK} Attack, {C:AxeFinalStats.UNDEAD_DEF} Armor and {C:AxeFinalStats.UNDEAD_DEF} Magic Resist. Nearby enemies take magic damage equal to {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% of their max health each second. For each nearby enemy, [Axe] heals {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% of its max health per second. {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} seconds after [Axe] dies, it revives with {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% of its max health, once per battle.\n[Seraph]: gains {C:AxeFinalStats.SERAPH_HP} Health, {C:AxeFinalStats.SERAPH_ATK} Attack, {C:AxeFinalStats.SERAPH_DEF} Armor and {C:AxeFinalStats.SERAPH_DEF} Magic Resist, and its range becomes {C:AxeFinalStats.SERAPH_RANGE}. Attacks apply {C:AxeFinalStats.SERAPH_BURN_ON_HIT} Burn. [Charged Slam] is replaced by throwing {C:AxeFinalStats.SERAPH_BOOMERANGS} boomerangs over {C:AxeFinalStats.SERAPH_CAST_TIME} seconds, with no Damage Reduction meanwhile. The boomerangs fly out and return, dealing ({C:AxeFinalStats.SERAPH_BOOM_ATK%}% Attack) magic damage on hit and applying {C:AxeFinalStats.SERAPH_BOOM_BURN} Burn.\n[Holo Axe]: gains {C:AxeFinalStats.HOLO_HP} Health, {C:AxeFinalStats.HOLO_ATK} Attack, {C:AxeFinalStats.HOLO_DEF} Armor, {C:AxeFinalStats.HOLO_DEF} Magic Resist and {C:AxeFinalStats.HOLO_ENERGY_RATE%}% Energy Charge. Attacks give the ally with the lowest health percentage a {C:AxeFinalStats.HOLO_ONHIT_SHIELD} shield and {C:AxeFinalStats.HOLO_ONHIT_ENERGY} Energy. [Charged Slam] is replaced by planting itself in the ground for {C:AxeFinalStats.HOLO_PLANT_TIME} seconds with {C:AxeFinalStats.HOLO_PLANT_DR%}% Damage Reduction; every {C:AxeFinalStats.HOLO_AURA_TICK} seconds, nearby allies heal {C:AxeFinalStats.HOLO_AURA_HEAL}, gain {C:AxeFinalStats.HOLO_AURA_ENERGY} Energy and {C:AxeFinalStats.HOLO_AURA_ASPD%}% attack speed.\n[Ember]: gains {C:AxeFinalStats.EMBER_HP} Health, {C:AxeFinalStats.EMBER_ATK} Attack, {C:AxeFinalStats.EMBER_ASPD%}% attack speed and {C:AxeFinalStats.EMBER_MOVE%}% move speed. Attack hits apply {C:AxeFinalStats.EMBER_SEED_PER_HIT} [Ember Seed] stacks and execute targets below the execute threshold. Each [Ember Seed] stack raises that target's execute threshold by {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% of its max health, with no cap. Each execution grants {C:AxeFinalStats.EMBER_EXEC_ENERGY} Energy. [Charged Slam] is replaced by [Ember Light]: for {C:AxeFinalStats.EMBER_LIGHT_TIME} seconds, gains {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% Lifesteal, {C:AxeFinalStats.EMBER_LIGHT_DR%}% Damage Reduction and {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% attack speed, and is immune to crowd control. It still builds Energy meanwhile, and recasts stack independently."
+
+msgid "先点击发光的位置。"
+msgstr "Tap the glowing spot first."
+
+msgid "教程加成：你的龟造成的伤害提高 50%，受到的伤害降低 30%。"
+msgstr "Tutorial bonus: your turtles deal 50% more damage and take 30% less damage."
+
+msgid "龟会自动战斗。先打上路战场，结束后再打下路战场。"
+msgstr "Turtles fight automatically. The Top Lane battle comes first, then the Bottom Lane."
+
+msgid "每只龟都有一个技能。当【{pet}】血条下的龟能槽攒满时，就会释放技能。"
+msgstr "Every turtle has an ability. When the Energy bar under [{pet}]'s health bar fills up, it casts its ability."
+
+msgid "场边的是你的训龟大师。它会在战斗中释放你选择的技能。"
+msgstr "On the sideline is your Turtle Trainer. It casts the abilities you chose during battle."
+
+msgid "击碎敌方的【龟蛋】，就能赢下这个战场。"
+msgstr "Break the enemy's [Turtle Egg] to win the battle."
+
+msgid "两个战场各赢一个，比分 1 : 1，进入【终极战场】决胜。"
+msgstr "If each side wins one lane, it's 1 : 1 and the [Final Battle] decides the winner."
+
+msgid "点击刚买的【{item}】。"
+msgstr "Tap the [{item}] you just bought."
+
+msgid "再点击一只龟，把装备装到它身上。"
+msgstr "Then tap a turtle to equip it."
+
+msgid "点击【站位】，调整龟开战时站的位置。"
+msgstr "Tap [Positions] to set where your turtles start."
+
+msgid "拖动一只龟到想要的位置。近战龟放在前面会更好一些。"
+msgstr "Drag a turtle to where you want it. Melee turtles do better in front."
+
+msgid "点击【完成】，保存站位。"
+msgstr "Tap [Done] to save the positions."
+
+msgid "教程完成。点击【完成教程】，开始你的第一场对战。"
+msgstr "Tutorial complete. Tap [Finish Tutorial] to start your first battle."
+
+msgid "每打一场都会获得【深海币】和【经验】。前往商店使用它们。"
+msgstr "Every battle earns [Abyss Coins] and [XP]. Spend them in the Shop."
+
+msgid "装备数量由等级决定。1 级时全队还不能装备任何装备。"
+msgstr "Your level decides how many items you can equip. At level 1, your team can't equip any yet."
+
+msgid "购买【经验】提升到 2 级，全队就能装备 2 件装备。"
+msgstr "Buy [XP] to reach level 2, and your team can equip 2 items."
+
+msgid "点击一件装备，查看它的效果。"
+msgstr "Tap an item to see what it does."
+
+msgid "点击【购买】，装备会放入背包。"
+msgstr "Tap [Buy] and the item goes into your Inventory."
+
+msgid "集齐 3 件同名同星的装备，会自动合成为一件更强的 2 星装备。"
+msgstr "Collect 3 copies of the same item at the same star level and they combine into a stronger 2-star item."
+
+msgid "点击【背包】，把装备装到你的龟身上。"
+msgstr "Tap [Inventory] to equip items on your turtles."
+
+msgid "从这里选出 3 只龟组成你的队伍。先选择【{pet}】。"
+msgstr "Pick 3 turtles here to form your team. Start with [{pet}]."
+
+msgid "每只龟都有 3 个技能，每场带 1 个。点击一个技能装备它。"
+msgstr "Each turtle has 3 abilities and brings 1 to each battle. Tap an ability to equip it."
+
+msgid "再选择【{pet}】。"
+msgstr "Next, pick [{pet}]."
+
+msgid "最后选择【{pet}】。"
+msgstr "Finally, pick [{pet}]."
+
+msgid "本周第一场对战开始后，这 3 只龟会锁定到下周一，技能仍可每场更换。"
+msgstr "Once your first battle this week starts, these 3 turtles are locked until next Monday. You can still change abilities every battle."
+
+msgid "+生命80/140/200"
+msgstr "+80/140/200 Health"
+
+msgid "+攻5/12/20·暴击10/15/25%"
+msgstr "+5/12/20 Attack · +10/15/25% Crit"
+
+msgid "+攻10/23/40·吸血15/24/33%·治疗增幅15/24/33%·盾增15/24/33%"
+msgstr "+10/23/40 Attack · +15/24/33% Lifesteal · +15/24/33% Heal Power · +15/24/33% Shield Power"
+
+msgid "+生命90/180/300·魔抗7/16/23"
+msgstr "+90/180/300 Health · +7/16/23 MR"
+
+msgid "+生命60/110/200·反伤8/11/15%"
+msgstr "+60/110/200 Health · +8/11/15% Thorns"
+
+msgid "+生命80/160/600·护甲&魔抗14/25/50"
+msgstr "+80/160/600 Health · +14/25/50 Armor & MR"
+
+msgid "+生命180/350/1000·反伤12/25/40%"
+msgstr "+180/350/1000 Health · +12/25/40% Thorns"
+
+msgid "+护甲6/13/21·魔抗6/13/21"
+msgstr "+6/13/21 Armor · +6/13/21 MR"
+
+msgid "+生命200/450/4000·护甲&魔抗15/35/150"
+msgstr "+200/450/4000 Health · +15/35/150 Armor & MR"
+
+msgid "+生命70/140/300·魔抗8/13/18·治疗&盾增5/13/20%"
+msgstr "+70/140/300 Health · +8/13/18 MR · +5/13/20% Heal & Shield Power"
+
+msgid "+护甲5/10/16·魔抗10/15/21"
+msgstr "+5/10/16 Armor · +10/15/21 MR"
+
+msgid "+生命100/140/210·护甲&魔抗3/4/6·+10%龟能充能速率"
+msgstr "+100/140/210 Health · +3/4/6 Armor & MR · +10% Energy Charge"
+
+msgid "+攻12/24/40"
+msgstr "+12/24/40 Attack"
+
+msgid "+生命60/100/180·+20初始龟能"
+msgstr "+60/100/180 Health · +20 Starting Energy"
+
+msgid "+攻8/15/25·+10%龟能充能速率"
+msgstr "+8/15/25 Attack · +10% Energy Charge"
+
+msgid "+生命40/60/80·攻10/25/40·魔穿5/8/13"
+msgstr "+40/60/80 Health · +10/25/40 Attack · +5/8/13 Magic Pen"
+
+msgid "+攻20/45/70·魔穿8/15/27·+20初始龟能"
+msgstr "+20/45/70 Attack · +8/15/27 Magic Pen · +20 Starting Energy"
+
+msgid "+攻25/35/55"
+msgstr "+25/35/55 Attack"
+
+msgid "+魔穿8/13/20"
+msgstr "+8/13/20 Magic Pen"
+
+msgid "+生命110/250/400·护甲&魔抗9/16/25"
+msgstr "+110/250/400 Health · +9/16/25 Armor & MR"
+
+msgid "+生命30/40/60·魔穿5/9/14"
+msgstr "+30/40/60 Health · +5/9/14 Magic Pen"
+
+msgid "+生命50/110/150·护甲9/15/25"
+msgstr "+50/110/150 Health · +9/15/25 Armor"
+
+msgid "+攻7/12/20·生命20/40/80·魔穿5/8/13"
+msgstr "+7/12/20 Attack · +20/40/80 Health · +5/8/13 Magic Pen"
+
+msgid "+攻8/14/30·护穿5/7/10·暴击15/25/40%"
+msgstr "+8/14/30 Attack · +5/7/10 Armor Pen · +15/25/40% Crit"
+
+msgid "+攻7/12/20·生命20/40/80·魔穿3/6/10"
+msgstr "+7/12/20 Attack · +20/40/80 Health · +3/6/10 Magic Pen"
+
+msgid "+生命50/60/70"
+msgstr "+50/60/70 Health"
+
+msgid "+生命110/270/3000"
+msgstr "+110/270/3000 Health"
+
+msgid "+攻20/50/300·生命120/250/1000"
+msgstr "+20/50/300 Attack · +120/250/1000 Health"
+
+msgid "+生命100/130/180·攻5/13/22"
+msgstr "+100/130/180 Health · +5/13/22 Attack"
+
+msgid "+生命70/120/180"
+msgstr "+70/120/180 Health"
+
+msgid "+攻10/25/40·生命80/130/180"
+msgstr "+10/25/40 Attack · +80/130/180 Health"
+
+msgid "+生命100/200/500"
+msgstr "+100/200/500 Health"
+
+msgid "+攻15/30/90·暴击25/35/60%·吸血5/9/15%"
+msgstr "+15/30/90 Attack · +25/35/60% Crit · +5/9/15% Lifesteal"
+
+msgid "+生命40/90/170·盾疗10/15/20%"
+msgstr "+40/90/170 Health · +10/15/20% Heal & Shield Power"
+
+msgid "+生命60/100/180·盾疗20/25/30%"
+msgstr "+60/100/180 Health · +20/25/30% Heal & Shield Power"
+
+msgid "+生命80/200/5000·盾疗10/20/30%"
+msgstr "+80/200/5000 Health · +10/20/30% Heal & Shield Power"
+
+msgid "+生命40/60/90·护甲5/12/20"
+msgstr "+40/60/90 Health · +5/12/20 Armor"
+
+msgid "+生命90/170/300·护甲&魔抗4/8/15"
+msgstr "+90/170/300 Health · +4/8/15 Armor & MR"
+
+msgid "+生命80/140/400·闪避15/25/50%"
+msgstr "+80/140/400 Health · +15/25/50% Dodge"
+
+msgid "+生命120/250/500"
+msgstr "+120/250/500 Health"
+
+msgid "+攻12/25/41"
+msgstr "+12/25/41 Attack"
+
+msgid "+攻15/32/50·暴击15/25/40%"
+msgstr "+15/32/50 Attack · +15/25/40% Crit"
+
+msgid "+攻20/50/120·护穿5/11/18"
+msgstr "+20/50/120 Attack · +5/11/18 Armor Pen"
+
+msgid "+攻14/30/50·吸血4/7/10%·+20初始龟能"
+msgstr "+14/30/50 Attack · +4/7/10% Lifesteal · +20 Starting Energy"
+
+msgid "+攻16/28/42·护穿3/6/10·吸血4/6/9%"
+msgstr "+16/28/42 Attack · +3/6/10 Armor Pen · +4/6/9% Lifesteal"
+
+msgid "+攻40/90/500·护穿15/24/50"
+msgstr "+40/90/500 Attack · +15/24/50 Armor Pen"
+
+msgid "+攻14/25/41·暴击10/15/25%"
+msgstr "+14/25/41 Attack · +10/15/25% Crit"
+
+msgid "+攻10/15/20·暴击15/25/40%·暴伤+10/15/20%"
+msgstr "+10/15/20 Attack · +15/25/40% Crit ·+10/15/20% Crit Damage"
+
+msgid "+攻9/15/21·+20龟能"
+msgstr "+9/15/21 Attack · +20 Energy"
+
+msgid "+攻45/90/400"
+msgstr "+45/90/400 Attack"
+
+msgid "+攻18/30/70·护穿10/16/30"
+msgstr "+18/30/70 Attack · +10/16/30 Armor Pen"
+
+msgid "+攻17/29/41·+20龟能"
+msgstr "+17/29/41 Attack · +20 Energy"
+
+msgid "+生命100/210/1000·龟能充能+10%"
+msgstr "+100/210/1000 Health ·+10% Energy Charge"
+
+msgid "+护甲5/11/19·+魔抗5/11/19"
+msgstr "+5/11/19 Armor · +5/11/19 MR"
+
+msgid "+攻18/40/90·护穿6/12/20"
+msgstr "+18/40/90 Attack · +6/12/20 Armor Pen"
+
+msgid "+射程50·+攻速15/30/50%"
+msgstr "+50 Range · +15/30/50% Attack Speed"
+
+msgid "+攻12/30/66·+移速5/9/15%"
+msgstr "+12/30/66 Attack · +5/9/15% Move Speed"
+
+msgid "+攻速8/15/25%·+暴击10/18/30%"
+msgstr "+8/15/25% Attack Speed · +10/18/30% Crit"
+
+msgid "+生命100/260/600·+充能10/18/30%"
+msgstr "+100/260/600 Health · +10/18/30% Energy Charge"
+
+msgid "+射程50·+攻速10/20/30%·+吸血3/6/10%"
+msgstr "+50 Range · +10/20/30% Attack Speed · +3/6/10% Lifesteal"
+
+msgid "+龟能20/35/60·+移速6/11/18%"
+msgstr "+20/35/60 Energy · +6/11/18% Move Speed"
+
+msgid "+生命110/280/650·+攻15/38/90·+法穿10/20/38"
+msgstr "+110/280/650 Health · +15/38/90 Attack · +10/20/38 Magic Pen"
+
+msgid "+生命180/460/1100·+攻速10/18/30%·+治疗与护盾15/25/40%"
+msgstr "+180/460/1100 Health · +10/18/30% Attack Speed · +15/25/40% Heal & Shield Power"
+
+msgid "+生命偷取5/9/15%·+龟能充能8/14/24%"
+msgstr "+5/9/15% Lifesteal · +8/14/24% Energy Charge"
+
+msgid "+生命120/300/700·+攻击18/45/100"
+msgstr "+120/300/700 Health · +18/45/100 Attack"
+
+msgid "+攻5/10/20·生命20/45/100"
+msgstr "+5/10/20 Attack · +20/45/100 Health"
+
+msgid "+治疗与护盾14/26/45%·+双抗10/22/40"
+msgstr "+14/26/45% Heal & Shield Power · +10/22/40 Armor & MR"
+
+msgid "+生命200/550/1400·+双抗10/24/55"
+msgstr "+200/550/1400 Health · +10/24/55 Armor & MR"
+
+msgid "+暴击10/18/30%·+射程50/70/100"
+msgstr "+10/18/30% Crit · +50/70/100 Range"
+
+msgid "+生命50/120/260·+攻速6/11/18%"
+msgstr "+50/120/260 Health · +6/11/18% Attack Speed"
+
+msgid "+攻12/30/68·+射程40/60/90"
+msgstr "+12/30/68 Attack · +40/60/90 Range"
+
+msgid "+攻20/50/115·+吸血6/11/18%·+暴伤15/28/50%"
+msgstr "+20/50/115 Attack · +6/11/18% Lifesteal · +15/28/50% Crit Damage"
+
+msgid "+暴击10/18/30%·+破甲4/9/18"
+msgstr "+10/18/30% Crit · +4/9/18 Armor Pen"
+
+msgid "+攻12/30/68·+破甲5/11/22"
+msgstr "+12/30/68 Attack · +5/11/22 Armor Pen"
+
+msgid "+生命90/200/420·+治疗与护盾10/18/30%·+攻速8/15/25%"
+msgstr "+90/200/420 Health · +10/18/30% Heal & Shield Power · +8/15/25% Attack Speed"
+
+msgid "+攻30/90/260·+双抗12/28/60"
+msgstr "+30/90/260 Attack · +12/28/60 Armor & MR"
+
+msgid "+攻8/15/30·护穿4/8/12·魔穿4/8/12"
+msgstr "+8/15/30 Attack · +4/8/12 Armor Pen · +4/8/12 Magic Pen"
+
+msgid "+生命50/120/260·+护甲6/13/22"
+msgstr "+50/120/260 Health · +6/13/22 Armor"
+
+msgid "+生命70/170/380·+魔抗8/17/30"
+msgstr "+70/170/380 Health · +8/17/30 MR"
+
+msgid "+攻18/42/92·+暴击10/18/30%"
+msgstr "+18/42/92 Attack · +10/18/30% Crit"
+
+msgid "+攻速10/18/30%·+移速7/13/22%"
+msgstr "+10/18/30% Attack Speed · +7/13/22% Move Speed"
+
+msgid "+生命50/120/260·+暴击10/18/30%"
+msgstr "+50/120/260 Health · +10/18/30% Crit"
+
+msgid "+攻30/90/260·+充能12/22/38%"
+msgstr "+30/90/260 Attack · +12/22/38% Energy Charge"
+
+msgid "+护甲25/60/150·+生命150/420/1200"
+msgstr "+25/60/150 Armor · +150/420/1200 Health"
+
+msgid "+法穿5/11/20·+龟能12/22/40"
+msgstr "+5/11/20 Magic Pen · +12/22/40 Energy"
+
+msgid "+充能6/11/18%·+护甲6/13/22"
+msgstr "+6/11/18% Energy Charge · +6/13/22 Armor"
+
+msgid "+法穿13/21/40·+生命150/420/1200·+龟能45/80/150"
+msgstr "+13/21/40 Magic Pen · +150/420/1200 Health · +45/80/150 Energy"
+
+msgid "+攻12/25/40·+20初始龟能"
+msgstr "+12/25/40 Attack · +20 Starting Energy"
+
+msgid "+攻5/12/20·+射程50·+护甲6/13/22"
+msgstr "+5/12/20 Attack · +50 Range · +6/13/22 Armor"
+
+msgid "+生命50/70/100·+魔抗10/22/40"
+msgstr "+50/70/100 Health · +10/22/40 MR"
+
+msgid "+攻10/20/36·+破甲3/7/11·+法穿3/7/11"
+msgstr "+10/20/36 Attack · +3/7/11 Armor Pen · +3/7/11 Magic Pen"
+
+msgid "+攻25/62/140·+破甲6/13/22·+生命120/300/700·+移速5/9/14"
+msgstr "+25/62/140 Attack · +6/13/22 Armor Pen · +120/300/700 Health · +5/9/14 Move Speed"
+
+msgid "+生命250"
+msgstr "+250 Health"
+
+msgid "+生命20·+攻10·+护甲2·+魔抗2"
+msgstr "+20 Health · +10 Attack · +2 Armor · +2 MR"
+
+msgid "+攻30/75/200·护穿10/18/30·生命50/120/1300"
+msgstr "+30/75/200 Attack · +10/18/30 Armor Pen · +50/120/1300 Health"

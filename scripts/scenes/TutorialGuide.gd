@@ -477,13 +477,15 @@ static func vis_rect(c) -> Rect2:
 
 ## 文案里的 `{pet}` / `{item}` 等占位: 宿主 `tut_text_vars()` 给值(按那一刻的状态); 没给的原样留着(门禁扫「{」抓漏填)。
 static func fill_text(t: String, host: Node) -> String:
+	## 先换语言(2026-11-23): 译文表里保留 {pet} / {item}, 换完再填; 填进去的龟名 / 装备名也换。中文时原样。
+	t = Lang.t(t)
 	if not t.contains("{") or host == null or not host.has_method("tut_text_vars"):
 		return t
 	var vars = host.call("tut_text_vars")
 	if not (vars is Dictionary):
 		return t
 	for k in (vars as Dictionary).keys():
-		t = t.replace("{%s}" % str(k), str(vars[k]))
+		t = t.replace("{%s}" % str(k), Lang.t(str(vars[k])))
 	return t
 
 
@@ -499,14 +501,15 @@ func _fit_text_width() -> void:
 	var fs: int = _text.get_theme_font_size("font_size")
 	var w: float = f.get_string_size(_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x if f != null else 0.0
 	if w > maxw:
-		_text.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		## 英文按单词折行(按字符折会把单词拦腰截断); 中文照旧任意处折
+		_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if Lang.is_en() else TextServer.AUTOWRAP_ARBITRARY
 		_text.custom_minimum_size = Vector2(maxw, 0)
 
 
 ## 点错那一行说明(data/tutorial-steps.json 顶层 `_wrong_tap`)。
 static func wrong_tap_text() -> String:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(STEPS_PATH))
-	return str((parsed as Dictionary).get("_wrong_tap", "")) if parsed is Dictionary else ""
+	return Lang.t(str((parsed as Dictionary).get("_wrong_tap", ""))) if parsed is Dictionary else ""
 
 
 ## 从 data/tutorial-steps.json 取某一屏的步骤。取不到返回空数组(不显示引导, 不崩)。
