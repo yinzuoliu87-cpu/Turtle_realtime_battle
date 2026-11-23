@@ -382,6 +382,10 @@ static func premiere_target(p: Dictionary) -> int:
 	return maxi(0, int(floor(el * 60.0)))
 
 
+## 开播迟到入场追播的倍速(用户 11-22 定「从这局开头追播」; 2 倍 = LoL 观战 / 云顶直播追进度的通行倍速)
+const CATCHUP_SPEED := 2.0
+
+
 class Guard extends Node:
 	var sess: Dictionary = {}
 	var left: Callable = Callable()
@@ -390,6 +394,8 @@ class Guard extends Node:
 	var t0 := 0
 	var _prem_pending := false
 	var _done := false
+	## 追播中(开播迟到入场: 从这局开头 CATCHUP_SPEED 倍速放, 追上「翻面至今」那一步就回 1 倍)
+	var _catchup := false
 
 	func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
@@ -419,6 +425,8 @@ class Guard extends Node:
 			return
 		if _prem_pending:
 			_premiere_step()
+		elif _catchup:
+			_catchup_step()
 
 	## 开播迟到入场: 块拉到目标步之后跳过去; 目标已过全场 ⇒ 从头当回放放。
 	## ★2026-10-31 周日彩排 P14(探针 tests/probes/_probe_premiere_wait.gd, 内测服真流 9e27c7c7 · 81 块 / 4820 步):
@@ -439,12 +447,29 @@ class Guard extends Node:
 			return
 		if int(player.first_step) < 0:
 			return
-		var have: int = int(player.first_step) + int(src.available()) * F.CHUNK_STEPS
-		if tgt <= int(player.first_step) + F.CHUNK_STEPS:
-			_release()
-		elif have > tgt + F.CHUNK_STEPS or src.ended():
-			player.seek(tgt)
-			_release()
+		## ★2026-11-23 B1(方案书 20261122; 用户 11-22「人家开播他进去…直接跳到对决一半…看的很乱」⇒ 定「从这局开头追播」):
+		##   原来等块拉到「翻面至今」那一步再 seek 过去 ⇒ 进来就落在对决中间、没有前因。
+		##   现在不跳: 第一块到了就放开, 从这局开头 CATCHUP_SPEED 倍速放, 追上实时(_catchup_step)回 1 倍。
+		##   刚开播不久(目标还在第一块里)照旧直接 1 倍放; 已经播完(目标过全场)照旧从头当回放放(上面那条)。
+		_release()
+		if tgt > int(player.first_step) + F.CHUNK_STEPS:
+			_catchup = true
+			player.speed = CATCHUP_SPEED
+			player.catchup_text = str(load(LS_PATH).TXT_CATCHUP)
+
+	## 追上了(播放头 ≥ 此刻该到的那一步) / 播完 / 出错 ⇒ 回 1 倍、提示收掉。
+	##   中途点「回到直播」(finals_watch_hud seek 到目标) ⇒ 下一帧播放头已在目标上, 同样收掉。
+	func _catchup_step() -> void:
+		if player == null or not is_instance_valid(battle):
+			_catchup = false
+			return
+		var tgt: int = (load("res://scripts/systems/replay/stream_watch.gd") as GDScript).premiere_target(sess.get("premiere", {}))
+		var last: int = int(player.total_steps())
+		var st := str(player.state)
+		if float(player.head) >= float(tgt) - 1.0 or (last >= 0 and float(player.head) >= float(last)) or st == "ended" or st == "error":
+			_catchup = false
+			player.speed = 1.0
+			player.catchup_text = ""
 
 	func _release() -> void:
 		_prem_pending = false

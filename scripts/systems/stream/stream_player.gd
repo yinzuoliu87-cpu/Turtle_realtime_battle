@@ -107,6 +107,8 @@ var wait_text := ""
 ## 守卫(stream_watch 周日开播迟到入场)按住播放器、等块拉到目标步那段时间屏上那句(空 = 没按住)。
 ##   ★2026-10-31 周日彩排 P14: 按住时播放器是「playing + 已暂停」, 原来 status_text 回空 ⇒ 空场地一个字都没有。
 var hold_text := ""
+## 追播提示(stream_watch 周日开播迟到入场: 从这局开头倍速追到实时那段)。只在正常播放时显示; 「同步中」等照旧优先。
+var catchup_text := ""
 ## 进度条: 每一路开打的步号、全场步数(流的 end.json 到了以它为准)。
 var fights: Array = []
 var total_hint := -1
@@ -944,6 +946,8 @@ func status_text() -> String:
 			return Live.TXT_SYNC
 		"error":
 			return TXT_ERROR
+		"playing":
+			return catchup_text
 	return ""
 
 

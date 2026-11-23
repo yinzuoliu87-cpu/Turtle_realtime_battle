@@ -14,8 +14,7 @@ extends Node
 ##  判据(走真入口: StreamWatch.enter 挂开播会话 → 真战斗场 → 真守卫 → 真播放器的提示标签)
 ## ══════════════════════════════════════════════════════════════════════
 ##   ① 目标已过全场、块只到了 1 块(没录完 / 没拉完): 守卫**当场放开**(不等整场下载完), 从开头放、不跳转
-##   ② 目标在场内、块还不够: 守卫按住时屏上那句 = live_spectate.TXT_CONNECTING(标签真的可见);
-##      块够了 ⇒ 跳到目标步、放开、那句收掉(分母: 按住真的会结束)
+##   ② 目标在场内(迟到): ★2026-11-23 B1 起不按住、不跳 —— 从这局开头 2 倍速追播、顶上「追播中 ×2」, 追上实时回 1 倍、那句收掉
 ##   ③ 第一块还没到: 开播那句也是 TXT_CONNECTING; 不是开播(回放)照旧「同步中」(别的入口不受影响)
 ## ★块是本测试现造的空步块(合法格式、不带任何对象), 块来源 = 内存(limit 卡住「拉到了第几块」) —— 不碰网络。
 ## ★不抄屏幕字面量: 比的是 live_spectate 里那个常量。
@@ -184,10 +183,12 @@ func _t_past_end() -> void:
 	await _close(o)
 
 
-## ② 翻面 15 秒后进来(目标在场内), 块只拉到 3 块: 守卫按住, 屏上要有那句; 块够了 ⇒ 跳过去、放开、那句收掉
+## ② 翻面 4 秒后进来(目标在场内), 块只拉到 3 块 —— ★2026-11-23 B1 改(方案书 20261122; 用户 11-22 定「从这局开头追播」):
+##   原来守卫按住等块、再 seek 到「翻面至今」⇒ 进来就在对决中间。现在第一块到了就放开、**不跳**, 从开头 2 倍速放,
+##   顶上「追播中 ×2」; 播放头追上「此刻该到的那一步」⇒ 回 1 倍、那句收掉。
 func _t_hold_text() -> void:
-	print("── ② 按住等块的时候屏上有字 ──")
-	var o: Dictionary = await _open(15, 3, true)
+	print("── ② 迟到入场: 从这局开头倍速追播, 追上回 1 倍 ──")
+	var o: Dictionary = await _open(4, 3, true)
 	var g: Node = o["g"]
 	var p = o["p"]
 	var src: StreamSource.Mem = o["src"]
@@ -196,20 +197,27 @@ func _t_hold_text() -> void:
 		await _close(o)
 		return
 	var tgt: int = SW.premiere_target(SW.current.get("premiere", {}))
-	_ok("② ★分母: 守卫真的按住了(目标 %d 在场内、块只到 %d 块、第一块已解出 首步 %d)" % [tgt, src.available(), int(p.first_step)],
-		bool(g._prem_pending) and bool(p.paused) and tgt < TOTAL and int(p.first_step) >= 0)
-	_ok("② ★★★按住的时候屏上那句 = 「%s」(原来是空的 ⇒ 空场地一个字都没有)" % LS.TXT_CONNECTING,
-		p.status_text() == LS.TXT_CONNECTING and _label_shows(p, LS.TXT_CONNECTING),
-		"status_text=「%s」 标签=%s" % [p.status_text(),
-			("「%s」可见=%s" % [(p._sync_lbl as Label).text, str((p._sync_lbl as Label).visible)]) if p._sync_lbl != null else "没建"])
+	_ok("② ★分母: 目标在场内、且确实在第一块之后(目标 %d · 首步 %d · 块只到 %d 块)" % [tgt, int(p.first_step), src.available()],
+		tgt < TOTAL and int(p.first_step) >= 0 and tgt > int(p.first_step) + F.CHUNK_STEPS)
+	_ok("② ★★★没有按住、没有跳: 从开头放(seeks=0 · 播放头 %.0f 在目标 %d 之前)" % [float(p.head), tgt],
+		not bool(g._prem_pending) and not bool(p.paused) and int(p.seeks) == 0 and float(p.head) < float(tgt))
+	_ok("② ★★追播: 倍速 = %.1f、顶上那句 = 「%s」(标签真的可见)" % [SW.CATCHUP_SPEED, LS.TXT_CATCHUP],
+		is_equal_approx(float(p.speed), SW.CATCHUP_SPEED) and bool(g._catchup) and _label_shows(p, LS.TXT_CATCHUP),
+		"speed=%.2f catchup=%s status=「%s」" % [float(p.speed), str(g._catchup), p.status_text()])
 	src.limit = -1
-	for _i in range(12):
+	## 追上要的真时间 ≈ 迟到的秒数(2 倍速每秒多追 1 秒); 等到 12 秒为止
+	var t0 := Time.get_ticks_msec()
+	var sp_mid := 0.0
+	while bool(g._catchup) and Time.get_ticks_msec() - t0 < 12000:
 		await get_tree().process_frame
+		if Time.get_ticks_msec() - t0 > 1000 and sp_mid == 0.0:
+			sp_mid = float(p.speed)
 	var tgt2: int = SW.premiere_target(SW.current.get("premiere", {}))
-	_ok("② ★分母: 块够了 ⇒ 跳到目标步、放开(按住真的会结束)", not bool(g._prem_pending) and not bool(p.paused)
-		and int(p.seeks) >= 1 and absi(int(p.applied) - tgt2) <= 2 * F.CHUNK_STEPS,
-		"按住=%s seeks=%d applied=%d 目标=%d" % [str(g._prem_pending), int(p.seeks), int(p.applied), tgt2])
-	_ok("② 放开之后那句收掉", p.status_text() != LS.TXT_CONNECTING, "status_text=「%s」" % p.status_text())
+	_ok("② ★追播途中一直是 2 倍(1 秒时 speed=%.1f)" % sp_mid, is_equal_approx(sp_mid, SW.CATCHUP_SPEED) or not bool(g._catchup))
+	_ok("② ★★★追上了 ⇒ 回 1 倍、那句收掉(播放头 %.0f · 此刻目标 %d · 用了 %.1f 秒)" % [float(p.head), tgt2, float(Time.get_ticks_msec() - t0) / 1000.0],
+		not bool(g._catchup) and is_equal_approx(float(p.speed), 1.0) and p.status_text() != LS.TXT_CATCHUP
+		and float(p.head) >= float(tgt2) - 2.0 * F.CHUNK_STEPS and int(p.seeks) == 0,
+		"catchup=%s speed=%.2f status=「%s」" % [str(g._catchup), float(p.speed), p.status_text()])
 	await _close(o)
 
 
