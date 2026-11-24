@@ -47,7 +47,7 @@ ITEMS = [
      "定时给敌人绑炸弹，每绑一颗之后的伤害都更高。"),
     ("p2eq_105", "炮筒", 5, "炸弹", "+生命200/450/2500·攻20/50/250",
      [{"hp": 200, "atk": 20}, {"hp": 450, "atk": 50}, {"hp": 2500, "atk": 250}],
-     "登场时在己方后方召唤一门炮筒：{C:%s.CANNON_HP} 生命值、{C:%s.CANNON_ATK} 攻击力，龟能上限 {C:%s.CANNON_EN_MAX}。炮筒每 {C:%s.CANNON_IV} 秒朝敌人开一炮，造成 100%% 攻击力的物理伤害。龟能满时进入重炮状态（期间不回复龟能）：每发消耗 {C:%s.CANNON_HEAVY_COST} 龟能，炮弹沿直线飞行 {C:EqBombBatch.CANNON_HEAVY_LEN} 码，击退直线上的敌人，造成 {C:%s.CANNON_HEAVY_MULT%%}%% 攻击力的物理伤害并施加 {C:%s.CANNON_HEAVY_BLEED} 层流血；龟能耗尽时回到普通炮击。" % (B, B, B, B, B, B, B, B),
+     "登场时在己方后方召唤一门炮筒：{C:%s.CANNON_HP} 生命值、{C:%s.CANNON_ATK} 攻击力，龟能上限 {C:%s.CANNON_EN_MAX}。炮筒攻击速度 {C:%s.CANNON_ASPD}，每次攻击朝敌人开一炮，造成 100%% 攻击力的物理伤害。龟能满时进入重炮状态：每发消耗 {C:%s.CANNON_HEAVY_COST} 龟能，炮弹沿直线飞行 {C:EqBombBatch.CANNON_HEAVY_LEN} 码，击退直线上的敌人，造成 {C:%s.CANNON_HEAVY_MULT%%}%% 攻击力的物理伤害并施加 {C:%s.CANNON_HEAVY_BLEED} 层流血；龟能耗尽时回到普通炮击。" % (B, B, B, B, B, B, B, B),
      "召唤一门高血量炮筒，龟能满时进入重炮状态，直线击退并流血。"),
     ("p2eq_106", "遥控炸弹", 5, "炸弹", "+生命200/450/2500·护甲&魔抗15/30/120",
      [{"hp": 200, "def": 15, "mr": 15}, {"hp": 450, "def": 30, "mr": 30}, {"hp": 2500, "def": 120, "mr": 120}],

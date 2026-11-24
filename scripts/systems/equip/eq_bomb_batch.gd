@@ -79,11 +79,15 @@ const TIMER_STACK := 0.10
 # ── 105 炮筒 ──
 const CANNON_HP := [2000.0, 4000.0, 10000.0]
 const CANNON_ATK := [70.0, 150.0, 400.0]
-const CANNON_IV := 2.0   # 攻速 0.5 次/秒(用户 11-24「改为0.5」; 原 1.5 秒)
+## 攻速 0.7 次/秒(用户 11-24「大炮攻速改为0.7」, 取代 0.5)
+const CANNON_ASPD := 0.7
+const CANNON_IV := 1.0 / CANNON_ASPD
 const CANNON_RANGE := 900.0
 const CANNON_SPLASH := 80.0
 const CANNON_EN_MAX := 100.0
-const CANNON_HEAVY_COST := [25.0, 20.0, 10.0]
+## 重炮每发消耗(用户 11-24「炮弹消耗改为40/35/30」, 取代 45/30/10 与最早的 25/20/10)。重炮期间龟能照全局规则照常涨
+##   (攻速 0.7 ⇒ 两炮之间涨 ≈19), 打到 0 才退出
+const CANNON_HEAVY_COST := [40.0, 35.0, 30.0]
 const CANNON_HEAVY_MULT := 2.0
 const CANNON_HEAVY_BLEED := [10, 20, 50]
 const CANNON_HEAVY_LEN := 2000.0   # 重炮弹固定飞这么远(用户 11-24「重炮固定移动距离吧，2000码」)
@@ -123,7 +127,7 @@ const KATANA_AIR := 1.0
 ## ── 召唤物龟能: 照全游戏同一条规则(用户 11-24「龟能增长能按规则来吗」) ──
 ##   1 点龟能 = SEC_PER_ENERGY 秒(与龟的技能充能 / 斧头召唤物同一个换算: AxeEvolution.SEC_PER_ENERGY),
 ##   × 自身充能速率(echarge_perm) × 充能减速 debuff; 眩晕 / 击飞 / 引导 / 龟能锁 期间不充(同 RealtimeBattle3DScene._tick_skill_cd)。
-##   「持续状态」期间也不充(同岩石护盾 / 钻石坚不可摧): 炮筒的重炮状态、武士刀小将的蓄力。
+##   炮筒重炮状态期间照常充(用户 11-24 方案书拍板「重炮状态中每发照常攒龟能」, 再确认「涨」); 武士刀小将蓄力期间不充。
 const SEC_PER_ENERGY := 0.075
 func _en_gain(u: Dictionary, delta: float) -> float:
 	var t := float(battle._t)
@@ -777,16 +781,12 @@ func _tick_cannons(delta: float) -> void:
 		p["energy"] = float(c["en"])
 		if float(battle._t) < float(p.get("stun_until", 0.0)):
 			continue
-		if not bool(c["heavy"]):   # 重炮状态期间不充(持续状态锁龟能)
-			c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + _en_gain(p, delta))
+		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + _en_gain(p, delta))
 		p["energy"] = float(c["en"])
 		## 龟能一满就进入重炮形态(当场播变身, 不等下一炮) —— 下一炮起是重炮
 		if not bool(c["heavy"]) and float(c["en"]) >= CANNON_EN_MAX:
 			c["heavy"] = true
 			_fx("cannon_heavy_on", [p])
-		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[int(c["si"])]):
-			c["heavy"] = false
-			_fx("cannon_heavy_off", [p])
 		c["acc"] = float(c["acc"]) + delta
 		if float(c["acc"]) < CANNON_IV:
 			continue
@@ -805,7 +805,9 @@ func _tick_cannons(delta: float) -> void:
 			_balls.append({"src": p, "tgt": tgt, "last": Vector2(tgt["pos"]), "t": float(battle._t) + fly})
 			_fx("cannon_fire", [p])
 			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, fly, p])
-		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
+		## 龟能耗光才退出(方案书「龟能耗光才退出」; 11-24 用户「鬼能都没消耗完，为什么…停止这个技能状态」):
+		##   剩的不够一发也照样打重炮、把剩下的扣光, 扣到 0 才回普通炮
+		if bool(c["heavy"]) and float(c["en"]) <= 0.0:
 			c["heavy"] = false
 			_fx("cannon_heavy_off", [p])
 		p["energy_view"] = float(c["en"])

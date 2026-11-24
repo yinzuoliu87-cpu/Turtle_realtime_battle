@@ -73,6 +73,7 @@ static func cases() -> Dictionary:
 		## 正常情况(不给满龟能): 从 0 攒, 看头顶龟能条怎么涨 → 满了进重炮 → 一发发往下掉(用户 11-24「给我看看正常情况这个龟能条怎么变」)
 		"cannon_norm": [[_u("__summon__", "left", Vector2(-40, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105], 3), "minion": true})] + _dummies(160, 3), 40.0],
 		"cannon_norm1": [[_u("__summon__", "left", Vector2(-40, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105], 1), "minion": true})] + _dummies(160, 3), 46.0],
+		"cannon_norm2": [[_u("__summon__", "left", Vector2(-40, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105], 2), "minion": true})] + _dummies(160, 3), 70.0],
 		"remote": [[_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_106", "equips": _eq([106], 1), "minion": true})] + _dummies(150, 3), 14.0],
 		"katana": [[_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(60, 3), 16.0],
 	}
