@@ -110,7 +110,9 @@ func strike(side: String, tier: int) -> int:
 	return hit
 
 
-## 一场结束（不是换路）：没有跨路状态要清，留着接口与其它羁绊对齐。
+## 一场结束（不是换路）：羁绊本身没有跨路状态；顺带清 104 定时炸弹的跨路叠层（装备效果，挂在同一个时机，主文件不多加一行）。
 func reset_match() -> void:
 	_fired = {"left": false, "right": false}
 	_lane_t0 = -1.0
+	if battle.get("_equip_sys") != null and battle._equip_sys.get("_bomb_sys") != null:
+		battle._equip_sys._bomb_sys.reset_match()

@@ -3,8 +3,7 @@ extends Node
 ##
 ## 用户 11-24：每一路开打第 10 秒，导弹落到战场中心，对所有敌方单位造成「固定 + 目标最大生命 %」物理伤害并击飞 1 秒；
 ##   三档 3 / 6 / 10 件，只递增伤害：100 + 8% / 200 + 15% / 400 + 40%。
-## ★炸弹装备还没做（下一步）⇒ 本测试把 10 件现有装备在 Phase2Types 里临时标成「炸弹」，测完原样还原；
-##   炸弹装备进数据表后改成真 id（那时这一段删掉）。
+## 用真的 10 件炸弹装备（097~106，data/p2eq-types.json 归「炸弹」）；伤害对账时拿掉它们的登场效果（只测羁绊本身）。
 ## 判据：
 ##   A 档位：3 / 6 / 10 件不同装备 ⇒ 1 / 2 / 3 档；9 件仍是 2 档（顶档要集齐 10 件）
 ##   B 时机：开打 9.99 秒不落、10 秒落；同一路只落一发；换路（_sd_t0 变）重新计时再落一发
@@ -17,8 +16,8 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const T := preload("res://scripts/gamedata/phase2_types.gd")
 const BS := preload("res://scripts/systems/equip/bomb_synergy_system.gd")
-## 临时标成炸弹的 10 件(任意现有、互不相同的商店装备)
-const FAKE := ["p2eq_001", "p2eq_002", "p2eq_007", "p2eq_012", "p2eq_018", "p2eq_028", "p2eq_035", "p2eq_044", "p2eq_048", "p2eq_054"]
+## 10 件炸弹装备
+const FAKE := ["p2eq_097", "p2eq_098", "p2eq_099", "p2eq_100", "p2eq_101", "p2eq_102", "p2eq_103", "p2eq_104", "p2eq_105", "p2eq_106"]
 
 var _n := 0
 var _fail := 0
@@ -85,10 +84,11 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("=== 炸弹羁绊【导弹轰炸】===")
 	T._ensure_loaded()
-	var saved := {}
+	var real := 0
 	for id in FAKE:
-		saved[id] = T._type_of.get(id, null)
-		T._type_of[id] = ["炸弹"]
+		if T.types_of(id).has("炸弹"):
+			real += 1
+	_ok("0 数据表里 10 件都归「炸弹」", real == 10, "%d / 10" % real)
 
 	## A 档位
 	var tiers := {}
@@ -167,11 +167,6 @@ func _ready() -> void:
 	_ok("F 两方都有 ⇒ 各落一发、各挨一发", _scene._bomb_syn.strikes == s0 + 2 and float(l["hp"]) < 10000.0 and float(r["hp"]) < 10000.0,
 		"strikes +%d" % (_scene._bomb_syn.strikes - s0))
 
-	for id in FAKE:
-		if saved[id] == null:
-			T._type_of.erase(id)
-		else:
-			T._type_of[id] = saved[id]
 	print("")
-	print("ALL PASS — 炸弹羁绊导弹轰炸 (%d 条)" % _n if _fail == 0 and _n >= 12 else "FAIL x%d (断言 %d 条)" % [_fail, _n])
+	print("ALL PASS — 炸弹羁绊导弹轰炸 (%d 条)" % _n if _fail == 0 and _n >= 13 else "FAIL x%d (断言 %d 条)" % [_fail, _n])
 	get_tree().quit(1 if _fail > 0 else 0)

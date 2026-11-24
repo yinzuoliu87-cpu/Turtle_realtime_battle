@@ -1,0 +1,816 @@
+class_name EqBombBatch
+extends RefCounted
+## eq_bomb_batch.gd —— 炸弹羁绊 10 件 + 剑 2 费武士刀 的效果本体（2026-11-24 · 方案书 docs/plans/20261124f-炸弹羁绊.md §4.2 / §4.3）
+##   097 鞭炮 · 098 爆竹筒 · 099 手雷 · 100 烟雾弹 · 101 粘弹 · 102 地雷 · 103 炸药桶 · 104 定时炸弹 · 105 炮筒 · 106 遥控炸弹 · 107 武士刀
+##
+## 接口 = 批④统一口（EquipSystem.B4_OWNER → `_b4`）：on_spawn / on_basic / on_hit / on_damaged / on_magic_hurt / on_death /
+##   on_mana_full / tick / tick_unit / clear_all；另加 `on_any_basic(u, tgt)`（任何单位普攻都经过：烟雾弹潜行现形 + 召唤物攒龟能）。
+##
+## ── 地雷对照（CLAUDE.md §4）────────────────────────────────────────
+##   §4.1 「X% 最大生命」一律真实 maxHp，不除 HP_MULT。
+##   §4.2 单位字典不当键：在途表里存字典本身，比较 `is_same`，命中名单用数组 + is_same。
+##   §4.3 只发伤害、不改伤害流程：物理走 `_resolve_dmg` + `_apply_damage_from(..., from_equip=true)`；真伤走 raw=true。
+##   §4.4 `_t` 跨路累加：本批计时全是【逐帧累加的相对计时】（换路单位重建 ⇒ 自然清零）；
+##        唯一要跨路的是 104 的叠层，按 `_food_key`（食物羁绊每路给每只单位贴的跨路身份键）存在系统对象上。
+##   随机：只有 097 的几率，走已播种的 `battle._battle_rng`。
+##   会走的波 / 弹道（105 重炮、107 剑气波与龙卷风）：每步按线段碰撞，命中名单防重复（memory fb-moving-hits-collide-per-step）。
+var battle
+## 演出层（可空：没有演出照样结算；门禁不依赖演出）
+var vfx = null
+
+# ── 097 鞭炮 ──
+const CRACKER_CHANCE := [0.4, 0.7, 1.0]
+const CRACKER_R := 100.0
+const CRACKER_ATK := [0.35, 0.5, 0.7]
+# ── 098 爆竹筒 ──
+const TUBE_IV := 6.0
+const TUBE_R := 120.0
+const TUBE_FLAT := [20.0, 40.0, 70.0]
+const TUBE_ATK := 0.2
+const TUBE_SHIELD := [60.0, 120.0, 250.0]
+const TUBE_SHIELD_SEC := 4.0
+# ── 099 手雷 ──
+const GRENADE_IV := 6.0
+const GRENADE_R := 160.0
+const GRENADE_FLAT := [80.0, 150.0, 280.0]
+const GRENADE_ATK := 0.6
+const GRENADE_SHRED := [10.0, 18.0, 30.0]
+const GRENADE_SHRED_SEC := 4.0
+const GRENADE_FLY := 0.6
+# ── 100 烟雾弹 ──
+const SMOKE_IV := 8.0
+const SMOKE_SEC := 3.0
+const SMOKE_R := 180.0
+const SMOKE_PULSE := 1.0
+const SMOKE_TRUE_FLAT := [50.0, 90.0, 160.0]
+const SMOKE_TRUE_ATK := 0.5
+# ── 101 粘弹 ──
+const STICKY_IV := 8.0
+const STICKY_SLOW := 0.4
+const STICKY_FUSE := 2.0
+const STICKY_FLAT := [40.0, 70.0, 120.0]
+const STICKY_ATK := 0.3
+const GOO_SEC := 1.5
+const GOO_R := 130.0
+const GOO_TICK := 0.5
+const GOO_POISON := [5, 10, 18]
+const GOO_SLOW := 0.3
+# ── 102 地雷 ──
+const MINE_COUNT := [3, 4, 5]
+const MINE_DMG := [100.0, 180.0, 320.0]
+const MINE_STUN := 0.8
+const MINE_TRIGGER_R := 45.0
+const MINE_BLAST_R := 110.0
+## 不摆时默认埋在己方前排正前方：离携带者往敌方方向这么远，横向按颗数等距排开
+const MINE_FWD := 220.0
+const MINE_GAP := 90.0
+# ── 103 炸药桶 ──
+const BARREL_R := 250.0
+const BARREL_PCT := [0.3, 0.45, 0.8]
+# ── 104 定时炸弹 ──
+const TIMER_IV := 8.0
+const TIMER_FUSE := 4.0
+const TIMER_FLAT := [200.0, 380.0, 900.0]
+const TIMER_ATK := 1.0
+const TIMER_R := 120.0
+const TIMER_STACK := 0.10
+# ── 105 炮筒 ──
+const CANNON_HP := [2000.0, 4000.0, 10000.0]
+const CANNON_ATK := [70.0, 150.0, 400.0]
+const CANNON_IV := 1.5
+const CANNON_RANGE := 900.0
+const CANNON_SPLASH := 80.0
+const CANNON_EN_MAX := 100.0
+## 每炮攒的龟能（重炮状态下照样攒；必须小于最便宜的消耗，否则 3★ 永不退出 —— 3★ 每发净耗 2）
+const CANNON_EN_GAIN := 8.0
+const CANNON_HEAVY_COST := [25.0, 20.0, 10.0]
+const CANNON_HEAVY_MULT := 2.0
+const CANNON_HEAVY_BLEED := [10, 20, 50]
+const CANNON_HEAVY_LEN := 1000.0
+const CANNON_HEAVY_W := 60.0
+const CANNON_HEAVY_SPD := 900.0
+const CANNON_BACK := 260.0
+# ── 106 遥控炸弹 ──
+const REMOTE_HP := [2500.0, 5000.0, 12000.0]
+const REMOTE_RES := [70.0, 130.0, 200.0]
+const REMOTE_DECAY := [0.10, 0.08, 0.0]
+const REMOTE_R := 600.0
+const REMOTE_FLAT := [400.0, 800.0, 2000.0]
+const REMOTE_TRUE_PCT := [0.08, 0.12, 0.20]
+const REMOTE_BLEED := [40, 70, 120]
+const REMOTE_FWD := 120.0
+# ── 107 武士刀 ──
+const KATANA_HP := [700.0, 1300.0, 2700.0]
+const KATANA_ATK := [40.0, 75.0, 140.0]
+const KATANA_EN_MAX := 60.0
+const KATANA_EN_PER_HIT := 20.0
+const KATANA_WAVE_LEN := 700.0
+const KATANA_WAVE_W := 50.0
+const KATANA_WAVE_SPD := 1100.0
+const KATANA_WAVE_MULT := 1.5
+const KATANA_CHARGE := 1.5
+const KATANA_HEAL_TICK := 0.25
+const KATANA_HEAL_TOTAL := 0.15
+const KATANA_TORNADOES := 3
+const KATANA_TORNADO_SPREAD := 0.32
+const KATANA_TORNADO_LEN := 800.0
+const KATANA_TORNADO_W := 55.0
+const KATANA_TORNADO_SPD := 600.0
+const KATANA_TORNADO_MULT := 3.0
+const KATANA_AIR := 1.0
+
+const COL_PHYS := Color("#ff9a4a")
+const COL_TRUE := Color("#ffffff")
+
+# ── 在途 / 场上状态（换路 clear_all 清空）──
+var _grenades: Array = []      ## {pos, t, src, si}
+var _smokes: Array = []        ## {pos, t, owner, si, pulse}
+var _stickies: Array = []      ## {tgt, t, src, si}
+var _goos: Array = []          ## {pos, t, src, si, tick}
+var _mines: Array = []         ## {pos, side, src, si}
+var _timers: Array = []        ## {tgt, t, src, si, mult}
+var _shreds: Array = []        ## {u, amt, until}
+var _lines: Array = []         ## 直线弹道 {pos, dir, spd, left, w, src, hit:[], kind, si}
+var _cannons: Array = []       ## {u, owner, si, acc, en, heavy}
+var _remotes: Array = []       ## {u, owner, si, boomed}
+var _katanas: Array = []       ## {u, owner, si, en, casts, charge, heal_acc}
+## 104 跨路叠层：身份键 → 已绑颗数（一局结束 reset_match 清）
+var _timer_stacks: Dictionary = {}
+## 门禁量
+var stat := {"cracker": 0, "tube": 0, "grenade": 0, "smoke_pulse": 0, "smoke_strike": 0, "sticky": 0, "goo_tick": 0,
+	"mine_boom": 0, "barrel": 0, "timer_boom": 0, "cannon_shot": 0, "cannon_heavy": 0, "remote_boom": 0, "katana_wave": 0, "katana_tornado": 0}
+
+
+func _init(b) -> void:
+	battle = b
+
+
+func _fx(method: String, args: Array = []) -> void:
+	if vfx != null and vfx.has_method(method):
+		vfx.callv(method, args)
+
+
+# ════════════════════════════════════════ 小工具 ════════════════════════════════════════
+
+func _enemies_of(u: Dictionary) -> Array:
+	var out: Array = []
+	var side := str(battle._eff_side(u))
+	for o in battle._units:
+		if not (o is Dictionary) or not o.get("alive", false):
+			continue
+		if str(battle._eff_side(o)) == side or bool(o.get("_isEgg", false)) or battle._is_untouchable(o):
+			continue
+		out.append(o)
+	return out
+
+
+func _allies_of(u: Dictionary) -> Array:
+	var out: Array = []
+	var side := str(battle._eff_side(u))
+	for o in battle._units:
+		if o is Dictionary and o.get("alive", false) and str(battle._eff_side(o)) == side and not bool(o.get("_isEgg", false)) \
+				and not battle._is_untouchable(o):
+			out.append(o)
+	return out
+
+
+func _in_radius(arr: Array, c: Vector2, r: float) -> Array:
+	var out: Array = []
+	for o in arr:
+		if DetMath.dist(Vector2(o["pos"]), c) <= r:
+			out.append(o)
+	return out
+
+
+## 物理伤害一段（过护甲、吃出手方护穿、可暴击 = 装备效果同普通装备）
+func _phys(src: Dictionary, tgt: Dictionary, base: float) -> void:
+	if not tgt.get("alive", false) or base <= 0.0:
+		return
+	var dmg: int = battle._resolve_dmg(src, base, tgt, false)
+	battle._damage._apply_damage_from(src, tgt, dmg, COL_PHYS, 0.0, false, true)
+
+
+func _true(src: Dictionary, tgt: Dictionary, amt: float) -> void:
+	if not tgt.get("alive", false) or amt <= 0.0:
+		return
+	battle._damage._apply_damage_from(src, tgt, int(round(amt)), COL_TRUE, 0.0, true, true)
+
+
+func _slow(tgt: Dictionary, mag: float, sec: float) -> void:
+	var t := float(battle._t)
+	var cur := float(tgt.get("slow_mag", 1.0)) if t < float(tgt.get("slow_until", 0.0)) else 1.0
+	tgt["slow_mag"] = minf(cur, mag)
+	tgt["slow_until"] = maxf(float(tgt.get("slow_until", 0.0)), t + sec)
+
+
+func _carry_key(u: Dictionary) -> String:
+	var k := str(u.get("_food_key", ""))
+	return k if k != "" else "%s|%s" % [str(u.get("side", "")), str(u.get("id", ""))]
+
+
+## 携带者身上某件装备的第 n 份的累加器（同一件带多份 = 各自独立，memory project-dup-equip-each-independent-1113）
+func _acc(u: Dictionary, key: String) -> float:
+	var d: Dictionary = u.get("_bomb_acc", {})
+	return float(d.get(key, 0.0))
+
+
+func _set_acc(u: Dictionary, key: String, v: float) -> void:
+	var d: Dictionary = u.get("_bomb_acc", {})
+	d[key] = v
+	u["_bomb_acc"] = d
+
+
+# ════════════════════════════════════════ 批④统一口 ════════════════════════════════════════
+
+func on_spawn(u: Dictionary, eid: String, si: int) -> void:
+	match eid:
+		"p2eq_102":
+			_place_mines(u, si)
+		"p2eq_105":
+			_spawn_cannon(u, si)
+		"p2eq_106":
+			_spawn_remote(u, si)
+		"p2eq_107":
+			_spawn_katana(u, si)
+
+
+func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
+	if eid != "p2eq_097" or not (tgt is Dictionary) or not tgt.get("alive", false):
+		return
+	if battle._battle_rng.randf() >= float(CRACKER_CHANCE[si]):
+		return
+	stat["cracker"] += 1
+	var c := Vector2(tgt["pos"])
+	_fx("cracker_burst", [c])
+	for o in _in_radius(_enemies_of(u), c, CRACKER_R):
+		_phys(u, o, float(CRACKER_ATK[si]) * float(u["atk"]))
+
+
+func on_hit(_src: Dictionary, _tgt: Dictionary, _dmg: float, _eid: String, _si: int) -> void:
+	pass
+
+
+func on_damaged(_u: Dictionary, _src, _dmg: float, _eid: String, _si: int) -> void:
+	pass
+
+
+func on_magic_hurt(_u: Dictionary, _src, _dmg: float, _eid: String, _si: int) -> void:
+	pass
+
+
+func on_death(u: Dictionary, eid: String, si: int) -> void:
+	if eid != "p2eq_103":
+		return
+	stat["barrel"] += 1
+	var c := Vector2(u["pos"])
+	_fx("barrel_blast", [c, BARREL_R])
+	var amt: float = float(BARREL_PCT[si]) * float(u.get("maxHp", 0.0))
+	for o in _in_radius(_enemies_of(u), c, BARREL_R):
+		_phys(u, o, amt)
+
+
+func on_mana_full(_u: Dictionary, _eid: String, _si: int) -> void:
+	pass
+
+
+## 任何单位普攻（EquipSystem._eq_on_basic_attack 最前面调，不论有没有装备）
+func on_any_basic(u: Dictionary, tgt) -> void:
+	if bool(u.get("_smoke_hidden", false)) and float(battle._t) >= float(u.get("untargetable_until", 0.0)):
+		u["_smoke_hidden"] = false          # 潜行已自然到期（离开烟雾）⇒ 这一下不算潜行攻击
+	if bool(u.get("_smoke_hidden", false)):
+		u["_smoke_hidden"] = false
+		u["untargetable_until"] = float(battle._t)          # 攻击即现形
+		var si := int(u.get("_smoke_si", 0))
+		if tgt is Dictionary and tgt.get("alive", false):
+			stat["smoke_strike"] += 1
+			var by: Array = u.get("_smoke_by", [u, "p2eq_100"])
+			var tl: Array = battle._equip_sys.tally.push_for(u, by[0], str(by[1]))   # 伤害源 = 潜行的这只，账记给放烟的那件
+			_true(u, tgt, float(SMOKE_TRUE_FLAT[si]) + SMOKE_TRUE_ATK * float(u["atk"]))
+			battle._equip_sys.tally.pop(tl)
+			_fx("smoke_strike", [Vector2(tgt["pos"])])
+	for k in _katanas:
+		if is_same(k["u"], u):
+			k["en"] = minf(KATANA_EN_MAX, float(k["en"]) + KATANA_EN_PER_HIT)
+
+
+## 每帧（全局一次）：在途 / 场上东西
+func tick(delta: float) -> void:
+	var t := float(battle._t)
+	_tick_grenades(t)
+	_tick_smokes(t, delta)
+	_tick_stickies(t)
+	_tick_goos(t, delta)
+	_tick_mines()
+	_tick_timers(t)
+	_tick_shreds(t)
+	_tick_lines(delta)
+	_tick_cannons(delta)
+	_tick_remotes(delta)
+	_tick_katanas(delta)
+
+
+## 每帧（每个带炸弹 / 武士刀的单位一次，守卫 `_b4_eq`）：定时投放
+func tick_unit(u: Dictionary, delta: float) -> void:
+	if not u.get("alive", false):
+		return
+	var es = battle._equip_sys
+	var ckp: Array = es.ck_save()
+	for e in u.get("equips", []):
+		if not (e is Dictionary):
+			continue
+		var eid := str(e.get("id", ""))
+		var iv := 0.0
+		match eid:
+			"p2eq_098": iv = TUBE_IV
+			"p2eq_099": iv = GRENADE_IV
+			"p2eq_100": iv = SMOKE_IV
+			"p2eq_101": iv = STICKY_IV
+			"p2eq_104": iv = TIMER_IV
+			_: continue
+		var si := clampi(int(e.get("star", 1)), 1, 3) - 1
+		## 份号：同名多件各自计时、各自记账（第 1 件 = 原 id，第 2 件起 = id#2…）
+		es.ck_set(u, e)
+		var ck: String = es.key_of(u, eid)
+		var a := _acc(u, ck) + delta
+		if a < iv:
+			_set_acc(u, ck, a)
+			continue
+		_set_acc(u, ck, a - iv)
+		var tl: Array = es.tally.push(u, ck)
+		match eid:
+			"p2eq_098": _tube(u, si)
+			"p2eq_099": _throw_grenade(u, si, ck)
+			"p2eq_100": _drop_smoke(u, si, ck)
+			"p2eq_101": _throw_sticky(u, si, ck)
+			"p2eq_104": _bind_timer(u, si, ck)
+		es.tally.pop(tl)
+	es.ck_restore(ckp)
+
+
+## 在途东西落地结算时切回「投放它的那件装备」的统计上下文
+func _tl_in(rec: Dictionary) -> Array:
+	return battle._equip_sys.tally.push(rec["src"], str(rec.get("ck", "")))
+
+
+func _tl_out(tl: Array) -> void:
+	battle._equip_sys.tally.pop(tl)
+
+
+func clear_all() -> void:
+	for s in _shreds:
+		_unshred(s)
+	_grenades.clear(); _smokes.clear(); _stickies.clear(); _goos.clear(); _mines.clear()
+	_timers.clear(); _shreds.clear(); _lines.clear(); _cannons.clear(); _remotes.clear(); _katanas.clear()
+
+
+## 一局结束（不是换路）：104 跨路叠层清零
+func reset_match() -> void:
+	_timer_stacks.clear()
+
+
+# ════════════════════════════════════════ 098 爆竹筒 ════════════════════════════════════════
+
+func _tube(u: Dictionary, si: int) -> void:
+	stat["tube"] += 1
+	var c := Vector2(u["pos"])
+	_fx("tube_blast", [c, TUBE_R])
+	for o in _in_radius(_enemies_of(u), c, TUBE_R):
+		_phys(u, o, float(TUBE_FLAT[si]) + TUBE_ATK * float(u["atk"]))
+		battle._damage._knockback(u, o, 0.0, 0.6, 1.0)
+	battle._damage._grant_shield(u, float(TUBE_SHIELD[si]), TUBE_SHIELD_SEC)
+
+
+# ════════════════════════════════════════ 099 手雷 ════════════════════════════════════════
+
+func _throw_grenade(u: Dictionary, si: int, ck: String = "p2eq_099") -> void:
+	if _enemies_of(u).is_empty():
+		return
+	var p: Vector2 = battle._densest_enemy_point(u, GRENADE_R)
+	_grenades.append({"pos": p, "t": float(battle._t) + GRENADE_FLY, "src": u, "si": si, "ck": ck})
+	_fx("grenade_throw", [Vector2(u["pos"]), p, GRENADE_FLY])
+
+
+func _tick_grenades(t: float) -> void:
+	var keep: Array = []
+	for g in _grenades:
+		if t < float(g["t"]):
+			keep.append(g)
+			continue
+		var u: Dictionary = g["src"]
+		var si := int(g["si"])
+		stat["grenade"] += 1
+		var tl := _tl_in(g)
+		_fx("grenade_blast", [Vector2(g["pos"]), GRENADE_R])
+		for o in _in_radius(_enemies_of(u), Vector2(g["pos"]), GRENADE_R):
+			_phys(u, o, float(GRENADE_FLAT[si]) + GRENADE_ATK * float(u["atk"]))
+			if o.get("alive", false):
+				var amt := float(GRENADE_SHRED[si])
+				o["def_shred"] = float(o.get("def_shred", 0.0)) + amt
+				battle._recalc_stats(o)
+				_shreds.append({"u": o, "amt": amt, "until": t + GRENADE_SHRED_SEC})
+		_tl_out(tl)
+	_grenades = keep
+
+
+func _unshred(s: Dictionary) -> void:
+	var o: Dictionary = s["u"]
+	o["def_shred"] = maxf(0.0, float(o.get("def_shred", 0.0)) - float(s["amt"]))
+	battle._recalc_stats(o)
+
+
+func _tick_shreds(t: float) -> void:
+	var keep: Array = []
+	for s in _shreds:
+		if t < float(s["until"]):
+			keep.append(s)
+		else:
+			_unshred(s)
+	_shreds = keep
+
+
+# ════════════════════════════════════════ 100 烟雾弹 ════════════════════════════════════════
+
+func _drop_smoke(u: Dictionary, si: int, ck: String = "p2eq_100") -> void:
+	var c := Vector2(u["pos"])
+	_smokes.append({"pos": c, "t": float(battle._t) + SMOKE_SEC, "owner": u, "src": u, "si": si, "ck": ck, "pulse": SMOKE_PULSE})
+	_fx("smoke_cloud", [c, SMOKE_R, SMOKE_SEC])
+
+
+func _tick_smokes(t: float, delta: float) -> void:
+	var keep: Array = []
+	for s in _smokes:
+		if t >= float(s["t"]):
+			continue
+		s["pulse"] = float(s["pulse"]) + delta
+		if float(s["pulse"]) >= SMOKE_PULSE:
+			s["pulse"] = float(s["pulse"]) - SMOKE_PULSE
+			for a in _in_radius(_allies_of(s["owner"]), Vector2(s["pos"]), SMOKE_R):
+				stat["smoke_pulse"] += 1
+				## 多给 0.1 秒重叠：下一次脉冲前不留空档（待在烟里 = 一直潜行；攻击现形后等下一次脉冲再潜）
+				a["untargetable_until"] = maxf(float(a.get("untargetable_until", 0.0)), t + SMOKE_PULSE + 0.1)
+				a["_smoke_hidden"] = true
+				a["_smoke_si"] = int(s["si"])
+				a["_smoke_by"] = [s["owner"], str(s["ck"])]
+		keep.append(s)
+	_smokes = keep
+
+
+# ════════════════════════════════════════ 101 粘弹 ════════════════════════════════════════
+
+func _throw_sticky(u: Dictionary, si: int, ck: String = "p2eq_101") -> void:
+	var tgt = battle._targeting._nearest_enemy(u)
+	if not (tgt is Dictionary):
+		return
+	_slow(tgt, 1.0 - STICKY_SLOW, STICKY_FUSE)
+	_stickies.append({"tgt": tgt, "t": float(battle._t) + STICKY_FUSE, "src": u, "si": si, "ck": ck})
+	_fx("sticky_attach", [tgt, STICKY_FUSE])
+
+
+func _tick_stickies(t: float) -> void:
+	var keep: Array = []
+	for s in _stickies:
+		if t < float(s["t"]):
+			keep.append(s)
+			continue
+		var tgt: Dictionary = s["tgt"]
+		var u: Dictionary = s["src"]
+		var si := int(s["si"])
+		var c := Vector2(tgt["pos"])
+		stat["sticky"] += 1
+		var tl := _tl_in(s)
+		_fx("sticky_blast", [c, GOO_R])
+		_phys(u, tgt, float(STICKY_FLAT[si]) + STICKY_ATK * float(u["atk"]))
+		_goos.append({"pos": c, "t": t + GOO_SEC, "src": u, "si": si, "tick": GOO_TICK, "ck": str(s.get("ck", ""))})
+		_tl_out(tl)
+	_stickies = keep
+
+
+## 粘液：每 GOO_TICK 秒叠一次中毒（1.5 秒内共 3 次：0.5 / 1.0 / 1.5），在里面的敌人持续减速
+func _tick_goos(t: float, delta: float) -> void:
+	var keep: Array = []
+	for g in _goos:
+		var u: Dictionary = g["src"]
+		var si := int(g["si"])
+		var inside := _in_radius(_enemies_of(u), Vector2(g["pos"]), GOO_R)
+		for o in inside:
+			_slow(o, 1.0 - GOO_SLOW, 0.2)
+		g["tick"] = float(g["tick"]) - delta
+		if float(g["tick"]) <= 0.0001:
+			g["tick"] = float(g["tick"]) + GOO_TICK
+			stat["goo_tick"] += 1
+			var tl := _tl_in(g)
+			for o in inside:
+				battle._damage._apply_dot_stacks(o, "poison", int(GOO_POISON[si]), u)
+			_tl_out(tl)
+		if t < float(g["t"]) - 0.0001:
+			keep.append(g)
+	_goos = keep
+
+
+# ════════════════════════════════════════ 102 地雷 ════════════════════════════════════════
+
+## 埋雷位置：阵容里摆过的（`mine_pos`，相对携带者的偏移，按阵营镜像）优先；否则默认己方前排正前方一排。
+func _place_mines(u: Dictionary, si: int) -> void:
+	var n := int(MINE_COUNT[si])
+	var side := str(battle._eff_side(u))
+	var fwd := 1.0 if side == "left" else -1.0
+	var custom: Array = u.get("mine_pos", []) if u.get("mine_pos") is Array else []
+	for i in range(n):
+		var p: Vector2
+		if i < custom.size() and custom[i] is Array and (custom[i] as Array).size() >= 2:
+			p = Vector2(u["pos"]) + Vector2(float(custom[i][0]) * fwd, float(custom[i][1]))
+		else:
+			p = Vector2(u["pos"]) + Vector2(MINE_FWD * fwd, (float(i) - float(n - 1) * 0.5) * MINE_GAP)
+		p.x = clampf(p.x, battle.ARENA.position.x + 20.0, battle.ARENA.end.x - 20.0)
+		p.y = clampf(p.y, battle.ARENA.position.y + 20.0, battle.ARENA.end.y - 20.0)
+		_mines.append({"pos": p, "side": side, "src": u, "si": si, "ck": battle._equip_sys.key_of(u, "p2eq_102")})
+		_fx("mine_place", [p, side])
+
+
+func _tick_mines() -> void:
+	var keep: Array = []
+	for m in _mines:
+		var u: Dictionary = m["src"]
+		var trig := false
+		for o in _enemies_of(u):
+			if not bool(o.get("airborne", false)) and DetMath.dist(Vector2(o["pos"]), Vector2(m["pos"])) <= MINE_TRIGGER_R:
+				trig = true
+				break
+		if not trig:
+			keep.append(m)
+			continue
+		var si := int(m["si"])
+		stat["mine_boom"] += 1
+		var tl := _tl_in(m)
+		_fx("mine_blast", [Vector2(m["pos"]), MINE_BLAST_R])
+		for o in _in_radius(_enemies_of(u), Vector2(m["pos"]), MINE_BLAST_R):
+			_phys(u, o, float(MINE_DMG[si]))
+			if o.get("alive", false):
+				battle._damage._stun(o, MINE_STUN, "p2eq_102")
+		_tl_out(tl)
+	_mines = keep
+
+
+# ════════════════════════════════════════ 104 定时炸弹 ════════════════════════════════════════
+
+func _bind_timer(u: Dictionary, si: int, ck: String = "p2eq_104") -> void:
+	var tgt = battle._targeting._nearest_enemy(u)
+	if not (tgt is Dictionary):
+		return
+	var k := _carry_key(u) + "|" + ck
+	var n: int = int(_timer_stacks.get(k, 0))
+	_timer_stacks[k] = n + 1
+	_timers.append({"tgt": tgt, "t": float(battle._t) + TIMER_FUSE, "src": u, "si": si, "ck": ck, "mult": 1.0 + TIMER_STACK * float(n)})
+	_fx("timer_attach", [tgt, TIMER_FUSE])
+
+
+## 已绑颗数（门禁 / 面板读）
+func timer_stacks_of(u: Dictionary) -> int:
+	var pre := _carry_key(u) + "|"
+	var n := 0
+	for k in _timer_stacks:
+		if str(k).begins_with(pre):
+			n += int(_timer_stacks[k])
+	return n
+
+
+func _tick_timers(t: float) -> void:
+	var keep: Array = []
+	for b in _timers:
+		if t < float(b["t"]):
+			keep.append(b)
+			continue
+		var tgt: Dictionary = b["tgt"]
+		var u: Dictionary = b["src"]
+		var si := int(b["si"])
+		var c := Vector2(tgt["pos"])
+		stat["timer_boom"] += 1
+		var tl := _tl_in(b)
+		_fx("timer_blast", [c, TIMER_R])
+		var base: float = (float(TIMER_FLAT[si]) + TIMER_ATK * float(u["atk"])) * float(b["mult"])
+		for o in _in_radius(_enemies_of(u), c, TIMER_R):
+			_phys(u, o, base)
+		_tl_out(tl)
+	_timers = keep
+
+
+# ════════════════════════════════════════ 直线弹道（105 重炮 / 107 剑气波 / 龙卷风）════════════════════════════════════════
+
+## `hit` 可传共用的命中名单：107 一次吹出的 3 道龙卷风共用一份 ⇒ 同一个敌人一轮只吃一道
+func _launch_line(src: Dictionary, from: Vector2, dir: Vector2, spd: float, length: float, w: float, kind: String, si: int, hit: Array = []) -> void:
+	_lines.append({"pos": from, "dir": DetMath.norm(dir), "spd": spd, "left": length, "w": w, "src": src, "hit": hit, "kind": kind, "si": si})
+	_fx("line_launch", [kind, from, DetMath.norm(dir), spd, length])
+
+
+func _tick_lines(delta: float) -> void:
+	var keep: Array = []
+	for L in _lines:
+		var step := minf(float(L["spd"]) * delta, float(L["left"]))
+		var a: Vector2 = L["pos"]
+		var b: Vector2 = a + Vector2(L["dir"]) * step
+		var src: Dictionary = L["src"]
+		for o in _enemies_of(src):
+			var already := false
+			for h in L["hit"]:
+				if is_same(h, o):
+					already = true
+					break
+			if already:
+				continue
+			var q: Vector2 = DetMath.seg_closest(Vector2(o["pos"]), a, b)
+			if DetMath.dist(q, Vector2(o["pos"])) <= float(L["w"]) + float(o.get("col_r", 20.0)):
+				(L["hit"] as Array).append(o)
+				_line_hit(L, o)
+		L["pos"] = b
+		L["left"] = float(L["left"]) - step
+		if float(L["left"]) > 0.01:
+			keep.append(L)
+	_lines = keep
+
+
+func _line_hit(L: Dictionary, o: Dictionary) -> void:
+	var src: Dictionary = L["src"]
+	var si := int(L["si"])
+	match str(L["kind"]):
+		"cannon_heavy":
+			_phys(src, o, CANNON_HEAVY_MULT * float(src["atk"]))
+			if o.get("alive", false):
+				battle._damage._apply_dot_stacks(o, "bleed", int(CANNON_HEAVY_BLEED[si]), src)
+				battle._damage._knockback(src, o, 0.0, 0.5, 1.2)
+		"katana_wave":
+			_phys(src, o, KATANA_WAVE_MULT * float(src["atk"]))
+		"katana_tornado":
+			_phys(src, o, KATANA_TORNADO_MULT * float(src["atk"]))
+			if o.get("alive", false):
+				battle._damage._knockback(src, o, 0.0, BombSynergySystem.air_vy_mult(float(battle.KNOCK_VY), float(battle.GRAVITY), KATANA_AIR), 0.0)
+
+
+# ════════════════════════════════════════ 105 炮筒 ════════════════════════════════════════
+
+func _spawn_cannon(owner: Dictionary, si: int) -> void:
+	var p = battle._spawn._spawn_summon(owner, "cannon", float(CANNON_HP[si]), float(CANNON_ATK[si]),
+		{"label": "炮筒", "spr_id": "eq-cannon", "col_size": 34.0, "hp_w": 44.0,
+		 "atk_interval": CANNON_IV, "atk_range": CANNON_RANGE, "melee": false})
+	if p == null:
+		return
+	p["no_basic"] = true          # 普攻由本系统驱动（要攒龟能、要切重炮）
+	p["no_move"] = true
+	p["move_spd"] = 0.0
+	var fwd := 1.0 if str(battle._eff_side(owner)) == "left" else -1.0
+	var pos := Vector2(owner["pos"]) - Vector2(CANNON_BACK * fwd, 0.0)
+	pos.x = clampf(pos.x, battle.ARENA.position.x + 30.0, battle.ARENA.end.x - 30.0)
+	p["pos"] = pos
+	if p.has("sprite") and is_instance_valid(p["sprite"]):
+		p["sprite"].position = battle._world_pos(p["pos"], battle.GROUND_LIFT)
+	_cannons.append({"u": p, "owner": owner, "si": si, "acc": 0.0, "en": 0.0, "heavy": false})
+
+
+## 门禁读：某门炮筒当前龟能 / 是否重炮
+func cannon_state(i: int = 0) -> Dictionary:
+	return _cannons[i] if i < _cannons.size() else {}
+
+
+func _tick_cannons(delta: float) -> void:
+	for c in _cannons:
+		var p: Dictionary = c["u"]
+		if not p.get("alive", false):
+			continue
+		if float(battle._t) < float(p.get("stun_until", 0.0)):
+			continue
+		c["acc"] = float(c["acc"]) + delta
+		if float(c["acc"]) < CANNON_IV:
+			continue
+		var tgt = battle._targeting._nearest_enemy(p)
+		if not (tgt is Dictionary) or DetMath.dist(Vector2(p["pos"]), Vector2(tgt["pos"])) > CANNON_RANGE:
+			continue
+		c["acc"] = float(c["acc"]) - CANNON_IV
+		var si := int(c["si"])
+		if not bool(c["heavy"]) and float(c["en"]) >= CANNON_EN_MAX:
+			c["heavy"] = true
+		if bool(c["heavy"]):
+			stat["cannon_heavy"] += 1
+			c["en"] = maxf(0.0, float(c["en"]) - float(CANNON_HEAVY_COST[si]))
+			_launch_line(p, Vector2(p["pos"]), Vector2(tgt["pos"]) - Vector2(p["pos"]), CANNON_HEAVY_SPD, CANNON_HEAVY_LEN, CANNON_HEAVY_W, "cannon_heavy", si)
+		else:
+			stat["cannon_shot"] += 1
+			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"])])
+			for o in _in_radius(_enemies_of(p), Vector2(tgt["pos"]), CANNON_SPLASH):
+				_phys(p, o, float(p["atk"]))
+		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_GAIN)
+		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
+			c["heavy"] = false
+		p["energy_view"] = float(c["en"])
+
+
+# ════════════════════════════════════════ 106 遥控炸弹 ════════════════════════════════════════
+
+func _spawn_remote(owner: Dictionary, si: int) -> void:
+	var p = battle._spawn._spawn_summon(owner, "remote_bomb", float(REMOTE_HP[si]), 0.0,
+		{"label": "遥控炸弹", "spr_id": "eq-remote-bomb", "col_size": 26.0, "hp_w": 40.0,
+		 "atk_interval": 1.0, "atk_range": 30.0, "melee": true})
+	if p == null:
+		return
+	p["no_basic"] = true          # 不攻击：只追着敌人走
+	p["def"] = float(REMOTE_RES[si]); p["base_def"] = float(REMOTE_RES[si])
+	p["mr"] = float(REMOTE_RES[si]); p["base_mr"] = float(REMOTE_RES[si])
+	var fwd := 1.0 if str(battle._eff_side(owner)) == "left" else -1.0
+	p["pos"] = Vector2(owner["pos"]) + Vector2(REMOTE_FWD * fwd, 0.0)
+	if p.has("sprite") and is_instance_valid(p["sprite"]):
+		p["sprite"].position = battle._world_pos(p["pos"], battle.GROUND_LIFT)
+	_remotes.append({"u": p, "owner": owner, "si": si, "boomed": false, "pos": Vector2(p["pos"])})
+
+
+func _tick_remotes(delta: float) -> void:
+	for r in _remotes:
+		if bool(r["boomed"]):
+			continue
+		var p: Dictionary = r["u"]
+		var si := int(r["si"])
+		if p.get("alive", false):
+			r["pos"] = Vector2(p["pos"])
+			var decay: float = float(REMOTE_DECAY[si]) * float(p.get("maxHp", 0.0)) * delta
+			if decay > 0.0:
+				p["hp"] = float(p["hp"]) - decay
+				if float(p["hp"]) > 0.0:
+					continue
+				p["hp"] = 0.0
+				battle._kill(p)
+			else:
+				continue
+		r["boomed"] = true
+		_remote_boom(r)
+
+
+func _remote_boom(r: Dictionary) -> void:
+	var owner: Dictionary = r["owner"]
+	var p: Dictionary = r["u"]
+	var si := int(r["si"])
+	var c: Vector2 = r["pos"]
+	stat["remote_boom"] += 1
+	_fx("remote_blast", [c, REMOTE_R])
+	var true_amt: float = float(REMOTE_TRUE_PCT[si]) * float(owner.get("maxHp", 0.0))
+	for o in _in_radius(_enemies_of(p), c, REMOTE_R):
+		_phys(p, o, float(REMOTE_FLAT[si]))
+		_true(p, o, true_amt)
+		if o.get("alive", false):
+			battle._damage._apply_dot_stacks(o, "bleed", int(REMOTE_BLEED[si]), p)
+
+
+# ════════════════════════════════════════ 107 武士刀 ════════════════════════════════════════
+
+func _spawn_katana(owner: Dictionary, si: int) -> void:
+	var p = battle._spawn._spawn_summon(owner, "katana", float(KATANA_HP[si]), float(KATANA_ATK[si]),
+		{"label": "武士刀小将", "spr_id": "eq-katana", "col_size": 24.0, "hp_w": 36.0,
+		 "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
+	if p == null:
+		return
+	_katanas.append({"u": p, "owner": owner, "si": si, "en": 0.0, "casts": 0, "charge": -1.0, "heal_acc": 0.0})
+
+
+func katana_state(i: int = 0) -> Dictionary:
+	return _katanas[i] if i < _katanas.size() else {}
+
+
+func _tick_katanas(delta: float) -> void:
+	for k in _katanas:
+		var p: Dictionary = k["u"]
+		if not p.get("alive", false):
+			continue
+		if float(k["charge"]) >= 0.0:
+			k["charge"] = float(k["charge"]) + delta
+			k["heal_acc"] = float(k["heal_acc"]) + delta
+			while float(k["heal_acc"]) >= KATANA_HEAL_TICK - 0.0001:
+				k["heal_acc"] = float(k["heal_acc"]) - KATANA_HEAL_TICK
+				var per: float = KATANA_HEAL_TOTAL / (KATANA_CHARGE / KATANA_HEAL_TICK) * float(p.get("maxHp", 0.0))
+				p["hp"] = minf(float(p.get("maxHp", 0.0)), float(p["hp"]) + per)
+			if float(k["charge"]) >= KATANA_CHARGE - 0.0001:
+				k["charge"] = -1.0
+				_katana_tornadoes(k)
+			continue
+		if float(k["en"]) < KATANA_EN_MAX:
+			continue
+		var tgt = battle._targeting._nearest_enemy(p)
+		if not (tgt is Dictionary):
+			continue
+		k["en"] = 0.0
+		k["casts"] = int(k["casts"]) + 1
+		if int(k["casts"]) % 4 == 0:
+			k["charge"] = 0.0
+			k["heal_acc"] = 0.0
+			k["aim"] = Vector2(tgt["pos"]) - Vector2(p["pos"])
+			_fx("katana_charge", [p, KATANA_CHARGE])
+		else:
+			stat["katana_wave"] += 1
+			_launch_line(p, Vector2(p["pos"]), Vector2(tgt["pos"]) - Vector2(p["pos"]), KATANA_WAVE_SPD, KATANA_WAVE_LEN, KATANA_WAVE_W, "katana_wave", int(k["si"]))
+
+
+func _katana_tornadoes(k: Dictionary) -> void:
+	var p: Dictionary = k["u"]
+	var aim: Vector2 = k.get("aim", Vector2.RIGHT)
+	if DetMath.vlen(aim) < 0.1:
+		aim = Vector2.RIGHT if str(battle._eff_side(p)) == "left" else Vector2.LEFT
+	var shared: Array = []
+	for i in range(KATANA_TORNADOES):
+		var ang := (float(i) - float(KATANA_TORNADOES - 1) * 0.5) * KATANA_TORNADO_SPREAD
+		stat["katana_tornado"] += 1
+		_launch_line(p, Vector2(p["pos"]), DetMath.rotated(aim, ang), KATANA_TORNADO_SPD, KATANA_TORNADO_LEN, KATANA_TORNADO_W, "katana_tornado", int(k["si"]), shared)

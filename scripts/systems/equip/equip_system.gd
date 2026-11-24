@@ -26,6 +26,7 @@ var _blade_sys: EqBladeBatch     # 盾+剑 4 件(081~084)·eq_blade_batch.gd
 var _gadget_sys: EqGadgetBatch   # 奇械 3 件(085~087)·eq_gadget_batch.gd
 var _arcane_sys: EqArcaneBatch   # 法器 3 件(088~090)·eq_arcane_batch.gd
 var _relic_sys: EqRelicBatch     # 遗物 2 件(091/094)·eq_relic_batch.gd
+var _bomb_sys: EqBombBatch       # 炸弹 10 件(097~106) + 剑 2 费武士刀(107)·eq_bomb_batch.gd(11-24 方案书 20261124f)
 var _incense: IncenseStoneSystem # 093 香火石(跨对局养成·要落存档)·incense_stone_system.gd
 var _summons   # 058 / 032 登场召唤(eq_summons.gd)
 var cp   # 份号上下文(equip_copies.gd · 11-13 同名装备多件各自生效)
@@ -62,6 +63,7 @@ func _init(b) -> void:
 	_arcane_sys = EqArcaneBatch.new(b)
 	_blood_sys = EqBloodCombo.new(b)
 	_relic_sys = EqRelicBatch.new(b)
+	_bomb_sys = EqBombBatch.new(b)
 	_incense = IncenseStoneSystem.new(b); tally = EquipTally.new(b)
 	_summons = EqSummons.new(b); _wave = EqWaveAmulet.new(b)
 	cp = EquipCopies.new(b)
@@ -99,6 +101,9 @@ const B4_OWNER := {
 	"p2eq_088": "arcane", "p2eq_089": "arcane", "p2eq_090": "arcane",
 	"p2eq_091": "relic", "p2eq_094": "relic",
 	"p2eq_093": "incense",
+	"p2eq_097": "bomb", "p2eq_098": "bomb", "p2eq_099": "bomb", "p2eq_100": "bomb", "p2eq_101": "bomb",
+	"p2eq_102": "bomb", "p2eq_103": "bomb", "p2eq_104": "bomb", "p2eq_105": "bomb", "p2eq_106": "bomb",
+	"p2eq_107": "bomb",
 }
 
 ## 取某件批④装备的宿主系统; 不是批④的件返回 null。
@@ -110,12 +115,13 @@ func _b4(eid: String):
 		"arcane": return _arcane_sys
 		"relic": return _relic_sys
 		"incense": return _incense
+		"bomb": return _bomb_sys
 	return null
 
 
 ## 批④ 的六个系统(供 tick / clear_all / 换路撤场遍历)。
 func _b4_all() -> Array:
-	return [_gun_sys, _blade_sys, _gadget_sys, _arcane_sys, _relic_sys, _incense]
+	return [_gun_sys, _blade_sys, _gadget_sys, _arcane_sys, _relic_sys, _incense, _bomb_sys]
 
 
 ## 批④ 专用的【DoT/真伤路】受伤钩 —— CLAUDE.md §3.3 的另一半。
@@ -174,6 +180,8 @@ func _b4_on_damaged_equip(u: Dictionary, src, dmg: int) -> void:
 	ck_restore(_ckp146)
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
+	## 炸弹批(11-24): 不论有没有装备都要过 —— 100 烟雾弹潜行的是友军(攻击即现形 + 追加真伤)、107 武士刀小将是召唤物(身上没装备)靠普攻攒龟能
+	_bomb_sys.on_any_basic(u, tgt)
 	if u.get("equips", []).is_empty(): return
 	u["_basic_serial"] = int(u.get("_basic_serial", 0)) + 1   # 这一次攻击的序号: 同龟多件同名装备共用一份状态的, 靠它认「同一次」(093)
 	var _ckp159: Array = ck_save()   # 份号上下文(11-13)
