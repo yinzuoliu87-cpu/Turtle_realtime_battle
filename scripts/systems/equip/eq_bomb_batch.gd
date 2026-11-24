@@ -242,7 +242,7 @@ func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
 		return
 	stat["cracker"] += 1
 	var c := Vector2(tgt["pos"])
-	_fx("cracker_burst", [c])
+	_fx("cracker_burst", [c, tgt])
 	for o in _in_radius(_enemies_of(u), c, CRACKER_R):
 		_phys(u, o, float(CRACKER_ATK[si]) * float(u["atk"]))
 
@@ -264,7 +264,7 @@ func on_death(u: Dictionary, eid: String, si: int) -> void:
 		return
 	stat["barrel"] += 1
 	var c := Vector2(u["pos"])
-	_fx("barrel_blast", [c, BARREL_R])
+	_fx("barrel_blast", [c, BARREL_R, u])
 	var amt: float = float(BARREL_PCT[si]) * float(u.get("maxHp", 0.0))
 	for o in _in_radius(_enemies_of(u), c, BARREL_R):
 		_phys(u, o, amt)
@@ -288,7 +288,7 @@ func on_any_basic(u: Dictionary, tgt) -> void:
 			var tl: Array = battle._equip_sys.tally.push_for(u, by[0], str(by[1]))   # 伤害源 = 潜行的这只，账记给放烟的那件
 			_true(u, tgt, float(SMOKE_TRUE_FLAT[si]) + SMOKE_TRUE_ATK * float(u["atk"]))
 			battle._equip_sys.tally.pop(tl)
-			_fx("smoke_strike", [Vector2(tgt["pos"])])
+			_fx("smoke_strike", [Vector2(tgt["pos"]), tgt])
 	for k in _katanas:
 		if is_same(k["u"], u):
 			var gain: float = KATANA_EN_MAX if bool((k["owner"] as Dictionary).get("_edit_fe", false)) else KATANA_EN_PER_HIT   # 调试场满龟能: 一下就满
@@ -379,7 +379,7 @@ func reset_match() -> void:
 func _tube(u: Dictionary, si: int) -> void:
 	stat["tube"] += 1
 	var c := Vector2(u["pos"])
-	_fx("tube_blast", [c, TUBE_R])
+	_fx("tube_blast", [c, TUBE_R, u])
 	for o in _in_radius(_enemies_of(u), c, TUBE_R):
 		_phys(u, o, float(TUBE_FLAT[si]) + TUBE_ATK * float(u["atk"]))
 		battle._damage._knockback(u, o, 0.0, 0.6, 1.0)
@@ -484,7 +484,7 @@ func _tick_stickies(t: float) -> void:
 		var c := Vector2(tgt["pos"])
 		stat["sticky"] += 1
 		var tl := _tl_in(s)
-		_fx("sticky_blast", [c, GOO_R])
+		_fx("sticky_blast", [c, GOO_R, tgt])
 		_phys(u, tgt, float(STICKY_FLAT[si]) + STICKY_ATK * float(u["atk"]))
 		_goos.append({"pos": c, "t": t + GOO_SEC, "src": u, "si": si, "tick": GOO_TICK, "ck": str(s.get("ck", ""))})
 		_tl_out(tl)
@@ -656,7 +656,7 @@ func _tick_timers(t: float) -> void:
 		var c := Vector2(tgt["pos"])
 		stat["timer_boom"] += 1
 		var tl := _tl_in(b)
-		_fx("timer_blast", [c, TIMER_R])
+		_fx("timer_blast", [c, TIMER_R, tgt])
 		var base: float = (float(TIMER_FLAT[si]) + TIMER_ATK * float(u["atk"])) * float(b["mult"])
 		for o in _in_radius(_enemies_of(u), c, TIMER_R):
 			_phys(u, o, base)

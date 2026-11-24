@@ -55,7 +55,8 @@ func _load(key: String) -> Texture2D:
 
 
 ## 播一张特效表：`world_d` = 想让内容覆盖的世界直径（码）；`flat` = 贴地（俯视盘面）
-func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.02, flat: bool = false, loop: bool = false, tint: Color = Color.WHITE) -> Sprite3D:
+## `on` = 炸在哪个单位身上(给了就把爆点放在它的身体中段、且不被地面遮挡; 不给 = 落在地上的爆炸, 下沿贴地)
+func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.02, flat: bool = false, loop: bool = false, tint: Color = Color.WHITE, on = null) -> Sprite3D:
 	if not _ok():
 		return null
 	var t: Texture2D = _load(key)
@@ -81,7 +82,14 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 		s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		## ★竖着的特效: 贴图最下沿不能低于地面, 不够就把整张往上抬(用户 11-24「下面被切了一半」——
 		##   锚点在帧中间、贴图几米高, 放在离地 0.5 米 ⇒ 下半截埋进地里被地面挡掉)
-		h = maxf(h, float(fh - int(row[5])) * s.pixel_size + 0.02)
+		if on is Dictionary:
+			## ★炸在单位身上: 爆点 = 它的身体中段(用户 11-24「炸弹应该从人物中心爆炸吧」);
+			##   这时贴图下半截会低于地面 ⇒ 不做深度测试(不被地面挡), 渲染排在前面
+			h = GunEqVfx.body_mid_h(on)
+			s.no_depth_test = true
+			s.render_priority = 10
+		else:
+			h = maxf(h, float(fh - int(row[5])) * s.pixel_size + 0.02)
 	s.position = battle._world_pos(pos, h)
 	battle._world.add_child(s)
 	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "anim", "nf": s.hframes, "loop": loop})
@@ -174,13 +182,13 @@ func missile_impact(side: String) -> void:
 
 # ═══════════════════════════════ 十件装备 ═══════════════════════════════
 
-func cracker_burst(c: Vector2) -> void:
-	_anim("pop", c, 110.0, 0.35, 0.5)
+func cracker_burst(c: Vector2, on = null) -> void:
+	_anim("pop", c, 110.0, 0.35, 0.5, false, false, Color.WHITE, on)
 	_ring(c, EqBombBatch.CRACKER_R, Color(1.0, 0.75, 0.3, 1.0), 0.45)   # 地上一圈 = 真实伤害半径
 
 
-func tube_blast(c: Vector2, r: float) -> void:
-	_anim("crackle", c, r * 2.0, 1.0, 0.6)
+func tube_blast(c: Vector2, r: float, on = null) -> void:
+	_anim("crackle", c, r * 2.0, 1.0, 0.6, false, false, Color.WHITE, on)
 	_ring(c, r, Color(1.0, 0.55, 0.2, 0.7), 0.35)
 
 
@@ -200,16 +208,16 @@ func smoke_cloud(c: Vector2, r: float, sec: float) -> void:
 		s.modulate = Color(1, 1, 1, 0.85)
 
 
-func smoke_strike(pos: Vector2) -> void:
-	_anim("pop", pos, 120.0, 0.3, 0.6, false, false, Color(0.85, 0.9, 1.0))
+func smoke_strike(pos: Vector2, on = null) -> void:
+	_anim("pop", pos, 120.0, 0.3, 0.6, false, false, Color(0.85, 0.9, 1.0), on)
 
 
 func sticky_attach(tgt: Dictionary, fuse: float) -> void:
 	_attach("p2eq_101", tgt, fuse)
 
 
-func sticky_blast(c: Vector2, r: float) -> void:
-	_anim("std", c, r * 1.6, 0.6, 0.02, false, false, Color(0.75, 1.0, 0.55))
+func sticky_blast(c: Vector2, r: float, on = null) -> void:
+	_anim("std", c, r * 1.6, 0.6, 0.02, false, false, Color(0.75, 1.0, 0.55), on)
 	_anim("goo", c, r * 2.0, 1.5, 0.02, false, true)
 
 
@@ -217,8 +225,8 @@ func timer_attach(tgt: Dictionary, fuse: float) -> void:
 	_attach("p2eq_104", tgt, fuse)
 
 
-func timer_blast(c: Vector2, r: float) -> void:
-	_anim("std", c, r * 2.2, 0.7)
+func timer_blast(c: Vector2, r: float, on = null) -> void:
+	_anim("std", c, r * 2.2, 0.7, 0.02, false, false, Color.WHITE, on)
 
 
 ## 绑在目标头顶的小炸弹，跟着目标走，越到引爆闪得越快
@@ -250,8 +258,8 @@ func mine_blast(c: Vector2, r: float) -> void:
 	_ring(c, r, Color(0.9, 0.8, 0.5, 0.6), 0.3)
 
 
-func barrel_blast(c: Vector2, r: float) -> void:
-	_anim("boom", c, r * 2.0, 0.9, 0.02)
+func barrel_blast(c: Vector2, r: float, on = null) -> void:
+	_anim("boom", c, r * 2.0, 0.9, 0.02, false, false, Color.WHITE, on)
 	_ring(c, r, Color(1.0, 0.4, 0.15, 0.7), 0.4)
 
 
