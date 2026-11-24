@@ -115,6 +115,10 @@ func _process(d: float) -> void:
 	if not _started and _el > 0.6:
 		_started = true
 		_b._debug._edit_start_battle()
+		## 录像只要战场: 调试场的笔刷栏 / 编辑面板整个藏掉(11-24 自查: 底部一直露着「左队[友军]」选龟栏)
+		for nd in [_b.get("_edit_brush_bar"), _b.get("_edit_palette")]:
+			if nd is CanvasItem and is_instance_valid(nd):
+				(nd as CanvasItem).visible = false
 		print("[REC] %.2f 开打 · 场上 %d 单位" % [_el, _b._units.size()])
 	var bs = _b._equip_sys._bomb_sys
 	for k in bs.stat:
