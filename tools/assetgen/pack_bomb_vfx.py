@@ -30,7 +30,8 @@ JOBS = {
     "cracker-spark": "bomb-cracker-spark",     # 097 鞭炮连炸的每一响(11-24 重做: 用户「感觉这个特效不行」)
     "cracker-paper": "bomb-cracker-paper",     # 097 鞭炮红纸屑
     "mine-blast": "bomb-mine-blast",
-    "timer-blast": "bomb-timer-blast",         # 104 定时炸弹: 红闪 + 准星环 + 火团(与手雷火球区分)           # 102 地雷: 地底炸起(火 + 泥土碎石 + 尘团), 与手雷的纯火焰区分
+    "timer-blast": "bomb-timer-blast",
+    "cannon-heavy-shell": "bomb-cannon-shell",  # 105 重炮弹: 带火焰尾巴的炮弹(循环)         # 104 定时炸弹: 红闪 + 准星环 + 火团(与手雷火球区分)           # 102 地雷: 地底炸起(火 + 泥土碎石 + 尘团), 与手雷的纯火焰区分
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):
 ##   ai_src/bomb_summons/<名>_<0..6>.png → assets/sprites/vfx/<产出>.png 横排
@@ -39,7 +40,7 @@ SUMMONS = {"cannon": ("eq-cannon-idle", 7), "remote": ("eq-remote-bomb-idle", 7)
 ##   + animate_image 首尾钉住同一张生成冒泡帧; 取 0..7(第 8 张 = 第 0 张, 循环不重复取)
 EXTRA = {"bomb_goo/goo": ("bomb-goo-splat", 8)}
 ## 循环播放的不去尾帧(循环要首尾相接)
-LOOPS = {"bomb-goo-puddle"}
+LOOPS = {"bomb-goo-puddle", "cannon-heavy-shell"}
 
 
 def main() -> None:

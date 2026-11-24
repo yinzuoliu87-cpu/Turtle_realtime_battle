@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "cannon-heavy-shell 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 1.png",
+   "frame": {
+    "x": 74,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 2.png",
+   "frame": {
+    "x": 148,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 3.png",
+   "frame": {
+    "x": 222,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 4.png",
+   "frame": {
+    "x": 0,
+    "y": 28,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 5.png",
+   "frame": {
+    "x": 74,
+    "y": 28,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 6.png",
+   "frame": {
+    "x": 148,
+    "y": 28,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 7.png",
+   "frame": {
+    "x": 222,
+    "y": 28,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 8.png",
+   "frame": {
+    "x": 0,
+    "y": 56,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 9.png",
+   "frame": {
+    "x": 74,
+    "y": 56,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 10.png",
+   "frame": {
+    "x": 148,
+    "y": 56,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "cannon-heavy-shell 11.png",
+   "frame": {
+    "x": 222,
+    "y": 56,
+    "w": 74,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 74,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 74,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.8513513513513513,
+    "y": 0.5357142857142857
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "cannon-heavy-shell.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 296,
+   "h": 84
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 63,
+   "y": 15
+  },
+  "frameTags": [
+   {
+    "name": "cannon-heavy-shell",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

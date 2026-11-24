@@ -28,6 +28,7 @@ const SHEETS := {
 	"paper": ["vfx/bomb-cracker-paper.png", 96, 75, 90.0, 47, 39],
 	"mine": ["vfx/bomb-mine-blast.png", 82, 78, 73.0, 41, 39],
 	"timer": ["vfx/bomb-timer-blast.png", 82, 80, 75.0, 41, 40],
+	"shell": ["vfx/bomb-cannon-shell.png", 74, 28, 60.0, 63, 15],
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
 ## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
@@ -420,14 +421,19 @@ func remote_blast(c: Vector2, r: float) -> void:
 	_ring(c, r, Color(1.0, 0.3, 0.1, 0.8), 0.5)
 
 
-func cannon_shot(from: Vector2, to: Vector2) -> void:
-	var m := _anim("muzzle", from + (to - from).normalized() * 30.0, 70.0, 0.3, 0.7)
+func cannon_shot(from: Vector2, to: Vector2, tgt = null) -> void:
+	var m := _anim("muzzle", from + (to - from).normalized() * 30.0, 110.0, 0.3, 0.7)
 	if m != null and to.x > from.x:
 		m.flip_h = false
 	elif m != null:
 		m.flip_h = true
 		m.offset.x = -m.offset.x
-	_anim("boom", to, 90.0, 0.6, 0.02)
+	_anim("boom", to, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
+
+
+## 重炮打中: 目标身上炸一下(用炸药桶以前那张卡通爆炸, 现在别处不用了)
+func cannon_hit(o: Dictionary) -> void:
+	_anim("boom", Vector2(o["pos"]), 120.0, 0.6, 0.02, false, false, Color.WHITE, o)
 
 
 func katana_charge(p: Dictionary, sec: float) -> void:
@@ -449,13 +455,18 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 		"katana_tornado":
 			_tornado(from, dir, spd, life)
 		"cannon_heavy":
-			var b := _icon("p2eq_105", battle._world_pos(from, 0.8), 30.0)
+			## 重炮(11-24 自查): 炮口只放火光(原来顺手调了普通炮演出, 炮口前 60 码多炸一团); 炮弹 = 带火焰尾巴的重炮弹, 沿直线飞
+			var m := _anim("muzzle", from + dir.normalized() * 30.0, 110.0, 0.3, 0.7)
+			if m != null and dir.x < 0.0:
+				m.flip_h = true
+				m.offset.x = -m.offset.x
+			var b := _anim("shell", from, 150.0, life, 0.9, false, true)
 			if b != null:
-				b.texture = VfxTex._make_fire_glow_tex()
-				b.pixel_size = (40.0 * float(battle.WS)) / 64.0
-				b.modulate = Color(0.25, 0.22, 0.2, 1.0)
-				_fx.append({"node": b, "t": 0.0, "life": life, "kind": "move", "from": from, "dir": dir, "spd": spd, "h": 0.8, "nf": 1})
-			cannon_shot(from, from + dir * 60.0)
+				if dir.x < 0.0:
+					b.flip_h = true
+					b.offset.x = -b.offset.x
+				_fx[_fx.size() - 1]["kind"] = "move"
+				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "h": 0.9, "loop_all": true})
 
 
 ## 龙卷风：五层细环叠成漏斗（下小上大），每层绕中心转、相位错开 ⇒ 读得出「旋」
@@ -568,7 +579,9 @@ func tick(delta: float) -> void:
 			"move":
 				var pos: Vector2 = Vector2(f["from"]) + Vector2(f["dir"]).normalized() * float(f["spd"]) * float(f["t"])
 				(n as Node3D).position = battle._world_pos(pos, float(f.get("h", 1.0)))
-				if int(f.get("nf", 1)) > 1:
+				if bool(f.get("loop_all", false)):
+					(n as Sprite3D).frame = int(float(f["t"]) * 12.0) % int(f["nf"])
+				elif int(f.get("nf", 1)) > 1:
 					(n as Sprite3D).frame = mini(int(f["nf"]) - 1, 2 + int(float(f["t"]) * 10.0) % 2)
 			"tornado":
 				var tp: Vector2 = Vector2(f["from"]) + Vector2(f["dir"]).normalized() * float(f["spd"]) * float(f["t"])

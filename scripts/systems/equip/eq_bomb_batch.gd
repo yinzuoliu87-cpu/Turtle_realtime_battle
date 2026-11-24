@@ -708,6 +708,7 @@ func _line_hit(L: Dictionary, o: Dictionary) -> void:
 	var si := int(L["si"])
 	match str(L["kind"]):
 		"cannon_heavy":
+			_fx("cannon_hit", [o])
 			_phys(src, o, CANNON_HEAVY_MULT * float(src["atk"]))
 			if o.get("alive", false):
 				battle._damage._apply_dot_stacks(o, "bleed", int(CANNON_HEAVY_BLEED[si]), src)
@@ -738,7 +739,11 @@ func _spawn_cannon(owner: Dictionary, si: int) -> void:
 	if p.has("sprite") and is_instance_valid(p["sprite"]):
 		p["sprite"].position = battle._world_pos(p["pos"], battle.GROUND_LIFT)
 	## 调试场「满龟能」(主人带 _edit_fe; 正式对局没有这个字段): 一出场就满, 方便看重炮
-	_cannons.append({"u": p, "owner": owner, "si": si, "acc": 0.0, "en": CANNON_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0, "heavy": false})
+	## 头顶龟能条: 召唤物带 maxEnergy/energy 就画(BattleRender 自带龟能召唤物那条路), 每帧由 _tick_cannons 同步
+	p["maxEnergy"] = CANNON_EN_MAX
+	p["energy"] = 0.0
+	## 调试场「满龟能」(主人带 _edit_fe; 正式对局没有这个字段): 差 3 炮满能起步 ⇒ 演示里先看到 3 发普通炮再切重炮
+	_cannons.append({"u": p, "owner": owner, "si": si, "acc": 0.0, "en": (CANNON_EN_MAX - 3.0 * CANNON_EN_GAIN) if bool(owner.get("_edit_fe", false)) else 0.0, "heavy": false})
 
 
 ## 门禁读：某门炮筒当前龟能 / 是否重炮
@@ -751,6 +756,7 @@ func _tick_cannons(delta: float) -> void:
 		var p: Dictionary = c["u"]
 		if not p.get("alive", false):
 			continue
+		p["energy"] = float(c["en"])
 		if float(battle._t) < float(p.get("stun_until", 0.0)):
 			continue
 		c["acc"] = float(c["acc"]) + delta
@@ -769,13 +775,14 @@ func _tick_cannons(delta: float) -> void:
 			_launch_line(p, Vector2(p["pos"]), Vector2(tgt["pos"]) - Vector2(p["pos"]), CANNON_HEAVY_SPD, CANNON_HEAVY_LEN, CANNON_HEAVY_W, "cannon_heavy", si)
 		else:
 			stat["cannon_shot"] += 1
-			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"])])
+			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt])
 			for o in _in_radius(_enemies_of(p), Vector2(tgt["pos"]), CANNON_SPLASH):
 				_phys(p, o, float(p["atk"]))
 		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_GAIN)
 		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
 			c["heavy"] = false
 		p["energy_view"] = float(c["en"])
+		p["energy"] = float(c["en"])
 
 
 # ════════════════════════════════════════ 106 遥控炸弹 ════════════════════════════════════════
@@ -840,6 +847,8 @@ func _spawn_katana(owner: Dictionary, si: int) -> void:
 		 "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
 	if p == null:
 		return
+	p["maxEnergy"] = KATANA_EN_MAX   # 头顶龟能条(见 _spawn_cannon)
+	p["energy"] = 0.0
 	_katanas.append({"u": p, "owner": owner, "si": si, "en": KATANA_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0, "casts": 0, "charge": -1.0, "heal_acc": 0.0})
 
 
@@ -852,6 +861,7 @@ func _tick_katanas(delta: float) -> void:
 		var p: Dictionary = k["u"]
 		if not p.get("alive", false):
 			continue
+		p["energy"] = float(k["en"])
 		if float(k["charge"]) >= 0.0:
 			k["charge"] = float(k["charge"]) + delta
 			k["heal_acc"] = float(k["heal_acc"]) + delta
