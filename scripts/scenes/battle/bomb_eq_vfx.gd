@@ -86,7 +86,13 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 		s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		## ★竖着的特效: 贴图最下沿不能低于地面, 不够就把整张往上抬(用户 11-24「下面被切了一半」——
 		##   锚点在帧中间、贴图几米高, 放在离地 0.5 米 ⇒ 下半截埋进地里被地面挡掉)
-		if on is Dictionary:
+		if on is String and on == "ground":
+			## ★落在地上的爆炸(手雷 / 地雷 / 导弹 / 遥控炸弹): 爆炸中心 = 落地点(地面), 不悬在半空;
+			##   火球下半截会低于地面 ⇒ 不做深度测试(不被地面挡), 屏幕上就是以敌人脚下为中心炸开(用户 11-24「爆炸点到底应该在哪」)
+			h = 0.05
+			s.no_depth_test = true
+			s.render_priority = 10
+		elif on is Dictionary:
 			## ★炸在单位身上: 爆点 = 它的身体中段(用户 11-24「炸弹应该从人物中心爆炸吧」);
 			##   这时贴图下半截会低于地面 ⇒ 不做深度测试(不被地面挡), 渲染排在前面
 			h = GunEqVfx.body_mid_h(on)
@@ -235,7 +241,7 @@ func grenade_throw(from: Vector2, to: Vector2, fly: float) -> void:
 ## 火球固定 150 码大(约 3.6 米, 比单位高一些), 底部贴地; 伤害范围(半径 160 码)由地上一圈标出 ——
 ##   原来火球按伤害直径缩放成 7.7 米一大团飘在头顶(用户 11-24 看片)
 func grenade_blast(c: Vector2, r: float) -> void:
-	_anim("std", c, 150.0, 0.7)
+	_anim("std", c, 150.0, 0.7, 0.05, false, false, Color.WHITE, "ground")
 	_ring(c, r, Color(1.0, 0.6, 0.25, 0.95), 0.6)
 
 
