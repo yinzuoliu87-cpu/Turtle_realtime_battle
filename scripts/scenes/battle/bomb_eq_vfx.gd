@@ -240,8 +240,17 @@ func grenade_throw(from: Vector2, to: Vector2, fly: float) -> void:
 
 ## 火球固定 150 码大(约 3.6 米, 比单位高一些), 底部贴地; 伤害范围(半径 160 码)由地上一圈标出 ——
 ##   原来火球按伤害直径缩放成 7.7 米一大团飘在头顶(用户 11-24 看片)
+## 手雷(11-24 用户「范围也没覆盖到啊」→ 重做): 爆炸要盖满整个伤害范围(半径 160 码) ——
+##   ① 贴地火焰冲击: 爆炸贴图躺平铺在地上, 直径 = 伤害直径, 从落地点往外扩散到圈边;
+##   ② 中心一团往上冒的火球(以落地点为中心);
+##   ③ 破片火星四散飞到圈边(手雷的特征);  ④ 地上的范围圈。
 func grenade_blast(c: Vector2, r: float) -> void:
-	_anim("std", c, 150.0, 0.7, 0.05, false, false, Color.WHITE, "ground")
+	_anim("std", c, r * 2.0, 0.7, 0.04, true)
+	_anim("std", c, 170.0, 0.7, 0.05, false, false, Color.WHITE, "ground")
+	for k in range(8):
+		var a: float = float(k) * TAU / 8.0 + 0.3
+		var p: Vector2 = c + Vector2(cos(a), sin(a)) * r * 0.85
+		_later(0.08 + 0.02 * float(k % 3), func() -> void: _anim("spark", p, 60.0, 0.35, 0.3))
 	_ring(c, r, Color(1.0, 0.6, 0.25, 0.95), 0.6)
 
 
