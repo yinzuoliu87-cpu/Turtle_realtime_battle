@@ -17,6 +17,7 @@ extends Node
 
 const Backend := preload("res://scripts/net/backend.gd")
 const ES := preload("res://scripts/gamedata/equip_stats.gd")
+const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const LEVEL := 6
 const N_LEFT := 5          ## 左方本周已打场数
 const N_RIGHT := 9         ## 右方(对手快照)本周已打场数 —— 故意与左方不同, 量「各按各的」
@@ -397,13 +398,40 @@ func _pure_checks(a: Dictionary, b: Dictionary) -> void:
 	_ok("Q 对手快照用对手自己那份(本测试的右方)", (b.get("reserve_pool", []) as Array) == POOL_B)
 	var bot: Dictionary = Backend.make_bot(9, _rng_of(4242))
 	_ok("Q 机器人快照也带 reserve_pool(不带 = 一眼认得出), 1~2 件", (bot.get("reserve_pool", []) as Array).size() in [1, 2], str(bot.get("reserve_pool")))
-	var dv: Array = Backend.derived_reserve_pool("g_seed_x")
-	_ok("Q ★快照缺 reserve_pool 键(陪练种子 / 机器人) ⇒ 按 ghost_id 派生 1~2 件, 与陪练转换同一个函数",
-		dv.size() in [1, 2] and Backend.reserve_pool_of({"ghost_id": "g_seed_x"}) == dv, str(dv))
+	var dv: Array = Backend.derived_reserve_pool("g_seed_x", 6)
+	_ok("Q ★快照缺 reserve_pool 键(陪练种子 / 机器人) ⇒ 按 ghost_id + 快照等级派生 1~2 件, 与陪练转换同一个函数",
+		dv.size() in [1, 2] and Backend.reserve_pool_of({"ghost_id": "g_seed_x", "season_level": 6.0}) == dv
+		and Backend.reserve_pool_of({"ghost_id": "g_seed_x"}, 6) == dv, str(dv))
+	## ★2026-11-24 用户「三级四级买到五费装备？不可能啊！」: 派生按等级的商店费用概率掷(同真人开店), 不再全商店平均抽。
+	##   每级 400 个号: 费用不超过那一级商店刷得出的最高费; 分母: 10 级真抽到了 5 费、5 级真抽到了 3 费(不然是空检查)。
+	var cost_of := {}
+	for e in DataRegistry.phase2_equipment:
+		cost_of[str((e as Dictionary)["id"])] = int((e as Dictionary).get("cost", 0))
+	var over: Array = []
+	var top_seen := {}
+	var top_cap := {}
+	for lv in range(1, 11):
+		var odds: Array = P2C.shop_cost_odds(lv)
+		var cap := 0
+		for ci in range(odds.size()):
+			if int(odds[ci]) > 0:
+				cap = ci + 1
+		var mx := 0
+		for k in range(400):
+			for it in Backend.derived_reserve_pool("g_lv%d_%d" % [lv, k], lv):
+				var c: int = int(cost_of.get(str(it["id"]), 99))
+				mx = maxi(mx, c)
+				if c > cap:
+					over.append("%d级:%s(%d费)" % [lv, str(it["id"]), c])
+		top_seen[lv] = mx
+		top_cap[lv] = cap
+	_ok("Q ★★派生的装备费用不超过该等级商店刷得出的最高费(1~10 级各 400 个号)", over.is_empty(), str(over.slice(0, 6)))
+	_ok("Q 分母: 每一级都真抽到了那一级刷得出的最高费(1 级 1 费 … 7 级起 5 费; 不然上一条是空检查)", top_seen == top_cap,
+		"抽到 %s / 上限 %s" % [str(top_seen), str(top_cap)])
 	_ok("Q 有键但是空数组(真人背包里没有没穿的) ⇒ 空, 不派生", Backend.reserve_pool_of({"ghost_id": "g_seed_x", "reserve_pool": []}).is_empty())
 	var bot_pool: Array = ReserveConsts.clean_pool(bot.get("reserve_pool", []))   # JSON 往返后星级是 float, 清洗成 int 再比
-	_ok("Q 机器人 = 按自己的 ghost_id 派生", bot_pool == Backend.derived_reserve_pool(str(bot.get("ghost_id", ""))),
-		"%s / %s" % [str(bot_pool), str(Backend.derived_reserve_pool(str(bot.get("ghost_id", ""))))])
+	var bot_dv: Array = Backend.derived_reserve_pool(str(bot.get("ghost_id", "")), int(bot.get("season_level", 1)))
+	_ok("Q 机器人 = 按自己的 ghost_id + 等级派生", bot_pool == bot_dv, "%s / %s" % [str(bot_pool), str(bot_dv)])
 
 	print("--- R 录制器: 实打开局从背包刷新, 回放 / 观赛 / 裁判 / 补打不刷新 ---")
 	var src := FileAccess.get_file_as_string("res://scripts/systems/replay/replay_recorder.gd").replace("\r\n", "\n")   # 行尾 CRLF / LF 都按 LF 比

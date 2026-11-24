@@ -491,8 +491,8 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		"loadouts": loadouts,
 		"equipped": equipped,
 		## 援军小将可抽的装备(2026-11-11): 真人快照带这一键, 机器人也带(不带 = 一眼认得出)。
-		##   按 ghost_id 派生(`derived_reserve_pool`, 不消耗 rng ⇒ 已有机器人的其余内容逐位不变)。
-		"reserve_pool": derived_reserve_pool(ghost_id),
+		##   按 ghost_id 派生(`derived_reserve_pool`, 不消耗 rng ⇒ 已有机器人的其余内容逐位不变), 费用按 bot 等级掷(同商店)。
+		"reserve_pool": derived_reserve_pool(ghost_id, bot_lv),
 		"pet_levels": levels,
 		## 按龟等级(R1, 2026-11-09): 限免龟一律 1 级(同没绑主站的真人; 服务器裁判开算时也会按 1 级盖章)
 		"lv": levels.duplicate(),
@@ -1146,33 +1146,47 @@ static func _seed_season_id() -> int:
 ## ★幂等: 对已经转过的再转一次, 只会换赛季号(换赛季时 `_ensure_seeded` 就靠这个就地重盖)。
 ## 一份快照里援军小将的可抽清单(2026-11-11, 方案书 20261111b)。
 ## ★有 `reserve_pool` 键(数组, 可以是空 = 真人背包里没有没穿的)⇒ 清洗后用它;
-##   缺键(机器人 / 陪练种子文件 / 新键出现之前的快照)⇒ `derived_reserve_pool(ghost_id)`。
+##   缺键(机器人 / 陪练种子文件 / 新键出现之前的快照)⇒ `derived_reserve_pool(ghost_id, 等级)`。
+##   等级 = `level`(≥ 1 时; seed_as_human 转换前的种子文件没有 season_level, 由它把算好的传进来), 否则快照自己的 season_level。
 ##   战斗侧(右方 dual_ghost)、裁判(左方 A 快照)、陪练转换(seed_as_human)都走这一个函数 ⇒ 同一份快照到哪都抽同一件,
 ##   陪练「原样 vs 转换后」强度逐字相同(verify_bot_snapshot_shape)。
-static func reserve_pool_of(snap) -> Array:
+static func reserve_pool_of(snap, level: int = 0) -> Array:
 	if not (snap is Dictionary):
 		return []
 	if (snap as Dictionary).get("reserve_pool") is Array:
 		return ReserveConsts.clean_pool((snap as Dictionary)["reserve_pool"])
-	return derived_reserve_pool(str((snap as Dictionary).get("ghost_id", "")))
+	var lv := level if level >= 1 else maxi(1, int((snap as Dictionary).get("season_level", 1)))
+	return derived_reserve_pool(str((snap as Dictionary).get("ghost_id", "")), lv)
 
 
 ## 按 ghost_id 派生 1~2 件 1 星商店装备(机器人 / 陪练「背包里没穿的」)。独立 PCG(种子 = ghost_id 的哈希)⇒ 不碰任何别的随机数;
 ##   ghost_id 为空 ⇒ 空(调试 / 冷启动兜底, 不凭空造装备)。
-static func derived_reserve_pool(ghost_id: String) -> Array:
+## ★每件先按 `level` 的商店费用概率(phase2_config.SHOP_COST_ODDS, 与真人开店同一张表)掷费用, 再在那个费用里挑一件
+##   (2026-11-24 用户「三级四级买到五费装备？不可能啊！」: 原来在全部商店装备里平均抽 ⇒ 5 级陪练号援军小将带 5 费打捞旋翼机,
+##   而 5 级开店 5 费概率是 0)。那个费用没有可刷的 ⇒ 往低一档找。
+static func derived_reserve_pool(ghost_id: String, level: int) -> Array:
 	var out: Array = []
 	if ghost_id == "":
 		return out
-	var shop_ids: Array = []
+	var by_cost := {}
 	for e in DataRegistry.phase2_equipment:
 		if int((e as Dictionary).get("shopAvailable", 0)) == 1:
-			shop_ids.append(str((e as Dictionary)["id"]))
-	if shop_ids.is_empty():
+			var c := int((e as Dictionary).get("cost", 1))
+			if not by_cost.has(c):
+				by_cost[c] = []
+			(by_cost[c] as Array).append(str((e as Dictionary)["id"]))
+	if by_cost.is_empty():
 		return out
 	var r := RandomNumberGenerator.new()
 	r.seed = hash("reserve_pool:" + ghost_id)
 	for _i in range(1 + r.randi() % 2):
-		out.append({"id": str(shop_ids[r.randi() % shop_ids.size()]), "star": 1})
+		var c := _P2.roll_cost_tier(clampi(level, 1, _P2.SHOP_STAGES), r.randf())
+		while c > 1 and not by_cost.has(c):
+			c -= 1
+		var ids: Array = by_cost.get(c, [])
+		if ids.is_empty():
+			continue
+		out.append({"id": str(ids[r.randi() % ids.size()]), "star": 1})
 	return out
 
 
@@ -1233,7 +1247,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"leader_off": (g.get("leader_off", {}) as Dictionary).duplicate(true) if g.get("leader_off") is Dictionary else {},
 		"loadouts": (g.get("loadouts", {}) as Dictionary).duplicate(true) if g.get("loadouts") is Dictionary else {},
 		"equipped": equipped,
-		"reserve_pool": reserve_pool_of(g),   # 援军小将可抽的装备(2026-11-11): 有就照抄; 种子文件没有 ⇒ 按 ghost_id 派生(与战斗侧缺键回落同一个函数 ⇒ 原样 vs 转换后强度相同)
+		"reserve_pool": reserve_pool_of(g, _seed_level(g, battles)),   # 援军小将可抽的装备(2026-11-11): 有就照抄; 种子文件没有 ⇒ 按 ghost_id 派生(与战斗侧缺键回落同一个函数 ⇒ 原样 vs 转换后强度相同)
 		"pet_levels": levels,
 		"lv": levels.duplicate(),      # 按龟等级(R1, 2026-11-09): 与真人同形(没绑主站的真人 = 全 1 级)
 		"trainer_skill": str(g.get("trainer_skill", "")),
