@@ -65,6 +65,17 @@ def main() -> None:
     for src, (dst, n) in SUMMONS.items():
         frames = [Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "%s_%d.png" % (src, i))).convert("RGBA") for i in range(n)]
         w, h = frames[0].size
+        ## ★落地(11-24 用户「炮台召唤物怎么看着飞起来的」): 原画底下有透明留白(炮筒 11 行 / 武士刀 17 行),
+        ##   召唤物按帧底边贴地 ⇒ 整只悬空。所有帧同一个量往下挪, 让最低的那一行有画的像素贴到帧底。
+        low = max((f.getbbox() or (0, 0, 0, h))[3] for f in frames)
+        dy = h - low
+        if dy > 0:
+            moved = []
+            for f in frames:
+                g = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+                g.paste(f, (0, dy))
+                moved.append(g)
+            frames = moved
         strip = Image.new("RGBA", (w * n, h), (0, 0, 0, 0))
         for i, fr in enumerate(frames):
             strip.paste(fr, (i * w, 0))
