@@ -16,6 +16,14 @@ func _ready() -> void:
 			and not (GameState.meta_shop_offer as Array).is_empty() and GameState.meta_shop_offer[0] is Dictionary:
 		GameState.persistent_bench.append({"id": str(GameState.meta_shop_offer[0].get("id", "")),
 			"star": int(OS.get_environment("SHOT_OWN_STAR"))})
+	## SHOT_OFFER=030,031,…: 货架按这些装备编号摆(装备图标实拍用, 2026-11-24 去 AI 味换图标); 戳对齐当前场次 ⇒ 进店不重掷
+	if OS.get_environment("SHOT_OFFER") != "":
+		var offer: Array = []
+		for s in OS.get_environment("SHOT_OFFER").split(","):
+			offer.append({"id": "p2eq_" + s.strip_edges()})
+		GameState.meta_shop_offer = offer
+		GameState.meta_shop_battles = int(GameState.season_total_battles)
+		GameState.meta_shop_locked = true
 	if OS.get_environment("SHOT_SEQ") != "":
 		var rec := SeqRec.new(); rec.dir = OS.get_environment("SHOT_SEQ")
 		if OS.get_environment("SHOT_N").is_valid_int():
