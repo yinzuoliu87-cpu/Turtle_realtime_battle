@@ -66,7 +66,8 @@ static func cases() -> Dictionary:
 		## 地雷: 我方站住, 两只会动的敌人走过来踩雷
 		"mine": [[_me(Vector2(-400, 0), _eq([102]), {"hold": true})] + _dummies(250, 2, true, 20000.0, 30.0), 14.0],
 		## 炸药桶: 我方站住、血少, 会打的敌人把它打死
-		"barrel": [[_me(Vector2(-10, 0), _eq([103]), {"hold": true, "hp": 400.0, "killable": true})] + _dummies(60, 3, true, 20000.0, 300.0), 14.0],
+		## 炸药桶: 我方站住、血少, 会打的敌人把它打死; 后面再放一只不动不打、打不死的小将 —— 否则携带者一死我方全灭、立刻弹结算盖住爆炸
+		"barrel": [[_me(Vector2(-10, 0), _eq([103]), {"hold": true, "hp": 400.0, "killable": true}), _me(Vector2(-420, 160), [], {"idle": true})] + _dummies(60, 3, true, 20000.0, 300.0), 14.0],
 		"timer": [[_me(Vector2(-10, 0), _eq([104]))] + _dummies(60, 3), 23.0],
 		"cannon": [[_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105]), "minion": true, "fe": true})] + _dummies(160, 3), 14.0],
 		"remote": [[_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_106", "equips": _eq([106], 1), "minion": true})] + _dummies(150, 3), 14.0],

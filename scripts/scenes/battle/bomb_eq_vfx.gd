@@ -371,8 +371,10 @@ func mine_blast(c: Vector2, r: float) -> void:
 	_ring(c, r, Color(0.95, 0.8, 0.5, 0.95), 0.6)
 
 
-func barrel_blast(c: Vector2, r: float, on = null) -> void:
-	_anim("boom", c, r * 2.0, 0.9, 0.02, false, false, Color.WHITE, on)
+## 炸药桶(11-24 自查): 原来 56 像素的卡通爆炸放大到 12 米, 像素块粗得和画面不是一个精度 ⇒ 换高精度大爆炸(224 像素:
+##   火光 + 冲击波 + 飞石 + 黑烟柱), 从携带者脚下炸起, 宽 = 伤害直径
+func barrel_blast(c: Vector2, r: float, _on = null) -> void:
+	_anim("big", c, r * 2.0, 2.4, 0.05, false, false, Color.WHITE, "ground")
 	_ring(c, r, Color(1.0, 0.4, 0.15, 0.7), 0.4)
 
 
