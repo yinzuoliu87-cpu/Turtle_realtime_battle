@@ -283,9 +283,34 @@ func sticky_attach(tgt: Dictionary, fuse: float, from = null) -> void:
 ## 粘液坑: 地上铺一层半透明荧光绿(贴地, 直径 = 粘液范围) + 中间冒泡; 地上一圈标范围
 func sticky_blast(c: Vector2, r: float, on = null) -> void:
 	_anim("std", c, 120.0, 0.6, 0.02, false, false, Color(0.75, 1.0, 0.55), on)
-	_decal(c, r, Color(0.45, 0.95, 0.25, 0.55), EqBombBatch.GOO_SEC)
-	_anim("goo", c, r * 1.3, EqBombBatch.GOO_SEC, 0.05, false, true, Color.WHITE, "ground")
+	_splat(c, r, EqBombBatch.GOO_SEC)
 	_ring(c, r, Color(0.6, 1.0, 0.35, 0.9), EqBombBatch.GOO_SEC)
+
+
+## 粘液摊(11-24 重做, 用户「程序生成的？我感觉效果不好，没有商业的感觉」): 画好的像素粘液(8 帧冒泡循环) 平铺在地上,
+##   宽 = 粘液直径; 落地 0.15 秒从中心弹开, 持续期间冒泡, 最后 0.3 秒收缩淡出。单位站在上面照常画在粘液之上。
+const SPLAT_TEX := "res://assets/sprites/vfx/bomb-goo-splat.png"
+const SPLAT_FW := 96
+const SPLAT_CONTENT_W := 82.0
+## 素材本身画成斜上方看下去的扁椭圆; 平铺到地面再被镜头压扁一次 ⇒ 纵向拉回这么多倍, 看起来与原画同比例
+const SPLAT_Z := 1.7
+func _splat(c: Vector2, r: float, life: float) -> void:
+	if not _ok() or not ResourceLoader.exists(SPLAT_TEX):
+		return
+	var t: Texture2D = load(SPLAT_TEX)
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = maxi(1, t.get_width() / SPLAT_FW)
+	s.shaded = false
+	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y
+	s.pixel_size = (r * 2.0 * float(battle.WS)) / SPLAT_CONTENT_W
+	s.position = battle._world_pos(c, 0.03)
+	s.scale = Vector3(0.3, 1.0, 0.3 * SPLAT_Z)
+	battle._world.add_child(s)
+	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "splat", "nf": s.hframes})
 
 
 ## 贴地的一片(软边圆), 存活 life 秒, 最后 30% 淡出
@@ -466,6 +491,20 @@ func tick(delta: float) -> void:
 				var b: Vector2 = f["to"]
 				(n as Node3D).position = battle._world_pos(a.lerp(b, q), 0.4 + float(f["h"]) * 4.0 * q * (1.0 - q))
 				(n as Node3D).rotation.z = q * 9.0
+			"splat":
+				var sp2: Sprite3D = n
+				var tt: float = float(f["t"])
+				var lf: float = float(f["life"])
+				var k: float = 1.0
+				if tt < 0.15:
+					k = 0.3 + 0.8 * (tt / 0.15)          # 弹开(略冲过头)
+				elif tt < 0.25:
+					k = 1.1 - 0.1 * ((tt - 0.15) / 0.1)  # 回弹到 1
+				if tt > lf - 0.3:
+					k *= 0.6 + 0.4 * clampf((lf - tt) / 0.3, 0.0, 1.0)   # 收缩
+					sp2.modulate.a = clampf((lf - tt) / 0.3, 0.0, 1.0)
+				sp2.scale = Vector3(k, 1.0, k * SPLAT_Z)
+				sp2.frame = int(tt * 10.0) % int(f["nf"])
 			"decal":
 				(n as Sprite3D).modulate.a = float(f["a0"]) * (1.0 if q < 0.7 else (1.0 - q) / 0.3)
 			"arc_to":
