@@ -855,13 +855,17 @@ func _trainer_ai_step(u: Dictionary) -> void:
 		_cast_active(u, aim)
 
 
+## 钩锁提前量只认这么新的移速(秒): 再旧 = 已经停下了(vel 停下不清零)
+const HOOK_LEAD_FRESH := 0.2
+
+
 ## 训龟大师每个主动技往哪放(用户 11-08 逐个定)。返回大师 → 目标 / 落点的向量; 没有可放的返回 null。
 func _ai_aim(u: Dictionary):
 	var at = null
 	match str(u.get("_tr_active", "")):
-		"hook":         ## 射程内随机一个敌人(「不要再是最近的敌人，改为向随机敌人」)
-			var t = battle._targeting._random_enemy_for_trainer(u)
-			if t != null: at = t["pos"]
+		"hook":         ## 射程内随机一个钩得到的敌人(「不要再是最近的敌人，改为向随机敌人」), 瞄它飞到时会在的位置
+			var t = battle._targeting._random_hook_target(u)
+			if t != null: at = _hook_lead(u, t)
 		"hunt_order":   ## 敌方这个战场造成伤害最高的单位
 			var t2 = _hunt_ai_target(u)
 			if t2 != null: at = t2["pos"]
@@ -876,6 +880,20 @@ func _ai_aim(u: Dictionary):
 	if at == null:
 		return null
 	return (at as Vector2) - (u["pos"] as Vector2)
+
+
+## 钩锁提前量(2026-11-24 用户「准头问题」): 钩子要前摇 HOOK_WINDUP 再以 HOOK_MISSILE_SPD 飞过去, 大师站后排常常一两秒才到 ——
+##   瞄目标出手那一刻的位置, 走动的目标飞到时早不在那儿了。⇒ 按目标此刻的移速推算钩头飞到时它在哪(迭代一次), 朝那里丢。
+##   ★只认最近 HOOK_LEAD_FRESH 秒里真走过的速度: vel 只在走的时候写、停下不清零(_do_move), 站着的目标照原位瞄。
+func _hook_lead(u: Dictionary, t: Dictionary) -> Vector2:
+	var p0: Vector2 = t["pos"]
+	var v: Vector2 = t.get("vel", Vector2.ZERO) if battle._t - float(t.get("_vel_t", -99.0)) <= HOOK_LEAD_FRESH else Vector2.ZERO
+	if DetMath.vlen(v) < 1.0:
+		return p0
+	var tt: float = battle.HOOK_WINDUP + DetMath.vlen(p0 - (u["pos"] as Vector2)) / battle.HOOK_MISSILE_SPD
+	var p1: Vector2 = ArenaShape.clamp_in(p0 + v * tt, battle.ARENA)
+	tt = battle.HOOK_WINDUP + DetMath.vlen(p1 - (u["pos"] as Vector2)) / battle.HOOK_MISSILE_SPD
+	return ArenaShape.clamp_in(p0 + v * tt, battle.ARENA)
 
 
 ## 猎龟令选靶(用户 11-08「对敌方造成伤害最高的一个单位」): 射程内敌方这个战场 `_st_dealt` 最高的,

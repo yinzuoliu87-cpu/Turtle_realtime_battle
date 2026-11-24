@@ -37,6 +37,24 @@ func _random_enemy_for_trainer(u: Dictionary):
 	return pool[battle._battle_rng.randi() % pool.size()]
 
 
+## 钩锁的 AI 选靶(2026-11-24): 射程内随机一个【钩得到】的敌人。
+##   ★名单 = 钩头飞行中碰撞判定(trainer_system._hook_hit_at)用的同一个 _pick_enemies_of, 再去掉龟蛋 ——
+##   原来走 _trainer_targets(没排围栏没破的龟蛋), 探针 3 局 25 钩里 11 钩瞄的是对面龟蛋: 钩子横穿全场, 到了蛋那里碰不到,
+##   要么落空要么钩到正好挡在线上的人(用户 11-24「它有的时候乱丢」)。钩一个蛋也没有意义(拽不动、眩晕无效)⇒ 蛋一律不选。
+##   随机数照旧每次放钩取一次(名单空就不取), 与原来同一个时机。
+func _random_hook_target(u: Dictionary):
+	var pool: Array = []
+	var r2: float = battle.TRAINER_RANGE * battle.TRAINER_RANGE
+	for o in _pick_enemies_of(u):
+		if o.get("_isEgg", false):
+			continue
+		if DetMath.len2((o["pos"] - u["pos"])) < r2:
+			pool.append(o)
+	if pool.is_empty():
+		return null
+	return pool[battle._battle_rng.randi() % pool.size()]
+
+
 ## 训龟大师能选的敌人(最近 / 随机两种选法共用这一道闸门, 免得各抄一份)。
 func _trainer_targets(u: Dictionary) -> Array:
 	var out: Array = []
