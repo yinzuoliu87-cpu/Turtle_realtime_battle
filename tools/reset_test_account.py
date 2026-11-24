@@ -1,4 +1,4 @@
-"""reset_test_account.py —— 把测试号整个重置（云存档 + 本周积分赛账本 + 本周快照 + 本周积分赛任务的去重键）。
+"""reset_test_account.py —— 把测试号整个重置（云存档 + 本周积分赛账本 + 本周快照 + 本周积分赛任务的去重键 + 本周经济流水）。
 
   python tools/reset_test_account.py <账号 uuid>                    # 只读演练：查现状、备份、生成重置后的存档、打印要改什么
   python tools/reset_test_account.py <账号 uuid> --apply --yes-prod  # 真写正式服（一个事务里四处一起改，带条件，失败整体回滚）
@@ -9,6 +9,9 @@
   ③ ghosts：删本周这个号的快照 —— 账本没有行时 `ranked_ledger_peek` 会拿本周快照补种账本。
   ④ referee_jobs：本周这个号的积分赛任务去重键加 `:void<日期>` —— 不改的话新打的第 0 场按 `ranked:周:号:0` 撞上旧任务、直接返回旧结果。
      任务行本身保留（历史 / 录像还在）；`tools/ranked_reconcile.py` 不数带 `:void` 的任务。
+  ⑤ econ_ops / econ_state：删本周这个号的经济流水与服务器重放结果（2026-11-24 补）—— 不删的话手机拿到重置存档后
+     开局按服务器那份流水对齐（EconNet.adopt_async → EconReplay.adopt：week_start 归零再逐条重放），
+     等级 / 装备 / 深海币 / 买卖全回来（11-24 第四次重置就这样：1056 重置完两分钟手机推上来 1057，等级 6、装备齐全）。
 只认 ACCOUNTS 里的测试号（防止手滑重置真人）。正式服写入每次都要用户点头（CLAUDE.md §3）—— `--yes-prod` 只是开关，不是授权。
 备份与中间文件在 `.out/reset_acct/<时间>/`（含存档全文，不进仓库）。手机上要「设置 → 邮箱登录」把新版本拉回来，或在存档冲突里选云端。
 """
@@ -48,14 +51,17 @@ def main():
     jb = ro("select job_id, match_key, status from public.referee_jobs where a_account = '%s' and season_week = %d "
             "and kind = 'ranked' and match_key not like '%%:void%%' order by job_id" % (acc, week))
     inflight = [j for j in jb if j["status"] in ("pending", "claimed")]
-    print("本周 %d · 存档第 %s 版（%s，%s）· 本周 %s 场 %s 胜 · 账本 %d 行 · 快照 %d 份 · 积分赛任务 %d 个（在算 %d）"
+    eo = ro("select seq, src, op, created_at from public.econ_ops where account_id = '%s' and week = %d order by seq" % (acc, week))
+    es = ro("select * from public.econ_state where account_id = '%s' and week = %d" % (acc, week))
+    print("本周 %d · 存档第 %s 版（%s，%s）· 本周 %s 场 %s 胜 · 账本 %d 行 · 快照 %d 份 · 积分赛任务 %d 个（在算 %d）· 经济流水 %d 条 / 重放结果 %d 行"
           % (week, sv["save_rev"], sv["client_version"], sv["updated_at"], payload.get("season_total_battles"),
-             payload.get("season_wins"), len(rr), len(gh), len(jb), len(inflight)))
+             payload.get("season_wins"), len(rr), len(gh), len(jb), len(inflight), len(eo), len(es)))
     if inflight:
         raise SystemExit("✗ 有在算的积分赛任务 %s —— 等它算完再重置" % [j["job_id"] for j in inflight])
     d = os.path.join(ROOT, ".out", "reset_acct", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     os.makedirs(d, exist_ok=True)
-    json.dump({"account": acc, "week": week, "saves": {**sv, "payload": payload}, "ranked_records": rr, "ghosts": gh, "jobs": jb},
+    json.dump({"account": acc, "week": week, "saves": {**sv, "payload": payload}, "ranked_records": rr, "ghosts": gh, "jobs": jb,
+               "econ_ops": eo, "econ_state": es},
               open(os.path.join(d, "backup.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=str)
     json.dump(payload, open(os.path.join(d, "payload_in.json"), "w", encoding="utf-8"), ensure_ascii=False)
     print("备份 → %s" % os.path.relpath(os.path.join(d, "backup.json"), ROOT))
@@ -81,8 +87,8 @@ def main():
     if TAG in body:
         raise SystemExit("✗ 存档里含引号标记 %s" % TAG)
     void = ":void" + datetime.date.today().strftime("%Y%m%d")
-    print("要改：存档 %s → %s 版 · 删账本 %d 行 · 删快照 %d 份 · 任务去重键加「%s」%d 个"
-          % (sv["save_rev"], int(sv["save_rev"]) + 1, len(rr), len(gh), void, len(jb)))
+    print("要改：存档 %s → %s 版 · 删账本 %d 行 · 删快照 %d 份 · 任务去重键加「%s」%d 个 · 删经济流水 %d 条 / 重放结果 %d 行"
+          % (sv["save_rev"], int(sv["save_rev"]) + 1, len(rr), len(gh), void, len(jb), len(eo), len(es)))
     if not apply:
         print("\n（演练）没写。确认后加 --apply --yes-prod")
         return 0
@@ -99,8 +105,12 @@ begin
   update public.referee_jobs set match_key = match_key || '%(void)s'
    where a_account = '%(acc)s' and season_week = %(week)d and kind = 'ranked' and match_key not like '%%:void%%';
   get diagnostics n = row_count; if n <> %(njb)d then raise exception 'referee_jobs 个数变了（%%）', n; end if;
+  delete from public.econ_ops where account_id = '%(acc)s' and week = %(week)d;
+  get diagnostics n = row_count; if n <> %(neo)d then raise exception 'econ_ops 条数变了（%%）', n; end if;
+  delete from public.econ_state where account_id = '%(acc)s' and week = %(week)d;
+  get diagnostics n = row_count; if n <> %(nes)d then raise exception 'econ_state 行数变了（%%）', n; end if;
 end $do$;""" % {"tag": TAG, "body": body, "acc": acc, "rev": int(sv["save_rev"]), "week": week, "nrr": len(rr),
-                "ngh": len(gh), "void": void, "njb": len(jb)}
+                "ngh": len(gh), "void": void, "njb": len(jb), "neo": len(eo), "nes": len(es)}
     S.query(S.REFS["prod"], sql, prod_write_ok=True)
     chk = ro("select (select save_rev from public.saves where account_id = '%(a)s') rev, "
              "(select payload->>'season_total_battles' from public.saves where account_id = '%(a)s') battles, "
@@ -108,10 +118,12 @@ end $do$;""" % {"tag": TAG, "body": body, "acc": acc, "rev": int(sv["save_rev"])
              "(select count(*) from public.ranked_records where account_id = '%(a)s' and season_week = %(w)d) rr, "
              "(select count(*) from public.ghosts where account_id = '%(a)s' and season_week = %(w)d) gh, "
              "(select count(*) from public.referee_jobs where a_account = '%(a)s' and season_week = %(w)d and kind = 'ranked' "
-             "and match_key not like '%%:void%%') jobs" % {"a": acc, "w": week})[0]
+             "and match_key not like '%%:void%%') jobs, "
+             "(select count(*) from public.econ_ops where account_id = '%(a)s' and week = %(w)d) eo, "
+             "(select count(*) from public.econ_state where account_id = '%(a)s' and week = %(w)d) es" % {"a": acc, "w": week})[0]
     print("回读：%s" % chk)
     good = (int(chk["rev"]) == int(sv["save_rev"]) + 1 and int(chk["battles"]) == 0 and int(chk["rr"]) == 0
-            and int(chk["gh"]) == 0 and int(chk["jobs"]) == 0)
+            and int(chk["gh"]) == 0 and int(chk["jobs"]) == 0 and int(chk["eo"]) == 0 and int(chk["es"]) == 0)
     print("\nALL OK —— 已重置；手机上「设置 → 邮箱登录」拉回第 %s 版" % chk["rev"] if good else "\nFAILED —— 回读不对，看上面")
     return 0 if good else 1
 
