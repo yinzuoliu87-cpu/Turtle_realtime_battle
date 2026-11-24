@@ -189,9 +189,11 @@ const RANKED := {
 	## ★2026-11-18 安卓返回键(提交 8c8f7a3a, 方案书 20261118b A4): `_build_ui` 里返回键多一行 `BackKey.tag(back)`(给按钮挂一个
 	##   元数据记号, 安卓返回键据此按它)—— 不改选人 / 存档 / 出战进匹配的任何一步。499da8ef → 8c8f7a3a 只动这一行;
 	##   基线挪到 8c8f7a3a, units 不变(70 个), 摘要按本表口径现算(86ed83c8… → 8f72a496…)。
+	## ★11-24: 英文版(文字包 Lang.t / 英文缩字号)+ 去绿底(_ensure_menu_bg 不铺平铺)只动显示, 选人 / 存档 / 出战一步没变;
+	##   8c8f7a3a → b80769fb 没有新加 / 挪走函数(units 仍 70 个)⇒ 挪基线判据不变松, 摘要按本表口径现算。
 	"scripts/scenes/TeamSelectScene.gd": {
-		"base": "8c8f7a3a",
-		"digest": "8f72a4962b39a0da4a8a00ecab1b0fe5a514edd9ff8fa56d6c3ad4774fc5a494",
+		"base": "b80769fb",
+		"digest": "9ca14eafd04ddf6fdbccd00e37b64eb4779757d835e44f7772f336a13051ea37",
 		"views": {},
 		"sat_only": [],
 		"units": [

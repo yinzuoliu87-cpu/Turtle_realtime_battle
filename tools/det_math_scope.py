@@ -22,7 +22,9 @@ RENDER = re.compile(r'(_vfx\.gd$|/battle_hud\.gd$|/battle_render\.gd$|/battle_vf
                     r'|/equip/tentacle_rig\.gd$|/equip/tentacle_idle_keys\.gd$|/equip/tentacle_slam_fx\.gd$'
                     ## 2026-11-15 换路幕布三段演出 / 桌面作战地图: 幕布是 sim 步里到点建的(dual_lane_flow._dl_present_advance), 但这两份只画画面 ——
                     ##   读谁还活着来摆立牌, 不写任何单位状态、不取 _battle_rng; 幕布时长 / 点击 / 回放输入仍在 dual_lane_flow
-                    r'|/battle/lane_map_intro\.gd$|/battle/lane_war_table\.gd$)')
+                    r'|/battle/lane_map_intro\.gd$|/battle/lane_war_table\.gd$'
+                    ## 2026-11-24 周日那一层(缎带 / 名牌 / VS 盾徽 / 记分牌翻牌): 挂在上面那份幕布上, 只画画面, 不写单位状态、不取 _battle_rng
+                    r'|/battle/lane_map_finals\.gd$)')
 ## 整个不算(网络/音频/回放校验: 不算战斗数值)
 SKIP = re.compile(r'(/systems/audio/|/systems/replay/|/systems/sim/sim_driver\.gd$|/systems/sim/sim_shot\.gd$'
                   r'|/gamedata/(vfxlab_cases|skill_icons|axe_art|glossary|menu_arena_layout|bracket_layout|arena_theme)\.gd$)')

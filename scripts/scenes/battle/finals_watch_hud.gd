@@ -297,7 +297,8 @@ func _build_break(vp: Vector2) -> void:
 	bk.size = vp
 	bk.visible = false
 	bk.set_meta("band_y", roundf(vp.y * 0.5 - BREAK_H * 0.5 + 16.0))
-	bk.draw.connect(_draw_break_bg.bind(bk))
+	if not TABLE_BREAK:                  # B2: 插卡不显示 ⇒ 整屏深底也不画(只留小条停靠位)
+		bk.draw.connect(_draw_break_bg.bind(bk))
 	root.add_child(bk)
 	_n["break"] = bk
 	var by: float = float(bk.get_meta("band_y"))
@@ -699,8 +700,6 @@ func _draw_tug(c: Control) -> void:
 
 ## 路间插卡的底: 整屏幕布同色深底 + 中间一条亮带(三级阶梯明暗 + 斜纹 + 比分背后金光 + 上下金线两端渐隐)。硬边。
 func _draw_break_bg(c: Control) -> void:
-	if TABLE_BREAK:
-		return
 	var s := c.size
 	var by := float(c.get_meta("band_y", s.y * 0.3))
 	var band := Rect2(0, by, s.x, BREAK_H)
