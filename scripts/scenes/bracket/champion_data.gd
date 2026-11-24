@@ -254,6 +254,9 @@ static func path_of(b: Dictionary, sd: int, people: Dictionary, group: bool) -> 
 			var ft := _arr_at(b, "tags", foe)
 			var fp: Dictionary = people.get(ft, {}) if ft != "" else {}
 			row["foe_avatar"] = str(fp.get("avatar", ""))
+			## ★2026-11-24 周日走查: 与 person() 同一串兜底(缺了这一层 ⇒ 对阵图上是绿龙的人在夺冠之路里成了默认石头图标)
+			if row["foe_avatar"] == "":
+				row["foe_avatar"] = _arr_at(b, "avatars", foe)
 			if row["foe_avatar"] == "" and not (fp.get("lineup", []) as Array).is_empty():
 				row["foe_avatar"] = str((fp["lineup"] as Array)[0])
 			if done.has(key):

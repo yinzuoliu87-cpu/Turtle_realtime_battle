@@ -136,6 +136,19 @@ func _t_pure() -> void:
 	var p0: Array = DATA.path_of(v["cup"], 0, {}, false)
 	_ok("⑪ 轮空那一轮写「轮空」(0 号种子首轮轮空, 半决赛输)", p0.size() == 2 and bool(p0[0]["bye"]) and str(p0[0]["foe"]) == ""
 		and not bool(p0[1]["won"]) and p0[1]["score"] == [1, 2], str(p0))
+	## ★2026-11-24 周日走查: 行里没这个人的头像(people 空)⇒ 照对阵图按种子序的头像(与冠军 / 亚军卡同一串兜底), 不落成默认石头图标
+	var cav: Dictionary = (v["cup"] as Dictionary).duplicate(true)
+	var avs: Array = []
+	for i in range(int(cav.get("size", 0))):
+		avs.append("av%d" % i)
+	cav["avatars"] = avs
+	var pa: Array = DATA.path_of(cav, int(DATA.champion_seed_of(cav)), {}, false)
+	var pa_ok := pa.size() >= 2
+	for r in pa:
+		if not bool(r["bye"]):
+			var fs: int = (cav["names"] as Array).find(str(r["foe"]))
+			pa_ok = pa_ok and fs >= 0 and str(r["foe_avatar"]) == "av%d" % fs
+	_ok("⑪ ★夺冠之路对手头像: 行里没有 ⇒ 取对阵图按种子序那一格(分母 %d 轮)" % pa.size(), pa_ok, str(pa))
 	var bs: Array = DATA.best_cards(v, FIX.rows())
 	_ok("⑪ 今晚之最 · 最快结束 = C 组半决赛 1:12(行里 steps 最小那一场)", bs.size() == 1 and str(bs[0]["value"]) == "1:12"
 		and str(bs[0]["sub"]).contains("C 组半决赛") and str(bs[0]["who"]) == "暗流", str(bs))
