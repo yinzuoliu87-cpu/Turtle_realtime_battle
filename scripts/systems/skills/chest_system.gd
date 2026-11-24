@@ -4,12 +4,23 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 var battle
+## 普攻【宝箱砸击】的专属特效(2026-11-20 重做, 只管画面; chest_vfx.gd)
+const ChestVfx := preload("res://scripts/scenes/battle/chest_vfx.gd")
+var fx
+
+## 普攻【宝箱砸击】的判定(值与 2026-11-20 之前写在 _chest_basic 里的字面量相同; 抽出来给特效对齐时机用)
+const BASIC_REACH := 170.0      # 直线射程(码, 从宝箱龟脚下量)
+const BASIC_HALFW := 62.0       # 直线半宽(码)
+const BASIC_WAVE_SEC := 0.18    # 波头从脚下走到射程尽头用时(秒); 扫到谁谁结算(近先远后)
+const BASIC_SLAM_FWD := 46.0    # 宝箱砸地点在身前多远(码; 只管画面)
 
 func _init(b) -> void:
 	battle = b
+	fx = ChestVfx.new(b)
 
 # 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值, 过阈值开专属战利品(分档池·不重复)+回血, 一大轮最多5件
 func _chest_treasure_tick(u: Dictionary) -> void:
+	fx.tick_attack(u)   # 普攻举起 / 抡下时宝箱上的光(只管画面, 每个 sim 步看动作播到第几帧; chest_vfx.gd)
 	# 大轮制(用户2026-07-16): 财宝值跨场累积·阈值3000/6000/10000/18000/30000(用户2026-08-14上调)·开出=一大轮常驻
 	## ★2026-08-15 起【敌我同一套阈值】(用户拍板 A)。
 	##   原来敌侧走的是"单场旧制": 一套比我方低 12~50 倍的阈值,
@@ -286,12 +297,11 @@ func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝�
 	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
 	dir = DetMath.norm(dir)
 	var aoe_mult: float = float(u.get("chest_aoe_mult", 1.0))       # 锁链loot将来翻倍AOE距离/射程钩子(=1未装)
-	var reach: float = 170.0 * aoe_mult
-	var halfw: float = 62.0 * aoe_mult
+	var reach: float = BASIC_REACH * aoe_mult
+	var halfw: float = BASIC_HALFW * aoe_mult
 	var rock: float = float(u.get("chest_rock_bonus", 0.0))         # 石头loot将来额外+100%护甲+100%魔抗钩子(=0未装)
 	var bonus: int = int((u["def"] + u["mr"]) * rock)
-	# 逐帧订正(2026-07-16问责轮): 一段Q=砸地→金波头0.18s推进→扫到谁谁炸(错峰)→贴地燃金痕依次铺→尽头残亮头熄灭
-	var wave_t: float = 0.18                                        # 波头跑完170码用时(s16砸→s21到敌≈0.15-0.2s)
+	var wave_t: float = BASIC_WAVE_SEC                              # 波头跑完射程用时; 扫到谁谁结算(近先远后)
 	var uu: Dictionary = u
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
@@ -303,36 +313,11 @@ func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝�
 		battle._pending_shots.append({"delay": wave_t * clampf(along / reach, 0.0, 1.0), "fn": func() -> void:   # 波头扫到才结算(近先远后)
 			if not oref.get("alive", false) or not uu.get("alive", false): return
 			battle._damage._apply_basic_hit_from(uu, oref, battle._atk_dmg(uu, 1.0, oref) + bonus, Color("#ffd93d"))
-			battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", oref["pos"], 130.0)                  # 命中放射爆闪(s21·波到才炸)
+			fx.basic_hit(oref)                                                                                  # 命中: 金币溅开 + 宝石星闪(只管画面)
 		, "src": u})
-	# ① 砸点层(s16): 尘环+金爆+轻震
+	# 演出(只管画面; chest_vfx.gd 2026-11-20 重做, 参考奥恩 Q 逐帧): 砸点金币宝石崩飞 + 贴地金色裂光推进 + 波头光 + 沿线金币蹦出
 	battle._shake(0.05)
-	battle._skill_ring(u["pos"] + dir * 42.0, Color(1.0, 0.85, 0.3, 0.7), 30.0)
-	battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", u["pos"] + dir * 46.0, 120.0)
-	# ② 金波头推进(0.18s冲到尽头→残亮头0.3s熄灭·不凭空消失)
-	var glowt = VfxTex._make_fire_glow_tex()
-	var wh = Sprite3D.new()
-	wh.texture = glowt
-	wh.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wh.shaded = false; wh.transparent = true
-	wh.pixel_size = (44.0 * battle.WS) / float(maxi(1, glowt.get_width()))
-	wh.modulate = Color(1.0, 0.85, 0.35, 0.95)
-	wh.position = battle._world_pos(u["pos"] + dir * 46.0, 0.18)
-	battle._world.add_child(wh)
-	var wt = battle._reg_tween()
-	wt.tween_property(wh, "position", battle._world_pos(u["pos"] + dir * reach, 0.18), wave_t)
-	wt.tween_property(wh, "pixel_size", (20.0 * battle.WS) / float(maxi(1, glowt.get_width())), 0.3)   # 尽头残亮头收小熄灭(s26远端)
-	wt.parallel().tween_property(wh, "modulate:a", 0.0, 0.3)
-	wt.chain().tween_callback(wh.queue_free)
-	# ③ 贴地痕迹(height压到0.06·原0.5悬空是错的): 冲击带短亮+燃金痕渐隐
-	battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], u["pos"] + dir * reach, 96.0, Color(1.0, 0.85, 0.25, 0.7), 0.16, 0.06)
-	battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], u["pos"] + dir * reach, 58.0, Color(1.0, 0.6, 0.15, 0.5), 0.6, 0.06)
-	# ④ 尘旋圈随波头依次留下(s26·非同帧全出)
-	for r in range(3):
-		var rq: float = 0.3 + 0.28 * float(r)
-		var rp: Vector2 = u["pos"] + dir * (reach * rq)
-		battle._pending_shots.append({"delay": wave_t * rq, "fn": func() -> void:
-			battle._skill_ring(rp, Color(1.0, 0.8, 0.35, 0.4), 26.0)
-		, "src": u})
+	fx.basic_slam(u, dir, reach)
 
 func _chest_coin_spray(pos2d: Vector2, n: int) -> void:        # 金币弹飞(抛物线落地淡出·命中反馈)
 	var ctex: Texture2D = load("res://assets/sprites/vfx/storm-coin.png")

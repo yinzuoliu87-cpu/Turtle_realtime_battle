@@ -16,6 +16,8 @@ func _ready() -> void:
 	tid = OS.get_environment("REVIEW_TURTLE")
 	form = OS.get_environment("REVIEW_FORM")
 	passive = OS.get_environment("REVIEW_PASSIVE") == "1"
+	if OS.get_environment("REVIEW_PIN") == "1":
+		process_priority = 100   # 钉位置要在战斗这一帧推进之后做(否则这一帧画出来的还是被推过的位置)
 	sc = (load("res://scenes/RealtimeBattle3D.tscn") as PackedScene).instantiate()
 	add_child(sc)
 var _sfx_seen := 0
@@ -41,6 +43,11 @@ func _process(_d: float) -> void:
 			if passive and not staged and f > 60:
 				staged = true
 				_stage_passive(u)
+			## REVIEW_PIN=1(11-20 宝箱砸击审阅): 受审龟钉在第一次看到它的位置(审阅台开场会把它往前推, 每一下砸的方向都不一样, 看不出直线)
+			if OS.get_environment("REVIEW_PIN") == "1":
+				if not u.has("_rev_pin"):
+					u["_rev_pin"] = u["pos"]
+				u["pos"] = u["_rev_pin"]
 			if "_cam" in sc and sc._cam != null:   # 受审龟每帧的屏幕位置(tools/review_frames.py 按它跟拍裁切)
 				var sp: Vector2 = sc._cam.unproject_position(sc._world_pos(u["pos"], 0.0))
 				print("[POS] %d %d %d" % [f, int(sp.x), int(sp.y)])

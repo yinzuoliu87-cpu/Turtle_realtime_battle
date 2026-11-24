@@ -684,6 +684,7 @@ scripts/gamedata/vfxlab_cases.gd|lit|远程→近战: 视觉上主要是'贴脸�
 scripts/gamedata/vfxlab_cases.gd|lit|遗物
 scripts/gamedata/vfxlab_cases.gd|lit|靠命中触发 ⇒ attacker 必开。★★2026-09-14 订正三处: ①`ui` → `bars` —— `ui: true` 会把**飘字连同整层 UI 一起关掉**, 而这件「满 20 层转真实伤害」的读法**正是飘字变色**(蓝→白), 配 ui 等于把要看的东西关了(第四批栽过同一个坑)。②`dur` 12 → 24 + `aspd` 2.0: 每击叠 2 层, 12 秒攒不到 20 层, **满层转真伤那一下一帧都拍不到**。③敌人 40 万血, 不然它先被打死。
 scripts/gamedata/vfxlab_cases.gd|lit|食物
+scripts/gamedata/weekly_free.gd|lit|本周免费
 scripts/net/backend.gd|lit|已删掉
 scripts/net/backend.gd|lit|已挪到 
 scripts/net/backend.gd|lit|玩家阵容
@@ -1478,6 +1479,9 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|破蛋定胜负
 scripts/scenes/battle/dual_lane_flow.gd|lit|结算
 scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
 scripts/scenes/battle/finals_ctx.gd|lit|%s 对 %s
+scripts/scenes/battle/finals_ctx.gd|lit|%s冠军
+scripts/scenes/battle/finals_ctx.gd|lit|%s第 %d 场
+scripts/scenes/battle/finals_ctx.gd|lit|%s，不敌 %s
 scripts/scenes/battle/finals_ctx.gd|lit|上路
 scripts/scenes/battle/finals_ctx.gd|lit|上路战场
 scripts/scenes/battle/finals_ctx.gd|lit|下一场 %s 开播：%s
@@ -1485,8 +1489,7 @@ scripts/scenes/battle/finals_ctx.gd|lit|下一场即将开播：%s
 scripts/scenes/battle/finals_ctx.gd|lit|下一场：%s
 scripts/scenes/battle/finals_ctx.gd|lit|下路
 scripts/scenes/battle/finals_ctx.gd|lit|下路战场
-scripts/scenes/battle/finals_ctx.gd|lit|不敌 
-scripts/scenes/battle/finals_ctx.gd|lit|冠军
+scripts/scenes/battle/finals_ctx.gd|lit|不敌 %s
 scripts/scenes/battle/finals_ctx.gd|lit|冠军杯赛冠军
 scripts/scenes/battle/finals_ctx.gd|lit|双方阵容已锁定，由服务器实时演算
 scripts/scenes/battle/finals_ctx.gd|lit|开战
@@ -1499,13 +1502,11 @@ scripts/scenes/battle/finals_ctx.gd|lit|晋级冠军杯赛
 scripts/scenes/battle/finals_ctx.gd|lit|晋级决赛
 scripts/scenes/battle/finals_ctx.gd|lit|晋级半决赛
 scripts/scenes/battle/finals_ctx.gd|lit|止步
-scripts/scenes/battle/finals_ctx.gd|lit|第 %d 场
 scripts/scenes/battle/finals_ctx.gd|lit|组冠军
 scripts/scenes/battle/finals_ctx.gd|lit|终极
 scripts/scenes/battle/finals_ctx.gd|lit|终极战场
 scripts/scenes/battle/finals_ctx.gd|lit|获胜
 scripts/scenes/battle/finals_ctx.gd|lit|观看 %s 对 %s
-scripts/scenes/battle/finals_ctx.gd|lit|，不敌 
 scripts/scenes/battle/finals_end_beats.gd|lit|%s 获胜
 scripts/scenes/battle/finals_end_beats.gd|lit|%s第 %d~%d 名
 scripts/scenes/battle/finals_end_beats.gd|lit|亚军
@@ -1711,6 +1712,7 @@ scripts/scenes/battle/inspect_card.gd|lit|闪避
 scripts/scenes/battle/inspect_card.gd|lit|魔抗
 scripts/scenes/battle/inspect_card.gd|lit|魔法穿透
 scripts/scenes/battle/inspect_card.gd|lit|龟能充能速率
+scripts/scenes/battle/lane_map_finals.gd|text|%s 赢得%s
 scripts/scenes/battle/lane_map_intro.gd|lit|本战场失败
 scripts/scenes/battle/lane_map_intro.gd|lit|本战场胜利
 scripts/scenes/battle/lane_map_intro.gd|lit|龟蛋生命  我方 %d  ·  对方 %d
@@ -1758,7 +1760,6 @@ scripts/scenes/battle/settle_screen.gd|lit|造成总伤害
 scripts/scenes/battle/settle_screen.gd|lit|造成物理伤害
 scripts/scenes/battle/settle_screen.gd|lit|造成魔法伤害
 scripts/scenes/battle/settle_screen.gd|lit|阵亡
-scripts/scenes/battle/settle_screen.gd|lit|限免
 scripts/scenes/battle/settle_screen.gd|lit|龟经验
 scripts/scenes/battle/spar_exit.gd|lit|退出切磋？
 scripts/scenes/battle/topbar_status.gd|lit|加时
@@ -1792,10 +1793,12 @@ scripts/scenes/bracket/bracket_info.gd|lit|%s即将开播
 scripts/scenes/bracket/bracket_info.gd|lit|%s备战
 scripts/scenes/bracket/bracket_info.gd|lit|%s备战 %s 开始
 scripts/scenes/bracket/bracket_info.gd|lit|%s备战中
+scripts/scenes/bracket/bracket_info.gd|lit|%s对手
 scripts/scenes/bracket/bracket_info.gd|lit|%s已结束
 scripts/scenes/bracket/bracket_info.gd|lit|%s开播中
 scripts/scenes/bracket/bracket_info.gd|lit|%s第 %d 场
 scripts/scenes/bracket/bracket_info.gd|lit|%s结果
+scripts/scenes/bracket/bracket_info.gd|lit|%s（卫冕）
 scripts/scenes/bracket/bracket_info.gd|lit|「%s」头衔
 scripts/scenes/bracket/bracket_info.gd|lit|下一场
 scripts/scenes/bracket/bracket_info.gd|lit|你已晋级
@@ -1815,7 +1818,6 @@ scripts/scenes/bracket/bracket_info.gd|lit|卫冕冠军
 scripts/scenes/bracket/bracket_info.gd|lit|即将开始
 scripts/scenes/bracket/bracket_info.gd|lit|备战中
 scripts/scenes/bracket/bracket_info.gd|lit|备战剩余 %s
-scripts/scenes/bracket/bracket_info.gd|lit|对手
 scripts/scenes/bracket/bracket_info.gd|lit|已结束
 scripts/scenes/bracket/bracket_info.gd|lit|开播中
 scripts/scenes/bracket/bracket_info.gd|lit|本周决赛日参赛选手（%d 人）　%s
@@ -1841,12 +1843,11 @@ scripts/scenes/bracket/bracket_info.gd|lit|轮空
 scripts/scenes/bracket/bracket_info.gd|lit|选择小组查看对阵
 scripts/scenes/bracket/bracket_info.gd|lit|重看决赛
 scripts/scenes/bracket/bracket_info.gd|lit|首轮轮空，直接晋级
-scripts/scenes/bracket/bracket_info.gd|lit|（卫冕）
-scripts/scenes/bracket/bracket_preseat.gd|lit| 开赛
 scripts/scenes/bracket/bracket_preseat.gd|lit|%d 人
 scripts/scenes/bracket/bracket_preseat.gd|lit|%d 胜 %d 负
 scripts/scenes/bracket/bracket_preseat.gd|lit|%s 公布
 scripts/scenes/bracket/bracket_preseat.gd|lit|%s 公布分组
+scripts/scenes/bracket/bracket_preseat.gd|lit|%s 开赛
 scripts/scenes/bracket/bracket_preseat.gd|lit|%s参赛选手
 scripts/scenes/bracket/bracket_preseat.gd|lit|今晚赛程
 scripts/scenes/bracket/bracket_preseat.gd|lit|分组单败淘汰，组冠军晋级%s
@@ -1991,7 +1992,6 @@ scripts/scenes/codex/detail_views.gd|lit|被动
 scripts/scenes/codex/detail_views.gd|lit|被动 · %s
 scripts/scenes/codex/detail_views.gd|lit|费用 %d
 scripts/scenes/codex/detail_views.gd|lit|闪避
-scripts/scenes/codex/detail_views.gd|lit|限免
 scripts/scenes/codex/detail_views.gd|lit|随后
 scripts/scenes/codex/detail_views.gd|lit|魔抗
 scripts/scenes/codex/detail_views.gd|lit|魔法穿透
@@ -2176,6 +2176,7 @@ scripts/scenes/menu_finals_day.gd|lit|下一轮备战 %s 开始
 scripts/scenes/menu_finals_day.gd|lit|冠军杯赛冠军
 scripts/scenes/menu_finals_day.gd|lit|已夺得%s冠军
 scripts/scenes/menu_finals_day.gd|lit|已晋级
+scripts/scenes/menu_finals_day.gd|lit|已晋级%s
 scripts/scenes/menu_finals_day.gd|lit|已止步
 scripts/scenes/menu_finals_day.gd|lit|我的比赛
 scripts/scenes/menu_finals_day.gd|lit|查看结果
@@ -2328,8 +2329,8 @@ scripts/scenes/social/player_menu.gd|lit|该玩家 ID 对应多位玩家，请�
 scripts/scenes/social/player_menu.gd|lit|黑名单已满
 scripts/scenes/social/player_menu.gd|text|玩家 ID %s
 scripts/scenes/stage_ceremony.gd|lit|点击任意处继续
+scripts/scenes/team_select/detail_panel.gd|text|本周免费的龟不获得经验
 scripts/scenes/team_select/detail_panel.gd|text|被动
-scripts/scenes/team_select/detail_panel.gd|text|限免龟不获得经验
 scripts/scenes/team_select/detail_panel.gd|tooltip_text|被动
 scripts/scenes/team_select/layout_editor.gd|lit|\n===== 复制以下 RL (含你拖动后的坐标) =====\nconst RL := {\n
 scripts/scenes/team_select/layout_editor.gd|lit|}\n===== 结束 =====\n
@@ -2341,7 +2342,6 @@ scripts/scenes/team_select/layout_editor.gd|lit|🔧 布局编辑开: 拖=移动
 scripts/scenes/team_select/layout_editor.gd|text|布局编辑 · 拖绿框=移动 · 拖右下角黄块=缩放 · 拖完点右上「保存坐标」→
 scripts/scenes/team_select/layout_editor.gd|text|💾 保存坐标
 scripts/scenes/team_select/pet_grid.gd|text|已上阵
-scripts/scenes/team_select/pet_grid.gd|text|限免
 scripts/scenes/team_select/roster_slots.gd|lit|%s 不能被替换
 scripts/scenes/team_select/roster_slots.gd|lit|水晶球
 scripts/scenes/team_select/roster_slots.gd|lit|糖果炸弹
@@ -2631,6 +2631,7 @@ scripts/ui/finals_copy.gd|lit|%d 天 %d 小时
 scripts/ui/finals_copy.gd|lit|%d 小时 %02d 分 %02d 秒
 scripts/ui/finals_copy.gd|lit|%d 秒
 scripts/ui/finals_copy.gd|lit|1/%d 决赛
+scripts/ui/finals_copy.gd|lit|1/4 决赛
 scripts/ui/finals_copy.gd|lit|决赛
 scripts/ui/finals_copy.gd|lit|半决赛
 scripts/ui/finals_day_bar.gd|lit|0 小时 00 分 00 秒
@@ -2642,8 +2643,9 @@ scripts/ui/finals_day_card.gd|lit|%s 对 %s
 scripts/ui/finals_day_card.gd|lit|%s已结束
 scripts/ui/finals_day_card.gd|lit|%s开播中
 scripts/ui/finals_day_card.gd|lit|%s进行中
-scripts/ui/finals_day_card.gd|lit|「冠军」头衔
+scripts/ui/finals_day_card.gd|lit|「%s」头衔
 scripts/ui/finals_day_card.gd|lit|上周冠军
+scripts/ui/finals_day_card.gd|lit|冠军
 scripts/ui/finals_day_card.gd|lit|冠军奖励
 scripts/ui/finals_day_card.gd|lit|决赛日
 scripts/ui/finals_day_card.gd|lit|已结束
@@ -2663,6 +2665,7 @@ scripts/ui/finals_day_layer.gd|lit|%s %s 开赛
 scripts/ui/finals_day_layer.gd|lit|%s 对 %s
 scripts/ui/finals_day_layer.gd|lit|%s下一场 %s 开播
 scripts/ui/finals_day_layer.gd|lit|%s下一轮备战 %s 开始
+scripts/ui/finals_day_layer.gd|lit|%s即将开播
 scripts/ui/finals_day_layer.gd|lit|%s备战 %s 开始
 scripts/ui/finals_day_layer.gd|lit|%s备战剩余
 scripts/ui/finals_day_layer.gd|lit|%s进行中
@@ -2670,7 +2673,6 @@ scripts/ui/finals_day_layer.gd|lit|你的
 scripts/ui/finals_day_layer.gd|lit|你获得冠军杯赛冠军
 scripts/ui/finals_day_layer.gd|lit|冠军杯赛冠军
 scripts/ui/finals_day_layer.gd|lit|决赛日
-scripts/ui/finals_day_layer.gd|lit|即将开播
 scripts/ui/finals_day_layer.gd|lit|观看
 scripts/ui/finals_day_model.gd|lit|%s %s 开播
 scripts/ui/finals_day_model.gd|lit|%s %s 开赛
@@ -2687,9 +2689,9 @@ scripts/ui/finals_day_model.gd|lit|并列第 %d 名
 scripts/ui/finals_day_model.gd|lit|第 %d 名
 scripts/ui/finals_day_model.gd|lit|，%d 组同时进行
 scripts/ui/finals_day_popup.gd|lit|%s %d 秒后开播
+scripts/ui/finals_day_popup.gd|lit|%s即将开播
+scripts/ui/finals_day_popup.gd|lit|%s开播中
 scripts/ui/finals_day_popup.gd|lit|你的
-scripts/ui/finals_day_popup.gd|lit|即将开播
-scripts/ui/finals_day_popup.gd|lit|开播中
 scripts/ui/finals_day_popup.gd|lit|开播后自动进入
 scripts/ui/finals_day_popup.gd|lit|比赛
 scripts/ui/finals_day_popup.gd|lit|稍后
@@ -2727,6 +2729,7 @@ scripts/util/big_title.gd|lit|胜
 scripts/util/big_title.gd|lit|胜利
 scripts/util/big_title.gd|lit|负
 scripts/util/keyboard_bar.gd|lit|完成
+scripts/util/lang.gd|lit|语言：简体中文
 scripts/util/scene_fader.gd|text|加载中
 scripts/util/skill_text.gd|lit|(?:\\s*外加[^，。；\\n]{0,50}?)?)[^，。；\\n（]{0,4}?生命值)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
