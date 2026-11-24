@@ -143,6 +143,7 @@ var stat := {"cracker": 0, "tube": 0, "grenade": 0, "smoke_pulse": 0, "smoke_str
 
 func _init(b) -> void:
 	battle = b
+	vfx = BombEqVfx.new(b)
 
 
 func _fx(method: String, args: Array = []) -> void:
@@ -307,6 +308,8 @@ func tick(delta: float) -> void:
 	_tick_cannons(delta)
 	_tick_remotes(delta)
 	_tick_katanas(delta)
+	if vfx != null:
+		vfx.tick(delta)
 
 
 ## 每帧（每个带炸弹 / 武士刀的单位一次，守卫 `_b4_eq`）：定时投放
@@ -361,6 +364,8 @@ func clear_all() -> void:
 		_unshred(s)
 	_grenades.clear(); _smokes.clear(); _stickies.clear(); _goos.clear(); _mines.clear()
 	_timers.clear(); _shreds.clear(); _lines.clear(); _cannons.clear(); _remotes.clear(); _katanas.clear()
+	if vfx != null:
+		vfx.clear()
 
 
 ## 一局结束（不是换路）：104 跨路叠层清零
@@ -509,22 +514,47 @@ func _tick_goos(t: float, delta: float) -> void:
 
 # ════════════════════════════════════════ 102 地雷 ════════════════════════════════════════
 
-## 埋雷位置：阵容里摆过的（`mine_pos`，相对携带者的偏移，按阵营镜像）优先；否则默认己方前排正前方一排。
+## 埋雷位置：背包站位图里摆过的优先 —— 存在【这件地雷自己的装备条目】上 `mines = [[dx, dy], …]`
+##   （与统领站位 `off` 同一套坐标：相对本方队形中心、左方视角、整数；右方镜像 x，见 LineupPos）。
+##   存在装备条目上 ⇒ 快照 / 裁判机 / 对手还原本来就把装备原样带着走，不用改快照结构。
+## 没摆过 ⇒ 默认埋在携带者正前方一排（站位图里显示的默认位置用同一个式子：`default_mine_off`）。
 func _place_mines(u: Dictionary, si: int) -> void:
 	var n := int(MINE_COUNT[si])
 	var side := str(battle._eff_side(u))
 	var fwd := 1.0 if side == "left" else -1.0
-	var custom: Array = u.get("mine_pos", []) if u.get("mine_pos") is Array else []
+	var custom: Array = _mine_offsets_of(u)
+	var base: Vector2 = battle._arena_center + Vector2(-float(LineupPos.FORMATION_DX) * fwd, 0.0)
 	for i in range(n):
 		var p: Vector2
 		if i < custom.size() and custom[i] is Array and (custom[i] as Array).size() >= 2:
-			p = Vector2(u["pos"]) + Vector2(float(custom[i][0]) * fwd, float(custom[i][1]))
+			p = LineupPos.to_field(base, Vector2i(int(custom[i][0]), int(custom[i][1])), side)
 		else:
 			p = Vector2(u["pos"]) + Vector2(MINE_FWD * fwd, (float(i) - float(n - 1) * 0.5) * MINE_GAP)
-		p.x = clampf(p.x, battle.ARENA.position.x + 20.0, battle.ARENA.end.x - 20.0)
-		p.y = clampf(p.y, battle.ARENA.position.y + 20.0, battle.ARENA.end.y - 20.0)
+		p = ArenaShape.clamp_in(p, battle.ARENA, 60.0)   # 与站位图 / 统领站位同一个岛形(pad 60)
 		_mines.append({"pos": p, "side": side, "src": u, "si": si, "ck": battle._equip_sys.key_of(u, "p2eq_102")})
 		_fx("mine_place", [p, side])
+
+
+## 当前这一份地雷（份号上下文）在装备栏里对应的那一条的 `mines`
+func _mine_offsets_of(u: Dictionary) -> Array:
+	var ck: String = battle._equip_sys.key_of(u, "p2eq_102")
+	for c in EquipCk.copies(u, "p2eq_102"):
+		if str(c[0]) == ck and c[2] is Dictionary and (c[2] as Dictionary).get("mines") is Array:
+			return (c[2] as Dictionary)["mines"]
+	return []
+
+
+## 站位图里默认地雷位置（相对队形中心的偏移；与 `_place_mines` 的默认同一个式子）
+static func default_mine_off(carrier_off: Vector2i, i: int, n: int) -> Vector2i:
+	return LineupPos.clamp_off(carrier_off + Vector2i(int(MINE_FWD), int(round((float(i) - float(n - 1) * 0.5) * MINE_GAP))))
+
+
+## 局外装备条目 → 局内装备条目（RealtimeBattle3DScene._inject_equipment 用）：照旧只留 id / star / chg，另外带上地雷的摆位
+static func eq_entry(it: Dictionary, chg: int) -> Dictionary:
+	var d := {"id": str(it["id"]), "star": int(it.get("star", 1)), "chg": chg}
+	if it.get("mines") is Array:
+		d["mines"] = (it["mines"] as Array).duplicate(true)
+	return d
 
 
 func _tick_mines() -> void:
@@ -649,7 +679,7 @@ func _line_hit(L: Dictionary, o: Dictionary) -> void:
 
 func _spawn_cannon(owner: Dictionary, si: int) -> void:
 	var p = battle._spawn._spawn_summon(owner, "cannon", float(CANNON_HP[si]), float(CANNON_ATK[si]),
-		{"label": "炮筒", "spr_id": "eq-cannon", "col_size": 34.0, "hp_w": 44.0,
+		{"label": "炮筒", "spr_id": "eq-cannon", "col_size": 40.0, "hp_w": 44.0,
 		 "atk_interval": CANNON_IV, "atk_range": CANNON_RANGE, "melee": false})
 	if p == null:
 		return
@@ -706,7 +736,7 @@ func _tick_cannons(delta: float) -> void:
 
 func _spawn_remote(owner: Dictionary, si: int) -> void:
 	var p = battle._spawn._spawn_summon(owner, "remote_bomb", float(REMOTE_HP[si]), 0.0,
-		{"label": "遥控炸弹", "spr_id": "eq-remote-bomb", "col_size": 26.0, "hp_w": 40.0,
+		{"label": "遥控炸弹", "spr_id": "eq-remote-bomb", "col_size": 34.0, "hp_w": 40.0,
 		 "atk_interval": 1.0, "atk_range": 30.0, "melee": true})
 	if p == null:
 		return
@@ -760,7 +790,7 @@ func _remote_boom(r: Dictionary) -> void:
 
 func _spawn_katana(owner: Dictionary, si: int) -> void:
 	var p = battle._spawn._spawn_summon(owner, "katana", float(KATANA_HP[si]), float(KATANA_ATK[si]),
-		{"label": "武士刀小将", "spr_id": "eq-katana", "col_size": 24.0, "hp_w": 36.0,
+		{"label": "武士刀小将", "spr_id": "eq-katana", "col_size": 46.0, "hp_w": 36.0,
 		 "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
 	if p == null:
 		return

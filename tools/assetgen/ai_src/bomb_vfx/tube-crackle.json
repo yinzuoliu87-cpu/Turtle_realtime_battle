@@ -1,0 +1,443 @@
+{
+ "frames": [
+  {
+   "filename": "tube-crackle 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 1.png",
+   "frame": {
+    "x": 83,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 2.png",
+   "frame": {
+    "x": 166,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 3.png",
+   "frame": {
+    "x": 249,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 4.png",
+   "frame": {
+    "x": 0,
+    "y": 92,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 5.png",
+   "frame": {
+    "x": 83,
+    "y": 92,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 6.png",
+   "frame": {
+    "x": 166,
+    "y": 92,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 7.png",
+   "frame": {
+    "x": 249,
+    "y": 92,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 8.png",
+   "frame": {
+    "x": 0,
+    "y": 184,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 9.png",
+   "frame": {
+    "x": 83,
+    "y": 184,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 10.png",
+   "frame": {
+    "x": 166,
+    "y": 184,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 11.png",
+   "frame": {
+    "x": 249,
+    "y": 184,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 12.png",
+   "frame": {
+    "x": 0,
+    "y": 276,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 13.png",
+   "frame": {
+    "x": 83,
+    "y": 276,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 14.png",
+   "frame": {
+    "x": 166,
+    "y": 276,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  },
+  {
+   "filename": "tube-crackle 15.png",
+   "frame": {
+    "x": 249,
+    "y": 276,
+    "w": 83,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.31521739130434784
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "tube-crackle.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 332,
+   "h": 368
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 41,
+   "y": 29
+  },
+  "frameTags": [
+   {
+    "name": "tube-crackle",
+    "from": 0,
+    "to": 15,
+    "direction": "forward"
+   }
+  ]
+ }
+}

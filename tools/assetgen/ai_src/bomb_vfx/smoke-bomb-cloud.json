@@ -1,0 +1,859 @@
+{
+ "frames": [
+  {
+   "filename": "smoke-bomb-cloud 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 1.png",
+   "frame": {
+    "x": 148,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 2.png",
+   "frame": {
+    "x": 296,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 3.png",
+   "frame": {
+    "x": 444,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 4.png",
+   "frame": {
+    "x": 592,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 5.png",
+   "frame": {
+    "x": 740,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 6.png",
+   "frame": {
+    "x": 0,
+    "y": 80,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 7.png",
+   "frame": {
+    "x": 148,
+    "y": 80,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 8.png",
+   "frame": {
+    "x": 296,
+    "y": 80,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 9.png",
+   "frame": {
+    "x": 444,
+    "y": 80,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 10.png",
+   "frame": {
+    "x": 592,
+    "y": 80,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 11.png",
+   "frame": {
+    "x": 740,
+    "y": 80,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 12.png",
+   "frame": {
+    "x": 0,
+    "y": 160,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 13.png",
+   "frame": {
+    "x": 148,
+    "y": 160,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 14.png",
+   "frame": {
+    "x": 296,
+    "y": 160,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 15.png",
+   "frame": {
+    "x": 444,
+    "y": 160,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 16.png",
+   "frame": {
+    "x": 592,
+    "y": 160,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 17.png",
+   "frame": {
+    "x": 740,
+    "y": 160,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 18.png",
+   "frame": {
+    "x": 0,
+    "y": 240,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 19.png",
+   "frame": {
+    "x": 148,
+    "y": 240,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 20.png",
+   "frame": {
+    "x": 296,
+    "y": 240,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 21.png",
+   "frame": {
+    "x": 444,
+    "y": 240,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 22.png",
+   "frame": {
+    "x": 592,
+    "y": 240,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 23.png",
+   "frame": {
+    "x": 740,
+    "y": 240,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 24.png",
+   "frame": {
+    "x": 0,
+    "y": 320,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 25.png",
+   "frame": {
+    "x": 148,
+    "y": 320,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 26.png",
+   "frame": {
+    "x": 296,
+    "y": 320,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 27.png",
+   "frame": {
+    "x": 444,
+    "y": 320,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 28.png",
+   "frame": {
+    "x": 592,
+    "y": 320,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 29.png",
+   "frame": {
+    "x": 740,
+    "y": 320,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 30.png",
+   "frame": {
+    "x": 0,
+    "y": 400,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  },
+  {
+   "filename": "smoke-bomb-cloud 31.png",
+   "frame": {
+    "x": 148,
+    "y": 400,
+    "w": 148,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 148,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 148,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.925
+   },
+   "duration": 125
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "smoke-bomb-cloud.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 888,
+   "h": 480
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 74,
+   "y": 74
+  },
+  "frameTags": [
+   {
+    "name": "smoke-bomb-cloud",
+    "from": 0,
+    "to": 31,
+    "direction": "forward"
+   }
+  ]
+ }
+}

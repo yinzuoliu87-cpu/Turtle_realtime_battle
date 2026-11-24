@@ -1771,6 +1771,9 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 		"pistol": ["vfx/eq-pistol-idle.png", 40],       # 077 小手枪
 		"coraltower": ["vfx/eq-coraltower-idle.png", 64],  # 079 医疗塔
 		"axe": ["vfx/eq096-axe-wood-idle.png", 112],  # 096 斧头召唤物·兜底(2026-09-15 换成悬空 3D 斧; 按形态换表 + 统一尺寸见 AxeArt.apply)
+		"eq-cannon": ["vfx/eq-cannon-idle.png", 64],          # 105 炮筒(11-24)
+		"eq-remote-bomb": ["vfx/eq-remote-bomb-idle.png", 64],  # 106 遥控炸弹
+		"eq-katana": ["vfx/eq-katana-idle.png", 112],        # 107 武士刀小将
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]
@@ -7906,12 +7909,12 @@ func _inject_equipment() -> void:
 		if u.has("_dl_equips") and u["_dl_equips"] is Array and not (u["_dl_equips"] as Array).is_empty():
 			for it in (u["_dl_equips"] as Array):   # 双路: leader/小将局外配的装(dual_lineup)优先 — 小将id共享__minion__, 只能走这里
 				if it is Dictionary and it.has("id"):
-					list.append({"id": str(it["id"]), "star": int(it.get("star", 1)), "chg": (gs.eq_chg(it) if gs != null else 0)})
+					list.append(EqBombBatch.eq_entry(it, gs.eq_chg(it) if gs != null else 0))   # 带上 102 地雷摆位(11-24)
 		elif not use_demo and pe.has(key):
 			if u["side"] == "left":
 				for it in (pe[key] as Array):
 					if it is Dictionary and it.has("id"):
-						list.append({"id": str(it["id"]), "star": int(it.get("star", 1)), "chg": (gs.eq_chg(it) if gs != null else 0)})
+						list.append(EqBombBatch.eq_entry(it, gs.eq_chg(it) if gs != null else 0))   # 带上 102 地雷摆位(11-24)
 		if use_demo and DEMO_EQUIP.has(key):
 			list = (DEMO_EQUIP[key] as Array).duplicate(true)
 		u["equips"] = list

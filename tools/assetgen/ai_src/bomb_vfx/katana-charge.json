@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "katana-charge 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 1.png",
+   "frame": {
+    "x": 67,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 2.png",
+   "frame": {
+    "x": 134,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 3.png",
+   "frame": {
+    "x": 201,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 4.png",
+   "frame": {
+    "x": 0,
+    "y": 67,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 5.png",
+   "frame": {
+    "x": 67,
+    "y": 67,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 6.png",
+   "frame": {
+    "x": 134,
+    "y": 67,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 7.png",
+   "frame": {
+    "x": 201,
+    "y": 67,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 8.png",
+   "frame": {
+    "x": 0,
+    "y": 134,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 9.png",
+   "frame": {
+    "x": 67,
+    "y": 134,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 10.png",
+   "frame": {
+    "x": 134,
+    "y": 134,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  },
+  {
+   "filename": "katana-charge 11.png",
+   "frame": {
+    "x": 201,
+    "y": 134,
+    "w": 67,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 67,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.4925373134328358,
+    "y": 0.4925373134328358
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "katana-charge.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 268,
+   "h": 201
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 33,
+   "y": 33
+  },
+  "frameTags": [
+   {
+    "name": "katana-charge",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

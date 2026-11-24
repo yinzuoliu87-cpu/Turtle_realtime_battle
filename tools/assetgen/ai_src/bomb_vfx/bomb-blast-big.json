@@ -1,0 +1,859 @@
+{
+ "frames": [
+  {
+   "filename": "bomb-blast-big 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 1.png",
+   "frame": {
+    "x": 224,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 2.png",
+   "frame": {
+    "x": 448,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 3.png",
+   "frame": {
+    "x": 672,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 4.png",
+   "frame": {
+    "x": 896,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 5.png",
+   "frame": {
+    "x": 1120,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 6.png",
+   "frame": {
+    "x": 0,
+    "y": 216,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 7.png",
+   "frame": {
+    "x": 224,
+    "y": 216,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 8.png",
+   "frame": {
+    "x": 448,
+    "y": 216,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 9.png",
+   "frame": {
+    "x": 672,
+    "y": 216,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 10.png",
+   "frame": {
+    "x": 896,
+    "y": 216,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 11.png",
+   "frame": {
+    "x": 1120,
+    "y": 216,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 12.png",
+   "frame": {
+    "x": 0,
+    "y": 432,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 13.png",
+   "frame": {
+    "x": 224,
+    "y": 432,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 14.png",
+   "frame": {
+    "x": 448,
+    "y": 432,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 15.png",
+   "frame": {
+    "x": 672,
+    "y": 432,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 16.png",
+   "frame": {
+    "x": 896,
+    "y": 432,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 17.png",
+   "frame": {
+    "x": 1120,
+    "y": 432,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 18.png",
+   "frame": {
+    "x": 0,
+    "y": 648,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 19.png",
+   "frame": {
+    "x": 224,
+    "y": 648,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 20.png",
+   "frame": {
+    "x": 448,
+    "y": 648,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 21.png",
+   "frame": {
+    "x": 672,
+    "y": 648,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 22.png",
+   "frame": {
+    "x": 896,
+    "y": 648,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 23.png",
+   "frame": {
+    "x": 1120,
+    "y": 648,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 24.png",
+   "frame": {
+    "x": 0,
+    "y": 864,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 25.png",
+   "frame": {
+    "x": 224,
+    "y": 864,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 26.png",
+   "frame": {
+    "x": 448,
+    "y": 864,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 27.png",
+   "frame": {
+    "x": 672,
+    "y": 864,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 28.png",
+   "frame": {
+    "x": 896,
+    "y": 864,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 29.png",
+   "frame": {
+    "x": 1120,
+    "y": 864,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 30.png",
+   "frame": {
+    "x": 0,
+    "y": 1080,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  },
+  {
+   "filename": "bomb-blast-big 31.png",
+   "frame": {
+    "x": 224,
+    "y": 1080,
+    "w": 224,
+    "h": 216
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 224,
+    "h": 216
+   },
+   "sourceSize": {
+    "w": 224,
+    "h": 216
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7962962962962963
+   },
+   "duration": 100
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "bomb-blast-big.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 1344,
+   "h": 1296
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 112,
+   "y": 172
+  },
+  "frameTags": [
+   {
+    "name": "bomb-blast-big",
+    "from": 0,
+    "to": 31,
+    "direction": "forward"
+   }
+  ]
+ }
+}

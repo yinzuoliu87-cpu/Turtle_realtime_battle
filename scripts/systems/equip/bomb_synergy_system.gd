@@ -31,12 +31,20 @@ const COL_PHYS := Color("#ff8a3d")
 var _fired := {"left": false, "right": false}
 ## 记下「这一路」的开打时刻，变了 = 换路 ⇒ 重新计时
 var _lane_t0 := -1.0
+## 本路已经放过落弹演出的方
+var _launched := {}
 ## 门禁量：本进程落过几发
 var strikes := 0
 
 
 func _init(b) -> void:
 	battle = b
+
+
+## 演出层（与炸弹装备共用一个 BombEqVfx；无头 / 没建好时为 null，只结算）
+func _vfx():
+	var es = battle.get("_equip_sys")
+	return es._bomb_sys.vfx if es != null and es.get("_bomb_sys") != null else null
 
 
 func side_tier(side: String) -> int:
@@ -57,10 +65,20 @@ func tick(_dt: float) -> void:
 	if t0 != _lane_t0:
 		_lane_t0 = t0
 		_fired = {"left": false, "right": false}
+		_launched = {}
 		for side in ["left", "right"]:
-			if side_tier(side) > 0 and battle.get("_bomb_vfx") != null:
-				battle._bomb_vfx.show_locator(side, FIRE_AT)
+			if side_tier(side) > 0 and _vfx() != null:
+				_vfx().show_locator(side, FIRE_AT)
+	## 演出: 导弹提前 MISSILE_LEAD 秒从天上落下, 砸地那一帧正好是结算时刻(纯表现, 不影响结算)
+	if float(battle._t) - t0 >= FIRE_AT - BombEqVfx.MISSILE_LEAD and not bool(battle.get("_over")):
+		for side in ["left", "right"]:
+			if not bool(_launched.get(side, false)) and side_tier(side) > 0 and _vfx() != null:
+				_vfx().missile_launch(side)
+				_launched[side] = true
 	if float(battle._t) - t0 < FIRE_AT:
+		return
+	## 整场已判定(`_over`)就不再落 —— 录像台实测: 下路打完进 done 后又落了一发(主循环的 _fight_on 不看 _over)
+	if bool(battle.get("_over")):
 		return
 	for side in ["left", "right"]:
 		if bool(_fired[side]):
@@ -97,8 +115,8 @@ func strike(side: String, tier: int) -> int:
 		if str(u.get("side", "")) == side or bool(u.get("_isEgg", false)) or battle._is_untouchable(u):
 			continue
 		targets.append(u)
-	if battle.get("_bomb_vfx") != null:
-		battle._bomb_vfx.missile_impact(side)
+	if _vfx() != null:
+		_vfx().missile_impact(side)
 	for u in targets:
 		if not u.get("alive", false):
 			continue

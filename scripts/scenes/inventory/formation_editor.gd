@@ -262,6 +262,20 @@ func _build_field(lane: String, title: String, col: Color, pos: Vector2) -> void
 			m_seen += 1
 		var o: Vector2i = LP.off_of(u, i, n)
 		field.add_child(_token(lane, i, u, is_leader, elite, world_from_off(o)))
+	## 102 地雷(2026-11-24 · 方案书 20261124f §4.2「在站位图中摆放」): 带地雷的单位, 每颗雷一个可拖的小图标
+	for i in range(n):
+		var u2: Dictionary = arr[i] if arr[i] is Dictionary else {}
+		var eqs: Array = mine_equips(u2)
+		var co: Vector2i = LP.off_of(u2, i, n)
+		for k in range(eqs.size()):
+			var e: Dictionary = eqs[k]
+			var cnt: int = int(EqBombBatch.MINE_COUNT[clampi(int(e.get("star", 1)), 1, 3) - 1])
+			var offs: Array = e.get("mines", []) if e.get("mines") is Array else []
+			for j in range(cnt):
+				var mo: Vector2i = EqBombBatch.default_mine_off(co, j, cnt)
+				if j < offs.size() and offs[j] is Array and (offs[j] as Array).size() >= 2:
+					mo = LP.clamp_off(Vector2i(int(offs[j][0]), int(offs[j][1])))
+				field.add_child(_mine_token(lane, i, k, j, ArenaShape.clamp_in(world_from_off(mo), RB.ARENA, PAD)))
 
 
 func _to_field(w: Vector2) -> Vector2:
@@ -329,6 +343,94 @@ func _off_at(local: Vector2) -> Vector2i:
 	return off_from_world(_from_field(local + g))
 
 
+## 这个阵容格子身上的 102 地雷装备条目(统领: 背包穿戴 `persistent_equipped[龟]`; 小将: 格子自己的 `equips`)。
+## ★返回的是存档里的那几条字典本身(改它 = 改存档), 调用方改完要 GameState.save()。
+static func mine_equips(u: Dictionary) -> Array:
+	var src: Array = []
+	if str(u.get("kind", "")) == "leader":
+		var pe = GameState.persistent_equipped
+		if pe is Dictionary and (pe as Dictionary).get(str(u.get("id", ""))) is Array:
+			src = (pe as Dictionary)[str(u.get("id", ""))]
+	elif u.get("equips") is Array:
+		src = u["equips"]
+	var out: Array = []
+	for e in src:
+		if e is Dictionary and str((e as Dictionary).get("id", "")) == "p2eq_102":
+			out.append(e)
+	return out
+
+
+const MINE_TOKEN := 36.0
+const MINE_HIT := 52.0
+
+
+func _mine_token(lane: String, idx: int, k: int, j: int, w: Vector2) -> Control:
+	var t := Control.new(); t.name = "Mine_%s_%d_%d_%d" % [lane, idx, k, j]
+	t.size = Vector2(MINE_HIT, MINE_HIT)
+	t.position = _to_field(w) - t.size * 0.5
+	t.mouse_filter = Control.MOUSE_FILTER_STOP
+	t.z_index = 2
+	var a := TextureRect.new()
+	var ip := "res://assets/sprites/equip/p2eq_102.png"
+	if ResourceLoader.exists(ip):
+		a.texture = load(ip)
+	a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	a.position = (t.size - Vector2(MINE_TOKEN, MINE_TOKEN)) * 0.5; a.size = Vector2(MINE_TOKEN, MINE_TOKEN)
+	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	t.add_child(a)
+	t.gui_input.connect(func(ev): _on_mine_input(lane, idx, k, j, t, ev))
+	return t
+
+
+func _on_mine_input(lane: String, idx: int, k: int, j: int, t: Control, ev: InputEvent) -> void:
+	var field: Control = t.get_parent()
+	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		var mb := ev as InputEventMouseButton
+		var local: Vector2 = field.get_global_transform().affine_inverse() * mb.global_position
+		if mb.pressed:
+			_drag = {"lane": lane, "idx": idx, "grab": (t.position + t.size * 0.5) - local, "from": mb.global_position}
+			t.z_index = 6
+		elif not _drag.is_empty():
+			var o: Vector2i = _off_at(local)
+			commit_mine(lane, idx, k, j, o)
+			t.position = _to_field(world_from_off(o)) - t.size * 0.5
+			t.z_index = 2
+			_drag = {}
+	elif ev is InputEventMouseMotion and not _drag.is_empty():
+		var local2: Vector2 = field.get_global_transform().affine_inverse() * (ev as InputEventMouseMotion).global_position
+		t.position = _to_field(world_from_off(_off_at(local2))) - t.size * 0.5
+
+
+## 第 j 颗雷摆到偏移 o 并存档。没摆过的其它几颗按默认位置一起写下(之后整组都按存下的来, 不会因为统领挪了位而跟着漂)。
+## ★门禁也走这一个入口。
+func commit_mine(lane: String, idx: int, k: int, j: int, o: Vector2i) -> void:
+	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	var arr: Array = a.get(lane, []) if a.get(lane) is Array else []
+	if idx < 0 or idx >= arr.size() or not (arr[idx] is Dictionary):
+		return
+	var u: Dictionary = arr[idx]
+	var eqs: Array = mine_equips(u)
+	if k < 0 or k >= eqs.size():
+		return
+	var e: Dictionary = eqs[k]
+	var cnt: int = int(EqBombBatch.MINE_COUNT[clampi(int(e.get("star", 1)), 1, 3) - 1])
+	var co: Vector2i = LP.off_of(u, idx, arr.size())
+	var old: Array = e.get("mines", []) if e.get("mines") is Array else []
+	var out: Array = []
+	for m in range(cnt):
+		var mo: Vector2i = EqBombBatch.default_mine_off(co, m, cnt)
+		if m < old.size() and old[m] is Array and (old[m] as Array).size() >= 2:
+			mo = Vector2i(int(old[m][0]), int(old[m][1]))
+		if m == j:
+			mo = o
+		out.append(LP.pack(mo))
+	e["mines"] = out
+	if str(u.get("kind", "")) != "leader":
+		GameState.dual_lineup = a   # 小将的装备在阵容格子里(改的是上面那份副本) ⇒ 整份写回; 统领的在 persistent_equipped, 已经原地改好
+	GameState.save()
+
+
 ## 写进阵容格子并存档。★门禁也走这一个入口(不另写一份写法)。
 func commit(lane: String, idx: int, o: Vector2i) -> void:
 	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
@@ -346,6 +448,8 @@ func _reset_all() -> void:
 			for u in a[lane]:
 				if u is Dictionary:
 					(u as Dictionary).erase("off")
+					for e in mine_equips(u):
+						(e as Dictionary).erase("mines")
 	GameState.dual_lineup = a
 	GameState.save()
 	_drop_dim()

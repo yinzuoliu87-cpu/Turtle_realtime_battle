@@ -1,0 +1,183 @@
+{
+ "frames": [
+  {
+   "filename": "cannon-muzzle 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 35,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.08571428571428572,
+    "y": 0.5
+   },
+   "duration": 67
+  },
+  {
+   "filename": "cannon-muzzle 1.png",
+   "frame": {
+    "x": 35,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 35,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.08571428571428572,
+    "y": 0.5
+   },
+   "duration": 67
+  },
+  {
+   "filename": "cannon-muzzle 2.png",
+   "frame": {
+    "x": 70,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 35,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.08571428571428572,
+    "y": 0.5
+   },
+   "duration": 67
+  },
+  {
+   "filename": "cannon-muzzle 3.png",
+   "frame": {
+    "x": 0,
+    "y": 20,
+    "w": 35,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 35,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.08571428571428572,
+    "y": 0.5
+   },
+   "duration": 67
+  },
+  {
+   "filename": "cannon-muzzle 4.png",
+   "frame": {
+    "x": 35,
+    "y": 20,
+    "w": 35,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 35,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.08571428571428572,
+    "y": 0.5
+   },
+   "duration": 67
+  },
+  {
+   "filename": "cannon-muzzle 5.png",
+   "frame": {
+    "x": 70,
+    "y": 20,
+    "w": 35,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 35,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.08571428571428572,
+    "y": 0.5
+   },
+   "duration": 67
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "cannon-muzzle.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 105,
+   "h": 40
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 3,
+   "y": 10
+  },
+  "frameTags": [
+   {
+    "name": "cannon-muzzle",
+    "from": 0,
+    "to": 5,
+    "direction": "forward"
+   }
+  ]
+ }
+}
