@@ -423,7 +423,24 @@ func remote_blast(c: Vector2, r: float) -> void:
 
 ## 普通炮(11-24 用户「普通炮你没弹道出来没」): 炮口火光 + 一颗黑铁炮弹按弧线飞向目标(跟着目标走), 落到身上才炸(cannon_ball_hit)
 const BALL_TEX := "res://assets/sprites/vfx/bomb-cannonball.png"
-func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0) -> void:
+## 炮口位置(画里炮口在帧左侧 x≈8 / 离帧底 42 像素; 游戏里朝向敌人翻转): 返回 [地面坐标, 离地高度]
+const MUZZLE_PX := Vector2(24.0, 42.0)
+func muzzle(p, toward_x: float) -> Array:
+	var sp = p.get("sprite", null) if p is Dictionary else null
+	if not is_instance_valid(sp) or not (sp is Sprite3D):
+		return [Vector2(p["pos"]) if p is Dictionary else Vector2.ZERO, 1.0]
+	var s3: Sprite3D = sp
+	var ps: float = s3.pixel_size * s3.scale.y
+	var sgn: float = 1.0 if toward_x >= float(p["pos"].x) else -1.0
+	return [Vector2(p["pos"]) + Vector2(sgn * MUZZLE_PX.x * ps / float(battle.WS), 0.0), MUZZLE_PX.y * ps]
+
+
+func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0, src = null) -> void:
+	var mz_h := 0.9
+	if src is Dictionary:
+		var mz: Array = muzzle(src, to.x)
+		from = mz[0]
+		mz_h = float(mz[1])
 	if fly > 0.0 and _ok() and ResourceLoader.exists(BALL_TEX):
 		var t: Texture2D = load(BALL_TEX)
 		var bs := Sprite3D.new()
@@ -439,9 +456,9 @@ func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0) -> vo
 			bs.offset.x = -bs.offset.x
 		bs.no_depth_test = true
 		bs.render_priority = 11
-		bs.position = battle._world_pos(from, 0.9)
+		bs.position = battle._world_pos(from, mz_h)
 		battle._world.add_child(bs)
-		_fx.append({"node": bs, "t": 0.0, "life": fly, "kind": "ball", "from": from, "to": to, "tgt": tgt})
+		_fx.append({"node": bs, "t": 0.0, "life": fly, "kind": "ball", "from": from, "to": to, "tgt": tgt, "h0": mz_h})
 	if fly <= 0.0:
 		_anim("boom", to, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
 
@@ -465,9 +482,11 @@ func cannon_fire(p) -> void:
 	s.texture = t
 	s.hframes = maxi(1, t.get_width() / 64)
 	s.shaded = false
-	s.transparent = true
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	## ★与本体同一套材质(接地着色器: 全朝镜头 + 脚底软渐隐) —— 原来用「只绕竖轴转」, 被镜头一斜形状大小都变, 一切换就跳(11-24 自查)
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+	s.material_override = battle._make_grounded_material(t, {})
 	battle._world.add_child(s)
 	(sp as Sprite3D).visible = false
 	_fx.append({"node": s, "t": 0.0, "life": FIRE_SEC, "kind": "cannon_fire", "u": p, "nf": s.hframes})
@@ -505,7 +524,11 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 			cannon_fire(src)
 			## ★飞行高度 = 敌人身体中心(11-24 用户「这个怎么又贴地下」: 原来 0.9 米、没影子 ⇒ 像一道火在地上滑);
 			##   地上跟一块影子, 读得出它在空中飞
-			var fh: float = maxf(1.3, body_h(src) if src is Dictionary else 1.3)
+			var fh := 1.3
+			if src is Dictionary:   # 从炮口打出去(位置 + 高度)
+				var mz2: Array = muzzle(src, from.x + dir.x)
+				from = mz2[0]
+				fh = float(mz2[1])
 			var b := _anim("shell", from, 130.0, life, fh, false, true)
 			if b != null:
 				b.no_depth_test = true
@@ -514,12 +537,14 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 					b.flip_h = true
 					b.offset.x = -b.offset.x
 				_fx[_fx.size() - 1]["kind"] = "move"
-				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "h": fh, "loop_all": true})
-			_ground_shadow(from, dir, spd, life, 70.0)
+				## 尾焰约 100 码长: 头飞出炮口 100 码之前不画, 否则整条火尾盖在炮台身上(11-24 自查)
+				b.visible = false
+				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "h": fh, "loop_all": true, "show_after": 100.0 / maxf(1.0, spd)})
+			_ground_shadow(from, dir, spd, life, 70.0, 100.0 / maxf(1.0, spd))
 
 
 ## 飞行物在地上的影子: 一块扁的暗色软斑, 跟着飞行物走(只在地上, 不画高度)
-func _ground_shadow(from: Vector2, dir: Vector2, spd: float, life: float, w: float) -> void:
+func _ground_shadow(from: Vector2, dir: Vector2, spd: float, life: float, w: float, show_after: float = 0.0) -> void:
 	var sh := Sprite3D.new()
 	sh.texture = VfxTex._make_blob_texture()
 	sh.shaded = false
@@ -531,7 +556,8 @@ func _ground_shadow(from: Vector2, dir: Vector2, spd: float, life: float, w: flo
 	sh.scale = Vector3(1.0, 1.0, 0.55)
 	sh.position = battle._world_pos(from, 0.03)
 	battle._world.add_child(sh)
-	_fx.append({"node": sh, "t": 0.0, "life": life, "kind": "move", "from": from, "dir": dir, "spd": spd, "h": 0.03, "nf": 1})
+	sh.visible = show_after <= 0.0
+	_fx.append({"node": sh, "t": 0.0, "life": life, "kind": "move", "from": from, "dir": dir, "spd": spd, "h": 0.03, "nf": 1, "show_after": show_after})
 
 
 ## 龙卷风：五层细环叠成漏斗（下小上大），每层绕中心转、相位错开 ⇒ 读得出「旋」
@@ -644,7 +670,7 @@ func tick(delta: float) -> void:
 				var tb = f.get("tgt", null)
 				var dst: Vector2 = Vector2(tb["pos"]) if tb is Dictionary and tb.get("alive", false) else Vector2(f["to"])
 				var hb: float = body_h(tb) if tb is Dictionary else 1.0
-				(n as Node3D).position = battle._world_pos(Vector2(f["from"]).lerp(dst, q), lerpf(0.9, hb, q) + 1.6 * 4.0 * q * (1.0 - q))
+				(n as Node3D).position = battle._world_pos(Vector2(f["from"]).lerp(dst, q), lerpf(float(f.get("h0", 0.9)), hb, q) + 1.6 * 4.0 * q * (1.0 - q))
 			"arc_to":
 				var tg2: Dictionary = f["tgt"]
 				var a2: Vector2 = f["from"]
@@ -662,6 +688,8 @@ func tick(delta: float) -> void:
 				var hz: float = 2.0 + 10.0 * q
 				(n as Sprite3D).modulate = Color(1, 1, 1, 1) if fmod(float(f["t"]) * hz, 1.0) < 0.6 else Color(1, 0.4, 0.35, 1)
 			"move":
+				if f.has("show_after"):
+					(n as Node3D).visible = float(f["t"]) >= float(f["show_after"])
 				var pos: Vector2 = Vector2(f["from"]) + Vector2(f["dir"]).normalized() * float(f["spd"]) * float(f["t"])
 				(n as Node3D).position = battle._world_pos(pos, float(f.get("h", 1.0)))
 				if bool(f.get("loop_all", false)):

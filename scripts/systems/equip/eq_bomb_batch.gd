@@ -781,8 +781,8 @@ func _tick_cannons(delta: float) -> void:
 			stat["cannon_shot"] += 1
 			var fly: float = DetMath.dist(Vector2(p["pos"]), Vector2(tgt["pos"])) / CANNON_BALL_SPD
 			_balls.append({"src": p, "tgt": tgt, "last": Vector2(tgt["pos"]), "t": float(battle._t) + fly})
-			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, fly])
 			_fx("cannon_fire", [p])
+			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, fly, p])
 		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_GAIN)
 		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
 			c["heavy"] = false
