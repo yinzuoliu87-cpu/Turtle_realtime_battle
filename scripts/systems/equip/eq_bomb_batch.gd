@@ -99,9 +99,10 @@ const CANNON_BALL_SPD := 1100.0
 # ── 106 遥控炸弹 ──
 const REMOTE_HP := [2500.0, 5000.0, 12000.0]
 const REMOTE_RES := [70.0, 130.0, 200.0]
-const REMOTE_DECAY := [0.10, 0.08, 0.0]
+## 每秒损失最大生命值 / 爆炸固定物理伤害(用户 11-24「改为每秒损失4/2/0，物理固定伤害改为150/280/500」, 取代 10/8/0% 与 400/800/2000)
+const REMOTE_DECAY := [0.04, 0.02, 0.0]
 const REMOTE_R := 600.0
-const REMOTE_FLAT := [400.0, 800.0, 2000.0]
+const REMOTE_FLAT := [150.0, 280.0, 500.0]
 const REMOTE_TRUE_PCT := [0.08, 0.12, 0.20]
 const REMOTE_BLEED := [40, 70, 120]
 const REMOTE_FWD := 120.0

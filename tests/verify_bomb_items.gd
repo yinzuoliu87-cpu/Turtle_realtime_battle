@@ -289,7 +289,7 @@ func _ready() -> void:
 	ru = _bs._remotes[0]["u"]
 	_s._units.append(ru)
 	_adv(1.0)
-	_ok("106 1★ 每秒 −10%% 最大生命", _near(float(ru["hp"]), float(B.REMOTE_HP[0]) * 0.9, 3.0), "%.0f" % float(ru["hp"]))
+	_ok("106 1★ 每秒 −%.0f%% 最大生命" % [float(B.REMOTE_DECAY[0]) * 100.0], _near(float(ru["hp"]), float(B.REMOTE_HP[0]) * (1.0 - float(B.REMOTE_DECAY[0])), 3.0), "%.0f" % float(ru["hp"]))
 
 	## ── 107 武士刀 ──
 	me = _mk("left", c + Vector2(-200, 0), ["p2eq_107"])
