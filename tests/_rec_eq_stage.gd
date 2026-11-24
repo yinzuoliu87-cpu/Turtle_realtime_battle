@@ -42,13 +42,22 @@ static func _dummies(dx: float = 80.0, n: int = 3, ai: bool = false, hp: float =
 	return o
 
 
+## 靶子按给定偏移围着某点摆
+static func _ring_dummies(at: Vector2, offs: Array) -> Array:
+	var o: Array = []
+	for d in offs:
+		o.append(_u("__minion__", "right", at + Vector2(d), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 20000.0, "killable": false}))
+	return o
+
+
 ## 每条: [摆位, 录几秒]
 static func cases() -> Dictionary:
 	return {
 		## 羁绊: 持有人不动不打(只为凑 3 件炸弹 = 1 档), 只看导弹本身
 		"missile": [[_me(Vector2(-300, 0), _eq([102, 103, 97]), {"idle": true})] + _dummies(60, 3) + [_u("__minion__", "right", Vector2(280, 0), {"minion": true, "plain": true, "hp": 20000.0, "killable": false})], 15.0],
 		"cracker": [[_me(Vector2(-10, 0), _eq([97]))] + _dummies(60, 3), 12.0],
-		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _dummies(60, 3), 16.0],
+		## 爆竹筒范围 120 码: 三个靶子围在携带者 70~85 码内(都在范围里, 看得出一圈都被击退)
+		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(30, -78), Vector2(30, 78)]), 16.0],
 		"grenade": [[_me(Vector2(-10, 0), _eq([99]))] + _dummies(60, 3), 16.0],
 		## 烟雾弹: 两只会打的敌人冲过来, 看它们选不中烟里的我方
 		"smoke": [[_me(Vector2(-200, -40), _eq([100]), {"hold": true}), _me(Vector2(-200, 60), [], {"hold": true})] + _dummies(150, 2, true, 8000.0, 60.0), 20.0],

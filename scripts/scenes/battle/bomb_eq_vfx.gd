@@ -20,7 +20,7 @@ const SHEETS := {
 	"pop": ["vfx/bomb-cracker-pop.png", 64, 64, 44.0, 32, 32],
 	"smoke": ["vfx/bomb-smoke-cloud.png", 148, 80, 121.0, 74, 74],
 	"missile": ["vfx/bomb-missile-strike.png", 132, 151, 64.0, 55, 128],
-	"crackle": ["vfx/bomb-tube-crackle.png", 83, 92, 77.0, 41, 46],
+	"crackle": ["vfx/bomb-tube-crackle.png", 83, 92, 77.0, 41, 46, 2],   # 第 7 项 = 跳过开头几帧(前两帧是一团白闪, 放大后像个白球盖住单位)
 	"boom": ["vfx/bomb-barrel-boom.png", 56, 60, 50.0, 30, 37],
 	"muzzle": ["vfx/bomb-cannon-muzzle.png", 35, 20, 28.0, 3, 10],
 	"charge": ["vfx/katana-charge.png", 67, 67, 61.0, 33, 33],
@@ -96,7 +96,9 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 			h = maxf(h, float(fh - int(row[5])) * s.pixel_size + 0.02)
 	s.position = battle._world_pos(pos, h)
 	battle._world.add_child(s)
-	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "anim", "nf": s.hframes, "loop": loop})
+	var skip: int = int(row[6]) if row.size() > 6 else 0
+	s.frame = skip
+	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "anim", "nf": s.hframes - skip, "skip": skip, "loop": loop})
 	return s
 
 
@@ -388,11 +390,11 @@ func tick(delta: float) -> void:
 			"anim":
 				var nf: int = int(f["nf"])
 				if bool(f.get("loop", false)):
-					(n as Sprite3D).frame = int(float(f["t"]) * 12.0) % nf
+					(n as Sprite3D).frame = int(f.get("skip", 0)) + int(float(f["t"]) * 12.0) % nf
 					if q > 0.8:
 						(n as Sprite3D).modulate.a = (1.0 - q) / 0.2
 				else:
-					(n as Sprite3D).frame = mini(nf - 1, int(q * float(nf)))
+					(n as Sprite3D).frame = int(f.get("skip", 0)) + mini(nf - 1, int(q * float(nf)))
 			"ring":
 				var s: Sprite3D = n
 				s.pixel_size = lerpf(float(f["ps0"]), float(f["ps1"]), minf(1.0, q / 0.4))
