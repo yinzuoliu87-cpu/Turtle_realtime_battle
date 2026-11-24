@@ -168,7 +168,7 @@ func spirit_phys(raw: float, tgt: Dictionary) -> float:
 	return d
 
 
-## 060 磷光水母伞「本局」的「减伤挡下」(用户 11-12「补个回血…补个格挡，以减免伤害」):
+## 060 水母伞「本局」的「减伤挡下」(用户 11-12「补个回血…补个格挡，以减免伤害」):
 ##   伞下单位身上记着伞那份减伤 `_pa_dr` 和撑伞的 `_pa_by`(eq_spirit_batch 开伞写、收伞撤)。
 ##   这一段落地时的伤害已经乘过总减伤 ⇒ 没有伞那份时本该是 dmg × dr_mult(总 − 伞) / dr_mult(总), 差值就是伞挡掉的。
 ##   真实伤害不吃减伤 ⇒ 不算。★只写统计(_st_eq), 不碰结算。
@@ -397,7 +397,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	if not mute_sfx:
 		if shield_before > 0.0 and u["shield"] <= 0.0:
 			battle._audio_sys._sfx_shield_break()
-	# ★2026-08-06 窄口: 068 深海气压罐的充能条要吃【所有】伤害(用户原文"将收到的...伤害储存"),
+	# ★2026-08-06 窄口: 068 氧气瓶的充能条要吃【所有】伤害(用户原文"将收到的...伤害储存"),
 	#   而 `_eq_on_target` 只挂在另一条路上。不给那个钩子补全路是因为它还挂着硬化层/冰封反制,
 	#   让它们从每一跳灼烧触发是行为变更。详见 eq_potion_batch.store_from_any_damage 的头注。
 	if u.get("_potion_tick", false):
@@ -413,7 +413,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		battle._equip_sys.tally.pop(_tl0)
 	# ★★2026-08-06 补: 这条路(DoT/真伤)原先【完全没有 HP 阈值检查】——
 	#   `_eq_check_hp_threshold` 与血线只挂在 _apply_damage_from(普攻/技能)上。
-	#   后果: 044 深海项链 / 045 珍珠耳环 的"首次<50%保命"在被**灼烧/中毒/流血/诅咒/真伤**
+	#   后果: 044 珍珠项链 / 045 珍珠耳环 的"首次<50%保命"在被**灼烧/中毒/流血/诅咒/真伤**
 	#   打到半血时【不触发】, 要等再挨一次普攻才补上。这是 CLAUDE.md §3.3 那一类的既有 bug。
 	#   (我加多条血线时先只接了一条路, 自己又踩了一次同样的坑, 所以两条一起补。)
 	if u["alive"]:
@@ -520,7 +520,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	var d = battle._mitigate_incoming(u, float(dmg), raw)
 	# ★082 的旧减伤消费点已撤 —— 与 _apply_damage 同一位置的另一半(§3.3), 理由见那边。
 	dmg = maxi(1, int(round(d))); _credit_parasol_block(u, dmg, raw)   # 后半: 060 伞下这一段被伞那份减伤挡掉的量 → 记给撑伞的(只动统计; §3.3 两路都接; 并一行 = 函数行数预算 250)
-	# 守护贝母021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
+	# 蚌壳021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)
 	var _rd = u.get("dmg_redirect_to", null)
 	if _rd is Dictionary and battle._t < float(_rd.get("until", 0.0)):
 		var carrier = _rd.get("carrier", null)
@@ -688,7 +688,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	_post_hit_hooks(src, u, dmg, basic, was_crit, _bkt, from_equip)   # 装备事件钩子: on-hit / on-target / 宝箱战利品 / U3 装备伤害(见函数头注)
 	if u["alive"]:
 		var _tl1: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
-		battle._equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
+		battle._equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (珍珠项链/珍珠耳环)
 		battle._equip_sys.tally.pop(_tl1)
 		battle._hpl.check(u)                                 # ★多条血线(069 三块糕 80/55/30% · 064 <35%); 与上面那条 50% 线并存
 		if str(u.get("id", "")) == "fortune" and not u.get("_lowhp_fired", false) and u["hp"] <= u["maxHp"] * FortuneSystem.LOWHP_PCT:
@@ -910,14 +910,14 @@ func _dot_float_flyaway(u: Dictionary, bucket: String, st: Dictionary) -> void:
 ## 每帧: 常驻 DOT 数字跟随头顶 + 左右错开; 桶结束(或单位死)→弹射跳走。在 _process 里 _render._update_overlay 之后调。
 ## ★通用护盾时长(封板 2026-07-06 · docs/design/技能改制设计决策.md 石龟封板补全):
 ##   「所有"通用护盾"持续=4秒」。特殊护盾要在装备/技能的**文案里写明**自己的时长
-##   (013 炙烤海胆写了「10 秒内逐渐衰减」、嘲讽写了「永久」), 文案没写时长的一律吃这个默认值。
+##   (013 烤海胆写了「10 秒内逐渐衰减」、嘲讽写了「永久」), 文案没写时长的一律吃这个默认值。
 ## ★为什么是一个共用常量而不是各处再写一个 4.0: 这个数原本在 bamboo/bubble/diamond
 ##   三个技能系统里各存了一份 `*_SHIELD_SEC := 4.0`, 而装备层**一处都没有** ——
 ##   2026-08 那轮只扫了技能, 装备的 `_grant_shield` 全部吾着 dur=0(永久)。
 const COMMON_SHIELD_SEC := 4.0
 
 ## 【治疗强度 / 护盾强度】的此刻实际倍率 —— 结算(_heal / _grant_shield)与信息面板两行共用这一份。
-##   = (1 + heal_amp / shield_amp) × (1 − 015 荆棘海胆反伤削弱, 3 秒, 见 ThornCut)。
+##   = (1 + heal_amp / shield_amp) × (1 − 015 荆棘盾牌反伤削弱, 3 秒, 见 ThornCut)。
 ##   ★面板原来自己写 `1 + heal_amp`: 削弱生效时面板会照旧显示 100%, 与实际结算对不上。
 static func heal_strength(u: Dictionary, t: float) -> float:
 	return (1.0 + float(u.get("heal_amp", 0.0))) * (1.0 - ThornCut.cut_of(u, "heal_amp_cut", t))
@@ -938,7 +938,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	#   那个常量是 2026-06-27「阶段2/3雏形」那次提交里**随手写下的一行, 没有任何注释说明理由**,
 	#   一年多没人回头看过, 却静默地封着全游戏 44 个给盾点。
 	#   用户看到时的原话:「哪来的上限啊, 不应该有啊」——> 确认不是设计决定, 是遗留值。
-	#   ⚠ 删掉之后 068 深海气压罐(3★ 法力护盾 = 300% 充能值)、072 铁皮蛋糕盒(3★ 终极护盾
+	#   ⚠ 删掉之后 068 氧气瓶(3★ 法力护盾 = 300% 充能值)、072 蛋糕盒(3★ 终极护盾
 	#     = 120% 最大生命) 这类新设计才拿得到设计值; 原来会被静默砍掉一半。
 	u["shield"] = u["shield"] + amt
 	if dur > 0.0:
@@ -1022,13 +1022,13 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	## ★★**累计要用 float**。原来是 `int(...) + int(hp - hb)` —— 把**每一次的增量**截成整数,
-	##   而持续回复(044 深海项链 / 045 珍珠耳环 / 037 蜡烛, 以及任何按帧摊付的治疗)
+	##   而持续回复(044 珍珠项链 / 045 珍珠耳环 / 037 蜡烛, 以及任何按帧摊付的治疗)
 	##   每帧只回 1.77 点 ⇒ `int(1.77) = 1` ⇒ **结算面板的「治疗」列少算 43.5%**。
 	##   2026-09-14 实测: 8 秒真实回复 850 点, 账上记成 480。
 	##   读取侧(battle_hud / dmg_stats_panel / 主场景快照)本来就全都套了 `int()`, 所以只改累计。
 	u["_st_heal"] = float(u.get("_st_heal", 0)) + (u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
 	battle._equip_sys.tally.on_heal(u, float(u["hp"] - hb))   # ④ 装备统计: 同 _st_heal 口径(实际回血)
-	var _osc: float = float(u.get("overheal2shield_cap", 0.0))   # 饮血护符坠(011): 溢出治疗(超过满血部分)转血护盾, 累积上限
+	var _osc: float = float(u.get("overheal2shield_cap", 0.0))   # 血滴护符(011): 溢出治疗(超过满血部分)转血护盾, 累积上限
 	if _osc > 0.0:
 		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出
 		if _ovf > 0.0 and u["shield"] < _osc:
@@ -1132,7 +1132,7 @@ func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false
 	u["_stun_src"] = src_tag
 	u["stun_until"] = maxf(float(u.get("stun_until", 0.0)), battle._t + d)
 	if not _was_stun and u.get("alive", false):   # ④ 装备统计:「眩晕 / 冰封 N 次」—— 数「从没晕到晕上」的次数, 续时长不算(有的效果每步重施); 已经被这一下打死的不算(不沉之锚 3★ 一击常直接打死)
-		battle._equip_sys.tally.on_cc(u, "stun")   # `_freeze` 也是眩晕(电棍 / 霰弹 / 不沉之锚都走它) ⇒ 同一个键, 冰封水母在面板上改叫「冰封」
+		battle._equip_sys.tally.on_cc(u, "stun")   # `_freeze` 也是眩晕(电击器 / 霰弹 / 不沉之锚都走它) ⇒ 同一个键, 寒冰法杖在面板上改叫「冰封」
 
 func _buff(u: Dictionary, stat: String, amount: float, pct: bool, sec: float = battle.BUFF_SEC) -> void:
 	if battle._untouch_block(u, "buff"):

@@ -163,7 +163,7 @@ func _check_reserve(tag: String, u: Dictionary, n: int, pool: Array, seed: int, 
 	var m := 1.0 + 0.04 * float(n)
 	_ok(tag + " 名字「援军小将」", str(u.get("name")) == ReserveConsts.NAME, str(u.get("name")))
 	_ok(tag + " 不是精英", not bool(u.get("is_elite", false)))
-	## 期望 = 底子 × 成长 + 所带那件装备的基础属性(终极战场第一步还没挨打 ⇒ 014 硬化 0 层); 047 重击锤再加 maxHp × 比例
+	## 期望 = 底子 × 成长 + 所带那件装备的基础属性(终极战场第一步还没挨打 ⇒ 014 硬化 0 层); 047 战锤再加 maxHp × 比例
 	var es: Dictionary = {}
 	var ueq: Array = u.get("equips", [])
 	if ueq.size() == 1:

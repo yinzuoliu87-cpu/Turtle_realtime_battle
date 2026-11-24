@@ -1759,7 +1759,7 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 			var bt: Texture2D = load(banim)
 			if bt != null:
 				return _sprite_dict_from(bt, {"frames": 7, "frameW": 96, "frameH": 96, "duration": 720}, true)
-	# 077 铜管手铳的小手枪(2026-08-07): 全表第一个【有真立绘】的装备召唤物。
+	# 077 小手枪的小手枪(2026-08-07): 全表第一个【有真立绘】的装备召唤物。
 	# ★为什么单独一支而不是走下面的 `pets/<spr_id>.png` 通用路: 它不是宠物, 没有 pets.json 元数据,
 	#   走通用路会被当成静态单图 ⇒ 16 帧的表会显示成"一排小枪"(2026-07-17 竹叶龟踩过同一个坑)。
 	# ★帧表是【乒乓】排的(0..8 再 7..1 = 16 帧): PixelLab 出的 idle 末帧与首帧差 323/1600 像素,
@@ -1767,8 +1767,8 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 	# ★装备召唤物的本体立绘(「白球家族」)。没有这几条就会掉进最下面的**兜底队色发光球** ——
 	#   干净台花名册会打 `spr=✗`, 玩家看到"不明白点"。一律**纯乒乓**排帧(0..n 再 n-1..1), 帧数由素材定(手枪/塔 9→16, 斧头 4→6), 见 verify_eq_body_sprites ②。
 	const _EQ_BODY_SPR := {
-		"pistol": ["vfx/eq-pistol-idle.png", 40],       # 077 铜管手铳
-		"coraltower": ["vfx/eq-coraltower-idle.png", 64],  # 079 珊瑚急救塔
+		"pistol": ["vfx/eq-pistol-idle.png", 40],       # 077 小手枪
+		"coraltower": ["vfx/eq-coraltower-idle.png", 64],  # 079 医疗塔
 		"axe": ["vfx/eq096-axe-wood-idle.png", 112],  # 096 斧头召唤物·兜底(2026-09-15 换成悬空 3D 斧; 按形态换表 + 统一尺寸见 AxeArt.apply)
 	}
 	if _EQ_BODY_SPR.has(spr_id):
@@ -2340,7 +2340,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	_update_stun_vfx(u)         # 通用眩晕圈: 眩晕期间头顶火花星绕转(椭圆), 结束即撤
 	_update_bamboo_charge_dots(u)   # 竹叶蓄满: 双手两绿点(强化就绪指示)
 	_damage._heal_flush(u)   # LoL式治疗累加器: 攒一波回血合并成一个绿字(满血=0)
-	# 装备救命回血 HoT (044深海项链6秒 / 045珍珠耳环8秒; 用户2026-08-01「改为在N秒内回复X%最大生命值」)。
+	# 装备救命回血 HoT (044珍珠项链6秒 / 045珍珠耳环8秒; 用户2026-08-01「改为在N秒内回复X%最大生命值」)。
 	# ★用【固定速率×delta】而不是"每帧 maxHp×比例": 携带者在回复期间可能被温泉蛋/升级顶高 maxHp,
 	#   按当前 maxHp 现算会让总量随之膨胀 —— 触发瞬间锁死 rate, 总量才等于文案写的那个数。
 	# ★死亡即停(方案书 §4·F): 本函数只在 alive 单位上跑, 不需要额外判定。
@@ -2728,7 +2728,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_equip_tick_sys._tick_rustblade(u, delta)
 		_equip_tick_sys._tick_sword_storm(u, delta)
 		_equip_tick_sys._tick_broadsword(u, delta)
-		_equip_tick_sys._tick_coral(u, delta)          # 双穿珊瑚刺008: 修——之前漏挂dispatch→整个珊瑚刺击效果从未触发(用户2026-07-19发现)
+		_equip_tick_sys._tick_coral(u, delta)          # 珊瑚刺008: 修——之前漏挂dispatch→整个珊瑚刺击效果从未触发(用户2026-07-19发现)
 		_equip_tick_sys._tick_laser(u, delta)
 		_equip_tick_sys._tick_jelly(u, delta)
 		_equip_tick_sys._tick_fortress(u, delta)
@@ -3256,8 +3256,8 @@ func _conch_transform(pos2d: Vector2) -> void:
 		_bone_speck(pos2d + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 
 ## ★法器【一件都不在这张表里】(2026-08-12): 法器的主动只能由法力条满触发
-##   (用户:「只有法力条触发的主动效果, 可能有常驻的被动效果」)。030 迷你水晶球A(7秒)
-##   与 031 迷你水晶球B(8秒)原来在这里, 那是第二个触发口, 已摘掉 —— **别补回来**,
+##   (用户:「只有法力条触发的主动效果, 可能有常驻的被动效果」)。030 粉色迷你水晶(7秒)
+##   与 031 蓝色迷你水晶(8秒)原来在这里, 那是第二个触发口, 已摘掉 —— **别补回来**,
 ##   补回来就是同一件装备两条路各放各的。verify_staff_synergy ⑭ 会红。
 const _EQ_CUSTOM_IV := {"p2eq_004": EquipSystem.FANG_IV, "p2eq_048": EquipSystem.HANDGUN_IV, "p2eq_049": EquipSystem.XBOW_IV, "p2eq_050": EquipSystem.GATLING_IV, "p2eq_051": EquipSystem.PISTOL_IV, "p2eq_053": EquipSystem.SHOTGUN_IV, "p2eq_057": EquipSystem.SNIPER_IV, "p2eq_022": EquipSystem.EMBER_IV, "p2eq_028": IceSystem.VIAL_IV, "p2eq_037": EquipSystem.CANDLE_IV, "p2eq_040": EquipSystem.FPGA_IV, "p2eq_042": EquipSystem.RIPPLE_IV, "p2eq_052": EquipSystem.REVOLVER_IV}
 func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
@@ -3282,7 +3282,7 @@ func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	tw.tween_property(r, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(r.queue_free)
 
-const SHOTGUN_PELLET_DEG := 2.5   # 霰弹贝古053: 相邻两颗弹珠的固定夹角(度) —— 发数越多扇面自然越宽
+const SHOTGUN_PELLET_DEG := 2.5   # 喇叭枪053: 相邻两颗弹珠的固定夹角(度) —— 发数越多扇面自然越宽
 
 func _ensure_candle(u: Dictionary) -> void:
 	var ex = u.get("_candle_spr", null)
@@ -3679,7 +3679,7 @@ func _mud_mark(pos2d: Vector2) -> void:
 	t.tween_callback(spr.queue_free)
 
 
-## 021 守护贝母的绑定绳 —— 实现搬进 `battle_vfx.barnacle_line()`。
+## 021 蚌壳的绑定绳 —— 实现搬进 `battle_vfx.barnacle_line()`。
 ## ★CLAUDE.md §5:「不在 `_sim_step` 调用链上的代码不进主文件」—— 这一段是**纯演出**
 ##   (不挂任何结算), 主文件只留这一行转发。同 v0.19.361 `_bolt_line` 的处置。
 func _update_barnacle_line(u: Dictionary, target) -> void:
@@ -4146,7 +4146,7 @@ func _summon_walking_bear(u: Dictionary, tgt, dmg: int) -> void:   # 玩偶小�
 		tw.tween_callback(bear.queue_free)
 
 ## ★2026-08-03 加了 `gun_id` —— 枪羁绊【金弹】挂在这里。
-##   五把枪(黄铜手铳/激光手枪/加特林/狙击/左轮)的齐射【共用这一个出口】,
+##   五把枪(燧发枪/激光手枪/加特林/狙击/左轮)的齐射【共用这一个出口】,
 ##   所以金弹只需要在这里数一次, 不用去改五套各不相同的开火逻辑。
 ##   金弹规格(类型原生): 每把枪【射满 GunSynergySystem.GOLD_EVERY 发】额外射出一发, 效果与原子弹完全相同
 ##   (伤害/流血/减甲/击杀连锁全继承), 并额外造成 GOLD_TRUE_PCT 的真实伤害; 金弹本身不计入计数。
@@ -4320,7 +4320,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	#   用 flag 而不是判 id: 骷髅是召唤物, 将来还会有别的"血量即命数"单位。
 	if u.get("_dmg_cap_one", false):
 		return minf(d, 1.0)
-	# ★2026-08-06 泛化成【带值】的封顶: 077 铜管手铳的小手枪要"受到的所有伤害(含真伤)降为 2 点,
+	# ★2026-08-06 泛化成【带值】的封顶: 077 小手枪的小手枪要"受到的所有伤害(含真伤)降为 2 点,
 	#   携带者阵亡后降为 5 点" —— 布尔版只能降到 1, 而这两个值还会在战斗中变(携带者一死就换)。
 	#   ⚠ 为什么必须放在这里而不是让 077 自己在效果里补差额: 本函数是**两条伤害路径唯一的共用收口**
 	#   (CLAUDE.md §3.3), 在别处拦就只拦得住其中一条; 而"含真伤"要求它在真伤也走的这条收口上生效。
@@ -4334,7 +4334,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 
 
 func _redirect_damage(carrier: Dictionary, amt: float, dtype: String) -> void:
-	# 守护贝母021 伤害转移: 友军受什么类型就转什么类型(物红/魔蓝/真白), 并在携带者头上跳数字(用户2026-07-19)
+	# 蚌壳021 伤害转移: 友军受什么类型就转什么类型(物红/魔蓝/真白), 并在携带者头上跳数字(用户2026-07-19)
 	# 注: amt 是友军【已经吃过自己抗性】之后的那一段, 这里不再吃携带者的抗性(否则同一发减两次伤=021凭空变强)。
 	#     携带者的护盾照吸(与原_raw_lose行为一致)。
 	if amt <= 0.0 or not carrier.get("alive", false):
@@ -4441,7 +4441,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if killer != null and killer.get("alive", false):
 		_equip_sys._eq_on_kill(killer, u)             # on-kill: 击杀者装备 (暴君之牙处决回血 等)
 	var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
-	_equip_sys._eq_on_death(u, killer)                # on-death: 阵亡者装备 (复活海螺变虫 / 齿轮折币 / 玩偶熊)
+	_equip_sys._eq_on_death(u, killer)                # on-death: 阵亡者装备 (魔法海螺变虫 / 齿轮折币 / 玩偶熊)
 	_equip_sys.tally.pop(_tl0)
 	_shield_syn.on_enemy_died(u)                      # 盾羁绊【收殓】: 最近的携带盾者获得死者 30% 最大生命的护盾
 	_potion_syn.on_death(u)                           # 药水羁绊【猎获】: 死的是猎物 → 那一方全队攻击力永久 +22/38
@@ -4568,7 +4568,7 @@ func play_sheet_vfx(pos2d: Vector2, sheet: Texture2D, frames: int, world_px: flo
 ## ★2026-08-07 修的 bug(方案书 docs/plans/20260807-表现层方案书.md §1.3):
 ##   原来【尺寸和 alpha 走同一条 0.35 秒曲线】—— 环从 40% 扩到 100% 的**同时**
 ##   alpha 从 1 拉到 0 ⇒ **环放到最大的那一帧正好完全透明**, 肉眼只看得到 40~70% 那一段。
-##   用户报的"083 潮汐细剑的叠层环 / 093 香火石 / 081 藤编圆盾 / 目标环都看不出来"根因就是它:
+##   用户报的"083 细剑的叠层环 / 093 香火石 / 081 藤编圆盾 / 目标环都看不出来"根因就是它:
 ##   **不是做小了, 是画到最显眼的时候被自己抹掉了**。
 ##   ⇒ 拆成两条曲线: 【先长大(这一整段 alpha 保持峰值) → 长满【之后】才淡出】。
 ##   ⚠ 它是公共原语, 全仓 60+ 个调用点共用 —— 改的只有【时间轴】,
@@ -6329,7 +6329,7 @@ func _recalc_stats(u: Dictionary) -> void:
 			acc[s][1] += b["amount"]
 	u["atk"] = maxf(0.0, u["base_atk"] * (1.0 + acc["atk"][0]) + acc["atk"][1])
 	if float(u.get("hammer_pct", 0.0)) > 0.0:
-		u["atk"] += u["maxHp"] * float(u["hammer_pct"])   # 重击锤(047): ATK随真实maxHp动态成长(不除HP_MULT·用户2026-10-04)
+		u["atk"] += u["maxHp"] * float(u["hammer_pct"])   # 战锤(047): ATK随真实maxHp动态成长(不除HP_MULT·用户2026-10-04)
 	# ★剑【血祭】(羁绊·用户 2026-08-03 定): 本体每损失 1% 生命 → +0.1/0.3/0.5% 攻击力。
 	#   · 按【本体自己】的血量, 不是全队平均 —— 残血反打这件事要发生在那只残血的龟身上, 玩家看得见因果。
 	#   · 是【百分比】不是固定值: 剩 1% 血时 +9.9/29.7/49.5% 攻击力。
@@ -6341,7 +6341,7 @@ func _recalc_stats(u: Dictionary) -> void:
 	# ★遗物【生死界】(羁绊·2026-08-03; 11-08 起我方全体单位): 血量 >50% 时 +3/5/8/12% 攻击力。
 	#   与血祭同一个乘区(都乘在 base_atk 上), 不是独立乘区 —— 避免 R8 那种"多个乘区连乘"。
 	u["atk"] *= _relic_syn.atk_mult(u)
-	# ★★2026-08-06 加【削甲/削抗】通道 `def_shred` / `mr_shred`(089 蚀月符纸「每秒削减 1 魔抗」)。
+	# ★★2026-08-06 加【削甲/削抗】通道 `def_shred` / `mr_shred`(089 符咒「每秒削减 1 魔抗」)。
 	#   背景: `DamageMath.resist_multiplier` 对**负**抗性是增伤(`1+|r|/(|r|+40)`, 上限 2.0),
 	#   `damage_math.gd:28` 注明这是**有意设计** —— 而这两行的 `maxf(0.0, …)` 把负值抹平了,
 	#   于是"削穿之后开始增伤"这条机制**在这里被静默吃掉**。
@@ -6927,7 +6927,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			u["summon_life"] = 0.0
 			_kill(u, null)
 			return
-	if u.get("worm_split", false):                        # 033复活海螺3★: 小虫每2.5s在空位分裂一只(自身周期, 非携带者eq_tick)
+	if u.get("worm_split", false):                        # 033魔法海螺3★: 小虫每2.5s在空位分裂一只(自身周期, 非携带者eq_tick)
 		u["worm_split_t"] = float(u.get("worm_split_t", 0.0)) + delta
 		if u["worm_split_t"] >= EquipSystem.WORM_SPLIT_IV:
 			if _equip_sys._summons.worm_count(u) < EquipSystem.WORM_CAP:   # 上限按件算(同一携带者同一份号, 11-13)
@@ -7498,7 +7498,7 @@ func _settle_season(won: bool) -> void:
 ##   而且升星/换路重建单位时会【重复乘】。所以基础值仍归 atk_range, 加成走独立的 range_perm,
 ##   在【判定的那一刻】才相乘。同理移速走 move_perm(既有的 move_buff_mult 是限时通道, 装备要永久)。
 ## ★2026-08-05 加 flat 通道 `range_add`(码), 与 `range_perm`(倍率) 并存 ——
-##   用户给 065 鲨肝油 写的是"提供 50 射程"这样的**绝对值**, 而原来只有百分比字段。
+##   用户给 065 轻盈药水 写的是"提供 50 射程"这样的**绝对值**, 而原来只有百分比字段。
 ##   顺序是【先加后乘】: 基础 + 加成码数, 再整体乘百分比。理由同上面那段注释 ——
 ##   两条都不能就地写进 atk_range(会被形态切换覆盖、被换路重建重复累加)。
 ##   ⚠ flat 对近战收益远大于远程: 近战基础 70(战斗里抬到 >=100), 远程 400~450,
@@ -7848,12 +7848,12 @@ const EQ_TICK := 2.5            # 装备周期触发 = 1回合 ≈ 2.5 秒 (规�
 
 # demo 测试装备 (persistent_equipped 空时): 给每龟塞2-3件有视觉效果的件, 验证效果真触发. (与 2D 版 DEMO_EQUIP 一致)
 const DEMO_EQUIP := {
-	"stone":     [{"id": "p2eq_016", "star": 2}, {"id": "p2eq_013", "star": 2}],          # 铁壁盾(周期全队护盾)+炙烤海胆(受击硬化)
-	"basic":     [{"id": "p2eq_002", "star": 3}, {"id": "p2eq_005", "star": 2}, {"id": "p2eq_023", "star": 2}],  # 海带卷刀(流血)+双生匕首(追击)+灼热火珊瑚(灼烧)
+	"stone":     [{"id": "p2eq_016", "star": 2}, {"id": "p2eq_013", "star": 2}],          # 铁壁盾(周期全队护盾)+烤海胆(受击硬化)
+	"basic":     [{"id": "p2eq_002", "star": 3}, {"id": "p2eq_005", "star": 2}, {"id": "p2eq_023", "star": 2}],  # 海带卷刀(流血)+双生匕首(追击)+火珊瑚(灼烧)
 	"lightning": [{"id": "p2eq_026", "star": 2}, {"id": "p2eq_004", "star": 2}],          # 雷电法杖(连锁闪电)+暴君之牙(处决)
 	"diamond":   [{"id": "p2eq_016", "star": 2}, {"id": "p2eq_046", "star": 2}],          # 铁壁盾(周期护盾)+幽灵墨鱼(闪避护盾)
 	"ninja":     [{"id": "p2eq_002", "star": 3}, {"id": "p2eq_054", "star": 1}, {"id": "p2eq_058", "star": 2}],  # 流血+瞄准镜(必中)+穿甲遗弹(贯穿)
-	"ghost":     [{"id": "p2eq_023", "star": 3}, {"id": "p2eq_026", "star": 1}],          # 灼热火珊瑚(灼烧)+雷电法杖(连锁)
+	"ghost":     [{"id": "p2eq_023", "star": 3}, {"id": "p2eq_026", "star": 1}],          # 火珊瑚(灼烧)+雷电法杖(连锁)
 }
 
 # 装备注入: 玩家队(left)读 persistent_equipped; demo 阵容兜底塞测试装备.

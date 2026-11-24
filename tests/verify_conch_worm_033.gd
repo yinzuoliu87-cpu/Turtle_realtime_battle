@@ -1,5 +1,5 @@
 extends Node
-## verify_conch_worm_033.gd — 033 复活海螺【变虫】的门禁 (2026-09-13)
+## verify_conch_worm_033.gd — 033 魔法海螺【变虫】的门禁 (2026-09-13)
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
@@ -63,7 +63,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 033 复活海螺: 彻底阵亡 → 原位变虫 (攻速 %.2f/秒) ===" % ES.WORM_ASPD)
+	print("=== 033 魔法海螺: 彻底阵亡 → 原位变虫 (攻速 %.2f/秒) ===" % ES.WORM_ASPD)
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -181,7 +181,7 @@ func _ready() -> void:
 		var w4: Dictionary = w4a[0]
 		## ★★2026-09-17 修一条偶发红: 这一段只验【伤害类型】(物理吃护甲、不吃魔抗),
 		##   但 033 **本来就给小虫发 3 件随机 3★ 装备**(③ 段验的就是这件事), 其中带命中触发的
-		##   (057 狙击长管 / 010 激光 …) 会把某一次命中放大 ⇒ 下面「软 ≈ 厚魔抗」的判据偶发不成立。
+		##   (057 狙击枪 / 010 激光 …) 会把某一次命中放大 ⇒ 下面「软 ≈ 厚魔抗」的判据偶发不成立。
 		##   实测证据: 并行门禁里红过「软 405 / 厚甲 60 / 厚魔抗 810」(整 2 倍),
 		##   而**清掉装备后**同一只小虫连打八次逐次一致(探针 tests/probes/_probe_worm_atk.gd)。
 		## ★清的是【随机源】不是被测对象 —— 伤害类型由 `_resolve_dmg(..., magic=false)` 决定,
@@ -281,5 +281,5 @@ func _done() -> void:
 	if _n < 22:
 		print("  [FAIL] ★断言只有 %d 条(<22) —— 有用例中途中止了" % _n)
 		_fail += 1
-	print("ALL PASS — 033 复活海螺" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 033 魔法海螺" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

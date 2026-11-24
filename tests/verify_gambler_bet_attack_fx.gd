@@ -1,16 +1,16 @@
 extends Node
 ## verify_gambler_bet_attack_fx.gd —— 赌神龟: 多重打击与赌注的牌算作攻击, 触发攻击时 / 普攻命中的装备效果(2026-11-11)
 ##
-## 用户 11-11:「多重打击能不能触发攻击特效？…白鲸气环的三环应该是能触发…它是被算作普通攻击，能够触发攻击特效…
-##   鲨肝油的那个叠攻速，它这个也应该能触发…那这个七下和其他的多重打击是不是都应该能够触发攻击特效？啊，这个应该是能的呀」
-##   ① 被动多重打击连出来的那一发(`_chained_atk`)是真普攻 ⇒ 065 鲨肝油 +1 层(原来就成立, 这里钉住)
+## 用户 11-11:「多重打击能不能触发攻击特效？…灵火的三环应该是能触发…它是被算作普通攻击，能够触发攻击特效…
+##   轻盈药水的那个叠攻速，它这个也应该能触发…那这个七下和其他的多重打击是不是都应该能够触发攻击特效？啊，这个应该是能的呀」
+##   ① 被动多重打击连出来的那一发(`_chained_atk`)是真普攻 ⇒ 065 轻盈药水 +1 层(原来就成立, 这里钉住)
 ##   ② 赌注的牌甩出 = 一次攻击 ⇒ 065 +1 层(`GamblerSystem.bet_card_on_throw`)
-##   ③ 赌注的牌落地 as_attack ⇒ 063 白鲸气环给目标挂 1 层; 对照: 不算攻击的同一张牌不挂(分母: 证明闸门真的在起作用)
+##   ③ 赌注的牌落地 as_attack ⇒ 063 灵火给目标挂 1 层; 对照: 不算攻击的同一张牌不挂(分母: 证明闸门真的在起作用)
 ##   ④ 真入口 `_sk_gambler_bet`(多重打击关掉, 只有 7 张): 7 张牌甩完 ⇒ 065 正好 +7
 ##   ⑤ 源码: 赌注的牌不点剑士(bet_card_on_throw 里没有 swordsman); 补间回调与兜底都走 bet_card_land; 7 张与追加牌都传 as_attack = true
 ## 用户 11-11 追加「多重打击触发的攻击特效仅有百分之五十效果」(范围: 被动连击那几发 + 赌注里多重打击追加的牌; 数值减半, 触发与计数不打折):
-##   ⑥ 被动连击那一发: 鲨肝油的攻速加成 = 平常的一半, 层数照 +1   ⑦ 那一发的弹道记录带 multi_fx = 0.5(命中时用), 平常的 = 1
-##   ⑧ 赌注追加的牌: 攻速加成减半; 赌注本身那 7 张照满   ⑨ 白鲸气环: 多重打击那张牌引爆的伤害 ≈ 平常的一半, 环照样清零(触发不打折)
+##   ⑥ 被动连击那一发: 轻盈药水的攻速加成 = 平常的一半, 层数照 +1   ⑦ 那一发的弹道记录带 multi_fx = 0.5(命中时用), 平常的 = 1
+##   ⑧ 赌注追加的牌: 攻速加成减半; 赌注本身那 7 张照满   ⑨ 灵火: 多重打击那张牌引爆的伤害 ≈ 平常的一半, 环照样清零(触发不打折)
 ##   ⑩ 窗口收尾: _copy_fx_mult / dmg_out_mult 都回到 1
 ## 结算从演出里抽出来直接调(CLAUDE.md §4.5), 不等补间。
 
@@ -86,7 +86,7 @@ func _ready() -> void:
 	g1["_chained_atk"] = true
 	var o0 := _oil(g1)
 	_s._basic_attack(g1, t1)
-	_ok("① 被动多重打击连出来的那一发(_chained_atk)走普攻 ⇒ 鲨肝油 +1 层", _oil(g1) == o0 + 1, "%d → %d" % [o0, _oil(g1)])
+	_ok("① 被动多重打击连出来的那一发(_chained_atk)走普攻 ⇒ 轻盈药水 +1 层", _oil(g1) == o0 + 1, "%d → %d" % [o0, _oil(g1)])
 
 	# ② 赌注的牌甩出 = 一次攻击
 	_s._units.clear()
@@ -96,19 +96,19 @@ func _ready() -> void:
 	_s._units.append(g2)
 	_s._units.append(t2)
 	gsys.bet_card_on_throw(g2, t2)
-	_ok("② 赌注的牌甩出 ⇒ 鲨肝油 +1 层(攻击时的装备钩子)", _oil(g2) == 1, str(_oil(g2)))
+	_ok("② 赌注的牌甩出 ⇒ 轻盈药水 +1 层(攻击时的装备钩子)", _oil(g2) == 1, str(_oil(g2)))
 
-	# ③ 落地: 算攻击 ⇒ 白鲸气环挂环; 对照: 不算攻击 ⇒ 不挂
+	# ③ 落地: 算攻击 ⇒ 灵火挂环; 对照: 不算攻击 ⇒ 不挂
 	var r0: int = int(t2.get("whale_rings", 0))
 	gsys.bet_card_land(g2, t2, 10, Color.WHITE, false, false)
 	var r_off: int = int(t2.get("whale_rings", 0))
 	gsys.bet_card_land(g2, t2, 10, Color.WHITE, false, true)
 	var r_on: int = int(t2.get("whale_rings", 0))
-	_ok("③ 分母: 不算攻击的同一张牌 ⇒ 白鲸气环不挂(技能不施环, 08-11 规格)", r_off == r0, "%d → %d" % [r0, r_off])
-	_ok("③ ★赌注的牌落地算攻击 ⇒ 白鲸气环给目标挂 1 层", r_on == r_off + 1, "%d → %d" % [r_off, r_on])
+	_ok("③ 分母: 不算攻击的同一张牌 ⇒ 灵火不挂(技能不施环, 08-11 规格)", r_off == r0, "%d → %d" % [r0, r_off])
+	_ok("③ ★赌注的牌落地算攻击 ⇒ 灵火给目标挂 1 层", r_on == r_off + 1, "%d → %d" % [r_off, r_on])
 	_ok("③ 落地之后「算作普攻」的标记已清掉(不串到下一次伤害)", not bool(g2.get("_hit_as_basic", false)))
 
-	# ④ 真入口: 放一次赌注, 7 张牌甩完 ⇒ 鲨肝油正好 +7
+	# ④ 真入口: 放一次赌注, 7 张牌甩完 ⇒ 轻盈药水正好 +7
 	_s._units.clear()
 	_s._pending_shots.clear()
 	var g4 := _gambler()
@@ -120,7 +120,7 @@ func _ready() -> void:
 	for _k in range(80):
 		_s._ballistics._step_pending_shots(0.05)
 	_ok("④ 分母: 赌注排进 7 张牌", queued >= 7, str(queued))
-	_ok("④ ★真入口: 7 张牌甩完 ⇒ 鲨肝油正好 +7(每张都算一次攻击)", _oil(g4) == 7, str(_oil(g4)))
+	_ok("④ ★真入口: 7 张牌甩完 ⇒ 轻盈药水正好 +7(每张都算一次攻击)", _oil(g4) == 7, str(_oil(g4)))
 
 	# ⑤ 源码
 	var src := FileAccess.get_file_as_string("res://scripts/systems/skills/gambler_system.gd").replace("\r\n", "\n")
@@ -166,7 +166,7 @@ func _multi_fx_checks(gsys) -> void:
 	var a2 := _aspd(g)
 	var fx_chain: float = float((_s._projectiles.back() as Dictionary).get("multi_fx", -1.0)) if not _s._projectiles.is_empty() else -1.0
 	g["_chained_atk"] = false
-	_ok("⑥ 分母: 平常那一发鲨肝油 +%.2f 攻速" % per, absf((a1 - a0) - per) < 1e-6, "%.4f" % (a1 - a0))
+	_ok("⑥ 分母: 平常那一发轻盈药水 +%.2f 攻速" % per, absf((a1 - a0) - per) < 1e-6, "%.4f" % (a1 - a0))
 	_ok("⑥ ★被动连击那一发: 攻速加成 = 平常的一半", absf((a2 - a1) - per * GamblerSystem.MULTI_FX) < 1e-6, "%.4f" % (a2 - a1))
 	_ok("⑥ 层数照样 +1(触发与计数不打折)", _oil(g) == 2, str(_oil(g)))
 	_ok("⑦ 连击那一发的弹道记着 multi_fx = %.1f, 平常那一发 = 1" % GamblerSystem.MULTI_FX,
@@ -182,7 +182,7 @@ func _multi_fx_checks(gsys) -> void:
 	_ok("⑧ 赌注本身的牌: 攻速加成照满", absf((b1 - b0) - per) < 1e-6, "%.4f" % (b1 - b0))
 	_ok("⑧ ★赌注里多重打击追加的牌: 攻速加成减半", absf((b2 - b1) - per * GamblerSystem.MULTI_FX) < 1e-6, "%.4f" % (b2 - b1))
 
-	# ⑨ 白鲸气环引爆: 伤害减半, 环照样清零
+	# ⑨ 灵火引爆: 伤害减半, 环照样清零
 	var trig: int = int(EqSpiritBatch.RING_TRIGGER)
 	t["hp"] = 100000.0
 	t["whale_rings"] = trig - 1

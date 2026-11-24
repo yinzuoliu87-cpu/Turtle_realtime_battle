@@ -48,7 +48,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	gs.test_mode = true
-	print("=== 最后两件零门禁装备: 054 瞄准镜 / 011 饮血护符坠 ===")
+	print("=== 最后两件零门禁装备: 054 瞄准镜 / 011 血滴护符 ===")
 	_s = RB.new()
 	add_child(_s)
 	for _i in range(30):
@@ -102,9 +102,9 @@ func _t054() -> void:
 	await get_tree().process_frame
 
 
-## ── 011 饮血护符坠: 溢出治疗转血护盾, 上限 200/350/500 ────
+## ── 011 血滴护符: 溢出治疗转血护盾, 上限 200/350/500 ────
 func _t011_cap() -> void:
-	print("── 011 饮血护符坠: 溢出治疗转血护盾(上限 200/350/500) ──")
+	print("── 011 血滴护符: 溢出治疗转血护盾(上限 200/350/500) ──")
 	var want := [200.0, 350.0, 500.0]
 	var got := []
 	for si in range(3):

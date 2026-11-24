@@ -355,7 +355,7 @@ func _place_now(anchor: Control) -> void:
 	var y: float = 54.0
 	if anchor != null and is_instance_valid(anchor):
 		y = anchor.get_global_rect().position.y - 6.0
-	## ★底边避开回放 / 观赛的底部操作条(2026-10-27 用户截图: 铜管手铳的说明下半截被进度条挡住, 文字断在「上限为 1」)。
+	## ★底边避开回放 / 观赛的底部操作条(2026-10-27 用户截图: 小手枪的说明下半截被进度条挡住, 文字断在「上限为 1」)。
 	##   操作条在 _ui_layer 上面一层(replay_controls.gd 为了压住血条), 卡挂在 _ui_layer ⇒ 往上收;
 	##   收到 TOP_Y 还放不下的长卡由 _fit 改成卡内滑动, 卡总高本身就收在操作条上沿之上 —— 不挪层、不压操作条。
 	var x: float = _card_x()

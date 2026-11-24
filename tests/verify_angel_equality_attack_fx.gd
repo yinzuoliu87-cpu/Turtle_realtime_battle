@@ -7,15 +7,15 @@ extends Node
 ## 实现: AngelSystem._equality_hit(出手 = _eq_on_basic_attack; 落地 = _hit_as_basic; 再结算 judge_hit)
 ##       + AngelSystem.judge_hit(审判被动只在这一处, 普攻命中与平等每一段共用)。
 ##   ① 龟能: SkillEnergy 与 pets.json 都是 90
-##   ② 真入口 `_sk_angel_equality`, C 级目标(4 道圣光): 065 鲨肝油 +4 层(攻击时)、061 钻孔螺破损 +4 层(命中时按普攻)、
-##      063 白鲸气环 4 下 = 满 3 引爆一次 + 剩 1 层
-##   ③ A 级目标(4 道 + 审判光柱): 鲨肝油 +5、破损 +5
+##   ② 真入口 `_sk_angel_equality`, C 级目标(4 道圣光): 065 轻盈药水 +4 层(攻击时)、061 钻孔螺破损 +4 层(命中时按普攻)、
+##      063 灵火 4 下 = 满 3 引爆一次 + 剩 1 层
+##   ③ A 级目标(4 道 + 审判光柱): 轻盈药水 +5、破损 +5
 ##   ④ 分母: 同一个目标挨一段不算攻击的技能伤害 ⇒ 破损不涨(钻孔螺「技能不触发」闸门真的在) ; 落地后「算作普攻」标记已清
 ##   ⑤ 审判被动每一段都结算一次(无装备的天使、按段逐步推算目标血量); 普攻命中仍正好一次
 ##   ⑥ 飞升的打包被动(每次普攻命中 +龟能 +攻击力)不跟着平等的每一段走(这次没改它)
 ##   ⑦ 源码: 主场景不再自己写审判系数(走 judge_hit); 审判伤害式子全仓只有一处; _equality_hit 不点剑士
 ## 结算从演出里抽出来直接调(CLAUDE.md §4.5)。
-## 反向验证(11-19): 去掉出手钩子 ⇒ ②③ 鲨肝油红; 落地不带 _hit_as_basic ⇒ ②③ 破损 / 气环红;
+## 反向验证(11-19): 去掉出手钩子 ⇒ ②③ 轻盈药水红; 落地不带 _hit_as_basic ⇒ ②③ 破损 / 灵火红;
 ##   光柱不走 _equality_hit ⇒ ③ 红; _equality_hit 里不调 judge_hit ⇒ ⑤ 红; 龟能写回 60 ⇒ ① 红。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -116,9 +116,9 @@ func _ready() -> void:
 	var q2: int = _s._pending_shots.size()
 	_run_pending()
 	_ok("② 分母: C 级目标排进 %d 段(4 道圣光, 没有光柱)" % q2, q2 == AngelSystem.EQUAL_SEGMENTS)
-	_ok("② ★4 道圣光各算一次攻击 ⇒ 鲨肝油正好 +4 层(攻击时的装备效果)", _oil(a2) == 4, str(_oil(a2)))
+	_ok("② ★4 道圣光各算一次攻击 ⇒ 轻盈药水正好 +4 层(攻击时的装备效果)", _oil(a2) == 4, str(_oil(a2)))
 	_ok("② ★4 道圣光命中按普攻判 ⇒ 钻孔螺破损 +4 层(命中时的装备效果)", int(t2.get("breach_stacks", 0)) == 4, str(t2.get("breach_stacks", 0)))
-	_ok("② ★白鲸气环: 4 下 = 满 %d 层引爆一次 + 剩 %d 层" % [trig, 4 - trig], int(t2.get("whale_rings", -1)) == 4 - trig, str(t2.get("whale_rings", -1)))
+	_ok("② ★灵火: 4 下 = 满 %d 层引爆一次 + 剩 %d 层" % [trig, 4 - trig], int(t2.get("whale_rings", -1)) == 4 - trig, str(t2.get("whale_rings", -1)))
 	_ok("② 落地之后「算作普攻」的标记已清掉(不串到下一次伤害)", not bool(a2.get("_hit_as_basic", false)))
 
 	# ③ A 级目标: 4 道 + 审判光柱
@@ -130,7 +130,7 @@ func _ready() -> void:
 	var q3: int = _s._pending_shots.size()
 	_run_pending()
 	_ok("③ 分母: A 级目标排进 %d 段(4 道 + 光柱)" % q3, q3 == AngelSystem.EQUAL_SEGMENTS + 1)
-	_ok("③ ★审判光柱也算一次攻击 ⇒ 鲨肝油 +5、破损 +5", _oil(a3) == 5 and int(t3.get("breach_stacks", 0)) == 5,
+	_ok("③ ★审判光柱也算一次攻击 ⇒ 轻盈药水 +5、破损 +5", _oil(a3) == 5 and int(t3.get("breach_stacks", 0)) == 5,
 		"油 %d / 破损 %d" % [_oil(a3), int(t3.get("breach_stacks", 0))])
 
 	# ④ 分母: 不算攻击的技能伤害不触发钻孔螺

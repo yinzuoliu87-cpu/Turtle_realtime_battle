@@ -1,6 +1,6 @@
 extends Node
-## verify_equip_040_045.gd — 040 FPGA板 / 041 退潮浊液 / 042 涟漪药剂 /
-##                            043 海浪护符 / 044 深海项链 / 045 地狱护盾 (2026-09-13)
+## verify_equip_040_045.gd — 040 FPGA板 / 041 潮汐药水 / 042 活力药水 /
+##                            043 海浪护符 / 044 珍珠项链 / 045 地狱护盾 (2026-09-13)
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
@@ -89,7 +89,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 040 FPGA板 / 041 退潮浊液 / 042 涟漪药剂 / 043 海浪护符 / 044 深海项链 / 045 地狱护盾 ===")
+	print("=== 040 FPGA板 / 041 潮汐药水 / 042 活力药水 / 043 海浪护符 / 044 珍珠项链 / 045 地狱护盾 ===")
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -172,7 +172,7 @@ func _ready() -> void:
 		float(c1.get("damage_amp", 0.0)) < 0.001 and float(c1.get("damage_reduction", 0.0)) < 0.001,
 		"文案写的是「3.5 秒内」, 不是永久")
 
-	# ══════════════ 041 退潮浊液 ══════════════
+	# ══════════════ 041 潮汐药水 ══════════════
 	_ok("② ★分母: 登场 %.0f 秒后涨潮 / 体积 +%.0f%% / 射程 +%.0f 码"
 		% [ES.TIDE_DELAY, ES.TIDE_SIZE_UP * 100.0, ES.TIDE_RANGE_UP],
 		absf(ES.TIDE_DELAY - 5.0) < 0.01 and absf(ES.TIDE_SIZE_UP - 0.30) < 0.001
@@ -208,7 +208,7 @@ func _ready() -> void:
 			t1.get("alive", false) and float(t1["hp"]) > 0.0,
 			"文案明写「退潮不会致死, 只把生命削到新上限」")
 
-	# ══════════════ 042 涟漪药剂 ══════════════
+	# ══════════════ 042 活力药水 ══════════════
 	_ok("③ ★分母: 每 %.0f 秒回一次" % ES.RIPPLE_IV, absf(ES.RIPPLE_IV - 8.0) < 0.01)
 	_s._units.clear()
 	var c3: Dictionary = _mk(500.0, 400.0, "left")

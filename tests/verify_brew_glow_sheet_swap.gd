@@ -1,5 +1,5 @@
 extends Node
-## verify_brew_glow_sheet_swap.gd —— 066 鲸涎浓浆金红光: 龟换动作表后不越界(60 人实操台账 A3)
+## verify_brew_glow_sheet_swap.gd —— 066 狂暴药水金红光: 龟换动作表后不越界(60 人实操台账 A3)
 ## 原现象: brew_glow_tick 只抄 frame, 不抄贴图/切格 ⇒ 龟换到帧数更多的表时光晕那张表越界, 每帧报 p_frame out of bounds。
 ## 判据: 光晕建在 1 帧的表上 → 本体换成 6 帧表并停在第 5 帧 → tick 一次 ⇒ 光晕的切格跟上、帧号在界内、等于本体帧号。
 const VFX := preload("res://scripts/scenes/battle/potion_eq_vfx.gd")

@@ -51,7 +51,7 @@ func _eq_apply_all_stats() -> void:
 
 
 ## ★这里原来是 `_apply_feast_hp()` ——「072 百年龟苓宴: 开战给全队 +60/110/180 最大生命」。
-##   2026-08-05 用户把 072 整条重做成【铁皮蛋糕盒】(终极护盾 + 变身礼盒 + 阵亡分裂),
+##   2026-08-05 用户把 072 整条重做成【蛋糕盒】(终极护盾 + 变身礼盒 + 阵亡分裂),
 ##   新设计里【没有"开战送血"这一半】⇒ 整段删掉, 不是搬走。
 ##   效果本体见 scripts/systems/equip/eq_food_batch.gd 的 §072 段。
 
@@ -143,10 +143,10 @@ func apply_stat_dict(u: Dictionary, st: Dictionary, item_id: String) -> void:
 		u["move_perm"] = float(u.get("move_perm", 1.0)) + float(st["_mspdPct"]) / 100.0
 	if st.has("_rangePct"):     # 射程% → range_perm(★新通道; atk_range 被 34 处直接读, 不能就地乘)
 		u["range_perm"] = float(u.get("range_perm", 1.0)) + float(st["_rangePct"]) / 100.0
-	if st.has("_rangeAdd"):     # 射程 flat(码) → range_add(2026-08-05·065 鲨肝油)。同理不能就地写 atk_range
+	if st.has("_rangeAdd"):     # 射程 flat(码) → range_add(2026-08-05·065 轻盈药水)。同理不能就地写 atk_range
 		u["range_add"] = float(u.get("range_add", 0.0)) + float(st["_rangeAdd"])
 	# ↓ 以下4类原先漏接: 数值表里写了、单位字段也确实被消费, 但从没往里写 → 属性栏骗人(用户2026-07-19发现)
-	# ★★2026-08-02 修【反伤发两次】: p2eq_015 荆棘海胆必须【跳过】这个通用钩。
+	# ★★2026-08-02 修【反伤发两次】: p2eq_015 荆棘盾牌必须【跳过】这个通用钩。
 	#   它在 equip_system.gd:1104 有【专属分支】自己发反伤(而且要把伤害累计进 thorn_accum
 	#   才能触发"满阈值 → 护盾 + 强化下一次普攻")。两条路都在 battle_damage.gd 的同一个
 	#   `if not from_equip` 块里触发, 无互斥 ⇒ 实际反伤是名义值的【两倍】,
@@ -210,17 +210,17 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 			# 闪避率改从 battle.EquipStats.STATS 取 —— 它此前是这里的内联字面量, 而图鉴/背包读 STATS,
 			# 于是闪避在两处 UI 里都不显示(用户2026-07-19「必须写完整」的漏网)。现在同源。
 			# ★★2026-08-02: 闪避改走【通用 dodgePct 分支】(见本文件上方), 这里不再自己 _buff ——
-			#   否则同一件装备的闪避会【发两次】, 与 p2eq_015 荆棘海胆"反伤发两次"是同一个形状
+			#   否则同一件装备的闪避会【发两次】, 与 p2eq_015 荆棘盾牌"反伤发两次"是同一个形状
 			#   (那次实测 2.00× 名义)。专属分支只留它独有的东西: 闪避触发的永久护盾。
 			stt["ghost_shield"] = [30.0, 50.0, 120.0][si]
 		"p2eq_054":   # 瞄准镜: 必中 (无视目标闪避)
 			u["eq_cannot_be_dodged"] = true
-		"p2eq_013", "p2eq_014":   # 炙烤海胆(cap20·+1/1.5/2) / 深海堡垒甲(cap25·+1.5/2.5/6·用户2026-11-11)
+		"p2eq_013", "p2eq_014":   # 烤海胆(cap20·+1/1.5/2) / 深海堡垒甲(cap25·+1.5/2.5/6·用户2026-11-11)
 			stt["harden_inc"] = (EquipTickSystem.FORTRESS_HARDEN_INC[si] if item_id == "p2eq_014" else [1.0, 1.5, 2.0][si])
 			stt["harden_cap"] = (EquipTickSystem.FORTRESS_CAP if item_id == "p2eq_014" else EquipSystem.URCHIN_CAP)
 			stt["harden_stacks"] = 0
 			stt["harden_given"] = false
-		"p2eq_015":   # 荆棘海胆: 反伤转真伤+施流血
+		"p2eq_015":   # 荆棘盾牌: 反伤转真伤+施流血
 			# ★用户 2026-07-30 效果重做: 反伤比例提到 12/25/40%;
 			#   流血【不再每次反伤都给】, 改成"累计反伤到阈值 → 护盾 + 强化下一次普攻"。
 			#   (reflect_bleed 这个每击流血字段已废除 —— 留着会是死字段。)
@@ -249,12 +249,12 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 			u["flat_dr"] = float(u.get("flat_dr", 0.0)) + [3.0, 6.0, 10.0][si]
 		"p2eq_024":   # 龙蛋: 装备即3层吐息
 			stt["dragon_stacks"] = 3
-		"p2eq_039":   # 竹制弓箭: 生长充能数 (6/10/15 次·用户2026-07-19 从 1/1/3 提上来)
+		"p2eq_039":   # 竹弓: 生长充能数 (6/10/15 次·用户2026-07-19 从 1/1/3 提上来)
 			stt["bamboo_charges"] = [6, 10, 15][si]   # 用户2026-07-19: 1/1/3 → 6/10/15 (一局重置: eq_state每场重建)
 		"p2eq_052":   # 左轮: 6发子弹
 			## ★2026-10-16: 多把左轮共用 eq_state 一槽 ⇒ 弹数按件数放大(原来两把共 6 发, 等于第二把没带弹)
 			stt["revolver_bullets"] = EquipSystem.REVOLVER_AMMO * eq_copies(u, "p2eq_052")
-		"p2eq_027":   # 电棍: 3/4/5 层电击(逐星)
+		"p2eq_027":   # 电击器: 3/4/5 层电击(逐星)
 			stt["baton_charges"] = [3, 4, 5][si]
 		"p2eq_058":   # 穿甲遗弹(重做·用户2026-07-19): 登场召唤炮台 (延到首帧spawn, 同032)
 			u["_turret_pending"] = true   # 首帧按【每一件】各召一座(各自星级, 11-13); 星级从条目现取, 不再写到龟身上(原来后一件覆盖前一件)
@@ -264,13 +264,13 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 			## ★延到首帧 —— 与 058/032 同样的理由: 开战 setup 期间敌方单位还没全进
 			##   `battle._units`, 这里挑不出人来。("登场时"每条路各触发一次。)
 			u["_gremlin_pending"] = true   # 首帧按【每一件】各发一轮(各自星级, 11-13)
-		"p2eq_032":   # 唤灵骨符: 登场召唤亡灵骷髅 (延到首帧spawn, 避免开战setup中append battle._units)
+		"p2eq_032":   # 骨哨: 登场召唤亡灵骷髅 (延到首帧spawn, 避免开战setup中append battle._units)
 			u["_skele_pending"] = true   # 首帧按【每一件】各召一只(各自星级, 11-13)
-		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
+		"p2eq_047":   # 战锤: ATK += maxHp×pct (一次性按当前maxHp折算)
 			stt["hammer_pct"] = [0.01, 0.02, 0.03][si]   # 这一件自己的比例(面板「当前提供攻击力」读它; eq_state 随直播下发, 观战照样显示)
-			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + float(stt["hammer_pct"])   # 重击锤(3★ 15%→8% 用户2026-10-10; 4/6/8% → 1/2/3% 用户2026-11-11): 随maxHp动态(在_recalc_stats累加), 多件叠加
+			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + float(stt["hammer_pct"])   # 战锤(3★ 15%→8% 用户2026-10-10; 4/6/8% → 1/2/3% 用户2026-11-11): 随maxHp动态(在_recalc_stats累加), 多件叠加
 			battle._recalc_stats(u)
-		"p2eq_041":   # 退潮浊液: 登场5秒后涨潮(临时+maxHp/+攻击/+体积/+射程), 到期退潮还原(用户2026-07-19)
+		"p2eq_041":   # 潮汐药水: 登场5秒后涨潮(临时+maxHp/+攻击/+体积/+射程), 到期退潮还原(用户2026-07-19)
 			## ★用户 2026-09-30 加强: 250/400/650 → 500/1100/2000 maxHp ·
 			##   10/16/25 → 16/31/60 atk · 8/11/15 → 12/16/22 秒。
 			var hp41: float = [500.0, 1100.0, 2000.0][si]   # 装备hp是最终值, 不乘HP_MULT
@@ -290,7 +290,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 			u["eq_exec_immune"] = true
 			stt["anchor_accum"] = 0.0    # 累积治疗, 满 ANCHOR_ACC_PER_CHARGE(250)→+1充能
 			stt["anchor_charges"] = 0    # 沉锚充能 (施法时消耗)
-		"p2eq_011":   # 饮血护符坠: 溢出治疗转血护盾 (累积上限200/350/500; 11-13 起多件各一份上限、相加 —— 用户「各自生效」; 原取最大)
+		"p2eq_011":   # 血滴护符: 溢出治疗转血护盾 (累积上限200/350/500; 11-13 起多件各一份上限、相加 —— 用户「各自生效」; 原取最大)
 			u["overheal2shield_cap"] = float(u.get("overheal2shield_cap", 0.0)) + [200.0, 350.0, 500.0][si]
 			stt["o2s_cap"] = [200.0, 350.0, 500.0][si]   # 这一件自己的那份(「本局」按上限占比分账)
 		# ══ 批③(2026-08-05) 常驻字段类 —— 值写在这里, 消费点在 EquipSystem / battle_damage ══
@@ -300,13 +300,13 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 		#    ★换路会整体重建单位字典 → 本函数在每一路的开战管线里重跑 → 字段自动重写(方案书 R5)。
 		# ══ 灵物 5 件(2026-08-05 用户逐件重做·§0.5 定稿) ══════════════════════
 		#    ★p2eq_063 原来在这里写 `_ink_sac`(幽影墨囊·致命伤留 1 血)。063 已整条重做成
-		#      【白鲸气环】, 那两行随之删掉 ⇒ `_ink_sac` 通道进入休眠(函数留着, 见
+		#      【灵火】, 那两行随之删掉 ⇒ `_ink_sac` 通道进入休眠(函数留着, 见
 		#      EquipSystem._eq_ink_sac 的头注: 调用点在 battle_damage 两条路上, 删不得)。
 		#    ★下面两件只写【常驻字段】: 消费点是 EqSpiritBatch.tick_unit(每帧, 在
 		#      EquipSystem._eq_tick 的 EQ_TICK 闸之前)。不带这两件的单位每帧只多两次 dict.get。
 		#    ★11-13 起多件各自生效(用户「两件相同装备…各自生效」): 两件 060 各跑一套 7 秒计时、各自开伞
 		#      (原「取星级更高的那一件」作废; 强度上两把伞减伤覆盖率更高, 数值另调)。`_parasol_si` 按份换装(EquipSystem.UF)。
-		"p2eq_060":   # 磷光水母伞: 每 7 秒开伞 2.5 秒(减伤 + 闪避 + 结束回血), 自管两相计时
+		"p2eq_060":   # 水母伞: 每 7 秒开伞 2.5 秒(减伤 + 闪避 + 结束回血), 自管两相计时
 			u["_parasol_si"] = maxi(int(u.get("_parasol_si", -1)), si)
 			stt["pa_t"] = 0.0
 			stt["pa_open"] = false
@@ -322,7 +322,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 			stt["emp_energy"] = 0.0
 			stt["emp_armed"] = false
 			stt["emp_armed_energy"] = 0.0
-		"p2eq_064":   # 溺者的浮囊: 首次跌破 35% 血 → 幽灵护盾(每路一次, eq_state 换路重建)
+		"p2eq_064":   # 溺者符囊: 首次跌破 35% 血 → 幽灵护盾(每路一次, eq_state 换路重建)
 			u["_bladder_si"] = maxi(int(u.get("_bladder_si", -1)), si)
 			stt["ghost_fired"] = false
 			stt["ghost_res"] = 0.0
@@ -345,7 +345,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 			u["_food_eq"] = true
 		# ★这里原来有 085/086 的 `_b3_gadget`(受法术伤害时掷骰充能 / 减速+反弹)
 		#   与 094「觉醒之核」的 `awk_t0`/`awk_done`(本路开打时刻)。三件都已整条重做
-		#   (085 → 压电陶瓷片: 受【所有】伤害按比例转龟能; 086 → 六分仪浮游炮; 094 → 祖龟碑:
+		#   (085 → 蓄电池: 受【所有】伤害按比例转龟能; 086 → 终极浮游炮; 094 → 墓碑:
 		#   阵亡才立碑) ⇒ 旧字段作废。批④ 统一的登场标记 `_b4_eq` 在 `_b4_on_spawn_all` 里写。
 		"p2eq_036":   # 温泉蛋: 孵化进度 → 临时等级(上限随星级) → 满级全队均摊护盾(一次) + 携带者每秒回血
 			stt["incub"] = 0.0
@@ -368,17 +368,17 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 		#       CLAUDE.md §3.4 那颗地雷: battle._t 跨上路/下路/决胜累加、永不重置,
 		#       直接判 `_t >= 11` 会让**下路一开场就触发**。本函数跑在【每一路的开战管线】里,
 		#       所以它记的正好是"本路开打"(同 094 觉醒之核)。
-		"p2eq_065":   # 鲨肝油: 每次普攻叠攻速(不设上限·换路重置=单位重建天然带来的)
+		"p2eq_065":   # 轻盈药水: 每次普攻叠攻速(不设上限·换路重置=单位重建天然带来的)
 			u["_potion_tick"] = true
 			stt["oil_stacks"] = 0
-		"p2eq_066":   # 鲸涎浓浆: 本路第 11 秒喝药 → 免疫控制 + 十项属性 + 体型 +40%
+		"p2eq_066":   # 狂暴药水: 本路第 11 秒喝药 → 免疫控制 + 十项属性 + 体型 +40%
 			u["_potion_tick"] = true
 			stt["brew_t0"] = battle._t
 			stt["brew_done"] = false
 		"p2eq_067":   # 毒药瓶: 每 6 秒投瓶(周期表) + 中毒者治疗/护盾减半(每帧)
 			u["_potion_tick"] = true
 			stt["vial_thrown"] = 0
-		"p2eq_068":   # 深海气压罐: 受伤充能, 本路第 12 秒起每 12 秒释放法力护盾 + 法力激光
+		"p2eq_068":   # 氧气瓶: 受伤充能, 本路第 12 秒起每 12 秒释放法力护盾 + 法力激光
 			u["_potion_tick"] = true
 			stt["can_t0"] = battle._t
 			stt["can_charge"] = 0.0
@@ -386,9 +386,9 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 	u["eq_state"][ck] = stt
 
 
-## ── 041 退潮浊液: 涨潮 / 退潮(2026-11-13 从 equip_system.gd 搬来 —— 那个文件到了 3000 行预算; 外部仍走 EquipSystem 的同名转发) ──
+## ── 041 潮汐药水: 涨潮 / 退潮(2026-11-13 从 equip_system.gd 搬来 —— 那个文件到了 3000 行预算; 外部仍走 EquipSystem 的同名转发) ──
 ## ck = 份号: 同名多件各涨各的、各退各的(11-13 用户「各自生效」; 原来 `_ebb_on` 一个开关 ⇒ 第二件被挡掉)。单件逐字不变。
-func ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float, ck: String = "p2eq_041") -> void:   # 退潮浊液041: 涨潮期开始
+func ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float, ck: String = "p2eq_041") -> void:   # 潮汐药水041: 涨潮期开始
 	var act: Array = u.get("_ebb_cks", [])
 	if not u.get("alive", false) or act.has(ck): return
 	act.append(ck); u["_ebb_cks"] = act
@@ -414,7 +414,7 @@ func ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float, ck: Str
 		battle._vfx._float_text(u["pos"] + Vector2(0, -70), "涨潮", Color("#5fe0d0"))
 	battle._pending_shots.append({"delay": dur, "fn": func(): ebb_recede(u, hp_add, atk_add, ck), "src": u})
 
-func ebb_recede(u: Dictionary, hp_add: float, atk_add: float, ck: String = "p2eq_041") -> void:   # 退潮浊液041: 到期还原(只还这一件的)
+func ebb_recede(u: Dictionary, hp_add: float, atk_add: float, ck: String = "p2eq_041") -> void:   # 潮汐药水041: 到期还原(只还这一件的)
 	if not u.get("_ebb_on", false): return
 	var act: Array = u.get("_ebb_cks", [])
 	if act.has(ck):

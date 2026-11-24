@@ -1,8 +1,8 @@
 extends Node
-## verify_eq058_036_045.gd — 058→远古炮台 / 036 回血改公式 / 045→地狱护盾 (2026-08-31)
+## verify_eq058_036_045.gd — 058→远古炮塔 / 036 回血改公式 / 045→地狱护盾 (2026-08-31)
 ##
 ## ★需求原文(用户 2026-08-31):
-##   「穿甲遗弹改为远古炮台并重做图标，温泉蛋的生命恢复改为每秒回复
+##   「穿甲遗弹改为远古炮塔并重做图标，温泉蛋的生命恢复改为每秒回复
 ##     2/5/10+0.3/0.8/1.2%最大生命值，珍珠耳环改命为地狱护盾并重做图标」
 ##   045 走 (a): **只改名换图, 效果照旧**(用户:「a，有啥对不上的」)。
 ##
@@ -51,7 +51,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	gs.test_mode = true
-	print("=== 058 远古炮台 / 036 回血 / 045 地狱护盾 ===")
+	print("=== 058 远古炮塔 / 036 回血 / 045 地狱护盾 ===")
 	_s = RB.new()
 	add_child(_s)
 	for _i in range(30):
@@ -83,7 +83,7 @@ func _ready() -> void:
 
 	# ── 058 / 045: 改名换图, 效果不动 ──
 	var e58: Dictionary = DataRegistry.phase2_equipment_by_id.get("p2eq_058", {})
-	_ok("058 名字 = 远古炮台", str(e58.get("name", "")) == "远古炮台", str(e58.get("name", "")))
+	_ok("058 名字 = 远古炮塔", str(e58.get("name", "")) == "远古炮塔", str(e58.get("name", "")))
 	_ok("058 图标换成专属新图且文件在盘上",
 		str(e58.get("img", "")) == "equip/ancient-turret.png"
 		and ResourceLoader.exists("res://assets/sprites/equip/ancient-turret.png"))
@@ -132,7 +132,7 @@ func _ready() -> void:
 # ═════════════════════════════════════════════════════════════════════
 func _t058_turret_numbers() -> void:
 	print("")
-	print("── ⑤ 058 远古炮台 · 召唤数值 + 每次普攻的累积 ──")
+	print("── ⑤ 058 远古炮塔 · 召唤数值 + 每次普攻的累积 ──")
 	var WANT_HP: Array = [650.0, 1400.0, 2500.0]
 	var WANT_ATK: Array = [70.0, 120.0, 180.0]
 	var HP_PER_ATK := 10.0

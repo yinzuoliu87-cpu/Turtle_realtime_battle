@@ -50,7 +50,7 @@ func _init(b) -> void:
 ##   · 这一局每一方长了多少记在 `grown`(裁判写进结果单 bamboo_new / bamboo_new_b, 客户端 RefereeWatch.apply_bamboo 累积进存档);
 ##   · 登场 `apply_season_growth`: 左方读存档 GameState.bamboo_growth_hp, 右方读对手快照 bamboo_hp, 再加上**这一局已经长的**
 ##     (用户 11-19「一直的上路成长，那肯定是在对」: 上路 / 下路长的进终极战场还在 —— 终极战场按幸存名单重建单位, 不接就丢);
-##   · 不设上限(用户「没有上限啊，不用上限」)。039 竹制弓箭的绿球不进这里(用户「竹制弓箭…不要动啊」)。
+##   · 不设上限(用户「没有上限啊，不用上限」)。039 竹弓的绿球不进这里(用户「竹弓…不要动啊」)。
 var grown := {"left": 0.0, "right": 0.0}
 
 

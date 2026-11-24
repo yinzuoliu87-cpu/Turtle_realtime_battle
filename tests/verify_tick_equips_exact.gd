@@ -74,7 +74,7 @@ func _ready() -> void:
 		"盾 %.1f → %.1f (增 %.1f, 应 %.1f)"
 			% [sh0, float(u12.get("shield", 0.0)), float(u12.get("shield", 0.0)) - sh0, want12])
 
-	# ── 019 海葵药膏: 每 7 秒奶自己 ────────────────────────────────────────
+	# ── 019 药膏: 每 7 秒奶自己 ────────────────────────────────────────
 	var u19: Dictionary = _stage(s, "p2eq_019", 3)
 	u19["hp"] = 2500.0
 	var hp0: float = float(u19["hp"])
@@ -131,12 +131,12 @@ func _ready() -> void:
 			t8 = float((u8["equips"][0] as Dictionary)[k2])
 	_ok("★★008 计时器【真的在走】(喂 0.5 秒后 coral_t 前进)", t8 > 0.0, "coral_t=%.2f" % t8)
 
-	# ── 027 电棍: 攒充能 ───────────────────────────────────────────────────
+	# ── 027 电击器: 攒充能 ───────────────────────────────────────────────────
 	var u27: Dictionary = _stage(s, "p2eq_027", 3)
 	var b0: int = int((u27["eq_state"].get("p2eq_027", {}) as Dictionary).get("baton_charges", 0))
 	tk._tick_baton(u27, 30.0)
 	var b1: int = int((u27["eq_state"].get("p2eq_027", {}) as Dictionary).get("baton_charges", 0))
-	_ok("★027 电棍: 喂 30 秒后充能账有动静(起 %d → %d)" % [b0, b1],
+	_ok("★027 电击器: 喂 30 秒后充能账有动静(起 %d → %d)" % [b0, b1],
 		(u27["eq_state"].get("p2eq_027", {}) as Dictionary).size() > 0,
 		"eq_state=%s" % str(u27["eq_state"].get("p2eq_027", {})))
 

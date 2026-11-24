@@ -37,7 +37,7 @@ extends RefCounted
 
 const KEYS := ["phy", "mag", "tru", "heal", "shield", "blocked", "dodge",   # blocked / dodge: 060 伞「减伤挡下」「闪避次数」(11-12)
 	"energy", "coins", "ts_sec", "stun", "knock", "cc_block", "dot_bleed", "dot_burn", "dot_poison", "surge"]   # surge: 041 涨潮次数
-## ★11-15 补齐(用户「压电陶瓷片…已获得龟能」「辣椒…施加流血层数是多少多少层」): 每件装备的「本局」= 结果数 + 次数 / 层数。
+## ★11-15 补齐(用户「蓄电池…已获得龟能」「辣椒…施加流血层数是多少多少层」): 每件装备的「本局」= 结果数 + 次数 / 层数。
 ##   energy 龟能(085 / 065 / 076 / 059 …, `EquipSystem._eq_grant_energy` 唯一入口) · coins 深海币(035) · ts_sec 时停秒数(059)
 ##   stun / knock 控制上身次数(`_stun` / `_knockback` / `_knock_up` 过了免疫才记) · cc_block 被免掉的控制(066 免控 / 017 免击飞)
 ##   dot_* 施加的层数(`on_dot_add` 归到装备的那一份)。都是纯记账, 不读不改任何结算字段。
@@ -269,7 +269,7 @@ func on_cc(u: Dictionary, kind: String) -> void:
 	_add(a[0], str(a[1]), kind, 1.0)
 
 
-## 控制被免掉了(各入口的免疫分支调): 066 鲸涎浓浆喝药后的免控 / 017 不沉之锚的免击飞, 记在被保护的携带者自己身上。
+## 控制被免掉了(各入口的免疫分支调): 066 狂暴药水喝药后的免控 / 017 不沉之锚的免击飞, 记在被保护的携带者自己身上。
 func on_cc_block(u: Dictionary, kind: String) -> void:
 	if bool(u.get("_brew_immune", false)) and _carries(u, "p2eq_066"):
 		_add(u, battle._equip_sys.key_of(u, "p2eq_066"), "cc_block", 1.0)

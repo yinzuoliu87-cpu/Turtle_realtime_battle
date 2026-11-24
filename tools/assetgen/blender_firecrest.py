@@ -1,4 +1,4 @@
-"""blender_firecrest.py — 023 灼热火珊瑚【火焰波】的一簇火冠(8 帧循环)。
+"""blender_firecrest.py — 023 火珊瑚【火焰波】的一簇火冠(8 帧循环)。
 
 跑法(无窗口):
   blender --background --python tools/assetgen/blender_firecrest.py -- --out C:/tmp/fc --frames 8 --only <k> --px 256

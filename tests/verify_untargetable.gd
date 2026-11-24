@@ -75,7 +75,7 @@ func _ready() -> void:
 		"%.0f → %.0f" % [hp_before, float(mech["hp"])])
 
 	# ── E. 训龟大师(场外监视者)不被【单体定向】技选中 ──
-	# 起因(用户 2026-07-24):「双穿珊瑚刺为啥还能锁到训龟大师」。根因: 珊瑚刺/竹击/背刺 这类"挑最远一个"
+	# 起因(用户 2026-07-24):「珊瑚刺为啥还能锁到训龟大师」。根因: 珊瑚刺/竹击/背刺 这类"挑最远一个"
 	# 的单体定向技原走 _enemies_of(含大师) → 而大师在场外·永远最远 → 每次都锁它(飞去角落/瞬移过去)。
 	# 铁律(§PICK-TARGET): 单体挑选必须走 _pick_enemies_of(排除大师+不可选中); 真 AOE 才用 _enemies_of。
 	var caster: Dictionary = scene._spawn._make_unit("basic", "left", Vector2(0, 0))

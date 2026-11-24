@@ -82,7 +82,7 @@ func _ready() -> void:
 			{"id": "p2eq_048", "star": 1}, {"id": "p2eq_050", "star": 1},
 			{"id": "p2eq_051", "star": 1}, {"id": "p2eq_052", "star": 1},
 			{"id": "p2eq_048", "star": 1},                      # 重复 id: 不该多算
-			## ★别拿 p2eq_049 当枪 —— 它是【弓箭】(连发弩)。第一版就这么写的, 门禁当场报
+			## ★别拿 p2eq_049 当枪 —— 它是【弓箭】(手弩)。第一版就这么写的, 门禁当场报
 			##   "枪=3 不是 4" 把我的测试数据抓了出来。装备属于哪个类型一律查 data/p2eq-types.json。
 		]
 		var rows: Array = GameState.synergy_rows()

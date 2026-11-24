@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""blender_truefire.py — 022 余烬燃油瓶【真火】的持续燃烧(8 帧循环)。
+"""blender_truefire.py — 022 燃烧瓶【真火】的持续燃烧(8 帧循环)。
 
 跑法(无窗口):
   blender --background --python tools/assetgen/blender_truefire.py -- --out C:/tmp/tf --frames 8 --px 320

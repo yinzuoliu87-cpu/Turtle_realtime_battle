@@ -3,10 +3,10 @@
 
 ★★为什么有这个东西(2026-09-14):
   装备逐件体检到第七、第八批, **同一个形状连抓四处**:
-    · 070 压舱咸鱼砖  `BRICK_SPLASH_R` = 250  ↔ 演出 `SPLASH_RANGE_PX` = 250
+    · 070 大火腿  `BRICK_SPLASH_R` = 250  ↔ 演出 `SPLASH_RANGE_PX` = 250
     · 071 炼乳罐      `CREAM_BURST_R`  = 300  ↔ 演出里**硬写** `range_m(300.0)`
-    · 072 铁皮蛋糕盒  `BOX_TAUNT_PX`   = 550  ↔ 演出 `TAUNT_RANGE_PX` = 550
-    · 072 铁皮蛋糕盒  `BOX_FIELD_PX`   = 300  ↔ 演出 `CAKE_FIELD_PX`  = 300
+    · 072 蛋糕盒  `BOX_TAUNT_PX`   = 550  ↔ 演出 `TAUNT_RANGE_PX` = 550
+    · 072 蛋糕盒  `BOX_FIELD_PX`   = 300  ↔ 演出 `CAKE_FIELD_PX`  = 300
 
   值今天都一样, 所以画面上看不出任何问题。它是**潜伏缺陷**: 改一个不改另一个,
   环画的范围就和真打的范围对不上 —— 而这正是第五批(046~051)抓到的那一整类

@@ -197,7 +197,7 @@ func _adopt(n: Node3D) -> void:
 
 
 ## 半透明填充材质(MIX·只画正面)。★不用 ADD —— 实心体正反面叠加会爆成纯白,
-##   axe_final_vfx 的头注记着 088 祖龟碑那次。
+##   axe_final_vfx 的头注记着 088 墓碑那次。
 ## 带顶点色的材质(六边形网格用: 逐格亮度靠顶点 alpha 表达)。
 func _mat_vcol(col: Color, prio: int = 0) -> StandardMaterial3D:
 	var m: StandardMaterial3D = _mat_solid(col, prio, true)

@@ -1,6 +1,6 @@
 class_name EqSummons
 extends RefCounted
-## 登场召唤类装备: 058 远古炮台 / 032 唤灵骨符(2026-11-13 从 equip_system.gd 搬出 —— 那个文件到了 3000 行架构预算)。
+## 登场召唤类装备: 058 远古炮塔 / 032 骨哨(2026-11-13 从 equip_system.gd 搬出 —— 那个文件到了 3000 行架构预算)。
 ## 外部仍走 EquipSystem 的同名转发(`_eq_summon_turret` / `_tick_eq_turret` / `_eq_summon_skeleton`), 门禁与主场景不用改。
 ## ★11-13 用户「两件肯定召唤两个炮台啊，三件召唤三个炮台」: 每件各召一个、各自星级(份号 ck, 方案书 20261113)。
 
@@ -94,7 +94,7 @@ func skeleton(u: Dictionary, si: int, ck: String = "p2eq_032") -> void:   # ck =
 		var tw = battle._reg_tween()
 		tw.tween_property(sk["sprite"], "scale", base_sc, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
-## 033 复活海螺: 和 w 同一件海螺的虫(同一携带者 · 同一份号「p2eq_033#2」)现存几只。
+## 033 魔法海螺: 和 w 同一件海螺的虫(同一携带者 · 同一份号「p2eq_033#2」)现存几只。
 ## ★分裂上限 WORM_CAP 按【件】算(用户 11-13「不应该出两个吗？」): 两件 3★ 各自分裂到 4 只 = 8 只;
 ##   两只龟各带一件也各算各的。原来按「我方场上所有海螺虫」算, 第二件的虫会占掉第一件的名额。
 ## 分裂虫在主场景 _tick_summon_special 里继承 `_eq_src` / `_eq_owner`, 所以整条分裂链都认得出属于哪一件。

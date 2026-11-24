@@ -1,5 +1,5 @@
 extends Node
-## verify_candle_signal_bamboo.gd — 037 蛋糕蜡烛 + 038 信号放大器 + 039 竹制弓箭 (2026-09-13)
+## verify_candle_signal_bamboo.gd — 037 蜡烛 + 038 信号放大器 + 039 竹弓 (2026-09-13)
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
@@ -66,7 +66,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 037 蛋糕蜡烛 + 038 信号放大器 + 039 竹制弓箭 ===")
+	print("=== 037 蜡烛 + 038 信号放大器 + 039 竹弓 ===")
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -75,7 +75,7 @@ func _ready() -> void:
 	_s.process_mode = Node.PROCESS_MODE_DISABLED
 	_s._edit_mode = false
 
-	# ══════════════ 037 蛋糕蜡烛 ══════════════
+	# ══════════════ 037 蜡烛 ══════════════
 	_ok("① ★分母: %d 个阶段 / 每 %.0f 秒切 / 回血半径 %.0f 码 / 爆燃半径 %.0f 码 / 友军按 %.1f 折"
 		% [ES.CANDLE_PHASES, ES.CANDLE_IV, ES.CANDLE_HEAL_R, ES.CANDLE_BURN_R, ES.CANDLE_ALLY_HALF],
 		ES.CANDLE_PHASES == 3 and absf(ES.CANDLE_IV - 5.0) < 0.01
@@ -187,7 +187,7 @@ func _ready() -> void:
 		int(st4.get("sig_stacks", -1)) <= SW.MAX_STACKS,
 		"文案: 最多叠加 20 层")
 
-	# ══════════════ 039 竹制弓箭 ══════════════
+	# ══════════════ 039 竹弓 ══════════════
 	_ok("⑤ ★分母: 回血/伤害的自身最大生命占比 %.0f%%" % (ES.BAMBOO_ARROW_MAXHP_PCT * 100.0),
 		absf(ES.BAMBOO_ARROW_MAXHP_PCT - 0.06) < 0.001)
 	for si in [0, 1, 2]:

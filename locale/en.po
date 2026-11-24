@@ -1427,8 +1427,8 @@ msgstr "An empowered state entered some time after spawning: greatly increased m
 msgid "【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。"
 msgstr "Removes all [High Tide] bonuses when it ends. This can't kill; health drops to the new maximum."
 
-msgid "气环"
-msgstr "Bubble Ring"
+msgid "灵火"
+msgstr "Spirit Flame"
 
 msgid "攻击对敌人施加的层数。达到最大层数时引爆，造成基于该敌人最大生命值的真实伤害。"
 msgstr "Stacks applied to enemies by attacks. At max stacks it detonates, dealing true damage based on the enemy's max health."
@@ -1532,8 +1532,8 @@ msgstr "Stacks the Mini Crystal Ball applies to enemies. At max stacks it detona
 msgid "符纸"
 msgstr "Talisman"
 
-msgid "蚀月符纸贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。"
-msgstr "A damage-over-time effect from the Eclipse Talisman that also lowers magic resist each second. Stacks. When the target dies, it moves to the nearest enemy with its remaining duration."
+msgid "符咒贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。"
+msgstr "A damage-over-time effect from the Talisman that also lowers magic resist each second. Stacks. When the target dies, it moves to the nearest enemy with its remaining duration."
 
 msgid "星际龟的技能：以自身为中心释放一圈向外扩散的环形波。"
 msgstr "Space Turtle's ability: releases a ring wave that expands outward from itself."
@@ -1550,8 +1550,8 @@ msgstr "Urchin Shield"
 msgid "海胆每次受到伤害时叠加一层硬化，层数达到上限时为自身提供的护盾，随后在数秒内逐渐衰减。"
 msgstr "The urchin gains a Harden stack each time it takes damage. At max stacks it shields itself, and the shield decays over a few seconds."
 
-msgid "余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。对龟蛋的灼烧伤害会降低，数值见余烬燃油瓶。"
-msgstr "A status from Ember: Burn damage this enemy takes becomes true damage (not reduced by magic resist). Reduced against Turtle Eggs; see Ember Oil Flask for values."
+msgid "余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。对龟蛋的灼烧伤害会降低，数值见燃烧瓶。"
+msgstr "A status from Ember: Burn damage this enemy takes becomes true damage (not reduced by magic resist). Reduced against Turtle Eggs; see Molotov for values."
 
 msgid "靶子"
 msgstr "Target"
@@ -4232,20 +4232,20 @@ msgstr "Fortune Flows In"
 msgid "木制长剑"
 msgstr "Wooden Longsword"
 
-msgid "饮血护符坠"
-msgstr "Bloodthirst Pendant"
+msgid "血滴护符"
+msgstr "Blood Drop Amulet"
 
 msgid "海藻"
 msgstr "Seaweed"
 
-msgid "炙烤海胆"
-msgstr "Grilled Sea Urchin"
+msgid "烤海胆"
+msgstr "Grilled Urchin"
 
 msgid "深海堡垒甲"
 msgstr "Abyssal Fortress Armor"
 
-msgid "荆棘海胆"
-msgstr "Thorny Sea Urchin"
+msgid "荆棘盾牌"
+msgstr "Thorn Shield"
 
 msgid "铁壁盾"
 msgstr "Iron Wall Shield"
@@ -4256,20 +4256,20 @@ msgstr "Unsinkable Anchor"
 msgid "守护贝壳"
 msgstr "Guardian Seashell"
 
-msgid "海葵药膏"
-msgstr "Anemone Salve"
+msgid "药膏"
+msgstr "Salve"
 
 msgid "辣椒"
 msgstr "Chili Pepper"
 
-msgid "守护贝母"
-msgstr "Guardian Nacre"
+msgid "蚌壳"
+msgstr "Clam Shell"
 
-msgid "余烬燃油瓶"
-msgstr "Ember Oil Flask"
+msgid "燃烧瓶"
+msgstr "Molotov"
 
-msgid "灼热火珊瑚"
-msgstr "Scorching Fire Coral"
+msgid "火珊瑚"
+msgstr "Fire Coral"
 
 msgid "龙蛋"
 msgstr "Dragon Egg"
@@ -4280,29 +4280,29 @@ msgstr "Thunder Seashell"
 msgid "雷电法杖"
 msgstr "Lightning Staff"
 
-msgid "电棍"
-msgstr "Stun Baton"
+msgid "电击器"
+msgstr "Stun Gun"
 
 msgid "冰冻药剂"
 msgstr "Freezing Potion"
 
-msgid "冰封水母"
-msgstr "Frozen Jellyfish"
+msgid "寒冰法杖"
+msgstr "Frost Staff"
 
-msgid "迷你水晶球A"
-msgstr "Mini Crystal Ball A"
+msgid "粉色迷你水晶"
+msgstr "Pink Mini Crystal"
 
 msgid "锋利鲨齿"
 msgstr "Sharp Shark Tooth"
 
-msgid "迷你水晶球B"
-msgstr "Mini Crystal Ball B"
+msgid "蓝色迷你水晶"
+msgstr "Blue Mini Crystal"
 
-msgid "唤灵骨符"
-msgstr "Spirit-Calling Bone Charm"
+msgid "骨哨"
+msgstr "Bone Whistle"
 
-msgid "复活海螺"
-msgstr "Revival Conch"
+msgid "魔法海螺"
+msgstr "Magic Conch"
 
 msgid "玩偶小熊"
 msgstr "Teddy Bear"
@@ -4313,13 +4313,13 @@ msgstr "Brass Gear"
 msgid "温泉蛋"
 msgstr "Hot Spring Egg"
 
-msgid "蛋糕蜡烛"
-msgstr "Cake Candle"
+msgid "蜡烛"
+msgstr "Candle"
 
 msgid "信号放大器"
 msgstr "Signal Amplifier"
 
-msgid "竹制弓箭"
+msgid "竹弓"
 msgstr "Bamboo Bow"
 
 msgid "FPGA板"
@@ -4328,17 +4328,17 @@ msgstr "FPGA Board"
 msgid "暴君之牙"
 msgstr "Tyrant's Fang"
 
-msgid "退潮浊液"
-msgstr "Ebb-Tide Sludge"
+msgid "潮汐药水"
+msgstr "Tide Potion"
 
-msgid "涟漪药剂"
-msgstr "Ripple Potion"
+msgid "活力药水"
+msgstr "Vigor Potion"
 
 msgid "海浪护符"
 msgstr "Wave Amulet"
 
-msgid "深海项链"
-msgstr "Abyssal Necklace"
+msgid "珍珠项链"
+msgstr "Pearl Necklace"
 
 msgid "地狱护盾"
 msgstr "Hellfire Shield"
@@ -4346,17 +4346,17 @@ msgstr "Hellfire Shield"
 msgid "幽灵墨鱼"
 msgstr "Ghost Cuttlefish"
 
-msgid "重击锤"
-msgstr "Heavy Hammer"
+msgid "战锤"
+msgstr "Warhammer"
 
-msgid "黄铜手铳"
-msgstr "Brass Hand Cannon"
+msgid "燧发枪"
+msgstr "Flintlock"
 
-msgid "连发弩"
-msgstr "Repeating Crossbow"
+msgid "手弩"
+msgstr "Hand Crossbow"
 
-msgid "幽灵加特林"
-msgstr "Ghost Gatling"
+msgid "加特林"
+msgstr "Gatling"
 
 msgid "双生匕首"
 msgstr "Twin Daggers"
@@ -4367,8 +4367,8 @@ msgstr "Laser Pistol"
 msgid "左轮手枪"
 msgstr "Revolver"
 
-msgid "霰弹贝古"
-msgstr "Scattershell Blunderbuss"
+msgid "喇叭枪"
+msgstr "Blunderbuss"
 
 msgid "瞄准镜"
 msgstr "Scope"
@@ -4379,17 +4379,17 @@ msgstr "Virus Arrowhead"
 msgid "飞镖"
 msgstr "Darts"
 
-msgid "狙击长管"
-msgstr "Sniper Barrel"
+msgid "狙击枪"
+msgstr "Sniper Rifle"
 
-msgid "远古炮台"
+msgid "远古炮塔"
 msgstr "Ancient Turret"
 
 msgid "沙漏"
 msgstr "Hourglass"
 
-msgid "磷光水母伞"
-msgstr "Phosphor Jelly Umbrella"
+msgid "水母伞"
+msgstr "Jellyfish Umbrella"
 
 msgid "千刃风暴"
 msgstr "Thousand-Blade Storm"
@@ -4400,29 +4400,26 @@ msgstr "Drill Snail"
 msgid "螳螂虾钳"
 msgstr "Mantis Shrimp Claw"
 
-msgid "白鲸气环"
-msgstr "Beluga Bubble Ring"
+msgid "溺者符囊"
+msgstr "Drowned Charm Pouch"
 
-msgid "溺者的浮囊"
-msgstr "Drowned Man's Float"
+msgid "轻盈药水"
+msgstr "Swiftness Potion"
 
-msgid "鲨肝油"
-msgstr "Shark Liver Oil"
-
-msgid "鲸涎浓浆"
-msgstr "Ambergris Syrup"
+msgid "狂暴药水"
+msgstr "Berserk Potion"
 
 msgid "毒药瓶"
 msgstr "Poison Vial"
 
-msgid "深海气压罐"
-msgstr "Deep-Sea Pressure Tank"
+msgid "氧气瓶"
+msgstr "Oxygen Tank"
 
 msgid "草莓蛋糕"
 msgstr "Strawberry Cake"
 
-msgid "压舱咸鱼砖"
-msgstr "Ballast Saltfish Brick"
+msgid "大火腿"
+msgstr "Big Ham"
 
 msgid "锈蚀阔剑"
 msgstr "Rusted Broadsword"
@@ -4430,11 +4427,11 @@ msgstr "Rusted Broadsword"
 msgid "炼乳罐"
 msgstr "Condensed Milk Can"
 
-msgid "铁皮蛋糕盒"
-msgstr "Tin Cake Box"
+msgid "蛋糕盒"
+msgstr "Cake Box"
 
-msgid "藤蔓弓弦"
-msgstr "Vine Bowstring"
+msgid "藤弓"
+msgstr "Vine Bow"
 
 msgid "魔法胸甲"
 msgstr "Magic Breastplate"
@@ -4442,23 +4439,20 @@ msgstr "Magic Breastplate"
 msgid "银色箭袋"
 msgstr "Silver Quiver"
 
-msgid "连发弩机"
-msgstr "Auto-Crossbow"
+msgid "连弩"
+msgstr "Repeating Crossbow"
 
-msgid "铜管手铳"
-msgstr "Copper Hand Cannon"
+msgid "双管枪"
+msgstr "Double-Barrel"
 
-msgid "电鳗双管铳"
-msgstr "Eel Double-Barrel"
+msgid "医疗塔"
+msgstr "Medic Tower"
 
-msgid "珊瑚急救塔"
-msgstr "Coral Aid Tower"
+msgid "旋翼机"
+msgstr "Gyrocopter"
 
-msgid "打捞旋翼机"
-msgstr "Salvage Gyrocopter"
-
-msgid "双穿珊瑚刺"
-msgstr "Twinpierce Coral Spike"
+msgid "珊瑚刺"
+msgstr "Coral Spike"
 
 msgid "藤编圆盾"
 msgstr "Wicker Round Shield"
@@ -4466,26 +4460,26 @@ msgstr "Wicker Round Shield"
 msgid "护心甲"
 msgstr "Heartguard Plate"
 
-msgid "潮汐细剑"
-msgstr "Tidal Rapier"
+msgid "细剑"
+msgstr "Rapier"
 
 msgid "手半剑"
 msgstr "Bastard Sword"
 
-msgid "压电陶瓷片"
-msgstr "Piezo Ceramic Plate"
+msgid "蓄电池"
+msgstr "Battery"
 
-msgid "六分仪浮游炮"
-msgstr "Sextant Drone Cannon"
+msgid "终极浮游炮"
+msgstr "Ultimate Drone Cannon"
 
-msgid "盗令潜水钟"
-msgstr "Thief's Diving Bell"
+msgid "潜水钟"
+msgstr "Diving Bell"
 
-msgid "涨潮碑"
-msgstr "Rising Tide Stele"
+msgid "潮汐图腾"
+msgstr "Tide Totem"
 
-msgid "蚀月符纸"
-msgstr "Eclipse Talisman"
+msgid "符咒"
+msgstr "Talisman"
 
 msgid "镇海杵"
 msgstr "Sea-Calming Pestle"
@@ -4493,8 +4487,8 @@ msgstr "Sea-Calming Pestle"
 msgid "月之刃"
 msgstr "Moon Blade"
 
-msgid "远古龟甲片"
-msgstr "Ancient Shell Shard"
+msgid "龟甲"
+msgstr "Tortoise Shell"
 
 msgid "每 {C:EquipTickSystem.RUST_IV} 秒甩出一道剑气，造成（60/75/100% 攻击力+40/60/100×暴击率）物理伤害。"
 msgstr "Every {C:EquipTickSystem.RUST_IV} seconds, flings a sword wave that deals (60/75/100% Attack + 40/60/100 × Crit Chance) physical damage."
@@ -4661,8 +4655,8 @@ msgstr "Attacks deal bonus magic damage equal to 2/2.5/3% of the target's max he
 msgid "释放技能后，下次攻击额外造成物理伤害并回复其中 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值，伤害随技能消耗的龟能提高。"
 msgstr "After casting an ability, the next attack deals bonus physical damage and heals for {C:EqSpiritBatch.MANTIS_LEECH%}% of it. Damage scales with the Energy the ability cost."
 
-msgid "释放技能后获得攻击速度。攻击对敌人施加一层【气环】，可叠加 3 层，满层时引爆，造成基于该敌人最大生命值的真实伤害。"
-msgstr "Gains attack speed after casting an ability. Attacks apply a [Bubble Ring] stack to enemies, up to 3. At max stacks it detonates, dealing true damage based on the enemy's max health."
+msgid "释放技能后获得攻击速度。攻击对敌人施加一层【灵火】，可叠加 3 层，满层时引爆，造成基于该敌人最大生命值的真实伤害。"
+msgstr "Gains attack speed after casting an ability. Attacks apply a [Spirit Flame] stack to enemies, up to 3. At max stacks it detonates, dealing true damage based on the enemy's max health."
 
 msgid "生命值首次低于 {C:EqSpiritBatch.GHOST_HP_LINE%}% 时获得 50/80/160% 最大生命值的幽灵护盾，破碎时诅咒敌人。"
 msgstr "The first time health drops below {C:EqSpiritBatch.GHOST_HP_LINE%}%, gains a Ghost Shield equal to 50/80/160% of max health. When it breaks, it curses enemies."
@@ -4763,8 +4757,8 @@ msgstr "Summons a venomous flyer that leaves a poison fog along its path, stacki
 msgid "每 {C:IncenseStoneSystem.EMP_IV} 秒强化接下来的 {C:IncenseStoneSystem.EMP_SHOTS} 次攻击：+{C:IncenseStoneSystem.EMP_ASPD%}% 攻击速度，并附带额外伤害，回复该伤害 {C:IncenseStoneSystem.EMP_LS%}% 的生命值。"
 msgstr "Every {C:IncenseStoneSystem.EMP_IV} seconds, empowers the next {C:IncenseStoneSystem.EMP_SHOTS} attacks: +{C:IncenseStoneSystem.EMP_ASPD%}% attack speed and bonus damage, healing for {C:IncenseStoneSystem.EMP_LS%}% of that damage."
 
-msgid "阵亡时立起祖龟碑：全队获得 12/22/35% 增伤，并每 {C:EqRelicBatch.STELE_BOLT_IV} 秒砸下石雷。"
-msgstr "On death, raises an Ancestor Turtle Stele: the team gains 12/22/35% Damage Amp, and it drops a stone bolt every {C:EqRelicBatch.STELE_BOLT_IV} seconds."
+msgid "阵亡时立起墓碑：全队获得 12/22/35% 增伤，并每 {C:EqRelicBatch.STELE_BOLT_IV} 秒砸下石雷。"
+msgstr "On death, raises an Tombstone: the team gains 12/22/35% Damage Amp, and it drops a stone bolt every {C:EqRelicBatch.STELE_BOLT_IV} seconds."
 
 msgid "每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾。护盾存在时，每次被攻击或技能命中时反击 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害。"
 msgstr "Gains {C:ShieldSynergySystem.HOLY_AMOUNT} Holy Shield every {C:ShieldSynergySystem.HOLY_PERIOD} seconds. While it holds, each attack or ability hit taken strikes back for {C:ShieldSynergySystem.RIPOSTE_FLAT} true damage."
@@ -5267,8 +5261,8 @@ msgstr "Each attack hit deals bonus magic damage equal to 2/2.5/3% of the target
 msgid "释放技能后，下次攻击额外造成 60/90/140% 攻击力 + 3/5/9% 目标最大生命值的物理伤害，并回复此伤害 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。\n本次技能每消耗 1 点龟能，此伤害提高 {C:EqSpiritBatch.MANTIS_PER_ENERGY%}%。"
 msgstr "After casting an ability, the next attack deals 60/90/140% Attack + 3/5/9% of the target's max health as bonus physical damage and heals for {C:EqSpiritBatch.MANTIS_LEECH%}% of it.\nThis damage increases by {C:EqSpiritBatch.MANTIS_PER_ENERGY%}% for each Energy that ability cost."
 
-msgid "释放技能后获得 30/60/100% 攻击速度，持续时间为本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY} 秒。\n自身的攻击会对敌人施加一层【气环】，在 3 层时引爆，对该敌人造成（15/30/50+{C:EqSpiritBatch.RING_ATK_COEF%}% 攻击力+2.5/4/6% 该敌人最大生命值）真实伤害。"
-msgstr "After casting an ability, gains 30/60/100% attack speed for (Energy that ability cost × {C:EqSpiritBatch.RING_SEC_PER_ENERGY}) seconds.\nAttacks apply a [Bubble Ring] stack to enemies. At 3 stacks it detonates, dealing (15/30/50 + {C:EqSpiritBatch.RING_ATK_COEF%}% Attack + 2.5/4/6% of that enemy's max health) true damage."
+msgid "释放技能后获得 30/60/100% 攻击速度，持续时间为本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY} 秒。\n自身的攻击会对敌人施加一层【灵火】，在 3 层时引爆，对该敌人造成（15/30/50+{C:EqSpiritBatch.RING_ATK_COEF%}% 攻击力+2.5/4/6% 该敌人最大生命值）真实伤害。"
+msgstr "After casting an ability, gains 30/60/100% attack speed for (Energy that ability cost × {C:EqSpiritBatch.RING_SEC_PER_ENERGY}) seconds.\nAttacks apply a [Spirit Flame] stack to enemies. At 3 stacks it detonates, dealing (15/30/50 + {C:EqSpiritBatch.RING_ATK_COEF%}% Attack + 2.5/4/6% of that enemy's max health) true damage."
 
 msgid "生命值首次降至 {C:EqSpiritBatch.GHOST_HP_LINE%}% 以下时，获得自身最大生命值 50/80/160% 的【幽灵护盾】，此护盾会在 {C:EqSpiritBatch.GHOST_DECAY} 秒内线性衰减。\n持有该护盾期间获得 {C:EqSpiritBatch.GHOST_DODGE%}% 闪避与 30/60/120 点双抗。\n该护盾被击破或自然衰减耗尽时会爆炸，使附近的敌人陷入 {C:EqSpiritBatch.GHOST_CURSE_SEC} 秒【诅咒】。\n每个战场一次。"
 msgstr "The first time health drops below {C:EqSpiritBatch.GHOST_HP_LINE%}%, gains a [Ghost Shield] equal to 50/80/160% of max health that decays steadily over {C:EqSpiritBatch.GHOST_DECAY} seconds.\nWhile it holds, gains {C:EqSpiritBatch.GHOST_DODGE%}% Dodge and 30/60/120 Armor and Magic Resist.\nWhen the shield breaks or fully decays, it explodes, applying [Curse] to nearby enemies for {C:EqSpiritBatch.GHOST_CURSE_SEC} seconds.\nOnce per battle."
@@ -5369,8 +5363,8 @@ msgstr "Summons an untargetable venomous flyer that dies when the holder dies.\n
 msgid "主动：每 {C:IncenseStoneSystem.EMP_IV} 秒强化接下来的 {C:IncenseStoneSystem.EMP_SHOTS} 次攻击，这 {C:IncenseStoneSystem.EMP_SHOTS} 次攻击获得 {C:IncenseStoneSystem.EMP_ASPD%}% 攻击速度，并附带 30/50/80+目标最大生命值 1/1.5/2% 的物理伤害，回复相当于该附带伤害 {C:IncenseStoneSystem.EMP_LS%}% 的生命值。"
 msgstr "Active: every {C:IncenseStoneSystem.EMP_IV} seconds, empowers the next {C:IncenseStoneSystem.EMP_SHOTS} attacks. Those {C:IncenseStoneSystem.EMP_SHOTS} attacks gain {C:IncenseStoneSystem.EMP_ASPD%}% attack speed and deal 30/50/80 + 1/1.5/2% of the target's max health as bonus physical damage, healing for {C:IncenseStoneSystem.EMP_LS%}% of that bonus damage."
 
-msgid "阵亡时在原地立起一座不可选中的祖龟碑，持续到本战场结束。\n祖龟碑为全体友军提供 12/22/35% 增伤与 18/32/50 双抗，并每 {C:EqRelicBatch.STELE_BOLT_IV} 秒向最近的敌人砸下一道石雷，造成 130/260/500 魔法伤害。"
-msgstr "On death, raises an untargetable Ancestor Turtle Stele in place that lasts until the battle ends.\nThe stele gives all allies 12/22/35% Damage Amp and 18/32/50 Armor and Magic Resist, and drops a stone bolt on the nearest enemy every {C:EqRelicBatch.STELE_BOLT_IV} seconds for 130/260/500 magic damage."
+msgid "阵亡时在原地立起一座不可选中的墓碑，持续到本战场结束。\n墓碑为全体友军提供 12/22/35% 增伤与 18/32/50 双抗，并每 {C:EqRelicBatch.STELE_BOLT_IV} 秒向最近的敌人砸下一道石雷，造成 130/260/500 魔法伤害。"
+msgstr "On death, raises an untargetable Tombstone in place that lasts until the battle ends.\nThe stele gives all allies 12/22/35% Damage Amp and 18/32/50 Armor and Magic Resist, and drops a stone bolt on the nearest enemy every {C:EqRelicBatch.STELE_BOLT_IV} seconds for 130/260/500 magic damage."
 
 msgid "每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒为自身提供 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。圣光护盾存在时，自身每次被攻击或技能命中，对攻击者反击造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害。"
 msgstr "Every {C:ShieldSynergySystem.HOLY_PERIOD} seconds, gains {C:ShieldSynergySystem.HOLY_AMOUNT} Holy Shield. While the Holy Shield holds, each attack or ability hit taken strikes back at the attacker for {C:ShieldSynergySystem.RIPOSTE_FLAT} true damage."
@@ -6089,14 +6083,14 @@ msgstr "Diamond Structure"
 msgid "聚宝盆"
 msgstr "Treasure Bowl"
 
-msgid "毒蛾茧"
-msgstr "Venom Moth Cocoon"
+msgid "毒蛾"
+msgstr "Venom Moth"
 
 msgid "香火石"
 msgstr "Incense Stone"
 
-msgid "祖龟碑"
-msgstr "Ancestor Turtle Stele"
+msgid "墓碑"
+msgstr "Tombstone"
 
 msgid "圣光护盾"
 msgstr "Holy Light Shield"

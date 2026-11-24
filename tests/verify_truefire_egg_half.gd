@@ -1,5 +1,5 @@
 extends Node
-## verify_truefire_egg_half.gd —— 022 余烬燃油瓶【真火】打龟蛋: 灼烧伤害减少 EMBER_TRUEFIRE_EGG_REDUCE%(用户 2026-11-06
+## verify_truefire_egg_half.gd —— 022 燃烧瓶【真火】打龟蛋: 灼烧伤害减少 EMBER_TRUEFIRE_EGG_REDUCE%(用户 2026-11-06
 ## 「真火对龟蛋的伤害减少百分之五十」)。
 ##
 ## 做法: 真实 RealtimeBattle3DScene 里造一只龟蛋(走 _make_unit 的 egg spec, 单位上带 `_isEgg`)和一只普通单位,
@@ -71,7 +71,7 @@ func _ready() -> void:
 
 	## 文案里写了这条(数字走占位符, 不手抄)
 	var txt := FileAccess.get_file_as_string("res://data/phase2-equipment.json")
-	_ok("★余烬燃油瓶文案写了龟蛋减伤且读常量", txt.contains("对龟蛋的灼烧伤害降低 {C:EquipSystem.EMBER_TRUEFIRE_EGG_REDUCE}%"))
+	_ok("★燃烧瓶文案写了龟蛋减伤且读常量", txt.contains("对龟蛋的灼烧伤害降低 {C:EquipSystem.EMBER_TRUEFIRE_EGG_REDUCE}%"))
 
 	print("%d passed, %d failed" % [_n - _fail, _fail])
 	print("ALL PASS — 真火打龟蛋减伤 %d%%" % reduce if _fail == 0 else "FAIL")

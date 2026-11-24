@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""blender_bindbead.py — 021 守护贝母【绑定绳】上的圆珠(4 帧呼吸)。
+"""blender_bindbead.py — 021 蚌壳【绑定绳】上的圆珠(4 帧呼吸)。
 
 跑法(无窗口):
   blender --background --python tools/assetgen/blender_bindbead.py -- --out C:/tmp/bb --frames 4 --px 96

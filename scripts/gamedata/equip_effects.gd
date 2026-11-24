@@ -25,12 +25,12 @@ static func specs() -> Dictionary:
 	if not _specs.is_empty():
 		return _specs
 	_specs = {
-		## 黄铜手铳: 每 8 秒朝最近的敌人方向依次射 4 / 5 / 6 发, 每发命中直线上第一个敌人(原 equip_system._eq_pistol_volley)
-		## 11-19 用户「黄铜手铳的伤害需要加强」: 每发 50/54/60% → 50/90/150% 攻击力
+		## 燧发枪: 每 8 秒朝最近的敌人方向依次射 4 / 5 / 6 发, 每发命中直线上第一个敌人(原 equip_system._eq_pistol_volley)
+		## 11-19 用户「燧发枪的伤害需要加强」: 每发 50/54/60% → 50/90/150% 攻击力
 		"p2eq_048": {"trigger": "interval", "iv": EquipSystem.HANDGUN_IV, "action": "volley", "aim": "nearest", "band": 36.0,
 			"shots": [4, 5, 6], "gap": 0.08, "dmg": {"coef": [0.5, 0.9, 1.5]},
 			"fx": {"flash": "#ffe08a", "tex": "res://assets/sprites/vfx/bullet.png", "col": "#fff0b0", "psize": 0.026}},
-		## 连发弩: 每 8 秒朝最远的敌人方向依次射 1 / 2 / 3 发, 按目标已损生命加伤(原 equip_system._eq_crossbow_volley)
+		## 手弩: 每 8 秒朝最远的敌人方向依次射 1 / 2 / 3 发, 按目标已损生命加伤(原 equip_system._eq_crossbow_volley)
 		"p2eq_049": {"trigger": "interval", "iv": EquipSystem.XBOW_IV, "action": "volley", "aim": "farthest", "band": 42.0,
 			"shots": [1, 2, 3], "gap": EquipSystem.XBOW_GAP,
 			"dmg": {"lost_hp_lerp": [EquipSystem.XBOW_MIN_COEF, EquipSystem.XBOW_MAX_COEF, EquipSystem.XBOW_LOST_FULL]},

@@ -1,46 +1,45 @@
 eq|FPGA板|effectBrief	6.0
 eq|FPGA板|effectDesc1	1.0 1.0 1.0 1.0 3.5 3.5 5.0 6.0 7.0 12.0 15.0 15.0 25.0
 eq|不沉之锚|effectDesc1	0.25 1.5 100.0 250.0
-eq|余烬燃油瓶|effectBrief	5.0 8.0
-eq|余烬燃油瓶|effectDesc1	5.0 8.0 50.0
 eq|信号放大器|effectBrief	5.0
 eq|信号放大器|effectDesc1	2.5 5.0 5.0 20.0 30.0 90.0 90.0 360.0
-eq|六分仪浮游炮|effectBrief	3.0 6.0
-eq|六分仪浮游炮|effectDesc1	2.0 3.0 6.0 50.0
 eq|冰冻药剂|effectBrief	5.0 6.0
 eq|冰冻药剂|effectDesc1	5.0 6.0 10.0 20.0
-eq|冰封水母|effectDesc1	0.6
+eq|加特林|effectBrief	8.0
+eq|加特林|effectDesc1	8.0
 eq|千刃风暴|effectBrief	7.0
 eq|千刃风暴|effectDesc1	7.0
-eq|压舱咸鱼砖|effectDesc1	10.0
-eq|双穿珊瑚刺|effectBrief	9.0
-eq|双穿珊瑚刺|effectDesc1	9.0
+eq|双管枪|effectBrief	2.0
+eq|双管枪|effectDesc1	2.0 50.0
 eq|哑铃|effectBrief	8.0
 eq|哑铃|effectDesc1	8.0
+eq|喇叭枪|effectBrief	1.5 8.0 8.0
+eq|喇叭枪|effectDesc1	1.5 2.5 8.0 8.0 22.0
 eq|圣光护盾|effectBrief	2.0 3.0 55.0
 eq|圣光护盾|effectDesc1	2.0 3.0 55.0
 eq|地狱护盾|effectBrief	50.0
 eq|地狱护盾|effectDesc1	8.0 50.0
-eq|复活海螺|effectDesc1	0.65 4.0 5.0
-eq|复活海螺|effectDesc3	2.5 4.0
+eq|墓碑|effectBrief	3.0
+eq|墓碑|effectDesc1	3.0
+eq|大火腿|effectDesc1	10.0
 eq|守护贝壳|effectBrief	8.0
 eq|守护贝壳|effectDesc1	8.0
-eq|守护贝母|effectBrief	5.0
-eq|守护贝母|effectDesc1	4.0 5.0 10.0 10.0
+eq|寒冰法杖|effectDesc1	0.6
+eq|小手枪|effectDesc1	0.5 1.0 5.0 50.0 700.0
 eq|小木斧|effectDesc1	0.2 3.0 4.0 5.0 5.0 8.0 10.0 12.0 12.0 14.0 24.0 24.0 30.0 140.0 400.0 500.0
 eq|小木斧|effectDesc2	2.0 2.5 3.0 3.0 4.0 4.0 5.0 5.0 5.0 9.0 10.0 50.0 50.0 70.0 140.0 180.0 250.0
 eq|小木斧|effectDesc3	0.3 0.5 0.5 1.0 1.0 2.5 3.0 3.0 3.0 4.0 4.0 4.0 5.0 5.0 5.0 5.0 8.0 10.0 13.0 13.0 20.0 20.0 25.0 25.0 25.0 25.0 25.0 30.0 30.0 30.0 40.0 50.0 50.0 60.0 80.0 80.0 100.0 150.0 150.0 300.0 400.0 1200.0
 eq|左轮手枪|effectBrief	4.0
 eq|左轮手枪|effectDesc1	4.0 6.0 6.0
-eq|幽灵加特林|effectBrief	8.0
-eq|幽灵加特林|effectDesc1	8.0
 eq|幽灵墨鱼|effectBrief	4.0
 eq|幽灵墨鱼|effectDesc1	4.0
 eq|手半剑|effectBrief	450.0
 eq|手半剑|effectDesc1	20.0 80.0 100.0 100.0 450.0
-eq|打捞旋翼机|effectDesc1	1.2 4.0 10.0 30.0 40.0 100.0
+eq|手弩|effectBrief	8.0
+eq|手弩|effectDesc1	8.0 30.0 80.0 130.0
 eq|护心甲|effectBrief	15.0
 eq|护心甲|effectDesc1	15.0
+eq|旋翼机|effectDesc1	1.2 4.0 10.0 30.0 40.0 100.0
 eq|暴君之牙|effectBrief	6.0
 eq|暴君之牙|effectDesc1	6.0 20.0 40.0 100.0
 eq|月之刃|effectBrief	100.0
@@ -49,80 +48,86 @@ eq|木制长剑|effectBrief	3.0
 eq|木制长剑|effectDesc1	3.0
 eq|毒药瓶|effectBrief	6.0
 eq|毒药瓶|effectDesc1	6.0 50.0
-eq|毒蛾茧|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
+eq|毒蛾|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
+eq|氧气瓶|effectBrief	12.0
+eq|氧气瓶|effectDesc1	3.0 5.0 8.0 12.0 12.0
+eq|水母伞|effectBrief	2.5 7.0
+eq|水母伞|effectDesc1	2.5 7.0 7.0 15.0
 eq|沙漏|effectBrief	10.0
 eq|沙漏|effectDesc1	1.0 10.0
+eq|活力药水|effectBrief	8.0
+eq|活力药水|effectDesc1	8.0
 eq|海浪护符|effectDesc1	4.0
-eq|海葵药膏|effectBrief	7.0
-eq|海葵药膏|effectDesc1	7.0
 eq|海藻|effectBrief	4.0 4.0
 eq|海藻|effectDesc1	4.0 4.0
-eq|涟漪药剂|effectBrief	8.0
-eq|涟漪药剂|effectDesc1	8.0
-eq|涨潮碑|effectBrief	5.0
-eq|涨潮碑|effectDesc1	5.0
 eq|深海堡垒甲|effectBrief	8.0 25.0
 eq|深海堡垒甲|effectDesc1	5.0 8.0 25.0
-eq|深海气压罐|effectBrief	12.0
-eq|深海气压罐|effectDesc1	3.0 5.0 8.0 12.0 12.0
-eq|深海项链|effectBrief	16.0 50.0
-eq|深海项链|effectDesc1	16.0 50.0
 eq|温泉蛋|effectBrief	100.0
 eq|温泉蛋|effectDesc1	0.1 0.1 2.5 5.0 5.0 10.0 15.0 100.0
-eq|溺者的浮囊|effectBrief	35.0
-eq|溺者的浮囊|effectDesc1	4.0 15.0 20.0 35.0
-eq|潮汐细剑|effectDesc1	0.5 20.0
+eq|溺者符囊|effectBrief	35.0
+eq|溺者符囊|effectDesc1	4.0 15.0 20.0 35.0
+eq|潜水钟|effectDesc1	2.0 3.0 3.0 10.0 10.0 15.0
+eq|潮汐图腾|effectBrief	5.0
+eq|潮汐图腾|effectDesc1	5.0
+eq|潮汐药水|effectBrief	5.0
+eq|潮汐药水|effectDesc1	5.0 30.0 50.0
 eq|激光手枪|effectBrief	8.0
 eq|激光手枪|effectDesc1	8.0 50.0
 eq|激光长刃|effectDesc1	120.0 250.0
-eq|灼热火珊瑚|effectDesc1	10.0 60.0
-eq|炙烤海胆|effectBrief	20.0
-eq|炙烤海胆|effectDesc1	10.0 20.0
+eq|火珊瑚|effectDesc1	10.0 60.0
+eq|灵火|effectDesc1	0.03 80.0
 eq|炼乳罐|effectDesc1	3.0 10.0 50.0 50.0
-eq|狙击长管|effectBrief	8.0
-eq|狙击长管|effectDesc1	1.0 1.0 8.0 12.0
+eq|烤海胆|effectBrief	20.0
+eq|烤海胆|effectDesc1	10.0 20.0
+eq|燃烧瓶|effectBrief	5.0 8.0
+eq|燃烧瓶|effectDesc1	5.0 8.0 50.0
+eq|燧发枪|effectBrief	8.0
+eq|燧发枪|effectDesc1	8.0
+eq|狂暴药水|effectBrief	11.0
+eq|狂暴药水|effectDesc1	11.0 40.0
+eq|狙击枪|effectBrief	8.0
+eq|狙击枪|effectDesc1	1.0 1.0 8.0 12.0
 eq|玩偶小熊|effectBrief	4.0
 eq|玩偶小熊|effectDesc1	0.7 0.8 1.2 2.0 4.0 70.0 150.0 600.0
-eq|电鳗双管铳|effectBrief	2.0
-eq|电鳗双管铳|effectDesc1	2.0 50.0
+eq|珊瑚刺|effectBrief	9.0
+eq|珊瑚刺|effectDesc1	9.0
+eq|珍珠项链|effectBrief	16.0 50.0
+eq|珍珠项链|effectDesc1	16.0 50.0
 eq|病毒箭头|effectBrief	400.0
 eq|病毒箭头|effectDesc1	1.0 1.1 10.0 400.0
-eq|白鲸气环|effectDesc1	0.03 80.0
-eq|盗令潜水钟|effectDesc1	2.0 3.0 3.0 10.0 10.0 15.0
-eq|磷光水母伞|effectBrief	2.5 7.0
-eq|磷光水母伞|effectDesc1	2.5 7.0 7.0 15.0
-eq|祖龟碑|effectBrief	3.0
-eq|祖龟碑|effectDesc1	3.0
-eq|竹制弓箭|effectDesc1	6.0 6.0
-eq|荆棘海胆|effectBrief	3.0 50.0
-eq|荆棘海胆|effectDesc1	3.0 4.0 50.0
+eq|竹弓|effectDesc1	6.0 6.0
+eq|符咒|effectBrief	15.0
+eq|符咒|effectDesc1	1.0 15.0
+eq|粉色迷你水晶|effectBrief	3.0
+eq|粉色迷你水晶|effectDesc1	0.2 3.0
+eq|细剑|effectDesc1	0.5 20.0
+eq|终极浮游炮|effectBrief	3.0 6.0
+eq|终极浮游炮|effectDesc1	2.0 3.0 6.0 50.0
+eq|荆棘盾牌|effectBrief	3.0 50.0
+eq|荆棘盾牌|effectDesc1	3.0 4.0 50.0
 eq|草莓蛋糕|effectBrief	30.0 55.0 80.0
 eq|草莓蛋糕|effectDesc1	3.0 5.0 8.0 20.0 30.0 30.0 50.0 55.0 80.0
-eq|藤蔓弓弦|effectDesc1	3.0
-eq|蚀月符纸|effectBrief	15.0
-eq|蚀月符纸|effectDesc1	1.0 15.0
-eq|蛋糕蜡烛|effectBrief	5.0
-eq|蛋糕蜡烛|effectDesc1	3.0 5.0 5.0
+eq|药膏|effectBrief	7.0
+eq|药膏|effectDesc1	7.0
+eq|蓝色迷你水晶|effectBrief	3.0
+eq|蓝色迷你水晶|effectDesc1	1.5 3.0 10.0
+eq|藤弓|effectDesc1	3.0
+eq|蚌壳|effectBrief	5.0
+eq|蚌壳|effectDesc1	4.0 5.0 10.0 10.0
+eq|蛋糕盒|effectDesc1	5.0
+eq|蜡烛|effectBrief	5.0
+eq|蜡烛|effectDesc1	3.0 5.0 5.0
 eq|螳螂虾钳|effectBrief	40.0
 eq|螳螂虾钳|effectDesc1	1.0 40.0
-eq|远古炮台|effectDesc1	0.5 4.0 10.0 100.0 2000.0
-eq|远古龟甲片|effectBrief	0.25 6.0 25.0
-eq|远古龟甲片|effectDesc1	0.25 6.0 25.0
-eq|连发弩|effectBrief	8.0
-eq|连发弩|effectDesc1	8.0 30.0 80.0 130.0
-eq|连发弩机|effectDesc1	0.15 3.0 25.0 25.0
-eq|迷你水晶球A|effectBrief	3.0
-eq|迷你水晶球A|effectDesc1	0.2 3.0
-eq|迷你水晶球B|effectBrief	3.0
-eq|迷你水晶球B|effectDesc1	1.5 3.0 10.0
-eq|退潮浊液|effectBrief	5.0
-eq|退潮浊液|effectDesc1	5.0 30.0 50.0
+eq|血滴护符|effectDesc1	33.0 85.0
+eq|轻盈药水|effectBrief	5.0
+eq|轻盈药水|effectDesc1	5.0
+eq|远古炮塔|effectDesc1	0.5 4.0 10.0 100.0 2000.0
+eq|连弩|effectDesc1	0.15 3.0 25.0 25.0
 eq|钻孔螺|effectBrief	20.0
 eq|钻孔螺|effectDesc1	20.0 20.0
 eq|铁壁盾|effectBrief	5.0
 eq|铁壁盾|effectDesc1	4.0 5.0 8.0
-eq|铁皮蛋糕盒|effectDesc1	5.0
-eq|铜管手铳|effectDesc1	0.5 1.0 5.0 50.0 700.0
 eq|银色箭袋|effectBrief	6.0 100.0
 eq|银色箭袋|effectDesc1	0.25 1.5 6.0 100.0
 eq|锈蚀阔剑|effectBrief	6.0
@@ -131,21 +136,16 @@ eq|镇海杵|effectDesc1	1.0 3.0
 eq|雷电法杖|effectDesc1	10.0 15.0
 eq|雷鸣贝壳|effectBrief	4.0
 eq|雷鸣贝壳|effectDesc1	4.0
-eq|霰弹贝古|effectBrief	1.5 8.0 8.0
-eq|霰弹贝古|effectDesc1	1.5 2.5 8.0 8.0 22.0
 eq|飞镖|effectBrief	2.5
 eq|飞镖|effectDesc1	1.0 2.5 5.0 10.0
-eq|饮血护符坠|effectDesc1	33.0 85.0
 eq|香火石|effectBrief	4.0 10.0 12.0 100.0
 eq|香火石|effectDesc1	4.0 4.0 10.0 12.0 100.0
-eq|鲨肝油|effectBrief	5.0
-eq|鲨肝油|effectDesc1	5.0
-eq|鲸涎浓浆|effectBrief	11.0
-eq|鲸涎浓浆|effectDesc1	11.0 40.0
-eq|黄铜手铳|effectBrief	8.0
-eq|黄铜手铳|effectDesc1	8.0
+eq|魔法海螺|effectDesc1	0.65 4.0 5.0
+eq|魔法海螺|effectDesc3	2.5 4.0
 eq|龙蛋|effectBrief	2.5
 eq|龙蛋|effectDesc1	2.5
+eq|龟甲|effectBrief	0.25 6.0 25.0
+eq|龟甲|effectDesc1	0.25 6.0 25.0
 pet|凤凰龟/强化涅槃|brief	4.0 20.0 50.0 50.0 60.0
 pet|凤凰龟/强化涅槃|detail	4.0 20.0 50.0 50.0 60.0
 pet|凤凰龟/涅槃|brief	2.5 5.0 25.0 41.1 50.0

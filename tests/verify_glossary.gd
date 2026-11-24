@@ -193,7 +193,7 @@ func _ready() -> void:
 	var inplace := "· 远程形态【灵能冲击】：射出一颗紫色炮弹。"
 	_ok("★就地定义(【X】：)不再在底部抄一遍", Glossary.terms_in(inplace).is_empty(),
 		str(Glossary.terms_in(inplace)))
-	var crossref := "普攻对敌人施加一层【气环】，可叠加 3 层。"
+	var crossref := "普攻对敌人施加一层【灵火】，可叠加 3 层。"
 	_ok("★★反面: 跨段引用的(后面跟逗号/句号)照常解释 —— 否则这条可以靠「一律不解释」作弊",
 		Glossary.terms_in(crossref).size() == 1, str(Glossary.terms_in(crossref)))
 

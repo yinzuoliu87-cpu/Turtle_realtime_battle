@@ -256,7 +256,7 @@ const IMMUNE_BRANCH_ATK_COEF := 1.5
 ##
 ## ★为什么要反复调而不是开一次: 减速有**两条并行通道**(slow_until 与 spd_move_mult/spd_aspd_mult),
 ##   免控窗口只挡得住"新的眩晕", 挡不住"已经挂上的减速" ⇒ 要在技能的几个节点各清一次。
-##   (066 鲸涎浓浆的注释写过: 施加点散在几十处, 别在每个施加点判免疫, 改成周期清。)
+##   (066 狂暴药水的注释写过: 施加点散在几十处, 别在每个施加点判免疫, 改成周期清。)
 func _unstoppable_apply(u: Dictionary) -> void:
 	if not u.get("_unstoppable", false):
 		return
@@ -316,7 +316,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	##   按 LoL 的**奥拉夫 R 那一档**(用户:「按LOL 的」+「免推开，推开不就是控制技能吗」):
 	##   先清掉身上已有的控制 + 免疫一切控制(含减速、含位移), 免控 ≠ 无敌(照样能被打死)。
 	##   ⚠ 减速有**两条并行通道**(slow_* 与 spd_*), 只挡一条 = 半个免疫
-	##   (这条坑写在 eq_potion_batch.gd:165-172, 066 鲸涎浓浆踩过)。
+	##   (这条坑写在 eq_potion_batch.gd:165-172, 066 狂暴药水踩过)。
 	uu["_unstoppable"] = true
 	_unstoppable_apply(uu)
 	battle._melee_anim(uu, "leap")                              # 0.00-0.64 蓄力+蹬地起跳

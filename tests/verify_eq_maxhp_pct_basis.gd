@@ -1,9 +1,9 @@
 extends Node
 ## verify_eq_maxhp_pct_basis.gd — 装备/羁绊「X% 自身最大生命值」按【真实 maxHp】算, 不除 HP_MULT
 ##
-## 起因(2026-10-04): 047 重击锤 / 039 竹箭 / 020 哑铃 / 盾羁绊冲击波的代码都写成
+## 起因(2026-10-04): 047 战锤 / 039 竹箭 / 020 哑铃 / 盾羁绊冲击波的代码都写成
 ##   `maxHp / HP_MULT × pct` —— 早期 ×3 血量缩放的遗留, 实发只有文案的 1/3;
-##   而 079 珊瑚急救塔、039 自己的回血那一半都是按真实 maxHp 算的, 同一句文案两种口径。
+##   而 079 医疗塔、039 自己的回血那一半都是按真实 maxHp 算的, 同一句文案两种口径。
 ##   用户原话:「肯定是代码去掉除以3啊」「不需要列表给我看，强度都输没问题的」。
 ##   ⇒ 文案一直是对的, 改的是代码。CLAUDE.md §3.1 同步改成「HP_MULT 只用于召唤物 raw 值」。
 ##
@@ -72,7 +72,7 @@ func _ready() -> void:
 	_s.process_mode = Node.PROCESS_MODE_DISABLED
 	_s._edit_mode = false
 
-	# ── ① 047 重击锤 3★: ATK 增量 == maxHp × 3%(2026-10-10 15%→8%; 2026-11-11 8%→3%) ──
+	# ── ① 047 战锤 3★: ATK 增量 == maxHp × 3%(2026-10-10 15%→8%; 2026-11-11 8%→3%) ──
 	_s._units.clear()
 	var c1: Dictionary = _mk(500.0, 400.0, "left", MHP)
 	c1["equips"] = []; c1["eq_state"] = {}; c1["hammer_pct"] = 0.0
@@ -83,7 +83,7 @@ func _ready() -> void:
 	c1["hammer_pct"] = TXT_HAMMER_PCT_3
 	_s._recalc_stats(c1)
 	var got1: float = float(c1["atk"]) - atk0
-	_ok("① 分母: 重击锤 maxHp=%.0f" % mhp1, mhp1 > 100.0)
+	_ok("① 分母: 战锤 maxHp=%.0f" % mhp1, mhp1 > 100.0)
 	_ok("① 047 3★ ATK 增量 %.1f == 真实maxHp %.0f × 3%% = %.1f" % [got1, mhp1, mhp1 * TXT_HAMMER_PCT_3],
 		absf(got1 - mhp1 * TXT_HAMMER_PCT_3) < 1.0, "若是 %.1f 就是又除了 3" % (mhp1 * TXT_HAMMER_PCT_3 / 3.0))
 

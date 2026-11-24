@@ -49,7 +49,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_029", "at": "systems/skills/ice_system.gd:_ice_fissure_hit", "v": "1/1.8/2.5 秒",
 			"lf": EQS, "link": "\"p2eq_029\": _eq_ice_fissure"},
 		{"k": "eq", "id": "p2eq_038", "at": "systems/equip/signal_wave_system.gd:_apply", "v": "{C:SignalWaveSystem.WAVE_STUN} 秒"},
-		{"k": "eq", "id": "p2eq_053", "at": EQS + ":_eq_shotgun_blast", "v": "{C:RealtimeBattle3DScene.CTRL_SEC} 秒", "link": "霰弹贝古053"},
+		{"k": "eq", "id": "p2eq_053", "at": EQS + ":_eq_shotgun_blast", "v": "{C:RealtimeBattle3DScene.CTRL_SEC} 秒", "link": "喇叭枪053"},
 		{"k": "eq", "id": "p2eq_055", "at": "systems/equip/hookbomb_system.gd:_hb_detonate"},
 		{"k": "eq", "id": "p2eq_056", "at": EQS + ":_eq_on_hit", "arm": "p2eq_056", "v": "{C:EquipSystem.DART_KNOCKUP_SEC} 秒"},
 		{"k": "eq", "id": "p2eq_090", "at": "systems/equip/eq_arcane_batch.gd:pestle_slam"},

@@ -1,5 +1,5 @@
 extends Node
-## verify_talisman_089.gd — 089 蚀月符纸的【专属判据】(2026-08-14)
+## verify_talisman_089.gd — 089 符咒的【专属判据】(2026-08-14)
 ##
 ## ★由来: `verify_staff_active_isolated` 里 089 是唯一没解掉的一件, 被显式登记为
 ##   "本判据量不到"。查根因(读代码, 不是猜): 它的主动是【贴符纸】,
@@ -29,7 +29,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 func _ready() -> void:
 	await get_tree().process_frame
-	print("=== 089 蚀月符纸: 专属判据 ===")
+	print("=== 089 符咒: 专属判据 ===")
 	RB.DEBUG_EDIT = true
 	var s = RB.new()
 	add_child(s)
@@ -151,7 +151,7 @@ func _ready() -> void:
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	if _fail == 0:
-		print("ALL PASS — 089 蚀月符纸")
+		print("ALL PASS — 089 符咒")
 	else:
 		print("FAIL x%d" % _fail)
 	get_tree().quit()

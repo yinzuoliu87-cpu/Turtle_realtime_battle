@@ -1,5 +1,5 @@
 extends Node
-## verify_eq_blood_combo.gd —— 011「饮血护符坠」连斩的美术 + 演出 + 接线门禁。
+## verify_eq_blood_combo.gd —— 011「血滴护符」连斩的美术 + 演出 + 接线门禁。
 ##
 ## ★★为什么要这一份: 重做之前 011 的美术侧**一条断言都没有**, 于是
 ##   斩痕是程序生成的 92 色 / 1938 半透、末帧平均亮度只有峰值的 30%、
@@ -106,7 +106,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("")
-	print("═══ 011 饮血护符坠 · 连斩素材/演出/接线 ═══")
+	print("═══ 011 血滴护符 · 连斩素材/演出/接线 ═══")
 	var CELL: int = int(BC.BLOOD_SLASH_CELL)
 
 	# ══════════════════════════════════════════════════════════════
@@ -383,7 +383,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  (共 %d 条断言)" % _n)
-	print("ALL PASS — 011 饮血护符坠" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 011 血滴护符" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 
 

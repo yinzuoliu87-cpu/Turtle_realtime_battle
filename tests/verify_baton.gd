@@ -1,5 +1,5 @@
 extends Node
-## verify_baton.gd — 027 电棍的门禁 (2026-09-13)
+## verify_baton.gd — 027 电击器的门禁 (2026-09-13)
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
@@ -53,7 +53,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 027 电棍: 每 3 秒充能, 普攻命中追加魔法伤 + 眩晕, 消耗 1 层 ===")
+	print("=== 027 电击器: 每 3 秒充能, 普攻命中追加魔法伤 + 眩晕, 消耗 1 层 ===")
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -164,7 +164,7 @@ func _ready() -> void:
 	_ok("⑥ ★★魔抗 500 吃得明显少 ⇒ 是【魔法伤害】(软 %.0f vs 硬 %.0f)" % [ds, dh],
 		dh < ds * 0.5)
 
-	# ── ⑦ ★★★演出层: 电棍要**看得出是电**, 且贴住判定 ──────────────
+	# ── ⑦ ★★★演出层: 电击器要**看得出是电**, 且贴住判定 ──────────────
 	## 为什么这一节必须存在(memory [[fb-weld-visual-lessons-into-gate]]: 视觉教训焊进门禁,
 	## 别指望我下次想得起来):
 	##   原来两处演出都借 `electric-zap.png` —— 一张**对称放射星爆**, 而且
@@ -344,5 +344,5 @@ func _done() -> void:
 	if _n < 28:
 		print("  [FAIL] ★断言只有 %d 条(<28) —— 有用例中途中止了" % _n)
 		_fail += 1
-	print("ALL PASS — 027 电棍" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 027 电击器" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

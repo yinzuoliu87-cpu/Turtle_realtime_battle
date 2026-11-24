@@ -1,5 +1,5 @@
 extends Node
-## verify_ice_fissure.gd — 029 冰封水母【冰道】的门禁 (2026-09-13)
+## verify_ice_fissure.gd — 029 寒冰法杖【冰道】的门禁 (2026-09-13)
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
@@ -55,7 +55,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 029 冰封水母: 冰道长 %.0f 码 · 半宽 %.0f 码 ===" % [ICE.FISSURE_REACH, ICE.FISSURE_HALF_W])
+	print("=== 029 寒冰法杖: 冰道长 %.0f 码 · 半宽 %.0f 码 ===" % [ICE.FISSURE_REACH, ICE.FISSURE_HALF_W])
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -257,5 +257,5 @@ func _done() -> void:
 	if _n < 21:
 		print("  [FAIL] ★断言只有 %d 条(<21) —— 有用例中途中止了" % _n)
 		_fail += 1
-	print("ALL PASS — 029 冰封水母" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 029 寒冰法杖" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

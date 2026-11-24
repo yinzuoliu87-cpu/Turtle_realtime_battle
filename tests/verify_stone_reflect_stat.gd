@@ -94,7 +94,7 @@ func _ready() -> void:
 	foe["reflect"] = 0.07
 	_ok("★别的龟: 反伤属性 == 通用 reflect(不吃坚壁那一份)", absf(StoneSystem.reflect_of(foe) - 0.07) < 1e-9)
 
-	# ── ⑤ 015 荆棘海胆(4 费): 反伤属性含它那一份, 弹一次、不暴击 ──
+	# ── ⑤ 015 荆棘盾牌(4 费): 反伤属性含它那一份, 弹一次、不暴击 ──
 	##   015 有专属分支自己发反伤(累计 thorn_accum), 通用结算不含它 ⇒ 面板读 reflect_of, 结算各走各的。
 	var h: Dictionary = s._spawn._make_unit("ninja", "left", c + Vector2(0, 400))
 	var a: Dictionary = s._spawn._make_unit("ninja", "right", c + Vector2(60, 400))

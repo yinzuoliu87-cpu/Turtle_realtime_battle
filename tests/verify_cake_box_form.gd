@@ -1,5 +1,5 @@
 extends Node
-## verify_cake_box_form.gd — 072 铁皮蛋糕盒【化身礼盒要真的换立绘】(2026-08-11)
+## verify_cake_box_form.gd — 072 蛋糕盒【化身礼盒要真的换立绘】(2026-08-11)
 ##
 ## ══════════════════════════════════════════════════════════════════
 ##  ★由来: 用户 2026-08-11「换」——「化身蛋糕礼盒」要真换立绘, 不是只加个标记
@@ -35,7 +35,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 func _ready() -> void:
 	await get_tree().process_frame
-	print("=== 072 铁皮蛋糕盒: 化身礼盒要真换立绘 ===")
+	print("=== 072 蛋糕盒: 化身礼盒要真换立绘 ===")
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)

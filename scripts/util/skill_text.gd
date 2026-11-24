@@ -1015,8 +1015,8 @@ static func plain_to_bb(plain: String, font_px: int = 0) -> String:
 ##     ② 简述**没说新东西** —— 它的内容被全文覆盖 ≥ 90%
 ##   两个都成立 ⇒ 它不是简述, 是重复。
 ##   实测(95 件装备的全量剖面): 命中 4 件 —— 黄铜齿轮(15字 vs 15字·完全一样)、
-##   幽灵墨鱼、双穿珊瑚刺、辣椒。其余 91 件的简述是真·简述
-##   (如霰弹贝古 32 字 vs 108 字), 照常显示两段。
+##   幽灵墨鱼、珊瑚刺、辣椒。其余 91 件的简述是真·简述
+##   (如喇叭枪 32 字 vs 108 字), 照常显示两段。
 ## ★不改数据只改判据: 以后再加装备自动纳入, 不用有人记得去改文案。
 static func brief_is_redundant(brief: String, full: String) -> bool:
 	var b := _strip_for_cmp(brief)

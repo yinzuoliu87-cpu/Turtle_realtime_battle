@@ -1,5 +1,5 @@
 extends Node
-## verify_eq_relic_batch.gd — 遗物 2 件(091 远古龟甲片 / 094 祖龟碑)逐条焊死 + 演出几何门禁
+## verify_eq_relic_batch.gd — 遗物 2 件(091 龟甲 / 094 墓碑)逐条焊死 + 演出几何门禁
 ##
 ## 规格: docs/plans/20260805-装备逐件重做.md §0.5 ★091 / ★094【用户逐件亲手写的定稿】
 ## 契约: docs/plans/20260806-实装契约-批④.md
@@ -144,7 +144,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	gs.test_mode = true
-	print("=== 遗物 2 件(091 远古龟甲片 / 094 祖龟碑) ===")
+	print("=== 遗物 2 件(091 龟甲 / 094 墓碑) ===")
 	_s = RB.new()
 	add_child(_s)
 	for _i in range(30):

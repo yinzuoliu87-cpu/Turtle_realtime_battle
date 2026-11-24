@@ -134,12 +134,12 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	if nearest is Dictionary and (nearest as Dictionary).get("alive", false):
 		## ★on-hit 不在这里调了 —— 它已经在上面那趟 `_apply_damage_from(..., basic=is_near)`
 		##   里走过一次。这里只补【普攻计数器】那条钩子, 它不在伤害链上。
-		## ★★v0.19.144 补上 v0.19.141 漏掉的另一半(用户实测「143 为什么没触发竹制弓箭」):
+		## ★★v0.19.144 补上 v0.19.141 漏掉的另一半(用户实测「143 为什么没触发竹弓」):
 		##   装备有【两个】普攻钩子, 上一版只接了 `_eq_on_hit`(每次命中: 腐蚀/毒/金弹…),
-		##   而 039 竹制弓箭的判据是「每第 3 段普攻」——它住在 `_eq_on_basic_attack` 的
+		##   而 039 竹弓的判据是「每第 3 段普攻」——它住在 `_eq_on_basic_attack` 的
 		##   计数器里, 那个函数只被 `_basic_attack` 调, 而凤凰在 `_sim_step` 里
 		##   (`elif u["id"] == "phoenix"`)就分支去喷火了, **一次都没走到 `_basic_attack`**。
-		##   ⇒ 同函数里的 008 珊瑚刺 / 017 不沉之锚 / 027 电棍 在凤凰身上也一并复活。
+		##   ⇒ 同函数里的 008 珊瑚刺 / 017 不沉之锚 / 027 电击器 在凤凰身上也一并复活。
 		##   顺序: 放在伤害之后, 与上面 `_eq_on_hit` 同一条纪律(读得到这一跳的账)。
 		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys._eq_on_basic_attack(u, nearest)

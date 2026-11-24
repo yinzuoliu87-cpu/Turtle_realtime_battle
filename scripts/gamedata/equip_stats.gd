@@ -111,7 +111,7 @@ const STATS := {
 	"p2eq_008": [{"atk": 8, "armorPen": 4, "magicPen": 4}, {"atk": 15, "armorPen": 8, "magicPen": 8}, {"atk": 30, "armorPen": 12, "magicPen": 12}],
 	"p2eq_009": [{"atk": 12, "_maxEnergy": 20}, {"atk": 25, "_maxEnergy": 20}, {"atk": 40, "_maxEnergy": 20}],
 	"p2eq_010": [{"atk": 30, "armorPen": 10, "hp": 50}, {"atk": 75, "armorPen": 18, "hp": 120}, {"atk": 200, "armorPen": 30, "hp": 1300}],
-	# ── 剑系 011 (饮血护符坠) ──
+	# ── 剑系 011 (血滴护符) ──
 	"p2eq_011": [{"atk": 10, "_lifestealPct": 15, "healAmp": 15, "shieldAmp": 15}, {"atk": 23, "_lifestealPct": 24, "healAmp": 24, "shieldAmp": 24}, {"atk": 40, "_lifestealPct": 33, "healAmp": 33, "shieldAmp": 33}],
 	# ── 盾系 012-017 ──
 	"p2eq_012": [{"hp": 90, "mr": 7}, {"hp": 180, "mr": 16}, {"hp": 300, "mr": 23}],   # 用户2026-10-08: 生命 40/70/100→90/180/300, 护甲 5/10/18 → 魔抗 7/16/23
@@ -138,9 +138,9 @@ const STATS := {
 	"p2eq_041": [{"hp": 40, "shieldHealPct": 10}, {"hp": 90, "shieldHealPct": 15}, {"hp": 170, "shieldHealPct": 20}],
 	"p2eq_042": [{"hp": 60, "shieldHealPct": 20}, {"hp": 100, "shieldHealPct": 25}, {"hp": 180, "shieldHealPct": 30}],
 	"p2eq_044": [{"hp": 40, "def": 5}, {"hp": 60, "def": 12}, {"hp": 90, "def": 20}],
-	# 重击锤: 3★ hp 700→400 (用户2026-08-01)。★连带: 它的 hammer_pct 是 ATK += maxHp×8%(3★ 15%→8% 用户2026-10-10),
+	# 战锤: 3★ hp 700→400 (用户2026-08-01)。★连带: 它的 hammer_pct 是 ATK += maxHp×8%(3★ 15%→8% 用户2026-10-10),
 	#   砍血等于连攻一起砍 —— 这是按字面执行的已知副作用, 见 docs/plans/20260801-装备批次13条.md R4。
-	# ★2026-11-11 用户调强度「终极锤提供的生命改为提供一百二、二百五十和五百，攻击力等于自身最大生命值乘，分别是百分之一、百分之二、百分之三」(「终极锤」= 重击锤, 语音):
+	# ★2026-11-11 用户调强度「终极锤提供的生命改为提供一百二、二百五十和五百，攻击力等于自身最大生命值乘，分别是百分之一、百分之二、百分之三」(「终极锤」= 战锤, 语音):
 	#   生命 100/200/400 → 120/250/500; hammer_pct 4/6/8% → 1/2/3%(见 equip_stats_apply)。
 	"p2eq_047": [{"hp": 120}, {"hp": 250}, {"hp": 500}],
 	"p2eq_055": [{"atk": 9, "_maxEnergy": 20}, {"atk": 15, "_maxEnergy": 20}, {"atk": 21, "_maxEnergy": 20}],
@@ -158,21 +158,21 @@ const STATS := {
 	"p2eq_050": [{"atk": 20, "armorPen": 5}, {"atk": 50, "armorPen": 11}, {"atk": 120, "armorPen": 18}],
 	"p2eq_051": [{"atk": 16, "armorPen": 3, "_lifestealPct": 4}, {"atk": 28, "armorPen": 6, "_lifestealPct": 6}, {"atk": 42, "armorPen": 10, "_lifestealPct": 9}],
 	"p2eq_057": [{"atk": 18, "armorPen": 10}, {"atk": 30, "armorPen": 16}, {"atk": 70, "armorPen": 30}],
-	# ── 枪械049连发弩/053霰弹/054瞄准镜 + 独立059沙漏 (批9) ──
+	# ── 枪械049手弩/053霰弹/054瞄准镜 + 独立059沙漏 (批9) ──
 	"p2eq_049": [{"atk": 15, "crit": 0.15}, {"atk": 32, "crit": 0.25}, {"atk": 50, "crit": 0.40}],
 	"p2eq_053": [{"atk": 14, "crit": 0.10}, {"atk": 25, "crit": 0.15}, {"atk": 41, "crit": 0.25}],
 	"p2eq_054": [{"atk": 10, "crit": 0.15, "critDmg": 0.10}, {"atk": 15, "crit": 0.25, "critDmg": 0.15}, {"atk": 20, "crit": 0.40, "critDmg": 0.20}],
 	"p2eq_059": [{"hp": 100, "_echargePct": 10}, {"hp": 210, "_echargePct": 10}, {"hp": 1000, "_echargePct": 10}],   # 沙漏: +生命 + 龟能充能+10%(echarge_perm×1.1); 主动=JoJo时停(登场10s触发, _eq_hourglass_timestop)
-	# ── 杖系026雷电/027电棍/030·031水晶球 + 潮汐043海浪护符 (批10) ──
+	# ── 杖系026雷电/027电击器/030·031水晶球 + 潮汐043海浪护符 (批10) ──
 	"p2eq_026": [{"magicPen": 8}, {"magicPen": 13}, {"magicPen": 20}],
-	## 电棍属性加强(用户 11-08「最大生命值改为一百一、二百五、四百。提供的双抗改为9/16/25」; 原 20/40/80 · 5/8/13)
+	## 电击器属性加强(用户 11-08「最大生命值改为一百一、二百五、四百。提供的双抗改为9/16/25」; 原 20/40/80 · 5/8/13)
 	"p2eq_027": [{"hp": 110, "def": 9, "mr": 9}, {"hp": 250, "def": 16, "mr": 16}, {"hp": 400, "def": 25, "mr": 25}],
 	"p2eq_030": [{"atk": 7, "hp": 20, "magicPen": 5}, {"atk": 12, "hp": 40, "magicPen": 8}, {"atk": 20, "hp": 80, "magicPen": 13}],
 	"p2eq_031": [{"atk": 7, "hp": 20, "magicPen": 3}, {"atk": 12, "hp": 40, "magicPen": 6}, {"atk": 20, "hp": 80, "magicPen": 10}],
 	"p2eq_043": [{"hp": 80, "shieldHealPct": 10}, {"hp": 200, "shieldHealPct": 20}, {"hp": 5000, "shieldHealPct": 30}],
 	# ── 召唤034玩偶小熊 (批12, 召唤大熊fighter — spawn管线在BattleScene) ──
 	"p2eq_034": [{"atk": 20, "hp": 120}, {"atk": 50, "hp": 250}, {"atk": 300, "hp": 1000}],
-	# ── 召唤039竹制弓箭 + 枪械052左轮 (批11) ──
+	# ── 召唤039竹弓 + 枪械052左轮 (批11) ──
 	"p2eq_039": [{"hp": 80}, {"hp": 140}, {"hp": 200}],
 	"p2eq_052": [{"atk": 40, "armorPen": 15}, {"atk": 90, "armorPen": 24}, {"atk": 500, "armorPen": 50}],
 	# ── 召唤035黄铜齿轮 (批12, 死亡钩子) ──
@@ -183,49 +183,49 @@ const STATS := {
 	"p2eq_046": [{"hp": 80, "dodgePct": 15}, {"hp": 140, "dodgePct": 25}, {"hp": 400, "dodgePct": 50}],
 	# ── 枪械056飞镖 (批15, 复用_knockedUpThisTurn击飞靶子) ──
 	"p2eq_056": [{"atk": 45}, {"atk": 90}, {"atk": 400}],
-	# ── 召唤032唤灵骨符(纯属性) + 033复活海螺(复用e_conch死亡变虫) (批16) ──
+	# ── 召唤032骨哨(纯属性) + 033魔法海螺(复用e_conch死亡变虫) (批16) ──
 	"p2eq_032": [{"hp": 50}, {"hp": 60}, {"hp": 70}],
 	"p2eq_033": [{"hp": 110}, {"hp": 270}, {"hp": 3000}],
-	"p2eq_060": [{"def": 5, "mr": 5}, {"def": 11, "mr": 11}, {"def": 19, "mr": 19}],   # 灵物 · 1费 · 磷光水母伞(★用户 §0.5「属性改为给护甲和魔抗」·数值我提 5/11/19 用户「数值可以」)
+	"p2eq_060": [{"def": 5, "mr": 5}, {"def": 11, "mr": 11}, {"def": 19, "mr": 19}],   # 灵物 · 1费 · 水母伞(★用户 §0.5「属性改为给护甲和魔抗」·数值我提 5/11/19 用户「数值可以」)
 	"p2eq_061": [{"_rangeAdd": 50, "_aspdPct": 15}, {"_rangeAdd": 50, "_aspdPct": 30}, {"_rangeAdd": 50, "_aspdPct": 50}],   # 灵物 · 2费 · 钻孔螺(★用户范例「装备3」原话: 50 射程 + 15/30/50% 攻速; 射程三星同值)
 	"p2eq_062": [{"atk": 12, "_mspdPct": 5}, {"atk": 30, "_mspdPct": 9}, {"atk": 66, "_mspdPct": 15}],   # 灵物 · 2费 · 螳螂虾钳(★用户 §0.5 只写「攻击力·移速」没给数, 我按同为 2 费的 092 沉船罗盘同带取值)
-	"p2eq_063": [{"_aspdPct": 8, "crit": 0.10}, {"_aspdPct": 15, "crit": 0.18}, {"_aspdPct": 25, "crit": 0.30}],   # 灵物 · 3费 · 白鲸气环(★用户 §0.5 只写「攻速·暴击率」没给数, 我按同为 3 费的 083 潮汐细剑同带取值)
-	"p2eq_064": [{"hp": 100, "_echargePct": 10}, {"hp": 260, "_echargePct": 18}, {"hp": 600, "_echargePct": 30}],   # 灵物 · 4费 · 溺者的浮囊(★用户 §0.5「生命值 · 龟能充能速率」; 生命沿用原值, 充能速率我按 4 费带取值)
+	"p2eq_063": [{"_aspdPct": 8, "crit": 0.10}, {"_aspdPct": 15, "crit": 0.18}, {"_aspdPct": 25, "crit": 0.30}],   # 灵物 · 3费 · 灵火(★用户 §0.5 只写「攻速·暴击率」没给数, 我按同为 3 费的 083 细剑同带取值)
+	"p2eq_064": [{"hp": 100, "_echargePct": 10}, {"hp": 260, "_echargePct": 18}, {"hp": 600, "_echargePct": 30}],   # 灵物 · 4费 · 溺者符囊(★用户 §0.5「生命值 · 龟能充能速率」; 生命沿用原值, 充能速率我按 4 费带取值)
 	# ── 药水四件(2026-08-05 用户逐件重做·§0.5 定稿) ────────────────────────────
 	# 065 射程走 flat 通道 `_rangeAdd`(三星同值 50): 系统原来只有百分比字段, 用户写的是绝对值。
 	#   副作用已告知用户并接受: 近战基础 70 ⇒ +50 码约 +50%, 远程 400~450 ⇒ 只 +12%, 对近战收益大得多。
-	"p2eq_065": [{"_rangeAdd": 50, "_aspdPct": 10, "_lifestealPct": 3}, {"_rangeAdd": 50, "_aspdPct": 20, "_lifestealPct": 6}, {"_rangeAdd": 50, "_aspdPct": 30, "_lifestealPct": 10}],   # 药水 · 3费 · 鲨肝油
-	"p2eq_066": [{"_maxEnergy": 20, "_mspdPct": 6}, {"_maxEnergy": 35, "_mspdPct": 11}, {"_maxEnergy": 60, "_mspdPct": 18}],   # 药水 · 4费 · 鲸涎浓浆(喝药后的十项属性【不在这里】: 那是效果, 在 eq_potion_batch.gd)
+	"p2eq_065": [{"_rangeAdd": 50, "_aspdPct": 10, "_lifestealPct": 3}, {"_rangeAdd": 50, "_aspdPct": 20, "_lifestealPct": 6}, {"_rangeAdd": 50, "_aspdPct": 30, "_lifestealPct": 10}],   # 药水 · 3费 · 轻盈药水
+	"p2eq_066": [{"_maxEnergy": 20, "_mspdPct": 6}, {"_maxEnergy": 35, "_mspdPct": 11}, {"_maxEnergy": 60, "_mspdPct": 18}],   # 药水 · 4费 · 狂暴药水(喝药后的十项属性【不在这里】: 那是效果, 在 eq_potion_batch.gd)
 	"p2eq_067": [{"hp": 110, "atk": 15, "magicPen": 10}, {"hp": 280, "atk": 38, "magicPen": 20}, {"hp": 650, "atk": 90, "magicPen": 38}],   # 药水 · 4费 · 毒药瓶
-	"p2eq_068": [{"hp": 180, "_aspdPct": 10, "shieldHealPct": 15}, {"hp": 460, "_aspdPct": 18, "shieldHealPct": 25}, {"hp": 1100, "_aspdPct": 30, "shieldHealPct": 40}],   # 药水 · 5费 · 深海气压罐(★shieldHealPct 是现成的合并字段, 用户点名不要拆成 healAmp+shieldAmp)
+	"p2eq_068": [{"hp": 180, "_aspdPct": 10, "shieldHealPct": 15}, {"hp": 460, "_aspdPct": 18, "shieldHealPct": 25}, {"hp": 1100, "_aspdPct": 30, "shieldHealPct": 40}],   # 药水 · 5费 · 氧气瓶(★shieldHealPct 是现成的合并字段, 用户点名不要拆成 healAmp+shieldAmp)
 	# ── 食物 4 件(2026-08-05 用户逐件重做·§0.5 定稿): 属性【字段】由用户点名, 逐星数值我填 ──
 	"p2eq_069": [{"_lifestealPct": 5, "_echargePct": 8}, {"_lifestealPct": 9, "_echargePct": 14}, {"_lifestealPct": 15, "_echargePct": 24}],   # 食物 · 3费 · 珊瑚糖糕(用户: 生命偷取 · 龟能充能速率)
-	"p2eq_070": [{"hp": 120, "atk": 18}, {"hp": 300, "atk": 45}, {"hp": 700, "atk": 100}],   # 食物 · 4费 · 压舱咸鱼砖(用户: 生命值 · 攻击力 —— ★三段效果全按最大生命缩放, hp 就是它的核心属性)
+	"p2eq_070": [{"hp": 120, "atk": 18}, {"hp": 300, "atk": 45}, {"hp": 700, "atk": 100}],   # 食物 · 4费 · 大火腿(用户: 生命值 · 攻击力 —— ★三段效果全按最大生命缩放, hp 就是它的核心属性)
 	"p2eq_071": [{"shieldHealPct": 14, "def": 10, "mr": 10}, {"shieldHealPct": 26, "def": 22, "mr": 22}, {"shieldHealPct": 45, "def": 40, "mr": 40}],   # 食物 · 4费 · 炼乳罐(用户: 治疗和护盾强度 · 双抗)
-	"p2eq_072": [{"hp": 200, "def": 10, "mr": 10}, {"hp": 550, "def": 24, "mr": 24}, {"hp": 1400, "def": 55, "mr": 55}],   # 食物 · 5费 · 铁皮蛋糕盒(用户: 双抗 · 生命值)
-	"p2eq_073": [{"crit": 0.1, "_rangeAdd": 50}, {"crit": 0.18, "_rangeAdd": 70}, {"crit": 0.3, "_rangeAdd": 100}],   # 弓箭 · 1费 · 藤蔓弓弦(2026-08-05 用户亲手重写·§0.5: 射程改成【绝对码数】50/70/100, 走 _rangeAdd 不是百分比)
+	"p2eq_072": [{"hp": 200, "def": 10, "mr": 10}, {"hp": 550, "def": 24, "mr": 24}, {"hp": 1400, "def": 55, "mr": 55}],   # 食物 · 5费 · 蛋糕盒(用户: 双抗 · 生命值)
+	"p2eq_073": [{"crit": 0.1, "_rangeAdd": 50}, {"crit": 0.18, "_rangeAdd": 70}, {"crit": 0.3, "_rangeAdd": 100}],   # 弓箭 · 1费 · 藤弓(2026-08-05 用户亲手重写·§0.5: 射程改成【绝对码数】50/70/100, 走 _rangeAdd 不是百分比)
 	"p2eq_074": [{"hp": 50, "_aspdPct": 6}, {"hp": 120, "_aspdPct": 11}, {"hp": 260, "_aspdPct": 18}],   # 弓箭 · 1费 · 魔法胸甲(2026-08-05 用户亲手重写·§0.5)
 	"p2eq_075": [{"atk": 12, "_rangeAdd": 40}, {"atk": 30, "_rangeAdd": 60}, {"atk": 68, "_rangeAdd": 90}],   # 弓箭 · 2费 · 银色箭袋(2026-08-05 用户亲手重写·§0.5)
-	"p2eq_076": [{"atk": 20, "_lifestealPct": 6, "critDmg": 0.15}, {"atk": 50, "_lifestealPct": 11, "critDmg": 0.28}, {"atk": 115, "_lifestealPct": 18, "critDmg": 0.5}],   # 弓箭 · 4费 · 连发弩机(2026-08-05 用户亲手重写·§0.5: 属性类别改成攻击力/吸血/暴伤, 原案的暴击与射程作废)
-	"p2eq_077": [{"crit": 0.1, "armorPen": 4}, {"crit": 0.18, "armorPen": 9}, {"crit": 0.3, "armorPen": 18}],   # 枪 · 1费 · 铜管手铳
-	"p2eq_078": [{"atk": 12, "armorPen": 5}, {"atk": 30, "armorPen": 11}, {"atk": 68, "armorPen": 22}],   # 枪 · 2费 · 电鳗双管铳
-	"p2eq_079": [{"hp": 90, "shieldHealPct": 10, "_aspdPct": 8}, {"hp": 200, "shieldHealPct": 18, "_aspdPct": 15}, {"hp": 420, "shieldHealPct": 30, "_aspdPct": 25}],   # 枪 · 3费 · 珊瑚急救塔
-	"p2eq_080": [{"atk": 30, "def": 12, "mr": 12}, {"atk": 90, "def": 28, "mr": 28}, {"atk": 260, "def": 60, "mr": 60}],   # 枪 · 5费 · 打捞旋翼机
+	"p2eq_076": [{"atk": 20, "_lifestealPct": 6, "critDmg": 0.15}, {"atk": 50, "_lifestealPct": 11, "critDmg": 0.28}, {"atk": 115, "_lifestealPct": 18, "critDmg": 0.5}],   # 弓箭 · 4费 · 连弩(2026-08-05 用户亲手重写·§0.5: 属性类别改成攻击力/吸血/暴伤, 原案的暴击与射程作废)
+	"p2eq_077": [{"crit": 0.1, "armorPen": 4}, {"crit": 0.18, "armorPen": 9}, {"crit": 0.3, "armorPen": 18}],   # 枪 · 1费 · 小手枪
+	"p2eq_078": [{"atk": 12, "armorPen": 5}, {"atk": 30, "armorPen": 11}, {"atk": 68, "armorPen": 22}],   # 枪 · 2费 · 双管枪
+	"p2eq_079": [{"hp": 90, "shieldHealPct": 10, "_aspdPct": 8}, {"hp": 200, "shieldHealPct": 18, "_aspdPct": 15}, {"hp": 420, "shieldHealPct": 30, "_aspdPct": 25}],   # 枪 · 3费 · 医疗塔
+	"p2eq_080": [{"atk": 30, "def": 12, "mr": 12}, {"atk": 90, "def": 28, "mr": 28}, {"atk": 260, "def": 60, "mr": 60}],   # 枪 · 5费 · 旋翼机
 	"p2eq_081": [{"hp": 50, "def": 6}, {"hp": 120, "def": 13}, {"hp": 260, "def": 22}],   # 盾 · 1费 · 藤编圆盾
 	"p2eq_082": [{"hp": 70, "mr": 8}, {"hp": 170, "mr": 17}, {"hp": 380, "mr": 30}],   # 盾 · 2费 · 砗磲护心甲
-	"p2eq_083": [{"atk": 18, "crit": 0.1}, {"atk": 42, "crit": 0.18}, {"atk": 92, "crit": 0.3}],   # 剑 · 3费 · 潮汐细剑
+	"p2eq_083": [{"atk": 18, "crit": 0.1}, {"atk": 42, "crit": 0.18}, {"atk": 92, "crit": 0.3}],   # 剑 · 3费 · 细剑
 	"p2eq_084": [{"_aspdPct": 10, "_mspdPct": 7}, {"_aspdPct": 18, "_mspdPct": 13}, {"_aspdPct": 30, "_mspdPct": 22}],   # 剑 · 4费 · 手半剑
-	"p2eq_085": [{"hp": 50, "crit": 0.1}, {"hp": 120, "crit": 0.18}, {"hp": 260, "crit": 0.3}],   # 奇械 · 1费 · 压电陶瓷片
-	"p2eq_086": [{"atk": 30, "_echargePct": 12}, {"atk": 90, "_echargePct": 22}, {"atk": 260, "_echargePct": 38}],   # 奇械 · 5费 · 六分仪浮游炮
-	"p2eq_087": [{"def": 25, "hp": 150}, {"def": 60, "hp": 420}, {"def": 150, "hp": 1200}],   # 奇械 · 5费 · 盗令潜水钟
-	"p2eq_088": [{"magicPen": 5, "_maxEnergy": 12}, {"magicPen": 11, "_maxEnergy": 22}, {"magicPen": 20, "_maxEnergy": 40}],   # 法器 · 1费 · 涨潮碑
-	"p2eq_089": [{"_echargePct": 6, "def": 6}, {"_echargePct": 11, "def": 13}, {"_echargePct": 18, "def": 22}],   # 法器 · 1费 · 蚀月符纸
+	"p2eq_085": [{"hp": 50, "crit": 0.1}, {"hp": 120, "crit": 0.18}, {"hp": 260, "crit": 0.3}],   # 奇械 · 1费 · 蓄电池
+	"p2eq_086": [{"atk": 30, "_echargePct": 12}, {"atk": 90, "_echargePct": 22}, {"atk": 260, "_echargePct": 38}],   # 奇械 · 5费 · 终极浮游炮
+	"p2eq_087": [{"def": 25, "hp": 150}, {"def": 60, "hp": 420}, {"def": 150, "hp": 1200}],   # 奇械 · 5费 · 潜水钟
+	"p2eq_088": [{"magicPen": 5, "_maxEnergy": 12}, {"magicPen": 11, "_maxEnergy": 22}, {"magicPen": 20, "_maxEnergy": 40}],   # 法器 · 1费 · 潮汐图腾
+	"p2eq_089": [{"_echargePct": 6, "def": 6}, {"_echargePct": 11, "def": 13}, {"_echargePct": 18, "def": 22}],   # 法器 · 1费 · 符咒
 	"p2eq_090": [{"magicPen": 13, "hp": 150, "_maxEnergy": 45}, {"magicPen": 21, "hp": 420, "_maxEnergy": 80}, {"magicPen": 40, "hp": 1200, "_maxEnergy": 150}],   # 法器 · 5费 · 镇海杵(魔法穿透 用户 2026-10-23 改 13/21/40; 原 18/42/110)
-	"p2eq_091": [{"atk": 5, "_rangeAdd": 50, "def": 6}, {"atk": 12, "_rangeAdd": 50, "def": 13}, {"atk": 20, "_rangeAdd": 50, "def": 22}],   # 遗物 · 1费 · 远古龟甲片
+	"p2eq_091": [{"atk": 5, "_rangeAdd": 50, "def": 6}, {"atk": 12, "_rangeAdd": 50, "def": 13}, {"atk": 20, "_rangeAdd": 50, "def": 22}],   # 遗物 · 1费 · 龟甲
 	# 2026-08-05 用户重做: 属性原话「提供 50/70/100 生命值和 10/22/40 魔抗」——
 	# 就这两项, 所以原来的 atk/_lifestealPct 一并换掉(不是加在它们之上)。
-	"p2eq_092": [{"hp": 50, "mr": 10}, {"hp": 70, "mr": 22}, {"hp": 100, "mr": 40}],   # 遗物 · 2费 · 毒蛾茧
+	"p2eq_092": [{"hp": 50, "mr": 10}, {"hp": 70, "mr": 22}, {"hp": 100, "mr": 40}],   # 遗物 · 2费 · 毒蛾
 	"p2eq_093": [{"atk": 10, "armorPen": 3, "magicPen": 3}, {"atk": 20, "armorPen": 7, "magicPen": 7}, {"atk": 36, "armorPen": 11, "magicPen": 11}],   # 遗物 · 2费 · 香火石
-	"p2eq_094": [{"atk": 25, "armorPen": 6, "hp": 120, "_mspdPct": 5}, {"atk": 62, "armorPen": 13, "hp": 300, "_mspdPct": 9}, {"atk": 140, "armorPen": 22, "hp": 700, "_mspdPct": 14}],   # 遗物 · 4费 · 祖龟碑
+	"p2eq_094": [{"atk": 25, "armorPen": 6, "hp": 120, "_mspdPct": 5}, {"atk": 62, "armorPen": 13, "hp": 300, "_mspdPct": 9}, {"atk": 140, "armorPen": 22, "hp": 700, "_mspdPct": 14}],   # 遗物 · 4费 · 墓碑
 	"p2eq_095": [{"hp": 250}, {"hp": 250}, {"hp": 250}],   # 圣光护盾(盾羁绊3档赠送·不占容量·三星同值: 它不参与合成)
 }

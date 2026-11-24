@@ -287,7 +287,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
 scripts/gamedata/glossary.gd|lit|余烬攻击命中时叠加在目标身上的层数，每层提高该目标的斩杀线。
-scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。对龟蛋的灼烧伤害会降低，数值见余烬燃油瓶。
+scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。对龟蛋的灼烧伤害会降低，数值见燃烧瓶。
 scripts/gamedata/glossary.gd|lit|余烬种子
 scripts/gamedata/glossary.gd|lit|冰霜
 scripts/gamedata/glossary.gd|lit|剑士
@@ -317,24 +317,24 @@ scripts/gamedata/glossary.gd|lit|枪羁绊：每发射若干发普通子弹后�
 scripts/gamedata/glossary.gd|lit|每个战场开始时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
 scripts/gamedata/glossary.gd|lit|每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。法器羁绊档位越高，充满所需的法力越少。
 scripts/gamedata/glossary.gd|lit|每次受到一段攻击时，对攻击者反弹一次魔法伤害。持续伤害不会触发此效果，多段攻击的每一段单独触发。
-scripts/gamedata/glossary.gd|lit|气环
 scripts/gamedata/glossary.gd|lit|永久不衰减的护盾。护盾存在期间，自身变为蛋糕礼盒：射程变为近战，攻击与技能也替换为礼盒专属版本。
 scripts/gamedata/glossary.gd|lit|沙漏释放的全场定格：除持有全场最高星级沙漏的龟之外，所有单位、弹道与特效全部静止。
 scripts/gamedata/glossary.gd|lit|法力
 scripts/gamedata/glossary.gd|lit|海胆护盾
 scripts/gamedata/glossary.gd|lit|海胆每次受到伤害时叠加一层硬化，层数达到上限时为自身提供的护盾，随后在数秒内逐渐衰减。
 scripts/gamedata/glossary.gd|lit|涨潮
+scripts/gamedata/glossary.gd|lit|灵火
 scripts/gamedata/glossary.gd|lit|生命值低于阈值时获得的一次性护盾，在数秒内线性衰减。
 scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型变大。
 scripts/gamedata/glossary.gd|lit|登场时给予敌人的枪。持枪者属性提升，但每次攻击会损失生命值。
 scripts/gamedata/glossary.gd|lit|直升机龟的龟能充满时施放的大招：沿覆盖敌人最多的航线飞行，沿途投弹。
 scripts/gamedata/glossary.gd|lit|真火
 scripts/gamedata/glossary.gd|lit|破损
+scripts/gamedata/glossary.gd|lit|符咒贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。
 scripts/gamedata/glossary.gd|lit|符纸
 scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
 scripts/gamedata/glossary.gd|lit|蓄力猛砸
-scripts/gamedata/glossary.gd|lit|蚀月符纸贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。
 scripts/gamedata/glossary.gd|lit|诅咒
 scripts/gamedata/glossary.gd|lit|迷你水晶
 scripts/gamedata/glossary.gd|lit|迷你水晶球施加在敌人身上的层数。达到最大层数时引爆，造成基于该敌人最大生命值的魔法伤害，并重置层数。
@@ -638,14 +638,14 @@ scripts/gamedata/vfxlab_cases.gd|lit|★贝壳是 **billboard 罩在龟身上**�
 scripts/gamedata/vfxlab_cases.gd|lit|★这一件**没有任何战斗演出** —— 全部可见性就是每 6 秒一次的「+3 深海币」飘字和装备格里的累计徽章。拍点就压在 t≈6.0 与 t≈12.0 两次到账的前后, 看飘字升起与徽章数字跳。 ★拍点密铺 5.95~7.30 每 0.09 秒: 金币 12 帧/16fps = 0.75 秒转一圈、存活 1.05 秒、三枚还错峰 0.09 秒 —— 用2 帧采样根本看不出它在转。 ★★配 `bars` 而不是 `ui`: 飘字跟着**整层 UI** 走, 而 `ui: true` 只留队伍面板、把飘字连同整层一起关掉 —— 这件的读数就是飘字 + 装备格徽章。
 scripts/gamedata/vfxlab_cases.gd|lit|★金弹专用台。0.2 秒一档密排铺满两个金弹周期(小手枪 0.5 秒一发 × 每 4 发一金) ⇒ 同一批图里既有普通弹也有金弹。
 scripts/gamedata/vfxlab_cases.gd|lit|★龙从携带者位置朝敌方质心拉一条直线飞到最远敌人身后, 线两侧各 DragonSystem.BREATH_HALF_W=88 码内: 敌吃魔伤+灼烧, 友回血。 ★摆 1 个友军正是要验「友军回血」那半条。 ★enemy_attacks 关掉: 这一件看的是龙与火柱, 敌人还手只加噪声。
-scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_023 灼热火珊瑚】原生=它【自己的火法力】(每段命中 +10, 满 100)挥出 60 度扇形火焰波; 法力满=再挥一次。看点: 装备格【两条】条子 —— 上橙=火法力(靠命中涨), 下紫=法器法力。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_023 火珊瑚】原生=它【自己的火法力】(每段命中 +10, 满 100)挥出 60 度扇形火焰波; 法力满=再挥一次。看点: 装备格【两条】条子 —— 上橙=火法力(靠命中涨), 下紫=法器法力。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
 scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_026 雷电法杖】原生=它【自己的雷电充能】(每段伤害 +25, 满 100)朝随机目标发连锁闪电(最多命中 4/5/6 个); 法力满=再发一次。看点: 装备格两条(上黄=雷电充能, 下紫=法力) + 闪电在敌人之间跳。 ★★2026-09-13 订正: 未激活羁绊时满值是 **MANA_FULL_BY_TIER[0] = 200** 不是 100 —— 原来 mana_kick 给 100 只灌半条, 实拍 1.0~4.0 秒**一道闪电都没有**(和 023 同一个坑)。现在给 200 ⇒ 一进场就满, 拍点铺 1.0~3.55 每 0.15s 覆盖六跳(逐跳错峰 CHAIN_HOP_GAP=0.2s)。
-scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_029 冰封水母】原生=每 12 秒自身上盾 100/160/250 并砸地推出一条冰道(长 500 码); 法力满=再来一次。看点: 上盾那一下 + 冰道推进到谁才结算谁(击飞+冰封)。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 MANA_FULL_BY_TIER[0] = 200** ⇒ 只灌半条, 整段拍下来什么都不会发生(023/026 同一个坑, 这是第三次)。②原来 7 个拍点跨 15 秒, 而整套演出是【前摇 0.3 秒 + 冰道推进 0.9 秒】共 1.2 秒 —— 采样比效果本身还粗, 冰道推进的过程一帧都拍不到。现在铺 1.00~2.60 每 0.1 秒。
-scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_030 迷你水晶球A】原生=每 7 秒朝最近敌方向连发 2/2/3 段贯穿光束(间隔 LINE_SEG_GAP=0.2 秒); 法力满=再来一轮。看点: 一条直线上的贯穿 + 敌人身上叠迷你水晶层, 满 3 层引爆。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 200**(MANA_FULL_BY_TIER[0]) ⇒ 只灌半条。②原来 7 个拍点跨 15 秒, 而三段光束总共只占 0.4 秒 —— **采样间隔比效果的节拍还大, 整段会被跳过**(026 逐跳错峰那次栽过同一个)。现在铺 1.00~1.96 每 0.08 秒, 一段都不漏。
-scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_031 迷你水晶球B】原生=每 8 秒以自身为中心 360 度扫射一圈(半径 1000 码, 耗时 1.5 秒, 射线跟着龟走); 法力满=再扫一圈。看点: 扫射那一圈 + 偷魔抗。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 200**(`MANA_FULL_BY_TIER[0]`) ⇒ 只灌半条(023/026/029/030 之后**这是第四次**)。②原来 7 个拍点跨 15 秒, 而扫射一圈只用 `SWEEP_SEC`=1.5 秒 —— 采样比效果本身还粗。现在铺 1.00~2.40 每 0.1 秒, 看得见射线一圈一圈转过去。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_029 寒冰法杖】原生=每 12 秒自身上盾 100/160/250 并砸地推出一条冰道(长 500 码); 法力满=再来一次。看点: 上盾那一下 + 冰道推进到谁才结算谁(击飞+冰封)。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 MANA_FULL_BY_TIER[0] = 200** ⇒ 只灌半条, 整段拍下来什么都不会发生(023/026 同一个坑, 这是第三次)。②原来 7 个拍点跨 15 秒, 而整套演出是【前摇 0.3 秒 + 冰道推进 0.9 秒】共 1.2 秒 —— 采样比效果本身还粗, 冰道推进的过程一帧都拍不到。现在铺 1.00~2.60 每 0.1 秒。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_030 粉色迷你水晶】原生=每 7 秒朝最近敌方向连发 2/2/3 段贯穿光束(间隔 LINE_SEG_GAP=0.2 秒); 法力满=再来一轮。看点: 一条直线上的贯穿 + 敌人身上叠迷你水晶层, 满 3 层引爆。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 200**(MANA_FULL_BY_TIER[0]) ⇒ 只灌半条。②原来 7 个拍点跨 15 秒, 而三段光束总共只占 0.4 秒 —— **采样间隔比效果的节拍还大, 整段会被跳过**(026 逐跳错峰那次栽过同一个)。现在铺 1.00~1.96 每 0.08 秒, 一段都不漏。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_031 蓝色迷你水晶】原生=每 8 秒以自身为中心 360 度扫射一圈(半径 1000 码, 耗时 1.5 秒, 射线跟着龟走); 法力满=再扫一圈。看点: 扫射那一圈 + 偷魔抗。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 200**(`MANA_FULL_BY_TIER[0]`) ⇒ 只灌半条(023/026/029/030 之后**这是第四次**)。②原来 7 个拍点跨 15 秒, 而扫射一圈只用 `SWEEP_SEC`=1.5 秒 —— 采样比效果本身还粗。现在铺 1.00~2.40 每 0.1 秒, 看得见射线一圈一圈转过去。
 scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_043 海浪护符】原生=每 2.5 秒 +1 巨浪层, 满 3/2/2 层清零并从身后 400 码涌起浪墙横扫全场(敌我都扫: 友军上盾+永久护甲魔抗, 敌人吃伤害+永久减)。★法力满 = +1 层, 不是直接涌浪 —— 它的效果就是那个周期分支本身。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
-scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_088 涨潮碑】★只有法力条这一条触发路径。法力满=脚下立一块潮汐碑(钉地不跟随, 5 秒, 半径 250 码): 碑内敌人每秒掉血、友军每秒上盾+攻速。碑在的时候法力条锁住不涨。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
-scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_089 蚀月符纸】★只有法力条这一条触发路径。法力满=给一个敌人贴符纸: 15 秒内共造成 400/700/1000 魔法伤害并每秒削 1 点魔抗; 被贴的敌人死了, 符纸带剩余时长转移到最近的敌人。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_088 潮汐图腾】★只有法力条这一条触发路径。法力满=脚下立一块潮汐碑(钉地不跟随, 5 秒, 半径 250 码): 碑内敌人每秒掉血、友军每秒上盾+攻速。碑在的时候法力条锁住不涨。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_089 符咒】★只有法力条这一条触发路径。法力满=给一个敌人贴符纸: 15 秒内共造成 400/700/1000 魔法伤害并每秒削 1 点魔抗; 被贴的敌人死了, 符纸带剩余时长转移到最近的敌人。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
 scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_090 镇海杵】★主动只有法力条这一条: 法力满=跳到空中猛砸(500 码内 3 倍攻击力+魔法伤害, 眩晕+击飞)。另有被动: 每第三次普攻发一片浪潮, 在敌我之间连跳(打敌伤害/打友治疗)。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
 scripts/gamedata/vfxlab_cases.gd|lit|【亡灵之斧】(2026-09-15 重做 · 方案书 20260915g「E」, 用户「6/9亡灵斧你这是在敷衍我啊」) 看三样: ①常驻亡灵领域 `eq096-undead-field.png`(贴地跟斧头走, 外缘冥火亮边 = 300 码判定圆, 不用等龟能) ②每秒一跳: 领域内收一次 `eq096-undead-pulse.png` + 每个环内挨扣的敌人抽一缕魂飞回斧头 `eq096-undead-soul.png`(0.45 秒, 紧跟跳点的拍点才拍得到) + 斧头「吸到了」`eq096-undead-drink.png` ③主动: 亡灵没有替换, 仍是被动 6 的梯形蓄力。★这个台子**看不到死亡复活**: 敌人不还手、斧头死不了 —— 崩散 / 倒计时 / 复活柱由门禁 verify_axe_undead_holo_vfx ③ 走真入口逐模拟步验(倒计时结束 = 复活结算那一步), 重生本身由 verify_axe_batch10 E3 验。
 scripts/gamedata/vfxlab_cases.gd|lit|【余烬之斧】处决一个单位 ⇒ 召唤物 +150 龟能; 主动 4 秒猛砸被替换为余烬之光。★enemies=3 是为了有得处决(单敌人打死就没目标了)。
@@ -2081,6 +2081,7 @@ scripts/scenes/codex/status_sources.gd|lit|−{C:CandySystem.BARRAGE_SLOW_PCT%}%
 scripts/scenes/codex/status_sources.gd|lit|−{C:DiamondSystem.SMASH_SLOW_PCT%}% · {C:DiamondSystem.SMASH_SLOW_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|吞噬
 scripts/scenes/codex/status_sources.gd|lit|哑铃
+scripts/scenes/codex/status_sources.gd|lit|喇叭枪053
 scripts/scenes/codex/status_sources.gd|lit|奇械
 scripts/scenes/codex/status_sources.gd|lit|宝箱藏宝图 on-hit 战利品
 scripts/scenes/codex/status_sources.gd|lit|小木斧
@@ -2106,7 +2107,6 @@ scripts/scenes/codex/status_sources.gd|lit|精英小将铁锁
 scripts/scenes/codex/status_sources.gd|lit|赛博龟阵亡 → 浮游炮组装成机甲
 scripts/scenes/codex/status_sources.gd|lit|铁锁
 scripts/scenes/codex/status_sources.gd|lit|锈蚀阔剑007
-scripts/scenes/codex/status_sources.gd|lit|霰弹贝古053
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备

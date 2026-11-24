@@ -25,8 +25,8 @@ extends Node
 ##
 ## ★分布(实测, 不是猜的):
 ##   · fire_equip_effect(8): 004 022 028 037 040 042 053 057
-##   · 各自的 _tick_*(6):    008 珊瑚刺 / 012 龟苓膏 / 019 海葵 / 025 雷鸣贝 / 027 电棍 / 035 齿轮
-##   · 常驻标志(2):          041 退潮浊液(_eq_apply_flags) / 059 沙漏(_unit_hourglass_star)
+##   · 各自的 _tick_*(6):    008 珊瑚刺 / 012 龟苓膏 / 019 海葵 / 025 雷鸣贝 / 027 电击器 / 035 齿轮
+##   · 常驻标志(2):          041 潮汐药水(_eq_apply_flags) / 059 沙漏(_unit_hourglass_star)
 ##     ⇒ 这两件不产生"事件", 只改字段, 单独用字段判据。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -69,7 +69,7 @@ func _snap(u: Dictionary, es: Array) -> Array:
 	## ★★还要看【这件装备自己的账】`eq_state[iid]` —— 那是产品自己的记账,
 	##   不是我插的标记。第一版漏了它, 于是:
 	##     · 035 黄铜齿轮铸的是【深海币】(记在 eq_state), 不改任何单位字段 ⇒ 被判"没反应"
-	##     · 027 电棍攒的是 `baton_charges`(也在 eq_state) ⇒ 同上
+	##     · 027 电击器攒的是 `baton_charges`(也在 eq_state) ⇒ 同上
 	##   把"什么都没发生"判成 bug, 与把"我没配对环境"报成"效果有问题"是同一个错。
 	return [hp, dots, stun, float(u.get("shield", 0.0)) + float(u.get("hp", 0.0)),
 		float(u.get("atk", 0.0)), float(u.get("aspd_perm", 1.0)),
@@ -225,7 +225,7 @@ func _ready() -> void:
 		_ok("%s: %s 可达且没炸, 装备账已建" % [iid2, fn], reach2,
 			"eq_state 有它=%s" % str(reach2))
 
-	# ── ③ 两件常驻标志: 041 退潮浊液 / 059 沙漏 ────────────────────────────
+	# ── ③ 两件常驻标志: 041 潮汐药水 / 059 沙漏 ────────────────────────────
 	##   ★它们不产生"事件", 只在登场时改字段 ⇒ 判据是【字段真的被改了】。
 	##     只断言"函数被调过"守不住(那是数我自己的标记)。
 	## ★★2026-08-26 重写这两条 —— 原来的判据是【恒真式】, 就写在上面那句
@@ -244,13 +244,13 @@ func _ready() -> void:
 	##       「展示串与事实源对不上 1 处」)。本文件守的是**"产品有没有照表施加"**这条链。
 	##       两件事分工, 不是缺口 —— 但**必须写下来**, 否则下次跑反向验证看到"0 红"会自己吓自己。
 
-	## ── 041 退潮浊液: 装备表给 hp/shieldHealPct, 另有"登场 5 秒后涨潮"的延时事件 ──
+	## ── 041 潮汐药水: 装备表给 hp/shieldHealPct, 另有"登场 5 秒后涨潮"的延时事件 ──
 	var st3: Array = _stage(s, "p2eq_041")
 	var u3: Dictionary = st3[0]
 	var base3: Dictionary = _stage(s, "")[0]        # 对照组: 同样的龟, 不带任何装备
 	var want_hp41: float = float(EQS.STATS["p2eq_041"][SI3].get("hp", 0))
 	_ok("★分母: 对照组(不带装备)真的建起来了", not base3.is_empty())
-	_ok("★★041 退潮浊液: maxHp 比对照组【正好多出装备表那一档】(+%.0f)" % want_hp41,
+	_ok("★★041 潮汐药水: maxHp 比对照组【正好多出装备表那一档】(+%.0f)" % want_hp41,
 		absf((float(u3["maxHp"]) - float(base3["maxHp"])) - want_hp41) < 1.0,
 		"带 %.0f - 不带 %.0f = %.0f (表里 %.0f)"
 			% [float(u3["maxHp"]), float(base3["maxHp"]), float(u3["maxHp"]) - float(base3["maxHp"]), want_hp41])

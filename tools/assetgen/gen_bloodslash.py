@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""gen_bloodslash.py — 011「饮血护符坠」的两件素材: 连斩斩痕 / 图标。
+"""gen_bloodslash.py — 011「血滴护符」的两件素材: 连斩斩痕 / 图标。
 
 跑法(两步, 与 006/007/008/009/010 同一条流水):
   python tools/assetgen/gen_bloodslash.py --out C:/tmp/bs_slash --mode slash --vars 4 --frames 5 --px 64

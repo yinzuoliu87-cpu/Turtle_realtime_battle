@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""blender_candlefire.py — 037 蛋糕蜡烛【燃烧阶段】的两段火, 用 Blender 体积火渲染。
+"""blender_candlefire.py — 037 蜡烛【燃烧阶段】的两段火, 用 Blender 体积火渲染。
 
 跑法(无窗口):
   blender --background --python tools/assetgen/blender_candlefire.py -- --out C:/tmp/cfire --px 288

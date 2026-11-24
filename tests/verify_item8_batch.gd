@@ -86,7 +86,7 @@ func _ready() -> void:
 	_ok("★③ 对照: 没有加速的友军照常吃到 +30%%", absf(float(plain.get("haste_mult", 1.0)) - (1.0 + AxeFinalStats.HOLO_AURA_ASPD)) < 1e-4,
 		"haste_mult %.2f" % float(plain.get("haste_mult", 1.0)))
 
-	# ── ④ 060 磷光水母伞: 伞张开时携带者阵亡 ⇒ 伞下队友的减伤/闪避必须撤掉 ──
+	# ── ④ 060 水母伞: 伞张开时携带者阵亡 ⇒ 伞下队友的减伤/闪避必须撤掉 ──
 	_s._units.clear()
 	var car := _unit("basic", "left")
 	var mate := _unit("basic", "left", Vector2(50, 0))

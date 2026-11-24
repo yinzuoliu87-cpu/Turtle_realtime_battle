@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""blender_cake_field.py — 072 铁皮蛋糕盒【蛋糕法阵】: 贴地蛋糕盘(俯视) + 8 根立着的生日蜡烛(公告板)。
+"""blender_cake_field.py — 072 蛋糕盒【蛋糕法阵】: 贴地蛋糕盘(俯视) + 8 根立着的生日蜡烛(公告板)。
 
 跑法(无窗口):
   "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" --background --python tools/assetgen/blender_cake_field.py -- --out C:/tmp/cake

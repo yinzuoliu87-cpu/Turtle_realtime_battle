@@ -1,10 +1,10 @@
 extends Node
-## verify_thorn_cut.gd — 荆棘海胆 015 追加效果「反伤 → 3 秒治疗强度/护盾强度 -50%」(2026-10-07)
+## verify_thorn_cut.gd — 荆棘盾牌 015 追加效果「反伤 → 3 秒治疗强度/护盾强度 -50%」(2026-10-07)
 ##
 ## 用户原话:「提供的生命值加强为180/350/1000，新效果为携带者的反伤会对目标施加持续3秒的50%治疗效果和护盾效果的削弱」
 ##         同日更正:「不不不，不要去掉旧效果」(累计反伤 → 护盾 + 强化普攻流血 原样保留)
 ##         同日:「没有护盾效果的属性吗」「有吧」⇒ 削的是【治疗强度 / 护盾强度】属性, 不另立状态
-## 方案书: docs/plans/20261007-荆棘海胆重做.md
+## 方案书: docs/plans/20261007-荆棘盾牌重做.md
 ##
 ## 判据走真入口: 伤害走 `_apply_damage_from`(反伤由产品自己的两条反伤路径打出), 治疗走 `_heal`,
 ##   护盾走 `_grant_shield`, 面板读 `_info_stat_tiles` / `_info_stat_rows_minor`(面板真正画的那两张表)。
@@ -95,7 +95,7 @@ func _minor(u: Dictionary, nm: String) -> String:
 
 func _ready() -> void:
 	await get_tree().process_frame
-	print("=== 荆棘海胆 015: 反伤 → 治疗强度/护盾强度 -50% ===")
+	print("=== 荆棘盾牌 015: 反伤 → 治疗强度/护盾强度 -50% ===")
 	RB.DEBUG_EDIT = true
 	s = RB.new()
 	add_child(s)

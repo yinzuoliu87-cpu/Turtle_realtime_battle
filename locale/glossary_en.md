@@ -123,51 +123,51 @@
 
 | 中文 | English | | 中文 | English |
 |---|---|---|---|---|
-| 木制长剑 | Wooden Longsword | | 霰弹贝古 | Scattershell Blunderbuss ⚠ |
+| 木制长剑 | Wooden Longsword | | 喇叭枪 | Blunderbuss ⚠ |
 | 辣椒 | Chili Pepper | | 瞄准镜 | Scope |
 | 锋利鲨齿 | Sharp Shark Tooth | | 病毒箭头 | Virus Arrowhead |
 | 暴君之牙 | Tyrant's Fang | | 飞镖 | Darts |
-| 双生匕首 | Twin Daggers | | 狙击长管 | Sniper Barrel |
-| 千刃风暴 | Thousand-Blade Storm | | 远古炮台 | Ancient Turret |
+| 双生匕首 | Twin Daggers | | 狙击枪 | Sniper Rifle |
+| 千刃风暴 | Thousand-Blade Storm | | 远古炮塔 | Ancient Turret |
 | 锈蚀阔剑 | Rusted Broadsword | | 沙漏 | Hourglass |
-| 双穿珊瑚刺 | Twinpierce Coral Spike | | 磷光水母伞 | Phosphor Jelly Umbrella |
+| 珊瑚刺 | Coral Spike | | 水母伞 | Jellyfish Umbrella |
 | 月之刃 | Moon Blade | | 钻孔螺 | Drill Snail |
 | 激光长刃 | Laser Longblade | | 螳螂虾钳 | Mantis Shrimp Claw |
-| 饮血护符坠 | Bloodthirst Pendant | | 白鲸气环 | Beluga Bubble Ring |
-| 海藻 | Seaweed | | 溺者的浮囊 | Drowned Man's Float |
-| 炙烤海胆 | Grilled Sea Urchin | | 鲨肝油 | Shark Liver Oil |
-| 深海堡垒甲 | Abyssal Fortress Armor | | 鲸涎浓浆 | Ambergris Syrup |
-| 荆棘海胆 | Thorny Sea Urchin | | 毒药瓶 | Poison Vial |
-| 铁壁盾 | Iron Wall Shield | | 深海气压罐 | Deep-Sea Pressure Tank |
+| 血滴护符 | Blood Drop Amulet | | 灵火 | Spirit Flame |
+| 海藻 | Seaweed | | 溺者符囊 | Drowned Charm Pouch |
+| 烤海胆 | Grilled Urchin | | 轻盈药水 | Swiftness Potion |
+| 深海堡垒甲 | Abyssal Fortress Armor | | 狂暴药水 | Berserk Potion |
+| 荆棘盾牌 | Thorn Shield | | 毒药瓶 | Poison Vial |
+| 铁壁盾 | Iron Wall Shield | | 氧气瓶 | Oxygen Tank |
 | 不沉之锚 | Unsinkable Anchor | | 草莓蛋糕 | Strawberry Cake |
-| 守护贝壳 | Guardian Seashell | | 压舱咸鱼砖 | Ballast Saltfish Brick |
-| 海葵药膏 | Anemone Salve | | 炼乳罐 | Condensed Milk Can |
-| 哑铃 | Dumbbell | | 铁皮蛋糕盒 | Tin Cake Box |
-| 守护贝母 | Guardian Nacre | | 藤蔓弓弦 | Vine Bowstring |
-| 余烬燃油瓶 | Ember Oil Flask | | 魔法胸甲 | Magic Breastplate |
-| 灼热火珊瑚 | Scorching Fire Coral | | 银色箭袋 | Silver Quiver |
-| 龙蛋 | Dragon Egg | | 连发弩机 | Auto-Crossbow ⚠（与「连发弩」区分） |
-| 雷鸣贝壳 | Thunder Seashell | | 铜管手铳 | Copper Hand Cannon |
-| 雷电法杖 | Lightning Staff | | 电鳗双管铳 | Eel Double-Barrel |
-| 电棍 | Stun Baton | | 珊瑚急救塔 | Coral Aid Tower |
-| 冰冻药剂 | Freezing Potion | | 打捞旋翼机 | Salvage Gyrocopter |
-| 冰封水母 | Frozen Jellyfish | | 藤编圆盾 | Wicker Round Shield |
-| 迷你水晶球A / B | Mini Crystal Ball A / B | | 护心甲 | Heartguard Plate |
-| 唤灵骨符 | Spirit-Calling Bone Charm | | 潮汐细剑 | Tidal Rapier |
-| 复活海螺 | Revival Conch | | 手半剑 | Bastard Sword |
-| 玩偶小熊 | Teddy Bear | | 压电陶瓷片 | Piezo Ceramic Plate |
-| 黄铜齿轮 | Brass Gear | | 六分仪浮游炮 | Sextant Drone Cannon |
-| 温泉蛋 | Hot Spring Egg | | 盗令潜水钟 | Thief's Diving Bell ⚠ |
-| 蛋糕蜡烛 | Cake Candle | | 涨潮碑 | Rising Tide Stele |
-| 信号放大器 | Signal Amplifier | | 蚀月符纸 | Eclipse Talisman |
-| 竹制弓箭 | Bamboo Bow | | 镇海杵 | Sea-Calming Pestle |
-| FPGA板 | FPGA Board | | 远古龟甲片 | Ancient Shell Shard |
-| 退潮浊液 | Ebb-Tide Sludge | | 毒蛾茧 | Venom Moth Cocoon |
-| 涟漪药剂 | Ripple Potion | | 香火石 | Incense Stone |
-| 海浪护符 | Wave Amulet | | 祖龟碑 | Ancestor Turtle Stele |
-| 深海项链 | Abyssal Necklace | | 小木斧 | Little Wooden Axe |
+| 守护贝壳 | Guardian Seashell | | 大火腿 | Big Ham |
+| 药膏 | Salve | | 炼乳罐 | Condensed Milk Can |
+| 哑铃 | Dumbbell | | 蛋糕盒 | Cake Box |
+| 蚌壳 | Clam Shell | | 藤弓 | Vine Bow |
+| 燃烧瓶 | Molotov | | 魔法胸甲 | Magic Breastplate |
+| 火珊瑚 | Fire Coral | | 银色箭袋 | Silver Quiver |
+| 龙蛋 | Dragon Egg | | 连弩 | Repeating Crossbow ⚠（与「手弩」区分） |
+| 雷鸣贝壳 | Thunder Seashell | | 小手枪 | Little Pistol |
+| 雷电法杖 | Lightning Staff | | 双管枪 | Double-Barrel |
+| 电击器 | Stun Gun | | 医疗塔 | Medic Tower |
+| 冰冻药剂 | Freezing Potion | | 旋翼机 | Gyrocopter |
+| 寒冰法杖 | Frost Staff | | 藤编圆盾 | Wicker Round Shield |
+| 粉色迷你水晶 / B | Pink Mini Crystal / B | | 护心甲 | Heartguard Plate |
+| 骨哨 | Bone Whistle | | 细剑 | Rapier |
+| 魔法海螺 | Magic Conch | | 手半剑 | Bastard Sword |
+| 玩偶小熊 | Teddy Bear | | 蓄电池 | Battery |
+| 黄铜齿轮 | Brass Gear | | 终极浮游炮 | Ultimate Drone Cannon |
+| 温泉蛋 | Hot Spring Egg | | 潜水钟 | Diving Bell ⚠ |
+| 蜡烛 | Candle | | 潮汐图腾 | Tide Totem |
+| 信号放大器 | Signal Amplifier | | 符咒 | Talisman |
+| 竹弓 | Bamboo Bow | | 镇海杵 | Sea-Calming Pestle |
+| FPGA板 | FPGA Board | | 龟甲 | Tortoise Shell |
+| 潮汐药水 | Tide Potion | | 毒蛾 | Venom Moth |
+| 活力药水 | Vigor Potion | | 香火石 | Incense Stone |
+| 海浪护符 | Wave Amulet | | 墓碑 | Tombstone |
+| 珍珠项链 | Pearl Necklace | | 小木斧 | Little Wooden Axe |
 | 地狱护盾 | Hellfire Shield | | 圣光护盾 | Holy Light Shield |
-| 幽灵墨鱼 | Ghost Cuttlefish | | 重击锤 | Heavy Hammer |
-| 黄铜手铳 | Brass Hand Cannon | | 连发弩 | Repeating Crossbow |
-| 幽灵加特林 | Ghost Gatling | | 激光手枪 | Laser Pistol |
+| 幽灵墨鱼 | Ghost Cuttlefish | | 战锤 | Warhammer |
+| 燧发枪 | Flintlock | | 手弩 | Hand Crossbow |
+| 加特林 | Gatling | | 激光手枪 | Laser Pistol |
 | 左轮手枪 | Revolver | | | |

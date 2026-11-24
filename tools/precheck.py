@@ -10,7 +10,7 @@
   ② 全仓扫描类测试(源码里遍历目录的 verify_*: 这类最容易被任何改动碰红, 而且大多很快)
   ③ 和这次改动有关的测试: 改动里的 verify_* 本身 + 源码提到改动文件路径 / class_name 的 verify_*(枢纽文件不展开)
   ④ 数据整表扫描(2026-11-14 补): 改了 data/*.json ⇒ 把那份数据整张遍历的 verify_*(`for x in DataRegistry.<字段>`)也选上。
-     由来: 11-14 连发弩机正文多一组分档, verify_equip_tier_labels(逐件对标签条数)只读 DataRegistry.phase2_equipment,
+     由来: 11-14 连弩正文多一组分档, verify_equip_tier_labels(逐件对标签条数)只读 DataRegistry.phase2_equipment,
      既不提文件路径也不提改动的 .gd ⇒ 预检没选, 红在 CI 上。读这份数据的测试有 51 条(超枢纽线), 只选「整表遍历」那 46 条。
 判定与门禁同一套: 退出码 0 + 日志有 ALL PASS + 不命中 run-tests.sh 的 FATAL 正则。
 ★11-14 用户「CI 每次都跑了太多遍了…你得思考一下」, 补两处省轮次:

@@ -33,7 +33,7 @@ const BADGE_PX := 16.0
 ## 枪羁绊【金弹】逐档真伤比例。★写**字面值**, 不引用常量 ——
 ##   引用就是拿代码跟它自己比, 那是恒真式(memory [[fb-verify-check-can-fail]])。
 const WANT_GOLD_PCT := [0.60, 0.80, 1.00]
-## 083 潮汐细剑的层数上限(规格原文)
+## 083 细剑的层数上限(规格原文)
 const WANT_STACK_CAP := 20
 ## 090 镇海杵的砸落半径 / 起跳峰高(规格原文)
 ## ★2026-08-09 1000 → 500(用户拍板)。这个常量是**独立第三方**: 它不引用产品代码,
@@ -253,7 +253,7 @@ func _g3_gold_vs_normal() -> void:
 # ══════════════════════════════════════════════════════════════════
 func _g4_078_arc() -> void:
 	print("")
-	print("  ⑤ 078 电鳗双管铳:")
+	print("  ⑤ 078 双管枪:")
 	# ①「不是白的」的可执行判据 = 饱和度。白 = 饱和度 0; 旧色 #9bdcff 的饱和度只有 0.39。
 	var s_old: float = _sat(Color("#9bdcff"))
 	var s_new: float = _sat(GEV.COL_ARC)
@@ -380,7 +380,7 @@ func _g6_082_shells() -> void:
 # ══════════════════════════════════════════════════════════════════
 func _g7_083_stacks() -> void:
 	print("")
-	print("  ⑧ 083 潮汐细剑(20 层是核心资源):")
+	print("  ⑧ 083 细剑(20 层是核心资源):")
 	_ok("⑧ 刻度格数 = 层数上限 %d" % WANT_STACK_CAP,
 		BEV.STACK_TICKS == WANT_STACK_CAP and int(BEV.STACK_CAP) == WANT_STACK_CAP)
 	# ★核心一条: 点亮的弧长比例 ≡ stacks/20。拿**真实贴图的像素**去数, 不是重算公式。
@@ -432,7 +432,7 @@ func _g8_grow_curve() -> void:
 # ══════════════════════════════════════════════════════════════════
 func _g9_088_boundary() -> void:
 	print("")
-	print("  ⑩ 088 涨潮碑(边界):")
+	print("  ⑩ 088 潮汐图腾(边界):")
 	var mesh: ArrayMesh = AEV._build_boundary_ring()
 	var arr: Array = mesh.surface_get_arrays(0)
 	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]

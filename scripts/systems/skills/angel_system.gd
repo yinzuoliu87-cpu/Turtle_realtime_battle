@@ -75,8 +75,8 @@ func judge_hit(u: Dictionary, tgt: Dictionary) -> void:
 
 ## 平等的一段(4 道圣光各一段 + A 级以上目标的审判光柱)= **一次攻击**(用户 11-19「它不是四段打击嘛…还可能会触发额外一段打击…
 ##   每段打击都应该是能够触发攻击特效的。比如说能够触发三环，或者有个二费叫钻孔螺…同样，天使龟本身它的被动也是一个攻击特效」):
-##   ① 出手 = 攻击时的装备钩子 `_eq_on_basic_attack`(065 鲨肝油 / 017 不沉之锚 / 027 电棍 / 062 螳螂虾钳取出 …);
-##   ② 伤害落地时命中类装备按【普攻命中】判(`_hit_as_basic` ⇒ battle_damage._post_hit_hooks: 061 钻孔螺 / 063 白鲸气环 …);
+##   ① 出手 = 攻击时的装备钩子 `_eq_on_basic_attack`(065 轻盈药水 / 017 不沉之锚 / 027 电击器 / 062 螳螂虾钳取出 …);
+##   ② 伤害落地时命中类装备按【普攻命中】判(`_hit_as_basic` ⇒ battle_damage._post_hit_hooks: 061 钻孔螺 / 063 灵火 …);
 ##   ③ 审判被动(judge_hit)。
 ##   同赌神赌注的牌(11-11 GamblerSystem.bet_card_on_throw / bet_card_land): 只对**装备钩子**算普攻, 音效 / 伤害统计仍是技能;
 ##   不点剑士(08-03「连击不触发剑士」同口径)。结算从演出里抽出来, 门禁 verify_angel_equality_attack_fx 直接调。
@@ -88,7 +88,7 @@ func _equality_hit(u: Dictionary, tgt: Dictionary, dmg_fn: Callable, col: Color,
 		battle._equip_sys._eq_on_basic_attack(u, tgt)
 		battle._equip_sys.tally.pop(_tl0)
 		if not tgt.get("alive", false):
-			return   # 攻击时的装备(锚击 / 电棍)已经把它打死了
+			return   # 攻击时的装备(锚击 / 电击器)已经把它打死了
 	u["_hit_as_basic"] = true
 	battle._damage._apply_damage_from(u, tgt, int(dmg_fn.call()), col, ls, raw)
 	u["_hit_as_basic"] = false

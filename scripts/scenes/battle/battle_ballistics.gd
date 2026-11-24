@@ -78,7 +78,7 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) 
 
 ## ★魔法石(被动·用户2026-07-23): 大师普攻命中→附带 2% 目标最大生命 魔法伤害 + 自己 +5% 攻速(可叠·本场结束重置)。
 ## ★可测纯函数(不依赖演出): 石头是归巢弹→火时即视作命中, 直接结算(数值稳)。攻速叠层是【计数】(_ms_stacks), 换场清零。
-## 008 双穿珊瑚刺的弹体。
+## 008 珊瑚刺的弹体。
 ## ★★2026-09-08 重做: 改前是 `VfxTex._make_coralspike_texture()` **程序生成** +
 ##   `TEXTURE_FILTER_LINEAR` + `wisp_dir` 手动 basis 自由旋转 —— 实拍是**一团模糊的粉红雾**
 ##   飞过去, 完全读不出是"刺"(与 001/003/004/007 完全同族的三件病)。
@@ -445,7 +445,7 @@ func _step_projectiles(delta: float) -> void:
 					battle._venom_splat(tgt["pos"])
 					if pr["src"].get("alive", false):
 						battle._damage._heal(pr["src"], float(vd) * EquipSystem.FANG_LIFESTEAL)   # 回复100%造成的伤害值
-				elif pr.get("coral_spike", false):   # 双穿珊瑚刺008: 命中→物理(红)+ %maxHP魔法(蓝·走魔抗·修原raw白字真伤)+珊瑚碎裂
+				elif pr.get("coral_spike", false):   # 珊瑚刺008: 命中→物理(红)+ %maxHP魔法(蓝·走魔抗·修原raw白字真伤)+珊瑚碎裂
 					var cs: int = int(pr.get("co_si", 2))
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._atk_dmg(pr["src"], [1.0, 1.2, 1.5][cs], tgt), Color("#ff4444"), 0.0, false, true)
 					battle._damage._apply_damage_from(pr["src"], tgt, battle._resolve_dmg(pr["src"], float(tgt["maxHp"]) * [0.08, 0.12, 0.18][cs], tgt, true), Color("#bfe9ff"), 0.0, false, true)

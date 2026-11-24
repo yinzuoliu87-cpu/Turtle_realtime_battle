@@ -18,8 +18,8 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 ## 【伤害类】判据 = 敌人掉血
 const DMG_IDS := ["p2eq_004", "p2eq_022", "p2eq_028", "p2eq_053", "p2eq_057"]
 ## 【增益类】判据 = 己方状态变化。★分类是**读代码得出**的, 不是猜:
-##   · 042 涟漪药剂 走 `_allies_of`(奶友军)
-##   · 037 蛋糕蜡烛 是 `_ensure_candle` 的相位状态机
+##   · 042 活力药水 走 `_allies_of`(奶友军)
+##   · 037 蜡烛 是 `_ensure_candle` 的相位状态机
 ##   · 040 FPGA板 只放光环与代码符
 ##   拿"敌人掉血"去量它们, 得到的 0 是**判据选错**, 不是装备坏了 ——
 ##   我第一版就是这么把三件好装备列进"死件"的。

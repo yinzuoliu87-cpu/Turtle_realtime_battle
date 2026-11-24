@@ -46,7 +46,7 @@ TARGET_WORDS = {
     '最远的敌': ['farthest', 'far_enemy', '最远'],
     '随机': ['randi', 'pick_random', 'randf', 'shuffle', '随机'],
     '全体敌': ['_all_enemies', '_enemies_of', '_team_of', '全体', '全场'],
-    # 手写的最小值循环里没有 lowest 字样(涟漪药剂/狙击长管都是 var lv := INF 比大小),
+    # 手写的最小值循环里没有 lowest 字样(活力药水/狙击枪都是 var lv := INF 比大小),
     # 只按名字找会把它们报成误报。把这个惯用法也算进来。
     '生命百分比最低': ['lowest', 'min_hp', '最低', '最残', 'INF', 'hp_frac'],
     '攻击力最高': ['highest_atk', 'max_atk', '最高'],
@@ -225,7 +225,7 @@ def main():
     eq_src = {}
     for f in sorted(glob.glob('scripts/systems/equip/*.gd')):
         eq_src[f] = io.open(f, encoding='utf-8', errors='replace').read()
-    # 召唤物类装备(复活海螺/旋翼机/毒蛾茧/潜水钟)的行为住在 battle/ 与主场景, 不在 equip/ ——
+    # 召唤物类装备(魔法海螺/旋翼机/毒蛾/潜水钟)的行为住在 battle/ 与主场景, 不在 equip/ ——
     # 只扫 equip/ 会把它们全报成"选靶对不上"。把提到这件 id 的其它文件也收进来。
     eq_extra = {}
     ## ★2026-11-04 A1 技能积木化: 写成数据的装备(瞄准 / 周期 / 发数)住在 EquipEffects 数据表, 也是证据源。

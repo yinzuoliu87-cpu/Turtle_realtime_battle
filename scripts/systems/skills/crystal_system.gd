@@ -213,13 +213,13 @@ func _crystal_detonate(pos2d: Vector2) -> void:
 ## ★缓动照抄 Godot 的 `TRANS_CUBIC + EASE_IN_OUT`, 保证观感与改前一致:
 ##   t<0.5 → 4t³ ; 否则 → 1 - (-2t+2)³/2
 var _sweeps: Array = []
-## 【031 迷你水晶球B】法力满 → 以自身为心 360° 扫射一圈。
+## 【031 蓝色迷你水晶】法力满 → 以自身为心 360° 扫射一圈。
 ## 扫过的角度: 代码用的是弧度 TAU(整圈), 这里是它的度数形式 —— **推导**, 别存两份
 ## (存两份就会出现"代码扫整圈、文案说 270 度"这种事)。
 const SWEEP_ARC_RAD := TAU
 const SWEEP_ARC_DEG := rad_to_deg(SWEEP_ARC_RAD)
 const SWEEP_REACH := 1000.0     # 射线半径(码)
-## 【030 迷你水晶球A】贯穿光束: 段与段的错峰、判定带半宽。
+## 【030 粉色迷你水晶】贯穿光束: 段与段的错峰、判定带半宽。
 const LINE_SEG_GAP := 0.2       # 每段间隔(秒)
 const LINE_HALF_W := 55.0       # 直线中线两侧各多宽算命中(码)
 const MINI_STACK_MAX := 3       # 迷你水晶叠满几层引爆

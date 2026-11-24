@@ -10,7 +10,7 @@ extends Node
 ##      ⇒ dodge_bonus ≥ 1.0 = 永远打不中。而单只装备上限 3 件,
 ##      **探针实测: 带 2 件 3★ 幽灵墨鱼(各 50%) → 1.00 = 100% 免疫**。这个 bug 当时就是活的。
 ##
-## 修法: 通用分支施加 + 删掉 p2eq_046 的专属 _buff(否则双份, 与荆棘海胆同形状) + DODGE_CAP 钳在唯一写入点。
+## 修法: 通用分支施加 + 删掉 p2eq_046 的专属 _buff(否则双份, 与荆棘盾牌同形状) + DODGE_CAP 钳在唯一写入点。
 var _n := 0
 var _fail := 0
 func _ok(name: String, cond: bool, detail: String = "") -> void:

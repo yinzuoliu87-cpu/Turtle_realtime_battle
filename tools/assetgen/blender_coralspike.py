@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""blender_coralspike.py — 008 双穿珊瑚刺的三件素材: 珊瑚刺弹 / 命中碎裂 / 图标。
+"""blender_coralspike.py — 008 珊瑚刺的三件素材: 珊瑚刺弹 / 命中碎裂 / 图标。
 
 跑法(无窗口):
   blender --background --python tools/assetgen/blender_coralspike.py -- --out C:/tmp/cs --mode spike --dirs 8

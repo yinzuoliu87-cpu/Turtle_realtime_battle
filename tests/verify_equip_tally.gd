@@ -274,7 +274,7 @@ func _tick_owned() -> void:
 			s._equip_sys._arcane_sys._stele_settle({"src": u, "si": 2, "pos": e["pos"], "dmg": 40.0, "shd": 55.0})],
 		["p2eq_089", "mag", "符纸一跳(符纸在全局表)", func() -> void:
 			s._equip_sys._arcane_sys._talisman_settle({"src": u, "tgt": e, "si": 2, "per": 66.0})],
-		["p2eq_094", "mag", "祖龟碑石雷落地(携带者已阵亡)", func() -> void:
+		["p2eq_094", "mag", "墓碑石雷落地(携带者已阵亡)", func() -> void:
 			s._equip_sys._relic_sys.stele_bolt_land({"carrier": u, "tgt": e, "si": 2})],
 		["p2eq_055", "phy", "钩索炸弹每秒一跳(挂在敌人身上)", func() -> void:
 			e["hookbomb_pct"] = 0.0001

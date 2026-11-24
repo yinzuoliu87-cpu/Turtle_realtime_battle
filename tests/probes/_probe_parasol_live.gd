@@ -1,5 +1,5 @@
 extends Node
-## _probe_parasol_live —— 用户 11-12「磷光水母伞有什么效果吗？我怎么看那一直都是暂无效果」:
+## _probe_parasol_live —— 用户 11-12「水母伞有什么效果吗？我怎么看那一直都是暂无效果」:
 ##   裁判真入口打一整局, 量 060 携带者每一路: 伞撑开几次 / 每次罩到几个人 / 收伞回了多少血 / 「本局」统计里 060 记了什么。探针, 不进门禁。
 
 const Backend := preload("res://scripts/net/backend.gd")

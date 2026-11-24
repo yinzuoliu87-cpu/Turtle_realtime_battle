@@ -1,5 +1,5 @@
 extends Node
-## verify_skeleton_032.gd — 032 唤灵骨符【亡灵骷髅】的门禁 (2026-09-13)
+## verify_skeleton_032.gd — 032 骨哨【亡灵骷髅】的门禁 (2026-09-13)
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
@@ -58,7 +58,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 032 唤灵骨符: 亡灵骷髅 16/31/55 血 · 受任何伤害恒 1 点 ===")
+	print("=== 032 骨哨: 亡灵骷髅 16/31/55 血 · 受任何伤害恒 1 点 ===")
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -164,5 +164,5 @@ func _done() -> void:
 	if _n < 16:
 		print("  [FAIL] ★断言只有 %d 条(<16) —— 有用例中途中止了" % _n)
 		_fail += 1
-	print("ALL PASS — 032 唤灵骨符" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 032 骨哨" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

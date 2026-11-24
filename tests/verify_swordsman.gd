@@ -79,7 +79,7 @@ func _ready() -> void:
 	var eq4: Array = []
 	for i4 in ALL9.slice(0, 3):
 		eq4.append({"id": str(i4), "star": 1})
-	eq4.append({"id": "p2eq_065", "star": 1})   # 鲨肝油: 每次攻击 +1 层(攻速 + 龟能)
+	eq4.append({"id": "p2eq_065", "star": 1})   # 轻盈药水: 每次攻击 +1 层(攻速 + 龟能)
 	me4["equips"] = eq4
 	me4["eq_state"] = {}
 	me4["hp"] = 100000.0; me4["maxHp"] = 100000.0; me4["alive"] = true
@@ -94,7 +94,7 @@ func _ready() -> void:
 	s._swordsman.tick(0.0)
 	var o5: int = int((me4["eq_state"].get("p2eq_065", {}) as Dictionary).get("oil_stacks", 0))
 	_ok("④ 分母: 顶档带 3 件剑 ⇒ 排了 2 次追打, 且都打出去了", n4 == 2 and s._swordsman._pending.is_empty(), "排 %d · 剩 %d" % [n4, s._swordsman._pending.size()])
-	_ok("④ ★追打算一次攻击 ⇒ 鲨肝油每次追打 +1 层(%d → %d)" % [o4, o5], o5 == o4 + n4)
+	_ok("④ ★追打算一次攻击 ⇒ 轻盈药水每次追打 +1 层(%d → %d)" % [o4, o5], o5 == o4 + n4)
 	_ok("④ 追打打完 _sw_busy 已放下(不把后面的正常普攻也挡掉)", not bool(me4.get("_sw_busy", false)))
 	s._swordsman._pending.clear()
 

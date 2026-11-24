@@ -1,5 +1,5 @@
 extends Node
-## 荆棘海胆(p2eq_015) 反伤只发一次 —— 别的反伤装备不受影响。
+## 荆棘盾牌(p2eq_015) 反伤只发一次 —— 别的反伤装备不受影响。
 ##
 ## 由来〖2026-08-02 逐份复验方案书时查出〗:
 ##   p2eq_015 同时走两条反伤路 ——
@@ -34,13 +34,13 @@ func _ready() -> void:
 		await get_tree().process_frame
 
 	for si in range(3):
-		await _one("p2eq_015", si, WANT_THORN_PCT[si], "① 荆棘海胆")
+		await _one("p2eq_015", si, WANT_THORN_PCT[si], "① 荆棘盾牌")
 	for si in range(3):
 		await _one("p2eq_013", si, WANT_URCHIN_PCT[si], "② 海胆壳(对照·必须仍生效)")
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
-	print("ALL PASS — 荆棘海胆反伤只发一次" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 荆棘盾牌反伤只发一次" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 
 func _one(iid: String, si: int, want_pct: float, tag: String) -> void:

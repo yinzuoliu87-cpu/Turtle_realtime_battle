@@ -1162,7 +1162,7 @@ static func reserve_pool_of(snap, level: int = 0) -> Array:
 ## 按 ghost_id 派生 1~2 件 1 星商店装备(机器人 / 陪练「背包里没穿的」)。独立 PCG(种子 = ghost_id 的哈希)⇒ 不碰任何别的随机数;
 ##   ghost_id 为空 ⇒ 空(调试 / 冷启动兜底, 不凭空造装备)。
 ## ★每件先按 `level` 的商店费用概率(phase2_config.SHOP_COST_ODDS, 与真人开店同一张表)掷费用, 再在那个费用里挑一件
-##   (2026-11-24 用户「三级四级买到五费装备？不可能啊！」: 原来在全部商店装备里平均抽 ⇒ 5 级陪练号援军小将带 5 费打捞旋翼机,
+##   (2026-11-24 用户「三级四级买到五费装备？不可能啊！」: 原来在全部商店装备里平均抽 ⇒ 5 级陪练号援军小将带 5 费旋翼机,
 ##   而 5 级开店 5 费概率是 0)。那个费用没有可刷的 ⇒ 往低一档找。
 static func derived_reserve_pool(ghost_id: String, level: int) -> Array:
 	var out: Array = []

@@ -2,7 +2,7 @@ extends RefCounted
 class_name ManaBeamVfx
 ## 录流出处键: 本文件的生成函数路径(VfxTex.tag 用)
 const SRC := "res://scripts/scenes/battle/mana_beam_vfx.gd"
-## mana_beam_vfx.gd — 068 深海气压罐【可转向法力射线】的演出层(2026-08-11)
+## mana_beam_vfx.gd — 068 氧气瓶【可转向法力射线】的演出层(2026-08-11)
 ##
 ## ══════════════════════════════════════════════════════════════════
 ##  这份文件的每个数字都是【逐帧量出来的】, 不是手调的

@@ -33,7 +33,7 @@ const TS_EXTRA_UNIT_TIMER_FIELDS := ["move_buff_until", "stiff_until", "roll_fre
 ## ⚠ `_heal_acc_start` 以 `<= 0` 当「未开始」哨兵: 0 挪成负数仍 <= 0, 语义不变。
 const TS_SINCE_UNIT_FIELDS := ["_ninja_last_dash", "roll_start", "shell_last_dmg_t", "_awaken_t0", "_hunt_scan_t",
 	"anchor_swing_t", "dice_dash_seg_start", "phx_aim_t", "_heal_acc_t", "_heal_acc_start"]
-## 装备子状态里的起点戳: 066 鲸涎浓浆「本路第 11 秒喝药」与喝后体型曲线 · 068 气压罐「第 12 秒起每 12 秒」。
+## 装备子状态里的起点戳: 066 狂暴药水「本路第 11 秒喝药」与喝后体型曲线 · 068 气压罐「第 12 秒起每 12 秒」。
 const TS_SINCE_EQ_FIELDS := ["brew_t0", "brew_at_t", "can_t0"]
 
 ## ── 时停里的协程(2026-10-04·方案书 20260916c §8.7 #8) ──
@@ -229,7 +229,7 @@ func _end_timestop() -> void:
 		if _c is Dictionary: _c.erase("_ts_echarge")   # 时停结束: 撤掉+100%充能速度
 	_ts_resume_freeze()
 	_ts_visual_end()
-	## ★抹成 0 —— 不抹的话图标框那根条会停在最后一格(044 深海项链踩过的原话教训)。
+	## ★抹成 0 —— 不抹的话图标框那根条会停在最后一格(044 珍珠项链踩过的原话教训)。
 	for c in _ts_active:
 		if c is Dictionary:
 			var st: Dictionary = (c.get("eq_state", {}) as Dictionary).get(battle._equip_sys.key_of(c, "p2eq_059"), {})

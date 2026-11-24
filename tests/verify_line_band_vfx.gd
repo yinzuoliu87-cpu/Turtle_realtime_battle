@@ -9,8 +9,8 @@ extends Node
 ##
 ##   | 件 | 文案半宽 | 我量到的演出地面横向覆盖 | 比例 |
 ##   |---|---|---|---|
-##   | 029 冰封水母    | 90 码 | 冰刺散布写死 `randf_range(-46, 46)`       | 51%  |
-##   | 030 迷你水晶球A | 55 码 | 两条 `bolt_line` 细线 + 碎晶只撒在中线上  | ≈0   |
+##   | 029 寒冰法杖    | 90 码 | 冰刺散布写死 `randf_range(-46, 46)`       | 51%  |
+##   | 030 粉色迷你水晶 | 55 码 | 两条 `bolt_line` 细线 + 碎晶只撒在中线上  | ≈0   |
 ##   | 051 激光手枪    | 50 码 | `_laser_beam` 是**立起来**的带子          | 恒 0 |
 ##
 ## 051 的 0 不是估的, 是几何事实: 那个带子的顶点只在 ±Y 上偏移(`up = Vector3(0, half_w, 0)`),
@@ -27,8 +27,8 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 ## 文案写明的判定半宽(码)。改产品常量而不改文案 ⇒ 这里当场红。
-const EXP_ICE_HALF := 90.0        # 029 冰封水母 · IceSystem.FISSURE_HALF_W
-const EXP_XTAL_HALF := 55.0       # 030 迷你水晶球A · CrystalSystem.LINE_HALF_W
+const EXP_ICE_HALF := 90.0        # 029 寒冰法杖 · IceSystem.FISSURE_HALF_W
+const EXP_XTAL_HALF := 55.0       # 030 粉色迷你水晶 · CrystalSystem.LINE_HALF_W
 const EXP_LASER_HALF := 50.0      # 051 激光手枪 · EquipSystem.PISTOL_LASER_BAND
 
 ## 演出至少要盖住判定带的多少 —— 留 10% 余量给"最外一圈刚好落在边界上"的取整,
@@ -159,7 +159,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 演出必须盖住文案写明的判定带: 029 冰封水母 / 030 迷你水晶球A / 051 激光手枪 ===")
+	print("=== 演出必须盖住文案写明的判定带: 029 寒冰法杖 / 030 粉色迷你水晶 / 051 激光手枪 ===")
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -191,7 +191,7 @@ func _ready() -> void:
 		float(r51[1]) >= EXP_LASER_HALF * COVER_MIN,
 		"文案写「中线两侧各 %.0f 码」—— 画面读不出这个宽度就是缺陷" % EXP_LASER_HALF)
 
-	# ══════════════ 030 迷你水晶球A: 中线两侧各 55 码 ══════════════
+	# ══════════════ 030 粉色迷你水晶: 中线两侧各 55 码 ══════════════
 	_s._units.clear()
 	_s._pending_shots.clear()
 	var c30: Dictionary = _mk(300.0, 400.0, "left")
@@ -206,7 +206,7 @@ func _ready() -> void:
 		float(r30[1]) >= EXP_XTAL_HALF * COVER_MIN,
 		"原来两条 bolt_line 都在中线上, 横向宽度 ≈ 0")
 
-	# ══════════════ 029 冰封水母: 中线两侧各 90 码 ══════════════
+	# ══════════════ 029 寒冰法杖: 中线两侧各 90 码 ══════════════
 	## ★冰刺是**错峰**窜起的(沿线距离 ÷ 冰道长 × FISSURE_SWEEP_SEC), 且 2026-09-14 起
 	##   挂在 `_equip_tick_sys`(游戏钟)上而不是 tween ⇒ 这里必须**推游戏钟**才等得到。
 	##   原来挂 tween 时无头下一根都不会生成, 这条判据当时根本无法成立。

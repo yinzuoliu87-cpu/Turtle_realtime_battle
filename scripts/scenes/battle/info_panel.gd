@@ -1068,7 +1068,7 @@ func eq_stats_text_live(u: Dictionary, eid: String) -> String:
 	return "\n".join(live) if tx == "" else tx + "\n" + "\n".join(live)
 
 
-## 属性型装备此刻提供了多少(用户 11-15「047 重击锤，你想想看，lol里有个装备叫血手，人家怎么描述的」:
+## 属性型装备此刻提供了多少(用户 11-15「047 战锤，你想想看，lol里有个装备叫血手，人家怎么描述的」:
 ##   血手把「按基础攻击力换算的额外攻击力」当成装备效果本身写 ⇒ 这类装备的「本局」该写它现在给了多少, 不是「暂无记录」)。
 ## 读单位当前状态(`eq_state` 随直播下发 ⇒ 观战 / 回放与本机一致), 不是累计账; ck = 份号, 同名多件各报各的。
 static func eq_live_lines(u: Dictionary, ck: String) -> Array:
@@ -1133,14 +1133,14 @@ static func eq_stats_text(u: Dictionary, eid: String) -> String:
 	var shield: int = int(round(float(st.get("shield", 0.0))))
 	if shield > 0:
 		lines.append(Lang.t("护盾 %d") % shield)
-	## 060 磷光水母伞(11-12 用户「补个回血…补个格挡，以减免伤害」): 伞那份减伤挡掉的量 / 伞下闪避次数
+	## 060 水母伞(11-12 用户「补个回血…补个格挡，以减免伤害」): 伞那份减伤挡掉的量 / 伞下闪避次数
 	var blocked: int = int(round(float(st.get("blocked", 0.0))))
 	if blocked > 0:
 		lines.append(Lang.t("减免伤害 %d") % blocked)
 	var dodge: int = int(round(float(st.get("dodge", 0.0))))
 	if dodge > 0:
 		lines.append(Lang.t("闪避 %d 次") % dodge)
-	## 11-15 补齐(用户「压电陶瓷片…已获得龟能」「辣椒…施加流血层数是多少多少层」): 结果数 + 次数 / 层数, 只列非零
+	## 11-15 补齐(用户「蓄电池…已获得龟能」「辣椒…施加流血层数是多少多少层」): 结果数 + 次数 / 层数, 只列非零
 	for row in EQ_STAT_LINES:
 		var v: int = int(round(float(st.get(str(row[0]), 0.0))))
 		if v > 0:

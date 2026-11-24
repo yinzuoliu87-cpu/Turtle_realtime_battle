@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""blender_urchinspike.py — 013 炙烤海胆的【放射刺】(16 向预烤)。
+"""blender_urchinspike.py — 013 烤海胆的【放射刺】(16 向预烤)。
 
 跑法(无窗口):
   blender --background --python tools/assetgen/blender_urchinspike.py -- --out C:/tmp/us --dirs 16 --px 384

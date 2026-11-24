@@ -57,7 +57,7 @@ const SRC := "res://scripts/scenes/battle/incense_vfx.gd"
 ##   · `eq093-ember-seal.png`    64×64 —— 八角石印, 外圈橙焰 + 放射火星
 ##   两张都按 `TEXTURE_FILTER_NEAREST` 取样(像素风不许糊)。
 
-## 香火金 / 香火红。★这两个色是这一件的身份, 与 092 毒蛾茧的紫绿、094 祖龟碑的灰蓝分开。
+## 香火金 / 香火红。★这两个色是这一件的身份, 与 092 毒蛾的紫绿、094 墓碑的灰蓝分开。
 const GOLD := Color(1.0, 0.82, 0.42, 0.95)
 const EMBER := Color(0.98, 0.44, 0.20, 0.85)
 

@@ -1,5 +1,5 @@
 extends Node
-## _probe_spar_reserve_ls —— 用户 11-12 切磋反馈「援军小将装备栏里有饮血护符坠…掉了血，打中人却一点都不回」:
+## _probe_spar_reserve_ls —— 用户 11-12 切磋反馈「援军小将装备栏里有血滴护符…掉了血，打中人却一点都不回」:
 ##   走切磋真入口(Spar.begin → 完整战斗场景, 同 verify_spar_isolation), 打到终极战场, 逐步记两边援军:
 ##   lifesteal / 掉血时打中几步、当步回没回血 / 打中的是谁。探针, 不进门禁。PROBE_EQ / PROBE_STAR 换装备。
 

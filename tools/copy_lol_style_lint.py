@@ -146,7 +146,7 @@ def collect():
 def selftest():
     ## 已知阳性: 用户截图里那一句原文 + 分号 + 破折号; 已知阴性: 数值展开式与 LoL 式短限定语。
     pos = '对敌人造成的所有伤害（普攻、技能、真实伤害都算）按目标的稀有度提升；持续 3 秒——（' + '很长' * 15 + '）'
-    neg = '造成（{C:X%}%×攻击力 = {N:ATK}）物理伤害，施加一层【气环】（最多 3 层）。'
+    neg = '造成（{C:X%}%×攻击力 = {N:ATK}）物理伤害，施加一层【灵火】（最多 3 层）。'
     vp, vn = violations(pos), violations(neg)
     assert any('都算' in x for x in vp) and any('；' in x for x in vp) and any('括号' in x for x in vp), vp
     assert vn == [], vn

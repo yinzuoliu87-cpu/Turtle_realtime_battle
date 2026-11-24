@@ -204,7 +204,7 @@ func _t_hooks() -> void:
 	# ★★2026-08-06 全局那条从 `_eq_tick` 里【搬出来】成了 `EquipSystem.tick_global`。
 	#   原因(E 路 agent 报的真耦合): `_eq_tick` 挂在主循环的
 	#   `if not u.get("equips", []).is_empty():` 之内 ⇒ **场上没有一个带装备的活单位时,
-	#   全局在途表就停摆**。而 094 祖龟碑正是"携带者已经死了、碑还要继续放光环和石雷",
+	#   全局在途表就停摆**。而 094 墓碑正是"携带者已经死了、碑还要继续放光环和石雷",
 	#   077 的小手枪 / 079 的炮台 / 080 的直升机也都要在携带者死后继续动。
 	var gl_body: String = _fn_body(_code, "func tick_global")
 	_ok("② tick_global 里有【全局】驱动 `_b4_all()` 的 tick(delta)",

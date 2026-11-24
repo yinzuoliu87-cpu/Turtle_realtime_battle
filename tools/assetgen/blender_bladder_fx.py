@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""blender_bladder_fx.py — 064 溺者的浮囊【触发 / 破裂】两段: 浮起、炸开、诅咒水波。
+"""blender_bladder_fx.py — 064 溺者符囊【触发 / 破裂】两段: 浮起、炸开、诅咒水波。
 
 跑法(无窗口):
   "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" --background --python tools/assetgen/blender_bladder_fx.py -- --out C:/tmp/bladder_fx

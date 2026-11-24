@@ -56,7 +56,7 @@ func ctl_hold(u: Dictionary) -> bool:
 	return battle._damage.is_controlled(u)
 
 
-## 050 幽灵加特林: 永久减甲在【子弹飞到】时结算(2026-10-16; 原来发射瞬间就扣, 子弹还在路上目标已少了护甲)。
+## 050 加特林: 永久减甲在【子弹飞到】时结算(2026-10-16; 原来发射瞬间就扣, 子弹还在路上目标已少了护甲)。
 ## 延时 = `_spawn_eq_bolt` 里弹道时长的同一公式, 走游戏钟队列(不挂 tween, §3.5)。单目标累计上限 cap 不变。
 func gatling_shred_on_land(u: Dictionary, o: Dictionary, shred: float, cap: float) -> void:
 	var fly: float = clampf(DetMath.dist(u["pos"], o["pos"]) / 520.0, 0.22, 1.1)
@@ -236,7 +236,7 @@ func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016:
 ## 【017 不沉之锚】回血攒充能 → 充能期加攻速 → 普攻消耗充能击飞。
 const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 battle_damage.anchor_aspd)
 ## 那一击的眩晕走【通用 CTRL_SEC】(RealtimeBattle3DScene), 这里不存副本。
-## 【021 守护贝母】持续连全队最高攻友军, 周期性重连并给双方一串永久加成。
+## 【021 蚌壳】持续连全队最高攻友军, 周期性重连并给双方一串永久加成。
 ## 【周期件的触发间隔(秒)】★2026-08-25 文案根除: 这些原来全是各自 `_tick_*` 函数体里的
 ##   裸字面量, 而 json 的 effectDesc1 / effectBrief 又各手写了一遍 —— 同一个数存三份。
 ##   现在代码是唯一的那一份, 两处文案都用 `{C:EquipTickSystem.XXX_IV}` 指过来。
@@ -247,11 +247,11 @@ const JELLY_MAXHP_PCT := [0.03, 0.04, 0.055]   #   自身最大生命 × (用户
 const IRONWALL_MAXHP_PCT := 0.08  # 016 铁壁盾: 护盾总池 = 固定值 + 携带者最大生命 ×
 const SWORD_STORM_IV := 7.0     # 006 千刃风暴: 每几秒召一排剑穿过全体敌人
 const BROADSWORD_IV := 6.0      # 007 锈蚀阔剑: 每几秒挥一道剑气墙
-const CORAL_IV := 9.0           # 008 双穿珊瑚刺: 每几秒射一根尖刺(用户 2026-07-19: 6 → 9)
+const CORAL_IV := 9.0           # 008 珊瑚刺: 每几秒射一根尖刺(用户 2026-07-19: 6 → 9)
 const JELLY_IV := 4.0           # 012 海藻: 每几秒给自己套一次护盾
 const IRONWALL_IV := 5.0        # 016 铁壁盾: 每几秒产生一份由全队分摊的护盾
 const SHELL_IV := 8.0           # 018 守护贝壳: 每几秒自回一次
-const ANEMONE_IV := 7.0         # 019 海葵药膏: 每几秒治自己与最残友军
+const ANEMONE_IV := 7.0         # 019 药膏: 每几秒治自己与最残友军
 const DUMBBELL_IV := 8.0        # 020 哑铃: 每几秒锻炼 + 投掷(用户 2026-07-19: 10 → 8)
 ## ★★【游戏钟延时队列】—— 全装备共用的原语。
 ##   由来: `tween_interval` + `tween_callback` 做延时投递, 而 **tween 走未钳制的真实 delta,
@@ -410,8 +410,8 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:
 				"kind": "bolt", "o": null, "_tl": battle._equip_sys.tally.capture()})
 	battle._equip_sys.ck_restore(_ckp365)
 
-# 029 冰封水母(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
-## ★029 冰封水母的「每 12 秒」驱动 `_tick_ice_fissure` 已整体删除(2026-08-12):
+# 029 寒冰法杖(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
+## ★029 寒冰法杖的「每 12 秒」驱动 `_tick_ice_fissure` 已整体删除(2026-08-12):
 ##   法器的主动只能由法力条满触发(用户定的规则), 那个计时器是第二个触发口。
 ##   效果本体 `EquipSystem._eq_ice_fissure` 还在, 现在只由 fire_equip_effect 调。
 
@@ -512,7 +512,7 @@ func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018:
 		battle._shell_sys._shell_guard_fx(u)   # 半壳合拢护罩演出(用户2026-07-19)
 	battle._equip_sys.ck_restore(_ckp473)
 
-func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
+func _tick_anemone(u: Dictionary, delta: float) -> void:   # 药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	var _ckp486: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
@@ -571,7 +571,7 @@ func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: �
 		battle._equip_sys._eq_dumbbell_routine(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
 	battle._equip_sys.ck_restore(_ckp524)
 
-# 027 电棍: 每3s就绪→下次普攻消耗1层(附魔法伤+眩晕); 就绪时身上冒电光
+# 027 电击器: 每3s就绪→下次普攻消耗1层(附魔法伤+眩晕); 就绪时身上冒电光
 func _tick_baton(u: Dictionary, delta: float) -> void:
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
@@ -595,7 +595,7 @@ func _tick_baton(u: Dictionary, delta: float) -> void:
 		u["eq_state"][battle._equip_sys.key_of(u, "p2eq_027")] = bst
 	battle._equip_sys.ck_restore(_ckp540)
 
-func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立
+func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 蚌壳p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	var _ckp560: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
@@ -685,7 +685,7 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_
 	battle._equip_sys.ck_restore(_ckp617)
 
 
-func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_008: 每9秒对最远敌射珊瑚尖刺(用户2026-07-19: 6→9); 命中才结算; 每件独立
+func _tick_coral(u: Dictionary, delta: float) -> void:   # 珊瑚刺p2eq_008: 每9秒对最远敌射珊瑚尖刺(用户2026-07-19: 6→9); 命中才结算; 每件独立
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	var _ckp635: Array = battle._equip_sys.ck_save()   # 份号上下文(11-13)
@@ -1050,7 +1050,7 @@ var _tide_hits: Array = []
 var _rock_waves: Array = []
 
 
-## ★11-15 会走的直线扫荡(024 龙蛋喷火龙 / 029 冰封水母冰道)。用户 11-15「修」(接 11-14「3个敌人被同时击飞？怎么可能」
+## ★11-15 会走的直线扫荡(024 龙蛋喷火龙 / 029 寒冰法杖冰道)。用户 11-15「修」(接 11-14「3个敌人被同时击飞？怎么可能」
 ##   「整个游戏难道你搞了很多这种不合理的地方吗」): 这两处原来出手那一刻就按各人**当时**的位置排好挨打时刻
 ##   (`schedule(沿线距离 ÷ 全长 × 时长, …)`) ⇒ 之后走进线里的打不到、走出去的照样挨打。11-14 全仓扫只扫了 `_pending_shots`, 漏了这两处。
 ## 每项 = {src, start, dir, reach, dur, half_w, cap(true ⇒ 只算 0 ≤ 沿线距离 ≤ reach), on_enemy / on_ally(Callable(o), 可空), t, hit, tl}
@@ -1295,7 +1295,7 @@ func start_hot(u: Dictionary, owner: String, total: float, secs: float) -> void:
 ## 每帧: 把所有还在生效的摊付一次性喂进去, 并维护给演出/读数用的镜像。
 ## ★由主场景 sim tick **无条件**调一次 —— 到期那一帧要把条子抹成 0、把镜像清掉。
 func tick_hots(u: Dictionary, dt: float) -> void:
-	## 037 蛋糕蜡烛光圈的 HoT(11-15 从主场景 _tick_unit 原样挪来, 原来就紧挨着本函数的调用 ⇒ 结算顺序不变):
+	## 037 蜡烛光圈的 HoT(11-15 从主场景 _tick_unit 原样挪来, 原来就紧挨着本函数的调用 ⇒ 结算顺序不变):
 	##   每跳切到给这份 HoT 的那一件(`candle_hot_by`)⇒ 回血记进它的「本局」(原来没有上下文, 一笔都没记)。
 	if battle._t < float(u.get("candle_hot_until", 0.0)):
 		var _cb = u.get("candle_hot_by", null)

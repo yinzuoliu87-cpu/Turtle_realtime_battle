@@ -142,7 +142,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	gs.test_mode = true
-	print("=== 盾+剑 4 件(081 藤编圆盾 / 082 砗磲护心甲 / 083 潮汐细剑 / 084 手半剑) ===")
+	print("=== 盾+剑 4 件(081 藤编圆盾 / 082 砗磲护心甲 / 083 细剑 / 084 手半剑) ===")
 	_s = RB.new()
 	add_child(_s)
 	for _i in range(30):
@@ -678,10 +678,10 @@ func _t082_charge_and_basic() -> void:
 
 
 # ═════════════════════════════════════════════════════════════
-# ③ 083 潮汐细剑
+# ③ 083 细剑
 # ═════════════════════════════════════════════════════════════
 func _t083_passive() -> void:
-	print("── ③ 083 潮汐细剑: 被动「每损失 1% 生命 +0.2/0.3/0.4% 攻速」 ──")
+	print("── ③ 083 细剑: 被动「每损失 1% 生命 +0.2/0.3/0.4% 攻速」 ──")
 	_s._units.clear()
 	var u: Dictionary = _mk("fortune", "left", Vector2(-200.0, 0.0), 10000.0)
 	_equip(u, "p2eq_083", 3)
@@ -1028,7 +1028,7 @@ func _t084_realtime() -> void:
 		absf(float(u["_b84_mult"]) - 1.70) < 1e-4
 			and absf(float(u["maxHp"]) - hp0 - float(EqBladeBatch.HH_RANGED_HP[2]) * 1.70) < 1.51,
 		"mult=%.4f maxHp+%.0f" % [float(u["_b84_mult"]), float(u["maxHp"]) - hp0])
-	## 战斗中拿到 +100 码 flat 射程(073 藤蔓弓弦口径) → 走每帧真入口 _eq_tick 重算
+	## 战斗中拿到 +100 码 flat 射程(073 藤弓口径) → 走每帧真入口 _eq_tick 重算
 	u["range_add"] = float(u.get("range_add", 0.0)) + 100.0
 	_s._equip_sys._eq_tick(u, 0.016)
 	_ok("④ ★★战斗中 +100 码射程 → 转化量 450, 倍率 ×1.90(§0.5 「+073」那一行)",

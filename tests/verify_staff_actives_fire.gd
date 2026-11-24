@@ -149,7 +149,7 @@ func _ready() -> void:
 		##   直接调等于绕过"法力条满才触发"这条链, 而那条链正是这次要验的东西。
 		s._staff_syn.add_mana(u, full + 1.0)
 		## 推进时间让延后结算落地。★★必须【等真实帧】而不是纯同步调 `_sim_step`:
-		##   023 灼热火珊瑚走的是 `await battle._wait_sim(0.4)` + `await process_frame`
+		##   023 火珊瑚走的是 `await battle._wait_sim(0.4)` + `await process_frame`
 		##   的**协程**, 同步循环里真实帧一帧都没过 ⇒ 协程永远不恢复 ⇒ 我一度把它误判成
 		##   "效果埋在 tween 里量不到"。分类错了, 判据自然也就错了。
 		for _f in range(win):

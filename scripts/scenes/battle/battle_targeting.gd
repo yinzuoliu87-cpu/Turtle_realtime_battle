@@ -71,7 +71,7 @@ func _trainer_targets(u: Dictionary) -> Array:
 
 ## 【最远】的敌人 —— 与 `_nearest_enemy` 同一套选靶闸门, 只把比较方向反过来。
 ##
-## ★2026-08-06 收编进标准层(C 路 agent 报的): 087 盗令潜水钟的水柱要打最远的敌人,
+## ★2026-08-06 收编进标准层(C 路 agent 报的): 087 潜水钟的水柱要打最远的敌人,
 ##   它原来在自己文件里手写了一份。memory [[fb-hand-rolled-copies-drift]]:
 ##   就地手写选靶 = 抄一次永远落后一次 —— 以后给 `_nearest_enemy` 加的任何闸门
 ##   (黑洞 untargetable / 龟蛋围栏 / 训龟大师不被主动索敌)都不会同步到那一份。

@@ -1,5 +1,5 @@
 extends Node
-## verify_barnacle_solo.gd —— 021 守护贝母没有可连的友军时不许每帧发一次 buff(2026-10-11 全项目通读 A13)
+## verify_barnacle_solo.gd —— 021 蚌壳没有可连的友军时不许每帧发一次 buff(2026-10-11 全项目通读 A13)
 ## ★「首次立即连」的条件是 `link_target == null`; 没友军时 best=null 又写回 null ⇒ 下一帧条件仍成立 ⇒
 ##   每帧 +10 龟能 +10% 攻速无限叠。另外原来连的是 `_allies_of`(含训龟大师/龟蛋), 应走 `_allies_share_pool`。
 ## ★判据走产品 tick: 独狼携带者跑 2 秒(< 一个 5 秒周期) ⇒ 攻速只加一次。
