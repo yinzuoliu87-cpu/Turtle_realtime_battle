@@ -240,14 +240,14 @@ func _ready() -> void:
 	cu["crit"] = 0.0
 	_adv(B.CANNON_IV + 0.01)
 	_adv(0.9)   # 普通炮弹要飞一段(CANNON_BALL_SPD)才落到身上结算
-	var en_want: float = B.CANNON_EN_PER_SEC * (B.CANNON_IV + 0.01 + 0.9)
-	_ok("105 每炮 100%% 攻击（%.0f）；龟能按时间涨 %.0f/秒（%.2f 秒 ⇒ %.1f）" % [float(B.CANNON_ATK[2]), B.CANNON_EN_PER_SEC, B.CANNON_IV + 0.91, en_want],
+	var en_want: float = minf(B.CANNON_EN_MAX, (B.CANNON_IV + 0.01 + 0.9) / B.SEC_PER_ENERGY)
+	_ok("105 每炮 100%% 攻击（%.0f）；龟能照全局规则涨（1 点 = %.3f 秒 ⇒ %.2f 秒 %.1f）" % [float(B.CANNON_ATK[2]), B.SEC_PER_ENERGY, B.CANNON_IV + 0.91, en_want],
 		_near(_lost(t1), float(B.CANNON_ATK[2])) and _near(float(cs["en"]), en_want, 0.3), "%.0f · 龟能 %.0f" % [_lost(t1), float(cs["en"])])
 	cs["en"] = B.CANNON_EN_MAX
 	t1["hp"] = t1["maxHp"]
 	_adv(B.CANNON_IV + 0.01)
 	_adv(1.2)
-	_ok("105 龟能满 ⇒ 重炮：直线飞行命中，%.0f%% 攻击 + %d 层流血 + 击退，每发净 −%.0f 龟能" % [B.CANNON_HEAVY_MULT * 100.0, int(B.CANNON_HEAVY_BLEED[2]), float(B.CANNON_HEAVY_COST[2]) - B.CANNON_EN_PER_SEC * B.CANNON_IV],
+	_ok("105 龟能满 ⇒ 重炮：直线飞行命中，%.0f%% 攻击 + %d 层流血 + 击退，每发 −%.0f 龟能（重炮期间不充）" % [B.CANNON_HEAVY_MULT * 100.0, int(B.CANNON_HEAVY_BLEED[2]), float(B.CANNON_HEAVY_COST[2])],
 		bool(cs["heavy"]) and _bs.stat["cannon_heavy"] >= 1 and _lost(t1) >= B.CANNON_HEAVY_MULT * float(B.CANNON_ATK[2]) - 1.5 and int(t1["dot_stacks"].get("bleed", 0)) >= int(B.CANNON_HEAVY_BLEED[2]),
 		"heavy %s · 挨 %.0f · 流血 %d · 龟能 %.0f" % [str(cs["heavy"]), _lost(t1), int(t1["dot_stacks"].get("bleed", 0)), float(cs["en"])])
 	var exited := false
@@ -306,8 +306,7 @@ func _ready() -> void:
 	var waves := []
 	for i in range(3):
 		t1["hp"] = t1["maxHp"]
-		for j in range(int(B.KATANA_EN_MAX / B.KATANA_EN_PER_HIT)):
-			_s._equip_sys._eq_on_basic_attack(ku, t1)
+		ks["en"] = B.KATANA_EN_MAX
 		_adv(1.0)
 		waves.append(_lost(t1))
 	var w107: float = B.KATANA_WAVE_MULT * float(B.KATANA_ATK[2])
@@ -315,8 +314,7 @@ func _ready() -> void:
 		str(waves))
 	t1["hp"] = t1["maxHp"]
 	ku["hp"] = float(ku["maxHp"]) * 0.5
-	for j in range(int(B.KATANA_EN_MAX / B.KATANA_EN_PER_HIT)):
-		_s._equip_sys._eq_on_basic_attack(ku, t1)
+	ks["en"] = B.KATANA_EN_MAX
 	_adv(0.05)
 	_ok("107 第四次：蓄力中（不出波）", float(ks["charge"]) >= 0.0 and _bs.stat["katana_wave"] == 3)
 	_adv(B.KATANA_CHARGE)
