@@ -155,9 +155,12 @@ const RANKED := {
 	## ★2026-11-23 每个号永久拥有 basic(提交 3effe0d1, 方案书 docs/plans/20261123b-新号送basic.md; 用户 11-22 拍板「新玩家一进游戏
 	##   永久送一只 basic」): **有意**改积分赛会走的 make_bot —— 兜底机器人从「basic ∪ 限免 7 只」(WeeklyFree.allowed_ids)里抽统领,
 	##   与真人同一池; 洗牌消耗的随机数个数不变。9046cdd3 → 3effe0d1 只改这一个、没有新加 / 挪走函数 ⇒ 挪基线判据不变松; 摘要现算。
+	## ★2026-11-24 援军小将派生装备按等级掷(提交 9eb621a9; 用户 11-24「三级四级买到五费装备？不可能啊！」): **有意**改积分赛会走的
+	##   derived_reserve_pool(多收等级, 先按 SHOP_COST_ODDS 掷费用再挑)、reserve_pool_of(缺键用快照 season_level)、
+	##   make_bot / seed_as_human(把各自的等级传进去)。3effe0d1 → 9eb621a9 只改这四个、没有新加 / 挪走函数 ⇒ 挪基线判据不变松; 摘要现算。
 	"scripts/net/backend.gd": {
-		"base": "3effe0d1",
-		"digest": "b49647f2875abf821f9292209a485adf455c47cf9fa2d1816bd7810850569897",
+		"base": "9eb621a9",
+		"digest": "a422ff9a2f08e56b3f607aa93191c421d8cdb51c4165128eb888162aa6c1ab79",
 		"views": {},
 		"sat_only": [],
 		"units": [
