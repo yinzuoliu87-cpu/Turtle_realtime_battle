@@ -608,7 +608,7 @@ func _xp_item(pid: String, owned: bool, x0: int, g: int, tw: Tween, t0: float) -
 	top.add_child(lv)
 	var note: Label
 	if not owned:
-		note = _lbl(WeeklyFree.TAG, F_XP, COL_SUB)
+		note = _lbl(WeeklyFree.TAG, F_CAP, COL_SUB)   # 小注字号: 「本周免费」四个字按 F_XP 会把第 2 页表格撑出 1280 宽的可视区(verify_settle_fit)
 	elif bool(p0["maxed"]):
 		note = _lbl("满级", F_XP, COL_GOLD)
 	else:

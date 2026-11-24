@@ -85,7 +85,7 @@ var _seg_display: Array = []
 ## 切语言: 存到设备上、整页重建(拼出来的字也跟着换)。门禁按名字找这颗: TopBar 的右侧动作。
 func _on_lang() -> void:
 	_LANG.toggle()
-	get_tree().reload_current_scene()
+	SceneNav.go(get_tree(), scene_file_path)   # 换场景一律走 SceneNav(verify_touch_detach_on_release ④)
 
 
 func _ready() -> void:

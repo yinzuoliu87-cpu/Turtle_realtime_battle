@@ -258,7 +258,7 @@ func _ready() -> void:
 	_ok("★★已删掉过度设计的确认弹窗(_confirm_smash_jar 不再存在)",
 		src_inv.find("func _confirm_smash_jar") < 0)
 	_ok("★卡面显示【档位】而不是 ×N(一大轮只能碎一次, N 是累积糖数)",
-		src_inv.find('jnm.text = "%d 档" % GameState.candy_jar_tier()') >= 0)   # 格子只写档位(「糖果罐」在说明小卡)
+		(src_inv.find('jnm.text = "%d 档" % GameState.candy_jar_tier()') >= 0 or src_inv.find('jnm.text = Lang.t("%d 档") % GameState.candy_jar_tier()') >= 0))   # 11-23 英文版包了 Lang.t   # 格子只写档位(「糖果罐」在说明小卡)
 
 	## ★★2026-10-22 装备改成贴着那一格弹说明小卡(InspectCard), 不再画底部操作条 ⇒ 糖果罐跟着改。
 	##   原来这里 grep 两颗键的源码坐标「同一位置同一尺寸」—— 装备那条栏没了, 那两行坐标比的是一段死代码。
