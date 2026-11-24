@@ -8,7 +8,7 @@ extends Node
 ##   APPDATA=<目录> XDG_DATA_HOME=<目录> DUALLANE=1 DL_AUTOFIGHT=1 SHIP=1 TURTLE_SUPABASE=" " TURTLE_BACKEND=" " WINDOW=1 \
 ##     bash godot-quiet.sh --path . --resolution 1280x720 --position 2000,80 --write-movie <输出>/bomb.avi --fixed-fps 30 \
 ##     res://tests/_rec_bomb_showcase.tscn
-## 可选: REC_MAX_SEC(默认 75) 录多久就收工。
+## 可选: REC_MAX_SEC(默认 75) 录多久就收工; REC_FOE_HPX / REC_ME_HPX 对手 / 我方血量倍率(录像台专用, 不是产品数值)。
 const Backend := preload("res://scripts/net/backend.gd")
 const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
 const LEADERS := ["two_head", "phoenix", "lightning"]
@@ -89,17 +89,22 @@ func _process(d: float) -> void:
 		if s.begins_with("fight/"):
 			## REC_FOE_HPX: 录像台专用 —— 对手血量 ×N(只为让周期装备有时间出手; 不是产品数值)
 			var hx := float(OS.get_environment("REC_FOE_HPX")) if OS.has_environment("REC_FOE_HPX") else 1.0
-			if hx != 1.0:
-				for u in _b._units:
-					if u is Dictionary and str(u.get("side", "")) == "right" and not bool(u.get("_isEgg", false)) and not bool(u.get("is_trainer", false)):
-						u["maxHp"] = float(u["maxHp"]) * hx
-						u["hp"] = float(u["maxHp"])
+			var mx := float(OS.get_environment("REC_ME_HPX")) if OS.has_environment("REC_ME_HPX") else 1.0
+			for u in _b._units:
+				if not (u is Dictionary) or bool(u.get("_isEgg", false)) or bool(u.get("is_trainer", false)) or bool(u.get("is_summon", false)):
+					continue
+				var f: float = hx if str(u.get("side", "")) == "right" else mx
+				if f != 1.0:
+					u["maxHp"] = float(u["maxHp"]) * f
+					u["hp"] = float(u["maxHp"])
 			for u in _b._units:
 				if u is Dictionary and not bool(u.get("_isEgg", false)):
 					print("[REC]    %s %s hp %.0f atk %.0f 装备 %d 炸弹档 %d" % [str(u.get("side", "")), str(u.get("id", "")), float(u.get("maxHp", 0)), float(u.get("atk", 0)), (u.get("equips", []) as Array).size(), int(_b._synergy.tier_for(u, "炸弹"))])
 	var bs = _b._equip_sys._bomb_sys if _b.get("_equip_sys") != null else null
 	if bs != null and int(_el * 2.0) != int((_el - d) * 2.0) and int(_el) % 5 == 0 and int(_el * 2.0) % 2 == 0:
 		print("[REC] %.1f 炸弹计数 %s · 导弹 %d" % [_el, JSON.stringify(bs.stat), _b._bomb_syn.strikes])
+		for k in bs._katanas:
+			print("[REC]    武士刀小将 alive=%s hp=%.0f 龟能=%.0f 释放=%d 蓄力=%.2f" % [str(k["u"].get("alive", false)), float(k["u"]["hp"]), float(k["en"]), int(k["casts"]), float(k["charge"])])
 	if _el > _max:
 		print("[REC] %.2f 收工" % _el)
 		get_tree().quit(0)
