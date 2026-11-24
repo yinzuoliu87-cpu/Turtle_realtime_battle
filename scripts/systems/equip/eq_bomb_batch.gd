@@ -79,7 +79,7 @@ const TIMER_STACK := 0.10
 # ── 105 炮筒 ──
 const CANNON_HP := [2000.0, 4000.0, 10000.0]
 const CANNON_ATK := [70.0, 150.0, 400.0]
-const CANNON_IV := 1.5
+const CANNON_IV := 2.0   # 攻速 0.5 次/秒(用户 11-24「改为0.5」; 原 1.5 秒)
 const CANNON_RANGE := 900.0
 const CANNON_SPLASH := 80.0
 const CANNON_EN_MAX := 100.0
