@@ -1298,7 +1298,7 @@ func shield_grant_count() -> int:
 func sync_synergy_grants() -> void:
 	var want: int = shield_grant_count()
 	var have: Array = []          # [[容器数组, 下标], …]
-	for pid in persistent_equipped.keys():
+	for pid in _EconLedger.equipped_pids(self):   # 按龟 id 排序(收回哪只身上的不随字典键序变, 见 equipped_pids)
 		var arr: Array = persistent_equipped[pid]
 		for i in range(arr.size()):
 			if is_synergy_grant(arr[i]):
@@ -2771,7 +2771,7 @@ func auto_merge_all() -> void:
 			if not is_equip_item(it): continue          # 消耗品(临时等级器)不参与3合1
 			var k := "%s|%d" % [str(it.get("id", "")), int(it.get("star", 1))]
 			counts[k] = int(counts.get(k, 0)) + 1
-		for pet in persistent_equipped.keys():
+		for pet in _EconLedger.equipped_pids(self):   # ★按龟 id 排序: 先合哪组 / 升星件放回谁不随字典键序变(见 equipped_pids)
 			for eit in persistent_equipped[pet]:
 				var ke := "%s|%d" % [str(eit.get("id", "")), int(eit.get("star", 1))]
 				counts[ke] = int(counts.get(ke, 0)) + 1
@@ -2813,7 +2813,7 @@ func auto_merge_all() -> void:
 				else:
 					bi += 1
 			if removed < 3:                                 # 不够再从统领龟身移
-				for pet2 in persistent_equipped.keys():
+				for pet2 in _EconLedger.equipped_pids(self):
 					var eqs: Array = persistent_equipped[pet2]
 					var ei := 0
 					while ei < eqs.size() and removed < 3:

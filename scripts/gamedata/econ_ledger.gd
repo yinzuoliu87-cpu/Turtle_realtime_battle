@@ -69,6 +69,21 @@ static func do(gs, op: Dictionary) -> Dictionary:
 
 # ═════════════════════════════════ 哨兵 ═════════════════════════════════
 
+## 统领身上装备表的龟 id, **按 id 排序**。凡是「先处理谁」会影响结果的遍历(三合一拆哪几件 / 升星件放回哪只 / 圣光护盾收回谁)都用它。
+## ★2026-11-24 用户追问「为什么要换完再查」后实查: 上周 alex + 4 个陪练号被服务器判 apply:equip:full, 全是同一个根因 ——
+##   auto_merge_all 原来按 `persistent_equipped.keys()` 的顺序找第一只交出装备的龟, 升星件放回它身上;
+##   字典键序 = 插入顺序, 而手机读档后(存档 JSON 按键名排序写盘)变成字母序, 服务器重放从不读档、一直是穿上去的先后 ⇒
+##   同一条「买入触发三合一」两边把升星件放到不同的龟身上, 下一条往那只龟穿装备时服务器判「满了」。
+##   探针 tests/probes/_probe_econ_cap_overflow.gd(ECON_SORT_KEYS)实测: 键序一变, 5 份流水的失败点全跟着变。
+static func equipped_pids(gs) -> Array:
+	var out: Array = []
+	if gs.persistent_equipped is Dictionary:
+		for k in (gs.persistent_equipped as Dictionary).keys():
+			out.append(str(k))
+	out.sort()
+	return out
+
+
 ## 资产(哨兵盯的那部分)规整成一份可比的字典。
 ##   ★不含: 宝箱 / 香火(战斗工作副本, 见文件头)、装备实例上的 `chg`(香火石充能的旧镜像, 局内写、没人读)、
 ##     `axe_evo_pending`(进化演出排队, 不是资产)、`meta_shop_battles`(什么时候自动换货的戳)、阵型 / 前后排 / 站位。
