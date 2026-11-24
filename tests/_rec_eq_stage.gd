@@ -26,28 +26,41 @@ static func _u(id: String, side: String, d: Vector2, extra: Dictionary = {}) -> 
 	return u
 
 
-## 三只站桩靶子(一前两侧, 挨得近好看范围伤害)
-static func _dummies(dx: float = 120.0, ai: bool = false, hp: float = 20000.0, atk: float = 0.0) -> Array:
+## 我方携带者: 近战小将, 只会普攻(清掉技能; 小将本来就没有被动) —— 用户 11-24「友方带一件这件装备…只能攻击，不应该有任何除了攻击以外的东西」
+static func _me(d: Vector2, eq: Array, extra: Dictionary = {}) -> Dictionary:
+	var u := _u("__minion__", "left", d, {"minion": true, "role": "front", "level": 1, "plain": true, "equips": eq, "hp": 8000.0, "killable": false})
+	u.merge(extra, true)
+	return u
+
+
+## 靶子: 小将身板(不带任何被动)、站桩、打不死; `n` = 1 只或 3 只(范围类看半径)
+static func _dummies(dx: float = 80.0, n: int = 3, ai: bool = false, hp: float = 20000.0, atk: float = 0.0) -> Array:
 	var o: Array = []
-	for d in [Vector2(dx, 0), Vector2(dx + 70, -70), Vector2(dx + 70, 70)]:
-		o.append(_u("basic", "right", d, {"hp": hp, "killable": ai, "ai": ai, "atk": atk}))
+	var spots := [Vector2(dx, 0), Vector2(dx + 70, -70), Vector2(dx + 70, 70)]
+	for i in range(n):
+		o.append(_u("__minion__", "right", spots[i], {"minion": true, "role": "front", "level": 1, "plain": true, "hp": hp, "killable": ai, "ai": ai, "atk": atk}))
 	return o
 
 
+## 每条: [摆位, 录几秒]
 static func cases() -> Dictionary:
 	return {
-		"missile": [_u("basic", "left", Vector2(-260, -80), {"equips": _eq([97, 98, 99])}), _u("stone", "left", Vector2(-260, 80), {"equips": _eq([101, 103, 104])})] + _dummies(80) + [_u("basic", "right", Vector2(320, 0), {"hp": 20000.0, "killable": false})],
-		"cracker": [_u("basic", "left", Vector2(-60, 0), {"equips": _eq([97])})] + _dummies(0),
-		"tube": [_u("stone", "left", Vector2(-40, 0), {"equips": _eq([98])})] + _dummies(-20),
-		"grenade": [_u("basic", "left", Vector2(-300, 0), {"equips": _eq([99])})] + _dummies(120),
-		"smoke": [_u("basic", "left", Vector2(-200, -40), {"equips": _eq([100])}), _u("bamboo", "left", Vector2(-200, 60))] + _dummies(150, true, 8000.0),
-		"sticky": [_u("basic", "left", Vector2(-260, 0), {"equips": _eq([101])})] + _dummies(120, true, 30000.0),
-		"mine": [_u("stone", "left", Vector2(-400, 0), {"equips": _eq([102]), "hp": 40000.0, "killable": false, "hold": true})] + _dummies(250, true, 20000.0),
-		"barrel": [_u("basic", "left", Vector2(-60, 0), {"equips": _eq([103]), "hp": 1500.0, "hold": true})] + _dummies(40, true, 20000.0, 200.0),
-		"timer": [_u("basic", "left", Vector2(-260, 0), {"equips": _eq([104])})] + _dummies(120),
-		"cannon": [_u("__summon__", "left", Vector2(-260, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105]), "minion": true, "fe": true})] + _dummies(160),
-		"remote": [_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_106", "equips": _eq([106], 1), "minion": true})] + _dummies(150),
-		"katana": [_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(60),
+		## 羁绊: 持有人不动不打(只为凑 3 件炸弹 = 1 档), 只看导弹本身
+		"missile": [[_me(Vector2(-300, 0), _eq([102, 103, 97]), {"idle": true})] + _dummies(60, 3) + [_u("__minion__", "right", Vector2(280, 0), {"minion": true, "plain": true, "hp": 20000.0, "killable": false})], 15.0],
+		"cracker": [[_me(Vector2(-10, 0), _eq([97]))] + _dummies(60, 3), 12.0],
+		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _dummies(60, 3), 16.0],
+		"grenade": [[_me(Vector2(-10, 0), _eq([99]))] + _dummies(60, 3), 16.0],
+		## 烟雾弹: 两只会打的敌人冲过来, 看它们选不中烟里的我方
+		"smoke": [[_me(Vector2(-200, -40), _eq([100]), {"hold": true}), _me(Vector2(-200, 60), [], {"hold": true})] + _dummies(150, 2, true, 8000.0, 60.0), 20.0],
+		"sticky": [[_me(Vector2(-10, 0), _eq([101]))] + _dummies(60, 3), 20.0],
+		## 地雷: 我方站住, 两只会动的敌人走过来踩雷
+		"mine": [[_me(Vector2(-400, 0), _eq([102]), {"hold": true})] + _dummies(250, 2, true, 20000.0, 30.0), 14.0],
+		## 炸药桶: 我方站住、血少, 会打的敌人把它打死
+		"barrel": [[_me(Vector2(-10, 0), _eq([103]), {"hold": true, "hp": 400.0, "killable": true})] + _dummies(60, 3, true, 20000.0, 300.0), 14.0],
+		"timer": [[_me(Vector2(-10, 0), _eq([104]))] + _dummies(60, 3), 23.0],
+		"cannon": [[_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105]), "minion": true, "fe": true})] + _dummies(160, 3), 14.0],
+		"remote": [[_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_106", "equips": _eq([106], 1), "minion": true})] + _dummies(150, 3), 14.0],
+		"katana": [[_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(60, 3), 16.0],
 	}
 
 
@@ -65,7 +78,10 @@ func _ready() -> void:
 	var case := OS.get_environment("REC_CASE") if OS.has_environment("REC_CASE") else "cracker"
 	if OS.has_environment("REC_SEC"):
 		_max = float(OS.get_environment("REC_SEC"))
-	var units: Array = cases().get(case, [])
+	var row: Array = cases().get(case, [[], 0.0])
+	var units: Array = row[0]
+	if not OS.has_environment("REC_SEC"):
+		_max = float(row[1])
 	if units.is_empty():
 		print("[REC] 没有这个演示: ", case)
 		get_tree().quit(1)

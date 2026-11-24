@@ -257,6 +257,10 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 		_edit_set_ai(u, bool(s.get("ai", false)))
 	if float(s.get("atk", 0.0)) > 0.0:
 		u["atk"] = float(s["atk"]); u["base_atk"] = float(s["atk"]); u["_edit_atk"] = float(s["atk"])   # 演示台: 攻击力覆盖(靶子打得动人)
+	if bool(s.get("plain", false)):
+		u["active_skills"] = []; u["_edit_plain"] = true   # 只会普攻(用户 11-24「只能攻击, 不应该有任何除了攻击以外的东西」)
+	if bool(s.get("idle", false)):
+		u["no_move"] = true; u["no_basic"] = true; u["active_skills"] = []; u["_edit_idle"] = true   # 不动不打(只当装备/羁绊的「持有人」)
 	if bool(s.get("hold", false)):
 		u["no_move"] = true; u["_edit_hold"] = true   # 原地不动(仍会打、会放技能): 演示台用(例: 地雷携带者站住等敌人踩雷)
 	u["maxHp"] = float(s.get("hp", u.get("maxHp", battle._edit_dummy_hp)))   # 血量: 左右都按 per-unit 存的(用户2026-07-24)
@@ -305,6 +309,8 @@ func _edit_snapshot_setup() -> void:
 			"ai": bool(u.get("_edit_ai", false)),
 			"hold": bool(u.get("_edit_hold", false)),
 			"atk": float(u.get("_edit_atk", 0.0)),
+			"plain": bool(u.get("_edit_plain", false)),
+			"idle": bool(u.get("_edit_idle", false)),
 		})
 
 # ----------------------------------------------------------------------------
@@ -820,7 +826,7 @@ func _edit_save_setup() -> void:
 	var lds = {}
 	for s in battle._edit_paused_setup:
 		var pos: Vector2 = s.get("pos", Vector2())
-		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1)), "ghost_eq": str(s.get("ghost_eq", "")), "ai": bool(s.get("ai", false)), "fe": bool(s.get("fe", false)), "hold": bool(s.get("hold", false)), "atk": float(s.get("atk", 0.0))})
+		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1)), "ghost_eq": str(s.get("ghost_eq", "")), "ai": bool(s.get("ai", false)), "fe": bool(s.get("fe", false)), "hold": bool(s.get("hold", false)), "atk": float(s.get("atk", 0.0)), "plain": bool(s.get("plain", false)), "idle": bool(s.get("idle", false))})
 		var _id = str(s.get("id", ""))
 		if GameState != null and GameState.loadouts.has(_id): lds[_id] = GameState.loadouts[_id]
 	var f = FileAccess.open(SETUP_PATH, FileAccess.WRITE)
@@ -868,6 +874,8 @@ func _edit_load_setup() -> void:
 			"fe": bool(sd.get("fe", false)),
 			"hold": bool(sd.get("hold", false)),
 			"atk": float(sd.get("atk", 0.0)),
+			"plain": bool(sd.get("plain", false)),
+			"idle": bool(sd.get("idle", false)),
 		}))
 	_edit_set_status("已恢复上次摆位 (%d 单位)" % battle._units.size())
 
