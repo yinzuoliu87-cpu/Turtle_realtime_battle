@@ -30,6 +30,7 @@ const UI := preload("res://scripts/scenes/bracket/champion_ui.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const DT := 1.0 / 60.0
 const JN := preload("res://scripts/net/journey_net.gd")
+const SB := preload("res://scripts/net/supabase.gd")
 
 var _n := 0
 var _fail := 0
@@ -929,6 +930,27 @@ func _t_week() -> void:
 		id += 1
 		raw.append(_jrow(id, "finals", true, W21, P2C.FINALS_CUP_BUCKET))
 	var pr := JN.parse(true, 200, JSON.stringify({"ok": true, "rows": raw}))
+	## 真走一遍发请求那条路(与对局记录共用 battle_log_net._send, 传夺冠之路自己的 RPC 与 parse; 假传输层接住)
+	var urls: Array = []
+	var got := {}
+	OS.set_environment("TURTLE_SUPABASE", "http://127.0.0.1:9")
+	SB._reset_auth_for_test()
+	SB.apply_auth_response(true, 200,
+		'{"access_token":"at-1","expires_in":3600,"refresh_token":"rt-1","user":{"id":"uid-journey","email":"e@x.co"}}')
+	SB._transport_for_test = func(_m, url, _h, _b, cb) -> void:
+		urls.append(str(url))
+		cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "rows": raw})})
+	JN.fetch(4102444800, "00000000-0000-4000-8000-000000000001", func(r: Dictionary) -> void: got.merge(r))
+	for _i in range(120):
+		if not got.is_empty():
+			break
+		await get_tree().process_frame
+	SB._transport_for_test = Callable()
+	OS.set_environment("TURTLE_SUPABASE", " ")
+	SB._reset_auth_for_test()
+	_ok("⑭ 真发请求: 打到 finals_week_journey、回包按夺冠之路解析(27 行, 第一行三路都在)", urls.size() == 1
+		and str(urls[0]).ends_with("/rest/v1/rpc/finals_week_journey") and bool(got.get("ok", false))
+		and (got.get("rows", []) as Array).size() == 27 and ((got["rows"][0] as Dictionary)["lanes"] as Dictionary).has("final"), str(urls))
 	var st: Array = JN.stages(pr["rows"])
 	var keys: Array = []
 	for x in st:

@@ -124,13 +124,15 @@ static func _reply(done: Callable, r: Dictionary) -> void:
 		dropped += 1
 
 
-static func _send(n, body: String, done: Callable) -> void:
+## ★夺冠之路(journey_net.gd)也走这里: 传它自己的 `rpc` 与 `parse_fn`(dup_primitive_audit: 同一份实现不许抄两遍)。
+static func _send(n, body: String, done: Callable, rpc: String = RPC, parse_fn: Callable = Callable()) -> void:
 	if not await n._await_token():
 		n._bye()
 		_reply(done, {"ok": false, "rows": [], "reason": "not_signed_in" if SB.session_lost() else "net"})
 		return
-	n._http("POST", SB.base_url().rstrip("/") + RPC, body, func(res: Dictionary) -> void:
-		var r := parse(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")))
+	var pf: Callable = parse_fn if parse_fn.is_valid() else parse
+	n._http("POST", SB.base_url().rstrip("/") + rpc, body, func(res: Dictionary) -> void:
+		var r: Dictionary = pf.call(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")))
 		n._bye()
 		_reply(done, r),
 		"Content-Type: application/json")

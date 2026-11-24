@@ -7,6 +7,8 @@ extends RefCounted
 ## `stages(rows)` 按段分组: 积分赛 / 闯关赛 / 小组赛 / 冠军杯赛, 每段 {key, title, w, l, rows}; 空段不出。
 
 const SB := preload("res://scripts/net/supabase.gd")
+## 发请求 / 回调方已释放就丢 / 路的取值: 与对局记录共用 battle_log_net 那一份(dup_primitive_audit)
+const BLN := preload("res://scripts/net/battle_log_net.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const RPC := "/rest/v1/rpc/finals_week_journey"
 const KINDS := ["ranked", "gauntlet", "finals"]
@@ -17,7 +19,6 @@ const ST_CUP := "cup"
 const STAGE_ORDER := [ST_RANKED, ST_GAUNTLET, ST_GROUP, ST_CUP]
 
 static var fetches := 0        # 发出去几次(门禁量)
-static var dropped := 0        # 回包时回调方已释放、丢掉的次数(门禁量)
 
 
 ## 纯函数: 回包 → {ok, rows, reason}。看不懂 / 断网 / 服务器拒(not_entrant)⇒ ok false。不合法的行丢掉。
@@ -45,16 +46,11 @@ static func parse(ok: bool, code: int, body: String) -> Dictionary:
 				leaders.append(str(l))
 		rows.append({
 			"id": int(d.get("id", 0)), "kind": kind, "at": int(d.get("at", 0)), "won": bool(d.get("won", false)),
-			"lanes": {"top": _lane(la.get("top")), "bottom": _lane(la.get("bottom")), "final": _lane(la.get("final"))},
+			"lanes": {"top": BLN._lane(la.get("top")), "bottom": BLN._lane(la.get("bottom")), "final": BLN._lane(la.get("final"))},
 			"finals": d.get("finals", {}) if d.get("finals") is Dictionary else {},
 			"foe": {"name": str(fo.get("name", "")), "avatar": str(fo.get("avatar", "")), "leaders": leaders},
 		})
 	return {"ok": true, "rows": rows, "reason": ""}
-
-
-static func _lane(v) -> String:
-	var s := str(v) if v is String else ""
-	return s if s == "me" or s == "foe" else ""
 
 
 ## 比分 [我赢的路数, 对手赢的路数]: 上 / 下 / 终极各算一路(2:0 / 2:1 / 上路碎蛋 1:0 / 1-1 后碎蛋 1:1,
@@ -128,30 +124,12 @@ static func stages(rows: Array) -> Array:
 ## 取冠军(或组冠军)这一周。`done(res: {ok, rows, reason})` 恰好一次。
 static func fetch(week: int, account: String, done: Callable) -> void:
 	if not SB.enabled() or week <= 0 or account == "":
-		_reply(done, {"ok": false, "rows": [], "reason": "off"})
+		BLN._reply(done, {"ok": false, "rows": [], "reason": "off"})
 		return
 	var n = SB._spawn()
 	if n == null:
-		_reply(done, {"ok": false, "rows": [], "reason": "net"})
+		BLN._reply(done, {"ok": false, "rows": [], "reason": "net"})
 		return
 	fetches += 1
-	_send(n, JSON.stringify({"p_week": week, "p_account": account}), done)
+	BLN._send(n, JSON.stringify({"p_week": week, "p_account": account}), done, RPC, parse)
 
-
-static func _reply(done: Callable, r: Dictionary) -> void:
-	if done.is_valid():
-		done.call(r)
-	else:
-		dropped += 1
-
-
-static func _send(n, body: String, done: Callable) -> void:
-	if not await n._await_token():
-		n._bye()
-		_reply(done, {"ok": false, "rows": [], "reason": "not_signed_in" if SB.session_lost() else "net"})
-		return
-	n._http("POST", SB.base_url().rstrip("/") + RPC, body, func(res: Dictionary) -> void:
-		var r := parse(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")))
-		n._bye()
-		_reply(done, r),
-		"Content-Type: application/json")
