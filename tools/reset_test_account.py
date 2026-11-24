@@ -7,7 +7,7 @@
   ① saves：存档换成产品 `GameState.reset_save()` 的结果（保留昵称 / 称号 / 历届决赛 / 新手完成），save_rev +1，只在版本号没变时才写。
   ② ranked_records：删本周这一行 —— 不删的话手机一开战就被服务器以账本为准拉回原来的场次 / 余命。
   ③ ghosts：删本周这个号的快照 —— 账本没有行时 `ranked_ledger_peek` 会拿本周快照补种账本。
-  ④ referee_jobs：本周这个号的积分赛任务去重键加 `:void<日期>` —— 不改的话新打的第 0 场按 `ranked:周:号:0` 撞上旧任务、直接返回旧结果。
+  ④ referee_jobs：本周这个号的积分赛任务去重键加 `:void<年月日时分秒>`（同一天重置两次也不撞唯一键，11-24） —— 不改的话新打的第 0 场按 `ranked:周:号:0` 撞上旧任务、直接返回旧结果。
      任务行本身保留（历史 / 录像还在）；`tools/ranked_reconcile.py` 不数带 `:void` 的任务。
   ⑤ econ_ops / econ_state：删本周这个号的经济流水与服务器重放结果（2026-11-24 补）—— 不删的话手机拿到重置存档后
      开局按服务器那份流水对齐（EconNet.adopt_async → EconReplay.adopt：week_start 归零再逐条重放），
@@ -87,7 +87,7 @@ def main():
     body = json.dumps(out, ensure_ascii=False)
     if TAG in body:
         raise SystemExit("✗ 存档里含引号标记 %s" % TAG)
-    void = ":void" + datetime.date.today().strftime("%Y%m%d")
+    void = ":void" + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     print("要改：存档 %s → %s 版 · 删账本 %d 行 · 删快照 %d 份 · 任务去重键加「%s」%d 个 · 删经济流水 %d 条 / 重放结果 %d 行"
           % (sv["save_rev"], int(sv["save_rev"]) + 1, len(rr), len(gh), void, len(jb), len(eo), len(es)))
     if not apply:
