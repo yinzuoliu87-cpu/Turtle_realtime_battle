@@ -890,7 +890,8 @@ func _track_motion(delta: float) -> void:
 	if delta <= 0.0:
 		return
 	for o in battle._units:
-		if not o.get("alive", false):
+		## 只记钩得到的单位: 训龟大师是装饰、谁都不许往它身上写字段(§UNTOUCHABLE, verify_trainer_untouchable); 龟蛋不选(_random_hook_target)
+		if not o.get("alive", false) or battle._is_untouchable(o) or o.get("_isEgg", false):
 			continue
 		var p: Vector2 = o["pos"]
 		o["_hk_v"] = (p - (o.get("_hk_p", p) as Vector2)) / delta
