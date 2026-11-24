@@ -49,6 +49,7 @@ const TYPES := {
 	"弓箭": {"tiers": [3, 6, 9],     "stats": [{"crit": 0.09}, {"crit": 0.16}, {"crit": 0.22}]},
 	"法器": {"tiers": [2, 5, 8, 10], "stats": [{"magicPen": 4, "_maxEnergy": 4}, {"magicPen": 7, "_maxEnergy": 6}, {"magicPen": 11, "_maxEnergy": 8}, {"magicPen": 14, "_maxEnergy": 10}]},
 	"灵物": {"tiers": [2, 5, 8, 10], "stats": [{"dodgePct": 5}, {"dodgePct": 9}, {"dodgePct": 13}, {"dodgePct": 18}]},
+	"炸弹": {"tiers": [3, 6, 10], "stats": [{"armorPen": 5}, {"armorPen": 12}, {"armorPen": 20}]},   # 2026-11-24 新羁绊(方案书 20261124f; 用户「那肯定三六十嘛」)
 	## ★★香火(2026-08-13 用户:「093应该有两个羁绊: 遗物和香火」)。
 	##   **只有 1 档**(装备文案原文「羁绊只激活1档」) ⇒ 带 1 块和带 3 块一样。
 	##   它没有逐档属性: 收益全部来自**刻痕数**(每道给全队 +0.1% 增伤 / +0.05% 减伤),
@@ -96,6 +97,7 @@ const TYPE_ICON := {
 	"遗物": "res://assets/sprites/tags/tag-relic.png",
 	"香火": "res://assets/sprites/tags/tag-incense.png",
 	"斧头": "res://assets/sprites/tags/tag-axe.png",
+	"炸弹": "res://assets/sprites/tags/tag-bomb.png",
 	## ★2026-08-20 补: 香火在 TYPES 里(第 56 行)但这两张表都漏了它 ⇒ 静默回落成剑,
 	##   界面上香火羁绊显示成一把剑。**表分几张而只加了一张**是典型漏法。
 }
@@ -105,6 +107,7 @@ const TYPE_NAME := {
 	"法器": "法器·法师", "灵物": "灵物·召唤", "遗物": "遗物·古物",
 	"香火": "香火·刻痕",
 	"斧头": "斧头·砍伐",
+	"炸弹": "炸弹·爆破",
 }
 ## ★★2026-10-13 按云顶羁绊小卡的结构重写(用户「行，你自己弄」; 参考 docs/plans/ref/20261006-云顶装备弹窗/3-tft手游-点羁绊弹小卡.png):
 ##   机制只在 TYPE_INTRO 写一次(一条一行, 【专名】开头), TIER_DESCS 每档只写变化的数字 / 「生效」。
@@ -159,6 +162,9 @@ const TYPE_INTRO := {
 	"遗物": [
 		"遗物提供生命偷取。我方全体单位按生命值高低切换攻击与续航，全队增伤随战斗时间累积，龟蛋也加入战斗。",
 	],
+	"炸弹": [
+		"炸弹提高携带者的护甲穿透。每个战场开打后不久，一发导弹落到战场中心，轰炸并击飞所有敌方单位。",
+	],
 }
 
 # 逐档效果: 该档新增 / 变化的内容(总述见 TYPE_INTRO)。条目之间用「 · 」分隔, 图鉴 / 背包按它拆行。
@@ -183,6 +189,11 @@ const TIER_DESCS := {
 		"每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，档位降低时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害",
 		"每件盾为携带者提供 +13 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 自身最大生命值 · 【圣光护盾】再获得 1 件，共 2 件 · 【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾",
 		"每件盾为携带者提供 +22 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 自身最大生命值 · 【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值。圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%",
+	],
+	"炸弹": [
+		"每件炸弹为携带者提供 +5 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外",
+		"每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%",
+		"每件炸弹为携带者提供 +20 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%",
 	],
 	"药水": [
 		"每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%",

@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT = os.path.join(ROOT, ".out", "equip_icons")
-RULER = os.path.join(ROOT, "assets", "sprites", "equip", "p2eq_060.png")   # 水母伞: 现有干净 64px 图标
+RULER = os.environ.get("CAND_RULER") or os.path.join(ROOT, "assets", "sprites", "equip", "p2eq_060.png")   # 水母伞: 现有干净 64px 图标
 
 
 def fetch(job, i, dst):

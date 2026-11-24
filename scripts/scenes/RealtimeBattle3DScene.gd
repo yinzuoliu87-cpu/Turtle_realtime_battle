@@ -686,6 +686,7 @@ var _bow_syn := BowSynergySystem.new(self)   # 弓箭羁绊【处决/穿透/腐�
 var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控】(2026-08-03)
 var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/余韵/共鸣】(2026-08-03)
 var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获】(2026-08-03)
+var _bomb_syn := BombSynergySystem.new(self)   # 炸弹羁绊【导弹轰炸】(2026-11-24 · 方案书 20261124f)
 var _gadget_syn := GadgetSynergySystem.new(self)   # 奇械羁绊【铸币/冰封】(2026-08-03)
 var _food_syn := FoodSynergySystem.new(self)       # 食物羁绊【永久成长/学院】(2026-08-03)
 var _spirit_syn := SpiritSynergySystem.new(self)   # 灵物羁绊【触手/闪避追击/亡灵】(2026-08-03)
@@ -2130,6 +2131,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击(每 2.5 秒·TICK) / 第二座能量循环(每 5 秒·T2_PERIOD)
 		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 共鸣(7.5s)
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
+		_bomb_syn.tick(dt)    # 炸弹: 每一路开打第 10 秒导弹轰炸
 		_gadget_syn.tick(dt)  # 奇械: 铸币累计
 		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
 		_spirit_syn.tick(dt)  # 灵物: 触手拍击层数(每 SLAP_PERIOD=5 秒 +1, 闪避再 +1) + 空闲时消费 1 层拍一次
@@ -4023,10 +4025,10 @@ func _lstrike_frame(spr: Sprite3D, f: int) -> void:
 	if is_instance_valid(spr):
 		spr.frame = clampi(f, 0, maxi(0, int(spr.hframes) * int(spr.vframes) - 1))
 
-func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> int:
+func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool, can_crit: bool = true) -> int:   # can_crit=false: 羁绊效果不暴击(炸弹导弹); 不掷随机数
 	_last_dmg_type = "magic" if magic else "physical"; _damage._dt_fresh = true; _damage._dt_owner = tgt; _damage._dt_resolved = true   # 记类型供飘字取色(+哨兵置新鲜/记归属/记"这一发真算过护甲")
 	var eff_crit: float = minf(float(u["crit"]), 1.0)
-	_last_atk_crit = _battle_rng.randf() < eff_crit
+	_last_atk_crit = can_crit and _battle_rng.randf() < eff_crit
 	if _last_atk_crit:
 		base *= DamageMath.crit_multiplier(float(u["crit"]), float(u["crit_dmg"]))   # 暴击率溢出100%每1%→1.5%暴伤
 	var resist: float
@@ -7476,6 +7478,7 @@ func _settle_season(won: bool) -> void:
 	_equip_tick_sys.reset_match()   # 035 齿轮本场铸币归零(与上一行同一时机)
 	_food_syn.reset_match()      # 食物成长: 以【场】重置(用户 2026-08-04) —— 跨路保留, 换场清零
 	_potion_syn.reset_match()    # 药水战利品: 同上
+	_bomb_syn.reset_match()
 	_relic_syn.reset_match()     # 遗物远古之力: 同上
 	## ★2026-10-06 用户「可以不发」: 被打出局的那一局不发深海币(含战斗内铸币)。
 	##   出局后商店锁住、深海币周一清零 ⇒ 这笔钱一枚都花不出去, 发了只是假账(60 人实操台账)。
