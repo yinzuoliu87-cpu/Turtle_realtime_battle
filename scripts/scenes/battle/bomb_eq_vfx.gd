@@ -79,6 +79,9 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 		s.axis = Vector3.AXIS_Y
 	else:
 		s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		## ★竖着的特效: 贴图最下沿不能低于地面, 不够就把整张往上抬(用户 11-24「下面被切了一半」——
+		##   锚点在帧中间、贴图几米高, 放在离地 0.5 米 ⇒ 下半截埋进地里被地面挡掉)
+		h = maxf(h, float(fh - int(row[5])) * s.pixel_size + 0.02)
 	s.position = battle._world_pos(pos, h)
 	battle._world.add_child(s)
 	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "anim", "nf": s.hframes, "loop": loop})
@@ -172,7 +175,8 @@ func missile_impact(side: String) -> void:
 # ═══════════════════════════════ 十件装备 ═══════════════════════════════
 
 func cracker_burst(c: Vector2) -> void:
-	_anim("pop", c, 200.0, 0.35, 0.5)
+	_anim("pop", c, 110.0, 0.35, 0.5)
+	_ring(c, EqBombBatch.CRACKER_R, Color(1.0, 0.55, 0.2, 0.7), 0.3)   # 地上一圈 = 真实伤害半径
 
 
 func tube_blast(c: Vector2, r: float) -> void:
