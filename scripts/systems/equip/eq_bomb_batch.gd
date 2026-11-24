@@ -412,6 +412,8 @@ func _tick_grenades(t: float) -> void:
 			_phys(u, o, float(GRENADE_FLAT[si]) + GRENADE_ATK * float(u["atk"]))
 			if o.get("alive", false):
 				var amt := float(GRENADE_SHRED[si])
+				if vfx != null and battle.get("_vfx") != null:
+					battle._vfx._float_text(Vector2(o["pos"]) + Vector2(0, -70), Lang.t("护甲 -%d") % int(amt), Color("#ffb070"))   # 破甲看得见
 				o["def_shred"] = float(o.get("def_shred", 0.0)) + amt
 				battle._recalc_stats(o)
 				_shreds.append({"u": o, "amt": amt, "until": t + GRENADE_SHRED_SEC})

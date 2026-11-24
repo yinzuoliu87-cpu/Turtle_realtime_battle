@@ -58,7 +58,8 @@ static func cases() -> Dictionary:
 		"cracker": [[_me(Vector2(-10, 0), _eq([97]))] + _dummies(60, 3), 12.0],
 		## 爆竹筒范围 120 码: 三个靶子围在携带者 70~85 码内(都在范围里, 看得出一圈都被击退)
 		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(30, -78), Vector2(30, 78)]), 16.0],
-		"grenade": [[_me(Vector2(-10, 0), _eq([99]))] + _dummies(60, 3), 16.0],
+		## 手雷: 携带者站在远处不动(看得到一道弧线扔过去)
+		"grenade": [[_me(Vector2(-280, 0), _eq([99]), {"hold": true})] + _dummies(60, 3), 16.0],
 		## 烟雾弹: 两只会打的敌人冲过来, 看它们选不中烟里的我方
 		"smoke": [[_me(Vector2(-200, -40), _eq([100]), {"hold": true}), _me(Vector2(-200, 60), [], {"hold": true})] + _dummies(150, 2, true, 8000.0, 60.0), 20.0],
 		"sticky": [[_me(Vector2(-10, 0), _eq([101]))] + _dummies(60, 3), 20.0],

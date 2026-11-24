@@ -93,7 +93,9 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 			s.no_depth_test = true
 			s.render_priority = 10
 		else:
-			h = maxf(h, float(fh - int(row[5])) * s.pixel_size + 0.02)
+			## 落在地上的爆炸: 火球(内容直径 row[3])的底部刚好贴地 ⇒ 锚点抬到内容半径的高度
+			##   (原来按「整张贴图下沿贴地」抬, 贴图四周有透明边 ⇒ 火球整团飘在半空, 用户 11-24 手雷那段)
+			h = maxf(h, float(row[3]) * 0.5 * s.pixel_size)
 	s.position = battle._world_pos(pos, h)
 	battle._world.add_child(s)
 	var skip: int = int(row[6]) if row.size() > 6 else 0
@@ -225,13 +227,16 @@ func tube_blast(c: Vector2, r: float, on = null) -> void:
 
 
 func grenade_throw(from: Vector2, to: Vector2, fly: float) -> void:
-	var s := _icon("p2eq_099", battle._world_pos(from, 1.0), 26.0) if _ok() else null
+	var s := _icon("p2eq_099", battle._world_pos(from, 1.0), 42.0) if _ok() else null
 	if s != null:
 		_fx.append({"node": s, "t": 0.0, "life": fly, "kind": "arc", "from": from, "to": to, "h": 2.2})
 
 
+## 火球固定 150 码大(约 3.6 米, 比单位高一些), 底部贴地; 伤害范围(半径 160 码)由地上一圈标出 ——
+##   原来火球按伤害直径缩放成 7.7 米一大团飘在头顶(用户 11-24 看片)
 func grenade_blast(c: Vector2, r: float) -> void:
-	_anim("std", c, r * 2.0, 0.7)
+	_anim("std", c, 150.0, 0.7)
+	_ring(c, r, Color(1.0, 0.6, 0.25, 0.95), 0.6)
 
 
 func smoke_cloud(c: Vector2, r: float, sec: float) -> void:

@@ -8110,3 +8110,6 @@ msgstr "Summons a Katana Minion. Its first three abilities fire sword waves; the
 
 msgid "登场时召唤一名武士刀小将：{C:EqBombBatch.KATANA_HP} 生命值、{C:EqBombBatch.KATANA_ATK} 攻击力，龟能上限 {C:EqBombBatch.KATANA_EN_MAX}，普攻造成 100% 攻击力的物理伤害。龟能满时释放技能，四次一循环：前三次向前方 {C:EqBombBatch.KATANA_WAVE_LEN} 码挥出一道剑气波，造成 {C:EqBombBatch.KATANA_WAVE_MULT%}% 攻击力的物理伤害；第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒并回复 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成 {C:EqBombBatch.KATANA_TORNADO_MULT%}% 攻击力的物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒。"
 msgstr "On spawn, summons a Katana Minion: {C:EqBombBatch.KATANA_HP} health, {C:EqBombBatch.KATANA_ATK} Attack, {C:EqBombBatch.KATANA_EN_MAX} max Energy; its attacks deal 100% Attack as physical damage. At full Energy it casts an ability in a cycle of four: the first three fire a sword wave {C:EqBombBatch.KATANA_WAVE_LEN} units forward, dealing {C:EqBombBatch.KATANA_WAVE_MULT%}% Attack as physical damage; the fourth charges for {C:EqBombBatch.KATANA_CHARGE} seconds, restoring {C:EqBombBatch.KATANA_HEAL_TOTAL%}% max health, then sends {C:EqBombBatch.KATANA_TORNADOES} tornadoes forward, dealing {C:EqBombBatch.KATANA_TORNADO_MULT%}% Attack as physical damage and knocking up for {C:EqBombBatch.KATANA_AIR} second."
+
+msgid "护甲 -%d"
+msgstr "Armor -%d"
