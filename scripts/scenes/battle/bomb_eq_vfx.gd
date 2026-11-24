@@ -365,9 +365,9 @@ func mine_blast(c: Vector2, r: float) -> void:
 				_mines[i]["node"].queue_free()
 			_mines.remove_at(i)
 			break
-	## 落地类: 贴地一层铺满伤害范围 + 以落地点为中心往上炸的一团(泥土碎石) + 范围圈
-	_anim("mine", c, r * 2.0, 0.85, 0.04, true)
-	_anim("mine", c, 150.0, 0.85, 0.05, false, false, Color.WHITE, "ground")
+	## 落地类: 以雷为中心从地面炸起的一整团(泥土碎石), 宽 = 伤害直径(靠爆炸本身盖满范围) + 范围圈
+	##   (原来另有一层放平贴在地上的, 用户 11-24「怎么跟贴地上了」⇒ 去掉)
+	_anim("mine", c, r * 2.0, 0.85, 0.05, false, false, Color.WHITE, "ground")
 	_ring(c, r, Color(0.95, 0.8, 0.5, 0.95), 0.6)
 
 
