@@ -113,11 +113,20 @@ func _live_play(chunks: Array, meta: Dictionary, nat: Dictionary) -> void:
 	src.limit = 8
 	var stalled := false
 	var over_edge := false
+	## ★「停在边沿」= 停下 且 连续 30 帧没有新数据进来(_last_step 不变)。11-24 CI 两次实测: 慢机器上 8 块是分批解出来的,
+	##   先在当时的边沿(240 步)停一下, 后面几块到了又接着播到 480 —— 那一下停也是对的(数据只到 240), 不能当成最终边沿去量。
+	var quiet := 0
+	var last_seen := -1
 	for _i in range(4000):
 		await get_tree().process_frame
 		if p.head > float(p._last_step) + 0.001:
 			over_edge = true
-		if p.state == "stalled":
+		if int(p._last_step) != last_seen:
+			last_seen = int(p._last_step)
+			quiet = 0
+		else:
+			quiet += 1
+		if p.state == "stalled" and quiet >= 30:
 			stalled = true
 			break
 	var h_st := p.head
