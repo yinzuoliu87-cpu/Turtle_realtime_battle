@@ -324,6 +324,8 @@ static func cup_show_from_end(info: Dictionary, view: Dictionary, week: int, row
 					path.append(row)
 			if str(champ["origin"]) == "":
 				champ["origin"] = origin_of(view, _arr_at(cup, "accs", sd), _arr_at(cup, "tags", sd))
+			## 夺冠之路一整周要按账号去取(ChampionShow._start_journey, 方案书 20261124)
+			champ["acc"] = _arr_at(cup, "accs", sd)
 	var score: Array = []
 	if sc.has(win) and sc.has(lose) and int(sc[win]) > 0:
 		score = [int(sc[win]), int(sc[lose])]

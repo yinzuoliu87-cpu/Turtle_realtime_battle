@@ -37,12 +37,19 @@ const UI := preload("res://scripts/scenes/bracket/champion_ui.gd")
 const FX := preload("res://scripts/scenes/bracket/champion_fx.gd")
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const DATA := preload("res://scripts/scenes/bracket/champion_data.gd")
+const JN := preload("res://scripts/net/journey_net.gd")
 const REWARDS_PATH := "res://scripts/scenes/bracket/champion_rewards.gd"
 const WALL_PATH := "res://scripts/scenes/bracket/champion_wall.gd"
 
 const LAYER := 96
-const CUP_RANGE := Vector2(12.0, 16.0)        # 冠军杯总长(到定格卡落定)要落在这里
-const GROUP_RANGE := Vector2(8.0, 11.0)
+## ★2026-11-24 夺冠之路列一整周(方案书 20261124)⇒ 上限各放宽 3 秒
+const CUP_RANGE := Vector2(12.0, 19.0)        # 冠军杯总长(到定格卡落定)要落在这里
+const GROUP_RANGE := Vector2(8.0, 14.0)
+## 一整周那一版 path 拍: 栏一栏一栏落下(每栏 PATH_COL_STEP 秒, 栏里每行 PATH_ROW_STEP 秒), 全落定后停 PATH_HOLD 秒
+const PATH_COL_STEP := 0.55
+const PATH_ROW_STEP := 0.035
+const PATH_HOLD := 1.6
+const PATH_WEEK_ANIM := 0.4 + PATH_COL_STEP * 4.0 + 0.6
 const SKIP_HOLD := 0.5                         # 点屏落定后再停多久进下一拍
 const FADE_OLD := 0.22
 const FADE_NEW := 0.15
@@ -80,6 +87,9 @@ var _fired := {}
 var _n := {}                   # 当前拍的节点
 var _closed := false
 var _claimed := false
+## 一整周的对局: 开演就去取(data 里已经有 "journey" 就不取; 门禁直接喂)。取不到 ⇒ path 拍照旧只列冠军杯 / 小组那几轮。
+var fetch_journey := true
+var journey_state := ""       # "" 没取 / pending / ok / fail(门禁量)
 
 
 static func create(d: Dictionary) -> ChampionShow:
@@ -99,6 +109,7 @@ func _ready() -> void:
 	vp = data["vp"] if data.get("vp", null) is Vector2 else get_viewport().get_visible_rect().size   # 门禁量两种比例时直接给
 	c = vp * 0.5
 	_build_base()
+	_start_journey()
 	_plan()
 	_enter(0, 0.0)
 
@@ -130,6 +141,35 @@ func path_rows() -> Array:
 	return a if a is Array else []
 
 
+## 一整周分段: [{key, title, w, l, rows}](JourneyNet.stages); 没有 ⇒ []。
+func journey() -> Array:
+	var a = data.get("journey", [])
+	return a if a is Array else []
+
+
+func _start_journey() -> void:
+	if not journey().is_empty():
+		journey_state = "ok"
+		return
+	var acc := str((data.get("champion", {}) as Dictionary).get("acc", ""))
+	if not fetch_journey or acc == "" or int(data.get("week", 0)) <= 0:
+		return
+	journey_state = "pending"
+	JN.fetch(int(data["week"]), acc, _on_journey)
+
+
+## 回包: 拍子已经排好(path 拍按一整周的长度留了时间), 到 path 拍建的时候看有没有。
+func _on_journey(res: Dictionary) -> void:
+	if _closed:
+		return
+	var st: Array = JN.stages(res.get("rows", [])) if bool(res.get("ok", false)) else []
+	if st.is_empty():
+		journey_state = "fail"
+		return
+	data["journey"] = st
+	journey_state = "ok"
+
+
 func bests() -> Array:
 	var a = data.get("bests", [])
 	return (a as Array).slice(0, 3) if a is Array else []
@@ -148,7 +188,9 @@ func _plan() -> void:
 		## 逐只落位, 最后一只落定后再停一拍(0.8~0.9 s)让三只并排看清
 		var per := 0.55 if cup else 0.5
 		beats.append({"name": "lineup", "dur": 0.35 + per * nl + (0.9 if cup else 0.8), "anim": 0.35 + per * nl + 0.15, "per": per})
-	if np > 0:
+	if not journey().is_empty() or journey_state == "pending":
+		beats.append({"name": "path", "dur": PATH_WEEK_ANIM + PATH_HOLD, "anim": PATH_WEEK_ANIM, "step": 0.45})
+	elif np > 0:
 		var step := 0.45 if cup else 0.4
 		beats.append({"name": "path", "dur": 0.4 + step * np + (0.6 if cup else 0.5), "anim": 0.4 + step * np + 0.2, "step": step})
 	if cup and not bests().is_empty():
@@ -585,6 +627,9 @@ func _apply_lineup(t: float) -> void:
 #  ⑤ 夺冠之路
 # ═══════════════════════════════════════════════════════════════════
 func _build_path() -> void:
+	if not journey().is_empty():
+		_build_path_week()
+		return
 	var rows := path_rows()
 	UI.label_in(_stage, Rect2(0, c.y - 262, vp.x, 52), "夺冠之路", 36, UI.GOLD, true, "PathTitle")
 	var w := minf(vp.x - 200.0, 1120.0)
@@ -605,6 +650,10 @@ func _build_path() -> void:
 			var sc: Array = r.get("score", [])
 			if sc.size() == 2:
 				UI.label_in(pl, Rect2(w - 320, 0, 180, rh), "%d : %d" % [int(sc[0]), int(sc[1])], 48, UI.TXT, true, "PathScore%d" % i)
+		## 轮空没打 ⇒ 不盖「胜」(2026-11-24)
+		if bool(r.get("bye", false)):
+			items.append({"row": pl, "stamp": null})
+			continue
 		var stamp := Control.new()
 		stamp.name = "PathWin%d" % i
 		stamp.size = Vector2(96, 96)
@@ -622,6 +671,9 @@ func _build_path() -> void:
 ## 每一行像盖章一样砸下来(1.3 倍 → 1 倍 + 扬尘 + 轻震), 再盖「胜」章(2.4 倍 → 1 倍回弹)。
 func _apply_path(t: float) -> void:
 	_fx.rays_alpha = 0.16
+	if _n.has("cols"):
+		_apply_path_week(t)
+		return
 	var step: float = float(beats[beat_i].get("step", 0.45))
 	var items: Array = _n["items"]
 	var shake := 0.0
@@ -637,11 +689,142 @@ func _apply_path(t: float) -> void:
 		var after := t - (ti + 0.16)
 		if after >= 0.0 and after < 0.12:
 			shake = maxf(shake, 1.0 - after / 0.12)
+		if items[i]["stamp"] == null:
+			continue
 		var st: Control = items[i]["stamp"]
 		var ks := UI.seg(t, ti + 0.2, ti + 0.34)
 		st.modulate.a = ks
 		st.scale = Vector2.ONE * lerpf(2.4, 1.0, UI.ease_back(ks))
 	_stage.position = Vector2(sin(t * 95.0) * 4.0 * shake, 0.0) if shake > 0.0 else Vector2.ZERO
+
+
+## 一整周那一版(方案书 20261124): 积分赛 / 闯关赛 / 小组赛 / 冠军杯赛 一段一栏; 栏头「12 胜 4 负」, 每场一行「对 名字　2 : 1」,
+##   赢的金字、输的灰字。冠军杯 / 小组那一栏有对阵表的轮次名(path_rows)就用它(带轮空), 没有就用回包里的行。
+func _week_cols() -> Array:
+	var out: Array = []
+	var pr := path_rows()
+	var tail_key := JN.ST_CUP if is_cup() else JN.ST_GROUP
+	for s in journey():
+		var col := {"key": str(s["key"]), "title": str(s["title"]), "w": int(s["w"]), "l": int(s["l"]), "rows": []}
+		if str(s["key"]) == tail_key and not pr.is_empty():
+			for r in pr:
+				(col["rows"] as Array).append({"label": str(r.get("round", "")), "foe": "" if bool(r.get("bye", false)) else str(r.get("foe", "")),
+					"score": r.get("score", []), "won": bool(r.get("won", false)), "bye": bool(r.get("bye", false))})
+		else:
+			for r in s["rows"]:
+				(col["rows"] as Array).append({"label": "", "foe": str((r["foe"] as Dictionary).get("name", "")),
+					"score": JN.score_of(r), "won": bool(r["won"]), "bye": false})
+		out.append(col)
+	## 回包里没有冠军杯 / 小组那一段(还没写回)、对阵表里有 ⇒ 补一栏
+	var has_tail := false
+	for col in out:
+		if str(col["key"]) == tail_key:
+			has_tail = true
+	if not has_tail and not pr.is_empty():
+		var col := {"key": tail_key, "title": JN.stage_title(tail_key), "w": 0, "l": 0, "rows": []}
+		for r in pr:
+			if not bool(r.get("bye", false)):
+				col["w"] = int(col["w"]) + (1 if bool(r.get("won", false)) else 0)
+				col["l"] = int(col["l"]) + (0 if bool(r.get("won", false)) else 1)
+			(col["rows"] as Array).append({"label": str(r.get("round", "")), "foe": "" if bool(r.get("bye", false)) else str(r.get("foe", "")),
+				"score": r.get("score", []), "won": bool(r.get("won", false)), "bye": bool(r.get("bye", false))})
+		out.append(col)
+	## 冠军杯 / 小组那一栏的胜负数也按对阵表那几行算(轮空不算胜)
+	for col in out:
+		if str(col["key"]) == tail_key and not pr.is_empty():
+			var w := 0
+			var l := 0
+			for r in col["rows"]:
+				if not bool(r["bye"]):
+					w += 1 if bool(r["won"]) else 0
+					l += 0 if bool(r["won"]) else 1
+			col["w"] = w
+			col["l"] = l
+	return out
+
+
+static func record_text(w: int, l: int) -> String:
+	return (Lang.t("%d 胜 %d 负") % [w, l]) if l > 0 else (Lang.t("%d 胜") % w)
+
+
+func _build_path_week() -> void:
+	var cols := _week_cols()
+	UI.label_in(_stage, Rect2(0, 24, vp.x, 52), "夺冠之路", 36, UI.GOLD, true, "PathTitle")
+	var n := maxi(1, cols.size())
+	var gap := 16.0
+	var w := minf(vp.x - 80.0, 1440.0)
+	var cw := (w - gap * float(n - 1)) / float(n)
+	var x0 := c.x - w * 0.5
+	var top := 92.0
+	var head_h := 64.0
+	var most := 1
+	for col in cols:
+		most = maxi(most, (col["rows"] as Array).size())
+	var rh := clampf((vp.y - top - head_h - 30.0) / float(most), 22.0, 44.0)
+	var fs := int(clampf(rh * 0.62, 15.0, 24.0))
+	var out: Array = []
+	for ci in range(cols.size()):
+		var col: Dictionary = cols[ci]
+		var rows: Array = col["rows"]
+		var ch := head_h + rh * float(most) + 12.0          # 四栏一样高(一张表), 短的那几栏下面留空
+		var pl := UI.plate(_stage, Rect2(x0 + float(ci) * (cw + gap), top, cw, ch), UI.BRONZE, UI.PLATE, "PathCol%d" % ci)
+		UI.box(pl, Rect2(3, 3, cw - 6, head_h - 6), UI.PLATE_HEAD)
+		UI.label_in(pl, Rect2(0, 4, cw, 30), str(col["title"]), 24, UI.GOLD, true, "PathColTitle%d" % ci)
+		UI.label_in(pl, Rect2(0, 32, cw, 26), record_text(int(col["w"]), int(col["l"])), 20, UI.TXT, false, "PathColRec%d" % ci)
+		## 带轮次名的那一栏(冠军杯 / 小组, 行少)⇒ 一格两行: 上面小字轮次、下面「对 名字　比分」(iPad 4:3 一行放不下会截成「对 北…」)
+		var labeled := false
+		for r in rows:
+			if str(r["label"]) != "":
+				labeled = true
+		var two := labeled and rows.size() * 2 <= most
+		var crh := rh * (2.0 if two else 1.0)
+		var lines: Array = []
+		for ri in range(rows.size()):
+			var r: Dictionary = rows[ri]
+			var y := head_h + crh * float(ri) + 4.0
+			var line := Control.new()
+			line.name = "PathLine%d_%d" % [ci, ri]
+			line.position = Vector2(0, y)
+			line.size = Vector2(cw, crh)
+			line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pl.add_child(line)
+			var won := bool(r["won"]) and not bool(r["bye"])
+			var col_c := UI.GOLD if won else (UI.TXT_DIM if bool(r["bye"]) else UI.TXT_DIM.darkened(0.15))
+			var sc: Array = r["score"] if r["score"] is Array else []
+			var sw := 72.0 if sc.size() == 2 else 0.0
+			var left := str(r["label"])
+			var body := "轮空" if bool(r["bye"]) else (Lang.t("对 %s") % str(r["foe"]))
+			var txt := (left + "　" + body) if left != "" and not two else body
+			var ly := crh - rh
+			if two and left != "":
+				UI.label_in(line, Rect2(12, 2, cw - 24, rh - 2), left, maxi(14, fs - 3), UI.TXT_DIM, false, "PathLineRound%d_%d" % [ci, ri], HORIZONTAL_ALIGNMENT_LEFT)
+			var nl := UI.label_in(line, Rect2(12, ly, cw - 24 - sw, rh), txt, fs, col_c, false, "PathLineText%d_%d" % [ci, ri], HORIZONTAL_ALIGNMENT_LEFT)
+			nl.clip_text = true
+			nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			if sc.size() == 2:
+				UI.label_in(line, Rect2(cw - 12 - sw, ly, sw, rh), "%d : %d" % [int(sc[0]), int(sc[1])], fs + 2, col_c, false,
+					"PathLineScore%d_%d" % [ci, ri], HORIZONTAL_ALIGNMENT_RIGHT)
+			lines.append(line)
+		out.append({"col": pl, "lines": lines})
+	_n["cols"] = out
+
+
+## 栏一栏一栏落下(从上方 40 像素落定), 栏里每行依次亮起。
+func _apply_path_week(t: float) -> void:
+	var cols: Array = _n["cols"]
+	for ci in range(cols.size()):
+		var ti := 0.4 + PATH_COL_STEP * float(ci)
+		var pl: Control = cols[ci]["col"]
+		var k := UI.seg(t, ti, ti + 0.25)
+		if not pl.has_meta("y0"):
+			pl.set_meta("y0", pl.position.y)
+		pl.position.y = float(pl.get_meta("y0")) - 40.0 * (1.0 - UI.ease_back(k))
+		pl.modulate.a = k
+		if t >= ti + 0.25 and _fire("col%d" % ci):
+			_fx.dust(pl.position + Vector2(pl.size.x * 0.5, pl.size.y), 16, pl.size.x * 0.45)
+		var lines: Array = cols[ci]["lines"]
+		for ri in range(lines.size()):
+			(lines[ri] as Control).modulate.a = UI.seg(t, ti + 0.2 + PATH_ROW_STEP * float(ri), ti + 0.32 + PATH_ROW_STEP * float(ri))
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -765,15 +948,25 @@ func _build_card() -> void:
 	## 夺冠之路(小)
 	var rows := path_rows()
 	var py := 344.0 if not ids.is_empty() else 200.0
-	if not rows.is_empty():
+	var wk := journey()
+	if not wk.is_empty():
+		## 一整周: 一段一行「积分赛　12 胜 4 负」(方案书 20261124); 冠军杯 / 小组那一段按对阵表算(轮空不算胜)
+		UI.label_in(card, Rect2(rx, py, rw, 24), "夺冠之路", 18, UI.TXT_DIM, false, "CardPathHead", HORIZONTAL_ALIGNMENT_LEFT)
+		var cols := _week_cols()
+		for i in range(cols.size()):
+			var col: Dictionary = cols[i]
+			UI.label_in(card, Rect2(rx, py + 26 + i * 28, rw, 28), "%s　%s" % [str(col["title"]), record_text(int(col["w"]), int(col["l"]))],
+				22, UI.TXT, false, "CardPath%d" % i, HORIZONTAL_ALIGNMENT_LEFT)
+	elif not rows.is_empty():
 		UI.label_in(card, Rect2(rx, py, rw, 24), "夺冠之路", 18, UI.TXT_DIM, false, "CardPathHead", HORIZONTAL_ALIGNMENT_LEFT)
 		for i in range(rows.size()):
 			var r: Dictionary = rows[i]
 			var sc: Array = r.get("score", [])
-			var line := "%s　%s" % [str(r.get("round", "")), "轮空晋级" if bool(r.get("bye", false)) else "对 " + str(r.get("foe", ""))]
+			var line := "%s　%s" % [str(r.get("round", "")), Lang.t("轮空晋级") if bool(r.get("bye", false)) else Lang.t("对 %s") % str(r.get("foe", ""))]
 			if sc.size() == 2:
 				line += "　%d : %d" % [int(sc[0]), int(sc[1])]
-			line += "　胜"
+			if not bool(r.get("bye", false)):
+				line += "　胜"
 			UI.label_in(card, Rect2(rx, py + 26 + i * 30, rw, 28), line, 22, UI.TXT, false, "CardPath%d" % i, HORIZONTAL_ALIGNMENT_LEFT)
 	## 按钮(落定后才出; 主按钮在右)
 	var specs: Array = []

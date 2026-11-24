@@ -29,6 +29,7 @@ const WALL := preload("res://scripts/scenes/bracket/champion_wall.gd")
 const UI := preload("res://scripts/scenes/bracket/champion_ui.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const DT := 1.0 / 60.0
+const JN := preload("res://scripts/net/journey_net.gd")
 
 var _n := 0
 var _fail := 0
@@ -59,6 +60,7 @@ func _ready() -> void:
 	await _t_layout()
 	await _t_round2()
 	await _t_hook()
+	await _t_week()
 	print("--- %d 条, 失败 %d ---" % [_n, _fail])
 	if _fail == 0 and _n >= 40:
 		print("ALL PASS")
@@ -886,4 +888,132 @@ func _t_hook() -> void:
 		show.queue_free()
 	hook.queue_free()
 	host.queue_free()
+	await get_tree().process_frame
+
+
+# ═══════════════════════════════════════════════════════════════════
+## ⑭ 夺冠之路一整周(2026-11-24 · 方案书 20261124): 用户「不是人家打的积分赛那十六场啊…瑞士轮那几场…小组赛几场，冠军几场。那比分你都不展示吗？」
+##   喂一份造好的回包(积分赛 16 / 闯关赛 6 / 小组赛 2 / 冠军杯 3 + 对阵表里冠军杯首轮轮空)⇒ path 拍四栏、栏头胜负、比分按路数、轮空不算胜、定格卡四行。
+func _jrow(id: int, kind: String, won: bool, la: Dictionary, bucket: int = -1) -> Dictionary:
+	var d := {"id": id, "kind": kind, "at": 1000 + id, "won": won, "lanes": la, "foe": {"name": "对手%d" % id, "avatar": "basic", "leaders": ["basic"]}}
+	if kind == "finals":
+		d["finals"] = {"bucket": bucket, "round": 1, "match": 0}
+	return d
+
+
+func _t_week() -> void:
+	print("--- ⑭ 夺冠之路一整周 ---")
+	## 纯函数: 比分按路数(四种码)、分段、服务器拒
+	var W20 := {"top": "me", "bottom": "me"}
+	var W21 := {"top": "me", "bottom": "foe", "final": "me"}
+	var W10 := {"top": "me"}
+	var W11 := {"top": "foe", "bottom": "me"}
+	var L02 := {"top": "foe", "bottom": "foe"}
+	_ok("⑭ score_of: 2:0 / 2:1 / 1:0 / 1:1 / 0:2 / 一路都没记 ⇒ []",
+		JN.score_of({"lanes": W20}) == [2, 0] and JN.score_of({"lanes": W21}) == [2, 1] and JN.score_of({"lanes": W10}) == [1, 0]
+		and JN.score_of({"lanes": W11}) == [1, 1] and JN.score_of({"lanes": L02}) == [0, 2] and JN.score_of({"lanes": {}}) == [])
+	_ok("⑭ parse: 服务器回 not_entrant ⇒ ok false、带原因", JN.parse(true, 200, '{"ok": false, "reason": "not_entrant"}') == {"ok": false, "rows": [], "reason": "not_entrant"})
+	var raw: Array = []
+	var id := 0
+	var pats := [W20, W21, W10, W11]
+	for i in range(16):
+		id += 1
+		raw.append(_jrow(id, "ranked", i < 12, pats[i % 4] if i < 12 else L02))
+	for i in range(6):
+		id += 1
+		raw.append(_jrow(id, "gauntlet", i < 4, W21 if i < 4 else L02))
+	for i in range(2):
+		id += 1
+		raw.append(_jrow(id, "finals", true, W20, 9900001))
+	for i in range(3):
+		id += 1
+		raw.append(_jrow(id, "finals", true, W21, P2C.FINALS_CUP_BUCKET))
+	var pr := JN.parse(true, 200, JSON.stringify({"ok": true, "rows": raw}))
+	var st: Array = JN.stages(pr["rows"])
+	var keys: Array = []
+	for x in st:
+		keys.append("%s:%d-%d:%d" % [str(x["key"]), int(x["w"]), int(x["l"]), (x["rows"] as Array).size()])
+	_ok("⑭ stages: 积分赛 12-4(16 行) / 闯关赛 4-2 / 小组赛 2-0 / 冠军杯 3-0(按 finals.bucket 分小组与冠军杯)",
+		keys == ["ranked:12-4:16", "gauntlet:4-2:6", "group:2-0:2", "cup:3-0:3"], str(keys))
+	## 演出: 对阵表那几轮带轮空(1/4 决赛轮空 + 半决赛 + 决赛)
+	for vp in [Vector2(1560, 720), Vector2(1280, 960), Vector2(1280, 720)]:
+		var d := _cup_data(vp)
+		d["journey"] = st
+		d["path"] = [{"round": "1/4 决赛", "foe": "", "foe_avatar": "", "score": [], "won": true, "bye": true},
+			{"round": "半决赛", "foe": "深海小龟王", "foe_avatar": "", "score": [2, 1], "won": true, "bye": false},
+			{"round": "决赛", "foe": "火山岩", "foe_avatar": "", "score": [2, 1], "won": true, "bye": false}]
+		var s = _mk(SHOW, d)
+		await get_tree().process_frame
+		var tag := "⑭ [%dx%d]" % [int(vp.x), int(vp.y)]
+		var guard := 0
+		while s.current_beat() != "path" and guard < 60 * 30:
+			s.advance(DT)
+			guard += 1
+		var anim: float = float(s._beat("path")["anim"])
+		while s.current_beat() == "path" and s.bt < anim + 0.05:
+			s.advance(DT)
+		var titles: Array = []
+		var recs: Array = []
+		var in_screen := true
+		for ci in range(4):
+			titles.append(_text(s, "PathColTitle%d" % ci))
+			recs.append(_text(s, "PathColRec%d" % ci))
+			var col := s.node("PathCol%d" % ci) as Control
+			if col == null or not Rect2(Vector2.ZERO, vp).encloses(col.get_global_rect()):
+				in_screen = false
+		_ok("%s ★四栏: 积分赛 / 闯关赛 / 小组赛 / 冠军杯赛, 没有第五栏" % tag, titles == ["积分赛", "闯关赛", "小组赛", "冠军杯赛"]
+			and s.node("PathCol4") == null, str(titles))
+		_ok("%s ★栏头胜负: 12 胜 4 负 / 4 胜 2 负 / 2 胜 / 2 胜(冠军杯轮空不算胜)" % tag, recs == ["12 胜 4 负", "4 胜 2 负", "2 胜", "2 胜"], str(recs))
+		_ok("%s ★积分赛那一栏 16 行(第 17 行没有)、四栏整栏在屏内" % tag, s.node("PathLine0_15") != null and s.node("PathLine0_16") == null and in_screen)
+		var scs: Array = []
+		for ri in range(4):
+			scs.append(_text(s, "PathLineScore0_%d" % ri))
+		_ok("%s ★每场比分按路数: 2 : 0 / 2 : 1 / 1 : 0 / 1 : 1" % tag, scs == ["2 : 0", "2 : 1", "1 : 0", "1 : 1"], str(scs))
+		var t_win := s.node("PathLineText0_0") as Label
+		var t_lose := s.node("PathLineText0_12") as Label
+		_ok("%s 赢的金字、输的不是金字; 第 13 场输的比分 0 : 2" % tag, t_win != null and t_lose != null
+			and t_win.get_theme_color("font_color") == UI.GOLD and t_lose.get_theme_color("font_color") != UI.GOLD
+			and _text(s, "PathLineScore0_12") == "0 : 2" and t_win.text == "对 对手1")
+		var bye := s.node("PathLineText3_0") as Label
+		_ok("%s ★冠军杯那一栏用对阵表轮次名(一格两行: 轮次 / 对手); 轮空那一行写「轮空」、没有比分、不是金字" % tag, bye != null and bye.text == "轮空"
+			and _text(s, "PathLineRound3_0") == "1/4 决赛" and s.node("PathLineScore3_0") == null and bye.get_theme_color("font_color") != UI.GOLD
+			and _text(s, "PathLineRound3_2") == "决赛" and _text(s, "PathLineText3_2") == "对 火山岩", bye.text if bye else "-")
+		var cut := false
+		var cut_at: Array = []
+		for ci in range(4):
+			for ln in s.node("PathCol%d" % ci).find_children("PathLineText*", "Label", true, false):
+				## ★量字宽对「格子里留给字的那块」: 一行宽 - 左右边距 - 比分那一格(Label 自己的 size 会被字撑大, 拿它比是空检查)
+				var lb := ln as Label
+				var line := lb.get_parent() as Control
+				var sc_l := line.find_child("PathLineScore*", false, false) as Control
+				var room := (sc_l.position.x if sc_l != null else line.size.x - 12.0) - lb.position.x
+				if lb.get_theme_font("font").get_string_size(lb.text, HORIZONTAL_ALIGNMENT_LEFT, -1, lb.get_theme_font_size("font_size")).x > room + 0.5:
+					cut = true
+					cut_at.append("%s(%.0f>%.0f)" % [lb.text, lb.get_theme_font("font").get_string_size(lb.text, HORIZONTAL_ALIGNMENT_LEFT, -1, lb.get_theme_font_size("font_size")).x, room])
+		_ok("%s 没有一行字被截断(字宽 ≤ 格宽)" % tag, not cut, str(cut_at))
+		var all_on := true
+		for ci in range(4):
+			for ln in s.node("PathCol%d" % ci).find_children("PathLine*", "", false, false):
+				if (ln as Control).modulate.a < 0.99:
+					all_on = false
+		_ok("%s 拍子动画走完 ⇒ 每一行都亮着" % tag, all_on)
+		while not s.is_settled():
+			s.advance(DT)
+		var cps: Array = []
+		for i in range(4):
+			cps.append(_text(s, "CardPath%d" % i))
+		_ok("%s ★定格卡夺冠之路四行(一段一行)" % tag, cps == ["积分赛　12 胜 4 负", "闯关赛　4 胜 2 负", "小组赛　2 胜", "冠军杯赛　2 胜"], str(cps))
+		_ok("%s 总长在 %.0f~%.0f s(实测 %.2f)" % [tag, SHOW.CUP_RANGE.x, SHOW.CUP_RANGE.y, s.settled_at],
+			s.settled_at >= SHOW.CUP_RANGE.x and s.settled_at <= SHOW.CUP_RANGE.y)
+		s.queue_free()
+		await get_tree().process_frame
+	## 没有回包(后端关着 ⇒ 当场回 off)⇒ 照旧只列冠军杯那几轮(大行), journey_state = fail
+	var s2 = _mk(SHOW, _cup_data())
+	await get_tree().process_frame
+	while s2.current_beat() != "path":
+		s2.advance(DT)
+	s2.advance(DT)
+	_ok("⑭ 取不到一整周 ⇒ 照旧冠军杯几轮的大行(PathRow0 在、PathCol0 不在)", s2.journey_state == "fail" and s2.node("PathRow0") != null
+		and s2.node("PathCol0") == null, s2.journey_state)
+	s2.queue_free()
 	await get_tree().process_frame

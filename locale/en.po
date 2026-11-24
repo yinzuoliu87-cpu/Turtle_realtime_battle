@@ -7993,3 +7993,9 @@ msgstr "%s prep time left %s"
 
 msgid "%s备战剩余"
 msgstr "%s prep time left"
+
+msgid "%d 胜"
+msgstr "%dW"
+
+msgid "对 %s"
+msgstr "vs %s"
