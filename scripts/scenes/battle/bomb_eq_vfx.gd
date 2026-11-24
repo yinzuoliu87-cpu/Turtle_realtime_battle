@@ -432,7 +432,7 @@ func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0) -> vo
 		bs.transparent = true
 		bs.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		bs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		bs.pixel_size = (60.0 * float(battle.WS)) / 50.0
+		bs.pixel_size = (34.0 * float(battle.WS)) / 50.0   # 炮弹比炮台小(原来 60 码比炮台还大)
 		bs.offset = Vector2(32.0 - 44.0, 31.0 - 32.0)   # 锚点 = 球心(图里球在右、烟尾在左)
 		bs.flip_h = to.x < from.x
 		if bs.flip_h:
@@ -442,14 +442,35 @@ func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0) -> vo
 		bs.position = battle._world_pos(from, 0.9)
 		battle._world.add_child(bs)
 		_fx.append({"node": bs, "t": 0.0, "life": fly, "kind": "ball", "from": from, "to": to, "tgt": tgt})
-	var m := _anim("muzzle", from + (to - from).normalized() * 30.0, 110.0, 0.3, 0.7)
-	if m != null and to.x > from.x:
-		m.flip_h = false
-	elif m != null:
-		m.flip_h = true
-		m.offset.x = -m.offset.x
 	if fly <= 0.0:
 		_anim("boom", to, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
+
+
+## 炮筒开炮动作(11-24 用户「炮台攻击动画呢」): 炮口喷火 → 炮管后坐 → 回位, 6 帧 0.45 秒。
+##   做法: 炮台本体先藏起来, 在它的位置放一张开炮动作(跟着本体的位置 / 朝向 / 大小), 播完删掉、本体露回来。
+const FIRE_TEX := "res://assets/sprites/vfx/eq-cannon-fire.png"
+const FIRE_SEC := 0.45
+func cannon_fire(p) -> void:
+	if not (p is Dictionary) or not _ok() or not ResourceLoader.exists(FIRE_TEX):
+		return
+	var sp = (p as Dictionary).get("sprite", null)
+	if not is_instance_valid(sp) or not (sp is Sprite3D):
+		return
+	for f in _fx:   # 上一发的动作还没播完 ⇒ 从头再播, 不叠两张
+		if str(f.get("kind", "")) == "cannon_fire" and is_same(f.get("u", null), p):
+			f["t"] = 0.0
+			return
+	var t: Texture2D = load(FIRE_TEX)
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = maxi(1, t.get_width() / 64)
+	s.shaded = false
+	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	battle._world.add_child(s)
+	(sp as Sprite3D).visible = false
+	_fx.append({"node": s, "t": 0.0, "life": FIRE_SEC, "kind": "cannon_fire", "u": p, "nf": s.hframes})
 
 
 func cannon_ball_hit(c: Vector2, tgt = null) -> void:
@@ -480,11 +501,8 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 		"katana_tornado":
 			_tornado(from, dir, spd, life)
 		"cannon_heavy":
-			## 重炮(11-24 自查): 炮口只放火光(原来顺手调了普通炮演出, 炮口前 60 码多炸一团); 炮弹 = 带火焰尾巴的重炮弹, 沿直线飞
-			var m := _anim("muzzle", from + dir.normalized() * 30.0, 110.0, 0.3, 0.7)
-			if m != null and dir.x < 0.0:
-				m.flip_h = true
-				m.offset.x = -m.offset.x
+			## 重炮: 炮台播开炮动作(炮口火光在动作里); 炮弹 = 带火焰尾巴的重炮弹, 沿直线飞
+			cannon_fire(src)
 			## ★飞行高度 = 敌人身体中心(11-24 用户「这个怎么又贴地下」: 原来 0.9 米、没影子 ⇒ 像一道火在地上滑);
 			##   地上跟一块影子, 读得出它在空中飞
 			var fh: float = maxf(1.3, body_h(src) if src is Dictionary else 1.3)
@@ -607,6 +625,21 @@ func tick(delta: float) -> void:
 				sp2.frame = int(tt * 10.0) % int(f["nf"])
 			"decal":
 				(n as Sprite3D).modulate.a = float(f["a0"]) * (1.0 if q < 0.7 else (1.0 - q) / 0.3)
+			"cannon_fire":
+				var pu: Dictionary = f["u"]
+				var body = pu.get("sprite", null)
+				var fs: Sprite3D = n
+				if is_instance_valid(body) and pu.get("alive", false):
+					var bs3: Sprite3D = body
+					fs.position = bs3.global_position
+					fs.pixel_size = bs3.pixel_size
+					fs.offset = bs3.offset
+					fs.flip_h = bs3.flip_h
+					fs.scale = bs3.scale
+					bs3.visible = q >= 1.0
+				fs.frame = mini(int(f["nf"]) - 1, int(q * float(f["nf"])))
+				if q >= 1.0 and is_instance_valid(body):
+					(body as Sprite3D).visible = true
 			"ball":
 				var tb = f.get("tgt", null)
 				var dst: Vector2 = Vector2(tb["pos"]) if tb is Dictionary and tb.get("alive", false) else Vector2(f["to"])

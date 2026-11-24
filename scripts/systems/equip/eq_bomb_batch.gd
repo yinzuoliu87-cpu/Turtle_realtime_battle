@@ -729,7 +729,7 @@ func _line_hit(L: Dictionary, o: Dictionary) -> void:
 
 func _spawn_cannon(owner: Dictionary, si: int) -> void:
 	var p = battle._spawn._spawn_summon(owner, "cannon", float(CANNON_HP[si]), float(CANNON_ATK[si]),
-		{"label": "炮筒", "spr_id": "eq-cannon", "col_size": 40.0, "hp_w": 44.0,
+		{"label": "炮筒", "spr_id": "eq-cannon", "col_size": 72.0, "hp_w": 44.0,
 		 "atk_interval": CANNON_IV, "atk_range": CANNON_RANGE, "melee": false})
 	if p == null:
 		return
@@ -782,6 +782,7 @@ func _tick_cannons(delta: float) -> void:
 			var fly: float = DetMath.dist(Vector2(p["pos"]), Vector2(tgt["pos"])) / CANNON_BALL_SPD
 			_balls.append({"src": p, "tgt": tgt, "last": Vector2(tgt["pos"]), "t": float(battle._t) + fly})
 			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, fly])
+			_fx("cannon_fire", [p])
 		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_GAIN)
 		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
 			c["heavy"] = false

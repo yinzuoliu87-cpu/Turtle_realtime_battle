@@ -35,7 +35,8 @@ JOBS = {
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):
 ##   ai_src/bomb_summons/<名>_<0..6>.png → assets/sprites/vfx/<产出>.png 横排
-SUMMONS = {"cannon": ("eq-cannon-idle", 7), "remote": ("eq-remote-bomb-idle", 7), "katana": ("eq-katana-idle", 7)}
+SUMMONS = {"cannon": ("eq-cannon-idle", 7), "remote": ("eq-remote-bomb-idle", 7), "katana": ("eq-katana-idle", 7),
+           "cannonfire": ("eq-cannon-fire", 6)}   # 炮筒开炮 6 帧(animate_image 首尾钉住待机原画: 炮口喷火→后坐→回位, 11-24 用户「炮台攻击动画呢」)
 ## 101 粘弹的粘液摊(11-24 重做, 用户「没有商业的感觉」): create_image_pro_from_style 8 张候选里挑的 1 号
 ##   + animate_image 首尾钉住同一张生成冒泡帧; 取 0..7(第 8 张 = 第 0 张, 循环不重复取)
 EXTRA = {"bomb_goo/goo": ("bomb-goo-splat", 8)}

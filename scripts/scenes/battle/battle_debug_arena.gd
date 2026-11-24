@@ -542,6 +542,11 @@ func _edit_ghostify() -> void:
 		if not (u is Dictionary) or str(u.get("_edit_ghost_eq", "")) == "":
 			continue
 		battle._hide_summon_nodes(u)
+		## 血条每帧会被 BattleRender._update_overlay 按存活重设回可见 ⇒ 直接把血条节点摘掉(调试场单位, 不影响正式对局)
+		var br = u.get("bar_root", null)
+		if is_instance_valid(br):
+			br.queue_free()
+		u.erase("bar_root"); u.erase("hp_bar"); u.erase("en_fill")
 		u["no_move"] = true
 		u["no_basic"] = true
 		u["move_spd"] = 0.0
