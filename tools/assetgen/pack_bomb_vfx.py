@@ -32,6 +32,7 @@ JOBS = {
     "mine-blast": "bomb-mine-blast",
     "timer-blast": "bomb-timer-blast",
     "cannon-heavy-shell": "bomb-cannon-shell",
+    "remote-blast": "bomb-remote-blast",       # 106 遥控炸弹专属爆炸(11-24: 蘑菇云 + 地面一圈火团铺满 600 码, 不再借炸药桶的大爆炸)
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):
 ##   ai_src/bomb_summons/<名>_<0..6>.png → assets/sprites/vfx/<产出>.png 横排

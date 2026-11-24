@@ -29,6 +29,7 @@ const SHEETS := {
 	"mine": ["vfx/bomb-mine-blast.png", 82, 78, 73.0, 41, 39],
 	"timer": ["vfx/bomb-timer-blast.png", 82, 80, 75.0, 41, 40],
 	"shell": ["vfx/bomb-cannon-shell.png", 74, 28, 60.0, 63, 15],
+	"remote": ["vfx/bomb-remote-blast.png", 175, 97, 155.0, 88, 63],   # 106 专属: 锚点 = 地面爆点; 内容宽 = 地面那圈火团铺开后的宽度(第 17~25 帧 150~165 像素)
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
 ## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
@@ -431,8 +432,9 @@ func barrel_blast(c: Vector2, r: float, _on = null) -> void:
 	_ring(c, r, Color(1.0, 0.4, 0.15, 0.7), 0.4)
 
 
+## 106 遥控炸弹(11-24 专属, 不借炸药桶的大爆炸): 白闪 → 地面一圈火团往外推、正好铺满伤害直径 → 蘑菇云升起 → 渐隐
 func remote_blast(c: Vector2, r: float) -> void:
-	_anim("big", c, r * 1.2, 2.2, 0.02)
+	_anim("remote", c, r * 2.0, 2.8, 0.02, false, false, Color.WHITE, "ground")
 	_ring(c, r, Color(1.0, 0.3, 0.1, 0.8), 0.5)
 
 
