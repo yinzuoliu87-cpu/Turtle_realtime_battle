@@ -37,6 +37,7 @@ extends Node
 ##      a 取消键 → 会话 cancel_queue 当场出队(发不出取消请求时 `_to(ST_LEFT)`)→ changed → refresh;
 ##      b 会话没发信号就没了(R7)时点主按钮 → `_on_hero_tap` → refresh。
 ##      ⇒ 真手指点 ⇒ 抬起到达时那颗还在树上、Logger 0 条、之后照样重建成「开始战斗」。
+##   ⑦ 对局记录页(2026-11-24, 正式服 0.23.5 Tab_* / MoreBtn 12 条): 手指点页签 / 「更多」⇒ 抬起时那颗还在树上、点一下仍生效。
 ##   ④ 静态: scripts/scenes/** 里不许再有 `reload_current_scene(`(它就是同步 change_scene_to_file(当前场景),
 ##      `verify_scene_change_on_release` ② 只认 `change_scene_to_file` 这个字面量, 这一个从缝里漏了)。
 ##      只放行登记过理由的(都不是触摸点按); 登记项不再出现 ⇒ 红(提醒删掉, 别让名单烂掉)。
@@ -48,6 +49,8 @@ const SB := preload("res://scripts/net/supabase.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const BOARD := "res://scenes/GauntletBoard.tscn"
 const SETTINGS := "res://scenes/Settings.tscn"
+const RECORD := "res://scenes/Record.tscn"
+const BLN := preload("res://scripts/net/battle_log_net.gd")
 const BTN_USE_LOCAL := "使用本地存档"
 const RUN := preload("res://scripts/systems/replay/referee_run.gd")
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")
@@ -176,6 +179,7 @@ func _ready() -> void:
 	await _part_settings()
 	await _part_reporter()
 	await _part_menu_queue()
+	await _part_record()
 	_part_static()
 
 	## Logger 的分母: 它真收得到引擎报错(不然上面「0 条」是空检查)
@@ -197,7 +201,7 @@ func _ready() -> void:
 		OS.unset_environment(SB.ENV_URL)
 	print("")
 	print("  (共 %d 条断言 · 用了 %d 帧)" % [_n, Engine.get_process_frames()])
-	print("ALL PASS — 手指抬起时被按的控件还在树上" if _fail == 0 and _n >= 36 else "FAIL x%d (断言 %d 条)" % [_fail, _n])
+	print("ALL PASS — 手指抬起时被按的控件还在树上" if _fail == 0 and _n >= 48 else "FAIL x%d (断言 %d 条)" % [_fail, _n])
 	get_tree().quit(1 if _fail > 0 else 0)
 
 
@@ -294,6 +298,58 @@ func _part_board() -> void:
 	_ok("★★② 手指点选手行 ⇒「!is_inside_tree() @ can_process」0 条", errs == 0, "%d 条" % errs)
 	_ok("② 点一下仍是点: 右栏换成了这个人的对局", want != "" and str(r.get("focus_tag")) == want,
 		"focus_tag=%s 期望 %s" % [str(r.get("focus_tag")), want])
+	_watch = null
+	_cleanup_scene(r)
+	await _frames(2)
+
+
+# ─────────────────────────────── ⑦ 对局记录页 ───────────────────────────────
+## 正式服 0.23.5(2026-11-24 查 client_errors): 对局记录页 Tab_all / Tab_ranked / Tab_gauntlet / Tab_finals / Tab_raid / MoreBtn
+##   共 12 条「已离树」, 两个 iOS 号。原来页签 / 「更多」回调里当场 `_render()` ⇒ 页签整排、列表整列 remove_child。
+func _part_record() -> void:
+	var r: Node = (load(RECORD) as PackedScene).instantiate()
+	get_tree().root.add_child(r)
+	get_tree().current_scene = r
+	await _frames(4)
+	var now := int(P2C.now_utc())
+	var raw: Array = []
+	for i in range(3):
+		raw.append({"id": 90 - i, "kind": ["ranked", "gauntlet", "raid"][i], "week": 1, "at": now - 600 * (i + 1), "side": "a",
+			"won": i % 2 == 0, "secs": 60, "lanes": {"top": "me", "bottom": "foe"}, "match_id": "", "replay": false,
+			"me": {"name": "我", "leaders": ["basic"]}, "foe": {"name": "对手", "leaders": ["stone"]}})
+	r.set("server_rows", BLN.parse(true, 200, JSON.stringify(raw))["rows"])
+	r.set("_more", true)
+	r.set("server_state", "ok")
+	r.call("_render")
+	await _frames(3)
+	for nm in ["Tab_raid", "MoreBtn"]:
+		var btn := r.find_child(nm, true, false) as Button
+		## 「更多」在列表最底下 ⇒ 先滚到它(同手指拖到底)
+		var sc := r.find_children("*", "ScrollContainer", true, false)
+		if btn != null and not sc.is_empty():
+			(sc[0] as ScrollContainer).ensure_control_visible(btn)
+			await _frames(3)
+		var rc := Rect2()
+		if btn != null:
+			rc = btn.get_global_rect().intersection(get_viewport().get_visible_rect())
+		_ok("⑦ 分母: 对局记录页有「%s」且在屏内" % nm, btn != null and btn.is_visible_in_tree() and rc.size.y > 20.0)
+		if btn == null or rc.size.y <= 20.0:
+			continue
+		var c0 := _cap.count()
+		var on := await _tap(rc.get_center(), btn)
+		await _frames(3)
+		var errs := _cap.count() - c0
+		_ok("⑦ 分母: 手指按下真命中「%s」" % nm, on)
+		_ok("★★⑦ 点「%s」⇒ 触摸抬起到达时那颗还在树上" % nm, _rel == 0, "rel=%d" % _rel)
+		_ok("★★⑦ 点「%s」⇒「!is_inside_tree() @ can_process」0 条" % nm, errs == 0, "%d 条" % errs)
+		if nm == "Tab_raid":
+			_ok("⑦ 点一下仍是点: 换到偷袭页签、列表只剩偷袭那一张", str(r.get("tab")) == "raid"
+				and r.find_children("RecordCard*", "", true, false).size() == 1, str(r.get("tab")))
+			r.set("tab", "all")
+			r.call("_render")
+			await _frames(2)
+		else:
+			_ok("⑦ 点一下仍是点: 「更多」去取下一页了(状态离开 ok)", str(r.get("server_state")) != "ok", str(r.get("server_state")))
 	_watch = null
 	_cleanup_scene(r)
 	await _frames(2)

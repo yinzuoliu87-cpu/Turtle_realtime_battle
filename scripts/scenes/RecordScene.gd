@@ -217,10 +217,20 @@ func _render() -> void:
 	if _more and server_state == "ok":
 		var mb := MatchCard.big_btn(MORE_LABEL, N_MORE, Vector2(200, 52), UISkin.PX_SLATE, 18)
 		mb.mouse_filter = Control.MOUSE_FILTER_PASS
-		mb.pressed.connect(_on_more)
+		mb.pressed.connect(func() -> void: _defer(_on_more))
 		var cc := CenterContainer.new()
 		cc.add_child(mb)
 		_list.add_child(cc)
+
+
+## 按钮回调里要重画 ⇒ 推到下一帧开头再做(同 menu_queue._refresh_soon)。
+## ★回调里当场 `_render()` 会把手指还按着的那颗(页签 / 「更多」)摘下树, 紧跟着的触摸抬起在 iOS 上报
+##   「!is_inside_tree() @ can_process」—— 正式服 0.23.5 对局记录页 Tab_* / MoreBtn 共 12 条(2026-11-24 查 client_errors;
+##   tests/verify_touch_detach_on_release.gd ⑦)。同一帧里点几次也只做一次。
+func _defer(f: Callable) -> void:
+	var tr := get_tree()
+	if tr != null and not tr.process_frame.is_connected(f):
+		tr.process_frame.connect(f, CONNECT_ONE_SHOT)
 
 
 func _drop_children(n: Node) -> void:
@@ -251,7 +261,7 @@ func _render_tabs() -> void:
 			UISkin.PX_GOLD if key == tab else UISkin.PX_SLATE, 17)
 		bt.pressed.connect(func() -> void:
 			tab = key
-			_render())
+			_defer(_render))
 		_tabs_row.add_child(bt)
 
 
