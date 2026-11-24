@@ -46,6 +46,35 @@ func _init(b) -> void:
 	battle = b
 
 
+## 单位「真正的身体中心」世界高度(11-24 用户「又是在头上吗」): 不按整帧高度的一半算 —— 立绘帧上方有大片透明留白
+##   (小将 192 像素高的帧里只有 77~176 行有画), 一半落在头上。⇒ 量这张贴图第一帧有画部分的上下边界取正中, 按贴图缓存。
+static var _body_cache := {}
+static func body_h(u) -> float:
+	if not (u is Dictionary):
+		return 1.0
+	var sp = (u as Dictionary).get("sprite", null)
+	if not is_instance_valid(sp) or not (sp is Sprite3D) or (sp as Sprite3D).texture == null:
+		return GunEqVfx.body_mid_h(u)
+	var s3: Sprite3D = sp
+	var tex: Texture2D = s3.texture
+	var fw: int = tex.get_width() / maxi(1, s3.hframes)
+	var fh: int = tex.get_height() / maxi(1, s3.vframes)
+	var key: String = "%s|%d|%d" % [str(tex.get_rid().get_id()), fw, fh]
+	if not _body_cache.has(key):
+		var img: Image = tex.get_image()
+		var mid: float = float(fh) * 0.5
+		if img != null:
+			if img.is_compressed():
+				img.decompress()
+			var used: Rect2i = img.get_region(Rect2i(0, 0, fw, fh)).get_used_rect()
+			if used.size.y > 0:
+				mid = float(used.position.y) + float(used.size.y) * 0.5
+		_body_cache[key] = mid
+	var row: float = float(_body_cache[key])
+	## 居中的 Sprite3D: 第 row 行(从顶数)的局部高度 = (帧高/2 − row) + offset.y(像素)
+	return s3.global_position.y + ((float(fh) * 0.5 - row) + s3.offset.y) * s3.pixel_size * s3.scale.y
+
+
 func _ok() -> bool:
 	return battle != null and battle.get("_world") != null and is_instance_valid(battle._world)
 
@@ -96,7 +125,7 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 		elif on is Dictionary:
 			## ★炸在单位身上: 爆点 = 它的身体中段(用户 11-24「炸弹应该从人物中心爆炸吧」);
 			##   这时贴图下半截会低于地面 ⇒ 不做深度测试(不被地面挡), 渲染排在前面
-			h = GunEqVfx.body_mid_h(on)
+			h = body_h(on)
 			s.no_depth_test = true
 			s.render_priority = 10
 		else:
@@ -342,7 +371,7 @@ func timer_attach(tgt: Dictionary, fuse: float) -> void:
 
 ## 定时炸弹爆炸: 专属的红闪 + 准星环 + 火团(不再借手雷的火球), 在目标身体中心, 宽 = 伤害直径; 地上范围圈
 func timer_blast(c: Vector2, r: float, on = null) -> void:
-	_anim("timer", c, r * 2.0, 0.75, 0.02, false, false, Color.WHITE, on)
+	_anim("timer", c, r * 2.7, 0.75, 0.02, false, false, Color.WHITE, on)   # 火团本身(约占内容 3/4)铺满伤害直径
 	_ring(c, r, Color(1.0, 0.35, 0.3, 0.95), 0.5)
 
 
