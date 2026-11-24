@@ -29,6 +29,7 @@ const SHEETS := {
 	"mine": ["vfx/bomb-mine-blast.png", 82, 78, 73.0, 41, 39],
 	"timer": ["vfx/bomb-timer-blast.png", 82, 80, 75.0, 41, 40],
 	"shell": ["vfx/bomb-cannon-shell.png", 74, 28, 60.0, 63, 15],
+	"aura": ["vfx/bomb-cannon-aura.png", 68, 112, 62.0, 34, 97],
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
 ## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
@@ -492,6 +493,27 @@ func cannon_fire(p) -> void:
 	_fx.append({"node": s, "t": 0.0, "life": FIRE_SEC, "kind": "cannon_fire", "u": p, "nf": s.hframes})
 
 
+## 重炮状态(11-24 用户「重炮的话召唤物没有任何变化吗」): 炮台身后烧起一圈火(循环), 跟着炮台; 进入时地上扩一圈火环; 退出时熄灭
+## 火圈放在炮台身后 34 码(离镜头更远) ⇒ 炮台本体挡在它前面, 火从炮台背后往上冒, 不盖住炮台
+const AURA_BACK := Vector2(0, -34)
+func cannon_heavy_on(p: Dictionary) -> void:
+	if not _ok():
+		return
+	var s := _anim("aura", Vector2(p["pos"]) + AURA_BACK, 105.0, 9999.0, 0.02, false, true)
+	if s != null:
+		s.modulate.a = 0.9
+		s.render_priority = -10   # 同在半透明那一批里先画 ⇒ 炮台画在火上面(只靠前后位置不够, 两者都半透明)
+		_fx[_fx.size() - 1]["kind"] = "aura"
+		_fx[_fx.size() - 1]["u"] = p
+	_ring(Vector2(p["pos"]), 110.0, Color(1.0, 0.5, 0.15, 0.95), 0.45)
+
+
+func cannon_heavy_off(p: Dictionary) -> void:
+	for f in _fx:
+		if str(f.get("kind", "")) == "aura" and is_same(f.get("u", null), p):
+			f["life"] = float(f["t"]) + 0.25   # 0.25 秒内熄掉
+
+
 func cannon_ball_hit(c: Vector2, tgt = null) -> void:
 	_anim("boom", c, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
 
@@ -651,6 +673,14 @@ func tick(delta: float) -> void:
 				sp2.frame = int(tt * 10.0) % int(f["nf"])
 			"decal":
 				(n as Sprite3D).modulate.a = float(f["a0"]) * (1.0 if q < 0.7 else (1.0 - q) / 0.3)
+			"aura":
+				var au: Dictionary = f["u"]
+				if not au.get("alive", false):
+					f["life"] = minf(float(f["life"]), float(f["t"]) + 0.25)
+				(n as Node3D).position = battle._world_pos(Vector2(au["pos"]) + AURA_BACK, (n as Node3D).position.y)
+				(n as Sprite3D).frame = int(float(f["t"]) * 12.0) % int(f["nf"])
+				var left_t: float = float(f["life"]) - float(f["t"])
+				(n as Sprite3D).modulate.a = 0.9 * clampf(left_t / 0.25, 0.0, 1.0) * clampf(float(f["t"]) / 0.15, 0.0, 1.0)
 			"cannon_fire":
 				var pu: Dictionary = f["u"]
 				var body = pu.get("sprite", null)

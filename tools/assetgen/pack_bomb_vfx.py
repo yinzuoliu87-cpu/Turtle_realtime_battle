@@ -31,7 +31,8 @@ JOBS = {
     "cracker-paper": "bomb-cracker-paper",     # 097 鞭炮红纸屑
     "mine-blast": "bomb-mine-blast",
     "timer-blast": "bomb-timer-blast",
-    "cannon-heavy-shell": "bomb-cannon-shell",  # 105 重炮弹: 带火焰尾巴的炮弹(循环)         # 104 定时炸弹: 红闪 + 准星环 + 火团(与手雷火球区分)           # 102 地雷: 地底炸起(火 + 泥土碎石 + 尘团), 与手雷的纯火焰区分
+    "cannon-heavy-shell": "bomb-cannon-shell",
+    "cannon-heavy-aura": "bomb-cannon-aura",    # 105 重炮状态: 炮台身后一圈火焰(循环, 用户 11-24「重炮的话召唤物没有任何变化吗」)  # 105 重炮弹: 带火焰尾巴的炮弹(循环)         # 104 定时炸弹: 红闪 + 准星环 + 火团(与手雷火球区分)           # 102 地雷: 地底炸起(火 + 泥土碎石 + 尘团), 与手雷的纯火焰区分
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):
 ##   ai_src/bomb_summons/<名>_<0..6>.png → assets/sprites/vfx/<产出>.png 横排
@@ -71,7 +72,7 @@ CLEAN = {
     "cannonfire": lambda fs: [fs[1], fs[2], _erase_hot(fs[4], 50), _erase_hot(fs[4], 50), fs[0]],
 }
 ## 循环播放的不去尾帧(循环要首尾相接)
-LOOPS = {"bomb-goo-puddle", "cannon-heavy-shell"}
+LOOPS = {"bomb-goo-puddle", "cannon-heavy-shell", "cannon-heavy-aura"}
 
 
 def main() -> None:

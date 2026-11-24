@@ -716,7 +716,12 @@ func _line_hit(L: Dictionary, o: Dictionary) -> void:
 			_phys(src, o, CANNON_HEAVY_MULT * float(src["atk"]))
 			if o.get("alive", false):
 				battle._damage._apply_dot_stacks(o, "bleed", int(CANNON_HEAVY_BLEED[si]), src)
-				battle._damage._knockback(src, o, 0.0, 0.5, 1.2)
+				## 往两边推(用户 11-24「重炮的话我希望的是向两边去击退吧」): 以炮弹飞行线为界, 在线哪一侧就往哪一侧推
+				var dv: Vector2 = Vector2(L["dir"])
+				var rel: Vector2 = Vector2(o["pos"]) - Vector2(L["pos"])
+				var side_s: float = 1.0 if (dv.x * rel.y - dv.y * rel.x) >= 0.0 else -1.0
+				var perp: Vector2 = Vector2(-dv.y, dv.x) * side_s
+				battle._damage._knockback({"pos": Vector2(o["pos"]) - perp * 10.0, "side": src.get("side", "left")}, o, 0.0, 0.5, 1.6)
 		"katana_wave":
 			_phys(src, o, KATANA_WAVE_MULT * float(src["atk"]))
 		"katana_tornado":
@@ -773,6 +778,7 @@ func _tick_cannons(delta: float) -> void:
 		var si := int(c["si"])
 		if not bool(c["heavy"]) and float(c["en"]) >= CANNON_EN_MAX:
 			c["heavy"] = true
+			_fx("cannon_heavy_on", [p])
 		if bool(c["heavy"]):
 			stat["cannon_heavy"] += 1
 			c["en"] = maxf(0.0, float(c["en"]) - float(CANNON_HEAVY_COST[si]))
@@ -786,6 +792,7 @@ func _tick_cannons(delta: float) -> void:
 		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_GAIN)
 		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
 			c["heavy"] = false
+			_fx("cannon_heavy_off", [p])
 		p["energy_view"] = float(c["en"])
 		p["energy"] = float(c["en"])
 
