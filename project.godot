@@ -38,8 +38,8 @@ run/main_scene.web_player="res://scenes/WebPlayer.tscn"
 
 [autoload]
 
-LangBoot="*res://autoload/lang_boot.gd"
 PersistentBg="*res://autoload/persistent_bg.gd"
+LangBoot="*res://autoload/lang_boot.gd"
 DataRegistry="*res://autoload/DataRegistry.gd"
 GameState="*res://autoload/GameState.gd"
 Audio="*res://autoload/Audio.gd"

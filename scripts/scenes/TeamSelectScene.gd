@@ -243,21 +243,12 @@ func _ensure_menu_bg() -> void:
 	holder.name = "MenuBg"
 	holder.set_anchors_preset(Control.PRESET_FULL_RECT)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 深绿底 #1a3a2a
+	## 底色(2026-11-24 去掉深绿 + 绿色平铺: 用户「绿底…就都不要了」; 舞台皮 select-bg 与木色留白照旧盖在上面)
 	var base := ColorRect.new()
 	base.set_anchors_preset(Control.PRESET_FULL_RECT)
-	base.color = Color(0.102, 0.227, 0.165)
+	base.color = SceneBackdrop.BASE
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(base)
-	# menu-bg-tile.png 512 平铺
-	if ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-		var tile := TextureRect.new()
-		tile.set_anchors_preset(Control.PRESET_FULL_RECT)
-		tile.texture = PreloadCache.menu_bg_tile_tex()   # 复用缓存512²纹理 (resize只做一次, 消除进场景LANCZOS卡顿)
-		tile.stretch_mode = TextureRect.STRETCH_TILE
-		tile.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(tile)
 	# ::after 暗渐变 (8/12/20 @ .15→.25→.40)
 	var grad := Gradient.new()
 	grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])

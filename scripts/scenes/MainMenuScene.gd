@@ -441,7 +441,7 @@ func _bg() -> void:
 	#   over 深绿底 #1a3a2a, 上叠暗渐变 ::after rgba(8,12,20,.15→.40). 不是 menu-bg.png 废墟图!
 	var vp := get_viewport_rect().size   # 真实视口(EXPAND 后=窗口比例); bg 全填它, 含原黑边区
 	var base := ColorRect.new(); base.set_anchors_preset(Control.PRESET_FULL_RECT)
-	base.color = Color("#1a3a2a")   # 深绿底 — 用 PoC 字面色值, 不四舍五入
+	base.color = SceneBackdrop.BASE   # 擂台场景盖满; 底色与各页一致(2026-11-24 去掉原 PoC 深绿 #1a3a2a)
 	add_child(base)
 	# ★★2026-10-05 背景换成【擂台 + 看台】(方案书 20260917-主菜单版式重做 R1 / R1-a / R1-b)。
 	#   原来是 28 只龟第 0 帧拼的群像墙(menu-bg-crowd.png) —— 用户先拍板「擂台 + 看台」,

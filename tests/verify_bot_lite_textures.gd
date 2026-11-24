@@ -248,15 +248,16 @@ func _part3(ld: ResourceFormatLoader) -> void:
 	var i_guard := src.find("if DisplayServer.get_name() == \"headless\":", i_ready)
 	var i_ret := src.find("return", i_guard)
 	var i_px := src.find(".get_image()", i_ready)
-	_ok("③ S2 PersistentBg._ready: 无头先 return、再往下才读像素(加载器只在无头装 ⇒ 这一处碰不到占位)",
-		i_ready >= 0 and i_guard > i_ready and i_ret > i_guard and i_px > i_ret and LTL.wanted(false, "1") == false,
+	## ★11-24 起常驻底层不铺 menu-bg-tile 花砖(绿底全去掉), 整个文件不读像素 ⇒ 无头先 return + get_image 不出现都算对
+	_ok("③ S2 PersistentBg._ready: 无头先 return; 读像素的话只在 return 之后(11-24 起根本不读)",
+		i_ready >= 0 and i_guard > i_ready and i_ret > i_guard and (i_px < 0 or i_px > i_ret) and LTL.wanted(false, "1") == false,
 		"_ready@%d guard@%d return@%d get_image@%d" % [i_ready, i_guard, i_ret, i_px])
 	var rerun := func() -> bool:
 		get_node("/root/PersistentBg")._ready()
 		return true
 	var m2 := _measure(rerun)
 	_ok("③ S2 PersistentBg._ready 在无头下再跑一遍: 0 报错", m2[1] == 0, "errors=%d last=%s" % [m2[1], m2[3]])
-	_site(i_px > i_ret and m2[1] == 0)
+	_site((i_px < 0 or i_px > i_ret) and m2[1] == 0)   # no pixel read since 11-24 = cannot touch placeholder
 
 	## S3 / S4 scripts/util/vfx_textures.gd: skill-ring 96×96 / shell-guard 76×42 —— 小图, 加载器放行
 	for e in [[SKILL_RING, "S3 VfxTex._make_ring_texture", func(): return VfxTex._make_ring_texture(Color.WHITE)],

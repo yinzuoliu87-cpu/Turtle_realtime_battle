@@ -40,7 +40,7 @@ func _warm_cache() -> void:
 	SkillText.prewarm_consts()
 	if not is_instance_valid(DataRegistry) or DataRegistry.all_pets.is_empty():
 		return
-	menu_bg_tile_tex()   # 启动时预缩一次(菜单空闲期付掉), 之后各场景复用无卡顿
+	## (2026-11-24 起不再预缩 menu-bg-tile: 绿色平铺底全仓不用了; 函数留着给 verify_bot_lite_textures)
 	var seen: Dictionary = {}   # 当 set 用, 去重
 	for pet in DataRegistry.all_pets:
 		var id: String = str(pet.get("id", ""))
