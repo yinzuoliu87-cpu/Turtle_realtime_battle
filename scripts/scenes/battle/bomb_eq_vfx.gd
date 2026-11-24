@@ -24,6 +24,8 @@ const SHEETS := {
 	"boom": ["vfx/bomb-barrel-boom.png", 56, 60, 50.0, 30, 37],
 	"muzzle": ["vfx/bomb-cannon-muzzle.png", 35, 20, 28.0, 3, 10],
 	"charge": ["vfx/katana-charge.png", 67, 67, 61.0, 33, 33],
+	"spark": ["vfx/bomb-cracker-spark.png", 66, 69, 60.0, 35, 30],
+	"paper": ["vfx/bomb-cracker-paper.png", 96, 75, 90.0, 47, 39],
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
 ## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
@@ -34,6 +36,8 @@ var battle
 var _fx: Array = []          ## {node, t, life, kind, ...}
 var _mines: Array = []       ## {node, pos}
 var _hidden: Array = []      ## 烟雾弹潜行中被调过透明度的单位
+var _pending: Array = []     ## 延时出场的演出 {t, fn}(鞭炮一串连炸)
+var _crack_n := 0            ## 鞭炮第几串(每串转一个角度, 不每次一模一样)
 static var _tex := {}
 
 
@@ -182,9 +186,35 @@ func missile_impact(side: String) -> void:
 
 # ═══════════════════════════════ 十件装备 ═══════════════════════════════
 
-func cracker_burst(c: Vector2, on = null) -> void:
-	_anim("pop", c, 110.0, 0.35, 0.5, false, false, Color.WHITE, on)
-	_ring(c, EqBombBatch.CRACKER_R, Color(1.0, 0.75, 0.3, 1.0), 0.45)   # 地上一圈 = 真实伤害半径
+## 097 鞭炮(11-24 重做, 用户「感觉这个特效不行」→「重做特效」): 一串鞭炮在伤害范围里噼里啪啦连着炸 ——
+##   CRACK_N 响在 CRACK_SEC 秒内依次炸开(金角螺旋撒满半径 100 码的圈, 每串转一个角度), 红纸屑往上崩,
+##   每个真挨炸的敌人身上补一个小火花(看得出谁被炸到); 地上一圈 = 真实伤害半径。
+const CRACK_N := 9
+const CRACK_SEC := 0.45
+func cracker_burst(c: Vector2, _on = null, hits: Array = []) -> void:
+	if not _ok():
+		return
+	_crack_n += 1
+	_ring(c, EqBombBatch.CRACKER_R, Color(1.0, 0.75, 0.3, 1.0), 0.6)
+	_anim("paper", c, 210.0, 1.0, 0.02)
+	var rot: float = float(_crack_n) * 1.1
+	for k in range(CRACK_N):
+		var r: float = EqBombBatch.CRACKER_R * 0.85 * sqrt((float(k) + 0.5) / float(CRACK_N))
+		var a: float = float(k) * 2.39996 + rot
+		var p: Vector2 = c + Vector2(cos(a), sin(a)) * r
+		var hh: float = 0.4 + 0.5 * float((k * 7) % 5) / 4.0
+		_later(CRACK_SEC * float(k) / float(CRACK_N), func() -> void: _anim("spark", p, 85.0, 0.45, hh))
+	for o in hits:
+		if o is Dictionary:
+			var oo: Dictionary = o
+			_later(0.0, func() -> void: _anim("spark", Vector2(oo["pos"]), 105.0, 0.45, 1.0, false, false, Color.WHITE, oo))
+
+
+func _later(sec: float, fn: Callable) -> void:
+	if sec <= 0.0:
+		fn.call()
+	else:
+		_pending.append({"t": sec, "fn": fn})
 
 
 func tube_blast(c: Vector2, r: float, on = null) -> void:
@@ -340,6 +370,12 @@ func _tornado(from: Vector2, dir: Vector2, spd: float, life: float) -> void:
 # ═══════════════════════════════ 生命周期 ═══════════════════════════════
 
 func tick(delta: float) -> void:
+	for i in range(_pending.size() - 1, -1, -1):
+		_pending[i]["t"] = float(_pending[i]["t"]) - delta
+		if float(_pending[i]["t"]) <= 0.0:
+			var fn: Callable = _pending[i]["fn"]
+			_pending.remove_at(i)
+			fn.call()
 	for i in range(_fx.size() - 1, -1, -1):
 		var f: Dictionary = _fx[i]
 		var n = f.get("node", null)
@@ -431,6 +467,7 @@ func _tick_stealth() -> void:
 
 
 func clear() -> void:
+	_pending.clear()
 	for f in _fx:
 		if is_instance_valid(f.get("node", null)):
 			f["node"].queue_free()

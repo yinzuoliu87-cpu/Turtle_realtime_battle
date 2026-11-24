@@ -242,8 +242,9 @@ func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
 		return
 	stat["cracker"] += 1
 	var c := Vector2(tgt["pos"])
-	_fx("cracker_burst", [c, tgt])
-	for o in _in_radius(_enemies_of(u), c, CRACKER_R):
+	var hits: Array = _in_radius(_enemies_of(u), c, CRACKER_R)
+	_fx("cracker_burst", [c, tgt, hits])
+	for o in hits:
 		_phys(u, o, float(CRACKER_ATK[si]) * float(u["atk"]))
 
 

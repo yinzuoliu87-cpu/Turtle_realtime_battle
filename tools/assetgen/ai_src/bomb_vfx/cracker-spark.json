@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "cracker-spark 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  },
+  {
+   "filename": "cracker-spark 1.png",
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  },
+  {
+   "filename": "cracker-spark 2.png",
+   "frame": {
+    "x": 132,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  },
+  {
+   "filename": "cracker-spark 3.png",
+   "frame": {
+    "x": 0,
+    "y": 69,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  },
+  {
+   "filename": "cracker-spark 4.png",
+   "frame": {
+    "x": 66,
+    "y": 69,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  },
+  {
+   "filename": "cracker-spark 5.png",
+   "frame": {
+    "x": 132,
+    "y": 69,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  },
+  {
+   "filename": "cracker-spark 6.png",
+   "frame": {
+    "x": 0,
+    "y": 138,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  },
+  {
+   "filename": "cracker-spark 7.png",
+   "frame": {
+    "x": 66,
+    "y": 138,
+    "w": 66,
+    "h": 69
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 69
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 69
+   },
+   "pivot": {
+    "x": 0.5303030303030303,
+    "y": 0.43478260869565216
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "cracker-spark.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 198,
+   "h": 207
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 35,
+   "y": 30
+  },
+  "frameTags": [
+   {
+    "name": "cracker-spark",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}
