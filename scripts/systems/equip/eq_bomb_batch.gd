@@ -413,7 +413,7 @@ func _tick_grenades(t: float) -> void:
 			if o.get("alive", false):
 				var amt := float(GRENADE_SHRED[si])
 				if vfx != null and battle.get("_vfx") != null:
-					battle._vfx._float_text(Vector2(o["pos"]) + Vector2(0, -70), Lang.t("护甲 -%d") % int(amt), Color("#ffb070"))   # 破甲看得见
+					battle._vfx._float_text(Vector2(o["pos"]) + Vector2(0, -70), Lang.t("护甲 -%d") % int(amt), VisualConstants.color_of("debuff-label"))   # 破甲看得见
 				o["def_shred"] = float(o.get("def_shred", 0.0)) + amt
 				battle._recalc_stats(o)
 				_shreds.append({"u": o, "amt": amt, "until": t + GRENADE_SHRED_SEC})
@@ -621,7 +621,7 @@ func _tick_mines() -> void:
 			if o.get("alive", false):
 				battle._damage._stun(o, MINE_STUN, "p2eq_102")
 				if vfx != null and battle.get("_vfx") != null:
-					battle._vfx._float_text(Vector2(o["pos"]) + Vector2(0, -70), Lang.t("眩晕"), Color("#ffe27a"))   # 被炸晕看得见
+					battle._vfx._float_text(Vector2(o["pos"]) + Vector2(0, -70), Lang.t("眩晕"), VisualConstants.color_of("debuff-label"))   # 被炸晕看得见
 		_tl_out(tl)
 	_mines = keep
 

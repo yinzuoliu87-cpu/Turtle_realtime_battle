@@ -307,7 +307,7 @@ func sticky_attach(tgt: Dictionary, fuse: float, from = null) -> void:
 	_later(STICKY_FLY if from is Dictionary else 0.0, func() -> void:
 		_attach("p2eq_101", tgt, maxf(0.1, fuse - STICKY_FLY), 46.0)
 		if battle.get("_vfx") != null and tgt.get("alive", false):
-			battle._vfx._float_text(Vector2(tgt["pos"]) + Vector2(0, -70), Lang.t("减速 %d%%") % int(round(EqBombBatch.STICKY_SLOW * 100.0)), Color("#a8ff6a")))
+			battle._vfx._float_text(Vector2(tgt["pos"]) + Vector2(0, -70), Lang.t("减速 %d%%") % int(round(EqBombBatch.STICKY_SLOW * 100.0)), VisualConstants.color_of("debuff-label")))
 
 
 ## 粘弹爆炸只伤被粘住的那一个 ⇒ 身体中心一团(不按粘液范围放大); 粘液坑贴地铺开(半径 = GOO_R), 地上一圈标范围
@@ -562,7 +562,7 @@ func tick(delta: float) -> void:
 					var left: int = int(ceil(float(f["life"]) - float(f["t"])))
 					if left < int(f["count"]) and left > 0 and battle.get("_vfx") != null:
 						f["count"] = left
-						battle._vfx._float_text(Vector2(tg["pos"]) + Vector2(0, -150), str(left), Color("#ff5a4a"), true)
+						battle._vfx._float_text(Vector2(tg["pos"]) + Vector2(0, -150), str(left), VisualConstants.color_of("debuff-label"), true)   # 飘字配色表: 挂在敌人身上的状态 = 减益标签色(不用伤害红)
 				var hz: float = 2.0 + 10.0 * q
 				(n as Sprite3D).modulate = Color(1, 1, 1, 1) if fmod(float(f["t"]) * hz, 1.0) < 0.6 else Color(1, 0.4, 0.35, 1)
 			"move":
