@@ -91,6 +91,7 @@ func _b4_on_spawn_all() -> void:
 				battle._equip_sys.uf_out(u, _sv)
 				battle._equip_sys.tally.pop(_tl0)
 		battle._equip_sys.ck_restore(_ckp116)
+	battle._equip_sys._bomb_sys.place_team_mines()   # 102 地雷按全队埋(每个战场同一批、同一位置, 11-24 用户)
 
 
 # 单件逐星属性 → 实时单位字段 (复用 battle.EquipStats.STATS; 字段口径换到实时引擎).

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_debug_summon_brush.gd" id="1_dbgsum"]
+
+[node name="VerifyDebugSummonBrush" type="Node"]
+script = ExtResource("1_dbgsum")

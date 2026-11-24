@@ -21,6 +21,11 @@ func _init(b) -> void:
 ## ★选图规则本身不改(`ArenaTheme.choose_for_battle`: 开发工具场次沿用进场前那张): 门禁先设 `ArenaTheme.active` 再建调试场
 ##   看指定主题的那些(verify_arena_theme_pick ③ / verify_cam_extent …)照旧成立。
 const DEV_THEME := ArenaTheme.V1_DUSK
+## ── 召唤物笔刷(2026-11-24 用户「在小台上，你能摆放一个友方单位…可以是小龟，可以是任何召唤物…同样，我们有个敌方的靶子」) ──
+## 摆下去的是一个【隐形携带者】(小将身板, 带这一件召唤装备): 开打时由这件装备照正式对局的登场钩召出召唤物 ⇒ 召唤物的行为与正式对局逐字相同;
+##   携带者本身随即隐身、不动、不攻击、不可选中、打不死(只当召唤物的「主人」)。
+const SUMMON_EQ := ["p2eq_077", "p2eq_079", "p2eq_080", "p2eq_096", "p2eq_105", "p2eq_106", "p2eq_107"]
+var summon_eq := "p2eq_105"
 const SETUP_PATH := "user://debug_setup.json"
 
 
@@ -120,6 +125,11 @@ func _edit_place_unit(id: String, side: String, pos: Vector2) -> Dictionary:
 			str(battle.TRAINER_SKILLS.get(battle._edit_trainer_active, {}).get("name", battle._edit_trainer_active)),
 			("友军" if side == "left" else "敌方"), battle._units.size()])
 		return u
+	if id == "__summon__":
+		u = _edit_make_ghost(side, pos, summon_eq, battle._edit_pick_star)
+		battle._units.append(u)
+		_edit_set_status("摆放 %s (%s) · 共 %d 单位" % [_edit_brush_name("__summon__"), ("友军" if side == "left" else "敌方"), battle._units.size()])
+		return u
 	if id == "__minion__":   # 调试场摆小将: front=近战浪板 / back=远程火箭 / elite=精英(用户2026-07-24 补精英)
 		var _mlvl = maxi(1, int(battle._edit_dummy_hp / 300.0))
 		var _elite: bool = (battle._edit_minion_role == "elite")
@@ -203,6 +213,7 @@ func _edit_start_battle() -> void:
 	if battle._edit_full_energy:   # 装备/被动结算后再补满龟能→技能即就绪(不被_eq_apply_all_stats重置回充率覆盖)
 		for u in battle._units:
 			if u.get("side", "") == "left": _edit_apply_full_energy(u)
+	_edit_ghostify()   # 召唤物笔刷的隐形携带者: 召唤物已经召出来了, 它本身藏起来
 	battle._edit_mode = false
 	battle._over = false
 	if battle._edit_btn_start != null: battle._edit_btn_start.disabled = true
@@ -220,6 +231,15 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 		u["_tr_active"] = battle._valid_active(str(s.get("tr_active", "hook")))
 		u["_tr_passive"] = ""
 		return u
+	if str(s.get("ghost_eq", "")) != "":
+		var _ge: Array = s.get("equips", [])
+		var _gst: int = int((_ge[0] as Dictionary).get("star", 1)) if not _ge.is_empty() and _ge[0] is Dictionary else 1
+		u = _edit_make_ghost(side, s.get("pos", Vector2()), str(s["ghost_eq"]), _gst)
+		if bool(s.get("fe", false)):
+			u["_edit_fe"] = true   # 调试场「满龟能」: 炮筒 / 武士刀小将一出场龟能就满(EqBombBatch 读)
+		if side == "right" and not bool(s.get("ai", false)):
+			u["no_basic"] = true; u["no_move"] = true; u["active_skills"] = []
+		return u
 	if bool(s.get("minion", false)) or str(s.get("id", "")) == "__minion__":
 		var role = str(s.get("role", "front"))
 		var lvl = int(s.get("level", 1))
@@ -234,9 +254,11 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 		u = battle._spawn._make_unit(str(s.get("id", "basic")), side, s.get("pos", Vector2()))
 	u["_edit_equips"] = s.get("equips", [])
 	if side == "right":
-		u["no_basic"] = true
-		u["no_move"] = true
-		u["active_skills"] = []
+		_edit_set_ai(u, bool(s.get("ai", false)))
+	if float(s.get("atk", 0.0)) > 0.0:
+		u["atk"] = float(s["atk"]); u["base_atk"] = float(s["atk"]); u["_edit_atk"] = float(s["atk"])   # 演示台: 攻击力覆盖(靶子打得动人)
+	if bool(s.get("hold", false)):
+		u["no_move"] = true; u["_edit_hold"] = true   # 原地不动(仍会打、会放技能): 演示台用(例: 地雷携带者站住等敌人踩雷)
 	u["maxHp"] = float(s.get("hp", u.get("maxHp", battle._edit_dummy_hp)))   # 血量: 左右都按 per-unit 存的(用户2026-07-24)
 	u["hp"] = u["maxHp"]
 	if not bool(s.get("killable", true)):
@@ -279,6 +301,10 @@ func _edit_snapshot_setup() -> void:
 			"level": int(u.get("_edit_minion_lvl", 1)),
 			"trainer": bool(u.get("is_trainer", false)),        # 训龟大师(用户2026-07-24)
 			"tr_active": str(u.get("_tr_active", "hook")),
+			"ghost_eq": str(u.get("_edit_ghost_eq", "")),
+			"ai": bool(u.get("_edit_ai", false)),
+			"hold": bool(u.get("_edit_hold", false)),
+			"atk": float(u.get("_edit_atk", 0.0)),
 		})
 
 # ----------------------------------------------------------------------------
@@ -346,6 +372,11 @@ func _edit_current_brush_key() -> String:
 	return battle._edit_pick_id
 
 func _edit_set_brush(key: String) -> void:
+	if key == "__summon__":
+		battle._edit_pick_id = "__summon__"
+		_edit_open_summon_grid()
+		_edit_refresh_brush_highlight()
+		return
 	if key.begins_with("__minion__:"):
 		battle._edit_pick_id = "__minion__"
 		battle._edit_minion_role = key.substr(11)   # front/back/elite/reserve
@@ -357,6 +388,7 @@ func _edit_set_brush(key: String) -> void:
 
 func _edit_brush_name(key: String) -> String:
 	if key == battle.TRAINER_ID: return "训龟大师"
+	if key == "__summon__": return "召唤物·" + str(DataRegistry.phase2_equipment_by_id.get(summon_eq, {}).get("name", summon_eq))
 	if key.begins_with("__minion__:"):
 		return _edit_minion_name(key.substr(11))
 	return str(battle._data_by_id.get(key, {}).get("name", key))
@@ -467,6 +499,73 @@ func _edit_open_turtle_grid() -> void:
 		var av = battle.AVATAR_DIR + iid + ".png"
 		grid.add_child(_edit_grid_card(nm, av, Color("#8aa0b4"), func(): _edit_pick_turtle(iid)))
 
+func _edit_open_summon_grid() -> void:
+	var grid = _edit_make_popup("摆召唤物 · 选哪一件装备召出来的")
+	for id in SUMMON_EQ:
+		var iid = str(id)
+		var eq: Dictionary = DataRegistry.phase2_equipment_by_id.get(iid, {})
+		var img = str(eq.get("img", ""))
+		var ip = ("res://assets/sprites/" + img) if (img != "" and not img.begins_with("res://")) else img
+		grid.add_child(_edit_grid_card(str(eq.get("name", iid)), ip, _edit_rarity_color(eq), func(): _edit_pick_summon(iid)))
+
+
+func _edit_pick_summon(iid: String) -> void:
+	summon_eq = iid
+	battle._edit_pick_id = "__summon__"
+	_edit_close_popup()
+	_edit_refresh_labels()
+	_edit_set_status("笔刷: %s · 点空地摆放(开打时召出来)" % _edit_brush_name("__summon__"))
+
+
+## 隐形携带者: 小将身板 + 这一件召唤装备。编辑态半透明(看得见摆在哪), 开打后 `_edit_ghostify` 藏起来。
+func _edit_make_ghost(side: String, pos: Vector2, iid: String, star: int) -> Dictionary:
+	var u: Dictionary = battle._spawn._make_unit("__minion__", side, pos, {"minion": true, "role": "front", "level": 1})
+	u["_edit_minion_role"] = "front"
+	u["_edit_minion_lvl"] = 1
+	u["_edit_ghost_eq"] = iid
+	u["_edit_equips"] = [{"id": iid, "star": star}]
+	var sp = u.get("sprite", null)
+	if is_instance_valid(sp):
+		(sp as GeometryInstance3D).transparency = 0.6
+	return u
+
+
+## 开打后: 隐形携带者只当召唤物的主人 —— 藏起来、不动、不打、不可选中、打不死、不放技能
+func _edit_ghostify() -> void:
+	for u in battle._units:
+		if not (u is Dictionary) or str(u.get("_edit_ghost_eq", "")) == "":
+			continue
+		battle._hide_summon_nodes(u)
+		u["no_move"] = true
+		u["no_basic"] = true
+		u["move_spd"] = 0.0
+		u["active_skills"] = []
+		u["untargetable_until"] = 1.0e9
+		u["_review_dummy"] = true
+
+
+## 敌方「会动会打」开关(默认是站桩靶子): 开 = 照常移动 / 普攻 / 放技能
+func _edit_sel_toggle_ai() -> void:
+	if battle._edit_sel_unit == null: return
+	var u: Dictionary = battle._edit_sel_unit
+	_edit_set_ai(u, not bool(u.get("_edit_ai", false)))
+	_edit_refresh_equip_panel()
+
+
+func _edit_set_ai(u: Dictionary, on: bool) -> void:
+	if on:
+		u["_edit_ai"] = true
+		u.erase("no_basic")
+		u.erase("no_move")
+		if str(u.get("id", "")) != "__minion__":
+			u["active_skills"] = battle._resolve_active_skills(str(u.get("id", "")), false)
+	else:
+		u.erase("_edit_ai")
+		u["no_basic"] = true
+		u["no_move"] = true
+		u["active_skills"] = []
+
+
 func _edit_pick_turtle(id: String) -> void:
 	battle._edit_pick_id = id
 	_edit_close_popup()
@@ -566,6 +665,8 @@ func _edit_refresh_equip_panel() -> void:
 		hrow.add_child(_edit_mk_btn("无敌:%s" % ("开" if _inv else "关"), func(): _edit_sel_toggle_invincible(), 92))
 		var _fe: bool = _u.get("_edit_fe", false)
 		hrow.add_child(_edit_mk_btn("满龟能:%s" % ("开" if _fe else "关"), func(): _edit_sel_toggle_energy(), 110))
+		if str(_u.get("side", "")) == "right":
+			hrow.add_child(_edit_mk_btn("会动会打:%s" % ("开" if bool(_u.get("_edit_ai", false)) else "关"), func(): _edit_sel_toggle_ai(), 130))
 	var wrap = HFlowContainer.new(); wrap.add_theme_constant_override("h_separation", 6); wrap.add_theme_constant_override("v_separation", 6); battle._edit_equip_box.add_child(wrap)
 	var eqs: Array = battle._edit_sel_unit.get("_edit_equips", [])
 	for e in eqs:
@@ -719,7 +820,7 @@ func _edit_save_setup() -> void:
 	var lds = {}
 	for s in battle._edit_paused_setup:
 		var pos: Vector2 = s.get("pos", Vector2())
-		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1))})
+		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1)), "ghost_eq": str(s.get("ghost_eq", "")), "ai": bool(s.get("ai", false)), "fe": bool(s.get("fe", false)), "hold": bool(s.get("hold", false)), "atk": float(s.get("atk", 0.0))})
 		var _id = str(s.get("id", ""))
 		if GameState != null and GameState.loadouts.has(_id): lds[_id] = GameState.loadouts[_id]
 	var f = FileAccess.open(SETUP_PATH, FileAccess.WRITE)
@@ -751,7 +852,7 @@ func _edit_load_setup() -> void:
 		var eqs = sd.get("equips", [])
 		if eqs is Array:
 			for e in eqs:
-				if e is Dictionary: el.append({"id": str(e.get("id", "")), "star": int(e.get("star", 1))})
+				if e is Dictionary: el.append(EqBombBatch.eq_entry(e, 0))   # 带上 102 地雷摆位
 		battle._units.append(_edit_unit_from_setup({
 			"id": str(sd.get("id", "basic")),
 			"side": str(sd.get("side", "left")),
@@ -762,6 +863,11 @@ func _edit_load_setup() -> void:
 			"minion": bool(sd.get("minion", false)),
 			"role": str(sd.get("role", "front")),
 			"level": int(sd.get("level", 1)),
+			"ghost_eq": str(sd.get("ghost_eq", "")),
+			"ai": bool(sd.get("ai", false)),
+			"fe": bool(sd.get("fe", false)),
+			"hold": bool(sd.get("hold", false)),
+			"atk": float(sd.get("atk", 0.0)),
 		}))
 	_edit_set_status("已恢复上次摆位 (%d 单位)" % battle._units.size())
 

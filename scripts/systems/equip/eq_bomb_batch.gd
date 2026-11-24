@@ -61,9 +61,11 @@ const MINE_DMG := [100.0, 180.0, 320.0]
 const MINE_STUN := 0.8
 const MINE_TRIGGER_R := 45.0
 const MINE_BLAST_R := 110.0
-## 不摆时默认埋在己方前排正前方：离携带者往敌方方向这么远，横向按颗数等距排开
+## 不摆时默认埋在己方队形中心往前这么远，竖着按颗数等距排开
 const MINE_FWD := 220.0
 const MINE_GAP := 90.0
+## 全队带多件地雷时，第 2 件起的默认列再往前挪这么多(不和第 1 件重叠)
+const MINE_COL := 60.0
 # ── 103 炸药桶 ──
 const BARREL_R := 250.0
 const BARREL_PCT := [0.3, 0.45, 0.8]
@@ -225,8 +227,6 @@ func _set_acc(u: Dictionary, key: String, v: float) -> void:
 
 func on_spawn(u: Dictionary, eid: String, si: int) -> void:
 	match eid:
-		"p2eq_102":
-			_place_mines(u, si)
 		"p2eq_105":
 			_spawn_cannon(u, si)
 		"p2eq_106":
@@ -291,7 +291,8 @@ func on_any_basic(u: Dictionary, tgt) -> void:
 			_fx("smoke_strike", [Vector2(tgt["pos"])])
 	for k in _katanas:
 		if is_same(k["u"], u):
-			k["en"] = minf(KATANA_EN_MAX, float(k["en"]) + KATANA_EN_PER_HIT)
+			var gain: float = KATANA_EN_MAX if bool((k["owner"] as Dictionary).get("_edit_fe", false)) else KATANA_EN_PER_HIT   # 调试场满龟能: 一下就满
+			k["en"] = minf(KATANA_EN_MAX, float(k["en"]) + gain)
 
 
 ## 每帧（全局一次）：在途 / 场上东西
@@ -514,39 +515,78 @@ func _tick_goos(t: float, delta: float) -> void:
 
 # ════════════════════════════════════════ 102 地雷 ════════════════════════════════════════
 
-## 埋雷位置：背包站位图里摆过的优先 —— 存在【这件地雷自己的装备条目】上 `mines = [[dx, dy], …]`
-##   （与统领站位 `off` 同一套坐标：相对本方队形中心、左方视角、整数；右方镜像 x，见 LineupPos）。
-##   存在装备条目上 ⇒ 快照 / 裁判机 / 对手还原本来就把装备原样带着走，不用改快照结构。
-## 没摆过 ⇒ 默认埋在携带者正前方一排（站位图里显示的默认位置用同一个式子：`default_mine_off`）。
-func _place_mines(u: Dictionary, si: int) -> void:
-	var n := int(MINE_COUNT[si])
-	var side := str(battle._eff_side(u))
-	var fwd := 1.0 if side == "left" else -1.0
-	var custom: Array = _mine_offsets_of(u)
-	var base: Vector2 = battle._arena_center + Vector2(-float(LineupPos.FORMATION_DX) * fwd, 0.0)
-	for i in range(n):
-		var p: Vector2
-		if i < custom.size() and custom[i] is Array and (custom[i] as Array).size() >= 2:
-			p = LineupPos.to_field(base, Vector2i(int(custom[i][0]), int(custom[i][1])), side)
-		else:
-			p = Vector2(u["pos"]) + Vector2(MINE_FWD * fwd, (float(i) - float(n - 1) * 0.5) * MINE_GAP)
-		p = ArenaShape.clamp_in(p, battle.ARENA, 60.0)   # 与站位图 / 统领站位同一个岛形(pad 60)
-		_mines.append({"pos": p, "side": side, "src": u, "si": si, "ck": battle._equip_sys.key_of(u, "p2eq_102")})
-		_fx("mine_place", [p, side])
+## 埋雷（用户 11-24「你上半场是四个，那你下半场也是四个，中间也是四个，而且四个的位置都应该一致」）:
+##   地雷按【全队】算，不按「携带者在哪一路」—— 每个战场(上路 / 下路 / 终极)开打时，这一方全队带的每一件地雷都按它的颗数埋一遍。
+##   位置存在【那件地雷自己的装备条目】上 `mines = [[dx, dy], …]`，坐标相对本方队形中心(与统领站位 `off` 同一套：左方视角、整数、右方镜像 x)
+##   ⇒ 三个战场的雷逐颗同位。存在装备条目上 ⇒ 快照 / 裁判机 / 对手还原本来就把装备原样带着走，不用改快照结构。
+##   没摆过 ⇒ 默认位置 `default_mine_off(第几件, 第几颗, 颗数)`(站位图显示的默认用同一个式子)。
+## 名单：双路(正式对局 / 裁判机) = 全队名单(我方 GameState.team_p2_equips_for_synergy，对方 dual_ghost 两路规格，与羁绊计数同源)；
+##   单路 / 调试场 / 门禁合成单位 = 场上单位身上的装备。
+## 由 EquipStatsApply._b4_on_spawn_all 末尾每个战场调一次(换路 clear_all 先清掉上一路的雷)。
+func place_team_mines() -> void:
+	for side in ["left", "right"]:
+		var entries: Array = mine_entries_of(side)
+		if entries.is_empty():
+			continue
+		var src = _mine_src(side)
+		if src == null:
+			continue
+		var fwd := 1.0 if side == "left" else -1.0
+		var base: Vector2 = battle._arena_center + Vector2(-float(LineupPos.FORMATION_DX) * fwd, 0.0)
+		for k in range(entries.size()):
+			var e: Dictionary = entries[k]
+			var si: int = clampi(int(e.get("star", 1)), 1, 3) - 1
+			var n := int(MINE_COUNT[si])
+			var custom: Array = e.get("mines", []) if e.get("mines") is Array else []
+			for i in range(n):
+				var off: Vector2i = default_mine_off(k, i, n)
+				if i < custom.size() and custom[i] is Array and (custom[i] as Array).size() >= 2:
+					off = LineupPos.clamp_off(Vector2i(int(custom[i][0]), int(custom[i][1])))
+				var p: Vector2 = ArenaShape.clamp_in(LineupPos.to_field(base, off, side), battle.ARENA, 60.0)   # 与站位图同一个岛形(pad 60)
+				_mines.append({"pos": p, "side": side, "src": src, "si": si, "ck": "p2eq_102"})
+				_fx("mine_place", [p, side])
 
 
-## 当前这一份地雷（份号上下文）在装备栏里对应的那一条的 `mines`
-func _mine_offsets_of(u: Dictionary) -> Array:
-	var ck: String = battle._equip_sys.key_of(u, "p2eq_102")
-	for c in EquipCk.copies(u, "p2eq_102"):
-		if str(c[0]) == ck and c[2] is Dictionary and (c[2] as Dictionary).get("mines") is Array:
-			return (c[2] as Dictionary)["mines"]
-	return []
+## 这一方全队带的地雷条目(按名单顺序；站位图的「第几件」与这里同序)
+func mine_entries_of(side: String) -> Array:
+	var src: Array = []
+	if battle.has_method("_is_dual_lane_mode") and battle._is_dual_lane_mode() and GameState != null:
+		if side == "left":
+			src = GameState.team_p2_equips_for_synergy()
+		elif GameState.dual_ghost is Dictionary:
+			for lane in ["top", "bottom"]:
+				for spec in battle._dual_foe_lane(lane):
+					if spec is Dictionary and (spec as Dictionary).get("equips") is Array:
+						src.append_array((spec as Dictionary)["equips"])
+	else:
+		for u in battle._units:
+			if u is Dictionary and str(u.get("side", "")) == side and u.get("alive", false):
+				src.append_array(u.get("equips", []))
+	var out: Array = []
+	for e in src:
+		if e is Dictionary and str((e as Dictionary).get("id", "")) == "p2eq_102":
+			out.append(e)
+	return out
 
 
-## 站位图里默认地雷位置（相对队形中心的偏移；与 `_place_mines` 的默认同一个式子）
-static func default_mine_off(carrier_off: Vector2i, i: int, n: int) -> Vector2i:
-	return LineupPos.clamp_off(carrier_off + Vector2i(int(MINE_FWD), int(round((float(i) - float(n - 1) * 0.5) * MINE_GAP))))
+## 雷的伤害记在谁头上：场上带地雷的那只优先(吃它的护穿)，没有就这一方第一只活着的单位
+func _mine_src(side: String):
+	var first = null
+	for u in battle._units:
+		if not (u is Dictionary) or not u.get("alive", false) or str(u.get("side", "")) != side \
+				or bool(u.get("_isEgg", false)) or bool(u.get("is_trainer", false)) or bool(u.get("is_summon", false)):
+			continue
+		if first == null:
+			first = u
+		for e in u.get("equips", []):
+			if e is Dictionary and str((e as Dictionary).get("id", "")) == "p2eq_102":
+				return u
+	return first
+
+
+## 默认地雷位置(相对队形中心)：第 k 件地雷一列，往前 MINE_FWD 码起、每多一件再往前 MINE_COL 码；一列里竖着间隔 MINE_GAP
+static func default_mine_off(k: int, i: int, n: int) -> Vector2i:
+	return LineupPos.clamp_off(Vector2i(int(MINE_FWD + MINE_COL * float(k)), int(round((float(i) - float(n - 1) * 0.5) * MINE_GAP))))
 
 
 ## 局外装备条目 → 局内装备条目（RealtimeBattle3DScene._inject_equipment 用）：照旧只留 id / star / chg，另外带上地雷的摆位
@@ -692,7 +732,8 @@ func _spawn_cannon(owner: Dictionary, si: int) -> void:
 	p["pos"] = pos
 	if p.has("sprite") and is_instance_valid(p["sprite"]):
 		p["sprite"].position = battle._world_pos(p["pos"], battle.GROUND_LIFT)
-	_cannons.append({"u": p, "owner": owner, "si": si, "acc": 0.0, "en": 0.0, "heavy": false})
+	## 调试场「满龟能」(主人带 _edit_fe; 正式对局没有这个字段): 一出场就满, 方便看重炮
+	_cannons.append({"u": p, "owner": owner, "si": si, "acc": 0.0, "en": CANNON_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0, "heavy": false})
 
 
 ## 门禁读：某门炮筒当前龟能 / 是否重炮
@@ -794,7 +835,7 @@ func _spawn_katana(owner: Dictionary, si: int) -> void:
 		 "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
 	if p == null:
 		return
-	_katanas.append({"u": p, "owner": owner, "si": si, "en": 0.0, "casts": 0, "charge": -1.0, "heal_acc": 0.0})
+	_katanas.append({"u": p, "owner": owner, "si": si, "en": KATANA_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0, "casts": 0, "charge": -1.0, "heal_acc": 0.0})
 
 
 func katana_state(i: int = 0) -> Dictionary:

@@ -262,20 +262,18 @@ func _build_field(lane: String, title: String, col: Color, pos: Vector2) -> void
 			m_seen += 1
 		var o: Vector2i = LP.off_of(u, i, n)
 		field.add_child(_token(lane, i, u, is_leader, elite, world_from_off(o)))
-	## 102 地雷(2026-11-24 · 方案书 20261124f §4.2「在站位图中摆放」): 带地雷的单位, 每颗雷一个可拖的小图标
-	for i in range(n):
-		var u2: Dictionary = arr[i] if arr[i] is Dictionary else {}
-		var eqs: Array = mine_equips(u2)
-		var co: Vector2i = LP.off_of(u2, i, n)
-		for k in range(eqs.size()):
-			var e: Dictionary = eqs[k]
-			var cnt: int = int(EqBombBatch.MINE_COUNT[clampi(int(e.get("star", 1)), 1, 3) - 1])
-			var offs: Array = e.get("mines", []) if e.get("mines") is Array else []
-			for j in range(cnt):
-				var mo: Vector2i = EqBombBatch.default_mine_off(co, j, cnt)
-				if j < offs.size() and offs[j] is Array and (offs[j] as Array).size() >= 2:
-					mo = LP.clamp_off(Vector2i(int(offs[j][0]), int(offs[j][1])))
-				field.add_child(_mine_token(lane, i, k, j, ArenaShape.clamp_in(world_from_off(mo), RB.ARENA, PAD)))
+	## 102 地雷(2026-11-24 · 用户「上半场四个，下半场也四个，中间也四个，位置都一致」): 地雷按全队算 ⇒ 两块小场地画同一批雷、同一位置;
+	##   拖任意一块里的雷, 两块一起变(存在那件地雷的装备条目上, 开打三个战场都按它埋)。
+	var refs: Array = mine_refs()
+	for k in range(refs.size()):
+		var e: Dictionary = _entry_of(refs[k])
+		var cnt: int = int(EqBombBatch.MINE_COUNT[clampi(int(e.get("star", 1)), 1, 3) - 1])
+		var offs: Array = e.get("mines", []) if e.get("mines") is Array else []
+		for j in range(cnt):
+			var mo: Vector2i = EqBombBatch.default_mine_off(k, j, cnt)
+			if j < offs.size() and offs[j] is Array and (offs[j] as Array).size() >= 2:
+				mo = LP.clamp_off(Vector2i(int(offs[j][0]), int(offs[j][1])))
+			field.add_child(_mine_token(lane, k, j, ArenaShape.clamp_in(world_from_off(mo), RB.ARENA, PAD)))
 
 
 func _to_field(w: Vector2) -> Vector2:
@@ -343,29 +341,43 @@ func _off_at(local: Vector2) -> Vector2i:
 	return off_from_world(_from_field(local + g))
 
 
-## 这个阵容格子身上的 102 地雷装备条目(统领: 背包穿戴 `persistent_equipped[龟]`; 小将: 格子自己的 `equips`)。
-## ★返回的是存档里的那几条字典本身(改它 = 改存档), 调用方改完要 GameState.save()。
-static func mine_equips(u: Dictionary) -> Array:
-	var src: Array = []
-	if str(u.get("kind", "")) == "leader":
-		var pe = GameState.persistent_equipped
-		if pe is Dictionary and (pe as Dictionary).get(str(u.get("id", ""))) is Array:
-			src = (pe as Dictionary)[str(u.get("id", ""))]
-	elif u.get("equips") is Array:
-		src = u["equips"]
+## 全队的 102 地雷条目在哪(顺序 = GameState.team_p2_equips_for_synergy 过滤出 102 的顺序 = 开打埋雷 `EqBombBatch.mine_entries_of` 的顺序)。
+##   统领: {"lead": 龟 id, "i": 在 persistent_equipped[龟] 里第几条}; 小将: {"lane": 路, "slot": 格子, "i": 在它 equips 里第几条}。
+static func mine_refs() -> Array:
 	var out: Array = []
-	for e in src:
-		if e is Dictionary and str((e as Dictionary).get("id", "")) == "p2eq_102":
-			out.append(e)
+	var pe = GameState.persistent_equipped if GameState.persistent_equipped is Dictionary else {}
+	for pid in GameState.lineup_leader_ids():
+		var lst = (pe as Dictionary).get(str(pid), [])
+		for i in range((lst as Array).size() if lst is Array else 0):
+			if lst[i] is Dictionary and str(lst[i].get("id", "")) == "p2eq_102":
+				out.append({"lead": str(pid), "i": i})
+	var dl: Dictionary = GameState.get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		var arr: Array = dl.get(lane, []) if dl.get(lane) is Array else []
+		for slot in range(arr.size()):
+			var u = arr[slot]
+			if not (u is Dictionary) or str(u.get("kind", "")) != "minion" or not (u.get("equips") is Array):
+				continue
+			for i in range((u["equips"] as Array).size()):
+				var e = u["equips"][i]
+				if e is Dictionary and str(e.get("id", "")) == "p2eq_102":
+					out.append({"lane": lane, "slot": slot, "i": i})
 	return out
+
+
+## 引用 → 条目(统领: 存档里那条本身; 小将: 当前阵容里那条)
+static func _entry_of(ref: Dictionary) -> Dictionary:
+	if ref.has("lead"):
+		return GameState.persistent_equipped[ref["lead"]][int(ref["i"])]
+	return GameState.get_dual_lineup()[ref["lane"]][int(ref["slot"])]["equips"][int(ref["i"])]
 
 
 const MINE_TOKEN := 36.0
 const MINE_HIT := 52.0
 
 
-func _mine_token(lane: String, idx: int, k: int, j: int, w: Vector2) -> Control:
-	var t := Control.new(); t.name = "Mine_%s_%d_%d_%d" % [lane, idx, k, j]
+func _mine_token(lane: String, k: int, j: int, w: Vector2) -> Control:
+	var t := Control.new(); t.name = "Mine_%s_%d_%d" % [lane, k, j]
 	t.size = Vector2(MINE_HIT, MINE_HIT)
 	t.position = _to_field(w) - t.size * 0.5
 	t.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -379,55 +391,62 @@ func _mine_token(lane: String, idx: int, k: int, j: int, w: Vector2) -> Control:
 	a.position = (t.size - Vector2(MINE_TOKEN, MINE_TOKEN)) * 0.5; a.size = Vector2(MINE_TOKEN, MINE_TOKEN)
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.add_child(a)
-	t.gui_input.connect(func(ev): _on_mine_input(lane, idx, k, j, t, ev))
+	t.gui_input.connect(func(ev): _on_mine_input(k, j, t, ev))
 	return t
 
 
-func _on_mine_input(lane: String, idx: int, k: int, j: int, t: Control, ev: InputEvent) -> void:
+func _on_mine_input(k: int, j: int, t: Control, ev: InputEvent) -> void:
 	var field: Control = t.get_parent()
 	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		var mb := ev as InputEventMouseButton
 		var local: Vector2 = field.get_global_transform().affine_inverse() * mb.global_position
 		if mb.pressed:
-			_drag = {"lane": lane, "idx": idx, "grab": (t.position + t.size * 0.5) - local, "from": mb.global_position}
+			_drag = {"mine": k, "grab": (t.position + t.size * 0.5) - local, "from": mb.global_position}
 			t.z_index = 6
 		elif not _drag.is_empty():
 			var o: Vector2i = _off_at(local)
-			commit_mine(lane, idx, k, j, o)
-			t.position = _to_field(world_from_off(o)) - t.size * 0.5
-			t.z_index = 2
 			_drag = {}
+			commit_mine(k, j, o)
+			## 另一块场地里同一颗雷跟着挪(两块画的是同一批雷)
+			if _body != null:
+				for nm in ["Field_top", "Field_bottom"]:
+					var f2 = _body.find_child(nm, true, false)
+					var tk = f2.find_child("Mine_%s_%d_%d" % [nm.substr(6), k, j], false, false) if f2 != null else null
+					if tk != null:
+						(tk as Control).position = _to_field(ArenaShape.clamp_in(world_from_off(o), RB.ARENA, PAD)) - (tk as Control).size * 0.5
+			t.z_index = 2
 	elif ev is InputEventMouseMotion and not _drag.is_empty():
 		var local2: Vector2 = field.get_global_transform().affine_inverse() * (ev as InputEventMouseMotion).global_position
 		t.position = _to_field(world_from_off(_off_at(local2))) - t.size * 0.5
 
 
-## 第 j 颗雷摆到偏移 o 并存档。没摆过的其它几颗按默认位置一起写下(之后整组都按存下的来, 不会因为统领挪了位而跟着漂)。
+## 全队第 k 件地雷的第 j 颗摆到偏移 o 并存档。没摆过的其它几颗按默认位置一起写下(之后整组都按存下的来)。
 ## ★门禁也走这一个入口。
-func commit_mine(lane: String, idx: int, k: int, j: int, o: Vector2i) -> void:
-	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
-	var arr: Array = a.get(lane, []) if a.get(lane) is Array else []
-	if idx < 0 or idx >= arr.size() or not (arr[idx] is Dictionary):
+func commit_mine(k: int, j: int, o: Vector2i) -> void:
+	var refs: Array = mine_refs()
+	if k < 0 or k >= refs.size():
 		return
-	var u: Dictionary = arr[idx]
-	var eqs: Array = mine_equips(u)
-	if k < 0 or k >= eqs.size():
-		return
-	var e: Dictionary = eqs[k]
+	var ref: Dictionary = refs[k]
+	var a: Dictionary = {}
+	var e: Dictionary
+	if ref.has("lead"):
+		e = _entry_of(ref)
+	else:
+		a = GameState.get_dual_lineup().duplicate(true)
+		e = a[ref["lane"]][int(ref["slot"])]["equips"][int(ref["i"])]
 	var cnt: int = int(EqBombBatch.MINE_COUNT[clampi(int(e.get("star", 1)), 1, 3) - 1])
-	var co: Vector2i = LP.off_of(u, idx, arr.size())
 	var old: Array = e.get("mines", []) if e.get("mines") is Array else []
 	var out: Array = []
 	for m in range(cnt):
-		var mo: Vector2i = EqBombBatch.default_mine_off(co, m, cnt)
+		var mo: Vector2i = EqBombBatch.default_mine_off(k, m, cnt)
 		if m < old.size() and old[m] is Array and (old[m] as Array).size() >= 2:
 			mo = Vector2i(int(old[m][0]), int(old[m][1]))
 		if m == j:
 			mo = o
 		out.append(LP.pack(mo))
 	e["mines"] = out
-	if str(u.get("kind", "")) != "leader":
-		GameState.dual_lineup = a   # 小将的装备在阵容格子里(改的是上面那份副本) ⇒ 整份写回; 统领的在 persistent_equipped, 已经原地改好
+	if not a.is_empty():
+		GameState.dual_lineup = a   # 小将的装备在阵容格子里(改的是副本) ⇒ 整份写回; 统领的在 persistent_equipped, 已原地改好
 	GameState.save()
 
 
@@ -448,8 +467,13 @@ func _reset_all() -> void:
 			for u in a[lane]:
 				if u is Dictionary:
 					(u as Dictionary).erase("off")
-					for e in mine_equips(u):
-						(e as Dictionary).erase("mines")
+					if str((u as Dictionary).get("kind", "")) == "minion" and (u as Dictionary).get("equips") is Array:
+						for e in (u as Dictionary)["equips"]:
+							if e is Dictionary and str((e as Dictionary).get("id", "")) == "p2eq_102":
+								(e as Dictionary).erase("mines")
+	for ref in mine_refs():
+		if ref.has("lead"):
+			_entry_of(ref).erase("mines")
 	GameState.dual_lineup = a
 	GameState.save()
 	_drop_dim()

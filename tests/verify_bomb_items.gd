@@ -178,7 +178,7 @@ func _ready() -> void:
 	me = _mk("left", c + Vector2(-300, 0), ["p2eq_102"])
 	t1 = _mk("right", c + Vector2(400, 0))
 	_place([me, t1])
-	_bs.on_spawn(me, "p2eq_102", 2)
+	_bs.place_team_mines()
 	_ok("102 3★ 登场埋 %d 颗" % int(B.MINE_COUNT[2]), _bs._mines.size() == int(B.MINE_COUNT[2]), "%d" % _bs._mines.size())
 	var mp: Vector2 = _bs._mines[0]["pos"]
 	t1["airborne"] = true
@@ -190,7 +190,8 @@ func _ready() -> void:
 	_ok("102 踩中：挨 %.0f 物理 + 眩晕 %.1f 秒；那颗雷没了" % [float(B.MINE_DMG[2]), B.MINE_STUN],
 		_near(_lost(t1), float(B.MINE_DMG[2])) and _near(float(t1["stun_until"]) - float(_s._t), B.MINE_STUN, 0.06) and _bs._mines.size() == int(B.MINE_COUNT[2]) - 1,
 		"%.0f · 眩晕剩 %.2f · 雷 %d" % [_lost(t1), float(t1["stun_until"]) - float(_s._t), _bs._mines.size()])
-	_ok("102 默认埋在携带者前方（朝敌方）", mp.x > float(me["pos"].x) + 100.0, "雷 x %.0f · 龟 x %.0f" % [mp.x, float(me["pos"].x)])
+	var fbase: float = _s._arena_center.x - float(LineupPos.FORMATION_DX)
+	_ok("102 默认埋在本方队形中心往前 %.0f 码（朝敌方）" % B.MINE_FWD, absf(mp.x - (fbase + B.MINE_FWD)) < 1.0, "雷 x %.0f · 队形中心 x %.0f" % [mp.x, fbase])
 
 	## ── 103 炸药桶 ──
 	me = _mk("left", c, ["p2eq_103"], 3, 5000.0)
