@@ -264,13 +264,46 @@ func smoke_strike(pos: Vector2, on = null) -> void:
 	_anim("pop", pos, 120.0, 0.3, 0.6, false, false, Color(0.85, 0.9, 1.0), on)
 
 
-func sticky_attach(tgt: Dictionary, fuse: float) -> void:
-	_attach("p2eq_101", tgt, fuse)
+## 粘弹(11-24 自查): 从携带者手里丢出一道弧线 → 粘到目标头顶(图标放大、越近引爆越闪) + 「减速」飘字
+const STICKY_FLY := 0.35
+func sticky_attach(tgt: Dictionary, fuse: float, from = null) -> void:
+	if not _ok():
+		return
+	if from is Dictionary:
+		var s := _icon("p2eq_101", battle._world_pos(Vector2(from["pos"]), 1.0), 40.0)
+		if s != null:
+			_fx.append({"node": s, "t": 0.0, "life": STICKY_FLY, "kind": "arc_to", "from": Vector2(from["pos"]), "tgt": tgt, "h": 1.4})
+	_later(STICKY_FLY if from is Dictionary else 0.0, func() -> void:
+		_attach("p2eq_101", tgt, maxf(0.1, fuse - STICKY_FLY), 46.0)
+		if battle.get("_vfx") != null and tgt.get("alive", false):
+			battle._vfx._float_text(Vector2(tgt["pos"]) + Vector2(0, -70), Lang.t("减速 %d%%") % int(round(EqBombBatch.STICKY_SLOW * 100.0)), Color("#a8ff6a")))
 
 
+## 粘弹爆炸只伤被粘住的那一个 ⇒ 身体中心一团(不按粘液范围放大); 粘液坑贴地铺开(半径 = GOO_R), 地上一圈标范围
+## 粘液坑: 地上铺一层半透明荧光绿(贴地, 直径 = 粘液范围) + 中间冒泡; 地上一圈标范围
 func sticky_blast(c: Vector2, r: float, on = null) -> void:
-	_anim("std", c, r * 1.6, 0.6, 0.02, false, false, Color(0.75, 1.0, 0.55), on)
-	_anim("goo", c, r * 2.0, 1.5, 0.02, false, true)
+	_anim("std", c, 120.0, 0.6, 0.02, false, false, Color(0.75, 1.0, 0.55), on)
+	_decal(c, r, Color(0.45, 0.95, 0.25, 0.55), EqBombBatch.GOO_SEC)
+	_anim("goo", c, r * 1.3, EqBombBatch.GOO_SEC, 0.05, false, true, Color.WHITE, "ground")
+	_ring(c, r, Color(0.6, 1.0, 0.35, 0.9), EqBombBatch.GOO_SEC)
+
+
+## 贴地的一片(软边圆), 存活 life 秒, 最后 30% 淡出
+func _decal(c: Vector2, r: float, col: Color, life: float) -> void:
+	if not _ok():
+		return
+	var tx: Texture2D = VfxTex._make_fire_glow_tex()
+	var s := Sprite3D.new()
+	s.texture = tx
+	s.shaded = false
+	s.transparent = true
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y
+	s.modulate = col
+	s.pixel_size = (r * 2.4 * float(battle.WS)) / float(tx.get_height())
+	s.position = battle._world_pos(c, 0.03)
+	battle._world.add_child(s)
+	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "decal", "a0": col.a})
 
 
 func timer_attach(tgt: Dictionary, fuse: float) -> void:
@@ -282,8 +315,8 @@ func timer_blast(c: Vector2, r: float, on = null) -> void:
 
 
 ## 绑在目标头顶的小炸弹，跟着目标走，越到引爆闪得越快
-func _attach(icon_id: String, tgt: Dictionary, fuse: float) -> void:
-	var s := _icon(icon_id, battle._world_pos(Vector2(tgt["pos"]), 2.9), 30.0) if _ok() else null
+func _attach(icon_id: String, tgt: Dictionary, fuse: float, px: float = 30.0) -> void:
+	var s := _icon(icon_id, battle._world_pos(Vector2(tgt["pos"]), 2.9), px) if _ok() else null
 	if s != null:
 		_fx.append({"node": s, "t": 0.0, "life": fuse, "kind": "attach", "tgt": tgt})
 
@@ -433,6 +466,14 @@ func tick(delta: float) -> void:
 				var b: Vector2 = f["to"]
 				(n as Node3D).position = battle._world_pos(a.lerp(b, q), 0.4 + float(f["h"]) * 4.0 * q * (1.0 - q))
 				(n as Node3D).rotation.z = q * 9.0
+			"decal":
+				(n as Sprite3D).modulate.a = float(f["a0"]) * (1.0 if q < 0.7 else (1.0 - q) / 0.3)
+			"arc_to":
+				var tg2: Dictionary = f["tgt"]
+				var a2: Vector2 = f["from"]
+				var b2: Vector2 = Vector2(tg2["pos"])
+				(n as Node3D).position = battle._world_pos(a2.lerp(b2, q), 1.0 + float(f["h"]) * 4.0 * q * (1.0 - q) + 1.9 * q)
+				(n as Node3D).rotation.z = q * 8.0
 			"attach":
 				var tg: Dictionary = f["tgt"]
 				(n as Node3D).position = battle._world_pos(Vector2(tg["pos"]), 2.9)

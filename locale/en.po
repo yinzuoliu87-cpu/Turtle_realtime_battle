@@ -8113,3 +8113,6 @@ msgstr "On spawn, summons a Katana Minion: {C:EqBombBatch.KATANA_HP} health, {C:
 
 msgid "护甲 -%d"
 msgstr "Armor -%d"
+
+msgid "减速 %d%%"
+msgstr "Slow %d%%"

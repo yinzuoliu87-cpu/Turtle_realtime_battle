@@ -472,7 +472,7 @@ func _throw_sticky(u: Dictionary, si: int, ck: String = "p2eq_101") -> void:
 		return
 	_slow(tgt, 1.0 - STICKY_SLOW, STICKY_FUSE)
 	_stickies.append({"tgt": tgt, "t": float(battle._t) + STICKY_FUSE, "src": u, "si": si, "ck": ck})
-	_fx("sticky_attach", [tgt, STICKY_FUSE])
+	_fx("sticky_attach", [tgt, STICKY_FUSE, u])
 
 
 func _tick_stickies(t: float) -> void:
