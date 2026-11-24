@@ -42,6 +42,8 @@ const TXT_LIVE := "开播中"
 const TXT_FROM_START := "从头看"
 const TXT_BACK_LIVE := "回到直播"
 const TXT_LANE_RESULT := "%s战果"
+## B2(2026-11-23): 路间插卡让给桌面地图的战果幕(lane_map_finals); 插卡只留小条停靠位
+const TABLE_BREAK := true
 const TXT_LANE_TAKE := "%s 赢得%s"
 const TXT_LANE_NEXT := "接下来：%s"
 ## 路名全称(用户 10-07「我们叫上路战场，下路战场，终极战场」)
@@ -301,8 +303,14 @@ func _build_break(vp: Vector2) -> void:
 	var by: float = float(bk.get_meta("band_y"))
 	var cx: float = roundf(vp.x * 0.5)
 	## 插卡期间全局决赛日小条的停靠位: 缎带上方那块空地正中(插卡是整屏, 小条自己找位置会落到左下角压住退出键)
-	var bdock := Ctx.bar_dock(N_BREAK_DOCK, Rect2(cx - Ctx.BAR_W * 0.5, roundf((by - 44.0 - Ctx.BAR_H) * 0.5), Ctx.BAR_W, Ctx.BAR_H))
+	## ★2026-11-23 B2: 路间不再出这块插卡(比分 / 谁拿下这一路改在桌面地图的战果幕上, lane_map_finals.gd), 只留小条的停靠位,
+	##   挪到底部正中(顶上是地图战果幕的记分牌)。下面那些节点照建(门禁 / 读屏读字), 不显示。
+	var bdock := Ctx.bar_dock(N_BREAK_DOCK, Rect2(cx - Ctx.BAR_W * 0.5, vp.y - Ctx.BAR_H - 22.0, Ctx.BAR_W, Ctx.BAR_H) if TABLE_BREAK
+		else Rect2(cx - Ctx.BAR_W * 0.5, roundf((by - 44.0 - Ctx.BAR_H) * 0.5), Ctx.BAR_W, Ctx.BAR_H))
 	bk.add_child(bdock)
+	bk.child_entered_tree.connect(func(n: Node) -> void:
+		if TABLE_BREAK and n != bdock and n is CanvasItem:
+			(n as CanvasItem).visible = false)
 	## 红缎带: 路名美术字 +「战果」
 	var rib := Control.new()
 	rib.name = "BreakRibbon"
@@ -417,6 +425,12 @@ func _set_break_title(cur: String) -> void:
 
 # ─────────────────────────────── 刷新 ───────────────────────────────
 
+## 换路幕布(桌面地图开场 / 对阵 / 战果)在不在屏上。
+func _curtain_up() -> bool:
+	var pr = battle.get("_dl_present_root") if battle != null else null
+	return pr != null and is_instance_valid(pr)
+
+
 ## 这一路的结果 + 正在结算的那一路(幕布出来时结果还没记进 lane_results, 记账在幕布 5 秒后)。
 func lane_state() -> Dictionary:
 	var lr: Dictionary = (GameState.lane_results as Dictionary).duplicate() if GameState != null and GameState.lane_results is Dictionary else {}
@@ -511,17 +525,17 @@ func refresh() -> void:
 		(_n["break_next"] as Label).text = nxt
 		(_n["break_right"] as Label).text = str(names.get("r", ""))
 	## 顶上那几样在幕布 / 收尾时收起(幕布上有自己的那一块)
-	var top_vis: bool = not show and (ctl == null or ctl.card == null)
+	var top_vis: bool = not show and (ctl == null or ctl.card == null) and not _curtain_up()
 	for k in ["tug", "dg_left", "dg_right", "origin_left", "origin_right"]:
 		if _n.has(k):
 			(_n[k] as CanvasItem).visible = top_vis
 	(root.get_node(N_TAG) as CanvasItem).visible = top_vis
 	var no_card: bool = ctl == null or ctl.card == null
-	(_n["cheer_key"] as Control).visible = no_card
+	(_n["cheer_key"] as Control).visible = no_card and not _curtain_up()   # 幕布上底部两角是名牌(lane_map_finals)
 	if not no_card:
 		(_n["cheers"] as Control).visible = false
 	if _n.has("next"):
-		(_n["next"] as Control).visible = no_card and not (_n["cheers"] as Control).visible   # 表情排展开时让位
+		(_n["next"] as Control).visible = no_card and not (_n["cheers"] as Control).visible and not _curtain_up()   # 表情排展开时让位; 幕布上底部正中是全局小条
 	if _n.has("from_start"):
 		(_n["from_start"] as Button).text = TXT_BACK_LIVE if from_start else TXT_FROM_START
 		(_n["from_start"] as Control).visible = (ctl == null or ctl.card == null) and _can_seek()
@@ -685,6 +699,8 @@ func _draw_tug(c: Control) -> void:
 
 ## 路间插卡的底: 整屏幕布同色深底 + 中间一条亮带(三级阶梯明暗 + 斜纹 + 比分背后金光 + 上下金线两端渐隐)。硬边。
 func _draw_break_bg(c: Control) -> void:
+	if TABLE_BREAK:
+		return
 	var s := c.size
 	var by := float(c.get_meta("band_y", s.y * 0.3))
 	var band := Rect2(0, by, s.x, BREAK_H)

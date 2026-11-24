@@ -680,7 +680,9 @@ func _build_finals(vp: Vector2, m: Vector4) -> void:
 		return
 	hud = WatchHudS.new(battle, self)
 	hud.build(root, vp, m, _names)
-	if not hud.late:
+	## ★2026-11-23 B2: 不再盖平面 VS 开场卡(finals_vs_intro) —— 轮次 / 名牌 / VS 盾徽融进桌面地图开场(lane_map_finals.gd)。
+	##   start_vs() 留着(门禁 / 录像台还能单独放)。
+	if not hud.late and not WatchHudS.TABLE_BREAK:
 		start_vs()
 
 

@@ -361,8 +361,10 @@ func _t_wiring() -> void:
 	var made: Array = _make(pn, 2)
 	var fb: Node = made[0]
 	var ui = made[1]
-	_ok("C ★按时进来(开播 2 秒): 建了观战页, 先放开场 VS(播放器此刻还在开场幕布那一段)", ui.hud != null and ui.vs != null
-		and fb.find_child(VS.N_ROOT, true, false) != null and not bool(ui.hud.late))
+	## ★B2(11-23): 开场不再盖平面 VS 卡 —— 轮次 / 名牌 / VS 盾徽融进桌面地图开场(lane_map_finals, 门禁 verify_lane_map_finals)
+	_ok("C ★按时进来(开播 2 秒): 建了观战页, 不再盖平面 VS 卡(融进桌面地图开场)", ui.hud != null and ui.vs == null
+		and fb.find_child(VS.N_ROOT, true, false) == null and not bool(ui.hud.late) and HUD.TABLE_BREAK)
+	ui.start_vs()                       # 平面 VS 卡还能单独放(录像台 / 金色决赛对照), 内容照旧验
 	var vsr: Node = fb.find_child(VS.N_ROOT, true, false)
 	var crest_names: Array = []
 	if vsr != null:
@@ -545,10 +547,13 @@ func _t_hud() -> void:
 		fd0.test_host = fb
 		picked = fd0.dock_rect()
 		fd0.test_host = null
-	_ok("D ⑥ ★插卡期间小条停在缎带上方正中(%s), 不压缎带 / 退出键; 观战页那一块收起" % str(picked), bdk != null and rib != null
-		and bdk.is_visible_in_tree() and not (fb.find_child(HUD.N_BAR_DOCK, true, false) as Control).visible
-		and picked.is_equal_approx(bdk.get_global_rect()) and not bdk.get_global_rect().intersects(rib.get_global_rect())
-		and bdk.get_global_rect().end.y < rib.get_global_rect().position.y + 1.0)
+	## ★B2(11-23): 插卡本身不显示(比分改在地图战果幕上), 只留小条停靠位 —— 底部正中(顶上是地图战果幕的记分牌)
+	var vpw: Vector2 = bk.get_viewport_rect().size
+	var bkr: Rect2 = bdk.get_global_rect() if bdk != null else Rect2()
+	_ok("D ⑥ ★路间小条停在底部正中(%s), 插卡缎带不显示; 观战页那一块收起" % str(picked), bdk != null and rib != null
+		and bdk.is_visible_in_tree() and not rib.is_visible_in_tree() and not (fb.find_child(HUD.N_BAR_DOCK, true, false) as Control).visible
+		and picked.is_equal_approx(bkr) and bkr.end.y <= vpw.y and bkr.position.y > vpw.y * 0.8
+		and absf(bkr.get_center().x - vpw.x * 0.5) < 2.0)
 	fb._dl_state = "fight"
 	ui.refresh()
 	_ok("D ⑥ 开打后那一块收起、比分条回来", not bk.visible and (fb.find_child(HUD.N_TUG, true, false) as Control).visible)

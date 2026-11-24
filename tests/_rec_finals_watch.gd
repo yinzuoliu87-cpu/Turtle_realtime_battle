@@ -136,14 +136,35 @@ func _ready() -> void:
 	if not gold:
 		ui.hud = HUD.new(b, ui)
 		ui.hud.build(ui.root, vp, m, ui._names)
-	## ── 开场 VS ──
+	b._hud._replay_ui = ui              # 真开播: 战斗场 HUD 挂着这一份(桌面地图幕布按它认「周日这一场」)
+	## ── 开场 ──
 	print("[rec] SHOW_START frame=%d" % _frame)
 	_cover.queue_free()
-	ui.start_vs()
-	_bar_tick()
+	if gold or OS.get_environment("REC_OLD") == "1":
+		ui.start_vs()                      # 旧的平面 VS 卡(对照用)
+		_bar_tick()
+		await _sec(VS_DUR() + 0.3)
+	else:
+		## B2(2026-11-23): 桌面地图开场幕布(轮次缎带 / 名牌 / VS 盾徽融进地图)
+		var keep0: String = str(b._dl_state)
+		_gs.current_lane = "top"
+		b._dl_state = "overview"
+		b._dl_sys._dl_build_present_overlay("overview")
+		ui.refresh()
+		_bar_tick()
+		await _sec(5.0)
+		## 接着对阵幕(上路双方三对三斜切对峙), 与真开播同一个顺序: 地图开场 → 对阵 → 开打
+		b._dl_state = "preview"
+		b._dl_sys._dl_build_present_overlay("preview")
+		ui.refresh()
+		_bar_tick()
+		await _sec(5.0)
+		if b._dl_present_root != null and is_instance_valid(b._dl_present_root):
+			b._dl_present_root.queue_free()
+			b._dl_present_root = null
+		b._dl_state = keep0
 	if _fd != null:
 		print("[rec] bar line=", _fd.line, " slot=", _fd.slot)
-	await _sec(VS_DUR() + 0.3)
 	if gold:
 		print("[rec] done frame=%d" % _frame)
 		get_tree().quit(0)

@@ -265,6 +265,10 @@ static func fallen(pids: Array, side: String, units: Array, win: String) -> Arra
 	return out
 
 
+## 第二拍名牌冲进来的时刻(相对第二拍起点): 等标语带收到顶上
+const SIDE_IN := 0.25
+
+
 ## 三拍的起止 [[名字, 起, 止], …]。
 static func beat_times(cs: String) -> Array:
 	var out: Array = []
@@ -871,7 +875,8 @@ func pose(x: float) -> void:
 	## 暗幕: 第一拍只压一条带(战场照样看得见), 第二拍整屏压暗
 	var dim_a: float = 0.0 if cs != "broken" else 0.62 * Ctx.ease_out(Ctx.k01(x, 0.0, 0.2))
 	if b2[0] < INF:
-		dim_a = 0.88 * Ctx.ease_out(Ctx.k01(x, b2[0], 0.3))      # 第二拍起几乎不透: 对局顶栏 / 头像框栏不再透出来抢字
+		dim_a = 0.88 * Ctx.ease_out(Ctx.k01(x, b2[0], 0.12))     # 第二拍起几乎不透: 对局顶栏 / 头像框栏不再透出来抢字
+		##   ★0.12 秒(原 0.3): 慢了 ⇒ 战场 / 标语带 / 卡片三层半透明叠在一起(11-22 走查「惜败」出场穿帮)
 	(root as ColorRect).color.a = dim_a
 	## 标语带: 0 → 屏中展开; 第二拍收到顶上并缩小
 	var band: Control = _n["band"]
@@ -924,8 +929,10 @@ func _pose_result(x: float, t0: float, t1: float) -> void:
 	var win := str(info["win"])
 	for side in ["left", "right"]:
 		var c: Control = _n["side_" + side]
-		var p := Ctx.k01(x, t0 + (0.0 if side == "left" else 0.08), 0.32)
-		var dx: float = (-1.0 if side == "left" else 1.0) * 160.0 * (1.0 - Ctx.ease_out(p))
+		## ★B2(11-23): 名牌等标语带收到顶上(0.25 秒)再从两侧屏外冲进来、整张不透明、落位回弹 —— 原来边淡入边滑 160 px,
+		##   与压暗 / 标语带上移同时进行 ⇒ 三层半透明叠在一起
+		var p := Ctx.k01(x, t0 + SIDE_IN + (0.0 if side == "left" else 0.06), 0.3)
+		var dx: float = (-1.0 if side == "left" else 1.0) * 560.0 * (1.0 - Ctx.ease_back(p))
 		c.position.x = roundf(float(c.get_meta("x0", 0.0)) + dx)
 		## 胜负落定(第二拍 0.9 秒起): 赢家放大一点 + 发光; 输家压灰 + 下沉
 		var q := Ctx.k01(x, t0 + 0.9, 0.35)
@@ -933,7 +940,14 @@ func _pose_result(x: float, t0: float, t1: float) -> void:
 		c.scale = Vector2.ONE * (Ctx.mix(1.0, 1.04, Ctx.ease_back(q)) if won else 1.0)
 		c.position.y = float(_n["side_y_" + side]) + (0.0 if won else 10.0 * Ctx.ease_out(q))
 		var g: float = Ctx.mix(1.0, 0.55, q) if not won else 1.0
-		c.modulate = Color(g, g, g * 1.04, p)
+		c.modulate = Color(g, g, g * 1.04, 1.0 if p > 0.0 else 0.0)
+		## 「胜」章: 胜负落定那一刻从大砸下来
+		var wb := c.get_node_or_null("EndWinBadge") as Control
+		if wb != null:
+			var qb := Ctx.k01(x, t0 + 0.9, 0.18)
+			wb.pivot_offset = wb.size * 0.5
+			wb.scale = Vector2.ONE * Ctx.mix(2.6, 1.0, Ctx.ease_out(qb))
+			wb.modulate.a = clampf(qb * 3.0, 0.0, 1.0)
 		c.set_meta("glow", q * (0.7 + 0.3 * Ctx.wave(x * 0.8)) if won else 0.0)
 		c.queue_redraw()
 	if _n.has("rays"):

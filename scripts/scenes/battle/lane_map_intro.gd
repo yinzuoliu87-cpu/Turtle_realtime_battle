@@ -132,6 +132,10 @@ var anim_frames: Array = []       # [{node: TextureRect, tex, fw, fh, hf, frames
 var table = null                  # 桌面作战地图(lane_war_table.gd), 开场 / 战果两幕用
 var anchors: Array = []           # 2D 字跟着 3D 点走: [{node, p, off}]
 var cam_segs: Array = []          # 镜头分段: [t0, t1, [pos, look], [pos, look]]
+var table_view: TextureRect = null   # 桌面地图的 3D 视口贴图(周日震屏跟着震)
+var inset_b := 0.0                # 底部让给回放操作条的高
+## 周日决赛日那一场: 对阵卡融进地图(lane_map_finals.gd; 方案书 20261122 B2)。平时 = null
+var fin = null
 
 
 func _init(b, f) -> void:
@@ -144,7 +148,10 @@ func _init(b, f) -> void:
 # ══════════════════════════════════════════════════════════════════════
 func build(back: Control, mode_: String, inset_bottom: float) -> Control:
 	mode = mode_
+	inset_b = inset_bottom
 	me_lr = ReplayRecorder.my_side(battle)
+	if mode_ in ["overview", "lane_settle"]:
+		fin = load("res://scripts/scenes/battle/lane_map_finals.gd").make(battle)
 	var gs = battle.get_node_or_null("/root/GameState")
 	var cur: String = str(gs.current_lane) if gs != null else "top"
 	lane = cur if cur in ["top", "bottom", "final"] else "top"
@@ -437,6 +444,8 @@ func pose(tt: float) -> void:
 		(af["mat"] as ShaderMaterial).set_shader_parameter("shift", Vector2(float(fi % hf) * float(af["fw"]), float(fi / hf) * float(af["fh"])))
 	_pose_zoom()
 	_pose_table()
+	if fin != null:
+		fin.pose(t)
 	## 屏震(VS 盾徽砸下那一下): 叠在推近之后, 按时刻算(不随机 ⇒ 门禁摆到哪一刻都一样)
 	for tr3 in tracks:
 		if str(tr3["k"]) == "shake":
@@ -540,6 +549,7 @@ func _build_table(settle: bool) -> void:
 	var thc := Color(0.17, 0.24, 0.17)
 	table = WarTable.new()
 	var v: TextureRect = table.build(vp, photo(), thc)
+	table_view = v
 	root.add_child(v)
 	root.move_child(v, 1)   # 海图(2D 底)之上、地图画布之下
 	var ov: Array = table.overview_cam()
@@ -569,9 +579,10 @@ func _build_table(settle: bool) -> void:
 	## ── 大本营: 名字(我方绿 / 对方红) + 蛋血条 ──
 	for side_lr in ["left", "right"]:
 		var bp: Vector3 = WarTable.BASE_POS[side_lr]
-		var nm := _label(str(hdr["l"] if side_lr == "left" else hdr["r"]), 22, COL_WIN if side_lr == me_lr else COL_LOSE, root, Vector2.ZERO)
-		_anchor(nm, bp + Vector3(0, 2.75, 0))
-		_fade(nm, 0.35 if not settle else 0.0, 0.25)
+		if fin == null:   # 周日: 名字写在桌边的名牌上, 大本营上不再说一遍
+			var nm := _label(str(hdr["l"] if side_lr == "left" else hdr["r"]), 22, COL_WIN if side_lr == me_lr else COL_LOSE, root, Vector2.ZERO)
+			_anchor(nm, bp + Vector3(0, 2.75, 0))
+			_fade(nm, 0.35 if not settle else 0.0, 0.25)
 		var lv_l: int = maxi(1, int(gs.season_level)) if gs != null and gs.season_level != null else 1
 		var mx: float = maxf(1.0, flow.egg_max_for(lv_l if side_lr == "left" else flow._dl_foe_level(lv_l)))
 		var raw_hp: float = float((gs.egg_hp as Dictionary).get(side_lr, 0.0)) if gs != null and gs.egg_hp is Dictionary else 0.0
@@ -693,6 +704,8 @@ func _build_table(settle: bool) -> void:
 				tracks.append({"k": "dim3", "node": table.isl[ln3]["top_mat"], "t0": t_hi, "dur": 0.4})
 		_sfx("match_found", 3.8, 0.75)
 		zoom["in"] = [4.45, 5.0]
+	if fin != null:
+		fin.build(self, settle, inset_b)
 	_add_flash(false)
 
 
