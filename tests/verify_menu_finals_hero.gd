@@ -386,14 +386,15 @@ func _t_sunday(mm) -> void:
 			"距小组赛开始 20 分 00 秒", "已晋级"],
 		["17:40 观众", SUN + 17 * H + 40 * MI, "plain", "查看赛况", "小组赛 %s 开赛" % _hm(seat), "bracket",
 			"未开始", "未开始", "CUPCD", "", "距小组赛开始 20 分 00 秒", "未晋级"],
-		["18:01 备战", SUN + 18 * H + 1 * MI, "in", "我的比赛", "%s备战中" % r1, "bracket",
+		## ★2026-11-24: 主菜单不出全局小条(finals_day_layer.bar_on) ⇒ 备战剩余写在副标(原来只在条上数)
+		["18:01 备战", SUN + 18 * H + 1 * MI, "in", "我的比赛", "%s备战剩余 2 分 00 秒" % r1, "bracket",
 			"进行中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
 		["18:05 备战结束等开播", SUN + 18 * H + 5 * MI, "in", "我的比赛", "%s %s 开播" % [r1, _hm(SUN + 18 * H + 480)], "bracket",
 			"进行中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
 		## ★小组赛同一轮所有场同时开播(用户 10-31 纠正): 18:08 翻面, 我那场与同组另一场一起开播
 		["18:10 我的比赛开播中(本轮同时开播)", SUN + 18 * H + 10 * MI, "in", "我的比赛", "%s开播中" % r1, "watch",
 			"进行中", "进行中", "CUPCD", "group:%s=now" % r1, "MODECD", "已晋级"],
-		["18:13 我那场已揭晓 · 决赛备战中", SUN + 18 * H + 13 * MI, "in", "我的比赛", "%s备战中" % r2, "bracket",
+		["18:13 我那场已揭晓 · 决赛备战中", SUN + 18 * H + 13 * MI, "in", "我的比赛", "%s备战剩余 1 分 55 秒" % r2, "bracket",
 			"进行中", "进行中", "CUPCD", "group:%s=won,group:%s=now" % [r1, r2], "MODECD", "已晋级"],
 		["18:10 观众(6 组 × 2 场同时开播中)", SUN + 18 * H + 10 * MI, "plain", "观看开播", "12 场开播中", "watch",
 			"进行中", "进行中", "CUPCD", "", "MODECD", "未晋级"],
@@ -530,12 +531,18 @@ func _t_tick(mm) -> void:
 	var a0: int = (fd.announced as Array).size()
 	_tick_to(mm, SUN + 18 * H + 1, "in")
 	var sub := mm._hero_btn.find_child(FD.N_SUB, true, false) as Label
-	var want_sub := "%s备战中" % M.round_name(4, 1)
+	var want_sub := "%s备战剩余 2 分 59 秒" % M.round_name(4, 1)
 	_ok("④a 跨 18:00 ⇒ 副标换成「%s」" % want_sub, sub != null and sub.text == want_sub, sub.text if sub else "-")
 	_ok("④a ★跨 18:00 ⇒ 副标闪一下(当场冲亮)", int(fd.flashes) == f0 + 1 and sub != null and sub.modulate.r >= 1.5,
 		"闪 %d 次 · 亮度 %.2f" % [int(fd.flashes) - f0, sub.modulate.r if sub else 0.0])
 	var want_a := "小组赛已开赛"
 	_ok("④a ★跨 18:00 ⇒ 飘「%s」" % want_a, (fd.announced as Array).size() == a0 + 1 and _toast_has(mm, want_a), str(fd.announced))
+	## ★备战剩余每秒在走(主菜单不出全局小条, 剩多久只在这里数), 但只是数秒 ⇒ 不闪不飘
+	var f1: int = int(fd.flashes)
+	var a1: int = (fd.announced as Array).size()
+	_tick_to(mm, SUN + 18 * H + 2, "in")
+	_ok("④a' ★下一拍副标数到「2 分 58 秒」、不闪不飘", sub.text == "%s备战剩余 2 分 58 秒" % M.round_name(4, 1)
+		and int(fd.flashes) == f1 and (fd.announced as Array).size() == a1, sub.text)
 	_ok("④a 卡的状态带同一拍换成「进行中」", _txt(_card(mm), CARD.N_STATE) == "进行中", _txt(_card(mm), CARD.N_STATE))
 	## b) 只走倒计时: 不闪不飘, 但卡上的秒在走
 	_feed(mm, SUN + 17 * H + 40 * MI, "in")
@@ -568,8 +575,8 @@ func _t_tick(mm) -> void:
 	_tick_to(mm, cup_at + 1, "in")
 	sub = mm._hero_btn.find_child(FD.N_SUB, true, false) as Label
 	var want_d := "冠军杯赛已开赛"
-	_ok("④d 跨冠军杯赛开赛 ⇒「%s备战中」, 闪一下, 飘「%s」" % [M.round_name(6, 1), want_d], sub != null
-		and sub.text == "%s备战中" % M.round_name(6, 1) and int(fd.flashes) == f0 + 1 and _toast_has(mm, want_d), sub.text if sub else "-")
+	_ok("④d 跨冠军杯赛开赛 ⇒「%s备战剩余 2 分 59 秒」, 闪一下, 飘「%s」" % [M.round_name(6, 1), want_d], sub != null
+		and sub.text == "%s备战剩余 2 分 59 秒" % M.round_name(6, 1) and int(fd.flashes) == f0 + 1 and _toast_has(mm, want_d), sub.text if sub else "-")
 	## e) 我那场揭晓那一拍: 格子翻牌(横向压扁再弹回), 主按钮闪
 	var t_end: int = int(fx.timeline(4, SUN + 18 * H, {"1-1": 1, "2-0": 1}, true)[0]["slots"]["1-1"][1])
 	_feed(mm, t_end - 10, "in")

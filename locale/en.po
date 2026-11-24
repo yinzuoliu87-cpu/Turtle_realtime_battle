@@ -7987,3 +7987,9 @@ msgstr "Starts %s"
 
 msgid "%s：%s"
 msgstr "%s: %s"
+
+msgid "%s备战剩余 %s"
+msgstr "%s prep time left %s"
+
+msgid "%s备战剩余"
+msgstr "%s prep time left"

@@ -41,6 +41,7 @@ const AVOID_GROUP := "finals_bar_avoid"
 const DOCK_GROUP := "finals_bar_dock"
 const SLOT_DOCK := 9
 const BATTLE := "RealtimeBattle3D"
+const MENU := "MainMenu"
 const BRACKET := "BracketMap"
 const SCENES := ["MainMenu", "BracketMap", "Shop", "Inventory", "TeamSelect", "TrainerConfig", "Codex",
 	"Leaderboard", "Friends", "Record", "GauntletBoard", "Settings", "RealtimeBattle3D"]
@@ -178,6 +179,9 @@ func tick() -> void:
 	if scene_key(host()) == BATTLE and watching_same(_target, _SW.current):
 		bar.visible = false
 		_hit.visible = false
+	elif not bar_on(scene_key(host())):
+		bar.visible = false
+		_hit.visible = false
 	else:
 		bar.paint(line)
 		_hit.visible = bool(line.get("tap", false))
@@ -210,6 +214,14 @@ func _lineup_toast(msg: String) -> void:
 	tw.tween_interval(3.0)
 	tw.tween_property(l, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(l.queue_free)
+
+
+## 这一屏出不出条(在场的前提下)。★2026-11-24(方案书 20261122 B「同一件事说好几遍」): 主菜单不出 ——
+##   开赛前一屏四处写同一个开赛时刻(条「小组赛 18:00 开赛 19 分 58 秒」/ 模式卡「距小组赛开始 19 分 58 秒」/ 决赛日卡「小组赛 18:00」/ 主按钮);
+##   条说的主菜单自己都有(决赛日卡 + 模式卡倒计时 + 主按钮直达观看), 只有「备战剩余」原来只在条上 ⇒ 挪到主按钮副标(menu_finals_day.hero_state)。
+##   弹窗(30 秒开播)与跑马灯照旧。纯函数, 门禁直接调。
+static func bar_on(key: String) -> bool:
+	return key != MENU
 
 
 ## 条上那一行: {"head", "live", "body", "cd", "act", "tap", "target"}。纯函数(门禁穷举)。
@@ -435,9 +447,9 @@ func _place() -> void:
 	var hr := hit_rect(pos, sz)
 	_hit.position = hr.position
 	_hit.size = hr.size
-	## 跑马灯: 条在顶上 ⇒ 挂在条下面; 否则挂顶上正中。
+	## 跑马灯: 条在顶上 ⇒ 挂在条下面; 否则(含条不出)挂顶上正中。
 	var vp := _vp()
-	var my := pos.y + sz.y + 8.0 if best in [SLOT_TOP, SLOT_TOP_LOW] else SafeArea.margins(vp, 6.0).y
+	var my := pos.y + sz.y + 8.0 if bar.visible and best in [SLOT_TOP, SLOT_TOP_LOW] else SafeArea.margins(vp, 6.0).y
 	marquee.position = Vector2(roundf((vp.x - marquee.size.x) / 2.0), my)
 
 

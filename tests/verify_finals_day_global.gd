@@ -265,6 +265,18 @@ func _t_place() -> void:
 			_settle()                                   # 入场滑入一律推到落定(量落点, 不量半路)
 			fd.test_host = inst
 			_at(SUN + 18 * H + 13 * MI)
+			if nm == "MainMenu":
+				## ★2026-11-24(方案书 20261122 B「同一件事说好几遍」): 主菜单自己有决赛日卡 + 模式卡倒计时 + 主按钮 ⇒ 条不出;
+				##   在场(分母)但条与点击区都收着, 跑马灯挂回顶上正中(不挂在一条看不见的条下面)
+				var tg := "C [MainMenu %dx%d]" % [vp.x, vp.y]
+				_ok("%s 分母: 全局层在场(周日 18:13)" % tg, fd.active_at(SUN + 18 * H + 13 * MI))
+				_ok("%s ★主菜单不出条、点击区也收着" % tg, not fd.bar.visible and not (fd._hit as Control).visible)
+				_ok("%s 跑马灯挂顶上(安全区内), 不挂在看不见的条下面" % tg, fd.marquee.position.y <= SafeArea.margins(Vector2(vp), 6.0).y + 0.5,
+					str(fd.marquee.position))
+				fd.test_host = host
+				inst.queue_free()
+				await get_tree().process_frame
+				continue
 			var blk: Array = fd.blockers()
 			var sz: Vector2 = fd.bar.size
 			var hr: Rect2 = fd.hit_rect(_bar_pos(), sz)
@@ -279,8 +291,7 @@ func _t_place() -> void:
 				and vr.encloses(Rect2(_bar_pos(), sz)) and fd.bar.visible, str(hit_any))
 			_ok("%s 点击区就在条上(宽同条、竖向罩住条)" % tag, (fd._hit as Control).visible and absf((fd._hit as Control).size.y - 81.0) < 0.5
 				and Rect2((fd._hit as Control).position, (fd._hit as Control).size).encloses(Rect2(_bar_pos(), sz)))
-			if nm == "MainMenu" and vp.x == 1560:
-				_ok("%s 主菜单: 条在顶上正中(玩家卡与货币条之间)" % tag, int(fd.slot) == L.SLOT_TOP)
+			if nm == "Shop" and vp.x == 1560:
 				## ★尺子会动: 在条那个位置放一颗按钮 ⇒ 条必须让开
 				var blocker := Button.new()
 				blocker.position = _bar_pos()

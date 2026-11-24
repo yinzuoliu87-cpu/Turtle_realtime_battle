@@ -133,7 +133,8 @@ func hero_state(now: int) -> Dictionary:
 		rn = _M.round_name(int((mn["b"] as Dictionary).get("size", 0)), int(mn["r"]))
 	match k:
 		_M.K_SHOP:
-			out["sub"] = Lang.t("%s备战中") % rn       # 剩多久在全局小条上数(一屏一个倒计时)
+			## 剩多久写在这里(主菜单不出全局小条, finals_day_layer.bar_on; 一屏一个倒计时: 模式卡数的是开赛, 这里数的是我这一轮备战)
+			out["sub"] = (Lang.t("%s备战剩余 %s") % [rn, _FC.dur(at - now)]) if at > now else (Lang.t("%s备战中") % rn)
 		_M.K_UPCOMING:
 			out["sub"] = Lang.t("%s %s 开播") % [rn, _P2.local_hhmm(at)]
 		_M.K_LIVE:
