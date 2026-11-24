@@ -425,6 +425,7 @@ func _rebuild() -> void:
 	capl.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#b9cbdc"))
 	capl.position = Vector2(HDR_GROUP_X + 176 + ICON_PX + 6 - _tsh, 22); capl.size = Vector2(190 - ICON_PX - 6, 40)
 	capl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	Lang.fit_font(capl, capl.size.x, 24, 14)   # 英文「Team Items 0/0」比中文长: iPad 宽度下压进「Positions」按钮(11-24 走查)
 	var _nxt := int(GameState.season_level) + 1
 	## ★原文"全队 6 只合计上限随赛季等级提升。当前 Lv3 → 5 件"是规则书的写法("上限""提升"
 	##   加一个箭头)。改成跟玩家说话: 现在能装几件、再升一级能装几件。

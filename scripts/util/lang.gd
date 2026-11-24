@@ -71,10 +71,10 @@ static func is_en() -> bool:
 	return code == "en"
 
 
-## 写着字的美术图(大字): 英文下换成同目录的 <名>_en.png(tools/assetgen/build_big_titles_en.py 出的), 没有就原图。
+## 写着字的图(大字 / 首启介绍截图): 英文下换成同目录的 <名>_en.<扩展名>, 没有就原图。
 static func art(path: String) -> String:
-	if code == "en" and path.ends_with(".png"):
-		var en := path.trim_suffix(".png") + "_en.png"
+	if code == "en" and path.get_extension() != "":
+		var en := path.get_basename() + "_en." + path.get_extension()
 		if ResourceLoader.exists(en):
 			return en
 	return path

@@ -126,7 +126,9 @@ func _live_play(chunks: Array, meta: Dictionary, nat: Dictionary) -> void:
 		await get_tree().process_frame
 	_ok("② 追上服务器后停在直播边沿「同步中」(状态 %s, 播放头 %.1f = 已到最后一步 %d), 停着时不前进" % [p.state, p.head, p._last_step],
 		stalled and p.status_text() == StreamPlayer.Live.TXT_SYNC and int(roundf(h_st)) == p._last_step
-		and p.applied == applied_st and not over_edge)
+		and p.applied == applied_st and not over_edge,
+		## 11-24 CI 红过一次、本机(含 --max-fps 15)复现不出 ⇒ 五个条件各自的值都打出来, 下次红就知道是哪一条
+		"stalled=%s 字=%s 停时播放头=%.2f 应用 %d→%d 越过边沿=%s" % [str(stalled), p.status_text(), h_st, applied_st, p.applied, str(over_edge)])
 	## ③ 全部放出: 播到结尾
 	src.limit = -1
 	for _i in range(60000):

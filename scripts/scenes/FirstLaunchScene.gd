@@ -265,6 +265,7 @@ func _show_page(i: int, instant: bool = false) -> void:
 	_bg_b.self_modulate = _bg_a.self_modulate
 	_bg_b.modulate.a = 1.0
 	var p := str(pg["img"])
+	p = Lang.art(p)   # 背景截图里有对局 HUD / 赛程的字: 英文下用英文截的那一张(assets/sprites/intro/*_en.jpg)
 	_bg_a.texture = load(p) if ResourceLoader.exists(p) else null
 	var dk := float(pg.get("dim", 1.0))
 	_bg_a.self_modulate = Color(dk, dk, dk, 1.0)
@@ -280,7 +281,8 @@ func _show_page(i: int, instant: bool = false) -> void:
 ## 起名那一屏的背景(NAME_BG), 不带标题 / 那一句。
 func _show_name_bg() -> void:
 	_bg_b.texture = null
-	_bg_a.texture = load(NAME_BG) if ResourceLoader.exists(NAME_BG) else null
+	var nb := Lang.art(NAME_BG)   # 英文下用英文截的那一张
+	_bg_a.texture = load(nb) if ResourceLoader.exists(nb) else null
 	_bg_a.self_modulate = Color(NAME_BG_DIM, NAME_BG_DIM, NAME_BG_DIM, 1.0)
 	_bg_a.modulate.a = 1.0
 	_fade_t = 1.0

@@ -27,6 +27,8 @@ extends Node
 ##   结束(完成 / 跳过 / 中途离开)把那份拷贝原样换回, 只写上「看过教程」这几个标记再存档。
 ##   ⇒ 进程在教程中被杀: 账号存档从没被写过, 下次启动 `onboarded=false` ⇒ 再弹选择框。
 ##   (原做法「快照几个字段 → 在真存档上教 → 结束还原」漏一个字段就污染, X4 就是这么来的。)
+## autoload 比全局类表先就位 ⇒ 语言工具用 preload(同 lang_boot)
+const _LANG_TD := preload("res://scripts/util/lang.gd")
 
 const MAIN_MENU := "res://scenes/MainMenu.tscn"
 const TEAM_SELECT := "res://scenes/TeamSelect.tscn"
@@ -669,7 +671,9 @@ func _trigger_hit(bt: Node, st: Dictionary) -> bool:
 
 
 ## 战斗提示里的 {pet}: 触发那只龟的名字。
+## ★先换语言再填(2026-11-24 英文走查: 先填了「小龟」整句就对不上译文表, 英文下这一句整句是中文); 填进去的龟名也换。中文时原样。
 func _fill_battle_text(t: String, u) -> String:
+	t = _LANG_TD.t(t)
 	if not t.contains("{pet}"):
 		return t
 	var nm := ""
@@ -677,7 +681,7 @@ func _fill_battle_text(t: String, u) -> String:
 		var pid := str((u as Dictionary).get("id", ""))
 		var pd = DataRegistry.pet_by_id.get(pid, {})
 		nm = str((pd as Dictionary).get("name", pid)) if pd is Dictionary else pid
-	return t.replace("{pet}", nm)
+	return t.replace("{pet}", _LANG_TD.t(nm))
 
 
 ## 开打了、演出幕布全淡出、还没结束。

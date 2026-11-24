@@ -3540,7 +3540,7 @@ msgid "可装备 %d 件"
 msgstr "%d item slots"
 
 msgid "（Lv%d：%d 件）"
-msgstr "(Lv%d: %d items)"
+msgstr " (Lv%d: %d items)"
 
 msgid "买经验 %d"
 msgstr "Buy XP %d"
