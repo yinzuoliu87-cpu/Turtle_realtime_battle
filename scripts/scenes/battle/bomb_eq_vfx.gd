@@ -27,6 +27,7 @@ const SHEETS := {
 	"spark": ["vfx/bomb-cracker-spark.png", 66, 69, 60.0, 35, 30],
 	"paper": ["vfx/bomb-cracker-paper.png", 96, 75, 90.0, 47, 39],
 	"mine": ["vfx/bomb-mine-blast.png", 82, 78, 73.0, 41, 39],
+	"timer": ["vfx/bomb-timer-blast.png", 82, 80, 75.0, 41, 40],
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
 ## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
@@ -332,19 +333,26 @@ func _decal(c: Vector2, r: float, col: Color, life: float) -> void:
 	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "decal", "a0": col.a})
 
 
+## 定时炸弹(11-24 自查): 图标放大、挂到血条上方; 每秒在头上跳倒计时数字(4/3/2/1)
 func timer_attach(tgt: Dictionary, fuse: float) -> void:
-	_attach("p2eq_104", tgt, fuse)
+	_attach("p2eq_104", tgt, fuse, 72.0, 4.7)
+	if _fx.size() > 0 and _fx[_fx.size() - 1].get("kind", "") == "attach":
+		_fx[_fx.size() - 1]["count"] = int(ceil(fuse))
 
 
+## 定时炸弹爆炸: 专属的红闪 + 准星环 + 火团(不再借手雷的火球), 在目标身体中心, 宽 = 伤害直径; 地上范围圈
 func timer_blast(c: Vector2, r: float, on = null) -> void:
-	_anim("std", c, r * 2.2, 0.7, 0.02, false, false, Color.WHITE, on)
+	_anim("timer", c, r * 2.0, 0.75, 0.02, false, false, Color.WHITE, on)
+	_ring(c, r, Color(1.0, 0.35, 0.3, 0.95), 0.5)
 
 
 ## 绑在目标头顶的小炸弹，跟着目标走，越到引爆闪得越快
-func _attach(icon_id: String, tgt: Dictionary, fuse: float, px: float = 30.0) -> void:
-	var s := _icon(icon_id, battle._world_pos(Vector2(tgt["pos"]), 2.9), px) if _ok() else null
+func _attach(icon_id: String, tgt: Dictionary, fuse: float, px: float = 30.0, h: float = 2.9) -> void:
+	var s := _icon(icon_id, battle._world_pos(Vector2(tgt["pos"]), h), px) if _ok() else null
 	if s != null:
-		_fx.append({"node": s, "t": 0.0, "life": fuse, "kind": "attach", "tgt": tgt})
+		s.no_depth_test = true
+		s.render_priority = 12
+		_fx.append({"node": s, "t": 0.0, "life": fuse, "kind": "attach", "tgt": tgt, "h": h})
 
 
 ## 地雷「对手看不见」(方案书 §4.2): 只画本方(左方 = 玩家视角)的雷; 对方的雷不画, 踩中才看到爆炸
@@ -520,7 +528,12 @@ func tick(delta: float) -> void:
 				(n as Node3D).rotation.z = q * 8.0
 			"attach":
 				var tg: Dictionary = f["tgt"]
-				(n as Node3D).position = battle._world_pos(Vector2(tg["pos"]), 2.9)
+				(n as Node3D).position = battle._world_pos(Vector2(tg["pos"]), float(f.get("h", 2.9)))
+				if f.has("count"):   # 倒计时: 剩余整秒数一变就在头上跳一个数字
+					var left: int = int(ceil(float(f["life"]) - float(f["t"])))
+					if left < int(f["count"]) and left > 0 and battle.get("_vfx") != null:
+						f["count"] = left
+						battle._vfx._float_text(Vector2(tg["pos"]) + Vector2(0, -150), str(left), Color("#ff5a4a"), true)
 				var hz: float = 2.0 + 10.0 * q
 				(n as Sprite3D).modulate = Color(1, 1, 1, 1) if fmod(float(f["t"]) * hz, 1.0) < 0.6 else Color(1, 0.4, 0.35, 1)
 			"move":

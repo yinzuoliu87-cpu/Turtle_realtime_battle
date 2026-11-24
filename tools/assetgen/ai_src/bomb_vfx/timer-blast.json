@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "timer-blast 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 1.png",
+   "frame": {
+    "x": 82,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 2.png",
+   "frame": {
+    "x": 164,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 3.png",
+   "frame": {
+    "x": 246,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 4.png",
+   "frame": {
+    "x": 0,
+    "y": 80,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 5.png",
+   "frame": {
+    "x": 82,
+    "y": 80,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 6.png",
+   "frame": {
+    "x": 164,
+    "y": 80,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 7.png",
+   "frame": {
+    "x": 246,
+    "y": 80,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 8.png",
+   "frame": {
+    "x": 0,
+    "y": 160,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 9.png",
+   "frame": {
+    "x": 82,
+    "y": 160,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 10.png",
+   "frame": {
+    "x": 164,
+    "y": 160,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "timer-blast 11.png",
+   "frame": {
+    "x": 246,
+    "y": 160,
+    "w": 82,
+    "h": 80
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 80
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 80
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "timer-blast.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 328,
+   "h": 240
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 41,
+   "y": 40
+  },
+  "frameTags": [
+   {
+    "name": "timer-blast",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}
