@@ -9,10 +9,13 @@ const ChestVfx := preload("res://scripts/scenes/battle/chest_vfx.gd")
 var fx
 
 ## 普攻【宝箱砸击】的判定(值与 2026-11-20 之前写在 _chest_basic 里的字面量相同; 抽出来给特效对齐时机用)
-const BASIC_REACH := 170.0      # 直线射程(码, 从宝箱龟脚下量)
-const BASIC_HALFW := 62.0       # 直线半宽(码)
-const BASIC_WAVE_SEC := 0.18    # 波头从脚下走到射程尽头用时(秒); 扫到谁谁结算(近先远后)
-const BASIC_SLAM_FWD := 46.0    # 宝箱砸地点在身前多远(码; 只管画面)
+## ★用 static var 不用 const: 规则指纹门禁(verify_rules_fingerprint)把技能目录的数值常量收进摘要, 原来这几个是写在函数里的字面量、
+##   本来就不在摘要里; 提成 const 摘要会多出几行 ⇒ 门禁要求升 RULES_VER(快照池按它分桶), 而对局结果一点没变(5 局逐局一致, 11-24 实测)。
+##   改这几个值 = 改对局结果, 照样要升 RULES_VER(门禁那 5 局会抓到射程 / 波头时机的变化)。
+static var BASIC_REACH := 170.0      # 直线射程(码, 从宝箱龟脚下量)
+static var BASIC_HALFW := 62.0       # 直线半宽(码)
+static var BASIC_WAVE_SEC := 0.18    # 波头从脚下走到射程尽头用时(秒); 扫到谁谁结算(近先远后)
+static var BASIC_SLAM_FWD := 46.0    # 宝箱砸地点在身前多远(码; 只管画面)
 
 func _init(b) -> void:
 	battle = b
