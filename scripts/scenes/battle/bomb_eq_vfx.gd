@@ -76,6 +76,21 @@ static func body_h(u) -> float:
 	return s3.global_position.y + ((float(fh) * 0.5 - row) + s3.offset.y) * s3.pixel_size * s3.scale.y
 
 
+## 飞行物朝向(11-24 用户「弹道方向你觉得？弹道你到底怎么做的」): 贴图里飞行物都画成「朝右飞」;
+##   每帧把「这一刻」和「下一瞬」的位置投到屏幕上, 按屏幕上真实的运动方向把贴图转过去(面朝镜头、绕视线转)
+##   ⇒ 斜着飞时头朝前、走弧线时先抬头后低头, 尾焰 / 烟尾永远拖在后面。原来只会左右翻, 斜飞时是一根横棍在滑。
+func _orient(s: Sprite3D, a3: Vector3, b3: Vector3) -> void:
+	var cam = battle.get("_cam")
+	if not (cam is Camera3D) or not is_instance_valid(cam):
+		return
+	var d: Vector2 = (cam as Camera3D).unproject_position(b3) - (cam as Camera3D).unproject_position(a3)
+	if d.length() < 0.01:
+		return
+	s.flip_h = false
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.global_transform.basis = (cam as Camera3D).global_transform.basis * Basis(Vector3(0, 0, 1), atan2(-d.y, d.x))
+
+
 func _ok() -> bool:
 	return battle != null and battle.get("_world") != null and is_instance_valid(battle._world)
 
@@ -451,9 +466,6 @@ func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0, src =
 		bs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		bs.pixel_size = (34.0 * float(battle.WS)) / 50.0   # 炮弹比炮台小(原来 60 码比炮台还大)
 		bs.offset = Vector2(32.0 - 44.0, 31.0 - 32.0)   # 锚点 = 球心(图里球在右、烟尾在左)
-		bs.flip_h = to.x < from.x
-		if bs.flip_h:
-			bs.offset.x = -bs.offset.x
 		bs.no_depth_test = true
 		bs.render_priority = 11
 		bs.position = battle._world_pos(from, mz_h)
@@ -565,10 +577,8 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 			if b != null:
 				b.no_depth_test = true
 				b.render_priority = 11
-				if dir.x < 0.0:
-					b.flip_h = true
-					b.offset.x = -b.offset.x
 				_fx[_fx.size() - 1]["kind"] = "move"
+				_fx[_fx.size() - 1]["orient"] = true
 				## 尾焰约 100 码长: 头飞出炮口 100 码之前不画, 否则整条火尾盖在炮台身上(11-24 自查)
 				b.visible = false
 				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "h": fh, "loop_all": true, "show_after": 100.0 / maxf(1.0, spd)})
@@ -687,7 +697,13 @@ func tick(delta: float) -> void:
 				var tb = f.get("tgt", null)
 				var dst: Vector2 = Vector2(tb["pos"]) if tb is Dictionary and tb.get("alive", false) else Vector2(f["to"])
 				var hb: float = body_h(tb) if tb is Dictionary else 1.0
-				(n as Node3D).position = battle._world_pos(Vector2(f["from"]).lerp(dst, q), lerpf(float(f.get("h0", 0.9)), hb, q) + 1.6 * 4.0 * q * (1.0 - q))
+				var h0b: float = float(f.get("h0", 0.9))
+				var p3: Vector3 = battle._world_pos(Vector2(f["from"]).lerp(dst, q), lerpf(h0b, hb, q) + 1.6 * 4.0 * q * (1.0 - q))
+				var q2: float = minf(1.0, q + 0.03)
+				var p3b: Vector3 = battle._world_pos(Vector2(f["from"]).lerp(dst, q2), lerpf(h0b, hb, q2) + 1.6 * 4.0 * q2 * (1.0 - q2))
+				(n as Node3D).position = p3
+				if q2 > q:
+					_orient(n, p3, p3b)
 			"arc_to":
 				var tg2: Dictionary = f["tgt"]
 				var a2: Vector2 = f["from"]
@@ -709,6 +725,8 @@ func tick(delta: float) -> void:
 					(n as Node3D).visible = float(f["t"]) >= float(f["show_after"])
 				var pos: Vector2 = Vector2(f["from"]) + Vector2(f["dir"]).normalized() * float(f["spd"]) * float(f["t"])
 				(n as Node3D).position = battle._world_pos(pos, float(f.get("h", 1.0)))
+				if bool(f.get("orient", false)):
+					_orient(n, (n as Node3D).position, battle._world_pos(pos + Vector2(f["dir"]).normalized() * 20.0, float(f.get("h", 1.0))))
 				if bool(f.get("loop_all", false)):
 					(n as Sprite3D).frame = int(float(f["t"]) * 12.0) % int(f["nf"])
 				elif int(f.get("nf", 1)) > 1:
