@@ -462,6 +462,11 @@ func prep(vp: Vector2, band: Dictionary, d: Dictionary) -> void:
 #  ⑲ 全部组宫格
 # ═══════════════════════════════════════════════════════════════════
 ## `cells` = [{"bucket", "title", "state"(live/prep/done/wait), "chip", "a", "b", "score": [x, y], "line", "mine"}]
+const GRID_AV_MAX := 96.0
+const GRID_NAME_FS := 18.0
+const GRID_NAME_H := 24.0
+
+
 func grid(vp: Vector2, band: Dictionary, cells: Array) -> void:
 	var rt := _ensure_root()
 	var top := float(band.get("top", 150.0)) - 24.0
@@ -537,45 +542,49 @@ func grid(vp: Vector2, band: Dictionary, cells: Array) -> void:
 		var body := Rect2(Vector2(10, 38), Vector2(cw - 20, ch - 46))
 		var a: Dictionary = c.get("a", {})
 		var b: Dictionary = c.get("b", {})
-		var av := clampf(body.size.y - 30.0, 34.0, 64.0)
+		## ★2026-11-24 周日走查「对阵图字很小」: 原来头像封顶 64、名字 14, 卡下半截空着 ⇒ 头像随卡高放到 GRID_AV_MAX,
+		##   名字 GRID_NAME_FS, 头像 + 名字这一块在正文区(去掉底下那行)竖向居中
+		var ln_h := 26.0 if str(c.get("line", "")) != "" else 0.0
+		var av := clampf(body.size.y - ln_h - GRID_NAME_H - 6.0, 34.0, GRID_AV_MAX)
+		body.position.y += maxf(0.0, (body.size.y - ln_h - (av + GRID_NAME_H + 4.0)) * 0.5)
 		if st == "done" and not a.is_empty():
 			_avatar(vis, Rect2(Vector2(body.position.x + 6, body.position.y + 2), Vector2(av, av)), a, false, true)
-			var nl := _lb(s._fit_name(str(a.get("name", "")), body.size.x - av - 24.0, false, 19.0), 19, _H.GOLD)
+			var nl := _lb(s._fit_name(str(a.get("name", "")), body.size.x - av - 24.0, false, 26.0), 26, _H.GOLD)
 			nl.position = Vector2(body.position.x + av + 18, body.position.y + 2)
 			nl.size = Vector2(body.size.x - av - 24, av * 0.55)
 			nl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			vis.add_child(nl)
-			var sl := _lb("组冠军", 13, _H.TXT_DIM, false)
+			var sl := _lb("组冠军", 17, _H.TXT_DIM, false)
 			sl.position = Vector2(body.position.x + av + 18, body.position.y + 2 + av * 0.55)
 			sl.size = Vector2(body.size.x - av - 24, av * 0.45)
 			vis.add_child(sl)
 		elif not a.is_empty() and not b.is_empty():
 			_avatar(vis, Rect2(Vector2(body.position.x + 4, body.position.y + 2), Vector2(av, av)), a)
 			_avatar(vis, Rect2(Vector2(body.end.x - 4 - av, body.position.y + 2), Vector2(av, av)), b)
-			var vs := _lb("VS", 20, _H.GOLD)
+			var vs := _lb("VS", 28, _H.GOLD)
 			var sc: Array = c.get("score", [])
 			if sc.size() == 2:
 				vs.text = "%d : %d" % [int(sc[0]), int(sc[1])]
-			vs.position = Vector2(body.get_center().x - 40, body.position.y + 2)
-			vs.size = Vector2(80, av)
+			vs.position = Vector2(body.get_center().x - 50, body.position.y + 2)
+			vs.size = Vector2(100, av)
 			vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			vis.add_child(vs)
 			var nw := body.size.x * 0.5 - 6.0
-			var an := _lb(s._fit_name(str(a.get("name", "")), nw, false, 14.0), 14, _H.TXT, false)
+			var an := _lb(s._fit_name(str(a.get("name", "")), nw, false, GRID_NAME_FS), int(GRID_NAME_FS), _H.TXT, false)
 			an.position = Vector2(body.position.x, body.position.y + av + 4)
-			an.size = Vector2(nw, 20)
+			an.size = Vector2(nw, GRID_NAME_H)
 			vis.add_child(an)
-			var bn := _lb(s._fit_name(str(b.get("name", "")), nw, false, 14.0), 14, _H.TXT, false)
+			var bn := _lb(s._fit_name(str(b.get("name", "")), nw, false, GRID_NAME_FS), int(GRID_NAME_FS), _H.TXT, false)
 			bn.position = Vector2(body.get_center().x + 6, body.position.y + av + 4)
-			bn.size = Vector2(nw, 20)
+			bn.size = Vector2(nw, GRID_NAME_H)
 			bn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			vis.add_child(bn)
 		var ln := str(c.get("line", ""))
 		if ln != "":
-			var ll := _lb(ln, 13, _H.TXT_DIM, false)
+			var ll := _lb(ln, 16, _H.TXT_DIM, false)
 			ll.name = "GridLine"
-			ll.position = Vector2(10, ch - 24)
+			ll.position = Vector2(10, ch - 26)
 			ll.size = Vector2(cw - 20, 20)
 			ll.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			vis.add_child(ll)

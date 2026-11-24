@@ -47,6 +47,11 @@ const SKIP_HOLD := 0.5                         # 点屏落定后再停多久进�
 const FADE_OLD := 0.22
 const FADE_NEW := 0.15
 const T_FLASH := 1.0                           # crown 拍内: 白闪时刻
+## crown 拍白闪之后: 奖杯(奖章)往左挪、冠军头像在右边弹出(2026-11-24 周日走查: 原来头像收成光球后再也不出现,
+##   冠军那一拍只有奖杯 + 字, 看不到是谁; 主菜单补看的冠军卡就是奖杯与头像并排)
+const CROWN_DX := 120.0
+const CROWN_FACE := 160.0
+const RAYS_CHARGE_MIN := 0.3                  # 蓄力时背光最低亮度(原来从 0 起 ⇒ 一颗头像挂在黑底上)
 
 var data: Dictionary = {}
 var auto_advance := true
@@ -424,11 +429,13 @@ func _build_crown() -> void:
 	var ty := c.y - 150.0
 	_n["orb"] = UI.portrait(_stage, Vector2(c.x, ty + 20), 180, str(ch.get("avatar", "")), UI.GOLD, "Orb")
 	if cup:
-		_n["ped"] = UI.tex_at(_stage, UI.TEX_PEDESTAL, Vector2(c.x, c.y - 26), Vector2(256, 128), "Pedestal")
-		_n["trophy"] = UI.tex_at(_stage, UI.TEX_TROPHY, Vector2(c.x, ty), Vector2(192, 192), "Trophy")
+		_n["ped"] = UI.tex_at(_stage, UI.TEX_PEDESTAL, Vector2(c.x - CROWN_DX, c.y - 26), Vector2(256, 128), "Pedestal")
+		_n["trophy"] = UI.tex_at(_stage, UI.TEX_TROPHY, Vector2(c.x - CROWN_DX, ty), Vector2(192, 192), "Trophy")
 	else:
-		_n["trophy"] = UI.tex_at(_stage, UI.TEX_MEDAL, Vector2(c.x, ty + 4), Vector2(128, 128), "Trophy")
+		_n["trophy"] = UI.tex_at(_stage, UI.TEX_MEDAL, Vector2(c.x - CROWN_DX, ty + 4), Vector2(128, 128), "Trophy")
 		_n["ped"] = UI.ribbon(_stage, Vector2(c.x, c.y - 40), 320, str(data.get("group", "")) + "冠军", 36, "red", "GroupRibbon")
+	_n["face"] = UI.portrait(_stage, Vector2(c.x + CROWN_DX, ty + (6.0 if cup else 4.0)), CROWN_FACE, str(ch.get("avatar", "")), UI.GOLD, "ChampFace")
+	_n["face_y"] = (_n["face"] as Control).position.y
 	_n["ty"] = ty
 	_n["big"] = UI.label_in(_stage, Rect2(0, c.y + 6, vp.x, 100), "冠军" if cup else "组冠军", 96, UI.GOLD, true, "BigWord")
 	_n["banner"] = UI.ribbon(_stage, Vector2(c.x, c.y + 180), 480, str(ch.get("name", "")), 48, "gold", "NameBanner")
@@ -442,7 +449,7 @@ func _build_crown() -> void:
 	_n["l1"] = UI.label_in(_stage, Rect2(0, c.y + 244, vp.x, 32), scale_line, 24, UI.TXT, false, "ScaleLine")
 	_n["l2"] = UI.label_in(_stage, Rect2(0, c.y + 276, vp.x, 28),
 		DATA.edition_line(int(data.get("week", 0)), int(data.get("edition", -1))), 20, UI.TXT_DIM, false, "DateLine")
-	for k in ["trophy", "ped", "big", "banner", "l1", "l2"]:
+	for k in ["trophy", "ped", "face", "big", "banner", "l1", "l2"]:
 		(_n[k] as Control).modulate.a = 0.0
 
 
@@ -458,7 +465,8 @@ func _apply_crown(t: float) -> void:
 	orb.visible = t < T_FLASH
 	var kc := UI.ease_in(UI.seg(t, 0.15, T_FLASH))
 	orb.scale = Vector2.ONE * lerpf(1.0, 0.1, kc)
-	orb.modulate = Color(1.0 + 2.2 * kc, 1.0 + 1.8 * kc, 1.0 + 1.0 * kc, 1.0)
+	## 等上一拍(亚军卡, FADE_OLD 秒)淡出再淡入, 不叠在亚军头像上
+	orb.modulate = Color(1.0 + 2.2 * kc, 1.0 + 1.8 * kc, 1.0 + 1.0 * kc, UI.seg(t, FADE_OLD * 0.8, FADE_OLD + 0.12))
 	## 白闪(高潮) + 彩带三炮
 	if t >= T_FLASH and _fire("flash"):
 		_flash_now(T_FLASH)
@@ -471,7 +479,7 @@ func _apply_crown(t: float) -> void:
 	_fx.rays_center = tc
 	_fx.rays_radius = maxf(vp.x, vp.y) * 0.62
 	if t < T_FLASH:
-		_fx.rays_alpha = 0.22 * kc
+		_fx.rays_alpha = RAYS_CHARGE_MIN + 0.15 * kc
 		_fx.rays_speed = 0.4 + 3.2 * kc
 	else:
 		_fx.rays_alpha = 0.6 * UI.ease_out(UI.seg(t, T_FLASH, T_FLASH + 0.4))
@@ -484,6 +492,12 @@ func _apply_crown(t: float) -> void:
 	var bob := sin((t - 1.5) * 2.4) * 4.0 if t > 1.5 else 0.0
 	tr.position.y = roundf(ty - tr.size.y * 0.5 + 70.0 * (1.0 - UI.ease_out(kt)) + bob)   # 整像素: 浮动时不糊格子
 	(_n["ped"] as Control).modulate.a = UI.seg(t, T_FLASH, T_FLASH + 0.25)
+	## 冠军头像在奖杯右边弹出(慢奖杯半拍), 之后与奖杯错相轻浮
+	var fc: Control = _n["face"]
+	var kf := UI.seg(t, T_FLASH + 0.15, T_FLASH + 0.5)
+	fc.modulate.a = UI.ease_out(kf)
+	fc.scale = Vector2.ONE * (0.4 + 0.6 * UI.ease_back(kf))
+	fc.position.y = roundf(float(_n["face_y"]) + (sin((t - 1.5) * 2.4 + PI) * 3.0 if t > 1.5 else 0.0))
 	## 「冠军」大字砸下(从 2.2 倍落到 1 倍) + 落定那一下屏震
 	var big: Control = _n["big"]
 	var kb := UI.seg(t, 1.45, 1.7)

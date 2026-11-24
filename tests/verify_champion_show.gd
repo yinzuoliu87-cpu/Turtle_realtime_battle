@@ -295,6 +295,10 @@ func _t_skip() -> void:
 		s.advance(DT)
 	for _i in range(18):
 		s.advance(DT)                                  # 进 crown 0.3 s, 还没白闪
+	## ★2026-11-24 周日走查: 蓄力时背光不从 0 起(原来一颗头像挂在黑底上); 冠军头像白闪前不露面
+	_ok("⑤' ★蓄力中(进 crown 0.3 s)背光已亮着(≥ %.2f), 不是一颗头像挂在黑底上" % SHOW.RAYS_CHARGE_MIN, float(s._fx.rays_alpha) >= SHOW.RAYS_CHARGE_MIN - 0.001,
+		"%.3f" % float(s._fx.rays_alpha))
+	_ok("⑤' 白闪前冠军头像(ChampFace)不露面", (s.node("ChampFace") as Control).modulate.a < 0.01)
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
 	ev.position = Vector2(640, 360)
@@ -314,6 +318,14 @@ func _t_skip() -> void:
 		and absf(s.bt - 2.45) < 0.02, "%s skips=%d bt=%.2f" % [s.current_beat(), s.skips, s.bt])
 	_ok("⑤ 终态到位: 奖杯满尺寸可见、「冠军」大字满不透明、名字缎带在", tr != null and tr.modulate.a > 0.99
 		and absf(tr.scale.x - 1.0) < 0.01 and bw != null and bw.modulate.a > 0.99 and (s.node("NameBanner") as Control).modulate.a > 0.99)
+	## ★冠军是谁要看得到: 终态冠军头像满尺寸在奖杯右边、两者不叠, 头像是冠军本人(不是亚军)
+	var cf := s.node("ChampFace") as Control
+	var cf_tex := cf.get_node_or_null("Face") as TextureRect if cf != null else null
+	var want_tex := UI.avatar_path(str((_cup_data()["champion"] as Dictionary).get("avatar", "")))
+	_ok("⑤ ★终态冠军头像满尺寸可见、在奖杯右边且不叠、是冠军本人的头像", cf != null and cf.modulate.a > 0.99 and absf(cf.scale.x - 1.0) < 0.01
+		and cf.get_global_rect().position.x > tr.get_global_rect().end.x - 8.0
+		and cf_tex != null and cf_tex.texture != null and cf_tex.texture.resource_path == want_tex,
+		"%s vs 奖杯 %s · %s" % [str(cf.get_global_rect()) if cf else "-", str(tr.get_global_rect()), cf_tex.texture.resource_path if cf_tex and cf_tex.texture else "-"])
 	var t0: float = s.elapsed
 	var moved_at := -1.0
 	for _i in range(120):
