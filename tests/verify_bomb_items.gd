@@ -239,6 +239,7 @@ func _ready() -> void:
 	_s._units.append(cu)
 	cu["crit"] = 0.0
 	_adv(B.CANNON_IV + 0.01)
+	_adv(0.9)   # 普通炮弹要飞一段(CANNON_BALL_SPD)才落到身上结算
 	_ok("105 每炮 100%% 攻击（%.0f）+%.0f 龟能" % [float(B.CANNON_ATK[2]), B.CANNON_EN_GAIN],
 		_near(_lost(t1), float(B.CANNON_ATK[2])) and _near(float(cs["en"]), B.CANNON_EN_GAIN), "%.0f · 龟能 %.0f" % [_lost(t1), float(cs["en"])])
 	cs["en"] = B.CANNON_EN_MAX

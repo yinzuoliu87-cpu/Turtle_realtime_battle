@@ -421,14 +421,39 @@ func remote_blast(c: Vector2, r: float) -> void:
 	_ring(c, r, Color(1.0, 0.3, 0.1, 0.8), 0.5)
 
 
-func cannon_shot(from: Vector2, to: Vector2, tgt = null) -> void:
+## 普通炮(11-24 用户「普通炮你没弹道出来没」): 炮口火光 + 一颗黑铁炮弹按弧线飞向目标(跟着目标走), 落到身上才炸(cannon_ball_hit)
+const BALL_TEX := "res://assets/sprites/vfx/bomb-cannonball.png"
+func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0) -> void:
+	if fly > 0.0 and _ok() and ResourceLoader.exists(BALL_TEX):
+		var t: Texture2D = load(BALL_TEX)
+		var bs := Sprite3D.new()
+		bs.texture = t
+		bs.shaded = false
+		bs.transparent = true
+		bs.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		bs.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		bs.pixel_size = (60.0 * float(battle.WS)) / 50.0
+		bs.offset = Vector2(32.0 - 44.0, 31.0 - 32.0)   # 锚点 = 球心(图里球在右、烟尾在左)
+		bs.flip_h = to.x < from.x
+		if bs.flip_h:
+			bs.offset.x = -bs.offset.x
+		bs.no_depth_test = true
+		bs.render_priority = 11
+		bs.position = battle._world_pos(from, 0.9)
+		battle._world.add_child(bs)
+		_fx.append({"node": bs, "t": 0.0, "life": fly, "kind": "ball", "from": from, "to": to, "tgt": tgt})
 	var m := _anim("muzzle", from + (to - from).normalized() * 30.0, 110.0, 0.3, 0.7)
 	if m != null and to.x > from.x:
 		m.flip_h = false
 	elif m != null:
 		m.flip_h = true
 		m.offset.x = -m.offset.x
-	_anim("boom", to, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
+	if fly <= 0.0:
+		_anim("boom", to, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
+
+
+func cannon_ball_hit(c: Vector2, tgt = null) -> void:
+	_anim("boom", c, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
 
 
 ## 重炮打中: 目标身上炸一下(用炸药桶以前那张卡通爆炸, 现在别处不用了)
@@ -560,6 +585,11 @@ func tick(delta: float) -> void:
 				sp2.frame = int(tt * 10.0) % int(f["nf"])
 			"decal":
 				(n as Sprite3D).modulate.a = float(f["a0"]) * (1.0 if q < 0.7 else (1.0 - q) / 0.3)
+			"ball":
+				var tb = f.get("tgt", null)
+				var dst: Vector2 = Vector2(tb["pos"]) if tb is Dictionary and tb.get("alive", false) else Vector2(f["to"])
+				var hb: float = body_h(tb) if tb is Dictionary else 1.0
+				(n as Node3D).position = battle._world_pos(Vector2(f["from"]).lerp(dst, q), lerpf(0.9, hb, q) + 1.6 * 4.0 * q * (1.0 - q))
 			"arc_to":
 				var tg2: Dictionary = f["tgt"]
 				var a2: Vector2 = f["from"]

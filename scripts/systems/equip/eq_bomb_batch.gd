@@ -92,6 +92,8 @@ const CANNON_HEAVY_LEN := 1000.0
 const CANNON_HEAVY_W := 60.0
 const CANNON_HEAVY_SPD := 900.0
 const CANNON_BACK := 260.0
+## 普通炮弹飞行速度(码/秒): 打出去要飞一段才落到目标身上(11-24 用户「普通炮你没弹道出来没」) —— 落到才结算
+const CANNON_BALL_SPD := 1100.0
 # ── 106 遥控炸弹 ──
 const REMOTE_HP := [2500.0, 5000.0, 12000.0]
 const REMOTE_RES := [70.0, 130.0, 200.0]
@@ -134,6 +136,7 @@ var _timers: Array = []        ## {tgt, t, src, si, mult}
 var _shreds: Array = []        ## {u, amt, until}
 var _lines: Array = []         ## 直线弹道 {pos, dir, spd, left, w, src, hit:[], kind, si}
 var _cannons: Array = []       ## {u, owner, si, acc, en, heavy}
+var _balls: Array = []         ## 普通炮弹在途 {src, tgt, last, t}
 var _remotes: Array = []       ## {u, owner, si, boomed}
 var _katanas: Array = []       ## {u, owner, si, en, casts, charge, heal_acc}
 ## 104 跨路叠层：身份键 → 已绑颗数（一局结束 reset_match 清）
@@ -308,6 +311,7 @@ func tick(delta: float) -> void:
 	_tick_shreds(t)
 	_tick_lines(delta)
 	_tick_cannons(delta)
+	_tick_balls()
 	_tick_remotes(delta)
 	_tick_katanas(delta)
 	if vfx != null:
@@ -365,7 +369,7 @@ func clear_all() -> void:
 	for s in _shreds:
 		_unshred(s)
 	_grenades.clear(); _smokes.clear(); _stickies.clear(); _goos.clear(); _mines.clear()
-	_timers.clear(); _shreds.clear(); _lines.clear(); _cannons.clear(); _remotes.clear(); _katanas.clear()
+	_timers.clear(); _shreds.clear(); _lines.clear(); _cannons.clear(); _remotes.clear(); _katanas.clear(); _balls.clear()
 	if vfx != null:
 		vfx.clear()
 
@@ -775,14 +779,32 @@ func _tick_cannons(delta: float) -> void:
 			_launch_line(p, Vector2(p["pos"]), Vector2(tgt["pos"]) - Vector2(p["pos"]), CANNON_HEAVY_SPD, CANNON_HEAVY_LEN, CANNON_HEAVY_W, "cannon_heavy", si)
 		else:
 			stat["cannon_shot"] += 1
-			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt])
-			for o in _in_radius(_enemies_of(p), Vector2(tgt["pos"]), CANNON_SPLASH):
-				_phys(p, o, float(p["atk"]))
+			var fly: float = DetMath.dist(Vector2(p["pos"]), Vector2(tgt["pos"])) / CANNON_BALL_SPD
+			_balls.append({"src": p, "tgt": tgt, "last": Vector2(tgt["pos"]), "t": float(battle._t) + fly})
+			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, fly])
 		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_GAIN)
 		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
 			c["heavy"] = false
 		p["energy_view"] = float(c["en"])
 		p["energy"] = float(c["en"])
+
+
+## 普通炮弹落地: 跟着目标走(目标死了 = 落在它最后的位置), 到点才炸、才扣血
+func _tick_balls() -> void:
+	var t := float(battle._t)
+	var keep: Array = []
+	for b in _balls:
+		var tg: Dictionary = b["tgt"]
+		if tg.get("alive", false):
+			b["last"] = Vector2(tg["pos"])
+		if t < float(b["t"]):
+			keep.append(b)
+			continue
+		var p: Dictionary = b["src"]
+		_fx("cannon_ball_hit", [Vector2(b["last"]), tg if tg.get("alive", false) else null])
+		for o in _in_radius(_enemies_of(p), Vector2(b["last"]), CANNON_SPLASH):
+			_phys(p, o, float(p["atk"]))
+	_balls = keep
 
 
 # ════════════════════════════════════════ 106 遥控炸弹 ════════════════════════════════════════
