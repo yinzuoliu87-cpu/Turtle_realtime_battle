@@ -5182,7 +5182,6 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 	# 分离已移到 _apply_separation_pass (每帧全单位, 不只move态) → 根治攻击/待机扎堆
 	if DetMath.vlen(intent) > 0.01:
 		u["vel"] = DetMath.limit_len(intent, 1.0) * spd            # 合力调速, 力抵消缓停
-		u["_vel_t"] = _t                                            # vel 写于何时(停下不清 vel; 钩锁提前量只认刚写过的, trainer_system._hook_lead)
 		u["pos"] += u["vel"] * delta
 		u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 		var _slowed: bool = _t < float(u.get("slow_until", 0.0)) or (_t < float(u.get("spd_dbf_until", 0.0)) and float(u.get("spd_move_mult", 1.0)) < 0.99)

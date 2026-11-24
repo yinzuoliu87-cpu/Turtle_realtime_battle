@@ -840,6 +840,7 @@ func _tick_hooks(delta: float) -> void:
 ##   节奏 = 各技能自己的冷却(D2「用各自冷却」)。不移动、不游走 —— 原敌方 AI 的随机游走已随 U2 删掉
 ##   (那条游走用的还是裸全局 `randf_range`, 连 det 模式都不可复现: 20261003-跨设备回放 §2.4)。
 func _tick_trainer_ai(_delta: float) -> void:
+	_track_motion(_delta)
 	if not _trainer_ticks_active():
 		return
 	for u in battle._units:
@@ -855,8 +856,8 @@ func _trainer_ai_step(u: Dictionary) -> void:
 		_cast_active(u, aim)
 
 
-## 钩锁提前量只认这么新的移速(秒): 再旧 = 已经停下了(vel 停下不清零)
-const HOOK_LEAD_FRESH := 0.2
+## 钩锁提前量: 目标这一步的移速低于这个(码/秒)就当站着(软分离把扎堆的单位推开也会有一点位移)
+const HOOK_LEAD_MIN_SPD := 20.0
 
 
 ## 训龟大师每个主动技往哪放(用户 11-08 逐个定)。返回大师 → 目标 / 落点的向量; 没有可放的返回 null。
@@ -882,13 +883,27 @@ func _ai_aim(u: Dictionary):
 	return (at as Vector2) - (u["pos"] as Vector2)
 
 
+## 每个单位这一步的移速(码/秒) = 这一步的位移 / dt, 记在 `_hk_v`(钩锁提前量用)。每个 sim 步都算(训龟大师不在场也算, 一上场就有)。
+##   ★只认位置: 位置每一步都进全场指纹 ⇒ 录制与回放、各平台必然一致。不读单位的 vel —— 那是给画面用的(走着不呼吸),
+##   停下不清零、也不进指纹(11-24 CI 上 verify_replay_roundtrip 录制 / 回放在第 1091 步分叉, 先读 vel 的那一版)。
+func _track_motion(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	for o in battle._units:
+		if not o.get("alive", false):
+			continue
+		var p: Vector2 = o["pos"]
+		o["_hk_v"] = (p - (o.get("_hk_p", p) as Vector2)) / delta
+		o["_hk_p"] = p
+
+
 ## 钩锁提前量(2026-11-24 用户「准头问题」): 钩子要前摇 HOOK_WINDUP 再以 HOOK_MISSILE_SPD 飞过去, 大师站后排常常一两秒才到 ——
 ##   瞄目标出手那一刻的位置, 走动的目标飞到时早不在那儿了。⇒ 按目标此刻的移速推算钩头飞到时它在哪(迭代一次), 朝那里丢。
-##   ★只认最近 HOOK_LEAD_FRESH 秒里真走过的速度: vel 只在走的时候写、停下不清零(_do_move), 站着的目标照原位瞄。
+##   速度 = _track_motion 记的这一步位移速度; 低于 HOOK_LEAD_MIN_SPD 当站着, 照原位瞄。
 func _hook_lead(u: Dictionary, t: Dictionary) -> Vector2:
 	var p0: Vector2 = t["pos"]
-	var v: Vector2 = t.get("vel", Vector2.ZERO) if battle._t - float(t.get("_vel_t", -99.0)) <= HOOK_LEAD_FRESH else Vector2.ZERO
-	if DetMath.vlen(v) < 1.0:
+	var v: Vector2 = t.get("_hk_v", Vector2.ZERO)
+	if DetMath.vlen(v) < HOOK_LEAD_MIN_SPD:
 		return p0
 	var tt: float = battle.HOOK_WINDUP + DetMath.vlen(p0 - (u["pos"] as Vector2)) / battle.HOOK_MISSILE_SPD
 	var p1: Vector2 = ArenaShape.clamp_in(p0 + v * tt, battle.ARENA)
