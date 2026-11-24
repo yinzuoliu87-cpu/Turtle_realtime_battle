@@ -35,7 +35,6 @@ const MISSILE_LEAD := MISSILE_SEC * 8.0 / 17.0
 var battle
 var _fx: Array = []          ## {node, t, life, kind, ...}
 var _mines: Array = []       ## {node, pos}
-var _hidden: Array = []      ## 烟雾弹潜行中被调过透明度的单位
 var _pending: Array = []     ## 延时出场的演出 {t, fn}(鞭炮一串连炸)
 var _crack_n := 0            ## 鞭炮第几串(每串转一个角度, 不每次一模一样)
 static var _tex := {}
@@ -254,10 +253,11 @@ func grenade_blast(c: Vector2, r: float) -> void:
 	_ring(c, r, Color(1.0, 0.6, 0.25, 0.95), 0.6)
 
 
+## 烟雾: 从地面升起、罩住范围里的单位(不被地面 / 单位挡), 烟本身半透明 ⇒ 透过烟看得到里面潜行的人
+##   (原来被「底部贴地」规则整团抬到半空, 用户 11-24 看片前自查抓到)
 func smoke_cloud(c: Vector2, r: float, sec: float) -> void:
-	var s := _anim("smoke", c, r * 2.0, sec + 0.8, 0.02)
-	if s != null:
-		s.modulate = Color(1, 1, 1, 0.85)
+	var s := _anim("smoke", c, r * 2.0, sec + 0.8, 0.05, false, false, Color(1, 1, 1, 0.55), "ground")
+	_ring(c, r, Color(0.75, 0.8, 0.9, 0.9), 0.8)
 
 
 func smoke_strike(pos: Vector2, on = null) -> void:
@@ -459,33 +459,6 @@ func tick(delta: float) -> void:
 		if float(f["t"]) >= float(f["life"]):
 			n.queue_free()
 			_fx.remove_at(i)
-	_tick_stealth()
-
-
-## 烟雾弹潜行：潜行中的单位半透明（只调节点透明度，不碰渲染层的 modulate）
-func _tick_stealth() -> void:
-	if battle == null:
-		return
-	var t := float(battle._t)
-	for i in range(_hidden.size() - 1, -1, -1):
-		var u: Dictionary = _hidden[i]
-		if not bool(u.get("_smoke_hidden", false)) or t >= float(u.get("untargetable_until", 0.0)) or not u.get("alive", false):
-			var sp = u.get("sprite", null)
-			if is_instance_valid(sp):
-				(sp as GeometryInstance3D).transparency = 0.0
-			_hidden.remove_at(i)
-	for u in battle._units:
-		if u is Dictionary and bool(u.get("_smoke_hidden", false)) and t < float(u.get("untargetable_until", 0.0)):
-			var known := false
-			for h in _hidden:
-				if is_same(h, u):
-					known = true
-					break
-			if not known:
-				var sp = u.get("sprite", null)
-				if is_instance_valid(sp):
-					(sp as GeometryInstance3D).transparency = 0.55
-				_hidden.append(u)
 
 
 func clear() -> void:
@@ -498,11 +471,6 @@ func clear() -> void:
 		if is_instance_valid(m["node"]):
 			m["node"].queue_free()
 	_mines.clear()
-	for u in _hidden:
-		var sp = u.get("sprite", null)
-		if is_instance_valid(sp):
-			(sp as GeometryInstance3D).transparency = 0.0
-	_hidden.clear()
 
 
 func alive_count() -> int:
