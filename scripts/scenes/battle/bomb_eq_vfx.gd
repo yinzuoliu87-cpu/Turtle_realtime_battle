@@ -176,7 +176,7 @@ func missile_impact(side: String) -> void:
 
 func cracker_burst(c: Vector2) -> void:
 	_anim("pop", c, 110.0, 0.35, 0.5)
-	_ring(c, EqBombBatch.CRACKER_R, Color(1.0, 0.55, 0.2, 0.7), 0.3)   # 地上一圈 = 真实伤害半径
+	_ring(c, EqBombBatch.CRACKER_R, Color(1.0, 0.75, 0.3, 1.0), 0.45)   # 地上一圈 = 真实伤害半径
 
 
 func tube_blast(c: Vector2, r: float) -> void:
@@ -351,8 +351,8 @@ func tick(delta: float) -> void:
 					(n as Sprite3D).frame = mini(nf - 1, int(q * float(nf)))
 			"ring":
 				var s: Sprite3D = n
-				s.pixel_size = lerpf(float(f["ps0"]), float(f["ps1"]), sqrt(q))
-				s.modulate.a = float(f["a0"]) * (1.0 - q)
+				s.pixel_size = lerpf(float(f["ps0"]), float(f["ps1"]), minf(1.0, q / 0.4))
+				s.modulate.a = float(f["a0"]) * (1.0 if q < 0.5 else (1.0 - q) / 0.5)
 			"locator":
 				var mat = (n as MeshInstance3D).material_override
 				if mat is StandardMaterial3D:
