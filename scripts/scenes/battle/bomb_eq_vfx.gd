@@ -466,7 +466,7 @@ func katana_charge(p: Dictionary, sec: float) -> void:
 
 
 ## 直线弹道：剑气波 / 龙卷风 / 重炮，与结算同一速度同一路程（演出只画，不判定）
-func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: float) -> void:
+func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: float, src = null) -> void:
 	if not _ok():
 		return
 	var life: float = length / maxf(1.0, spd)
@@ -485,13 +485,35 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 			if m != null and dir.x < 0.0:
 				m.flip_h = true
 				m.offset.x = -m.offset.x
-			var b := _anim("shell", from, 150.0, life, 0.9, false, true)
+			## ★飞行高度 = 敌人身体中心(11-24 用户「这个怎么又贴地下」: 原来 0.9 米、没影子 ⇒ 像一道火在地上滑);
+			##   地上跟一块影子, 读得出它在空中飞
+			var fh: float = maxf(1.3, body_h(src) if src is Dictionary else 1.3)
+			var b := _anim("shell", from, 130.0, life, fh, false, true)
 			if b != null:
+				b.no_depth_test = true
+				b.render_priority = 11
 				if dir.x < 0.0:
 					b.flip_h = true
 					b.offset.x = -b.offset.x
 				_fx[_fx.size() - 1]["kind"] = "move"
-				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "h": 0.9, "loop_all": true})
+				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "h": fh, "loop_all": true})
+			_ground_shadow(from, dir, spd, life, 70.0)
+
+
+## 飞行物在地上的影子: 一块扁的暗色软斑, 跟着飞行物走(只在地上, 不画高度)
+func _ground_shadow(from: Vector2, dir: Vector2, spd: float, life: float, w: float) -> void:
+	var sh := Sprite3D.new()
+	sh.texture = VfxTex._make_blob_texture()
+	sh.shaded = false
+	sh.transparent = true
+	sh.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sh.axis = Vector3.AXIS_Y
+	sh.modulate = Color(0, 0, 0, 0.45)
+	sh.pixel_size = (w * float(battle.WS)) / float(maxi(1, sh.texture.get_width()))
+	sh.scale = Vector3(1.0, 1.0, 0.55)
+	sh.position = battle._world_pos(from, 0.03)
+	battle._world.add_child(sh)
+	_fx.append({"node": sh, "t": 0.0, "life": life, "kind": "move", "from": from, "dir": dir, "spd": spd, "h": 0.03, "nf": 1})
 
 
 ## 龙卷风：五层细环叠成漏斗（下小上大），每层绕中心转、相位错开 ⇒ 读得出「旋」

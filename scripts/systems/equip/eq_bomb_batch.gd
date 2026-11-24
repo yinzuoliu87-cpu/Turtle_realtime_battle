@@ -678,7 +678,7 @@ func _tick_timers(t: float) -> void:
 ## `hit` 可传共用的命中名单：107 一次吹出的 3 道龙卷风共用一份 ⇒ 同一个敌人一轮只吃一道
 func _launch_line(src: Dictionary, from: Vector2, dir: Vector2, spd: float, length: float, w: float, kind: String, si: int, hit: Array = []) -> void:
 	_lines.append({"pos": from, "dir": DetMath.norm(dir), "spd": spd, "left": length, "w": w, "src": src, "hit": hit, "kind": kind, "si": si})
-	_fx("line_launch", [kind, from, DetMath.norm(dir), spd, length])
+	_fx("line_launch", [kind, from, DetMath.norm(dir), spd, length, src])
 
 
 func _tick_lines(delta: float) -> void:
