@@ -25,6 +25,7 @@ import sb_common as S  # noqa: E402
 GODOT = os.environ.get("GODOT") or r"C:\Users\Louis\Desktop\Godot_v4.6.3-stable_win64.exe"
 ACCOUNTS = {
     "b250de29-1be0-4b17-81bc-a97ea91376d2": "LouisT01 #F5ZRDR（用户手机测试号；10-22 / 10-27 / 11-04 用户要求重置过）",
+    "fecbc9da-8a3c-4193-b5ce-32fc541532d9": "单杀王（真人号, gmail 注册于 10-14；用户 11-24「把单杀王的这周的进度重置看看」点名）",
 }
 TAG = "$rstpl$"
 
