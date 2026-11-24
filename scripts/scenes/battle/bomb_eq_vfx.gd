@@ -26,6 +26,7 @@ const SHEETS := {
 	"charge": ["vfx/katana-charge.png", 67, 67, 61.0, 33, 33],
 	"spark": ["vfx/bomb-cracker-spark.png", 66, 69, 60.0, 35, 30],
 	"paper": ["vfx/bomb-cracker-paper.png", 96, 75, 90.0, 47, 39],
+	"mine": ["vfx/bomb-mine-blast.png", 82, 78, 73.0, 41, 39],
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
 ## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
@@ -348,7 +349,7 @@ func _attach(icon_id: String, tgt: Dictionary, fuse: float, px: float = 30.0) ->
 
 ## 地雷「对手看不见」(方案书 §4.2): 只画本方(左方 = 玩家视角)的雷; 对方的雷不画, 踩中才看到爆炸
 func mine_place(p: Vector2, side: String) -> void:
-	var s := _icon("p2eq_102", battle._world_pos(p, 0.05), 34.0) if _ok() else null
+	var s := _icon("p2eq_102", battle._world_pos(p, 0.05), 48.0) if _ok() else null
 	if s != null:
 		s.visible = side == "left"
 		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
@@ -364,8 +365,10 @@ func mine_blast(c: Vector2, r: float) -> void:
 				_mines[i]["node"].queue_free()
 			_mines.remove_at(i)
 			break
-	_anim("std", c, r * 2.0, 0.7)
-	_ring(c, r, Color(0.9, 0.8, 0.5, 0.6), 0.3)
+	## 落地类: 贴地一层铺满伤害范围 + 以落地点为中心往上炸的一团(泥土碎石) + 范围圈
+	_anim("mine", c, r * 2.0, 0.85, 0.04, true)
+	_anim("mine", c, 150.0, 0.85, 0.05, false, false, Color.WHITE, "ground")
+	_ring(c, r, Color(0.95, 0.8, 0.5, 0.95), 0.6)
 
 
 func barrel_blast(c: Vector2, r: float, on = null) -> void:

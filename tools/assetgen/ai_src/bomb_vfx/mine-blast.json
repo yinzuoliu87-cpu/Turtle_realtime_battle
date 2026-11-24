@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "mine-blast 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 1.png",
+   "frame": {
+    "x": 82,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 2.png",
+   "frame": {
+    "x": 164,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 3.png",
+   "frame": {
+    "x": 246,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 4.png",
+   "frame": {
+    "x": 0,
+    "y": 78,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 5.png",
+   "frame": {
+    "x": 82,
+    "y": 78,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 6.png",
+   "frame": {
+    "x": 164,
+    "y": 78,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 7.png",
+   "frame": {
+    "x": 246,
+    "y": 78,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 8.png",
+   "frame": {
+    "x": 0,
+    "y": 156,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 9.png",
+   "frame": {
+    "x": 82,
+    "y": 156,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 10.png",
+   "frame": {
+    "x": 164,
+    "y": 156,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  },
+  {
+   "filename": "mine-blast 11.png",
+   "frame": {
+    "x": 246,
+    "y": 156,
+    "w": 82,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 82,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 82,
+    "h": 78
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "mine-blast.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 328,
+   "h": 234
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 41,
+   "y": 39
+  },
+  "frameTags": [
+   {
+    "name": "mine-blast",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

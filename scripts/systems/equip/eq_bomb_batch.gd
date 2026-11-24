@@ -620,6 +620,8 @@ func _tick_mines() -> void:
 			_phys(u, o, float(MINE_DMG[si]))
 			if o.get("alive", false):
 				battle._damage._stun(o, MINE_STUN, "p2eq_102")
+				if vfx != null and battle.get("_vfx") != null:
+					battle._vfx._float_text(Vector2(o["pos"]) + Vector2(0, -70), Lang.t("眩晕"), Color("#ffe27a"))   # 被炸晕看得见
 		_tl_out(tl)
 	_mines = keep
 

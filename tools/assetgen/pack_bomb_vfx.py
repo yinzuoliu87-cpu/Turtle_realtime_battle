@@ -29,6 +29,7 @@ JOBS = {
     "katana-charge": "katana-charge",
     "cracker-spark": "bomb-cracker-spark",     # 097 鞭炮连炸的每一响(11-24 重做: 用户「感觉这个特效不行」)
     "cracker-paper": "bomb-cracker-paper",     # 097 鞭炮红纸屑
+    "mine-blast": "bomb-mine-blast",           # 102 地雷: 地底炸起(火 + 泥土碎石 + 尘团), 与手雷的纯火焰区分
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):
 ##   ai_src/bomb_summons/<名>_<0..6>.png → assets/sprites/vfx/<产出>.png 横排
