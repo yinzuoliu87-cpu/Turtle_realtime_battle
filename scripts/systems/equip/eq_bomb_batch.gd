@@ -771,6 +771,10 @@ func _tick_cannons(delta: float) -> void:
 			continue
 		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_PER_SEC * delta)
 		p["energy"] = float(c["en"])
+		## 龟能一满就进入重炮形态(当场播变身, 不等下一炮) —— 下一炮起是重炮
+		if not bool(c["heavy"]) and float(c["en"]) >= CANNON_EN_MAX:
+			c["heavy"] = true
+			_fx("cannon_heavy_on", [p])
 		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[int(c["si"])]):
 			c["heavy"] = false
 			_fx("cannon_heavy_off", [p])
@@ -782,9 +786,6 @@ func _tick_cannons(delta: float) -> void:
 			continue
 		c["acc"] = float(c["acc"]) - CANNON_IV
 		var si := int(c["si"])
-		if not bool(c["heavy"]) and float(c["en"]) >= CANNON_EN_MAX:
-			c["heavy"] = true
-			_fx("cannon_heavy_on", [p])
 		if bool(c["heavy"]):
 			stat["cannon_heavy"] += 1
 			c["en"] = maxf(0.0, float(c["en"]) - float(CANNON_HEAVY_COST[si]))

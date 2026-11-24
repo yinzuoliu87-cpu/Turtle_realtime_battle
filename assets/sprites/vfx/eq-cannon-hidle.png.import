@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6b7dmqoda4ad"
-path="res://.godot/imported/bomb-cannon-aura.png-2e5723fa6733a96737c7cf060fa4c6a7.ctex"
+uid="uid://ekoiacusihuy"
+path="res://.godot/imported/eq-cannon-hidle.png-7f93e2c170102e8622cf5661b880fb50.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/bomb-cannon-aura.png"
-dest_files=["res://.godot/imported/bomb-cannon-aura.png-2e5723fa6733a96737c7cf060fa4c6a7.ctex"]
+source_file="res://assets/sprites/vfx/eq-cannon-hidle.png"
+dest_files=["res://.godot/imported/eq-cannon-hidle.png-7f93e2c170102e8622cf5661b880fb50.ctex"]
 
 [params]
 

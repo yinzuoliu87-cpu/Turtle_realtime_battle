@@ -32,12 +32,15 @@ JOBS = {
     "mine-blast": "bomb-mine-blast",
     "timer-blast": "bomb-timer-blast",
     "cannon-heavy-shell": "bomb-cannon-shell",
-    "cannon-heavy-aura": "bomb-cannon-aura",    # 105 重炮状态: 炮台身后一圈火焰(循环, 用户 11-24「重炮的话召唤物没有任何变化吗」)  # 105 重炮弹: 带火焰尾巴的炮弹(循环)         # 104 定时炸弹: 红闪 + 准星环 + 火团(与手雷火球区分)           # 102 地雷: 地底炸起(火 + 泥土碎石 + 尘团), 与手雷的纯火焰区分
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):
 ##   ai_src/bomb_summons/<名>_<0..6>.png → assets/sprites/vfx/<产出>.png 横排
 SUMMONS = {"cannon": ("eq-cannon-idle", 7), "remote": ("eq-remote-bomb-idle", 7), "katana": ("eq-katana-idle", 7),
-           "cannonfire": ("eq-cannon-fire", 6)}   # 炮筒开炮 6 帧(animate_image 首尾钉住待机原画: 炮口喷火→后坐→回位, 11-24 用户「炮台攻击动画呢」)
+           "cannonfire": ("eq-cannon-fire", 6),
+           ## 重炮形态(11-24 用户「武器进入强化形态…应该武器会有什么变化」): 原画 = cannonheavy_base(edit_image_pro_flash 从炮台原画改: 炮管烧红+裂纹+钢箍)
+           "cannonheat": ("eq-cannon-heat", 7),     # 变身: 普通 → 烧红(animate_image 首=普通原画 尾=强化原画)
+           "cannonhidle": ("eq-cannon-hidle", 4),   # 强化待机: 裂纹明暗呼吸(生成的 6 帧里 3~5 帧炮管变黑, 只取 0→1→2→1)
+           "cannonhfire": ("eq-cannon-hfire", 7)}   # 强化开炮: 喷火→重后坐→回位(炮尾冒火的几帧擦掉)   # 炮筒开炮 6 帧(animate_image 首尾钉住待机原画: 炮口喷火→后坐→回位, 11-24 用户「炮台攻击动画呢」)
 ## 101 粘弹的粘液摊(11-24 重做, 用户「没有商业的感觉」): create_image_pro_from_style 8 张候选里挑的 1 号
 ##   + animate_image 首尾钉住同一张生成冒泡帧; 取 0..7(第 8 张 = 第 0 张, 循环不重复取)
 EXTRA = {"bomb_goo/goo": ("bomb-goo-splat", 8)}
@@ -67,12 +70,15 @@ def _erase_hot(img, x0):
             if nb <= 1:
                 px[x, y] = (0, 0, 0, 0)
     return img
+## 炮筒原画底下空 11 行(见下方「落地」): 所有炮筒动作一律挪这么多
+CANNON_DY = 64 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "cannon_0.png")).convert("RGBA").getbbox()[3]
 CLEAN = {
     "cannon": lambda fs: [fs[0]] * len(fs),
+    "cannonhfire": lambda fs: [fs[1], _erase_hot(fs[2], 48), _erase_hot(fs[3], 48), _erase_hot(fs[4], 48), fs[5], fs[6]],
     "cannonfire": lambda fs: [fs[1], fs[2], _erase_hot(fs[4], 50), _erase_hot(fs[4], 50), fs[0]],
 }
 ## 循环播放的不去尾帧(循环要首尾相接)
-LOOPS = {"bomb-goo-puddle", "cannon-heavy-shell", "cannon-heavy-aura"}
+LOOPS = {"bomb-goo-puddle", "cannon-heavy-shell"}
 
 
 def main() -> None:
@@ -102,6 +108,8 @@ def main() -> None:
         ##   召唤物按帧底边贴地 ⇒ 整只悬空。所有帧同一个量往下挪, 让最低的那一行有画的像素贴到帧底。
         low = max((f.getbbox() or (0, 0, 0, h))[3] for f in frames)
         dy = h - low
+        if src.startswith("cannon"):
+            dy = CANNON_DY   # 炮筒所有动作同一个下移量(按原画算), 换表不跳
         if dy > 0:
             moved = []
             for f in frames:
@@ -115,6 +123,12 @@ def main() -> None:
             strip.paste(fr, (i * w, 0))
         strip.save(os.path.join(DST, dst + ".png"), optimize=False)
         out.append("%s %dx%d x%d" % (dst, w, h, n))
+        if src == "cannonheat":   # 退出强化 = 变身倒着播(冷却回黑铁)
+            rev = Image.new("RGBA", (w * n, h), (0, 0, 0, 0))
+            for i, fr in enumerate(reversed(frames)):
+                rev.paste(fr, (i * w, 0))
+            rev.save(os.path.join(DST, "eq-cannon-cool.png"), optimize=False)
+            out.append("eq-cannon-cool %dx%d x%d" % (w, h, n))
     for src, (dst, n) in EXTRA.items():
         frames = [Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "%s_%d.png" % (src, i))).convert("RGBA") for i in range(n)]
         w, h = frames[0].size

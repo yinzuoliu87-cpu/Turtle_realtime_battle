@@ -29,7 +29,6 @@ const SHEETS := {
 	"mine": ["vfx/bomb-mine-blast.png", 82, 78, 73.0, 41, 39],
 	"timer": ["vfx/bomb-timer-blast.png", 82, 80, 75.0, 41, 40],
 	"shell": ["vfx/bomb-cannon-shell.png", 74, 28, 60.0, 63, 15],
-	"aura": ["vfx/bomb-cannon-aura.png", 68, 112, 62.0, 34, 97],
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
 ## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
@@ -464,54 +463,65 @@ func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0, src =
 		_anim("boom", to, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
 
 
-## 炮筒开炮动作(11-24 用户「炮台攻击动画呢」): 炮口喷火 → 炮管后坐 → 回位, 6 帧 0.45 秒。
-##   做法: 炮台本体先藏起来, 在它的位置放一张开炮动作(跟着本体的位置 / 朝向 / 大小), 播完删掉、本体露回来。
-const FIRE_TEX := "res://assets/sprites/vfx/eq-cannon-fire.png"
-const FIRE_SEC := 0.45
+## 炮筒动作 / 形态(11-24 用户「炮台攻击动画呢」「武器进入强化形态…武器会有什么变化」):
+##   走引擎自己的动作通道 `_set_anim_sheet(单位, 帧表, 动作名, true)`: 动作播一遍自动回到这只单位【当前的】待机表。
+##   · 普通形态: 待机 = 黑铁炮台; 开炮 = 喷火→后坐→回位
+##   · 强化(重炮)形态: 待机换成「炮管烧红、裂纹明暗呼吸」; 进入时播「升温变身」(黑铁→烧红); 开炮 = 更猛的喷火 + 重后坐;
+##     退出时待机换回黑铁, 播「冷却」(变身倒放)
+##   帧表全在 assets/sprites/vfx/eq-cannon-*.png(tools/assetgen/pack_bomb_vfx.py 打包; 来历见那里)
+const CANNON_SHEETS := {
+	"fire": ["res://assets/sprites/vfx/eq-cannon-fire.png", 450],
+	"heat": ["res://assets/sprites/vfx/eq-cannon-heat.png", 900],
+	"cool": ["res://assets/sprites/vfx/eq-cannon-cool.png", 700],
+	"hidle": ["res://assets/sprites/vfx/eq-cannon-hidle.png", 1100],
+	"hfire": ["res://assets/sprites/vfx/eq-cannon-hfire.png", 550],
+}
+static var _cannon_sd := {}
+func _csd(key: String) -> Dictionary:
+	if _cannon_sd.has(key):
+		return _cannon_sd[key]
+	var row: Array = CANNON_SHEETS[key]
+	var sd := {}
+	if ResourceLoader.exists(str(row[0])):
+		var t: Texture2D = load(str(row[0]))
+		sd = battle._sprite_dict_from(t, {"frames": t.get_width() / 64, "frameW": 64, "frameH": 64, "duration": int(row[1])}, false)
+	_cannon_sd[key] = sd
+	return sd
+
+
+func _cannon_play(p, key: String, action: String) -> void:
+	if not (p is Dictionary) or not _ok() or not (p as Dictionary).get("alive", false):
+		return
+	var sd: Dictionary = _csd(key)
+	if not sd.is_empty():
+		battle._set_anim_sheet(p, sd, action, true)
+
+
 func cannon_fire(p) -> void:
-	if not (p is Dictionary) or not _ok() or not ResourceLoader.exists(FIRE_TEX):
+	if not (p is Dictionary):
 		return
-	var sp = (p as Dictionary).get("sprite", null)
-	if not is_instance_valid(sp) or not (sp is Sprite3D):
+	## 变身 / 冷却正在播 ⇒ 不打断(炮弹照常飞出, 只是这一下不播后坐)
+	if str((p as Dictionary).get("anim_action", "")) in ["heat", "cool"]:
 		return
-	for f in _fx:   # 上一发的动作还没播完 ⇒ 从头再播, 不叠两张
-		if str(f.get("kind", "")) == "cannon_fire" and is_same(f.get("u", null), p):
-			f["t"] = 0.0
-			return
-	var t: Texture2D = load(FIRE_TEX)
-	var s := Sprite3D.new()
-	s.texture = t
-	s.hframes = maxi(1, t.get_width() / 64)
-	s.shaded = false
-	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	## ★与本体同一套材质(接地着色器: 全朝镜头 + 脚底软渐隐) —— 原来用「只绕竖轴转」, 被镜头一斜形状大小都变, 一切换就跳(11-24 自查)
-	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
-	s.material_override = battle._make_grounded_material(t, {})
-	battle._world.add_child(s)
-	(sp as Sprite3D).visible = false
-	_fx.append({"node": s, "t": 0.0, "life": FIRE_SEC, "kind": "cannon_fire", "u": p, "nf": s.hframes})
+	_cannon_play(p, "hfire" if bool((p as Dictionary).get("_cannon_heavy", false)) else "fire", "fire")
 
 
-## 重炮状态(11-24 用户「重炮的话召唤物没有任何变化吗」): 炮台身后烧起一圈火(循环), 跟着炮台; 进入时地上扩一圈火环; 退出时熄灭
-## 火圈放在炮台身后 34 码(离镜头更远) ⇒ 炮台本体挡在它前面, 火从炮台背后往上冒, 不盖住炮台
-const AURA_BACK := Vector2(0, -34)
 func cannon_heavy_on(p: Dictionary) -> void:
-	if not _ok():
-		return
-	var s := _anim("aura", Vector2(p["pos"]) + AURA_BACK, 105.0, 9999.0, 0.02, false, true)
-	if s != null:
-		s.modulate.a = 0.9
-		s.render_priority = -10   # 同在半透明那一批里先画 ⇒ 炮台画在火上面(只靠前后位置不够, 两者都半透明)
-		_fx[_fx.size() - 1]["kind"] = "aura"
-		_fx[_fx.size() - 1]["u"] = p
+	if not p.has("_idle_norm_sd"):
+		p["_idle_norm_sd"] = p.get("idle_sd", {})
+	p["_cannon_heavy"] = true
+	var hs: Dictionary = _csd("hidle")
+	if not hs.is_empty():
+		p["idle_sd"] = hs
+	_cannon_play(p, "heat", "heat")
 	_ring(Vector2(p["pos"]), 110.0, Color(1.0, 0.5, 0.15, 0.95), 0.45)
 
 
 func cannon_heavy_off(p: Dictionary) -> void:
-	for f in _fx:
-		if str(f.get("kind", "")) == "aura" and is_same(f.get("u", null), p):
-			f["life"] = float(f["t"]) + 0.25   # 0.25 秒内熄掉
+	p["_cannon_heavy"] = false
+	if p.has("_idle_norm_sd"):
+		p["idle_sd"] = p["_idle_norm_sd"]
+	_cannon_play(p, "cool", "cool")
 
 
 func cannon_ball_hit(c: Vector2, tgt = null) -> void:
@@ -673,29 +683,6 @@ func tick(delta: float) -> void:
 				sp2.frame = int(tt * 10.0) % int(f["nf"])
 			"decal":
 				(n as Sprite3D).modulate.a = float(f["a0"]) * (1.0 if q < 0.7 else (1.0 - q) / 0.3)
-			"aura":
-				var au: Dictionary = f["u"]
-				if not au.get("alive", false):
-					f["life"] = minf(float(f["life"]), float(f["t"]) + 0.25)
-				(n as Node3D).position = battle._world_pos(Vector2(au["pos"]) + AURA_BACK, (n as Node3D).position.y)
-				(n as Sprite3D).frame = int(float(f["t"]) * 12.0) % int(f["nf"])
-				var left_t: float = float(f["life"]) - float(f["t"])
-				(n as Sprite3D).modulate.a = 0.9 * clampf(left_t / 0.25, 0.0, 1.0) * clampf(float(f["t"]) / 0.15, 0.0, 1.0)
-			"cannon_fire":
-				var pu: Dictionary = f["u"]
-				var body = pu.get("sprite", null)
-				var fs: Sprite3D = n
-				if is_instance_valid(body) and pu.get("alive", false):
-					var bs3: Sprite3D = body
-					fs.position = bs3.global_position
-					fs.pixel_size = bs3.pixel_size
-					fs.offset = bs3.offset
-					fs.flip_h = bs3.flip_h
-					fs.scale = bs3.scale
-					bs3.visible = q >= 1.0
-				fs.frame = mini(int(f["nf"]) - 1, int(q * float(f["nf"])))
-				if q >= 1.0 and is_instance_valid(body):
-					(body as Sprite3D).visible = true
 			"ball":
 				var tb = f.get("tgt", null)
 				var dst: Vector2 = Vector2(tb["pos"]) if tb is Dictionary and tb.get("alive", false) else Vector2(f["to"])
