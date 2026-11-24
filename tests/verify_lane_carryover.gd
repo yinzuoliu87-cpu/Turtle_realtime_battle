@@ -65,9 +65,10 @@ func _ready() -> void:
 		for h in pr["hits"]:
 			all_hits.append("%s: %s" % [str(c["tag"]), h])
 	rf.free()
-	## 11-15 实测: 5 局共换路 7 次(每局上 → 下, ④⑤ 两局再进终极)
-	_ok("① 分母: %d 局裁判都算完、每局至少换路 1 次(%d / %d), 共换路 %d 次 ≥ 7" % [games, games_ok, games, clears],
-		games == RF.CASES.size() and games_ok == games and clears >= 7)
+	## 11-15 实测: 5 局共换路 7 次(每局上 → 下, ④⑤ 两局再进终极); 11-24 钩锁瞄准改了(RULES_VER 9)后 6 次(只一局进终极)。
+	##   ★判据量的是需求「每局都换过路 + 至少一局进了终极战场」(= 次数 ≥ 局数 + 1), 不钉某一次实测的次数
+	_ok("① 分母: %d 局裁判都算完、每局至少换路 1 次(%d / %d), 共换路 %d 次 ≥ 局数 + 1(至少一局进终极)" % [games, games_ok, games, clears],
+		games == RF.CASES.size() and games_ok == games and clears >= games + 1)
 	_ok("① ★换路清场后, 战斗场里没有任何地方还拿着上一路的单位(%d 处)" % all_hits.size(), all_hits.is_empty(),
 		"\n      " + "\n      ".join(PackedStringArray(all_hits.slice(0, 300))))
 	## ── ② 038 定点 ──
