@@ -240,13 +240,14 @@ func _ready() -> void:
 	cu["crit"] = 0.0
 	_adv(B.CANNON_IV + 0.01)
 	_adv(0.9)   # 普通炮弹要飞一段(CANNON_BALL_SPD)才落到身上结算
-	_ok("105 每炮 100%% 攻击（%.0f）+%.0f 龟能" % [float(B.CANNON_ATK[2]), B.CANNON_EN_GAIN],
-		_near(_lost(t1), float(B.CANNON_ATK[2])) and _near(float(cs["en"]), B.CANNON_EN_GAIN), "%.0f · 龟能 %.0f" % [_lost(t1), float(cs["en"])])
+	var en_want: float = B.CANNON_EN_PER_SEC * (B.CANNON_IV + 0.01 + 0.9)
+	_ok("105 每炮 100%% 攻击（%.0f）；龟能按时间涨 %.0f/秒（%.2f 秒 ⇒ %.1f）" % [float(B.CANNON_ATK[2]), B.CANNON_EN_PER_SEC, B.CANNON_IV + 0.91, en_want],
+		_near(_lost(t1), float(B.CANNON_ATK[2])) and _near(float(cs["en"]), en_want, 0.3), "%.0f · 龟能 %.0f" % [_lost(t1), float(cs["en"])])
 	cs["en"] = B.CANNON_EN_MAX
 	t1["hp"] = t1["maxHp"]
 	_adv(B.CANNON_IV + 0.01)
 	_adv(1.2)
-	_ok("105 龟能满 ⇒ 重炮：直线飞行命中，%.0f%% 攻击 + %d 层流血 + 击退，每发净 −%.0f 龟能" % [B.CANNON_HEAVY_MULT * 100.0, int(B.CANNON_HEAVY_BLEED[2]), float(B.CANNON_HEAVY_COST[2]) - B.CANNON_EN_GAIN],
+	_ok("105 龟能满 ⇒ 重炮：直线飞行命中，%.0f%% 攻击 + %d 层流血 + 击退，每发净 −%.0f 龟能" % [B.CANNON_HEAVY_MULT * 100.0, int(B.CANNON_HEAVY_BLEED[2]), float(B.CANNON_HEAVY_COST[2]) - B.CANNON_EN_PER_SEC * B.CANNON_IV],
 		bool(cs["heavy"]) and _bs.stat["cannon_heavy"] >= 1 and _lost(t1) >= B.CANNON_HEAVY_MULT * float(B.CANNON_ATK[2]) - 1.5 and int(t1["dot_stacks"].get("bleed", 0)) >= int(B.CANNON_HEAVY_BLEED[2]),
 		"heavy %s · 挨 %.0f · 流血 %d · 龟能 %.0f" % [str(cs["heavy"]), _lost(t1), int(t1["dot_stacks"].get("bleed", 0)), float(cs["en"])])
 	var exited := false

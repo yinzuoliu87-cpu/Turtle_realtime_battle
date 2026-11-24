@@ -83,8 +83,9 @@ const CANNON_IV := 2.0   # 攻速 0.5 次/秒(用户 11-24「改为0.5」; 原 1
 const CANNON_RANGE := 900.0
 const CANNON_SPLASH := 80.0
 const CANNON_EN_MAX := 100.0
-## 每炮攒的龟能（重炮状态下照样攒；必须小于最便宜的消耗，否则 3★ 永不退出 —— 3★ 每发净耗 2）
-const CANNON_EN_GAIN := 8.0
+## 龟能按时间匀速涨(用户 11-24 选「按时间匀速涨」, 取代「每炮 +8」): 每秒这么多, 被眩晕时不涨(同龟)。
+##   重炮每发消耗 CANNON_HEAVY_COST; 3★ 每 2 秒耗 10、涨 8 ⇒ 净 −2/发, 会停在重炮很久(待用户定)
+const CANNON_EN_PER_SEC := 4.0
 const CANNON_HEAVY_COST := [25.0, 20.0, 10.0]
 const CANNON_HEAVY_MULT := 2.0
 const CANNON_HEAVY_BLEED := [10, 20, 50]
@@ -752,7 +753,7 @@ func _spawn_cannon(owner: Dictionary, si: int) -> void:
 	p["maxEnergy"] = CANNON_EN_MAX
 	p["energy"] = 0.0
 	## 调试场「满龟能」(主人带 _edit_fe; 正式对局没有这个字段): 差 3 炮满能起步 ⇒ 演示里先看到 3 发普通炮再切重炮
-	_cannons.append({"u": p, "owner": owner, "si": si, "acc": 0.0, "en": (CANNON_EN_MAX - 3.0 * CANNON_EN_GAIN) if bool(owner.get("_edit_fe", false)) else 0.0, "heavy": false})
+	_cannons.append({"u": p, "owner": owner, "si": si, "acc": 0.0, "en": (CANNON_EN_MAX - 3.0 * CANNON_IV * CANNON_EN_PER_SEC) if bool(owner.get("_edit_fe", false)) else 0.0, "heavy": false})
 
 
 ## 门禁读：某门炮筒当前龟能 / 是否重炮
@@ -768,6 +769,11 @@ func _tick_cannons(delta: float) -> void:
 		p["energy"] = float(c["en"])
 		if float(battle._t) < float(p.get("stun_until", 0.0)):
 			continue
+		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_PER_SEC * delta)
+		p["energy"] = float(c["en"])
+		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[int(c["si"])]):
+			c["heavy"] = false
+			_fx("cannon_heavy_off", [p])
 		c["acc"] = float(c["acc"]) + delta
 		if float(c["acc"]) < CANNON_IV:
 			continue
@@ -789,7 +795,6 @@ func _tick_cannons(delta: float) -> void:
 			_balls.append({"src": p, "tgt": tgt, "last": Vector2(tgt["pos"]), "t": float(battle._t) + fly})
 			_fx("cannon_fire", [p])
 			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, fly, p])
-		c["en"] = minf(CANNON_EN_MAX, float(c["en"]) + CANNON_EN_GAIN)
 		if bool(c["heavy"]) and float(c["en"]) < float(CANNON_HEAVY_COST[si]):
 			c["heavy"] = false
 			_fx("cannon_heavy_off", [p])
