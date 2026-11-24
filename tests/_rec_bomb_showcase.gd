@@ -17,6 +17,7 @@ var _b = null
 var _el := 0.0
 var _max := 75.0
 var _last := ""
+var _seen := {}
 
 
 func _ready() -> void:
@@ -91,9 +92,11 @@ func _process(d: float) -> void:
 			var hx := float(OS.get_environment("REC_FOE_HPX")) if OS.has_environment("REC_FOE_HPX") else 1.0
 			var mx := float(OS.get_environment("REC_ME_HPX")) if OS.has_environment("REC_ME_HPX") else 1.0
 			for u in _b._units:
-				if not (u is Dictionary) or bool(u.get("_isEgg", false)) or bool(u.get("is_trainer", false)) or bool(u.get("is_summon", false)):
+				if not (u is Dictionary) or bool(u.get("_isEgg", false)) or bool(u.get("is_trainer", false)):
 					continue
 				var f: float = hx if str(u.get("side", "")) == "right" else mx
+				if bool(u.get("is_summon", false)) and str(u.get("side", "")) == "left":
+					f = float(OS.get_environment("REC_SUMMON_HPX")) if OS.has_environment("REC_SUMMON_HPX") else 1.0
 				if f != 1.0:
 					u["maxHp"] = float(u["maxHp"]) * f
 					u["hp"] = float(u["maxHp"])
@@ -101,6 +104,15 @@ func _process(d: float) -> void:
 				if u is Dictionary and not bool(u.get("_isEgg", false)):
 					print("[REC]    %s %s hp %.0f atk %.0f 装备 %d 炸弹档 %d" % [str(u.get("side", "")), str(u.get("id", "")), float(u.get("maxHp", 0)), float(u.get("atk", 0)), (u.get("equips", []) as Array).size(), int(_b._synergy.tier_for(u, "炸弹"))])
 	var bs = _b._equip_sys._bomb_sys if _b.get("_equip_sys") != null else null
+	## 事件时间戳(视频秒): 每个计数一变就打一行, 剪片按它找镜头
+	if bs != null:
+		for k in bs.stat:
+			if int(bs.stat[k]) != int(_seen.get(k, 0)):
+				print("[EV] %.2f %s %d" % [_el, k, int(bs.stat[k])])
+				_seen[k] = int(bs.stat[k])
+		if int(_b._bomb_syn.strikes) != int(_seen.get("missile", 0)):
+			print("[EV] %.2f missile %d" % [_el, int(_b._bomb_syn.strikes)])
+			_seen["missile"] = int(_b._bomb_syn.strikes)
 	if bs != null and int(_el * 2.0) != int((_el - d) * 2.0) and int(_el) % 5 == 0 and int(_el * 2.0) % 2 == 0:
 		print("[REC] %.1f 炸弹计数 %s · 导弹 %d" % [_el, JSON.stringify(bs.stat), _b._bomb_syn.strikes])
 		for k in bs._katanas:

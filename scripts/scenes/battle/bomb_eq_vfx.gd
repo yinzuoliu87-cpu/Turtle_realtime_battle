@@ -300,17 +300,28 @@ func _tornado(from: Vector2, dir: Vector2, spd: float, life: float) -> void:
 	root.position = battle._world_pos(from, 0.0)
 	battle._world.add_child(root)
 	var tx: Texture2D = VfxTex._make_thin_ring_tex()
-	for i in range(6):
-		var s := Sprite3D.new()
-		s.texture = tx
-		s.shaded = false
-		s.transparent = true
-		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-		s.axis = Vector3.AXIS_Y
-		s.modulate = Color(0.85, 0.95, 1.0, 0.75 - 0.07 * float(i))
-		s.pixel_size = ((24.0 + 14.0 * float(i)) * 2.0 * float(battle.WS)) / float(tx.get_height())
-		s.position = Vector3(0.0, 0.25 + 0.42 * float(i), 0.0)
-		root.add_child(s)
+	## 9 层、每层两圈(内圈略小) ⇒ 线够密, 远看是一根旋转的漏斗而不是几道细线(录像台实拍第一版太淡)
+	for i in range(9):
+		for dr in [0.0, -5.0]:
+			var s := Sprite3D.new()
+			s.texture = tx
+			s.shaded = false
+			s.transparent = true
+			s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			s.axis = Vector3.AXIS_Y
+			s.modulate = Color(0.92, 0.98, 1.0, 1.0 - 0.05 * float(i))
+			s.pixel_size = ((20.0 + 11.0 * float(i) + dr) * 2.0 * float(battle.WS)) / float(tx.get_height())
+			s.position = Vector3(0.0, 0.15 + 0.3 * float(i), 0.0)
+			root.add_child(s)
+	var dust := Sprite3D.new()   # 底部一团卷起的尘
+	dust.texture = VfxTex._make_fire_glow_tex()
+	dust.shaded = false
+	dust.transparent = true
+	dust.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	dust.modulate = Color(0.85, 0.82, 0.72, 0.55)
+	dust.pixel_size = (70.0 * float(battle.WS)) / 64.0
+	dust.position = Vector3(0.0, 0.3, 0.0)
+	root.add_child(dust)
 	_fx.append({"node": root, "t": 0.0, "life": life, "kind": "tornado", "from": from, "dir": dir, "spd": spd})
 
 
@@ -367,8 +378,8 @@ func tick(delta: float) -> void:
 				(n as Node3D).position = battle._world_pos(tp, 0.0)
 				var k := 0
 				for ch in (n as Node3D).get_children():
-					var ph: float = float(f["t"]) * 14.0 + float(k) * 0.9
-					var rr: float = 0.06 + 0.03 * float(k)
+					var ph: float = float(f["t"]) * 14.0 + float(k / 2) * 0.9
+					var rr: float = 0.05 + 0.02 * float(k / 2)
 					(ch as Node3D).position.x = cos(ph) * rr
 					(ch as Node3D).position.z = sin(ph) * rr
 					k += 1
