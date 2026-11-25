@@ -96,9 +96,8 @@ const FORB_SPD := 1000.0
 # ── 126 浮空魔典 ──
 const PAGE_N := [3, 4, 6]
 const PAGE_R := 120.0
-const PAGE_W := 3.0          # 环绕角速度(弧度/秒)
-const PAGE_HIT_R := 45.0     # 书页碰到敌人的判定半径
-const PAGE_IV := 0.5
+const PAGE_W := 1.4          # 环绕角速度(弧度/秒; 11-25 用户「转速这么快吗？这太快了呀」3.0 → 1.4, 转一圈约 4.5 秒)
+const PAGE_HIT_R := 45.0     # 书页碰到敌人的判定半径(书页半宽 + 余量; 再加敌人自己的碰撞半径)
 const PAGE_FLAT := [10.0, 20.0, 50.0]
 const PAGE_ATK := 0.1
 const PAGE_SHIELD := [15.0, 30.0, 70.0]
@@ -533,6 +532,7 @@ func _summon_skeleton(owner: Dictionary, si: int, cost: float, kind: String = ""
 	p["mr"] = res; p["base_mr"] = res
 	p["maxEnergy"] = SKEL_EN_MAX
 	p["energy"] = 0.0
+	p["_act_like_idle"] = true   # 动作帧沿用待机缩放(render 读; 不然一做动作就放大、脚底跳)
 	stat["skel"] += 1
 	var rec := {"u": p, "owner": owner, "kind": kind, "si": si, "en": 0.0, "until": float(battle._t) + life}
 	_skels.append(rec)
@@ -686,45 +686,52 @@ func _wave_hit(src: Dictionary, o: Dictionary, si: int) -> void:
 
 # ════════════════════════════════════════ 126 浮空魔典: 书页 ════════════════════════════════════════
 
-## 近战: 书页绕携带者转, 每 0.5 秒结算一次碰到的敌人(每个敌人一次), 每碰到一个敌人给自己一点护盾(本件给的盾封顶)
+## 近战: 书页绕携带者转; ★每张书页各自判定碰撞(11-25 用户「你确定是每个书页碰到敌人的时候就触发效果吗？…没有的话就给我重做」):
+##   每个 sim 步算每张书页此刻的位置, 某张书页「刚碰上」某个敌人(上一步没碰着、这一步碰着)就结算一次 ——
+##   同一张书页一直贴着同一个敌人不重复打, 离开再碰上才再打; 不同书页各算各的。每碰一次给自己一点护盾(本件给的盾封顶)。
 func _tick_pages_melee(u: Dictionary, si: int, ck: String, delta: float) -> void:
-	var ang: float = _acc(u, "pang:" + ck) + PAGE_W * delta
-	_set_acc(u, "pang:" + ck, fmod(ang, TAU))
-	var a := _acc(u, "pacc:" + ck) + delta
-	if a < PAGE_IV:
-		_set_acc(u, "pacc:" + ck, a)
-		return
-	_set_acc(u, "pacc:" + ck, a - PAGE_IV)
+	var ang: float = fmod(_acc(u, "pang:" + ck) + PAGE_W * delta, TAU)
+	_set_acc(u, "pang:" + ck, ang)
 	var n: int = int(PAGE_N[si])
 	var c := Vector2(u["pos"])
-	var pts: Array = []
+	var base: float = float(PAGE_FLAT[si]) + PAGE_ATK * float(u.get("atk", 0.0))
 	for i in range(n):
 		var th: float = ang + TAU * float(i) / float(n)
-		pts.append(c + Vector2(DetMath.dcos(th), DetMath.dsin(th)) * PAGE_R)
-	var base: float = float(PAGE_FLAT[si]) + PAGE_ATK * float(u.get("atk", 0.0))
-	for o in _enemies_of(u):
-		var touched := false
-		for p in pts:
-			if DetMath.dist(Vector2(p), Vector2(o["pos"])) <= PAGE_HIT_R + float(o.get("col_r", 20.0)):
-				touched = true
-				break
-		if not touched:
-			continue
-		stat["page_hit"] += 1
-		_magic(u, o, base, false)
-		_fx("page_cut", [o])
-		var got: float = _acc(u, "pshield:" + ck)
-		var room: float = float(PAGE_SHIELD_CAP[si]) - got
-		var add: float = minf(float(PAGE_SHIELD[si]), room)
-		if add > 0.0:
-			_set_acc(u, "pshield:" + ck, got + add)
-			battle._damage._grant_shield(u, add, PAGE_SHIELD_SEC)
-			var exp_at: float = float(battle._t) + PAGE_SHIELD_SEC
-			_set_acc(u, "pshexp:" + ck, exp_at)
+		var p: Vector2 = c + Vector2(DetMath.dcos(th), DetMath.dsin(th)) * PAGE_R
+		for o in _enemies_of(u):
+			var key: String = "ptouch:%s:%d:%s" % [ck, i, _uid(o)]
+			var touching: bool = DetMath.dist(p, Vector2(o["pos"])) <= PAGE_HIT_R + float(o.get("col_r", 20.0))
+			var was: bool = _acc(u, key) > 0.0
+			if touching == was:
+				continue
+			_set_acc(u, key, 1.0 if touching else 0.0)
+			if touching:
+				_page_hit(u, o, si, ck, base)
 	## 本件给的盾 4 秒到期 ⇒ 封顶额度跟着回来
 	if _acc(u, "pshexp:" + ck) > 0.0 and float(battle._t) >= _acc(u, "pshexp:" + ck):
 		_set_acc(u, "pshield:" + ck, 0.0)
 		_set_acc(u, "pshexp:" + ck, 0.0)
+
+
+func _page_hit(u: Dictionary, o: Dictionary, si: int, ck: String, base: float) -> void:
+	stat["page_hit"] += 1
+	_magic(u, o, base, false)
+	_fx("page_cut", [o])
+	var got: float = _acc(u, "pshield:" + ck)
+	var add: float = minf(float(PAGE_SHIELD[si]), float(PAGE_SHIELD_CAP[si]) - got)
+	if add > 0.0:
+		_set_acc(u, "pshield:" + ck, got + add)
+		battle._damage._grant_shield(u, add, PAGE_SHIELD_SEC)
+		_set_acc(u, "pshexp:" + ck, float(battle._t) + PAGE_SHIELD_SEC)
+
+
+static var _uid_next := 0
+## 敌人的稳定编号(做「哪张书页碰着哪个敌人」的键; 单位字典不能当键, CLAUDE.md §4.2)
+func _uid(o: Dictionary) -> String:
+	if not o.has("_mb_uid"):
+		_uid_next += 1
+		o["_mb_uid"] = "m%d" % _uid_next
+	return str(o["_mb_uid"])
 
 
 ## 远程: 每 4/3.5/3 秒长回一张书页(最多 3/4/6 张)

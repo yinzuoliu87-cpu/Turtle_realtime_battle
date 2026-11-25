@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dxkbc7dit8s1p"
-path="res://.godot/imported/magic-fireball-hit.png-c19013072497063b36b26a3efaee34eb.ctex"
+uid="uid://du43w55n2w1bs"
+path="res://.godot/imported/magic-mirror-shatter.png-322f97bdc8e0a974c2bdb9140022d86e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-fireball-hit.png"
-dest_files=["res://.godot/imported/magic-fireball-hit.png-c19013072497063b36b26a3efaee34eb.ctex"]
+source_file="res://assets/sprites/vfx/magic-mirror-shatter.png"
+dest_files=["res://.godot/imported/magic-mirror-shatter.png-322f97bdc8e0a974c2bdb9140022d86e.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ch4onuk0eerb6"
-path="res://.godot/imported/magic-forbidden-bolt.png-513ef23c2f74f0dacee41140eeada9dc.ctex"
+uid="uid://bdguv0bcf1823"
+path="res://.godot/imported/magic-fire-trail.png-f53ea7025a72f982124aa8a9d38588b1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-forbidden-bolt.png"
-dest_files=["res://.godot/imported/magic-forbidden-bolt.png-513ef23c2f74f0dacee41140eeada9dc.ctex"]
+source_file="res://assets/sprites/vfx/magic-fire-trail.png"
+dest_files=["res://.godot/imported/magic-fire-trail.png-f53ea7025a72f982124aa8a9d38588b1.ctex"]
 
 [params]
 

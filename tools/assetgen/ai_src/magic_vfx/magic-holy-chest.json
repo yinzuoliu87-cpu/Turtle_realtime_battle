@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "magic-holy-chest 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 1.png",
+   "frame": {
+    "x": 43,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 2.png",
+   "frame": {
+    "x": 86,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 3.png",
+   "frame": {
+    "x": 129,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 4.png",
+   "frame": {
+    "x": 0,
+    "y": 57,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 5.png",
+   "frame": {
+    "x": 43,
+    "y": 57,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 6.png",
+   "frame": {
+    "x": 86,
+    "y": 57,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 7.png",
+   "frame": {
+    "x": 129,
+    "y": 57,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 8.png",
+   "frame": {
+    "x": 0,
+    "y": 114,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 9.png",
+   "frame": {
+    "x": 43,
+    "y": 114,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 10.png",
+   "frame": {
+    "x": 86,
+    "y": 114,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-chest 11.png",
+   "frame": {
+    "x": 129,
+    "y": 114,
+    "w": 43,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 57
+   },
+   "pivot": {
+    "x": 0.7441860465116279,
+    "y": 1.0350877192982457
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-holy-chest.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 172,
+   "h": 171
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 32,
+   "y": 59
+  },
+  "frameTags": [
+   {
+    "name": "magic-holy-chest",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

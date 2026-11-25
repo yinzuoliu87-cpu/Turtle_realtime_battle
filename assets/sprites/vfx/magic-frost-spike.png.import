@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c58kob3vrd5ju"
-path="res://.godot/imported/magic-fireball.png-a096ce386e446c44fd52470a2c9eb5e1.ctex"
+uid="uid://v3ybvjidawdx"
+path="res://.godot/imported/magic-frost-spike.png-619999b23a8dd3a1012ac3129107b095.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-fireball.png"
-dest_files=["res://.godot/imported/magic-fireball.png-a096ce386e446c44fd52470a2c9eb5e1.ctex"]
+source_file="res://assets/sprites/vfx/magic-frost-spike.png"
+dest_files=["res://.godot/imported/magic-frost-spike.png-619999b23a8dd3a1012ac3129107b095.ctex"]
 
 [params]
 

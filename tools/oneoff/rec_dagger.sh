@@ -2,7 +2,7 @@
 ## rec_dagger.sh —— 匕首批录像台逐条录(2026-11-25 自查用; 右屏、静音、单独存档目录)
 ##   bash tools/oneoff/rec_dagger.sh ninja_show:2 fold knife ...   (冒号后 = REC_ZOOM)
 cd "$(dirname "$0")/../.."
-OUT=.out/dagger_rec
+OUT="${OUT:-.out/dagger_rec}"
 FF="${FF:-D:/oopz/ffmpeg.exe}"
 mkdir -p "$OUT"
 for spec in "$@"; do

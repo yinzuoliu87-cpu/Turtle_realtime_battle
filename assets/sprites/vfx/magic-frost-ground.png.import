@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dnuyanqakolam"
-path="res://.godot/imported/magic-frost-nova.png-23f3dc1b67caa4e0ec89052f6bca5550.ctex"
+uid="uid://cb82j31c205oj"
+path="res://.godot/imported/magic-frost-ground.png-0e1d3593a4d2993ef1614e2b8e47cc6f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-frost-nova.png"
-dest_files=["res://.godot/imported/magic-frost-nova.png-23f3dc1b67caa4e0ec89052f6bca5550.ctex"]
+source_file="res://assets/sprites/vfx/magic-frost-ground.png"
+dest_files=["res://.godot/imported/magic-frost-ground.png-0e1d3593a4d2993ef1614e2b8e47cc6f.ctex"]
 
 [params]
 

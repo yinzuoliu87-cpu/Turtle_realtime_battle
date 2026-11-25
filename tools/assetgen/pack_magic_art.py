@@ -12,7 +12,10 @@
     祭司甩灯蓄力三格头顶多画了一个青色法阵圈(与身体不相连的独立块) ⇒ DROP_FLOATERS 去掉「整块都在 y ≤ 40 的非身体块」。
   · 特效: PixelLab 特效工作台(vfx_workbench)的预设改配色 / 改参数后导出的网格表 + 逐帧坐标 json, 在 ai_src/magic_vfx/(导出 id 记在 exports.txt);
     一次性的去掉末尾全透明帧, 循环的原样保留。打印出来的表行(帧宽 / 帧高 / 内容直径 / 锚点)抄进 MagicEqVfx.MSHEETS。
-  · 126 书页: create_image_pro_flash 32×32(无锚), ai_src/magic/page.png → vfx/magic-page.png
+  · 126 书页: create_image_pro_flash 64×64(无锚, 11-25 第二版: 青色符文的书页), ai_src/magic/page2.png → vfx/magic-page.png
+  · 125 禁咒书: create_image_pro_flash 64×64(无锚, 翻开的品红禁咒书), ai_src/magic/forbook.png → vfx/magic-forbook.png;
+    悬浮 / 飞行的上下浮动、翻转是引擎里按时间摆位置 / 缩放(不是逐帧画的)
+  · 【飞弹】光尾段: 工作台 beam 图层画的竖光带, 裁中段转横(见 main 里那一段注释)。
 本脚本只做拷贝 / 拼接 / 去碎块, 重跑逐字节相同。
 
     python tools/assetgen/pack_magic_art.py
@@ -61,12 +64,14 @@ DROP_FLOATERS = {"kpa_wind_1", "kpa_wind_2", "kpa_wind_3"}
 FOOT_REF = {"eq-skelw": "skw_0", "eq-skelm": "skm_0", "eq-skelp": "skp_0b"}
 
 AIV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "magic_vfx")
-VFX_SHEETS = ["magic-missile-orb", "magic-missile-hit", "magic-note-bolt", "magic-note-hit", "magic-fireball", "magic-fireball-hit",
-              "magic-frost-nova", "magic-storm-bolt", "magic-holy-regen", "magic-scroll-shield", "magic-skel-rise", "magic-skel-crumble",
-              "magic-skel-blast", "magic-skel-wave", "magic-wave-hit", "magic-wave-heal", "magic-mirror-echo", "magic-forbidden-bolt",
-              "magic-forbidden-blast", "magic-forbidden-ready", "magic-page-cut", "magic-page-block", "magic-tome-hp", "magic-skelm-bolt", "magic-skelp-bolt"]
-VFX_LOOPS = {"magic-missile-orb", "magic-note-bolt", "magic-fireball", "magic-holy-regen", "magic-scroll-shield", "magic-skel-wave",
-             "magic-mirror-echo", "magic-forbidden-bolt", "magic-forbidden-ready", "magic-skelm-bolt", "magic-skelp-bolt"}
+VFX_SHEETS = ["magic-missile-orb", "magic-missile-hit", "magic-note-bolt", "magic-note-hit", "magic-fireball2", "magic-fireball-hit2",
+              "magic-frost-ground", "magic-frost-spike", "magic-storm-bolt", "magic-holy-chest", "magic-scroll-shield", "magic-skel-rise", "magic-skel-crumble",
+              "magic-skel-blast", "magic-skel-wave", "magic-wave-hit", "magic-wave-heal", "magic-mirror-shatter",
+              "magic-forbidden-blast", "magic-page-cut", "magic-page-block", "magic-tome-hp", "magic-skelm-bolt", "magic-skelp-bolt"]
+VFX_LOOPS = {"magic-missile-orb", "magic-note-bolt", "magic-fireball2", "magic-holy-chest", "magic-scroll-shield", "magic-skel-wave",
+             "magic-skelm-bolt", "magic-skelp-bolt"}
+## 锚点改写(工作台导出的锚点是效果原点, 不是要对准的那一点): 122 胸口绿光 = 光团中心(逐帧量绿芯质心 ≈ (20, 30))
+ANCHOR_FIX = {"magic-holy-chest": (20, 30)}
 
 
 def _drop_floaters(im, ymax=40):
@@ -131,6 +136,8 @@ def _vfx(name):
             diam = max(diam, bb[2] - bb[0], bb[3] - bb[1])
     out.save(os.path.join(VFX, name + ".png"), optimize=False)
     an = meta["meta"]["anchor"]
+    if name in ANCHOR_FIX:
+        an = {"x": ANCHOR_FIX[name][0], "y": ANCHOR_FIX[name][1]}
     return '\t"%s": ["vfx/%s.png", %d, %d, %.1f, %d, %d],   # %d 帧%s' % (
         name[6:], name, w, h, float(diam), int(an["x"]), int(an["y"]), len(frames), " · 循环" if name in VFX_LOOPS else "")
 
@@ -144,7 +151,18 @@ def main():
         ref = Image.open(os.path.join(AI, FOOT_REF[dst[:8]] + ".png")).convert("RGBA")
         _strip(names, FW - ref.getbbox()[3]).save(os.path.join(VFX, dst + ".png"), optimize=False)
     rows = [_vfx(n) for n in VFX_SHEETS]
-    Image.open(os.path.join(AI, "page.png")).convert("RGBA").save(os.path.join(VFX, "magic-page.png"), optimize=False)
+    Image.open(os.path.join(AI, "page2.png")).convert("RGBA").save(os.path.join(VFX, "magic-page.png"), optimize=False)
+    Image.open(os.path.join(AI, "forbook.png")).convert("RGBA").save(os.path.join(VFX, "magic-forbook.png"), optimize=False)
+    ## 125 禁咒书飞行光尾: 蓝光尾逐色换成品红(同一条光带的形状, 只改四个颜色)
+    pal = {(58, 94, 224, 255): (112, 18, 104, 255), (127, 176, 255, 255): (214, 58, 196, 255), (214, 232, 255, 255): (255, 168, 238, 255)}
+    tr = Image.open(os.path.join(AIV, "magic-missile-trail.png")).convert("RGBA").crop((0, 10, 24, 18)).transpose(Image.Transpose.ROTATE_90)
+    tr.putdata([pal.get(c, c) for c in tr.getdata()])
+    tr.save(os.path.join(VFX, "magic-forb-trail.png"), optimize=False)
+    ## 羁绊【飞弹】光尾段: 工作台导出的竖光带(24×32, 上端圆头)只取长度方向一致的第 10–17 行, 转成「沿路径 = 横向」的 8×24
+    ##   (引擎里每个 sim 步铺一段, 按路径方向转、按段长拉伸; 圆头那几行会在段与段接缝处出现亮点, 不取)
+    for tn in ["magic-missile-trail", "magic-fire-trail"]:   # 蓝(羁绊飞弹 / 学徒笔记)· 火(119 火球)
+        Image.open(os.path.join(AIV, tn + ".png")).convert("RGBA").crop((0, 10, 24, 18)).transpose(Image.Transpose.ROTATE_90).save(
+            os.path.join(VFX, tn + ".png"), optimize=False)
     print("图标 %d 张 + 标签 %d 张 + 骷髅帧条 %d 条 + 特效 %d 张 + 书页 1 张" % (len(ICONS), len(TAG), len(SKEL_SEQ), len(rows)))
     print("\n".join(rows))
 

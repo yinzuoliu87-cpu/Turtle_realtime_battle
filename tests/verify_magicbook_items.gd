@@ -353,13 +353,30 @@ func _ready() -> void:
 	t2 = _mk("right", c + Vector2(400, 0))
 	_place([me, t1, t2])
 	_ms.on_spawn(me, "p2eq_126", 2)
-	_adv(0.55, [me])   # 0.05 × 10 累加差一点到不了 0.5, 多走一步
+	_adv(0.2, [me])   # 第 0 张书页开打就在 t1 身上; 0.2 秒内下一张还没转到
 	var w126: float = float(M.PAGE_FLAT[2]) + M.PAGE_ATK * 100.0
-	_ok("126 近战: 环上的敌人每 %.1f 秒挨 %.0f 魔法、自己得 %.0f 护盾; 远处不挨" % [M.PAGE_IV, w126, float(M.PAGE_SHIELD[2])],
+	_ok("126 近战: 书页碰到环上的敌人 ⇒ 挨 %.0f 魔法、自己得 %.0f 护盾; 一直贴着不重复打; 远处不挨" % [w126, float(M.PAGE_SHIELD[2])],
 		_near(_lost(t1), w126) and _near(float(me["shield"]), float(M.PAGE_SHIELD[2])) and _lost(t2) == 0.0,
 		"%.0f / 盾 %.0f / 远 %.0f" % [_lost(t1), float(me["shield"]), _lost(t2)])
-	_adv(10.0, [me])
-	_ok("126 近战: 本件给的护盾封顶 %.0f" % float(M.PAGE_SHIELD_CAP[2]), float(me["shield"]) <= float(M.PAGE_SHIELD_CAP[2]) + 0.5, "盾 %.0f" % float(me["shield"]))
+	## 每张书页各自判定碰撞: 转一整圈(2π / 角速度), 6 张书页各从 t1 身上扫过一次 ⇒ 恰好 6 次; 远处的 t2 一次没有
+	var h0: int = int(_ms.stat["page_hit"])
+	t1["hp"] = t1["maxHp"]
+	_adv(TAU / M.PAGE_W, [me])
+	var nh: int = int(_ms.stat["page_hit"]) - h0
+	_ok("126 近战: 转一圈 %.1f 秒, 每张书页碰到敌人各结算一次 ⇒ %d 次(按碰撞, 不按定时)" % [TAU / M.PAGE_W, int(M.PAGE_N[2])],
+		nh == int(M.PAGE_N[2]) and _near(_lost(t1), w126 * float(M.PAGE_N[2]), 3.0) and _lost(t2) == 0.0,
+		"%d 次 · %.0f · 远 %.0f" % [nh, _lost(t1), _lost(t2)])
+	## 封顶口径 = 护盾 4 秒到期之内本件最多给 1000(测试台不跑护盾到期 ⇒ 量「任意 4 秒窗口里增加了多少」)
+	var shs: Array = [float(me["shield"])]
+	for i in range(400):
+		_adv(0.05, [me])
+		shs.append(float(me["shield"]))
+	var win: int = int(round(M.PAGE_SHIELD_SEC / 0.05))
+	var worst := 0.0
+	for i in range(win, shs.size()):
+		worst = maxf(worst, float(shs[i]) - float(shs[i - win]))
+	_ok("126 近战: 本件给的护盾 %.0f 秒内封顶 %.0f" % [M.PAGE_SHIELD_SEC, float(M.PAGE_SHIELD_CAP[2])],
+		worst <= float(M.PAGE_SHIELD_CAP[2]) + 0.5 and worst > 0.0, "4 秒内最多 +%.0f" % worst)
 
 	## ── 126 远程: 书页格挡 ──
 	me = _mk("left", c, ["p2eq_126"])

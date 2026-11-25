@@ -117,7 +117,9 @@ static func cases() -> Dictionary:
 			+ _ring_dummies(Vector2(-170, 0), [Vector2(320, -90), Vector2(380, 40), Vector2(300, 150)]), 30.0],
 		"mb_mirror": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "equips": _eq([124]), "hp": 8000.0, "killable": false})] + _dummies(80, 3), 12.0],
 		"mb_forb": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "equips": _eq([125]), "hp": 8000.0, "killable": false})] + _dummies(80, 3), 12.0],
-		"mb_tome_melee": [[_u("diamond", "left", Vector2(-10, 0), {"fe": true, "equips": _eq([126]), "hp": 8000.0, "killable": false})] + _dummies(60, 3, true, 30000.0, 30.0), 12.0],
+		## 近战书页: 只会站着的小将带(钻石龟自己的技能白光把书页盖住, 11-25 录像自查); 三只靶子正好站在书页转的那一圈上 ⇒ 看每张书页扫过才挨打
+		"mb_tome_melee": [[_me(Vector2(-10, 0), _eq([126]), {"idle": true})]
+			+ _ring_dummies(Vector2(-10, 0), [Vector2(120, 0), Vector2(-60, 104), Vector2(-60, -104)]), 12.0],
 		## 远程书页格挡: 敌人一下打 ≥ 6% 最大生命(攻击力调高、携带者血量压到 3000 ⇒ 门槛 180) ⇒ 书页闪到身前挡
 		"mb_tome_ranged": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "hold": true, "equips": _eq([126]), "hp": 3000.0, "killable": false})]
 			+ _dummies(-60, 2, true, 30000.0, 700.0), 14.0],

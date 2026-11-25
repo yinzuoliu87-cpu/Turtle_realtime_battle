@@ -23,3 +23,11 @@ magic-wave-heal c31f527f-08f1-4905-8f1e-465d552e70df
 magic-forbidden-ready 7ceb8b09-236d-4860-8851-d4038a3405fa
 magic-skelm-bolt 94c0a685-a8e2-49a4-a9f9-36a77a990169
 magic-skelp-bolt 1392b4a1-9347-4543-8d6e-ad78cff5a810
+magic-missile-trail 7da554b1-52e1-4fdf-ba41-4836131e8027
+magic-fire-trail df46dba8-3aca-46fb-82b0-2d5137af341a
+magic-holy-chest c7358af1-c03f-4793-b9e1-e35763353440
+magic-frost-spike 37b027d9-262d-4c74-a30b-3508b6c6ecf5
+magic-frost-ground 6a34c059-2426-4b25-a351-d8b7a26e1e87
+magic-fireball2 1085caaf-6b70-459d-9d86-c225da33a4b1
+magic-fireball-hit2 1da70b43-7b92-47b2-85cb-6989df107875
+magic-mirror-shatter e286cde7-a657-4a17-a82d-152843d2914f

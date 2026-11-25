@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "magic-fireball-hit2 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 1.png",
+   "frame": {
+    "x": 83,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 2.png",
+   "frame": {
+    "x": 166,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 3.png",
+   "frame": {
+    "x": 249,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 4.png",
+   "frame": {
+    "x": 0,
+    "y": 79,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 5.png",
+   "frame": {
+    "x": 83,
+    "y": 79,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 6.png",
+   "frame": {
+    "x": 166,
+    "y": 79,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 7.png",
+   "frame": {
+    "x": 249,
+    "y": 79,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 8.png",
+   "frame": {
+    "x": 0,
+    "y": 158,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 9.png",
+   "frame": {
+    "x": 83,
+    "y": 158,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 10.png",
+   "frame": {
+    "x": 166,
+    "y": 158,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-fireball-hit2 11.png",
+   "frame": {
+    "x": 249,
+    "y": 158,
+    "w": 83,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 79
+   },
+   "pivot": {
+    "x": 0.5060240963855421,
+    "y": 0.4936708860759494
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-fireball-hit2.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 332,
+   "h": 237
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 42,
+   "y": 39
+  },
+  "frameTags": [
+   {
+    "name": "magic-fireball-hit2",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

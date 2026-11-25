@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "magic-mirror-shatter 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 1.png",
+   "frame": {
+    "x": 83,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 2.png",
+   "frame": {
+    "x": 166,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 3.png",
+   "frame": {
+    "x": 249,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 4.png",
+   "frame": {
+    "x": 0,
+    "y": 99,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 5.png",
+   "frame": {
+    "x": 83,
+    "y": 99,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 6.png",
+   "frame": {
+    "x": 166,
+    "y": 99,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 7.png",
+   "frame": {
+    "x": 249,
+    "y": 99,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 8.png",
+   "frame": {
+    "x": 0,
+    "y": 198,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-shatter 9.png",
+   "frame": {
+    "x": 83,
+    "y": 198,
+    "w": 83,
+    "h": 99
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 83,
+    "h": 99
+   },
+   "sourceSize": {
+    "w": 83,
+    "h": 99
+   },
+   "pivot": {
+    "x": 0.4939759036144578,
+    "y": 0.36363636363636365
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-mirror-shatter.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 332,
+   "h": 297
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 41,
+   "y": 36
+  },
+  "frameTags": [
+   {
+    "name": "magic-mirror-shatter",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

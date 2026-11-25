@@ -15,11 +15,12 @@ const MSHEETS := {
 	"missile-hit": ["vfx/magic-missile-hit.png", 64, 64, 44.0, 32, 32],   # 5 帧 ·【飞弹】命中: 蓝白闪 + 射线 + 环
 	"note-bolt": ["vfx/magic-note-bolt.png", 32, 32, 24.0, 16, 16],   # 8 帧 · 循环 · 117 学徒笔记飞弹: 小而淡的青白球(与羁绊飞弹区分)
 	"note-hit": ["vfx/magic-note-hit.png", 43, 42, 37.0, 18, 23],   # 5 帧 · 117 命中: 青白小十字环
-	"fireball": ["vfx/magic-fireball.png", 48, 48, 39.0, 24, 24],   # 8 帧 · 循环 · 119 烈焰法典火球
-	"fireball-hit": ["vfx/magic-fireball-hit.png", 58, 81, 67.0, 29, 29],   # 10 帧 · 119 火球爆开
-	"frost-nova": ["vfx/magic-frost-nova.png", 115, 47, 109.0, 55, 23],   # 7 帧 · 120 冰霜新星: 贴地冰环 + 雪花甩出
+	"fireball2": ["vfx/magic-fireball2.png", 74, 28, 68.0, 63, 15],   # 12 帧 · 循环 · 119 烈焰法典火球(11-25 第二版, 照安妮 Q): 白热弹头在前、火舌往后甩; 朝飞行方向转
+	"fireball-hit2": ["vfx/magic-fireball-hit2.png", 83, 79, 76.0, 42, 39],   # 12 帧 · 119 火球命中(第二版): 白闪 → 火团翻滚炸开 + 冲击圈 + 火星往外甩、冷成暗红 → 烟
+	"frost-ground": ["vfx/magic-frost-ground.png", 160, 66, 135.0, 80, 33],   # 16 帧 · 120 冰霜新星(11-25 第二版, 照冰雪墨菲特): 地面冰裂从中心往外爬 + 贴地寒雾
+	"frost-spike": ["vfx/magic-frost-spike.png", 56, 65, 56.0, 31, 43],   # 14 帧 · 120 冰刺一簇: 从地里破土 → 停住 → 缩回、剩碎冰(锚点 = 冰刺根部)
 	"storm-bolt": ["vfx/magic-storm-bolt.png", 96, 128, 127.0, 48, 110, 2],   # 8 帧 · 121 风暴之书: 天降黄色闪电(第 7 列 = 从第 2 帧开播: 闪电已快到地面, 落地格对上伤害那一刻)
-	"holy-regen": ["vfx/magic-holy-regen.png", 80, 112, 60.0, 40, 92],   # 12 帧 · 循环 · 122 治愈圣典持续回复: 脚下绿环 + 上飘的加号
+	"holy-chest": ["vfx/magic-holy-chest.png", 43, 57, 45.0, 20, 30],   # 12 帧 · 循环 · 122 治愈圣典持续回复(第二版): 胸口一团绿光脉动 + 绿色光点 / 加号往上飘(锚点 = 光团中心)
 	"scroll-shield": ["vfx/magic-scroll-shield.png", 96, 96, 81.0, 48, 48],   # 8 帧 · 循环 · 118 羊皮咒卷护盾: 金色符文环
 	"skel-rise": ["vfx/magic-skel-rise.png", 64, 63, 58.0, 32, 18],   # 9 帧 · 123 骷髅破土: 绿环 + 骨灰 + 骨头蹦出
 	"skel-crumble": ["vfx/magic-skel-crumble.png", 54, 91, 71.0, 26, 27],   # 8 帧 · 123 骷髅时间到化灰: 灰烟 + 骨头往下掉
@@ -27,10 +28,8 @@ const MSHEETS := {
 	"skel-wave": ["vfx/magic-skel-wave.png", 60, 76, 70.0, 30, 46],   # 8 帧 · 循环 · 123 骷髅祭司亡灵浪潮: 青色鬼火团 + 骷髅头
 	"wave-hit": ["vfx/magic-wave-hit.png", 51, 47, 45.0, 23, 24],   # 5 帧 · 浪潮打到敌人: 青色爆闪 + 骷髅头飞散
 	"wave-heal": ["vfx/magic-wave-heal.png", 46, 51, 31.0, 23, 28],   # 5 帧 · 浪潮经过友军: 青绿光球 + 加号
-	"mirror-echo": ["vfx/magic-mirror-echo.png", 70, 70, 64.0, 35, 35],   # 12 帧 · 循环 · 124 镜像魔典再放一次: 紫色法阵
-	"forbidden-bolt": ["vfx/magic-forbidden-bolt.png", 50, 50, 42.0, 25, 25],   # 8 帧 · 循环 · 125 禁咒弹: 品红大球 + 环绕符文
+	"mirror-shatter": ["vfx/magic-mirror-shatter.png", 83, 99, 77.0, 41, 36],   # 10 帧 · 124 镜像分身碎裂: 紫白闪 + 光环 + 镜片碎屑往外飞
 	"forbidden-blast": ["vfx/magic-forbidden-blast.png", 78, 94, 80.0, 39, 39],   # 10 帧 · 125 禁咒弹命中: 品红爆炸 + 符文碎片
-	"forbidden-ready": ["vfx/magic-forbidden-ready.png", 37, 37, 28.0, 18, 18],   # 8 帧 · 循环 · 125 下一次攻击已装填: 头顶三枚品红符文
 	"page-cut": ["vfx/magic-page-cut.png", 47, 42, 41.0, 22, 26],   # 6 帧 · 126 近战书页划过敌人: 青色纸刃弧
 	"page-block": ["vfx/magic-page-block.png", 51, 46, 45.0, 23, 23],   # 5 帧 · 126 远程书页格挡: 纸白闪 + 碎纸片
 	"tome-hp": ["vfx/magic-tome-hp.png", 46, 51, 45.0, 23, 28],   # 5 帧 · 126 释放技能后临时最大生命: 金闪 + 上飘加号
@@ -39,12 +38,11 @@ const MSHEETS := {
 	"skelp-bolt": ["vfx/magic-skelp-bolt.png", 33, 33, 26.0, 16, 16],   # 8 帧 · 循环 · 骷髅祭司鬼火光: 青球 + 白点
 }
 const PAGE_TEX := "vfx/magic-page.png"
-const PAGE_PX := 26.0           ## 书页显示大小(世界码)
+const PAGE_PX := 58.0           ## 书页显示大小(世界码; 11-25 第二版放大: 26 / 40 时录出来只是几个小纸片)
 const PAGE_ORBIT_H := 1.05      ## 近战书页环绕高度(米)
 
 var _flies: Array = []          ## 飞行物节点(换路清)
 var _pages: Array = []          ## 126 书页 {u, ck, melee, nodes:[]}
-var _marks: Array = []          ## 125 装填标记 {u, node}
 
 
 func _row(key: String) -> Array:   # zero-caller-ok: 覆盖父类 BombEqVfx._row —— 父类的 _anim / _load 经它查表, 调用方在父类
@@ -75,22 +73,141 @@ func _fly_end(node) -> void:
 		(node as Sprite3D).queue_free()
 
 
-func mb_launch(u: Dictionary, _tgt: Dictionary, _i: int, _n: int):
-	return _fly_node("missile-orb", u, 36.0)
+## 羁绊【飞弹】(11-25 用户「太大了，而且没有轨迹…是这么直直飞吗？一般飞弹不这么做的吧」):
+##   照卡莎 Q「艾卡西亚暴雨」的做法 —— 小而亮的弹头, 出手先朝两侧扇形散开、走一条往外鼓的弧线再拐进目标, 身后拖一条渐隐光尾。
+##   ★只是画法: 结算仍是 launch_flight 按速度追身体(k = 已飞 / 总路程), 这里按同一个 k 在「出手点 → 外鼓控制点 → 目标当前位置」的
+##     二次贝塞尔上取位置 ⇒ k = 1(碰到身体、结算)那一刻画面也正好在目标身上, 不会出现画面没到就掉血。
+const MB_PX := 18.0              ## 弹头大小(世界码)
+const MB_FAN_DEG := 32.0         ## 相邻两枚出手方向错开的角度
+const MB_BULGE := 0.55           ## 外鼓程度(控制点离连线的距离 / 直线距离)
+const MB_ARC_H := 0.9            ## 弧线额外抬高(米, 正中间最高)
+const MB_TRAIL_LIFE := 0.22      ## 每段光带存在多久(秒) = 光尾长度(按飞行速度 ≈ 200 码)
+const MB_TRAIL_W := 10.0         ## 光带最粗处的宽度(世界码, 比弹头细)
+const MB_TRAIL_COL := Color(0.62, 0.78, 1.0, 0.9)   ## 羁绊飞弹光尾: 跟弹头同一种蓝
+const NOTE_PX := 16.0            ## 117 学徒笔记: 比羁绊飞弹再小一圈(单发、青白)
+const NOTE_TRAIL_W := 6.0
+const NOTE_TRAIL_COL := Color(0.7, 1.0, 0.95, 0.8)
+const TRAIL_TEX := "vfx/magic-missile-trail.png"
+const FIRE_TRAIL_TEX := "vfx/magic-fire-trail.png"
+var _trail: Array = []           ## 光尾段 {node, t, sx}
 
 
-func mb_step(node, _from2: Vector2, p2: Vector2, _to2: Vector2, _k: float, _i: int) -> void:
-	_fly_to(node, p2)
+func mb_launch(u: Dictionary, tgt: Dictionary, i: int, n: int):
+	return _arc_launch("missile-orb", u, tgt, MB_PX, i, n, MB_TRAIL_COL, MB_TRAIL_W)
+
+
+func mb_step(node, _from2: Vector2, _p2: Vector2, to2: Vector2, k: float, _i: int) -> void:
+	_arc_step(node, to2, k)
+
+
+## 弧线飞行物(羁绊【飞弹】/ 117 学徒笔记): 出手点 → 外鼓控制点 → 目标当前位置的二次贝塞尔, 按结算侧同一个 k 取位置;
+##   第 i 枚(共 n 枚)往哪一侧鼓、鼓多少: 正中间那枚也略鼓(不走直线), 两侧依次加大角度, 左右交替。身后铺丝带光尾(颜色 / 宽度各自定)。
+func _arc_launch(key: String, u: Dictionary, tgt: Dictionary, px: float, i: int, n: int, col: Color, width: float, bulge: float = 1.0, tex: String = TRAIL_TEX) -> Sprite3D:
+	var s := _fly_node(key, u, px)
+	if s == null:
+		return null
+	var a := Vector2(u["pos"])
+	var b := Vector2(tgt["pos"])
+	var d := b - a
+	var L: float = maxf(1.0, d.length())
+	var side_k: float = float(i) - float(n - 1) * 0.5
+	if absf(side_k) < 0.01:
+		side_k = 0.35 if (i % 2 == 0) else -0.35
+	var ang: float = deg_to_rad(clampf(side_k * MB_FAN_DEG, -80.0, 80.0))
+	var perp := Vector2(-d.y, d.x) / L
+	s.set_meta("ctrl_off", (d * 0.35) + perp * L * MB_BULGE * sin(ang) * 2.0 * bulge)
+	s.set_meta("from", a)
+	s.set_meta("trail_col", col)
+	s.set_meta("trail_w", width)
+	s.set_meta("trail_tex", tex)
+	return s
+
+
+func _arc_step(node, to2: Vector2, k: float) -> void:
+	if not (node is Sprite3D) or not is_instance_valid(node):
+		return
+	var s: Sprite3D = node
+	var a: Vector2 = s.get_meta("from", to2)
+	var c: Vector2 = a + Vector2(s.get_meta("ctrl_off", Vector2.ZERO))
+	var q: float = clampf(k, 0.0, 1.0)
+	var p: Vector2 = a * (1.0 - q) * (1.0 - q) + c * 2.0 * (1.0 - q) * q + to2 * q * q
+	var h: float = float(s.get_meta("h", 1.0)) + MB_ARC_H * sin(PI * q)
+	var prev: Vector3 = s.position
+	s.position = battle._world_pos(p, h)
+	if s.has_meta("orient"):
+		_orient_screen(s, s.position - prev)   # 119 火球: 弹头朝前进方向
+	if s.has_meta("book"):
+		s.scale = Vector3(0.8 + 0.2 * sin(q * 40.0), 1.0, 1.0)   # 125 飞书: 飞的时候书页扑扇
+	_trail_seg(prev, s.position, s.get_meta("trail_col", MB_TRAIL_COL), float(s.get_meta("trail_w", MB_TRAIL_W)), str(s.get_meta("trail_tex", TRAIL_TEX)))
+
+
+## 光尾 = 一条丝带(拖尾渲染器的做法): 每个 sim 步从上一位置到这一位置铺一段光带, 按路径方向转、按段长拉伸, 段与段首尾相接;
+##   每段随年龄变细、变淡 ⇒ 弹头后面是一条连续、越往后越细的光尾。
+##   (11-25 用户「这个飞弹的轨迹…就是这个图片叠在一起吗？」—— 第一版是弹头贴图的残影一个个摞起来, 不是轨迹。)
+##   ★不用每帧现画的 ImmediateMesh(直播录不进流, memory fb-no-immediatemesh-vfx-stream): 每段是一个 Sprite3D,
+##     位置 / 旋转 / 缩放 / 颜色都在录流器的跟踪表里。
+func _trail_seg(a3: Vector3, b3: Vector3, col: Color, width: float, tex: String = TRAIL_TEX) -> void:
+	if not _ok():
+		return
+	var cam = battle.get("_cam")
+	if not is_instance_valid(cam) or not (cam is Camera3D):
+		return
+	var t: Texture2D = _load(tex)
+	if t == null:
+		return
+	var cb: Basis = (cam as Camera3D).global_transform.basis
+	var v: Vector3 = b3 - a3
+	var vx: float = v.dot(cb.x)
+	var vy: float = v.dot(cb.y)
+	var seg: float = sqrt(vx * vx + vy * vy)
+	if seg < 0.0005:
+		return
+	var g := Sprite3D.new()
+	g.texture = t
+	g.shaded = false
+	g.transparent = true
+	g.no_depth_test = true
+	g.render_priority = 10
+	g.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	g.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 方向自己转(面朝镜头、绕视线转到路径方向); 建好之后不再改这个属性(直播白名单)
+	g.pixel_size = (width * float(battle.WS)) / float(t.get_height())
+	g.modulate = col   # 压成弹头同色(白芯在游戏尺寸下太白)
+	battle._world.add_child(g)
+	g.global_transform = Transform3D(cb * Basis(Vector3(0, 0, 1), atan2(vy, vx)), (a3 + b3) * 0.5)
+	var sx: float = seg / (float(t.get_width()) * g.pixel_size) * 1.12   # 略长一点, 段与段之间不留缝
+	g.scale = Vector3(sx, 1.0, 1.0)
+	_trail.append({"node": g, "t": 0.0, "sx": sx, "a0": col.a})
+
+
+func _tick_trail(delta: float) -> void:
+	for j in range(_trail.size() - 1, -1, -1):
+		var r: Dictionary = _trail[j]
+		var g = r["node"]
+		if not is_instance_valid(g):
+			_trail.remove_at(j)
+			continue
+		r["t"] = float(r["t"]) + delta
+		var q: float = float(r["t"]) / MB_TRAIL_LIFE
+		if q >= 1.0:
+			(g as Node3D).queue_free()
+			_trail.remove_at(j)
+			continue
+		(g as Sprite3D).modulate.a = float(r.get("a0", 0.9)) * (1.0 - q)
+		(g as Sprite3D).scale = Vector3(float(r["sx"]), 1.0 - 0.85 * q, 1.0)   # 越旧越细 ⇒ 光尾往后收成一根线
 
 
 func mb_land(node, tgt: Dictionary, hit: bool) -> void:
 	_fly_end(node)
 	if hit:
-		_anim("missile-hit", Vector2(tgt["pos"]), 56.0, 0.35, 0.02, false, false, Color.WHITE, tgt)
+		_anim("missile-hit", Vector2(tgt["pos"]), 42.0, 0.35, 0.02, false, false, Color.WHITE, tgt)
 
 
-func note_launch(u: Dictionary, _tgt: Dictionary):
-	return _fly_node("note-bolt", u, 28.0)
+var _note_n := 0   ## 第几发学徒笔记(左右交替鼓)
+
+
+func note_launch(u: Dictionary, tgt: Dictionary):
+	_note_n += 1
+	return _arc_launch("note-bolt", u, tgt, NOTE_PX, _note_n % 2, 2, NOTE_TRAIL_COL, NOTE_TRAIL_W)   # 当成一对里的一发: 左右各鼓 16°, 一发往左一发往右
 
 
 func note_land(node, tgt: Dictionary, hit: bool) -> void:
@@ -99,17 +216,130 @@ func note_land(node, tgt: Dictionary, hit: bool) -> void:
 		_anim("note-hit", Vector2(tgt["pos"]), 50.0, 0.32, 0.02, false, false, Color.WHITE, tgt)
 
 
-func fire_launch(u: Dictionary, _tgt: Dictionary):
-	return _fly_node("fireball", u, 54.0)
+## 119 火球(11-25 第二版, 用户「火球本身以及这个命中特效不是很好…参考一下英雄联盟的安妮」):
+##   照安妮 Q「碎裂之火」—— 白热弹头在前、火舌往身后甩, 弹头朝飞行方向转(不是一颗圆球平移); 身后仍拖火焰丝带(丝带用户说没问题);
+##   命中 = 白闪 → 火团翻滚炸开 + 冲击圈 + 火星往外甩并冷成暗红 → 烟散。
+const FIRE_PX := 78.0            ## 弹头连火舌的长度(世界码)
+func fire_launch(u: Dictionary, tgt: Dictionary):
+	var s := _arc_launch("fireball2", u, tgt, FIRE_PX, 0, 1, Color(1, 1, 1, 0.9), 16.0, 0.0, FIRE_TRAIL_TEX)
+	if s != null:
+		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 建出来这一帧就定(直播只在建点录这一项); 朝向每步在 _arc_step 里按路径转
+		s.set_meta("orient", true)
+		_orient_to(s, Vector2(tgt["pos"]) - Vector2(u["pos"]))
+	return s
 
 
 func fire_land(node, tgt: Dictionary) -> void:
 	_fly_end(node)
-	_anim("fireball-hit", Vector2(tgt["pos"]), 110.0, 0.7, 0.02, false, false, Color.WHITE, tgt)
+	_anim("fireball-hit2", Vector2(tgt["pos"]), 125.0, 0.85, 0.02, false, false, Color.WHITE, tgt)
 
 
-func forb_launch(u: Dictionary, _tgt: Dictionary):
-	return _fly_node("forbidden-bolt", u, 46.0)
+## 飞行物朝向: 面朝镜头, 绕视线转到「屏幕上的前进方向」(贴图里弹头朝右)
+func _orient_screen(s: Sprite3D, v3: Vector3) -> void:
+	var cam = battle.get("_cam")
+	if not is_instance_valid(cam) or not (cam is Camera3D):
+		return
+	var cb: Basis = (cam as Camera3D).global_transform.basis
+	var vx: float = v3.dot(cb.x)
+	var vy: float = v3.dot(cb.y)
+	if vx * vx + vy * vy < 0.0000001:
+		return
+	s.global_transform = Transform3D(cb * Basis(Vector3(0, 0, 1), atan2(vy, vx)), s.global_transform.origin)
+
+
+func _orient_to(s: Sprite3D, d2: Vector2) -> void:
+	_orient_screen(s, battle._world_pos(d2, 0.0) - battle._world_pos(Vector2.ZERO, 0.0))
+
+
+# ═══════════════════════════════ 125 禁咒全书: 飞书 ═══════════════════════════════
+## 11-25 用户「身上出现一个飞书…一个大一点的、比较好看一点的飞书, 然后下次普攻之后, 这个飞书就直接游到这个敌人身上, 碰到敌人的时候就爆炸」:
+##   放过技能 ⇒ 携带者身后肩头浮起一本翻开的禁咒书(上下浮动、书页一开一合); 下一次攻击 ⇒ 就是这本书从肩头飞出去,
+##   拖一条品红光尾、走一条略鼓的弧线, 碰到敌人身体(结算侧按速度追身体, 同一个 k)那一刻炸开。原来的三枚红符文删掉。
+##   (书 = PixelLab 生成的一张 64×64 图; 浮动 / 开合是引擎里按时间摆位置 / 横向缩放, 不是逐帧画的)
+const FORB_TEX := "vfx/magic-forbook.png"
+const FORB_PX := 74.0            ## 书的显示大小(世界码; 52 时录出来只是肩后一小块, 11-25 录像自查)
+const FORB_SIDE := 46.0          ## 浮在身后多远(码)
+const FORB_TRAIL_TEX := "vfx/magic-forb-trail.png"
+var _books: Array = []           ## 浮在身边的书 {u, node}
+
+
+func _book_node(u: Dictionary) -> Sprite3D:
+	var t: Texture2D = _load(FORB_TEX)
+	if t == null:
+		return null
+	var s := Sprite3D.new()
+	s.texture = t
+	s.shaded = false
+	s.transparent = true
+	s.no_depth_test = true
+	s.render_priority = 11
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.pixel_size = (FORB_PX * float(battle.WS)) / float(maxi(t.get_width(), t.get_height()))
+	battle._world.add_child(s)
+	return s
+
+
+func _book_hover_pos(u: Dictionary, t: float) -> Vector3:
+	var back: float = -1.0 if bool(u.get("face_right", str(u.get("side", "left")) == "left")) else 1.0
+	return battle._world_pos(Vector2(u["pos"]) + Vector2(back * FORB_SIDE, 0.0), body_h(u) + 0.55 + 0.09 * sin(t * 2.4))
+
+
+func forb_ready(u: Dictionary, on: bool) -> void:
+	for i in range(_books.size() - 1, -1, -1):
+		if is_same(_books[i]["u"], u):
+			if is_instance_valid(_books[i]["node"]):
+				(_books[i]["node"] as Node3D).queue_free()
+			_books.remove_at(i)
+	if not on or not _ok():
+		return
+	var s := _book_node(u)
+	if s == null:
+		return
+	s.position = _book_hover_pos(u, float(battle._t))
+	s.scale = Vector3(0.2, 0.2, 1.0)   # 浮起时从小长大(tick 里 0.25 秒长到原大)
+	_books.append({"u": u, "node": s, "t": 0.0})
+
+
+func _tick_books(delta: float) -> void:
+	var t := float(battle._t)
+	for i in range(_books.size() - 1, -1, -1):
+		var r: Dictionary = _books[i]
+		var s = r["node"]
+		var u: Dictionary = r["u"]
+		if not is_instance_valid(s) or not u.get("alive", false):
+			if is_instance_valid(s):
+				(s as Node3D).queue_free()
+			_books.remove_at(i)
+			continue
+		r["t"] = float(r["t"]) + delta
+		var grow: float = minf(1.0, float(r["t"]) / 0.25)
+		(s as Sprite3D).position = _book_hover_pos(u, t)
+		(s as Sprite3D).scale = Vector3(grow * (0.86 + 0.14 * sin(t * 5.0)), grow, 1.0)   # 书页一开一合
+
+
+## 下一次攻击: 就是身边那本书飞出去(从它浮着的位置起飞); 没浮着(演出层后建 / 直播中途进)就从肩头新建一本
+func forb_launch(u: Dictionary, tgt: Dictionary):
+	if not _ok():
+		return null
+	var start: Vector3 = _book_hover_pos(u, float(battle._t))
+	var s := _book_node(u)
+	if s == null:
+		return null
+	s.position = start
+	var a := Vector2(u["pos"])
+	var b := Vector2(tgt["pos"])
+	var d := b - a
+	var L: float = maxf(1.0, d.length())
+	s.set_meta("h", body_h(u) + 0.55)
+	s.set_meta("from", a)
+	s.set_meta("ctrl_off", d * 0.35 + Vector2(-d.y, d.x) / L * L * 0.18)   # 略往一侧鼓的弧线(像被甩出去、拐向敌人)
+	s.set_meta("trail_col", Color(1, 1, 1, 0.92))
+	s.set_meta("trail_w", 18.0)
+	s.set_meta("trail_tex", FORB_TRAIL_TEX)
+	s.set_meta("book", true)
+	_flies.append(s)
+	return s
 
 
 func forb_land(node, tgt: Dictionary) -> void:
@@ -117,32 +347,33 @@ func forb_land(node, tgt: Dictionary) -> void:
 	_anim("forbidden-blast", Vector2(tgt["pos"]), 200.0, 0.75, 0.02, false, false, Color.WHITE, tgt)
 
 
-func bolt_step(node, _from2: Vector2, p2: Vector2, _to2: Vector2, _k: float) -> void:
-	_fly_to(node, p2)
-
-
-## 125 下一次攻击已装填: 头顶三枚品红符文(射出那一下就收)
-func forb_ready(u: Dictionary, on: bool) -> void:
-	for i in range(_marks.size() - 1, -1, -1):
-		if is_same(_marks[i]["u"], u):
-			if is_instance_valid(_marks[i]["node"]):
-				(_marks[i]["node"] as Node3D).queue_free()
-			_marks.remove_at(i)
-	if not on or not _ok():
-		return
-	var s := _follow("forbidden-ready", u, 86.0, 600.0, body_h(u))   # 三枚符文绕身体中段转(放头顶会被血条挡、太挤; 11-25 录像自查)
-	if s != null:
-		_marks.append({"u": u, "node": s})
+func bolt_step(node, _from2: Vector2, p2: Vector2, to2: Vector2, k: float) -> void:
+	if node is Sprite3D and is_instance_valid(node) and (node as Sprite3D).has_meta("ctrl_off"):
+		_arc_step(node, to2, k)   # 117 学徒笔记 / 119 火球 / 125 飞书走弧线 + 光尾
+	else:
+		_fly_to(node, p2)
 
 
 # ═══════════════════════════════ 释放技能时 ═══════════════════════════════
 
 func scroll_shield(u: Dictionary) -> void:
-	_follow("scroll-shield", u, 80.0, 4.0, body_h(u))
+	_follow("scroll-shield", u, 125.0, 4.0, body_h(u))   # 环要把整只龟圈在里面才像护盾(80 时像一圈细箍压在身上, 11-25 录像自查)
 
 
+## 120 冰霜新星(11-25 第二版, 用户「完全没有贴地的感觉…墨菲特…冰雪杰的皮肤, 你可以去参考他的」):
+##   照冰雪墨菲特 —— 冰是从地里长出来的: 先地面冰裂从中心往外爬、贴地寒雾铺开, 紧跟着一圈圈冰刺破土
+##   (中心一簇 → 内圈 5 簇 → 外圈 9 簇, 由内往外一拍一拍), 停一下再缩回地里、剩碎冰。冰刺锚点在根部, 根部贴地。
+const FROST_RINGS := [[0.0, 1, 0.0, 130.0], [0.42, 5, 0.07, 105.0], [0.8, 9, 0.15, 92.0]]   # 第一版 74/62/54 录出来只是地上一撮撮小冰碴(11-25 录像自查)   ## [半径比例, 簇数, 延迟秒, 冰刺大小(码)]
 func frost_nova(c: Vector2, r: float) -> void:
-	_anim("frost-nova", c, r * 2.0, 0.5, 0.05, false, false, Color.WHITE, "ground")
+	_anim("frost-ground", c, r * 1.35, 1.4, 0.05, false, false, Color(0.8, 0.92, 1.0, 0.7), "ground")   # 冰裂压淡、缩小: 第一版按直径 2r 铺、纯白, 像一只白色大蜘蛛盖住冰刺(11-25 录像自查)
+	for ring in FROST_RINGS:
+		var n: int = int(ring[1])
+		for i in range(n):
+			var th: float = TAU * (float(i) + 0.5 * float(n % 2)) / float(n) + 0.3
+			var p: Vector2 = c + Vector2(cos(th), sin(th)) * r * float(ring[0])
+			var sz: float = float(ring[3]) * (0.9 + 0.2 * float((i * 7) % 3) / 2.0)
+			_later(float(ring[2]) + 0.015 * float(i % 3), func() -> void:
+				_anim("frost-spike", p, sz, 0.95, 0.05, false, false, Color.WHITE, "ground"))
 
 
 func storm_bolt(o: Dictionary) -> void:
@@ -154,16 +385,91 @@ func storm_bolt(o: Dictionary) -> void:
 		s.render_priority = 10
 
 
+## 122 持续回复(11-25 第二版, 用户「别搞这种环…回血是应该是人物的这个胸部去冒这种绿光、绿粒子特效」):
+##   胸口一团绿光一明一暗地脉动, 绿色光点 / 小加号从胸口往上飘; 跟着人走, 回复多久就亮多久。
 func holy_mark(o: Dictionary, sec: float) -> void:
-	_follow("holy-regen", o, 110.0, sec, 0.05)
+	_follow("holy-chest", o, 105.0, sec, body_h(o) * 1.1)   # 66 码时录出来胸口只有一粒绿点、上飘的光点几乎看不见(11-25 录像自查)
 
 
 func tome_hp(u: Dictionary, _sec: float) -> void:
 	_anim("tome-hp", Vector2(u["pos"]), 60.0, 0.45, 0.02, false, false, Color.WHITE, u)
 
 
+## 124 镜像魔典(11-25 第二版, 用户「你这个就在角色身上贴个这个法阵贴图嘛？你太敷衍了」):
+##   像镜子里走出一个自己 —— 拷一份携带者当前的立绘帧, 染成半透明紫色, 从身上往身后滑出一步、越来越实;
+##   到「再放一次」那一刻分身闪白、碎成紫色镜片往外飞(镜片碎裂特效), 分身随即淡掉。没有贴在身上的法阵。
+const MIRROR_SLIDE := 85.0       ## 分身往身后滑多远(码; 52 时录出来分身大半叠在本体和本体的技能特效后面, 11-25 录像自查)
+const MIRROR_COL := Color(0.62, 0.38, 1.0, 0.0)
+var _clones: Array = []          ## {node, u, t, delay, back}
+
+
 func mirror_echo(u: Dictionary, delay: float) -> void:
-	_follow("mirror-echo", u, 90.0, delay + 0.35, body_h(u))
+	if not _ok():
+		return
+	var src = u.get("sprite")
+	if not is_instance_valid(src) or not (src is Sprite3D):
+		return
+	var o: Sprite3D = src
+	var s := Sprite3D.new()
+	_copy_look(o, s)
+	s.centered = o.centered
+	s.billboard = o.billboard
+	s.shaded = false
+	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.render_priority = 12
+	s.no_depth_test = true   # 分身画在本体技能特效前面(否则被挡住看不见)
+	s.modulate = MIRROR_COL
+	battle._world.add_child(s)
+	s.global_position = o.global_position
+	var back: float = -1.0 if bool(u.get("face_right", str(u.get("side", "left")) == "left")) else 1.0
+	_clones.append({"node": s, "u": u, "t": 0.0, "delay": delay, "back": back, "y0": o.global_position.y - battle._world_pos(Vector2(u["pos"]), 0.0).y})
+
+
+func _copy_look(o: Sprite3D, s: Sprite3D) -> void:
+	if s.texture != o.texture:
+		s.texture = o.texture
+	if s.hframes != o.hframes:
+		s.hframes = o.hframes
+	if s.vframes != o.vframes:
+		s.vframes = o.vframes
+	s.region_enabled = o.region_enabled
+	s.region_rect = o.region_rect
+	s.frame = mini(o.frame, s.hframes * s.vframes - 1)
+	s.flip_h = o.flip_h
+	s.offset = o.offset
+	s.pixel_size = o.pixel_size
+
+
+func _tick_clones(delta: float) -> void:
+	for i in range(_clones.size() - 1, -1, -1):
+		var r: Dictionary = _clones[i]
+		var s = r["node"]
+		if not is_instance_valid(s):
+			_clones.remove_at(i)
+			continue
+		r["t"] = float(r["t"]) + delta
+		var t: float = float(r["t"])
+		var dl: float = float(r["delay"])
+		var u: Dictionary = r["u"]
+		var k: float = clampf(t / dl, 0.0, 1.0)
+		var e: float = 1.0 - (1.0 - k) * (1.0 - k)   # 先快后慢地滑出
+		var base := Vector2(u["pos"]) + Vector2(float(r["back"]) * MIRROR_SLIDE * e, 0.0)
+		(s as Sprite3D).global_position = battle._world_pos(base, 0.0) + Vector3(0, float(r["y0"]), 0)
+		var src = u.get("sprite")
+		if is_instance_valid(src) and src is Sprite3D:
+			_copy_look(src, s)   # 分身跟本体同一个动作(本体换动作表时一起换)
+		if t < dl:
+			(s as Sprite3D).modulate = Color(MIRROR_COL.r, MIRROR_COL.g, MIRROR_COL.b, 0.35 + 0.55 * e)
+		else:
+			if not r.get("burst", false):
+				r["burst"] = true
+				_anim("mirror-shatter", base, 96.0, 0.6, 0.02, false, false, Color.WHITE, u)   # on = 单位 ⇒ 炸在分身的身体中段
+			var q: float = clampf((t - dl) / 0.3, 0.0, 1.0)
+			(s as Sprite3D).modulate = Color(1.0, 0.9, 1.0, 0.9 * (1.0 - q)) if q < 0.35 else Color(MIRROR_COL.r, MIRROR_COL.g, MIRROR_COL.b, 0.75 * (1.0 - q))
+			if q >= 1.0:
+				(s as Node3D).queue_free()
+				_clones.remove_at(i)
 
 
 ## 跟着单位走的循环特效(护盾环 / 持续回复 / 再放法阵 / 装填标记)
@@ -225,6 +531,28 @@ func wave_heal(o: Dictionary) -> void:
 
 # ═══════════════════════════════ 126 浮空魔典 · 书页 ═══════════════════════════════
 
+## 11-25 第二版(用户「书页一样的，太敷衍了…转速这么快吗？」): 书页 = PixelLab 生成的一张带青色符文的书页图(64×64);
+##   飞的时候横向一缩一放(纸页扑扇, 每张相位错开), 近战绕身转得慢(角速度在结算侧 EqMagicBatch.PAGE_W), 身后拖一条青色细光尾;
+##   远程在身后扇形叠着、上下轻浮; 挡下一击时最上面那张飞到身前、亮一下碎成纸片(书页格挡特效)。
+const PAGE_TRAIL_COL := Color(0.55, 1.0, 0.95, 0.55)
+const PAGE_TRAIL_W := 7.0
+var _page_fly: Array = []        ## 远程挡刀时飞到身前的那张 {node, u, t, from, to}
+
+
+func _page_node(t: Texture2D) -> Sprite3D:
+	var s := Sprite3D.new()
+	s.texture = t
+	s.shaded = false
+	s.transparent = true
+	s.no_depth_test = true
+	s.render_priority = 9
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.pixel_size = (PAGE_PX * float(battle.WS)) / float(maxi(t.get_width(), t.get_height()))
+	battle._world.add_child(s)
+	return s
+
+
 func pages_spawn(u: Dictionary, ck: String, n: int, melee: bool) -> void:
 	if not _ok():
 		return
@@ -233,17 +561,8 @@ func pages_spawn(u: Dictionary, ck: String, n: int, melee: bool) -> void:
 		return
 	var nodes: Array = []
 	for i in range(n):
-		var s := Sprite3D.new()
-		s.texture = t
-		s.shaded = false
-		s.transparent = true
-		s.no_depth_test = true
-		s.render_priority = 9
-		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		s.pixel_size = (PAGE_PX * float(battle.WS)) / float(maxi(t.get_width(), t.get_height()))
+		var s := _page_node(t)
 		s.position = battle._world_pos(Vector2(u["pos"]), PAGE_ORBIT_H)
-		battle._world.add_child(s)
 		nodes.append(s)
 	_pages.append({"u": u, "ck": ck, "melee": melee, "nodes": nodes})
 
@@ -253,7 +572,12 @@ func _page_acc(u: Dictionary, key: String) -> float:
 	return float(d.get(key, 0.0))
 
 
+func _back_of(u: Dictionary) -> float:
+	return -1.0 if bool(u.get("face_right", str(u.get("side", "left")) == "left")) else 1.0
+
+
 func _tick_pages() -> void:
+	var t := float(battle._t)
 	for i in range(_pages.size() - 1, -1, -1):
 		var g: Dictionary = _pages[i]
 		var u: Dictionary = g["u"]
@@ -266,35 +590,79 @@ func _tick_pages() -> void:
 			continue
 		var n: int = nodes.size()
 		var c := Vector2(u["pos"])
-		var t := float(battle._t)
 		if bool(g["melee"]):
-			## 近战: 按批系统里的角度绕身转(结算判定用同一个角度)
+			## 近战: 按批系统里的角度绕身转(结算判定用同一个角度、同一个半径 ⇒ 画面上碰到身体才挨打)
 			var ang: float = _page_acc(u, "pang:" + str(g["ck"]))
 			for j in range(n):
+				var s: Sprite3D = nodes[j]
 				var th: float = ang + TAU * float(j) / float(n)
 				var p := c + Vector2(cos(th), sin(th)) * EqMagicBatch.PAGE_R
-				(nodes[j] as Sprite3D).position = battle._world_pos(p, PAGE_ORBIT_H + 0.12 * sin(th * 2.0))
+				var prev: Vector3 = s.position
+				s.position = battle._world_pos(p, PAGE_ORBIT_H + 0.1 * sin(t * 3.0 + float(j) * 1.7))
+				s.scale = Vector3(0.55 + 0.45 * absf(sin(t * 4.5 + float(j) * 0.9)), 1.0, 1.0)   # 纸页扑扇
+				if prev.distance_to(s.position) < 1.5:
+					_trail_seg(prev, s.position, PAGE_TRAIL_COL, PAGE_TRAIL_W)
 		else:
-			## 远程: 身后扇形悬着现有的张数(用掉一张少一张, 长回来再出现)
+			## 远程: 身后扇形叠着现有的张数(用掉一张少一张, 长回来再出现)
 			var have: int = int(_page_acc(u, "pages:" + str(g["ck"])))
-			var back: float = -1.0 if bool(u.get("face_right", str(u.get("side", "left")) == "left")) else 1.0
+			var back: float = _back_of(u)
 			for j in range(n):
 				var s: Sprite3D = nodes[j]
 				s.visible = j < have
-				var fan: float = (float(j) - float(n - 1) * 0.5) * 0.32
-				var p := c + Vector2(back * (34.0 + 6.0 * absf(fan)), 0.0)
-				s.position = battle._world_pos(p, 1.35 + fan * 0.9 + 0.05 * sin(t * 2.0 + float(j)))
+				var p := _page_stack_pos(u, j, n, back, t)
+				s.position = p
+				s.scale = Vector3(0.8 + 0.2 * sin(t * 2.6 + float(j) * 1.3), 1.0, 1.0)
+
+
+func _page_stack_pos(u: Dictionary, j: int, n: int, back: float, t: float) -> Vector3:
+	var fan: float = (float(j) - float(n - 1) * 0.5)
+	var p := Vector2(u["pos"]) + Vector2(back * (40.0 + 9.0 * absf(fan)), 0.0)
+	return battle._world_pos(p, body_h(u) + 0.35 + fan * 0.22 + 0.06 * sin(t * 2.0 + float(j)))
 
 
 func page_cut(o: Dictionary) -> void:
-	_anim("page-cut", Vector2(o["pos"]), 46.0, 0.3, 0.02, false, false, Color.WHITE, o)
+	_anim("page-cut", Vector2(o["pos"]), 52.0, 0.3, 0.02, false, false, Color.WHITE, o)
 
 
-func page_block(u: Dictionary, _ck: String, absorbed: float = 0.0) -> void:
-	_anim("page-block", Vector2(u["pos"]), 60.0, 0.32, 0.02, false, false, Color.WHITE, u)
+func page_block(u: Dictionary, ck: String, absorbed: float = 0.0) -> void:
+	## 最上面那张(刚用掉的那一张, 下标 = 现有张数)从身后飞到身前, 0.16 秒到位后亮一下、碎成纸片
+	if _ok():
+		var t: Texture2D = _load(PAGE_TEX)
+		if t != null:
+			var n: int = 1
+			for g in _pages:
+				if is_same(g["u"], u) and str(g["ck"]) == ck:
+					n = (g["nodes"] as Array).size()
+			var have: int = int(_page_acc(u, "pages:" + ck))
+			var s := _page_node(t)
+			s.render_priority = 12
+			var back: float = _back_of(u)
+			s.position = _page_stack_pos(u, mini(have, n - 1), n, back, float(battle._t))
+			var to3: Vector3 = battle._world_pos(Vector2(u["pos"]) + Vector2(-back * 44.0, 0.0), body_h(u) + 0.15)
+			_page_fly.append({"node": s, "u": u, "t": 0.0, "from": s.position, "to": to3, "ab": absorbed})
 	## 伤害飘字照常显示格挡前的数(同护盾口径) ⇒ 另跳一个「格挡 N」, 看得出书页吃掉了多少(11-25 录像自查)
 	if absorbed >= 1.0 and battle.get("_vfx") != null:
 		battle._vfx._float_text(Vector2(u["pos"]) + Vector2(0, -70), "格挡 %d" % int(round(absorbed)), Color("#f2e6c0"))
+
+
+const PAGE_FLY_SEC := 0.16
+func _tick_page_fly(delta: float) -> void:
+	for i in range(_page_fly.size() - 1, -1, -1):
+		var r: Dictionary = _page_fly[i]
+		var s = r["node"]
+		if not is_instance_valid(s):
+			_page_fly.remove_at(i)
+			continue
+		r["t"] = float(r["t"]) + delta
+		var q: float = clampf(float(r["t"]) / PAGE_FLY_SEC, 0.0, 1.0)
+		(s as Sprite3D).position = (r["from"] as Vector3).lerp(r["to"], 1.0 - (1.0 - q) * (1.0 - q))
+		(s as Sprite3D).scale = Vector3(1.0 + 0.5 * q, 1.0 + 0.5 * q, 1.0)   # 挡到身前时放大、正对来势
+		(s as Sprite3D).modulate = Color(1.0 + q, 1.0 + q, 1.0 + q, 1.0)
+		if q >= 1.0:
+			var u: Dictionary = r["u"]
+			_anim("page-block", Vector2(u["pos"]) + Vector2(-_back_of(u) * 44.0, 0.0), 70.0, 0.34, 0.02, false, false, Color.WHITE, u)
+			(s as Node3D).queue_free()
+			_page_fly.remove_at(i)
 
 
 func page_regen(_u: Dictionary, _ck: String, _n: int) -> void:
@@ -340,6 +708,10 @@ func skel_cast(p: Dictionary, kind: String, windup: float) -> void:
 func tick(delta: float) -> void:
 	super.tick(delta)
 	_tick_pages()
+	_tick_page_fly(delta)
+	_tick_books(delta)
+	_tick_clones(delta)
+	_tick_trail(delta)
 
 
 func clear() -> void:
@@ -353,4 +725,12 @@ func clear() -> void:
 			if is_instance_valid(s):
 				(s as Node3D).queue_free()
 	_pages.clear()
-	_marks.clear()
+	for arr in [_books, _clones, _page_fly]:
+		for r in arr:
+			if is_instance_valid(r["node"]):
+				(r["node"] as Node3D).queue_free()
+		arr.clear()
+	for r in _trail:
+		if is_instance_valid(r["node"]):
+			(r["node"] as Node3D).queue_free()
+	_trail.clear()

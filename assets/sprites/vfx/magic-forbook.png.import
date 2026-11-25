@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c56m64ol1roe3"
-path="res://.godot/imported/magic-forbidden-ready.png-58a1f01a12fd2b701f9234eec2c176a4.ctex"
+uid="uid://dstfhw7n4ndj8"
+path="res://.godot/imported/magic-forbook.png-a72b4fb38317e19cdcae0c68fb1e175c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-forbidden-ready.png"
-dest_files=["res://.godot/imported/magic-forbidden-ready.png-58a1f01a12fd2b701f9234eec2c176a4.ctex"]
+source_file="res://assets/sprites/vfx/magic-forbook.png"
+dest_files=["res://.godot/imported/magic-forbook.png-a72b4fb38317e19cdcae0c68fb1e175c.ctex"]
 
 [params]
 

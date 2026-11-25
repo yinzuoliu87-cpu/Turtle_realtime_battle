@@ -1,0 +1,391 @@
+{
+ "frames": [
+  {
+   "filename": "magic-frost-spike 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 1.png",
+   "frame": {
+    "x": 56,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 2.png",
+   "frame": {
+    "x": 112,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 3.png",
+   "frame": {
+    "x": 168,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 4.png",
+   "frame": {
+    "x": 0,
+    "y": 65,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 5.png",
+   "frame": {
+    "x": 56,
+    "y": 65,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 6.png",
+   "frame": {
+    "x": 112,
+    "y": 65,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 7.png",
+   "frame": {
+    "x": 168,
+    "y": 65,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 8.png",
+   "frame": {
+    "x": 0,
+    "y": 130,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 9.png",
+   "frame": {
+    "x": 56,
+    "y": 130,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 10.png",
+   "frame": {
+    "x": 112,
+    "y": 130,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 11.png",
+   "frame": {
+    "x": 168,
+    "y": 130,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 12.png",
+   "frame": {
+    "x": 0,
+    "y": 195,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-spike 13.png",
+   "frame": {
+    "x": 56,
+    "y": 195,
+    "w": 56,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5535714285714286,
+    "y": 0.6615384615384615
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-frost-spike.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 224,
+   "h": 260
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 31,
+   "y": 43
+  },
+  "frameTags": [
+   {
+    "name": "magic-frost-spike",
+    "from": 0,
+    "to": 13,
+    "direction": "forward"
+   }
+  ]
+ }
+}

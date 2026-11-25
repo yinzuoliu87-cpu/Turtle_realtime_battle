@@ -15,11 +15,11 @@ def main():
     fps = float(sys.argv[4]) if len(sys.argv) > 4 else 10.0
     x, y, w, h = [int(v) for v in (sys.argv[5] if len(sys.argv) > 5 else "320,160,640,400").split(",")]
     k = float(sys.argv[6]) if len(sys.argv) > 6 else 1.0
-    d = os.path.join(ROOT, ".out", "dagger_rec", "f_" + case)
+    d = os.path.join(ROOT, ".out", os.environ.get("REC_DIR", "dagger_rec"), "f_" + case)
     os.makedirs(d, exist_ok=True)
     for f in glob.glob(os.path.join(d, "*.png")):
         os.remove(f)
-    subprocess.run([FF, "-loglevel", "error", "-ss", str(t0), "-t", str(dur), "-i", os.path.join(ROOT, ".out", "dagger_rec", case + ".mp4"),
+    subprocess.run([FF, "-loglevel", "error", "-ss", str(t0), "-t", str(dur), "-i", os.path.join(ROOT, ".out", os.environ.get("REC_DIR", "dagger_rec"), case + ".mp4"),
                     "-vf", "fps=%g" % fps, os.path.join(d, "%03d.png")], check=True)
     fs = sorted(glob.glob(os.path.join(d, "*.png")))
     cw, ch = int(w * k), int(h * k)
@@ -29,7 +29,7 @@ def main():
     for i, f in enumerate(fs):
         im = Image.open(f).crop((x, y, x + w, y + h)).resize((cw, ch), Image.NEAREST)
         sheet.paste(im, ((i % cols) * cw, (i // cols) * ch))
-    out = os.path.join(ROOT, ".out", "dagger_rec", "sheet_%s_%g.png" % (case, t0))
+    out = os.path.join(ROOT, ".out", os.environ.get("REC_DIR", "dagger_rec"), "sheet_%s_%g.png" % (case, t0))
     sheet.save(out)
     print(out, len(fs))
 

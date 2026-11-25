@@ -1854,6 +1854,12 @@ func _set_anim_sheet(u: Dictionary, sd: Dictionary, action: String, is_idle: boo
 	if is_idle:
 		spr.pixel_size = float(u.get("idle_px", PIXEL_SIZE))
 		spr.offset = Vector2(0.0, float(u.get("idle_offy", frame_h * 0.5)))
+	elif u.get("_act_like_idle", false):
+		## 召唤物按自己体型缩过(col_size ≠ 标准身高)、动作帧与待机同一套方帧: 动作沿用待机的缩放与脚底位置
+		##   (11-25 用户「这个角色的动画，这个大小一直搁这变化，一直闪现」—— 123 骷髅原来一做动作就按标准身高放大 27%、脚底跳)
+		var _ifh: int = int((u.get("idle_sd", {}) as Dictionary).get("frame_h", frame_h))
+		spr.pixel_size = float(u.get("idle_px", PIXEL_SIZE)) * float(_ifh) / float(maxi(1, frame_h))
+		spr.offset = Vector2(0.0, float(u.get("idle_offy", frame_h * 0.5)) * float(frame_h) / float(maxi(1, _ifh)))
 	else:
 		# 动作帧高可能 != idle (basic idle 64 / attack 120): 按动作帧高归一到同样世界高度, 脚底对齐
 		spr.pixel_size = TARGET_BODY_H / float(maxi(1, frame_h))
