@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 8,
- "fingerprint": "f244a0d145dd8cf6d44927b4d757e10449f9a83d7e435fff792712be39f20b7c",
+ "fingerprint": "4f3129fb6183a6acb62ef10dd54ef57cd1e2d2f4ed98789190bae8da25e234f4",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -35,7 +35,7 @@
   },
   {
    "def": "1edc1a4ca1200c12",
-   "hash": "bd610077b7f1878c486dcc218fb0fb73c001cca0129183965090f1a269fb59d4",
+   "hash": "11c1d0bf2258062cda663c90276441542880a387f64eb4d5522cd42d61811f33",
    "tag": "⑦ 匕首顶档(刺杀) + 暗影忍者 + 血契 vs 剑顶档/枪"
   },
   {
