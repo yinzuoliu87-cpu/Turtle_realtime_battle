@@ -79,13 +79,15 @@ def _erase_hot(img, x0):
 ##   横斩 = animate_image 首尾钉住待机原画(第二版, 身体转得多)。每段按下表挑帧拼(序号 = 生成结果的第几张, 0 = 输入原画不要)。
 ##   所有段与待机同一个下移量(KATANA_DY), 换表不跳。
 KATANA_SEQ = {
-    ## 横斩(11-25 第五版): 用户「你不是量了吗？就看它到底有没有从一边横扫到另外一边啊？那很明显是没有」——
-    ##   前几版是生成器在关键姿势之间补帧, 刀一帧之间直接翻 166°(跳过去, 不是扫过去), 拖尾把跳变盖住了。
-    ##   这一版不让生成器补扫刀的帧: 每隔约 45° 单独定一张姿势(PixelLab edit_image_pro_flash 从待机原画改, 每张写明刀指向哪):
-    ##   kathw05 刀竖直举起 → kathw1 右上 → kath0 正右 → kath05 右下(半朝镜头) → kath1 正对镜头(刀缩成一小截) →
-    ##   kath15 左下(半朝镜头) → katkey_s2b 正左(命中, 下标 6) → kath25 绕到左肩后; 收刀 khr_1..3 = animate_image(kath25 → 待机)。
-    ##   刀尖沿椭圆下半边从右走到左(tools/oneoff/sweep_check.py 逐帧量): (93,75) → (51,69) → (15,70) → (3,51)。
-    "eq-katana-attack": ["kathw05", "kathw1", "kath0", "kath05", "kath1", "kath15", "katkey_s2b", "kath25", "khr_1", "khr_2", "khr_3"],
+    ## 横斩(11-25 第六版): 用户「哪有这个身子对着人脸的呀？对着我们摄像头的…你整个身子怎么动的嘛？」——
+    ##   第五版为了让刀指向镜头, 把身体也转成正对镜头, 侧视角里身体该一直侧着朝敌人。这一版每张都写明「严格侧面、胸口不朝镜头、头看左边」,
+    ##   身体动作: 蓄力(重心后脚、腰肩后拧、刀收到身后右侧)→ 前脚踩出、先转腰再转肩、手臂带刀在胸口高度从身前(靠镜头一侧)扫过 →
+    ##   命中(手臂伸直、刀平指敌人、身体前冲)→ 收势(刀继续扫过、举到左肩后)→ 放下回待机。
+    ##   第五版命中前后几张生成丢了红色鬼面具(绿脸), 这一版写明「同一副红色鬼面具」重做。
+    ##   做法(如实): 每张姿势 = PixelLab edit_image_pro_flash 单独定(写明刀指向哪 + 身体侧面); 收刀 kpr_1..3 = animate_image(katp25 → 待机)。
+    ##   kathw05 竖举 → kathw1 右上 → kath0 正右(身后) → katp05 右下(过腰前) → katp1 正对镜头(刀在身前缩成一截) →
+    ##   katp15c 左前(略朝镜头) → katp2 平指左(命中, 下标 6) → katp25 举到左肩后 → kpr_1..3 放下
+    "eq-katana-attack": ["kathw05", "kathw1", "kath0", "katp05", "katp1", "katp15c", "katp2", "katp25", "kpr_1", "kpr_2", "kpr_3"],
     "eq-katana-walk": ["katwalk_%d" % i for i in range(1, 9)],                           # 走路循环 8 帧(首尾钉住待机原画生成)
     ## 上挑: katup_3 不要(刀身画成一团往身后飞的白雾, 方向反了) ⇒ 刀尖压地后一下挑到指天; 第 6 帧(刀指天)出波
     "eq-katana-rise": ["katlow_%d" % i for i in range(1, 5)] + ["katup_1", "katup_2", "katup_4"]
@@ -95,7 +97,7 @@ KATANA_SEQ = {
     "eq-katana-release": ["katrel_%d" % i for i in range(1, 7)] + ["katrec_%d" % i for i in range(1, 4)],   # 绕身甩刀(第 4 帧甩出龙卷风) → 刀举过头顶 → 收刀
 }
 ## 横斩刀光拖尾画进帧(tools/assetgen/katana_trail.py): 段名 → (从第几帧画, 画到第几帧)
-KATANA_TRAIL = {"eq-katana-attack": (3, 7)}   # 下标 3(正右 → 右下) 到 7(正左 → 绕到肩后)
+KATANA_TRAIL = {"eq-katana-attack": (3, 6)}   # 下标 3(身后 → 过腰前) 到 6(命中); 命中后刀往肩上举那一下不算横扫、不画(画出来是一大块白楔)
 KATANA_DY = 112 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "katana_0.png")).convert("RGBA").getbbox()[3]
 ## 炮筒原画底下空 11 行(见下方「落地」): 所有炮筒动作一律挪这么多
 CANNON_DY = 64 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "cannon_0.png")).convert("RGBA").getbbox()[3]
