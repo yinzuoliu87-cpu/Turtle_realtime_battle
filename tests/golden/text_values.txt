@@ -1,6 +1,7 @@
 eq|FPGA板|effectBrief	6.0
 eq|FPGA板|effectDesc1	1.0 1.0 1.0 1.0 3.5 3.5 5.0 6.0 7.0 12.0 15.0 15.0 25.0
 eq|不沉之锚|effectDesc1	0.25 1.5 100.0 250.0
+eq|亡者之书|effectDesc1	0.15 1.5 4.0 4.0 25.0 25.0 25.0 50.0 60.0 80.0 100.0 200.0
 eq|仪式匕首|effectDesc1	10.0 150.0
 eq|信号放大器|effectBrief	5.0
 eq|信号放大器|effectDesc1	2.5 5.0 5.0 20.0 30.0 90.0 90.0 360.0
@@ -24,6 +25,7 @@ eq|地雷|effectDesc1	0.8
 eq|墓碑|effectBrief	3.0
 eq|墓碑|effectDesc1	3.0
 eq|大火腿|effectDesc1	10.0
+eq|学徒笔记|effectDesc1	3.0 30.0
 eq|守护贝壳|effectBrief	8.0
 eq|守护贝壳|effectDesc1	8.0
 eq|定时炸弹|effectDesc1	4.0 8.0 10.0 100.0
@@ -63,8 +65,10 @@ eq|水母伞|effectBrief	2.5 7.0
 eq|水母伞|effectDesc1	2.5 7.0 7.0 15.0
 eq|沙漏|effectBrief	10.0
 eq|沙漏|effectDesc1	1.0 10.0
+eq|治愈圣典|effectDesc1	0.1
 eq|活力药水|effectBrief	8.0
 eq|活力药水|effectDesc1	8.0
+eq|浮空魔典|effectDesc1	0.06 0.5 4.0 6.0 10.0
 eq|海浪护符|effectDesc1	4.0
 eq|海藻|effectBrief	4.0 4.0
 eq|海藻|effectDesc1	4.0 4.0
@@ -86,6 +90,7 @@ eq|火珊瑚|effectDesc1	10.0 60.0
 eq|灵火|effectDesc1	0.03 80.0
 eq|炮筒|effectDesc1	0.7 100.0 200.0
 eq|炼乳罐|effectDesc1	3.0 10.0 50.0 50.0
+eq|烈焰法典|effectDesc1	60.0
 eq|烟雾弹|effectDesc1	1.0 3.0 8.0 50.0
 eq|烤海胆|effectBrief	20.0
 eq|烤海胆|effectDesc1	10.0 20.0
@@ -106,6 +111,7 @@ eq|珍珠项链|effectBrief	16.0 50.0
 eq|珍珠项链|effectDesc1	16.0 50.0
 eq|病毒箭头|effectBrief	400.0
 eq|病毒箭头|effectDesc1	1.0 1.1 10.0 400.0
+eq|禁咒全书|effectDesc1	50.0 80.0
 eq|竹弓|effectDesc1	6.0 6.0
 eq|符咒|effectBrief	15.0
 eq|符咒|effectDesc1	1.0 15.0
@@ -115,6 +121,7 @@ eq|粘弹|effectDesc1	0.5 1.5 2.0 8.0 30.0 30.0 40.0
 eq|细剑|effectDesc1	0.5 20.0
 eq|终极浮游炮|effectBrief	3.0 6.0
 eq|终极浮游炮|effectDesc1	2.0 3.0 6.0 50.0
+eq|羊皮咒卷|effectDesc1	4.0
 eq|苦无|effectDesc1	5.0 20.0
 eq|荆棘盾牌|effectBrief	3.0 50.0
 eq|荆棘盾牌|effectDesc1	3.0 4.0 50.0
@@ -149,6 +156,8 @@ eq|镇海杵|effectDesc1	1.0 3.0
 eq|雷电法杖|effectDesc1	10.0 15.0
 eq|雷鸣贝壳|effectBrief	4.0
 eq|雷鸣贝壳|effectDesc1	4.0
+eq|霜语魔典|effectDesc1	10.0 20.0 30.0
+eq|风暴之书|effectDesc1	3.0 6.0 40.0
 eq|飞镖|effectBrief	2.5
 eq|飞镖|effectDesc1	1.0 2.5 5.0 10.0
 eq|香火石|effectBrief	4.0 10.0 12.0 100.0

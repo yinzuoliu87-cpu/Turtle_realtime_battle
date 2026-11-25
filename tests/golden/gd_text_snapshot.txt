@@ -79,6 +79,7 @@ scripts/gamedata/eq_stat_labels.gd|lit|免疫击飞 %d 次
 scripts/gamedata/eq_stat_labels.gd|lit|冰封 %d 次
 scripts/gamedata/equip_stats.gd|lit|初始龟能
 scripts/gamedata/equip_stats.gd|lit|反伤
+scripts/gamedata/equip_stats.gd|lit|增伤
 scripts/gamedata/equip_stats.gd|lit|射程
 scripts/gamedata/equip_stats.gd|lit|护甲
 scripts/gamedata/equip_stats.gd|lit|护甲穿透
@@ -544,6 +545,9 @@ scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +10% 生命�
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +3% 生命偷取 · 【生死界】我方全体单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}
+scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）
+scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害
+scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）
 scripts/gamedata/phase2_types.gd|lit|法器
 scripts/gamedata/phase2_types.gd|lit|法器·法师
 scripts/gamedata/phase2_types.gd|lit|法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位越高充满越快。
@@ -572,6 +576,9 @@ scripts/gamedata/phase2_types.gd|lit|食物·增益
 scripts/gamedata/phase2_types.gd|lit|香火
 scripts/gamedata/phase2_types.gd|lit|香火·刻痕
 scripts/gamedata/phase2_types.gd|lit|香火石的携带者造成伤害时刻下刻痕。刻痕跨对局保留，每道刻痕永久提高全队的增伤与减伤。
+scripts/gamedata/phase2_types.gd|lit|魔法书
+scripts/gamedata/phase2_types.gd|lit|魔法书·飞弹
+scripts/gamedata/phase2_types.gd|lit|魔法书提高携带者造成的伤害。我方任意单位（包括召唤物）每释放一次技能，按这次消耗的龟能召唤一批魔法飞弹，飞向随机敌人。
 scripts/gamedata/reserve_consts.gd|lit|四面合围
 scripts/gamedata/reserve_consts.gd|lit|援军小将
 scripts/gamedata/skill_forms.gd|lit|u[\"_hammer_n\"] % 3 == 2 → 下一发是第3次 → 形态1(强化); 否则形态0(普通)
@@ -918,6 +925,7 @@ scripts/scenes/CodexScene.gd|lit|装备
 scripts/scenes/CodexScene.gd|lit|遗物
 scripts/scenes/CodexScene.gd|lit|食物
 scripts/scenes/CodexScene.gd|lit|香火
+scripts/scenes/CodexScene.gd|lit|魔法书
 scripts/scenes/CodexScene.gd|lit|龟
 scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
@@ -1779,6 +1787,7 @@ scripts/scenes/battle/lane_map_intro.gd|lit|本战场失败
 scripts/scenes/battle/lane_map_intro.gd|lit|本战场胜利
 scripts/scenes/battle/lane_map_intro.gd|lit|龟蛋生命  我方 %d  ·  对方 %d
 scripts/scenes/battle/lane_map_intro.gd|text|被驯服
+scripts/scenes/battle/magic_eq_vfx.gd|lit|格挡 %d
 scripts/scenes/battle/replay_controls.gd|lit|上路战场
 scripts/scenes/battle/replay_controls.gd|lit|下路战场
 scripts/scenes/battle/replay_controls.gd|lit|决赛日
@@ -2487,6 +2496,9 @@ scripts/systems/equip/eq_gadget_batch.gd|lit|施放成功
 scripts/systems/equip/eq_gun_batch.gd|lit|小手枪
 scripts/systems/equip/eq_gun_batch.gd|lit|急救塔
 scripts/systems/equip/eq_gun_batch.gd|lit|枪
+scripts/systems/equip/eq_magic_batch.gd|lit|骷髅战士
+scripts/systems/equip/eq_magic_batch.gd|lit|骷髅法师
+scripts/systems/equip/eq_magic_batch.gd|lit|骷髅祭司
 scripts/systems/equip/eq_potion_batch.gd|lit|浓浆
 scripts/systems/equip/eq_summons.gd|lit|亡灵骷髅
 scripts/systems/equip/eq_summons.gd|lit|炮台
@@ -2501,6 +2513,7 @@ scripts/systems/equip/gremlin_gun.gd|lit|古灵精怪枪
 scripts/systems/equip/gun_synergy_system.gd|lit|枪
 scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d · 充能 %d / %d
 scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d（已满）
+scripts/systems/equip/magicbook_synergy_system.gd|lit|魔法书
 scripts/systems/equip/potion_synergy_system.gd|lit|猎物
 scripts/systems/equip/potion_synergy_system.gd|lit|药水
 scripts/systems/equip/relic_synergy_system.gd|lit|遗物
