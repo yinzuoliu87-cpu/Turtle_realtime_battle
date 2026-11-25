@@ -67,7 +67,17 @@ def blade_seg(im):
 
     def near_gold(e):
         return min([(g[0] - e[0]) ** 2 + (g[1] - e[1]) ** 2 for g in gold] or [10 ** 9])
-    hilt, tip = (e1, e2) if near_gold(e1) <= near_gold(e2) else (e2, e1)
+    g1, g2 = near_gold(e1), near_gold(e2)
+    if min(g1, g2) <= 36 and abs(g1 - g2) > 16:
+        hilt, tip = (e1, e2) if g1 <= g2 else (e2, e1)      # 护手(金色)看得清: 靠护手那头是刀柄
+    else:
+        ## 护手被手挡住 / 刀很短: 刀柄在手里, 手在身体上 ⇒ 离身体(非透明像素重心)近的那头是刀柄
+        px = im.load()
+        xs = [(x, y) for y in range(im.height) for x in range(im.width) if px[x, y][3] > 128]
+        cx = sum(p[0] for p in xs) / float(len(xs)); cy = sum(p[1] for p in xs) / float(len(xs))
+        d1 = (e1[0] - cx) ** 2 + (e1[1] - cy) ** 2
+        d2 = (e2[0] - cx) ** 2 + (e2[1] - cy) ** 2
+        hilt, tip = (e1, e2) if d1 <= d2 else (e2, e1)
     return tip, hilt, bl
 
 
@@ -110,13 +120,6 @@ def apply(frames, first, last):
     for f in frames:
         s = blade_seg(f)
         segs.append((s[0], s[1]) if s else None)
-    ## 刀柄连续性: 刀柄握在手里, 相邻两帧的刀柄挨着; 按护手判断偶尔标反(刀竖着、护手被手挡住时), 离上一帧刀柄更近的那头才是刀柄
-    for k in range(1, len(segs)):
-        if segs[k] and segs[k - 1]:
-            tip, hilt = segs[k]
-            ph = segs[k - 1][1]
-            if (tip[0] - ph[0]) ** 2 + (tip[1] - ph[1]) ** 2 < (hilt[0] - ph[0]) ** 2 + (hilt[1] - ph[1]) ** 2:
-                segs[k] = (hilt, tip)
     out = []
     for k, f in enumerate(frames):
         if k < first or k > last:
@@ -124,7 +127,7 @@ def apply(frames, first, last):
             continue
         layer = Image.new("RGBA", f.size, (0, 0, 0, 0))
         d = ImageDraw.Draw(layer)
-        if k >= 2 and segs[k - 2] and segs[k - 1]:
+        if k - 2 >= first - 1 and segs[k - 2] and segs[k - 1]:   # 只画横扫这一段里的(起手落刀那一下不算拖尾)
             for poly in _sweep_polys(segs[k - 2], segs[k - 1], 0.6, 1.0):
                 d.polygon(poly, fill=C_OLD)
         if k >= 1 and segs[k - 1] and segs[k]:

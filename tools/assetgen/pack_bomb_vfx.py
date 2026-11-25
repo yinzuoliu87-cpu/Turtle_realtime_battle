@@ -79,12 +79,13 @@ def _erase_hot(img, x0):
 ##   横斩 = animate_image 首尾钉住待机原画(第二版, 身体转得多)。每段按下表挑帧拼(序号 = 生成结果的第几张, 0 = 输入原画不要)。
 ##   所有段与待机同一个下移量(KATANA_DY), 换表不跳。
 KATANA_SEQ = {
-    ## 横斩(11-25 第三版): 用户「刀刀头和刀尾…标点…有这样横扫吗？我觉得没有吧」⇒ 量出第二版刀尖只在身前 30 像素内晃(tools/oneoff/blade_track.py)。
-    ##   改成三张关键姿势定路线: katkey_s1 刀拉到右肩后 → katkey_s2 刀平指正前方 → katkey_s3 刀横扫过身前到右侧; kats_a/b/c/d = 四段过渡。
-    ##   第四版(同日): 命中那张 katkey_s2 刀尖出了画布左边(被裁一截) ⇒ 重做成 katkey_s2b(刀整把在画布里), kats2_b / kats2_c 是围着它重新生成的过渡;
-    ##   kats2_c_1 与 s2b 一样(停在正前方)不要。命中 = 第 7 帧(kats2_b_4, 刀平指敌人)。刀光拖尾按每帧刀尖 / 刀柄算出来画进帧里(KATANA_TRAIL)。
-    "eq-katana-attack": ["kats_a_%d" % i for i in range(1, 5)] + ["kats2_b_%d" % i for i in range(1, 5)]
-                        + ["kats2_c_2", "kats2_c_3", "kats2_c_4"] + ["kats_d_%d" % i for i in range(1, 4)],
+    ## 横斩(11-25 第五版): 用户「你不是量了吗？就看它到底有没有从一边横扫到另外一边啊？那很明显是没有」——
+    ##   前几版是生成器在关键姿势之间补帧, 刀一帧之间直接翻 166°(跳过去, 不是扫过去), 拖尾把跳变盖住了。
+    ##   这一版不让生成器补扫刀的帧: 每隔约 45° 单独定一张姿势(PixelLab edit_image_pro_flash 从待机原画改, 每张写明刀指向哪):
+    ##   kathw05 刀竖直举起 → kathw1 右上 → kath0 正右 → kath05 右下(半朝镜头) → kath1 正对镜头(刀缩成一小截) →
+    ##   kath15 左下(半朝镜头) → katkey_s2b 正左(命中, 下标 6) → kath25 绕到左肩后; 收刀 khr_1..3 = animate_image(kath25 → 待机)。
+    ##   刀尖沿椭圆下半边从右走到左(tools/oneoff/sweep_check.py 逐帧量): (93,75) → (51,69) → (15,70) → (3,51)。
+    "eq-katana-attack": ["kathw05", "kathw1", "kath0", "kath05", "kath1", "kath15", "katkey_s2b", "kath25", "khr_1", "khr_2", "khr_3"],
     "eq-katana-walk": ["katwalk_%d" % i for i in range(1, 9)],                           # 走路循环 8 帧(首尾钉住待机原画生成)
     ## 上挑: katup_3 不要(刀身画成一团往身后飞的白雾, 方向反了) ⇒ 刀尖压地后一下挑到指天; 第 6 帧(刀指天)出波
     "eq-katana-rise": ["katlow_%d" % i for i in range(1, 5)] + ["katup_1", "katup_2", "katup_4"]
@@ -94,7 +95,7 @@ KATANA_SEQ = {
     "eq-katana-release": ["katrel_%d" % i for i in range(1, 7)] + ["katrec_%d" % i for i in range(1, 4)],   # 绕身甩刀(第 4 帧甩出龙卷风) → 刀举过头顶 → 收刀
 }
 ## 横斩刀光拖尾画进帧(tools/assetgen/katana_trail.py): 段名 → (从第几帧画, 画到第几帧)
-KATANA_TRAIL = {"eq-katana-attack": (4, 11)}
+KATANA_TRAIL = {"eq-katana-attack": (3, 7)}   # 下标 3(正右 → 右下) 到 7(正左 → 绕到肩后)
 KATANA_DY = 112 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "katana_0.png")).convert("RGBA").getbbox()[3]
 ## 炮筒原画底下空 11 行(见下方「落地」): 所有炮筒动作一律挪这么多
 CANNON_DY = 64 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "cannon_0.png")).convert("RGBA").getbbox()[3]
