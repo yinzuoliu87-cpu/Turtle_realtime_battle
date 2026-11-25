@@ -586,20 +586,38 @@ func orb_tick(u: Dictionary, delta: float) -> void:
 
 
 ## 射出藤蔓箭: ①给小球反冲(动量守恒) ②画一道藤蔓光迹。
-func orb_fire(u: Dictionary, tgt_pos: Vector2, crit: bool) -> void:
+func orb_fire(u: Dictionary, tgt_pos: Vector2, crit: bool):
 	var from: Vector2 = u.get("_vine_orb_pos", (u["pos"] as Vector2) + ORB_OFFSET)
 	var dir: Vector2 = tgt_pos - from
 	if dir.length() < 1.0:
 		dir = Vector2.RIGHT
 	u["_vine_orb_vel"] = Vector2(u.get("_vine_orb_vel", Vector2.ZERO)) + recoil_dv(dir, ORB_RECOIL)
 	if not _has_world():
-		return
+		return null
 	var col: Color = Color(1.0, 0.94, 0.45, 0.95) if crit else Color(0.50, 0.93, 0.45, 0.85)
-	## ★寿命 0.26/0.34(旧 0.14/0.20): 实拍复核(2026-08-11)按普攻节拍铺 9 张一支都没抓到 ——
-	##   0.14 秒 + 出生即淡出, 玩家肉眼同样读不到"每次普攻多射一箭"这条核心机制。
-	var n := _streak(from, tgt_pos, col, 4.2 if crit else 3.0)
-	if n != null:
-		_fx.append({"node": n, "t": 0.0, "life": 0.34 if crit else 0.26, "kind": "streak"})
+	## 11-25 改成一支 VINE_ARROW_LEN 码长的箭从小球飞出去(结算侧按 EqBowBatch.VINE_SPD 推进, 每步调 vine_step 摆位置);
+	##   原来是整条 from→目标 一闪 0.26/0.34 秒(伤害当场结算) —— 用户「肯定是有飞行速度的呀」。
+	var dn: Vector2 = dir.normalized()
+	return _streak(from, from + dn * minf(VINE_ARROW_LEN, dir.length()), col, 4.2 if crit else 3.0)
+
+
+const VINE_ARROW_LEN := 70.0
+## 按飞行进度摆箭: 网格顶点是世界坐标建的(箭身 from → from+方向×箭长) ⇒ 整体平移 = 节点 position 设成位移量
+func vine_step(n, from: Vector2, to2: Vector2, k: float) -> void:
+	if n == null or not is_instance_valid(n):
+		return
+	var d: Vector2 = to2 - from
+	var ln: float = d.length()
+	if ln < 1.0:
+		return
+	var off: Vector2 = (d - d / ln * minf(VINE_ARROW_LEN, ln)) * k   # 箭头从「箭长」处走到目标
+	n.position = battle._world_pos(from + off, 0.0) - battle._world_pos(from, 0.0)
+
+
+## 箭到了: 收掉
+func vine_land(n) -> void:
+	if n != null and is_instance_valid(n):
+		n.queue_free()
 
 
 ## 一支从 a 到 b 的【藤蔓箭】(贴地上方一点): 箭杆尾端渐隐 + 命中端三角箭头 + 杆上两对倒刺。

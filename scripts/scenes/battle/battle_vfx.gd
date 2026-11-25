@@ -678,46 +678,45 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null, t
 ##   · 高度不写死 —— 起手/落点都走 `battle._world_pos`, 拱高按距离算
 ##   · 用**真素材**不是程序生成的白球
 ##   · NEAREST 采样(像素风; LINEAR 会糊)
-func _throw_item(src: Dictionary, tgt: Dictionary, img: String, label: String, col: Color) -> void:
-	if not (src is Dictionary) or not (tgt is Dictionary):
-		return
-	var from2d: Vector2 = src.get("pos", Vector2.ZERO)
-	var to2d: Vector2 = tgt.get("pos", Vector2.ZERO)
+## 扔东西(古灵精怪枪)的演出, 分三段由通用飞行物驱动(11-25 起按飞行速度, 不再自己按固定秒数补间):
+##   throw_item_node 建节点 → throw_item_step 每步按飞行进度摆(真抛物线 + 翻滚) → throw_item_land 到了(火花 + 飘字 + 淡出)
+const THROW_ITEM_H0 := 1.1                      # 出手在胸口高度(与 lava-rock 那条一致)
+func throw_item_node(from2d: Vector2, img: String):
 	var p := Sprite3D.new()
 	var path := "res://assets/sprites/vfx/" + img
-	if not ResourceLoader.exists(path):
-		return                                  # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
+	if not ResourceLoader.exists(path) or battle._world == null:
+		return null                             # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
 	p.texture = load(path)
 	p.pixel_size = (30.0 * battle.WS) / float(maxi(1, p.texture.get_height()))
 	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	p.shaded = false
 	p.transparent = true
 	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	var h0 := 1.1                               # 出手在胸口高度(与 lava-rock 那条一致)
-	p.position = battle._world_pos(from2d, h0)
+	p.position = battle._world_pos(from2d, THROW_ITEM_H0)
 	battle._world.add_child(p)
-	var dist: float = from2d.distance_to(to2d)
-	var dur: float = clampf(dist / 700.0, 0.22, 0.62)
-	var arc: float = clampf(dist * 0.004, 0.5, 2.2)   # 远则拱高
+	return p
+
+
+func throw_item_step(p, from2d: Vector2, to2d: Vector2, s: float) -> void:
+	if p == null or not is_instance_valid(p):
+		return
+	var arc: float = clampf(from2d.distance_to(to2d) * 0.004, 0.5, 2.2)   # 远则拱高
+	## 真抛物线: 4·h·s(1−s) 是拱高为 h 的标准形(与 090 浪潮同一条公式, 不另立)
+	p.position = battle._world_pos(from2d.lerp(to2d, s), THROW_ITEM_H0 + arc * 4.0 * s * (1.0 - s))
+	p.rotation.z = s * TAU * 1.5             # 翻滚 —— 扔出去的东西会转
+
+
+func throw_item_land(p, tgt: Dictionary, label: String, col: Color, hit: bool) -> void:
+	if hit:
+		_hit_spark(tgt)
+		_float_text(Vector2(tgt["pos"]) + Vector2(0, -66), label, col)
+	if p == null or not is_instance_valid(p):
+		return
+	## ★落地才淡 —— 不是从出手就开始淡(那正是"淡出病": 实拍读成一团灰)
 	var tw: Tween = battle._reg_tween()
 	tw.bind_node(p)
-	tw.tween_method(func(s: float) -> void:
-		if not is_instance_valid(p):
-			return
-		## 真抛物线: 4·h·s(1−s) 是拱高为 h 的标准形(与 090 浪潮同一条公式, 不另立)
-		var at2d: Vector2 = from2d.lerp(to2d, s)
-		p.position = battle._world_pos(at2d, h0 + arc * 4.0 * s * (1.0 - s))
-		p.rotation.z = s * TAU * 1.5             # 翻滚 —— 扔出去的东西会转
-	, 0.0, 1.0, dur)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(p):
-			_hit_spark(tgt)
-		_float_text(to2d + Vector2(0, -66), label, col))
-	## ★落地才淡 —— 不是从出手就开始淡(那正是"淡出病": 实拍读成一团灰)
 	tw.tween_property(p, "modulate:a", 0.0, 0.18)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(p):
-			p.queue_free())
+	tw.tween_callback(p.queue_free)
 
 
 func _hit_spark(tgt, at_pos = null, tier: int = VfxTiers.NORMAL) -> void:

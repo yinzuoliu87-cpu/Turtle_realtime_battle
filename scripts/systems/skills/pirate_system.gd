@@ -50,6 +50,8 @@ const SHOT_ARC_DEG := 60.0           # 扇面角度
 const SHOT_COEF := 0.5               # 每颗 ×ATK 物理
 const SHOT_KNOCK := 40.0             # 击退(码)
 const SHOT_RANGE := 400.0            # 射程(码)
+const SHOT_PELLET_SPD := 555.0       # 弹丸飞行速度(码/秒) = 原画面 400 码 / 0.72 秒(11-25 起结算也按它)
+const SHOT_PELLET_W := 18.0          # 弹丸碰撞半宽(码)
 
 var battle
 
@@ -246,9 +248,11 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 	for i in range(SHOT_PELLETS):
 		var frac: float = (float(i) / 7.0) * 2.0 - 1.0      # -1..1 均分
 		var d: Vector2 = DetMath.rotated(base_dir, half * frac)
-		battle._ballistics._shotgun_pellet(u["pos"], u["pos"] + d * SHOT_RANGE, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
-		var hit = battle._basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
-		if hit != null and DetMath.dist(hit["pos"], u["pos"]) <= SHOT_RANGE:
+		## 11-25 弹丸按 SHOT_PELLET_SPD 沿这条线飞, 每步碰撞、碰到第一个敌人(含蛋)才结算(原来开枪那一刻就打中、弹丸画面还飞 0.72 秒;
+		##   用户「肯定是有飞行速度的呀」)。速度 = 原画面 400 码 / 0.72 秒(慢速·用户2026-07-14)
+		battle._ballistics.fire_pellet(u, d, SHOT_RANGE, SHOT_PELLET_SPD, SHOT_PELLET_W, Color(1.0, 0.86, 0.5, 0.95), func(hit: Dictionary) -> void:
+			if not hit.get("alive", false):
+				return
 			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, SHOT_COEF, hit), Color("#ffd07a"))   # 0.5A物理
 			## ★2026-10-11 全项目通读 A5: 原来直接改 pos, 不查 `_knockback` 那三道守卫 ⇒ 017 不沉之锚/不可阻挡照样被推
 			##   (门禁 verify_pirate_shot_knock_immune)。守卫与 `_knockback` 一致: 活着 / 不在空中 / 不免击退。
@@ -256,7 +260,7 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 				var pd: Vector2 = DetMath.norm((hit["pos"] - u["pos"]))               # 40码轻击退(不用_knockback避免8连击飞震屏)
 				hit["pos"] += pd * SHOT_KNOCK
 				hit["pos"] = ArenaShape.clamp_in(hit["pos"], battle.ARENA)
-			battle._vfx._hit_spark(hit)
+			battle._vfx._hit_spark(hit))
 
 func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on_impact: Callable) -> void:   # 演出船俯冲: 从后方高空冲向撞击点·边冲边变大·拉水花航迹
 	if ship == null or not is_instance_valid(ship):

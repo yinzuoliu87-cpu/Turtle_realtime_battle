@@ -80,6 +80,8 @@ const VINE_FLAT := [15, 23, 30]
 const VINE_ATK := [0.30, 0.40, 0.60]
 ## 暴击时给的攻速(1/2/3 星)
 const VINE_ASPD := [0.35, 0.45, 0.60]
+## 藤蔓箭飞行速度(码/秒): 从小球出手, 追着目标飞、到了才结算(11-25 用户「肯定是有飞行速度的呀…可以全部改了」; 原来出手当场结算、画面只闪一道 0.26 秒的光迹)
+const VINE_SPD := 1200.0
 
 
 ## 每次普攻: 小球射一支藤蔓箭。
@@ -102,7 +104,21 @@ func on_basic_073(u: Dictionary, si: int) -> void:
 	var crit: bool = battle._battle_rng.randf() < minf(float(u.get("crit", 0.0)), 1.0)
 	_note_owner(u)
 	_vfx.ensure_orb(u)
-	_vfx.orb_fire(u, t["pos"], crit)
+	var arrow = _vfx.orb_fire(u, t["pos"], crit)
+	var from2: Vector2 = u.get("_vine_orb_pos", (u["pos"] as Vector2) + BowEqVfx.ORB_OFFSET)
+	stt["vine_shots"] = int(stt.get("vine_shots", 0)) + 1   # 同步触发证据(出手那一刻记; 供门禁, 不必等演出)
+	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_073")] = stt
+	battle._ballistics.launch_flight(u, from2, t, VINE_SPD,
+		func(hit: bool) -> void:
+			_vfx.vine_land(arrow)
+			if hit:
+				_vine_hit(u, t, si, base, crit),
+		func(k: float, _p2: Vector2, to2: Vector2) -> void: _vfx.vine_step(arrow, from2, to2, k))
+
+
+## 藤蔓箭飞到才结算(暴击在出手那一刻已掷好, 带过来)
+func _vine_hit(u: Dictionary, t: Dictionary, si: int, base: float, crit: bool) -> void:
+	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_073"), {})
 	if crit:
 		## 暴击 → 转【真实伤害】(不吃护甲/减伤) + 全局暴伤倍率(见文件头"诚实记录"第二条)。
 		## ★`pre_crit = true`: 不加这个, `_apply_damage_from` 会在真伤段【再掷一次暴击】
@@ -115,7 +131,6 @@ func on_basic_073(u: Dictionary, si: int) -> void:
 		var raw: float = base
 		battle._damage._apply_damage_from(u, t, battle._phys_after_armor(u, raw, t),
 			Color("#8ce860"), 0.0, false, true)
-	stt["vine_shots"] = int(stt.get("vine_shots", 0)) + 1   # 同步触发证据(供门禁, 不必等演出)
 	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_073")] = stt
 
 
@@ -421,19 +436,28 @@ func volley_shot(u: Dictionary, si: int) -> int:
 	var steal: float = [0.5, 0.5, 1.0][si]
 	var cuts: Array = []
 	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_076"), {})
+	## 11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 弩矢按 BowEqVfx.BOLT_SPEED 飞, 穿到谁身上那一刻才结算谁(延时 = 沿途距离 / 速度);
+	##   原来出手那一刻整条线上的人全部结算, 画面上弩矢才刚出发。穿过哪些人出手时按当时位置排好(3000 码/秒, 一路不到 0.7 秒)。
+	var fx_mult: float = battle._copy_fx_mult
 	for k in range(line.size()):
 		var o: Dictionary = line[k]["u"]
 		var mult: float = BowEqVfx.pierce_mult(k)
-		battle._damage._apply_damage_from(u, o, battle._phys_after_armor(u, phys * mult, o),
-			Color("#ffb060"), 0.0, false, true)
-		battle._damage._apply_damage_from(u, o, maxi(1, int(round(tru * mult))),
-			Color("#ffffff"), 0.0, true, true, true)
-		var got: float = drain_energy(o, steal * battle._copy_fx_mult)   # × 系数: 多重打击那一发按 50%(11-11)
-		if got > 0.0:
-			var _tp76: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_076"))   # ④ 偷来的龟能记给这一件(箭在飞行途中结算, 没有分发上下文)
-			battle._equip_sys._eq_grant_energy(u, got)
-			battle._equip_sys.tally.pop(_tp76)
-			stt["volley_stolen"] = float(stt.get("volley_stolen", 0.0)) + got
+		var key76: String = battle._equip_sys.key_of(u, "p2eq_076")
+		battle._pending_shots.append({"delay": float(line[k]["d"]) / BowEqVfx.BOLT_SPEED, "src": u, "fn": func() -> void:
+			if not o.get("alive", false) or not u.get("alive", false):
+				return
+			battle._damage._apply_damage_from(u, o, battle._phys_after_armor(u, phys * mult, o),
+				Color("#ffb060"), 0.0, false, true)
+			battle._damage._apply_damage_from(u, o, maxi(1, int(round(tru * mult))),
+				Color("#ffffff"), 0.0, true, true, true)
+			var got: float = drain_energy(o, steal * fx_mult)   # × 系数: 多重打击那一发按 50%(11-11)
+			if got > 0.0:
+				var _tp76: Array = battle._equip_sys.tally.push(u, key76)   # ④ 偷来的龟能记给这一件(箭在飞行途中结算, 没有分发上下文)
+				battle._equip_sys._eq_grant_energy(u, got)
+				battle._equip_sys.tally.pop(_tp76)
+				var st2: Dictionary = u["eq_state"].get(key76, {})
+				st2["volley_stolen"] = float(st2.get("volley_stolen", 0.0)) + got
+				u["eq_state"][key76] = st2})
 		cuts.append(clampf(float(line[k]["d"]) / PIERCE_RANGE, 0.0, 1.0))
 	stt["volley_fired"] = int(stt.get("volley_fired", 0)) + 1
 	stt["volley_pierced"] = int(stt.get("volley_pierced", 0)) + line.size()

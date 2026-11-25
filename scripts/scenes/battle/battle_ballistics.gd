@@ -610,27 +610,28 @@ func _step_pending_shots(delta: float) -> void:
 	battle._equip_sys.tally.pop(_tl0)
 
 # 排队 count 发子弹, 每发间隔 interval 秒, 逐发 call fn (fn 内部自选目标, 支持死亡守卫)
-func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color, dur: float = 0.42, on_land: Callable = Callable()) -> void:
-	if battle._pellet_tex == null: battle._pellet_tex = VfxTex._make_pellet_texture()
-	var sp = Sprite3D.new()
-	sp.texture = battle._pellet_tex
-	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sp.modulate = col
-	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sp.shaded = false; sp.transparent = true
-	sp.pixel_size = 0.02
-	var perp = DetMath.norm((to2d - from2d).orthogonal()) if DetMath.vlen((to2d - from2d)) > 1.0 else Vector2.UP
-	sp.position = battle._world_pos(from2d + perp * randf_range(-18.0, 18.0), 1.0)
-	battle._world.add_child(sp)
-	var tw = battle._reg_tween()   # 顺序: 全程满alpha飞行 → 命中处才快速淡出(修"路中间淡化"用户2026-07-04)
-	tw.tween_property(sp, "position", battle._world_pos(to2d, 1.0), dur).set_ease(Tween.EASE_OUT)
-	## ★★2026-09-13: 结算从 tween 末尾挪到游戏钟。飞行本身是纯观感, 留在 tween;
-	##   但 `on_land` 里是 053 散弹枪的**伤害**, 挂在 tween 上等于无头下一发都不结算(§3.5)。
-	##   节拍一个数没动: 仍是弹珠飞完 `dur` 秒那一刻。与 024~029/034/039 同一个共享原语。
-	if on_land.is_valid():
-		battle._equip_tick_sys.schedule(dur, on_land)   # 弹珠飞到才结算(用户2026-07-19)
-	tw.tween_property(sp, "modulate:a", 0.0, 0.1)
-	tw.tween_callback(sp.queue_free)
+## 弹丸(霰弹类)直线弹(11-25): 与 fire_skillshot 同一套每步碰撞 —— 按 speed 沿 dir 飞, 碰到第一个敌人才结算并消失, 飞满 rng 就没了。
+##   原来是出手那一刻就定好每颗打谁、伤害当场落(海盗霰弹)或按固定时长落(053), 画面上弹丸还在飞(用户「肯定是有飞行速度的呀」)。
+##   弹体是程序生成的弹珠贴图(没有贴图路径) ⇒ 自己建好节点交给 fire_skillshot。
+func fire_pellet(src: Dictionary, dir: Vector2, rng: float, speed: float, half_w: float, col: Color, on_hit: Callable) -> void:
+	var sp: Sprite3D = null
+	if battle._world != null:
+		if battle._pellet_tex == null: battle._pellet_tex = VfxTex._make_pellet_texture()
+		sp = Sprite3D.new()
+		sp.texture = battle._pellet_tex
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sp.modulate = col
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false; sp.transparent = true
+		sp.pixel_size = 0.02
+		sp.position = battle._world_pos(src["pos"], 1.0)
+		battle._world.add_child(sp)
+		var tw: Tween = battle._reg_tween()   # 兜底(同 _skillshot_sprite): 满程时长后无论如何收掉
+		tw.bind_node(sp)
+		tw.tween_interval(rng / maxf(1.0, speed) + 0.3)
+		tw.tween_callback(sp.queue_free)
+	fire_skillshot(src, dir, rng, speed, half_w, "", 0.0, on_hit, null, 0.0, sp)
+
 
 # 装备弹道(弩矢/飞镖等真实贴图投射物): 朝向随飞行方向(2.5D近似 z-roll), 命中记装备物理伤. eq_bleed=命中附加流血层
 func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:
@@ -929,10 +930,10 @@ func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> vo
 const SKILLSHOT_STEP := 0.05
 
 func fire_skillshot(src: Dictionary, dir: Vector2, rng: float, speed: float, half_w: float,
-		tex_path: String, size_px: float, on_hit: Callable, from = null, catchup: float = 0.0) -> void:
+		tex_path: String, size_px: float, on_hit: Callable, from = null, catchup: float = 0.0, spr_in: Sprite3D = null) -> void:
 	## `from`: 弹体起点(援军小将·四面合围的气波出现在目标四周, 不在施法者身上)。缺省 = 施法者脚下。
 	var p_start: Vector2 = from if from is Vector2 else src["pos"]
-	var spr: Sprite3D = _skillshot_sprite(tex_path, size_px, p_start, rng / maxf(1.0, speed))
+	var spr: Sprite3D = spr_in if spr_in != null else _skillshot_sprite(tex_path, size_px, p_start, rng / maxf(1.0, speed))   # spr_in: 调用方自己建的弹体(fire_pellet)
 	## ★弹体节点只存 instance_id, 不让 lambda 捕获节点本身 —— 节点先被收掉、回调后跑时
 	##   Godot 报「Lambda capture was freed」(门禁 tween_capture 守着这一类)。
 	var st := {"pos": p_start, "left": rng, "spr_id": spr.get_instance_id() if spr != null else 0}

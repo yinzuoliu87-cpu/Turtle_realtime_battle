@@ -6732,9 +6732,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				for _bh in range(2): _bubble_sys._bubble_rise(u["pos"])   # 泡沫被动proc: 自身回血泡泡(用户2026-07-14)
 				var bt = _targeting._nearest_enemy(u)             # 修: 随机敌→最近敌(封板)
 				if bt != null:
-					_damage.set_dtype("magic", bt); _damage._apply_damage_from(u, bt, int(_mitigate(u, bs * BubbleSystem.FOAM_DMG_PCT, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)·★类型要自己设: 走_mitigate不走_resolve_dmg⇒原来跳的是上一发别人的颜色(2026-08-22哨兵抓出)
-					_fly_vfx("res://assets/sprites/skills/bubble-1.png", u["pos"], bt["pos"], 46.0, 0.34, 1.0)   # 泡泡弹飞向最近敌
-					_bubble_sys._bubble_rise(bt["pos"]); _bubble_sys._bubble_rise(bt["pos"])   # 命中泡沫破
+					_bubble_sys.foam_shot(u, bt, bs * BubbleSystem.FOAM_DMG_PCT)   # 泡泡弹按速度飞向最近敌、砸到才结算(11-25; 原来当场结算、画面飞 0.34 秒)
 				u["bubble_store"] = bs * BubbleSystem.FOAM_KEEP          # 修: 消耗50%→共消耗20%(10%伤+10%治·封板)
 	# --- 闪电·雷电: 每4s 自动电击随机敌 (真伤) (用户) ---
 	## ★被控时不自动电击、计时暂停(用户 10-16 被控规则)

@@ -41,6 +41,13 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 		_fail += 1
 		print("  [FAIL] ", name, "  ", detail)
 
+## 只推飞行物 / 弹道 / 延时队列(不推单位行为)1.5 秒: 藤蔓箭 / 弩矢 / 扔枪 11-25 起按速度飞到才结算
+func _fly() -> void:
+	for _i in range(90):
+		_s._ballistics._step_projectiles(_s.SIM_DT)
+		_s._ballistics._step_pending_shots(_s.SIM_DT)
+
+
 
 ## 干净合成单位。★携带者一律 `fortune` 不用 `basic`:
 ##   小龟·不屈会给小龟造成的一切伤害 +20%, 拿 basic 当携带者验"22 点加成"会量到 26。
@@ -264,6 +271,7 @@ func _t073_vine_bow() -> void:
 		var t: Dictionary = _mk("basic", "right", Vector2(-100.0, -300.0))
 		var h0: float = float(t["hp"])
 		_s._equip_sys._eq_on_basic_attack(u, t)          # ★真入口
+		_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 		var want: float = flat + 200.0 * pct
 		_ok("① 073 si=%d 非暴击 → %.0f 物理(15/23/30 + ATK 200 × 30/40/60%%, 护甲 0)" % [si, want],
 			absf(h0 - float(t["hp"]) - want) < 0.51, "实掉 %.1f" % (h0 - float(t["hp"])))
@@ -285,6 +293,7 @@ func _t073_vine_bow() -> void:
 		ct["base_def"] = 200.0
 		var c0: float = float(ct["hp"])
 		_s._equip_sys._eq_on_basic_attack(c, ct)
+		_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 		var wc: float = (flat2 + 200.0 * pct2) * 1.5
 		_ok("① 073 si=%d 暴击 → %.0f 真实伤害(转真伤: 目标 200 护甲一点没减)" % [si2, wc],
 			absf(c0 - float(ct["hp"]) - wc) < 0.51,
@@ -301,6 +310,7 @@ func _t073_vine_bow() -> void:
 	nt["base_def"] = 200.0
 	var n0: float = float(nt["hp"])
 	_s._equip_sys._eq_on_basic_attack(n1, nt)
+	_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 	## 减伤曲线 1 − r/(r+40): 200 护甲 ⇒ ×0.16667 ⇒ (30 + 200 × 60% = 150) × 0.16667 = 25
 	_ok("① 073 ★分母: 不暴击时护甲【真的在减】(150 打成 25, 减伤曲线 40/(200+40))",
 		absf(n0 - float(nt["hp"]) - 25.0) < 0.51, "实掉 %.1f 期望 25" % (n0 - float(nt["hp"])))
@@ -325,6 +335,7 @@ func _t073_aspd() -> void:
 		_ok("①b si=%d ★分母: 起手 aspd_perm = 1.000" % si,
 			absf(float(u.get("aspd_perm", 1.0)) - 1.0) < 0.0001, "%.4f" % float(u.get("aspd_perm", 1.0)))
 		_s._equip_sys._eq_on_basic_attack(u, t)
+		_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 		_ok("①b si=%d 一次暴击 → aspd_perm = %.2f(+35/45/60%%)" % [si, 1.0 + pct],
 			absf(float(u["aspd_perm"]) - (1.0 + pct)) < 0.0005,
 			"实测 %.4f" % float(u["aspd_perm"]))
@@ -334,6 +345,7 @@ func _t073_aspd() -> void:
 		_s._t += 1.0
 		for _k in range(5):
 			_s._equip_sys._eq_on_basic_attack(u, t)
+			_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 		_ok("①b si=%d ★刷新【不叠加】: 再暴 5 次仍是 %.2f(叠加的话会到 %.2f)" % [si, 1.0 + pct, 1.0 + pct * 6.0],
 			absf(float(u["aspd_perm"]) - (1.0 + pct)) < 0.0005,
 			"实测 %.4f" % float(u["aspd_perm"]))
@@ -355,6 +367,7 @@ func _t073_aspd() -> void:
 	m["aspd_perm"] = 1.50                                # 贝母021 / 枪羁绊等别的来源
 	var mt: Dictionary = _mk("basic", "right", Vector2(-100.0, -140.0))
 	_s._equip_sys._eq_on_basic_attack(m, mt)
+	_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 	_ok("①b ★共存: 别人给的 1.50 上叠我的 60% = 2.10(加算通道, 不覆盖)",
 		absf(float(m["aspd_perm"]) - 2.10) < 0.0005, "实测 %.4f" % float(m["aspd_perm"]))
 	_s._t = float((m["eq_state"]["p2eq_073"] as Dictionary)["vine_aspd_until"]) + 0.01
@@ -385,6 +398,7 @@ func _t073_random_and_nochain() -> void:
 		hp0.append(float(o["hp"]))
 	for _i in range(TRIALS):
 		_s._equip_sys._eq_on_basic_attack(u, es[0])
+		_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 	var hits: Array = []
 	var tot := 0
 	for k in range(3):
@@ -417,6 +431,7 @@ func _t073_random_and_nochain() -> void:
 			for o2 in e2:
 				before.append(float(o2["hp"]))
 			_s._equip_sys._eq_on_basic_attack(u2, e2[0])
+			_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 			for k3 in range(3):
 				if float(e2[k3]["hp"]) < before[k3]:
 					seq.append(k3)
@@ -441,6 +456,7 @@ func _t073_random_and_nochain() -> void:
 	var wt: Dictionary = _mk("basic", "right", Vector2(-100.0, -20.0), 1.0e9)
 	w["_onhit_fr"] = -999   # 先抹掉标记, 免得读到本帧更早的别的 on-hit
 	_s._equip_sys._eq_on_basic_attack(w, wt)
+	_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 	_ok("①c ★★藤蔓箭【不触发 on-hit】(_eq_on_hit 的入口标记没被写)",
 		int(w.get("_onhit_fr", -999)) == -999, "_onhit_fr=%d" % int(w.get("_onhit_fr", -999)))
 	## ★分母: 同一对单位走【正常伤害路】必须真的进 on-hit —— 证明探针有效, 不是空检查
@@ -756,6 +772,7 @@ func _t076_volley() -> void:
 		for o in row:
 			b4.append(float(o["hp"]))
 		var pierced: int = _s._equip_sys._bow_sys.volley_shot(c, si)
+		_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 		_ok("④b si=%d ★分母: 一发箭穿过了 5 个人" % si, pierced == 5, "pierced=%d" % pierced)
 		var base: float = 120.0 * [0.05, 0.06, 0.08][si] + [9.0, 13.0, 16.0][si]
 		var bad: Array = []
@@ -783,6 +800,7 @@ func _t076_volley() -> void:
 	far["pos"] = (f["pos"] as Vector2) + Vector2(2001.0, 0.0)
 	var fh0: float = float(far["hp"])
 	var pn: int = _s._equip_sys._bow_sys.volley_shot(f, 2)
+	_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 	_ok("④b ★2000 码封顶: 2001 码外那个没被穿到", absf(fh0 - float(far["hp"])) < 0.01,
 		"远处掉 %.1f" % (fh0 - float(far["hp"])))
 	_ok("④b ★分母: 这一发确实穿到了近处那个(穿透数 = 1)", pn == 1, "pierced=%d" % pn)
@@ -812,6 +830,7 @@ func _t076_steal() -> void:
 		var mine0: float = float(u["skill_cd"]["mine"])
 		var his0: float = float(v["skill_cd"]["theirs"])
 		var pierced: int = _s._equip_sys._bow_sys.volley_shot(u, si)
+		_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 		_ok("④c si=%d ★分母: 这一发穿到了 1 个人" % si, pierced == 1, "pierced=%d" % pierced)
 		## 偷 N 点 = 敌人冷却【多】N×0.075 秒
 		_ok("④c si=%d 敌人被偷走 %.1f 点龟能(冷却往后推 %.4f 秒)" % [si, steal, steal * 0.075],
@@ -836,6 +855,7 @@ func _t076_steal() -> void:
 	b["skill_cd"] = {"theirs": 7.5}                      # 已是满冷却 = 龟能 0, 偷不动
 	var am0: float = float(a["skill_cd"]["mine"])
 	_s._equip_sys._bow_sys.volley_shot(a, 2)
+	_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 	_ok("④c ★敌人龟能已见底 → 偷不到 ⇒ 自己也【不凭空多】(冷却纹丝不动)",
 		absf(float(a["skill_cd"]["mine"]) - am0) < 0.0005,
 		"己冷却 %.4f → %.4f" % [am0, float(a["skill_cd"]["mine"])])
@@ -1332,7 +1352,8 @@ func _t_readouts_fixture() -> void:
 	c["crit"] = 1.0
 	var ct: Dictionary = _mk("basic", "right", Vector2(-100.0, -360.0))
 	_s._equip_sys._eq_on_basic_attack(c, ct)
-	_ok("⑦d 073 暴击瞬间 vine_buff_pct = 100(触发瞬间读数就位)",
+	_fly()   # 11-25 藤蔓箭按速度飞到才结算(暴击 buff 也在那一刻上)
+	_ok("⑦d 073 暴击箭到的瞬间 vine_buff_pct = 100(触发瞬间读数就位)",
 		absf(float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0)) - 100.0) < 0.001,
 		"pct=%.2f" % float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0)))
 	_s._t += 1.0

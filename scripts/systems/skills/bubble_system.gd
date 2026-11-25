@@ -37,6 +37,38 @@ const BURST_RADIUS := 200.0     # 门间判定带半径(码)
 
 var battle
 
+## 泡沫被动: 泡泡弹按 FOAM_SPD 追着最近敌飞, 砸到才结算 10% 储存的魔法伤害(11-25 用户「肯定是有飞行速度的呀…可以全部改了」;
+##   原来出手当场结算、画面上泡泡再飞 0.34 秒)。伤害数额出手时就按当时的储存算好。
+const FOAM_SPD := 900.0
+func foam_shot(u: Dictionary, bt: Dictionary, raw: float) -> void:
+	var from2: Vector2 = u["pos"]
+	var spr: Sprite3D = null
+	var t: Texture2D = load("res://assets/sprites/skills/bubble-1.png")
+	if t != null and battle._world != null:
+		var fh: int = maxi(1, t.get_height())
+		spr = Sprite3D.new()
+		spr.texture = t
+		spr.hframes = maxi(1, int(t.get_width() / fh))
+		spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; spr.shaded = false; spr.transparent = true
+		spr.pixel_size = (46.0 * battle.WS) / float(fh)
+		spr.position = battle._world_pos(from2, 1.0)
+		battle._world.add_child(spr)
+	battle._ballistics.launch_flight(u, from2, bt, FOAM_SPD,
+		func(hit: bool) -> void:
+			if spr != null and is_instance_valid(spr):
+				spr.queue_free()
+			if not hit:
+				return
+			battle._damage.set_dtype("magic", bt); battle._damage._apply_damage_from(u, bt, int(battle._mitigate(u, raw, bt, true)), Color("#aef1ff"))   # 修: 35%真伤→10%化魔法(吃魔抗·封板)·★类型要自己设: 走_mitigate不走_resolve_dmg⇒原来跳的是上一发别人的颜色(2026-08-22哨兵抓出)
+			_bubble_rise(bt["pos"]); _bubble_rise(bt["pos"]),   # 命中泡沫破
+		func(k: float, p2: Vector2, _to2: Vector2) -> void:
+			if spr != null and is_instance_valid(spr):
+				spr.position = battle._world_pos(p2, 1.0)
+				if spr.hframes > 1:
+					spr.frame = mini(spr.hframes - 1, int(k * float(spr.hframes))))
+
+
 func _init(b) -> void:
 	battle = b
 

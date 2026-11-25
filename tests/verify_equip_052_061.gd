@@ -149,7 +149,7 @@ func _ready() -> void:
 		"文案: 任何敌人阵亡时 +1 发")
 
 	# ══════════════ 053 霰弹: 弹珠数 / 每颗系数 / 8 颗眩晕 ══════════════
-	## ★★弹珠没有数组容器(走 `_ballistics._shotgun_pellet` 的回调), 数不出来。
+	## ★★弹珠没有数组容器(走 `_ballistics.fire_pellet` 的每步碰撞回调), 数不出来。
 	##   判据改成: **把敌人放到 60 码近处**, 让整个扇面(★3 半角 (18-1)/2×2.5 = 21.25°,
 	##   在 60 码处横向只散开约 23 码)全部打在同一个人身上 ⇒
 	##   **总伤害 ÷ 单颗伤害 = 颗数**, 数出来的是产品自己的账。
@@ -162,6 +162,7 @@ func _ready() -> void:
 		var e2: Dictionary = _mk(460.0, 400.0, "right")   # 只隔 60 码
 		_s._units.append(e2)
 		var h2: float = float(e2["hp"])
+		var t_blast: float = float(_s._t)
 		ES._eq_shotgun_blast(c2, si)
 		_advance(1.6)
 		var dmg2: float = h2 - float(e2["hp"])
@@ -176,10 +177,11 @@ func _ready() -> void:
 			"文案: 12/14/18 颗, 每颗 %.2f×攻击力" % EXP_SHOTGUN_COEF)
 		## 文案: 同一次齐射被 8 颗及以上命中 → 眩晕。★3 打 18 颗全中, 必须眩晕。
 		if si == 2:
-			_ok("② ★★★被 %d 颗(≥%d)命中 ⇒ 眩晕(stun_until %.2f > 当前 %.2f)"
+			## 11-25 起第 8 颗命中那一刻就眩晕(弹珠按速度飞到才结算), 推完 1.6 秒时可能已经醒了 ⇒ 判「齐射之后被眩晕过」
+			_ok("② ★★★被 %d 颗(≥%d)命中 ⇒ 眩晕(stun_until %.2f > 齐射时刻 %.2f + 0.5)"
 				% [EXP_SHOTGUN_N[si], EXP_SHOTGUN_STUN_HITS,
-				   float(e2.get("stun_until", 0.0)), _s._t],
-				float(e2.get("stun_until", 0.0)) > _s._t,
+				   float(e2.get("stun_until", 0.0)), t_blast],
+				float(e2.get("stun_until", 0.0)) > t_blast + 0.5,
 				"文案: 同一次齐射被 8 颗及以上弹珠命中的敌人眩晕")
 
 	# ══════════════ 054 瞄准镜: 必中 ══════════════

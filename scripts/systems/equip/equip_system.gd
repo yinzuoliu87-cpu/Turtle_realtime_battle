@@ -426,6 +426,7 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 				battle._damage._apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * PISTOL_LASER_FALLOFF)), u)   # 身后50%流血
 				battle._vfx._hit_spark(o)   # ★身后的也要有命中特效: 文案写「命中这条直线上的**所有**敌人」, 原来只有首敌有
 
+const SHOTGUN_PELLET_SPD := 1500.0   # 053 弹珠飞行速度(码/秒; 原公式里的恒定弹速, 去掉 0.10–0.75 秒的上下限)
 func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 喇叭枪053: 朝最近敌扇形散开, 每颗弹珠沿自己的直线飞, 撞到第一个敌人才结算伤害并消失; 被8发及以上命中→眩晕
 	if not u.get("alive", false): return
 	var t53 = battle._targeting._nearest_enemy(u)
@@ -433,30 +434,27 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 喇叭枪053: 朝最
 	battle._vfx.shotgun_muzzle_fx(u, dir53)   # 枪口闪 + 爆环(纯演出, 住 battle_vfx)
 	var n53: int = [12, 14, 18][si]
 	var step53: float = deg_to_rad(battle.SHOTGUN_PELLET_DEG)
-	var touched: Array = []
-	var maxdur: float = 0.0
+	## 11-25 每颗弹珠按 SHOTGUN_PELLET_SPD 沿自己的直线飞, 每步碰撞、撞到第一个敌人才结算(原来出手就定好打谁、按固定时长落;
+	##   用户「肯定是有飞行速度的呀」)。这一发里同一个敌人吃到第 SHOTGUN_STUN_HITS 颗那一刻眩晕(原来全部落地后再数, 结果相同)。
+	##   命中计数放在这一发自己的数组里([单位, 颗数]), 不拿单位字典当 Dict 键(2026-07-19 卡死教训)。
+	var tally53: Array = []
 	for k in range(n53):
 		var off53: float = (float(k) - float(n53 - 1) * 0.5) * step53   # 均匀分布在中线两侧
 		var d53: Vector2 = DetMath.rotated(dir53, off53)
-		var hit53 = _eq_first_in_line(u, d53, 40.0)                     # 这条线上最近的敌人=挡住这颗弹珠的那个
-		var endp: Vector2 = (hit53["pos"] if hit53 != null else u["pos"] + d53 * 1800.0)   # 没挡住→无限飞出场外
-		var dur53: float = clampf(DetMath.dist(u["pos"], endp) / 1500.0, 0.10, 0.75)         # 恒定弹速
-		maxdur = maxf(maxdur, dur53)
-		if hit53 == null:
-			battle._ballistics._shotgun_pellet(u["pos"], endp, Color(1.0, 0.86, 0.5, 0.95), dur53)
-			continue
-		if not battle._arr_has_unit(touched, hit53): touched.append(hit53)
-		var _tg: Dictionary = hit53
-		battle._ballistics._shotgun_pellet(u["pos"], endp, Color(1.0, 0.86, 0.5, 0.95), dur53, func() -> void:
-			if not _tg.get("alive", false): return
-			battle._damage._apply_damage_from(u, _tg, battle._atk_dmg(u, SHOTGUN_COEF, _tg), Color("#ffd07a"), 0.0, false, true)
-			_tg["_sg_hits"] = int(_tg.get("_sg_hits", 0)) + 1)
-	# 全部弹珠落地后再判眩晕(命中计数记在单位自身字段 —— 不拿单位字典当Dict键, 见 2026-07-19 卡死教训)
-	if touched.is_empty(): return
-	battle._pending_shots.append({"delay": maxdur + 0.06, "src": u, "fn": func() -> void:
-		for o in touched:
-			if int(o.get("_sg_hits", 0)) >= SHOTGUN_STUN_HITS and o.get("alive", false): battle._freeze(o, battle.CTRL_SEC)
-			o.erase("_sg_hits")})
+		battle._ballistics.fire_pellet(u, d53, 1800.0, SHOTGUN_PELLET_SPD, 40.0, Color(1.0, 0.86, 0.5, 0.95), func(tg: Dictionary) -> void:   # 没挡住→飞出场外
+			if not tg.get("alive", false): return
+			battle._damage._apply_damage_from(u, tg, battle._atk_dmg(u, SHOTGUN_COEF, tg), Color("#ffd07a"), 0.0, false, true)
+			var row = null
+			for r in tally53:
+				if is_same(r[0], tg):
+					row = r
+					break
+			if row == null:
+				row = [tg, 0]
+				tally53.append(row)
+			row[1] = int(row[1]) + 1
+			if int(row[1]) == SHOTGUN_STUN_HITS and tg.get("alive", false):
+				battle._freeze(tg, battle.CTRL_SEC))
 
 func _eq_ripple_tick(u: Dictionary, si: int) -> void:
 	var low042 = null; var lv042 := INF

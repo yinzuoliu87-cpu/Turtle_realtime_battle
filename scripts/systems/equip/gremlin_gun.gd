@@ -109,6 +109,7 @@ func tick_owner(u: Dictionary) -> void:
 ## ★挑人是**不重复**的 —— 需求说"1/2/3 个敌人", 同一个人塞两把不算两个敌人。
 ##   (敌人不够时有几个给几个; 返回真给出去的把数, 门禁拿它当分母。)
 ## ★用 `battle._battle_rng` 而不是裸 randi —— 确定性门禁(rng_discipline)守着这条。
+const THROW_SPD := 700.0   # 扔枪的飞行速度(码/秒; 原演出公式里的除数)
 func hand_out(u: Dictionary, si: int) -> int:
 	var want: int = EquipSystem.FPGA_GUNS[si]
 	var foes: Array = []
@@ -121,12 +122,18 @@ func hand_out(u: Dictionary, si: int) -> int:
 	var given: int = 0
 	while given < want and not foes.is_empty():
 		var k: int = battle._battle_rng.randi() % foes.size()
-		give(foes[k])
-		## ★★「**扔**给目标一把古灵精怪枪」—— 需求原话里的动作。
-		##   之前这条路径**一个 vfx 调用都没有**: 属性静悄悄加上去, 玩家看不到发生过什么
-		##   (2026-09-01 逐句核对原话时抓到, 第 2 句)。
-		##   ★演出在结算【之后】—— give() 已经同步做完, 这条 tween 推不动也不影响数值。
-		battle._vfx._throw_item(u, foes[k], "gremlin-gun.png", "古灵精怪枪", Color("#8ae06a"))
+		var foe: Dictionary = foes[k]
+		## ★★「**扔**给目标一把古灵精怪枪」—— 需求原话里的动作(2026-09-01 逐句核对原话时抓到, 第 2 句)。
+		##   11-25 起按飞行速度扔过去、**落到身上才给**(原来出手那一刻 give()、画面再补一条固定时长的抛物线;
+		##   用户「肯定是有飞行速度的呀…可以全部改了」)。目标半路死了就落空。
+		var from2: Vector2 = u["pos"]
+		var node = battle._vfx.throw_item_node(from2, "gremlin-gun.png")
+		battle._ballistics.launch_flight(u, from2, foe, THROW_SPD,
+			func(hit: bool) -> void:
+				if hit:
+					give(foe)
+				battle._vfx.throw_item_land(node, foe, "古灵精怪枪", Color("#8ae06a"), hit),
+			func(s: float, _p2: Vector2, to2: Vector2) -> void: battle._vfx.throw_item_step(node, from2, to2, s))
 		foes.remove_at(k)          # ★不重复: 挑过就拿掉
 		given += 1
 	return given

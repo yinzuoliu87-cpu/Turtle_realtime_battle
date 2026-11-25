@@ -30,6 +30,8 @@ func _shoot(s, immune: bool) -> Array:
 	s._units.append(t)
 	var p0: Vector2 = t["pos"]
 	s._pirate_sys._pirate_shotgun(p, t)
+	for _i in range(90):   # 11-25 弹丸按速度飞、每步碰撞才结算 ⇒ 推 1.5 秒延时队列(400 码射程 / 555 码每秒 < 0.8 秒)
+		s._ballistics._step_pending_shots(s.SIM_DT)
 	return [DetMath.dist(t["pos"], p0), 1.0e6 - float(t["hp"])]
 
 

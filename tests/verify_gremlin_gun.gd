@@ -26,6 +26,13 @@ func _ok(t: String, c: bool, ex: String = "") -> void:
 		_fail += 1
 	print("  [%s] %s  %s" % ["PASS" if c else "FAIL", t, ex])
 
+## 只推飞行物 / 弹道 / 延时队列(不推单位行为)1.5 秒: 藤蔓箭 / 弩矢 / 扔枪 11-25 起按速度飞到才结算
+func _fly() -> void:
+	for _i in range(90):
+		_s._ballistics._step_projectiles(_s.SIM_DT)
+		_s._ballistics._step_pending_shots(_s.SIM_DT)
+
+
 
 func _mk(side: String, off: Vector2) -> Dictionary:
 	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
@@ -156,6 +163,7 @@ func _ready() -> void:
 		for k in range(4):
 			foes.append(_mk("right", Vector2(200.0, -60.0 + 40.0 * float(k))))
 		var given: int = _s._equip_sys._gremlin.hand_out(carrier, si)
+		_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 		var n_foe: int = 0
 		var n_dup: int = 0
 		for f in foes:
@@ -181,6 +189,7 @@ func _ready() -> void:
 	var c2: Dictionary = _mk("left", Vector2(-200.0, 0.0))
 	var only1: Dictionary = _mk("right", Vector2(200.0, 0.0))
 	var g2: int = _s._equip_sys._gremlin.hand_out(c2, 2)   # 3★ 想塞 3 把, 只有 1 个敌人
+	_fly()   # 11-25 飞行物按速度飞到才结算 ⇒ 先把在途的推完
 	_ok("★敌人不够时有几个给几个(3★ 只有 1 个敌人 → 给 1 把)",
 		g2 == 1 and int(only1.get("gremlin_guns", 0)) == 1, "给出 %d" % g2)
 
@@ -205,13 +214,13 @@ func _ready() -> void:
 		_s.ARENA.position + _s.ARENA.size * 0.5 + Vector2(260, 0))
 	_s._units.append(victim)
 	var n_before: int = _s._world.get_child_count()
-	_s._vfx._throw_item(thrower, victim, "gremlin-gun.png", "古灵精怪枪", Color("#8ae06a"))
+	_s._vfx.throw_item_node(Vector2(thrower["pos"]), "gremlin-gun.png")   # 11-25 演出拆成 建节点 / 按飞行进度摆 / 落地 三段
 	var n_after: int = _s._world.get_child_count()
 	_ok("★★★扔出去的东西**真的在世界里建出来了**(子节点 %d → %d)" % [n_before, n_after],
 		n_after > n_before, "没有增量 = 又是一次'写了没人看见'")
 	## ★分母: 缺图时**不画**, 而不是拿别的图顶替(素材不复用铁律)
 	var n2: int = _s._world.get_child_count()
-	_s._vfx._throw_item(thrower, victim, "__不存在的图__.png", "x", Color.WHITE)
+	_s._vfx.throw_item_node(Vector2(thrower["pos"]), "__不存在的图__.png")
 	_ok("★分母: 图不存在时不画(也不拿别的图顶替)",
 		_s._world.get_child_count() == n2, "凭空多了节点")
 	## ★素材真的在盘上, 且**不是**复用别件装备的图
@@ -224,10 +233,10 @@ func _ready() -> void:
 	var seg_end: int = src40.find("func ", seg + 10)
 	if seg_end < 0:
 		seg_end = src40.length()   # ★它是文件里最后一个函数 —— 找不到"下一个 func"不等于函数体是空的
-	_ok("★★★发枪的产品入口里真的调了 _throw_item(分母: 函数体 %d 字)"
+	_ok("★★★发枪的产品入口里真的调了 throw_item_node(分母: 函数体 %d 字)"
 		% maxi(0, seg_end - seg),
 		seg >= 0 and seg_end > seg
-		and src40.substr(seg, seg_end - seg).contains("_throw_item("))
+		and src40.substr(seg, seg_end - seg).contains("throw_item_node("))
 
 	# ── ★★读数有没有出口: 枪要真的显进【头像下的装备格】 ──────────────
 	## 用户 2026-09-13:「我没懂为什么对面装备栏什么都没显示」—— 查实: `give()` 只加
