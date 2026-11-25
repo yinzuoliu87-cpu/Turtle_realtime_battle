@@ -1,46 +1,46 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 8,
- "fingerprint": "7ddf4d3604fe912ae0351e42dfadad34c9a601ef0989fc851552f45752922977",
+ "fingerprint": "1508b0c32afb6a7756d756484dfbba50a9990d41bae27946f60d14a3461890eb",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
-   "hash": "e909aa6d8b9d92697ede2250dbcca8df55886829315f04ffa0b1a521ffb1af5e",
+   "hash": "7e37f921230baf24c973e130fccf06f5457075ecfdd2ca6d9f2172da3ad979bb",
    "tag": "① 双方顶档盾(冲击波互打) · 剑 / 食物"
   },
   {
    "def": "302cbfd03fa4ff31",
-   "hash": "71bfb951f4742989803caf385e2b74fa14bf28208525f2964a4858bf53b722e5",
+   "hash": "a8ee8a5fb88437fca027164019f7e94b58a907ba0efa9672ce45d4625e1edb13",
    "tag": "② 药水/枪 vs 弓箭/剑 · 3 统领同路 + 精英小将"
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "384cad0ab19eded4fc69ba41d498266359506983a90f251f224af85c0c2801e8",
+   "hash": "ae53f49f074f91f074826f6f65ae6aca8bdc57bf7588022e4f0b29bc3dd6738b",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
-   "def": "f3854e0ad5fcd50a",
-   "hash": "188f1b78a894cb812e6b2fd9d8e9414be4b1c2aa01d06b16fdbd964fbb730508",
+   "def": "d934661682f7db9a",
+   "hash": "a804037247956cb4f6766e0940d5bbfe6ee0cd17bfeb94cc5e5a6c6a6fa740f8",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
    "def": "99521fedd8b3b2c9",
-   "hash": "28966e138339542fb930f039d61d22604fa8bf7faf47b8f44f7124cdb919f5bc",
+   "hash": "04dcaf4fb2af295678c9c1ce108e3ab428142c27512d9f9462bb33416be855ec",
    "tag": "⑤ 双方灵物触手 · 弓箭 vs 剑 · 复制/命运之轮/雷暴"
   },
   {
    "def": "28d5c2b94dc9943c",
-   "hash": "df86cba4e04d418fba22345246e1b7ef4514bddc916d221ce17773df23c51ec5",
+   "hash": "6262c76714887b0545408411d11d0cd70900830004c3848261fdf5be8904127c",
    "tag": "⑥ 炸弹顶档(导弹) + 武士刀小将 vs 盾/剑"
   },
   {
    "def": "1edc1a4ca1200c12",
-   "hash": "11c1d0bf2258062cda663c90276441542880a387f64eb4d5522cd42d61811f33",
+   "hash": "43951f030397b1f436046212baad65406de291c8dbb1b0ea36558fceab1cf841",
    "tag": "⑦ 匕首顶档(刺杀) + 暗影忍者 + 血契 vs 剑顶档/枪"
   },
   {
    "def": "static-tables",
-   "hash": "3f1f4faa52acf9d1b767f7b33e1df2cccecac6ba7b738783959614dd1d686664",
+   "hash": "2c97d414d69c9687099a30c9216a3d9bc6cb1d6488932e5d07ad98135dcb7ecd",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],
