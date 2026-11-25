@@ -21,7 +21,7 @@ const SHEETS := {
 	"smoke": ["vfx/bomb-smoke-cloud.png", 148, 80, 121.0, 74, 74],
 	"missile": ["vfx/bomb-missile-strike.png", 132, 151, 64.0, 55, 128],
 	"carpet": ["vfx/bomb-missile-carpet.png", 62, 53, 56.0, 32, 31],     # 羁绊导弹铺满全场的爆炸(11-25 特效工作台 cartoon_boom, 不带烟球)
-	"drop": ["vfx/missile-drop.png", 72, 72, 40.0, 36, 60],             # 竖直下落的导弹(锚点 = 弹头)
+	"drop": ["vfx/missile-drop.png", 72, 112, 36.0, 36, 104],           # 竖直下落的导弹(锚点 = 弹头; 4 帧弹头逐帧对齐在同一点)
 	"laser": ["vfx/missile-laser.png", 24, 256, 24.0, 12, 256],         # 天降瞄准激光(show_locator 自己摆, 不走 _anim)
 	"reticle": ["vfx/missile-reticle.png", 128, 128, 120.0, 64, 64],    # 地面靶心(同上)
 	"zone": ["vfx/missile-zone.png", 256, 256, 256.0, 128, 128],        # 打击范围 = 整座岛(同上, _board_zone 自己摆)
@@ -809,7 +809,7 @@ func tick(delta: float) -> void:
 			"fall":
 				## 加速下落(h = H × (1 - q²)), 帧循环
 				(n as Node3D).position = battle._world_pos(Vector2(f["at"]), DROP_H * (1.0 - q * (0.35 + 0.65 * q)))   # 先慢后快(开头不至于停在天上不动)
-				(n as Sprite3D).frame = int(float(f["t"]) * 16.0) % int(f["nf"])
+				(n as Sprite3D).frame = int(float(f["t"]) * 10.0) % int(f["nf"])
 			"board_zone":
 				## 开头淡、越接近落弹越亮, 闪烁从慢到快
 				## 11-25 用户「这个红色斜纹危险区太明显了」: 整体压淡到原来的 4 成左右, 看得出范围但不抢画面

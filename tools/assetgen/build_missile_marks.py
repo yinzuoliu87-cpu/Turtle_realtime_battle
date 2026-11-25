@@ -9,8 +9,8 @@
 确定性: 纯几何, 重跑逐字节相同。
   python tools/assetgen/build_missile_marks.py
 产出: assets/sprites/vfx/missile-laser.png (4 帧 × 24×256 横排) · assets/sprites/vfx/missile-reticle.png (128×128)
-  · assets/sprites/vfx/missile-drop.png: 竖直下落的导弹 4 帧循环 —— 取 bomb-missile-strike.png(原来斜着飞进来的那张, 特效工作台出的)
-    第 3~6 帧的弹体, 按弹体主轴(实测 -60°, 即往右上斜)逆时针转 30° 摆成竖直、弹头朝下, 最近邻采样(不糊);
+  · assets/sprites/vfx/missile-drop.png: 竖直下落的导弹 4 帧循环(72×112, 弹头对齐) —— 取 bomb-missile-strike.png(原来斜着飞进来的那张, 特效工作台出的)
+    第 4/5/6/5 帧的弹体, 按弹体主轴(实测 -60°, 即往右上斜)逆时针转 30° 摆成竖直、弹头朝下, 最近邻采样(不糊);
     用户 11-25「它不是指向天空，然后天空落下一道这个红线吗？」⇒ 导弹顺着竖直的激光落下, 不再从右上斜着飞进来。
     依赖 pack_bomb_vfx.py 先产出 bomb-missile-strike.png。
   · assets/sprites/vfx/missile-zone.png: 打击范围 = 整个棋盘(用户 11-25「范围是整个棋盘，我再跟你说一遍」): 俯视的整圆, 里面铺满红色斜纹警示条
@@ -75,19 +75,23 @@ def reticle():
 
 
 def drop():
+    """竖直下落的导弹 4 帧循环(72×112)。★按弹头对齐(11-25 用户「导弹怎么会来回闪现？」: 原来按整团重心对齐,
+    各帧火尾长短不一 ⇒ 弹头底边 57 → 61 → 63 → 70 像素一帧帧往下、循环时跳回去, 每秒上下跳 4 次)。
+    现在每帧转正后量弹头(最底下 6 行的横向中心 + 最底一行), 摆到同一点 (36, 104); 帧取原图第 4 / 5 / 6 / 5 帧(火尾长短接近, 第 3 帧太短不要)。"""
     src = Image.open(os.path.join(OUT, "bomb-missile-strike.png")).convert("RGBA")
-    FW, FH, S = 132, 151, 72
-    out = Image.new("RGBA", (S * 4, S), (0, 0, 0, 0))
-    for i, k in enumerate((3, 4, 5, 6)):
+    FW, FH, W2, H2, HX, HY = 132, 151, 72, 112, 36, 104
+    out = Image.new("RGBA", (W2 * 4, H2), (0, 0, 0, 0))
+    for i, k in enumerate((4, 5, 6, 5)):
         f = src.crop((k * FW, 0, k * FW + FW, FH))
-        px = f.load()
-        pts = [(x, y) for y in range(FH) for x in range(FW) if px[x, y][3] > 128]
-        cx = sum(p[0] for p in pts) // len(pts)
-        cy = sum(p[1] for p in pts) // len(pts)
-        big = Image.new("RGBA", (S * 2, S * 2), (0, 0, 0, 0))
-        big.paste(f, (S - cx, S - cy))
+        big = Image.new("RGBA", (FW * 2, FH * 2), (0, 0, 0, 0))
+        big.paste(f, (FW // 2, FH // 2))
         rot = big.rotate(30, resample=Image.NEAREST)
-        out.paste(rot.crop((S // 2, S // 2, S // 2 + S, S // 2 + S)), (i * S, 0))
+        px = rot.load()
+        bb = rot.getbbox()
+        bot = bb[3] - 1
+        xs = [x for y in range(bot - 5, bot + 1) for x in range(rot.width) if px[x, y][3] > 128]
+        hx = int(round(sum(xs) / float(len(xs))))
+        out.paste(rot.crop((hx - HX, bot - HY, hx - HX + W2, bot - HY + H2)), (i * W2, 0))
     out.save(os.path.join(OUT, "missile-drop.png"), optimize=False)
 
 
