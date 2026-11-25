@@ -127,6 +127,7 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 	var s := Sprite3D.new()
 	s.texture = t
 	s.hframes = maxi(1, t.get_width() / fw)
+	s.vframes = maxi(1, t.get_height() / fh)   # 超 4096 宽的表打包时折成了多行(pack_bomb_vfx.py _sheet); 每行排满 ⇒ 帧数 = 列 × 行
 	s.frame = 0
 	s.shaded = false
 	s.transparent = true
@@ -161,7 +162,7 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 	battle._world.add_child(s)
 	var skip: int = int(row[6]) if row.size() > 6 else 0
 	s.frame = skip
-	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "anim", "nf": s.hframes - skip, "skip": skip, "loop": loop})
+	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "anim", "nf": s.hframes * s.vframes - skip, "skip": skip, "loop": loop})
 	return s
 
 
@@ -705,7 +706,7 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 			if s != null:
 				s.flip_h = dir.x < 0.0
 				_fx[_fx.size() - 1]["kind"] = "move"
-				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "nf": s.hframes, "h": 1.0})
+				_fx[_fx.size() - 1].merge({"from": from, "dir": dir, "spd": spd, "nf": s.hframes * s.vframes, "h": 1.0})
 		"katana_tornado":
 			_tornado(from, dir, spd, life)
 		"cannon_heavy":
@@ -757,7 +758,7 @@ func _tornado(from: Vector2, dir: Vector2, spd: float, life: float) -> void:
 	var f: Dictionary = _fx[_fx.size() - 1]
 	f["kind"] = "move"
 	f.merge({"from": from, "dir": dir, "spd": spd, "h": 0.05, "loop_all": true, "fps": 16.0, "grow": 0.15, "fade_tail": 0.15, "ps": s.pixel_size})
-	f["f0"] = int(absf(dir.angle()) * 20.0) % s.hframes   # 三道方向不同 ⇒ 各从不同帧起转, 不同步
+	f["f0"] = int(absf(dir.angle()) * 20.0) % (s.hframes * s.vframes)   # 三道方向不同 ⇒ 各从不同帧起转, 不同步
 
 
 # ═══════════════════════════════ 生命周期 ═══════════════════════════════

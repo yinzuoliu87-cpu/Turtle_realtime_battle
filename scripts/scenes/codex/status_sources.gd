@@ -30,6 +30,7 @@ const EQS := "systems/equip/equip_system.gd"
 
 const SRC := {
 	"stun": [
+		{"k": "eq", "id": "p2eq_102", "at": "systems/equip/eq_bomb_batch.gd:_tick_mines", "v": "{C:EqBombBatch.MINE_STUN} 秒"},   # 102 地雷(2026-11-24)
 		{"k": "pet", "id": "basic", "sk": "basicSlam", "at": "systems/skills/basic_slam_system.gd:stun_target", "v": "{C:BasicConsts.SLAM_STUN_SEC} 秒"},
 		{"k": "pet", "id": "bamboo", "sk": "bambooSmack", "at": "systems/skills/bamboo_system.gd:_sk_bamboo_smack", "v": "{C:BambooSystem.SMACK_STUN} 秒"},
 		{"k": "pet", "id": "bubble", "sk": "bubbleBind", "at": "systems/skills/bubble_system.gd:_sk_bubble_bind", "v": "{C:BubbleSystem.BIND_SEC} 秒"},
@@ -60,6 +61,10 @@ const SRC := {
 		{"k": "pet", "id": "headless", "sk": "headlessFear", "at": "systems/skills/headless_system.gd:_sk_headless_fear", "v": "3 秒"},
 	],
 	"airborne": [
+		## 炸弹批(2026-11-24): 羁绊导弹全体击飞 1 秒 / 098 爆竹筒击退
+		{"k": "syn", "id": "炸弹", "at": "systems/equip/bomb_synergy_system.gd:strike", "v": "{C:BombSynergySystem.AIR_SEC} 秒"},
+		{"k": "eq", "id": "p2eq_098", "at": "systems/equip/eq_bomb_batch.gd:_tube"},
+		{"k": "eq", "id": "p2eq_105", "at": "systems/equip/eq_bomb_batch.gd:_line_hit", "link": "\"cannon_heavy\":[\\s\\S]{0,1400}_knockback"},   # 105 炮筒重炮往两边击退
 		{"k": "pet", "id": "basic", "sk": "basicChiWave", "at": MAIN + ":_sk_basic_chiwave"},
 		{"k": "pet", "id": "basic", "sk": "basicTurtle", "at": MAIN + ":_basic_shield_impact_hit",
 			"link": "== \"basic\" and u\\.get\\(\"basic_enh_ready\"[\\s\\S]{0,200}_sk_basic_shield\\(u, tgt\\)"},
@@ -137,6 +142,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_096", "at": "systems/equip/axe_final_forms.gd:_boom_sweep", "lf": "systems/equip/axe_system.gd", "link": "p2eq_096"},
 	],
 	"poison": [
+		{"k": "eq", "id": "p2eq_101", "at": "systems/equip/eq_bomb_batch.gd:_tick_goos", "link": "func _tick_goos[\\s\\S]{0,1500}GOO_POISON"},   # 101 粘弹粘液(2026-11-24)
 		{"k": "pet", "id": "hunter", "sk": "hunterShot", "at": "systems/skills/hunter_system.gd:_sk_hunter_shot"},
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_shell_basic",
 			"lf": MAIN, "link": "\"shellShadow\"[^\\n]*\\n\\s*_shell_sys\\._shell_enter_stealth"},
@@ -145,6 +151,8 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_092", "at": "systems/equip/eq_venom_drone.gd:_apply_fog_field"},
 	],
 	"bleed": [
+		{"k": "eq", "id": "p2eq_105", "at": "systems/equip/eq_bomb_batch.gd:_line_hit", "link": "\"cannon_heavy\":[\\s\\S]{0,400}CANNON_HEAVY_BLEED"},   # 105 炮筒重炮(2026-11-24)
+		{"k": "eq", "id": "p2eq_106", "at": "systems/equip/eq_bomb_batch.gd:_remote_boom", "link": "func _remote_boom[\\s\\S]{0,1500}REMOTE_BLEED"},   # 106 遥控炸弹(2026-11-24)
 		{"k": "pet", "id": "ninja", "sk": "ninjaSlash", "at": MAIN + ":_do_basic", "re": "\"bleed\":\\s+_damage\\._apply_dot_stacks",
 			"link": "\"ninja\":\\s+\\{[^\\n]*\"rider\": \"bleed\""},
 		{"k": "pet", "id": "diamond", "sk": "diamondSmash", "at": "systems/skills/diamond_system.gd:_diamond_smash_impact"},
@@ -164,6 +172,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_064", "at": "systems/equip/eq_spirit_batch.gd:_ghost_break", "v": "{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒"},
 	],
 	"shield": [
+		{"k": "eq", "id": "p2eq_098", "at": "systems/equip/eq_bomb_batch.gd:_tube", "to": "self"},   # 098 爆竹筒(2026-11-24)
 		{"k": "pet", "id": "basic", "sk": "basicTurtle", "at": MAIN + ":_basic_shield_impact_hit", "to": "self",
 			"link": "== \"basic\" and u\\.get\\(\"basic_enh_ready\"[\\s\\S]{0,200}_sk_basic_shield\\(u, tgt\\)"},
 		{"k": "pet", "id": "stone", "sk": "stoneRockShield", "at": "systems/skills/stone_system.gd:_sk_stone_rock_shield", "to": "ally"},
@@ -232,6 +241,7 @@ const SRC := {
 		{"k": "pet", "id": "ghost", "sk": "ghostPhase", "at": "systems/skills/ghost_system.gd:_sk_ghost_phase", "to": "self", "v": "{C:GhostSystem.PHASE_SEC} 秒"},
 	],
 	"untargetable": [
+		{"k": "eq", "id": "p2eq_100", "at": "systems/equip/eq_bomb_batch.gd:_tick_smokes", "to": "ally", "link": "func _tick_smokes[\\s\\S]{0,1200}SMOKE_PULSE"},   # 100 烟雾弹潜行(2026-11-24)
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_shell_enter_stealth", "to": "self",
 			"lf": MAIN, "link": "\"shellShadow\"[^\\n]*\\n\\s*_shell_sys\\._shell_enter_stealth"},
 		{"k": "pet", "id": "lava", "sk": "lavaRage", "at": "systems/skills/lava_system.gd:_lava_volcano_slam", "to": "self",
@@ -271,6 +281,9 @@ const SRC := {
 			"lf": EQS, "link": "# 028 冰冻药剂[^\\n]*\\nfunc _eq_ice_throw"},
 	],
 	"slow": [
+		## 101 粘弹: 贴上减速 + 粘液减速(两处都经批里的 _slow 写减速通道)
+		{"k": "eq", "id": "p2eq_101", "at": "systems/equip/eq_bomb_batch.gd:_slow",
+			"link": "func _throw_sticky[\\s\\S]{0,400}_slow\\(tgt,"},   # 数值在调用处(_throw_sticky / _tick_goos), _slow 是通道
 		## 糖衣炮弹 10-16 起走普通减速通道(原写寒冰共享槽 spd_dbf_until, 显示成冰寒)
 		{"k": "pet", "id": "candy", "sk": "candyBarrage", "at": "systems/skills/candy_system.gd:_sk_candy_barrage",
 			"v": "−{C:CandySystem.BARRAGE_SLOW_PCT%}% · {C:CandySystem.BARRAGE_SLOW_SEC} 秒"},

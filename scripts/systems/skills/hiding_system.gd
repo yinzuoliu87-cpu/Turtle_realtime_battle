@@ -418,7 +418,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 	var _ct = battle._shell_sys.ctx_capture()   # 龟壳复制期放的: await 之后的结算照样按 60%
 	var from: Vector2 = u["pos"]
 	var h0: float = float(u.get("height", 0.0))           # 从空中悬停高度俯冲下来
-	var ride_h: float = SpriteArt.top_m(tref, SURF_RIDE_H_FALLBACK)   # 落到目标背上(本体顶部), 不是和目标叠在一起
+	var ride_h: float = SpriteArt.top_m_idle(tref, SURF_RIDE_H_FALLBACK)   # ★按待机图量(sim 不读渲染推进的当前帧, 见 SpriteArt.top_m_idle)   # 落到目标背上(本体顶部), 不是和目标叠在一起
 	var dive_sec: float = surf_pull_sec(from, tref["pos"])   # 按速度飞(用户 11-08), 原固定 0.3 秒
 	battle._melee_anim(u, "dive", MELEE_DIVE_SLOTS / dive_sec)   # dive.png 8 格拉长到整段飞行, 播完才不会半空回站姿
 	var d = 0.0

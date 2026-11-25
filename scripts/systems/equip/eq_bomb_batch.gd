@@ -873,6 +873,9 @@ func _tick_remotes(delta: float) -> void:
 				p["hp"] = float(p["hp"]) - decay
 				if float(p["hp"]) > 0.0:
 					continue
+				## 掉血掉到 0 = 不经伤害路径直接清零 ⇒ 先问免死(门禁 verify_execute_respects_floor): 免死期间锁 1 血、不自爆
+				if battle._damage.execute_saved(p):
+					continue
 				p["hp"] = 0.0
 				battle._kill(p)
 			else:

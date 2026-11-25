@@ -140,15 +140,15 @@ func _t_owner_table() -> void:
 			nullsys.append(iid)
 	_ok("① 十七件全在 B4_OWNER 表里", miss.is_empty(), "缺 %s" % str(miss))
 	_ok("① 每件都能 _b4() 取到一个非 null 的系统", nullsys.is_empty(), "取不到 %s" % str(nullsys))
-	_ok("① ★分母: 表的大小正好是 17(多了就是有别的 id 混进来)",
-		es.B4_OWNER.size() == 17, "size=%d" % es.B4_OWNER.size())
+	_ok("① ★分母: 表的大小正好是 28(批④ 17 件 + 炸弹批 11 件 097–107; 多了就是有别的 id 混进来)",
+		es.B4_OWNER.size() == 28, "size=%d" % es.B4_OWNER.size())
 	# ★反向: 不是批④的件必须取不到系统(否则 _b4 恒返回同一个东西, 上面那条恒真)
 	_ok("① ★反向: 非批④的件(001/060/075)取不到系统",
 		es._b4("p2eq_001") == null and es._b4("p2eq_060") == null and es._b4("p2eq_075") == null)
 
 	# 六个系统: 非 null、互不相同
 	var all: Array = es._b4_all()
-	_ok("① _b4_all() 返回 6 个系统", all.size() == 6, "size=%d" % all.size())
+	_ok("① _b4_all() 返回 7 个系统(含 2026-11-24 炸弹批)", all.size() == 7, "size=%d" % all.size())
 	var distinct := 0
 	for i in range(all.size()):
 		if all[i] == null:
@@ -159,7 +159,7 @@ func _t_owner_table() -> void:
 				dup = true
 		if not dup:
 			distinct += 1
-	_ok("① 六个系统互不相同且都非 null", distinct == 6, "distinct=%d" % distinct)
+	_ok("① 七个系统互不相同且都非 null", distinct == 7, "distinct=%d" % distinct)
 
 	# 每一路的件数(照 §0.5 分工写死, 不从表里数)
 	var cnt: Dictionary = {}

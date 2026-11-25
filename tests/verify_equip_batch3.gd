@@ -28,15 +28,16 @@ const EquipPoolS := preload("res://scripts/gamedata/equip_pool.gd")
 const Phase2Config := preload("res://scripts/gamedata/phase2_config.gd")
 
 ## 上架 94 件(不含羁绊赠送的 p2eq_095, 它 shopAvailable=0)
-const WANT_TOTAL := 95   # 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
+const WANT_TOTAL := 106   # 2026-11-25: +11 = 炸弹 10 件(097–106) + 107 武士刀 · 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
 ## 方案书 §4.4.2 最终态（写字面值，不引用被测数据）
 const WANT_BY_TYPE := {
 	"奇械": [2, 2, 2, 2, 2], "法器": [2, 2, 3, 2, 1], "灵物": [2, 2, 2, 2, 2],
-	"遗物": [2, 2, 3, 2, 1], "剑": [2, 2, 2, 2, 1], "弓箭": [3, 3, 1, 1, 1],
+	"遗物": [2, 2, 3, 2, 1], "剑": [2, 3, 2, 2, 1], "弓箭": [3, 3, 1, 1, 1],   # 剑 2 费 +1 = 107 武士刀(双生匕首改归匕首前)
 	"枪": [2, 2, 1, 2, 2], "盾": [2, 1, 3, 2, 1], "药水": [3, 2, 1, 2, 1],
 	"食物": [2, 2, 2, 2, 1],
+	"炸弹": [2, 2, 2, 2, 2],   # 2026-11-24 方案书 20261124f: 1–5 费各两件
 }
-const WANT_BY_COST := [23, 20, 20, 19, 13]   # 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
+const WANT_BY_COST := [25, 23, 22, 21, 15]   # 2026-11-25: 炸弹 1–5 费各 +2、107 武士刀 2 费 +1 ·   # 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
 const EquipPoolB := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件没有逐星数值
 const EquipStatsB := preload("res://scripts/gamedata/equip_stats.gd")
 const NEW_FIRST := 60      # p2eq_060 起是批3 新增
@@ -118,7 +119,7 @@ func _ready() -> void:
 			incomplete.append("%s 缺 emoji/名字/类型" % eid)
 		if str(d.get("baseStats1", "")).strip_edges() == "":
 			incomplete.append("%s baseStats1 空" % eid)
-	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 36, "实得 %d" % new_n)   # 2026-08-31: 35→36(096 小木斧)
+	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 47, "实得 %d" % new_n)   # 2026-08-31: 35→36(096 小木斧) · 2026-11-25: 36→47(炸弹 10 件 + 107 武士刀; 新件同样要三档属性 / emoji / 名字 / 类型齐)
 	_ok("② 新件三档属性 / emoji / 名字 / 类型 / 属性串 全都齐", incomplete.is_empty(),
 		str(incomplete.slice(0, 5)))
 	_ok("② 上架 %d 件名字不重复" % eqs.size(), dup.is_empty(), str(dup))

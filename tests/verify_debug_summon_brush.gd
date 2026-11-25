@@ -40,8 +40,17 @@ func _ready() -> void:
 		var g: Dictionary = s._debug._edit_place_unit("__summon__", "left", c - Vector2(200, 0))
 		s._debug._edit_place_unit("basic", "right", c + Vector2(150, 0))
 		s._debug._edit_start_battle()
-		await get_tree().process_frame
+		## 轮询 + 上限(CLAUDE.md §4.5): 096 斧头等召唤物在开打后头几帧才生成(延到首帧 spawn), 只等一帧会漏判
 		var summ := 0
+		for _w in range(60):
+			await get_tree().process_frame
+			summ = 0
+			for u in s._units:
+				if bool(u.get("is_summon", false)) and str(u.get("side", "")) == "left":
+					summ += 1
+			if summ > 0 or (str(iid) == "p2eq_080" and not s._equip_sys._gun_sys._helis.is_empty()):
+				break
+		summ = 0
 		for u in s._units:
 			if bool(u.get("is_summon", false)) and is_same(u.get("summon_owner", null), g):
 				summ += 1

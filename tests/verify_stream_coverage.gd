@@ -349,6 +349,8 @@ func _run_obj(o: Dictionary) -> void:
 				eqst_last = es
 			if bool(_subject.get("_ebb_on", false)):
 				_cur["ebb_on"] = int(_cur.get("ebb_on", 0)) + 1
+			if _eid == "p2eq_106":
+				_cur["remote_n"] = maxi(int(_cur.get("remote_n", 0)), (s._equip_sys._bomb_sys._remotes as Array).size())
 		## 分母: 主角放技(产品自己写的 skill_cd 抬头, 与 verify_determinism_b cast_probe 同口径) / 大师 `_active_cd` 抬头
 		if _subject is Dictionary:
 			var cds = _subject.get("skill_cd", {})
@@ -437,6 +439,10 @@ func _den(o: Dictionary) -> void:
 			elif _eid == "p2eq_041":
 				c["den_kind"] = "涨潮步数(_ebb_on)"
 				c["den"] = int(c.get("ebb_on", 0))
+			elif _eid == "p2eq_106":
+				## 106 遥控炸弹 3★ 不掉血、局里没人把它打爆 ⇒ 不爆炸就没有产出; 证据 = 场上真的召出了它(召唤物立绘节点在直播里)
+				c["den_kind"] = "召出遥控炸弹"
+				c["den"] = int(c.get("remote_n", 0))
 			else:
 				c["den_kind"] = "弱:eq_state变化次数"
 				c["den"] = int(c.get("eqst_ch", 0))

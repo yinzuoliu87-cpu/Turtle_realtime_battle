@@ -113,9 +113,11 @@ func _b4(eid: String):
 	return _b4_by.get(B4_OWNER.get(eid, ""), null)
 
 
-## 批④ 的六个系统(供 tick / clear_all / 换路撤场遍历)。
+## 批④ 的七个系统(供 tick / clear_all / 换路撤场遍历)。
+## ★写成数组字面量(不要改回 `_b4_by.values()`): 门禁 verify_lane_clear_wired 从这里的源码抠成员名, 核每个都接进了换路清场;
+##   顺序与 `_b4_by` 相同, 炸弹批(2026-11-24)排最后 ⇒ 原六个的遍历顺序不变(随机流消耗顺序不变)。
 func _b4_all() -> Array:
-	return _b4_by.values()
+	return [_gun_sys, _blade_sys, _gadget_sys, _arcane_sys, _relic_sys, _incense, _bomb_sys]
 
 
 ## 批④ 专用的【DoT/真伤路】受伤钩 —— CLAUDE.md §3.3 的另一半。

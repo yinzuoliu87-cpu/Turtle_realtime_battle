@@ -79,6 +79,48 @@ static func top_m(u: Dictionary, fallback: float) -> float:
 	return maxf(0.0, (s.offset.y + float(fh) * 0.5 - float(top)) * s.pixel_size * sy)
 
 
+## 同 top_m, 但按单位【待机图第 0 帧】量(不读当前正在播的帧) —— 给 sim 用。
+## ★2026-11-25 verify_render_writeback 抓到: 小将人体浪板俯冲落点 ride_h 原来读 top_m(当前帧), 当前帧由渲染推进 ⇒
+##   换渲染节奏同一步看到的帧不同 ⇒ 落点高度差 1e-5 米、整局逐步分叉(机器人阵容换了才碰到)。
+##   待机图(idle_sd / idle_px / idle_offy)只在 sim 步里换 ⇒ 结果与渲染节奏无关。读不到 ⇒ fallback。
+static func top_m_idle(u: Dictionary, fallback: float) -> float:
+	var sd = u.get("idle_sd", {})
+	if not (sd is Dictionary) or (sd as Dictionary).get("tex", null) == null:
+		return fallback
+	var tex: Texture2D = sd["tex"]
+	var hf: int = maxi(1, int(sd.get("hframes", 1)))
+	var vf: int = maxi(1, int(sd.get("vframes", 1)))
+	var fw: int = tex.get_width() / hf
+	var fh: int = tex.get_height() / vf
+	var key := "%s#0" % tex.resource_path
+	var top: int = -1
+	if _top_cache.has(key):
+		top = int(_top_cache[key])
+	else:
+		var im: Image = _img(tex)
+		if im == null:
+			return fallback
+		for y in range(fh):
+			for x in range(int(fw * 0.35), int(fw * 0.65)):
+				if im.get_pixel(x, y).a > 0.5:
+					top = y
+					break
+			if top >= 0:
+				break
+		_top_cache[key] = top
+	if top < 0:
+		return fallback
+	var sy: float = 1.0
+	var bs = u.get("spr_base_scale", null)
+	if bs is Vector3:
+		sy = (bs as Vector3).y
+	var offy: float = float(u.get("idle_offy", float(fh) * 0.5))
+	var px: float = float(u.get("idle_px", 0.0))
+	if px <= 0.0:
+		return fallback
+	return maxf(0.0, (offy + float(fh) * 0.5 - float(top)) * px * sy)
+
+
 static func _img(tex: Texture2D) -> Image:
 	var k: String = tex.resource_path
 	if _img_cache.has(k):

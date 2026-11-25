@@ -114,6 +114,25 @@ CLEAR_CENTER = {"katana-charge": (33, 33, 9)}
 LOOPS = {"bomb-goo-puddle", "cannon-heavy-shell"}
 
 
+## ★手机 GPU 单张贴图最大边 4096(门禁 verify_sprite_sheets): 横排超宽的折成多行。
+##   每行帧数取「帧数的约数」里放得下的最大那个 ⇒ 每行排满、没有空帧(循环播放不闪); 播放端按 宽/帧宽 × 高/帧高 算帧数。
+MAX_EDGE = 4096
+
+
+def _sheet(frames):
+    w, h = frames[0].size
+    n = len(frames)
+    cols = n
+    if w * n > MAX_EDGE:
+        cols = max(c for c in range(1, n + 1) if n % c == 0 and c * w <= MAX_EDGE)
+    rows = n // cols
+    assert rows * h <= MAX_EDGE, "折行后仍超高"
+    strip = Image.new("RGBA", (w * cols, h * rows), (0, 0, 0, 0))
+    for i, fr in enumerate(frames):
+        strip.paste(fr, ((i % cols) * w, (i // cols) * h))
+    return strip
+
+
 def main() -> None:
     out = []
     for src, dst in JOBS.items():
@@ -135,9 +154,7 @@ def main() -> None:
                         if (x - cx) ** 2 + (y - cy) ** 2 <= cr * cr:
                             px[x, y] = (0, 0, 0, 0)
         w, h = frames[0].size
-        strip = Image.new("RGBA", (w * len(frames), h), (0, 0, 0, 0))
-        for i, fr in enumerate(frames):
-            strip.paste(fr, (i * w, 0))
+        strip = _sheet(frames)
         p = os.path.join(DST, dst + ".png")
         strip.save(p, optimize=False)
         out.append("%s %dx%d x%d" % (dst, w, h, len(frames)))

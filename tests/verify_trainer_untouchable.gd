@@ -166,6 +166,8 @@ func _ready() -> void:
 	var t_bow := ["p2eq_039", "p2eq_049", "p2eq_054", "p2eq_055", "p2eq_056", "p2eq_073", "p2eq_074", "p2eq_075", "p2eq_076"]
 	var t_gun := ["p2eq_048", "p2eq_050", "p2eq_051", "p2eq_052", "p2eq_057", "p2eq_077", "p2eq_078", "p2eq_079", "p2eq_080"]
 	var t_misc := ["p2eq_093", "p2eq_096"]
+	## 2026-11-25 炸弹批: 10 件炸弹(含炮筒 / 遥控炸弹召唤物、地雷、羁绊导弹全体击飞)+ 107 武士刀小将 ⇒ 第 5 个场景(原 4 个场景每方 21 格已满)
+	var t_bomb := ["p2eq_097", "p2eq_098", "p2eq_099", "p2eq_100", "p2eq_101", "p2eq_102", "p2eq_103", "p2eq_104", "p2eq_105", "p2eq_106"]
 	var scen: Array = [
 		{"tag": "S1 剑+灵物(触手) vs 法器+奇械", "L": g0, "R": g2, "tr_l": "hook", "tr_r": "tame", "ms_l": false,
 			"eqL": t_sword + t_spirit + t_misc, "eqR": t_staff + t_gadget + ["p2eq_004"]},
@@ -179,6 +181,8 @@ func _ready() -> void:
 				+ ["p2eq_025", "p2eq_032", "p2eq_033"], "eqR": _rev(t_sword) + t_shield + t_misc + ["p2eq_002"]},
 		{"tag": "S4 法器+药水 vs 灵物(触手)+枪", "L": g3, "R": g1, "tr_l": "tame", "tr_r": "hook", "ms_l": true,
 			"eqL": t_staff + t_potion + ["p2eq_046", "p2eq_060"], "eqR": t_spirit + t_gun + ["p2eq_012", "p2eq_013"]},
+		{"tag": "S5 炸弹(导弹全体击飞)+武士刀小将 vs 盾+食物", "L": g1, "R": g0, "tr_l": "hook", "tr_r": "glacier", "ms_l": false,
+			"eqL": t_bomb + ["p2eq_107"] + t_sword, "eqR": t_shield + t_food + ["p2eq_024", "p2eq_044", "p2eq_053"]},
 	]
 	var eq_seen := {}
 	for sc in scen:
@@ -194,7 +198,7 @@ func _ready() -> void:
 	for k in all_eq.keys():
 		if not eq_seen.has(str(k)):
 			miss_eq.append(str(k))
-	_ok("★分母: 4 个场景合计装上 %d 件不同装备 / 全表 %d 件(漏的: %s)" % [eq_seen.size(), eq_total, str(miss_eq)],
+	_ok("★分母: %d 个场景合计装上 %d 件不同装备 / 全表 %d 件(漏的: %s)" % [scen.size(), eq_seen.size(), eq_total, str(miss_eq)],
 		eq_total >= 90 and miss_eq.is_empty())
 
 	for sc in scen:
