@@ -45,7 +45,7 @@ eq|手雷|effectDesc1	4.0 6.0 60.0
 eq|护心甲|effectBrief	15.0
 eq|护心甲|effectDesc1	15.0
 eq|旋翼机|effectDesc1	1.2 4.0 10.0 30.0 40.0 100.0
-eq|暗影匕首|effectDesc1	1.5 20.0 50.0 50.0 100.0 250.0
+eq|暗影匕首|effectDesc1	1.5 20.0 50.0 50.0 100.0 250.0 1000.0
 eq|暴君之牙|effectBrief	6.0
 eq|暴君之牙|effectDesc1	6.0 20.0 40.0 100.0
 eq|月之刃|effectBrief	100.0
