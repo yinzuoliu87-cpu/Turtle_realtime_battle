@@ -20,6 +20,10 @@ const SHEETS := {
 	"pop": ["vfx/bomb-cracker-pop.png", 64, 64, 44.0, 32, 32],
 	"smoke": ["vfx/bomb-smoke-cloud.png", 148, 80, 121.0, 74, 74],
 	"missile": ["vfx/bomb-missile-strike.png", 132, 151, 64.0, 55, 128],
+	"carpet": ["vfx/bomb-missile-carpet.png", 62, 53, 56.0, 32, 31],     # 羁绊导弹铺满全场的爆炸(11-25 特效工作台 cartoon_boom, 不带烟球)
+	"drop": ["vfx/missile-drop.png", 72, 72, 40.0, 36, 60],             # 竖直下落的导弹(锚点 = 弹头)
+	"laser": ["vfx/missile-laser.png", 24, 256, 24.0, 12, 256],         # 天降瞄准激光(show_locator 自己摆, 不走 _anim)
+	"reticle": ["vfx/missile-reticle.png", 128, 128, 120.0, 64, 64],    # 地面靶心(同上)
 	"crackle": ["vfx/bomb-tube-crackle.png", 83, 92, 77.0, 41, 46, 2],   # 第 7 项 = 跳过开头几帧(前两帧是一团白闪, 放大后像个白球盖住单位)
 	"boom": ["vfx/bomb-barrel-boom.png", 56, 60, 50.0, 30, 37],
 	"muzzle": ["vfx/bomb-cannon-muzzle.png", 35, 20, 28.0, 3, 10],
@@ -197,26 +201,59 @@ func _ring(pos: Vector2, radius: float, col: Color, life: float) -> void:
 
 # ═══════════════════════════════ 羁绊：导弹轰炸 ═══════════════════════════════
 
-## 开打：从本方阵地拉一条红线指向战场中心（定位器），持续到导弹落下
-func show_locator(side: String, fire_at: float) -> void:
+## ── 11-25 重做(用户「卫星定位器是这么指的吗？…它不是指向天空，然后天空落下一道这个红线吗？」
+##   「整个导弹是要轰到覆盖整个棋盘的，所以到底这个特效怎么实现？」) ──
+##   原来: 定位器 = 从我方阵地沿地面横拉到中心的一条红线; 落弹 = 中心一张爆炸 + 每个敌人身上一张 ⇒ 看着只炸了中间。
+##   现在: ① 开打 → 天上竖直打下一道红色瞄准激光落在中心靶心上, 越接近落弹闪得越快;
+##         ② 最后 EDGE_WARN 秒整座岛的边缘亮一圈红色警示线(打击范围 = 整个棋盘);
+##         ③ 导弹顺着激光砸下 → 全屏白闪 + 中心大爆炸 → 一圈圈爆炸从中心往外推、CARPET_SEC 秒铺满整座岛 → 每个挨炸的敌人身上再炸一下。
+##   贴图: missile-laser / missile-reticle(tools/assetgen/build_missile_marks.py 脚本画) · bomb-missile-carpet(特效工作台)。
+const EDGE_WARN := 1.5
+const CARPET_SEC := 0.6
+const CARPET_RINGS := 5
+
+
+func show_locator(_side: String, fire_at: float) -> void:
 	if not _ok():
 		return
 	var c: Vector2 = battle._arena_center
-	var from := Vector2(battle.ARENA.position.x + 60.0, c.y) if side == "left" else Vector2(battle.ARENA.end.x - 60.0, c.y)
-	var mi := MeshInstance3D.new()
-	var d: Vector2 = c - from
-	var p: Vector2 = Vector2(-d.y, d.x).normalized() * 6.0
-	mi.mesh = GunEqVfx.gen_band(from, c, 0.06, 0.06, p, battle._arena_center, battle.WS)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.albedo_color = COL_LOCATOR
-	mi.material_override = mat
-	battle._world.add_child(mi)
-	_fx.append({"node": mi, "t": 0.0, "life": fire_at, "kind": "locator"})
-	## 靶心：中心一个收缩的红环，越到落弹越快
+	## 天降激光: 竖条贴图, 底端落在中心地面, 绕竖轴朝镜头(BILLBOARD_FIXED_Y), 高 12 米
+	var lt: Texture2D = _load("laser")
+	if lt != null:
+		var s := Sprite3D.new()
+		s.texture = lt
+		s.hframes = 4
+		s.shaded = false
+		s.transparent = true
+		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		s.pixel_size = 12.0 / float(lt.get_height())
+		s.offset = Vector2(0.0, float(lt.get_height()) * 0.5)
+		s.position = battle._world_pos(c, 0.0)
+		s.render_priority = 8
+		battle._world.add_child(s)
+		_fx.append({"node": s, "t": 0.0, "life": fire_at, "kind": "laser"})
+	## 地面靶心(俯视贴图平铺在地上), 慢慢转
+	var rt: Texture2D = _load("reticle")
+	if rt != null:
+		var r := Sprite3D.new()
+		r.texture = rt
+		r.shaded = false
+		r.transparent = true
+		r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		r.axis = Vector3.AXIS_Y
+		r.position = battle._world_pos(c, 0.06)
+		r.pixel_size = (180.0 * float(battle.WS)) / float(rt.get_height())
+		battle._world.add_child(r)
+		_fx.append({"node": r, "t": 0.0, "life": fire_at, "kind": "reticle", "ps": r.pixel_size, "no_shrink": true})
+	## 最后 EDGE_WARN 秒: 整座岛的边缘亮一圈红色警示线
+	_later(maxf(0.0, fire_at - EDGE_WARN), func() -> void: _edge_warn(EDGE_WARN))
+
+
+func _edge_warn(life: float) -> void:
+	if not _ok():
+		return
 	var tx: Texture2D = VfxTex._make_thin_ring_tex()
 	var s := Sprite3D.new()
 	s.texture = tx
@@ -225,24 +262,47 @@ func show_locator(side: String, fire_at: float) -> void:
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	s.axis = Vector3.AXIS_Y
 	s.modulate = COL_LOCATOR
-	s.position = battle._world_pos(c, 0.07)
-	s.pixel_size = (160.0 * float(battle.WS)) / float(tx.get_height())
+	s.position = battle._world_pos(battle._arena_center, 0.05)
+	var a: Vector2 = battle.ARENA.size * 0.5
+	s.pixel_size = (a.x * 2.0 * float(battle.WS)) / float(tx.get_height())
+	s.scale = Vector3(1.0, 1.0, a.y / a.x)    # 岛是椭圆(ArenaShape N=2): 竖向按半轴比压扁
 	battle._world.add_child(s)
-	_fx.append({"node": s, "t": 0.0, "life": fire_at, "kind": "reticle", "ps": s.pixel_size})
+	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "edge_warn"})
 
 
-## 导弹从天而降(提前 MISSILE_LEAD 秒开播)
+## 导弹顺着激光竖直落下(提前 MISSILE_LEAD 秒开播, 弹头砸地那一刻 = 结算): 从 DROP_H 米高处加速落到中心
+const DROP_H := 11.0
 func missile_launch(_side: String) -> void:
-	_anim("missile", battle._arena_center, 200.0, MISSILE_SEC, 0.02)
+	var s := _anim("drop", battle._arena_center, 70.0, MISSILE_LEAD, DROP_H, false, true)
+	if s != null:
+		s.no_depth_test = true
+		s.render_priority = 12
+		var f: Dictionary = _fx[_fx.size() - 1]
+		f["kind"] = "fall"
+		f["at"] = battle._arena_center
 
 
-## 砸地那一刻: 每个挨炸的敌人身上一记爆炸
+## 砸地那一刻: 全屏白闪 → 中心大爆炸 → 一圈圈往外推铺满整座岛 → 每个挨炸的敌人身上再炸一下
 func missile_impact(side: String) -> void:
 	if not _ok():
 		return
+	var c: Vector2 = battle._arena_center
+	if battle.has_method("_screen_flash_light"):
+		battle._screen_flash_light()
+	_anim("carpet", c, 380.0, 1.0, 0.02, false, false, Color.WHITE, "ground")
+	var a: Vector2 = battle.ARENA.size * 0.5 * 0.9
+	for k in range(1, CARPET_RINGS + 1):
+		var f: float = float(k) / float(CARPET_RINGS)
+		var n: int = 4 + 4 * k
+		for i in range(n):
+			var ang: float = TAU * (float(i) + 0.5 * float(k % 2)) / float(n)
+			var p: Vector2 = c + Vector2(cos(ang) * a.x * f, sin(ang) * a.y * f)
+			var sz: float = 150.0 - 30.0 * f + 20.0 * float((i * 7 + k * 3) % 3) / 2.0
+			_later(f * CARPET_SEC, func() -> void: _anim("carpet", p, sz, 1.0, 0.02, false, false, Color.WHITE, "ground"))
 	for u in battle._units:
 		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) != side and not bool(u.get("_isEgg", false)):
-			_anim("std", Vector2(u["pos"]), 110.0, 0.7, 0.02)
+			var uu: Dictionary = u
+			_anim("carpet", Vector2(uu["pos"]), 140.0, 1.0, 0.02, false, false, Color.WHITE, uu)
 
 
 # ═══════════════════════════════ 十件装备 ═══════════════════════════════
@@ -730,8 +790,21 @@ func tick(delta: float) -> void:
 					(mat as StandardMaterial3D).albedo_color.a = COL_LOCATOR.a * blink
 			"reticle":
 				var r: Sprite3D = n
-				r.pixel_size = float(f["ps"]) * (1.0 - 0.6 * q)
+				r.pixel_size = float(f["ps"]) * (1.0 if bool(f.get("no_shrink", false)) else (1.0 - 0.6 * q))
 				r.rotation.y = float(f["t"]) * 1.5
+				if bool(f.get("no_shrink", false)):
+					r.modulate.a = 0.55 + 0.45 * absf(sin(float(f["t"]) * (3.0 + 12.0 * q)))
+			"laser":
+				var ls: Sprite3D = n
+				ls.frame = int(float(f["t"]) * 16.0) % 4
+				## 越接近落弹闪得越快; 最后 0.3 秒常亮(导弹就要顺着它下来)
+				ls.modulate.a = 1.0 if q > 0.97 else (0.5 + 0.5 * absf(sin(float(f["t"]) * (2.0 + 14.0 * q))))
+			"fall":
+				## 加速下落(h = H × (1 - q²)), 帧循环
+				(n as Node3D).position = battle._world_pos(Vector2(f["at"]), DROP_H * (1.0 - q * q))
+				(n as Sprite3D).frame = int(float(f["t"]) * 16.0) % int(f["nf"])
+			"edge_warn":
+				(n as Sprite3D).modulate.a = 0.35 + 0.65 * absf(sin(float(f["t"]) * 14.0))
 			"arc":
 				var a: Vector2 = f["from"]
 				var b: Vector2 = f["to"]

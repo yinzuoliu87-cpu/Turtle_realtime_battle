@@ -33,6 +33,7 @@ JOBS = {
     "timer-blast": "bomb-timer-blast",
     "cannon-heavy-shell": "bomb-cannon-shell",
     "remote-blast": "bomb-remote-blast",
+    "missile-carpet": "bomb-missile-carpet",   # 羁绊导弹铺满全场的爆炸(11-25 特效工作台 cartoon_boom + crater_dust; 用户「整个导弹是要轰到覆盖整个棋盘的」)
     "katana-hslash": "katana-hslash",          # 107 小将普攻横斩刀光(11-25 特效工作台 slash_trail 部件: 压扁成横向、钢白配色)       # 106 遥控炸弹专属爆炸(11-24: 蘑菇云 + 地面一圈火团铺满 600 码, 不再借炸药桶的大爆炸)
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):

@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "missile-carpet 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 1.png",
+   "frame": {
+    "x": 62,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 2.png",
+   "frame": {
+    "x": 124,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 3.png",
+   "frame": {
+    "x": 186,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 4.png",
+   "frame": {
+    "x": 0,
+    "y": 53,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 5.png",
+   "frame": {
+    "x": 62,
+    "y": 53,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 6.png",
+   "frame": {
+    "x": 124,
+    "y": 53,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 7.png",
+   "frame": {
+    "x": 186,
+    "y": 53,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 8.png",
+   "frame": {
+    "x": 0,
+    "y": 106,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 9.png",
+   "frame": {
+    "x": 62,
+    "y": 106,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 10.png",
+   "frame": {
+    "x": 124,
+    "y": 106,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  },
+  {
+   "filename": "missile-carpet 11.png",
+   "frame": {
+    "x": 186,
+    "y": 106,
+    "w": 62,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.5849056603773585
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "missile-carpet.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 248,
+   "h": 159
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 32,
+   "y": 31
+  },
+  "frameTags": [
+   {
+    "name": "missile-carpet",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}
