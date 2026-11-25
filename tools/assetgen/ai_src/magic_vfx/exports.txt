@@ -37,3 +37,4 @@ magic-fire-cast 957ee3e2-ac5e-438b-abfc-cfc1ecf6280d
 magic-fire-ember bb79258a-fbea-4ff1-938a-36ec8086cbf9
 magic-frost-e 1b16d456-ef2a-436e-88fa-dcd9c8661007
 magic-frost-shard df01176d-97cb-4f69-95b9-afebca4aadc0
+magic-frost-e(第 2 次导出, 11-25 改: 外圈逐渐碎散淡出 / 压暗区缩成脚下一块) 1b16d456-ef2a-436e-88fa-dcd9c8661007
