@@ -1296,7 +1296,7 @@ func wave_path(pts: Array) -> Node3D:
 		quads.append(mi)
 	root.set_meta("path_len", path_length(pts))
 	_fx.append({"node": root, "t": 0.0,
-		"life": EqArcaneBatch.wave_hop_delay(pts.size() - 2) + WATER_TAIL_SEC,
+		"life": EqArcaneBatch.wave_hop_delay(pts, pts.size() - 2) + WATER_TAIL_SEC,
 		"kind": "water", "pts": pts, "chain": chain, "quads": quads, "splashed": 0})
 	return root
 
@@ -1435,14 +1435,14 @@ func tick(delta: float) -> void:
 				var seg_q: float = 0.0
 				var prev_t: float = 0.0
 				for si2 in range(nseg):
-					var end_t: float = EqArcaneBatch.wave_hop_delay(si2)
+					var end_t: float = EqArcaneBatch.wave_hop_delay(wpts, si2)
 					if t < end_t or si2 == nseg - 1:
 						seg_i = si2
 						seg_q = clampf((t - prev_t) / maxf(0.001, end_t - prev_t), 0.0, 1.0)
 						break
 					prev_t = end_t
 				var done: int = int(f.get("splashed", 0))
-				while done < nseg and t >= EqArcaneBatch.wave_hop_delay(done):
+				while done < nseg and t >= EqArcaneBatch.wave_hop_delay(wpts, done):
 					_water_splash(wpts[done + 1])
 					done += 1
 				f["splashed"] = done

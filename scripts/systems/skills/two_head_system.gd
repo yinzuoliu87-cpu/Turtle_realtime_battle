@@ -67,7 +67,7 @@ const ABSORB_HEAL_LOST := 0.18     # 回血 + 自身已损生命 ×
 const FUSION_WAVE_BASE := 4        # 魔法波基础段数(每次释放 +1, 累积到战斗结束)
 const FUSION_WAVE_COEF := 0.8      # 每段 ×ATK (物理与真实交替)
 const FUSION_TOUGH_CAP := 20       # 双头坚韧: 护甲/魔抗各自的上限
-const FUSION_WAVE_FLY_SEC := 0.27  # 每道魔法波飞到目标的时长(秒·到达才结算该段)
+const FUSION_WAVE_SPD := 1100.0   # 每道魔法波的飞行速度(码/秒·追着目标飞、到达才结算该段)·11-25 起按速度(原固定 0.27 秒; 用户「肯定是有飞行速度的呀」)
 
 ## 【锤击跳跃】从起跳到落地砸下的时长(秒)。动作驱动 TwoHeadArt 拿它对齐"砸地"那一帧。
 const HAMMER_LEAP_SEC := 0.42
@@ -288,15 +288,18 @@ func _two_head_fusion_wave(u: Dictionary, tgt: Dictionary, is_true: bool) -> voi
 	var from2d: Vector2 = u["pos"]
 	var to2d: Vector2 = tgt["pos"]
 	var wv = vfx.fusion_wave_new(from2d, to2d, is_true)        # 魔法波: 真实段白 / 物理段紫
-	var wtw = battle._reg_tween()
-	wtw.tween_method(_two_head_wave_step.bind(wv, from2d, to2d), 0.0, 1.0, FUSION_WAVE_FLY_SEC)   # 移速降40%(用户2026-07-11: 0.16→0.27s)
-	wtw.tween_callback(_two_head_fusion_wave_hit.bind(u, tgt, is_true, wv))
+	var el := [0.0]   # 已飞行秒(切帧用)
+	battle._ballistics.launch_flight(u, from2d, tgt, FUSION_WAVE_SPD,
+		func(_hit: bool) -> void: _two_head_fusion_wave_hit(u, tgt, is_true, wv),
+		func(pf: float, _p2: Vector2, to2: Vector2) -> void:
+			el[0] = float(el[0]) + battle.SIM_DT
+			_two_head_wave_step(pf, wv, from2d, to2, float(el[0])))
 
-func _two_head_wave_step(pf: float, wv, from2d: Vector2, to2d: Vector2) -> void:
+func _two_head_wave_step(pf: float, wv, from2d: Vector2, to2d: Vector2, fly_t: float) -> void:
 	if not is_instance_valid(wv):
 		return
 	wv.position = battle._world_pos(from2d.lerp(to2d, pf), TwoHeadVfx.CHEST_H)
-	vfx.fusion_wave_frame(wv, pf * FUSION_WAVE_FLY_SEC)        # 像素表只切帧, 不缩放(vfx_discipline A)
+	vfx.fusion_wave_frame(wv, fly_t)        # 像素表只切帧, 不缩放(vfx_discipline A)
 
 func _two_head_fusion_wave_hit(u: Dictionary, tgt: Dictionary, is_true: bool, wv) -> void:
 	if is_instance_valid(wv):

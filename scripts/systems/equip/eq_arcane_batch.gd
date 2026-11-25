@@ -135,7 +135,8 @@ const PESTLE_KB_SEC := 1.0
 const PESTLE_SLAM_WATCHDOG := 3.0
 const PESTLE_EVERY := 3
 ## 浪潮每一跳飞多久(秒)。★"一簇水跳过去"要看得见飞行过程, 太快就又变成瞬时连线了。
-const WAVE_HOP_SEC := 0.26
+## 浪潮那一簇水按飞行速度在目标之间跳(11-25 用户「肯定是有飞行速度的呀」; 原每跳固定 0.26 秒, 不管跳多远)
+const WAVE_SPD := 800.0
 
 ## 伤害飘字色。★取自演出层 `ArcaneEqVfx.COL_*`(颜色的单一事实源在那边),
 ##   引用是**单向**的 —— 演出层不反过来引用本文件, 免得两个 class_name 循环依赖。
@@ -754,10 +755,14 @@ func _pestle_on_basic(u: Dictionary, tgt, si: int) -> void:
 ##   一次浪潮一份。**绝不拿单位字典当 Dictionary 的键**(Godot 递归哈希 + 互引成环 → 卡死,
 ##   CLAUDE.md §3.2), 判存在一律 `battle._arr_has_unit`, 比较一律 `is_same`。
 ## ★携带者一开始就在 `visited` 里 —— 他是起点, 浪潮不回头。
-## 第 i 跳(0 起)落到目标的时刻(秒)。★演出与结算共用这一个函数 —— 两边各算一份
-## 就是"演出到了伤害还没到"的老毛病(CLAUDE.md 里 084 剑波焊 WAVE_SPD 也是为这个)。
-static func wave_hop_delay(i: int) -> float:
-	return WAVE_HOP_SEC * float(i + 1)
+## 第 i 跳(0 起)落到目标的时刻(秒) = 从起点沿折线 pts 到第 i+1 个点的路程 / WAVE_SPD。
+## ★演出与结算共用这一个函数 —— 两边各算一份就是"演出到了伤害还没到"的老毛病(CLAUDE.md 里 084 剑波焊 WAVE_SPD 也是为这个)。
+## ⚠ 路线(每一跳打谁、落在哪)出手那一刻按当时位置排好; 飞行时间按速度。
+static func wave_hop_delay(pts: Array, i: int) -> float:
+	var s: float = 0.0
+	for k in range(mini(i + 1, pts.size() - 1)):
+		s += DetMath.dist(pts[k] as Vector2, pts[k + 1] as Vector2)
+	return s / WAVE_SPD
 
 
 func wave_chain(u: Dictionary, first, hops: int, dmg: float, heal: float) -> Array:
@@ -782,7 +787,7 @@ func wave_chain(u: Dictionary, first, hops: int, dmg: float, heal: float) -> Arr
 		#   既然它是**飞过去**的, 就不该在出手那一帧把整条链全算完(旧版就是那样,
 		#   演出还没画完血已经掉光了)。每跳按累计飞行时间延后。
 		var tgt_u: Dictionary = o
-		var lag: float = wave_hop_delay(hit)
+		var lag: float = wave_hop_delay(path, hit)
 		var to_foe: bool = battle._is_hostile(u, o)
 		battle._queue_shots(1, 0.0, func() -> void:
 			if not tgt_u.get("alive", false):

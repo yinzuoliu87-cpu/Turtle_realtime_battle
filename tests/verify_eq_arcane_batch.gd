@@ -104,7 +104,7 @@ func _arc():
 
 ## 手动喂节拍。★这是本门禁唯一的时间来源 —— 不 await 帧、不用 create_timer。
 ## 推进时间。★★2026-08-08 补上 `_step_pending_shots`: 本件多处结算已改成**延后到演出到达**
-##   (浪潮每跳 WAVE_HOP_SEC 才落), 而旧版 `_feed` 只推装备自己的 tick、**不推延后队列**
+##   (浪潮每跳按 WAVE_SPD 飞到才落), 而旧版 `_feed` 只推装备自己的 tick、**不推延后队列**
 ##   ⇒ 断言全读到 0。"推进时间"本来就该把两条都推。
 ## 某一类演出**真正还活着**的个数。
 ## ⚠ 不能直接用 `vfx.alive_count()` —— 它只过 `is_instance_valid`, 而 `queue_free()` 是**延迟**的:
@@ -1151,9 +1151,9 @@ func _t090_wave() -> void:
 	_ok("③ 第三次普攻发出浪潮",
 		int(_st(u, "p2eq_090").get("pestle_waves", 0)) == 1,
 		"waves=%d" % int(_st(u, "p2eq_090").get("pestle_waves", 0)))
-	# ★★浪潮的伤害/治疗现在**等那一簇水真的跳到**才结算(每跳 WAVE_HOP_SEC),
-	#   不再是出手那一帧就把整条链算完 ⇒ 断言前必须把延后队列推完。
-	_feed(EqArcaneBatch.WAVE_HOP_SEC * 10.0)
+	# ★★浪潮的伤害/治疗现在**等那一簇水真的跳到**才结算(按 WAVE_SPD 飞),
+	#   不再是出手那一帧就把整条链算完 ⇒ 断言前必须把延后队列推完(3 秒 ≫ 场内整条链)。
+	_feed(3.0)
 	var st: Dictionary = _st(u, "p2eq_090")
 	_ok("③ ★分母: 场上 3 敌 + 2 友 = 5 个可跳单位(龟蛋/大师不算), 3★ 上限 8 ⇒ 全跳完 5 个",
 		int(st.get("wave_hits", -1)) == 5, "hits=%d" % int(st.get("wave_hits", -1)))
@@ -1204,7 +1204,7 @@ func _t090_wave() -> void:
 	_ok("③ ★2★ 跳数上限 5(场上有 6 个可跳单位)",
 		int(_st(u3, "p2eq_090").get("wave_hits", -1)) == 5,
 		"hits=%d" % int(_st(u3, "p2eq_090").get("wave_hits", -1)))
-	_feed(EqArcaneBatch.WAVE_HOP_SEC * 10.0)   # ★同上: 等水跳到
+	_feed(3.0)   # ★同上: 等水跳到
 	_ok("③ 2★ 打到敌人 70 魔法伤害", int(h3 - float(t3["hp"])) == 70,
 		"实测 %d" % int(h3 - float(t3["hp"])))
 
@@ -1218,7 +1218,7 @@ func _t090_wave() -> void:
 	var ha4: float = a4["hp"]
 	for i in range(3):
 		_s._equip_sys._eq_on_basic_attack(u4, t4)
-	_feed(EqArcaneBatch.WAVE_HOP_SEC * 10.0)   # ★同上: 等水跳到
+	_feed(3.0)   # ★同上: 等水跳到
 	_ok("③ 1★ 打到敌人 40 / 奶友军 20",
 		int(h4 - float(t4["hp"])) == 40 and absf((float(a4["hp"]) - ha4) - 20.0) < 0.01,
 		"dmg=%d heal=%.1f" % [int(h4 - float(t4["hp"])), float(a4["hp"]) - ha4])
@@ -1370,9 +1370,9 @@ func _t_vfx_nodes() -> void:
 		#   读 position 会永远得到 0(第一版就是这么读的, 两条都读出 0.000)。
 		#   ⇒ 读网格 AABB 的中心 Y —— 那才是它真正画在哪。
 		var _q0 = (wave as Node).get_child(0)
-		_feed(EqArcaneBatch.WAVE_HOP_SEC * 0.5)
+		_feed(EqArcaneBatch.wave_hop_delay(pts, 0) * 0.5)
 		var y_mid: float = ((_q0 as MeshInstance3D).mesh as Mesh).get_aabb().get_center().y
-		_feed(EqArcaneBatch.WAVE_HOP_SEC * 0.5)
+		_feed(EqArcaneBatch.wave_hop_delay(pts, 0) * 0.5)
 		var y_end: float = ((_q0 as MeshInstance3D).mesh as Mesh).get_aabb().get_center().y
 		_ok("⑥ ★有高度变化: 跳到一半时比落点高(平着飞就不叫跳)",
 			y_mid > y_end + 0.15, "中点 y=%.3f 落点 y=%.3f" % [y_mid, y_end])

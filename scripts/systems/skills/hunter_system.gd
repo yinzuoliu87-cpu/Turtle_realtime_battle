@@ -141,6 +141,7 @@ func _hunter_roll_ghost(u: Dictionary) -> void:                 # 单道灵巧�
 #  · 防重叠: 两带固定竖直分带; 行内固定间距; 超上限截断
 #  · 3D环绕类(眩晕火花/诅咒骷髅/忍者锁定)保持绕身体另一套, 不进此层
 # ============================================================================
+const SHOT_SPD := 2400.0   # 精准射击子弹飞行速度(码/秒; 狙击 = 很快, 但远的仍晚到)
 func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精准射击(封板·90龟能·射箭+毒箭+猎杀印记三合一): 蓄力狙2.0A物理+中毒5s+治疗削减50%5s+猎杀印记5s(<24%处决)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
@@ -149,15 +150,16 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 	# ① 瞄准蓄力(0.4s): 细红瞄准线 + 猎人蓄力红光
 	battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", u["pos"], tref["pos"], 6.0, Color(1.0, 0.35, 0.2, 0.4), 0.4, 1.0)
 	battle._gambler_sys._gambler_pop(u["pos"], float(u.get("height", 0.0)) + 0.5, Color(1.0, 0.45, 0.2, 0.7))   # 蓄力红光(复用通用glow pop)
-	# ② 0.4s后开火: 金色狙击曳光 → 到位(0.16s)才结算伤害+毒+印记+爆(命中才跳伤害)
+	# ② 0.4s后开火: 金色狙击曳光 → 子弹按 SHOT_SPD 飞到目标才结算伤害+毒+印记+爆(命中才跳伤害)
+	#   11-25 用户「肯定是有飞行速度的呀」: 原来开火后固定 0.16 秒结算, 远近一样
 	battle._pending_shots.append({"delay": 0.4, "fn": func() -> void:
 		if not uu.get("alive", false) or not tref.get("alive", false): return
 		if battle._damage.is_controlled(uu): return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手
 		var tp: Vector2 = tref["pos"]
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], tp, 18.0, Color(1.0, 0.9, 0.45, 0.9), 0.18, 1.0)   # 金色狙击曳光(粗亮快)
 		battle._shake(0.06)
-		battle._pending_shots.append({"delay": 0.16, "fn": func() -> void:
-			if not tref.get("alive", false): return
+		battle._ballistics.launch_flight(uu, Vector2(uu["pos"]), tref, SHOT_SPD, func(hit: bool) -> void:
+			if not hit: return
 			battle._damage._apply_damage_from(uu, tref, battle._atk_dmg(uu, SHOT_ATK_COEF, tref), Color("#ff4444"))   # 物理红(2.0A物理狙击·飘字色规范)
 			battle._damage._apply_dot_stacks(tref, "poison", maxi(1, int(round(uu["atk"] * SHOT_POISON_COEF))), uu)   # 中毒5s
 			tref["heal_reduce_until"] = battle._t + SHOT_HEALCUT_SEC                         # 治疗削减50%·5秒
@@ -165,8 +167,7 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 			tref["hunt_mark_until"] = battle._t + MARK_SEC                           # 猎杀印记5秒: <24%即处决(头顶状态图标行贴十字准星·_layout_head_badges·不用文字)
 			battle._skill_ring(tref["pos"], Color(0.5, 0.9, 0.2, 0.6), 40.0)   # 命中毒绿环(小·非大绿球)
 			for _pb in range(4): battle._spawn_poison_bubble(tref)             # 命中即冒一簇毒泡
-			battle._shake(battle.JUICE_SHAKE_HEAVY)
-			, "src": uu})
+			battle._shake(battle.JUICE_SHAKE_HEAVY))
 		, "src": u})
 
 func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩猎弹幕(封板·100龟能): 10箭·每0.2s一发·随机目标(注意龟蛋)·慢速抛物线追踪·箭头随角度·命中才跳0.36A真实(共3.6A)·每箭<14%即处决(用户2026-07-14重做)

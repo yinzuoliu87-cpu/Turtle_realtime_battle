@@ -125,25 +125,24 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	if perp.length() > 0.01: perp = perp.normalized()
 	var arc = randf_range(0.7, 1.5)                 # 抛物线拱高(每张不同)
 	var lat = randf_range(-1.0, 1.0)                # 侧向弧偏(每张不同→扇形散开)
-	var ctw = battle._reg_tween()
-	ctw.bind_node(card)
-	ctw.tween_method(func(f: float) -> void:
-		if not is_instance_valid(card): return
-		var pos = from3.lerp(to3, f)
-		pos.y += arc * DetMath.dsin(PI * f)                    # 抛物线拱起(不再贴地直飞)
-		pos += perp * lat * DetMath.dsin(PI * f)               # 侧向弧线(每张不同→扇形·不再直直)
-		card.position = pos
-		if battle._cam != null:
-			var ct: Transform3D = card.global_transform
-			ct.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), f * 11.0)
-			card.global_transform = ct
-		, 0.0, 1.0, 0.52)   # 0.34→0.52放慢(用户2026-07-14)
-	ctw.tween_callback(func() -> void:
-		if is_instance_valid(card): card.queue_free()
-		if tgt.get("alive", false):
-			bet_card_land(u, tgt, dmg, dcol, is_true, as_attack, multi)   # ★命中才跳伤害(穿透金/物理红)
-			if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))  # 每张牌触发多重打击(B)
-		_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.9)))
+	## 11-25 按飞行速度追着目标飞、到了才结算(原固定 0.52 秒补间、结算挂补间末尾; 用户「肯定是有飞行速度的呀」)
+	battle._ballistics.launch_flight(u, Vector2(u["pos"]), tgt, BET_CARD_SPD,
+		func(hit: bool) -> void:
+			if is_instance_valid(card): card.queue_free()
+			if hit:
+				bet_card_land(u, tgt, dmg, dcol, is_true, as_attack, multi)   # ★命中才跳伤害(穿透金/物理红)
+				if roll_multi: _gambler_bet_multi(u, tgt, _gambler_bet_ch(u))  # 每张牌触发多重打击(B)
+			_gambler_pop(Vector2(tgt["pos"]), th, Color(1.0, 0.85, 0.35, 0.9)),
+		func(f: float, _p2: Vector2, to2: Vector2) -> void:
+			if not is_instance_valid(card): return
+			var pos = from3.lerp(battle._world_pos(to2, 1.0), f)
+			pos.y += arc * DetMath.dsin(PI * f)                    # 抛物线拱起(不再贴地直飞)
+			pos += perp * lat * DetMath.dsin(PI * f)               # 侧向弧线(每张不同→扇形·不再直直)
+			card.position = pos
+			if battle._cam != null:
+				var ct: Transform3D = card.global_transform
+				ct.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), f * 11.0)
+				card.global_transform = ct)
 
 ## ── 赌注的牌算作攻击(用户 2026-11-11「多重打击能不能触发攻击特效？…灵火的三环应该是能触发…它是被算作普通攻击，能够触发攻击特效…轻盈药水的那个叠攻速，它这个也应该能触发…那这个七下和其他的多重打击是不是都应该能够触发攻击特效？啊，这个应该是能的呀」) ──
 ## 7 张牌与它们判出来的追加牌, 每一张都视为一次攻击:
@@ -264,34 +263,36 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 		card.billboard = BaseMaterial3D.BILLBOARD_DISABLED; card.shaded = false; card.transparent = true
 		card.pixel_size = 1.6 / 56.0   # 比普攻牌大(特殊技·放大更明显)
 		var from3 = battle._world_pos(u["pos"], 1.0)
-		var to3 = battle._world_pos(tgt["pos"], 1.0)
 		card.position = from3
 		battle._world.add_child(card)
-		var tp: Vector2 = tgt["pos"]
 		var th: float = float(tgt.get("height", 0.0))
-		var ctw = battle._reg_tween()
-		ctw.bind_node(card)
-		ctw.tween_method(func(f: float) -> void:
-			if not is_instance_valid(card): return
-			card.position = from3.lerp(to3, f)
-			if battle._cam != null:
-				var ct: Transform3D = card.global_transform
-				ct.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), f * 9.0)   # 面向相机+滚转
-				card.global_transform = ct
-			, 0.0, 1.0, 0.62)   # 飞行0.35→0.62s放慢看清(用户2026-07-14)
-		ctw.tween_callback(func() -> void:
-			if is_instance_valid(card): card.queue_free()
-			if tgt.get("alive", false):
-				battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, JOKER_DMG, tgt), Color("#ff4444"))   # ★命中才跳伤害
-				battle._damage._buff(tgt, "atk", -JOKER_ATK_DOWN, true)                                        # 减攻也命中才上
-			_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.95))        # 命中金光
-			_gambler_pop(tp, th + 0.25, Color(1.0, 0.30, 0.30, 0.8)))  # 减攻红标
+		## 11-25 按飞行速度追着目标飞、到了才结算(原固定 0.62 秒补间、结算挂补间末尾)
+		battle._ballistics.launch_flight(u, Vector2(u["pos"]), tgt, JOKER_CARD_SPD,
+			func(hit: bool) -> void:
+				if is_instance_valid(card): card.queue_free()
+				if hit:
+					battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, JOKER_DMG, tgt), Color("#ff4444"))   # ★命中才跳伤害
+					battle._damage._buff(tgt, "atk", -JOKER_ATK_DOWN, true)                                        # 减攻也命中才上
+				var tp: Vector2 = tgt["pos"]
+				_gambler_pop(tp, th, Color(1.0, 0.85, 0.35, 0.95))        # 命中金光
+				_gambler_pop(tp, th + 0.25, Color(1.0, 0.30, 0.30, 0.8)),  # 减攻红标
+			func(f: float, _p2: Vector2, to2: Vector2) -> void:
+				if not is_instance_valid(card): return
+				card.position = from3.lerp(battle._world_pos(to2, 1.0), f)
+				if battle._cam != null:
+					var ct: Transform3D = card.global_transform
+					ct.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), f * 9.0)   # 面向相机+滚转
+					card.global_transform = ct)
 	else:   # 无牌素材兜底: 即时结算目标伤害+减攻
 		if tgt.get("alive", false):
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, JOKER_DMG, tgt), Color("#ff4444"))
 			battle._damage._buff(tgt, "atk", -JOKER_ATK_DOWN, true)
 	battle._shield_dome(u)                                                   # 护盾罩
 	_gambler_pop(u["pos"], float(u.get("height", 0.0)), Color(0.30, 1.0, 0.5, 0.85))   # 回血绿
+
+## 飞牌速度(码/秒)·11-25 起按速度(原赌注牌固定 0.52 秒、万能牌固定 0.62 秒; 用户「肯定是有飞行速度的呀」)
+const BET_CARD_SPD := 700.0
+const JOKER_CARD_SPD := 650.0
 
 func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·赌注(用户封板·100龟能): 需当前生命>40%; 消耗当前生命40%→7段物理砸目标(共≈0.4×当前生命); 施放3秒多重概率+20%
 	if tgt == null or not tgt.get("alive", false): return

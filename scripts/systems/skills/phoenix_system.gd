@@ -346,6 +346,8 @@ func _phoenix_flame_burst(pos2d: Vector2) -> void:
 # 火球抛物线飞行 (t:0→1; 高度 lerp + sin峰=抛起弧线) + 火焰拖尾
 
 # 凤凰·烫伤 ✅: 蓄力投掷火球(1.5ATK魔法+SCALD_BURN_COEF(0.5)ATK灼烧+破盾/减攻防抗/治疗削减), 命中爆开 (用户)
+const SCALD_CHARGE_SEC := 0.30   # 蓄力(火球长大)
+const SCALD_SPD := 800.0         # 火球飞行速度(码/秒)·11-25 起按速度(原固定 0.42 秒)
 func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
@@ -364,12 +366,15 @@ func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	fb.scale = Vector3(0.4, 0.4, 0.4)
 	fb.position = battle._world_pos(mouth, 1.05)
 	battle._world.add_child(fb)
-	var tgt_pos: Vector2 = tgt["pos"]
 	var tw = battle._reg_tween()
-	tw.tween_property(fb, "scale", Vector3(1.9, 1.9, 1.9), 0.30)             # 蓄力(火球长大)
-	tw.parallel().tween_property(fb, "modulate", Color(1.0, 0.40, 0.12, 1.0), 0.30)
-	tw.tween_method(battle._scald_arc.bind(fb, mouth, tgt_pos), 0.0, 1.0, 0.42)        # 投掷
-	tw.tween_callback(_phoenix_scald_hit.bind(u, tgt, fb))
+	tw.tween_property(fb, "scale", Vector3(1.9, 1.9, 1.9), SCALD_CHARGE_SEC)             # 蓄力(火球长大·纯演出)
+	tw.parallel().tween_property(fb, "modulate", Color(1.0, 0.40, 0.12, 1.0), SCALD_CHARGE_SEC)
+	## 11-25: 蓄力走游戏钟; 出手后按飞行速度追着目标飞、砸到才结算(原 0.42 秒固定补间、结算挂补间末尾 —— 无头推不动 §3.5;
+	##   用户「肯定是有飞行速度的呀」)
+	battle._pending_shots.append({"delay": SCALD_CHARGE_SEC, "src": u, "fn": func() -> void:
+		battle._ballistics.launch_flight(u, mouth, tgt, SCALD_SPD,
+			func(_hit: bool) -> void: _phoenix_scald_hit(u, tgt, fb),
+			func(k: float, _p2: Vector2, to2: Vector2) -> void: battle._scald_arc(k, fb, mouth, to2))})
 
 func _sk_phoenix_lavashield(u: Dictionary) -> void:              # 凤凰龟·熔岩盾 (用户2026-07-07: 3.5A护盾4秒+反击0.14A魔法)
 	battle._damage._grant_shield(u, u["atk"] * LAVA_SHIELD_COEF, LAVA_SHIELD_SEC)   # 凤凰熔岩盾4秒(与反击窗口lava_shield_until同步·封板)

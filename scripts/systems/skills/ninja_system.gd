@@ -382,6 +382,8 @@ func _sk_ninja_shuriken(u: Dictionary, tgt) -> void:           # 技·手里剑(
 		phys_raw = maxf(0.0, crit_total - true_raw)           # 余下→物理(吃减甲)
 	battle._ballistics._fire_shuriken(u, tgt, phys_raw, true_raw, is_crit)
 
+const BOMB_SPD := 600.0        # 炸弹飞行速度(码/秒)·11-25 起按速度(原固定 0.4 秒)
+const BOMB_FUSE_SEC := 0.4     # 落地后引信(秒) —— 原来 0.8 秒引爆 = 0.4 飞行 + 0.4 引信
 func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
@@ -398,16 +400,19 @@ func _sk_ninja_bomb(u: Dictionary, tgt) -> void:
 	spr.pixel_size = (150.0 * battle.WS) / 64.0      # 炸弹/爆炸尺寸(3D里过大会钻地)
 	spr.position = battle._world_pos(u["pos"], 0.8)
 	battle._world.add_child(spr)
-	# 抛物线(3段弹跳)0.4s + 12帧动画1.2s播一次 (并行), 全播完(1.2s)销毁
-	var tw = battle._reg_tween()
-	tw.set_parallel(true)
-	tw.tween_method(_bomb_arc.bind(spr, u["pos"], land), 0.0, 1.0, 0.4)
-	tw.tween_method(_bomb_anim.bind(spr), 0.0, 12.0, 1.2)
-	tw.chain().tween_callback(spr.queue_free)
-	# 引爆 @0.8s: 震屏 + 400码冲击波环 + 半径伤害 (帧动画此刻正到爆炸帧8)
-	var boom = battle._reg_tween()
-	boom.tween_interval(0.8)
-	boom.tween_callback(_bomb_explode.bind(spr, u, land, opts))
+	# 11-25 按飞行速度抛到落点(原固定 0.4 秒; 用户「肯定是有飞行速度的呀」): 飞行中走 3 段弹跳、球帧 0-4;
+	#   落地后引信 BOMB_FUSE_SEC 走游戏钟再引爆(原挂 tween_interval, 无头推不动 §3.5), 引信→爆闪→蘑菇云帧 4→11 从落地开始播
+	var from2: Vector2 = u["pos"]
+	battle._ballistics.launch_flight(u, from2, land, BOMB_SPD,
+		func(_hit: bool) -> void:
+			if is_instance_valid(spr):
+				var tw = battle._reg_tween()
+				tw.tween_method(_bomb_anim.bind(spr), 4.0, 12.0, BOMB_FUSE_SEC * 2.0)
+				tw.tween_callback(spr.queue_free)
+			battle._pending_shots.append({"delay": BOMB_FUSE_SEC, "src": u, "fn": func() -> void: _bomb_explode(spr, u, land, opts)}),
+		func(k: float, _p2: Vector2, _to2: Vector2) -> void:
+			_bomb_arc(k, spr, from2, land)
+			_bomb_anim(k * 4.0, spr))
 
 func _bomb_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
 	if not is_instance_valid(spr):
