@@ -148,6 +148,8 @@ func _calc_tiers(side: String) -> Dictionary:
 			continue
 		if u.get("_isEgg", false) or battle._is_untouchable(u):
 			continue          # 龟蛋与训龟大师不带装备, 也不该被算进羁绊
+		if u.get("_mask_copy", false):
+			continue          # 面具复制体的装备不算羁绊件数(用户 11-25「复制替代装备不算」)
 		for e in u.get("equips", []):
 			if not (e is Dictionary):
 				continue
@@ -250,6 +252,8 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 			u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + v
 		"dmgAmp":   # 魔法书羁绊(2026-11-25): 每件给增伤(damage_amp, 与其它增伤来源相加)
 			u["damage_amp"] = float(u.get("damage_amp", 0.0)) + v
+		"dmgRed":   # 面具羁绊(2026-11-25): 每件给减伤(damage_reduction)
+			u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + v
 		"armorPen":
 			u["armor_pen"] = float(u.get("armor_pen", 0.0)) + v
 		"magicPen":

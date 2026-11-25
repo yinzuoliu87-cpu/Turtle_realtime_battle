@@ -824,6 +824,8 @@ func _dl_snapshot_survivors() -> void:
 				continue
 			if u.get("_isEgg", false) or u.get("is_summon", false):
 				continue
+			if u.get("_mask_copy", false):
+				continue   # 面具复制体只活在这一路(终极战场开打时按面具羁绊重新偷), 不进幸存名单
 			if u.get("is_trainer", false):
 				continue   # ★不进幸存名单: 进了会带着残血去终极战场(用户要每场重置), 还会被重复 spawn
 			var healed: float = minf(u["maxHp"], u["hp"] + (u["maxHp"] - u["hp"]) * 0.30)

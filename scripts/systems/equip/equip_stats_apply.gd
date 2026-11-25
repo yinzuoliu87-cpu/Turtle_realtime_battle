@@ -69,6 +69,36 @@ func _eq_apply_all_stats() -> void:
 ##   最终属性(079 的炮台攻速要跟随携带者、080 的机炮吃携带者攻击力), 轮到第一只龟时
 ##   它自己的属性才刚写完、别的龟还没写。放末尾能保证读到的都是最终值。
 ## ★换路会整体重建单位字典 ⇒ 本函数在每一路的开战管线里重跑 ⇒ 召唤物每路重新生成。
+## 单个单位(面具【偷脸】中途生成的复制体): 逐件属性 + 标记 + 批④登场钩, 与 _eq_apply_all_stats / _b4_on_spawn_all 同一条路, 只跑这一只
+func apply_unit(u: Dictionary) -> void:
+	var _seen: Dictionary = {}
+	var _ckp: Array = battle._equip_sys.ck_save()
+	for e in u.get("equips", []):
+		battle._equip_sys.ck_set(u, e)
+		var _iid: String = str(e["id"])
+		var _ck: String = EquipCk.ck_next(_seen, _iid)
+		var _sv: Array = battle._equip_sys.uf_in(u, _ck)
+		_eq_apply_one_stats(u, _iid, int(e.get("star", 1)), _ck)
+		battle._equip_sys.uf_out(u, _sv)
+	battle._equip_sys.ck_restore(_ckp)
+	var owner: Dictionary = battle._equip_sys.B4_OWNER
+	var _ckp2: Array = battle._equip_sys.ck_save()
+	for e in u.get("equips", []):
+		if not (e is Dictionary) or not owner.has(str((e as Dictionary).get("id", ""))):
+			continue
+		battle._equip_sys.ck_set(u, e)
+		var eid: String = str((e as Dictionary).get("id", ""))
+		u["_b4_eq"] = true
+		var sys = battle._equip_sys._b4(eid)
+		if sys != null:
+			var _tl0: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, eid))
+			var _sv2: Array = battle._equip_sys.uf_in(u, battle._equip_sys.key_of(u, eid))
+			sys.on_spawn(u, eid, clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1)
+			battle._equip_sys.uf_out(u, _sv2)
+			battle._equip_sys.tally.pop(_tl0)
+	battle._equip_sys.ck_restore(_ckp2)
+
+
 func _b4_on_spawn_all() -> void:
 	var owner: Dictionary = battle._equip_sys.B4_OWNER
 	for u in battle._units:

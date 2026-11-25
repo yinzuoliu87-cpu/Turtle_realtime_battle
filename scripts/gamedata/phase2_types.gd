@@ -54,6 +54,7 @@ const TYPES := {
 	## 仪式(2026-11-25): 仪式匕首的专属羁绊(照香火的形状: 单档 · 1 件即激活 · 无逐档属性, 收益全在【血契】)。用户「类似于香火石一样…在大轮里面不断的增强」
 	"仪式": {"tiers": [1], "stats": [{}]},
 	"魔法书": {"tiers": [3, 6, 10], "stats": [{"dmgAmp": 0.03}, {"dmgAmp": 0.06}, {"dmgAmp": 0.10}]},   # 2026-11-25 新羁绊(方案书 20261125b; 用户 11-24「魔法书 = 增伤」)
+	"面具": {"tiers": [3, 6, 10], "stats": [{"dmgRed": 0.03}, {"dmgRed": 0.05}, {"dmgRed": 0.08}]},   # 2026-11-25 新羁绊(方案书 20261125c; 用户 11-24「我们没有韧性…给减伤吧」, 11-25 定【偷脸】)
 	## ★★香火(2026-08-13 用户:「093应该有两个羁绊: 遗物和香火」)。
 	##   **只有 1 档**(装备文案原文「羁绊只激活1档」) ⇒ 带 1 块和带 3 块一样。
 	##   它没有逐档属性: 收益全部来自**刻痕数**(每道给全队 +0.1% 增伤 / +0.05% 减伤),
@@ -105,6 +106,7 @@ const TYPE_ICON := {
 	"匕首": "res://assets/sprites/tags/tag-dagger.png",
 	"仪式": "res://assets/sprites/tags/tag-ritual.png",
 	"魔法书": "res://assets/sprites/tags/tag-magicbook.png",
+	"面具": "res://assets/sprites/tags/tag-mask.png",
 	## ★2026-08-20 补: 香火在 TYPES 里(第 56 行)但这两张表都漏了它 ⇒ 静默回落成剑,
 	##   界面上香火羁绊显示成一把剑。**表分几张而只加了一张**是典型漏法。
 }
@@ -118,6 +120,7 @@ const TYPE_NAME := {
 	"匕首": "匕首·刺杀",
 	"仪式": "仪式·血契",
 	"魔法书": "魔法书·飞弹",
+	"面具": "面具·偷脸",
 }
 ## ★★2026-10-13 按云顶羁绊小卡的结构重写(用户「行，你自己弄」; 参考 docs/plans/ref/20261006-云顶装备弹窗/3-tft手游-点羁绊弹小卡.png):
 ##   机制只在 TYPE_INTRO 写一次(一条一行, 【专名】开头), TIER_DESCS 每档只写变化的数字 / 「生效」。
@@ -181,6 +184,9 @@ const TYPE_INTRO := {
 	"魔法书": [
 		"魔法书提高携带者造成的伤害。我方任意单位（包括召唤物）每释放一次技能，按这次消耗的龟能召唤一批魔法飞弹，飞向随机敌人。",
 	],
+	"面具": [
+		"面具提高携带者的减伤。每个战场开打时，从对面这一路随机偷走几只龟的脸，在我方阵地召唤它们的复制体。复制体阵亡时把一部分属性留给最近的友军。",
+	],
 	"仪式": [
 		"仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。",
 	],
@@ -223,6 +229,11 @@ const TIER_DESCS := {
 		"每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害",
 		"每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）",
 		"每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）",
+	],
+	"面具": [
+		"每件面具为携带者提供 +3% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[0]} 只，在我方阵地召唤它的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一（一星的不带，不计入羁绊件数） · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[0]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
+		"每件面具为携带者提供 +5% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[1]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[1]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
+		"每件面具为携带者提供 +8% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[2]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[2]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
 	],
 	"仪式": [
 		"【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%",
