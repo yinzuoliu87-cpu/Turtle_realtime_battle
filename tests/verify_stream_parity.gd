@@ -468,6 +468,11 @@ func _cmp_interp(a0: Dictionary, a: Dictionary, a2: Dictionary, b: Dictionary, s
 	for idx in ua:
 		if not ub.has(idx) or not bool(ua[idx][4]):
 			continue
+		## ★后面没有下一个采样(录像最后一步)⇒ 手机没有终点可插, 只能停在上一个采样; 本机这一步还在走(2026-11-25 最重真实快照局
+		##   碎蛋那一步: 钻石 / 小将离上一采样 1.6 / 1.8 像素, 诊断里「后」是空的)。插值无从谈起 ⇒ 只计数, 不进最大偏差。
+		if not u2.has(idx):
+			st["i_noend"] = int(st.get("i_noend", 0)) + 1
+			continue
 		## 采样间隔(2 步)里位移超过 TELEPORT_PX 的是闪现 / 冲刺 / 击退(2026-10-22 抓到: 钻石龟一步之内闪 224 像素, 中间那步离中点 112)。
 		##   原来不量、单独计数; 2026-11-01 起录流器发中间步真位置 `@mp`, 它们也照同一把尺子量(这里只额外计数 + 记最大值)。
 		if u0.has(idx) and u2.has(idx) and (u0[idx][0] as Vector2).distance_to(u2[idx][0]) > TELEPORT_PX:

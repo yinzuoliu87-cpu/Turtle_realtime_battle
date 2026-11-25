@@ -211,6 +211,12 @@ func _dir_to_cardinal(v: Vector2) -> String:
 	return "south" if v.y >= 0.0 else "north"
 
 func _update_trainer_anim(u: Dictionary, delta: float) -> void:
+	## ★看直播时(镜像单位 _manual_anim)帧表 / 帧号由流照抄, 这里不再自己算(同 _advance_anim 开头那一条)。
+	##   原来漏了这一条 ⇒ 播放端用自己的时间再算一遍盖掉流里的帧号; 时停把时间冻在列边界附近时一直差一帧
+	##   (2026-11-25 verify_stream_parity 最重真实快照局: 右方大师扔到一半进时停, 本机 24 / 播放 25;
+	##   探针: 流在第 5622 步把它设成 24 之后播放端再没换过, 读到的却是 25)。
+	if u.get("_manual_anim", false):
+		return
 	var spr = u.get("sprite", null)
 	if not is_instance_valid(spr):
 		return
