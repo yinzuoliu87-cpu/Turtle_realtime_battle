@@ -476,21 +476,22 @@ func _pistol_bullet(p: Dictionary) -> void:
 	#   第一版乘的是 aim(指向目标 = 右下方) ⇒ 弹从枪的右下角冒出来而不是枪口(用户实拍抓到)。
 	var _muz: Vector2 = Vector2(p["pos"]) + Vector2(float(p.get("_muzzle_px", PISTOL_MUZZLE_FALLBACK)), 0.0)
 	# ★⑭ 同上: 结算等弹飞到(内层空 gun_id, 不重复计金弹)
-	var _fly2: float = vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold,
+	var _bul: Array = vfx.tracer(_muz, Vector2(tgt["pos"]), COL_PHYS, gold,
 		float(p.get("_muzzle_h", 0.6)), GunEqVfx.body_mid_h(tgt), tgt)
 	# ★★把 `_golden_pct` **带进**延后的结算 —— 这是延后伤害引入的真 bug:
 	#   金弹的真伤在 `battle_damage` 里是从 `src["_golden_pct"]` 读的, 而那个标记
 	#   在 `_queue_shots` 的闭包里**用完就清零**。伤害一旦推迟到弹落地, 读到的就是 0
 	#   ⇒ **金弹白打**(实测 6 发全按普通弹算, 240 变 180)。
 	#   ⇒ 结算前把当时的 gold 标回去, 算完立刻还原。
-	battle._queue_shots(1, 0.0, func() -> void:
-		if not tgt.get("alive", false):
+	##   11-25: 弹按 bullet_spd 追着目标飞、到了才结算(通用飞行物; 原来固定时长排队, 远处一律 0.5 秒)
+	battle._ballistics.launch_flight(p, _muz, tgt, GunEqVfx.bullet_spd(), func(hit: bool) -> void:
+		if not hit:
 			return
 		var _sv: float = float(p.get("_golden_pct", 0.0))
 		p["_golden_pct"] = gold
 		battle._damage._apply_damage_from(p, tgt, battle._atk_dmg(p, 1.0, tgt), COL_PHYS, 0.0, false, true)
-		p["_golden_pct"] = _sv
-	, p, "", Callable(), _fly2)
+		p["_golden_pct"] = _sv,
+		func(k: float, _p2: Vector2, _to2: Vector2) -> void: vfx.tracer_drive(_bul, k))
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -801,14 +802,15 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 		#   077/080 上被用户逐条盯出来改过的三件事, 在这件上一件都没做。
 		#   ⇒ 炮口取炮台立绘顶端那颗珊瑚珠(0.78), 落点取目标身体中段, 并把目标本体传进去。
 		var muz_h: float = GunEqVfx.sprite_h(t, TOWER_MUZZLE_FRAC)
-		var fly: float = vfx.tracer(Vector2(t["pos"]), Vector2(tgt["pos"]), COL_PHYS,
+		var bul: Array = vfx.tracer(Vector2(t["pos"]), Vector2(tgt["pos"]), COL_PHYS,
 			gold_pct if golden else 0.0, muz_h, GunEqVfx.body_mid_h(tgt), tgt)
 		vfx.tower_muzzle(Vector2(t["pos"]), muz_h, COL_PHYS)
 		# ★伤害等炮弹到达(080 立的规矩)。金弹标记在闭包返回时被清掉 ⇒ 延后段自己捎上。
 		var gp: float = float(t.get("_golden_pct", 0.0))
 		var vt: Dictionary = tgt
-		battle._queue_shots(1, 0.0, func() -> void:
-			if not vt.get("alive", false):
+		##   11-25: 按 bullet_spd 追着目标飞、到了才结算(通用飞行物)
+		battle._ballistics.launch_flight(t, Vector2(t["pos"]), vt, GunEqVfx.bullet_spd(), func(hit: bool) -> void:
+			if not hit:
 				return
 			var keep: float = float(t.get("_golden_pct", 0.0))
 			t["_golden_pct"] = gp
@@ -816,7 +818,8 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 			var mdm: int = battle._resolve_dmg(t, float(vt["maxHp"]) * hp_pct, vt, true)
 			if vt.get("alive", false):
 				battle._damage._apply_damage_from(t, vt, mdm, COL_MAGIC, 0.0, false, true)
-			t["_golden_pct"] = keep, t, "", Callable(), fly)
+			t["_golden_pct"] = keep,
+			func(k: float, _p2: Vector2, _to2: Vector2) -> void: vfx.tracer_drive(bul, k))
 	var low = lowest_ally(t)
 	if low is Dictionary:
 		var _tp: Array = battle._equip_sys.tally.push(_tower_owner(t), str(t.get("_eq_ck", "p2eq_079")))   # ④ 炮台的治疗记给「携带者 · 召它的那一件」(炮台打的伤害靠召唤物标; 治疗只认上下文)
@@ -957,12 +960,13 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 	#   **血条先掉、弹后到**, 画面和实际发生的事是两回事(弹纯装饰)。
 	#   ⇒ 先放演出拿到**飞行时间**, 再把结算推到弹真正到达那一刻(和炸弹同一条纪律)。
 	#   ⚠ 内层 `_queue_shots` 传空 gun_id ⇒ **不重复计金弹**(外层那一发已经计过了)。
-	var _fly: float = vfx.tracer(muz, Vector2(tgt["pos"]), COL_PHYS,
+	var _bul: Array = vfx.tracer(muz, Vector2(tgt["pos"]), COL_PHYS,
 		float(owner.get("_golden_pct", 0.0)), GunEqVfx.HELI_H, GunEqVfx.body_mid_h(tgt), tgt,
 		GunEqVfx.BUL_MG)   # ★机炮型: 快/细/长尾
 	var _gp: float = float(owner.get("_golden_pct", 0.0))
-	battle._queue_shots(1, 0.0, func() -> void:
-		if not tgt.get("alive", false):
+	## 11-25: 按机炮弹速追着目标飞、到了才结算(通用飞行物; 原来固定时长排队)
+	battle._ballistics.launch_flight(owner, muz, tgt, GunEqVfx.bullet_spd(GunEqVfx.BUL_MG), func(hit: bool) -> void:
+		if not hit:
 			return                                   # 弹在途中目标就死了 ⇒ 这一发落空(合理)
 		# ★金弹标记要带过来, 理由同 _pistol_bullet 的长注释(否则金弹真伤白丢)
 		var _sv: float = float(owner.get("_golden_pct", 0.0))
@@ -971,8 +975,8 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 		owner["_golden_pct"] = _sv
 		h["energy"] = minf(HELI_EN_MAX, float(h.get("energy", 0.0)) + HELI_EN_PER_HIT)
 		_heli_en_mirror(h)                           # 图标框读数(D7)
-		_heli_check_bomb(h)
-	, owner, "", Callable(), _fly)
+		_heli_check_bomb(h),
+		func(k: float, _p2: Vector2, _to2: Vector2) -> void: vfx.tracer_drive(_bul, k))
 
 
 ## 龟能满 ⇒ 起飞轰炸。★抽出来是因为结算已经推迟到弹到达那一刻(见 _heli_bullet),

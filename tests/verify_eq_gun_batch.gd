@@ -127,9 +127,10 @@ func _tier(side: String, t: int) -> void:
 ## 同步把排队的子弹全部打出去(★不等 tween、不等帧)
 func _pump(times: int = 40) -> void:
 	for _i in range(times):
-		if _s._pending_shots.is_empty():
+		if _s._pending_shots.is_empty() and _s._ballistics._flights.is_empty():
 			return
 		_s._ballistics._step_pending_shots(0.2)
+		_s._ballistics._step_flights(0.2)   # 11-25 子弹按速度飞到才结算(通用飞行物)
 
 
 func _find_summon(kind: String) -> Variant:
@@ -776,19 +777,20 @@ func _t079_bullet() -> void:
 	var f4: float = float(foe4["hp"])
 	var y4: float = float(ally4["hp"])
 	_s._pending_shots.clear()
+	_s._ballistics.clear_flights()
 	_gun._tower_bullet(t4, 2)
 	_ok("③T 开火当帧: 敌人【一滴血都不掉】(炮弹还在飞)",
 		_near(f4 - float(foe4["hp"]), 0.0, 0.01), "当帧掉血 %.1f" % (f4 - float(foe4["hp"])))
 	_ok("③T 开火当帧: 回血已经到位(治疗不需要飞)",
 		_near(float(ally4["hp"]) - y4, 20.0, 0.01), "当帧回了 %.1f" % (float(ally4["hp"]) - y4))
-	_ok("③T ★分母: 确实排了延后段", _s._pending_shots.size() > 0,
-		"排了 %d 段" % _s._pending_shots.size())
+	_ok("③T ★分母: 确实发了一颗在途的炮弹(按速度飞的通用飞行物)", _s._ballistics._flights.size() > 0,
+		"在途 %d 颗" % _s._ballistics._flights.size())
 	# ★★不能只断言"过了队列" —— delay0 写 0 也会过队列, "当帧不掉血"照样成立。
 	#   (反向验证时实测到的: 把延后量改成 0, 上面那条没红 ⇒ 它守不住东西。)
 	#   ⇒ 逐格步进, 断言伤害落在第几格: 260 码 ÷ 390 码/秒 ≈ 0.67 秒, 必须等到第 6 格以后。
 	var landed := -1
 	for st4 in range(1, 41):
-		_s._ballistics._step_pending_shots(0.1)
+		_s._ballistics._step_flights(0.1)
 		if landed < 0 and (f4 - float(foe4["hp"])) > 0.0:
 			landed = st4
 			break
@@ -803,6 +805,7 @@ func _t079_bullet() -> void:
 	var vf2 = _gun.vfx
 	vf2.clear()
 	_s._pending_shots.clear()
+	_s._ballistics.clear_flights()
 	_gun._tower_bullet(t4, 2)
 	var muz_h: float = GunEqVfx.sprite_h(t4, EqGunBatch.TOWER_MUZZLE_FRAC)
 	var mid_h: float = GunEqVfx.body_mid_h(foe4)
@@ -1189,7 +1192,7 @@ func _t_vfx_nodes() -> void:
 	vf.clear()
 	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
 	var before: int = _s._world.get_child_count()
-	vf.tracer(c, c + Vector2(300.0, 0.0), Color.WHITE, 1.0)
+	var tr_parts: Array = vf.tracer(c, c + Vector2(300.0, 0.0), Color.WHITE, 1.0)
 	vf.blast(c, 300.0, Color.ORANGE)
 	var n_cone: int = vf.cone_blast(c, Vector2.RIGHT, 400.0, 30.0, Color.WHITE, 0.0, 8)
 	var n_arc: int = vf.chain_arc(c, c + Vector2(200.0, 100.0), Color.SKY_BLUE)
@@ -1205,6 +1208,7 @@ func _t_vfx_nodes() -> void:
 	#   同一帧生出火花, 而那一帧已经没有剩余时间去推火花 ⇒ 断言"全退场"就红。
 	#   ⇒ 喂**两段**: 第一段推完弹(并生出火花), 第二段推完火花。
 	#   ⚠ 这不是"放宽断言" —— 断言本身没动(仍然要求全部退场), 只是承认演出多了一级链。
+	vf.tracer_drive(tr_parts, 1.0)  # 11-25 子弹由结算侧按速度推进; 这里直接给「到了」
 	vf.tick(2.0)                    # ① 弹/带/环等第一级效果寿终, 并在终点生出命中火花
 	vf.tick(2.0)                    # ② 命中火花(0.16~0.22 秒)也退场
 	_ok("⑤N 喂 2 秒 delta → 瞬时演出全部自行退场(★不靠 tween, 无头也稳)",
@@ -1236,8 +1240,8 @@ func _t_bullet_track() -> void:
 	vf.clear()
 	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
 	var tgt: Dictionary = {"pos": c + Vector2(400.0, 0.0), "alive": true, "height": 0.0}
-	var fly: float = vf.tracer(c, Vector2(tgt["pos"]), Color.WHITE, 0.0, 0.6, 1.0, tgt)
-	_ok("⑬ ★分母: tracer 返回了飞行时间(伤害延后就是按它对齐的)", fly > 0.02, "fly=%.3f 秒" % fly)
+	var parts: Array = vf.tracer(c, Vector2(tgt["pos"]), Color.WHITE, 0.0, 0.6, 1.0, tgt)
+	_ok("⑬ ★分母: tracer 返回了这颗弹的三段演出(结算侧按速度推进它们)", parts.size() == 3, "%d 段" % parts.size())
 	var carried := 0
 	for f in vf._fx:
 		if is_same(f.get("tgt", null), tgt):
@@ -1247,7 +1251,8 @@ func _t_bullet_track() -> void:
 	# 目标横移 240 码 → 终点必须被改写。★用**看得见的那条亮线**(bullettail)一起验,
 	#   只有辉光跟上的话观感仍然是打向旧坐标。
 	tgt["pos"] = c + Vector2(400.0, 240.0)
-	vf.tick(fly * 0.25)
+	vf.tracer_drive(parts, 0.25)
+	vf.tick(0.05)
 	var followed := 0
 	for f in vf._fx:
 		if is_same(f.get("tgt", null), tgt) \
@@ -1271,8 +1276,9 @@ func _t_bullet_track() -> void:
 	# 命中火花: 弹寿终那一刻在终点生出来。★单独喂一条弹, 让"还剩几个"只反映火花。
 	vf.clear()
 	var lone: Dictionary = {"pos": c + Vector2(300.0, 0.0), "alive": true, "height": 0.0}
-	var fly2: float = vf.tracer(c, Vector2(lone["pos"]), Color.WHITE, 0.0, 0.6, 1.0, lone)
-	vf.tick(fly2 + 0.01)
+	var parts2: Array = vf.tracer(c, Vector2(lone["pos"]), Color.WHITE, 0.0, 0.6, 1.0, lone)
+	vf.tracer_drive(parts2, 1.0)
+	vf.tick(0.01)
 	_ok("⑬ 弹飞到终点【真的炸出命中火花】(v0.19.53~55 这一段是空的)",
 		vf.alive_count() > 0, "弹寿终后还剩 %d 个演出节点" % vf.alive_count())
 	vf.tick(2.0)

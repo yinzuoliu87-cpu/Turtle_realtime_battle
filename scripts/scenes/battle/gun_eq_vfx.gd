@@ -499,23 +499,24 @@ static func sprite_h(u, frac: float) -> float:
 ##   ⇒ 弹道高度从**枪口**线性降到**目标身体中段**(由目标立绘算, 见 body_mid_h)。
 ##   `h_to < 0` 表示"沿用出膛高度"(供不需要落点的调用方)。
 const BODY_HIT_FRAC := 0.5
-## `tgt`: 传目标字典的话, 弹会**跟着它走**(见下面 ⑬)。返回**飞行时间(秒)**, 供结算对齐。
+## `tgt`: 传目标字典的话, 弹会**跟着它走**(见下面 ⑬)。
+## ★11-25 返回这颗弹的三段演出条目(弹头 / 尾焰 / 辉光), 由结算侧的通用飞行物按 bullet_spd(kind) 推进、
+##   每步调 tracer_drive(条目, 进度) —— 原来返回固定飞行时间(距离 / 速度, 夹在 0.05–0.5 秒)、结算按它排队,
+##   远处一律 0.5 秒到(用户「肯定是有飞行速度的呀」)。
 ##
 ## ★★2026-08-08 ⑬【终点在开火瞬间锁死】用户实测指出:
 ##   原来 `b` 是开火那一刻抄下来的坐标, 弹飞 0.67 秒期间目标只要动了,
 ##   弹就**打到它刚才站的地方**并在那儿炸出命中火花 —— 目标已经走了。
 ##   ⇒ 传了 `tgt` 就每帧读它**当前**位置; 目标死了/丢了才退回锁死的那个点。
 func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: float = PISTOL_MUZZLE_H_M,
-		h_to: float = -1.0, tgt = null, kind: int = BUL_PISTOL) -> float:
+		h_to: float = -1.0, tgt = null, kind: int = BUL_PISTOL) -> Array:
 	var sp: Dictionary = BULLET_SPEC[kind]
 	if not _has_world():
-		return clampf((b - a).length() / float(sp["spd"]), 0.05, 0.5)   # 无世界也要给飞行时间(结算靠它)
+		return []
 	var g: float = gold_glow(gold_pct)
 	var c := Color(col.r + (1.0 - col.r) * g, col.g + (0.9 - col.g) * g, col.b * (1.0 - 0.5 * g), 0.95)
 	var dist: float = (b - a).length()
-	var life: float = clampf(dist / float(sp["spd"]), 0.05, 0.5)
-	if not _has_world():
-		return life
+	var life: float = 99.0   # 由 tracer_drive 推进; 寿命只是兜底(换路清飞行物时节点也跟着收)
 	var dir: Vector2 = (b - a).normalized() if dist > 0.001 else Vector2.RIGHT
 	# ★★2026-08-07 用户问「子弹方向有考虑吗」—— 上一版**没有**: 弹头是一团**圆的**辉光,
 	#   圆形没有方向, 只有后面那条尾焰暗示了走向。现在整颗弹是一条**沿飞行方向的流线**:
@@ -530,16 +531,32 @@ func tracer(a: Vector2, b: Vector2, col: Color, gold_pct: float = 0.0, h_m: floa
 	#   tick() 里的 "bullet" 分支写得好好的, 但零生产者。宣称做了 ⑬, 实际全程没跑。
 	#   ⇒ 三段都建完再 return; 且 `tgt` 同时挂到两条 bullettail 上, 让**看得见的那条亮线**
 	#     也跟着目标走(只挂辉光的话, 亮线仍然打向旧坐标 = 用户看到的还是打空)。
+	var out: Array = []
 	var head := _band(a, a + dir * float(sp["head"]), h_m, float(sp["hw"]) + 3.0 * g, c)
-	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt})
+	_adopt(head, life, "bullettail", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt, "qd": 0.0})
+	out.append(_fx[_fx.size() - 1])
 	var tail := _band(a - dir * float(sp["tail"]), a, h_m, float(sp["tw"]) + 2.2 * g,
 		Color(c.r, c.g, c.b, 0.40))
-	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40, "h": h_m, "h2": _h2, "tgt": tgt})
+	_adopt(tail, life, "bullettail", {"from": a, "to": b, "a0": 0.40, "h": h_m, "h2": _h2, "tgt": tgt, "qd": 0.0})
+	out.append(_fx[_fx.size() - 1])
 	# 弹头再叠一点点辉光(只是"热", 不承担方向)
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(a, h_m),
 		(float(sp["px"]) * (1.0 + 0.5 * g) * float(battle.WS)) / 64.0, c, false)
-	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt})
-	return life
+	_adopt(s, life, "bullet", {"from": a, "to": b, "a0": c.a, "h": h_m, "h2": _h2, "tgt": tgt, "qd": 0.0})
+	out.append(_fx[_fx.size() - 1])
+	return out
+
+
+## 这种弹的飞行速度(码/秒) —— 结算侧通用飞行物用它推进(演出与结算同一个数)
+static func bullet_spd(kind: int = BUL_PISTOL) -> float:
+	return float(BULLET_SPEC[kind]["spd"])
+
+
+## 结算侧每步把飞行进度(0..1, 1 = 到了)写给这颗弹的三段演出; 到 1 那一帧 tick 里收掉并在终点炸火花
+func tracer_drive(parts: Array, k: float) -> void:
+	for f in parts:
+		if f is Dictionary:
+			(f as Dictionary)["qd"] = clampf(k, 0.0, 1.0)
 
 
 ## 爆炸立绘(11 帧一次性动画)。★**不做乒乓** —— 乒乓会让火球缩回去 = 倒放, 爆炸只能单向播。
@@ -1184,7 +1201,8 @@ func tick(delta: float) -> void:
 			_fx.remove_at(i)
 			continue
 		f["t"] = float(f["t"]) + delta
-		var q: float = clampf(float(f["t"]) / maxf(0.001, float(f["life"])), 0.0, 1.0)
+		## "qd" = 外部给的飞行进度(子弹由结算侧的通用飞行物按速度推进, 每步写进来 —— 11-25 起不再按固定时长)
+		var q: float = float(f["qd"]) if f.has("qd") else clampf(float(f["t"]) / maxf(0.001, float(f["life"])), 0.0, 1.0)
 		match str(f.get("kind", "")):
 			"ring":
 				var s: Sprite3D = n
