@@ -421,7 +421,7 @@ CROSS_OK = {
 ## ⚠ 我**没有**替"要不要两张表"拍板 —— 那是产品结构问题(平行表天生会漂), 已交主会话。
 ##   这里只认领"同一个含义"这一件事; 哪天并成一张表, 这 12 条会被 `[已清]` 报出来。
 for _t in ("sword", "gadget", "food", "shield", "potion", "gun", "bow",
-           "staff", "spirit", "incense", "relic", "axe"):
+           "staff", "spirit", "incense", "relic", "axe", "bomb"):   # bomb = 2026-11-24 炸弹羁绊
     CROSS_OK["tags/tag-%s.png" % _t] = (
         "装备**类型图标**。图鉴羁绊页(CodexScene.TYPE_STYLE)与羁绊行名/弹框标题"
         "(Phase2Types.TYPE_ICON)说的是同一件事: 这件装备属于哪个类型。"

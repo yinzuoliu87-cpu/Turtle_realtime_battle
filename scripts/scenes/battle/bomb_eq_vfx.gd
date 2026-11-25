@@ -90,7 +90,7 @@ static func body_h(u) -> float:
 ##   ⇒ 斜着飞时头朝前、走弧线时先抬头后低头, 尾焰 / 烟尾永远拖在后面。原来只会左右翻, 斜飞时是一根横棍在滑。
 func _orient(s: Sprite3D, a3: Vector3, b3: Vector3) -> void:
 	var cam = battle.get("_cam")
-	if not (cam is Camera3D) or not is_instance_valid(cam):
+	if not is_instance_valid(cam) or not (cam is Camera3D):   # 先判有效再 is(对已释放对象 is 会报错中断, freed_is_order_audit)
 		return
 	var d: Vector2 = (cam as Camera3D).unproject_position(b3) - (cam as Camera3D).unproject_position(a3)
 	if d.length() < 0.01:
@@ -431,24 +431,6 @@ func _splat(c: Vector2, r: float, life: float) -> void:
 	s.scale = Vector3(0.3, 1.0, 0.3 * SPLAT_Z)
 	battle._world.add_child(s)
 	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "splat", "nf": s.hframes})
-
-
-## 贴地的一片(软边圆), 存活 life 秒, 最后 30% 淡出
-func _decal(c: Vector2, r: float, col: Color, life: float) -> void:
-	if not _ok():
-		return
-	var tx: Texture2D = VfxTex._make_fire_glow_tex()
-	var s := Sprite3D.new()
-	s.texture = tx
-	s.shaded = false
-	s.transparent = true
-	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	s.axis = Vector3.AXIS_Y
-	s.modulate = col
-	s.pixel_size = (r * 2.4 * float(battle.WS)) / float(tx.get_height())
-	s.position = battle._world_pos(c, 0.03)
-	battle._world.add_child(s)
-	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "decal", "a0": col.a})
 
 
 ## 定时炸弹(11-24 自查): 图标放大、挂到血条上方; 每秒在头上跳倒计时数字(4/3/2/1)
@@ -834,8 +816,6 @@ func tick(delta: float) -> void:
 					sp2.modulate.a = clampf((lf - tt) / 0.3, 0.0, 1.0)
 				sp2.scale = Vector3(k, 1.0, k * SPLAT_Z)
 				sp2.frame = int(tt * 10.0) % int(f["nf"])
-			"decal":
-				(n as Sprite3D).modulate.a = float(f["a0"]) * (1.0 if q < 0.7 else (1.0 - q) / 0.3)
 			"ball":
 				var tb = f.get("tgt", null)
 				var dst: Vector2 = Vector2(tb["pos"]) if tb is Dictionary and tb.get("alive", false) else Vector2(f["to"])
