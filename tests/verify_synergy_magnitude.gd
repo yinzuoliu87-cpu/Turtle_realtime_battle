@@ -55,6 +55,11 @@ const USER_REVIEWED := ["剑", "盾", "弓箭", "枪", "法器"]
 ##   没有来源时它是 0 —— 换算不成倍率, 只卡绝对上限。
 const ABS_CAP := {"armorPen": 40.0, "magicPen": 50.0, "_lifestealPct": 35.0, "_maxEnergy": 70.0,
 	"healAmp": 70.0, "shieldAmp": 70.0}
+## 按羁绊单独放宽的绝对上限(要写理由; 只给「这条属性就是这个羁绊的主题」的)。
+##   炸弹(2026-11-25 CI 抓到): 护甲穿透是炸弹羁绊唯一的属性、整条羁绊围绕破甲(方案书 20261124f §4.1, 11-24 拍板 5 / 12 / 20),
+##   顶档要集齐 10 件(比其它 3 档羁绊的 9 件还多一件) ⇒ 带满 3 件 = +60。护穿 40 的上限是 08-04 定的, 那时没有任何羁绊给护穿(枪已改攻速)。
+##   ⚠ 数值本身没动; 要不要把炸弹顶档调低等用户看(列在 11-25 汇报里)。
+const ABS_CAP_BY_TYPE := {"炸弹": {"armorPen": 60.0}}
 
 var _n := 0
 var _fail := 0
@@ -136,8 +141,9 @@ func _ready() -> void:
 						notes.append("血+%.0f" % add)
 					_:
 						notes.append("%s+%.0f" % [k, total])
-						if ABS_CAP.has(k) and total > float(ABS_CAP[k]):
-							bad_abs.append("%s 档%d %s +%.0f 超上限 %.0f" % [t, ti + 1, k, total, float(ABS_CAP[k])])
+						var cap_k: float = float((ABS_CAP_BY_TYPE.get(t, {}) as Dictionary).get(k, ABS_CAP.get(k, 0.0)))
+						if ABS_CAP.has(k) and total > cap_k:
+							bad_abs.append("%s 档%d %s +%.0f 超上限 %.0f" % [t, ti + 1, k, total, cap_k])
 			var is_top: bool = ti == stats.size() - 1
 			var tag: String = "顶档" if is_top else ("首档" if ti == 0 else "中档")
 			print("  %-5s %-7s ×%.2f %s  %s" % [t, "%s(%d件)" % [tag, int(tiers[ti])], mult,
