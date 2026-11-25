@@ -305,7 +305,7 @@ func on_mana_full(_u: Dictionary, _eid: String, _si: int) -> void:
 
 ## 任何单位普攻（EquipSystem._eq_on_basic_attack 最前面调，不论有没有装备）
 func on_any_basic(u: Dictionary, tgt) -> void:
-	if bool(u.get("_katana_minion", false)) and tgt is Dictionary:
+	if str(u.get("id", "")) == "_summon_katana" and tgt is Dictionary:
 		_fx("katana_hslash", [u, tgt])   # 107 小将普攻命中的横斩刀光(只管画面)
 	if bool(u.get("_smoke_hidden", false)) and float(battle._t) >= float(u.get("untargetable_until", 0.0)):
 		u["_smoke_hidden"] = false          # 潜行已自然到期（离开烟雾）⇒ 这一下不算潜行攻击
@@ -904,10 +904,6 @@ func _spawn_katana(owner: Dictionary, si: int) -> void:
 		 "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
 	if p == null:
 		return
-	## 普攻 = 横斩(11-25 用户「普通攻击应该是一个横横斩」): 自带普攻帧表(前摇 / 命中 / 后摇由 AttackRhythm 对齐), 命中画专属刀光、不叠通用火花
-	p["_act_rows"] = {"attack": ["vfx/eq-katana-attack.png", 14.0]}
-	p["_own_hit_vfx"] = true
-	p["_katana_minion"] = true
 	p["maxEnergy"] = KATANA_EN_MAX   # 头顶龟能条(见 _spawn_cannon)
 	p["energy"] = 0.0
 	_katanas.append({"u": p, "owner": owner, "si": si, "en": KATANA_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0, "casts": 0, "charge": -1.0, "heal_acc": 0.0, "wave_t": -1.0})

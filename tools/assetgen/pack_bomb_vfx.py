@@ -79,7 +79,12 @@ def _erase_hot(img, x0):
 ##   横斩 = animate_image 首尾钉住待机原画(第二版, 身体转得多)。每段按下表挑帧拼(序号 = 生成结果的第几张, 0 = 输入原画不要)。
 ##   所有段与待机同一个下移量(KATANA_DY), 换表不跳。
 KATANA_SEQ = {
-    "eq-katana-attack": ["katslash2_%d" % i for i in range(1, 9)],                       # 横斩 8 帧, 命中 = 第 3 帧(刀横扫过身前)
+    ## 横斩(11-25 第三版): 用户「刀刀头和刀尾…标点…有这样横扫吗？我觉得没有吧」⇒ 量出第二版刀尖只在身前 30 像素内晃(tools/oneoff/blade_track.py)。
+    ##   改成三张关键姿势定路线: katkey_s1 刀拉到右肩后 → katkey_s2 刀平指正前方 → katkey_s3 刀横扫过身前到右侧; kats_a/b/c/d = 四段过渡。
+    ##   kats_c_1 / c_2 与 s2 几乎一样(停在正前方)不要。命中 = 第 7 帧(kats_b_4, 刀平指敌人)。
+    "eq-katana-attack": ["kats_a_%d" % i for i in range(1, 5)] + ["kats_b_%d" % i for i in range(1, 5)]
+                        + ["kats_c_3", "kats_c_4"] + ["kats_d_%d" % i for i in range(1, 4)],
+    "eq-katana-walk": ["katwalk_%d" % i for i in range(1, 9)],                           # 走路循环 8 帧(首尾钉住待机原画生成)
     ## 上挑: katup_3 不要(刀身画成一团往身后飞的白雾, 方向反了) ⇒ 刀尖压地后一下挑到指天; 第 6 帧(刀指天)出波
     "eq-katana-rise": ["katlow_%d" % i for i in range(1, 5)] + ["katup_1", "katup_2", "katup_4"]
                       + ["katuprec_%d" % i for i in range(1, 4)],
