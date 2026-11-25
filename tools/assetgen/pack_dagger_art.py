@@ -27,7 +27,7 @@ TAG = {"tagdagger": "tag-dagger", "tagritual2": "tag-ritual"}
 ## 特效表(源名 = 产出名); 一次性的去掉末尾全透明帧, 循环的原样保留
 VFX_SHEETS = ["dagger-fang-bite", "dagger-ninja-smoke", "dagger-ninja-strike", "dagger-assassin-strike", "dagger-assassin-mark",
               "dagger-ritual-exec", "dagger-ritual-mark", "dagger-kris-rush", "dagger-fold-cut", "dagger-knife-hit",
-              "dagger-obs-pull", "dagger-ninja-slash", "dagger-shuriken-spin", "dagger-kunai-hit", "dagger-kunai-heal", "dagger-shuriken-hit"]
+              "dagger-obs-pull", "dagger-shade-cut", "dagger-shuriken-spin", "dagger-kunai-hit", "dagger-kunai-heal", "dagger-shuriken-hit"]
 LOOPS = {"dagger-kris-rush", "dagger-shuriken-spin"}
 
 ## 暗影忍者动作(序号 0 = animate_image 的输入原画; 段与段首尾相接处只取一次)
@@ -73,8 +73,8 @@ def main() -> None:
                 frames.pop()
         _strip(frames).save(os.path.join(VFX, name + ".png"), optimize=False)
         out.append("%s %dx%d x%d" % (name, frames[0].width, frames[0].height, len(frames)))
-    ## 苦无飞行物: 110 图标中间那一把(x 24..39, 刀尖到握柄 y 0..46; 下面三把的环叠在一起, 不取)
-    k = Image.open(os.path.join(AI, "icon110.png")).convert("RGBA").crop((24, 0, 40, 47))
+    ## 苦无飞行物: 110 图标中间那一把(x 24..39, 刀尖到握柄 y 0..39; 再往下是三把的环叠在一起 + 两侧那两把的刀柄边, 不取)
+    k = Image.open(os.path.join(AI, "icon110.png")).convert("RGBA").crop((24, 0, 40, 40))
     k.save(os.path.join(VFX, "dagger-kunai.png"), optimize=False)
     out.append("dagger-kunai %dx%d" % k.size)
     ## 暗影忍者: 所有帧同一个下移量(按待机原画最低一行贴到帧底), 换表不跳

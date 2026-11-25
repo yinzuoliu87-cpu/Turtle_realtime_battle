@@ -1,7 +1,7 @@
 {
  "frames": [
   {
-   "filename": "dagger-ninja-slash 0.png",
+   "filename": "dagger-shade-cut 0.png",
    "frame": {
     "x": 0,
     "y": 0,
@@ -27,7 +27,7 @@
    "duration": 63
   },
   {
-   "filename": "dagger-ninja-slash 1.png",
+   "filename": "dagger-shade-cut 1.png",
    "frame": {
     "x": 26,
     "y": 0,
@@ -53,7 +53,7 @@
    "duration": 63
   },
   {
-   "filename": "dagger-ninja-slash 2.png",
+   "filename": "dagger-shade-cut 2.png",
    "frame": {
     "x": 52,
     "y": 0,
@@ -79,7 +79,7 @@
    "duration": 63
   },
   {
-   "filename": "dagger-ninja-slash 3.png",
+   "filename": "dagger-shade-cut 3.png",
    "frame": {
     "x": 0,
     "y": 22,
@@ -105,7 +105,7 @@
    "duration": 63
   },
   {
-   "filename": "dagger-ninja-slash 4.png",
+   "filename": "dagger-shade-cut 4.png",
    "frame": {
     "x": 26,
     "y": 22,
@@ -131,7 +131,7 @@
    "duration": 63
   },
   {
-   "filename": "dagger-ninja-slash 5.png",
+   "filename": "dagger-shade-cut 5.png",
    "frame": {
     "x": 52,
     "y": 22,
@@ -157,7 +157,7 @@
    "duration": 63
   },
   {
-   "filename": "dagger-ninja-slash 6.png",
+   "filename": "dagger-shade-cut 6.png",
    "frame": {
     "x": 0,
     "y": 44,
@@ -183,7 +183,7 @@
    "duration": 63
   },
   {
-   "filename": "dagger-ninja-slash 7.png",
+   "filename": "dagger-shade-cut 7.png",
    "frame": {
     "x": 26,
     "y": 44,
@@ -211,7 +211,7 @@
  ],
  "meta": {
   "app": "PixelLab VFX Creator",
-  "image": "dagger-ninja-slash.png",
+  "image": "dagger-shade-cut.png",
   "format": "RGBA8888",
   "size": {
    "w": 78,
@@ -225,7 +225,7 @@
   },
   "frameTags": [
    {
-    "name": "dagger-ninja-slash",
+    "name": "dagger-shade-cut",
     "from": 0,
     "to": 7,
     "direction": "forward"

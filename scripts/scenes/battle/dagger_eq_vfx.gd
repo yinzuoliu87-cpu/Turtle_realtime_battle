@@ -14,7 +14,7 @@ const DSHEETS := {
 	"fang": ["vfx/dagger-fang-bite.png", 69, 72, 49.0, 40, 31],          # 111 毒牙: 蛇颚咬合 + 毒液
 	"nsmoke": ["vfx/dagger-ninja-smoke.png", 73, 58, 67.0, 39, 35],      # 115 化烟 / 现身 / 登场 / 消散
 	"nstrike": ["vfx/dagger-ninja-strike.png", 58, 67, 52.0, 29, 26],    # 115 影袭背刺: 紫色交叉斩
-	"nslash": ["vfx/dagger-ninja-slash.png", 26, 22, 20.0, 22, 11],      # 115 忍者普攻命中: 紫色单刀痕
+	"nslash": ["vfx/dagger-shade-cut.png", 26, 22, 20.0, 22, 11],      # 115 忍者普攻命中: 紫色单刀痕
 	"astrike": ["vfx/dagger-assassin-strike.png", 123, 53, 114.0, 54, 21],   # 羁绊【刺杀】强化击: 猩红长斩线
 	"amark": ["vfx/dagger-assassin-mark.png", 48, 45, 42.0, 23, 23],     # 羁绊【刺杀】挂上强化: 头顶暗红星芒
 	"rexec": ["vfx/dagger-ritual-exec.png", 76, 65, 62.0, 37, 26],       # 114 斩杀: 猩红镰月 + 血花
@@ -111,7 +111,7 @@ func fold_cut(u: Dictionary, tgt: Dictionary) -> void:
 
 
 func fang_bite(tgt: Dictionary) -> void:
-	_anim("fang", Vector2(tgt["pos"]), 80.0, 0.65, 1.0, false, false, Color.WHITE, tgt)
+	_anim("fang", Vector2(tgt["pos"]), 60.0, 0.65, 1.0, false, false, Color.WHITE, tgt)
 
 
 ## 弯匕: 攻速暴涨那几秒, 携带者身上金色风纹一直往后掠(跟着人走)
@@ -133,7 +133,7 @@ func ritual_execute(tgt: Dictionary) -> void:
 func ritual_mark(killer: Dictionary, n: int) -> void:
 	_anim("rmark", Vector2(killer["pos"]), 70.0, 0.6, 1.0, false, false, Color.WHITE, killer)
 	if _ok() and battle.get("_vfx") != null:
-		battle._vfx._float_text(Vector2(killer["pos"]) + Vector2(0, -120), Lang.t("血契 %d") % n, Color("#ff4a5a"), true)
+		battle._vfx._float_text(Vector2(killer["pos"]) + Vector2(0, -50), Lang.t("血契 %d") % n, Color("#ff4a5a"), true)
 
 
 # ═══════════════════════════════ 109 柳叶飞刀 / 115 手里剑 ═══════════════════════════════
@@ -151,7 +151,7 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 			if s != null:
 				_fx.append({"node": s, "t": 0.0, "life": life, "kind": "flyline", "line": kind, "from": from, "dir": dir, "spd": spd, "h": h, "tip": KNIFE_TIP_DEG})
 		"shuriken":
-			s = _anim("shur", from, 30.0, life, h, false, true)
+			s = _anim("shur", from, 40.0, life, h, false, true)
 			if s != null:
 				s.no_depth_test = true
 				s.render_priority = 11
