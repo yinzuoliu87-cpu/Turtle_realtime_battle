@@ -223,6 +223,7 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
 		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
+		"ls": DaggerSynergySystem.extra_ls(src) if basic_onhit else 0.0,   # 匕首【刺杀】强化击的额外吸血随弹道带到命中
 		## 多重打击连出来的那一发(出手这一刻 _chained_atk 指的就是这一发; 命中时它早被下一发的掷骰改写)⇒ 记在弹道上, 命中时装备效果按 50%
 		"multi_fx": GamblerSystem.MULTI_FX if (basic_onhit and src is Dictionary and bool(src.get("_chained_atk", false))) else 1.0,
 		"oriented": oriented, "card_spin": card_spin, "card_hand": card_hand, "dtype": battle._last_dmg_type,
@@ -459,7 +460,7 @@ func _step_projectiles(delta: float) -> void:
 					##   平常的弹道一个字段都不碰(训龟大师哨兵 verify_trainer_untouchable 盯着它的每个字段; 11-11 CI 第 7 片抓到)
 					var _mfh: float = float(pr.get("multi_fx", 1.0))
 					if _mfh < 1.0: pr["src"]["_multi_fx_hit"] = _mfh
-					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], 0.0, pr.get("raw", false), false, false, false, false, pr.get("basic_onhit", false))   # raw=手里剑暴击转真伤等; basic 随弹道标
+					battle._damage._apply_damage_from(pr["src"], tgt, pr["dmg"], pr["col"], float(pr.get("ls", 0.0)), pr.get("raw", false), false, false, false, false, pr.get("basic_onhit", false))   # raw=手里剑暴击转真伤等; basic 随弹道标
 					if _mfh < 1.0: (pr["src"] as Dictionary).erase("_multi_fx_hit")
 				else:
 					battle._damage._apply_damage(tgt, pr["dmg"], pr["col"])

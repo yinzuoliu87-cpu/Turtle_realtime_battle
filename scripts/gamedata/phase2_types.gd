@@ -50,6 +50,9 @@ const TYPES := {
 	"法器": {"tiers": [2, 5, 8, 10], "stats": [{"magicPen": 4, "_maxEnergy": 4}, {"magicPen": 7, "_maxEnergy": 6}, {"magicPen": 11, "_maxEnergy": 8}, {"magicPen": 14, "_maxEnergy": 10}]},
 	"灵物": {"tiers": [2, 5, 8, 10], "stats": [{"dodgePct": 5}, {"dodgePct": 9}, {"dodgePct": 13}, {"dodgePct": 18}]},
 	"炸弹": {"tiers": [3, 6, 10], "stats": [{"armorPen": 5}, {"armorPen": 12}, {"armorPen": 20}]},   # 2026-11-24 新羁绊(方案书 20261124f; 用户「那肯定三六十嘛」)
+	"匕首": {"tiers": [3, 6, 10], "stats": [{"critDmg": 0.06}, {"critDmg": 0.12}, {"critDmg": 0.20}]},   # 2026-11-25 新羁绊(方案书 20261125; 用户「匕首提供暴击伤害」)
+	## 仪式(2026-11-25): 仪式匕首的专属羁绊(照香火的形状: 单档 · 1 件即激活 · 无逐档属性, 收益全在【血契】)。用户「类似于香火石一样…在大轮里面不断的增强」
+	"仪式": {"tiers": [1], "stats": [{}]},
 	## ★★香火(2026-08-13 用户:「093应该有两个羁绊: 遗物和香火」)。
 	##   **只有 1 档**(装备文案原文「羁绊只激活1档」) ⇒ 带 1 块和带 3 块一样。
 	##   它没有逐档属性: 收益全部来自**刻痕数**(每道给全队 +0.1% 增伤 / +0.05% 减伤),
@@ -98,6 +101,8 @@ const TYPE_ICON := {
 	"香火": "res://assets/sprites/tags/tag-incense.png",
 	"斧头": "res://assets/sprites/tags/tag-axe.png",
 	"炸弹": "res://assets/sprites/tags/tag-bomb.png",
+	"匕首": "res://assets/sprites/tags/tag-dagger.png",
+	"仪式": "res://assets/sprites/tags/tag-ritual.png",
 	## ★2026-08-20 补: 香火在 TYPES 里(第 56 行)但这两张表都漏了它 ⇒ 静默回落成剑,
 	##   界面上香火羁绊显示成一把剑。**表分几张而只加了一张**是典型漏法。
 }
@@ -108,6 +113,8 @@ const TYPE_NAME := {
 	"香火": "香火·刻痕",
 	"斧头": "斧头·砍伐",
 	"炸弹": "炸弹·爆破",
+	"匕首": "匕首·刺杀",
+	"仪式": "仪式·血契",
 }
 ## ★★2026-10-13 按云顶羁绊小卡的结构重写(用户「行，你自己弄」; 参考 docs/plans/ref/20261006-云顶装备弹窗/3-tft手游-点羁绊弹小卡.png):
 ##   机制只在 TYPE_INTRO 写一次(一条一行, 【专名】开头), TIER_DESCS 每档只写变化的数字 / 「生效」。
@@ -165,6 +172,12 @@ const TYPE_INTRO := {
 	"炸弹": [
 		"炸弹提高携带者的护甲穿透。每个战场开打后不久，一发导弹落到战场中心，轰炸并击飞所有敌方单位。",
 	],
+	"匕首": [
+		"匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。档位越高，战斗中再触发的次数越多。",
+	],
+	"仪式": [
+		"仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。",
+	],
 }
 
 # 逐档效果: 该档新增 / 变化的内容(总述见 TYPE_INTRO)。条目之间用「 · 」分隔, 图鉴 / 背包按它拆行。
@@ -194,6 +207,14 @@ const TIER_DESCS := {
 		"每件炸弹为携带者提供 +5 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外",
 		"每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%",
 		"每件炸弹为携带者提供 +20 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%",
+	],
+	"匕首": [
+		"每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取",
+		"每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次",
+		"每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次",
+	],
+	"仪式": [
+		"【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%",
 	],
 	"药水": [
 		"每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%",

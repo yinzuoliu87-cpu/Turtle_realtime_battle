@@ -1115,6 +1115,8 @@ var incense_marks: int = 0                            # 093 香火石: 本赛季
 ##   (用户 2026-08-13:「羁绊里有多少刻痕和充能都是重新激活状态…就接着激活啊」)。
 ##   ★这里【曾经】存在装备实例的 `chg` 字段里 ⇒ 卖掉再买充能归零、刻痕却还在, 两半各走各的。
 var incense_charge: int = 0
+## 114 仪式匕首【血契】(2026-11-25 · 方案书 20261125 §4.2c): 队伍级 + 大轮级, 同香火刻痕(卖掉不退, 大轮清零, 上限 EqDaggerBatch.RITUAL_CAP)
+var ritual_marks: int = 0
 ## 096 小木斧【砍伐经验】—— 照 093 香火石的先例做成**赛季级**(用户 2026-08-31「随大轮重置」;
 ##   代码里「一大轮」就是赛季, 见上面 season_id 的注释)。
 ## ★★这里是**两个**字段, 不是一个 —— 未决点 ⑥ 拍板「历史累计」之后必然如此:
@@ -1880,6 +1882,7 @@ func _save_dict() -> Dictionary:
 		"promoted": promoted,
 		"titles": titles,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
+		"ritual_marks": ritual_marks,     # 114 仪式匕首: 大轮级血契池
 		"incense_charge": incense_charge, # 093 香火石: 赛季级充能池(与刻痕同一条线)
 		"season_level": season_level,
 		"season_xp": season_xp,
@@ -2079,6 +2082,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	promoted = bool(data.get("promoted", false))
 	titles = (data.get("titles", []) as Array).duplicate(true)
 	incense_marks = int(data.get("incense_marks", 0))   # 093 香火石: 赛季级刻痕池
+	ritual_marks = int(data.get("ritual_marks", 0))     # 114 仪式匕首: 大轮级血契池
 	incense_charge = int(data.get("incense_charge", 0))
 	season_level = int(data.get("season_level", 1))
 	# ★老存档没有这个键 → 空字典, 由 ensure_equip_pool() 在下次用到时补满(D12: 不做旧档兜底)。
@@ -2295,6 +2299,7 @@ func reset_save() -> void:
 	finals_runner_up = false
 	_clear_cup_progress()
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
+	ritual_marks = 0                  # 114 仪式匕首: 血契随大轮清零
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
 	season_xp = 0
@@ -2960,6 +2965,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	finals_runner_up = false
 	_clear_cup_progress()
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
+	ritual_marks = 0                  # 114 仪式匕首: 血契随大轮清零
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
 	season_xp = 0

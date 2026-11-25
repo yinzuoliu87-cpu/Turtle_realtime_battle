@@ -246,6 +246,8 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 			u["base_mr"] = float(u.get("base_mr", 0.0)) + v
 		"crit":
 			u["crit"] = float(u.get("crit", 0.0)) + v
+		"critDmg":   # 匕首羁绊(2026-11-25): 每件给暴击伤害
+			u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + v
 		"armorPen":
 			u["armor_pen"] = float(u.get("armor_pen", 0.0)) + v
 		"magicPen":

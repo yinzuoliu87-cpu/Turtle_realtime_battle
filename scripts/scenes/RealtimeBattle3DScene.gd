@@ -689,6 +689,7 @@ var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控
 var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/余韵/共鸣】(2026-08-03)
 var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获】(2026-08-03)
 var _bomb_syn := BombSynergySystem.new(self)   # 炸弹羁绊【导弹轰炸】(2026-11-24 · 方案书 20261124f)
+var _dagger_syn := DaggerSynergySystem.new(self)   # 匕首羁绊【刺杀】(2026-11-25 · 方案书 20261125)
 var _gadget_syn := GadgetSynergySystem.new(self)   # 奇械羁绊【铸币/冰封】(2026-08-03)
 var _food_syn := FoodSynergySystem.new(self)       # 食物羁绊【永久成长/学院】(2026-08-03)
 var _spirit_syn := SpiritSynergySystem.new(self)   # 灵物羁绊【触手/闪避追击/亡灵】(2026-08-03)
@@ -2137,6 +2138,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 共鸣(7.5s)
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
 		_bomb_syn.tick(dt)    # 炸弹: 每一路开打第 10 秒导弹轰炸
+		_dagger_syn.tick(dt)  # 匕首: 每一路开打(二档 +10 秒 / 三档 +20 秒)全队下一次普攻强化
 		_gadget_syn.tick(dt)  # 奇械: 铸币累计
 		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
 		_spirit_syn.tick(dt)  # 灵物: 触手拍击层数(每 SLAP_PERIOD=5 秒 +1, 闪避再 +1) + 空闲时消费 1 层拍一次
@@ -2781,7 +2783,13 @@ func _enter_basic_windup(u: Dictionary) -> void:
 	u["state_t"] = clampf(float(u["atk_interval"]) * ATK_WINDUP_PCT, ATK_WINDUP_MIN, ATK_WINDUP_MAX)
 	AttackRhythm.begin(self, u, float(u["state_t"]))
 
+## 匕首【刺杀】(2026-11-25): 包一层 —— 本体里十几个提前返回都要经过 end_basic(把「这一下普攻强化」清掉)
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
+	DaggerSynergySystem.begin_basic(u)
+	_basic_attack_body(u, tgt)
+	_dagger_syn.end_basic(u, tgt)
+
+func _basic_attack_body(u: Dictionary, tgt: Dictionary) -> void:
 	AttackRhythm.on_hit(self, u)    # 普攻三段: 前摇里已开播 ⇒ 此刻正是命中帧不重播; 追打等无前摇的出手照旧(预备形变 + 开播)
 	_audio_sys.sfx_basic_swing(u)   # 普攻出手声(挥击破风 / 发射; 11-05 照云顶 BasicAttack_OnCast; 只管声音)
 	var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
@@ -3891,6 +3899,7 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 		_ls = DiceSystem.FATE_LIFESTEAL
 		u["dice_fate_ls"] = false
 		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运生命偷取", Color("#ff6b6b"))
+	_ls += DaggerSynergySystem.extra_ls(u)   # 匕首【刺杀】强化击的额外生命偷取(同一条 extra_ls 通道)
 	# 手半剑084近战携带→瞬发激光束(整段在 eq_blade_batch.beam_basic); 近战但射程被拉远的→弹道(见 BasicConsts.LONG_MELEE_RANGE); 其余近战→瞬发
 	if not _equip_sys._blade_sys.beam_basic(u, tgt, dmg, col, _ls, i):
 		if u["melee"] and _eff_range(u) < BasicConsts.LONG_MELEE_RANGE:
@@ -4033,9 +4042,10 @@ func _lstrike_frame(spr: Sprite3D, f: int) -> void:
 func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool, can_crit: bool = true) -> int:   # can_crit=false: 羁绊效果不暴击(炸弹导弹); 不掷随机数
 	_last_dmg_type = "magic" if magic else "physical"; _damage._dt_fresh = true; _damage._dt_owner = tgt; _damage._dt_resolved = true   # 记类型供飘字取色(+哨兵置新鲜/记归属/记"这一发真算过护甲")
 	var eff_crit: float = minf(float(u["crit"]), 1.0)
-	_last_atk_crit = can_crit and _battle_rng.randf() < eff_crit
+	var _asx: float = DaggerSynergySystem.extra_crit(u)   # 匕首【刺杀】强化的那一下普攻: 必暴击 + 额外暴伤(照掷一次骰, 随机流不跟着变形)
+	_last_atk_crit = (can_crit and _battle_rng.randf() < eff_crit) or _asx > 0.0
 	if _last_atk_crit:
-		base *= DamageMath.crit_multiplier(float(u["crit"]), float(u["crit_dmg"]))   # 暴击率溢出100%每1%→1.5%暴伤
+		base *= DamageMath.crit_multiplier(float(u["crit"]), float(u["crit_dmg"]) + _asx)   # 暴击率溢出100%每1%→1.5%暴伤
 	var resist: float
 	if magic:
 		resist = DamageMath.effective_resist(float(tgt["mr"]), float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
@@ -7484,6 +7494,7 @@ func _settle_season(won: bool) -> void:
 	_food_syn.reset_match()      # 食物成长: 以【场】重置(用户 2026-08-04) —— 跨路保留, 换场清零
 	_potion_syn.reset_match()    # 药水战利品: 同上
 	_bomb_syn.reset_match()
+	_dagger_syn.reset_match()
 	_relic_syn.reset_match()     # 遗物远古之力: 同上
 	## ★2026-10-06 用户「可以不发」: 被打出局的那一局不发深海币(含战斗内铸币)。
 	##   出局后商店锁住、深海币周一清零 ⇒ 这笔钱一枚都花不出去, 发了只是假账(60 人实操台账)。

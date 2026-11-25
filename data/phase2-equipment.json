@@ -1283,5 +1283,113 @@
     "effectDesc3": "",
     "img": "equip/p2eq_107.png",
     "effectBrief": "召唤一名武士刀小将，前三次技能挥剑气波，第四次蓄力回血后吹出龙卷风。"
+  },
+  {
+    "id": "p2eq_108",
+    "name": "折叠小刀",
+    "cost": 1,
+    "baseStats1": "+攻8/15/25·暴伤5/8/12%",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "每个战场开打后，第一次攻击附带 {C:EqDaggerBatch.FOLD_BLEED} 层流血。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_108.png",
+    "effectBrief": "每个战场的第一次攻击附带流血。"
+  },
+  {
+    "id": "p2eq_109",
+    "name": "柳叶飞刀",
+    "cost": 1,
+    "baseStats1": "+攻6/12/20·暴击4/6/10%",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "每 {C:EqDaggerBatch.KNIFE_IV} 秒朝最远的敌人射出一把柳叶飞刀，命中途经的第一个敌人，造成（{C:EqDaggerBatch.KNIFE_FLAT}+{C:EqDaggerBatch.KNIFE_ATK%}% 攻击力）魔法伤害，可以暴击。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_109.png",
+    "effectBrief": "定时朝最远的敌人射出飞刀，造成可以暴击的魔法伤害。"
+  },
+  {
+    "id": "p2eq_110",
+    "name": "苦无",
+    "cost": 2,
+    "baseStats1": "+生命80/160/300·护甲8/15/25",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "每 {C:EqDaggerBatch.KUNAI_IV} 秒朝随机敌人掷出 {C:EqDaggerBatch.KUNAI_N} 枚苦无，每枚造成（{C:EqDaggerBatch.KUNAI_FLAT}+{C:EqDaggerBatch.KUNAI_ATK%}% 攻击力）魔法伤害，并为自身回复 {C:EqDaggerBatch.KUNAI_HEAL} 点生命值。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_110.png",
+    "effectBrief": "定时朝随机敌人掷出苦无，每命中一枚为自身回复生命值。"
+  },
+  {
+    "id": "p2eq_111",
+    "name": "毒牙匕首",
+    "cost": 3,
+    "baseStats1": "+生命120/240/450·魔抗10/18/30",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "造成暴击时，使目标叠加相当于自身 {C:EqDaggerBatch.FANG_POISON_ATK%}% 攻击力的中毒层数。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_111.png",
+    "effectBrief": "暴击时按自身攻击力施加中毒。"
+  },
+  {
+    "id": "p2eq_112",
+    "name": "三棱刺",
+    "cost": 3,
+    "baseStats1": "+攻15/28/48·暴击6/10/16%",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "攻击和技能无视目标 {C:EqDaggerBatch.PIERCE_PCT%}% 护甲。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_112.png",
+    "effectBrief": "攻击和技能无视目标一部分护甲。"
+  },
+  {
+    "id": "p2eq_113",
+    "name": "弯匕",
+    "cost": 4,
+    "baseStats1": "+生命200/420/1000·攻20/38/90",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "击杀敌人后 {C:EqDaggerBatch.KRIS_SEC} 秒内攻击速度提高 {C:EqDaggerBatch.KRIS_ASPD%}%。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_113.png",
+    "effectBrief": "击杀敌人后短时间内提高攻击速度。"
+  },
+  {
+    "id": "p2eq_114",
+    "name": "仪式匕首",
+    "cost": 4,
+    "baseStats1": "+生命200/420/1000·攻15/30/70",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "攻击和技能直接击杀生命值低于其 {C:EqDaggerBatch.RITUAL_EXEC%}% 最大生命值的敌人。每击杀一名敌人刻下 1 道【血契】，整个大轮累计，至多 {C:EqDaggerBatch.RITUAL_CAP} 道。每道血契使自身攻击力提高 {C:EqDaggerBatch.RITUAL_ATK}、护甲穿透提高 {C:EqDaggerBatch.RITUAL_PEN}。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_114.png",
+    "effectBrief": "斩杀低血量的敌人，每次击杀刻下血契，整个大轮持续变强。"
+  },
+  {
+    "id": "p2eq_115",
+    "name": "暗影匕首",
+    "cost": 5,
+    "baseStats1": "+攻40/90/400·暴伤20/35/80%",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "登场时召唤一名暗影忍者：{C:EqDaggerBatch.NINJA_HP} 生命值、{C:EqDaggerBatch.NINJA_ATK} 攻击力、{C:EqDaggerBatch.NINJA_RES} 护甲和魔抗、{C:EqDaggerBatch.NINJA_CRIT%}% 暴击率，登场时隐身，攻击时现形。龟能满时释放【影袭】：化为黑烟，闪到生命值比例最低的敌人身后背刺，造成 {C:EqDaggerBatch.NINJA_STRIKE_MULT%}% 攻击力的物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。暗影忍者的生命值首次低于其 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 最大生命值时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力。影子在场时，每次【影袭】两名忍者各朝目标掷出一枚手里剑，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT}+{C:EqDaggerBatch.SHURIKEN_ATK%}% 攻击力）魔法伤害。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_115.png",
+    "effectBrief": "召唤暗影忍者，影袭背刺生命值最低的敌人，半血时分出影子一起掷出手里剑。"
+  },
+  {
+    "id": "p2eq_116",
+    "name": "黑曜石匕首",
+    "cost": 5,
+    "baseStats1": "+攻40/90/400·暴击15/25/50%",
+    "shopAvailable": 1,
+    "emoji": "🗡️",
+    "effectDesc1": "造成暴击时，在目标身上插入一把黑曜石匕首，匕首不会自行拔出。目标身上全部匕首一起拔出的伤害足以击杀目标时，立即全部拔出：每把造成（{C:EqDaggerBatch.OBS_FLAT}+{C:EqDaggerBatch.OBS_ATK%}% 攻击力+目标 {C:EqDaggerBatch.OBS_MAXHP%}% 最大生命值）物理伤害，并为自身回复 {C:EqDaggerBatch.OBS_HEAL} 点生命值。",
+    "effectDesc3": "",
+    "img": "equip/p2eq_116.png",
+    "effectBrief": "暴击时把黑曜石匕首插进敌人身上，足以致命时一起拔出并回复生命值。"
   }
 ]
