@@ -121,7 +121,7 @@ func _ready() -> void:
 			incomplete.append("%s 缺 emoji/名字/类型" % eid)
 		if str(d.get("baseStats1", "")).strip_edges() == "":
 			incomplete.append("%s baseStats1 空" % eid)
-	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 56, "实得 %d" % new_n)   # 2026-11-25: 47→56(匕首 108–116) · 2026-08-31: 35→36(096 小木斧) · 2026-11-25: 36→47(炸弹 10 件 + 107 武士刀; 新件同样要三档属性 / emoji / 名字 / 类型齐)
+	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 66, "实得 %d" % new_n)   # 2026-11-25: 56→66(魔法书 117–126) · 47→56(匕首 108–116) · 2026-08-31: 35→36(096 小木斧) · 2026-11-25: 36→47(炸弹 10 件 + 107 武士刀; 新件同样要三档属性 / emoji / 名字 / 类型齐)
 	_ok("② 新件三档属性 / emoji / 名字 / 类型 / 属性串 全都齐", incomplete.is_empty(),
 		str(incomplete.slice(0, 5)))
 	_ok("② 上架 %d 件名字不重复" % eqs.size(), dup.is_empty(), str(dup))

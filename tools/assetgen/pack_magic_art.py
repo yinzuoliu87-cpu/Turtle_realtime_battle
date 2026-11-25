@@ -105,6 +105,20 @@ def _drop_floaters(im, ymax=40):
     return im
 
 
+def _icon(src, dst, maxc=64):
+    """装备图标: 不透明像素颜色数 > 64 就压到 64 色(中位切分, 不抖动 ⇒ 重跑逐字节相同); 透明度原样(pixel_art_audit: ≤64 色 · 硬边)。
+    11-25 预检: 120 / 122 / 124 / 125 四张原图 67~78 色。"""
+    im = Image.open(src).convert("RGBA")
+    if len({p[:3] for p in im.getdata() if p[3] > 0}) <= maxc:
+        im.save(dst, optimize=False)
+        return
+    a = im.getchannel("A")
+    q = im.convert("RGB").quantize(colors=maxc, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
+    out = q.convert("RGBA")
+    out.putalpha(a)
+    out.save(dst, optimize=False)
+
+
 def _strip(names, dy=0):
     out = Image.new("RGBA", (FW * len(names), FW), (0, 0, 0, 0))
     for i, n in enumerate(names):
@@ -127,10 +141,15 @@ def _vfx(name):
         while len(frames) > 1 and frames[-1].getbbox() is None:
             frames.pop()
     w, h = frames[0].size
-    out = Image.new("RGBA", (w * len(frames), h), (0, 0, 0, 0))
+    n = len(frames)
+    ## 超 4096 宽就折成多行(verify_sprite_sheets: 最大边 ≤ 4096); 列数取能整除帧数的最大值 ⇒ 每行排满(引擎按 列 × 行 算帧数)
+    cols = n
+    if w * n > 4096:
+        cols = max(c for c in range(1, n + 1) if n % c == 0 and c * w <= 4096)
+    out = Image.new("RGBA", (w * cols, h * (n // cols)), (0, 0, 0, 0))
     diam = 0
     for i, f in enumerate(frames):
-        out.paste(f, (i * w, 0))
+        out.paste(f, ((i % cols) * w, (i // cols) * h))
         bb = f.getbbox()
         if bb:
             diam = max(diam, bb[2] - bb[0], bb[3] - bb[1])
@@ -144,7 +163,7 @@ def _vfx(name):
 
 def main():
     for src, dst in ICONS.items():
-        shutil.copyfile(os.path.join(AI, src + ".png"), os.path.join(EQ, dst + ".png"))
+        _icon(os.path.join(AI, src + ".png"), os.path.join(EQ, dst + ".png"))
     for src, dst in TAG.items():
         shutil.copyfile(os.path.join(AI, src + ".png"), os.path.join(TAGS, dst + ".png"))
     for dst, names in SKEL_SEQ.items():

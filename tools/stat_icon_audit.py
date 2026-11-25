@@ -39,6 +39,7 @@ KEY2ICON = {
     '_lifestealPct': 'lifesteal', 'dodgePct': 'dodge',
     'shieldHealPct': 'shieldheal', 'healAmp': 'healamp', 'shieldAmp': 'shieldamp',
     'reflectPct': 'reflect',
+    'dmgAmp': 'dmg-amp',   # 2026-11-25 魔法书羁绊属性「增伤」(图标盘上已有)
 }
 
 fails = []

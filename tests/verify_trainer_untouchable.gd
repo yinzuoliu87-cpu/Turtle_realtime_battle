@@ -171,6 +171,8 @@ func _ready() -> void:
 	var t_bomb := ["p2eq_097", "p2eq_098", "p2eq_099", "p2eq_100", "p2eq_101", "p2eq_102", "p2eq_103", "p2eq_104", "p2eq_105", "p2eq_106"]
 	## 2026-11-25 匕首批: 10 件匕首(005 + 108–116; 刺杀全队必暴击、暗影忍者召唤物隐身 / 瞬移、仪式匕首斩杀)⇒ 第 6 个场景
 	var t_dagger := ["p2eq_005", "p2eq_108", "p2eq_109", "p2eq_110", "p2eq_111", "p2eq_112", "p2eq_113", "p2eq_114", "p2eq_115", "p2eq_116"]
+	## 2026-11-25 魔法书批: 10 件(羁绊飞弹 / 火球 / 冰霜新星 / 天降闪电 / 三种骷髅召唤物 / 镜像再放 / 禁咒弹 / 书页)⇒ 第 7 个场景
+	var t_magic := ["p2eq_117", "p2eq_118", "p2eq_119", "p2eq_120", "p2eq_121", "p2eq_122", "p2eq_123", "p2eq_124", "p2eq_125", "p2eq_126"]
 	var scen: Array = [
 		{"tag": "S1 剑+灵物(触手) vs 法器+奇械", "L": g0, "R": g2, "tr_l": "hook", "tr_r": "tame", "ms_l": false,
 			"eqL": t_sword + t_spirit + t_misc, "eqR": t_staff + t_gadget + ["p2eq_004"]},
@@ -181,13 +183,16 @@ func _ready() -> void:
 			## 084 手半剑会把【近战】携带者的技能整个换成十字斩 —— S1 里它落在竹叶龟身上, 这里倒过来发, 免得竹叶龟两次都被换掉
 			## 059 时停排到第 7 只(凤凰龟, 带涅槃)身上: 第一版落在闪电龟身上, 它活不到第 10 秒 ⇒ 时停一次没放, 那一族整段空跑
 			"eqL": t_gun + ["p2eq_004", "p2eq_024", "p2eq_044", "p2eq_053", "p2eq_058", "p2eq_091", "p2eq_059", "p2eq_092", "p2eq_094"]
-				+ ["p2eq_025", "p2eq_032", "p2eq_033"], "eqR": _rev(t_sword) + t_shield + t_misc + ["p2eq_002"]},
+				+ ["p2eq_025", "p2eq_032", "p2eq_034"], "eqR": _rev(t_sword) + t_shield + t_misc + ["p2eq_002"]},
+			## ★2026-11-25 033 魔法海螺换成 034: 海螺从装备池随机抽, 魔法书 10 件进池后抽到的变了 ⇒ 凤凰活不到第 10 秒、时停一次没放(033 在 S1 / S4 里照样有)
 		{"tag": "S4 法器+药水 vs 灵物(触手)+枪", "L": g3, "R": g1, "tr_l": "tame", "tr_r": "hook", "ms_l": true,
 			"eqL": t_staff + t_potion + ["p2eq_046", "p2eq_060"], "eqR": t_spirit + t_gun + ["p2eq_012", "p2eq_013"]},
 		{"tag": "S5 炸弹(导弹全体击飞)+武士刀小将 vs 盾+食物", "L": g1, "R": g0, "tr_l": "hook", "tr_r": "glacier", "ms_l": false,
 			"eqL": t_bomb + t_sword, "eqR": t_shield + t_food + ["p2eq_024", "p2eq_044", "p2eq_053"]},
 		{"tag": "S6 匕首(刺杀 / 暗影忍者 / 斩杀)+枪 vs 盾+药水", "L": g3, "R": g2, "tr_l": "magic_stone", "tr_r": "whistle", "ms_l": false,
 			"eqL": t_dagger + t_gun + t_misc, "eqR": t_shield + t_potion + ["p2eq_058", "p2eq_091", "p2eq_092"]},
+		{"tag": "S7 魔法书(飞弹 / 骷髅 / 镜像 / 书页)+弓箭 vs 盾+食物", "L": g2, "R": g1, "tr_l": "glacier", "tr_r": "hunt_order", "ms_l": false,
+			"eqL": t_magic + t_bow, "eqR": t_shield + t_food + ["p2eq_024", "p2eq_044", "p2eq_053"]},
 	]
 	var eq_seen := {}
 	for sc in scen:

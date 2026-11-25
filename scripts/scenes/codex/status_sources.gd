@@ -30,6 +30,7 @@ const EQS := "systems/equip/equip_system.gd"
 
 const SRC := {
 	"stun": [
+		{"k": "eq", "id": "p2eq_123", "at": "systems/equip/eq_magic_batch.gd:_wave_hit", "v": "{C:EqMagicBatch.WAVE_STUN} 秒", "link": "\"p2eq_123\": _summon_skeleton[\\s\\S]*func _wave_hit"},   # 123 骷髅祭司【亡灵浪潮】眩晕(2026-11-25)
 		{"k": "eq", "id": "p2eq_102", "at": "systems/equip/eq_bomb_batch.gd:_tick_mines", "v": "{C:EqBombBatch.MINE_STUN} 秒"},   # 102 地雷(2026-11-24)
 		{"k": "pet", "id": "basic", "sk": "basicSlam", "at": "systems/skills/basic_slam_system.gd:stun_target", "v": "{C:BasicConsts.SLAM_STUN_SEC} 秒"},
 		{"k": "pet", "id": "bamboo", "sk": "bambooSmack", "at": "systems/skills/bamboo_system.gd:_sk_bamboo_smack", "v": "{C:BambooSystem.SMACK_STUN} 秒"},
@@ -61,6 +62,7 @@ const SRC := {
 		{"k": "pet", "id": "headless", "sk": "headlessFear", "at": "systems/skills/headless_system.gd:_sk_headless_fear", "v": "3 秒"},
 	],
 	"airborne": [
+		{"k": "eq", "id": "p2eq_123", "at": "systems/equip/eq_magic_batch.gd:_wave_hit", "link": "\"p2eq_123\": _summon_skeleton[\\s\\S]*func _wave_hit"},   # 123 骷髅祭司【亡灵浪潮】击飞(2026-11-25)
 		## 炸弹批(2026-11-24): 羁绊导弹全体击飞 1 秒 / 098 爆竹筒击退
 		{"k": "syn", "id": "炸弹", "at": "systems/equip/bomb_synergy_system.gd:strike", "v": "{C:BombSynergySystem.AIR_SEC} 秒"},
 		{"k": "eq", "id": "p2eq_098", "at": "systems/equip/eq_bomb_batch.gd:_tube"},
@@ -115,6 +117,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_072", "at": "systems/equip/eq_food_batch.gd:_box_form_tick"},
 	],
 	"burn": [
+		{"k": "eq", "id": "p2eq_119", "at": "systems/equip/eq_magic_batch.gd:_fireball"},   # 119 烈焰法典火球灼烧(2026-11-25)
 		{"k": "pet", "id": "lava", "sk": "lavaBolt", "at": MAIN + ":_do_basic", "re": "\"burn\":\\s+_damage\\._apply_dot_stacks",
 			"link": "\"lava\":\\s+\\{[^\\n]*\"rider\": \"burn\""},
 		{"k": "pet", "id": "lava", "sk": "volcanoErupt", "at": "systems/skills/lava_system.gd:_lava_volcano_erupt", "link": "if volcano: _lava_volcano_erupt\\(u\\)"},
@@ -174,6 +177,8 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_064", "at": "systems/equip/eq_spirit_batch.gd:_ghost_break", "v": "{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒"},
 	],
 	"shield": [
+		{"k": "eq", "id": "p2eq_126", "at": "systems/equip/eq_magic_batch.gd:_page_hit", "to": "self"},   # 126 浮空魔典近战书页碰到敌人给护盾(2026-11-25)
+		{"k": "eq", "id": "p2eq_118", "at": "systems/equip/eq_magic_batch.gd:_scroll", "to": "self"},   # 118 羊皮咒卷释放技能给护盾(2026-11-25)
 		{"k": "eq", "id": "p2eq_098", "at": "systems/equip/eq_bomb_batch.gd:_tube", "to": "self"},   # 098 爆竹筒(2026-11-24)
 		{"k": "pet", "id": "basic", "sk": "basicTurtle", "at": MAIN + ":_basic_shield_impact_hit", "to": "self",
 			"link": "== \"basic\" and u\\.get\\(\"basic_enh_ready\"[\\s\\S]{0,200}_sk_basic_shield\\(u, tgt\\)"},
@@ -269,6 +274,7 @@ const SRC := {
 		{"k": "pet", "id": "cyber", "sk": "cyberSmartAI", "at": "systems/skills/cyber_system.gd:_sk_cyber_smart", "to": "self"},
 	],
 	"chilled": [
+		{"k": "eq", "id": "p2eq_120", "at": "systems/equip/eq_magic_batch.gd:_frost_nova"},   # 120 霜语魔典冰霜新星减速(2026-11-25)
 		{"k": "pet", "id": "ice", "sk": "frostAura", "at": "scenes/battle/battle_spawn.gd:_apply_spawn_passive_one", "arm": "ice",
 			"v": "攻速 移速 龟能 −{C:IceSystem.AURA_SLOW%}% · {C:IceSystem.AURA_SEC} 秒"},
 		{"k": "pet", "id": "bamboo", "sk": "bambooSmack", "at": "systems/skills/bamboo_system.gd:_sk_bamboo_smack",

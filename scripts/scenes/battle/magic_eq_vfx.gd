@@ -69,12 +69,12 @@ func _fly_node(key: String, u: Dictionary, world_d: float) -> Sprite3D:
 
 
 func _fly_to(node, p2: Vector2) -> void:
-	if node is Sprite3D and is_instance_valid(node):
+	if is_instance_valid(node) and node is Sprite3D:
 		(node as Sprite3D).position = battle._world_pos(p2, float((node as Sprite3D).get_meta("h", 1.0)))
 
 
 func _fly_end(node) -> void:
-	if node is Sprite3D and is_instance_valid(node):
+	if is_instance_valid(node) and node is Sprite3D:
 		(node as Sprite3D).queue_free()
 
 
@@ -129,7 +129,7 @@ func _arc_launch(key: String, u: Dictionary, tgt: Dictionary, px: float, i: int,
 
 
 func _arc_step(node, to2: Vector2, k: float) -> void:
-	if not (node is Sprite3D) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Sprite3D):
 		return
 	var s: Sprite3D = node
 	var a: Vector2 = s.get_meta("from", to2)
@@ -302,7 +302,7 @@ const FORB_TRAIL_TEX := "vfx/magic-forb-trail.png"
 var _books: Array = []           ## 浮在身边的书 {u, node}
 
 
-func _book_node(u: Dictionary) -> Sprite3D:
+func _book_node() -> Sprite3D:
 	var t: Texture2D = _load(FORB_TEX)
 	if t == null:
 		return null
@@ -333,7 +333,7 @@ func forb_ready(u: Dictionary, on: bool) -> void:
 			_books.remove_at(i)
 	if not on or not _ok():
 		return
-	var s := _book_node(u)
+	var s := _book_node()
 	if s == null:
 		return
 	s.position = _book_hover_pos(u, float(battle._t))
@@ -364,7 +364,7 @@ func forb_launch(u: Dictionary, tgt: Dictionary):
 	if not _ok():
 		return null
 	var start: Vector3 = _book_hover_pos(u, float(battle._t))
-	var s := _book_node(u)
+	var s := _book_node()
 	if s == null:
 		return null
 	s.position = start
@@ -391,7 +391,7 @@ func forb_land(node, tgt: Dictionary) -> void:
 
 
 func bolt_step(node, _from2: Vector2, p2: Vector2, to2: Vector2, k: float) -> void:
-	if node is Sprite3D and is_instance_valid(node) and (node as Sprite3D).has_meta("ctrl_off"):
+	if is_instance_valid(node) and node is Sprite3D and (node as Sprite3D).has_meta("ctrl_off"):
 		_arc_step(node, to2, k)   # 117 学徒笔记 / 119 火球 / 125 飞书走弧线 + 光尾
 	else:
 		_fly_to(node, p2)

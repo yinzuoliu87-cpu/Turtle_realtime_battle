@@ -35,11 +35,12 @@ LABEL = {
     '闪避': 'dodgePct', '反伤': 'reflectPct',
     '生命偷取': '_lifestealPct', '龟能充能': '_echargePct', '攻击': 'atk',
     '治疗增幅': 'healAmp', '治疗&盾增': 'shieldAmp', '盾增': 'shieldAmp',
+    '增伤': 'dmgAmp',   # 2026-11-25 魔法书羁绊属性
 }
 # 这些键在 STATS 里以小数存(0.10), 而展示串写百分数(10%)
 # ★哪些键在 STATS 里存小数是**量出来的**, 不是猜的: crit 存 0.10 而展示写 10%;
 #   dodgePct 却存 15.0(整数百分比) —— 第一版把它算成小数, 报出 3 处「展示=15.0 STATS=15.0」的假分歧。
-PCT = {'crit', 'critDmg'}
+PCT = {'crit', 'critDmg', 'dmgAmp'}   # dmgAmp 存 0.03 展示 3%(equip_stats.gd:46 ×100)
 # 一个标签映到两个键(双抗 = 护甲 + 魔抗)
 MULTI = {'双抗': ['def', 'mr'], '护甲&魔抗': ['def', 'mr']}
 

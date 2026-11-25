@@ -72,6 +72,8 @@ ACCEPT = {
     ('p2eq_092', '随机'): '毒蛾飞行物随机选目标由 venom_drone 的飞行逻辑管',
     ('p2eq_109', '最远的敌'): '2026-11-25 复核: eq_dagger_batch.gd _throw_knife 遍历敌人取 DetMath.dist 最大者; 证据范围(id 附近)看不到这个函数',
     ('p2eq_110', '随机'): '2026-11-25 复核: eq_dagger_batch.gd _throw_kunai 用 battle._battle_rng.randi() % foes.size() 挑, 同上',
+    ('p2eq_119', '最近的敌'): '2026-11-25 复核: eq_magic_batch.gd _fireball 用 _nearest_enemy(u) 取目标, 与文案「朝最近的敌人」一致; 证据范围看不到这个函数',
+    ('p2eq_123', '随机'): '2026-11-25 复核: 文案「随机召唤一具骷髅」说的是骷髅种类随机, eq_magic_batch.gd _summon_skeleton 用 battle._battle_rng.randi() % SKEL_KINDS.size() 挑种类; 不是选靶',
     ('p2eq_094', '最近的敌'): '实测用 _nearest_enemy_from(以碑为原点算最近), 文案对; 误报因为它的实现函数叫 stele_bolt_land, 不符合我 _eq_/_tick_ 的命名假设',
 }
 

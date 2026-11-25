@@ -514,18 +514,18 @@ func _summon_skeleton(owner: Dictionary, si: int, cost: float, kind: String = ""
 	var hp: float
 	var atk: float
 	var res: float
-	var opts: Dictionary
+	var p = null
+	## 三个调用点各写字面量 label(verify_summon_label 逐个扫 `_spawn_summon(` 调用点要求带中文 label)
 	match kind:
 		"skel_warrior":
 			hp = SKW_HP[si]; atk = SKW_ATK[si]; res = SKW_RES[si]
-			opts = {"label": "骷髅战士", "spr_id": "eq-skel-warrior", "col_size": 44.0, "hp_w": 32.0, "atk_interval": 1.0, "atk_range": 60.0, "melee": true}
+			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅战士", "spr_id": "eq-skel-warrior", "col_size": 44.0, "hp_w": 32.0, "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
 		"skel_mage":
 			hp = SKM_HP[si]; atk = SKM_ATK[si]; res = SKM_RES[si]
-			opts = {"label": "骷髅法师", "spr_id": "eq-skel-mage", "col_size": 42.0, "hp_w": 30.0, "atk_interval": 1.3, "atk_range": 420.0, "melee": false}
+			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅法师", "spr_id": "eq-skel-mage", "col_size": 42.0, "hp_w": 30.0, "atk_interval": 1.3, "atk_range": 420.0, "melee": false})
 		_:
 			hp = SKP_HP[si]; atk = SKP_ATK[si]; res = SKP_RES[si]
-			opts = {"label": "骷髅祭司", "spr_id": "eq-skel-priest", "col_size": 42.0, "hp_w": 30.0, "atk_interval": 1.2, "atk_range": 400.0, "melee": false}
-	var p = battle._spawn._spawn_summon(owner, kind, hp, atk, opts)
+			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅祭司", "spr_id": "eq-skel-priest", "col_size": 42.0, "hp_w": 30.0, "atk_interval": 1.2, "atk_range": 400.0, "melee": false})
 	if p == null:
 		return {}
 	p["def"] = res; p["base_def"] = res

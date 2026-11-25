@@ -2146,6 +2146,7 @@ scripts/scenes/codex/status_sources.gd|lit|{C:EliteSystem.WHIP_STUN_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqBombBatch.MINE_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqDaggerBatch.FOLD_BLEED} 层
 scripts/scenes/codex/status_sources.gd|lit|{C:EqDaggerBatch.NINJA_RESTEALTH} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:EqMagicBatch.WAVE_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.DART_KNOCKUP_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒
