@@ -1,0 +1,391 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-fang-bite 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 1.png",
+   "frame": {
+    "x": 69,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 2.png",
+   "frame": {
+    "x": 138,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 3.png",
+   "frame": {
+    "x": 207,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 4.png",
+   "frame": {
+    "x": 0,
+    "y": 72,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 5.png",
+   "frame": {
+    "x": 69,
+    "y": 72,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 6.png",
+   "frame": {
+    "x": 138,
+    "y": 72,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 7.png",
+   "frame": {
+    "x": 207,
+    "y": 72,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 8.png",
+   "frame": {
+    "x": 0,
+    "y": 144,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 9.png",
+   "frame": {
+    "x": 69,
+    "y": 144,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 10.png",
+   "frame": {
+    "x": 138,
+    "y": 144,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 11.png",
+   "frame": {
+    "x": 207,
+    "y": 144,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 12.png",
+   "frame": {
+    "x": 0,
+    "y": 216,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  },
+  {
+   "filename": "dagger-fang-bite 13.png",
+   "frame": {
+    "x": 69,
+    "y": 216,
+    "w": 69,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 69,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 69,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5797101449275363,
+    "y": 0.4305555555555556
+   },
+   "duration": 50
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-fang-bite.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 276,
+   "h": 288
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 40,
+   "y": 31
+  },
+  "frameTags": [
+   {
+    "name": "dagger-fang-bite",
+    "from": 0,
+    "to": 13,
+    "direction": "forward"
+   }
+  ]
+ }
+}

@@ -100,6 +100,11 @@ func _orient(s: Sprite3D, a3: Vector3, b3: Vector3) -> void:
 	s.global_transform.basis = (cam as Camera3D).global_transform.basis * Basis(Vector3(0, 0, 1), atan2(-d.y, d.x))
 
 
+## 特效表一行(子类 DaggerEqVfx 覆盖成「先查自己的表」; 找不到 = 空数组)
+func _row(key: String) -> Array:
+	return SHEETS.get(key, [])
+
+
 func _ok() -> bool:
 	return battle != null and battle.get("_world") != null and is_instance_valid(battle._world)
 
@@ -107,7 +112,7 @@ func _ok() -> bool:
 func _load(key: String) -> Texture2D:
 	if _tex.has(key):
 		return _tex[key]
-	var p: String = SPRITE_DIR + str(SHEETS[key][0]) if SHEETS.has(key) else SPRITE_DIR + key
+	var p: String = SPRITE_DIR + str(_row(key)[0]) if not _row(key).is_empty() else SPRITE_DIR + key
 	var t: Texture2D = load(p) if ResourceLoader.exists(p) else null
 	_tex[key] = t
 	return t
@@ -121,7 +126,7 @@ func _anim(key: String, pos: Vector2, world_d: float, life: float, h: float = 0.
 	var t: Texture2D = _load(key)
 	if t == null:
 		return null
-	var row: Array = SHEETS[key]
+	var row: Array = _row(key)
 	var fw: int = int(row[1])
 	var fh: int = int(row[2])
 	var s := Sprite3D.new()

@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-ritual-exec 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 1.png",
+   "frame": {
+    "x": 76,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 2.png",
+   "frame": {
+    "x": 152,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 3.png",
+   "frame": {
+    "x": 0,
+    "y": 65,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 4.png",
+   "frame": {
+    "x": 76,
+    "y": 65,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 5.png",
+   "frame": {
+    "x": 152,
+    "y": 65,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 6.png",
+   "frame": {
+    "x": 0,
+    "y": 130,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 7.png",
+   "frame": {
+    "x": 76,
+    "y": 130,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-exec 8.png",
+   "frame": {
+    "x": 152,
+    "y": 130,
+    "w": 76,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.4
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-ritual-exec.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 228,
+   "h": 195
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 37,
+   "y": 26
+  },
+  "frameTags": [
+   {
+    "name": "dagger-ritual-exec",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

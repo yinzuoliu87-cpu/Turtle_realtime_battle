@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-fold-cut 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 1.png",
+   "frame": {
+    "x": 33,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 2.png",
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 3.png",
+   "frame": {
+    "x": 0,
+    "y": 42,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 4.png",
+   "frame": {
+    "x": 33,
+    "y": 42,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 5.png",
+   "frame": {
+    "x": 66,
+    "y": 42,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 6.png",
+   "frame": {
+    "x": 0,
+    "y": 84,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 7.png",
+   "frame": {
+    "x": 33,
+    "y": 84,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-fold-cut 8.png",
+   "frame": {
+    "x": 66,
+    "y": 84,
+    "w": 33,
+    "h": 42
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 42
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 42
+   },
+   "pivot": {
+    "x": 0.2727272727272727,
+    "y": 0.4523809523809524
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-fold-cut.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 99,
+   "h": 126
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 9,
+   "y": 19
+  },
+  "frameTags": [
+   {
+    "name": "dagger-fold-cut",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

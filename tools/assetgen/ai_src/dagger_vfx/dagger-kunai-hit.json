@@ -1,0 +1,209 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-kunai-hit 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.4186046511627907,
+    "y": 0.5142857142857142
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-kunai-hit 1.png",
+   "frame": {
+    "x": 43,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.4186046511627907,
+    "y": 0.5142857142857142
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-kunai-hit 2.png",
+   "frame": {
+    "x": 86,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.4186046511627907,
+    "y": 0.5142857142857142
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-kunai-hit 3.png",
+   "frame": {
+    "x": 0,
+    "y": 35,
+    "w": 43,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.4186046511627907,
+    "y": 0.5142857142857142
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-kunai-hit 4.png",
+   "frame": {
+    "x": 43,
+    "y": 35,
+    "w": 43,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.4186046511627907,
+    "y": 0.5142857142857142
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-kunai-hit 5.png",
+   "frame": {
+    "x": 86,
+    "y": 35,
+    "w": 43,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.4186046511627907,
+    "y": 0.5142857142857142
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-kunai-hit 6.png",
+   "frame": {
+    "x": 0,
+    "y": 70,
+    "w": 43,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 43,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 43,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.4186046511627907,
+    "y": 0.5142857142857142
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-kunai-hit.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 129,
+   "h": 105
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 18,
+   "y": 18
+  },
+  "frameTags": [
+   {
+    "name": "dagger-kunai-hit",
+    "from": 0,
+    "to": 6,
+    "direction": "forward"
+   }
+  ]
+ }
+}

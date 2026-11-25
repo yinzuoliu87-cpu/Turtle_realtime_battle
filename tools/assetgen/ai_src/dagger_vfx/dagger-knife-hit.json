@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-knife-hit 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-knife-hit 1.png",
+   "frame": {
+    "x": 46,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-knife-hit 2.png",
+   "frame": {
+    "x": 92,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-knife-hit 3.png",
+   "frame": {
+    "x": 0,
+    "y": 30,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-knife-hit 4.png",
+   "frame": {
+    "x": 46,
+    "y": 30,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-knife-hit 5.png",
+   "frame": {
+    "x": 92,
+    "y": 30,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-knife-hit 6.png",
+   "frame": {
+    "x": 0,
+    "y": 60,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-knife-hit 7.png",
+   "frame": {
+    "x": 46,
+    "y": 60,
+    "w": 46,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5333333333333333
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-knife-hit.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 138,
+   "h": 90
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 23,
+   "y": 16
+  },
+  "frameTags": [
+   {
+    "name": "dagger-knife-hit",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

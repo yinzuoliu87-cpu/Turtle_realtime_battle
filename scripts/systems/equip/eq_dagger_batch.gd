@@ -55,6 +55,10 @@ const NINJA_EN_MAX := 60.0
 const NINJA_VANISH := 0.3
 const NINJA_STRIKE_MULT := 2.5
 const NINJA_RESTEALTH := 1.5
+## 影袭现身到刀插下去的前摇(背刺动作第 3 帧 = 插中那一下, 演出按「3 帧 / 这么多秒」播 ⇒ 画面插中 = 结算)
+const NINJA_STAB_WINDUP := 0.18
+## 背刺之后两名忍者各掷手里剑的前摇(掷剑动作第 3 帧 = 出手)
+const SHURIKEN_WINDUP := 0.2
 const NINJA_CLONE_HP_PCT := 0.5
 const NINJA_CLONE_SEC := 20.0
 const NINJA_CLONE_STAT := 0.5
@@ -234,6 +238,7 @@ func on_any_basic(u: Dictionary, tgt) -> void:
 	var id := str(u.get("id", ""))
 	if id == "_summon_shadow_ninja" or id == "_summon_shadow_clone":
 		u["untargetable_until"] = minf(float(u.get("untargetable_until", 0.0)), float(battle._t))   # 攻击即现形
+		u["_ninja_veil"] = false
 		if tgt is Dictionary:
 			_fx("ninja_slash", [u, tgt])
 
@@ -519,10 +524,12 @@ func _spawn_ninja(owner: Dictionary, si: int, clone_of = null) -> Dictionary:
 	p["energy"] = 0.0
 	if is_clone:
 		p["pos"] = Vector2((clone_of as Dictionary)["pos"]) + Vector2(0, 40)
+		p["_body_tint"] = Color(0.42, 0.3, 0.7, 0.72)   # 影子 = 同一套立绘压成暗紫半透明(演出底色通道, battle_render 读)
 	else:
 		p["untargetable_until"] = 1.0e9   # 登场隐身: 第一次攻击现形(on_any_basic)
+		p["_ninja_veil"] = true
 	var rec := {"u": p, "owner": owner, "si": si, "en": NINJA_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0,
-		"vanish": -1.0, "tgt": null, "clone": is_clone, "until": float(battle._t) + NINJA_CLONE_SEC if is_clone else 1.0e12,
+		"vanish": -1.0, "stab": -1.0, "tgt": null, "clone": is_clone, "until": float(battle._t) + NINJA_CLONE_SEC if is_clone else 1.0e12,
 		"split_done": false}
 	_ninjas.append(rec)
 	_fx("ninja_spawn", [p, is_clone])
@@ -550,11 +557,22 @@ func _tick_ninjas(delta: float) -> void:
 			n["split_done"] = true
 			stat["ninja_clone"] += 1
 			add.append([n["owner"], int(n["si"]), p])
+		if float(n.get("throw", -1.0)) >= 0.0:   # 掷手里剑前摇(不打断走位 / 普攻判定: 只是延后放出)
+			n["throw"] = float(n["throw"]) - delta
+			if float(n["throw"]) <= 0.0:
+				n["throw"] = -1.0
+				_ninja_throw(n)
+		if float(n.get("stab", -1.0)) >= 0.0:   # 影袭: 已在目标身后现身, 刀正往下插
+			n["stab"] = float(n["stab"]) - delta
+			if float(n["stab"]) <= 0.0:
+				n["stab"] = -1.0
+				_ninja_stab(n)
+			continue
 		if float(n["vanish"]) >= 0.0:   # 影袭: 化烟消失中
 			n["vanish"] = float(n["vanish"]) - delta
 			if float(n["vanish"]) <= 0.0:
 				n["vanish"] = -1.0
-				_ninja_strike(n)
+				_ninja_appear(n)
 			continue
 		n["en"] = minf(NINJA_EN_MAX, float(n["en"]) + _en_gain(p, delta))
 		p["energy"] = float(n["en"])
@@ -566,8 +584,10 @@ func _tick_ninjas(delta: float) -> void:
 		n["en"] = 0.0
 		n["tgt"] = tgt
 		n["vanish"] = NINJA_VANISH
-		battle._damage.channel(p, NINJA_VANISH + 0.1)
+		battle._damage.channel(p, NINJA_VANISH + NINJA_STAB_WINDUP + 0.1)
 		p["untargetable_until"] = maxf(float(p.get("untargetable_until", 0.0)), t + NINJA_VANISH)
+		p["_ninja_veil"] = true
+		p["_ninja_gone"] = true   # 化烟这段整个看不见(演出读)
 		_fx("ninja_vanish", [p, NINJA_VANISH])
 	for a in add:
 		_spawn_ninja(a[0], int(a[1]), a[2])
@@ -584,27 +604,43 @@ func _lowest_ratio_enemy(p: Dictionary):
 	return best
 
 
-## 影袭落地: 闪到目标身后背刺(必暴击), 重新隐身; 分身在场时两个忍者各朝这个目标掷一枚手里剑
-func _ninja_strike(n: Dictionary) -> void:
+## 影袭现身: 化烟结束 ⇒ 闪到目标身后(背对着它的那一侧), 开始往下插(NINJA_STAB_WINDUP 秒后结算)
+func _ninja_appear(n: Dictionary) -> void:
 	var p: Dictionary = n["u"]
+	p["_ninja_gone"] = false
 	var tgt = n["tgt"]
 	if not p.get("alive", false):
 		return
 	if not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 		tgt = _lowest_ratio_enemy(p)
 	if not (tgt is Dictionary):
+		p["_ninja_veil"] = false
 		return
+	n["tgt"] = tgt
 	var from := Vector2(p["pos"])
 	var away: Vector2 = Vector2(tgt["pos"]) - from
 	away = DetMath.norm(away) if DetMath.vlen(away) > 1.0 else (Vector2.RIGHT if _side_of(p) == "left" else Vector2.LEFT)
 	p["pos"] = ArenaShape.clamp_in(Vector2(tgt["pos"]) + away * 46.0, battle.ARENA, 30, 20)
 	p["face_right"] = Vector2(tgt["pos"]).x > Vector2(p["pos"]).x
+	n["stab"] = NINJA_STAB_WINDUP
+	_fx("ninja_appear", [p, from, NINJA_STAB_WINDUP])
+
+
+## 影袭插中: 必暴击背刺, 重新隐身; 分身在场时两个忍者各朝这个目标掷一枚手里剑
+func _ninja_stab(n: Dictionary) -> void:
+	var p: Dictionary = n["u"]
+	var tgt = n["tgt"]
+	if not p.get("alive", false) or not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
+		p["_ninja_veil"] = false
+		return
+	var from := Vector2(p["pos"])
 	stat["ninja_strike"] += 1
 	p["_assassin_now"] = 0.0001   # 借【刺杀】那条「这一下必暴击」通道(额外暴伤 ≈ 0), 用完即清
 	var dmg: int = battle._resolve_dmg(p, NINJA_STRIKE_MULT * float(p.get("atk", 0.0)), tgt, false)
 	p.erase("_assassin_now")
 	battle._damage._apply_damage_from(p, tgt, dmg, COL_PHYS, 0.0, false, true)
 	p["untargetable_until"] = maxf(float(p.get("untargetable_until", 0.0)), float(battle._t) + NINJA_RESTEALTH)
+	p["_ninja_veil"] = true
 	_fx("ninja_strike", [p, tgt, from])
 	## 影分身期间: 两个忍者同时朝这个目标各掷一枚手里剑(沿直线飞, 路径上每个敌人吃一次)
 	var pair: Array = []
@@ -614,11 +650,22 @@ func _ninja_strike(n: Dictionary) -> void:
 			pair.append(m)
 	if pair.size() >= 2:
 		for m in pair:
-			var q: Dictionary = m["u"]
-			var d: Vector2 = Vector2(tgt["pos"]) - Vector2(q["pos"])
-			var len := DetMath.vlen(d) + 260.0
-			stat["shuriken"] += 1
-			_launch(q, Vector2(q["pos"]), d, SHURIKEN_SPD, len, SHURIKEN_W, "shuriken", int(m["si"]))
+			m["throw"] = SHURIKEN_WINDUP   # SHURIKEN_WINDUP 秒后出手(_tick_ninjas), 朝这个目标
+			m["throw_tgt"] = tgt
+			_fx("ninja_throw", [m["u"], SHURIKEN_WINDUP])
+
+
+## 手里剑出手: 朝目标(死了就朝它最后的位置)沿直线飞, 路径上每个敌人吃一次
+func _ninja_throw(m: Dictionary) -> void:
+	var q: Dictionary = m["u"]
+	var tgt = m.get("throw_tgt", null)
+	m.erase("throw_tgt")
+	if not q.get("alive", false) or not (tgt is Dictionary):
+		return
+	var d: Vector2 = Vector2(tgt["pos"]) - Vector2(q["pos"])
+	var len := DetMath.vlen(d) + 260.0
+	stat["shuriken"] += 1
+	_launch(q, Vector2(q["pos"]), d, SHURIKEN_SPD, len, SHURIKEN_W, "shuriken", int(m["si"]))
 
 
 # ════════════════════════════════════════ 116 黑曜石匕首 ════════════════════════════════════════

@@ -670,6 +670,8 @@ func _update_world_transforms() -> void:
 			spr.modulate = ShellVfx.shade_tint(battle._t).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
 		if bool(u.get("_smoke_hidden", false)) and battle._t < float(u.get("untargetable_until", 0.0)):   # 100 烟雾弹潜行(11-24): 灰蓝半透明, 攻击即现形
 			spr.modulate = Color(0.72, 0.8, 0.95, 0.38).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl * 0.5)
+		if bool(u.get("_ninja_veil", false)) and battle._t < float(u.get("untargetable_until", 0.0)):   # 115 暗影忍者隐身(11-25): 暗紫半透明; 影袭化烟那 0.3 秒整个看不见
+			spr.modulate = Color(0.5, 0.38, 0.85, 0.0 if bool(u.get("_ninja_gone", false)) else 0.36).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl * 0.5)
 		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
 		## ★演出抬高(`_slam_voff`, 过肩摔 / 双头跃起…)也算离地高度(2026-10-24 过肩摔体检 B7: 原来只读 height, 腾空 5 米影子照旧满大)。
 		var _lift_h: float = _rh + maxf(0.0, float((u.get("_slam_voff", Vector3.ZERO) as Vector3).y))

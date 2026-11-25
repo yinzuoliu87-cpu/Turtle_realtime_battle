@@ -1,0 +1,391 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-kunai-heal 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 1.png",
+   "frame": {
+    "x": 22,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 2.png",
+   "frame": {
+    "x": 44,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 3.png",
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 4.png",
+   "frame": {
+    "x": 0,
+    "y": 37,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 5.png",
+   "frame": {
+    "x": 22,
+    "y": 37,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 6.png",
+   "frame": {
+    "x": 44,
+    "y": 37,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 7.png",
+   "frame": {
+    "x": 66,
+    "y": 37,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 8.png",
+   "frame": {
+    "x": 0,
+    "y": 74,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 9.png",
+   "frame": {
+    "x": 22,
+    "y": 74,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 10.png",
+   "frame": {
+    "x": 44,
+    "y": 74,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 11.png",
+   "frame": {
+    "x": 66,
+    "y": 74,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 12.png",
+   "frame": {
+    "x": 0,
+    "y": 111,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  },
+  {
+   "filename": "dagger-kunai-heal 13.png",
+   "frame": {
+    "x": 22,
+    "y": 111,
+    "w": 22,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7027027027027027
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-kunai-heal.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 88,
+   "h": 148
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 11,
+   "y": 26
+  },
+  "frameTags": [
+   {
+    "name": "dagger-kunai-heal",
+    "from": 0,
+    "to": 13,
+    "direction": "forward"
+   }
+  ]
+ }
+}

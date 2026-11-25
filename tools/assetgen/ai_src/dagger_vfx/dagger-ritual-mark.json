@@ -1,0 +1,391 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-ritual-mark 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 1.png",
+   "frame": {
+    "x": 54,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 2.png",
+   "frame": {
+    "x": 108,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 3.png",
+   "frame": {
+    "x": 162,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 4.png",
+   "frame": {
+    "x": 0,
+    "y": 28,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 5.png",
+   "frame": {
+    "x": 54,
+    "y": 28,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 6.png",
+   "frame": {
+    "x": 108,
+    "y": 28,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 7.png",
+   "frame": {
+    "x": 162,
+    "y": 28,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 8.png",
+   "frame": {
+    "x": 0,
+    "y": 56,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 9.png",
+   "frame": {
+    "x": 54,
+    "y": 56,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 10.png",
+   "frame": {
+    "x": 108,
+    "y": 56,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 11.png",
+   "frame": {
+    "x": 162,
+    "y": 56,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 12.png",
+   "frame": {
+    "x": 0,
+    "y": 84,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ritual-mark 13.png",
+   "frame": {
+    "x": 54,
+    "y": 84,
+    "w": 54,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.018518518518518517,
+    "y": 0.4642857142857143
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-ritual-mark.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 216,
+   "h": 112
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 1,
+   "y": 13
+  },
+  "frameTags": [
+   {
+    "name": "dagger-ritual-mark",
+    "from": 0,
+    "to": 13,
+    "direction": "forward"
+   }
+  ]
+ }
+}

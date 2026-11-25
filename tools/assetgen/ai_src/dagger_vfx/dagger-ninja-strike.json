@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-ninja-strike 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 1.png",
+   "frame": {
+    "x": 58,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 2.png",
+   "frame": {
+    "x": 116,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 3.png",
+   "frame": {
+    "x": 174,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 4.png",
+   "frame": {
+    "x": 0,
+    "y": 67,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 5.png",
+   "frame": {
+    "x": 58,
+    "y": 67,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 6.png",
+   "frame": {
+    "x": 116,
+    "y": 67,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 7.png",
+   "frame": {
+    "x": 174,
+    "y": 67,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 8.png",
+   "frame": {
+    "x": 0,
+    "y": 134,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 9.png",
+   "frame": {
+    "x": 58,
+    "y": 134,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 10.png",
+   "frame": {
+    "x": 116,
+    "y": 134,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-strike 11.png",
+   "frame": {
+    "x": 174,
+    "y": 134,
+    "w": 58,
+    "h": 67
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 67
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 67
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.3880597014925373
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-ninja-strike.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 232,
+   "h": 201
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 29,
+   "y": 26
+  },
+  "frameTags": [
+   {
+    "name": "dagger-ninja-strike",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

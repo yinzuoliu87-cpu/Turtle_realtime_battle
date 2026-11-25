@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-assassin-strike 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 1.png",
+   "frame": {
+    "x": 123,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 2.png",
+   "frame": {
+    "x": 246,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 3.png",
+   "frame": {
+    "x": 0,
+    "y": 53,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 4.png",
+   "frame": {
+    "x": 123,
+    "y": 53,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 5.png",
+   "frame": {
+    "x": 246,
+    "y": 53,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 6.png",
+   "frame": {
+    "x": 0,
+    "y": 106,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 7.png",
+   "frame": {
+    "x": 123,
+    "y": 106,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-assassin-strike 8.png",
+   "frame": {
+    "x": 246,
+    "y": 106,
+    "w": 123,
+    "h": 53
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 53
+   },
+   "sourceSize": {
+    "w": 123,
+    "h": 53
+   },
+   "pivot": {
+    "x": 0.43902439024390244,
+    "y": 0.39622641509433965
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-assassin-strike.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 369,
+   "h": 159
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 54,
+   "y": 21
+  },
+  "frameTags": [
+   {
+    "name": "dagger-assassin-strike",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

@@ -19,6 +19,7 @@ const BY_PATH := {
 	"pets/animations/reserve/attack.png": 5,    # 12 帧(11-08: AI 补抬手 3 帧 / 收回 5 帧)
 	"pets/animations/wraith/attack.png": 2,     # 5 帧
 	"vfx/eq096-axe-wood-attack.png": 2,
+	"vfx/eq-ninja-attack.png": 8,               # 12 帧(115 暗影忍者横斩, 11-25: 刀从肩后举过头顶、经脸前扫到正前方, 下标 8 刀平指敌人; tools/oneoff/ninja_blade_track.py 逐帧标过刀尖)
 	"vfx/eq-katana-attack.png": 6,              # 11 帧(107 武士刀小将横斩, 11-25 第五版: 刀在胸口高度从右边经正对镜头扫到左边, 下标 6 刀平指敌人)         # 8 帧(斧头兜底表; 按形态的表走 AxeArt._act_rows, 没登记的按 40% 算)
 }
 

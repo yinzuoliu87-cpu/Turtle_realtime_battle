@@ -420,6 +420,7 @@ const ACTION_ATTACK := {
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
 	"_summon_axe": ["vfx/eq096-axe-wood-attack.png", 16.0],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时装到单位 _act_rows)
 	"_summon_katana": ["vfx/eq-katana-attack.png", 14.0],   # 107 武士刀小将横斩(11-25; 命中帧见 AttackHits)
+	"_summon_shadow_ninja": ["vfx/eq-ninja-attack.png", 16.0], "_summon_shadow_clone": ["vfx/eq-ninja-attack.png", 16.0],   # 115 暗影忍者 / 影子: 蓄力刀收肩后 → 横斩(命中帧见 AttackHits)
 }
 # 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
 #   在技能代码里直接 _elite_sys._elite_anim() 调。action 名会写进 u["anim_action"], 由 _vfx._play_action 顶部的
@@ -481,6 +482,7 @@ const ACTION_RUN := {
 	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
 	"_summon_axe": ["vfx/eq096-axe-wood-walk.png", 13.33],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时预置 run_sd)
 	"_summon_katana": ["vfx/eq-katana-walk.png", 10.0],     # 107 武士刀小将走路循环(11-25 用户「肯定是没有走路的」)
+	"_summon_shadow_ninja": ["vfx/eq-ninja-walk.png", 12.0], "_summon_shadow_clone": ["vfx/eq-ninja-walk.png", 12.0],   # 115 暗影忍者 / 影子 潜行小跑 8 帧
 }
 # GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界), 不再靠抬高去躲硬切. 见 §GROUNDING.
 const GROUND_LIFT := 0.06                  # 略沉 → 软淡脚部融进地面 (原 0.35 是为躲硬切的权宜, 已被 shader 根治)
@@ -1777,6 +1779,7 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 		"eq-cannon": ["vfx/eq-cannon-idle.png", 64],          # 105 炮筒(11-24)
 		"eq-remote-bomb": ["vfx/eq-remote-bomb-idle.png", 64],  # 106 遥控炸弹
 		"eq-katana": ["vfx/eq-katana-idle.png", 112],        # 107 武士刀小将
+		"eq-shadow-ninja": ["vfx/eq-ninja-idle.png", 112],   # 115 暗影忍者(影子同一套, 演出层压暗半透明)
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]

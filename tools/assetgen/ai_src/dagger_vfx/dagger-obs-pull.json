@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-obs-pull 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 1.png",
+   "frame": {
+    "x": 76,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 2.png",
+   "frame": {
+    "x": 152,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 3.png",
+   "frame": {
+    "x": 228,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 4.png",
+   "frame": {
+    "x": 0,
+    "y": 95,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 5.png",
+   "frame": {
+    "x": 76,
+    "y": 95,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 6.png",
+   "frame": {
+    "x": 152,
+    "y": 95,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 7.png",
+   "frame": {
+    "x": 228,
+    "y": 95,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 8.png",
+   "frame": {
+    "x": 0,
+    "y": 190,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-obs-pull 9.png",
+   "frame": {
+    "x": 76,
+    "y": 190,
+    "w": 76,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.4868421052631579,
+    "y": 0.35789473684210527
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-obs-pull.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 304,
+   "h": 285
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 37,
+   "y": 34
+  },
+  "frameTags": [
+   {
+    "name": "dagger-obs-pull",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

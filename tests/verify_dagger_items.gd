@@ -196,7 +196,12 @@ func _ready() -> void:
 		"%s" % ("空" if nin.is_empty() else "%.0f / %.0f / %.0f / %.2f" % [float(nin["maxHp"]), float(nin["atk"]), float(nin["def"]), float(nin["crit"])]))
 	ns["en"] = D.NINJA_EN_MAX
 	var l2 := _lost(t2)
-	_adv(0.5)
+	_adv(D.NINJA_VANISH + 0.1)
+	var early_hit: float = _lost(t2) - l2
+	var early_d: float = DetMath.dist(Vector2(nin["pos"]), Vector2(t2["pos"]))
+	_ok("115 影袭时序: 化烟 %.2f 秒后已闪到目标身后, 刀还没插(前摇 %.2f 秒, 背刺第 3 帧 = 结算)" % [D.NINJA_VANISH, D.NINJA_STAB_WINDUP],
+		early_d < 80.0 and early_hit == 0.0 and int(_ds.stat["ninja_strike"]) == 0, "距 %.0f · 已挨 %.0f" % [early_d, early_hit])
+	_adv(D.NINJA_STAB_WINDUP + 0.05)
 	var w115: float = D.NINJA_STRIKE_MULT * float(D.NINJA_ATK[2]) * 1.5
 	_ok("115 影袭: 闪到最低血比例的敌人身后, 挨 %.0f(250%% 必暴击)" % w115,
 		int(_ds.stat["ninja_strike"]) == 1 and _near(_lost(t2) - l2, w115, 3.0) and _lost(t1) == 0.0
@@ -210,7 +215,7 @@ func _ready() -> void:
 		not cl.is_empty() and _near(float(cl["maxHp"]), float(D.NINJA_HP[2]) * D.NINJA_CLONE_STAT) and _near(float(cl["atk"]), float(D.NINJA_ATK[2]) * D.NINJA_CLONE_STAT),
 		"%s" % ("空" if cl.is_empty() else "%.0f / %.0f" % [float(cl["maxHp"]), float(cl["atk"])]))
 	ns["en"] = D.NINJA_EN_MAX
-	_adv(0.5)
+	_adv(D.NINJA_VANISH + D.NINJA_STAB_WINDUP + D.SHURIKEN_WINDUP + 0.25)
 	_ok("115 影子在场时影袭 ⇒ 两枚手里剑", int(_ds.stat["shuriken"]) == 2, str(_ds.stat["shuriken"]))
 	_adv(D.NINJA_CLONE_SEC)
 	_ok("115 影子 %.0f 秒后消散" % D.NINJA_CLONE_SEC, not cl.is_empty() and not bool(cl["alive"]), str(cl.get("alive")))

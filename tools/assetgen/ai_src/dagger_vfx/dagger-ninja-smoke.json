@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-ninja-smoke 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 1.png",
+   "frame": {
+    "x": 73,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 2.png",
+   "frame": {
+    "x": 146,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 3.png",
+   "frame": {
+    "x": 219,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 4.png",
+   "frame": {
+    "x": 0,
+    "y": 58,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 5.png",
+   "frame": {
+    "x": 73,
+    "y": 58,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 6.png",
+   "frame": {
+    "x": 146,
+    "y": 58,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 7.png",
+   "frame": {
+    "x": 219,
+    "y": 58,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 8.png",
+   "frame": {
+    "x": 0,
+    "y": 116,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dagger-ninja-smoke 9.png",
+   "frame": {
+    "x": 73,
+    "y": 116,
+    "w": 73,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 73,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 73,
+    "h": 58
+   },
+   "pivot": {
+    "x": 0.5342465753424658,
+    "y": 0.603448275862069
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-ninja-smoke.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 292,
+   "h": 174
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 39,
+   "y": 35
+  },
+  "frameTags": [
+   {
+    "name": "dagger-ninja-smoke",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

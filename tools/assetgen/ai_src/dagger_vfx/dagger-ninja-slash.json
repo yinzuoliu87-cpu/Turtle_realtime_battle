@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "dagger-ninja-slash 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-slash 1.png",
+   "frame": {
+    "x": 26,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-slash 2.png",
+   "frame": {
+    "x": 52,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-slash 3.png",
+   "frame": {
+    "x": 0,
+    "y": 22,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-slash 4.png",
+   "frame": {
+    "x": 26,
+    "y": 22,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-slash 5.png",
+   "frame": {
+    "x": 52,
+    "y": 22,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-slash 6.png",
+   "frame": {
+    "x": 0,
+    "y": 44,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "dagger-ninja-slash 7.png",
+   "frame": {
+    "x": 26,
+    "y": 44,
+    "w": 26,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.8461538461538461,
+    "y": 0.5
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "dagger-ninja-slash.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 78,
+   "h": 66
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 22,
+   "y": 11
+  },
+  "frameTags": [
+   {
+    "name": "dagger-ninja-slash",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}
