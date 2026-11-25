@@ -256,14 +256,26 @@ func obs_embed(tgt: Dictionary, count: int, src = null) -> void:
 	var from_left: bool = src is Dictionary and (Vector2(tgt["pos"]) - Vector2(src["pos"])).x > 0.0
 	var jit: float = 20.0 * float((count - 1) % 3 - 1)
 	s.rotation.z = deg_to_rad((-90.0 - jit) if from_left else (180.0 + jit))   # 图标刀尖朝右上: 转半圈 = 朝左下; 顺时针转 90° = 朝右下
-	_stuck.append({"node": s, "tgt": tgt, "k": count - 1})
+	_stuck.append({"node": s, "tgt": tgt, "k": count - 1, "fl": from_left})
 
 
+## 够杀时全部拔出(11-25 用户「这个刀拔出来有特效」—— 原来刀原地消失、只炸一圈碎玻璃, 看不出「拔」):
+##   每把刀顺着刀柄方向往出手者那一侧被扯出来(先快后慢、带一点上扬和转动, 后 40% 淡出), 几把依次错开 YANK_GAP 秒;
+##   同时身上炸开黑玻璃碎片(原有)。参照 LoL 卡莉丝塔 E「撕裂」: 插着的矛被一齐扯出。
+const YANK_SEC := 0.3
+const YANK_GAP := 0.04
+const YANK_DIST := 1.2     # 米: 扯出去多远
 func obs_pull(tgt: Dictionary, _n: int) -> void:
+	var k := 0
 	for i in range(_stuck.size() - 1, -1, -1):
 		if is_same(_stuck[i]["tgt"], tgt):
-			if is_instance_valid(_stuck[i]["node"]):
-				_stuck[i]["node"].queue_free()
+			var nd = _stuck[i]["node"]
+			if is_instance_valid(nd):
+				var fl: bool = bool(_stuck[i].get("fl", true))
+				_fx.append({"node": nd, "t": -YANK_GAP * float(k), "life": YANK_SEC, "kind": "yank",
+					"p0": (nd as Node3D).position, "r0": (nd as Node3D).rotation.z,
+					"dir": Vector3(-YANK_DIST if fl else YANK_DIST, 0.0, 0.0), "spin": 0.7 if fl else -0.7})
+				k += 1
 			_stuck.remove_at(i)
 	_anim("obs", Vector2(tgt["pos"]), 120.0, 0.8, 1.0, false, false, Color.WHITE, tgt)
 
@@ -352,6 +364,12 @@ func tick(delta: float) -> void:
 				(n as Node3D).position = p3
 				if q2 > q:
 					_point(n, p3, p3b, float(f["tip"]))
+			"yank":
+				var yq: float = clampf(maxf(0.0, float(f["t"])) / float(f["life"]), 0.0, 1.0)
+				var ye: float = 1.0 - (1.0 - yq) * (1.0 - yq)   # 先快后慢: 一下扯出来
+				(n as Node3D).position = Vector3(f["p0"]) + Vector3(f["dir"]) * ye + Vector3(0.0, 0.6 * ye, 0.0)
+				(n as Node3D).rotation.z = float(f["r0"]) + float(f["spin"]) * ye
+				(n as Sprite3D).modulate.a = 1.0 if yq < 0.6 else (1.0 - yq) / 0.4
 			"beam":
 				var bk = f.get("tgt", null)
 				var bp: Vector2 = Vector2(bk["pos"]) if bk is Dictionary else Vector2(f["src"])
