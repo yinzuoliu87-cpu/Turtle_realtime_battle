@@ -68,7 +68,7 @@ eq|沙漏|effectDesc1	1.0 10.0
 eq|治愈圣典|effectDesc1	0.1
 eq|活力药水|effectBrief	8.0
 eq|活力药水|effectDesc1	8.0
-eq|浮空魔典|effectDesc1	0.06 0.5 4.0 6.0 10.0
+eq|浮空魔典|effectDesc1	0.06 4.0 6.0 10.0
 eq|海浪护符|effectDesc1	4.0
 eq|海藻|effectBrief	4.0 4.0
 eq|海藻|effectDesc1	4.0 4.0

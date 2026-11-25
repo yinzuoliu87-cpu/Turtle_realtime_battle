@@ -104,6 +104,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|中毒层数 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|临时等级上限 # 级
 scripts/gamedata/equip_tier_labels.gd|lit|举盾时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|举盾阈值 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|书页基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 充能值
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 护甲与魔抗之和
@@ -116,9 +117,11 @@ scripts/gamedata/equip_tier_labels.gd|lit|伤害转移 #%
 scripts/gamedata/equip_tier_labels.gd|lit|偷取间隔 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|偷取龟能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|充能上限 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|充能条 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|充能比例 #% 受到伤害
 scripts/gamedata/equip_tier_labels.gd|lit|光束伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|光束数 # 道
+scripts/gamedata/equip_tier_labels.gd|lit|冰寒时长 # 秒 / 每点龟能
 scripts/gamedata/equip_tier_labels.gd|lit|冰封时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|冰道伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|减伤 # 点
@@ -179,6 +182,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|护甲与魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|护甲和魔抗 #
 scripts/gamedata/equip_tier_labels.gd|lit|护盾 #
 scripts/gamedata/equip_tier_labels.gd|lit|护盾 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|护盾上限 #
 scripts/gamedata/equip_tier_labels.gd|lit|护盾加成 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|护盾比例 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|护盾比例 #% 本次伤害
@@ -200,6 +204,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|暴击伤害 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|暴击加成 #×暴击率
 scripts/gamedata/equip_tier_labels.gd|lit|暴击率 #%
 scripts/gamedata/equip_tier_labels.gd|lit|暴击率 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|最大生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|最大生命值 +#
 scripts/gamedata/equip_tier_labels.gd|lit|机炮数 # 发
 scripts/gamedata/equip_tier_labels.gd|lit|横斩伤害加成 #% 攻击力
@@ -207,6 +212,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|横斩基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|横波伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|横波基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|每 # 秒补一张
 scripts/gamedata/equip_tier_labels.gd|lit|每 # 龟能射一箭
 scripts/gamedata/equip_tier_labels.gd|lit|每个魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层双抗 +#
@@ -216,16 +222,19 @@ scripts/gamedata/equip_tier_labels.gd|lit|每层所需治疗 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|每层护甲和魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层攻击速度 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|每层生命值 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每张至多抵挡 #
 scripts/gamedata/equip_tier_labels.gd|lit|每把回复 # 生命值
 scripts/gamedata/equip_tier_labels.gd|lit|每把基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每枚回复 # 生命值
 scripts/gamedata/equip_tier_labels.gd|lit|每枚基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每次中毒 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|每次护盾 #
 scripts/gamedata/equip_tier_labels.gd|lit|每次破甲 #
 scripts/gamedata/equip_tier_labels.gd|lit|每段充能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|每秒上限 # 龟能
 scripts/gamedata/equip_tier_labels.gd|lit|每秒伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每秒回复 #
+scripts/gamedata/equip_tier_labels.gd|lit|每秒回复 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|每秒护盾 #
 scripts/gamedata/equip_tier_labels.gd|lit|每秒损失 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|每秒龟能 #
@@ -241,8 +250,10 @@ scripts/gamedata/equip_tier_labels.gd|lit|法力需求 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|流血层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|流血层数 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|浪潮回复 #
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮弹跳 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮治疗 #
+scripts/gamedata/equip_tier_labels.gd|lit|浪潮物理伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|浮游炮伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|溅射比例 #%
 scripts/gamedata/equip_tier_labels.gd|lit|潜行一击基础伤害 #
@@ -251,6 +262,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|火球目标 # 名
 scripts/gamedata/equip_tier_labels.gd|lit|灰血比例 #%
 scripts/gamedata/equip_tier_labels.gd|lit|灼烧加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|灼烧层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|灼烧层数 #% 消耗龟能
 scripts/gamedata/equip_tier_labels.gd|lit|炮台双抗 #
 scripts/gamedata/equip_tier_labels.gd|lit|炮台攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|炮台生命值 #
@@ -297,7 +309,9 @@ scripts/gamedata/equip_tier_labels.gd|lit|血护盾上限 #
 scripts/gamedata/equip_tier_labels.gd|lit|装备星级 # 星
 scripts/gamedata/equip_tier_labels.gd|lit|触发几率 #%
 scripts/gamedata/equip_tier_labels.gd|lit|转化比例 #%
+scripts/gamedata/equip_tier_labels.gd|lit|近战书页 # 张
 scripts/gamedata/equip_tier_labels.gd|lit|近战增伤 #%
+scripts/gamedata/equip_tier_labels.gd|lit|远程书页至多 # 张
 scripts/gamedata/equip_tier_labels.gd|lit|远程减伤 #%
 scripts/gamedata/equip_tier_labels.gd|lit|连射数 # 发
 scripts/gamedata/equip_tier_labels.gd|lit|连斩次数 # 次
@@ -312,12 +326,22 @@ scripts/gamedata/equip_tier_labels.gd|lit|霰弹基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|额外伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|额外伤害 #% 目标最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|额外攻击力 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅战士护甲和魔抗 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅战士攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅战士生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|骷髅攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅法师护甲和魔抗 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅法师攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅法师生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|骷髅生命值 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅祭司护甲和魔抗 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅祭司攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅祭司生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|魔法穿透 +# 点
 scripts/gamedata/equip_tier_labels.gd|lit|龟能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|龟能消耗减少 #
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
 scripts/gamedata/glossary.gd|lit|仪式匕首的携带者每击杀一名敌人刻下的印记，整个大轮累计、换大轮清零。每道血契提高携带者的攻击力与护甲穿透，并提高全队的攻击力。
 scripts/gamedata/glossary.gd|lit|余烬攻击命中时叠加在目标身上的层数，每层提高该目标的斩杀线。
