@@ -672,6 +672,10 @@ func _update_world_transforms() -> void:
 			if battle._t - float(u.get("_phase_ai_t", -1.0)) >= 0.08:
 				u["_phase_ai_t"] = battle._t
 				battle._vfx.phase_afterimage(spr)
+		if battle._t < float(u.get("_kris_until", 0.0)):   # 113 弯匕攻速暴涨(11-25 用户「金色纹风可以，但是我觉得还不够明显」): 身体金光快闪 + 金色残影往身后飘
+			if battle._t - float(u.get("_kris_ai_t", -1.0)) >= 0.05:
+				u["_kris_ai_t"] = battle._t
+				battle._vfx.haste_afterimage(spr, bool(u.get("face_right", str(u.get("side", "left")) == "left")))
 		if bool(u.get("shell_stealth", false)):   # 龟壳潜影(11-08 晚): 暗紫半透明剪影 + 慢呼吸; 受击闪色照常叠上去(吃范围伤害不破隐, 也看得出挨了)
 			spr.modulate = ShellVfx.shade_tint(battle._t).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
 		if bool(u.get("_smoke_hidden", false)) and battle._t < float(u.get("untargetable_until", 0.0)):   # 100 烟雾弹潜行(11-24): 灰蓝半透明, 攻击即现形

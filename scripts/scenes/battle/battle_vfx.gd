@@ -1201,6 +1201,44 @@ func phase_afterimage(spr) -> void:
 	tw.tween_callback(ai.queue_free)
 
 
+## 113 弯匕攻速暴涨的金色残影(11-25 用户「还不够明显」): 复制当前身体帧 → 纯金色发光剪影(assets/shaders/haste_silhouette.gdshader),
+##   往身后飘 0.4 米再淡出。站着连砍时残影也会往后拉开(读成「快」); 前几帧的挥砍姿势留在残影里 = 一道快影。纯视觉, 渲染层调。
+##   ★用着色器换色, 不用 modulate: modulate 是乘法, 乘在绿龟上是一团土黄(>1 也被截住), 实拍过两次。
+const _HASTE_SIL := preload("res://assets/shaders/haste_silhouette.gdshader")
+func haste_afterimage(spr, face_right: bool) -> void:
+	if not is_instance_valid(spr) or not spr.is_inside_tree():
+		return
+	var ai := Sprite3D.new()
+	ai.texture = spr.texture
+	ai.frame = 0
+	ai.hframes = spr.hframes
+	ai.vframes = spr.vframes
+	ai.frame = clampi(int(spr.frame), 0, maxi(0, int(ai.hframes) * int(ai.vframes) - 1))
+	ai.pixel_size = spr.pixel_size
+	ai.billboard = spr.billboard
+	ai.flip_h = spr.flip_h
+	ai.offset = spr.offset
+	ai.shaded = false
+	ai.transparent = true
+	ai.texture_filter = spr.texture_filter
+	ai.scale = spr.scale
+	var mat := ShaderMaterial.new()
+	mat.shader = _HASTE_SIL
+	mat.set_shader_parameter("tex", spr.texture)
+	mat.set_shader_parameter("fade", 0.5)
+	mat.render_priority = -1   # 画在本体后面: 本体后画、盖住残影(原来残影盖在人身上, 人被一团金光糊住)
+	ai.material_override = mat
+	battle._world.add_child(ai)
+	var back := Vector3(-0.4 if face_right else 0.4, 0.0, 0.0)
+	ai.global_position = spr.global_position + back * 0.25   # 一出生就往身后错开一点
+	var tw: Tween = battle._reg_tween()
+	tw.bind_node(ai)
+	tw.set_parallel(true)
+	tw.tween_property(ai, "global_position", spr.global_position + back, 0.3)
+	tw.tween_method(func(v: float) -> void: mat.set_shader_parameter("fade", v), 0.5, 0.0, 0.3)
+	tw.chain().tween_callback(ai.queue_free)
+
+
 ## ══════════════════════════════════════════════════════════════════
 ##  001 木制长剑·飞斩剑气 —— 发射 muzzle / 命中 impact
 ## ══════════════════════════════════════════════════════════════════

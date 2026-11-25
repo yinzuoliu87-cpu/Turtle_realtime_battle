@@ -229,6 +229,7 @@ func on_kill(killer: Dictionary, victim: Dictionary, eid: String, si: int) -> vo
 			var cur: float = float(killer.get("haste_mult", 1.0)) if t < float(killer.get("haste_until", 0.0)) else 1.0
 			killer["haste_mult"] = maxf(cur, 1.0 + float(KRIS_ASPD[si]))
 			killer["haste_until"] = maxf(float(killer.get("haste_until", 0.0)), t + KRIS_SEC)
+			killer["_kris_until"] = maxf(float(killer.get("_kris_until", 0.0)), t + KRIS_SEC)   # 渲染层画金色残影 / 金光用(别的加速也写 haste_until, 单开一个)
 			_fx("kris_rush", [killer, KRIS_SEC])
 		"p2eq_114":
 			_ritual_mark(killer, victim)
