@@ -56,7 +56,6 @@ var _mesh_rune: ArrayMesh = null
 var _mesh_blood: ArrayMesh = null
 var _mesh_reap: ArrayMesh = null
 ## 正在飞的收殓金球
-var _reaps: Array = []
 var _mesh_ring_flat: ArrayMesh = null
 ## 正在扩散的星浪(炮台二) —— 每帧由 gun_turret_tick 推进
 var _waves: Array = []
@@ -1242,7 +1241,9 @@ func blood_rite_free(u: Dictionary) -> int:
 ## ★同 070 冲击环/炮台二星浪的纪律: 效果时刻 = 演出到达时刻, 不是"先给了再画"。
 
 ## 金球飞行时长(秒) / 跳起高度(米) / 球半径(码)
-const REAP_FLY_SEC := 0.62
+## 收殓金球按飞行速度追着收殓者飞(11-25 用户「肯定是有飞行速度的呀」; 原固定 0.62 秒)。结算 + 推进走通用飞行物
+##   (BattleBallistics.launch_flight), 这里只画: reap_orb 建节点, reap_step 按飞行进度摆。
+const REAP_SPD := 650.0
 ## ★弧要【高】(2026-08-12 用户:「是高有个抛物线的飞」) —— 1.9 米太平, 读起来像贴地滑过去
 const REAP_HOP_H := 3.4
 const REAP_R_PX := 26.0
@@ -1294,8 +1295,6 @@ func reap_orb(from2d: Vector2, to_unit: Dictionary) -> MeshInstance3D:
 	mi.scale = Vector3(r, r, r)
 	mi.position = battle._world_pos(from2d, 0.35)
 	_adopt(mi, "reap_orb")
-	_reaps.append({"node": mi, "mat": mat, "from": from2d, "unit": to_unit,
-		"t": 0.0, "life": REAP_FLY_SEC})
 	return mi
 
 
@@ -1307,33 +1306,21 @@ static func reap_hop(x: float) -> float:
 	return 4.0 * xx * (1.0 - xx)
 
 
-## 每帧推进金球(由 ShieldSynergySystem.tick 顺带调)
-func tick_reaps(delta: float) -> void:
-	if _reaps.is_empty():
+## 按飞行进度摆金球(通用飞行物每步回调): x = 已飞 / 总路程, to2 = 收殓者当前位置(终点跟着人走)
+func reap_step(n, from2d: Vector2, x: float, to2: Vector2) -> void:
+	if not is_instance_valid(n):
 		return
-	var keep: Array = []
-	for h in _reaps:
-		var n = h["node"]
-		if not is_instance_valid(n):
-			continue
-		var t: float = float(h["t"]) + maxf(delta, 0.0)
-		h["t"] = t
-		var x: float = clampf(t / float(h["life"]), 0.0, 1.0)
-		var u = h.get("unit", null)
-		## 终点【跟着人走】—— 收殓的受益者是活人, 它会移动; 锁死落点会落空
-		var to2: Vector2 = (u as Dictionary)["pos"] if (u is Dictionary and (u as Dictionary).get("alive", false)) else (h["from"] as Vector2)
-		var p2: Vector2 = (h["from"] as Vector2).lerp(to2, x)
-		n.position = battle._world_pos(p2, 0.35 + REAP_HOP_H * reap_hop(x))
-		## 落地前收小一点(被"吸进"身体的感觉), 全程保持半透明
-		var k: float = (1.0 - 0.35 * x) * REAP_R_PX * float(battle.WS)
-		n.scale = Vector3(k, k, k)
-		(h["mat"] as StandardMaterial3D).albedo_color = Color(COL_REAP_ORB.r, COL_REAP_ORB.g,
+	var p2: Vector2 = from2d.lerp(to2, x)
+	n.position = battle._world_pos(p2, 0.35 + REAP_HOP_H * reap_hop(x))
+	## 落地前收小一点(被"吸进"身体的感觉), 全程保持半透明
+	var k: float = (1.0 - 0.35 * x) * REAP_R_PX * float(battle.WS)
+	n.scale = Vector3(k, k, k)
+	var mat = n.material_override
+	if mat is StandardMaterial3D:
+		(mat as StandardMaterial3D).albedo_color = Color(COL_REAP_ORB.r, COL_REAP_ORB.g,
 			COL_REAP_ORB.b, COL_REAP_ORB.a * (1.0 - smoothstep(0.82, 1.0, x)))
-		if x >= 1.0:
-			n.queue_free()
-			continue
-		keep.append(h)
-	_reaps = keep
+	if x >= 1.0:
+		n.queue_free()
 
 
 ## 炮管(单位长: 沿 +X 伸出 1, 方管) + 炮口环

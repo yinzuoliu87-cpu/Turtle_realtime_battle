@@ -8,6 +8,9 @@ var battle
 var _ps_drop_invalid := 0    # 回调失效
 var _ps_cc_cancel := 0       # 蓄力被打断(条目带 cc): 施法者死亡 / 眩晕 / 击飞 ⇒ 整组取消
 var _ps_drop_cleared := 0    # 换路清空队列
+## 通用飞行物(11-25 用户「肯定不是固定飞多少多少秒啊，肯定是有飞行速度的呀…可以全部改了」):
+##   药瓶 / 哑铃 / 回流光球 / 牌 / 火球 / 炸弹… 一律按速度飞, 到了才结算。见 launch_flight。
+var _flights: Array = []
 ## 暴击对账(仅 DMGSENTINEL): drift=病的频率(分母) / applied_wrong=修完必须恒 0
 var _crit_drift := 0
 var _crit_applied_wrong := 0
@@ -51,6 +54,66 @@ func _push_proj(d: Dictionary) -> void:
 	if d.has("spd") and not d.has("p2"):
 		d["p2"] = Vector2(d["src"]["pos"]) if d.get("src") is Dictionary else Vector2(d["tgt"]["pos"])
 	battle._projectiles.append(d)
+
+
+## 发一个按速度飞的东西(不是弹道队列那种「弹体 + 命中伤害」, 而是落地时调回调的通用件):
+##   tgt = 单位(追着它当前位置飞, 碰到身体 col_r 算到) 或 Vector2(飞向固定落点);
+##   on_arrive(hit: bool): 到了调一次, hit = 目标还活着(落点型恒 true; 目标半路死了 ⇒ 飞到它最后的位置、hit = false);
+##   on_step(k: float, p2: Vector2, to2: Vector2): 每步调, k = 已飞 / 总路程(0..1), 演出按它摆位置 —— 演出别再自己按固定秒数补间。
+##   src = 谁发的(时停里只有时停携带者的会动, 同弹道)。装备统计 / 技能音效上下文在发射时捕获、到达时切回(同弹道)。
+func launch_flight(src, from2: Vector2, tgt, spd: float, on_arrive: Callable, on_step: Callable = Callable()) -> void:
+	var last: Vector2 = Vector2(tgt["pos"]) if tgt is Dictionary else Vector2(tgt)
+	_flights.append({"src": src, "p2": from2, "tgt": tgt, "last": last, "spd": spd, "flown": 0.0,
+		"arrive": on_arrive, "step": on_step, "_tl": battle._equip_sys.tally.capture(), "_sk": battle._audio_sys.skill_ctx})
+
+
+func _step_flights(delta: float) -> void:
+	if _flights.is_empty():
+		return
+	var ts_on: bool = not battle._timestop._ts_active.is_empty()
+	var _tl0: Array = battle._equip_sys.tally.capture()
+	var keep: Array = []
+	var cur: Array = _flights
+	_flights = []   # 到达回调里可能再发新的(弹跳 / 连锁), 先换掉再遍历
+	for f in cur:
+		if ts_on and not battle._arr_has_unit(battle._timestop._ts_active, f.get("src")):
+			keep.append(f)
+			continue
+		var tg = f["tgt"]
+		var alive: bool = tg is Dictionary and tg.get("alive", false)
+		if alive:
+			f["last"] = Vector2(tg["pos"])
+		var to2: Vector2 = f["last"]
+		var p: Vector2 = f["p2"]
+		var d: float = DetMath.dist(p, to2)
+		var step: float = float(f["spd"]) * delta
+		var reach: float = float(tg.get("col_r", 20.0)) if alive else 0.0
+		var arrived: bool = d - reach <= step
+		var k: float = 1.0
+		if not arrived:
+			p = p + (to2 - p) * (step / d)
+			f["p2"] = p
+			f["flown"] = float(f["flown"]) + step
+			k = clampf(float(f["flown"]) / (float(f["flown"]) + d - step - reach), 0.0, 0.999)
+		var sc: Callable = f["step"]
+		if sc.is_valid():
+			sc.call(k, p, to2)
+		if not arrived:
+			keep.append(f)
+			continue
+		battle._equip_sys.tally.use(f.get("_tl", null))
+		battle._audio_sys.skill_ctx = str(f.get("_sk", "")); battle._audio_sys.skill_ctx_src = f.get("src")
+		var ac: Callable = f["arrive"]
+		if ac.is_valid():
+			ac.call(alive or not (tg is Dictionary))
+	battle._equip_sys.tally.pop(_tl0)
+	battle._audio_sys.skill_ctx = ""; battle._audio_sys.skill_ctx_src = null
+	_flights = keep + _flights
+
+
+## 换路 / 编辑重开: 在途的全部作废(演出节点由各自 on_step 的主人收)
+func clear_flights() -> void:
+	_flights.clear()
 
 
 ## 弹道按速度推进一步: pr["p2"] = 结算用的 2D 位置, 每步按 pr["spd"] 往目标【当前】位置走, 碰到身体(col_r) = 到达。
@@ -424,7 +487,7 @@ func _step_projectiles(delta: float) -> void:
 					battle._bamboo_sys._bamboo_hit_splash(tgt)                                        # 大淡绿命中爆(≈上半身大小)
 					var _bsrc: Dictionary = pr["src"]
 					var _bgrow: float = float(pr.get("bamboo_grow", 0.0))   # ★不乘HP_MULT: 装备hp已是最终值(见L45规则), 原来乘了→永久成长实发150/210/270=文案50/70/90的3倍
-					battle._spawn_bamboo_orb(tgt["pos"], _bsrc["pos"], func() -> void:    # 绿球飞回携带者, 落到身上才吸收
+					battle._spawn_bamboo_orb(tgt["pos"], _bsrc, func() -> void:    # 绿球飞回携带者, 落到身上才吸收
 						if not _bsrc.get("alive", false):
 							return
 						## ★读常量不写死: 文案用的是 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}, 写死 0.06 就是两份
@@ -502,6 +565,7 @@ func _step_projectiles(delta: float) -> void:
 	battle._equip_sys.tally.pop(_tl0)
 	battle._audio_sys.skill_ctx = ""; battle._audio_sys.skill_ctx_src = null
 	battle._projectiles = keep
+	_step_flights(delta)
 
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)

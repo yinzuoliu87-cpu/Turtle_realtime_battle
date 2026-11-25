@@ -145,9 +145,9 @@ func _ready() -> void:
 	##   落地那一刻才给(用户:「转移到自己身上后再获得护盾」)。判据随之分两段。
 	_ok("收殓 ★金球飞行途中【还没到账】(效果时刻 = 演出到达时刻)",
 		absf(float(me["shield"])) < 0.5, "实得 %.0f" % float(me["shield"]))
-	var steps: int = int(ceil((SynergyVfx.REAP_FLY_SEC + 0.08) / 0.02))
-	for _i in range(steps):
-		s._ballistics._step_pending_shots(0.02)
+	## 按飞行速度推够(尸体到收殓者 10 码, 碰到身体就到 ⇒ 几步内); 推 2 秒足够任何场内距离以外的余量
+	for _i in range(100):
+		s._ballistics._step_flights(0.02)
 	_ok("收殓: 敌人(3000血)阵亡 → 金球落地后最近携带盾者 +900 护盾(30%)",
 		absf(float(me["shield"]) - 900.0) < 1.0, "实得 %.0f" % float(me["shield"]))
 	## ★★金球的【高抛物线飞行】—— 量真实节点(金球与圣盾罩子同为金色, 像素法分不开)。
@@ -163,7 +163,7 @@ func _ready() -> void:
 		var ys: Array = [y0]
 		var xs: Array = [orb.position.x]
 		for _k in range(5):
-			sv.tick_reaps(SynergyVfx.REAP_FLY_SEC / 6.0)
+			sv.reap_step(orb, corpse, float(_k + 1) / 6.0, Vector2(taker2["pos"]))   # 飞行进度 1/6 … 5/6(通用飞行物每步就是这样回调的)
 			ys.append(orb.position.y)
 			xs.append(orb.position.x)
 		var peak: float = ys[0]
@@ -186,8 +186,8 @@ func _ready() -> void:
 	me["shield"] = 0.0
 	s._shield_syn.on_enemy_died(ally_dead)
 	## ★对照组也要把定时器推完 —— 否则"没盾"可能只是"还在飞"(假对照)
-	for _j in range(int(ceil((SynergyVfx.REAP_FLY_SEC + 0.08) / 0.02))):
-		s._ballistics._step_pending_shots(0.02)
+	for _j in range(100):
+		s._ballistics._step_flights(0.02)
 	_ok("★对照: 【我方】单位阵亡不给我方盾(收殓只吃敌人的死)",
 		absf(float(me["shield"])) < 0.5, "实得 %.0f" % float(me["shield"]))
 

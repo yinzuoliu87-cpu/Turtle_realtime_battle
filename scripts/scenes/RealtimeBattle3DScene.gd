@@ -3400,7 +3400,7 @@ func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢�
 ##   tween 走**未钳制**的真实 delta, 而战斗时钟走钳制后的 ⇒ 两条钟;
 ##   无头 CI 下那条链推不动, 伤害永远不结算(等多久都是 0), 而本地永远复现不出来。
 ##   ⇒ 现在飞行与结算在**同一个 `_wait_sim` 循环**里, 一条钟。
-## ★落点在开火那一刻就定死(与 tween 版逐字相同的行为) —— 不追着目标走。
+## ★11-25 改成按飞行速度追着目标飞、砸到身上才结算(用户「肯定是有飞行速度的呀」; 原来固定 0.3 秒、落点开火时定死)。
 	var spr := Sprite3D.new()
 ## ★★2026-09-11 换图: 原来这里加载的是 **712×712 的 AI 渲染图**, 再用 pixel_size 压到 48 码宽,
 ##   而 texture_filter 是 NEAREST —— **缩小时用 NEAREST 是最糟的组合**, 712→约 40 屏幕像素
@@ -3411,21 +3411,13 @@ func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢�
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED; spr.shaded = false; spr.transparent = true
 	spr.pixel_size = (48.0 * WS) / float(maxi(1, spr.texture.get_width()))   # 场地约48px宽
 	var from2d: Vector2 = u["pos"]
-	var to2d: Vector2 = tgt["pos"]
 	spr.position = _world_pos(from2d, 1.1)
 	_world.add_child(spr)
-	const FLY_T := 0.3             # 飞行时长(游戏秒) = 18 × SIM_DT
-	const FLY_STEP := 2.0 / 60.0   # ★必须是 SIM_DT 整数倍, 否则 _wait_sim 向上取整
-	var el := 0.0
-	while el < FLY_T:
-		el = minf(FLY_T, el + FLY_STEP)
-		var pf: float = el / FLY_T
-		if is_instance_valid(spr):
-			spr.position = _world_pos(from2d.lerp(to2d, pf), DetMath.flerp(1.1, 1.0, pf))
-		await _wait_sim(FLY_STEP, u)
-		if not is_instance_valid(self):
-			return   ## await 期间战斗可能已结束(场景 free)
-	_dumbbell_hit(spr, u, tgt, dmg)
+	_ballistics.launch_flight(u, from2d, tgt, DUMBBELL_SPD, func(_hit: bool) -> void: _dumbbell_hit(spr, u, tgt, dmg),
+		func(k: float, p2: Vector2, _to2: Vector2) -> void:
+			if is_instance_valid(spr):
+				spr.position = _world_pos(p2, DetMath.flerp(1.1, 1.0, k)))
+const DUMBBELL_SPD := 650.0   # 码/秒(原固定 0.3 秒; 常见 200 码左右的距离 ≈ 原来的手感)
 
 func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
@@ -4527,9 +4519,10 @@ func _dmg_float_step(el: float, node_fl: Control, base: Vector2, jump_x: float, 
 	node_fl.position = base + Vector2(px, py)
 	node_fl.modulate.a = 1.0 if el < fade_start else maxf(0.0, 1.0 - (el - fade_start) / (total_dur - fade_start))
 
-const BAMBOO_ORB_FLY := 0.65   # 竹叶生命球飞行时长(秒)·抽常量是为了门禁能拿它推 sim
+const BAMBOO_ORB_SPD := 320.0   # 竹叶生命球飞行速度(码/秒)·11-25 起按速度追着携带者飞(原固定 0.65 秒飞到携带者出手时的位置; 用户「肯定是有飞行速度的呀」)
 
-func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = Callable()) -> void:
+## to = 携带者(追着它飞, 到身上才结算) 或 Vector2 落点
+func _spawn_bamboo_orb(from_pos: Vector2, to, on_land: Callable = Callable()) -> void:
 	var orb_path := "res://assets/sprites/vfx/bamboo-charge-orb.png"
 	if not ResourceLoader.exists(orb_path):
 		return
@@ -4546,17 +4539,16 @@ func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = C
 	orb.pixel_size = 0.85 / float(fh)
 	orb.position = _world_pos(from_pos, 1.0)
 	_world.add_child(orb)
-	## ★抛物线是纯观感(留 tween), 但**落点结算不许挂它末尾**: tween 无头下推不动(§3.5)
-	##   ⇒ 039 文案那句「落到身上才结算(回血+永久 +50/70/90 最大生命)」一次都不会发生。
-	var tw := _reg_tween()
-	tw.bind_node(orb)
-	tw.tween_method(_bamboo_sys._bamboo_orb_step.bind(orb, from_pos, to_pos, nframes, [0]), 0.0, 1.0, BAMBOO_ORB_FLY)
-	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(orb): orb.queue_free()
-		_vfx.bamboo_burst(to_pos))
-	if on_land.is_valid():
-		_equip_tick_sys.schedule(BAMBOO_ORB_FLY, on_land)   # 落到身上才结算 —— 走游戏钟
+	## ★落点结算不许挂 tween 末尾(tween 无头下推不动, §3.5) ⇒ 走通用飞行物(按速度、游戏钟), 演出每步跟着飞行进度摆
+	var trail := [0]
+	_ballistics.launch_flight(to if to is Dictionary else null, from_pos, to, BAMBOO_ORB_SPD,
+		func(_hit: bool) -> void:
+			if is_instance_valid(orb): orb.queue_free()
+			_vfx.bamboo_burst(Vector2(to["pos"]) if to is Dictionary else Vector2(to))
+			if on_land.is_valid():
+				on_land.call(),
+		func(k: float, _p2: Vector2, to2: Vector2) -> void:
+			_bamboo_sys._bamboo_orb_step(k, orb, from_pos, to2, nframes, trail))
 
 var _sheet_cache := {}
 func _sheet(path: String) -> Texture2D:
@@ -6523,7 +6515,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 				_vfx._flash(tgt, Color(0.5, 1.7, 0.65))                             # 敌绿闪(生长主题)
 				_bamboo_sys._bamboo_hit_splash(tgt)                                        # 命中: 敌人身上爆一下大淡绿命中特效(≈上半身大小·用户2026-07-11); 施法者tell=双手绿点(蓄满期), 不在命中闪
 				# 回血+永久成长 延到绿球落到竹叶龟身上才生效 (用户: 到自己身上才吸收)
-				_spawn_bamboo_orb(tgt["pos"], u["pos"], func() -> void:
+				_spawn_bamboo_orb(tgt["pos"], u, func() -> void:
 					if not u.get("alive", false):
 						return
 					_damage._heal(u, u["maxHp"] * (BambooSystem.GROW_SMACK_HEAL_PCT if "bambooSmack" in _chosen_skill_types(u["id"], u["side"] == "left") else BambooSystem.GROW_HEAL_PCT))

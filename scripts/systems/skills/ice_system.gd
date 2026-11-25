@@ -132,16 +132,13 @@ func _ice_throw_go(u: Dictionary, si: int) -> void:
 	var from2d: Vector2 = u["pos"]
 	spr.position = battle._world_pos(from2d, 1.1)
 	battle._world.add_child(spr)
-	## 瓶子的抛物线是**纯观感**, 留在 tween 没关系; 但**结算不许挂在它末尾** ——
-	## tween 无头下推不动(§3.5) ⇒ 伤害 / 冰寒 / 击退会整个不落。落点判定改走游戏钟。
-	var tw = battle._reg_tween()
-	## ★11-15 瓶子追着目标**当前**位置飞(伤害本来就锁定这个目标): 原来飞向出手那一刻的位置, 目标走开了瓶子落在空地、人却挨打
-	tw.tween_method(_ice_bottle_arc.bind(spr, from2d, t), 0.0, 1.0, VIAL_FLY_SEC)
-	battle._equip_tick_sys.schedule(VIAL_FLY_SEC, _ice_bottle_hit.bind(spr, u, t, si))
+	## 瓶子按飞行速度追着目标**当前**位置飞, 砸到身上才结算(通用飞行物, 游戏钟; 不挂 tween §3.5)
+	##   11-25 用户「肯定是有飞行速度的呀」: 原来固定 0.6 秒, 远近一样快
+	battle._ballistics.launch_flight(u, from2d, t, VIAL_SPD, func(_hit: bool) -> void: _ice_bottle_hit(spr, u, t, si),
+		func(k: float, _p2: Vector2, to2: Vector2) -> void: _ice_bottle_arc(k, spr, from2d, to2))
 
-func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, t: Dictionary) -> void:
+func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
 	if is_instance_valid(spr):
-		var to2d: Vector2 = t["pos"]
 		spr.position = battle._world_pos(from2d.lerp(to2d, pf), 1.0 + DetMath.dsin(pf * PI) * 2.4)
 
 func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
@@ -251,7 +248,7 @@ const VIAL_IV := 6.0            # 每几秒抛一次(主场景 _EQ_CUSTOM_IV 引
 ## ★下面两个节拍原来写死在函数里(0.32 / 0.6)。抽成常量不是"为了文案" ——
 ##   是**门禁要拿它推 sim**(推少了量到 0 会被误判成"效果没落"), 两边必须读同一个数。
 const VIAL_WINDUP := 0.32      # 蓄力(秒) —— 抛出前的前摇
-const VIAL_FLY_SEC := 0.6      # 瓶子在空中的飞行时间(秒)
+const VIAL_SPD := 600.0        # 瓶子飞行速度(码/秒)·11-25 起按速度(原固定 0.6 秒)
 ## 【029 寒冰法杖】法力满 → 自身上盾 + 朝最近敌推一条冰道, 推到谁才结算谁。
 const FISSURE_REACH := 500.0    # 冰道长度(码)
 const FISSURE_HALF_W := 90.0    # 冰道中线两侧各多宽(码)

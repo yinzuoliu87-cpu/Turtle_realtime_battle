@@ -989,6 +989,7 @@ func _dl_clear_units() -> void:
 	battle._projectiles.clear()
 	battle._ballistics._ps_drop_cleared += battle._pending_shots.size()   # 换路清队列: 记账(探针2026-08-22)
 	battle._pending_shots.clear()
+	battle._ballistics.clear_flights()    # 通用飞行物(药瓶 / 哑铃 / 光球…)不跨路
 	battle._trainer_sys.clear_flights()   # #21: 在途钩子 / 气波不跨路(否则下一路开局「同时两根钩锁」)
 	for f in battle._follow_vfx:
 		var fs = f.get("spr", null)

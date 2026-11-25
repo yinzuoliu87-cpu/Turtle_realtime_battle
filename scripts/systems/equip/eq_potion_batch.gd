@@ -255,8 +255,9 @@ func _eq_poison_vial(u: Dictionary, si: int) -> void:
 	if not bool(d["ok"]):
 		return
 	var dest: Vector2 = d["pos"]
-	_vfx.vial_throw(u["pos"], dest)
-	battle._pending_shots.append({"delay": Vfx.VIAL_FLIGHT, "src": u,
+	var fly: float = DetMath.dist(Vector2(u["pos"]), dest) / Vfx.VIAL_SPD
+	_vfx.vial_throw(u["pos"], dest, fly)
+	battle._pending_shots.append({"delay": fly, "src": u,
 		"fn": func() -> void: _eq_vial_land(u, si, dest)})
 
 

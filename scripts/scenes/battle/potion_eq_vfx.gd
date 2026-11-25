@@ -164,7 +164,8 @@ const CLOUD_LIFE := 4.0
 const CLOUD_T0 := 0.18
 
 ## 药瓶飞行时长(秒)与抛高(码)
-const VIAL_FLIGHT := 0.55
+## 067 毒药瓶按飞行速度抛到落点: 飞行时间 = 距离 / VIAL_SPD(11-25 用户「肯定是有飞行速度的呀」; 原固定 0.55 秒)
+const VIAL_SPD := 750.0
 const VIAL_ARC_H := 190.0
 
 
@@ -556,11 +557,11 @@ static func gen_splash_mesh() -> ArrayMesh:
 
 
 ## 抛出一个药瓶(纯演出)。落地结算由调用方用 battle._pending_shots 定时 —— **不是 tween**。
-func vial_throw(p0: Vector2, p1: Vector2) -> Dictionary:
+func vial_throw(p0: Vector2, p1: Vector2, dur: float) -> Dictionary:
 	if not _alive_world():
 		return {}
 	var nd := _node(gen_bottle_mesh(), _mat(true, 12), battle._world_pos(p0, 0.0))
-	var h := {"kind": "vial", "nd": nd, "p0": p0, "p1": p1, "t": 0.0, "dur": VIAL_FLIGHT}
+	var h := {"kind": "vial", "nd": nd, "p0": p0, "p1": p1, "t": 0.0, "dur": dur}
 	apply_at(h, 0.0)
 	_live.append(h)
 	return h

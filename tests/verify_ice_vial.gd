@@ -89,7 +89,7 @@ func _ready() -> void:
 	_s._equip_sys._eq_ice_throw(c, 2)
 	_ok("② ★分母: 刚放完还没结算(掉血 %.0f 应为 0)" % (hp0 - float(foe["hp"])),
 		absf(hp0 - float(foe["hp"])) < 0.01,
-		"前摇 %.2f + 飞行 %.2f 秒都还没走完" % [ICE.VIAL_WINDUP, ICE.VIAL_FLY_SEC])
+		"前摇 %.2f + 飞行(200 码 / %.0f) 都还没走完" % [ICE.VIAL_WINDUP, ICE.VIAL_SPD])
 	## 推够 前摇 + 飞行 + 余量; 用 _sim_step 确定性推, 不看帧率脸色
 	for _k in range(150):        # 150 / 60 = 2.5 游戏秒 > 0.32 + 0.6
 		_s._sim_step(_s.SIM_DT, false, false)

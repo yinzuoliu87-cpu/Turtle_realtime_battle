@@ -179,6 +179,7 @@ func _edit_clear() -> void:
 		_edit_free_unit_nodes(u)
 	battle._units.clear()
 	battle._projectiles.clear()
+	battle._ballistics.clear_flights()
 	for z in battle._lava_sys._lava_zones:                       # 清岩浆池(避免编辑重开残留)
 		var d = z.get("disc", null)
 		if d != null and is_instance_valid(d):

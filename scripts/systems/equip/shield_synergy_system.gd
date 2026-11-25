@@ -222,7 +222,6 @@ func tick(delta: float) -> void:
 	##   ⇒ 以后别的羁绊也要每帧驱动时, **仍然走这一处**, 不要再加第二个 tick 源(会双倍推进)。
 	if battle._vfx != null and battle._vfx._syn != null:
 		battle._vfx._syn.tick(delta)
-		battle._vfx._syn.tick_reaps(delta)      # 收殓金球每帧推进(走 sim delta, 不用 tween)
 	## ★接线(2026-08-09·095 逐件重做): 圣光护盾演出层的【每帧驱动】, 理由与上面那行完全一样,
 	##   而且必须同样在提前 return 之【前】—— 放后面的话常驻盾板每 3 秒才动一帧。
 	_holy_vfx.tick(delta)
@@ -310,14 +309,19 @@ func on_enemy_died(victim: Dictionary) -> void:
 		var reap_amt: float = float(victim.get("maxHp", 0.0)) * REAP_PCT
 		var taker: Dictionary = best
 		var vpos: Vector2 = Vector2(victim.get("pos", Vector2.ZERO))
+		var orb = null
 		if battle._vfx != null and battle._vfx._syn != null:
-			battle._vfx._syn.reap_orb(vpos, taker)
-		battle._pending_shots.append({"delay": SynergyVfx.REAP_FLY_SEC, "src": taker,
-			"fn": func() -> void:
+			orb = battle._vfx._syn.reap_orb(vpos, taker)
+		## 11-25: 按飞行速度追着收殓者飞, 落到身上才发盾(原固定 0.62 秒; 用户「肯定是有飞行速度的呀」)
+		battle._ballistics.launch_flight(taker, vpos, taker, SynergyVfx.REAP_SPD,
+			func(_hit: bool) -> void:
 				if not taker.get("alive", false):
 					return
 				battle._damage._grant_shield(taker, reap_amt)
-				taker["_reap_taken_n"] = int(taker.get("_reap_taken_n", 0)) + 1})
+				taker["_reap_taken_n"] = int(taker.get("_reap_taken_n", 0)) + 1,
+			func(x: float, _p2: Vector2, to2: Vector2) -> void:
+				if orb != null and battle._vfx != null and battle._vfx._syn != null:
+					battle._vfx._syn.reap_step(orb, vpos, x, to2))
 		# ★演出(批 B3): _grant_shield 的通用护盾演出(v0.19.356 起是身上的六棱护罩)**看不出是从那具尸体收来的**,
 		#   而"从哪来"正是收殓这条唯一要传达的信息。⇒ 尸体 → 受益者的一道灵魂流。
 		#   ⚠ 护盾上面已经结算完了, 这一行只画不算。

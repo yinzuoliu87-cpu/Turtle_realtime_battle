@@ -237,15 +237,15 @@ func _ready() -> void:
 	var hp_before: float = float(c7["maxHp"])
 	var cur_before: float = float(c7["hp"])
 	var grow: float = BAMBOO_GROW[2]
-	_s._spawn_bamboo_orb(Vector2(700.0, 400.0), c7["pos"], func() -> void:
+	_s._spawn_bamboo_orb(Vector2(700.0, 400.0), c7, func() -> void:
 		_s._damage._heal(c7, c7["maxHp"] * ES.BAMBOO_ARROW_MAXHP_PCT)
 		c7["maxHp"] += grow
 		c7["hp"] += grow)
 	_ok("⑦ ★分母: 球刚飞出去还没结算(最大生命 %.0f 未变)" % float(c7["maxHp"]),
 		absf(float(c7["maxHp"]) - hp_before) < 0.01,
 		"文案明写「落到身上才结算」—— 出手那一刻不该结算")
-	## 推够飞行时长(常量, 不是我拍的数)
-	for _k in range(int(_s.BAMBOO_ORB_FLY * 60.0) + 20):
+	## 推够飞行时长(按飞行速度: 距离 / BAMBOO_ORB_SPD, 不是我拍的数)
+	for _k in range(int(DetMath.dist(Vector2(700.0, 400.0), Vector2(c7["pos"])) / _s.BAMBOO_ORB_SPD * 60.0) + 20):
 		_s._sim_step(_s.SIM_DT, false, false)
 	_ok("⑦ ★★★推 sim 之后**落地结算了**: 最大生命 %.0f → %.0f(永久 +%.0f)"
 		% [hp_before, float(c7["maxHp"]), grow],
