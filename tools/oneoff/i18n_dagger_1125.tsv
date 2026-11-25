@@ -39,3 +39,5 @@
 黑曜石匕首	Obsidian Dagger
 暴击时把黑曜石匕首插进敌人身上，足以致命时一起拔出并回复生命值。	Critical strikes lodge obsidian daggers in the enemy. Once they can kill, they are ripped out together and restore health.
 造成暴击时，在目标身上插入一把黑曜石匕首，匕首不会自行拔出。目标身上全部匕首一起拔出的伤害足以击杀目标时，立即全部拔出：每把造成（{C:EqDaggerBatch.OBS_FLAT}+{C:EqDaggerBatch.OBS_ATK%}% 攻击力+目标 {C:EqDaggerBatch.OBS_MAXHP%}% 最大生命值）物理伤害，并为自身回复 {C:EqDaggerBatch.OBS_HEAL} 点生命值。	Critical strikes lodge an obsidian dagger in the target; daggers never come out on their own. As soon as ripping out all daggers in the target would kill it, they are all ripped out at once: each deals ({C:EqDaggerBatch.OBS_FLAT} + {C:EqDaggerBatch.OBS_ATK%}% Attack + {C:EqDaggerBatch.OBS_MAXHP%}% of the target's max health) physical damage and restores {C:EqDaggerBatch.OBS_HEAL} health to the carrier.
+血契 %d / %d	Blood Pact %d / %d
+血契 %d / %d（已满）	Blood Pact %d / %d (full)

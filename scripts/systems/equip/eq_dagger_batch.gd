@@ -418,6 +418,14 @@ func _side_tier(side: String, t: String) -> int:
 	return best
 
 
+## 局外装备卡那一行(背包): 「血契 N / 150」(满了标已满)
+static func progress_text(marks: int) -> String:
+	var m: int = clampi(marks, 0, RITUAL_CAP)
+	if m >= RITUAL_CAP:
+		return Lang.t("血契 %d / %d（已满）") % [m, RITUAL_CAP]
+	return Lang.t("血契 %d / %d") % [m, RITUAL_CAP]
+
+
 func marks_of(side: String) -> int:
 	return int(_marks.get(side, 0))
 
