@@ -748,6 +748,7 @@ func _spawn_afterimage(src: Sprite3D, life: float = 0.20) -> void:
 	g.vframes = src.vframes
 	g.frame = src.frame
 	g.billboard = src.billboard
+	g.axis = src.axis   # 平躺飞行的弹体(115 手里剑, axis = Y)残影也要平躺; 其余弹体默认 Z, 不变
 	g.shaded = false
 	g.transparent = true
 	g.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

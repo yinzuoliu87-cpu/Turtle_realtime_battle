@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dajygmjffp0g7"
-path="res://.godot/imported/dagger-shuriken-spin.png-455afce59110c7e65fbec5b17e7b7cf9.ctex"
+uid="uid://bkpruw2qs5qid"
+path="res://.godot/imported/dagger-shuriken-impact.png-fd6a235c5d51b1c1ae1ac0e63c3157b8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/dagger-shuriken-spin.png"
-dest_files=["res://.godot/imported/dagger-shuriken-spin.png-455afce59110c7e65fbec5b17e7b7cf9.ctex"]
+source_file="res://assets/sprites/vfx/dagger-shuriken-impact.png"
+dest_files=["res://.godot/imported/dagger-shuriken-impact.png-fd6a235c5d51b1c1ae1ac0e63c3157b8.ctex"]
 
 [params]
 

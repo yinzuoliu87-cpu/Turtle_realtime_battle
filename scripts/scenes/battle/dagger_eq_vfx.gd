@@ -23,10 +23,9 @@ const DSHEETS := {
 	"fold": ["vfx/dagger-fold-cut.png", 33, 42, 22.0, 9, 19],            # 108 折叠小刀: 钢白小刀口 + 血滴
 	"khit": ["vfx/dagger-knife-hit.png", 46, 30, 40.0, 23, 16],          # 109 柳叶飞刀命中: 银蓝魔法火花
 	"obs": ["vfx/dagger-obs-pull.png", 76, 95, 70.0, 37, 34],            # 116 黑曜石拔出: 黑玻璃碎片迸开
-	"shur": ["vfx/dagger-shuriken-spin.png", 16, 16, 9.0, 7, 7],         # 115 手里剑旋转(循环)
 	"kuhit": ["vfx/dagger-kunai-hit.png", 43, 35, 37.0, 18, 18],         # 110 苦无命中: 暗铁星形火花
 	"kheal": ["vfx/dagger-kunai-heal.png", 22, 37, 24.0, 11, 26],        # 110 苦无回血: 青绿小十字
-	"shit": ["vfx/dagger-shuriken-hit.png", 46, 29, 40.0, 23, 15],       # 115 手里剑命中: 紫色火花
+	"shit": ["vfx/dagger-shuriken-impact.png", 88, 50, 72.0, 69, 24],   # 115 手里剑命中(11-25 重做): 交叉刀口 + 紫色星形爆闪 + 冲击环 + 往回溅的火花(贴图朝「从左打来」)
 }
 ## 暗影忍者动作帧(112 方帧, 与待机同贴地线): 背刺第 3 帧插中、掷剑第 3 帧出手(pack_dagger_art.py NINJA_HIT)
 const NINJA_SHEETS := {
@@ -34,9 +33,12 @@ const NINJA_SHEETS := {
 	"throw": "res://assets/sprites/vfx/eq-ninja-throw.png",
 }
 const NINJA_STAB_HIT := 3
-const NINJA_THROW_HIT := 3
+const NINJA_THROW_HIT := 7
 ## 图标贴图里刀尖的朝向(度, 屏幕坐标 x 右 y 下): 109 / 116 图标刀尖朝右上 = -45°; 单把苦无刀尖朝上 = -90°
 const KNIFE_TIP_DEG := -45.0
+const SHURIKEN_PX := 72.0        ## 手里剑显示大小(世界码; 平躺后斜着看会压扁, 比正对时大一点)
+const SHURIKEN_SPIN := 16.0      ## 自转角速度(弧度/秒)
+const SHURIKEN_AI_GAP := 0.035   ## 残影间隔(秒)
 const KUNAI_TIP_DEG := -90.0
 
 static var _nsd := {}
@@ -187,13 +189,14 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 			if s != null:
 				_fx.append({"node": s, "t": 0.0, "life": life, "kind": "flyline", "line": kind, "from": from, "dir": dir, "spd": spd, "h": h, "tip": KNIFE_TIP_DEG})
 		"shuriken":
-			s = _anim("shur", from, 72.0, life, h, false, true)   # 11-25 用户「手里剑看着太小了」(原 40)
+			## 11-25 用户「这个飞镖做的太快了，而且太粗糙了…命中的时候也没有标识或任何特效。忍者有丢飞镖的这个动作吗？」
+			##   原来是 16 像素小图放大到 72(全是方块) ⇒ 换 64 像素新画的钢镖(dagger-shuriken.png), 身后拖紫色残影
+			##   ★平躺着飞、绕竖轴转(盘面平行地面; 斜俯视镜头下是一个压扁的旋转星形) —— 11-25 用户「飞镖最好不是正对视角…正常的飞镖是怎么样的」
+			##     (原来正对镜头、在屏幕平面里转, 像一张贴纸)。参照 LoL 劫 Q 的平飞手里剑。
+			s = _tex_sprite("vfx/dagger-shuriken.png", SHURIKEN_PX, battle._world_pos(from, h), false)
 			if s != null:
-				s.no_depth_test = true
-				s.render_priority = 11
-				var f: Dictionary = _fx[_fx.size() - 1]
-				f["kind"] = "move"
-				f.merge({"from": from, "dir": dir, "spd": spd, "h": h, "loop_all": true, "fps": 24.0, "line": kind})
+				s.axis = Vector3.AXIS_Y   # 建的时候就定(直播白名单: sim 步里不再改)
+				_fx.append({"node": s, "t": 0.0, "life": life, "kind": "spinline", "line": kind, "from": from, "dir": dir, "spd": spd, "h": h, "ai": 0.0})
 
 
 func line_stop(kind: String, at: Vector2) -> void:
@@ -216,8 +219,13 @@ func knife_hit(o: Dictionary) -> void:
 	_anim("khit", Vector2(o["pos"]), 60.0, 0.45, 1.0, false, false, Color.WHITE, o)
 
 
-func shuriken_hit(o: Dictionary) -> void:
-	_anim("shit", Vector2(o["pos"]), 56.0, 0.45, 1.0, false, false, Color.WHITE, o)
+## 命中(11-25 重做): 交叉刀口 + 星形爆闪 + 火花往回溅, 按手里剑飞行方向翻(贴图画的是从左打来); 被打的人闪一下
+func shuriken_hit(o: Dictionary, dir = null) -> void:
+	var s := _anim("shit", Vector2(o["pos"]), 100.0, 0.57, 1.0, false, false, Color.WHITE, o)
+	if s != null and dir is Vector2:
+		s.flip_h = (dir as Vector2).x < 0.0
+	if _ok() and battle.get("_vfx") != null:
+		battle._vfx._flash(o, Color(1.4, 1.1, 1.8))
 
 
 # ═══════════════════════════════ 110 苦无 ═══════════════════════════════
@@ -370,6 +378,18 @@ func tick(delta: float) -> void:
 				(n as Node3D).position = Vector3(f["p0"]) + Vector3(f["dir"]) * ye + Vector3(0.0, 0.6 * ye, 0.0)
 				(n as Node3D).rotation.z = float(f["r0"]) + float(f["spin"]) * ye
 				(n as Sprite3D).modulate.a = 1.0 if yq < 0.6 else (1.0 - yq) / 0.4
+			"spinline":
+				## 手里剑: 沿直线飞(与结算同速同路程) + 平躺绕竖轴自转 + 每 SHURIKEN_AI_GAP 秒留一个紫色残影
+				var sdn: Vector2 = Vector2(f["dir"]).normalized()
+				var sp2: Vector2 = Vector2(f["from"]) + sdn * float(f["spd"]) * float(f["t"])
+				(n as Node3D).position = battle._world_pos(sp2, float(f["h"]))
+				(n as Node3D).rotation.y = -float(f["t"]) * SHURIKEN_SPIN   # 平躺, 绕竖轴转
+				f["ai"] = float(f["ai"]) + delta
+				if float(f["ai"]) >= SHURIKEN_AI_GAP and battle.get("_ballistics") != null:
+					f["ai"] = 0.0
+					(n as Sprite3D).modulate = Color(0.75, 0.55, 1.0, 1.0)
+					battle._ballistics._spawn_afterimage(n as Sprite3D, 0.16)
+					(n as Sprite3D).modulate = Color.WHITE
 			"beam":
 				var bk = f.get("tgt", null)
 				var bp: Vector2 = Vector2(bk["pos"]) if bk is Dictionary else Vector2(f["src"])

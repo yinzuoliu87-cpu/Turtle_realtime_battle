@@ -52,7 +52,7 @@ const RITUAL_PEN := [0.2, 0.35, 0.6]
 const RITUAL_TEAM_ATK := 0.001
 # ── 115 暗影匕首: 暗影忍者 ──
 const NINJA_HP := [1500.0, 3000.0, 8000.0]
-const NINJA_ATK := [80.0, 160.0, 450.0]
+const NINJA_ATK := [50.0, 95.0, 300.0]   # 11-25 用户「攻击力改为50/95/300」「不不不，是忍者的攻击力」(原 80/160/450)
 const NINJA_RES := [30.0, 50.0, 90.0]
 const NINJA_CRIT := [0.25, 0.35, 0.5]
 const NINJA_EN_MAX := 60.0
@@ -62,14 +62,15 @@ const NINJA_RESTEALTH := 1.5
 ## 影袭现身到刀插下去的前摇(背刺动作第 3 帧 = 插中那一下, 演出按「3 帧 / 这么多秒」播 ⇒ 画面插中 = 结算)
 const NINJA_STAB_WINDUP := 0.18
 ## 背刺之后两名忍者各掷手里剑的前摇(掷剑动作第 3 帧 = 出手)
-const SHURIKEN_WINDUP := 0.2
+const SHURIKEN_WINDUP := 0.45   # 11-25 0.2 → 0.45: 掷镖动作重做成 12 帧(后引蓄力 → 前冲甩出, 第 8 格出手), 0.2 秒里看不清
 const NINJA_CLONE_HP_PCT := 0.5
 const NINJA_CLONE_SEC := 20.0
 const NINJA_CLONE_STAT := 0.5
 const SHURIKEN_FLAT := [60.0, 120.0, 300.0]
 const SHURIKEN_ATK := 1.0
-const SHURIKEN_SPD := 1300.0
+const SHURIKEN_SPD := 650.0   # 11-25 用户「这个飞镖做的太快了」(原 1300)
 const SHURIKEN_W := 26.0
+const SHURIKEN_RANGE := 1000.0   # 飞行距离(码)·11-25 用户「飞镖飞行距离是多少，改为1000码」(原 到目标距离 + 260)
 # ── 116 黑曜石匕首 ──
 const OBS_FLAT := [100.0, 200.0, 600.0]
 const OBS_ATK := 0.5
@@ -365,7 +366,7 @@ func _line_hit(L: Dictionary, o: Dictionary) -> void:
 			_fx("knife_hit", [o])
 		"shuriken":
 			_magic(src, o, float(SHURIKEN_FLAT[si]) + SHURIKEN_ATK * float(src.get("atk", 0.0)))
-			_fx("shuriken_hit", [o])
+			_fx("shuriken_hit", [o, Vector2(L["dir"])])
 	battle._equip_sys.tally.pop(tl)
 
 
@@ -665,17 +666,23 @@ func _ninja_stab(n: Dictionary) -> void:
 	p["_ninja_veil"] = true
 	p["atk_cd"] = maxf(float(p.get("atk_cd", 0.0)), NINJA_RESTEALTH)   # 隐身这 1.5 秒不普攻(否则下一拍普攻就现形, 隐身等于没有; 11-25 录像自查)
 	_fx("ninja_strike", [p, tgt, from])
-	## 影分身期间: 两个忍者同时朝这个目标各掷一枚手里剑(沿直线飞, 路径上每个敌人吃一次)
+	## 每次影袭: 场上本方的忍者(影子在场时两名)各朝这个目标掷一枚手里剑(沿直线飞, 路径上每个敌人吃一次)
+	##   11-25 用户「攻击力改为50/95/300，手里剑改为每次释放影袭都会使两个忍者放」 —— 原来只有影子在场时才掷
 	var pair: Array = []
 	for m in _ninjas:
 		var q: Dictionary = m["u"]
 		if q.get("alive", false) and is_same(m["owner"], n["owner"]):
 			pair.append(m)
-	if pair.size() >= 2:
+	if not pair.is_empty():
 		for m in pair:
 			m["throw"] = SHURIKEN_WINDUP   # SHURIKEN_WINDUP 秒后出手(_tick_ninjas), 朝这个目标
 			m["throw_tgt"] = tgt
-			_fx("ninja_throw", [m["u"], SHURIKEN_WINDUP])
+			## 掷镖 = 攻击 ⇒ 现形(同普攻「攻击即现形」)。11-25 用户「忍者有丢飞镖的这个动作吗？」——
+			##   原来背刺完立刻潜伏、掷镖整段在半透明里, 甩手动作根本看不见
+			var mq: Dictionary = m["u"]
+			mq["_ninja_veil"] = false
+			mq["untargetable_until"] = minf(float(mq.get("untargetable_until", 0.0)), float(battle._t))
+			_fx("ninja_throw", [mq, SHURIKEN_WINDUP])
 
 
 ## 手里剑出手: 朝目标(死了就朝它最后的位置)沿直线飞, 路径上每个敌人吃一次
@@ -686,9 +693,8 @@ func _ninja_throw(m: Dictionary) -> void:
 	if not q.get("alive", false) or not (tgt is Dictionary):
 		return
 	var d: Vector2 = Vector2(tgt["pos"]) - Vector2(q["pos"])
-	var len := DetMath.vlen(d) + 260.0
 	stat["shuriken"] += 1
-	_launch(q, Vector2(q["pos"]), d, SHURIKEN_SPD, len, SHURIKEN_W, "shuriken", int(m["si"]))
+	_launch(q, Vector2(q["pos"]), d, SHURIKEN_SPD, SHURIKEN_RANGE, SHURIKEN_W, "shuriken", int(m["si"]))
 
 
 # ════════════════════════════════════════ 116 黑曜石匕首 ════════════════════════════════════════

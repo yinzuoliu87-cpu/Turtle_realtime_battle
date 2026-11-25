@@ -227,6 +227,9 @@ func _ready() -> void:
 		int(_ds.stat["ninja_strike"]) == 1 and _near(_lost(t2) - l2, w115, 3.0) and _lost(t1) == 0.0
 		and DetMath.dist(Vector2(nin["pos"]), Vector2(t2["pos"])) < 80.0,
 		"影袭 %d · 挨 %.0f · 别人 %.0f · 距 %.0f" % [int(_ds.stat["ninja_strike"]), _lost(t2) - l2, _lost(t1), DetMath.dist(Vector2(nin["pos"]), Vector2(t2["pos"]))])
+	## 11-25 用户「手里剑改为每次释放影袭都会…放」: 没有影子时, 暗影忍者自己也掷一枚
+	_adv(D.SHURIKEN_WINDUP + 0.05)
+	_ok("115 没有影子时影袭 ⇒ 暗影忍者自己掷一枚手里剑", int(_ds.stat["shuriken"]) == 1, str(_ds.stat["shuriken"]))
 	nin["hp"] = float(nin["maxHp"]) * 0.45
 	_adv(0.05)
 	var cs: Dictionary = _ds.ninja_state(1)
@@ -235,8 +238,9 @@ func _ready() -> void:
 		not cl.is_empty() and _near(float(cl["maxHp"]), float(D.NINJA_HP[2]) * D.NINJA_CLONE_STAT) and _near(float(cl["atk"]), float(D.NINJA_ATK[2]) * D.NINJA_CLONE_STAT),
 		"%s" % ("空" if cl.is_empty() else "%.0f / %.0f" % [float(cl["maxHp"]), float(cl["atk"])]))
 	ns["en"] = D.NINJA_EN_MAX
+	var sh0: int = int(_ds.stat["shuriken"])
 	_adv(D.NINJA_VANISH + D.NINJA_STAB_WINDUP + D.SHURIKEN_WINDUP + 0.25)
-	_ok("115 影子在场时影袭 ⇒ 两枚手里剑", int(_ds.stat["shuriken"]) == 2, str(_ds.stat["shuriken"]))
+	_ok("115 影子在场时影袭 ⇒ 两名忍者各掷一枚(这一次 +2)", int(_ds.stat["shuriken"]) - sh0 == 2, "%d → %d" % [sh0, int(_ds.stat["shuriken"])])
 	_adv(D.NINJA_CLONE_SEC)
 	_ok("115 影子 %.0f 秒后消散" % D.NINJA_CLONE_SEC, not cl.is_empty() and not bool(cl["alive"]), str(cl.get("alive")))
 

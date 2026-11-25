@@ -7,6 +7,10 @@
     关键姿势之间 = animate_image 首尾钉住两张关键姿势生成(序号 0 = 输入原画, 不取); 待机 / 走路 = animate_image 首尾都钉 ninja_0
   · 特效: PixelLab 特效工作台(vfx_workbench)的部件改配色后导出的网格表 + 逐帧坐标 json, 在 ai_src/dagger_vfx/
   · 苦无飞行物: 从 110 图标(三把苦无)裁出中间那一把的刀身 + 握柄
+  · 115 手里剑(11-25 重做): create_image_pro_flash 64×64(风格锚 = 115 图标)= shuriken2.png, 原样拷成 dagger-shuriken.png(飞行时引擎里转);
+    命中 = 特效工作台 spark_hit 预设改紫 / 银配色 + 两道交叉刀口(dagger-shuriken-impact);
+    掷镖动作 = edit_image_pro_flash 从 ninja_0 改出「后引蓄力」「前冲出手」两张关键姿势(写明严格侧面朝左),
+    再 animate_image 首尾钉住补三段中间帧(站 → 蓄力 → 出手 → 回站), 即 nthrow2_w* / nthrow2_t* / nthrow2_r*
 本脚本只做裁切 / 拼接 / 拷贝, 重跑逐字节相同。
 
     python tools/assetgen/pack_dagger_art.py
@@ -27,8 +31,8 @@ TAG = {"tagdagger": "tag-dagger", "tagritual2": "tag-ritual"}
 ## 特效表(源名 = 产出名); 一次性的去掉末尾全透明帧, 循环的原样保留
 VFX_SHEETS = ["dagger-fang-bite", "dagger-ninja-smoke", "dagger-ninja-strike", "dagger-assassin-strike", "dagger-assassin-mark",
               "dagger-ritual-exec", "dagger-ritual-mark", "dagger-kris-rush", "dagger-fold-cut", "dagger-knife-hit",
-              "dagger-obs-pull", "dagger-shade-cut", "dagger-shuriken-spin", "dagger-kunai-hit", "dagger-kunai-heal", "dagger-shuriken-hit"]
-LOOPS = {"dagger-kris-rush", "dagger-shuriken-spin"}
+              "dagger-obs-pull", "dagger-shade-cut", "dagger-kunai-hit", "dagger-kunai-heal", "dagger-shuriken-impact"]
+LOOPS = {"dagger-kris-rush"}
 ## 只把「刀弧」(含亮色像素的连通块)以锚点竖线为轴左右翻, 血花 / 碎屑不动(2026-11-25):
 ##   工作台导出的 114 斩杀镰月是「C」形(刀弧往左鼓 = 往左砍)、血却往右上甩, 自相矛盾;
 ##   翻完 = 「)」形往右砍、血往右甩(远离出手者)。演出层按出手方向整张 flip_h。
@@ -45,10 +49,46 @@ NINJA_SEQ = {
     "eq-ninja-attack": ["ninja_0", "nwind_1", "nwind_2", "nwind_3", "nkey_wind", "nslash_1", "nslash_2", "nslash_3", "nkey_slash",
                         "nrec_1", "nrec_2", "nrec_3"],
     "eq-ninja-stab": ["nstab_1", "nstab_2", "nstab_3", "nkey_stab", "nkey_stab", "nstabrec_1", "nstabrec_2", "nstabrec_3"],
-    "eq-ninja-throw": ["nthrow_1", "nthrow_2", "nthrow_3", "nkey_throw", "nthrowrec_1", "nthrowrec_2", "nthrowrec_3"],
+    ## 掷手里剑(11-25 重做, 用户「忍者有丢飞镖的这个动作吗？」—— 原 7 帧手臂几乎不动):
+    ##   后引蓄力(身体后仰、持镖手举到头后) → 整个身体前冲、手臂甩直出手(第 8 格 = 出手) → 收势回站姿
+    "eq-ninja-throw": ["nthrow2_w1", "nthrow2_w2", "nthrow2_w3", "nthrow2_w4", "nthrow2_t1", "nthrow2_t2", "nthrow2_t3", "nthrow2_t4",
+                       "nthrow2_r1", "nthrow2_r2", "nthrow2_r3", "nthrow2_r4"],
 }
 ## 命中 / 出手帧下标(从 0 数; 演出层与 AttackHits 照抄这几个数)
-NINJA_HIT = {"eq-ninja-attack": 8, "eq-ninja-stab": 3, "eq-ninja-throw": 3}
+NINJA_HIT = {"eq-ninja-attack": 8, "eq-ninja-stab": 3, "eq-ninja-throw": 7}
+## animate_image 在甩手那几格自己画了纯白速度线(一条横穿头部); 忍者本身没有纯白像素 ⇒ 去掉近白像素, 再去掉不连身体的小碎块(< 8 像素)
+CLEAN_STREAK = {"nthrow2_t1", "nthrow2_t2", "nthrow2_t3"}
+
+
+def _clean_streak(im):
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a > 0 and r > 225 and g > 225 and b > 225:
+                px[x, y] = (0, 0, 0, 0)
+    seen = set()
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] == 0 or (x, y) in seen:
+                continue
+            st = [(x, y)]
+            seen.add((x, y))
+            comp = []
+            while st:
+                a0, b0 = st.pop()
+                comp.append((a0, b0))
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        n = (a0 + dx, b0 + dy)
+                        if 0 <= n[0] < w and 0 <= n[1] < h and n not in seen and px[n][3] > 0:
+                            seen.add(n)
+                            st.append(n)
+            if len(comp) < 8:
+                for p in comp:
+                    px[p] = (0, 0, 0, 0)
+    return im
 
 
 def _strip(frames):
@@ -123,6 +163,9 @@ def main() -> None:
     k = Image.open(os.path.join(AI, "icon110.png")).convert("RGBA").crop((24, 0, 40, 40))
     k.save(os.path.join(VFX, "dagger-kunai.png"), optimize=False)
     out.append("dagger-kunai %dx%d" % k.size)
+    sh = Image.open(os.path.join(AI, "shuriken2.png")).convert("RGBA")
+    sh.save(os.path.join(VFX, "dagger-shuriken.png"), optimize=False)
+    out.append("dagger-shuriken %dx%d" % sh.size)
     ## 暗影忍者: 所有帧同一个下移量(按待机原画最低一行贴到帧底), 换表不跳
     base = Image.open(os.path.join(AI, "ninja_0.png")).convert("RGBA")
     dy = base.height - base.getbbox()[3]
@@ -130,6 +173,8 @@ def main() -> None:
         frames = []
         for nm in names:
             f = Image.open(os.path.join(AI, nm + ".png")).convert("RGBA")
+            if nm in CLEAN_STREAK:
+                f = _clean_streak(f)
             g = Image.new("RGBA", f.size, (0, 0, 0, 0))
             g.paste(f, (0, dy))
             frames.append(g)
