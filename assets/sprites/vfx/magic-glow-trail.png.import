@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cb82j31c205oj"
-path="res://.godot/imported/magic-frost-ground.png-0e1d3593a4d2993ef1614e2b8e47cc6f.ctex"
+uid="uid://7k0rjg6uohau"
+path="res://.godot/imported/magic-glow-trail.png-4cae9f4bd645676e8963df4614df0d97.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-frost-ground.png"
-dest_files=["res://.godot/imported/magic-frost-ground.png-0e1d3593a4d2993ef1614e2b8e47cc6f.ctex"]
+source_file="res://assets/sprites/vfx/magic-glow-trail.png"
+dest_files=["res://.godot/imported/magic-glow-trail.png-4cae9f4bd645676e8963df4614df0d97.ctex"]
 
 [params]
 

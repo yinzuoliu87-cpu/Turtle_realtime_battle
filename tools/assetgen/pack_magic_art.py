@@ -64,11 +64,11 @@ DROP_FLOATERS = {"kpa_wind_1", "kpa_wind_2", "kpa_wind_3"}
 FOOT_REF = {"eq-skelw": "skw_0", "eq-skelm": "skm_0", "eq-skelp": "skp_0b"}
 
 AIV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "magic_vfx")
-VFX_SHEETS = ["magic-missile-orb", "magic-missile-hit", "magic-note-bolt", "magic-note-hit", "magic-fireball2", "magic-fireball-hit2",
-              "magic-frost-ground", "magic-frost-spike", "magic-storm-bolt", "magic-holy-chest", "magic-scroll-shield", "magic-skel-rise", "magic-skel-crumble",
+VFX_SHEETS = ["magic-missile-orb", "magic-missile-hit", "magic-note-bolt", "magic-note-hit", "magic-fire-head", "magic-fire-hit3", "magic-fire-cast", "magic-fire-ember",
+              "magic-frost-e", "magic-frost-shard", "magic-storm-bolt", "magic-holy-chest", "magic-scroll-shield", "magic-skel-rise", "magic-skel-crumble",
               "magic-skel-blast", "magic-skel-wave", "magic-wave-hit", "magic-wave-heal", "magic-mirror-shatter",
               "magic-forbidden-blast", "magic-page-cut", "magic-page-block", "magic-tome-hp", "magic-skelm-bolt", "magic-skelp-bolt"]
-VFX_LOOPS = {"magic-missile-orb", "magic-note-bolt", "magic-fireball2", "magic-holy-chest", "magic-scroll-shield", "magic-skel-wave",
+VFX_LOOPS = {"magic-missile-orb", "magic-note-bolt", "magic-fire-head", "magic-holy-chest", "magic-scroll-shield", "magic-skel-wave",
              "magic-skelm-bolt", "magic-skelp-bolt"}
 ## 锚点改写(工作台导出的锚点是效果原点, 不是要对准的那一点): 122 胸口绿光 = 光团中心(逐帧量绿芯质心 ≈ (20, 30))
 ANCHOR_FIX = {"magic-holy-chest": (20, 30)}
@@ -158,9 +158,14 @@ def main():
     tr = Image.open(os.path.join(AIV, "magic-missile-trail.png")).convert("RGBA").crop((0, 10, 24, 18)).transpose(Image.Transpose.ROTATE_90)
     tr.putdata([pal.get(c, c) for c in tr.getdata()])
     tr.save(os.path.join(VFX, "magic-forb-trail.png"), optimize=False)
+    ## 119 火球光尾: 同一条光带换成灰白(颜色在引擎里按年龄从粉 → 红 → 暗紫插值, 贴安妮 Q 视频「头粉尾红」)
+    grey = {(58, 94, 224, 255): (92, 92, 104, 255), (127, 176, 255, 255): (168, 168, 180, 255), (214, 232, 255, 255): (226, 226, 232, 255)}
+    tg = Image.open(os.path.join(AIV, "magic-missile-trail.png")).convert("RGBA").crop((0, 10, 24, 18)).transpose(Image.Transpose.ROTATE_90)
+    tg.putdata([grey.get(c, c) for c in tg.getdata()])
+    tg.save(os.path.join(VFX, "magic-glow-trail.png"), optimize=False)
     ## 羁绊【飞弹】光尾段: 工作台导出的竖光带(24×32, 上端圆头)只取长度方向一致的第 10–17 行, 转成「沿路径 = 横向」的 8×24
     ##   (引擎里每个 sim 步铺一段, 按路径方向转、按段长拉伸; 圆头那几行会在段与段接缝处出现亮点, 不取)
-    for tn in ["magic-missile-trail", "magic-fire-trail"]:   # 蓝(羁绊飞弹 / 学徒笔记)· 火(119 火球)
+    for tn in ["magic-missile-trail"]:   # 蓝(羁绊飞弹 / 学徒笔记); 119 火球改用下面的灰白光带(引擎里按年龄染色)
         Image.open(os.path.join(AIV, tn + ".png")).convert("RGBA").crop((0, 10, 24, 18)).transpose(Image.Transpose.ROTATE_90).save(
             os.path.join(VFX, tn + ".png"), optimize=False)
     print("图标 %d 张 + 标签 %d 张 + 骷髅帧条 %d 条 + 特效 %d 张 + 书页 1 张" % (len(ICONS), len(TAG), len(SKEL_SEQ), len(rows)))

@@ -1,0 +1,1041 @@
+{
+ "frames": [
+  {
+   "filename": "magic-frost-e 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 1.png",
+   "frame": {
+    "x": 200,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 2.png",
+   "frame": {
+    "x": 400,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 3.png",
+   "frame": {
+    "x": 600,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 4.png",
+   "frame": {
+    "x": 800,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 5.png",
+   "frame": {
+    "x": 1000,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 6.png",
+   "frame": {
+    "x": 1200,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 7.png",
+   "frame": {
+    "x": 0,
+    "y": 132,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 8.png",
+   "frame": {
+    "x": 200,
+    "y": 132,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 9.png",
+   "frame": {
+    "x": 400,
+    "y": 132,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 10.png",
+   "frame": {
+    "x": 600,
+    "y": 132,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 11.png",
+   "frame": {
+    "x": 800,
+    "y": 132,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 12.png",
+   "frame": {
+    "x": 1000,
+    "y": 132,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 13.png",
+   "frame": {
+    "x": 1200,
+    "y": 132,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 14.png",
+   "frame": {
+    "x": 0,
+    "y": 264,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 15.png",
+   "frame": {
+    "x": 200,
+    "y": 264,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 16.png",
+   "frame": {
+    "x": 400,
+    "y": 264,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 17.png",
+   "frame": {
+    "x": 600,
+    "y": 264,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 18.png",
+   "frame": {
+    "x": 800,
+    "y": 264,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 19.png",
+   "frame": {
+    "x": 1000,
+    "y": 264,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 20.png",
+   "frame": {
+    "x": 1200,
+    "y": 264,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 21.png",
+   "frame": {
+    "x": 0,
+    "y": 396,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 22.png",
+   "frame": {
+    "x": 200,
+    "y": 396,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 23.png",
+   "frame": {
+    "x": 400,
+    "y": 396,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 24.png",
+   "frame": {
+    "x": 600,
+    "y": 396,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 25.png",
+   "frame": {
+    "x": 800,
+    "y": 396,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 26.png",
+   "frame": {
+    "x": 1000,
+    "y": 396,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 27.png",
+   "frame": {
+    "x": 1200,
+    "y": 396,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 28.png",
+   "frame": {
+    "x": 0,
+    "y": 528,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 29.png",
+   "frame": {
+    "x": 200,
+    "y": 528,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 30.png",
+   "frame": {
+    "x": 400,
+    "y": 528,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 31.png",
+   "frame": {
+    "x": 600,
+    "y": 528,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 32.png",
+   "frame": {
+    "x": 800,
+    "y": 528,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 33.png",
+   "frame": {
+    "x": 1000,
+    "y": 528,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 34.png",
+   "frame": {
+    "x": 1200,
+    "y": 528,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 35.png",
+   "frame": {
+    "x": 0,
+    "y": 660,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 36.png",
+   "frame": {
+    "x": 200,
+    "y": 660,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 37.png",
+   "frame": {
+    "x": 400,
+    "y": 660,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-e 38.png",
+   "frame": {
+    "x": 600,
+    "y": 660,
+    "w": 200,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 200,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 200,
+    "h": 132
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 33
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-frost-e.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 1400,
+   "h": 792
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 100,
+   "y": 66
+  },
+  "frameTags": [
+   {
+    "name": "magic-frost-e",
+    "from": 0,
+    "to": 38,
+    "direction": "forward"
+   }
+  ]
+ }
+}

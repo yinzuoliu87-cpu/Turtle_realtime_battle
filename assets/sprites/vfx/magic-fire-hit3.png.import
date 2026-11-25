@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://v3ybvjidawdx"
-path="res://.godot/imported/magic-frost-spike.png-619999b23a8dd3a1012ac3129107b095.ctex"
+uid="uid://djkm1fbakeotj"
+path="res://.godot/imported/magic-fire-hit3.png-91b6be374a6039bdfff43ee25c0be36b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-frost-spike.png"
-dest_files=["res://.godot/imported/magic-frost-spike.png-619999b23a8dd3a1012ac3129107b095.ctex"]
+source_file="res://assets/sprites/vfx/magic-fire-hit3.png"
+dest_files=["res://.godot/imported/magic-fire-hit3.png-91b6be374a6039bdfff43ee25c0be36b.ctex"]
 
 [params]
 

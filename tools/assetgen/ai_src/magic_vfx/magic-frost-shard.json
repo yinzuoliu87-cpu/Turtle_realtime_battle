@@ -1,0 +1,495 @@
+{
+ "frames": [
+  {
+   "filename": "magic-frost-shard 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 1.png",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 2.png",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 3.png",
+   "frame": {
+    "x": 144,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 4.png",
+   "frame": {
+    "x": 192,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 5.png",
+   "frame": {
+    "x": 0,
+    "y": 60,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 6.png",
+   "frame": {
+    "x": 48,
+    "y": 60,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 7.png",
+   "frame": {
+    "x": 96,
+    "y": 60,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 8.png",
+   "frame": {
+    "x": 144,
+    "y": 60,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 9.png",
+   "frame": {
+    "x": 192,
+    "y": 60,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 10.png",
+   "frame": {
+    "x": 0,
+    "y": 120,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 11.png",
+   "frame": {
+    "x": 48,
+    "y": 120,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 12.png",
+   "frame": {
+    "x": 96,
+    "y": 120,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 13.png",
+   "frame": {
+    "x": 144,
+    "y": 120,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 14.png",
+   "frame": {
+    "x": 192,
+    "y": 120,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 15.png",
+   "frame": {
+    "x": 0,
+    "y": 180,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 16.png",
+   "frame": {
+    "x": 48,
+    "y": 180,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  },
+  {
+   "filename": "magic-frost-shard 17.png",
+   "frame": {
+    "x": 96,
+    "y": 180,
+    "w": 48,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 60
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.7666666666666667
+   },
+   "duration": 33
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-frost-shard.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 240,
+   "h": 240
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 24,
+   "y": 46
+  },
+  "frameTags": [
+   {
+    "name": "magic-frost-shard",
+    "from": 0,
+    "to": 17,
+    "direction": "forward"
+   }
+  ]
+ }
+}

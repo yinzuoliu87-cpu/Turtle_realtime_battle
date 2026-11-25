@@ -15,10 +15,14 @@ const MSHEETS := {
 	"missile-hit": ["vfx/magic-missile-hit.png", 64, 64, 44.0, 32, 32],   # 5 帧 ·【飞弹】命中: 蓝白闪 + 射线 + 环
 	"note-bolt": ["vfx/magic-note-bolt.png", 32, 32, 24.0, 16, 16],   # 8 帧 · 循环 · 117 学徒笔记飞弹: 小而淡的青白球(与羁绊飞弹区分)
 	"note-hit": ["vfx/magic-note-hit.png", 43, 42, 37.0, 18, 23],   # 5 帧 · 117 命中: 青白小十字环
-	"fireball2": ["vfx/magic-fireball2.png", 74, 28, 68.0, 63, 15],   # 12 帧 · 循环 · 119 烈焰法典火球(11-25 第二版, 照安妮 Q): 白热弹头在前、火舌往后甩; 朝飞行方向转
-	"fireball-hit2": ["vfx/magic-fireball-hit2.png", 83, 79, 76.0, 42, 39],   # 12 帧 · 119 火球命中(第二版): 白闪 → 火团翻滚炸开 + 冲击圈 + 火星往外甩、冷成暗红 → 烟
-	"frost-ground": ["vfx/magic-frost-ground.png", 160, 66, 135.0, 80, 33],   # 16 帧 · 120 冰霜新星(11-25 第二版, 照冰雪墨菲特): 地面冰裂从中心往外爬 + 贴地寒雾
-	"frost-spike": ["vfx/magic-frost-spike.png", 56, 65, 56.0, 31, 43],   # 14 帧 · 120 冰刺一簇: 从地里破土 → 停住 → 缩回、剩碎冰(锚点 = 冰刺根部)
+	## 119 / 120 第三版(11-25): 贴安妮 Q 官网演示视频 / 冰雪墨菲特 E 展示视频逐帧做(参考研究 docs/studies/20261125-参考-*.md, 分段表见方案书附录);
+	##   工作台里自己写的图层(水滴弹头 / 光团 / 横条星芒 / 舔火 / 贴地亮圈 / 冰火圆盘 / 压暗区 / 冻印 / 细冰条), 不是现成模板
+	"fire-head": ["vfx/magic-fire-head.png", 84, 36, 54.0, 64, 18],   # 8 帧 · 循环 · 119 弹头: 前沿黄白月牙 · 中橙 · 后深红火舌往后飘 · 外包品红辉光(锚点 = 弹头前沿; 引擎按飞行方向转)
+	"fire-hit3": ["vfx/magic-fire-hit3.png", 96, 84, 78.0, 48, 44],   # 17 帧 · 119 命中: 小爆点 → 圆光团鼓到约一个目标大 → 横条 + 星芒 → 余火往上舔 + 碎片蹦出 + 脚下暗烟
+	"fire-cast": ["vfx/magic-fire-cast.png", 48, 48, 34.0, 24, 24],   # 5 帧 · 119 出手: 施法点一团橙光 + 品红晕
+	"fire-ember": ["vfx/magic-fire-ember.png", 28, 28, 16.0, 14, 14],   # 10 帧 · 119 沿路火星: 几颗火星往外蹦、冷成暗红
+	"frost-e": ["vfx/magic-frost-e.png", 200, 132, 194.0, 100, 66],   # 39 帧 · 120 贴地: 亮圈 3 帧胀满 + 冰火圆盘 + 毛刺环 + 雾 → 压暗区留 1.1 秒 + 圆心冻印 1.2 秒后淡掉(亮圈半径 = 92 像素)
+	"frost-shard": ["vfx/magic-frost-shard.png", 48, 60, 29.0, 24, 46],   # 17 帧 · 120 圆面上的细冰条: 3 帧长出 → 停 → 碎, 碎冰上抛落地(锚点 = 冰条根部)
 	"storm-bolt": ["vfx/magic-storm-bolt.png", 96, 128, 127.0, 48, 110, 2],   # 8 帧 · 121 风暴之书: 天降黄色闪电(第 7 列 = 从第 2 帧开播: 闪电已快到地面, 落地格对上伤害那一刻)
 	"holy-chest": ["vfx/magic-holy-chest.png", 43, 57, 45.0, 20, 30],   # 12 帧 · 循环 · 122 治愈圣典持续回复(第二版): 胸口一团绿光脉动 + 绿色光点 / 加号往上飘(锚点 = 光团中心)
 	"scroll-shield": ["vfx/magic-scroll-shield.png", 96, 96, 81.0, 48, 48],   # 8 帧 · 循环 · 118 羊皮咒卷护盾: 金色符文环
@@ -88,7 +92,7 @@ const NOTE_PX := 16.0            ## 117 学徒笔记: 比羁绊飞弹再小一�
 const NOTE_TRAIL_W := 6.0
 const NOTE_TRAIL_COL := Color(0.7, 1.0, 0.95, 0.8)
 const TRAIL_TEX := "vfx/magic-missile-trail.png"
-const FIRE_TRAIL_TEX := "vfx/magic-fire-trail.png"
+const GLOW_TRAIL_TEX := "vfx/magic-glow-trail.png"   ## 灰白光带(颜色由引擎按年龄染)
 var _trail: Array = []           ## 光尾段 {node, t, sx}
 
 
@@ -138,7 +142,15 @@ func _arc_step(node, to2: Vector2, k: float) -> void:
 		_orient_screen(s, s.position - prev)   # 119 火球: 弹头朝前进方向
 	if s.has_meta("book"):
 		s.scale = Vector3(0.8 + 0.2 * sin(q * 40.0), 1.0, 1.0)   # 125 飞书: 飞的时候书页扑扇
-	_trail_seg(prev, s.position, s.get_meta("trail_col", MB_TRAIL_COL), float(s.get_meta("trail_w", MB_TRAIL_W)), str(s.get_meta("trail_tex", TRAIL_TEX)))
+	_trail_seg(prev, s.position, s.get_meta("trail_col", MB_TRAIL_COL), float(s.get_meta("trail_w", MB_TRAIL_W)), str(s.get_meta("trail_tex", TRAIL_TEX)),
+		float(s.get_meta("trail_life", MB_TRAIL_LIFE)), s.get_meta("trail_grad", []))
+	if s.has_meta("embers"):
+		## 119 沿路火星: 每飞过一段撒一小簇(贴安妮 Q 尾巴两侧蹦出的橙色火星)
+		var acc: float = float(s.get_meta("ember_acc", 0.0)) + prev.distance_to(s.position)
+		if acc >= FIRE_EMBER_GAP * float(battle.WS):
+			acc = 0.0
+			_anim("fire-ember", p, 40.0, 0.42, h, false, false)
+		s.set_meta("ember_acc", acc)
 
 
 ## 光尾 = 一条丝带(拖尾渲染器的做法): 每个 sim 步从上一位置到这一位置铺一段光带, 按路径方向转、按段长拉伸, 段与段首尾相接;
@@ -146,7 +158,7 @@ func _arc_step(node, to2: Vector2, k: float) -> void:
 ##   (11-25 用户「这个飞弹的轨迹…就是这个图片叠在一起吗？」—— 第一版是弹头贴图的残影一个个摞起来, 不是轨迹。)
 ##   ★不用每帧现画的 ImmediateMesh(直播录不进流, memory fb-no-immediatemesh-vfx-stream): 每段是一个 Sprite3D,
 ##     位置 / 旋转 / 缩放 / 颜色都在录流器的跟踪表里。
-func _trail_seg(a3: Vector3, b3: Vector3, col: Color, width: float, tex: String = TRAIL_TEX) -> void:
+func _trail_seg(a3: Vector3, b3: Vector3, col: Color, width: float, tex: String = TRAIL_TEX, life: float = MB_TRAIL_LIFE, grad: Array = []) -> void:
 	if not _ok():
 		return
 	var cam = battle.get("_cam")
@@ -176,7 +188,17 @@ func _trail_seg(a3: Vector3, b3: Vector3, col: Color, width: float, tex: String 
 	g.global_transform = Transform3D(cb * Basis(Vector3(0, 0, 1), atan2(vy, vx)), (a3 + b3) * 0.5)
 	var sx: float = seg / (float(t.get_width()) * g.pixel_size) * 1.12   # 略长一点, 段与段之间不留缝
 	g.scale = Vector3(sx, 1.0, 1.0)
-	_trail.append({"node": g, "t": 0.0, "sx": sx, "a0": col.a})
+	_trail.append({"node": g, "t": 0.0, "sx": sx, "a0": col.a, "life": life, "grad": grad})
+
+
+## 颜色曲线取值: grad = [[q, Color], ...](q 升序)
+func _grad_at(grad: Array, q: float) -> Color:
+	for k in range(1, grad.size()):
+		if q <= float(grad[k][0]):
+			var a: Array = grad[k - 1]
+			var b: Array = grad[k]
+			return (a[1] as Color).lerp(b[1], clampf((q - float(a[0])) / maxf(0.0001, float(b[0]) - float(a[0])), 0.0, 1.0))
+	return grad.back()[1]
 
 
 func _tick_trail(delta: float) -> void:
@@ -187,12 +209,16 @@ func _tick_trail(delta: float) -> void:
 			_trail.remove_at(j)
 			continue
 		r["t"] = float(r["t"]) + delta
-		var q: float = float(r["t"]) / MB_TRAIL_LIFE
+		var q: float = float(r["t"]) / float(r.get("life", MB_TRAIL_LIFE))
 		if q >= 1.0:
 			(g as Node3D).queue_free()
 			_trail.remove_at(j)
 			continue
-		(g as Sprite3D).modulate.a = float(r.get("a0", 0.9)) * (1.0 - q)
+		var grad: Array = r.get("grad", [])
+		if grad.is_empty():
+			(g as Sprite3D).modulate.a = float(r.get("a0", 0.9)) * (1.0 - q)
+		else:
+			(g as Sprite3D).modulate = _grad_at(grad, q)
 		(g as Sprite3D).scale = Vector3(float(r["sx"]), 1.0 - 0.85 * q, 1.0)   # 越旧越细 ⇒ 光尾往后收成一根线
 
 
@@ -216,22 +242,32 @@ func note_land(node, tgt: Dictionary, hit: bool) -> void:
 		_anim("note-hit", Vector2(tgt["pos"]), 50.0, 0.32, 0.02, false, false, Color.WHITE, tgt)
 
 
-## 119 火球(11-25 第二版, 用户「火球本身以及这个命中特效不是很好…参考一下英雄联盟的安妮」):
-##   照安妮 Q「碎裂之火」—— 白热弹头在前、火舌往身后甩, 弹头朝飞行方向转(不是一颗圆球平移); 身后仍拖火焰丝带(丝带用户说没问题);
-##   命中 = 白闪 → 火团翻滚炸开 + 冲击圈 + 火星往外甩并冷成暗红 → 烟散。
-const FIRE_PX := 78.0            ## 弹头连火舌的长度(世界码)
+## 119 火球(11-25 第三版, 贴安妮 Q 官网演示视频逐帧做; 研究 docs/studies/20261125-参考-安妮Q.md, 分段表见方案书附录):
+##   ① 出手: 施法点一团橙光 + 品红晕 ② 弹头: 水滴形, 前沿黄白月牙最亮, 火舌往后飘, 外包品红辉光, 按屏幕上的飞行方向转
+##   ③ 拖尾: 每段活 0.4 秒, 颜色按年龄 粉亮 → 红(33%) → 暗紫半透明(53%) → 没 ⇒ 同一时刻整条「头粉尾红」
+##   ④ 沿路撒火星 ⑤⑥ 命中: 小爆点 → 圆光团 → 横条 + 星芒 → 余火往上舔 / 碎片蹦 / 脚下暗烟 ⑦ 弹头碰到即删, 尾迹原地照年龄暗掉
+const FIRE_PX := 84.0            ## 弹头连火舌的长度(世界码)
+const FIRE_TRAIL_W := 22.0
+const FIRE_TRAIL_LIFE := 0.4
+const FIRE_EMBER_GAP := 55.0     ## 每飞多少码撒一簇火星
+const FIRE_TRAIL_GRAD := [[0.0, Color(1.0, 0.82, 0.92, 0.95)], [0.15, Color(1.0, 0.5, 0.78, 0.95)], [0.33, Color(0.95, 0.24, 0.14, 0.85)],
+	[0.53, Color(0.42, 0.1, 0.34, 0.5)], [1.0, Color(0.3, 0.05, 0.25, 0.0)]]
 func fire_launch(u: Dictionary, tgt: Dictionary):
-	var s := _arc_launch("fireball2", u, tgt, FIRE_PX, 0, 1, Color(1, 1, 1, 0.9), 16.0, 0.0, FIRE_TRAIL_TEX)
+	_anim("fire-cast", Vector2(u["pos"]), 52.0, 0.18, 0.02, false, false, Color.WHITE, u)
+	var s := _arc_launch("fire-head", u, tgt, FIRE_PX, 0, 1, Color.WHITE, FIRE_TRAIL_W, 0.0, GLOW_TRAIL_TEX)
 	if s != null:
 		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 建出来这一帧就定(直播只在建点录这一项); 朝向每步在 _arc_step 里按路径转
 		s.set_meta("orient", true)
+		s.set_meta("trail_life", FIRE_TRAIL_LIFE)
+		s.set_meta("trail_grad", FIRE_TRAIL_GRAD)
+		s.set_meta("embers", true)
 		_orient_to(s, Vector2(tgt["pos"]) - Vector2(u["pos"]))
 	return s
 
 
 func fire_land(node, tgt: Dictionary) -> void:
-	_fly_end(node)
-	_anim("fireball-hit2", Vector2(tgt["pos"]), 125.0, 0.85, 0.02, false, false, Color.WHITE, tgt)
+	_fly_end(node)   # 弹头碰到即消失; 尾段各自照年龄淡完
+	_anim("fire-hit3", Vector2(tgt["pos"]), 132.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
 
 
 ## 飞行物朝向: 面朝镜头, 绕视线转到「屏幕上的前进方向」(贴图里弹头朝右)
@@ -360,20 +396,20 @@ func scroll_shield(u: Dictionary) -> void:
 	_follow("scroll-shield", u, 125.0, 4.0, body_h(u))   # 环要把整只龟圈在里面才像护盾(80 时像一圈细箍压在身上, 11-25 录像自查)
 
 
-## 120 冰霜新星(11-25 第二版, 用户「完全没有贴地的感觉…墨菲特…冰雪杰的皮肤, 你可以去参考他的」):
-##   照冰雪墨菲特 —— 冰是从地里长出来的: 先地面冰裂从中心往外爬、贴地寒雾铺开, 紧跟着一圈圈冰刺破土
-##   (中心一簇 → 内圈 5 簇 → 外圈 9 簇, 由内往外一拍一拍), 停一下再缩回地里、剩碎冰。冰刺锚点在根部, 根部贴地。
-const FROST_RINGS := [[0.0, 1, 0.0, 130.0], [0.42, 5, 0.07, 105.0], [0.8, 9, 0.15, 92.0]]   # 第一版 74/62/54 录出来只是地上一撮撮小冰碴(11-25 录像自查)   ## [半径比例, 簇数, 延迟秒, 冰刺大小(码)]
+## 120 冰霜新星(11-25 第三版, 贴冰雪墨菲特 E 展示视频逐帧做; 研究 docs/studies/20261125-参考-冰雪墨菲特E与R.md, 分段表见方案书附录):
+##   贴地一张: 亮圈 3 帧胀到半径 r + 里面冰火圆盘 + 毛刺环 + 雾 → 压暗区留到 1.1 秒 + 圆心冻印 1.2 秒后淡掉(亮圈半径 92 像素 / 内容直径 194);
+##   圆面上撒几簇细冰条「站起来」再碎、碎冰上抛落地。第二版的「一圈圈大冰刺破土」是大招 R 的东西, 撤掉。
+const FROST_SHARDS := [[0.0, 0.0, 0.0], [0.45, 0.4, 0.04], [0.5, 2.3, 0.05], [0.42, 4.1, 0.06], [0.75, 1.2, 0.08], [0.8, 3.0, 0.09],
+	[0.72, 5.0, 0.1], [0.62, 5.9, 0.07], [0.3, 3.2, 0.03]]   ## [半径比例, 角度(弧度), 延迟秒]
+const FROST_SHARD_PX := 78.0   ## 48 时录出来只是几粒白点(11-25 录像自查)
 func frost_nova(c: Vector2, r: float) -> void:
-	_anim("frost-ground", c, r * 1.35, 1.4, 0.05, false, false, Color(0.8, 0.92, 1.0, 0.7), "ground")   # 冰裂压淡、缩小: 第一版按直径 2r 铺、纯白, 像一只白色大蜘蛛盖住冰刺(11-25 录像自查)
-	for ring in FROST_RINGS:
-		var n: int = int(ring[1])
-		for i in range(n):
-			var th: float = TAU * (float(i) + 0.5 * float(n % 2)) / float(n) + 0.3
-			var p: Vector2 = c + Vector2(cos(th), sin(th)) * r * float(ring[0])
-			var sz: float = float(ring[3]) * (0.9 + 0.2 * float((i * 7) % 3) / 2.0)
-			_later(float(ring[2]) + 0.015 * float(i % 3), func() -> void:
-				_anim("frost-spike", p, sz, 0.95, 0.05, false, false, Color.WHITE, "ground"))
+	var g := _anim("frost-e", c, r * 2.0 * 194.0 / 184.0, 1.3, 0.05, false, false, Color.WHITE, "ground")
+	if g != null:
+		g.render_priority = -1   # 贴地的一层画在单位底下(参考里墨菲特站在圈上); 不做深度测试照旧(下半张不被地面挡)
+	for sh in FROST_SHARDS:
+		var p: Vector2 = c + Vector2(cos(float(sh[1])), sin(float(sh[1]))) * r * float(sh[0])
+		_later(float(sh[2]), func() -> void:
+			_anim("frost-shard", p, FROST_SHARD_PX, 0.6, 0.05, false, false, Color.WHITE, "ground"))
 
 
 func storm_bolt(o: Dictionary) -> void:

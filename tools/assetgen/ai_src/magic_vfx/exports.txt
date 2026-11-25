@@ -31,3 +31,9 @@ magic-frost-ground 6a34c059-2426-4b25-a351-d8b7a26e1e87
 magic-fireball2 1085caaf-6b70-459d-9d86-c225da33a4b1
 magic-fireball-hit2 1da70b43-7b92-47b2-85cb-6989df107875
 magic-mirror-shatter e286cde7-a657-4a17-a82d-152843d2914f
+magic-fire-head 3a76fdfe-d9b2-4c9a-86ee-624bde3926b7
+magic-fire-hit3 4a82360a-bea2-42a5-8e1f-fc2a38ab0144
+magic-fire-cast 957ee3e2-ac5e-438b-abfc-cfc1ecf6280d
+magic-fire-ember bb79258a-fbea-4ff1-938a-36ec8086cbf9
+magic-frost-e 1b16d456-ef2a-436e-88fa-dcd9c8661007
+magic-frost-shard df01176d-97cb-4f69-95b9-afebca4aadc0
