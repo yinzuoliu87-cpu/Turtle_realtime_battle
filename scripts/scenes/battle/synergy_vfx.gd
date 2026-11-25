@@ -1281,7 +1281,7 @@ static func _build_reap_orb() -> ArrayMesh:
 
 ## 收殓的金球转移。from2d = 尸体, to_unit = 收下这份护盾的单位(跟着它走, 它会动)。
 ## 返回金球节点(门禁量它的真实轨迹)。
-func reap_orb(from2d: Vector2, to_unit: Dictionary) -> MeshInstance3D:
+func reap_orb(from2d: Vector2) -> MeshInstance3D:
 	if not _has_world():
 		return null
 	if _mesh_reap == null:

@@ -56,7 +56,9 @@ func _ready() -> void:
 	P2C.now_override_ts = P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 12 * 3600
 	var a := _snap(["basic", "stone", "bamboo"], [3, 3, 3], "amy")
 	var b := _snap(["ninja", "dice", "pirate"], [1, 2, 0], "hal")
-	for s in range(3100041, 3100053):
+	var s0: int = int(OS.get_environment("SEED_FROM")) if OS.has_environment("SEED_FROM") else 3100041   # 11-25 起可用环境变量指定扫描范围
+	var s1: int = int(OS.get_environment("SEED_TO")) if OS.has_environment("SEED_TO") else 3100052
+	for s in range(s0, s1 + 1):
 		SEED = s
 		var res: Dictionary = await RefereeRunner.run(self, _job(a, b))
 		print("[SEED] %d ok=%s 胜 %s 步 %d coins %d / coins_b %d %s" % [s, str(res.get("ok")), str(res.get("winner")), int(res.get("steps", 0)),

@@ -4792,29 +4792,6 @@ func _anim_vfx_frame(fv: float, spr, n: int) -> void:
 	if is_instance_valid(spr):
 		var real: int = maxi(1, int(spr.hframes) * int(spr.vframes))
 		spr.frame = clampi(int(fv), 0, mini(n, real) - 1)
-func _fly_vfx(path: String, from2d: Vector2, to2d: Vector2, size_px: float, dur: float, height: float = 1.0, delay: float = 0.0) -> void:
-	var t: Texture2D = load(path)
-	if t == null: return
-	var fh: int = maxi(1, t.get_height())
-	var nf: int = maxi(1, int(t.get_width() / fh))
-	var spawn := func() -> void:
-		var s := Sprite3D.new()
-		s.texture = t
-		s.hframes = nf
-		s.frame = 0
-		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED; s.shaded = false; s.transparent = true
-		s.pixel_size = (size_px * WS) / float(fh)
-		s.position = _world_pos(from2d, height)
-		_world.add_child(s)
-		var tw2 := _reg_tween()
-		tw2.tween_property(s, "position", _world_pos(to2d, height), dur).set_trans(Tween.TRANS_LINEAR)
-		if nf > 1:
-			tw2.parallel().tween_property(s, "frame", nf - 1, dur)
-		tw2.tween_callback(s.queue_free)
-	var tw0 := _reg_tween()
-	tw0.tween_interval(maxf(0.001, delay))
-	tw0.tween_callback(spawn)
 
 # 通用光环VFX(C组半透明): 贴地半透明环罩住单位·跟随单位·淡入→保持→淡出 (仿 _shield_dome/_skill_ring). color含alpha=峰值透明度.
 func _aura_vfx(path: String, u: Dictionary, radius_px: float, color: Color, dur: float, height: float = 0.06) -> void:
@@ -5355,18 +5332,6 @@ func _basic_shield_impact_hit(u: Dictionary, tgt) -> void:
 	_vfx._play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-impact.png", tgt["pos"], 130.0, 20.0, 1.05)
 	_skill_ring(u["pos"], Color(1.0, 0.9, 0.45, 0.5), 50.0)
 	_shake(0.1)
-func _basic_first_blocker(u: Dictionary, dir: Vector2):          # 可被挡直线弹道: 返回dir方向路径上第一个"敌/蛋"(障碍穿过·我方不挡·走_enemies_of天然含蛋不含友)
-	var best = null
-	var bestd: float = INF
-	for o in _targeting._enemies_of(u):
-		if not o.get("alive", false): continue
-		var rel: Vector2 = o["pos"] - u["pos"]
-		var along: float = DetMath.dot(rel, dir)
-		if along < 0.0: continue
-		if DetMath.vlen((rel - dir * along)) > 55.0: continue
-		if along < bestd: bestd = along; best = o
-	return best
-
 func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击(80龟能): 实现在 battle_ballistics.basic_strike(直线技能弹·420 码·随机方向·施法定身)
 	_ballistics.basic_strike(u)
 

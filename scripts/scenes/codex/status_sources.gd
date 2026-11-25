@@ -130,7 +130,7 @@ const SRC := {
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_sk_shell_shadow_dive"},
 		{"k": "pet", "id": "chest", "sk": "chestTreasure", "at": "scenes/battle/battle_damage.gd:_post_hit_hooks", "re": "\"burn\", maxi\\(1, roundi\\(float\\(src\\[\"atk\"\\]\\) \\* ChestSystem\\.FLINT",
 			"link": "宝箱藏宝图 on-hit 战利品"},
-		{"k": "eq", "id": "p2eq_022", "at": MAIN + ":_fuel_bottle_hit", "lf": EQS, "link": "battle\\._fuel_bottle_hit\\.bind"},
+		{"k": "eq", "id": "p2eq_022", "at": MAIN + ":_fuel_bottle_hit", "lf": EQS, "link": "func _eq_fuel_throw[\\s\\S]{0,2000}battle\\._fuel_bottle_hit\\("},
 		{"k": "eq", "id": "p2eq_023", "at": EQS + ":_eq_on_hit", "arm": "p2eq_023"},
 		{"k": "eq", "id": "p2eq_023", "at": EQS + ":_fire_coral_wave_hit", "link": "\"p2eq_023\""},
 		{"k": "eq", "id": "p2eq_024", "at": "systems/equip/dragon_system.gd:_dragon_hit_enemy", "lf": EQS,
@@ -287,7 +287,7 @@ const SRC := {
 	"slow": [
 		## 101 粘弹: 贴上减速 + 粘液减速(两处都经批里的 _slow 写减速通道)
 		{"k": "eq", "id": "p2eq_101", "at": "systems/equip/eq_bomb_batch.gd:_slow",
-			"link": "func _throw_sticky[\\s\\S]{0,400}_slow\\(tgt,"},   # 数值在调用处(_throw_sticky / _tick_goos), _slow 是通道
+			"link": "func _tick_sticky_fly[\\s\\S]{0,800}_slow\\(tgt,"},   # 数值在调用处(_tick_sticky_fly 粘上那一刻 / _tick_goos), _slow 是通道(11-25 粘弹改按速度飞到才粘)
 		## 糖衣炮弹 10-16 起走普通减速通道(原写寒冰共享槽 spd_dbf_until, 显示成冰寒)
 		{"k": "pet", "id": "candy", "sk": "candyBarrage", "at": "systems/skills/candy_system.gd:_sk_candy_barrage",
 			"v": "−{C:CandySystem.BARRAGE_SLOW_PCT%}% · {C:CandySystem.BARRAGE_SLOW_SEC} 秒"},
@@ -326,7 +326,7 @@ const SRC := {
 		{"k": "pet", "id": "headless", "sk": "headlessSoulStrike", "at": "systems/skills/headless_system.gd:_sk_headless_soul_charge", "to": "self"},
 	],
 	"true-fire": [
-		{"k": "eq", "id": "p2eq_022", "at": MAIN + ":_fuel_bottle_hit", "v": "{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒", "lf": EQS, "link": "battle\\._fuel_bottle_hit\\.bind"},
+		{"k": "eq", "id": "p2eq_022", "at": MAIN + ":_fuel_bottle_hit", "v": "{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒", "lf": EQS, "link": "func _eq_fuel_throw[\\s\\S]{0,2000}battle\\._fuel_bottle_hit\\("},
 	],
 	"corrode": [
 		{"k": "syn", "id": "弓箭", "at": "systems/equip/bow_synergy_system.gd:tick"},

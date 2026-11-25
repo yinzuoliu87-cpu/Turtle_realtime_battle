@@ -48,7 +48,7 @@ const RENDER_OWNED_KEYS := [
 	"_windup_total", "_atk_wind", "_atk_hit_frame", "_cast_wind", "_cast_cancel", "_state_on", "_run_key",   # 普攻三段(11-05): 前摇总秒数(形变蓄力用) / 本次前摇已开播 / 命中帧
 	"_run_acc", "_run_acc_t", "_run_last_pos", "run_sd",
 	"_tr_move_dir", "_tr_move_acc", "_tr_last_pos", "_tr_move_t", "_tr_speed", "_tr_face", "_tr_anim_t",
-	"_hhot_owner", "_mark_spr", "_phase_ai_t",
+	"_hhot_owner", "_mark_spr", "_phase_ai_t", "_kris_ai_t",   # _kris_ai_t: 113 弯匕金色残影的出残影节拍(11-25)
 	"_auraEnergy", "_lavaRage", "_starEnergy", "bubbleStore", "_stoneDefGained", "_initDef",
 	"bear_anim", "bear_anim_t", "_bear_sheet", "_bear_pp",
 	## 变脸龟动作驱动(TwoHeadArt, 2026-10-20): 当前动作 / 排队动作 / 认过的前摇 / 认过的形态 / 走路判据
@@ -675,7 +675,7 @@ func _update_world_transforms() -> void:
 		if battle._t < float(u.get("_kris_until", 0.0)):   # 113 弯匕攻速暴涨(11-25 用户「金色纹风可以，但是我觉得还不够明显」): 身体金光快闪 + 金色残影往身后飘
 			if battle._t - float(u.get("_kris_ai_t", -1.0)) >= 0.05:
 				u["_kris_ai_t"] = battle._t
-				battle._vfx.haste_afterimage(spr, bool(u.get("face_right", str(u.get("side", "left")) == "left")))
+				FlightItemVfx.haste_afterimage(battle, spr, bool(u.get("face_right", str(u.get("side", "left")) == "left")))
 		if bool(u.get("shell_stealth", false)):   # 龟壳潜影(11-08 晚): 暗紫半透明剪影 + 慢呼吸; 受击闪色照常叠上去(吃范围伤害不破隐, 也看得出挨了)
 			spr.modulate = ShellVfx.shade_tint(battle._t).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
 		if bool(u.get("_smoke_hidden", false)) and battle._t < float(u.get("untargetable_until", 0.0)):   # 100 烟雾弹潜行(11-24): 灰蓝半透明, 攻击即现形

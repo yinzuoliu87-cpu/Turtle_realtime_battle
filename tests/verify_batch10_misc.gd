@@ -56,6 +56,7 @@ func _drain(sec: float) -> void:
 	var k: int = int(round(sec / 0.02))
 	for _i in range(k):
 		_s._ballistics._step_pending_shots(0.02)
+		_s._ballistics._step_flights(0.02)   # 11-25 反击光弹 / 收殓金球按速度飞到才结算
 
 
 func _ready() -> void:

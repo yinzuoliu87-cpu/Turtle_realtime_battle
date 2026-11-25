@@ -315,7 +315,7 @@ func on_enemy_died(victim: Dictionary) -> void:
 		var vpos: Vector2 = Vector2(victim.get("pos", Vector2.ZERO))
 		var orb = null
 		if battle._vfx != null and battle._vfx._syn != null:
-			orb = battle._vfx._syn.reap_orb(vpos, taker)
+			orb = battle._vfx._syn.reap_orb(vpos)
 		## 11-25: 按飞行速度追着收殓者飞, 落到身上才发盾(原固定 0.62 秒; 用户「肯定是有飞行速度的呀」)
 		battle._ballistics.launch_flight(taker, vpos, taker, SynergyVfx.REAP_SPD,
 			func(_hit: bool) -> void:

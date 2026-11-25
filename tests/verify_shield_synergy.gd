@@ -91,6 +91,8 @@ func _ready() -> void:
 	#   "有反击"那条假 FAIL, 而"不反击"那两条变成**假通过**(没飞到也是 0)。
 	var _drain := func() -> void:
 		s._ballistics._step_pending_shots(2.0)
+		for _k in range(120):   # 11-25 光弹按速度追着攻击者飞(通用飞行物), 逐步推 2 秒
+			s._ballistics._step_flights(1.0 / 60.0)
 	## ★★2026-08-12 语义改动(用户:「反击也是只要有圣光护盾就反击, 不一定要装备啊」):
 	##   反击的条件从【装着 095】改成【圣光护盾值 > 0】—— 规格原文「圣光护盾存在时」
 	##   说的是这份护盾在不在, 而不是这件装备在不在。收殓/9 档转来的圣盾值同样算。
@@ -155,7 +157,7 @@ func _ready() -> void:
 	var sv = s._vfx._syn
 	var corpse := Vector2(200.0, 400.0)
 	var taker2: Dictionary = {"pos": Vector2(700.0, 400.0), "alive": true}
-	var orb = sv.reap_orb(corpse, taker2)
+	var orb = sv.reap_orb(corpse)
 	_ok("收殓 ★金球节点真的挂进 _world",
 		orb != null and s._world.is_ancestor_of(orb), str(orb))
 	if orb != null:

@@ -214,13 +214,13 @@ func _ready() -> void:
 		_s.ARENA.position + _s.ARENA.size * 0.5 + Vector2(260, 0))
 	_s._units.append(victim)
 	var n_before: int = _s._world.get_child_count()
-	_s._vfx.throw_item_node(Vector2(thrower["pos"]), "gremlin-gun.png")   # 11-25 演出拆成 建节点 / 按飞行进度摆 / 落地 三段
+	FlightItemVfx.throw_item_node(_s, Vector2(thrower["pos"]), "gremlin-gun.png")   # 11-25 演出拆成 建节点 / 按飞行进度摆 / 落地 三段
 	var n_after: int = _s._world.get_child_count()
 	_ok("★★★扔出去的东西**真的在世界里建出来了**(子节点 %d → %d)" % [n_before, n_after],
 		n_after > n_before, "没有增量 = 又是一次'写了没人看见'")
 	## ★分母: 缺图时**不画**, 而不是拿别的图顶替(素材不复用铁律)
 	var n2: int = _s._world.get_child_count()
-	_s._vfx.throw_item_node(Vector2(thrower["pos"]), "__不存在的图__.png")
+	FlightItemVfx.throw_item_node(_s, Vector2(thrower["pos"]), "__不存在的图__.png")
 	_ok("★分母: 图不存在时不画(也不拿别的图顶替)",
 		_s._world.get_child_count() == n2, "凭空多了节点")
 	## ★素材真的在盘上, 且**不是**复用别件装备的图

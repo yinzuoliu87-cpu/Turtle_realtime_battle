@@ -96,7 +96,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #        `_sim_tweens` 之后才扫 `_world`(门禁①守着, 变异两行都删 ⇒ 上千条报错)。
 #      真正的触发条件只有「两条时钟错开」: 顿帧(tween 走、延时/协程不走)与时停(定格的 tween 不走、
 #      携带者的协程/延时照走)。判无害 = 两种错开下捕获物都不会先于回调被释放。
-BASELINE = 26   # 2026-11-05 27→26: 星波三道环的逐帧更新收进 StarSystem._wave_rings, 闭包不再捕获环节点   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2) · 2026-10-14: 31 → 28(三处 UI 循环 tween 改走 TweenKit, 退出时随节点停) · 2026-10-23: 28 → 27(精英吞噬不再捕获目标立绘, 改写单位字段 _devour_k)
+BASELINE = 25   # 2026-11-25 26→25: 海盗船炮炮弹改走通用飞行物(不再是补间链)   # 2026-11-05 27→26: 星波三道环的逐帧更新收进 StarSystem._wave_rings, 闭包不再捕获环节点   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2) · 2026-10-14: 31 → 28(三处 UI 循环 tween 改走 TweenKit, 退出时随节点停) · 2026-10-23: 28 → 27(精英吞噬不再捕获目标立绘, 改写单位字段 _devour_k)
 
 # ★每一处剩下的风险都要有一句**为什么无害**。键 = (文件, 被捕获的名字逗号串), 值 = (处数, 理由)。
 #   新冒出来一处没登记 → 红; 登记了但代码里没这处了(修掉了/改名了) → 也红, 逼着把台账跟着降。
@@ -128,8 +128,6 @@ HARMLESS = {
         (1, "同一条链(窗口从刀光 et 起算的重复计数)"),
     ("scripts/systems/skills/lava_system.gd", "battle, wave"):
         (1, "岩浆浪: 捕获的是 wref(=wall), 本链末尾释放; wave/battle 是窗口里 lambda 外的 is_instance_valid, 误记"),
-    ("scripts/systems/skills/pirate_system.gd", "ball"):
-        (1, "炮弹: ball 只由本链末尾回调释放"),
     ("scripts/systems/skills/pirate_system.gd", "ship"):
         (1, "演出船俯冲: ship(_perf_ship)全仓只在本链的 on_impact 回调里释放"),
     ("scripts/systems/skills/rocket_system.gd", "smref"):

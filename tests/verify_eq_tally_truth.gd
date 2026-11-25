@@ -122,10 +122,11 @@ func _stage(iid: String = "") -> Array:
 	return [u, es]
 
 
-## 只推延时队列 2 秒(不推整步 sim: 不让别的单位在这期间出手)。
+## 只推延时队列 + 在途飞行物 2 秒(不推整步 sim: 不让别的单位在这期间出手)。11-25 收殓金球等按速度飞到才结算
 func _fly_pending() -> void:
 	for _k in range(120):
 		s._ballistics._step_pending_shots(DT)
+		s._ballistics._step_flights(DT)
 
 
 # ─────────────────────────────── A. 合成: 每个根因各一笔 ───────────────────────────────

@@ -364,7 +364,7 @@ func _seek_tick(f: Dictionary, n: Node3D, delta: float) -> void:
 		f["last"] = Vector2(sk["pos"])
 	var p0: Vector2 = f["pos"]
 	var to: Vector2 = f["last"]
-	var d: float = p0.distance_to(to)
+	var d: float = DetMath.dist(p0, to)
 	var step: float = float(f["spd"]) * delta
 	var reach: float = float(sk.get("col_r", 20.0)) if alive else 0.0
 	if d - reach <= step:
@@ -373,9 +373,9 @@ func _seek_tick(f: Dictionary, n: Node3D, delta: float) -> void:
 	var p1: Vector2 = p0 + (to - p0) * (step / d)
 	f["pos"] = p1
 	var h1: float = body_h(sk) if alive else float(f["h0"])
-	var flown: float = Vector2(f["from"]).distance_to(p1)
-	var k: float = clampf(flown / maxf(1.0, flown + p1.distance_to(to) - reach), 0.0, 1.0)
-	var hk: float = lerpf(float(f["h0"]), h1, k) + float(f["arc"]) * 4.0 * k * (1.0 - k)
+	var flown: float = DetMath.dist(Vector2(f["from"]), p1)
+	var k: float = clampf(flown / maxf(1.0, flown + DetMath.dist(p1, to) - reach), 0.0, 1.0)
+	var hk: float = DetMath.flerp(float(f["h0"]), h1, k) + float(f["arc"]) * 4.0 * k * (1.0 - k)
 	var a3: Vector3 = battle._world_pos(p1, hk)
 	n.position = a3
 	match str(f["face"]):
@@ -383,7 +383,7 @@ func _seek_tick(f: Dictionary, n: Node3D, delta: float) -> void:
 			_seek_face(n, a3, battle._world_pos(to, h1), float(f["tip"]))
 		"orient":
 			var k2: float = minf(1.0, k + 0.03)
-			_orient(n, a3, battle._world_pos(p1.lerp(to, 0.05), lerpf(float(f["h0"]), h1, k2) + float(f["arc"]) * 4.0 * k2 * (1.0 - k2)))
+			_orient(n, a3, battle._world_pos(DetMath.vlerp(p1, to, 0.05), DetMath.flerp(float(f["h0"]), h1, k2) + float(f["arc"]) * 4.0 * k2 * (1.0 - k2)))
 		"spin":
 			n.rotation.z = float(f["t"]) * 14.0
 

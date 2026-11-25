@@ -1311,7 +1311,7 @@ func _cast_hunt_order(trainer: Dictionary, aim: Vector2) -> bool:
 				_hunt_mark(tt, kk)
 				_hunt_sigil(kk),
 		func(k: float, p2: Vector2, _to2: Vector2) -> void:
-			if bolt != null and is_instance_valid(bolt): bolt.position = battle._world_pos(p2, lerpf(1.1, 1.0, k)))
+			if bolt != null and is_instance_valid(bolt): bolt.position = battle._world_pos(p2, DetMath.flerp(1.1, 1.0, k)))
 	return true
 
 
@@ -1455,7 +1455,7 @@ func _cast_tame(trainer: Dictionary, aim: Vector2) -> bool:
 				_tame_mark(tt, kk)
 				_tame_rune(kk),
 		func(k: float, p2: Vector2, _to2: Vector2) -> void:
-			if bolt != null and is_instance_valid(bolt): bolt.position = battle._world_pos(p2, lerpf(1.1, 1.0, k)))
+			if bolt != null and is_instance_valid(bolt): bolt.position = battle._world_pos(p2, DetMath.flerp(1.1, 1.0, k)))
 	return true
 
 
