@@ -8000,14 +8000,14 @@ msgstr "Bombs · Demolition"
 msgid "炸弹提高携带者的护甲穿透。每个战场开打后不久，一发导弹落到战场中心，轰炸并击飞所有敌方单位。"
 msgstr "Bombs grant their carriers Armor Pen. Shortly after each battlefield begins, a missile strikes the center of the field, blasting and knocking up every enemy unit."
 
-msgid "每件炸弹为携带者提供 +5 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外"
-msgstr "Each Bomb item grants its carrier +5 Armor Pen · [Missile Strike] {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, dealing {C:BombSynergySystem.DMG_FLAT[0]} + {C:BombSynergySystem.DMG_MAXHP[0]%}% of the target's max health as physical damage to every enemy unit and knocking them up for {C:BombSynergySystem.AIR_SEC} second (eggs excluded)"
+msgid "每件炸弹为携带者提供 +4 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外"
+msgstr "Each Bomb item grants its carrier +4 Armor Pen · [Missile Strike] {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, dealing {C:BombSynergySystem.DMG_FLAT[0]} + {C:BombSynergySystem.DMG_MAXHP[0]%}% of the target's max health as physical damage to every enemy unit and knocking them up for {C:BombSynergySystem.AIR_SEC} second (eggs excluded)"
 
-msgid "每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%"
-msgstr "Each Bomb item grants its carrier +12 Armor Pen · [Missile Strike] damage increased to {C:BombSynergySystem.DMG_FLAT[1]} + {C:BombSynergySystem.DMG_MAXHP[1]%}% of the target's max health"
+msgid "每件炸弹为携带者提供 +8 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%"
+msgstr "Each Bomb item grants its carrier +8 Armor Pen · [Missile Strike] damage increased to {C:BombSynergySystem.DMG_FLAT[1]} + {C:BombSynergySystem.DMG_MAXHP[1]%}% of the target's max health"
 
-msgid "每件炸弹为携带者提供 +20 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%"
-msgstr "Each Bomb item grants its carrier +20 Armor Pen · [Missile Strike] damage increased to {C:BombSynergySystem.DMG_FLAT[2]} + {C:BombSynergySystem.DMG_MAXHP[2]%}% of the target's max health"
+msgid "每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%"
+msgstr "Each Bomb item grants its carrier +12 Armor Pen · [Missile Strike] damage increased to {C:BombSynergySystem.DMG_FLAT[2]} + {C:BombSynergySystem.DMG_MAXHP[2]%}% of the target's max health"
 
 msgid "武士刀小将"
 msgstr "Katana Minion"

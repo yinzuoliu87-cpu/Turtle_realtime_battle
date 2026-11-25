@@ -1,8 +1,9 @@
 """dagger_reel_1125.py —— 把录像台的匕首批各段剪成一条验收合集(每段左上角写这一段看什么; 慢放段写明倍速)
 
-    python tools/oneoff/dagger_reel_1125.py      ⇒ .out/dagger_rec/匕首批验收合集.mp4
+    python tools/oneoff/dagger_reel_1125.py        ⇒ .out/dagger_rec/匕首批验收合集.mp4
+    python tools/oneoff/dagger_reel_1125.py 3      ⇒ 只出第 3 条(一件一条, 给用户逐条看; 用户 11-25「让你一条条给我看啊」)
 """
-import os, subprocess
+import os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 D = os.path.join(ROOT, ".out", "dagger_rec")
@@ -28,9 +29,27 @@ SEG = [
 ]
 
 
+## 逐条看: 第 N 条 = (文件名, 用到的 SEG 下标)
+ITEMS = [
+    ("01-刺杀羁绊", [0, 1, 2]),
+    ("02-108折叠小刀", [3]),
+    ("03-109柳叶飞刀", [4]),
+    ("04-110苦无", [5]),
+    ("05-111毒牙匕首", [6]),
+    ("06-113弯匕", [7]),
+    ("07-114仪式匕首", [8, 9]),
+    ("08-116黑曜石匕首", [10]),
+    ("09-115暗影忍者", [11, 12, 13]),
+]
+
+
 def main():
+    one = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    pick = ITEMS[one - 1][1] if one else list(range(len(SEG)))
     parts = []
     for i, (c, t0, dur, sp, txt) in enumerate(SEG):
+        if i not in pick:
+            continue
         out = os.path.join(D, "_seg%02d.mp4" % i)
         label = txt.replace(":", "\\:").replace("'", "").replace("%", "％")
         vf = "setpts=%g*PTS,drawbox=x=0:y=0:w=iw:h=46:color=black@0.6:t=fill,drawtext=fontfile='%s':text='%s':x=14:y=10:fontsize=22:fontcolor=white" % (1.0 / sp, FONT, label)
@@ -41,7 +60,7 @@ def main():
     with open(lst, "w", encoding="utf-8") as f:
         for p in parts:
             f.write("file '%s'\n" % p.replace("\\", "/"))
-    final = os.path.join(D, "匕首批验收合集.mp4")
+    final = os.path.join(D, ("第%s.mp4" % ITEMS[one - 1][0]) if one else "匕首批验收合集.mp4")
     subprocess.run([FF, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", final], check=True)
     for p in parts:
         os.remove(p)

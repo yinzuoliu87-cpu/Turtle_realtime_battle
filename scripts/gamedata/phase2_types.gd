@@ -49,7 +49,7 @@ const TYPES := {
 	"弓箭": {"tiers": [3, 6, 9],     "stats": [{"crit": 0.09}, {"crit": 0.16}, {"crit": 0.22}]},
 	"法器": {"tiers": [2, 5, 8, 10], "stats": [{"magicPen": 4, "_maxEnergy": 4}, {"magicPen": 7, "_maxEnergy": 6}, {"magicPen": 11, "_maxEnergy": 8}, {"magicPen": 14, "_maxEnergy": 10}]},
 	"灵物": {"tiers": [2, 5, 8, 10], "stats": [{"dodgePct": 5}, {"dodgePct": 9}, {"dodgePct": 13}, {"dodgePct": 18}]},
-	"炸弹": {"tiers": [3, 6, 10], "stats": [{"armorPen": 5}, {"armorPen": 12}, {"armorPen": 20}]},   # 2026-11-24 新羁绊(方案书 20261124f; 用户「那肯定三六十嘛」)
+	"炸弹": {"tiers": [3, 6, 10], "stats": [{"armorPen": 4}, {"armorPen": 8}, {"armorPen": 12}]},   # 2026-11-24 新羁绊(方案书 20261124f; 用户「那肯定三六十嘛」); 11-25 用户「肯定调低啊…四八十二吧」(原 5/12/20)
 	"匕首": {"tiers": [3, 6, 10], "stats": [{"critDmg": 0.06}, {"critDmg": 0.12}, {"critDmg": 0.20}]},   # 2026-11-25 新羁绊(方案书 20261125; 用户「匕首提供暴击伤害」)
 	## 仪式(2026-11-25): 仪式匕首的专属羁绊(照香火的形状: 单档 · 1 件即激活 · 无逐档属性, 收益全在【血契】)。用户「类似于香火石一样…在大轮里面不断的增强」
 	"仪式": {"tiers": [1], "stats": [{}]},
@@ -204,9 +204,9 @@ const TIER_DESCS := {
 		"每件盾为携带者提供 +22 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 自身最大生命值 · 【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值。圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%",
 	],
 	"炸弹": [
-		"每件炸弹为携带者提供 +5 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外",
-		"每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%",
-		"每件炸弹为携带者提供 +20 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%",
+		"每件炸弹为携带者提供 +4 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外",
+		"每件炸弹为携带者提供 +8 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%",
+		"每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%",
 	],
 	"匕首": [
 		"每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取",
