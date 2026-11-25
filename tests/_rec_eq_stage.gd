@@ -76,6 +76,8 @@ static func cases() -> Dictionary:
 		"cannon_norm2": [[_u("__summon__", "left", Vector2(-40, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105], 2), "minion": true})] + _dummies(160, 3), 70.0],
 		"remote": [[_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_106", "equips": _eq([106], 1), "minion": true})] + _dummies(150, 3), 14.0],
 		"katana": [[_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(60, 3), 16.0],
+		## 敌人会走过来打小将(掉点血) ⇒ 第 4 下蓄力回血看得见
+		"katana_hit": [[_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(150, 3, true, 20000.0, 40.0), 19.0],
 	}
 
 

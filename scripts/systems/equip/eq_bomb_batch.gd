@@ -918,7 +918,7 @@ func _tick_katanas(delta: float) -> void:
 			while float(k["heal_acc"]) >= KATANA_HEAL_TICK - 0.0001:
 				k["heal_acc"] = float(k["heal_acc"]) - KATANA_HEAL_TICK
 				var per: float = KATANA_HEAL_TOTAL / (KATANA_CHARGE / KATANA_HEAL_TICK) * float(p.get("maxHp", 0.0))
-				p["hp"] = minf(float(p.get("maxHp", 0.0)), float(p["hp"]) + per)
+				battle._damage._heal(p, per)   # 走正式回血(绿字 / 治疗统计 / 重伤减疗都照常), 不直接改 hp
 			if float(k["charge"]) >= KATANA_CHARGE - 0.0001:
 				k["charge"] = -1.0
 				_katana_tornadoes(k)

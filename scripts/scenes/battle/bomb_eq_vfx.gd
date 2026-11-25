@@ -547,8 +547,33 @@ func cannon_hit(o: Dictionary) -> void:
 	_anim("boom", Vector2(o["pos"]), 120.0, 0.6, 0.02, false, false, Color.WHITE, o)
 
 
+## 第 4 下蓄力: 风往小将身上收(三层横着的风圈由外往里收、越收越亮), 中间一团聚气粒子;
+##   蓄满那一刻往外一放 —— 龙卷风紧接着出手(11-24 录像台自查: 原来只有一张 120 码的稀疏粒子图, 1.5 秒蓄力几乎看不见)
 func katana_charge(p: Dictionary, sec: float) -> void:
-	_anim("charge", Vector2(p["pos"]), 120.0, sec, 1.0, false, false, Color(0.75, 0.95, 1.0))
+	if not _ok():
+		return
+	var s := _anim("charge", Vector2(p["pos"]), 190.0, sec, 1.0, false, true, Color(0.8, 0.97, 1.0))
+	if s != null:
+		_fx[_fx.size() - 1]["kind"] = "anim_follow"
+		_fx[_fx.size() - 1]["tgt"] = p
+	var root := Node3D.new()
+	root.position = battle._world_pos(Vector2(p["pos"]), 0.0)
+	battle._world.add_child(root)
+	var tx: Texture2D = VfxTex._make_thin_ring_tex()
+	for i in range(3):
+		for dr in [0.0, -6.0]:
+			var r := Sprite3D.new()
+			r.texture = tx
+			r.shaded = false
+			r.transparent = true
+			r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			r.axis = Vector3.AXIS_Y
+			r.modulate = Color(0.85, 0.97, 1.0, 0.0)
+			r.position = Vector3(0.0, 0.2 + 0.45 * float(i), 0.0)
+			r.set_meta("dr", dr)
+			r.set_meta("layer", i)
+			root.add_child(r)
+	_fx.append({"node": root, "t": 0.0, "life": sec, "kind": "swirl_in", "tgt": p, "tex_h": float(tx.get_height())})
 
 
 ## 直线弹道：剑气波 / 龙卷风 / 重炮，与结算同一速度同一路程（演出只画，不判定）
@@ -733,6 +758,27 @@ func tick(delta: float) -> void:
 					(n as Sprite3D).frame = int(float(f["t"]) * 12.0) % int(f["nf"])
 				elif int(f.get("nf", 1)) > 1:
 					(n as Sprite3D).frame = mini(int(f["nf"]) - 1, 2 + int(float(f["t"]) * 10.0) % 2)
+			"anim_follow":
+				var tf = f.get("tgt", null)
+				if tf is Dictionary and tf.get("alive", false):
+					var keep_y: float = (n as Node3D).position.y
+					(n as Node3D).position = battle._world_pos(Vector2(tf["pos"]), 0.0)
+					(n as Node3D).position.y = keep_y
+				(n as Sprite3D).frame = int(f.get("skip", 0)) + int(float(f["t"]) * 12.0) % int(f["nf"])
+			"swirl_in":
+				var tw = f.get("tgt", null)
+				if tw is Dictionary and tw.get("alive", false):
+					(n as Node3D).position = battle._world_pos(Vector2(tw["pos"]), 0.0)
+				for ch in (n as Node3D).get_children():
+					var lay: int = int(ch.get_meta("layer", 0))
+					## 每层 0.5 秒收一圈(各层错开), 半径 120 → 35 码; 越到蓄满越亮
+					var cyc: float = fmod(float(f["t"]) * 2.0 + float(lay) * 0.33, 1.0)
+					var rad: float = lerpf(120.0, 35.0, cyc) + float(ch.get_meta("dr", 0.0))
+					(ch as Sprite3D).pixel_size = (rad * 2.0 * float(battle.WS)) / float(f["tex_h"])
+					var ph: float = float(f["t"]) * 16.0 + float(lay) * 2.1
+					(ch as Node3D).position.x = cos(ph) * 0.04
+					(ch as Node3D).position.z = sin(ph) * 0.04
+					(ch as Sprite3D).modulate.a = (0.35 + 0.65 * q) * sin(cyc * PI)
 			"tornado":
 				var tp: Vector2 = Vector2(f["from"]) + Vector2(f["dir"]).normalized() * float(f["spd"]) * float(f["t"])
 				(n as Node3D).position = battle._world_pos(tp, 0.0)
