@@ -41,9 +41,8 @@ const SHEETS := {
 	"remote": ["vfx/bomb-remote-blast.png", 175, 97, 155.0, 88, 63],   # 106 专属: 锚点 = 地面爆点; 内容宽 = 地面那圈火团铺开后的宽度(第 17~25 帧 150~165 像素)
 }
 const COL_LOCATOR := Color(1.0, 0.18, 0.12, 0.85)
-## 导弹特效表里砸地是第 8 帧(共 17 帧, 播 0.95 秒) ⇒ 提前这么多秒开播, 砸地正好落在结算那一刻
-const MISSILE_SEC := 0.95
-const MISSILE_LEAD := MISSILE_SEC * 8.0 / 17.0
+## 导弹从天上竖直落下要多久(提前这么多秒开播, 弹头砸地 = 结算那一刻)。11-25 用户「导弹移动速度太快了」: 0.45 → 1.4 秒
+const MISSILE_LEAD := 1.4
 
 var battle
 var _fx: Array = []          ## {node, t, life, kind, ...}
@@ -209,7 +208,7 @@ func _ring(pos: Vector2, radius: float, col: Color, life: float) -> void:
 ##         ② 最后 EDGE_WARN 秒整座岛的边缘亮一圈红色警示线(打击范围 = 整个棋盘);
 ##         ③ 导弹顺着激光砸下 → 全屏白闪 + 中心大爆炸 → 一圈圈爆炸从中心往外推、CARPET_SEC 秒铺满整座岛 → 每个挨炸的敌人身上再炸一下。
 ##   贴图: missile-laser / missile-reticle(tools/assetgen/build_missile_marks.py 脚本画) · bomb-missile-carpet(特效工作台)。
-const CARPET_STEP := 70.0      # 整座岛按这个间距(码)铺爆炸
+const CARPET_STEP := 135.0     # 整座岛按这个间距(码)铺爆炸(11-25 用户「火海太密集了」: 70 → 135, 个数约四分之一)
 const CARPET_JITTER := 0.15     # 同一时刻炸开, 各点只差这么一点(看着是一起炸, 不是一个个)
 
 
@@ -275,7 +274,7 @@ func _board_zone(life: float) -> void:
 ## 导弹顺着激光竖直落下(提前 MISSILE_LEAD 秒开播, 弹头砸地那一刻 = 结算): 从 DROP_H 米高处加速落到中心
 const DROP_H := 11.0
 func missile_launch(_side: String) -> void:
-	var s := _anim("drop", battle._arena_center, 70.0, MISSILE_LEAD, DROP_H, false, true)
+	var s := _anim("drop", battle._arena_center, 210.0, MISSILE_LEAD, DROP_H, false, true)   # 11-25 用户「导弹大小太小了」: 70 → 210 码
 	if s != null:
 		s.no_depth_test = true
 		s.render_priority = 12
@@ -302,7 +301,7 @@ func missile_impact(side: String) -> void:
 			var o := Vector2(x + (CARPET_STEP * 0.5 if row % 2 == 1 else 0.0), y)
 			if (o.x * o.x) / (a.x * a.x) + (o.y * o.y) / (a.y * a.y) <= 1.0:   # 整座岛(椭圆)里每个格点都炸
 				var p: Vector2 = c + o
-				var sz: float = 120.0 + 30.0 * float((n * 7) % 3) / 2.0
+				var sz: float = 100.0 + 30.0 * float((n * 7) % 3) / 2.0   # 火团之间留缝, 不糊成一整片
 				_later(CARPET_JITTER * float((n * 5) % 7) / 6.0, func() -> void: _anim("carpet", p, sz, 1.0, 0.02, false, false, Color.WHITE, "ground"))
 				n += 1
 			x += CARPET_STEP
@@ -809,11 +808,12 @@ func tick(delta: float) -> void:
 				ls.modulate.a = 1.0 if q > 0.97 else (0.5 + 0.5 * absf(sin(float(f["t"]) * (2.0 + 14.0 * q))))
 			"fall":
 				## 加速下落(h = H × (1 - q²)), 帧循环
-				(n as Node3D).position = battle._world_pos(Vector2(f["at"]), DROP_H * (1.0 - q * q))
+				(n as Node3D).position = battle._world_pos(Vector2(f["at"]), DROP_H * (1.0 - q * (0.35 + 0.65 * q)))   # 先慢后快(开头不至于停在天上不动)
 				(n as Sprite3D).frame = int(float(f["t"]) * 16.0) % int(f["nf"])
 			"board_zone":
 				## 开头淡、越接近落弹越亮, 闪烁从慢到快
-				(n as Sprite3D).modulate.a = (0.35 + 0.65 * q) * (0.6 + 0.4 * absf(sin(float(f["t"]) * (2.0 + 12.0 * q))))
+				## 11-25 用户「这个红色斜纹危险区太明显了」: 整体压淡到原来的 4 成左右, 看得出范围但不抢画面
+				(n as Sprite3D).modulate.a = (0.12 + 0.28 * q) * (0.7 + 0.3 * absf(sin(float(f["t"]) * (2.0 + 10.0 * q))))
 			"arc":
 				var a: Vector2 = f["from"]
 				var b: Vector2 = f["to"]
