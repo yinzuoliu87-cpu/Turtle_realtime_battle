@@ -29,6 +29,11 @@ VFX_SHEETS = ["dagger-fang-bite", "dagger-ninja-smoke", "dagger-ninja-strike", "
               "dagger-ritual-exec", "dagger-ritual-mark", "dagger-kris-rush", "dagger-fold-cut", "dagger-knife-hit",
               "dagger-obs-pull", "dagger-shade-cut", "dagger-shuriken-spin", "dagger-kunai-hit", "dagger-kunai-heal", "dagger-shuriken-hit"]
 LOOPS = {"dagger-kris-rush", "dagger-shuriken-spin"}
+## 只把「刀弧」(含亮色像素的连通块)以锚点竖线为轴左右翻, 血花 / 碎屑不动(2026-11-25):
+##   工作台导出的 114 斩杀镰月是「C」形(刀弧往左鼓 = 往左砍)、血却往右上甩, 自相矛盾;
+##   翻完 = 「)」形往右砍、血往右甩(远离出手者)。演出层按出手方向整张 flip_h。
+##   用户 11-25「左边的人往右边斩杀，那这个刀刃到底怎么往哪个方向画呢」
+MIRROR_BLADE = {"dagger-ritual-exec": 37}
 
 ## 暗影忍者动作(序号 0 = animate_image 的输入原画; 段与段首尾相接处只取一次)
 ##   普攻(横斩): 站 → 蓄力(刀收到肩后) → 横斩出手(刀从肩后经胸前扫到正前方, 平指敌人 = 命中帧) → 收势回站姿
@@ -54,6 +59,45 @@ def _strip(frames):
     return s
 
 
+def _comps(im):
+    w, h = im.size
+    px = im.load()
+    seen = set()
+    out = []
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] == 0 or (x, y) in seen:
+                continue
+            st = [(x, y)]
+            seen.add((x, y))
+            c = []
+            while st:
+                a, b = st.pop()
+                c.append((a, b))
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        n = (a + dx, b + dy)
+                        if 0 <= n[0] < w and 0 <= n[1] < h and n not in seen and px[n][3] > 0:
+                            seen.add(n)
+                            st.append(n)
+            out.append(c)
+    return out
+
+
+def _mirror_blade(im, ax):
+    w, h = im.size
+    px = im.load()
+    out = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    op = out.load()
+    for c in _comps(im):
+        blade = len(c) >= 12 and any(px[p][0] > 200 and px[p][1] > 110 for p in c)
+        for (x, y) in c:
+            nx = 2 * ax - x if blade else x
+            assert 0 <= nx < w, (x, y)
+            op[nx, y] = px[x, y]
+    return out
+
+
 def main() -> None:
     out = []
     for src, dst in ICONS.items():
@@ -71,6 +115,8 @@ def main() -> None:
         if name not in LOOPS:
             while len(frames) > 1 and frames[-1].getbbox() is None:
                 frames.pop()
+        if name in MIRROR_BLADE:
+            frames = [_mirror_blade(f, MIRROR_BLADE[name]) for f in frames]
         _strip(frames).save(os.path.join(VFX, name + ".png"), optimize=False)
         out.append("%s %dx%d x%d" % (name, frames[0].width, frames[0].height, len(frames)))
     ## 苦无飞行物: 110 图标中间那一把(x 24..39, 刀尖到握柄 y 0..39; 再往下是三把的环叠在一起 + 两侧那两把的刀柄边, 不取)

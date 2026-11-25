@@ -218,7 +218,7 @@ func on_mana_full(_u: Dictionary, _eid: String, _si: int) -> void:
 
 
 ## 击杀钩(equip_system._eq_on_kill 逐件转来)
-func on_kill(killer: Dictionary, _victim: Dictionary, eid: String, si: int) -> void:
+func on_kill(killer: Dictionary, victim: Dictionary, eid: String, si: int) -> void:
 	match eid:
 		"p2eq_113":   # 弯匕: 击杀后 3 秒攻速暴涨(取较高的一份, 不叠乘)
 			stat["kris"] += 1
@@ -228,7 +228,7 @@ func on_kill(killer: Dictionary, _victim: Dictionary, eid: String, si: int) -> v
 			killer["haste_until"] = maxf(float(killer.get("haste_until", 0.0)), t + KRIS_SEC)
 			_fx("kris_rush", [killer, KRIS_SEC])
 		"p2eq_114":
-			_ritual_mark(killer)
+			_ritual_mark(killer, victim)
 
 
 ## 任何单位普攻(EquipSystem._eq_on_basic_attack 最前面调)
@@ -454,7 +454,7 @@ func _ritual_execute(src: Dictionary, tgt: Dictionary) -> void:
 	if battle._damage.execute_saved(tgt):
 		return
 	stat["ritual_exec"] += 1
-	_fx("ritual_execute", [tgt])
+	_fx("ritual_execute", [tgt, src])
 	battle._vfx._float_text(tgt["pos"], "-999999", battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")
 	## 斩掉的那截血记成这件的真实伤害(战斗统计 / 装备统计里看得到仪式匕首的贡献; 不走伤害路径, 所以手记一笔)
 	battle._equip_sys.tally.credit(src, battle._equip_sys.key_of(src, "p2eq_114"), "tru", maxf(0.0, float(tgt["hp"])))
@@ -465,7 +465,7 @@ func _ritual_execute(src: Dictionary, tgt: Dictionary) -> void:
 
 
 ## 携带者击杀一名敌人 ⇒ 刻 1 道血契(同一只身上多件仪式匕首: 每件的钩子都会来, 只刻一次 —— 用击杀时刻去重)
-func _ritual_mark(killer: Dictionary) -> void:
+func _ritual_mark(killer: Dictionary, victim: Dictionary) -> void:
 	var t := float(battle._t)
 	if absf(float(killer.get("_ritual_last_t", -99.0)) - t) < 0.0001:
 		return
@@ -485,7 +485,7 @@ func _ritual_mark(killer: Dictionary) -> void:
 				o["base_atk"] = float(o.get("base_atk", 0.0)) + float(RITUAL_ATK[si])
 				o["armor_pen"] = float(o.get("armor_pen", 0.0)) + float(RITUAL_PEN[si])
 				battle._recalc_stats(o)
-	_fx("ritual_mark", [killer, marks_of(side)])
+	_fx("ritual_mark", [killer, marks_of(side), Vector2(victim.get("pos", killer["pos"]))])
 
 
 ## 「仪式」羁绊那一份: 本方每个单位的攻击力 +RITUAL_TEAM_ATK × 血契(百分比 buff, 同 tag 只一条, 血契变了就改数)

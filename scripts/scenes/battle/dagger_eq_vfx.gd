@@ -124,13 +124,42 @@ func kris_rush(u: Dictionary, sec: float) -> void:
 	f["tgt"] = u
 
 
-func ritual_execute(tgt: Dictionary) -> void:
-	_anim("rexec", Vector2(tgt["pos"]), 110.0, 0.55, 1.0, false, false, Color.WHITE, tgt)
+## 斩杀: 猩红镰月以出手者为轴扫过目标 —— 贴图(打包时已改成)刀弧朝右鼓 = 从左往右砍、血往右甩;
+##   出手者在目标右边(往左砍)就整张翻过来(用户 11-25「左边的人往右边斩杀，那这个刀刃到底怎么往哪个方向画」)
+func ritual_execute(tgt: Dictionary, src = null) -> void:
+	var s := _anim("rexec", Vector2(tgt["pos"]), 110.0, 0.55, 1.0, false, false, Color.WHITE, tgt)
+	if s != null and src is Dictionary:
+		s.flip_h = (Vector2(tgt["pos"]) - Vector2(src["pos"])).x < 0.0
 
 
-## 刻下血契: 一缕血气流进携带者 + 头顶跳「血契 N」
-func ritual_mark(killer: Dictionary, n: int) -> void:
-	_anim("rmark", Vector2(killer["pos"]), 70.0, 0.6, 1.0, false, false, Color.WHITE, killer)
+## 刻下血契: 一缕血气从被斩的人那里流进携带者 + 头顶跳「血契 N」
+##   贴图: 锚点(左端) = 携带者, 右端光点 = 源头 ⇒ 不朝镜头公告板, 每帧按屏幕方向把右端转向被斩的人,
+##   长度按两人距离缩放(源头光点离锚点 RMARK_SRC_PX 像素)。原来固定朝右, 被斩的人在左边时血气是从反方向流过来的。
+const RMARK_SRC_PX := 40.0
+func ritual_mark(killer: Dictionary, n: int, from_pos = null) -> void:
+	var src_pos: Vector2 = from_pos if from_pos is Vector2 else Vector2(killer["pos"]) + Vector2(60, 0)
+	if _ok():
+		var t: Texture2D = _load("rmark")
+		var row: Array = _row("rmark")
+		if t != null:
+			var fw: int = int(row[1])
+			var fh: int = int(row[2])
+			var dist: float = clampf(Vector2(killer["pos"]).distance_to(src_pos), 45.0, 200.0)
+			var s := Sprite3D.new()
+			s.texture = t
+			s.hframes = maxi(1, t.get_width() / fw)
+			s.shaded = false
+			s.transparent = true
+			s.no_depth_test = true
+			s.render_priority = 11
+			s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			s.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 建的时候就定(直播白名单: sim 步里不再改)
+			s.pixel_size = dist * float(battle.WS) / RMARK_SRC_PX
+			s.offset = Vector2(float(fw) * 0.5 - float(row[4]), float(row[5]) - float(fh) * 0.5)
+			var h: float = BombEqVfx.body_h(killer)
+			s.position = battle._world_pos(Vector2(killer["pos"]), h)
+			battle._world.add_child(s)
+			_fx.append({"node": s, "t": 0.0, "life": 0.6, "kind": "beam", "nf": s.hframes, "tgt": killer, "src": src_pos, "h": h})
 	if _ok() and battle.get("_vfx") != null:
 		battle._vfx._float_text(Vector2(killer["pos"]) + Vector2(0, -50), Lang.t("血契 %d") % n, Color("#ff4a5a"), true)
 
@@ -150,7 +179,7 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 			if s != null:
 				_fx.append({"node": s, "t": 0.0, "life": life, "kind": "flyline", "line": kind, "from": from, "dir": dir, "spd": spd, "h": h, "tip": KNIFE_TIP_DEG})
 		"shuriken":
-			s = _anim("shur", from, 40.0, life, h, false, true)
+			s = _anim("shur", from, 72.0, life, h, false, true)   # 11-25 用户「手里剑看着太小了」(原 40)
 			if s != null:
 				s.no_depth_test = true
 				s.render_priority = 11
@@ -311,6 +340,13 @@ func tick(delta: float) -> void:
 				(n as Node3D).position = p3
 				if q2 > q:
 					_point(n, p3, p3b, float(f["tip"]))
+			"beam":
+				var bk = f.get("tgt", null)
+				var bp: Vector2 = Vector2(bk["pos"]) if bk is Dictionary else Vector2(f["src"])
+				var b3: Vector3 = battle._world_pos(bp, float(f["h"]))
+				(n as Node3D).position = b3
+				_point(n, b3, battle._world_pos(Vector2(f["src"]), float(f["h"])), 0.0)
+				(n as Sprite3D).frame = mini(int(f["nf"]) - 1, int(q * float(f["nf"])))
 	## 插着的黑曜石匕首: 跟着目标走; 目标死了 / 换路就收
 	for i in range(_stuck.size() - 1, -1, -1):
 		var e: Dictionary = _stuck[i]
