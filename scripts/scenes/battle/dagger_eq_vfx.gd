@@ -250,7 +250,7 @@ func kunai_hit(tgt: Dictionary, src: Dictionary) -> void:
 func obs_embed(tgt: Dictionary, count: int, src = null) -> void:
 	if not _ok():
 		return
-	var s := _tex_sprite("equip/p2eq_116.png", 34.0, battle._world_pos(Vector2(tgt["pos"]), BombEqVfx.body_h(tgt)))
+	var s := _tex_sprite("equip/p2eq_116.png", 48.0, battle._world_pos(Vector2(tgt["pos"]), BombEqVfx.body_h(tgt)))   # 11-25 34 → 48: 原来压在龟身上看不出(手里剑同一天被说太小)
 	if s == null:
 		return
 	var from_left: bool = src is Dictionary and (Vector2(tgt["pos"]) - Vector2(src["pos"])).x > 0.0
