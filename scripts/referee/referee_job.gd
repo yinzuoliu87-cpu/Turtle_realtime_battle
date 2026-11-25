@@ -212,6 +212,9 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	## 竹叶龟生长本大轮累积(2026-11-19 · 迁移 20261119_bamboo_growth): 领活时服务器按本周结果单累加的(key.b_bamboo)给 B 快照自报的封顶; 没有 ⇒ 快照原样。
 	if key.get("b_bamboo") is float or key.get("b_bamboo") is int:
 		b["bamboo_hp"] = bamboo_cap(BE.ghost_bamboo_hp(b), key["b_bamboo"])
+	## 仪式匕首血契(2026-11-25 · 迁移 20261125_ritual_marks): 同一条封顶(key.b_ritual = 服务器按本周结果单 ritual_new 累加的)
+	if key.get("b_ritual") is float or key.get("b_ritual") is int:
+		b["ritual_marks"] = ritual_cap(BE.ghost_ritual_marks(b), key["b_ritual"])
 	var st: Dictionary
 	if j.get("a_state") is Dictionary:
 		st = {}
@@ -228,6 +231,10 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	st["bamboo_growth_hp"] = BE.ghost_bamboo_hp({"bamboo_hp": st.get("bamboo_growth_hp", (j["a"] as Dictionary).get("bamboo_hp", 0.0) if j.get("a") is Dictionary else 0.0)})
 	if key.get("a_bamboo") is float or key.get("a_bamboo") is int:   # 左方同一条封顶
 		st["bamboo_growth_hp"] = bamboo_cap(float(st["bamboo_growth_hp"]), key["a_bamboo"])
+	## 仪式匕首血契(2026-11-25): 同竹叶龟那条 —— 一律写(旧客户端 a_state 没这个键 ⇒ 从 A 快照取), 再按 key.a_ritual 封顶
+	st["ritual_marks"] = BE.ghost_ritual_marks({"ritual_marks": st.get("ritual_marks", (j["a"] as Dictionary).get("ritual_marks", 0) if j.get("a") is Dictionary else 0)})
+	if key.get("a_ritual") is float or key.get("a_ritual") is int:
+		st["ritual_marks"] = ritual_cap(int(st["ritual_marks"]), key["a_ritual"])
 	st["dual_ghost"] = b
 	st["dual_active"] = true
 	st["tutorial_active"] = false
@@ -248,6 +255,11 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 ## 竹叶龟生长封顶(2026-11-19 · 迁移 20261119_bamboo_growth): 取「自报」与「服务器结果单合计」的较小值(同 wheel_cap 的理由)。
 static func bamboo_cap(claimed: float, server) -> float:
 	return snappedf(minf(maxf(0.0, claimed), maxf(0.0, float(server))), 0.01)
+
+
+## 仪式匕首血契封顶(2026-11-25 · 迁移 20261125_ritual_marks): 取「自报」与「服务器结果单合计」的较小值(同 bamboo_cap)。
+static func ritual_cap(claimed: int, server) -> int:
+	return clampi(mini(claimed, int(maxf(0.0, float(server)))), 0, EqDaggerBatch.RITUAL_CAP)
 
 
 ## 命运之轮层数封顶: 每种花色取「自报」与「服务器结果单合计」的较小值(迁移 20261109d)。
@@ -347,6 +359,7 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 		"trainer_skill": ts if ts != "" else "hook",   # 与右方回落相同(battle_spawn: 老快照没有 ⇒ hook)
 		"gambler_wheel_stacks": BE.ghost_wheel_stacks(a),   # 2026-11-06 快照带上了(原来恒空 ⇒ 服务器局里命运之轮不累积); 右方读 dual_ghost 同一个键
 		"bamboo_growth_hp": BE.ghost_bamboo_hp(a),          # 竹叶龟生长本大轮累积(2026-11-19); 右方读 dual_ghost.bamboo_hp 同一个函数
+		"ritual_marks": BE.ghost_ritual_marks(a),           # 仪式匕首血契本大轮累积(2026-11-25); 右方读 dual_ghost.ritual_marks 同一个函数
 		"chest_treasure_value": float(cv) if (cv is int or cv is float) else 0.0,
 		"chest_treasures_won": cw,
 		## 093 香火石(2026-10-23): 从 A 的快照起算(原来写死 0 ⇒ 周末服务器局里我方刻痕不生效)。

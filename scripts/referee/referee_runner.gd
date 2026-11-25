@@ -103,6 +103,9 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 		## 竹叶龟【生长】(2026-11-19 · 方案书 20261119): 这一局两侧长的最大生命, 客户端结算时累积进存档(一大轮内越打越多, 换轮清零)。
 		res["bamboo_new"] = snappedf(float(battle._bamboo_sys.grown["left"]), 0.01)
 		res["bamboo_new_b"] = snappedf(float(battle._bamboo_sys.grown["right"]), 0.01)
+		## 114 仪式匕首【血契】(2026-11-25 · 方案书 20261125 §4.2c): 这一局两侧新刻的道数, 客户端结算时累积进存档(一大轮内累计, 换轮清零)。
+		res["ritual_new"] = int(battle._equip_sys._dagger_sys.ritual_new["left"])
+		res["ritual_new_b"] = int(battle._equip_sys._dagger_sys.ritual_new["right"])
 	if rr != null and rr.stream != null:
 		## end.json 另带三样给网页录像播放器(2026-11-08 · 方案书 20261105c §4.7; 播放器不登录、拿不到 matches 那一行):
 		##   mode(保留期按它分: 偷袭局 30 天, server/stream/stream_ops.py purge)、names(两边名字, 收尾卡「<名字> 获胜」)、

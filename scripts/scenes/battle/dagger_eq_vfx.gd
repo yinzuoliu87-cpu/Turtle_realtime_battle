@@ -133,7 +133,7 @@ func ritual_execute(tgt: Dictionary) -> void:
 func ritual_mark(killer: Dictionary, n: int) -> void:
 	_anim("rmark", Vector2(killer["pos"]), 70.0, 0.6, 1.0, false, false, Color.WHITE, killer)
 	if _ok() and battle.get("_vfx") != null:
-		battle._vfx._float_text(Vector2(killer["pos"]) + Vector2(0, -120), "血契 %d" % n, Color("#ff4a5a"), true)
+		battle._vfx._float_text(Vector2(killer["pos"]) + Vector2(0, -120), Lang.t("血契 %d") % n, Color("#ff4a5a"), true)
 
 
 # ═══════════════════════════════ 109 柳叶飞刀 / 115 手里剑 ═══════════════════════════════
@@ -270,12 +270,12 @@ func ninja_vanish(p: Dictionary, _sec: float) -> void:
 
 ## 影袭第二拍: 在目标身后冒烟现身, 背刺动作开播 —— 第 3 帧(刀插中)正好落在 windup 秒后(= sim 结算)
 func ninja_appear(p: Dictionary, _from: Vector2, windup: float) -> void:
-	_anim("nsmoke", Vector2(p["pos"]), 80.0, 0.6, 0.6)
+	_anim("nsmoke", Vector2(p["pos"]) + Vector2(36.0 if bool(p.get("face_right", false)) else -36.0, 0.0) * -1.0, 55.0, 0.45, 0.6)   # 小一团、落在身后(不盖住背刺动作)
 	_ninja_play(p, "stab", float(NINJA_STAB_HIT) / maxf(0.05, windup))
 
 
 func ninja_strike(_p: Dictionary, tgt: Dictionary, _from: Vector2) -> void:
-	_anim("nstrike", Vector2(tgt["pos"]), 110.0, 0.75, 1.0, false, false, Color.WHITE, tgt)
+	_anim("nstrike", Vector2(tgt["pos"]), 78.0, 0.75, 1.0, false, false, Color.WHITE, tgt)
 
 
 ## 掷手里剑: 手往后引 → 甩出, 第 3 帧(出手)正好落在 windup 秒后(= sim 放出手里剑那一刻)

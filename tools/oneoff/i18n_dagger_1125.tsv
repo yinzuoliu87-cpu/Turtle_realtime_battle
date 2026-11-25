@@ -1,0 +1,41 @@
+# 匕首羁绊 + 仪式 + 9 件匕首 + 暗影忍者 英文(2026-11-25 · 方案书 20261125) —— python tools/i18n_add.py tools/oneoff/i18n_dagger_1125.tsv
+匕首	Dagger
+仪式	Ritual
+匕首·刺杀	Daggers · Assassinate
+仪式·血契	Ritual · Blood Pact
+匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。档位越高，战斗中再触发的次数越多。	Daggers grant their carriers Crit Damage. When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and Life Steal. Higher tiers trigger it again later in the fight.
+仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。	Each kill by a Ritual Dagger carrier carves a Blood Pact. Blood Pacts accumulate across the whole round, and each one permanently increases the Attack of the carrier and the whole team.
+每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取	Each Dagger item grants its carrier +6% Crit Damage · [Assassinate] When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with +{C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}% bonus Crit Damage and {C:DaggerSynergySystem.LIFESTEAL%}% Life Steal
+每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次	Each Dagger item grants its carrier +12% Crit Damage · [Assassinate] bonus Crit Damage increased to {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%, and it triggers again {C:DaggerSynergySystem.TRIGGER_GAP} seconds into the fight
+每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次	Each Dagger item grants its carrier +20% Crit Damage · [Assassinate] bonus Crit Damage increased to {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%, and it triggers again {C:DaggerSynergySystem.TRIGGER_GAP} and 20 seconds into the fight
+【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%	[Blood Pact] Each kill by the carrier carves 1 Blood Pact, up to {C:EqDaggerBatch.RITUAL_CAP}. Pacts accumulate across the whole round and reset with the round. Multiple Ritual Daggers share the same Pacts · Each Blood Pact increases the whole team's Attack by {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%
+暗影忍者	Shadow Ninja
+影子忍者	Shadow Clone
+血契 %d	Blood Pact %d
+折叠小刀	Folding Knife
+每个战场的第一次攻击附带流血。	The first attack on each battlefield applies Bleed.
+每个战场开打后，第一次攻击附带 {C:EqDaggerBatch.FOLD_BLEED} 层流血。	After each battlefield begins, the first attack applies {C:EqDaggerBatch.FOLD_BLEED} Bleed stacks.
+柳叶飞刀	Willow-Leaf Knife
+定时朝最远的敌人射出飞刀，造成可以暴击的魔法伤害。	Periodically throws a knife toward the farthest enemy, dealing magic damage that can crit.
+每 {C:EqDaggerBatch.KNIFE_IV} 秒朝最远的敌人射出一把柳叶飞刀，命中途经的第一个敌人，造成（{C:EqDaggerBatch.KNIFE_FLAT}+{C:EqDaggerBatch.KNIFE_ATK%}% 攻击力）魔法伤害，可以暴击。	Every {C:EqDaggerBatch.KNIFE_IV} seconds, throws a willow-leaf knife toward the farthest enemy. It hits the first enemy in its path, dealing ({C:EqDaggerBatch.KNIFE_FLAT} + {C:EqDaggerBatch.KNIFE_ATK%}% Attack) magic damage. This damage can crit.
+苦无	Kunai
+定时朝随机敌人掷出苦无，每命中一枚为自身回复生命值。	Periodically throws kunai at random enemies, restoring health for each one that hits.
+每 {C:EqDaggerBatch.KUNAI_IV} 秒朝随机敌人掷出 {C:EqDaggerBatch.KUNAI_N} 枚苦无，每枚造成（{C:EqDaggerBatch.KUNAI_FLAT}+{C:EqDaggerBatch.KUNAI_ATK%}% 攻击力）魔法伤害，并为自身回复 {C:EqDaggerBatch.KUNAI_HEAL} 点生命值。	Every {C:EqDaggerBatch.KUNAI_IV} seconds, throws {C:EqDaggerBatch.KUNAI_N} kunai at random enemies. Each deals ({C:EqDaggerBatch.KUNAI_FLAT} + {C:EqDaggerBatch.KUNAI_ATK%}% Attack) magic damage and restores {C:EqDaggerBatch.KUNAI_HEAL} health to the carrier.
+毒牙匕首	Venom Fang
+暴击时按自身攻击力施加中毒。	Critical strikes apply Poison based on Attack.
+造成暴击时，使目标叠加相当于自身 {C:EqDaggerBatch.FANG_POISON_ATK%}% 攻击力的中毒层数。	Critical strikes apply Poison stacks equal to {C:EqDaggerBatch.FANG_POISON_ATK%}% of the carrier's Attack.
+三棱刺	Tri-Edge Stiletto
+攻击和技能无视目标一部分护甲。	Attacks and abilities ignore part of the target's Armor.
+攻击和技能无视目标 {C:EqDaggerBatch.PIERCE_PCT%}% 护甲。	Attacks and abilities ignore {C:EqDaggerBatch.PIERCE_PCT%}% of the target's Armor.
+弯匕	Kris
+击杀敌人后短时间内提高攻击速度。	Gains Attack Speed for a short time after a kill.
+击杀敌人后 {C:EqDaggerBatch.KRIS_SEC} 秒内攻击速度提高 {C:EqDaggerBatch.KRIS_ASPD%}%。	After killing an enemy, gains {C:EqDaggerBatch.KRIS_ASPD%}% Attack Speed for {C:EqDaggerBatch.KRIS_SEC} seconds.
+仪式匕首	Ritual Dagger
+斩杀低血量的敌人，每次击杀刻下血契，整个大轮持续变强。	Executes low-health enemies. Every kill carves a Blood Pact that keeps growing across the whole round.
+攻击和技能直接击杀生命值低于其 {C:EqDaggerBatch.RITUAL_EXEC%}% 最大生命值的敌人。每击杀一名敌人刻下 1 道【血契】，整个大轮累计，至多 {C:EqDaggerBatch.RITUAL_CAP} 道。每道血契使自身攻击力提高 {C:EqDaggerBatch.RITUAL_ATK}、护甲穿透提高 {C:EqDaggerBatch.RITUAL_PEN}。	Attacks and abilities execute enemies below {C:EqDaggerBatch.RITUAL_EXEC%}% of their max health. Each kill carves 1 [Blood Pact], accumulating across the whole round, up to {C:EqDaggerBatch.RITUAL_CAP}. Each Blood Pact grants the carrier {C:EqDaggerBatch.RITUAL_ATK} Attack and {C:EqDaggerBatch.RITUAL_PEN} Armor Pen.
+暗影匕首	Shadow Dagger
+召唤暗影忍者，影袭背刺生命值最低的敌人，半血时分出影子一起掷出手里剑。	Summons a Shadow Ninja that backstabs the weakest enemy. At half health it splits off a clone, and both throw shuriken together.
+登场时召唤一名暗影忍者：{C:EqDaggerBatch.NINJA_HP} 生命值、{C:EqDaggerBatch.NINJA_ATK} 攻击力、{C:EqDaggerBatch.NINJA_RES} 护甲和魔抗、{C:EqDaggerBatch.NINJA_CRIT%}% 暴击率，登场时隐身，攻击时现形。龟能满时释放【影袭】：化为黑烟，闪到生命值比例最低的敌人身后背刺，造成 {C:EqDaggerBatch.NINJA_STRIKE_MULT%}% 攻击力的物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。暗影忍者的生命值首次低于其 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 最大生命值时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力。影子在场时，每次【影袭】两名忍者各朝目标掷出一枚手里剑，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT}+{C:EqDaggerBatch.SHURIKEN_ATK%}% 攻击力）魔法伤害。	On entry, summons a Shadow Ninja with {C:EqDaggerBatch.NINJA_HP} health, {C:EqDaggerBatch.NINJA_ATK} Attack, {C:EqDaggerBatch.NINJA_RES} Armor and Magic Resist, and {C:EqDaggerBatch.NINJA_CRIT%}% Crit Chance. It enters stealthed and is revealed when it attacks. When its turtle energy is full it casts [Shadow Strike]: it turns into black smoke, blinks behind the enemy with the lowest health ratio and backstabs it for {C:EqDaggerBatch.NINJA_STRIKE_MULT%}% Attack as physical damage. This is always a critical strike. It then stays stealthed for {C:EqDaggerBatch.NINJA_RESTEALTH} seconds. The first time the Shadow Ninja drops below {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% of its max health, it splits off a Shadow Clone for {C:EqDaggerBatch.NINJA_CLONE_SEC} seconds with {C:EqDaggerBatch.NINJA_CLONE_STAT%}% of its max health and Attack. While the clone is present, each [Shadow Strike] makes both ninjas throw a shuriken at the target, dealing ({C:EqDaggerBatch.SHURIKEN_FLAT} + {C:EqDaggerBatch.SHURIKEN_ATK%}% Attack) magic damage to every enemy in its path.
+黑曜石匕首	Obsidian Dagger
+暴击时把黑曜石匕首插进敌人身上，足以致命时一起拔出并回复生命值。	Critical strikes lodge obsidian daggers in the enemy. Once they can kill, they are ripped out together and restore health.
+造成暴击时，在目标身上插入一把黑曜石匕首，匕首不会自行拔出。目标身上全部匕首一起拔出的伤害足以击杀目标时，立即全部拔出：每把造成（{C:EqDaggerBatch.OBS_FLAT}+{C:EqDaggerBatch.OBS_ATK%}% 攻击力+目标 {C:EqDaggerBatch.OBS_MAXHP%}% 最大生命值）物理伤害，并为自身回复 {C:EqDaggerBatch.OBS_HEAL} 点生命值。	Critical strikes lodge an obsidian dagger in the target; daggers never come out on their own. As soon as ripping out all daggers in the target would kill it, they are all ripped out at once: each deals ({C:EqDaggerBatch.OBS_FLAT} + {C:EqDaggerBatch.OBS_ATK%}% Attack + {C:EqDaggerBatch.OBS_MAXHP%}% of the target's max health) physical damage and restores {C:EqDaggerBatch.OBS_HEAL} health to the carrier.

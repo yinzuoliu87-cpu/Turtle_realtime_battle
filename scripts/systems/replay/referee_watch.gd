@@ -248,6 +248,7 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 	apply_axe_kills(gs, st)                    # 服务器那一局里斧头的击杀 + 助攻(2026-11-06)
 	apply_wheel(gs, st)                        # 服务器那一局里命运之轮新抽到的花色(2026-11-06)
 	apply_bamboo(gs, st)                       # 服务器那一局里竹叶龟长的最大生命(2026-11-19)
+	apply_ritual(gs, st)                       # 服务器那一局里 114 仪式匕首新刻的血契(2026-11-25)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -641,7 +642,8 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 			apply_axe_kills(GameState, res)
 			apply_wheel(GameState, res)
 			var bm_c: bool = apply_bamboo(GameState, res)   # 竹叶龟生长(2026-11-19), 同一张单子同一道闸
-			if ch_c or in_c or bm_c:
+			var rt_c: bool = apply_ritual(GameState, res)   # 仪式匕首血契(2026-11-25), 同上
+			if ch_c or in_c or bm_c or rt_c:
 				GameState.save()
 	else:
 		return -1                             # 问不到 / 还没翻面: 留着下次
@@ -748,6 +750,16 @@ static func apply_bamboo(gs, st: Dictionary) -> bool:
 	return true
 
 
+## 服务器那一局我方 114 仪式匕首新刻的血契 ⇒ 累积进本大轮存档(2026-11-25 · 方案书 20261125 §4.2c; 一大轮内累计, 换轮清零, 封顶 RITUAL_CAP)。
+##   ★服务端没传这个键(迁移没上 / 老裁判)⇒ 什么都不发。服务端回的是「我这一侧」(B 方取 ritual_new_b, 回包按视角换好)。
+static func apply_ritual(gs, st: Dictionary) -> bool:
+	var v = st.get("ritual_new", 0)
+	if not (v is int or v is float) or int(v) <= 0:
+		return false
+	gs.ritual_marks = clampi(int(gs.ritual_marks) + int(v), 0, EqDaggerBatch.RITUAL_CAP)
+	return true
+
+
 static func apply_wheel(gs, st: Dictionary) -> bool:
 	var w = st.get("wheel_new", {})
 	if not (w is Dictionary) or (w as Dictionary).is_empty():
@@ -795,6 +807,7 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 	apply_axe_kills(gs, st)
 	apply_wheel(gs, st)
 	apply_bamboo(gs, st)
+	apply_ritual(gs, st)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1

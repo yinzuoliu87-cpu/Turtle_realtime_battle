@@ -15,6 +15,10 @@ extends Node
 ##   116 黑曜石: 暴击插一把; 不够杀不拔; 够杀 ⇒ 全拔、目标死、携带者每把回 300
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const D := preload("res://scripts/systems/equip/eq_dagger_batch.gd")
+const RNET := preload("res://scripts/net/referee_net.gd")
+const RW := preload("res://scripts/systems/replay/referee_watch.gd")
+const RJ := preload("res://scripts/referee/referee_job.gd")
+const BE := preload("res://scripts/net/backend.gd")
 
 var _n := 0
 var _fail := 0
@@ -179,6 +183,22 @@ func _ready() -> void:
 		m1 == m0 + 1 and m1b == m1 and _ds.marks_of("left") == m0 + 2 and _near(float(me["base_atk"]) - a0, 2.0 * float(D.RITUAL_ATK[2]), 1e-6)
 		and _near(float(me["armor_pen"]), 2.0 * float(D.RITUAL_PEN[2]), 1e-6),
 		"血契 %d → %d / %d → %d · 攻 +%.2f · 护穿 %.2f" % [m0, m1, m1b, _ds.marks_of("left"), float(me["base_atk"]) - a0, float(me["armor_pen"])])
+	## ── 114 血契跨场链(2026-11-25 · 迁移 20261125_ritual_marks, 照竹叶龟生长): 局内只记 ritual_new, 回包才进存档 ──
+	var gs_before: int = int(GameState.ritual_marks)
+	_ok("114 链① 局内刻的记在 ritual_new(裁判写结果单), 不直接写存档", int(_ds.ritual_new["left"]) == 2 and int(GameState.ritual_marks) == gs_before,
+		"ritual_new %s · 存档 %d → %d" % [str(_ds.ritual_new), gs_before, int(GameState.ritual_marks)])
+	var pr_ok: bool = RNET.parse_ritual(7) == 7 and RNET.parse_ritual(7.0) == 7 and RNET.parse_ritual("7") == 0 and RNET.parse_ritual(null) == 0 		and RNET.parse_ritual(-3) == 0 and RNET.parse_ritual(999) == D.RITUAL_CAP
+	GameState.ritual_marks = D.RITUAL_CAP - 2
+	var ap1: bool = RW.apply_ritual(GameState, {"ritual_new": 5})
+	var after_cap: int = int(GameState.ritual_marks)
+	var ap0: bool = RW.apply_ritual(GameState, {})
+	GameState.ritual_marks = gs_before
+	_ok("114 链② 回包解析(数字才认、夹到 0~%d) · 加进存档按上限封顶 · 没这个键什么都不发" % D.RITUAL_CAP,
+		pr_ok and ap1 and after_cap == D.RITUAL_CAP and not ap0, "解析 %s · %d · 空键 %s" % [str(pr_ok), after_cap, str(ap0)])
+	_ok("114 链③ 快照读法夹到 0~%d、裁判封顶取较小" % D.RITUAL_CAP,
+		BE.ghost_ritual_marks({"ritual_marks": 200}) == D.RITUAL_CAP and BE.ghost_ritual_marks({"ritual_marks": "9"}) == 0 and BE.ghost_ritual_marks({}) == 0
+		and RJ.ritual_cap(100, 40) == 40 and RJ.ritual_cap(10, 40) == 10 and RJ.ritual_cap(10, -5) == 0,
+		"%d / %d / %d" % [BE.ghost_ritual_marks({"ritual_marks": 200}), RJ.ritual_cap(100, 40), RJ.ritual_cap(10, 40)])
 
 	## ── 115 暗影匕首 ──
 	me = _mk("left", c + Vector2(-300, 0), ["p2eq_115"])

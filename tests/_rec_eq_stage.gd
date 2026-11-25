@@ -81,6 +81,26 @@ static func cases() -> Dictionary:
 			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 21.0],
 		## 敌人会走过来打小将(掉点血) ⇒ 第 4 下蓄力回血看得见
 		"katana_hit": [[_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(150, 3, true, 20000.0, 40.0), 19.0],
+		## ── 匕首批(11-25) ──
+		## 羁绊【刺杀】二档: 携带者凑 6 件不同匕首(108/109/110/111/112/113), 旁边两只不带装备的友方 —— 开打和第 10 秒全队头顶各闪一次, 下一下普攻猩红长斩
+		"assassin": [[_me(Vector2(-10, 0), _eq([108, 109, 110, 111, 112, 113], 1)), _me(Vector2(-10, -90), []), _me(Vector2(-10, 90), [])] + _dummies(60, 3), 16.0],
+		"fold": [[_me(Vector2(-10, 0), _eq([108]))] + _dummies(60, 3), 6.0],
+		## 柳叶飞刀: 携带者站远处不动, 靶子一前一后排成一条 —— 看飞刀只打中途经的第一个
+		"knife": [[_me(Vector2(-320, 0), _eq([109]), {"hold": true})] + _ring_dummies(Vector2(0, 0), [Vector2(40, 0), Vector2(200, 0), Vector2(120, -110)]), 14.0],
+		"kunai": [[_me(Vector2(-260, 0), _eq([110]), {"hold": true, "hp": 6000.0})] + _dummies(60, 3), 12.0],
+		## 毒牙要暴击才触发: 同时带 116(3 星 50% 暴击)
+		"fang": [[_me(Vector2(-10, 0), _eq([111, 116]))] + _dummies(60, 3), 12.0],
+		"pierce": [[_me(Vector2(-10, 0), _eq([112]))] + _dummies(60, 3), 6.0],
+		## 弯匕 / 仪式: 靶子血少、打得死(击杀后攻速暴涨 / 斩杀 + 刻血契)
+		"kris": [[_me(Vector2(-10, 0), _eq([113]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(110, -80), Vector2(110, 80)]).map(func(x): x["hp"] = 700.0; x["killable"] = true; return x), 12.0],
+		"ritual": [[_me(Vector2(-10, 0), _eq([114]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(110, -80), Vector2(110, 80)]).map(func(x): x["hp"] = 350.0; x["killable"] = true; return x), 14.0],
+		"obs": [[_me(Vector2(-10, 0), _eq([116]))] + _dummies(60, 1, false, 4000.0).map(func(x): x["killable"] = true; return x), 14.0],
+		## 暗影忍者: 满龟能开局(马上看影袭); 两只会打的敌人把它打到半血 ⇒ 分影子 ⇒ 下一次影袭两名忍者一起掷手里剑
+		"ninja": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
+			+ _dummies(150, 3, true, 30000.0, 450.0), 24.0],
+		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
+		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
+			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 16.0],
 	}
 
 
@@ -134,6 +154,14 @@ func _process(d: float) -> void:
 		if OS.has_environment("REC_ZOOM"):
 			_b._cam_zoom = float(OS.get_environment("REC_ZOOM"))
 			_b._apply_cam_zoom()
+	var ds = _b._equip_sys._dagger_sys
+	for k in ds.stat:
+		if int(ds.stat[k]) != int(_seen.get("d_" + k, 0)):
+			print("[EV] %.2f %s %d" % [_el, k, int(ds.stat[k])])
+			_seen["d_" + k] = int(ds.stat[k])
+	if int(_b._dagger_syn.armed) != int(_seen.get("armed", 0)):
+		print("[EV] %.2f assassin_armed %d" % [_el, int(_b._dagger_syn.armed)])
+		_seen["armed"] = int(_b._dagger_syn.armed)
 	var bs = _b._equip_sys._bomb_sys
 	for k in bs.stat:
 		if int(bs.stat[k]) != int(_seen.get(k, 0)):

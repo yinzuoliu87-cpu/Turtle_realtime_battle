@@ -14,6 +14,7 @@ extends RefCounted
 ##   §4.4 `_t` 跨路累加: 计时全是逐帧累加(换路单位重建 ⇒ 自然清零)。跨路 / 跨对局的只有 114 血契(见下)。
 ##   随机: 只有 110 苦无挑随机敌人, 走已播种的 `battle._battle_rng`。
 ##   会走的飞行物(109 柳叶飞刀 / 115 手里剑): 每步线段碰撞, 命中名单防重复(memory fb-moving-hits-collide-per-step)。
+const _BE := preload("res://scripts/net/backend.gd")
 var battle
 var vfx = null
 
@@ -84,6 +85,10 @@ var _obs_tgts: Array = []      ## 身上插着黑曜石匕首的敌人(字典本
 ## 114 血契: 本场每方的刻数(left 与 GameState.ritual_marks 同步; right 每场从对手快照读一次)
 var _marks := {"left": 0, "right": 0}
 var _marks_loaded := {}
+## 这一局每方新刻了几道(同竹叶龟生长 `grown`): 裁判写进结果单 ritual_new / ritual_new_b, 客户端 RefereeWatch.apply_ritual
+##   收到回包才累积进存档(GameState.ritual_marks)。局内不直接写存档 —— 本机看的是直播 / 回放, 真打的是裁判机。
+##   ★不随 reset_match 清(那一刻在结算里, 裁判结果单在它之后才读); 每局新建一个对战场景 ⇒ 自然从 0 起。
+var ritual_new := {"left": 0, "right": 0}
 ## 门禁量
 var stat := {"fold": 0, "knife": 0, "kunai": 0, "kunai_heal": 0, "fang": 0, "kris": 0, "ritual_exec": 0, "ritual_mark": 0,
 	"ninja_strike": 0, "ninja_clone": 0, "shuriken": 0, "obs_embed": 0, "obs_pull": 0}
@@ -426,9 +431,7 @@ func _load_marks(side: String) -> void:
 	if side == "left":
 		_marks["left"] = clampi(int(GameState.ritual_marks), 0, RITUAL_CAP)
 	else:
-		var gh = GameState.dual_ghost
-		if gh is Dictionary:
-			_marks["right"] = maxi(int(_marks.get("right", 0)), clampi(int((gh as Dictionary).get("ritual_marks", 0)), 0, RITUAL_CAP))
+		_marks["right"] = maxi(int(_marks.get("right", 0)), _BE.ghost_ritual_marks(GameState.dual_ghost))   # 对手快照(同裁判左方的口径)
 
 
 ## 登场: 按已有血契给这件的那一份(攻击 / 护穿, 按星)
@@ -469,6 +472,7 @@ func _ritual_mark(killer: Dictionary) -> void:
 	if marks_of(side) >= RITUAL_CAP:
 		return
 	_marks[side] = marks_of(side) + 1
+	ritual_new[side] = int(ritual_new.get(side, 0)) + 1
 	stat["ritual_mark"] += 1
 	## 这一道给场上本方每个仪式匕首携带者的那一份(按各自星级, 每件一份)
 	for o in _allies_of_side(side):
@@ -478,9 +482,6 @@ func _ritual_mark(killer: Dictionary) -> void:
 				o["base_atk"] = float(o.get("base_atk", 0.0)) + float(RITUAL_ATK[si])
 				o["armor_pen"] = float(o.get("armor_pen", 0.0)) + float(RITUAL_PEN[si])
 				battle._recalc_stats(o)
-	if side == "left":
-		if GameState != null and not battle._world_builder._is_dev_tool_battle():
-			GameState.ritual_marks = marks_of("left")   # 同 093 香火刻痕: 局内刻的写回存档池(经济流水 / 裁判机见方案书 §4.2c)
 	_fx("ritual_mark", [killer, marks_of(side)])
 
 
@@ -623,6 +624,9 @@ func _ninja_appear(n: Dictionary) -> void:
 	p["pos"] = ArenaShape.clamp_in(Vector2(tgt["pos"]) + away * 46.0, battle.ARENA, 30, 20)
 	p["face_right"] = Vector2(tgt["pos"]).x > Vector2(p["pos"]).x
 	n["stab"] = NINJA_STAB_WINDUP
+	## 现身 = 出手(攻击即现形): 登场隐身(到第一次攻击为止)在这一刻结束, 背刺动作全程看得见、也打得到
+	p["untargetable_until"] = float(battle._t)
+	p["_ninja_veil"] = false
 	_fx("ninja_appear", [p, from, NINJA_STAB_WINDUP])
 
 
@@ -641,6 +645,7 @@ func _ninja_stab(n: Dictionary) -> void:
 	battle._damage._apply_damage_from(p, tgt, dmg, COL_PHYS, 0.0, false, true)
 	p["untargetable_until"] = maxf(float(p.get("untargetable_until", 0.0)), float(battle._t) + NINJA_RESTEALTH)
 	p["_ninja_veil"] = true
+	p["atk_cd"] = maxf(float(p.get("atk_cd", 0.0)), NINJA_RESTEALTH)   # 隐身这 1.5 秒不普攻(否则下一拍普攻就现形, 隐身等于没有; 11-25 录像自查)
 	_fx("ninja_strike", [p, tgt, from])
 	## 影分身期间: 两个忍者同时朝这个目标各掷一枚手里剑(沿直线飞, 路径上每个敌人吃一次)
 	var pair: Array = []

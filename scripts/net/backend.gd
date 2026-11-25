@@ -206,6 +206,17 @@ static func ghost_minion_extras(m: Dictionary, spec: Dictionary) -> void:
 ## 快照里的命运之轮累积 {花色: 次数}(裁判左方 / 战斗右方同一个口径)。快照是别人传上来的 ⇒ 只认四种花色, 夹到 0 ~ 99。
 ## 快照里的竹叶龟【生长】本大轮累积(最大生命; 裁判左方 / 战斗右方同一个口径, 2026-11-19)。快照是别人传上来的 ⇒ 只认有限正数, 夹到 0 ~ BAMBOO_HP_MAX, 留两位小数。
 const BAMBOO_HP_MAX := 1000000.0
+## 快照里的 114 仪式匕首【血契】本大轮累积道数(裁判左方 / 战斗右方同一个口径, 2026-11-25)。别人传上来的 ⇒ 只认数字, 夹到 0 ~ RITUAL_CAP。
+static func ghost_ritual_marks(g) -> int:
+	var v = (g as Dictionary).get("ritual_marks", 0) if g is Dictionary else 0
+	if not (v is int or v is float):
+		return 0
+	var f := float(v)
+	if is_nan(f) or is_inf(f) or f <= 0.0:
+		return 0
+	return clampi(int(f), 0, EqDaggerBatch.RITUAL_CAP)
+
+
 static func ghost_bamboo_hp(g) -> float:
 	var v = (g as Dictionary).get("bamboo_hp", 0.0) if g is Dictionary else 0.0
 	if not (v is int or v is float):
@@ -2207,4 +2218,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	var bh := ghost_bamboo_hp({"bamboo_hp": GameState.bamboo_growth_hp})   # 竹叶龟生长本大轮累积(11-19): 同样只有长过才带
 	if bh > 0.0:
 		out["bamboo_hp"] = bh
+	var rm := ghost_ritual_marks({"ritual_marks": GameState.ritual_marks})   # 仪式匕首血契本大轮累积(11-25): 同样只有刻过才带
+	if rm > 0:
+		out["ritual_marks"] = rm
 	return out
