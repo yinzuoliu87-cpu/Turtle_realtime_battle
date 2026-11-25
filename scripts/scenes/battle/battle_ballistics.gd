@@ -47,7 +47,27 @@ func _push_proj(d: Dictionary) -> void:
 		var _ct = battle._shell_sys.ctx_capture()
 		if _ct != null:
 			d["_copy"] = _ct                           # 龟壳复制期射出的弹道: 命中时照样按 60%(冰封冰锥等)
+	## ★飞行物一律按速度(11-25 用户「肯定不是固定飞多少多少秒啊，肯定是有飞行速度的呀」): 结算用的 2D 位置从携带者脚下出发
+	if d.has("spd") and not d.has("p2"):
+		d["p2"] = Vector2(d["src"]["pos"]) if d.get("src") is Dictionary else Vector2(d["tgt"]["pos"])
 	battle._projectiles.append(d)
+
+
+## 弹道按速度推进一步: pr["p2"] = 结算用的 2D 位置, 每步按 pr["spd"] 往目标【当前】位置走, 碰到身体(col_r) = 到达。
+##   返回进度 0..1 = 已飞 / (已飞 + 剩余); 画面按它从出手点插到目标, 1 = 到了(命中结算)。
+##   原来是 dur = clampf(距离 / 速度, 下限, 上限) 固定时长、出手时就算死 ⇒ 远处一律同一时间到、目标跑开也到点就中。
+func proj_seek(pr: Dictionary, tgt: Dictionary, delta: float) -> float:
+	var p: Vector2 = pr["p2"]
+	var to2: Vector2 = tgt["pos"]
+	var d: float = DetMath.dist(p, to2)
+	var step: float = float(pr["spd"]) * delta
+	var reach: float = float(tgt.get("col_r", 20.0))
+	if d - reach <= step:
+		return 1.0
+	pr["p2"] = p + (to2 - p) * (step / d)
+	var flown: float = float(pr.get("_flown", 0.0)) + step
+	pr["_flown"] = flown
+	return clampf(flown / (flown + d - step - reach), 0.0, 0.999)
 
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) -> void:
 	var p = Sprite3D.new()
@@ -67,10 +87,9 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) 
 	p.position = world_from
 	battle._world.add_child(p)
 	var dist: float = DetMath.dist(start2d, tgt["pos"])
-	var pdur = clampf(dist / 650.0, 0.25, 0.9)
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": 1, "col": Color("#d9d2c4"),   # ★伤害写死 1(象征性): 不走 _resolve_dmg 是有意的 —— 吃了护甲也还是 1(maxi(1,…) 兜底)
-		"src": u, "t": 0.0, "dur": pdur, "basic_onhit": false,
+		"src": u, "t": 0.0, "spd": 650.0, "basic_onhit": false,
 		"arc": clampf(dist * 0.010, 0.8, 3.2),    # ★抛物线拱高(用户2026-07-23:「弹道是抛物线的」): 远则拱高
 		"dtype": "physical", "spin": true, "ms_onhit": ms_onhit,
 	})
@@ -104,7 +123,7 @@ func _fire_coral_spike(src: Dictionary, tgt: Dictionary, si: int) -> void:   # �
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color(1.0, 0.5, 0.36),
-		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 900.0, 0.22, 0.8),
+		"src": src, "t": 0.0, "spd": 900.0,
 		"coral_spike": true, "dirsel": true, "co_si": si,
 	})
 
@@ -215,14 +234,13 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 			p.scale = Vector3.ONE * GAMBLER_CARD_HAND_SCALE
 	p.position = world_from
 	battle._world.add_child(p)
-	var pdur = clampf(DetMath.dist(start2d, tgt["pos"]) / 700.0, 0.22, 0.7)
-	if card_spin: pdur = clampf(DetMath.dist(start2d, tgt["pos"]) / 430.0, 0.42, 1.1)   # 扑克牌弹道放慢看清(用户2026-07-14)
+	var pspd: float = 430.0 if card_spin else 700.0   # 扑克牌弹道放慢看清(用户2026-07-14)
 	var _stt: int = 0
 	if basic_onhit and src is Dictionary and str(src.get("id", "")) == "space" and float(src.get("star_energy", 0.0)) > 0.0:
 		_stt = int(float(src["star_energy"]) * StarSystem.ENERGY_TRUE_PCT)   # 星能追加真伤=12%当前星能(用户2026-07-16: 30%→12%)·打包进普攻弹道命中才结算
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
+		"src": src, "t": 0.0, "spd": pspd, "basic_onhit": basic_onhit, "star_true": _stt,
 		"ls": DaggerSynergySystem.extra_ls(src) if basic_onhit else 0.0,   # 匕首【刺杀】强化击的额外吸血随弹道带到命中
 		## 多重打击连出来的那一发(出手这一刻 _chained_atk 指的就是这一发; 命中时它早被下一发的掷骰改写)⇒ 记在弹道上, 命中时装备效果按 50%
 		"multi_fx": GamblerSystem.MULTI_FX if (basic_onhit and src is Dictionary and bool(src.get("_chained_atk", false))) else 1.0,
@@ -247,7 +265,7 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "src": u, "t": 0.0,
-		"dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 620.0, 0.2, 0.62),
+		"spd": 620.0,
 		"ghost_touch": true, "gt_phys": GhostSystem.BASIC_PHYS * atk, "gt_true": GhostSystem.BASIC_TRUE * atk,   # ★读常量(10-16): 原写死 0.4 / 0.9, 文案引用的常量只被一张不生效的表读
 		 "basic_onhit": true, "wisp_dir": true,
 	})
@@ -294,7 +312,7 @@ func _step_projectiles(delta: float) -> void:
 			continue
 		var tgt: Dictionary = pr["tgt"]
 		var to = battle._world_pos(tgt["pos"], 1.0)
-		var frac: float = clampf(pr["t"] / pr["dur"], 0.0, 1.0)
+		var frac: float = proj_seek(pr, tgt, delta) if pr.has("spd") else clampf(pr["t"] / pr["dur"], 0.0, 1.0)
 		node.position = pr["from"].lerp(to, frac)
 
 		## ══════════════════════════════════════════════════════════════
@@ -579,7 +597,7 @@ func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color("#c96bff"),
-		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 700.0, 0.28, 0.84),
+		"src": src, "t": 0.0, "spd": 700.0,
 		"venom_fang": true, "fang_base": base,
 		"afterimage": 0.016,     # 拖尾很密(毒牙飞得快, 要拉出旧版那种"一条带"的速度感)
 		"ai_life": 0.34,         # 残影活久一点 ⇒ 尾更长(实测 0.20 只有约 2 个龟身, 旧版跨 3 个)
@@ -600,10 +618,9 @@ func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int, freeze_sec: flo
 	var world_from = battle._world_pos(start2d, 1.0)
 	p.position = world_from
 	battle._world.add_child(p)
-	var dur = clampf(DetMath.dist(start2d, tgt["pos"]) / 600.0, 0.35, 0.9)   # 恒速~600px/s, 慢到看得清(原0.2太快)
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": Color("#4dabf7"),
-		"src": src, "t": 0.0, "dur": dur, "basic_onhit": false, "freeze_on_hit": freeze_sec, "oriented": true, "dtype": battle._last_dmg_type,
+		"src": src, "t": 0.0, "spd": 600.0, "basic_onhit": false, "freeze_on_hit": freeze_sec, "oriented": true, "dtype": battle._last_dmg_type,
 	})
 
 func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw: float, is_crit: bool) -> void:   # 旋转飞镖弹道(4帧自旋): 命中→物理段(红·减甲)+可选真伤段(白·穿甲)·暴击金染
@@ -620,9 +637,8 @@ func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw:
 	var world_from = battle._world_pos(start2d, 1.0)
 	p.position = world_from
 	battle._world.add_child(p)
-	var dur = clampf(DetMath.dist(start2d, tgt["pos"]) / 850.0, 0.12, 0.5)   # 快镖
 	_push_proj({
-		"node": p, "from": world_from, "tgt": tgt, "src": src, "t": 0.0, "dur": dur,
+		"node": p, "from": world_from, "tgt": tgt, "src": src, "t": 0.0, "spd": 850.0,   # 快镖
 		"afterimage": 0.02, "ai_life": 0.16,   # 11-05 残影拖尾(快镖拉出一条速度带)
 		"shuriken_hit": true, "shuriken_anim": true,
 		"nj_phys": phys_raw, "nj_true": true_raw, "is_crit": is_crit,
@@ -832,7 +848,7 @@ func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> vo
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 520.0, 0.8, 2.6),   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
+		"src": src, "t": 0.0, "spd": 520.0,   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
 		"flyslash": true, "o2d": start2d,
 		"dirsel": true,                # ③ 按飞行角度选方向帧(不旋转) —— 见本文件 _step_projectiles
 		"afterimage": 0.045,           # ④ 拖尾: 每 45ms 留一个半透明残影, 原地淡出(不画进贴图)

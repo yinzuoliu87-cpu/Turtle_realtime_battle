@@ -4253,7 +4253,7 @@ func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String
 	_world.add_child(p)
 	var pd: Dictionary = {
 		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 520.0, 0.22, 1.1),   # 慢一半(用户"完全看不清")
+		"src": src, "t": 0.0, "spd": 520.0,   # 慢一半(用户"完全看不清")
 		"eq_bolt": true, "eq_bleed": bleed,
 	}
 	if spin:
@@ -6220,10 +6220,9 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	var world_from := _world_pos(start2d, 1.0)
 	p.position = world_from
 	_world.add_child(p)
-	var dur := clampf(DetMath.dist(start2d, tgt["pos"]) / 650.0, 0.18, 0.6)
 	_ballistics._push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.30, tgt, false),
-		"col": Color("#ff4444"), "src": src, "t": 0.0, "dur": dur, "basic_onhit": false,
+		"col": Color("#ff4444"), "src": src, "t": 0.0, "spd": 650.0, "basic_onhit": false,
 		"coin_true": int(src["atk"] * FortuneSystem.ALLIN_COIN_COEF),   # 梭哈每枚 0.18+0.18 → 0.3+0.3(用户2026-07-29 第五轮)
 		# ★这一改顺带修掉一个隐藏缺陷: 财神普攻 = 1.0A + 2%×ATK×金币数, 而梭哈【清空金币】。
 		#   每枚金币"留着"值 0.66 伤害/秒(持续到死); 旧值 17.1 点一次性 → 打平需剩余 25.7 秒,
@@ -6913,7 +6912,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 				_world.add_child(p)
 				var dmg: int = _resolve_dmg(u, u["atk"] * CyberSystem.DRONE_SHOT_COEF, tgt, false)   # 弹伤=赛博ATK×4%(系数与来由见 CyberSystem.DRONE_SHOT_COEF)
 				_ballistics._push_proj({"node": p, "from": p.position, "tgt": tgt, "dmg": maxi(1, dmg), "col": Color("#9fe8ff"),
-					"src": u, "t": 0.0, "dur": clampf(DetMath.vlen((u["pos"] - tgt["pos"])) / 900.0, 0.15, 0.5),
+					"src": u, "t": 0.0, "spd": 900.0,
 					"basic_onhit": false, "oriented": false, "card_spin": false, "dtype": "physical", "drone_shot": true})
 
 func _art_faces_right(u: Dictionary) -> bool:
@@ -7237,7 +7236,7 @@ func _spawn_fireball(src: Dictionary, tgt: Dictionary, dmg: int, burn: int) -> v
 	_world.add_child(p)
 	_ballistics._push_proj({
 		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#ff7a33"),
-		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(src["pos"], tgt["pos"]) / 600.0, 0.35, 0.7),
+		"src": src, "t": 0.0, "spd": 600.0,
 		"arc": 2.2, "fireball": true, "fire_burst": burn,
 	})
 
@@ -7255,7 +7254,7 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int, grow: float
 	_world.add_child(p)
 	_ballistics._push_proj({
 		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#a8ffb0"),
-		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(src["pos"], tgt["pos"]) / 850.0, 0.14, 0.5),
+		"src": src, "t": 0.0, "spd": 850.0,
 		"bamboo": true, "wisp_dir": true, "wisp_off": PI / 2.0, "bamboo_grow": grow,   # bamboo-arrow.png 是96x24横向贴图(+X朝前)
 	})
 
