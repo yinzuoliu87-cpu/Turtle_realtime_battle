@@ -107,6 +107,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 充能值
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 护甲与魔抗之和
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 自身最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|伤害减免 #%
 scripts/gamedata/equip_tier_labels.gd|lit|伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|伤害转移 #%
@@ -124,6 +125,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|单体伤害提高 #%
 scripts/gamedata/equip_tier_labels.gd|lit|压载舱容量 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|友军双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|友军护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|双抗 #
 scripts/gamedata/equip_tier_labels.gd|lit|双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|双穿 +#
 scripts/gamedata/equip_tier_labels.gd|lit|反伤阈值 # 点
@@ -137,6 +139,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|回复 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|回复加成 #% 已损失生命值
 scripts/gamedata/equip_tier_labels.gd|lit|回复加成 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|回复比例 #% 本次伤害
+scripts/gamedata/equip_tier_labels.gd|lit|地雷 # 颗
 scripts/gamedata/equip_tier_labels.gd|lit|坠毁伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|基础回复 #
@@ -155,6 +158,8 @@ scripts/gamedata/equip_tier_labels.gd|lit|孵化护盾 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|射线伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|射线基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|射线所需攻击 # 次
+scripts/gamedata/equip_tier_labels.gd|lit|小将攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|小将生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|小手枪攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|小手枪生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|小熊伤害 #% 攻击力
@@ -202,12 +207,14 @@ scripts/gamedata/equip_tier_labels.gd|lit|每层所需治疗 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|每层护甲和魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层攻击速度 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|每层生命值 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每次中毒 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|每次破甲 #
 scripts/gamedata/equip_tier_labels.gd|lit|每段充能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|每秒上限 # 龟能
 scripts/gamedata/equip_tier_labels.gd|lit|每秒伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每秒回复 #
 scripts/gamedata/equip_tier_labels.gd|lit|每秒护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|每秒损失 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|每秒龟能 #
 scripts/gamedata/equip_tier_labels.gd|lit|每跳衰减 #%
 scripts/gamedata/equip_tier_labels.gd|lit|永久护盾 # 点
@@ -223,6 +230,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|浪潮弹跳 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮治疗 #
 scripts/gamedata/equip_tier_labels.gd|lit|浮游炮伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|溅射比例 #%
+scripts/gamedata/equip_tier_labels.gd|lit|潜行一击基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|火球伤害 #% 目标最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|火球目标 # 名
 scripts/gamedata/equip_tier_labels.gd|lit|灰血比例 #%
@@ -231,12 +239,16 @@ scripts/gamedata/equip_tier_labels.gd|lit|灼烧层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|炮台双抗 #
 scripts/gamedata/equip_tier_labels.gd|lit|炮台攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|炮台生命值 #
+scripts/gamedata/equip_tier_labels.gd|lit|炮筒攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|炮筒生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|炸弹伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|炸弹数 # 枚
+scripts/gamedata/equip_tier_labels.gd|lit|炸弹生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|炸弹魔法伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|爆炸伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|爆炸伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|爆炸时间 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|物理伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|猛砸伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|生命偷取 #%
 scripts/gamedata/equip_tier_labels.gd|lit|生长充能 # 次
@@ -245,8 +257,10 @@ scripts/gamedata/equip_tier_labels.gd|lit|电击层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|目标数 # 名
 scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 #% 携带者最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|眩晕时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|破损层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|破甲 #
 scripts/gamedata/equip_tier_labels.gd|lit|破甲上限 #
 scripts/gamedata/equip_tier_labels.gd|lit|竖斩伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|竖斩基础伤害 #
@@ -264,6 +278,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|范围伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|落雷数 # 道
 scripts/gamedata/equip_tier_labels.gd|lit|血护盾上限 #
 scripts/gamedata/equip_tier_labels.gd|lit|装备星级 # 星
+scripts/gamedata/equip_tier_labels.gd|lit|触发几率 #%
 scripts/gamedata/equip_tier_labels.gd|lit|转化比例 #%
 scripts/gamedata/equip_tier_labels.gd|lit|近战增伤 #%
 scripts/gamedata/equip_tier_labels.gd|lit|远程减伤 #%
@@ -271,6 +286,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|连射数 # 发
 scripts/gamedata/equip_tier_labels.gd|lit|连斩次数 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|追加伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|追加概率 #%
+scripts/gamedata/equip_tier_labels.gd|lit|重炮每发消耗 # 龟能
 scripts/gamedata/equip_tier_labels.gd|lit|金弹真实伤害 #%
 scripts/gamedata/equip_tier_labels.gd|lit|金弹间隔 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|附带伤害 #
@@ -2056,12 +2072,14 @@ scripts/scenes/codex/status_sources.gd|lit|func _ninja_dash\\(u: Dictionary, tar
 scripts/scenes/codex/status_sources.gd|lit|{C:AxeEvolution.SLAM_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BambooSystem.SMACK_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BasicConsts.SLAM_STUN_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:BombSynergySystem.AIR_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BubbleSystem.BIND_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BubbleSystem.SHIELD_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:ChestSystem.POISON_CUT%}% · {C:ChestSystem.POISON_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:CyberSystem.HIJACK_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EliteSystem.WHIP_STUN_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:EqBombBatch.MINE_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.DART_KNOCKUP_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒
@@ -2108,6 +2126,7 @@ scripts/scenes/codex/status_sources.gd|lit|气场觉醒
 scripts/scenes/codex/status_sources.gd|lit|法器
 scripts/scenes/codex/status_sources.gd|lit|涅槃
 scripts/scenes/codex/status_sources.gd|lit|温泉蛋\\(036\\)
+scripts/scenes/codex/status_sources.gd|lit|炸弹
 scripts/scenes/codex/status_sources.gd|lit|玩偶小熊仔
 scripts/scenes/codex/status_sources.gd|lit|登场 {C:CyberSystem.AI_START_CHARGE} 层
 scripts/scenes/codex/status_sources.gd|lit|盾
