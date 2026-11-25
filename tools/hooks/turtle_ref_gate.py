@@ -72,6 +72,8 @@ def hook_prompt(data):
     prompt = str(data.get("prompt", ""))
     if "参考" not in prompt or not _in_turtle(data.get("cwd", ".")):
         return
+    if "<task-notification>" in prompt or "SYSTEM NOTIFICATION" in prompt:
+        return   # 后台任务通知不是用户的话(11-25 误报 r3)
     p = _load()
     i = prompt.index("参考")
     ex = prompt[max(0, i - 40): i + 60].replace("\n", " ")
