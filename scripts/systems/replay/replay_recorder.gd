@@ -98,7 +98,9 @@ const STATE_KEYS := [
 ##   战斗里要用就走 `fight_battles()` 从录像里读; 裁判入口(referee_runner)在一次性的 GameState 上直接设。
 const APPLY_SKIP := ["season_total_battles"]
 const PLAY_READS_NOT_RECORDED := ["test_mode", "tutorial", "current_lane", "egg_hp", "lane_results",
-	"dual_survivors", "dual_ms_stacks", "foe_loadouts"]
+	"dual_survivors", "dual_ms_stacks", "foe_loadouts",
+	## econ_quiet: 记账沙盒开关(回放自己置上, 恒为开) —— 回放里斧头击杀走记账口 EconLedger.do 先判它、只改不记(11-25 roundtrip V3c 抓到); 录它反而错
+	"econ_quiet"]
 ## 其余约 100 个变量回放那一遍**一次都没读**(币/邮箱/昵称/账号/背包/装备池/赛季战绩/宝箱以外的进度……)。
 
 ## 播放前备份 / 退出还原时**不碰**的变量(令牌 / 设备身份 / 战绩 / 补报单 / 上传队列):

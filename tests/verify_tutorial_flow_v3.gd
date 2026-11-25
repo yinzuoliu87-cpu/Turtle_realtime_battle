@@ -116,6 +116,9 @@ func _make_account() -> void:
 	GameState.persistent_equipped = {"candy": [{"id": "p2eq_005", "star": 1}]}
 	GameState.onboarded = false
 	GameState.nickname = ""          # 新号没起过名 ⇒ 出口后要起名(v4)
+	## ★「第一次遇到」提示是账号侧的, reset_save 不清 ⇒ 第一遍跳过后进主菜单弹过「本周赛程」(first_week), 会带进第二遍的基线,
+	##   两遍存档整行比就永远对不上(11-25 周三实测红; 主菜单弹不弹这页还看周结算卡队列空不空 ⇒ 跟日期有关)。新号本来就一条没看过。
+	GameState.first_tips_seen = {}
 	## 已登录的绑定号: 云存档同步的前提全齐(账号 / 邮箱 / 令牌) ⇒ 「教程里不推」靠的是教程闸, 不是没登录
 	GameState.account_id = "gate-acc-tut"
 	GameState.account_email = "gate@turtle.test"

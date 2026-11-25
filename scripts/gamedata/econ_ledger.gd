@@ -50,7 +50,7 @@ static func quiet(gs) -> bool:
 ##   否则恰好在那之后闪退 = 盘上有结果、流水里没有这一笔。
 ## ★嵌套(apply 里又调到 do)只改不记: 外层那一条重放时会再走一遍里面。
 static func do(gs, op: Dictionary) -> Dictionary:
-	if int(gs._econ_depth) > 0 or quiet(gs):
+	if quiet(gs) or int(gs._econ_depth) > 0:   # 先判沙盒(同 check): 回放 / 裁判机里不碰 _econ_depth(不在回放状态表里, roundtrip V3c)
 		return apply(gs, op)
 	check(gs, "do:" + str(op.get("op", "")))
 	var led: Array = gs.econ_log
