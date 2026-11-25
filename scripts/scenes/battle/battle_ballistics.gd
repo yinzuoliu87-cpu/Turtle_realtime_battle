@@ -63,8 +63,14 @@ func _push_proj(d: Dictionary) -> void:
 ##   src = 谁发的(时停里只有时停携带者的会动, 同弹道)。装备统计 / 技能音效上下文在发射时捕获、到达时切回(同弹道)。
 func launch_flight(src, from2: Vector2, tgt, spd: float, on_arrive: Callable, on_step: Callable = Callable()) -> void:
 	var last: Vector2 = Vector2(tgt["pos"]) if tgt is Dictionary else Vector2(tgt)
-	_flights.append({"src": src, "p2": from2, "tgt": tgt, "last": last, "spd": spd, "flown": 0.0,
-		"arrive": on_arrive, "step": on_step, "_tl": battle._equip_sys.tally.capture(), "_sk": battle._audio_sys.skill_ctx})
+	var f := {"src": src, "p2": from2, "tgt": tgt, "last": last, "spd": spd, "flown": 0.0,
+		"arrive": on_arrive, "step": on_step, "_tl": battle._equip_sys.tally.capture(), "_sk": battle._audio_sys.skill_ctx}
+	## 龟壳复制期发出的: 到达时照样按 60% 结算(同弹道 `_push_proj` 的 _copy; CI verify_copy_effect 画线龟墨水炸弹抓到)
+	if battle._copy_fx_mult != 1.0:
+		var _ct = battle._shell_sys.ctx_capture()
+		if _ct != null:
+			f["_copy"] = _ct
+	_flights.append(f)
 
 
 func _step_flights(delta: float) -> void:
@@ -105,7 +111,10 @@ func _step_flights(delta: float) -> void:
 		battle._audio_sys.skill_ctx = str(f.get("_sk", "")); battle._audio_sys.skill_ctx_src = f.get("src")
 		var ac: Callable = f["arrive"]
 		if ac.is_valid():
+			var _cp: Array = battle._shell_sys.ctx_enter(f["_copy"]) if f.get("_copy") is Array else []
 			ac.call(alive or not (tg is Dictionary))
+			if not _cp.is_empty():
+				battle._shell_sys.ctx_exit(f["_copy"], _cp)
 	battle._equip_sys.tally.pop(_tl0)
 	battle._audio_sys.skill_ctx = ""; battle._audio_sys.skill_ctx_src = null
 	_flights = keep + _flights

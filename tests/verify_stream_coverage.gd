@@ -336,7 +336,8 @@ func _run_obj(o: Dictionary) -> void:
 		if i == low_at and _subject is Dictionary and bool(_subject.get("alive", false)):
 			_subject["hp"] = maxf(1.0, float(_subject.get("maxHp", 100.0)) * 0.25)
 			## 114 仪式匕首(2026-11-25): 效果全在「斩杀 10% 血以下 → 刻血契」, 4 万血的靶子 2 秒内碰不到斩杀线 ⇒ 同一刻把第一个靶子压到 5%
-			if _eid == "p2eq_114" and foes.size() > 0 and bool((foes[0] as Dictionary).get("alive", false)):
+			if (_eid == "p2eq_114" or _eid == "p2eq_113") and foes.size() > 0 and bool((foes[0] as Dictionary).get("alive", false)):
+				## 113 弯匕(2026-11-25 CI 抓到)同理: 效果是「击杀后 3 秒攻速暴涨」, 4 万血的靶子杀不死 ⇒ 同一刻压到 5% 让携带者能打出击杀
 				foes[0]["hp"] = float(foes[0].get("maxHp", 100.0)) * 0.05
 		if i == kill_at and _subject is Dictionary and bool(_subject.get("alive", false)):
 			_subject["hp"] = 1.0
@@ -345,6 +346,8 @@ func _run_obj(o: Dictionary) -> void:
 		rec.post_step()
 		if not (s._timestop._ts_active as Array).is_empty():
 			ts_steps += 1
+		if _eid == "p2eq_113" and _subject is Dictionary and float(_subject.get("_kris_until", 0.0)) > 0.0:
+			_cur["kris_on"] = 1   # 113 攻速暴涨挂上过(产品自己写的 _kris_until, 金色残影也读它)
 		if _eid != "" and _subject is Dictionary:
 			var es := _fp_state((_subject.get("eq_state", {}) as Dictionary).get(_eid))
 			if es != eqst_last:
@@ -378,6 +381,7 @@ func _run_obj(o: Dictionary) -> void:
 	_cur["eqst_ch"] = eqst_ch
 	if _eid != "" and _subject is Dictionary:
 		_cur["hammer_pct"] = float(_subject.get("hammer_pct", 0.0))
+		_cur["pierce_pct"] = float(_subject.get("armor_pen_pct", 0.0))
 	## 装备产出(产品自己的装备统计 EquipTally: 伤害 / 治疗 / 护盾)
 	if _eid != "":
 		var tot := 0.0
@@ -439,6 +443,14 @@ func _den(o: Dictionary) -> void:
 			if _eid == "p2eq_047":
 				c["den_kind"] = "纯属性(hammer_pct)"
 				c["den"] = 1 if float(c.get("hammer_pct", 0.0)) > 0.0 else 0
+			elif _eid == "p2eq_112":
+				## 112 三棱刺是纯属性(百分比破甲, 登场加到 armor_pen_pct), 没有演出 ⇒ 证据 = 属性真的加上了(同 047)
+				c["den_kind"] = "纯属性(armor_pen_pct)"
+				c["den"] = 1 if float(c.get("pierce_pct", 0.0)) > 0.0 else 0
+			elif _eid == "p2eq_113":
+				## 113 弯匕的效果是攻速暴涨(没有伤害产出) ⇒ 证据 = 击杀后真的挂上了(_kris_until)
+				c["den_kind"] = "击杀后攻速暴涨(_kris_until)"
+				c["den"] = int(c.get("kris_on", 0))
 			elif _eid == "p2eq_041":
 				c["den_kind"] = "涨潮步数(_ebb_on)"
 				c["den"] = int(c.get("ebb_on", 0))

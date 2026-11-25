@@ -94,6 +94,7 @@ func _ready() -> void:
 		for _k in range(160):
 			_s._equip_sys.tick_global(0.05)
 			_s._ballistics._step_pending_shots(0.05)
+			_s._ballistics._step_flights(0.05)   # 11-25 炮台子弹走通用飞行物
 			var en: float = float(h.get("energy", 0.0))
 			max_en = maxf(max_en, en)
 			if prev_en >= 90.0 and en < 1.0:
@@ -123,6 +124,7 @@ func _ready() -> void:
 		for _k in range(120):
 			_s._equip_sys.tick_global(0.05)
 			_s._ballistics._step_pending_shots(0.05)
+			_s._ballistics._step_flights(0.05)   # 11-25 炮台子弹走通用飞行物
 			var ct: int = int((tu.get("_gun_shot_ct", {}) as Dictionary).get("p2eq_079", 0))
 			if max_ct > 0 and ct == 0:
 				saw_zero_after = true
@@ -134,8 +136,10 @@ func _ready() -> void:
 			guard += 1
 			_s._equip_sys.tick_global(0.05)
 			_s._ballistics._step_pending_shots(0.05)
+			_s._ballistics._step_flights(0.05)   # 11-25 炮台子弹走通用飞行物
 		for _k in range(40):                           # 停止开火, 把在途的弹排空(镜像在弹落地时写)
 			_s._ballistics._step_pending_shots(0.05)
+			_s._ballistics._step_flights(0.05)   # 11-25 炮台子弹走通用飞行物
 		var ct_end: int = int((tu.get("_gun_shot_ct", {}) as Dictionary).get("p2eq_079", 0))
 		var mir: float = _mirror(o79, "p2eq_079", "gold_pct")
 		if tier == 1:
@@ -160,6 +164,7 @@ func _ready() -> void:
 	for _k in range(240):
 		_s._equip_sys._eq_tick(o86, 0.05)
 		_s._ballistics._step_pending_shots(0.05)
+		_s._ballistics._step_flights(0.05)   # 11-25 炮台子弹走通用飞行物
 		var shots: int = int(((o86.get("eq_state", {}) as Dictionary).get("p2eq_086", {}) as Dictionary).get("shots", 0))
 		max_shots = maxi(max_shots, shots)
 		if absf(_mirror(o86, "p2eq_086", "shots_pct") - float(shots) / 20.0 * 100.0) > 0.01:
