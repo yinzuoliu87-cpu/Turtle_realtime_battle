@@ -96,6 +96,8 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 	var asd = battle._resolve_action(str(entry[0]), float(entry[1]))
 	if asd.is_empty():
 		return
+	if kind == "attack" and id == "_summon_katana":
+		u["_art_px"] = float(u.get("idle_px", battle.PIXEL_SIZE)); u["_art_offy"] = float(u.get("idle_offy", 56.0))   # 107 武士刀小将: 横斩表与待机同 112 方帧、同贴地线 ⇒ 沿用待机像素尺寸(不走「身高 / 帧高」通用归一, 否则一挥刀身体变大一圈, 11-25 自查)
 	if kind == "attack" and id == "ninja":
 		u["_art_px"] = float(u.get("idle_px", battle.PIXEL_SIZE)); u["_art_offy"] = float(u.get("idle_offy", 32.0))   # 普攻帧条 = 待机 64 画布四边补 16 的 96 方帧(build_ninja_slash.py, 给刀留地方): 沿用待机像素尺寸 / 贴地线
 		var _afr: float = AttackHits.beats_before(asd.get("frame_w", []), int(asd.get("frames", 1)))   # 整段拍数(登记了每帧拍数的按拍数)

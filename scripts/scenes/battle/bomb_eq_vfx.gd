@@ -594,16 +594,13 @@ func _katana_play(p: Dictionary, key: String, fps: float, as_idle: bool = false)
 		battle._set_anim_sheet(p, sd, "katana_" + key, true)
 
 
-## 普攻命中: 小将身前一道横向刀光(朝目标那一侧; 素材是朝左画的, 朝右时水平翻转)
+## 普攻命中: 敌人身上一道小切痕(刀光拖尾已经画进横斩动作帧里, 跟着刀走 —— tools/assetgen/katana_trail.py;
+##   11-25 用户「这个普攻的特效，你这次怎么给的呢？我不太懂」: 原来在小将身前另播一张大刀光弧, 和刀实际走的路线对不上, 去掉)
 func katana_hslash(u: Dictionary, tgt: Dictionary) -> void:
-	var d: Vector2 = Vector2(tgt["pos"]) - Vector2(u["pos"])
-	var right: bool = d.x > 0.0
-	var c: Vector2 = Vector2(u["pos"]) + Vector2(38.0 if right else -38.0, 0.0)
-	var s := _anim("hslash", c, 100.0, 0.45, 0.55)
+	var right: bool = (Vector2(tgt["pos"]) - Vector2(u["pos"])).x > 0.0
+	var s := _anim("hslash", Vector2(tgt["pos"]), 64.0, 0.3, 1.0, false, false, Color.WHITE, tgt)
 	if s != null:
 		s.flip_h = right
-		s.no_depth_test = true
-		s.render_priority = 9
 
 
 ## 技能: 刀压低 → 上挑, 上挑那一帧(第 6 帧)正好是 sim 出波那一刻(前摇 wsec 秒)

@@ -81,9 +81,10 @@ def _erase_hot(img, x0):
 KATANA_SEQ = {
     ## 横斩(11-25 第三版): 用户「刀刀头和刀尾…标点…有这样横扫吗？我觉得没有吧」⇒ 量出第二版刀尖只在身前 30 像素内晃(tools/oneoff/blade_track.py)。
     ##   改成三张关键姿势定路线: katkey_s1 刀拉到右肩后 → katkey_s2 刀平指正前方 → katkey_s3 刀横扫过身前到右侧; kats_a/b/c/d = 四段过渡。
-    ##   kats_c_1 / c_2 与 s2 几乎一样(停在正前方)不要。命中 = 第 7 帧(kats_b_4, 刀平指敌人)。
-    "eq-katana-attack": ["kats_a_%d" % i for i in range(1, 5)] + ["kats_b_%d" % i for i in range(1, 5)]
-                        + ["kats_c_3", "kats_c_4"] + ["kats_d_%d" % i for i in range(1, 4)],
+    ##   第四版(同日): 命中那张 katkey_s2 刀尖出了画布左边(被裁一截) ⇒ 重做成 katkey_s2b(刀整把在画布里), kats2_b / kats2_c 是围着它重新生成的过渡;
+    ##   kats2_c_1 与 s2b 一样(停在正前方)不要。命中 = 第 7 帧(kats2_b_4, 刀平指敌人)。刀光拖尾按每帧刀尖 / 刀柄算出来画进帧里(KATANA_TRAIL)。
+    "eq-katana-attack": ["kats_a_%d" % i for i in range(1, 5)] + ["kats2_b_%d" % i for i in range(1, 5)]
+                        + ["kats2_c_2", "kats2_c_3", "kats2_c_4"] + ["kats_d_%d" % i for i in range(1, 4)],
     "eq-katana-walk": ["katwalk_%d" % i for i in range(1, 9)],                           # 走路循环 8 帧(首尾钉住待机原画生成)
     ## 上挑: katup_3 不要(刀身画成一团往身后飞的白雾, 方向反了) ⇒ 刀尖压地后一下挑到指天; 第 6 帧(刀指天)出波
     "eq-katana-rise": ["katlow_%d" % i for i in range(1, 5)] + ["katup_1", "katup_2", "katup_4"]
@@ -92,6 +93,8 @@ KATANA_SEQ = {
     "eq-katana-hold": ["kathold_%d" % i for i in range(1, 4)],                           # 蓄力循环(身边风丝)
     "eq-katana-release": ["katrel_%d" % i for i in range(1, 7)] + ["katrec_%d" % i for i in range(1, 4)],   # 绕身甩刀(第 4 帧甩出龙卷风) → 刀举过头顶 → 收刀
 }
+## 横斩刀光拖尾画进帧(tools/assetgen/katana_trail.py): 段名 → (从第几帧画, 画到第几帧)
+KATANA_TRAIL = {"eq-katana-attack": (4, 11)}
 KATANA_DY = 112 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "katana_0.png")).convert("RGBA").getbbox()[3]
 ## 炮筒原画底下空 11 行(见下方「落地」): 所有炮筒动作一律挪这么多
 CANNON_DY = 64 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "cannon_0.png")).convert("RGBA").getbbox()[3]
@@ -172,6 +175,10 @@ def main() -> None:
             g = Image.new("RGBA", f.size, (0, 0, 0, 0))
             g.paste(f, (0, KATANA_DY))
             frames.append(g)
+        if dst in KATANA_TRAIL:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import katana_trail
+            frames, _ = katana_trail.apply(frames, *KATANA_TRAIL[dst])
         w, h = frames[0].size
         strip = Image.new("RGBA", (w * len(frames), h), (0, 0, 0, 0))
         for i, fr in enumerate(frames):
