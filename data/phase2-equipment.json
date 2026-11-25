@@ -1471,7 +1471,7 @@
     "baseStats1": "+生命200/420/1000·攻20/38/90",
     "shopAvailable": 1,
     "emoji": "📖",
-    "effectDesc1": "释放技能后随机召唤一具骷髅，存在时间等于这次技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，骷髅龟能满 {C:EqMagicBatch.SKEL_EN_MAX} 点时释放技能。骷髅战士近战，技能【骸骨狂怒】：{C:EqMagicBatch.SKW_RAGE_SEC} 秒内受到的伤害降低 {C:EqMagicBatch.SKW_DR%}%，攻击额外造成 {C:EqMagicBatch.SKW_EXTRA%}% 攻击力物理伤害，获得 {C:EqMagicBatch.SKW_LS%}% 生命偷取。骷髅法师攻击造成 {C:EqMagicBatch.SKM_BASIC%}% 攻击力魔法伤害，技能【骨火爆裂】：对目标周围的敌人造成 {C:EqMagicBatch.SKM_BLAST_ATK%}% 攻击力魔法伤害。骷髅祭司攻击造成 {C:EqMagicBatch.SKP_BASIC%}% 攻击力魔法伤害，技能【亡灵浪潮】：缓慢前进的浪潮对途经的敌人造成 {C:EqMagicBatch.WAVE_DMG} 物理伤害、击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%}%，为途经的友军回复 {C:EqMagicBatch.WAVE_HEAL} 生命值。三种骷髅的生命值、攻击力与双抗见下方属性。",
+    "effectDesc1": "释放技能后随机召唤一具骷髅，持续时间等于这次消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，骷髅龟能满 {C:EqMagicBatch.SKEL_EN_MAX} 点时释放技能。骷髅战士：生命值 {C:EqMagicBatch.SKW_HP}、攻击力 {C:EqMagicBatch.SKW_ATK}、双抗 {C:EqMagicBatch.SKW_RES}，近战。【骸骨狂怒】：{C:EqMagicBatch.SKW_RAGE_SEC} 秒内减伤 {C:EqMagicBatch.SKW_DR%}%，攻击额外造成 {C:EqMagicBatch.SKW_EXTRA%}% 攻击力物理伤害，生命偷取 {C:EqMagicBatch.SKW_LS%}%。骷髅法师：生命值 {C:EqMagicBatch.SKM_HP}、攻击力 {C:EqMagicBatch.SKM_ATK}、双抗 {C:EqMagicBatch.SKM_RES}，攻击造成 {C:EqMagicBatch.SKM_BASIC%}% 攻击力魔法伤害。【骨火爆裂】：目标周围的敌人受到 {C:EqMagicBatch.SKM_BLAST_ATK%}% 攻击力魔法伤害。骷髅祭司：生命值 {C:EqMagicBatch.SKP_HP}、攻击力 {C:EqMagicBatch.SKP_ATK}、双抗 {C:EqMagicBatch.SKP_RES}，攻击造成 {C:EqMagicBatch.SKP_BASIC%}% 攻击力魔法伤害。【亡灵浪潮】：浪潮缓慢前进，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%}%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL} 生命值。",
     "effectDesc3": "",
     "img": "equip/p2eq_123.png",
     "effectBrief": "释放技能后召唤一具随机的骷髅战士、法师或祭司。"
