@@ -77,8 +77,10 @@ const MELEE_IDLE_FPS := 5.0
 const MELEE_DIVE_SLOTS := 8.0
 ## 穿刺链(11-11 用户「链头应该是那种尖的穿刺…穿刺过敌人的身体」「当他把自己拽过去的时候，这个铁链的尖头在哪里？」):
 ##   链头 = 手上那个三刺头(vfx/melee-chain-head.png, build_melee_minion.py 从动作帧原样裁), 0.68 离开手腕、
-##   SURF_CHAIN_FLY 秒飞到敌人胸口扎穿、拉人时钉住不动, 撞上前 SURF_CHAIN_RETRACT 秒拔出收回手腕。
-const SURF_CHAIN_FLY := 0.1
+##   按 SURF_CHAIN_SPD 飞到敌人胸口扎穿、拉人时钉住不动, 撞上前 SURF_CHAIN_RETRACT 秒拔出收回手腕。
+const SURF_CHAIN_SPD := 2500.0   # 链头飞行速度(码/秒)·11-25 用户「肯定是有飞行速度的呀…可以全部改了」(原固定 0.1 秒扎中)
+static func surf_chain_fly(from: Vector2, to: Vector2) -> float:
+	return DetMath.dist(from, to) / SURF_CHAIN_SPD
 const SURF_CHAIN_RETRACT := 0.1
 const SURF_CHAIN_PX := 1.5 / 99.0      # 链环 / 链头每像素米数 = 人物图(本体 99 像素 = 1.5 米), 不出现粗细两种像素
 const SURF_PIERCE_OUT := 0.6          # 尖端越过目标胸口多少米(从背后透出)
@@ -351,11 +353,12 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 		##   在这里判是因为「绳索拉到对方」就是这一刻(射链命中)。
 		##   10% 是**目标的**最大生命(用户确认), 走物理结算。
 		##   ⚠ 判定必须走 `_is_cc_immune` —— `_stun()` 被免疫时静默 return, 拿不到信息。
-		## 11-11: 伤害 / 晕都在链头到达那一刻(SURF_CHAIN_FLY 秒后)结算, 不再是射出那一刻(画面上链头还在半空敌人就已经晕了)
-		var chain := _fire_surf_chain(uu, tref, 0.6 + surf_pull_sec(uu["pos"], tref["pos"]) + 0.5)
+		## 11-11: 伤害 / 晕都在链头到达那一刻(11-25 起按 SURF_CHAIN_SPD 飞)结算, 不再是射出那一刻(画面上链头还在半空敌人就已经晕了)
+		var cfly: float = surf_chain_fly(uu["pos"], tref["pos"])   # 链头按速度飞到才结算
+		var chain := _fire_surf_chain(uu, tref, 0.6 + surf_pull_sec(uu["pos"], tref["pos"]) + 0.5, cfly)
 		rope.append(chain)
 		if battle._damage._is_cc_immune(tref):
-			battle._pending_shots.append({"delay": SURF_CHAIN_FLY, "fn": func() -> void:
+			battle._pending_shots.append({"delay": cfly, "fn": func() -> void:
 				chain.release()
 				if uu.get("alive", false) and tref.get("alive", false):
 					var _ib: float = float(tref.get("maxHp", 0.0)) * IMMUNE_BRANCH_MAXHP_PCT + float(uu.get("atk", 0.0)) * IMMUNE_BRANCH_ATK_COEF
@@ -365,7 +368,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 				_minion_abort_fall(uu)                               # 不拉自己过去, 原地掉回地面
 			, "src": uu})
 			return
-		battle._pending_shots.append({"delay": SURF_CHAIN_FLY, "fn": func() -> void:   # 链头扎进胸口那一刻
+		battle._pending_shots.append({"delay": cfly, "fn": func() -> void:   # 链头扎进胸口那一刻
 			if uu.get("alive", false) and tref.get("alive", false):
 				battle._damage._stun(tref, SURF_STUN_SEC, "_sk_minion_bodysurf", true)   # 晕住覆盖整个空中顿+俯冲
 				battle._vfx._hit_spark(tref)
@@ -390,7 +393,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	, "src": u})
 
 ## 射穿刺链(画面): 手腕 → 目标胸口, 两端每帧从单位的 pos / height 推(sim 不读)
-func _fire_surf_chain(uu: Dictionary, tref: Dictionary, life: float) -> PierceChainVfx:
+func _fire_surf_chain(uu: Dictionary, tref: Dictionary, life: float, fly: float) -> PierceChainVfx:
 	var wrist := func() -> Vector3:
 		var dv: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
 		var dn: Vector2 = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.LEFT
@@ -404,7 +407,7 @@ func _fire_surf_chain(uu: Dictionary, tref: Dictionary, life: float) -> PierceCh
 		return fb
 	var chest := func() -> Vector3:
 		return battle._world_pos(tref["pos"], float(tref.get("height", 0.0)) + SURF_CHEST_UP)
-	return PierceChainVfx.fire(battle, "melee-chain", SURF_CHAIN_PX, true, wrist, chest, SURF_CHAIN_FLY, SURF_PIERCE_OUT, life)
+	return PierceChainVfx.fire(battle, "melee-chain", SURF_CHAIN_PX, true, wrist, chest, fly, SURF_PIERCE_OUT, life)
 
 
 func _chain_release(rope: Array) -> void:

@@ -32,10 +32,11 @@ const WHIP_SHOT_DELAY := 0.3            # 链射出手到开始拉体(与 _tick_
 ## 铁锁出手前摇(11-11 用户「你的手可以…往回这个地上甩一下，把这个链子带出来…紧接着手臂往前甩」): 后甩 + 后拉 0.2 秒后才出链。
 ##   改了对局结果(晕 / 拉人都晚 0.2 秒) ⇒ RULES_VER 本周已是 6, 规则指纹要刷。
 const WHIP_WINDUP_SEC := 0.2
-const WHIP_HIT_SEC := WHIP_WINDUP_SEC + 0.14   # 链头扎中(目标晕 + 闪)的时刻, 从出招算; _tick_elite_whip 用
+## 链头扎中(目标晕 + 闪)的时刻从出招算 = 甩出那格(2 / 动作帧率) + 距离 / WHIP_CHAIN_SPD —— 见 whip_hit_sec。
+##   11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 原来固定 0.34 秒扎中、链头飞行时间夹在 0.06–0.12 秒去凑它, 远近一样。
 const WHIP_ANIM_SLOTS := 11.0           # whip.png 格数(tools/assetgen/build_minion_redo.py)
 ## 穿刺链(PierceChainVfx, 与近战同一套): 从拳头射出, 链头 = elite-chain-head(菱形紫刃), 扎穿目标胸口
-const WHIP_CHAIN_FLY := 0.12
+const WHIP_CHAIN_SPD := 2500.0   # 链头飞行速度(码/秒); 350 码 ≈ 0.14 秒, 扎中仍早于 0.5 秒开始拉人
 const WHIP_CHAIN_PX := 1.8 / 117.0     # 与人物图同一个像素大小(本体 117 像素 = 1.8 米)
 const WHIP_PIERCE_OUT := 0.6
 const WHIP_FIST_FWD := 54.0            # 甩出那张拳头在身体前方 85 像素 ≈ 1.3 米 ≈ 54 码
@@ -60,6 +61,10 @@ static func whip_pull_sec(from: Vector2, to: Vector2) -> float:
 	return maxf(WHIP_PULL_MIN, DetMath.dist(from, to) / WHIP_PULL_SPD)
 
 ## 甩臂动作 whip.png 7 帧拉长到「出手 0.3 秒 + 拉过去」整段(出手时按当时距离 + 绕到身后 46 码估), 播完才不会回站姿。
+static func whip_hit_sec(d: float) -> float:
+	return 2.0 / whip_anim_fps(d) + d / WHIP_CHAIN_SPD
+
+
 static func whip_anim_fps(d: float) -> float:
 	return WHIP_ANIM_SLOTS / (WHIP_WINDUP_SEC + WHIP_SHOT_DELAY + maxf(WHIP_PULL_MIN, (d + 46.0) / WHIP_PULL_SPD))
 
@@ -92,9 +97,10 @@ func whip_chain(u: Dictionary, tgt: Dictionary, life: float) -> Array:
 		var p: Vector3 = SpriteArt.point(battle, u, WHIP_BACK_TIP_ART, fb)
 		p.y = maxf(p.y, 0.06)                                       # 贴地(人在空中时也躺在地上)
 		return p
-	## 出链 = 动作播到第 3 格「甩出」那刻(帧率随拉人距离变, 与 _tick_elite_whip 同一个 d); 链头仍在 WHIP_HIT_SEC 扎到
-	var pre: float = 2.0 / whip_anim_fps(DetMath.dist((tgt["pos"] as Vector2), u["pos"]))
-	var fly: float = clampf(WHIP_HIT_SEC - pre, 0.06, WHIP_CHAIN_FLY)
+	## 出链 = 动作播到第 3 格「甩出」那刻(帧率随拉人距离变, 与 _tick_elite_whip 同一个 d); 链头按 WHIP_CHAIN_SPD 飞, 在 whip_hit_sec(d) 扎到
+	var dd: float = DetMath.dist((tgt["pos"] as Vector2), u["pos"])
+	var pre: float = 2.0 / whip_anim_fps(dd)
+	var fly: float = dd / WHIP_CHAIN_SPD
 	st["chain"] = PierceChainVfx.fire(battle, "elite-chain", WHIP_CHAIN_PX, false, fist, chest, fly, WHIP_PIERCE_OUT, life + pre,
 		pre, back_hand, back_tip)
 	return [st]
