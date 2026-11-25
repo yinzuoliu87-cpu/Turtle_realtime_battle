@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
- "cases": 6,
- "fingerprint": "ad5b2ae4b843c7e19de15616ff51f4d98142b7043856dbd3b9ca40432d5ab8eb",
+ "cases": 7,
+ "fingerprint": "6168d2028d21e627c836be15b0750ede144b259796843c221f9e45d316a809b5",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -15,7 +15,7 @@
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "4299b4d0b4ca47336b6e63fe190ad3cbf070b9a24531858806cd77f2330b40ff",
+   "hash": "7bb423c6956fd241a5b93c64add60a8d3fc7acd9157af87c88b29394e41d7e52",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
@@ -25,12 +25,17 @@
   },
   {
    "def": "99521fedd8b3b2c9",
-   "hash": "b0433636965a47d8cc2be4b8e30f465f2b49723b6c881f10e81bb869d97a4663",
+   "hash": "cd1ba6d907cf4a4fc73c5c4f4f922b7e18226401d6f6024a2c2e30e82f6d9db4",
    "tag": "⑤ 双方灵物触手 · 弓箭 vs 剑 · 复制/命运之轮/雷暴"
   },
   {
+   "def": "28d5c2b94dc9943c",
+   "hash": "77d975b8b36502f95a3e009514c0187b4671f06d7f78e9077f3ffd9127ad467d",
+   "tag": "⑥ 炸弹顶档(导弹) + 武士刀小将 vs 盾/剑"
+  },
+  {
    "def": "static-tables",
-   "hash": "70d7462a9eb2f9d47a75b1018b57a63987148f7d5b7a08885c69a9632e97698b",
+   "hash": "85a2f672c45e43f0120b1a9915d91c25cb0b04773819f82cafe4f66fb44f0eaf",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],

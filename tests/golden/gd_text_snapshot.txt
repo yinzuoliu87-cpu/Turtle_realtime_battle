@@ -487,6 +487,9 @@ scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +13% 闪避 
 scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +18% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次
 scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +5% 闪避 · 【触手】召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% 攻击力与生命值，自动攻击最近的敌人
 scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +9% 闪避 · 【触手】增加至 {C:SpiritSynergySystem.TENTACLES[1]} 根 · 【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击 · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%。亡魂阵亡后可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%
+scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%
+scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +20 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%
+scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +5 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +13 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 自身最大生命值 · 【圣光护盾】再获得 1 件，共 2 件 · 【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +22 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 自身最大生命值 · 【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值。圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，档位降低时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害
@@ -503,6 +506,9 @@ scripts/gamedata/phase2_types.gd|lit|法器提高携带者的魔法穿透与最�
 scripts/gamedata/phase2_types.gd|lit|灵物
 scripts/gamedata/phase2_types.gd|lit|灵物·召唤
 scripts/gamedata/phase2_types.gd|lit|灵物提高携带者的闪避。无法被击杀的触手为我方作战，阵亡的友军化为亡魂继续战斗。
+scripts/gamedata/phase2_types.gd|lit|炸弹
+scripts/gamedata/phase2_types.gd|lit|炸弹·爆破
+scripts/gamedata/phase2_types.gd|lit|炸弹提高携带者的护甲穿透。每个战场开打后不久，一发导弹落到战场中心，轰炸并击飞所有敌方单位。
 scripts/gamedata/phase2_types.gd|lit|盾
 scripts/gamedata/phase2_types.gd|lit|盾·守护
 scripts/gamedata/phase2_types.gd|lit|盾提高携带者的护甲。全队承受伤害后对敌人释放冲击波，并获得圣光护盾装备。
@@ -857,6 +863,7 @@ scripts/scenes/CodexScene.gd|lit|枪
 scripts/scenes/CodexScene.gd|lit|法器
 scripts/scenes/CodexScene.gd|lit|深海小将
 scripts/scenes/CodexScene.gd|lit|灵物
+scripts/scenes/CodexScene.gd|lit|炸弹
 scripts/scenes/CodexScene.gd|lit|状态
 scripts/scenes/CodexScene.gd|lit|盾
 scripts/scenes/CodexScene.gd|lit|羁绊
@@ -1331,6 +1338,7 @@ scripts/scenes/battle/battle_debug_arena.gd|lit|× 关闭
 scripts/scenes/battle/battle_debug_arena.gd|lit|➕ 加装备
 scripts/scenes/battle/battle_debug_arena.gd|lit|不死
 scripts/scenes/battle/battle_debug_arena.gd|lit|主动技
+scripts/scenes/battle/battle_debug_arena.gd|lit|会动会打:%s
 scripts/scenes/battle/battle_debug_arena.gd|lit|会死
 scripts/scenes/battle/battle_debug_arena.gd|lit|假人
 scripts/scenes/battle/battle_debug_arena.gd|lit|先点一个单位选中, 再加装备
@@ -1341,6 +1349,7 @@ scripts/scenes/battle/battle_debug_arena.gd|lit|删除单位 (剩 %d)
 scripts/scenes/battle/battle_debug_arena.gd|lit|加装备到 %s · 点选(可连点多件)
 scripts/scenes/battle/battle_debug_arena.gd|lit|友军
 scripts/scenes/battle/battle_debug_arena.gd|lit|取消
+scripts/scenes/battle/battle_debug_arena.gd|lit|召唤物·
 scripts/scenes/battle/battle_debug_arena.gd|lit|场上没有单位, 先摆几个再开始
 scripts/scenes/battle/battle_debug_arena.gd|lit|大师主动 → %s
 scripts/scenes/battle/battle_debug_arena.gd|lit|小将
@@ -1354,6 +1363,7 @@ scripts/scenes/battle/battle_debug_arena.gd|lit|技%d
 scripts/scenes/battle/battle_debug_arena.gd|lit|技能
 scripts/scenes/battle/battle_debug_arena.gd|lit|技能 → %s
 scripts/scenes/battle/battle_debug_arena.gd|lit|换地图：%s
+scripts/scenes/battle/battle_debug_arena.gd|lit|摆召唤物 · 选哪一件装备召出来的
 scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 %s (%s) · 共 %d 单位
 scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 训龟大师·%s (%s) · 双方自动放(U2) · 共 %d 单位
 scripts/scenes/battle/battle_debug_arena.gd|lit|敌方
@@ -1361,6 +1371,7 @@ scripts/scenes/battle/battle_debug_arena.gd|lit|无敌:%s
 scripts/scenes/battle/battle_debug_arena.gd|lit|满龟能 %s · 友军技能开局即就绪+快速回充
 scripts/scenes/battle/battle_debug_arena.gd|lit|满龟能:%s
 scripts/scenes/battle/battle_debug_arena.gd|lit|笔刷: %s · 点空地摆放(可连点)
+scripts/scenes/battle/battle_debug_arena.gd|lit|笔刷: %s · 点空地摆放(开打时召出来)
 scripts/scenes/battle/battle_debug_arena.gd|lit|精英小将
 scripts/scenes/battle/battle_debug_arena.gd|lit|血量
 scripts/scenes/battle/battle_debug_arena.gd|lit|训龟大师
@@ -1393,6 +1404,7 @@ scripts/scenes/battle/battle_hud.gd|lit|前往商店
 scripts/scenes/battle/battle_hud.gd|lit|前排
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命
 scripts/scenes/battle/battle_hud.gd|lit|友军
+scripts/scenes/battle/battle_hud.gd|lit|召唤物
 scripts/scenes/battle/battle_hud.gd|lit|后排
 scripts/scenes/battle/battle_hud.gd|lit|大师
 scripts/scenes/battle/battle_hud.gd|lit|失败
@@ -1461,6 +1473,7 @@ scripts/scenes/battle/battle_vfx_lab.gd|lit|召唤物:
 scripts/scenes/battle/battle_vfx_lab.gd|lit|携带者
 scripts/scenes/battle/battle_vfx_lab.gd|lit|枪
 scripts/scenes/battle/battle_vfx_lab.gd|lit|盾
+scripts/scenes/battle/bomb_eq_vfx.gd|lit|减速 %d%%
 scripts/scenes/battle/dmg_stats_panel.gd|lit|受到伤害
 scripts/scenes/battle/dmg_stats_panel.gd|lit|我方
 scripts/scenes/battle/dmg_stats_panel.gd|lit|战报
@@ -2400,8 +2413,14 @@ scripts/scenes/week_close_card.gd|lit|闯关赛战绩
 scripts/scenes/week_close_card.gd|lit|闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。
 scripts/scenes/week_close_card.gd|lit|领取
 scripts/scenes/week_close_card.gd|text|[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]
+scripts/systems/equip/bomb_synergy_system.gd|lit|炸弹
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
 scripts/systems/equip/eq_blood_combo.gd|lit|护盾+
+scripts/systems/equip/eq_bomb_batch.gd|lit|护甲 -%d
+scripts/systems/equip/eq_bomb_batch.gd|lit|武士刀小将
+scripts/systems/equip/eq_bomb_batch.gd|lit|炮筒
+scripts/systems/equip/eq_bomb_batch.gd|lit|眩晕
+scripts/systems/equip/eq_bomb_batch.gd|lit|遥控炸弹
 scripts/systems/equip/eq_bow_batch.gd|lit|弓箭
 scripts/systems/equip/eq_food_batch.gd|lit|蛋糕礼盒
 scripts/systems/equip/eq_gadget_batch.gd|lit|  (本携带者日志到此为止)

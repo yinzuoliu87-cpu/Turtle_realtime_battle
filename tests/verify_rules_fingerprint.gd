@@ -158,6 +158,21 @@ const CASES := [
 				["p2eq_061", "p2eq_062", "p2eq_063"], ["p2eq_064", "p2eq_001", "p2eq_003"],
 				["p2eq_005", "p2eq_006", "p2eq_007"], ["p2eq_009", "p2eq_010", "p2eq_083"]],
 			"x": {"season_total_battles": 11, "lv": {"shell": 8, "gambler": 10, "lightning": 9}}}},
+	## ⑥ 炸弹顶档(10 件集齐 ⇒ 每路第 10 秒导弹)+ 107 武士刀小将 vs 双方都见过的盾顶档(2026-11-25 新羁绊进指纹;
+	##   测试规矩「新装备要进场景表(加一局, 不要改已有的局)」)。炸弹件分在两路的单位身上, 两路都真上场。
+	{"tag": "⑥ 炸弹顶档(导弹) + 武士刀小将 vs 盾/剑", "seed": 7160006,
+		"a": {"lv": 9, "tr": "hook", "top": ["hunter", "stone"], "bottom": ["bubble"],
+			"lo": {"hunter": 3, "stone": 2, "bubble": 2},
+			"eq": [["p2eq_097", "p2eq_098", "p2eq_099"], ["p2eq_100", "p2eq_101", "p2eq_102"],
+				["p2eq_103", "p2eq_104", "p2eq_105"], ["p2eq_106", "p2eq_107", "p2eq_001"],
+				["p2eq_003", "p2eq_006", "p2eq_007"], ["p2eq_009", "p2eq_010", "p2eq_083"]],
+			"x": {"season_total_battles": 9, "lv": {"hunter": 9, "stone": 10, "bubble": 8}}},
+		"b": {"lv": 9, "tr": "magic_stone", "top": ["bamboo"], "bottom": ["crystal", "ninja"],
+			"lo": {"bamboo": 2, "crystal": 1, "ninja": 3},
+			"eq": [["p2eq_014", "p2eq_015", "p2eq_016"], ["p2eq_017", "p2eq_018", "p2eq_021"],
+				["p2eq_045", "p2eq_081", "p2eq_082"], ["p2eq_002", "p2eq_012", "p2eq_013"],
+				["p2eq_036", "p2eq_037", "p2eq_069"], ["p2eq_070", "p2eq_071", "p2eq_072"]],
+			"x": {"season_total_battles": 9, "lv": {"bamboo": 10, "crystal": 9, "ninja": 8}}}},
 ]
 ## 数值表静态摘要(这几个脚本里的数字 / 表常量整份进指纹)。
 ## ★2026-11-03 反向验证抓到的洞: 五局里每件装备只放在一个星级上(第几格 = 几星), 另外两个星级的数值改了
