@@ -344,6 +344,50 @@ func cracker_burst(c: Vector2, _on = null, hits: Array = []) -> void:
 			_later(0.0, func() -> void: _anim("spark", Vector2(oo["pos"]), 105.0, 0.45, 1.0, false, false, Color.WHITE, oo))
 
 
+## 追踪飞行物(与结算 EqBombBatch.seek_step 同一条规则): 每帧按 spd 往目标当前位置飞(目标死了 → 它最后的位置),
+##   碰到身体(col_r)就收。arc = 抛物线顶高(按已飞路程 / 总路程算, 0 = 平飞); face = "tip"(按刀尖角转向) / "orient"(炮弹) / "spin"(翻滚) / ""。
+##   11-25 用户「肯定不是固定飞多少多少秒啊，肯定是有飞行速度的呀」: 飞行物一律按速度, 不按固定秒数。
+func _seek(n: Node3D, from: Vector2, h0: float, tgt: Dictionary, spd: float, arc: float = 0.0, face: String = "", tip: float = 0.0) -> void:
+	_fx.append({"node": n, "t": 0.0, "life": 30.0, "kind": "seek", "pos": from, "from": from, "h0": h0, "tgt": tgt, "last": Vector2(tgt["pos"]),
+		"spd": spd, "arc": arc, "face": face, "tip": tip})
+
+
+## 子类按需覆盖(匕首层: 按刀尖角转); 这里没有刀尖贴图
+func _seek_face(_n: Node3D, _a3: Vector3, _b3: Vector3, _tip: float) -> void:
+	pass
+
+
+func _seek_tick(f: Dictionary, n: Node3D, delta: float) -> void:
+	var sk = f.get("tgt", null)
+	var alive: bool = sk is Dictionary and sk.get("alive", false)
+	if alive:
+		f["last"] = Vector2(sk["pos"])
+	var p0: Vector2 = f["pos"]
+	var to: Vector2 = f["last"]
+	var d: float = p0.distance_to(to)
+	var step: float = float(f["spd"]) * delta
+	var reach: float = float(sk.get("col_r", 20.0)) if alive else 0.0
+	if d - reach <= step:
+		n.queue_free()
+		return
+	var p1: Vector2 = p0 + (to - p0) * (step / d)
+	f["pos"] = p1
+	var h1: float = body_h(sk) if alive else float(f["h0"])
+	var flown: float = Vector2(f["from"]).distance_to(p1)
+	var k: float = clampf(flown / maxf(1.0, flown + p1.distance_to(to) - reach), 0.0, 1.0)
+	var hk: float = lerpf(float(f["h0"]), h1, k) + float(f["arc"]) * 4.0 * k * (1.0 - k)
+	var a3: Vector3 = battle._world_pos(p1, hk)
+	n.position = a3
+	match str(f["face"]):
+		"tip":
+			_seek_face(n, a3, battle._world_pos(to, h1), float(f["tip"]))
+		"orient":
+			var k2: float = minf(1.0, k + 0.03)
+			_orient(n, a3, battle._world_pos(p1.lerp(to, 0.05), lerpf(float(f["h0"]), h1, k2) + float(f["arc"]) * 4.0 * k2 * (1.0 - k2)))
+		"spin":
+			n.rotation.z = float(f["t"]) * 14.0
+
+
 func _later(sec: float, fn: Callable) -> void:
 	if sec <= 0.0:
 		fn.call()
@@ -390,18 +434,21 @@ func smoke_strike(pos: Vector2, on = null) -> void:
 
 
 ## 粘弹(11-24 自查): 从携带者手里丢出一道弧线 → 粘到目标头顶(图标放大、越近引爆越闪) + 「减速」飘字
-const STICKY_FLY := 0.35
-func sticky_attach(tgt: Dictionary, fuse: float, from = null) -> void:
+## 粘弹出手: 按速度追着目标飞(与结算同规则); 粘上那一刻结算层再调 sticky_attach
+func sticky_throw(from: Dictionary, tgt: Dictionary, spd: float) -> void:
 	if not _ok():
 		return
-	if from is Dictionary:
-		var s := _icon("p2eq_101", battle._world_pos(Vector2(from["pos"]), 1.0), 40.0)
-		if s != null:
-			_fx.append({"node": s, "t": 0.0, "life": STICKY_FLY, "kind": "arc_to", "from": Vector2(from["pos"]), "tgt": tgt, "h": 1.4})
-	_later(STICKY_FLY if from is Dictionary else 0.0, func() -> void:
-		_attach("p2eq_101", tgt, maxf(0.1, fuse - STICKY_FLY), 46.0)
-		if battle.get("_vfx") != null and tgt.get("alive", false):
-			battle._vfx._float_text(Vector2(tgt["pos"]) + Vector2(0, -70), Lang.t("减速 %d%%") % int(round(EqBombBatch.STICKY_SLOW * 100.0)), VisualConstants.color_of("debuff-label")))
+	var s := _icon("p2eq_101", battle._world_pos(Vector2(from["pos"]), 1.0), 40.0)
+	if s != null:
+		_seek(s, Vector2(from["pos"]), 1.0, tgt, spd, 1.4, "spin")
+
+
+func sticky_attach(tgt: Dictionary, fuse: float) -> void:
+	if not _ok():
+		return
+	_attach("p2eq_101", tgt, fuse, 46.0)
+	if battle.get("_vfx") != null and tgt.get("alive", false):
+		battle._vfx._float_text(Vector2(tgt["pos"]) + Vector2(0, -70), Lang.t("减速 %d%%") % int(round(EqBombBatch.STICKY_SLOW * 100.0)), VisualConstants.color_of("debuff-label"))
 
 
 ## 粘弹爆炸只伤被粘住的那一个 ⇒ 身体中心一团(不按粘液范围放大); 粘液坑贴地铺开(半径 = GOO_R), 地上一圈标范围
@@ -511,13 +558,14 @@ func muzzle(p, toward_x: float) -> Array:
 	return [Vector2(p["pos"]) + Vector2(sgn * MUZZLE_PX.x * ps / float(battle.WS), 0.0), MUZZLE_PX.y * ps]
 
 
-func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0, src = null) -> void:
+## spd > 0 = 普通炮弹按速度追着目标飞(与结算 _tick_balls 同规则); 0 = 只在落点炸一团
+func cannon_shot(from: Vector2, to: Vector2, tgt = null, spd: float = 0.0, src = null) -> void:
 	var mz_h := 0.9
 	if src is Dictionary:
 		var mz: Array = muzzle(src, to.x)
 		from = mz[0]
 		mz_h = float(mz[1])
-	if fly > 0.0 and _ok() and ResourceLoader.exists(BALL_TEX):
+	if spd > 0.0 and tgt is Dictionary and _ok() and ResourceLoader.exists(BALL_TEX):
 		var t: Texture2D = load(BALL_TEX)
 		var bs := Sprite3D.new()
 		bs.texture = t
@@ -531,8 +579,8 @@ func cannon_shot(from: Vector2, to: Vector2, tgt = null, fly: float = 0.0, src =
 		bs.render_priority = 11
 		bs.position = battle._world_pos(from, mz_h)
 		battle._world.add_child(bs)
-		_fx.append({"node": bs, "t": 0.0, "life": fly, "kind": "ball", "from": from, "to": to, "tgt": tgt, "h0": mz_h})
-	if fly <= 0.0:
+		_seek(bs, from, mz_h, tgt, spd, 1.6, "orient")
+	if spd <= 0.0:
 		_anim("boom", to, 100.0, 0.6, 0.02, false, false, Color.WHITE, tgt)
 
 
@@ -821,23 +869,8 @@ func tick(delta: float) -> void:
 					sp2.modulate.a = clampf((lf - tt) / 0.3, 0.0, 1.0)
 				sp2.scale = Vector3(k, 1.0, k * SPLAT_Z)
 				sp2.frame = int(tt * 10.0) % int(f["nf"])
-			"ball":
-				var tb = f.get("tgt", null)
-				var dst: Vector2 = Vector2(tb["pos"]) if tb is Dictionary and tb.get("alive", false) else Vector2(f["to"])
-				var hb: float = body_h(tb) if tb is Dictionary else 1.0
-				var h0b: float = float(f.get("h0", 0.9))
-				var p3: Vector3 = battle._world_pos(Vector2(f["from"]).lerp(dst, q), lerpf(h0b, hb, q) + 1.6 * 4.0 * q * (1.0 - q))
-				var q2: float = minf(1.0, q + 0.03)
-				var p3b: Vector3 = battle._world_pos(Vector2(f["from"]).lerp(dst, q2), lerpf(h0b, hb, q2) + 1.6 * 4.0 * q2 * (1.0 - q2))
-				(n as Node3D).position = p3
-				if q2 > q:
-					_orient(n, p3, p3b)
-			"arc_to":
-				var tg2: Dictionary = f["tgt"]
-				var a2: Vector2 = f["from"]
-				var b2: Vector2 = Vector2(tg2["pos"])
-				(n as Node3D).position = battle._world_pos(a2.lerp(b2, q), 1.0 + float(f["h"]) * 4.0 * q * (1.0 - q) + 1.9 * q)
-				(n as Node3D).rotation.z = q * 8.0
+			"seek":
+				_seek_tick(f, n, delta)
 			"attach":
 				var tg: Dictionary = f["tgt"]
 				(n as Node3D).position = battle._world_pos(Vector2(tg["pos"]), float(f.get("h", 2.9)))

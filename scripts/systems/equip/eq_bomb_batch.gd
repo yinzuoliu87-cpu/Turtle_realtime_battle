@@ -36,7 +36,8 @@ const GRENADE_FLAT := [80.0, 150.0, 280.0]
 const GRENADE_ATK := 0.6
 const GRENADE_SHRED := [10.0, 18.0, 30.0]
 const GRENADE_SHRED_SEC := 4.0
-const GRENADE_FLY := 0.6
+## 手雷按飞行速度抛到落点(飞行时间 = 距离 / 速度; 原来固定 0.6 秒, 远近一样)。11-25 用户「肯定不是固定飞多少多少秒啊，肯定是有飞行速度的呀…你还有什么是固定飞多少秒的？」
+const GRENADE_SPD := 700.0
 # ── 100 烟雾弹 ──
 const SMOKE_IV := 8.0
 const SMOKE_SEC := 3.0
@@ -48,6 +49,8 @@ const SMOKE_TRUE_ATK := 0.5
 const STICKY_IV := 8.0
 const STICKY_SLOW := 0.4
 const STICKY_FUSE := 2.0
+## 粘弹按飞行速度追着目标飞, 粘上那一刻才减速、才开始 2 秒倒计时(原来扔出去当场就减速 + 计时, 画面上弹还在半空)。11-25 用户「肯定不是固定飞多少多少秒啊，肯定是有飞行速度的呀…你还有什么是固定飞多少秒的？」
+const STICKY_SPD := 700.0
 const STICKY_FLAT := [40.0, 70.0, 120.0]
 const STICKY_ATK := 0.3
 const GOO_SEC := 1.5
@@ -155,13 +158,14 @@ const COL_TRUE := Color("#ffffff")
 var _grenades: Array = []      ## {pos, t, src, si}
 var _smokes: Array = []        ## {pos, t, owner, si, pulse}
 var _stickies: Array = []      ## {tgt, t, src, si}
+var _sticky_fly: Array = []    ## 粘弹在途 {tgt, src, pos, last, si, ck}
 var _goos: Array = []          ## {pos, t, src, si, tick}
 var _mines: Array = []         ## {pos, side, src, si}
 var _timers: Array = []        ## {tgt, t, src, si, mult}
 var _shreds: Array = []        ## {u, amt, until}
 var _lines: Array = []         ## 直线弹道 {pos, dir, spd, left, w, src, hit:[], kind, si}
 var _cannons: Array = []       ## {u, owner, si, acc, en, heavy}
-var _balls: Array = []         ## 普通炮弹在途 {src, tgt, last, t}
+var _balls: Array = []         ## 普通炮弹在途 {src, tgt, pos, last}(按 CANNON_BALL_SPD 追着目标飞, 碰到身体才炸)
 var _remotes: Array = []       ## {u, owner, si, boomed}
 var _katanas: Array = []       ## {u, owner, si, en, casts, charge, heal_acc}
 ## 104 跨路叠层：身份键 → 已绑颗数（一局结束 reset_match 清）
@@ -327,6 +331,7 @@ func tick(delta: float) -> void:
 	var t := float(battle._t)
 	_tick_grenades(t)
 	_tick_smokes(t, delta)
+	_tick_sticky_fly(delta)
 	_tick_stickies(t)
 	_tick_goos(t, delta)
 	_tick_mines()
@@ -334,7 +339,7 @@ func tick(delta: float) -> void:
 	_tick_shreds(t)
 	_tick_lines(delta)
 	_tick_cannons(delta)
-	_tick_balls()
+	_tick_balls(delta)
 	_tick_remotes(delta)
 	_tick_katanas(delta)
 	if vfx != null:
@@ -391,7 +396,7 @@ func _tl_out(tl: Array) -> void:
 func clear_all() -> void:
 	for s in _shreds:
 		_unshred(s)
-	_grenades.clear(); _smokes.clear(); _stickies.clear(); _goos.clear(); _mines.clear()
+	_grenades.clear(); _smokes.clear(); _stickies.clear(); _sticky_fly.clear(); _goos.clear(); _mines.clear()
 	_timers.clear(); _shreds.clear(); _lines.clear(); _cannons.clear(); _remotes.clear(); _katanas.clear(); _balls.clear()
 	if vfx != null:
 		vfx.clear()
@@ -420,8 +425,9 @@ func _throw_grenade(u: Dictionary, si: int, ck: String = "p2eq_099") -> void:
 	if _enemies_of(u).is_empty():
 		return
 	var p: Vector2 = battle._densest_enemy_point(u, GRENADE_R)
-	_grenades.append({"pos": p, "t": float(battle._t) + GRENADE_FLY, "src": u, "si": si, "ck": ck})
-	_fx("grenade_throw", [Vector2(u["pos"]), p, GRENADE_FLY])
+	var fly: float = DetMath.dist(Vector2(u["pos"]), p) / GRENADE_SPD
+	_grenades.append({"pos": p, "t": float(battle._t) + fly, "src": u, "si": si, "ck": ck})
+	_fx("grenade_throw", [Vector2(u["pos"]), p, fly])
 
 
 func _tick_grenades(t: float) -> void:
@@ -497,9 +503,43 @@ func _throw_sticky(u: Dictionary, si: int, ck: String = "p2eq_101") -> void:
 	var tgt = battle._targeting._nearest_enemy(u)
 	if not (tgt is Dictionary):
 		return
-	_slow(tgt, 1.0 - STICKY_SLOW, STICKY_FUSE)
-	_stickies.append({"tgt": tgt, "t": float(battle._t) + STICKY_FUSE, "src": u, "si": si, "ck": ck})
-	_fx("sticky_attach", [tgt, STICKY_FUSE, u])
+	_sticky_fly.append({"tgt": tgt, "src": u, "pos": Vector2(u["pos"]), "last": Vector2(tgt["pos"]), "si": si, "ck": ck})
+	_fx("sticky_throw", [u, tgt, STICKY_SPD])
+
+
+## 在途的粘弹: 每步按速度往目标当前位置飞, 碰到身体 ⇒ 粘上(减速 + 开始倒计时); 目标半路死了 ⇒ 落空
+func _tick_sticky_fly(delta: float) -> void:
+	var keep: Array = []
+	for s in _sticky_fly:
+		var tgt: Dictionary = s["tgt"]
+		var r: int = seek_step(s, tgt, STICKY_SPD, delta)
+		if r == 0:
+			keep.append(s)
+			continue
+		if r < 0:
+			continue
+		_slow(tgt, 1.0 - STICKY_SLOW, STICKY_FUSE)
+		_stickies.append({"tgt": tgt, "t": float(battle._t) + STICKY_FUSE, "src": s["src"], "si": s["si"], "ck": s["ck"]})
+		_fx("sticky_attach", [tgt, STICKY_FUSE])
+	_sticky_fly = keep
+
+
+## 追踪飞行物走一步(粘弹 / 炮弹 / 苦无共用这条规则): e = {pos, last}; 目标活着就更新 last。
+##   返回 1 = 碰到目标身体(col_r), -1 = 目标已死且飞到了它最后的位置(落空), 0 = 还在飞。
+static func seek_step(e: Dictionary, tgt: Dictionary, spd: float, delta: float) -> int:
+	var alive: bool = tgt.get("alive", false)
+	if alive:
+		e["last"] = Vector2(tgt["pos"])
+	var to: Vector2 = e["last"]
+	var p: Vector2 = e["pos"]
+	var d: float = DetMath.dist(p, to)
+	var step: float = spd * delta
+	var reach: float = float(tgt.get("col_r", 20.0)) if alive else 0.0
+	if d - reach > step:
+		e["pos"] = p + (to - p) * (step / d)
+		return 0
+	e["pos"] = to
+	return 1 if alive else -1
 
 
 func _tick_stickies(t: float) -> void:
@@ -811,10 +851,9 @@ func _tick_cannons(delta: float) -> void:
 			_launch_line(p, Vector2(p["pos"]), Vector2(tgt["pos"]) - Vector2(p["pos"]), CANNON_HEAVY_SPD, CANNON_HEAVY_LEN, CANNON_HEAVY_W, "cannon_heavy", si)
 		else:
 			stat["cannon_shot"] += 1
-			var fly: float = DetMath.dist(Vector2(p["pos"]), Vector2(tgt["pos"])) / CANNON_BALL_SPD
-			_balls.append({"src": p, "tgt": tgt, "last": Vector2(tgt["pos"]), "t": float(battle._t) + fly})
+			_balls.append({"src": p, "tgt": tgt, "pos": Vector2(p["pos"]), "last": Vector2(tgt["pos"])})
 			_fx("cannon_fire", [p])
-			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, fly, p])
+			_fx("cannon_shot", [Vector2(p["pos"]), Vector2(tgt["pos"]), tgt, CANNON_BALL_SPD, p])
 		## 龟能耗光才退出(方案书「龟能耗光才退出」; 11-24 用户「鬼能都没消耗完，为什么…停止这个技能状态」):
 		##   剩的不够一发也照样打重炮、把剩下的扣光, 扣到 0 才回普通炮
 		if bool(c["heavy"]) and float(c["en"]) <= 0.0:
@@ -824,15 +863,13 @@ func _tick_cannons(delta: float) -> void:
 		p["energy"] = float(c["en"])
 
 
-## 普通炮弹落地: 跟着目标走(目标死了 = 落在它最后的位置), 到点才炸、才扣血
-func _tick_balls() -> void:
-	var t := float(battle._t)
+## 普通炮弹: 按 CANNON_BALL_SPD 追着目标飞(目标死了 = 飞到它最后的位置), 到了才炸、才扣血
+##   (原来出膛时按距离算好落地时刻, 目标跑远了也到点就炸 ⇒ 等于半路加速。11-25 用户「肯定不是固定飞多少多少秒啊，肯定是有飞行速度的呀…你还有什么是固定飞多少秒的？」)
+func _tick_balls(delta: float) -> void:
 	var keep: Array = []
 	for b in _balls:
 		var tg: Dictionary = b["tgt"]
-		if tg.get("alive", false):
-			b["last"] = Vector2(tg["pos"])
-		if t < float(b["t"]):
+		if seek_step(b, tg, CANNON_BALL_SPD, delta) == 0:
 			keep.append(b)
 			continue
 		var p: Dictionary = b["src"]

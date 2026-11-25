@@ -131,7 +131,7 @@ func _ready() -> void:
 	t1 = _mk("right", c + Vector2(100, 0))
 	t2 = _mk("right", c + Vector2(130, 30))
 	_place([me, t1, t2])
-	_adv(6.0 + B.GRENADE_FLY + 0.1, [me])
+	_adv(6.0 + 500.0 / B.GRENADE_SPD + 0.1, [me])   # 落点离携带者约 415 码, 按飞行速度留足
 	var w99: float = float(B.GRENADE_FLAT[2]) + B.GRENADE_ATK * 100.0
 	_ok("099 第 6 秒扔、落地：挨 %.0f；护甲 −%.0f" % [w99, float(B.GRENADE_SHRED[2])],
 		_near(_lost(t1), w99) and _near(_lost(t2), w99) and _near(float(t1["def"]), -float(B.GRENADE_SHRED[2])),
@@ -162,8 +162,10 @@ func _ready() -> void:
 	t1 = _mk("right", c + Vector2(100, 0))
 	t2 = _mk("right", c + Vector2(100, 60))
 	_place([me, t1, t2])
-	_adv(8.05, [me])
-	_ok("101 第 8 秒：目标减速 40%%（移速倍率 0.6）", _near(float(t1.get("slow_mag", 1.0)), 1.0 - B.STICKY_SLOW, 0.001) and float(t1["slow_until"]) > float(_s._t),
+	_adv(8.0, [me])
+	_ok("101 第 8 秒扔出、还在半路：目标还没减速", _near(float(t1.get("slow_mag", 1.0)), 1.0, 0.001), "mag %.2f" % float(t1.get("slow_mag", 1.0)))
+	_adv(200.0 / B.STICKY_SPD + 0.05, [me])   # 相距 200 码, 按飞行速度飞到才粘上
+	_ok("101 粘上那一刻：目标减速 40%%（移速倍率 0.6）", _near(float(t1.get("slow_mag", 1.0)), 1.0 - B.STICKY_SLOW, 0.001) and float(t1["slow_until"]) > float(_s._t),
 		"mag %.2f" % float(t1.get("slow_mag", 1.0)))
 	_adv(B.STICKY_FUSE + 0.05, [])
 	var w101: float = float(B.STICKY_FLAT[2]) + B.STICKY_ATK * 100.0
@@ -331,7 +333,7 @@ func _ready() -> void:
 	t1 = _mk("right", c + Vector2(100, 0))
 	_place([me, t1])
 	var g0: int = _bs.stat["grenade"]
-	_adv(6.0 + B.GRENADE_FLY + 0.1, [me])
+	_adv(6.0 + 500.0 / B.GRENADE_SPD + 0.1, [me])
 	_ok("同名两件：两颗手雷各炸一次（第二颗吃到第一颗的破甲，伤害更高）", _bs.stat["grenade"] - g0 == 2 and _lost(t1) > 2.0 * w99 + 1.0, "%d 颗 · 挨 %.0f" % [_bs.stat["grenade"] - g0, _lost(t1)])
 
 	print("")

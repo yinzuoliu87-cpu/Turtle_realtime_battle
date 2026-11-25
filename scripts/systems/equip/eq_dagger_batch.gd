@@ -24,7 +24,7 @@ const FOLD_BLEED := [80, 140, 210]
 const KNIFE_IV := 6.0
 const KNIFE_FLAT := [40.0, 70.0, 120.0]
 const KNIFE_ATK := 0.6
-const KNIFE_SPD := 1100.0
+const KNIFE_SPD := 770.0   # 11-25 用户「速度太快了，减百分之三十」(原 1100)
 const KNIFE_LEN := 1600.0
 const KNIFE_W := 22.0
 # ── 110 苦无 ──
@@ -33,7 +33,10 @@ const KUNAI_N := [3, 4, 5]
 const KUNAI_FLAT := [15.0, 25.0, 40.0]
 const KUNAI_ATK := 0.2
 const KUNAI_HEAL := [10.0, 18.0, 30.0]
-const KUNAI_FLY := 0.3
+## 苦无按飞行速度追着目标飞, 碰到身体才结算(11-25 用户「肯定不是固定飞多少多少秒啊，肯定是有飞行速度的呀」;
+##   原来固定 0.3 秒 = 远近一样快)。速度与柳叶飞刀同档(都是甩出去的飞刃)。目标半路死了 ⇒ 飞到它最后的位置就没了, 不结算。
+const KUNAI_SPD := KNIFE_SPD
+const KUNAI_GAP := 0.06   ## 一把一把连着出手的间隔(秒)
 # ── 111 毒牙匕首 ──
 const FANG_POISON_ATK := [0.3, 0.5, 0.8]
 # ── 112 三棱刺 ──
@@ -79,7 +82,7 @@ const COL_MAGIC := Color("#4dabf7")
 
 # ── 在途 / 场上状态(换路 clear_all 清空)──
 var _lines: Array = []         ## 直线飞行物 {pos, dir, spd, left, w, src, hit:[], kind, si}
-var _kunai: Array = []         ## 苦无在途 {src, tgt, t, si}
+var _kunai: Array = []         ## 苦无在途 {src, tgt, pos, last, wait, si, ck}
 var _ninjas: Array = []        ## {u, owner, si, en, vanish, tgt, clone(bool), clone_of, until, split_done}
 var _obs_tgts: Array = []      ## 身上插着黑曜石匕首的敌人(字典本身, is_same 去重)
 ## 114 血契: 本场每方的刻数(left 与 GameState.ritual_marks 同步; right 每场从对手快照读一次)
@@ -193,7 +196,7 @@ func on_hit(src: Dictionary, tgt: Dictionary, _dmg: float, eid: String, si: int)
 				if n > 0:
 					stat["fang"] += 1
 					battle._damage._apply_dot_stacks(tgt, "poison", n, src)
-					_fx("fang_bite", [tgt])
+					_fx("fang_bite", [tgt, src])
 		"p2eq_114":   # 仪式匕首: 斩杀线 10% 最大生命(攻击和技能)
 			_ritual_execute(src, tgt)
 		"p2eq_116":   # 黑曜石匕首: 暴击 ⇒ 插一把
@@ -243,7 +246,7 @@ func on_any_basic(u: Dictionary, tgt) -> void:
 
 func tick(delta: float) -> void:
 	_tick_lines(delta)
-	_tick_kunai()
+	_tick_kunai(delta)
 	_tick_ninjas(delta)
 	_tick_obs()
 	_tick_ritual_team()
@@ -374,22 +377,30 @@ func _throw_kunai(u: Dictionary, si: int, ck: String) -> void:
 	for i in range(int(KUNAI_N[si])):
 		var tgt: Dictionary = foes[battle._battle_rng.randi() % foes.size()]
 		stat["kunai"] += 1
-		var delay := float(i) * 0.06   # 一把一把连着出手
-		_kunai.append({"src": u, "tgt": tgt, "t": float(battle._t) + delay + KUNAI_FLY, "si": si, "ck": ck})
-		_fx("kunai_throw", [u, tgt, delay, KUNAI_FLY])
+		var delay := float(i) * KUNAI_GAP   # 一把一把连着出手
+		_kunai.append({"src": u, "tgt": tgt, "pos": Vector2(u["pos"]), "last": Vector2(tgt["pos"]), "wait": delay, "si": si, "ck": ck})
+		_fx("kunai_throw", [u, tgt, delay, KUNAI_SPD])
 
 
-func _tick_kunai() -> void:
-	var t := float(battle._t)
+func _tick_kunai(delta: float) -> void:
 	var keep: Array = []
 	for k in _kunai:
-		if t < float(k["t"]):
-			keep.append(k)
-			continue
 		var src: Dictionary = k["src"]
 		var tgt: Dictionary = k["tgt"]
-		if not tgt.get("alive", false):
+		if float(k["wait"]) > 0.0:
+			k["wait"] = float(k["wait"]) - delta
+			if float(k["wait"]) > 0.0:
+				keep.append(k)
+				continue
+			if not src.get("alive", false):
+				continue   # 还没出手携带者就倒了
+			k["pos"] = Vector2(src["pos"])
+		var r: int = EqBombBatch.seek_step(k, tgt, KUNAI_SPD, delta)
+		if r == 0:
+			keep.append(k)
 			continue
+		if r < 0:
+			continue   # 目标半路死了: 飞到它最后的位置就没了
 		var si := int(k["si"])
 		var tl: Array = battle._equip_sys.tally.push(src, str(k.get("ck", "")))
 		_magic(src, tgt, float(KUNAI_FLAT[si]) + KUNAI_ATK * float(src.get("atk", 0.0)))
@@ -693,7 +704,7 @@ func _obs_embed(src: Dictionary, tgt: Dictionary, si: int) -> void:
 	if not seen:
 		_obs_tgts.append(tgt)
 	stat["obs_embed"] += 1
-	_fx("obs_embed", [tgt, arr.size()])
+	_fx("obs_embed", [tgt, arr.size(), src])
 	_obs_check(tgt)
 
 

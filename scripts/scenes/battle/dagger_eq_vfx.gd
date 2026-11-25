@@ -64,6 +64,11 @@ func _point(s: Sprite3D, a3: Vector3, b3: Vector3, tip_deg: float) -> void:
 	s.global_transform.basis = (cam as Camera3D).global_transform.basis * Basis(Vector3(0, 0, 1), deg_to_rad(tip_deg) - atan2(d.y, d.x))
 
 
+## 追踪飞行物的朝向: 贴图刀尖朝 tip_deg, 转到 a3 → b3 的屏幕方向(覆盖父类的空实现)
+func _seek_face(n: Node3D, a3: Vector3, b3: Vector3, tip: float) -> void:   # zero-caller-ok: 覆盖父类 BombEqVfx._seek_face —— 调用方在父类 tick 的 "seek"
+	_point(n as Sprite3D, a3, b3, tip)
+
+
 func _tex_sprite(path: String, px_world: float, pos3: Vector3, face_cam: bool = true) -> Sprite3D:
 	var t: Texture2D = _load(path)
 	if t == null or not _ok():
@@ -109,8 +114,11 @@ func fold_cut(u: Dictionary, tgt: Dictionary) -> void:
 		s.flip_h = (Vector2(tgt["pos"]) - Vector2(u["pos"])).x < 0.0
 
 
-func fang_bite(tgt: Dictionary) -> void:
-	_anim("fang", Vector2(tgt["pos"]), 60.0, 0.65, 1.0, false, false, Color.WHITE, tgt)
+## 毒牙: 贴图蛇颚铰链在左、嘴朝右张(从左往右咬) ⇒ 出手者在目标右边就翻过来(11-25 同 114 镰月那条: 按出手方向画)
+func fang_bite(tgt: Dictionary, src = null) -> void:
+	var s := _anim("fang", Vector2(tgt["pos"]), 60.0, 0.65, 1.0, false, false, Color.WHITE, tgt)
+	if s != null and src is Dictionary:
+		s.flip_h = (Vector2(tgt["pos"]) - Vector2(src["pos"])).x < 0.0
 
 
 ## 弯匕: 攻速暴涨那几秒, 携带者身上金色风纹一直往后掠(跟着人走)
@@ -214,7 +222,8 @@ func shuriken_hit(o: Dictionary) -> void:
 
 # ═══════════════════════════════ 110 苦无 ═══════════════════════════════
 
-func kunai_throw(u: Dictionary, tgt: Dictionary, delay: float, fly: float) -> void:
+## 与结算同一条规则: 出手后按 spd 每帧追着目标当前位置飞(目标死了追它最后的位置), 碰到身体(col_r)就收
+func kunai_throw(u: Dictionary, tgt: Dictionary, delay: float, spd: float) -> void:
 	if not _ok():
 		return
 	var uu: Dictionary = u
@@ -225,7 +234,7 @@ func kunai_throw(u: Dictionary, tgt: Dictionary, delay: float, fly: float) -> vo
 		var h0: float = BombEqVfx.body_h(uu)
 		var s := _tex_sprite("vfx/dagger-kunai.png", 34.0, battle._world_pos(Vector2(uu["pos"]), h0), false)
 		if s != null:
-			_fx.append({"node": s, "t": 0.0, "life": fly, "kind": "dart", "from": Vector2(uu["pos"]), "h0": h0, "tgt": tt, "to": Vector2(tt["pos"]), "tip": KUNAI_TIP_DEG}))
+			_seek(s, Vector2(uu["pos"]), h0, tt, spd, 0.0, "tip", KUNAI_TIP_DEG))
 
 
 func kunai_hit(tgt: Dictionary, src: Dictionary) -> void:
@@ -237,13 +246,16 @@ func kunai_hit(tgt: Dictionary, src: Dictionary) -> void:
 # ═══════════════════════════════ 116 黑曜石匕首 ═══════════════════════════════
 
 ## 插一把: 黑曜石匕首(116 图标)斜插在敌人身上, 跟着它走; 几把错开位置
-func obs_embed(tgt: Dictionary, count: int) -> void:
+## 刀柄留在出手者那一侧(从哪边插进去刀柄就在哪边; 11-25 同 114 镰月那条): 出手者在右 ⇒ 刀尖朝左下; 在左 ⇒ 刀尖朝右下
+func obs_embed(tgt: Dictionary, count: int, src = null) -> void:
 	if not _ok():
 		return
 	var s := _tex_sprite("equip/p2eq_116.png", 34.0, battle._world_pos(Vector2(tgt["pos"]), BombEqVfx.body_h(tgt)))
 	if s == null:
 		return
-	s.rotation.z = deg_to_rad(180.0 + 20.0 * float((count - 1) % 3 - 1))   # 刀尖朝下插进去(图标刀尖朝右上, 转半圈 = 朝左下)
+	var from_left: bool = src is Dictionary and (Vector2(tgt["pos"]) - Vector2(src["pos"])).x > 0.0
+	var jit: float = 20.0 * float((count - 1) % 3 - 1)
+	s.rotation.z = deg_to_rad((-90.0 - jit) if from_left else (180.0 + jit))   # 图标刀尖朝右上: 转半圈 = 朝左下; 顺时针转 90° = 朝右下
 	_stuck.append({"node": s, "tgt": tgt, "k": count - 1})
 
 
