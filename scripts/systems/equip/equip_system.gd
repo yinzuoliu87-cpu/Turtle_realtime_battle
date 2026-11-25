@@ -246,7 +246,6 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 	ck_restore(_ckp159)
 
 
-
 func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	## ★2026-09-13 删掉这里原有的 `battle._shield_bubble(u)`(029 自绘的护盾泡):
