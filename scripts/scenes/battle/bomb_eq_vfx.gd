@@ -24,6 +24,10 @@ const SHEETS := {
 	"boom": ["vfx/bomb-barrel-boom.png", 56, 60, 50.0, 30, 37],
 	"muzzle": ["vfx/bomb-cannon-muzzle.png", 35, 20, 28.0, 3, 10],
 	"charge": ["vfx/katana-charge.png", 67, 67, 61.0, 33, 33],
+	## 107 龙卷风(11-25 Blender 建模渲的 16 帧循环, tools/assetgen/blender_katana_tornado.py): 锚点 = 漏斗底(地面); 内容宽 123 像素(含摆动和底部扬尘)
+	"tornado": ["vfx/katana-tornado.png", 192, 192, 123.0, 96, 131],
+	## 107 普攻横斩刀光(11-25 特效工作台 slash_trail 压扁成横向): 锚点 = 弧心
+	"hslash": ["vfx/katana-hslash.png", 85, 39, 79.0, 45, 21],
 	"spark": ["vfx/bomb-cracker-spark.png", 66, 69, 60.0, 35, 30],
 	"paper": ["vfx/bomb-cracker-paper.png", 96, 75, 90.0, 47, 39],
 	"mine": ["vfx/bomb-mine-blast.png", 82, 78, 73.0, 41, 39],
@@ -547,33 +551,83 @@ func cannon_hit(o: Dictionary) -> void:
 	_anim("boom", Vector2(o["pos"]), 120.0, 0.6, 0.02, false, false, Color.WHITE, o)
 
 
-## 第 4 下蓄力: 风往小将身上收(三层横着的风圈由外往里收、越收越亮), 中间一团聚气粒子;
-##   蓄满那一刻往外一放 —— 龙卷风紧接着出手(11-24 录像台自查: 原来只有一张 120 码的稀疏粒子图, 1.5 秒蓄力几乎看不见)
+## ── 107 武士刀小将的动作(11-25 用户「武士这个动作…普通攻击应该是一个横横斩…把刀放下，然后往上挥出一道这个气波…
+##   强化形态下…一套序列动作…刀会放到这个左身方，然后这样子挥出去，挥出这个龙卷风」) ──
+##   帧表 assets/sprites/vfx/eq-katana-*.png(来历见 tools/assetgen/pack_bomb_vfx.py KATANA_SEQ), 走引擎动作通道
+##   `_set_anim_sheet`: 动作播一遍自动回到这只单位【当前的】待机表(蓄力时待机临时换成蓄力循环)。
+##   普攻横斩不在这里: 小将身上挂 `_act_rows`(普攻前摇 / 命中 / 后摇节奏由 AttackRhythm 对齐), 这里只画命中刀光。
+const KATANA_SHEETS := {
+	"rise": "res://assets/sprites/vfx/eq-katana-rise.png",        # 10 帧: 刀压低 → 上挑(第 6 帧 = 出波) → 收刀
+	"coil": "res://assets/sprites/vfx/eq-katana-coil.png",        # 6 帧: 蹲低、刀收到身侧
+	"hold": "res://assets/sprites/vfx/eq-katana-hold.png",        # 3 帧循环: 蓄力(身边风丝)
+	"release": "res://assets/sprites/vfx/eq-katana-release.png",  # 9 帧: 绕身甩刀(第 4 帧 = 甩出龙卷风) → 刀举过头顶 → 收刀
+}
+const KATANA_RISE_HIT := 6
+const KATANA_RELEASE_HIT := 4
+const KATANA_ACT_FPS := 16.0
+static var _katana_sd := {}
+func _ksd(key: String, fps: float) -> Dictionary:
+	if not _katana_sd.has(key):
+		var path: String = KATANA_SHEETS[key]
+		var sd := {}
+		if ResourceLoader.exists(path):
+			var t: Texture2D = load(path)
+			sd = battle._sprite_dict_from(t, {"frames": t.get_width() / 112, "frameW": 112, "frameH": 112, "duration": 800}, false)
+		_katana_sd[key] = sd
+	var out: Dictionary = (_katana_sd[key] as Dictionary).duplicate()
+	if not out.is_empty():
+		out["fps"] = fps
+	return out
+
+
+func _katana_play(p: Dictionary, key: String, fps: float, as_idle: bool = false) -> void:
+	if not _ok() or not p.get("alive", false):
+		return
+	var sd := _ksd(key, fps)
+	if sd.is_empty():
+		return
+	if as_idle:
+		if not p.has("_idle_norm_sd"):
+			p["_idle_norm_sd"] = p.get("idle_sd", {})
+		p["idle_sd"] = sd
+	else:
+		battle._set_anim_sheet(p, sd, "katana_" + key, true)
+
+
+## 普攻命中: 小将身前一道横向刀光(朝目标那一侧; 素材是朝左画的, 朝右时水平翻转)
+func katana_hslash(u: Dictionary, tgt: Dictionary) -> void:
+	var d: Vector2 = Vector2(tgt["pos"]) - Vector2(u["pos"])
+	var right: bool = d.x > 0.0
+	var c: Vector2 = Vector2(u["pos"]) + Vector2(38.0 if right else -38.0, 0.0)
+	var s := _anim("hslash", c, 100.0, 0.45, 0.55)
+	if s != null:
+		s.flip_h = right
+		s.no_depth_test = true
+		s.render_priority = 9
+
+
+## 技能: 刀压低 → 上挑, 上挑那一帧(第 6 帧)正好是 sim 出波那一刻(前摇 wsec 秒)
+func katana_rise(p: Dictionary, wsec: float) -> void:
+	_katana_play(p, "rise", float(KATANA_RISE_HIT) / maxf(0.05, wsec))
+
+
+## 第 4 下: 蹲低收刀(6 帧) → 蓄力循环(身边风丝 + 聚气粒子) → 蓄满前 0.25 秒开甩, 甩出帧(第 4 帧)对上 sim 出龙卷风那一刻
 func katana_charge(p: Dictionary, sec: float) -> void:
 	if not _ok():
 		return
-	var s := _anim("charge", Vector2(p["pos"]), 190.0, sec, 1.0, false, true, Color(0.8, 0.97, 1.0))
+	_katana_play(p, "hold", 8.0, true)          # 收刀播完自动回「当前待机」= 蓄力循环
+	_katana_play(p, "coil", KATANA_ACT_FPS)
+	var s := _anim("charge", Vector2(p["pos"]), 130.0, sec, 0.45, false, true, Color(0.55, 0.9, 1.0), p)   # 聚气中心 = 身体中段(on=单位; 原来按贴图半径抬高, 浮在头顶像个蓝球)
 	if s != null:
 		_fx[_fx.size() - 1]["kind"] = "anim_follow"
 		_fx[_fx.size() - 1]["tgt"] = p
-	var root := Node3D.new()
-	root.position = battle._world_pos(Vector2(p["pos"]), 0.0)
-	battle._world.add_child(root)
-	var tx: Texture2D = VfxTex._make_thin_ring_tex()
-	for i in range(3):
-		for dr in [0.0, -6.0]:
-			var r := Sprite3D.new()
-			r.texture = tx
-			r.shaded = false
-			r.transparent = true
-			r.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-			r.axis = Vector3.AXIS_Y
-			r.modulate = Color(0.85, 0.97, 1.0, 0.0)
-			r.position = Vector3(0.0, 0.2 + 0.45 * float(i), 0.0)
-			r.set_meta("dr", dr)
-			r.set_meta("layer", i)
-			root.add_child(r)
-	_fx.append({"node": root, "t": 0.0, "life": sec, "kind": "swirl_in", "tgt": p, "tex_h": float(tx.get_height())})
+		_fx[_fx.size() - 1]["nmax"] = 7   # 只循环前 7 帧(风粒子往里收); 后几帧是聚成一团的光核, 压在身上像块蓝方块(11-25 自查)
+	var pp: Dictionary = p
+	_later(maxf(0.0, sec - float(KATANA_RELEASE_HIT) / KATANA_ACT_FPS), func() -> void:
+		if pp.has("_idle_norm_sd"):
+			pp["idle_sd"] = pp["_idle_norm_sd"]
+			pp.erase("_idle_norm_sd")
+		_katana_play(pp, "release", KATANA_ACT_FPS))
 
 
 ## 直线弹道：剑气波 / 龙卷风 / 重炮，与结算同一速度同一路程（演出只画，不判定）
@@ -630,34 +684,16 @@ func _ground_shadow(from: Vector2, dir: Vector2, spd: float, life: float, w: flo
 
 
 ## 龙卷风：五层细环叠成漏斗（下小上大），每层绕中心转、相位错开 ⇒ 读得出「旋」
+## 龙卷风: Blender 渲的漏斗序列帧(16 帧/秒循环)沿路径走; 出生 0.15 秒从小长大, 最后 15% 渐隐。
+##   (11-25 用户「这个龙卷风做的也不好…完全这个程序做的呀，太敷衍了」⇒ 换掉原来 VfxTex 细圆环叠出来的程序漏斗)
 func _tornado(from: Vector2, dir: Vector2, spd: float, life: float) -> void:
-	var root := Node3D.new()
-	root.position = battle._world_pos(from, 0.0)
-	battle._world.add_child(root)
-	var tx: Texture2D = VfxTex._make_thin_ring_tex()
-	## 9 层、每层两圈(内圈略小) ⇒ 线够密, 远看是一根旋转的漏斗而不是几道细线(录像台实拍第一版太淡)
-	for i in range(9):
-		for dr in [0.0, -5.0]:
-			var s := Sprite3D.new()
-			s.texture = tx
-			s.shaded = false
-			s.transparent = true
-			s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-			s.axis = Vector3.AXIS_Y
-			s.modulate = Color(0.92, 0.98, 1.0, 1.0 - 0.05 * float(i))
-			s.pixel_size = ((20.0 + 11.0 * float(i) + dr) * 2.0 * float(battle.WS)) / float(tx.get_height())
-			s.position = Vector3(0.0, 0.15 + 0.3 * float(i), 0.0)
-			root.add_child(s)
-	var dust := Sprite3D.new()   # 底部一团卷起的尘
-	dust.texture = VfxTex._make_fire_glow_tex()
-	dust.shaded = false
-	dust.transparent = true
-	dust.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	dust.modulate = Color(0.85, 0.82, 0.72, 0.55)
-	dust.pixel_size = (70.0 * float(battle.WS)) / 64.0
-	dust.position = Vector3(0.0, 0.3, 0.0)
-	root.add_child(dust)
-	_fx.append({"node": root, "t": 0.0, "life": life, "kind": "tornado", "from": from, "dir": dir, "spd": spd})
+	var s := _anim("tornado", from, 112.0, life, 0.05, false, true, Color.WHITE, "ground")   # 约 1.5 个单位高(亚索 Q3 的比例)
+	if s == null:
+		return
+	var f: Dictionary = _fx[_fx.size() - 1]
+	f["kind"] = "move"
+	f.merge({"from": from, "dir": dir, "spd": spd, "h": 0.05, "loop_all": true, "fps": 16.0, "grow": 0.15, "fade_tail": 0.15, "ps": s.pixel_size})
+	f["f0"] = int(absf(dir.angle()) * 20.0) % s.hframes   # 三道方向不同 ⇒ 各从不同帧起转, 不同步
 
 
 # ═══════════════════════════════ 生命周期 ═══════════════════════════════
@@ -755,7 +791,11 @@ func tick(delta: float) -> void:
 				if bool(f.get("orient", false)):
 					_orient(n, (n as Node3D).position, battle._world_pos(pos + Vector2(f["dir"]).normalized() * 20.0, float(f.get("h", 1.0))))
 				if bool(f.get("loop_all", false)):
-					(n as Sprite3D).frame = int(float(f["t"]) * 12.0) % int(f["nf"])
+					(n as Sprite3D).frame = (int(f.get("f0", 0)) + int(float(f["t"]) * float(f.get("fps", 12.0)))) % int(f["nf"])
+				if f.has("grow"):
+					(n as Sprite3D).pixel_size = float(f["ps"]) * lerpf(0.3, 1.0, minf(1.0, float(f["t"]) / float(f["grow"])))
+				if f.has("fade_tail") and q > 1.0 - float(f["fade_tail"]):
+					(n as Sprite3D).modulate.a = (1.0 - q) / float(f["fade_tail"])
 				elif int(f.get("nf", 1)) > 1:
 					(n as Sprite3D).frame = mini(int(f["nf"]) - 1, 2 + int(float(f["t"]) * 10.0) % 2)
 			"anim_follow":
@@ -764,34 +804,7 @@ func tick(delta: float) -> void:
 					var keep_y: float = (n as Node3D).position.y
 					(n as Node3D).position = battle._world_pos(Vector2(tf["pos"]), 0.0)
 					(n as Node3D).position.y = keep_y
-				(n as Sprite3D).frame = int(f.get("skip", 0)) + int(float(f["t"]) * 12.0) % int(f["nf"])
-			"swirl_in":
-				var tw = f.get("tgt", null)
-				if tw is Dictionary and tw.get("alive", false):
-					(n as Node3D).position = battle._world_pos(Vector2(tw["pos"]), 0.0)
-				for ch in (n as Node3D).get_children():
-					var lay: int = int(ch.get_meta("layer", 0))
-					## 每层 0.5 秒收一圈(各层错开), 半径 120 → 35 码; 越到蓄满越亮
-					var cyc: float = fmod(float(f["t"]) * 2.0 + float(lay) * 0.33, 1.0)
-					var rad: float = lerpf(120.0, 35.0, cyc) + float(ch.get_meta("dr", 0.0))
-					(ch as Sprite3D).pixel_size = (rad * 2.0 * float(battle.WS)) / float(f["tex_h"])
-					var ph: float = float(f["t"]) * 16.0 + float(lay) * 2.1
-					(ch as Node3D).position.x = cos(ph) * 0.04
-					(ch as Node3D).position.z = sin(ph) * 0.04
-					(ch as Sprite3D).modulate.a = (0.35 + 0.65 * q) * sin(cyc * PI)
-			"tornado":
-				var tp: Vector2 = Vector2(f["from"]) + Vector2(f["dir"]).normalized() * float(f["spd"]) * float(f["t"])
-				(n as Node3D).position = battle._world_pos(tp, 0.0)
-				var k := 0
-				for ch in (n as Node3D).get_children():
-					var ph: float = float(f["t"]) * 14.0 + float(k / 2) * 0.9
-					var rr: float = 0.05 + 0.02 * float(k / 2)
-					(ch as Node3D).position.x = cos(ph) * rr
-					(ch as Node3D).position.z = sin(ph) * rr
-					k += 1
-				if q > 0.85:
-					for ch in (n as Node3D).get_children():
-						(ch as Sprite3D).modulate.a *= 0.8
+				(n as Sprite3D).frame = int(f.get("skip", 0)) + int(float(f["t"]) * 12.0) % mini(int(f["nf"]), int(f.get("nmax", 999)))
 		if float(f["t"]) >= float(f["life"]):
 			n.queue_free()
 			_fx.remove_at(i)

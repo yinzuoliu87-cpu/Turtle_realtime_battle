@@ -112,7 +112,14 @@ const KATANA_ATK := [40.0, 75.0, 140.0]
 const KATANA_EN_MAX := 60.0
 const KATANA_WAVE_LEN := 700.0
 const KATANA_WAVE_W := 50.0
-const KATANA_WAVE_SPD := 1100.0
+## 剑气波 600 码/秒(11-25 用户「这个气波移动太快了」, 取代 1100) ⇒ 700 码走 1.17 秒
+const KATANA_WAVE_SPD := 600.0
+## 出波前摇: 技能动作「刀压低 → 上挑」, 上挑那一帧才出波(11-25 用户「应该是把刀放下，然后往上挥出一道这个气波」);
+##   前摇 + 收招期间小将施法定身(不走、不普攻、不充龟能)
+const KATANA_WAVE_WINDUP := 0.35
+const KATANA_WAVE_RECOVER := 0.25
+## 第 4 下: 蓄力 1.5 秒后甩出龙卷风, 甩完收招 0.3 秒(整段施法定身, 蓄力时不再普攻)
+const KATANA_TORNADO_RECOVER := 0.3
 const KATANA_WAVE_MULT := 1.5
 const KATANA_CHARGE := 1.5
 const KATANA_HEAL_TICK := 0.25
@@ -298,6 +305,8 @@ func on_mana_full(_u: Dictionary, _eid: String, _si: int) -> void:
 
 ## 任何单位普攻（EquipSystem._eq_on_basic_attack 最前面调，不论有没有装备）
 func on_any_basic(u: Dictionary, tgt) -> void:
+	if bool(u.get("_katana_minion", false)) and tgt is Dictionary:
+		_fx("katana_hslash", [u, tgt])   # 107 小将普攻命中的横斩刀光(只管画面)
 	if bool(u.get("_smoke_hidden", false)) and float(battle._t) >= float(u.get("untargetable_until", 0.0)):
 		u["_smoke_hidden"] = false          # 潜行已自然到期（离开烟雾）⇒ 这一下不算潜行攻击
 	if bool(u.get("_smoke_hidden", false)):
@@ -895,9 +904,13 @@ func _spawn_katana(owner: Dictionary, si: int) -> void:
 		 "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
 	if p == null:
 		return
+	## 普攻 = 横斩(11-25 用户「普通攻击应该是一个横横斩」): 自带普攻帧表(前摇 / 命中 / 后摇由 AttackRhythm 对齐), 命中画专属刀光、不叠通用火花
+	p["_act_rows"] = {"attack": ["vfx/eq-katana-attack.png", 14.0]}
+	p["_own_hit_vfx"] = true
+	p["_katana_minion"] = true
 	p["maxEnergy"] = KATANA_EN_MAX   # 头顶龟能条(见 _spawn_cannon)
 	p["energy"] = 0.0
-	_katanas.append({"u": p, "owner": owner, "si": si, "en": KATANA_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0, "casts": 0, "charge": -1.0, "heal_acc": 0.0})
+	_katanas.append({"u": p, "owner": owner, "si": si, "en": KATANA_EN_MAX if bool(owner.get("_edit_fe", false)) else 0.0, "casts": 0, "charge": -1.0, "heal_acc": 0.0, "wave_t": -1.0})
 
 
 func katana_state(i: int = 0) -> Dictionary:
@@ -912,6 +925,13 @@ func _tick_katanas(delta: float) -> void:
 		if float(k["charge"]) < 0.0:   # 蓄力期间不充(持续状态锁龟能)
 			k["en"] = minf(KATANA_EN_MAX, float(k["en"]) + _en_gain(p, delta))
 		p["energy"] = float(k["en"])
+		if float(k["wave_t"]) >= 0.0:   # 出波前摇: 上挑那一刻出波
+			k["wave_t"] = float(k["wave_t"]) - delta
+			if float(k["wave_t"]) <= 0.0:
+				k["wave_t"] = -1.0
+				stat["katana_wave"] += 1
+				_launch_line(p, Vector2(p["pos"]), Vector2(k["aim"]), KATANA_WAVE_SPD, KATANA_WAVE_LEN, KATANA_WAVE_W, "katana_wave", int(k["si"]))
+			continue
 		if float(k["charge"]) >= 0.0:
 			k["charge"] = float(k["charge"]) + delta
 			k["heal_acc"] = float(k["heal_acc"]) + delta
@@ -934,10 +954,13 @@ func _tick_katanas(delta: float) -> void:
 			k["charge"] = 0.0
 			k["heal_acc"] = 0.0
 			k["aim"] = Vector2(tgt["pos"]) - Vector2(p["pos"])
+			battle._damage.channel(p, KATANA_CHARGE + KATANA_TORNADO_RECOVER)
 			_fx("katana_charge", [p, KATANA_CHARGE])
 		else:
-			stat["katana_wave"] += 1
-			_launch_line(p, Vector2(p["pos"]), Vector2(tgt["pos"]) - Vector2(p["pos"]), KATANA_WAVE_SPD, KATANA_WAVE_LEN, KATANA_WAVE_W, "katana_wave", int(k["si"]))
+			k["wave_t"] = KATANA_WAVE_WINDUP
+			k["aim"] = Vector2(tgt["pos"]) - Vector2(p["pos"])
+			battle._damage.channel(p, KATANA_WAVE_WINDUP + KATANA_WAVE_RECOVER)
+			_fx("katana_rise", [p, KATANA_WAVE_WINDUP])
 
 
 func _katana_tornadoes(k: Dictionary) -> void:

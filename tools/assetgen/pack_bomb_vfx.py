@@ -32,7 +32,8 @@ JOBS = {
     "mine-blast": "bomb-mine-blast",
     "timer-blast": "bomb-timer-blast",
     "cannon-heavy-shell": "bomb-cannon-shell",
-    "remote-blast": "bomb-remote-blast",       # 106 遥控炸弹专属爆炸(11-24: 蘑菇云 + 地面一圈火团铺满 600 码, 不再借炸药桶的大爆炸)
+    "remote-blast": "bomb-remote-blast",
+    "katana-hslash": "katana-hslash",          # 107 小将普攻横斩刀光(11-25 特效工作台 slash_trail 部件: 压扁成横向、钢白配色)       # 106 遥控炸弹专属爆炸(11-24: 蘑菇云 + 地面一圈火团铺满 600 码, 不再借炸药桶的大爆炸)
 }
 ## 召唤物待机表(PixelLab animate_image 首尾钉住同一张原画生成 7 帧; 原画是 create_image_pro_from_style 候选):
 ##   ai_src/bomb_summons/<名>_<0..6>.png → assets/sprites/vfx/<产出>.png 横排
@@ -71,6 +72,22 @@ def _erase_hot(img, x0):
             if nb <= 1:
                 px[x, y] = (0, 0, 0, 0)
     return img
+## 107 武士刀小将的动作(11-25 用户「武士这个动作…普通攻击应该是一个横横斩…把刀放下，然后往上挥出一道这个气波…
+##   强化形态下…一套序列动作…刀会放到这个左身方，然后这样子挥出去，挥出这个龙卷风」):
+##   做法(如实): 关键姿势 = PixelLab edit_image_pro_flash 从待机原画改出来(katkey_low 刀尖压地 / katkey_up 上挑后刀指天 /
+##   katkey_coil 蹲低收刀到身侧 / katkey_high 甩完刀举过头顶); 关键姿势之间的帧 = animate_image 首尾钉住两张关键姿势生成;
+##   横斩 = animate_image 首尾钉住待机原画(第二版, 身体转得多)。每段按下表挑帧拼(序号 = 生成结果的第几张, 0 = 输入原画不要)。
+##   所有段与待机同一个下移量(KATANA_DY), 换表不跳。
+KATANA_SEQ = {
+    "eq-katana-attack": ["katslash2_%d" % i for i in range(1, 9)],                       # 横斩 8 帧, 命中 = 第 3 帧(刀横扫过身前)
+    ## 上挑: katup_3 不要(刀身画成一团往身后飞的白雾, 方向反了) ⇒ 刀尖压地后一下挑到指天; 第 6 帧(刀指天)出波
+    "eq-katana-rise": ["katlow_%d" % i for i in range(1, 5)] + ["katup_1", "katup_2", "katup_4"]
+                      + ["katuprec_%d" % i for i in range(1, 4)],
+    "eq-katana-coil": ["katcoil_%d" % i for i in range(1, 7)],                           # 蹲低收刀到身侧
+    "eq-katana-hold": ["kathold_%d" % i for i in range(1, 4)],                           # 蓄力循环(身边风丝)
+    "eq-katana-release": ["katrel_%d" % i for i in range(1, 7)] + ["katrec_%d" % i for i in range(1, 4)],   # 绕身甩刀(第 4 帧甩出龙卷风) → 刀举过头顶 → 收刀
+}
+KATANA_DY = 112 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "katana_0.png")).convert("RGBA").getbbox()[3]
 ## 炮筒原画底下空 11 行(见下方「落地」): 所有炮筒动作一律挪这么多
 CANNON_DY = 64 - Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", "cannon_0.png")).convert("RGBA").getbbox()[3]
 CLEAN = {
@@ -78,6 +95,9 @@ CLEAN = {
     "cannonhfire": lambda fs: [fs[1], _erase_hot(fs[2], 48), _erase_hot(fs[3], 48), _erase_hot(fs[4], 48), fs[5], fs[6]],
     "cannonfire": lambda fs: [fs[1], fs[2], _erase_hot(fs[4], 50), _erase_hot(fs[4], 50), fs[0]],
 }
+## 擦掉帧中心一圈(11-25 自查): 107 蓄力的聚气粒子图正中心有一个光点, 放大到小将身上成了一块压在身上的蓝方块;
+##   只留往里收的风粒子。值 = (中心 x, 中心 y, 半径)
+CLEAR_CENTER = {"katana-charge": (33, 33, 9)}
 ## 循环播放的不去尾帧(循环要首尾相接)
 LOOPS = {"bomb-goo-puddle", "cannon-heavy-shell"}
 
@@ -94,6 +114,14 @@ def main() -> None:
         if src not in LOOPS:
             while len(frames) > 1 and frames[-1].getbbox() is None:
                 frames.pop()
+        if src in CLEAR_CENTER:
+            cx, cy, cr = CLEAR_CENTER[src]
+            for fr in frames:
+                px = fr.load()
+                for y in range(fr.height):
+                    for x in range(fr.width):
+                        if (x - cx) ** 2 + (y - cy) ** 2 <= cr * cr:
+                            px[x, y] = (0, 0, 0, 0)
         w, h = frames[0].size
         strip = Image.new("RGBA", (w * len(frames), h), (0, 0, 0, 0))
         for i, fr in enumerate(frames):
@@ -111,6 +139,8 @@ def main() -> None:
         dy = h - low
         if src.startswith("cannon"):
             dy = CANNON_DY   # 炮筒所有动作同一个下移量(按原画算), 换表不跳
+        if src == "katana":
+            dy = KATANA_DY   # 待机与各动作同一个下移量
         if dy > 0:
             moved = []
             for f in frames:
@@ -130,6 +160,19 @@ def main() -> None:
                 rev.paste(fr, (i * w, 0))
             rev.save(os.path.join(DST, "eq-cannon-cool.png"), optimize=False)
             out.append("eq-cannon-cool %dx%d x%d" % (w, h, n))
+    for dst, names in KATANA_SEQ.items():
+        frames = []
+        for nm in names:
+            f = Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "bomb_summons", nm + ".png")).convert("RGBA")
+            g = Image.new("RGBA", f.size, (0, 0, 0, 0))
+            g.paste(f, (0, KATANA_DY))
+            frames.append(g)
+        w, h = frames[0].size
+        strip = Image.new("RGBA", (w * len(frames), h), (0, 0, 0, 0))
+        for i, fr in enumerate(frames):
+            strip.paste(fr, (i * w, 0))
+        strip.save(os.path.join(DST, dst + ".png"), optimize=False)
+        out.append("%s %dx%d x%d" % (dst, w, h, len(frames)))
     for src, (dst, n) in EXTRA.items():
         frames = [Image.open(os.path.join(ROOT, "tools", "assetgen", "ai_src", "%s_%d.png" % (src, i))).convert("RGBA") for i in range(n)]
         w, h = frames[0].size

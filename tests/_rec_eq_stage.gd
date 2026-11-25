@@ -76,6 +76,9 @@ static func cases() -> Dictionary:
 		"cannon_norm2": [[_u("__summon__", "left", Vector2(-40, 0), {"ghost_eq": "p2eq_105", "equips": _eq([105], 2), "minion": true})] + _dummies(160, 3), 70.0],
 		"remote": [[_u("__summon__", "left", Vector2(-300, 0), {"ghost_eq": "p2eq_106", "equips": _eq([106], 1), "minion": true})] + _dummies(150, 3), 14.0],
 		"katana": [[_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(60, 3), 16.0],
+		## 看动作(配 REC_ZOOM): 三个不动的靶子竖着隔开站, 小将走过去打, 不被挤住挡住动作
+		"katana_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})]
+			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 21.0],
 		## 敌人会走过来打小将(掉点血) ⇒ 第 4 下蓄力回血看得见
 		"katana_hit": [[_u("__summon__", "left", Vector2(-160, 0), {"ghost_eq": "p2eq_107", "equips": _eq([107]), "minion": true, "fe": true})] + _dummies(150, 3, true, 20000.0, 40.0), 19.0],
 	}
@@ -127,6 +130,10 @@ func _process(d: float) -> void:
 			if nd is CanvasItem and is_instance_valid(nd):
 				(nd as CanvasItem).visible = false
 		print("[REC] %.2f 开打 · 场上 %d 单位" % [_el, _b._units.size()])
+		## REC_ZOOM=2 ⇒ 镜头拉近(11-25 武士刀小将动作录像: 默认镜头下小将只有二十来像素, 动作看不清)
+		if OS.has_environment("REC_ZOOM"):
+			_b._cam_zoom = float(OS.get_environment("REC_ZOOM"))
+			_b._apply_cam_zoom()
 	var bs = _b._equip_sys._bomb_sys
 	for k in bs.stat:
 		if int(bs.stat[k]) != int(_seen.get(k, 0)):
