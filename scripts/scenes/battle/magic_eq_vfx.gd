@@ -296,6 +296,8 @@ func _orient_to(s: Sprite3D, d2: Vector2) -> void:
 const FORB_TEX := "vfx/magic-forbook-anim.png"   ## 8 帧循环: 书页一开一合、符文亮暗(PixelLab animate_image, 11-25)
 const FORB_PX := 74.0            ## 书的显示大小(世界码; 52 时录出来只是肩后一小块, 11-25 录像自查)
 const FORB_SIDE := 46.0          ## 浮在身后多远(码)
+const FORB_BULGE := 0.62        ## 弧线外鼓程度(控制点离连线的距离 / 直线距离; 羁绊飞弹两侧那几枚约 0.5~0.7)
+var _forb_n := 0
 const FORB_TRAIL_TEX := "vfx/magic-forb-trail.png"
 var _books: Array = []           ## 浮在身边的书 {u, node}
 
@@ -372,7 +374,9 @@ func forb_launch(u: Dictionary, tgt: Dictionary):
 	var L: float = maxf(1.0, d.length())
 	s.set_meta("h", body_h(u) + 0.55)
 	s.set_meta("from", a)
-	s.set_meta("ctrl_off", d * 0.35 + Vector2(-d.y, d.x) / L * L * 0.18)   # 略往一侧鼓的弧线(像被甩出去、拐向敌人)
+	_forb_n += 1
+	var side: float = 1.0 if _forb_n % 2 == 0 else -1.0
+	s.set_meta("ctrl_off", d * 0.2 + Vector2(-d.y, d.x) / L * L * FORB_BULGE * side)   # 跟羁绊飞弹一样: 先朝一侧甩出去、走一条大弧再拐进敌人(11-25 用户「这个弹道太直了吧，希望做成飞弹那样」); 左右轮换
 	s.set_meta("trail_col", Color(1, 1, 1, 0.92))
 	s.set_meta("trail_w", 18.0)
 	s.set_meta("trail_tex", FORB_TRAIL_TEX)
