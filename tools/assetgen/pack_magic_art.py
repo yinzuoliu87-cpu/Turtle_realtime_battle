@@ -1,0 +1,112 @@
+"""pack_magic_art.py —— 魔法书羁绊(2026-11-25 · 方案书 docs/plans/20261125b-魔法书羁绊.md)的美术打包
+
+来源(如实, 没有一张是手画的):
+  · 装备图标 117–126 / 类型标签: PixelLab create_image_pro_flash 64×64 / 32×32。
+    117–121 风格锚 = 110 苦无图标; 122–126 风格锚 = 119 烈焰法典(同一套书的样子); 标签无锚。原图在 ai_src/magic/icon*.png / tagmagic.png
+  · 123 亡者之书三种骷髅龟: 待机原画 = create_image_pro_flash 112×112(风格锚 = 115 暗影忍者待机原画 eq-ninja-idle 第 0 帧, 写明严格侧面朝左);
+    骷髅祭司的头第一版画成了活龟的光头 ⇒ edit_image_pro_flash 只改头成骷髅(skp_0b)。
+    关键姿势 kw_* / km_* / kp_* = edit_image_pro_flash 从各自原画改出来(写明严格侧面朝左、两手两脚);
+    关键姿势之间 = animate_image 首尾钉住两张关键姿势生成(序号 0 = 输入原画, 不取); 待机 / 走路 = animate_image 首尾都钉原画。
+    自查后弃用的帧(如实): 战士横斩第二段开头两格剑弹回竖直(kwa_b_1/2) · 横斩第二段第 3 格剑竖回脸前(kwa_b_3, 轨迹倒退) · 战士狂怒第 2 格全身被刷成绿色(kwr_up_2) ·
+    法师普攻第一版三格大块纯白拖影(kma_cast_*, 重生成为 kma2_cast_*, 仍有一格拖影 kma2_cast_2 不取) · 法师举杖第一版三格白云(kms_up_*, 重生成为 kms2_up_*)。
+    祭司甩灯蓄力三格头顶多画了一个青色法阵圈(与身体不相连的独立块) ⇒ DROP_FLOATERS 去掉「整块都在 y ≤ 40 的非身体块」。
+本脚本只做拷贝 / 拼接 / 去碎块, 重跑逐字节相同。
+
+    python tools/assetgen/pack_magic_art.py
+"""
+import os, shutil
+from PIL import Image
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+AI = os.path.join(ROOT, "tools", "assetgen", "ai_src", "magic")
+EQ = os.path.join(ROOT, "assets", "sprites", "equip")
+TAGS = os.path.join(ROOT, "assets", "sprites", "tags")
+
+ICONS = {"icon%d" % i: "p2eq_%d" % i for i in range(117, 127)}
+TAG = {"tagmagic": "tag-magicbook"}
+VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
+FW = 112
+
+## 骷髅帧条(源名; 拼成横条 112 方帧)。命中 / 出招帧下标(从 0 数)抄到 AttackHits(普攻)与 MagicEqVfx.SKEL_SKILL_HIT(技能)
+SKEL_SEQ = {
+    "eq-skelw-idle": ["skw_idle_%d" % i for i in range(0, 6)],
+    "eq-skelw-walk": ["skw_walk_%d" % i for i in range(1, 9)],
+    ## 横斩: 剑收到头后 → 举过头顶竖直 → 斜指前上(kw_mid) → 劈到前下 → ★横平指敌人 → 收势
+    "eq-skelw-attack": ["kwa_wind_%d" % i for i in range(1, 5)] + ["kwa_a_%d" % i for i in range(1, 5)] + ["kwa_b_4"]
+                       + ["kwa_rec_%d" % i for i in range(1, 5)],
+    ## 骸骨狂怒: 举剑 → ★仰头怒吼、眼冒绿火 → 收剑
+    "eq-skelw-skill": ["kwr_up_1", "kwr_up_3", "kwr_up_4"] + ["kwr_dn_%d" % i for i in range(1, 5)],
+    "eq-skelm-idle": ["skm_idle_%d" % i for i in range(0, 6)],
+    "eq-skelm-walk": ["skm_walk_%d" % i for i in range(1, 9)],
+    ## 暗影弹: 杖收到身后 → 甩过头顶 → ★杖前刺指敌人 → 收杖
+    "eq-skelm-attack": ["kma_wind_%d" % i for i in range(1, 5)] + ["kma2_cast_1", "kma2_cast_3", "kma2_cast_4"]
+                       + ["kma_rec_%d" % i for i in range(1, 5)],
+    ## 骨火爆裂: 站直双手举杖 → ★杖头火团最大 → 放下
+    "eq-skelm-skill": ["kms2_up_%d" % i for i in range(1, 5)] + ["kms_dn_%d" % i for i in range(1, 5)],
+    "eq-skelp-idle": ["skp_idle_%d" % i for i in range(0, 6)],
+    "eq-skelp-walk": ["skp_walk_%d" % i for i in range(1, 9)],
+    ## 甩灯: 灯甩到身后 → 绕前 → ★手臂前伸、灯冲敌人亮 → 收回
+    "eq-skelp-attack": ["kpa_wind_%d" % i for i in range(1, 5)] + ["kpa_cast_%d" % i for i in range(1, 5)]
+                       + ["kpa_rec_%d" % i for i in range(1, 5)],
+    ## 亡灵浪潮: 下蹲 → ★双手前推、青色浪涌 → 收势
+    "eq-skelp-skill": ["kps_up_%d" % i for i in range(1, 5)] + ["kps_dn_%d" % i for i in range(1, 5)],
+}
+SKEL_HIT = {"eq-skelw-attack": 8, "eq-skelm-attack": 6, "eq-skelp-attack": 7,
+            "eq-skelw-skill": 2, "eq-skelm-skill": 3, "eq-skelp-skill": 3}
+DROP_FLOATERS = {"kpa_wind_1", "kpa_wind_2", "kpa_wind_3"}
+
+
+def _drop_floaters(im, ymax=40):
+    """去掉与身体(最大连通块)不相连、且整块都在 y ≤ ymax 的碎块(头顶多画的法阵圈)"""
+    px = im.load()
+    w, h = im.size
+    seen = set()
+    comps = []
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] == 0 or (x, y) in seen:
+                continue
+            st = [(x, y)]
+            seen.add((x, y))
+            c = []
+            while st:
+                a, b = st.pop()
+                c.append((a, b))
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        nx, ny = a + dx, b + dy
+                        if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen and px[nx, ny][3] > 0:
+                            seen.add((nx, ny))
+                            st.append((nx, ny))
+            comps.append(c)
+    comps.sort(key=len, reverse=True)
+    for c in comps[1:]:
+        if max(p[1] for p in c) <= ymax:
+            for q in c:
+                px[q] = (0, 0, 0, 0)
+    return im
+
+
+def _strip(names):
+    out = Image.new("RGBA", (FW * len(names), FW), (0, 0, 0, 0))
+    for i, n in enumerate(names):
+        im = Image.open(os.path.join(AI, n + ".png")).convert("RGBA")
+        assert im.size == (FW, FW), (n, im.size)
+        if n in DROP_FLOATERS:
+            im = _drop_floaters(im)
+        out.paste(im, (i * FW, 0))
+    return out
+
+
+def main():
+    for src, dst in ICONS.items():
+        shutil.copyfile(os.path.join(AI, src + ".png"), os.path.join(EQ, dst + ".png"))
+    for src, dst in TAG.items():
+        shutil.copyfile(os.path.join(AI, src + ".png"), os.path.join(TAGS, dst + ".png"))
+    for dst, names in SKEL_SEQ.items():
+        _strip(names).save(os.path.join(VFX, dst + ".png"), optimize=False)
+    print("图标 %d 张 + 标签 %d 张 + 骷髅帧条 %d 条" % (len(ICONS), len(TAG), len(SKEL_SEQ)))
+
+
+if __name__ == "__main__":
+    main()

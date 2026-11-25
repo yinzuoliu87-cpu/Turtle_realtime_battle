@@ -129,6 +129,7 @@ const TYPE_STYLE := {
 	"炸弹": {"color": "#ef4444", "icon": "res://assets/sprites/tags/tag-bomb.png"},   # 2026-11-24 新羁绊
 	"匕首": {"color": "#a78bfa", "icon": "res://assets/sprites/tags/tag-dagger.png"},   # 2026-11-25 新羁绊
 	"仪式": {"color": "#dc2626", "icon": "res://assets/sprites/tags/tag-ritual.png"},   # 2026-11-25 仪式匕首专属
+	"魔法书": {"color": "#60a5fa", "icon": "res://assets/sprites/tags/tag-magicbook.png"},   # 2026-11-25 新羁绊
 	## ★2026-08-15 补上「香火」—— 它 2026-08-13 进了 Phase2Types.TYPES(第 11 个类型),
 	##   但这张表没跟着加, 于是羁绊页拿默认值画成 🔗 灰蓝, 而装备页走当时的 Phase2Types 取值口
 	##   拿到的默认值是【🗡️ 剑】—— 一件香火装备顶着把剑的图标。两处默认值还不一样。

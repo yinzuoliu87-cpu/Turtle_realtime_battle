@@ -248,6 +248,8 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 			u["crit"] = float(u.get("crit", 0.0)) + v
 		"critDmg":   # 匕首羁绊(2026-11-25): 每件给暴击伤害
 			u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + v
+		"dmgAmp":   # 魔法书羁绊(2026-11-25): 每件给增伤(damage_amp, 与其它增伤来源相加)
+			u["damage_amp"] = float(u.get("damage_amp", 0.0)) + v
 		"armorPen":
 			u["armor_pen"] = float(u.get("armor_pen", 0.0)) + v
 		"magicPen":

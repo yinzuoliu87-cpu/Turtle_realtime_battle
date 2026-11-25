@@ -14,4 +14,7 @@ const OWNER := {
 	## 匕首批(2026-11-25 · 方案书 docs/plans/20261125-匕首羁绊.md)
 	"p2eq_108": "dagger", "p2eq_109": "dagger", "p2eq_110": "dagger", "p2eq_111": "dagger", "p2eq_112": "dagger",
 	"p2eq_113": "dagger", "p2eq_114": "dagger", "p2eq_115": "dagger", "p2eq_116": "dagger",
+	## 魔法书批(2026-11-25 · 方案书 docs/plans/20261125b-魔法书羁绊.md)
+	"p2eq_117": "magic", "p2eq_118": "magic", "p2eq_119": "magic", "p2eq_120": "magic", "p2eq_121": "magic",
+	"p2eq_122": "magic", "p2eq_123": "magic", "p2eq_124": "magic", "p2eq_125": "magic", "p2eq_126": "magic",
 }

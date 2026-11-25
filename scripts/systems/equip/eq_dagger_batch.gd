@@ -602,6 +602,7 @@ func _tick_ninjas(delta: float) -> void:
 		if not (tgt is Dictionary):
 			continue
 		n["en"] = 0.0
+		battle._magic_syn.on_cast(p, NINJA_EN_MAX)   # 魔法书【飞弹】: 召唤物放技能也算(用户 11-25)
 		n["tgt"] = tgt
 		n["vanish"] = NINJA_VANISH
 		battle._damage.channel(p, NINJA_VANISH + NINJA_STAB_WINDUP + 0.1)

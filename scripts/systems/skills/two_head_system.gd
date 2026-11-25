@@ -352,6 +352,7 @@ func _two_head_deferred_cast(u: Dictionary, tgt, stype: String) -> void:
 	var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 	battle._equip_sys._eq_on_cast(u, tgt)
 	battle._equip_sys.tally.pop(_tl0)
+	battle._magic_syn.after_cast(u, tgt, stype)   # 魔法书(双头延后施法这条路)
 
 func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生(用户2026-07-11 B案): 切形态+挂"下1下强化普攻"; 近战不单独位移(锤击自带跳接近)/远程纯滑退到射程
 	var to_ranged: bool = u["melee"]

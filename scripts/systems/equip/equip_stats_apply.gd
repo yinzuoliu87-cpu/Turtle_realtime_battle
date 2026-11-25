@@ -130,6 +130,8 @@ func apply_stat_dict(u: Dictionary, st: Dictionary, item_id: String) -> void:
 		u["base_mr"] += float(st["mr"])
 	if st.has("critDmg"):
 		u["crit_dmg"] += float(st["critDmg"])
+	if st.has("dmgAmp"):   # 增伤(2026-11-25 魔法书羁绊 / 魔法书装备): 加到 damage_amp(物理 / 魔法 / 持续伤害结算都乘, 与其它增伤来源相加)
+		u["damage_amp"] = float(u.get("damage_amp", 0.0)) + float(st["dmgAmp"])
 	if st.has("_maxEnergy"):   # 初始龟能: 开局减该技冷却(init_energy_bonus懒初始化时折算, 多件叠加)
 		u["init_energy_bonus"] = float(u.get("init_energy_bonus", 0.0)) + float(st["_maxEnergy"])
 	if st.has("_echargePct"):   # 龟能充能速率% → echarge_perm 永久倍率(多件叠加)

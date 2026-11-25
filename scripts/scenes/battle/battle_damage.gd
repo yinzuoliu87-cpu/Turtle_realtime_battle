@@ -547,6 +547,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	var shield_before: float = u["shield"]
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸, 墨迹真伤也一样(10-15 起)。
+	if u.get("_mb_pages", false): d = battle._equip_sys._magic_sys.page_block(u, d)   # 126 浮空魔典远程书页格挡: 只挡攻击和技能(持续伤害那条路不接), 在一切护盾之前
 	d = MagicShield.absorb(u, d, _dtv == "magic" and not raw)   # 魔法护盾(012): 只挡魔法, 先于普通盾; §3.3 两路都接
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接

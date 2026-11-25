@@ -308,6 +308,8 @@ const BASIC_ATK := {
 	"crystal":  {"phys": CrystalSystem.BASIC_ATK_COEF, "hits": 1},                                          # 水晶刺(封板L559):0.6A物理+1.5%目标maxHp魔法+叠1结晶(魔法段与结晶都走_on_basic_hit·原hp bonus折进物理=类型错)
 	"space":    {"magic": StarSystem.BOLT_MAGIC, "tcurhp": StarSystem.BOLT_CURHP, "hits": 1},                          # 星光弹: 单段0.9A魔法+5%目标当前HP (封板2026-07-07)
 	"hiding":   {"phys": HidingSystem.BASIC_COEF, "hits": 1, "rider": "shrink"},                        # 缩壳: 1A物理+每击+1甲+1抗+0.1A盾(越打越硬)
+	"_summon_skel_mage":   {"magic": EqMagicBatch.SKM_BASIC, "hits": 1},   # 123 亡者之书 · 骷髅法师: 远程暗影弹 100% 攻击力魔法(2026-11-25)
+	"_summon_skel_priest": {"magic": EqMagicBatch.SKP_BASIC, "hits": 1},   # 123 亡者之书 · 骷髅祭司: 远程 60% 攻击力魔法(用户 11-25)
 	# shell 走 _basic_attack 特判 _shell_sys._shell_basic (1ATK单段·物/真逐攻交替 + 120px范围溅射50%); 不进 _do_basic
 }
 const DEFAULT_BASIC := {"phys": BasicConsts.DEFAULT_BASIC_COEF, "hits": 1}   # 系数住 BasicConsts(纯常量表不进上帝文件)
@@ -420,6 +422,8 @@ const ACTION_ATTACK := {
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
 	"_summon_axe": ["vfx/eq096-axe-wood-attack.png", 16.0],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时装到单位 _act_rows)
 	"_summon_katana": ["vfx/eq-katana-attack.png", 14.0],   # 107 武士刀小将横斩(11-25; 命中帧见 AttackHits)
+	"_summon_skel_warrior": ["vfx/eq-skelw-attack.png", 16.0], "_summon_skel_mage": ["vfx/eq-skelm-attack.png", 16.0],   # 123 亡者之书骷髅(11-25; 命中帧见 AttackHits)
+	"_summon_skel_priest": ["vfx/eq-skelp-attack.png", 16.0],
 	"_summon_shadow_ninja": ["vfx/eq-ninja-attack.png", 16.0], "_summon_shadow_clone": ["vfx/eq-ninja-attack.png", 16.0],   # 115 暗影忍者 / 影子: 蓄力刀收肩后 → 横斩(命中帧见 AttackHits)
 }
 # 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
@@ -482,6 +486,8 @@ const ACTION_RUN := {
 	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
 	"_summon_axe": ["vfx/eq096-axe-wood-walk.png", 13.33],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时预置 run_sd)
 	"_summon_katana": ["vfx/eq-katana-walk.png", 10.0],     # 107 武士刀小将走路循环(11-25 用户「肯定是没有走路的」)
+	"_summon_skel_warrior": ["vfx/eq-skelw-walk.png", 12.0], "_summon_skel_mage": ["vfx/eq-skelm-walk.png", 12.0],   # 123 亡者之书骷髅走路循环 8 帧
+	"_summon_skel_priest": ["vfx/eq-skelp-walk.png", 12.0],
 	"_summon_shadow_ninja": ["vfx/eq-ninja-walk.png", 12.0], "_summon_shadow_clone": ["vfx/eq-ninja-walk.png", 12.0],   # 115 暗影忍者 / 影子 潜行小跑 8 帧
 }
 # GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界), 不再靠抬高去躲硬切. 见 §GROUNDING.
@@ -692,6 +698,7 @@ var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/余�
 var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获】(2026-08-03)
 var _bomb_syn := BombSynergySystem.new(self)   # 炸弹羁绊【导弹轰炸】(2026-11-24 · 方案书 20261124f)
 var _dagger_syn := DaggerSynergySystem.new(self)   # 匕首羁绊【刺杀】(2026-11-25 · 方案书 20261125)
+var _magic_syn := MagicbookSynergySystem.new(self)   # 魔法书羁绊【飞弹】(2026-11-25 · 方案书 20261125b): 任意单位放技能按消耗龟能出飞弹
 var _gadget_syn := GadgetSynergySystem.new(self)   # 奇械羁绊【铸币/冰封】(2026-08-03)
 var _food_syn := FoodSynergySystem.new(self)       # 食物羁绊【永久成长/学院】(2026-08-03)
 var _spirit_syn := SpiritSynergySystem.new(self)   # 灵物羁绊【触手/闪避追击/亡灵】(2026-08-03)
@@ -1780,6 +1787,9 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 		"eq-remote-bomb": ["vfx/eq-remote-bomb-idle.png", 64],  # 106 遥控炸弹
 		"eq-katana": ["vfx/eq-katana-idle.png", 112],        # 107 武士刀小将
 		"eq-shadow-ninja": ["vfx/eq-ninja-idle.png", 112],   # 115 暗影忍者(影子同一套, 演出层压暗半透明)
+		"eq-skel-warrior": ["vfx/eq-skelw-idle.png", 112],   # 123 亡者之书 · 骷髅战士(11-25)
+		"eq-skel-mage": ["vfx/eq-skelm-idle.png", 112],      # 123 · 骷髅法师
+		"eq-skel-priest": ["vfx/eq-skelp-idle.png", 112],    # 123 · 骷髅祭司
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]
@@ -2528,6 +2538,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 						_equip_sys._eq_on_cast(u, tgt)
 						_equip_sys.tally.pop(_tl0)
+						_magic_syn.after_cast(u, tgt, stype)   # 魔法书: 携带者的魔法书逐件生效 + 羁绊【飞弹】(按这次消耗的龟能)
 						if u["id"] == "space": _star_sys.after_cast(u, tgt, _se0)   # 星能: 施法后追加星能真伤
 						if u["id"] == "shell":                   # 潜影: 自己放技能→破隐(下次普攻附破隐bonus)
 							_shell_sys._shell_break_stealth(u)
@@ -5067,7 +5078,9 @@ const _IMPL_SKILLS := {
 # 龟能花费表 已移到单一事实源 SkillEnergy (scripts/systems/skill_energy.gd) — 战斗/图鉴/选龟共用
 func _skill_cost(u: Dictionary, stype: String) -> float:
 	## 数据驱动: 优先该龟该技 energyCost, 缺则类型兜底; 火山形态的熔岩爆发单独 120。图鉴走同一个函数(SkillEnergy.cost_for)。
-	return SkillEnergy.cost_for(stype, u.get("energy_cost", {}), bool(u.get("volcano", false)))
+	var _c: float = SkillEnergy.cost_for(stype, u.get("energy_cost", {}), bool(u.get("volcano", false)))
+	## 125 禁咒全书②「技能条的最大龟能减少」: energy_cut(装备 on_spawn 写, 多件相加) ⇒ 消耗与充满时间一起少, 至少 10; 没带的龟原样返回
+	return _c if float(u.get("energy_cut", 0.0)) <= 0.0 else maxf(10.0, _c - float(u["energy_cut"]))
 
 # 该技充满龟能要多少秒 (= 龟能花费 × 0.075; 即所谓"冷却") — 龟盾~5s · 普通~7s · 弹幕~10s · 大招~13s
 func _skill_cd(u: Dictionary, stype: String) -> float:
@@ -7452,6 +7465,7 @@ func _settle_season(won: bool) -> void:
 	_potion_syn.reset_match()    # 药水战利品: 同上
 	_bomb_syn.reset_match()
 	_dagger_syn.reset_match()
+	_magic_syn.reset_match()
 	_relic_syn.reset_match()     # 遗物远古之力: 同上
 	## ★2026-10-06 用户「可以不发」: 被打出局的那一局不发深海币(含战斗内铸币)。
 	##   出局后商店锁住、深海币周一清零 ⇒ 这笔钱一枚都花不出去, 发了只是假账(60 人实操台账)。

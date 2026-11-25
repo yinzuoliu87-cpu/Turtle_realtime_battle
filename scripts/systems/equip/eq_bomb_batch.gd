@@ -837,6 +837,7 @@ func _tick_cannons(delta: float) -> void:
 		if not bool(c["heavy"]) and float(c["en"]) >= CANNON_EN_MAX:
 			c["heavy"] = true
 			_fx("cannon_heavy_on", [p])
+			battle._magic_syn.on_cast(p, CANNON_EN_MAX)   # 魔法书【飞弹】: 召唤物放技能也算(进重炮 = 放技能)
 		c["acc"] = float(c["acc"]) + delta
 		if float(c["acc"]) < CANNON_IV:
 			continue
@@ -985,6 +986,7 @@ func _tick_katanas(delta: float) -> void:
 		if not (tgt is Dictionary):
 			continue
 		k["en"] = 0.0
+		battle._magic_syn.on_cast(p, KATANA_EN_MAX)   # 魔法书【飞弹】: 召唤物放技能也算
 		k["casts"] = int(k["casts"]) + 1
 		if int(k["casts"]) % 4 == 0:
 			k["charge"] = 0.0
