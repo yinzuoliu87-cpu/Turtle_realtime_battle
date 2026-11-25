@@ -218,7 +218,7 @@ func _t_riposte_real_entry() -> void:
 		"%.3f 秒" % fly)
 	var steps: int = int(ceil(fly / 0.02)) + 2
 	for _k in range(steps):
-		_s._ballistics._step_pending_shots(0.02)
+		_s._ballistics._step_pending_shots(0.02); _s._ballistics._step_flights(0.02)
 		_vfx.tick(0.02)
 	var dealt: float = hp0 - float(foe["hp"])
 	_ok("③ ★光弹到达 ⇒ 攻击者掉 2 点真伤", absf(dealt - 2.0) < 0.01,
@@ -251,7 +251,7 @@ func _t_riposte_real_entry() -> void:
 	_sys.on_damaged(me, foe, 10)
 	var fly3: float = HSV.bolt_flight(Vector2(me["pos"]), Vector2(foe["pos"]))
 	for _k3 in range(int(ceil(fly3 / 0.02)) + 2):
-		_s._ballistics._step_pending_shots(0.02)
+		_s._ballistics._step_pending_shots(0.02); _s._ballistics._step_flights(0.02)
 	_ok("③ 对照: 盾羁绊 0 档 ⇒ 推满光弹飞行时间(%.2f 秒)也不反击(档位闸)" % fly3,
 		absf(hp0 - float(foe["hp"])) < 0.01, "敌掉 %.1f" % (hp0 - float(foe["hp"])))
 
@@ -300,7 +300,7 @@ func _t_aegis_tracks_riposte_switch() -> void:
 		var fly2: float = HSV.bolt_flight(Vector2(me["pos"]), Vector2(foe["pos"]))
 		var st2: int = int(ceil(fly2 / 0.02)) + 2
 		for _k in range(st2):
-			_s._ballistics._step_pending_shots(0.02)
+			_s._ballistics._step_pending_shots(0.02); _s._ballistics._step_flights(0.02)
 			_vfx.tick(0.02)
 		var will_riposte: bool = (hp0 - float(foe["hp"])) > 0.5
 		_ok(str(c["name"]), has_board == bool(c["board"]) and will_riposte == bool(c["ripo"]),
@@ -405,7 +405,7 @@ func _t_holdfade() -> void:
 	##   所以这里得把它也调上, 否则量到的是空集(N=0 是空检查不是通过)。
 	_vfx.clear()
 	_vfx.grant_burst(me, 55.0)
-	_vfx.riposte(me, foe, 2.0)
+	var _bd0: Dictionary = _vfx.riposte(me, foe, 2.0)
 	_vfx.riposte_hit(foe)
 	_vfx.tick(0.09)
 	var dim: Array = []
@@ -438,7 +438,10 @@ func _t_holdfade() -> void:
 		"变暗的: %s" % str(dim2))
 	# 收尾前把趟 B 的东西喂完, 免得漏进下一组
 	_vfx.grant_burst(me, 55.0)
-	_vfx.riposte(me, foe, 2.0)
+	var _bd: Dictionary = _vfx.riposte(me, foe, 2.0)
+	## 11-25 光弹由结算侧按速度推进(bolt_drive); 这里直接把两枚都给「到了」
+	_vfx.bolt_drive(_bd0, 1.0, Vector2(foe["pos"]))
+	_vfx.bolt_drive(_bd, 1.0, Vector2(foe["pos"]))
 	# 喂满寿命 ⇒ 全部自销(不许挂着不走)
 	_vfx.tick(1.2)
 	_vfx.riposte_hit(foe)
@@ -660,6 +663,7 @@ func _t_wiring() -> void:
 	var ln_dmgfrom := -1
 	var ln_riposte := -1
 	var ln_clear_vfx := -1
+	var ln_launch := -1
 	for i in range(lines.size()):
 		var t: String = lines[i]
 		# ★★只认【代码行】, 跳过注释 —— 第一版就栽在这: 锚点 `_t_holy < HOLY_PERIOD`
@@ -679,6 +683,8 @@ func _t_wiring() -> void:
 			ln_dmgfrom = i
 		if ln_riposte < 0 and t.find("_holy_vfx.riposte(") >= 0:
 			ln_riposte = i
+		if ln_launch < 0 and t.find("battle._ballistics.launch_flight(u,") >= 0:
+			ln_launch = i
 		if ln_clear_vfx < 0 and t.find("_holy_vfx.clear()") >= 0:
 			ln_clear_vfx = i
 	_ok("★分母: 六个锚点都找得到",
@@ -691,9 +697,11 @@ func _t_wiring() -> void:
 		"tick 行 %d / return 行 %d" % [ln_tick, ln_period_ret])
 	_ok("⑨ grant_burst 在 _grant_shield 之后(否则那一帧 shield 还是 0, 盾板不出现)",
 		ln_grant >= 0 and ln_burst > ln_grant, "grant %d / burst %d" % [ln_grant, ln_burst])
-	_ok("⑨ riposte 演出在伤害结算之后(同帧, 且不抢在结算前面)",
-		ln_dmgfrom >= 0 and ln_riposte > ln_dmgfrom,
-		"dmg %d / rip %d" % [ln_dmgfrom, ln_riposte])
+	## 11-25 起光弹按速度追着攻击者飞(通用飞行物): riposte 只建光弹起飞, 伤害写在飞行物的「到达」回调里 ⇒
+	##   源码顺序 = riposte(起飞) < launch_flight < 伤害(回调体内)。伤害仍然和「看到弹中」同一刻。
+	_ok("⑨ 伤害写在光弹飞行物的到达回调里(起飞演出 < 发射 < 伤害)",
+		ln_riposte >= 0 and ln_launch > ln_riposte and ln_dmgfrom > ln_launch,
+		"rip %d / launch %d / dmg %d" % [ln_riposte, ln_launch, ln_dmgfrom])
 	# 换路撤场: dual_lane_flow 每次换路都调 ShieldSynergySystem.clear()
 	var dl := FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
 	_ok("⑨ 换路真的会调到本系统的 clear()(它才会带走盾板)",

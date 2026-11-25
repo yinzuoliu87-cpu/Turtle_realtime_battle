@@ -103,6 +103,7 @@ func _step(u: Dictionary, seconds: float, dt: float = 0.05) -> int:
 	for _i in range(k):
 		_g().tick_unit(u, dt)
 		_s._ballistics._step_pending_shots(dt)   # 大师技能的到达结算走这条真管线(不是 tween)
+		_s._ballistics._step_flights(dt)         # 11-25 锁头弹 / 驯服弹按速度追着目标飞到才生效(通用飞行物)
 	return k
 
 
@@ -248,6 +249,7 @@ func _t086_pierce() -> void:
 func _pump_shots(seconds: float, dt: float = 0.05) -> void:
 	for _i in range(int(round(seconds / dt))):
 		_s._ballistics._step_pending_shots(dt)
+		_s._ballistics._step_flights(dt)   # 11-25 弹丸按速度飞到才结算(通用飞行物)
 
 
 ## 把延后队列【推到空为止】(上限 20 游戏秒防死循环), 返回还剩几条(应为 0)。
@@ -258,10 +260,11 @@ func _pump_shots(seconds: float, dt: float = 0.05) -> void:
 ##   ⇒ 排空不再猜窗口长短, 推到队列空为止; 调用方再断言"确实空了"。
 func _drain_pending(dt: float = 0.05) -> int:
 	var k: int = 0
-	while not _s._pending_shots.is_empty() and k < int(20.0 / dt):
+	while (not _s._pending_shots.is_empty() or not _s._ballistics._flights.is_empty()) and k < int(20.0 / dt):
 		_s._ballistics._step_pending_shots(dt)
+		_s._ballistics._step_flights(dt)
 		k += 1
-	return _s._pending_shots.size()
+	return _s._pending_shots.size() + _s._ballistics._flights.size()
 
 
 func _fn_body(code: String, header: String) -> String:
@@ -970,13 +973,12 @@ func _t_teardown() -> void:
 	var tr = _g().vfx.sextant_shot(a, foe)
 	_ok("⑥ ★分母: 射击曳光真的建出来并挂进 battle._world", _in_world(tr),
 		"parent=%s" % (str((tr as Node).get_parent()) if tr != null else "无节点"))
-	# ★★2026-08-08: 曳光改成**一颗按距离算飞行时间的弹**(照赛博龟被动的 dist/900),
-	#   寿命不再是固定的 0.16 ⇒ 这里按真实飞行时间推, 不写死 0.25。
-	var _fly: float = clampf((Vector2(foe["pos"]) - Vector2(a["pos"])).length()
-		/ GVfx.SHOT_BOLT_SPD, 0.12, 0.5)
-	_g().tick(_fly * 0.4)
+	# ★★11-25: 弹丸的飞行进度由结算侧的通用飞行物按 SHOT_BOLT_SPD 推进(bolt_drive); 这里直接喂进度
+	_g().vfx.bolt_drive(tr, 0.4)
+	_g().tick(0.02)
 	var alive_early: bool = is_instance_valid(tr)
-	_g().tick(_fly * 0.8)
+	_g().vfx.bolt_drive(tr, 1.0)
+	_g().tick(0.02)
 	await get_tree().process_frame
 	_ok("⑥ `tick(delta)` 推进演出: 飞行到 40% 时弹还在, 超过飞行时间后被 free",
 		alive_early and not is_instance_valid(tr),

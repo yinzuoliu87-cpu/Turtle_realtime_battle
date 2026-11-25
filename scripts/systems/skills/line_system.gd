@@ -129,7 +129,8 @@ func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨
 			battle._burst_vfx("res://assets/sprites/vfx/ink-splat.png", o["pos"], 110.0, 0.9)   # 每敌身上墨溅
 		battle._skill_ring(land, Color(0.55, 0.4, 0.75, 0.5), battle.INK_BOMB_RADIUS))   # 环显300码AOE范围
 
-func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable) -> void:   # 墨水炸弹: 深墨球抛向敌区→落点自销调on_land
+const INK_BOMB_SPD := 900.0   # 墨水炸弹飞行速度(码/秒; 原公式里的除数)
+func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable, src = null) -> void:   # 墨水炸弹: 深墨球抛向敌区→落点自销调on_land
 	var ball = Sprite3D.new()
 	ball.texture = VfxTex._make_glow_texture()
 	ball.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -138,16 +139,14 @@ func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable) -> void:
 	ball.pixel_size = (30.0 * battle.WS) / float(maxi(1, ball.texture.get_height()))
 	ball.position = battle._world_pos(from2d, 1.0)
 	battle._world.add_child(ball)
-	var dur: float = clampf(DetMath.dist(from2d, to2d) / 900.0, 0.32, 0.6)
-	var tw = battle._reg_tween()
-	tw.bind_node(ball)
-	tw.tween_method(func(p: float) -> void:
-		if not is_instance_valid(ball): return
-		ball.position = battle._world_pos(from2d.lerp(to2d, p), 1.0 * (1.0 - p) + 3.0 * DetMath.dsin(PI * p))   # 抛物
-	, 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(ball): ball.queue_free()
-		if on_land.is_valid(): on_land.call())
+	## 11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 按 INK_BOMB_SPD 抛到落点、落地才结算(原来 距离/900 夹在 0.32–0.6 秒补间、结算挂补间末尾 —— 无头推不动 §3.5)
+	battle._ballistics.launch_flight(src, from2d, to2d, INK_BOMB_SPD,
+		func(_hit: bool) -> void:
+			if is_instance_valid(ball): ball.queue_free()
+			if on_land.is_valid(): on_land.call(),
+		func(p: float, _p2: Vector2, _to2: Vector2) -> void:
+			if not is_instance_valid(ball): return
+			ball.position = battle._world_pos(from2d.lerp(to2d, p), 1.0 * (1.0 - p) + 3.0 * DetMath.dsin(PI * p)))   # 抛物
 
 # 线条·收尾·画龙点睛: 对墨迹最多敌 (0.7+0.45×层数)×ATK物理 (用户封板L466: 不消耗墨迹)
 func _sk_line_finish(u: Dictionary) -> void:

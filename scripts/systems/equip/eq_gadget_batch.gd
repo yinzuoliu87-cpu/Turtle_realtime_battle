@@ -399,15 +399,15 @@ func sext_fire_one(u: Dictionary, atk_mult: float, di: int = -1) -> bool:
 	# ★★2026-08-08 照赛博龟被动: 弹从**那门炮**出膛(不是从携带者身上), 且伤害等弹飞到。
 	#   `di` 由调用方给 —— 哪门炮的计时器到点就是哪门在打。
 	var vt: Dictionary = tgt
-	var fly: float = clampf(DetMath.vlen((Vector2(tgt["pos"]) - Vector2(u["pos"])))
-		/ GadgetEqVfx.SHOT_BOLT_SPD, 0.12, 0.5)
-	battle._queue_shots(1, 0.0, func() -> void:
-		if not vt.get("alive", false):
-			return
-		var dm: int = battle._resolve_dmg(u, float(u.get("atk", 0.0)) * atk_mult, vt, false)
-		battle._damage._apply_damage_from(u, vt, dm, Color(0.72, 0.86, 1.0), 0.0, false, true),
-		u, "", Callable(), fly)
-	vfx.sextant_shot(u, tgt, di)
+	var bolt = vfx.sextant_shot(u, tgt, di)
+	## 11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 弹丸按 SHOT_BOLT_SPD 追着目标飞、到了才结算(原来 距离/速度 夹在 0.12–0.5 秒排队)
+	battle._ballistics.launch_flight(u, Vector2(u["pos"]), vt, GadgetEqVfx.SHOT_BOLT_SPD,
+		func(hit: bool) -> void:
+			if not hit:
+				return
+			var dm: int = battle._resolve_dmg(u, float(u.get("atk", 0.0)) * atk_mult, vt, false)
+			battle._damage._apply_damage_from(u, vt, dm, Color(0.72, 0.86, 1.0), 0.0, false, true),
+		func(k: float, _p2: Vector2, _to2: Vector2) -> void: vfx.bolt_drive(bolt, k))
 	return true
 
 

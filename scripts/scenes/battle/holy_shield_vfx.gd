@@ -409,9 +409,10 @@ func riposte_hit(src) -> void:
 	_adopt(sm, SMITE_SEC, "smite", {"p": b, "y": y, "d": SMITE_D})
 
 
-func riposte(u, src, _dmg: float = 0.0) -> void:
+## 返回这枚光弹的条目(结算侧的通用飞行物每步 bolt_drive 推进它; 没有世界时返回 {})
+func riposte(u, src, _dmg: float = 0.0) -> Dictionary:
 	if not (u is Dictionary) or not (src is Dictionary) or not _has_world():
-		return
+		return {}
 	var a: Vector2 = _aegis_anchor(u as Dictionary)
 	var b: Vector2 = (src as Dictionary).get("pos", Vector2.ZERO)
 	## ★★2026-08-09 用户:「反击怎么做，你这是射金光吗」——
@@ -433,9 +434,18 @@ func riposte(u, src, _dmg: float = 0.0) -> void:
 	var edge: Vector2 = a
 	if (b - a).length_squared() > 1e-9:
 		edge = a + (b - a).normalized() * (DOME_R / float(battle.WS))
-	_bolts.append({"from": edge, "to": b, "t": 0.0,
-		"T": maxf(bolt_flight(edge, b), 0.001), "node": _bolt_node(edge)})
+	var bd := {"from": edge, "to": b, "t": 0.0, "qd": 0.0, "node": _bolt_node(edge)}
+	_bolts.append(bd)
 	_flash_aegis(u)
+	return bd
+
+
+## 结算侧每步写光弹的飞行进度(0..1)与攻击者当前位置(光弹追着他飞); 1 = 到了 ⇒ 下一帧收掉
+func bolt_drive(bd: Dictionary, k: float, to2: Vector2) -> void:
+	if bd.is_empty():
+		return
+	bd["qd"] = clampf(k, 0.0, 1.0)
+	bd["to"] = to2
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -581,7 +591,7 @@ func _tick_bolts(delta: float) -> void:
 			_bolts.remove_at(i)
 			continue
 		b["t"] = float(b["t"]) + delta
-		var q: float = clampf(float(b["t"]) / float(b["T"]), 0.0, 1.0)
+		var q: float = float(b.get("qd", 0.0))   # 11-25 起由结算侧按 BOLT_SPEED 推进(bolt_drive)
 		var at: Vector2 = (b["from"] as Vector2).lerp(b["to"] as Vector2, q)
 		(nd as Sprite3D).position = battle._world_pos(at, BEAM_Y)
 		(nd as Sprite3D).modulate.a = 1.0

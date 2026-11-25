@@ -181,25 +181,29 @@ func _riposte(u: Dictionary, src) -> void:
 	##   反击改成**一枚光弹从罩面飞回攻击者, 飞到那一刻才结算伤害**。
 	##   飞行时间由演出侧的纯函数 `bolt_flight` 给, **两边用同一个数** ⇒
 	##   "看到弹中"与"打出伤害"仍然是同一个事件, 同帧原则没破(只是这一帧往后挪了)。
-	var _from: Vector2 = Vector2(u.get("pos", Vector2.ZERO))
-	var _to: Vector2 = Vector2((src as Dictionary).get("pos", Vector2.ZERO))
-	var _fly: float = HolyShieldVfx.bolt_flight(_from, _to)
-	## ④ 装备统计: 反击是 095 文案里的效果 ⇒ 身上带 095 才记给它(圣盾值也可能来自羁绊收殓/9 档转化, 那不是这件装备的账);
-	##   入队的光弹靠下面 pop 时的 _flush 盖章, 到达时记回来
-	var _tp: Array = battle._equip_sys.tally.push(u if holy_count(u) > 0 else null, HOLY_ITEM if holy_count(u) > 0 else "")
-	battle._queue_shots(1, 0.0, func() -> void:
-		if not (src is Dictionary) or not (src as Dictionary).get("alive", false):
-			return
-		## ★from_equip=true(第十批 E1): 反击是装备自己打出的段, 不许再回钩对方的受伤钩子 ——
-		##   双方都有圣盾时原来会互弹成无限循环(探针: 3 秒内双方各挨 5 次), 还顺带让携带者的 089 法力涨。与通用反伤同一口径。
-		battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true, true)
-		if _holy_vfx != null:
-			_holy_vfx.riposte_hit(src), u, "", Callable(), _fly)
-	battle._equip_sys.tally.pop(_tp)
-	## 演出: 罩子涟漪 + 光弹起飞(下一行), 伤害在光弹到达时才出。
+	## 11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 光弹按 HolyShieldVfx.BOLT_SPEED **追着攻击者**飞、到了才结算
+	##   (原来出手时按当时距离算死到达时刻, 攻击者跑开了也到点就中; 演出也飞向出手时的位置)。
+	## 演出: 罩子涟漪 + 光弹起飞(位置由下面的飞行物每步推), 伤害在光弹到达时才出。
 	##   重做前这条反击**一点演出都没有**(探针实测它一直在触发, 画面上只有敌人头上一个 "2")。
-	##   ⚠ 这一行只画不算; 放在结算之后, 保证"看到光矢 = 伤害已经打出去了"。
-	_holy_vfx.riposte(u, src, RIPOSTE_FLAT)
+	var _bolt: Dictionary = _holy_vfx.riposte(u, src, RIPOSTE_FLAT) if _holy_vfx != null else {}
+	## ④ 装备统计: 反击是 095 文案里的效果 ⇒ 身上带 095 才记给它(圣盾值也可能来自羁绊收殓/9 档转化, 那不是这件装备的账);
+	##   飞行物在发射时捕获这个上下文, 到达时切回来
+	var _tp: Array = battle._equip_sys.tally.push(u if holy_count(u) > 0 else null, HOLY_ITEM if holy_count(u) > 0 else "")
+	battle._ballistics.launch_flight(u, Vector2(u.get("pos", Vector2.ZERO)), src, HolyShieldVfx.BOLT_SPEED,
+		func(hit: bool) -> void:
+			if _holy_vfx != null:
+				_holy_vfx.bolt_drive(_bolt, 1.0, Vector2((src as Dictionary).get("pos", Vector2.ZERO)))
+			if not hit:
+				return
+			## ★from_equip=true(第十批 E1): 反击是装备自己打出的段, 不许再回钩对方的受伤钩子 ——
+			##   双方都有圣盾时原来会互弹成无限循环(探针: 3 秒内双方各挨 5 次), 还顺带让携带者的 089 法力涨。与通用反伤同一口径。
+			battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true, true)
+			if _holy_vfx != null:
+				_holy_vfx.riposte_hit(src),
+		func(k: float, _p2: Vector2, to2: Vector2) -> void:
+			if _holy_vfx != null:
+				_holy_vfx.bolt_drive(_bolt, k, to2))
+	battle._equip_sys.tally.pop(_tp)
 
 
 ## 身上装了几件【圣光护盾】装备

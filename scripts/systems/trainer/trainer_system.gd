@@ -1299,15 +1299,19 @@ func _cast_hunt_order(trainer: Dictionary, aim: Vector2) -> bool:
 		trainer["_active_cd"] = battle.HUNT_CD * 0.5   # 空放返还一半(与钩锁同思路)
 		return false
 	trainer["_active_cd"] = battle.HUNT_CD
-	var dist: float = DetMath.vlen((tgt["pos"] - trainer["pos"]))
-	var arrive: float = dist / battle.HUNT_MISSILE_SPD
 	var tt: Dictionary = trainer
 	var kk: Dictionary = tgt
-	# 到达才生效(走 _pending_shots 的 delta 制, 无头也稳 —— 不是等 tween)
-	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
-		if kk.get("alive", false):
-			_hunt_mark(tt, kk)})
-	_hunt_dramatize(trainer, tgt, arrive)
+	# 锁头弹按 HUNT_MISSILE_SPD 追着目标飞、到达才生效(通用飞行物, 游戏钟; 11-25 用户「肯定是有飞行速度的呀…可以全部改了」 ——
+	#   原来出手时按当时距离算死到达时刻, 目标跑开了也到点就打上)
+	var bolt = _hunt_dramatize(trainer, tgt)
+	battle._ballistics.launch_flight(trainer, Vector2(trainer["pos"]), kk, battle.HUNT_MISSILE_SPD,
+		func(hit: bool) -> void:
+			if bolt != null and is_instance_valid(bolt): bolt.queue_free()
+			if hit:
+				_hunt_mark(tt, kk)
+				_hunt_sigil(kk),
+		func(k: float, p2: Vector2, _to2: Vector2) -> void:
+			if bolt != null and is_instance_valid(bolt): bolt.position = battle._world_pos(p2, lerpf(1.1, 1.0, k)))
 	return true
 
 
@@ -1340,10 +1344,10 @@ func _tick_hunt_taunt(_delta: float) -> void:
 ## 三段: ① 大师身前射出一枚猩红锁头弹 → ② 到达时目标脚下炸开猎龟令印记 →
 ##       ③ 印记常驻 15 秒并【跟着目标走】(圈是随目标移动的, 用户已确认)。
 ## ★演出全在这里, 数值一点不在这里 —— _hunt_mark 才是效果, 门禁直接调它, 不等 tween。
-func _hunt_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> void:
+## 猎龟令的锁头弹(只建节点; 位置由 _cast_hunt_order 里的通用飞行物每步摆, 到达时收掉并出印记)
+func _hunt_dramatize(trainer: Dictionary, _tgt: Dictionary) -> Sprite3D:
 	if battle._world == null:
-		return
-	# ① 锁头弹: 直接用 _pending_shots 的到达时间做 tween 时长, 两者同一个数 → 视觉与结算对齐
+		return null
 	var bolt := Sprite3D.new()
 	bolt.texture = VfxTex._make_bolt_texture(Color("#ff3b30"))
 	bolt.pixel_size = 0.03
@@ -1352,20 +1356,7 @@ func _hunt_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> voi
 	bolt.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	bolt.position = battle._world_pos(trainer["pos"], 1.1)
 	battle._world.add_child(bolt)
-	var kk: Dictionary = tgt
-	var tw = battle._reg_tween().bind_node(bolt)
-	tw.tween_method(func(f: float) -> void:
-		if is_instance_valid(bolt):
-			# ★每帧重新读目标位置 = 真"锁头": 目标跑开也追得到(用户: 像安妮的 Q)
-			bolt.position = bolt.position.lerp(battle._world_pos(kk["pos"], 1.0), minf(1.0, f)),
-		0.35, 1.0, maxf(0.05, arrive))
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(bolt):
-			bolt.queue_free())
-	# ② + ③ 印记: 到达后出现, 跟随目标, 到期自己消失
-	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
-		if kk.get("alive", false):
-			_hunt_sigil(kk)})
+	return bolt
 
 
 ## 猎龟令印记(跟随目标·15秒)。用新素材 hunt-mark.png; 缺图则不画(不静默换别的贴图 —— 
@@ -1453,14 +1444,18 @@ func _cast_tame(trainer: Dictionary, aim: Vector2) -> bool:
 		trainer["_active_cd"] = TAME_CD_MISS
 		return false
 	trainer["_active_cd"] = battle.TAME_CD
-	var dist: float = DetMath.vlen((tgt["pos"] - trainer["pos"]))
-	var arrive: float = dist / battle.TAME_MISSILE_SPD
 	var tt: Dictionary = trainer
 	var kk: Dictionary = tgt
-	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
-		if kk.get("alive", false):
-			_tame_mark(tt, kk)})
-	_tame_dramatize(trainer, tgt, arrive)
+	# 驯服弹按 TAME_MISSILE_SPD 追着目标飞、到达才生效(同猎龟令; 11-25 用户「肯定是有飞行速度的呀…可以全部改了」)
+	var bolt = _tame_dramatize(trainer, tgt)
+	battle._ballistics.launch_flight(trainer, Vector2(trainer["pos"]), kk, battle.TAME_MISSILE_SPD,
+		func(hit: bool) -> void:
+			if bolt != null and is_instance_valid(bolt): bolt.queue_free()
+			if hit:
+				_tame_mark(tt, kk)
+				_tame_rune(kk),
+		func(k: float, p2: Vector2, _to2: Vector2) -> void:
+			if bolt != null and is_instance_valid(bolt): bolt.position = battle._world_pos(p2, lerpf(1.1, 1.0, k)))
 	return true
 
 
@@ -1553,9 +1548,10 @@ func _tick_tame_decay(_delta: float) -> void:
 
 ## 驯服演出: 青碧锁扣弹飞向目标 → 命中后目标脚下亮起符文环(常驻到它死/归顺)。
 ## ★素材是本技能【新生成】的 tame-rune.png(青碧双环 + 白金符文 + 锁链), 不复用现成贴图。
-func _tame_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> void:
+## 驯服弹(只建节点; 位置由 _cast_tame 里的通用飞行物每步摆, 到达时收掉并出符文环)
+func _tame_dramatize(trainer: Dictionary, _tgt: Dictionary) -> Sprite3D:
 	if battle._world == null:
-		return
+		return null
 	var bolt := Sprite3D.new()
 	bolt.texture = VfxTex._make_bolt_texture(Color("#4fe0c0"))
 	bolt.pixel_size = 0.028
@@ -1564,18 +1560,7 @@ func _tame_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> voi
 	bolt.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	bolt.position = battle._world_pos(trainer["pos"], 1.1)
 	battle._world.add_child(bolt)
-	var kk: Dictionary = tgt
-	var tw = battle._reg_tween().bind_node(bolt)
-	tw.tween_method(func(f: float) -> void:
-		if is_instance_valid(bolt):
-			bolt.position = bolt.position.lerp(battle._world_pos(kk["pos"], 1.0), minf(1.0, f)),
-		0.35, 1.0, maxf(0.05, arrive))
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(bolt):
-			bolt.queue_free())
-	battle._pending_shots.append({"delay": arrive, "src": trainer, "fn": func() -> void:
-		if kk.get("alive", false):
-			_tame_rune(kk)})
+	return bolt
 
 
 ## 驯服符文环(跟随目标)。缺图则不画并 push_warning —— 不静默换别的贴图兜底。

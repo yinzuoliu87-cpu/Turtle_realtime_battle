@@ -72,13 +72,16 @@ func _sk_pirate_rum(u: Dictionary) -> void:                     # 海盗龟·朗
 	var ship2d: Vector2 = (ship.get_meta("ship2d") if ship != null else u["pos"] + Vector2(0.0, -220.0))
 	var ship_h: float = (ship.get_meta("ship_h") if ship != null else 5.0)
 	var uu: Dictionary = u
-	_pirate_rum_bottle(ship2d, ship_h, u["pos"], func() -> void:   # 酒瓶到手: 饮酒琥珀爆+环
+	_pirate_rum_bottle(ship2d, ship_h, u, func() -> void:   # 酒瓶到手: 饮酒琥珀爆+环(11-25 起追着海盗本人飞)
 		if not uu.get("alive", false): return
 		AttackRhythm.play_form(battle, uu, str(battle._anim_key(uu)), "drink")   # 瓶到手那一刻接瓶仰头(飞行时间随距离变, 只有这里准; 只管画面)
 		battle._gambler_sys._gambler_pop(uu["pos"], float(uu.get("height", 0.0)) + 0.5, Color(0.95, 0.62, 0.25, 0.85))
 		battle._skill_ring(uu["pos"], Color(0.95, 0.62, 0.25, 0.55), 52.0))
 
-func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: Callable) -> void:   # 朗姆酒瓶: 船抛真酒瓶(equip-rum-icon)翻滚飞向海盗→到手调on_land
+const RUM_SPD := 900.0          # 朗姆酒瓶飞行速度(码/秒; 原公式里的除数)
+const CANNONBALL_SPD := 950.0   # 船炮炮弹飞行速度(码/秒; 原公式里的除数)
+## to = 海盗本人(追着他飞, 到手才结算) 或 Vector2 落点
+func _pirate_rum_bottle(from2d: Vector2, from_h: float, to, on_land: Callable, src = null) -> void:   # 朗姆酒瓶: 船抛真酒瓶(equip-rum-icon)翻滚飞向海盗→到手调on_land
 	var b = Sprite3D.new()
 	var bt = load("res://assets/sprites/equip/equip-rum-icon.png")
 	if bt == null:
@@ -91,22 +94,20 @@ func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 	b.pixel_size = (46.0 * battle.WS) / float(maxi(1, bt.get_height()))
 	b.position = battle._world_pos(from2d, from_h)
 	battle._world.add_child(b)
-	var dur: float = clampf(DetMath.dist(from2d, to2d) / 900.0, 0.4, 0.7)
-	var tw = battle._reg_tween()
-	tw.bind_node(b)
-	tw.tween_method(func(p: float) -> void:
-		if not is_instance_valid(b): return
-		var flat: Vector2 = DetMath.vlerp(from2d, to2d, p)
-		var hh: float = from_h * (1.0 - p) + 2.4 * DetMath.dsin(PI * p) + 1.0   # 高抛物(船高抛给海盗)
-		b.position = battle._world_pos(flat, maxf(0.4, hh))
-		if battle._cam != null:                                # 面向相机+屏幕内翻滚
-			var tf: Transform3D = b.global_transform
-			tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), p * TAU * 2.5)
-			b.global_transform = tf
-	, 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(b): b.queue_free()
-		if on_land.is_valid(): on_land.call())
+	## 11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 按 RUM_SPD 追着海盗飞、到手才结算(原来 距离/900 夹在 0.4–0.7 秒补间、结算挂补间末尾 —— 无头推不动 §3.5)
+	battle._ballistics.launch_flight(src, from2d, to, RUM_SPD,
+		func(_hit: bool) -> void:
+			if is_instance_valid(b): b.queue_free()
+			if on_land.is_valid(): on_land.call(),
+		func(p: float, _p2: Vector2, to2: Vector2) -> void:
+			if not is_instance_valid(b): return
+			var flat: Vector2 = DetMath.vlerp(from2d, to2, p)
+			var hh: float = from_h * (1.0 - p) + 2.4 * DetMath.dsin(PI * p) + 1.0   # 高抛物(船高抛给海盗)
+			b.position = battle._world_pos(flat, maxf(0.4, hh))
+			if battle._cam != null:                                # 面向相机+屏幕内翻滚
+				var tf: Transform3D = b.global_transform
+				tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), p * TAU * 2.5)
+				b.global_transform = tf)
 
 func _pirate_rum_bubble(u: Dictionary) -> void:   # 酒气暖泡(HoT期上飘·暖琥珀·区别中毒绿)
 	var pos2d: Vector2 = u["pos"] + Vector2(randf_range(-15.0, 15.0), randf_range(-2.0, 8.0))
@@ -191,7 +192,7 @@ func _pirate_ship_muzzle(ship2d: Vector2, h: float) -> void:   # 船炮口闪(�
 	tw.tween_property(g, "material_override:albedo_color", Color(1.0, 0.78, 0.32, 0.0), 0.22)
 	tw.chain().tween_callback(g.queue_free)
 
-func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: Callable) -> void:   # 炮弹: 从船抛物下落到落点→自销调on_land
+func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: Callable, src = null) -> void:   # 炮弹: 从船抛物下落到落点→自销调on_land
 	var ball = Sprite3D.new()
 	ball.texture = VfxTex._make_glow_texture()
 	ball.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -201,21 +202,22 @@ func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 	ball.pixel_size = (28.0 * battle.WS) / float(maxi(1, ball.texture.get_height()))
 	ball.position = battle._world_pos(from2d, from_h)
 	battle._world.add_child(ball)
-	var dur: float = clampf(DetMath.dist(from2d, to2d) / 950.0, 0.34, 0.62)
-	var tw = battle._reg_tween()
-	tw.tween_method(func(p: float) -> void:
-		if not is_instance_valid(ball): return
-		var flat: Vector2 = DetMath.vlerp(from2d, to2d, p)
-		var hh: float = from_h * DetMath.dpow(1.0 - p, 1.7) + 1.2 * DetMath.dsin(PI * p)   # 抛物下落(先抛起再重力加速落地)
-		ball.position = battle._world_pos(flat, maxf(0.1, hh))
-		if int(p * 20.0) % 3 == 0:   # 烟尾
-			var sm = battle._glow_bb(flat, maxf(0.2, hh), 16.0, Color(0.4, 0.38, 0.36, 0.5))
-			var st = battle._reg_tween(); st.tween_property(sm, "material_override:albedo_color", Color(0.4, 0.38, 0.36, 0.0), 0.3); st.tween_callback(sm.queue_free)
-			st.bind_node(ball)
-	, 0.0, 1.0, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(func() -> void:
-		if is_instance_valid(ball): ball.queue_free()
-		if on_land.is_valid(): on_land.call())
+	## 11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 按 CANNONBALL_SPD 抛到落点、落地才结算(原来 距离/950 夹在 0.34–0.62 秒补间、结算挂补间末尾 —— 无头推不动 §3.5)
+	var smoke_i := [0]
+	battle._ballistics.launch_flight(src, from2d, to2d, CANNONBALL_SPD,
+		func(_hit: bool) -> void:
+			if is_instance_valid(ball): ball.queue_free()
+			if on_land.is_valid(): on_land.call(),
+		func(p: float, _p2: Vector2, _to2: Vector2) -> void:
+			if not is_instance_valid(ball): return
+			var flat: Vector2 = DetMath.vlerp(from2d, to2d, p)
+			var hh: float = from_h * DetMath.dpow(1.0 - p, 1.7) + 1.2 * DetMath.dsin(PI * p)   # 抛物下落(先抛起再重力加速落地)
+			ball.position = battle._world_pos(flat, maxf(0.1, hh))
+			smoke_i[0] = int(smoke_i[0]) + 1
+			if int(smoke_i[0]) % 3 == 0:   # 烟尾(每 3 步一团)
+				var sm = battle._glow_bb(flat, maxf(0.2, hh), 16.0, Color(0.4, 0.38, 0.36, 0.5))
+				var st = battle._reg_tween(); st.tween_property(sm, "material_override:albedo_color", Color(0.4, 0.38, 0.36, 0.0), 0.3); st.tween_callback(sm.queue_free)
+				st.bind_node(ball))
 
 # 海盗船·技能三(封板L379): 首次充能满召唤实体船→冲锋撞目标(第一敌200码1.0A魔法+击飞2秒)→留场; 船=HP1.5×/ATK1.0×/无双抗/攻速0.8射程110(近战·battle_spawn._spawn_pirate_ship_entity)/普攻射最近敌0.4A
 func _sk_pirate_ship(u: Dictionary, tgt) -> void:

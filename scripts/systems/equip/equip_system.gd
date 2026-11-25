@@ -782,6 +782,7 @@ func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:
 	var dmg: int = maxi(1, int(u["maxHp"] * [0.05, 0.07, 0.10][si]))
 	battle._throw_dumbbell(u, t, dmg)
 
+const FUEL_SPD := 620.0   # 022 火瓶飞行速度(码/秒; 原公式里的除数)
 func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 燃烧瓶022: 每8秒→短蓄力→抛物线掷出火瓶(翻滚·余烬拖尾)→碎裂溅火+灼烧+真火5秒
 	if not u.get("alive", false): return
 	if battle._targeting._nearest_enemy(u) == null: return
@@ -802,10 +803,11 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 燃烧瓶022: 每8秒�
 	spr.pixel_size = (42.0 * battle.WS) / float(maxi(1, spr.texture.get_height()))
 	spr.position = battle._world_pos(from2d, 1.15)
 	battle._world.add_child(spr)
-	var dist: float = DetMath.dist(from2d, to2d)
-	var tw = battle._reg_tween()
-	tw.tween_method(battle._fuel_flask_step.bind(spr, from2d, to2d, clampf(dist / 900.0, 0.55, 1.5)), 0.0, 1.0, clampf(dist / 620.0, 0.45, 1.05))
-	tw.tween_callback(battle._fuel_bottle_hit.bind(spr, u, t, si))
+	var peak: float = clampf(DetMath.dist(from2d, to2d) / 900.0, 0.55, 1.5)   # 拱高(纯观感)
+	## 11-25 用户「肯定是有飞行速度的呀…可以全部改了」: 火瓶按 FUEL_SPD 追着目标飞、砸到才结算(原来 距离/620 夹在 0.45–1.05 秒补间、结算挂补间末尾 —— 无头推不动 §3.5)
+	battle._ballistics.launch_flight(u, from2d, t, FUEL_SPD,
+		func(_hit: bool) -> void: battle._fuel_bottle_hit(spr, u, t, si),
+		func(k: float, _p2: Vector2, to2: Vector2) -> void: battle._fuel_flask_step(k, spr, from2d, to2, peak))
 
 # 028 冰冻药剂: 蓄力→抛物线缓慢扔冰瓶→砸敌魔法伤+冰寒+冰爆
 func _eq_ice_throw(u: Dictionary, si: int) -> void:
@@ -2775,7 +2777,7 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 		reach = maxf(reach, DetMath.dot((o["pos"] - start), dir) + 260.0)
 	var end: Vector2 = start + dir * reach
 	var total: float = maxf(1.0, DetMath.dist(start, end))
-	var dur: float = clampf(reach / 480.0, 1.6, 2.6)  # 按距离定时长=恒定速度
+	var dur: float = reach / 480.0   # 恒定速度 480 码/秒(11-25 去掉 1.6–2.6 秒的上下限: 近处不再拖慢、远处不再加速; 用户「肯定是有飞行速度的呀」)
 	## 前摇: 召唤点聚火蓄能再爆发出龙(修「一下冒出来」)
 	battle._anticipate(u)
 	battle._dragon_sys._dragon_windup(start)                            # 前摇: 召唤点聚火蓄能(~0.55s)再爆发出龙(修"一下冒出来")

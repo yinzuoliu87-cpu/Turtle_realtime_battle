@@ -509,10 +509,22 @@ func sextant_shot(u: Dictionary, tgt: Dictionary, di: int = -1) -> Node3D:
 	bolt.position = battle._world_pos(from2, lift)
 	battle._world.add_child(bolt)
 	_owned.append(bolt)
-	var fly: float = clampf((Vector2(tgt["pos"]) - from2).length() / SHOT_BOLT_SPD, 0.12, 0.5)
-	_fx.append({"node": bolt, "t": 0.0, "life": fly, "bolt": true,
+	## 11-25: 进度由结算侧的通用飞行物按 SHOT_BOLT_SPD 推进、每步 bolt_drive 写进来(原来自己按 距离/速度 夹在 0.12–0.5 秒走)
+	_fx.append({"node": bolt, "t": 0.0, "life": 99.0, "bolt": true, "qd": 0.0,
 		"p0": from2, "p1": Vector2(tgt["pos"]), "h": lift, "tgt": tgt})
 	return bolt
+
+
+## 结算侧每步写这颗弹丸的飞行进度(0..1, 1 = 到了 ⇒ 收掉)
+func bolt_drive(bolt, k: float) -> void:
+	if bolt == null or not is_instance_valid(bolt):
+		return
+	for h in _fx:
+		if is_same(h.get("node", null), bolt):
+			h["qd"] = clampf(k, 0.0, 1.0)
+			if k >= 1.0:
+				(bolt as Node).queue_free()
+			return
 
 
 ## 终极射线: `beams` = [[飞散点, 目标点], ...]。每条一根紫色粗光柱 + 指数余辉。
@@ -676,7 +688,7 @@ func tick(delta: float) -> void:
 		if h.get("bolt", false):
 			# 弹丸沿 p0→目标匀速飞。★终点取目标**当前**位置(目标动了不会打空) ——
 			#   这是 077/080 上被用户逐条盯出来定下的规矩。
-			var bq: float = clampf(t / maxf(0.001, life), 0.0, 1.0)
+			var bq: float = float(h["qd"]) if h.has("qd") else clampf(t / maxf(0.001, life), 0.0, 1.0)
 			var bt = h.get("tgt", null)
 			if bt is Dictionary and (bt as Dictionary).get("alive", false):
 				h["p1"] = Vector2((bt as Dictionary)["pos"])
