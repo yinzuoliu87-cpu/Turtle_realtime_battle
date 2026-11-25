@@ -1375,7 +1375,7 @@
     "baseStats1": "+攻40/90/400·暴伤20/35/80%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "登场时召唤一名暗影忍者：{C:EqDaggerBatch.NINJA_HP} 生命值、{C:EqDaggerBatch.NINJA_ATK} 攻击力、{C:EqDaggerBatch.NINJA_RES} 护甲和魔抗、{C:EqDaggerBatch.NINJA_CRIT%}% 暴击率，登场时隐身，攻击时现形。龟能满时释放【影袭】：化为黑烟，闪到生命值比例最低的敌人身后背刺，造成 {C:EqDaggerBatch.NINJA_STRIKE_MULT%}% 攻击力的物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。暗影忍者的生命值首次低于其 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 最大生命值时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力。每次【影袭】，暗影忍者朝目标掷出一枚手里剑（影子在场时两名忍者各掷一枚），沿直线飞行 {C:EqDaggerBatch.SHURIKEN_RANGE} 码，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT}+{C:EqDaggerBatch.SHURIKEN_ATK%}% 攻击力）魔法伤害。",
+    "effectDesc1": "登场时召唤一名暗影忍者：{C:EqDaggerBatch.NINJA_HP} 生命值、{C:EqDaggerBatch.NINJA_ATK} 攻击力、{C:EqDaggerBatch.NINJA_RES} 护甲和魔抗、{C:EqDaggerBatch.NINJA_CRIT%}% 暴击率，登场时隐身，攻击时现形。龟能满时释放【影袭】：化为黑烟，闪到生命值比例最低的敌人身后背刺，造成 {C:EqDaggerBatch.NINJA_STRIKE_MULT%}% 攻击力的物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。暗影忍者的生命值首次低于其 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 最大生命值时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力。每次【影袭】，暗影忍者朝目标掷出一枚手里剑（影子在场时两名忍者各掷一枚），对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT}+{C:EqDaggerBatch.SHURIKEN_ATK%}% 攻击力）魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_115.png",
     "effectBrief": "召唤暗影忍者，影袭背刺生命值最低的敌人，半血时分出影子一起掷出手里剑。"
