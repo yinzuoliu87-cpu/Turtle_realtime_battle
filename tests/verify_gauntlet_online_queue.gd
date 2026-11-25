@@ -158,15 +158,19 @@ const RANKED := {
 	## ★2026-11-24 援军小将派生装备按等级掷(提交 9eb621a9; 用户 11-24「三级四级买到五费装备？不可能啊！」): **有意**改积分赛会走的
 	##   derived_reserve_pool(多收等级, 先按 SHOP_COST_ODDS 掷费用再挑)、reserve_pool_of(缺键用快照 season_level)、
 	##   make_bot / seed_as_human(把各自的等级传进去)。3effe0d1 → 9eb621a9 只改这四个、没有新加 / 挪走函数 ⇒ 挪基线判据不变松; 摘要现算。
+	## ★2026-11-25 仪式匕首【血契】一大轮内跨场累积(提交 a080ff74, 方案书 docs/plans/20261125-匕首羁绊.md §4.2d; 用户 11-25
+	##   「仪式匕首可能要做一个专属的羁绊，就是类似于香火石一样…一个大轮去叠加」): **有意**改积分赛会走的 build_ghost_snapshot ——
+	##   只在刻过时多带 ritual_marks(没刻过的快照一字不变, 同 11-19 竹叶龟 bamboo_hp); 新加的 ghost_ritual_marks 是它调用的(积分赛也走)
+	##   ⇒ 进 units(60 → 61), 不算周六专用。9eb621a9 → a080ff74 只改这一个、只加这一个、没有挪走函数 ⇒ 挪基线判据不变松; 摘要现算。
 	"scripts/net/backend.gd": {
-		"base": "9eb621a9",
-		"digest": "a422ff9a2f08e56b3f607aa93191c421d8cdb51c4165128eb888162aa6c1ab79",
+		"base": "a080ff74",
+		"digest": "25e96d5577e9c8fb4c223c1bf53f200ec0e6bb58b30fd5073037beef54a5aced",
 		"views": {},
 		"sat_only": [],
 		"units": [
 			"_bot_season_record", "_bot_trainer_skill", "_drop_stale_schema", "_ensure_seeded", "_finals_snap", "_is_self_ghost", "_load_seed",
 			"_migrate_brackets_to_battles", "_seed_level", "_seed_record", "_seed_season_id", "_shuffle", "_tally",
-			"_tally_exact", "build_ghost_snapshot", "derived_reserve_pool", "drop_week_snapshots", "ensure_finals_entry",
+			"_tally_exact", "build_ghost_snapshot", "derived_reserve_pool", "ghost_ritual_marks", "drop_week_snapshots", "ensure_finals_entry",
 			"ensure_gauntlet_entry_snapshot", "fake_person_tag", "finals_snap_sig", "find_gauntlet_opponent",
 			"find_opponent", "gauntlet_bot_battles", "gauntlet_pool_find", "ghost_bamboo_hp", "ghost_lanes_broken", "ghost_level",
 			"ghost_owner_tag", "is_sparring", "lead_of", "leaderboard", "load_pool", "make_bot", "make_match_rng", "my_tag",

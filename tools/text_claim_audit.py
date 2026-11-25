@@ -70,6 +70,8 @@ ACCEPT = {
     ('p2eq_033', '随机'): '小虫随机带 3 件装备走 _chest_pick_equip, 不在本件代码里',
     ('p2eq_087', '随机'): '偷训龟大师技能走大师技能池的随机, 不在本件代码里',
     ('p2eq_092', '随机'): '毒蛾飞行物随机选目标由 venom_drone 的飞行逻辑管',
+    ('p2eq_109', '最远的敌'): '2026-11-25 复核: eq_dagger_batch.gd _throw_knife 遍历敌人取 DetMath.dist 最大者; 证据范围(id 附近)看不到这个函数',
+    ('p2eq_110', '随机'): '2026-11-25 复核: eq_dagger_batch.gd _throw_kunai 用 battle._battle_rng.randi() % foes.size() 挑, 同上',
     ('p2eq_094', '最近的敌'): '实测用 _nearest_enemy_from(以碑为原点算最近), 文案对; 误报因为它的实现函数叫 stele_bolt_land, 不符合我 _eq_/_tick_ 的命名假设',
 }
 

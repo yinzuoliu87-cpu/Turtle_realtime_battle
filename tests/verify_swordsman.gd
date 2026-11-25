@@ -21,7 +21,7 @@ func _ready() -> void:
 	RB.DEBUG_EDIT = true
 	var s = RB.new(); add_child(s)
 	await get_tree().process_frame; await get_tree().process_frame
-	var ALL9 := ["p2eq_001","p2eq_007","p2eq_005","p2eq_009","p2eq_003","p2eq_083","p2eq_006","p2eq_084","p2eq_010"]
+	var ALL9 := ["p2eq_001","p2eq_007","p2eq_107","p2eq_009","p2eq_003","p2eq_083","p2eq_006","p2eq_084","p2eq_010"]   # 2026-11-25: 005 双生匕首改归匕首 ⇒ 换 107 武士刀
 	print("=== 剑士 + 血祭 (批4-2) ===")
 
 	# ── 剑士: 逐档追打次数与伤害 ──

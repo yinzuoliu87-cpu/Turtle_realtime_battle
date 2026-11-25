@@ -99,6 +99,7 @@ scripts/gamedata/equip_stats.gd|lit|魔抗
 scripts/gamedata/equip_stats.gd|lit|魔法穿透
 scripts/gamedata/equip_stats.gd|lit|龟能充能速率
 scripts/gamedata/equip_tier_labels.gd|lit|中毒层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|中毒层数 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|临时等级上限 # 级
 scripts/gamedata/equip_tier_labels.gd|lit|举盾时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|举盾阈值 #% 最大生命值
@@ -168,9 +169,13 @@ scripts/gamedata/equip_tier_labels.gd|lit|小虫攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|小虫生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|幽灵护盾 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|弹珠数 # 颗
+scripts/gamedata/equip_tier_labels.gd|lit|忍者攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|忍者生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|总伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|手里剑基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|扫击灼烧 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|护甲与魔抗 +#
+scripts/gamedata/equip_tier_labels.gd|lit|护甲和魔抗 #
 scripts/gamedata/equip_tier_labels.gd|lit|护盾 #
 scripts/gamedata/equip_tier_labels.gd|lit|护盾 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|护盾加成 #% 最大生命值
@@ -183,13 +188,16 @@ scripts/gamedata/equip_tier_labels.gd|lit|持续时间 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|攻击力 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|攻击力 +#
 scripts/gamedata/equip_tier_labels.gd|lit|攻击速度 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|攻击速度提高 #%
 scripts/gamedata/equip_tier_labels.gd|lit|攻击附伤 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|攻击附毒 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|敌人伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|敌人双抗 −#
 scripts/gamedata/equip_tier_labels.gd|lit|斩杀线 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|无视护甲 #%
 scripts/gamedata/equip_tier_labels.gd|lit|暴击伤害 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|暴击加成 #×暴击率
+scripts/gamedata/equip_tier_labels.gd|lit|暴击率 #%
 scripts/gamedata/equip_tier_labels.gd|lit|暴击率 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|最大生命值 +#
 scripts/gamedata/equip_tier_labels.gd|lit|机炮数 # 发
@@ -207,6 +215,10 @@ scripts/gamedata/equip_tier_labels.gd|lit|每层所需治疗 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|每层护甲和魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层攻击速度 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|每层生命值 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每把回复 # 生命值
+scripts/gamedata/equip_tier_labels.gd|lit|每把基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|每枚回复 # 生命值
+scripts/gamedata/equip_tier_labels.gd|lit|每枚基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每次中毒 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|每次破甲 #
 scripts/gamedata/equip_tier_labels.gd|lit|每段充能 # 点
@@ -217,6 +229,8 @@ scripts/gamedata/equip_tier_labels.gd|lit|每秒护盾 #
 scripts/gamedata/equip_tier_labels.gd|lit|每秒损失 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|每秒龟能 #
 scripts/gamedata/equip_tier_labels.gd|lit|每跳衰减 #%
+scripts/gamedata/equip_tier_labels.gd|lit|每道血契护甲穿透 #
+scripts/gamedata/equip_tier_labels.gd|lit|每道血契攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|永久护盾 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|治疗 #
 scripts/gamedata/equip_tier_labels.gd|lit|治疗 #% 最大生命值
@@ -255,6 +269,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|生长充能 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|电击伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|电击层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|目标数 # 名
+scripts/gamedata/equip_tier_labels.gd|lit|目标最大生命值 #%
 scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 #% 携带者最大生命值
@@ -274,6 +289,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|第三块 每秒回复 #% 最大生命
 scripts/gamedata/equip_tier_labels.gd|lit|第二块 攻击力 +#
 scripts/gamedata/equip_tier_labels.gd|lit|终极护盾 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|至多 # 枚
+scripts/gamedata/equip_tier_labels.gd|lit|苦无数 # 枚
 scripts/gamedata/equip_tier_labels.gd|lit|范围伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|落雷数 # 道
 scripts/gamedata/equip_tier_labels.gd|lit|血护盾上限 #
@@ -302,6 +318,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|龟能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
+scripts/gamedata/glossary.gd|lit|仪式匕首的携带者每击杀一名敌人刻下的印记，整个大轮累计、换大轮清零。每道血契提高携带者的攻击力与护甲穿透，并提高全队的攻击力。
 scripts/gamedata/glossary.gd|lit|余烬攻击命中时叠加在目标身上的层数，每层提高该目标的斩杀线。
 scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。对龟蛋的灼烧伤害会降低，数值见燃烧瓶。
 scripts/gamedata/glossary.gd|lit|余烬种子
@@ -351,6 +368,7 @@ scripts/gamedata/glossary.gd|lit|符纸
 scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
 scripts/gamedata/glossary.gd|lit|蓄力猛砸
+scripts/gamedata/glossary.gd|lit|血契
 scripts/gamedata/glossary.gd|lit|诅咒
 scripts/gamedata/glossary.gd|lit|迷你水晶
 scripts/gamedata/glossary.gd|lit|迷你水晶球施加在敌人身上的层数。达到最大层数时引爆，造成基于该敌人最大生命值的魔法伤害，并重置层数。
@@ -467,9 +485,16 @@ scripts/gamedata/phase2_minion.gd|lit|整排挥砍
 scripts/gamedata/phase2_minion.gd|lit|深海小将
 scripts/gamedata/phase2_minion.gd|lit|深海小将精英
 scripts/gamedata/phase2_types.gd|lit|【刻痕】携带者每造成 {C:IncenseStoneSystem.PER_MARK} 点伤害，刻下 1 道刻痕，至多 {C:IncenseStoneSystem.MARK_CAP} 道，跨对局保留，赛季重置。多件香火石共用同一份刻痕 · 每道刻痕使携带者获得 {C:IncenseStoneSystem.ITEM_AMP%}% 增伤与 {C:IncenseStoneSystem.ITEM_DR%}% 减伤，全队获得 {C:IncenseStoneSystem.TEAM_AMP%}% 增伤与 {C:IncenseStoneSystem.TEAM_DR%}% 减伤
+scripts/gamedata/phase2_types.gd|lit|【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%
+scripts/gamedata/phase2_types.gd|lit|仪式
+scripts/gamedata/phase2_types.gd|lit|仪式·血契
+scripts/gamedata/phase2_types.gd|lit|仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。
 scripts/gamedata/phase2_types.gd|lit|剑
 scripts/gamedata/phase2_types.gd|lit|剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位生命值越低，攻击力越高。
 scripts/gamedata/phase2_types.gd|lit|剑系
+scripts/gamedata/phase2_types.gd|lit|匕首
+scripts/gamedata/phase2_types.gd|lit|匕首·刺杀
+scripts/gamedata/phase2_types.gd|lit|匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。档位越高，战斗中再触发的次数越多。
 scripts/gamedata/phase2_types.gd|lit|商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}% · 重复买到的小木斧转化为砍伐经验
 scripts/gamedata/phase2_types.gd|lit|奇械
 scripts/gamedata/phase2_types.gd|lit|奇械·魔抗
@@ -485,6 +510,9 @@ scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把�
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%
+scripts/gamedata/phase2_types.gd|lit|每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次
+scripts/gamedata/phase2_types.gd|lit|每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次
+scripts/gamedata/phase2_types.gd|lit|每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +10 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚 · 【冰封】全队攻击有 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% 概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +16 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +23 魔抗 · 【铸币】每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%
@@ -870,7 +898,9 @@ scripts/scenes/BracketMapScene.gd|text|观战
 scripts/scenes/BracketMapScene.gd|text|（我）
 scripts/scenes/BracketMapScene.gd|tooltip_text|开始对战
 scripts/scenes/BracketMapScene.gd|tooltip_text|观看回放
+scripts/scenes/CodexScene.gd|lit|仪式
 scripts/scenes/CodexScene.gd|lit|剑
+scripts/scenes/CodexScene.gd|lit|匕首
 scripts/scenes/CodexScene.gd|lit|图鉴
 scripts/scenes/CodexScene.gd|lit|奇械
 scripts/scenes/CodexScene.gd|lit|弓箭
@@ -1490,6 +1520,7 @@ scripts/scenes/battle/battle_vfx_lab.gd|lit|携带者
 scripts/scenes/battle/battle_vfx_lab.gd|lit|枪
 scripts/scenes/battle/battle_vfx_lab.gd|lit|盾
 scripts/scenes/battle/bomb_eq_vfx.gd|lit|减速 %d%%
+scripts/scenes/battle/dagger_eq_vfx.gd|lit|血契 %d
 scripts/scenes/battle/dmg_stats_panel.gd|lit|受到伤害
 scripts/scenes/battle/dmg_stats_panel.gd|lit|我方
 scripts/scenes/battle/dmg_stats_panel.gd|lit|战报
@@ -2080,6 +2111,8 @@ scripts/scenes/codex/status_sources.gd|lit|{C:CyberSystem.HIJACK_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EliteSystem.WHIP_STUN_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqBombBatch.MINE_STUN} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:EqDaggerBatch.FOLD_BLEED} 层
+scripts/scenes/codex/status_sources.gd|lit|{C:EqDaggerBatch.NINJA_RESTEALTH} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.DART_KNOCKUP_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒
@@ -2434,6 +2467,7 @@ scripts/scenes/week_close_card.gd|lit|领取
 scripts/scenes/week_close_card.gd|text|[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]
 scripts/systems/equip/bomb_synergy_system.gd|lit|炸弹
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
+scripts/systems/equip/dagger_synergy_system.gd|lit|匕首
 scripts/systems/equip/eq_blood_combo.gd|lit|护盾+
 scripts/systems/equip/eq_bomb_batch.gd|lit|护甲 -%d
 scripts/systems/equip/eq_bomb_batch.gd|lit|武士刀小将
@@ -2441,6 +2475,11 @@ scripts/systems/equip/eq_bomb_batch.gd|lit|炮筒
 scripts/systems/equip/eq_bomb_batch.gd|lit|眩晕
 scripts/systems/equip/eq_bomb_batch.gd|lit|遥控炸弹
 scripts/systems/equip/eq_bow_batch.gd|lit|弓箭
+scripts/systems/equip/eq_dagger_batch.gd|lit|仪式
+scripts/systems/equip/eq_dagger_batch.gd|lit|影子忍者
+scripts/systems/equip/eq_dagger_batch.gd|lit|暗影忍者
+scripts/systems/equip/eq_dagger_batch.gd|lit|血契 %d / %d
+scripts/systems/equip/eq_dagger_batch.gd|lit|血契 %d / %d（已满）
 scripts/systems/equip/eq_food_batch.gd|lit|蛋糕礼盒
 scripts/systems/equip/eq_gadget_batch.gd|lit|  (本携带者日志到此为止)
 scripts/systems/equip/eq_gadget_batch.gd|lit|★被拒(未施放)

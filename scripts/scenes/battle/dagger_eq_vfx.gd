@@ -43,7 +43,7 @@ static var _nsd := {}
 var _stuck: Array = []    ## {node, tgt, k}: 插在敌人身上的黑曜石匕首
 
 
-func _row(key: String) -> Array:
+func _row(key: String) -> Array:   # zero-caller-ok: 覆盖父类 BombEqVfx._row —— 父类的 _anim / _load 经它查表, 调用方在父类
 	return DSHEETS.get(key, [])
 
 
@@ -60,12 +60,11 @@ func _point(s: Sprite3D, a3: Vector3, b3: Vector3, tip_deg: float) -> void:
 	var d: Vector2 = (cam as Camera3D).unproject_position(b3) - (cam as Camera3D).unproject_position(a3)
 	if d.length() < 0.01:
 		return
-	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	## 屏幕 y 向下: 屏幕角 = atan2(d.y, d.x); 贴图角(同样 y 向下) tip_deg ⇒ 绕视线转 (tip − 屏幕角)
 	s.global_transform.basis = (cam as Camera3D).global_transform.basis * Basis(Vector3(0, 0, 1), deg_to_rad(tip_deg) - atan2(d.y, d.x))
 
 
-func _tex_sprite(path: String, px_world: float, pos3: Vector3) -> Sprite3D:
+func _tex_sprite(path: String, px_world: float, pos3: Vector3, face_cam: bool = true) -> Sprite3D:
 	var t: Texture2D = _load(path)
 	if t == null or not _ok():
 		return null
@@ -76,7 +75,7 @@ func _tex_sprite(path: String, px_world: float, pos3: Vector3) -> Sprite3D:
 	s.no_depth_test = true
 	s.render_priority = 11
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED if face_cam else BaseMaterial3D.BILLBOARD_DISABLED   # 要按飞行方向转的(face_cam=false)建的时候就定, sim 步里不再改这个属性(直播白名单)
 	s.pixel_size = (px_world * float(battle.WS)) / float(maxi(t.get_width(), t.get_height()))
 	s.position = pos3
 	battle._world.add_child(s)
@@ -147,7 +146,7 @@ func line_launch(kind: String, from: Vector2, dir: Vector2, spd: float, length: 
 	var s: Sprite3D = null
 	match kind:
 		"knife":
-			s = _tex_sprite("equip/p2eq_109.png", 46.0, battle._world_pos(from, h))
+			s = _tex_sprite("equip/p2eq_109.png", 46.0, battle._world_pos(from, h), false)
 			if s != null:
 				_fx.append({"node": s, "t": 0.0, "life": life, "kind": "flyline", "line": kind, "from": from, "dir": dir, "spd": spd, "h": h, "tip": KNIFE_TIP_DEG})
 		"shuriken":
@@ -195,7 +194,7 @@ func kunai_throw(u: Dictionary, tgt: Dictionary, delay: float, fly: float) -> vo
 		if not uu.get("alive", false):
 			return
 		var h0: float = BombEqVfx.body_h(uu)
-		var s := _tex_sprite("vfx/dagger-kunai.png", 34.0, battle._world_pos(Vector2(uu["pos"]), h0))
+		var s := _tex_sprite("vfx/dagger-kunai.png", 34.0, battle._world_pos(Vector2(uu["pos"]), h0), false)
 		if s != null:
 			_fx.append({"node": s, "t": 0.0, "life": fly, "kind": "dart", "from": Vector2(uu["pos"]), "h0": h0, "tgt": tt, "to": Vector2(tt["pos"]), "tip": KUNAI_TIP_DEG}))
 
@@ -215,7 +214,6 @@ func obs_embed(tgt: Dictionary, count: int) -> void:
 	var s := _tex_sprite("equip/p2eq_116.png", 34.0, battle._world_pos(Vector2(tgt["pos"]), BombEqVfx.body_h(tgt)))
 	if s == null:
 		return
-	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	s.rotation.z = deg_to_rad(180.0 + 20.0 * float((count - 1) % 3 - 1))   # 刀尖朝下插进去(图标刀尖朝右上, 转半圈 = 朝左下)
 	_stuck.append({"node": s, "tgt": tgt, "k": count - 1})
 

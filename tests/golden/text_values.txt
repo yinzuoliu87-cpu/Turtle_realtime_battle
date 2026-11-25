@@ -1,6 +1,7 @@
 eq|FPGA板|effectBrief	6.0
 eq|FPGA板|effectDesc1	1.0 1.0 1.0 1.0 3.5 3.5 5.0 6.0 7.0 12.0 15.0 15.0 25.0
 eq|不沉之锚|effectDesc1	0.25 1.5 100.0 250.0
+eq|仪式匕首|effectDesc1	10.0 150.0
 eq|信号放大器|effectBrief	5.0
 eq|信号放大器|effectDesc1	2.5 5.0 5.0 20.0 30.0 90.0 90.0 360.0
 eq|冰冻药剂|effectBrief	5.0 6.0
@@ -35,6 +36,7 @@ eq|左轮手枪|effectBrief	4.0
 eq|左轮手枪|effectDesc1	4.0 6.0 6.0
 eq|幽灵墨鱼|effectBrief	4.0
 eq|幽灵墨鱼|effectDesc1	4.0
+eq|弯匕|effectDesc1	3.0
 eq|手半剑|effectBrief	450.0
 eq|手半剑|effectDesc1	20.0 80.0 100.0 100.0 450.0
 eq|手弩|effectBrief	8.0
@@ -43,12 +45,14 @@ eq|手雷|effectDesc1	4.0 6.0 60.0
 eq|护心甲|effectBrief	15.0
 eq|护心甲|effectDesc1	15.0
 eq|旋翼机|effectDesc1	1.2 4.0 10.0 30.0 40.0 100.0
+eq|暗影匕首|effectDesc1	1.5 20.0 50.0 50.0 100.0 250.0
 eq|暴君之牙|effectBrief	6.0
 eq|暴君之牙|effectDesc1	6.0 20.0 40.0 100.0
 eq|月之刃|effectBrief	100.0
 eq|月之刃|effectDesc1	60.0 100.0
 eq|木制长剑|effectBrief	3.0
 eq|木制长剑|effectDesc1	3.0
+eq|柳叶飞刀|effectDesc1	6.0 60.0
 eq|武士刀|effectDesc1	1.0 1.5 3.0 15.0 60.0 150.0 300.0
 eq|毒药瓶|effectBrief	6.0
 eq|毒药瓶|effectDesc1	6.0 50.0
@@ -111,6 +115,7 @@ eq|粘弹|effectDesc1	0.5 1.5 2.0 8.0 30.0 30.0 40.0
 eq|细剑|effectDesc1	0.5 20.0
 eq|终极浮游炮|effectBrief	3.0 6.0
 eq|终极浮游炮|effectDesc1	2.0 3.0 6.0 50.0
+eq|苦无|effectDesc1	5.0 20.0
 eq|荆棘盾牌|effectBrief	3.0 50.0
 eq|荆棘盾牌|effectDesc1	3.0 4.0 50.0
 eq|草莓蛋糕|effectBrief	30.0 55.0 80.0
@@ -150,6 +155,7 @@ eq|香火石|effectBrief	4.0 10.0 12.0 100.0
 eq|香火石|effectDesc1	4.0 4.0 10.0 12.0 100.0
 eq|魔法海螺|effectDesc1	0.65 4.0 5.0
 eq|魔法海螺|effectDesc3	2.5 4.0
+eq|黑曜石匕首|effectDesc1	50.0
 eq|龙蛋|effectBrief	2.5
 eq|龙蛋|effectDesc1	2.5
 eq|龟甲|effectBrief	0.25 6.0 25.0

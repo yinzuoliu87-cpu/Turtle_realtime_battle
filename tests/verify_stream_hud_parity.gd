@@ -72,6 +72,10 @@ func _record(job: Dictionary) -> Dictionary:
 					snaps[s] = H.snap(bt, ub)
 			, CONNECT_ONE_SHOT)
 	var res: Dictionary = await RefereeRunner.run(self, job, hook, {"keep": true})
+	## ★整局最后那一步(碎蛋 ⇒ 双路状态切成 done)不比(2026-11-25): 本机这一遍在那一步采完样裁判就收工, HUD 不再刷新
+	##   (还挂着上一刻的「团灭」章 / 蛋的血条); 播放端处理完这一步会按结束态刷。探针 tests/probes/_probe_hud9301.gd 实测:
+	##   最重真实快照局第 9301 步 = 最后一步(右蛋 184 → 0、dl eggwindow → done), 刚好落在采样步(9301 % 60 = 1)上才露出来。
+	snaps.erase(int(res.get("steps", -1)))
 	var st := {}
 	var b64 := str(res.get("replay_b64", ""))
 	if b64 != "":

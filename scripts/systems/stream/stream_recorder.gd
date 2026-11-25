@@ -111,10 +111,10 @@ const UKEYS_INFO := [
 	"chest_opened", "chest_treasures", "corrode_stacks", "corrode_tier", "crit", "crit_dmg", "damage_amp",
 	"damage_reduction", "def_shred", "dodge_bonus", "dot_stacks", "echarge_perm", "egg_side_lr", "elite", "energy_bank",
 	"energy_lock_until", "eq_state", "fear_until", "gold", "hammer_pct", "haste_mult", "haste_until", "heal_amp",
-	"heal_reduce_until", "hijacked", "hp_frac", "icicle", "idle_offy", "kind", "lifesteal", "ls_bonus", "magic_pen",
+	"heal_amp_cut", "heal_amp_cut_until", "heal_reduce_until", "hijacked", "hp_frac", "icicle", "idle_offy", "kind", "lifesteal", "ls_bonus", "magic_pen",
 	"magic_pen_pct", "melee", "mi", "minion_kind", "move_buff_mult", "move_buff_until", "move_perm", "move_spd", "mr",
 	"mr_shred", "no_basic", "no_move", "off", "passive", "range_add", "range_perm", "reflect", "role", "shell_stealth",
-	"shield_amp", "ship_summoned", "slow_mag", "slow_until", "spd_aspd_mult", "spd_move_mult", "stiff_stacks", "stun_until", "tame_used",
+	"shield_amp", "shield_amp_cut", "shield_amp_cut_until", "ship_summoned", "slow_mag", "slow_until", "spd_aspd_mult", "spd_move_mult", "stiff_stacks", "stun_until", "tame_used",
 	"taunt_until", "temp_lv", "two_form", "volcano", "volcano_until"]
 ## 允许整份发的数组键(纯值数组; 其余数组键里装的是单位字典 / 节点, 一律不发)。
 const UARR := {"active_skills": true}

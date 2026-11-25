@@ -155,7 +155,8 @@ func _ready() -> void:
 		all_ids.size() == 28 and by_id.size() == 28 and all_ids.all(func(x): return by_id.has(x)))
 
 	## 装备按类型成组发, 让每一方都能把羁绊叠到高档(触手要灵物 8 / 10 件, 炮台要枪 3 件不同 …)
-	var t_sword := ["p2eq_001", "p2eq_003", "p2eq_005", "p2eq_006", "p2eq_007", "p2eq_009", "p2eq_010", "p2eq_083", "p2eq_084"]
+	## ★2026-11-25: 005 双生匕首改归匕首 ⇒ 剑组换上 107 武士刀(剑仍是 9 件顶档; 不换的话 S3 右方剑掉到二档、左方一边倒, 第 10 秒前就结束, 时停一次没放)
+	var t_sword := ["p2eq_001", "p2eq_003", "p2eq_107", "p2eq_006", "p2eq_007", "p2eq_009", "p2eq_010", "p2eq_083", "p2eq_084"]
 	var t_food := ["p2eq_002", "p2eq_012", "p2eq_013", "p2eq_036", "p2eq_037", "p2eq_069", "p2eq_070", "p2eq_071", "p2eq_072"]
 	var t_relic := ["p2eq_004", "p2eq_024", "p2eq_044", "p2eq_053", "p2eq_058", "p2eq_059", "p2eq_091", "p2eq_092", "p2eq_094"]
 	var t_gadget := ["p2eq_008", "p2eq_020", "p2eq_027", "p2eq_035", "p2eq_038", "p2eq_040", "p2eq_047", "p2eq_085", "p2eq_086", "p2eq_087"]
@@ -168,6 +169,8 @@ func _ready() -> void:
 	var t_misc := ["p2eq_093", "p2eq_096"]
 	## 2026-11-25 炸弹批: 10 件炸弹(含炮筒 / 遥控炸弹召唤物、地雷、羁绊导弹全体击飞)+ 107 武士刀小将 ⇒ 第 5 个场景(原 4 个场景每方 21 格已满)
 	var t_bomb := ["p2eq_097", "p2eq_098", "p2eq_099", "p2eq_100", "p2eq_101", "p2eq_102", "p2eq_103", "p2eq_104", "p2eq_105", "p2eq_106"]
+	## 2026-11-25 匕首批: 10 件匕首(005 + 108–116; 刺杀全队必暴击、暗影忍者召唤物隐身 / 瞬移、仪式匕首斩杀)⇒ 第 6 个场景
+	var t_dagger := ["p2eq_005", "p2eq_108", "p2eq_109", "p2eq_110", "p2eq_111", "p2eq_112", "p2eq_113", "p2eq_114", "p2eq_115", "p2eq_116"]
 	var scen: Array = [
 		{"tag": "S1 剑+灵物(触手) vs 法器+奇械", "L": g0, "R": g2, "tr_l": "hook", "tr_r": "tame", "ms_l": false,
 			"eqL": t_sword + t_spirit + t_misc, "eqR": t_staff + t_gadget + ["p2eq_004"]},
@@ -182,7 +185,9 @@ func _ready() -> void:
 		{"tag": "S4 法器+药水 vs 灵物(触手)+枪", "L": g3, "R": g1, "tr_l": "tame", "tr_r": "hook", "ms_l": true,
 			"eqL": t_staff + t_potion + ["p2eq_046", "p2eq_060"], "eqR": t_spirit + t_gun + ["p2eq_012", "p2eq_013"]},
 		{"tag": "S5 炸弹(导弹全体击飞)+武士刀小将 vs 盾+食物", "L": g1, "R": g0, "tr_l": "hook", "tr_r": "glacier", "ms_l": false,
-			"eqL": t_bomb + ["p2eq_107"] + t_sword, "eqR": t_shield + t_food + ["p2eq_024", "p2eq_044", "p2eq_053"]},
+			"eqL": t_bomb + t_sword, "eqR": t_shield + t_food + ["p2eq_024", "p2eq_044", "p2eq_053"]},
+		{"tag": "S6 匕首(刺杀 / 暗影忍者 / 斩杀)+枪 vs 盾+药水", "L": g3, "R": g2, "tr_l": "magic_stone", "tr_r": "whistle", "ms_l": false,
+			"eqL": t_dagger + t_gun + t_misc, "eqR": t_shield + t_potion + ["p2eq_058", "p2eq_091", "p2eq_092"]},
 	]
 	var eq_seen := {}
 	for sc in scen:

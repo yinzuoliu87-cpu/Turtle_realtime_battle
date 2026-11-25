@@ -335,6 +335,9 @@ func _run_obj(o: Dictionary) -> void:
 		rec.pre_step()
 		if i == low_at and _subject is Dictionary and bool(_subject.get("alive", false)):
 			_subject["hp"] = maxf(1.0, float(_subject.get("maxHp", 100.0)) * 0.25)
+			## 114 仪式匕首(2026-11-25): 效果全在「斩杀 10% 血以下 → 刻血契」, 4 万血的靶子 2 秒内碰不到斩杀线 ⇒ 同一刻把第一个靶子压到 5%
+			if _eid == "p2eq_114" and foes.size() > 0 and bool((foes[0] as Dictionary).get("alive", false)):
+				foes[0]["hp"] = float(foes[0].get("maxHp", 100.0)) * 0.05
 		if i == kill_at and _subject is Dictionary and bool(_subject.get("alive", false)):
 			_subject["hp"] = 1.0
 			s._kill(_subject, foes[0])

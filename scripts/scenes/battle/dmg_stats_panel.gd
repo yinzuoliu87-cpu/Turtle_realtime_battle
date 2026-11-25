@@ -117,13 +117,19 @@ func _to_front() -> void:
 	if par != null:
 		par.move_child(panel, par.get_child_count() - 1)
 
+## 累计量取整前先对齐到千分位(2026-11-25 直播一致性, 同 info_panel._sn): 直播流里是单精度 ⇒ 本机 196.99999 截成 196、
+##   播流 197.0 显示 197(verify_stream_parity_wide 抓到; 匕首【刺杀】20% 吸血让治疗累计第一次落在边界上)。
+static func _iv(x) -> int:
+	return int(snappedf(float(x), 0.001))
+
+
 ## 当前 Tab 的标量值 (排序/显示)
 static func val(u: Dictionary, tab: String) -> int:
 	match tab:
 		"dealt": return _SS.own_dealt(u)   # 灵物触手份额单列(11-11)
-		"taken": return int(u.get("_st_taken", 0))
-		"heal": return int(u.get("_st_heal", 0))
-		"shield": return int(u.get("_st_shield", 0))
+		"taken": return _iv(u.get("_st_taken", 0))
+		"heal": return _iv(u.get("_st_heal", 0))
+		"shield": return _iv(u.get("_st_shield", 0))
 	return 0
 
 ## 当前 Tab 的分段条 [[值,色],...]: 造成/承受按类型三段, 治疗/护盾单段.
@@ -134,13 +140,13 @@ static func parts(u: Dictionary, tab: String) -> Array:
 	if tab == "taken":
 		var bt: Dictionary = u.get("_st_taken_by_type", {})
 		return [
-			[int(bt.get("phy", 0)), COL_PHY],
-			[int(bt.get("mag", 0)), COL_MAG],
-			[int(bt.get("tru", 0)) + int(bt.get("dot", 0)), COL_TRU],
+			[_iv(bt.get("phy", 0)), COL_PHY],
+			[_iv(bt.get("mag", 0)), COL_MAG],
+			[_iv(bt.get("tru", 0)) + _iv(bt.get("dot", 0)), COL_TRU],
 		]
 	elif tab == "heal":
-		return [[int(u.get("_st_heal", 0)), COL_HEAL]]
-	return [[int(u.get("_st_shield", 0)), COL_SHIELD]]
+		return [[_iv(u.get("_st_heal", 0)), COL_HEAL]]
+	return [[_iv(u.get("_st_shield", 0)), COL_SHIELD]]
 
 ## 分段条: 金属凹槽(九宫格条框) + 分段液面; 段按值 stretch_ratio, 余量露出槽底。
 ##

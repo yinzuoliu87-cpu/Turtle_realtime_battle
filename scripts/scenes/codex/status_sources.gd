@@ -142,6 +142,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_096", "at": "systems/equip/axe_final_forms.gd:_boom_sweep", "lf": "systems/equip/axe_system.gd", "link": "p2eq_096"},
 	],
 	"poison": [
+		{"k": "eq", "id": "p2eq_111", "at": "systems/equip/eq_dagger_batch.gd:on_hit", "arm": "p2eq_111"},   # 111 毒牙匕首暴击叠中毒(2026-11-25)
 		{"k": "eq", "id": "p2eq_101", "at": "systems/equip/eq_bomb_batch.gd:_tick_goos", "link": "func _tick_goos[\\s\\S]{0,1500}GOO_POISON"},   # 101 粘弹粘液(2026-11-24)
 		{"k": "pet", "id": "hunter", "sk": "hunterShot", "at": "systems/skills/hunter_system.gd:_sk_hunter_shot"},
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_shell_basic",
@@ -151,6 +152,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_092", "at": "systems/equip/eq_venom_drone.gd:_apply_fog_field"},
 	],
 	"bleed": [
+		{"k": "eq", "id": "p2eq_108", "at": "systems/equip/eq_dagger_batch.gd:on_basic", "v": "{C:EqDaggerBatch.FOLD_BLEED} 层"},   # 108 折叠小刀每路第一下(2026-11-25)
 		{"k": "eq", "id": "p2eq_105", "at": "systems/equip/eq_bomb_batch.gd:_line_hit", "link": "\"cannon_heavy\":[\\s\\S]{0,400}CANNON_HEAVY_BLEED"},   # 105 炮筒重炮(2026-11-24)
 		{"k": "eq", "id": "p2eq_106", "at": "systems/equip/eq_bomb_batch.gd:_remote_boom", "link": "func _remote_boom[\\s\\S]{0,1500}REMOTE_BLEED"},   # 106 遥控炸弹(2026-11-24)
 		{"k": "pet", "id": "ninja", "sk": "ninjaSlash", "at": MAIN + ":_do_basic", "re": "\"bleed\":\\s+_damage\\._apply_dot_stacks",
@@ -241,6 +243,8 @@ const SRC := {
 		{"k": "pet", "id": "ghost", "sk": "ghostPhase", "at": "systems/skills/ghost_system.gd:_sk_ghost_phase", "to": "self", "v": "{C:GhostSystem.PHASE_SEC} 秒"},
 	],
 	"untargetable": [
+		{"k": "eq", "id": "p2eq_115", "at": "systems/equip/eq_dagger_batch.gd:_tick_ninjas", "to": "self", "link": "func _tick_ninjas[\\s\\S]{0,2500}NINJA_VANISH"},   # 115 暗影忍者影袭化烟(2026-11-25)
+		{"k": "eq", "id": "p2eq_115", "at": "systems/equip/eq_dagger_batch.gd:_ninja_stab", "to": "self", "v": "{C:EqDaggerBatch.NINJA_RESTEALTH} 秒", "link": "func _ninja_stab[\\s\\S]{0,1500}NINJA_RESTEALTH"},   # 115 影袭插中后重新隐身
 		{"k": "eq", "id": "p2eq_100", "at": "systems/equip/eq_bomb_batch.gd:_tick_smokes", "to": "ally", "link": "func _tick_smokes[\\s\\S]{0,1200}SMOKE_PULSE"},   # 100 烟雾弹潜行(2026-11-24)
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_shell_enter_stealth", "to": "self",
 			"lf": MAIN, "link": "\"shellShadow\"[^\\n]*\\n\\s*_shell_sys\\._shell_enter_stealth"},

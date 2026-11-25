@@ -82,13 +82,16 @@ def build() -> str:
 
 def main():
     out = build()
-    io.open(DST, "w", encoding="utf-8", newline="\n").write(out)
-    sc = io.open(SCHEMA, encoding="utf-8", newline="").read()
+    ## ★行尾跟 schema.sql 检出的那一种(Windows autocrlf ⇒ CRLF; 入库统一 LF); 混了 verify_stream_referee_paths 会红(11-25 实测)
+    raw = io.open(SCHEMA, encoding="utf-8", newline="").read()
+    eol = "\r\n" if "\r\n" in raw else "\n"
+    io.open(DST, "w", encoding="utf-8", newline=eol).write(out)
+    sc = raw.replace("\r\n", "\n")
     if "-- >>> BEGIN ritual_marks 20261125 >>>" in sc:
         sc = re.sub(r"-- >>> BEGIN ritual_marks 20261125 >>>.*?-- <<< END ritual_marks 20261125 <<<\n", lambda m: out, sc, flags=re.S)
     else:
         sc = sc.rstrip("\n") + "\n\n" + out
-    io.open(SCHEMA, "w", encoding="utf-8", newline="").write(sc)
+    io.open(SCHEMA, "w", encoding="utf-8", newline=eol).write(sc)
     print("写 %s(%d 行)并同步进 schema.sql" % (os.path.basename(DST), out.count("\n")))
 
 

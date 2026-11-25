@@ -28,16 +28,17 @@ const EquipPoolS := preload("res://scripts/gamedata/equip_pool.gd")
 const Phase2Config := preload("res://scripts/gamedata/phase2_config.gd")
 
 ## 上架 94 件(不含羁绊赠送的 p2eq_095, 它 shopAvailable=0)
-const WANT_TOTAL := 106   # 2026-11-25: +11 = 炸弹 10 件(097–106) + 107 武士刀 · 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
+const WANT_TOTAL := 115   # 2026-11-25: +9 = 匕首 108–116(005 双生匕首原来就在, 只改类型) · 2026-11-25: +11 = 炸弹 10 件(097–106) + 107 武士刀 · 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
 ## 方案书 §4.4.2 最终态（写字面值，不引用被测数据）
 const WANT_BY_TYPE := {
 	"奇械": [2, 2, 2, 2, 2], "法器": [2, 2, 3, 2, 1], "灵物": [2, 2, 2, 2, 2],
-	"遗物": [2, 2, 3, 2, 1], "剑": [2, 3, 2, 2, 1], "弓箭": [3, 3, 1, 1, 1],   # 剑 2 费 +1 = 107 武士刀(双生匕首改归匕首前)
+	"遗物": [2, 2, 3, 2, 1], "剑": [2, 2, 2, 2, 1], "弓箭": [3, 3, 1, 1, 1],   # 剑 2 费: +1 = 107 武士刀、−1 = 005 双生匕首改归匕首(2026-11-25)
 	"枪": [2, 2, 1, 2, 2], "盾": [2, 1, 3, 2, 1], "药水": [3, 2, 1, 2, 1],
 	"食物": [2, 2, 2, 2, 1],
 	"炸弹": [2, 2, 2, 2, 2],   # 2026-11-24 方案书 20261124f: 1–5 费各两件
+	"匕首": [2, 2, 2, 2, 2],   # 2026-11-25 方案书 20261125: 1–5 费各两件(2 费那件是 005 双生匕首)
 }
-const WANT_BY_COST := [25, 23, 22, 21, 15]   # 2026-11-25: 炸弹 1–5 费各 +2、107 武士刀 2 费 +1 ·   # 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
+const WANT_BY_COST := [27, 24, 24, 23, 17]   # 2026-11-25: 匕首 108–116 = 1 费 +2 · 2 费 +1(苦无) · 3 / 4 / 5 费各 +2 · 2026-11-25: 炸弹 1–5 费各 +2、107 武士刀 2 费 +1 ·   # 2026-08-31: +1 = 096 小木斧(1费·遗物·用户新需求, 方案书 20260831-小木斧进化系统与三件改动.md 三期)
 const EquipPoolB := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件没有逐星数值
 const EquipStatsB := preload("res://scripts/gamedata/equip_stats.gd")
 const NEW_FIRST := 60      # p2eq_060 起是批3 新增
@@ -119,7 +120,7 @@ func _ready() -> void:
 			incomplete.append("%s 缺 emoji/名字/类型" % eid)
 		if str(d.get("baseStats1", "")).strip_edges() == "":
 			incomplete.append("%s baseStats1 空" % eid)
-	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 47, "实得 %d" % new_n)   # 2026-08-31: 35→36(096 小木斧) · 2026-11-25: 36→47(炸弹 10 件 + 107 武士刀; 新件同样要三档属性 / emoji / 名字 / 类型齐)
+	_ok("② ★分母: 新增 %d 件(p2eq_%03d 起)" % [new_n, NEW_FIRST], new_n == 56, "实得 %d" % new_n)   # 2026-11-25: 47→56(匕首 108–116) · 2026-08-31: 35→36(096 小木斧) · 2026-11-25: 36→47(炸弹 10 件 + 107 武士刀; 新件同样要三档属性 / emoji / 名字 / 类型齐)
 	_ok("② 新件三档属性 / emoji / 名字 / 类型 / 属性串 全都齐", incomplete.is_empty(),
 		str(incomplete.slice(0, 5)))
 	_ok("② 上架 %d 件名字不重复" % eqs.size(), dup.is_empty(), str(dup))
@@ -246,7 +247,9 @@ func _has_effect_impl(eid: String) -> bool:
 				#   (它不是"周期到点触发一次"的形状, 驱动挂在 RelicSynergySystem.tick)。
 				#   不把它加进这张名单, 这条门禁就会把一件真装了的装备判成"文案说得到做不到" ——
 				#   与 memory [[project-god-file-decomposition]] 坑16「审计器的文件名单跟不上拆分」同形。
-				"res://scripts/systems/equip/eq_venom_drone.gd"]:
+				"res://scripts/systems/equip/eq_venom_drone.gd",
+				# ★2026-11-25 批④的「id → 批系统」路由表 B4_OWNER 从 equip_system.gd 挪进 gamedata/b4_owner.gd(匕首批; 同坑16)
+				"res://scripts/gamedata/b4_owner.gd"]:
 			for ln in FileAccess.get_file_as_string(p).split("\n"):
 				var hi: int = ln.find("#")
 				_impl_src += (ln if hi < 0 else ln.substr(0, hi)) + "\n"

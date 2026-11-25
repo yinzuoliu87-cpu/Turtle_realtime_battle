@@ -132,13 +132,6 @@ func _side_of(u: Dictionary) -> String:
 	return sd if (sd == "left" or sd == "right") else "left"
 
 
-func _phys(src: Dictionary, tgt: Dictionary, base: float, can_crit: bool = true) -> void:
-	if not tgt.get("alive", false) or base <= 0.0:
-		return
-	var dmg: int = battle._resolve_dmg(src, base, tgt, false, can_crit)
-	battle._damage._apply_damage_from(src, tgt, dmg, COL_PHYS, 0.0, false, true)
-
-
 func _magic(src: Dictionary, tgt: Dictionary, base: float, can_crit: bool = true) -> void:
 	if not tgt.get("alive", false) or base <= 0.0:
 		return
@@ -463,6 +456,8 @@ func _ritual_execute(src: Dictionary, tgt: Dictionary) -> void:
 	stat["ritual_exec"] += 1
 	_fx("ritual_execute", [tgt])
 	battle._vfx._float_text(tgt["pos"], "-999999", battle._VC.color_of(battle._VC.cls_for("damage", "true", true)), true, "damage", "true")
+	## 斩掉的那截血记成这件的真实伤害(战斗统计 / 装备统计里看得到仪式匕首的贡献; 不走伤害路径, 所以手记一笔)
+	battle._equip_sys.tally.credit(src, battle._equip_sys.key_of(src, "p2eq_114"), "tru", maxf(0.0, float(tgt["hp"])))
 	tgt["hp"] = 0.0
 	var tk: Array = battle._equip_sys.tally.push(null, "")
 	battle._kill(tgt, src)
@@ -523,7 +518,7 @@ func _spawn_ninja(owner: Dictionary, si: int, clone_of = null) -> Dictionary:
 	var k := NINJA_CLONE_STAT if is_clone else 1.0
 	var p = battle._spawn._spawn_summon(owner, "shadow_clone" if is_clone else "shadow_ninja",
 		float(NINJA_HP[si]) * k, float(NINJA_ATK[si]) * k,
-		{"label": "影子忍者" if is_clone else "暗影忍者", "spr_id": "eq-shadow-ninja", "col_size": 44.0, "hp_w": 34.0,
+		{"label": "暗影忍者", "spr_id": "eq-shadow-ninja", "col_size": 44.0, "hp_w": 34.0,
 		 "atk_interval": 0.8, "atk_range": 60.0, "melee": true, "crit": float(NINJA_CRIT[si])})
 	if p == null:
 		return {}
@@ -533,6 +528,7 @@ func _spawn_ninja(owner: Dictionary, si: int, clone_of = null) -> Dictionary:
 	p["energy"] = 0.0
 	if is_clone:
 		p["pos"] = Vector2((clone_of as Dictionary)["pos"]) + Vector2(0, 40)
+		p["name"] = "影子忍者"
 		p["_body_tint"] = Color(0.42, 0.3, 0.7, 0.72)   # 影子 = 同一套立绘压成暗紫半透明(演出底色通道, battle_render 读)
 	else:
 		p["untargetable_until"] = 1.0e9   # 登场隐身: 第一次攻击现形(on_any_basic)
@@ -557,6 +553,8 @@ func _tick_ninjas(delta: float) -> void:
 		if not p.get("alive", false):
 			continue
 		if bool(n["clone"]) and t >= float(n["until"]):   # 影子到时消散
+			if battle._damage.execute_saved(p):
+				continue
 			p["hp"] = 0.0
 			battle._kill(p)
 			_fx("ninja_fade", [p])
@@ -726,7 +724,9 @@ func _obs_check(tgt: Dictionary) -> void:
 	for d in arr:
 		var src: Dictionary = d["src"]
 		var tl: Array = battle._equip_sys.tally.push(src, "p2eq_116")
-		battle._damage._apply_damage_from(src, tgt, _obs_one(d, tgt), COL_PHYS, 0.0, true, true, false, true)
+		var od: int = _obs_one(d, tgt)
+		battle._damage.set_dtype("physical", tgt, false, true)   # 物理 · 已过护甲(_phys_after_armor) ⇒ 飘字物理色
+		battle._damage._apply_damage_from(src, tgt, od, COL_PHYS, 0.0, false, true, false, true)
 		battle._equip_sys.tally.pop(tl)
 		heal_by.append(d)
 	for d in heal_by:

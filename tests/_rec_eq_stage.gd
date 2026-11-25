@@ -94,7 +94,7 @@ static func cases() -> Dictionary:
 		## 弯匕 / 仪式: 靶子血少、打得死(击杀后攻速暴涨 / 斩杀 + 刻血契)
 		"kris": [[_me(Vector2(-10, 0), _eq([113]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(110, -80), Vector2(110, 80)]).map(func(x): x["hp"] = 700.0; x["killable"] = true; return x), 12.0],
 		"ritual": [[_me(Vector2(-10, 0), _eq([114]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(110, -80), Vector2(110, 80)]).map(func(x): x["hp"] = 350.0; x["killable"] = true; return x), 14.0],
-		"obs": [[_me(Vector2(-10, 0), _eq([116]))] + _dummies(60, 1, false, 4000.0).map(func(x): x["killable"] = true; return x), 14.0],
+		"obs": [[_me(Vector2(-10, 0), _eq([116]))] + _dummies(60, 3, false, 4000.0).map(func(x): x["killable"] = true; return x), 14.0],
 		## 暗影忍者: 满龟能开局(马上看影袭); 两只会打的敌人把它打到半血 ⇒ 分影子 ⇒ 下一次影袭两名忍者一起掷手里剑
 		"ninja": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
 			+ _dummies(150, 3, true, 30000.0, 450.0), 24.0],
