@@ -96,6 +96,7 @@ func _ready() -> void:
 	o["crit_dmg"] = 1.9
 	o["damage_reduction"] = 0.12
 	o["lifesteal"] = 0.08
+	o["buffs"] = [{"stat": "dodge", "amount": 0.15, "pct": false, "until": _s._t + 99999.0}, {"stat": "dodge", "amount": 0.30, "pct": false, "until": _s._t + 3.0}]
 	_s._recalc_stats(o)
 	_run([_mk("left"), o], {"left": {"面具": 1}})
 	var c: Dictionary = _s._mask_syn.make_copy(o, "left", 1)
@@ -104,6 +105,7 @@ func _ready() -> void:
 	_ok("B 最大生命值 = 原版最大值的 50%(满血出场) · 攻击力 = 原版 50%",
 		absf(float(c["maxHp"]) - 1500.0) < 1e-3 and absf(float(c["hp"]) - 1500.0) < 1e-3 and absf(float(c["base_atk"]) - 100.0) < 1e-3 and absf(float(c["atk"]) - 100.0) < 1e-3,
 		"生命 %.0f/%.0f · 攻击 %.0f" % [float(c["hp"]), float(c["maxHp"]), float(c["atk"])])
+	_ok("B 闪避照抄原版的常驻部分(装备给的 15%), 临时闪避(3 秒的 30%)不抄", absf(float(c.get("dodge_bonus", 0.0)) - 0.15) < 1e-6, "复制体闪避 %.2f · 原版当前 %.2f" % [float(c.get("dodge_bonus", 0.0)), float(o.get("dodge_bonus", 0.0))])
 	_ok("B 护甲 / 魔抗 / 暴击 / 暴伤 / 减伤 / 吸血 照抄原版",
 		absf(float(c["def"]) - float(o["def"])) < 1e-3 and absf(float(c["mr"]) - float(o["mr"])) < 1e-3 and absf(float(c["crit"]) - 0.37) < 1e-6
 		and absf(float(c["crit_dmg"]) - 1.9) < 1e-6 and absf(float(c["damage_reduction"]) - 0.12) < 1e-6 and absf(float(c["lifesteal"]) - 0.08) < 1e-6,

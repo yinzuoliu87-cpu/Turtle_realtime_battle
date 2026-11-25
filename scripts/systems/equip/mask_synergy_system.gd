@@ -23,7 +23,9 @@ const GIVE_PCT := [0.10, 0.20, 0.35]
 ## 照抄原版的属性字段(装备 / 羁绊 / 等级加完之后的最终值; base_* 是 _recalc_stats 的底数)
 const INHERIT := ["base_def", "base_mr", "crit", "crit_dmg", "armor_pen", "magic_pen", "lifesteal", "damage_amp", "damage_reduction",
 	"aspd_perm", "move_perm", "range_add", "range_perm", "echarge_perm", "heal_amp", "shield_amp", "reflect"]
-## ⚠ 闪避走 buff 通道(equip_stats_apply: dodgePct → _buff "dodge"), 不在字段里 ⇒ 复制体的闪避来自它自己降星后的装备, 不照抄(待补)
+## 闪避走 buff 通道(equip_stats_apply: dodgePct → 99999 秒的 "dodge" buff), 不在字段里 ⇒ 单独照抄: 复制体自己的常驻闪避 buff
+## 拿掉, 换成原版常驻闪避的总和(临时闪避不抄 —— 别的临时状态也不抄)
+const PERM_BUFF_SEC := 9999.0
 
 var battle
 var _lane_t0 := -1.0
@@ -122,6 +124,17 @@ func make_copy(o: Dictionary, side: String, tier: int) -> Dictionary:
 	for f in INHERIT:
 		if o.has(f):
 			c[f] = o[f]
+	var dodge := 0.0
+	for b in o.get("buffs", []):
+		if b is Dictionary and str(b.get("stat", "")) == "dodge" and float(b.get("until", 0.0)) > float(battle._t) + PERM_BUFF_SEC:
+			dodge += float(b.get("amount", 0.0))
+	var kept: Array = []
+	for b in c.get("buffs", []):
+		if not (b is Dictionary and str(b.get("stat", "")) == "dodge" and float(b.get("until", 0.0)) > float(battle._t) + PERM_BUFF_SEC):
+			kept.append(b)
+	if dodge > 0.0:
+		kept.append({"stat": "dodge", "amount": dodge, "pct": false, "until": float(battle._t) + 99999.0})
+	c["buffs"] = kept
 	c["maxHp"] = maxf(1.0, float(o.get("maxHp", 1.0)) * COPY_HP)
 	c["hp"] = c["maxHp"]
 	c["base_atk"] = float(o.get("base_atk", 0.0)) * COPY_ATK
