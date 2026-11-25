@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://duei7g6sseeq8"
-path="res://.godot/imported/magic-page.png-f4f662ee4f1c012e241998d4112a6d64.ctex"
+uid="uid://ddaqps22o4adv"
+path="res://.godot/imported/magic-forbook-anim.png-76a21f578675d53fe9be0878fa2a065e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-page.png"
-dest_files=["res://.godot/imported/magic-page.png-f4f662ee4f1c012e241998d4112a6d64.ctex"]
+source_file="res://assets/sprites/vfx/magic-forbook-anim.png"
+dest_files=["res://.godot/imported/magic-forbook-anim.png-76a21f578675d53fe9be0878fa2a065e.ctex"]
 
 [params]
 

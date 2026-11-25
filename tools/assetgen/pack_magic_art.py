@@ -151,8 +151,13 @@ def main():
         ref = Image.open(os.path.join(AI, FOOT_REF[dst[:8]] + ".png")).convert("RGBA")
         _strip(names, FW - ref.getbbox()[3]).save(os.path.join(VFX, dst + ".png"), optimize=False)
     rows = [_vfx(n) for n in VFX_SHEETS]
-    Image.open(os.path.join(AI, "page2.png")).convert("RGBA").save(os.path.join(VFX, "magic-page.png"), optimize=False)
-    Image.open(os.path.join(AI, "forbook.png")).convert("RGBA").save(os.path.join(VFX, "magic-forbook.png"), optimize=False)
+    ## 125 禁咒书 / 126 书页: 逐帧动画(11-25 用户「那肯定不是一个静态图片啊，它是肯定是动起来的呀」) ——
+    ##   PixelLab animate_image 以原图为首尾帧生成 8 帧(第 0 帧 = 原图, 第 8 帧回到原图 ⇒ 取 0~7 循环); 拼成 64 方帧横条
+    for src, dst in (("forbook_a", "magic-forbook-anim"), ("page_a", "magic-page-anim")):
+        strip = Image.new("RGBA", (64 * 8, 64), (0, 0, 0, 0))
+        for i in range(8):
+            strip.paste(Image.open(os.path.join(AI, "%s%d.png" % (src, i))).convert("RGBA"), (i * 64, 0))
+        strip.save(os.path.join(VFX, dst + ".png"), optimize=False)
     ## 125 禁咒书飞行光尾: 蓝光尾逐色换成品红(同一条光带的形状, 只改四个颜色)
     pal = {(58, 94, 224, 255): (112, 18, 104, 255), (127, 176, 255, 255): (214, 58, 196, 255), (214, 232, 255, 255): (255, 168, 238, 255)}
     tr = Image.open(os.path.join(AIV, "magic-missile-trail.png")).convert("RGBA").crop((0, 10, 24, 18)).transpose(Image.Transpose.ROTATE_90)

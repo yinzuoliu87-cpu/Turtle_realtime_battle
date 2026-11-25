@@ -41,7 +41,8 @@ const MSHEETS := {
 	"skelm-bolt": ["vfx/magic-skelm-bolt.png", 40, 40, 30.0, 20, 20],   # 8 帧 · 循环 · 骷髅法师暗影弹: 紫球 + 小骷髅头
 	"skelp-bolt": ["vfx/magic-skelp-bolt.png", 33, 33, 26.0, 16, 16],   # 8 帧 · 循环 · 骷髅祭司鬼火光: 青球 + 白点
 }
-const PAGE_TEX := "vfx/magic-page.png"
+const PAGE_TEX := "vfx/magic-page-anim.png"   ## 8 帧循环: 书页在空中翻转飘(PixelLab animate_image, 11-25)
+const ANIM_FPS := 10.0
 const PAGE_PX := 58.0           ## 书页显示大小(世界码; 11-25 第二版放大: 26 / 40 时录出来只是几个小纸片)
 const PAGE_ORBIT_H := 1.05      ## 近战书页环绕高度(米)
 
@@ -141,7 +142,7 @@ func _arc_step(node, to2: Vector2, k: float) -> void:
 	if s.has_meta("orient"):
 		_orient_screen(s, s.position - prev)   # 119 火球: 弹头朝前进方向
 	if s.has_meta("book"):
-		s.scale = Vector3(0.8 + 0.2 * sin(q * 40.0), 1.0, 1.0)   # 125 飞书: 飞的时候书页扑扇
+		s.frame = int(float(battle._t) * ANIM_FPS * 1.6) % 8   # 125 飞书: 飞的时候书页翻得快一点(逐帧动画, 不是缩放)
 	_trail_seg(prev, s.position, s.get_meta("trail_col", MB_TRAIL_COL), float(s.get_meta("trail_w", MB_TRAIL_W)), str(s.get_meta("trail_tex", TRAIL_TEX)),
 		float(s.get_meta("trail_life", MB_TRAIL_LIFE)), s.get_meta("trail_grad", []))
 	if s.has_meta("embers"):
@@ -292,7 +293,7 @@ func _orient_to(s: Sprite3D, d2: Vector2) -> void:
 ##   放过技能 ⇒ 携带者身后肩头浮起一本翻开的禁咒书(上下浮动、书页一开一合); 下一次攻击 ⇒ 就是这本书从肩头飞出去,
 ##   拖一条品红光尾、走一条略鼓的弧线, 碰到敌人身体(结算侧按速度追身体, 同一个 k)那一刻炸开。原来的三枚红符文删掉。
 ##   (书 = PixelLab 生成的一张 64×64 图; 浮动 / 开合是引擎里按时间摆位置 / 横向缩放, 不是逐帧画的)
-const FORB_TEX := "vfx/magic-forbook.png"
+const FORB_TEX := "vfx/magic-forbook-anim.png"   ## 8 帧循环: 书页一开一合、符文亮暗(PixelLab animate_image, 11-25)
 const FORB_PX := 74.0            ## 书的显示大小(世界码; 52 时录出来只是肩后一小块, 11-25 录像自查)
 const FORB_SIDE := 46.0          ## 浮在身后多远(码)
 const FORB_TRAIL_TEX := "vfx/magic-forb-trail.png"
@@ -311,7 +312,8 @@ func _book_node(u: Dictionary) -> Sprite3D:
 	s.render_priority = 11
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	s.pixel_size = (FORB_PX * float(battle.WS)) / float(maxi(t.get_width(), t.get_height()))
+	s.hframes = 8
+	s.pixel_size = (FORB_PX * float(battle.WS)) / float(t.get_height())   # 8 帧横条, 单帧 64 方
 	battle._world.add_child(s)
 	return s
 
@@ -351,7 +353,8 @@ func _tick_books(delta: float) -> void:
 		r["t"] = float(r["t"]) + delta
 		var grow: float = minf(1.0, float(r["t"]) / 0.25)
 		(s as Sprite3D).position = _book_hover_pos(u, t)
-		(s as Sprite3D).scale = Vector3(grow * (0.86 + 0.14 * sin(t * 5.0)), grow, 1.0)   # 书页一开一合
+		(s as Sprite3D).scale = Vector3(grow, grow, 1.0)
+		(s as Sprite3D).frame = int(t * ANIM_FPS) % 8   # 书页一开一合(逐帧动画)
 
 
 ## 下一次攻击: 就是身边那本书飞出去(从它浮着的位置起飞); 没浮着(演出层后建 / 直播中途进)就从肩头新建一本
@@ -584,7 +587,8 @@ func _page_node(t: Texture2D) -> Sprite3D:
 	s.render_priority = 9
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	s.pixel_size = (PAGE_PX * float(battle.WS)) / float(maxi(t.get_width(), t.get_height()))
+	s.hframes = 8
+	s.pixel_size = (PAGE_PX * float(battle.WS)) / float(t.get_height())   # 8 帧横条, 单帧 64 方
 	battle._world.add_child(s)
 	return s
 
@@ -635,7 +639,7 @@ func _tick_pages() -> void:
 				var p := c + Vector2(cos(th), sin(th)) * EqMagicBatch.PAGE_R
 				var prev: Vector3 = s.position
 				s.position = battle._world_pos(p, PAGE_ORBIT_H + 0.1 * sin(t * 3.0 + float(j) * 1.7))
-				s.scale = Vector3(0.55 + 0.45 * absf(sin(t * 4.5 + float(j) * 0.9)), 1.0, 1.0)   # 纸页扑扇
+				s.frame = (int(t * ANIM_FPS) + j * 3) % 8   # 纸页在空中翻转(逐帧动画, 每张错开相位)
 				if prev.distance_to(s.position) < 1.5:
 					_trail_seg(prev, s.position, PAGE_TRAIL_COL, PAGE_TRAIL_W)
 		else:
@@ -647,7 +651,7 @@ func _tick_pages() -> void:
 				s.visible = j < have
 				var p := _page_stack_pos(u, j, n, back, t)
 				s.position = p
-				s.scale = Vector3(0.8 + 0.2 * sin(t * 2.6 + float(j) * 1.3), 1.0, 1.0)
+				s.frame = (int(t * ANIM_FPS * 0.6) + j * 2) % 8
 
 
 func _page_stack_pos(u: Dictionary, j: int, n: int, back: float, t: float) -> Vector3:
