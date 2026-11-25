@@ -98,6 +98,29 @@ static func cases() -> Dictionary:
 		## 暗影忍者: 满龟能开局(马上看影袭); 两只会打的敌人把它打到半血 ⇒ 分影子 ⇒ 下一次影袭两名忍者一起掷手里剑
 		"ninja": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
 			+ _dummies(150, 3, true, 30000.0, 450.0), 24.0],
+		## ── 魔法书批(11-25) ── 施法类要真的放技能: 携带者用天使龟(远程) / 钻石龟(近战) —— 熔岩龟自己的技能特效太大, 盖住魔法书的东西, 满龟能开局
+		## 羁绊【飞弹】: 三本不同的魔法书放在一只不动不打的小将身上(凑 1 档), 天使龟空手放技能 ⇒ 飞弹从天使龟身上飞出
+		"mb_missile": [[_me(Vector2(-380, 160), _eq([117, 118, 121], 1), {"idle": true}), _u("angel", "left", Vector2(-260, 0), {"fe": true, "hp": 8000.0, "killable": false})]
+			+ _dummies(80, 3), 14.0],
+		"mb_note": [[_me(Vector2(-10, 0), _eq([117]))] + _dummies(80, 3), 10.0],
+		"mb_scroll": [[_u("angel", "left", Vector2(-200, 0), {"fe": true, "equips": _eq([118]), "hp": 8000.0, "killable": false})] + _dummies(80, 3), 10.0],
+		"mb_fire": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "equips": _eq([119]), "hp": 8000.0, "killable": false})] + _dummies(80, 3), 12.0],
+		## 冰霜新星 300 码: 靶子围在携带者 150~250 码(圈里), 再放一只 420 码外(圈外不挨)
+		"mb_frost": [[_u("diamond", "left", Vector2(-10, 0), {"fe": true, "equips": _eq([120]), "hp": 8000.0, "killable": false})]
+			+ _ring_dummies(Vector2(-10, 0), [Vector2(150, 0), Vector2(120, -150), Vector2(120, 150), Vector2(420, 0)]), 12.0],
+		"mb_storm": [[_me(Vector2(-260, 0), _eq([121]), {"hold": true})] + _dummies(80, 3), 14.0],
+		## 治愈圣典: 旁边站一只半血的友方(生命比例最低 ⇒ 挂在它身上)
+		"mb_holy": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "equips": _eq([122]), "hp": 8000.0, "killable": false}), _me(Vector2(-260, 130), [], {"idle": true, "hp_pct": 0.4, "killable": true})]
+			+ _dummies(80, 3), 14.0],
+		## 亡者之书: 两次技能召两具(随机种类), 敌人会打 ⇒ 骷髅有对手
+		"mb_skel": [[_u("angel", "left", Vector2(-170, 0), {"fe": true, "equips": _eq([123]), "hp": 8000.0, "killable": false})]
+			+ _ring_dummies(Vector2(-170, 0), [Vector2(320, -90), Vector2(380, 40), Vector2(300, 150)]), 30.0],
+		"mb_mirror": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "equips": _eq([124]), "hp": 8000.0, "killable": false})] + _dummies(80, 3), 12.0],
+		"mb_forb": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "equips": _eq([125]), "hp": 8000.0, "killable": false})] + _dummies(80, 3), 12.0],
+		"mb_tome_melee": [[_u("diamond", "left", Vector2(-10, 0), {"fe": true, "equips": _eq([126]), "hp": 8000.0, "killable": false})] + _dummies(60, 3, true, 30000.0, 30.0), 12.0],
+		## 远程书页格挡: 敌人一下打 ≥ 6% 最大生命(攻击力调高、携带者血量压到 3000 ⇒ 门槛 180) ⇒ 书页闪到身前挡
+		"mb_tome_ranged": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "hold": true, "equips": _eq([126]), "hp": 3000.0, "killable": false})]
+			+ _dummies(-60, 2, true, 30000.0, 700.0), 14.0],
 		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
 		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
 			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 16.0],
@@ -150,6 +173,10 @@ func _process(d: float) -> void:
 			if nd is CanvasItem and is_instance_valid(nd):
 				(nd as CanvasItem).visible = false
 		print("[REC] %.2f 开打 · 场上 %d 单位" % [_el, _b._units.size()])
+		## 摆位里写了 hp_pct 的单位: 开打时调试场会按等级重算血量回满, 这里再压一次(11-25 魔法书 122: 看治疗挂在半血友军身上)
+		for uu in _b._units:
+			if uu is Dictionary and float(uu.get("_edit_hp_pct", 1.0)) < 1.0:
+				uu["hp"] = float(uu["maxHp"]) * float(uu["_edit_hp_pct"])
 		## REC_ZOOM=2 ⇒ 镜头拉近(11-25 武士刀小将动作录像: 默认镜头下小将只有二十来像素, 动作看不清)
 		if OS.has_environment("REC_ZOOM"):
 			_b._cam_zoom = float(OS.get_environment("REC_ZOOM"))

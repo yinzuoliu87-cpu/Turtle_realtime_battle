@@ -68,6 +68,7 @@ const SKW_RAGE_SEC := 4.0
 const SKW_DR := 0.25
 const SKW_EXTRA := 0.5
 const SKW_LS := 0.25
+const SKW_RAGE_TINT := Color(0.78, 1.2, 0.62)
 const SKM_BLAST_R := 200.0
 const SKM_BLAST_ATK := 2.0
 const SKP_BASIC := 0.6   # 祭司普攻 60% 攻击力魔法(主场景 BASIC_ATK["_summon_skel_priest"] 读它)
@@ -236,11 +237,12 @@ func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
 					if hit:
 						_magic(src, t, base),
 				func(k: float, p2: Vector2, to2: Vector2) -> void: _fx("bolt_step", [node, from2, p2, to2, k]))
-		"p2eq_125":   # 禁咒全书①: 放过技能后的下一次攻击额外射出禁咒弹
+		"p2eq_125":   # 禁咒全书①: 放过技能后的下一次攻击变成禁咒弹
 			if _acc(u, "forb:" + ck) <= 0.0:
 				return
 			_set_acc(u, "forb:" + ck, 0.0)
 			stat["forb"] += 1
+			u["_basic_replaced"] = true   # 这一下攻击本身就是禁咒弹(主场景普攻本体看到这个标记就不再打原来的攻击)
 			var src2: Dictionary = u
 			var t2: Dictionary = tgt
 			var base2: float = float(FORB_FLAT[si]) + FORB_ATK * float(u.get("atk", 0.0))
@@ -606,6 +608,7 @@ func _skw_rage(p: Dictionary) -> void:
 	p["_skw_rage_until"] = float(battle._t) + SKW_RAGE_SEC
 	p["damage_reduction"] = float(p.get("damage_reduction", 0.0)) + SKW_DR
 	p["lifesteal"] = float(p.get("lifesteal", 0.0)) + SKW_LS
+	p["_body_tint"] = SKW_RAGE_TINT   # 狂怒 4 秒: 骨头泛绿(演出底色通道, battle_render 读, 直播录)
 	_fx("skw_rage", [p, SKW_RAGE_SEC])
 
 
@@ -613,6 +616,7 @@ func _skw_rage_end(p: Dictionary) -> void:
 	p["_skw_rage_until"] = 0.0
 	p["damage_reduction"] = maxf(0.0, float(p.get("damage_reduction", 0.0)) - SKW_DR)
 	p["lifesteal"] = maxf(0.0, float(p.get("lifesteal", 0.0)) - SKW_LS)
+	p.erase("_body_tint")
 
 
 ## 骷髅法师【骨火爆裂】: 目标周围 200 码爆炸, 200% 攻击力魔法
@@ -761,7 +765,7 @@ func page_block(u: Dictionary, d: float) -> float:
 		var tl: Array = es.tally.push(u, ck)
 		es.tally.credit(u, "p2eq_126", "block", ab)
 		es.tally.pop(tl)
-		_fx("page_block", [u, ck])
+		_fx("page_block", [u, ck, ab])
 		return d - ab
 	return d
 

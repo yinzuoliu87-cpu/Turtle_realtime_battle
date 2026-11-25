@@ -1483,7 +1483,7 @@
     "baseStats1": "+生命220/460/1050·双抗10/18/30",
     "shopAvailable": 1,
     "emoji": "📖",
-    "effectDesc1": "每个战场第一次释放技能后，立即再释放一次。每次释放技能将消耗的龟能存入充能条，存满 {C:EqMagicBatch.MIRROR_THR} 点后清空，下一次释放技能后立即再释放一次。再释放的那一次同样算作释放技能，但不存入充能条。",
+    "effectDesc1": "每个战场第一次释放技能后，立即再释放一次。每次释放技能将消耗的龟能存入充能条，存满 {C:EqMagicBatch.MIRROR_THR} 点后，下一次释放技能后立即再释放一次，充能条从零开始重新积累。再释放的那一次同样触发释放技能时的效果，但不存入充能条。",
     "effectDesc3": "",
     "img": "equip/p2eq_124.png",
     "effectBrief": "每个战场第一次释放技能和充能条存满后的那次技能，都会再释放一次。"
@@ -1495,10 +1495,10 @@
     "baseStats1": "+攻40/90/400·增伤10/15/25%",
     "shopAvailable": 1,
     "emoji": "📖",
-    "effectDesc1": "技能的龟能消耗减少 {C:EqMagicBatch.FORB_CUT} 点。释放技能后，下一次攻击额外射出一枚禁咒弹，造成（{C:EqMagicBatch.FORB_FLAT}+{C:EqMagicBatch.FORB_ATK%}% 攻击力+目标 {C:EqMagicBatch.FORB_MAXHP%}% 最大生命值）魔法伤害，并对目标周围的敌人造成其 {C:EqMagicBatch.FORB_SPLASH%}% 的伤害。",
+    "effectDesc1": "技能的龟能消耗减少 {C:EqMagicBatch.FORB_CUT} 点。释放技能后，下一次攻击变为禁咒弹，造成（{C:EqMagicBatch.FORB_FLAT}+{C:EqMagicBatch.FORB_ATK%}% 攻击力+目标 {C:EqMagicBatch.FORB_MAXHP%}% 最大生命值）魔法伤害，并对目标周围的敌人造成其 {C:EqMagicBatch.FORB_SPLASH%}% 的伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_125.png",
-    "effectBrief": "技能更快就绪，释放技能后的下一次攻击射出禁咒弹。"
+    "effectBrief": "技能更快就绪，释放技能后的下一次攻击变为禁咒弹。"
   },
   {
     "id": "p2eq_126",

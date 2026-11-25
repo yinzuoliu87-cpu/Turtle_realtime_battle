@@ -2811,6 +2811,8 @@ func _basic_attack_body(u: Dictionary, tgt: Dictionary) -> void:
 	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(不算多段)
 	_gambler_sys.fx_exit(_mfx)
 	_equip_sys.tally.pop(_tl0)
+	if u.get("_basic_replaced", false):   # 125 禁咒全书: 这一下攻击变成禁咒弹(弹已在上面的装备钩里射出), 原来的攻击不打(方案书 20261125b §4.2)
+		u.erase("_basic_replaced"); return
 		## ⚠ 这里原来写着"008每5次普攻射珊瑚刺" —— **早就不是了**: 那个计数器 2026-07-19 已删,
 		##   008 现在走 `_tick_coral` 的**每 9 秒**。过期注释比没注释更糟, 我自己就被它带偏过一次。
 	_swordsman.on_basic_attack(u, tgt)       # 剑士: 排 1/1/2 次追打(★追打自己不走这里, 防自递归与赌神连击互喂)

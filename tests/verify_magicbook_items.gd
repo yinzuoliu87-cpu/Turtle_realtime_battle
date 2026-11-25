@@ -269,6 +269,7 @@ func _ready() -> void:
 	ally["hp"] = 50000.0
 	t1 = _mk("right", c + Vector2(250, 0))
 	_place([me, ally, t1])
+	var _wh0: int = int(_ms.stat["wave_hit"])
 	var rp: Dictionary = _ms._summon_skeleton(me, 2, COST, "skel_priest")
 	var pp: Dictionary = rp["u"]
 	pp["pos"] = c + Vector2(-200, 0)
@@ -286,8 +287,8 @@ func _ready() -> void:
 			mr_buf = true
 	_ok("123 祭司浪潮慢慢推: 先过友军(回 %.0f)、后到敌人(%.0f 物理 + 眩晕 + 魔抗 −%.0f%%), 每人一次" % [float(M.WAVE_HEAL[2]), float(M.WAVE_DMG[2]), M.WAVE_MR_SHRED * 100],
 		_near(ally_mid, float(M.WAVE_HEAL[2])) and t1_mid == 0.0 and _near(_lost(t1), float(M.WAVE_DMG[2])) and stun_left > M.WAVE_STUN and mr_buf
-			and int(_ms.stat["wave_hit"]) == 1,
-		"0.55 秒: 友 +%.0f 敌 %.0f · 2.55 秒: 敌 %.0f 眩晕到 +%.2f 减魔抗 %s 命中 %d" % [ally_mid, t1_mid, _lost(t1), stun_left, str(mr_buf), int(_ms.stat["wave_hit"])])
+			and int(_ms.stat["wave_hit"]) - _wh0 == 1,
+		"0.55 秒: 友 +%.0f 敌 %.0f · 2.55 秒: 敌 %.0f 眩晕到 +%.2f 减魔抗 %s 命中 %d" % [ally_mid, t1_mid, _lost(t1), stun_left, str(mr_buf), int(_ms.stat["wave_hit"]) - _wh0])
 
 	## ── 124 镜像魔典 ──
 	me = _mk("left", c, ["p2eq_124"])
@@ -319,9 +320,14 @@ func _ready() -> void:
 	_place([me, t1, t2, t3])
 	_ms.on_basic(me, t1, "p2eq_125", 2)
 	var pre: int = int(_ms.stat["forb"])
+	var rep0: bool = bool(me.get("_basic_replaced", false))
 	_cast(me, t1)
 	_ms.on_basic(me, t1, "p2eq_125", 2)
+	var rep1: bool = bool(me.get("_basic_replaced", false))
+	me.erase("_basic_replaced")   # 主场景普攻本体读到就清(这里手动清, 模拟那一步)
 	_ms.on_basic(me, t1, "p2eq_125", 2)
+	var rep2: bool = bool(me.get("_basic_replaced", false))
+	_ok("125 放过技能后的那一下攻击变成禁咒弹(原攻击不打): 只有那一下打标记", not rep0 and rep1 and not rep2, "%s %s %s" % [rep0, rep1, rep2])
 	_adv(1.0)
 	var w125: float = float(M.FORB_FLAT[2]) + M.FORB_ATK * 100.0 + float(M.FORB_MAXHP[2]) * 100000.0
 	_ok("125 没放技能不射; 放过后下一次射 1 枚: 主目标 %.0f, 200 码内 50%%, 圈外不挨" % w125,

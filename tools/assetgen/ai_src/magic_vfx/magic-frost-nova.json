@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "magic-frost-nova 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-nova 1.png",
+   "frame": {
+    "x": 115,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-nova 2.png",
+   "frame": {
+    "x": 230,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-nova 3.png",
+   "frame": {
+    "x": 0,
+    "y": 47,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-nova 4.png",
+   "frame": {
+    "x": 115,
+    "y": 47,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-nova 5.png",
+   "frame": {
+    "x": 230,
+    "y": 47,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-nova 6.png",
+   "frame": {
+    "x": 0,
+    "y": 94,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  },
+  {
+   "filename": "magic-frost-nova 7.png",
+   "frame": {
+    "x": 115,
+    "y": 94,
+    "w": 115,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.4782608695652174,
+    "y": 0.48936170212765956
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-frost-nova.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 345,
+   "h": 141
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 55,
+   "y": 23
+  },
+  "frameTags": [
+   {
+    "name": "magic-frost-nova",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

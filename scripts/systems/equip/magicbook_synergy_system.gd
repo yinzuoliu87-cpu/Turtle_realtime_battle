@@ -19,6 +19,8 @@ const PER_ENERGY := [20.0, 15.0, 10.0]
 const DMG_FLAT := [20.0, 35.0, 60.0]
 const DMG_MAXHP := [0.01, 0.015, 0.025]
 const SPD := 900.0
+const FAN_GAP := 18.0
+const FAN_MAX := 70.0
 const COL_MAGIC := Color("#8fd3ff")
 
 var battle
@@ -69,8 +71,9 @@ func on_cast(u: Dictionary, cost: float) -> void:
 	if foes.is_empty():
 		return
 	var k := clampi(tier, 1, DMG_FLAT.size()) - 1
-	var from2: Vector2 = u["pos"]
 	for i in range(n):
+		## 一批飞弹从携带者身边排成一列竖着出手(间距 FAN_GAP, 至多 ±FAN_MAX), 不叠成一团(11-25 录像自查: 5 枚叠在同一点看着像一枚)
+		var from2: Vector2 = Vector2(u["pos"]) + Vector2(0.0, clampf((float(i) - float(n - 1) * 0.5) * FAN_GAP, -FAN_MAX, FAN_MAX))
 		var tgt: Dictionary = foes[battle._battle_rng.randi() % foes.size()]
 		fired += 1
 		var node = _vfx_launch(u, tgt, i, n)

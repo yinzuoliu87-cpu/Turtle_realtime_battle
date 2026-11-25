@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "magic-skel-rise 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 1.png",
+   "frame": {
+    "x": 64,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 2.png",
+   "frame": {
+    "x": 128,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 3.png",
+   "frame": {
+    "x": 192,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 4.png",
+   "frame": {
+    "x": 0,
+    "y": 63,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 5.png",
+   "frame": {
+    "x": 64,
+    "y": 63,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 6.png",
+   "frame": {
+    "x": 128,
+    "y": 63,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 7.png",
+   "frame": {
+    "x": 192,
+    "y": 63,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 8.png",
+   "frame": {
+    "x": 0,
+    "y": 126,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-rise 9.png",
+   "frame": {
+    "x": 64,
+    "y": 126,
+    "w": 64,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 63
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.2857142857142857
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-skel-rise.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 256,
+   "h": 189
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 32,
+   "y": 18
+  },
+  "frameTags": [
+   {
+    "name": "magic-skel-rise",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

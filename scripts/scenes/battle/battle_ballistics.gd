@@ -255,6 +255,14 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 			rs_bolt = true
 	if th_bolt or rs_bolt:
 		pass
+	elif src is Dictionary and (str(src.get("id", "")) == "_summon_skel_mage" or str(src.get("id", "")) == "_summon_skel_priest"):
+		## 123 亡者之书骷髅的远程普攻(11-25): 法师 = 紫色暗影弹带小骷髅头, 祭司 = 青色鬼火光(各自一张循环表取第 0 帧; pack_magic_art.py)
+		var _sk: bool = str(src["id"]) == "_summon_skel_mage"
+		p.texture = load("res://assets/sprites/vfx/magic-skelm-bolt.png" if _sk else "res://assets/sprites/vfx/magic-skelp-bolt.png")
+		p.hframes = 8
+		p.frame = 0
+		p.pixel_size = ((34.0 if _sk else 30.0) * battle.WS) / (30.0 if _sk else 26.0)
+		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	elif src is Dictionary and str(src.get("id", "")) == "gambler":   # 赌神: 甩旋转扑克牌(黑桃A)
 		p.texture = load("res://assets/sprites/vfx/gambler-card.png")
 		p.pixel_size = 0.9 / 54.0   # ~0.9m 高扑克牌

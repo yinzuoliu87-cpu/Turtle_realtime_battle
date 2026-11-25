@@ -1,0 +1,209 @@
+{
+ "frames": [
+  {
+   "filename": "magic-page-block 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 46
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-page-block 1.png",
+   "frame": {
+    "x": 51,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 46
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-page-block 2.png",
+   "frame": {
+    "x": 102,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 46
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-page-block 3.png",
+   "frame": {
+    "x": 0,
+    "y": 46,
+    "w": 51,
+    "h": 46
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 46
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-page-block 4.png",
+   "frame": {
+    "x": 51,
+    "y": 46,
+    "w": 51,
+    "h": 46
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 46
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-page-block 5.png",
+   "frame": {
+    "x": 102,
+    "y": 46,
+    "w": 51,
+    "h": 46
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 46
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-page-block 6.png",
+   "frame": {
+    "x": 0,
+    "y": 92,
+    "w": 51,
+    "h": 46
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 46
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 46
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-page-block.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 153,
+   "h": 138
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 23,
+   "y": 23
+  },
+  "frameTags": [
+   {
+    "name": "magic-page-block",
+    "from": 0,
+    "to": 6,
+    "direction": "forward"
+   }
+  ]
+ }
+}

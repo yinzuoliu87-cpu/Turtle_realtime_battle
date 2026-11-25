@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "magic-mirror-echo 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 1.png",
+   "frame": {
+    "x": 70,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 2.png",
+   "frame": {
+    "x": 140,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 3.png",
+   "frame": {
+    "x": 210,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 4.png",
+   "frame": {
+    "x": 0,
+    "y": 70,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 5.png",
+   "frame": {
+    "x": 70,
+    "y": 70,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 6.png",
+   "frame": {
+    "x": 140,
+    "y": 70,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 7.png",
+   "frame": {
+    "x": 210,
+    "y": 70,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 8.png",
+   "frame": {
+    "x": 0,
+    "y": 140,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 9.png",
+   "frame": {
+    "x": 70,
+    "y": 140,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 10.png",
+   "frame": {
+    "x": 140,
+    "y": 140,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-mirror-echo 11.png",
+   "frame": {
+    "x": 210,
+    "y": 140,
+    "w": 70,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 70,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 70,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-mirror-echo.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 280,
+   "h": 210
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 35,
+   "y": 35
+  },
+  "frameTags": [
+   {
+    "name": "magic-mirror-echo",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

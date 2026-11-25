@@ -265,7 +265,8 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 	if bool(s.get("hold", false)):
 		u["no_move"] = true; u["_edit_hold"] = true   # 原地不动(仍会打、会放技能): 演示台用(例: 地雷携带者站住等敌人踩雷)
 	u["maxHp"] = float(s.get("hp", u.get("maxHp", battle._edit_dummy_hp)))   # 血量: 左右都按 per-unit 存的(用户2026-07-24)
-	u["hp"] = u["maxHp"]
+	u["hp"] = u["maxHp"] * clampf(float(s.get("hp_pct", 1.0)), 0.01, 1.0)   # 演示台: 开局半血(看治疗类挂在谁身上; 11-25 魔法书)
+	if s.has("hp_pct"): u["_edit_hp_pct"] = float(s["hp_pct"])   # 存回摆位快照用(开打时按快照重建单位)
 	if not bool(s.get("killable", true)):
 		u["_review_dummy"] = true   # 无敌沙包(per-unit·左右都可)
 	if side == "left" and bool(s.get("fe", false)):   # 满龟能(per-unit)
@@ -312,6 +313,7 @@ func _edit_snapshot_setup() -> void:
 			"atk": float(u.get("_edit_atk", 0.0)),
 			"plain": bool(u.get("_edit_plain", false)),
 			"idle": bool(u.get("_edit_idle", false)),
+			"hp_pct": float(u.get("_edit_hp_pct", 1.0)),
 		})
 
 # ----------------------------------------------------------------------------
@@ -832,7 +834,7 @@ func _edit_save_setup() -> void:
 	var lds = {}
 	for s in battle._edit_paused_setup:
 		var pos: Vector2 = s.get("pos", Vector2())
-		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1)), "ghost_eq": str(s.get("ghost_eq", "")), "ai": bool(s.get("ai", false)), "fe": bool(s.get("fe", false)), "hold": bool(s.get("hold", false)), "atk": float(s.get("atk", 0.0)), "plain": bool(s.get("plain", false)), "idle": bool(s.get("idle", false))})
+		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1)), "ghost_eq": str(s.get("ghost_eq", "")), "ai": bool(s.get("ai", false)), "fe": bool(s.get("fe", false)), "hold": bool(s.get("hold", false)), "atk": float(s.get("atk", 0.0)), "plain": bool(s.get("plain", false)), "idle": bool(s.get("idle", false)), "hp_pct": float(s.get("hp_pct", 1.0))})
 		var _id = str(s.get("id", ""))
 		if GameState != null and GameState.loadouts.has(_id): lds[_id] = GameState.loadouts[_id]
 	var f = FileAccess.open(SETUP_PATH, FileAccess.WRITE)
@@ -882,6 +884,7 @@ func _edit_load_setup() -> void:
 			"atk": float(sd.get("atk", 0.0)),
 			"plain": bool(sd.get("plain", false)),
 			"idle": bool(sd.get("idle", false)),
+			"hp_pct": float(sd.get("hp_pct", 1.0)),   # 演示台: 开局血量比例(11-25)
 		}))
 	_edit_set_status("已恢复上次摆位 (%d 单位)" % battle._units.size())
 

@@ -46,7 +46,9 @@ pet_ids = {p["id"] for p in pets}
 # ★显式豁免: 训龟大师有普攻(站定扔石头)但它不是龟, 按设计就不在 pets.json 里。
 #   不豁免的话报告里会常驻一条"已知差异" —— 而常驻的已知差异会训练人【忽略整份报告】,
 #   下次真出问题也看不见。豁免要写清理由, 不能默默过滤。
-B_EXEMPT = {"__trainer__": "训龟大师(场外单位, 非龟, 设计如此)"}
+B_EXEMPT = {"__trainer__": "训龟大师(场外单位, 非龟, 设计如此)",
+            ## 2026-11-25 魔法书批: 123 亡者之书的两种远程骷髅(召唤物)普攻走同一张表(魔法伤害 · 系数住 EqMagicBatch), 不是龟
+            "_summon_skel_mage": "123 骷髅法师(召唤物)", "_summon_skel_priest": "123 骷髅祭司(召唤物)"}
 b_issue = []
 for bid in sorted(basic_ids):
     if bid not in pet_ids and bid not in B_EXEMPT:

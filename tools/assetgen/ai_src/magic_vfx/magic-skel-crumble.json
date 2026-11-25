@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "magic-skel-crumble 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 1.png",
+   "frame": {
+    "x": 54,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 2.png",
+   "frame": {
+    "x": 108,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 3.png",
+   "frame": {
+    "x": 162,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 4.png",
+   "frame": {
+    "x": 0,
+    "y": 91,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 5.png",
+   "frame": {
+    "x": 54,
+    "y": 91,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 6.png",
+   "frame": {
+    "x": 108,
+    "y": 91,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 7.png",
+   "frame": {
+    "x": 162,
+    "y": 91,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 8.png",
+   "frame": {
+    "x": 0,
+    "y": 182,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skel-crumble 9.png",
+   "frame": {
+    "x": 54,
+    "y": 182,
+    "w": 54,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.48148148148148145,
+    "y": 0.2967032967032967
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-skel-crumble.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 216,
+   "h": 273
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 26,
+   "y": 27
+  },
+  "frameTags": [
+   {
+    "name": "magic-skel-crumble",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

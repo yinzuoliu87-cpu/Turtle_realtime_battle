@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "magic-skel-wave 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  },
+  {
+   "filename": "magic-skel-wave 1.png",
+   "frame": {
+    "x": 60,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  },
+  {
+   "filename": "magic-skel-wave 2.png",
+   "frame": {
+    "x": 120,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  },
+  {
+   "filename": "magic-skel-wave 3.png",
+   "frame": {
+    "x": 0,
+    "y": 76,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  },
+  {
+   "filename": "magic-skel-wave 4.png",
+   "frame": {
+    "x": 60,
+    "y": 76,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  },
+  {
+   "filename": "magic-skel-wave 5.png",
+   "frame": {
+    "x": 120,
+    "y": 76,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  },
+  {
+   "filename": "magic-skel-wave 6.png",
+   "frame": {
+    "x": 0,
+    "y": 152,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  },
+  {
+   "filename": "magic-skel-wave 7.png",
+   "frame": {
+    "x": 60,
+    "y": 152,
+    "w": 60,
+    "h": 76
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 76
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 76
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.6052631578947368
+   },
+   "duration": 100
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-skel-wave.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 180,
+   "h": 228
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 30,
+   "y": 46
+  },
+  "frameTags": [
+   {
+    "name": "magic-skel-wave",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

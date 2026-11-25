@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "magic-skelp-bolt 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skelp-bolt 1.png",
+   "frame": {
+    "x": 33,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skelp-bolt 2.png",
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skelp-bolt 3.png",
+   "frame": {
+    "x": 0,
+    "y": 33,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skelp-bolt 4.png",
+   "frame": {
+    "x": 33,
+    "y": 33,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skelp-bolt 5.png",
+   "frame": {
+    "x": 66,
+    "y": 33,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skelp-bolt 6.png",
+   "frame": {
+    "x": 0,
+    "y": 66,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-skelp-bolt 7.png",
+   "frame": {
+    "x": 33,
+    "y": 66,
+    "w": 33,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.48484848484848486
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-skelp-bolt.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 99,
+   "h": 99
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 16,
+   "y": 16
+  },
+  "frameTags": [
+   {
+    "name": "magic-skelp-bolt",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

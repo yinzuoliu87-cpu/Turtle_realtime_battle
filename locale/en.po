@@ -8242,3 +8242,123 @@ msgstr "Blood Pact %d / %d"
 
 msgid "血契 %d / %d（已满）"
 msgstr "Blood Pact %d / %d (full)"
+
+msgid "学徒笔记"
+msgstr "Apprentice's Notes"
+
+msgid "每第 {C:EqMagicBatch.NOTE_EVERY} 次攻击额外射出一枚追踪魔法飞弹，造成（{C:EqMagicBatch.NOTE_FLAT}+{C:EqMagicBatch.NOTE_ATK%}% 攻击力）魔法伤害。"
+msgstr "Every {C:EqMagicBatch.NOTE_EVERY}rd attack fires an extra homing magic missile that deals ({C:EqMagicBatch.NOTE_FLAT} + {C:EqMagicBatch.NOTE_ATK%}% Attack) magic damage."
+
+msgid "每第三次攻击额外射出一枚追踪魔法飞弹。"
+msgstr "Every third attack fires an extra homing magic missile."
+
+msgid "羊皮咒卷"
+msgstr "Parchment Scroll"
+
+msgid "释放技能时获得 {C:EqMagicBatch.SCROLL_SHIELD} 点护盾，持续 {C:EqMagicBatch.SCROLL_SEC} 秒。"
+msgstr "Casting an ability grants a {C:EqMagicBatch.SCROLL_SHIELD} Shield for {C:EqMagicBatch.SCROLL_SEC} seconds."
+
+msgid "释放技能时获得护盾。"
+msgstr "Casting an ability grants a Shield."
+
+msgid "烈焰法典"
+msgstr "Tome of Flames"
+
+msgid "释放技能时朝最近的敌人掷出一颗火球，造成（{C:EqMagicBatch.FIRE_FLAT}+{C:EqMagicBatch.FIRE_ATK%}% 攻击力）魔法伤害并施加灼烧，层数等于这次技能消耗龟能的 {C:EqMagicBatch.FIRE_BURN_PER_EN%}%。"
+msgstr "Casting an ability hurls a fireball at the nearest enemy, dealing ({C:EqMagicBatch.FIRE_FLAT} + {C:EqMagicBatch.FIRE_ATK%}% Attack) magic damage and applying Burn stacks equal to {C:EqMagicBatch.FIRE_BURN_PER_EN%}% of the energy spent on that ability."
+
+msgid "释放技能时朝最近的敌人掷出火球，消耗的龟能越多灼烧越多。"
+msgstr "Casting an ability hurls a fireball at the nearest enemy; the more energy spent, the more Burn."
+
+msgid "霜语魔典"
+msgstr "Frostwhisper Grimoire"
+
+msgid "释放技能时对周围的敌人释放冰霜新星，造成（{C:EqMagicBatch.FROST_FLAT}+{C:EqMagicBatch.FROST_ATK%}% 攻击力）魔法伤害并施加冰寒，使其移动速度降低 {C:EqMagicBatch.FROST_MOVE_DOWN%}%、攻击速度降低 {C:EqMagicBatch.FROST_ASPD_DOWN%}%，持续时间等于这次技能消耗的龟能 × {C:EqMagicBatch.FROST_SEC_PER_EN} 秒。"
+msgstr "Casting an ability releases a frost nova around you, dealing ({C:EqMagicBatch.FROST_FLAT} + {C:EqMagicBatch.FROST_ATK%}% Attack) magic damage and applying Chill, reducing Move Speed by {C:EqMagicBatch.FROST_MOVE_DOWN%}% and Attack Speed by {C:EqMagicBatch.FROST_ASPD_DOWN%}% for (energy spent on that ability × {C:EqMagicBatch.FROST_SEC_PER_EN}) seconds."
+
+msgid "释放技能时冻住周围的敌人，消耗的龟能越多冰寒越久。"
+msgstr "Casting an ability chills nearby enemies; the more energy spent, the longer the Chill."
+
+msgid "风暴之书"
+msgstr "Book of Storms"
+
+msgid "每 {C:EqMagicBatch.STORM_IV} 秒对 {C:EqMagicBatch.STORM_N} 名随机敌人各降下一道闪电，造成（{C:EqMagicBatch.STORM_FLAT}+{C:EqMagicBatch.STORM_ATK%}% 攻击力）魔法伤害。"
+msgstr "Every {C:EqMagicBatch.STORM_IV} seconds, lightning strikes {C:EqMagicBatch.STORM_N} random enemies, each taking ({C:EqMagicBatch.STORM_FLAT} + {C:EqMagicBatch.STORM_ATK%}% Attack) magic damage."
+
+msgid "定时对随机敌人降下闪电。"
+msgstr "Periodically calls lightning down on random enemies."
+
+msgid "治愈圣典"
+msgstr "Codex of Mending"
+
+msgid "释放技能时为生命值比例最低的友军施加持续回复，每秒回复（{C:EqMagicBatch.HOLY_FLAT}+{C:EqMagicBatch.HOLY_ATK%}% 攻击力）生命值，持续时间等于这次技能消耗的龟能 × {C:EqMagicBatch.HOLY_SEC_PER_EN} 秒。"
+msgstr "Casting an ability grants the ally with the lowest Health percentage a heal over time that restores ({C:EqMagicBatch.HOLY_FLAT} + {C:EqMagicBatch.HOLY_ATK%}% Attack) Health per second for (energy spent on that ability × {C:EqMagicBatch.HOLY_SEC_PER_EN}) seconds."
+
+msgid "释放技能时为生命值比例最低的友军持续回复生命值。"
+msgstr "Casting an ability heals the ally with the lowest Health percentage over time."
+
+msgid "亡者之书"
+msgstr "Book of the Dead"
+
+msgid "释放技能后随机召唤一具骷髅战士、骷髅法师或骷髅祭司，存在时间等于这次技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒。骷髅龟能满 {C:EqMagicBatch.SKEL_EN_MAX} 点时释放技能。骷髅战士：{C:EqMagicBatch.SKW_HP} 生命值、{C:EqMagicBatch.SKW_ATK} 攻击力、{C:EqMagicBatch.SKW_RES} 护甲和魔抗，近战攻击。【骸骨狂怒】{C:EqMagicBatch.SKW_RAGE_SEC} 秒内受到的伤害降低 {C:EqMagicBatch.SKW_DR%}%，攻击额外造成 {C:EqMagicBatch.SKW_EXTRA%}% 攻击力物理伤害，并获得 {C:EqMagicBatch.SKW_LS%}% 生命偷取。骷髅法师：{C:EqMagicBatch.SKM_HP} 生命值、{C:EqMagicBatch.SKM_ATK} 攻击力、{C:EqMagicBatch.SKM_RES} 护甲和魔抗，远程攻击造成 {C:EqMagicBatch.SKM_BASIC%}% 攻击力魔法伤害。【骨火爆裂】对目标周围的敌人造成 {C:EqMagicBatch.SKM_BLAST_ATK%}% 攻击力魔法伤害。骷髅祭司：{C:EqMagicBatch.SKP_HP} 生命值、{C:EqMagicBatch.SKP_ATK} 攻击力、{C:EqMagicBatch.SKP_RES} 护甲和魔抗，远程攻击造成 {C:EqMagicBatch.SKP_BASIC%}% 攻击力魔法伤害。【亡灵浪潮】推出一道缓慢前进的浪潮，对途经的敌人造成 {C:EqMagicBatch.WAVE_DMG} 物理伤害、击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%}%，持续 {C:EqMagicBatch.WAVE_MR_SEC} 秒，为途经的友军回复 {C:EqMagicBatch.WAVE_HEAL} 生命值。"
+msgstr "Casting an ability summons a random Skeleton Warrior, Skeleton Mage or Skeleton Priest that lasts for (energy spent on that ability × {C:EqMagicBatch.SKEL_SEC_PER_EN}) seconds. Skeletons cast their ability at {C:EqMagicBatch.SKEL_EN_MAX} energy. Skeleton Warrior: {C:EqMagicBatch.SKW_HP} Health, {C:EqMagicBatch.SKW_ATK} Attack, {C:EqMagicBatch.SKW_RES} Armor and Magic Resist, melee attacks. [Bone Fury] For {C:EqMagicBatch.SKW_RAGE_SEC} seconds, takes {C:EqMagicBatch.SKW_DR%}% less damage, its attacks deal an extra {C:EqMagicBatch.SKW_EXTRA%}% Attack physical damage and it gains {C:EqMagicBatch.SKW_LS%}% Life Steal. Skeleton Mage: {C:EqMagicBatch.SKM_HP} Health, {C:EqMagicBatch.SKM_ATK} Attack, {C:EqMagicBatch.SKM_RES} Armor and Magic Resist, ranged attacks deal {C:EqMagicBatch.SKM_BASIC%}% Attack magic damage. [Bonefire Burst] Deals {C:EqMagicBatch.SKM_BLAST_ATK%}% Attack magic damage to enemies around its target. Skeleton Priest: {C:EqMagicBatch.SKP_HP} Health, {C:EqMagicBatch.SKP_ATK} Attack, {C:EqMagicBatch.SKP_RES} Armor and Magic Resist, ranged attacks deal {C:EqMagicBatch.SKP_BASIC%}% Attack magic damage. [Wave of the Dead] Pushes a slow wave forward that deals {C:EqMagicBatch.WAVE_DMG} physical damage to enemies it passes, knocks them up and stuns them for {C:EqMagicBatch.WAVE_STUN} seconds and reduces their Magic Resist by {C:EqMagicBatch.WAVE_MR_SHRED%}% for {C:EqMagicBatch.WAVE_MR_SEC} seconds, and restores {C:EqMagicBatch.WAVE_HEAL} Health to allies it passes."
+
+msgid "释放技能后召唤一具随机的骷髅战士、法师或祭司。"
+msgstr "Casting an ability summons a random skeleton warrior, mage or priest."
+
+msgid "镜像魔典"
+msgstr "Mirror Grimoire"
+
+msgid "每个战场第一次释放技能和充能条存满后的那次技能，都会再释放一次。"
+msgstr "Your first ability on each battlefield, and the one after the charge bar fills, are cast twice."
+
+msgid "禁咒全书"
+msgstr "Forbidden Codex"
+
+msgid "浮空魔典"
+msgstr "Floating Tome"
+
+msgid "释放技能后获得 {C:EqMagicBatch.TOME_HP} 点最大生命值并回复等量生命值，持续时间等于这次技能消耗的龟能 × {C:EqMagicBatch.TOME_SEC_PER_EN} 秒。近战单位携带时，{C:EqMagicBatch.PAGE_N} 张书页环绕自身，每 {C:EqMagicBatch.PAGE_IV} 秒对碰到的敌人造成（{C:EqMagicBatch.PAGE_FLAT}+{C:EqMagicBatch.PAGE_ATK%}% 攻击力）魔法伤害，每碰到一名敌人获得 {C:EqMagicBatch.PAGE_SHIELD} 点护盾，持续 {C:EqMagicBatch.PAGE_SHIELD_SEC} 秒，至多 {C:EqMagicBatch.PAGE_SHIELD_CAP} 点。远程单位携带时，身后悬浮至多 {C:EqMagicBatch.PAGE_N} 张书页，每 {C:EqMagicBatch.PAGE_REGEN} 秒补充一张。受到不低于自身 {C:EqMagicBatch.PAGE_BLOCK_PCT%}% 最大生命值的单次攻击或技能伤害时，消耗一张书页抵挡至多 {C:EqMagicBatch.PAGE_BLOCK_MAX} 点伤害，持续伤害不会触发。"
+msgstr "Casting an ability grants {C:EqMagicBatch.TOME_HP} maximum Health and restores the same amount of Health for (energy spent on that ability × {C:EqMagicBatch.TOME_SEC_PER_EN}) seconds. On a melee carrier, {C:EqMagicBatch.PAGE_N} pages orbit you, dealing ({C:EqMagicBatch.PAGE_FLAT} + {C:EqMagicBatch.PAGE_ATK%}% Attack) magic damage to enemies they touch every {C:EqMagicBatch.PAGE_IV} seconds and granting a {C:EqMagicBatch.PAGE_SHIELD} Shield for {C:EqMagicBatch.PAGE_SHIELD_SEC} seconds for each enemy touched, up to {C:EqMagicBatch.PAGE_SHIELD_CAP}. On a ranged carrier, up to {C:EqMagicBatch.PAGE_N} pages float behind you, regrowing one every {C:EqMagicBatch.PAGE_REGEN} seconds. When a single attack or ability deals damage of at least {C:EqMagicBatch.PAGE_BLOCK_PCT%}% of your maximum Health, a page blocks up to {C:EqMagicBatch.PAGE_BLOCK_MAX} of it. Damage over time does not trigger it."
+
+msgid "释放技能后提高最大生命值。近战时书页环绕伤敌并给护盾，远程时书页替自身挡下大额伤害。"
+msgstr "Casting an ability raises maximum Health. Melee: orbiting pages cut enemies and grant Shields. Ranged: pages block big hits."
+
+msgid "魔法书"
+msgstr "Spellbook"
+
+msgid "魔法书·飞弹"
+msgstr "Spellbooks · Magic Missiles"
+
+msgid "骷髅战士"
+msgstr "Skeleton Warrior"
+
+msgid "骷髅法师"
+msgstr "Skeleton Mage"
+
+msgid "骷髅祭司"
+msgstr "Skeleton Priest"
+
+msgid "魔法书提高携带者造成的伤害。我方任意单位（包括召唤物）每释放一次技能，按这次消耗的龟能召唤一批魔法飞弹，飞向随机敌人。"
+msgstr "Spellbooks grant their carriers Damage Amp. Whenever any allied unit (summons included) casts an ability, it conjures magic missiles based on the energy spent, which fly at random enemies."
+
+msgid "每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害"
+msgstr "Each Spellbook grants its carrier +3% Damage Amp · [Magic Missiles] Whenever an allied unit casts an ability, it conjures 1 magic missile per {C:MagicbookSynergySystem.PER_ENERGY[0]} energy spent (at least 1). Each flies at a random enemy and deals ({C:MagicbookSynergySystem.DMG_FLAT[0]} + {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% of the target's maximum Health) magic damage"
+
+msgid "每个战场第一次释放技能后，立即再释放一次。每次释放技能将消耗的龟能存入充能条，存满 {C:EqMagicBatch.MIRROR_THR} 点后，下一次释放技能后立即再释放一次，充能条从零开始重新积累。再释放的那一次同样触发释放技能时的效果，但不存入充能条。"
+msgstr "The first time you cast an ability on each battlefield, cast it again immediately. Each cast stores the energy spent in a charge bar; when it reaches {C:EqMagicBatch.MIRROR_THR}, it empties and your next ability is cast again immediately. The repeated cast also counts as casting an ability, but does not add to the charge bar."
+
+msgid "每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）"
+msgstr "Each Spellbook grants its carrier +6% Damage Amp · [Magic Missiles] now 1 missile per {C:MagicbookSynergySystem.PER_ENERGY[1]} energy, damage increased to ({C:MagicbookSynergySystem.DMG_FLAT[1]} + {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% of the target's maximum Health)"
+
+msgid "每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）"
+msgstr "Each Spellbook grants its carrier +10% Damage Amp · [Magic Missiles] now 1 missile per {C:MagicbookSynergySystem.PER_ENERGY[2]} energy, damage increased to ({C:MagicbookSynergySystem.DMG_FLAT[2]} + {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% of the target's maximum Health)"
+
+msgid "技能的龟能消耗减少 {C:EqMagicBatch.FORB_CUT} 点。释放技能后，下一次攻击变为禁咒弹，造成（{C:EqMagicBatch.FORB_FLAT}+{C:EqMagicBatch.FORB_ATK%}% 攻击力+目标 {C:EqMagicBatch.FORB_MAXHP%}% 最大生命值）魔法伤害，并对目标周围的敌人造成其 {C:EqMagicBatch.FORB_SPLASH%}% 的伤害。"
+msgstr "Your abilities cost {C:EqMagicBatch.FORB_CUT} less energy. After casting an ability, your next attack becomes a forbidden bolt that deals ({C:EqMagicBatch.FORB_FLAT} + {C:EqMagicBatch.FORB_ATK%}% Attack + {C:EqMagicBatch.FORB_MAXHP%}% of the target's maximum Health) magic damage, and deals {C:EqMagicBatch.FORB_SPLASH%}% of that damage to enemies around the target."
+
+msgid "技能更快就绪，释放技能后的下一次攻击变为禁咒弹。"
+msgstr "Abilities are ready sooner, and the attack after each ability becomes a forbidden bolt."
+
+msgid "格挡 %d"
+msgstr "Blocked %d"

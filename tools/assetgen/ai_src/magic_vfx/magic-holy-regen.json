@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "magic-holy-regen 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 1.png",
+   "frame": {
+    "x": 80,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 2.png",
+   "frame": {
+    "x": 160,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 3.png",
+   "frame": {
+    "x": 240,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 4.png",
+   "frame": {
+    "x": 0,
+    "y": 112,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 5.png",
+   "frame": {
+    "x": 80,
+    "y": 112,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 6.png",
+   "frame": {
+    "x": 160,
+    "y": 112,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 7.png",
+   "frame": {
+    "x": 240,
+    "y": 112,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 8.png",
+   "frame": {
+    "x": 0,
+    "y": 224,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 9.png",
+   "frame": {
+    "x": 80,
+    "y": 224,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 10.png",
+   "frame": {
+    "x": 160,
+    "y": 224,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  },
+  {
+   "filename": "magic-holy-regen 11.png",
+   "frame": {
+    "x": 240,
+    "y": 224,
+    "w": 80,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 112
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.8214285714285714
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-holy-regen.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 320,
+   "h": 336
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 40,
+   "y": 92
+  },
+  "frameTags": [
+   {
+    "name": "magic-holy-regen",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

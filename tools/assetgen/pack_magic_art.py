@@ -10,11 +10,14 @@
     自查后弃用的帧(如实): 战士横斩第二段开头两格剑弹回竖直(kwa_b_1/2) · 横斩第二段第 3 格剑竖回脸前(kwa_b_3, 轨迹倒退) · 战士狂怒第 2 格全身被刷成绿色(kwr_up_2) ·
     法师普攻第一版三格大块纯白拖影(kma_cast_*, 重生成为 kma2_cast_*, 仍有一格拖影 kma2_cast_2 不取) · 法师举杖第一版三格白云(kms_up_*, 重生成为 kms2_up_*)。
     祭司甩灯蓄力三格头顶多画了一个青色法阵圈(与身体不相连的独立块) ⇒ DROP_FLOATERS 去掉「整块都在 y ≤ 40 的非身体块」。
+  · 特效: PixelLab 特效工作台(vfx_workbench)的预设改配色 / 改参数后导出的网格表 + 逐帧坐标 json, 在 ai_src/magic_vfx/(导出 id 记在 exports.txt);
+    一次性的去掉末尾全透明帧, 循环的原样保留。打印出来的表行(帧宽 / 帧高 / 内容直径 / 锚点)抄进 MagicEqVfx.MSHEETS。
+  · 126 书页: create_image_pro_flash 32×32(无锚), ai_src/magic/page.png → vfx/magic-page.png
 本脚本只做拷贝 / 拼接 / 去碎块, 重跑逐字节相同。
 
     python tools/assetgen/pack_magic_art.py
 """
-import os, shutil
+import json, os, shutil, sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -54,6 +57,16 @@ SKEL_SEQ = {
 SKEL_HIT = {"eq-skelw-attack": 8, "eq-skelm-attack": 6, "eq-skelp-attack": 7,
             "eq-skelw-skill": 2, "eq-skelm-skill": 3, "eq-skelp-skill": 3}
 DROP_FLOATERS = {"kpa_wind_1", "kpa_wind_2", "kpa_wind_3"}
+## 每种骷髅所有帧同一个下移量(按待机原画最低一行贴到帧底, 同暗影忍者), 换表不跳
+FOOT_REF = {"eq-skelw": "skw_0", "eq-skelm": "skm_0", "eq-skelp": "skp_0b"}
+
+AIV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "magic_vfx")
+VFX_SHEETS = ["magic-missile-orb", "magic-missile-hit", "magic-note-bolt", "magic-note-hit", "magic-fireball", "magic-fireball-hit",
+              "magic-frost-nova", "magic-storm-bolt", "magic-holy-regen", "magic-scroll-shield", "magic-skel-rise", "magic-skel-crumble",
+              "magic-skel-blast", "magic-skel-wave", "magic-wave-hit", "magic-wave-heal", "magic-mirror-echo", "magic-forbidden-bolt",
+              "magic-forbidden-blast", "magic-forbidden-ready", "magic-page-cut", "magic-page-block", "magic-tome-hp", "magic-skelm-bolt", "magic-skelp-bolt"]
+VFX_LOOPS = {"magic-missile-orb", "magic-note-bolt", "magic-fireball", "magic-holy-regen", "magic-scroll-shield", "magic-skel-wave",
+             "magic-mirror-echo", "magic-forbidden-bolt", "magic-forbidden-ready", "magic-skelm-bolt", "magic-skelp-bolt"}
 
 
 def _drop_floaters(im, ymax=40):
@@ -87,15 +100,39 @@ def _drop_floaters(im, ymax=40):
     return im
 
 
-def _strip(names):
+def _strip(names, dy=0):
     out = Image.new("RGBA", (FW * len(names), FW), (0, 0, 0, 0))
     for i, n in enumerate(names):
         im = Image.open(os.path.join(AI, n + ".png")).convert("RGBA")
         assert im.size == (FW, FW), (n, im.size)
         if n in DROP_FLOATERS:
             im = _drop_floaters(im)
-        out.paste(im, (i * FW, 0))
+        out.paste(im, (i * FW, dy))
     return out
+
+
+def _vfx(name):
+    sheet = Image.open(os.path.join(AIV, name + ".png")).convert("RGBA")
+    meta = json.load(open(os.path.join(AIV, name + ".json"), encoding="utf-8"))
+    frames = []
+    for f in meta["frames"]:
+        r = f["frame"]
+        frames.append(sheet.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])))
+    if name not in VFX_LOOPS:
+        while len(frames) > 1 and frames[-1].getbbox() is None:
+            frames.pop()
+    w, h = frames[0].size
+    out = Image.new("RGBA", (w * len(frames), h), (0, 0, 0, 0))
+    diam = 0
+    for i, f in enumerate(frames):
+        out.paste(f, (i * w, 0))
+        bb = f.getbbox()
+        if bb:
+            diam = max(diam, bb[2] - bb[0], bb[3] - bb[1])
+    out.save(os.path.join(VFX, name + ".png"), optimize=False)
+    an = meta["meta"]["anchor"]
+    return '\t"%s": ["vfx/%s.png", %d, %d, %.1f, %d, %d],   # %d 帧%s' % (
+        name[6:], name, w, h, float(diam), int(an["x"]), int(an["y"]), len(frames), " · 循环" if name in VFX_LOOPS else "")
 
 
 def main():
@@ -104,8 +141,12 @@ def main():
     for src, dst in TAG.items():
         shutil.copyfile(os.path.join(AI, src + ".png"), os.path.join(TAGS, dst + ".png"))
     for dst, names in SKEL_SEQ.items():
-        _strip(names).save(os.path.join(VFX, dst + ".png"), optimize=False)
-    print("图标 %d 张 + 标签 %d 张 + 骷髅帧条 %d 条" % (len(ICONS), len(TAG), len(SKEL_SEQ)))
+        ref = Image.open(os.path.join(AI, FOOT_REF[dst[:8]] + ".png")).convert("RGBA")
+        _strip(names, FW - ref.getbbox()[3]).save(os.path.join(VFX, dst + ".png"), optimize=False)
+    rows = [_vfx(n) for n in VFX_SHEETS]
+    Image.open(os.path.join(AI, "page.png")).convert("RGBA").save(os.path.join(VFX, "magic-page.png"), optimize=False)
+    print("图标 %d 张 + 标签 %d 张 + 骷髅帧条 %d 条 + 特效 %d 张 + 书页 1 张" % (len(ICONS), len(TAG), len(SKEL_SEQ), len(rows)))
+    print("\n".join(rows))
 
 
 if __name__ == "__main__":

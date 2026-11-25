@@ -1,0 +1,209 @@
+{
+ "frames": [
+  {
+   "filename": "magic-wave-hit 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5106382978723404
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-wave-hit 1.png",
+   "frame": {
+    "x": 51,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5106382978723404
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-wave-hit 2.png",
+   "frame": {
+    "x": 102,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5106382978723404
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-wave-hit 3.png",
+   "frame": {
+    "x": 0,
+    "y": 47,
+    "w": 51,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5106382978723404
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-wave-hit 4.png",
+   "frame": {
+    "x": 51,
+    "y": 47,
+    "w": 51,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5106382978723404
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-wave-hit 5.png",
+   "frame": {
+    "x": 102,
+    "y": 47,
+    "w": 51,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5106382978723404
+   },
+   "duration": 63
+  },
+  {
+   "filename": "magic-wave-hit 6.png",
+   "frame": {
+    "x": 0,
+    "y": 94,
+    "w": 51,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 51,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 51,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.45098039215686275,
+    "y": 0.5106382978723404
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "magic-wave-hit.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 153,
+   "h": 141
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 23,
+   "y": 24
+  },
+  "frameTags": [
+   {
+    "name": "magic-wave-hit",
+    "from": 0,
+    "to": 6,
+    "direction": "forward"
+   }
+  ]
+ }
+}

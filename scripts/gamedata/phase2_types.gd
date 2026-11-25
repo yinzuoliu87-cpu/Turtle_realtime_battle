@@ -221,8 +221,8 @@ const TIER_DESCS := {
 	],
 	"魔法书": [
 		"每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害",
-		"每件魔法书为携带者提供 +6% 增伤 · 【飞弹】改为每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）",
-		"每件魔法书为携带者提供 +10% 增伤 · 【飞弹】改为每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）",
+		"每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）",
+		"每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）",
 	],
 	"仪式": [
 		"【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%",
