@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 7,
- "fingerprint": "6168d2028d21e627c836be15b0750ede144b259796843c221f9e45d316a809b5",
+ "fingerprint": "1f2a32446a340abd7a8c78c8caf3d83ce7b5fcc34fe8b5e2ce0f1b632bfb725d",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -30,7 +30,7 @@
   },
   {
    "def": "28d5c2b94dc9943c",
-   "hash": "77d975b8b36502f95a3e009514c0187b4671f06d7f78e9077f3ffd9127ad467d",
+   "hash": "df86cba4e04d418fba22345246e1b7ef4514bddc916d221ce17773df23c51ec5",
    "tag": "⑥ 炸弹顶档(导弹) + 武士刀小将 vs 盾/剑"
   },
   {
