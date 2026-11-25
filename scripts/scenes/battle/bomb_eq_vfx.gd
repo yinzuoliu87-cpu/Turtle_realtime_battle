@@ -24,6 +24,7 @@ const SHEETS := {
 	"drop": ["vfx/missile-drop.png", 72, 72, 40.0, 36, 60],             # 竖直下落的导弹(锚点 = 弹头)
 	"laser": ["vfx/missile-laser.png", 24, 256, 24.0, 12, 256],         # 天降瞄准激光(show_locator 自己摆, 不走 _anim)
 	"reticle": ["vfx/missile-reticle.png", 128, 128, 120.0, 64, 64],    # 地面靶心(同上)
+	"zone": ["vfx/missile-zone.png", 256, 256, 256.0, 128, 128],        # 打击范围 = 整座岛(同上, _board_zone 自己摆)
 	"crackle": ["vfx/bomb-tube-crackle.png", 83, 92, 77.0, 41, 46, 2],   # 第 7 项 = 跳过开头几帧(前两帧是一团白闪, 放大后像个白球盖住单位)
 	"boom": ["vfx/bomb-barrel-boom.png", 56, 60, 50.0, 30, 37],
 	"muzzle": ["vfx/bomb-cannon-muzzle.png", 35, 20, 28.0, 3, 10],
@@ -208,9 +209,8 @@ func _ring(pos: Vector2, radius: float, col: Color, life: float) -> void:
 ##         ② 最后 EDGE_WARN 秒整座岛的边缘亮一圈红色警示线(打击范围 = 整个棋盘);
 ##         ③ 导弹顺着激光砸下 → 全屏白闪 + 中心大爆炸 → 一圈圈爆炸从中心往外推、CARPET_SEC 秒铺满整座岛 → 每个挨炸的敌人身上再炸一下。
 ##   贴图: missile-laser / missile-reticle(tools/assetgen/build_missile_marks.py 脚本画) · bomb-missile-carpet(特效工作台)。
-const EDGE_WARN := 1.5
-const CARPET_SEC := 0.6
-const CARPET_RINGS := 5
+const CARPET_STEP := 70.0      # 整座岛按这个间距(码)铺爆炸
+const CARPET_JITTER := 0.15     # 同一时刻炸开, 各点只差这么一点(看着是一起炸, 不是一个个)
 
 
 func show_locator(_side: String, fire_at: float) -> void:
@@ -247,27 +247,29 @@ func show_locator(_side: String, fire_at: float) -> void:
 		r.pixel_size = (180.0 * float(battle.WS)) / float(rt.get_height())
 		battle._world.add_child(r)
 		_fx.append({"node": r, "t": 0.0, "life": fire_at, "kind": "reticle", "ps": r.pixel_size, "no_shrink": true})
-	## 最后 EDGE_WARN 秒: 整座岛的边缘亮一圈红色警示线
-	_later(maxf(0.0, fire_at - EDGE_WARN), func() -> void: _edge_warn(EDGE_WARN))
+	## ★打击范围 = 整个棋盘(用户 11-25「范围是整个棋盘，我再跟你说一遍」): 开打就把整座岛铺满红色斜纹危险区, 越接近落弹越亮、闪得越快
+	_board_zone(fire_at)
 
 
-func _edge_warn(life: float) -> void:
+func _board_zone(life: float) -> void:
 	if not _ok():
 		return
-	var tx: Texture2D = VfxTex._make_thin_ring_tex()
+	var tx: Texture2D = _load("zone")
+	if tx == null:
+		return
 	var s := Sprite3D.new()
 	s.texture = tx
 	s.shaded = false
 	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	s.axis = Vector3.AXIS_Y
-	s.modulate = COL_LOCATOR
-	s.position = battle._world_pos(battle._arena_center, 0.05)
+	s.position = battle._world_pos(battle._arena_center, 0.04)
 	var a: Vector2 = battle.ARENA.size * 0.5
-	s.pixel_size = (a.x * 2.0 * float(battle.WS)) / float(tx.get_height())
-	s.scale = Vector3(1.0, 1.0, a.y / a.x)    # 岛是椭圆(ArenaShape N=2): 竖向按半轴比压扁
+	s.pixel_size = (a.x * 2.0 * float(battle.WS)) / float(tx.get_width())
+	s.scale = Vector3(1.0, 1.0, a.y / a.x)    # 岛是椭圆(ArenaShape N=2): 按两条半轴拉
 	battle._world.add_child(s)
-	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "edge_warn"})
+	_fx.append({"node": s, "t": 0.0, "life": life, "kind": "board_zone"})
 
 
 ## 导弹顺着激光竖直落下(提前 MISSILE_LEAD 秒开播, 弹头砸地那一刻 = 结算): 从 DROP_H 米高处加速落到中心
@@ -282,7 +284,7 @@ func missile_launch(_side: String) -> void:
 		f["at"] = battle._arena_center
 
 
-## 砸地那一刻: 全屏白闪 → 中心大爆炸 → 一圈圈往外推铺满整座岛 → 每个挨炸的敌人身上再炸一下
+## 砸地那一刻: 全屏白闪 → 整座岛同时炸成一片火海(不是从中心往外推: 用户「范围是整个棋盘」) → 每个挨炸的敌人身上再炸一下
 func missile_impact(side: String) -> void:
 	if not _ok():
 		return
@@ -290,15 +292,21 @@ func missile_impact(side: String) -> void:
 	if battle.has_method("_screen_flash_light"):
 		battle._screen_flash_light()
 	_anim("carpet", c, 380.0, 1.0, 0.02, false, false, Color.WHITE, "ground")
-	var a: Vector2 = battle.ARENA.size * 0.5 * 0.9
-	for k in range(1, CARPET_RINGS + 1):
-		var f: float = float(k) / float(CARPET_RINGS)
-		var n: int = 4 + 4 * k
-		for i in range(n):
-			var ang: float = TAU * (float(i) + 0.5 * float(k % 2)) / float(n)
-			var p: Vector2 = c + Vector2(cos(ang) * a.x * f, sin(ang) * a.y * f)
-			var sz: float = 150.0 - 30.0 * f + 20.0 * float((i * 7 + k * 3) % 3) / 2.0
-			_later(f * CARPET_SEC, func() -> void: _anim("carpet", p, sz, 1.0, 0.02, false, false, Color.WHITE, "ground"))
+	var a: Vector2 = battle.ARENA.size * 0.5
+	var n := 0
+	var y := -a.y
+	while y <= a.y:
+		var x := -a.x
+		var row := int(round((y + a.y) / (CARPET_STEP * 0.8)))
+		while x <= a.x:
+			var o := Vector2(x + (CARPET_STEP * 0.5 if row % 2 == 1 else 0.0), y)
+			if (o.x * o.x) / (a.x * a.x) + (o.y * o.y) / (a.y * a.y) <= 1.0:   # 整座岛(椭圆)里每个格点都炸
+				var p: Vector2 = c + o
+				var sz: float = 120.0 + 30.0 * float((n * 7) % 3) / 2.0
+				_later(CARPET_JITTER * float((n * 5) % 7) / 6.0, func() -> void: _anim("carpet", p, sz, 1.0, 0.02, false, false, Color.WHITE, "ground"))
+				n += 1
+			x += CARPET_STEP
+		y += CARPET_STEP * 0.8
 	for u in battle._units:
 		if u is Dictionary and u.get("alive", false) and str(u.get("side", "")) != side and not bool(u.get("_isEgg", false)):
 			var uu: Dictionary = u
@@ -803,8 +811,9 @@ func tick(delta: float) -> void:
 				## 加速下落(h = H × (1 - q²)), 帧循环
 				(n as Node3D).position = battle._world_pos(Vector2(f["at"]), DROP_H * (1.0 - q * q))
 				(n as Sprite3D).frame = int(float(f["t"]) * 16.0) % int(f["nf"])
-			"edge_warn":
-				(n as Sprite3D).modulate.a = 0.35 + 0.65 * absf(sin(float(f["t"]) * 14.0))
+			"board_zone":
+				## 开头淡、越接近落弹越亮, 闪烁从慢到快
+				(n as Sprite3D).modulate.a = (0.35 + 0.65 * q) * (0.6 + 0.4 * absf(sin(float(f["t"]) * (2.0 + 12.0 * q))))
 			"arc":
 				var a: Vector2 = f["from"]
 				var b: Vector2 = f["to"]

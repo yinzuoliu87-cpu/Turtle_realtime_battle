@@ -13,6 +13,8 @@
     第 3~6 帧的弹体, 按弹体主轴(实测 -60°, 即往右上斜)逆时针转 30° 摆成竖直、弹头朝下, 最近邻采样(不糊);
     用户 11-25「它不是指向天空，然后天空落下一道这个红线吗？」⇒ 导弹顺着竖直的激光落下, 不再从右上斜着飞进来。
     依赖 pack_bomb_vfx.py 先产出 bomb-missile-strike.png。
+  · assets/sprites/vfx/missile-zone.png: 打击范围 = 整个棋盘(用户 11-25「范围是整个棋盘，我再跟你说一遍」): 俯视的整圆, 里面铺满红色斜纹警示条
+    (两档半透明硬边) + 外沿一圈实心红边; 游戏里按岛的两条半轴拉成椭圆、平铺盖住整座岛。
 """
 import os
 
@@ -89,7 +91,27 @@ def drop():
     out.save(os.path.join(OUT, "missile-drop.png"), optimize=False)
 
 
+def zone():
+    S = 256
+    im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    px = im.load()
+    c = (S - 1) / 2.0
+    for y in range(S):
+        for x in range(S):
+            d = ((x - c) ** 2 + (y - c) ** 2) ** 0.5
+            if d > S / 2.0 - 0.5:
+                continue
+            if d > S / 2.0 - 6:
+                px[x, y] = (255, 50, 40, 230)          # 外沿实心红边
+            elif ((x + y) // 12) % 2 == 0:
+                px[x, y] = (255, 40, 30, 110)          # 斜纹亮条
+            else:
+                px[x, y] = (200, 20, 20, 55)           # 斜纹暗条
+    im.save(os.path.join(OUT, "missile-zone.png"), optimize=False)
+
+
 if __name__ == "__main__":
+    zone()
     laser()
     reticle()
     drop()
