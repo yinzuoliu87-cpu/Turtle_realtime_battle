@@ -308,7 +308,9 @@ func _ready() -> void:
 	_s._sd_t0 = _s._t
 	_adv(7.9)
 	var before: bool = bool(ow.active)
-	_adv(0.2)
+	_adv(0.4)
+	var grabbing: bool = not bool(ow.active) and not bool(me.get("_ow", false))
+	_adv(0.4)
 	var vic = null
 	for o in [e1, e2, e3]:
 		if bool(o.get("_ow", false)):
@@ -317,8 +319,9 @@ func _ready() -> void:
 	for o in [e1, e2, e3]:
 		if not is_same(o, vic):
 			others.append(o)
-	_ok("J 开打第 8 秒(7.9 秒还没有)把一名敌人拽进里世界, 自己也进去", not before and bool(ow.active) and bool(me.get("_ow", false)) and vic is Dictionary,
-		"7.9 秒 %s · 拽 %s" % [str(before), str(vic is Dictionary)])
+	_ok("J 开打第 8 秒(7.9 秒还没有)先抓 0.6 秒(8.3 秒还在主世界), 8.7 秒把一名敌人拽进里世界, 自己也进去",
+		not before and grabbing and bool(ow.active) and bool(me.get("_ow", false)) and vic is Dictionary,
+		"7.9 秒 %s · 8.3 秒抓取中 %s · 拽 %s" % [str(before), str(grabbing), str(vic is Dictionary)])
 	_ok("J 主世界的敌人不再把它当敌人(选不到、范围伤害也打不到) · 里世界里两人互为敌人",
 		not _s._is_hostile(others[0], me) and not _s._is_hostile(me, others[0]) and _s._is_hostile(me, vic) and _s._is_hostile(vic, me)
 		and not _s._targeting._enemies_of(others[0]).has(me))
@@ -348,7 +351,7 @@ func _ready() -> void:
 	ow = _m.ow
 	var open0: int = int(ow.stat["open"])
 	_s._sd_t0 = _s._t
-	_adv(8.1)
+	_adv(8.7)
 	_ok("J 两边各带千面 ⇒ 只开一个里世界, 牵连到的全进来(%d 人)" % ow.members.size(), int(ow.stat["open"]) == open0 + 1 and ow.members.size() >= 3, str(ow.members.size()))
 	for mm in ow.members:
 		if str(mm.get("side", "")) == "right":
@@ -365,7 +368,7 @@ func _ready() -> void:
 	_field([me, ea, eb, stay2])
 	ow = _m.ow
 	_s._sd_t0 = _s._t
-	_adv(8.1)
+	_adv(8.7)
 	var opened: bool = bool(ow.active)
 	for o in [ea, eb]:
 		if not bool(o.get("_ow", false)):
