@@ -193,6 +193,50 @@ func _ready() -> void:
 	_ok("D 途经的敌人吃一次冲撞(%d ≈ 200%% 舞狮攻击力过护甲) + 眩晕" % want_l, int(_m.stat["lion_hit"]) == 1 and fdmg > 0.0 and float(foe.get("stun_until", 0.0)) > 1000.0,
 		"命中 %d · 掉血 %.0f · 眩晕到 %.2f" % [int(_m.stat["lion_hit"]), fdmg, float(foe.get("stun_until", 0.0))])
 
+	## ── D2 舞狮龟能 / 被控 / 冲锋朝向(11-27 用户「召唤物的龟能增长，没按规矩来吗？」「冲锋到一半，他方向会变了？」) ──
+	_adv(3.0)   # 让上一段冲撞跑完
+	L["state"] = "idle"
+	L["en"] = 0.0
+	lion["stun_until"] = 0.0
+	lion["airborne"] = false
+	lion["channel_until"] = 0.0
+	foe["pos"] = Vector2(lion["pos"]) + Vector2(250.0, 0.0)
+	foe["stun_until"] = 0.0
+	_adv(3.0)
+	var en3: float = float(L["en"])
+	_m.on_any_basic(lion, foe)
+	_ok("D2 龟能只按时间涨: 3 秒 = %.1f(≈ 3 / 0.075 = 40); 普攻不额外加(原来每下 +20)" % en3, absf(en3 - 40.0) < 1.0 and absf(float(L["en"]) - en3) < 1e-6,
+		"普攻后 %.1f" % float(L["en"]))
+	L["en"] = MB.LION_EN_MAX
+	lion["stun_until"] = _s._t + 1.0
+	_adv(0.3)
+	_ok("D2 龟能满了但正被眩晕 ⇒ 不开始冲(等控制结束)", str(L["state"]) == "idle" and float(L["en"]) >= MB.LION_EN_MAX - 1e-6, "状态 %s · 龟能 %.0f" % [str(L["state"]), float(L["en"])])
+	lion["stun_until"] = 0.0
+	_adv(0.1)
+	var st_w: String = str(L["state"])
+	lion["stun_until"] = _s._t + 1.0
+	_adv(0.1)
+	_ok("D2 蓄力中被眩晕 ⇒ 这次冲撞取消、龟能用掉、朝向解锁", st_w == "wind" and str(L["state"]) == "idle" and float(L["en"]) < 1.0 and not lion.has("_face_lock"),
+		"蓄力 %s → %s · 龟能 %.0f" % [st_w, str(L["state"]), float(L["en"])])
+	lion["stun_until"] = 0.0
+	_adv(1.0)
+	foe["pos"] = Vector2(lion["pos"]) + Vector2(250.0, 0.0)
+	L["en"] = MB.LION_EN_MAX
+	_adv(MB.LION_WINDUP + 0.15)   # 冲起来
+	var run_dir_right: bool = Vector2(L["dir"]).x > 0.0
+	foe["pos"] = Vector2(lion["pos"]) - Vector2(120.0, 0.0)   # 冲过去了: 目标到了身后
+	lion["target"] = foe
+	_s._tick_unit(lion, 0.0)
+	var face_locked: bool = bool(lion["face_right"]) == run_dir_right
+	lion.erase("_face_lock")
+	_s._tick_unit(lion, 0.0)
+	var face_unlocked_flips: bool = bool(lion["face_right"]) != run_dir_right   # 反证: 不锁就会掉头 ⇒ 上一条真在量
+	lion["_face_lock"] = true
+	_ok("D2 冲锋中目标跑到身后也不掉头(锁朝向); 反证: 去掉锁会掉头", str(L["state"]) == "run" and face_locked and face_unlocked_flips,
+		"状态 %s · 锁住 %s · 不锁时掉头 %s" % [str(L["state"]), str(face_locked), str(face_unlocked_flips)])
+	_adv(2.0)
+	_ok("D2 冲完解锁朝向", str(L["state"]) == "idle" and not lion.has("_face_lock"), "状态 %s" % str(L["state"]))
+
 	## ── E 131 小丑面具 ──
 	me = _mk("left", ["p2eq_131"])
 	var near := _mk("right", [], -200.0)

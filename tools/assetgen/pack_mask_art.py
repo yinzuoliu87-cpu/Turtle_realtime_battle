@@ -40,7 +40,7 @@
     + animate_image 只钉首帧(clb_0..8)。
   · 11-27 舞狮冲撞照塞恩 R 重做(用户点名; 研究 docs/studies/20261127-参考-塞恩R冲撞.md): 全部 create_image_pro_flash(无锚) + animate_image ——
     蓄力时狮头前方聚起的能量球 lion_orb(+ edit 出的小火星 lion_orb_small; 首尾钉住小→大 lorb_0..6) /
-    冲锋时狮头前的弯月冲击罩 lion_bow(首尾钉原画, lbow_0..5; 第一条中间多一根白尖刺, 换提示词重出) /
+    冲锋时狮头前的弯月冲击罩 lion_bow(lbow_0..5; 11-27 用户「冲击罩不适合」——整只裹红光后多余, 不再打包, 源图留档) /
     身后速度线 lion_speed(首尾钉原画, lspd_0..3) /
     撞击后地面冲击环 lion_shock(俯视, 只钉首帧 lgsw_0..10; 生成的第 5~8 帧焦黑处发蓝, 打包时把偏蓝像素按亮度改成焦褐色, 见 BLUE_TO_SCORCH)。
   · 11-27 用户「冲击的时候，它整个身上应该是这个冲击波的这个红红色特效」: 奔腾 8 帧(lgal)左右各补 24 像素透明边成 160×112(lgalpad_*, 留出拖尾的地方),
@@ -106,7 +106,6 @@ STRIPS = {
     "mask-lion-bite": ["lfang_%d" % i for i in range(0, 8)],
     "mask-clown-burst": ["clb_%d" % i for i in range(0, 9)],     # 131 小丑面具嘲讽: 彩纸炸开(11-27)
     "mask-lion-gather": ["lorb_%d" % i for i in range(0, 7)],    # 130 冲撞蓄力: 狮头前方聚能(11-27 照塞恩 R)
-    "mask-lion-bow": ["lbow_%d" % i for i in range(0, 6)],       # 130 冲锋中: 狮头前弯月冲击罩(循环)
     "mask-lion-speed": ["lspd_%d" % i for i in range(0, 4)],     # 130 冲锋中: 身后速度线(循环)
     "mask-lion-shock": ["lgsw_%d" % i for i in range(0, 11)],    # 130 撞上: 地面冲击环 → 变暗焦痕 → 淡出
     "eq-masklion-charge-fire": ["lfire_%d" % i for i in range(0, 8)],   # 130 冲锋中: 整只裹在红色冲击能量里(160×112, 狮身在中间 112 宽)     # 130 舞狮普攻命中: 狮牙合拢(11-27)    # 130 舞狮冲撞身后红金彩绸(循环, 11-27)

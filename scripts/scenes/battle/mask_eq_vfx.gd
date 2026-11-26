@@ -506,7 +506,7 @@ func _tick_lion_in(delta: float) -> void:
 ## 11-27 冲撞重做两轮: 用户「冲刺特效呢」→「冲锋方向你自己从来没有设计过吗…撞到敌人什么特效？…去搜这个塞恩的 R」
 ##   照塞恩 R 逐帧研究(docs/studies/20261127-参考-塞恩R冲撞.md)的节奏, 配色换成舞狮红金:
 ##   ① 蓄力 0.45 秒: 压低扒地(lwind) + 扬土; ★狮头前方先聚一团金红能量球(mask-lion-gather, 从小火星长大), 告诉玩家要往哪冲
-##   ② 冲锋: ★整只裹在红色冲击能量里(eq-masklion-charge-fire) + 狮头前面一道弯月冲击罩(mask-lion-bow, 前缘最亮, 朝冲锋方向)
+##   ② 冲锋: ★整只裹在红色冲击能量里(eq-masklion-charge-fire, 前缘最亮; 冲锋全程锁朝向, 冲过目标不掉头)
 ##          + 身后速度线(mask-lion-speed) + 红金彩绸(mask-lion-ribbon) + 脚下一路扬土
 ##   ③ 撞上分三拍(塞恩: 接触亮星 0 秒 → 碎片喷 + 抛起 0.03 秒 → 地面冲击环 0.17 秒 → 变暗焦痕淡出 0.6 秒):
 ##          接触点金白亮星(底层火星) → 鞭炮碎屑炸开(mask-lion-hit) + 目标被撞飞(sim 里 _knockback, 真的抛起)
@@ -581,8 +581,7 @@ func lion_run(p: Dictionary, _dir: Vector2) -> void:
 	var parts: Array = [
 		_lion_part(p, _dir, MV + "mask-lion-speed.png", 4, 70.0, 0.15, 0.85, 14.0, true, 0.0),    # 身后速度线
 		_lion_part(p, _dir, MV + "mask-lion-ribbon.png", 6, 78.0, 0.18, 0.7, 12.0, true, 0.0),    # 身后彩绸
-		_lion_part(p, _dir, MV + "mask-lion-bow.png", 6, -40.0, -0.05, 1.55, 14.0, true, 0.0),    # ★狮头前的弯月冲击罩(最后加 ⇒ 画在最上面)
-	]
+	]   # 狮头前的弯月冲击罩(mask-lion-bow)11-27 去掉: 整只已裹在红色冲击能量里, 再套一层罩子多余(用户「冲击罩不适合」)
 	_lion_trails.append({"p": p, "dir": _dir, "parts": parts, "dust_t": 0.0})
 
 
@@ -654,7 +653,7 @@ func lion_stop(p: Dictionary) -> void:
 	_lion_trail_end(p)
 	if p.has("_lion_walk_sd"):
 		p["run_sd"] = p["_lion_walk_sd"]
-	if p.get("alive", false) and (is_same(p.get("anim_sd", null), _lion_run_sd) or is_same(p.get("anim_sd", null), _lion_fire_sd)):
+	if p.get("alive", false) and (is_same(p.get("anim_sd", null), _lion_run_sd) or is_same(p.get("anim_sd", null), _lion_fire_sd) or is_same(p.get("anim_sd", null), _lion_wind_sd)):
 		battle._set_anim_sheet(p, p.get("idle_sd", {}), "", true)
 
 

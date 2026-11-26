@@ -1,5 +1,6 @@
 class_name EqDaggerBatch
 extends RefCounted
+const _SummonEnergy := preload("res://scripts/gamedata/summon_energy.gd")
 ## eq_dagger_batch.gd —— 匕首羁绊 9 件新装备的效果本体（2026-11-25 · 方案书 docs/plans/20261125-匕首羁绊.md §4.2）
 ##   108 折叠小刀 · 109 柳叶飞刀 · 110 苦无 · 111 毒牙匕首 · 112 三棱刺 · 113 弯匕 · 114 仪式匕首(+ 专属羁绊「仪式」血契)
 ##   · 115 暗影匕首(召唤暗影忍者) · 116 黑曜石匕首
@@ -155,11 +156,8 @@ func _set_acc(u: Dictionary, key: String, v: float) -> void:
 
 
 func _en_gain(u: Dictionary, delta: float) -> float:
-	var t := float(battle._t)
-	if t < float(u.get("stun_until", 0.0)) or t < float(u.get("channel_until", 0.0)) or bool(u.get("airborne", false)) \
-			or t < float(u.get("storm_until", 0.0)) or t < float(u.get("energy_lock_until", 0.0)):
-		return 0.0
-	return delta / SEC_PER_ENERGY * maxf(0.0, float(u.get("echarge_perm", 1.0)))
+	## 召唤物龟能: 和龟的技能充能同一套规矩(锁 / 加减速 / 时停), 见 summon_energy.gd(11-27 统一)
+	return _SummonEnergy.gain(u, float(battle._t), delta)
 
 
 # ════════════════════════════════════════ 批④统一口 ════════════════════════════════════════

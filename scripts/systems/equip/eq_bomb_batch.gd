@@ -1,5 +1,6 @@
 class_name EqBombBatch
 extends RefCounted
+const _SummonEnergy := preload("res://scripts/gamedata/summon_energy.gd")
 ## eq_bomb_batch.gd —— 炸弹羁绊 10 件 + 剑 2 费武士刀 的效果本体（2026-11-24 · 方案书 docs/plans/20261124f-炸弹羁绊.md §4.2 / §4.3）
 ##   097 鞭炮 · 098 爆竹筒 · 099 手雷 · 100 烟雾弹 · 101 粘弹 · 102 地雷 · 103 炸药桶 · 104 定时炸弹 · 105 炮筒 · 106 遥控炸弹 · 107 武士刀
 ##
@@ -141,14 +142,8 @@ const KATANA_AIR := 1.0
 ##   炮筒重炮状态期间照常充(用户 11-24 方案书拍板「重炮状态中每发照常攒龟能」, 再确认「涨」); 武士刀小将蓄力期间不充。
 const SEC_PER_ENERGY := 0.075
 func _en_gain(u: Dictionary, delta: float) -> float:
-	var t := float(battle._t)
-	if t < float(u.get("stun_until", 0.0)) or t < float(u.get("channel_until", 0.0)) or bool(u.get("airborne", false)) \
-			or t < float(u.get("storm_until", 0.0)) or t < float(u.get("energy_lock_until", 0.0)):
-		return 0.0
-	var m: float = float(u.get("echarge_perm", 1.0))
-	if t < float(u.get("spd_dbf_until", 0.0)):
-		m *= float(u.get("spd_echarge_mult", 1.0))
-	return delta / SEC_PER_ENERGY * maxf(0.0, m)
+	## 召唤物龟能: 和龟的技能充能同一套规矩(锁 / 加减速 / 时停), 见 summon_energy.gd(11-27 统一)
+	return _SummonEnergy.gain(u, float(battle._t), delta)
 
 
 const COL_PHYS := Color("#ff9a4a")

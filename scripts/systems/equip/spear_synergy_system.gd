@@ -1,5 +1,6 @@
 class_name SpearSynergySystem
 extends RefCounted
+const _SummonEnergy := preload("res://scripts/gamedata/summon_energy.gd")
 ## 长矛羁绊【百夫长】(2026-11-26 · 方案书 docs/plans/20261126-长矛羁绊.md)
 ##
 ## 用户 11-26(原话摘要, 全文见方案书第 1 节):
@@ -401,10 +402,8 @@ func _ring_magic(u: Dictionary, rad: float, coef: float, key: String) -> void:
 
 
 func _en_gain(u: Dictionary, delta: float) -> float:
-	var t := float(battle._t)
-	if t < float(u.get("stun_until", 0.0)) or bool(u.get("airborne", false)) or t < float(u.get("energy_lock_until", 0.0)):
-		return 0.0
-	return delta / SEC_PER_ENERGY * maxf(0.0, float(u.get("echarge_perm", 1.0)))
+	## 召唤物龟能: 和龟的技能充能同一套规矩(锁 / 加减速 / 时停), 见 summon_energy.gd(11-27 统一)
+	return _SummonEnergy.gain(u, float(battle._t), delta)
 
 
 ## 4 档: 我方身后的地图边缘冲出 4 名持矛骑兵, 各冲一名随机敌人

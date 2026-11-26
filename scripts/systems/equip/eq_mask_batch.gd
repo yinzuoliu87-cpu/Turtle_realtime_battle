@@ -1,5 +1,6 @@
 class_name EqMaskBatch
 extends RefCounted
+const _SummonEnergy := preload("res://scripts/gamedata/summon_energy.gd")
 ## eq_mask_batch.gd —— 面具羁绊 10 件新装备的效果本体(2026-11-26 · 方案书 docs/plans/20261125c-面具羁绊.md §3)
 ##   127 纸面具 · 128 狐狸面具 · 129 京剧脸谱 · 130 舞狮头(召唤舞狮) · 131 小丑面具 · 132 鬼面 · 133 防毒面具
 ##   · 134 威尼斯面具(复活) · 135 黄金面具(金光) · 136 千面(里世界, 见 otherworld_system.gd)
@@ -42,7 +43,6 @@ const LION_HP := [900.0, 1600.0, 2500.0]       # 用户 11-26「生命值改为�
 const LION_ATK := [20.0, 40.0, 80.0]
 const LION_RES := [20.0, 35.0, 55.0]
 const LION_EN_MAX := 100.0
-const LION_EN_PER_HIT := 20.0                  # 舞狮每次攻击 +20 龟能(另随时间涨)
 const LION_CHARGE_ATK := [2.0, 2.5, 3.0]       # 冲撞 = 舞狮攻击力 ×(用户 11-26「百分比攻击力」)
 const LION_STUN := [1.0, 1.25, 1.5]
 const LION_SPD := 360.0                        # 冲撞速度(用户 11-26「别太快了」; 普通龟走路 105)
@@ -137,11 +137,8 @@ func _set_acc(u: Dictionary, key: String, v: float) -> void:
 
 
 func _en_gain(u: Dictionary, delta: float) -> float:
-	var t := float(battle._t)
-	if t < float(u.get("stun_until", 0.0)) or t < float(u.get("channel_until", 0.0)) or bool(u.get("airborne", false)) \
-			or t < float(u.get("energy_lock_until", 0.0)):
-		return 0.0
-	return delta / SEC_PER_ENERGY * maxf(0.0, float(u.get("echarge_perm", 1.0)))
+	## 召唤物龟能: 和龟的技能充能同一套规矩(锁 / 加减速 / 时停), 见 summon_energy.gd(11-27 统一)
+	return _SummonEnergy.gain(u, float(battle._t), delta)
 
 
 func _nearest_enemy(u: Dictionary, excl: Array = []):
@@ -362,9 +359,6 @@ func on_any_basic(u: Dictionary, _tgt) -> void:
 		u["untargetable_until"] = minf(float(u.get("untargetable_until", 0.0)), float(battle._t))
 		_fx("ghost_reveal", [u])
 	if str(u.get("id", "")) == "_summon_mask_lion":
-		for L in _lions:
-			if is_same(L["u"], u):
-				L["en"] = minf(LION_EN_MAX, float(L["en"]) + LION_EN_PER_HIT)
 		if _tgt is Dictionary:
 			_fx("lion_bite", [u, _tgt])   # 11-27: 命中那一刻目标身上狮牙合拢(只画, 不影响结算)
 
@@ -451,6 +445,14 @@ func _spawn_lion(owner: Dictionary, si: int) -> Dictionary:
 	return rec
 
 
+## 舞狮是否被控住(眩晕 / 击飞 / 别人给的定身)。in_wind = 蓄力中: 自己的 channel 不算
+func _lion_cc(p: Dictionary, in_wind: bool = false) -> bool:
+	var t := float(battle._t)
+	if t < float(p.get("stun_until", 0.0)) or bool(p.get("airborne", false)):
+		return true
+	return (not in_wind) and t < float(p.get("channel_until", 0.0))
+
+
 func lion_state(i: int = 0) -> Dictionary:
 	return _lions[i] if i < _lions.size() else {}
 
@@ -466,6 +468,8 @@ func _tick_lions(delta: float) -> void:
 				p["energy"] = float(L["en"])
 				if float(L["en"]) < LION_EN_MAX:
 					continue
+				if _lion_cc(p):
+					continue   # 被眩晕 / 击飞 / 施法定身中不开始冲撞, 等控制结束(同忍者冲刺 verify_ninja_dash_cc ①; 11-27)
 				var tgt = p.get("target", null)
 				if not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 					tgt = _nearest_enemy(p)
@@ -479,9 +483,17 @@ func _tick_lions(delta: float) -> void:
 				L["state"] = "wind"
 				L["t"] = 0.0
 				L["hit"] = []
+				p["face_right"] = Vector2(L["dir"]).x > 0.0
+				p["_face_lock"] = true   # 蓄力 + 冲锋全程朝冲锋方向; 冲过目标身边时不许掉头(11-27)
 				battle._damage.channel(p, LION_WINDUP + LION_DIST / LION_SPD + 0.1)
 				_fx("lion_windup", [p, L["dir"], LION_WINDUP])
 			"wind":
+				if _lion_cc(p, true):   # 蓄力期被控 ⇒ 这次冲撞取消、龟能照样用掉(同石头龟砸地「蓄力期被控即取消」; 11-27)
+					L["state"] = "idle"
+					p["channel_until"] = float(battle._t)
+					p.erase("_face_lock")
+					_fx("lion_stop", [p])
+					continue
 				L["t"] = float(L["t"]) + delta
 				if float(L["t"]) >= LION_WINDUP:
 					L["state"] = "run"
@@ -509,6 +521,7 @@ func _tick_lions(delta: float) -> void:
 						_lion_hit(L, o)
 				if float(L["t"]) >= LION_DIST or b.distance_to(a) < step * 0.5:
 					L["state"] = "idle"
+					p.erase("_face_lock")
 					_fx("lion_stop", [p])
 
 

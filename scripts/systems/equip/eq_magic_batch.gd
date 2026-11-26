@@ -1,5 +1,6 @@
 class_name EqMagicBatch
 extends RefCounted
+const _SummonEnergy := preload("res://scripts/gamedata/summon_energy.gd")
 ## eq_magic_batch.gd —— 魔法书羁绊 10 件新装备的效果本体(2026-11-25 · 方案书 docs/plans/20261125b-魔法书羁绊.md §4.2)
 ##   117 学徒笔记 · 118 羊皮咒卷 · 119 烈焰法典 · 120 霜语魔典 · 121 风暴之书 · 122 治愈圣典 · 123 亡者之书(召唤三种骷髅)
 ##   · 124 镜像魔典(再放一次) · 125 禁咒全书 · 126 浮空魔典(近战书页环绕 / 远程书页格挡)
@@ -176,11 +177,8 @@ func _set_acc(u: Dictionary, key: String, v: float) -> void:
 
 
 func _en_gain(u: Dictionary, delta: float) -> float:
-	var t := float(battle._t)
-	if t < float(u.get("stun_until", 0.0)) or t < float(u.get("channel_until", 0.0)) or bool(u.get("airborne", false)) \
-			or t < float(u.get("storm_until", 0.0)) or t < float(u.get("energy_lock_until", 0.0)):
-		return 0.0
-	return delta / SEC_PER_ENERGY * maxf(0.0, float(u.get("echarge_perm", 1.0)))
+	## 召唤物龟能: 和龟的技能充能同一套规矩(锁 / 加减速 / 时停), 见 summon_energy.gd(11-27 统一)
+	return _SummonEnergy.gain(u, float(battle._t), delta)
 
 
 func _nearest_enemy(u: Dictionary):
