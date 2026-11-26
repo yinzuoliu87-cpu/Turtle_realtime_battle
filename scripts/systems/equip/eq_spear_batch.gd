@@ -130,7 +130,9 @@ static func _si_of(e: Dictionary) -> int:
 func _phys(src: Dictionary, o: Dictionary, base: float) -> void:
 	if not o.get("alive", false) or base <= 0.0:
 		return
-	battle._damage._apply_damage_from(src, o, battle._phys_after_armor(src, base, o), COL_PHYS, 0.0, false, true)
+	var d: int = battle._phys_after_armor(src, base, o)
+	battle._damage.set_dtype("physical", o, false, true)   # _phys_after_armor 只算护甲不声明类型 ⇒ 不声明就捡上一发的(飘字颜色 / 分行跟着错)
+	battle._damage._apply_damage_from(src, o, d, COL_PHYS, 0.0, false, true)
 
 
 func _magic(src: Dictionary, o: Dictionary, base: float) -> void:
@@ -473,11 +475,56 @@ func _tick_drops() -> void:
 	_drops = keep
 
 
+## 信息面板「本局」要显示的状态, 每帧镜像进 eq_state[装备键](面板 info_panel.eq_live_lines 只读它; eq_state 随直播下发 ⇒ 观战一致)。
+##   只供显示、不参与结算(不改对局结果)。只放整数(倒计时按整秒), 免得每帧都变把直播数据撑大。
+##   11-26 用户「物理护盾条呢…你这我随便一问，你这个就没做到啊？」⇒ 30 件新装备的显示逐件补齐。
+func _live_put(u: Dictionary, ck: String, d: Dictionary) -> void:
+	var est: Dictionary = u.get("eq_state", {})
+	var cur = est.get(ck, {})
+	if not (cur is Dictionary):
+		cur = {}
+	for k in d:
+		(cur as Dictionary)[k] = d[k]
+	est[ck] = cur
+	u["eq_state"] = est
+
+
+func _live_mirror(u: Dictionary) -> void:
+	var es = battle._equip_sys
+	var t := float(battle._t)
+	for e in u.get("equips", []):
+		if not (e is Dictionary):
+			continue
+		var eid := str(e.get("id", ""))
+		if not ["p2eq_140", "p2eq_142", "p2eq_143"].has(eid):
+			continue
+		es.ck_set(u, e)
+		var ck: String = es.key_of(u, eid)
+		match eid:
+			"p2eq_140":
+				_live_put(u, ck, {"lance": int(_acc(u, "lance:" + ck)), "need": int(LANCE_NEED)})
+			"p2eq_142":
+				var act: Dictionary = u.get("_shsp_act", {})
+				if act.has(ck):
+					var a: Dictionary = act[ck]
+					_live_put(u, ck, {"raise": true, "store": int(float(a["store"])), "left": int(ceil(float(a["until"]) - t))})
+				else:
+					_live_put(u, ck, {"raise": false, "next": int(ceil(SHSP_IV - _acc(u, "shsp:" + ck)))})
+			"p2eq_143":
+				var bu: float = _acc(u, "ftj_buff:" + ck)
+				if t < bu:
+					_live_put(u, ck, {"buff": int(ceil(bu - t)), "pct": 0})
+				else:
+					var need: float = maxf(1.0, float(u.get("maxHp", 1.0)) * FTJ_NEED_PCT)
+					_live_put(u, ck, {"buff": 0, "pct": int(floor(_acc(u, "ftj:" + ck) / need * 100.0))})
+
+
 func tick_unit(u: Dictionary, delta: float) -> void:
 	if not u.get("alive", false):
 		return
 	var es = battle._equip_sys
 	var ckp: Array = es.ck_save()
+	_live_mirror(u)
 	for e in u.get("equips", []):
 		if not (e is Dictionary):
 			continue

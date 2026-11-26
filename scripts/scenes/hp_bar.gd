@@ -19,6 +19,7 @@ var _urchin := 0.0        # 海胆护盾量 (013满层·shield 中属海胆盾�
 var _cream := 0.0         # 071奶油护盾量 (SpecialBalance独立余额, 不在shield里; eq_food_batch每帧镜像进_creamShieldVal)
 var _ult := 0.0           # 072终极护盾量 (SpecialBalance独立余额, 不在shield里; eq_food_batch每帧镜像进_ultShieldVal) — 画礼盒粉段
 var _ghost := 0.0         # 064溺者符囊护盾量 (SpecialBalance独立余额, 不在shield里; eq_spirit_batch每帧镜像进_ghostShieldVal) — 画救生圈珊瑚段(20秒线性衰减)
+var _phys := 0.0          # 物理护盾量(127 纸面具 / 151 黑色筹码; 独立字段 phys_shield, 不在 shield 里; 只挡物理、先于普通盾扛) — 画钢灰段, 紧接生命之后
 var _magic := 0.0         # 012 魔法护盾量 (独立字段 magic_shield, 不在shield里; 只挡魔法、先于普通盾扛) — 画蓝紫段, 紧接生命之后
 var _mana := 0.0          # 068法力护盾量 (SpecialBalance独立余额, 不在shield里; eq_potion_batch每帧镜像进_manaShieldVal) — 画法力蓝段(8秒线性衰减肉眼可见)
 var _aura := 0.0
@@ -52,6 +53,8 @@ const _HSHELL_D := Color8(0x3f, 0x9f, 0x6e)  # 壳青绿暗
 const _URCHIN_L := Color8(0xcc, 0x66, 0xf5)  # 海胆盾段 亮紫 (013满层·用户2026-07-19"特殊颜色")
 const _URCHIN_D := Color8(0x93, 0x33, 0xba)  # 海胆紫暗
 ## 魔法护盾段 蓝紫(012·用户 2026-10-08): 与法力蓝 / 海胆紫 / 我方青绿 / 敌方紫都隔得开。
+const _PHYS_L := Color8(0xf2, 0xc8, 0x6a)   # 物理护盾: 暖黄褐(与普通盾的灰白、魔法盾的蓝紫一眼分开; 浅米灰版和普通盾太像, 11-26 录像)
+const _PHYS_D := Color8(0xa8, 0x74, 0x24)
 const _MAGIC_L := Color8(0x9a, 0x8c, 0xff)
 const _MAGIC_D := Color8(0x5b, 0x4a, 0xd8)
 const _MANA_L := Color8(0x9e, 0xd1, 0xff)    # 法力盾段 法力蓝 (068·用户2026-08-11"特殊颜色护盾条"; 与充能条#9ed1ff同支)
@@ -96,6 +99,7 @@ func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -
 	_urchin = clampf(float(f.get("urchin_sh_left", 0)), 0.0, maxf(0.0, _shield - _holy - _hshell))   # 海胆盾段: 随10秒衰减自动缩
 	# 法力盾(068)不裁到 _shield: 它是 SpecialBalance 独立余额, 吸收顺序在普通盾之后 —— 不是 shield 的一部分。
 	_magic = maxf(0.0, float(f.get("magic_shield", 0)))
+	_phys = maxf(0.0, float(f.get("phys_shield", 0)))   # 11-26 用户「物理护盾条呢」: 原来血条不认这个字段, 纸面具 / 黑色筹码给的盾看不见
 	_mana = maxf(0.0, float(f.get("_manaShieldVal", 0)))
 	_ult = maxf(0.0, float(f.get("_ultShieldVal", 0)))
 	_cream = maxf(0.0, float(f.get("_creamShieldVal", 0)))
@@ -106,7 +110,7 @@ func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -
 	## ★★终极护盾必须进 barMax: 它是最大生命的 50/80/120%, 不撑开分母的话满血时
 	##   它那一段的起点就已经在条尾, 宽度被压成 0 —— 这正是 2026-08-12 用户
 	##   「5费蛋糕礼盒的特殊护盾条我压根没看到」的根因。
-	_bm = maxf(_max_hp, new_hp + _magic + _shield + _ghost + _cream + _mana + _ult + _aura + _bubble + _anem)   # turtle-hud:228-229
+	_bm = maxf(_max_hp, new_hp + _phys + _magic + _shield + _ghost + _cream + _mana + _ult + _aura + _bubble + _anem)   # turtle-hud:228-229
 	if _prev_hp >= 0.0 and new_hp < _prev_hp:
 		_start_trail(_prev_hp / _bm, new_hp / _bm)
 		_start_flash()
@@ -211,6 +215,7 @@ func _draw() -> void:
 	_fill_band(x, hp_w, ftop, fbot, 1.0)
 	var cursor := hp_w
 	# 护盾段: 圣盾部分(白黄亮)先画, 普通盾部分(灰白)接其后 — 一看血条即区分圣盾 (圣甲) 与普通盾。
+	cursor += _seg_special(x, cursor, w, _phys, _PHYS_L, _PHYS_D)     # 物理护盾紧接生命 = 物理伤害的实际吸收顺序(它先扛)
 	cursor += _seg_special(x, cursor, w, _magic, _MAGIC_L, _MAGIC_D)   # 魔法护盾紧接生命 = 魔法伤害的实际吸收顺序(它先扛)
 	cursor += _seg_special(x, cursor, w, _holy, _HOLY_L, _HOLY_D)
 	cursor += _seg_special(x, cursor, w, _hshell, _HSHELL_L, _HSHELL_D)

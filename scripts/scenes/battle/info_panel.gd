@@ -1102,6 +1102,51 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 			var m: int = int(round(float(st.get("ow_base_mr", 0.0))))
 			if a + d + m > 0:
 				out.append(Lang.t("里世界偷取：+%d 攻击力、+%d 护甲、+%d 魔抗") % [a, d, m])
+		"paper":
+			if int(st.get("phys", 0)) > 0:
+				out.append(Lang.t("物理护盾剩余 %d") % int(st.get("phys", 0)))
+		"opera_face":
+			var fn: Array = [Lang.t("红脸"), Lang.t("黑脸"), Lang.t("白脸")]
+			out.append(Lang.t("当前：%s，%d 秒后换脸") % [str(fn[clampi(int(st.get("face", 0)), 0, 2)]), maxi(0, int(st.get("next", 0)))])
+		"ghost_face":
+			if bool(st.get("hidden", false)):
+				out.append(Lang.t("潜行中"))
+			else:
+				out.append(Lang.t("潜行：已用") if bool(st.get("used", false)) else Lang.t("潜行：待命"))
+		"gas_mask":
+			if int(st.get("move", 0)) > 0:
+				out.append(Lang.t("获得 %d%% 移动速度") % int(st.get("move", 0)))
+		"venice":
+			out.append(Lang.t("复活：待命") if bool(st.get("ready", false)) else Lang.t("复活：已用"))
+		"gold_mask":
+			var gs: int = int(st.get("stk", 0))
+			if gs > 0:
+				out.append(Lang.t("%d 层：获得 %d 最大生命值、%d 攻击力") % [gs, gs * int(EqMaskBatch.GOLD_STK_HP), gs * int(EqMaskBatch.GOLD_STK_ATK)])
+		"lance":
+			var ln: int = int(st.get("lance", 0))
+			var nd: int = maxi(1, int(st.get("need", 1)))
+			out.append(Lang.t("冲势已满，下一次攻击冲阵") if ln >= nd else Lang.t("冲势 %d%%") % int(100.0 * float(ln) / float(nd)))
+		"shield_spear":
+			if bool(st.get("raise", false)):
+				out.append(Lang.t("举盾中：已存下 %d 伤害，%d 秒后放盾") % [int(st.get("store", 0)), maxi(0, int(st.get("left", 0)))])
+			else:
+				out.append(Lang.t("%d 秒后举盾") % maxi(0, int(st.get("next", 0))))
+		"halberd_ftj":
+			if int(st.get("buff", 0)) > 0:
+				out.append(Lang.t("横扫状态：还剩 %d 秒") % int(st.get("buff", 0)))
+			else:
+				out.append(Lang.t("战意 %d%%") % mini(100, int(st.get("pct", 0))))
+		"chip_gold":
+			out.append(Lang.t("金色护罩：已触发") if bool(st.get("done", false)) else Lang.t("金色护罩：开打第 8 秒触发"))
+		"chip_cci":
+			if bool(st.get("cci", false)):
+				out.append(Lang.t("本战场免疫控制"))
+		"chip_grey":
+			var gn: int = int(st.get("stk", 0))
+			if gn > 0:
+				out.append(Lang.t("%d 层：获得 %d 攻击力、%d 护甲和魔抗、%d 最大生命值") % [gn, gn * int(EqChipBatch.GREY_ATK), gn * int(EqChipBatch.GREY_RES), gn * int(EqChipBatch.GREY_HP)])
+				if gn >= int(EqChipBatch.GREY_CAP):
+					out.append(Lang.t("已叠满：额外获得增伤与减伤"))
 		"tide":
 			if bool(st.get("tide_on", false)):
 				out.append(Lang.t("涨潮中：获得 %d 最大生命值、%d 攻击力") % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])
@@ -1267,6 +1312,8 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 			chips.append([Lang.t("%s %d 层") % [str(d[1]), n], str(d[2]), sic + str(d[3])])
 	if float(u.get("shield", 0.0)) > 0.0:
 		chips.append([Lang.t("护盾 %d") % int(u.get("shield", 0.0)), "#7fe0ff", sic + "shield-icon.png"])
+	if float(u.get("phys_shield", 0.0)) >= 1.0:
+		chips.append([Lang.t("物理护盾 %d") % int(u.get("phys_shield", 0.0)), "#f2c86a", sic + "shield-icon.png"])
 	if float(u.get("magic_shield", 0.0)) >= 1.0:
 		chips.append([Lang.t("魔法护盾 %d") % int(u.get("magic_shield", 0.0)), "#9a8cff", sic + "magic-shield-icon.png"])
 	var flow = HFlowContainer.new()
@@ -1333,7 +1380,7 @@ func _status_sig_own(u: Dictionary) -> String:
 	var vleft := int(maxf(0.0, float(u.get("volcano_until", 0.0)) - battle._t) * 10.0)   # 0.1 秒一档(chip 印一位小数)
 	return "%s|%d|%d|%d|%s|%d|%d|%d" % [
 		battle._status_signature(u),
-		int(float(u.get("magic_shield", 0.0))),   # 「魔法护盾 N」chip 印的数
+		int(float(u.get("magic_shield", 0.0))) * 100000 + int(float(u.get("phys_shield", 0.0))),   # 「魔法护盾 N」「物理护盾 N」chip 印的数
 		vol, vleft,
 		str(u.get("two_form", "")),
 		1 if bool(u.get("shell_stealth", false)) else 0,

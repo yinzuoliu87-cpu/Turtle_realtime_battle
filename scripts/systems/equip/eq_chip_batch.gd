@@ -164,9 +164,47 @@ func _gold_guard(u: Dictionary) -> void:
 	_fx("chip_gold_guard", [u, GOLD_SEC])
 
 
+## 信息面板「本局」要显示的状态, 每帧镜像进 eq_state[装备键](面板 info_panel.eq_live_lines 只读它; eq_state 随直播下发 ⇒ 观战一致)。
+##   只供显示、不参与结算(不改对局结果)。只放整数(倒计时按整秒), 免得每帧都变把直播数据撑大。
+##   11-26 用户「物理护盾条呢…你这我随便一问，你这个就没做到啊？」⇒ 30 件新装备的显示逐件补齐。
+func _live_put(u: Dictionary, ck: String, d: Dictionary) -> void:
+	var est: Dictionary = u.get("eq_state", {})
+	var cur = est.get(ck, {})
+	if not (cur is Dictionary):
+		cur = {}
+	for k in d:
+		(cur as Dictionary)[k] = d[k]
+	est[ck] = cur
+	u["eq_state"] = est
+
+
 func tick_unit(u: Dictionary, delta: float) -> void:
 	if not u.get("alive", false):
 		return
+	var es0 = battle._equip_sys
+	var ckp0: Array = es0.ck_save()
+	for e0 in u.get("equips", []):
+		if not (e0 is Dictionary):
+			continue
+		var eid0 := str((e0 as Dictionary).get("id", ""))
+		if not ["p2eq_153", "p2eq_154", "p2eq_155", "p2eq_156"].has(eid0):
+			continue
+		es0.ck_set(u, e0)
+		var ck0: String = es0.key_of(u, eid0)
+		match eid0:
+			"p2eq_153":
+				_live_put(u, ck0, {"cci": true})
+			"p2eq_154":
+				_live_put(u, ck0, {"ready": bool(u.get("_chip_revive_ready", false))})   # 面板同威尼斯面具那一种写法
+			"p2eq_155":
+				var done := true
+				for g in _golds:
+					if is_same(g["u"], u) and not bool(g["done"]):
+						done = false
+				_live_put(u, ck0, {"done": done})
+			_:
+				_live_put(u, ck0, {"stk": int(u.get("_grey_stk", 0))})
+	es0.ck_restore(ckp0)
 	if float(u["hp"]) >= float(u.get("maxHp", 0.0)):
 		return
 	## 150 绿: 每秒回复 1% 最大生命值。每枚各自回、各自记进自己的装备统计(用户 11-13「每件各自独立生效…统计也分开」;

@@ -105,6 +105,7 @@ func make_copy(o: Dictionary, side: String, tier: int) -> Dictionary:
 		c["lv_side"] = str(spec["lv_side"])
 	c["level"] = int(o.get("level", c.get("level", 1)))
 	c["_mask_copy"] = true
+	c["name"] = str(o.get("name", c.get("name", ""))) + Lang.t("·复制")   # 点开详情 / 战报里分得出哪只是偷来的(11-26 夜; 只是名字, 不影响结算)
 	c["_mask_tier"] = tier
 	c["_mask_of_id"] = str(o.get("id", ""))
 	c["face_right"] = side == "left"

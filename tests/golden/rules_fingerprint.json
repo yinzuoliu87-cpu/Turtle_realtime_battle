@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "faec616985703bb16de4bf078ab4cea332e9d9e9968af35b7dc4a95a6b275173",
+ "fingerprint": "95662084d0018f0818359392dfb2ad6def207f58fcc3ccf1fb4faaed71b98a79",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -45,7 +45,7 @@
   },
   {
    "def": "c74f3eed261e1b5e",
-   "hash": "5f313abfcba60cb78d1191aab7ace3574053c3e795d686de16e0f174678e6b8c",
+   "hash": "f44fba946e6837dd2be50058234bdf1ff7545d16436836f71cd166f7192a6045",
    "tag": "⑨ 面具顶档(偷脸 / 里世界) + 筹码 vs 长矛顶档(百夫长) + 筹码"
   },
   {

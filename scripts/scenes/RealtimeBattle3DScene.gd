@@ -5631,9 +5631,14 @@ func _layout_head_badges(u: Dictionary) -> void:
 	var nai := int(u.get("cyber_ai_charge", 0))
 	if nai > 0: stacks.append({"icon": "res://assets/sprites/vfx/hijack-chip.png", "tint": Color(0.55, 0.95, 1.0), "n": nai, "sz": 32.0})   # 智能AI充能层(青调芯片·2026-07-15)
 	var ncr := int(st.get("crystal", 0))
-	if ncr > 0: stacks.append({"icon": "res://assets/sprites/vfx/crystal-shard.png", "tint": Color(0.75, 0.92, 1.0), "n": ncr, "sz": 32.0})   # 结晶印记层(冰蓝碎晶·满5引爆·2026-07-15)
+	if ncr > 0: stacks.append({"icon": "res://assets/sprites/vfx/crystal-shard.png", "tint": Color(0.75, 0.92, 1.0), "n": ncr, "sz": 32.0})
+	var ngy := int(u.get("_grey_stk", 0))
+	if ngy > 0: stacks.append({"icon": "res://assets/sprites/equip/p2eq_156.png", "tint": Color(1, 1, 1), "n": ngy, "sz": 30.0})   # 156 灰色筹码层数(11-26 夜)
+	var ngm := int(u.get("_gold_stk_total", 0))
+	if ngm > 0: stacks.append({"icon": "res://assets/sprites/equip/p2eq_135.png", "tint": Color(1, 1, 1), "n": ngm, "sz": 30.0})   # 135 黄金面具层数(11-26 夜)   # 结晶印记层(冰蓝碎晶·满5引爆·2026-07-15)
 	var status: Array = []            # 状态图标(纯图标·瞬时态)·可扩展: 未来 stun/taunt/silence/curse 在此追加
 	if _t < float(u.get("hunt_mark_until", 0.0)): status.append({"icon": "res://assets/sprites/vfx/hunter-mark.png", "tint": Color(1, 1, 1), "n": 0, "sz": 44.0})
+	if _t < float(u.get("_gold_guard_until", 0.0)): status.append({"icon": "res://assets/sprites/equip/p2eq_155.png", "tint": Color(1, 1, 1), "n": 0, "sz": 34.0})   # 155 金色护罩中(11-26 夜)
 	if u.get("hijacked", false): status.append({"icon": "res://assets/sprites/vfx/hijack-chip.png", "tint": Color(1, 1, 1), "n": 0, "sz": 34.0})   # 被侵入: 芯片图标(2026-07-15)
 	var vis: bool = u.get("alive", false) and _cam != null
 	var anchor := Vector2.ZERO

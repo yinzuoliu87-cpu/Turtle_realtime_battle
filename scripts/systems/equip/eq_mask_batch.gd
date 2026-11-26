@@ -164,6 +164,9 @@ func _nearest_enemy(u: Dictionary, excl: Array = []):
 func _true_dmg(src: Dictionary, tgt: Dictionary, amt: float) -> void:
 	if not tgt.get("alive", false) or amt < 0.5:
 		return
+	## ★先声明类型(battle_damage 头注「伤害类型哨兵」): raw 伤害不经 _resolve_dmg, 不声明就捡上一发的类型 ——
+	##   11-26 用户「真伤和物理伤还叠在一起了？你不按规则来的吗？」: 红脸真伤紧跟普攻, 捡成物理 ⇒ 飘字进物理那一行、叠在普攻数字上
+	battle._damage.set_dtype("true", tgt, false, true)
 	battle._damage._apply_damage_from(src, tgt, int(round(amt)), COL_TRUE, 0.0, true, true)
 
 
@@ -328,6 +331,7 @@ func on_damaged(u: Dictionary, src, _dmg: float, eid: String, si: int) -> void:
 			if not hit or not me.get("alive", false):
 				return
 			var d: int = battle._phys_after_armor(me, amt, s)
+			battle._damage.set_dtype("physical", s, false, true)   # _phys_after_armor 只算护甲不声明类型(同上)
 			battle._damage._apply_damage_from(me, s, d, COL_PHYS, 0.0, false, true),
 		func(_k: float, p2: Vector2, _to2: Vector2) -> void:
 			if vfx != null and vfx.has_method("paper_step"):
@@ -683,11 +687,55 @@ func _tick_revives() -> void:
 	_revives = keep
 
 
+## 信息面板「本局」要显示的状态, 每帧镜像进 eq_state[装备键](面板 info_panel.eq_live_lines 只读它; eq_state 随直播下发 ⇒ 观战一致)。
+##   只供显示、不参与结算(不改对局结果)。只放整数(倒计时按整秒), 免得每帧都变把直播数据撑大。
+##   11-26 用户「物理护盾条呢…你这我随便一问，你这个就没做到啊？」⇒ 30 件新装备的显示逐件补齐。
+func _live_put(u: Dictionary, ck: String, d: Dictionary) -> void:
+	var est: Dictionary = u.get("eq_state", {})
+	var cur = est.get(ck, {})
+	if not (cur is Dictionary):
+		cur = {}
+	for k in d:
+		(cur as Dictionary)[k] = d[k]
+	est[ck] = cur
+	u["eq_state"] = est
+
+
+func _live_mirror(u: Dictionary) -> void:
+	var es = battle._equip_sys
+	var gold_total := 0
+	for e in u.get("equips", []):
+		if not (e is Dictionary):
+			continue
+		var eid := str(e.get("id", ""))
+		if not ["p2eq_127", "p2eq_129", "p2eq_132", "p2eq_133", "p2eq_134", "p2eq_135"].has(eid):
+			continue
+		es.ck_set(u, e)
+		var ck: String = es.key_of(u, eid)
+		match eid:
+			"p2eq_127":
+				_live_put(u, ck, {"phys": int(float(u.get("phys_shield", 0.0)))})
+			"p2eq_129":
+				_live_put(u, ck, {"face": int(_acc(u, "face:" + ck)), "next": int(ceil(FACE_IV - _acc(u, "facet:" + ck)))})
+			"p2eq_132":
+				_live_put(u, ck, {"used": _acc(u, "ghost_used:" + ck) > 0.0, "hidden": bool(u.get("_ghost_hidden", false))})
+			"p2eq_133":
+				_live_put(u, ck, {"move": int(round(float(u.get("_gas_move", 0.0)) * 100.0))})
+			"p2eq_134":
+				_live_put(u, ck, {"ready": bool(u.get("_ven_ready", false))})
+			"p2eq_135":
+				var stk: int = int((e as Dictionary).get("gm_stk", 0)) + int(gold_gain.get(_gold_key(u, ck), 0))
+				gold_total += stk
+				_live_put(u, ck, {"stk": stk})
+	u["_gold_stk_total"] = gold_total   # 头顶徽章(黄金面具层数)读它
+
+
 func tick_unit(u: Dictionary, delta: float) -> void:
 	if not u.get("alive", false):
 		return
 	var es = battle._equip_sys
 	var ckp: Array = es.ck_save()
+	_live_mirror(u)
 	for e in u.get("equips", []):
 		if not (e is Dictionary):
 			continue
