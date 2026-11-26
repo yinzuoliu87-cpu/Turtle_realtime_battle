@@ -1428,8 +1428,8 @@ func eternal_temp(me: Dictionary, amt: int) -> void:
 		battle._vfx._float_text(me["pos"] + Vector2(0, -60), Lang.t("+%d 临时生命值") % amt, Color("#ffc43a"))
 
 
-func eternal_burn(at: Vector2, r: float, sec: float) -> void:
-	_strip(SV + "eternal-burn.png", 12, battle._world_pos(at, 0.03), r * 2.0 * float(battle.WS) * ETER_BURN_FILL, 12.0, true, sec, true, null, 0.03)
+func eternal_burn(me: Dictionary, r: float, sec: float) -> void:   # 跟着携带者走(11-26 晚用户)
+	_strip(SV + "eternal-burn.png", 12, battle._world_pos(Vector2(me["pos"]), 0.03), r * 2.0 * float(battle.WS) * ETER_BURN_FILL, 12.0, true, sec, true, me, 0.03)
 
 
 func _tick_eternal(delta: float) -> void:

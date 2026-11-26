@@ -91,7 +91,7 @@ const ETERNAL_IMM_ATK := [1.0, 1.5, 2.5]       # 目标免疫控制 ⇒ 不倒�
 const ETERNAL_IMM_HP := [0.04, 0.05, 0.08]     # 转而追加: + 目标最大生命值 ×
 const ETERNAL_TEMP := [0.2, 0.3, 0.5]          # 命中时携带者临时生命值 = 自身最大生命值 ×(可叠加)
 const ETERNAL_TEMP_SEC := 6.0
-const ETERNAL_BURN_R := 250.0                  # 命中处灼烧圈半径
+const ETERNAL_BURN_R := 250.0                  # 携带者身上灼烧圈半径(跟着携带者走)
 const ETERNAL_BURN_SEC := 6.0
 const ETERNAL_BURN_PCT := [0.02, 0.03, 0.05]   # 每秒: 圈内敌人各自最大生命值 × 的魔法伤害(多个圈各自生效)
 # ── 146 圣枪(待重新设计) ──
@@ -117,7 +117,7 @@ var _pulls: Array = []    # 138 拉拽 {src, o, left, t_next}
 var _swaves: Array = []   # 142 冲击波 {src, ck, o, dir, r, per, hit}
 var _slams: Array = []    # 143 {u, ck, si, t, phase}
 var _slides: Array = []   # 145 击倒滑行 {src, o, dir, gone, total, si, ck, hit}
-var _burns: Array = []    # 145 灼烧圈 {src, at, until, next, si, ck}
+var _burns: Array = []    # 145 灼烧圈(跟着携带者) {src, until, next, si, ck}
 var _drops: Array = []    # 144 落矛 {src, ck, at, t_fire, t_land, si, fired}
 
 
@@ -834,9 +834,10 @@ func _eternal_hit(me: Dictionary, tg: Dictionary, si: int, ck: String, from: Vec
 		var tmp: float = float(me.get("maxHp", 0.0)) * float(ETERNAL_TEMP[si])
 		battle._trainer_sys._apply_temp_maxhp(me, tmp, ETERNAL_TEMP_SEC)
 		_fx("eternal_temp", [me, int(tmp)])
-	## 命中处灼烧圈(每个圈各自生效)
-	_burns.append({"src": me, "at": at, "until": float(battle._t) + ETERNAL_BURN_SEC, "next": float(battle._t) + 1.0, "si": si, "ck": ck})
-	_fx("eternal_burn", [at, ETERNAL_BURN_R, ETERNAL_BURN_SEC])
+	## 携带者身上的灼烧圈, 跟着携带者走(用户 11-26 晚「145 火圈应该是在携带者身上的」; 每个圈各自生效)
+	if me.get("alive", false):
+		_burns.append({"src": me, "until": float(battle._t) + ETERNAL_BURN_SEC, "next": float(battle._t) + 1.0, "si": si, "ck": ck})
+		_fx("eternal_burn", [me, ETERNAL_BURN_R, ETERNAL_BURN_SEC])
 
 
 ## 145 击倒滑行: 目标按每一步往后滑(总距离 / 总时长), 这一步滑过的那一段里撞到的其他敌人各吃一次; 滑行伤害按这一步滑的距离分摊
@@ -886,14 +887,14 @@ func _tick_burns() -> void:
 	var keep: Array = []
 	for z in _burns:
 		var src: Dictionary = z["src"]
-		if t >= float(z["until"]):
+		if t >= float(z["until"]) or not src.get("alive", false):
 			continue
 		if t >= float(z["next"]):
 			z["next"] = float(z["next"]) + 1.0
 			var tp: Array = battle._equip_sys.tally.push(src, str(z["ck"]))
 			var bdd0: float = float(src.get("dmg_dealt", 0.0))
 			for e in _enemies(src):
-				if DetMath.dist(Vector2(e["pos"]), Vector2(z["at"])) <= ETERNAL_BURN_R + float(e.get("col_size", 22.0)) * 0.5:
+				if DetMath.dist(Vector2(e["pos"]), Vector2(src["pos"])) <= ETERNAL_BURN_R + float(e.get("col_size", 22.0)) * 0.5:
 					stat["eternal_burn"] += 1
 					_magic(src, e, float(e.get("maxHp", 0.0)) * float(ETERNAL_BURN_PCT[int(z["si"])]))
 			_eter_self(src, str(z["ck"]), bdd0)

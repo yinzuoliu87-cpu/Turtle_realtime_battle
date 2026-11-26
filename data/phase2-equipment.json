@@ -1735,10 +1735,10 @@
     "baseStats1": "+攻40/90/400·护甲穿透8/12/20",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "战斗中积攒进度：每秒获得 {C:EqSpearBatch.ETERNAL_PS} 点，每造成或受到 100 点伤害获得 {C:EqSpearBatch.ETERNAL_PER_DMG} 点，永恒之枪自身造成的伤害不计入。进度达到 {C:EqSpearBatch.ETERNAL_NEED} 时，一支永恒之枪从场外飞向生命值最高的敌人，造成 {C:EqSpearBatch.ETERNAL_HIT_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_HIT_HP%}% 最大生命值的物理伤害，将其击倒并向后滑行，滑行期间共造成 {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% 最大生命值的物理伤害，眩晕 {C:EqSpearBatch.ETERNAL_STUN} 秒。滑行路径上的其他敌人受到 {C:EqSpearBatch.ETERNAL_PASS_ATK%}% 攻击力 + 其 {C:EqSpearBatch.ETERNAL_PASS_HP%}% 最大生命值的物理伤害。目标免疫控制时，转而额外受到 {C:EqSpearBatch.ETERNAL_IMM_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_IMM_HP%}% 最大生命值的物理伤害。\n命中时，自身获得 {C:EqSpearBatch.ETERNAL_TEMP%}% 最大生命值的临时生命值，持续 {C:EqSpearBatch.ETERNAL_TEMP_SEC} 秒。命中处留下灼烧圈，持续 {C:EqSpearBatch.ETERNAL_BURN_SEC} 秒，每秒对圈内敌人造成其 {C:EqSpearBatch.ETERNAL_BURN_PCT%}% 最大生命值的魔法伤害。临时生命值与灼烧圈均可叠加。",
+    "effectDesc1": "战斗中积攒进度：每秒获得 {C:EqSpearBatch.ETERNAL_PS} 点，每造成或受到 100 点伤害获得 {C:EqSpearBatch.ETERNAL_PER_DMG} 点，永恒之枪自身造成的伤害不计入。进度达到 {C:EqSpearBatch.ETERNAL_NEED} 时，一支永恒之枪从场外飞向生命值最高的敌人，造成 {C:EqSpearBatch.ETERNAL_HIT_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_HIT_HP%}% 最大生命值的物理伤害，将其击倒并向后滑行，滑行期间共造成 {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% 最大生命值的物理伤害，眩晕 {C:EqSpearBatch.ETERNAL_STUN} 秒。滑行路径上的其他敌人受到 {C:EqSpearBatch.ETERNAL_PASS_ATK%}% 攻击力 + 其 {C:EqSpearBatch.ETERNAL_PASS_HP%}% 最大生命值的物理伤害。目标免疫控制时，转而额外受到 {C:EqSpearBatch.ETERNAL_IMM_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_IMM_HP%}% 最大生命值的物理伤害。\n命中时，自身获得 {C:EqSpearBatch.ETERNAL_TEMP%}% 最大生命值的临时生命值，持续 {C:EqSpearBatch.ETERNAL_TEMP_SEC} 秒。同时自身周围燃起灼烧圈，持续 {C:EqSpearBatch.ETERNAL_BURN_SEC} 秒，每秒对圈内敌人造成其 {C:EqSpearBatch.ETERNAL_BURN_PCT%}% 最大生命值的魔法伤害。临时生命值与灼烧圈均可叠加。",
     "effectDesc3": "",
     "img": "equip/p2eq_145.png",
-    "effectBrief": "积攒进度满后，永恒之枪从场外飞向生命值最高的敌人，将其击倒拖行，并获得临时生命值、留下灼烧圈。"
+    "effectBrief": "积攒进度满后，永恒之枪从场外飞向生命值最高的敌人，将其击倒拖行，并获得临时生命值、点燃自身周围的灼烧圈。"
   },
   {
     "id": "p2eq_146",

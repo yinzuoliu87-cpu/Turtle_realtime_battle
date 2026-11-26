@@ -4,7 +4,7 @@ extends Node
 ##   ② 打生命值最高的敌人, 从场外按速度飞来、碰到才结算: 攻击力 + 目标最大生命两段
 ##   ③ 击倒滑行 250 码、眩晕 1 秒、滑行伤害按距离分摊、路径上其他敌人各挨一次
 ##   ④ 免控: 不倒不滑, 转而追加
-##   ⑤ 临时生命值(叠加) / 灼烧圈(每秒按圈内敌人最大生命)
+##   ⑤ 临时生命值(叠加) / 携带者身上的灼烧圈(跟着携带者走, 每秒按圈内敌人最大生命)
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const SB := preload("res://scripts/systems/equip/eq_spear_batch.gd")
 
@@ -159,13 +159,20 @@ func _ready() -> void:
 		_b._acc(me3, "eter:p2eq_145") < 4.0 * 2.0 + 0.5, "进度 %.1f" % _b._acc(me3, "eter:p2eq_145"))
 	## ⑤ 临时生命值 + 灼烧圈
 	_ok("⑤ 携带者拿到临时生命值(最大生命 +20%)", float(me3["maxHp"]) > 5000.0 * 1.19, "最大生命 %.0f" % float(me3["maxHp"]))
+	me3["pos"] = Vector2(tank["pos"]) - Vector2(150.0, 0.0)   # 灼烧圈跟着携带者: 把携带者挪到坦克旁边(150 码 < 250)
 	var tb := float(tank["hp"])
 	var b0 := int(_b.stat["eternal_burn"])
 	_adv(3.0, [me3])
 	var burn_each: int = _s._resolve_dmg(me3, 9000.0 * 0.02, tank, true, false)
 	_ok("⑤ 灼烧圈每秒按圈内敌人最大生命 2% 魔伤(3 秒 3 跳)", int(_b.stat["eternal_burn"]) - b0 == 3 and absf(_hp_lost(tank, tb) - 3.0 * float(burn_each)) <= 3.0,
 		"跳 %d · 掉 %.0f(应 %d)" % [int(_b.stat["eternal_burn"]) - b0, _hp_lost(tank, tb), 3 * burn_each])
-	_adv(4.0, [me3])
+	me3["pos"] = Vector2(tank["pos"]) - Vector2(600.0, 0.0)   # 携带者走远: 圈跟着走, 坦克不在圈里了
+	var b1 := int(_b.stat["eternal_burn"])
+	var tb1 := float(tank["hp"])
+	_adv(1.0, [me3])
+	_ok("⑤ 灼烧圈跟着携带者走: 携带者走开 600 码后, 原地的坦克不再挨烧", int(_b.stat["eternal_burn"]) == b1 and float(tank["hp"]) == tb1,
+		"多跳 %d 次" % (int(_b.stat["eternal_burn"]) - b1))
+	_adv(3.0, [me3])
 	_ok("⑤ 临时生命值 6 秒后削回", float(me3["maxHp"]) < 5000.0 * 1.01, "最大生命 %.0f" % float(me3["maxHp"]))
 
 	print("分母: %d 条断言" % _n)
