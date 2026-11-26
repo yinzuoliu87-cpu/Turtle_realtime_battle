@@ -65,7 +65,8 @@ static func cases() -> Dictionary:
 		## 145 永恒之枪(11-26 重做): REC_ETERNAL_FULL 秒时进度填满 ⇒ 枪从左上场外飞来砸血最多的靶子(中间那只), 往右下滑, 路线上还站着一只
 		"eternal": [[_me(Vector2(-200, 0), _eq([145]), {"idle": true})] + _ring_dummies(Vector2(60, 0), [Vector2(0, 0)])
 			+ [_u("__minion__", "right", Vector2(60, 0) + Vector2(130, 75), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 9000.0, "killable": false}),
-			_u("__minion__", "right", Vector2(260, -150), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 9000.0, "killable": false})], 10.0],
+			_u("__minion__", "right", Vector2(260, -150), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 9000.0, "killable": false}),
+			_u("__minion__", "right", Vector2(-80, 60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 9000.0, "killable": false, "idle": true})], 10.0],   # 携带者身边一只: 灼烧圈里挨烧
 		"holy_guard": [[_me(Vector2(-60, 0), _eq([146]), {"hp_pct": 0.6, "killable": true})] + _dummies(70, 1), 7.0],
 		## 爆竹筒范围 120 码: 三个靶子围在携带者 70~85 码内(都在范围里, 看得出一圈都被击退)
 		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(30, -78), Vector2(30, 78)]), 16.0],

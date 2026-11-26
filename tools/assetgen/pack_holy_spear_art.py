@@ -10,7 +10,10 @@
     holy-channel  引导(循环 12 帧): 全部自己写的图层: 头顶细金环 + 十字星 + 转动的刻度 + 往环里汇聚的光点 + 脚下淡光环
   · 145 永恒之枪(11-26 重做, 参考 docs/studies/20261126-参考-薇恩E恶魔审判.md), 同样是特效工作台全部自己写的图层:
     eternal-impact 插中(9 帧): 白金闪光 + 四芒大星 + 斜向小星 + 外扩金环 + 外散碎光条
-    eternal-burn   灼烧圈(循环 12 帧, 俯视): 暗红地面辉光 + 余烬斑块 + 两圈参差火舌(rays 抖动) + 闪烁火星
+    (11-26 晚用户「145 火圈应该是在携带者身上的，火圈特效不行，仔细以美术师的角度思考」⇒ 原 eternal-burn 作废, 按分层重做:)
+    eternal-ring-ground 灼烧圈地面层(循环 12 帧, 俯视): 暗褐焦痕环(压对比) + 焦斑 + 圈内淡热光呼吸 + 圈边琥珀细光
+    eternal-pulse       每秒跳伤害的光波(8 帧, 俯视): 从中心推到圈边的亮环 + 余晖 + 往外甩的火星
+    eternal-flame-tongue 圈边火舌(循环 8 帧): **Aseprite 后台逐笔画**(tools/assetgen/ase/eternal_flame_tongue.lua: 轮廓工具画剪影 / 平涂 / 亮部 / 高光, 铅笔点火星, Outline 描边), 引擎里沿圈立起一圈
   · 参考研究: docs/studies/20261126-参考-娜美W冲击之潮.md(同一飞行物砸友方 / 敌方靠落点颜色与形状区分)。
   · 砸中敌方用的是旧圣枪自己的两套(spear-holy-burst 十字星爆 / spear-holy-mark 圣痕印记), 同一件装备里换用途, 不算借别人的。
 工作台导出的是网格帧表 + JSON(每帧位置 / 锚点); 本脚本按 JSON 拆帧, 把锚点摆到每帧水平正中, 拼成横排帧条。
@@ -30,7 +33,9 @@ VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
 
 ## 名字 → (锚点居中方式) ; center = 锚点在帧正中, feet = 锚点水平居中、底边留 BELOW
 JOBS = {"holy-orb": "center", "holy-ally": "feet", "holy-guard-up": "feet", "holy-guard-ground": "center", "holy-channel": "feet",
-        "eternal-impact": "center", "eternal-burn": "center"}
+        "eternal-impact": "center", "eternal-ring-ground": "center", "eternal-pulse": "center"}
+## 不走工作台 JSON 的: Aseprite 画的火舌(工作流②), 源文件 tools/assetgen/ase/eternal_flame_tongue.aseprite, 导出的横排帧条原样拷过去
+COPY = {"eternal-flame-tongue-sheet": "eternal-flame-tongue"}
 
 
 def frames_of(name):
@@ -62,6 +67,10 @@ def main():
         strip.save(os.path.join(VFX, name + ".png"), optimize=False)
         below = fh - (oy + ay) if mode == "feet" else 0
         print("%-13s %d 帧 · 每帧 %dx%d · 锚点下方 %d 像素" % (name, len(fr), fw, fh, below))
+    for src, dst in COPY.items():
+        im = Image.open(os.path.join(SRC, src + ".png")).convert("RGBA")
+        im.save(os.path.join(VFX, dst + ".png"), optimize=False)
+        print("%-13s 拷贝 %dx%d" % (dst, im.width, im.height))
 
 
 if __name__ == "__main__":

@@ -895,10 +895,12 @@ func _tick_burns() -> void:
 			z["next"] = float(z["next"]) + 1.0
 			var tp: Array = battle._equip_sys.tally.push(src, str(z["ck"]))
 			var bdd0: float = float(src.get("dmg_dealt", 0.0))
+			_fx("eternal_burn_tick", [src, ETERNAL_BURN_R])
 			for e in _enemies(src):
 				if DetMath.dist(Vector2(e["pos"]), Vector2(src["pos"])) <= ETERNAL_BURN_R + float(e.get("col_size", 22.0)) * 0.5:
 					stat["eternal_burn"] += 1
 					_magic(src, e, float(e.get("maxHp", 0.0)) * float(ETERNAL_BURN_PCT[int(z["si"])]))
+					_fx("eternal_burn_lick", [e])
 			_eter_self(src, str(z["ck"]), bdd0)
 			battle._equip_sys.tally.pop(tp)
 		keep.append(z)
