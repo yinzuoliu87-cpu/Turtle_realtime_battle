@@ -1,0 +1,209 @@
+{
+ "frames": [
+  {
+   "filename": "centurion-thrust-impact 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 96
+   },
+   "pivot": {
+    "x": 0.7142857142857143,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "centurion-thrust-impact 1.png",
+   "frame": {
+    "x": 112,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 96
+   },
+   "pivot": {
+    "x": 0.7142857142857143,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "centurion-thrust-impact 2.png",
+   "frame": {
+    "x": 224,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 96
+   },
+   "pivot": {
+    "x": 0.7142857142857143,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "centurion-thrust-impact 3.png",
+   "frame": {
+    "x": 0,
+    "y": 96,
+    "w": 112,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 96
+   },
+   "pivot": {
+    "x": 0.7142857142857143,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "centurion-thrust-impact 4.png",
+   "frame": {
+    "x": 112,
+    "y": 96,
+    "w": 112,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 96
+   },
+   "pivot": {
+    "x": 0.7142857142857143,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "centurion-thrust-impact 5.png",
+   "frame": {
+    "x": 224,
+    "y": 96,
+    "w": 112,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 96
+   },
+   "pivot": {
+    "x": 0.7142857142857143,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "centurion-thrust-impact 6.png",
+   "frame": {
+    "x": 0,
+    "y": 192,
+    "w": 112,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 96
+   },
+   "pivot": {
+    "x": 0.7142857142857143,
+    "y": 0.5
+   },
+   "duration": 50
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "centurion-thrust-impact.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 336,
+   "h": 288
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 80,
+   "y": 48
+  },
+  "frameTags": [
+   {
+    "name": "centurion-thrust-impact",
+    "from": 0,
+    "to": 6,
+    "direction": "forward"
+   }
+  ]
+ }
+}

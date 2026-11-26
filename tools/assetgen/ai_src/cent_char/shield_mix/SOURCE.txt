@@ -1,0 +1,5 @@
+shield_mix(11-27 cent_fix5_1127.py 生成, 重跑逐字节相同)
+000 = shield_brace2/000(站姿, 打包时只用来对齐包围盒)
+001-006 = shield_brace2/003-008(下蹲举盾)
+007 = brace_jab/001(盾后把矛往回拉) · 008 = brace_jab/002 · 009 = brace_jab/003(从盾上沿捅出)
+brace_jab = PixelLab pixminimax 自定义动作, 首帧 = shield_brace2/008; 252×184 画布, 与 180 画布偏移 (-36,-2) 逐像素对上

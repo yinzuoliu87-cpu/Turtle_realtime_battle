@@ -11,7 +11,7 @@ extends MaskEqVfx
 ##   普攻        刺(attack 帧条, 命中帧见 AttackHits); 第 4 下掷矛: 掷矛帧条 + 一根罗马重标枪按 sim 位置飞
 ##   龟甲阵      举盾帧条放慢到 3 秒; 3 档的连刺 = 脚下一圈小闪; 放盾横扫 = 一圈大环; 4 档骑兵 = 奔马帧条沿 sim 路线跑
 const V := "res://assets/sprites/vfx/"
-const CENT_SHEETS := {"attack": "eq-centurion-attack.png", "throw": "eq-centurion-throw.png", "shield": "eq-centurion-shield.png", "sweep": "eq-centurion-sweep.png"}
+const CENT_SHEETS := {"attack": "eq-centurion-attack.png", "throw": "eq-centurion-throw.png", "shield": "eq-centurion-shield.png", "brace": "eq-centurion-brace.png", "sweep": "eq-centurion-sweep.png"}
 const CENT_FW := 192   # 11-27 换 PixelLab「角色」流程新形象: 192 方帧(人约 127 像素高)
 const LAND_H := 9.0
 var _cent_cache := {}
@@ -92,7 +92,7 @@ func cent_land(p: Dictionary, sec: float) -> void:
 	if tr != null:
 		tr.visible = false   # 开始砸下那一刻才亮(下面 tick 里跟着本体)
 	_lands.append({"u": p, "t": 0.0, "sec": maxf(0.1, sec), "mk": mk, "sp": sp, "tr": tr, "planted": false, "ghost": 0.0})
-	_cent_play(p, "shield", 42.0 / maxf(0.1, sec))   # 举盾下蹲的姿势砸下来, 落地时正好举满
+	_cent_play(p, "brace", 42.0 / maxf(0.1, sec))   # 举盾下蹲的姿势砸下来, 落地时正好举满
 
 
 ## 下落残影: 复制本体此刻这一帧, 金色半透明, 0.15 秒淡掉
@@ -278,6 +278,39 @@ func _cent_tip_flash_unused(u: Dictionary) -> void:   # 上一轮钉在命中点
 	_mfx.append({"node": s, "nf": 6, "fps": 20.0, "t": 0.0, "life": 0.3, "loop": false, "follow": null, "h": 0.0})
 
 
+## 普攻冲击罩(11-27 用户「矛刺出去…想要那种明显一点的冲击罩」): 刺到最远那一帧(本体普攻帧 5, 矛尖在帧里 (21,161), 脚底 (96,191)
+##   ⇒ 立足点往前 75 像素、离地 30 像素)炸开: 中心白闪 → 朝前的半月冲击环 + 气浪 + 速度线, 7 帧 @20
+##   帧 112×96 里矛尖锚点 (80,48), 冲击往画面左边(= 刺的方向)推; 比本体放大 1.8 倍
+const CENT_IMP_FWD_PX := 75.0
+const CENT_IMP_UP_PX := 30.0
+const CENT_IMP_SCALE := 1.8
+
+func _cent_impact_dome(u: Dictionary) -> void:
+	var spr = u.get("sprite", null)
+	if not _ok() or not is_instance_valid(spr) or not ResourceLoader.exists(SV + "spear-cent-dome.png"):
+		return
+	var px: float = float((spr as Sprite3D).pixel_size)
+	var fr: bool = bool((spr as Sprite3D).flip_h)   # 原画朝左; 翻转 = 朝右
+	var t: Texture2D = load(SV + "spear-cent-dome.png")
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = 7
+	s.shaded = false
+	s.transparent = true
+	s.no_depth_test = true
+	s.render_priority = 10
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.pixel_size = px * CENT_IMP_SCALE
+	s.flip_h = fr
+	s.offset = Vector2((56.0 - 80.0) * (-1.0 if fr else 1.0), 0.0)   # 锚点(矛尖)对上节点位置
+	var base: Vector3 = (spr as Sprite3D).global_position
+	var cb: Basis = battle._cam.global_transform.basis if battle.get("_cam") != null else Basis.IDENTITY   # 立绘是朝镜头的板: 帧里的左右 / 上下 = 镜头的 x / y 轴
+	s.position = base + cb.x * (CENT_IMP_FWD_PX * px * (1.0 if fr else -1.0)) + cb.y * (CENT_IMP_UP_PX * px)
+	battle._world.add_child(s)
+	_mfx.append({"node": s, "nf": 7, "fps": 20.0, "t": 0.0, "life": 7.0 / 20.0, "loop": false, "follow": null, "h": 0.0})
+
+
 func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	var a := Vector2(u["pos"])
 	var b := Vector2(t["pos"])
@@ -289,6 +322,7 @@ func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	var mid: Vector2 = a + dir * (ln * 0.5)
 	_dir_strip(SV + "spear-cent-thrust.png", 7, mid, dir, ln * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)
 	_cent_glow_on(u)   # 矛刃光叠加层(贴着矛, 跟本体同帧)
+	_cent_impact_dome(u)   # 矛尖前炸开的冲击罩(附录 C)
 	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(b, 0.6), 1.3, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
@@ -320,17 +354,20 @@ func cent_spear_drop(s: Dictionary) -> void:
 ## 龟甲阵(11-27 用户「技能特效感觉都不明显」): 举盾那一刻身前立起一面金色能量巨盾(逐帧: 光纹流过、边缘明暗、光点上飘),
 ##   跟着百夫长、朝最近的敌人那一侧, 半透明叠在盾前; 举盾结束收掉。落盾时扬尘 + 轻震屏
 var _aegis: Array = []      # {u, node}
-const AEGIS_FWD := 46.0     # 立在身前多远(码)
-const AEGIS_H_M := 3.4      # 能量盾高(米)
-const AEGIS_NF := 13        # 帧条: 0..4 展开(16 fps) + 5..12 循环(12 fps)
-const AEGIS_OPEN := 5
+## 11-27 附录 C(照潘森 E): 竖长方形板 → 朝敌人那一侧的金色半弧能量盾(画里弧朝左鼓), 比人高半个身位
+const AEGIS_FWD := 56.0     # 立在身前多远(码)
+const AEGIS_H_M := 4.4      # 能量盾高(米)
+const AEGIS_NF := 12        # 帧条: 0..3 张开(20 fps) + 4..11 循环(12 fps)
+const AEGIS_OPEN := 4
+const AEGIS_OPEN_FPS := 20.0
 
 
 func cent_shield(u: Dictionary, sec: float) -> void:
 	## 帧条 = 举盾 6 帧 + 撑盾 36 帧(打包脚本里拼好); 整条恰好播满举盾时长 ⇒ 0.4 秒举起, 之后一直撑着, 到点放下回待机
 	var sd := _cent_sd("shield", 14.0)
 	var nf: int = int(sd.get("frames", 42)) if not sd.is_empty() else 42
-	_cent_play(u, "shield", float(nf) / maxf(0.5, sec))
+	_cent_play(u, "shield", float(nf) / maxf(0.5, sec))   # 42 帧 / 3 秒 = 14 fps: 盾后出刺的捅出帧恰好落在 0.5 / 1.0 / … 秒(= 结算 POKE_IV)
+	battle._vfx._flash(u, Color(1.0, 0.9, 0.55), 0.12)   # 扎稳那一下本体闪白金
 	cent_shield_off(u)
 	## 11-27 自查重做: 半透明能量盾(13 帧 = 展开 5 + 循环 8), 帧号由 _tick_aegis 推: 展开放一次、之后循环段
 	var s := _strip(SV + "spear-cent-aegis.png", AEGIS_NF, battle._world_pos(Vector2(u["pos"]), 0.0), AEGIS_H_M, 0.0, true, sec, false, null, 0.0)
@@ -357,14 +394,15 @@ func _tick_aegis() -> void:
 		if n == null or not is_instance_valid(n) or not u.get("alive", false):
 			_free(n)
 			continue
-		var tg = battle._targeting._nearest_enemy(u)
-		var fx: float = (1.0 if Vector2(tg["pos"]).x >= Vector2(u["pos"]).x else -1.0) if tg is Dictionary else _face(u).x
+		## 盾立在本体正面(11-27 录像: 原来按最近敌人另判方向, 人朝左、盾立在右边); 本体帧条原画朝左, flip_h = 朝右
+		var spr = u.get("sprite", null)
+		var fx: float = (1.0 if (spr as Sprite3D).flip_h else -1.0) if is_instance_valid(spr) else _face(u).x
 		(n as Sprite3D).position = battle._world_pos(Vector2(u["pos"]) + Vector2(fx * AEGIS_FWD, 6.0), 0.0)
-		(n as Sprite3D).flip_h = fx < 0.0
-		if a.get("mf") is Dictionary:   # 展开段放一次(16 fps), 之后循环段(12 fps); 在 super.tick 的通用推帧之后覆盖
+		(n as Sprite3D).flip_h = fx > 0.0   # 画里弧朝左鼓 ⇒ 敌人在右边就翻过来
+		if a.get("mf") is Dictionary:   # 张开段放一次(20 fps), 之后循环段(12 fps); 在 super.tick 的通用推帧之后覆盖
 			var at: float = float((a["mf"] as Dictionary)["t"])
-			var ok: float = float(AEGIS_OPEN) / 16.0
-			(n as Sprite3D).frame = mini(AEGIS_OPEN - 1, int(at * 16.0)) if at < ok else AEGIS_OPEN + (int((at - ok) * 12.0) % (AEGIS_NF - AEGIS_OPEN))
+			var ok: float = float(AEGIS_OPEN) / AEGIS_OPEN_FPS
+			(n as Sprite3D).frame = mini(AEGIS_OPEN - 1, int(at * AEGIS_OPEN_FPS)) if at < ok else AEGIS_OPEN + (int((at - ok) * 12.0) % (AEGIS_NF - AEGIS_OPEN))
 		keep.append(a)
 	_aegis = keep
 
