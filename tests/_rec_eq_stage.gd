@@ -331,6 +331,24 @@ func _process(d: float) -> void:
 		if cen != null and _seen.has("adir%d" % ad_k) and not _seen.has("adoff%d" % ad_k) and ad_t - float(ad_k) * 1.7 > 1.45:
 			_seen["adoff%d" % ad_k] = 1
 			_b._spear_syn.vfx.cent_shield_off(cen)
+	## 11-27 普攻冲击罩朝敌人 + 二档沿穿刺线延伸: REC_STAB_SIDE 秒时把一个敌人挪到百夫长正右 220 码、一个挪到 380 码(穿刺线上), 其余挪到岛上方远处
+	if OS.has_environment("REC_STAB_SIDE") and _el > float(OS.get_environment("REC_STAB_SIDE")) and not _seen.has("stab_side"):
+		_seen["stab_side"] = 1
+		var cs = null
+		for uu in _b._units:
+			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and bool(uu.get("alive", false)):
+				cs = uu
+		if cs != null:
+			var k2 := 0
+			for uu in _b._units:
+				if uu is Dictionary and str(uu.get("side", "")) == "right" and bool(uu.get("alive", false)):
+					if k2 == 0:
+						uu["pos"] = Vector2(cs["pos"]) + Vector2(220.0, 0.0)
+					elif k2 == 1:
+						uu["pos"] = Vector2(cs["pos"]) + Vector2(380.0, 6.0)
+					else:
+						uu["pos"] = Vector2(_b.ARENA.position.x + 300.0 + float(k2) * 120.0, _b.ARENA.position.y + 60.0)
+					k2 += 1
 	if OS.get_environment("REC_CASE") == "sp_cav" and _el > 2.0 and not _seen.has("cav_go"):
 		_seen["cav_go"] = 1
 		for uu in _b._units:

@@ -23,6 +23,7 @@ const CENT_KNOCK_VY := 16.5            # 滞空 = 2 × 16.5 / 22 = 1.5 秒
 const ENTRY_COEF := 1.5
 ## 从天而降的时长: 召唤那一刻人在高处(不可选中、不行动), 落地那一步才结算全场击飞 + 魔法伤害(画面与结算同一刻;
 ##   11-26 夜用户「召唤物的登场，登场动画…别敷衍了」—— 原来召唤那一帧就结算, 人还在半空)
+const RISE_SEC := 0.8   # 11-27 砸地后蹲起再起身: 落地那一步起原地停这么久(不走不打), 与 eq-centurion-rise 帧条等长
 const LAND_SEC := 1.2   # 11-27 用户: 预警标记圈 → 长矛插进圈心(0.35)→ 本人从高空砸下(0.75–1.2), 方案书附录 B
 const HP := [1600.0, 2600.0, 3600.0, 5200.0]
 const ATK := [48.0, 72.0, 104.0, 144.0]
@@ -220,6 +221,7 @@ func _land(r: Dictionary) -> void:
 	r["t"] = 0.0
 	var p: Dictionary = r["u"]
 	p["untargetable_until"] = minf(float(p.get("untargetable_until", 0.0)), float(battle._t))
+	battle._damage.channel(p, RISE_SEC)
 	_fx("cent_impact", [p])
 	for o in battle._targeting._enemies_of(p):
 		if not o.get("alive", false):

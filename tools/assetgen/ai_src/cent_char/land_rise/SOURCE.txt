@@ -1,0 +1,7 @@
+land_rise(11-27 cent_fix14_land_rise_1127.py 生成)
+000 = shield_brace2/000(站姿, 打包时只用来对齐包围盒)
+001-012 = PixelLab pixminimax 自定义动作 land_rise_a(角色 9185546b, 组 01d3b303), 首帧 shield_brace2/008、尾帧目标 = 站姿;
+  画布 180×184 按 (0,-2) 贴进 180 方画布(首帧与 shield_brace2/008 逐像素相同)
+提示词: Recovering from a heavy landing: he stays crouched low behind his big shield for a beat with knees deeply bent, then plants his feet,
+  pushes up with his legs, straightens his back, lowers the shield to his side and stands up tall, ending in a relaxed upright stance holding the spear vertically.
+同时出了 land_rise_b(另一种写法), 第 2 帧有红色杂点, 不用。

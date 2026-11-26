@@ -11,7 +11,7 @@ extends MaskEqVfx
 ##   普攻        刺(attack 帧条, 命中帧见 AttackHits); 第 4 下掷矛: 掷矛帧条 + 一根罗马重标枪按 sim 位置飞
 ##   龟甲阵      举盾帧条放慢到 3 秒; 3 档的连刺 = 脚下一圈小闪; 放盾横扫 = 一圈大环; 4 档骑兵 = 奔马帧条沿 sim 路线跑
 const V := "res://assets/sprites/vfx/"
-const CENT_SHEETS := {"attack": "eq-centurion-attack.png", "throw": "eq-centurion-throw.png", "shield": "eq-centurion-shield.png", "brace": "eq-centurion-brace.png", "sweep": "eq-centurion-sweep.png"}
+const CENT_SHEETS := {"attack": "eq-centurion-attack.png", "throw": "eq-centurion-throw.png", "shield": "eq-centurion-shield.png", "brace": "eq-centurion-brace.png", "rise": "eq-centurion-rise.png", "sweep": "eq-centurion-sweep.png"}
 const CENT_FW := 192   # 11-27 换 PixelLab「角色」流程新形象: 192 方帧(人约 127 像素高)
 const LAND_H := 9.0
 var _cent_cache := {}
@@ -267,6 +267,7 @@ func _drop_ghost(u: Dictionary) -> void:
 
 func cent_impact(p: Dictionary) -> void:
 	p["_slam_voff"] = Vector3.ZERO
+	_cent_play(p, "rise", 12.0 / SpearSynergySystem.RISE_SEC)   # 砸地后蹲住 → 撑起 → 站直(11-27 用户「应该是有个蹲起…然后站起身，然后再移动」), 播完自动回待机
 	var d_m: float = 1200.0 * float(battle.WS)   # 11-27 第二次「裂坑圈可以大一倍」: 600 → 1200 码 ≈ 29 米(岛宽约 38 米) #   # 落地裂坑直径(11-27 用户「下坠的那个地裂的这个圈还可以再大点啊」: 380 → 600 码 ≈ 14.4 米, 与预警圈同大)
 	_strip(V + "spear-cent-impact.png", 8, battle._world_pos(Vector2(p["pos"]), 0.07), d_m, 14.0, false, 8.0 / 14.0, true, null, 0.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
@@ -440,6 +441,7 @@ const CENT_IMP_FWD_PX := 75.0
 const CENT_IMP_UP_PX := 30.0
 const CENT_SHOCK_SEC := 0.34
 const CENT_SHOCK_DIST := 2.0
+const CENT_SHOCK_SPD := 16.0   # 冲击罩飞行速度(米/秒): 二档整条线(目标 + 260 码)约 0.6 秒
 const CONE_MIX: Shader = preload("res://assets/shaders/cent_cone_mix.gdshader")
 const CONE_ADD: Shader = preload("res://assets/shaders/cent_cone_add.gdshader")
 const CONE_SP := ["prog", "fade"]
@@ -490,11 +492,14 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	var base: Vector3 = (spr as Sprite3D).global_position
 	var cb: Basis = battle._cam.global_transform.basis if battle.get("_cam") != null else Basis.IDENTITY   # 立绘是朝镜头的板: 帧里的左右 / 上下 = 镜头的 x / y 轴
 	var tip: Vector3 = base + cb.x * (CENT_IMP_FWD_PX * px * (1.0 if fr else -1.0)) + cb.y * (CENT_IMP_UP_PX * px)
-	## 沿画面上矛指的方向冲(立绘是朝镜头的板, 矛在画面里永远水平 ⇒ 镜头的左右轴压到地面上); 原来朝目标冲, 目标斜着时罩子离开矛头
-	var cx := Vector3(cb.x.x, 0.0, cb.x.z).normalized() if Vector3(cb.x.x, 0.0, cb.x.z).length() > 0.01 else Vector3.RIGHT
-	var d3: Vector3 = cx * (1.0 if fr else -1.0)
 	if tg.is_empty():
 		return
+	## 朝敌人冲(11-27 用户「方向朝哪儿呢？你应该朝着敌人啊」): 地面方向 = 矛尖 → 目标; 二档起沿穿刺线再延 LINE_LEN(与结算同一条线)
+	var tgp: Vector3 = battle._world_pos(Vector2(tg["pos"]), tip.y)
+	var fl := Vector3(tgp.x - tip.x, 0.0, tgp.z - tip.z)
+	var d3: Vector3 = fl.normalized() if fl.length() > 0.05 else Vector3(1.0 if fr else -1.0, 0.0, 0.0)
+	var tier: int = int(u.get("_cent_tier", 1))
+	var dist: float = fl.length() + (SpearSynergySystem.LINE_LEN * float(battle.WS) if tier >= 2 else 0.6)
 	tip += d3 * 0.25   # 尖端略超出矛尖: 矛头罩在里面
 	var yaw: float = Cent3dVfx.yaw_of(Vector2(d3.x, d3.z))
 	var w: Node3D = battle._world
@@ -558,7 +563,7 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	ps.emitting = true
 	w.add_child(ps)
 	_aegis_junk.append({"node": ps, "left": 0.6})
-	_stabs.append({"parts": parts, "bills": bills, "ring": ring, "t": 0.0, "life": CENT_SHOCK_SEC, "p0": tip, "d3": d3, "dist": CENT_SHOCK_DIST})
+	_stabs.append({"parts": parts, "bills": bills, "ring": ring, "t": 0.0, "life": maxf(CENT_SHOCK_SEC, dist / CENT_SHOCK_SPD), "p0": tip, "d3": d3, "dist": dist})
 
 
 func _tick_stabs(delta: float) -> void:
