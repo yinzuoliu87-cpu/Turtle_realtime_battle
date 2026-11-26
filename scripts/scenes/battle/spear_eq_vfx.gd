@@ -63,7 +63,7 @@ func _proj(tex: String, from: Vector2, dir: Vector2, len_m: float) -> Sprite3D:
 # ── 百夫长 ──
 ## 登场(11-27 用户, 方案书附录 B): 0 秒落点亮出预警标记圈 → CENT_PLANT_T 他自己的长矛从高空直插圈心 → 最后 CENT_DROP_SEC 本人从画面外高空砸下(残影)
 ##   → 落地那一步(cent_impact)裂坑 + 震屏 + 整岛地裂。旧的通用金光柱删了(用户「这个落下的这个光特效，你是不是偷偷复用了什么东西」)。
-const CENT_MARKER_M := 9.0      # 预警标记圈直径(米; 4 时用户 11-27「落地那个圈太小了…大一点啊」)
+const CENT_MARKER_M := 14.0     # 预警标记圈直径(米; 4 → 9 → 14, 用户 11-27 两次「再大点啊」)
 const CENT_TRAIL_M := 7.0       # 下坠光尾长(米)
 const CENT_DROP_H := 14.0       # 本人从多高砸下来(米; 刚好在画面上沿外: 30 米时先慢后快、进画面只剩最后一两帧, 11-27 录像量过)
 const CENT_DROP_SEC := 0.5      # 砸下来用时(落地前最后这段; 约最后 0.2 秒在画面里, 带残影)
@@ -122,7 +122,7 @@ func _drop_ghost(u: Dictionary) -> void:
 
 func cent_impact(p: Dictionary) -> void:
 	p["_slam_voff"] = Vector3.ZERO
-	var d_m: float = 380.0 * float(battle.WS)   # 560 时裂坑盖住大半个场地(11-26 夜录像量过)
+	var d_m: float = 600.0 * float(battle.WS)   # 落地裂坑直径(11-27 用户「下坠的那个地裂的这个圈还可以再大点啊」: 380 → 600 码 ≈ 14.4 米, 与预警圈同大)
 	_strip(V + "spear-cent-impact.png", 8, battle._world_pos(Vector2(p["pos"]), 0.07), d_m, 14.0, false, 8.0 / 14.0, true, null, 0.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	_island_cracks(Vector2(p["pos"]))   # 整座岛的地面一起裂开(11-27 用户「应该是整个地面都出现全部地裂呀」)
@@ -196,6 +196,38 @@ func _crack_piece(t: Texture2D, rng: RandomNumberGenerator, a: Vector2, b: Vecto
 const CENT_TIP_H := 1.3     # 矛尖离地高(米, 新画的百夫长平端长矛的高度)
 
 
+## 普攻刺出那一下矛刃上的白金突刺光(11-27 用户「矛刺出去的话…带点特效」): 钉在命中帧的矛尖上
+##   命中帧矛尖在帧里 (21, 161), 立足点 (96, 186) ⇒ 往前 75 像素、离地 25 像素; 帧 128×48 里矛尖在 x≈18, 光刃往后延 100 像素
+const CENT_TIP_FWD_PX := 75.0
+const CENT_TIP_UP_PX := 31.0   # 25 时录像里比矛低几个像素(11-27)
+
+func _cent_tip_flash(u: Dictionary) -> void:
+	var spr = u.get("sprite", null)
+	if not _ok() or not is_instance_valid(spr) or not ResourceLoader.exists(SV + "spear-cent-tip.png"):
+		return
+	var px: float = float((spr as Sprite3D).pixel_size)
+	var fr: bool = bool((spr as Sprite3D).flip_h)   # 原画朝左; 翻转 = 朝右
+	var fwd: float = CENT_TIP_FWD_PX * px
+	var t: Texture2D = load(SV + "spear-cent-tip.png")
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = 6
+	s.shaded = false
+	s.transparent = true
+	s.no_depth_test = true
+	s.render_priority = 9
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.pixel_size = px
+	s.flip_h = fr
+	s.offset = Vector2((64.0 - 18.0) * (-1.0 if fr else 1.0), 0.0)   # 帧里矛尖在 x=18: 让矛尖对上锚点
+	var base: Vector3 = (spr as Sprite3D).global_position
+	var cb: Basis = battle._cam.global_transform.basis if battle.get("_cam") != null else Basis.IDENTITY   # 立绘是朝镜头的板: 帧里的左右 / 上下 = 镜头的 x / y 轴
+	s.position = base + cb.x * (fwd if fr else -fwd) + cb.y * (CENT_TIP_UP_PX * px)
+	battle._world.add_child(s)
+	_mfx.append({"node": s, "nf": 6, "fps": 20.0, "t": 0.0, "life": 0.3, "loop": false, "follow": null, "h": 0.0})
+
+
 func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	var a := Vector2(u["pos"])
 	var b := Vector2(t["pos"])
@@ -206,12 +238,13 @@ func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	var ln: float = maxf(80.0, d.length()) + (SpearSynergySystem.LINE_LEN if n > 1 else 20.0)
 	var mid: Vector2 = a + dir * (ln * 0.5)
 	_dir_strip(SV + "spear-cent-thrust.png", 7, mid, dir, ln * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)
+	_cent_tip_flash(u)
 	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(b, 0.6), 1.3, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
 ## 掷矛起手(结算侧第 3 下刺完、回待机停一拍后调): 掷矛动作 7 帧 @12 = 0.58 秒, 出手帧在第 2 帧(结算 THROW_RELEASE 同一刻发飞矛)
 func cent_throw_begin(u: Dictionary) -> void:
-	_cent_play(u, "throw", 12.0)   # 12 帧 = 1 秒, 出手帧下标 4(结算 THROW_RELEASE 0.34 同一刻)
+	_cent_play(u, "throw", 16.0)   # 17 帧 @16, 出手帧下标 6(结算 THROW_RELEASE 0.38 同一刻)
 
 
 func cent_throw(u: Dictionary, s: Dictionary) -> void:
