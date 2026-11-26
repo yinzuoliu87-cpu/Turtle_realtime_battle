@@ -503,7 +503,11 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	var tier: int = int(u.get("_cent_tier", 1))
 	var dist: float = fl.length() + (SpearSynergySystem.LINE_LEN * float(battle.WS) if tier >= 2 else 0.6)
 	tip += d3 * 0.25   # 尖端略超出矛尖: 矛头罩在里面
-	var yaw: float = Cent3dVfx.yaw_of(Vector2(d3.x, d3.z))
+	## 朝向压平: 去掉 75% 朝镜头 / 背镜头的分量(画面上的矛永远横着刺), 路线仍是 d3
+	var camf := Vector3(cb.z.x, 0.0, cb.z.z).normalized() if Vector3(cb.z.x, 0.0, cb.z.z).length() > 0.01 else Vector3.BACK
+	var d3v: Vector3 = d3 - camf * d3.dot(camf) * 0.75
+	d3v = d3v.normalized() if d3v.length() > 0.2 else Vector3(cb.x.x, 0.0, cb.x.z).normalized() * (1.0 if fr else -1.0)
+	var yaw: float = Cent3dVfx.yaw_of(Vector2(d3v.x, d3v.z))
 	var w: Node3D = battle._world
 	## 罩: 同一个抛物面叠 4 层 + 流光层(研究稿「方法」1–4): [着色器, 长, 口径, 起始缩放, 结束缩放, 往后错开(米), 参数, 绘制顺序]
 	var spec: Array = [
@@ -566,7 +570,7 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	w.add_child(ps)
 	_aegis_junk.append({"node": ps, "left": 0.6})
 	## 头部加强(11-27 第二轮「冲击到的头部…需要更多明显的特效」): 激波前沿亮环 + 外贴暗环(折射边) + 横向拉丝光 + 两侧往后甩的火花
-	var yaw2: float = Cent3dVfx.yaw_of(Vector2(d3.x, d3.z))
+	var yaw2: float = yaw
 	var te := Cent3dVfx.tex("energy.png")
 	var fr_dark := Cent3dVfx.node(w, Cent3dVfx.gen_fan(0.42, 1.0, TAU, 0.0, 40, 4), Cent3dVfx.GROUND_SHADER, Cent3dVfx.GROUND_SP,
 		{"tex_energy": te, "open": 1.0, "shell_k": 0.55, "col_mid": Vector3(0.18, 0.08, 0.03), "col_hot": Vector3(0.25, 0.12, 0.05)}, 11)
