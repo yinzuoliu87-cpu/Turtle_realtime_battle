@@ -477,7 +477,7 @@ func _dl_build_lane_field() -> void:
 	##   要验"清的位置对不对"请看 tests/verify_lane_clear_wired.gd 的 ③④ 两条。
 	for _sysref in [battle._equip_sys._spirit_sys, battle._equip_sys._potion_sys,
 			battle._equip_sys._food_sys, battle._equip_sys._bow_sys, battle._equip_sys._venom,
-			battle._crystal_sys]:
+			battle._crystal_sys, battle._spear_syn]:   # _spear_syn(11-27): 百夫长 / 飞矛 / 骑兵与演出句柄; 召唤在开打后才发生, 这里清不会误删登场钩刚生成的东西
 		if _sysref == null:
 			continue
 		if _sysref.has_method("clear_all"):

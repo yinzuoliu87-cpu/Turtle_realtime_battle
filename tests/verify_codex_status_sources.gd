@@ -53,6 +53,7 @@ const SIG := {
 const IGNORE := {
 	# —— 通用入口 / 通道本身(真正的来源是调用它的地方, 那些已逐个认领) ——
 	"stun|scenes/battle/battle_damage.gd:_stun#": "眩晕的通用入口",
+	"untargetable|scenes/battle/battle_damage.gd:revive_begin#": "复活的通用入口(真正的来源是调它的天使 / 凤凰 / 驯服 / 威尼斯面具 / 棕色筹码 / 斧头, 已逐个认领; 11-27)",
 	"stun|scenes/RealtimeBattle3DScene.gd:_freeze#": "冻结 = 通用眩晕入口加特效",
 	"stun|scenes/battle/battle_ballistics.gd:_step_projectiles#": "冰锥弹道命中的冻结通道; 来源是发射方(_fire_ice_shard 调用点)",
 	"airborne|scenes/battle/battle_damage.gd:_knockback#": "击飞的通用入口",

@@ -26,6 +26,7 @@ extends Node
 ##   ⇒ **不调它确实没有后果**，豁免结论不变，但理由换成真的那个。
 const EXEMPT := {
 	"IncenseStoneSystem": "不调它三条后果实测均无影响(香台靠 _world 兜底/buff 随旧字典离场/存档在刻痕当时就写回)",
+	"OtherworldSystem": "不是 battle 成员: 挂在 EqMaskBatch.ow 上, EqMaskBatch.clear_all() 第二行就转调 ow.clear_all(), 而 EqMaskBatch 在批④ _b4_all() 那一轮里清(11-27)",
 }
 
 var _n := 0

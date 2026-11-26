@@ -57,6 +57,10 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_090", "at": "systems/equip/eq_arcane_batch.gd:pestle_slam"},
 		{"k": "eq", "id": "p2eq_096", "at": "systems/equip/axe_passives.gd:slam_settle", "v": "{C:AxeEvolution.SLAM_STUN} 秒", "link": "小木斧"},
 		{"k": "syn", "id": "奇械", "at": "systems/equip/gadget_synergy_system.gd:on_hit", "v": "{C:GadgetSynergySystem.FREEZE_SEC} 秒"},
+		{"k": "eq", "id": "p2eq_130", "at": "systems/equip/eq_mask_batch.gd:_lion_hit", "link": "130 舞狮头[\\s\\S]*func _lion_hit"},   # 130 舞狮冲撞眩晕(11-27)
+		{"k": "eq", "id": "p2eq_140", "at": "systems/equip/eq_spear_batch.gd:on_basic", "arm": "p2eq_140"},   # 140 骑枪冲势耗尽那一下(11-27)
+		{"k": "eq", "id": "p2eq_138", "at": "systems/equip/eq_spear_batch.gd:_harpoon", "link": "\"p2eq_138\":[\\s\\S]{0,300}_harpoon\\("},   # 138 鱼叉命中眩晕 + 拽回(11-27)
+		{"k": "eq", "id": "p2eq_145", "at": "systems/equip/eq_spear_batch.gd:_eternal", "link": "\"p2eq_145\":[\\s\\S]{0,400}_eternal\\("},   # 145 永恒之枪(待用户重新设计, 11-27)
 	],
 	"fear": [
 		{"k": "pet", "id": "headless", "sk": "headlessFear", "at": "systems/skills/headless_system.gd:_sk_headless_fear", "v": "3 秒"},
@@ -111,10 +115,16 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_090", "at": "systems/equip/eq_arcane_batch.gd:_knock_for"},
 		{"k": "eq", "id": "p2eq_096", "at": "systems/equip/axe_passives.gd:smash_on_hit", "link": "小木斧"},
 		{"k": "eq", "id": "p2eq_096", "at": "systems/equip/axe_passives.gd:slam_settle", "link": "小木斧"},
+		{"k": "eq", "id": "p2eq_130", "at": "systems/equip/eq_mask_batch.gd:_lion_hit", "link": "130 舞狮头[\\s\\S]*func _lion_hit"},   # 130 舞狮冲撞击退(11-27)
+		{"k": "eq", "id": "p2eq_140", "at": "systems/equip/eq_spear_batch.gd:on_basic", "arm": "p2eq_140"},   # 140 骑枪冲势耗尽击退(11-27)
+		{"k": "eq", "id": "p2eq_143", "at": "systems/equip/eq_spear_batch.gd:_tick_slams", "link": "_slams: Array = \\[\\][^\\n]*143"},   # 143 砸地击飞(11-27)
+		{"k": "syn", "id": "长矛", "at": "systems/equip/spear_synergy_system.gd:_land"},   # 长矛羁绊百夫长从天而降(11-27)
+		{"k": "syn", "id": "长矛", "at": "systems/equip/spear_synergy_system.gd:_tick_cavs"},   # 长矛羁绊骑兵冲锋(11-27)
 	],
 	"taunt": [
 		{"k": "pet", "id": "stone", "sk": "stoneTaunt", "at": "systems/skills/stone_system.gd:_sk_stone_taunt", "v": "{C:StoneSystem.TAUNT_SEC} 秒"},
 		{"k": "eq", "id": "p2eq_072", "at": "systems/equip/eq_food_batch.gd:_box_form_tick"},
+		{"k": "eq", "id": "p2eq_131", "at": "systems/equip/eq_mask_batch.gd:on_unit_cast", "link": "func on_unit_cast[\\s\\S]{0,600}p2eq_131"},   # 131 小丑面具放技能嘲讽(11-27)
 	],
 	"burn": [
 		{"k": "eq", "id": "p2eq_119", "at": "systems/equip/eq_magic_batch.gd:_fireball"},   # 119 烈焰法典火球灼烧(2026-11-25)
@@ -167,6 +177,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_056", "at": EQS + ":_eq_tick", "arm": "p2eq_056"},
 		{"k": "eq", "id": "p2eq_075", "at": "systems/equip/eq_bow_batch.gd:rain_hop"},
 		{"k": "eq", "id": "p2eq_096", "at": "systems/equip/axe_passives.gd:cleave_settle", "link": "小木斧"},
+		{"k": "eq", "id": "p2eq_139", "at": "systems/equip/eq_spear_batch.gd:_javelin", "link": "\"p2eq_139\":[\\s\\S]{0,400}_javelin\\("},   # 139 标枪流血(11-27)
 	],
 	"curse": [
 		{"k": "pet", "id": "ghost", "sk": "ghostCurse", "at": "scenes/battle/battle_spawn.gd:_apply_spawn_passive_one", "arm": "ghost", "v": "{C:GhostSystem.SPAWN_CURSE_SEC} 秒"},
@@ -233,6 +244,8 @@ const SRC := {
 		{"k": "syn", "id": "盾", "at": "scenes/battle/battle_damage.gd:_holy_convert", "to": "self", "link": "盾羁绊9档"},
 		{"k": "syn", "id": "枪", "at": "systems/equip/gun_synergy_system.gd:_turret_two", "to": "ally"},
 		{"k": "syn", "id": "法器", "at": "systems/equip/staff_synergy_system.gd:on_healed", "to": "self"},
+		{"k": "eq", "id": "p2eq_131", "at": "systems/equip/eq_mask_batch.gd:on_unit_cast", "to": "self", "link": "func on_unit_cast[\\s\\S]{0,600}p2eq_131"},   # 131 小丑面具放技能给自己护盾(11-27)
+		{"k": "eq", "id": "p2eq_142", "at": "systems/equip/eq_spear_batch.gd:_tick_shield_spear", "to": "self", "link": "\"p2eq_142\":[\\s\\S]{0,200}_tick_shield_spear\\("},   # 142 盾矛(11-27)
 	],
 	"magic-shield": [
 		{"k": "eq", "id": "p2eq_012", "at": "systems/equip/magic_shield.gd:seaweed_on_spawn", "to": "self"},
@@ -261,6 +274,9 @@ const SRC := {
 			"lf": MAIN, "link": "赛博龟阵亡 → 浮游炮组装成机甲"},
 		{"k": "minion", "id": "elite", "sk": "eliteHammer", "at": "systems/skills/elite_system.gd:_sk_elite_hammer", "to": "self", "v": "1.6 秒"},
 		{"k": "minion", "id": "elite", "pv": "吞噬", "at": "systems/skills/elite_system.gd:_elite_try_consume", "v": "1.7 秒", "link": "^class_name EliteSystem"},
+		{"k": "eq", "id": "p2eq_132", "at": "systems/equip/eq_mask_batch.gd:tick_unit", "arm": "p2eq_132", "to": "self"},   # 132 鬼面半血潜行(11-27)
+		{"k": "eq", "id": "p2eq_134", "at": "systems/equip/eq_mask_batch.gd:revive", "to": "self", "link": "func revive[\\s\\S]{0,400}_ven_ready"},   # 134 威尼斯面具倒地复活(11-27)
+		{"k": "eq", "id": "p2eq_154", "at": "systems/equip/eq_mask_batch.gd:revive", "to": "self", "link": "func revive[\\s\\S]{0,600}_chip_revive_ready"},   # 154 棕色筹码倒地复活(同一套流程, 11-27)
 	],
 	"reflect": [
 		{"k": "pet", "id": "stone", "sk": "stoneWall", "at": "systems/skills/stone_system.gd:reflect_generic", "arm": "stone", "re": "REFLECT_BASE \\+", "to": "self",
