@@ -2485,7 +2485,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	u["_has_target"] = true
 	u["_sep_target"] = tgt   # ★近战修: 供 _separation 对"自己的攻击目标"缩小分离半径(否则 SEP_RADIUS92 > 近战射程70 → 永远贴不进射程)
 	var _fdx: float = tgt["pos"].x - u["pos"].x   # 朝向跟战斗目标(非移动方向): 交战/风筝/走位都稳定朝敌, 根治近战分离回推"转身"
-	if absf(_fdx) > 8.0 and not bool(u.get("_ninja_gliding", false)) and not bool(u.get("_face_lock", false)):   # _face_lock: 冲撞类动作期间锁朝向(11-27 舞狮冲过目标后掉头, 用户「冲锋到一半，他方向会变了？」)   # 死区: 目标明显在某侧才转向; 忍者冲刺滑行中锁冲刺方向(11-11 用户「戳到空中还会回头」: 冲过目标身边时目标跑到身后, 这里把它转回去)
+	if absf(_fdx) > 8.0 and not bool(u.get("_ninja_gliding", false)) and not bool(u.get("_face_lock", false)) and _t >= float(u.get("_revive_until", -1.0)):   # 复活倒地 2.5 秒不转身(11-27) · _face_lock: 冲撞类动作期间锁朝向(11-27 舞狮冲过目标后掉头, 用户「冲锋到一半，他方向会变了？」)   # 死区: 目标明显在某侧才转向; 忍者冲刺滑行中锁冲刺方向(11-11 用户「戳到空中还会回头」: 冲过目标身边时目标跑到身后, 这里把它转回去)
 		u["face_right"] = _fdx > 0.0
 	if stunned:                     # 麻痹: 不移动/不出手 (但冷却已走)
 		return

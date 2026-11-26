@@ -81,6 +81,7 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    verify_revive_lock) echo 1500 ;;   # 2026-11-27 复活定身: 三种复活各 ~210 帧真 sim(每帧一步), 实测 ~700 帧
     verify_lane_map_intro) echo 4000 ;;   # 2026-11-15 三路开场桌面地图: 真流程走开场 5 秒 + 对阵 5 秒 + 开打 + 两次战果幕, 实测 1400~2000 帧之间跑完, 给一倍余量
     verify_lane_map_finals) echo 1500 ;;   # 2026-11-23 周日对阵卡融进桌面地图(B2): 等开场幕 + 建 4 块幕布, 实测约 600 帧
     verify_hp_bar_center) echo 1500 ;;   # 2026-11-20 血条在人物正上方: 真战斗等开场演出放完、开打 1.5 秒后量; 本机 500 帧够, 给三倍余量

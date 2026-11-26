@@ -1083,7 +1083,7 @@ func revive_begin(u: Dictionary, to_hp: float, protect: bool = true, from_dead: 
 	if protect:
 		u["deathfloor_until"] = maxf(float(u.get("deathfloor_until", 0.0)), t + REVIVE_SEC)
 		u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + REVIVE_SEC)
-		channel(u, REVIVE_SEC)
+	channel(u, REVIVE_SEC)   # 复活期间不移动不行动: 所有复活都上(11-27 用户「复活角色不是不移动了吗」; 原来只在 protect 里 ⇒ 驯服重生漏了)
 	u["_revive_until"] = t + REVIVE_SEC
 	_revq.append({"u": u, "t0": t, "to": maxf(1.0, to_hp), "n": 0, "dead": from_dead})
 
