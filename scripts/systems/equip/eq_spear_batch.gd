@@ -71,10 +71,29 @@ const ATL_SPREAD_SEC := 0.6       # 一批矛在这段时间里陆续出手
 const ATL_FALL_H := 600.0         # 从多高落下(按速度飞, 落地才结算)
 const ATL_FALL_SPD := 1400.0
 # ── 145 永恒之枪(待重新设计) ──
-const ETERNAL_IV := 8.0
-const ETERNAL_PIN := 1.5
-const ETERNAL_PCT := [0.08, 0.12, 0.20]
-const ETERNAL_SPD := 1100.0
+## 145 永恒之枪(11-26 用户设计重做 · 方案书 20261126 附录 E)
+const ETERNAL_NEED := 100.0                    # 进度条满
+const ETERNAL_PS := 4.0                        # 每秒 +
+const ETERNAL_PER_DMG := 3.0                   # 每造成 / 受到 100 点伤害 +
+const ETERNAL_SPD := 700.0                     # 飞行速度(用户嫌飞刀飞镖快, 同手雷)
+const ETERNAL_FROM := Vector2(900.0, 520.0)    # 从目标的「我方一侧上方」这么远处飞来(场外)
+const ETERNAL_HIT_ATK := [1.2, 1.8, 3.0]       # 插中: 攻击力 ×
+const ETERNAL_HIT_HP := [0.04, 0.06, 0.10]     # 插中: + 目标最大生命值 ×
+const ETERNAL_SLIDE := 250.0                   # 击倒后往后滑行距离
+const ETERNAL_SLIDE_SEC := 0.5
+const ETERNAL_STUN := 1.0                      # 击倒 + 滑行期间眩晕
+const ETERNAL_SLIDE_ATK := [0.4, 0.6, 1.0]     # 滑行期间共: 攻击力 ×(按每一步滑过的距离分摊)
+const ETERNAL_SLIDE_HP := [0.02, 0.03, 0.05]   # 滑行期间共: + 目标最大生命值 ×
+const ETERNAL_PASS_W := 50.0                   # 滑行路径上撞到其他敌人的判定半宽(加敌人体型一半)
+const ETERNAL_PASS_ATK := [0.8, 1.2, 2.0]      # 路径上的其他敌人各: 攻击力 ×
+const ETERNAL_PASS_HP := [0.03, 0.04, 0.06]    # 路径上的其他敌人各: + 其最大生命值 ×
+const ETERNAL_IMM_ATK := [1.0, 1.5, 2.5]       # 目标免疫控制 ⇒ 不倒不滑, 转而追加: 攻击力 ×
+const ETERNAL_IMM_HP := [0.04, 0.05, 0.08]     # 转而追加: + 目标最大生命值 ×
+const ETERNAL_TEMP := [0.2, 0.3, 0.5]          # 命中时携带者临时生命值 = 自身最大生命值 ×(可叠加)
+const ETERNAL_TEMP_SEC := 6.0
+const ETERNAL_BURN_R := 250.0                  # 命中处灼烧圈半径
+const ETERNAL_BURN_SEC := 6.0
+const ETERNAL_BURN_PCT := [0.02, 0.03, 0.05]   # 每秒: 圈内敌人各自最大生命值 × 的魔法伤害(多个圈各自生效)
 # ── 146 圣枪(待重新设计) ──
 ## 146 圣枪(11-26 晚用户重做成坦克装 · 方案书 20261126c)
 const HOLY_GUARD_AT := 0.5                     # 每一路首次生命值低于这个比例 ⇒ 圣枪护盾 + 双抗
@@ -92,11 +111,13 @@ const HOLY_ORB_SHIELD := [60.0, 100.0, 200.0]  # 砸到敌方: 携带者护盾(�
 
 var stat := {"bamboo": 0, "bamboo_hit": 0, "harpoon": 0, "harpoon_hit": 0, "harpoon_pull": 0, "jav": 0, "jav_hit": 0,
 	"lance": 0, "halb": 0, "halb_hit": 0, "shsp_raise": 0, "shsp_block": 0, "shsp_release": 0, "shsp_wave_hit": 0,
-	"ftj": 0, "ftj_hit": 0, "ftj_spin": 0, "atl": 0, "atl_hit": 0, "eternal": 0, "eternal_hit": 0, "holy_guard": 0, "holy_guard_part": 0, "holy_channel": 0, "holy_orb": 0, "holy_ally": 0, "holy_enemy": 0}
+	"ftj": 0, "ftj_hit": 0, "ftj_spin": 0, "atl": 0, "atl_hit": 0, "eternal": 0, "eternal_hit": 0, "eternal_imm": 0, "eternal_pass": 0, "eternal_burn": 0, "holy_guard": 0, "holy_guard_part": 0, "holy_channel": 0, "holy_orb": 0, "holy_ally": 0, "holy_enemy": 0}
 var _waves: Array = []    # 137 竹刺浪 {src, ck, o(起点), dir, r, si, hit, sp(下一丛竹刺的距离)}
 var _pulls: Array = []    # 138 拉拽 {src, o, left, t_next}
 var _swaves: Array = []   # 142 冲击波 {src, ck, o, dir, r, per, hit}
 var _slams: Array = []    # 143 {u, ck, si, t, phase}
+var _slides: Array = []   # 145 击倒滑行 {src, o, dir, gone, total, si, ck, hit}
+var _burns: Array = []    # 145 灼烧圈 {src, at, until, next, si, ck}
 var _drops: Array = []    # 144 落矛 {src, ck, at, t_fire, t_land, si, fired}
 
 
@@ -263,6 +284,10 @@ func on_hit(_src: Dictionary, _tgt: Dictionary, _dmg: float, _eid: String, _si: 
 
 ## 143 方天画戟: 受到伤害攒战意(攻击 / 技能 / 持续伤害都算; 蓄力 / 跃起期间和横扫状态里不攒)
 func on_damaged(u: Dictionary, _src, dmg: float, eid: String, si: int) -> void:
+	if eid == "p2eq_145" and dmg > 0.0:   # 145 永恒之枪: 受到伤害攒进度
+		var ck5: String = battle._equip_sys.key_of(u, eid)
+		_set_acc(u, "eter:" + ck5, minf(ETERNAL_NEED, _acc(u, "eter:" + ck5) + dmg * ETERNAL_PER_DMG / 100.0))
+		return
 	if eid != "p2eq_143" or dmg <= 0.0:
 		return
 	var ck: String = battle._equip_sys.key_of(u, eid)
@@ -332,6 +357,8 @@ func tick(delta: float) -> void:
 	_tick_swaves(delta)
 	_tick_slams(delta)
 	_tick_drops()
+	_tick_slides(delta)
+	_tick_burns()
 
 
 ## 137 竹刺浪: 浪头按速度往前推, 每一步扫过的那一段里碰到的敌人各吃一次
@@ -503,7 +530,7 @@ func _live_mirror(u: Dictionary) -> void:
 		if not (e is Dictionary):
 			continue
 		var eid := str(e.get("id", ""))
-		if not ["p2eq_140", "p2eq_142", "p2eq_143", "p2eq_146"].has(eid):
+		if not ["p2eq_140", "p2eq_142", "p2eq_143", "p2eq_145", "p2eq_146"].has(eid):
 			continue
 		es.ck_set(u, e)
 		var ck: String = es.key_of(u, eid)
@@ -524,6 +551,8 @@ func _live_mirror(u: Dictionary) -> void:
 				else:
 					var need: float = maxf(1.0, float(u.get("maxHp", 1.0)) * FTJ_NEED_PCT)
 					_live_put(u, ck, {"buff": 0, "pct": int(floor(_acc(u, "ftj:" + ck) / need * 100.0))})
+			"p2eq_145":
+				_live_put(u, ck, {"pct": int(floor(_acc(u, "eter:" + ck) / ETERNAL_NEED * 100.0))})
 			"p2eq_146":
 				_live_put(u, ck, {"store": int(holy_stored(u, ck)), "cap": int(float(u.get("maxHp", 0.0)) * HOLY_STORE_CAP),
 					"channel": _acc(u, "holy_ch:" + ck) > 0.0, "next": int(ceil(HOLY_IV - _acc(u, "holy_t:" + ck)))})
@@ -583,11 +612,13 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 					a3 -= ATL_IV
 					_atlatl(u, si, ck)
 				_set_acc(u, "atl:" + ck, a3)
-			"p2eq_145":
-				var a4 := _acc(u, "eter:" + ck) + delta
-				if a4 >= ETERNAL_IV:
-					a4 -= ETERNAL_IV
-					_eternal(u, si, ck)
+			"p2eq_145":   # 进度: 每秒 + / 造成伤害(看 dmg_dealt 的增量) + / 受到伤害(on_damaged) +; 满了出手
+				var dd: float = float(u.get("dmg_dealt", 0.0))
+				var dd0: float = _acc(u, "eter_dd:" + ck)
+				_set_acc(u, "eter_dd:" + ck, dd)
+				var a4 := minf(ETERNAL_NEED, _acc(u, "eter:" + ck) + ETERNAL_PS * delta + maxf(0.0, dd - dd0) * ETERNAL_PER_DMG / 100.0)
+				if a4 >= ETERNAL_NEED and _eternal(u, si, ck):
+					a4 = 0.0
 				_set_acc(u, "eter:" + ck, a4)
 			"p2eq_146":
 				_tick_holy(u, si, ck, delta)
@@ -740,7 +771,8 @@ func _atlatl(u: Dictionary, si: int, ck: String) -> void:
 
 
 ## 145 永恒之枪(待重新设计): 生命值最高的敌人; 按速度飞到才结算: 钉住 1.5 秒 + 目标最大生命值 % 物理伤害
-func _eternal(u: Dictionary, si: int, ck: String) -> void:
+## 145 永恒之枪: 进度满 ⇒ 一支枪从场外(携带者那一方的上方)按速度飞向生命值最高的敌人, 碰到才结算。返回 false = 没有能打的(进度留着下一帧再试)
+func _eternal(u: Dictionary, si: int, ck: String) -> bool:
 	var best = null
 	var bh := -1.0
 	for o in _enemies(u):
@@ -750,28 +782,114 @@ func _eternal(u: Dictionary, si: int, ck: String) -> void:
 			bh = float(o.get("hp", 0.0))
 			best = o
 	if not (best is Dictionary):
-		return
+		return false
 	stat["eternal"] += 1
 	var me: Dictionary = u
 	var tg: Dictionary = best
-	var pct: float = float(ETERNAL_PCT[si])
+	var sx: float = -1.0 if str(battle._eff_side(u)) == "left" else 1.0   # 左边队伍 ⇒ 从左上方飞来(从我方身后掷过去)
+	var from := Vector2(tg["pos"]) + Vector2(sx * ETERNAL_FROM.x, -ETERNAL_FROM.y)
 	var node = null
 	var vx = _vfx()
 	if vx != null and vx.has_method("eternal_fly"):
-		node = vx.eternal_fly(u, tg)
+		node = vx.eternal_fly(from, tg)
 	var tp: Array = battle._equip_sys.tally.push(u, ck)
-	battle._ballistics.launch_flight(u, Vector2(u["pos"]), tg, ETERNAL_SPD,
+	battle._ballistics.launch_flight(u, from, tg, ETERNAL_SPD,
 		func(hit: bool) -> void:
 			_fx("eternal_end", [node, hit, tg])
 			if not hit or not tg.get("alive", false):
 				return
-			stat["eternal_hit"] += 1
-			_phys(me, tg, float(tg.get("maxHp", 0.0)) * pct)
-			if tg.get("alive", false):
-				battle._damage._stun(tg, ETERNAL_PIN, "eternal_pin"),
+			_eternal_hit(me, tg, si, ck, from),
 		func(_k: float, p2: Vector2, to2: Vector2) -> void:
 			_fx("eternal_step", [node, p2, to2]))
 	battle._equip_sys.tally.pop(tp)
+	return true
+
+
+func _eternal_hit(me: Dictionary, tg: Dictionary, si: int, ck: String, from: Vector2) -> void:
+	stat["eternal_hit"] += 1
+	var atk: float = float(me.get("atk", 0.0))
+	var at := Vector2(tg["pos"])
+	var dir: Vector2 = DetMath.norm(at - from) if DetMath.vlen(at - from) > 1.0 else Vector2(1.0, 0.0)
+	_phys(me, tg, float(ETERNAL_HIT_ATK[si]) * atk + float(ETERNAL_HIT_HP[si]) * float(tg.get("maxHp", 0.0)))
+	if tg.get("alive", false):
+		if battle._damage.knock_blocked(tg):   # 免疫控制(或免击飞): 不倒不滑, 转而追加一段
+			stat["eternal_imm"] += 1
+			_phys(me, tg, float(ETERNAL_IMM_ATK[si]) * atk + float(ETERNAL_IMM_HP[si]) * float(tg.get("maxHp", 0.0)))
+			_fx("eternal_immune", [tg])
+		else:
+			battle._damage._stun(tg, ETERNAL_STUN, "eternal_pin")
+			var total: float = float(ETERNAL_SLIDE_ATK[si]) * atk + float(ETERNAL_SLIDE_HP[si]) * float(tg.get("maxHp", 0.0))
+			_slides.append({"src": me, "o": tg, "dir": dir, "gone": 0.0, "total": total, "si": si, "ck": ck, "hit": [tg]})
+			_fx("eternal_slide", [tg, dir, ETERNAL_SLIDE_SEC])
+	## 携带者临时生命值(到期按比例削回; 多次各自独立 = 叠加)
+	if me.get("alive", false):
+		battle._trainer_sys._apply_temp_maxhp(me, float(me.get("maxHp", 0.0)) * float(ETERNAL_TEMP[si]), ETERNAL_TEMP_SEC)
+		_fx("eternal_temp", [me])
+	## 命中处灼烧圈(每个圈各自生效)
+	_burns.append({"src": me, "at": at, "until": float(battle._t) + ETERNAL_BURN_SEC, "next": float(battle._t) + 1.0, "si": si, "ck": ck})
+	_fx("eternal_burn", [at, ETERNAL_BURN_R, ETERNAL_BURN_SEC])
+
+
+## 145 击倒滑行: 目标按每一步往后滑(总距离 / 总时长), 这一步滑过的那一段里撞到的其他敌人各吃一次; 滑行伤害按这一步滑的距离分摊
+func _tick_slides(delta: float) -> void:
+	var keep: Array = []
+	var step_len: float = ETERNAL_SLIDE / ETERNAL_SLIDE_SEC * delta
+	for s in _slides:
+		var o: Dictionary = s["o"]
+		var src: Dictionary = s["src"]
+		if not o.get("alive", false) or float(s["gone"]) >= ETERNAL_SLIDE - 0.01:
+			continue
+		var a: Vector2 = Vector2(o["pos"])
+		var mv: float = minf(step_len, ETERNAL_SLIDE - float(s["gone"]))
+		var b: Vector2 = ArenaShape.clamp_in(a + Vector2(s["dir"]) * mv, battle.ARENA, 40.0)
+		var real: float = DetMath.dist(a, b)
+		o["pos"] = b
+		s["gone"] = float(s["gone"]) + mv
+		var tp: Array = battle._equip_sys.tally.push(src, str(s["ck"]))
+		if real > 0.0:
+			_phys(src, o, float(s["total"]) * real / ETERNAL_SLIDE)
+		var si: int = int(s["si"])
+		for e in _enemies(src):
+			if _arr_has(s["hit"], e) or battle._is_untargetable(e):
+				continue
+			var q: Vector2 = DetMath.seg_closest(Vector2(e["pos"]), a, b)
+			if DetMath.dist(q, Vector2(e["pos"])) <= ETERNAL_PASS_W + float(e.get("col_size", 22.0)) * 0.5:
+				(s["hit"] as Array).append(e)
+				stat["eternal_pass"] += 1
+				_phys(src, e, float(ETERNAL_PASS_ATK[si]) * float(src.get("atk", 0.0)) + float(ETERNAL_PASS_HP[si]) * float(e.get("maxHp", 0.0)))
+				_fx("eternal_pass", [e])
+		battle._equip_sys.tally.pop(tp)
+		if real < mv * 0.5:   # 撞到场地边缘: 停
+			s["gone"] = ETERNAL_SLIDE
+		keep.append(s)
+	_slides = keep
+
+
+## 145 灼烧圈: 每秒对圈内敌人各自最大生命值 × ETERNAL_BURN_PCT 的魔法伤害
+func _tick_burns() -> void:
+	var t := float(battle._t)
+	var keep: Array = []
+	for z in _burns:
+		var src: Dictionary = z["src"]
+		if t >= float(z["until"]):
+			continue
+		if t >= float(z["next"]):
+			z["next"] = float(z["next"]) + 1.0
+			var tp: Array = battle._equip_sys.tally.push(src, str(z["ck"]))
+			for e in _enemies(src):
+				if DetMath.dist(Vector2(e["pos"]), Vector2(z["at"])) <= ETERNAL_BURN_R + float(e.get("col_size", 22.0)) * 0.5:
+					stat["eternal_burn"] += 1
+					_magic(src, e, float(e.get("maxHp", 0.0)) * float(ETERNAL_BURN_PCT[int(z["si"])]))
+			battle._equip_sys.tally.pop(tp)
+		keep.append(z)
+	_burns = keep
+
+
+static func _arr_has(arr: Array, x) -> bool:
+	for y in arr:
+		if is_same(y, x):
+			return true
+	return false
 
 
 ## 146 圣枪每帧: ① 每一路首次低于 50% 生命 ⇒ 圣枪护盾 + 双抗; ② 每 12 秒开始引导, 引导中每 0.25 秒耗储能出一个光球, 不够就结束。
@@ -883,6 +1001,8 @@ func _holy_orb(u: Dictionary, si: int, ck: String) -> void:
 
 
 func clear_all() -> void:
+	_slides.clear()
+	_burns.clear()
 	_waves.clear()
 	_pulls.clear()
 	_swaves.clear()

@@ -1342,8 +1342,8 @@ func javelin_end(node, _hit: bool) -> void:
 	_free(node)
 
 
-func eternal_fly(u: Dictionary, tg: Dictionary):
-	return _proj("spear-gungnir.png", Vector2(u["pos"]), Vector2(tg["pos"]) - Vector2(u["pos"]), 2.0)
+func eternal_fly(from: Vector2, tg: Dictionary):   # 11-26 起从场外飞来(sim 给出发点)
+	return _proj("spear-gungnir.png", from, Vector2(tg["pos"]) - from, 2.0)
 
 
 func eternal_step(node, p2: Vector2, to2: Vector2) -> void:

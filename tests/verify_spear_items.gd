@@ -255,20 +255,7 @@ func _ready() -> void:
 		int(_b.stat["atl"]) == 1 and nd == 8 and far_ok and hits0 == 0 and int(_b.stat["atl_hit"]) >= 2 and float(grp[3]["hp"]) == 5000.0,
 		"批 %d · 矛 %d · 落点都在圈内 %s · 出手时 %d · 落地后 %d" % [int(_b.stat["atl"]), nd, str(far_ok), hits0, int(_b.stat["atl_hit"])])
 
-	## 145 永恒之枪
-	me = _mk("left", ["p2eq_145"])
-	var small := _mk("right", [], 0.0, -80.0)
-	var big := _mk("right", [], 300.0, 80.0)
-	_field([me, small, big])
-	big["maxHp"] = 9000.0
-	big["hp"] = 9000.0
-	_adv(8.02, [me])
-	var hb2 := float(big["hp"])
-	_adv(1.0, [me])
-	var want: int = _s._phys_after_armor(me, 9000.0 * 0.08, big)
-	_ok("145 永恒之枪: 第 8 秒掷向血最多的, 飞到才打: 目标最大生命 8% 物理 + 钉住 1.5 秒",
-		int(_b.stat["eternal_hit"]) == 1 and absf(hb2 - float(big["hp"]) - float(want)) < 1.5 and float(big.get("stun_until", 0.0)) > _s._t and float(small["hp"]) == 5000.0,
-		"命中 %d · 掉 %.0f(应 %d)" % [int(_b.stat["eternal_hit"]), hb2 - float(big["hp"]), want])
+	## 145 永恒之枪: 11-26 晚按用户设计重做, 单独一份门禁 tests/verify_eternal_spear.gd
 
 	## 146 圣枪: 11-26 晚重做成坦克装, 单独一份门禁 tests/verify_holy_spear.gd(17 条)
 
