@@ -326,6 +326,8 @@ func _process(d: float) -> void:
 			_b._damage.channel(cen, 1.6)
 			_b._spear_syn.vfx.cent_shield(cen, 1.4)
 			print("[ADIR] %d 角度 %d 敌人 %s 百夫长 %s" % [ad_k, int(rad_to_deg(ang)), str(foes[0]["pos"]), str(cp)])
+		if cen != null and OS.has_environment("REC_AEGIS_HITS") and ad_k < 8 and int(ad_t / 0.35) != int((ad_t - d) / 0.35):   # 受击涟漪演示: 每 0.35 秒 1 点伤害
+			_b._damage._apply_damage(cen, 1, Color.WHITE)
 		if cen != null and _seen.has("adir%d" % ad_k) and not _seen.has("adoff%d" % ad_k) and ad_t - float(ad_k) * 1.7 > 1.45:
 			_seen["adoff%d" % ad_k] = 1
 			_b._spear_syn.vfx.cent_shield_off(cen)
