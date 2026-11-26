@@ -153,8 +153,8 @@ static func cases() -> Dictionary:
 		"mk_paper": [[_me(Vector2(-60, 0), _eq([127], 1), {"hold": true})] + _dummies(60, 3, true, 30000.0, 60.0), 12.0],
 		## 京剧脸谱: 18 秒 ⇒ 第 8 秒红→黑、第 16 秒黑→白; 红脸普攻冒红火花、白脸普攻偷龟能
 		"mk_face": [[_me(Vector2(-60, 0), _eq([129], 1))] + _dummies(60, 3, false, 30000.0), 18.0],
-		## 小丑面具: 天使龟满龟能开局放技能 ⇒ 附近敌人头上挂嘲笑小丑脸
-		"mk_clown": [[_u("angel", "left", Vector2(-120, 0), {"fe": true, "equips": _eq([131], 1), "hp": 8000.0, "killable": false})] + _dummies(40, 3, true, 30000.0, 40.0), 10.0],
+		## 小丑面具(11-27 携带者换泡泡龟: 天使龟放技能自带一大团白光, 盖住小丑效果): 满龟能开局放技能 ⇒ 附近敌人头上挂嘲笑小丑脸
+		"mk_clown": [[_u("bubble", "left", Vector2(-120, 0), {"fe": true, "equips": _eq([131], 1), "hp": 8000.0, "killable": false})] + _dummies(40, 3, true, 30000.0, 40.0), 10.0],
 		## ── 长矛(11-26) ── 两只只会站着的小将各带 5 件不同的长矛 = 10 件 4 档; 百夫长第 8 秒登场
 		"sp_cent": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
 			+ _dummies(60, 3, true, 12000.0, 60.0), 30.0],
@@ -234,6 +234,16 @@ func _process(d: float) -> void:
 			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and bool(uu.get("alive", false)):
 				_seen["cent_kill"] = 1
 				_b._damage._apply_damage(uu, int(float(uu["hp"]) + float(uu.get("shield", 0.0)) + 10.0), Color.WHITE)
+	if OS.has_environment("REC_NODE_PROBE") and _el > float(OS.get_environment("REC_NODE_PROBE")) and not _seen.has("node_probe"):
+		_seen["node_probe"] = 1
+		for nd in _b._world.get_children():
+			if nd is Sprite3D and (nd as Sprite3D).visible:
+				var tx = (nd as Sprite3D).texture
+				print("[NODE] Sprite3D %s tex=%s mod=%s px=%.4f" % [str((nd as Sprite3D).position), (tx.resource_path.get_file() if tx != null and tx.resource_path != "" else ("动态" + str(tx.get_size()) if tx != null else "无")), str((nd as Sprite3D).modulate), (nd as Sprite3D).pixel_size])
+			elif nd is MeshInstance3D and (nd as MeshInstance3D).visible:
+				print("[NODE] Mesh %s %s" % [str((nd as MeshInstance3D).position), str((nd as MeshInstance3D).mesh)])
+			elif nd is GPUParticles3D or nd is CPUParticles3D:
+				print("[NODE] Particles %s" % str(nd.position))
 	if OS.has_environment("REC_ANIM_PROBE") and int(_el * 2.0) != int((_el - d) * 2.0):   # 每 0.5 秒打一次召唤物当前播的帧条(11-27 查舞狮走路)
 		for uu in _b._units:
 			if uu is Dictionary and bool(uu.get("is_summon", false)):
