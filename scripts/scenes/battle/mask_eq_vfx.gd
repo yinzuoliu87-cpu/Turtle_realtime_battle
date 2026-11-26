@@ -335,6 +335,7 @@ func clear() -> void:
 		_free(f["node"])
 	_mflies.clear()
 	_gas_last.clear()
+	_fox_last.clear()
 	_lion_in.clear()
 	for r in _ow_rifts:
 		_free(r["node"])
@@ -542,6 +543,20 @@ func ghost_hide(u: Dictionary, _sec: float) -> void:
 
 func ghost_reveal(u: Dictionary) -> void:
 	_strip(MV + "mask-ghost-puff.png", 9, battle._world_pos(Vector2(u["pos"]), 0.0), 1.4, 18.0, false, 9.0 / 18.0, false, null, 0.0)
+
+
+## 128 狐狸面具: 打最大生命比自己高很多的目标(增伤到上限一半以上)时, 目标身上冒一簇狐火(逐帧); 同一个目标 0.6 秒内只冒一次
+var _fox_last := {}
+
+
+func fox_fire(tgt: Dictionary) -> void:
+	var spr = tgt.get("sprite")
+	var key: int = (spr as Object).get_instance_id() if is_instance_valid(spr) else 0
+	var t := float(battle._t)
+	if t - float(_fox_last.get(key, -9.0)) < 0.6:
+		return
+	_fox_last[key] = t
+	_strip(MV + "mask-fox-fire.png", 7, battle._world_pos(Vector2(tgt["pos"]), 0.6), 1.25, 16.0, false, 7.0 / 16.0, false, tgt, 0.7)
 
 
 ## 133 防毒面具

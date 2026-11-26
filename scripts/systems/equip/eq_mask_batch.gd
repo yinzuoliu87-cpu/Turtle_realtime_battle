@@ -295,8 +295,13 @@ func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
 			_fx("face_white_steal", [u, tgt])
 
 
-func on_hit(_src: Dictionary, _tgt: Dictionary, _dmg: float, _eid: String, _si: int) -> void:
-	pass
+## 128 狐狸面具: 这一下对目标的增伤到了上限一半以上 ⇒ 目标身上冒一簇狐火(只管画面; 同一个目标 0.6 秒内一次, 演出层里节流)
+func on_hit(src: Dictionary, tgt: Dictionary, _dmg: float, eid: String, _si: int) -> void:
+	if eid != "p2eq_128" or not tgt.get("alive", false):
+		return
+	var mx: float = float(src.get("_fox_max", 0.0))
+	if mx > 0.0 and fox_amp(src, tgt) >= mx * 0.5:
+		_fx("fox_fire", [tgt])
 
 
 ## 127 纸面具②: 每受到一段攻击或技能伤害, 朝攻击者飞一片纸, 碰到才结算(自身护甲 × 比例 的物理伤害)。持续伤害不触发。

@@ -74,7 +74,8 @@ STRIPS = {
     "mask-paper-blade": ["ppb_%d" % i for i in range(0, 4)],     # 127 反击纸刃(循环)
     "mask-ghost-puff": ["ghp_%d" % i for i in range(0, 9)],      # 132 潜行 / 现形的暗红烟
     "mask-gas-block": ["gsb_%d" % i for i in range(0, 7)],       # 133 毒气撞上滤网散掉
-    "mask-lion-pop": ["lnb_%d" % i for i in range(0, 9)],        # 130 舞狮登场爆竹   # 第 1 帧整张发白不取; 2/3 帧右侧杂点在 CLEAN_RIGHT 里清
+    "mask-lion-pop": ["lnb_%d" % i for i in range(0, 9)],        # 130 舞狮登场爆竹
+    "mask-fox-fire": ["foxf_%d" % i for i in range(0, 7)],       # 128 狐狸面具增伤狐火(11-26 夜: create_image_pro_flash 无锚 fox_fire + animate_image 只钉首帧)   # 第 1 帧整张发白不取; 2/3 帧右侧杂点在 CLEAN_RIGHT 里清
 }
 
 
