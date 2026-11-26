@@ -123,6 +123,17 @@ static func cases() -> Dictionary:
 		## 远程书页格挡: 敌人一下打 ≥ 6% 最大生命(攻击力调高、携带者血量压到 3000 ⇒ 门槛 180) ⇒ 书页闪到身前挡
 		"mb_tome_ranged": [[_u("angel", "left", Vector2(-260, 0), {"fe": true, "hold": true, "equips": _eq([126]), "hp": 3000.0, "killable": false})]
 			+ _dummies(-60, 2, true, 30000.0, 700.0), 14.0],
+		## ── 面具批(11-26) ──
+		## 黄金面具: 一星, 三只会打的靶子各 2500 血 ⇒ 看金光钉一只到死 → 8 秒冷却 → 钉下一只
+		"mk_gold": [[_me(Vector2(-260, 0), _eq([135], 1), {"hold": true})] + _dummies(80, 3, true, 2500.0, 0.0), 26.0],
+		## 舞狮头: 舞狮冲撞(靶子会动会打)
+		"mk_lion": [[_me(Vector2(-300, 0), _eq([130], 1), {"idle": true})] + _dummies(60, 3, true, 6000.0, 60.0), 22.0],
+		## 千面: 第 8 秒拽一只进里世界; 9.5 秒自动点「观看里世界」, 15 秒切回主世界(REC_OW 自动点按钮)
+		"mk_ow": [[_me(Vector2(-200, 0), _eq([136], 1)), _me(Vector2(-200, 150), [])] + _dummies(60, 3, true, 8000.0, 40.0), 24.0],
+		## 威尼斯面具: 携带者 1500 血, 靶子攻击 400 ⇒ 很快被打倒 → 倒地 2.5 秒回到 30% → 继续
+		"mk_venice": [[_me(Vector2(-60, 0), _eq([134], 1), {"hp": 1500.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 250.0), 16.0],
+		## 鬼面: 靶子打到它半血 ⇒ 潜行(半透明) → 攻击现形
+		"mk_ghost": [[_me(Vector2(-60, 0), _eq([132], 1), {"hp": 3000.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 120.0), 16.0],
 		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
 		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
 			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 16.0],
@@ -206,6 +217,23 @@ func _process(d: float) -> void:
 		for u in _b._units:
 			print("[PROBE] %.1f %s %s pos=%s hp=%s alive=%s nm=%s nb=%s sk=%s st=%s atk=%s cd=%s rng=%s stun=%s" % [_el, str(u.get("side", "")), str(u.get("id", "")), str(u.get("pos", "")), str(int(u.get("hp", 0))), str(u.get("alive", false)), str(u.get("no_move", false)), str(u.get("no_basic", false)), str(u.get("active_skills", [])), str(u.get("state", "")), str(u.get("atk", 0)), str(u.get("atk_cd", 0)), str(u.get("atk_range", 0)), str(u.get("stun_until", 0))])
 		print("[PROBE] mines ", _b._equip_sys._bomb_sys._mines.size(), " over=", _b._over, " edit=", _b._edit_mode)
+	var ms = _b._equip_sys._mask_sys
+	for k in ms.stat:
+		if int(ms.stat[k]) != int(_seen.get("m_" + k, 0)):
+			print("[EV] %.2f %s %d" % [_el, k, int(ms.stat[k])])
+			_seen["m_" + k] = int(ms.stat[k])
+	if bool(ms.ow.active) != bool(_seen.get("ow", false)):
+		print("[EV] %.2f ow_active %s" % [_el, str(ms.ow.active)])
+		_seen["ow"] = bool(ms.ow.active)
+	## 千面演示: 里世界开着时自动点一次「观看里世界」, 隔 5 秒再点回主世界(看按钮切视角)
+	if OS.get_environment("REC_CASE") == "mk_ow" and ms.ow.active:
+		var ot: float = float(_b._t) - float(ms.ow.t0)
+		if ot > 1.5 and not bool(_seen.get("ow_v1", false)):
+			_seen["ow_v1"] = true
+			ms.vfx._ow_toggle()
+		if ot > 6.5 and not bool(_seen.get("ow_v2", false)):
+			_seen["ow_v2"] = true
+			ms.vfx._ow_toggle()
 	if _el > _max:
 		print("[REC] %.2f 收工" % _el)
 		get_tree().quit(0)

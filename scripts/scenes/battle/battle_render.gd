@@ -702,6 +702,12 @@ func _update_world_transforms() -> void:
 			contact.modulate.a = 0.0   # 隐藏接触核影(用户"只留影子")
 		if is_instance_valid(ring):
 			ring.position = battle._world_pos(_rpos, 0.015)
+		if bool(u.get("_ghost_hidden", false)) and battle._t < float(u.get("untargetable_until", 0.0)):   # 132 鬼面潜行(11-26): 暗红紫半透明, 攻击现形
+			spr.modulate = Color(0.62, 0.3, 0.55, 0.34).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl * 0.5)
+		if battle._equip_sys._mask_sys.ow_hidden(u):   # 136 千面【里世界】: 不在观众正在看的那个世界 ⇒ 本体 / 影子都隐去(血条在下面那段隐)
+			spr.modulate.a = 0.0
+			if is_instance_valid(shadow):
+				shadow.modulate.a = 0.0
 
 # ============================================================================
 #  §JUICE — Phase4 商业级打击感 (squash&stretch / 闪白 / 顿帧 / 震屏 / idle bob / 粒子)
@@ -739,6 +745,13 @@ func _update_overlay() -> void:
 		if not u["alive"]:
 			root.visible = false
 			continue
+		if battle._equip_sys._mask_sys.ow_hidden(u):   # 136 里世界: 不在观众正在看的世界 ⇒ 血条也隐
+			root.visible = false
+			u["_ow_bar_hid"] = true
+			continue
+		elif bool(u.get("_ow_bar_hid", false)):
+			u["_ow_bar_hid"] = false
+			root.visible = true
 		# HpBar 组件刷新 (HP/护盾/受击红trail+白闪/刻度全自带, 1:1 回合制血条).
 		#   update_state 读 u 的 maxHp/hp/shield 字段; 召唤体也是同 HpBar (无护盾段则自然不画).
 		var hb = u.get("hp_bar", null)

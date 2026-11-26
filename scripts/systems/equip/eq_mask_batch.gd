@@ -87,6 +87,13 @@ var gold_gain := {}
 
 
 var ow: OtherworldSystem      # 136 千面【里世界】
+## 观众此刻看的是不是里世界(画面层; 不进 sim)
+var ow_view := false
+
+
+## 画面: 这个单位此刻该不该隐去(里世界开着时, 不在观众正在看的那个世界里)
+func ow_hidden(u: Dictionary) -> bool:
+	return ow.active and bool(u.get("_ow", false)) != ow_view
 
 
 func _init(b) -> void:

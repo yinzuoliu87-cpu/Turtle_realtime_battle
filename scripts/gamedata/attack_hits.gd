@@ -20,6 +20,7 @@ const BY_PATH := {
 	"pets/animations/wraith/attack.png": 2,     # 5 帧
 	"vfx/eq096-axe-wood-attack.png": 2,
 	"vfx/eq-ninja-attack.png": 8,               # 12 帧(115 暗影忍者横斩, 11-25: 刀从肩后举过头顶、经脸前扫到正前方, 下标 8 刀平指敌人; tools/oneoff/ninja_blade_track.py 逐帧标过刀尖)
+	"vfx/eq-masklion-attack.png": 4,           # 10 帧(130 舞狮: 后仰 → 下标 4 张嘴前扑到最前 → 收回)
 	"vfx/eq-skelw-attack.png": 8,               # 13 帧(123 骷髅战士横斩, 11-25: 剑收头后 → 竖直 → 斜指前上 → 下标 8 剑横平指敌人(逐帧标过剑尖角度: 单调由上往前); pack_magic_art.py SKEL_HIT)
 	"vfx/eq-skelm-attack.png": 6,               # 11 帧(123 骷髅法师杖前刺, 下标 6 杖头指敌人)
 	"vfx/eq-skelp-attack.png": 7,               # 12 帧(123 骷髅祭司甩灯, 下标 7 手臂前伸灯冲敌人亮)
