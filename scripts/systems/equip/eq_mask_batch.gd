@@ -57,6 +57,9 @@ const CLOWN_SHIELD_SEC := 4.0
 # ── 132 鬼面 ──
 const GHOST_LINE := 0.5
 const GHOST_SEC := [3.0, 4.0, 5.0]
+## 11-27 自查: 攻击现形后 1 秒重新隐身(照用户定的烟雾弹潜行「攻击现形, 下一秒又盖上」)。原来现形就整段结束 ⇒ 自动普攻的单位进潜行下一帧就出手,
+##   探针量到潜行只维持 0.07 秒, 文案「持续 3 秒、每秒回 3%」实际只回了 5 点血
+const GHOST_REHIDE := 1.0
 const GHOST_REGEN := [0.03, 0.05, 0.08]        # 潜行期间每秒回复 最大生命值 ×
 # ── 133 防毒面具 ──
 const GAS_IMMUNE := ["burn", "poison", "bleed"]
@@ -357,6 +360,7 @@ func on_any_basic(u: Dictionary, _tgt) -> void:
 	if bool(u.get("_ghost_hidden", false)):
 		u["_ghost_hidden"] = false
 		u["untargetable_until"] = minf(float(u.get("untargetable_until", 0.0)), float(battle._t))
+		u["_ghost_rehide"] = float(battle._t) + GHOST_REHIDE   # 1 秒后重新隐身(潜行时间没到的话)
 		_fx("ghost_reveal", [u])
 	if str(u.get("id", "")) == "_summon_mask_lion":
 		if _tgt is Dictionary:
@@ -384,7 +388,11 @@ func on_unit_cast(u: Dictionary, _tgt, _stype: String, cost: float, _echo: bool)
 				tg.append(o)
 		if sec > 0.0 and not tg.is_empty():
 			battle._taunt(u, tg, sec)
+		## 11-27 自查: 小丑自己有一团彩纸爆开(clown_taunt), 通用获得护盾罩(开头几帧是实心亮圆)和它同一刻、同一位置 ⇒ 彩纸被盖成一团白;
+		##   照盾羁绊的做法不叠通用罩 —— 盾照样看得到: 头顶「+N 盾」飘字 + 血条上的盾条
+		u["_own_grant_vfx"] = true
 		battle._damage._grant_shield(u, float(u.get("maxHp", 0.0)) * float(CLOWN_SHIELD_PCT[si]), CLOWN_SHIELD_SEC)
+		u.erase("_own_grant_vfx")   # _grant_shield 提前返回(盾量 0)时不会清这个标记 ⇒ 这里兜底, 别吞掉下一次别人给盾的护罩
 		_fx("clown_taunt", [u, tg, sec])
 		es.tally.pop(tl)
 	es.ck_restore(ckp)
@@ -773,16 +781,22 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 					_set_acc(u, "ghost_used:" + ck, 1.0)
 					stat["ghost"] += 1
 					var t := float(battle._t)
+					u["_ghost_end"] = t + float(GHOST_SEC[si])
 					u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + float(GHOST_SEC[si]))
 					u["_ghost_hidden"] = true
 					u["_ghost_regen"] = float(GHOST_REGEN[si])
 					_fx("ghost_hide", [u, float(GHOST_SEC[si])])
-				if bool(u.get("_ghost_hidden", false)):
-					if float(battle._t) >= float(u.get("untargetable_until", 0.0)):
-						u["_ghost_hidden"] = false
-						_fx("ghost_reveal", [u])
-					else:
-						battle._damage._heal(u, float(u.get("maxHp", 0.0)) * float(u.get("_ghost_regen", 0.0)) * delta)
+				var tg0 := float(battle._t)
+				if tg0 < float(u.get("_ghost_end", -1.0)):
+					## 潜行时间内: 攻击现形过的, 1 秒后重新隐身; 整段时间都回血(现形那 1 秒也回)
+					if not bool(u.get("_ghost_hidden", false)) and tg0 >= float(u.get("_ghost_rehide", 0.0)):
+						u["_ghost_hidden"] = true
+						u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), float(u["_ghost_end"]))
+						_fx("ghost_hide", [u, float(u["_ghost_end"]) - tg0])
+					battle._damage._heal(u, float(u.get("maxHp", 0.0)) * float(u.get("_ghost_regen", 0.0)) * delta)
+				elif bool(u.get("_ghost_hidden", false)):
+					u["_ghost_hidden"] = false
+					_fx("ghost_reveal", [u])
 			"p2eq_133":   # 每损失 1% 生命值 +1% 移动速度(每帧按当前血量重算)
 				var lost: float = clampf(1.0 - float(u["hp"]) / maxf(1.0, float(u.get("maxHp", 1.0))), 0.0, 1.0)
 				var want: float = lost * 100.0 * GAS_MOVE_PER_PCT * float(_count(u, "p2eq_133"))

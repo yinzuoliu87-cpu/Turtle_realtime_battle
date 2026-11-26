@@ -76,12 +76,19 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 		"p2eq_153":   # 黄: 整个战场控制免疫
 			u["cc_immune_until"] = maxf(float(u.get("cc_immune_until", 0.0)), 1.0e12)
 			stat["cc_immune"] += 1
+			_fx("chip_cc_block", [u])   # 登场时头顶转一下黄色筹码: 告诉玩家这只免控
 		"p2eq_154":
 			u["_chip_revive_ready"] = true
 		"p2eq_155":
 			_golds.append({"u": u, "done": false})
 		"p2eq_156":
 			u["_grey_stk"] = 0
+
+
+## 153 黄: 一次控制被挡掉(equip_tally.on_cc_block 调) ⇒ 头顶黄色筹码转一圈 + 金色盾光
+func on_cc_block(u: Dictionary) -> void:
+	stat["cc_block"] = int(stat.get("cc_block", 0)) + 1
+	_fx("chip_cc_block", [u])
 
 
 func on_basic(u: Dictionary, _tgt, eid: String, _si: int) -> void:

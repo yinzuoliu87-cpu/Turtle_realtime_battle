@@ -613,7 +613,11 @@ func _harpoon(u: Dictionary, si: int, ck: String) -> bool:
 			_magic(me, tg, float(HARPOON_DMG[si]))
 			if tg.get("alive", false):
 				battle._damage._stun(tg, HARPOON_STUN, "harpoon")
-				_pulls.append({"src": me, "o": tg, "left": int(round(HARPOON_STUN / HARPOON_PULL_IV)), "t_next": float(battle._t) + HARPOON_PULL_IV}),
+				## 11-27 自查(黄色筹码录像): 眩晕被免掉(免控 / 训龟大师)时原来照样「眩晕期间」往回拽 ⇒ 只有真晕上了才拽; 没晕上就当场收绳
+				if float(tg.get("stun_until", 0.0)) > float(battle._t):
+					_pulls.append({"src": me, "o": tg, "left": int(round(HARPOON_STUN / HARPOON_PULL_IV)), "t_next": float(battle._t) + HARPOON_PULL_IV})
+				else:
+					_fx("harpoon_release", [me, tg]),
 		func(_k: float, p2: Vector2, to2: Vector2) -> void:
 			_fx("harpoon_step", [node, p2, to2]))
 	battle._equip_sys.tally.pop(tp)

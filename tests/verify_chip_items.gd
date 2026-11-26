@@ -137,6 +137,13 @@ func _ready() -> void:
 	_field([me, foe])
 	_s._damage._stun(me, 2.0, "test")
 	_ok("C 黄: 整个战场控制免疫(眩晕打不上)", float(me.get("stun_until", 0.0)) <= _s._t, str(me.get("stun_until", 0.0)))
+	## 11-27 自查补: 挡掉的控制记进这一枚的装备统计「免疫控制 N 次」(原来面板只写「整场免控」, 看不出它真挡了)
+	var cc153 := 0.0
+	var st_eq: Dictionary = me.get("_st_eq", {})
+	for k in st_eq:
+		if str(k).begins_with("p2eq_153"):
+			cc153 += float((st_eq[k] as Dictionary).get("cc_block", 0.0))
+	_ok("C 黄: 挡掉一次眩晕 ⇒ 装备统计「免疫控制」记 1 次", is_equal_approx(cc153, 1.0), str(st_eq))
 
 	me = _mk("left", ["p2eq_154"])
 	foe = _mk("right")

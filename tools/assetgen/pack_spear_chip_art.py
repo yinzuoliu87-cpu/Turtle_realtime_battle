@@ -55,6 +55,8 @@ STRIPS = {
     "chip-spin-purple": [(CH, "cspp_%d" % i, False) for i in range(0, 6)],
     "chip-grey-flare": [(CH, "cgry_%d" % i, False) for i in range(0, 7)],
     "chip-spin-brown": [(CH, "cspb_%d" % i, False) for i in range(0, 6)],   # 154 棕: 同黑紫, 图标 p2eq_154 当首帧转一圈
+    ## 153 黄(11-27 自查补: 挡掉控制时画面上原来什么都没有): 图标 icon153 首尾都钉 animate_image 6 帧(cspy_0..6, 末帧 = 钉住的图标不取)
+    "chip-spin-yellow": [(CH, "cspy_%d" % i, False) for i in range(0, 6)],
     "chip-gold-dome": [(CH, "cgdm_%d" % i, False) for i in range(0, 6)],    # 155 金色护罩: create_image_pro_flash 无锚 fx_golddome + animate_image 首尾钉原画循环(引擎里半透明)
     ## 11-26 夜第二轮(用户改了 137~144 的机制; create_image_pro_flash 无锚原画 b2_* + animate_image, 没照参考):
     ##   竹刺: 原画 b2_spike(满) → edit_image_pro_flash 改出只冒竹尖的 b2_spike_small → 首尾钉这两张出「刺出」6 帧(b2erp);

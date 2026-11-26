@@ -114,6 +114,19 @@ func _ready() -> void:
 	_ok("138 鱼叉: 第 10 秒射向伤害最多的那只, 飞到后 40 魔法伤害 + 眩晕, 1.5 秒里被拉近约 120 码, 另一只不挨",
 		int(_b.stat["harpoon_hit"]) == 1 and absf(hit_dmg - float(want_m)) < 1.5 and stunned and absf(pulled - 120.0) < 25.0 and float(low["hp"]) == 5000.0,
 		"命中 %d · 伤 %.0f · 眩晕 %s · 拉近 %.0f" % [int(_b.stat["harpoon_hit"]), hit_dmg, str(stunned), pulled])
+	## 11-27: 目标免控(153 黄色筹码 / 免控窗口) ⇒ 眩晕打不上, 也不往回拽(原来照拽)
+	me = _mk("left", ["p2eq_138"])
+	high = _mk("right", [], 300.0, 100.0)
+	_field([me, high])
+	high["cc_immune_until"] = 1.0e12
+	high["_st_dealt"] = 5000
+	var nh0 := int(_b.stat["harpoon_hit"])
+	_adv(10.02, [me])
+	var d1 := DetMath.dist(Vector2(high["pos"]), Vector2(me["pos"]))
+	_adv(2.1, [me])
+	var pulled1 := d1 - DetMath.dist(Vector2(high["pos"]), Vector2(me["pos"]))
+	_ok("138 鱼叉: 目标免控 ⇒ 叉中了但不晕、不被拽(拉近 %.0f)" % pulled1,
+		int(_b.stat["harpoon_hit"]) == nh0 + 1 and absf(pulled1) < 1.0 and float(high.get("stun_until", 0.0)) <= _s._t, "命中 %d" % int(_b.stat["harpoon_hit"]))
 
 	## 139 标枪: 每 6 秒最远的; 飞到才打: 150% 物理 + 流血
 	me = _mk("left", ["p2eq_139"])

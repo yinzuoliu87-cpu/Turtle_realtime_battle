@@ -275,6 +275,10 @@ func on_cc_block(u: Dictionary, kind: String) -> void:
 		_add(u, battle._equip_sys.key_of(u, "p2eq_066"), "cc_block", 1.0)
 	elif kind == "knock" and _carries(u, "p2eq_017"):
 		_add(u, battle._equip_sys.key_of(u, "p2eq_017"), "cc_block", 1.0)
+	elif _carries(u, "p2eq_153"):
+		## 153 黄色筹码整场免控(11-27 自查: 原来挡掉控制时画面上什么都没有、面板只写「整场免控」, 看不出它真挡了)
+		_add(u, battle._equip_sys.key_of(u, "p2eq_153"), "cc_block", 1.0)
+		battle._equip_sys._chip_sys.on_cc_block(u)
 
 
 func _carries(u: Dictionary, eid: String) -> bool:

@@ -716,7 +716,10 @@ func gas_block(u: Dictionary) -> void:
 	if t - float(_gas_last.get(key, -9.0)) < 0.5:
 		return
 	_gas_last[key] = t
-	_strip(MV + "mask-gas-block.png", 7, battle._world_pos(Vector2(u["pos"]), 0.5), 1.0, 14.0, false, 7.0 / 14.0, false, u, 0.5)
+	## 11-27 自查录像: 1.0 米、原色橄榄绿叠在绿色身体和土地上几乎看不出 ⇒ 放大到 1.5 米 + 提亮(只调亮度, 不改美术定的色相)
+	var s := _strip(MV + "mask-gas-block.png", 7, battle._world_pos(Vector2(u["pos"]), 0.6), 1.5, 14.0, false, 7.0 / 14.0, false, u, 0.6)
+	if s != null:
+		s.modulate = Color(1.35, 1.45, 1.15, 1.0)
 
 
 # ════════════════════════════════════════ 134 威尼斯面具【复活】 ════════════════════════════════════════

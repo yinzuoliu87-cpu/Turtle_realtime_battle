@@ -1579,7 +1579,7 @@
     "baseStats1": "+攻15/28/48·减伤3/5/8%",
     "shopAvailable": 1,
     "emoji": "🎭",
-    "effectDesc1": "生命值首次降到 {C:EqMaskBatch.GHOST_LINE%}% 时进入潜行，持续 {C:EqMaskBatch.GHOST_SEC} 秒：无法被选中，攻击时现形。潜行期间每秒回复 {C:EqMaskBatch.GHOST_REGEN%}% 最大生命值。每个战场一次。",
+    "effectDesc1": "生命值首次降到 {C:EqMaskBatch.GHOST_LINE%}% 时进入潜行，持续 {C:EqMaskBatch.GHOST_SEC} 秒：无法被选中，攻击时现形，{C:EqMaskBatch.GHOST_REHIDE} 秒后重新潜行。这段时间内每秒回复 {C:EqMaskBatch.GHOST_REGEN%}% 最大生命值。每个战场一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_132.png",
     "effectBrief": "生命值首次降到一半时潜行并回复生命值。"

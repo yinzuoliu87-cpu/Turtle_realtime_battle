@@ -469,7 +469,7 @@ func atl_drop(d: Dictionary) -> void:
 	s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.offset = Vector2(0.0, float(t.get_height()) * 0.5)
-	s.pixel_size = 1.3 / float(t.get_height())
+	s.pixel_size = 2.0 / float(t.get_height())   # 11-27 自查录像: 1.3 米在正常镜头下像一根细棍, 看不出是矛 ⇒ 2 米
 	battle._world.add_child(s)
 	var h0: float = EqSpearBatch.ATL_FALL_H * float(battle.WS)
 	s.position = battle._world_pos(Vector2(d["at"]), h0)
@@ -481,7 +481,7 @@ func atl_land(d: Dictionary, _hit: bool) -> void:
 		if is_same(f["d"], d):
 			_free(f["node"])
 	_fall = _fall.filter(func(f): return not is_same(f["d"], d))
-	_strip(SV + "spear-atl-stuck.png", 7, battle._world_pos(Vector2(d["at"]), 0.0), 1.2, 12.0, false, 7.0 / 12.0, false, null, 0.0)
+	_strip(SV + "spear-atl-stuck.png", 7, battle._world_pos(Vector2(d["at"]), 0.0), 1.6, 12.0, false, 7.0 / 12.0, false, null, 0.0)
 
 
 func _tick_fall(delta: float) -> void:
@@ -558,6 +558,24 @@ func _tick_drops(delta: float) -> void:
 			continue
 		keep.append(d)
 	_drops = keep
+
+
+## 153 黄: 登场 / 每挡掉一次控制 ⇒ 头顶黄色筹码转一圈(它自己的图标转一圈的帧条) + 胸口金色盾光(同一枚 0.5 秒内只画一次)
+var _cc_last := {}
+
+
+func chip_cc_block(u: Dictionary) -> void:
+	var key: int = (u.get("sprite") as Object).get_instance_id() if is_instance_valid(u.get("sprite")) else 0
+	var t := float(battle._t)
+	if t - float(_cc_last.get(key, -9.0)) < 0.5:
+		return
+	_cc_last[key] = t
+	var s := _strip(SV + "chip-spin-yellow.png", 6, battle._world_pos(Vector2(u["pos"]), HEAD_H), 0.8, 12.0, false, 6.0 / 12.0, false, u, HEAD_H)
+	if s != null:
+		s.offset = Vector2.ZERO
+	var g := _strip(SV + "chip-shield-glint.png", 7, battle._world_pos(Vector2(u["pos"]), 0.5), 1.1, 18.0, false, 7.0 / 18.0, false, u, 0.5)
+	if g != null:
+		g.modulate = Color(1.0, 0.85, 0.3, 1.0)
 
 
 func chip_grey_full(u: Dictionary) -> void:
@@ -663,6 +681,7 @@ func clear() -> void:
 	_stig.clear()
 	_drops.clear()
 	_browns.clear()
+	_cc_last.clear()
 	_lance_on.clear()
 	for r4 in _cav_nodes:
 		for pt in r4.get("parts", []):

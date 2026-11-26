@@ -266,6 +266,16 @@ func _ready() -> void:
 	_adv(0.5, [me])
 	_ok("F 降到 50%% ⇒ 潜行不可选中 · 1 秒回 %.0f(≈ 3%% 最大生命值) · 攻击现形 · 再掉血不会第二次潜行" % regen,
 		hidden and regen > 120.0 and regen < 180.0 and revealed and not bool(me.get("_ghost_hidden", false)), "潜 %s · 现 %s" % [str(hidden), str(revealed)])
+	## 11-27: 现形 1 秒后重新潜行(潜行时间 3 秒没到), 现形那 1 秒照样回血; 3 秒到了彻底现形、不再潜
+	var h2 := float(me["hp"])
+	_adv(0.6, [me])   # 现形后共 1.1 秒
+	var rehid: bool = bool(me.get("_ghost_hidden", false)) and _s._is_untargetable(me)
+	var regen2 := float(me["hp"]) - h2
+	_adv(1.2, [me])   # 进潜行后共 3.3 秒
+	var ended: bool = not bool(me.get("_ghost_hidden", false)) and not _s._is_untargetable(me)
+	_adv(2.0, [me])
+	_ok("F 现形 1 秒后重新潜行(现形期间也回血 %.0f) · 3 秒到了彻底现形 · 之后不再潜" % regen2,
+		rehid and regen2 > 60.0 and ended and not bool(me.get("_ghost_hidden", false)), "再潜 %s · 结束 %s" % [str(rehid), str(ended)])
 
 	## ── G 133 防毒面具 ──
 	me = _mk("left", ["p2eq_133"])

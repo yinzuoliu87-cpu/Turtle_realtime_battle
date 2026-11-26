@@ -136,9 +136,11 @@ static func cases() -> Dictionary:
 		## 千面: 第 8 秒拽一只进里世界; 9.5 秒自动点「观看里世界」, 15 秒切回主世界(REC_OW 自动点按钮)
 		"mk_ow": [[_me(Vector2(-200, 0), _eq([136], 1)), _me(Vector2(-200, 150), [])] + _dummies(60, 3, true, 8000.0, 40.0), 24.0],
 		## 威尼斯面具: 携带者 1500 血, 靶子攻击 400 ⇒ 很快被打倒 → 倒地 2.5 秒回到 30% → 继续
-		"mk_venice": [[_me(Vector2(-60, 0), _eq([134], 1), {"hp": 1500.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 250.0), 16.0],
+		##   11-27 自查: 携带者复活后又被打死 ⇒ 我方全灭、后半段全是「失败」结算页 ⇒ 远处加一只不动不打的友军垫着, 靶子攻击 250 → 150
+		"mk_venice": [[_me(Vector2(-60, 0), _eq([134], 1), {"hp": 1500.0, "killable": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 150.0), 16.0],
 		## 鬼面: 靶子打到它半血 ⇒ 潜行(半透明) → 攻击现形
-		"mk_ghost": [[_me(Vector2(-60, 0), _eq([132], 1), {"hp": 3000.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 120.0), 16.0],
+		##   11-27 自查: 同威尼斯, 远处垫一只不动不打的友军(携带者被打死也不弹结算)
+		"mk_ghost": [[_me(Vector2(-60, 0), _eq([132], 1), {"hp": 3000.0, "killable": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 120.0), 16.0],
 		## 偷脸: 三件不同面具放在一只不动不打的小将身上(凑 1 档 ⇒ 每路偷 1 只); 敌人是会打的天使龟 + 两只靶子 ⇒ 看魂面具飞过去、复制体发蓝;
 		##   复制体只有原版一半血, 被靶子打死 ⇒ 金绿光球飞向最近的友军
 		"mk_steal": [[_me(Vector2(-300, 0), _eq([127, 128, 133], 1), {"idle": true}), _me(Vector2(-300, 150), [], {"idle": true})]
@@ -153,8 +155,8 @@ static func cases() -> Dictionary:
 		"mk_paper": [[_me(Vector2(-60, 0), _eq([127], 1), {"hold": true})] + _dummies(60, 3, true, 30000.0, 60.0), 12.0],
 		## 京剧脸谱: 18 秒 ⇒ 第 8 秒红→黑、第 16 秒黑→白; 红脸普攻冒红火花、白脸普攻偷龟能
 		"mk_face": [[_me(Vector2(-60, 0), _eq([129], 1))] + _dummies(60, 3, false, 30000.0), 18.0],
-		## 小丑面具(11-27 携带者换泡泡龟: 天使龟放技能自带一大团白光, 盖住小丑效果): 满龟能开局放技能 ⇒ 附近敌人头上挂嘲笑小丑脸
-		"mk_clown": [[_u("bubble", "left", Vector2(-120, 0), {"fe": true, "equips": _eq([131], 1), "hp": 8000.0, "killable": false})] + _dummies(40, 3, true, 30000.0, 40.0), 10.0],
+		## 小丑面具(11-27 携带者换小龟: 天使龟 / 泡泡龟放技能自己给盾、通用护盾罩一团白盖住小丑效果; 闪电龟被动在敌人头顶挂闪电层数, 和嘲讽小丑脸挤在一处): 满龟能开局放技能 ⇒ 附近敌人头上挂嘲笑小丑脸
+		"mk_clown": [[_u("basic", "left", Vector2(-120, 0), {"fe": true, "equips": _eq([131], 1), "hp": 8000.0, "killable": false})] + _dummies(40, 3, true, 30000.0, 40.0), 10.0],
 		## ── 长矛(11-26) ── 两只只会站着的小将各带 5 件不同的长矛 = 10 件 4 档; 百夫长第 8 秒登场
 		"sp_cent": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
 			+ _dummies(60, 3, true, 12000.0, 60.0), 30.0],
@@ -185,7 +187,16 @@ static func cases() -> Dictionary:
 		"ch_shield": [[_me(Vector2(-200, 0), _eq([151, 152], 1)), _me(Vector2(-200, 140), [], {"idle": true}), _me(Vector2(-200, -140), [], {"idle": true})] + _dummies(80, 3, true, 30000.0, 40.0), 8.0],
 		"ch_gold": [[_me(Vector2(-200, 0), _eq([155], 1)), _me(Vector2(-200, 140), [], {"idle": true})] + _dummies(80, 3, true, 30000.0, 40.0), 14.0],
 		"ch_grey": [[_me(Vector2(-60, 0), _eq([156], 1), {"hold": true})] + _dummies(40, 3, true, 30000.0, 80.0), 16.0],
-		"ch_brown": [[_me(Vector2(-60, 0), _eq([154], 1), {"hp": 300.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 400.0), 14.0],
+		## 黄色筹码(11-27 自查补): 两只会打的敌人各带一件鱼叉(3 星 6 秒一叉 / 1 星 10 秒一叉) ⇒ 叉中不晕, 头顶黄色筹码转一圈
+		"ch_yellow": [[_me(Vector2(-200, 0), _eq([153], 1), {"hold": true})]
+			+ [_u("__minion__", "right", Vector2(150, -60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": true, "atk": 40.0, "equips": _eq([138], 3)}),
+				_u("__minion__", "right", Vector2(150, 60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": true, "atk": 40.0, "equips": _eq([138], 1)})], 14.0],
+		## 防毒面具(11-27 自查补): 两只会打的敌人各带一件标枪(6 秒一根, 带流血) ⇒ 流血上不了身, 胸口冒挡毒
+		"mk_gas": [[_me(Vector2(-200, 0), _eq([133], 1), {"hp": 3000.0, "killable": true})]
+			+ [_u("__minion__", "right", Vector2(150, -60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": true, "atk": 60.0, "equips": _eq([139], 3)}),
+				_u("__minion__", "right", Vector2(150, 60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": true, "atk": 60.0, "equips": _eq([139], 1)})], 14.0],
+		## 棕色筹码(11-27 自查: 复活后又被打死 ⇒ 后半段全是「失败」结算页 ⇒ 远处垫一只不动不打的友军, 靶子攻击 400 → 300(筹码自带 1500 生命 + 60 双抗), 看得清倒下 → 复活 → 继续打)
+		"ch_brown": [[_me(Vector2(-60, 0), _eq([154], 1), {"hp": 300.0, "killable": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 300.0), 14.0],
 		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
 		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
 			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 16.0],
@@ -238,7 +249,15 @@ func _process(d: float) -> void:
 				_b._damage._apply_damage(uu, int(float(uu["hp"]) + float(uu.get("shield", 0.0)) + 10.0), Color.WHITE)
 	if OS.has_environment("REC_NODE_PROBE") and _el > float(OS.get_environment("REC_NODE_PROBE")) and not _seen.has("node_probe"):
 		_seen["node_probe"] = 1
-		for nd in _b._world.get_children():
+		var nodes: Array = _b._world.get_children()
+		if OS.has_environment("REC_NODE_DEEP"):   # 连子节点 / 2D 层一起列(11-27 查金色筹码旁边飘的小金光)
+			nodes = _b.find_children("*", "", true, false)
+			for nd2 in nodes:
+				if (nd2 is GPUParticles3D or nd2 is CPUParticles3D or nd2 is GPUParticles2D or nd2 is CPUParticles2D) and nd2.emitting:
+					print("[NODE] 粒子 %s %s 父=%s" % [nd2.get_class(), str(nd2.get("global_position")), str(nd2.get_parent().name)])
+				elif nd2 is Sprite2D and (nd2 as Sprite2D).is_visible_in_tree() and (nd2 as Sprite2D).texture != null:
+					print("[NODE] 2D %s %s" % [(nd2 as Sprite2D).texture.resource_path.get_file(), str((nd2 as Sprite2D).global_position)])
+		for nd in nodes:
 			if nd is Sprite3D and (nd as Sprite3D).visible:
 				var tx = (nd as Sprite3D).texture
 				print("[NODE] Sprite3D %s tex=%s mod=%s px=%.4f" % [str((nd as Sprite3D).position), (tx.resource_path.get_file() if tx != null and tx.resource_path != "" else ("动态" + str(tx.get_size()) if tx != null else "无")), str((nd as Sprite3D).modulate), (nd as Sprite3D).pixel_size])
@@ -252,6 +271,13 @@ func _process(d: float) -> void:
 			if uu is Dictionary and str(uu.get("side", "")) == "left" and bool(uu.get("alive", false)):
 				_b._spear_syn._cavalry(uu, "left")
 				break
+	if OS.has_environment("REC_HP_PROBE"):   # 11-27 查鬼面潜行时还挨不挨打: 每帧打我方第一只的血量 / 潜行 / 不可选中
+		var w: PackedStringArray = OS.get_environment("REC_HP_PROBE").split(",")
+		if _b._t >= float(w[0]) and _b._t <= float(w[1]):
+			for uu in _b._units:
+				if uu is Dictionary and str(uu.get("side", "")) == "left":
+					print("[HP] t=%.3f hp=%.1f hid=%s untg=%.2f" % [_b._t, float(uu["hp"]), str(uu.get("_ghost_hidden", false)), float(uu.get("untargetable_until", 0.0))])
+					break
 	if OS.has_environment("REC_ANIM_PROBE") and int(_el * 2.0) != int((_el - d) * 2.0):   # 每 0.5 秒打一次召唤物当前播的帧条(11-27 查舞狮走路)
 		for uu in _b._units:
 			if uu is Dictionary and bool(uu.get("is_summon", false)):
