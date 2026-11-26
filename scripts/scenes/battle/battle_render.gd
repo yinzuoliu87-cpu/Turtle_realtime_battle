@@ -632,7 +632,7 @@ func _tick_ink_links() -> void:                                  # 每帧: 线�
 ## 145 插倒(方案 A, 用户 11-26 晚): 0.08 秒倒到 KD_DEG → 滑行 + 躺到 KD_HOLD → KD_RISE 秒弹回(总长 < 眩晕 1 秒)
 const KD_DEG := 70.0
 const KD_FALL := 0.08
-const KD_HOLD := 0.8
+const KD_HOLD := 0.85   # 滑行 0.833 秒(先快后慢)滑完再起
 const KD_RISE := 0.15
 static func knockdown_tilt(u: Dictionary, t: float) -> float:
 	var t0: float = float(u.get("_kd_t0", -1.0))

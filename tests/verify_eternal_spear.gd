@@ -127,7 +127,15 @@ func _ready() -> void:
 	var fired := int(_b.stat["eternal"])
 	_adv(0.5, [me])
 	_ok("② 飞行中还没打到(按速度飞, 场外 ~1000 码 / 700)", fired == 1 and int(_b.stat["eternal_hit"]) == 0 and float(big["hp"]) == hb)
-	_adv(1.6, [me])   # 场外 ~1040 码 / 700 ≈ 1.5 秒到; 再滑 0.5 秒; 灼烧第一跳在命中后 1 秒(还没到)
+	var guard := 0
+	while int(_b.stat["eternal_hit"]) == 0 and guard < 200:   # 逐步推到插中那一刻
+		_adv(0.01, [me])
+		guard += 1
+	var ph := Vector2(big["pos"])
+	_adv(0.42, [me])
+	var half: float = Vector2(big["pos"]).distance_to(ph)
+	_ok("③ 滑行先快后慢(同近战小将人体浪板): 前一半时间滑出 ≥ 70% 距离", half >= 250.0 * 0.7 and half < 250.0 - 1.0, "%.1f 码" % half)
+	_adv(0.5, [me])   # 滑完(0.833 秒); 灼烧第一跳在命中后 1 秒(还没到)
 	var hit_dmg: int = _s._phys_after_armor(me, 1.2 * float(me["atk"]) + 0.04 * 9000.0, big)
 	var slide_dmg: int = _s._phys_after_armor(me, 0.4 * float(me["atk"]) + 0.02 * 9000.0, big)
 	var moved: float = Vector2(big["pos"]).distance_to(p0)

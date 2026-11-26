@@ -80,8 +80,8 @@ const ETERNAL_FROM := Vector2(900.0, 520.0)    # 从目标的「我方一侧上�
 const ETERNAL_HIT_ATK := [1.2, 1.8, 3.0]       # 插中: 攻击力 ×
 const ETERNAL_HIT_HP := [0.04, 0.06, 0.10]     # 插中: + 目标最大生命值 ×
 const ETERNAL_SLIDE := 250.0                   # 击倒后往后滑行距离
-const ETERNAL_SLIDE_SEC := 0.5
-const ETERNAL_STUN := 1.0                      # 击倒 + 滑行期间眩晕
+const ETERNAL_SLIDE_SEC := 0.833                # 先快后慢(ease-out 1-(1-k)^2, 同近战小将人体浪板; 用户 07-18「非匀速」, 11-26 晚「插倒滑行是匀速的吗」)
+const ETERNAL_STUN := 1.0                      # 击倒 + 滑行期间眩晕(滑 0.833 + 起身 0.15 ≈ 1 秒)
 const ETERNAL_SLIDE_ATK := [0.4, 0.6, 1.0]     # 滑行期间共: 攻击力 ×(按每一步滑过的距离分摊)
 const ETERNAL_SLIDE_HP := [0.02, 0.03, 0.05]   # 滑行期间共: + 目标最大生命值 ×
 const ETERNAL_PASS_W := 50.0                   # 滑行路径上撞到其他敌人的判定半宽(加敌人体型一半)
@@ -828,7 +828,7 @@ func _eternal_hit(me: Dictionary, tg: Dictionary, si: int, ck: String, from: Vec
 			tg["_kd_t0"] = float(battle._t)                      # 插倒(方案 A): 渲染按它把立绘往后倒、滑完躺一下再弹起
 			tg["_kd_dir"] = 1.0 if dir.x >= 0.0 else -1.0         # 往滑行方向倒(背离来枪)
 			var total: float = float(ETERNAL_SLIDE_ATK[si]) * atk + float(ETERNAL_SLIDE_HP[si]) * float(tg.get("maxHp", 0.0))
-			_slides.append({"src": me, "o": tg, "dir": dir, "gone": 0.0, "total": total, "si": si, "ck": ck, "hit": [tg]})
+			_slides.append({"src": me, "o": tg, "dir": dir, "gone": 0.0, "t": 0.0, "total": total, "si": si, "ck": ck, "hit": [tg]})
 			_fx("eternal_slide", [tg, dir, ETERNAL_SLIDE_SEC])
 	_eter_self(me, ck, dd0)
 	## 携带者临时生命值(到期按比例削回; 多次各自独立 = 叠加)
@@ -845,7 +845,6 @@ func _eternal_hit(me: Dictionary, tg: Dictionary, si: int, ck: String, from: Vec
 ## 145 击倒滑行: 目标按每一步往后滑(总距离 / 总时长), 这一步滑过的那一段里撞到的其他敌人各吃一次; 滑行伤害按这一步滑的距离分摊
 func _tick_slides(delta: float) -> void:
 	var keep: Array = []
-	var step_len: float = ETERNAL_SLIDE / ETERNAL_SLIDE_SEC * delta
 	for s in _slides:
 		var o: Dictionary = s["o"]
 		var src: Dictionary = s["src"]
@@ -853,7 +852,10 @@ func _tick_slides(delta: float) -> void:
 			_fx("eternal_slide_sum", [o, int(s.get("shown", 0))])   # 滑行伤害一路静默扣, 滑到头只跳一个总数(每步飘字会糊成一串, 11-26 录像)
 			continue
 		var a: Vector2 = Vector2(o["pos"])
-		var mv: float = minf(step_len, ETERNAL_SLIDE - float(s["gone"]))
+		s["t"] = float(s["t"]) + delta
+		var kq: float = clampf(float(s["t"]) / ETERNAL_SLIDE_SEC, 0.0, 1.0)
+		var want: float = ETERNAL_SLIDE * (1.0 - (1.0 - kq) * (1.0 - kq))   # 到这一刻该滑出的总距离(先快后慢)
+		var mv: float = maxf(0.0, minf(want, ETERNAL_SLIDE) - float(s["gone"]))
 		var b: Vector2 = ArenaShape.clamp_in(a + Vector2(s["dir"]) * mv, battle.ARENA, 40.0)
 		var real: float = DetMath.dist(a, b)
 		o["pos"] = b
