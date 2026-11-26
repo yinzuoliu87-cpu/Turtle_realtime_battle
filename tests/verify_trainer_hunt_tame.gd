@@ -26,7 +26,7 @@ const WANT_TAME_CD_MISS := 30.0   # 用户 11-08:「未命中还是三十秒」(
 const WANT_TAME_RANGE := 2000.0   # ★U2/D1: 原需求字面 600
 const WANT_TAME_REVIVE := 0.30      # 30% 最大生命重生
 const WANT_TAME_INVULN := 2.5       # 重生演出 2.5 秒
-const WANT_TAME_DECAY := 0.05       # 每秒 5% 最大生命(用户 11-08: 2% → 5%)
+const WANT_TAME_DECAY := 0.05       # 每秒削基准 5% 生命值上限(用户 11-26 晚; 原为每秒 5% 真伤, 11-08: 2% → 5%)
 
 var _fail := 0
 
@@ -197,35 +197,37 @@ func _ready() -> void:
 	#   原来是 "dot" 桶, 会被钻石×0.82 / 石头岩石之躯 / 铁壁盾016 flat_dr 打折。
 	#   所以这里【故意把减伤全拉满】: 打折的话倍率就不是 ×1.00, 当场红。
 	print("")
-	print("  ⑧ 归顺掉血(需求 每秒 %.0f%% · 真实伤害 · 与帧率无关):" % (WANT_TAME_DECAY * 100.0))
+	## ★11-26 晚用户改: 不再是每秒 5% 真实伤害, 而是每秒削基准 5% 的生命值上限(20 秒后 1 点)。判据跟着换: 量上限, 不量血。
+	print("  ⑧ 归顺削上限(需求 每秒削基准 %.0f%% 上限 · 20 秒后 1 点 · 与帧率无关 · 不是伤害):" % (WANT_TAME_DECAY * 100.0))
 	var t_save: float = s._t
 	for fps in [30, 60, 600]:
 		for mh in [200.0, 2000.0]:
 			var u: Dictionary = s._spawn._make_unit("basic", "right", Vector2(400, 0), {})
-			u["maxHp"] = mh; u["hp"] = mh
-			u["def"] = 60.0; u["mr"] = 60.0; u["flat_dr"] = 30.0; u["shield"] = 0.0
+			u["maxHp"] = mh; u["hp"] = mh * 0.5
+			u["def"] = 60.0; u["mr"] = 60.0; u["flat_dr"] = 30.0; u["shield"] = 300.0
 			u["tamed_side"] = "left"; u["_tame_invuln_until"] = 0.0
 			u["_tame_decay_next"] = -1.0
+			u.erase("_tame_max0"); u.erase("_tame_cut_n")
 			s._units.append(u)
 			var t0: float = s._t
-			var h0: float = -1.0
-			# 同步推进 3 秒(第 1 秒建节拍, 后 2 秒真掉)。不 await → _process 不会插进来抢 _t。
+			## 同步推进 3 秒(第 1 秒建节拍, 之后整秒各削一次 ⇒ 削 2 次)。不 await → _process 不会插进来抢 _t。
 			for f in range(fps * 3):
 				s._t = t0 + float(f + 1) / float(fps)
 				s._trainer_sys._tick_tame_decay(1.0 / float(fps))
-				if h0 < 0.0 and s._t >= t0 + 1.0:
-					h0 = float(u["hp"])
-			var lost: float = (h0 - float(u["hp"])) / mh / 2.0
+			var want: float = round(mh * (1.0 - WANT_TAME_DECAY * 2.0))
+			print("     %3dfps / %4.0f血 → 上限 %.0f (应 %.0f) · 血 %.0f · 盾 %.0f" % [fps, mh, float(u["maxHp"]), want, float(u["hp"]), float(u["shield"])])
+			_chk("⑧ %3dfps·%4.0f血 3 秒后上限 = 基准 × 90%%(不随帧率变)" % [fps, mh], absf(float(u["maxHp"]) - want) < 0.5)
+			_chk("⑧ %3dfps·%4.0f血 不是伤害: 半血没被削到、护盾没被吃" % [fps, mh],
+				absf(float(u["hp"]) - mh * 0.5) < 0.01 and absf(float(u["shield"]) - 300.0) < 0.01)
+			## 再推 20 秒: 上限到底 1 点, 当前血被压到 1
+			for f in range(fps * 20):
+				s._t = t0 + 3.0 + float(f + 1) / float(fps)
+				s._trainer_sys._tick_tame_decay(1.0 / float(fps))
+			_chk("⑧ %3dfps·%4.0f血 20 秒后上限 1 点、血 ≤ 1(一碰就死)" % [fps, mh],
+				absf(float(u["maxHp"]) - 1.0) < 0.01 and float(u["hp"]) <= 1.0 and u.get("alive", false))
 			s._t = t0
-			print("     %3dfps / %4.0f血 → %.2f%%/秒 (×%.2f)" % [fps, mh, lost * 100.0, lost / WANT_TAME_DECAY])
-			_chk("⑧ %3dfps·%4.0f血 每秒掉 %.0f%%(真伤穿满减伤·不随帧率变)" % [fps, mh, WANT_TAME_DECAY * 100.0],
-				absf(lost - WANT_TAME_DECAY) < 0.002)
 			u["alive"] = false      # 别留着干扰后面
 	s._t = t_save
-	# 真伤桶: 统计面板该把它算进"真实"而不是 DoT
-	_chk("⑧ ★掉血走真实伤害桶(bucket=\"tru\")",
-		FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")
-			.contains('Color("#8b2e4a"), null, "tru", true'))
 	_chk("⑧ ★不再逐帧 ceilf 摊薄(那会让速率 = max(2%, 帧率÷血量))",
 		not FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")
 			.contains("battle.TAME_DECAY_PCT * delta"))
@@ -255,6 +257,8 @@ func _tame_into_final(s) -> void:
 	s._trainer_sys._tame_mark(tr, foe)
 	foe["hp"] = 1.0
 	s._kill(foe)
+	foe["_tame_invuln_until"] = 0.0
+	s._trainer_sys.tame_cut(foe, 4)   # 归顺后已经削了 4 次(20%), 看进终极战场后还是 80%
 	_chk("⑩ ★分母: 已归顺(tamed_side 非空 · side 未改写)",
 		str(foe.get("tamed_side", "")) != "" and str(foe.get("side", "")) == "right")
 	# 走真实幸存快照
@@ -291,20 +295,23 @@ func _tame_into_final(s) -> void:
 	_chk("⑩ ★★归顺状态跟过去了(tamed_side 非空)", str(rb.get("tamed_side", "")) != "")
 	_chk("⑩ 已用掉的复活机会也跟过去(tame_used·别在决胜里再复活一次)",
 		bool(rb.get("tame_used", false)))
-	# 掉血 buff 真的还在跑
-	var h0: float = float(rb["hp"])
-	var mx: float = float(rb["maxHp"])
+	## 已削的上限跟过去(11-26 晚改成削上限; 不跟的话换路就回满): 进场后第一次走到节拍(装备已装好)按同一比例补削
 	rb["_tame_invuln_until"] = 0.0
 	rb["_tame_decay_next"] = -1.0
+	s._trainer_sys._tick_tame_decay(1.0 / 60.0)
+	var base: float = float(rb.get("_tame_max0", 0.0))
+	_chk("⑩ ★★已削的上限跟进决胜: 削了 4 次 ⇒ 上限 = 重建后基准 × 80%",
+		int(rb.get("_tame_cut_n", 0)) == 4 and base > 0.0 and absf(float(rb["maxHp"]) - round(base * 0.8)) < 0.5 and float(rb["hp"]) <= float(rb["maxHp"]))
+	print("     次数 %d · 上限 %.0f · 基准 %.0f" % [int(rb.get("_tame_cut_n", 0)), float(rb["maxHp"]), base])
+	## 削上限 buff 真的还在跑(节拍上一步已经起了: 之后整秒各削一次)
 	var t0: float = s._t
 	for f in range(180):
 		s._t = t0 + float(f + 1) / 60.0
 		s._trainer_sys._tick_tame_decay(1.0 / 60.0)
-	var lost: float = (h0 - float(rb["hp"])) / mx / 2.0
 	s._t = t0
-	print("     决胜里每秒掉 %.2f%% 最大生命 (需求 %.0f%%)" % [lost * 100.0, WANT_TAME_DECAY * 100.0])
-	_chk("⑩ ★★掉血 buff 在决胜里【继续】(每秒 %.0f%%)" % (WANT_TAME_DECAY * 100.0),
-		absf(lost - WANT_TAME_DECAY) < 0.002)
+	var want: float = round(base * (1.0 - WANT_TAME_DECAY * 7.0))   # 节拍在上面那一步起的 ⇒ 3 秒里整秒削 3 次: 第 5、6、7 次
+	print("     决胜里 3 秒后上限 %.0f (应 %.0f)" % [float(rb["maxHp"]), want])
+	_chk("⑩ ★★削上限在决胜里【继续】(接着第 5、6、7 次)", absf(float(rb["maxHp"]) - want) < 0.5)
 
 
 ## ⑨ 地面印记/符文环的【几何】—— 2026-07-30 逐技目视审核抓到的两个问题, 焊死不许回来。

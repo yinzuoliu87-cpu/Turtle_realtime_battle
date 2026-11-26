@@ -938,8 +938,8 @@ msgstr "Look"
 msgid "每个战场开始 10 秒后，训龟大师锁定敌方造成伤害最高的单位，持续 15 秒：目标受到的伤害提高 15%，全体友军优先攻击该目标。冷却 40 秒，未命中时冷却 20 秒。"
 msgstr "10 seconds into each battle, the Turtle Trainer marks the enemy unit that has dealt the most damage for 15 seconds: it takes 15% more damage and all allies focus it. Cooldown 40 seconds (20 seconds on a miss)."
 
-msgid "训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 5% 最大生命值，持续作战至终极战场。冷却 999 秒，未命中时冷却 30 秒。"
-msgstr "The Turtle Trainer marks the nearest enemy. The next time it dies, it revives with 30% max health and joins your side. It is invulnerable for 2.5 seconds after reviving, then loses 5% max health per second, fighting on into the Final Battle. Cooldown 999 seconds (30 seconds on a miss)."
+msgid "训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒最大生命值降低复活时的 5%，20 秒后降至 1 点，持续作战至终极战场。冷却 999 秒，未命中时冷却 30 秒。"
+msgstr "The Turtle Trainer marks the nearest enemy. The next time it dies, it revives with 30% max health and joins your side. It is invulnerable for 2.5 seconds after reviving, then its max health drops by 5% of its revived max health every second, down to 1 after 20 seconds, fighting on into the Final Battle. Cooldown 999 seconds (30 seconds on a miss)."
 
 msgid "村民"
 msgstr "Villager"
@@ -8404,3 +8404,6 @@ msgstr "%s (Copy)"
 
 msgid "本周羁绊"
 msgstr "This week"
+
+msgid "生命上限 -%d"
+msgstr "Max Health -%d"

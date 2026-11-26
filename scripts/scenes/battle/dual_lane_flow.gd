@@ -843,6 +843,7 @@ func _dl_snapshot_survivors() -> void:
 			if str(u.get("tamed_side", "")) != "":
 				spec["tamed_side"] = str(u["tamed_side"])
 				spec["tame_used"] = true
+				spec["tame_cut_n"] = int(u.get("_tame_cut_n", 0))   # 已削了几次生命值上限(11-26 晚驯服削弱): 进终极战场按同一比例补削
 				## 按龟等级(R1, 2026-11-09): 驯服过来的龟在终极战场仍按它自己的等级 = 原主人那一方的 lv 表(那一方没有表 ⇒ 老口径)
 				if spec.get("kind", "") == "leader" and str(u.get("side", side)) != side:
 					spec["lv_side"] = str(u.get("side", side))

@@ -121,7 +121,8 @@ func _ready() -> void:
 			["不写射程", "!%d码" % int(K["TAME_RANGE"])],
 			["重生血量", "%d%%最大生命" % int(K["TAME_REVIVE_PCT"] * 100.0)],
 			["无敌时长", "%.1f秒无敌" % K["TAME_REVIVE_SEC"]],
-			["每秒衰减", "每秒损失%d%%最大生命" % int(K["TAME_DECAY_PCT"] * 100.0)],
+			["每秒削上限(11-26 晚)", "每秒最大生命值降低复活时的%d%%" % int(K["TAME_DECAY_PCT"] * 100.0)],
+			["削到 1 点的秒数", "%d秒后降至1点" % int(round(1.0 / K["TAME_DECAY_PCT"]))],
 			["冷却", "冷却%d秒" % int(K["TAME_CD"])],
 		],
 	}

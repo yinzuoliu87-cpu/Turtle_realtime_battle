@@ -1412,7 +1412,7 @@ func _hunt_sigil(tgt: Dictionary) -> void:
 # 被驯服的敌人【死亡时不真死】:
 #   · 以 30% 最大生命重生, 2.5 秒演出期间无敌且不可选中
 #   · 重生后【归顺我方】(用户:「顺归算我方」) —— 走 tamed_side, 绝不改写 side
-#   · 归顺后每秒损失 TAME_DECAY_PCT(5%) 最大生命(永久, 没有解除手段)
+#   · 归顺后每秒削减 TAME_DECAY_PCT(5%) 生命值上限(按开始削时的上限算, 20 秒后 1 点; 永久, 没有解除手段; 用户 11-26 晚)
 #   · 活到本路结束可跨入终极战场, 掉血 buff 继续
 #
 # ★与赛博侵入(hijacked)是两种语义, 别混:
@@ -1533,6 +1533,11 @@ func _tick_tame_decay(_delta: float) -> void:
 		var nxt: float = float(u.get("_tame_decay_next", -1.0))
 		if nxt < 0.0:
 			u["_tame_decay_next"] = battle._t + 1.0
+			if u.has("_tame_carry_n"):   # 从上一路跟过来的: 装备都装好了, 按同一比例补削(基准 = 现在的上限)
+				var cn: int = int(u["_tame_carry_n"])
+				u.erase("_tame_carry_n")
+				u.erase("_tame_max0")
+				tame_cut(u, cn)
 			continue
 		if battle._t < nxt:
 			continue
@@ -1541,10 +1546,26 @@ func _tick_tame_decay(_delta: float) -> void:
 		while battle._t >= float(u["_tame_decay_next"]) and ticks < 10:
 			u["_tame_decay_next"] = float(u["_tame_decay_next"]) + 1.0
 			ticks += 1
-		var amt: int = maxi(1, int(round(float(u["maxHp"]) * battle.TAME_DECAY_PCT))) * ticks
-		# ★参数位置: _apply_damage(u, dmg, col, src, bucket, is_self, ...) ——
-		#   第 4 个是 src 不是 is_self。写成 (u, d, col, true) 会把 true 当 src 传进去。
-		battle._damage._apply_damage(u, amt, Color("#8b2e4a"), null, "tru", true)
+		tame_cut(u, int(u.get("_tame_cut_n", 0)) + ticks)
+
+
+## ★★11-26 晚用户改: 不再是每秒 5% 真实伤害, 而是每秒削 5% 生命值上限 ——「二十秒之后…生命值上限将会被削为一点，你这一碰就死」。
+##   基准 _tame_max0 = 第一次削的那一刻的最大生命值(之后别的效果加的上限不进基准); 第 n 次后上限 = max(1, 基准 × (1 − 5% × n))。
+##   不是伤害: 不过护盾、不进任何人的输出统计; 当前血只是被压到不超过新上限。
+##   n 记在 _tame_cut_n, 跨进终极战场时写进幸存名单, 重建后用新上限当基准补到同一个 n(换路不回满)。
+func tame_cut(u: Dictionary, n: int) -> void:
+	if not u.has("_tame_max0"):
+		u["_tame_max0"] = float(u.get("maxHp", 1.0))
+	var base: float = float(u["_tame_max0"])
+	var cap: float = maxf(1.0, round(base * (1.0 - battle.TAME_DECAY_PCT * float(n))))
+	var cut: int = int(float(u.get("maxHp", 1.0)) - cap)
+	u["_tame_cut_n"] = n
+	if cut <= 0:
+		return
+	u["maxHp"] = cap
+	if float(u.get("hp", 0.0)) > cap:
+		u["hp"] = cap
+	battle._vfx._float_text(u["pos"] + Vector2(0, -40), Lang.t("生命上限 -%d") % cut, Color("#8b2e4a"))
 
 
 ## 驯服演出: 青碧锁扣弹飞向目标 → 命中后目标脚下亮起符文环(常驻到它死/归顺)。
