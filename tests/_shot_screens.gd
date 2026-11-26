@@ -17,6 +17,9 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:
 		gs.test_mode = true
+		if OS.get_environment("SHOT_WEEK").is_valid_int():   # 11-27: 指定周锚点(看图鉴「本周不出」压暗)
+			gs.week_anchor_ts = int(OS.get_environment("SHOT_WEEK"))
+			gs.season_total_battles = maxi(1, int(gs.season_total_battles))   # 商店打完第一场才开: 看本周羁绊木牌要先开店
 	var scn := OS.get_environment("SHOT_SCENE")
 	if scn == "":
 		scn = "MainMenu"

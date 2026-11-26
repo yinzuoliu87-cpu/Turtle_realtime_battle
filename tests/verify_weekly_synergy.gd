@@ -150,6 +150,46 @@ func _ready() -> void:
 	var ci := eqsrc.find("func _conch_grant_equips")
 	var cj := eqsrc.find("\nfunc ", ci + 10)
 	_ok("H 魔法海螺小虫的随机装备也只出本周池(源码里挂了 WeeklySynergy.battle_ok)", ci > 0 and eqsrc.substr(ci, cj - ci).contains("WeeklySynergy.battle_ok("))
+	## I 图鉴「本周不出」压暗(11-27): 判据与掷货同一个 pool_ok · 羁绊赠送(费用 0)不标 · 羁绊页只标 16 个轮换的
+	var i_bad: Array = []
+	var i_off := 0
+	var i_on := 0
+	for e in DataRegistry.phase2_equipment:
+		var eid := str(e.get("id", ""))
+		var want: bool = int(e.get("cost", 0)) > 0 and not WS.pool_ok(eid, wk, WS.BATTLE_PV)
+		if CodexList.off_week_eq(e) != want:
+			i_bad.append(eid)
+		if want:
+			i_off += 1
+		elif int(e.get("cost", 0)) > 0:
+			i_on += 1
+	var syn_bad: Array = []
+	for t in WS.ALL:
+		if CodexList.off_week_syn(str(t)) == in_week.has(t):
+			syn_bad.append(t)
+	_ok("I 图鉴装备页: 压暗 %d 件 / 照常 %d 件, 与掷货判据逐件一致 · 羁绊页 16 个逐个一致 · 不轮换的类型不标" % [i_off, i_on],
+		i_bad.is_empty() and syn_bad.is_empty() and i_off > 0 and i_on > 0 and not CodexList.off_week_syn("小木斧"), "%s %s" % [str(i_bad.slice(0, 5)), str(syn_bad)])
+	## J 商店顶栏「本周羁绊」木牌: 图标恰好是本周那 10 个(按顺序) · 周锚点 0(演示 / 冷启动)⇒ 不挂
+	var bt0: int = int(gs.season_total_battles)
+	gs.season_total_battles = maxi(1, bt0)
+	var shop = load("res://scenes/Shop.tscn").instantiate()
+	add_child(shop)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var icons: Array = []
+	for n in shop.find_children("WeekSyn_*", "TextureRect", true, false):
+		icons.append(str(n.name).trim_prefix("WeekSyn_"))
+	var plq_n: int = shop.find_children("WeekSynPlaque", "", true, false).size()
+	shop.queue_free()
+	gs.week_anchor_ts = 0
+	var shop0 = load("res://scenes/Shop.tscn").instantiate()
+	add_child(shop0)
+	await get_tree().process_frame
+	var plq0: int = shop0.find_children("WeekSynPlaque", "", true, false).size()
+	shop0.queue_free()
+	gs.season_total_battles = bt0
+	_ok("J 商店木牌: 图标 %d 个 = 本周 %d 个且同序 · 周锚点 0 不挂(%d)" % [icons.size(), in_week.size(), plq0],
+		plq_n == 1 and icons == in_week and plq0 == 0, "%s vs %s" % [str(icons), str(in_week)])
 	gs.week_anchor_ts = bk["wk"]
 	gs.meta_shop_offer = bk["offer"]
 	gs.equip_pool = bk["pool"]

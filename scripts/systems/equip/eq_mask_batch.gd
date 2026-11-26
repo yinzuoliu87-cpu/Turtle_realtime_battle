@@ -312,7 +312,7 @@ func on_hit(src: Dictionary, tgt: Dictionary, _dmg: float, eid: String, _si: int
 func on_damaged(u: Dictionary, src, _dmg: float, eid: String, si: int) -> void:
 	if eid != "p2eq_127" or bool(u.get("_b4_dot", false)) or not (src is Dictionary) or is_same(src, u):
 		return
-	if not (src as Dictionary).get("alive", false):
+	if not (src as Dictionary).get("alive", false) or battle._is_untouchable(src):   # §UNTOUCHABLE: 训龟大师扔石头砸到携带者也不回敬(verify_trainer_untouchable S8 抓到)
 		return
 	var amt: float = float(u.get("def", 0.0)) * float(PAPER_COUNTER[si])
 	if amt < 0.5:

@@ -173,6 +173,10 @@ func _ready() -> void:
 	var t_dagger := ["p2eq_005", "p2eq_108", "p2eq_109", "p2eq_110", "p2eq_111", "p2eq_112", "p2eq_113", "p2eq_114", "p2eq_115", "p2eq_116"]
 	## 2026-11-25 魔法书批: 10 件(羁绊飞弹 / 火球 / 冰霜新星 / 天降闪电 / 三种骷髅召唤物 / 镜像再放 / 禁咒弹 / 书页)⇒ 第 7 个场景
 	var t_magic := ["p2eq_117", "p2eq_118", "p2eq_119", "p2eq_120", "p2eq_121", "p2eq_122", "p2eq_123", "p2eq_124", "p2eq_125", "p2eq_126"]
+	## 2026-11-27 面具 / 长矛 / 筹码批: 30 件(千面里世界、鬼面潜行、鱼叉拽人、百夫长与骑兵召唤物、黄色筹码免控 …)⇒ 第 8 个场景
+	var t_mask := ["p2eq_127", "p2eq_128", "p2eq_129", "p2eq_130", "p2eq_131", "p2eq_132", "p2eq_133", "p2eq_134", "p2eq_135", "p2eq_136"]
+	var t_spear := ["p2eq_137", "p2eq_138", "p2eq_139", "p2eq_140", "p2eq_141", "p2eq_142", "p2eq_143", "p2eq_144", "p2eq_145", "p2eq_146"]
+	var t_chip := ["p2eq_147", "p2eq_148", "p2eq_149", "p2eq_150", "p2eq_151", "p2eq_152", "p2eq_153", "p2eq_154", "p2eq_155", "p2eq_156"]
 	var scen: Array = [
 		{"tag": "S1 剑+灵物(触手) vs 法器+奇械", "L": g0, "R": g2, "tr_l": "hook", "tr_r": "tame", "ms_l": false,
 			"eqL": t_sword + t_spirit + t_misc, "eqR": t_staff + t_gadget + ["p2eq_004"]},
@@ -193,6 +197,8 @@ func _ready() -> void:
 			"eqL": t_dagger + t_gun + t_misc, "eqR": t_shield + t_potion + ["p2eq_058", "p2eq_091", "p2eq_092"]},
 		{"tag": "S7 魔法书(飞弹 / 骷髅 / 镜像 / 书页)+弓箭 vs 盾+食物", "L": g2, "R": g1, "tr_l": "glacier", "tr_r": "hunt_order", "ms_l": false,
 			"eqL": t_magic + t_bow, "eqR": t_shield + t_food + ["p2eq_024", "p2eq_044", "p2eq_053"]},
+		{"tag": "S8 面具(里世界 / 潜行)+长矛(鱼叉 / 百夫长) vs 筹码(免控 / 复活)+药水", "L": g0, "R": g3, "tr_l": "tame", "tr_r": "hook", "ms_l": false,
+			"eqL": t_mask + t_spear, "eqR": t_chip + t_potion},
 	]
 	var eq_seen := {}
 	for sc in scen:

@@ -127,8 +127,9 @@ func _add_group_header(title: String) -> void:
 ##   塞进 36×36 的图标格再 KEEP_ASPECT 就是 1.125 倍 ⇒ 像素网格被打烂
 ##   (同一条教训的门禁是 `tools/vfx_discipline_audit.py` 判据 A)。32 < 36, 原尺寸放得下。
 ## ★其余调用点(深海小将 / 规则)的图尺寸不统一(几十到上千), 仍走等比内缩 —— 默认 false。
+## `off_week` = 本周商店不出(11-27): 整行压暗 + 名字后注「本周不出」; 仍然点得开看说明。
 func _add_simple_row(label: String, label_color: String, stroke: Color, icon_path: String,
-		idx: int, icon_native: bool = false) -> void:
+		idx: int, icon_native: bool = false, off_week: bool = false) -> void:
 	var col = stroke; col.a = 0.7
 	var p = host._make_row(52, 0.85, col)
 	var _ictex: Texture2D = _icon(icon_path)
@@ -152,7 +153,24 @@ func _add_simple_row(label: String, label_color: String, stroke: Color, icon_pat
 	lbl.add_theme_font_size_override("font_size", 15)
 	lbl.add_theme_color_override("font_color", Color(label_color))
 	p.add_child(lbl)
+	if off_week:
+		lbl.text = label + "  " + Lang.t("· 本周不出")
+		p.modulate = Color(1.0, 1.0, 1.0, 0.42)
 	host._connect_row(p, idx, col)
+
+
+## 这一件这周商店出不出(与掷货同一个判据; 没有周 / 演示 ⇒ 都出)。羁绊赠送(费用 0)不上商店, 不标。
+static func off_week_eq(eq: Dictionary) -> bool:
+	if int(eq.get("cost", 0)) <= 0 or GameState == null:
+		return false
+	return not WeeklySynergy.pool_ok(str(eq.get("id", "")), int(GameState.week_anchor_ts), WeeklySynergy.BATTLE_PV)   # BATTLE_PV == EconLedger.POOL_VER(verify_weekly_synergy F 核)
+
+
+## 这个大羁绊在不在本周 10 个里(小木斧 / 香火这类不轮换的类型 ⇒ 不标)。
+static func off_week_syn(t: String) -> bool:
+	if GameState == null or not WeeklySynergy.ALL.has(t):
+		return false
+	return not WeeklySynergy.of_week(int(GameState.week_anchor_ts)).has(t)
 
 
 # 装备 Tab 总件数 = p2eq(59) + 消耗品件数 (Tab 计数 / 状态栏共用)
@@ -203,7 +221,7 @@ func _add_equip_rows() -> void:
 			##   ② 但它是**下一个 emoji 的种子**: 哪天新装备忘了配图, 屏幕上就凭空长出
 			##     一个 NotoEmoji 的彩色字符 —— 而行里本来就有名字, 不写 emoji 不会开天窗。
 			var rname: String = str(eq.get("name", "?"))
-			_add_simple_row(rname, "#ffffff", Color(stroke), ipath, host._items.size() - 1)
+			_add_simple_row(rname, "#ffffff", Color(stroke), ipath, host._items.size() - 1, false, off_week_eq(eq))
 	## ★2026-11-20 宝箱龟【藏宝图】的战利品(用户「十几件装备其实可以放在装备那一栏不用塞到龟里面吧」):
 	##   不在商店卖、只能宝箱龟开箱开出 ⇒ 单独一组放在末尾; 行描边按池子上色(基础银 / 进阶蓝 / 传说金), 点开 CodexDetail._show_loot。
 	##   件数 / 顺序读 ChestLoot.POOL(基础 → 进阶 → 传说), 不写死。图标 32 像素原尺寸画(icon_native)。

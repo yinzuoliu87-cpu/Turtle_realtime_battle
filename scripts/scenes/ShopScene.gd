@@ -591,6 +591,7 @@ func _rebuild() -> void:
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; _coin_box.add_child(coin)
 	_tut_coin = coin   # 教学高亮"币"锚点
+	_build_week_strip(cpx)   # 本周羁绊(11-27)
 
 
 	# ── 货架 5×2(货柜两层板上) ──
@@ -635,6 +636,39 @@ func _rebuild() -> void:
 	#   就触发一次), 框和框里的内容会被一起清掉。attach 是幂等的, 重复调只重新收编+居中。
 	UIFrame.attach(self)
 	_pin_top_bar()
+
+
+## 顶栏中间「本周羁绊」木牌(11-27 · 方案书 20261124d): 商店这周只出这 10 个大羁绊的装备(小木斧 / 香火石不轮换, 不列)。
+##   左沿接在左上页签之后(WEEK_X), 右沿离钱袋牌留 16; 图标原尺寸 32、最近邻。
+##   纯展示、不可点: 木牌只有 64 高(上下没空间), 做成可点就违反手机可点区短边 ≥ 81(verify_shop_inv_phone ④); 名字在图鉴羁绊页(非本周压暗)。
+const WEEK_X := 340.0
+const WEEK_ICON := 32.0
+const WEEK_GAP := 10.0
+
+func _build_week_strip(coin_x: float) -> void:
+	var syns: Array = WeeklySynergy.of_week(int(GameState.week_anchor_ts))
+	if syns.size() >= WeeklySynergy.ALL.size():
+		return   # 没有周(演示 / 冷启动)⇒ 16 个全在, 不挂这块牌子
+	var w: float = minf(coin_x - 16.0 - WEEK_X, 150.0 + float(syns.size()) * (WEEK_ICON + WEEK_GAP) + 24.0)
+	var plq := _plank(_coin_box, Vector2(WEEK_X, 48.0 - 32.0), Vector2(w, 64.0)); plq.name = "WeekSynPlaque"
+	var lbl := Label.new(); lbl.text = Lang.t("本周羁绊")
+	lbl.add_theme_font_size_override("font_size", 24); lbl.add_theme_color_override("font_color", Color("#ffe6a8"))
+	lbl.add_theme_color_override("font_outline_color", Color("#1a0e05")); lbl.add_theme_constant_override("outline_size", 5)
+	lbl.position = Vector2(WEEK_X + 18.0, 48.0 - 20.0); lbl.size = Vector2(120.0, 40.0)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_coin_box.add_child(lbl)
+	var x: float = WEEK_X + 18.0 + 124.0
+	for t in syns:
+		var ip: String = Phase2Types.icon_of(str(t))
+		if ip == "" or not ResourceLoader.exists(ip):
+			continue
+		var ic := TextureRect.new(); ic.name = "WeekSyn_" + str(t)
+		ic.texture = load(ip); ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		ic.position = Vector2(x, 48.0 - WEEK_ICON * 0.5); ic.size = Vector2(WEEK_ICON, WEEK_ICON)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_coin_box.add_child(ic)
+		x += WEEK_ICON + WEEK_GAP
 
 
 ## 场景底图(2026-10-21): 原背景去掉货柜与左下半截宝箱、四边外扩(shop-backdrop.png, 原生 512×296,

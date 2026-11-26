@@ -171,7 +171,7 @@ frames_for () {
     verify_skills_not_dead)   echo 40000 ;;
     # 训龟大师不受影响(2026-10-31): 5 场真对局(4 × 1200 步 + 小将 600 步, det 模式每帧恰一步) + 每场建场 / 收尾若干帧。
     #   实测约 5500 帧 / 110 秒; 帧给少了会半路被掐断 ⇒ 没打 ALL PASS, 看着像断言失败。
-    verify_trainer_untouchable) echo 30000 ;;   # 2026-11-25 第 6 个场景(匕首) · 第 7 个场景(魔法书)
+    verify_trainer_untouchable) echo 34000 ;;   # 2026-11-25 第 6 个场景(匕首) · 第 7 个场景(魔法书) · 11-27 第 8 个场景(面具/长矛/筹码)
     verify_axe_passives)      echo 16000 ;;
     verify_axe_finals)        echo 12000 ;;
     # 余烬处决激光: 要按墙钟等 1.6 秒演出 tween 播完并收掉节点(上限 6 秒), 帧给足防半路掐断
