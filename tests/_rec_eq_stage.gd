@@ -163,6 +163,8 @@ static func cases() -> Dictionary:
 			+ _dummies(320, 3, false, 12000.0, 0.0), 16.0],
 		"sp_cent_die": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
 			+ _dummies(320, 3, false, 12000.0, 0.0), 16.0],
+		## 骑兵冲锋(11-27): 开场 2 秒演示台直接放一次四骑冲锋(正常是 4 档百夫长横扫后才来), 靶子分开站在右半场
+		"sp_cav": [[_me(Vector2(-500, 0), [], {"idle": true})] + _ring_dummies(Vector2(250, 0), [Vector2(0, -200), Vector2(80, -60), Vector2(0, 80), Vector2(80, 220)]), 6.0],
 		## 10 件长矛(11-26 夜): 每件单独一段, 靶子按触发条件摆
 		## 竹矛: 三只靶子站成一条线 ⇒ 第 3 下穿到身后那只
 		"sp_bamboo": [[_me(Vector2(-60, 0), _eq([137], 1))] + _ring_dummies(Vector2(-60, 0), [Vector2(70, 0), Vector2(150, 0), Vector2(230, 0)]), 10.0],
@@ -244,6 +246,12 @@ func _process(d: float) -> void:
 				print("[NODE] Mesh %s %s" % [str((nd as MeshInstance3D).position), str((nd as MeshInstance3D).mesh)])
 			elif nd is GPUParticles3D or nd is CPUParticles3D:
 				print("[NODE] Particles %s" % str(nd.position))
+	if OS.get_environment("REC_CASE") == "sp_cav" and _el > 2.0 and not _seen.has("cav_go"):
+		_seen["cav_go"] = 1
+		for uu in _b._units:
+			if uu is Dictionary and str(uu.get("side", "")) == "left" and bool(uu.get("alive", false)):
+				_b._spear_syn._cavalry(uu, "left")
+				break
 	if OS.has_environment("REC_ANIM_PROBE") and int(_el * 2.0) != int((_el - d) * 2.0):   # 每 0.5 秒打一次召唤物当前播的帧条(11-27 查舞狮走路)
 		for uu in _b._units:
 			if uu is Dictionary and bool(uu.get("is_summon", false)):

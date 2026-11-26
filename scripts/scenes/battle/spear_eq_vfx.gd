@@ -123,22 +123,35 @@ func cent_sweep(u: Dictionary) -> void:
 	_strip(SV + "spear-cent-sweep.png", 9, battle._world_pos(Vector2(u["pos"]), 0.06), 260.0 * 2.0 * float(battle.WS) / 0.8, 20.0, false, 9.0 / 20.0, true, null, 0.0)
 
 
+## 骑兵冲锋(11-27 补, 同舞狮冲撞那次用户「冲锋方向什么特效都没有吗？」): 马身后灰白风线 + 马头前一团被冲开的尘浪 + 马蹄一路扬土
+##   (原画都给「朝左冲」画: 风线往右拖、尘浪往左翻 ⇒ 往右冲一律翻过来)
 func cent_cav(c: Dictionary) -> void:
-	var n := _strip(V + "eq-cavalry-run.png", 8, battle._world_pos(Vector2(c["pos"]), 0.0), 2.6, 14.0, true, 0.0)
+	var dir: Vector2 = Vector2(c["dir"])
+	var fr: bool = dir.x > 0.0
+	var parts: Array = []
+	for spec in [["spear-cav-speed.png", 4, 1.3, 12.0, 80.0, 0.35], ["spear-cav-dustbow.png", 6, 1.5, 14.0, -50.0, 0.0]]:
+		var sp := _strip(V + str(spec[0]), int(spec[1]), battle._world_pos(Vector2(c["pos"]), float(spec[5])), float(spec[2]), float(spec[3]), true, 0.0)
+		if sp != null:
+			sp.flip_h = fr
+			parts.append({"n": sp, "back": float(spec[4]), "h": float(spec[5])})
+	var n := _strip(V + "eq-cavalry-run.png", 8, battle._world_pos(Vector2(c["pos"]), 0.0), 2.6, 14.0, true, 0.0)   # 最后加 ⇒ 画在最上面
 	if n != null:
-		n.flip_h = Vector2(c["dir"]).x > 0.0   # 原画朝左; 往右冲就翻过来
-		_cav_nodes.append({"c": c, "node": n})
+		n.flip_h = fr   # 原画朝左; 往右冲就翻过来
+		_cav_nodes.append({"c": c, "node": n, "parts": parts, "dust_t": 0.0})
 
 
 func cent_cav_hit(_c: Dictionary, o: Dictionary) -> void:
-	_strip(LION_DUST, 7, battle._world_pos(Vector2(o["pos"]), 0.0), 0.9, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 马蹄踏过扬土(底层扬尘)
-	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(o["pos"]), 0.4), 0.9, 20.0, false, 6.0 / 20.0, false, null, 0.0)
+	_strip(LION_DUST, 7, battle._world_pos(Vector2(o["pos"]), 0.0), 1.4, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 马蹄踏过扬土(底层扬尘)
+	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(o["pos"]), 0.5), 1.5, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
 func cent_cav_end(c: Dictionary) -> void:
 	for r in _cav_nodes:
 		if is_same(r["c"], c):
 			_free(r["node"])
+			for pt in r.get("parts", []):
+				if pt["n"] != null and is_instance_valid(pt["n"]):
+					_fade_out(pt["n"] as Sprite3D, 0.12)
 	_cav_nodes = _cav_nodes.filter(func(r): return not is_same(r["c"], c))
 
 
@@ -631,7 +644,18 @@ func tick(delta: float) -> void:
 	for r3 in _cav_nodes:
 		var n3 = r3["node"]
 		if n3 != null and is_instance_valid(n3):
-			(n3 as Sprite3D).position = battle._world_pos(Vector2(r3["c"]["pos"]), 0.0)
+			var cp: Vector2 = Vector2(r3["c"]["pos"])
+			var face: float = 1.0 if Vector2(r3["c"]["dir"]).x > 0.0 else -1.0
+			(n3 as Sprite3D).position = battle._world_pos(cp, 0.0)
+			for pt in r3.get("parts", []):
+				if pt["n"] != null and is_instance_valid(pt["n"]):
+					(pt["n"] as Sprite3D).position = battle._world_pos(cp - Vector2(face, 0.0) * float(pt["back"]), float(pt["h"]))
+			r3["dust_t"] = float(r3.get("dust_t", 0.0)) + delta
+			if float(r3["dust_t"]) >= 0.08:   # 马蹄一路扬土(底层扬尘)
+				r3["dust_t"] = 0.0
+				var ds := _strip(LION_DUST, 7, battle._world_pos(cp - Vector2(face, 0.0) * 40.0, 0.0), 0.55, 16.0, false, 7.0 / 16.0, false, null, 0.0)
+				if ds != null:
+					ds.flip_h = face < 0.0
 
 
 func clear() -> void:
@@ -640,6 +664,9 @@ func clear() -> void:
 	_drops.clear()
 	_browns.clear()
 	_lance_on.clear()
+	for r4 in _cav_nodes:
+		for pt in r4.get("parts", []):
+			_free(pt["n"])
 	for arr in [_spear_nodes, _cav_nodes, _ropes, _shields, _swv, _fall]:
 		for r in arr:
 			_free(r["node"])

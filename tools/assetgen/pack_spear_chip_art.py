@@ -83,6 +83,10 @@ STRIPS = {
     ##   animate_image 首尾钉住 10 帧(第一条中间 4 帧矛放平像在出招、盾变黑, 换提示词重出) ⇒ cdie_0..10; 输入已贴地不再下移;
     ##   前段抽帧, 末帧连停 4 拍(12 帧 @12 = 1 秒 ≥ 阵亡淡出 0.95 秒)
     "eq-centurion-death": [(SP, "cdie_%d" % i, False) for i in [0, 2, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]],
+    ## 骑兵冲锋(11-27 补, 同舞狮冲撞): 身后灰白风线 cav_speed / 马头前尘浪 cav_dustbow = create_image_pro_flash(无锚, 没照参考)
+    ##   + animate_image 首尾钉原画循环(cvspd_0..3 / cvbow_0..5)
+    "spear-cav-speed": [(SP, "cvspd_%d" % i, False) for i in range(0, 4)],
+    "spear-cav-dustbow": [(SP, "cvbow_%d" % i, False) for i in range(0, 6)],
 }
 
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。
