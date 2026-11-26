@@ -276,6 +276,8 @@ static func converge_marks(units: Array) -> void:
 			u["_holyShieldVal"] = sh
 		if float((u as Dictionary).get("_hidingShellVal", 0.0)) > sh:
 			u["_hidingShellVal"] = sh
+		if float((u as Dictionary).get("_spearShieldVal", 0.0)) > sh:   # 146 圣枪护盾标记(11-26)
+			u["_spearShieldVal"] = sh
 
 
 ## 收殓：敌方单位阵亡 → 最近的携带盾者获得该单位 30% 最大生命的护盾。

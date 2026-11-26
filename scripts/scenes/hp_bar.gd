@@ -15,6 +15,7 @@ var _max_hp := 1.0
 var _shield := 0.0
 var _holy := 0.0          # 圣甲圣盾量 (shield 中属圣盾的部分) — 血条上画成白黄亮 (区别普通盾段)
 var _hshell := 0.0        # 缩头防御特殊盾量 (shield 中属壳盾的部分) — 画壳青绿段
+var _spear := 0.0         # 146 圣枪护盾量(shield 中属圣枪护盾的部分, 标记 _spearShieldVal) — 画金色段(11-26 用户「特殊护盾，又有特殊颜色」)
 var _urchin := 0.0        # 海胆护盾量 (013满层·shield 中属海胆盾的部分) — 画海胆紫段(10秒渐衰肉眼可见)
 var _cream := 0.0         # 071奶油护盾量 (SpecialBalance独立余额, 不在shield里; eq_food_batch每帧镜像进_creamShieldVal)
 var _ult := 0.0           # 072终极护盾量 (SpecialBalance独立余额, 不在shield里; eq_food_batch每帧镜像进_ultShieldVal) — 画礼盒粉段
@@ -47,6 +48,8 @@ const _DELAY_L := Color8(0xff, 0x4d, 0x4d)
 const _DELAY_D := Color8(0xc8, 0x1e, 0x1e)
 const _SHIELD_L := Color8(0xf0, 0xf0, 0xf5)
 const _SHIELD_D := Color8(0xc8, 0xc8, 0xdc)
+const _SPEAR_L := Color8(0xff, 0xc4, 0x3a)   # 146 圣枪护盾: 浓金(和圣盾的白黄、物理盾的暖黄褐分开; 与圣枪光球 / 枪身同色)
+const _SPEAR_D := Color8(0xc0, 0x80, 0x10)
 const _HOLY_L := Color8(0xff, 0xf4, 0xc0)    # 圣盾段 白黄亮 (圣光色, 区别普通灰白盾)
 const _HSHELL_L := Color8(0x8f, 0xf0, 0xb8)  # 缩头防御特殊盾段 壳青绿亮(用户2026-07-17"特殊点的颜色放血条")
 const _HSHELL_D := Color8(0x3f, 0x9f, 0x6e)  # 壳青绿暗
@@ -97,6 +100,7 @@ func update_state(f: Dictionary, hp_override := -1.0, shield_override := -1.0) -
 	_holy = clampf(float(f.get("_holyShieldVal", 0)), 0.0, _shield)
 	_hshell = clampf(float(f.get("_hidingShellVal", 0)), 0.0, maxf(0.0, _shield - _holy))
 	_urchin = clampf(float(f.get("urchin_sh_left", 0)), 0.0, maxf(0.0, _shield - _holy - _hshell))   # 海胆盾段: 随10秒衰减自动缩
+	_spear = clampf(float(f.get("_spearShieldVal", 0)), 0.0, maxf(0.0, _shield - _holy - _hshell - _urchin))   # 圣枪护盾段
 	# 法力盾(068)不裁到 _shield: 它是 SpecialBalance 独立余额, 吸收顺序在普通盾之后 —— 不是 shield 的一部分。
 	_magic = maxf(0.0, float(f.get("magic_shield", 0)))
 	_phys = maxf(0.0, float(f.get("phys_shield", 0)))   # 11-26 用户「物理护盾条呢」: 原来血条不认这个字段, 纸面具 / 黑色筹码给的盾看不见
@@ -220,7 +224,8 @@ func _draw() -> void:
 	cursor += _seg_special(x, cursor, w, _holy, _HOLY_L, _HOLY_D)
 	cursor += _seg_special(x, cursor, w, _hshell, _HSHELL_L, _HSHELL_D)
 	cursor += _seg_special(x, cursor, w, _urchin, _URCHIN_L, _URCHIN_D)
-	cursor += _seg(x, cursor, w, maxf(0.0, _shield - _holy - _hshell - _urchin), _SHIELD_L, _SHIELD_D, 0.55)
+	cursor += _seg_special(x, cursor, w, _spear, _SPEAR_L, _SPEAR_D)
+	cursor += _seg(x, cursor, w, maxf(0.0, _shield - _holy - _hshell - _urchin - _spear), _SHIELD_L, _SHIELD_D, 0.55)
 	## 浮囊护盾(064)接普通盾之后、法力盾之前 = SpecialBalance 实际吸收顺序(order 0 先于法力盾的 order 10)
 	cursor += _seg_special(x, cursor, w, _ghost, _GHOST_L, _GHOST_D)
 	cursor += _seg_special(x, cursor, w, _cream, _CREAM_L, _CREAM_D)   # 奶油护盾(071)同样按 _bm 算: 满血时血条让出位置, 不会宽度为 0

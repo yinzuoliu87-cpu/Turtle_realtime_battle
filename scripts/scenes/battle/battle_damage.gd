@@ -954,7 +954,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	EqSpearBatch.holy_store(u, float(got))   # 146 圣枪: 获得的任何护盾存进储能条
 	if not _holy_busy:
 		battle._equip_sys.tally.on_shield(u, float(got))   # ④ 装备统计: 同 _st_shield 口径; 盾羁绊 9 档圣光转化那份是羁绊给的, 不记
-	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
+	if got >= 8 and not bool(u.get("_own_grant_txt", false)):   # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏; _own_grant_txt = 给盾方自己跳字(146 圣枪护盾跳金色「+N 圣枪护盾」)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -52), Lang.t("+%d 盾") % got, battle._VC.color_of("shield-num"), false, "shield")   # 走飘字色表, 不再手抄 #ffffff
 	## ★★两轮用户意见否的是同一个东西:
 	##   2026-08-09 看 095:「又是程序生成的环？哪个商业游戏是你这么做啊」
@@ -968,6 +968,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if not bool(u.get("_own_grant_vfx", false)):
 		battle._vfx.shield_shell(u, Color(1.0, 0.93, 0.62))   # ★淡金不是深金: 深金蓝通道只有 0.2, 低 alpha 叠在近黑背景上会发浑褐(1:1 实拍量出来的)   # ★罩在**单位身上**的六棱护罩(原先是地上一个金圈·用户2026-09-11 否)
 	u.erase("_own_grant_vfx")
+	u.erase("_own_grant_txt")
 	battle._audio_sys._sfx_shield_gain()                       # §AUDIO: 得盾音 (节流; 群体上盾不刷屏)
 
 

@@ -78,7 +78,8 @@ const ETERNAL_SPD := 1100.0
 # ── 146 圣枪(待重新设计) ──
 ## 146 圣枪(11-26 晚用户重做成坦克装 · 方案书 20261126c)
 const HOLY_GUARD_AT := 0.5                     # 每一路首次生命值低于这个比例 ⇒ 圣枪护盾 + 双抗
-const HOLY_GUARD_PCT := [0.40, 0.60, 1.00]     # 圣枪护盾 = 最大生命值 ×(不衰减, 换路随单位重建清掉)
+const HOLY_GUARD_PCT := [0.40, 0.60, 1.00]     # 圣枪护盾合计 = 最大生命值 ×(不衰减, 换路随单位重建清掉)
+const HOLY_GUARD_SEC := 4                      # 4 秒内每秒给一份(开头那一下给第 1 份, 共 4 份; 用户 11-26「数秒之内每秒提供」)
 const HOLY_RESIST := [30.0, 50.0, 100.0]       # 护甲 / 魔抗各 +, 持续到这一路结束
 const HOLY_STORE_CAP := 1.0                    # 储能上限 = 最大生命值 ×
 const HOLY_IV := 12.0                          # 每 12 秒开始引导
@@ -91,7 +92,7 @@ const HOLY_ORB_SHIELD := [60.0, 100.0, 200.0]  # 砸到敌方: 携带者护盾(�
 
 var stat := {"bamboo": 0, "bamboo_hit": 0, "harpoon": 0, "harpoon_hit": 0, "harpoon_pull": 0, "jav": 0, "jav_hit": 0,
 	"lance": 0, "halb": 0, "halb_hit": 0, "shsp_raise": 0, "shsp_block": 0, "shsp_release": 0, "shsp_wave_hit": 0,
-	"ftj": 0, "ftj_hit": 0, "ftj_spin": 0, "atl": 0, "atl_hit": 0, "eternal": 0, "eternal_hit": 0, "holy_guard": 0, "holy_channel": 0, "holy_orb": 0, "holy_ally": 0, "holy_enemy": 0}
+	"ftj": 0, "ftj_hit": 0, "ftj_spin": 0, "atl": 0, "atl_hit": 0, "eternal": 0, "eternal_hit": 0, "holy_guard": 0, "holy_guard_part": 0, "holy_channel": 0, "holy_orb": 0, "holy_ally": 0, "holy_enemy": 0}
 var _waves: Array = []    # 137 竹刺浪 {src, ck, o(起点), dir, r, si, hit, sp(下一丛竹刺的距离)}
 var _pulls: Array = []    # 138 拉拽 {src, o, left, t_next}
 var _swaves: Array = []   # 142 冲击波 {src, ck, o, dir, r, per, hit}
@@ -779,11 +780,21 @@ func _tick_holy(u: Dictionary, si: int, ck: String, delta: float) -> void:
 	if _acc(u, "holy_g:" + ck) <= 0.0 and float(u.get("hp", 0.0)) < float(u.get("maxHp", 0.0)) * HOLY_GUARD_AT:
 		_set_acc(u, "holy_g:" + ck, 1.0)
 		stat["holy_guard"] += 1
-		u["_own_grant_vfx"] = true   # 圣枪护盾自己画(不叠通用六棱罩)
-		battle._damage._grant_shield(u, float(u.get("maxHp", 0.0)) * float(HOLY_GUARD_PCT[si]))
 		battle._damage._buff(u, "def", float(HOLY_RESIST[si]), false, 99999.0)   # 到这一路结束(换路单位重建, buff 随之清)
 		battle._damage._buff(u, "mr", float(HOLY_RESIST[si]), false, 99999.0)
 		_fx("holy_guard", [u, int(HOLY_RESIST[si])])
+		## 每份 = 触发那一刻的最大生命 × 合计比例 ÷ 份数(之后临时等级涨了最大生命也不改这一份)
+		_set_acc(u, "holy_gper:" + ck, float(u.get("maxHp", 0.0)) * float(HOLY_GUARD_PCT[si]) / float(HOLY_GUARD_SEC))
+		_set_acc(u, "holy_gn:" + ck, 0.0)
+		_set_acc(u, "holy_ga:" + ck, 1.0)   # 触发这一步就给第 1 份
+	var gn := int(_acc(u, "holy_gn:" + ck))
+	if _acc(u, "holy_g:" + ck) > 0.0 and gn < HOLY_GUARD_SEC:
+		var ga := _acc(u, "holy_ga:" + ck) + (0.0 if gn == 0 else delta)
+		if ga >= 1.0:
+			ga -= 1.0
+			_holy_guard_part(u, _acc(u, "holy_gper:" + ck))
+			_set_acc(u, "holy_gn:" + ck, float(gn + 1))
+		_set_acc(u, "holy_ga:" + ck, ga)
 	var a := _acc(u, "holy_t:" + ck) + delta
 	if a >= HOLY_IV:
 		a -= HOLY_IV
@@ -810,6 +821,20 @@ func _tick_holy(u: Dictionary, si: int, ck: String, delta: float) -> void:
 		_holy_orb(u, si, ck)
 		oi += HOLY_ORB_IV
 	_set_acc(u, "holy_oi:" + ck, oi)
+
+
+## 圣枪护盾的一份: 进护盾池, 另记标记 _spearShieldVal(血条画金色段 / 面板单列); 不弹通用得盾罩、不跳通用「+N 盾」, 演出自己画
+func _holy_guard_part(u: Dictionary, amt: float) -> void:
+	if amt <= 0.0 or not u.get("alive", false):
+		return
+	var sb: float = float(u.get("shield", 0.0))
+	u["_own_grant_vfx"] = true
+	u["_own_grant_txt"] = true
+	battle._damage._grant_shield(u, amt)
+	var got: float = maxf(0.0, float(u.get("shield", 0.0)) - sb)
+	u["_spearShieldVal"] = minf(float(u.get("_spearShieldVal", 0.0)) + got, float(u.get("shield", 0.0)))
+	stat["holy_guard_part"] += 1
+	_fx("holy_guard_tick", [u, int(got)])
 
 
 ## 光球候选: 友方只有统领与小将(含携带者自己; 不含召唤物 / 龟蛋 / 训龟大师), 敌方是全部可选中的单位(含召唤物)。

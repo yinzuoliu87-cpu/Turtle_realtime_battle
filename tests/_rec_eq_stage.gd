@@ -62,7 +62,7 @@ static func cases() -> Dictionary:
 			_u("__minion__", "left", Vector2(-150, 90), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 8000.0, "killable": false, "idle": true})]
 			+ _dummies(70, 3, true, 20000.0, 700.0), 26.0],
 		## 146 圣枪效果一: 携带者会掉血(killable)、靶子打得疼 ⇒ 半血那一下圣枪落地 + 护盾 + 双抗
-		"holy_guard": [[_me(Vector2(-60, 0), _eq([146]), {"hp_pct": 0.6, "killable": true})] + _dummies(70, 1), 6.0],
+		"holy_guard": [[_me(Vector2(-60, 0), _eq([146]), {"hp_pct": 0.6, "killable": true})] + _dummies(70, 1), 7.0],
 		## 爆竹筒范围 120 码: 三个靶子围在携带者 70~85 码内(都在范围里, 看得出一圈都被击退)
 		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(30, -78), Vector2(30, 78)]), 16.0],
 		## 手雷: 携带者站在远处不动(看得到一道弧线扔过去)

@@ -1687,6 +1687,31 @@ const HOLY_ORB_M := 1.3         # 光球帧宽(米)
 const HOLY_BACK_SEC := 0.35     # 敌方那颗回流光点飞回携带者的时长(纯演出)
 var _holy_ch := {}              # 携带者立绘实例 id → 引导光环节点
 var _holy_back: Array = []      # {node, from(Vector2), to(单位), t}
+var _holy_spears: Array = []    # 插着的圣枪 {f(_mfx 那一条), t, life}: 落下(帧 0~8) → 定格插着 → 最后 3 帧碎散
+const HOLY_SPEAR_HOLD := 8      # holy-guard-up 第 8 帧 = 插住、还没开始碎
+
+
+## 圣枪护盾的一份(4 秒内每秒一份): 地面金环在脚下再亮一次 + 金色「+N 圣枪护盾」(和血条那段同色)
+func holy_guard_tick(u: Dictionary, amt: int) -> void:
+	var at := Vector2(u["pos"])
+	_strip(SV + "holy-guard-ground.png", 12, battle._world_pos(at + Vector2(0.0, -12.0), 0.02), HOLY_GUARD_GROUND_M, 13.0, false, 12.0 / 13.0, true, u, 0.02)   # 往后 12 码: 圆心对上立绘脚底(11-26 录像量过)
+	if amt > 0:
+		battle._vfx._float_text(u["pos"] + Vector2(0, -52), Lang.t("+%d 圣枪护盾") % amt, Color("#ffc43a"), false, "shield")
+
+
+func _tick_holy_spears(delta: float) -> void:
+	var keep: Array = []
+	for h in _holy_spears:
+		var f: Dictionary = h["f"]
+		var n = f["node"]
+		if n == null or not is_instance_valid(n):
+			continue
+		h["t"] = float(h["t"]) + delta
+		var t: float = float(h["t"])
+		var tail: float = float(h["life"]) - 3.0 / 13.0
+		f["hold"] = mini(int(t * 13.0), HOLY_SPEAR_HOLD) if t < tail else mini(HOLY_SPEAR_HOLD + 1 + int((t - tail) * 13.0), 11)
+		keep.append(h)
+	_holy_spears = keep
 
 
 func _feet_strip(path: String, nf: int, at: Vector2, h_m: float, below_px: float, fps: float, loop: bool, life: float, follow = null, sink: float = 0.0) -> Sprite3D:
@@ -1703,11 +1728,12 @@ func _feet_strip(path: String, nf: int, at: Vector2, h_m: float, below_px: float
 ##   第一版画在人前面压住身体、第二版挪到身后 46 码、第三版一张贴图开深度测试 ⇒ 地面那半圈被地面切掉 —— 都不对。
 func holy_guard(u: Dictionary, resist: int) -> void:
 	var at := Vector2(u["pos"])
-	var s := _feet_strip(SV + "holy-guard-up.png", 12, at + Vector2(0.0, -4.0), HOLY_GUARD_M, HOLY_GUARD_BELOW, 13.0, false, 12.0 / 13.0)   # 插住就不动(不跟人走)
+	var life: float = float(EqSpearBatch.HOLY_GUARD_SEC) - 1.0 + 3.0 / 13.0 + 0.25   # 枪插到给完最后一份再收(最后一份在第 3 秒)
+	var s := _feet_strip(SV + "holy-guard-up.png", 12, at + Vector2(0.0, -4.0), HOLY_GUARD_M, HOLY_GUARD_BELOW, 13.0, false, life)   # 插住就不动(不跟人走)
 	if s != null:
 		s.no_depth_test = false
 		s.render_priority = -1
-	_strip(SV + "holy-guard-ground.png", 12, battle._world_pos(at + Vector2(0.0, -12.0), 0.02), HOLY_GUARD_GROUND_M, 13.0, false, 12.0 / 13.0, true, null, 0.02)   # 往后 12 码: 圆心对上立绘脚底(11-26 录像量过, 不挪圆心偏在脚前)
+		_holy_spears.append({"f": _mfx.back(), "t": 0.0, "life": life})
 	battle._vfx._float_text(u["pos"] + Vector2(0, -88), Lang.t("护甲和魔抗 +%d") % resist, Color("#ffe08a"))   # 分段表 ②: 双抗
 
 
@@ -1910,6 +1936,7 @@ func tick(delta: float) -> void:
 	_tick_stabs(delta)
 	_tick_cent_glows()
 	_tick_holy_back(delta)
+	_tick_holy_spears(delta)
 	## 百夫长登场: 预警圈 → 长矛插进圈心 → 本人从高空砸下(残影)
 	var keep: Array = []
 	for l in _lands:
@@ -2057,6 +2084,7 @@ func clear() -> void:
 	for b in _holy_back:
 		_free(b["node"])
 	_holy_back.clear()
+	_holy_spears.clear()
 	_drops.clear()
 	_browns.clear()
 	_cc_last.clear()

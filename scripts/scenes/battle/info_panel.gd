@@ -1315,6 +1315,8 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 			chips.append([Lang.t("%s %d 层") % [str(d[1]), n], str(d[2]), sic + str(d[3])])
 	if float(u.get("shield", 0.0)) > 0.0:
 		chips.append([Lang.t("护盾 %d") % int(u.get("shield", 0.0)), "#7fe0ff", sic + "shield-icon.png"])
+	if float(u.get("_spearShieldVal", 0.0)) >= 1.0:
+		chips.append([Lang.t("圣枪护盾 %d") % int(u.get("_spearShieldVal", 0.0)), "#ffc43a", sic + "shield-icon.png"])
 	if float(u.get("phys_shield", 0.0)) >= 1.0:
 		chips.append([Lang.t("物理护盾 %d") % int(u.get("phys_shield", 0.0)), "#f2c86a", sic + "shield-icon.png"])
 	if float(u.get("magic_shield", 0.0)) >= 1.0:

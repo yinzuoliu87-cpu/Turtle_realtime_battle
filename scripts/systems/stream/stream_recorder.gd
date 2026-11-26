@@ -85,7 +85,7 @@ const UKEYS := ["_active_cd", "_anemoneShield", "_appearance", "_atk_voff", "_au
 	## 11-26 夜(探针 tests/probes/_probe_stream_mask: 本机隐去 178 / 播放 0, 里世界按钮 89 / 0): 渲染层按单位字段着色的, 原来都不在流里 ——
 	##   134 威尼斯 / 154 棕色筹码倒地半透明 / 136 里世界(在哪个世界 · 被偷发灰) / 132 鬼面潜行;
 	##   同一类的旧件一并补: 100 烟雾弹潜行 / 115 暗影忍者隐身 · 化烟 / 龟壳潜影
-	"_ven_until", "_ven_t0", "_ow", "_ow_drained", "_ghost_hidden", "phys_shield", "_grey_stk", "_gold_stk_total", "_gold_guard_until",
+	"_ven_until", "_ven_t0", "_ow", "_ow_drained", "_ghost_hidden", "phys_shield", "_spearShieldVal", "_grey_stk", "_gold_stk_total", "_gold_guard_until",
 	"_smoke_hidden", "_ninja_veil", "_ninja_gone", "shell_stealth"]
 ## (S2 拿掉了 anim_t / anim_t0: 渲染步每次都推它、每次采样都在变, 而手机不推立绘帧(帧号走镜像), 用不上。)
 const UKEYS_STEP := ["alive", "anim_action", "side"]   # 逐步(离散)
