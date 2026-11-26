@@ -424,7 +424,8 @@ const ACTION_ATTACK := {
 	"_summon_katana": ["vfx/eq-katana-attack.png", 14.0],   # 107 武士刀小将横斩(11-25; 命中帧见 AttackHits)
 	"_summon_skel_warrior": ["vfx/eq-skelw-attack.png", 16.0], "_summon_skel_mage": ["vfx/eq-skelm-attack.png", 16.0],   # 123 亡者之书骷髅(11-25; 命中帧见 AttackHits)
 	"_summon_skel_priest": ["vfx/eq-skelp-attack.png", 16.0],
-	"_summon_mask_lion": ["vfx/eq-masklion-attack.png", 14.0],   # 130 舞狮头的舞狮: 后仰 → 张嘴前扑咬(11-26; 命中帧见 AttackHits)
+	"_summon_mask_lion": ["vfx/eq-masklion-attack.png", 14.0],
+	"_summon_centurion": ["vfx/eq-centurion-attack.png", 16.0],   # 长矛羁绊百夫长: 压矛 → 往前刺 → 收回(11-26; 命中帧见 AttackHits)   # 130 舞狮头的舞狮: 后仰 → 张嘴前扑咬(11-26; 命中帧见 AttackHits)
 	"_summon_shadow_ninja": ["vfx/eq-ninja-attack.png", 16.0], "_summon_shadow_clone": ["vfx/eq-ninja-attack.png", 16.0],   # 115 暗影忍者 / 影子: 蓄力刀收肩后 → 横斩(命中帧见 AttackHits)
 }
 # 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
@@ -489,7 +490,8 @@ const ACTION_RUN := {
 	"_summon_katana": ["vfx/eq-katana-walk.png", 10.0],     # 107 武士刀小将走路循环(11-25 用户「肯定是没有走路的」)
 	"_summon_skel_warrior": ["vfx/eq-skelw-walk.png", 12.0], "_summon_skel_mage": ["vfx/eq-skelm-walk.png", 12.0],   # 123 亡者之书骷髅走路循环 8 帧
 	"_summon_skel_priest": ["vfx/eq-skelp-walk.png", 12.0],
-	"_summon_mask_lion": ["vfx/eq-masklion-walk.png", 10.0],     # 130 舞狮走路循环
+	"_summon_mask_lion": ["vfx/eq-masklion-walk.png", 10.0],
+	"_summon_centurion": ["vfx/eq-centurion-walk.png", 10.0],     # 长矛羁绊百夫长走路     # 130 舞狮走路循环
 	"_summon_shadow_ninja": ["vfx/eq-ninja-walk.png", 12.0], "_summon_shadow_clone": ["vfx/eq-ninja-walk.png", 12.0],   # 115 暗影忍者 / 影子 潜行小跑 8 帧
 }
 # GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界), 不再靠抬高去躲硬切. 见 §GROUNDING.
@@ -1795,7 +1797,8 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 		"eq-skel-warrior": ["vfx/eq-skelw-idle.png", 112],   # 123 亡者之书 · 骷髅战士(11-25)
 		"eq-skel-mage": ["vfx/eq-skelm-idle.png", 112],      # 123 · 骷髅法师
 		"eq-skel-priest": ["vfx/eq-skelp-idle.png", 112],    # 123 · 骷髅祭司
-		"eq-mask-lion": ["vfx/eq-masklion-idle.png", 112],   # 130 舞狮头 · 舞狮(11-26)
+		"eq-mask-lion": ["vfx/eq-masklion-idle.png", 112],
+		"eq-centurion": ["vfx/eq-centurion-idle.png", 112],   # 长矛羁绊 · 百夫长(11-26)   # 130 舞狮头 · 舞狮(11-26)
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]

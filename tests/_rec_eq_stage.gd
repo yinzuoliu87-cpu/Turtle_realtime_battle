@@ -134,6 +134,9 @@ static func cases() -> Dictionary:
 		"mk_venice": [[_me(Vector2(-60, 0), _eq([134], 1), {"hp": 1500.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 250.0), 16.0],
 		## 鬼面: 靶子打到它半血 ⇒ 潜行(半透明) → 攻击现形
 		"mk_ghost": [[_me(Vector2(-60, 0), _eq([132], 1), {"hp": 3000.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 120.0), 16.0],
+		## ── 长矛(11-26) ── 两只只会站着的小将各带 5 件不同的长矛 = 10 件 4 档; 百夫长第 8 秒登场
+		"sp_cent": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
+			+ _dummies(60, 3, true, 12000.0, 60.0), 30.0],
 		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
 		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
 			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 16.0],
@@ -217,6 +220,11 @@ func _process(d: float) -> void:
 		for u in _b._units:
 			print("[PROBE] %.1f %s %s pos=%s hp=%s alive=%s nm=%s nb=%s sk=%s st=%s atk=%s cd=%s rng=%s stun=%s" % [_el, str(u.get("side", "")), str(u.get("id", "")), str(u.get("pos", "")), str(int(u.get("hp", 0))), str(u.get("alive", false)), str(u.get("no_move", false)), str(u.get("no_basic", false)), str(u.get("active_skills", [])), str(u.get("state", "")), str(u.get("atk", 0)), str(u.get("atk_cd", 0)), str(u.get("atk_range", 0)), str(u.get("stun_until", 0))])
 		print("[PROBE] mines ", _b._equip_sys._bomb_sys._mines.size(), " over=", _b._over, " edit=", _b._edit_mode)
+	var spx = _b._spear_syn
+	for k in spx.stat:
+		if int(spx.stat[k]) != int(_seen.get("s_" + k, 0)):
+			print("[EV] %.2f %s %d" % [_el, k, int(spx.stat[k])])
+			_seen["s_" + k] = int(spx.stat[k])
 	var ms = _b._equip_sys._mask_sys
 	for k in ms.stat:
 		if int(ms.stat[k]) != int(_seen.get("m_" + k, 0)):
