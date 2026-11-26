@@ -20,11 +20,13 @@ const MAX_DIM := 4096
 ##   外包 11 只 = Spine 待机渲成的像素序列帧(tools/assetgen/build_spine_idle.py, 50 帧);
 ##   其余 14 只 = 新形象(tools/assetgen/build_turtle_seq.py, 一律 8 帧)。忍者 / 幽灵未动。
 ##   原表(07-10 重排时测): basic 7 stone 9 bamboo 9 angel 7 fortune 17 hunter 14 candy 9 line 13 crystal 10 space 11 hiding 13 headless 16 shell 19
+## ★2026-11-26 财神龟换成自己的设计(方案书 20261126d, 外包逐只替换的第一只): 50 → 8 帧(build_turtle_seq.py)
 const EXPECTED_EFFECTIVE := {
-	"basic": 50, "stone": 50, "bamboo": 50, "angel": 50, "ice": 50, "fortune": 50, "rainbow": 50,
+	"basic": 50, "stone": 50, "bamboo": 50, "angel": 50, "ice": 50, "rainbow": 50,
 	"lightning": 50, "phoenix": 50, "lava": 50, "shell": 50,
 	"ninja": 5, "ghost": 11,
 	"diamond": 8, "dice": 8, "gambler": 8, "hunter": 8, "pirate": 8, "candy": 8, "bubble": 8, "line": 8,
+	"fortune": 8,
 	"cyber": 8, "crystal": 8, "chest": 8, "space": 8, "hiding": 8, "headless": 8,
 }
 

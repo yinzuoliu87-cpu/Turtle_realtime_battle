@@ -1,0 +1,51 @@
+{
+ "attack": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 147,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_fortuneAllIn": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 147,
+  "ox": 0,
+  "rel": 5
+ },
+ "cast_fortuneBuyEquip": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 147,
+  "ox": 0,
+  "rel": 4
+ },
+ "cast_fortuneDice": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 147,
+  "ox": 0,
+  "rel": 4
+ },
+ "death": {
+  "cancel": -1,
+  "fps": 15,
+  "ground": 147,
+  "ox": 0,
+  "rel": -1
+ },
+ "idle": {
+  "cancel": -1,
+  "fps": 8,
+  "ground": 147,
+  "ox": 0,
+  "rel": -1
+ },
+ "run": {
+  "cancel": -1,
+  "fps": 12,
+  "ground": 147,
+  "ox": 0,
+  "rel": -1
+ }
+}

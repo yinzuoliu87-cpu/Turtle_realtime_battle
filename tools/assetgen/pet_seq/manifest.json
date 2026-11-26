@@ -252,6 +252,35 @@
    ]
   ]
  },
+ "fortune": {
+  "attack": 7,
+  "body0": 69,
+  "casts": {
+   "fortuneAllIn": [
+    8,
+    5,
+    "seq"
+   ],
+   "fortuneBuyEquip": [
+    9,
+    4,
+    "seq"
+   ],
+   "fortuneDice": [
+    9,
+    4,
+    "seq"
+   ]
+  },
+  "death": 15,
+  "feet": 164,
+  "feet_row": 164,
+  "fps": 15,
+  "frame": 168,
+  "hit": 4,
+  "rows": {},
+  "run": 8
+ },
  "gambler": {
   "attack": 10,
   "body0": 78,

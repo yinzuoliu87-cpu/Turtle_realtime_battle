@@ -791,13 +791,8 @@
     "def": 19,
     "mr": 16,
     "crit": 0.25,
-    "img": "pets/spine/fortune_idle.png",
-    "sprite": {
-      "frames": 50,
-      "frameW": 200,
-      "frameH": 176,
-      "duration": 3333
-    },
+    "img": "pets/pixel/fortune_idle.png",
+    "sprite": {"frames": 8, "frameW": 72, "frameH": 104, "duration": 1000},
     "passive": {
       "type": "fortuneGold",
       "name": "聚宝盆",

@@ -16,7 +16,7 @@ const ATTACK := {
 	"cyber": ["pets/animations/cyber/attack.png", 15.0],   # 12 帧
 	"diamond": ["pets/animations/diamond/attack.png", 15.0],   # 12 帧
 	"dice": ["pets/animations/dice/attack.png", 15.0],   # 12 帧
-	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 10 帧
+	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 7 帧
 	"gambler": ["pets/animations/gambler/attack.png", 15.0],   # 10 帧
 	"headless": ["pets/animations/headless/attack.png", 15.0],   # 12 帧
 	"hiding": ["pets/animations/hiding/attack.png", 15.0],   # 12 帧
@@ -130,7 +130,7 @@ const STATE := {
 }
 ## 形态切换段 [路径, 帧率(, 开播前在首帧停留秒数)](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放; 凤凰复活先趴 2.5 秒)
 const FORM := {
-	"angel": {"revive": ["pets/animations/angel/revive.png", 15.0, 1.833]},   # 11-27: 复活改成 2.5 秒倒地分段回血 ⇒ 同凤凰先趴 1.833 秒再站(10 帧 / 15fps)
+	"angel": {"revive": ["pets/animations/angel/revive.png", 15.0, 1.833]},
 	"candy": {"drain": ["pets/animations/candy/drain.png", 12.0]},
 	"crystal": {"barrier_end": ["pets/animations/crystal/barrier_end.png", 15.0]},
 	"diamond": {"diamondRoll_end": ["pets/animations/diamond/diamondRoll_end.png", 15.0], "enter": ["pets/animations/diamond/enter.png", 12.0]},
@@ -197,9 +197,9 @@ const CAST := {
 		"diceFlashStrike": ["pets/animations/dice/cast_diceFlashStrike.png", 15.0, 4],   # 5 帧 · seq
 	},
 	"fortune": {
-		"fortuneAllIn": ["pets/animations/fortune/cast_fortuneAllIn.png", 15.0, 4],   # 9 帧 · pixellab
-		"fortuneBuyEquip": ["pets/animations/fortune/cast_fortuneBuyEquip.png", 15.0, 4],   # 8 帧 · skel
-		"fortuneDice": ["pets/animations/fortune/cast_fortuneDice.png", 15.0, 3],   # 7 帧 · pixellab
+		"fortuneAllIn": ["pets/animations/fortune/cast_fortuneAllIn.png", 15.0, 5],   # 8 帧 · seq
+		"fortuneBuyEquip": ["pets/animations/fortune/cast_fortuneBuyEquip.png", 15.0, 4],   # 9 帧 · seq
+		"fortuneDice": ["pets/animations/fortune/cast_fortuneDice.png", 15.0, 4],   # 9 帧 · seq
 	},
 	"gambler": {
 		"gamblerBet": ["pets/animations/gambler/cast_gamblerBet.png", 15.0, 3],   # 10 帧 · seq
@@ -291,7 +291,7 @@ const NORM := {
 	"cyber": [60.0, 138.0, 60.0],
 	"diamond": [77.0, 135.0, 77.0],
 	"dice": [71.0, 139.0, 71.0],
-	"fortune": [149.0, 260.0, 149.0],
+	"fortune": [69.0, 164.0, 69.0],
 	"gambler": [78.0, 143.0, 78.0],
 	"headless": [91.0, 135.0, 91.0],
 	"hiding": [71.0, 138.0, 71.0],
