@@ -40,8 +40,8 @@ const THROW_W := 30.0
 ## 掷矛节奏(11-27 用户「普攻回到 idle，然后再在 idle 这上面去投掷…投掷的时候不普攻…完成投掷动作再普攻」):
 ##   第 3 下普攻命中后 THROW_LEAD 秒起手, 掷矛动作 THROW_ANIM 秒(帧条 7 帧 @12), 出手帧 THROW_RELEASE 秒才发飞矛; 整段定身
 const THROW_LEAD := 0.45
-const THROW_ANIM := 0.58
-const THROW_RELEASE := 0.17
+const THROW_ANIM := 1.0      # 11-27 重出的掷矛动作 16 帧 @16
+const THROW_RELEASE := 0.34   # 出手帧 = 下标 4(12 fps)
 const EN_MAX := 100.0
 const SEC_PER_ENERGY := 0.075
 const SHIELD_SEC := 3.0
@@ -195,6 +195,9 @@ func summon(side: String, tier: int) -> Dictionary:
 	p["energy"] = 0.0
 	p["_cent_tier"] = tier
 	p["_death_hold"] = 1.3   # 倒下帧条 1 秒 + 在地上躺 0.3 秒再淡(11-27 自查: 原来没倒完就淡没了)
+	if is_instance_valid(p.get("sprite", null)):   # 立足点放在两脚中间(近脚第 190 行 / 远脚第 179 行, 11-27 量过): 帧下沉 6 行; 原来按近脚着地, 斜俯视下人像飘在影子后上方(用户「为什么是浮空的」)
+		p["sprite"].offset = Vector2(0.0, 96.0 - 6.0)
+		p["idle_offy"] = 90.0
 	p["bar_head_h"] = 4.0   # 11-27 放大后人约 3 米高(连盔缨): 血条抬到头顶上方(默认 2.8 会横在胸口)
 	## 落点: 我方阵地往前(两军之间偏我方)
 	var cx: float = float(battle._arena_center.x)

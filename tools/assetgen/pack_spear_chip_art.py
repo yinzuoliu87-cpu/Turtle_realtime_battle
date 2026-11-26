@@ -114,12 +114,12 @@ CENT2 = {
     "eq-centurion-idle":   ("idle",          [0, 1, 2, 3]),
     "eq-centurion-walk":   ("walk_skel",     [0, 1, 2, 3, 4, 5]),
     "eq-centurion-attack": ("attack2",       [1, 2, 3, 4, 5, 6, 7, 8, 1, 0]),          # 命中 = 原第 6 帧(矛尖最远) = 下标 5; 末尾补回 1 / 0 接待机
-    "eq-centurion-throw":  ("throw",         [3, 4, 5, 6, 7, 8, 0]),                   # 从举矛过肩截起: 出手在下标 2(引擎里飞矛动作一开始就发)
+    "eq-centurion-throw":  ("throw_mix",     list(range(1, 13))),                      # 11-27 拼接(见 ai_src/cent_char/throw_mix/SOURCE.txt): 起手 4 帧(矛尖朝前后拉) + 下标 4 前冲甩出矛离手 + 随势 + 掏新矛; 12 帧 @12 = 1 秒
     "eq-centurion-shield": ("shield_brace2", [3, 4, 5, 6, 7, 8] + [8] * 36),           # 下蹲举盾 6 帧 + 撑盾(结构同旧帧条, 引擎按举盾秒数算播放速度)
     "eq-centurion-sweep":  ("spin_sweep",    list(range(5, 17))),                      # 原地转一圈横扫(前 5 帧几乎不动, 截掉)
     "eq-centurion-death":  ("death",         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8]),     # 末帧连停 4 拍
 }
-CENT2_FW, CENT2_LEFT, CENT2_FOOT = 192, 62, 186
+CENT2_FW, CENT2_LEFT, CENT2_FOOT = 192, 62, 191   # 脚底 = 帧最底行: 召唤物立绘按「帧底着地」摆(offset = 帧高/2), 11-27 量过 186 时人悬空 5 行 ≈ 0.1 米
 
 
 def _icon(src, dst, maxc=64):
@@ -156,7 +156,8 @@ def main():
     import json
     CV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_vfx")
     for src, dst, centre in [("centurion-crack-segment", "spear-cent-crack", False),
-            ("centurion-aegis-open+centurion-aegis-loop", "spear-cent-aegis", False), ("centurion-drop-marker", "spear-cent-marker", False)]:
+            ("centurion-aegis-open+centurion-aegis-loop", "spear-cent-aegis", False), ("centurion-drop-marker", "spear-cent-marker", False),
+            ("centurion-fall-trail", "spear-cent-trail", False)]:
         if "+" in src:   # 两段接成一条(先展开后循环)
             parts = []
             for one in src.split("+"):

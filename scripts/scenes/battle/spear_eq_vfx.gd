@@ -63,7 +63,8 @@ func _proj(tex: String, from: Vector2, dir: Vector2, len_m: float) -> Sprite3D:
 # ── 百夫长 ──
 ## 登场(11-27 用户, 方案书附录 B): 0 秒落点亮出预警标记圈 → CENT_PLANT_T 他自己的长矛从高空直插圈心 → 最后 CENT_DROP_SEC 本人从画面外高空砸下(残影)
 ##   → 落地那一步(cent_impact)裂坑 + 震屏 + 整岛地裂。旧的通用金光柱删了(用户「这个落下的这个光特效，你是不是偷偷复用了什么东西」)。
-const CENT_MARKER_M := 4.0      # 预警标记圈直径(米)
+const CENT_MARKER_M := 9.0      # 预警标记圈直径(米; 4 时用户 11-27「落地那个圈太小了…大一点啊」)
+const CENT_TRAIL_M := 7.0       # 下坠光尾长(米)
 const CENT_DROP_H := 14.0       # 本人从多高砸下来(米; 刚好在画面上沿外: 30 米时先慢后快、进画面只剩最后一两帧, 11-27 录像量过)
 const CENT_DROP_SEC := 0.5      # 砸下来用时(落地前最后这段; 约最后 0.2 秒在画面里, 带残影)
 const CENT_PLANT_T := 0.35      # 长矛插进圈心的时刻
@@ -87,7 +88,10 @@ func cent_land(p: Dictionary, sec: float) -> void:
 		sp.offset = Vector2(0.0, float(sp.texture.get_height()) * 0.5)   # 原点 = 矛尖(底边)
 		sp.visible = false
 		battle._world.add_child(sp)
-	_lands.append({"u": p, "t": 0.0, "sec": maxf(0.1, sec), "mk": mk, "sp": sp, "planted": false, "ghost": 0.0})
+	var tr := _strip(V + "spear-cent-trail.png", 6, battle._world_pos(Vector2(p["pos"]), CENT_DROP_H), CENT_TRAIL_M, 16.0, true, sec, false, null, 0.0)
+	if tr != null:
+		tr.visible = false   # 开始砸下那一刻才亮(下面 tick 里跟着本体)
+	_lands.append({"u": p, "t": 0.0, "sec": maxf(0.1, sec), "mk": mk, "sp": sp, "tr": tr, "planted": false, "ghost": 0.0})
 	_cent_play(p, "shield", 42.0 / maxf(0.1, sec))   # 举盾下蹲的姿势砸下来, 落地时正好举满
 
 
@@ -112,7 +116,8 @@ func _drop_ghost(u: Dictionary) -> void:
 	g.modulate = Color(1.0, 0.85, 0.45, 0.5)
 	battle._world.add_child(g)
 	g.global_position = src.global_position
-	_fade_out(g, 0.15)
+	## 登记进 _mfx 由统一推帧淡出删除(直播录得到; 不登记则 _fade_out 管不到, 11-27 录像里留成一根红柱)
+	_mfx.append({"node": g, "nf": maxi(1, g.hframes * g.vframes), "fps": 0.0, "t": 0.0, "life": 0.15, "loop": false, "follow": null, "h": 0.0, "hold": g.frame})
 
 
 func cent_impact(p: Dictionary) -> void:
@@ -206,7 +211,7 @@ func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 
 ## 掷矛起手(结算侧第 3 下刺完、回待机停一拍后调): 掷矛动作 7 帧 @12 = 0.58 秒, 出手帧在第 2 帧(结算 THROW_RELEASE 同一刻发飞矛)
 func cent_throw_begin(u: Dictionary) -> void:
-	_cent_play(u, "throw", 12.0)
+	_cent_play(u, "throw", 12.0)   # 12 帧 = 1 秒, 出手帧下标 4(结算 THROW_RELEASE 0.34 同一刻)
 
 
 func cent_throw(u: Dictionary, s: Dictionary) -> void:
@@ -839,6 +844,10 @@ func tick(delta: float) -> void:
 		else:
 			var k: float = clampf((t - t0) / CENT_DROP_SEC, 0.0, 1.0)
 			u["_slam_voff"] = Vector3(0.0, CENT_DROP_H * (1.0 - k * k), 0.0)   # 加速砸下(落地那一刻由 cent_impact 归零)
+			var tr = l.get("tr")
+			if tr != null and is_instance_valid(tr):   # 下坠光尾: 挂在本体头顶上方, 跟着往下砸
+				(tr as Sprite3D).visible = k < 1.0
+				(tr as Sprite3D).position = battle._world_pos(Vector2(u["pos"]), CENT_DROP_H * (1.0 - k * k) + 1.6)
 			l["ghost"] = float(l["ghost"]) - delta
 			if float(l["ghost"]) <= 0.0 and k < 1.0:
 				l["ghost"] = 0.04
@@ -856,8 +865,11 @@ func tick(delta: float) -> void:
 					battle._shake(battle.JUICE_SHAKE_HEAVY * 0.35)
 		if t >= sec or not u.get("alive", false):
 			u["_slam_voff"] = Vector3.ZERO
+			var tr2 = l.get("tr")
+			if tr2 != null and is_instance_valid(tr2):
+				(tr2 as Node).queue_free()   # 落地那一刻收掉下坠光尾(11-27 录像: 原来竖在头顶上方又留了 0.7 秒)
 			if sp != null and is_instance_valid(sp):
-				_fade_out(sp as Sprite3D, 0.3)
+				_mfx.append({"node": sp, "nf": 1, "fps": 0.0, "t": 0.0, "life": 0.3, "loop": false, "follow": null, "h": 0.0})   # 插地长矛落地后淡掉删除(统一推帧, 直播录得到)
 			continue
 		keep.append(l)
 	_lands = keep

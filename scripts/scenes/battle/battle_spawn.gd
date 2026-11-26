@@ -961,7 +961,8 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 	shadow.shaded = false
 	shadow.transparent = true
 	shadow.modulate = Color(1, 1, 1, battle.SHADOW_BASE_A)
-	shadow.scale = battle.SHADOW_BASE * 0.6
+	var _shm: float = 0.6 * float(behavior.get("vis_mul", 1.0))   # 影子跟画面放大(11-27 百夫长放大 1.55 后影子还是一小团, 用户「为什么是浮空的」)
+	shadow.scale = battle.SHADOW_BASE * _shm
 	shadow.position = battle._world_pos(pos, 0.02)
 	battle._world.add_child(shadow)
 
@@ -1003,7 +1004,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"self_decay": float(behavior.get("self_decay", 0.0)),
 		"equips": [], "eq_state": {}, "hp50_fired": false,
 		# 节点引用
-		"sprite": spr, "shadow": shadow, "ring": null, "shadow_base_scale": battle.SHADOW_BASE * 0.6,
+		"sprite": spr, "shadow": shadow, "ring": null, "shadow_base_scale": battle.SHADOW_BASE * _shm,
 		"bar_root": bar["root"], "hp_bar": bar["hp_bar"], "en_fill": bar["en"], "level_badge": bar.get("level_badge", null),
 		"spr_base_offy": spr.offset.y,
 		# 立绘动画态 (召唤体若有 sheet 也循环 idle) ----

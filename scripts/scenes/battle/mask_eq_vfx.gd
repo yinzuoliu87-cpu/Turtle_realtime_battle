@@ -47,7 +47,7 @@ func _tick_mfx(delta: float) -> void:
 		f["t"] = float(f["t"]) + delta
 		var t: float = float(f["t"])
 		var k: int = int(t * float(f["fps"]))
-		(n as Sprite3D).frame = (k % int(f["nf"])) if bool(f["loop"]) else mini(k, int(f["nf"]) - 1)
+		(n as Sprite3D).frame = int(f["hold"]) if f.has("hold") else ((k % int(f["nf"])) if bool(f["loop"]) else mini(k, int(f["nf"]) - 1))   # hold: 定格在某一帧(百夫长下落残影, 11-27)
 		var fo = f["follow"]
 		if fo is Dictionary:
 			if not (fo as Dictionary).get("alive", false):

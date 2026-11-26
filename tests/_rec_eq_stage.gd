@@ -274,7 +274,7 @@ func _process(d: float) -> void:
 			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and is_instance_valid(uu.get("sprite", null)):
 				var cs = uu["sprite"]
 				var ctx = (uu.get("anim_sd", {}) as Dictionary).get("tex", null)
-				print("[CENT] %.2f %s f=%d px=%.5f fh=%d sc=%s off=%s pos=%s" % [_el, (ctx as Texture2D).resource_path.get_file() if ctx != null else "无", int(cs.frame), float(cs.pixel_size), int((uu.get("anim_sd", {}) as Dictionary).get("frame_h", 0)), str(cs.scale), str(cs.offset), str(uu.get("pos"))])
+				print("[CENT] %.2f fr=%s flip=%s %s f=%d px=%.5f fh=%d sc=%s off=%s pos=%s" % [_el, str(uu.get("face_right")), str(cs.flip_h), (ctx as Texture2D).resource_path.get_file() if ctx != null else "无", int(cs.frame), float(cs.pixel_size), int((uu.get("anim_sd", {}) as Dictionary).get("frame_h", 0)), str(cs.scale), str(cs.offset), str(uu.get("pos"))])
 	if OS.has_environment("REC_NODE_PROBE") and _el > float(OS.get_environment("REC_NODE_PROBE")) and not _seen.has("node_probe"):
 		_seen["node_probe"] = 1
 		var nodes: Array = _b._world.get_children()
