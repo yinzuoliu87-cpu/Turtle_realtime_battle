@@ -224,6 +224,47 @@ static func _set_sheet_normed(battle, u: Dictionary, sd: Dictionary, action: Str
 		battle._set_anim_sheet(u, sd, action, action == "")
 
 
+## 134 威尼斯 / 154 棕色筹码倒地复活的身体姿势(11-27): 借本龟阵亡帧条前 DOWN_F 帧 —— 倒下正放、趴着定格、最后 DOWN_RISE 秒倒放起身, 结束换回待机。
+##   只读 _ven_t0 / _ven_until(直播流里有) ⇒ 回放同样有; 没有阵亡帧条的(幽灵 / 忍者 / 变脸)不变姿势。纯演出, 不碰结算。
+const DOWN_F := 7          # 阵亡帧条第 6 帧起已趴平(11-27 量过 basic / bubble / stone 的包围盒)
+const DOWN_FPS := 15.0
+const DOWN_RISE := 0.5
+
+static func downed_pose(battle, u: Dictionary) -> void:
+	var until: float = float(u.get("_ven_until", -1.0))
+	var on: bool = battle._t < until and u.get("alive", false)
+	if not on:
+		if u.get("_downed_pose", false):
+			u.erase("_downed_pose")
+			u.erase("_manual_anim")
+			battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
+		return
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr):
+		return
+	if not u.get("_downed_pose", false):
+		if u.get("_manual_anim", false):
+			return   # 别的演出在手动管帧(忍者冲刺…), 不抢
+		var key = battle._anim_key(u)
+		var table: Dictionary = battle.ACTION_DEATH if battle.ACTION_DEATH.has(key) else TurtleActions.DEATH
+		if not table.has(key):
+			return
+		var sd: Dictionary = battle._resolve_action(str(table[key][0]), float(table[key][1]))
+		if sd.is_empty():
+			return
+		u["_state_on"] = ""
+		_set_sheet_normed(battle, u, sd, "downed")
+		u["_downed_pose"] = true
+		u["_manual_anim"] = true
+	var el: float = battle._t - float(u.get("_ven_t0", battle._t))
+	var f: int = mini(DOWN_F, int(el * DOWN_FPS))
+	var left: float = until - battle._t
+	if left < DOWN_RISE:
+		f = mini(f, int(left / DOWN_RISE * float(DOWN_F)))
+	var real: int = maxi(1, int(spr.hframes) * int(spr.vframes))
+	spr.frame = clampi(f, 0, real - 1)
+
+
 ## 形态切换段(熔岩变身 / 变回): TurtleActions.FORM[龟][段] = [路径, 帧率]; 播一次, 期间普攻 / 受击不打断(battle_vfx 白名单)
 static func play_form(battle, u: Dictionary, tid: String, seg: String) -> void:
 	var ent: Array = (TurtleActions.FORM.get(tid, {}) as Dictionary).get(seg, [])

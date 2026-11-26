@@ -204,6 +204,9 @@ static func cases() -> Dictionary:
 			+ _ring_dummies(Vector2(420, 0), [Vector2(0, -70), Vector2(0, 70)]), 7.0],
 		## 150 绿色筹码(11-27 补录): 携带者四成血站着挨轻打, 每秒回 1.5% 最大生命值(头上绿字)
 		"ch_green": [[_me(Vector2(-60, 0), _eq([150], 1), {"hold": true, "hp": 6000.0, "killable": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(40, 1, true, 30000.0, 260.0), 8.0],
+		## 倒地姿势(11-27): 携带者用基础龟(普通小将没有阵亡帧条; 实战里带装备的龟 / 援军小将都有) · 只放一只靶子(三只会围上来挡住携带者), 看倒下 → 趴着 → 起身
+		"rv_ven1": [[_u("basic", "left", Vector2(-60, 0), {"equips": _eq([134], 1), "hp": 1500.0, "killable": true, "plain": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(90, 1, true, 30000.0, 400.0), 12.0],
+		"rv_brown1": [[_u("basic", "left", Vector2(-60, 0), {"equips": _eq([154], 1), "hp": 300.0, "killable": true, "plain": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(90, 1, true, 30000.0, 900.0), 12.0],
 		"ch_brown": [[_me(Vector2(-60, 0), _eq([154], 1), {"hp": 300.0, "killable": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 300.0), 14.0],
 		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
 		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
@@ -292,6 +295,12 @@ func _process(d: float) -> void:
 			if uu is Dictionary and str(uu.get("side", "")) == "left" and uu.get("alive", false):
 				parts.append("x=%.0f mv=%.2f" % [Vector2(uu["pos"]).x, float(uu.get("move_perm", 1.0))])
 		print("[POS] %.1f %s" % [_el, " | ".join(parts)])
+	if OS.has_environment("REC_POSE_PROBE"):   # 倒地复活(11-27): 每帧打携带者的帧条 / 帧号 / 透明度
+		for uu in _b._units:
+			if uu is Dictionary and str(uu.get("id", "")) == "basic" and is_instance_valid(uu.get("sprite", null)) and _el > 7.5 and _el < 10.8:
+				var ps = uu["sprite"]
+				var ptx = (uu.get("anim_sd", {}) as Dictionary).get("tex", null)
+				print("[POSE] %.2f %s %s f=%d a=%.2f hp=%d" % [_el, str(uu.get("id", "")), (ptx as Texture2D).resource_path.get_file() if ptx != null else "无", int(ps.frame), float(ps.modulate.a), int(uu.get("hp", 0))] + " px=%.5f fh=%d idle_px=%.5f idle_fh=%d sc=%s off=%s" % [float(ps.pixel_size), int((uu.get("anim_sd", {}) as Dictionary).get("frame_h", 0)), float(uu.get("idle_px", 0.0)), int((uu.get("idle_sd", {}) as Dictionary).get("frame_h", 0)), str(ps.scale), str(ps.offset)])
 	if OS.has_environment("REC_ANIM_PROBE") and int(_el * 2.0) != int((_el - d) * 2.0):   # 每 0.5 秒打一次召唤物当前播的帧条(11-27 查舞狮走路)
 		for uu in _b._units:
 			if uu is Dictionary and bool(uu.get("is_summon", false)):

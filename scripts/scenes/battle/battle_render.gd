@@ -54,6 +54,7 @@ const RENDER_OWNED_KEYS := [
 	## 变脸龟动作驱动(TwoHeadArt, 2026-10-20): 当前动作 / 排队动作 / 认过的前摇 / 认过的形态 / 走路判据
 	"_tha_clip", "_tha_t0", "_tha_tk", "_tha_q", "_tha_ws", "_tha_pend", "_tha_form",
 	"_tha_lp", "_tha_lt", "_tha_walk", "_tha_loop_t0", "_tha_cut", "_tha_fps",
+	"_ow_bar_hid", "_downed_pose",   # 136 千面里世界藏血条 / 倒地复活姿势(AttackRhythm.downed_pose, 11-27)
 ]
 
 var battle
@@ -704,6 +705,8 @@ func _update_world_transforms() -> void:
 			ring.position = battle._world_pos(_rpos, 0.015)
 		if int(u.get("_ow_drained", 0)) > 0:   # 136 千面: 在里世界被偷过属性 ⇒ 身体发灰(偷得越多越灰, 封顶 45%; 一路有效)
 			spr.modulate = spr.modulate.lerp(Color(0.52, 0.48, 0.62, spr.modulate.a), minf(0.45, 0.05 * float(u["_ow_drained"])))
+		if u.has("_ven_until") or u.has("_downed_pose"):
+			AttackRhythm.downed_pose(battle, u)   # 倒地复活: 身体倒下 → 趴着 → 起身(11-27)
 		if battle._t < float(u.get("_ven_until", -1.0)):   # 134 威尼斯 / 棕色筹码复活: 倒下时身体灰白, 2.5 秒里随血量回色
 			var vk: float = clampf((battle._t - float(u.get("_ven_t0", battle._t))) / maxf(0.1, float(u["_ven_until"]) - float(u.get("_ven_t0", 0.0))), 0.0, 1.0)
 			spr.modulate = Color(1.5, 1.55, 1.7, 0.3 + 0.7 * vk).lerp(spr.modulate, vk * vk).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl * 0.5)   # 苍白半透明魂体, 随血量变实(往近白色乘在绿身上看不出, 11-26 录像量过)

@@ -326,6 +326,31 @@ func _ready() -> void:
 		down_alive and down_untg and stepped and absf(up - to) < 1.0 and absf(healed - (to - 1.0)) < 2.0 and not bool(me.get("alive", true)),
 		"活 %s · 不可选 %s" % [str(down_alive), str(down_untg)])
 
+	## ── H2 倒地姿势(11-27): 有阵亡帧条的龟 ⇒ 倒下(阵亡帧正放)→ 趴着(定格 DOWN_F)→ 最后 0.5 秒倒放起身 → 回待机 ──
+	##   渲染层每帧调 AttackRhythm.downed_pose(读 _ven_t0 / _ven_until); 这里 _adv 不跑渲染, 每 0.1 秒直接调一次同一个函数
+	me = _mk("left", ["p2eq_134"], 0.0, 0.0, "basic")
+	foe = _mk("right")
+	_field([me, foe])
+	me["hp"] = 100.0
+	_s._damage._apply_damage_from(foe, me, 999, Color.WHITE, 0.0, true)
+	var pf: Array = []
+	var ptex := ""
+	for _q in range(26):
+		AttackRhythm.downed_pose(_s, me)
+		if me.get("_downed_pose", false) and is_instance_valid(me.get("sprite", null)):
+			pf.append(int(me["sprite"].frame))
+			var _ptx = (me.get("anim_sd", {}) as Dictionary).get("tex", null)
+			ptex = (_ptx as Texture2D).resource_path.get_file() if _ptx != null else ""
+		else:
+			pf.append(-1)
+		_adv(0.1)
+	AttackRhythm.downed_pose(_s, me)   # 2.6 秒: 已过 _ven_until
+	var back := not me.has("_downed_pose") and not bool(me.get("_manual_anim", false)) and str(me.get("anim_action", "x")) == ""
+	var DF: int = AttackRhythm.DOWN_F
+	_ok("H2 倒地姿势: 阵亡帧条(%s)正放倒下 → 趴着定格第 %d 帧 → 最后 0.5 秒倒放起身 → 2.5 秒整回待机(帧号 %s)" % [ptex, DF, str(pf)],
+		ptex == "death.png" and int(pf[0]) == 0 and int(pf[5]) == DF and int(pf[12]) == DF and int(pf[19]) == DF
+		and int(pf[22]) > 0 and int(pf[22]) < DF and int(pf[24]) <= 2 and int(pf[25]) <= 1 and back, "回待机 %s" % str(back))
+
 	## ── I 135 黄金面具 ──
 	me = _mk("left", ["p2eq_135"])
 	foe = _mk("right", [], 200.0)
