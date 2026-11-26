@@ -37,7 +37,8 @@ MUT = (r"(\s*(\+=|-=|\*=|=(?!=))|\.(append|push_back|push_front|erase|remove_at|
 RX = {f: re.compile(r"(?<![A-Za-z0-9_\"'])" + re.escape(f) + MUT) for f in FIELDS}
 FUNC = re.compile(r"^(static\s+)?func\s+([A-Za-z0-9_]+)")
 
-LEDGER = ("scripts/gamedata/econ_ledger.gd", "scripts/gamedata/econ_inv.gd")
+## chip_burn.gd(11-26 起): 筹码打完损坏, 只由 econ_ledger._income 那一笔进账调(CHIP_BURN_SRCS), 是记账口拆出去的一段 —— 同 econ_inv.gd
+LEDGER = ("scripts/gamedata/econ_ledger.gd", "scripts/gamedata/econ_inv.gd", "scripts/gamedata/chip_burn.gd")
 
 ## 判据二: 记账口才调的 GameState 辅助函数(函数体里改经济字段; 调用点受限)
 HELPERS = {

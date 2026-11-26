@@ -154,7 +154,16 @@ func _add_simple_row(label: String, label_color: String, stroke: Color, icon_pat
 	lbl.add_theme_color_override("font_color", Color(label_color))
 	p.add_child(lbl)
 	if off_week:
-		lbl.text = label + "  " + Lang.t("· 本周不出")
+		## 「本周不出」单独一个右对齐小标签(11-27 verify_ui_copy: 不拿「·」把名字和状态拼成一行)
+		var tag := Label.new()
+		tag.text = Lang.t("本周不出")
+		tag.position = Vector2(48, 0)
+		tag.size = Vector2(host.LIST_W - 16 - 56 - 10, 52)
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tag.add_theme_font_size_override("font_size", 13)
+		tag.add_theme_color_override("font_color", Color("#9fb0c2"))
+		p.add_child(tag)
 		p.modulate = Color(1.0, 1.0, 1.0, 0.42)
 	host._connect_row(p, idx, col)
 

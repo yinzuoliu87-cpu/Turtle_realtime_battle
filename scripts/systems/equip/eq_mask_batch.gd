@@ -63,7 +63,7 @@ const GHOST_REHIDE := 1.0
 const GHOST_REGEN := [0.03, 0.05, 0.08]        # 潜行期间每秒回复 最大生命值 ×
 # ── 133 防毒面具 ──
 const GAS_IMMUNE := ["burn", "poison", "bleed"]
-const GAS_MOVE_PER_PCT := 0.01                 # 每损失 1% 生命值 +1% 移动速度
+const GAS_MOVE_PER_PCT := [0.01, 0.015, 0.02]   # 每损失 1% 生命值 +1/1.5/2% 移动速度(11-27 预检: 本批唯一不随星级成长的效果, 按项目惯例补逐星)
 # ── 134 威尼斯面具 ──
 const VEN_SEC := 2.5
 const VEN_HEAL := [0.30, 0.45, 0.70]
@@ -170,8 +170,8 @@ func _true_dmg(src: Dictionary, tgt: Dictionary, amt: float) -> void:
 	battle._damage._apply_damage_from(src, tgt, int(round(amt)), COL_TRUE, 0.0, true, true)
 
 
-static func _si_of(e: Dictionary) -> int:
-	return clampi(int(e.get("star", 1)), 1, 3) - 1
+static func _si_of(e: Dictionary) -> int:   # 同一份实现只留在 EqMagicBatch(dup_primitive_audit)
+	return EqMagicBatch._si_of(e)
 
 
 func _count(u: Dictionary, eid: String) -> int:
@@ -223,6 +223,7 @@ func revive(u: Dictionary, d: float) -> float:
 		return d
 	## 威尼斯面具先用; 用完了才轮到 154 棕色筹码(同一套倒地复活流程, 回血比例 60%)
 	var heal_pct: float
+	var sec: float = VEN_SEC if ven else EqChipBatch.BROWN_SEC   # 倒地时长: 面具读 VEN_SEC、棕色筹码读 BROWN_SEC(文案各自引用; 现在都是 2.5)
 	if ven:
 		u["_ven_ready"] = false
 		heal_pct = float(VEN_HEAL[int(u.get("_ven_si", 0))])
@@ -232,18 +233,18 @@ func revive(u: Dictionary, d: float) -> float:
 		battle._equip_sys._chip_sys.stat["brown"] += 1
 	var t := float(battle._t)
 	stat["revive"] += 1
-	u["deathfloor_until"] = maxf(float(u.get("deathfloor_until", 0.0)), t + VEN_SEC)   # 2.5 秒内血量不会再掉到 1 以下
-	u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + VEN_SEC)
-	battle._damage.channel(u, VEN_SEC)                                                 # 倒地期间不行动
-	u["_ven_until"] = t + VEN_SEC
-	_revives.append({"u": u, "t0": t, "ven": ven})
+	u["deathfloor_until"] = maxf(float(u.get("deathfloor_until", 0.0)), t + sec)   # 倒地期间血量不会再掉到 1 以下
+	u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + sec)
+	battle._damage.channel(u, sec)                                                 # 倒地期间不行动
+	u["_ven_until"] = t + sec
+	_revives.append({"u": u, "t0": t, "ven": ven, "sec": sec})
 	battle._damage.revive_begin(u, float(u.get("maxHp", 1.0)) * heal_pct, false)   # 分 5 段回血、每段弹数字(全项目共用, 用户 11-27); 保护上面已设
 	u["_ven_t0"] = t
 	## 演出分开: 威尼斯面具的招牌(面具 + 光环)不给棕色筹码用(CLAUDE.md §10 第 5 条)
 	if ven:
 		_fx("venice_down", [u, VEN_SEC])
 	else:
-		battle._equip_sys._chip_sys._fx("chip_brown_down", [u, VEN_SEC])   # 棕色筹码的演出在筹码那一层(面具演出层里没有, 原来派发到这里就丢了)
+		battle._equip_sys._chip_sys._fx("chip_brown_down", [u, sec])   # 棕色筹码的演出在筹码那一层(面具演出层里没有, 原来派发到这里就丢了)
 	return maxf(0.0, float(u["hp"]) - 1.0)
 
 
@@ -488,7 +489,7 @@ func _tick_lions(delta: float) -> void:
 				p["energy"] = 0.0
 				battle._magic_syn.on_cast(p, LION_EN_MAX)   # 魔法书【飞弹】: 召唤物放技能也算
 				var dv: Vector2 = Vector2((tgt as Dictionary)["pos"]) - Vector2(p["pos"])
-				L["dir"] = dv.normalized() if dv.length() > 1.0 else Vector2(1.0 if str(battle._eff_side(p)) == "left" else -1.0, 0.0)
+				L["dir"] = DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2(1.0 if str(battle._eff_side(p)) == "left" else -1.0, 0.0)
 				L["state"] = "wind"
 				L["t"] = 0.0
 				L["hit"] = []
@@ -524,11 +525,11 @@ func _tick_lions(delta: float) -> void:
 							already = true
 					if already:
 						continue
-					var q: Vector2 = Geometry2D.get_closest_point_to_segment(Vector2(o["pos"]), a, b)
+					var q: Vector2 = DetMath.seg_closest(Vector2(o["pos"]), a, b)
 					if DetMath.dist(q, Vector2(o["pos"])) <= LION_W + float(o.get("col_size", 22.0)) * 0.5:
 						(L["hit"] as Array).append(o)
 						_lion_hit(L, o)
-				if float(L["t"]) >= LION_DIST or b.distance_to(a) < step * 0.5:
+				if float(L["t"]) >= LION_DIST or DetMath.dist(b, a) < step * 0.5:
 					L["state"] = "idle"
 					p.erase("_face_lock")
 					_fx("lion_stop", [p])
@@ -718,7 +719,7 @@ func _tick_revives() -> void:
 		var u: Dictionary = R["u"]
 		if not u.get("alive", false):
 			continue
-		var k: float = clampf((t - float(R["t0"])) / VEN_SEC, 0.0, 1.0)   # 回血在 battle_damage.revive_tick(分段弹数字); 这里只管起身演出
+		var k: float = clampf((t - float(R["t0"])) / float(R.get("sec", VEN_SEC)), 0.0, 1.0)   # 回血在 battle_damage.revive_tick(分段弹数字); 这里只管起身演出
 		if k < 1.0:
 			keep.append(R)
 		else:
@@ -816,9 +817,13 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 				elif bool(u.get("_ghost_hidden", false)):
 					u["_ghost_hidden"] = false
 					_fx("ghost_reveal", [u])
-			"p2eq_133":   # 每损失 1% 生命值 +1% 移动速度(每帧按当前血量重算)
+			"p2eq_133":   # 每损失 1% 生命值 +1/1.5/2% 移动速度(每帧按当前血量重算; 多件各按自己的星级相加)
 				var lost: float = clampf(1.0 - float(u["hp"]) / maxf(1.0, float(u.get("maxHp", 1.0))), 0.0, 1.0)
-				var want: float = lost * 100.0 * GAS_MOVE_PER_PCT * float(_count(u, "p2eq_133"))
+				var rate: float = 0.0
+				for e2 in u.get("equips", []):
+					if e2 is Dictionary and str((e2 as Dictionary).get("id", "")) == "p2eq_133":
+						rate += float(GAS_MOVE_PER_PCT[_si_of(e2)])
+				var want: float = lost * 100.0 * rate
 				var had: float = float(u.get("_gas_move", 0.0))
 				if absf(want - had) > 1e-6:
 					u["move_perm"] = float(u.get("move_perm", 1.0)) + (want - had)

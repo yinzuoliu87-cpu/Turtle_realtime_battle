@@ -104,12 +104,12 @@ func show(item: Dictionary) -> void:
 		thresh += ("" if i == 0 else " / ") + str(int(tiers[i]))
 	## 两件事各占一行(文案规则 2: 不拿「·」把两个读数拼成一行)
 	## 特殊羁绊(筹码, 用户 11-27): 没有档位 ⇒ 不写「激活 N 件」
-	host._add_text(130, 80, Lang.t("激活：%s 件") % thresh if not tiers.is_empty() else Lang.t("没有羁绊档位"), 16, color, 0.0, 0.5, true)
+	host._add_text(130, 80, Lang.t("激活：%s 件") % thresh if not tiers.is_empty() else Lang.t("无羁绊加成"), 16, color, 0.0, 0.5, true)
 	host._add_text(130, 104, Lang.t("现有装备：%d 件") % members.size(), 16, color, 0.0, 0.5, true)
 
 	## 逐档: 左列「N 件」, 右列一条一行。
 	var y := 132.0
-	host._add_text(20, y, "羁绊效果", 17, "#58d3ff", 0.0, 0.0, true)
+	host._add_text(20, y, "羁绊效果" if not tiers.is_empty() else "说明", 17, "#58d3ff", 0.0, 0.0, true)   # 没有档位的羁绊(筹码)不写「羁绊效果」
 	y += 32.0
 	## ★2026-10-13 机制只写一次(云顶羁绊小卡): TYPE_INTRO 一条一行, 下面逐档只列变化的数字。
 	var intro_w: float = float(host.DETAIL_W) - 40.0

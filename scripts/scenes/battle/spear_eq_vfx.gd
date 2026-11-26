@@ -26,7 +26,7 @@ func _cent_sd(key: String, fps: float) -> Dictionary:
 		var sd := {}
 		if ResourceLoader.exists(p):
 			var t: Texture2D = load(p)
-			sd = battle._sprite_dict_from(t, {"frames": t.get_width() / CENT_FW, "frameW": CENT_FW, "frameH": CENT_FW, "duration": 800}, false)
+			sd = battle._sprite_dict_from(t, {"frames": (t.get_width() / CENT_FW) * (t.get_height() / CENT_FW), "frameW": CENT_FW, "frameH": CENT_FW, "duration": 800}, false)   # 42 帧的举盾帧条排成 2 行(贴图最大边 ≤ 4096)
 		_cent_cache[key] = sd
 	var out: Dictionary = (_cent_cache[key] as Dictionary).duplicate()
 	if not out.is_empty():
@@ -352,11 +352,6 @@ func _crack_piece(t: Texture2D, rng: RandomNumberGenerator, a: Vector2, b: Vecto
 const CENT_TIP_H := 1.3     # 矛尖离地高(米, 新画的百夫长平端长矛的高度)
 
 
-## 普攻刺出那一下矛刃上的白金突刺光(11-27 用户「矛刺出去的话…带点特效」): 钉在命中帧的矛尖上
-##   命中帧矛尖在帧里 (21, 161), 立足点 (96, 186) ⇒ 往前 75 像素、离地 25 像素; 帧 128×48 里矛尖在 x≈18, 光刃往后延 100 像素
-const CENT_TIP_FWD_PX := 75.0
-const CENT_TIP_UP_PX := 31.0   # 25 时录像里比矛低几个像素(11-27)
-
 ## 普攻矛刃光叠加层: 一只百夫长一个节点, 首次普攻时建; 每帧跟本体同帧号 / 位置 / 朝向 / 尺寸, 只在本体播普攻帧条时显示
 const CENT_GLOW_TEX := "res://assets/sprites/vfx/eq-centurion-attack-glow.png"
 var _cent_glows: Array = []   # {u, node, mf}
@@ -405,33 +400,6 @@ func _tick_cent_glows() -> void:
 		s.global_position = src.global_position
 		keep.append(g)
 	_cent_glows = keep
-
-
-func _cent_tip_flash_unused(u: Dictionary) -> void:   # 上一轮钉在命中点的版本(矛收回后光还浮着), 11-27 第四轮起不用
-	var spr = u.get("sprite", null)
-	if not _ok() or not is_instance_valid(spr) or not ResourceLoader.exists(SV + "spear-cent-tip.png"):
-		return
-	var px: float = float((spr as Sprite3D).pixel_size)
-	var fr: bool = bool((spr as Sprite3D).flip_h)   # 原画朝左; 翻转 = 朝右
-	var fwd: float = CENT_TIP_FWD_PX * px
-	var t: Texture2D = load(SV + "spear-cent-tip.png")
-	var s := Sprite3D.new()
-	s.texture = t
-	s.hframes = 6
-	s.shaded = false
-	s.transparent = true
-	s.no_depth_test = true
-	s.render_priority = 9
-	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	s.pixel_size = px
-	s.flip_h = fr
-	s.offset = Vector2((64.0 - 18.0) * (-1.0 if fr else 1.0), 0.0)   # 帧里矛尖在 x=18: 让矛尖对上锚点
-	var base: Vector3 = (spr as Sprite3D).global_position
-	var cb: Basis = battle._cam.global_transform.basis if battle.get("_cam") != null else Basis.IDENTITY   # 立绘是朝镜头的板: 帧里的左右 / 上下 = 镜头的 x / y 轴
-	s.position = base + cb.x * (fwd if fr else -fwd) + cb.y * (CENT_TIP_UP_PX * px)
-	battle._world.add_child(s)
-	_mfx.append({"node": s, "nf": 6, "fps": 20.0, "t": 0.0, "life": 0.3, "loop": false, "follow": null, "h": 0.0})
 
 
 ## 普攻冲击罩(11-27 第六轮, 用户「武器头部有一层冲击罩一样的冲击波…冲出去」): 刺到最远那一帧, 矛头外面裹两层 3D 激波罩
@@ -922,7 +890,7 @@ func _cent_burst(pos: Vector3, yaw: float, ring_m: float) -> void:
 	_stabs.append({"parts": [], "bills": [], "ring": ring, "t": 0.0, "life": 0.25, "p0": pos, "d3": Vector3.ZERO, "dist": 0.0})
 
 
-func cent_throw(u: Dictionary, s: Dictionary) -> void:
+func cent_throw(_u: Dictionary, s: Dictionary) -> void:
 	_dir_strip(SV + "spear-cent-thrust.png", 7, Vector2(s["pos"]) + Vector2(s["dir"]) * 90.0, Vector2(s["dir"]), 180.0 * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)   # 出手那一下的气劲
 	var n := _proj("spear-pilum.png", Vector2(s["pos"]), Vector2(s["dir"]), 2.4)
 	if n != null:
@@ -1188,7 +1156,7 @@ func _tick_aegis(delta: float) -> void:
 			a["off"] = float(a["off"]) + delta
 			k = minf(1.0, float(a["off"]) / AEGIS_BRK_SEC)
 		var op: float = minf(1.0, t / AEGIS_OPEN_SEC)
-		var pop: float = 1.0 + 0.08 * sin(PI * clampf(t / 0.24, 0.0, 1.0))   # 张开时整面高度回弹一下
+		var pop: float = 1.0 + 0.08 * DetMath.dsin(PI * clampf(t / 0.24, 0.0, 1.0))   # 张开时整面高度回弹一下
 		for i in range((a["parts"] as Array).size()):
 			var p = a["parts"][i]
 			if p == null or not is_instance_valid(p):

@@ -123,8 +123,8 @@ func _set_acc(u: Dictionary, key: String, v: float) -> void:
 	u["_spear_acc"] = d
 
 
-static func _si_of(e: Dictionary) -> int:
-	return clampi(int(e.get("star", 1)), 1, 3) - 1
+static func _si_of(e: Dictionary) -> int:   # 同一份实现只留在 EqMagicBatch(dup_primitive_audit)
+	return EqMagicBatch._si_of(e)
 
 
 func _phys(src: Dictionary, o: Dictionary, base: float) -> void:
@@ -342,11 +342,11 @@ func _tick_waves(delta: float) -> void:
 			if _in_list(w["hit"], o):
 				continue
 			var rel: Vector2 = Vector2(o["pos"]) - org
-			var along: float = rel.dot(dir)
+			var along: float = DetMath.dot(rel, dir)
 			var half: float = float(o.get("col_size", 22.0)) * 0.5
 			if along < r0 - half or along > r1 + half:
 				continue
-			if absf(rel.dot(Vector2(-dir.y, dir.x))) > BAMBOO_W + half:
+			if absf(DetMath.dot(rel, Vector2(-dir.y, dir.x))) > BAMBOO_W + half:
 				continue
 			(w["hit"] as Array).append(o)
 			stat["bamboo_hit"] += 1
@@ -408,7 +408,7 @@ func _tick_swaves(delta: float) -> void:
 			var half: float = float(o.get("col_size", 22.0)) * 0.5
 			if d < r0 - half or d > r1 + half:
 				continue
-			if d > 1.0 and DetMath.norm(rel).dot(Vector2(w["dir"])) < SHSP_WAVE_ARC:
+			if d > 1.0 and DetMath.dot(DetMath.norm(rel), Vector2(w["dir"])) < SHSP_WAVE_ARC:
 				continue
 			(w["hit"] as Array).append(o)
 			stat["shsp_wave_hit"] += 1
@@ -663,7 +663,7 @@ func _halberd(u: Dictionary, tg: Dictionary, si: int) -> void:
 		var dd: float = DetMath.vlen(rel)
 		if dd > rng + float(o.get("col_size", 22.0)) * 0.5:
 			continue
-		if dd > 1.0 and DetMath.norm(rel).dot(fdir) < HALB_ARC:
+		if dd > 1.0 and DetMath.dot(DetMath.norm(rel), fdir) < HALB_ARC:
 			continue
 		stat["halb_hit"] += 1
 		_phys(u, o, float(HALB_PCT[si]) * float(u.get("atk", 0.0)))
@@ -692,7 +692,7 @@ func _tick_shield_spear(u: Dictionary, si: int, ck: String, delta: float) -> voi
 		for o in _enemies(u):
 			var rel: Vector2 = Vector2(o["pos"]) - Vector2(u["pos"])
 			var d: float = DetMath.vlen(rel)
-			if d <= SHSP_WAVE_LEN + float(o.get("col_size", 22.0)) * 0.5 and (d <= 1.0 or DetMath.norm(rel).dot(dir) >= SHSP_WAVE_ARC):
+			if d <= SHSP_WAVE_LEN + float(o.get("col_size", 22.0)) * 0.5 and (d <= 1.0 or DetMath.dot(DetMath.norm(rel), dir) >= SHSP_WAVE_ARC):
 				n += 1
 		if total > 0.0:
 			_swaves.append({"src": u, "ck": ck, "o": Vector2(u["pos"]), "dir": dir, "r": 0.0, "per": total / float(maxi(1, n)), "hit": []})
@@ -722,7 +722,7 @@ func _atlatl(u: Dictionary, si: int, ck: String) -> void:
 	for i in range(n):
 		var ang: float = battle._battle_rng.randf() * TAU
 		var rr: float = 0.0 if i == 0 else sqrt(battle._battle_rng.randf()) * ATL_R   # 第一根正落在目标身上(随机数照常取, 个数不变)
-		var at: Vector2 = ArenaShape.clamp_in(c + Vector2(cos(ang), sin(ang)) * rr, battle.ARENA, 20.0)
+		var at: Vector2 = ArenaShape.clamp_in(c + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * rr, battle.ARENA, 20.0)
 		var tf: float = t + ATL_SPREAD_SEC * float(i) / float(maxi(1, n - 1))
 		_drops.append({"src": u, "ck": ck, "at": at, "t_fire": tf, "t_land": tf + fall, "si": si, "fired": false})
 

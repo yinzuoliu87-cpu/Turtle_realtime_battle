@@ -1133,11 +1133,11 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 				out.append(Lang.t("%d 秒后举盾") % maxi(0, int(st.get("next", 0))))
 		"halberd_ftj":
 			if int(st.get("buff", 0)) > 0:
-				out.append(Lang.t("横扫状态：还剩 %d 秒") % int(st.get("buff", 0)))
+				out.append(Lang.t("横扫状态：%d 秒") % int(st.get("buff", 0)))
 			else:
-				out.append(Lang.t("战意 %d%%") % mini(100, int(st.get("pct", 0))))
+				out.append(Lang.t("积攒进度 %d%%") % mini(100, int(st.get("pct", 0))))   # 11-27 文案「战意」被判风味词, 改「层数」; 面板跟着改
 		"chip_gold":
-			out.append(Lang.t("金色护罩：已触发") if bool(st.get("done", false)) else Lang.t("金色护罩：开打第 8 秒触发"))
+			out.append(Lang.t("金色护罩：已触发") if bool(st.get("done", false)) else Lang.t("金色护罩：开打第 %d 秒触发") % int(EqChipBatch.GOLD_AT))
 		"chip_cci":
 			if bool(st.get("cci", false)):
 				out.append(Lang.t("本战场免疫控制"))

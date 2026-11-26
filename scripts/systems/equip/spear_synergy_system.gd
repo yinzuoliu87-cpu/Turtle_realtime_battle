@@ -238,10 +238,6 @@ func _land(r: Dictionary) -> void:
 			battle._knock_up(o, Vector2(o["pos"]) + Vector2(0.0, 1.0), CENT_KNOCK_VY)
 
 
-func cent_state(i: int = 0) -> Dictionary:
-	return _cents[i] if i < _cents.size() else {}
-
-
 func _rec_of(u: Dictionary) -> Dictionary:
 	for r in _cents:
 		if is_same(r["u"], u):
@@ -349,7 +345,7 @@ func _tick_spears(delta: float) -> void:
 					already = true
 			if already:
 				continue
-			var q: Vector2 = Geometry2D.get_closest_point_to_segment(Vector2(o["pos"]), a, b)
+			var q: Vector2 = DetMath.seg_closest(Vector2(o["pos"]), a, b)
 			if DetMath.dist(q, Vector2(o["pos"])) <= THROW_W + float(o.get("col_size", 22.0)) * 0.5:
 				(s["hit"] as Array).append(o)
 				stat["throw_hit"] += 1
@@ -471,7 +467,7 @@ func _tick_cavs(delta: float) -> void:
 					already = true
 			if already:
 				continue
-			var q: Vector2 = Geometry2D.get_closest_point_to_segment(Vector2(o["pos"]), a, b)
+			var q: Vector2 = DetMath.seg_closest(Vector2(o["pos"]), a, b)
 			if DetMath.dist(q, Vector2(o["pos"])) <= CAV_W + float(o.get("col_size", 22.0)) * 0.5:
 				(c["hit"] as Array).append(o)
 				stat["cav_hit"] += 1
@@ -507,9 +503,9 @@ func _tick_waves(delta: float) -> void:
 				for h in w["hit"]:
 					if is_same(h, o):
 						already = true
-				if already or (Vector2(o["pos"]) - Vector2(w["t0"])).dot(dir) <= 0.0:
+				if already or DetMath.dot(Vector2(o["pos"]) - Vector2(w["t0"]), dir) <= 0.0:
 					continue
-				var q: Vector2 = Geometry2D.get_closest_point_to_segment(Vector2(o["pos"]), a, b)
+				var q: Vector2 = DetMath.seg_closest(Vector2(o["pos"]), a, b)
 				if DetMath.dist(q, Vector2(o["pos"])) > LINE_W + float(o.get("col_size", 22.0)) * 0.5:
 					continue
 				(w["hit"] as Array).append(o)

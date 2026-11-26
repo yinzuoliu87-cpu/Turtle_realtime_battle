@@ -159,7 +159,7 @@ def main():
     CV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_vfx")
     for src, dst, centre in [("centurion-crack-segment", "spear-cent-crack", False),
             ("centurion-drop-marker", "spear-cent-marker", False),
-            ("centurion-fall-trail", "spear-cent-trail", False), ("centurion-spear-thrust-tip", "spear-cent-tip", False)]:
+            ("centurion-fall-trail", "spear-cent-trail", False)]:   # spear-cent-tip 11-27 删(矛尖光改成贴矛叠加层 eq-centurion-attack-glow)
         if "+" in src:   # 两段接成一条(先展开后循环)
             parts = []
             for one in src.split("+"):
@@ -201,11 +201,14 @@ def main():
             continue
         bb = Image.open(fp(0)).convert("RGBA").getchannel("A").getbbox()
         dx, dy = CENT2_LEFT - bb[0], CENT2_FOOT - bb[3]
-        out = Image.new("RGBA", (CENT2_FW * len(idx), CENT2_FW), (0, 0, 0, 0))
+        ## 11-27 verify_sprite_sheets: 贴图最大边 ≤ 4096(手机 GPU) ⇒ 一行最多 21 帧(4032), 多的换行(引擎按 hframes × vframes 读)
+        cols = min(len(idx), 4096 // CENT2_FW)
+        rows = (len(idx) + cols - 1) // cols
+        out = Image.new("RGBA", (CENT2_FW * cols, CENT2_FW * rows), (0, 0, 0, 0))
         for i, k in enumerate(idx):
             fr = Image.new("RGBA", (CENT2_FW, CENT2_FW), (0, 0, 0, 0))
             fr.alpha_composite(Image.open(fp(k)).convert("RGBA"), (dx, dy)) if dx >= 0 and dy >= 0 else fr.paste(Image.open(fp(k)).convert("RGBA"), (dx, dy))
-            out.paste(fr, (i * CENT2_FW, 0))
+            out.paste(fr, ((i % cols) * CENT2_FW, (i // cols) * CENT2_FW))
         out.save(os.path.join(VFX, dst + ".png"), optimize=False)
         print(dst, len(idx), "帧", CENT2_FW, "方 · 位移", (dx, dy))
     for dst, srcs in STRIPS.items():

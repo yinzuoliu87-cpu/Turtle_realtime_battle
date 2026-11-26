@@ -3704,6 +3704,12 @@ msgstr "Charge %s / %s"
 msgid "层数 %d"
 msgstr "Stacks %d"
 
+msgid "积攒进度 %d%%"
+msgstr "Charge %d%%"
+
+msgid "金色护罩：开打第 %d 秒触发"
+msgstr "Golden Aegis: triggers at %ds"
+
 msgid "%d层 · %s/%s"
 msgstr "%d stacks · %s/%s"
 
@@ -8366,8 +8372,14 @@ msgstr "Blocked %d"
 msgid "金光层数 %d（每层 +%d 生命值、+%d 攻击力）"
 msgstr "Gold stacks %d (each +%d HP, +%d Attack)"
 
-msgid "· 本周不出"
-msgstr "· Not this week"
+msgid "本周不出"
+msgstr "Not this week"
+
+msgid "横扫状态：%d 秒"
+msgstr "Sweep: %ds"
+
+msgid "%s的复制体"
+msgstr "%s (Copy)"
 
 msgid "本周羁绊"
 msgstr "This week"

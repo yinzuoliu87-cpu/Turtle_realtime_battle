@@ -30,6 +30,8 @@ LABEL = {
     '暴伤': 'critDmg', '护穿': 'armorPen', '破甲': 'armorPen',
     '魔穿': 'magicPen', '法穿': 'magicPen',
     '攻速': '_aspdPct', '移速': '_mspdPct', '射程': '_rangeAdd',
+    ## 2026-11-26 面具 / 长矛批的展示标签(与 equip_stats.gd 的 out.append 标签同名)
+    '减伤': 'dmgRed', '护甲穿透': 'armorPen', '魔法穿透': 'magicPen', '暴击率': 'crit', '暴击伤害': 'critDmg',
     '吸血': '_lifestealPct', '龟能': '_maxEnergy', '充能': '_echargePct',
     '盾疗': 'shieldHealPct', '治疗与护盾': 'shieldHealPct',
     '闪避': 'dodgePct', '反伤': 'reflectPct',
@@ -40,7 +42,7 @@ LABEL = {
 # 这些键在 STATS 里以小数存(0.10), 而展示串写百分数(10%)
 # ★哪些键在 STATS 里存小数是**量出来的**, 不是猜的: crit 存 0.10 而展示写 10%;
 #   dodgePct 却存 15.0(整数百分比) —— 第一版把它算成小数, 报出 3 处「展示=15.0 STATS=15.0」的假分歧。
-PCT = {'crit', 'critDmg', 'dmgAmp'}   # dmgAmp 存 0.03 展示 3%(equip_stats.gd:46 ×100)
+PCT = {'crit', 'critDmg', 'dmgAmp', 'dmgRed'}   # dmgAmp 存 0.03 展示 3%(equip_stats.gd:46 ×100)
 # 一个标签映到两个键(双抗 = 护甲 + 魔抗)
 MULTI = {'双抗': ['def', 'mr'], '护甲&魔抗': ['def', 'mr']}
 

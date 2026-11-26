@@ -1522,7 +1522,7 @@
     "effectDesc1": "登场时获得自身 {C:EqMaskBatch.PAPER_SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害。每受到一段攻击或技能伤害，朝攻击者掷出一片纸刃，造成自身 {C:EqMaskBatch.PAPER_COUNTER%}% 护甲的物理伤害。持续伤害不会触发此效果。",
     "effectDesc3": "",
     "img": "equip/p2eq_127.png",
-    "effectBrief": "登场获得物理护盾，挨打时按护甲朝攻击者掷出纸刃。"
+    "effectBrief": "登场获得物理护盾，受到伤害时按护甲朝攻击者掷出纸刃。"
   },
   {
     "id": "p2eq_128",
@@ -1579,7 +1579,7 @@
     "baseStats1": "+攻15/28/48·减伤3/5/8%",
     "shopAvailable": 1,
     "emoji": "🎭",
-    "effectDesc1": "生命值首次降到 {C:EqMaskBatch.GHOST_LINE%}% 时进入潜行，持续 {C:EqMaskBatch.GHOST_SEC} 秒：无法被选中，攻击时现形，{C:EqMaskBatch.GHOST_REHIDE} 秒后重新潜行。这段时间内每秒回复 {C:EqMaskBatch.GHOST_REGEN%}% 最大生命值。每个战场一次。",
+    "effectDesc1": "生命值首次降到 {C:EqMaskBatch.GHOST_LINE%}% 时进入潜行，持续 {C:EqMaskBatch.GHOST_SEC} 秒：无法被选中，攻击时现形，{C:EqMaskBatch.GHOST_REHIDE} 秒后重新潜行。这段时间内每秒回复自身 {C:EqMaskBatch.GHOST_REGEN%}% 最大生命值。每个战场一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_132.png",
     "effectBrief": "生命值首次降到一半时潜行并回复生命值。"
@@ -1603,7 +1603,7 @@
     "baseStats1": "+生命220/460/1050·减伤4/6/10%",
     "shopAvailable": 1,
     "emoji": "🎭",
-    "effectDesc1": "首次受到致命伤害时倒地不死，{C:EqMaskBatch.VEN_SEC} 秒内生命值逐渐回复至 {C:EqMaskBatch.VEN_HEAL%}% 最大生命值后继续战斗，倒地期间无法被选中。每个战场一次。",
+    "effectDesc1": "首次受到致命伤害时倒地不死，{C:EqMaskBatch.VEN_SEC} 秒内生命值逐渐回复至自身 {C:EqMaskBatch.VEN_HEAL%}% 最大生命值后继续战斗，倒地期间无法被选中。每个战场一次。",
     "effectDesc3": "",
     "img": "equip/p2eq_134.png",
     "effectBrief": "首次受到致命伤害时倒地复活，继续战斗。"
@@ -1627,7 +1627,7 @@
     "baseStats1": "+生命300/700/2000·攻30/70/300",
     "shopAvailable": 1,
     "emoji": "🎭",
-    "effectDesc1": "开打第 {C:OtherworldSystem.OW_AT} 秒，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取对方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。",
+    "effectDesc1": "开打第 {C:OtherworldSystem.OW_AT} 秒，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。",
     "effectDesc3": "",
     "img": "equip/p2eq_136.png",
     "effectBrief": "把一名敌人拽进里世界决斗，期间持续偷取它的属性。"
@@ -1648,7 +1648,7 @@
     "id": "p2eq_138",
     "name": "鱼叉",
     "cost": 1,
-    "baseStats1": "+生命80/160/300·法术穿透3/5/8",
+    "baseStats1": "+生命80/160/300·魔法穿透3/5/8",
     "shopAvailable": 1,
     "emoji": "🔱",
     "effectDesc1": "每 {C:EqSpearBatch.HARPOON_IV} 秒朝造成伤害最多的敌人射出鱼叉，造成 {C:EqSpearBatch.HARPOON_DMG} 魔法伤害并眩晕 {C:EqSpearBatch.HARPOON_STUN} 秒，眩晕期间每 {C:EqSpearBatch.HARPOON_PULL_IV} 秒把它朝自己拉近一段距离。",
@@ -1675,7 +1675,7 @@
     "baseStats1": "+生命100/200/380·移速4/6/10%",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "移动时积攒冲势，攒满后下一次攻击消耗全部冲势，造成 {C:EqSpearBatch.LANCE_PCT%}% 攻击力的物理伤害，将目标击飞并眩晕 {C:EqSpearBatch.LANCE_STUN} 秒，自己回复 {C:EqSpearBatch.LANCE_EN} 点龟能。",
+    "effectDesc1": "移动时积攒冲势，冲势达到上限后，下一次攻击消耗全部冲势，造成 {C:EqSpearBatch.LANCE_PCT%}% 攻击力的物理伤害，将目标击飞并眩晕 {C:EqSpearBatch.LANCE_STUN} 秒，自己回复 {C:EqSpearBatch.LANCE_EN} 点龟能。",
     "effectDesc3": "",
     "img": "equip/p2eq_140.png",
     "effectBrief": "跑起来攒冲势，下一击击飞敌人。"
@@ -1711,10 +1711,10 @@
     "baseStats1": "+生命200/420/1000·攻20/38/90",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "受到伤害时积攒战意，攒满后原地蓄力高高跃起，将戟砸入地面，对周围大范围的敌人造成 {C:EqSpearBatch.FTJ_SLAM_PCT%}% 攻击力的物理伤害并击飞。之后 {C:EqSpearBatch.FTJ_BUFF_SEC} 秒内每次攻击额外绕身横扫一圈，对周围的敌人造成 {C:EqSpearBatch.FTJ_PCT%}% 攻击力的物理伤害，并回复 {C:EqSpearBatch.FTJ_HEAL} 生命值。",
+    "effectDesc1": "受到伤害时积攒层数，层数达到上限后原地蓄力跃起，将戟砸入地面，对周围大范围的敌人造成 {C:EqSpearBatch.FTJ_SLAM_PCT%}% 攻击力的物理伤害并击飞。之后 {C:EqSpearBatch.FTJ_BUFF_SEC} 秒内每次攻击额外绕身横扫一圈，对周围的敌人造成 {C:EqSpearBatch.FTJ_PCT%}% 攻击力的物理伤害，并回复 {C:EqSpearBatch.FTJ_HEAL} 生命值。",
     "effectDesc3": "",
     "img": "equip/p2eq_143.png",
-    "effectBrief": "挨打攒战意，跃起砸地，之后攻击带横扫。"
+    "effectBrief": "受到伤害时积攒层数，跃起砸地，之后攻击附带横扫。"
   },
   {
     "id": "p2eq_144",
@@ -1747,10 +1747,10 @@
     "baseStats1": "+生命300/700/2000·攻30/70/300",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "攻击为目标叠加圣痕，叠满 {C:EqSpearBatch.HOLY_STACKS} 层时引爆，造成 {C:EqSpearBatch.HOLY_DMG} 魔法伤害，并回复自身 {C:EqSpearBatch.HOLY_HEAL%}% 最大生命值。",
+    "effectDesc1": "攻击为目标叠加圣痕，达到 {C:EqSpearBatch.HOLY_STACKS} 层时引爆，造成 {C:EqSpearBatch.HOLY_DMG} 魔法伤害，并回复自身 {C:EqSpearBatch.HOLY_HEAL%}% 最大生命值。",
     "effectDesc3": "",
     "img": "equip/p2eq_146.png",
-    "effectBrief": "攻击叠圣痕，叠满引爆并回复生命值。"
+    "effectBrief": "攻击叠加圣痕，达到上限时引爆并回复生命值。"
   },
   {
     "id": "p2eq_147",
@@ -1759,10 +1759,10 @@
     "baseStats1": "+攻45·攻速50%",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_147.png",
-    "effectBrief": "一次性的攻击力与攻击速度。"
+    "effectBrief": "提供攻击力与攻击速度。"
   },
   {
     "id": "p2eq_148",
@@ -1771,10 +1771,10 @@
     "baseStats1": "+生命700·护甲40",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_148.png",
-    "effectBrief": "一次性的生命值与护甲。"
+    "effectBrief": "提供生命值与护甲。"
   },
   {
     "id": "p2eq_149",
@@ -1783,10 +1783,10 @@
     "baseStats1": "+攻70·暴击率30%",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_149.png",
-    "effectBrief": "一次性的攻击力与暴击率。"
+    "effectBrief": "提供攻击力与暴击率。"
   },
   {
     "id": "p2eq_150",
@@ -1795,10 +1795,10 @@
     "baseStats1": "+生命900·魔抗40",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "每秒回复 {C:EqChipBatch.GREEN_REGEN%}% 最大生命值。消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "每秒回复自身 {C:EqChipBatch.GREEN_REGEN%}% 最大生命值。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_150.png",
-    "effectBrief": "一次性的生命值、魔抗与持续回复。"
+    "effectBrief": "提供生命值与魔抗，并持续回复生命值。"
   },
   {
     "id": "p2eq_151",
@@ -1807,7 +1807,7 @@
     "baseStats1": "+生命600",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害，不会消散。消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_151.png",
     "effectBrief": "登场时为全队提供物理护盾。"
@@ -1819,7 +1819,7 @@
     "baseStats1": "+生命600",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的魔法护盾，该护盾只吸收魔法伤害，不会消散。消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的魔法护盾，该护盾只吸收魔法伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_152.png",
     "effectBrief": "登场时为全队提供魔法护盾。"
@@ -1831,10 +1831,10 @@
     "baseStats1": "+攻70·攻速50%·暴击伤害30%",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "整个战场免疫控制。消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "整个战场免疫控制。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_153.png",
-    "effectBrief": "一次性的攻击属性，整个战场免疫控制。"
+    "effectBrief": "提供攻击属性，整个战场免疫控制。"
   },
   {
     "id": "p2eq_154",
@@ -1843,10 +1843,10 @@
     "baseStats1": "+生命1500·护甲60·魔抗60",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "首次受到致命伤害时倒地不死，{C:EqChipBatch.BROWN_SEC} 秒内回复至 {C:EqChipBatch.BROWN_HEAL%}% 最大生命值后继续战斗。每个战场一次。消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "首次受到致命伤害时倒地不死，{C:EqChipBatch.BROWN_SEC} 秒内回复至自身 {C:EqChipBatch.BROWN_HEAL%}% 最大生命值后继续战斗。每个战场一次。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_154.png",
-    "effectBrief": "一次性的双抗与复活。"
+    "effectBrief": "提供护甲与魔抗，首次受到致命伤害时倒地不死。"
   },
   {
     "id": "p2eq_155",
@@ -1855,10 +1855,10 @@
     "baseStats1": "+生命1000",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "开打第 {C:EqChipBatch.GOLD_AT} 秒，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "开打第 {C:EqChipBatch.GOLD_AT} 秒，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_155.png",
-    "effectBrief": "第 8 秒全队金色护罩并提升全队属性。"
+    "effectBrief": "开打第 {C:EqChipBatch.GOLD_AT} 秒为全队套上金色护罩并提升全队属性。"
   },
   {
     "id": "p2eq_156",
@@ -1867,9 +1867,9 @@
     "baseStats1": "+生命500",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "每次攻击或受到攻击获得 1 层，至多 {C:EqChipBatch.GREY_CAP} 层。每层提供 {C:EqChipBatch.GREY_ATK} 攻击力、{C:EqChipBatch.GREY_RES} 护甲和魔抗、{C:EqChipBatch.GREY_HP} 最大生命值。叠满后额外获得 {C:EqChipBatch.GREY_FULL_AMP%}% 增伤与 {C:EqChipBatch.GREY_FULL_DR%}% 减伤。消耗品：只有一星，不会升星，带进一场积分赛、闯关赛或决赛日对局后损坏。",
+    "effectDesc1": "每次攻击或受到攻击获得 1 层，至多 {C:EqChipBatch.GREY_CAP} 层。每层提供 {C:EqChipBatch.GREY_ATK} 攻击力、{C:EqChipBatch.GREY_RES} 护甲和魔抗、{C:EqChipBatch.GREY_HP} 最大生命值。层数达到上限后额外获得 {C:EqChipBatch.GREY_FULL_AMP%}% 增伤与 {C:EqChipBatch.GREY_FULL_DR%}% 减伤。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_156.png",
-    "effectBrief": "攻击或挨打叠层，越打越强。"
+    "effectBrief": "攻击或受到攻击时叠层，每层提升攻击力、护甲、魔抗与生命值。"
   }
 ]

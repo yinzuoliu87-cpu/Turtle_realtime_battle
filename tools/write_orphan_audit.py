@@ -121,6 +121,7 @@ WHY = {
                    "回放录制仍读它(正式对局恒 0), 门禁 verify_codex_battle_parity 写它来验「强制等级」那条路",
     "NO_PRESENT": "对照实验快路径(dual_lane_flow.gd:19 头注:「只给离线统计用; 正式对局绝不会设它」)",
     "NO_TRAINER": "对照实验开关(RealtimeBattle3DScene.gd:650:「true 则不生成训龟大师」, 胜率测试用)",
+    "_pool_week": "裁判机按服务器这一局的周过滤本周羁绊池(scripts/referee/referee_runner.gd:36 `battle.set(\"_pool_week\", …)` 动态写, 扫描器只认 `X = ` 形态认不出); 本机对局恒 -1 ⇒ 读 GameState.week_anchor_ts(2026-11-27 复核)",
     "now_override_ts": "phase2_config 的纯静态**时间缝** —— 门禁要把「现在」钉在某一刻",
     "clock_override_ts": "主菜单侧的同一条时间缝(截图台/门禁用)",
     "lockout_now_override": "选阵容屏的封盘时刻注入(同上, 门禁要钉住「现在」)",

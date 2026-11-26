@@ -125,11 +125,11 @@ func build() -> void:
 	var ang_l := [200.0, 245.0, 295.0, 340.0, 160.0, 20.0]
 	for a in ang_l:
 		var r: float = deg_to_rad(float(a))
-		var p := c + Vector3(cos(r) * aw * 0.46, 0.0, sin(r) * ah * 0.44)
+		var p := c + Vector3(DetMath.dcos(r) * aw * 0.46, 0.0, DetMath.dsin(r) * ah * 0.44)
 		_spr("ow-brazier.png", p, 3.2, 8, 9.0)
 	for a in [225.0, 270.0, 315.0, 180.0]:
 		var r2: float = deg_to_rad(float(a) + 12.0)
-		var p2 := c + Vector3(cos(r2) * aw * 0.49, 0.0, sin(r2) * ah * 0.49)
+		var p2 := c + Vector3(DetMath.dcos(r2) * aw * 0.49, 0.0, DetMath.dsin(r2) * ah * 0.49)
 		_spr("ow-pillar.png", p2, 4.6)
 	## 暗紫点光(只照平台; 贴图是自发光的, 这盏灯给单位身上一点紫边)
 	var l := OmniLight3D.new()

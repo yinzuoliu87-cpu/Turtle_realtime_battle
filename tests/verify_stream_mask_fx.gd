@@ -137,7 +137,9 @@ func _run_one(job: Dictionary) -> void:
 	p.advance(0.0)
 	while p.state != "ended" and p.state != "error" and guard < 400000:
 		guard += 1
-		p.advance(SIM_DT)
+		## 每次推 CONT_EVERY 步 = 与服务器渲染步同一节奏(服务器每个采样步渲染一次, 衰减 2·SIM_DT)。11-27: 原来每步推一次 ⇒
+		##   闪白计时(0.06 秒)在采样那一刻比本机晚一档, 鬼面暗紫被残余 0.01 闪白拉过「发灰 / 半透明」分界(探针 tests/probes/_probe_mask_tint_diff)
+		p.advance(SIM_DT * float(FMT.CONT_EVERY) if p.cur_step % FMT.CONT_EVERY == 0 else SIM_DT)   # 先单步对齐到采样步(偶数), 之后两步一推
 		if _nat.has(p.cur_step):
 			_add(_nat_tot, _nat[p.cur_step])
 			_add(_pl_tot, _cat(b, p.units.values()))

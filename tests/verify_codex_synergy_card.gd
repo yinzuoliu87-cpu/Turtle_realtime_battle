@@ -199,7 +199,8 @@ func _t_special_syn() -> void:
 			elif ch is RichTextLabel:
 				texts.append(str((ch as RichTextLabel).get_parsed_text()))
 		var joined: String = " | ".join(texts)
-		_ok("⑤ %s 详情写「没有羁绊档位」、没有「激活」" % tname, joined.find("没有羁绊档位") >= 0 and joined.find("激活") < 0, joined.substr(0, 160))
+		_ok("⑤ %s 详情写「无羁绊加成」「说明」、没有「激活」「羁绊效果」" % tname,
+			joined.find("无羁绊加成") >= 0 and joined.find("说明") >= 0 and joined.find("激活") < 0 and joined.find("羁绊效果") < 0, joined.substr(0, 160))
 		_ok("⑤ %s 没有逐档行" % tname, _with_meta("codex_syn_tier").is_empty() and _with_meta("codex_syn_line").is_empty())
 		var intro: Array = Phase2Types.intro_lines(str(tname))
 		_ok("⑤ %s 说明逐条出现(%d 条)" % [tname, intro.size()], intro.size() >= 1 and _with_meta("codex_syn_intro").size() == intro.size(),

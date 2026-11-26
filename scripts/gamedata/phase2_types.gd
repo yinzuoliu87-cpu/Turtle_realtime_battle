@@ -197,11 +197,11 @@ const TYPE_INTRO := {
 		"长矛提高携带者的龟能回复速率。每个战场开打第 8 秒或我方生命值低于 60% 时，百夫长从天而降，击飞全场敌人。我方每有一件不同的长矛，百夫长按它的星级获得更多生命值与攻击力。",
 	],
 	"面具": [
-		"面具提高携带者的减伤。每个战场开打时，从对面这一路随机偷走几只龟的脸，在我方阵地召唤它们的复制体。复制体阵亡时把一部分属性留给最近的友军。",
+		"面具提高携带者的减伤。每个战场开打时，从这个战场的敌方随机偷走几只龟的脸，在我方阵地召唤它们的复制体。复制体阵亡时把一部分属性留给最近的友军。",
 	],
 	"筹码": [
-		"筹码是特殊羁绊：没有羁绊档位，不提供羁绊效果，件数也不计入任何羁绊。",
-		"筹码是消耗品：只有一星、不能合成。买入后放进背包，装在龟身上带进一场对局，这一场打完筹码就损坏。",
+		"筹码没有羁绊加成，也不计入其他羁绊的件数。",
+		"筹码为消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
 	],
 	"仪式": [
 		"仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。",
@@ -250,12 +250,12 @@ const TIER_DESCS := {
 		"每件长矛为携带者提供 +5% 龟能回复速率 · 【百夫长】开打第 {C:SpearSynergySystem.SUMMON_AT} 秒或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时，召唤百夫长：{C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗，我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。龟能满时释放【龟甲阵】：举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%",
 		"每件长矛为携带者提供 +10% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。【龟甲阵】放下盾时横扫，对周围每个敌人造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害",
 		"每件长矛为携带者提供 +16% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，每个敌人至多失去 {C:SpearSynergySystem.SHRED_CAP} 点。【龟甲阵】举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害",
-		"每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击改为把长矛掷向最远的敌人，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。【龟甲阵】横扫后，我方身后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，各自冲向一名随机敌人，对途经的敌人造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并将其击飞",
+		"每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击转而把长矛掷向最远的敌人，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。【龟甲阵】横扫后，我方身后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，各自冲向一名随机敌人，对途经的敌人造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并将其击飞",
 	],
 	"面具": [
-		"每件面具为携带者提供 +3% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[0]} 只，在我方阵地召唤它的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一（一星的不带，不计入羁绊件数） · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[0]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
-		"每件面具为携带者提供 +5% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[1]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[1]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
-		"每件面具为携带者提供 +8% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[2]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[2]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
+		"每件面具为携带者提供 +3% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[0]} 只，在我方阵地召唤它的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一（一星的不带，不计入羁绊件数） · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[0]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
+		"每件面具为携带者提供 +5% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[1]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[1]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
+		"每件面具为携带者提供 +8% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[2]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[2]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",
 	],
 	"仪式": [
 		"【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%",

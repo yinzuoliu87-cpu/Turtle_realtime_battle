@@ -148,7 +148,7 @@ func _t_owner_table() -> void:
 
 	# 六个系统: 非 null、互不相同
 	var all: Array = es._b4_all()
-	_ok("① _b4_all() 返回 9 个系统(含 2026-11-24 炸弹批 / 2026-11-25 匕首批 / 2026-11-25 魔法书批)", all.size() == 9, "size=%d" % all.size())
+	_ok("① _b4_all() 返回 12 个系统(含 2026-11-24 炸弹批 / 2026-11-25 匕首批 / 魔法书批 / 2026-11-26 面具批 / 长矛批 / 筹码批)", all.size() == 12, "size=%d" % all.size())
 	var distinct := 0
 	for i in range(all.size()):
 		if all[i] == null:
@@ -159,7 +159,7 @@ func _t_owner_table() -> void:
 				dup = true
 		if not dup:
 			distinct += 1
-	_ok("① 九个系统互不相同且都非 null", distinct == 9, "distinct=%d" % distinct)
+	_ok("① 十二个系统互不相同且都非 null", distinct == 12, "distinct=%d" % distinct)
 
 	# 每一路的件数(照 §0.5 分工写死, 不从表里数)
 	var cnt: Dictionary = {}

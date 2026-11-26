@@ -446,6 +446,7 @@ func _dl_build_lane_field() -> void:
 	##   真正需要拍板的只有 068 与 070 两件, 已拍: 清零。
 	battle._spec.clear_all()
 	battle._hpl.clear_all()       # 换路: 血线阈值重置(同一口径)
+	battle._damage.revive_clear()   # 换路: 上一路排队中的复活分段回血作废(单位字典整体重建; 11-27 zero_caller 查出没接)
 	# ★2026-08-06 五路重做装备的换路撤场统一接在这里。
 	#   各路暴露的入口名字不一(clear_all / clear / 无), 而 dual_lane_flow.gd 在并行分工里
 	#   是禁改文件 ⇒ 它们只能在自己文件里"自扫"或干脆没接。现在由主会话统一接一次。

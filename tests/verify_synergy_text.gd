@@ -29,12 +29,14 @@ const LABEL := {
 	"_lifestealPct": "生命偷取", "_maxEnergy": "最大龟能", "dodgePct": "闪避",
 	"_aspdPct": "攻击速度", "healAmp": "治疗强度", "shieldAmp": "护盾强度",
 	"dmgAmp": "增伤",   # 2026-11-25 魔法书羁绊
+	"_echargePct": "龟能回复速率",   # 2026-11-26 长矛羁绊
+	"dmgRed": "减伤",   # 2026-11-26 面具羁绊
 }
 ## 这些 key 在文案里带 % 号
 const PCT_KEYS := ["crit", "critDmg", "dodgePct", "_lifestealPct", "_aspdPct", "_mspdPct", "_rangePct",
-	"healAmp", "shieldAmp", "dmgAmp"]
+	"healAmp", "shieldAmp", "dmgAmp", "_echargePct", "dmgRed"]
 ## 这些 key 在 stats 里是小数（0.09），文案里是百分数（9）
-const X100_KEYS := ["crit", "critDmg", "dmgAmp"]
+const X100_KEYS := ["crit", "critDmg", "dmgAmp", "dmgRed"]
 ## ★负向前瞻：有的标签是另一个标签的前缀 ——「护甲」会匹配到「护甲穿透」里去，
 ##   于是门禁报"枪的文案写了护甲但 stats 里没有"，其实那是护甲穿透。
 ##   一开始漏了这条，②当场误红 3 次。加新标签时如果又出现前缀包含关系，这里要跟着加。

@@ -240,6 +240,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|每层生命值 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每张至多抵挡 #
 scripts/gamedata/equip_tier_labels.gd|lit|每把回复 # 生命值
 scripts/gamedata/equip_tier_labels.gd|lit|每把基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|每损失 1% 生命值移动速度 #%
 scripts/gamedata/equip_tier_labels.gd|lit|每枚回复 # 生命值
 scripts/gamedata/equip_tier_labels.gd|lit|每枚基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每根伤害 #% 攻击力
@@ -610,11 +611,11 @@ scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +5% 生命�
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}
 scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +10% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。【龟甲阵】放下盾时横扫，对周围每个敌人造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害
 scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +16% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，每个敌人至多失去 {C:SpearSynergySystem.SHRED_CAP} 点。【龟甲阵】举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害
-scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击改为把长矛掷向最远的敌人，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。【龟甲阵】横扫后，我方身后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，各自冲向一名随机敌人，对途经的敌人造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并将其击飞
+scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击转而把长矛掷向最远的敌人，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。【龟甲阵】横扫后，我方身后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，各自冲向一名随机敌人，对途经的敌人造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并将其击飞
 scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +5% 龟能回复速率 · 【百夫长】开打第 {C:SpearSynergySystem.SUMMON_AT} 秒或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时，召唤百夫长：{C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗，我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。龟能满时释放【龟甲阵】：举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%
-scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +3% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[0]} 只，在我方阵地召唤它的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一（一星的不带，不计入羁绊件数） · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[0]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
-scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +5% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[1]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[1]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
-scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +8% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[2]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[2]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
+scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +3% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[0]} 只，在我方阵地召唤它的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一（一星的不带，不计入羁绊件数） · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[0]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
+scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +5% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[1]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[1]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
+scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +8% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[2]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[2]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）
@@ -632,8 +633,8 @@ scripts/gamedata/phase2_types.gd|lit|盾·守护
 scripts/gamedata/phase2_types.gd|lit|盾提高携带者的护甲。全队承受伤害后对敌人释放冲击波，并获得圣光护盾装备。
 scripts/gamedata/phase2_types.gd|lit|筹码
 scripts/gamedata/phase2_types.gd|lit|筹码·消耗品
-scripts/gamedata/phase2_types.gd|lit|筹码是消耗品：只有一星、不能合成。买入后放进背包，装在龟身上带进一场对局，这一场打完筹码就损坏。
-scripts/gamedata/phase2_types.gd|lit|筹码是特殊羁绊：没有羁绊档位，不提供羁绊效果，件数也不计入任何羁绊。
+scripts/gamedata/phase2_types.gd|lit|筹码为消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。
+scripts/gamedata/phase2_types.gd|lit|筹码没有羁绊加成，也不计入其他羁绊的件数。
 scripts/gamedata/phase2_types.gd|lit|药水
 scripts/gamedata/phase2_types.gd|lit|药水·龟能
 scripts/gamedata/phase2_types.gd|lit|药水提高携带者的治疗与护盾强度。全队集火被标记的猎物，击杀猎物后攻击力提高。
@@ -650,7 +651,7 @@ scripts/gamedata/phase2_types.gd|lit|队伍每件装备为携带者提供 +70 �
 scripts/gamedata/phase2_types.gd|lit|队伍里每件装备为携带者提供最大生命值，食物提供双倍。食物还让最大生命值在战斗中持续成长。
 scripts/gamedata/phase2_types.gd|lit|面具
 scripts/gamedata/phase2_types.gd|lit|面具·偷脸
-scripts/gamedata/phase2_types.gd|lit|面具提高携带者的减伤。每个战场开打时，从对面这一路随机偷走几只龟的脸，在我方阵地召唤它们的复制体。复制体阵亡时把一部分属性留给最近的友军。
+scripts/gamedata/phase2_types.gd|lit|面具提高携带者的减伤。每个战场开打时，从这个战场的敌方随机偷走几只龟的脸，在我方阵地召唤它们的复制体。复制体阵亡时把一部分属性留给最近的友军。
 scripts/gamedata/phase2_types.gd|lit|食物
 scripts/gamedata/phase2_types.gd|lit|食物·增益
 scripts/gamedata/phase2_types.gd|lit|香火
@@ -1763,7 +1764,6 @@ scripts/scenes/battle/info_panel.gd|lit|当前：%s，%d 秒后换脸
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
 scripts/scenes/battle/info_panel.gd|lit|战利品 %d/%d
-scripts/scenes/battle/info_panel.gd|lit|战意 %d%%
 scripts/scenes/battle/info_panel.gd|lit|技能
 scripts/scenes/battle/info_panel.gd|lit|技能 · %d 龟能
 scripts/scenes/battle/info_panel.gd|lit|护甲
@@ -1801,7 +1801,7 @@ scripts/scenes/battle/info_panel.gd|lit|暴击时造成的伤害倍率。暴击�
 scripts/scenes/battle/info_panel.gd|lit|最大生命值
 scripts/scenes/battle/info_panel.gd|lit|本局
 scripts/scenes/battle/info_panel.gd|lit|本战场免疫控制
-scripts/scenes/battle/info_panel.gd|lit|横扫状态：还剩 %d 秒
+scripts/scenes/battle/info_panel.gd|lit|横扫状态：%d 秒
 scripts/scenes/battle/info_panel.gd|lit|每点 +2% 攻击
 scripts/scenes/battle/info_panel.gd|lit|每秒攻击次数。
 scripts/scenes/battle/info_panel.gd|lit|治疗
@@ -1835,6 +1835,7 @@ scripts/scenes/battle/info_panel.gd|lit|真实伤害
 scripts/scenes/battle/info_panel.gd|lit|真火
 scripts/scenes/battle/info_panel.gd|lit|眩晕
 scripts/scenes/battle/info_panel.gd|lit|眩晕 %d 次
+scripts/scenes/battle/info_panel.gd|lit|积攒进度 %d%%
 scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果影响。
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
@@ -1860,7 +1861,7 @@ scripts/scenes/battle/info_panel.gd|lit|释放：冲击波 %d，护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|里世界偷取：+%d 攻击力、+%d 护甲、+%d 魔抗
 scripts/scenes/battle/info_panel.gd|lit|金币
 scripts/scenes/battle/info_panel.gd|lit|金色护罩：已触发
-scripts/scenes/battle/info_panel.gd|lit|金色护罩：开打第 8 秒触发
+scripts/scenes/battle/info_panel.gd|lit|金色护罩：开打第 %d 秒触发
 scripts/scenes/battle/info_panel.gd|lit|闪避
 scripts/scenes/battle/info_panel.gd|lit|闪避 
 scripts/scenes/battle/info_panel.gd|lit|闪避 %d 次
@@ -2212,7 +2213,7 @@ scripts/scenes/codex/list_builder.gd|lit|宝箱龟战利品
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
-scripts/scenes/codex/list_builder.gd|text|· 本周不出
+scripts/scenes/codex/list_builder.gd|text|本周不出
 scripts/scenes/codex/status_page.gd|lit|%s · 技能
 scripts/scenes/codex/status_page.gd|lit|%s · 被动
 scripts/scenes/codex/status_page.gd|lit|减益
@@ -2319,10 +2320,11 @@ scripts/scenes/codex/status_sources.gd|lit|长矛
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备
-scripts/scenes/codex/synergy_view.gd|lit|没有羁绊档位
+scripts/scenes/codex/synergy_view.gd|lit|无羁绊加成
 scripts/scenes/codex/synergy_view.gd|lit|激活：%s 件
 scripts/scenes/codex/synergy_view.gd|lit|现有装备：%d 件
 scripts/scenes/codex/synergy_view.gd|lit|羁绊效果
+scripts/scenes/codex/synergy_view.gd|lit|说明
 scripts/scenes/exit_confirm_dialog.gd|lit|取消
 scripts/scenes/exit_confirm_dialog.gd|lit|退出
 scripts/scenes/exit_confirm_dialog.gd|lit|退出游戏
@@ -2652,7 +2654,7 @@ scripts/systems/equip/gun_synergy_system.gd|lit|枪
 scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d · 充能 %d / %d
 scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d（已满）
 scripts/systems/equip/magicbook_synergy_system.gd|lit|魔法书
-scripts/systems/equip/mask_synergy_system.gd|lit|·复制
+scripts/systems/equip/mask_synergy_system.gd|lit|%s的复制体
 scripts/systems/equip/mask_synergy_system.gd|lit|面具
 scripts/systems/equip/potion_synergy_system.gd|lit|猎物
 scripts/systems/equip/potion_synergy_system.gd|lit|药水

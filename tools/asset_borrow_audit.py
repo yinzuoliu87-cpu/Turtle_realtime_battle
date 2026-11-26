@@ -259,6 +259,11 @@ GENERIC = ("fx-", "dust-", "spark", "smoke", "trail", "glow", "ring", "shard",
 ##   只会让人去改判据而不是去看事实。所以表里也允许出现"同一屏内两个文件"
 ##   的正当复用(`stats/crit-dmg-icon.png` 就是: 战斗飘字 ↔ 信息面板同一维)。
 CROSS_OK = {
+    ## ★2026-11-27 面具 / 长矛批: 舞狮冲撞马蹄扬土、骑兵冲锋扬土、龟甲阵扎稳扬土都借小龟砸地的扬尘帧条(mask_eq_vfx.LION_DUST, spear_eq_vfx 继承)。
+    ##   扬尘是底层小元素(CLAUDE.md §10 第 5 条: 水滴 / 烟 / 光晕 / 碎片这类可以跨特效共用), 每处都只当「地面扬起一团土」用, 不是谁的招牌。
+    "vfx/basic-slam-dust.png":
+        "底层扬尘(一团地面扬土)。小龟砸地与面具批舞狮 / 长矛批骑兵、龟甲阵用的是同一个含义: 脚下扬起一团土。"
+        "CLAUDE.md §10 第 5 条许底层小元素跨特效共用。",
     ## ★2026-11-15 三路开场桌面地图的两端大本营(lane_war_table.gd)。这张图在战斗里就是双方要守的那颗龟蛋(碎蛋演出 battle_vfx 切它),
     ##   地图上画的正是同一颗蛋(「谁的蛋先碎谁输」) —— 同一个东西用同一张图, 换一张反而会让玩家以为是两样东西。
     "pets/egg.png": "三路开场地图两端的龟蛋大本营 = 对局里真正要守的那颗蛋(同一个东西, 同一张图)",
@@ -423,7 +428,8 @@ CROSS_OK = {
 for _t in ("sword", "gadget", "food", "shield", "potion", "gun", "bow",
            "staff", "spirit", "incense", "relic", "axe", "bomb",   # bomb = 2026-11-24 炸弹羁绊
            "dagger", "ritual",   # dagger / ritual = 2026-11-25 匕首羁绊 + 仪式
-           "magicbook"):   # magicbook = 2026-11-25 魔法书羁绊
+           "magicbook",   # magicbook = 2026-11-25 魔法书羁绊
+           "mask", "spear", "chip"):   # 2026-11-26 面具 / 长矛羁绊 + 筹码(特殊羁绊, 图鉴照样列, 用户 11-27)
     CROSS_OK["tags/tag-%s.png" % _t] = (
         "装备**类型图标**。图鉴羁绊页(CodexScene.TYPE_STYLE)与羁绊行名/弹框标题"
         "(Phase2Types.TYPE_ICON)说的是同一件事: 这件装备属于哪个类型。"

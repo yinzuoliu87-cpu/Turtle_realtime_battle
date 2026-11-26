@@ -40,6 +40,7 @@ KEY2ICON = {
     'shieldHealPct': 'shieldheal', 'healAmp': 'healamp', 'shieldAmp': 'shieldamp',
     'reflectPct': 'reflect',
     'dmgAmp': 'dmg-amp',   # 2026-11-25 魔法书羁绊属性「增伤」(图标盘上已有)
+    'dmgRed': 'dmg-red',   # 2026-11-26 面具批属性「减伤」(图标盘上已有, skill_text / info_panel 已在用)
 }
 
 fails = []

@@ -443,9 +443,8 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary, rope: Array = []) ->
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
 	var _cp0: Array = battle._shell_sys.ctx_enter_opt(_ct)
-	var sdv: int = battle._phys_after_armor(u, float(tref["maxHp"]) * SURF_CONTACT_MAXHP_PCT, tref)
-	battle._damage.set_dtype("physical", tref, false, true)   # 声明物理(11-27 哨兵: 原来捡上一发的类型)
-	battle._damage._apply_damage_from(u, tref, sdv, Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
+	battle._damage.set_dtype("physical", tref, false, true)   # 声明物理(11-27 哨兵: 原来捡上一发的类型); 抗性在下一行同一行里算(verify_skill_dmg_takes_resist 按行扫)
+	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * SURF_CONTACT_MAXHP_PCT, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
 	battle._shell_sys.ctx_exit_opt(_ct, _cp0)
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
 	battle._vfx._hit_spark(tref); battle._shake(0.14)
