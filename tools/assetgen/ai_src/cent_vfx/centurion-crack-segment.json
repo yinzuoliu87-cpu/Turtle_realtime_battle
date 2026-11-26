@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "centurion-crack-segment 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-crack-segment 1.png",
+   "frame": {
+    "x": 128,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-crack-segment 2.png",
+   "frame": {
+    "x": 256,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-crack-segment 3.png",
+   "frame": {
+    "x": 0,
+    "y": 28,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-crack-segment 4.png",
+   "frame": {
+    "x": 128,
+    "y": 28,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-crack-segment 5.png",
+   "frame": {
+    "x": 256,
+    "y": 28,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-crack-segment 6.png",
+   "frame": {
+    "x": 0,
+    "y": 56,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-crack-segment 7.png",
+   "frame": {
+    "x": 128,
+    "y": 56,
+    "w": 128,
+    "h": 28
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 28
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 28
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "centurion-crack-segment.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 384,
+   "h": 84
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 64,
+   "y": 14
+  },
+  "frameTags": [
+   {
+    "name": "centurion-crack-segment",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

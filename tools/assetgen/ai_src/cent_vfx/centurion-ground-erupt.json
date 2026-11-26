@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "centurion-ground-erupt 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 1.png",
+   "frame": {
+    "x": 108,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 2.png",
+   "frame": {
+    "x": 216,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 3.png",
+   "frame": {
+    "x": 324,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 4.png",
+   "frame": {
+    "x": 0,
+    "y": 92,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 5.png",
+   "frame": {
+    "x": 108,
+    "y": 92,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 6.png",
+   "frame": {
+    "x": 216,
+    "y": 92,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 7.png",
+   "frame": {
+    "x": 324,
+    "y": 92,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 8.png",
+   "frame": {
+    "x": 0,
+    "y": 184,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  },
+  {
+   "filename": "centurion-ground-erupt 9.png",
+   "frame": {
+    "x": 108,
+    "y": 184,
+    "w": 108,
+    "h": 92
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 108,
+    "h": 92
+   },
+   "sourceSize": {
+    "w": 108,
+    "h": 92
+   },
+   "pivot": {
+    "x": 0.37962962962962965,
+    "y": 0.6304347826086957
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "centurion-ground-erupt.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 432,
+   "h": 276
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 41,
+   "y": 58
+  },
+  "frameTags": [
+   {
+    "name": "centurion-ground-erupt",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

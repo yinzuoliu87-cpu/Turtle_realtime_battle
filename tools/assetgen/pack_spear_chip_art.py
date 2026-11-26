@@ -12,6 +12,10 @@
     命中火星 hit_spark(hspk_0..5, 只钉首帧) / 鱼叉溅水 harpoon_splash(hwsp_0..8) / 百夫长横扫气刃 cent_sweep(俯视, cswp_0..8) /
     投矛器落点警示区 atl_target(俯视, atgt_0..3 首尾钉原画循环) / 标枪迸血 javelin_blood(第一版 48×48 太淡弃, 64×64 重出; jbld_0..6) /
     棕色筹码起身光柱 brown_rise(crev_0..6, 后两帧只剩一块黑影不取) / 筹码盾落进胸口的盾光 shield_glint(cglt_0..6, 引擎按物理 / 魔法着色)。
+  · 11-27 百夫长自查返工(用户「有没有说过，它是全屏击飞的」): PixelLab 特效工作台(vfx_workbench)自己写图层画的, 不是模板改色 ——
+    ai_src/cent_vfx/centurion-ground-erupt(.json): 每个被击飞的敌人脚下的裂地爆(贴地闪电形状画金色地裂 + 贴地光 + 短金光柱 + 土块碎石 + 尘烟 + 火星, 10 帧);
+    ai_src/cent_vfx/centurion-crack-segment(.json): 俯视、两端等高可首尾拼接的一段地裂(暗缝 + 金色裂光, 8 帧), 引擎里贴地从落点铺到每个敌人。
+    工作台导出的是网格帧表 + JSON(帧位置 / 锚点), 下面 GRIDS 一段按 JSON 拆帧拼成横排; 裂地爆每帧左右补齐, 让锚点(地面点)落在帧的正中。
 本脚本只做拷贝 / 拼接 / 量化, 重跑逐字节相同。
 
     python tools/assetgen/pack_spear_chip_art.py
@@ -135,6 +139,27 @@ def main():
     ## 第二轮的单张(飞行物 / 绳子): 鱼叉 / 绳 / 下落的矛
     for src, dst in {"b2_harpoon": "spear-harpoon", "b2_rope": "spear-rope", "b2_fall": "spear-atl-fall"}.items():
         _icon(os.path.join(SP, src + ".png"), os.path.join(VFX, dst + ".png"))
+    ## 11-27 特效工作台网格帧表 → 横排帧条(见头注)
+    import json
+    CV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_vfx")
+    for src, dst, centre in [("centurion-ground-erupt", "spear-cent-erupt", True), ("centurion-crack-segment", "spear-cent-crack", False)]:
+        jp = os.path.join(CV, src + ".json")
+        if not os.path.exists(jp):
+            print("缺帧表, 跳过", dst)
+            continue
+        meta = json.load(open(jp, encoding="utf-8"))
+        sheet = Image.open(os.path.join(CV, src + ".png")).convert("RGBA")
+        fr = meta["frames"]
+        w0, h0 = fr[0]["frame"]["w"], fr[0]["frame"]["h"]
+        ax = int(round(fr[0]["pivot"]["x"] * w0))
+        fw = 2 * max(ax, w0 - ax) if centre else w0
+        dx = fw // 2 - ax if centre else 0
+        out = Image.new("RGBA", (fw * len(fr), h0), (0, 0, 0, 0))
+        for i, f in enumerate(fr):
+            r = f["frame"]
+            out.paste(sheet.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])), (i * fw + dx, 0))
+        out.save(os.path.join(VFX, dst + ".png"), optimize=False)
+        print(dst, len(fr), "帧", fw, "×", h0, "锚点行", int(round(fr[0]["pivot"]["y"] * h0)))
     for dst, srcs in STRIPS.items():
         ims = []
         for d, n, flip in srcs:
