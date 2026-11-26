@@ -29,6 +29,9 @@ const AXE_ID := "p2eq_096"
 ##   门禁里「数一数货架上有几个 X」的判据不随机红, 理由见 ShopScene._ready 旧注释)。
 const TEST_SHOP_SEED := 20260819
 ## 这几种进账 = 一场正式对局打完(积分赛 / 周六闯关 / 周日决赛), 筹码在这一笔里损坏(方案书 20261126b)。切磋 / 教程不记账, 自然不扣。
+## 商店池版本: 每条流水记当时客户端的版本(WeeklySynergy 头注)。1 = 0.23.5 及以前(流水里没有 pv: 老池 001~096、不轮换);
+##   2 = 0.23.6 起(新 60 件 + 16 抽 10 轮换)。★掷货 / 糖果罐按流水里那条的版本出货 ⇒ 换版当天老客户端掷的货重放也对得上。
+const POOL_VER := 2
 const CHIP_BURN_SRCS := {"ranked": true, "ranked_ref": true, "gauntlet": true, "finals": true}
 
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
@@ -55,6 +58,7 @@ static func do(gs, op: Dictionary) -> Dictionary:
 	if quiet(gs) or int(gs._econ_depth) > 0:   # 先判沙盒(同 check): 回放 / 裁判机里不碰 _econ_depth(不在回放状态表里, roundtrip V3c)
 		return apply(gs, op)
 	check(gs, "do:" + str(op.get("op", "")))
+	op["pv"] = POOL_VER
 	var led: Array = gs.econ_log
 	var row: Dictionary = op.duplicate(true)
 	row["seq"] = led.size()
@@ -222,6 +226,13 @@ static func _norm(v):
 
 ## 只改状态、不落流水(重放走这个)。`{ok, reason, ...}`; 不认识的操作 ⇒ ok=false。
 static func apply(gs, op: Dictionary) -> Dictionary:
+	gs._econ_pv = int(op.get("pv", 1))   # 这一条按它记的池版本出货(_roll / 糖果罐读); 用完复位
+	var r: Dictionary = _apply(gs, op)
+	gs._econ_pv = POOL_VER
+	return r
+
+
+static func _apply(gs, op: Dictionary) -> Dictionary:
 	match str(op.get("op", "")):
 		"roll":
 			## ★掷货不花钱 ⇒ 只在「该换货」时成交(= ShopScene._restore_offer 的判据: 货架空 / 没锁且打过新的一场),
@@ -419,6 +430,8 @@ static func _roll(gs, seed: int) -> Dictionary:
 	## 私人池: 只掷池里还有张的件(抽空与满 3★ 冻结都不出)。上面的满星过滤仍保留, 两者各守各的。
 	gs.ensure_equip_pool()
 	pool = EquipPool.available(gs.equip_pool, pool)
+	## 本周羁绊(16 抽 10) + 池版本: 本周没抽到的羁绊的装备不出; 版本 1 的流水只出老池(WeeklySynergy 头注)
+	pool = WeeklySynergy.filter_defs(pool, int(gs.week_anchor_ts), int(gs._econ_pv))
 	## 096 小木斧独立出货通路(三种模式见 AxeEvolution.shelf_mode): 激活羁绊时先从常规池剔掉, 再按每格概率铺回去
 	var axe_mode: String = AxeEvolution.shelf_mode(gs.axe_synergy_active(), str(gs.axe_final))
 	var axe_def = null

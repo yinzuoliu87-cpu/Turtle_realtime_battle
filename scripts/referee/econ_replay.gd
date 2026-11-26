@@ -203,6 +203,9 @@ static func run(gs, input: Dictionary) -> Dictionary:
 	var tally := {}
 	var bk: Dictionary = ReplayRecorder.capture_all()
 	var tm0 := bool(gs.test_mode)
+	var wk0 := int(gs.week_anchor_ts)
+	if input.has("week"):
+		gs.week_anchor_ts = int(input["week"])   # 本周羁绊按这份流水那一周算(轮换, 方案书 20261124d)
 	gs.test_mode = true                  # 任何 save() 空转
 	gs.econ_quiet = int(gs.econ_quiet) + 1
 	week_start(gs)
@@ -239,6 +242,7 @@ static func run(gs, input: Dictionary) -> Dictionary:
 		var v = bk[n]
 		gs.set(str(n), v.duplicate(true) if (v is Array or v is Dictionary) else v)
 	gs.test_mode = tm0
+	gs.week_anchor_ts = wk0
 	return out
 
 
@@ -295,7 +299,7 @@ static func run_files(host: Node, in_path: String, out_path: String) -> int:
 			if not (job is Dictionary):
 				continue
 			var r := run(gs, {"rows": (job as Dictionary).get("rows", []), "strict": bool((j as Dictionary).get("strict", true)),
-				"facts": (job as Dictionary).get("facts", {})})
+				"facts": (job as Dictionary).get("facts", {}), "week": int(job.get("week", 0))})
 			outs.append({"account_id": str(job.get("account_id", "")), "week": int(job.get("week", 0)),
 				"seen": int(job.get("seen", 0)), "result": r})
 		res = {"results": outs}

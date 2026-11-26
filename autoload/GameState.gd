@@ -1151,6 +1151,8 @@ var chest_treasure_value: float = 0.0                 # 宝箱藏宝图·财宝�
 var chest_treasures_won: Array = []                   # 宝箱藏宝图·本大轮已开战利品id(常驻整轮·最多5件)
 var season_leaders: Array = []                        # 本赛季锁定的 3 统领 id (整轮不可换)
 var persistent_bench: Array = []                      # 持久背包 [{id,star}] (装备永不丢; build 源, 取代局内临时 bench_inventory)
+## 这一条经济流水的商店池版本(EconLedger.apply 进出时设 / 复位; 不存档)。默认 = 当前版本。
+var _econ_pv: int = 2
 var persistent_equipped: Dictionary = {}             # 持久 build {pet_key → [{id,star}]} (build 源, 取代局内临时 equipped_p2)
 
 # ═══ 装备容量 (统一规则·用户 2026-07-27) ═════════════════════════════
@@ -2646,6 +2648,8 @@ func _candy_jar_pick_equip(costs: Array, rng: RandomNumberGenerator = null) -> S
 	var pool: Array = []
 	var has_axe: bool = axe_owned()
 	for eq in DataRegistry.phase2_equipment:
+		if not WeeklySynergy.pool_ok(str(eq.get("id", "")), int(week_anchor_ts), int(_econ_pv)):
+			continue   # 本周羁绊轮换 + 池版本(同商店掷货, 方案书 20261124d)
 		if int(eq.get("cost", 0)) in costs:
 			## ★2026-10-11 全项目通读 B2: 小木斧只能拥有一把(用户 2026-08-31) —— 已有就不进池(门禁 verify_candy_axe_unique)
 			if has_axe and str(eq.get("id", "")) == "p2eq_096":
