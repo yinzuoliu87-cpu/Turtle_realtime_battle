@@ -85,7 +85,7 @@ const HOLY_STORE_CAP := 1.0                    # 储能上限 = 最大生命值 
 const HOLY_IV := 12.0                          # 每 12 秒开始引导
 const HOLY_ORB_IV := 0.25                      # 引导中每 0.25 秒出一个光球
 const HOLY_ORB_COST := [500.0, 400.0, 300.0]   # 每个光球消耗的储能; 不够一个就结束引导
-const HOLY_ORB_SPD := 900.0
+const HOLY_ORB_SPD := 450.0                  # 用户 11-26「飞得太快了吧」(原 900); 画面上走弧线(演出层抬高度, 结算仍是飞到碰到才算)
 const HOLY_ORB_HEAL := [150.0, 250.0, 400.0]   # 砸到友方: 临时等级 +1 并回复
 const HOLY_ORB_DMG := [150.0, 250.0, 500.0]    # 砸到敌方: 魔法伤害
 const HOLY_ORB_SHIELD := [60.0, 100.0, 200.0]  # 砸到敌方: 携带者护盾(照样存回储能条, 用户「不需要去限制」)

@@ -60,7 +60,7 @@ static func cases() -> Dictionary:
 		"holy": [[_me(Vector2(-60, 0), _eq([146, 152, 127]), {"hp": 4500.0}),
 			_u("__minion__", "left", Vector2(-150, -90), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 8000.0, "killable": false, "idle": true}),
 			_u("__minion__", "left", Vector2(-150, 90), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 8000.0, "killable": false, "idle": true})]
-			+ _dummies(70, 3, true, 20000.0, 700.0), 26.0],
+			+ _dummies(220, 3), 26.0],
 		## 146 圣枪效果一: 携带者会掉血(killable)、靶子打得疼 ⇒ 半血那一下圣枪落地 + 护盾 + 双抗
 		"holy_guard": [[_me(Vector2(-60, 0), _eq([146]), {"hp_pct": 0.6, "killable": true})] + _dummies(70, 1), 7.0],
 		## 爆竹筒范围 120 码: 三个靶子围在携带者 70~85 码内(都在范围里, 看得出一圈都被击退)

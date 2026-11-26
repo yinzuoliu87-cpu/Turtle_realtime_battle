@@ -201,8 +201,9 @@ func _ready() -> void:
 		ne + na == int(_b.stat["holy_orb"]) and na > 0 and ne > 0, "发 %d · 友 %d · 敌 %d" % [int(_b.stat["holy_orb"]), na, ne])
 	var spent: float = float(int(_b.stat["holy_orb"])) * float(SB.HOLY_ORB_COST[2])
 	var back: float = float(SB.HOLY_ORB_SHIELD[2]) * float(ne)
-	_ok("④ 敌方给的护盾回存储能: 剩余 = 初始 − 消耗 + 回存, 且引导结束时不够一个光球",
-		absf(_store(me) - (store0 - spent + back)) < 1.0 and _store(me) < float(SB.HOLY_ORB_COST[2]) and spent > store0,
+	## 光球按速度飞, 引导结束时还有几颗在路上 ⇒ 它们回存的护盾在引导结束之后才到, 剩余可能又够一个光球(下一次引导再用); 这里只验守恒 + 引导已结束
+	_ok("④ 敌方给的护盾回存储能: 剩余 = 初始 − 消耗 + 回存, 消耗超过初始(回存被用掉了), 引导已结束",
+		absf(_store(me) - (store0 - spent + back)) < 1.0 and spent > store0 and _b._acc(me, "holy_ch:p2eq_146") <= 0.0,
 		"初始 %.0f · 消耗 %.0f · 回存 %.0f · 剩 %.0f" % [store0, spent, back, _store(me)])
 
 	## ⑤ 候选

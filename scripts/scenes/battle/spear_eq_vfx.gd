@@ -1768,12 +1768,35 @@ func _holy_orb_node(at: Vector2, dir: Vector2, len_m: float) -> Sprite3D:
 	return s
 
 
+## 光球走弧线(用户 11-26「不要直直飞呀，一个弧线啊」): 结算在 sim 里按直线距离与速度(飞到碰到才算), 这里只把画面高度抬成一道抛物线 ——
+##   进度 k = 已飞 / (已飞 + 剩下), 高度 = 1 米 + 弧高 × sin(πk), 弧高随两人距离(1 ~ 2 米)。落到目标那一下高度回到 1 米。
+const HOLY_ORB_ARC_M := 2.0     # 弧顶最高(米)
+const HOLY_ORB_ARC_MIN := 1.0   # 弧顶最低(米): 贴脸的目标也要看得出是一道弧(0.5 米时录像里像直线, 11-26)
 func holy_orb_fly(u: Dictionary, tg: Dictionary, _ally: bool):
-	return _holy_orb_node(Vector2(u["pos"]), Vector2(tg["pos"]) - Vector2(u["pos"]), HOLY_ORB_M)
+	var n := _holy_orb_node(Vector2(u["pos"]), Vector2(tg["pos"]) - Vector2(u["pos"]), HOLY_ORB_M)
+	if n != null:
+		n.set_meta("from", Vector2(u["pos"]))
+	return n
 
 
 func holy_orb_step(node, p2: Vector2, to2: Vector2) -> void:
-	javelin_step(node, p2, to2)
+	if node == null or not is_instance_valid(node):
+		return
+	var from: Vector2 = (node as Node).get_meta("from", p2)
+	var gone: float = from.distance_to(p2)
+	var left: float = p2.distance_to(to2)
+	var k: float = gone / maxf(1.0, gone + left)
+	var arc: float = clampf((gone + left) * 0.012, HOLY_ORB_ARC_MIN, HOLY_ORB_ARC_M)
+	var h: float = 1.0 + arc * sin(PI * k)
+	var here: Vector3 = battle._world_pos(p2, h)
+	(node as Sprite3D).position = here
+	## 拖尾跟着弧线切线方向(上升段头朝上、下落段头朝下): 往前看一小步算屏幕上的走向
+	var step: float = minf(12.0, left)
+	var p3: Vector2 = p2 + (to2 - p2).normalized() * step if left > 0.5 else p2
+	var k3: float = (gone + step) / maxf(1.0, gone + left)
+	var ahead: Vector3 = battle._world_pos(p3, 1.0 + arc * sin(PI * k3))
+	if ahead.distance_to(here) > 0.0001:
+		_orient_screen(node, ahead - here)
 
 
 func holy_orb_end(node, hit: bool, tg: Dictionary, ally: bool) -> void:
