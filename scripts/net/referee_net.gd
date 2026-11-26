@@ -338,7 +338,24 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		"wheel_new": parse_wheel(d.get("wheel_new", null)),
 		"bamboo_new": parse_bamboo(d.get("bamboo_new", null)),
 		"ritual_new": parse_ritual(d.get("ritual_new", null)),
+		"gold_new": parse_gold(d.get("gold_new", null)),
 		"error": str(d.get("error", "")) if d.get("error", null) is String else ""}
+
+
+## 纯函数: 回包里的 `gold_new`(20261127b 起: 这一局我方 135 黄金面具每件新涨的层数 {"<龟 id>|<份号>": 层数})→ 字典。
+##   缺 / 形状不对 / 值不是正数 ⇒ 丢掉那一项; 单件单局按 50 夹(同服务器封顶求和)。
+static func parse_gold(v) -> Dictionary:
+	var out := {}
+	if not (v is Dictionary):
+		return out
+	for k in v:
+		var n = (v as Dictionary)[k]
+		if not (n is int or n is float) or is_nan(float(n)) or is_inf(float(n)) or float(n) < 1.0:
+			continue
+		if str(k).split("|").size() != 2:
+			continue
+		out[str(k)] = clampi(int(n), 1, 50)
+	return out
 
 
 ## 纯函数: 回包里的 `ritual_new`(20261125 起: 这一局我方 114 仪式匕首新刻的血契道数)→ 整数。缺 / 形状不对 ⇒ 0(什么都不发)。
@@ -533,7 +550,8 @@ static func parse_finals_coins(ok: bool, code: int, body: String) -> Dictionary:
 	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0,
 		"chest": parse_chest(d.get("chest", null)), "incense": parse_incense(d.get("incense", null)),
 		"axe_kills": parse_axe_kills(d.get("axe_kills", null)), "wheel_new": parse_wheel(d.get("wheel_new", null)),
-		"bamboo_new": parse_bamboo(d.get("bamboo_new", null)), "ritual_new": parse_ritual(d.get("ritual_new", null))}
+		"bamboo_new": parse_bamboo(d.get("bamboo_new", null)), "ritual_new": parse_ritual(d.get("ritual_new", null)),
+		"gold_new": parse_gold(d.get("gold_new", null))}
 
 
 static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Callable) -> bool:

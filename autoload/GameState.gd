@@ -393,11 +393,21 @@ static func eq_chg(it) -> int:
 
 ## 造一件装备 dict。★本文件里所有"新建/重建装备"都必须经过它。
 ## 非香火石不写 `chg` 字段 —— 免得给另外 94 件装备的存档凭空加一个永远是 0 的键。
-static func mk_eq(id: String, star: int, chg: int = 0) -> Dictionary:
+static func mk_eq(id: String, star: int, chg: int = 0, gm: int = 0) -> Dictionary:
 	var d: Dictionary = {"id": id, "star": star}
 	if id == INCENSE_ID and chg > 0:
 		d["chg"] = chg
+	if id == GOLD_MASK_ID and gm > 0:
+		d["gm_stk"] = gm   # 135 黄金面具层数(跨对局保留、只记在这一件上; 11-27)
 	return d
+
+
+## 135 黄金面具: 这一件攒下的层数(非黄金面具恒为 0)。合成时三件相加(用户 11-26「合成…层数是保留下来的」)。
+const GOLD_MASK_ID := "p2eq_135"
+static func eq_gm(it) -> int:
+	if not (it is Dictionary) or str((it as Dictionary).get("id", "")) != GOLD_MASK_ID:
+		return 0
+	return maxi(0, int((it as Dictionary).get("gm_stk", 0)))
 
 
 ## 满席凑合一预判: 买入一张 (id, star) 后是否会立刻触发三合一 (= 本 side 已有 ≥2 件同 id+同星 → 第3张合1).
@@ -442,12 +452,14 @@ func try_merge_bench() -> int:
 				# ★093 香火石: 升星前先把三件的香火充能加起来(用户「升星就合并 20 和其他的」)。
 				#   必须在 remove_at 之前取 —— 删完就拿不到了。
 				var chg_sum: int = 0
+				var gm_sum: int = 0
 				for ri0 in rm:
 					chg_sum += eq_chg(bench_inventory[int(ri0)])
+					gm_sum += eq_gm(bench_inventory[int(ri0)])
 				rm.sort(); rm.reverse()   # 降序删, 防索引错位
 				for ri in rm:
 					bench_inventory.remove_at(ri)
-				bench_inventory.append(mk_eq(item_id, star + 1, chg_sum))
+				bench_inventory.append(mk_eq(item_id, star + 1, chg_sum, gm_sum))
 				merges += 1
 				changed = true
 				break   # 备战席变了, 重新统计
@@ -470,7 +482,7 @@ func try_merge_all(side: String = "left") -> Array:
 		_other_kept = {}
 		for b in bench_inventory:
 			if b is Dictionary:
-				flat.append({"id": str(b.get("id", "")), "star": int(b.get("star", 1)), "pet": "", "chg": eq_chg(b)})
+				flat.append({"id": str(b.get("id", "")), "star": int(b.get("star", 1)), "pet": "", "chg": eq_chg(b), "gm": eq_gm(b)})
 		for pet in equipped_p2:
 			var _pet_is_right := str(pet).begins_with(_P2EQ_RIGHT_PREFIX)
 			if _pet_is_right != _is_right:
@@ -478,7 +490,7 @@ func try_merge_all(side: String = "left") -> Array:
 				continue
 			for it in equipped_p2[pet]:
 				if it is Dictionary:
-					flat.append({"id": str(it.get("id", "")), "star": int(it.get("star", 1)), "pet": str(pet), "chg": eq_chg(it)})
+					flat.append({"id": str(it.get("id", "")), "star": int(it.get("star", 1)), "pet": str(pet), "chg": eq_chg(it), "gm": eq_gm(it)})
 		# 按 id|star 分组, 找一组 ≥3 (star<MAX)
 		var groups: Dictionary = {}
 		for fi in range(flat.size()):
@@ -521,16 +533,18 @@ func try_merge_all(side: String = "left") -> Array:
 				continue
 			var it: Dictionary = flat[fi]
 			if str(it["pet"]) == "":
-				nb.append(mk_eq(str(it["id"]), int(it["star"]), int(it.get("chg", 0))))
+				nb.append(mk_eq(str(it["id"]), int(it["star"]), int(it.get("chg", 0)), int(it.get("gm", 0))))
 			else:
 				if not ne.has(it["pet"]):
 					ne[it["pet"]] = []
-				(ne[it["pet"]] as Array).append(mk_eq(str(it["id"]), int(it["star"]), int(it.get("chg", 0))))
+				(ne[it["pet"]] as Array).append(mk_eq(str(it["id"]), int(it["star"]), int(it.get("chg", 0)), int(it.get("gm", 0))))
 		# ★093: 被合掉的三件的香火充能相加进新件(用户「升星就合并」)
 		var m_chg: int = 0
+		var m_gm: int = 0
 		for mi2 in pick:
 			m_chg += int((flat[mi2] as Dictionary).get("chg", 0))
-		var merged: Dictionary = mk_eq(m_id, m_star + 1, m_chg)
+			m_gm += int((flat[mi2] as Dictionary).get("gm", 0))
+		var merged: Dictionary = mk_eq(m_id, m_star + 1, m_chg, m_gm)
 		var placed: String = ""
 		if dest_pet != "":
 			var cap: int = _P2.UNIT_EQUIP_CAP   # 2026-07-27 统一规则: 单只上限固定3
@@ -2803,6 +2817,7 @@ func auto_merge_all() -> void:
 			# ★093 香火石: 被合掉的三件的香火充能要加进升星件(用户 2026-08-06「升星就合并」)。
 			#   在【每个 remove 点之前】累加 —— 删完就取不到了。
 			var chg_sum: int = 0
+			var gm_sum: int = 0                           # 135 黄金面具: 三件的层数相加(11-27)
 			var host_pet := ""                            # 有统领件被合 → 记第一只龟(升星件放回它)
 			var host_lane := ""                           # 或有小将件被合 → 记第一只小将(升星件放回它)
 			var host_idx := -1
@@ -2812,6 +2827,7 @@ func auto_merge_all() -> void:
 					bi += 1; continue                       # 跳过消耗品
 				var bit: Dictionary = persistent_bench[bi]
 				if str(bit.get("id", "")) == iid and int(bit.get("star", 1)) == star:
+					gm_sum += eq_gm(persistent_bench[bi])
 					chg_sum += eq_chg(persistent_bench[bi])   # ★093: 删之前先取充能
 					persistent_bench.remove_at(bi); removed += 1
 				else:
@@ -2823,6 +2839,7 @@ func auto_merge_all() -> void:
 					while ei < eqs.size() and removed < 3:
 						var eit2: Dictionary = eqs[ei]
 						if str(eit2.get("id", "")) == iid and int(eit2.get("star", 1)) == star:
+							gm_sum += eq_gm(eqs[ei])
 							chg_sum += eq_chg(eqs[ei])   # ★093: 删之前先取充能
 							eqs.remove_at(ei); removed += 1
 							if host_pet == "": host_pet = str(pet2)
@@ -2843,6 +2860,7 @@ func auto_merge_all() -> void:
 						while mei < meqs.size() and removed < 3:
 							var mit = meqs[mei]
 							if mit is Dictionary and str(mit.get("id", "")) == iid and int(mit.get("star", 1)) == star:
+								gm_sum += eq_gm(meqs[mei])
 								chg_sum += eq_chg(meqs[mei])   # ★093: 删之前先取充能
 								meqs.remove_at(mei); removed += 1
 								if host_pet == "" and host_lane == "": host_lane = lane2; host_idx = midx
@@ -2851,14 +2869,14 @@ func auto_merge_all() -> void:
 						(mu2 as Dictionary)["equips"] = meqs
 					if removed >= 3: break
 			if host_pet != "":                              # 升星件优先装回统领
-				persistent_equipped[host_pet].append(mk_eq(iid, star + 1, chg_sum))
+				persistent_equipped[host_pet].append(mk_eq(iid, star + 1, chg_sum, gm_sum))
 			elif host_lane != "" and host_idx >= 0:         # 否则装回小将
 				var hu: Dictionary = (dual_lineup[host_lane] as Array)[host_idx]
 				var heq: Array = hu.get("equips", []) if hu.get("equips") is Array else []
-				heq.append(mk_eq(iid, star + 1, chg_sum))
+				heq.append(mk_eq(iid, star + 1, chg_sum, gm_sum))
 				hu["equips"] = heq
 			else:
-				persistent_bench.append(mk_eq(iid, star + 1, chg_sum))
+				persistent_bench.append(mk_eq(iid, star + 1, chg_sum, gm_sum))
 			changed = true
 			# ★D21「满 3★ 后剩下的张不再流通」这里【不做任何事】—— 不是漏了。
 			#   EconLedger.maxed_ids()(原 ShopScene._maxed_item_ids) 早就把 star>=3 的 id 排除出掷货池了, 且它是【库存驱动】:

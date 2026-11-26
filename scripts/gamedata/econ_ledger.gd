@@ -188,6 +188,7 @@ static func _items(arr) -> Array:
 		if it is Dictionary:
 			var d: Dictionary = (it as Dictionary).duplicate(true)
 			d.erase("chg")
+			d.erase("gm_stk")   # 135 黄金面具层数: 战斗里挣的进度(同 chg), 服务器结果单 gold_new 那条链管, 不是买卖(11-27)
 			out.append(d)
 		else:
 			out.append(it)

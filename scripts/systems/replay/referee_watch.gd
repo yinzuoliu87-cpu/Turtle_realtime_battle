@@ -249,6 +249,7 @@ static func settle(gs, job_id: int, st: Dictionary, preview: bool = false) -> Di
 	apply_wheel(gs, st)                        # 服务器那一局里命运之轮新抽到的花色(2026-11-06)
 	apply_bamboo(gs, st)                       # 服务器那一局里竹叶龟长的最大生命(2026-11-19)
 	apply_ritual(gs, st)                       # 服务器那一局里 114 仪式匕首新刻的血契(2026-11-25)
+	apply_gold(gs, st)                         # 服务器那一局里 135 黄金面具每件新涨的层数(2026-11-27)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -643,7 +644,8 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 			apply_wheel(GameState, res)
 			var bm_c: bool = apply_bamboo(GameState, res)   # 竹叶龟生长(2026-11-19), 同一张单子同一道闸
 			var rt_c: bool = apply_ritual(GameState, res)   # 仪式匕首血契(2026-11-25), 同上
-			if ch_c or in_c or bm_c or rt_c:
+			var gm_c: bool = apply_gold(GameState, res)     # 黄金面具层数(2026-11-27), 同上
+			if ch_c or in_c or bm_c or rt_c or gm_c:
 				GameState.save()
 	else:
 		return -1                             # 问不到 / 还没翻面: 留着下次
@@ -760,6 +762,29 @@ static func apply_ritual(gs, st: Dictionary) -> bool:
 	return true
 
 
+## 服务器那一局我方 135 黄金面具每件新涨的层数 ⇒ 写回背包里那一件的 gm_stk(2026-11-27 · 方案书 20261125c §5; 跨对局保留、只记在这一件上)。
+##   键 = "<龟 id>|<份号>": 份号 = 那只龟身上第几件黄金面具(EquipCk, 与局内同一口径)。找不到那一件(已卖 / 已换下)⇒ 那一项丢掉。
+##   ★服务端没传这个键(迁移没上 / 老裁判)⇒ 什么都不发。
+static func apply_gold(gs, st: Dictionary) -> bool:
+	var g = st.get("gold_new", {})
+	if not (g is Dictionary) or (g as Dictionary).is_empty() or not (gs.persistent_equipped is Dictionary):
+		return false
+	var hit := false
+	for k in g:
+		var parts: PackedStringArray = str(k).split("|")
+		if parts.size() != 2 or not (gs.persistent_equipped as Dictionary).has(parts[0]):
+			continue
+		var seen := {}
+		for it in (gs.persistent_equipped[parts[0]] as Array):
+			if not (it is Dictionary) or str((it as Dictionary).get("id", "")) != "p2eq_135":
+				continue
+			if EquipCk.ck_next(seen, "p2eq_135") == parts[1]:
+				(it as Dictionary)["gm_stk"] = maxi(0, int((it as Dictionary).get("gm_stk", 0))) + int(g[k])
+				hit = true
+				break
+	return hit
+
+
 static func apply_wheel(gs, st: Dictionary) -> bool:
 	var w = st.get("wheel_new", {})
 	if not (w is Dictionary) or (w as Dictionary).is_empty():
@@ -808,6 +833,7 @@ static func settle_ranked(gs, job_id: int, st: Dictionary, preview: bool = false
 	apply_wheel(gs, st)
 	apply_bamboo(gs, st)
 	apply_ritual(gs, st)
+	apply_gold(gs, st)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1

@@ -8362,3 +8362,6 @@ msgstr "Abilities are ready sooner, and the attack after each ability becomes a 
 
 msgid "格挡 %d"
 msgstr "Blocked %d"
+
+msgid "金光层数 %d（每层 +%d 生命值、+%d 攻击力）"
+msgstr "Gold stacks %d (each +%d HP, +%d Attack)"

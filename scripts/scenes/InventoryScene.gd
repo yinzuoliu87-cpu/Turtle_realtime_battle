@@ -1103,6 +1103,8 @@ func _open_item_card() -> void:
 		body += "\n[color=#ffd27a]%s[/color]" % IncenseStoneSystem.progress_text(int(GameState.incense_marks), int(GameState.incense_charge))
 	elif eid == "p2eq_114":   # 114 仪式匕首: 血契是整个大轮的(同香火刻痕), 局外也看得到
 		body += "\n[color=#ff6b7a]%s[/color]" % EqDaggerBatch.progress_text(int(GameState.ritual_marks))
+	elif eid == "p2eq_135":   # 135 黄金面具: 金光击杀攒的层数记在这一件上(跨对局保留, 11-27)
+		body += "\n[color=#ffd93d]%s[/color]" % EqMaskBatch.gold_progress_text(GameState.eq_gm(it))
 	var lv: Dictionary = _insp.open(("worn:" if worn else "bench:") + eid, null, {
 		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
 		"title": str(edef.get("name", eid)), "title_col": col,

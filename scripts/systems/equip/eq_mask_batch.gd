@@ -670,6 +670,25 @@ func _gold_kill(B: Dictionary, victim: Dictionary) -> void:
 	_fx("gold_coin", [u, victim])
 
 
+## 这一局一方的黄金面具每件新涨的层数 ⇒ 裁判结果单 gold_new / gold_new_b({"<龟 id>|<份号>": 层数}; 11-27 · 迁移 20261127b)。
+##   小将身上的不写回(小将的装备按路 / 槽位存, 同 id 两只会撞键; 局内照样涨)。
+func gold_new_of(side: String) -> Dictionary:
+	var out := {}
+	var keys: Array = gold_gain.keys()
+	keys.sort()
+	for k in keys:
+		var parts: PackedStringArray = str(k).split("|")
+		if parts.size() != 3 or parts[0] != side or parts[1] == "__minion__" or int(gold_gain[k]) <= 0:
+			continue
+		out["%s|%s" % [parts[1], parts[2]]] = int(gold_gain[k])
+	return out
+
+
+## 背包卡上的一行: 这一件攒下的层数(局外也看得到, 11-27)
+static func gold_progress_text(stk: int) -> String:
+	return Lang.t("金光层数 %d（每层 +%d 生命值、+%d 攻击力）") % [maxi(0, stk), int(GOLD_STK_HP), int(GOLD_STK_ATK)]
+
+
 ## 本场层数账的键: 一方 + 龟 + 份号(换路后同一只龟、同一件拿到同一个键)
 ## ⚠ 小将共用 id "__minion__": 同一方两只小将各带一件黄金面具时会记到一起(罕见; 写回背包时再按槽位区分)
 func _gold_key(u: Dictionary, ck: String) -> String:

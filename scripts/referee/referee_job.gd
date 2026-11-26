@@ -215,6 +215,9 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	## 仪式匕首血契(2026-11-25 · 迁移 20261125_ritual_marks): 同一条封顶(key.b_ritual = 服务器按本周结果单 ritual_new 累加的)
 	if key.get("b_ritual") is float or key.get("b_ritual") is int:
 		b["ritual_marks"] = ritual_cap(BE.ghost_ritual_marks(b), key["b_ritual"])
+	## 135 黄金面具层数(2026-11-27 · 迁移 20261127b): 快照里各件 gm_stk 合计压到服务器结果单合计(key.b_gold)以内
+	if key.get("b_gold") is float or key.get("b_gold") is int:
+		gold_cap(b, key["b_gold"])
 	var st: Dictionary
 	if j.get("a_state") is Dictionary:
 		st = {}
@@ -235,6 +238,8 @@ static func state_for(j: Dictionary, normalize: Callable) -> Dictionary:
 	st["ritual_marks"] = BE.ghost_ritual_marks({"ritual_marks": st.get("ritual_marks", (j["a"] as Dictionary).get("ritual_marks", 0) if j.get("a") is Dictionary else 0)})
 	if key.get("a_ritual") is float or key.get("a_ritual") is int:
 		st["ritual_marks"] = ritual_cap(int(st["ritual_marks"]), key["a_ritual"])
+	if key.get("a_gold") is float or key.get("a_gold") is int:   # 135 黄金面具层数: 左方同一条封顶(已穿 + 小将)
+		gold_cap(st, key["a_gold"])
 	st["dual_ghost"] = b
 	st["dual_active"] = true
 	st["tutorial_active"] = false
@@ -260,6 +265,40 @@ static func bamboo_cap(claimed: float, server) -> float:
 ## 仪式匕首血契封顶(2026-11-25 · 迁移 20261125_ritual_marks): 取「自报」与「服务器结果单合计」的较小值(同 bamboo_cap)。
 static func ritual_cap(claimed: int, server) -> int:
 	return clampi(mini(claimed, int(maxf(0.0, float(server)))), 0, EqDaggerBatch.RITUAL_CAP)
+
+
+## 135 黄金面具层数封顶(2026-11-27 · 迁移 20261127b): 按固定顺序走一遍(字典键排序), 把各件 gm_stk 依次扣到合计 ≤ 服务器合计。
+##   原地改; 返回封顶后的合计。层数只会被压低, 不会凭空变多。
+static func gold_cap(root, server) -> int:
+	var left: int = maxi(0, int(maxf(0.0, float(server))))
+	var items: Array = []
+	_gold_items(root, items)
+	var total := 0
+	for it in items:
+		var v: int = maxi(0, int((it as Dictionary).get("gm_stk", 0)))
+		var keep: int = mini(v, left)
+		left -= keep
+		total += keep
+		if keep > 0:
+			(it as Dictionary)["gm_stk"] = keep
+		else:
+			(it as Dictionary).erase("gm_stk")
+	return total
+
+
+static func _gold_items(v, out: Array) -> void:
+	if v is Dictionary:
+		var d: Dictionary = v
+		if str(d.get("id", "")) == "p2eq_135" and d.has("gm_stk"):
+			out.append(d)
+			return
+		var ks: Array = d.keys()
+		ks.sort()
+		for k in ks:
+			_gold_items(d[k], out)
+	elif v is Array:
+		for x in v:
+			_gold_items(x, out)
 
 
 ## 命运之轮层数封顶: 每种花色取「自报」与「服务器结果单合计」的较小值(迁移 20261109d)。

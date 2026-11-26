@@ -110,6 +110,9 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 		## 114 仪式匕首【血契】(2026-11-25 · 方案书 20261125 §4.2c): 这一局两侧新刻的道数, 客户端结算时累积进存档(一大轮内累计, 换轮清零)。
 		res["ritual_new"] = int(battle._equip_sys._dagger_sys.ritual_new["left"])
 		res["ritual_new_b"] = int(battle._equip_sys._dagger_sys.ritual_new["right"])
+		## 135 黄金面具(2026-11-27 · 迁移 20261127b): 这一局两侧每件新涨的层数, 客户端写回那一件(跨对局保留)
+		res["gold_new"] = battle._equip_sys._mask_sys.gold_new_of("left")
+		res["gold_new_b"] = battle._equip_sys._mask_sys.gold_new_of("right")
 	if rr != null and rr.stream != null:
 		## end.json 另带三样给网页录像播放器(2026-11-08 · 方案书 20261105c §4.7; 播放器不登录、拿不到 matches 那一行):
 		##   mode(保留期按它分: 偷袭局 30 天, server/stream/stream_ops.py purge)、names(两边名字, 收尾卡「<名字> 获胜」)、

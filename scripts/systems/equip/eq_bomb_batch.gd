@@ -657,6 +657,8 @@ static func default_mine_off(k: int, i: int, n: int) -> Vector2i:
 ## 局外装备条目 → 局内装备条目（RealtimeBattle3DScene._inject_equipment 用）：照旧只留 id / star / chg，另外带上地雷的摆位
 static func eq_entry(it: Dictionary, chg: int) -> Dictionary:
 	var d := {"id": str(it["id"]), "star": int(it.get("star", 1)), "chg": chg}
+	if int(it.get("gm_stk", 0)) > 0:
+		d["gm_stk"] = int(it["gm_stk"])   # 135 黄金面具层数跟着这一件进战斗(11-27; 原来这里重建字典会把它丢掉)
 	if it.get("mines") is Array:
 		d["mines"] = (it["mines"] as Array).duplicate(true)
 	return d
