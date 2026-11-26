@@ -441,6 +441,7 @@ const CENT_IMP_FWD_PX := 75.0
 const CENT_IMP_UP_PX := 30.0
 const CENT_SHOCK_SEC := 0.34
 const CENT_SHOCK_DIST := 2.0
+const CENT_ARROW_M := 2.6     # 突刺气劲长(米), 跟着罩子走
 const CENT_SHOCK_SPD := 16.0   # 冲击罩飞行速度(米/秒): 二档整条线(目标 + 260 码)约 0.6 秒
 const CONE_MIX: Shader = preload("res://assets/shaders/cent_cone_mix.gdshader")
 const CONE_ADD: Shader = preload("res://assets/shaders/cent_cone_add.gdshader")
@@ -605,8 +606,13 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	spray.position = tip
 	spray.rotation = Vector3(0.0, yaw2, 0.0)
 	w.add_child(spray)
+	var arrow := _dir_strip(SV + "spear-cent-thrust.png", 7, Vector2(u["pos"]), Vector2(d3.x, d3.z), CENT_ARROW_M, 24.0, 0.0, tip.y)
+	if arrow != null:
+		(_mfx.back() as Dictionary)["loop"] = true   # 帧条循环, 跟罩子同生同灭(_stab_free 删)
+		arrow.position = tip - d3 * (CENT_ARROW_M * 0.5 - 0.1)
+		arrow.render_priority = 13   # 画在罩子各层(10–12)上面: 箭头在罩子里看得清
 	_stabs.append({"parts": parts, "bills": bills, "ring": ring, "t": 0.0, "life": maxf(CENT_SHOCK_SEC, dist / CENT_SHOCK_SPD), "p0": tip, "d3": d3, "dist": dist,
-		"u": u, "front": [fr_dark, fr_hot], "spray": spray, "skid": 0.0, "h": tip.y})
+		"u": u, "front": [fr_dark, fr_hot], "spray": spray, "skid": 0.0, "h": tip.y, "arrow": arrow})
 
 
 ## 二档: 冲击罩头部改跟着结算那道冲击波走(sim 的波头位置), 到头再淡掉
@@ -654,6 +660,7 @@ func _stab_free(st: Dictionary) -> void:
 	for f in st.get("front", []):
 		_free(f)
 	_stop_ps(st.get("spray"))
+	_free(st.get("arrow"))
 
 
 func _tick_stabs(delta: float) -> void:
@@ -696,6 +703,10 @@ func _tick_stabs(delta: float) -> void:
 				fm.set_shader_parameter("t", t)
 				fm.set_shader_parameter("fade", fd)
 			fi += 1
+		var ar0 = st.get("arrow")   # 突刺气劲: 箭头尖贴着罩子头部往前走
+		if ar0 != null and is_instance_valid(ar0):
+			(ar0 as Sprite3D).position = pos - d3 * (CENT_ARROW_M * 0.5 - 0.1)
+			(ar0 as Sprite3D).modulate = Color(1.0, 1.0, 1.0, fd)
 		var sp0 = st.get("spray")
 		if sp0 != null and is_instance_valid(sp0):
 			(sp0 as GPUParticles3D).position = pos
@@ -744,7 +755,7 @@ func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	var dir := d.normalized()
 	var ln: float = maxf(80.0, d.length()) + (SpearSynergySystem.LINE_LEN if n > 1 else 20.0)
 	var mid: Vector2 = a + dir * (ln * 0.5)
-	_dir_strip(SV + "spear-cent-thrust.png", 7, mid, dir, ln * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)
+	## 金色突刺气劲改由 _cent_impact_dome 建、跟着冲击罩走(11-27 用户「像箭头一样的…也跟着罩子方向去走」); 原来在这里原地画一次
 	_cent_glow_on(u)   # 矛刃光叠加层(贴着矛, 跟本体同帧)
 	_cent_impact_dome(u, t)   # 矛头裹着冲击罩冲出去(第六轮 3D)
 	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(b, 0.6), 1.3, 20.0, false, 6.0 / 20.0, false, null, 0.0)
@@ -1980,6 +1991,7 @@ func clear() -> void:
 		for f in st.get("front", []):
 			_free(f)
 		_free(st.get("spray"))
+		_free(st.get("arrow"))
 	_stabs.clear()
 	for r4 in _cav_nodes:
 		_free(r4.get("bow"))
