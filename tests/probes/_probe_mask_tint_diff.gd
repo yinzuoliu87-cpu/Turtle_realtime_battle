@@ -184,8 +184,8 @@ func _run_one(job: Dictionary) -> void:
 					for kk in np:
 						if str(np[kk]).split(" ")[0] != str(pp.get(kk, "?")).split(" ")[0]:
 							print("[DIFF] step=", p.cur_step, " hitstop=", b._hitstop, " ts=", b._timestop._ts_active.size(), " ", kk, "
-   本机 ", np[kk], "
-   播放 ", pp.get(kk, "无"))
+								本机 ", np[kk], "
+								播放 ", pp.get(kk, "无"))
 			_add(_pl_tot, pc)
 			_steps += 1
 			_nat.erase(p.cur_step)
