@@ -32,6 +32,7 @@ const TEST_SHOP_SEED := 20260819
 ## 商店池版本: 每条流水记当时客户端的版本(WeeklySynergy 头注)。1 = 0.23.5 及以前(流水里没有 pv: 老池 001~096、不轮换);
 ##   2 = 0.23.6 起(新 60 件 + 16 抽 10 轮换)。★掷货 / 糖果罐按流水里那条的版本出货 ⇒ 换版当天老客户端掷的货重放也对得上。
 const POOL_VER := 2
+const _ChipBurn := preload("res://scripts/gamedata/chip_burn.gd")   # 筹码打完损坏(用 preload: 新 class_name 在无头门禁里不一定已登记)
 const CHIP_BURN_SRCS := {"ranked": true, "ranked_ref": true, "gauntlet": true, "finals": true}
 
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
@@ -225,10 +226,14 @@ static func _norm(v):
 # ═════════════════════════════════ 操作 ═════════════════════════════════
 
 ## 只改状态、不落流水(重放走这个)。`{ok, reason, ...}`; 不认识的操作 ⇒ ok=false。
+## 正在应用的这一条流水的商店池版本(apply 进出时设 / 复位; _roll 与 GameState 糖果罐读)。不在 apply 里 = 当前版本。
+static var cur_pv: int = POOL_VER
+
+
 static func apply(gs, op: Dictionary) -> Dictionary:
-	gs._econ_pv = int(op.get("pv", 1))   # 这一条按它记的池版本出货(_roll / 糖果罐读); 用完复位
+	cur_pv = int(op.get("pv", 1))   # 这一条按它记的池版本出货(老流水没有 pv = 版本 1); 用完复位
 	var r: Dictionary = _apply(gs, op)
-	gs._econ_pv = POOL_VER
+	cur_pv = POOL_VER
 	return r
 
 
@@ -322,7 +327,7 @@ static func _income(gs, op: Dictionary) -> Dictionary:
 	##   按来源判、不靠客户端传字段 ⇒ 不扣就和服务器重放对不上。每场只有一笔带经验的进账走这几个来源。
 	var burned := 0
 	if CHIP_BURN_SRCS.has(str(op.get("src", ""))):
-		burned = int(gs.burn_chips()) if gs.has_method("burn_chips") else 0
+		burned = _ChipBurn.burn(gs)
 	gs.meta_deepsea_coins = int(gs.meta_deepsea_coins) + c
 	if xp > 0:
 		gs.add_season_xp(xp)
@@ -431,7 +436,7 @@ static func _roll(gs, seed: int) -> Dictionary:
 	gs.ensure_equip_pool()
 	pool = EquipPool.available(gs.equip_pool, pool)
 	## 本周羁绊(16 抽 10) + 池版本: 本周没抽到的羁绊的装备不出; 版本 1 的流水只出老池(WeeklySynergy 头注)
-	pool = WeeklySynergy.filter_defs(pool, int(gs.week_anchor_ts), int(gs._econ_pv))
+	pool = WeeklySynergy.filter_defs(pool, int(gs.week_anchor_ts), cur_pv)
 	## 096 小木斧独立出货通路(三种模式见 AxeEvolution.shelf_mode): 激活羁绊时先从常规池剔掉, 再按每格概率铺回去
 	var axe_mode: String = AxeEvolution.shelf_mode(gs.axe_synergy_active(), str(gs.axe_final))
 	var axe_def = null

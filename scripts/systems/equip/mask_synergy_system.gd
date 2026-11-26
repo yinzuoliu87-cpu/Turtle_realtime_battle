@@ -185,4 +185,7 @@ func reset_match() -> void:
 
 
 func _vfx():
-	return null   # 演出层(面具特效)接上之前不画
+	var es = battle.get("_equip_sys")
+	if es == null or es.get("_mask_sys") == null:
+		return null
+	return es._mask_sys.vfx   # 与 10 件面具共用一个演出层(MaskEqVfx)

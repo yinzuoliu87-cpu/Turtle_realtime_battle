@@ -24,15 +24,24 @@ VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
 
 ## 11-26 夜自查(如实): PixelLab 出的是半侧身姿势, 两版的朝向都不严格 —— cent_0 一套里待机 / 走路 / 掷矛朝左、刺击往右捅;
 ##   左右翻转的 centL_0 一套里刺击往右捅、掷矛朝左。按「整套朝左」拼: 待机 / 走路 / 掷矛 = cent_0 那套, 刺击 = centL_0 那套再翻回来(往左捅),
-##   举盾两套都没把盾举起来(cent_0 那套是压低长矛、盾在身侧), 先用 cshd, 待重做。第三个元素 True = 左右翻转。
+##   举盾 11-26 夜重做(见下面 eq-centurion-shield 那行)。第三个元素 True = 左右翻转。
 STRIPS = {
     "eq-centurion-idle": [(SP, "cidle_%d" % i, False) for i in range(0, 6)],
     "eq-centurion-walk": [(SP, "cwalk_%d" % i, False) for i in range(1, 9)],
     "eq-centurion-attack": [(SP, "latk_%d" % i, True) for i in range(1, 11)],
     "eq-centurion-throw": [(SP, "cthr_%d" % i, False) for i in range(1, 11)],
-    "eq-centurion-shield": [(SP, "cshd_%d" % i, False) for i in range(1, 7)],
+    ## 举盾(11-26 夜重做): 原画 cent_0 → edit_image_pro_flash 改出「屈膝、大盾举到身前、长矛架在盾沿上」cshdA_end,
+    ##   animate_image 首尾钉这两张出 6 帧(cshdA_1..6)。帧条 = 举盾 6 帧 + 撑盾 36 帧(末两帧每 4 帧换一次, 慢慢用力),
+    ##   引擎按举盾秒数算播放速度(3 秒 ⇒ 14 fps: 举盾 0.43 秒, 之后一直撑着)。旧 cshd_* 盾没举起来, 弃。
+    "eq-centurion-shield": [(SP, "cshdA_%d" % i, False) for i in range(1, 7)]
+        + [(SP, "cshdA_%d" % (6 if (k // 4) % 2 == 0 else 5), False) for k in range(36)],
     "eq-cavalry-run": [(SP, "cav_%d" % i, False) for i in range(0, 8)],
 }
+
+## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。
+##   同一个角色的所有帧条按「全部帧里最低那只脚」统一下移同样多 ⇒ 脚贴帧底、动作之间切换不跳。
+SHIFT_DOWN = {"eq-centurion-idle": 19, "eq-centurion-walk": 19, "eq-centurion-attack": 19, "eq-centurion-throw": 19,
+              "eq-centurion-shield": 19, "eq-cavalry-run": 7}
 
 
 def _icon(src, dst, maxc=64):
@@ -74,7 +83,7 @@ def main():
         out = Image.new("RGBA", (fw * len(ims), fh), (0, 0, 0, 0))
         for i, im in enumerate(ims):
             assert im.size == (fw, fh), (dst, i, im.size)
-            out.paste(im, (i * fw, 0))
+            out.paste(im, (i * fw, SHIFT_DOWN.get(dst, 0)))
         out.save(os.path.join(VFX, dst + ".png"), optimize=False)
         print(dst, len(ims), "帧", fw, "×", fh)
 

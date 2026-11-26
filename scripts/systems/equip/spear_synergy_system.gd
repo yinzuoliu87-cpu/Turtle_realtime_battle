@@ -18,7 +18,7 @@ extends RefCounted
 const SUMMON_AT := 8.0
 const TEAM_HP_LINE := 0.60
 const KNOCK_SEC := 1.5
-const KNOCK_VY := 16.5            # 滞空 = 2 × 16.5 / 22 = 1.5 秒
+const CENT_KNOCK_VY := 16.5            # 滞空 = 2 × 16.5 / 22 = 1.5 秒
 const ENTRY_COEF := 1.5
 const HP := [1600.0, 2600.0, 3600.0, 5200.0]
 const ATK := [48.0, 72.0, 104.0, 144.0]
@@ -200,7 +200,7 @@ func summon(side: String, tier: int) -> Dictionary:
 		var dmg: int = battle._resolve_dmg(p, ENTRY_COEF * float(p.get("atk", 0.0)), o, true, false)
 		battle._damage._apply_damage_from(p, o, dmg, COL_MAGIC, 0.0, false, true)
 		if o.get("alive", false):
-			battle._knock_up(o, Vector2(o["pos"]) + Vector2(0.0, 1.0), KNOCK_VY)
+			battle._knock_up(o, Vector2(o["pos"]) + Vector2(0.0, 1.0), CENT_KNOCK_VY)
 	return rec
 
 

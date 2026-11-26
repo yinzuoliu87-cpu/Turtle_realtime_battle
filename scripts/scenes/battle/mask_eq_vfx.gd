@@ -303,6 +303,11 @@ func clear() -> void:
 	for f in _mfx:
 		_free(f["node"])
 	_mfx.clear()
+	_ven.clear()
+	for f in _mflies:
+		_free(f["node"])
+	_mflies.clear()
+	_gas_last.clear()
 	for r in _ow_rifts:
 		_free(r["node"])
 		_free(r["label"])
@@ -317,6 +322,238 @@ func clear() -> void:
 		battle._apply_cam_zoom()
 	if _ow_btn != null and is_instance_valid(_ow_btn):
 		_ow_btn.visible = false
+
+
+# ════════════════════════════════════════ 偷脸 / 127 / 129 / 130 / 131 / 132 / 133 ════════════════════════════════════════
+## 11-26 夜补齐(分段与素材来历见 pack_mask_art.py 头注; 全部逐帧帧条, 没照参考):
+##   偷脸复制   原版身上飘出一张淡蓝魂面具(逐帧), 0.45 秒飞到复制体身上, 落点一圈淡蓝环; 复制体常驻淡蓝微透明(_body_tint)
+##   复制体赠属性 金绿光球(逐帧)0.5 秒飞到最近友军, 落点一圈金绿环
+##   127 纸面具  登场一圈纸色环; 反击纸刃(逐帧旋转)按 sim 飞行位置走, 碰到身体才结算(sim 侧)
+##   129 京剧   换脸: 头顶一张脸 0.45 秒变成下一张(逐帧变脸), 停 0.6 秒淡出; 红脸普攻 = 目标身上红色真伤火花; 白脸偷龟能 = 白色光球从目标飞回
+##   130 舞狮   登场爆竹(逐帧); 蓄力 = 脚下红金环; 冲撞 = 换成冲撞帧条循环(走引擎走路通道), 停下换回; 撞到人 = 一圈红金环
+##   131 小丑   被嘲讽的敌人头上一张嘲笑小丑脸(逐帧循环), 嘲讽多久挂多久
+##   132 鬼面   潜行 / 现形各一团暗红烟(逐帧)
+##   133 防毒   挡下灼烧 / 中毒 / 流血时身前一团毒气撞上滤网散开(逐帧; 同一只 0.5 秒内只画一次)
+const MV := "res://assets/sprites/vfx/"
+const HEAD_H := 1.6   # 头顶演出的离地高(血条下面; 2.3 会被血条挡住, 11-26 录像量过)
+var _mflies: Array = []   # {node, a(单位或 Vector2), b(单位), t, dur, h, done(Callable)}
+var _gas_last := {}       # 单位 → 上次画挡毒的时间(按实例 id)
+
+
+func _upos(x) -> Vector2:
+	return Vector2((x as Dictionary)["pos"]) if x is Dictionary else Vector2(x)
+
+
+func _fly_strip(path: String, nf: int, a, b: Dictionary, dur: float, h: float, size_m: float, col: Color, done: Callable = Callable()) -> void:
+	var s := _strip(path, nf, battle._world_pos(_upos(a), h), size_m, 12.0, true, 0.0, false, null, 0.0)
+	if s == null:
+		return
+	s.offset = Vector2.ZERO
+	s.modulate = col
+	_mflies.append({"node": s, "a": _upos(a), "b": b, "t": 0.0, "dur": dur, "h": h, "done": done})
+
+
+func _tick_mflies(delta: float) -> void:
+	var keep: Array = []
+	for f in _mflies:
+		var n = f["node"]
+		if n == null or not is_instance_valid(n):
+			continue
+		f["t"] = float(f["t"]) + delta
+		var k: float = clampf(float(f["t"]) / float(f["dur"]), 0.0, 1.0)
+		var b: Dictionary = f["b"]
+		var p: Vector2 = Vector2(f["a"]).lerp(Vector2(b["pos"]), k * k * (3.0 - 2.0 * k))
+		(n as Sprite3D).position = battle._world_pos(p, float(f["h"]) + sin(k * PI) * 0.6)   # 抛一道弧
+		if k >= 1.0 or not b.get("alive", false):
+			_free(n)
+			if k >= 1.0 and (f["done"] as Callable).is_valid():
+				(f["done"] as Callable).call()
+			continue
+		keep.append(f)
+	_mflies = keep
+
+
+## 偷脸: 复制体生成
+func mask_copy_spawn(c: Dictionary, o: Dictionary) -> void:
+	c["_body_tint"] = Color(0.55, 0.8, 1.6, 0.75)   # 复制体常驻淡蓝微透明(受击闪白照常叠上去); 一眼分得出哪只是偷来的
+	_fly_strip(MV + "mask-copy-spirit.png", 4, o, c, 0.45, 1.2, 1.4, Color(1, 1, 1, 0.95),
+		func() -> void: _ring(Vector2(c["pos"]), 70.0, Color(0.55, 0.85, 1.0, 0.9), 0.35))
+
+
+## 偷脸: 复制体死, 属性给最近友军
+func mask_gift(u: Dictionary, b: Dictionary) -> void:
+	_fly_strip(MV + "mask-gift-orb.png", 4, Vector2(u["pos"]), b, 0.5, 1.2, 0.7, Color(1, 1, 1, 1),
+		func() -> void: _ring(Vector2(b["pos"]), 60.0, Color(0.8, 1.0, 0.45, 0.9), 0.35))
+
+
+## 127 纸面具
+func paper_shield(u: Dictionary) -> void:
+	_ring(Vector2(u["pos"]), 55.0, Color(0.95, 0.93, 0.85, 0.9), 0.4)
+
+
+func paper_shot(u: Dictionary, _s: Dictionary):
+	var n := _strip(MV + "mask-paper-blade.png", 4, battle._world_pos(Vector2(u["pos"]), 1.0), 0.8, 16.0, true, 0.0, false, null, 0.0)
+	if n != null:
+		n.offset = Vector2.ZERO
+	return n
+
+
+func paper_step(node, p2: Vector2) -> void:
+	if node != null and is_instance_valid(node):
+		(node as Sprite3D).position = battle._world_pos(p2, 1.0)
+
+
+func paper_shot_end(node, hit: bool) -> void:
+	## 近身反击飞行往往只有 0.1 秒(两三帧): 命中处再留 0.2 秒让纸刃转着淡出, 看得见「掷回去了」
+	if hit and node != null and is_instance_valid(node):
+		var s2 := _strip(MV + "mask-paper-blade.png", 4, (node as Sprite3D).position, 0.8, 16.0, true, 0.22, false, null, 0.0)
+		if s2 != null:
+			s2.offset = Vector2.ZERO
+	_free(node)
+
+
+## 129 京剧脸谱
+func face_swap(u: Dictionary, face: int) -> void:
+	if not bool(u.get("_face_shown", false)):
+		u["_face_shown"] = true
+		if face == 0:
+			return   # 开打进红脸不画变脸(没有「上一张脸」)
+	var path: String = [MV + "mask-face-wr.png", MV + "mask-face-rk.png", MV + "mask-face-kw.png"][clampi(face, 0, 2)]
+	var nf: int = [7, 4, 7][clampi(face, 0, 2)]
+	var fps := 14.0
+	_strip(path, nf, battle._world_pos(Vector2(u["pos"]), HEAD_H), 0.8, fps, false, float(nf) / fps + 0.6, false, u, HEAD_H)
+
+
+func face_red_hit(_u: Dictionary, tgt: Dictionary) -> void:
+	_strip(MV + "mask-face-redhit.png", 7, battle._world_pos(Vector2(tgt["pos"]), 0.6), 0.9, 18.0, false, 7.0 / 18.0, false, tgt, 0.6)
+
+
+func face_white_steal(u: Dictionary, tgt: Dictionary) -> void:
+	_fly_strip(MV + "mask-gift-orb.png", 4, tgt, u, 0.35, 1.2, 0.5, Color(0.8, 0.9, 1.0, 1.0))
+
+
+## 130 舞狮
+var _lion_run_sd := {}
+
+
+func lion_spawn(p: Dictionary) -> void:
+	_strip(MV + "mask-lion-pop.png", 9, battle._world_pos(Vector2(p["pos"]), 0.0), 2.4, 14.0, false, 9.0 / 14.0, false, null, 0.0)
+
+
+func lion_windup(p: Dictionary, _dir: Vector2, sec: float) -> void:
+	_ring(Vector2(p["pos"]), 75.0, Color(1.0, 0.55, 0.25, 0.9), maxf(0.2, sec))
+
+
+func lion_run(p: Dictionary, _dir: Vector2) -> void:
+	if _lion_run_sd.is_empty() and ResourceLoader.exists(MV + "eq-masklion-charge.png"):
+		var t: Texture2D = load(MV + "eq-masklion-charge.png")
+		_lion_run_sd = battle._sprite_dict_from(t, {"frames": t.get_width() / 112, "frameW": 112, "frameH": 112, "duration": 600}, false)
+	if _lion_run_sd.is_empty() or not p.get("alive", false):
+		return
+	if not p.has("_lion_walk_sd"):
+		p["_lion_walk_sd"] = p.get("run_sd", {})
+	p["run_sd"] = _lion_run_sd                         # 冲撞期间「走路」帧条 = 冲撞帧条(引擎按速度切走路, 不会和它抢)
+	battle._set_anim_sheet(p, _lion_run_sd, "", true)
+
+
+func lion_stop(p: Dictionary) -> void:
+	if p.has("_lion_walk_sd"):
+		p["run_sd"] = p["_lion_walk_sd"]
+	if p.get("alive", false) and is_same(p.get("anim_sd", null), _lion_run_sd):
+		battle._set_anim_sheet(p, p.get("idle_sd", {}), "", true)
+
+
+func lion_hit(_p: Dictionary, o: Dictionary) -> void:
+	_ring(Vector2(o["pos"]), 60.0, Color(1.0, 0.75, 0.3, 0.95), 0.3)
+
+
+## 131 小丑面具
+func clown_taunt(u: Dictionary, tg: Array, sec: float) -> void:
+	_ring(Vector2(u["pos"]), 150.0, Color(1.0, 0.45, 0.7, 0.85), 0.4)
+	if sec <= 0.0:
+		return
+	for o in tg:
+		if o is Dictionary and (o as Dictionary).get("alive", false):
+			_strip(MV + "mask-clown-jeer.png", 4, battle._world_pos(Vector2(o["pos"]), HEAD_H), 0.6, 8.0, true, sec, false, o, HEAD_H)
+
+
+## 132 鬼面
+func ghost_hide(u: Dictionary, _sec: float) -> void:
+	_strip(MV + "mask-ghost-puff.png", 9, battle._world_pos(Vector2(u["pos"]), 0.0), 1.8, 16.0, false, 9.0 / 16.0, false, null, 0.0)
+
+
+func ghost_reveal(u: Dictionary) -> void:
+	_strip(MV + "mask-ghost-puff.png", 9, battle._world_pos(Vector2(u["pos"]), 0.0), 1.4, 18.0, false, 9.0 / 18.0, false, null, 0.0)
+
+
+## 133 防毒面具
+func gas_block(u: Dictionary) -> void:
+	var key: int = (u.get("sprite") as Object).get_instance_id() if is_instance_valid(u.get("sprite")) else 0
+	var t := float(battle._t)
+	if t - float(_gas_last.get(key, -9.0)) < 0.5:
+		return
+	_gas_last[key] = t
+	_strip(MV + "mask-gas-block.png", 7, battle._world_pos(Vector2(u["pos"]), 0.5), 1.0, 14.0, false, 7.0 / 14.0, false, u, 0.5)
+
+
+# ════════════════════════════════════════ 134 威尼斯面具【复活】 ════════════════════════════════════════
+## 用户 11-26:「复活动画…2.5 秒之内的血量逐渐增起来，然后有这个复活的光环」。分段(没照参考, 素材见 pack_mask_art.py 头注):
+##   0.0–0.4 秒  白金面具(逐帧呼吸发光)从胸口升到头顶; 身体变灰白(battle_render 读 _ven_t0 / _ven_until)
+##   0.0–2.5 秒  脚下金白复活光环(逐帧沿环跑光, 循环), 前 0.3 秒由小涨满; 血条随 sim 从 1 涨到 30/45/70%, 身体随之回色
+##   2.5 秒      面具 0.15 秒落回胸口; 一道金白光柱 + 白羽毛炸开(逐帧, 0.55 秒散尽)
+const VEN_MASK := "res://assets/sprites/vfx/mask-venice-mask.png"
+const VEN_HALO := "res://assets/sprites/vfx/mask-venice-halo.png"
+const VEN_BURST := "res://assets/sprites/vfx/mask-venice-burst.png"
+var _ven: Array = []   # {u, t, mask(_mfx 那条), halo(_mfx 那条), up(起身后的秒数, -1 = 未起)}
+
+
+func venice_down(u: Dictionary, sec: float) -> void:
+	var p3: Vector3 = battle._world_pos(Vector2(u["pos"]), 0.0)
+	var halo := _strip(VEN_HALO, 8, p3, 2.6, 10.0, true, sec + 0.4, false, u, -1.3)
+	var hf = _mfx.back() if halo != null else null
+	var mask := _strip(VEN_MASK, 8, p3, 0.75, 8.0, true, 0.0, false, u, 0.6)
+	var mf = _mfx.back() if mask != null else null
+	if halo != null:
+		halo.scale = Vector3(0.2, 0.2, 0.2)
+	_ven.append({"u": u, "t": 0.0, "mask": mf, "halo": hf, "up": -1.0})
+
+
+func venice_up(u: Dictionary) -> void:
+	for V in _ven:
+		if is_same(V["u"], u):
+			V["up"] = 0.0
+	_strip(VEN_BURST, 9, battle._world_pos(Vector2(u["pos"]), 0.0), 3.2, 16.0, false, 9.0 / 16.0, false, u, 0.0)
+
+
+func _tick_ven(delta: float) -> void:
+	var keep: Array = []
+	for V in _ven:
+		var u: Dictionary = V["u"]
+		var mf = V["mask"]
+		var hf = V["halo"]
+		V["t"] = float(V["t"]) + delta
+		var t: float = float(V["t"])
+		if not u.get("alive", false):
+			continue
+		if hf is Dictionary and is_instance_valid((hf as Dictionary)["node"]):
+			var hs: float = clampf(t / 0.3, 0.2, 1.0)
+			((hf as Dictionary)["node"] as Sprite3D).scale = Vector3(hs, hs, hs)
+		if float(V["up"]) < 0.0:
+			if mf is Dictionary:
+				(mf as Dictionary)["h"] = lerpf(0.6, 1.6, clampf(t / 0.4, 0.0, 1.0))   # 从胸口升到头顶(血条下面, 别被血条挡住)
+			keep.append(V)
+			continue
+		V["up"] = float(V["up"]) + delta
+		var k: float = clampf(float(V["up"]) / 0.15, 0.0, 1.0)
+		if mf is Dictionary:
+			(mf as Dictionary)["h"] = lerpf(1.6, 0.6, k * k)                    # 落回胸口
+			if k >= 1.0:
+				_free((mf as Dictionary)["node"])
+		if hf is Dictionary and k >= 1.0:
+			_free((hf as Dictionary)["node"])
+		if k < 1.0:
+			keep.append(V)
+	_ven = keep
 
 
 # ════════════════════════════════════════ 135 黄金面具【金光】 ════════════════════════════════════════
@@ -476,5 +713,7 @@ func _tick_gold(delta: float) -> void:
 func tick(delta: float) -> void:
 	super.tick(delta)
 	_tick_mfx(delta)
+	_tick_mflies(delta)
+	_tick_ven(delta)
 	_tick_gold(delta)
 	_tick_ow(delta)

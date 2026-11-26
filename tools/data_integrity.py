@@ -48,10 +48,17 @@ def _typeset():
     return set(re.findall(r'"([^"]+)"\s*:\s*\{"tiers"', m.group(1)))
 
 TYPESET = _typeset()
+def _tag_only():
+    import re
+    src = io.open('scripts/gamedata/phase2_types.gd', encoding='utf-8').read()
+    m = re.search(r'const TAG_ONLY\s*:=\s*\[(.*?)\]', src)
+    return set(re.findall(r'"([^"]+)"', m.group(1))) if m else set()
+## 只有标签、不成羁绊的类型(phase2_types.TAG_ONLY, 例: 筹码 11-26): 装备可以挂, 但不进 TYPES
+TAGONLY = _tag_only()
 ## ★分母: 一个类型都没读到 = 正则挂了/表改写法了, 不是"通过"。
 chk('★分母: 从 phase2_types.gd 读到类型 %d 个(<8 就是解析失效)' % len(TYPESET),
     [] if len(TYPESET) >= 8 else ['只读到 %d 个: %s' % (len(TYPESET), sorted(TYPESET))])
-chk('p2eq-types 的值都在 phase2_types.TYPES 里(学派已删·护符/饰品已解散)', sorted({t for v in types.values() for t in (v if isinstance(v, list) else [v])} - TYPESET))
+chk('p2eq-types 的值都在 phase2_types.TYPES 里(学派已删·护符/饰品已解散; TAG_ONLY 名单里的只挂标签)', sorted({t for v in types.values() for t in (v if isinstance(v, list) else [v])} - TYPESET - TAGONLY))
 chk('每个类型都至少有 1 件装备(分母, 防打错字造出空类型)', sorted(TYPESET - {t for v in types.values() for t in (v if isinstance(v, list) else [v])}))
 ptypes = {str(p.get('passive',{}).get('type','')) for p in pets}
 chk('每只龟的被动都有图标', sorted(ptypes - set(picons)))

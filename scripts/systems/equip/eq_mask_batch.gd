@@ -231,8 +231,10 @@ func revive(u: Dictionary, d: float) -> float:
 	u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + VEN_SEC)
 	battle._damage.channel(u, VEN_SEC)                                                 # 倒地期间不行动
 	u["_ven_until"] = t + VEN_SEC
-	_revives.append({"u": u, "t0": t, "to": float(u.get("maxHp", 1.0)) * heal_pct})
-	_fx("venice_down", [u, VEN_SEC])
+	_revives.append({"u": u, "t0": t, "to": float(u.get("maxHp", 1.0)) * heal_pct, "ven": ven})
+	u["_ven_t0"] = t
+	## 演出分开: 威尼斯面具的招牌(面具 + 光环)不给棕色筹码用(CLAUDE.md §10 第 5 条)
+	_fx("venice_down" if ven else "chip_brown_down", [u, VEN_SEC])
 	return maxf(0.0, float(u["hp"]) - 1.0)
 
 
@@ -312,7 +314,10 @@ func on_damaged(u: Dictionary, src, _dmg: float, eid: String, si: int) -> void:
 			if not hit or not me.get("alive", false):
 				return
 			var d: int = battle._phys_after_armor(me, amt, s)
-			battle._damage._apply_damage_from(me, s, d, COL_PHYS, 0.0, false, true))
+			battle._damage._apply_damage_from(me, s, d, COL_PHYS, 0.0, false, true),
+		func(_k: float, p2: Vector2, _to2: Vector2) -> void:
+			if vfx != null and vfx.has_method("paper_step"):
+				vfx.paper_step(shot, p2))
 	battle._equip_sys.tally.pop(tp)
 
 
@@ -657,7 +662,7 @@ func _tick_revives() -> void:
 		if k < 1.0:
 			keep.append(R)
 		else:
-			_fx("venice_up", [u])
+			_fx("venice_up" if bool(R.get("ven", true)) else "chip_brown_up", [u])
 	_revives = keep
 
 

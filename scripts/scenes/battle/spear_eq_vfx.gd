@@ -88,7 +88,10 @@ func cent_spear_drop(s: Dictionary) -> void:
 
 
 func cent_shield(u: Dictionary, sec: float) -> void:
-	_cent_play(u, "shield", 6.0 / maxf(0.5, sec))
+	## 帧条 = 举盾 6 帧 + 撑盾 36 帧(打包脚本里拼好); 整条恰好播满举盾时长 ⇒ 0.4 秒举起, 之后一直撑着, 到点放下回待机
+	var sd := _cent_sd("shield", 14.0)
+	var nf: int = int(sd.get("frames", 42)) if not sd.is_empty() else 42
+	_cent_play(u, "shield", float(nf) / maxf(0.5, sec))
 
 
 func cent_shield_off(_u: Dictionary) -> void:
@@ -179,6 +182,15 @@ func ftj_spin(u: Dictionary) -> void:
 # ── 筹码 ──
 func chip_gold_guard(u: Dictionary, _sec: float) -> void:
 	_ring(Vector2(u["pos"]), 600.0, Color(1.0, 0.85, 0.3, 0.9), 0.6)
+
+
+## 154 棕色筹码复活: 暂时只有倒下 / 起身两道金棕光圈 + 身体灰白回色(battle_render); 专属素材待画(不借威尼斯面具的面具与光环)
+func chip_brown_down(u: Dictionary, _sec: float) -> void:
+	_ring(Vector2(u["pos"]), 110.0, Color(0.75, 0.5, 0.25, 0.9), 0.4)
+
+
+func chip_brown_up(u: Dictionary) -> void:
+	_ring(Vector2(u["pos"]), 180.0, Color(0.95, 0.75, 0.4, 0.95), 0.45)
 
 
 # ── 帧推进 ──

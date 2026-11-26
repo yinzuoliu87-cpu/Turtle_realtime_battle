@@ -17,7 +17,14 @@
     裂隙 ow_rift / 魂流 ow_wisp / 光环 ow_aura2 / 回落光柱 ow_pillar2 = create_image_pro_flash(无锚), 各自 animate_image;
     自查弃用(如实): 裂隙第 2、3 帧多一圈白描边(owr_2/3 不取) · 第一版光环中间画了白人影(ow_aura 弃, 重出 ow_aura2) · 第一版印记底下多一块白方块(ow_sigil 弃)。
     里世界按钮图标 btn_ow / btn_main = create_image_pro_flash 40×36, 风格锚 = hud-stats 顶栏图标。
-本脚本只做拷贝 / 拼接 / 量化, 重跑逐字节相同。
+  · 11-26 夜 134 威尼斯复活: 面具 ven_mask(64×64) / 光环 ven_halo / 爆闪 ven_burst(128×128) = create_image_pro_flash(无锚, 没照参考);
+    面具 / 光环 = animate_image 首尾钉原画 8 帧(venm_* / venh_*), 爆闪 = 只钉首帧 8 帧(venb_*)。
+  · 11-26 夜其余面具演出(全部 create_image_pro_flash 无锚原画 + animate_image, 没照参考):
+    偷脸魂面具 cp_ghostmask / 赠属性光球 gift_orb / 纸刃 paper_blade / 小丑脸 clown_jeer = 首尾钉原画 4 帧循环;
+    京剧三张脸 face_r / face_k2 / face_w2(黑白两张以红脸为风格锚重出: 第一版 face_k / face_w 比红脸小一圈, 弃)
+      = 首尾各钉一张脸出 6 帧变脸(fcrk / fckw / fcwr);
+    红脸火花 face_redhit / 鬼面烟 ghost_puff / 挡毒 gas_block / 舞狮爆竹 lion_burst2(第一版 lion_burst 画进了一只狮子, 弃) = 只钉首帧。
+, 重跑逐字节相同。
 
     python tools/assetgen/pack_mask_art.py
 """
@@ -53,7 +60,21 @@ STRIPS = {
     "ow-pillar2": ["owp_%d" % i for i in range(0, 6)],
     "ow-wisp": ["oww_%d" % i for i in range(0, 4)],
     "ow-aura": ["owaura_%d" % i for i in range(0, 8)],   # 源名不能叫 owa_*: Windows 不分大小写, 会和巨面具 owA_* 撞名(11-26 撞过一次, 从提交里取回)
-    "ow-sigil": ["ows_0", "ows_2", "ows_3", "ows_2"],   # 第 1 帧整张发白不取; 2/3 帧右侧杂点在 CLEAN_RIGHT 里清
+    "ow-sigil": ["ows_0", "ows_2", "ows_3", "ows_2"],
+    "mask-venice-mask": ["venm_%d" % i for i in range(0, 8)],    # 134 复活: 头顶浮着的面具(呼吸发光, 首尾钉原画, 末帧 = 原画不取)
+    "mask-venice-halo": ["venh_%d" % i for i in range(0, 8)],    # 134 复活光环(循环, 首尾钉原画)
+    "mask-venice-burst": ["venb_%d" % i for i in range(0, 9)],   # 134 起身爆闪(只钉首帧, 第 9 帧散尽)
+    "mask-copy-spirit": ["cpm_%d" % i for i in range(0, 4)],     # 偷脸: 从原版飞到复制体的魂面具(循环, 首尾钉原画)
+    "mask-gift-orb": ["gfo_%d" % i for i in range(0, 4)],        # 偷脸: 复制体死后飞向友军的属性光球(循环); 129 白脸偷龟能也用(底层光点, 换色)
+    "mask-face-rk": ["fcrk_0", "fcrk_1", "fcrk_5", "fcrk_6"],     # 129 红→黑(第 2~4 帧闪出白脸, 与白脸状态混淆, 不取)
+    "mask-face-kw": ["fckw_%d" % i for i in range(0, 7)],        # 129 黑→白
+    "mask-face-wr": ["fcwr_%d" % i for i in range(0, 7)],        # 129 白→红
+    "mask-face-redhit": ["frh_%d" % i for i in range(0, 7)],     # 129 红脸真伤火花
+    "mask-clown-jeer": ["clj_%d" % i for i in range(0, 4)],      # 131 被嘲讽者头上的小丑脸(循环)
+    "mask-paper-blade": ["ppb_%d" % i for i in range(0, 4)],     # 127 反击纸刃(循环)
+    "mask-ghost-puff": ["ghp_%d" % i for i in range(0, 9)],      # 132 潜行 / 现形的暗红烟
+    "mask-gas-block": ["gsb_%d" % i for i in range(0, 7)],       # 133 毒气撞上滤网散掉
+    "mask-lion-pop": ["lnb_%d" % i for i in range(0, 9)],        # 130 舞狮登场爆竹   # 第 1 帧整张发白不取; 2/3 帧右侧杂点在 CLEAN_RIGHT 里清
 }
 
 
@@ -111,7 +132,7 @@ def main():
         for i, n in enumerate(names):
             im = Image.open(os.path.join(AI, n + ".png")).convert("RGBA")
             assert im.size == (FW, FW), (n, im.size)
-            out.paste(im, (i * FW, 0))
+            out.paste(im, (i * FW, 17))   # 脚底对齐: 舞狮原画脚只到第 95 行(帧高 112), 四套统一下移 17 贴地(11-26 夜量过, 原来浮在半空)
         out.save(os.path.join(VFX, dst + ".png"), optimize=False)
         print(dst, len(names), "帧")
 

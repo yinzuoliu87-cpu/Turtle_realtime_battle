@@ -90,6 +90,9 @@ const TYPES := {
 ##
 ## ★★尺寸只许 **16(1:2)** 与 **32(1×)**: 源图 32×32、硬边、半透明像素 0 个 ——
 ##   只有这两档每个输出像素恰好取整数个源像素, 别的倍率会把硬边糊掉。
+## 只有类型标签、不成羁绊的类型(不进 TYPES ⇒ 不算件数、不亮羁绊徽章; 装备卡上照样挂标签图标)。
+##   筹码: 用户 11-26「没有羁绊档位」—— 消耗品, 不是羁绊(方案书 20261126b)。data_integrity 认这份名单。
+const TAG_ONLY := ["筹码"]
 const TYPE_ICON := {
 	"剑":   "res://assets/sprites/tags/tag-sword.png",
 	"奇械": "res://assets/sprites/tags/tag-gadget.png",
