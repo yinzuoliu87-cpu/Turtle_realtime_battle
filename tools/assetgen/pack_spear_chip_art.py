@@ -103,7 +103,7 @@ STRIPS = {
     ##   普攻突刺气劲 fx_thrust(128×48, 画的是朝左 ⇒ 翻成朝右, 引擎按方向转)+ 只钉首帧 7 帧(cthr2: 矛尖闪 → 光尾拉长 → 碎成火星)
     ##   龟甲阵金色能量巨盾 fx_aegis(64×128)+ 首尾钉原画循环 6 帧(caeg)
     "spear-cent-thrust": [(SP, "cthr2_%d" % i, True) for i in range(0, 7)],
-    "spear-cent-aegis": [(SP, "caeg_%d" % i, False) for i in range(0, 6)],
+    ## spear-cent-aegis: 11-27 自查返工改由下面 GRIDS 拼(特效工作台 aegis-open 5 帧 + aegis-loop 8 帧); 旧的 caeg_0..5(金色实心盾)留在 ai_src 不用
 }
 
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。
@@ -142,7 +142,23 @@ def main():
     ## 11-27 特效工作台网格帧表 → 横排帧条(见头注)
     import json
     CV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_vfx")
-    for src, dst, centre in [("centurion-ground-erupt", "spear-cent-erupt", True), ("centurion-crack-segment", "spear-cent-crack", False)]:
+    for src, dst, centre in [("centurion-ground-erupt", "spear-cent-erupt", True), ("centurion-crack-segment", "spear-cent-crack", False),
+            ("centurion-aegis-open+centurion-aegis-loop", "spear-cent-aegis", False)]:
+        if "+" in src:   # 两段接成一条(先展开后循环)
+            parts = []
+            for one in src.split("+"):
+                mj = json.load(open(os.path.join(CV, one + ".json"), encoding="utf-8"))
+                sh = Image.open(os.path.join(CV, one + ".png")).convert("RGBA")
+                for f in mj["frames"]:
+                    r = f["frame"]
+                    parts.append(sh.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])))
+            fw0, fh0 = parts[0].size
+            out = Image.new("RGBA", (fw0 * len(parts), fh0), (0, 0, 0, 0))
+            for i, im in enumerate(parts):
+                out.paste(im, (i * fw0, 0))
+            out.save(os.path.join(VFX, dst + ".png"), optimize=False)
+            print(dst, len(parts), "帧", fw0, "×", fh0)
+            continue
         jp = os.path.join(CV, src + ".json")
         if not os.path.exists(jp):
             print("缺帧表, 跳过", dst)

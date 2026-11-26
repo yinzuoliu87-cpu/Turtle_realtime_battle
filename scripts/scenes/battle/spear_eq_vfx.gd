@@ -171,6 +171,8 @@ func cent_spear_drop(s: Dictionary) -> void:
 var _aegis: Array = []      # {u, node}
 const AEGIS_FWD := 46.0     # 立在身前多远(码)
 const AEGIS_H_M := 3.4      # 能量盾高(米)
+const AEGIS_NF := 13        # 帧条: 0..4 展开(16 fps) + 5..12 循环(12 fps)
+const AEGIS_OPEN := 5
 
 
 func cent_shield(u: Dictionary, sec: float) -> void:
@@ -179,10 +181,11 @@ func cent_shield(u: Dictionary, sec: float) -> void:
 	var nf: int = int(sd.get("frames", 42)) if not sd.is_empty() else 42
 	_cent_play(u, "shield", float(nf) / maxf(0.5, sec))
 	cent_shield_off(u)
-	var s := _strip(SV + "spear-cent-aegis.png", 6, battle._world_pos(Vector2(u["pos"]), 0.0), AEGIS_H_M, 10.0, true, sec, false, null, 0.0)
+	## 11-27 自查重做: 半透明能量盾(13 帧 = 展开 5 + 循环 8), 帧号由 _tick_aegis 推: 展开放一次、之后循环段
+	var s := _strip(SV + "spear-cent-aegis.png", AEGIS_NF, battle._world_pos(Vector2(u["pos"]), 0.0), AEGIS_H_M, 0.0, true, sec, false, null, 0.0)
 	if s != null:
-		s.modulate = Color(1.15, 1.1, 1.0, 0.86)
-		_aegis.append({"u": u, "node": s})
+		s.frame = 0
+		_aegis.append({"u": u, "node": s, "mf": _mfx.back()})   # mf: 借通用帧推进的计时(t 累加), 帧号这里自己算
 		_tick_aegis()
 	_strip(LION_DUST, 7, battle._world_pos(Vector2(u["pos"]), 0.0), 1.6, 16.0, false, 7.0 / 16.0, false, null, 0.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY * 0.5)
@@ -207,6 +210,10 @@ func _tick_aegis() -> void:
 		var fx: float = (1.0 if Vector2(tg["pos"]).x >= Vector2(u["pos"]).x else -1.0) if tg is Dictionary else _face(u).x
 		(n as Sprite3D).position = battle._world_pos(Vector2(u["pos"]) + Vector2(fx * AEGIS_FWD, 6.0), 0.0)
 		(n as Sprite3D).flip_h = fx < 0.0
+		if a.get("mf") is Dictionary:   # 展开段放一次(16 fps), 之后循环段(12 fps); 在 super.tick 的通用推帧之后覆盖
+			var at: float = float((a["mf"] as Dictionary)["t"])
+			var ok: float = float(AEGIS_OPEN) / 16.0
+			(n as Sprite3D).frame = mini(AEGIS_OPEN - 1, int(at * 16.0)) if at < ok else AEGIS_OPEN + (int((at - ok) * 12.0) % (AEGIS_NF - AEGIS_OPEN))
 		keep.append(a)
 	_aegis = keep
 
