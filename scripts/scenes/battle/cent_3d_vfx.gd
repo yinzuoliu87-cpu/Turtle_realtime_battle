@@ -122,6 +122,18 @@ static func gen_ray_cross(ln: float, w: float) -> ArrayMesh:
 	return VfxTex.tag(st.commit(), "gen_ray_cross", [ln, w], SRC)
 
 
+## 面片(XY 平面, 中心在原点): 热扭曲用, 着色器里做公告板
+static func gen_quad(w: float, h: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for q in [[-0.5, -0.5, 0.0, 1.0], [0.5, -0.5, 1.0, 1.0], [0.5, 0.5, 1.0, 0.0], [-0.5, 0.5, 0.0, 0.0]]:
+		st.set_uv(Vector2(float(q[2]), float(q[3])))
+		st.add_vertex(Vector3(float(q[0]) * w, float(q[1]) * h, 0.0))
+	for k in [0, 1, 2, 0, 2, 3]:
+		st.add_index(k)
+	return VfxTex.tag(st.commit(), "gen_quad", [w, h], SRC)
+
+
 static func tex(name: String) -> Texture2D:
 	return load(AT + name) as Texture2D
 

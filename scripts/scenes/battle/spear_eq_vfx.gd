@@ -441,7 +441,8 @@ const CENT_IMP_FWD_PX := 75.0
 const CENT_IMP_UP_PX := 30.0
 const CENT_SHOCK_SEC := 0.34
 const CENT_SHOCK_DIST := 2.0
-const CENT_ARROW_M := 2.6     # 突刺气劲长(米), 跟着罩子走
+const CENT_ARROW_M := 2.6     # 突刺气劲基准长(米): 定粗细; 实际长度 = 人身前 → 罩子头部
+const CENT_ARROW_BACK := 1.0  # 箭尾在命中帧矛尖往回多少米(人身前一点)
 const CENT_SHOCK_SPD := 16.0   # 冲击罩飞行速度(米/秒): 二档整条线(目标 + 260 码)约 0.6 秒
 const CONE_MIX: Shader = preload("res://assets/shaders/cent_cone_mix.gdshader")
 const CONE_ADD: Shader = preload("res://assets/shaders/cent_cone_add.gdshader")
@@ -606,13 +607,26 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	spray.position = tip
 	spray.rotation = Vector3(0.0, yaw2, 0.0)
 	w.add_child(spray)
+	## 突刺气劲: 箭尾固定在人身前(命中帧矛尖往回 CENT_ARROW_BACK 米), 箭头贴着罩子头部, 长度跟着拉长(粗细不变)
+	var tail: Vector3 = tip - d3 * CENT_ARROW_BACK
 	var arrow := _dir_strip(SV + "spear-cent-thrust.png", 7, Vector2(u["pos"]), Vector2(d3.x, d3.z), CENT_ARROW_M, 24.0, 0.0, tip.y)
 	if arrow != null:
 		(_mfx.back() as Dictionary)["loop"] = true   # 帧条循环, 跟罩子同生同灭(_stab_free 删)
-		arrow.position = tip - d3 * (CENT_ARROW_M * 0.5 - 0.1)
+		(_mfx.back() as Dictionary)["nf"] = 6   # 只循环前 6 帧: 第 7 帧是收尾几乎全空, 循环到它箭会闪没
 		arrow.render_priority = 13   # 画在罩子各层(10–12)上面: 箭头在罩子里看得清
+		_arrow_span(arrow, tail, tip)
+	## 热扭曲 11-27 试过读屏幕纹理(hint_screen_texture): 兼容渲染器 + 战场在 SubViewport 里, 3D 特效读到的是一片平滑色、没有地面画面
+	##   (强制 mip 0 也一样; 探针: 平移 + 染红后整块无砖纹), 扭曲只是一团糊 ⇒ 这一层不做; 桌面没有黑屏
+	var haze = null
 	_stabs.append({"parts": parts, "bills": bills, "ring": ring, "t": 0.0, "life": maxf(CENT_SHOCK_SEC, dist / CENT_SHOCK_SPD), "p0": tip, "d3": d3, "dist": dist,
-		"u": u, "front": [fr_dark, fr_hot], "spray": spray, "skid": 0.0, "h": tip.y, "arrow": arrow})
+		"u": u, "front": [fr_dark, fr_hot], "spray": spray, "skid": 0.0, "h": tip.y, "arrow": arrow, "tail": tail, "haze": haze})
+
+
+## 突刺气劲从 a 拉到 b: 帧里箭的有效长约 108 / 128 帧宽 ⇒ 横向缩放 = 距离 / (CENT_ARROW_M × 0.84)
+func _arrow_span(s: Sprite3D, a: Vector3, b: Vector3) -> void:
+	var ln: float = maxf(0.3, a.distance_to(b))
+	s.position = (a + b) * 0.5
+	s.scale = Vector3(ln / (CENT_ARROW_M * 0.84), 1.0, 1.0)
 
 
 ## 二档: 冲击罩头部改跟着结算那道冲击波走(sim 的波头位置), 到头再淡掉
@@ -661,6 +675,7 @@ func _stab_free(st: Dictionary) -> void:
 		_free(f)
 	_stop_ps(st.get("spray"))
 	_free(st.get("arrow"))
+	_free(st.get("haze"))
 
 
 func _tick_stabs(delta: float) -> void:
@@ -705,7 +720,7 @@ func _tick_stabs(delta: float) -> void:
 			fi += 1
 		var ar0 = st.get("arrow")   # 突刺气劲: 箭头尖贴着罩子头部往前走
 		if ar0 != null and is_instance_valid(ar0):
-			(ar0 as Sprite3D).position = pos - d3 * (CENT_ARROW_M * 0.5 - 0.1)
+			_arrow_span(ar0 as Sprite3D, Vector3(st["tail"]), pos + d3 * 0.1)
 			(ar0 as Sprite3D).modulate = Color(1.0, 1.0, 1.0, fd)
 		var sp0 = st.get("spray")
 		if sp0 != null and is_instance_valid(sp0):
@@ -1992,6 +2007,7 @@ func clear() -> void:
 			_free(f)
 		_free(st.get("spray"))
 		_free(st.get("arrow"))
+		_free(st.get("haze"))
 	_stabs.clear()
 	for r4 in _cav_nodes:
 		_free(r4.get("bow"))
