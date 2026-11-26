@@ -10,6 +10,7 @@
   mote.png     32²  上飘光点 / 碎光片: 软圆点 + 十字闪
   xstar.png   128²  普攻冲击罩最前端的十字星芒(RGBA 白 + 透明度, 立绘式面片直接用)
   glow.png     64²  矛头光晕(RGBA 白 + 透明度)
+  rock.png     32²  登场砸地迸出的碎石(RGBA 彩色: 不规则多边形 + 亮面 / 暗面 + 深色描边)
 """
 import math, os
 import numpy as np
@@ -145,6 +146,20 @@ def glow():
     return np.clip(np.exp(-(r / 0.42) ** 2) * 1.05 - 0.02, 0, 1)
 
 
+def rock():
+    S = 32; im = Image.new("RGBA", (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    rng = np.random.default_rng(57)
+    pts = []
+    for k in range(7):
+        a = k / 7 * 2 * math.pi + rng.uniform(-0.25, 0.25)
+        r = rng.uniform(9, 14)
+        pts.append((16 + math.cos(a) * r, 16 + math.sin(a) * r))
+    d.polygon(pts, fill=(112, 84, 58, 255), outline=(52, 36, 24, 255))
+    d.polygon([pts[4], pts[5], pts[6], (16, 16)], fill=(150, 118, 84, 255))     # 亮面(左上受光)
+    d.polygon([pts[1], pts[2], (16, 16)], fill=(78, 56, 38, 255))               # 暗面
+    return im
+
+
 if __name__ == "__main__":
     save(energy(), "energy.png")
     save(erode(), "erode.png")
@@ -154,3 +169,5 @@ if __name__ == "__main__":
     save(mote(), "mote.png")
     save_rgba(xstar(), "xstar.png")
     save_rgba(glow(), "glow.png")
+    rock().save(os.path.join(OUT, "rock.png"), optimize=False)
+    print("rock.png (32, 32)")

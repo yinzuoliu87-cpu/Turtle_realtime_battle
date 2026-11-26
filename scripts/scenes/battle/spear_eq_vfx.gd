@@ -73,6 +73,143 @@ const CENT_PLANT_H0 := 16.0     # 长矛从多高落(米)
 const CENT_PLANT_M := 4.2       # 插着的长矛高(米; 2.6 时全景下只剩一根细线)
 const CENT_PLANT_BURY := 0.35   # 矛尖扎进地里多深(米)
 
+## 登场分层(11-27, 研究稿 R 落地插矛 / R 冲击 / R 下坠彗星)
+const DOWN := Vector3(0.0, 0.0, -PI * 0.5)   # 本地 +X 转成朝下(抛物面尖端朝地, 口朝上)
+
+
+## 一组同形锥(尖端朝下): [着色器, 长, 口径, 往后错开(米), 参数, 绘制顺序]
+func _cone_set(spec: Array, pos: Vector3, rot: Vector3) -> Array:
+	var parts: Array = []
+	for sp in spec:
+		var prm: Dictionary = (sp[4] as Dictionary).duplicate()
+		prm["prog"] = 0.0
+		prm["fade"] = 1.0
+		var mi := Cent3dVfx.node(battle._world, Cent3dVfx.gen_shock(float(sp[1]), float(sp[2]), 8, 20), sp[0], CONE_SP, prm, int(sp[5]))
+		mi.rotation = rot
+		mi.position = pos
+		parts.append({"node": mi, "off": float(sp[3])})
+	return parts
+
+
+func _cone_set_tick(parts: Array, pos: Vector3, axis: Vector3, t: float, fade: float, vis: bool) -> void:
+	for p in parts:
+		var n = p["node"]
+		if n == null or not is_instance_valid(n):
+			continue
+		(n as MeshInstance3D).visible = vis
+		(n as MeshInstance3D).position = pos - axis * float(p["off"])
+		var m: ShaderMaterial = (n as MeshInstance3D).material_override
+		m.set_shader_parameter("prog", t * 8.0)
+		m.set_shader_parameter("fade", fade)
+
+
+func _cone_set_free(parts) -> void:
+	if parts is Array:
+		for p in parts:
+			_free(p["node"])
+
+
+## 连续冒的粒子(星尘 / 星点): 方向 = 世界方向
+func _stream_ps(pos: Vector3, dir: Vector3, amount: int, life: float, v0: float, v1: float, spread: float, sz: float) -> GPUParticles3D:
+	var ps := GPUParticles3D.new()
+	ps.amount = amount
+	ps.lifetime = life
+	ps.randomness = 0.7
+	ps.local_coords = false
+	ps.fixed_fps = 30
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.35
+	pm.direction = dir
+	pm.spread = spread
+	pm.initial_velocity_min = v0
+	pm.initial_velocity_max = v1
+	pm.gravity = Vector3(0.0, -0.5, 0.0)
+	pm.scale_min = 0.6
+	pm.scale_max = 1.3
+	pm.color_ramp = _gold_ramp(0.0)
+	ps.process_material = pm
+	ps.draw_pass_1 = _mote_quad(sz)
+	ps.position = pos
+	battle._world.add_child(ps)
+	return ps
+
+
+func _stop_ps(ps) -> void:
+	if ps != null and is_instance_valid(ps):
+		(ps as GPUParticles3D).emitting = false
+		_aegis_junk.append({"node": ps, "left": 1.2})
+
+
+## 一次性迸射(碎石用彩色贴图 + 普通混合; 星尘用金色光点 + 叠加)
+func _burst_ps(pos: Vector3, amount: int, life: float, v0: float, v1: float, spread: float, grav: float, sz: float, rock: bool) -> void:
+	var ps := GPUParticles3D.new()
+	ps.amount = amount
+	ps.lifetime = life
+	ps.one_shot = true
+	ps.explosiveness = 0.95
+	ps.randomness = 0.8
+	ps.local_coords = false
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 1.2
+	pm.direction = Vector3(0.0, 1.0, 0.0)
+	pm.spread = spread
+	pm.initial_velocity_min = v0
+	pm.initial_velocity_max = v1
+	pm.gravity = Vector3(0.0, grav, 0.0)
+	pm.scale_min = 0.7
+	pm.scale_max = 1.8
+	pm.angle_min = -180.0
+	pm.angle_max = 180.0
+	pm.angular_velocity_min = -360.0
+	pm.angular_velocity_max = 360.0
+	if rock:
+		var gd := Gradient.new()
+		gd.offsets = PackedFloat32Array([0.0, 0.8, 1.0])
+		gd.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+		var gt := GradientTexture1D.new()
+		gt.gradient = gd
+		pm.color_ramp = gt
+		var qm := QuadMesh.new()
+		qm.size = Vector2(sz, sz)
+		var sm := StandardMaterial3D.new()
+		sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		sm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		sm.vertex_color_use_as_albedo = true
+		sm.albedo_texture = Cent3dVfx.tex("rock.png")
+		sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		qm.material = sm
+		ps.draw_pass_1 = qm
+	else:
+		pm.color_ramp = _gold_ramp(1.0)
+		ps.draw_pass_1 = _mote_quad(sz)
+	ps.process_material = pm
+	ps.position = pos
+	ps.emitting = true
+	battle._world.add_child(ps)
+	_aegis_junk.append({"node": ps, "left": life + 0.4})
+
+
+## 贴地的单张光(亮光 / 暗光垫底): 统一推帧最后 0.15 秒淡掉删除
+func _ground_glow(pos2: Vector2, size_m: float, col: Color, life: float) -> void:
+	var s := _strip(Cent3dVfx.AT + "glow.png", 1, battle._world_pos(pos2, 0.06), size_m, 0.0, false, life, true, null, 0.0)
+	if s != null:
+		s.modulate = col
+
+
+## 一圈往外推的环(土浪 / 余震): 半径 r 米, rd 秒扩完
+func _ring_wave(pos2: Vector2, r: float, rd: float, mid: Color, hot: Color, delay: float) -> void:
+	if not _ok():
+		return
+	var ring := Cent3dVfx.node(battle._world, Cent3dVfx.gen_fan(0.1, r, TAU, 0.08, 56, 6), Cent3dVfx.GROUND_SHADER, Cent3dVfx.GROUND_SP,
+		{"tex_energy": Cent3dVfx.tex("energy.png"), "open": 1.0, "shell_k": 0.0, "fade": 0.0,
+		 "col_mid": Vector3(mid.r, mid.g, mid.b), "col_hot": Vector3(hot.r, hot.g, hot.b)}, 0)
+	ring.position = battle._world_pos(pos2, 0.0)
+	_stabs.append({"parts": [], "bills": [], "ring": ring, "t": -delay, "life": rd + delay, "rd": rd, "p0": Vector3.ZERO, "d3": Vector3.ZERO, "dist": 0.0})
+
+
 func cent_land(p: Dictionary, sec: float) -> void:
 	p["_slam_voff"] = Vector3(0.0, CENT_DROP_H, 0.0)   # 先在画面外的高空
 	var mk := _strip(V + "spear-cent-marker.png", 8, battle._world_pos(Vector2(p["pos"]), 0.05), CENT_MARKER_M, 10.0, true, sec + 0.05, true, null, 0.0)
@@ -91,7 +228,15 @@ func cent_land(p: Dictionary, sec: float) -> void:
 	var tr := _strip(V + "spear-cent-trail.png", 6, battle._world_pos(Vector2(p["pos"]), CENT_DROP_H), CENT_TRAIL_M, 16.0, true, sec, false, null, 0.0)
 	if tr != null:
 		tr.visible = false   # 开始砸下那一刻才亮(下面 tick 里跟着本体)
-	_lands.append({"u": p, "t": 0.0, "sec": maxf(0.1, sec), "mk": mk, "sp": sp, "tr": tr, "planted": false, "ghost": 0.0})
+	var comet: Array = _cone_set([
+		[CONE_MIX, 3.4, 1.05, 0.0, {"col": Vector4(0.2, 0.06, 0.02, 0.5), "rim_mix": 0.45, "tail": 0.55, "apex": 0.2}, 10],
+		[CONE_MIX, 2.8, 0.85, 0.0, {"col": Vector4(1.0, 0.74, 0.25, 0.6), "rim_mix": 0.7, "tail": 0.5, "apex": 1.0}, 11],
+		[CONE_ADD, 3.4, 0.95, 0.0, {"col": Vector4(0.85, 0.28, 0.1, 0.55), "rim_mix": 0.5, "tail": 0.45, "apex": 0.6}, 12],
+		[CONE_MIX, 6.5, 1.15, 0.3, {"col": Vector4(1.0, 0.95, 0.8, 0.8), "rim_mix": 0.0, "tail": 0.6, "apex": 0.0, "streaks": 20.0}, 12],
+	], battle._world_pos(Vector2(p["pos"]), CENT_DROP_H), DOWN) if _ok() else []
+	_cone_set_tick(comet, Vector3.ZERO, Vector3.DOWN, 0.0, 1.0, false)
+	_lands.append({"u": p, "t": 0.0, "sec": maxf(0.1, sec), "mk": mk, "sp": sp, "tr": tr, "planted": false, "ghost": 0.0,
+		"comet": comet, "dust": null, "plant_fx": [], "plant_ps": null})
 	_cent_play(p, "brace", 42.0 / maxf(0.1, sec))   # 举盾下蹲的姿势砸下来, 落地时正好举满
 
 
@@ -125,6 +270,16 @@ func cent_impact(p: Dictionary) -> void:
 	var d_m: float = 1200.0 * float(battle.WS)   # 11-27 第二次「裂坑圈可以大一倍」: 600 → 1200 码 ≈ 29 米(岛宽约 38 米) #   # 落地裂坑直径(11-27 用户「下坠的那个地裂的这个圈还可以再大点啊」: 380 → 600 码 ≈ 14.4 米, 与预警圈同大)
 	_strip(V + "spear-cent-impact.png", 8, battle._world_pos(Vector2(p["pos"]), 0.07), d_m, 14.0, false, 8.0 / 14.0, true, null, 0.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
+	## 研究稿 R 冲击: 亮闪 → 暗光垫底 → 土浪环 + 两道余震环 + 碎石 / 星尘迸射
+	var c2 := Vector2(p["pos"])
+	_ground_glow(c2, 12.0, Color(0.12, 0.05, 0.02, 0.6), 0.5)
+	_ground_glow(c2, 8.0, Color(1.0, 0.85, 0.5, 1.0), 0.18)
+	_ring_wave(c2, 9.0, 0.55, Color(0.55, 0.4, 0.25), Color(0.85, 0.72, 0.5), 0.0)       # 土浪
+	_ring_wave(c2, 6.5, 0.25, Color(1.0, 0.62, 0.14), Color(1.0, 0.95, 0.8), 0.0)        # 余震环 1
+	_ring_wave(c2, 13.0, 0.35, Color(1.0, 0.62, 0.14), Color(1.0, 0.95, 0.8), 0.08)      # 余震环 2
+	if _ok():
+		_burst_ps(battle._world_pos(c2, 0.3), 40, 0.9, 5.0, 10.0, 70.0, -14.0, 0.26, true)    # 碎石
+		_burst_ps(battle._world_pos(c2, 0.5), 60, 0.8, 3.0, 7.0, 60.0, -3.0, 0.13, false)     # 星尘
 	_island_cracks(Vector2(p["pos"]))   # 整座岛的地面一起裂开(11-27 用户「应该是整个地面都出现全部地裂呀」)
 
 
@@ -414,7 +569,7 @@ func _tick_stabs(delta: float) -> void:
 		var k: float = t / float(st["life"])
 		var rg = st.get("ring")
 		if rg != null and is_instance_valid(rg):
-			var rk: float = t / 0.22
+			var rk: float = maxf(0.0, t) / float(st.get("rd", 0.22))
 			if rk >= 1.0:
 				_free(rg)
 				st["ring"] = null
@@ -476,15 +631,153 @@ func cent_throw_begin(u: Dictionary) -> void:
 	_cent_play(u, "throw", 14.0)   # 15 帧 @14, 出手帧下标 4(结算 THROW_RELEASE 0.29 同一刻)
 
 
+## 掷矛飞矛分层(11-27, 研究稿 Q 普通飞矛): 跟着飞矛走的一组层, 矛头在飞矛节点往前 JAV_HEAD 米处
+const JAV_HEAD := 1.15
+
+
+func _jav_fx(head: Vector3, yaw: float) -> Dictionary:
+	var w: Node3D = battle._world
+	## [着色器, 长, 口径, 往后错开(米), 参数, 绘制顺序]
+	var spec: Array = [
+		[CONE_MIX, 1.1, 0.34, 0.0, {"col": Vector4(0.2, 0.06, 0.02, 0.5), "rim_mix": 0.4, "tail": 0.5, "apex": 0.2}, 10],     # 暗罩
+		[CONE_MIX, 0.9, 0.28, 0.0, {"col": Vector4(1.0, 0.74, 0.25, 0.65), "rim_mix": 0.65, "tail": 0.5, "apex": 1.0}, 11],    # 金罩
+		[CONE_ADD, 1.1, 0.32, 0.0, {"col": Vector4(0.8, 0.3, 0.12, 0.55), "rim_mix": 0.5, "tail": 0.45, "apex": 0.6}, 12],    # 叠加发光罩
+		[CONE_MIX, 3.2, 0.3, 0.3, {"col": Vector4(1.0, 0.95, 0.8, 0.75), "rim_mix": 0.0, "tail": 0.7, "apex": 0.0, "streaks": 16.0}, 12],   # 流光拖尾
+		[CONE_MIX, 3.6, 0.36, 0.3, {"col": Vector4(0.18, 0.1, 0.05, 0.35), "rim_mix": 0.3, "tail": 0.75, "apex": 0.0}, 9],    # 暗拖尾
+	]
+	var parts: Array = []
+	for sp in spec:
+		var prm: Dictionary = (sp[4] as Dictionary).duplicate()
+		prm["prog"] = 0.0
+		prm["fade"] = 1.0
+		var mi := Cent3dVfx.node(w, Cent3dVfx.gen_shock(float(sp[1]), float(sp[2]), 8, 20), sp[0], CONE_SP, prm, int(sp[5]))
+		mi.rotation = Vector3(0.0, yaw, 0.0)
+		mi.position = head
+		parts.append({"node": mi, "off": float(sp[3])})
+	var bills: Array = []
+	## [贴图, 宽(米), 颜色, 绘制顺序, 横向拉伸]
+	for b in [["glow.png", 1.2, Color(0.12, 0.05, 0.02, 0.5), 9, 1.0], ["glow.png", 0.9, Color(1.0, 0.95, 0.8, 0.85), 13, 1.0],
+			["xstar.png", 1.4, Color(1.0, 0.9, 0.65, 0.9), 14, 2.2]]:
+		var s := Sprite3D.new()
+		s.texture = Cent3dVfx.tex(str(b[0]))
+		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		s.shaded = false
+		s.transparent = true
+		s.no_depth_test = true
+		s.render_priority = int(b[3])
+		s.modulate = b[2]
+		s.pixel_size = float(b[1]) / float(s.texture.get_width())
+		s.scale = Vector3(float(b[4]), 1.0 / sqrt(float(b[4])), 1.0)
+		s.position = head
+		w.add_child(s)
+		bills.append({"node": s, "sx": float(b[4])})
+	var ps := GPUParticles3D.new()   # 一路火花(往后落下)
+	ps.amount = 40
+	ps.lifetime = 0.35
+	ps.randomness = 0.6
+	ps.local_coords = false
+	ps.fixed_fps = 30
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(-1.0, 0.15, 0.0)
+	pm.spread = 18.0
+	pm.initial_velocity_min = 1.0
+	pm.initial_velocity_max = 3.0
+	pm.gravity = Vector3(0.0, -2.5, 0.0)
+	pm.scale_min = 0.6
+	pm.scale_max = 1.2
+	pm.color_ramp = _gold_ramp(1.0)
+	ps.process_material = pm
+	ps.draw_pass_1 = _mote_quad(0.08)
+	ps.position = head
+	ps.rotation = Vector3(0.0, yaw, 0.0)
+	w.add_child(ps)
+	return {"parts": parts, "bills": bills, "ps": ps, "t": 0.0}
+
+
+func _jav_tick(fx: Dictionary, head: Vector3, d3: Vector3, delta: float) -> void:
+	fx["t"] = float(fx.get("t", 0.0)) + delta
+	var t: float = float(fx["t"])
+	for p in fx["parts"]:
+		var n = p["node"]
+		if n != null and is_instance_valid(n):
+			(n as MeshInstance3D).position = head - d3 * float(p["off"])
+			((n as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("prog", t * 9.0)
+	var fl: float = 0.8 + 0.4 * fmod(t * 31.0, 1.0)
+	for b in fx["bills"]:
+		var bn = b["node"]
+		if bn != null and is_instance_valid(bn):
+			(bn as Sprite3D).position = head
+			var sx: float = float(b["sx"])
+			(bn as Sprite3D).scale = Vector3(sx, 1.0 / sqrt(sx), 1.0) * (fl if sx > 1.0 else 1.0)
+	var ps = fx.get("ps")
+	if ps != null and is_instance_valid(ps):
+		(ps as GPUParticles3D).position = head
+		(ps as GPUParticles3D).emitting = true
+
+
+func _jav_free(fx) -> void:
+	if not (fx is Dictionary):
+		return
+	for p in fx.get("parts", []):
+		_free(p["node"])
+	for b in fx.get("bills", []):
+		_free(b["node"])
+	var ps = fx.get("ps")
+	if ps != null and is_instance_valid(ps):
+		(ps as GPUParticles3D).emitting = false
+		_aegis_junk.append({"node": ps, "left": 0.4})
+
+
+## 径向冲击环 + 火花迸射(出手 / 命中共用; 底层元素)
+func _cent_burst(pos: Vector3, yaw: float, ring_m: float) -> void:
+	if not _ok():
+		return
+	var w: Node3D = battle._world
+	var ring := Cent3dVfx.node(w, Cent3dVfx.gen_fan(0.05, ring_m, TAU, 0.0, 40, 4), Cent3dVfx.GROUND_SHADER, Cent3dVfx.GROUND_SP,
+		{"tex_energy": Cent3dVfx.tex("energy.png"), "open": 1.0, "shell_k": 0.05}, 12)
+	ring.position = pos
+	ring.rotation = Vector3(0.0, yaw, PI * 0.5)
+	var ps := GPUParticles3D.new()
+	ps.amount = 18
+	ps.lifetime = 0.35
+	ps.one_shot = true
+	ps.explosiveness = 1.0
+	ps.randomness = 0.7
+	ps.local_coords = false
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(1.0, 0.2, 0.0)
+	pm.spread = 50.0
+	pm.initial_velocity_min = 3.0
+	pm.initial_velocity_max = 7.0
+	pm.gravity = Vector3(0.0, -6.0, 0.0)
+	pm.scale_min = 0.7
+	pm.scale_max = 1.5
+	pm.color_ramp = _gold_ramp(1.0)
+	ps.process_material = pm
+	ps.draw_pass_1 = _mote_quad(0.1)
+	ps.position = pos
+	ps.rotation = Vector3(0.0, yaw, 0.0)
+	ps.emitting = true
+	w.add_child(ps)
+	_aegis_junk.append({"node": ps, "left": 0.6})
+	_stabs.append({"parts": [], "bills": [], "ring": ring, "t": 0.0, "life": 0.25, "p0": pos, "d3": Vector3.ZERO, "dist": 0.0})
+
+
 func cent_throw(u: Dictionary, s: Dictionary) -> void:
 	_dir_strip(SV + "spear-cent-thrust.png", 7, Vector2(s["pos"]) + Vector2(s["dir"]) * 90.0, Vector2(s["dir"]), 180.0 * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)   # 出手那一下的气劲
 	var n := _proj("spear-pilum.png", Vector2(s["pos"]), Vector2(s["dir"]), 2.4)
 	if n != null:
-		_spear_nodes.append({"s": s, "node": n})
+		var d2: Vector2 = Vector2(s["dir"]).normalized()
+		var d3 := Vector3(d2.x, 0.0, d2.y)
+		var yaw: float = Cent3dVfx.yaw_of(d2)
+		var head: Vector3 = battle._world_pos(Vector2(s["pos"]), 1.0) + d3 * JAV_HEAD
+		_cent_burst(battle._world_pos(Vector2(s["pos"]), 1.0), yaw, 1.1)   # 出手: 径向冲击环 + 火花
+		_spear_nodes.append({"s": s, "node": n, "fx": _jav_fx(head, yaw), "d3": d3})
 
 
 ## 11-27: 三批里程序画的圆圈全部换成画出来的帧条(用户「lion 太敷衍了吧」之后自查出 18 处)
 func cent_spear_hit(o: Dictionary) -> void:
+	_cent_burst(battle._world_pos(Vector2(o["pos"]), 1.0), 0.0, 1.0)   # 命中: 径向冲击环 + 火花迸射
 	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(o["pos"]), 0.5), 1.6, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 	_strip(LION_DUST, 7, battle._world_pos(Vector2(o["pos"]), 0.0), 1.0, 16.0, false, 7.0 / 16.0, false, null, 0.0)
 
@@ -493,6 +786,7 @@ func cent_spear_drop(s: Dictionary) -> void:
 	for r in _spear_nodes:
 		if is_same(r["s"], s):
 			_free(r["node"])
+			_jav_free(r.get("fx"))
 	_spear_nodes = _spear_nodes.filter(func(r): return not is_same(r["s"], s))
 
 
@@ -1374,6 +1668,14 @@ func tick(delta: float) -> void:
 			if tr != null and is_instance_valid(tr):   # 下坠光尾: 挂在本体头顶上方, 跟着往下砸
 				(tr as Sprite3D).visible = k < 1.0
 				(tr as Sprite3D).position = battle._world_pos(Vector2(u["pos"]), CENT_DROP_H * (1.0 - k * k) + 1.6)
+			## 彗星罩裹着本体往下砸(尖端在脚下), 一路往上留星尘
+			var hb: float = CENT_DROP_H * (1.0 - k * k)
+			_cone_set_tick(l["comet"], battle._world_pos(Vector2(u["pos"]), hb - 0.3), Vector3.DOWN, t, 1.0, k < 1.0)
+			if l.get("dust") == null and _ok():
+				l["dust"] = _stream_ps(battle._world_pos(Vector2(u["pos"]), hb), Vector3.UP, 50, 0.6, 0.5, 2.0, 30.0, 0.12)
+			var dps = l.get("dust")
+			if dps != null and is_instance_valid(dps):
+				(dps as GPUParticles3D).position = battle._world_pos(Vector2(u["pos"]), hb + 1.0)
 			l["ghost"] = float(l["ghost"]) - delta
 			if float(l["ghost"]) <= 0.0 and k < 1.0:
 				l["ghost"] = 0.04
@@ -1386,11 +1688,41 @@ func tick(delta: float) -> void:
 				(sp as Sprite3D).position = battle._world_pos(Vector2(u["pos"]), lerpf(CENT_PLANT_H0, -CENT_PLANT_BURY, kk * kk))
 				if kk >= 1.0 and not bool(l["planted"]):
 					l["planted"] = true
+					## 插矛: 竖直光罩 + 地面亮光(下垫暗光) + 横向星芒 + 星点往上飘, 一直到本人砸下
+					var up2 := Vector2(u["pos"])
+					var rest: float = maxf(0.2, float(l["sec"]) - t + 0.1)
+					_ground_glow(up2, 5.5, Color(0.14, 0.05, 0.02, 0.55), rest)
+					_ground_glow(up2, 3.4, Color(1.0, 0.78, 0.38, 0.9), rest)
+					l["plant_fx"] = _cone_set([
+						[CONE_MIX, 2.6, 0.55, 0.0, {"col": Vector4(0.25, 0.05, 0.02, 0.45), "rim_mix": 0.5, "tail": 0.6, "apex": 0.3}, 10],
+						[CONE_ADD, 2.2, 0.42, 0.0, {"col": Vector4(1.0, 0.7, 0.3, 0.6), "rim_mix": 0.6, "tail": 0.55, "apex": 1.2}, 12],
+						[CONE_ADD, 2.6, 0.5, 0.0, {"col": Vector4(0.9, 0.15, 0.08, 0.45), "rim_mix": 0.5, "tail": 0.5, "apex": 0.6}, 12],
+					], battle._world_pos(up2, 0.05), DOWN)
+					l["plant_ps"] = _stream_ps(battle._world_pos(up2, 0.3), Vector3.UP, 40, 1.0, 2.0, 4.0, 15.0, 0.12)
+					var fl := Sprite3D.new()   # 横向星芒(插地那一下)
+					fl.texture = Cent3dVfx.tex("xstar.png")
+					fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+					fl.shaded = false
+					fl.transparent = true
+					fl.no_depth_test = true
+					fl.render_priority = 14
+					fl.modulate = Color(1.0, 0.88, 0.6, 1.0)
+					fl.pixel_size = 2.0 / float(fl.texture.get_width())
+					fl.scale = Vector3(3.0, 0.35, 1.0)
+					fl.position = battle._world_pos(up2, 0.4)
+					battle._world.add_child(fl)
+					_mfx.append({"node": fl, "nf": 1, "fps": 0.0, "t": 0.0, "life": 0.35, "loop": false, "follow": null, "h": 0.0})
 					_strip(LION_DUST, 7, battle._world_pos(Vector2(u["pos"]), 0.0), 2.6, 16.0, false, 7.0 / 16.0, false, null, 0.0)
 					_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(u["pos"]), 0.3), 2.6, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 					battle._shake(battle.JUICE_SHAKE_HEAVY * 0.35)
+		if bool(l["planted"]):
+			_cone_set_tick(l["plant_fx"], battle._world_pos(Vector2(u["pos"]), 0.05), Vector3.DOWN, t, 1.0, true)
 		if t >= sec or not u.get("alive", false):
 			u["_slam_voff"] = Vector3.ZERO
+			_cone_set_free(l.get("comet"))
+			_cone_set_free(l.get("plant_fx"))
+			_stop_ps(l.get("dust"))
+			_stop_ps(l.get("plant_ps"))
 			var tr2 = l.get("tr")
 			if tr2 != null and is_instance_valid(tr2):
 				(tr2 as Node).queue_free()   # 落地那一刻收掉下坠光尾(11-27 录像: 原来竖在头顶上方又留了 0.7 秒)
@@ -1404,6 +1736,8 @@ func tick(delta: float) -> void:
 		var n = r["node"]
 		if n != null and is_instance_valid(n):
 			(n as Sprite3D).position = battle._world_pos(Vector2(r["s"]["pos"]), 1.0)
+			if r.get("fx") is Dictionary:   # 百夫长飞矛: 分层特效跟着矛头
+				_jav_tick(r["fx"], (n as Sprite3D).position + Vector3(r["d3"]) * JAV_HEAD, Vector3(r["d3"]), delta)
 	for r3 in _cav_nodes:
 		var n3 = r3["node"]
 		if n3 != null and is_instance_valid(n3):
@@ -1459,6 +1793,14 @@ func clear() -> void:
 		_free(r4.get("bow"))
 		for pt in r4.get("parts", []):
 			_free(pt["n"])
+	for r5 in _spear_nodes:   # 清场直接删(不进 _aegis_junk: 它在上面已经清过)
+		var f5 = r5.get("fx")
+		if f5 is Dictionary:
+			for p5 in f5.get("parts", []):
+				_free(p5["node"])
+			for b5 in f5.get("bills", []):
+				_free(b5["node"])
+			_free(f5.get("ps"))
 	for arr in [_spear_nodes, _cav_nodes, _ropes, _shields, _swv, _fall]:
 		for r in arr:
 			_free(r["node"])
