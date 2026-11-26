@@ -21,6 +21,8 @@ const AT := "res://assets/sprites/vfx/cent_aegis/"
 const SHOCK_SP := ["prog", "fade"]
 const SHEATH_SHADER: Shader = preload("res://assets/shaders/cent_sheath.gdshader")
 const SHEATH_SP := ["t", "fade"]
+const FIELD_SHADER: Shader = preload("res://assets/shaders/eternal_field.gdshader")
+const FIELD_SP := ["t", "grow", "pulse", "fade", "stack"]
 
 
 ## r = 半径(米), arc = 张角(弧度), h = 高(米), lean = 顶部往外翻多少(米)
@@ -105,6 +107,23 @@ static func gen_fan(r0: float, r1: float, arc: float, y0: float, nu: int, nv: in
 			st.add_vertex(Vector3(cos(a) * rr, y0, sin(a) * rr))
 	_grid_index(st, nu, nv)
 	return VfxTex.tag(st.commit(), "gen_fan", [r0, r1, arc, y0, nu, nv], SRC)
+
+
+## 低穹顶(145 灼烧力场, 11-26 深夜): 底圆半径 r 米、顶高 h 米, 中心在本地原点; UV.x 绕一圈 0→1, UV.y 地面 0 → 顶 1
+static func gen_dome(r: float, h: float, nu: int, nv: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in range(nv + 1):
+		var v: float = float(j) / float(nv)
+		var th: float = v * PI * 0.5
+		for i in range(nu + 1):
+			var u: float = float(i) / float(nu)
+			var a: float = TAU * u
+			st.set_uv(Vector2(u, v))
+			st.add_vertex(Vector3(cos(a) * cos(th) * r, sin(th) * h, sin(a) * cos(th) * r))
+	_grid_index(st, nu, nv)
+	st.generate_normals()
+	return VfxTex.tag(st.commit(), "gen_dome", [r, h, nu, nv], SRC)
 
 
 ## 十字交叉两片(沿 +X 长 ln 米, 宽 w 米): 穿盾矛光

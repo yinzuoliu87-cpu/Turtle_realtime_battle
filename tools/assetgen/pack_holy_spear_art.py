@@ -11,9 +11,8 @@
   · 145 永恒之枪(11-26 重做, 参考 docs/studies/20261126-参考-薇恩E恶魔审判.md), 同样是特效工作台全部自己写的图层:
     eternal-impact 插中(9 帧): 白金闪光 + 四芒大星 + 斜向小星 + 外扩金环 + 外散碎光条
     (11-26 晚用户「145 火圈应该是在携带者身上的，火圈特效不行，仔细以美术师的角度思考」⇒ 原 eternal-burn 作废, 按分层重做:)
-    eternal-ring-ground 灼烧圈地面层(循环 12 帧, 俯视): 暗褐焦痕环(压对比) + 焦斑 + 圈内淡热光呼吸 + 圈边琥珀细光
-    eternal-pulse       每秒跳伤害的光波(8 帧, 俯视): 从中心推到圈边的亮环 + 余晖 + 往外甩的火星
-    eternal-flame-tongue 圈边火舌(循环 8 帧): **Aseprite 后台逐笔画**(tools/assetgen/ase/eternal_flame_tongue.lua: 轮廓工具画剪影 / 平涂 / 亮部 / 高光, 铅笔点火星, Outline 描边), 引擎里沿圈立起一圈
+    (11-26 深夜用户「相当于携带者周围一个力场一样的东西」⇒ 地面环 / 光波两张作废, 力场改 3D 网格 + 着色器 assets/shaders/eternal_field.gdshader)
+    eternal-flame-tongue 火舌(循环 8 帧; 力场版贴在携带者身上往上窜): **Aseprite 后台逐笔画**(tools/assetgen/ase/eternal_flame_tongue.lua: 轮廓工具画剪影 / 平涂 / 亮部 / 高光, 铅笔点火星, Outline 描边), 引擎里沿圈立起一圈
   · 参考研究: docs/studies/20261126-参考-娜美W冲击之潮.md(同一飞行物砸友方 / 敌方靠落点颜色与形状区分)。
   · 砸中敌方用的是旧圣枪自己的两套(spear-holy-burst 十字星爆 / spear-holy-mark 圣痕印记), 同一件装备里换用途, 不算借别人的。
 工作台导出的是网格帧表 + JSON(每帧位置 / 锚点); 本脚本按 JSON 拆帧, 把锚点摆到每帧水平正中, 拼成横排帧条。
@@ -33,7 +32,7 @@ VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
 
 ## 名字 → (锚点居中方式) ; center = 锚点在帧正中, feet = 锚点水平居中、底边留 BELOW
 JOBS = {"holy-orb": "center", "holy-ally": "feet", "holy-guard-up": "feet", "holy-guard-ground": "center", "holy-channel": "feet",
-        "eternal-impact": "center", "eternal-ring-ground": "center", "eternal-pulse": "center"}
+        "eternal-impact": "center"}
 ## 不走工作台 JSON 的: Aseprite 画的火舌(工作流②), 源文件 tools/assetgen/ase/eternal_flame_tongue.aseprite, 导出的横排帧条原样拷过去
 COPY = {"eternal-flame-tongue-sheet": "eternal-flame-tongue"}
 

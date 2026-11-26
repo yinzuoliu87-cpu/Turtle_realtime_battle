@@ -349,6 +349,12 @@ func _process(d: float) -> void:
 		for uu in _b._units:
 			if uu is Dictionary and uu.get("alive", false) and not EquipCk.copies(uu, "p2eq_145").is_empty():
 				_b._equip_sys._spear_sys._set_acc(uu, "eter:p2eq_145", 100.0)
+	## 11-26 深夜 145 灼烧力场跟随演示: REC_ETERNAL_WALK 秒起让携带者上下来回走(验证力场贴着人走)
+	if OS.has_environment("REC_ETERNAL_WALK") and _el > float(OS.get_environment("REC_ETERNAL_WALK")):
+		for uu in _b._units:
+			if uu is Dictionary and uu.get("alive", false) and not EquipCk.copies(uu, "p2eq_145").is_empty():
+				var w0: float = float(OS.get_environment("REC_ETERNAL_WALK"))
+				uu["pos"] = Vector2(uu["pos"]) + Vector2(70.0, 110.0 * cos((_el - w0) * 1.6)) * d
 	## 11-26 146 圣枪效果一演示: REC_HOLY_HIT 秒时给圣枪携带者打一下(20% 最大生命), 从 60% 打到 50% 以下 ⇒ 圣枪落地 + 护盾 + 双抗
 	if OS.has_environment("REC_HOLY_HIT") and _el > float(OS.get_environment("REC_HOLY_HIT")) and not _seen.has("holy_hit"):
 		_seen["holy_hit"] = 1
