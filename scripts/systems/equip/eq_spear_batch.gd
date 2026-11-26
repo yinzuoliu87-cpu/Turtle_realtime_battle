@@ -830,7 +830,7 @@ func _holy_guard_part(u: Dictionary, amt: float) -> void:
 	var sb: float = float(u.get("shield", 0.0))
 	u["_own_grant_vfx"] = true
 	u["_own_grant_txt"] = true
-	battle._damage._grant_shield(u, amt)
+	battle._damage._grant_shield(u, amt)   # shield-perm-ok: 146 圣枪护盾「不会衰减」(用户 11-26 晚: 特殊护盾; 文案写明)
 	var got: float = maxf(0.0, float(u.get("shield", 0.0)) - sb)
 	u["_spearShieldVal"] = minf(float(u.get("_spearShieldVal", 0.0)) + got, float(u.get("shield", 0.0)))
 	stat["holy_guard_part"] += 1
@@ -875,7 +875,7 @@ func _holy_orb(u: Dictionary, si: int, ck: String) -> void:
 				_magic(me, tg, float(HOLY_ORB_DMG[si]))
 				if me.get("alive", false):
 					me["_own_grant_vfx"] = true   # 不弹通用得盾罩: 一次引导几十个光球, 每个都弹会把携带者整个盖住(11-26 录像); 演出是光点飞回携带者
-					battle._damage._grant_shield(me, float(HOLY_ORB_SHIELD[si]))
+					battle._damage._grant_shield(me, float(HOLY_ORB_SHIELD[si]), BattleDamage.COMMON_SHIELD_SEC)   # 文案没写时长 ⇒ 通用护盾 4 秒(封板)
 					_fx("holy_shield_back", [tg, me]),
 		func(_k: float, p2: Vector2, to2: Vector2) -> void:
 			_fx("holy_orb_step", [node, p2, to2]))

@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "66db6b87d896b57e201cbbc5b868e6af6df1dcae7937facc261bf3f02034ae8e",
+ "fingerprint": "e61d39e5a0f6da72e5be66940a9a1637d82f157f2d9022d7507543e989db6685",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -45,12 +45,12 @@
   },
   {
    "def": "c74f3eed261e1b5e",
-   "hash": "8d2080bded30c9cc212d12bc225c8591bac85566333ab78fb65e2fc1d17c28fa",
+   "hash": "df2419de070a7d63aabdaff9783e038b1ac38fb06e3859333fc2e99ef341bb26",
    "tag": "⑨ 面具顶档(偷脸 / 里世界) + 筹码 vs 长矛顶档(百夫长) + 筹码"
   },
   {
    "def": "static-tables",
-   "hash": "abc140f506450a87ddb5483e7a38325ace2386c3d2db6bb4a91fc0174cf6637c",
+   "hash": "839ac9f52557c6c41a87dca0c697165384b141236e3d5c4f2b56cfc3c6db1013",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],

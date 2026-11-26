@@ -135,6 +135,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|单体伤害提高 #%
 scripts/gamedata/equip_tier_labels.gd|lit|压载舱容量 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|友军双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|友军护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|友方回复 #
 scripts/gamedata/equip_tier_labels.gd|lit|双抗 #
 scripts/gamedata/equip_tier_labels.gd|lit|双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|双穿 +#
@@ -151,6 +152,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|回复加成 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|回复比例 #% 本次伤害
 scripts/gamedata/equip_tier_labels.gd|lit|回复至 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|回复龟能 #
+scripts/gamedata/equip_tier_labels.gd|lit|圣枪护盾 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|地雷 # 颗
 scripts/gamedata/equip_tier_labels.gd|lit|坠毁伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|基础伤害 #
@@ -180,7 +182,6 @@ scripts/gamedata/equip_tier_labels.gd|lit|小熊基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|小虫攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|小虫生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|幽灵护盾 #% 最大生命值
-scripts/gamedata/equip_tier_labels.gd|lit|引爆伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|弹珠数 # 颗
 scripts/gamedata/equip_tier_labels.gd|lit|忍者攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|忍者生命值 #
@@ -189,6 +190,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|手里剑基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|扫击灼烧 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|护甲与魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|护甲和魔抗 #
+scripts/gamedata/equip_tier_labels.gd|lit|护甲和魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|护盾 #
 scripts/gamedata/equip_tier_labels.gd|lit|护盾 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|护盾 #% 存下伤害
@@ -209,6 +211,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|攻击附伤 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|攻击附毒 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|敌人伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|敌人双抗 −#
+scripts/gamedata/equip_tier_labels.gd|lit|敌方魔法伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|斩杀线 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|无视护甲 #%
 scripts/gamedata/equip_tier_labels.gd|lit|暴击伤害 +#%
@@ -229,6 +232,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|每 # 秒一叉
 scripts/gamedata/equip_tier_labels.gd|lit|每 # 秒补一张
 scripts/gamedata/equip_tier_labels.gd|lit|每 # 龟能射一箭
 scripts/gamedata/equip_tier_labels.gd|lit|每 100 龟能嘲讽 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|每个光球消耗 # 储能
 scripts/gamedata/equip_tier_labels.gd|lit|每个魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层增伤 #%
@@ -1722,6 +1726,7 @@ scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后爆炸：治疗 %d，伤害 %
 scripts/scenes/battle/info_panel.gd|lit|%d 层：获得 %d 攻击力、%d 护甲和魔抗、%d 最大生命值
 scripts/scenes/battle/info_panel.gd|lit|%d 层：获得 %d 最大生命值、%d 攻击力
 scripts/scenes/battle/info_panel.gd|lit|%d 秒后举盾
+scripts/scenes/battle/info_panel.gd|lit|%d 秒后引导
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %d%%
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %s/%s
 scripts/scenes/battle/info_panel.gd|lit|%s %d 层
@@ -1735,6 +1740,7 @@ scripts/scenes/battle/info_panel.gd|lit|中毒
 scripts/scenes/battle/info_panel.gd|lit|主动
 scripts/scenes/battle/info_panel.gd|lit|举盾中：已存下 %d 伤害，%d 秒后放盾
 scripts/scenes/battle/info_panel.gd|lit|储能
+scripts/scenes/battle/info_panel.gd|lit|储能 %d / %d
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
 scripts/scenes/battle/info_panel.gd|lit|免疫控制 %d 次
@@ -1752,6 +1758,7 @@ scripts/scenes/battle/info_panel.gd|lit|受到伤害时，按比例反弹给攻�
 scripts/scenes/battle/info_panel.gd|lit|受到的所有伤害按比例降低。
 scripts/scenes/battle/info_panel.gd|lit|嘲讽
 scripts/scenes/battle/info_panel.gd|lit|回复
+scripts/scenes/battle/info_panel.gd|lit|圣枪护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|增伤
 scripts/scenes/battle/info_panel.gd|lit|增伤 
 scripts/scenes/battle/info_panel.gd|lit|复活：已用
@@ -1760,6 +1767,7 @@ scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
 scripts/scenes/battle/info_panel.gd|lit|已叠满：额外获得增伤与减伤
+scripts/scenes/battle/info_panel.gd|lit|引导中
 scripts/scenes/battle/info_panel.gd|lit|当前：%s，%d 秒后换脸
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
@@ -1965,6 +1973,9 @@ scripts/scenes/battle/settle_screen.gd|lit|造成魔法伤害
 scripts/scenes/battle/settle_screen.gd|lit|阵亡
 scripts/scenes/battle/settle_screen.gd|lit|龟经验
 scripts/scenes/battle/spar_exit.gd|lit|退出切磋？
+scripts/scenes/battle/spear_eq_vfx.gd|lit|+%d 圣枪护盾
+scripts/scenes/battle/spear_eq_vfx.gd|lit|护甲和魔抗 +%d
+scripts/scenes/battle/spear_eq_vfx.gd|lit|等级 +1
 scripts/scenes/battle/topbar_status.gd|lit|加时
 scripts/scenes/battle/topbar_status.gd|lit|加时：每 %d 秒全场伤害 +%d%%
 scripts/scenes/battle/topbar_status.gd|lit|加时：治疗效果 -%d%%
