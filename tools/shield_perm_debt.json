@@ -2,7 +2,7 @@
  "_": "永久给盾点存量台账(只减不增)。新增当场红; 还了债要跑 SHIELD_PERM_UPDATE=1 重写这里。判据见 tools/shield_duration_audit.py",
  "known": [
   "scripts/scenes/RealtimeBattle3DScene.gd::_basic_shield_impact_hit",
-  "scripts/scenes/battle/battle_damage.gd::_heal",
+  "scripts/scenes/battle/battle_damage.gd::_heal_apply",
   "scripts/systems/equip/axe_final_forms.gd::holo_on_hit",
   "scripts/systems/equip/axe_system.gd::cast_heal",
   "scripts/systems/equip/axe_system.gd::steal_shield",

@@ -1421,6 +1421,7 @@ scripts/scenes/ShopScene.gd|text|可装备 %d 件
 scripts/scenes/ShopScene.gd|text|商品
 scripts/scenes/ShopScene.gd|text|商店未解锁\n\n本大轮首战后解锁
 scripts/scenes/ShopScene.gd|text|已满级
+scripts/scenes/ShopScene.gd|text|本周羁绊
 scripts/scenes/ShopScene.gd|text|经验 %d/%d
 scripts/scenes/ShopScene.gd|text|购买  %d
 scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
@@ -1713,6 +1714,9 @@ scripts/scenes/battle/incense_vfx.gd|lit|香火 +%d
 scripts/scenes/battle/incense_vfx.gd|lit|香火 满
 scripts/scenes/battle/info_panel.gd|lit| (普攻)
 scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后爆炸：治疗 %d，伤害 %d
+scripts/scenes/battle/info_panel.gd|lit|%d 层：获得 %d 攻击力、%d 护甲和魔抗、%d 最大生命值
+scripts/scenes/battle/info_panel.gd|lit|%d 层：获得 %d 最大生命值、%d 攻击力
+scripts/scenes/battle/info_panel.gd|lit|%d 秒后举盾
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %d%%
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %s/%s
 scripts/scenes/battle/info_panel.gd|lit|%s %d 层
@@ -1724,11 +1728,14 @@ scripts/scenes/battle/info_panel.gd|lit|(普攻)
 scripts/scenes/battle/info_panel.gd|lit|不可选中
 scripts/scenes/battle/info_panel.gd|lit|中毒
 scripts/scenes/battle/info_panel.gd|lit|主动
+scripts/scenes/battle/info_panel.gd|lit|举盾中：已存下 %d 伤害，%d 秒后放盾
 scripts/scenes/battle/info_panel.gd|lit|储能
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
 scripts/scenes/battle/info_panel.gd|lit|免疫控制 %d 次
 scripts/scenes/battle/info_panel.gd|lit|冰寒
+scripts/scenes/battle/info_panel.gd|lit|冲势 %d%%
+scripts/scenes/battle/info_panel.gd|lit|冲势已满，下一次攻击冲阵
 scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
 scripts/scenes/battle/info_panel.gd|lit|减免伤害 %d
@@ -1742,12 +1749,17 @@ scripts/scenes/battle/info_panel.gd|lit|嘲讽
 scripts/scenes/battle/info_panel.gd|lit|回复
 scripts/scenes/battle/info_panel.gd|lit|增伤
 scripts/scenes/battle/info_panel.gd|lit|增伤 
+scripts/scenes/battle/info_panel.gd|lit|复活：已用
+scripts/scenes/battle/info_panel.gd|lit|复活：待命
 scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
+scripts/scenes/battle/info_panel.gd|lit|已叠满：额外获得增伤与减伤
+scripts/scenes/battle/info_panel.gd|lit|当前：%s，%d 秒后换脸
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
 scripts/scenes/battle/info_panel.gd|lit|战利品 %d/%d
+scripts/scenes/battle/info_panel.gd|lit|战意 %d%%
 scripts/scenes/battle/info_panel.gd|lit|技能
 scripts/scenes/battle/info_panel.gd|lit|技能 · %d 龟能
 scripts/scenes/battle/info_panel.gd|lit|护甲
@@ -1784,6 +1796,8 @@ scripts/scenes/battle/info_panel.gd|lit|暴击
 scripts/scenes/battle/info_panel.gd|lit|暴击时造成的伤害倍率。暴击率超过 100% 的部分会折算进来。
 scripts/scenes/battle/info_panel.gd|lit|最大生命值
 scripts/scenes/battle/info_panel.gd|lit|本局
+scripts/scenes/battle/info_panel.gd|lit|本战场免疫控制
+scripts/scenes/battle/info_panel.gd|lit|横扫状态：还剩 %d 秒
 scripts/scenes/battle/info_panel.gd|lit|每点 +2% 攻击
 scripts/scenes/battle/info_panel.gd|lit|每秒攻击次数。
 scripts/scenes/battle/info_panel.gd|lit|治疗
@@ -1797,15 +1811,21 @@ scripts/scenes/battle/info_panel.gd|lit|流血
 scripts/scenes/battle/info_panel.gd|lit|涨潮 %d 次
 scripts/scenes/battle/info_panel.gd|lit|涨潮中：获得 %d 最大生命值、%d 攻击力
 scripts/scenes/battle/info_panel.gd|lit|潜伏中：无法被选为目标
+scripts/scenes/battle/info_panel.gd|lit|潜行中
+scripts/scenes/battle/info_panel.gd|lit|潜行：已用
+scripts/scenes/battle/info_panel.gd|lit|潜行：待命
 scripts/scenes/battle/info_panel.gd|lit|火山形态：剩余 %.1f 秒
 scripts/scenes/battle/info_panel.gd|lit|灼烧
 scripts/scenes/battle/info_panel.gd|lit|熔岩形态
 scripts/scenes/battle/info_panel.gd|lit|物理
 scripts/scenes/battle/info_panel.gd|lit|物理 / 魔法伤害
 scripts/scenes/battle/info_panel.gd|lit|物理伤害
+scripts/scenes/battle/info_panel.gd|lit|物理护盾 %d
+scripts/scenes/battle/info_panel.gd|lit|物理护盾剩余 %d
 scripts/scenes/battle/info_panel.gd|lit|生命值
 scripts/scenes/battle/info_panel.gd|lit|生命偷取
 scripts/scenes/battle/info_panel.gd|lit|生命偷取 
+scripts/scenes/battle/info_panel.gd|lit|白脸
 scripts/scenes/battle/info_panel.gd|lit|真实
 scripts/scenes/battle/info_panel.gd|lit|真实伤害
 scripts/scenes/battle/info_panel.gd|lit|真火
@@ -1815,9 +1835,11 @@ scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果�
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|窃取护盾
+scripts/scenes/battle/info_panel.gd|lit|红脸
 scripts/scenes/battle/info_panel.gd|lit|获得 %d 额外攻击力
 scripts/scenes/battle/info_panel.gd|lit|获得 %d%% 增伤
 scripts/scenes/battle/info_panel.gd|lit|获得 %d%% 攻击速度
+scripts/scenes/battle/info_panel.gd|lit|获得 %d%% 移动速度
 scripts/scenes/battle/info_panel.gd|lit|获得深海币 %d 枚
 scripts/scenes/battle/info_panel.gd|lit|获得龟能 %d
 scripts/scenes/battle/info_panel.gd|lit|被动
@@ -1833,6 +1855,8 @@ scripts/scenes/battle/info_panel.gd|lit|造成魔法伤害时无视目标的魔�
 scripts/scenes/battle/info_panel.gd|lit|释放：冲击波 %d，护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|里世界偷取：+%d 攻击力、+%d 护甲、+%d 魔抗
 scripts/scenes/battle/info_panel.gd|lit|金币
+scripts/scenes/battle/info_panel.gd|lit|金色护罩：已触发
+scripts/scenes/battle/info_panel.gd|lit|金色护罩：开打第 8 秒触发
 scripts/scenes/battle/info_panel.gd|lit|闪避
 scripts/scenes/battle/info_panel.gd|lit|闪避 
 scripts/scenes/battle/info_panel.gd|lit|闪避 %d 次
@@ -1846,6 +1870,7 @@ scripts/scenes/battle/info_panel.gd|lit|魔法伤害
 scripts/scenes/battle/info_panel.gd|lit|魔法护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|魔法穿透
 scripts/scenes/battle/info_panel.gd|lit|魔法穿透 %d
+scripts/scenes/battle/info_panel.gd|lit|黑脸
 scripts/scenes/battle/info_panel.gd|lit|龟能
 scripts/scenes/battle/info_panel.gd|lit|龟能 %d / %d
 scripts/scenes/battle/info_panel.gd|lit|龟能充能
@@ -2183,6 +2208,7 @@ scripts/scenes/codex/list_builder.gd|lit|宝箱龟战利品
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
+scripts/scenes/codex/list_builder.gd|text|· 本周不出
 scripts/scenes/codex/status_page.gd|lit|%s · 技能
 scripts/scenes/codex/status_page.gd|lit|%s · 被动
 scripts/scenes/codex/status_page.gd|lit|减益
@@ -2209,6 +2235,7 @@ scripts/scenes/codex/status_sources.gd|lit|## 石头龟岩脊冲击波: 波前�
 scripts/scenes/codex/status_sources.gd|lit|1.6 秒
 scripts/scenes/codex/status_sources.gd|lit|1.7 秒
 scripts/scenes/codex/status_sources.gd|lit|1/1.8/2.5 秒
+scripts/scenes/codex/status_sources.gd|lit|130 舞狮头[\\s\\S]*func _lion_hit
 scripts/scenes/codex/status_sources.gd|lit|3 秒
 scripts/scenes/codex/status_sources.gd|lit|func _ninja_dash\\(u: Dictionary, target: Dictionary\\) -> void:    # 被动
 scripts/scenes/codex/status_sources.gd|lit|{C:AxeEvolution.SLAM_STUN} 秒
@@ -2284,6 +2311,7 @@ scripts/scenes/codex/status_sources.gd|lit|精英小将铁锁
 scripts/scenes/codex/status_sources.gd|lit|赛博龟阵亡 → 浮游炮组装成机甲
 scripts/scenes/codex/status_sources.gd|lit|铁锁
 scripts/scenes/codex/status_sources.gd|lit|锈蚀阔剑007
+scripts/scenes/codex/status_sources.gd|lit|长矛
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备
@@ -2603,6 +2631,7 @@ scripts/systems/equip/eq_magic_batch.gd|lit|骷髅战士
 scripts/systems/equip/eq_magic_batch.gd|lit|骷髅法师
 scripts/systems/equip/eq_magic_batch.gd|lit|骷髅祭司
 scripts/systems/equip/eq_mask_batch.gd|lit|舞狮
+scripts/systems/equip/eq_mask_batch.gd|lit|金光层数 %d（每层 +%d 生命值、+%d 攻击力）
 scripts/systems/equip/eq_potion_batch.gd|lit|浓浆
 scripts/systems/equip/eq_summons.gd|lit|亡灵骷髅
 scripts/systems/equip/eq_summons.gd|lit|炮台
@@ -2618,6 +2647,7 @@ scripts/systems/equip/gun_synergy_system.gd|lit|枪
 scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d · 充能 %d / %d
 scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d（已满）
 scripts/systems/equip/magicbook_synergy_system.gd|lit|魔法书
+scripts/systems/equip/mask_synergy_system.gd|lit|·复制
 scripts/systems/equip/mask_synergy_system.gd|lit|面具
 scripts/systems/equip/potion_synergy_system.gd|lit|猎物
 scripts/systems/equip/potion_synergy_system.gd|lit|药水
