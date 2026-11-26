@@ -63,7 +63,7 @@ func _proj(tex: String, from: Vector2, dir: Vector2, len_m: float) -> Sprite3D:
 # ── 百夫长 ──
 ## 登场(11-27 用户, 方案书附录 B): 0 秒落点亮出预警标记圈 → CENT_PLANT_T 他自己的长矛从高空直插圈心 → 最后 CENT_DROP_SEC 本人从画面外高空砸下(残影)
 ##   → 落地那一步(cent_impact)裂坑 + 震屏 + 整岛地裂。旧的通用金光柱删了(用户「这个落下的这个光特效，你是不是偷偷复用了什么东西」)。
-const CENT_MARKER_M := 14.0     # 预警标记圈直径(米; 4 → 9 → 14, 用户 11-27 两次「再大点啊」)
+const CENT_MARKER_M := 20.0     # 预警标记圈直径(米; 4 → 9 → 14 → 20, 用户 11-27 三次「再大点啊」)
 const CENT_TRAIL_M := 7.0       # 下坠光尾长(米)
 const CENT_DROP_H := 14.0       # 本人从多高砸下来(米; 刚好在画面上沿外: 30 米时先慢后快、进画面只剩最后一两帧, 11-27 录像量过)
 const CENT_DROP_SEC := 0.5      # 砸下来用时(落地前最后这段; 约最后 0.2 秒在画面里, 带残影)
@@ -122,7 +122,7 @@ func _drop_ghost(u: Dictionary) -> void:
 
 func cent_impact(p: Dictionary) -> void:
 	p["_slam_voff"] = Vector3.ZERO
-	var d_m: float = 600.0 * float(battle.WS)   # 落地裂坑直径(11-27 用户「下坠的那个地裂的这个圈还可以再大点啊」: 380 → 600 码 ≈ 14.4 米, 与预警圈同大)
+	var d_m: float = 1200.0 * float(battle.WS)   # 11-27 第二次「裂坑圈可以大一倍」: 600 → 1200 码 ≈ 29 米(岛宽约 38 米) #   # 落地裂坑直径(11-27 用户「下坠的那个地裂的这个圈还可以再大点啊」: 380 → 600 码 ≈ 14.4 米, 与预警圈同大)
 	_strip(V + "spear-cent-impact.png", 8, battle._world_pos(Vector2(p["pos"]), 0.07), d_m, 14.0, false, 8.0 / 14.0, true, null, 0.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
 	_island_cracks(Vector2(p["pos"]))   # 整座岛的地面一起裂开(11-27 用户「应该是整个地面都出现全部地裂呀」)
@@ -201,7 +201,57 @@ const CENT_TIP_H := 1.3     # 矛尖离地高(米, 新画的百夫长平端长�
 const CENT_TIP_FWD_PX := 75.0
 const CENT_TIP_UP_PX := 31.0   # 25 时录像里比矛低几个像素(11-27)
 
-func _cent_tip_flash(u: Dictionary) -> void:
+## 普攻矛刃光叠加层: 一只百夫长一个节点, 首次普攻时建; 每帧跟本体同帧号 / 位置 / 朝向 / 尺寸, 只在本体播普攻帧条时显示
+const CENT_GLOW_TEX := "res://assets/sprites/vfx/eq-centurion-attack-glow.png"
+var _cent_glows: Array = []   # {u, node, mf}
+
+func _cent_glow_on(u: Dictionary) -> void:
+	for g in _cent_glows:
+		if is_same(g["u"], u):
+			return
+	if not _ok() or not ResourceLoader.exists(CENT_GLOW_TEX):
+		return
+	var t: Texture2D = load(CENT_GLOW_TEX)
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = maxi(1, t.get_width() / 192)
+	s.shaded = false
+	s.transparent = true
+	s.no_depth_test = true
+	s.render_priority = 9
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	battle._world.add_child(s)
+	_mfx.append({"node": s, "nf": s.hframes, "fps": 0.0, "t": 0.0, "life": 0.0, "loop": false, "follow": null, "h": 0.0, "hold": 0})
+	_cent_glows.append({"u": u, "node": s, "mf": _mfx.back()})
+	_tick_cent_glows()
+
+
+func _tick_cent_glows() -> void:
+	var keep: Array = []
+	for g in _cent_glows:
+		var n = g["node"]
+		var u: Dictionary = g["u"]
+		var spr = u.get("sprite", null)
+		if n == null or not is_instance_valid(n) or not is_instance_valid(spr) or not u.get("alive", false):
+			_free(n)
+			continue
+		var s: Sprite3D = n
+		var src: Sprite3D = spr
+		var tx = (u.get("anim_sd", {}) as Dictionary).get("tex", null)
+		var on: bool = tx != null and (tx as Texture2D).resource_path.ends_with("eq-centurion-attack.png") and src.frame < s.hframes
+		(g["mf"] as Dictionary)["hold"] = src.frame if on else 0
+		s.frame = src.frame if on else 0
+		s.modulate = Color(1.0, 1.0, 1.0, 1.0 if on else 0.0)
+		s.pixel_size = src.pixel_size
+		s.offset = src.offset
+		s.flip_h = src.flip_h
+		s.global_position = src.global_position
+		keep.append(g)
+	_cent_glows = keep
+
+
+func _cent_tip_flash_unused(u: Dictionary) -> void:   # 上一轮钉在命中点的版本(矛收回后光还浮着), 11-27 第四轮起不用
 	var spr = u.get("sprite", null)
 	if not _ok() or not is_instance_valid(spr) or not ResourceLoader.exists(SV + "spear-cent-tip.png"):
 		return
@@ -238,13 +288,13 @@ func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	var ln: float = maxf(80.0, d.length()) + (SpearSynergySystem.LINE_LEN if n > 1 else 20.0)
 	var mid: Vector2 = a + dir * (ln * 0.5)
 	_dir_strip(SV + "spear-cent-thrust.png", 7, mid, dir, ln * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)
-	_cent_tip_flash(u)
+	_cent_glow_on(u)   # 矛刃光叠加层(贴着矛, 跟本体同帧)
 	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(b, 0.6), 1.3, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
 ## 掷矛起手(结算侧第 3 下刺完、回待机停一拍后调): 掷矛动作 7 帧 @12 = 0.58 秒, 出手帧在第 2 帧(结算 THROW_RELEASE 同一刻发飞矛)
 func cent_throw_begin(u: Dictionary) -> void:
-	_cent_play(u, "throw", 16.0)   # 17 帧 @16, 出手帧下标 6(结算 THROW_RELEASE 0.38 同一刻)
+	_cent_play(u, "throw", 14.0)   # 15 帧 @14, 出手帧下标 4(结算 THROW_RELEASE 0.29 同一刻)
 
 
 func cent_throw(u: Dictionary, s: Dictionary) -> void:
@@ -864,6 +914,7 @@ func tick(delta: float) -> void:
 	_tick_leaps(delta)
 	_tick_fall(delta)
 	_tick_aegis()
+	_tick_cent_glows()
 	## 百夫长登场: 预警圈 → 长矛插进圈心 → 本人从高空砸下(残影)
 	var keep: Array = []
 	for l in _lands:
@@ -930,6 +981,7 @@ func tick(delta: float) -> void:
 
 func clear() -> void:
 	super.clear()
+	_cent_glows.clear()
 	_stig.clear()
 	_drops.clear()
 	_browns.clear()

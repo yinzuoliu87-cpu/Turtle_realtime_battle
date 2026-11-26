@@ -114,7 +114,7 @@ CENT2 = {
     "eq-centurion-idle":   ("idle",          [0, 1, 2, 3]),
     "eq-centurion-walk":   ("walk_skel",     [0, 1, 2, 3, 4, 5]),
     "eq-centurion-attack": ("attack2",       [1, 2, 3, 4, 5, 6, 7, 8, 1, 0]),          # 命中 = 原第 6 帧(矛尖最远) = 下标 5; 末尾补回 1 / 0 接待机
-    "eq-centurion-throw":  ("throw_mix",     list(range(1, 18))),   # 11-27 第二版 17 帧: 后拉 3 + 握矛送出 3 + 甩出随势 6 + 起身抽新矛 3 + 站直 2(见 SOURCE.txt), @16, 出手下标 6 #                      # 11-27 拼接(见 ai_src/cent_char/throw_mix/SOURCE.txt): 起手 4 帧(矛尖朝前后拉) + 下标 4 前冲甩出矛离手 + 随势 + 掏新矛; 12 帧 @12 = 1 秒
+    "eq-centurion-throw":  ("throw_mix",     list(range(1, 16))),   # 11-27 第三版 15 帧: 后拉 3 + 扛矛上肩转身 1 + 甩出随势 6 + 起身抽新矛 3 + 站直 2(见 SOURCE.txt), @14, 出手下标 4 #   # 11-27 第二版 17 帧: 后拉 3 + 握矛送出 3 + 甩出随势 6 + 起身抽新矛 3 + 站直 2(见 SOURCE.txt), @16, 出手下标 6 #                      # 11-27 拼接(见 ai_src/cent_char/throw_mix/SOURCE.txt): 起手 4 帧(矛尖朝前后拉) + 下标 4 前冲甩出矛离手 + 随势 + 掏新矛; 12 帧 @12 = 1 秒
     "eq-centurion-shield": ("shield_brace2", [3, 4, 5, 6, 7, 8] + [8] * 36),           # 下蹲举盾 6 帧 + 撑盾(结构同旧帧条, 引擎按举盾秒数算播放速度)
     "eq-centurion-sweep":  ("spin_sweep",    list(range(5, 17))),                      # 原地转一圈横扫(前 5 帧几乎不动, 截掉)
     "eq-centurion-death":  ("death",         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8]),     # 末帧连停 4 拍

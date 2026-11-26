@@ -40,8 +40,8 @@ const THROW_W := 30.0
 ## 掷矛节奏(11-27 用户「普攻回到 idle，然后再在 idle 这上面去投掷…投掷的时候不普攻…完成投掷动作再普攻」):
 ##   第 3 下普攻命中后 THROW_LEAD 秒起手, 掷矛动作 THROW_ANIM 秒(帧条 7 帧 @12), 出手帧 THROW_RELEASE 秒才发飞矛; 整段定身
 const THROW_LEAD := 0.45
-const THROW_ANIM := 1.06     # 11-27 掷矛 17 帧 @16(补了握矛送出 / 起身抽新矛两段过渡)
-const THROW_RELEASE := 0.38   # 出手帧 = 下标 6(16 fps)
+const THROW_ANIM := 1.07     # 11-27 掷矛 15 帧 @14(补了扛矛上肩转身 / 起身抽新矛)
+const THROW_RELEASE := 0.29   # 出手帧 = 下标 4(14 fps)
 const EN_MAX := 100.0
 const SEC_PER_ENERGY := 0.075
 const SHIELD_SEC := 3.0
