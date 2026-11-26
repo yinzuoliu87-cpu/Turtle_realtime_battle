@@ -1366,7 +1366,7 @@ func eternal_end(node, hit: bool, tg: Dictionary) -> void:
 ##   143 方天画戟 蓄力: 脚下红金火焰聚气(逐帧); 跃起: 携带者真的跳起来再砸下(抛物线); 落地: 大裂坑冲击(逐帧)+ 震屏;
 ##              之后 4 秒脚下留余焰, 每次攻击一圈红金刃环(大小 = 结算半径)
 ##   144 投矛器  目标那一圈先亮红色警示圈; 矛一根根从高处按速度落下, 扎进地里起尘、矛杆抖两下(逐帧)
-##   146 圣枪    (待重新设计)圣痕: 头顶金色矛十字印记; 第 3 层引爆: 金光十字炸开
+##   146 圣枪    11-26 晚重做: 圣枪护盾 / 引导光环 / 光球 / 砸中友方光柱 / 砸中敌方星爆 + 护盾回流(见下面 146 那一段)
 const SV := "res://assets/sprites/vfx/"
 const RING_FILL := 1.16   # 刃环在 128 帧里约占 110 像素 ⇒ 帧宽 = 直径 × 1.16
 const CRATER_FILL := 1.1  # 裂坑冲击在 128 帧里约占 116 像素
@@ -1668,6 +1668,118 @@ func ftj_spin(u: Dictionary) -> void:
 	_strip(SV + "spear-ftj-ring.png", 6, battle._world_pos(Vector2(u["pos"]), 0.08), d_m, 24.0, true, 0.5, true, u, 0.08)
 
 
+## ── 146 圣枪(11-26 晚用户重做 · 方案书 20261126c 附录 A 分段表 · 参考 docs/studies/20261126-参考-娜美W冲击之潮.md) ──
+##   ① 圣枪护盾: 一支金色长枪从头顶落下插进脚边, 地面冲击环 + 金色十字(holy-guard, 12 帧)
+##   ③ 引导: 头顶细金环 + 十字星 + 刻度慢转 + 光点汇聚(holy-channel, 循环), 跟着携带者, 引导结束才收
+##   ④ 光球: 白金光球 + 十字星 + 呼吸光环(holy-orb, 循环), 按飞行方向转, 按速度飞(结算在 sim, 这里只跟着画)
+##   ⑤ 砸中友方: 落点金色光柱(holy-ally, 0.65 秒) + 「等级 +1」
+##   ⑥ 砸中敌方: 金色十字星爆(旧圣枪自己的 spear-holy-burst) + 一颗小光点从敌人飞回携带者(对应拿到的护盾)
+##   娜美 W 的办法: 同一种飞行物, 落点分两种 —— 友方是往上的光柱(增益), 敌方是往外炸的星爆(伤害)。
+const HOLY_GUARD_M := 7.75      # holy-guard 帧高(米): 插住的枪(41 像素)约 2 米, 比龟高一点
+const HOLY_GUARD_BELOW := 22.0  # 帧里锚点(脚底)下面还有多少像素(打包脚本打印的)
+const HOLY_ALLY_M := 4.0        # holy-ally 帧高(米): 光柱约 3.5 米
+const HOLY_ALLY_BELOW := 13.0
+const HOLY_CH_M := 3.2          # holy-channel 帧高(米)
+const HOLY_CH_SINK := 0.5       # 再往下沉 0.5 米: 光环离地约 1.45 米, 在血条下面(2.3 米会被血条挡住, 11-26 录像量过; 同 HEAD_H 的教训)
+const HOLY_CH_BELOW := 13.0
+const HOLY_ORB_M := 1.3         # 光球帧宽(米)
+const HOLY_BACK_SEC := 0.35     # 敌方那颗回流光点飞回携带者的时长(纯演出)
+var _holy_ch := {}              # 携带者立绘实例 id → 引导光环节点
+var _holy_back: Array = []      # {node, from(Vector2), to(单位), t}
+
+
+func _feet_strip(path: String, nf: int, at: Vector2, h_m: float, below_px: float, fps: float, loop: bool, life: float, follow = null, sink: float = 0.0) -> Sprite3D:
+	if not ResourceLoader.exists(path):
+		return null
+	var th: float = float((load(path) as Texture2D).get_height())
+	var off: float = below_px * h_m / maxf(1.0, th) + sink   # 锚点(脚底)对上地面: 帧底边往下挪锚点下面那几像素(sink = 再往下沉)
+	return _strip(path, nf, battle._world_pos(at, -off), h_m, fps, loop, life, false, follow, -off)
+
+
+const HOLY_GUARD_BACK := 46.0   # 圣枪插在携带者身后这么多码的地上(插在正中会压住身体, 11-26 录像自查)
+func holy_guard(u: Dictionary, resist: int) -> void:
+	var back: float = -HOLY_GUARD_BACK if str(battle._eff_side(u)) == "left" else HOLY_GUARD_BACK   # 左边队伍面朝右 ⇒ 身后 = 左
+	_feet_strip(SV + "holy-guard.png", 12, Vector2(u["pos"]) + Vector2(back, -6.0), HOLY_GUARD_M, HOLY_GUARD_BELOW, 13.0, false, 12.0 / 13.0)   # 插住就不动(不跟人走)
+	battle._vfx._float_text(u["pos"] + Vector2(0, -88), Lang.t("护甲和魔抗 +%d") % resist, Color("#ffe08a"))   # 分段表 ②: 双抗
+
+
+func holy_channel(u: Dictionary, on: bool) -> void:
+	var k := _uid(u)
+	_free(_holy_ch.get(k, null))
+	_holy_ch.erase(k)
+	if on:
+		var s := _feet_strip(SV + "holy-channel.png", 12, Vector2(u["pos"]), HOLY_CH_M, HOLY_CH_BELOW, 12.0, true, 600.0, u, HOLY_CH_SINK)
+		if s != null:
+			_holy_ch[k] = s
+
+
+func _holy_orb_node(at: Vector2, dir: Vector2, len_m: float) -> Sprite3D:
+	var path := SV + "holy-orb.png"
+	if not _ok() or not ResourceLoader.exists(path):
+		return null
+	var t: Texture2D = load(path)
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = 8
+	s.shaded = false
+	s.transparent = true
+	s.no_depth_test = true
+	s.render_priority = 9
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.pixel_size = len_m / float(t.get_width() / 8)
+	s.position = battle._world_pos(at, 1.0)
+	battle._world.add_child(s)
+	_orient_to(s, dir)
+	_mfx.append({"node": s, "nf": 8, "fps": 12.0, "t": 0.0, "life": 600.0, "loop": true, "follow": null, "h": 1.0})
+	return s
+
+
+func holy_orb_fly(u: Dictionary, tg: Dictionary, _ally: bool):
+	return _holy_orb_node(Vector2(u["pos"]), Vector2(tg["pos"]) - Vector2(u["pos"]), HOLY_ORB_M)
+
+
+func holy_orb_step(node, p2: Vector2, to2: Vector2) -> void:
+	javelin_step(node, p2, to2)
+
+
+func holy_orb_end(node, hit: bool, tg: Dictionary, ally: bool) -> void:
+	_free(node)
+	if not hit or not tg.get("alive", false):
+		return
+	var at := Vector2(tg["pos"])
+	if ally:
+		_feet_strip(SV + "holy-ally.png", 9, at, HOLY_ALLY_M, HOLY_ALLY_BELOW, 14.0, false, 9.0 / 14.0, tg)
+		battle._vfx._float_text(tg["pos"] + Vector2(0, -64), Lang.t("等级 +1"), Color("#ffe08a"))
+	else:
+		_strip(SV + "spear-holy-burst.png", 9, battle._world_pos(at, 0.0), 2.2, 18.0, false, 9.0 / 18.0, false, null, 0.0)
+
+
+## 敌方光球命中后给携带者的那层护盾: 一颗小光点从敌人飞回携带者(sim 里护盾当场就给了, 这里只是让人看得出护盾从哪来)
+func holy_shield_back(from_u: Dictionary, to_u: Dictionary) -> void:
+	var n := _holy_orb_node(Vector2(from_u["pos"]), Vector2(to_u["pos"]) - Vector2(from_u["pos"]), HOLY_ORB_M * 0.55)
+	if n != null:
+		_holy_back.append({"node": n, "from": Vector2(from_u["pos"]), "to": to_u, "t": 0.0})
+
+
+func _tick_holy_back(delta: float) -> void:
+	var keep: Array = []
+	for b in _holy_back:
+		var n = b["node"]
+		if n == null or not is_instance_valid(n):
+			continue
+		b["t"] = float(b["t"]) + delta
+		var k: float = clampf(float(b["t"]) / HOLY_BACK_SEC, 0.0, 1.0)
+		var dst := Vector2((b["to"] as Dictionary)["pos"])
+		var p: Vector2 = Vector2(b["from"]).lerp(dst, k * k)   # 先慢后快, 被携带者「吸」回去
+		(n as Sprite3D).position = battle._world_pos(p, 1.0 + 0.6 * sin(PI * k))
+		_orient_to(n, dst - p)
+		if k >= 1.0:
+			_free(n)
+		else:
+			keep.append(b)
+	_holy_back = keep
+
+
 # ── 筹码 ──
 ## 151 黑 / 152 紫: 开场每个友军头顶落下一枚旋转的筹码(0.5 秒落到胸口), 落下时一圈对应颜色的环(物理盾灰白 / 魔法盾紫)
 var _drops: Array = []   # {f(_mfx 那一条), a(友军), t, phys}
@@ -1789,6 +1901,7 @@ func tick(delta: float) -> void:
 	_tick_shocks(delta)
 	_tick_stabs(delta)
 	_tick_cent_glows()
+	_tick_holy_back(delta)
 	## 百夫长登场: 预警圈 → 长矛插进圈心 → 本人从高空砸下(残影)
 	var keep: Array = []
 	for l in _lands:
@@ -1930,6 +2043,12 @@ func tick(delta: float) -> void:
 func clear() -> void:
 	super.clear()
 	_cent_glows.clear()
+	for k in _holy_ch:
+		_free(_holy_ch[k])
+	_holy_ch.clear()
+	for b in _holy_back:
+		_free(b["node"])
+	_holy_back.clear()
 	_drops.clear()
 	_browns.clear()
 	_cc_last.clear()

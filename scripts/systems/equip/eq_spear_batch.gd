@@ -783,7 +783,7 @@ func _tick_holy(u: Dictionary, si: int, ck: String, delta: float) -> void:
 		battle._damage._grant_shield(u, float(u.get("maxHp", 0.0)) * float(HOLY_GUARD_PCT[si]))
 		battle._damage._buff(u, "def", float(HOLY_RESIST[si]), false, 99999.0)   # 到这一路结束(换路单位重建, buff 随之清)
 		battle._damage._buff(u, "mr", float(HOLY_RESIST[si]), false, 99999.0)
-		_fx("holy_guard", [u])
+		_fx("holy_guard", [u, int(HOLY_RESIST[si])])
 	var a := _acc(u, "holy_t:" + ck) + delta
 	if a >= HOLY_IV:
 		a -= HOLY_IV
@@ -849,7 +849,9 @@ func _holy_orb(u: Dictionary, si: int, ck: String) -> void:
 				stat["holy_enemy"] += 1
 				_magic(me, tg, float(HOLY_ORB_DMG[si]))
 				if me.get("alive", false):
-					battle._damage._grant_shield(me, float(HOLY_ORB_SHIELD[si])),
+					me["_own_grant_vfx"] = true   # 不弹通用得盾罩: 一次引导几十个光球, 每个都弹会把携带者整个盖住(11-26 录像); 演出是光点飞回携带者
+					battle._damage._grant_shield(me, float(HOLY_ORB_SHIELD[si]))
+					_fx("holy_shield_back", [tg, me]),
 		func(_k: float, p2: Vector2, to2: Vector2) -> void:
 			_fx("holy_orb_step", [node, p2, to2]))
 	battle._equip_sys.tally.pop(tp)

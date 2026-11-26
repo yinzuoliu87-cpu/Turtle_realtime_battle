@@ -56,6 +56,13 @@ static func cases() -> Dictionary:
 		## 羁绊: 持有人不动不打(只为凑 3 件炸弹 = 1 档), 只看导弹本身
 		"missile": [[_me(Vector2(-300, 0), _eq([102, 103, 97]), {"idle": true})] + _dummies(60, 3) + [_u("__minion__", "right", Vector2(280, 0), {"minion": true, "plain": true, "hp": 20000.0, "killable": false})], 15.0],
 		"cracker": [[_me(Vector2(-10, 0), _eq([97]))] + _dummies(60, 3), 12.0],
+		## 146 圣枪(11-26 晚重做): 紫色筹码 + 纸面具给开场魔法 / 物理护盾(只给一次, 不像海藻每几秒刷一次通用得盾罩挡画面) ⇒ 储能有一笔; 两个友方小将给光球砸; 三个会打的靶子把携带者打到半血 ⇒ 圣枪护盾; 第 12 / 24 秒两次引导
+		"holy": [[_me(Vector2(-60, 0), _eq([146, 152, 127]), {"hp": 4500.0}),
+			_u("__minion__", "left", Vector2(-150, -90), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 8000.0, "killable": false, "idle": true}),
+			_u("__minion__", "left", Vector2(-150, 90), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 8000.0, "killable": false, "idle": true})]
+			+ _dummies(70, 3, true, 20000.0, 700.0), 26.0],
+		## 146 圣枪效果一: 携带者会掉血(killable)、靶子打得疼 ⇒ 半血那一下圣枪落地 + 护盾 + 双抗
+		"holy_guard": [[_me(Vector2(-60, 0), _eq([146]), {"hp_pct": 0.6, "killable": true})] + _dummies(70, 1), 6.0],
 		## 爆竹筒范围 120 码: 三个靶子围在携带者 70~85 码内(都在范围里, 看得出一圈都被击退)
 		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(30, -78), Vector2(30, 78)]), 16.0],
 		## 手雷: 携带者站在远处不动(看得到一道弧线扔过去)
@@ -331,6 +338,13 @@ func _process(d: float) -> void:
 		if cen != null and _seen.has("adir%d" % ad_k) and not _seen.has("adoff%d" % ad_k) and ad_t - float(ad_k) * 1.7 > 1.45:
 			_seen["adoff%d" % ad_k] = 1
 			_b._spear_syn.vfx.cent_shield_off(cen)
+	## 11-26 146 圣枪效果一演示: REC_HOLY_HIT 秒时给圣枪携带者打一下(20% 最大生命), 从 60% 打到 50% 以下 ⇒ 圣枪落地 + 护盾 + 双抗
+	if OS.has_environment("REC_HOLY_HIT") and _el > float(OS.get_environment("REC_HOLY_HIT")) and not _seen.has("holy_hit"):
+		_seen["holy_hit"] = 1
+		for uu in _b._units:
+			if uu is Dictionary and uu.get("alive", false) and not EquipCk.copies(uu, "p2eq_146").is_empty():
+				_b._damage._apply_damage(uu, int(float(uu["maxHp"]) * 0.2), Color.WHITE)
+				print("[HOLY] %.2f 打到 %.0f / %.0f" % [_el, float(uu["hp"]), float(uu["maxHp"])])
 	## 11-27 普攻冲击罩朝敌人 + 二档沿穿刺线延伸: REC_STAB_SIDE 秒时把一个敌人挪到百夫长正右 220 码、一个挪到 380 码(穿刺线上), 其余挪到岛上方远处
 	if OS.has_environment("REC_STAB_SIDE") and _el > float(OS.get_environment("REC_STAB_SIDE")) and not _seen.has("stab_side"):
 		_seen["stab_side"] = 1

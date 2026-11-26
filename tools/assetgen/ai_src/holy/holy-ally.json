@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "146 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 1.png",
+   "frame": {
+    "x": 58,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 2.png",
+   "frame": {
+    "x": 116,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 3.png",
+   "frame": {
+    "x": 0,
+    "y": 104,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 4.png",
+   "frame": {
+    "x": 58,
+    "y": 104,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 5.png",
+   "frame": {
+    "x": 116,
+    "y": 104,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 6.png",
+   "frame": {
+    "x": 0,
+    "y": 208,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 7.png",
+   "frame": {
+    "x": 58,
+    "y": 208,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  },
+  {
+   "filename": "146 8.png",
+   "frame": {
+    "x": 116,
+    "y": 208,
+    "w": 58,
+    "h": 104
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 58,
+    "h": 104
+   },
+   "sourceSize": {
+    "w": 58,
+    "h": 104
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "duration": 71
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "146.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 174,
+   "h": 312
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 29,
+   "y": 91
+  },
+  "frameTags": [
+   {
+    "name": "146",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

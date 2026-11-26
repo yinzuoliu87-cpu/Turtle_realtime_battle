@@ -3713,6 +3713,12 @@ msgstr "Stored %d / %d"
 msgid "引导中"
 msgstr "Channeling"
 
+msgid "等级 +1"
+msgstr "Level +1"
+
+msgid "护甲和魔抗 +%d"
+msgstr "Armor and Magic Resist +%d"
+
 msgid "%d 秒后引导"
 msgstr "Channels in %ds"
 
