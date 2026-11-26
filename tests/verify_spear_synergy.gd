@@ -56,6 +56,7 @@ func _adv(sec: float, units: Array = [], step: float = 0.05) -> void:
 		_s._t += step
 		_p.tick(step)
 		_s._ballistics._step_flights(step)
+		_s._ballistics._step_pending_shots(step)   # 11-27 掷矛改成延时起手(回待机再掷)
 		t += step
 
 
@@ -189,16 +190,25 @@ func _ready() -> void:
 	near["airborne"] = false
 	far["airborne"] = false
 	far["hp"] = 5000.0
-	for _i in range(3):
-		_s._basic_attack(c, near)
+	## 11-27 用户「普攻回到 idle，然后再在 idle 这上面去投掷…投掷的时候不普攻…完成投掷动作再普攻」:
+	##   第 3 下刺完 ⇒ 定身到掷完; THROW_LEAD 后起手, 再过 THROW_RELEASE 出手(这次掷矛占用第 4 下那一拍)
 	var far_before := float(far["hp"])
 	var th0: int = int(_p.stat["throw"])
-	_s._basic_attack(c, near)
+	for _i in range(3):
+		_s._basic_attack(c, near)
+	var SP = _p.get_script()
+	var not_yet: bool = int(_p.stat["throw"]) == th0
+	var locked: bool = float(c.get("channel_until", 0.0)) >= float(_s._t) + SP.THROW_LEAD + SP.THROW_ANIM - 0.01
+	_adv(SP.THROW_LEAD + SP.THROW_RELEASE + 0.05)
 	var thrown: bool = int(_p.stat["throw"]) == th0 + 1
-	var same_frame: float = far_before - float(far["hp"])
+	var in_flight: float = far_before - float(far["hp"])
 	_adv(1.5)
-	_ok("D 四档第 4 下掷矛: 扔向最远的敌人, 出手那一刻还没伤害, 飞到才结算", thrown and same_frame == 0.0 and far_before - float(far["hp"]) > 0.0,
-		"掷 %s · 出手时 %.0f · 飞到后 %.0f" % [str(thrown), same_frame, far_before - float(far["hp"])])
+	_ok("D 四档掷矛: 第 3 下刺完不当场扔、定身到掷完(不出普攻) · 回待机后起手、出手才发飞矛 · 飞到最远的敌人才结算",
+		not_yet and locked and thrown and in_flight == 0.0 and far_before - float(far["hp"]) > 0.0,
+		"刺完时没扔 %s · 定身 %s · 出手 %s · 在路上时伤害 %.0f · 飞到后 %.0f" % [str(not_yet), str(locked), str(thrown), in_flight, far_before - float(far["hp"])])
+	var th1: int = int(_p.stat["throw"])
+	_s._basic_attack(c, near)
+	_ok("D 掷矛占用第 4 下那一拍: 之后下一记是普通的刺", int(_p.stat["throw"]) == th1, str(int(_p.stat["throw"]) - th1))
 
 	## ── E 龟甲阵 ──
 	var res := {}

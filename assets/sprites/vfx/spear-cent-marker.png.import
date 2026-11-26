@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dgmmatmsjwh4u"
-path="res://.godot/imported/spear-cent-beam.png-c8de34164a1c672b494fae45403e93ed.ctex"
+uid="uid://c53e2hbgklbda"
+path="res://.godot/imported/spear-cent-marker.png-6529df657a5ae4be4c1e027857678bca.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/spear-cent-beam.png"
-dest_files=["res://.godot/imported/spear-cent-beam.png-c8de34164a1c672b494fae45403e93ed.ctex"]
+source_file="res://assets/sprites/vfx/spear-cent-marker.png"
+dest_files=["res://.godot/imported/spear-cent-marker.png-6529df657a5ae4be4c1e027857678bca.ctex"]
 
 [params]
 

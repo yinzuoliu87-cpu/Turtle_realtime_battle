@@ -23,7 +23,7 @@ const CENT_KNOCK_VY := 16.5            # 滞空 = 2 × 16.5 / 22 = 1.5 秒
 const ENTRY_COEF := 1.5
 ## 从天而降的时长: 召唤那一刻人在高处(不可选中、不行动), 落地那一步才结算全场击飞 + 魔法伤害(画面与结算同一刻;
 ##   11-26 夜用户「召唤物的登场，登场动画…别敷衍了」—— 原来召唤那一帧就结算, 人还在半空)
-const LAND_SEC := 0.7
+const LAND_SEC := 1.2   # 11-27 用户: 预警标记圈 → 长矛插进圈心(0.35)→ 本人从高空砸下(0.75–1.2), 方案书附录 B
 const HP := [1600.0, 2600.0, 3600.0, 5200.0]
 const ATK := [48.0, 72.0, 104.0, 144.0]
 const RES := [45.0, 70.0, 110.0, 140.0]
@@ -37,6 +37,11 @@ const THROW_EVERY := 4
 const THROW_COEF := 2.0
 const THROW_SPD := 900.0
 const THROW_W := 30.0
+## 掷矛节奏(11-27 用户「普攻回到 idle，然后再在 idle 这上面去投掷…投掷的时候不普攻…完成投掷动作再普攻」):
+##   第 3 下普攻命中后 THROW_LEAD 秒起手, 掷矛动作 THROW_ANIM 秒(帧条 7 帧 @12), 出手帧 THROW_RELEASE 秒才发飞矛; 整段定身
+const THROW_LEAD := 0.45
+const THROW_ANIM := 0.58
+const THROW_RELEASE := 0.17
 const EN_MAX := 100.0
 const SEC_PER_ENERGY := 0.075
 const SHIELD_SEC := 3.0
@@ -244,10 +249,6 @@ func on_any_basic(u: Dictionary, tgt) -> void:
 	var tier := int(r["tier"])
 	u["_basic_replaced"] = true
 	r["n_atk"] = int(r["n_atk"]) + 1
-	## 4 档: 每第 4 下掷矛(扔向最远的敌人)
-	if tier >= 4 and int(r["n_atk"]) % THROW_EVERY == 0:
-		_throw(u)
-		return
 	var t: Dictionary = tgt
 	var hits: Array = [t]
 	if tier >= 2:   # 贯穿直线: 目标身后同一条线上的敌人
@@ -272,6 +273,9 @@ func on_any_basic(u: Dictionary, tgt) -> void:
 		if tier >= 3 and o.get("alive", false):
 			_shred(o)
 	_fx("cent_thrust", [u, t, hits.size()])
+	## 4 档: 第 3 下刺完 ⇒ 回待机再起手掷矛(占用第 4 下那一拍, 见 THROW_LEAD)
+	if tier >= 4 and int(r["n_atk"]) % THROW_EVERY == THROW_EVERY - 1:
+		_throw_schedule(r)
 
 
 ## 3 档: 削 1 护甲 1 魔抗, 每个敌人至多 30(当路有效 —— 换路重建单位字典自然清零)
@@ -297,6 +301,20 @@ func _farthest_enemy(u: Dictionary):
 			bd = d
 			best = o
 	return best
+
+
+## 掷矛排程: 从现在起定身到掷完(不出普攻); THROW_LEAD 后起手(播掷矛动作), 再过 THROW_RELEASE 出手发飞矛。被晕 / 击飞 ⇒ 这次掷矛取消(cc 组)
+func _throw_schedule(r: Dictionary) -> void:
+	var u: Dictionary = r["u"]
+	battle._damage.channel(u, THROW_LEAD + THROW_ANIM)
+	var g := {}
+	battle._pending_shots.append({"delay": THROW_LEAD, "src": u, "cc": g, "fn": func() -> void:
+		if u.get("alive", false):
+			_fx("cent_throw_begin", [u])})
+	battle._pending_shots.append({"delay": THROW_LEAD + THROW_RELEASE, "src": u, "cc": g, "fn": func() -> void:
+		if u.get("alive", false):
+			r["n_atk"] = int(r["n_atk"]) + 1
+			_throw(u)})
 
 
 func _throw(u: Dictionary) -> void:

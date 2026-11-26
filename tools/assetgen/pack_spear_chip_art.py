@@ -75,7 +75,7 @@ STRIPS = {
     "spear-atl-stuck": [(SP, "b2stk_%d" % i, False) for i in range(0, 7)],
     ## 百夫长登场(11-26 夜重做): 落点金光柱 c3_beam(首尾钉原画循环) / 落地金色冲击 c3_impact2(第一版 c3_impact 中间画进了一个人, 弃)
     ##   = create_image_pro_flash 无锚 + animate_image; 冲击第 2 帧中间一道 1 像素白竖线(生成瑕疵)不取
-    "spear-cent-beam": [(SP, "c3bm_%d" % i, False) for i in range(0, 6)],
+    ## spear-cent-beam(通用金光柱)11-27 删: 用户「这个落下的这个光特效，你是不是偷偷复用了什么东西」⇒ 换成预警标记圈 + 插地长矛(下面 GRIDS / PLANT)
     "spear-cent-impact": [(SP, "c3im_%d" % i, False) for i in [0, 1, 3, 4, 5, 6, 7, 8]],
     ## 11-27 换掉程序圆圈
     "spear-hit-spark": [(SP, "hspk_%d" % i, False) for i in range(0, 6)],
@@ -148,11 +148,15 @@ def main():
     ## 第二轮的单张(飞行物 / 绳子): 鱼叉 / 绳 / 下落的矛
     for src, dst in {"b2_harpoon": "spear-harpoon", "b2_rope": "spear-rope", "b2_fall": "spear-atl-fall"}.items():
         _icon(os.path.join(SP, src + ".png"), os.path.join(VFX, dst + ".png"))
+    ## 11-27 登场插进标记圈的长矛 = 掷矛同一张 spear-pilum 顺时针转 90°(矛尖朝下)
+    pil = os.path.join(VFX, "spear-pilum.png")
+    if os.path.exists(pil):
+        Image.open(pil).convert("RGBA").transpose(Image.Transpose.ROTATE_270).save(os.path.join(VFX, "spear-cent-plant.png"), optimize=False)
     ## 11-27 特效工作台网格帧表 → 横排帧条(见头注)
     import json
     CV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_vfx")
     for src, dst, centre in [("centurion-crack-segment", "spear-cent-crack", False),
-            ("centurion-aegis-open+centurion-aegis-loop", "spear-cent-aegis", False)]:
+            ("centurion-aegis-open+centurion-aegis-loop", "spear-cent-aegis", False), ("centurion-drop-marker", "spear-cent-marker", False)]:
         if "+" in src:   # 两段接成一条(先展开后循环)
             parts = []
             for one in src.split("+"):

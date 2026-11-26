@@ -61,16 +61,58 @@ func _proj(tex: String, from: Vector2, dir: Vector2, len_m: float) -> Sprite3D:
 
 
 # ── 百夫长 ──
+## 登场(11-27 用户, 方案书附录 B): 0 秒落点亮出预警标记圈 → CENT_PLANT_T 他自己的长矛从高空直插圈心 → 最后 CENT_DROP_SEC 本人从画面外高空砸下(残影)
+##   → 落地那一步(cent_impact)裂坑 + 震屏 + 整岛地裂。旧的通用金光柱删了(用户「这个落下的这个光特效，你是不是偷偷复用了什么东西」)。
+const CENT_MARKER_M := 4.0      # 预警标记圈直径(米)
+const CENT_DROP_H := 14.0       # 本人从多高砸下来(米; 刚好在画面上沿外: 30 米时先慢后快、进画面只剩最后一两帧, 11-27 录像量过)
+const CENT_DROP_SEC := 0.5      # 砸下来用时(落地前最后这段; 约最后 0.2 秒在画面里, 带残影)
+const CENT_PLANT_T := 0.35      # 长矛插进圈心的时刻
+const CENT_PLANT_FALL := 0.12   # 长矛从高空落下用时
+const CENT_PLANT_H0 := 16.0     # 长矛从多高落(米)
+const CENT_PLANT_M := 4.2       # 插着的长矛高(米; 2.6 时全景下只剩一根细线)
+const CENT_PLANT_BURY := 0.35   # 矛尖扎进地里多深(米)
+
 func cent_land(p: Dictionary, sec: float) -> void:
-	p["_slam_voff"] = Vector3(0.0, LAND_H, 0.0)
-	_lands.append({"u": p, "t": 0.0, "sec": maxf(0.1, sec)})
-	var beam := _strip(V + "spear-cent-beam.png", 6, battle._world_pos(Vector2(p["pos"]), 0.0), 9.5, 14.0, true, sec + 0.15, false, null, 0.0)
-	if beam != null:
-		## 光柱画在人后面、半透明: 原来不透明 + 渲染优先级高, 把顺着光柱落下来的百夫长整个挡住了(11-26 夜录像探针量出人在落、画面上看不见)
-		beam.render_priority = -2
-		beam.no_depth_test = false
-		beam.modulate = Color(1.0, 1.0, 1.0, 0.6)
-	_cent_play(p, "shield", 42.0 / maxf(0.1, sec))   # 下落途中把盾举起, 落地时正好举满
+	p["_slam_voff"] = Vector3(0.0, CENT_DROP_H, 0.0)   # 先在画面外的高空
+	var mk := _strip(V + "spear-cent-marker.png", 8, battle._world_pos(Vector2(p["pos"]), 0.05), CENT_MARKER_M, 10.0, true, sec + 0.05, true, null, 0.0)
+	var sp: Sprite3D = null
+	if _ok() and ResourceLoader.exists(V + "spear-cent-plant.png"):
+		sp = Sprite3D.new()
+		sp.texture = load(V + "spear-cent-plant.png")
+		sp.shaded = false
+		sp.transparent = true
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		sp.pixel_size = CENT_PLANT_M / float(sp.texture.get_height())
+		sp.offset = Vector2(0.0, float(sp.texture.get_height()) * 0.5)   # 原点 = 矛尖(底边)
+		sp.visible = false
+		battle._world.add_child(sp)
+	_lands.append({"u": p, "t": 0.0, "sec": maxf(0.1, sec), "mk": mk, "sp": sp, "planted": false, "ghost": 0.0})
+	_cent_play(p, "shield", 42.0 / maxf(0.1, sec))   # 举盾下蹲的姿势砸下来, 落地时正好举满
+
+
+## 下落残影: 复制本体此刻这一帧, 金色半透明, 0.15 秒淡掉
+func _drop_ghost(u: Dictionary) -> void:
+	var spr = u.get("sprite", null)
+	if not is_instance_valid(spr):
+		return
+	var src: Sprite3D = spr
+	var g := Sprite3D.new()
+	g.texture = src.texture
+	g.hframes = src.hframes
+	g.vframes = src.vframes
+	g.frame = src.frame
+	g.pixel_size = src.pixel_size
+	g.offset = src.offset
+	g.flip_h = src.flip_h
+	g.billboard = src.billboard
+	g.shaded = false
+	g.transparent = true
+	g.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	g.modulate = Color(1.0, 0.85, 0.45, 0.5)
+	battle._world.add_child(g)
+	g.global_position = src.global_position
+	_fade_out(g, 0.15)
 
 
 func cent_impact(p: Dictionary) -> void:
@@ -162,8 +204,12 @@ func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(b, 0.6), 1.3, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
+## 掷矛起手(结算侧第 3 下刺完、回待机停一拍后调): 掷矛动作 7 帧 @12 = 0.58 秒, 出手帧在第 2 帧(结算 THROW_RELEASE 同一刻发飞矛)
+func cent_throw_begin(u: Dictionary) -> void:
+	_cent_play(u, "throw", 12.0)
+
+
 func cent_throw(u: Dictionary, s: Dictionary) -> void:
-	_cent_play(u, "throw", 20.0)
 	_dir_strip(SV + "spear-cent-thrust.png", 7, Vector2(s["pos"]) + Vector2(s["dir"]) * 90.0, Vector2(s["dir"]), 180.0 * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)   # 出手那一下的气劲
 	var n := _proj("spear-pilum.png", Vector2(s["pos"]), Vector2(s["dir"]), 2.4)
 	if n != null:
@@ -780,15 +826,38 @@ func tick(delta: float) -> void:
 	_tick_leaps(delta)
 	_tick_fall(delta)
 	_tick_aegis()
-	## 百夫长从天上砸下来
+	## 百夫长登场: 预警圈 → 长矛插进圈心 → 本人从高空砸下(残影)
 	var keep: Array = []
 	for l in _lands:
 		var u: Dictionary = l["u"]
 		l["t"] = float(l["t"]) + delta
-		var k: float = clampf(float(l["t"]) / float(l["sec"]), 0.0, 1.0)
-		u["_slam_voff"] = Vector3(0.0, LAND_H * (1.0 - k * k), 0.0)   # 加速落下(落地那一刻由 cent_impact 归零)
-		if k >= 1.0 or not u.get("alive", false):
+		var t: float = float(l["t"])
+		var sec: float = float(l["sec"])
+		var t0: float = maxf(0.0, sec - CENT_DROP_SEC)
+		if t < t0:
+			u["_slam_voff"] = Vector3(0.0, CENT_DROP_H, 0.0)
+		else:
+			var k: float = clampf((t - t0) / CENT_DROP_SEC, 0.0, 1.0)
+			u["_slam_voff"] = Vector3(0.0, CENT_DROP_H * (1.0 - k * k), 0.0)   # 加速砸下(落地那一刻由 cent_impact 归零)
+			l["ghost"] = float(l["ghost"]) - delta
+			if float(l["ghost"]) <= 0.0 and k < 1.0:
+				l["ghost"] = 0.04
+				_drop_ghost(u)
+		var sp = l["sp"]
+		if sp != null and is_instance_valid(sp):
+			if t >= CENT_PLANT_T - CENT_PLANT_FALL:
+				(sp as Sprite3D).visible = true
+				var kk: float = clampf((t - (CENT_PLANT_T - CENT_PLANT_FALL)) / CENT_PLANT_FALL, 0.0, 1.0)
+				(sp as Sprite3D).position = battle._world_pos(Vector2(u["pos"]), lerpf(CENT_PLANT_H0, -CENT_PLANT_BURY, kk * kk))
+				if kk >= 1.0 and not bool(l["planted"]):
+					l["planted"] = true
+					_strip(LION_DUST, 7, battle._world_pos(Vector2(u["pos"]), 0.0), 2.6, 16.0, false, 7.0 / 16.0, false, null, 0.0)
+					_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(u["pos"]), 0.3), 2.6, 20.0, false, 6.0 / 20.0, false, null, 0.0)
+					battle._shake(battle.JUICE_SHAKE_HEAVY * 0.35)
+		if t >= sec or not u.get("alive", false):
 			u["_slam_voff"] = Vector3.ZERO
+			if sp != null and is_instance_valid(sp):
+				_fade_out(sp as Sprite3D, 0.3)
 			continue
 		keep.append(l)
 	_lands = keep
