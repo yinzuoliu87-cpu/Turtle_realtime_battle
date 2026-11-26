@@ -1,0 +1,164 @@
+{
+  "group_id": "46a9ff4c-0aaf-45b0-92bf-91a71bb8adc8",
+  "states": [
+    {
+      "character": {
+        "id": "9185546b-5eac-4a08-84cf-edbd3d08540d",
+        "name": "Idle",
+        "prompt": "Roman centurion, heavy armored legion officer, broad shoulders and sturdy heroic build. Imperial gallic steel helmet with a transverse red horsehair crest running side to side, cheek guards, stern bearded face. Segmented steel lorica armor with three round gold medal discs on the chest, steel shoulder plates, red tunic with a skirt of leather strips with brass studs, bare muscular thighs, steel greaves on the shins, strapped leather sandals. Holds a large curved red rectangular scutum shield with a gold eagle wings and lightning emblem and gold rim on his left arm, and a long wooden spear with an iron leaf blade upright in his right hand. No cape, no cloak.",
+        "size": {
+          "width": 128,
+          "height": 128
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-11-26T13:39:07.656440+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {
+          "shield_brace2": {
+            "south-west": [
+              "Idle/animations/shield_brace2/south-west/frame_000.png",
+              "Idle/animations/shield_brace2/south-west/frame_001.png",
+              "Idle/animations/shield_brace2/south-west/frame_002.png",
+              "Idle/animations/shield_brace2/south-west/frame_003.png",
+              "Idle/animations/shield_brace2/south-west/frame_004.png",
+              "Idle/animations/shield_brace2/south-west/frame_005.png",
+              "Idle/animations/shield_brace2/south-west/frame_006.png",
+              "Idle/animations/shield_brace2/south-west/frame_007.png",
+              "Idle/animations/shield_brace2/south-west/frame_008.png"
+            ]
+          },
+          "throw": {
+            "south-west": [
+              "Idle/animations/throw/south-west/frame_000.png",
+              "Idle/animations/throw/south-west/frame_001.png",
+              "Idle/animations/throw/south-west/frame_002.png",
+              "Idle/animations/throw/south-west/frame_003.png",
+              "Idle/animations/throw/south-west/frame_004.png",
+              "Idle/animations/throw/south-west/frame_005.png",
+              "Idle/animations/throw/south-west/frame_006.png",
+              "Idle/animations/throw/south-west/frame_007.png",
+              "Idle/animations/throw/south-west/frame_008.png"
+            ]
+          },
+          "walk": {
+            "south-west": [
+              "Idle/animations/walk/south-west/frame_000.png",
+              "Idle/animations/walk/south-west/frame_001.png",
+              "Idle/animations/walk/south-west/frame_002.png",
+              "Idle/animations/walk/south-west/frame_003.png",
+              "Idle/animations/walk/south-west/frame_004.png",
+              "Idle/animations/walk/south-west/frame_005.png"
+            ]
+          },
+          "attack": {
+            "south-west": [
+              "Idle/animations/attack/south-west/frame_000.png",
+              "Idle/animations/attack/south-west/frame_001.png",
+              "Idle/animations/attack/south-west/frame_002.png",
+              "Idle/animations/attack/south-west/frame_003.png",
+              "Idle/animations/attack/south-west/frame_004.png",
+              "Idle/animations/attack/south-west/frame_005.png",
+              "Idle/animations/attack/south-west/frame_006.png",
+              "Idle/animations/attack/south-west/frame_007.png",
+              "Idle/animations/attack/south-west/frame_008.png"
+            ]
+          },
+          "idle": {
+            "south-west": [
+              "Idle/animations/idle/south-west/frame_000.png",
+              "Idle/animations/idle/south-west/frame_001.png",
+              "Idle/animations/idle/south-west/frame_002.png",
+              "Idle/animations/idle/south-west/frame_003.png"
+            ]
+          },
+          "shield_brace": {
+            "south-west": [
+              "Idle/animations/shield_brace/south-west/frame_000.png",
+              "Idle/animations/shield_brace/south-west/frame_001.png",
+              "Idle/animations/shield_brace/south-west/frame_002.png",
+              "Idle/animations/shield_brace/south-west/frame_003.png",
+              "Idle/animations/shield_brace/south-west/frame_004.png",
+              "Idle/animations/shield_brace/south-west/frame_005.png",
+              "Idle/animations/shield_brace/south-west/frame_006.png",
+              "Idle/animations/shield_brace/south-west/frame_007.png",
+              "Idle/animations/shield_brace/south-west/frame_008.png"
+            ]
+          },
+          "death": {
+            "south-west": [
+              "Idle/animations/death/south-west/frame_000.png",
+              "Idle/animations/death/south-west/frame_001.png",
+              "Idle/animations/death/south-west/frame_002.png",
+              "Idle/animations/death/south-west/frame_003.png",
+              "Idle/animations/death/south-west/frame_004.png",
+              "Idle/animations/death/south-west/frame_005.png",
+              "Idle/animations/death/south-west/frame_006.png",
+              "Idle/animations/death/south-west/frame_007.png",
+              "Idle/animations/death/south-west/frame_008.png"
+            ]
+          },
+          "walk_skel": {
+            "south-west": [
+              "Idle/animations/walk_skel/south-west/frame_000.png",
+              "Idle/animations/walk_skel/south-west/frame_001.png",
+              "Idle/animations/walk_skel/south-west/frame_002.png",
+              "Idle/animations/walk_skel/south-west/frame_003.png",
+              "Idle/animations/walk_skel/south-west/frame_004.png",
+              "Idle/animations/walk_skel/south-west/frame_005.png"
+            ]
+          },
+          "spin_sweep": {
+            "south-west": [
+              "Idle/animations/spin_sweep/south-west/frame_000.png",
+              "Idle/animations/spin_sweep/south-west/frame_001.png",
+              "Idle/animations/spin_sweep/south-west/frame_002.png",
+              "Idle/animations/spin_sweep/south-west/frame_003.png",
+              "Idle/animations/spin_sweep/south-west/frame_004.png",
+              "Idle/animations/spin_sweep/south-west/frame_005.png",
+              "Idle/animations/spin_sweep/south-west/frame_006.png",
+              "Idle/animations/spin_sweep/south-west/frame_007.png",
+              "Idle/animations/spin_sweep/south-west/frame_008.png",
+              "Idle/animations/spin_sweep/south-west/frame_009.png",
+              "Idle/animations/spin_sweep/south-west/frame_010.png",
+              "Idle/animations/spin_sweep/south-west/frame_011.png",
+              "Idle/animations/spin_sweep/south-west/frame_012.png",
+              "Idle/animations/spin_sweep/south-west/frame_013.png",
+              "Idle/animations/spin_sweep/south-west/frame_014.png",
+              "Idle/animations/spin_sweep/south-west/frame_015.png",
+              "Idle/animations/spin_sweep/south-west/frame_016.png"
+            ]
+          },
+          "attack2": {
+            "south-west": [
+              "Idle/animations/attack2/south-west/frame_000.png",
+              "Idle/animations/attack2/south-west/frame_001.png",
+              "Idle/animations/attack2/south-west/frame_002.png",
+              "Idle/animations/attack2/south-west/frame_003.png",
+              "Idle/animations/attack2/south-west/frame_004.png",
+              "Idle/animations/attack2/south-west/frame_005.png",
+              "Idle/animations/attack2/south-west/frame_006.png",
+              "Idle/animations/attack2/south-west/frame_007.png",
+              "Idle/animations/attack2/south-west/frame_008.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-11-26T13:49:42.284745"
+}

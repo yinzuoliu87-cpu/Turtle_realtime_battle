@@ -11,8 +11,8 @@ extends MaskEqVfx
 ##   普攻        刺(attack 帧条, 命中帧见 AttackHits); 第 4 下掷矛: 掷矛帧条 + 一根罗马重标枪按 sim 位置飞
 ##   龟甲阵      举盾帧条放慢到 3 秒; 3 档的连刺 = 脚下一圈小闪; 放盾横扫 = 一圈大环; 4 档骑兵 = 奔马帧条沿 sim 路线跑
 const V := "res://assets/sprites/vfx/"
-const CENT_SHEETS := {"attack": "eq-centurion-attack.png", "throw": "eq-centurion-throw.png", "shield": "eq-centurion-shield.png"}
-const CENT_FW := 128
+const CENT_SHEETS := {"attack": "eq-centurion-attack.png", "throw": "eq-centurion-throw.png", "shield": "eq-centurion-shield.png", "sweep": "eq-centurion-sweep.png"}
+const CENT_FW := 192   # 11-27 换 PixelLab「角色」流程新形象: 192 方帧(人约 127 像素高)
 const LAND_H := 9.0
 var _cent_cache := {}
 var _lands: Array = []       # {u, t}
@@ -78,53 +78,70 @@ func cent_impact(p: Dictionary) -> void:
 	var d_m: float = 380.0 * float(battle.WS)   # 560 时裂坑盖住大半个场地(11-26 夜录像量过)
 	_strip(V + "spear-cent-impact.png", 8, battle._world_pos(Vector2(p["pos"]), 0.07), d_m, 14.0, false, 8.0 / 14.0, true, null, 0.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	## 全场击飞(11-27 用户「它是全屏击飞的」): 结算同一步, 每个敌人脚下裂地爆 + 落点到每个敌人一道贴地地裂(与 _land 同一个 _enemies_of)
-	for o in battle._targeting._enemies_of(p):
-		if not (o is Dictionary) or not o.get("alive", false):
-			continue
-		var er := _strip(V + "spear-cent-erupt.png", 10, battle._world_pos(Vector2(o["pos"]), 0.0), ERUPT_H, 16.0, false, 10.0 / 16.0, false, null, 0.0)
-		if er != null:
-			er.offset = Vector2(0.0, ERUPT_ROW - ERUPT_FH * 0.5)   # 帧里地面点那一行压在敌人脚下(原 _strip 是底边着地)
-		_ground_crack(Vector2(p["pos"]), Vector2(o["pos"]))
+	_island_cracks(Vector2(p["pos"]))   # 整座岛的地面一起裂开(11-27 用户「应该是整个地面都出现全部地裂呀」)
 
 
-const ERUPT_H := 3.6        # 裂地爆整帧高(米; 帧 134×92, 敌方小将约 1.3 米宽)
-const ERUPT_FH := 92.0      # 帧高(像素)
-const ERUPT_ROW := 58.0     # 帧里地面点所在行(打包时由工作台锚点量出)
-const CRACK_W := 0.9        # 贴地地裂宽(米); 一段帧 128×28
+## 登场砸地 = 整座岛的地面一起裂开: 从落点往四面八方 ISLAND_RAYS 条主裂缝一直裂到岛边, 每条随机分出岔缝; 不按敌人位置走。
+##   与击飞同一步全部出现(不做往外蔓延, 画面不晚于结算), 之后金光褪去、暗缝合上(帧条 8 帧 @8 = 1 秒)。
+##   一段裂缝帧 128×28(两端等高可拼), 宽 w 米 ⇒ 一段长 w × 128 / 28 米; 碰到岛边的最后一段按剩余长度缩短、变细收尾。
+##   随机数用本地的(按落点播种): 纯演出, 不碰对局随机流。
+const ISLAND_RAYS := 12
+const CRACK_MAIN_W := 0.85   # 主裂缝宽(米)
+const CRACK_BR_W := 0.5      # 岔缝宽(米)
+const CRACK_FPS := 8.0
 
 
-## 从 a 到 b 沿地面铺地裂: 一段 128×28 的帧条首尾相接, 段数 = 距离 / 段长取整, 每段等长(只差几成, 不拉伸像素)
-func _ground_crack(a: Vector2, b: Vector2) -> void:
+func _island_cracks(c: Vector2) -> void:
 	if not _ok() or not ResourceLoader.exists(V + "spear-cent-crack.png"):
 		return
-	var d: Vector2 = b - a
-	var dist_m: float = d.length() * float(battle.WS)
-	if dist_m < 0.5:
-		return
-	var seg0: float = CRACK_W * 128.0 / 28.0
-	var n: int = maxi(1, int(round(dist_m / seg0)))
-	var seg: float = dist_m / float(n)
 	var t: Texture2D = load(V + "spear-cent-crack.png")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(absf(c.x) * 131.0 + absf(c.y) * 7.0) + 1
+	for i in range(ISLAND_RAYS):
+		var base: float = TAU * float(i) / float(ISLAND_RAYS) + rng.randf_range(-0.15, 0.15)
+		_crack_ray(t, rng, c, base, CRACK_MAIN_W, 12, true)
+
+
+func _crack_ray(t: Texture2D, rng: RandomNumberGenerator, start: Vector2, base: float, w: float, max_n: int, branch: bool) -> void:
+	var pos: Vector2 = start
+	var seg_px: float = w * 128.0 / 28.0 / float(battle.WS)
+	for k in range(max_n):
+		var ang: float = base + rng.randf_range(-0.35, 0.35)
+		var dir := Vector2(cos(ang), sin(ang))
+		var nxt: Vector2 = pos + dir * seg_px
+		if not ArenaShape.in_rect_shape(nxt, battle.ARENA, 6.0):
+			for f in [0.7, 0.45, 0.25]:   # 岛边: 最后一段缩短变细收尾
+				var q: Vector2 = pos + dir * seg_px * f
+				if ArenaShape.in_rect_shape(q, battle.ARENA, 6.0):
+					_crack_piece(t, rng, pos, q, w * f)
+					break
+			return
+		_crack_piece(t, rng, pos, nxt, w)
+		if branch and rng.randf() < 0.4:
+			var side: float = 1.0 if rng.randf() < 0.5 else -1.0
+			_crack_ray(t, rng, nxt, ang + side * rng.randf_range(0.5, 0.95), CRACK_BR_W, 3, false)
+		pos = nxt
+
+
+## 一段裂缝: 贴地帧条, 宽 w 米(一段长 = w × 128 / 28), 从 a 铺到 b
+func _crack_piece(t: Texture2D, rng: RandomNumberGenerator, a: Vector2, b: Vector2, w: float) -> void:
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = 8
+	s.shaded = false
+	s.transparent = true
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	s.axis = Vector3.AXIS_Y
+	s.no_depth_test = false
+	s.render_priority = -1   # 贴地的先画, 单位压在上面(同 _strip flat)
+	s.pixel_size = w / 28.0
+	s.flip_v = rng.randf() < 0.5   # 同一段裂纹不连着重复
 	var w3: Vector3 = battle._world_pos(b, 0.0) - battle._world_pos(a, 0.0)
-	var ang: float = atan2(-w3.z, w3.x)
-	for i in range(n):
-		var s := Sprite3D.new()
-		s.texture = t
-		s.hframes = 8
-		s.shaded = false
-		s.transparent = true
-		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-		s.axis = Vector3.AXIS_Y
-		s.no_depth_test = false
-		s.render_priority = -1   # 贴地的先画, 单位压在上面(同 _strip flat)
-		s.pixel_size = seg / 128.0
-		s.flip_v = (i % 2) == 1   # 隔段上下翻: 同一段裂纹不连着重复
-		s.position = battle._world_pos(a + d * ((float(i) + 0.5) / float(n)), 0.06)
-		s.rotation.y = ang
-		battle._world.add_child(s)
-		_mfx.append({"node": s, "nf": 8, "fps": 16.0, "t": 0.0, "life": 0.5, "loop": false, "follow": null, "h": 0.0})
+	s.position = battle._world_pos((a + b) * 0.5, 0.06)
+	s.rotation.y = atan2(-w3.z, w3.x)
+	battle._world.add_child(s)
+	_mfx.append({"node": s, "nf": 8, "fps": CRACK_FPS, "t": 0.0, "life": 8.0 / CRACK_FPS, "loop": false, "follow": null, "h": 0.0})
 
 
 ## 普攻(11-27 用户「普攻也没有特效」): 刺出那一下(sim 结算同一步)从矛尖朝目标射出一道金白突刺气劲(逐帧: 矛尖闪 → 光尾拉长 → 碎成火星),
@@ -232,6 +249,7 @@ func cent_poke(u: Dictionary) -> void:
 
 
 func cent_sweep(u: Dictionary) -> void:
+	_cent_play(u, "sweep", 16.0)   # 本体原地转一圈横扫(12 帧 0.75 秒; 用户 11-27「原地横扫转一圈」)
 	## 一圈金白横扫气刃贴地转开、往外甩土(spear-cent-sweep, 俯视画); 画里气刃外缘约占画布 0.8 ⇒ 按横扫半径 260 换算
 	var sw := _strip(SV + "spear-cent-sweep.png", 9, battle._world_pos(Vector2(u["pos"]), 0.06), 260.0 * 2.0 * float(battle.WS) / 0.8, 16.0, false, 9.0 / 16.0, true, null, 0.0)
 	if sw != null:

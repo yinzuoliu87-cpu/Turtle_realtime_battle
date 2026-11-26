@@ -43,6 +43,7 @@ const SHIELD_SEC := 3.0
 const SHIELD_DR := 0.20
 const SWEEP_R := 260.0
 const SWEEP_COEF := 1.2
+const SWEEP_SEC := 0.75   # 转圈横扫本体动作时长(12 帧 @16, 用户 11-27「原地横扫转一圈」)
 const POKE_IV := 0.5
 const POKE_R := 200.0
 const POKE_COEF := 0.4
@@ -180,7 +181,7 @@ func summon(side: String, tier: int) -> Dictionary:
 	var ti: int = clampi(tier, 1, 4) - 1
 	var k: float = 1.0 + float(star_sum(side)) * STAR_PCT
 	var p = battle._spawn._spawn_summon(owner, "centurion", float(HP[ti]) * k, float(ATK[ti]) * k,
-		{"label": "百夫长", "spr_id": "eq-centurion", "col_size": 72.0, "hp_w": 56.0, "vis_mul": 1.3, "atk_interval": 1.0, "atk_range": RANGE, "melee": true})   # 11-27 用户「形象就太小了…要大一点的，要健壮一点」: 重画成重甲巨汉 + 放大
+		{"label": "百夫长", "spr_id": "eq-centurion", "col_size": 72.0, "hp_w": 56.0, "vis_mul": 1.55, "atk_interval": 1.0, "atk_range": RANGE, "melee": true})   # 11-27 用户「形象就太小了…要大一点的，要健壮一点」: 重画成重甲巨汉 + 放大
 	if p == null:
 		return {}
 	p["def"] = float(RES[ti]); p["base_def"] = p["def"]
@@ -383,6 +384,7 @@ func _tick_cents(delta: float) -> void:
 					if tier >= 2:
 						_ring_magic(u, SWEEP_R, SWEEP_COEF, "sweep")
 						_fx("cent_sweep", [u])
+						battle._damage.channel(u, SWEEP_SEC)   # 原地转一圈横扫这 0.75 秒不出手(11-27: 原来下一记普攻 0.15 秒后就把转圈动作顶掉)
 					if tier >= 4:
 						_cavalry(u, str(r["side"]))
 

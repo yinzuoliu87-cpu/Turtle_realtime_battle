@@ -13,8 +13,8 @@
     投矛器落点警示区 atl_target(俯视, atgt_0..3 首尾钉原画循环) / 标枪迸血 javelin_blood(第一版 48×48 太淡弃, 64×64 重出; jbld_0..6) /
     棕色筹码起身光柱 brown_rise(crev_0..6, 后两帧只剩一块黑影不取) / 筹码盾落进胸口的盾光 shield_glint(cglt_0..6, 引擎按物理 / 魔法着色)。
   · 11-27 百夫长自查返工(用户「有没有说过，它是全屏击飞的」): PixelLab 特效工作台(vfx_workbench)自己写图层画的, 不是模板改色 ——
-    ai_src/cent_vfx/centurion-ground-erupt(.json): 每个被击飞的敌人脚下的裂地爆(贴地闪电形状画金色地裂 + 贴地光 + 短金光柱 + 土块碎石 + 尘烟 + 火星, 10 帧);
-    ai_src/cent_vfx/centurion-crack-segment(.json): 俯视、两端等高可首尾拼接的一段地裂(暗缝 + 金色裂光, 8 帧), 引擎里贴地从落点铺到每个敌人。
+    (centurion-ground-erupt 每人脚下裂地爆: 用户 11-27 否掉「哪有说什么对每个敌人脚下的地裂爆」, 不再打包, 源留在 ai_src)
+    ai_src/cent_vfx/centurion-crack-segment(.json): 俯视、两端等高可首尾拼接的一段地裂(暗缝 + 金色裂光, 8 帧), 引擎里从落点往四面八方铺满整座岛。
     工作台导出的是网格帧表 + JSON(帧位置 / 锚点), 下面 GRIDS 一段按 JSON 拆帧拼成横排; 裂地爆每帧左右补齐, 让锚点(地面点)落在帧的正中。
 本脚本只做拷贝 / 拼接 / 量化, 重跑逐字节相同。
 
@@ -40,15 +40,9 @@ VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
 ##   待机和走路三次生成都凭空长出一条红披风(底图没有): cBidle3 / cBwalk3 按底图每一行的盾左缘把盾外侧的披风像素清掉 ⇒ cBidle3c / cBwalk3c
 ##   (清理脚本 tools/oneoff/cent_cape_clean_1127.py, 盾内与脚不动); 前两次的 cBidle / cBidle2 / cBwalk / cBwalk2 弃。旧 112 帧那套(cidle / cwalk / latk / cthr / cshdA / cdie)留在 ai_src。
 STRIPS = {
-    "eq-centurion-idle": [(SP, "cBidle3c_%d" % i, False) for i in range(0, 4)],
-    "eq-centurion-walk": [(SP, "cBwalk3c_%d" % i, False) for i in range(0, 8)],
-    "eq-centurion-attack": [(SP, "cBatk_%d" % i, False) for i in range(1, 9)],
-    "eq-centurion-throw": [(SP, "cBthr_%d" % i, False) for i in range(1, 9)],
     ## 举盾(11-26 夜重做): 原画 cent_0 → edit_image_pro_flash 改出「屈膝、大盾举到身前、长矛架在盾沿上」cshdA_end,
     ##   animate_image 首尾钉这两张出 6 帧(cshdA_1..6)。帧条 = 举盾 6 帧 + 撑盾 36 帧(末两帧每 4 帧换一次, 慢慢用力),
     ##   引擎按举盾秒数算播放速度(3 秒 ⇒ 14 fps: 举盾 0.43 秒, 之后一直撑着)。旧 cshd_* 盾没举起来, 弃。
-    "eq-centurion-shield": [(SP, "cBshd_%d" % i, False) for i in range(1, 7)]
-        + [(SP, "cBshd_%d" % (6 if (k // 4) % 2 == 0 else 5), False) for k in range(36)],
     "eq-cavalry-run": [(SP, "cav_%d" % i, False) for i in range(0, 8)],
     ## 11-26 夜 10 件长矛的演出(create_image_pro_flash 无锚原画 fx_* + animate_image; 没照参考):
     ##   只钉首帧(一次性): 骑枪冲阵 slan / 长戟横扫 shal / 圣枪引爆 shbu
@@ -94,7 +88,6 @@ STRIPS = {
     ## 百夫长阵亡(11-27 自查: 原来只有通用淡出): 打包好的待机首帧(已下移贴地, cent_stand_packed)→ edit 出倒地 cent_fallen,
     ##   animate_image 首尾钉住 10 帧(第一条中间 4 帧矛放平像在出招、盾变黑, 换提示词重出) ⇒ cdie_0..10; 输入已贴地不再下移;
     ##   前段抽帧, 末帧连停 4 拍(12 帧 @12 = 1 秒 ≥ 阵亡淡出 0.95 秒)
-    "eq-centurion-death": [(SP, "cBdie_%d" % i, False) for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8]],   # 11-27 重画: cBdie 末帧连停 4 拍
     ## 骑兵冲锋(11-27 补, 同舞狮冲撞): 身后灰白风线 cav_speed / 马头前尘浪 cav_dustbow = create_image_pro_flash(无锚, 没照参考)
     ##   + animate_image 首尾钉原画循环(cvspd_0..3 / cvbow_0..5)
     "spear-cav-speed": [(SP, "cvspd_%d" % i, False) for i in range(0, 4)],
@@ -109,8 +102,24 @@ STRIPS = {
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。
 ##   同一个角色的所有帧条按「全部帧里最低那只脚」统一下移同样多 ⇒ 脚贴帧底、动作之间切换不跳。
 ##   11-27 重画的 128 帧: 全部帧最低的脚在第 120 行 ⇒ 统一下移 7(阵亡也一起)
-SHIFT_DOWN = {"eq-centurion-idle": 7, "eq-centurion-walk": 7, "eq-centurion-attack": 7, "eq-centurion-throw": 7,
-              "eq-centurion-shield": 7, "eq-centurion-death": 7, "eq-cavalry-run": 7}
+SHIFT_DOWN = {"eq-cavalry-run": 7}   # 百夫长 11-27 换新形象后由下面 CENT2 统一对齐
+
+## ★11-27 百夫长换新形象(用户「重画」; 手画一版用户看了「不如 Pixel AI」⇒ PixelLab「角色」流程):
+##   create_character(v3, 128, low top-down, 8 方向同一个角色) → 只用西南向(朝左四分之三侧身); animate_character 逐个动作:
+##   待机 = skeleton-v3 breathing-idle · 走路 = skeleton-v3 walking(普通模板那版盾会消失、鹰徽丢、人变瘦, 弃) ·
+##   普攻 / 掷矛 / 举盾 / 转圈横扫 / 倒下 = pixminimax 自定义动作(普攻、举盾第一版矛尖朝右后方, 写死「矛尖朝左」重出 attack2 / shield_brace2)。
+##   举盾姿势按潘森 E 研究(docs/studies/20261127-龟甲阵参考-潘森E逐帧.md): 压低重心蹲在盾后、盾往前推、矛架盾上沿。
+##   帧(下标 = 下载包里的 frame_NNN, 0 = 角色原画站姿):
+CENT2 = {
+    "eq-centurion-idle":   ("idle",          [0, 1, 2, 3]),
+    "eq-centurion-walk":   ("walk_skel",     [0, 1, 2, 3, 4, 5]),
+    "eq-centurion-attack": ("attack2",       [1, 2, 3, 4, 5, 6, 7, 8, 1, 0]),          # 命中 = 原第 6 帧(矛尖最远) = 下标 5; 末尾补回 1 / 0 接待机
+    "eq-centurion-throw":  ("throw",         [3, 4, 5, 6, 7, 8, 0]),                   # 从举矛过肩截起: 出手在下标 2(引擎里飞矛动作一开始就发)
+    "eq-centurion-shield": ("shield_brace2", [3, 4, 5, 6, 7, 8] + [8] * 36),           # 下蹲举盾 6 帧 + 撑盾(结构同旧帧条, 引擎按举盾秒数算播放速度)
+    "eq-centurion-sweep":  ("spin_sweep",    list(range(5, 17))),                      # 原地转一圈横扫(前 5 帧几乎不动, 截掉)
+    "eq-centurion-death":  ("death",         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8]),     # 末帧连停 4 拍
+}
+CENT2_FW, CENT2_LEFT, CENT2_FOOT = 192, 62, 186
 
 
 def _icon(src, dst, maxc=64):
@@ -142,7 +151,7 @@ def main():
     ## 11-27 特效工作台网格帧表 → 横排帧条(见头注)
     import json
     CV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_vfx")
-    for src, dst, centre in [("centurion-ground-erupt", "spear-cent-erupt", True), ("centurion-crack-segment", "spear-cent-crack", False),
+    for src, dst, centre in [("centurion-crack-segment", "spear-cent-crack", False),
             ("centurion-aegis-open+centurion-aegis-loop", "spear-cent-aegis", False)]:
         if "+" in src:   # 两段接成一条(先展开后循环)
             parts = []
@@ -176,6 +185,22 @@ def main():
             out.paste(sheet.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])), (i * fw + dx, 0))
         out.save(os.path.join(VFX, dst + ".png"), optimize=False)
         print(dst, len(fr), "帧", fw, "×", h0, "锚点行", int(round(fr[0]["pivot"]["y"] * h0)))
+    ## 11-27 百夫长新形象(见 CENT2 头注): 每个动作以第 0 帧包围盒对齐(左沿 → CENT2_LEFT、脚底 → CENT2_FOOT)
+    CC = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_char")
+    for dst, (anim, idx) in CENT2.items():
+        fp = lambda k: os.path.join(CC, anim, "frame_%03d.png" % k)
+        if not os.path.exists(fp(0)):
+            print("缺帧, 跳过", dst)
+            continue
+        bb = Image.open(fp(0)).convert("RGBA").getchannel("A").getbbox()
+        dx, dy = CENT2_LEFT - bb[0], CENT2_FOOT - bb[3]
+        out = Image.new("RGBA", (CENT2_FW * len(idx), CENT2_FW), (0, 0, 0, 0))
+        for i, k in enumerate(idx):
+            fr = Image.new("RGBA", (CENT2_FW, CENT2_FW), (0, 0, 0, 0))
+            fr.alpha_composite(Image.open(fp(k)).convert("RGBA"), (dx, dy)) if dx >= 0 and dy >= 0 else fr.paste(Image.open(fp(k)).convert("RGBA"), (dx, dy))
+            out.paste(fr, (i * CENT2_FW, 0))
+        out.save(os.path.join(VFX, dst + ".png"), optimize=False)
+        print(dst, len(idx), "帧", CENT2_FW, "方 · 位移", (dx, dy))
     for dst, srcs in STRIPS.items():
         ims = []
         for d, n, flip in srcs:

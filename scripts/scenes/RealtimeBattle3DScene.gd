@@ -1806,7 +1806,7 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 		"eq-skel-mage": ["vfx/eq-skelm-idle.png", 112],      # 123 · 骷髅法师
 		"eq-skel-priest": ["vfx/eq-skelp-idle.png", 112],    # 123 · 骷髅祭司
 		"eq-mask-lion": ["vfx/eq-masklion-idle.png", 112],
-		"eq-centurion": ["vfx/eq-centurion-idle.png", 128],   # 长矛羁绊 · 百夫长(11-26)   # 130 舞狮头 · 舞狮(11-26)
+		"eq-centurion": ["vfx/eq-centurion-idle.png", 192],   # 长矛羁绊 · 百夫长(11-26)   # 130 舞狮头 · 舞狮(11-26)
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cmqss3hcqaiii"
-path="res://.godot/imported/spear-cent-erupt.png-7a77864a72dc2ec9a5c212593f529816.ctex"
+uid="uid://bhvrbmbb4atfx"
+path="res://.godot/imported/eq-centurion-sweep.png-ca21f8bcb821c26db5d513b0d167ea3e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/spear-cent-erupt.png"
-dest_files=["res://.godot/imported/spear-cent-erupt.png-7a77864a72dc2ec9a5c212593f529816.ctex"]
+source_file="res://assets/sprites/vfx/eq-centurion-sweep.png"
+dest_files=["res://.godot/imported/eq-centurion-sweep.png-ca21f8bcb821c26db5d513b0d167ea3e.ctex"]
 
 [params]
 
