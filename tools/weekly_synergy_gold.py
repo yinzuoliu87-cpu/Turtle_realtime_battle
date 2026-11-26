@@ -17,7 +17,13 @@ def fnv(s):
     return h
 
 
+LAUNCH = calendar.timegm((2026, 11, 30, 0, 0, 0))   # 上线那一周保底 6 个新羁绊(11-27), 另 4 个从老羁绊里按同一排序取
+NEW = ["匕首", "魔法书", "面具", "筹码", "炸弹", "长矛"]
+
+
 def week(anchor):
+    if anchor == LAUNCH:
+        return NEW + [t for _, t in sorted((fnv("%d|%s" % (anchor, t)), t) for t in ALL if t not in NEW)][:4]
     return [t for _, t in sorted((fnv("%d|%s" % (anchor, t)), t) for t in ALL)][:10]
 
 

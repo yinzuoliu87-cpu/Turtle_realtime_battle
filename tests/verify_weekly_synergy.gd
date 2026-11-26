@@ -23,6 +23,13 @@ func _ok(n: String, c: bool, d: String = "") -> void:
 		print("  [FAIL] ", n, "  ", d)
 
 
+func _uniq(a: Array) -> bool:
+	var d := {}
+	for x in a:
+		d[x] = true
+	return d.size() == a.size()
+
+
 func _ready() -> void:
 	await get_tree().process_frame
 	var gs = get_node("/root/GameState")
@@ -50,8 +57,16 @@ func _ready() -> void:
 			seen[t] = true
 	_ok("A 104 周里 16 个羁绊都轮到过(纯随机不会有永远抽不到的)", seen.size() == 16, str(seen.size()))
 	_ok("B 周锚点 0 ⇒ 16 个全在", WS.of_week(0).size() == 16)
+	var lw: Array = WS.of_week(WS.LAUNCH_WEEK)
+	var lw_new := 0
+	for t in WS.LAUNCH_NEW:
+		if lw.has(t):
+			lw_new += 1
+	var nx: Array = WS.of_week(WS.LAUNCH_WEEK + 7 * 86400)
+	_ok("B2 上线周(11-30)保底: 6 个新羁绊全在 + 共 10 个不重复(%s) · 下一周照常纯随机" % "、".join(lw),
+		lw_new == 6 and lw.size() == 10 and _uniq(lw) and nx.size() == 10)
 
-	var wk := int((gold as Dictionary).keys()[0])
+	var wk := int((gold as Dictionary).keys()[1])   # 第二周(第一周是上线保底周, 6 个新羁绊全在 ⇒ 量不出「本周池外的新件」)
 	var in_week: Array = WS.of_week(wk)
 	var out_t := ""
 	for t in WS.ALL:

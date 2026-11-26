@@ -17,6 +17,10 @@ const COUNT := 10
 const LEGACY_LAST := 96
 ## 从这一周起轮换(含)。0 = 有池版本 2 的流水就轮换。
 const START_WEEK := 0
+## 上线那一周(2026-11-30 周一 00:00 UTC)保底: 6 个新羁绊全在, 另 4 个从 10 个老羁绊里按同一排序键取前 4。
+##   11-27 自查: 纯随机这一周抽不到面具 / 炸弹 / 长矛(面具和炸弹要连缺 4 周); 用户 11-27「直接做就好了呀」⇒ 按我的建议上线周强制。之后各周照旧纯随机。
+const LAUNCH_WEEK := 1795996800
+const LAUNCH_NEW: Array[String] = ["匕首", "魔法书", "面具", "筹码", "炸弹", "长矛"]
 
 const _P2T := preload("res://scripts/gamedata/phase2_types.gd")
 
@@ -26,12 +30,17 @@ static func of_week(week_anchor: int) -> Array:
 	if week_anchor <= 0 or week_anchor < START_WEEK:
 		return ALL.duplicate()
 	var keyed: Array = []
+	var launch: bool = week_anchor == LAUNCH_WEEK
 	for t in ALL:
+		if launch and LAUNCH_NEW.has(t):
+			continue
 		keyed.append([WeeklyFree.fnv1a32("%d|%s" % [week_anchor, t]), t])
 	keyed.sort_custom(func(a: Array, b: Array) -> bool:
 		return int(a[0]) < int(b[0]) or (int(a[0]) == int(b[0]) and str(a[1]) < str(b[1])))
 	var out: Array = []
-	for i in range(COUNT):
+	if launch:
+		out = LAUNCH_NEW.duplicate()
+	for i in range(COUNT - out.size()):
 		out.append(str(keyed[i][1]))
 	return out
 
