@@ -406,7 +406,7 @@ func _aegis_dir(u: Dictionary) -> Vector2:
 		if not o.get("alive", false):
 			continue
 		var d: Vector2 = Vector2(o["pos"]) - Vector2(u["pos"])
-		if d.x * fx <= 0.0 or d.length() < 1.0:
+		if d.x * fx < -0.25 * d.length() or d.length() < 1.0:   # 朝向那一侧 + 接近竖直的(上下方)都算
 			continue
 		if d.length() < bd:
 			bd = d.length()
@@ -511,10 +511,11 @@ func cent_cav(c: Dictionary) -> void:
 	var n := _strip(V + "eq-cavalry-run.png", 8, battle._world_pos(Vector2(c["pos"]), 0.0), 2.6, 10.0, true, 0.0)   # 最后加 ⇒ 画在最上面; 11-27 冲锋 520 → 300 码/秒, 跑帧 14 → 10 fps
 	if n != null:
 		n.flip_h = fr   # 原画朝左; 往右冲就翻过来
-		## 马头前的船头浪(11-27 用户「也没有冲击罩啊」): 压低压宽的土金色激波罩, 跟着马走、波纹一直往后退
-		var bow := Cent3dVfx.node(battle._world, Cent3dVfx.gen_shock(1.1, 1.0, 8, 20), Cent3dVfx.SHOCK_SHADER, Cent3dVfx.SHOCK_SP,
-			{"prog": 0.0, "fade": 0.85, "rings": 3.0, "rim_pow": 1.3, "tail": 0.5, "col_a": Vector3(1.0, 0.93, 0.75), "col_b": Vector3(0.85, 0.6, 0.3)}, 10)
-		bow.scale = Vector3(1.0, 0.75, 1.35)
+		## 罩住人马全身的能量罩(11-27 用户「像赛亚冲锋一样…要有个罩子…不要很明显的贴图的那种感觉」): 3D 水滴形外壳,
+		##   只有轮廓边亮、正面透明(人马在里面看得清), 壳面气流线往后流, 前端最亮; 朝冲锋方向
+		var bow := Cent3dVfx.node(battle._world, Cent3dVfx.gen_sheath(4.2, 1.35, 16, 28), Cent3dVfx.SHEATH_SHADER, Cent3dVfx.SHEATH_SP,
+			{"t": 0.0, "fade": 1.0}, 10)
+		bow.scale = Vector3(1.0, 0.9, 0.8)
 		bow.rotation = Vector3(0.0, Cent3dVfx.yaw_of(dir), 0.0)
 		_cav_nodes.append({"c": c, "node": n, "parts": parts, "dust_t": 0.0, "bow": bow, "bt": 0.0})
 
@@ -1088,10 +1089,12 @@ func tick(delta: float) -> void:
 				if pt["n"] != null and is_instance_valid(pt["n"]):
 					(pt["n"] as Sprite3D).position = battle._world_pos(cp - Vector2(face, 0.0) * float(pt["back"]), float(pt["h"]))
 			var bw = r3.get("bow")
-			if bw != null and is_instance_valid(bw):   # 船头浪: 马头前 70 码、离地 0.9 米
+			if bw != null and is_instance_valid(bw):   # 能量罩: 罩在人马身上(中心离地 1.15 米), 气流按时间往后流; 最后 0.25 秒淡掉
 				r3["bt"] = float(r3.get("bt", 0.0)) + delta
-				(bw as MeshInstance3D).position = battle._world_pos(cp + Vector2(r3["c"]["dir"]) * 70.0, 0.9)
-				((bw as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("prog", float(r3["bt"]) * 4.0)
+				(bw as MeshInstance3D).position = battle._world_pos(cp + Vector2(r3["c"]["dir"]) * 10.0, 1.15)
+				var bm: ShaderMaterial = (bw as MeshInstance3D).material_override
+				bm.set_shader_parameter("t", float(r3["bt"]))
+				bm.set_shader_parameter("fade", clampf(float(r3["c"]["left"]) / (SpearSynergySystem.CAV_SPD * 0.25), 0.0, 1.0) * minf(1.0, float(r3["bt"]) / 0.15))
 			r3["dust_t"] = float(r3.get("dust_t", 0.0)) + delta
 			if float(r3["dust_t"]) >= 0.08:   # 马蹄一路扬土(底层扬尘)
 				r3["dust_t"] = 0.0

@@ -57,7 +57,7 @@ const CAV_SPD := 300.0            # 11-27 用户「速度是很快, 太快了」
 const CAV_COEF := 1.5
 const CAV_W := 40.0
 const CAV_VY := 8.25              # 骑兵撞飞滞空 0.75 秒
-const CAV_MAX := 2200.0           # 冲锋最长距离(到不了就散)
+const CAV_MAX := 1500.0           # 11-27 用户「固定跑一千五百码…固定速度…冲到谁就把谁造成伤害」: 每匹固定冲 1500 码, 中途不停
 const ID := "_summon_centurion"
 const COL_PHYS := Color("#ff9a4a")
 const COL_MAGIC := Color("#4dabf7")
@@ -431,7 +431,7 @@ func _en_gain(u: Dictionary, delta: float) -> float:
 	return _SummonEnergy.gain(u, float(battle._t), delta)
 
 
-## 4 档: 我方身后的地图边缘冲出 4 名持矛骑兵, 各冲一名随机敌人
+## 4 档: 我方身后的地图边缘冲出 4 名持矛骑兵, 各朝一名随机敌人的方向固定冲 CAV_MAX 码(路上撞到谁打谁)
 func _cavalry(u: Dictionary, side: String) -> void:
 	var foes: Array = []
 	for o in battle._targeting._enemies_of(u):
@@ -481,9 +481,8 @@ func _tick_cavs(delta: float) -> void:
 				if o.get("alive", false):
 					battle._knock_up(o, Vector2(o["pos"]) - dir * 40.0, CAV_VY)
 				_fx("cent_cav_hit", [c, o])
-		## 冲过目标所在处再跑一段就散(出了岛也散)
-		var passed: bool = tgt is Dictionary and (Vector2(tgt["pos"]) - b).dot(dir) < -160.0
-		if float(c["left"]) > 0.5 and not passed and ArenaShape.in_rect_shape(b, battle.ARENA, -40.0):
+		## 固定冲满 CAV_MAX 才散(11-27 起不再「冲过目标 / 出岛就散」)
+		if float(c["left"]) > 0.5:
 			keep.append(c)
 		else:
 			_fx("cent_cav_end", [c])

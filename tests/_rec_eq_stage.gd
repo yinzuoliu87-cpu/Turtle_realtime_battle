@@ -293,6 +293,42 @@ func _process(d: float) -> void:
 				print("[NODE] Mesh %s %s" % [str((nd as MeshInstance3D).position), str((nd as MeshInstance3D).mesh)])
 			elif nd is GPUParticles3D or nd is CPUParticles3D:
 				print("[NODE] Particles %s" % str(nd.position))
+	## 11-27 龟甲阵朝不同方向(用户「朝不同方向这个效果，你没给我」): 从 REC_AEGIS_DIRS 秒起, 每 1.7 秒把一个敌人挪到百夫长周围一个方向
+	##   (右 → 右下 → 下 → 左下 → 左 → 左上 → 上 → 右上, 230 码), 其余敌人挪到岛另一侧, 再走真实的举盾演出 SpearEqVfx.cent_shield
+	##   (方向由它自己按最近敌人算); 演示期间压住龟能, 免得真举盾插进来。录像说明里写明是录像台挪的敌人。
+	if OS.has_environment("REC_AEGIS_DIRS") and _el > float(OS.get_environment("REC_AEGIS_DIRS")):
+		var ad_t: float = _el - float(OS.get_environment("REC_AEGIS_DIRS"))
+		var ad_k: int = int(ad_t / 1.7)
+		var cen = null
+		for uu in _b._units:
+			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and bool(uu.get("alive", false)):
+				cen = uu
+		for r in _b._spear_syn._cents:
+			r["en"] = 0.0
+		if cen != null and ad_k < 8 and not _seen.has("adir%d" % ad_k):
+			_seen["adir%d" % ad_k] = 1
+			var foes: Array = []
+			for uu in _b._units:
+				if uu is Dictionary and str(uu.get("side", "")) == "right" and bool(uu.get("alive", false)):
+					foes.append(uu)
+			var ang: float = float(ad_k) * TAU / 8.0
+			var cp: Vector2 = Vector2(cen["pos"])
+			var far_x: float = (_b.ARENA.end.x - 60.0) if cp.x < _b.ARENA.get_center().x else (_b.ARENA.position.x + 60.0)
+			for i in range(foes.size()):
+				if i == 0:
+					foes[i]["pos"] = cp + Vector2(cos(ang), sin(ang)) * 230.0
+				else:
+					foes[i]["pos"] = Vector2(far_x, _b.ARENA.position.y + 80.0 + float(i) * 80.0)
+			var fr: bool = cos(ang) > 0.01 or (absf(cos(ang)) <= 0.01 and bool(cen.get("face_right", true)))
+			cen["face_right"] = fr
+			if is_instance_valid(cen.get("sprite", null)):
+				(cen["sprite"] as Sprite3D).flip_h = fr
+			_b._damage.channel(cen, 1.6)
+			_b._spear_syn.vfx.cent_shield(cen, 1.4)
+			print("[ADIR] %d 角度 %d 敌人 %s 百夫长 %s" % [ad_k, int(rad_to_deg(ang)), str(foes[0]["pos"]), str(cp)])
+		if cen != null and _seen.has("adir%d" % ad_k) and not _seen.has("adoff%d" % ad_k) and ad_t - float(ad_k) * 1.7 > 1.45:
+			_seen["adoff%d" % ad_k] = 1
+			_b._spear_syn.vfx.cent_shield_off(cen)
 	if OS.get_environment("REC_CASE") == "sp_cav" and _el > 2.0 and not _seen.has("cav_go"):
 		_seen["cav_go"] = 1
 		for uu in _b._units:
