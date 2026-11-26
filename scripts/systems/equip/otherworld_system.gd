@@ -15,6 +15,8 @@ extends RefCounted
 ## 偷属性: 每个千面携带者从它拽进来的那一个身上, 每秒偷 3/5/10% 攻击力、护甲、魔抗(按对方当前底数), 直接改两边的
 ##   base_atk / base_def / base_mr ⇒ 一直留到这个战场结束(换路整体重建单位字典, 自然清零)。
 const OW_AT := 8.0
+## 抓取演出: 第 8 秒被拽的人头上先出面具印记、鬼手抓过去, 0.6 秒后才真的进里世界(参考莫德凯撒 R 先印记后抓, 研究 docs/studies/20261126-参考-莫德凯撒R死亡之境.md)
+const OW_GRAB := 0.6
 const OW_SEC := 12.0
 const OW_STEAL := [0.03, 0.05, 0.10]
 ## 里世界那块地: 跟主岛一样大(技能射程 / 走位空间都不变), 往远处挪 OW_SHIFT 像素(镜头切过去才看得见)
@@ -25,7 +27,8 @@ var _carriers: Array = []     # {u, si, used}
 var active := false
 var t0 := 0.0
 var members: Array = []       # 单位字典(is_same 比较, 不当键)
-var pairs: Array = []         # {thief, victim, si, acc}
+var pairs: Array = []         # {thief, victim, si, acc, ck}
+var _grabs: Array = []        # 抓取中: {thief, victim, si, ck, t_end}
 ## 门禁量
 var stat := {"pull": 0, "open": 0, "close": 0, "steal_ticks": 0}
 var last_close_reason := ""
@@ -42,8 +45,8 @@ static func separated(a, b) -> bool:
 	return bool((a as Dictionary).get("_ow", false)) != bool((b as Dictionary).get("_ow", false))
 
 
-func add_carrier(u: Dictionary, si: int) -> void:
-	_carriers.append({"u": u, "si": si, "used": false})
+func add_carrier(u: Dictionary, si: int, ck: String = "p2eq_136") -> void:
+	_carriers.append({"u": u, "si": si, "used": false, "ck": ck})
 
 
 func _in(u: Dictionary) -> bool:
@@ -114,6 +117,17 @@ func tick(delta: float) -> void:
 		var v = _victim_for(cu)
 		if not (v is Dictionary):
 			continue
+		_grabs.append({"thief": cu, "victim": v, "si": int(c["si"]), "ck": str(c.get("ck", "p2eq_136")), "t_end": t + OW_GRAB})
+		battle._equip_sys._mask_sys._fx("ow_grab", [cu, v, OW_GRAB])
+	var still: Array = []
+	for g in _grabs:
+		if t < float(g["t_end"]):
+			still.append(g)
+			continue
+		var cu: Dictionary = g["thief"]
+		var v: Dictionary = g["victim"]
+		if not cu.get("alive", false) or not v.get("alive", false):
+			continue   # 抓的过程中有一方死了: 不进
 		if not active:
 			active = true
 			t0 = t
@@ -121,12 +135,15 @@ func tick(delta: float) -> void:
 			stat["open"] += 1
 			if battle.get("_equip_sys") != null:
 				battle._equip_sys._mask_sys._fx("ow_open", [])
+		var p0c := Vector2(cu["pos"])
+		var p0v := Vector2(v["pos"])
 		_enter(cu)
 		_enter(v)
-		pairs.append({"thief": cu, "victim": v, "si": int(c["si"]), "acc": 0.0})
+		pairs.append({"thief": cu, "victim": v, "si": int(g["si"]), "acc": 0.0, "ck": str(g["ck"])})
 		stat["pull"] += 1
 		_drop_cross_targets()
-		battle._equip_sys._mask_sys._fx("ow_pull", [cu, v])
+		battle._equip_sys._mask_sys._fx("ow_pull", [cu, v, p0c, p0v])
+	_grabs = still
 	if not active:
 		return
 	for P in pairs:
@@ -137,7 +154,7 @@ func tick(delta: float) -> void:
 		P["acc"] = float(P["acc"]) + delta
 		while float(P["acc"]) >= 1.0:
 			P["acc"] = float(P["acc"]) - 1.0
-			_steal(th, vi, float(OW_STEAL[int(P["si"])]))
+			_steal(th, vi, float(OW_STEAL[int(P["si"])]), str(P.get("ck", "p2eq_136")))
 	## 结束: 12 秒到 / 里世界里只剩一方
 	var sides := {}
 	for m in members:
@@ -167,15 +184,25 @@ func _main_side_out() -> bool:
 	return int(alive["left"]) == 0 or int(alive["right"]) == 0
 
 
-func _steal(th: Dictionary, vi: Dictionary, pct: float) -> void:
+func _steal(th: Dictionary, vi: Dictionary, pct: float, ck: String = "p2eq_136") -> void:
 	stat["steal_ticks"] += 1
+	## 偷到的量记进这一件千面的装备状态(属性面板「偷取 +X」读它) + 携带者身上的总量(光环大小读它)
+	var es: Dictionary = th.get("eq_state", {})
+	var st: Dictionary = es.get(ck, {}) if es.get(ck, null) is Dictionary else {}
+	var got := {}
 	for f in ["base_atk", "base_def", "base_mr"]:
 		var amt: float = maxf(0.0, float(vi.get(f, 0.0))) * pct
 		vi[f] = float(vi.get(f, 0.0)) - amt
 		th[f] = float(th.get(f, 0.0)) + amt
+		got[f] = amt
+		st["ow_" + f] = float(st.get("ow_" + f, 0.0)) + amt
+	es[ck] = st
+	th["eq_state"] = es
+	th["_ow_stolen"] = float(th.get("_ow_stolen", 0.0)) + float(got["base_atk"]) + float(got["base_def"]) + float(got["base_mr"])
+	vi["_ow_drained"] = int(vi.get("_ow_drained", 0)) + 1
 	battle._recalc_stats(vi)
 	battle._recalc_stats(th)
-	battle._equip_sys._mask_sys._fx("ow_steal", [th, vi])
+	battle._equip_sys._mask_sys._fx("ow_steal", [th, vi, got])
 
 
 func close(reason: String) -> void:
@@ -184,6 +211,7 @@ func close(reason: String) -> void:
 	active = false
 	last_close_reason = reason
 	stat["close"] += 1
+	var returned: Array = members.duplicate()
 	for m in members:
 		if m is Dictionary:
 			_leave(m)
@@ -191,7 +219,7 @@ func close(reason: String) -> void:
 	pairs.clear()
 	ArenaShape.ow_rect = Rect2()
 	_drop_cross_targets()
-	battle._equip_sys._mask_sys._fx("ow_close", [reason])
+	battle._equip_sys._mask_sys._fx("ow_close", [reason, returned])
 
 
 func clear_all() -> void:
@@ -201,5 +229,6 @@ func clear_all() -> void:
 	members.clear()
 	pairs.clear()
 	_carriers.clear()
+	_grabs.clear()
 	active = false
 	ArenaShape.ow_rect = Rect2()

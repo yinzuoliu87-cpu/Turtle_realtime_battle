@@ -702,6 +702,8 @@ func _update_world_transforms() -> void:
 			contact.modulate.a = 0.0   # 隐藏接触核影(用户"只留影子")
 		if is_instance_valid(ring):
 			ring.position = battle._world_pos(_rpos, 0.015)
+		if int(u.get("_ow_drained", 0)) > 0:   # 136 千面: 在里世界被偷过属性 ⇒ 身体发灰(偷得越多越灰, 封顶 45%; 一路有效)
+			spr.modulate = spr.modulate.lerp(Color(0.52, 0.48, 0.62, spr.modulate.a), minf(0.45, 0.05 * float(u["_ow_drained"])))
 		if bool(u.get("_ghost_hidden", false)) and battle._t < float(u.get("untargetable_until", 0.0)):   # 132 鬼面潜行(11-26): 暗红紫半透明, 攻击现形
 			spr.modulate = Color(0.62, 0.3, 0.55, 0.34).lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl * 0.5)
 		if battle._equip_sys._mask_sys.ow_hidden(u):   # 136 千面【里世界】: 不在观众正在看的那个世界 ⇒ 本体 / 影子都隐去(血条在下面那段隐)

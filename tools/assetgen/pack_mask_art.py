@@ -5,11 +5,18 @@
     原图在 ai_src/mask/icon*.png / tagmask.png。
   · 130 舞狮: 原画 = create_image_pro_flash 112×112(无锚, 写明严格侧面朝左) lion_0.png;
     待机 / 走路 / 咬 = animate_image 首尾都钉原画(序号 0 = 输入原画); 冲撞 = animate_image 只钉首帧。
-  · 135 金光: 光柱 gold_beam.png = create_image_pro_flash 64×256(无锚); 落地光 gold_ground.png = create_image_pro_flash 96×64(无锚)。
+  · 135 金光第一版(11-26 用户说敷衍, 已弃): gold_beam.png / gold_ground.png 原图留在 ai_src, 不再打包。
     面具升空用的是 135 自己的图标; 光柱的伸缩 / 跟随 / 变亮是引擎里按时间摆(不是逐帧画的)。
   · 136 里世界场景: 地砖 ow_tile(64×64) / 法阵 ow_circle(256×256) / 断柱 ow_pillar / 巨面具两种 ow_maskA·B(128×128) / 鬼火灯台 ow_brazier(48×96)
     = create_image_pro_flash(无锚); 巨面具与鬼火 = animate_image 首尾钉原画 8 帧(owA_0..7 / owB_0..7 / owF_0..7, 序号 8 = 钉住的末帧不取)。
     平台椭圆裁切 / 边缘碎口 / 变暗是着色器(otherworld_ground.gdshader); 摆位见 OtherworldStage。
+  · 11-26 第二轮(用户看过参考后): 135 金光照云顶雷欧娜(docs/studies/20261126-参考-云顶雷欧娜金光.md) ——
+    锁定圈 gl_ring / 三层光柱 gl_beam / 底部飞溅 gl_splash / 收尾烟 gl_smoke = create_image_pro_flash(无锚);
+    光柱 / 飞溅 = animate_image 首尾钉原画 6 帧(glb_0..5 / gls_0..5); 烟 = animate_image 只钉首帧(glk_1..6)。
+    136 千面演出照莫德凯撒 R(docs/studies/20261126-参考-莫德凯撒R死亡之境.md) —— 面具印记 ow_sigil2 / 鬼手 ow_hand / 紫雾 ow_mist /
+    裂隙 ow_rift / 魂流 ow_wisp / 光环 ow_aura2 / 回落光柱 ow_pillar2 = create_image_pro_flash(无锚), 各自 animate_image;
+    自查弃用(如实): 裂隙第 2、3 帧多一圈白描边(owr_2/3 不取) · 第一版光环中间画了白人影(ow_aura 弃, 重出 ow_aura2) · 第一版印记底下多一块白方块(ow_sigil 弃)。
+    里世界按钮图标 btn_ow / btn_main = create_image_pro_flash 40×36, 风格锚 = hud-stats 顶栏图标。
 本脚本只做拷贝 / 拼接 / 量化, 重跑逐字节相同。
 
     python tools/assetgen/pack_mask_art.py
@@ -35,6 +42,24 @@ LION_SEQ = {
 }
 
 
+## 特效帧条(源名按帧序; 一律横排一行)
+STRIPS = {
+    "mask-gold-beam-anim": ["glb_%d" % i for i in range(0, 6)],
+    "mask-gold-splash": ["gls_%d" % i for i in range(0, 6)],
+    "mask-gold-smoke": ["glk_%d" % i for i in range(1, 7)],
+    "ow-hand": ["owh_%d" % i for i in range(0, 9)],
+    "ow-mist": ["owm_%d" % i for i in range(0, 9)],
+    "ow-rift": ["owr_0", "owr_1", "owr_4", "owr_5"],
+    "ow-pillar2": ["owp_%d" % i for i in range(0, 6)],
+    "ow-wisp": ["oww_%d" % i for i in range(0, 4)],
+    "ow-aura": ["owaura_%d" % i for i in range(0, 8)],   # 源名不能叫 owa_*: Windows 不分大小写, 会和巨面具 owA_* 撞名(11-26 撞过一次, 从提交里取回)
+    "ow-sigil": ["ows_0", "ows_2", "ows_3", "ows_2"],   # 第 1 帧整张发白不取; 2/3 帧右侧杂点在 CLEAN_RIGHT 里清
+}
+
+
+CLEAN_RIGHT = {"ow-sigil": 21}   # 印记本体占 x 2..20, 21 起是杂点(逐列量过)
+
+
 def _icon(src, dst, maxc=64):
     im = Image.open(src).convert("RGBA")
     if len({p[:3] for p in im.getdata() if p[3] > 0}) <= maxc:
@@ -52,8 +77,6 @@ def main():
         _icon(os.path.join(AI, src + ".png"), os.path.join(EQ, dst + ".png"))
     for src, dst in TAG.items():
         _icon(os.path.join(AI, src + ".png"), os.path.join(TAGS, dst + ".png"))
-    for src, dst in {"gold_beam": "mask-gold-beam", "gold_ground": "mask-gold-ground"}.items():
-        _icon(os.path.join(AI, src + ".png"), os.path.join(VFX, dst + ".png"))
     for src, dst in {"ow_tile": "ow-tile", "ow_circle": "ow-circle", "ow_pillar": "ow-pillar"}.items():
         _icon(os.path.join(AI, src + ".png"), os.path.join(VFX, dst + ".png"))
     for pre, dst, (fw, fh) in [("owA", "ow-maskA", (128, 128)), ("owB", "ow-maskB", (128, 128)), ("owF", "ow-brazier", (48, 96))]:
@@ -63,6 +86,26 @@ def main():
             assert im.size == (fw, fh), (pre, i, im.size)
             out.paste(im, (i * fw, 0))
         out.save(os.path.join(VFX, dst + ".png"), optimize=False)
+    for src, dst in {"gl_ring": "mask-gold-ring"}.items():
+        _icon(os.path.join(AI, src + ".png"), os.path.join(VFX, dst + ".png"))
+    UI = os.path.join(ROOT, "assets", "sprites", "ui")
+    for src, dst in {"btn_ow": "hud-ow-enter", "btn_main": "hud-ow-back"}.items():
+        _icon(os.path.join(AI, src + ".png"), os.path.join(UI, dst + ".png"))
+    for dst, names in STRIPS.items():
+        ims = [Image.open(os.path.join(AI, n + ".png")).convert("RGBA") for n in names]
+        if dst in CLEAN_RIGHT:   # 去掉帧右缘以外的杂点(自查: 印记第 2/3 帧右侧多出一小撮白点)
+            for im in ims:
+                px = im.load()
+                for y in range(im.height):
+                    for x in range(CLEAN_RIGHT[dst], im.width):
+                        px[x, y] = (0, 0, 0, 0)
+        fw, fh = ims[0].size
+        out = Image.new("RGBA", (fw * len(ims), fh), (0, 0, 0, 0))
+        for i, im in enumerate(ims):
+            assert im.size == (fw, fh), (dst, names[i], im.size)
+            out.paste(im, (i * fw, 0))
+        out.save(os.path.join(VFX, dst + ".png"), optimize=False)
+        print(dst, len(ims), "帧", fw, "×", fh)
     for dst, names in LION_SEQ.items():
         out = Image.new("RGBA", (FW * len(names), FW), (0, 0, 0, 0))
         for i, n in enumerate(names):

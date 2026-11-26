@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bk1stphdp8478"
-path="res://.godot/imported/mask-gold-beam.png-37beb1dc889f562af78e268d53770f8d.ctex"
+uid="uid://c55pki8mvqimh"
+path="res://.godot/imported/mask-gold-ring.png-026535b000b3e4fc3a3da4c82f8908ba.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/mask-gold-beam.png"
-dest_files=["res://.godot/imported/mask-gold-beam.png-37beb1dc889f562af78e268d53770f8d.ctex"]
+source_file="res://assets/sprites/vfx/mask-gold-ring.png"
+dest_files=["res://.godot/imported/mask-gold-ring.png-026535b000b3e4fc3a3da4c82f8908ba.ctex"]
 
 [params]
 

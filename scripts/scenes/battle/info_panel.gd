@@ -1096,6 +1096,12 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 			if n > 0 and amp > 0:
 				out.append(Lang.t("获得 %d%% 增伤") % amp)
 				out.append(Lang.t("%s%%×连击层数(%d) = %d%%") % [_num(float(st.get("amp_coef", 0.0)) * 100.0), n, amp])
+		"otherworld":
+			var a: int = int(round(float(st.get("ow_base_atk", 0.0))))
+			var d: int = int(round(float(st.get("ow_base_def", 0.0))))
+			var m: int = int(round(float(st.get("ow_base_mr", 0.0))))
+			if a + d + m > 0:
+				out.append(Lang.t("里世界偷取：+%d 攻击力、+%d 护甲、+%d 魔抗") % [a, d, m])
 		"tide":
 			if bool(st.get("tide_on", false)):
 				out.append(Lang.t("涨潮中：获得 %d 最大生命值、%d 攻击力") % [int(round(float(st.get("tide_hp", 0.0)))), int(round(float(st.get("tide_atk", 0.0))))])

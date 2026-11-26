@@ -256,7 +256,7 @@ func on_spawn(u: Dictionary, eid: String, si: int) -> void:
 		"p2eq_135":
 			_gold_spawn(u, ck, si)
 		"p2eq_136":
-			ow.add_carrier(u, si)
+			ow.add_carrier(u, si, ck)
 
 
 func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
