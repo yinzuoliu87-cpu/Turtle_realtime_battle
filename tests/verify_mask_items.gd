@@ -9,6 +9,7 @@ extends Node
 ##   F 132 鬼面     降到 50% ⇒ 潜行(不可选中) · 潜行期间回血 · 攻击现形 · 每路一次
 ##   G 133 防毒面具 灼烧 / 中毒 / 流血不上层 · 损失 50% 生命 ⇒ 移速 +50%, 回满血 ⇒ 还原
 ##   H 134 威尼斯面具 致命一击后不死 · 倒地期间不可选中 · 2.5 秒后血量 = 30% · 第二次致命照死
+##   J 136 千面     第 8 秒拽人进里世界 · 两个世界互不敌对 · 每秒偷 3% · 12 秒或一方全灭回来 · 多个千面共用一个里世界
 ##   I 135 黄金面具 1 秒延时才落地 · 每秒真伤递增 · 一直钉到死 · 打死出 1 枚深海币 + 这件 +1 层(+20 生命 +2 攻击) · 冷却 8 秒再找下一个
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const MB := preload("res://scripts/systems/equip/eq_mask_batch.gd")
@@ -295,6 +296,59 @@ func _ready() -> void:
 	_adv(1.0)
 	B = _m.beam_state(0)
 	_ok("I 冷却 8 秒内不出手 · 之后钉下一个(foe2)", still_cd and is_same(B.get("tgt"), foe2), "7.5 秒仍冷却 %s · 新目标 %s" % [str(still_cd), str(is_same(B.get("tgt"), foe2))])
+
+	## ── J 136 千面【里世界】 ──
+	me = _mk("left", ["p2eq_136"])
+	var e1 := _mk("right", [], 0.0, -150.0)
+	var e2 := _mk("right", [], 0.0, 0.0)
+	var e3 := _mk("right", [], 0.0, 150.0)
+	_field([me, e1, e2, e3])
+	var ow = _m.ow
+	_s._sd_t0 = _s._t
+	_adv(7.9)
+	var before: bool = bool(ow.active)
+	_adv(0.2)
+	var vic = null
+	for o in [e1, e2, e3]:
+		if bool(o.get("_ow", false)):
+			vic = o
+	var others: Array = []
+	for o in [e1, e2, e3]:
+		if not is_same(o, vic):
+			others.append(o)
+	_ok("J 开打第 8 秒(7.9 秒还没有)把一名敌人拽进里世界, 自己也进去", not before and bool(ow.active) and bool(me.get("_ow", false)) and vic is Dictionary,
+		"7.9 秒 %s · 拽 %s" % [str(before), str(vic is Dictionary)])
+	_ok("J 主世界的敌人不再把它当敌人(选不到、范围伤害也打不到) · 里世界里两人互为敌人",
+		not _s._is_hostile(others[0], me) and not _s._is_hostile(me, others[0]) and _s._is_hostile(me, vic) and _s._is_hostile(vic, me)
+		and not _s._targeting._enemies_of(others[0]).has(me))
+	var a_me0 := float(me["base_atk"])
+	var a_v0 := float((vic as Dictionary)["base_atk"])
+	var d_v0 := float((vic as Dictionary)["base_def"])
+	_adv(1.0)
+	_ok("J 每秒偷对方 3%% 攻击力(一星): 我 +%.1f · 对方 -%.1f" % [float(me["base_atk"]) - a_me0, a_v0 - float((vic as Dictionary)["base_atk"])],
+		absf(float(me["base_atk"]) - a_me0 - a_v0 * 0.03) < 1e-3 and absf(a_v0 - float((vic as Dictionary)["base_atk"]) - a_v0 * 0.03) < 1e-3)
+	_adv(11.2)
+	var after_atk := float(me["base_atk"])
+	_ok("J 12 秒到 ⇒ 两人回主世界(偷到的留着: 攻击力仍比进去前高 %.1f)" % (after_atk - a_me0),
+		not bool(ow.active) and not bool(me.get("_ow", false)) and not bool((vic as Dictionary).get("_ow", false)) and ow.last_close_reason == "time"
+		and after_atk > a_me0 + a_v0 * 0.25 and _s._is_hostile(others[0], me), "原因 %s" % ow.last_close_reason)
+	## 两边各带一件 + 一方在里面全灭 ⇒ 提前结束
+	me = _mk("left", ["p2eq_136"])
+	var fo := _mk("right", ["p2eq_136"])
+	var m2 := _mk("left", [], 0.0, 200.0)
+	var fo2 := _mk("right", [], 0.0, 200.0)
+	_field([me, fo, m2, fo2])
+	ow = _m.ow
+	var open0: int = int(ow.stat["open"])
+	_s._sd_t0 = _s._t
+	_adv(8.1)
+	_ok("J 两边各带千面 ⇒ 只开一个里世界, 牵连到的全进来(%d 人)" % ow.members.size(), int(ow.stat["open"]) == open0 + 1 and ow.members.size() >= 3, str(ow.members.size()))
+	for mm in ow.members:
+		if str(mm.get("side", "")) == "right":
+			mm["hp"] = 0.0
+			_s._kill(mm)
+	_adv(0.1)
+	_ok("J 里世界里一方全灭 ⇒ 决斗提前结束, 剩下的回主世界", not bool(ow.active) and ow.last_close_reason == "wipe", "原因 %s" % ow.last_close_reason)
 
 	print("分母: %d 条断言" % _n)
 	if _fail == 0:

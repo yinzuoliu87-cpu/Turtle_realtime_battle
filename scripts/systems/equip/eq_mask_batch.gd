@@ -86,9 +86,13 @@ var _gold_coins := {"left": 0, "right": 0}
 var gold_gain := {}
 
 
+var ow: OtherworldSystem      # 136 千面【里世界】
+
+
 func _init(b) -> void:
 	battle = b
 	vfx = MaskEqVfx.new(b)
+	ow = OtherworldSystem.new(b)
 
 
 func _fx(method: String, args: Array = []) -> void:
@@ -244,6 +248,8 @@ func on_spawn(u: Dictionary, eid: String, si: int) -> void:
 			u["_ven_si"] = maxi(int(u.get("_ven_si", 0)), si)
 		"p2eq_135":
 			_gold_spawn(u, ck, si)
+		"p2eq_136":
+			ow.add_carrier(u, si)
 
 
 func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
@@ -619,6 +625,7 @@ func tick(delta: float) -> void:
 	_tick_lions(delta)
 	_tick_beams(delta)
 	_tick_revives()
+	ow.tick(delta)
 	if vfx != null:
 		vfx.tick(delta)
 
@@ -688,6 +695,7 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 
 func clear_all() -> void:
 	_lions.clear(); _beams.clear(); _revives.clear()
+	ow.clear_all()
 	if vfx != null and vfx.has_method("clear"):
 		vfx.clear()
 

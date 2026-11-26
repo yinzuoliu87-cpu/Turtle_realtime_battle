@@ -2592,6 +2592,8 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 func _is_hostile(a: Dictionary, b: Dictionary) -> bool:
 	if is_same(a, b):
 		return false          # is_same: 单位字典互引成环, == 会深比较→卡死(项目铁律)
+	if OtherworldSystem.separated(a, b):
+		return false          # 136 千面【里世界】: 一个在里世界、一个在主世界 ⇒ 互不敌对(选目标 / 范围伤害 / 嘲讽都隔开)
 	if _is_untouchable(b):
 		return false          # §UNTOUCHABLE: 谁都不把训龟大师当敌人(它自己照样把别人当敌人 —— 只看 b, 不看 a)
 	if bool(b.get("hijacked", false)):
