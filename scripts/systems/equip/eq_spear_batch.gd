@@ -805,8 +805,15 @@ func _eternal(u: Dictionary, si: int, ck: String) -> bool:
 	return true
 
 
+## 145 自己打出的伤害不算「造成伤害」的进度(否则按最大生命值算的大伤害自己喂自己, 一枪接一枪; 11-26 录像量到 3 秒就满第二枪):
+##   每次 145 出伤害前后看 dmg_dealt 的差, 把进度基线一起往前挪
+func _eter_self(me: Dictionary, ck: String, dd0: float) -> void:
+	_set_acc(me, "eter_dd:" + ck, _acc(me, "eter_dd:" + ck) + maxf(0.0, float(me.get("dmg_dealt", 0.0)) - dd0))
+
+
 func _eternal_hit(me: Dictionary, tg: Dictionary, si: int, ck: String, from: Vector2) -> void:
 	stat["eternal_hit"] += 1
+	var dd0: float = float(me.get("dmg_dealt", 0.0))
 	var atk: float = float(me.get("atk", 0.0))
 	var at := Vector2(tg["pos"])
 	var dir: Vector2 = DetMath.norm(at - from) if DetMath.vlen(at - from) > 1.0 else Vector2(1.0, 0.0)
@@ -821,10 +828,12 @@ func _eternal_hit(me: Dictionary, tg: Dictionary, si: int, ck: String, from: Vec
 			var total: float = float(ETERNAL_SLIDE_ATK[si]) * atk + float(ETERNAL_SLIDE_HP[si]) * float(tg.get("maxHp", 0.0))
 			_slides.append({"src": me, "o": tg, "dir": dir, "gone": 0.0, "total": total, "si": si, "ck": ck, "hit": [tg]})
 			_fx("eternal_slide", [tg, dir, ETERNAL_SLIDE_SEC])
+	_eter_self(me, ck, dd0)
 	## 携带者临时生命值(到期按比例削回; 多次各自独立 = 叠加)
 	if me.get("alive", false):
-		battle._trainer_sys._apply_temp_maxhp(me, float(me.get("maxHp", 0.0)) * float(ETERNAL_TEMP[si]), ETERNAL_TEMP_SEC)
-		_fx("eternal_temp", [me])
+		var tmp: float = float(me.get("maxHp", 0.0)) * float(ETERNAL_TEMP[si])
+		battle._trainer_sys._apply_temp_maxhp(me, tmp, ETERNAL_TEMP_SEC)
+		_fx("eternal_temp", [me, int(tmp)])
 	## 命中处灼烧圈(每个圈各自生效)
 	_burns.append({"src": me, "at": at, "until": float(battle._t) + ETERNAL_BURN_SEC, "next": float(battle._t) + 1.0, "si": si, "ck": ck})
 	_fx("eternal_burn", [at, ETERNAL_BURN_R, ETERNAL_BURN_SEC])
@@ -838,6 +847,7 @@ func _tick_slides(delta: float) -> void:
 		var o: Dictionary = s["o"]
 		var src: Dictionary = s["src"]
 		if not o.get("alive", false) or float(s["gone"]) >= ETERNAL_SLIDE - 0.01:
+			_fx("eternal_slide_sum", [o, int(s.get("shown", 0))])   # 滑行伤害一路静默扣, 滑到头只跳一个总数(每步飘字会糊成一串, 11-26 录像)
 			continue
 		var a: Vector2 = Vector2(o["pos"])
 		var mv: float = minf(step_len, ETERNAL_SLIDE - float(s["gone"]))
@@ -846,8 +856,12 @@ func _tick_slides(delta: float) -> void:
 		o["pos"] = b
 		s["gone"] = float(s["gone"]) + mv
 		var tp: Array = battle._equip_sys.tally.push(src, str(s["ck"]))
-		if real > 0.0:
-			_phys(src, o, float(s["total"]) * real / ETERNAL_SLIDE)
+		var sdd0: float = float(src.get("dmg_dealt", 0.0))
+		if real > 0.0 and o.get("alive", false):
+			var sd: int = battle._phys_after_armor(src, float(s["total"]) * real / ETERNAL_SLIDE, o)
+			battle._damage.set_dtype("physical", o, false, true)
+			battle._damage._apply_damage_from(src, o, sd, COL_PHYS, 0.0, false, true, false, false, true)
+			s["shown"] = int(s.get("shown", 0)) + sd
 		var si: int = int(s["si"])
 		for e in _enemies(src):
 			if _arr_has(s["hit"], e) or battle._is_untargetable(e):
@@ -858,6 +872,7 @@ func _tick_slides(delta: float) -> void:
 				stat["eternal_pass"] += 1
 				_phys(src, e, float(ETERNAL_PASS_ATK[si]) * float(src.get("atk", 0.0)) + float(ETERNAL_PASS_HP[si]) * float(e.get("maxHp", 0.0)))
 				_fx("eternal_pass", [e])
+		_eter_self(src, str(s["ck"]), sdd0)
 		battle._equip_sys.tally.pop(tp)
 		if real < mv * 0.5:   # 撞到场地边缘: 停
 			s["gone"] = ETERNAL_SLIDE
@@ -876,10 +891,12 @@ func _tick_burns() -> void:
 		if t >= float(z["next"]):
 			z["next"] = float(z["next"]) + 1.0
 			var tp: Array = battle._equip_sys.tally.push(src, str(z["ck"]))
+			var bdd0: float = float(src.get("dmg_dealt", 0.0))
 			for e in _enemies(src):
 				if DetMath.dist(Vector2(e["pos"]), Vector2(z["at"])) <= ETERNAL_BURN_R + float(e.get("col_size", 22.0)) * 0.5:
 					stat["eternal_burn"] += 1
 					_magic(src, e, float(e.get("maxHp", 0.0)) * float(ETERNAL_BURN_PCT[int(z["si"])]))
+			_eter_self(src, str(z["ck"]), bdd0)
 			battle._equip_sys.tally.pop(tp)
 		keep.append(z)
 	_burns = keep

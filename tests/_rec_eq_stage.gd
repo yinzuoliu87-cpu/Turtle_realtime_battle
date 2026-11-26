@@ -62,6 +62,10 @@ static func cases() -> Dictionary:
 			_u("__minion__", "left", Vector2(-150, 90), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 8000.0, "killable": false, "idle": true})]
 			+ _dummies(220, 3), 26.0],
 		## 146 圣枪效果一: 携带者会掉血(killable)、靶子打得疼 ⇒ 半血那一下圣枪落地 + 护盾 + 双抗
+		## 145 永恒之枪(11-26 重做): REC_ETERNAL_FULL 秒时进度填满 ⇒ 枪从左上场外飞来砸血最多的靶子(中间那只), 往右下滑, 路线上还站着一只
+		"eternal": [[_me(Vector2(-200, 0), _eq([145]), {"idle": true})] + _ring_dummies(Vector2(60, 0), [Vector2(0, 0)])
+			+ [_u("__minion__", "right", Vector2(60, 0) + Vector2(130, 75), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 9000.0, "killable": false}),
+			_u("__minion__", "right", Vector2(260, -150), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 9000.0, "killable": false})], 10.0],
 		"holy_guard": [[_me(Vector2(-60, 0), _eq([146]), {"hp_pct": 0.6, "killable": true})] + _dummies(70, 1), 7.0],
 		## 爆竹筒范围 120 码: 三个靶子围在携带者 70~85 码内(都在范围里, 看得出一圈都被击退)
 		"tube": [[_me(Vector2(-10, 0), _eq([98]))] + _ring_dummies(Vector2(-10, 0), [Vector2(70, 0), Vector2(30, -78), Vector2(30, 78)]), 16.0],
@@ -338,6 +342,12 @@ func _process(d: float) -> void:
 		if cen != null and _seen.has("adir%d" % ad_k) and not _seen.has("adoff%d" % ad_k) and ad_t - float(ad_k) * 1.7 > 1.45:
 			_seen["adoff%d" % ad_k] = 1
 			_b._spear_syn.vfx.cent_shield_off(cen)
+	## 11-26 145 永恒之枪演示: REC_ETERNAL_FULL 秒时把进度填满(不用干等 25 秒)
+	if OS.has_environment("REC_ETERNAL_FULL") and _el > float(OS.get_environment("REC_ETERNAL_FULL")) and not _seen.has("eter_full"):
+		_seen["eter_full"] = 1
+		for uu in _b._units:
+			if uu is Dictionary and uu.get("alive", false) and not EquipCk.copies(uu, "p2eq_145").is_empty():
+				_b._equip_sys._spear_sys._set_acc(uu, "eter:p2eq_145", 100.0)
 	## 11-26 146 圣枪效果一演示: REC_HOLY_HIT 秒时给圣枪携带者打一下(20% 最大生命), 从 60% 打到 50% 以下 ⇒ 圣枪落地 + 护盾 + 双抗
 	if OS.has_environment("REC_HOLY_HIT") and _el > float(OS.get_environment("REC_HOLY_HIT")) and not _seen.has("holy_hit"):
 		_seen["holy_hit"] = 1

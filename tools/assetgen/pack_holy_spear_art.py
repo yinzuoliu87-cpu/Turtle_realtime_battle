@@ -8,6 +8,9 @@
                   用户 11-26「不应该说插在人的位置吗？」⇒ 拆两层: 立着的(一支自己逐行画像素的金色长枪从画面上方加速落下、刃尖插进地面 + 天光 + 火星 + 上飘光点;
                   引擎里开深度测试立在角色身后, 被身体挡住) / 贴地的(镜头正上方俯视渲染: 白金闪光 + 冲击环 + 金色十字; 引擎里平铺在角色脚下)。
     holy-channel  引导(循环 12 帧): 全部自己写的图层: 头顶细金环 + 十字星 + 转动的刻度 + 往环里汇聚的光点 + 脚下淡光环
+  · 145 永恒之枪(11-26 重做, 参考 docs/studies/20261126-参考-薇恩E恶魔审判.md), 同样是特效工作台全部自己写的图层:
+    eternal-impact 插中(9 帧): 白金闪光 + 四芒大星 + 斜向小星 + 外扩金环 + 外散碎光条
+    eternal-burn   灼烧圈(循环 12 帧, 俯视): 暗红地面辉光 + 余烬斑块 + 两圈参差火舌(rays 抖动) + 闪烁火星
   · 参考研究: docs/studies/20261126-参考-娜美W冲击之潮.md(同一飞行物砸友方 / 敌方靠落点颜色与形状区分)。
   · 砸中敌方用的是旧圣枪自己的两套(spear-holy-burst 十字星爆 / spear-holy-mark 圣痕印记), 同一件装备里换用途, 不算借别人的。
 工作台导出的是网格帧表 + JSON(每帧位置 / 锚点); 本脚本按 JSON 拆帧, 把锚点摆到每帧水平正中, 拼成横排帧条。
@@ -26,7 +29,8 @@ SRC = os.path.join(ROOT, "tools", "assetgen", "ai_src", "holy")
 VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
 
 ## 名字 → (锚点居中方式) ; center = 锚点在帧正中, feet = 锚点水平居中、底边留 BELOW
-JOBS = {"holy-orb": "center", "holy-ally": "feet", "holy-guard-up": "feet", "holy-guard-ground": "center", "holy-channel": "feet"}
+JOBS = {"holy-orb": "center", "holy-ally": "feet", "holy-guard-up": "feet", "holy-guard-ground": "center", "holy-channel": "feet",
+        "eternal-impact": "center", "eternal-burn": "center"}
 
 
 def frames_of(name):

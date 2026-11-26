@@ -155,6 +155,8 @@ func _ready() -> void:
 	_ok("④ 免控: 没滑、转而追加(攻击 100% + 最大生命 4%)", int(_b.stat["eternal_imm"]) == 1 and Vector2(tank["pos"]).distance_to(tp0) < 0.5
 		and absf(_hp_lost(tank, th) - float(imm_dmg)) <= 3.0, "免控 %d · 掉 %.0f(应 %d)" % [int(_b.stat["eternal_imm"]), _hp_lost(tank, th), imm_dmg])
 
+	_ok("① 永恒之枪自己打出的伤害不算进度(免控那一下 + 灼烧都打过了, 进度只该是时间那部分)",
+		_b._acc(me3, "eter:p2eq_145") < 4.0 * 2.0 + 0.5, "进度 %.1f" % _b._acc(me3, "eter:p2eq_145"))
 	## ⑤ 临时生命值 + 灼烧圈
 	_ok("⑤ 携带者拿到临时生命值(最大生命 +20%)", float(me3["maxHp"]) > 5000.0 * 1.19, "最大生命 %.0f" % float(me3["maxHp"]))
 	var tb := float(tank["hp"])
