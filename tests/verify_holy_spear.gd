@@ -99,7 +99,7 @@ func _ready() -> void:
 	_adv(0.05, [me])
 	var want_sh: float = mx * float(SB.HOLY_GUARD_PCT[0])
 	var part: float = want_sh / float(SB.HOLY_GUARD_SEC)
-	_ok("① 首次低于 50%: 当场给第 1 份圣枪护盾(合计 40% 最大生命 ÷ 4) + 护甲 / 魔抗各 +30",
+	_ok("① 首次低于 50%: 当场给第 1 份圣枪护盾(合计 40% 最大生命 ÷ 10) + 护甲 / 魔抗各 +30",
 		int(_b.stat["holy_guard"]) == 1 and int(_b.stat["holy_guard_part"]) == 1 and absf(float(me["shield"]) - part) < 1.0
 		and absf(float(me["def"]) - def0 - 30.0) < 0.01 and absf(float(me["mr"]) - mr0 - 30.0) < 0.01,
 		"盾 %.0f(应 %.0f) · 护甲 +%.1f · 魔抗 +%.1f" % [float(me["shield"]), part, float(me["def"]) - def0, float(me["mr"]) - mr0])
@@ -108,8 +108,8 @@ func _ready() -> void:
 	var at1 := int(_b.stat["holy_guard_part"])
 	_adv(0.2, [me])
 	var at2 := int(_b.stat["holy_guard_part"])
-	_adv(2.5, [me])
-	_ok("① 之后每秒一份: 0.95 秒时还是 1 份、1.15 秒时 2 份、给满 4 份停住, 合计 = 40% 最大生命",
+	_adv(9.5, [me])
+	_ok("① 之后每秒一份: 0.95 秒时还是 1 份、1.15 秒时 2 份、10 秒给满 10 份停住, 合计 = 40% 最大生命",
 		at1 == 1 and at2 == 2 and int(_b.stat["holy_guard_part"]) == SB.HOLY_GUARD_SEC and absf(float(me["shield"]) - want_sh) < 1.0
 		and absf(float(me.get("_spearShieldVal", 0.0)) - want_sh) < 1.0,
 		"%d → %d → %d 份 · 盾 %.0f(应 %.0f)" % [at1, at2, int(_b.stat["holy_guard_part"]), float(me["shield"]), want_sh])
