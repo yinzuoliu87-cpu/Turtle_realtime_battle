@@ -553,6 +553,7 @@ func lion_windup(p: Dictionary, dir: Vector2, sec: float) -> void:
 		return
 	if not _lion_wind_sd.is_empty():
 		battle._set_anim_sheet(p, _lion_wind_sd, "", true)
+	p["_no_run_switch"] = true   # 蓄力 + 冲撞整段帧条归这里管, 引擎别按速度切走路 / 待机(冲完 lion_stop 摘掉)
 	_lion_dust(p, dir, 34.0, 0.55)
 	## 狮头前方聚能: 7 帧正好在蓄力时长里从小火星长成一整团, 冲出去那一刻最大
 	var orb := _lion_part(p, dir, MV + "mask-lion-gather.png", 7, -46.0, 0.25, 1.0, 7.0 / maxf(0.2, sec), false, sec + 0.05)
@@ -571,8 +572,6 @@ func lion_run(p: Dictionary, _dir: Vector2) -> void:
 	var sd: Dictionary = _lion_run_sd if (p.has("_lion_in_now") or _lion_fire_sd.is_empty()) else _lion_fire_sd
 	if sd.is_empty() or not p.get("alive", false):
 		return
-	if not p.has("_lion_walk_sd"):
-		p["_lion_walk_sd"] = p.get("run_sd", {})
 	p["run_sd"] = sd                                   # 冲撞期间「走路」帧条 = 冲撞帧条(引擎按速度切走路, 不会和它抢)
 	battle._set_anim_sheet(p, sd, "", true)
 	if p.has("_lion_in_now"):
@@ -651,8 +650,11 @@ func _tick_lion_trails(delta: float) -> void:
 
 func lion_stop(p: Dictionary) -> void:
 	_lion_trail_end(p)
-	if p.has("_lion_walk_sd"):
-		p["run_sd"] = p["_lion_walk_sd"]
+	p.erase("_no_run_switch")
+	## 冲完把「走路帧条」这个键删掉, 引擎下一帧按自己的表(ACTION_RUN)重新挂上走路帧条。
+	##   ★原来是「冲之前先记下当时的走路帧条、冲完还回去」: 舞狮登场扑进来时引擎还没挂过走路帧条, 记下的是空的,
+	##   还回去以后引擎认为它没有走路动画 ⇒ 之后一路播待机帧平移(11-27 探针: 走路时 anim=idle、run_sd 空; 用户「走路的动画呢」)
+	p.erase("run_sd")
 	if p.get("alive", false) and (is_same(p.get("anim_sd", null), _lion_run_sd) or is_same(p.get("anim_sd", null), _lion_fire_sd) or is_same(p.get("anim_sd", null), _lion_wind_sd)):
 		battle._set_anim_sheet(p, p.get("idle_sd", {}), "", true)
 

@@ -130,6 +130,8 @@ static func cases() -> Dictionary:
 		"mk_lion": [[_me(Vector2(-300, 0), _eq([130], 1), {"idle": true})] + _dummies(60, 3, true, 6000.0, 60.0), 22.0],
 		## 舞狮冲撞(11-27 照塞恩 R 重做): 携带者和靶子隔开 1000 码(舞狮走路约 108 码/秒) ⇒ 舞狮走过去的路上龟能按正常速度(7.5 秒)充满, 离靶子还有一段时自然冲出去,
 		##   看得到冲锋全程和撞上三拍; 之后上去咬, 再攒满冲第二次。(第一版录像台里直接把龟能设成 99, 用户 11-27「龟能增长，没按规矩来吗？」⇒ 去掉)
+		## 舞狮被打死(11-27 自查: 召唤物倒下有没有表现): 三只会打的靶子攻击力 260
+		"mk_lion_die": [[_me(Vector2(-200, 0), _eq([130], 1), {"idle": true})] + _dummies(-40, 3, true, 30000.0, 260.0), 10.0],
 		"mk_lion_charge": [[_me(Vector2(-620, 0), _eq([130], 1), {"idle": true})] + _dummies(380, 3, false, 6000.0, 0.0), 20.0],
 		## 千面: 第 8 秒拽一只进里世界; 9.5 秒自动点「观看里世界」, 15 秒切回主世界(REC_OW 自动点按钮)
 		"mk_ow": [[_me(Vector2(-200, 0), _eq([136], 1)), _me(Vector2(-200, 150), [])] + _dummies(60, 3, true, 8000.0, 40.0), 24.0],
@@ -156,6 +158,11 @@ static func cases() -> Dictionary:
 		## ── 长矛(11-26) ── 两只只会站着的小将各带 5 件不同的长矛 = 10 件 4 档; 百夫长第 8 秒登场
 		"sp_cent": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
 			+ _dummies(60, 3, true, 12000.0, 60.0), 30.0],
+		## 百夫长走路 / 倒下(11-27 自查: 舞狮走路帧条曾被清空, 召唤物都要实测): 靶子远处不动 ⇒ 落地后要走 500 多码; 另一段同样摆位, 第 11 秒演示台给它一下致命伤看倒下
+		"sp_cent_walk": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
+			+ _dummies(320, 3, false, 12000.0, 0.0), 16.0],
+		"sp_cent_die": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
+			+ _dummies(320, 3, false, 12000.0, 0.0), 16.0],
 		## 10 件长矛(11-26 夜): 每件单独一段, 靶子按触发条件摆
 		## 竹矛: 三只靶子站成一条线 ⇒ 第 3 下穿到身后那只
 		"sp_bamboo": [[_me(Vector2(-60, 0), _eq([137], 1))] + _ring_dummies(Vector2(-60, 0), [Vector2(70, 0), Vector2(150, 0), Vector2(230, 0)]), 10.0],
@@ -221,6 +228,21 @@ func _process(d: float) -> void:
 	_el += d
 	if _b == null or not is_instance_valid(_b):
 		return
+	## 演示倒下动作: sp_cent_die 第 11 秒给百夫长一下致命真伤(靶子打不动举盾的百夫长; 只为看阵亡帧条, 录像说明里写明)
+	if OS.get_environment("REC_CASE") == "sp_cent_die" and _el > 11.0 and not _seen.has("cent_kill"):
+		for uu in _b._units:
+			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and bool(uu.get("alive", false)):
+				_seen["cent_kill"] = 1
+				_b._damage._apply_damage(uu, int(float(uu["hp"]) + float(uu.get("shield", 0.0)) + 10.0), Color.WHITE)
+	if OS.has_environment("REC_ANIM_PROBE") and int(_el * 2.0) != int((_el - d) * 2.0):   # 每 0.5 秒打一次召唤物当前播的帧条(11-27 查舞狮走路)
+		for uu in _b._units:
+			if uu is Dictionary and bool(uu.get("is_summon", false)):
+				var asd = uu.get("anim_sd", {})
+				var tx = (asd as Dictionary).get("tex", null) if asd is Dictionary else null
+				var rs = uu.get("run_sd", null)
+				print("[ANIM] %.1f %s pos=%s anim=%s run_sd=%s" % [_el, str(uu.get("id", "")), str(uu.get("pos", "")),
+					(tx as Texture2D).resource_path.get_file() if tx != null else "无",
+					("空" if (rs is Dictionary and (rs as Dictionary).is_empty()) else ("无键" if rs == null else "有"))])
 	if not _started and _el > 0.6:
 		_started = true
 		_b._debug._edit_start_battle()

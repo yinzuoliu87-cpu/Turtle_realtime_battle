@@ -46,6 +46,11 @@
   · 11-27 用户「冲击的时候，它整个身上应该是这个冲击波的这个红红色特效」: 奔腾 8 帧(lgal)左右各补 24 像素透明边成 160×112(lgalpad_*, 留出拖尾的地方),
     逐帧 edit_image_pro_flash「整只裹进红色冲击能量壳: 前缘橙黄最烫、全身泛红、身后拖长火舌」(同一句提示词同一种子) ⇒ lfire_0..7;
     第 7 帧第一次多一圈浅色描边, 换种子重出。
+  · 11-27 用户「这个东西走路是怎么走的？走路的动画呢？」: 原来那套走路(lwalk_1..8, 只钉首帧)腿几乎不动 ⇒ 重做:
+    edit_image_pro_flash 从站姿改出两个相反的迈步姿势 lion_strideA(近侧前腿迈出、抬头) / lion_strideB(远侧前腿迈出、低头),
+    animate_image A→B、B→A 各 4 帧(首尾钉住, 末帧不取) ⇒ lwalk2_0..7 循环。输入已贴地, 不再下移。
+  · 11-27 阵亡: 原来只是通用淡出 ⇒ edit_image_pro_flash 从站姿改出倒地姿势 lion_collapse(舞狮服塌在地上、狮头侧躺闭眼),
+    animate_image 站姿→倒地 10 帧(首尾钉住) ⇒ ldie_0..10。
 , 重跑逐字节相同。
 
     python tools/assetgen/pack_mask_art.py
@@ -65,13 +70,15 @@ TAG = {"tagmask": "tag-mask"}
 ## 舞狮帧条(源名)。咬的命中帧下标抄到 AttackHits
 LION_SEQ = {
     "eq-masklion-idle": ["lidle_%d" % i for i in range(0, 6)],
-    "eq-masklion-walk": ["lwalk_%d" % i for i in range(1, 9)],
 }
 ## 11-27 舞狮冲撞重做: 输入是已贴地的帧, 不再下移
 LION_SEQ0 = {
     "eq-masklion-charge": ["lgal_%d" % i for i in range(0, 8)],   # 奔腾(循环)
     "eq-masklion-windup": ["lwind_%d" % i for i in range(0, 7)],  # 蓄力压低(放一遍停在末帧)
     "eq-masklion-attack": ["latk2_%d" % i for i in range(0, 13)], # 普攻: 扬起 → 前扑咬(下标 8 = 命中) → 收回
+    "eq-masklion-walk": ["lwalk2_%d" % i for i in range(0, 8)],   # 走路(11-27 重做): 迈步 A → B → A 循环
+    ## 阵亡(11-27): 晃一下 → 腿一软整只塌在地上; 前段变化小抽帧, 末帧连停 5 拍(12 帧 @12 = 1 秒 ≥ 引擎阵亡淡出 0.95 秒, 不会淡到一半站起来)
+    "eq-masklion-death": ["ldie_%d" % i for i in [0, 3, 5, 6, 7, 8, 9, 10, 10, 10, 10, 10]],
 }
 
 

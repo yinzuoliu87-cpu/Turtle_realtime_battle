@@ -79,6 +79,10 @@ STRIPS = {
     "spear-javelin-blood": [(SP, "jbld_%d" % i, False) for i in range(0, 7)],
     "chip-brown-rise": [(CH, "crev_%d" % i, False) for i in range(0, 7)],
     "chip-shield-glint": [(CH, "cglt_%d" % i, False) for i in range(0, 7)],
+    ## 百夫长阵亡(11-27 自查: 原来只有通用淡出): 打包好的待机首帧(已下移贴地, cent_stand_packed)→ edit 出倒地 cent_fallen,
+    ##   animate_image 首尾钉住 10 帧(第一条中间 4 帧矛放平像在出招、盾变黑, 换提示词重出) ⇒ cdie_0..10; 输入已贴地不再下移;
+    ##   前段抽帧, 末帧连停 4 拍(12 帧 @12 = 1 秒 ≥ 阵亡淡出 0.95 秒)
+    "eq-centurion-death": [(SP, "cdie_%d" % i, False) for i in [0, 2, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]],
 }
 
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。

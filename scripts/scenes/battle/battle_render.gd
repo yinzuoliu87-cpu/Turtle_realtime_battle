@@ -100,7 +100,7 @@ func _update_run_anim(u: Dictionary, delta: float) -> void:
 	var rsd: Dictionary = u["run_sd"]
 	if rsd.is_empty():
 		return
-	if (str(u.get("anim_action", "")) != "" and not AttackRhythm.cast_cancelable(u)) or u.get("_manual_anim", false) or str(u.get("_state_on", "")) != "":   # 持续状态(虚化…)期间不切走路, 否则与状态循环每帧互抢
+	if (str(u.get("anim_action", "")) != "" and not AttackRhythm.cast_cancelable(u)) or u.get("_manual_anim", false) or str(u.get("_state_on", "")) != "" or bool(u.get("_no_run_switch", false)):   # _no_run_switch: 演出自己管帧条的整段动作(舞狮蓄力 + 冲撞; 11-27 探针: 刚停步就蓄力, 被按速度切回走路再切待机, 蓄力帧被顶掉)   # 持续状态(虚化…)期间不切走路, 否则与状态循环每帧互抢
 		return
 	# ★定步长下 pos 只在 sim step 跳, 逐 render 帧测 moved 会在 step 边界狂切 run↔idle(每切复位 frame=0)
 	#   → 高帧率"不动且一直闪"(2026-07-25·4070)。改按 0.1s 时间窗累计位移测速(跨多 step 稳), 窗内不切帧表。

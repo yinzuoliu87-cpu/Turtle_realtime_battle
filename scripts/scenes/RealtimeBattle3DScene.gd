@@ -472,6 +472,8 @@ const ACTION_DEATH := {
 	"ghost":  ["pets/animations/ghost/death.png", 12.0],
 	"ninja":  ["pets/animations/ninja/death.png", 11.0],
 	"__minion_reserve__": ["pets/animations/reserve/death.png", 12.0],   # 12 帧(末帧 hold) = 1.0s ≥ 阵亡淡出 0.95s, 不会淡到一半站起来
+	"_summon_mask_lion": ["vfx/eq-masklion-death.png", 12.0],
+	"_summon_centurion": ["vfx/eq-centurion-death.png", 12.0],   # 长矛羁绊百夫长: 膝盖一软 → 侧身倒下(11-27 原来只有通用淡出)   # 130 舞狮: 晃一下 → 塌在地上(12 帧末帧 hold = 1.0s; 11-27 原来只有通用淡出)
 }
 # 走路动画表 (移动时循环播·有 run.png 的龟): ninja/ghost. 停下回 idle.
 const ACTION_RUN := {
