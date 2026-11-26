@@ -278,37 +278,70 @@ func _cent_tip_flash_unused(u: Dictionary) -> void:   # 上一轮钉在命中点
 	_mfx.append({"node": s, "nf": 6, "fps": 20.0, "t": 0.0, "life": 0.3, "loop": false, "follow": null, "h": 0.0})
 
 
-## 普攻冲击罩(11-27 用户「矛刺出去…想要那种明显一点的冲击罩」): 刺到最远那一帧(本体普攻帧 5, 矛尖在帧里 (21,161), 脚底 (96,191)
-##   ⇒ 立足点往前 75 像素、离地 30 像素)炸开: 中心白闪 → 朝前的半月冲击环 + 气浪 + 速度线, 7 帧 @20
-##   帧 112×96 里矛尖锚点 (80,48), 冲击往画面左边(= 刺的方向)推; 比本体放大 1.8 倍
+## 普攻冲击罩(11-27 第六轮, 用户「武器头部有一层冲击罩一样的冲击波…冲出去」): 刺到最远那一帧, 矛头外面裹两层 3D 激波罩
+##   (Cent3dVfx.gen_shock 旋转抛物面 + cent_shock.gdshader), 沿真实刺击方向(朝目标)往前冲 CENT_SHOCK_DIST、边冲边张大, CENT_SHOCK_SEC 散掉
+##   起点 = 命中帧矛尖(帧里 (21,161), 脚底 (96,191) ⇒ 立足点往前 75 像素、离地 30 像素, 按镜头的左右 / 上下轴换成世界坐标)
 const CENT_IMP_FWD_PX := 75.0
 const CENT_IMP_UP_PX := 30.0
-const CENT_IMP_SCALE := 1.8
+const CENT_SHOCK_SEC := 0.34
+const CENT_SHOCK_DIST := 2.0
+var _shocks: Array = []   # {node, mat, t, life, p0, d3, dist, s0, s1, spin}
 
-func _cent_impact_dome(u: Dictionary) -> void:
+
+func _shock(p0: Vector3, d3: Vector3, mesh: Mesh, params: Dictionary, life: float, dist: float, s0: Vector3, s1: Vector3, spin: float) -> void:
+	if not _ok():
+		return
+	var mi := Cent3dVfx.node(battle._world, mesh, Cent3dVfx.SHOCK_SHADER, Cent3dVfx.SHOCK_SP, params, 10)
+	var fl := Vector3(d3.x, 0.0, d3.z)
+	var yaw: float = Cent3dVfx.yaw_of(Vector2(fl.x, fl.z).normalized()) if fl.length() > 0.001 else 0.0
+	var pitch: float = atan2(d3.y, maxf(0.001, fl.length()))
+	mi.rotation = Vector3(0.0, yaw, pitch)
+	mi.position = p0
+	mi.scale = s0
+	_shocks.append({"node": mi, "mat": mi.material_override, "t": 0.0, "life": life, "p0": p0, "d3": d3.normalized(), "dist": dist, "s0": s0, "s1": s1, "spin": spin})
+
+
+func _tick_shocks(delta: float) -> void:
+	var keep: Array = []
+	for s in _shocks:
+		var n = s["node"]
+		if n == null or not is_instance_valid(n):
+			continue
+		s["t"] = float(s["t"]) + delta
+		var k: float = float(s["t"]) / float(s["life"])
+		if k >= 1.0:
+			_free(n)
+			continue
+		var e: float = 1.0 - (1.0 - k) * (1.0 - k)   # 先快后慢
+		(n as MeshInstance3D).position = Vector3(s["p0"]) + Vector3(s["d3"]) * float(s["dist"]) * e
+		(n as MeshInstance3D).scale = (s["s0"] as Vector3).lerp(s["s1"] as Vector3, e)
+		var mat: ShaderMaterial = s["mat"]
+		mat.set_shader_parameter("prog", float(s["t"]) * float(s["spin"]))
+		mat.set_shader_parameter("fade", 1.0 - smoothstep(0.45, 1.0, k))
+		keep.append(s)
+	_shocks = keep
+
+
+func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	var spr = u.get("sprite", null)
-	if not _ok() or not is_instance_valid(spr) or not ResourceLoader.exists(SV + "spear-cent-dome.png"):
+	if not _ok() or not is_instance_valid(spr):
 		return
 	var px: float = float((spr as Sprite3D).pixel_size)
 	var fr: bool = bool((spr as Sprite3D).flip_h)   # 原画朝左; 翻转 = 朝右
-	var t: Texture2D = load(SV + "spear-cent-dome.png")
-	var s := Sprite3D.new()
-	s.texture = t
-	s.hframes = 7
-	s.shaded = false
-	s.transparent = true
-	s.no_depth_test = true
-	s.render_priority = 10
-	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	s.pixel_size = px * CENT_IMP_SCALE
-	s.flip_h = fr
-	s.offset = Vector2((56.0 - 80.0) * (-1.0 if fr else 1.0), 0.0)   # 锚点(矛尖)对上节点位置
 	var base: Vector3 = (spr as Sprite3D).global_position
 	var cb: Basis = battle._cam.global_transform.basis if battle.get("_cam") != null else Basis.IDENTITY   # 立绘是朝镜头的板: 帧里的左右 / 上下 = 镜头的 x / y 轴
-	s.position = base + cb.x * (CENT_IMP_FWD_PX * px * (1.0 if fr else -1.0)) + cb.y * (CENT_IMP_UP_PX * px)
-	battle._world.add_child(s)
-	_mfx.append({"node": s, "nf": 7, "fps": 20.0, "t": 0.0, "life": 7.0 / 20.0, "loop": false, "follow": null, "h": 0.0})
+	var tip: Vector3 = base + cb.x * (CENT_IMP_FWD_PX * px * (1.0 if fr else -1.0)) + cb.y * (CENT_IMP_UP_PX * px)
+	## 沿画面上矛指的方向冲(立绘是朝镜头的板, 矛在画面里永远水平 ⇒ 镜头的左右轴压到地面上); 原来朝目标冲, 目标斜着时罩子离开矛头
+	var cx := Vector3(cb.x.x, 0.0, cb.x.z).normalized() if Vector3(cb.x.x, 0.0, cb.x.z).length() > 0.01 else Vector3.RIGHT
+	var d3: Vector3 = cx * (1.0 if fr else -1.0)
+	if tg.is_empty():
+		return
+	tip += d3 * 0.25   # 尖端略超出矛尖: 矛头罩在里面
+	## 外层: 白金薄罩, 大、冲得远; 内层: 小、亮、紧贴矛尖, 冲得近(两层错开读得出厚度)
+	_shock(tip, d3, Cent3dVfx.gen_shock(1.6, 0.85, 8, 20), {"prog": 0.0, "fade": 1.0, "rings": 3.0, "rim_pow": 1.4, "tail": 0.45,
+		"col_a": Vector3(1.0, 0.98, 0.9), "col_b": Vector3(1.0, 0.6, 0.14)}, CENT_SHOCK_SEC, CENT_SHOCK_DIST, Vector3(0.5, 0.5, 0.5), Vector3(1.35, 1.35, 1.35), 9.0)
+	_shock(tip - d3 * 0.1, d3, Cent3dVfx.gen_shock(1.0, 0.45, 6, 16), {"prog": 0.0, "fade": 1.0, "rings": 2.0, "rim_pow": 1.1, "tail": 0.5,
+		"col_a": Vector3(1.0, 1.0, 1.0), "col_b": Vector3(1.0, 0.8, 0.35)}, CENT_SHOCK_SEC * 0.8, CENT_SHOCK_DIST * 0.55, Vector3(0.6, 0.6, 0.6), Vector3(1.1, 1.1, 1.1), 7.0)
 
 
 func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
@@ -322,7 +355,7 @@ func cent_thrust(u: Dictionary, t: Dictionary, n: int) -> void:
 	var mid: Vector2 = a + dir * (ln * 0.5)
 	_dir_strip(SV + "spear-cent-thrust.png", 7, mid, dir, ln * float(battle.WS), 24.0, 7.0 / 24.0, CENT_TIP_H)
 	_cent_glow_on(u)   # 矛刃光叠加层(贴着矛, 跟本体同帧)
-	_cent_impact_dome(u)   # 矛尖前炸开的冲击罩(附录 C)
+	_cent_impact_dome(u, t)   # 矛头裹着冲击罩冲出去(第六轮 3D)
 	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(b, 0.6), 1.3, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
@@ -351,15 +384,34 @@ func cent_spear_drop(s: Dictionary) -> void:
 	_spear_nodes = _spear_nodes.filter(func(r): return not is_same(r["s"], s))
 
 
-## 龟甲阵(11-27 用户「技能特效感觉都不明显」): 举盾那一刻身前立起一面金色能量巨盾(逐帧: 光纹流过、边缘明暗、光点上飘),
-##   跟着百夫长、朝最近的敌人那一侧, 半透明叠在盾前; 举盾结束收掉。落盾时扬尘 + 轻震屏
-var _aegis: Array = []      # {u, node}
-## 11-27 附录 C(照潘森 E): 竖长方形板 → 朝敌人那一侧的金色半弧能量盾(画里弧朝左鼓), 比人高半个身位
-const AEGIS_FWD := 56.0     # 立在身前多远(码)
-const AEGIS_H_M := 4.4      # 能量盾高(米)
-const AEGIS_NF := 12        # 帧条: 0..3 张开(20 fps) + 4..11 循环(12 fps)
-const AEGIS_OPEN := 4
-const AEGIS_OPEN_FPS := 20.0
+## 龟甲阵(11-27 第六轮, 用户「这举盾任何方向上都有可能举盾…需要三 D 特效」): 世界空间里一面 3D 弧形能量盾
+##   网格 Cent3dVfx.gen_aegis(以本体为圆心、半径 AEGIS_R 的竖立弧面), 着色器 cent_aegis.gdshader(六边形龟甲格 / 流光 / 亮边 / 碎裂)
+##   方向 = 本体朝向那一侧最近的敌人(没有就正前方), 举盾那一刻定下; 节点绕 Y 转到这个方向 ⇒ 斜着、朝上朝下都立得对
+var _aegis: Array = []      # {u, node, mat, t, dir, off}
+const AEGIS_R := 1.45       # 弧半径(米): 盾面离本体中心多远
+const AEGIS_ARC := 2.2      # 张角(弧度, 约 126°)
+const AEGIS_H := 3.0        # 盾高(米), 比人高半个身位
+const AEGIS_LEAN := 0.35    # 顶部往外翻(米)
+const AEGIS_OPEN_SEC := 0.15
+const AEGIS_BRK_SEC := 0.3
+const AEGIS_JAB_IV := 0.5   # 盾后出刺节奏(= 结算 POKE_IV、帧条捅出帧)
+
+
+func _aegis_dir(u: Dictionary) -> Vector2:
+	var spr = u.get("sprite", null)
+	var fx: float = (1.0 if (spr as Sprite3D).flip_h else -1.0) if is_instance_valid(spr) else _face(u).x   # 本体帧条原画朝左, flip_h = 朝右
+	var best: Vector2 = Vector2(fx, 0.0)
+	var bd := INF
+	for o in battle._targeting._enemies_of(u):
+		if not o.get("alive", false):
+			continue
+		var d: Vector2 = Vector2(o["pos"]) - Vector2(u["pos"])
+		if d.x * fx <= 0.0 or d.length() < 1.0:
+			continue
+		if d.length() < bd:
+			bd = d.length()
+			best = d.normalized()
+	return best
 
 
 func cent_shield(u: Dictionary, sec: float) -> void:
@@ -369,40 +421,53 @@ func cent_shield(u: Dictionary, sec: float) -> void:
 	_cent_play(u, "shield", float(nf) / maxf(0.5, sec))   # 42 帧 / 3 秒 = 14 fps: 盾后出刺的捅出帧恰好落在 0.5 / 1.0 / … 秒(= 结算 POKE_IV)
 	battle._vfx._flash(u, Color(1.0, 0.9, 0.55), 0.12)   # 扎稳那一下本体闪白金
 	cent_shield_off(u)
-	## 11-27 自查重做: 半透明能量盾(13 帧 = 展开 5 + 循环 8), 帧号由 _tick_aegis 推: 展开放一次、之后循环段
-	var s := _strip(SV + "spear-cent-aegis.png", AEGIS_NF, battle._world_pos(Vector2(u["pos"]), 0.0), AEGIS_H_M, 0.0, true, sec, false, null, 0.0)
-	if s != null:
-		s.frame = 0
-		_aegis.append({"u": u, "node": s, "mf": _mfx.back()})   # mf: 借通用帧推进的计时(t 累加), 帧号这里自己算
-		_tick_aegis()
+	if _ok():
+		var dir := _aegis_dir(u)
+		var mi := Cent3dVfx.node(battle._world, Cent3dVfx.gen_aegis(AEGIS_R, AEGIS_ARC, AEGIS_H, AEGIS_LEAN, 24, 10),
+			Cent3dVfx.AEGIS_SHADER, Cent3dVfx.AEGIS_SP,
+			{"open": 0.0, "fade": 1.0, "t": 0.0, "flash": 0.0, "brk": 0.0,
+			 "size_m": Vector2(AEGIS_R * AEGIS_ARC, AEGIS_H)})
+		mi.rotation = Vector3(0.0, Cent3dVfx.yaw_of(dir), 0.0)
+		mi.position = battle._world_pos(Vector2(u["pos"]), 0.0)
+		_aegis.append({"u": u, "node": mi, "mat": mi.material_override, "t": 0.0, "dir": dir, "off": -1.0})
 	_strip(LION_DUST, 7, battle._world_pos(Vector2(u["pos"]), 0.0), 1.6, 16.0, false, 7.0 / 16.0, false, null, 0.0)
 	battle._shake(battle.JUICE_SHAKE_HEAVY * 0.5)
 
 
+## 放盾: 按格碎掉(AEGIS_BRK_SEC), 碎完再删节点
 func cent_shield_off(u: Dictionary) -> void:
 	for a in _aegis:
-		if is_same(a["u"], u) and a["node"] != null and is_instance_valid(a["node"]):
-			_fade_out(a["node"] as Sprite3D, 0.15)
-	_aegis = _aegis.filter(func(a): return not is_same(a["u"], u))
+		if is_same(a["u"], u) and float(a["off"]) < 0.0:
+			a["off"] = 0.0
 
 
-func _tick_aegis() -> void:
+func _tick_aegis(delta: float) -> void:
 	var keep: Array = []
 	for a in _aegis:
 		var n = a["node"]
 		var u: Dictionary = a["u"]
-		if n == null or not is_instance_valid(n) or not u.get("alive", false):
-			_free(n)
+		if n == null or not is_instance_valid(n):
 			continue
-		## 盾立在本体正面(11-27 录像: 原来按最近敌人另判方向, 人朝左、盾立在右边); 本体帧条原画朝左, flip_h = 朝右
-		var spr = u.get("sprite", null)
-		var fx: float = (1.0 if (spr as Sprite3D).flip_h else -1.0) if is_instance_valid(spr) else _face(u).x
-		(n as Sprite3D).position = battle._world_pos(Vector2(u["pos"]) + Vector2(fx * AEGIS_FWD, 6.0), 0.0)
-		(n as Sprite3D).flip_h = fx > 0.0   # 画里弧朝左鼓 ⇒ 敌人在右边就翻过来
-		if a.get("mf") is Dictionary:   # 张开段放一次(20 fps), 之后循环段(12 fps); 在 super.tick 的通用推帧之后覆盖
-			var at: float = float((a["mf"] as Dictionary)["t"])
-			var ok: float = float(AEGIS_OPEN) / AEGIS_OPEN_FPS
-			(n as Sprite3D).frame = mini(AEGIS_OPEN - 1, int(at * AEGIS_OPEN_FPS)) if at < ok else AEGIS_OPEN + (int((at - ok) * 12.0) % (AEGIS_NF - AEGIS_OPEN))
+		if not u.get("alive", false) and float(a["off"]) < 0.0:
+			a["off"] = 0.0
+		var mat: ShaderMaterial = a["mat"]
+		a["t"] = float(a["t"]) + delta
+		var t: float = float(a["t"])
+		(n as MeshInstance3D).position = battle._world_pos(Vector2(u["pos"]), 0.0)
+		mat.set_shader_parameter("t", t)
+		mat.set_shader_parameter("open", minf(1.0, t / AEGIS_OPEN_SEC))
+		## 盾后出刺那一下(0.5 / 1.0 / … 秒, 跟本体帧条捅出帧同一刻)整片闪, 0.15 秒退掉
+		var ph: float = fmod(t, AEGIS_JAB_IV)
+		var fl: float = (1.0 - ph / 0.15) if t >= AEGIS_JAB_IV - 0.001 and ph < 0.15 else 0.0
+		mat.set_shader_parameter("flash", maxf(0.0, fl))
+		if float(a["off"]) >= 0.0:
+			a["off"] = float(a["off"]) + delta
+			var k: float = float(a["off"]) / AEGIS_BRK_SEC
+			mat.set_shader_parameter("brk", minf(1.0, k))
+			mat.set_shader_parameter("fade", 1.0 - 0.3 * minf(1.0, k))
+			if k >= 1.0:
+				_free(n)
+				continue
 		keep.append(a)
 	_aegis = keep
 
@@ -443,21 +508,33 @@ func cent_cav(c: Dictionary) -> void:
 		if sp != null:
 			sp.flip_h = fr
 			parts.append({"n": sp, "back": float(spec[4]), "h": float(spec[5])})
-	var n := _strip(V + "eq-cavalry-run.png", 8, battle._world_pos(Vector2(c["pos"]), 0.0), 2.6, 14.0, true, 0.0)   # 最后加 ⇒ 画在最上面
+	var n := _strip(V + "eq-cavalry-run.png", 8, battle._world_pos(Vector2(c["pos"]), 0.0), 2.6, 10.0, true, 0.0)   # 最后加 ⇒ 画在最上面; 11-27 冲锋 520 → 300 码/秒, 跑帧 14 → 10 fps
 	if n != null:
 		n.flip_h = fr   # 原画朝左; 往右冲就翻过来
-		_cav_nodes.append({"c": c, "node": n, "parts": parts, "dust_t": 0.0})
+		## 马头前的船头浪(11-27 用户「也没有冲击罩啊」): 压低压宽的土金色激波罩, 跟着马走、波纹一直往后退
+		var bow := Cent3dVfx.node(battle._world, Cent3dVfx.gen_shock(1.1, 1.0, 8, 20), Cent3dVfx.SHOCK_SHADER, Cent3dVfx.SHOCK_SP,
+			{"prog": 0.0, "fade": 0.85, "rings": 3.0, "rim_pow": 1.3, "tail": 0.5, "col_a": Vector3(1.0, 0.93, 0.75), "col_b": Vector3(0.85, 0.6, 0.3)}, 10)
+		bow.scale = Vector3(1.0, 0.75, 1.35)
+		bow.rotation = Vector3(0.0, Cent3dVfx.yaw_of(dir), 0.0)
+		_cav_nodes.append({"c": c, "node": n, "parts": parts, "dust_t": 0.0, "bow": bow, "bt": 0.0})
 
 
-func cent_cav_hit(_c: Dictionary, o: Dictionary) -> void:
-	_strip(LION_DUST, 7, battle._world_pos(Vector2(o["pos"]), 0.0), 1.4, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 马蹄踏过扬土(底层扬尘)
-	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(o["pos"]), 0.5), 1.5, 20.0, false, 6.0 / 20.0, false, null, 0.0)
+## 骑兵撞人(11-27 用户「命中特效也没有」): 撞点沿冲锋方向炸开一层冲击罩 + 大号火星 + 扬土 + 轻震屏
+func cent_cav_hit(c: Dictionary, o: Dictionary) -> void:
+	var d2: Vector2 = Vector2(c["dir"])
+	_shock(battle._world_pos(Vector2(o["pos"]) + d2 * 10.0, 1.0), Vector3(d2.x, 0.0, d2.y), Cent3dVfx.gen_shock(0.9, 0.8, 8, 20),
+		{"prog": 0.0, "fade": 1.0, "rings": 2.0, "rim_pow": 1.2, "tail": 0.45, "col_a": Vector3(1.0, 0.96, 0.85), "col_b": Vector3(1.0, 0.66, 0.28)},
+		0.32, 1.3, Vector3(0.5, 0.5, 0.5), Vector3(1.5, 1.5, 1.5), 8.0)
+	_strip(LION_DUST, 7, battle._world_pos(Vector2(o["pos"]), 0.0), 2.0, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 马蹄踏过扬土(底层扬尘)
+	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(o["pos"]), 0.6), 2.4, 20.0, false, 6.0 / 20.0, false, null, 0.0)
+	battle._shake(battle.JUICE_SHAKE_HEAVY * 0.25)
 
 
 func cent_cav_end(c: Dictionary) -> void:
 	for r in _cav_nodes:
 		if is_same(r["c"], c):
 			_free(r["node"])
+			_free(r.get("bow"))
 			for pt in r.get("parts", []):
 				if pt["n"] != null and is_instance_valid(pt["n"]):
 					_fade_out(pt["n"] as Sprite3D, 0.12)
@@ -951,7 +1028,8 @@ func tick(delta: float) -> void:
 	_tick_shields(delta)
 	_tick_leaps(delta)
 	_tick_fall(delta)
-	_tick_aegis()
+	_tick_aegis(delta)
+	_tick_shocks(delta)
 	_tick_cent_glows()
 	## 百夫长登场: 预警圈 → 长矛插进圈心 → 本人从高空砸下(残影)
 	var keep: Array = []
@@ -1009,6 +1087,11 @@ func tick(delta: float) -> void:
 			for pt in r3.get("parts", []):
 				if pt["n"] != null and is_instance_valid(pt["n"]):
 					(pt["n"] as Sprite3D).position = battle._world_pos(cp - Vector2(face, 0.0) * float(pt["back"]), float(pt["h"]))
+			var bw = r3.get("bow")
+			if bw != null and is_instance_valid(bw):   # 船头浪: 马头前 70 码、离地 0.9 米
+				r3["bt"] = float(r3.get("bt", 0.0)) + delta
+				(bw as MeshInstance3D).position = battle._world_pos(cp + Vector2(r3["c"]["dir"]) * 70.0, 0.9)
+				((bw as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("prog", float(r3["bt"]) * 4.0)
 			r3["dust_t"] = float(r3.get("dust_t", 0.0)) + delta
 			if float(r3["dust_t"]) >= 0.08:   # 马蹄一路扬土(底层扬尘)
 				r3["dust_t"] = 0.0
@@ -1028,7 +1111,11 @@ func clear() -> void:
 	for a in _aegis:
 		_free(a["node"])
 	_aegis.clear()
+	for sk in _shocks:
+		_free(sk["node"])
+	_shocks.clear()
 	for r4 in _cav_nodes:
+		_free(r4.get("bow"))
 		for pt in r4.get("parts", []):
 			_free(pt["n"])
 	for arr in [_spear_nodes, _cav_nodes, _ropes, _shields, _swv, _fall]:

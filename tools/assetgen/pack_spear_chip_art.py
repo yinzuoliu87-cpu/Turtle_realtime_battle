@@ -96,7 +96,7 @@ STRIPS = {
     ##   普攻突刺气劲 fx_thrust(128×48, 画的是朝左 ⇒ 翻成朝右, 引擎按方向转)+ 只钉首帧 7 帧(cthr2: 矛尖闪 → 光尾拉长 → 碎成火星)
     ##   龟甲阵金色能量巨盾 fx_aegis(64×128)+ 首尾钉原画循环 6 帧(caeg)
     "spear-cent-thrust": [(SP, "cthr2_%d" % i, True) for i in range(0, 7)],
-    ## spear-cent-aegis: 11-27 自查返工改由下面 GRIDS 拼(特效工作台 aegis-open 5 帧 + aegis-loop 8 帧); 旧的 caeg_0..5(金色实心盾)留在 ai_src 不用
+    ## spear-cent-aegis 11-27 第六轮删: 龟甲阵弧盾改成 3D 网格(scripts/scenes/battle/cent_3d_vfx.gd + assets/shaders/cent_aegis.gdshader, 用户「需要三 D 特效」); 旧帧条源图留在 ai_src 不用
 }
 
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。
@@ -157,7 +157,7 @@ def main():
     import json
     CV = os.path.join(ROOT, "tools", "assetgen", "ai_src", "cent_vfx")
     for src, dst, centre in [("centurion-crack-segment", "spear-cent-crack", False),
-            ("centurion-arc-shield-open+centurion-arc-shield-loop", "spear-cent-aegis", False), ("centurion-thrust-impact", "spear-cent-dome", False), ("centurion-drop-marker", "spear-cent-marker", False),
+            ("centurion-drop-marker", "spear-cent-marker", False),
             ("centurion-fall-trail", "spear-cent-trail", False), ("centurion-spear-thrust-tip", "spear-cent-tip", False)]:
         if "+" in src:   # 两段接成一条(先展开后循环)
             parts = []
