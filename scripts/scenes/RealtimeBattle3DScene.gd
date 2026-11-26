@@ -779,6 +779,7 @@ var _pinch_prev := -1.0                   # 上帧双指间距(捏合比例基�
 ## ★平移量并进 _cam_zoom_base(见 _apply_cam_zoom), 【不能直接写 _cam.position】——
 ##   _render._update_camera_shake 每帧无条件覆写 position, 直接写会被逐帧抹掉。
 var _cam_pan := Vector3.ZERO
+var _cam_world_off := Vector3.ZERO        # 136 里世界: 观众切到里世界时整个镜头平移到那块地(画面层, 不进 sim)
 var _pan_active := false                  # 正在拖动视角
 var _pan_from := Vector2.ZERO             # 按下时的屏幕位置(判定"是拖动还是点选")
 var _pan_moved := false                   # 已超过阈值 → 本次抬起不当点选处理
@@ -1342,8 +1343,8 @@ func _ellipse_pts(c: Vector2, rx: float, ry: float, n: int) -> PackedVector2Arra
 	return pts
 
 func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
-	if not _nav_ready:
-		return straight
+	if not _nav_ready or bool(u.get("_ow", false)):
+		return straight   # 136 里世界那块地没有障碍, 也不在寻路网格里: 直走
 	var now: float = _t
 	var need := false
 	var cached: PackedVector2Array = u.get("_nav_path", PackedVector2Array())
@@ -6995,7 +6996,7 @@ func _apply_cam_zoom() -> void:
 	# ★缩放锚点要跟着平移走(CAM_TARGET + _cam_pan) —— 否则拉近后平移到边角再缩放,
 	#   视野会被"吸"回战场原点, 手感很怪(用户 2026-07-21 要的视角移动)。
 	var anchor: Vector3 = CAM_TARGET + _cam_pan
-	_cam_zoom_base = anchor + (_cam_base - CAM_TARGET) / _cam_zoom
+	_cam_zoom_base = anchor + (_cam_base - CAM_TARGET) / _cam_zoom + _cam_world_off
 	if _shake_amp <= 0.0001:
 		_cam.position = _cam_zoom_base   # 不在震屏中→立即应用(震屏中由 _render._update_camera_shake 每帧应用)
 

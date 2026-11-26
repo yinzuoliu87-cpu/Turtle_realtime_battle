@@ -6,11 +6,11 @@ extends MagicEqVfx
 
 
 # ════════════════════════════════════════ 136 千面【里世界】 ════════════════════════════════════════
-## 用户 11-26「地图上需要有个按钮，可以调整观众的视角，从主地图切换到里世界」。
-## 里世界开着时屏幕上方出一个按钮; 切到里世界视角 ⇒ 只看得见里世界里的人(battle_render 读 EqMaskBatch.ow_hidden),
-## 整屏罩一层暗紫; 切回主世界 ⇒ 里世界的人隐去。结束时按钮收起、视角回主世界。
+## 用户 11-26「地图上需要有个按钮，可以调整观众的视角，从主地图切换到里世界」「需要设计一版地图…不是说画面变暗吧？」
+## 里世界开着时: 主岛外那块场地搭起来(OtherworldStage), 屏幕上方出一个按钮; 点了镜头整个平移到里世界那块地, 再点回来。
+## 结束时场地拆掉、按钮收起、镜头回主岛。
 var _ow_btn: Button = null
-var _ow_tint: ColorRect = null
+var _ow_stage: OtherworldStage = null
 
 
 func _ow_ui_parent():
@@ -19,17 +19,12 @@ func _ow_ui_parent():
 
 
 func ow_open() -> void:
+	if _ow_stage == null:
+		_ow_stage = OtherworldStage.new(battle)
+	_ow_stage.build()
 	var p = _ow_ui_parent()
 	if p == null:
 		return
-	if _ow_tint == null or not is_instance_valid(_ow_tint):
-		_ow_tint = ColorRect.new()
-		_ow_tint.color = Color(0.22, 0.05, 0.32, 0.38)
-		_ow_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_ow_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_ow_tint.visible = false
-		p.add_child(_ow_tint)
-		p.move_child(_ow_tint, 0)
 	if _ow_btn == null or not is_instance_valid(_ow_btn):
 		_ow_btn = Button.new()
 		_ow_btn.size = Vector2(150, 40)
@@ -53,8 +48,9 @@ func _ow_refresh() -> void:
 	var on := bool(battle._equip_sys._mask_sys.ow_view)
 	if _ow_btn != null and is_instance_valid(_ow_btn):
 		_ow_btn.text = "回到主世界" if on else "观看里世界"
-	if _ow_tint != null and is_instance_valid(_ow_tint):
-		_ow_tint.visible = on
+	if battle.get("_cam_world_off") != null:
+		battle._cam_world_off = (_ow_stage.center3() - battle._world_pos(Vector2(battle._arena_center), 0.0)) if (on and _ow_stage != null) else Vector3.ZERO
+		battle._apply_cam_zoom()
 
 
 func ow_close(_reason: String) -> void:
@@ -62,18 +58,23 @@ func ow_close(_reason: String) -> void:
 	if _ow_btn != null and is_instance_valid(_ow_btn):
 		_ow_btn.visible = false
 	_ow_refresh()
+	if _ow_stage != null:
+		_ow_stage.free_stage()
 
 
 func clear() -> void:
 	super.clear()
+	if _ow_stage != null:
+		_ow_stage.free_stage()
+	if battle.get("_cam_world_off") != null and battle._cam_world_off != Vector3.ZERO:
+		battle._cam_world_off = Vector3.ZERO
+		battle._apply_cam_zoom()
 	for g in _gb:
 		for key in ["beam", "ground", "up", "mask"]:
 			_gb_free(g[key])
 	_gb.clear()
 	if _ow_btn != null and is_instance_valid(_ow_btn):
 		_ow_btn.visible = false
-	if _ow_tint != null and is_instance_valid(_ow_tint):
-		_ow_tint.visible = false
 
 
 # ════════════════════════════════════════ 135 黄金面具【金光】 ════════════════════════════════════════
@@ -256,3 +257,5 @@ func _tick_gold(delta: float) -> void:
 func tick(delta: float) -> void:
 	super.tick(delta)
 	_tick_gold(delta)
+	if _ow_stage != null:
+		_ow_stage.tick(delta)

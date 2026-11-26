@@ -7,6 +7,9 @@
     待机 / 走路 / 咬 = animate_image 首尾都钉原画(序号 0 = 输入原画); 冲撞 = animate_image 只钉首帧。
   · 135 金光: 光柱 gold_beam.png = create_image_pro_flash 64×256(无锚); 落地光 gold_ground.png = create_image_pro_flash 96×64(无锚)。
     面具升空用的是 135 自己的图标; 光柱的伸缩 / 跟随 / 变亮是引擎里按时间摆(不是逐帧画的)。
+  · 136 里世界场景: 地砖 ow_tile(64×64) / 法阵 ow_circle(256×256) / 断柱 ow_pillar / 巨面具两种 ow_maskA·B(128×128) / 鬼火灯台 ow_brazier(48×96)
+    = create_image_pro_flash(无锚); 巨面具与鬼火 = animate_image 首尾钉原画 8 帧(owA_0..7 / owB_0..7 / owF_0..7, 序号 8 = 钉住的末帧不取)。
+    平台椭圆裁切 / 边缘碎口 / 变暗是着色器(otherworld_ground.gdshader); 摆位见 OtherworldStage。
 本脚本只做拷贝 / 拼接 / 量化, 重跑逐字节相同。
 
     python tools/assetgen/pack_mask_art.py
@@ -51,6 +54,15 @@ def main():
         _icon(os.path.join(AI, src + ".png"), os.path.join(TAGS, dst + ".png"))
     for src, dst in {"gold_beam": "mask-gold-beam", "gold_ground": "mask-gold-ground"}.items():
         _icon(os.path.join(AI, src + ".png"), os.path.join(VFX, dst + ".png"))
+    for src, dst in {"ow_tile": "ow-tile", "ow_circle": "ow-circle", "ow_pillar": "ow-pillar"}.items():
+        _icon(os.path.join(AI, src + ".png"), os.path.join(VFX, dst + ".png"))
+    for pre, dst, (fw, fh) in [("owA", "ow-maskA", (128, 128)), ("owB", "ow-maskB", (128, 128)), ("owF", "ow-brazier", (48, 96))]:
+        out = Image.new("RGBA", (fw * 8, fh), (0, 0, 0, 0))
+        for i in range(8):
+            im = Image.open(os.path.join(AI, "%s_%d.png" % (pre, i))).convert("RGBA")
+            assert im.size == (fw, fh), (pre, i, im.size)
+            out.paste(im, (i * fw, 0))
+        out.save(os.path.join(VFX, dst + ".png"), optimize=False)
     for dst, names in LION_SEQ.items():
         out = Image.new("RGBA", (FW * len(names), FW), (0, 0, 0, 0))
         for i, n in enumerate(names):

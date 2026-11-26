@@ -29,14 +29,28 @@ extends RefCounted
 const N := 2.0
 
 
+## 136 千面【里世界】开着时的那块场地(同主岛一样大, 摆在主岛外; 空 = 没开)。
+## ★为什么放在这里: 全工程把单位「夹回岛上」都走 clamp_in(位移 / 击退 / 冲刺 / 各技能共十几处), 里世界里的人要夹进里世界那块地。
+##   在这唯一入口按「点离哪块地的中心近」换 rect, 调用方一处都不用改; 主世界的点离里世界 2600 像素, 永远不会被换。
+static var ow_rect := Rect2()
+
+
+static func _pick(p: Vector2, rect: Rect2) -> Rect2:
+	if ow_rect.size.x <= 0.0:
+		return rect
+	var oc: Vector2 = ow_rect.position + ow_rect.size * 0.5
+	var rc: Vector2 = rect.position + rect.size * 0.5
+	return ow_rect if DetMath.dist2(p, oc) < DetMath.dist2(p, rc) else rect
+
+
 ## 点在不在竞技场形状里。调用方只需给 rect, 形状由本文件说了算。
 static func in_rect_shape(p: Vector2, rect: Rect2, pad: float = 0.0, pad_y: float = -1.0) -> bool:
-	return inside(p, rect, N, pad, pad_y)
+	return inside(p, _pick(p, rect), N, pad, pad_y)
 
 
 ## 把点钳进竞技场形状。调用方只需给 rect。
 static func clamp_in(p: Vector2, rect: Rect2, pad: float = 0.0, pad_y: float = -1.0) -> Vector2:
-	return clamp_to(p, rect, N, pad, pad_y)
+	return clamp_to(p, _pick(p, rect), N, pad, pad_y)
 
 
 ## 超椭圆的"归一化半径": <=1 在形状内, >1 在外。

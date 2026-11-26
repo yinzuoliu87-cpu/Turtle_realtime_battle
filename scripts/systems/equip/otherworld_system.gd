@@ -17,6 +17,8 @@ extends RefCounted
 const OW_AT := 8.0
 const OW_SEC := 12.0
 const OW_STEAL := [0.03, 0.05, 0.10]
+## 里世界那块地: 跟主岛一样大(技能射程 / 走位空间都不变), 往远处挪 OW_SHIFT 像素(镜头切过去才看得见)
+const OW_SHIFT := Vector2(0.0, 2600.0)
 
 var battle
 var _carriers: Array = []     # {u, si, used}
@@ -55,7 +57,22 @@ func _enter(u: Dictionary) -> void:
 	if _in(u):
 		return
 	u["_ow"] = true
+	u["_ow_pos0"] = Vector2(u["pos"])
+	u["pos"] = Vector2(u["pos"]) + OW_SHIFT   # 整体平移到里世界那块地(相对站位不变)
+	u["_nav_path"] = PackedVector2Array()
 	members.append(u)
+
+
+func _leave(u: Dictionary) -> void:
+	u["_ow"] = false
+	if u.has("_ow_pos0"):
+		u["pos"] = ArenaShape.clamp_in(Vector2(u["_ow_pos0"]), battle.ARENA)   # 回到进去之前的位置
+		u.erase("_ow_pos0")
+	u["_nav_path"] = PackedVector2Array()
+
+
+static func ow_rect_of(arena: Rect2) -> Rect2:
+	return Rect2(arena.position + OW_SHIFT, arena.size)
 
 
 func _victim_for(c: Dictionary):
@@ -100,6 +117,7 @@ func tick(delta: float) -> void:
 		if not active:
 			active = true
 			t0 = t
+			ArenaShape.ow_rect = ow_rect_of(battle.ARENA)
 			stat["open"] += 1
 			if battle.get("_equip_sys") != null:
 				battle._equip_sys._mask_sys._fx("ow_open", [])
@@ -150,9 +168,10 @@ func close(reason: String) -> void:
 	stat["close"] += 1
 	for m in members:
 		if m is Dictionary:
-			(m as Dictionary)["_ow"] = false
+			_leave(m)
 	members.clear()
 	pairs.clear()
+	ArenaShape.ow_rect = Rect2()
 	_drop_cross_targets()
 	battle._equip_sys._mask_sys._fx("ow_close", [reason])
 
@@ -160,8 +179,9 @@ func close(reason: String) -> void:
 func clear_all() -> void:
 	for m in members:
 		if m is Dictionary:
-			(m as Dictionary)["_ow"] = false
+			_leave(m)
 	members.clear()
 	pairs.clear()
 	_carriers.clear()
 	active = false
+	ArenaShape.ow_rect = Rect2()
