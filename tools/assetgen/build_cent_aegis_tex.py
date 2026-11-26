@@ -8,6 +8,8 @@
   sigil.png   256²  盾心徽记: 外环 + 内环 + 两侧月桂叶 + 中间朝上的矛尖(柔光)
   ray.png      64×256 穿盾矛光: 中线最亮、两侧柔散、前端一颗星芒
   mote.png     32²  上飘光点 / 碎光片: 软圆点 + 十字闪
+  xstar.png   128²  普攻冲击罩最前端的十字星芒(RGBA 白 + 透明度, 立绘式面片直接用)
+  glow.png     64²  矛头光晕(RGBA 白 + 透明度)
 """
 import math, os
 import numpy as np
@@ -44,6 +46,14 @@ def fbm(n, base, octaves, seed, gain=0.5):
 def norm(a):
     a = a - a.min()
     return a / max(1e-9, a.max())
+
+
+def save_rgba(a, name):
+    os.makedirs(OUT, exist_ok=True)
+    al = (np.clip(a, 0, 1) * 255).astype(np.uint8)
+    rgba = np.dstack([np.full_like(al, 255)] * 3 + [al])
+    Image.fromarray(rgba, "RGBA").save(os.path.join(OUT, name), optimize=False)
+    print(name, a.shape[::-1])
 
 
 def save(a, name):
@@ -118,6 +128,23 @@ def mote():
     return np.clip(a, 0, 1)
 
 
+def xstar():
+    S = 128; yy, xx = np.mgrid[0:S, 0:S]
+    dx = (xx + 0.5 - S / 2) / (S / 2); dy = (yy + 0.5 - S / 2) / (S / 2)
+    r = np.sqrt(dx * dx + dy * dy)
+    arms = np.exp(-(dx / 0.035) ** 2) * np.clip(1 - np.abs(dy), 0, 1) ** 2.5 + np.exp(-(dy / 0.035) ** 2) * np.clip(1 - np.abs(dx), 0, 1) ** 2.5
+    d1 = (dx + dy) / math.sqrt(2); d2 = (dx - dy) / math.sqrt(2)
+    diag = 0.45 * (np.exp(-(d1 / 0.03) ** 2) + np.exp(-(d2 / 0.03) ** 2)) * np.clip(1 - r / 0.55, 0, 1) ** 2
+    core = np.exp(-(r / 0.09) ** 2)
+    return np.clip(arms + diag + core, 0, 1)
+
+
+def glow():
+    S = 64; yy, xx = np.mgrid[0:S, 0:S]
+    r = np.sqrt(((xx + 0.5 - S / 2) / (S / 2)) ** 2 + ((yy + 0.5 - S / 2) / (S / 2)) ** 2)
+    return np.clip(np.exp(-(r / 0.42) ** 2) * 1.05 - 0.02, 0, 1)
+
+
 if __name__ == "__main__":
     save(energy(), "energy.png")
     save(erode(), "erode.png")
@@ -125,3 +152,5 @@ if __name__ == "__main__":
     save(sigil(), "sigil.png")
     save(ray(), "ray.png")
     save(mote(), "mote.png")
+    save_rgba(xstar(), "xstar.png")
+    save_rgba(glow(), "glow.png")
