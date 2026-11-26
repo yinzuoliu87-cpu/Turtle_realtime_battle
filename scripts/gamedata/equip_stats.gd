@@ -44,6 +44,7 @@ static func lines_of(st: Dictionary) -> Array:
 	if st.has("crit"):           out.append(["暴击率", "+%d%%" % int(round(float(st["crit"]) * 100.0))])
 	if st.has("critDmg"):        out.append(["暴击伤害", "+%d%%" % int(round(float(st["critDmg"]) * 100.0))])
 	if st.has("dmgAmp"):         out.append(["增伤", "+%d%%" % int(round(float(st["dmgAmp"]) * 100.0))])
+	if st.has("dmgRed"):         out.append(["减伤", "+%d%%" % int(round(float(st["dmgRed"]) * 100.0))])
 	if st.has("armorPen"):       out.append(["护甲穿透", "+%d" % int(st["armorPen"])])
 	if st.has("magicPen"):       out.append(["魔法穿透", "+%d" % int(st["magicPen"])])
 	if st.has("_lifestealPct"):  out.append(["生命偷取", "+%d%%" % int(st["_lifestealPct"])])
@@ -179,6 +180,16 @@ const STATS := {
 	"p2eq_124": [{"hp": 220, "def": 10, "mr": 10}, {"hp": 460, "def": 18, "mr": 18}, {"hp": 1050, "def": 30, "mr": 30}],   # 魔法书 · 4费 · 镜像魔典(2026-11-25 方案书 20261125b)
 	"p2eq_125": [{"atk": 40, "dmgAmp": 0.1}, {"atk": 90, "dmgAmp": 0.15}, {"atk": 400, "dmgAmp": 0.25}],   # 魔法书 · 5费 · 禁咒全书(2026-11-25 方案书 20261125b)
 	"p2eq_126": [{"hp": 300, "atk": 30}, {"hp": 700, "atk": 70}, {"hp": 2000, "atk": 300}],   # 魔法书 · 5费 · 浮空魔典(2026-11-25 方案书 20261125b)
+	"p2eq_127": [{"def": 8, "dmgRed": 0.02}, {"def": 15, "dmgRed": 0.03}, {"def": 25, "dmgRed": 0.05}],   # 面具 · 1费 · 纸面具(2026-11-26 方案书 20261125c)
+	"p2eq_128": [{"atk": 6, "dmgRed": 0.02}, {"atk": 12, "dmgRed": 0.03}, {"atk": 20, "dmgRed": 0.05}],   # 面具 · 1费 · 狐狸面具(2026-11-26 方案书 20261125c)
+	"p2eq_129": [{"atk": 14, "dmgRed": 0.03}, {"atk": 30, "dmgRed": 0.04}, {"atk": 50, "dmgRed": 0.06}],   # 面具 · 2费 · 京剧脸谱(2026-11-26 方案书 20261125c)
+	"p2eq_130": [{"hp": 100, "dmgRed": 0.03}, {"hp": 200, "dmgRed": 0.04}, {"hp": 380, "dmgRed": 0.06}],   # 面具 · 2费 · 舞狮头(2026-11-26 方案书 20261125c)
+	"p2eq_131": [{"hp": 120, "dmgRed": 0.03}, {"hp": 240, "dmgRed": 0.05}, {"hp": 450, "dmgRed": 0.08}],   # 面具 · 3费 · 小丑面具(2026-11-26 方案书 20261125c)
+	"p2eq_132": [{"atk": 15, "dmgRed": 0.03}, {"atk": 28, "dmgRed": 0.05}, {"atk": 48, "dmgRed": 0.08}],   # 面具 · 3费 · 鬼面(2026-11-26 方案书 20261125c)
+	"p2eq_133": [{"hp": 200, "dmgRed": 0.04}, {"hp": 420, "dmgRed": 0.06}, {"hp": 1000, "dmgRed": 0.1}],   # 面具 · 4费 · 防毒面具(2026-11-26 方案书 20261125c)
+	"p2eq_134": [{"hp": 220, "dmgRed": 0.04}, {"hp": 460, "dmgRed": 0.06}, {"hp": 1050, "dmgRed": 0.1}],   # 面具 · 4费 · 威尼斯面具(2026-11-26 方案书 20261125c)
+	"p2eq_135": [{"atk": 30, "_rangeAdd": 150}, {"atk": 90, "_rangeAdd": 200}, {"atk": 260, "_rangeAdd": 300}],   # 面具 · 5费 · 黄金面具(2026-11-26 方案书 20261125c)
+	"p2eq_136": [{"hp": 300, "atk": 30}, {"hp": 700, "atk": 70}, {"hp": 2000, "atk": 300}],   # 面具 · 5费 · 千面(2026-11-26 方案书 20261125c)
 	# ── 召唤系 037/038/040 + 潮汐 045 (批7) ──
 	"p2eq_037": [{"atk": 10, "hp": 80}, {"atk": 25, "hp": 130}, {"atk": 40, "hp": 180}],
 	"p2eq_038": [{"hp": 80}, {"hp": 140}, {"hp": 200}],

@@ -284,6 +284,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		_credit_parasol_block(u, dmg, _raw)          # 060 伞下挡掉的量(只动统计; §3.3 另一半在 _apply_damage_from 同一位置)
 	var shield_before: float = u["shield"]
 	d = MagicShield.absorb(u, d, bucket == "mag")   # 魔法护盾(012): 只挡魔法, 先于普通盾; §3.3 两路都接
+	d = EqMaskBatch.phys_absorb(u, d, bucket == "phy")   # 物理护盾(127 纸面具): 只挡物理, 先于普通盾; §3.3 两路都接
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接
 	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
@@ -298,6 +299,8 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	# ⚠ 两条伤害路径【都要挂】(CLAUDE.md §3.3) —— 只挂一条 = "只有被普攻打死才救得回来"。
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._eq_ink_sac(u, d)
+	if u.get("_ven_ready", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
+		d = battle._equip_sys._mask_sys.revive(u, d)   # 134 威尼斯面具: 倒地复活(§3.3 两路都接)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_nonlethal_hit", false):   # 调用方临时置位的「这一下不致死」(甜蜜掠夺·10-16: 增伤乘区原来能把「留 1 点」打穿)
 		u["hp"] = maxf(1.0, u["hp"])
@@ -548,6 +551,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸, 墨迹真伤也一样(10-15 起)。
 	d = MagicShield.absorb(u, d, _dtv == "magic" and not raw)   # 魔法护盾(012): 只挡魔法, 先于普通盾; §3.3 两路都接
+	d = EqMaskBatch.phys_absorb(u, d, _dtv == "physical" and not raw)   # 物理护盾(127 纸面具): 只挡物理; §3.3 两路都接
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接
 	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
@@ -561,6 +565,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A) —— 与 _apply_damage 同一位置的另一半(§3.3)
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._eq_ink_sac(u, d)
+	if u.get("_ven_ready", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
+		d = battle._equip_sys._mask_sys.revive(u, d)   # 134 威尼斯面具: 倒地复活(§3.3 两路都接)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_nonlethal_hit", false):   # 同上一处(两条伤害路径都要有·§3.3)
 		u["hp"] = maxf(1.0, u["hp"])
@@ -1221,6 +1227,8 @@ func _fx_of(who) -> float:
 func _apply_dot_stacks(u: Dictionary, type: String, stacks: int, src = null) -> void:
 	if battle._untouch_block(u, "dot_stacks"):
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
+	if u is Dictionary and u.get("_gas_mask", false) and battle._equip_sys._mask_sys.dot_immune(u, type):
+		return   # 133 防毒面具: 免疫灼烧 / 中毒 / 流血
 	if u == null or not u.get("alive", false) or stacks <= 0:
 		return
 	var _dm: float = _fx_of(src)

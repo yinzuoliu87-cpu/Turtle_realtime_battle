@@ -53,6 +53,7 @@ static func missiles_for(cost: float, tier: int) -> int:
 func after_cast(u: Dictionary, tgt, stype: String, echo: bool = false) -> void:
 	var cost: float = float(battle._skill_cost(u, stype)) if stype != "" else 0.0
 	battle._equip_sys._magic_sys.on_unit_cast(u, tgt, stype, cost, echo)
+	battle._equip_sys._mask_sys.on_unit_cast(u, tgt, stype, cost, echo)   # 面具批 131 小丑面具: 释放技能后嘲讽 + 护盾
 	on_cast(u, cost)
 
 

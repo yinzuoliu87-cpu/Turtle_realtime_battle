@@ -4071,6 +4071,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool, can_
 	var mult: float = DamageMath.resist_multiplier(resist)
 	base *= mult
 	base *= 1.0 + float(u.get("damage_amp", 0.0))          # 攻击者增伤%
+	base *= 1.0 + EqMaskBatch.fox_amp(u, tgt)              # 128 狐狸面具: 打最大生命值比自己高的目标
 	base *= DamageMath.dr_mult(float(tgt.get("damage_reduction", 0.0)))  # 受害者减伤%(真伤不走此函数; 封顶 90%)
 	if not magic and _t < float(tgt.get("phase_until", 0.0)):
 		base *= GhostSystem.PHASE_MULT                       # 虚化(幽灵): 受物理伤害-90% (真伤/魔法不减)

@@ -449,7 +449,7 @@ func gear_minted(side: String = "left") -> int:
 ##      (周六服务器局按 coins 发币; 周日决赛 A / B 两个真人各按自己那一侧, 2026-10-20)。
 ##   ⇒ 下一件会产币的装备接到这里, 两条路同时生效; 别在任何一处就地再写一份加法。
 static func match_minted(battle, side: String = "left") -> int:
-	return int(battle._gadget_syn.minted(side)) + int(battle._equip_tick_sys.gear_minted(side))
+	return int(battle._gadget_syn.minted(side)) + int(battle._equip_tick_sys.gear_minted(side)) + int(battle._equip_sys._mask_sys.gold_minted(side))
 
 
 ## 整场结束(**不是**换路): 归零。与 `_gadget_syn.reset_match()` 同一时机、同一理由。

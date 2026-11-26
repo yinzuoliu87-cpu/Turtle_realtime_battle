@@ -17,4 +17,7 @@ const OWNER := {
 	## 魔法书批(2026-11-25 · 方案书 docs/plans/20261125b-魔法书羁绊.md)
 	"p2eq_117": "magic", "p2eq_118": "magic", "p2eq_119": "magic", "p2eq_120": "magic", "p2eq_121": "magic",
 	"p2eq_122": "magic", "p2eq_123": "magic", "p2eq_124": "magic", "p2eq_125": "magic", "p2eq_126": "magic",
+	## 面具批(2026-11-26 · 方案书 docs/plans/20261125c-面具羁绊.md)
+	"p2eq_127": "mask", "p2eq_128": "mask", "p2eq_129": "mask", "p2eq_130": "mask", "p2eq_131": "mask",
+	"p2eq_132": "mask", "p2eq_133": "mask", "p2eq_134": "mask", "p2eq_135": "mask", "p2eq_136": "mask",
 }
