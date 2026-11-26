@@ -180,7 +180,7 @@ func summon(side: String, tier: int) -> Dictionary:
 	var ti: int = clampi(tier, 1, 4) - 1
 	var k: float = 1.0 + float(star_sum(side)) * STAR_PCT
 	var p = battle._spawn._spawn_summon(owner, "centurion", float(HP[ti]) * k, float(ATK[ti]) * k,
-		{"label": "百夫长", "spr_id": "eq-centurion", "col_size": 60.0, "hp_w": 44.0, "atk_interval": 1.0, "atk_range": RANGE, "melee": true})
+		{"label": "百夫长", "spr_id": "eq-centurion", "col_size": 72.0, "hp_w": 56.0, "vis_mul": 1.3, "atk_interval": 1.0, "atk_range": RANGE, "melee": true})   # 11-27 用户「形象就太小了…要大一点的，要健壮一点」: 重画成重甲巨汉 + 放大
 	if p == null:
 		return {}
 	p["def"] = float(RES[ti]); p["base_def"] = p["def"]
@@ -188,6 +188,7 @@ func summon(side: String, tier: int) -> Dictionary:
 	p["maxEnergy"] = EN_MAX
 	p["energy"] = 0.0
 	p["_cent_tier"] = tier
+	p["bar_head_h"] = 4.0   # 11-27 放大后人约 3 米高(连盔缨): 血条抬到头顶上方(默认 2.8 会横在胸口)
 	## 落点: 我方阵地往前(两军之间偏我方)
 	var cx: float = float(battle._arena_center.x)
 	var fwd: float = -1.0 if side == "left" else 1.0

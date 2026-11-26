@@ -196,6 +196,9 @@ static func cases() -> Dictionary:
 			+ [_u("__minion__", "right", Vector2(150, -60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": true, "atk": 60.0, "equips": _eq([139], 3)}),
 				_u("__minion__", "right", Vector2(150, 60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": true, "atk": 60.0, "equips": _eq([139], 1)})], 14.0],
 		## 棕色筹码(11-27 自查: 复活后又被打死 ⇒ 后半段全是「失败」结算页 ⇒ 远处垫一只不动不打的友军, 靶子攻击 400 → 300(筹码自带 1500 生命 + 60 双抗), 看得清倒下 → 复活 → 继续打)
+		## 复活(11-27 用户「在两点五秒内血量是逐渐涨的…头上要有数字在跑」): 凤凰涅槃 / 天使首死复活, 都是 2.5 秒分 5 段回血
+		"rv_phoenix": [[_u("phoenix", "left", Vector2(-60, 0), {"hp": 1500.0, "killable": true, "plain": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 150.0), 12.0],
+		"rv_angel": [[_u("angel", "left", Vector2(-60, 0), {"hp": 1500.0, "killable": true, "plain": true, "revive": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 150.0), 12.0],
 		"ch_brown": [[_me(Vector2(-60, 0), _eq([154], 1), {"hp": 300.0, "killable": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 300.0), 14.0],
 		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
 		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]

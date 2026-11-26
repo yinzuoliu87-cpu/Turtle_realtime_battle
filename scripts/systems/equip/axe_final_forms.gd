@@ -131,6 +131,8 @@ func undead_on_death(ax: Dictionary) -> bool:
 		vfx_undead.on_death(ax, -1.0)
 		return false
 	ax["_axe_revive_at"] = float(battle._t) + AF.UNDEAD_REVIVE_DELAY
+	ax["hp"] = 0.0
+	battle._damage.revive_begin(ax, float(ax.get("maxHp", 0.0)) * AF.UNDEAD_REVIVE_HP_PCT, false, true)   # 倒地 2.5 秒里分段回到 40%, 站起时正好满(用户 11-27 全项目复活统一)
 	## ★演出同一步: 领域收掉 + 崩散成亡魂 + 倒计时(帧率按上面排好的复活时刻算, 不另写 2.5)
 	vfx_undead.on_death(ax, float(ax["_axe_revive_at"]))
 	return true
@@ -145,7 +147,7 @@ func undead_tick_revive(ax: Dictionary) -> bool:
 	ax.erase("_axe_revive_at")
 	ax["_axe_revived"] = true
 	ax["alive"] = true
-	ax["hp"] = float(ax.get("maxHp", 0.0)) * AF.UNDEAD_REVIVE_HP_PCT
+	ax["hp"] = maxf(float(ax.get("hp", 0.0)), float(ax.get("maxHp", 0.0)) * AF.UNDEAD_REVIVE_HP_PCT)   # 倒地期间已分段回满(revive_begin); 这里兜底
 	ax["shield"] = 0.0
 	ax["stun_until"] = 0.0
 	## ★★把 `_kill` 做过的事撤回来(第十批 E3) —— 只改 alive 会得到一把【看不见、打不死】的斧头:

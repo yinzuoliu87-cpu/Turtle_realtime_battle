@@ -137,7 +137,12 @@ func _ready() -> void:
 	f2["hp"] = 1.0
 	s._kill(f2)                                            # 走真实死亡路径
 	var alive_after: bool = bool(f2.get("alive", false))
+	var _t_keep: float = s._t
+	for _i in range(52):   # 11-27: 复活 = 2.5 秒分 5 段回到 30%(用户「在两点五秒内血量是逐渐涨的」)
+		s._t += 0.05
+		s._damage.revive_tick()
 	var hp_frac: float = float(f2["hp"]) / mx
+	s._t = _t_keep         # 钟拨回重生那一刻: 下面 ⑦ 要量「重生时」剩多少秒无敌
 	print("")
 	print("  ⑥ 死亡后: alive=%s  hp=%.0f/%.0f = %.1f%% (需求 %.0f%%)" % [
 		str(alive_after), float(f2["hp"]), mx, hp_frac * 100.0, WANT_TAME_REVIVE * 100.0])

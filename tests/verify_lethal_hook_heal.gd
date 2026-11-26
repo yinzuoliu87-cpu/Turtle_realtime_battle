@@ -82,11 +82,14 @@ func _ready() -> void:
 	vic2["_angel_revive"] = true
 	vic2["hp"] = 1.0
 	s._damage._apply_damage_from(atk2, vic2, 200, Color.WHITE)
+	for _i in range(52):   # 11-27: 复活 = 2.5 秒倒地分 5 段回到 25%(用户「在两点五秒内血量是逐渐涨的」)
+		s._t += 0.05
+		s._damage.revive_tick()
 	var pct := float(vic2["hp"]) / float(vic2["maxHp"])
 	_ok("B0 ★分母: 复活真的触发了(reborn_used)", bool(vic2.get("reborn_used", false)))
 	_ok("B0 ★分母: 这一击里死亡处理恰好发生 1 次(_kill_n=%d)" % int(vic2.get("_kill_n", 0)), int(vic2.get("_kill_n", 0)) == 1)
 	_ok("★★B 复活一次后活着, 血量≈25%%(没被外层过期的「致命」补刀): alive=%s hp=%.0f/%.0f" % [str(vic2.get("alive")), float(vic2["hp"]), float(vic2["maxHp"])],
-		vic2.get("alive", false) and pct > 0.15)
+		vic2.get("alive", false) and absf(pct - AngelSystem.REVIVE_HP_PCT) < 0.01)
 
 	# ── C: DoT 路径同一判据 ──
 	var vic3 := _unit("angel", "right", Vector2(-120, 240))

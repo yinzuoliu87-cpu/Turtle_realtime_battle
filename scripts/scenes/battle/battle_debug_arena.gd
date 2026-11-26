@@ -262,6 +262,8 @@ func _edit_unit_from_setup(s: Dictionary) -> Dictionary:
 		u["active_skills"] = []; u["_edit_plain"] = true   # 只会普攻(用户 11-24「只能攻击, 不应该有任何除了攻击以外的东西」)
 	if bool(s.get("idle", false)):
 		u["no_move"] = true; u["no_basic"] = true; u["active_skills"] = []; u["_edit_idle"] = true   # 不动不打(只当装备/羁绊的「持有人」)
+	if bool(s.get("revive", false)):
+		u["_angel_revive"] = true; u["_edit_revive"] = true   # 演示台: 天使开局就带首死复活(正常要选「祝福」; 11-27 录复活分段回血)
 	if bool(s.get("hold", false)):
 		u["no_move"] = true; u["_edit_hold"] = true   # 原地不动(仍会打、会放技能): 演示台用(例: 地雷携带者站住等敌人踩雷)
 	u["maxHp"] = float(s.get("hp", u.get("maxHp", battle._edit_dummy_hp)))   # 血量: 左右都按 per-unit 存的(用户2026-07-24)
@@ -313,6 +315,7 @@ func _edit_snapshot_setup() -> void:
 			"atk": float(u.get("_edit_atk", 0.0)),
 			"plain": bool(u.get("_edit_plain", false)),
 			"idle": bool(u.get("_edit_idle", false)),
+			"revive": bool(u.get("_edit_revive", false)),
 			"hp_pct": float(u.get("_edit_hp_pct", 1.0)),
 		})
 
@@ -834,7 +837,7 @@ func _edit_save_setup() -> void:
 	var lds = {}
 	for s in battle._edit_paused_setup:
 		var pos: Vector2 = s.get("pos", Vector2())
-		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1)), "ghost_eq": str(s.get("ghost_eq", "")), "ai": bool(s.get("ai", false)), "fe": bool(s.get("fe", false)), "hold": bool(s.get("hold", false)), "atk": float(s.get("atk", 0.0)), "plain": bool(s.get("plain", false)), "idle": bool(s.get("idle", false)), "hp_pct": float(s.get("hp_pct", 1.0))})
+		arr.append({"id": str(s.get("id", "")), "side": str(s.get("side", "")), "px": pos.x, "py": pos.y, "hp": float(s.get("hp", 500.0)), "killable": bool(s.get("killable", true)), "equips": s.get("equips", []), "minion": bool(s.get("minion", false)), "role": str(s.get("role", "front")), "level": int(s.get("level", 1)), "ghost_eq": str(s.get("ghost_eq", "")), "ai": bool(s.get("ai", false)), "fe": bool(s.get("fe", false)), "hold": bool(s.get("hold", false)), "atk": float(s.get("atk", 0.0)), "plain": bool(s.get("plain", false)), "idle": bool(s.get("idle", false)), "hp_pct": float(s.get("hp_pct", 1.0)), "revive": bool(s.get("revive", false))})
 		var _id = str(s.get("id", ""))
 		if GameState != null and GameState.loadouts.has(_id): lds[_id] = GameState.loadouts[_id]
 	var f = FileAccess.open(SETUP_PATH, FileAccess.WRITE)

@@ -59,6 +59,7 @@ func _adv(sec: float, units: Array = [], step: float = 0.05) -> void:
 		_s._t += step
 		_c.tick(step)
 		_s._equip_sys._mask_sys.tick(step)
+		_s._damage.revive_tick()
 		for u in units:
 			_c.tick_unit(u, step)
 		t += step

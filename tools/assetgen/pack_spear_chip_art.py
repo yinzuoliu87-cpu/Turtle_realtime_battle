@@ -29,16 +29,22 @@ VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
 ## 11-26 夜自查(如实): PixelLab 出的是半侧身姿势, 两版的朝向都不严格 —— cent_0 一套里待机 / 走路 / 掷矛朝左、刺击往右捅;
 ##   左右翻转的 centL_0 一套里刺击往右捅、掷矛朝左。按「整套朝左」拼: 待机 / 走路 / 掷矛 = cent_0 那套, 刺击 = centL_0 那套再翻回来(往左捅),
 ##   举盾 11-26 夜重做(见下面 eq-centurion-shield 那行)。第三个元素 True = 左右翻转。
+## ★11-27 百夫长整套重画(用户「这个形象就太小了…肯定是要大一点的，要健壮一点」): 原画 centB_a = create_image_pro_flash 128×128,
+##   风格锚 = 旧百夫长待机首帧 cent_old_idle0(只借配色 / 描边 / 明暗), 提示词写「重甲巨汉、宽肩、大肩甲、大塔盾、粗长矛」; 另一版 centB_b 弃;
+##   左右翻转成朝左 centB_0, 六套 animate_image 都从它出: 待机 cBidle3(首尾钉) / 走路 cBwalk3(首尾钉) / 刺 cBatk(首尾钉) /
+##   掷 cBthr(首尾钉) / 举盾 cBshd(只钉首帧, 末帧 = 撑盾姿势) / 阵亡 cBdie(只钉首帧)。
+##   待机和走路三次生成都凭空长出一条红披风(底图没有): cBidle3 / cBwalk3 按底图每一行的盾左缘把盾外侧的披风像素清掉 ⇒ cBidle3c / cBwalk3c
+##   (清理脚本 tools/oneoff/cent_cape_clean_1127.py, 盾内与脚不动); 前两次的 cBidle / cBidle2 / cBwalk / cBwalk2 弃。旧 112 帧那套(cidle / cwalk / latk / cthr / cshdA / cdie)留在 ai_src。
 STRIPS = {
-    "eq-centurion-idle": [(SP, "cidle_%d" % i, False) for i in range(0, 6)],
-    "eq-centurion-walk": [(SP, "cwalk_%d" % i, False) for i in range(1, 9)],
-    "eq-centurion-attack": [(SP, "latk_%d" % i, True) for i in range(1, 11)],
-    "eq-centurion-throw": [(SP, "cthr_%d" % i, False) for i in range(1, 11)],
+    "eq-centurion-idle": [(SP, "cBidle3c_%d" % i, False) for i in range(0, 4)],
+    "eq-centurion-walk": [(SP, "cBwalk3c_%d" % i, False) for i in range(0, 8)],
+    "eq-centurion-attack": [(SP, "cBatk_%d" % i, False) for i in range(1, 9)],
+    "eq-centurion-throw": [(SP, "cBthr_%d" % i, False) for i in range(1, 9)],
     ## 举盾(11-26 夜重做): 原画 cent_0 → edit_image_pro_flash 改出「屈膝、大盾举到身前、长矛架在盾沿上」cshdA_end,
     ##   animate_image 首尾钉这两张出 6 帧(cshdA_1..6)。帧条 = 举盾 6 帧 + 撑盾 36 帧(末两帧每 4 帧换一次, 慢慢用力),
     ##   引擎按举盾秒数算播放速度(3 秒 ⇒ 14 fps: 举盾 0.43 秒, 之后一直撑着)。旧 cshd_* 盾没举起来, 弃。
-    "eq-centurion-shield": [(SP, "cshdA_%d" % i, False) for i in range(1, 7)]
-        + [(SP, "cshdA_%d" % (6 if (k // 4) % 2 == 0 else 5), False) for k in range(36)],
+    "eq-centurion-shield": [(SP, "cBshd_%d" % i, False) for i in range(1, 7)]
+        + [(SP, "cBshd_%d" % (6 if (k // 4) % 2 == 0 else 5), False) for k in range(36)],
     "eq-cavalry-run": [(SP, "cav_%d" % i, False) for i in range(0, 8)],
     ## 11-26 夜 10 件长矛的演出(create_image_pro_flash 无锚原画 fx_* + animate_image; 没照参考):
     ##   只钉首帧(一次性): 骑枪冲阵 slan / 长戟横扫 shal / 圣枪引爆 shbu
@@ -84,17 +90,23 @@ STRIPS = {
     ## 百夫长阵亡(11-27 自查: 原来只有通用淡出): 打包好的待机首帧(已下移贴地, cent_stand_packed)→ edit 出倒地 cent_fallen,
     ##   animate_image 首尾钉住 10 帧(第一条中间 4 帧矛放平像在出招、盾变黑, 换提示词重出) ⇒ cdie_0..10; 输入已贴地不再下移;
     ##   前段抽帧, 末帧连停 4 拍(12 帧 @12 = 1 秒 ≥ 阵亡淡出 0.95 秒)
-    "eq-centurion-death": [(SP, "cdie_%d" % i, False) for i in [0, 2, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]],
+    "eq-centurion-death": [(SP, "cBdie_%d" % i, False) for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8]],   # 11-27 重画: cBdie 末帧连停 4 拍
     ## 骑兵冲锋(11-27 补, 同舞狮冲撞): 身后灰白风线 cav_speed / 马头前尘浪 cav_dustbow = create_image_pro_flash(无锚, 没照参考)
     ##   + animate_image 首尾钉原画循环(cvspd_0..3 / cvbow_0..5)
     "spear-cav-speed": [(SP, "cvspd_%d" % i, False) for i in range(0, 4)],
     "spear-cav-dustbow": [(SP, "cvbow_%d" % i, False) for i in range(0, 6)],
+    ## 11-27 百夫长特效加强(用户「技能特效感觉都不明显。普攻也没有特效」; create_image_pro_flash 无锚 + animate_image, 没照参考):
+    ##   普攻突刺气劲 fx_thrust(128×48, 画的是朝左 ⇒ 翻成朝右, 引擎按方向转)+ 只钉首帧 7 帧(cthr2: 矛尖闪 → 光尾拉长 → 碎成火星)
+    ##   龟甲阵金色能量巨盾 fx_aegis(64×128)+ 首尾钉原画循环 6 帧(caeg)
+    "spear-cent-thrust": [(SP, "cthr2_%d" % i, True) for i in range(0, 7)],
+    "spear-cent-aegis": [(SP, "caeg_%d" % i, False) for i in range(0, 6)],
 }
 
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。
 ##   同一个角色的所有帧条按「全部帧里最低那只脚」统一下移同样多 ⇒ 脚贴帧底、动作之间切换不跳。
-SHIFT_DOWN = {"eq-centurion-idle": 19, "eq-centurion-walk": 19, "eq-centurion-attack": 19, "eq-centurion-throw": 19,
-              "eq-centurion-shield": 19, "eq-cavalry-run": 7}
+##   11-27 重画的 128 帧: 全部帧最低的脚在第 120 行 ⇒ 统一下移 7(阵亡也一起)
+SHIFT_DOWN = {"eq-centurion-idle": 7, "eq-centurion-walk": 7, "eq-centurion-attack": 7, "eq-centurion-throw": 7,
+              "eq-centurion-shield": 7, "eq-centurion-death": 7, "eq-cavalry-run": 7}
 
 
 def _icon(src, dst, maxc=64):

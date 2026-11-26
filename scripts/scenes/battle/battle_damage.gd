@@ -1018,6 +1018,14 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	var _hcap: float = float(u.get("_heal_cap_val", 0.0))
 	if _hcap > 0.0:
 		amt = minf(amt, _hcap)
+	return _heal_apply(u, amt, silent)
+
+
+## 回血的后半段(加血 + 统计 + 溢出转盾 + 受治疗钩子 + 绿字累加): `_heal` 乘完各种治疗系数后走这里;
+##   复活分段回血(revive_tick)不吃治疗系数(复活回多少是写死的比例), 直接走这里 —— 绿字 / 统计 / 钩子与普通回血同一套。
+func _heal_apply(u: Dictionary, amt: float, silent: bool = false) -> float:
+	if amt <= 0.0:
+		return 0.0
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
 	## ★★**累计要用 float**。原来是 `int(...) + int(hp - hb)` —— 把**每一次的增量**截成整数,
@@ -1055,6 +1063,59 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	if not silent and _act > 0.0:          # ★11-04: 满血回 0 不出声(原来照响)
 		battle._audio_sys._sfx_heal()                          # §AUDIO: 治疗音 (节流 HEAL_SFX_GAP)
 	return _act
+
+## ════ 复活: 2.5 秒内分 5 段回血到目标值(用户 11-27, 全项目统一; 样板 = 134 威尼斯面具) ════
+##   每 0.5 秒一段, 每段把血补到「目标 × 段数 / 5」(这期间被打掉的也补回来), 走 _heal_apply ⇒ 头上弹绿色回血数字、记进治疗统计。
+##   不吃治疗系数(决胜期减半 / 重伤 / 077 封顶): 复活回多少是这个复活写死的比例。
+##   protect = true ⇒ 这 2.5 秒倒地: 不可选中 + 血量不会掉到 1 以下 + 不行动(天使 / 宝箱雕像; 凤凰 / 威尼斯 / 驯服各自已有保护)。
+##   from_dead = true ⇒ 单位还没站起来(斧头亡灵形态倒地期间就开始回), 照样推进。
+const REVIVE_SEC := 2.5
+const REVIVE_STEPS := 5
+var _revq: Array = []
+
+
+func revive_begin(u: Dictionary, to_hp: float, protect: bool = true, from_dead: bool = false) -> void:
+	var t: float = battle._t
+	for R in _revq:
+		if is_same(R["u"], u):
+			_revq.erase(R)
+			break
+	if protect:
+		u["deathfloor_until"] = maxf(float(u.get("deathfloor_until", 0.0)), t + REVIVE_SEC)
+		u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + REVIVE_SEC)
+		channel(u, REVIVE_SEC)
+	u["_revive_until"] = t + REVIVE_SEC
+	_revq.append({"u": u, "t0": t, "to": maxf(1.0, to_hp), "n": 0, "dead": from_dead})
+
+
+func revive_tick() -> void:
+	if _revq.is_empty():
+		return
+	var t: float = battle._t
+	var keep: Array = []
+	for R in _revq:
+		var u: Dictionary = R["u"]
+		if not u.get("alive", false) and not bool(R["dead"]):
+			continue
+		if bool(R["dead"]) and u.get("alive", false):
+			R["dead"] = false
+		var due: int = mini(REVIVE_STEPS, int(floor((t - float(R["t0"])) / (REVIVE_SEC / float(REVIVE_STEPS)) + 0.0001)))
+		while int(R["n"]) < due:
+			R["n"] = int(R["n"]) + 1
+			var want: float = float(R["to"]) * float(R["n"]) / float(REVIVE_STEPS)
+			var add: float = minf(want, float(u["maxHp"])) - float(u["hp"])
+			if add > 0.0:
+				_heal_apply(u, add)
+				u["_heal_acc_t"] = t - 1.0   # 每段单独弹一个数字(不和下一段合并)
+				_heal_flush(u)
+		if int(R["n"]) < REVIVE_STEPS:
+			keep.append(R)
+	_revq = keep
+
+
+func revive_clear() -> void:
+	_revq.clear()
+
 
 func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.15s(一波打完)或攒够0.6s→合并弹一个绿字(=实际回血)
 	var acc: float = float(u.get("_heal_acc", 0.0))

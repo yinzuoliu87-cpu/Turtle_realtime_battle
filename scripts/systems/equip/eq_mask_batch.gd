@@ -236,7 +236,8 @@ func revive(u: Dictionary, d: float) -> float:
 	u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + VEN_SEC)
 	battle._damage.channel(u, VEN_SEC)                                                 # 倒地期间不行动
 	u["_ven_until"] = t + VEN_SEC
-	_revives.append({"u": u, "t0": t, "to": float(u.get("maxHp", 1.0)) * heal_pct, "ven": ven})
+	_revives.append({"u": u, "t0": t, "ven": ven})
+	battle._damage.revive_begin(u, float(u.get("maxHp", 1.0)) * heal_pct, false)   # 分 5 段回血、每段弹数字(全项目共用, 用户 11-27); 保护上面已设
 	u["_ven_t0"] = t
 	## 演出分开: 威尼斯面具的招牌(面具 + 光环)不给棕色筹码用(CLAUDE.md §10 第 5 条)
 	if ven:
@@ -698,8 +699,7 @@ func _tick_revives() -> void:
 		var u: Dictionary = R["u"]
 		if not u.get("alive", false):
 			continue
-		var k: float = clampf((t - float(R["t0"])) / VEN_SEC, 0.0, 1.0)
-		u["hp"] = maxf(float(u["hp"]), maxf(1.0, float(R["to"]) * k))   # 2.5 秒里血量逐渐涨到 30/45/70%
+		var k: float = clampf((t - float(R["t0"])) / VEN_SEC, 0.0, 1.0)   # 回血在 battle_damage.revive_tick(分段弹数字); 这里只管起身演出
 		if k < 1.0:
 			keep.append(R)
 		else:

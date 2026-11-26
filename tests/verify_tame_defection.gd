@@ -113,7 +113,10 @@ func _ready() -> void:
 		str(victim.get("tamed_side", "")) == "left" and victim.get("alive", false),
 		"tamed_side=%s alive=%s hp=%.0f/%.0f" % [str(victim.get("tamed_side", "")),
 			victim.get("alive", false), float(victim.get("hp", 0)), float(victim.get("maxHp", 1))])
-	_ok("③ 复活血量 = 30% 最大生命(需求字面值)",
+	for _i in range(52):   # 11-27: 复活 = 2.5 秒分 5 段回到 30%(用户「在两点五秒内血量是逐渐涨的」; 演出期无敌, 只推复活回血)
+		s._t += 0.05
+		s._damage.revive_tick()
+	_ok("③ 复活血量 = 30% 最大生命(需求字面值, 2.5 秒分段回满)",
 		absf(float(victim.get("hp", 0)) / maxf(1.0, float(victim.get("maxHp", 1))) - 0.30) < 0.02,
 		"%.1f%%" % (100.0 * float(victim.get("hp", 0)) / maxf(1.0, float(victim.get("maxHp", 1)))))
 	for _i in range(180):                                  # 跨过 2.5s 重生演出(无敌/不可选中)

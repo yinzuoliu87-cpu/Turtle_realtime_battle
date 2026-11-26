@@ -940,7 +940,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		spr.vframes = int(su_sd.get("vframes", 1))
 		spr.frame = 0
 		spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED    # 接地 shader 自管 alpha (软渐隐), 不硬切
-		spr.pixel_size = (battle.TARGET_BODY_H * (col_size / 56.0)) / float(maxi(1, fh))
+		spr.pixel_size = (battle.TARGET_BODY_H * (col_size / 56.0)) / float(maxi(1, fh)) * float(behavior.get("vis_mul", 1.0))   # vis_mul: 只放大画面(11-27 百夫长)
 		spr.offset = Vector2(0.0, fh * 0.5)
 		su_grounded = battle._make_grounded_material(tex, su_sd)   # §GROUNDING 软渐隐 (动画召唤体)
 		spr.material_override = su_grounded

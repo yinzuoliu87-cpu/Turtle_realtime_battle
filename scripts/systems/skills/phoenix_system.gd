@@ -434,6 +434,7 @@ func nirvana_begin(u: Dictionary, pct: float) -> void:
 		##     (两道伤害闸 + 异常检测跳过 + _is_untargetable)正好全是涅槃演出需要的。
 		u["_assembling"] = true
 		u["_phx_reborn_t0"] = battle._t
+		battle._damage.revive_begin(u, float(u["maxHp"]) * pct, false)   # 2.5 秒里分 5 段回到 60/25%, 每段弹绿字(用户 11-27; 原来展翼那一刻一下跳满)
 		nirvana_show(u, pct)              # 三拍演出(灰烬 → 聚火 → 展翼)
 		AttackRhythm.play_form(battle, u, "phoenix", "revive")   # 复活段: 趴着 2.5 秒里最后一拍站起, 对上展翼(11-05; build_spine_actions REVIVE_SHOW_SEC)
 		battle._pending_shots.append({"delay": NIRVANA_SHOW_SEC, "src": u, "fn": func() -> void:
@@ -445,7 +446,6 @@ func nirvana_begin(u: Dictionary, pct: float) -> void:
 			u["_assembling"] = false
 			if not u.get("alive", false):
 				return
-			u["hp"] = u["maxHp"] * pct                 # ★展翼那一刻才跳血条
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "涅槃", Color("#ffd93d"))
 			if u.get("_enh_rebirth", false):
 				u["base_atk"] = u["base_atk"] * (1.0 + NIRVANA_ENH_ATK); battle._recalc_stats(u)   # 强化涅槃: 永久+20%攻击

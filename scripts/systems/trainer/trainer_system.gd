@@ -1475,7 +1475,8 @@ func _tame_try_revive(u: Dictionary) -> bool:
 		return false
 	u["tame_used"] = true
 	u["tame_pending"] = false
-	u["hp"] = float(u["maxHp"]) * battle.TAME_REVIVE_PCT      # B4: 30% 最大生命
+	u["hp"] = 1.0
+	battle._damage.revive_begin(u, float(u["maxHp"]) * battle.TAME_REVIVE_PCT, false)   # B4: 30% 最大生命, 演出期 2.5 秒分段回(用户 11-27 全项目复活统一; 演出期本来就无敌不可选中)
 	u["dots"] = []
 	u["dot_stacks"] = {}
 	u["shield"] = 0.0

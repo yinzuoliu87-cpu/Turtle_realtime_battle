@@ -1806,7 +1806,7 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 		"eq-skel-mage": ["vfx/eq-skelm-idle.png", 112],      # 123 · 骷髅法师
 		"eq-skel-priest": ["vfx/eq-skelp-idle.png", 112],    # 123 · 骷髅祭司
 		"eq-mask-lion": ["vfx/eq-masklion-idle.png", 112],
-		"eq-centurion": ["vfx/eq-centurion-idle.png", 112],   # 长矛羁绊 · 百夫长(11-26)   # 130 舞狮头 · 舞狮(11-26)
+		"eq-centurion": ["vfx/eq-centurion-idle.png", 128],   # 长矛羁绊 · 百夫长(11-26)   # 130 舞狮头 · 舞狮(11-26)
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]
@@ -2176,6 +2176,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_bomb_syn.tick(dt)    # 炸弹: 每一路开打第 10 秒导弹轰炸
 		_spear_syn.tick(dt)   # 长矛: 第 8 秒或我方生命值 < 60% 召唤百夫长(登场全场击飞) + 龟甲阵 / 掷矛 / 骑兵
 		_mask_syn.tick(dt)    # 面具: 每一路开打偷对面 1/2/3 只龟的脸, 我方阵地生成复制体
+		_damage.revive_tick() # 复活: 2.5 秒分 5 段回血(全项目共用, 用户 11-27)
 		_dagger_syn.tick(dt)  # 匕首: 每一路开打(二档 +10 秒 / 三档 +20 秒)全队下一次普攻强化
 		_gadget_syn.tick(dt)  # 奇械: 铸币累计
 		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
@@ -4467,7 +4468,8 @@ func _kill(u: Dictionary, killer = null) -> void:
 		else:
 			_audio_sys._sfx_simple("g_rebirth")              # §AUDIO: 首死复活音 (天使圣光等, 低频不节流)
 		if u["id"] != "phoenix":
-			u["hp"] = u["maxHp"] * pct                 # 天使/宝箱雕像: 保持原来的"一帧复活"
+			u["hp"] = 1.0; u["stun_until"] = 0.0; u["airborne"] = false
+			_damage.revive_begin(u, float(u["maxHp"]) * pct)   # 天使/宝箱雕像: 倒地 2.5 秒分段回到 25%(用户 11-27 全项目复活统一)
 			_vfx._revive_fx(u)                           # 飘「复活」+ 复活段(倒地 → 站起, 11-05)
 			return
 		## ★★凤凰涅槃 = 一段 2.5 秒的演出(用户 2026-08-13)。整段住在 PhoenixSystem ——

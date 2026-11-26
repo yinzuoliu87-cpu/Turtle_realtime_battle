@@ -130,7 +130,7 @@ const STATE := {
 }
 ## 形态切换段 [路径, 帧率(, 开播前在首帧停留秒数)](AttackRhythm.play_form 读; 熔岩变身 / 变回, 变回 = 变身倒放; 凤凰复活先趴 2.5 秒)
 const FORM := {
-	"angel": {"revive": ["pets/animations/angel/revive.png", 15.0]},
+	"angel": {"revive": ["pets/animations/angel/revive.png", 15.0, 1.833]},   # 11-27: 复活改成 2.5 秒倒地分段回血 ⇒ 同凤凰先趴 1.833 秒再站(10 帧 / 15fps)
 	"candy": {"drain": ["pets/animations/candy/drain.png", 12.0]},
 	"crystal": {"barrier_end": ["pets/animations/crystal/barrier_end.png", 15.0]},
 	"diamond": {"diamondRoll_end": ["pets/animations/diamond/diamondRoll_end.png", 15.0], "enter": ["pets/animations/diamond/enter.png", 12.0]},
