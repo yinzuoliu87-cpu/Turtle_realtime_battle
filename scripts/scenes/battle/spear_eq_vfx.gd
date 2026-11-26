@@ -521,7 +521,7 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 		parts.append({"node": mi, "s0": float(sp[3]), "s1": float(sp[4]), "off": float(sp[5])})
 	## 头: 叠加光晕 + 十字星芒(研究稿 Missle Head Glow / leading star)
 	var bills: Array = []
-	for b in [["glow.png", 1.1, Color(1.0, 0.95, 0.8, 0.9), 13], ["xstar.png", 1.7, Color(1.0, 0.88, 0.6, 1.0), 14]]:
+	for b in [["glow.png", 1.6, Color(1.0, 0.95, 0.8, 0.95), 13], ["xstar.png", 2.3, Color(1.0, 0.88, 0.6, 1.0), 14]]:
 		var s := Sprite3D.new()
 		s.texture = Cent3dVfx.tex(str(b[0]))
 		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -563,7 +563,97 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	ps.emitting = true
 	w.add_child(ps)
 	_aegis_junk.append({"node": ps, "left": 0.6})
-	_stabs.append({"parts": parts, "bills": bills, "ring": ring, "t": 0.0, "life": maxf(CENT_SHOCK_SEC, dist / CENT_SHOCK_SPD), "p0": tip, "d3": d3, "dist": dist})
+	## 头部加强(11-27 第二轮「冲击到的头部…需要更多明显的特效」): 激波前沿亮环 + 外贴暗环(折射边) + 横向拉丝光 + 两侧往后甩的火花
+	var yaw2: float = Cent3dVfx.yaw_of(Vector2(d3.x, d3.z))
+	var te := Cent3dVfx.tex("energy.png")
+	var fr_dark := Cent3dVfx.node(w, Cent3dVfx.gen_fan(0.42, 1.0, TAU, 0.0, 40, 4), Cent3dVfx.GROUND_SHADER, Cent3dVfx.GROUND_SP,
+		{"tex_energy": te, "open": 1.0, "shell_k": 0.55, "col_mid": Vector3(0.18, 0.08, 0.03), "col_hot": Vector3(0.25, 0.12, 0.05)}, 11)
+	var fr_hot := Cent3dVfx.node(w, Cent3dVfx.gen_fan(0.2, 0.62, TAU, 0.0, 40, 4), Cent3dVfx.GROUND_SHADER, Cent3dVfx.GROUND_SP,
+		{"tex_energy": te, "open": 1.0, "shell_k": 0.62, "col_mid": Vector3(1.0, 0.8, 0.4), "col_hot": Vector3(1.0, 1.0, 0.95)}, 13)
+	for fnode in [fr_dark, fr_hot]:
+		(fnode as Node3D).rotation = Vector3(0.0, yaw2, PI * 0.5)
+		(fnode as Node3D).position = tip
+	var streak := Sprite3D.new()   # 横向拉丝光
+	streak.texture = Cent3dVfx.tex("xstar.png")
+	streak.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	streak.shaded = false
+	streak.transparent = true
+	streak.no_depth_test = true
+	streak.render_priority = 14
+	streak.modulate = Color(1.0, 0.92, 0.7, 0.9)
+	streak.pixel_size = 2.6 / float(streak.texture.get_width())
+	streak.position = tip
+	w.add_child(streak)
+	bills.append({"node": streak, "col": streak.modulate, "sx": 3.2})
+	var spray := GPUParticles3D.new()
+	spray.amount = 36
+	spray.lifetime = 0.28
+	spray.randomness = 0.7
+	spray.local_coords = false
+	spray.fixed_fps = 30
+	var spm := ParticleProcessMaterial.new()
+	spm.direction = Vector3(-1.0, 0.0, 0.0)
+	spm.spread = 38.0
+	spm.initial_velocity_min = 2.0
+	spm.initial_velocity_max = 5.0
+	spm.gravity = Vector3(0.0, -3.0, 0.0)
+	spm.scale_min = 0.6
+	spm.scale_max = 1.3
+	spm.color_ramp = _gold_ramp(1.0)
+	spray.process_material = spm
+	spray.draw_pass_1 = _mote_quad(0.09)
+	spray.position = tip
+	spray.rotation = Vector3(0.0, yaw2, 0.0)
+	w.add_child(spray)
+	_stabs.append({"parts": parts, "bills": bills, "ring": ring, "t": 0.0, "life": maxf(CENT_SHOCK_SEC, dist / CENT_SHOCK_SPD), "p0": tip, "d3": d3, "dist": dist,
+		"u": u, "front": [fr_dark, fr_hot], "spray": spray, "skid": 0.0, "h": tip.y})
+
+
+## 二档: 冲击罩头部改跟着结算那道冲击波走(sim 的波头位置), 到头再淡掉
+func cent_wave(u: Dictionary, wv: Dictionary) -> void:
+	for i in range(_stabs.size() - 1, -1, -1):
+		var st: Dictionary = _stabs[i]
+		if st.has("u") and is_same(st["u"], u) and not st.has("w"):
+			st["w"] = wv
+			st["life"] = 99.0
+			return
+
+
+func cent_wave_hit(_wv: Dictionary, o: Dictionary) -> void:
+	## 波头扫到一个敌人: 那个人身上炸一下(闪光 + 冲击环 + 火花 + 轻震)
+	var op := Vector2(o["pos"])
+	_cent_burst(battle._world_pos(op, 1.0), 0.0, 1.3)
+	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(op, 0.6), 1.8, 20.0, false, 6.0 / 20.0, false, null, 0.0)
+	var fl := Sprite3D.new()
+	fl.texture = Cent3dVfx.tex("glow.png")
+	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	fl.shaded = false
+	fl.transparent = true
+	fl.no_depth_test = true
+	fl.render_priority = 13
+	fl.modulate = Color(1.0, 0.95, 0.8, 0.95)
+	fl.pixel_size = 2.0 / float(fl.texture.get_width())
+	fl.position = battle._world_pos(op, 1.0)
+	battle._world.add_child(fl)
+	_mfx.append({"node": fl, "nf": 1, "fps": 0.0, "t": 0.0, "life": 0.18, "loop": false, "follow": null, "h": 0.0})
+	battle._shake(battle.JUICE_SHAKE_HEAVY * 0.15)
+
+
+func cent_wave_end(wv: Dictionary) -> void:
+	for st in _stabs:
+		if st.get("w") is Dictionary and is_same(st["w"], wv) and not st.has("end_t"):
+			st["end_t"] = float(st["t"])
+
+
+func _stab_free(st: Dictionary) -> void:
+	for p in st["parts"]:
+		_free(p["node"])
+	for b in st["bills"]:
+		_free(b["node"])
+	_free(st.get("ring"))
+	for f in st.get("front", []):
+		_free(f)
+	_stop_ps(st.get("spray"))
 
 
 func _tick_stabs(delta: float) -> void:
@@ -583,17 +673,45 @@ func _tick_stabs(delta: float) -> void:
 				rm.set_shader_parameter("shell_k", 0.05 + 0.9 * rk)
 				rm.set_shader_parameter("fade", 1.0 - rk * rk)
 				rm.set_shader_parameter("t", t)
+		var follow = st.get("w")
+		if st.has("end_t"):
+			k = maxf(k, 0.55 + 0.45 * (t - float(st["end_t"])) / 0.15)   # 波到头: 0.15 秒淡掉
 		if k >= 1.0:
-			for p in st["parts"]:
-				_free(p["node"])
-			for b in st["bills"]:
-				_free(b["node"])
-			_free(st.get("ring"))
+			_stab_free(st)
 			continue
 		var e: float = 1.0 - (1.0 - k) * (1.0 - k)   # 先快后慢
 		var d3: Vector3 = st["d3"]
 		var pos: Vector3 = Vector3(st["p0"]) + d3 * float(st["dist"]) * e
+		if follow is Dictionary:   # 二档: 头部 = 结算那道冲击波的波头(碰到谁才扣谁)
+			pos = battle._world_pos(Vector2(follow["pos"]), float(st.get("h", 1.0)))
+			e = clampf(t / 0.25, 0.0, 1.0)
 		var fd: float = 1.0 - smoothstep(0.45, 1.0, k)
+		## 头部: 前沿亮环 / 暗环跟着波头(亮环一直跳), 两侧火花, 地面焦痕 + 小尘团
+		var fi := 0
+		for f in st.get("front", []):
+			if f != null and is_instance_valid(f):
+				(f as Node3D).position = pos + d3 * (0.05 if fi == 1 else -0.02)
+				(f as Node3D).scale = Vector3.ONE * lerpf(0.6, 1.15, e) * (1.0 + (0.12 * sin(t * 50.0) if fi == 1 else 0.0))
+				var fm: ShaderMaterial = (f as MeshInstance3D).material_override
+				fm.set_shader_parameter("t", t)
+				fm.set_shader_parameter("fade", fd)
+			fi += 1
+		var sp0 = st.get("spray")
+		if sp0 != null and is_instance_valid(sp0):
+			(sp0 as GPUParticles3D).position = pos
+			(sp0 as GPUParticles3D).emitting = fd > 0.3
+		## 地面焦痕: 按上一帧 → 这一帧的线段每 0.25 米铺一点(按时间落点时, 每帧波头走半米多, 柔光点断开成一颗一颗)
+		var g2 := Vector2(pos.x / float(battle.WS) + float(battle._arena_center.x), pos.z / float(battle.WS) + float(battle._arena_center.y))
+		var gl = st.get("skid_p")
+		if fd > 0.3:
+			var seg_from: Vector2 = gl if gl is Vector2 else g2
+			var n_d: int = mini(12, int(seg_from.distance_to(g2) * float(battle.WS) / 0.25))
+			for di in range(1, n_d + 1):
+				var gp: Vector2 = seg_from.lerp(g2, float(di) / float(n_d))
+				_ground_glow(gp, 0.8, Color(0.15, 0.07, 0.03, 0.4), 0.6)
+				_ground_glow(gp, 0.35, Color(1.0, 0.75, 0.35, 0.65), 0.25)
+			if n_d > 0 or not (gl is Vector2):
+				st["skid_p"] = g2
 		for p in st["parts"]:
 			var n = p["node"]
 			if n == null or not is_instance_valid(n):
@@ -609,7 +727,8 @@ func _tick_stabs(delta: float) -> void:
 			if bn == null or not is_instance_valid(bn):
 				continue
 			(bn as Sprite3D).position = pos + d3 * 0.05
-			(bn as Sprite3D).scale = Vector3.ONE * fl * lerpf(0.8, 1.15, e)
+			var bsx: float = float(b.get("sx", 1.0))
+			(bn as Sprite3D).scale = Vector3(bsx, 1.0 / bsx if bsx > 1.0 else 1.0, 1.0) * fl * lerpf(0.8, 1.15, e)
 			var c: Color = b["col"]
 			(bn as Sprite3D).modulate = Color(c.r, c.g, c.b, c.a * fd)
 		keep.append(st)
@@ -1858,6 +1977,9 @@ func clear() -> void:
 		for b in st["bills"]:
 			_free(b["node"])
 		_free(st.get("ring"))
+		for f in st.get("front", []):
+			_free(f)
+		_free(st.get("spray"))
 	_stabs.clear()
 	for r4 in _cav_nodes:
 		_free(r4.get("bow"))

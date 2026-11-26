@@ -33,6 +33,8 @@ const RANGE := 110.0              # 长柄: 比一般近战(70)够得远
 const LINE_LEN := 260.0           # 贯穿那条线从目标往后再延多远
 const LINE_W := 34.0
 const PIERCE_BEHIND := 0.5
+const WAVE_SPD := 667.0              # 11-27 二档穿刺冲击波速度(码/秒) = 演出 16 米/秒
+const WAVE_TIP := 60.0              # 波从矛尖起(立足点往前约 1.4 米)
 const SHRED_CAP := 30.0
 const THROW_EVERY := 4
 const THROW_COEF := 2.0
@@ -69,6 +71,7 @@ var _lane_t0 := -1.0
 var _done := {"left": false, "right": false}
 var _cents: Array = []      # {u, side, tier, n_atk, en, state, t, poke}
 var _spears: Array = []     # 掷出的矛 {src, pos, dir, left, hit:[]}
+var _waves: Array = []      # 二档穿刺冲击波 {src, pos, dir, t0, left, hit, tier, pierced}
 var _cavs: Array = []       # 骑兵 {src, pos, tgt, dir, hit:[], left}
 ## 门禁量
 var stat := {"summon": 0, "entry_hits": 0, "pierce": 0, "shred": 0, "throw": 0, "throw_hit": 0, "shield": 0, "sweep": 0, "poke": 0, "cav": 0, "cav_hit": 0}
@@ -151,6 +154,7 @@ func tick(delta: float) -> void:
 		_cents.clear()   # 换路: 单位字典整体重建, 上一路的百夫长 / 飞矛 / 骑兵全部作废
 		_spears.clear()
 		_cavs.clear()
+		_waves.clear()
 	if not bool(battle.get("_over")):
 		var el: float = float(battle._t) - t0
 		for side in ["left", "right"]:
@@ -165,6 +169,7 @@ func tick(delta: float) -> void:
 	_tick_cents(delta)
 	_tick_spears(delta)
 	_tick_cavs(delta)
+	_tick_waves(delta)
 	if vfx != null and vfx.has_method("tick"):
 		vfx.tick(delta)
 
@@ -256,21 +261,13 @@ func on_any_basic(u: Dictionary, tgt) -> void:
 	r["n_atk"] = int(r["n_atk"]) + 1
 	var t: Dictionary = tgt
 	var hits: Array = [t]
-	if tier >= 2:   # 贯穿直线: 目标身后同一条线上的敌人
-		var dir: Vector2 = DetMath.norm(Vector2(t["pos"]) - Vector2(u["pos"])) if DetMath.dist(Vector2(t["pos"]), Vector2(u["pos"])) > 1.0 else Vector2.RIGHT
-		var behind: Array = []
-		for o in battle._targeting._enemies_of(u):
-			if is_same(o, t) or not o.get("alive", false):
-				continue
-			var rel: Vector2 = Vector2(o["pos"]) - Vector2(t["pos"])
-			var along: float = rel.dot(dir)
-			if along <= 0.0 or along > LINE_LEN:
-				continue
-			if battle._on_line(Vector2(t["pos"]), dir, Vector2(o["pos"]), LINE_W):
-				behind.append(o)
-		hits.append_array(behind)
-		if not behind.is_empty():
-			stat["pierce"] += 1
+	if tier >= 2:   # 贯穿直线(11-27 起波头碰到才结算): 从矛尖起一道冲击波沿刺击方向推到目标身后 LINE_LEN, 见 _tick_waves
+		var wdir: Vector2 = DetMath.norm(Vector2(t["pos"]) - Vector2(u["pos"])) if DetMath.dist(Vector2(t["pos"]), Vector2(u["pos"])) > 1.0 else Vector2.RIGHT
+		var w0: Vector2 = Vector2(u["pos"]) + wdir * WAVE_TIP
+		var wv := {"src": u, "pos": w0, "dir": wdir, "t0": Vector2(t["pos"]), "left": maxf(0.0, DetMath.dist(w0, Vector2(t["pos"]))) + LINE_LEN,
+			"hit": [t], "tier": tier, "pierced": false}
+		_waves.append(wv)
+		_fx("cent_wave", [u, wv])
 	for i in range(hits.size()):
 		var o: Dictionary = hits[i]
 		var sc: float = 1.0 if i == 0 else PIERCE_BEHIND
@@ -491,7 +488,47 @@ func _tick_cavs(delta: float) -> void:
 	_cavs = keep
 
 
+## 二档穿刺冲击波: 每步线段碰撞(项目规矩「会走的波每步碰撞判定」); 只打沿刺击方向在原目标之后的敌人(与旧规则同一条线)
+func _tick_waves(delta: float) -> void:
+	var keep: Array = []
+	for w in _waves:
+		var u: Dictionary = w["src"]
+		var a: Vector2 = w["pos"]
+		var dir: Vector2 = w["dir"]
+		var step: float = minf(WAVE_SPD * delta, float(w["left"]))
+		var b: Vector2 = a + dir * step
+		w["pos"] = b
+		w["left"] = float(w["left"]) - step
+		if u.get("alive", false):
+			for o in battle._targeting._enemies_of(u):
+				if not o.get("alive", false):
+					continue
+				var already := false
+				for h in w["hit"]:
+					if is_same(h, o):
+						already = true
+				if already or (Vector2(o["pos"]) - Vector2(w["t0"])).dot(dir) <= 0.0:
+					continue
+				var q: Vector2 = Geometry2D.get_closest_point_to_segment(Vector2(o["pos"]), a, b)
+				if DetMath.dist(q, Vector2(o["pos"])) > LINE_W + float(o.get("col_size", 22.0)) * 0.5:
+					continue
+				(w["hit"] as Array).append(o)
+				if not bool(w["pierced"]):
+					w["pierced"] = true
+					stat["pierce"] += 1
+				battle._damage._apply_basic_hit_from(u, o, battle._atk_dmg(u, PIERCE_BEHIND, o), COL_PHYS)
+				if int(w["tier"]) >= 3 and o.get("alive", false):
+					_shred(o)
+				_fx("cent_wave_hit", [w, o])
+		if float(w["left"]) > 0.5:
+			keep.append(w)
+		else:
+			_fx("cent_wave_end", [w])
+	_waves = keep
+
+
 func clear_all() -> void:
+	_waves.clear()
 	_cents.clear()
 	_spears.clear()
 	_cavs.clear()

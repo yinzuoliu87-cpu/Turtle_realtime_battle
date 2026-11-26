@@ -170,9 +170,12 @@ func _ready() -> void:
 		var h1: float = float(t1["hp"])
 		var h2: float = float(t2["hp"])
 		_s._basic_attack(c, t1)
-		got[tier] = [h1 - float(t1["hp"]), h2 - float(t2["hp"]), float(t2.get("_cent_shred", 0.0)), float(t1.get("def_shred", 0.0))]
+		var h2_now: float = h2 - float(t2["hp"])   # 11-27 二档穿刺改成冲击波按速度推过去、碰到才扣: 刺中那一刻身后那只应该还没掉血
+		_adv(0.6)
+		got[tier] = [h1 - float(t1["hp"]), h2 - float(t2["hp"]), float(t2.get("_cent_shred", 0.0)), float(t1.get("def_shred", 0.0)), h2_now]
 	_ok("D 一档只打目标(身后 0)", got[1][0] > 0.0 and got[1][1] == 0.0, str(got[1]))
 	_ok("D 二档贯穿: 身后那只吃约一半", got[2][1] > 0.0 and absf(got[2][1] / got[2][0] - 0.5) < 0.08, str(got[2]))
+	_ok("D 二档贯穿是冲击波碰到才结算: 刺中那一刻身后那只还没掉血、0.6 秒内波头到了才掉", got[2][4] == 0.0 and got[2][1] > 0.0, str(got[2]))
 	_ok("D 三档每一刺削线上每个敌人 1 护甲 1 魔抗", got[3][2] == 1.0 and got[3][3] == 1.0, str(got[3]))
 	## 削甲上限 30
 	for _i in range(40):
