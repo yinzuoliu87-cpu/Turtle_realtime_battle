@@ -1,0 +1,6 @@
+spin_sweep2(11-27 重出, 取代 spin_sweep: 用户「转圈…你自己看那特效吧…你怎么给提示词的」—— 旧版是人笔直站着原地转身、矛松垂身侧)
+PixelLab animate_character pixminimax, 角色 9185546b, west, 16 帧, 首帧 = spin_sweep/frame_000(站姿 180 画布), 动画名 sweep_v2_a1(组 2742abaa)
+提示词: Whirlwind spear sweep, one full 360-degree spin in place. First he drops into a low wide stance, knees bent, twists his torso back and pulls the spear back horizontally across his body. Then he explodes into a fast full-body spin: the spear is held flat and fully extended at waist height the whole time so the spear tip traces a wide circle around him; his body turns to show his back, then the other side, then the front; red crest and tunic strips fling outward; he leans into the turn. He finishes facing left in a low lunge with the spear swept far out to the left, then rises back to the starting stance.
+同时出了 sweep_v2_b1(换一种写法), 中间 8 帧原地不动, 不用。
+取帧: 1(后拉) 6 7(转成背影) 8 9 10(朝右矛平端) 11(转回正面矛朝下) 12 13 14(朝左低身突出) 15 16(收势站起)
+去掉 2-5: 生成里这几帧先朝右又朝左, 方向来回跳, 转圈不连贯。
