@@ -213,17 +213,25 @@ func dot_immune(u: Dictionary, type: String) -> bool:
 
 ## 134 威尼斯面具: 受到致命伤害时调(两条伤害路径都接)。返回改写后的这段伤害(留 1 点血)。
 func revive(u: Dictionary, d: float) -> float:
-	if not bool(u.get("_ven_ready", false)) or float(u["hp"]) - d > 0.0:
+	var ven: bool = bool(u.get("_ven_ready", false))
+	if (not ven and not bool(u.get("_chip_revive_ready", false))) or float(u["hp"]) - d > 0.0:
 		return d
-	u["_ven_ready"] = false
-	var si: int = int(u.get("_ven_si", 0))
+	## 威尼斯面具先用; 用完了才轮到 154 棕色筹码(同一套倒地复活流程, 回血比例 60%)
+	var heal_pct: float
+	if ven:
+		u["_ven_ready"] = false
+		heal_pct = float(VEN_HEAL[int(u.get("_ven_si", 0))])
+	else:
+		u["_chip_revive_ready"] = false
+		heal_pct = EqChipBatch.BROWN_HEAL
+		battle._equip_sys._chip_sys.stat["brown"] += 1
 	var t := float(battle._t)
 	stat["revive"] += 1
 	u["deathfloor_until"] = maxf(float(u.get("deathfloor_until", 0.0)), t + VEN_SEC)   # 2.5 秒内血量不会再掉到 1 以下
 	u["untargetable_until"] = maxf(float(u.get("untargetable_until", 0.0)), t + VEN_SEC)
 	battle._damage.channel(u, VEN_SEC)                                                 # 倒地期间不行动
 	u["_ven_until"] = t + VEN_SEC
-	_revives.append({"u": u, "t0": t, "to": float(u.get("maxHp", 1.0)) * float(VEN_HEAL[si])})
+	_revives.append({"u": u, "t0": t, "to": float(u.get("maxHp", 1.0)) * heal_pct})
 	_fx("venice_down", [u, VEN_SEC])
 	return maxf(0.0, float(u["hp"]) - 1.0)
 

@@ -4354,6 +4354,8 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	#   放进去会让真伤原样打穿。(原口径「伤害降为 1 / 0、但吃 AOE」已被用户 2026-10-31 的「不受任何影响」取代。)
 	if _t < float(u.get("_tame_invuln_until", 0.0)):
 		return 0.0                                   # ★驯服重生演出期(2.5秒)无敌(用户 2026-07-28 B7)
+	if _t < float(u.get("_gold_guard_until", 0.0)):
+		return 0.0                                   # 155 金色筹码: 金色护罩 3 秒免疫伤害(两条伤害路的共用收口)
 	if _is_untouchable(u):
 		return 0.0                                   # §UNTOUCHABLE: 大师不可被打 —— 两条伤害路入口已先拦(`_untouch_block`), 这里是第二道
 	# ★"受到的任何攻击(含真实伤害)降为 1" 的通用闸(用户2026-08-01 给亡灵骷髅 032 用)。

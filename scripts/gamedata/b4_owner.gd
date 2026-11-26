@@ -23,4 +23,7 @@ const OWNER := {
 	## 长矛批(2026-11-26 · 方案书 docs/plans/20261126-长矛羁绊.md)
 	"p2eq_137": "spear", "p2eq_138": "spear", "p2eq_139": "spear", "p2eq_140": "spear", "p2eq_141": "spear",
 	"p2eq_142": "spear", "p2eq_143": "spear", "p2eq_144": "spear", "p2eq_145": "spear", "p2eq_146": "spear",
+	## 筹码(2026-11-26 · 方案书 docs/plans/20261126b-筹码.md)
+	"p2eq_147": "chip", "p2eq_148": "chip", "p2eq_149": "chip", "p2eq_150": "chip", "p2eq_151": "chip",
+	"p2eq_152": "chip", "p2eq_153": "chip", "p2eq_154": "chip", "p2eq_155": "chip", "p2eq_156": "chip",
 }

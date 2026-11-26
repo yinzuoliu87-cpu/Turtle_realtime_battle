@@ -2911,6 +2911,47 @@ func pool_take(eid: String, n: int = 1) -> bool:
 
 ## 卖出退回。★按【份数】退(D22): 1★退1 / 2★退3 / 3★退9 ——
 ## 守恒律: 买 9 张合出 3★ 再卖掉, 池子必须恰好回到原样。这是门禁最好写的一条断言。
+## 筹码(消耗品, 方案书 20261126b): 把穿在统领 / 小将身上的筹码全部拿掉(这一场用掉了), 张数退回卡池(守恒律照旧)。
+## 只由 EconLedger._income 在正式对局那一笔进账时调 —— 服务器重放走同一份代码, 两边一定一致。返回烧掉几枚。
+func burn_chips() -> int:
+	var n := 0
+	for pid in persistent_equipped.keys():
+		var keep: Array = []
+		for it in persistent_equipped[pid]:
+			if it is Dictionary and _P2Types_ref().types_of(str((it as Dictionary).get("id", ""))).has("筹码"):
+				pool_give_back(str((it as Dictionary)["id"]), int((it as Dictionary).get("star", 1)))
+				n += 1
+			else:
+				keep.append(it)
+		persistent_equipped[pid] = keep
+	var a: Dictionary = get_dual_lineup().duplicate(true)
+	var changed := false
+	for lane in a.keys():
+		if not (a[lane] is Array):
+			continue
+		for u in a[lane]:
+			if not (u is Dictionary) or not ((u as Dictionary).get("equips") is Array):
+				continue
+			var keep2: Array = []
+			for it2 in (u as Dictionary)["equips"]:
+				if it2 is Dictionary and _P2Types_ref().types_of(str((it2 as Dictionary).get("id", ""))).has("筹码"):
+					pool_give_back(str((it2 as Dictionary)["id"]), int((it2 as Dictionary).get("star", 1)))
+					n += 1
+					changed = true
+				else:
+					keep2.append(it2)
+			(u as Dictionary)["equips"] = keep2
+	if changed:
+		dual_lineup = a
+	if n > 0:
+		sync_synergy_grants()
+	return n
+
+
+static func _P2Types_ref():
+	return load("res://scripts/gamedata/phase2_types.gd")
+
+
 func pool_give_back(eid: String, star: int) -> void:
 	ensure_equip_pool()
 	_EquipPool.give_back(equip_pool, eid, _EquipPool.shares_of(star))

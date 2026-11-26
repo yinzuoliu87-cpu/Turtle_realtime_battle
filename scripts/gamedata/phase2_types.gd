@@ -109,6 +109,7 @@ const TYPE_ICON := {
 	"魔法书": "res://assets/sprites/tags/tag-magicbook.png",
 	"面具": "res://assets/sprites/tags/tag-mask.png",
 	"长矛": "res://assets/sprites/tags/tag-spear.png",
+	"筹码": "res://assets/sprites/tags/tag-chip.png",
 	## ★2026-08-20 补: 香火在 TYPES 里(第 56 行)但这两张表都漏了它 ⇒ 静默回落成剑,
 	##   界面上香火羁绊显示成一把剑。**表分几张而只加了一张**是典型漏法。
 }
@@ -124,6 +125,7 @@ const TYPE_NAME := {
 	"魔法书": "魔法书·飞弹",
 	"面具": "面具·偷脸",
 	"长矛": "长矛·百夫长",
+	"筹码": "筹码·消耗品",
 }
 ## ★★2026-10-13 按云顶羁绊小卡的结构重写(用户「行，你自己弄」; 参考 docs/plans/ref/20261006-云顶装备弹窗/3-tft手游-点羁绊弹小卡.png):
 ##   机制只在 TYPE_INTRO 写一次(一条一行, 【专名】开头), TIER_DESCS 每档只写变化的数字 / 「生效」。

@@ -31,6 +31,7 @@ var _dagger_sys: EqDaggerBatch   # 匕首 9 件(108~116)·eq_dagger_batch.gd(11-
 var _magic_sys: EqMagicBatch     # 魔法书 10 件(117~126)·eq_magic_batch.gd(11-25 方案书 20261125b)
 var _mask_sys: EqMaskBatch       # 面具 10 件(127~136)·eq_mask_batch.gd(11-26 方案书 20261125c)
 var _spear_sys: EqSpearBatch     # 长矛 10 件(137~146)·eq_spear_batch.gd(11-26 方案书 20261126)
+var _chip_sys: EqChipBatch       # 筹码 10 枚(147~156)·eq_chip_batch.gd(11-26 方案书 20261126b)
 var _b4_by: Dictionary = {}      # B4_OWNER 的值 → 批系统(_init 末尾建)
 var _incense: IncenseStoneSystem # 093 香火石(跨对局养成·要落存档)·incense_stone_system.gd
 var _summons   # 058 / 032 登场召唤(eq_summons.gd)
@@ -69,11 +70,11 @@ func _init(b) -> void:
 	_blood_sys = EqBloodCombo.new(b)
 	_relic_sys = EqRelicBatch.new(b)
 	_bomb_sys = EqBombBatch.new(b)
-	_dagger_sys = EqDaggerBatch.new(b); _magic_sys = EqMagicBatch.new(b); _mask_sys = EqMaskBatch.new(b); _spear_sys = EqSpearBatch.new(b)
+	_dagger_sys = EqDaggerBatch.new(b); _magic_sys = EqMagicBatch.new(b); _mask_sys = EqMaskBatch.new(b); _spear_sys = EqSpearBatch.new(b); _chip_sys = EqChipBatch.new(b)
 	_incense = IncenseStoneSystem.new(b); tally = EquipTally.new(b)
 	_summons = EqSummons.new(b); _wave = EqWaveAmulet.new(b)
 	cp = EquipCopies.new(b)
-	_b4_by = {"gun": _gun_sys, "blade": _blade_sys, "gadget": _gadget_sys, "arcane": _arcane_sys, "relic": _relic_sys, "incense": _incense, "bomb": _bomb_sys, "dagger": _dagger_sys, "magic": _magic_sys, "mask": _mask_sys, "spear": _spear_sys}
+	_b4_by = {"gun": _gun_sys, "blade": _blade_sys, "gadget": _gadget_sys, "arcane": _arcane_sys, "relic": _relic_sys, "incense": _incense, "bomb": _bomb_sys, "dagger": _dagger_sys, "magic": _magic_sys, "mask": _mask_sys, "spear": _spear_sys, "chip": _chip_sys}
 
 
 ## ── 份号上下文(11-13 同名装备多件各自生效)整套在 equip_copies.gd(EquipCopies); 这里是同名转发, 调用方不用改 ──
@@ -113,7 +114,7 @@ func _b4(eid: String):
 ## ★写成数组字面量(不要改回 `_b4_by.values()`): 门禁 verify_lane_clear_wired 从这里的源码抠成员名, 核每个都接进了换路清场;
 ##   顺序与 `_b4_by` 相同, 炸弹批(2026-11-24)排最后 ⇒ 原六个的遍历顺序不变(随机流消耗顺序不变)。
 func _b4_all() -> Array:
-	return [_gun_sys, _blade_sys, _gadget_sys, _arcane_sys, _relic_sys, _incense, _bomb_sys, _dagger_sys, _magic_sys, _mask_sys, _spear_sys]
+	return [_gun_sys, _blade_sys, _gadget_sys, _arcane_sys, _relic_sys, _incense, _bomb_sys, _dagger_sys, _magic_sys, _mask_sys, _spear_sys, _chip_sys]
 
 
 ## 批④ 专用的【DoT/真伤路】受伤钩 —— CLAUDE.md §3.3 的另一半。

@@ -28,6 +28,8 @@ const AXE_ID := "p2eq_096"
 ## test_mode 下商店场景第 k 次掷货用 TEST_SHOP_SEED + k(第 0 次与原来 `_rng.seed = 20260819` 掷出来逐件相同,
 ##   门禁里「数一数货架上有几个 X」的判据不随机红, 理由见 ShopScene._ready 旧注释)。
 const TEST_SHOP_SEED := 20260819
+## 这几种进账 = 一场正式对局打完(积分赛 / 周六闯关 / 周日决赛), 筹码在这一笔里损坏(方案书 20261126b)。切磋 / 教程不记账, 自然不扣。
+const CHIP_BURN_SRCS := {"ranked": true, "ranked_ref": true, "gauntlet": true, "finals": true}
 
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const _Phase2Equip := preload("res://scripts/gamedata/phase2_equip.gd")
@@ -305,6 +307,11 @@ static func _income(gs, op: Dictionary) -> Dictionary:
 	var cj := int(op.get("candy", 0))
 	if c == 0 and xp == 0 and not axe and cj == 0:
 		return {"ok": false, "reason": "empty"}
+	## 筹码(消耗品, 方案书 20261126b): 正式对局的那一笔进账 = 这一场打完 ⇒ 身上的筹码损坏。
+	##   按来源判、不靠客户端传字段 ⇒ 不扣就和服务器重放对不上。每场只有一笔带经验的进账走这几个来源。
+	var burned := 0
+	if CHIP_BURN_SRCS.has(str(op.get("src", ""))):
+		burned = int(gs.burn_chips()) if gs.has_method("burn_chips") else 0
 	gs.meta_deepsea_coins = int(gs.meta_deepsea_coins) + c
 	if xp > 0:
 		gs.add_season_xp(xp)
@@ -312,7 +319,7 @@ static func _income(gs, op: Dictionary) -> Dictionary:
 		gs.axe_on_match_end()
 	if cj != 0:
 		gs.candy_jar_add(cj)
-	return {"ok": true, "coins": c}
+	return {"ok": true, "coins": c, "burned": burned}
 
 
 ## 服务器那一局结束时我方宝箱龟的进度(原 RefereeWatch.apply_chest, 2026-10-22b)。

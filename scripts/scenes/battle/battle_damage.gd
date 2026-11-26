@@ -299,7 +299,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	# ⚠ 两条伤害路径【都要挂】(CLAUDE.md §3.3) —— 只挂一条 = "只有被普攻打死才救得回来"。
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._eq_ink_sac(u, d)
-	if u.get("_ven_ready", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
+	if (u.get("_ven_ready", false) or u.get("_chip_revive_ready", false)) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._mask_sys.revive(u, d)   # 134 威尼斯面具: 倒地复活(§3.3 两路都接)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_nonlethal_hit", false):   # 调用方临时置位的「这一下不致死」(甜蜜掠夺·10-16: 增伤乘区原来能把「留 1 点」打穿)
@@ -566,7 +566,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A) —— 与 _apply_damage 同一位置的另一半(§3.3)
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._eq_ink_sac(u, d)
-	if u.get("_ven_ready", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
+	if (u.get("_ven_ready", false) or u.get("_chip_revive_ready", false)) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._mask_sys.revive(u, d)   # 134 威尼斯面具: 倒地复活(§3.3 两路都接)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_nonlethal_hit", false):   # 同上一处(两条伤害路径都要有·§3.3)
@@ -1230,6 +1230,8 @@ func _apply_dot_stacks(u: Dictionary, type: String, stacks: int, src = null) -> 
 		return   # §UNTOUCHABLE 训龟大师(见 RealtimeBattle3DScene._is_untouchable)
 	if u is Dictionary and u.get("_gas_mask", false) and battle._equip_sys._mask_sys.dot_immune(u, type):
 		return   # 133 防毒面具: 免疫灼烧 / 中毒 / 流血
+	if u is Dictionary and battle._t < float(u.get("_gold_guard_until", 0.0)):
+		return   # 155 金色筹码: 护罩期间免疫负面效果(持续伤害不上层)
 	if u == null or not u.get("alive", false) or stacks <= 0:
 		return
 	var _dm: float = _fx_of(src)

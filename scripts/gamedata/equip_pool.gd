@@ -43,7 +43,9 @@ const UNLIMITED := {"p2eq_096": true}
 ## 【不参与三合一升星】的件(同一条被动的另一半: 用户「这个装备不会进行升星」)。
 ## ★与 UNLIMITED 放在一起是刻意的 —— 它俩是同一句需求拆出来的两半, 分开放必然漏一半。
 ##   消费者: GameState.try_merge_all(真合成) + ShopScene._purchase_merge_star(卡上的预告)。
-const NO_STAR := {"p2eq_096": true}
+const NO_STAR := {"p2eq_096": true,
+	## 筹码 10 枚(2026-11-26 用户 11-24「只有一星不合成」, 方案书 20261126b): 不进三合一(张数照常, 不是无限件)
+	"p2eq_147": true, "p2eq_148": true, "p2eq_149": true, "p2eq_150": true, "p2eq_151": true, "p2eq_152": true, "p2eq_153": true, "p2eq_154": true, "p2eq_155": true, "p2eq_156": true}
 ## 无限件在 `left()` 里回报的张数 —— 只要远大于任何一次购买量即可, 不参与守恒律。
 const UNLIMITED_LEFT := 999999
 
