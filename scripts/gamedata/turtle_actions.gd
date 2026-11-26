@@ -198,7 +198,7 @@ const CAST := {
 	},
 	"fortune": {
 		"fortuneAllIn": ["pets/animations/fortune/cast_fortuneAllIn.png", 15.0, 5],   # 8 帧 · seq
-		"fortuneBuyEquip": ["pets/animations/fortune/cast_fortuneBuyEquip.png", 15.0, 4],   # 9 帧 · seq
+		"fortuneBuyEquip": ["pets/animations/fortune/cast_fortuneBuyEquip.png", 15.0, 3],   # 8 帧 · seq
 		"fortuneDice": ["pets/animations/fortune/cast_fortuneDice.png", 15.0, 4],   # 9 帧 · seq
 	},
 	"gambler": {
@@ -291,7 +291,7 @@ const NORM := {
 	"cyber": [60.0, 138.0, 60.0],
 	"diamond": [77.0, 135.0, 77.0],
 	"dice": [71.0, 139.0, 71.0],
-	"fortune": [69.0, 164.0, 69.0],
+	"fortune": [69.0, 144.0, 69.0],
 	"gambler": [78.0, 143.0, 78.0],
 	"headless": [91.0, 135.0, 91.0],
 	"hiding": [71.0, 138.0, 71.0],

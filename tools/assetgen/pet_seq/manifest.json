@@ -262,8 +262,8 @@
     "seq"
    ],
    "fortuneBuyEquip": [
-    9,
-    4,
+    8,
+    3,
     "seq"
    ],
    "fortuneDice": [
@@ -273,10 +273,10 @@
    ]
   },
   "death": 15,
-  "feet": 164,
-  "feet_row": 164,
+  "feet": 144,
+  "feet_row": 144,
   "fps": 15,
-  "frame": 168,
+  "frame": 148,
   "hit": 4,
   "rows": {},
   "run": 8
