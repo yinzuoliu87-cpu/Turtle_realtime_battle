@@ -238,7 +238,7 @@ func _t_dispatch() -> void:
 		if str(owner.get(iid, "")) != "arcane":
 			bad.append("%s→%s" % [iid, str(owner.get(iid, "?"))])
 	_ok("⓪ B4_OWNER 把 088/089/090 全路由到 arcane", bad.is_empty(), str(bad))
-	_ok("⓪ ★分母: B4_OWNER 一共 %d 件(批④ 17 件 + 炸弹批 11 件 + 匕首批 9 件 + 魔法书批 10 件)" % owner.size(), owner.size() == 47, "size=%d" % owner.size())
+	_ok("⓪ ★分母: B4_OWNER 一共 %d 件(批④ 17 件 + 炸弹批 11 件 + 匕首批 9 件 + 魔法书批 10 件 + 面具 / 长矛 / 筹码批各 10 件)" % owner.size(), owner.size() == 77, "size=%d" % owner.size())
 
 	var fb: String = _fn_body(code, "func fire_equip_effect")
 	_ok("⓪ ★分母: fire_equip_effect 的函数体非空(空串会让下面那条恒真)",

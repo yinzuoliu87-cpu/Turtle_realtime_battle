@@ -130,6 +130,8 @@ const TYPE_STYLE := {
 	"匕首": {"color": "#a78bfa", "icon": "res://assets/sprites/tags/tag-dagger.png"},   # 2026-11-25 新羁绊
 	"仪式": {"color": "#dc2626", "icon": "res://assets/sprites/tags/tag-ritual.png"},   # 2026-11-25 仪式匕首专属
 	"面具": {"color": "#e879f9", "icon": "res://assets/sprites/tags/tag-mask.png"},   # 2026-11-26 新羁绊
+	"筹码": {"color": "#facc15", "icon": "res://assets/sprites/tags/tag-chip.png"},   # 2026-11-26 特殊羁绊(没有档位, 图鉴照样列; 用户 11-27)
+	"长矛": {"color": "#f97316", "icon": "res://assets/sprites/tags/tag-spear.png"},   # 2026-11-26 新羁绊(百夫长; 罗马红金偏橙)
 	"魔法书": {"color": "#60a5fa", "icon": "res://assets/sprites/tags/tag-magicbook.png"},   # 2026-11-25 新羁绊
 	## ★2026-08-15 补上「香火」—— 它 2026-08-13 进了 Phase2Types.TYPES(第 11 个类型),
 	##   但这张表没跟着加, 于是羁绊页拿默认值画成 🔗 灰蓝, 而装备页走当时的 Phase2Types 取值口
@@ -203,7 +205,7 @@ func _ready() -> void:
 	##   纯冗余 + 遮挡 ⇒ 平时收起来; 只有**数据没加载出来**时才需要它(上面那个 ❌ 分支)。
 	status_bar.text = Lang.t("✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态") % [
 		DataRegistry.all_pets.size(), _equip_tab_count(),
-		Phase2Types.TYPES.size(), DataRegistry.status_defs.size()]
+		(Phase2Types.TYPES.size() + Phase2Types.TAG_ONLY.size()), DataRegistry.status_defs.size()]
 	status_bar.visible = false
 	# 视口比例由项目级 EXPAND(window/stretch/aspect)保证, 场景切换不翻转 aspect → 入场丝滑(同 TeamSelect)。
 	#   同步建完(无 await), 首帧即完整布局, 无半成品/撕裂帧。背景铺满+居中见 _fill_bg_and_center。
@@ -353,7 +355,7 @@ func _build_tab_bar() -> void:
 	# 装备 Tab 计数 = 59 件 p2eq + 消耗品件数 (上线野生=duallane 实际装备池, 非旧 e_ 装备)
 	var tab_counts := {
 		"pets": DataRegistry.launch_pets.size(), "equips": _equip_tab_count(),
-		"synergies": Phase2Types.TYPES.size(), "status": DataRegistry.status_defs.size(),
+		"synergies": (Phase2Types.TYPES.size() + Phase2Types.TAG_ONLY.size()), "status": DataRegistry.status_defs.size(),
 	}
 	for i in TABS.size():
 		var t: Array = TABS[i]
@@ -439,7 +441,7 @@ func _switch_tab(tab: String) -> void:
 			_codex_list._add_equip_rows()
 		"synergies":
 			# 11 装备类型羁绊 (2026-08-03 批1 取代 11 学派). 名序按 Phase2Types.TYPES 声明序.
-			for sname in Phase2Types.TYPES.keys():
+			for sname in Phase2Types.TYPES.keys() + Phase2Types.TAG_ONLY:   # 特殊羁绊(筹码)排在最后, 用户 11-27「图鉴要写」
 				_items.append({"_type": sname})
 				var col: String = _type_color(sname)
 				## ★★ 2026-09-28 图标走 `_add_simple_row` 本来就有的第 4 参 `icon_path`

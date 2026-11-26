@@ -632,6 +632,8 @@ scripts/gamedata/phase2_types.gd|lit|盾·守护
 scripts/gamedata/phase2_types.gd|lit|盾提高携带者的护甲。全队承受伤害后对敌人释放冲击波，并获得圣光护盾装备。
 scripts/gamedata/phase2_types.gd|lit|筹码
 scripts/gamedata/phase2_types.gd|lit|筹码·消耗品
+scripts/gamedata/phase2_types.gd|lit|筹码是消耗品：只有一星、不能合成。买入后放进背包，装在龟身上带进一场对局，这一场打完筹码就损坏。
+scripts/gamedata/phase2_types.gd|lit|筹码是特殊羁绊：没有羁绊档位，不提供羁绊效果，件数也不计入任何羁绊。
 scripts/gamedata/phase2_types.gd|lit|药水
 scripts/gamedata/phase2_types.gd|lit|药水·龟能
 scripts/gamedata/phase2_types.gd|lit|药水提高携带者的治疗与护盾强度。全队集火被标记的猎物，击杀猎物后攻击力提高。
@@ -1013,10 +1015,12 @@ scripts/scenes/CodexScene.gd|lit|灵物
 scripts/scenes/CodexScene.gd|lit|炸弹
 scripts/scenes/CodexScene.gd|lit|状态
 scripts/scenes/CodexScene.gd|lit|盾
+scripts/scenes/CodexScene.gd|lit|筹码
 scripts/scenes/CodexScene.gd|lit|羁绊
 scripts/scenes/CodexScene.gd|lit|药水
 scripts/scenes/CodexScene.gd|lit|装备
 scripts/scenes/CodexScene.gd|lit|遗物
+scripts/scenes/CodexScene.gd|lit|长矛
 scripts/scenes/CodexScene.gd|lit|面具
 scripts/scenes/CodexScene.gd|lit|食物
 scripts/scenes/CodexScene.gd|lit|香火
@@ -2315,6 +2319,7 @@ scripts/scenes/codex/status_sources.gd|lit|长矛
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备
+scripts/scenes/codex/synergy_view.gd|lit|没有羁绊档位
 scripts/scenes/codex/synergy_view.gd|lit|激活：%s 件
 scripts/scenes/codex/synergy_view.gd|lit|现有装备：%d 件
 scripts/scenes/codex/synergy_view.gd|lit|羁绊效果

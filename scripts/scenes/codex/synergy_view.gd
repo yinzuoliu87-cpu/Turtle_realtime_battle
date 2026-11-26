@@ -103,7 +103,8 @@ func show(item: Dictionary) -> void:
 	for i in range(tiers.size()):
 		thresh += ("" if i == 0 else " / ") + str(int(tiers[i]))
 	## 两件事各占一行(文案规则 2: 不拿「·」把两个读数拼成一行)
-	host._add_text(130, 80, Lang.t("激活：%s 件") % thresh, 16, color, 0.0, 0.5, true)
+	## 特殊羁绊(筹码, 用户 11-27): 没有档位 ⇒ 不写「激活 N 件」
+	host._add_text(130, 80, Lang.t("激活：%s 件") % thresh if not tiers.is_empty() else Lang.t("没有羁绊档位"), 16, color, 0.0, 0.5, true)
 	host._add_text(130, 104, Lang.t("现有装备：%d 件") % members.size(), 16, color, 0.0, 0.5, true)
 
 	## 逐档: 左列「N 件」, 右列一条一行。

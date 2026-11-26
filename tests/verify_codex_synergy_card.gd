@@ -172,7 +172,41 @@ func _ready() -> void:
 	var t2: PackedStringArray = view.split_tier("每件 +2 · 【僵硬】同上 · 闪避蓄能同上", t1)
 	_ok("★★③ 「【X】同上」展开成上一档那条; 上一档没有的「X同上」原样留着",
 		t2.size() == 3 and t2[1] == "【僵硬】叠 1 层（持续 5 秒）" and t2[2] == "闪避蓄能同上", str(t2))
+	await _t_special_syn()
 	_finish()
+
+
+## ⑤ 特殊羁绊(Phase2Types.TAG_ONLY, 现在是筹码; 用户 11-27「筹码也是羁绊啊…特殊的羁绊…没有羁绊的提供的羁绊效果。但是你图鉴要写啊」):
+##   左栏有它 → 详情写「没有羁绊档位」、不出「激活 N 件」和逐档行 → 说明文字逐条出现 → 成员格 = 挂这个标签的装备数(> 0)
+func _t_special_syn() -> void:
+	_ok("⑤ ★分母: 特殊羁绊名单非空", not Phase2Types.TAG_ONLY.is_empty(), str(Phase2Types.TAG_ONLY))
+	for tname in Phase2Types.TAG_ONLY:
+		_c._switch_tab("synergies")
+		await _settle(2)
+		var idx := -1
+		for i in range(_c._items.size()):
+			if str((_c._items[i] as Dictionary).get("_type", "")) == str(tname):
+				idx = i
+		_ok("⑤ %s 在图鉴羁绊页左栏" % tname, idx >= 0)
+		if idx < 0:
+			continue
+		_c._select(idx)
+		await _settle(2)
+		var texts: Array = []
+		for ch in _live():
+			if ch is Label:
+				texts.append(str((ch as Label).text))
+			elif ch is RichTextLabel:
+				texts.append(str((ch as RichTextLabel).get_parsed_text()))
+		var joined: String = " | ".join(texts)
+		_ok("⑤ %s 详情写「没有羁绊档位」、没有「激活」" % tname, joined.find("没有羁绊档位") >= 0 and joined.find("激活") < 0, joined.substr(0, 160))
+		_ok("⑤ %s 没有逐档行" % tname, _with_meta("codex_syn_tier").is_empty() and _with_meta("codex_syn_line").is_empty())
+		var intro: Array = Phase2Types.intro_lines(str(tname))
+		_ok("⑤ %s 说明逐条出现(%d 条)" % [tname, intro.size()], intro.size() >= 1 and _with_meta("codex_syn_intro").size() == intro.size(),
+			"界面 %d 条" % _with_meta("codex_syn_intro").size())
+		var want: int = (_c._codex_detail._syn_view._view_ref.get_ref()._type_members(str(tname)) as Array).size()
+		_ok("⑤ %s 成员格 = 挂这个标签的装备 %d 件(> 0)" % [tname, want], want > 0 and _with_meta("codex_syn_member").size() == want,
+			"格 %d" % _with_meta("codex_syn_member").size())
 
 
 func _finish() -> void:

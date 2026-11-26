@@ -197,7 +197,7 @@ func _t_dispatch() -> void:
 		if str(owner.get(iid, "")) != "blade":
 			miss.append(iid)
 	_ok("⓪ B4_OWNER 把 081~084 四件全路由到 blade", miss.is_empty(), "缺 %s" % str(miss))
-	_ok("⓪ ★分母: B4_OWNER 一共 47 件(批④ 17 件 + 炸弹批 11 件 + 匕首批 9 件 + 魔法书批 10 件)", owner.size() == 47, "size=%d" % owner.size())
+	_ok("⓪ ★分母: B4_OWNER 一共 77 件(批④ 17 件 + 炸弹批 11 件 + 匕首批 9 件 + 魔法书批 10 件 + 面具 / 长矛 / 筹码批各 10 件)", owner.size() == 77, "size=%d" % owner.size())
 	_ok("⓪ ★★接线: battle._equip_sys._blade_sys 真的存在且是 EqBladeBatch",
 		_blade() != null and _blade() is EqBladeBatch, str(_blade()))
 	_ok("⓪ ★★接线: 它自己也真的 new 了演出层 BladeEqVfx",

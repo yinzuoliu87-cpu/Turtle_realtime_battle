@@ -13,7 +13,7 @@
 ★判据落在**解析出来的键集**上, 不是"文件里有没有出现某个字符串" ——
   后者会被注释里的提及骗到。
 """
-import io, os, re, sys
+import io, re, os, sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -94,10 +94,17 @@ def main():
         print('[FAIL] TYPES 只解析出 %d 个 —— 解析失效了, 不是真的只有这么少' % len(base))
         return 1
 
+    ## 11-27: 特殊羁绊(phase2_types.gd `TAG_ONLY`, 现在是「筹码」: 没有档位、不提供羁绊效果)必须出现在图标 / 名字 / 说明 / 图鉴样式表里
+    ##   (用户 11-27「图鉴要写」), 逐档表 TIER_DESCS 里不许有。data_integrity 认同一份名单。
+    TAG_TABLES = ('TYPE_ICON', 'TYPE_NAME', 'TYPE_INTRO', 'CodexScene.gd::TYPE_STYLE')
+    m_tag = re.search(r'const\s+TAG_ONLY\s*:?=\s*\[([^\]]*)\]', src)
+    tag_only = set(re.findall(r'"([^"]+)"', m_tag.group(1))) if m_tag else set()
     bad = []
     for t in TABLES[1:] + ['%s::%s' % (p.split('/')[-1], n) for p, n in EXTRA_TABLES]:
         miss = sorted(base - ks[t])
-        extra = sorted(ks[t] - base)
+        allow = tag_only if t in TAG_TABLES else set()
+        extra = sorted(ks[t] - base - allow)
+        miss = sorted(set(miss) | (tag_only - ks[t] if t in TAG_TABLES else set()))   # 特殊羁绊在这几张表里也必须有(图鉴要写)
         print('  %-12s %2d 个%s%s' % (
             t, len(ks[t]),
             ('  缺: ' + ','.join(miss)) if miss else '',
