@@ -1,11 +1,11 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "95662084d0018f0818359392dfb2ad6def207f58fcc3ccf1fb4faaed71b98a79",
+ "fingerprint": "c2e04a3b9a2f90f080d90df2a2554d393f64b93791878c0f45522326a7f28577",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
-   "hash": "7e37f921230baf24c973e130fccf06f5457075ecfdd2ca6d9f2172da3ad979bb",
+   "hash": "49661df2bd3c75d9c593b6ab2ff06cee524792b371bcd90b4d5c329810be80dd",
    "tag": "① 双方顶档盾(冲击波互打) · 剑 / 食物"
   },
   {
@@ -20,7 +20,7 @@
   },
   {
    "def": "d934661682f7db9a",
-   "hash": "91a2da491f83c713b9bdcf90e20ce8e8f3666912752c54a5bd39db1e96739b76",
+   "hash": "5b41865c132b4585406a81724635629d70202430307673ca9254e5b7ab32c25b",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
@@ -30,12 +30,12 @@
   },
   {
    "def": "28d5c2b94dc9943c",
-   "hash": "6262c76714887b0545408411d11d0cd70900830004c3848261fdf5be8904127c",
+   "hash": "ee37843a3267d6b1208bbbeb5d746758ce0f3a7485155b403cc5d90d8afb3167",
    "tag": "⑥ 炸弹顶档(导弹) + 武士刀小将 vs 盾/剑"
   },
   {
    "def": "1edc1a4ca1200c12",
-   "hash": "ce648e8492cc983cb280e98263badcaefba42a4c2637c6629e10de0313349770",
+   "hash": "0e8f33626aa307b565931cdf635c93a788d940604d508b72dbb9bcea399b380d",
    "tag": "⑦ 匕首顶档(刺杀) + 暗影忍者 + 血契 vs 剑顶档/枪"
   },
   {
@@ -45,7 +45,7 @@
   },
   {
    "def": "c74f3eed261e1b5e",
-   "hash": "f44fba946e6837dd2be50058234bdf1ff7545d16436836f71cd166f7192a6045",
+   "hash": "6a6335e074af8e7c57e0811f29cb389a33b881ee4f139c820797cdd79527308c",
    "tag": "⑨ 面具顶档(偷脸 / 里世界) + 筹码 vs 长矛顶档(百夫长) + 筹码"
   },
   {

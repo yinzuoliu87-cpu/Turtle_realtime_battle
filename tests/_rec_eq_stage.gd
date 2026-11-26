@@ -128,6 +128,9 @@ static func cases() -> Dictionary:
 		"mk_gold": [[_me(Vector2(-260, 0), _eq([135], 1), {"hold": true})] + _dummies(80, 3, true, 2500.0, 0.0), 26.0],
 		## 舞狮头: 舞狮冲撞(靶子会动会打)
 		"mk_lion": [[_me(Vector2(-300, 0), _eq([130], 1), {"idle": true})] + _dummies(60, 3, true, 6000.0, 60.0), 22.0],
+		## 舞狮冲撞(11-27 照塞恩 R 重做): 舞狮一登场龟能就满(REC_LION_FULL) ⇒ 从携带者身边隔着 350 码冲向不会动的靶子, 看得到冲锋全程和撞上三拍;
+		##   之后上去咬, 攒满再冲第二次
+		"mk_lion_charge": [[_me(Vector2(-320, 0), _eq([130], 1), {"idle": true})] + _dummies(60, 3, false, 6000.0, 0.0), 16.0],
 		## 千面: 第 8 秒拽一只进里世界; 9.5 秒自动点「观看里世界」, 15 秒切回主世界(REC_OW 自动点按钮)
 		"mk_ow": [[_me(Vector2(-200, 0), _eq([136], 1)), _me(Vector2(-200, 150), [])] + _dummies(60, 3, true, 8000.0, 40.0), 24.0],
 		## 威尼斯面具: 携带者 1500 血, 靶子攻击 400 ⇒ 很快被打倒 → 倒地 2.5 秒回到 30% → 继续
@@ -138,8 +141,12 @@ static func cases() -> Dictionary:
 		##   复制体只有原版一半血, 被靶子打死 ⇒ 金绿光球飞向最近的友军
 		"mk_steal": [[_me(Vector2(-300, 0), _eq([127, 128, 133], 1), {"idle": true}), _me(Vector2(-300, 150), [], {"idle": true})]
 			+ [_u("angel", "right", Vector2(200, 0), {"hp": 3000.0, "killable": true, "ai": true})] + _dummies(60, 2, true, 6000.0, 160.0), 16.0],
-		## 狐狸面具: 携带者生命 1000、靶子 30000(差值远超 2000 ⇒ 增伤顶满)⇒ 每一下打上去冒狐火
-		"mk_fox": [[_me(Vector2(-60, 0), _eq([128], 1), {"hp": 1000.0})] + _dummies(60, 3, false, 30000.0), 8.0],
+		## 狐狸面具(11-27 重摆): 三排对照, 携带者都是 1000 生命、3 星(差 2000 增伤 40%) ——
+		##   上排靶子 800(比自己低 ⇒ 不增伤、不冒狐火) / 中排 2000(差 1000 ⇒ 增伤一半, 冒狐火) / 下排 30000(差远超 2000 ⇒ 增伤顶满)
+		"mk_fox": [[_me(Vector2(-60, -120), _eq([128], 3), {"hp": 1000.0}), _me(Vector2(-60, 0), _eq([128], 3), {"hp": 1000.0}), _me(Vector2(-60, 120), _eq([128], 3), {"hp": 1000.0}),
+			_u("__minion__", "right", Vector2(60, -120), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 800.0, "killable": false}),
+			_u("__minion__", "right", Vector2(60, 0), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 2000.0, "killable": false}),
+			_u("__minion__", "right", Vector2(60, 120), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false})], 8.0],
 		## 纸面具: 三只会打的靶子围着打 ⇒ 每一下都朝打它的那只掷一片纸刃
 		"mk_paper": [[_me(Vector2(-60, 0), _eq([127], 1), {"hold": true})] + _dummies(60, 3, true, 30000.0, 60.0), 12.0],
 		## 京剧脸谱: 18 秒 ⇒ 第 8 秒红→黑、第 16 秒黑→白; 红脸普攻冒红火花、白脸普攻偷龟能
@@ -214,6 +221,11 @@ func _process(d: float) -> void:
 	_el += d
 	if _b == null or not is_instance_valid(_b):
 		return
+	if OS.get_environment("REC_CASE") == "mk_lion_charge" and not _seen.has("lion_full"):
+		var ms = _b._equip_sys._mask_sys
+		if ms != null and not (ms._lions as Array).is_empty() and _el > 1.6:   # 登场扑进来(0.45 秒)落地之后
+			_seen["lion_full"] = 1
+			ms._lions[0]["en"] = 99.0
 	if not _started and _el > 0.6:
 		_started = true
 		_b._debug._edit_start_battle()

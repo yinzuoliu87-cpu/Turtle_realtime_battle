@@ -365,6 +365,8 @@ func on_any_basic(u: Dictionary, _tgt) -> void:
 		for L in _lions:
 			if is_same(L["u"], u):
 				L["en"] = minf(LION_EN_MAX, float(L["en"]) + LION_EN_PER_HIT)
+		if _tgt is Dictionary:
+			_fx("lion_bite", [u, _tgt])   # 11-27: 命中那一刻目标身上狮牙合拢(只画, 不影响结算)
 
 
 # ════════════════════════════════════════ 131 小丑面具(释放技能后) ════════════════════════════════════════

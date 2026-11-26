@@ -8,6 +8,10 @@
     两套各自 animate_image(待机 / 走路 / 刺 / 掷 首尾钉原画, 举盾只钉首帧); 最后怎么拼见下面 STRIPS 上方的注释(两套朝向都不严格)。
   · 骑兵: cav_0(128×112)+ animate_image 首尾钉原画 8 帧奔跑。
   · 飞行物: pilum(百夫长掷矛)/ javelin(139 标枪)/ dart(144 投矛器)/ gungnir(145 永恒之枪)各一张, 朝右; 引擎里按方向转。
+  · 11-27 换掉程序画的圆圈(自查 18 处): 全部 create_image_pro_flash(无锚, 没照参考) + animate_image ——
+    命中火星 hit_spark(hspk_0..5, 只钉首帧) / 鱼叉溅水 harpoon_splash(hwsp_0..8) / 百夫长横扫气刃 cent_sweep(俯视, cswp_0..8) /
+    投矛器落点警示区 atl_target(俯视, atgt_0..3 首尾钉原画循环) / 标枪迸血 javelin_blood(第一版 48×48 太淡弃, 64×64 重出; jbld_0..6) /
+    棕色筹码起身光柱 brown_rise(crev_0..6, 后两帧只剩一块黑影不取) / 筹码盾落进胸口的盾光 shield_glint(cglt_0..6, 引擎按物理 / 魔法着色)。
 本脚本只做拷贝 / 拼接 / 量化, 重跑逐字节相同。
 
     python tools/assetgen/pack_spear_chip_art.py
@@ -67,6 +71,14 @@ STRIPS = {
     ##   = create_image_pro_flash 无锚 + animate_image; 冲击第 2 帧中间一道 1 像素白竖线(生成瑕疵)不取
     "spear-cent-beam": [(SP, "c3bm_%d" % i, False) for i in range(0, 6)],
     "spear-cent-impact": [(SP, "c3im_%d" % i, False) for i in [0, 1, 3, 4, 5, 6, 7, 8]],
+    ## 11-27 换掉程序圆圈
+    "spear-hit-spark": [(SP, "hspk_%d" % i, False) for i in range(0, 6)],
+    "spear-harpoon-splash": [(SP, "hwsp_%d" % i, False) for i in range(0, 9)],
+    "spear-cent-sweep": [(SP, "cswp_%d" % i, False) for i in range(0, 9)],
+    "spear-atl-target": [(SP, "atgt_%d" % i, False) for i in range(0, 4)],
+    "spear-javelin-blood": [(SP, "jbld_%d" % i, False) for i in range(0, 7)],
+    "chip-brown-rise": [(CH, "crev_%d" % i, False) for i in range(0, 7)],
+    "chip-shield-glint": [(CH, "cglt_%d" % i, False) for i in range(0, 7)],
 }
 
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。

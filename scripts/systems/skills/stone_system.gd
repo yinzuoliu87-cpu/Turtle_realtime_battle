@@ -128,7 +128,9 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 
 ## 石头龟岩脊冲击波: 波前碰到敌人那一刻(由 EquipTickSystem._tick_rock_waves 调; 11-14 从出手时排队改成每步碰撞)
 func rock_wave_hit(uu: Dictionary, oo: Dictionary, dmgv: int) -> void:
-	battle._damage._apply_damage_from(uu, oo, battle._phys_after_armor(uu, float(dmgv), oo), Color("#c8a878"))
+	var dv: int = battle._phys_after_armor(uu, float(dmgv), oo)
+	battle._damage.set_dtype("physical", oo, false, true)   # 声明物理(11-27 哨兵: 原来捡上一发的类型)
+	battle._damage._apply_damage_from(uu, oo, dv, Color("#c8a878"))
 	battle._damage._stun(oo, ROCK_WAVE_STUN, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
 	battle._damage._knockback(uu, oo, 60.0)
 	_rock_chunk_erupt(oo["pos"])                     # 命中点额外破土

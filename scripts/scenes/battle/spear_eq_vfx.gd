@@ -91,8 +91,9 @@ func cent_throw(u: Dictionary, s: Dictionary) -> void:
 		_spear_nodes.append({"s": s, "node": n})
 
 
+## 11-27: 三批里程序画的圆圈全部换成画出来的帧条(用户「lion 太敷衍了吧」之后自查出 18 处)
 func cent_spear_hit(o: Dictionary) -> void:
-	_ring(Vector2(o["pos"]), 40.0, Color(1.0, 0.85, 0.6, 0.9), 0.25)
+	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(o["pos"]), 0.35), 0.9, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
 func cent_spear_drop(s: Dictionary) -> void:
@@ -113,12 +114,13 @@ func cent_shield_off(_u: Dictionary) -> void:
 	pass
 
 
-func cent_poke(u: Dictionary) -> void:
-	_ring(Vector2(u["pos"]), 200.0, Color(1.0, 0.8, 0.5, 0.55), 0.2)
+func cent_poke(_u: Dictionary) -> void:
+	pass   # 刺击本身有动作帧, 不再加地上的程序圆圈
 
 
 func cent_sweep(u: Dictionary) -> void:
-	_ring(Vector2(u["pos"]), 260.0, Color(1.0, 0.95, 0.8, 0.9), 0.4)
+	## 一圈金白横扫气刃贴地转开、往外甩土(spear-cent-sweep, 俯视画); 画里气刃外缘约占画布 0.8 ⇒ 按横扫半径 260 换算
+	_strip(SV + "spear-cent-sweep.png", 9, battle._world_pos(Vector2(u["pos"]), 0.06), 260.0 * 2.0 * float(battle.WS) / 0.8, 20.0, false, 9.0 / 20.0, true, null, 0.0)
 
 
 func cent_cav(c: Dictionary) -> void:
@@ -129,7 +131,8 @@ func cent_cav(c: Dictionary) -> void:
 
 
 func cent_cav_hit(_c: Dictionary, o: Dictionary) -> void:
-	_ring(Vector2(o["pos"]), 50.0, Color(1.0, 0.9, 0.7, 0.9), 0.25)
+	_strip(LION_DUST, 7, battle._world_pos(Vector2(o["pos"]), 0.0), 0.9, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 马蹄踏过扬土(底层扬尘)
+	_strip(SV + "spear-hit-spark.png", 6, battle._world_pos(Vector2(o["pos"]), 0.4), 0.9, 20.0, false, 6.0 / 20.0, false, null, 0.0)
 
 
 func cent_cav_end(c: Dictionary) -> void:
@@ -226,7 +229,7 @@ func _face(u: Dictionary) -> Vector2:
 
 # ── 137 竹矛 ──
 func bamboo_wave(u: Dictionary, _dir: Vector2) -> void:
-	_ring(Vector2(u["pos"]), 40.0, Color(0.7, 0.85, 0.45, 0.9), 0.25)
+	_strip(LION_DUST, 7, battle._world_pos(Vector2(u["pos"]), 0.0), 0.8, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 竹刺破土那一下脚下扬土
 
 
 func bamboo_spike(at: Vector2, _dir: Vector2) -> void:
@@ -269,7 +272,7 @@ func harpoon_end(node, hit: bool, _me: Dictionary, tg: Dictionary) -> void:
 			r["harp"] = null
 			if hit and tg.get("alive", false):
 				r["b"] = tg   # 叉中: 绳子改绷在两人之间, 直到 harpoon_release
-				_ring(Vector2(tg["pos"]), 45.0, Color(0.55, 0.75, 1.0, 0.95), 0.3)
+				_strip(SV + "spear-harpoon-splash.png", 9, battle._world_pos(Vector2(tg["pos"]), 0.0), 1.3, 18.0, false, 9.0 / 18.0, false, null, 0.0)   # 叉中: 溅一团海水
 			else:
 				_free(r["node"])
 				r["node"] = null
@@ -278,7 +281,7 @@ func harpoon_end(node, hit: bool, _me: Dictionary, tg: Dictionary) -> void:
 
 
 func harpoon_pull(_src: Dictionary, o: Dictionary) -> void:
-	_ring(Vector2(o["pos"]), 30.0, Color(0.75, 0.6, 0.4, 0.9), 0.25)
+	_strip(LION_DUST, 7, battle._world_pos(Vector2(o["pos"]), 0.0), 0.6, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 被拽一下脚下蹭起土
 
 
 func harpoon_release(_src: Dictionary, o: Dictionary) -> void:
@@ -314,7 +317,7 @@ func _tick_ropes() -> void:
 
 # ── 139 标枪 ──
 func javelin_bleed(tg: Dictionary) -> void:
-	_ring(Vector2(tg["pos"]), 35.0, Color(0.9, 0.15, 0.12, 0.95), 0.3)
+	_strip(SV + "spear-javelin-blood.png", 7, battle._world_pos(Vector2(tg["pos"]), 0.3), 1.1, 18.0, false, 7.0 / 18.0, false, null, 0.0)   # 扎中迸血(流血)
 
 
 # ── 140 骑枪 ──
@@ -435,7 +438,9 @@ func _tick_leaps(delta: float) -> void:
 
 # ── 144 投矛器 ──
 func atl_cast(_u: Dictionary, c: Vector2, r: float) -> void:
-	_ring(c, r, Color(1.0, 0.35, 0.25, 0.85), EqSpearBatch.ATL_SPREAD_SEC + EqSpearBatch.ATL_FALL_H / EqSpearBatch.ATL_FALL_SPD)
+	## 落点画一块红色警示区(俯视, 虚线边 + 往里指的矛形箭头, 循环闪), 直到最后一根矛落地; 画里圆约占画布 0.9
+	_strip(SV + "spear-atl-target.png", 4, battle._world_pos(c, 0.05), r * 2.0 * float(battle.WS) / 0.9, 8.0, true,
+		EqSpearBatch.ATL_SPREAD_SEC + EqSpearBatch.ATL_FALL_H / EqSpearBatch.ATL_FALL_SPD, true, null, 0.0)
 
 
 func atl_drop(d: Dictionary) -> void:
@@ -534,7 +539,9 @@ func _tick_drops(delta: float) -> void:
 			_free(f["node"])
 			var a: Dictionary = d["a"]
 			if a.get("alive", false):
-				_ring(Vector2(a["pos"]), 45.0, Color(0.85, 0.85, 0.9, 0.9) if bool(d["phys"]) else Color(0.7, 0.4, 1.0, 0.9), 0.35)
+				var g := _strip(SV + "chip-shield-glint.png", 7, battle._world_pos(Vector2(a["pos"]), 0.5), 1.1, 18.0, false, 7.0 / 18.0, false, null, 0.0)
+				if g != null:   # 落进胸口: 盾光一闪(物理灰白 / 魔法紫)
+					g.modulate = Color(0.92, 0.92, 1.0, 1.0) if bool(d["phys"]) else Color(0.8, 0.55, 1.0, 1.0)
 			continue
 		keep.append(d)
 	_drops = keep
@@ -562,7 +569,7 @@ var _browns: Array = []   # {u, f(_mfx 那一条), up(-1 = 未起)}
 
 
 func chip_brown_down(u: Dictionary, sec: float) -> void:
-	_ring(Vector2(u["pos"]), 90.0, Color(0.75, 0.5, 0.25, 0.9), 0.4)
+	_strip(LION_DUST, 7, battle._world_pos(Vector2(u["pos"]), 0.0), 1.1, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 倒地扬土
 	var s := _strip(SV + "chip-spin-brown.png", 6, battle._world_pos(Vector2(u["pos"]), HEAD_H), 0.8, 10.0, true, sec + 0.5, false, u, HEAD_H)
 	if s != null:
 		s.offset = Vector2.ZERO
@@ -573,7 +580,7 @@ func chip_brown_up(u: Dictionary) -> void:
 	for b in _browns:
 		if is_same(b["u"], u):
 			b["up"] = 0.0
-	_ring(Vector2(u["pos"]), 160.0, Color(0.95, 0.75, 0.4, 0.95), 0.45)
+	_strip(SV + "chip-brown-rise.png", 7, battle._world_pos(Vector2(u["pos"]), 0.0), 2.6, 16.0, false, 7.0 / 16.0, false, null, 0.0)   # 起身: 金棕光柱带着筹码往上冲
 
 
 func _tick_browns(delta: float) -> void:

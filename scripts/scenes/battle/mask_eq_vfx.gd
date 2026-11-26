@@ -25,6 +25,8 @@ func _strip(path: String, nf: int, pos3: Vector3, h_m: float, fps: float, loop: 
 	if flat:
 		s.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 		s.axis = Vector3.AXIS_Y
+		s.no_depth_test = false   # 贴地的要被站着的单位挡住(单位立绘有的走不透明通道, 光靠先画盖不住)
+		s.render_priority = -1   # 贴地的(冲击环 / 警示区 / 横扫气刃)先画, 单位压在上面(11-27 录像: 舞狮冲击环盖住了身体)
 		s.pixel_size = h_m / float(t.get_width() / nf)   # 贴地的: h_m 当作宽
 	else:
 		s.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
@@ -476,7 +478,9 @@ func lion_spawn(p: Dictionary) -> void:
 	var from := Vector3(-3.0 * face, 0.0, 0.0)
 	p["_slam_voff"] = from
 	_lion_in.append({"p": p, "t": 0.0, "from": from})
-	lion_run(p, Vector2(face, 0.0))   # 扑进来这一段播奔跑帧条
+	p["_lion_in_now"] = true
+	lion_run(p, Vector2(face, 0.0))   # 扑进来这一段播奔跑帧条(画面偏移着, 不拖彩绸)
+	p.erase("_lion_in_now")
 
 
 func _tick_lion_in(delta: float) -> void:
@@ -499,36 +503,181 @@ func _tick_lion_in(delta: float) -> void:
 	_lion_in = keep
 
 
-func lion_windup(p: Dictionary, _dir: Vector2, sec: float) -> void:
-	_ring(Vector2(p["pos"]), 75.0, Color(1.0, 0.55, 0.25, 0.9), maxf(0.2, sec))
+## 11-27 冲撞重做两轮: 用户「冲刺特效呢」→「冲锋方向你自己从来没有设计过吗…撞到敌人什么特效？…去搜这个塞恩的 R」
+##   照塞恩 R 逐帧研究(docs/studies/20261127-参考-塞恩R冲撞.md)的节奏, 配色换成舞狮红金:
+##   ① 蓄力 0.45 秒: 压低扒地(lwind) + 扬土; ★狮头前方先聚一团金红能量球(mask-lion-gather, 从小火星长大), 告诉玩家要往哪冲
+##   ② 冲锋: ★整只裹在红色冲击能量里(eq-masklion-charge-fire) + 狮头前面一道弯月冲击罩(mask-lion-bow, 前缘最亮, 朝冲锋方向)
+##          + 身后速度线(mask-lion-speed) + 红金彩绸(mask-lion-ribbon) + 脚下一路扬土
+##   ③ 撞上分三拍(塞恩: 接触亮星 0 秒 → 碎片喷 + 抛起 0.03 秒 → 地面冲击环 0.17 秒 → 变暗焦痕淡出 0.6 秒):
+##          接触点金白亮星(底层火星) → 鞭炮碎屑炸开(mask-lion-hit) + 目标被撞飞(sim 里 _knockback, 真的抛起)
+##          → 0.17 秒后目标脚下炸开地面冲击环(mask-lion-shock, 俯视画: 亮橙 → 暗红 → 焦痕 → 淡出)
+const LION_DUST := "res://assets/sprites/vfx/basic-slam-dust.png"   # 7 帧 56×40(底层扬尘, CLAUDE.md §10 第 5 条许共用)
+const LION_SPARK := "res://assets/sprites/vfx/spear-hit-spark.png"   # 6 帧 48×48(底层火星)
+const LION_DUST_EVERY := 0.09
+const LION_SHOCK_DELAY := 0.17
+var _lion_wind_sd := {}
+var _lion_fire_sd := {}
+var _lion_trails: Array = []   # {p, dir, parts:[{n, back, h}], dust_t, wind?}
+var _lion_later: Array = []    # {t, o(Vector2 位置)} 延后炸开的地面冲击环
+
+
+func _lion_face(dir: Vector2) -> float:
+	return 1.0 if dir.x >= 0.0 else -1.0
+
+
+## 身后 back_px 像素处的世界坐标(负数 = 身前)
+func _lion_behind(p: Dictionary, dir: Vector2, back_px: float, h: float) -> Vector3:
+	return battle._world_pos(Vector2(p["pos"]) - Vector2(_lion_face(dir), 0.0) * back_px, h)
+
+
+func _lion_dust(p: Dictionary, dir: Vector2, back_px: float, h_m: float) -> void:
+	var s := _strip(LION_DUST, 7, _lion_behind(p, dir, back_px, 0.0), h_m, 16.0, false, 7.0 / 16.0, false, null, 0.0)
+	if s != null:
+		s.flip_h = _lion_face(dir) < 0.0
+
+
+## 原画都是给「朝左跑」画的(冲击罩凸向左 / 彩绸和速度线往右拖) ⇒ 往右跑一律翻过来
+func _lion_part(p: Dictionary, dir: Vector2, path: String, nf: int, back: float, h: float, h_m: float, fps: float, loop: bool, life: float) -> Dictionary:
+	var n := _strip(path, nf, _lion_behind(p, dir, back, h), h_m, fps, loop, life, false, null, 0.0)
+	if n != null:
+		n.flip_h = _lion_face(dir) > 0.0
+	return {"n": n, "back": back, "h": h}
+
+
+func lion_windup(p: Dictionary, dir: Vector2, sec: float) -> void:
+	if _lion_wind_sd.is_empty() and ResourceLoader.exists(MV + "eq-masklion-windup.png"):
+		var t: Texture2D = load(MV + "eq-masklion-windup.png")
+		## 时长比蓄力略长一点: 冲出去之前一直停在最后一两帧(压到最低), 不会绕回站姿
+		_lion_wind_sd = battle._sprite_dict_from(t, {"frames": t.get_width() / 112, "frameW": 112, "frameH": 112, "duration": int(sec * 1000.0) + 60}, false)
+	if not p.get("alive", false):
+		return
+	if not _lion_wind_sd.is_empty():
+		battle._set_anim_sheet(p, _lion_wind_sd, "", true)
+	_lion_dust(p, dir, 34.0, 0.55)
+	## 狮头前方聚能: 7 帧正好在蓄力时长里从小火星长成一整团, 冲出去那一刻最大
+	var orb := _lion_part(p, dir, MV + "mask-lion-gather.png", 7, -46.0, 0.25, 1.0, 7.0 / maxf(0.2, sec), false, sec + 0.05)
+	_lion_trails.append({"p": p, "dir": dir, "parts": [orb], "dust_t": -sec * 0.5, "wind": true})   # 扒到一半再扬一团
 
 
 func lion_run(p: Dictionary, _dir: Vector2) -> void:
 	if _lion_run_sd.is_empty() and ResourceLoader.exists(MV + "eq-masklion-charge.png"):
 		var t: Texture2D = load(MV + "eq-masklion-charge.png")
 		_lion_run_sd = battle._sprite_dict_from(t, {"frames": t.get_width() / 112, "frameW": 112, "frameH": 112, "duration": 600}, false)
-	if _lion_run_sd.is_empty() or not p.get("alive", false):
+	## 冲锋用「整只裹在红色冲击能量里」的帧条(用户 11-27「冲击的时候，它整个身上应该是这个冲击波的这个红红色特效」);
+	##   160 宽, 狮身仍在中间 112 宽 ⇒ 居中显示, 大小 / 脚底和普通帧条一样。登场扑进来那一段仍用普通奔跑帧
+	if _lion_fire_sd.is_empty() and ResourceLoader.exists(MV + "eq-masklion-charge-fire.png"):
+		var tf: Texture2D = load(MV + "eq-masklion-charge-fire.png")
+		_lion_fire_sd = battle._sprite_dict_from(tf, {"frames": 8, "frameW": tf.get_width() / 8, "frameH": tf.get_height(), "duration": 600}, false)
+	var sd: Dictionary = _lion_run_sd if (p.has("_lion_in_now") or _lion_fire_sd.is_empty()) else _lion_fire_sd
+	if sd.is_empty() or not p.get("alive", false):
 		return
 	if not p.has("_lion_walk_sd"):
 		p["_lion_walk_sd"] = p.get("run_sd", {})
-	p["run_sd"] = _lion_run_sd                         # 冲撞期间「走路」帧条 = 冲撞帧条(引擎按速度切走路, 不会和它抢)
-	battle._set_anim_sheet(p, _lion_run_sd, "", true)
+	p["run_sd"] = sd                                   # 冲撞期间「走路」帧条 = 冲撞帧条(引擎按速度切走路, 不会和它抢)
+	battle._set_anim_sheet(p, sd, "", true)
+	if p.has("_lion_in_now"):
+		return   # 登场扑进来那一段只播帧条, 不加冲锋特效
+	_lion_trail_end(p)
+	var parts: Array = [
+		_lion_part(p, _dir, MV + "mask-lion-speed.png", 4, 70.0, 0.15, 0.85, 14.0, true, 0.0),    # 身后速度线
+		_lion_part(p, _dir, MV + "mask-lion-ribbon.png", 6, 78.0, 0.18, 0.7, 12.0, true, 0.0),    # 身后彩绸
+		_lion_part(p, _dir, MV + "mask-lion-bow.png", 6, -40.0, -0.05, 1.55, 14.0, true, 0.0),    # ★狮头前的弯月冲击罩(最后加 ⇒ 画在最上面)
+	]
+	_lion_trails.append({"p": p, "dir": _dir, "parts": parts, "dust_t": 0.0})
+
+
+func _lion_trail_end(p: Dictionary) -> void:
+	var keep: Array = []
+	for T in _lion_trails:
+		if is_same(T["p"], p):
+			for part in T["parts"]:
+				var n = part["n"]
+				if n != null and is_instance_valid(n):
+					_fade_out(n as Sprite3D, 0.12)
+			continue
+		keep.append(T)
+	_lion_trails = keep
+
+
+func _fade_out(s: Sprite3D, sec: float) -> void:
+	for f in _mfx:
+		if f["node"] == s:
+			f["t"] = 0.0
+			f["life"] = sec + 0.15   # _tick_mfx 在最后 0.15 秒淡出
+			f["follow"] = null
+
+
+func _tick_lion_trails(delta: float) -> void:
+	var keep: Array = []
+	for T in _lion_trails:
+		var p: Dictionary = T["p"]
+		if not p.get("alive", false):
+			for part in T["parts"]:
+				var n0 = part["n"]
+				if n0 != null and is_instance_valid(n0):
+					(n0 as Node).queue_free()
+			continue
+		var dir: Vector2 = T["dir"]
+		for part in T["parts"]:
+			var n = part["n"]
+			if n != null and is_instance_valid(n):
+				(n as Sprite3D).position = _lion_behind(p, dir, float(part["back"]), float(part["h"]))
+		T["dust_t"] = float(T["dust_t"]) + delta
+		if bool(T.get("wind", false)):
+			if float(T["dust_t"]) >= 0.0 and not bool(T.get("dusted", false)):
+				T["dusted"] = true
+				_lion_dust(p, dir, 40.0, 0.7)
+			var alive_part := false
+			for part in T["parts"]:
+				if part["n"] != null and is_instance_valid(part["n"]):
+					alive_part = true
+			if alive_part or float(T["dust_t"]) < 0.0:
+				keep.append(T)
+			continue
+		if float(T["dust_t"]) >= LION_DUST_EVERY:
+			T["dust_t"] = 0.0
+			_lion_dust(p, dir, 26.0, 0.45)
+		keep.append(T)
+	_lion_trails = keep
+	var later: Array = []
+	for L in _lion_later:
+		L["t"] = float(L["t"]) - delta
+		if float(L["t"]) > 0.0:
+			later.append(L)
+			continue
+		## 地面冲击环(俯视画, 贴地): 亮橙 → 暗红 → 焦痕 → 淡出, 11 帧约 0.6 秒
+		_strip(MV + "mask-lion-shock.png", 11, battle._world_pos(Vector2(L["o"]), 0.04), 2.8, 18.0, false, 11.0 / 18.0, true, null, 0.0)
+	_lion_later = later
 
 
 func lion_stop(p: Dictionary) -> void:
+	_lion_trail_end(p)
 	if p.has("_lion_walk_sd"):
 		p["run_sd"] = p["_lion_walk_sd"]
-	if p.get("alive", false) and is_same(p.get("anim_sd", null), _lion_run_sd):
+	if p.get("alive", false) and (is_same(p.get("anim_sd", null), _lion_run_sd) or is_same(p.get("anim_sd", null), _lion_fire_sd)):
 		battle._set_anim_sheet(p, p.get("idle_sd", {}), "", true)
 
 
-func lion_hit(_p: Dictionary, o: Dictionary) -> void:
-	_ring(Vector2(o["pos"]), 60.0, Color(1.0, 0.75, 0.3, 0.95), 0.3)
+## 撞上(塞恩 R 的三拍): 接触亮星 → 鞭炮碎屑炸开(目标同一步被 sim 撞飞) → 0.17 秒后地面冲击环
+func lion_hit(p: Dictionary, o: Dictionary) -> void:
+	var at: Vector2 = Vector2(o["pos"])
+	var mid: Vector2 = at.lerp(Vector2(p["pos"]), 0.35)   # 接触点 = 狮头碰到目标的地方
+	_strip(LION_SPARK, 6, battle._world_pos(mid, 0.45), 1.4, 24.0, false, 6.0 / 24.0, false, null, 0.0)
+	_strip(MV + "mask-lion-hit.png", 9, battle._world_pos(at, -0.35), 2.5, 20.0, false, 9.0 / 20.0, false, null, 0.0)
+	_lion_later.append({"t": LION_SHOCK_DELAY, "o": at})
+
+
+## 普攻咬中(11-27, 用户「lion 太敷衍了吧，特效，攻击特效」): 目标身上上下两排金色狮牙张开 → 合拢白闪 → 火星纸屑散开(8 帧 0.33 秒)
+func lion_bite(_p: Dictionary, o: Dictionary) -> void:
+	if not (o as Dictionary).has("pos"):
+		return
+	_strip(MV + "mask-lion-bite.png", 8, battle._world_pos(Vector2(o["pos"]), 0.0), 1.7, 24.0, false, 8.0 / 24.0, false, null, 0.0)
 
 
 ## 131 小丑面具
 func clown_taunt(u: Dictionary, tg: Array, sec: float) -> void:
-	_ring(Vector2(u["pos"]), 150.0, Color(1.0, 0.45, 0.7, 0.85), 0.4)
+	## 11-27: 原来是一圈程序画的粉环 ⇒ 换成携带者身上炸开一团粉紫彩纸 + 星星 + 小铃铛(mask-clown-burst)
+	_strip(MV + "mask-clown-burst.png", 9, battle._world_pos(Vector2(u["pos"]), -0.2), 2.6, 18.0, false, 9.0 / 18.0, false, null, 0.0)
 	if sec <= 0.0:
 		return
 	for o in tg:
@@ -788,6 +937,7 @@ func tick(delta: float) -> void:
 	_tick_mfx(delta)
 	_tick_mflies(delta)
 	_tick_lion_in(delta)
+	_tick_lion_trails(delta)
 	_tick_ven(delta)
 	_tick_gold(delta)
 	_tick_ow(delta)
