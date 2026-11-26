@@ -98,6 +98,8 @@ func _play_action(u: Dictionary, kind: String, fps_override: float = -1.0) -> vo
 		return
 	if kind == "attack" and (id == "_summon_katana" or id == "_summon_shadow_ninja" or id == "_summon_shadow_clone"):   # 115 忍者同 112 方帧、同贴地线
 		u["_art_px"] = float(u.get("idle_px", battle.PIXEL_SIZE)); u["_art_offy"] = float(u.get("idle_offy", 56.0))   # 107 武士刀小将: 横斩表与待机同 112 方帧、同贴地线 ⇒ 沿用待机像素尺寸(不走「身高 / 帧高」通用归一, 否则一挥刀身体变大一圈, 11-25 自查)
+	if (kind == "attack" or kind == "death") and id == "_summon_centurion":   # 长矛羁绊百夫长(11-27 自查): 六张帧条同 128 方帧同贴地线 ⇒ 沿用待机像素尺寸(含放大 1.3), 原来普攻 / 倒下按通用归一只有 60% 大
+		u["_art_px"] = float(u.get("idle_px", battle.PIXEL_SIZE)); u["_art_offy"] = float(u.get("idle_offy", 64.0))
 	if kind == "attack" and id == "ninja":
 		u["_art_px"] = float(u.get("idle_px", battle.PIXEL_SIZE)); u["_art_offy"] = float(u.get("idle_offy", 32.0))   # 普攻帧条 = 待机 64 画布四边补 16 的 96 方帧(build_ninja_slash.py, 给刀留地方): 沿用待机像素尺寸 / 贴地线
 		var _afr: float = AttackHits.beats_before(asd.get("frame_w", []), int(asd.get("frames", 1)))   # 整段拍数(登记了每帧拍数的按拍数)

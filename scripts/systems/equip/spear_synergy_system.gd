@@ -188,6 +188,7 @@ func summon(side: String, tier: int) -> Dictionary:
 	p["maxEnergy"] = EN_MAX
 	p["energy"] = 0.0
 	p["_cent_tier"] = tier
+	p["_death_hold"] = 1.3   # 倒下帧条 1 秒 + 在地上躺 0.3 秒再淡(11-27 自查: 原来没倒完就淡没了)
 	p["bar_head_h"] = 4.0   # 11-27 放大后人约 3 米高(连盔缨): 血条抬到头顶上方(默认 2.8 会横在胸口)
 	## 落点: 我方阵地往前(两军之间偏我方)
 	var cx: float = float(battle._arena_center.x)

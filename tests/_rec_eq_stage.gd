@@ -158,6 +158,8 @@ static func cases() -> Dictionary:
 		## 小丑面具(11-27 携带者换小龟: 天使龟 / 泡泡龟放技能自己给盾、通用护盾罩一团白盖住小丑效果; 闪电龟被动在敌人头顶挂闪电层数, 和嘲讽小丑脸挤在一处): 满龟能开局放技能 ⇒ 附近敌人头上挂嘲笑小丑脸
 		"mk_clown": [[_u("basic", "left", Vector2(-120, 0), {"fe": true, "equips": _eq([131], 1), "hp": 8000.0, "killable": false})] + _dummies(40, 3, true, 30000.0, 40.0), 10.0],
 		## ── 长矛(11-26) ── 两只只会站着的小将各带 5 件不同的长矛 = 10 件 4 档; 百夫长第 8 秒登场
+		## 百夫长单独审(11-27): 我方只有一只不动的友军, 长矛档由 REC_SPEAR_TIER 给; 7 个靶子散满全场(上下边 / 中线 / 对面后排)
+		"cent_full": [[_u("basic", "left", Vector2(-620, 0), {"idle": true, "killable": false, "plain": true})] + [_u("__minion__", "right", Vector2(0, -280), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": false})] + [_u("__minion__", "right", Vector2(0, 280), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": false})] + [_u("__minion__", "right", Vector2(320, -150), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": false})] + [_u("__minion__", "right", Vector2(320, 150), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": false})] + [_u("__minion__", "right", Vector2(640, -280), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": false})] + [_u("__minion__", "right", Vector2(640, 280), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": false})] + [_u("__minion__", "right", Vector2(700, 0), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": false})], 30.0],
 		"sp_cent": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
 			+ _dummies(60, 3, true, 12000.0, 60.0), 30.0],
 		## 百夫长走路 / 倒下(11-27 自查: 舞狮走路帧条曾被清空, 召唤物都要实测): 靶子远处不动 ⇒ 落地后要走 500 多码; 另一段同样摆位, 第 11 秒演示台给它一下致命伤看倒下
@@ -258,6 +260,21 @@ func _process(d: float) -> void:
 			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and bool(uu.get("alive", false)):
 				_seen["cent_kill"] = 1
 				_b._damage._apply_damage(uu, int(float(uu["hp"]) + float(uu.get("shield", 0.0)) + 10.0), Color.WHITE)
+	if OS.has_environment("REC_SPEAR_TIER") and _started:   # 百夫长单独审(11-27): 直接给档, 携带者不带件 ⇒ 没有 10 件长矛刷屏
+		if not _b._synergy._by_side.has("left"):
+			_b._synergy._by_side["left"] = {}
+		_b._synergy._by_side["left"]["长矛"] = int(OS.get_environment("REC_SPEAR_TIER"))
+	if OS.has_environment("REC_CENT_KILL") and _el > float(OS.get_environment("REC_CENT_KILL")) and not _seen.has("cent_kill"):
+		for uu in _b._units:
+			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and bool(uu.get("alive", false)):
+				_seen["cent_kill"] = 1
+				_b._damage._apply_damage(uu, int(float(uu["hp"]) + float(uu.get("shield", 0.0)) + 10.0), Color.WHITE)
+	if OS.has_environment("REC_CENT_PROBE") and int(_el * 4.0) != int((_el - d) * 4.0):   # 11-27 百夫长忽大忽小: 每 0.25 秒打帧条 / 像素尺寸 / 缩放 / 偏移
+		for uu in _b._units:
+			if uu is Dictionary and str(uu.get("id", "")) == "_summon_centurion" and is_instance_valid(uu.get("sprite", null)):
+				var cs = uu["sprite"]
+				var ctx = (uu.get("anim_sd", {}) as Dictionary).get("tex", null)
+				print("[CENT] %.2f %s f=%d px=%.5f fh=%d sc=%s off=%s pos=%s" % [_el, (ctx as Texture2D).resource_path.get_file() if ctx != null else "无", int(cs.frame), float(cs.pixel_size), int((uu.get("anim_sd", {}) as Dictionary).get("frame_h", 0)), str(cs.scale), str(cs.offset), str(uu.get("pos"))])
 	if OS.has_environment("REC_NODE_PROBE") and _el > float(OS.get_environment("REC_NODE_PROBE")) and not _seen.has("node_probe"):
 		_seen["node_probe"] = 1
 		var nodes: Array = _b._world.get_children()

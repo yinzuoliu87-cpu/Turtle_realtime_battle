@@ -162,6 +162,9 @@ func _advance_anim(u: Dictionary, delta: float) -> void:
 	if u.get("anim_action", "") != "":
 		# 动作播一次: 到末帧 → 回 idle
 		if idx >= frames:
+			if str(u.get("anim_action", "")) == "death" and not u.get("alive", false):
+				spr.frame = clampi(frames - 1, 0, maxi(1, int(spr.hframes) * int(spr.vframes)) - 1)   # 阵亡: 停在倒地末帧等淡出(11-27: 原来播完切回待机, 淡出晚于帧条的单位会「倒下又站起来」); 活过来的(斧头亡灵)照常回待机
+				return
 			battle._set_anim_sheet(u, u.get("idle_sd", {}), "", true)
 			return
 	else:

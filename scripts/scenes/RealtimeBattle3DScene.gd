@@ -4522,7 +4522,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if is_instance_valid(spr_n):
 		var stw := _reg_tween()
 		if has_death_anim:
-			stw.tween_interval(UIPalette.T_SLOW)        # 等 death 帧演完 (~7-13帧 @11-12fps) 再淡出
+			stw.tween_interval(maxf(UIPalette.T_SLOW, float(u.get("_death_hold", 0.0))))        # _death_hold: 帧条长的单位自己声明(百夫长 1.3 秒, 11-27) · 等 death 帧演完 (~7-13帧 @11-12fps) 再淡出
 		stw.tween_property(spr_n, "modulate:a", 0.0, 0.4)
 		stw.tween_callback(spr_n.hide)
 	# ★同 `reborn_used`：合成单位不一定带这个键，直读会抛错。
