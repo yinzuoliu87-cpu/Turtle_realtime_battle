@@ -5,6 +5,7 @@ extends Node
 ##   C 池版本 1(老流水没有 pv)只出 001~096; 版本 2 按本周羁绊; 小木斧这类非大羁绊件永远能出
 ##   D 真掷货(EconLedger._roll)200 次: 版本 2 的货 100% 在本周池; 版本 1 的货 100% ≤ 096
 ##   E 经济流水 do() 每条都记 pv = 当前版本
+##   F 对局池版本 == 经济池版本 · G 宝箱龟开箱 200 次 100% 在本周池 · H 魔法海螺也挂了过滤
 const EL := preload("res://scripts/gamedata/econ_ledger.gd")
 const WS := preload("res://scripts/gamedata/weekly_synergy.gd")
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
@@ -104,6 +105,36 @@ func _ready() -> void:
 	EL.do(gs, {"op": "roll", "seed": 7})
 	var row = (gs.econ_log as Array).back() if (gs.econ_log as Array).size() > led0 else {}
 	_ok("E 经济流水每条都记池版本 pv = %d" % EL.POOL_VER, row is Dictionary and int((row as Dictionary).get("pv", 0)) == EL.POOL_VER, str(row))
+	## F 对局里随机给装备用的池版本 == 经济记账的池版本(两边各写了一个常量)
+	_ok("F 对局池版本 BATTLE_PV(%d) == EconLedger.POOL_VER(%d)" % [WS.BATTLE_PV, EL.POOL_VER], WS.BATTLE_PV == EL.POOL_VER)
+	## G 宝箱龟开箱真抽 200 次(替身战斗对象只给 pool_week / _battle_rng): 100% 在本周池; 周锚点 0 ⇒ 16 个全在、新件也出
+	var src := GDScript.new()
+	src.source_code = "extends RefCounted\nvar _battle_rng := RandomNumberGenerator.new()\nvar wk := 0\nfunc pool_week() -> int:\n\treturn wk\n"
+	src.reload()
+	var fb = src.new()
+	fb._battle_rng.seed = 4242
+	fb.wk = wk
+	var chest := ChestSystem.new(fb)
+	var cbad := 0
+	var cn := 0
+	for i in range(200):
+		var eid: String = chest._chest_pick_equip([1, 2, 3, 4, 5])
+		if eid != "":
+			cn += 1
+			if not WS.pool_ok(eid, wk, 2):
+				cbad += 1
+	fb.wk = 0
+	var c0_new := 0
+	for i in range(200):
+		var eid0: String = chest._chest_pick_equip([1, 2, 3, 4, 5])
+		if int(eid0.trim_prefix("p2eq_")) > 96 and not WS.pool_ok(eid0, wk, 2):
+			c0_new += 1
+	_ok("G 宝箱龟开箱 200 次: %d 件全在本周池(越界 %d) · 周锚点 0 时本周池外的件也出(%d 次)" % [cn, cbad, c0_new], cn == 200 and cbad == 0 and c0_new > 0)
+	## H 魔法海螺小虫的 3 件随机装备也挂了同一个过滤(静态核: 产品代码里那一段真的调了 battle_ok)
+	var eqsrc := FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
+	var ci := eqsrc.find("func _conch_grant_equips")
+	var cj := eqsrc.find("\nfunc ", ci + 10)
+	_ok("H 魔法海螺小虫的随机装备也只出本周池(源码里挂了 WeeklySynergy.battle_ok)", ci > 0 and eqsrc.substr(ci, cj - ci).contains("WeeklySynergy.battle_ok("))
 	gs.week_anchor_ts = bk["wk"]
 	gs.meta_shop_offer = bk["offer"]
 	gs.equip_pool = bk["pool"]

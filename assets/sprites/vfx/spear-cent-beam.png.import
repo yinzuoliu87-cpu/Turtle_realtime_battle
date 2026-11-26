@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bohjnmwdtxpqp"
-path="res://.godot/imported/spear-dart.png-dabc7b14f0a7921b56bf1a1d241c5de6.ctex"
+uid="uid://dgmmatmsjwh4u"
+path="res://.godot/imported/spear-cent-beam.png-c8de34164a1c672b494fae45403e93ed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/spear-dart.png"
-dest_files=["res://.godot/imported/spear-dart.png-dabc7b14f0a7921b56bf1a1d241c5de6.ctex"]
+source_file="res://assets/sprites/vfx/spear-cent-beam.png"
+dest_files=["res://.godot/imported/spear-cent-beam.png-c8de34164a1c672b494fae45403e93ed.ctex"]
 
 [params]
 

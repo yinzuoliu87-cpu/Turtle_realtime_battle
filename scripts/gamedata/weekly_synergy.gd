@@ -58,6 +58,14 @@ static func pool_ok(eid: String, week_anchor: int, pv: int) -> bool:
 	return false
 
 
+## 对局里随机给装备(宝箱龟 / 魔法海螺)用: 对局永远按当前代码的池版本(= EconLedger.POOL_VER, verify_weekly_synergy 核两边相等)。
+const BATTLE_PV := 2
+
+
+static func battle_ok(eid: String, week_anchor: int) -> bool:
+	return pool_ok(eid, week_anchor, BATTLE_PV)
+
+
 ## 过滤一份装备定义表(Array of Dictionary)。
 static func filter_defs(defs: Array, week_anchor: int, pv: int) -> Array:
 	var out: Array = []

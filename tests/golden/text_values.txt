@@ -52,7 +52,7 @@ eq|手雷|effectDesc1	4.0 6.0 60.0
 eq|投矛器|effectDesc1	10.0
 eq|护心甲|effectBrief	15.0
 eq|护心甲|effectDesc1	15.0
-eq|方天画戟|effectDesc1	2.0
+eq|方天画戟|effectDesc1	4.0
 eq|旋翼机|effectDesc1	1.2 4.0 10.0 30.0 40.0 100.0
 eq|暗影匕首|effectDesc1	1.5 20.0 50.0 50.0 100.0 250.0
 eq|暴君之牙|effectBrief	6.0
@@ -62,7 +62,7 @@ eq|月之刃|effectDesc1	60.0 100.0
 eq|木制长剑|effectBrief	3.0
 eq|木制长剑|effectDesc1	3.0
 eq|柳叶飞刀|effectDesc1	6.0 60.0
-eq|标枪|effectDesc1	2.0 6.0 30.0
+eq|标枪|effectDesc1	6.0
 eq|棕色筹码|effectDesc1	2.5 60.0
 eq|武士刀|effectDesc1	1.0 1.5 3.0 15.0 60.0 150.0 300.0
 eq|毒药瓶|effectBrief	6.0
@@ -123,7 +123,7 @@ eq|珍珠项链|effectBrief	16.0 50.0
 eq|珍珠项链|effectDesc1	16.0 50.0
 eq|病毒箭头|effectBrief	400.0
 eq|病毒箭头|effectDesc1	1.0 1.1 10.0 400.0
-eq|盾矛|effectDesc1	5.0 30.0
+eq|盾矛|effectDesc1	4.0 6.0 8.0
 eq|禁咒全书|effectDesc1	50.0 80.0
 eq|竹弓|effectDesc1	6.0 6.0
 eq|竹矛|effectDesc1	3.0
@@ -180,11 +180,10 @@ eq|飞镖|effectBrief	2.5
 eq|飞镖|effectDesc1	1.0 2.5 5.0 10.0
 eq|香火石|effectBrief	4.0 10.0 12.0 100.0
 eq|香火石|effectDesc1	4.0 4.0 10.0 12.0 100.0
-eq|骑枪|effectDesc1	5.0
 eq|鬼面|effectDesc1	50.0
 eq|魔法海螺|effectDesc1	0.65 4.0 5.0
 eq|魔法海螺|effectDesc3	2.5 4.0
-eq|鱼叉|effectDesc1	4.0
+eq|鱼叉|effectDesc1	0.5 1.5
 eq|黄金面具|effectDesc1	1.0 2.0 8.0 20.0
 eq|黑曜石匕首|effectDesc1	50.0
 eq|黑色筹码|effectDesc1	30.0

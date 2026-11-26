@@ -81,7 +81,12 @@ const UKEYS := ["_active_cd", "_anemoneShield", "_appearance", "_atk_voff", "_au
 	## 11-22 头顶徽章要的(播放端原来一个徽章都不画, 补排版时量出这两项不在流里): 赛博龟智能 AI 充能层 / 猎杀印记到期时刻
 	"cyber_ai_charge", "hunt_mark_until",
 	## 11-25 113 弯匕攻速暴涨: 渲染层按它画金色残影 + 身体金光(播放端也要画)
-	"_kris_until"]
+	"_kris_until",
+	## 11-26 夜(探针 tests/probes/_probe_stream_mask: 本机隐去 178 / 播放 0, 里世界按钮 89 / 0): 渲染层按单位字段着色的, 原来都不在流里 ——
+	##   134 威尼斯 / 154 棕色筹码倒地半透明 / 136 里世界(在哪个世界 · 被偷发灰) / 132 鬼面潜行;
+	##   同一类的旧件一并补: 100 烟雾弹潜行 / 115 暗影忍者隐身 · 化烟 / 龟壳潜影
+	"_ven_until", "_ven_t0", "_ow", "_ow_drained", "_ghost_hidden",
+	"_smoke_hidden", "_ninja_veil", "_ninja_gone", "shell_stealth"]
 ## (S2 拿掉了 anim_t / anim_t0: 渲染步每次都推它、每次采样都在变, 而手机不推立绘帧(帧号走镜像), 用不上。)
 const UKEYS_STEP := ["alive", "anim_action", "side"]   # 逐步(离散)
 ## S2 补(2026-10-19, 手机播放端实测缺的): 血条 / 龟能条 / 等级牌要的、小将 / 召唤物身份。

@@ -806,6 +806,12 @@ var _dbg_op2 := "-"                        # 更细粒度定位: 最后经手的
 static var _adf_warned := false
 static var _stress_n := 0                 # 已跑对局数(跨reload累计)
 var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng (演出·永不种子化, 否则回放看着卡)
+## 本周羁绊(16 抽 10)按哪一周算: 对局里随机给装备(宝箱龟开箱 / 魔法海螺小虫)只出本周池的件(方案书 20261124d §4.2)。
+##   裁判跑局由 RefereeRunner 设成任务的 key.week(服务器本周; 没有就 0 = 16 个全在 ⇒ 规则指纹等测试不随真实日期变);
+##   -1 = 没人设(本机直接打) ⇒ 用 GameState.week_anchor_ts。
+var _pool_week: int = -1
+func pool_week() -> int:
+	return _pool_week if _pool_week >= 0 else int(GameState.week_anchor_ts)
 var _battle_rng := RandomNumberGenerator.new()  # ★sim 专用受控 PRNG (Phase1·大厂做法): 决定战斗结果的随机走它。默认 randomize()=手感与线上一致; TURTLE_SEED 设时确定→可复现/回放
 var _cast_tok: int = 0                          # 单调计数·多段技命中去重标记(替 randi() token: 确定性+无碰撞·§3.2 不拿字典做key)
 const SIM_DT := 1.0 / 60.0                       # 固定 sim 步长(交互累加器 + 确定性模式共用·≈60fps手感)

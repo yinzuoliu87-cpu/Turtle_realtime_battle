@@ -845,6 +845,10 @@ func _render(dt: float) -> void:
 	for u in units.values():
 		if u is Dictionary:
 			battle._layout_head_badges(u)
+	## 136 千面【里世界】: 切换按钮是 sim 步里建的 2D 界面、「谁该隐去」问的是 sim 侧对象 ⇒ 播放端按单位的 `_ow` 字段自己重建(11-26 夜)
+	var _ms = battle._equip_sys._mask_sys if battle.get("_equip_sys") != null else null
+	if _ms != null and _ms.vfx != null:
+		_ms.vfx.stream_sync(units.values())
 
 
 func _set_ts_active() -> void:

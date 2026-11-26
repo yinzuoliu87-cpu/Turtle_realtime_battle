@@ -20,6 +20,9 @@ const TEAM_HP_LINE := 0.60
 const KNOCK_SEC := 1.5
 const CENT_KNOCK_VY := 16.5            # 滞空 = 2 × 16.5 / 22 = 1.5 秒
 const ENTRY_COEF := 1.5
+## 从天而降的时长: 召唤那一刻人在高处(不可选中、不行动), 落地那一步才结算全场击飞 + 魔法伤害(画面与结算同一刻;
+##   11-26 夜用户「召唤物的登场，登场动画…别敷衍了」—— 原来召唤那一帧就结算, 人还在半空)
+const LAND_SEC := 0.7
 const HP := [1600.0, 2600.0, 3600.0, 5200.0]
 const ATK := [48.0, 72.0, 104.0, 144.0]
 const RES := [45.0, 70.0, 110.0, 140.0]
@@ -188,11 +191,24 @@ func summon(side: String, tier: int) -> Dictionary:
 	var cx: float = float(battle._arena_center.x)
 	var fwd: float = -1.0 if side == "left" else 1.0
 	p["pos"] = battle._dl_sys.clamp_place_side(Vector2(cx + fwd * 220.0, float(battle._arena_center.y)), side) if battle.get("_dl_sys") != null else Vector2(cx + fwd * 220.0, float(battle._arena_center.y))
-	var rec := {"u": p, "side": side, "tier": tier, "n_atk": 0, "en": 0.0, "state": "idle", "t": 0.0, "poke": 0.0}
+	var rec := {"u": p, "side": side, "tier": tier, "n_atk": 0, "en": 0.0, "state": "landing", "t": 0.0, "poke": 0.0}
 	_cents.append(rec)
 	stat["summon"] += 1
-	_fx("cent_land", [p])
-	## 登场: 全场敌人击飞 1.5 秒 + 150% 攻击力魔法伤害
+	p["untargetable_until"] = float(battle._t) + LAND_SEC
+	battle._damage.channel(p, LAND_SEC)
+	_fx("cent_land", [p, LAND_SEC])
+	return rec
+
+
+## 落地: 全场敌人击飞 1.5 秒 + 150% 攻击力魔法伤害(门禁可直接调, 跳过下落)
+func _land(r: Dictionary) -> void:
+	if str(r.get("state", "")) != "landing":
+		return
+	r["state"] = "idle"
+	r["t"] = 0.0
+	var p: Dictionary = r["u"]
+	p["untargetable_until"] = minf(float(p.get("untargetable_until", 0.0)), float(battle._t))
+	_fx("cent_impact", [p])
 	for o in battle._targeting._enemies_of(p):
 		if not o.get("alive", false):
 			continue
@@ -201,7 +217,6 @@ func summon(side: String, tier: int) -> Dictionary:
 		battle._damage._apply_damage_from(p, o, dmg, COL_MAGIC, 0.0, false, true)
 		if o.get("alive", false):
 			battle._knock_up(o, Vector2(o["pos"]) + Vector2(0.0, 1.0), CENT_KNOCK_VY)
-	return rec
 
 
 func cent_state(i: int = 0) -> Dictionary:
@@ -333,6 +348,10 @@ func _tick_cents(delta: float) -> void:
 			continue
 		var tier := int(r["tier"])
 		match str(r["state"]):
+			"landing":
+				r["t"] = float(r["t"]) + delta
+				if float(r["t"]) >= LAND_SEC:
+					_land(r)
 			"idle":
 				r["en"] = minf(EN_MAX, float(r["en"]) + _en_gain(u, delta))
 				u["energy"] = float(r["en"])

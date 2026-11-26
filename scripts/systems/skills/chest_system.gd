@@ -288,8 +288,9 @@ func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespok
 
 func _chest_pick_equip(costs: Array) -> String:
 	var pool: Array = []
+	var wk: int = int(battle.pool_week())
 	for eq in DataRegistry.phase2_equipment:
-		if int(eq.get("cost", 0)) in costs:
+		if int(eq.get("cost", 0)) in costs and WeeklySynergy.battle_ok(str(eq.get("id", "")), wk):   # 只出本周羁绊池的件(方案书 20261124d)
 			pool.append(str(eq.get("id", "")))
 	if pool.is_empty():
 		return ""

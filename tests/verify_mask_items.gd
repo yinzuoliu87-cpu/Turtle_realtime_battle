@@ -352,7 +352,10 @@ func _ready() -> void:
 	var open0: int = int(ow.stat["open"])
 	_s._sd_t0 = _s._t
 	_adv(8.7)
-	_ok("J 两边各带千面 ⇒ 只开一个里世界, 牵连到的全进来(%d 人)" % ow.members.size(), int(ow.stat["open"]) == open0 + 1 and ow.members.size() >= 3, str(ow.members.size()))
+	## 两边各拽一个随机敌人: 挑中的可能正是对面的携带者(那就只有 2 人), 也可能是别人(3~4 人) —— 都合法。
+	##   判据只看规则本身: 只开了一个里世界, 两个携带者都在里面(11-26 夜: 原来要求 ≥ 3 人, 随机序列一变就红)
+	var both_in := WS_has(ow.members, me) and WS_has(ow.members, fo)
+	_ok("J 两边各带千面 ⇒ 只开一个里世界, 两个携带者和各自拽的人全进来(%d 人)" % ow.members.size(), int(ow.stat["open"]) == open0 + 1 and both_in and ow.members.size() >= 2, str(ow.members.size()))
 	for mm in ow.members:
 		if str(mm.get("side", "")) == "right":
 			mm["hp"] = 0.0
@@ -384,3 +387,10 @@ func _ready() -> void:
 	else:
 		print("FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+static func WS_has(arr: Array, u: Dictionary) -> bool:
+	for x in arr:
+		if is_same(x, u):
+			return true
+	return false

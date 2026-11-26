@@ -36,6 +36,37 @@ STRIPS = {
     "eq-centurion-shield": [(SP, "cshdA_%d" % i, False) for i in range(1, 7)]
         + [(SP, "cshdA_%d" % (6 if (k // 4) % 2 == 0 else 5), False) for k in range(36)],
     "eq-cavalry-run": [(SP, "cav_%d" % i, False) for i in range(0, 8)],
+    ## 11-26 夜 10 件长矛的演出(create_image_pro_flash 无锚原画 fx_* + animate_image; 没照参考):
+    ##   只钉首帧(一次性): 骑枪冲阵 slan / 长戟横扫 shal / 圣枪引爆 shbu
+    ##   首尾钉原画(循环, 末帧 = 原画不取): 方天画戟刃环 sftj / 圣痕 shmk
+    ##   (竹矛穿刺 sbam / 鱼叉倒钩 sbarb / 盾矛反刺 sshs / 投矛器飞矛 dart 随 11-26 夜机制重做弃用, 原图留在 ai_src)
+    "spear-lance-hit": [(SP, "slan_%d" % i, False) for i in range(0, 7)],
+    "spear-halb-sweep": [(SP, "shal_%d" % i, False) for i in range(0, 7)],
+    "spear-ftj-ring": [(SP, "sftj_%d" % i, False) for i in range(0, 6)],
+    "spear-holy-mark": [(SP, "shmk_%d" % i, False) for i in range(0, 4)],
+    "spear-holy-burst": [(SP, "shbu_%d" % i, False) for i in range(0, 9)],
+    ## 筹码(11-26 夜): 151 黑 / 152 紫 = 各自的图标 p2eq_151 / 152 当首帧 animate_image 转一圈(cspk / cspp, 首帧 = 图标, 末帧转回正面);
+    ##   156 灰满层 = create_image_pro_flash 银灰光焰 fx_grey + animate_image 只钉首帧(cgry)
+    "chip-spin-black": [(CH, "cspk_%d" % i, False) for i in range(0, 6)],
+    "chip-spin-purple": [(CH, "cspp_%d" % i, False) for i in range(0, 6)],
+    "chip-grey-flare": [(CH, "cgry_%d" % i, False) for i in range(0, 7)],
+    "chip-spin-brown": [(CH, "cspb_%d" % i, False) for i in range(0, 6)],   # 154 棕: 同黑紫, 图标 p2eq_154 当首帧转一圈
+    "chip-gold-dome": [(CH, "cgdm_%d" % i, False) for i in range(0, 6)],    # 155 金色护罩: create_image_pro_flash 无锚 fx_golddome + animate_image 首尾钉原画循环(引擎里半透明)
+    ## 11-26 夜第二轮(用户改了 137~144 的机制; create_image_pro_flash 无锚原画 b2_* + animate_image, 没照参考):
+    ##   竹刺: 原画 b2_spike(满) → edit_image_pro_flash 改出只冒竹尖的 b2_spike_small → 首尾钉这两张出「刺出」6 帧(b2erp);
+    ##         帧条 = 刺出 7 帧 + 停 1 帧 + 倒放缩回 5 帧(第一版「缩回」b2spk 七帧一样高, 弃)
+    ##   骑枪标记 b2lnc / 大盾 b2sct / 聚气 b2chg = 首尾钉原画循环; 冲击波 b2swv / 裂坑 b2crt(第一版 b2_crater 太小太暗, 用重出的 b2_crater2)/ 扎地 b2stk = 只钉首帧
+    "spear-bamboo-spike": [(SP, "b2erp_%d" % i, False) for i in [0, 1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1]],
+    "spear-lance-ready": [(SP, "b2lnc_%d" % i, False) for i in range(0, 4)],
+    "spear-scutum": [(SP, "b2sct_%d" % i, False) for i in range(0, 4)],
+    "spear-shsp-wave": [(SP, "b2swv_%d" % i, False) for i in range(0, 7)],
+    "spear-ftj-charge": [(SP, "b2chg_%d" % i, False) for i in range(0, 6)],
+    "spear-ftj-crater": [(SP, "b2crt_%d" % i, False) for i in range(0, 9)],
+    "spear-atl-stuck": [(SP, "b2stk_%d" % i, False) for i in range(0, 7)],
+    ## 百夫长登场(11-26 夜重做): 落点金光柱 c3_beam(首尾钉原画循环) / 落地金色冲击 c3_impact2(第一版 c3_impact 中间画进了一个人, 弃)
+    ##   = create_image_pro_flash 无锚 + animate_image; 冲击第 2 帧中间一道 1 像素白竖线(生成瑕疵)不取
+    "spear-cent-beam": [(SP, "c3bm_%d" % i, False) for i in range(0, 6)],
+    "spear-cent-impact": [(SP, "c3im_%d" % i, False) for i in [0, 1, 3, 4, 5, 6, 7, 8]],
 }
 
 ## 脚底对齐(11-26 夜录像量过: 原画人物脚只到第 92 行, 帧高 112 ⇒ 引擎按帧底边贴地, 百夫长浮在半空)。
@@ -63,10 +94,13 @@ def main():
         _icon(os.path.join(CH, "icon%d.png" % i), os.path.join(EQ, "p2eq_%d.png" % i))
     _icon(os.path.join(SP, "tagspear.png"), os.path.join(TAGS, "tag-spear.png"))
     _icon(os.path.join(SP, "tagchip.png"), os.path.join(TAGS, "tag-chip.png"))
-    for n in ["pilum", "javelin", "dart", "gungnir"]:
+    for n in ["pilum", "javelin", "gungnir"]:
         p = os.path.join(SP, n + ".png")
         if os.path.exists(p):
             _icon(p, os.path.join(VFX, "spear-%s.png" % n))
+    ## 第二轮的单张(飞行物 / 绳子): 鱼叉 / 绳 / 下落的矛
+    for src, dst in {"b2_harpoon": "spear-harpoon", "b2_rope": "spear-rope", "b2_fall": "spear-atl-fall"}.items():
+        _icon(os.path.join(SP, src + ".png"), os.path.join(VFX, dst + ".png"))
     for dst, srcs in STRIPS.items():
         ims = []
         for d, n, flip in srcs:

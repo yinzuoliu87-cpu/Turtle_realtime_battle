@@ -89,11 +89,13 @@ var gold_gain := {}
 var ow: OtherworldSystem      # 136 千面【里世界】
 ## 观众此刻看的是不是里世界(画面层; 不进 sim)
 var ow_view := false
+## 看直播(播放端不跑 sim, ow.active 永远是假): 渲染步之后按单位的 `_ow` 字段判断里世界开着没有(MaskEqVfx.stream_sync 写)
+var stream_ow := false
 
 
 ## 画面: 这个单位此刻该不该隐去(里世界开着时, 不在观众正在看的那个世界里)
 func ow_hidden(u: Dictionary) -> bool:
-	return ow.active and bool(u.get("_ow", false)) != ow_view
+	return (ow.active or stream_ow) and bool(u.get("_ow", false)) != ow_view
 
 
 func _init(b) -> void:
@@ -234,7 +236,10 @@ func revive(u: Dictionary, d: float) -> float:
 	_revives.append({"u": u, "t0": t, "to": float(u.get("maxHp", 1.0)) * heal_pct, "ven": ven})
 	u["_ven_t0"] = t
 	## 演出分开: 威尼斯面具的招牌(面具 + 光环)不给棕色筹码用(CLAUDE.md §10 第 5 条)
-	_fx("venice_down" if ven else "chip_brown_down", [u, VEN_SEC])
+	if ven:
+		_fx("venice_down", [u, VEN_SEC])
+	else:
+		battle._equip_sys._chip_sys._fx("chip_brown_down", [u, VEN_SEC])   # 棕色筹码的演出在筹码那一层(面具演出层里没有, 原来派发到这里就丢了)
 	return maxf(0.0, float(u["hp"]) - 1.0)
 
 
@@ -244,8 +249,12 @@ func on_spawn(u: Dictionary, eid: String, si: int) -> void:
 	var ck: String = battle._equip_sys.key_of(u, eid)
 	match eid:
 		"p2eq_127":   # 纸面具①: 登场物理护盾(打空为止, 不随时间消失 —— 同海藻魔法护盾)
-			var amt: float = float(u.get("maxHp", 0.0)) * float(PAPER_SHIELD_PCT[si])
+			var amt: float = float(u.get("maxHp", 0.0)) * float(PAPER_SHIELD_PCT[si]) * BattleDamage.shield_strength(u, battle._t)
 			u["phys_shield"] = float(u.get("phys_shield", 0.0)) + amt
+			u["_st_shield"] = float(u.get("_st_shield", 0)) + amt   # 记账同 012 海藻: 获盾 + 这件装备统计的「护盾」栏
+			var tl: Array = battle._equip_sys.tally.push(u, ck)
+			battle._equip_sys.tally.on_shield(u, amt)
+			battle._equip_sys.tally.pop(tl)
 			_fx("paper_shield", [u])
 		"p2eq_128":
 			u["_fox_max"] = float(u.get("_fox_max", 0.0)) + float(FOX_MAX[si])
@@ -662,7 +671,10 @@ func _tick_revives() -> void:
 		if k < 1.0:
 			keep.append(R)
 		else:
-			_fx("venice_up" if bool(R.get("ven", true)) else "chip_brown_up", [u])
+			if bool(R.get("ven", true)):
+				_fx("venice_up", [u])
+			else:
+				battle._equip_sys._chip_sys._fx("chip_brown_up", [u])
 	_revives = keep
 
 

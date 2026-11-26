@@ -40,12 +40,12 @@ func _cat(b: Node, unit_list: Array) -> Dictionary:
 		var k := ""
 		if m.a < 0.05:
 			k = "隐去"
-		elif m.a < 0.85:
-			k = "半透明"
 		elif m.b > m.r * 1.5 and m.b > 0.9:
-			k = "偏蓝"
+			k = "偏蓝"          # 偷脸复制体(先判颜色: 它带 0.75 透明度, 放后面会被归进半透明)
 		elif m.r < 0.75 and m.g < 0.7 and m.b < 0.8:
 			k = "发灰"
+		elif m.a < 0.85:
+			k = "半透明"
 		if k != "":
 			by[k] = int(by.get(k, 0)) + 1
 	for c in b._ui_layer.get_children():

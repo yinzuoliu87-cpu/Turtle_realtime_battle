@@ -30,6 +30,10 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 	var backup: Dictionary = ReplayRecorder.capture_all()
 	var tm0 := bool(gs.test_mode)
 	var battle: Node = (load(BATTLE_SCENE) as PackedScene).instantiate()
+	## 本周羁绊: 对局里随机给装备按服务器这一局的周(key.week)过滤; 没有 ⇒ 0 = 16 个全在(方案书 20261124d)
+	var _k = job.get("key", {})
+	var _kw = (_k as Dictionary).get("week", 0) if _k is Dictionary else 0
+	battle.set("_pool_week", int(_kw) if (_kw is int or _kw is float) else 0)
 	var st: Dictionary = RefereeJob.state_for(job, Callable(battle, "_foe_normalize_lane"))
 	if st.has("_error"):
 		battle.free()

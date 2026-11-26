@@ -174,6 +174,7 @@ func _b4_on_damaged_equip(u: Dictionary, src, dmg: int) -> void:
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	_dagger_sys.on_any_basic(u, tgt); _magic_sys.on_any_basic(u, tgt); _mask_sys.on_any_basic(u, tgt); battle._spear_syn.on_any_basic(u, tgt)   # 匕首批(11-25): 115 暗影忍者的普攻刀光 · 魔法书批: 骷髅战士狂怒期的额外物理伤害(召唤物, 身上没装备)
+	_spear_sys.on_any_basic(u, tgt)   # 长矛批(11-26 夜): 143 方天画戟砸地后 4 秒每次攻击绕身横扫
 	_bomb_sys.on_any_basic(u, tgt)   # 炸弹批(11-24): 不论有没有装备都过 —— 100 烟雾弹潜行的是友军、107 武士刀小将(召唤物, 身上没装备)靠普攻攒龟能
 	if u.get("equips", []).is_empty(): return
 	u["_basic_serial"] = int(u.get("_basic_serial", 0)) + 1   # 这一次攻击的序号: 同龟多件同名装备共用一份状态的, 靠它认「同一次」(093)
@@ -1459,7 +1460,7 @@ func _conch_grant_equips(worm: Dictionary, si: int) -> void:
 	for it in DataRegistry.phase2_equipment:
 		var c: int = int(it.get("cost", 0))
 		## ★2026-10-16: 排除魔法海螺自己 —— 它本身是 5 费, 抽到就会「小虫死了再变小虫」无限套娃。
-		if (c == CONCH_COST_MIN or c == CONCH_COST_MAX) and str(it.get("id", "")) != "p2eq_033":
+		if (c == CONCH_COST_MIN or c == CONCH_COST_MAX) and str(it.get("id", "")) != "p2eq_033" and WeeklySynergy.battle_ok(str(it.get("id", "")), int(battle.pool_week())):   # 只出本周羁绊池的件(方案书 20261124d)
 			pool.append(str(it.get("id", "")))
 	if pool.is_empty():
 		push_warning("[魔法海螺] 4/5 费装备池为空 —— 小虫不带装备(不静默塞别的费用)")

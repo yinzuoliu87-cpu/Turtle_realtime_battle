@@ -147,6 +147,27 @@ static func cases() -> Dictionary:
 		## ── 长矛(11-26) ── 两只只会站着的小将各带 5 件不同的长矛 = 10 件 4 档; 百夫长第 8 秒登场
 		"sp_cent": [[_me(Vector2(-380, -120), _eq([137, 138, 139, 140, 141], 1), {"idle": true}), _me(Vector2(-380, 120), _eq([142, 143, 144, 145, 146], 1), {"idle": true})]
 			+ _dummies(60, 3, true, 12000.0, 60.0), 30.0],
+		## 10 件长矛(11-26 夜): 每件单独一段, 靶子按触发条件摆
+		## 竹矛: 三只靶子站成一条线 ⇒ 第 3 下穿到身后那只
+		"sp_bamboo": [[_me(Vector2(-60, 0), _eq([137], 1))] + _ring_dummies(Vector2(-60, 0), [Vector2(70, 0), Vector2(150, 0), Vector2(230, 0)]), 10.0],
+		## 鱼叉(11-26 夜改): 远处站着不动的靶子(会走的靶子第 10 秒已经贴脸, 叉飞不出去看不清); 第 10 秒叉过去、眩晕里一下下往回拽
+		"sp_barb": [[_me(Vector2(-300, 0), _eq([138], 1), {"hold": true})] + _dummies(250, 3, false, 30000.0), 14.0],
+		"sp_javelin": [[_me(Vector2(-300, 0), _eq([139], 1), {"hold": true})] + _dummies(150, 3, false, 30000.0), 14.0],
+		## 骑枪: 靶子站在远处 ⇒ 跑过去攒冲势, 第一下冲阵
+		"sp_lance": [[_me(Vector2(-380, 0), _eq([140], 1))] + _dummies(200, 3, false, 30000.0), 12.0],
+		"sp_halb": [[_me(Vector2(-60, 0), _eq([141], 1))] + _dummies(40, 3, false, 30000.0), 10.0],
+		## 盾矛: 三只会打的靶子都在正面 ⇒ 正面减伤 + 每 5 下反刺
+		"sp_shsp": [[_me(Vector2(-60, 0), _eq([142], 1), {"hold": true})] + _dummies(40, 3, true, 30000.0, 60.0), 14.0],
+		## 方天画戟(11-26 夜改): 三只会打的靶子围着打 ⇒ 挨够 30% 最大生命 ⇒ 蓄力 → 跃起 → 砸地, 之后攻击带横扫
+		"sp_ftj": [[_me(Vector2(-10, 0), _eq([143], 1), {"hp": 4000.0})] + _ring_dummies(Vector2(-10, 0), [Vector2(90, 0), Vector2(-60, 80), Vector2(-60, -80)]).map(func(x): x["ai"] = true; x["atk"] = 120.0; x["hp"] = 30000.0; return x), 16.0],
+		"sp_atl": [[_me(Vector2(-300, 0), _eq([144], 1), {"hold": true})] + _ring_dummies(Vector2(-300, 0), [Vector2(380, 0), Vector2(420, -60), Vector2(420, 60), Vector2(460, 0)]), 14.0],
+		"sp_eternal": [[_me(Vector2(-300, 0), _eq([145], 1), {"hold": true})] + _dummies(150, 3, false, 30000.0), 12.0],
+		"sp_holy": [[_me(Vector2(-60, 0), _eq([146], 1))] + _dummies(40, 1, false, 30000.0), 10.0],
+		## 筹码: 黑 + 紫两枚放在一只小将身上, 旁边两只友军 ⇒ 开场每人头上落一枚; 金色第 8 秒全队护罩; 灰色挨打叠满; 棕色倒地复活
+		"ch_shield": [[_me(Vector2(-200, 0), _eq([151, 152], 1)), _me(Vector2(-200, 140), [], {"idle": true}), _me(Vector2(-200, -140), [], {"idle": true})] + _dummies(80, 3, true, 30000.0, 40.0), 8.0],
+		"ch_gold": [[_me(Vector2(-200, 0), _eq([155], 1)), _me(Vector2(-200, 140), [], {"idle": true})] + _dummies(80, 3, true, 30000.0, 40.0), 14.0],
+		"ch_grey": [[_me(Vector2(-60, 0), _eq([156], 1), {"hold": true})] + _dummies(40, 3, true, 30000.0, 80.0), 16.0],
+		"ch_brown": [[_me(Vector2(-60, 0), _eq([154], 1), {"hp": 300.0, "killable": true})] + _dummies(60, 3, true, 30000.0, 400.0), 14.0],
 		## 看动作(配 REC_ZOOM=2): 靶子不动不打、竖着隔开站
 		"ninja_show": [[_u("__summon__", "left", Vector2(-220, 0), {"ghost_eq": "p2eq_115", "equips": _eq([115]), "minion": true, "fe": true})]
 			+ _ring_dummies(Vector2(-220, 0), [Vector2(300, 0), Vector2(380, -120), Vector2(380, 120)]), 16.0],
@@ -230,11 +251,22 @@ func _process(d: float) -> void:
 		for u in _b._units:
 			print("[PROBE] %.1f %s %s pos=%s hp=%s alive=%s nm=%s nb=%s sk=%s st=%s atk=%s cd=%s rng=%s stun=%s" % [_el, str(u.get("side", "")), str(u.get("id", "")), str(u.get("pos", "")), str(int(u.get("hp", 0))), str(u.get("alive", false)), str(u.get("no_move", false)), str(u.get("no_basic", false)), str(u.get("active_skills", [])), str(u.get("state", "")), str(u.get("atk", 0)), str(u.get("atk_cd", 0)), str(u.get("atk_range", 0)), str(u.get("stun_until", 0))])
 		print("[PROBE] mines ", _b._equip_sys._bomb_sys._mines.size(), " over=", _b._over, " edit=", _b._edit_mode)
+	if OS.has_environment("REC_CENT_PROBE") and int(_el * 10.0) != int((_el - d) * 10.0):
+		for u in _b._units:
+			if str(u.get("id", "")) == "_summon_centurion":
+				var sp = u.get("sprite", null)
+				print("[CP] %.1f voff=%s spr=%s vis=%s mod=%s sc=%s anim=%s" % [_el, str(u.get("_slam_voff", Vector3.ZERO)), str(sp.position) if is_instance_valid(sp) else "-", str(sp.visible) if is_instance_valid(sp) else "-", str(sp.modulate) if is_instance_valid(sp) else "-", str(sp.scale) if is_instance_valid(sp) else "-", str(u.get("anim_action", ""))])
 	var spx = _b._spear_syn
 	for k in spx.stat:
 		if int(spx.stat[k]) != int(_seen.get("s_" + k, 0)):
 			print("[EV] %.2f %s %d" % [_el, k, int(spx.stat[k])])
 			_seen["s_" + k] = int(spx.stat[k])
+	for pair in [["i_", _b._equip_sys._spear_sys], ["c_", _b._equip_sys._chip_sys]]:   # 10 件长矛 / 筹码的事件(11-26 夜)
+		var bx = pair[1]
+		for k in bx.stat:
+			if int(bx.stat[k]) != int(_seen.get(str(pair[0]) + k, 0)):
+				print("[EV] %.2f %s %d" % [_el, k, int(bx.stat[k])])
+				_seen[str(pair[0]) + k] = int(bx.stat[k])
 	var ms = _b._equip_sys._mask_sys
 	for k in ms.stat:
 		if int(ms.stat[k]) != int(_seen.get("m_" + k, 0)):

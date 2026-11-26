@@ -112,11 +112,27 @@ func _ready() -> void:
 		hp0.append(float(o["hp"]))
 	var rec: Dictionary = _p.summon("left", 1)
 	var c: Dictionary = rec.get("u", {})
+	## 从天而降: 落地之前谁都没被击飞、没掉血; 落地(LAND_SEC 秒后)那一步才全场结算
+	var air_early := 0
+	var hurt_early := 0
+	for i0 in range(foes.size()):
+		if bool((foes[i0] as Dictionary).get("airborne", false)):
+			air_early += 1
+		if float((foes[i0] as Dictionary)["hp"]) < float(hp0[i0]):
+			hurt_early += 1
+	_adv(SP.LAND_SEC - 0.1)
+	var air_mid := 0
+	for o0 in foes:
+		if bool((o0 as Dictionary).get("airborne", false)):
+			air_mid += 1
+	_adv(0.15)
+	_ok("B 从天而降: 召唤时与落地前 0.1 秒都没人被击飞 / 掉血, 落地那一步才结算", air_early == 0 and hurt_early == 0 and air_mid == 0 and str(rec["state"]) == "idle",
+		"召唤时 击飞 %d 掉血 %d · 落地前 击飞 %d · 状态 %s" % [air_early, hurt_early, air_mid, str(rec["state"])])
 	var air := 0
 	var dmg_ok := true
 	for i in range(foes.size()):
 		var o: Dictionary = foes[i]
-		if bool(o.get("airborne", false)) and absf(float(o.get("vy", 0.0)) - SP.KNOCK_VY) < 1e-3:
+		if bool(o.get("airborne", false)) and absf(float(o.get("vy", 0.0)) - SP.CENT_KNOCK_VY) < 1e-3:
 			air += 1
 		var want: int = _s._resolve_dmg(c, 1.5 * float(c["atk"]), o, true, false)
 		if absf(hp0[i] - float(o["hp"]) - float(want)) > 1.0:
@@ -129,6 +145,7 @@ func _ready() -> void:
 	_field([me, me2, _mk("right")], 2)
 	var ss: int = _p.star_sum("left")
 	rec = _p.summon("left", 2)
+	_p._land(rec)   # 跳过下落(落地结算不混进本段计数)
 	c = rec.get("u", {})
 	var k: float = 1.0 + float(ss) * SP.STAR_PCT
 	_ok("C 星级合计 = 竹矛 3 + 标枪 2 + 长戟 3 = 8(同名取最高) ⇒ ×%.2f; 二档 生命 %.0f 攻 %.0f 双抗 70" % [k, 2600.0 * k, 72.0 * k],
@@ -143,6 +160,7 @@ func _ready() -> void:
 		var t2 := _mk("right", [], 120.0, 0.0)   # 正好在目标身后同一条线上
 		_field([me, t1, t2], tier)
 		rec = _p.summon("left", tier)
+		_p._land(rec)   # 跳过下落(落地结算不混进本段计数)
 		c = rec.get("u", {})
 		c["pos"] = Vector2(t1["pos"]) - Vector2(100.0, 0.0)
 		for o in [t1, t2]:
@@ -165,6 +183,7 @@ func _ready() -> void:
 	var far := _mk("right", [], 700.0, 0.0)
 	_field([me, near, far], 4)
 	rec = _p.summon("left", 4)
+	_p._land(rec)   # 跳过下落(落地结算不混进本段计数)
 	c = rec.get("u", {})
 	c["pos"] = Vector2(near["pos"]) - Vector2(100.0, 0.0)
 	near["airborne"] = false
@@ -188,6 +207,7 @@ func _ready() -> void:
 		foes = [_mk("right", [], 0.0, -60.0), _mk("right", [], 0.0, 60.0), _mk("right", [], 200.0, 0.0)]
 		_field([me] + foes, tier)
 		rec = _p.summon("left", tier)
+		_p._land(rec)   # 跳过下落(落地结算不混进本段计数)
 		c = rec.get("u", {})
 		c["pos"] = Vector2(foes[0]["pos"]) - Vector2(80.0, -60.0)
 		for o in foes:

@@ -159,6 +159,11 @@ func ow_open() -> void:
 	if _ow_stage == null:
 		_ow_stage = OtherworldStage.new(battle)
 	_ow_stage.build()
+	_ow_button_show()
+
+
+## 只建 / 显示镜头切换按钮(场景是 3D 节点, 看直播时由镜像给; 按钮是 2D 界面, 播放端得自己建 —— 见 stream_sync)
+func _ow_button_show() -> void:
 	var p = _ow_ui_parent()
 	if p == null:
 		return
@@ -202,7 +207,7 @@ func _ow_refresh() -> void:
 			var ip: String = OW_ICON_BACK if on else OW_ICON_IN
 			_ow_btn_ic.texture = load(ip) if ResourceLoader.exists(ip) else null
 	if battle.get("_cam_world_off") != null:
-		battle._cam_world_off = (_ow_stage.center3() - battle._world_pos(Vector2(battle._arena_center), 0.0)) if (on and _ow_stage != null) else Vector3.ZERO
+		battle._cam_world_off = (battle._world_pos(Vector2(battle._arena_center) + OtherworldSystem.OW_SHIFT, 0.0) - battle._world_pos(Vector2(battle._arena_center), 0.0)) if on else Vector3.ZERO   # = OtherworldStage.center3(); 直接按常量算, 播放端没有 sim 侧的场景对象
 		battle._apply_cam_zoom()
 
 
@@ -224,6 +229,28 @@ func ow_close(_reason: String, returned: Array = []) -> void:
 				pl.scale = Vector3(1.0, 0.05, 1.0)
 				_ow_flies.append({"node": pl, "drop": true, "t": 0.0, "dur": 0.15})
 			_strip(OWV + "ow-mist.png", 9, battle._world_pos(Vector2((u as Dictionary)["pos"]), 0.0), 2.0, 15.0, false, 0.6)
+
+
+## 看直播 / 录像(播放端不跑 sim, ow_open / ow_close 都不会被调): 每个渲染步之后由 stream_player 调。
+##   单位的 `_ow`(在里世界)字段在流里 ⇒ 有活着的单位在里世界 = 里世界开着: 显示切换按钮、隐去不在观众所看世界的人(ow_hidden);
+##   没有了 = 关了: 收按钮、镜头回主世界。(11-26 夜探针 _probe_stream_mask: 原来本机按钮 89 次 / 播放 0 次, 隐去 178 / 0)
+func stream_sync(units: Array) -> void:
+	var m = battle._equip_sys._mask_sys
+	var any := false
+	for u in units:
+		if u is Dictionary and (u as Dictionary).get("alive", false) and bool((u as Dictionary).get("_ow", false)):
+			any = true
+			break
+	if any == bool(m.stream_ow):
+		return
+	m.stream_ow = any
+	if any:
+		_ow_button_show()
+	else:
+		m.ow_view = false
+		if _ow_btn != null and is_instance_valid(_ow_btn):
+			_ow_btn.visible = false
+		_ow_refresh()
 
 
 func _tick_ow(delta: float) -> void:
@@ -308,6 +335,7 @@ func clear() -> void:
 		_free(f["node"])
 	_mflies.clear()
 	_gas_last.clear()
+	_lion_in.clear()
 	for r in _ow_rifts:
 		_free(r["node"])
 		_free(r["label"])
@@ -436,8 +464,38 @@ func face_white_steal(u: Dictionary, tgt: Dictionary) -> void:
 var _lion_run_sd := {}
 
 
+## 登场(11-26 夜重做, 用户「召唤物的登场，登场动画…别敷衍了」): 舞狮从携带者身后 3 米外用奔跑帧条一个跃步扑进场(抛物线, 0.45 秒),
+##   落地那一下炸爆竹。只是画面偏移(_slam_voff), 结算位置不动 ⇒ 不影响对局结果。原来: 原地一声爆竹、狮子凭空出现。
+const LION_IN_SEC := 0.45
+var _lion_in: Array = []   # {p, t, from(画面偏移起点)}
+
+
 func lion_spawn(p: Dictionary) -> void:
-	_strip(MV + "mask-lion-pop.png", 9, battle._world_pos(Vector2(p["pos"]), 0.0), 2.4, 14.0, false, 9.0 / 14.0, false, null, 0.0)
+	var face: float = 1.0 if bool(p.get("face_right", str(p.get("side", "left")) == "left")) else -1.0
+	var from := Vector3(-3.0 * face, 0.0, 0.0)
+	p["_slam_voff"] = from
+	_lion_in.append({"p": p, "t": 0.0, "from": from})
+	lion_run(p, Vector2(face, 0.0))   # 扑进来这一段播奔跑帧条
+
+
+func _tick_lion_in(delta: float) -> void:
+	var keep: Array = []
+	for L in _lion_in:
+		var p: Dictionary = L["p"]
+		L["t"] = float(L["t"]) + delta
+		var k: float = clampf(float(L["t"]) / LION_IN_SEC, 0.0, 1.0)
+		if not p.get("alive", false):
+			p["_slam_voff"] = Vector3.ZERO
+			continue
+		var from: Vector3 = L["from"]
+		p["_slam_voff"] = from * (1.0 - k) + Vector3(0.0, 1.4 * sin(k * PI), 0.0)
+		if k >= 1.0:
+			p["_slam_voff"] = Vector3.ZERO
+			lion_stop(p)
+			_strip(MV + "mask-lion-pop.png", 9, battle._world_pos(Vector2(p["pos"]), 0.0), 2.4, 14.0, false, 9.0 / 14.0, false, null, 0.0)
+			continue
+		keep.append(L)
+	_lion_in = keep
 
 
 func lion_windup(p: Dictionary, _dir: Vector2, sec: float) -> void:
@@ -714,6 +772,7 @@ func tick(delta: float) -> void:
 	super.tick(delta)
 	_tick_mfx(delta)
 	_tick_mflies(delta)
+	_tick_lion_in(delta)
 	_tick_ven(delta)
 	_tick_gold(delta)
 	_tick_ow(delta)

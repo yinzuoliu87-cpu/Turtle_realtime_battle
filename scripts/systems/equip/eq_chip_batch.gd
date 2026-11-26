@@ -35,8 +35,14 @@ func _init(b) -> void:
 	battle = b
 
 
+## 筹码的演出画在长矛羁绊那一层(SpearEqVfx)。那一层是懒加载的: 场上没有长矛时一直是空的 ⇒ 先让它建起来
+##   (11-26 夜录像抓到: 原来直接读、是空就跳过 ⇒ 没带长矛的阵容里黑紫开场护盾 / 金色护罩 / 灰色满层一个都不画)
 func _fx(method: String, args: Array = []) -> void:
-	var v = battle._spear_syn.vfx if battle.get("_spear_syn") != null else null
+	if battle.get("_spear_syn") == null:
+		return
+	if battle._spear_syn.vfx == null:
+		battle._spear_syn._fx("noop", [])
+	var v = battle._spear_syn.vfx
 	if v != null and v.has_method(method):
 		v.callv(method, args)
 
@@ -56,8 +62,15 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 		"p2eq_151", "p2eq_152":   # 黑 = 物理护盾 / 紫 = 魔法护盾, 给全体友军(每枚各自生效, 可叠)
 			var amt: float = float(u.get("maxHp", 0.0)) * SHIELD_PCT
 			var key: String = "phys_shield" if eid == "p2eq_151" else "magic_shield"
+			## 记账照 012 海藻(MagicShield.seaweed_on_spawn): 乘受盾方护盾强度 · 进受盾方「获盾」· 记进这一枚的装备统计「护盾」栏
+			##   (原来直接加字段不记账 ⇒ 装备统计里这枚给的盾是 0, 直播覆盖扫描 verify_stream_coverage 抓到「151 没产出」)
+			var tl: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, eid))
 			for a in _allies(u):
-				a[key] = float(a.get(key, 0.0)) + amt
+				var got: float = amt * BattleDamage.shield_strength(a, battle._t)
+				a[key] = float(a.get(key, 0.0)) + got
+				a["_st_shield"] = float(a.get("_st_shield", 0)) + got
+				battle._equip_sys.tally.on_shield(a, got)
+			battle._equip_sys.tally.pop(tl)
 			stat["shield_phys" if eid == "p2eq_151" else "shield_mag"] += 1
 			_fx("chip_team_shield", [u, eid == "p2eq_151"])
 		"p2eq_153":   # 黄: 整个战场控制免疫
@@ -132,7 +145,9 @@ func tick(_delta: float) -> void:
 		if bool(g["done"]) or not u.get("alive", false) or el < GOLD_AT:
 			continue
 		g["done"] = true
+		var tl: Array = battle._equip_sys.tally.push(u, battle._equip_sys.key_of(u, "p2eq_155"))   # 演出与加成记在这一枚名下(装备统计 / 直播覆盖扫描按上下文认)
 		_gold_guard(u)
+		battle._equip_sys.tally.pop(tl)
 
 
 ## 155 金: 第 8 秒全体友军金色护罩 3 秒(免疫伤害与负面效果) + 这一路全体友军 +25 攻击 +25 双抗
@@ -152,12 +167,20 @@ func _gold_guard(u: Dictionary) -> void:
 func tick_unit(u: Dictionary, delta: float) -> void:
 	if not u.get("alive", false):
 		return
-	var n := 0
+	if float(u["hp"]) >= float(u.get("maxHp", 0.0)):
+		return
+	## 150 绿: 每秒回复 1% 最大生命值。每枚各自回、各自记进自己的装备统计(用户 11-13「每件各自独立生效…统计也分开」;
+	##   原来几枚合成一次 _heal 且不压统计上下文 ⇒ 回的血不记在任何一枚名下, 直播覆盖扫描 verify_stream_coverage 抓到「150 没产出」)
+	var es = battle._equip_sys
+	var ckp: Array = es.ck_save()
 	for e in u.get("equips", []):
-		if e is Dictionary and str((e as Dictionary).get("id", "")) == "p2eq_150":
-			n += 1
-	if n > 0 and float(u["hp"]) < float(u.get("maxHp", 0.0)):   # 150 绿: 每秒回复 1% 最大生命值(每枚各自)
-		battle._damage._heal(u, float(u.get("maxHp", 0.0)) * GREEN_REGEN * float(n) * delta, true)
+		if not (e is Dictionary) or str((e as Dictionary).get("id", "")) != "p2eq_150":
+			continue
+		es.ck_set(u, e)
+		var tl: Array = es.tally.push(u, es.key_of(u, "p2eq_150"))
+		battle._damage._heal(u, float(u.get("maxHp", 0.0)) * GREEN_REGEN * delta, true)
+		es.tally.pop(tl)
+	es.ck_restore(ckp)
 
 
 func clear_all() -> void:

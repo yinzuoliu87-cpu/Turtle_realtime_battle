@@ -334,20 +334,53 @@ func _run_obj(o: Dictionary) -> void:
 			await _third_clock_frame()
 		rec.pre_step()
 		if i == low_at and _subject is Dictionary and bool(_subject.get("alive", false)):
+			if _eid == "p2eq_143" and foes.size() > 0:
+				## 143 方天画戟(2026-11-26 夜改): 挨打攒战意, 直接改血量不过伤害路径攒不起来 ⇒ 这一刻走真的伤害路径挨一下(最大生命 35%)
+				s._damage._apply_damage_from(foes[0], _subject, int(float(_subject.get("maxHp", 100.0)) * 0.35), Color.WHITE)
 			_subject["hp"] = maxf(1.0, float(_subject.get("maxHp", 100.0)) * 0.25)
 			## 114 仪式匕首(2026-11-25): 效果全在「斩杀 10% 血以下 → 刻血契」, 4 万血的靶子 2 秒内碰不到斩杀线 ⇒ 同一刻把第一个靶子压到 5%
 			if (_eid == "p2eq_114" or _eid == "p2eq_113") and foes.size() > 0 and bool((foes[0] as Dictionary).get("alive", false)):
 				## 113 弯匕(2026-11-25 CI 抓到)同理: 效果是「击杀后 3 秒攻速暴涨」, 4 万血的靶子杀不死 ⇒ 同一刻压到 5% 让携带者能打出击杀
 				foes[0]["hp"] = float(foes[0].get("maxHp", 100.0)) * 0.05
+		if i == 1 and _eid == "p2eq_140" and _subject is Dictionary:
+			## 140 骑枪(2026-11-26 夜改): 移动 400 码才攒满, 靶子贴脸站着攒不起来 ⇒ 开局把靶子往外推 650 码(推 400 时走到近战距离只走了三百多码)
+			var away: Vector2 = DetMath.norm(Vector2(foes[0]["pos"]) - Vector2(_subject["pos"])) if foes.size() > 0 else Vector2.RIGHT
+			for f0 in foes:
+				if f0 is Dictionary:
+					f0["pos"] = ArenaShape.clamp_in(Vector2(f0["pos"]) + away * 650.0, s.ARENA, 40.0)
+		if i == 1 and _eid == "p2eq_137" and _subject is Dictionary and foes.size() >= 2:
+			## 137 竹矛(2026-11-26): 第 3 下只在「目标身后 220 码内同一直线上还有敌人」时穿刺 ⇒ 开局把第二个靶子摆到第一个正后方 80 码
+			var d0: Vector2 = DetMath.norm(Vector2(foes[0]["pos"]) - Vector2(_subject["pos"]))
+			foes[1]["pos"] = Vector2(foes[0]["pos"]) + d0 * 80.0
 		if i == kill_at and _subject is Dictionary and bool(_subject.get("alive", false)):
-			_subject["hp"] = 1.0
-			s._kill(_subject, foes[0])
+			if _eid == "p2eq_134" or _eid == "p2eq_154":
+				## 134 威尼斯面具 / 154 棕色筹码(2026-11-26): 效果是「受到致命伤害时倒地复活」, `_kill` 绕过伤害路径进不了那个钩子
+				##   ⇒ 这一刻改成走真的伤害路径打一下致命伤害
+				s._damage._apply_damage(_subject, int(float(_subject.get("maxHp", 100.0)) * 3.0), Color.WHITE)
+			else:
+				_subject["hp"] = 1.0
+				s._kill(_subject, foes[0])
 		s._sim_step(SIM_DT, float(s._hitstop) > 0.0, not (s._timestop._ts_active as Array).is_empty())
 		rec.post_step()
 		if not (s._timestop._ts_active as Array).is_empty():
 			ts_steps += 1
 		if _eid == "p2eq_113" and _subject is Dictionary and float(_subject.get("_kris_until", 0.0)) > 0.0:
 			_cur["kris_on"] = 1   # 113 攻速暴涨挂上过(产品自己写的 _kris_until, 金色残影也读它)
+		if (_eid == "p2eq_134" or _eid == "p2eq_154") and _subject is Dictionary and float(_subject.get("_ven_until", 0.0)) > 0.0:
+			_cur["ven_on"] = 1   # 倒地复活真的发生过(产品自己写的 _ven_until, 半透明与复活光环都读它)
+		if _eid == "p2eq_153" and _subject is Dictionary and float(_subject.get("cc_immune_until", 0.0)) > 1.0e11:
+			_cur["cci_on"] = 1   # 153 黄色筹码整场免控真的挂上了
+		if _subject is Dictionary:
+			if _eid == "p2eq_128" and float(_subject.get("_fox_max", 0.0)) > 0.0:
+				_cur["fox_on"] = 1      # 128 狐狸面具: 被动增伤上限写上了(纯被动, 没有演出)
+			if _eid == "p2eq_132" and bool(_subject.get("_ghost_hidden", false)):
+				_cur["ghost_on"] = 1    # 132 鬼面: 半血潜行真的发生过
+			if _eid == "p2eq_156" and int(_subject.get("_grey_stk", 0)) > 0:
+				_cur["grey_on"] = 1     # 156 灰色筹码: 真的叠上层了
+			if _eid == "p2eq_155" and float(_subject.get("_gold_guard_until", 0.0)) > 0.0:
+				_cur["gold_on"] = 1     # 155 金色筹码: 第 8 秒全队金色护罩真的挂上了(护罩 / 加属性都不产出伤害治疗)
+			if _eid == "p2eq_133" and float(_subject.get("_gas_move", 0.0)) > 0.0:
+				_cur["gas_on"] = 1      # 133 防毒面具: 掉血后真的加上了移速(免疫毒 / 灼烧 / 流血那一半要有人上 DoT, 扫描局里没有)
 		if _eid != "" and _subject is Dictionary:
 			var es := _fp_state((_subject.get("eq_state", {}) as Dictionary).get(_eid))
 			if es != eqst_last:
@@ -451,6 +484,32 @@ func _den(o: Dictionary) -> void:
 				## 113 弯匕的效果是攻速暴涨(没有伤害产出) ⇒ 证据 = 击杀后真的挂上了(_kris_until)
 				c["den_kind"] = "击杀后攻速暴涨(_kris_until)"
 				c["den"] = int(c.get("kris_on", 0))
+			elif _eid == "p2eq_128":
+				c["den_kind"] = "被动增伤(_fox_max)"
+				c["den"] = int(c.get("fox_on", 0))
+			elif _eid == "p2eq_132":
+				c["den_kind"] = "半血潜行(_ghost_hidden)"
+				c["den"] = int(c.get("ghost_on", 0))
+			elif _eid == "p2eq_155":
+				c["den_kind"] = "第 8 秒金色护罩(_gold_guard_until)"
+				c["den"] = int(c.get("gold_on", 0))
+			elif _eid == "p2eq_133":
+				c["den_kind"] = "掉血加移速(_gas_move)"
+				c["den"] = int(c.get("gas_on", 0))
+			elif _eid == "p2eq_156":
+				c["den_kind"] = "叠层(_grey_stk)"
+				c["den"] = int(c.get("grey_on", 0))
+			elif _eid in ["p2eq_147", "p2eq_148", "p2eq_149"]:
+				## 白 / 粉 / 红筹码(2026-11-26)是纯属性消耗品, 没有演出 ⇒ 证据同 047 / 112: 属性表里真有这一件的数值
+				c["den_kind"] = "纯属性(筹码)"
+				c["den"] = 1 if (preload("res://scripts/gamedata/equip_stats.gd").STATS.get(_eid, []) as Array).size() > 0 else 0   # 值是按星级排的数组
+			elif _eid == "p2eq_153":
+				c["den_kind"] = "整场免控(cc_immune_until)"
+				c["den"] = int(c.get("cci_on", 0))
+			elif _eid == "p2eq_134" or _eid == "p2eq_154":
+				## 134 / 154 的效果是倒地复活(复活时不产出伤害 / 治疗记账) ⇒ 证据 = 致命伤害那一下真的进了复活(_ven_until)
+				c["den_kind"] = "倒地复活(_ven_until)"
+				c["den"] = int(c.get("ven_on", 0))
 			elif _eid == "p2eq_041":
 				c["den_kind"] = "涨潮步数(_ebb_on)"
 				c["den"] = int(c.get("ebb_on", 0))
