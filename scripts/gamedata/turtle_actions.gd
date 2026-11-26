@@ -16,7 +16,7 @@ const ATTACK := {
 	"cyber": ["pets/animations/cyber/attack.png", 15.0],   # 12 帧
 	"diamond": ["pets/animations/diamond/attack.png", 15.0],   # 12 帧
 	"dice": ["pets/animations/dice/attack.png", 15.0],   # 12 帧
-	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 7 帧
+	"fortune": ["pets/animations/fortune/attack.png", 15.0],   # 9 帧
 	"gambler": ["pets/animations/gambler/attack.png", 15.0],   # 10 帧
 	"headless": ["pets/animations/headless/attack.png", 15.0],   # 12 帧
 	"hiding": ["pets/animations/hiding/attack.png", 15.0],   # 12 帧

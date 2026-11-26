@@ -253,7 +253,7 @@
   ]
  },
  "fortune": {
-  "attack": 7,
+  "attack": 9,
   "body0": 69,
   "casts": {
    "fortuneAllIn": [

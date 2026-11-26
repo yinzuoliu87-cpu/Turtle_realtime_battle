@@ -4,12 +4,11 @@
   待机 = Aseprite 后台脚本 tools/assetgen/ase/fortune_idle.lua 在定稿上逐帧改像素(呼吸 + 墨镜反光), 不是 AI
   其余 6 段 = PixelLab animate_image_pixminimax, 首尾钉定稿(死亡只钉首帧), 8 帧(+ 第 0 帧原图)
 排帧:
-  攻击: 用 0~4 + 7~8(第 5 / 6 帧 AI 让它转过身去、壳朝前, 违反「不转身」, 删掉); 命中 = 第 4 帧(剑劈到身前)
-  攻击 / 招财进宝: 只留跟身体连在一起的像素(AI 自己画的剑弧、白光星、撒出的金币是演示特效, 游戏另有特效画; pet_seq/README「裸帧」)
+  攻击: 原样 9 帧 = 后拧举剑 → 劈下(命中第 4 帧) → 顺势旋身一圈(5~6 朝右、7 正面)→ 回站姿; 剑弧原样保留
+        (用户 11-26 深夜「恢复，不用擦掉」—— 之前我按自己编的「不转身」删了 5~7 帧、擦了剑弧, 没有出处, 撤回)
+  招财进宝: 只留跟身体连在一起的像素(AI 画的撒出去的金币是演示特效; pet_seq/README「裸帧」)
   骰子: 抛在空中的骰子是动作本身, 保留
-  11-26 深夜自查(拼图逐帧看)补两处:
-  · 攻击命中帧(原第 4 帧)AI 画的剑弧跟剑连成一块, 连通块清不掉 ⇒ 按区域擦掉剑弧(头顶以上 / 头左侧 / 手左下),
-    再从待机第 0 帧拷剑身(护手 → 剑尖, 斜向左下)贴到手上 —— 脚本拷像素, 不是重画
+  11-26 深夜自查(拼图逐帧看):
   · 招财进宝原第 2~4 帧有 AI 画的大白星 / 小闪光(第 2 帧整张脸被星盖住, 第 4 帧闪光压在壳边上, 擦了会在壳上开洞)⇒ 删掉, 第 5 帧(同一举剑姿势、干净)停三拍
 一次性; 输出逐字节确定。
 """
@@ -54,30 +53,6 @@ def main_body(im: Image.Image) -> Image.Image:
     return out
 
 
-def fix_hit(im: Image.Image) -> Image.Image:
-    """攻击命中帧: 擦剑弧 + 从待机帧拷剑身(坐标在 4 倍网格图上量的, 152 帧坐标)"""
-    im = im.copy()
-    px = im.load()
-    for y in range(152):
-        for x in range(152):
-            if y <= 81 or (x <= 63 and 82 <= y <= 111) or (x <= 58 and 112 <= y <= 131):
-                px[x, y] = (0, 0, 0, 0)
-    for y in range(82, 89):             # 头顶左角压着的一截剑弧: 只擦非绿、非暗描边的像素
-        for x in range(63, 73):
-            c = px[x, y]
-            if c[3] >= 128 and not (c[1] > c[0] and c[1] > c[2]) and sum(c[:3]) > 150:
-                px[x, y] = (0, 0, 0, 0)
-    idle = Image.open(os.path.join(IDLE, "fortune_idle_00.png")).convert("RGBA").load()
-    dx, dy = -7, -6                     # 待机护手(66,125) → 命中帧手里(59,119)
-    for y in range(118, 147):
-        for x in range(44, 67):
-            c = idle[x, y]
-            if c[3] < 128 or (c[1] > c[0] and c[1] > c[2] + 20):   # 跳过透明与绿色(手)
-                continue
-            px[x + dx, y + dy] = c
-    return im
-
-
 def put(seg: str, frames: list) -> None:
     d = os.path.join(DST, seg)
     os.makedirs(d, exist_ok=True)
@@ -99,9 +74,7 @@ def main() -> None:
     os.makedirs(DST, exist_ok=True)
     put("idle", [Image.open(os.path.join(IDLE, "fortune_idle_%02d.png" % i)).convert("RGBA") for i in range(8)])
     put("run", ai("fE_walk", list(range(8))))
-    atk = ai("fE_atk", [0, 1, 2, 3, 4, 7, 8], clean=True)
-    atk[4] = fix_hit(atk[4])
-    put("attack", atk)
+    put("attack", ai("fE_atk", list(range(9))))
     put("death", ai("fE_die", list(range(9))))
     put("cast_fortuneDice", ai("fE_dice", list(range(9))))
     put("cast_fortuneAllIn", ai("fE_allin", list(range(8))))   # 末帧(第 8 帧)AI 画了撒出去的金币 —— 投币由游戏弹道画, 不要
