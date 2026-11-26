@@ -1675,8 +1675,9 @@ func ftj_spin(u: Dictionary) -> void:
 ##   ⑤ 砸中友方: 落点金色光柱(holy-ally, 0.65 秒) + 「等级 +1」
 ##   ⑥ 砸中敌方: 金色十字星爆(旧圣枪自己的 spear-holy-burst) + 一颗小光点从敌人飞回携带者(对应拿到的护盾)
 ##   娜美 W 的办法: 同一种飞行物, 落点分两种 —— 友方是往上的光柱(增益), 敌方是往外炸的星爆(伤害)。
-const HOLY_GUARD_M := 7.75      # holy-guard 帧高(米): 插住的枪(41 像素)约 2 米, 比龟高一点
-const HOLY_GUARD_BELOW := 22.0  # 帧里锚点(脚底)下面还有多少像素(打包脚本打印的)
+const HOLY_GUARD_M := 5.0       # holy-guard-up 帧高(米, 100 像素): 插住的枪露出地面约 2.5 米, 从角色头顶露出一大截
+const HOLY_GUARD_BELOW := 16.0  # 帧里锚点(脚底)下面还有多少像素(打包脚本打印的)
+const HOLY_GUARD_GROUND_M := 3.6  # holy-guard-ground 帧宽(米, 72 像素): 冲击环最大直径约 3 米
 const HOLY_ALLY_M := 4.0        # holy-ally 帧高(米): 光柱约 3.5 米
 const HOLY_ALLY_BELOW := 13.0
 const HOLY_CH_M := 3.2          # holy-channel 帧高(米)
@@ -1696,10 +1697,17 @@ func _feet_strip(path: String, nf: int, at: Vector2, h_m: float, below_px: float
 	return _strip(path, nf, battle._world_pos(at, -off), h_m, fps, loop, life, false, follow, -off)
 
 
-const HOLY_GUARD_BACK := 46.0   # 圣枪插在携带者身后这么多码的地上(插在正中会压住身体, 11-26 录像自查)
+## 圣枪插在角色站的位置(用户 11-26「不应该说插在人的位置吗？角色的位置上吗？」): 拆两层, 同一时间轴(12 帧 13fps)。
+##   立着的(holy-guard-up): 枪落下插进角色脚下, 往画面里退 4 码 + 开深度测试 ⇒ 立在角色身后、被身体挡住, 枪杆从头顶露出一大截;
+##   贴地的(holy-guard-ground, 俯视渲染): 闪光 + 冲击环 + 十字平铺在角色脚下(单位压在上面)。
+##   第一版画在人前面压住身体、第二版挪到身后 46 码、第三版一张贴图开深度测试 ⇒ 地面那半圈被地面切掉 —— 都不对。
 func holy_guard(u: Dictionary, resist: int) -> void:
-	var back: float = -HOLY_GUARD_BACK if str(battle._eff_side(u)) == "left" else HOLY_GUARD_BACK   # 左边队伍面朝右 ⇒ 身后 = 左
-	_feet_strip(SV + "holy-guard.png", 12, Vector2(u["pos"]) + Vector2(back, -6.0), HOLY_GUARD_M, HOLY_GUARD_BELOW, 13.0, false, 12.0 / 13.0)   # 插住就不动(不跟人走)
+	var at := Vector2(u["pos"])
+	var s := _feet_strip(SV + "holy-guard-up.png", 12, at + Vector2(0.0, -4.0), HOLY_GUARD_M, HOLY_GUARD_BELOW, 13.0, false, 12.0 / 13.0)   # 插住就不动(不跟人走)
+	if s != null:
+		s.no_depth_test = false
+		s.render_priority = -1
+	_strip(SV + "holy-guard-ground.png", 12, battle._world_pos(at + Vector2(0.0, -12.0), 0.02), HOLY_GUARD_GROUND_M, 13.0, false, 12.0 / 13.0, true, null, 0.02)   # 往后 12 码: 圆心对上立绘脚底(11-26 录像量过, 不挪圆心偏在脚前)
 	battle._vfx._float_text(u["pos"] + Vector2(0, -88), Lang.t("护甲和魔抗 +%d") % resist, Color("#ffe08a"))   # 分段表 ②: 双抗
 
 

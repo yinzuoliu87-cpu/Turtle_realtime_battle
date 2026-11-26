@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bnbevcrk84ni3"
-path="res://.godot/imported/holy-guard.png-317a819126099300e8f48a400a92caf0.ctex"
+uid="uid://3fkxv6h6ic5f"
+path="res://.godot/imported/holy-guard-ground.png-a236a3951f515d118363216b97b9ef19.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/holy-guard.png"
-dest_files=["res://.godot/imported/holy-guard.png-317a819126099300e8f48a400a92caf0.ctex"]
+source_file="res://assets/sprites/vfx/holy-guard-ground.png"
+dest_files=["res://.godot/imported/holy-guard-ground.png-a236a3951f515d118363216b97b9ef19.ctex"]
 
 [params]
 

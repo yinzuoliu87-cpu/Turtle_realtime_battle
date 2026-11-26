@@ -4,8 +4,9 @@
   · 全部是 PixelLab 特效工作台(vfx_workbench)出的, 不是手画、没有 AI 生图:
     holy-orb      光球(循环 8 帧): 现成部件 magic_orb 改金色 + 自己加的两层(头上四芒十字星 holy_cross 一闪一闪、外圈细光环 holy_halo 呼吸)
     holy-ally     砸中友方(9 帧): 现成部件 level_up 改金色、缩到 0.65 秒 + 自己加的两层(光柱顶端十字星 top_cross / top_glow)
-    holy-guard    圣枪护盾触发(12 帧): 全部自己写的图层(holy-guard.recipe.json): 一支自己逐行画像素的金色长枪从画面上方加速落下、
-                  刃尖插进地面 → 地面压扁的白金闪光 + 冲击环 + 地面金色十字 + 火星 + 往上飘的光点
+    holy-guard-up / holy-guard-ground  圣枪护盾触发(各 12 帧, 同一时间轴): 全部自己写的图层(*.recipe.json)。
+                  用户 11-26「不应该说插在人的位置吗？」⇒ 拆两层: 立着的(一支自己逐行画像素的金色长枪从画面上方加速落下、刃尖插进地面 + 天光 + 火星 + 上飘光点;
+                  引擎里开深度测试立在角色身后, 被身体挡住) / 贴地的(镜头正上方俯视渲染: 白金闪光 + 冲击环 + 金色十字; 引擎里平铺在角色脚下)。
     holy-channel  引导(循环 12 帧): 全部自己写的图层: 头顶细金环 + 十字星 + 转动的刻度 + 往环里汇聚的光点 + 脚下淡光环
   · 参考研究: docs/studies/20261126-参考-娜美W冲击之潮.md(同一飞行物砸友方 / 敌方靠落点颜色与形状区分)。
   · 砸中敌方用的是旧圣枪自己的两套(spear-holy-burst 十字星爆 / spear-holy-mark 圣痕印记), 同一件装备里换用途, 不算借别人的。
@@ -25,7 +26,7 @@ SRC = os.path.join(ROOT, "tools", "assetgen", "ai_src", "holy")
 VFX = os.path.join(ROOT, "assets", "sprites", "vfx")
 
 ## 名字 → (锚点居中方式) ; center = 锚点在帧正中, feet = 锚点水平居中、底边留 BELOW
-JOBS = {"holy-orb": "center", "holy-ally": "feet", "holy-guard": "feet", "holy-channel": "feet"}
+JOBS = {"holy-orb": "center", "holy-ally": "feet", "holy-guard-up": "feet", "holy-guard-ground": "center", "holy-channel": "feet"}
 
 
 def frames_of(name):
