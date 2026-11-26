@@ -1136,6 +1136,9 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 				out.append(Lang.t("横扫状态：%d 秒") % int(st.get("buff", 0)))
 			else:
 				out.append(Lang.t("积攒进度 %d%%") % mini(100, int(st.get("pct", 0))))   # 11-27 文案「战意」被判风味词, 改「层数」; 面板跟着改
+		"holy_spear":
+			out.append(Lang.t("储能 %d / %d") % [int(st.get("store", 0)), int(st.get("cap", 0))])
+			out.append(Lang.t("引导中") if bool(st.get("channel", false)) else Lang.t("%d 秒后引导") % maxi(0, int(st.get("next", 0))))
 		"chip_gold":
 			out.append(Lang.t("金色护罩：已触发") if bool(st.get("done", false)) else Lang.t("金色护罩：开打第 %d 秒触发") % int(EqChipBatch.GOLD_AT))
 		"chip_cci":

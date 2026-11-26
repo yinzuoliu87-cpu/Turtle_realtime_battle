@@ -6294,7 +6294,7 @@ func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升�
 func _effective_level(u: Dictionary) -> int:
 	var lv: int = int(u.get("level", 1))
 	var st = u.get("eq_state", {}).get(_equip_sys.key_of(u, "p2eq_036"), {})
-	return lv + int(st.get("egg_levels", 0))
+	return lv + int(st.get("egg_levels", 0)) + int(u.get("_holy_lv", 0))   # 146 圣枪光球给的临时等级
 
 
 

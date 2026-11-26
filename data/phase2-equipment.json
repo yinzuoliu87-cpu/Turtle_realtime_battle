@@ -1744,13 +1744,13 @@
     "id": "p2eq_146",
     "name": "圣枪",
     "cost": 5,
-    "baseStats1": "+生命300/700/2000·攻30/70/300",
+    "baseStats1": "+生命200/450/2500·护甲15/30/120·魔抗15/30/120",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "攻击为目标叠加圣痕，达到 {C:EqSpearBatch.HOLY_STACKS} 层时引爆，造成 {C:EqSpearBatch.HOLY_DMG} 魔法伤害，并回复自身 {C:EqSpearBatch.HOLY_HEAL%}% 最大生命值。",
+    "effectDesc1": "每个战场中生命值首次低于 {C:EqSpearBatch.HOLY_GUARD_AT%}% 时，获得自身 {C:EqSpearBatch.HOLY_GUARD_PCT%}% 最大生命值的圣枪护盾，该护盾不会衰减。同时获得 {C:EqSpearBatch.HOLY_RESIST} 护甲和魔抗，持续到这个战场结束。\n获得任何护盾时，将护盾值存入储能，储能上限为自身最大生命值。每 {C:EqSpearBatch.HOLY_IV} 秒开始引导：每 {C:EqSpearBatch.HOLY_ORB_IV} 秒消耗 {C:EqSpearBatch.HOLY_ORB_COST} 点储能，向场上随机一个单位射出光球，储能不足时引导结束。光球命中友方统领或小将时，使其获得 1 点临时等级（持续到这个战场结束）并回复 {C:EqSpearBatch.HOLY_ORB_HEAL} 生命值。命中敌方单位时，造成 {C:EqSpearBatch.HOLY_ORB_DMG} 魔法伤害，并为自身提供 {C:EqSpearBatch.HOLY_ORB_SHIELD} 护盾。",
     "effectDesc3": "",
     "img": "equip/p2eq_146.png",
-    "effectBrief": "攻击叠加圣痕，达到上限时引爆并回复生命值。"
+    "effectBrief": "首次半血时获得圣枪护盾与双抗。护盾存入储能，定期引导光球：强化友军或攻击敌人。"
   },
   {
     "id": "p2eq_147",

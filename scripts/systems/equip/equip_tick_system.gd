@@ -762,19 +762,52 @@ func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010:
 ## 跨路重放温泉蛋已获得的临时等级(用户2026-08-01「重置问题同竹枝弓箭」)。
 ## 新单位的属性是干净的基线, 所以直接拿它当 ref 连加 n 级 —— 与 _egg_add_progress 里逐级加同一套公式。
 ## ★不复用 _egg_add_progress: 那条要吃"孵化进度"且会重复触发满级护盾(incub_given 虽拦着, 但依赖它就脆)。
+## 临时等级的基准(温泉蛋 036 与圣枪 146 共用一份): 本单位第一次拿临时等级那一刻的基础属性。
+##   ★共用的理由: 两边各锁各的基准、各写各的攻击间隔 ⇒ 同一只龟两件都有时, 后写的一方把另一方加的攻速抹掉。
+func _tlv_ref(u: Dictionary) -> Dictionary:
+	if not u.has("_tlv_ref"):
+		u["_tlv_ref"] = {"atk": float(u["base_atk"]), "def": float(u["base_def"]), "mr": float(u["base_mr"]),
+			"hp": float(u["maxHp"]), "iv": float(u.get("atk_interval", 1.0))}
+	return u["_tlv_ref"]
+
+
+func _tlv_ref_into(u: Dictionary, stt: Dictionary) -> void:
+	var r: Dictionary = _tlv_ref(u)
+	stt["ref_atk"] = r["atk"]; stt["ref_def"] = r["def"]; stt["ref_mr"] = r["mr"]
+	stt["ref_hp"] = r["hp"]; stt["ref_iv"] = r["iv"]
+
+
+## 146 圣枪光球砸到友方: 临时等级 +1(规则同温泉蛋: 线性 +5% 基础攻击 / 双抗 / 最大生命, 攻速 +2%; 本路有效, 换路单位重建即清)。
+func holy_level_up(u: Dictionary) -> void:
+	if not u.get("alive", false) or battle._untouch_block(u, "holy_level"):
+		return
+	var r: Dictionary = _tlv_ref(u)
+	u["_holy_lv"] = int(u.get("_holy_lv", 0)) + 1
+	u["base_atk"] += float(r["atk"]) * EGG_LV_GROWTH
+	u["base_def"] += float(r["def"]) * EGG_LV_GROWTH
+	u["base_mr"] += float(r["mr"]) * EGG_LV_GROWTH
+	var hpg: float = float(r["hp"]) * EGG_LV_GROWTH
+	u["maxHp"] += hpg; u["hp"] += hpg
+	var egg: int = 0
+	var es: Dictionary = u.get("eq_state", {})
+	if es.has(battle._equip_sys.key_of(u, "p2eq_036")):
+		egg = int((es[battle._equip_sys.key_of(u, "p2eq_036")] as Dictionary).get("egg_levels", 0))
+	u["atk_interval"] = maxf(0.1, float(r["iv"]) / (1.0 + EGG_LV_ASPD * float(egg + int(u["_holy_lv"]))))
+	battle._recalc_stats(u)
+
+
 func _egg_replay_levels(u: Dictionary, n: int) -> void:
 	if n <= 0 or not u.get("alive", false):
 		return
 	var stt: Dictionary = u["eq_state"].get(battle._equip_sys.key_of(u, "p2eq_036"), {})
 	if not stt.has("ref_atk"):
-		stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
-		stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
+		_tlv_ref_into(u, stt)
 	u["base_atk"] += float(stt["ref_atk"]) * EGG_LV_GROWTH * float(n)
 	u["base_def"] += float(stt["ref_def"]) * EGG_LV_GROWTH * float(n)
 	u["base_mr"] += float(stt["ref_mr"]) * EGG_LV_GROWTH * float(n)
 	var hpg: float = float(stt["ref_hp"]) * EGG_LV_GROWTH * float(n)   # ★原来写死 0.05
 	u["maxHp"] += hpg; u["hp"] += hpg
-	u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + EGG_LV_ASPD * float(n)))
+	u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + EGG_LV_ASPD * float(n + int(u.get("_holy_lv", 0)))))
 	stt["egg_levels"] = n
 	u["eq_state"][battle._equip_sys.key_of(u, "p2eq_036")] = stt
 	battle._recalc_stats(u)
@@ -790,15 +823,14 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 		stt["incub"] = float(stt["incub"]) - EGG_FULL
 		battle._audio_sys.sfx_equip("p2eq_036")   # 装备触发声(11-05 音效 v2; 只管声音)
 		if not stt.has("ref_atk"):   # 首次升级锁基准 → 线性+5%/级(同统领 1+0.05×级, 非复利)
-			stt["ref_atk"] = u["base_atk"]; stt["ref_def"] = u["base_def"]; stt["ref_mr"] = u["base_mr"]
-			stt["ref_hp"] = u["maxHp"]; stt["ref_iv"] = float(u.get("atk_interval", 1.0))
+			_tlv_ref_into(u, stt)
 		stt["egg_levels"] = int(stt.get("egg_levels", 0)) + 1
 		var el: int = int(stt["egg_levels"])
 		u["base_atk"] += float(stt["ref_atk"]) * EGG_LV_GROWTH          # 线性+5%基础属性/级
 		u["base_def"] += float(stt["ref_def"]) * EGG_LV_GROWTH
 		u["base_mr"] += float(stt["ref_mr"]) * EGG_LV_GROWTH
 		var hpg: float = float(stt["ref_hp"]) * EGG_LV_GROWTH; u["maxHp"] += hpg; u["hp"] += hpg   # ★同上, 原来写死 0.05
-		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + EGG_LV_ASPD * float(el)))   # 攻速/级(同统领)
+		u["atk_interval"] = maxf(0.1, float(stt["ref_iv"]) / (1.0 + EGG_LV_ASPD * float(el + int(u.get("_holy_lv", 0)))))   # 攻速/级(同统领); 圣枪临时等级一起算
 		battle._recalc_stats(u)
 		battle._egg_level_up_vfx(u, int(u.get("level", 1)) + el)      # 升级特效(金光柱+LV UP)
 		if int(stt["egg_levels"]) >= cap and not bool(stt.get("incub_given", false)):

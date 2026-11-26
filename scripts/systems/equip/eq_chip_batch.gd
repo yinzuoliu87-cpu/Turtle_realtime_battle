@@ -69,6 +69,7 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 				var got: float = amt * BattleDamage.shield_strength(a, battle._t)
 				a[key] = float(a.get(key, 0.0)) + got
 				a["_st_shield"] = float(a.get("_st_shield", 0)) + got
+				EqSpearBatch.holy_store(a, float(got))   # 146 圣枪储能
 				battle._equip_sys.tally.on_shield(a, got)
 			battle._equip_sys.tally.pop(tl)
 			stat["shield_phys" if eid == "p2eq_151" else "shield_mag"] += 1

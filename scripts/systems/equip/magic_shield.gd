@@ -37,5 +37,6 @@ static func seaweed_on_spawn(battle, u: Dictionary, si: int) -> float:
 		return 0.0
 	u["magic_shield"] = float(u.get("magic_shield", 0.0)) + amt
 	u["_st_shield"] = float(u.get("_st_shield", 0)) + amt   # §STATS 获盾(与 _grant_shield 同口径; 装备账 == Σ获盾 由 verify_equip_tally 对账)
+	EqSpearBatch.holy_store(u, amt)   # 146 圣枪储能(魔法护盾也算)
 	battle._equip_sys.tally.on_shield(u, amt)   # ④ 装备统计: 记进 012 的「护盾」一栏
 	return amt

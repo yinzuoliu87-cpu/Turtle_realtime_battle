@@ -270,21 +270,7 @@ func _ready() -> void:
 		int(_b.stat["eternal_hit"]) == 1 and absf(hb2 - float(big["hp"]) - float(want)) < 1.5 and float(big.get("stun_until", 0.0)) > _s._t and float(small["hp"]) == 5000.0,
 		"命中 %d · 掉 %.0f(应 %d)" % [int(_b.stat["eternal_hit"]), hb2 - float(big["hp"]), want])
 
-	## 146 圣枪
-	me = _mk("left", ["p2eq_146"])
-	t1 = _mk("right")
-	_field([me, t1])
-	me["pos"] = Vector2(t1["pos"]) - Vector2(80.0, 0.0)
-	me["hp"] = 2000.0
-	var hh := float(t1["hp"])
-	_s._basic_attack(me, t1)
-	_s._basic_attack(me, t1)
-	var two := hh - float(t1["hp"])
-	var meh := float(me["hp"])
-	_s._basic_attack(me, t1)
-	var third := hh - float(t1["hp"]) - two
-	_ok("146 圣枪: 第 3 下引爆, 多打 150 魔法, 并回 5% 最大生命值", int(_b.stat["holy"]) == 1 and third > float(me["atk"]) + 100.0 and float(me["hp"]) - meh > 0.04 * float(me["maxHp"]),
-		"第三下 %.0f · 回 %.0f" % [third, float(me["hp"]) - meh])
+	## 146 圣枪: 11-26 晚重做成坦克装, 单独一份门禁 tests/verify_holy_spear.gd(17 条)
 
 	print("分母: %d 条断言" % _n)
 	if _fail == 0:

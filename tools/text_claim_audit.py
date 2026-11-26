@@ -76,6 +76,7 @@ ACCEPT = {
     ('p2eq_136', '随机'): '2026-11-27 复核: otherworld_system.gd 选决斗对象 pool[battle._battle_rng.randi() % pool.size()]; 实现在 OtherworldSystem 不在装备批文件里, 证据范围看不到',
     ('p2eq_139', '最远的敌'): '2026-11-27 复核: eq_spear_batch.gd _javelin 调 _farthest(u)(遍历敌人取 DetMath.dist 最大者); 词表的 farthest 在 _farthest 函数名里, 但不在本件证据范围',
     ('p2eq_123', '随机'): '2026-11-25 复核: 文案「随机召唤一具骷髅」说的是骷髅种类随机, eq_magic_batch.gd _summon_skeleton 用 battle._battle_rng.randi() % SKEL_KINDS.size() 挑种类; 不是选靶',
+    ('p2eq_146', '随机'): '2026-11-26 复核: eq_spear_batch.gd _holy_orb 用 pool[battle._battle_rng.randi() % pool.size()] 挑光球目标(候选 holy_pool), 不在 on_basic 证据范围里',
     ('p2eq_094', '最近的敌'): '实测用 _nearest_enemy_from(以碑为原点算最近), 文案对; 误报因为它的实现函数叫 stele_bolt_land, 不符合我 _eq_/_tick_ 的命名假设',
 }
 

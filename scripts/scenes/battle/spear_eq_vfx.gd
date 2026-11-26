@@ -1370,7 +1370,6 @@ func eternal_end(node, hit: bool, tg: Dictionary) -> void:
 const SV := "res://assets/sprites/vfx/"
 const RING_FILL := 1.16   # 刃环在 128 帧里约占 110 像素 ⇒ 帧宽 = 直径 × 1.16
 const CRATER_FILL := 1.1  # 裂坑冲击在 128 帧里约占 116 像素
-var _stig := {}           # 目标立绘实例 id → _mfx 那一条
 const ROPE_THICK_M := 0.14
 var _ropes: Array = []    # 138 {a(携带者), b(目标或 null), node(绳), harp(飞行中的叉节点)}
 var _lance_on := {}       # 140 携带者立绘实例 id → _mfx 那一条
@@ -1669,32 +1668,6 @@ func ftj_spin(u: Dictionary) -> void:
 	_strip(SV + "spear-ftj-ring.png", 6, battle._world_pos(Vector2(u["pos"]), 0.08), d_m, 24.0, true, 0.5, true, u, 0.08)
 
 
-func holy_stigma(t: Dictionary, n: int) -> void:
-	var k := _uid(t)
-	var f = _stig.get(k, null)
-	var s: Sprite3D = null
-	if f is Dictionary and is_instance_valid((f as Dictionary)["node"]):
-		s = (f as Dictionary)["node"]
-		(f as Dictionary)["t"] = 0.0
-	else:
-		s = _strip(SV + "spear-holy-mark.png", 4, battle._world_pos(Vector2(t["pos"]), HEAD_H), 0.5, 7.0, true, 6.0, false, t, HEAD_H)
-		if s != null:
-			_stig[k] = _mfx.back()
-	if s != null:
-		var sc: float = 0.8 + 0.25 * float(n)   # 1 层 / 2 层越来越大越亮
-		s.scale = Vector3(sc, sc, sc)
-		s.modulate = Color(1.0 + 0.2 * float(n), 1.0 + 0.15 * float(n), 1.0, 1.0)
-
-
-func holy_burst(_u: Dictionary, t: Dictionary) -> void:
-	var k := _uid(t)
-	var f = _stig.get(k, null)
-	if f is Dictionary:
-		_free((f as Dictionary)["node"])
-		_stig.erase(k)
-	_strip(SV + "spear-holy-burst.png", 9, battle._world_pos(Vector2(t["pos"]), 0.0), 2.2, 18.0, false, 9.0 / 18.0, false, null, 0.0)
-
-
 # ── 筹码 ──
 ## 151 黑 / 152 紫: 开场每个友军头顶落下一枚旋转的筹码(0.5 秒落到胸口), 落下时一圈对应颜色的环(物理盾灰白 / 魔法盾紫)
 var _drops: Array = []   # {f(_mfx 那一条), a(友军), t, phys}
@@ -1957,7 +1930,6 @@ func tick(delta: float) -> void:
 func clear() -> void:
 	super.clear()
 	_cent_glows.clear()
-	_stig.clear()
 	_drops.clear()
 	_browns.clear()
 	_cc_last.clear()

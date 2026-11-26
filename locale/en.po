@@ -3707,6 +3707,15 @@ msgstr "Stacks %d"
 msgid "积攒进度 %d%%"
 msgstr "Charge %d%%"
 
+msgid "储能 %d / %d"
+msgstr "Stored %d / %d"
+
+msgid "引导中"
+msgstr "Channeling"
+
+msgid "%d 秒后引导"
+msgstr "Channels in %ds"
+
 msgid "金色护罩：开打第 %d 秒触发"
 msgstr "Golden Aegis: triggers at %ds"
 

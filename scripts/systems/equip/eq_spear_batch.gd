@@ -76,13 +76,22 @@ const ETERNAL_PIN := 1.5
 const ETERNAL_PCT := [0.08, 0.12, 0.20]
 const ETERNAL_SPD := 1100.0
 # ── 146 圣枪(待重新设计) ──
-const HOLY_STACKS := 3
-const HOLY_DMG := [150.0, 250.0, 500.0]
-const HOLY_HEAL := [0.05, 0.08, 0.12]
+## 146 圣枪(11-26 晚用户重做成坦克装 · 方案书 20261126c)
+const HOLY_GUARD_AT := 0.5                     # 每一路首次生命值低于这个比例 ⇒ 圣枪护盾 + 双抗
+const HOLY_GUARD_PCT := [0.40, 0.60, 1.00]     # 圣枪护盾 = 最大生命值 ×(不衰减, 换路随单位重建清掉)
+const HOLY_RESIST := [30.0, 50.0, 100.0]       # 护甲 / 魔抗各 +, 持续到这一路结束
+const HOLY_STORE_CAP := 1.0                    # 储能上限 = 最大生命值 ×
+const HOLY_IV := 12.0                          # 每 12 秒开始引导
+const HOLY_ORB_IV := 0.25                      # 引导中每 0.25 秒出一个光球
+const HOLY_ORB_COST := [500.0, 400.0, 300.0]   # 每个光球消耗的储能; 不够一个就结束引导
+const HOLY_ORB_SPD := 900.0
+const HOLY_ORB_HEAL := [150.0, 250.0, 400.0]   # 砸到友方: 临时等级 +1 并回复
+const HOLY_ORB_DMG := [150.0, 250.0, 500.0]    # 砸到敌方: 魔法伤害
+const HOLY_ORB_SHIELD := [60.0, 100.0, 200.0]  # 砸到敌方: 携带者护盾(照样存回储能条, 用户「不需要去限制」)
 
 var stat := {"bamboo": 0, "bamboo_hit": 0, "harpoon": 0, "harpoon_hit": 0, "harpoon_pull": 0, "jav": 0, "jav_hit": 0,
 	"lance": 0, "halb": 0, "halb_hit": 0, "shsp_raise": 0, "shsp_block": 0, "shsp_release": 0, "shsp_wave_hit": 0,
-	"ftj": 0, "ftj_hit": 0, "ftj_spin": 0, "atl": 0, "atl_hit": 0, "eternal": 0, "eternal_hit": 0, "holy": 0}
+	"ftj": 0, "ftj_hit": 0, "ftj_spin": 0, "atl": 0, "atl_hit": 0, "eternal": 0, "eternal_hit": 0, "holy_guard": 0, "holy_channel": 0, "holy_orb": 0, "holy_ally": 0, "holy_enemy": 0}
 var _waves: Array = []    # 137 竹刺浪 {src, ck, o(起点), dir, r, si, hit, sp(下一丛竹刺的距离)}
 var _pulls: Array = []    # 138 拉拽 {src, o, left, t_next}
 var _swaves: Array = []   # 142 冲击波 {src, ck, o, dir, r, per, hit}
@@ -186,6 +195,27 @@ static func shield_block(u: Dictionary, d: float, t: float) -> float:
 	return maxf(0.0, d - flat)
 
 
+## 146 圣枪储能: 携带者获得任何护盾(普通 / 魔法 / 物理 / 溢出治疗转盾)都按到手的量存进每一件圣枪各自的储能条。
+##   ★挂在全部「获盾记账」点上(_st_shield 的五个写点), 不是只挂 _grant_shield: 魔法 / 物理护盾是独立字段, 不走它。
+##   静态: 登场护盾在圣枪自己的 on_spawn 之前就可能发, 不能等批系统登记; 份号直接从装备栏算(EquipCk.copies)。
+static func holy_store(u: Dictionary, amt: float) -> void:
+	if amt <= 0.0:
+		return
+	var cs: Array = EquipCk.copies(u, "p2eq_146")
+	if cs.is_empty():
+		return
+	var hs: Dictionary = u.get("_holy_store", {})
+	var cap: float = float(u.get("maxHp", 0.0)) * HOLY_STORE_CAP
+	for c in cs:
+		var k := str(c[0])
+		hs[k] = minf(cap, float(hs.get(k, 0.0)) + amt)
+	u["_holy_store"] = hs
+
+
+static func holy_stored(u: Dictionary, ck: String) -> float:
+	return float((u.get("_holy_store", {}) as Dictionary).get(ck, 0.0))
+
+
 # ════════════════════════════════════════ 批④统一口 ════════════════════════════════════════
 
 func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
@@ -224,30 +254,6 @@ func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
 				battle._equip_sys._eq_grant_energy(u, float(LANCE_EN[si]))
 				_fx("lance_hit", [u, t])
 				_fx("lance_ready", [u, false])
-		"p2eq_146":   # 圣枪: 圣痕 3 层引爆(待重新设计)
-			var key := "holy:" + ck
-			var marks: Dictionary = t.get("_holy_marks", {})
-			var uid := str(u.get("_spear_uid", ""))
-			if uid == "":
-				_uid_n += 1
-				uid = "s%d" % _uid_n
-				u["_spear_uid"] = uid
-			var mk: String = uid + key
-			var nm := int(marks.get(mk, 0)) + 1
-			if nm >= HOLY_STACKS:
-				marks.erase(mk)
-				stat["holy"] += 1
-				var dmg: int = battle._resolve_dmg(u, float(HOLY_DMG[si]), t, true, false)
-				battle._damage._apply_damage_from(u, t, dmg, COL_MAGIC, 0.0, false, true)
-				battle._damage._heal(u, float(u.get("maxHp", 0.0)) * float(HOLY_HEAL[si]))
-				_fx("holy_burst", [u, t])
-			else:
-				marks[mk] = nm
-				_fx("holy_stigma", [t, nm])   # 不叫 holy_mark: 魔法书演出层(父类)有同名的 122 治愈圣典标记, 会画成别人的招牌
-			t["_holy_marks"] = marks
-
-
-static var _uid_n := 0
 
 
 func on_hit(_src: Dictionary, _tgt: Dictionary, _dmg: float, _eid: String, _si: int) -> void:
@@ -496,7 +502,7 @@ func _live_mirror(u: Dictionary) -> void:
 		if not (e is Dictionary):
 			continue
 		var eid := str(e.get("id", ""))
-		if not ["p2eq_140", "p2eq_142", "p2eq_143"].has(eid):
+		if not ["p2eq_140", "p2eq_142", "p2eq_143", "p2eq_146"].has(eid):
 			continue
 		es.ck_set(u, e)
 		var ck: String = es.key_of(u, eid)
@@ -517,6 +523,9 @@ func _live_mirror(u: Dictionary) -> void:
 				else:
 					var need: float = maxf(1.0, float(u.get("maxHp", 1.0)) * FTJ_NEED_PCT)
 					_live_put(u, ck, {"buff": 0, "pct": int(floor(_acc(u, "ftj:" + ck) / need * 100.0))})
+			"p2eq_146":
+				_live_put(u, ck, {"store": int(holy_stored(u, ck)), "cap": int(float(u.get("maxHp", 0.0)) * HOLY_STORE_CAP),
+					"channel": _acc(u, "holy_ch:" + ck) > 0.0, "next": int(ceil(HOLY_IV - _acc(u, "holy_t:" + ck)))})
 
 
 func tick_unit(u: Dictionary, delta: float) -> void:
@@ -529,7 +538,7 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		if not (e is Dictionary):
 			continue
 		var eid := str(e.get("id", ""))
-		if not ["p2eq_138", "p2eq_139", "p2eq_140", "p2eq_141", "p2eq_142", "p2eq_144", "p2eq_145"].has(eid):
+		if not ["p2eq_138", "p2eq_139", "p2eq_140", "p2eq_141", "p2eq_142", "p2eq_144", "p2eq_145", "p2eq_146"].has(eid):
 			continue
 		var si := _si_of(e)
 		es.ck_set(u, e)
@@ -579,6 +588,8 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 					a4 -= ETERNAL_IV
 					_eternal(u, si, ck)
 				_set_acc(u, "eter:" + ck, a4)
+			"p2eq_146":
+				_tick_holy(u, si, ck, delta)
 		es.tally.pop(tl)
 	es.ck_restore(ckp)
 
@@ -759,6 +770,88 @@ func _eternal(u: Dictionary, si: int, ck: String) -> void:
 				battle._damage._stun(tg, ETERNAL_PIN, "eternal_pin"),
 		func(_k: float, p2: Vector2, to2: Vector2) -> void:
 			_fx("eternal_step", [node, p2, to2]))
+	battle._equip_sys.tally.pop(tp)
+
+
+## 146 圣枪每帧: ① 每一路首次低于 50% 生命 ⇒ 圣枪护盾 + 双抗; ② 每 12 秒开始引导, 引导中每 0.25 秒耗储能出一个光球, 不够就结束。
+##   引导期间照常移动攻击(用户没说要定身); 引导中拿到的护盾照样存进来(存的口在 holy_store, 不分是否引导)。
+func _tick_holy(u: Dictionary, si: int, ck: String, delta: float) -> void:
+	if _acc(u, "holy_g:" + ck) <= 0.0 and float(u.get("hp", 0.0)) < float(u.get("maxHp", 0.0)) * HOLY_GUARD_AT:
+		_set_acc(u, "holy_g:" + ck, 1.0)
+		stat["holy_guard"] += 1
+		u["_own_grant_vfx"] = true   # 圣枪护盾自己画(不叠通用六棱罩)
+		battle._damage._grant_shield(u, float(u.get("maxHp", 0.0)) * float(HOLY_GUARD_PCT[si]))
+		battle._damage._buff(u, "def", float(HOLY_RESIST[si]), false, 99999.0)   # 到这一路结束(换路单位重建, buff 随之清)
+		battle._damage._buff(u, "mr", float(HOLY_RESIST[si]), false, 99999.0)
+		_fx("holy_guard", [u])
+	var a := _acc(u, "holy_t:" + ck) + delta
+	if a >= HOLY_IV:
+		a -= HOLY_IV
+		if _acc(u, "holy_ch:" + ck) <= 0.0:
+			_set_acc(u, "holy_ch:" + ck, 1.0)
+			_set_acc(u, "holy_oi:" + ck, 0.0)   # 开始引导的这一步就出第一个
+			stat["holy_channel"] += 1
+			_fx("holy_channel", [u, true])
+	_set_acc(u, "holy_t:" + ck, a)
+	if _acc(u, "holy_ch:" + ck) <= 0.0:
+		return
+	var oi := _acc(u, "holy_oi:" + ck) - delta
+	var cost: float = float(HOLY_ORB_COST[si])
+	while oi <= 0.0:
+		var hs: Dictionary = u.get("_holy_store", {})
+		var have: float = float(hs.get(ck, 0.0))
+		if have < cost:
+			_set_acc(u, "holy_ch:" + ck, 0.0)
+			_fx("holy_channel", [u, false])
+			oi = 0.0
+			break
+		hs[ck] = have - cost
+		u["_holy_store"] = hs
+		_holy_orb(u, si, ck)
+		oi += HOLY_ORB_IV
+	_set_acc(u, "holy_oi:" + ck, oi)
+
+
+## 光球候选: 友方只有统领与小将(含携带者自己; 不含召唤物 / 龟蛋 / 训龟大师), 敌方是全部可选中的单位(含召唤物)。
+func holy_pool(u: Dictionary) -> Array:
+	var out: Array = []
+	for o in battle._targeting._allies_of(u, true):
+		if o.get("alive", false) and not bool(o.get("is_summon", false)) and not bool(o.get("_isEgg", false)):
+			out.append(o)
+	for o in battle._targeting._targetable_enemies(u):
+		out.append(o)
+	return out
+
+
+func _holy_orb(u: Dictionary, si: int, ck: String) -> void:
+	var pool: Array = holy_pool(u)
+	if pool.is_empty():
+		return
+	var tg: Dictionary = pool[battle._battle_rng.randi() % pool.size()]
+	var ally: bool = is_same(tg, u) or battle._is_ally(u, tg)   # ★_is_ally(u, u) 是 false: 砸到自己要按友方算(用户「光球也可以给到携带者自己」)
+	stat["holy_orb"] += 1
+	var me: Dictionary = u
+	var node = null
+	var vx = _vfx()
+	if vx != null and vx.has_method("holy_orb_fly"):
+		node = vx.holy_orb_fly(u, tg, ally)
+	var tp: Array = battle._equip_sys.tally.push(u, ck)
+	battle._ballistics.launch_flight(u, Vector2(u["pos"]), tg, HOLY_ORB_SPD,
+		func(hit: bool) -> void:
+			_fx("holy_orb_end", [node, hit, tg, ally])
+			if not hit or not tg.get("alive", false):
+				return
+			if ally:
+				stat["holy_ally"] += 1
+				battle._equip_tick_sys.holy_level_up(tg)
+				battle._damage._heal(tg, float(HOLY_ORB_HEAL[si]))
+			else:
+				stat["holy_enemy"] += 1
+				_magic(me, tg, float(HOLY_ORB_DMG[si]))
+				if me.get("alive", false):
+					battle._damage._grant_shield(me, float(HOLY_ORB_SHIELD[si])),
+		func(_k: float, p2: Vector2, to2: Vector2) -> void:
+			_fx("holy_orb_step", [node, p2, to2]))
 	battle._equip_sys.tally.pop(tp)
 
 

@@ -257,6 +257,7 @@ func on_spawn(u: Dictionary, eid: String, si: int) -> void:
 			var amt: float = float(u.get("maxHp", 0.0)) * float(PAPER_SHIELD_PCT[si]) * BattleDamage.shield_strength(u, battle._t)
 			u["phys_shield"] = float(u.get("phys_shield", 0.0)) + amt
 			u["_st_shield"] = float(u.get("_st_shield", 0)) + amt   # 记账同 012 海藻: 获盾 + 这件装备统计的「护盾」栏
+			EqSpearBatch.holy_store(u, amt)   # 146 圣枪储能(物理护盾也算)
 			var tl: Array = battle._equip_sys.tally.push(u, ck)
 			battle._equip_sys.tally.on_shield(u, amt)
 			battle._equip_sys.tally.pop(tl)

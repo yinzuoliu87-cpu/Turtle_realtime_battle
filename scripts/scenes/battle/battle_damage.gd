@@ -951,6 +951,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 		u["shield_timed"] = minf(float(u.get("shield_timed", 0.0)) + amt, float(u["shield"]))
 	var got = int(u["shield"] - sb)
 	u["_st_shield"] = float(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾(同 _st_heal: 累计用 float, 否则每次调用丢掉小数)
+	EqSpearBatch.holy_store(u, float(got))   # 146 圣枪: 获得的任何护盾存进储能条
 	if not _holy_busy:
 		battle._equip_sys.tally.on_shield(u, float(got))   # ④ 装备统计: 同 _st_shield 口径; 盾羁绊 9 档圣光转化那份是羁绊给的, 不记
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
@@ -1043,6 +1044,7 @@ func _heal_apply(u: Dictionary, amt: float, silent: bool = false) -> float:
 			u["shield"] = minf(_osc, u["shield"] + _ovf)   # 静默累积(吸血高频不刷飘字), 由携带者护盾条显示
 			## ④ 只补账(结算不变): 这份盾不走 _grant_shield, 原来「获得护盾」与 011 的装备统计都漏记它
 			u["_st_shield"] = float(u.get("_st_shield", 0)) + (float(u["shield"]) - _osb)
+			EqSpearBatch.holy_store(u, float(u["shield"]) - _osb)   # 146 圣枪储能(溢出治疗转的盾也算获得护盾)
 			_credit_o2s(u, _osc, float(u["shield"]) - _osb)
 	_holy_convert(u, float(u["hp"] - hb))   # 盾羁绊9档: 盾类装备给的治疗, 额外 20% 转圣光护盾
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 回血也要刷(血量涨回去攻击力要跌回去)
