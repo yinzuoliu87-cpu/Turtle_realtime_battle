@@ -302,7 +302,8 @@ func _ready() -> void:
 	var e1 := _mk("right", [], 0.0, -150.0)
 	var e2 := _mk("right", [], 0.0, 0.0)
 	var e3 := _mk("right", [], 0.0, 150.0)
-	_field([me, e1, e2, e3])
+	var stay := _mk("left", [], -200.0, 250.0)   # 留在主世界的队友(否则携带者一进去, 主世界我方就空了 ⇒ 按 11-26 规则里世界当场关)
+	_field([me, e1, e2, e3, stay])
 	var ow = _m.ow
 	_s._sd_t0 = _s._t
 	_adv(7.9)
@@ -337,7 +338,13 @@ func _ready() -> void:
 	var fo := _mk("right", ["p2eq_136"])
 	var m2 := _mk("left", [], 0.0, 200.0)
 	var fo2 := _mk("right", [], 0.0, 200.0)
-	_field([me, fo, m2, fo2])
+	var sl := _mk("left", [], -300.0, -250.0)
+	var sr := _mk("right", [], 300.0, -250.0)
+	sl["_isEgg"] = false
+	_field([me, fo, m2, fo2, sl, sr])
+	## 留守的两只不许被拽: 先挂上 _egg_fence(千面不挑它们), 只为让主世界两边都还有人
+	sl["_egg_fence"] = true
+	sr["_egg_fence"] = true
 	ow = _m.ow
 	var open0: int = int(ow.stat["open"])
 	_s._sd_t0 = _s._t
@@ -349,6 +356,24 @@ func _ready() -> void:
 			_s._kill(mm)
 	_adv(0.1)
 	_ok("J 里世界里一方全灭 ⇒ 决斗提前结束, 剩下的回主世界", not bool(ow.active) and ow.last_close_reason == "wipe", "原因 %s" % ow.last_close_reason)
+
+	## 主世界一方打完 ⇒ 里世界马上消失, 人全部出来(用户 11-26)
+	me = _mk("left", ["p2eq_136"])
+	var ea := _mk("right", [], 0.0, -100.0)
+	var eb := _mk("right", [], 0.0, 100.0)
+	var stay2 := _mk("left", [], -200.0, 250.0)
+	_field([me, ea, eb, stay2])
+	ow = _m.ow
+	_s._sd_t0 = _s._t
+	_adv(8.1)
+	var opened: bool = bool(ow.active)
+	for o in [ea, eb]:
+		if not bool(o.get("_ow", false)):
+			o["hp"] = 0.0
+			_s._kill(o)
+	_adv(0.1)
+	_ok("J 主世界那边一方全灭(里世界里还有人) ⇒ 里世界马上关、人全部出来", opened and not bool(ow.active) and ow.last_close_reason == "main_over"
+		and not bool(me.get("_ow", false)), "原因 %s" % ow.last_close_reason)
 
 	print("分母: %d 条断言" % _n)
 	if _fail == 0:

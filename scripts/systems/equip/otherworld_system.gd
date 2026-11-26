@@ -147,6 +147,24 @@ func tick(delta: float) -> void:
 		close("time")
 	elif sides.size() < 2:
 		close("wipe")
+	elif _main_side_out():
+		close("main_over")   # 用户 11-26「(主世界)人结束了之后，那里世界就消失了嘛，人就全部出来了」
+
+
+## 主世界里有一方已经一个能打的都没有了(里世界里的不算)
+func _main_side_out() -> bool:
+	var alive := {"left": 0, "right": 0}
+	var inert: Dictionary = battle.get("_DL_INERT_SUMMON") if battle.get("_DL_INERT_SUMMON") is Dictionary else {}
+	for u in battle._units:
+		if not (u is Dictionary) or not u.get("alive", false) or bool(u.get("_ow", false)):
+			continue
+		if bool(u.get("_isEgg", false)) or battle._is_untouchable(u):
+			continue
+		if bool(u.get("is_summon", false)) and inert.has(str(u.get("summon_kind", ""))):
+			continue
+		var sd := str(battle._tamed_side(u))
+		alive[sd] = int(alive.get(sd, 0)) + 1
+	return int(alive["left"]) == 0 or int(alive["right"]) == 0
 
 
 func _steal(th: Dictionary, vi: Dictionary, pct: float) -> void:
