@@ -629,6 +629,23 @@ func _tick_ink_links() -> void:                                  # 每帧: 线�
 # ============================================================================
 #  每帧: 3D 节点世界坐标更新 (XZ + 高度) + 影/环随高缩放淡 + Phase4 squash/闪白/bob
 # ============================================================================
+## 145 插倒(方案 A, 用户 11-26 晚): 0.08 秒倒到 KD_DEG → 滑行 + 躺到 KD_HOLD → KD_RISE 秒弹回(总长 < 眩晕 1 秒)
+const KD_DEG := 70.0
+const KD_FALL := 0.08
+const KD_HOLD := 0.8
+const KD_RISE := 0.15
+static func knockdown_tilt(u: Dictionary, t: float) -> float:
+	var t0: float = float(u.get("_kd_t0", -1.0))
+	if t0 < 0.0:
+		return 0.0
+	var e: float = t - t0
+	if e < 0.0 or e >= KD_HOLD + KD_RISE:
+		return 0.0
+	var k: float = clampf(e / KD_FALL, 0.0, 1.0) if e < KD_HOLD else 1.0 - clampf((e - KD_HOLD) / KD_RISE, 0.0, 1.0)
+	k = 1.0 - (1.0 - k) * (1.0 - k)   # 倒得快、收得软
+	return deg_to_rad(KD_DEG) * k * float(u.get("_kd_dir", 1.0))
+
+
 func _update_world_transforms() -> void:
 	for u in battle._units:
 		if not u["alive"]:
@@ -661,6 +678,11 @@ func _update_world_transforms() -> void:
 		var dv: float = clampf(float(u.get("_devour_k", 0.0)), 0.0, 1.0)
 		var dvs: float = 1.0 - EliteSystem.DEVOUR_SHRINK * dv
 		spr.scale = Vector3(bs.x * sq.x * gm * dvs, bs.y * sq.y * gm * dvs, bs.z)
+		var _kdm = spr.material_override
+		if _kdm is ShaderMaterial:
+			var _kdt: float = knockdown_tilt(u, float(battle._t))
+			if _kdt != 0.0 or u.has("_kd_t0"):
+				(_kdm as ShaderMaterial).set_shader_parameter("tilt", _kdt)   # 145 插倒(方案 A)
 		# 受击闪白: modulate 由【常驻体色】→ 过曝白线性插值 (flash_t/battle.JUICE_FLASH_SEC)。
 		# ★底色从 `_body_tint` 读(默认白): 给"喝药金红体光"这类常驻体色一条通用通道 ——
 		#   原来写死 Color.WHITE, 任何效果直接改 spr.modulate 都会被这行每帧盖掉(066 踩的)。

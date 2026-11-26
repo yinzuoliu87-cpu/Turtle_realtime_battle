@@ -825,6 +825,8 @@ func _eternal_hit(me: Dictionary, tg: Dictionary, si: int, ck: String, from: Vec
 			_fx("eternal_immune", [tg])
 		else:
 			battle._damage._stun(tg, ETERNAL_STUN, "eternal_pin")
+			tg["_kd_t0"] = float(battle._t)                      # 插倒(方案 A): 渲染按它把立绘往后倒、滑完躺一下再弹起
+			tg["_kd_dir"] = 1.0 if dir.x >= 0.0 else -1.0         # 往滑行方向倒(背离来枪)
 			var total: float = float(ETERNAL_SLIDE_ATK[si]) * atk + float(ETERNAL_SLIDE_HP[si]) * float(tg.get("maxHp", 0.0))
 			_slides.append({"src": me, "o": tg, "dir": dir, "gone": 0.0, "total": total, "si": si, "ck": ck, "hit": [tg]})
 			_fx("eternal_slide", [tg, dir, ETERNAL_SLIDE_SEC])
