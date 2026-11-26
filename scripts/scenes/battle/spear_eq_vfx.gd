@@ -624,6 +624,14 @@ func _cent_impact_dome(u: Dictionary, tg: Dictionary) -> void:
 	var haze = null
 	_stabs.append({"parts": parts, "bills": bills, "ring": ring, "t": 0.0, "life": maxf(CENT_SHOCK_SEC, dist / CENT_SHOCK_SPD), "p0": tip, "d3": d3, "dist": dist,
 		"u": u, "front": [fr_dark, fr_hot], "spray": spray, "skid": 0.0, "h": tip.y, "arrow": arrow, "tail": tail, "haze": haze})
+	## 认领这一刺的冲击波(二档起): 罩子 / 箭头改跟结算的波头走, 到头(cent_wave_end)再淡掉
+	for i in range(_wave_wait.size() - 1, -1, -1):
+		if is_same(_wave_wait[i]["u"], u):
+			(_stabs.back() as Dictionary)["w"] = _wave_wait[i]["w"]
+			(_stabs.back() as Dictionary)["life"] = 99.0
+			_wave_wait.remove_at(i)
+			break
+	_wave_wait = _wave_wait.filter(func(x): return not is_same(x["u"], u))
 
 
 ## 突刺气劲从 a 拉到 b: 帧里箭的有效长约 108 / 128 帧宽 ⇒ 横向缩放 = 距离 / (CENT_ARROW_M × 0.84)
@@ -634,13 +642,10 @@ func _arrow_span(s: Sprite3D, a: Vector3, b: Vector3) -> void:
 
 
 ## 二档: 冲击罩头部改跟着结算那道冲击波走(sim 的波头位置), 到头再淡掉
+var _wave_wait: Array = []   # 结算先发 cent_wave、后发 cent_thrust: 波先存这里, 罩子建好时认领 {u, w}
+
 func cent_wave(u: Dictionary, wv: Dictionary) -> void:
-	for i in range(_stabs.size() - 1, -1, -1):
-		var st: Dictionary = _stabs[i]
-		if st.has("u") and is_same(st["u"], u) and not st.has("w"):
-			st["w"] = wv
-			st["life"] = 99.0
-			return
+	_wave_wait.append({"u": u, "w": wv})
 
 
 func cent_wave_hit(_wv: Dictionary, o: Dictionary) -> void:
@@ -2013,6 +2018,7 @@ func clear() -> void:
 		_free(st.get("arrow"))
 		_free(st.get("haze"))
 	_stabs.clear()
+	_wave_wait.clear()
 	for r4 in _cav_nodes:
 		_free(r4.get("bow"))
 		_cav_fx_free(r4.get("fxc"), true)
