@@ -20,4 +20,7 @@ const OWNER := {
 	## 面具批(2026-11-26 · 方案书 docs/plans/20261125c-面具羁绊.md)
 	"p2eq_127": "mask", "p2eq_128": "mask", "p2eq_129": "mask", "p2eq_130": "mask", "p2eq_131": "mask",
 	"p2eq_132": "mask", "p2eq_133": "mask", "p2eq_134": "mask", "p2eq_135": "mask", "p2eq_136": "mask",
+	## 长矛批(2026-11-26 · 方案书 docs/plans/20261126-长矛羁绊.md)
+	"p2eq_137": "spear", "p2eq_138": "spear", "p2eq_139": "spear", "p2eq_140": "spear", "p2eq_141": "spear",
+	"p2eq_142": "spear", "p2eq_143": "spear", "p2eq_144": "spear", "p2eq_145": "spear", "p2eq_146": "spear",
 }

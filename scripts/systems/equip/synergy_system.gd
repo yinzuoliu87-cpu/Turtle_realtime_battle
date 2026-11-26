@@ -252,6 +252,8 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 			u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + v
 		"dmgAmp":   # 魔法书羁绊(2026-11-25): 每件给增伤(damage_amp, 与其它增伤来源相加)
 			u["damage_amp"] = float(u.get("damage_amp", 0.0)) + v
+		"_echargePct":   # 长矛羁绊(2026-11-26): 龟能回复速率% → echarge_perm(同装备属性 _echargePct)
+			u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) + v / 100.0
 		"dmgRed":   # 面具羁绊(2026-11-25): 每件给减伤(damage_reduction)
 			u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + v
 		"armorPen":

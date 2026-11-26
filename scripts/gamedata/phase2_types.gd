@@ -54,6 +54,7 @@ const TYPES := {
 	## 仪式(2026-11-25): 仪式匕首的专属羁绊(照香火的形状: 单档 · 1 件即激活 · 无逐档属性, 收益全在【血契】)。用户「类似于香火石一样…在大轮里面不断的增强」
 	"仪式": {"tiers": [1], "stats": [{}]},
 	"魔法书": {"tiers": [3, 6, 10], "stats": [{"dmgAmp": 0.03}, {"dmgAmp": 0.06}, {"dmgAmp": 0.10}]},   # 2026-11-25 新羁绊(方案书 20261125b; 用户 11-24「魔法书 = 增伤」)
+	"长矛": {"tiers": [2, 5, 8, 10], "stats": [{"_echargePct": 5}, {"_echargePct": 10}, {"_echargePct": 16}, {"_echargePct": 24}]},   # 2026-11-26 第六批(取代乐器; 方案书 20261126; 属性 = 用户 11-24 给乐器定的龟能回复速率)
 	"面具": {"tiers": [3, 6, 10], "stats": [{"dmgRed": 0.03}, {"dmgRed": 0.05}, {"dmgRed": 0.08}]},   # 2026-11-25 新羁绊(方案书 20261125c; 用户 11-24「我们没有韧性…给减伤吧」, 11-25 定【偷脸】)
 	## ★★香火(2026-08-13 用户:「093应该有两个羁绊: 遗物和香火」)。
 	##   **只有 1 档**(装备文案原文「羁绊只激活1档」) ⇒ 带 1 块和带 3 块一样。
@@ -107,6 +108,7 @@ const TYPE_ICON := {
 	"仪式": "res://assets/sprites/tags/tag-ritual.png",
 	"魔法书": "res://assets/sprites/tags/tag-magicbook.png",
 	"面具": "res://assets/sprites/tags/tag-mask.png",
+	"长矛": "res://assets/sprites/tags/tag-spear.png",
 	## ★2026-08-20 补: 香火在 TYPES 里(第 56 行)但这两张表都漏了它 ⇒ 静默回落成剑,
 	##   界面上香火羁绊显示成一把剑。**表分几张而只加了一张**是典型漏法。
 }
@@ -121,6 +123,7 @@ const TYPE_NAME := {
 	"仪式": "仪式·血契",
 	"魔法书": "魔法书·飞弹",
 	"面具": "面具·偷脸",
+	"长矛": "长矛·百夫长",
 }
 ## ★★2026-10-13 按云顶羁绊小卡的结构重写(用户「行，你自己弄」; 参考 docs/plans/ref/20261006-云顶装备弹窗/3-tft手游-点羁绊弹小卡.png):
 ##   机制只在 TYPE_INTRO 写一次(一条一行, 【专名】开头), TIER_DESCS 每档只写变化的数字 / 「生效」。
@@ -184,6 +187,9 @@ const TYPE_INTRO := {
 	"魔法书": [
 		"魔法书提高携带者造成的伤害。我方任意单位（包括召唤物）每释放一次技能，按这次消耗的龟能召唤一批魔法飞弹，飞向随机敌人。",
 	],
+	"长矛": [
+		"长矛提高携带者的龟能回复速率。每个战场开打第 8 秒或我方生命值低于 60% 时，百夫长从天而降，击飞全场敌人。我方每有一件不同的长矛，百夫长按它的星级获得更多生命值与攻击力。",
+	],
 	"面具": [
 		"面具提高携带者的减伤。每个战场开打时，从对面这一路随机偷走几只龟的脸，在我方阵地召唤它们的复制体。复制体阵亡时把一部分属性留给最近的友军。",
 	],
@@ -229,6 +235,12 @@ const TIER_DESCS := {
 		"每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害",
 		"每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）",
 		"每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）",
+	],
+	"长矛": [
+		"每件长矛为携带者提供 +5% 龟能回复速率 · 【百夫长】开打第 {C:SpearSynergySystem.SUMMON_AT} 秒或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时，召唤百夫长：{C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗，我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。龟能满时释放【龟甲阵】：举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%",
+		"每件长矛为携带者提供 +10% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。【龟甲阵】放下盾时横扫，对周围每个敌人造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害",
+		"每件长矛为携带者提供 +16% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，每个敌人至多失去 {C:SpearSynergySystem.SHRED_CAP} 点。【龟甲阵】举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害",
+		"每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击改为把长矛掷向最远的敌人，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。【龟甲阵】横扫后，我方身后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，各自冲向一名随机敌人，对途经的敌人造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并将其击飞",
 	],
 	"面具": [
 		"每件面具为携带者提供 +3% 减伤 · 【偷脸】每个战场开打时，从对面这一路活着的龟里随机挑 {C:MaskSynergySystem.STEAL_N[0]} 只，在我方阵地召唤它的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一（一星的不带，不计入羁绊件数） · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[0]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军",

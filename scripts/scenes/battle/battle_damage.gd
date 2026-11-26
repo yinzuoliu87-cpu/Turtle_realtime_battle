@@ -521,6 +521,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	if _prey_amp != 1.0:
 		dmg = maxi(1, int(round(float(dmg) * _prey_amp)))
 	var d = battle._mitigate_incoming(u, float(dmg), raw)
+	if u.get("_shsp_dr", 0.0) > 0.0 and not raw: d = EqSpearBatch.front_block(u, src, d)   # 142 盾矛: 正面来的攻击 / 技能伤害降低(只有这条路有来源方向)
 	# ★082 的旧减伤消费点已撤 —— 与 _apply_damage 同一位置的另一半(§3.3), 理由见那边。
 	dmg = maxi(1, int(round(d))); _credit_parasol_block(u, dmg, raw)   # 后半: 060 伞下这一段被伞那份减伤挡掉的量 → 记给撑伞的(只动统计; §3.3 两路都接; 并一行 = 函数行数预算 250)
 	# 蚌壳021: 该单位被指向为"伤害转移", 把一部分入伤转给携带者承担 (护盾前分流, 剩余部分仍走本体护盾/血)

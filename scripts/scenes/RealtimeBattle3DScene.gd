@@ -699,6 +699,7 @@ var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控
 var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/余韵/共鸣】(2026-08-03)
 var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获】(2026-08-03)
 var _bomb_syn := BombSynergySystem.new(self)   # 炸弹羁绊【导弹轰炸】(2026-11-24 · 方案书 20261124f)
+var _spear_syn := SpearSynergySystem.new(self)   # 长矛羁绊【百夫长】(2026-11-26 · 方案书 20261126)
 var _mask_syn := MaskSynergySystem.new(self)   # 面具羁绊【偷脸】(2026-11-25 · 方案书 20261125c)
 var _dagger_syn := DaggerSynergySystem.new(self)   # 匕首羁绊【刺杀】(2026-11-25 · 方案书 20261125)
 var _magic_syn := MagicbookSynergySystem.new(self)   # 魔法书羁绊【飞弹】(2026-11-25 · 方案书 20261125b): 任意单位放技能按消耗龟能出飞弹
@@ -2162,6 +2163,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 共鸣(7.5s)
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
 		_bomb_syn.tick(dt)    # 炸弹: 每一路开打第 10 秒导弹轰炸
+		_spear_syn.tick(dt)   # 长矛: 第 8 秒或我方生命值 < 60% 召唤百夫长(登场全场击飞) + 龟甲阵 / 掷矛 / 骑兵
 		_mask_syn.tick(dt)    # 面具: 每一路开打偷对面 1/2/3 只龟的脸, 我方阵地生成复制体
 		_dagger_syn.tick(dt)  # 匕首: 每一路开打(二档 +10 秒 / 三档 +20 秒)全队下一次普攻强化
 		_gadget_syn.tick(dt)  # 奇械: 铸币累计
@@ -7482,6 +7484,7 @@ func _settle_season(won: bool) -> void:
 	_food_syn.reset_match()      # 食物成长: 以【场】重置(用户 2026-08-04) —— 跨路保留, 换场清零
 	_potion_syn.reset_match()    # 药水战利品: 同上
 	_bomb_syn.reset_match()
+	_spear_syn.reset_match()
 	_mask_syn.reset_match()
 	_dagger_syn.reset_match()
 	_magic_syn.reset_match()
