@@ -81,6 +81,7 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    verify_reserve_minion) echo 2000 ;;   # 2026-11-27 走 RefereeRunner 真打 5 局: 每帧按真实时间预算推 sim ⇒ 机器越慢帧越多; 本机 200~300 帧, CI 500 帧只跑到 S4(没打 ALL PASS)
     verify_revive_lock) echo 1500 ;;   # 2026-11-27 复活定身: 三种复活各 ~210 帧真 sim(每帧一步), 实测 ~700 帧
     verify_lane_map_intro) echo 4000 ;;   # 2026-11-15 三路开场桌面地图: 真流程走开场 5 秒 + 对阵 5 秒 + 开打 + 两次战果幕, 实测 1400~2000 帧之间跑完, 给一倍余量
     verify_lane_map_finals) echo 1500 ;;   # 2026-11-23 周日对阵卡融进桌面地图(B2): 等开场幕 + 建 4 块幕布, 实测约 600 帧
