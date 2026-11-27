@@ -239,6 +239,8 @@ func _set_state(scn, u: Dictionary, sname: String, on: bool) -> bool:
 			u["roll_active"] = on
 		"diceDash":
 			u["dice_dash_active"] = on
+		"fortuneAllIn":
+			u["allin_coins"] = 5 if on else 0
 		_:
 			return false
 	return true
