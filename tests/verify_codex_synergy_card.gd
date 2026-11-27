@@ -155,6 +155,14 @@ func _ready() -> void:
 			if int(tiles[ti2].get_meta("codex_syn_cost", -1)) != int((want[ti2] as Dictionary).get("cost", -2)):
 				bad_member.append("%s:%s 框费用 %s ≠ %s" % [tname, str((want[ti2] as Dictionary).get("id", "")), str(tiles[ti2].get_meta("codex_syn_cost", -1)), str((want[ti2] as Dictionary).get("cost", -2))])
 				break
+		## 11-27 同类装备按费用从低到高排(用户「按顺序就是一费、二费、三费、四费」): 格子从左到右、从上到下, 费用不降
+		var prev_cost := 0
+		for tl2 in tiles:
+			var cc: int = int(tl2.get_meta("codex_syn_cost", 0))
+			if cc < prev_cost:
+				bad_member.append("%s:同类装备没按费用排(%d 排在 %d 后面)" % [tname, cc, prev_cost])
+				break
+			prev_cost = cc
 		var first_intro: float = 99999.0
 		for it2 in _with_meta("codex_syn_intro"):
 			first_intro = minf(first_intro, (it2 as Control).position.y)
