@@ -116,6 +116,7 @@ func _build_ui() -> void:
 	_bg()
 	var sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		"title": "训龟大师",
 		"palette": TopBar.DEEP,
 		"width": 1280.0,

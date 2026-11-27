@@ -334,6 +334,7 @@ func _rebuild() -> void:
 	var shop_locked: bool = int(GameState.season_total_battles) <= 0
 	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		## ★★2026-09-28 去掉页名前的 🧳(理由与图鉴/设置/战绩同, 见 CodexScene 那条长注释):
 		##   146 款参考的枢纽页顶栏一律是「返回箭头 + 裸页名」, 没有一款给页名挂图标;
 		##   而 🧳 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。

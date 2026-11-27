@@ -59,6 +59,8 @@ const TITLE_FS := 36
 const BANNER_TEX := "res://assets/sprites/ui/hdr-banner.png"
 const BTN_TEX := {"←": "res://assets/sprites/ui/hdr-back.png", "⌂": "res://assets/sprites/ui/hdr-home.png"}
 const BTN_SIZE := Vector2(80.0, 68.0)   # 原图 40×34 的 2 倍
+## 木头场景(配色带 chip_tex: 商店 / 背包 / 选龟)的返回键: 底板就是同屏「商店 / 背包」那块木牌, 上面放单独的像素图标
+const BTN_ICON := {"←": "res://assets/sprites/ui/hdr-arrow.png", "⌂": "res://assets/sprites/ui/hdr-house.png"}
 var _banner := false
 
 ## 两套配色。★只是【取值不同】，结构完全一样 —— 这就是"统一规则不统一长相"。
@@ -373,6 +375,48 @@ static func apply_chip_skin(b: Button, pal: Dictionary, icon_only: bool = false)
 	b.add_theme_stylebox_override("disabled", sb)
 
 
+## ★2026-11-27 带底板的返回 / 回主页键(横幅样式)。木头配色(带 chip_tex) = 木牌底 + 像素图标; 其余 = 海蓝金边按钮贴图。
+##   静态: 选龟屏有自己的布局, 不走整条顶栏, 也走这一个函数(规则一处)。字留着(返回键靠它认), 颜色透明。
+static func apply_back_skin(b: Button, pal: Dictionary) -> void:
+	var glyph: String = b.text if b.text != "" else str(b.get_meta("glyph", "←"))
+	b.set_meta("glyph", glyph)
+	b.add_theme_font_size_override("font_size", 22)   # 字透明, 字号仍按全项目按钮下限(手机布局门禁量它)
+	for ck in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		b.add_theme_color_override(ck, Color(0, 0, 0, 0))
+	b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	b.size = Vector2(maxf(BTN_SIZE.x, TOUCH_MIN), TOUCH_MIN)
+	b.custom_minimum_size = b.size
+	var inset_y: float = (TOUCH_MIN - BTN_SIZE.y) / 2.0
+	var inset_x: float = (b.size.x - BTN_SIZE.x) / 2.0
+	var wood: bool = pal.has("chip_tex")
+	var tex: Texture2D = pal["chip_tex"] if wood else (load(str(BTN_TEX.get(glyph, BTN_TEX["←"]))) as Texture2D)
+	for st in [["normal", 1.0], ["hover", 1.18], ["pressed", 0.78], ["focus", 1.0], ["disabled", 1.0]]:
+		var tb := StyleBoxTexture.new()
+		tb.texture = tex
+		if wood:
+			tb.set_texture_margin_all(int(pal.get("chip_margin", 18)))
+		tb.modulate_color = Color(float(st[1]), float(st[1]), float(st[1]), 1.0)
+		tb.expand_margin_top = -inset_y
+		tb.expand_margin_bottom = -inset_y
+		tb.expand_margin_left = -inset_x
+		tb.expand_margin_right = -inset_x
+		b.add_theme_stylebox_override(str(st[0]), tb)
+	var old_ic := b.get_node_or_null("glyph_icon")
+	if old_ic != null:
+		old_ic.free()
+	if wood and BTN_ICON.has(glyph) and ResourceLoader.exists(str(BTN_ICON[glyph])):
+		## 图标叠成子节点居中(按钮的字只是透明、仍占排版宽, 用 Button.icon 会被挤偏)
+		var ic := TextureRect.new()
+		ic.name = "glyph_icon"
+		ic.texture = load(str(BTN_ICON[glyph]))
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.size = ic.texture.get_size()
+		ic.position = (b.size - ic.size) / 2.0
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(ic)
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
+
+
 ## 纯图标判定：≤2 个字符**且一个字(汉字/字母/数字)都没有**。
 ## ★★2026-10-20 修: 原来只看「≤2 字符」⇒ 两个汉字的「商店」「站位」也被当成图标 ——
 ##   走了图标皮(零底板 + 38 号字), 背包顶栏上「商店」比页名「背包」(26 号)还大、也没有薄片底,
@@ -414,8 +458,14 @@ func _chip(txt: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = txt
 	b.focus_mode = Control.FOCUS_NONE
+	if _banner and BTN_TEX.has(txt) and _pal.has("chip_tex"):
+		apply_back_skin(b, _pal)
+		if cb.is_valid():
+			b.pressed.connect(cb)
+		return b
 	if _banner and BTN_TEX.has(txt) and ResourceLoader.exists(str(BTN_TEX[txt])):
 		b.set_meta("glyph", txt)   # 字留着(返回键靠它认: 安卓返回键 / 测试), 颜色透明, 图标由贴图画
+		b.add_theme_font_size_override("font_size", 22)
 		for ck in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
 			b.add_theme_color_override(ck, Color(0, 0, 0, 0))
 		var tex: Texture2D = load(str(BTN_TEX[txt]))

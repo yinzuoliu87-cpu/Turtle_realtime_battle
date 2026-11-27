@@ -324,6 +324,8 @@ func _ready() -> void:
 		acts.append([str(ent["text"]), _open_gauntlet_board if str(ent["scene"]) == _MM.GAUNTLET_BOARD_SCENE
 			else _open_bracket_map])
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
+		"title_icon": "res://assets/sprites/menu/ic-trophy.png",
 		## ★★2026-09-27 标题里**不写排序规则**。「排行榜 · 胜场 → 余命 → 横扫」是**规格书**
 		##   的写法(把内部比较器写在标题上), 用户 2026-09-27:「我一点也看不出来游戏的味道」。
 		##   排序规则该由榜自己的样子表达(名次牌 + 数字), 不是标题里念一遍。

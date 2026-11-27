@@ -233,6 +233,7 @@ func _ready() -> void:
 	var tb_pal: Dictionary = TopBar.DEEP.duplicate()
 	tb_pal["no_plate"] = true
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		"title": TITLE_PAST if _viewing_past() else TITLE_NOW,
 		"palette": tb_pal,
 		## ★原来传的是 `"safe": sm` —— TopBar 根本不认这个键(它读 safe_left / safe_right),

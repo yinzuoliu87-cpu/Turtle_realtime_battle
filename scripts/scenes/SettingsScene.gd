@@ -95,6 +95,8 @@ func _ready() -> void:
 	##   规则来自 599 张/146 个触屏游戏枢纽页的逐张实测, 见 top_bar.gd 头注。
 	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
+		"title_icon": "res://assets/sprites/menu/hud/ic-gear.png",
 		## ★★2026-09-28 去掉页名前的 ⚙(理由与图鉴/背包/战绩同, 见 `CodexScene` 那条长注释):
 		##   146 款参考的枢纽页顶栏一律是「返回箭头 + 裸页名」, 没有一款给页名挂图标;
 		##   而 ⚙ 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。

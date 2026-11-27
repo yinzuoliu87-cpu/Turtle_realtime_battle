@@ -89,6 +89,7 @@ func _ready() -> void:
 
 	## 顶栏走全项目同一个原语 `TopBar`: 返回箭头 + 裸页名。
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		"title": "战绩",
 		"palette": TopBar.DEEP,
 		"width": W,

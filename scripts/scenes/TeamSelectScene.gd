@@ -717,7 +717,8 @@ func _build_ui() -> void:
 	##   (`verify_top_bar` 认 "返回"/←/‹ 任一, 纯汉字照样认得出来。)
 	## ★2026-10-30 重做: 「返回」→「←」零盒子 —— 其余各页顶栏(TopBar)都是这一枚, 只有这页是一块扁平方块。
 	back.text = "←"
-	TopBar.apply_chip_skin(back, TopBar.WOOD, true)
+	## 11-27 横幅顶栏铺开(用户「可以铺到其他页面」): 木头场景的返回键 = 商店同款木牌底板 + 像素箭头(TopBar.apply_back_skin)
+	TopBar.apply_back_skin(back, TopBar.WOOD.merged({"chip_tex": preload("res://assets/sprites/shop/shop-plank.png"), "chip_margin": 18}))
 	root.add_child(back)
 	_place_clamped(back, "back")
 	_grow_to_touch(back)

@@ -275,6 +275,7 @@ func _build_locked() -> void:
 	##   「有 early return 的地方就要各自收口」, 我第一遍又只改了正常态那条分支,
 	##   门禁当场拓出来(还是 120×44 = 24pt, 低于触控下限)。
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		"palette": TopBar.WOOD,   # 2026-10-18 整页重做: 场景是木头货铺, 顶栏跟着木色
 		"width": W,
 		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
@@ -547,6 +548,7 @@ func _rebuild() -> void:
 	##   146 款触屏游戏里返回一律是**扁平薄片**, 没有一款用厚装饰框。
 	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		## ★**不给页名** —— 用户 2026-08-15 明确删过「🛒 深海商店」这块牌子
 		##   (「玩家是自己点进来的, 不需要一块牌子告诉他站在哪」, 见本文件上方注释)。
 		##   我换顶栏时把它加回来了, 实拍一看还把右边的金币条压住了 —— 两错并一错。

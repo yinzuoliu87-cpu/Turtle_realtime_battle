@@ -109,6 +109,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _ready() -> void:
 	_bg()
 	_top_bar = TopBar.new(self, {
+		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		"title": TITLE,
 		"palette": TopBar.DEEP,
 		"width": W,

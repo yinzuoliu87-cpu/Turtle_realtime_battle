@@ -144,6 +144,23 @@ end
 button("hdr-back", ARROW)
 button("hdr-home", HOUSE)
 
+---------------- 单独的图标(木头场景: 底板用商店木牌 shop-plank, 图标单独放上去) ----------------
+local function icon_only(name, icon)
+  local W, H = #icon[1], #icon
+  local L = new_layers(1, W, H)
+  for r = 1, H do
+    for c = 1, W do
+      local ch = icon[r]:sub(c, c)
+      local col = nil
+      if ch == "o" then col = OUTL elseif ch == "c" then col = CREAM elseif ch == "s" then col = CREAM_SH end
+      if col ~= nil then L[1]:drawPixel(c - 1, r - 1, col) end
+    end
+  end
+  save_layers(name, W, H, {"图标"}, L)
+end
+icon_only("hdr-arrow", ARROW)
+icon_only("hdr-house", HOUSE)
+
 ---------------- 页签(九宫格: 上沿切角 + 三面金边, 底边敞开) ----------------
 local function tab(name, active)
   local W, H = 24, 24
