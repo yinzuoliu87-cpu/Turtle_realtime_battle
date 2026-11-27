@@ -9609,3 +9609,5 @@ msgstr "The Turtle Trainer throws stones at the nearest enemy, each dealing ({C:
 msgid "训龟大师站在场边，不可被选取，免疫一切伤害与效果。训龟大师可以携带一个独特的技能。"
 msgstr "The Turtle Trainer stands at the edge of the field, can't be targeted, and is immune to all damage and effects. The Turtle Trainer can carry one unique skill."
 
+msgid "召唤物"
+msgstr "Summon"

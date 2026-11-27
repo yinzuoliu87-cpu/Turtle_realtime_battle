@@ -241,7 +241,7 @@ static func card_spec(id: String) -> Dictionary:
 	var cols: Array = si.get("cols", [])
 	var head: String = ("[color=#aab8c6]%s %s[/color]\n\n" % [str(si.get("col_title", "")), str(cols[0])]) if not cols.is_empty() else ""
 	return {"icon": str(si.get("avatar", "")), "title": Lang.t(str(si["name"])), "title_col": Color("#ffd93d"),
-		"tag_bb": "[color=#58d3ff]%s[/color]" % "  ·  ".join(PackedStringArray(si.get("tags", []))),
+		"tag_bb": "[color=#58d3ff]%s[/color]" % Lang.t("召唤物"),   # 同图鉴页: 只写「召唤物」(用户 11-27)
 		"stats": stat_row,
 		"body": head + "\n\n".join(body),
 		"foot": Lang.t("完整数据见图鉴「角色」")}

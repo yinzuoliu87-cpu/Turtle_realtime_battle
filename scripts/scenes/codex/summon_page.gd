@@ -4,7 +4,6 @@ extends RefCounted
 ## 版式与龟页 / 小将页同一套(复用 detail_views 的 _left_header / _stat_rows / _render_right): 左栏立绘 + 名字 + 签牌 + 属性方块,
 ##   右栏 被动条 → 普攻条 → 技能卡。召唤物多一样: 属性跟着长矛件数 / 装备星级变 ⇒ 右栏最上面一排选择牌(管整页: 左栏属性与右栏技能
 ##   都跟着变), 点了整页重画。初版放在左栏属性下面, 要往下滚才看得到(11-27 截图自查)。
-## 来源签牌(金色)能点: 跳到召唤它的装备 / 羁绊 / 龟那一页(detail_views.open_entry, 走状态页同一个入口)。
 ## 数据全在 SummonCodex(读战斗代码常量)。
 
 var host
@@ -14,9 +13,6 @@ const SEL_W := 64.0
 const SEL_H := 36.0
 const SEL_HIT_H := 48.0
 const SEL_ROW_GAP := 6.0
-
-## 来源签牌 tab → 状态页跳转用的 k
-const _TAB_K := {"pets": "pet", "equips": "eq", "synergies": "syn"}
 
 
 func _init(h) -> void:
@@ -32,44 +28,15 @@ func show(id: String) -> void:
 		return
 	dv._rerender = show.bind(id)
 	host._add_pet_portrait(95, float(si.get("portrait_cy", 100.0)), si["portrait"], float(si.get("portrait_box", 160.0)))
+	## 签牌只写一块「召唤物」(用户 11-27「不要提这个近战坦克、不可编入、糖果龟，反而这里写一个召唤物就可以了」);
+	##   战场单位(龟蛋 / 训龟大师, source 为空)不挂签牌(用户 11-27「每路一颗和战场单位还有不可编入这三个东西干啥呢」)。
 	var chips: Array = []
-	for t in si.get("tags", []):
-		## 颜色同小将页(detail_views._show_minion): 定位 #58d3ff / 不可编入 #9fb6c9
-		chips.append({"kind": "tag", "text": str(t), "color": "#9fb6c9" if str(t) == Lang.t("不可编入") else "#58d3ff"})
-	var src: Dictionary = si["source"]
-	if str(src.get("text", "")) != "":   # 战场单位没有来源签牌
-		chips.append({"kind": "tag", "text": str(src["text"]), "color": "#ffd93d"})
+	if not (si.get("source", {}) as Dictionary).is_empty():
+		chips.append({"kind": "tag", "text": Lang.t("召唤物"), "color": "#58d3ff"})
 	dv._left_header(str(si["name"]), chips)
-	_source_hit(chips, src)
 	var y: float = dv._stat_rows(si["stats"]) + 14.0
 	dv._col_divider(y)
 	_render_right_side(id, si, ci)
-
-
-## 来源签牌的点击区: 照 _left_header 的排法(同一套估宽 / 换行)算出最后一块签牌在哪, 盖一块透明点击区。
-func _source_hit(chips: Array, src: Dictionary) -> void:
-	var dv = host._codex_detail
-	var tab: String = str(src.get("tab", ""))
-	if tab == "" or not _TAB_K.has(tab):
-		return
-	var mid_x := 190.0
-	var cx: float = mid_x
-	var cy: float = 88.0
-	var w: float = 0.0
-	for c in chips:
-		w = maxf(58.0, float(str(c["text"]).length()) * 16.0 + 26.0)
-		if cx > mid_x and cx + w > dv.LCOL_W - 6.0:
-			cx = mid_x
-			cy += 48.0
-		if c != chips[chips.size() - 1]:
-			cx += w + 8.0
-	var hit := Control.new()
-	hit.name = "SummonSourceHit"
-	hit.position = Vector2(cx - 4.0, cy - dv.TAG_H / 2.0 - 4.0)
-	hit.size = Vector2(w + 8.0, dv.TAG_H + 8.0)
-	var e := {"k": str(_TAB_K[tab]), "id": str(src.get("key", ""))}
-	dv._tap_hit(hit, func() -> void: dv.open_entry(e))
-	host.detail.add_child(hit)
 
 
 func _render_right_side(id: String, si: Dictionary, ci: int) -> void:

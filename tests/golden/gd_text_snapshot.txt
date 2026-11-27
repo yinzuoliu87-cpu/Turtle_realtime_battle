@@ -755,6 +755,7 @@ scripts/gamedata/summon_codex.gd|lit|举盾期间每 {C:%s.POKE_IV} 秒刺击周
 scripts/gamedata/summon_codex.gd|lit|众矛之力
 scripts/gamedata/summon_codex.gd|lit|军团天降
 scripts/gamedata/summon_codex.gd|lit|刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成（{C:%s.PIERCE_BEHIND%%}%%×攻击力({ATK}) = {N:%s.PIERCE_BEHIND*ATK}）物理伤害。
+scripts/gamedata/summon_codex.gd|lit|召唤物
 scripts/gamedata/summon_codex.gd|lit|召唤物 · 羁绊
 scripts/gamedata/summon_codex.gd|lit|召唤物 · 装备
 scripts/gamedata/summon_codex.gd|lit|召唤物 · 龟技能
@@ -2622,7 +2623,7 @@ scripts/scenes/codex/status_sources.gd|lit|赛博龟阵亡 → 浮游炮组装�
 scripts/scenes/codex/status_sources.gd|lit|铁锁
 scripts/scenes/codex/status_sources.gd|lit|锈蚀阔剑007
 scripts/scenes/codex/status_sources.gd|lit|长矛
-scripts/scenes/codex/summon_page.gd|lit|不可编入
+scripts/scenes/codex/summon_page.gd|lit|召唤物
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备
