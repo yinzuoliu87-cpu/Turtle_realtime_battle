@@ -96,7 +96,7 @@ static func _mech() -> Dictionary:
 		SC.stats(U, U, U, U, Y.MECH_MOVE, Y.MECH_ASPD, Y.MECH_RANGE),
 		{"name": "机甲重拳", "icon": "skills/summon-mech-punch.png", "desc": SC.basic_line_unknown("机甲")}, {},
 		[{"name": "歼灭炮", "icon": "passive/summon-mech-blast-icon.png",
-			"desc": "机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒对生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。"}])
+			"desc": "机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒朝生命值最低的敌人开一炮，造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。"}])
 
 
 # ─── 灵物羁绊 · 亡魂(列 = 灵物件数) ───

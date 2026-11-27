@@ -935,7 +935,7 @@ scripts/gamedata/summon_codex_misc.gd|lit|投石
 scripts/gamedata/summon_codex_misc.gd|lit|旁观者
 scripts/gamedata/summon_codex_misc.gd|lit|未知
 scripts/gamedata/summon_codex_misc.gd|lit|机甲
-scripts/gamedata/summon_codex_misc.gd|lit|机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒对生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。
+scripts/gamedata/summon_codex_misc.gd|lit|机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒朝生命值最低的敌人开一炮，造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。
 scripts/gamedata/summon_codex_misc.gd|lit|机甲重拳
 scripts/gamedata/summon_codex_misc.gd|lit|歼灭炮
 scripts/gamedata/summon_codex_misc.gd|lit|水晶光线

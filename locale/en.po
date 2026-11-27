@@ -9582,8 +9582,8 @@ msgstr "The Pirate Ship's attacks deal ({C:PirateSystem.SHIP_SHOT_COEF%}% × Att
 msgid "海盗船登场时冲锋撞击目标，对其附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"
 msgstr "On spawn, the Pirate Ship charges into its target, dealing ({C:PirateSystem.SHIP_CHARGE_COEF%}% × Pirate Turtle's Attack (Unknown) = Unknown) magic damage to enemies near it and knocking them up for {C:PirateSystem.SHIP_CHARGE_STUN} seconds."
 
-msgid "机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒对生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。"
-msgstr "Every {C:CyberSystem.MECH_BLAST_CD} seconds, the Mech fires two shots at the enemy with the lowest health, dealing a total of ({C:CyberSystem.MECH_BLAST_COEF%}% × Attack (Unknown) = Unknown) physical damage."
+msgid "机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒朝生命值最低的敌人开一炮，造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。"
+msgstr "Every {C:CyberSystem.MECH_BLAST_CD} seconds, the Mech fires a shot at the enemy with the lowest health, dealing ({C:CyberSystem.MECH_BLAST_COEF%}% × Attack (Unknown) = Unknown) physical damage."
 
 msgid "战斗开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。"
 msgstr "When combat starts, the Turtle Egg is protected by a fence: it can't be targeted, takes no area damage, and gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. Once all of its side's units have died, the fence disappears."
