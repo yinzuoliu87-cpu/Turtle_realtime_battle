@@ -165,9 +165,16 @@ func _ready() -> void:
 	##   而 2026-09-27 CI 上第 ④ 段(3 秒那个)就真的红了。
 	## ★帧数上限给宽: 每帧至少推进一个渲染步, WAIT_FRAMES 帧足够任何一条动作播完;
 	##   成立就立刻 break, 宽上限不花钱。
+	## ★★2026-11-27 CI 红过一次(实测 eq096-axe-wood-attack.png): 「停下来」原来没钉住 —— 不推它之后它照样是召唤物,
+	##   自己走去找敌人开打, 4 游戏秒里贴图停在攻击上。CI 帧粗(走路那段只走了 2 帧)时更容易撞上。
+	##   同 ① 的修法: 钉住(no_move)并暂时不许普攻(no_basic), 量完还原 —— 这一段量的是「不动了会不会回 idle」。
+	ax["no_move"] = true
+	ax["no_basic"] = true
 	var r_back: Dictionary = await _wait_tex(ax, IDLE, WAIT_GAME_S)
 	_ok("★② 停下来换回 %s(只验切走路会漏掉「再也回不去」)" % IDLE, bool(r_back["ok"]),
 		"实测 %s（等了 %.2f 游戏秒 / %d 帧）" % [_cur_tex(ax), float(r_back["g"]), int(r_back["fr"])])
+	ax["no_move"] = false
+	ax["no_basic"] = false
 
 	# ── ③ 技能释放: 攒满龟能放主动 ──
 	ax["energy"] = AE.ACTIVE_ENERGY
