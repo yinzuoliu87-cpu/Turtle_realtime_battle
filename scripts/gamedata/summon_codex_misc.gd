@@ -72,7 +72,7 @@ static func _crystalball() -> Dictionary:
 	return _base("水晶球", ["crystalball"], "crystalball", {"img": "pets/crystal-ball.png", "_box": 130.0, "_cy": 100.0}, _pet_src("crystal"), ["远程法师"],
 		SC.stats(U, U, 0, 0, C.ORB_MOVE, 1.0 / C.ORB_RAY_IV, C.ORB_RANGE),
 		{"name": "水晶光线", "icon": "skills/summon-crystal-ray.png",
-			"desc": "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿光线，分两段对直线上的所有敌人共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。"}, {},
+			"desc": "水晶球的攻击射出一道贯穿光线，分两段对直线上的所有敌人共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。"}, {},
 		[])
 
 
@@ -82,7 +82,7 @@ static func _ship() -> Dictionary:
 	return _base("海盗船", ["ship"], "ship", {"img": "skills/pirate-ship.png", "_box": 200.0, "_cy": 96.0}, _pet_src("pirate"), ["远程坦克"],
 		SC.stats(U, U, 0, 0, P.SHIP_MOVE, P.SHIP_ASPD, "全场"),
 		{"name": "舷炮", "icon": "skills/summon-ship-broadside.png",
-			"desc": "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"}, {},
+			"desc": "海盗船的攻击造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"}, {},
 		[{"name": "破浪登场", "icon": "passive/summon-ship-ram-icon.png",
 			"desc": "海盗船登场时冲锋撞击目标，对其附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"}])
 

@@ -9573,11 +9573,11 @@ msgstr "Sweet Fuse"
 msgid "糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值，阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，由所有敌人平摊。"
 msgstr "The Candy Bomb loses {C:CandySystem.BOMB_DECAY_PCT%}% of its max health per second. When it dies it explodes, dealing magic damage equal to {C:CandySystem.BOMB_DEATH_AOE%}% of its max health, split evenly among all enemies."
 
-msgid "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿光线，分两段对直线上的所有敌人共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。"
-msgstr "Every {C:CrystalSystem.ORB_RAY_IV} seconds, the Crystal Ball fires a piercing beam at the nearest enemy that hits every enemy in the line in two parts for a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack (Unknown) = Unknown) magic damage, and applies {C:CrystalSystem.ORB_RAY_STACKS} Crystal Mark stacks."
+msgid "水晶球的攻击射出一道贯穿光线，分两段对直线上的所有敌人共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。"
+msgstr "The Crystal Ball's attacks fire a piercing beam that hits every enemy in the line in two parts for a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack (Unknown) = Unknown) magic damage, and applies {C:CrystalSystem.ORB_RAY_STACKS} Crystal Mark stacks."
 
-msgid "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"
-msgstr "Every {C:PirateSystem.SHIP_SHOT_CD} seconds, the Pirate Ship fires at the nearest enemy, dealing ({C:PirateSystem.SHIP_SHOT_COEF%}% × Attack (Unknown) = Unknown) physical damage."
+msgid "海盗船的攻击造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"
+msgstr "The Pirate Ship's attacks deal ({C:PirateSystem.SHIP_SHOT_COEF%}% × Attack (Unknown) = Unknown) physical damage."
 
 msgid "海盗船登场时冲锋撞击目标，对其附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"
 msgstr "On spawn, the Pirate Ship charges into its target, dealing ({C:PirateSystem.SHIP_CHARGE_COEF%}% × Pirate Turtle's Attack (Unknown) = Unknown) magic damage to enemies near it and knocking them up for {C:PirateSystem.SHIP_CHARGE_STUN} seconds."
