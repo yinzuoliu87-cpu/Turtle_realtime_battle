@@ -427,7 +427,7 @@ scripts/gamedata/glossary.gd|lit|星际龟的技能：以自身为中心释放�
 scripts/gamedata/glossary.gd|lit|星际龟的技能：扭曲一片区域的空间。
 scripts/gamedata/glossary.gd|lit|枪羁绊：每发射若干发普通子弹后发射一发金弹，金弹继承该发子弹的全部效果并额外造成真实伤害。
 scripts/gamedata/glossary.gd|lit|每个战场开始时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
-scripts/gamedata/glossary.gd|lit|每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。法器羁绊档位越高，充满所需的法力越少。
+scripts/gamedata/glossary.gd|lit|每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。激活法器羁绊可减少充满所需的法力。
 scripts/gamedata/glossary.gd|lit|每次受到一段攻击时，对攻击者反弹一次魔法伤害。持续伤害不会触发此效果，多段攻击的每一段单独触发。
 scripts/gamedata/glossary.gd|lit|永久不衰减的护盾。护盾存在期间，自身变为蛋糕礼盒：射程变为近战，攻击与技能也替换为礼盒专属版本。
 scripts/gamedata/glossary.gd|lit|沙漏释放的全场定格：除持有全场最高星级沙漏的龟之外，所有单位、弹道与特效全部静止。
@@ -573,11 +573,11 @@ scripts/gamedata/phase2_types.gd|lit|剑提高携带者的攻击力，并让携�
 scripts/gamedata/phase2_types.gd|lit|剑系
 scripts/gamedata/phase2_types.gd|lit|匕首
 scripts/gamedata/phase2_types.gd|lit|匕首·刺杀
-scripts/gamedata/phase2_types.gd|lit|匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。第二档起，战斗中再次触发。
+scripts/gamedata/phase2_types.gd|lit|匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。
 scripts/gamedata/phase2_types.gd|lit|商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}% · 重复买到的小木斧转化为砍伐经验
 scripts/gamedata/phase2_types.gd|lit|奇械
 scripts/gamedata/phase2_types.gd|lit|奇械·魔抗
-scripts/gamedata/phase2_types.gd|lit|奇械提高携带者的魔抗，并为全队铸造深海币。第二档起，全队攻击有概率冰封敌人。
+scripts/gamedata/phase2_types.gd|lit|奇械提高携带者的魔抗，并为全队铸造深海币。
 scripts/gamedata/phase2_types.gd|lit|弓箭
 scripts/gamedata/phase2_types.gd|lit|弓箭·神射手
 scripts/gamedata/phase2_types.gd|lit|弓箭提高携带者的暴击率。全队攻击可处决低生命值的敌人，并持续腐蚀敌方全体。
@@ -585,7 +585,7 @@ scripts/gamedata/phase2_types.gd|lit|斧头
 scripts/gamedata/phase2_types.gd|lit|斧头·砍伐
 scripts/gamedata/phase2_types.gd|lit|枪
 scripts/gamedata/phase2_types.gd|lit|枪·神枪手
-scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把枪定期额外射出金弹，每激活一档，我方生成一座炮台。
+scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把枪定期额外射出金弹，我方生成炮台助战。
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%
@@ -615,7 +615,7 @@ scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +4 护甲穿
 scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +8 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +13 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 自身最大生命值 · 【圣光护盾】再获得 1 件，共 2 件 · 【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +22 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 自身最大生命值 · 【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值。圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%
-scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，档位降低时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，羁绊失效时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[1]%}% · 【战利品】每击杀 1 名猎物，全队永久 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力，持续到本局结束
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%
@@ -635,7 +635,7 @@ scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +3% 增�
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）
 scripts/gamedata/phase2_types.gd|lit|法器
 scripts/gamedata/phase2_types.gd|lit|法器·法师
-scripts/gamedata/phase2_types.gd|lit|法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位提高后充满所需的法力减少。
+scripts/gamedata/phase2_types.gd|lit|法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果。
 scripts/gamedata/phase2_types.gd|lit|灵物
 scripts/gamedata/phase2_types.gd|lit|灵物·召唤
 scripts/gamedata/phase2_types.gd|lit|灵物提高携带者的闪避。无法被击杀的触手为我方作战，阵亡的友军化为亡魂继续战斗。
@@ -655,7 +655,7 @@ scripts/gamedata/phase2_types.gd|lit|药水提高携带者的治疗与护盾强�
 scripts/gamedata/phase2_types.gd|lit|装备小木斧即激活。激活后商店更容易刷出小木斧。
 scripts/gamedata/phase2_types.gd|lit|遗物
 scripts/gamedata/phase2_types.gd|lit|遗物·古物
-scripts/gamedata/phase2_types.gd|lit|遗物提供生命偷取。我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。第二档起，全队增伤随战斗时间累积，龟蛋也加入战斗。
+scripts/gamedata/phase2_types.gd|lit|遗物提供生命偷取。我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。
 scripts/gamedata/phase2_types.gd|lit|长矛
 scripts/gamedata/phase2_types.gd|lit|长矛·百夫长
 scripts/gamedata/phase2_types.gd|lit|长矛提高携带者的龟能回复速率。每个战场开打第 8 秒或我方生命值低于 60% 时，百夫长从天而降，击飞全场敌人。我方每有一件不同的长矛，百夫长按它的星级获得更多生命值与攻击力。

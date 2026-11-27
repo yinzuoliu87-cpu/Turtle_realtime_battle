@@ -144,7 +144,7 @@
     "name": "腐蚀",
     "iconKey": "status-corrode",
     "category": "debuff",
-    "desc": "每层使受到的伤害 +{C:BowSynergySystem.CORRODE_PER_STACK%}%（按弓箭羁绊档位），上限 {C:BowSynergySystem.CORRODE_MAX} 层。满层时受到的伤害中 {C:BowSynergySystem.CORRODE_TRUE_PCT%}% 转为真实伤害。"
+    "desc": "每层使受到的伤害 +{C:BowSynergySystem.CORRODE_PER_STACK%}%（随弓箭羁绊件数），上限 {C:BowSynergySystem.CORRODE_MAX} 层。满层时受到的伤害中 {C:BowSynergySystem.CORRODE_TRUE_PCT%}% 转为真实伤害。"
   },
   {
     "id": "ink",

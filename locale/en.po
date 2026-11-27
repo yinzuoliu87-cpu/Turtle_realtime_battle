@@ -1520,8 +1520,8 @@ msgstr "Stacks Ember applies to targets on hit. Each stack raises that target's 
 msgid "法力"
 msgstr "Mana"
 
-msgid "每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。法器羁绊档位越高，充满所需的法力越少。"
-msgstr "Each Artifact has its own mana bar: regenerates 15 every 2.5 seconds, and also when the holder deals ability damage or takes damage. When full, it casts that Artifact's active effect, then refills. Damage from Artifact effects doesn't restore mana. Higher Artifact synergy tiers need less mana to fill."
+msgid "每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。激活法器羁绊可减少充满所需的法力。"
+msgstr "Each Artifact has its own mana bar: regenerates 15 every 2.5 seconds, and also when the holder deals ability damage or takes damage. When full, it casts that Artifact's active effect, then refills. Damage from Artifact effects doesn't restore mana. An active Artifact synergy reduces the mana needed to fill."
 
 msgid "迷你水晶"
 msgstr "Mini Crystal"
@@ -1715,8 +1715,8 @@ msgstr "Axe · Chopping"
 msgid "剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位按已损失的生命值提高攻击力。"
 msgstr "Swords grant attack damage and make the holder follow up after attacking. Your units gain attack damage based on their missing health."
 
-msgid "奇械提高携带者的魔抗，并为全队铸造深海币。第二档起，全队攻击有概率冰封敌人。"
-msgstr "Gadgets grant magic resist and mint Abyss Coins for the team. From the second tier, your team's attacks have a chance to freeze enemies."
+msgid "奇械提高携带者的魔抗，并为全队铸造深海币。"
+msgstr "Gadgets grant magic resist and mint Abyss Coins for the team."
 
 msgid "队伍里每件装备为携带者提供最大生命值，食物提供双倍。食物还让最大生命值在战斗中持续成长。"
 msgstr "Every item on your team gives the holder max health; Food gives double. Food also keeps growing max health during battle."
@@ -1727,14 +1727,14 @@ msgstr "Shields grant armor. As your team takes damage, it releases shockwaves a
 msgid "药水提高携带者的治疗与护盾强度。全队集火被标记的猎物，击杀猎物后攻击力提高。"
 msgstr "Potions grant Heal Power and Shield Power. Your team focuses the marked Prey and gains attack damage after killing it."
 
-msgid "枪提高携带者的攻击速度。每把枪定期额外射出金弹，每激活一档，我方生成一座炮台。"
-msgstr "Guns grant attack speed. Each gun periodically fires an extra Golden Bullet, and each active tier builds a turret for your side."
+msgid "枪提高携带者的攻击速度。每把枪定期额外射出金弹，我方生成炮台助战。"
+msgstr "Guns grant attack speed. Each gun periodically fires an extra Golden Bullet, and turrets join your side."
 
 msgid "弓箭提高携带者的暴击率。全队攻击可处决低生命值的敌人，并持续腐蚀敌方全体。"
 msgstr "Bows grant Crit Chance. Your team's attacks execute low-health enemies and steadily corrode the whole enemy team."
 
-msgid "法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位提高后充满所需的法力减少。"
-msgstr "Artifacts grant Magic Pen and max Energy. Each Artifact casts its own active effect when its mana is full; higher tiers reduce the mana required."
+msgid "法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果。"
+msgstr "Artifacts grant Magic Pen and max Energy. Each Artifact casts its own active effect when its mana is full."
 
 msgid "灵物提高携带者的闪避。无法被击杀的触手为我方作战，阵亡的友军化为亡魂继续战斗。"
 msgstr "Spirits grant Dodge. Unkillable tentacles fight for your side, and fallen allies rise as wraiths to keep fighting."
@@ -1745,8 +1745,8 @@ msgstr "The Incense Stone's holder carves Engravings by dealing damage. Engravin
 msgid "装备小木斧即激活。激活后商店更容易刷出小木斧。"
 msgstr "Activates when a Little Wooden Axe is equipped. Once active, the shop offers Little Wooden Axes more often."
 
-msgid "遗物提供生命偷取。我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。第二档起，全队增伤随战斗时间累积，龟蛋也加入战斗。"
-msgstr "Relics grant Lifesteal. Your units gain attack damage above {C:RelicSynergySystem.HP_GATE%}% health and Lifesteal below it. From the second tier, your team's Damage Amp builds over time and your Turtle Egg joins the fight."
+msgid "遗物提供生命偷取。我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。"
+msgstr "Relics grant Lifesteal. Your units gain attack damage above {C:RelicSynergySystem.HP_GATE%}% health and Lifesteal below it."
 
 msgid "每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%"
 msgstr "Each Sword gives its holder +8 Attack · [Swordsman] After each attack, the holder strikes the target {C:SwordsmanSystem.HITS[0]} more times; each Sword on it makes follow-ups deal {C:SwordsmanSystem.PCT[0]%}% attack damage. Follow-ups happen at {C:SwordsmanSystem.ASPD_MULT%}% of attack speed and count as attacks, triggering on-attack and on-hit item effects · [Blood Rite] For every 1% health your units have lost, they gain {C:SynergySystem.BLOOD_RITE[0]}% attack damage"
@@ -1778,8 +1778,8 @@ msgstr "Each item on your team gives its holder +70 Max Health, each Food +140 �
 msgid "队伍每件装备为携带者提供 +130 最大生命值，每件食物 +260 · 【成长】每次 +{C:FoodSynergySystem.GROW_PER_FOOD[2]} 最大生命值 · 【学院】全队 +{C:FoodSynergySystem.ACADEMY[2]} 最大生命值 · 【盛宴】每 {C:SynergySystem.PULSE} 秒，全队回复 {C:SynergySystem.FEAST_PCT[2]%}% 已损失生命值"
 msgstr "Each item on your team gives its holder +130 Max Health, each Food +260 · [Growth] +{C:FoodSynergySystem.GROW_PER_FOOD[2]} Max Health each time · [Academy] Whole team +{C:FoodSynergySystem.ACADEMY[2]} Max Health · [Feast] Every {C:SynergySystem.PULSE} seconds, your team heals {C:SynergySystem.FEAST_PCT[2]%}% of missing health"
 
-msgid "每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，档位降低时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害"
-msgstr "Each Shield gives its holder +5 Armor · [Rage] For every {C:ShieldSynergySystem.RAGE_THRESHOLD} damage a unit on your team takes, it releases a shockwave at the nearest enemy, dealing true damage equal to {C:ShieldSynergySystem.WAVE_PCT[0]%}% of its own max health and gaining a shield for {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% of that damage · [Holy Light Shield] Gain 1 Holy Light Shield item. It takes no item slot and is removed if the tier drops. Holder gets +250 Max Health and {C:ShieldSynergySystem.HOLY_AMOUNT} Holy Shield every {C:ShieldSynergySystem.HOLY_PERIOD} seconds. While it has Holy Shield, each hit taken deals {C:ShieldSynergySystem.RIPOSTE_FLAT} true damage to the attacker"
+msgid "每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，羁绊失效时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害"
+msgstr "Each Shield gives its holder +5 Armor · [Rage] For every {C:ShieldSynergySystem.RAGE_THRESHOLD} damage a unit on your team takes, it releases a shockwave at the nearest enemy, dealing true damage equal to {C:ShieldSynergySystem.WAVE_PCT[0]%}% of its own max health and gaining a shield for {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% of that damage · [Holy Light Shield] Gain 1 Holy Light Shield item. It takes no item slot and is removed if the synergy deactivates. Holder gets +250 Max Health and {C:ShieldSynergySystem.HOLY_AMOUNT} Holy Shield every {C:ShieldSynergySystem.HOLY_PERIOD} seconds. While it has Holy Shield, each hit taken deals {C:ShieldSynergySystem.RIPOSTE_FLAT} true damage to the attacker"
 
 msgid "每件盾为携带者提供 +13 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 自身最大生命值 · 【圣光护盾】再获得 1 件，共 2 件 · 【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾"
 msgstr "Each Shield gives its holder +13 Armor · [Rage] Shockwave damage increased to {C:ShieldSynergySystem.WAVE_PCT[1]%}% of own max health · [Holy Light Shield] Gain 1 more, 2 in total · [Reap] When an enemy unit dies, the nearest Shield holder gains a shield equal to {C:ShieldSynergySystem.REAP_PCT%}% of that unit's max health"
@@ -4835,8 +4835,8 @@ msgstr "For {C:EquipSystem.EMBER_TRUEFIRE_SEC} seconds: Burn damage taken become
 msgid "每秒受到魔法伤害：每层 1 点。每秒造成伤害后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），降到 0 层时消失。"
 msgstr "Takes magic damage each second: 1 per stack. After each tick, stacks drop to {C:CombatMath.STACK_DECAY%}% (rounded down) and the effect ends at 0."
 
-msgid "每层使受到的伤害 +{C:BowSynergySystem.CORRODE_PER_STACK%}%（按弓箭羁绊档位），上限 {C:BowSynergySystem.CORRODE_MAX} 层。满层时受到的伤害中 {C:BowSynergySystem.CORRODE_TRUE_PCT%}% 转为真实伤害。"
-msgstr "Each stack increases damage taken by {C:BowSynergySystem.CORRODE_PER_STACK%}% (by Bow synergy tier), up to {C:BowSynergySystem.CORRODE_MAX} stacks. At max stacks, {C:BowSynergySystem.CORRODE_TRUE_PCT%}% of damage taken becomes true damage."
+msgid "每层使受到的伤害 +{C:BowSynergySystem.CORRODE_PER_STACK%}%（随弓箭羁绊件数），上限 {C:BowSynergySystem.CORRODE_MAX} 层。满层时受到的伤害中 {C:BowSynergySystem.CORRODE_TRUE_PCT%}% 转为真实伤害。"
+msgstr "Each stack increases damage taken by {C:BowSynergySystem.CORRODE_PER_STACK%}% (scales with Bow count), up to {C:BowSynergySystem.CORRODE_MAX} stacks. At max stacks, {C:BowSynergySystem.CORRODE_TRUE_PCT%}% of damage taken becomes true damage."
 
 msgid "每层使每次受到的伤害额外附带 {C:LineSystem.INK_TRUE_PER_STACK%}% 的真实伤害，这部分无视减伤与护盾。上限 {C:LineSystem.INK_CAP} 层（墨水炸弹：{C:LineSystem.INK_CAP_BOMB} 层）。"
 msgstr "Each stack adds {C:LineSystem.INK_TRUE_PER_STACK%}% of every hit taken as true damage, ignoring Damage Reduction and shields. Up to {C:LineSystem.INK_CAP} stacks ({C:LineSystem.INK_CAP_BOMB} with Ink Bomb)."
@@ -5339,11 +5339,11 @@ msgstr "Passive: only while the Bow synergy is active, every {C:EqBowBatch.CORRO
 msgid "生成一把迷你小手枪：30/60/100 生命值、15/25/40 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程，每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，攻击造成 100% 攻击力的物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，该效果每个战场重置。\n小手枪没有护盾时，受到的所有伤害降为 2 点，真实伤害同样如此，自身阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。小手枪受到的治疗效果上限为 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。"
 msgstr "Creates a mini pistol with 30/60/100 health, 15/25/40 Attack and {C:EqGunBatch.PISTOL_RANGE} range. It attacks every {C:EqGunBatch.PISTOL_IV} seconds for 100% Attack as physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance.\nEach attack permanently gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen, reset each battle.\nWithout a shield, all damage the pistol takes is reduced to 2, true damage included, or {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} after the holder dies. Healing on the pistol is capped at 1.\nThe pistol's attacks trigger the Gun synergy's [Golden Bullet]."
 
-msgid "两管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替射击，仅在附近有敌人时开火。\n左管发射锥形霰弹，造成 15/25/40 + 30/60/100% 攻击力的物理伤害。\n右管发射电击弹，对首个目标造成 {C:EqGunBatch.EEL_BOLT_ATK%}% 攻击力的物理伤害+50/100/180 魔法伤害。魔法伤害依次连锁至所有未被击中的敌人，每次跳跃降低 20/15/10%。\n金弹从轮到的那管射出并继承其效果，额外造成本段伤害 60/80/100% 的真实伤害（随枪羁绊档位），对电击弹首个目标与每次跳跃均生效。"
-msgstr "The two barrels share a counter and fire in turn every {C:EqGunBatch.EEL_IV} seconds, only when enemies are nearby.\nThe left barrel fires a cone of buckshot dealing 15/25/40 + 30/60/100% Attack as physical damage.\nThe right barrel fires a shock round dealing {C:EqGunBatch.EEL_BOLT_ATK%}% Attack as physical damage + 50/100/180 magic damage to the first target. The magic damage chains to every enemy not yet hit, dropping 20/15/10% per bounce.\nGolden Bullets come from whichever barrel is up and keep its effects, dealing bonus true damage equal to 60/80/100% of the hit (by Gun synergy tier), applied to the shock round's first target and every bounce."
+msgid "两管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替射击，仅在附近有敌人时开火。\n左管发射锥形霰弹，造成 15/25/40 + 30/60/100% 攻击力的物理伤害。\n右管发射电击弹，对首个目标造成 {C:EqGunBatch.EEL_BOLT_ATK%}% 攻击力的物理伤害+50/100/180 魔法伤害。魔法伤害依次连锁至所有未被击中的敌人，每次跳跃降低 20/15/10%。\n金弹从轮到的那管射出并继承其效果，额外造成本段伤害 60/80/100% 的真实伤害（随枪羁绊件数），对电击弹首个目标与每次跳跃均生效。"
+msgstr "The two barrels share a counter and fire in turn every {C:EqGunBatch.EEL_IV} seconds, only when enemies are nearby.\nThe left barrel fires a cone of buckshot dealing 15/25/40 + 30/60/100% Attack as physical damage.\nThe right barrel fires a shock round dealing {C:EqGunBatch.EEL_BOLT_ATK%}% Attack as physical damage + 50/100/180 magic damage to the first target. The magic damage chains to every enemy not yet hit, dropping 20/15/10% per bounce.\nGolden Bullets come from whichever barrel is up and keep its effects, dealing bonus true damage equal to 60/80/100% of the hit (scales with Gun count), applied to the shock round's first target and every bounce."
 
-msgid "在自身后方生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与自身相同。\n炮台攻击造成 100% 攻击力的物理伤害+目标最大生命值 1/1.5/2% 的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，随枪羁绊档位每攻击 4/3/2 次射出一发金弹，金弹继承全部效果并附加本段伤害 60/80/100% 的真实伤害，且金弹的治疗量翻倍。"
-msgstr "Creates a medic turret behind the holder with 700/1200/2500 health, 15/20/30 Attack, 50/70/100 Armor and Magic Resist, and the holder's attack speed.\nTurret attacks deal 100% Attack as physical damage + 1/1.5/2% of the target's max health as magic damage, and heal the ally with the lowest health percentage for 10/15/20.\nThe turret has its own Golden Bullet counter: every 4/3/2 attacks (by Gun synergy tier) it fires a Golden Bullet that keeps all effects, adds true damage equal to 60/80/100% of the hit, and heals double."
+msgid "在自身后方生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与自身相同。\n炮台攻击造成 100% 攻击力的物理伤害+目标最大生命值 1/1.5/2% 的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，随枪羁绊件数每攻击 4/3/2 次射出一发金弹，金弹继承全部效果并附加本段伤害 60/80/100% 的真实伤害，且金弹的治疗量翻倍。"
+msgstr "Creates a medic turret behind the holder with 700/1200/2500 health, 15/20/30 Attack, 50/70/100 Armor and Magic Resist, and the holder's attack speed.\nTurret attacks deal 100% Attack as physical damage + 1/1.5/2% of the target's max health as magic damage, and heal the ally with the lowest health percentage for 10/15/20.\nThe turret has its own Golden Bullet counter: every 4/3/2 attacks (scales with Gun count) it fires a Golden Bullet that keeps all effects, adds true damage equal to 60/80/100% of the hit, and heals double."
 
 msgid "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF%}% 攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的航线飞过，投下 8/10/14 枚炸弹，每枚对落点附近敌人造成 40/70/150% 攻击力的物理伤害+50/100/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n自身阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对附近敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。"
 msgstr "On spawn, summons an untargetable, fully immune gyrocopter that circles over the battlefield with its own Energy bar.\nEvery {C:EqGunBatch.HELI_FIRE_IV} seconds, it strafes the nearest enemy below with 3/4/10 cannon rounds, each dealing {C:EqGunBatch.HELI_SHOT_COEF%}% Attack as physical damage and granting {C:EqGunBatch.HELI_EN_PER_HIT} Energy on hit (max {C:EqGunBatch.HELI_EN_MAX}).\nAt full Energy, it launches [Carpet Bombing]: flies the route covering the most enemies and drops 8/10/14 bombs, each dealing 40/70/150% Attack as physical damage + 50/100/120 magic damage to enemies near where it lands.\nCannon rounds and bombs both count toward the Gun synergy's [Golden Bullet].\nAfter the holder dies, the gyrocopter keeps flying for {C:EqGunBatch.DOOM_SEC} seconds, then crashes into a random enemy and explodes, dealing 200/300/500 physical damage and applying {C:EqGunBatch.CRASH_BURN} Burn to nearby enemies."
@@ -8159,8 +8159,8 @@ msgstr "Daggers · Assassinate"
 msgid "仪式·血契"
 msgstr "Ritual · Blood Pact"
 
-msgid "匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。第二档起，战斗中再次触发。"
-msgstr "Daggers grant their carriers Crit Damage. When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and Life Steal. From the second tier, it triggers again during the fight."
+msgid "匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。"
+msgstr "Daggers grant their carriers Crit Damage. When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and Life Steal."
 
 msgid "仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。"
 msgstr "Each kill by a Ritual Dagger carrier carves a Blood Pact. Blood Pacts accumulate across the whole round, and each one permanently increases the Attack of the carrier and the whole team."

@@ -60,7 +60,7 @@ const SRC := {
 		{"k": "eq", "id": "p2eq_130", "at": "systems/equip/eq_mask_batch.gd:_lion_hit", "link": "130 舞狮头[\\s\\S]*func _lion_hit"},   # 130 舞狮冲撞眩晕(11-27)
 		{"k": "eq", "id": "p2eq_140", "at": "systems/equip/eq_spear_batch.gd:on_basic", "arm": "p2eq_140"},   # 140 骑枪冲势耗尽那一下(11-27)
 		{"k": "eq", "id": "p2eq_138", "at": "systems/equip/eq_spear_batch.gd:_harpoon", "link": "\"p2eq_138\":[\\s\\S]{0,300}_harpoon\\("},   # 138 鱼叉命中眩晕 + 拽回(11-27)
-		{"k": "eq", "id": "p2eq_145", "at": "systems/equip/eq_spear_batch.gd:_eternal", "link": "\"p2eq_145\":[\\s\\S]{0,400}_eternal\\("},   # 145 永恒之枪(待用户重新设计, 11-27)
+		{"k": "eq", "id": "p2eq_145", "at": "systems/equip/eq_spear_batch.gd:_eternal_hit", "link": "\"p2eq_145\":[\\s\\S]{0,400}_eternal\\("},   # 145 永恒之枪插倒眩晕(11-26 重做后落在 _eternal_hit)
 	],
 	"fear": [
 		{"k": "pet", "id": "headless", "sk": "headlessFear", "at": "systems/skills/headless_system.gd:_sk_headless_fear", "v": "3 秒"},
@@ -246,6 +246,8 @@ const SRC := {
 		{"k": "syn", "id": "法器", "at": "systems/equip/staff_synergy_system.gd:on_healed", "to": "self"},
 		{"k": "eq", "id": "p2eq_131", "at": "systems/equip/eq_mask_batch.gd:on_unit_cast", "to": "self", "link": "func on_unit_cast[\\s\\S]{0,600}p2eq_131"},   # 131 小丑面具放技能给自己护盾(11-27)
 		{"k": "eq", "id": "p2eq_142", "at": "systems/equip/eq_spear_batch.gd:_tick_shield_spear", "to": "self", "link": "\"p2eq_142\":[\\s\\S]{0,200}_tick_shield_spear\\("},   # 142 盾矛(11-27)
+		{"k": "eq", "id": "p2eq_146", "at": "systems/equip/eq_spear_batch.gd:_holy_guard_part", "to": "self", "link": "\"p2eq_146\":\\s*_tick_holy\\("},   # 146 圣枪引导举枪时的护盾(11-26)
+		{"k": "eq", "id": "p2eq_146", "at": "systems/equip/eq_spear_batch.gd:_holy_orb", "to": "self", "link": "\"p2eq_146\":\\s*_tick_holy\\("},   # 146 光球砸中敌人, 护盾回存携带者(11-26)
 	],
 	"magic-shield": [
 		{"k": "eq", "id": "p2eq_012", "at": "systems/equip/magic_shield.gd:seaweed_on_spawn", "to": "self"},
