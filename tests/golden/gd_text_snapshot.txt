@@ -886,6 +886,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|远程辅助
 scripts/gamedata/summon_codex_equip.gd|lit|连射
 scripts/gamedata/summon_codex_equip.gd|lit|遥控炸弹
 scripts/gamedata/summon_codex_equip.gd|lit|遥控炸弹会持续追踪一名敌人，不会攻击。
+scripts/gamedata/summon_codex_equip.gd|lit|重击
 scripts/gamedata/summon_codex_equip.gd|lit|重炮
 scripts/gamedata/summon_codex_equip.gd|lit|锁定追踪
 scripts/gamedata/summon_codex_equip.gd|lit|阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。

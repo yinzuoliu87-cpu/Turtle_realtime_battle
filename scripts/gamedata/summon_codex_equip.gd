@@ -163,7 +163,7 @@ static func _gun_tiers() -> String:
 ##   (同龟蛋: 用户 11-27「这里已经有三千的基础生命值了，所以你这里可以说龟蛋额外获得」)。原来按进化门槛估砍伐经验填数, 是估出来的数。
 ## 九种形态各一页(用户 11-27「每一把分别建立一个这个档案…不要给它放在一个里面」): 进化五档 + 终形四种, 页内没有形态选择栏。
 ## 序号 0..4 = STAGES(小木斧 → 钻石斧), 5..8 = FINALS(终形都在钻石斧之上, 解锁的被动档数按钻石斧算)。
-## 石斧 / 铁斧 / 金斧解锁的都是攻击本身的变化 ⇒ 写进斧击, 不另列被动(用户 11-27「攻击的被动…就没必要分两个的呗」)。
+## 铁斧 / 金斧解锁的竖劈、横扫按第几次攻击 ⇒ 写进斧击(用户 11-27「攻击的被动…就没必要分两个的呗」); 石斧重击按时间 ⇒ 被动(用户 11-27「这个应该属于被动吧」)。
 const AXE_IDS := ["axe", "axe_stone", "axe_iron", "axe_gold", "axe_diamond", "axe_undead", "axe_seraph", "axe_holo", "axe_ember"]
 
 
@@ -188,8 +188,6 @@ static func _axe(ci: int) -> Dictionary:
 		"holo": hp += F.HOLO_HP; atk += F.HOLO_ATK; df += F.HOLO_DEF; mr += F.HOLO_DEF
 		"ember": hp += F.EMBER_HP; atk += F.EMBER_ATK; aspd *= 1.0 + F.EMBER_ASPD; move *= 1.0 + F.EMBER_MOVE
 	var basic: String = SC.basic_line("斧头") + Lang.t("每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。")
-	if stage >= 1:
-		basic += Lang.t("每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。")
 	if stage == 2:
 		basic += Lang.t("每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。")
 	elif stage >= 3:
@@ -206,6 +204,10 @@ static func _axe(ci: int) -> Dictionary:
 		"undead": skill += Lang.t("随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。")
 	var ps: Array = [{"name": "砍伐成长", "icon": "passive/summon-axe-grow-icon.png",
 		"desc": "斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。"}]
+	## 重击按时间触发 ⇒ 被动(用户 11-27「这个应该属于被动吧」); 竖劈 / 横扫按第几次攻击 ⇒ 留在斧击(同大熊冲击波)
+	if stage >= 1:
+		ps.append({"name": "重击", "icon": "passive/summon-axe-smash-icon.png",
+			"desc": "每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。"})
 	if stage >= 3:
 		ps.append({"name": "效率", "icon": "passive/summon-axe-sweep-icon.png",
 			"desc": "斧头每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。"})
