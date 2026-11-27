@@ -16,7 +16,8 @@ extends Node
 ## 守五组：
 ##   ① ★分母：十个类型全都弹得出框（不是只测一个）
 ##   ② ★每个类型的**每一档**都出现在弹框文本里（写死 3 档时四个类型立刻红）
-##   ③ 文案**逐字完整**（不截断）—— 用 `TIER_DESCS` 原文去弹框文本里找
+##   ③ 文案**逐字完整**（不截断）—— 用图鉴同一张表(TIER_TABLE: 机制句 / 每档那一句 / 规则)渲染后去弹框文本里找
+##      (2026-11-27 弹框统一成图鉴新写法, 原来比的是 TIER_DESCS 旧文案; 用户 11-27「背包里的羁绊弹窗统一成图鉴的新写法」)
 ##   ④ 弹框不出设计框（1280×720）边界，且正文区高度 > 0
 ##   ⑤ 正文控件必须**能滚动**（外层 ScrollContainer, 2026-10-13 起; 原为 `scroll_active`）—— 内容比框高时不滚就是又一次截断
 ##   ⑦ 正文滚动条是木框 / 黄铜皮, 不是 Godot 默认的灰色圆角细条(2026-10-22; 判据与商店说明卡共用 tests/_scrollbar_skin_judge.gd)
@@ -63,8 +64,9 @@ func _ready() -> void:
 
 	for t in Phase2Types.TYPES:
 		var tname: String = str(t)
-		var descs: Array = Phase2Types.TIER_DESCS.get(tname, [])
-		if descs.is_empty():
+		var tiers_t: Array = (Phase2Types.TYPES[tname] as Dictionary).get("tiers", [])
+		var tb_t: Dictionary = Phase2Types.TIER_TABLE.get(tname, {})
+		if tiers_t.is_empty():
 			continue
 		# 真的建一次弹框（当前档取 1）
 		host._inv_synergy._show_synergy_popup(tname, 1)
@@ -81,21 +83,27 @@ func _ready() -> void:
 			continue
 		built += 1
 		var body: String = rt.get_parsed_text()          # ★读【渲染后】的纯文本, 不是我塞进去的 bbcode
-		for i in range(descs.size()):
-			## ★2026-08-21: 面板现在把文案过一遍 `SkillText.render_consts`(让羁绊文案能用
-			##   `{C:类名.常量}` 直接引用代码常量)。判据这边**也必须渲染后再比** ——
-			##   否则拿含 `{C:...}` 的原文去渲染后的文本里找, 永远找不到,
-			##   会被误报成「出现了但不完整」(我 2026-08-21 就这么误判过一次)。
-			var d: String = SkillText.render_consts(str(descs[i]))
+		## 期望 = 图鉴同一张表渲染后的字(机制句 / 每档那一句「(N) …」/ 规则); ★渲染后再比({C:} {STAT:} [k] 都展开过)
+		var want_lines: Array = []
+		for ln in tb_t.get("lines", []):
+			want_lines.append(["机制", SkillText.render_consts(str(ln))])
+		for k in range(tiers_t.size()):
+			want_lines.append(["档%d" % (k + 1), "(%d)  %s" % [int(tiers_t[k]), CodexSynergyView.table_cell(tname, CodexSynergyView.row_tpl(tb_t, k), k)]])
+		if str(tb_t.get("note", "")) != "":
+			want_lines.append(["规则", SkillText.render_consts(str(tb_t["note"]))])
+		if body.find("档") >= 0 or body.find("%d 件" % int(tiers_t[0])) >= 0:
+			truncated.append("%s 还在用旧写法(「档」或「N 件」小标题)" % tname)
+		for i in range(want_lines.size()):
+			var d: String = str(want_lines[i][1])
 			if d.strip_edges() == "":
 				continue
 			total_tiers += 1
 			if body.find(d) < 0:
 				# 分清是"整档没画"还是"画了但被吃掉"：拿前 20 字再找一次
 				if body.find(d.substr(0, 20)) < 0:
-					miss_tier.append("%s 档%d 【整段没出现】" % [tname, i + 1])
+					miss_tier.append("%s %s 【整段没出现】" % [tname, want_lines[i][0]])
 				else:
-					truncated.append("%s 档%d 出现了但不完整(%d 字)" % [tname, i + 1, d.length()])
+					truncated.append("%s %s 出现了但不完整(%d 字)" % [tname, want_lines[i][0], d.length()])
 		# 几何：不出设计框、正文区有高度
 		if box.position.y < 0.0 or box.position.y + box.size.y > InvScene.H + 0.5:
 			geo_bad.append("%s 弹框出界 y=%.0f h=%.0f (设计框高 %.0f)"
@@ -144,12 +152,14 @@ func _ready() -> void:
 	## ★2026-10-13 羁绊改成「机制说明一次 + 逐档只列数字」后单档变短(最长 93 字),
 	##   撑长弹框的是【一个类型的全部内容】⇒ 自证改量整块(机制说明 + 各档)。
 	var longest := 0
-	for t2 in Phase2Types.TIER_DESCS:
+	for t2 in Phase2Types.TIER_TABLE:
 		var whole := ""
-		for il in Phase2Types.intro_lines(t2):
+		var tb2: Dictionary = Phase2Types.TIER_TABLE[t2]
+		for il in tb2.get("lines", []):
 			whole += str(il)
-		for d2 in Phase2Types.TIER_DESCS[t2]:
-			whole += str(d2)
+		for r2 in tb2.get("rows", []):
+			whole += str(r2)
+		whole += str(tb2.get("note", ""))
 		longest = maxi(longest, whole.length())
 	_ok("★自证: 最长一个类型的弹框内容 %d 字, 确实超过旧的固定 66px Label(约 120 字)" % longest, longest > 120,
 		"只有 %d 字 —— 这条门禁已退化成恒真式, 需要换判据" % longest if longest <= 120 else "")

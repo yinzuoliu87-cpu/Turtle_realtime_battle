@@ -360,6 +360,34 @@ func _build_synergy_panel(_leaders: Array) -> void:
 ##
 ## ⚠ 别再写死任何"3 档" —— `TYPES` 里两种档制并存（`[3,6,9]` 与 `[2,5,8,10]`），
 ##   写死一个就等于把另一种的最后一档藏起来，而且【不报错、不留痕】。
+## 弹框正文(bbcode)。★2026-11-27 统一成图鉴羁绊页的写法(用户 11-27「背包里的羁绊弹窗统一成图鉴的新写法…可以今天做完啊」):
+##   同一份 Phase2Types.TIER_TABLE —— 机制一条一行(【关键词】标色, CodexSynergyView.line_bb) → 每档一行「(N) 一句」
+##   (句子 = CodexSynergyView.table_cell, 图鉴同一个函数; 云顶羁绊卡的写法, 不写「档」/「N 件」小标题) → 灰色小字规则。
+##   原来读 TIER_DESCS(「3 件」小标题 + 一段旧文案), 与图鉴说法不一样; 现在两处只改一处。
+##   当前档: 件数与句子都亮色 + 「◀ 当前」; 其余档灰。件数颜色 = 右侧按钮同一套档色(用户 2026-08-15 档号用颜色表示)。
+func popup_bb(type_key: String, cur_tier: int) -> String:
+	var P = host.Phase2Types
+	var tb: Dictionary = P.TIER_TABLE.get(type_key, {"lines": P.intro_lines(type_key)})
+	var thresh: Array = (P.TYPES.get(type_key, {}) as Dictionary).get("tiers", [])
+	var out: Array = []
+	for ln in tb.get("lines", []):
+		out.append("[color=#e8f2ff]%s[/color]" % CodexSynergyView.line_bb(SkillText.render_consts(str(ln))))
+	var rows: Array = []
+	for k in range(thresh.size()):
+		var cell: String = CodexSynergyView.table_cell(type_key, CodexSynergyView.row_tpl(tb, k), k).replace("[", "[lb]")
+		var tcol: String = "#" + _tier_color(type_key, k + 1).to_html(false)
+		var on: bool = (k + 1) == cur_tier
+		rows.append("[color=%s][b](%d)[/b][/color]  [color=%s]%s[/color]%s" % [
+			tcol, int(thresh[k]), "#e8f2ff" if on else "#8a97a8", cell, ("[color=%s]%s[/color]" % [tcol, Lang.t("  ◀ 当前")]) if on else ""])
+	var bb: String = "\n".join(PackedStringArray(out))
+	if not rows.is_empty():
+		bb += "\n\n" + "\n".join(PackedStringArray(rows))
+	var note: String = str(tb.get("note", ""))
+	if note != "":
+		bb += "\n\n[font_size=16][color=#8a97a8]%s[/color][/font_size]" % SkillText.render_consts(note).replace("[", "[lb]")
+	return bb
+
+
 func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	var dim = ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)
@@ -368,42 +396,27 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	dim.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: dim.queue_free())
 	host.add_child(dim)
 
-	var descs: Array = host.Phase2Types.TIER_DESCS.get(type_key, [])
 	var thresh: Array = (host.Phase2Types.TYPES.get(type_key, {}) as Dictionary).get("tiers", [])
-	# 拼一段 bbcode：每档一小节，当前档高亮。★档数来自数据，不是写死的 [1,2,3]。
-	var bb := ""
-	## ★2026-10-13 机制只写一次(云顶羁绊小卡): 先放 TYPE_INTRO, 下面逐档只列变化的数字。
-	for il in host.Phase2Types.intro_lines(type_key):
-		bb += ("" if bb == "" else "\n") + "[color=#c8d4e0]%s[/color]" % SkillText.render_consts(str(il))
-	for i in range(descs.size()):
-		## ★2026-08-21 接上 {C:} 消费链: TIER_DESCS 原来是**直接拿原文显示**的,
-		##   写 `{C:类名.常量}` 会原样漏给玩家(这正是 verify_code_const_token ⑦ 在守的那类事故)。
-		##   过一遍 render_consts 之后, 羁绊文案就能直接引用代码常量、不再手抄。
-		var txt: String = SkillText.render_consts(str(descs[i]))
-		if txt.strip_edges() == "":
-			continue
-		var th: int = int(thresh[i]) if i < thresh.size() else 0
-		## 档号用【颜色】表示, 不写"档1/档2"(用户 2026-08-15) —— 与右侧按钮同一套色。
-		var tcol: String = "#" + _tier_color(type_key, i + 1).to_html(false)
-		var col: String = "#e8f2ff" if (i + 1) == cur_tier else "#8a97a8"
-		var mark: String = "  ◀ 当前" if (i + 1) == cur_tier else ""
-		bb += ("" if bb == "" else "
-
-") + Lang.t("[color=%s][b]%d 件[/b][/color][color=%s]%s[/color]\n[color=%s]%s[/color]") % [
-			tcol, th, tcol, mark, col, txt]
+	var bb: String = popup_bb(type_key, cur_tier)
 
 	var bw := 760.0   # 2026-10-21 正文 15 → 20 号字: 620 → 760
 	# 框高按内容估：每档标题 + 文案行数。估多了下面 minf 会钳住，估少了 RichTextLabel 自己能滚。
 	var body_h: float = 0.0
-	for d in descs:
-		body_h += 32.0 + ceilf(float(str(d).length()) / 34.0) * 28.0
-	for il in host.Phase2Types.intro_lines(type_key):   # 机制说明(2026-10-13)也占高度
-		body_h += ceilf(float(str(il).length()) / 34.0) * 28.0
+	## 每段按纯文字长度估行数(bbcode 标记不占宽): 正文 20 号字一行约 35 字 / 30 像素; 空行 12; 小字规则(16 号)一行约 44 字 / 22 像素。
+	##   (初版空行、小字都按一整行正文算, 剑那张框下面空出一大截; 11-27 截图自查)
+	for para in bb.split("\n"):
+		var plain: String = RegEx.create_from_string("\\[[^\\]]*\\]").sub(para, "", true)
+		if plain.strip_edges() == "":
+			body_h += 12.0
+		elif para.begins_with("[font_size=16]"):
+			body_h += ceilf(float(plain.length()) / 44.0) * 22.0
+		else:
+			body_h += ceilf(float(plain.length()) / 35.0) * 30.0
 	# ⚠ 上限用设计框高 `host.H`（1280×720 的那个 720），**不是 `host._vh`** ——
 	#   InventoryScene 上【没有 `_vh` 这个字段】（只有 `_vw`），写 `_vh` 会恒为 0
 	#   ⇒ maxf 兜到 280、每个类型的框都一样矮，等于白改。
 	#   本屏是"内容锁 1280×720 居中"的设计框口径（`_rebuild` 注释），所以按 H 算才对得上。
-	var bh: float = clampf(body_h + 170.0, 300.0, host._popup_bottom() - 24.0)
+	var bh: float = clampf(body_h + 180.0, 300.0, host._popup_bottom() - 24.0)   # 180 = 标题 62 + 按钮区 100 + 上下留白
 
 	var box = Panel.new()
 	var sb = StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
