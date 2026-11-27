@@ -83,6 +83,15 @@ def pick(files):
 	##   verify_staff_actives_fire 都没被选上, 红在 CI 上(用户 11-06「CI 不是用来找小错的」)。
 	syms, eq_ids = hub_symbols([f for f in files if f in hub])
 	syms = {s for s in syms if sum(1 for t in srcs.values() if s in t) <= HUB_MAX}
+	## ★枢纽文件被测试【当源码文本整份扫】(FileAccess 读它) ⇒ 改了它就要跑那几条(2026-11-27 加):
+	##   改 phase2_types.gd 加 TIER_TABLE, verify_code_const_token 逐行扫这份源码里的 {C:}, 预检按枢纽没选, 红在 CI 上。
+	##   每个枢纽这样读它的测试不超过 HUB_MAX 条才展开(主战斗文件有 36 条源码扫描, 照旧不展开)。
+	hub_text = {}
+	for h in hub:
+		if h.endswith(".gd"):
+			rd = [n for n, t in srcs.items() if reads_as_text(t, h)]
+			if 0 < len(rd) <= HUB_MAX:
+				hub_text[h] = rd
 	out = {}
 	for name, src in srcs.items():
 		if name in ALWAYS:
@@ -95,6 +104,8 @@ def pick(files):
 			out[name] = "数据整表扫描 " + next(f for p, f in data_scan if p.search(src))
 		elif eq_ids and EQ_TABLE.search(src):
 			out[name] = "装备整表遍历(改了 %s)" % ",".join(sorted(eq_ids)[:3])
+		elif any(name in rd for rd in hub_text.values()):
+			out[name] = "按文本扫改动的枢纽 " + next(os.path.basename(h) for h, rd in hub_text.items() if name in rd)
 		else:
 			for k in keys:
 				if k not in hub and k in src:
@@ -117,6 +128,26 @@ def pick(files):
 
 
 SCENE_TMPL = re.compile(r'res://scenes/%s\.tscn')
+
+
+def reads_as_text(src, f):
+	"""测试把 f 的源码当文本读: 路径字面量写在 FileAccess.open( 那一行, 或写在 for x in [...] 清单里且随后 6 行内 FileAccess.open(x。"""
+	lit = '"res://%s"' % f
+	if lit not in src:
+		return False
+	lines = src.replace("\r\n", "\n").split("\n")
+	for i, ln in enumerate(lines):
+		if lit not in ln:
+			continue
+		if "FileAccess.open(" in ln or "FileAccess.get_file_as_string(" in ln:
+			return True
+		m = re.match(r"\s*for\s+(\w+)\s+in\s+\[", ln)
+		if m:
+			v = m.group(1)
+			for nx in lines[i + 1:i + 7]:
+				if re.search(r"FileAccess\.(open|get_file_as_string)\(\s*%s\b" % v, nx):
+					return True
+	return False
 _TSCN = None
 
 

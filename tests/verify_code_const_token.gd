@@ -95,9 +95,13 @@ func _ready() -> void:
 "):
 			if not raw.contains("{C:"):
 				continue
+			## 注释行不是玩家看到的字(TIER_TABLE 的说明注释里写着「其余 {C:} 读代码常量」)
+			if raw.strip_edges().begins_with("#"):
+				continue
 			n_gd += 1
 			n_ctok += 1
-			if ST.render_consts(raw).contains("{C:"):
+			## TIER_TABLE 的 rows 用 [k] 指第几档, 图鉴页按档换成 [0] [1] [2] 再渲染(synergy_view.row_tpl) —— 这里取第 0 档同样走一遍
+			if ST.render_consts(raw.replace("[k]", "[0]")).contains("{C:"):
 				leaked.append(gd.get_file() + " 第 %d 段" % n_gd)
 	_ok("⑦ 分母: .gd 里也有 {C:} 段被扫到", n_gd > 0, "扫到 %d 行" % n_gd)
 	for jf in ["res://data/pets.json", "res://data/phase2-equipment.json"]:
