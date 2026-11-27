@@ -121,16 +121,15 @@ static func _turret(si: int) -> Dictionary:
 static func _cakebox(si: int) -> Dictionary:
 	var F := EqFoodBatch
 	return _page("蛋糕礼盒", ["cakebox"], "cakebox", {"img": "vfx/eq072-cake-box.png", "_box": 120.0, "_cy": 104.0}, "p2eq_072", ["近战坦克"],
-		SC.stats(SC._pct(F.BOX_SPLIT_HP_PCT[si]) + "%", "100%", "100%", "100%", 0, "同携带者", RealtimeBattle3DScene.MELEE_ATK_RANGE_MIN,
-			{"hp": "携带者生命", "atk": "携带者攻击", "def": "携带者护甲", "mr": "携带者魔抗"}),
+		SC.stats("未知", "未知", "未知", "未知", 0, "未知", RealtimeBattle3DScene.MELEE_ATK_RANGE_MIN),
 		{"name": "礼盒撞击", "icon": "skills/summon-cake-bump.png",
-			"desc": "蛋糕礼盒的攻击造成 {C:EqFoodBatch.BOX_HIT_COEF%}% 攻击力的物理伤害。"}, {},
+			"desc": "蛋糕礼盒的攻击造成（{C:EqFoodBatch.BOX_HIT_COEF%}%×攻击力(未知) = 未知）物理伤害。"}, {},
 		[{"name": "甜蜜诱惑", "icon": "passive/summon-cake-lure-icon.png",
 			"desc": Lang.t("嘲讽附近所有敌人。每有一个敌人以蛋糕礼盒为目标，蛋糕礼盒获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} 护甲和魔抗。") % si},
 		 {"name": "蛋糕法阵", "icon": "passive/summon-cake-field-icon.png",
-			"desc": Lang.t("登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后召唤蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒一次，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值与 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。") % [si, si]},
+			"desc": Lang.t("登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后在身边展开蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒展开一次。法阵跟随蛋糕礼盒，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中的友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值和 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。") % [si, si]},
 		 {"name": "礼盒分身", "icon": "passive/summon-cake-split-icon.png",
-			"desc": Lang.t("蛋糕礼盒拥有携带者 {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% 的最大生命值，攻击力、护甲、魔抗与攻击速度与携带者相同，不能移动。") % si}])
+			"desc": Lang.t("蛋糕礼盒的最大生命值为携带者的 {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%%，攻击力、护甲、魔抗和攻击速度与携带者相同。") % si}])
 
 
 # ─── 077 小手枪 ───

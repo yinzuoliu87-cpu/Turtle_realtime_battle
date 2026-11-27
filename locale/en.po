@@ -9162,23 +9162,15 @@ msgstr "Guarded"
 msgid "同携带者"
 msgstr "As holder"
 
-msgid "携带者生命"
-msgstr "holder's health"
 
-msgid "携带者攻击"
-msgstr "holder's Attack"
 
-msgid "携带者护甲"
-msgstr "holder's Armor"
 
-msgid "携带者魔抗"
-msgstr "holder's MR"
 
 msgid "礼盒撞击"
 msgstr "Box Bump"
 
-msgid "蛋糕礼盒的攻击造成 {C:EqFoodBatch.BOX_HIT_COEF%}% 攻击力的物理伤害。"
-msgstr "The Cake Box's attacks deal {C:EqFoodBatch.BOX_HIT_COEF%}% Attack as physical damage."
+msgid "蛋糕礼盒的攻击造成（{C:EqFoodBatch.BOX_HIT_COEF%}%×攻击力(未知) = 未知）物理伤害。"
+msgstr "The Cake Box's attacks deal ({C:EqFoodBatch.BOX_HIT_COEF%}% × Attack (Unknown) = Unknown) physical damage."
 
 msgid "甜蜜诱惑"
 msgstr "Sweet Lure"
@@ -9499,11 +9491,11 @@ msgstr "For each different Spear on your side, the Centurion gains {C:%s.STAR_PC
 msgid "嘲讽附近所有敌人。每有一个敌人以蛋糕礼盒为目标，蛋糕礼盒获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} 护甲和魔抗。"
 msgstr "Taunts all nearby enemies. For each enemy targeting it, the Cake Box gains {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} Armor and Magic Resist."
 
-msgid "登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后召唤蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒一次，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值与 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。"
-msgstr "{C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} seconds after spawning, and every {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} seconds after that, it summons a cake circle for {C:EqFoodBatch.BOX_FIELD_SEC} seconds that heals allies inside for {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} and gives them {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} Energy per second."
+msgid "登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后在身边展开蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒展开一次。法阵跟随蛋糕礼盒，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中的友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值和 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。"
+msgstr "{C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} seconds after spawning, and every {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} seconds after that, it opens a cake circle around itself. The circle follows the Cake Box for {C:EqFoodBatch.BOX_FIELD_SEC} seconds and each second heals allies inside for {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} and gives them {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} Energy."
 
-msgid "蛋糕礼盒拥有携带者 {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% 的最大生命值，攻击力、护甲、魔抗与攻击速度与携带者相同，不能移动。"
-msgstr "The Cake Box has {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% of the holder's max health and the same Attack, Armor, Magic Resist and attack speed as the holder, and can't move."
+msgid "蛋糕礼盒的最大生命值为携带者的 {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%%，攻击力、护甲、魔抗和攻击速度与携带者相同。"
+msgstr "The Cake Box has {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% of the holder's max health and the same Attack, Armor, Magic Resist and attack speed as the holder."
 
 msgid "急救塔的攻击造成（{C:EqGunBatch.TOWER_COEF%%}%%×攻击力({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}）物理伤害，另加目标最大生命值 {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% 的魔法伤害，并为生命值百分比最低的友军回复 {C:EqGunBatch.TOWER_HEAL[%d]} 生命值。"
 msgstr "The Aid Tower's attacks deal ({C:EqGunBatch.TOWER_COEF%%}%% × Attack ({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}) physical damage plus magic damage equal to {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% of the target's max health, and heal the ally with the lowest health percentage for {C:EqGunBatch.TOWER_HEAL[%d]}."
