@@ -53,6 +53,16 @@ func _ready() -> void:
 		if _P2T.icon_of(t) == "" or not ResourceLoader.exists(_P2T.icon_of(t)) or WeekReveal.blurb(t).strip_edges() == "":
 			miss.append(t)
 	_ok("16 个羁绊都有图标与简介(分母 %d)" % WeeklySynergy.ALL.size(), miss.is_empty(), str(miss))
+	## 11-27 用户「这些描述…没有按规矩来」: 有档位的卡 =「（第一档件数）+ 具体效果」, 常量占位符全部展开、件数档行与 TYPES 一致
+	var bad_copy: Array = []
+	for t in WeeklySynergy.ALL:
+		var b: String = WeekReveal.blurb(t)
+		var tiers: Array = (_P2T.TYPES.get(t, {}) as Dictionary).get("tiers", [])
+		var want_tl: String = " / ".join(PackedStringArray(tiers.map(func(n): return str(n)))) if not tiers.is_empty() else "特殊羁绊"
+		if b.contains("{C:") or b.contains("越") or WeekReveal.tiers_line(t) != want_tl \
+				or (not tiers.is_empty() and not b.begins_with("（%d）" % int(tiers[0]))):
+			bad_copy.append(t + ":" + b)
+	_ok("卡面文案照羁绊小卡体例(分母 %d)" % WeeklySynergy.ALL.size(), bad_copy.is_empty(), str(bad_copy))
 	print("== ③ 实建")
 	var host := Control.new()
 	host.size = Vector2(1280, 720)

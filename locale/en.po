@@ -8422,3 +8422,54 @@ msgstr "Chip"
 
 msgid "长矛"
 msgstr "Spear"
+
+msgid "特殊羁绊"
+msgstr "Special Synergy"
+
+msgid "携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次"
+msgstr "The carrier follows up each attack with {C:SwordsmanSystem.HITS[0]} extra strike"
+
+msgid "全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波"
+msgstr "Every {C:ShieldSynergySystem.RAGE_THRESHOLD} damage your units take unleashes a shockwave at the nearest enemy"
+
+msgid "每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹"
+msgstr "Every {C:GunSynergySystem.GOLD_EVERY[0]} shots, each Gun fires 1 extra Golden Bullet"
+
+msgid "每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%"
+msgstr "Every {C:BowSynergySystem.CORRODE_PERIOD} seconds, all enemies gain 1 Corrosion stack, each increasing damage taken by {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%"
+
+msgid "每件法器充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点法力时，释放该法器的主动效果"
+msgstr "Each Artifact casts its active effect at {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} Mana"
+
+msgid "召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手，拍击沿途敌人"
+msgstr "Summon {C:SpiritSynergySystem.TENTACLES[0]} unkillable Tentacle that slams enemies in its path"
+
+msgid "每 {C:GadgetSynergySystem.PERIOD} 秒铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，本局结束时获得"
+msgstr "Mint {C:GadgetSynergySystem.COIN_PER_TICK[0]} Abyss Coin every {C:GadgetSynergySystem.PERIOD} seconds, collected after the match"
+
+msgid "每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久获得 {C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值"
+msgstr "Every {C:FoodSynergySystem.PERIOD} seconds, each Food item permanently grants its carrier {C:FoodSynergySystem.GROW_PER_FOOD[0]} max health"
+
+msgid "生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取"
+msgstr "Above {C:RelicSynergySystem.HP_GATE%}% health: +{C:RelicSynergySystem.ATK_BONUS[0]%}% attack damage. Below: {C:RelicSynergySystem.LOW_HP_LS[0]%}% Lifesteal"
+
+msgid "生命值最高的敌人成为猎物，全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%"
+msgstr "The highest-health enemy becomes Prey. Your team deals {C:PotionSynergySystem.PREY_AMP[0]%}% more damage to Prey"
+
+msgid "开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹轰炸并击飞所有敌方单位"
+msgstr "{C:BombSynergySystem.FIRE_AT} seconds into combat, a missile blasts and knocks up every enemy"
+
+msgid "开打时，我方所有单位的下一次攻击必定暴击"
+msgstr "At the start of combat, every allied unit's next attack is a guaranteed critical strike"
+
+msgid "我方单位释放技能时，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹"
+msgstr "When an ally casts a skill, summon 1 Magic Missile per {C:MagicbookSynergySystem.PER_ENERGY[0]} Energy spent"
+
+msgid "开打第 {C:SpearSynergySystem.SUMMON_AT} 秒，百夫长从天而降，击飞全场敌人"
+msgstr "{C:SpearSynergySystem.SUMMON_AT} seconds into combat, the Centurion crashes down and knocks up every enemy"
+
+msgid "开打时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体"
+msgstr "At the start of combat, summon a copy of {C:MaskSynergySystem.STEAL_N[0]} enemy turtle on your side"
+
+msgid "消耗品，无法升星，不计入其他羁绊的件数"
+msgstr "Consumable. Cannot be upgraded and does not count toward other synergies"

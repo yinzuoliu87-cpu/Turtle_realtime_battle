@@ -68,22 +68,51 @@ static func fresh_of(anchor: int) -> Array:
 	return out
 
 
-## 卡上那一句: 总述(TYPE_INTRO 第一条)里讲招牌机制的那一句 —— 第一句是「X 提高携带者的 Y」就取第二句, 只有一句就整句。
+## 卡上的效果句: 照云顶羁绊小卡「（件数）效果」—— 写第一档的招牌机制, 数字一律读代码常量({C:} 占位符, 与图鉴 TIER_DESCS 同一批常量)。
+## ★11-27 用户「这些描述…是没有按规矩来的吗？规矩规定的不会有这么 AI 味吧？」: 原来截 TYPE_INTRO 总述的后半句,
+##   出来是「档位越高，全队攻击越能冰封敌人」「按生命值高低切换攻击与续航」这种不给数的说明书腔。
+##   规矩(memory project-copy-lol-rules-1013 / fb-no-colloquial-copy): 具体数字、不写「越…越…」、不口语、不用「·」拼短语。
+##   copy_lol_style_lint 扫本文件。英文在 locale/en.po(模板原样带 {C:})。
+const CARD_LINE := {
+	"剑": "携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次",
+	"盾": "全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波",
+	"枪": "每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹",
+	"弓箭": "每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%",
+	"法器": "每件法器充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点法力时，释放该法器的主动效果",
+	"灵物": "召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手，拍击沿途敌人",
+	"奇械": "每 {C:GadgetSynergySystem.PERIOD} 秒铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，本局结束时获得",
+	"食物": "每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久获得 {C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值",
+	"遗物": "生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取",
+	"药水": "生命值最高的敌人成为猎物，全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%",
+	"炸弹": "开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹轰炸并击飞所有敌方单位",
+	"匕首": "开打时，我方所有单位的下一次攻击必定暴击",
+	"魔法书": "我方单位释放技能时，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹",
+	"长矛": "开打第 {C:SpearSynergySystem.SUMMON_AT} 秒，百夫长从天而降，击飞全场敌人",
+	"面具": "开打时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体",
+	"筹码": "消耗品，无法升星，不计入其他羁绊的件数",
+}
+
+
+## 卡上的件数档行:「3 / 6 / 9」; 没有档位的特殊羁绊(筹码)写「特殊羁绊」。
+static func tiers_line(t: String) -> String:
+	var tiers: Array = (_P2T.TYPES.get(t, {}) as Dictionary).get("tiers", [])
+	if tiers.is_empty():
+		return Lang.t("特殊羁绊")
+	var out: PackedStringArray = []
+	for n in tiers:
+		out.append(str(n))
+	return " / ".join(out)
+
+
+## 卡上的效果句(已展开常量、已换语言); 有档位的前面挂第一档件数「（3）」。
 static func blurb(t: String) -> String:
-	var lines: Array = _P2T.intro_lines(t)
-	if lines.is_empty():
+	if not CARD_LINE.has(t):
 		return ""
-	var s: String = SkillText.render_consts(Lang.t(str(lines[0])))
-	## 卡上只放一句: 括号里的补充(「（包括召唤物）」)去掉 —— 图鉴里是全文。11-27 魔法书那句带括号最长, 拖得 10 张卡一起缩到 12 号字
-	var rx := RegEx.create_from_string("（[^）]*）| ?[(][^)]*[)]")
-	s = rx.sub(s, "", true)
-	var parts: PackedStringArray = s.split("。", false)
-	if parts.size() < 2:
-		parts = s.split(". ", false)
-	if parts.size() >= 2:
-		var second: String = parts[1].strip_edges()
-		return second + ("。" if s.contains("。") else ".")
-	return s.strip_edges()
+	var s: String = SkillText.render_consts(str(CARD_LINE[t]))
+	var tiers: Array = (_P2T.TYPES.get(t, {}) as Dictionary).get("tiers", [])
+	if tiers.is_empty():
+		return s
+	return ("(%d) " if Lang.is_en() else "（%d）") % int(tiers[0]) + s
 
 
 static func play(h: Control, anchor: int, done: Callable) -> WeekReveal:
@@ -207,6 +236,11 @@ func _card(i: int, t: String) -> Dictionary:
 	var bar_mid: float = (55.0 + 70.0 + 1.0) * 0.5 * PX
 	nm.position = Vector2(8.0 * PX, bar_mid - 25.0); nm.size = Vector2(80.0 * PX, 48.0)   # -25: 这套字体中文笔画本身比行框中线低约 1 像素(量过)
 	front.add_child(nm)
+	## 件数档行(金色, 红条下方): 框高 26 ≥ 16 号一行(24), 引擎才能真居中
+	var tl := _label(tiers_line(t), 16, Color("#f2c45a"), Color("#1a0c04"), 4)
+	tl.name = "Tiers"
+	tl.position = Vector2(10.0 * PX, 72.0 * PX); tl.size = Vector2(76.0 * PX, 26.0)
+	front.add_child(tl)
 	var ds := Label.new()
 	ds.text = blurb(t)
 	ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -214,7 +248,7 @@ func _card(i: int, t: String) -> Dictionary:
 	ds.add_theme_font_size_override("font_size", 14)
 	ds.add_theme_color_override("font_color", Color("#e9dcc2"))
 	ds.add_theme_constant_override("line_spacing", 1)
-	ds.position = Vector2(10.0, 72.0) * PX; ds.size = Vector2(76.0, 48.0) * PX   # 内框(离外沿 6 像素那道金线)以内: x 10..86, y 72..120
+	ds.position = Vector2(10.0 * PX, 72.0 * PX + 26.0); ds.size = Vector2(76.0 * PX, 48.0 * PX - 26.0)   # 内框(离外沿 6 像素那道金线)以内: x 10..86, 件数档行以下到 y 120
 	ds.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	ds.clip_text = true
 	ds.mouse_filter = Control.MOUSE_FILTER_IGNORE
