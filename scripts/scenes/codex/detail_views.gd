@@ -1107,7 +1107,7 @@ func _show_loot(tid: String) -> void:
 	host._add_image(60, 70, ChestLoot.icon_path(tid), 64, 64)   # 32 像素原图 × 2(整数倍不糊)
 	var nl: Label = host._add_text(130, 34, str(ChestLoot.NAME.get(tid, tid)), 30, "#ffd93d", 0.0, 0.5, true)
 	nl.name = "LootName"
-	var sl: Label = host._add_text(130, 74, Lang.t("宝箱龟战利品：%s，%s开出") % [ChestLoot.POOL_NAME.get(g, g), ChestLoot.box_text(g)], 17, col, 0.0, 0.5)
+	var sl: Label = host._add_text(130, 74, Lang.t("宝箱龟战利品：%s，%s开出") % [Lang.t(str(ChestLoot.POOL_NAME.get(g, g))), ChestLoot.box_text(g)], 17, col, 0.0, 0.5)
 	sl.name = "LootSub"
 	var y := 130.0
 	host._add_text(20, y, "效果", 17, "#58d3ff", 0.0, 0.0, true)

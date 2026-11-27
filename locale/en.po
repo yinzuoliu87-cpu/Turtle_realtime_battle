@@ -8473,3 +8473,270 @@ msgstr "At the start of combat, summon a copy of {C:MaskSynergySystem.STEAL_N[0]
 
 msgid "消耗品，无法升星，不计入其他羁绊的件数"
 msgstr "Consumable. Cannot be upgraded and does not count toward other synergies"
+
+msgid "纸面具"
+msgstr "Paper Mask"
+
+msgid "登场获得物理护盾，受到伤害时按护甲朝攻击者掷出纸刃。"
+msgstr "Gains a physical shield on deployment. Taking damage throws a paper blade at the attacker based on Armor."
+
+msgid "登场时获得自身 {C:EqMaskBatch.PAPER_SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害。每受到一段攻击或技能伤害，朝攻击者掷出一片纸刃，造成自身 {C:EqMaskBatch.PAPER_COUNTER%}% 护甲的物理伤害。持续伤害不会触发此效果。"
+msgstr "On deployment, gains a physical shield equal to {C:EqMaskBatch.PAPER_SHIELD_PCT%}% of max health that only absorbs physical damage. Each instance of attack or skill damage taken throws a paper blade at the attacker, dealing physical damage equal to {C:EqMaskBatch.PAPER_COUNTER%}% of Armor. Damage over time does not trigger this effect."
+
+msgid "狐狸面具"
+msgstr "Fox Mask"
+
+msgid "对最大生命值比自己高的敌人造成的伤害提高，至多提高 {C:EqMaskBatch.FOX_MAX%}%。"
+msgstr "Deals more damage to enemies with higher max health than the holder, up to {C:EqMaskBatch.FOX_MAX%}% more."
+
+msgid "对最大生命值高于自身的敌人伤害提高，提高量随两者最大生命值的差值增加，差值达到 {C:EqMaskBatch.FOX_FULL_DIFF} 时提高 {C:EqMaskBatch.FOX_MAX%}%。"
+msgstr "Deals more damage to enemies with higher max health than the holder. The bonus grows with the max health difference, reaching {C:EqMaskBatch.FOX_MAX%}% at a difference of {C:EqMaskBatch.FOX_FULL_DIFF}."
+
+msgid "京剧脸谱"
+msgstr "Opera Mask"
+
+msgid "定时按红、黑、白轮换脸谱：红脸加真伤，黑脸减伤加双抗，白脸加攻速并偷龟能。"
+msgstr "Periodically cycles Red, Black and White faces: Red adds true damage, Black reduces damage taken and grants Armor and Magic Resist, White grants Attack Speed and steals Energy."
+
+msgid "每 {C:EqMaskBatch.FACE_IV} 秒按红、黑、白的顺序换一次脸谱。红脸：攻击额外造成 {C:EqMaskBatch.FACE_RED_TRUE%}% 攻击力的真实伤害。黑脸：每段受到的伤害减少 {C:EqMaskBatch.FACE_BLACK_FLAT} 点，并获得 {C:EqMaskBatch.FACE_BLACK_RES} 护甲和魔抗。白脸：获得 {C:EqMaskBatch.FACE_WHITE_ASPD%}% 攻击速度，攻击偷取目标 {C:EqMaskBatch.FACE_WHITE_EN} 点龟能。"
+msgstr "Every {C:EqMaskBatch.FACE_IV} seconds, switches face in the order Red, Black, White. Red: attacks deal an extra {C:EqMaskBatch.FACE_RED_TRUE%}% Attack as true damage. Black: each instance of damage taken is reduced by {C:EqMaskBatch.FACE_BLACK_FLAT}, and gains {C:EqMaskBatch.FACE_BLACK_RES} Armor and Magic Resist. White: gains {C:EqMaskBatch.FACE_WHITE_ASPD%}% Attack Speed, and attacks steal {C:EqMaskBatch.FACE_WHITE_EN} Energy from the target."
+
+msgid "舞狮头"
+msgstr "Lion Dance Head"
+
+msgid "召唤一头舞狮，龟能满时冲撞途经的敌人，撞退并眩晕。"
+msgstr "Summons a dancing lion that charges through enemies when its Energy is full, knocking them back and stunning them."
+
+msgid "登场时召唤一头舞狮：{C:EqMaskBatch.LION_HP} 生命值、{C:EqMaskBatch.LION_ATK} 攻击力、{C:EqMaskBatch.LION_RES} 护甲和魔抗，近战攻击。舞狮龟能满时朝前方冲撞，对途经的敌人造成 {C:EqMaskBatch.LION_CHARGE_ATK%}% 舞狮攻击力的物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN} 秒。"
+msgstr "On deployment, summons a dancing lion: {C:EqMaskBatch.LION_HP} health, {C:EqMaskBatch.LION_ATK} Attack, {C:EqMaskBatch.LION_RES} Armor and Magic Resist, melee attacks. When its Energy is full, the lion charges forward, dealing physical damage equal to {C:EqMaskBatch.LION_CHARGE_ATK%}% of its Attack to enemies in its path, knocking them back and stunning them for {C:EqMaskBatch.LION_STUN} seconds."
+
+msgid "小丑面具"
+msgstr "Clown Mask"
+
+msgid "释放技能后嘲讽附近的敌人并获得护盾，嘲讽时间基于消耗的龟能。"
+msgstr "After casting a skill, taunts nearby enemies and gains a shield. Taunt duration is based on the Energy spent."
+
+msgid "释放技能后嘲讽附近的敌人，每消耗 100 点龟能嘲讽 {C:EqMaskBatch.CLOWN_SEC_PER_100} 秒，并获得自身 {C:EqMaskBatch.CLOWN_SHIELD_PCT%}% 最大生命值的护盾，持续 {C:EqMaskBatch.CLOWN_SHIELD_SEC} 秒。"
+msgstr "After casting a skill, taunts nearby enemies for {C:EqMaskBatch.CLOWN_SEC_PER_100} seconds per 100 Energy spent, and gains a shield equal to {C:EqMaskBatch.CLOWN_SHIELD_PCT%}% of max health for {C:EqMaskBatch.CLOWN_SHIELD_SEC} seconds."
+
+msgid "鬼面"
+msgstr "Ghost Mask"
+
+msgid "生命值首次降到一半时潜行并回复生命值。"
+msgstr "The first time health drops to half, enters stealth and restores health."
+
+msgid "生命值首次降到 {C:EqMaskBatch.GHOST_LINE%}% 时进入潜行，持续 {C:EqMaskBatch.GHOST_SEC} 秒：无法被选中，攻击时现形，{C:EqMaskBatch.GHOST_REHIDE} 秒后重新潜行。这段时间内每秒回复自身 {C:EqMaskBatch.GHOST_REGEN%}% 最大生命值。每个战场一次。"
+msgstr "The first time health drops to {C:EqMaskBatch.GHOST_LINE%}%, enters stealth for {C:EqMaskBatch.GHOST_SEC} seconds: cannot be targeted, is revealed when attacking, and re-enters stealth after {C:EqMaskBatch.GHOST_REHIDE} seconds. During this time, restores {C:EqMaskBatch.GHOST_REGEN%}% of max health per second. Once per battle."
+
+msgid "防毒面具"
+msgstr "Gas Mask"
+
+msgid "免疫灼烧、中毒和流血，每损失 1% 生命值获得 {C:EqMaskBatch.GAS_MOVE_PER_PCT%}% 移动速度。"
+msgstr "Immune to Burn, Poison and Bleed. Gains {C:EqMaskBatch.GAS_MOVE_PER_PCT%}% Move Speed for each 1% of health lost."
+
+msgid "免疫灼烧、中毒和流血。每损失 1% 生命值，获得 {C:EqMaskBatch.GAS_MOVE_PER_PCT%}% 移动速度。"
+msgstr "Immune to Burn, Poison and Bleed. Gains {C:EqMaskBatch.GAS_MOVE_PER_PCT%}% Move Speed for each 1% of health lost."
+
+msgid "威尼斯面具"
+msgstr "Venetian Mask"
+
+msgid "首次受到致命伤害时倒地复活，继续战斗。"
+msgstr "The first time it takes lethal damage, falls down instead of dying, then rises to keep fighting."
+
+msgid "首次受到致命伤害时倒地不死，{C:EqMaskBatch.VEN_SEC} 秒内生命值逐渐回复至自身 {C:EqMaskBatch.VEN_HEAL%}% 最大生命值后继续战斗，倒地期间无法被选中。每个战场一次。"
+msgstr "The first time it takes lethal damage, falls down instead of dying, gradually restores health to {C:EqMaskBatch.VEN_HEAL%}% of max health over {C:EqMaskBatch.VEN_SEC} seconds, then keeps fighting. Cannot be targeted while down. Once per battle."
+
+msgid "黄金面具"
+msgstr "Golden Mask"
+
+msgid "金光钉住一名敌人持续造成递增的真实伤害直到其死亡，击杀生成深海币并让这件面具永久成长。"
+msgstr "A golden beam pins an enemy, dealing escalating true damage until it dies. Kills create Abyss Coins and permanently grow this mask."
+
+msgid "面具升空射出一道金光，{C:EqMaskBatch.GOLD_DELAY} 秒后从天而降钉住一名敌人，每秒造成（{C:EqMaskBatch.GOLD_FLAT}+目标 {C:EqMaskBatch.GOLD_PCT%}% 最大生命值）真实伤害，之后每过 1 秒，每秒伤害再提高 {C:EqMaskBatch.GOLD_RAMP%}%，直到目标死亡。目标死亡后金光冷却 {C:EqMaskBatch.GOLD_CD} 秒。金光每击杀一个单位，生成 1 枚深海币，并使这件黄金面具永久获得 1 层，每层提供 {C:EqMaskBatch.GOLD_STK_HP} 最大生命值和 {C:EqMaskBatch.GOLD_STK_ATK} 攻击力。"
+msgstr "The mask rises and fires a golden beam that crashes down after {C:EqMaskBatch.GOLD_DELAY} seconds and pins an enemy, dealing ({C:EqMaskBatch.GOLD_FLAT} + {C:EqMaskBatch.GOLD_PCT%}% of the target's max health) true damage per second. Each second after that, the damage per second increases by {C:EqMaskBatch.GOLD_RAMP%}% until the target dies. After the target dies, the beam goes on a {C:EqMaskBatch.GOLD_CD}-second cooldown. Each unit the beam kills creates 1 Abyss Coin and permanently gives this Golden Mask 1 stack. Each stack grants {C:EqMaskBatch.GOLD_STK_HP} max health and {C:EqMaskBatch.GOLD_STK_ATK} Attack."
+
+msgid "千面"
+msgstr "Thousand Faces"
+
+msgid "把一名敌人拽进里世界决斗，期间持续偷取它的属性。"
+msgstr "Drags an enemy into the Otherworld for a duel, stealing its stats throughout."
+
+msgid "开打第 {C:OtherworldSystem.OW_AT} 秒，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。"
+msgstr "{C:OtherworldSystem.OW_AT} seconds into combat, drags a random enemy into the Otherworld for a duel lasting up to {C:OtherworldSystem.OW_SEC} seconds. In the Otherworld, steals {C:OtherworldSystem.OW_STEAL%}% of the enemy's Attack, Armor and Magic Resist every second. Stolen stats last until the battlefield ends. The duel ends early when either side is defeated."
+
+msgid "竹矛"
+msgstr "Bamboo Spear"
+
+msgid "每第三次攻击刺出一道竹刺浪。"
+msgstr "Every third attack sends out a wave of bamboo spikes."
+
+msgid "每第 {C:EqSpearBatch.BAMBOO_EVERY} 次攻击，朝最远的敌人方向从地里刺出一道竹刺浪，对路径上的每名敌人造成 {C:EqSpearBatch.BAMBOO_PCT%}% 攻击力的物理伤害。"
+msgstr "Every {C:EqSpearBatch.BAMBOO_EVERY}rd attack, bamboo spikes burst from the ground toward the farthest enemy, dealing {C:EqSpearBatch.BAMBOO_PCT%}% Attack as physical damage to each enemy in the path."
+
+msgid "鱼叉"
+msgstr "Harpoon"
+
+msgid "定时叉住伤害最高的敌人拉过来。"
+msgstr "Periodically harpoons the highest-damage enemy and drags it in."
+
+msgid "每 {C:EqSpearBatch.HARPOON_IV} 秒朝造成伤害最多的敌人射出鱼叉，造成 {C:EqSpearBatch.HARPOON_DMG} 魔法伤害并眩晕 {C:EqSpearBatch.HARPOON_STUN} 秒，眩晕期间每 {C:EqSpearBatch.HARPOON_PULL_IV} 秒把它朝自己拉近一段距离。"
+msgstr "Every {C:EqSpearBatch.HARPOON_IV} seconds, fires a harpoon at the enemy that has dealt the most damage, dealing {C:EqSpearBatch.HARPOON_DMG} magic damage and stunning it for {C:EqSpearBatch.HARPOON_STUN} seconds. While stunned, it is pulled closer every {C:EqSpearBatch.HARPOON_PULL_IV} seconds."
+
+msgid "标枪"
+msgstr "Javelin"
+
+msgid "定时朝最远的敌人掷标枪，附带流血。"
+msgstr "Periodically throws a javelin at the farthest enemy, applying Bleed."
+
+msgid "每 {C:EqSpearBatch.JAV_IV} 秒朝最远的敌人掷出一根标枪，造成 {C:EqSpearBatch.JAV_PCT%}% 攻击力的物理伤害，并施加 {C:EqSpearBatch.JAV_BLEED_PCT%}% 攻击力的流血层数。"
+msgstr "Every {C:EqSpearBatch.JAV_IV} seconds, throws a javelin at the farthest enemy, dealing {C:EqSpearBatch.JAV_PCT%}% Attack as physical damage and applying Bleed stacks equal to {C:EqSpearBatch.JAV_BLEED_PCT%}% Attack."
+
+msgid "骑枪"
+msgstr "Lance"
+
+msgid "跑起来攒冲势，下一击击飞敌人。"
+msgstr "Builds Momentum while moving. The next attack knocks the enemy up."
+
+msgid "移动时积攒冲势，冲势达到上限后，下一次攻击消耗全部冲势，造成 {C:EqSpearBatch.LANCE_PCT%}% 攻击力的物理伤害，将目标击飞并眩晕 {C:EqSpearBatch.LANCE_STUN} 秒，自己回复 {C:EqSpearBatch.LANCE_EN} 点龟能。"
+msgstr "Builds Momentum while moving. At max Momentum, the next attack consumes all of it, dealing {C:EqSpearBatch.LANCE_PCT%}% Attack as physical damage, knocking the target up and stunning it for {C:EqSpearBatch.LANCE_STUN} seconds, and restoring {C:EqSpearBatch.LANCE_EN} Energy."
+
+msgid "长戟"
+msgstr "Halberd"
+
+msgid "按攻击节奏横扫前方一片。"
+msgstr "Sweeps the area in front in rhythm with attacks."
+
+msgid "每隔一次攻击间隔朝最近的敌人横扫前方扇形，半径等于自身攻击射程，近战时半径额外增加。对扇形内每名敌人造成 {C:EqSpearBatch.HALB_PCT%}% 攻击力的物理伤害。"
+msgstr "Once per attack interval, sweeps a cone in front toward the nearest enemy. The radius equals Attack Range, with extra radius in melee. Deals {C:EqSpearBatch.HALB_PCT%}% Attack as physical damage to each enemy in the cone."
+
+msgid "盾矛"
+msgstr "Shield Spear"
+
+msgid "定时举盾存伤害，放盾时化成护盾和冲击波。"
+msgstr "Periodically raises a shield to store damage, then releases it as a shield and a shockwave."
+
+msgid "每 {C:EqSpearBatch.SHSP_IV} 秒举盾 {C:EqSpearBatch.SHSP_SEC} 秒，期间受到的每段攻击和技能伤害降低 {C:EqSpearBatch.SHSP_FLAT} 点，并把这些伤害存起来。放下盾时获得存下伤害 {C:EqSpearBatch.SHSP_SHIELD_PCT%}% 的护盾，持续 {C:EqSpearBatch.SHSP_SHIELD_SEC} 秒，并朝前方推出一道冲击波，路径上的敌人分摊存下伤害 {C:EqSpearBatch.SHSP_WAVE_PCT%}% 的魔法伤害。"
+msgstr "Every {C:EqSpearBatch.SHSP_IV} seconds, raises a shield for {C:EqSpearBatch.SHSP_SEC} seconds, reducing each instance of attack and skill damage taken by {C:EqSpearBatch.SHSP_FLAT} and storing that damage. When lowering the shield, gains a shield equal to {C:EqSpearBatch.SHSP_SHIELD_PCT%}% of the stored damage for {C:EqSpearBatch.SHSP_SHIELD_SEC} seconds and pushes a shockwave forward. Enemies in its path split {C:EqSpearBatch.SHSP_WAVE_PCT%}% of the stored damage as magic damage."
+
+msgid "方天画戟"
+msgstr "Sky Piercer"
+
+msgid "受到伤害时积攒层数，跃起砸地，之后攻击附带横扫。"
+msgstr "Builds stacks when taking damage, leaps and slams the ground, then attacks sweep all around."
+
+msgid "受到伤害时积攒层数，层数达到上限后原地蓄力跃起，将戟砸入地面，对周围大范围的敌人造成 {C:EqSpearBatch.FTJ_SLAM_PCT%}% 攻击力的物理伤害并击飞。之后 {C:EqSpearBatch.FTJ_BUFF_SEC} 秒内每次攻击额外绕身横扫一圈，对周围的敌人造成 {C:EqSpearBatch.FTJ_PCT%}% 攻击力的物理伤害，并回复 {C:EqSpearBatch.FTJ_HEAL} 生命值。"
+msgstr "Builds stacks when taking damage. At max stacks, charges up, leaps and drives the halberd into the ground, dealing {C:EqSpearBatch.FTJ_SLAM_PCT%}% Attack as physical damage to enemies in a large area and knocking them up. For the next {C:EqSpearBatch.FTJ_BUFF_SEC} seconds, each attack also sweeps all around, dealing {C:EqSpearBatch.FTJ_PCT%}% Attack as physical damage to nearby enemies and restoring {C:EqSpearBatch.FTJ_HEAL} health."
+
+msgid "投矛器"
+msgstr "Atlatl"
+
+msgid "定时朝敌人扎堆处落一场矛雨。"
+msgstr "Periodically rains spears where enemies cluster."
+
+msgid "每 {C:EqSpearBatch.ATL_IV} 秒朝敌人最密集的位置投出 {C:EqSpearBatch.ATL_N} 根矛，矛雨陆续落在那一圈里，每根对落点附近的敌人造成 {C:EqSpearBatch.ATL_PCT%}% 攻击力的物理伤害。"
+msgstr "Every {C:EqSpearBatch.ATL_IV} seconds, hurls {C:EqSpearBatch.ATL_N} spears at the densest group of enemies. The spears land one after another within that area, each dealing {C:EqSpearBatch.ATL_PCT%}% Attack as physical damage to enemies near where it lands."
+
+msgid "永恒之枪"
+msgstr "Eternal Spear"
+
+msgid "积攒进度满后，永恒之枪从场外飞向生命值最高的敌人，将其击倒拖行，并获得临时生命值、点燃自身周围的灼烧圈。"
+msgstr "When its charge is full, the Eternal Spear flies in from off the field at the highest-health enemy, knocking it down and dragging it, while the holder gains temporary health and ignites a Burn ring around itself."
+
+msgid "战斗中积攒进度：每秒获得 {C:EqSpearBatch.ETERNAL_PS} 点，每造成或受到 100 点伤害获得 {C:EqSpearBatch.ETERNAL_PER_DMG} 点，永恒之枪自身造成的伤害不计入。进度达到 {C:EqSpearBatch.ETERNAL_NEED} 时，一支永恒之枪从场外飞向生命值最高的敌人，造成 {C:EqSpearBatch.ETERNAL_HIT_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_HIT_HP%}% 最大生命值的物理伤害，将其击倒并向后滑行，滑行期间共造成 {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% 最大生命值的物理伤害，眩晕 {C:EqSpearBatch.ETERNAL_STUN} 秒。滑行路径上的其他敌人受到 {C:EqSpearBatch.ETERNAL_PASS_ATK%}% 攻击力 + 其 {C:EqSpearBatch.ETERNAL_PASS_HP%}% 最大生命值的物理伤害。目标免疫控制时，转而额外受到 {C:EqSpearBatch.ETERNAL_IMM_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_IMM_HP%}% 最大生命值的物理伤害。\n命中时，自身获得 {C:EqSpearBatch.ETERNAL_TEMP%}% 最大生命值的临时生命值，持续 {C:EqSpearBatch.ETERNAL_TEMP_SEC} 秒。同时自身周围燃起灼烧圈，持续 {C:EqSpearBatch.ETERNAL_BURN_SEC} 秒，每秒对圈内敌人造成其 {C:EqSpearBatch.ETERNAL_BURN_PCT%}% 最大生命值的魔法伤害。临时生命值与灼烧圈均可叠加。"
+msgstr "Builds charge during combat: {C:EqSpearBatch.ETERNAL_PS} per second and {C:EqSpearBatch.ETERNAL_PER_DMG} per 100 damage dealt or taken. Damage from the Eternal Spear itself does not count. At {C:EqSpearBatch.ETERNAL_NEED} charge, an Eternal Spear flies in from off the field at the highest-health enemy, dealing {C:EqSpearBatch.ETERNAL_HIT_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_HIT_HP%}% of the target's max health as physical damage, knocking it down and sliding it backward. The slide deals a total of {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% of the target's max health as physical damage and stuns for {C:EqSpearBatch.ETERNAL_STUN} seconds. Other enemies in the slide path take {C:EqSpearBatch.ETERNAL_PASS_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_PASS_HP%}% of their max health as physical damage. If the target is immune to crowd control, it instead takes an extra {C:EqSpearBatch.ETERNAL_IMM_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_IMM_HP%}% of its max health as physical damage.\nOn hit, the holder gains temporary health equal to {C:EqSpearBatch.ETERNAL_TEMP%}% of max health for {C:EqSpearBatch.ETERNAL_TEMP_SEC} seconds, and a Burn ring ignites around the holder for {C:EqSpearBatch.ETERNAL_BURN_SEC} seconds, dealing magic damage equal to {C:EqSpearBatch.ETERNAL_BURN_PCT%}% of each enemy's max health per second to enemies inside. Temporary health and Burn rings both stack."
+
+msgid "圣枪"
+msgstr "Holy Spear"
+
+msgid "首次半血时获得圣枪护盾与双抗。护盾存入储能，定期引导光球：强化友军或攻击敌人。"
+msgstr "The first time it drops to half health, gains a Holy Spear shield, Armor and Magic Resist. Shields fill Stored Energy, which periodically channels light orbs that empower allies or strike enemies."
+
+msgid "每个战场中生命值首次低于 {C:EqSpearBatch.HOLY_GUARD_AT%}% 时，在 {C:EqSpearBatch.HOLY_GUARD_SEC} 秒内每秒获得一层圣枪护盾，共计自身 {C:EqSpearBatch.HOLY_GUARD_PCT%}% 最大生命值，圣枪护盾不会衰减。同时获得 {C:EqSpearBatch.HOLY_RESIST} 护甲和魔抗，持续到这个战场结束。\n获得任何护盾时，将护盾值存入储能，储能上限为自身最大生命值。每 {C:EqSpearBatch.HOLY_IV} 秒开始引导：每 {C:EqSpearBatch.HOLY_ORB_IV} 秒消耗 {C:EqSpearBatch.HOLY_ORB_COST} 点储能，向场上随机一个单位射出光球，储能不足时引导结束。光球命中友方统领或小将时，使其获得 1 点临时等级（持续到这个战场结束）并回复 {C:EqSpearBatch.HOLY_ORB_HEAL} 生命值。命中敌方单位时，造成 {C:EqSpearBatch.HOLY_ORB_DMG} 魔法伤害，并为自身提供 {C:EqSpearBatch.HOLY_ORB_SHIELD} 护盾。"
+msgstr "In each battlefield, the first time health drops below {C:EqSpearBatch.HOLY_GUARD_AT%}%, gains a layer of Holy Spear shield every second for {C:EqSpearBatch.HOLY_GUARD_SEC} seconds, totaling {C:EqSpearBatch.HOLY_GUARD_PCT%}% of max health. Holy Spear shields do not decay. Also gains {C:EqSpearBatch.HOLY_RESIST} Armor and Magic Resist until this battlefield ends.\nWhenever it gains any shield, the shield amount is added to Stored Energy, up to max health. Every {C:EqSpearBatch.HOLY_IV} seconds, starts channeling: every {C:EqSpearBatch.HOLY_ORB_IV} seconds, spends {C:EqSpearBatch.HOLY_ORB_COST} Stored Energy to fire a light orb at a random unit on the field. Channeling ends when Stored Energy runs out. An orb that hits an allied Leader or Minion grants it 1 temporary level (until this battlefield ends) and restores {C:EqSpearBatch.HOLY_ORB_HEAL} health. An orb that hits an enemy unit deals {C:EqSpearBatch.HOLY_ORB_DMG} magic damage and grants the holder {C:EqSpearBatch.HOLY_ORB_SHIELD} shield."
+
+msgid "白色筹码"
+msgstr "White Chip"
+
+msgid "提供攻击力与攻击速度。"
+msgstr "Grants Attack and Attack Speed."
+
+msgid "消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "粉色筹码"
+msgstr "Pink Chip"
+
+msgid "提供生命值与护甲。"
+msgstr "Grants health and Armor."
+
+msgid "红色筹码"
+msgstr "Red Chip"
+
+msgid "提供攻击力与暴击率。"
+msgstr "Grants Attack and Crit Chance."
+
+msgid "绿色筹码"
+msgstr "Green Chip"
+
+msgid "提供生命值与魔抗，并持续回复生命值。"
+msgstr "Grants health and Magic Resist, and continuously restores health."
+
+msgid "每秒回复自身 {C:EqChipBatch.GREEN_REGEN%}% 最大生命值。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "Restores {C:EqChipBatch.GREEN_REGEN%}% of max health per second. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "黑色筹码"
+msgstr "Black Chip"
+
+msgid "登场时为全队提供物理护盾。"
+msgstr "On deployment, grants the whole team a physical shield."
+
+msgid "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "On deployment, grants all allies a physical shield equal to {C:EqChipBatch.SHIELD_PCT%}% of the holder's max health. It only absorbs physical damage and does not decay. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "紫色筹码"
+msgstr "Purple Chip"
+
+msgid "登场时为全队提供魔法护盾。"
+msgstr "On deployment, grants the whole team a magic shield."
+
+msgid "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的魔法护盾，该护盾只吸收魔法伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "On deployment, grants all allies a magic shield equal to {C:EqChipBatch.SHIELD_PCT%}% of the holder's max health. It only absorbs magic damage and does not decay. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "黄色筹码"
+msgstr "Yellow Chip"
+
+msgid "提供攻击属性，整个战场免疫控制。"
+msgstr "Grants attack stats and immunity to crowd control for the whole battlefield."
+
+msgid "整个战场免疫控制。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "Immune to crowd control for the whole battlefield. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "棕色筹码"
+msgstr "Brown Chip"
+
+msgid "提供护甲与魔抗，首次受到致命伤害时倒地不死。"
+msgstr "Grants Armor and Magic Resist. The first time it takes lethal damage, falls down instead of dying."
+
+msgid "首次受到致命伤害时倒地不死，{C:EqChipBatch.BROWN_SEC} 秒内回复至自身 {C:EqChipBatch.BROWN_HEAL%}% 最大生命值后继续战斗。每个战场一次。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "The first time it takes lethal damage, falls down instead of dying, restores to {C:EqChipBatch.BROWN_HEAL%}% of max health over {C:EqChipBatch.BROWN_SEC} seconds, then keeps fighting. Once per battle. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "金色筹码"
+msgstr "Gold Chip"
+
+msgid "开打第 {C:EqChipBatch.GOLD_AT} 秒为全队套上金色护罩并提升全队属性。"
+msgstr "{C:EqChipBatch.GOLD_AT} seconds into combat, covers the whole team in a golden barrier and boosts team stats."
+
+msgid "开打第 {C:EqChipBatch.GOLD_AT} 秒，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "{C:EqChipBatch.GOLD_AT} seconds into combat, covers all allies in a golden barrier for {C:EqChipBatch.GOLD_SEC} seconds, making them immune to damage and negative effects, and grants all allies {C:EqChipBatch.GOLD_TEAM_ATK} Attack and {C:EqChipBatch.GOLD_TEAM_RES} Armor and Magic Resist for this battlefield. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "灰色筹码"
+msgstr "Grey Chip"
+
+msgid "攻击或受到攻击时叠层，每层提升攻击力、护甲、魔抗与生命值。"
+msgstr "Gains stacks when attacking or being attacked. Each stack grants Attack, Armor, Magic Resist and health."
+
+msgid "每次攻击或受到攻击获得 1 层，至多 {C:EqChipBatch.GREY_CAP} 层。每层提供 {C:EqChipBatch.GREY_ATK} 攻击力、{C:EqChipBatch.GREY_RES} 护甲和魔抗、{C:EqChipBatch.GREY_HP} 最大生命值。层数达到上限后额外获得 {C:EqChipBatch.GREY_FULL_AMP%}% 增伤与 {C:EqChipBatch.GREY_FULL_DR%}% 减伤。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgstr "Gains 1 stack each time it attacks or is attacked, up to {C:EqChipBatch.GREY_CAP} stacks. Each stack grants {C:EqChipBatch.GREY_ATK} Attack, {C:EqChipBatch.GREY_RES} Armor and Magic Resist, and {C:EqChipBatch.GREY_HP} max health. At max stacks, also gains {C:EqChipBatch.GREY_FULL_AMP%}% Damage Amp and {C:EqChipBatch.GREY_FULL_DR%}% Damage Reduction. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
+
+msgid "魔法护盾"
+msgstr "Magic Shield"

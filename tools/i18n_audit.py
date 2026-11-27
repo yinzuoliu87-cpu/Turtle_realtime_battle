@@ -5,6 +5,7 @@
      `{N:表达式}` 一类技能模板占位与 `[b] [color=…]` 一类 BBCode 标签按【种类与个数】比(英文语序可以挪)。
   ② 同一个 msgid 出现两次(后一条会悄悄盖掉前一条)。
   ③ msgstr 里还有汉字(译了一半)。
+  ⑤ 装备 / 龟 / 状态三张数据表里玩家看得到的中文, 每段都要在 en.po 里有译文(2026-11-27 起; 面具 / 长矛 / 筹码 30 件整批漏过)。
 只报数不判红: 没译的(msgstr 为空)—— 第一期允许逐批补。
 
 用法: python tools/i18n_audit.py            # 对账, ALL OK / FAIL
@@ -83,6 +84,34 @@ def check(entries):
     return bad, missing
 
 
+COV_FILES = ["data/phase2-equipment.json", "data/pets.json", "data/status.json"]
+COV_SKIP = {"baseStats1"}
+
+
+def coverage(translated):
+    """→ (扫到的段数, 缺译文的 [路径 | 原文])。"""
+    import json
+    miss = []
+    n = [0]
+
+    def walk(o, path):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k not in COV_SKIP:
+                    walk(v, path + "." + str(k))
+        elif isinstance(o, list):
+            for i, x in enumerate(o):
+                walk(x, path + "[%s]" % (x.get("id", i) if isinstance(x, dict) else i))
+        elif isinstance(o, str) and HAN.search(o):
+            n[0] += 1
+            if o not in translated:
+                miss.append("%s | %s" % (path, o[:30].replace("\n", " ")))
+
+    for f in COV_FILES:
+        walk(json.load(io.open(os.path.join(ROOT, f), encoding="utf-8")), f)
+    return n[0], miss
+
+
 def selftest():
     cases = [
         ('msgid "%d 胜"\nmsgstr "%d W"\n', 0),
@@ -120,7 +149,15 @@ def main():
     proj = io.open(os.path.join(ROOT, "project.godot"), encoding="utf-8").read()
     if "locale/translations=" in proj and not re.search(r'^locale/fallback="zh"\s*$', proj, re.M):
         bad.append('project.godot 缺 locale/fallback="zh"(中文玩家会看到英文)')
-    print("[分母] en.po %d 条 · 已译 %d · 没译 %d" % (len(entries), len(entries) - missing, missing))
+    ## ⑤ 数据表覆盖(2026-11-27): 面具 / 长矛 / 筹码三批 30 件装备整批没进 en.po, 英文玩家看到中文, 这份审计却一直 ALL OK
+    ##    (它只核 en.po 里已有的条目)。现在装备 / 龟 / 状态三张表里玩家看得到的中文字段, 每段都必须在 en.po 里有译文。
+    ##    baseStats1 是手写的展示镜像, 游戏代码不读, 不算。
+    cov_n, cov_miss = coverage({m for m, s, _ in entries if s != ""})
+    for p in cov_miss[:20]:
+        bad.append("数据表缺英文: " + p)
+    if len(cov_miss) > 20:
+        bad.append("…… 共 %d 段数据表文字缺英文" % len(cov_miss))
+    print("[分母] en.po %d 条 · 已译 %d · 没译 %d · 数据表玩家文字 %d 段" % (len(entries), len(entries) - missing, missing, cov_n))
     if len(entries) == 0:
         print("FAIL — 一条都没读到(解析坏了 = 空检查)")
         return 1

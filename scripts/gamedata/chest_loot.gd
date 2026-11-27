@@ -93,7 +93,7 @@ static func pool_of(tid: String) -> String:
 ## 图鉴「获得方式」一句(措辞与藏宝图被动说明一致: pets.json chest passive desc)。
 static func source_text(group: String) -> String:
 	return Lang.t("宝箱龟被动【藏宝图】%s开箱时从%s中随机获得，同一大轮内不会重复。获得后在本大轮的每局对局中自动生效，新的大轮开始时重置。") % [
-		box_text(group), POOL_NAME.get(group, group)]
+		box_text(group), Lang.t(str(POOL_NAME.get(group, group)))]   # 11-27: 池名原来没过 Lang.t, 英文句子里夹着「传说池」
 
 
 static func icon_path(tid: String) -> String:
