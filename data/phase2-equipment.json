@@ -1426,7 +1426,7 @@
     "effectDesc1": "释放技能时朝最近的敌人掷出一颗火球，造成（{C:EqMagicBatch.FIRE_FLAT}+{C:EqMagicBatch.FIRE_ATK%}% 攻击力）魔法伤害并施加灼烧，层数等于这次技能消耗龟能的 {C:EqMagicBatch.FIRE_BURN_PER_EN%}%。",
     "effectDesc3": "",
     "img": "equip/p2eq_119.png",
-    "effectBrief": "释放技能时朝最近的敌人掷出火球，消耗的龟能越多灼烧越多。"
+    "effectBrief": "释放技能时朝最近的敌人掷出火球，按消耗的龟能施加灼烧。"
   },
   {
     "id": "p2eq_120",
@@ -1438,7 +1438,7 @@
     "effectDesc1": "释放技能时对周围的敌人释放冰霜新星，造成（{C:EqMagicBatch.FROST_FLAT}+{C:EqMagicBatch.FROST_ATK%}% 攻击力）魔法伤害并施加冰寒，使其移动速度降低 {C:EqMagicBatch.FROST_MOVE_DOWN%}%、攻击速度降低 {C:EqMagicBatch.FROST_ASPD_DOWN%}%，持续时间等于这次技能消耗的龟能 × {C:EqMagicBatch.FROST_SEC_PER_EN} 秒。",
     "effectDesc3": "",
     "img": "equip/p2eq_120.png",
-    "effectBrief": "释放技能时冻住周围的敌人，消耗的龟能越多冰寒越久。"
+    "effectBrief": "释放技能时冻住周围的敌人，冰寒持续时间基于消耗的龟能。"
   },
   {
     "id": "p2eq_121",
@@ -1534,7 +1534,7 @@
     "effectDesc1": "对最大生命值高于自身的敌人伤害提高，提高量随两者最大生命值的差值增加，差值达到 {C:EqMaskBatch.FOX_FULL_DIFF} 时提高 {C:EqMaskBatch.FOX_MAX%}%。",
     "effectDesc3": "",
     "img": "equip/p2eq_128.png",
-    "effectBrief": "对最大生命值比自己高的敌人伤害提高，差得越多提高越多。"
+    "effectBrief": "对最大生命值比自己高的敌人造成的伤害提高，至多提高 {C:EqMaskBatch.FOX_MAX%}%。"
   },
   {
     "id": "p2eq_129",
@@ -1570,7 +1570,7 @@
     "effectDesc1": "释放技能后嘲讽附近的敌人，每消耗 100 点龟能嘲讽 {C:EqMaskBatch.CLOWN_SEC_PER_100} 秒，并获得自身 {C:EqMaskBatch.CLOWN_SHIELD_PCT%}% 最大生命值的护盾，持续 {C:EqMaskBatch.CLOWN_SHIELD_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/p2eq_131.png",
-    "effectBrief": "释放技能后嘲讽附近的敌人并获得护盾，技能消耗的龟能越多嘲讽越久。"
+    "effectBrief": "释放技能后嘲讽附近的敌人并获得护盾，嘲讽时间基于消耗的龟能。"
   },
   {
     "id": "p2eq_132",
@@ -1594,7 +1594,7 @@
     "effectDesc1": "免疫灼烧、中毒和流血。每损失 1% 生命值，获得 {C:EqMaskBatch.GAS_MOVE_PER_PCT%}% 移动速度。",
     "effectDesc3": "",
     "img": "equip/p2eq_133.png",
-    "effectBrief": "免疫灼烧、中毒和流血，生命值越低移动越快。"
+    "effectBrief": "免疫灼烧、中毒和流血，每损失 1% 生命值获得 {C:EqMaskBatch.GAS_MOVE_PER_PCT%}% 移动速度。"
   },
   {
     "id": "p2eq_134",

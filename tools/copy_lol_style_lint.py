@@ -61,6 +61,7 @@ TIMES_STAT = re.compile(r'\u00d7(\u653b\u51fb\u529b|\u6700\u5927\u751f\u547d\u50
 ##   写出来的都是范围本身就是效果的(射程增减 / 形态射程 / 按距离加伤)。本次删了 125 处。
 MA_NUM = re.compile(r'(\{[A-Z]:[^}]+\}|\d)\s*\u7801')
 MA_KEEP = re.compile(r'\u5c04\u7a0b|\u8ddd\u79bb\u6bcf\u6709|\u6bcf\u8fdc\u79bb|\u6bcf\u8f6c\u5316|\u2194|\u589e\u9ad8|\u534a\u5f84\u989d\u5916')
+YUE = re.compile(r'越[^，。；\n]{0,14}越')
 UNIT_DMG = re.compile(r'\u4f24\u5bb3|\u62a4\u76fe|\u751f\u547d|\u653b\u51fb\u529b|\u6cbb\u7597|\u56de\u590d')
 
 
@@ -106,6 +107,10 @@ def violations(text):
     for sent in re.split(r'[\u3002\n]', HTML.sub('', text)):
         if MA_NUM.search(sent) and not MA_KEEP.search(sent):
             out.append('\u5199\u4e86\u8303\u56f4\u7801\u6570\u300c%s\u300d' % sent[:24])
+    ## ★2026-11-27 用户「这些描述…规矩规定的不会有这么 AI 味吧」「这八句肯定要改」: 不写「越 X 越 Y」这种不给数的比较句,
+    ##   写具体机制或数字(「按消耗的龟能」「每损失 1% 生命值」「至多提高 X%」)。
+    if YUE.search(plain):
+        out.append('「越…越…」比较句「%s」' % YUE.search(plain).group(0))
     for m in N_TAG.finditer(text):
         rest = HTML.sub('', text[m.end():])
         e = CLAUSE_END.search(rest)
@@ -167,6 +172,8 @@ def selftest():
     assert any('\u00d7' in x for x in violations('\u9020\u6210 0.7\u00d7\u653b\u51fb\u529b \u7269\u7406\u4f24\u5bb3\u3002')), '\u00d7\u9633\u6027'
     assert not any('\u00d7' in x for x in violations('\u9020\u6210\uff08{C:A%}%\u00d7\u653b\u51fb\u529b({ATK}) = {N:ATK}\uff09\u7269\u7406\u4f24\u5bb3\u3002')), '\u00d7\u9634\u6027'
     assert any('空格' in x for x in violations('每 {C:A} 秒 蓄力一次。')), '空格阳性'
+    assert any('越' in x for x in violations('生命值越低移动越快。')), '越阳性'
+    assert not any('越' in x for x in violations('飞越障碍，超越敌人。')), '越阴性'
     assert not any('空格' in x for x in violations('每 {C:A} 秒蓄力一次，造成 {N:ATK} 物理伤害。')), '空格阴性'
 
 
