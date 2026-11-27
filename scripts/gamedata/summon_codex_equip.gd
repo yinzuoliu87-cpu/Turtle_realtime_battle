@@ -111,7 +111,7 @@ static func _turret(si: int) -> Dictionary:
 		[{"name": "火力同调", "icon": "passive/summon-turret-link-icon.png",
 			"desc": "炮台登场时额外获得（{C:EquipSystem.TURRET_HP_PER_ATK}×携带者攻击力）生命值和（100%×携带者攻击力）攻击力。"},
 		 {"name": "护卫", "icon": "passive/summon-turret-ward-icon.png",
-			"desc": Lang.t("携带者存活时，炮台获得 {C:EquipSystem.TURRET_RES[%d]} 护甲与魔抗，携带者阵亡后降为 0。") % si}])
+			"desc": "携带者阵亡后，炮台的护甲与魔抗降为 0。"}])
 	d["avatar"] = "res://assets/sprites/pets/turret.png"
 	return d
 

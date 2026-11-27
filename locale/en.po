@@ -9495,8 +9495,6 @@ msgstr "The Centurion drops from the sky on spawn. On landing it knocks up all e
 msgid "我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。"
 msgstr "For each different Spear on your side, the Centurion gains {C:%s.STAR_PCT%%}%% health and Attack per star of that Spear."
 
-msgid "携带者存活时，炮台获得 {C:EquipSystem.TURRET_RES[%d]} 护甲与魔抗，携带者阵亡后降为 0。"
-msgstr "While the holder is alive, the Turret has {C:EquipSystem.TURRET_RES[%d]} Armor and Magic Resist, dropping to 0 after the holder dies."
 
 msgid "嘲讽附近所有敌人。每有一个敌人以蛋糕礼盒为目标，蛋糕礼盒获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} 护甲和魔抗。"
 msgstr "Taunts all nearby enemies. For each enemy targeting it, the Cake Box gains {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} Armor and Magic Resist."
@@ -9602,3 +9600,6 @@ msgstr "Summon"
 
 msgid "每第 %d 次攻击转而向前方打出一道射程 {C:EquipTickSystem.BEAR_WAVE_RANGE} 的冲击波，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%%}%%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前。"
 msgstr "Every %dth attack instead sends forward a shockwave with {C:EquipTickSystem.BEAR_WAVE_RANGE} range, dealing ({C:EquipTickSystem.BEAR_WAVE_COEF%%}%% × Attack ({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}) physical damage to enemies in its path, knocking them up and pulling them in front of the Big Bear."
+
+msgid "携带者阵亡后，炮台的护甲与魔抗降为 0。"
+msgstr "After the holder dies, the Turret's Armor and Magic Resist drop to 0."

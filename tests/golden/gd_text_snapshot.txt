@@ -824,10 +824,10 @@ scripts/gamedata/summon_codex_equip.gd|lit|急救金弹
 scripts/gamedata/summon_codex_equip.gd|lit|手里剑
 scripts/gamedata/summon_codex_equip.gd|lit|护卫
 scripts/gamedata/summon_codex_equip.gd|lit|推出一道缓慢前进的亡灵浪潮，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。
-scripts/gamedata/summon_codex_equip.gd|lit|携带者存活时，炮台获得 {C:EquipSystem.TURRET_RES[%d]} 护甲与魔抗，携带者阵亡后降为 0。
 scripts/gamedata/summon_codex_equip.gd|lit|携带者护甲
 scripts/gamedata/summon_codex_equip.gd|lit|携带者攻击
 scripts/gamedata/summon_codex_equip.gd|lit|携带者生命
+scripts/gamedata/summon_codex_equip.gd|lit|携带者阵亡后，炮台的护甲与魔抗降为 0。
 scripts/gamedata/summon_codex_equip.gd|lit|携带者魔抗
 scripts/gamedata/summon_codex_equip.gd|lit|斧之守护
 scripts/gamedata/summon_codex_equip.gd|lit|斧击
