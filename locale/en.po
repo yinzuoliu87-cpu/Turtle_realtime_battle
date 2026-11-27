@@ -9453,8 +9453,8 @@ msgstr "Each hit removes 1 Armor and Magic Resist from the enemy, up to {C:%s.SH
 msgid "每第 {C:%s.THROW_EVERY} 次攻击转而掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。"
 msgstr "Every {C:%s.THROW_EVERY}th attack instead throws its spear at the farthest enemy, piercing enemies along the way and dealing ({C:%s.THROW_COEF%%}%% × Attack ({ATK}) = {N:%s.THROW_COEF*ATK}) physical damage."
 
-msgid "百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。"
-msgstr "The Centurion raises its shield for {C:%s.SHIELD_SEC} seconds, taking {C:%s.SHIELD_DR%%}%% less damage."
+msgid "百夫长举盾 {C:%s.SHIELD_SEC} 秒，期间获得 {C:%s.SHIELD_DR%%}%% 减伤。"
+msgstr "The Centurion raises its shield for {C:%s.SHIELD_SEC} seconds, gaining {C:%s.SHIELD_DR%%}%% Damage Reduction."
 
 msgid "举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。"
 msgstr "While the shield is up, every {C:%s.POKE_IV} seconds it stabs nearby enemies, dealing ({C:%s.POKE_COEF%%}%% × Attack ({ATK}) = {M:%s.POKE_COEF*ATK}) magic damage."
@@ -9462,11 +9462,11 @@ msgstr "While the shield is up, every {C:%s.POKE_IV} seconds it stabs nearby ene
 msgid "放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。"
 msgstr "When it lowers the shield, it sweeps nearby enemies, dealing ({C:%s.SWEEP_COEF%%}%% × Attack ({ATK}) = {M:%s.SWEEP_COEF*ATK}) magic damage."
 
-msgid "横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。"
-msgstr "After the sweep, {C:%s.CAV_N} spear cavalry charge out from behind your side, each toward a random enemy. Every enemy they hit takes ({C:%s.CAV_COEF%%}%% × Attack ({ATK}) = {N:%s.CAV_COEF*ATK}) physical damage and is knocked up."
+msgid "横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，对撞到的每个敌人造成（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并将其击飞。"
+msgstr "After the sweep, {C:%s.CAV_N} spear cavalry charge out from behind your side, each toward a random enemy, dealing ({C:%s.CAV_COEF%%}%% × Attack ({ATK}) = {N:%s.CAV_COEF*ATK}) physical damage to every enemy they hit and knocking them up."
 
-msgid "百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。"
-msgstr "The Centurion drops from the sky on spawn. On landing it knocks up all enemies for {C:%s.KNOCK_SEC} seconds, dealing ({C:%s.ENTRY_COEF%%}%% × Attack ({ATK}) = {M:%s.ENTRY_COEF*ATK}) magic damage."
+msgid "百夫长登场时从高空落下，落地时对全场敌人造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害，并将其击飞 {C:%s.KNOCK_SEC} 秒。"
+msgstr "The Centurion drops from the sky on spawn. On landing it deals ({C:%s.ENTRY_COEF%%}%% × Attack ({ATK}) = {M:%s.ENTRY_COEF*ATK}) magic damage to all enemies and knocks them up for {C:%s.KNOCK_SEC} seconds."
 
 msgid "我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。"
 msgstr "For each different Spear on your side, the Centurion gains {C:%s.STAR_PCT%%}%% health and Attack per star of that Spear."

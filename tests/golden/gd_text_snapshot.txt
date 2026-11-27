@@ -768,14 +768,14 @@ scripts/gamedata/summon_codex.gd|lit|护甲
 scripts/gamedata/summon_codex.gd|lit|攻击
 scripts/gamedata/summon_codex.gd|lit|放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。
 scripts/gamedata/summon_codex.gd|lit|斧头
-scripts/gamedata/summon_codex.gd|lit|横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。
+scripts/gamedata/summon_codex.gd|lit|横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，对撞到的每个敌人造成（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并将其击飞。
 scripts/gamedata/summon_codex.gd|lit|每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。
 scripts/gamedata/summon_codex.gd|lit|每秒攻击
 scripts/gamedata/summon_codex.gd|lit|每第 {C:%s.THROW_EVERY} 次攻击转而掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。
 scripts/gamedata/summon_codex.gd|lit|生命
 scripts/gamedata/summon_codex.gd|lit|百夫长
-scripts/gamedata/summon_codex.gd|lit|百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。
-scripts/gamedata/summon_codex.gd|lit|百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。
+scripts/gamedata/summon_codex.gd|lit|百夫长举盾 {C:%s.SHIELD_SEC} 秒，期间获得 {C:%s.SHIELD_DR%%}%% 减伤。
+scripts/gamedata/summon_codex.gd|lit|百夫长登场时从高空落下，落地时对全场敌人造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害，并将其击飞 {C:%s.KNOCK_SEC} 秒。
 scripts/gamedata/summon_codex.gd|lit|移速
 scripts/gamedata/summon_codex.gd|lit|突刺
 scripts/gamedata/summon_codex.gd|lit|被动

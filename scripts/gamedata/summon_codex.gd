@@ -157,13 +157,13 @@ static func _centurion(ci: int) -> Dictionary:
 		basic += Lang.t("每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。") % _SP
 	if tier >= 4:
 		basic += Lang.t("每第 {C:%s.THROW_EVERY} 次攻击转而掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。") % [_SP, _SP, _SP]
-	var skill: String = Lang.t("百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。") % [_SP, _SP]
+	var skill: String = Lang.t("百夫长举盾 {C:%s.SHIELD_SEC} 秒，期间获得 {C:%s.SHIELD_DR%%}%% 减伤。") % [_SP, _SP]
 	if tier >= 3:
 		skill += Lang.t("举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。") % [_SP, _SP, _SP]
 	if tier >= 2:
 		skill += Lang.t("放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。") % [_SP, _SP]
 	if tier >= 4:
-		skill += Lang.t("横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。") % [_SP, _SP, _SP]
+		skill += Lang.t("横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，对撞到的每个敌人造成（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并将其击飞。") % [_SP, _SP, _SP]
 	return {
 		"name": "百夫长", "kinds": ["centurion"],
 		"avatar": "res://assets/sprites/avatars/summon-centurion.png",
@@ -179,7 +179,7 @@ static func _centurion(ci: int) -> Dictionary:
 		"skill": {"name": "龟甲阵", "icon": "skills/summon-cent-guard.png", "desc": skill, "energy": int(S.EN_MAX)},
 		"passives": [
 			{"name": "军团天降", "icon": "passive/summon-cent-land-icon.png",
-				"desc": Lang.t("百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。") % [_SP, _SP, _SP]},
+				"desc": Lang.t("百夫长登场时从高空落下，落地时对全场敌人造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害，并将其击飞 {C:%s.KNOCK_SEC} 秒。") % [_SP, _SP, _SP]},
 			{"name": "众矛之力", "icon": "passive/summon-cent-spears-icon.png",
 				"desc": Lang.t("我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。") % _SP},
 		],
