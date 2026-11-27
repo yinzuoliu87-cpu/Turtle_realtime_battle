@@ -258,7 +258,7 @@ static func _remote(si: int) -> Dictionary:
 		{}, {},
 		[{"name": "锁定追踪", "icon": "passive/summon-remote-chase-icon.png", "desc": chase},
 		 {"name": "引爆", "icon": "passive/summon-remote-boom-icon.png",
-			"desc": Lang.t("阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。") % [si, si, si]}])
+			"desc": Lang.t("遥控炸弹阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和（{C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%%×携带者最大生命值(未知) = 未知）真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。") % [si, si, si]}])
 
 
 # ─── 107 武士刀 · 武士刀小将 ───

@@ -9490,8 +9490,8 @@ msgstr "The Cannon enters Heavy Shot mode: each attack fires a heavy shell that 
 msgid "每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。"
 msgstr "It loses {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% of its max health per second."
 
-msgid "阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。"
-msgstr "When it dies it explodes, dealing {C:EqBombBatch.REMOTE_FLAT[%d]} physical damage plus true damage equal to {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% of the holder's max health to enemies in a large area, and applying {C:EqBombBatch.REMOTE_BLEED[%d]} Bleed."
+msgid "遥控炸弹阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和（{C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%%×携带者最大生命值(未知) = 未知）真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。"
+msgstr "When the Remote Bomb dies it explodes, dealing {C:EqBombBatch.REMOTE_FLAT[%d]} physical damage plus ({C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% × holder's max health (Unknown) = Unknown) true damage to enemies in a large area, and applying {C:EqBombBatch.REMOTE_BLEED[%d]} Bleed."
 
 msgid "暗影忍者拥有 {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% 暴击率。"
 msgstr "The Shadow Ninja has {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% Crit Chance."

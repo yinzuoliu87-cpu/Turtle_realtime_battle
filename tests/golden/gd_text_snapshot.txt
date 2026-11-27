@@ -888,10 +888,10 @@ scripts/gamedata/summon_codex_equip.gd|lit|远程辅助
 scripts/gamedata/summon_codex_equip.gd|lit|连射
 scripts/gamedata/summon_codex_equip.gd|lit|遥控炸弹
 scripts/gamedata/summon_codex_equip.gd|lit|遥控炸弹会持续追踪一名敌人，不会攻击。
+scripts/gamedata/summon_codex_equip.gd|lit|遥控炸弹阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和（{C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%%×携带者最大生命值(未知) = 未知）真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。
 scripts/gamedata/summon_codex_equip.gd|lit|重击
 scripts/gamedata/summon_codex_equip.gd|lit|重炮
 scripts/gamedata/summon_codex_equip.gd|lit|锁定追踪
-scripts/gamedata/summon_codex_equip.gd|lit|阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。
 scripts/gamedata/summon_codex_equip.gd|lit|附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，斧头每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。斧头阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。
 scripts/gamedata/summon_codex_equip.gd|lit|随后在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投出 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，回旋镖飞出后返回，命中时造成（{C:AxeFinalStats.SERAPH_BOOM_ATK%}%×攻击力({ATK}) = {M:AxeFinalStats.SERAPH_BOOM_ATK*ATK}）魔法伤害，并施加 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。
 scripts/gamedata/summon_codex_equip.gd|lit|随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。
