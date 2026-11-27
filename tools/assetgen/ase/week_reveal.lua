@@ -100,11 +100,11 @@ do
       img:drawPixel(x, y, col)
     end
   end
-  -- 名字横条 y 56..67
-  for y = 56, 67 do
+  -- 名字横条 y 55..70(16 像素高: 放大 1.75 倍后 28 像素, 装得下 19 号字; 11-27 用户「文字确定放对位置了吗」—— 原来 12 像素高, 字掉出下沿)
+  for y = 55, 70 do
     for x = 8, 87 do
       local col = rgba(110, 30, 24, 255)
-      if y == 56 or y == 67 then col = GOLD_D elseif y == 57 then col = rgba(150, 48, 36, 255) end
+      if y == 55 or y == 70 then col = GOLD_D elseif y == 56 then col = rgba(150, 48, 36, 255) end
       img:drawPixel(x, y, col)
     end
   end

@@ -25,10 +25,10 @@ const SHARD_TEX := V + "week-shard.png"
 const RIM_SHADER := "res://assets/shaders/week_card_rim.gdshader"
 const W := 1280.0
 const H := 720.0
-const CARD := Vector2(168.0, 224.0)     # 卡面 96×128 原生 × 1.75
-const PX := 1.75
-const GAP := Vector2(28.0, 22.0)
-const TOP := 150.0
+const CARD := Vector2(192.0, 256.0)     # 卡面 96×128 原生 × 2(整数倍: 像素均匀; 11-27 用户问文字位置后从 1.75 改)
+const PX := 2.0
+const GAP := Vector2(20.0, 14.0)
+const TOP := 136.0
 const FLIP_EVERY := 0.22
 const DEAL_EVERY := 0.04
 
@@ -74,6 +74,9 @@ static func blurb(t: String) -> String:
 	if lines.is_empty():
 		return ""
 	var s: String = SkillText.render_consts(Lang.t(str(lines[0])))
+	## 卡上只放一句: 括号里的补充(「（包括召唤物）」)去掉 —— 图鉴里是全文。11-27 魔法书那句带括号最长, 拖得 10 张卡一起缩到 12 号字
+	var rx := RegEx.create_from_string("（[^）]*）| ?[(][^)]*[)]")
+	s = rx.sub(s, "", true)
 	var parts: PackedStringArray = s.split("。", false)
 	if parts.size() < 2:
 		parts = s.split(". ", false)
@@ -123,9 +126,15 @@ func _build(anchor: int) -> void:
 	## ② 卡
 	for i in range(syns.size()):
 		cards.append(_card(i, str(syns[i])))
+	## 10 张简介统一字号 = 最长那张放得下的那一档(各卡各缩一档看着参差)
+	var px_min := 17
+	for c in cards:
+		px_min = mini(px_min, (c["ds"] as Label).get_theme_font_size("font_size"))
+	for c in cards:
+		(c["ds"] as Label).add_theme_font_size_override("font_size", px_min)
 	hint = _label(Lang.t("点击继续"), 22, Color("#fff6dc"), Color("#0c1220"), 6)
 	hint.name = "Hint"
-	hint.position = Vector2(0.0, 660.0); hint.size = Vector2(W, 34.0); hint.modulate.a = 0.0
+	hint.position = Vector2(0.0, 670.0); hint.size = Vector2(W, 34.0); hint.modulate.a = 0.0
 	box.add_child(hint)
 	## 时间线(一根主补间; 跳过 = 杀掉它直接摆到 ④)
 	stage = 1
@@ -193,8 +202,8 @@ func _card(i: int, t: String) -> Dictionary:
 	var ic := _tex_rect(_P2T.icon_of(t), Vector2(32.0, 32.0) * PX)
 	ic.position = Vector2(32.0, 16.0) * PX
 	front.add_child(ic)
-	var nm := _label(Lang.t(t), 19, Color("#fff2c8"), Color("#2a0a06"), 6)
-	nm.position = Vector2(8.0, 56.0) * PX; nm.size = Vector2(80.0, 12.0) * PX
+	var nm := _label(Lang.t(t), 22, Color("#fff2c8"), Color("#2a0a06"), 6)
+	nm.position = Vector2(8.0, 56.0) * PX; nm.size = Vector2(80.0, 14.0) * PX   # 红条 55..70 内(去掉上下金线)
 	front.add_child(nm)
 	var ds := Label.new()
 	ds.text = blurb(t)
@@ -203,20 +212,26 @@ func _card(i: int, t: String) -> Dictionary:
 	ds.add_theme_font_size_override("font_size", 14)
 	ds.add_theme_color_override("font_color", Color("#e9dcc2"))
 	ds.add_theme_constant_override("line_spacing", 1)
-	ds.position = Vector2(9.0, 70.0) * PX; ds.size = Vector2(78.0, 52.0) * PX
+	ds.position = Vector2(10.0, 72.0) * PX; ds.size = Vector2(76.0, 48.0) * PX   # 内框(离外沿 6 像素那道金线)以内: x 10..86, y 72..120
+	ds.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	ds.clip_text = true
 	ds.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	front.add_child(ds)
-	## 放不下就缩字号(14 → 11), 不截断
-	for px in [14, 13, 12, 11]:
+	## 放不下就缩字号(17 → 12), 不截断。★按字体直接算多行高度: 卡面这时还藏着(没翻开), Label 的行数量出来不准(11-27 一度全缩到 12 号)
+	var fnt: Font = ds.get_theme_font("font")
+	for px in [17, 16, 15, 14, 13, 12]:
 		ds.add_theme_font_size_override("font_size", px)
-		if ds.get_line_count() <= ds.get_visible_line_count():
+		if fnt == null:
+			break
+		var hh: float = fnt.get_multiline_string_size(ds.text, HORIZONTAL_ALIGNMENT_CENTER, ds.size.x, px).y
+		var lines: int = int(ceil(hh / fnt.get_height(px)))
+		if hh + float(maxi(0, lines - 1)) * 1.0 <= ds.size.y:
 			break
 	if fresh.has(t):
 		var nw := _label(Lang.t("新"), 18, Color("#ffffff"), Color("#5a0a06"), 6)
 		nw.name = "New"
 		var bg := ColorRect.new()
-		bg.color = Color("#c8321e"); bg.size = Vector2(34.0, 26.0); bg.position = Vector2(CARD.x - 40.0, 4.0)
+		bg.color = Color("#c8321e"); bg.size = Vector2(32.0, 24.0); bg.position = Vector2(87.0 * PX - 32.0, 8.0 * PX)   # 内框右上角以内, 不压金边铆钉
 		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		nw.size = bg.size
 		bg.add_child(nw)
@@ -248,7 +263,7 @@ func _card(i: int, t: String) -> Dictionary:
 	fl.visible = false
 	fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(fl)
-	return {"root": root, "back": back, "front": front, "flash": fl, "rim": rim, "pos": pos, "open": false}
+	return {"root": root, "back": back, "front": front, "flash": fl, "rim": rim, "pos": pos, "open": false, "ds": ds}
 
 
 ## ③ 翻一张: 横向压扁 → 换正面 → 弹开 + 金光圈 6 帧
