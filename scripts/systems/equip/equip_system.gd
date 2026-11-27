@@ -1417,6 +1417,9 @@ const TURRET_BUFF_R := 400.0      # 携带者在此范围内 → 自身获得攻
 const TURRET_HP_PER_ATK := 10.0    # 炮台生命 = 档位 + 它×自身攻击力(召唤时快照·不追后续变化·不乘HP_MULT·用户 2026-09-30)
 const TURRET_CRIT_PER_SHOT := 0.04 # 炮台每次普攻永久累积的暴击率(用户 2026-09-30: 2% → 4%)
 const TURRET_BUFF_ASPD := 1.00    # 在范围内时携带者自身攻速加成(用户 2026-09-14: 20/30/40% → 统一 100%)
+const TURRET_HP := [650.0, 1400.0, 2500.0]    # 炮台基础生命(★1/★2/★3; 另加 TURRET_HP_PER_ATK × 携带者攻击力)
+const TURRET_ATK := [70.0, 120.0, 180.0]      # 炮台基础攻击(另加携带者攻击力)
+const TURRET_RES := [70.0, 85.0, 100.0]       # 携带者存活时炮台的护甲与魔抗(阵亡后归零)
 ## 【033 魔法海螺】3★ 变虫之后的自我分裂(小虫自己的周期, 不走携带者的 eq_tick)。
 const WORM_SPLIT_IV := 2.5        # 每几秒在空位分裂一只
 const WORM_CAP := 4               # 每件海螺的小虫上限(11-13 起按件算: 两件 3★ 共 8 只, 见 EqSummons.worm_count)
@@ -1424,6 +1427,7 @@ const WORM_ASPD := 0.65           # 小虫攻速(次/秒) ⇒ atk_interval = 1 /
 ## 小虫生命值 1/2/3 星(★用户 2026-11-05「五费的魔法海螺，其中的这个小虫的生命值…需要调整为一千五三千一万」: 100/1500/10000 → 1500/3000/10000)。
 ##   文案用 {C:EquipSystem.WORM_HP} 引用, 数只存这一份。
 const WORM_HP := [1500.0, 3000.0, 10000.0]
+const WORM_ATK := [50.0, 80.0, 200.0]         # 海螺虫攻击力(用户 2026-07-30)
 const DART_EVERY := 5              # 每 5 下普攻强化一次
 const DART_BLEED_COEF := 0.1       # 飞镖命中施加的流血层数 = ×ATK
 ## 【003 锋利鲨齿】每段伤害命中后向目标周围溅射。
@@ -2517,7 +2521,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 			"p2eq_033":   # 魔法海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
 				battle._conch_transform(u["pos"])
 				# ★用户 2026-07-30 加强: 小虫 生命 400/900/5000 → 100/1500/10000, 攻击 30/55/200 → 50/80/200
-				var worm = battle._spawn._spawn_summon(u, "worm", float(WORM_HP[si]), [50.0, 80.0, 200.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
+				var worm = battle._spawn._spawn_summon(u, "worm", float(WORM_HP[si]), float(WORM_ATK[si]), {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
 				if worm != null:
 					worm["pos"] = u["pos"]
 					## ★读常量不写死: 文案用 {C:EquipSystem.WORM_ASPD}, 写死 0.65 就是同一个数存两份。

@@ -361,7 +361,7 @@ func _build_tab_bar() -> void:
 	# PoC makeTab label 带数量计数: 🐢 龟 (N) / ⚔ 装备 (N) / 🔗 羁绊 (N) / 💫 状态 (N) / 📜 规则 (N)
 	# 装备 Tab 计数 = 59 件 p2eq + 消耗品件数 (上线野生=duallane 实际装备池, 非旧 e_ 装备)
 	var tab_counts := {
-		"pets": DataRegistry.launch_pets.size() + MINION_KINDS.size() + SummonCodex.IDS.size(), "equips": _equip_tab_count(),
+		"pets": DataRegistry.launch_pets.size() + MINION_KINDS.size() + SummonCodex.all_ids().size(), "equips": _equip_tab_count(),
 		"synergies": (Phase2Types.TYPES.size() + Phase2Types.TAG_ONLY.size()), "status": DataRegistry.status_defs.size(),
 	}
 	for i in TABS.size():
@@ -474,18 +474,20 @@ func _switch_tab(tab: String) -> void:
 				_codex_list._add_pet_row(pet)
 			# 深海小将(用户2026-07-19「图鉴里补上小将的信息」): 不是龟, 不在 pets.json 里,
 			# 战斗中由 _make_unit(spec.minion) 现场造 → 只能用虚拟条目, 数值/技能全部照 RealtimeBattle3DScene 抄
-			_codex_list._add_group_header("深海小将")   # 页签计数仍是「龟(28)」, 小将不算龟 → 拿分隔条把两段划开(用户2026-07-19)
+			_codex_list._add_group_header("战场单位")   # 2026-11-27「深海小将」→「战场单位」: 龟蛋 / 训龟大师也在这一组   # 页签计数仍是「龟(28)」, 小将不算龟 → 拿分隔条把两段划开(用户2026-07-19)
 			for mk in MINION_KINDS:
 				_items.append({"_minion": mk["kind"]})
 				## 行图标 = 头像(与龟行的 avatars/<id> 同一种东西; 2026-11-04 用户「头像不等于全身画啊」), 不是全身立绘。
 				_codex_list._add_simple_row(str(mk["name"]), "#cdd9c2", Color("#7a8a96"),
 					MinionCodex.avatar_path(str(mk["kind"])), _items.size() - 1)
-			## 召唤物(2026-11-27 方案书 20261127d): 百夫长 / 炮台先做样子, 其余逐个补进 SummonCodex.IDS
-			_codex_list._add_group_header("召唤物")
-			for sid in SummonCodex.IDS:
-				_items.append({"_summon": sid})
-				_codex_list._add_simple_row(str(SummonCodex.info(sid, 0)["name"]), "#e8d9b8", Color("#8a7a5a"),
-					str(SummonCodex.info(sid, 0)["avatar"]), _items.size() - 1)
+			## 战场单位(龟蛋 / 训龟大师)接在深海小将后面同一组; 召唤物按来源分三组(2026-11-27 方案书 20261127d, 用户「收所有单位」)
+			for g in SummonCodex.GROUPS:
+				if str(g[0]) != "战场单位":
+					_codex_list._add_group_header(str(g[0]))
+				for sid in g[1]:
+					var _si: Dictionary = SummonCodex.info(str(sid), 0)
+					_items.append({"_summon": str(sid)})
+					_codex_list._add_simple_row(str(_si["name"]), "#e8d9b8", Color("#8a7a5a"), str(_si["avatar"]), _items.size() - 1)
 		"equips":
 			_codex_list._add_equip_rows()
 		"synergies":

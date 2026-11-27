@@ -19,6 +19,8 @@ const BEAR_RANGE := 70.0        # 大熊射程(码·近战)
 ## ★`col_size` 只喂 `spr.pixel_size`(纯立绘缩放), **不碰碰撞也不碰任何数值** —— 全仓只有两处读它。
 const BEAR_COL_SIZE := 88.0
 const BEAR_RESIST := 70.0       # 大熊护甲与魔抗(各·用户 2026-07-30: 20 → 70)
+const BEAR_HP := [1600.0, 3000.0, 15000.0]   # 大熊生命(★1/★2/★3)
+const BEAR_ATK := [70.0, 120.0, 2000.0]      # 大熊攻击
 const BEAR_PAW_STACKS := 2      # 熊掌累积几层后, 下一击改成冲击波
 const BEAR_WAVE_COEF := 1.5     # 冲击波 ×ATK 物理
 const BEAR_WAVE_RANGE := 600.0  # 冲击波那一击射程临时扩到(码)

@@ -34,6 +34,8 @@ const DRONE_FIRE_SEC := 1.6      # 每门炮每几秒射一发(实际再加 0~0.
 ## 【阵亡后组装的机甲】
 const MECH_ASSEMBLE_SEC := 5.0   # 组装期(期间不可被选中、不能动也不能打)
 const MECH_RANGE := 100.0        # 就位后射程(近战最低标准 100·70 会卡位)
+const MECH_MOVE := 95.0          # 机甲移速
+const MECH_ASPD := 1.0          # 机甲每秒攻击次数
 const MECH_HP_BASE := 100.0      # 生命 = (BASE + PER_LV×等级) × 炮数
 const MECH_HP_PER_LV := 2.0
 const MECH_ATK_BASE := 8.0       # 攻击 = (BASE + PER_LV×等级) × 炮数
@@ -272,7 +274,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
 		var mech = battle._spawn._spawn_summon(uu, "mech", final_hp, final_atk, {
 			"label": "机甲", "spr_id": "mech", "col_size": 40.0, "hp_w": 46.0, "melee": true,
-			"move_spd": 95.0, "atk_interval": 1.0, "atk_range": MECH_RANGE,   # 机甲=近战坦克档(用户2026-07-28移速定位化: 原130比全表任何龟都快); 近战最低标准100防卡位(用户2026-07-16"70会卡位")
+			"move_spd": MECH_MOVE, "atk_interval": 1.0 / MECH_ASPD, "atk_range": MECH_RANGE,   # 机甲=近战坦克档(用户2026-07-28移速定位化: 原130比全表任何龟都快); 近战最低标准100防卡位(用户2026-07-16"70会卡位")
 			"special": "mech_blast", "special_cd": MECH_BLAST_CD, "special_scale": MECH_BLAST_COEF,
 		})
 		if mech == null: return

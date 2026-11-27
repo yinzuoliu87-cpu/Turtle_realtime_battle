@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "d78505503c296836b29dd259d00b4368f1c9db7d7f9a26739e1ae8933c60c7a3",
+ "fingerprint": "e86137d2e383bb426acc28488076b383335e5cbad656fa12ca0038a44772bb1d",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -50,7 +50,7 @@
   },
   {
    "def": "static-tables",
-   "hash": "839ac9f52557c6c41a87dca0c697165384b141236e3d5c4f2b56cfc3c6db1013",
+   "hash": "a2b3b2981b2aad00915be331d8545299618f0e5120d2be6d3aaf3866e7f7aa6b",
    "tag": "数值表 EquipStats / TurtleStats / 小将 / 技能常量"
   }
  ],

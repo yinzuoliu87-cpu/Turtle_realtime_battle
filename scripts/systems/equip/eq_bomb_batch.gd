@@ -102,6 +102,7 @@ const CANNON_BACK := 260.0
 const CANNON_BALL_SPD := 1100.0
 # ── 106 遥控炸弹 ──
 const REMOTE_HP := [2500.0, 5000.0, 12000.0]
+const REMOTE_RANGE := 30.0      # 追身距离(不攻击)
 const REMOTE_RES := [70.0, 130.0, 200.0]
 ## 每秒损失最大生命值 / 爆炸固定物理伤害(用户 11-24「改为每秒损失4/2/0，物理固定伤害改为150/280/500」, 取代 10/8/0% 与 400/800/2000)
 const REMOTE_DECAY := [0.04, 0.02, 0.0]
@@ -114,6 +115,8 @@ const REMOTE_FWD := 120.0
 const KATANA_HP := [700.0, 1300.0, 2700.0]
 const KATANA_ATK := [40.0, 75.0, 140.0]
 const KATANA_EN_MAX := 60.0
+const KATANA_ASPD := 1.0        # 每秒攻击次数
+const KATANA_RANGE := 60.0
 const KATANA_WAVE_LEN := 700.0
 const KATANA_WAVE_W := 50.0
 ## 剑气波 600 码/秒(11-25 用户「这个气波移动太快了」, 取代 1100) ⇒ 700 码走 1.17 秒
@@ -882,7 +885,7 @@ func _tick_balls(delta: float) -> void:
 func _spawn_remote(owner: Dictionary, si: int) -> void:
 	var p = battle._spawn._spawn_summon(owner, "remote_bomb", float(REMOTE_HP[si]), 0.0,
 		{"label": "遥控炸弹", "spr_id": "eq-remote-bomb", "col_size": 34.0, "hp_w": 40.0,
-		 "atk_interval": 1.0, "atk_range": 30.0, "melee": true})
+		 "atk_interval": 1.0, "atk_range": REMOTE_RANGE, "melee": true})
 	if p == null:
 		return
 	p["no_basic"] = true          # 不攻击：只追着敌人走
@@ -939,7 +942,7 @@ func _remote_boom(r: Dictionary) -> void:
 func _spawn_katana(owner: Dictionary, si: int) -> void:
 	var p = battle._spawn._spawn_summon(owner, "katana", float(KATANA_HP[si]), float(KATANA_ATK[si]),
 		{"label": "武士刀小将", "spr_id": "eq-katana", "col_size": 46.0, "hp_w": 36.0,
-		 "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
+		 "atk_interval": 1.0 / KATANA_ASPD, "atk_range": KATANA_RANGE, "melee": true})
 	if p == null:
 		return
 	p["maxEnergy"] = KATANA_EN_MAX   # 头顶龟能条(见 _spawn_cannon)

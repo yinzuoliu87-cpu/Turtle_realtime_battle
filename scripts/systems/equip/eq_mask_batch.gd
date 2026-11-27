@@ -40,6 +40,8 @@ const FACE_WHITE_ASPD := [0.15, 0.25, 0.40]    # 白脸: 攻击速度
 const FACE_WHITE_EN := [3.0, 5.0, 8.0]         # 白脸: 攻击偷取目标龟能(用户 11-25 夜「改成三五八」)
 # ── 130 舞狮头 ──
 const LION_HP := [900.0, 1600.0, 2500.0]       # 用户 11-26「生命值改为九百、一千六和两千五」
+const LION_ASPD := 1.0          # 每秒攻击次数
+const LION_RANGE := 70.0
 const LION_ATK := [20.0, 40.0, 80.0]
 const LION_RES := [20.0, 35.0, 55.0]
 const LION_EN_MAX := 100.0
@@ -442,7 +444,7 @@ func _face_leave(u: Dictionary, ck: String) -> void:
 func _spawn_lion(owner: Dictionary, si: int) -> Dictionary:
 	var p = battle._spawn._spawn_summon(owner, "mask_lion", float(LION_HP[si]), float(LION_ATK[si]),
 		{"label": "舞狮", "spr_id": "eq-mask-lion", "col_size": 52.0, "hp_w": 40.0,
-		 "atk_interval": 1.0, "atk_range": 70.0, "melee": true})
+		 "atk_interval": 1.0 / LION_ASPD, "atk_range": LION_RANGE, "melee": true})
 	if p == null:
 		return {}
 	p["def"] = float(LION_RES[si]); p["base_def"] = p["def"]

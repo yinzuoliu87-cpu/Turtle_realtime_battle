@@ -12,6 +12,7 @@ const BULWARK_HP_PCT := 0.10    # 水晶壁垒: 盾 += ×最大生命 (0.05→0.
 ## ★★2026-08-22 文案根除: 壁垒这一组原来是 `_sk_crystal_bulwark` / `_crystal_spike_line` 里的裸字面量。
 ## 【水晶球(召唤物)】选此技登场即召唤, 独立单位, 本体阵亡后仍战斗。
 const ORB_HP_PCT := 0.50        # 生命 = 本体最大生命 ×
+const ORB_MOVE := 90.0           # 水晶球移速
 const ORB_RAY_IV := 5.0         # 每几秒射一道贯穿光线
 const ORB_RAY_COEF := 1.0       # 两段合计 ×ATK 魔法
 const ORB_RAY_STACKS := 2       # 每次叠几层结晶印记

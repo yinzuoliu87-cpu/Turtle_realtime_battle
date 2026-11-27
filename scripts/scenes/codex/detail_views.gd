@@ -730,6 +730,9 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			##   LoL 的技能头上只写**名字 + 消耗**。⇒ 与兄弟分支对齐成「角色 · 代价」;
 			##   「龟能 100」中间留空格(codex_text_lint「汉字贴着数字」)。
 			_: chip_text = Lang.t("主动 · 龟能 %d") % _energy_of(pet, sk); chip_color = "#06d6a0"
+		## 训龟大师的技能按冷却放、不吃龟能(2026-11-27 图鉴「角色」栏收训龟大师): 写冷却秒数
+		if sk.has("_cd"):
+			chip_text = (Lang.t("主动 · 冷却 %d 秒") % int(sk["_cd"])) if float(sk["_cd"]) > 0.0 else Lang.t("主动")
 		var chip_lbl = host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, CARD_CHIP_PX, chip_color, 0.0, 0.5)
 		if chip_lbl != null:
 			chip_lbl.set_meta("codex_chip", true)   # 门禁认卡片签用(「攻击」与属性栏「攻击」同字, 不能按文字认; 2026-10-13)
@@ -1019,7 +1022,11 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能自动施放
 		## ★2026-10-01: 「龟能100」→「龟能 100」。codex_text_lint 有一条「汉字贴着数字」,
 		##   它只扫 data/*.json 的玩家文案, 扫不到这里拼出来的屏幕串 —— 所以这处一直漏着。
-		bb += Lang.t("　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]") % _energy_of(pet, sk)
+		if sk.has("_cd"):
+			if float(sk["_cd"]) > 0.0:
+				bb += Lang.t("　[color=#06d6a0][font_size=20]冷却 %d 秒[/font_size][/color]") % int(sk["_cd"])
+		else:
+			bb += Lang.t("　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]") % _energy_of(pet, sk)
 	var title = RichTextLabel.new()
 	title.bbcode_enabled = true
 	title.fit_content = true
@@ -1625,3 +1632,11 @@ func _show_status(st: Dictionary) -> void:
 
 const StatusPage := preload("res://scripts/scenes/codex/status_page.gd")
 var _status_page = null
+
+
+## 跳到某一条(龟 / 小将 / 召唤物 / 装备 / 羁绊)的图鉴页 —— 召唤物页来源签牌、文案里的召唤物名字链接共用(2026-11-27)。
+## e = {"k": "pet"|"minion"|"summon"|"eq"|"syn", "id": …}; 走状态页同一个入口(_switch_tab + 等两帧 + _select)。
+func open_entry(e: Dictionary) -> void:
+	if _status_page == null:
+		_status_page = StatusPage.new(host)
+	_status_page.open(e)

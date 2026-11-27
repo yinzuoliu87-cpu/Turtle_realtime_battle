@@ -7,6 +7,10 @@ extends RefCounted
 ## 原默认 120 会让无名召唤物比大多数龟都快, 与"近战>远程"的结构保证冲突。
 ## 有明确设计理由的召唤物照旧各自硬写(水晶球90 / 海盗船40 —— 注释里有出处)。
 const SUMMON_DEFAULT_SPD := 100.0
+const SUMMON_DEFAULT_IV := 1.2      # 召唤物没给攻击间隔时的默认值(秒)
+const SUMMON_DEFAULT_RANGE := 70.0  # 召唤物没给射程时的默认值
+const EGG_RES_BASE := 60.0          # 龟蛋护甲与魔抗 = 它 + EGG_RES_PER_LV × 等级(用户 2026-07-19), 围栏立着时另加 EGG_FENCE_RES
+const EGG_RES_PER_LV := 15.0
 ## 训龟大师站在场地左 / 右边往里多少像素(`_spawn_trainers`)。镜头平移上限按它算「两端推不推得进来」(`ArenaOuter.reach_x`)。
 const TRAINER_INSET := 40.0
 const _BE := preload("res://scripts/net/backend.gd")
@@ -574,7 +578,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		u["_eggImmune"] = true          # 免控/斩/嘲讽
 		u["_egg_fence"] = true           # 围栏未破: 单体+AoE都不可锁(用户2026-07-12) + 屏障+200双抗(用户2026-07-19: 80→200)
 		# 蛋双抗 = 60 + 15×大轮等级 (用户2026-07-19; 原为定值60不随等级)
-		var _egg_res: float = 60.0 + 15.0 * float(int(spec.get("level", u.get("level", 1))))
+		var _egg_res: float = EGG_RES_BASE + EGG_RES_PER_LV * float(int(spec.get("level", u.get("level", 1))))
 		u["def"] = _egg_res + battle.EGG_FENCE_RES; u["mr"] = _egg_res + battle.EGG_FENCE_RES
 		u["base_def"] = _egg_res + battle.EGG_FENCE_RES; u["base_mr"] = _egg_res + battle.EGG_FENCE_RES
 		u["egg_side_lr"] = str(spec.get("egg_side", "left"))   # 该蛋归属方(left/right), 写回 GameState.egg_hp
@@ -746,7 +750,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			if "crystalBall" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 水晶球(技三·选中才召): 登场召唤实体水晶球(2026-07-16加大+特效)
 				var _orb = _spawn_summon(u, "crystalball", u["maxHp"] * CrystalSystem.ORB_HP_PCT, u["atk"], {
 					"label": "水晶球", "spr_id": "crystal-ball", "col_size": 38.0, "hp_w": 40.0, "melee": false,
-					"move_spd": 90.0, "atk_range": CrystalSystem.ORB_RANGE, "no_basic": true,   # 射程2000(用户2026-07-16)
+					"move_spd": CrystalSystem.ORB_MOVE, "atk_range": CrystalSystem.ORB_RANGE, "no_basic": true,   # 射程2000(用户2026-07-16)
 					"special": "ray", "special_cd": CrystalSystem.ORB_RAY_IV, "special_scale": CrystalSystem.ORB_RAY_COEF * 0.5,   # 攻速0.2≈5s一发(封板)·每发2段共1.0A魔法
 				})
 				if _orb != null:                              # 登场爆闪+常驻脉动光环(用户2026-07-16: 球太小没特效)
@@ -880,7 +884,7 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 		for e in battle._targeting._enemies_of(uu):                         # 撞击: 200码内1.0A魔法+击飞2秒(封板)
 			if not e.get("alive", false): continue
 			if DetMath.dist(e["pos"], impact2d) > PirateSystem.SHIP_CHARGE_RADIUS: continue
-			battle._damage._apply_damage_from(src, e, battle._atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
+			battle._damage._apply_damage_from(src, e, battle._atk_dmg(uu, PirateSystem.SHIP_CHARGE_COEF, e, true), Color("#e8c07a"), 0.0, true)
 			battle._damage._knockback(src, e, 40.0, 3.667, 1.0)
 			battle._damage._stun(e, PirateSystem.SHIP_CHARGE_STUN, "_spawn_pirate_ship")
 		if deco != null and is_instance_valid(deco): deco.queue_free()   # 演出船"化作"实体→消失
@@ -889,7 +893,7 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 func _spawn_pirate_ship_entity(u: Dictionary, at2d: Vector2):   # 实体海盗船(封板值·pirate-ship.png立绘)落在撞击点·淡入
 	var ship = _spawn_summon(u, "ship", u["maxHp"] * PirateSystem.SHIP_HP_SCALE, u["atk"] * PirateSystem.SHIP_ATK_SCALE, {
 		"label": "海盗船", "spr_id": "pirate-ship", "col_size": 54.0, "hp_w": 58.0, "melee": true,   # 近战(用户2026-07-14)
-		"move_spd": 40.0, "atk_range": PirateSystem.SHIP_RANGE, "no_basic": true,                 # 重船慢移(用户"再慢一点"·40)+近战射程110(用户2026-07-14)
+		"move_spd": PirateSystem.SHIP_MOVE, "atk_range": PirateSystem.SHIP_RANGE, "no_basic": true,                 # 重船慢移(用户"再慢一点"·40)+近战射程110(用户2026-07-14)
 		"special": "ship_shot", "special_cd": PirateSystem.SHIP_SHOT_CD, "special_scale": PirateSystem.SHIP_SHOT_COEF,       # 攻速0.8≈1.25s/发·近身0.4A(封板伤害)
 	})
 	if ship == null:
@@ -985,8 +989,8 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"heal_amp": 0.0, "shield_amp": 0.0, "damage_reduction": 0.0, "damage_amp": 0.0, "reflect": 0.0, "tenacity": 0.0,
 		"melee": bool(behavior.get("melee", kind != "drone")),
 		"move_spd": float(behavior.get("move_spd", 0.0 if behavior.get("no_move", false) else SUMMON_DEFAULT_SPD)),
-		"atk_interval": float(behavior.get("atk_interval", 1.2)),
-		"atk_range": float(behavior.get("atk_range", 280.0 if kind == "drone" else 70.0)),
+		"atk_interval": float(behavior.get("atk_interval", SUMMON_DEFAULT_IV)),
+		"atk_range": float(behavior.get("atk_range", 280.0 if kind == "drone" else SUMMON_DEFAULT_RANGE)),
 		"atk_cd": 0.0, "energy": 0.0, "alive": true, "is_summon": true,
 		"shield": 0.0, "stun_until": 0.0, "slow_until": 0.0,
 		"dot_stacks": {}, "_dottimer": 0.0, "dot_src": {}, "true_fire_until": 0.0, "_dot_float": {},

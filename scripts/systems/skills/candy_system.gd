@@ -244,7 +244,7 @@ func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技�
 	else:
 		battle._spawn._spawn_summon(u, "candybomb", u["maxHp"] * BOMB_REVIVE_HP_PCT, 0.0, {   # 炸弹阵亡→召新(HP=20%糖果龟maxHp)
 			"label": "糖果炸弹", "spr_id": "candy-bomb", "col_size": 20.0, "hp_w": 24.0,
-			"no_basic": true, "no_move": true, "self_decay": 0.08, "death_aoe": BOMB_DEATH_AOE,
+			"no_basic": true, "no_move": true, "self_decay": BOMB_DECAY_PCT, "death_aoe": BOMB_DEATH_AOE,
 		})
 
 func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(用户2026-07-15"第8秒生效"): 对最大生命最高敌吸25%maxHp→全回复自己(不杀留1)+粉精华VFX

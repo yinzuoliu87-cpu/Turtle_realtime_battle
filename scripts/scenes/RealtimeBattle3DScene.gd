@@ -90,6 +90,7 @@ const SEP_RADIUS := 92.0                    # 单位软分离半径 (像素口�
 const EGG_FENCE_RES := 200.0    # 围栏未破时蛋额外获得的双抗(原 80)
 const EGG_SELFLOSS_IV := 1.0    # 决胜期自损间隔秒(原 2.5)
 const EGG_SELFLOSS_PCT := 0.05  # 每次自损占最大生命比例(原 0.25) → 净速率 10%/秒 → 5%/秒
+const EGG_FINAL_DMG_MULT := 5.0   # 定局路上围栏倒下的蛋: 受到的伤害 ×它(图鉴龟蛋页读)
 const HP_MULT := 3.0                       # base↔final比率: 龟/装备hp已写最终值; 仅召唤raw值(×)用它。装备「X%最大生命」按真实maxHp算、不除它(用户2026-10-04)
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类层数 DoT 每秒结算一次
@@ -2937,7 +2938,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	#   · 最大生命 650/1100/10000 → 1600/3000/15000
 	#   · 双抗 20 → 70(护甲与魔抗各 70)
 	#   ★攻击力用户没提 → 不动(70/120/2000)。
-	var bear = _spawn._spawn_summon(u, "bear", [1600.0, 3000.0, 15000.0][si], [70.0, 120.0, 2000.0][si], {"label": "大熊", "spr_id": "doll-bear", "col_size": EquipTickSystem.BEAR_COL_SIZE, "hp_w": 52.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE}); _equip_sys.tally.pop(_btp)
+	var bear = _spawn._spawn_summon(u, "bear", float(EquipTickSystem.BEAR_HP[si]), float(EquipTickSystem.BEAR_ATK[si]), {"label": "大熊", "spr_id": "doll-bear", "col_size": EquipTickSystem.BEAR_COL_SIZE, "hp_w": 52.0, "melee": true, "atk_interval": 1.0 / EquipTickSystem.BEAR_ASPD, "atk_range": EquipTickSystem.BEAR_RANGE}); _equip_sys.tally.pop(_btp)
 	if bear != null:
 		bear["eq_state"] = {}; bear["equips"] = []
 		bear["base_def"] = EquipTickSystem.BEAR_RESIST; bear["def"] = EquipTickSystem.BEAR_RESIST
@@ -4321,7 +4322,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 													 #   两条伤害路径(_apply_damage / _apply_damage_from)都过这里,
 													 #   在技能里乘只会覆盖其中一条。
 	if not is_self and u.get("_egg_final", false):
-		d *= 5.0                                     # 终极战场暴露蛋: ×5承伤(快速决胜)
+		d *= EGG_FINAL_DMG_MULT                        # 终极战场暴露蛋: ×5承伤(快速决胜)
 	if not raw and float(u.get("flat_dr", 0.0)) > 0.0:
 		d = maxf(0.0, d - float(u["flat_dr"]))       # 铁壁盾016: 每段固定减 X 点(护盾前)
 	# ★训龟大师(§UNTOUCHABLE): 两条伤害路的入口已经先拦下(`_untouch_block`), 根本走不到这里;

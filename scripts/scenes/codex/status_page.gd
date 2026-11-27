@@ -272,7 +272,7 @@ func open(e: Dictionary) -> void:
 	var id := str(e.get("id", ""))
 	var tab := ""
 	match k:
-		"pet", "minion": tab = "pets"
+		"pet", "minion", "summon": tab = "pets"
 		"eq": tab = "equips"
 		"syn": tab = "synergies"
 	if tab == "":
@@ -293,8 +293,9 @@ func open(e: Dictionary) -> void:
 		var d := it as Dictionary
 		var hit := false
 		match k:
-			"pet", "eq": hit = str(d.get("id", "")) == id and not d.has("_minion")
+			"pet", "eq": hit = str(d.get("id", "")) == id and not d.has("_minion") and not d.has("_summon")
 			"minion": hit = str(d.get("_minion", "")) == id
+			"summon": hit = str(d.get("_summon", "")) == id
 			"syn": hit = str(d.get("_type", "")) == id
 		if hit:
 			host._select(i)

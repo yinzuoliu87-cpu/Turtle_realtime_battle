@@ -1,9 +1,10 @@
 class_name CodexSummonPage
 extends RefCounted
-## 图鉴「角色」栏 · 召唤物详情页(2026-11-27 · 方案书 docs/plans/20261127d-图鉴角色栏收全部单位.md)。
+## 图鉴「角色」栏 · 召唤物 / 战场单位详情页(2026-11-27 · 方案书 docs/plans/20261127d-图鉴角色栏收全部单位.md)。
 ## 版式与龟页 / 小将页同一套(复用 detail_views 的 _left_header / _stat_rows / _render_right): 左栏立绘 + 名字 + 签牌 + 属性方块,
 ##   右栏 被动条 → 普攻条 → 技能卡。召唤物多一样: 属性跟着长矛件数 / 装备星级变 ⇒ 右栏最上面一排选择牌(管整页: 左栏属性与右栏技能
 ##   都跟着变), 点了整页重画。初版放在左栏属性下面, 要往下滚才看得到(11-27 截图自查)。
+## 来源签牌(金色)能点: 跳到召唤它的装备 / 羁绊 / 龟那一页(detail_views.open_entry, 走状态页同一个入口)。
 ## 数据全在 SummonCodex(读战斗代码常量)。
 
 var host
@@ -12,6 +13,10 @@ var _sel := {}   # 条目 id → 选中的第几列(换条目回到第 0 列由 
 const SEL_W := 64.0
 const SEL_H := 36.0
 const SEL_HIT_H := 48.0
+const SEL_ROW_GAP := 6.0
+
+## 来源签牌 tab → 状态页跳转用的 k
+const _TAB_K := {"pets": "pet", "equips": "eq", "synergies": "syn"}
 
 
 func _init(h) -> void:
@@ -31,32 +36,46 @@ func show(id: String) -> void:
 	for t in si.get("tags", []):
 		## 颜色同小将页(detail_views._show_minion): 定位 #58d3ff / 不可编入 #9fb6c9
 		chips.append({"kind": "tag", "text": str(t), "color": "#9fb6c9" if str(t) == Lang.t("不可编入") else "#58d3ff"})
-	chips.append({"kind": "tag", "text": str((si["source"] as Dictionary)["text"]), "color": "#ffd93d"})
+	var src: Dictionary = si["source"]
+	chips.append({"kind": "tag", "text": str(src["text"]), "color": "#ffd93d"})
 	dv._left_header(str(si["name"]), chips)
+	_source_hit(chips, src)
 	var y: float = dv._stat_rows(si["stats"]) + 14.0
-	## 属性下一行灰字: 11-27 起不用(用户: 加成写成被动), 留着给以后真需要说明的条目
-	if str(si.get("stat_note", "")) == "":
-		dv._col_divider(y)
-		_render_right_side(id, si, ci)
-		return
-	var note := RichTextLabel.new()
-	note.bbcode_enabled = true; note.fit_content = true; note.scroll_active = false
-	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	note.position = Vector2(20, y)
-	note.custom_minimum_size = Vector2(dv.LCOL_W - 30.0, 0)
-	note.add_theme_font_size_override("normal_font_size", 14)
-	note.add_theme_color_override("default_color", Color("#9fb0c0"))
-	note.text = str(si.get("stat_note", ""))
-	note.set_meta("codex_summon_note", id)
-	host.detail.add_child(note)
-	y += maxf(20.0, note.get_combined_minimum_size().y) + 4.0
 	dv._col_divider(y)
 	_render_right_side(id, si, ci)
 
 
+## 来源签牌的点击区: 照 _left_header 的排法(同一套估宽 / 换行)算出最后一块签牌在哪, 盖一块透明点击区。
+func _source_hit(chips: Array, src: Dictionary) -> void:
+	var dv = host._codex_detail
+	var tab: String = str(src.get("tab", ""))
+	if tab == "" or not _TAB_K.has(tab):
+		return
+	var mid_x := 190.0
+	var cx: float = mid_x
+	var cy: float = 88.0
+	var w: float = 0.0
+	for c in chips:
+		w = maxf(58.0, float(str(c["text"]).length()) * 16.0 + 26.0)
+		if cx > mid_x and cx + w > dv.LCOL_W - 6.0:
+			cx = mid_x
+			cy += 48.0
+		if c != chips[chips.size() - 1]:
+			cx += w + 8.0
+	var hit := Control.new()
+	hit.name = "SummonSourceHit"
+	hit.position = Vector2(cx - 4.0, cy - dv.TAG_H / 2.0 - 4.0)
+	hit.size = Vector2(w + 8.0, dv.TAG_H + 8.0)
+	var e := {"k": str(_TAB_K[tab]), "id": str(src.get("key", ""))}
+	dv._tap_hit(hit, func() -> void: dv.open_entry(e))
+	host.detail.add_child(hit)
+
+
 func _render_right_side(id: String, si: Dictionary, ci: int) -> void:
 	var dv = host._codex_detail
-	var right_top: float = _selector(id, si, ci, 16.0) + 8.0
+	var right_top: float = 16.0
+	if not (si.get("cols", []) as Array).is_empty():
+		right_top = _selector(id, si, ci, 16.0) + 8.0
 	var ctx: Dictionary = {"atk": float(_stat(si, "atk")), "maxHp": float(_stat(si, "hp")), "hp": float(_stat(si, "hp")),
 		"def": float(_stat(si, "def")), "mr": float(_stat(si, "mr")), "lv": 1, "crit": 0.0}
 	dv._render_right(_as_pet(id, si), ctx, right_top)
@@ -69,28 +88,36 @@ static func _stat(si: Dictionary, key: String) -> String:
 	return "0"
 
 
-## 选择牌(右栏最上面一行): 小标题(长矛件数 / 装备星级) + 一排签牌, 当前那一列金色。返回占到的底边。
+## 选择牌(右栏最上面): 小标题(长矛件数 / 装备星级 / 进化形态…) + 一排签牌, 当前那一列金色; 放不下换行(小木斧 9 种形态 / 训龟大师 7 个技能)。
+## 返回占到的底边。
 func _selector(id: String, si: Dictionary, ci: int, y: float) -> float:
 	var dv = host._codex_detail
 	var x0: float = dv.RCOL_X
+	var x_max: float = x0 + dv._rw()
 	var cy: float = y + SEL_HIT_H / 2.0
 	var ttl: Label = host._add_text(x0, cy, str(si.get("col_title", "")), 16, "#c8d4e0", 0.0, 0.5, true)
 	var tw: float = ttl.get_combined_minimum_size().x + 14.0 if ttl != null else 90.0
 	var cols: Array = si.get("cols", [])
+	var x: float = x0 + tw
 	for k in range(cols.size()):
-		var x: float = x0 + tw + float(k) * (SEL_W + 8.0)
+		var txt: String = str(cols[k])
+		var w: float = maxf(SEL_W, float(txt.length()) * 18.0 + 16.0)
+		if x + w > x_max and x > x0 + tw:
+			x = x0 + tw
+			cy += SEL_HIT_H + SEL_ROW_GAP
 		var on: bool = k == ci
 		var col: String = "#ffd93d" if on else "#5f7186"
-		var p: Panel = dv._plaque(x, cy - SEL_H / 2.0, SEL_W, SEL_H, col)
+		var p: Panel = dv._plaque(x, cy - SEL_H / 2.0, w, SEL_H, col)
 		p.name = "SummonCol%d" % k
-		dv._chip_text(x + 6.0, cy - 12.0, SEL_W - 12.0, 24.0, str(cols[k]), 18, col)
+		dv._chip_text(x + 6.0, cy - 12.0, w - 12.0, 24.0, txt, 18, col)
 		var hit := Control.new()
 		hit.name = "SummonColHit%d" % k
 		hit.position = Vector2(x - 4.0, cy - SEL_HIT_H / 2.0)
-		hit.size = Vector2(SEL_W + 8.0, SEL_HIT_H)
+		hit.size = Vector2(w + 8.0, SEL_HIT_H)
 		var k_ref: int = k
 		dv._tap_hit(hit, func() -> void: set_col(id, k_ref))
 		host.detail.add_child(hit)
+		x += w + 8.0
 	return cy + SEL_HIT_H / 2.0
 
 
@@ -111,8 +138,14 @@ static func _as_pet(id: String, si: Dictionary) -> Dictionary:
 			"icon": str(b.get("icon", ""))})
 	var sk: Dictionary = si.get("skill", {})
 	if not sk.is_empty():
-		pool.append({"name": str(sk["name"]), "brief": str(sk["desc"]), "detail": str(sk["desc"]), "desc": str(sk["desc"]),
-			"_role": "active", "_energy": int(sk.get("energy", 0)), "icon": str(sk.get("icon", ""))})
+		var e := {"name": str(sk["name"]), "brief": str(sk["desc"]), "detail": str(sk["desc"]), "desc": str(sk["desc"]),
+			"_role": "active", "_energy": int(sk.get("energy", 0)), "icon": str(sk.get("icon", ""))}
+		## 训龟大师的技能按冷却放(驯服冷却 999 = 每场一次, 不写秒数)
+		if sk.has("cd") and float(sk["cd"]) < 900.0:
+			e["_cd"] = float(sk["cd"])
+		elif sk.has("cd"):
+			e["_cd"] = 0.0
+		pool.append(e)
 	var plist: Array = []
 	for pv in si.get("passives", []):
 		plist.append({"name": str(pv["name"]), "brief": str(pv["desc"]), "detail": str(pv["desc"]), "desc": str(pv["desc"]),

@@ -506,6 +506,13 @@ const BOX_TAUNT_SEC := 0.35
 ## 蛋糕法阵半径(码)与持续(秒)
 const BOX_FIELD_PX := 300.0
 const BOX_FIELD_SEC := 5.0
+const BOX_RES_PER_LOCKER := [20.0, 30.0, 60.0]   # 每个锁定礼盒的敌人 +双抗(★1/★2/★3)
+const BOX_FIELD_HEAL := [50.0, 70.0, 120.0]      # 蛋糕领域: 每秒回生命
+const BOX_FIELD_ENERGY := [2.0, 4.0, 6.0]        # 蛋糕领域: 每秒给龟能
+const BOX_HIT_COEF := 1.0                        # 礼盒攻击 × 攻击力 物理
+const BOX_SPLIT_HP_PCT := [0.20, 0.40, 1.00]     # 携带者阵亡分裂出的礼盒: 携带者最大生命 ×
+const BOX_SPLIT_FIELD_IV := 8.0                  # 分裂礼盒每隔几秒放一次蛋糕领域
+const BOX_SPLIT_FIELD_FIRST := 4.0               # 分裂礼盒第一次放领域在第几秒
 
 
 func _box_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> void:
@@ -594,7 +601,7 @@ func _box_form_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> vo
 	#   ★是"选靶结算之后"的真实结果(`_sep_target` 由 _tick_unit 每帧写), 不是嘲讽施加时算一次:
 	#     敌人一切目标, 这里下一帧就掉下来。用户点名要的就是这个"实时"。
 	var lockers: int = box_lockers(u)
-	var per: float = [20.0, 30.0, 60.0][si]   # 每个锁定自己的敌人 +20/30/60 双抗
+	var per: float = float(BOX_RES_PER_LOCKER[si])   # 每个锁定自己的敌人 +双抗
 	var want: float = per * float(lockers)
 	if absf(want - float(u.get("_cake_res_given", 0.0))) > 0.01:
 		var d: float = want - float(u.get("_cake_res_given", 0.0))
@@ -650,7 +657,7 @@ func box_hit(u: Dictionary, tgt: Dictionary) -> void:
 	if not u.get("alive", false) or not tgt.get("alive", false):
 		return
 	battle._damage._apply_damage_from(u, tgt,
-		battle._atk_dmg(u, 1.0, tgt), Color("#ffd0dc"), 0.0, false, true)
+		battle._atk_dmg(u, BOX_HIT_COEF, tgt), Color("#ffd0dc"), 0.0, false, true)
 	tgt["_box_hit_n"] = int(tgt.get("_box_hit_n", 0)) + 1   # 同步触发证据
 	battle._vfx._hit_spark(tgt)
 
@@ -681,8 +688,8 @@ func _box_field_tick(u: Dictionary, si: int, _stt: Dictionary, delta: float) -> 
 func box_field_pulse(u: Dictionary, si: int) -> void:
 	## ★中心 = 当前位置(跟随, 2026-08-11 用户拍板), 不再读施放时的快照
 	var c: Vector2 = u["pos"]
-	var heal: float = [50.0, 70.0, 120.0][si]     # 每秒回 50/70/120 生命
-	var energy: float = [2.0, 4.0, 6.0][si]       # 每秒给 2/4/6 龟能
+	var heal: float = float(BOX_FIELD_HEAL[si])     # 每秒回生命
+	var energy: float = float(BOX_FIELD_ENERGY[si])       # 每秒给龟能
 	var n := 0
 	for o in battle._targeting._allies_of(u, true):
 		if not o.get("alive", false) or DetMath.vlen((o["pos"] - c)) > BOX_FIELD_PX:
@@ -751,7 +758,7 @@ func _eq_cake_split(u: Dictionary, si: int, star: int) -> void:
 	if u.get("eq_state", null) is Dictionary:
 		u["eq_state"][_sk] = _sst
 	u["_cake_split_done"] = true
-	var hp_pct: float = [0.20, 0.40, 1.00][si]   # 携带者最大生命的 20/40/100%
+	var hp_pct: float = float(BOX_SPLIT_HP_PCT[si])   # 携带者最大生命的百分比
 	var hp: float = maxf(1.0, float(u["maxHp"]) * hp_pct)
 	# ★★"携带者的双抗"要【扣掉礼盒形态自己临时加的那一份】(_cake_res_given)。
 	#   携带者可能是【在礼盒形态里】死的(处决 / 墨迹真伤这类绕过余额的路), 那时它的 base_def
@@ -786,7 +793,7 @@ func _eq_cake_split(u: Dictionary, si: int, star: int) -> void:
 			if is_instance_valid(_bspr):
 				_bspr.modulate = Color(1, 1, 1, 1)
 		b["equips"] = [{"id": "p2eq_072", "star": star}]   # ★挂条目只为吃到每帧 _eq_tick(不跑属性管线)
-		b["eq_state"] = {"p2eq_072": {"opened": true, "field_iv": 8.0, "field_t": 4.0}}
+		b["eq_state"] = {"p2eq_072": {"opened": true, "field_iv": BOX_SPLIT_FIELD_IV, "field_t": BOX_SPLIT_FIELD_FIRST}}
 		b["_cake_is_box"] = true
 		b["_cake_si"] = si
 		b["_food_eq"] = true                              # 常驻守卫: 让 _eq_tick 把它交给本文件

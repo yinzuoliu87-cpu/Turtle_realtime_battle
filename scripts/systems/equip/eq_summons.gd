@@ -1,5 +1,16 @@
 class_name EqSummons
 extends RefCounted
+
+## 032 亡灵骷髅(用户 2026-08-01 定): 图鉴召唤物页读这几条(11-27 从召唤行提出来, 值不变)
+const SKEL_HP := [16.0, 31.0, 55.0]
+const SKEL_ATK := [3.0, 5.0, 8.0]
+const SKEL_ASPD := 1.2                 # 每秒攻击次数
+const SKEL_RANGE := 70.0
+const SKEL_MOVE := 110.0
+const SKEL_LIFE := [13.0, 17.0, 23.0]  # 存活秒数, 到点爆炸
+const SKEL_BOOM_PCT := [0.08, 0.13, 0.20]   # 爆炸: 目标最大生命值 × 它 真实伤害
+const SKEL_BOOM_R := 200.0
+const SKEL_DMG_CAP := 1.0              # 受到的任何伤害(含真伤)恒为它(闸在 _mitigate_incoming, 那边写的是 1.0)
 ## 登场召唤类装备: 058 远古炮塔 / 032 骨哨(2026-11-13 从 equip_system.gd 搬出 —— 那个文件到了 3000 行架构预算)。
 ## 外部仍走 EquipSystem 的同名转发(`_eq_summon_turret` / `_tick_eq_turret` / `_eq_summon_skeleton`), 门禁与主场景不用改。
 ## ★11-13 用户「两件肯定召唤两个炮台啊，三件召唤三个炮台」: 每件各召一个、各自星级(份号 ck, 方案书 20261113)。
@@ -16,7 +27,7 @@ func turret(u: Dictionary, si: int, ck: String = "p2eq_058") -> void:   # 穿甲
 	if not u.get("alive", false): return
 	battle._audio_sys.sfx_equip("p2eq_058")   # 装备触发声(11-05 音效 v2; 只管声音)
 	var _tp: Array = battle._equip_sys.tally.push(u, ck)
-	var tr = battle._spawn._spawn_summon(u, "turret", [650.0, 1400.0, 2500.0][si] + EquipSystem.TURRET_HP_PER_ATK * float(u.get("atk", 0.0)), [70.0, 120.0, 180.0][si] + float(u.get("atk", 0.0)),
+	var tr = battle._spawn._spawn_summon(u, "turret", float(EquipSystem.TURRET_HP[si]) + EquipSystem.TURRET_HP_PER_ATK * float(u.get("atk", 0.0)), float(EquipSystem.TURRET_ATK[si]) + float(u.get("atk", 0.0)),
 		{"label": "炮台", "spr_id": "turret", "col_size": 44.0, "hp_w": 32.0,
 		 "atk_interval": 1.0 / EquipSystem.TURRET_ASPD, "atk_range": EquipSystem.TURRET_RANGE, "move_spd": 0.0, "melee": false})
 	battle._equip_sys.tally.pop(_tp)
@@ -56,7 +67,7 @@ func tick_turret(u: Dictionary) -> void:   # 058: 炮台双抗随携带者存活
 			battle._update_turret_line(tr)
 			continue
 		var si: int = int(tr.get("_turret_si", u.get("_turret_si", 0)))
-		var res: float = ([70.0, 85.0, 100.0][si] if u.get("alive", false) else 0.0)   # 携带者阵亡→双抗归零
+		var res: float = (float(EquipSystem.TURRET_RES[si]) if u.get("alive", false) else 0.0)   # 携带者阵亡→双抗归零
 		if absf(float(tr.get("base_def", -1.0)) - res) > 0.01:
 			tr["base_def"] = res; tr["base_mr"] = res
 			battle._recalc_stats(tr)
@@ -77,14 +88,14 @@ func skeleton(u: Dictionary, si: int, ck: String = "p2eq_032") -> void:   # ck =
 	#     旧写法 [19,21,25]×3 = 57/63/75, 属于 CLAUDE.md §3.1 那类"多乘一次"的旧账 —— 顺手清掉。
 	#   ★双抗 20000 → 0: 免伤改由 _dmg_cap_one 走减伤收口实现。用双抗堆到 20000 的老办法【拦不住真伤】,
 	#     而用户点名"包括真实伤害"。两者并存还会让"受 1 点"变成"受 0 点"(被抗性吃光后再钳)。
-	var sk = battle._spawn._spawn_summon(u, "skeleton", [16.0, 31.0, 55.0][si], [3.0, 5.0, 8.0][si], {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / 1.2, "atk_range": 70.0, "melee": true, "move_spd": 110.0})
+	var sk = battle._spawn._spawn_summon(u, "skeleton", float(SKEL_HP[si]), float(SKEL_ATK[si]), {"label": "亡灵骷髅", "spr_id": "skeleton", "col_size": 32.0, "hp_w": 22.0, "atk_interval": 1.0 / SKEL_ASPD, "atk_range": SKEL_RANGE, "melee": true, "move_spd": SKEL_MOVE})
 	battle._equip_sys.tally.pop(_tp)
 	if sk == null: return
 	sk["base_def"] = 0.0; sk["base_mr"] = 0.0; sk["def"] = 0.0; sk["mr"] = 0.0
 	sk["_dmg_cap_one"] = true             # 收到的任何攻击(含真伤)降为 1 —— 闸在 _mitigate_incoming 末尾, 两条伤害路径共用
-	sk["summon_life"] = [13.0, 17.0, 23.0][si]
-	sk["boom_pct_true"] = [0.08, 0.13, 0.20][si]
-	sk["boom_radius"] = 200.0
+	sk["summon_life"] = float(SKEL_LIFE[si])
+	sk["boom_pct_true"] = float(SKEL_BOOM_PCT[si])
+	sk["boom_radius"] = SKEL_BOOM_R
 	battle._skill_ring(sk["pos"], Color(0.4, 1.0, 0.55, 0.6), 40.0)
 	for k in range(5):
 		battle._bone_speck(sk["pos"] + Vector2(randf_range(-24, 24), randf_range(-24, 24)))

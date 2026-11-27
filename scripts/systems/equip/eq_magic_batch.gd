@@ -55,6 +55,12 @@ const SKEL_SEC_PER_EN := 0.15
 const SKEL_EN_MAX := 80.0
 const SKEL_KINDS := ["skel_warrior", "skel_mage", "skel_priest"]
 const SKW_HP := [500.0, 1000.0, 2400.0]
+const SKW_IV := 1.0       # 攻击间隔(秒)
+const SKW_RANGE := 60.0
+const SKM_IV := 1.3
+const SKM_RANGE := 420.0
+const SKP_IV := 1.2
+const SKP_RANGE := 400.0
 const SKW_ATK := [30.0, 60.0, 140.0]
 const SKW_RES := [40.0, 70.0, 120.0]
 const SKM_HP := [300.0, 600.0, 1400.0]
@@ -517,13 +523,13 @@ func _summon_skeleton(owner: Dictionary, si: int, cost: float, kind: String = ""
 	match kind:
 		"skel_warrior":
 			hp = SKW_HP[si]; atk = SKW_ATK[si]; res = SKW_RES[si]
-			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅战士", "spr_id": "eq-skel-warrior", "col_size": 44.0, "hp_w": 32.0, "atk_interval": 1.0, "atk_range": 60.0, "melee": true})
+			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅战士", "spr_id": "eq-skel-warrior", "col_size": 44.0, "hp_w": 32.0, "atk_interval": SKW_IV, "atk_range": SKW_RANGE, "melee": true})
 		"skel_mage":
 			hp = SKM_HP[si]; atk = SKM_ATK[si]; res = SKM_RES[si]
-			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅法师", "spr_id": "eq-skel-mage", "col_size": 42.0, "hp_w": 30.0, "atk_interval": 1.3, "atk_range": 420.0, "melee": false})
+			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅法师", "spr_id": "eq-skel-mage", "col_size": 42.0, "hp_w": 30.0, "atk_interval": SKM_IV, "atk_range": SKM_RANGE, "melee": false})
 		_:
 			hp = SKP_HP[si]; atk = SKP_ATK[si]; res = SKP_RES[si]
-			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅祭司", "spr_id": "eq-skel-priest", "col_size": 42.0, "hp_w": 30.0, "atk_interval": 1.2, "atk_range": 400.0, "melee": false})
+			p = battle._spawn._spawn_summon(owner, kind, hp, atk, {"label": "骷髅祭司", "spr_id": "eq-skel-priest", "col_size": 42.0, "hp_w": 30.0, "atk_interval": SKP_IV, "atk_range": SKP_RANGE, "melee": false})
 	if p == null:
 		return {}
 	p["def"] = res; p["base_def"] = res

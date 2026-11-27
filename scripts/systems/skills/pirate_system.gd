@@ -35,6 +35,7 @@ const RUM_DEF_EXTRA := 0.5           # 护甲在双抗之外**再**加 ATK × (�
 const RUM_DEF_COEF := RUM_MR_COEF + RUM_DEF_EXTRA   # 护甲合计(推导, 不另写一份 0.65)
 ## 【海盗船】实体船的规格 —— 真值在 `battle_spawn._spawn_pirate_ship_entity`, 这里是它引用的常量
 const SHIP_HP_SCALE := 1.5           # 生命 = 海盗龟最大生命 ×
+const SHIP_MOVE := 40.0              # 海盗船移速(用户「再慢一点」)
 const SHIP_ATK_SCALE := 1.0          # 攻击 = 海盗龟攻击 ×
 const SHIP_RANGE := 110.0            # 射程(码)·近战
 const SHIP_SHOT_CD := 1.25           # 每发间隔(秒) ⇒ 攻速 = 1/1.25 = 0.8

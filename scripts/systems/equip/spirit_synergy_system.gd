@@ -415,8 +415,12 @@ func on_death(dead) -> void:
 		return          # 别的召唤物阵亡不生亡魂
 	if inherit <= 0.0:
 		return
-	var hp: float = float(dead.get("maxHp", 0.0)) * inherit
-	var atk: float = float(dead.get("base_atk", dead.get("atk", 0.0))) * inherit
+	## ★亡魂再生按【最初阵亡的那个单位】的属性 × 新比例(2026-11-27 修): 原来拿上一只亡魂自己的属性再乘一次比例,
+	##   (2) 档第二只亡魂只剩原单位的 0.38 × 0.38 × 0.9 ≈ 13%, 与文案「上一次的 90%」对不上(图鉴亡魂页按文案写, 代码跟上)。
+	var src_hp: float = float(dead.get("_wraith_src_hp", dead.get("maxHp", 0.0)))
+	var src_atk: float = float(dead.get("_wraith_src_atk", dead.get("base_atk", dead.get("atk", 0.0))))
+	var hp: float = src_hp * inherit
+	var atk: float = src_atk * inherit
 	if hp < 1.0 or atk < 1.0:
 		return
 		## ★2026-08-21 补 spr_id: 此前没传 ⇒ 落到 battle_spawn 的兜底 = **队色软发光球**,
@@ -438,6 +442,8 @@ func on_death(dead) -> void:
 		w["_is_wraith"] = true
 		w["_wraith_loops"] = loops_left
 		w["_wraith_inherit"] = inherit
+		w["_wraith_src_hp"] = src_hp
+		w["_wraith_src_atk"] = src_atk
 		w["pos"] = Vector2(dead["pos"])        # 原地(_spawn_summon 会随机抖一点, 亡灵要求"原地")
 
 

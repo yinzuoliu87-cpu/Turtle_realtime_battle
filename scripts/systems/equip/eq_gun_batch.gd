@@ -158,6 +158,19 @@ const PISTOL_SIDE_Y := -56.0
 const PISTOL_MUZZLE_FALLBACK := 15.9   ## 实测: 0.4875 帧宽 × 40px × 0.0196 ÷ WS 0.024 = 15.9 码
 ## 077 每次攻击给自己 +1 护甲穿透(规格原文), 每路重置 —— 换路重建召唤物即天然重置
 const PISTOL_PEN_PER_SHOT := 1.0
+const PISTOL_HP := [30.0, 60.0, 100.0]     # 小手枪生命(★1/★2/★3)
+const PISTOL_ATK := [15.0, 25.0, 40.0]     # 小手枪攻击
+const PISTOL_COEF := 1.0                   # 每发 × 攻击力 物理
+const PISTOL_DMG_CAP := 2.0                # 携带者存活时受到的任何伤害封顶
+const PISTOL_HEAL_CAP := 1.0               # 受到的治疗封顶
+const TOWER_HP := [700.0, 1200.0, 2500.0]  # 急救塔生命
+const TOWER_ATK := [15.0, 20.0, 30.0]      # 急救塔攻击
+const TOWER_RES := [50.0, 70.0, 100.0]     # 急救塔护甲与魔抗
+const TOWER_COEF := 1.0                    # 每发 × 攻击力 物理
+const TOWER_MAXHP_PCT := [0.01, 0.015, 0.02]   # 每发另加目标最大生命值 × 它 魔法伤害
+const TOWER_HEAL := [10.0, 15.0, 20.0]     # 每发治疗生命百分比最低的友军(金弹翻倍)
+const TOWER_GOLD_PCT := [0.60, 0.80, 1.00] # 枪羁绊 (1)(2)(3) 档: 金弹真实伤害比例
+const TOWER_GOLD_EVERY := [4, 3, 2]        # 枪羁绊各档: 每几发一颗金弹
 ## 079 炮台: 生成在携带者【后方】这么远(规格原文 150 码) · 射程见 D4
 const TOWER_BACK := 150.0
 const TOWER_RANGE := 700.0
@@ -236,7 +249,7 @@ func on_spawn(u: Dictionary, eid: String, si: int) -> void:
 			# 小手枪: 30/60/100 生命 · 15/25/40 攻击(2026-11-14 用户「一费的这个装备需要加强…10、20、30 调整为 15、25、40」)。
 			# ★hp【已是最终值, 不乘 HP_MULT】—— 用户原话"拥有 30/60/100 生命值",
 			#   文案也照写(CLAUDE.md §3.1 那条"多乘一次"的旧账, 032 骷髅/058 炮台同口径)。
-			_spawn_pistol(u, si, [30.0, 60.0, 100.0][si], [15.0, 25.0, 40.0][si])
+			_spawn_pistol(u, si, float(PISTOL_HP[si]), float(PISTOL_ATK[si]))
 		"p2eq_078":
 			# 左右管【共享】一个计数与一个节拍 ⇒ 常驻字段两枚, tick_unit 每帧推进。
 			u["_g078_si"] = si
@@ -244,7 +257,7 @@ func on_spawn(u: Dictionary, eid: String, si: int) -> void:
 			u["_g078_n"] = 0
 		"p2eq_079":
 			# 医疗炮台: 700/1200/2500 生命 · 15/20/30 攻击 · 50/70/100 双抗(同上, hp 不乘 HP_MULT)
-			_spawn_tower(u, si, [700.0, 1200.0, 2500.0][si], [15.0, 20.0, 30.0][si], [50.0, 70.0, 100.0][si])
+			_spawn_tower(u, si, float(TOWER_HP[si]), float(TOWER_ATK[si]), float(TOWER_RES[si]))
 		"p2eq_080":
 			# 坠机爆炸: 500 码内 200/300/500 物理 + 40 层灼烧(规格原文)。
 			# ★在【登场】就写进直升机, 不等 on_death —— 万一携带者是被某条不走 on-death 钩的
@@ -375,10 +388,10 @@ func _spawn_pistol(owner: Dictionary, si: int, hp: float, atk: float) -> void:
 	p["no_basic"] = true
 	# ★伤害封顶: 走共用收口 `_mitigate_incoming` 末尾的带值闸 —— 两条伤害路径、含真伤全覆盖。
 	#   携带者阵亡后 `on_death` 把它改成 5.0(规格原文)。
-	p["_dmg_cap_val"] = 2.0
+	p["_dmg_cap_val"] = PISTOL_DMG_CAP
 	## 受到的所有治疗封顶 1 点(用户 2026-08-12 削弱)。走 battle_damage._heal 的共用收口,
 	## 所以 079 医疗炮台 / 法器灵泉 / 食物盛宴 / 090 的治疗浪潮 一律只回 1。
-	p["_heal_cap_val"] = 1.0
+	p["_heal_cap_val"] = PISTOL_HEAL_CAP
 	p["_g077"] = true
 	# ★★2026-08-06 用户看图后拍板: 小手枪原来生成在携带者【随机偏移】处, 经常直接压在龟身上
 	#   ⇒ 读不出"这是一个独立的、会被打死的单位"(它是"需要保护的资产", 那是这件的设计核心)。
@@ -489,7 +502,7 @@ func _pistol_bullet(p: Dictionary) -> void:
 			return
 		var _sv: float = float(p.get("_golden_pct", 0.0))
 		p["_golden_pct"] = gold
-		battle._damage._apply_damage_from(p, tgt, battle._atk_dmg(p, 1.0, tgt), COL_PHYS, 0.0, false, true)
+		battle._damage._apply_damage_from(p, tgt, battle._atk_dmg(p, PISTOL_COEF, tgt), COL_PHYS, 0.0, false, true)
 		p["_golden_pct"] = _sv,
 		func(k: float, _p2: Vector2, _to2: Vector2) -> void: vfx.tracer_drive(_bul, k))
 
@@ -787,10 +800,10 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 	if not t.get("alive", false):
 		return
 	# ★三元数组就近声明(契约 §6): 都在上面 `_queue_shots(..., "p2eq_079")` 的锚点窗口内。
-	var hp_pct: float = [0.01, 0.015, 0.02][si]
-	var heal: float = [10.0, 15.0, 20.0][si]
-	var gold_pct: float = [0.60, 0.80, 1.00][clampi(int(battle._synergy.tier_for(t, "枪")) - 1, 0, 2)]
-	var per_gold: int = [4, 3, 2][clampi(int(battle._synergy.tier_for(t, "枪")) - 1, 0, 2)]
+	var hp_pct: float = float(TOWER_MAXHP_PCT[si])
+	var heal: float = float(TOWER_HEAL[si])
+	var gold_pct: float = TOWER_GOLD_PCT[clampi(int(battle._synergy.tier_for(t, "枪")) - 1, 0, 2)]
+	var per_gold: int = TOWER_GOLD_EVERY[clampi(int(battle._synergy.tier_for(t, "枪")) - 1, 0, 2)]
 	var golden: bool = float(t.get("_golden_pct", 0.0)) > 0.0
 	var tgt = battle._targeting._nearest_enemy(t)
 	if tgt != null and tgt.get("alive", false) and DetMath.vlen((Vector2(tgt["pos"]) - Vector2(t["pos"]))) <= TOWER_RANGE:
@@ -814,7 +827,7 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 				return
 			var keep: float = float(t.get("_golden_pct", 0.0))
 			t["_golden_pct"] = gp
-			battle._damage._apply_damage_from(t, vt, battle._atk_dmg(t, 1.0, vt), COL_PHYS, 0.0, false, true)
+			battle._damage._apply_damage_from(t, vt, battle._atk_dmg(t, TOWER_COEF, vt), COL_PHYS, 0.0, false, true)
 			var mdm: int = battle._resolve_dmg(t, float(vt["maxHp"]) * hp_pct, vt, true)
 			if vt.get("alive", false):
 				battle._damage._apply_damage_from(t, vt, mdm, COL_MAGIC, 0.0, false, true)

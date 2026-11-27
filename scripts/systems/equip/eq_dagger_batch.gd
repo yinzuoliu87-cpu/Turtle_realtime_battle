@@ -53,6 +53,8 @@ const RITUAL_PEN := [0.2, 0.35, 0.6]
 const RITUAL_TEAM_ATK := 0.001
 # ── 115 暗影匕首: 暗影忍者 ──
 const NINJA_HP := [1500.0, 3000.0, 8000.0]
+const NINJA_IV := 0.8           # 攻击间隔(秒)
+const NINJA_RANGE := 60.0
 const NINJA_ATK := [50.0, 95.0, 300.0]   # 11-25 用户「攻击力改为50/95/300」「不不不，是忍者的攻击力」(原 80/160/450)
 const NINJA_RES := [30.0, 50.0, 90.0]
 const NINJA_CRIT := [0.25, 0.35, 0.5]
@@ -530,7 +532,7 @@ func _spawn_ninja(owner: Dictionary, si: int, clone_of = null) -> Dictionary:
 	var p = battle._spawn._spawn_summon(owner, "shadow_clone" if is_clone else "shadow_ninja",
 		float(NINJA_HP[si]) * k, float(NINJA_ATK[si]) * k,
 		{"label": "暗影忍者", "spr_id": "eq-shadow-ninja", "col_size": 44.0, "hp_w": 34.0,
-		 "atk_interval": 0.8, "atk_range": 60.0, "melee": true, "crit": float(NINJA_CRIT[si])})
+		 "atk_interval": NINJA_IV, "atk_range": NINJA_RANGE, "melee": true, "crit": float(NINJA_CRIT[si])})
 	if p == null:
 		return {}
 	p["def"] = float(NINJA_RES[si]); p["base_def"] = p["def"]

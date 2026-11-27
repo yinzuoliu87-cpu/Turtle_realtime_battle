@@ -1,5 +1,8 @@
 class_name DualLaneFlow
 extends RefCounted
+
+const EGG_HP_BASE := 3000.0     # 龟蛋满血 = 它 + EGG_HP_PER_LV × 等级(用户 2026-07-19)
+const EGG_HP_PER_LV := 300.0
 ## 双路对战流程(呈现总览/放置/逐路推进/破蛋决胜/HUD)
 ## 类内名不变;外部名加 battle.
 
@@ -539,7 +542,7 @@ func _dl_ensure_egg_hp(lvl: int, flvl: int) -> void:
 
 ## 蛋原始满血(用户2026-07-19: 2000+100/级 → 3000+300/级) = maxHp 基准。
 static func egg_max_for(lv: int) -> float:
-	return 3000.0 + 300.0 * float(lv)
+	return EGG_HP_BASE + EGG_HP_PER_LV * float(lv)
 
 
 ## 右方(对手)的等级: 快照带 `season_level` 就用它, 否则 = `mine`(左方等级, 老口径)。判据在 `Backend.ghost_level`。
