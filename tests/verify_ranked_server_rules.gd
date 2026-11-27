@@ -302,7 +302,7 @@ func _t_pool() -> void:
 	for r in seeds:
 		var s: Dictionary = r["snapshot"]
 		var g = by_id.get(str(s.get("ghost_id", "")), null)
-		var want: Dictionary = BE.seed_as_human(g as Dictionary, BP.RANKED_SEED_SID) if g is Dictionary else {}
+		var want: Dictionary = BE.seed_as_human(g as Dictionary, BP.RANKED_SEED_SID, int(p1.get("week", 0))) if g is Dictionary else {}
 		want.erase(BE.ORIGIN_KEY)
 		if s.has(BE.ORIGIN_KEY) or int(s.get("season_total_battles", -1)) != int(r["battles"]) or JSON.stringify(s) != JSON.stringify(want):
 			bad_seed.append(str(s.get("ghost_id", "?")))
@@ -314,7 +314,7 @@ func _t_pool() -> void:
 		var s: Dictionary = r["snapshot"]
 		var rng := RandomNumberGenerator.new()
 		rng.seed = BP.ranked_seed_for(int(r["battles"]), int(r["variant"]))
-		var want: Dictionary = BE.make_bot(int(r["battles"]), rng)
+		var want: Dictionary = BE.make_bot(int(r["battles"]), rng, -1, -1, int(p1.get("week", 0)))   # 11-27 起池子按生成那一周生成(bot_pool.gd pool_week)
 		want.erase(BE.ORIGIN_KEY)
 		if s.has(BE.ORIGIN_KEY) or s.has("gl_w") or s.has("gl_ts") or int(s.get("season_total_battles", -1)) != int(r["battles"]) \
 				or (s.get("leaders", []) as Array).size() != 3 or JSON.stringify(s) != JSON.stringify(want):

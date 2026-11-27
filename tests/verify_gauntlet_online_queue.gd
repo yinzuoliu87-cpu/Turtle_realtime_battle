@@ -164,9 +164,14 @@ const RANKED := {
 	##   「仪式匕首可能要做一个专属的羁绊，就是类似于香火石一样…一个大轮去叠加」): **有意**改积分赛会走的 build_ghost_snapshot ——
 	##   只在刻过时多带 ritual_marks(没刻过的快照一字不变, 同 11-19 竹叶龟 bamboo_hp); 新加的 ghost_ritual_marks 是它调用的(积分赛也走)
 	##   ⇒ 进 units(60 → 61), 不算周六专用。9eb621a9 → a080ff74 只改这一个、只加这一个、没有挪走函数 ⇒ 挪基线判据不变松; 摘要现算。
+	## ★2026-11-27 机器人装备只从本周羁绊池里抽(提交 3a95cbef, 方案书 docs/plans/20261124d-16羁绊每周轮换.md「所有随机产出装备的地方一律过本周池」;
+	##   用户 11-27 问「商店都会出现正确的本周羁绊了吗」时自查: 机器人全商店抽 ⇒ 带着本周买不到的装备, 一眼认得出): **有意**改积分赛会走的
+	##   make_bot / derived_reserve_pool / reserve_pool_of / seed_as_human(多收 week, 0 = 老行为、随机数消耗个数不变)与
+	##   find_opponent / find_gauntlet_opponent(客户端安全网把 GameState.week_anchor_ts 传给 make_bot)。
+	##   a080ff74 → 3a95cbef 只改这六个、没有新加 / 挪走函数 ⇒ 挪基线判据不变松; 摘要按本表口径现算。
 	"scripts/net/backend.gd": {
-		"base": "a080ff74",
-		"digest": "25e96d5577e9c8fb4c223c1bf53f200ec0e6bb58b30fd5073037beef54a5aced",
+		"base": "3a95cbef",
+		"digest": "910fa0c3672c40c33ebb10e78130eff6f5ec5aa1b3310ef45cddcd00403bae2f",
 		"views": {},
 		"sat_only": [],
 		"units": [

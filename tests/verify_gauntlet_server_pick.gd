@@ -106,7 +106,7 @@ func _t_pool() -> void:
 	var again: Array = []
 	for i in range(0, rows.size(), 97):
 		var r: Dictionary = rows[i]
-		if var_to_bytes(BP.one(int(r["battles"]), int(r["gw"]), int(r["gl"]), int(r["variant"]))) != var_to_bytes(r["snapshot"]):
+		if var_to_bytes(BP.one(int(r["battles"]), int(r["gw"]), int(r["gl"]), int(r["variant"]), int(pool.get("week", 0)))) != var_to_bytes(r["snapshot"]):
 			again.append(i)
 	_ok("★S1 同一版本再生成一遍逐字节相同(抽 %d 份)" % ceili(rows.size() / 97.0), again.is_empty(), str(again))
 	var rng := RandomNumberGenerator.new()

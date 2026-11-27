@@ -950,6 +950,7 @@ scripts/gamedata/weekly_synergy.gd|lit|剑
 scripts/gamedata/weekly_synergy.gd|lit|匕首
 scripts/gamedata/weekly_synergy.gd|lit|奇械
 scripts/gamedata/weekly_synergy.gd|lit|弓箭
+scripts/gamedata/weekly_synergy.gd|lit|斧头
 scripts/gamedata/weekly_synergy.gd|lit|枪
 scripts/gamedata/weekly_synergy.gd|lit|法器
 scripts/gamedata/weekly_synergy.gd|lit|灵物
@@ -961,6 +962,7 @@ scripts/gamedata/weekly_synergy.gd|lit|遗物
 scripts/gamedata/weekly_synergy.gd|lit|长矛
 scripts/gamedata/weekly_synergy.gd|lit|面具
 scripts/gamedata/weekly_synergy.gd|lit|食物
+scripts/gamedata/weekly_synergy.gd|lit|香火
 scripts/gamedata/weekly_synergy.gd|lit|魔法书
 scripts/net/backend.gd|lit|已删掉
 scripts/net/backend.gd|lit|已挪到 
