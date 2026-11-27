@@ -146,21 +146,6 @@ def _():
 	return ic
 
 
-@icon("bear-wave", P("bear-wave"))
-def _():
-	ic = Icon()
-	for r, c in ((60, GOLD[2]), (48, GOLD[1]), (36, FIRE[1])):
-		crescent(ic, "back", 14, 52, r, 6, -1.45, -0.05, [WHITE, c, GOLD[3]])
-	ellipse(ic, "body", 18, 56, 17, 6, EARTH)                       # 被砸裂的地面(第一稿是整条横带, 太平)
-	paw(ic, "body", 16, 38, 13, FUR)
-	for (x, y, r) in ((34, 50, 3), (42, 44, 2.5), (28, 46, 2), (50, 40, 2)):
-		ellipse(ic, "body", x, y, r, r, STONE)
-	ic.rim()
-	ic.halo([GOLD[3]])
-	sparkle(ic, 16, 54, 6, (WHITE, FIRE[1], FIRE[2]))
-	return ic
-
-
 # ════════════ 072 蛋糕礼盒 ════════════
 def _gift(ic, layer, cx, cy, s, rot=0.0):
 	ca, sa = math.cos(rot), math.sin(rot)

@@ -804,7 +804,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|嘲讽附近所有敌人。每有一�
 scripts/gamedata/summon_codex_equip.gd|lit|四次一循环。前三次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。
 scripts/gamedata/summon_codex_equip.gd|lit|回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。
 scripts/gamedata/summon_codex_equip.gd|lit|大熊
-scripts/gamedata/summon_codex_equip.gd|lit|大熊积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。
 scripts/gamedata/summon_codex_equip.gd|lit|小不点
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪没有护盾时，受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
@@ -850,9 +849,9 @@ scripts/gamedata/summon_codex_equip.gd|lit|武士刀小将
 scripts/gamedata/summon_codex_equip.gd|lit|每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。
 scripts/gamedata/summon_codex_equip.gd|lit|每次影袭，暗影忍者朝目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|每次攻击使炮台获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。
-scripts/gamedata/summon_codex_equip.gd|lit|每次攻击积攒 1 层。
 scripts/gamedata/summon_codex_equip.gd|lit|每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。
 scripts/gamedata/summon_codex_equip.gd|lit|每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。
+scripts/gamedata/summon_codex_equip.gd|lit|每第 %d 次攻击转而向前方打出一道射程 {C:EquipTickSystem.BEAR_WAVE_RANGE} 的冲击波，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%%}%%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺馈赠
@@ -901,7 +900,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|随后在 {C:AxeFinalStats.SERAPH_CAS
 scripts/gamedata/summon_codex_equip.gd|lit|随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。
 scripts/gamedata/summon_codex_equip.gd|lit|随后插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒，期间获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，附近的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值和 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 {C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。
 scripts/gamedata/summon_codex_equip.gd|lit|随后点燃【余烬之光】：{C:AxeFinalStats.EMBER_LIGHT_TIME} 秒内获得 {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤和 {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，并免疫控制效果。期间仍会积累龟能，再次施放时效果独立叠加。
-scripts/gamedata/summon_codex_equip.gd|lit|震地波
 scripts/gamedata/summon_codex_equip.gd|lit|骨击
 scripts/gamedata/summon_codex_equip.gd|lit|骨斧
 scripts/gamedata/summon_codex_equip.gd|lit|骨火弹

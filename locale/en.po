@@ -9141,14 +9141,8 @@ msgstr "Roles"
 msgid "熊掌"
 msgstr "Bear Paw"
 
-msgid "每次攻击积攒 1 层。"
-msgstr "Each attack builds 1 stack."
 
-msgid "震地波"
-msgstr "Quake Wave"
 
-msgid "大熊积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。"
-msgstr "At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, the Big Bear's next attack instead sends a shockwave forward, with range temporarily raised to {C:EquipTickSystem.BEAR_WAVE_RANGE}, dealing ({C:EquipTickSystem.BEAR_WAVE_COEF%}% × Attack ({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}) physical damage to enemies in its path, knocking them up and pulling them in front of the Big Bear, then resets its stacks."
 
 msgid "炮击"
 msgstr "Shell Shot"
@@ -9605,3 +9599,6 @@ msgstr "The Turtle Trainer stands at the edge of the field, can't be targeted, a
 
 msgid "召唤物"
 msgstr "Summon"
+
+msgid "每第 %d 次攻击转而向前方打出一道射程 {C:EquipTickSystem.BEAR_WAVE_RANGE} 的冲击波，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%%}%%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前。"
+msgstr "Every %dth attack instead sends forward a shockwave with {C:EquipTickSystem.BEAR_WAVE_RANGE} range, dealing ({C:EquipTickSystem.BEAR_WAVE_COEF%%}%% × Attack ({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}) physical damage to enemies in its path, knocking them up and pulling them in front of the Big Bear."
