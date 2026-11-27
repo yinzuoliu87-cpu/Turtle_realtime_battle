@@ -37,7 +37,8 @@ func show(id: String) -> void:
 		## 颜色同小将页(detail_views._show_minion): 定位 #58d3ff / 不可编入 #9fb6c9
 		chips.append({"kind": "tag", "text": str(t), "color": "#9fb6c9" if str(t) == Lang.t("不可编入") else "#58d3ff"})
 	var src: Dictionary = si["source"]
-	chips.append({"kind": "tag", "text": str(src["text"]), "color": "#ffd93d"})
+	if str(src.get("text", "")) != "":   # 战场单位没有来源签牌
+		chips.append({"kind": "tag", "text": str(src["text"]), "color": "#ffd93d"})
 	dv._left_header(str(si["name"]), chips)
 	_source_hit(chips, src)
 	var y: float = dv._stat_rows(si["stats"]) + 14.0

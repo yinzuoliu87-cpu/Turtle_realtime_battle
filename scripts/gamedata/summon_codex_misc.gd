@@ -41,10 +41,13 @@ static func _pet_src(pet_id: String) -> Dictionary:
 
 static func _base(name: String, kinds: Array, avatar_id: String, portrait: Dictionary, source: Dictionary, tags: Array, st: Array,
 		basic: Dictionary, skill: Dictionary, passives: Array) -> Dictionary:
+	## 战场单位(龟蛋 / 训龟大师)不挂签牌: 定位 / 不可编入 / 来源对它们都没意义
+	##   (用户 11-27「你要这个每路一颗和战场单位还有不可编入这三个东西干啥呢？」); source 传 {} 即不挂。
 	var tg: Array = []
-	for t in tags:
-		tg.append(Lang.t(str(t)))
-	tg.append(Lang.t("不可编入"))
+	if not source.is_empty():
+		for t in tags:
+			tg.append(Lang.t(str(t)))
+		tg.append(Lang.t("不可编入"))
 	var d := {"name": name, "kinds": kinds, "avatar": "res://assets/sprites/avatars/summon-%s.png" % avatar_id,
 		"portrait": portrait, "source": source, "tags": tg, "col_title": "", "cols": [],
 		"stats": st, "basic": basic, "skill": skill, "passives": passives}
@@ -128,7 +131,7 @@ static func _egg() -> Dictionary:
 	var lv := 1
 	var res: float = BattleSpawn.EGG_RES_BASE + BattleSpawn.EGG_RES_PER_LV * float(lv)
 	return _base("龟蛋", [], "egg", {"img": "pets/egg.png", "sprite": {"frameW": 79, "frameH": 80, "frames": 3}, "_box": 150.0, "_cy": 104.0},
-		{"text": Lang.t("战场单位"), "tab": "", "key": ""}, ["每路一颗"],
+		{}, [],
 		SC.stats(DualLaneFlow.egg_max_for(lv), 0, res, res, 0, 0, 0),
 		{}, {},
 		[{"name": "围栏", "icon": "passive/summon-egg-fence-icon.png",
@@ -156,7 +159,7 @@ static func _trainer(ci: int) -> Dictionary:
 		var cd: float = float((RealtimeBattle3DScene.TRAINER_SKILLS.get(str(sk["id"]), {}) as Dictionary).get("cd", 0.0))
 		skill = {"name": str(sk["name"]), "icon": icon, "desc": str(sk["desc"]), "energy": 0, "cd": cd}
 	var d := _base("训龟大师", [], "trainer", {"img": "trainer/trainer-villager.png", "_box": 150.0, "_cy": 100.0},
-		{"text": Lang.t("战场单位"), "tab": "", "key": ""}, ["装饰"],
+		{}, [],
 		SC.stats("—", RealtimeBattle3DScene.TRAINER_ATK, "—", "—", 0, 1.0 / RealtimeBattle3DScene.TRAINER_ATK_INTERVAL, RealtimeBattle3DScene.TRAINER_RANGE),
 		{"name": "投石", "icon": "skills/summon-trainer-stone.png", "desc": "训龟大师朝最近的敌人扔石头，每块石头造成 1 点伤害。"},
 		skill, ps)

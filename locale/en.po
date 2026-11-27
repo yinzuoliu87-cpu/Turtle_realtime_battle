@@ -9456,8 +9456,6 @@ msgstr "The Wraith's attacks deal {C:BasicConsts.DEFAULT_BASIC_COEF%}% Attack as
 msgid "灵物件数"
 msgstr "Spirit Count"
 
-msgid "每路一颗"
-msgstr "One per lane"
 
 msgid "围栏"
 msgstr "Fence"
