@@ -59,23 +59,30 @@ static func id_of_kind(kind: String) -> String:
 
 
 # ─── 百夫长(长矛羁绊) ─────────────────────────────────────────────
+## 文案照小将模板(minion_codex.gd): 伤害写「（倍率×攻击力({ATK}) = 结果）」, 物理用 {N:}、魔法用 {M:}, 倍率读 {C:} 常量;
+##   图鉴按左栏当前属性现算(SkillText.render_bbcode, ctx 的 ATK = 选中那一档的攻击力)。
+## 用户 11-27: 被动 / 攻击 / 技能要照模板、有图标; 「从天而降」名字不好; 加成写成被动, 不要左下那行说明。
+## 图标: tools/assetgen/summon_icons_1127.py(参考研究 docs/studies/20261127-参考-召唤物技能图标.md), 源文件 tools/assetgen/ase/summon_icons/*.aseprite。
+const _SP := "SpearSynergySystem"
+
+
 static func _centurion(ci: int) -> Dictionary:
 	var S := SpearSynergySystem
-	var tier: int = ci + 1   # 第几档(1~4), 普攻 / 技能逐档叠加
-	var basic: String = Lang.t("刺击目标，造成 %s%% 攻击力的物理伤害。") % _pct(1.0)
+	var tier: int = ci + 1   # 第几档(1~4), 攻击 / 技能逐档叠加
+	var basic: String = "百夫长的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
 	if tier >= 2:
-		basic += Lang.t("刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成 %s%% 伤害。") % _pct(S.PIERCE_BEHIND)
+		basic += "刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成（{C:%s.PIERCE_BEHIND%%}%%×攻击力({ATK}) = {N:%s.PIERCE_BEHIND*ATK}）物理伤害。" % [_SP, _SP]
 	if tier >= 3:
-		basic += Lang.t("每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 %s 点。") % _n(S.SHRED_CAP)
+		basic += "每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。" % _SP
 	if tier >= 4:
-		basic += Lang.t("每第 %d 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成 %s%% 攻击力的物理伤害。") % [S.THROW_EVERY, _pct(S.THROW_COEF)]
-	var skill: String = Lang.t("举盾 %s 秒，受到的伤害降低 %s%%。") % [_n(S.SHIELD_SEC), _pct(S.SHIELD_DR)]
+		basic += "每第 {C:%s.THROW_EVERY} 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。" % [_SP, _SP, _SP]
+	var skill: String = "百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。" % [_SP, _SP]
 	if tier >= 3:
-		skill += Lang.t("举盾期间每 %s 秒刺击周围敌人，造成 %s%% 攻击力的魔法伤害。") % [_n(S.POKE_IV), _pct(S.POKE_COEF)]
+		skill += "举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。" % [_SP, _SP, _SP]
 	if tier >= 2:
-		skill += Lang.t("放下盾时横扫周围敌人，造成 %s%% 攻击力的魔法伤害。") % _pct(S.SWEEP_COEF)
+		skill += "放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。" % [_SP, _SP]
 	if tier >= 4:
-		skill += Lang.t("横扫后，我方身后冲出 %d 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到百夫长 %s%% 攻击力的物理伤害并被击飞。") % [S.CAV_N, _pct(S.CAV_COEF)]
+		skill += "横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。" % [_SP, _SP, _SP]
 	return {
 		"name": "百夫长", "kinds": ["centurion"],
 		"avatar": "res://assets/sprites/avatars/summon-centurion.png",
@@ -84,7 +91,7 @@ static func _centurion(ci: int) -> Dictionary:
 		## 待机帧 192×192 里人物只占中间约 68×123 ⇒ 按龟的 160 框放显得小一圈: 框放大到 230、中心上移到 76(脚底约 190, 不压属性方块 196)
 		"portrait_box": 230.0, "portrait_cy": 76.0,
 		"source": {"text": Lang.t("长矛羁绊"), "tab": "synergies", "key": "长矛"},
-		"tags": [Lang.t("近战")],
+		"tags": [Lang.t("近战斗士"), Lang.t("不可编入")],   # 定位用龟的十种叫法(turtle_stats.ROLE_SPEC); 用户 11-26「高血量中等输出的战士」
 		"col_title": Lang.t("长矛件数"), "cols": cols("centurion"),
 		"stats": [
 			{"key": "hp", "label": "生命", "disp": _n(S.HP[ci])},
@@ -95,16 +102,20 @@ static func _centurion(ci: int) -> Dictionary:
 			{"key": "aspd", "label": "每秒攻击", "disp": "1.00"},
 			{"key": "range", "label": "射程", "disp": _n(S.RANGE)},
 		],
-		"stat_note": Lang.t("我方每有一件不同的长矛，按其星级，每星使百夫长生命值与攻击力提高 %s%%。存在到被击败为止。") % _pct(S.STAR_PCT),
-		"basic": {"name": "突刺", "desc": basic},
-		"skill": {"name": "龟甲阵", "desc": skill, "energy": int(S.EN_MAX)},
-		"passives": [{"name": "从天而降",
-			"desc": Lang.t("登场时从高空落下，落地时击飞全场敌人 %s 秒，造成 %s%% 攻击力的魔法伤害。") % [_n(S.KNOCK_SEC), _pct(S.ENTRY_COEF)]}],
+		"basic": {"name": "突刺", "icon": "skills/summon-cent-thrust.png", "desc": basic},
+		"skill": {"name": "龟甲阵", "icon": "skills/summon-cent-guard.png", "desc": skill, "energy": int(S.EN_MAX)},
+		"passives": [
+			{"name": "军团天降", "icon": "passive/summon-cent-land-icon.png",
+				"desc": "百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。" % [_SP, _SP, _SP]},
+			{"name": "众矛之力", "icon": "passive/summon-cent-spears-icon.png",
+				"desc": "我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。" % _SP},
+		],
 	}
 
 
 # ─── 炮台(058 远古炮塔) ───────────────────────────────────────────
 ## 生命 / 攻击三档写在 eq_summons.gd 召唤那一行的字面量里(没抽常量); 这里引用同一组数, 门禁 verify_codex_summon 对着那一行核。
+## 左栏只写基础值; 携带者攻击力带来的加成写成被动【火力同调】(用户 11-27「左边就写一千四百生命，然后右边被动写这个炮台额外获得多少」)。
 const TURRET_HP := [650.0, 1400.0, 2500.0]
 const TURRET_ATK := [70.0, 120.0, 180.0]
 const TURRET_RES := [70.0, 85.0, 100.0]
@@ -117,22 +128,24 @@ static func _turret(si: int) -> Dictionary:
 		"avatar": "res://assets/sprites/pets/turret.png",
 		"portrait": {"id": "__summon_turret", "img": "pets/turret.png"},
 		"source": {"text": Lang.t("远古炮塔"), "tab": "equips", "key": "p2eq_058"},
-		"tags": [Lang.t("远程"), Lang.t("不可移动")],
+		"tags": [Lang.t("远程射手"), Lang.t("不可编入")],   # 不可移动看左栏移速 0, 不另起签牌(同小将页三块签牌)
 		"col_title": Lang.t("装备星级"), "cols": cols("turret"),
 		"stats": [
-			{"key": "hp", "label": Lang.t("生命 +%s×携带者攻击力") % _n(E.TURRET_HP_PER_ATK), "disp": _n(TURRET_HP[si])},
-			{"key": "atk", "label": Lang.t("攻击 +携带者攻击力"), "disp": _n(TURRET_ATK[si])},
+			{"key": "hp", "label": "生命", "disp": _n(TURRET_HP[si])},
+			{"key": "atk", "label": "攻击", "disp": _n(TURRET_ATK[si])},
 			{"key": "def", "label": "护甲", "disp": _n(TURRET_RES[si])},
 			{"key": "mr", "label": "魔抗", "disp": _n(TURRET_RES[si])},
 			{"key": "move", "label": "移速", "disp": "0"},
 			{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % E.TURRET_ASPD},
 			{"key": "range", "label": "射程", "disp": _n(E.TURRET_RANGE)},
 		],
-		"stat_note": Lang.t("登场时按携带者当时的攻击力定下生命值与攻击力，之后不再变化。每件远古炮塔各召唤一座，存在到被击败为止。"),
-		"basic": {"name": "炮击", "desc": Lang.t("炮击射程内的敌人，造成 %s%% 攻击力的物理伤害，并永久获得 %s%% 暴击率，持续到本战场结束。") % [_pct(1.0), _pct(E.TURRET_CRIT_PER_SHOT)]},
+		"basic": {"name": "炮击", "icon": "skills/summon-turret-shell.png",
+			"desc": "炮台的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害，并使炮台永久获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。"},
 		"skill": {},
-		## 「携带者在炮台附近加攻速」是携带者拿到的好处, 写在远古炮塔装备里, 这里不重复(11-27)
 		"passives": [
-			{"name": "护卫", "desc": Lang.t("携带者存活时，炮台获得 %s 护甲与魔抗；携带者阵亡后归零。") % _n(TURRET_RES[si])},
+			{"name": "火力同调", "icon": "passive/summon-turret-link-icon.png",
+				"desc": "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及等同于携带者攻击力的攻击力。"},
+			{"name": "护卫", "icon": "passive/summon-turret-ward-icon.png",
+				"desc": "携带者存活时，炮台获得 %s 护甲与魔抗，携带者阵亡后降为 0。" % _n(TURRET_RES[si])},
 		],
 	}

@@ -29,11 +29,16 @@ func show(id: String) -> void:
 	host._add_pet_portrait(95, float(si.get("portrait_cy", 100.0)), si["portrait"], float(si.get("portrait_box", 160.0)))
 	var chips: Array = []
 	for t in si.get("tags", []):
-		chips.append({"kind": "tag", "text": str(t), "color": "#58d3ff"})
+		## 颜色同小将页(detail_views._show_minion): 定位 #58d3ff / 不可编入 #9fb6c9
+		chips.append({"kind": "tag", "text": str(t), "color": "#9fb6c9" if str(t) == Lang.t("不可编入") else "#58d3ff"})
 	chips.append({"kind": "tag", "text": str((si["source"] as Dictionary)["text"]), "color": "#ffd93d"})
 	dv._left_header(str(si["name"]), chips)
 	var y: float = dv._stat_rows(si["stats"]) + 14.0
-	## 属性下一行灰字: 属性还跟什么变 / 存在多久
+	## 属性下一行灰字: 11-27 起不用(用户: 加成写成被动), 留着给以后真需要说明的条目
+	if str(si.get("stat_note", "")) == "":
+		dv._col_divider(y)
+		_render_right_side(id, si, ci)
+		return
 	var note := RichTextLabel.new()
 	note.bbcode_enabled = true; note.fit_content = true; note.scroll_active = false
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -46,6 +51,11 @@ func show(id: String) -> void:
 	host.detail.add_child(note)
 	y += maxf(20.0, note.get_combined_minimum_size().y) + 4.0
 	dv._col_divider(y)
+	_render_right_side(id, si, ci)
+
+
+func _render_right_side(id: String, si: Dictionary, ci: int) -> void:
+	var dv = host._codex_detail
 	var right_top: float = _selector(id, si, ci, 16.0) + 8.0
 	var ctx: Dictionary = {"atk": float(_stat(si, "atk")), "maxHp": float(_stat(si, "hp")), "hp": float(_stat(si, "hp")),
 		"def": float(_stat(si, "def")), "mr": float(_stat(si, "mr")), "lv": 1, "crit": 0.0}
@@ -97,13 +107,15 @@ static func _as_pet(id: String, si: Dictionary) -> Dictionary:
 	var pool: Array = []
 	var b: Dictionary = si.get("basic", {})
 	if not b.is_empty():
-		pool.append({"name": str(b["name"]), "brief": str(b["desc"]), "detail": str(b["desc"]), "desc": str(b["desc"]), "_role": "basic"})
+		pool.append({"name": str(b["name"]), "brief": str(b["desc"]), "detail": str(b["desc"]), "desc": str(b["desc"]), "_role": "basic",
+			"icon": str(b.get("icon", ""))})
 	var sk: Dictionary = si.get("skill", {})
 	if not sk.is_empty():
 		pool.append({"name": str(sk["name"]), "brief": str(sk["desc"]), "detail": str(sk["desc"]), "desc": str(sk["desc"]),
-			"_role": "active", "_energy": int(sk.get("energy", 0))})
+			"_role": "active", "_energy": int(sk.get("energy", 0)), "icon": str(sk.get("icon", ""))})
 	var plist: Array = []
 	for pv in si.get("passives", []):
-		plist.append({"name": str(pv["name"]), "brief": str(pv["desc"]), "detail": str(pv["desc"]), "desc": str(pv["desc"])})
+		plist.append({"name": str(pv["name"]), "brief": str(pv["desc"]), "detail": str(pv["desc"]), "desc": str(pv["desc"]),
+			"icon": str(pv.get("icon", ""))})
 	return {"id": "__summon_%s" % id, "_summon": id, "name": str(si["name"]), "skillPool": pool,
 		"passive": plist[0] if not plist.is_empty() else {}, "passives": plist}
