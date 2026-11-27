@@ -79,12 +79,14 @@ def main() -> None:
     put("death", ai("fE_die", list(range(9))))
     put("cast_fortuneDice", ai("fE_dice", list(range(9))))
     put("cast_fortuneAllIn", ai("fE_allin", list(range(8))))   # 末帧(第 8 帧)AI 画了撒出去的金币 —— 投币由游戏弹道画, 不要
+    ## 梭哈投币期循环(11-27 演示台录像: 投币 1 秒多龟一直站着不动): 梭哈自己的第 6 帧(手伸进钱袋掏) ↔ 第 7 帧(捏着金币举到胸前), 一来回 0.22 秒 = 两枚金币
+    put("state_fortuneAllIn", ai("fE_allin", [6, 7]))
     put("cast_fortuneBuyEquip", ai("fE_buy", [0, 1, 5, 5, 5, 6, 7, 8], clean=True))
     shutil.copyfile(os.path.join(SRC, "fortE_2.png"), os.path.join(DST, "avatar.png"))
     seg = lambda rel, fps=15: {"cancel": -1, "fps": fps, "ground": GROUND, "ox": 0, "rel": rel}
     meta = {
         "idle": seg(-1, 8), "run": seg(-1, 12), "attack": seg(4), "death": seg(-1),
-        "cast_fortuneDice": seg(8), "cast_fortuneAllIn": seg(5), "cast_fortuneBuyEquip": seg(3),
+        "cast_fortuneDice": seg(8), "state_fortuneAllIn": seg(-1, 9), "cast_fortuneAllIn": seg(5), "cast_fortuneBuyEquip": seg(3),
     }
     json.dump(meta, open(os.path.join(DST, "seq.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
     ## 头像框(avatar_heads.json 里 fortune 那一项手改: src = pet_seq/fortune/avatar.png, k 1, box [14, 6, 38] = 88×88 源图里头部含墨镜)

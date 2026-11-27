@@ -279,7 +279,14 @@
   "frame": 148,
   "hit": 4,
   "rows": {},
-  "run": 8
+  "run": 8,
+  "states": [
+   [
+    "fortuneAllIn",
+    "pets/animations/fortune/state_fortuneAllIn.png",
+    9.0
+   ]
+  ]
  },
  "gambler": {
   "attack": 10,

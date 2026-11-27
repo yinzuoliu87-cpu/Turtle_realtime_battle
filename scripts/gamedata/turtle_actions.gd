@@ -124,6 +124,7 @@ const HIT := {
 const STATE := {
 	"diamond": [["diamondRoll", "pets/animations/diamond/state_diamondRoll.png", 15.0]],
 	"dice": [["diceDash", "pets/animations/dice/state_diceDash.png", 12.0]],
+	"fortune": [["fortuneAllIn", "pets/animations/fortune/state_fortuneAllIn.png", 9.0]],
 	"headless": [["headlessTendrils", "pets/animations/headless/state_headlessTendrils.png", 8.0]],
 	"hiding": [["hidingShrink", "pets/animations/hiding/state_hidingShrink.png", 6.0]],
 	"lava_volcano": [["volcano", "pets/animations/lava_volcano/idle.png", 10.0]],

@@ -47,5 +47,12 @@
   "ground": 147,
   "ox": 0,
   "rel": -1
+ },
+ "state_fortuneAllIn": {
+  "cancel": -1,
+  "fps": 9,
+  "ground": 147,
+  "ox": 0,
+  "rel": -1
  }
 }

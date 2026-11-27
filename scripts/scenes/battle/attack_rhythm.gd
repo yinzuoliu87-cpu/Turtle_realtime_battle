@@ -169,6 +169,8 @@ static func state_active(battle, u: Dictionary, name: String) -> bool:
 			return bool(u.get("volcano", false))
 		"hidingShrink":   # 缩头乌龟缩头 3 秒(hiding_system._sk_hiding_shrink → channel)
 			return battle._t < float(u.get("channel_until", 0.0))
+		"fortuneAllIn":   # 财神龟梭哈投币期(fortune_system._fortune_allin_channel 每 0.11 秒投一枚, 投完 allin_coins 归零; 11-27)
+			return int(u.get("allin_coins", 0)) > 0
 		"diamondRoll":    # 钻石滚球位移态
 			return bool(u.get("roll_active", false))
 		"headlessTendrils":   # 万千触须引导 4 秒(headless_system: channel)
