@@ -6967,9 +6967,8 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 				if o["hp"] < lv: lv = o["hp"]; low = o
 			if low == null: return
 			_bolt_line(u["pos"], low["pos"], Color("#9bf0ff"))
-			for i in range(2):
-				if not low["alive"]: break
-				_damage._apply_damage_from(u, low, _atk_dmg(u, u.get("special_scale", 1.5) * 0.5, low), Color("#9bf0ff"))
+			## ★一炮一次结算(2026-11-27 用户「应该只打一炮…只显示一个伤害数字」): 原来画面一道光束、伤害拆两次各 ×0.5, 跳两个数字
+			_damage._apply_damage_from(u, low, _atk_dmg(u, u.get("special_scale", 1.5), low), Color("#9bf0ff"))
 
 
 func _apply_cam_zoom() -> void:
