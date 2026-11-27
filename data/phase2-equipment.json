@@ -1291,7 +1291,7 @@
     "baseStats1": "+攻8/15/25·暴伤5/8/12%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "每个战场开打后，第一次攻击附带 {C:EqDaggerBatch.FOLD_BLEED} 层流血。",
+    "effectDesc1": "每个战场开始后，第一次攻击附带 {C:EqDaggerBatch.FOLD_BLEED} 层流血。",
     "effectDesc3": "",
     "img": "equip/p2eq_108.png",
     "effectBrief": "每个战场的第一次攻击附带流血。"
@@ -1627,7 +1627,7 @@
     "baseStats1": "+生命300/700/2000·攻30/70/300",
     "shopAvailable": 1,
     "emoji": "🎭",
-    "effectDesc1": "开打第 {C:OtherworldSystem.OW_AT} 秒，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。",
+    "effectDesc1": "战斗开始 {C:OtherworldSystem.OW_AT} 秒后，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。",
     "effectDesc3": "",
     "img": "equip/p2eq_136.png",
     "effectBrief": "把一名敌人拽进里世界决斗，期间持续偷取它的属性。"
@@ -1855,10 +1855,10 @@
     "baseStats1": "+生命1000",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "开打第 {C:EqChipBatch.GOLD_AT} 秒，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
+    "effectDesc1": "战斗开始 {C:EqChipBatch.GOLD_AT} 秒后，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_155.png",
-    "effectBrief": "开打第 {C:EqChipBatch.GOLD_AT} 秒为全队套上金色护罩并提升全队属性。"
+    "effectBrief": "战斗开始 {C:EqChipBatch.GOLD_AT} 秒后为全队套上金色护罩并提升全队属性。"
   },
   {
     "id": "p2eq_156",

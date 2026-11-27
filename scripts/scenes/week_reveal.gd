@@ -84,11 +84,11 @@ const CARD_LINE := {
 	"食物": "每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久获得 {C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值",
 	"遗物": "生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取",
 	"药水": "生命值最高的敌人成为猎物，全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%",
-	"炸弹": "开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹轰炸并击飞所有敌方单位",
-	"匕首": "开打时，我方所有单位的下一次攻击必定暴击",
+	"炸弹": "战斗开始 {C:BombSynergySystem.FIRE_AT} 秒后，导弹轰炸并击飞所有敌方单位",
+	"匕首": "战斗开始时，我方所有单位的下一次攻击必定暴击",
 	"魔法书": "我方单位释放技能时，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹",
-	"长矛": "开打第 {C:SpearSynergySystem.SUMMON_AT} 秒，百夫长从天而降，击飞全场敌人",
-	"面具": "开打时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体",
+	"长矛": "战斗开始 {C:SpearSynergySystem.SUMMON_AT} 秒后，百夫长从天而降，击飞全场敌人",
+	"面具": "战斗开始时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体",
 	"筹码": "消耗品，无法升星，不计入其他羁绊的件数",
 }
 

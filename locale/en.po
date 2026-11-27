@@ -2117,7 +2117,7 @@ msgstr "Session expired"
 msgid "开始"
 msgstr "Start"
 
-msgid "开打时场上单位与录制时不同"
+msgid "战斗开始时场上单位与录制时不同"
 msgstr "Units on the field differ from the recording"
 
 msgid "重试"
@@ -3731,7 +3731,7 @@ msgstr "Armor and Magic Resist +%d"
 msgid "%d 秒后引导"
 msgstr "Channels in %ds"
 
-msgid "金色护罩：开打第 %d 秒触发"
+msgid "金色护罩：战斗开始 %d 秒后触发"
 msgstr "Golden Aegis: triggers at %ds"
 
 msgid "%d层 · %s/%s"
@@ -8027,10 +8027,10 @@ msgstr "vs %s"
 msgid "炸弹·爆破"
 msgstr "Bombs · Demolition"
 
-msgid "炸弹提高携带者的护甲穿透。每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，一发导弹落到战场中心，轰炸并击飞所有敌方单位。"
+msgid "炸弹提高携带者的护甲穿透。每个战场开始 {C:BombSynergySystem.FIRE_AT} 秒后，一发导弹落到战场中心，轰炸并击飞所有敌方单位。"
 msgstr "Bombs grant their carriers Armor Pen. {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, blasting and knocking up every enemy unit."
 
-msgid "每件炸弹为携带者提供 +4 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外"
+msgid "每件炸弹为携带者提供 +4 护甲穿透 · 【导弹轰炸】每个战场开始 {C:BombSynergySystem.FIRE_AT} 秒后，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外"
 msgstr "Each Bomb item grants its carrier +4 Armor Pen · [Missile Strike] {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, dealing {C:BombSynergySystem.DMG_FLAT[0]} + {C:BombSynergySystem.DMG_MAXHP[0]%}% of the target's max health as physical damage to every enemy unit and knocking them up for {C:BombSynergySystem.AIR_SEC} second (eggs excluded)"
 
 msgid "每件炸弹为携带者提供 +8 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%"
@@ -8159,19 +8159,19 @@ msgstr "Daggers · Assassinate"
 msgid "仪式·血契"
 msgstr "Ritual · Blood Pact"
 
-msgid "匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。"
+msgid "匕首提高携带者的暴击伤害。每个战场开始时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。"
 msgstr "Daggers grant their carriers Crit Damage. When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and Life Steal."
 
 msgid "仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。"
 msgstr "Each kill by a Ritual Dagger carrier carves a Blood Pact. Blood Pacts accumulate across the whole round, and each one permanently increases the Attack of the carrier and the whole team."
 
-msgid "每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取"
+msgid "每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开始时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取"
 msgstr "Each Dagger item grants its carrier +6% Crit Damage · [Assassinate] When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with +{C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}% bonus Crit Damage and {C:DaggerSynergySystem.LIFESTEAL%}% Life Steal"
 
-msgid "每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次"
+msgid "每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒后再触发一次"
 msgstr "Each Dagger item grants its carrier +12% Crit Damage · [Assassinate] bonus Crit Damage increased to {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%, and it triggers again {C:DaggerSynergySystem.TRIGGER_GAP} seconds into the fight"
 
-msgid "每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次"
+msgid "每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与 20 秒后各再触发一次"
 msgstr "Each Dagger item grants its carrier +20% Crit Damage · [Assassinate] bonus Crit Damage increased to {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%, and it triggers again {C:DaggerSynergySystem.TRIGGER_GAP} and 20 seconds into the fight"
 
 msgid "【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%"
@@ -8192,7 +8192,7 @@ msgstr "Folding Knife"
 msgid "每个战场的第一次攻击附带流血。"
 msgstr "The first attack on each battlefield applies Bleed."
 
-msgid "每个战场开打后，第一次攻击附带 {C:EqDaggerBatch.FOLD_BLEED} 层流血。"
+msgid "每个战场开始后，第一次攻击附带 {C:EqDaggerBatch.FOLD_BLEED} 层流血。"
 msgstr "After each battlefield begins, the first attack applies {C:EqDaggerBatch.FOLD_BLEED} Bleed stacks."
 
 msgid "柳叶飞刀"
@@ -8456,19 +8456,19 @@ msgstr "Above {C:RelicSynergySystem.HP_GATE%}% health: +{C:RelicSynergySystem.AT
 msgid "生命值最高的敌人成为猎物，全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%"
 msgstr "The highest-health enemy becomes Prey. Your team deals {C:PotionSynergySystem.PREY_AMP[0]%}% more damage to Prey"
 
-msgid "开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹轰炸并击飞所有敌方单位"
+msgid "战斗开始 {C:BombSynergySystem.FIRE_AT} 秒后，导弹轰炸并击飞所有敌方单位"
 msgstr "{C:BombSynergySystem.FIRE_AT} seconds into combat, a missile blasts and knocks up every enemy"
 
-msgid "开打时，我方所有单位的下一次攻击必定暴击"
+msgid "战斗开始时，我方所有单位的下一次攻击必定暴击"
 msgstr "At the start of combat, every allied unit's next attack is a guaranteed critical strike"
 
 msgid "我方单位释放技能时，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹"
 msgstr "When an ally casts a skill, summon 1 Magic Missile per {C:MagicbookSynergySystem.PER_ENERGY[0]} Energy spent"
 
-msgid "开打第 {C:SpearSynergySystem.SUMMON_AT} 秒，百夫长从天而降，击飞全场敌人"
+msgid "战斗开始 {C:SpearSynergySystem.SUMMON_AT} 秒后，百夫长从天而降，击飞全场敌人"
 msgstr "{C:SpearSynergySystem.SUMMON_AT} seconds into combat, the Centurion crashes down and knocks up every enemy"
 
-msgid "开打时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体"
+msgid "战斗开始时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体"
 msgstr "At the start of combat, summon a copy of {C:MaskSynergySystem.STEAL_N[0]} enemy turtle on your side"
 
 msgid "消耗品，无法升星，不计入其他羁绊的件数"
@@ -8561,7 +8561,7 @@ msgstr "Thousand Faces"
 msgid "把一名敌人拽进里世界决斗，期间持续偷取它的属性。"
 msgstr "Drags an enemy into the Otherworld for a duel, stealing its stats throughout."
 
-msgid "开打第 {C:OtherworldSystem.OW_AT} 秒，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。"
+msgid "战斗开始 {C:OtherworldSystem.OW_AT} 秒后，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。"
 msgstr "{C:OtherworldSystem.OW_AT} seconds into combat, drags a random enemy into the Otherworld for a duel lasting up to {C:OtherworldSystem.OW_SEC} seconds. In the Otherworld, steals {C:OtherworldSystem.OW_STEAL%}% of the enemy's Attack, Armor and Magic Resist every second. Stolen stats last until the battlefield ends. The duel ends early when either side is defeated."
 
 msgid "竹矛"
@@ -8723,10 +8723,10 @@ msgstr "The first time it takes lethal damage, falls down instead of dying, rest
 msgid "金色筹码"
 msgstr "Gold Chip"
 
-msgid "开打第 {C:EqChipBatch.GOLD_AT} 秒为全队套上金色护罩并提升全队属性。"
+msgid "战斗开始 {C:EqChipBatch.GOLD_AT} 秒后为全队套上金色护罩并提升全队属性。"
 msgstr "{C:EqChipBatch.GOLD_AT} seconds into combat, covers the whole team in a golden barrier and boosts team stats."
 
-msgid "开打第 {C:EqChipBatch.GOLD_AT} 秒，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgid "战斗开始 {C:EqChipBatch.GOLD_AT} 秒后，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
 msgstr "{C:EqChipBatch.GOLD_AT} seconds into combat, covers all allies in a golden barrier for {C:EqChipBatch.GOLD_SEC} seconds, making them immune to damage and negative effects, and grants all allies {C:EqChipBatch.GOLD_TEAM_ATK} Attack and {C:EqChipBatch.GOLD_TEAM_RES} Armor and Magic Resist for this battlefield. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
 
 msgid "灰色筹码"
@@ -8939,7 +8939,7 @@ msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[3]} tenta
 msgid "每件炸弹为携带者提供护甲穿透。"
 msgstr "Each Bomb grants its carrier Armor Pen."
 
-msgid "【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成物理伤害并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外。"
+msgid "【导弹轰炸】每个战场开始 {C:BombSynergySystem.FIRE_AT} 秒后，导弹落到战场中心，对所有敌方单位造成物理伤害并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外。"
 msgstr "[Missile Strike] {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, dealing physical damage to every enemy unit and knocking them up for {C:BombSynergySystem.AIR_SEC} second (eggs excluded)."
 
 msgid "每件 +{STAT:armorPen} 护甲穿透，导弹造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害"
@@ -8954,16 +8954,16 @@ msgstr "Each +{STAT:armorPen} Armor Pen, the missile deals {C:BombSynergySystem.
 msgid "每件匕首为携带者提供暴击伤害。"
 msgstr "Each Dagger grants its carrier Crit Damage."
 
-msgid "【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取。"
+msgid "【刺杀】每个战场开始时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取。"
 msgstr "[Assassinate] When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and {C:DaggerSynergySystem.LIFESTEAL%}% Lifesteal."
 
 msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%"
 msgstr "Each +{STATpct:critDmg}% Crit Damage, Assassinate bonus Crit Damage {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%"
 
-msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次"
+msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒后再触发一次"
 msgstr "Each +{STATpct:critDmg}% Crit Damage, Assassinate bonus Crit Damage {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%, triggers again {C:DaggerSynergySystem.TRIGGER_GAP} seconds into combat"
 
-msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次"
+msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与 20 秒后各再触发一次"
 msgstr "Each +{STATpct:critDmg}% Crit Damage, Assassinate bonus Crit Damage {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%, triggers again {C:DaggerSynergySystem.TRIGGER_GAP} and 20 seconds into combat"
 
 msgid "每件魔法书为携带者提供增伤。"
@@ -8984,7 +8984,7 @@ msgstr "Each +{STATpct:dmgAmp}% Damage Amp, 1 missile per {C:MagicbookSynergySys
 msgid "每件长矛为携带者提供龟能回复速率。"
 msgstr "Each Spear grants its carrier Energy Regen."
 
-msgid "【百夫长】开打第 {C:SpearSynergySystem.SUMMON_AT} 秒或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。"
+msgid "【百夫长】战斗开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。"
 msgstr "[Centurion] {C:SpearSynergySystem.SUMMON_AT} seconds into combat, or when your team drops below {C:SpearSynergySystem.TEAM_HP_LINE%}% health, the Centurion is summoned. On landing it knocks up every enemy for {C:SpearSynergySystem.KNOCK_SEC} seconds and deals {C:SpearSynergySystem.ENTRY_COEF%}% attack damage as magic damage. For each different Spear on your team, each of its stars gives the Centurion {C:SpearSynergySystem.STAR_PCT%}% more health and attack damage."
 
 msgid "【龟甲阵】百夫长龟能满时举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%。"
@@ -9005,7 +9005,7 @@ msgstr "Each +{STAT:_echargePct}% Energy Regen, Centurion has {C:SpearSynergySys
 msgid "每件面具为携带者提供减伤。"
 msgstr "Each Mask grants its carrier Damage Reduction."
 
-msgid "【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选几只，在我方阵地召唤它们的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一。"
+msgid "【偷脸】每个战场开始时，从这个战场存活的敌方龟中随机挑选几只，在我方阵地召唤它们的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一。"
 msgstr "[Face Steal] When each battlefield begins, a few random living enemy turtles on this battlefield are chosen, and copies of them are summoned on your side: max health and attack damage are {C:MaskSynergySystem.COPY_HP%}% of the original, other stats match, they cast the original's skills, and carry its items with each item 1 star lower."
 
 msgid "复制体阵亡时，把自身部分最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军。"
