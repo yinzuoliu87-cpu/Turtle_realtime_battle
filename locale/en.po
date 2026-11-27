@@ -9149,8 +9149,8 @@ msgstr "Each attack builds 1 stack."
 msgid "震地波"
 msgstr "Quake Wave"
 
-msgid "积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击改为向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后清空层数。"
-msgstr "At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, the next attack instead sends a shockwave forward, with range temporarily raised to {C:EquipTickSystem.BEAR_WAVE_RANGE}, dealing ({C:EquipTickSystem.BEAR_WAVE_COEF%}% × Attack ({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}) physical damage to enemies in its path, knocking them up and pulling them in front of the Big Bear, then clears its stacks."
+msgid "积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。"
+msgstr "At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, the next attack instead sends a shockwave forward, with range temporarily raised to {C:EquipTickSystem.BEAR_WAVE_RANGE}, dealing ({C:EquipTickSystem.BEAR_WAVE_COEF%}% × Attack ({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}) physical damage to enemies in its path, knocking them up and pulling them in front of the Big Bear, then resets its stacks."
 
 msgid "炮击"
 msgstr "Shell Shot"
@@ -9161,7 +9161,7 @@ msgstr "Each attack permanently gives the Turret {C:EquipSystem.TURRET_CRIT_PER_
 msgid "火力同调"
 msgstr "Linked Firepower"
 
-msgid "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及等同于携带者攻击力的攻击力。"
+msgid "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及相当于携带者攻击力的攻击力。"
 msgstr "On spawn, the Turret gains bonus health equal to {C:EquipSystem.TURRET_HP_PER_ATK} times the holder's Attack, and bonus Attack equal to the holder's Attack."
 
 msgid "护卫"
@@ -9407,33 +9407,17 @@ msgstr "Gnaw"
 msgid "舷炮"
 msgstr "Broadside"
 
-
 msgid "破浪登场"
 msgstr "Wave-Breaking Entry"
-
-
-
 
 msgid "机甲重拳"
 msgstr "Mech Punch"
 
-
-
 msgid "歼灭炮"
 msgstr "Annihilator"
 
-
 msgid "浮游炮数"
 msgstr "Drones"
-
-
-
-
-
-
-
-
-
 
 msgid "轮回"
 msgstr "Rebirth"
@@ -9456,30 +9440,21 @@ msgstr "The Wraith's attacks deal {C:BasicConsts.DEFAULT_BASIC_COEF%}% Attack as
 msgid "灵物件数"
 msgstr "Spirit Count"
 
-
 msgid "围栏"
 msgstr "Fence"
 
-msgid "开打时龟蛋被围栏护着，不能被选为目标，范围伤害也打不到，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部倒下后围栏才会倒下。"
-msgstr "When the fight starts the Turtle Egg is behind a fence: it can't be targeted, area damage can't reach it, and it gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. The fence only falls once all of its side's units are down."
 
 msgid "坚壳"
 msgstr "Hard Shell"
 
-msgid "龟蛋免疫控制、斩杀与嘲讽。龟蛋的生命值在上路、下路和决胜场之间延续，不会回满。"
-msgstr "The Turtle Egg is immune to crowd control, executes and taunts. Its health carries over between the top lane, bottom lane and deciding battle, and never refills."
 
 msgid "成长"
 msgstr "Growth"
 
-msgid "龟蛋的最大生命值为 {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × 等级，护甲和魔抗为 {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × 等级。左侧按 1 级计算。"
-msgstr "The Turtle Egg has {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × level max health and {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × level Armor and Magic Resist. The stats on the left are for level 1."
 
 msgid "定局"
 msgstr "Decider"
 
-msgid "定局的那一路上，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"
-msgstr "In the deciding lane, once its fence falls the Turtle Egg takes ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} damage and loses {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% of its max health every {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} seconds."
 
 msgid "旁观者"
 msgstr "Onlooker"
@@ -9502,19 +9477,11 @@ msgstr "Skill"
 msgid "糖果造物"
 msgstr "Candy Making"
 
-
-
-
 msgid "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"
 msgstr "When the Candy Turtle casts its ability and the Candy Bomb is still around, the bomb gains max health equal to {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% of the Candy Turtle's max health and heals {C:CandySystem.BOMB_FEED_HEAL_PCT%}% of the Candy Turtle's max health. If the bomb is gone, a new Candy Bomb is summoned with {C:CandySystem.BOMB_REVIVE_HP_PCT%}% of the Candy Turtle's max health."
 
-
-
 msgid "水晶射线"
 msgstr "Crystal Ray"
-
-
-
 
 msgid "%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
 msgstr "The %s's attacks deal ({C:BasicConsts.DEFAULT_BASIC_COEF%%}%% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage."
@@ -9525,7 +9492,7 @@ msgstr "Each thrust pushes a shockwave along its direction that pierces enemies 
 msgid "每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。"
 msgstr "Each hit removes 1 Armor and Magic Resist from the enemy, up to {C:%s.SHRED_CAP} per enemy."
 
-msgid "每第 {C:%s.THROW_EVERY} 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。"
+msgid "每第 {C:%s.THROW_EVERY} 次攻击转而掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。"
 msgstr "Every {C:%s.THROW_EVERY}th attack instead throws its spear at the farthest enemy, piercing enemies along the way and dealing ({C:%s.THROW_COEF%%}%% × Attack ({ATK}) = {N:%s.THROW_COEF*ATK}) physical damage."
 
 msgid "百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。"
@@ -9623,3 +9590,18 @@ msgstr "On spawn, the Pirate Ship crashes into the battlefield, dealing ({C:Pira
 
 msgid "每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。"
 msgstr "Every {C:CyberSystem.MECH_BLAST_CD} seconds, fires two shots at the enemy with the lowest current health, dealing a total of ({C:CyberSystem.MECH_BLAST_COEF%}% × Attack (Unknown) = Unknown) physical damage."
+
+msgid "战斗开始时龟蛋被围栏护着，不能被选为目标，范围伤害也打不到，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部倒下后围栏才会倒下。"
+msgstr "When combat starts the Turtle Egg is behind a fence: it can't be targeted, area damage can't reach it, and it gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. The fence only falls once all of its side's units are down."
+
+msgid "龟蛋免疫控制与斩杀。龟蛋的生命值在上路战场、下路战场和终极战场之间延续，不会回满。"
+msgstr "The Turtle Egg is immune to crowd control and executes. Its health carries over between the Top Lane, Bottom Lane and Final Battle, and never refills."
+
+msgid "龟蛋额外获得（{C:DualLaneFlow.EGG_HP_PER_LV}×等级）最大生命值、（{C:BattleSpawn.EGG_RES_PER_LV}×等级）护甲和（{C:BattleSpawn.EGG_RES_PER_LV}×等级）魔抗。"
+msgstr "The Turtle Egg gains ({C:DualLaneFlow.EGG_HP_PER_LV} × level) bonus max health, ({C:BattleSpawn.EGG_RES_PER_LV} × level) Armor and ({C:BattleSpawn.EGG_RES_PER_LV} × level) Magic Resist."
+
+msgid "决战"
+msgstr "Showdown"
+
+msgid "在终极战场，以及同一方已赢下上路战场后的下路战场，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"
+msgstr "In the Final Battle, and in the Bottom Lane after one side has already won the Top Lane, once its fence falls the Turtle Egg takes ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} damage and loses {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% of its max health every {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} seconds."

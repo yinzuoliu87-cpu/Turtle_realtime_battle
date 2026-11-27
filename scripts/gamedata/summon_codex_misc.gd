@@ -127,21 +127,21 @@ static func _wraith(ci: int) -> Dictionary:
 
 
 # ─── 战场单位 · 龟蛋 ───
+## 左栏 = 基础值(不含等级那一份); 等级加成写成被动【成长】(用户 11-27「这个东西是有基础生命值的」「这里已经有三千的基础生命值了，所以你这里可以说龟蛋额外获得」)。
+## 路名按用户定的全称: 上路战场 / 下路战场 / 终极战场(memory project-lane-names; 11-27「定局那一路上…你要按规矩来行不行啊」)。
 static func _egg() -> Dictionary:
-	var lv := 1
-	var res: float = BattleSpawn.EGG_RES_BASE + BattleSpawn.EGG_RES_PER_LV * float(lv)
 	return _base("龟蛋", [], "egg", {"img": "pets/egg.png", "sprite": {"frameW": 79, "frameH": 80, "frames": 3}, "_box": 150.0, "_cy": 104.0},
 		{}, [],
-		SC.stats(DualLaneFlow.egg_max_for(lv), 0, res, res, 0, 0, 0),
+		SC.stats(DualLaneFlow.EGG_HP_BASE, 0, BattleSpawn.EGG_RES_BASE, BattleSpawn.EGG_RES_BASE, 0, 0, 0),
 		{}, {},
 		[{"name": "围栏", "icon": "passive/summon-egg-fence-icon.png",
-			"desc": "开打时龟蛋被围栏护着，不能被选为目标，范围伤害也打不到，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部倒下后围栏才会倒下。"},
+			"desc": "战斗开始时龟蛋被围栏护着，不能被选为目标，范围伤害也打不到，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部倒下后围栏才会倒下。"},
 		 {"name": "坚壳", "icon": "passive/summon-egg-shell-icon.png",
-			"desc": "龟蛋免疫控制、斩杀与嘲讽。龟蛋的生命值在上路、下路和决胜场之间延续，不会回满。"},
+			"desc": "龟蛋免疫控制与斩杀。龟蛋的生命值在上路战场、下路战场和终极战场之间延续，不会回满。"},
 		 {"name": "成长", "icon": "passive/summon-egg-grow-icon.png",
-			"desc": "龟蛋的最大生命值为 {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × 等级，护甲和魔抗为 {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × 等级。左侧按 1 级计算。"},
-		 {"name": "定局", "icon": "passive/summon-egg-final-icon.png",
-			"desc": "定局的那一路上，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"}])
+			"desc": "龟蛋额外获得（{C:DualLaneFlow.EGG_HP_PER_LV}×等级）最大生命值、（{C:BattleSpawn.EGG_RES_PER_LV}×等级）护甲和（{C:BattleSpawn.EGG_RES_PER_LV}×等级）魔抗。"},
+		 {"name": "决战", "icon": "passive/summon-egg-final-icon.png",
+			"desc": "在终极战场，以及同一方已赢下上路战场后的下路战场，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"}])
 
 
 # ─── 战场单位 · 训龟大师(列 = 携带的技能, N 选 1) ───

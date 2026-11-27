@@ -99,7 +99,7 @@ static func _bear(si: int) -> Dictionary:
 		SC.stats(T.BEAR_HP[si], T.BEAR_ATK[si], T.BEAR_RESIST, T.BEAR_RESIST, BattleSpawn.SUMMON_DEFAULT_SPD, T.BEAR_ASPD, T.BEAR_RANGE),
 		{"name": "熊掌", "icon": "skills/summon-bear-paw.png", "desc": SC.basic_line("大熊") + Lang.t("每次攻击积攒 1 层。")}, {},
 		[{"name": "震地波", "icon": "passive/summon-bear-wave-icon.png",
-			"desc": "积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击改为向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后清空层数。"}])
+			"desc": "积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。"}])
 
 
 # ─── 058 远古炮塔 · 炮台 ───
@@ -111,7 +111,7 @@ static func _turret(si: int) -> Dictionary:
 		{"name": "炮击", "icon": "skills/summon-turret-shell.png",
 			"desc": SC.basic_line("炮台") + Lang.t("每次攻击使炮台永久获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。")}, {},
 		[{"name": "火力同调", "icon": "passive/summon-turret-link-icon.png",
-			"desc": "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及等同于携带者攻击力的攻击力。"},
+			"desc": "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及相当于携带者攻击力的攻击力。"},
 		 {"name": "护卫", "icon": "passive/summon-turret-ward-icon.png",
 			"desc": Lang.t("携带者存活时，炮台获得 {C:EquipSystem.TURRET_RES[%d]} 护甲与魔抗，携带者阵亡后降为 0。") % si}])
 	d["avatar"] = "res://assets/sprites/pets/turret.png"

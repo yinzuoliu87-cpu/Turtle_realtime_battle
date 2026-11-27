@@ -150,7 +150,7 @@ static func _centurion(ci: int) -> Dictionary:
 	if tier >= 3:
 		basic += Lang.t("每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。") % _SP
 	if tier >= 4:
-		basic += Lang.t("每第 {C:%s.THROW_EVERY} 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。") % [_SP, _SP, _SP]
+		basic += Lang.t("每第 {C:%s.THROW_EVERY} 次攻击转而掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。") % [_SP, _SP, _SP]
 	var skill: String = Lang.t("百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。") % [_SP, _SP]
 	if tier >= 3:
 		skill += Lang.t("举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。") % [_SP, _SP, _SP]

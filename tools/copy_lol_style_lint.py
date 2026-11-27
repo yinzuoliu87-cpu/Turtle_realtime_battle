@@ -41,7 +41,9 @@ BANNED = ['；', '——', '—', '…', '都算', '也算', '算作', '算一�
           ## 10-15 用户「每点攻击力？」: LoL 中文「每点」0 次 —— 换算写「结果（系数 来源）」或「基于…」
           '每点',
           ## 11-27 用户「开打第多少秒啊？这个按规矩来了吗？」: 口语; 云顶中文写「战斗开始时 / 战斗开始 X 秒后」
-          '开打']
+          '开打',
+          ## 11-27 用户「定局那一路上…你要按规矩来行不行啊」: 路名只许全称 上路战场 / 下路战场 / 终极战场(10-07 用户定)
+          '决胜场', '定局的那一路', '定局路']
 PAREN_MAX = 28            # LoL 实测最长括号段
 PAREN_DENSITY_MAX = 15.0  # 每万字【含汉字】括号段数上限(LoL 同口径实测 9.4)
 CJK = re.compile(r'[\u4e00-\u9fff]')
@@ -57,7 +59,8 @@ CLAUSE_END = re.compile(r'[，。；\n]')
 COLORED_NONDMG = re.compile(r'\{[HSDB]:')
 ## ★2026-10-15: 系数写成百分比「70% 攻击力」, 不写「0.7×攻击力」(LoL 中文 0 次)。公式组「（…= 结果）」里的 × 是算式, 不算;
 ##   乘积式「×攻击力×目标最大生命值」与「×(1+攻击速度)」也不算。
-FORMULA_GROUP = re.compile(r'[\uff08(]((?:[^\uff08\uff09()]|\([^()]*\))*?)=\s*(\{[A-Z]:[^}]+\}%?)\s*[\uff09)]')
+## 11-27: 结果也可以是「未知」(属性取决于主人的召唤物, 用户「你这都填未知，我觉得也可以」)
+FORMULA_GROUP = re.compile(r'[\uff08(]((?:[^\uff08\uff09()]|\([^()]*\))*?)=\s*(\{[A-Z]:[^}]+\}%?|\u672a\u77e5)\s*[\uff09)]')
 TIMES_STAT = re.compile(r'\u00d7(\u653b\u51fb\u529b|\u6700\u5927\u751f\u547d\u503c|\u62a4\u7532|\u9b54\u6297)(?!\u00d7)')
 ## ★2026-10-15: 不写范围码数。LoL 865 个技能只有 25 个在正文写范围数值, 「命中第一个敌人」类 45 个写码数 0 个;
 ##   写出来的都是范围本身就是效果的(射程增减 / 形态射程 / 按距离加伤)。本次删了 125 处。
@@ -141,7 +144,9 @@ def collect():
     ## ★2026-10-13 补 phase2_types.gd(羁绊机制 TYPE_INTRO + 逐档 TIER_DESCS): 原来不扫, 枪羁绊里的「；」「——」「→」一直漏着
     for f in ['scripts/gamedata/minion_codex.gd', 'scripts/gamedata/glossary.gd', 'scripts/gamedata/phase2_types.gd', 'scripts/scenes/TrainerConfigScene.gd',   # 训龟大师技能说明 2026-10-15 补
               'scripts/gamedata/chest_loot.gd',
-              'scripts/scenes/week_reveal.gd']:   # 宝箱龟战利品说明 2026-10-22 补(原来写「普攻」「×2」「1.0×ATK」没人拦)
+              'scripts/scenes/week_reveal.gd',
+              ## 2026-11-27 补图鉴召唤物页(龟蛋页写了「开打」「上路、下路和决胜场」没人拦; 用户「你到底有没有吸取过教训啊」)
+              'scripts/gamedata/summon_codex.gd', 'scripts/gamedata/summon_codex_equip.gd', 'scripts/gamedata/summon_codex_misc.gd']:   # 宝箱龟战利品说明 2026-10-22 补(原来写「普攻」「×2」「1.0×ATK」没人拦)
         s = io.open(os.path.join(ROOT, f), encoding='utf-8').read()
         for m in re.finditer(r'"((?:[^"\\\n]|\\.)*[\u4e00-\u9fff](?:[^"\\\n]|\\.)*)"', s):
             ls = s.rfind('\n', 0, m.start()) + 1
