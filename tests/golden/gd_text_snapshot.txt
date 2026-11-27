@@ -804,6 +804,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|嘲讽附近所有敌人。每有一�
 scripts/gamedata/summon_codex_equip.gd|lit|四次一循环。前三次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。
 scripts/gamedata/summon_codex_equip.gd|lit|回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。
 scripts/gamedata/summon_codex_equip.gd|lit|大熊
+scripts/gamedata/summon_codex_equip.gd|lit|大熊积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。
 scripts/gamedata/summon_codex_equip.gd|lit|小不点
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪没有护盾时，受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
@@ -872,7 +873,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|石斧 · 重击
 scripts/gamedata/summon_codex_equip.gd|lit|砍伐成长
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒分身
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒撞击
-scripts/gamedata/summon_codex_equip.gd|lit|积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。
 scripts/gamedata/summon_codex_equip.gd|lit|舞狮
 scripts/gamedata/summon_codex_equip.gd|lit|舞狮朝前方冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。
 scripts/gamedata/summon_codex_equip.gd|lit|蛋糕法阵

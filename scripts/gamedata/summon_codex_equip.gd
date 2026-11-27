@@ -96,7 +96,7 @@ static func _bear(si: int) -> Dictionary:
 		SC.stats(T.BEAR_HP[si], T.BEAR_ATK[si], T.BEAR_RESIST, T.BEAR_RESIST, BattleSpawn.SUMMON_DEFAULT_SPD, T.BEAR_ASPD, T.BEAR_RANGE),
 		{"name": "熊掌", "icon": "skills/summon-bear-paw.png", "desc": SC.basic_line("大熊") + Lang.t("每次攻击积攒 1 层。")}, {},
 		[{"name": "震地波", "icon": "passive/summon-bear-wave-icon.png",
-			"desc": "积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。"}])
+			"desc": "大熊积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击转而向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后重置层数。"}])
 
 
 # ─── 058 远古炮塔 · 炮台 ───
