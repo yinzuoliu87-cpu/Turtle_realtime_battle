@@ -861,8 +861,8 @@ scripts/gamedata/summon_codex_equip.gd|lit|炮击
 scripts/gamedata/summon_codex_equip.gd|lit|炮台
 scripts/gamedata/summon_codex_equip.gd|lit|炮台登场时额外获得（{C:EquipSystem.TURRET_HP_PER_ATK}×携带者攻击力）生命值和（100%×携带者攻击力）攻击力。
 scripts/gamedata/summon_codex_equip.gd|lit|炮筒
-scripts/gamedata/summon_codex_equip.gd|lit|炮筒朝射程内最近的敌人开炮，炮弹落地爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
-scripts/gamedata/summon_codex_equip.gd|lit|炮筒进入重炮状态：每发消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能，炮弹沿直线飞过整个战场，击退直线上的敌人，造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害并施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血。龟能耗尽时回到普通炮击。
+scripts/gamedata/summon_codex_equip.gd|lit|炮筒的攻击朝射程内最近的敌人发射炮弹，炮弹命中后爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
+scripts/gamedata/summon_codex_equip.gd|lit|炮筒进入重炮状态，每次攻击发射一发重炮弹，消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能。重炮弹沿直线飞过整个战场，对路径上的敌人造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害，施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血，并将其向两侧击退。龟能耗尽时回到普通炮击。
 scripts/gamedata/summon_codex_equip.gd|lit|熊掌
 scripts/gamedata/summon_codex_equip.gd|lit|狮咬
 scripts/gamedata/summon_codex_equip.gd|lit|甜蜜诱惑

@@ -9258,8 +9258,8 @@ msgstr "Axe Guard"
 msgid "开炮"
 msgstr "Fire"
 
-msgid "炮筒朝射程内最近的敌人开炮，炮弹落地爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
-msgstr "The Cannon fires at the nearest enemy in range. The shell explodes on landing, dealing ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage to nearby enemies."
+msgid "炮筒的攻击朝射程内最近的敌人发射炮弹，炮弹命中后爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+msgstr "The Cannon's attacks fire a shell at the nearest enemy in range. The shell explodes on hit, dealing ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage to nearby enemies."
 
 msgid "重炮"
 msgstr "Heavy Shot"
@@ -9484,8 +9484,8 @@ msgstr "The Cake Box has {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% of the holder'
 msgid "急救塔的攻击造成（{C:EqGunBatch.TOWER_COEF%%}%%×攻击力({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}）物理伤害，另加目标最大生命值 {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% 的魔法伤害，并为生命值百分比最低的友军回复 {C:EqGunBatch.TOWER_HEAL[%d]} 生命值。"
 msgstr "The Aid Tower's attacks deal ({C:EqGunBatch.TOWER_COEF%%}%% × Attack ({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}) physical damage plus magic damage equal to {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% of the target's max health, and heal the ally with the lowest health percentage for {C:EqGunBatch.TOWER_HEAL[%d]}."
 
-msgid "炮筒进入重炮状态：每发消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能，炮弹沿直线飞过整个战场，击退直线上的敌人，造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害并施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血。龟能耗尽时回到普通炮击。"
-msgstr "The Cannon enters Heavy Shot mode: each shot costs {C:EqBombBatch.CANNON_HEAVY_COST[%d]} Energy and flies in a straight line across the whole battlefield, knocking back enemies in the line, dealing ({C:EqBombBatch.CANNON_HEAVY_MULT%%}%% × Attack ({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}) physical damage and applying {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} Bleed. When its Energy runs out it goes back to normal shots."
+msgid "炮筒进入重炮状态，每次攻击发射一发重炮弹，消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能。重炮弹沿直线飞过整个战场，对路径上的敌人造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害，施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血，并将其向两侧击退。龟能耗尽时回到普通炮击。"
+msgstr "The Cannon enters Heavy Shot mode: each attack fires a heavy shell that costs {C:EqBombBatch.CANNON_HEAVY_COST[%d]} Energy. The heavy shell flies in a straight line across the whole battlefield, dealing ({C:EqBombBatch.CANNON_HEAVY_MULT%%}%% × Attack ({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}) physical damage to enemies in its path, applying {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} Bleed and knocking them aside. When its Energy runs out it goes back to normal shots."
 
 msgid "每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。"
 msgstr "It loses {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% of its max health per second."

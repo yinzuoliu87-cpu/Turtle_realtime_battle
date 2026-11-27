@@ -241,9 +241,9 @@ static func _cannon(si: int) -> Dictionary:
 	return _page("炮筒", ["cannon"], "cannon", _sheet("vfx/eq-cannon-idle.png", 64, 7, 170.0, 96.0), "p2eq_105", ["远程射手"],
 		SC.stats(B.CANNON_HP[si], B.CANNON_ATK[si], 0, 0, 0, B.CANNON_ASPD, B.CANNON_RANGE),
 		{"name": "开炮", "icon": "skills/summon-cannon-fire.png",
-			"desc": "炮筒朝射程内最近的敌人开炮，炮弹落地爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
+			"desc": "炮筒的攻击朝射程内最近的敌人发射炮弹，炮弹命中后爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
 		{"name": "重炮", "icon": "skills/summon-cannon-heavy.png", "energy": int(B.CANNON_EN_MAX),
-			"desc": Lang.t("炮筒进入重炮状态：每发消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能，炮弹沿直线飞过整个战场，击退直线上的敌人，造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害并施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血。龟能耗尽时回到普通炮击。") % [si, si]},
+			"desc": Lang.t("炮筒进入重炮状态，每次攻击发射一发重炮弹，消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能。重炮弹沿直线飞过整个战场，对路径上的敌人造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害，施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血，并将其向两侧击退。龟能耗尽时回到普通炮击。") % [si, si]},
 		[])
 
 
