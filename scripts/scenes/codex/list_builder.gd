@@ -127,7 +127,7 @@ func _add_group_header(title: String) -> void:
 ##   塞进 36×36 的图标格再 KEEP_ASPECT 就是 1.125 倍 ⇒ 像素网格被打烂
 ##   (同一条教训的门禁是 `tools/vfx_discipline_audit.py` 判据 A)。32 < 36, 原尺寸放得下。
 ## ★其余调用点(深海小将 / 规则)的图尺寸不统一(几十到上千), 仍走等比内缩 —— 默认 false。
-## `off_week` = 本周商店不出(11-27): 整行压暗 + 名字后注「本周不出」; 仍然点得开看说明。
+## `off_week` = 本周商店不出(11-27): 整行压暗 + 名字后注「本周未上架」(11-27 用户问「本周不出」有没有 AI 味: 「不出」是口语缩写, 改商店通行说法); 仍然点得开看说明。
 func _add_simple_row(label: String, label_color: String, stroke: Color, icon_path: String,
 		idx: int, icon_native: bool = false, off_week: bool = false) -> void:
 	var col = stroke; col.a = 0.7
@@ -154,9 +154,9 @@ func _add_simple_row(label: String, label_color: String, stroke: Color, icon_pat
 	lbl.add_theme_color_override("font_color", Color(label_color))
 	p.add_child(lbl)
 	if off_week:
-		## 「本周不出」单独一个右对齐小标签(11-27 verify_ui_copy: 不拿「·」把名字和状态拼成一行)
+		## 「本周未上架」单独一个右对齐小标签(11-27 verify_ui_copy: 不拿「·」把名字和状态拼成一行)
 		var tag := Label.new()
-		tag.text = Lang.t("本周不出")
+		tag.text = Lang.t("本周未上架")
 		tag.position = Vector2(48, 0)
 		tag.size = Vector2(host.LIST_W - 16 - 56 - 10, 52)
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

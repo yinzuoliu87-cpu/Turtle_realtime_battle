@@ -2235,7 +2235,7 @@ scripts/scenes/codex/list_builder.gd|lit|宝箱龟战利品
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
-scripts/scenes/codex/list_builder.gd|text|本周不出
+scripts/scenes/codex/list_builder.gd|text|本周未上架
 scripts/scenes/codex/status_page.gd|lit|%s · 技能
 scripts/scenes/codex/status_page.gd|lit|%s · 被动
 scripts/scenes/codex/status_page.gd|lit|减益

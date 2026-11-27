@@ -449,7 +449,7 @@ func _switch_tab(tab: String) -> void:
 				## ★第 6 参 `icon_native=true`: 36×36 的图标格里按 **1x = 32px 原尺寸**居中画。
 				##   源图就是 32×32, 拉到 36 是 1.125 倍 ⇒ 非整数倍会把像素网格打烂。
 				_codex_list._add_simple_row(sname, col, Color(col), _type_icon(sname),
-					_items.size() - 1, true, _codex_list.off_week_syn(sname))   # 不在本周 10 个里 ⇒ 压暗 + 「本周不出」(11-27)
+					_items.size() - 1, true, _codex_list.off_week_syn(sname))   # 不在本周 10 个里 ⇒ 压暗 + 「本周未上架」(11-27)
 		"status":
 			_codex_list._add_status_rows()
 		## ★「规则」页签已删(2026-10-07 用户「规则页直接删掉，我们没有这东西」):

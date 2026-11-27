@@ -8396,8 +8396,8 @@ msgstr "Blocked %d"
 msgid "金光层数 %d（每层 +%d 生命值、+%d 攻击力）"
 msgstr "Gold stacks %d (each +%d HP, +%d Attack)"
 
-msgid "本周不出"
-msgstr "Not this week"
+msgid "本周未上架"
+msgstr "Out of rotation"
 
 msgid "横扫状态：%d 秒"
 msgstr "Sweep: %ds"
