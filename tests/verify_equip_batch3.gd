@@ -191,6 +191,7 @@ func _ready() -> void:
 	var trip := RegEx.new()
 	trip.compile("\\d+(\\.\\d+)?/\\d+(\\.\\d+)?/\\d+(\\.\\d+)?")
 	var silent: Array = []
+	var on_role_page: Array = []
 	var impl := 0
 	for e3 in eqs:
 		var d3: Dictionary = e3
@@ -206,11 +207,17 @@ func _ready() -> void:
 		impl += 1
 		var txt3: String = SkillText.render_consts(str(d3.get("effectDesc1", "")) + str(d3.get("effectDesc3", "")))
 		if trip.search(txt3) == null:
+			## ★2026-11-27 召唤物的逐星属性搬去图鉴「角色」页(用户 11-27「羁绊里的召唤去描述可以换种方式」):
+			##   装备文案只写召唤谁 + 【名字】链接。豁免条件要硬: 文案链接的那一页**真的**按装备星级分 ★1/★2/★3 三列。
+			if _stars_on_role_page(txt3):
+				on_role_page.append(eid3)
+				continue
 			silent.append(eid3)
 	_ok("⑤ ★★分母: 批3 里已实装效果的件 = %d 件(0 件的话下面那条是空检查)" % impl, impl > 0,
 		"impl=%d" % impl)
 	_ok("⑤ ★★已实装的件必须把逐星数值写进文案(反过来的那一半)", silent.is_empty(),
 		str(silent.slice(0, 5)))
+	print("  [分母] 逐星数值在召唤物角色页上的件: %s" % str(on_role_page))
 	## ★★豁免不能是白给的: 被豁免的件必须**真的**没有三档数值 ——
 	##   否则"我把它加进 NO_STAR 就不用写文案了"会变成绕过这条门禁的后门。
 	var no_star_but_tiered: Array = []
@@ -258,3 +265,19 @@ func _has_effect_impl(eid: String) -> bool:
 				var hi: int = ln.find("#")
 				_impl_src += (ln if hi < 0 else ln.substr(0, hi)) + "\n"
 	return _impl_src.contains("\"%s\"" % eid)
+
+
+## 文案里链接的召唤物(【名字】)有一页按装备星级分三列 ⇒ 逐星数值在那一页上(11-27 图鉴角色栏)。
+func _stars_on_role_page(txt: String) -> bool:
+	var re := RegEx.create_from_string("【([^】]+)】")
+	for m in re.search_all(txt):
+		var nm := m.get_string(1)
+		var sid := ""
+		if SummonCodex.NAME_ALIASES.has(nm):
+			sid = str(SummonCodex.NAME_ALIASES[nm])
+		for id in SummonCodex.all_ids():
+			if str(SummonCodex.info(str(id), 0).get("name", "")) == nm:
+				sid = str(id)
+		if sid != "" and SummonCodex.cols(sid).size() == 3:
+			return true
+	return false

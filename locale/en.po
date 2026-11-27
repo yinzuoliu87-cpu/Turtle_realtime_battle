@@ -9547,8 +9547,8 @@ msgstr "On spawn, the Pirate Ship charges into its target, dealing ({C:PirateSys
 msgid "机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒朝生命值最低的敌人开一炮，造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。"
 msgstr "Every {C:CyberSystem.MECH_BLAST_CD} seconds, the Mech fires a shot at the enemy with the lowest health, dealing ({C:CyberSystem.MECH_BLAST_COEF%}% × Attack (Unknown) = Unknown) physical damage."
 
-msgid "战斗开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。"
-msgstr "When combat starts, the Turtle Egg is protected by a fence: it can't be targeted, takes no area damage, and gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. Once all of its side's units have died, the fence disappears."
+msgid "每个战场开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。"
+msgstr "At the start of each battlefield, the Turtle Egg is protected by a fence: it can't be targeted, takes no area damage, and gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. Once all of its side's units have died, the fence disappears."
 
 msgid "龟蛋免疫控制与斩杀，生命值在上路战场、下路战场和终极战场之间延续，不会回满。"
 msgstr "The Turtle Egg is immune to crowd control and executes, and its health carries over between the Top Lane, Bottom Lane and Final Battle, and never refills."

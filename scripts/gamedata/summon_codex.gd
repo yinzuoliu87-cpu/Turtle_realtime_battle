@@ -85,16 +85,6 @@ static func id_of_kind(kind: String) -> String:
 	return ""
 
 
-## 名字 → 条目 id(羁绊 / 装备文案里的【名字】点了跳到这一页)。
-static func id_of_name(nm: String) -> String:
-	if NAME_ALIASES.has(nm):
-		return str(NAME_ALIASES[nm])
-	for id in all_ids():
-		if str(info(id, 0).get("name", "")) == nm:
-			return id
-	return ""
-
-
 # ─── 公用 ─────────────────────────────────────────────────────────
 static func _pct(x: float) -> String:
 	var v: float = snappedf(x * 100.0, 0.01)
@@ -236,9 +226,10 @@ static func card_spec(id: String) -> Dictionary:
 	var stat_row: Array = []
 	for st in si.get("stats", []):
 		var ip := "res://assets/sprites/stats/%s-icon.png" % str(st["key"])
-		stat_row.append([ip, str(st["disp"]), Color("#f4ead8")])
+		## 数字按属性上色(同图鉴角色页左栏: 生命绿 / 攻击红 / 护甲黄 / 魔抗蓝…); 图标由 InspectCard._stat_row 按同一张表染
+		stat_row.append([ip, str(st["disp"]), SkillText.stat_icon_color_of(str(st["key"]))])
 	var body: PackedStringArray = []
-	var ctx := {"atk": float(_disp_of(si, "atk")), "maxHp": float(_disp_of(si, "hp")), "lv": 1}
+	var ctx := {"atk": float(disp_of(si, "atk")), "maxHp": float(disp_of(si, "hp")), "lv": 1}
 	var rows: Array = []
 	for pv in si.get("passives", []):
 		rows.append([Lang.t("被动"), pv])
@@ -259,7 +250,8 @@ static func card_spec(id: String) -> Dictionary:
 		"foot": Lang.t("完整数据见图鉴「角色」")}
 
 
-static func _disp_of(si: Dictionary, key: String) -> String:
+## 某一项属性在页上显示的字(数字或「未知」)。图鉴角色页(summon_page)与商店召唤物小卡共用。
+static func disp_of(si: Dictionary, key: String) -> String:
 	for st in si.get("stats", []):
 		if str(st["key"]) == key:
 			return str(st["disp"])

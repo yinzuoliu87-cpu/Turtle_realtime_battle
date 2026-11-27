@@ -129,7 +129,7 @@ static func _egg() -> Dictionary:
 		SC.stats(DualLaneFlow.EGG_HP_BASE, 0, BattleSpawn.EGG_RES_BASE, BattleSpawn.EGG_RES_BASE, 0, 0, 0),
 		{}, {},
 		[{"name": "围栏", "icon": "passive/summon-egg-fence-icon.png",
-			"desc": "战斗开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。"},
+			"desc": "每个战场开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。"},
 		 {"name": "坚壳", "icon": "passive/summon-egg-shell-icon.png",
 			"desc": "龟蛋免疫控制与斩杀，生命值在上路战场、下路战场和终极战场之间延续，不会回满。"},
 		 {"name": "成长", "icon": "passive/summon-egg-grow-icon.png",

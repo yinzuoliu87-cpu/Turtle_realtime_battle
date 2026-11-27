@@ -93,7 +93,7 @@ func _ready() -> void:
 	##   同一形状见 memory `fb-gate-can-pin-the-bug-in-place`(门禁会把 bug 钉住)。
 	##   ⇒ 判据收窄成"它仍然是【召唤一座不可移动的炮台】这件事", 数值交给下面 ⑤ 段。
 	_ok("058 ★效果仍然是【召唤一座不可移动的炮台】(换名换图与数值调整都不该改掉这件事)",
-		str(e58.get("effectDesc1", "")).contains("召唤一座不可移动的炮台"))
+		str(e58.get("effectDesc1", "")).replace("【", "").replace("】", "").contains("召唤一座不可移动的炮台"))   # 11-27 起炮台写成【炮台】链接(点了跳图鉴角色页), 判据去掉括号再比
 
 	var e45: Dictionary = DataRegistry.phase2_equipment_by_id.get("p2eq_045", {})
 	_ok("045 名字 = 地狱护盾", str(e45.get("name", "")) == "地狱护盾", str(e45.get("name", "")))

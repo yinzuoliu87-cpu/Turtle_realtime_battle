@@ -650,7 +650,7 @@ func _ninja_appear(n: Dictionary) -> void:
 	_fx("ninja_appear", [p, from, NINJA_STAB_WINDUP])
 
 
-## 影袭插中: 必暴击背刺, 重新隐身; 分身在场时两个忍者各朝这个目标掷一枚手里剑
+## 影袭插中: 必暴击背刺; 本方忍者(分身在场时两个)各朝这个目标掷一枚手里剑, 掷完隐身(_ninja_throw)
 func _ninja_stab(n: Dictionary) -> void:
 	var p: Dictionary = n["u"]
 	var tgt = n["tgt"]
@@ -663,8 +663,7 @@ func _ninja_stab(n: Dictionary) -> void:
 	var dmg: int = battle._resolve_dmg(p, NINJA_STRIKE_MULT * float(p.get("atk", 0.0)), tgt, false)
 	p.erase("_assassin_now")
 	battle._damage._apply_damage_from(p, tgt, dmg, COL_PHYS, 0.0, false, true)
-	p["untargetable_until"] = maxf(float(p.get("untargetable_until", 0.0)), float(battle._t) + NINJA_RESTEALTH)
-	p["_ninja_veil"] = true
+	## 隐身在掷完手里剑时才给(_ninja_throw, 11-27): 这里给了也会被下面掷镖的「攻击即现形」同一帧取消
 	p["atk_cd"] = maxf(float(p.get("atk_cd", 0.0)), NINJA_RESTEALTH)   # 隐身这 1.5 秒不普攻(否则下一拍普攻就现形, 隐身等于没有; 11-25 录像自查)
 	_fx("ninja_strike", [p, tgt, from])
 	## 每次影袭: 场上本方的忍者(影子在场时两名)各朝这个目标掷一枚手里剑(沿直线飞, 路径上每个敌人吃一次)

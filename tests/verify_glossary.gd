@@ -75,6 +75,12 @@ func _all_names() -> Dictionary:
 		var parsed = JSON.parse_string(txt)
 		if parsed != null:
 			_walk_names(parsed, out)
+	## ★2026-11-27 召唤物收进图鉴「角色」栏: 文案里的【百夫长】【炮台】等是角色页的名字(点了跳过去), 它那一页就是解释。
+	##   同样不手抄名单 —— 读登记表 SummonCodex(页名 + 文案别名 NAME_ALIASES)。
+	for sid in SummonCodex.all_ids():
+		out[str(SummonCodex.info(str(sid), 0).get("name", ""))] = true
+	for al in SummonCodex.NAME_ALIASES:
+		out[str(al)] = true
 	return out
 
 

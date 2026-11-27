@@ -2,12 +2,9 @@
  "_why": "本文件由 `python tools/codex_text_lint.py --update` 生成, 不要手改。键 = 类别|来源|实体|字段, 值 = 该条文案里的命中次数。**只减不增**。",
  "known": {
   "码·开发单位|装备|p2eq_010/激光长刃|effectDesc1": 1,
-  "码·开发单位|装备|p2eq_034/玩偶小熊|effectDesc1": 1,
   "码·开发单位|装备|p2eq_041/潮汐药水|effectDesc1": 1,
-  "码·开发单位|装备|p2eq_058/远古炮塔|effectDesc1": 1,
   "码·开发单位|装备|p2eq_075/银色箭袋|effectBrief": 1,
   "码·开发单位|装备|p2eq_075/银色箭袋|effectDesc1": 1,
-  "码·开发单位|装备|p2eq_077/小手枪|effectDesc1": 1,
   "码·开发单位|装备|p2eq_084/手半剑|effectDesc1": 3,
   "码·开发单位|装备|p2eq_096/小木斧|effectDesc3": 1,
   "码·开发单位|龟技能|angel/飞升|brief": 1,

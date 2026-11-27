@@ -44,16 +44,9 @@ func _render_right_side(id: String, si: Dictionary, ci: int) -> void:
 	var right_top: float = 16.0
 	if not (si.get("cols", []) as Array).is_empty():
 		right_top = _selector(id, si, ci, 16.0) + 8.0
-	var ctx: Dictionary = {"atk": float(_stat(si, "atk")), "maxHp": float(_stat(si, "hp")), "hp": float(_stat(si, "hp")),
-		"def": float(_stat(si, "def")), "mr": float(_stat(si, "mr")), "lv": 1, "crit": 0.0}
+	var ctx: Dictionary = {"atk": float(SummonCodex.disp_of(si, "atk")), "maxHp": float(SummonCodex.disp_of(si, "hp")), "hp": float(SummonCodex.disp_of(si, "hp")),
+		"def": float(SummonCodex.disp_of(si, "def")), "mr": float(SummonCodex.disp_of(si, "mr")), "lv": 1, "crit": 0.0}
 	dv._render_right(_as_pet(id, si), ctx, right_top)
-
-
-static func _stat(si: Dictionary, key: String) -> String:
-	for st in si.get("stats", []):
-		if str(st["key"]) == key:
-			return str(st["disp"])
-	return "0"
 
 
 ## 选择牌(右栏最上面): 小标题(长矛件数 / 装备星级 / 进化形态…) + 一排签牌, 当前那一列金色; 放不下换行(小木斧 9 种形态 / 训龟大师 7 个技能)。

@@ -65,6 +65,10 @@ func _ready() -> void:
 		var it = _c._items[i]
 		if not (it is Dictionary):
 			continue
+		## 召唤物 / 战场单位页(11-27 收进「角色」栏)不在本门禁的范围: 它们有「未知」这类随主人变的格子,
+		##   页面齐全 / 数字读常量由 verify_codex_summon 守。这里照旧只量 28 龟 + 小将。
+		if (it as Dictionary).has("_summon"):
+			continue
 		var is_min: bool = (it as Dictionary).has("_minion")
 		var tag: String = str((it as Dictionary).get("_minion", (it as Dictionary).get("id", "?")))
 		_c._codex_skill_detail = {}

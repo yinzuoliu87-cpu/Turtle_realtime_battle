@@ -264,7 +264,7 @@ const SRC := {
 	],
 	"untargetable": [
 		{"k": "eq", "id": "p2eq_115", "at": "systems/equip/eq_dagger_batch.gd:_tick_ninjas", "to": "self", "link": "func _tick_ninjas[\\s\\S]{0,2500}NINJA_VANISH"},   # 115 暗影忍者影袭化烟(2026-11-25)
-		{"k": "eq", "id": "p2eq_115", "at": "systems/equip/eq_dagger_batch.gd:_ninja_stab", "to": "self", "v": "{C:EqDaggerBatch.NINJA_RESTEALTH} 秒", "link": "func _ninja_stab[\\s\\S]{0,1500}NINJA_RESTEALTH"},   # 115 影袭插中后重新隐身
+		{"k": "eq", "id": "p2eq_115", "at": "systems/equip/eq_dagger_batch.gd:_ninja_throw", "to": "self", "v": "{C:EqDaggerBatch.NINJA_RESTEALTH} 秒", "link": "func _ninja_throw[\\s\\S]{0,1500}NINJA_RESTEALTH"},   # 115 掷完手里剑后隐身(11-27: 原来写在 _ninja_stab, 被掷镖现形当场取消)
 		{"k": "eq", "id": "p2eq_100", "at": "systems/equip/eq_bomb_batch.gd:_tick_smokes", "to": "ally", "link": "func _tick_smokes[\\s\\S]{0,1200}SMOKE_PULSE"},   # 100 烟雾弹潜行(2026-11-24)
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_shell_enter_stealth", "to": "self",
 			"lf": MAIN, "link": "\"shellShadow\"[^\\n]*\\n\\s*_shell_sys\\._shell_enter_stealth"},

@@ -167,6 +167,7 @@ const BUY_TAP_GUARD_MS := 400
 
 func _ready() -> void:
 	SkillText.prewarm_consts()   # 说明卡第一次点开不现场加载脚本(主菜单已排过的直接跳过, 见 SkillText.prewarm_consts)
+	SkillText.prewarm_path(_SUMMON_CODEX_PATH)   # 说明卡里的召唤物名字链接要用登记表, 同样放后台编(见 _summon_codex)
 	var _td = get_node_or_null("/root/TutorialDirector")
 	var _in_tut: bool = _td != null and _td.is_active()
 	if int(GameState.season_total_battles) <= 0 and not _in_tut:
@@ -1034,7 +1035,7 @@ func _open_detail_card() -> void:
 		return
 	## 说明里的【召唤物名】能点: 换成那个召唤物的小卡(2026-11-27 方案书 20261127d U4「图鉴、商店说明卡里能点」)
 	if lv.get("body", null) is RichTextLabel:
-		SummonCodex.attach_links(lv["body"], func(sid: String) -> void: _open_summon_card(sid))
+		_summon_codex().attach_links(lv["body"], func(sid: String) -> void: _open_summon_card(sid))
 	## 小木斧: 砍伐进度条 + (攒够时)最终造物四选一, 接在说明下面
 	if AxePanel.should_show(GameState) and (eid == AxePanel.EID or AxeEvo.final_ready(
 			int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))):
@@ -1209,9 +1210,21 @@ func _axe_card_wanted() -> bool:
 
 
 
+## ★召唤物登记表按需加载, 不在本脚本里直接写类名 SummonCodex: 写了的话编译 ShopScene 时就把登记表和它引用的
+##   EquipSystem 等一起同步载入, 进店卡约 1 秒, 后台预加载(SkillText.prewarm_consts)也就落空(verify_shop_no_rebuild ③)。
+const _SUMMON_CODEX_PATH := "res://scripts/gamedata/summon_codex.gd"
+static var _summon_codex_script: GDScript = null
+
+
+static func _summon_codex() -> GDScript:
+	if _summon_codex_script == null:
+		_summon_codex_script = SkillText.take_prewarmed(_SUMMON_CODEX_PATH) as GDScript
+	return _summon_codex_script
+
+
 ## 召唤物小卡(商店说明里点名字打开; 数据同图鉴角色页 SummonCodex)。
 func _open_summon_card(sid: String) -> void:
-	var spec: Dictionary = SummonCodex.card_spec(sid)
+	var spec: Dictionary = _summon_codex().card_spec(sid)
 	if spec.is_empty():
 		return
 	spec["width"] = CARD_W
@@ -1241,7 +1254,7 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	#   玩家看不出哪个数才是自己买到的。highlight_star 把当前星那档高亮、另两档压暗。
 	#   ★背包页(InventoryScene)一直在用这个函数, 商店漏了 —— 同一份文案两套渲染。
 	## 说明里的【召唤物名】做成链接(点了换成召唤物小卡, 见 _open_summon_card)
-	return SummonCodex.linkify(SkillText.highlight_star(raw, star))
+	return _summon_codex().linkify(SkillText.highlight_star(raw, star))
 
 
 ## 游戏必须联网(2026-11-01): 正式包里花深海币的三件事(买装备 / 买经验 / 换一批)先过 `OnlineGate` ——

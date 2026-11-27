@@ -1218,6 +1218,24 @@ static func prewarm_consts(texts: Array = []) -> int:
 	return n
 
 
+## 再排一个指定脚本进后台预加载(不是从文案 {C:类.} 扫出来的那种, 例: 商店的召唤物登记表)。规则同 prewarm_consts。
+static func prewarm_path(path: String) -> void:
+	if DisplayServer.get_name() == "headless" and not prewarm_in_headless:
+		return
+	if _warm_pending.has(path) or ResourceLoader.has_cached(path):
+		return
+	if ResourceLoader.load_threaded_request(path, "", false) == OK:
+		_warm_pending[path] = true
+
+
+## 取 prewarm_path 排过的脚本: 后台还在编就等它编完, 没排过就当场 load。
+static func take_prewarmed(path: String) -> Resource:
+	if _warm_pending.has(path):
+		_warm_pending.erase(path)
+		return ResourceLoader.load_threaded_get(path)
+	return load(path)
+
+
 ## 退出前把还在后台加载的取完(PreloadCache._exit_tree 调)。进程退出时后台线程编译到一半被掐断, 会打一串
 ##   「Could not preload resource file / Failed to compile depended scripts」(实测: 商店门禁打完 ALL PASS 就退出时出现, 门禁判红)。
 static func flush_prewarm() -> void:
