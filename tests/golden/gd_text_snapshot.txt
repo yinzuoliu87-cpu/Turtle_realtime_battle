@@ -785,6 +785,7 @@ scripts/gamedata/summon_codex.gd|lit|长矛件数
 scripts/gamedata/summon_codex.gd|lit|长矛羁绊
 scripts/gamedata/summon_codex.gd|lit|魔抗
 scripts/gamedata/summon_codex.gd|lit|龟甲阵
+scripts/gamedata/summon_codex_equip.gd|lit|%s存在（{C:EqMagicBatch.SKEL_SEC_PER_EN}×携带者这次施放技能消耗的龟能）秒，到时化为尘土。
 scripts/gamedata/summon_codex_equip.gd|lit|不可编入
 scripts/gamedata/summon_codex_equip.gd|lit|不朽之骨
 scripts/gamedata/summon_codex_equip.gd|lit|亡灵之斧
@@ -792,7 +793,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|亡灵浪潮
 scripts/gamedata/summon_codex_equip.gd|lit|亡灵骷髅
 scripts/gamedata/summon_codex_equip.gd|lit|亡灵骷髅每次受到的伤害都只有 {C:EqSummons.SKEL_DMG_CAP} 点，真实伤害也一样。
 scripts/gamedata/summon_codex_equip.gd|lit|亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于目标最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。
-scripts/gamedata/summon_codex_equip.gd|lit|亡者之书召唤的骷髅存在时间等于携带者这次施放技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，到时化为尘土。
 scripts/gamedata/summon_codex_equip.gd|lit|亡者契约
 scripts/gamedata/summon_codex_equip.gd|lit|伤害先由小手枪的护盾吸收，每次落到生命值上的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
 scripts/gamedata/summon_codex_equip.gd|lit|余烬
@@ -901,7 +901,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|骨斧
 scripts/gamedata/summon_codex_equip.gd|lit|骨火弹
 scripts/gamedata/summon_codex_equip.gd|lit|骨火爆裂
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅战士
-scripts/gamedata/summon_codex_equip.gd|lit|骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒：受到的伤害降低 {C:EqMagicBatch.SKW_DR%}%，获得 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积攒龟能。
+scripts/gamedata/summon_codex_equip.gd|lit|骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒，期间获得 {C:EqMagicBatch.SKW_DR%}% 减伤和 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积累龟能。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师的攻击造成（{C:EqMagicBatch.SKM_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅祭司

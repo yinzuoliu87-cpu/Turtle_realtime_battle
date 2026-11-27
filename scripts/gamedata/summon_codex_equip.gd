@@ -291,15 +291,16 @@ static func _ninja(si: int) -> Dictionary:
 # ─── 123 亡者之书 · 骷髅战士 / 骷髅法师 / 骷髅祭司 ───
 static func _skel123(id: String, si: int) -> Dictionary:
 	var M := EqMagicBatch
+	var nm: String = {"skel_warrior": "骷髅战士", "skel_mage": "骷髅法师"}.get(id, "骷髅祭司")
 	var life := {"name": "亡者契约", "icon": "passive/summon-skel123-pact-icon.png",
-		"desc": "亡者之书召唤的骷髅存在时间等于携带者这次施放技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，到时化为尘土。"}
+		"desc": Lang.t("%s存在（{C:EqMagicBatch.SKEL_SEC_PER_EN}×携带者这次施放技能消耗的龟能）秒，到时化为尘土。") % Lang.t(nm)}
 	match id:
 		"skel_warrior":
 			return _page("骷髅战士", ["skel_warrior"], "skel_warrior", _sheet("vfx/eq-skelw-idle.png", 112, 6, 200.0, 92.0), "p2eq_123", ["近战斗士"],
 				SC.stats(M.SKW_HP[si], M.SKW_ATK[si], M.SKW_RES[si], M.SKW_RES[si], BattleSpawn.SUMMON_DEFAULT_SPD, 1.0 / M.SKW_IV, M.SKW_RANGE),
 				{"name": "骨斧", "icon": "skills/summon-skelw-axe.png", "desc": SC.basic_line("骷髅战士")},
 				{"name": "骸骨狂怒", "icon": "skills/summon-skelw-rage.png", "energy": int(M.SKEL_EN_MAX),
-					"desc": "骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒：受到的伤害降低 {C:EqMagicBatch.SKW_DR%}%，获得 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积攒龟能。"},
+					"desc": "骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒，期间获得 {C:EqMagicBatch.SKW_DR%}% 减伤和 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积累龟能。"},
 				[life])
 		"skel_mage":
 			return _page("骷髅法师", ["skel_mage"], "skel_mage", _sheet("vfx/eq-skelm-idle.png", 112, 6, 200.0, 92.0), "p2eq_123", ["远程法师"],

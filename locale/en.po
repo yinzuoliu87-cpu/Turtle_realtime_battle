@@ -9303,8 +9303,8 @@ msgstr "The first time the Shadow Ninja drops below {C:EqDaggerBatch.NINJA_CLONE
 msgid "亡者契约"
 msgstr "Pact of the Dead"
 
-msgid "亡者之书召唤的骷髅存在时间等于携带者这次施放技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，到时化为尘土。"
-msgstr "Skeletons summoned by the Book of the Dead last for the Energy the holder spent on that cast × {C:EqMagicBatch.SKEL_SEC_PER_EN} seconds, then crumble to dust."
+msgid "%s存在（{C:EqMagicBatch.SKEL_SEC_PER_EN}×携带者这次施放技能消耗的龟能）秒，到时化为尘土。"
+msgstr "The %s lasts ({C:EqMagicBatch.SKEL_SEC_PER_EN} × Energy the holder spent on that cast) seconds, then crumbles to dust."
 
 msgid "骨斧"
 msgstr "Bone Axe"
@@ -9312,8 +9312,8 @@ msgstr "Bone Axe"
 msgid "骸骨狂怒"
 msgstr "Bone Rage"
 
-msgid "骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒：受到的伤害降低 {C:EqMagicBatch.SKW_DR%}%，获得 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积攒龟能。"
-msgstr "The Skeleton Warrior rages for {C:EqMagicBatch.SKW_RAGE_SEC} seconds: it takes {C:EqMagicBatch.SKW_DR%}% less damage, gains {C:EqMagicBatch.SKW_LS%}% Lifesteal, and each attack deals ({C:EqMagicBatch.SKW_EXTRA%}% × Attack ({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}) bonus physical damage. It builds no Energy while raging."
+msgid "骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒，期间获得 {C:EqMagicBatch.SKW_DR%}% 减伤和 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积累龟能。"
+msgstr "The Skeleton Warrior rages for {C:EqMagicBatch.SKW_RAGE_SEC} seconds, gaining {C:EqMagicBatch.SKW_DR%}% Damage Reduction and {C:EqMagicBatch.SKW_LS%}% Lifesteal, and each attack deals ({C:EqMagicBatch.SKW_EXTRA%}% × Attack ({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}) bonus physical damage. It builds no Energy while raging."
 
 msgid "骨火弹"
 msgstr "Bonefire Bolt"
