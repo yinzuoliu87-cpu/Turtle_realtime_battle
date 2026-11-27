@@ -8740,3 +8740,330 @@ msgstr "Gains 1 stack each time it attacks or is attacked, up to {C:EqChipBatch.
 
 msgid "魔法护盾"
 msgstr "Magic Shield"
+
+msgid "每件剑为携带者提供攻击力。"
+msgstr "Each Sword grants its carrier attack damage."
+
+msgid "【剑士】携带者每次攻击后追打目标，追打伤害按身上剑的件数计算。"
+msgstr "[Swordsman] The carrier follows up on its target after each attack. Follow-up damage scales with the number of Swords it carries."
+
+msgid "【血祭】全队单位损失生命值时，攻击力提高。"
+msgstr "[Blood Rite] Your units gain attack damage as they lose health."
+
+msgid "每件 +{STAT:atk} 攻击力，追打 {C:SwordsmanSystem.HITS[k]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[k]%}% 攻击伤害，全队每损失 1% 生命值攻击力提高 {C:SynergySystem.BLOOD_RITE[k]}%"
+msgstr "Each +{STAT:atk} attack damage, {C:SwordsmanSystem.HITS[k]} follow-up strike(s), each Sword carried makes follow-ups deal {C:SwordsmanSystem.PCT[k]%}% attack damage, your team gains {C:SynergySystem.BLOOD_RITE[k]}% attack damage per 1% health lost"
+
+msgid "追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果。"
+msgstr "Follow-ups strike at {C:SwordsmanSystem.ASPD_MULT%}% of attack speed. Each follow-up counts as an attack and triggers on-attack and on-hit item effects."
+
+msgid "每件奇械为携带者提供魔抗。"
+msgstr "Each Gadget grants its carrier magic resist."
+
+msgid "【铸币】每 {C:GadgetSynergySystem.PERIOD} 秒铸造深海币，本局结束时获得。"
+msgstr "[Minting] Mint Abyss Coins every {C:GadgetSynergySystem.PERIOD} seconds, collected after the match."
+
+msgid "【冰封】全队攻击有概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。"
+msgstr "[Freeze] Your team's attacks have a chance to freeze the target for {C:GadgetSynergySystem.FREEZE_SEC} seconds."
+
+msgid "每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[0]} 枚"
+msgstr "Each +{STAT:mr} magic resist, mint {C:GadgetSynergySystem.COIN_PER_TICK[0]} Abyss Coin each time, up to {C:GadgetSynergySystem.COIN_CAP[0]} per match"
+
+msgid "每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚，冰封概率 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}%"
+msgstr "Each +{STAT:mr} magic resist, mint {C:GadgetSynergySystem.COIN_PER_TICK[1]} Abyss Coins each time, up to {C:GadgetSynergySystem.COIN_CAP[1]} per match, {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% freeze chance"
+
+msgid "每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚，冰封概率 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%"
+msgstr "Each +{STAT:mr} magic resist, mint {C:GadgetSynergySystem.COIN_PER_TICK[2]} Abyss Coins each time, up to {C:GadgetSynergySystem.COIN_CAP[2]} per match, {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}% freeze chance"
+
+msgid "每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[3]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚，冰封概率 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%"
+msgstr "Each +{STAT:mr} magic resist, mint {C:GadgetSynergySystem.COIN_PER_TICK[3]} Abyss Coins each time, up to {C:GadgetSynergySystem.COIN_CAP[3]} per match, {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}% freeze chance"
+
+msgid "同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封。"
+msgstr "The same target can be frozen at most once every {C:GadgetSynergySystem.FREEZE_CD} seconds, and is immune to Freeze for {C:GadgetSynergySystem.FREEZE_IMMUNE} seconds after it ends."
+
+msgid "队伍里每件装备为携带者提供最大生命值，食物提供双倍。"
+msgstr "Each item on your team grants its carrier max health. Food grants double."
+
+msgid "【成长】每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久获得最大生命值，持续到本局结束。"
+msgstr "[Growth] Every {C:FoodSynergySystem.PERIOD} seconds, each Food permanently grants its carrier max health until the match ends."
+
+msgid "【学院】全队获得最大生命值。"
+msgstr "[Academy] Your team gains max health."
+
+msgid "【盛宴】每 {C:SynergySystem.PULSE} 秒，全队回复已损失生命值。"
+msgstr "[Feast] Every {C:SynergySystem.PULSE} seconds, your team restores missing health."
+
+msgid "每件装备 +{STAT:_foodPerEquip}、每件食物 +{STATx2:_foodPerEquip} 最大生命值，每件食物每次成长 +{C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值"
+msgstr "Each item +{STAT:_foodPerEquip}, each Food +{STATx2:_foodPerEquip} max health, each Food grows +{C:FoodSynergySystem.GROW_PER_FOOD[0]} max health each time"
+
+msgid "每件装备 +{STAT:_foodPerEquip}、每件食物 +{STATx2:_foodPerEquip} 最大生命值，每件食物每次成长 +{C:FoodSynergySystem.GROW_PER_FOOD[1]} 最大生命值，全队 +{C:FoodSynergySystem.ACADEMY[1]} 最大生命值"
+msgstr "Each item +{STAT:_foodPerEquip}, each Food +{STATx2:_foodPerEquip} max health, each Food grows +{C:FoodSynergySystem.GROW_PER_FOOD[1]} max health each time, team +{C:FoodSynergySystem.ACADEMY[1]} max health"
+
+msgid "每件装备 +{STAT:_foodPerEquip}、每件食物 +{STATx2:_foodPerEquip} 最大生命值，每件食物每次成长 +{C:FoodSynergySystem.GROW_PER_FOOD[2]} 最大生命值，全队 +{C:FoodSynergySystem.ACADEMY[2]} 最大生命值，盛宴回复 {C:SynergySystem.FEAST_PCT[2]%}% 已损失生命值"
+msgstr "Each item +{STAT:_foodPerEquip}, each Food +{STATx2:_foodPerEquip} max health, each Food grows +{C:FoodSynergySystem.GROW_PER_FOOD[2]} max health each time, team +{C:FoodSynergySystem.ACADEMY[2]} max health, Feast restores {C:SynergySystem.FEAST_PCT[2]%}% of missing health"
+
+msgid "每件盾为携带者提供护甲。"
+msgstr "Each Shield grants its carrier armor."
+
+msgid "【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成按自身最大生命值计算的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾。"
+msgstr "[Rage] For every {C:ShieldSynergySystem.RAGE_THRESHOLD} damage a unit on your team takes, it releases a shockwave at the nearest enemy, dealing true damage based on its own max health and gaining a shield equal to {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% of that damage."
+
+msgid "【圣光护盾】获得圣光护盾装备，不占装备位，羁绊失效时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害。"
+msgstr "[Holy Light Shield] Gain Holy Light Shield items. They take no item slot and are removed if the synergy deactivates. The holder gets +250 max health and {C:ShieldSynergySystem.HOLY_AMOUNT} Holy Shield every {C:ShieldSynergySystem.HOLY_PERIOD} seconds. While it has Holy Shield, each instance of damage taken deals {C:ShieldSynergySystem.RIPOSTE_FLAT} true damage to the attacker."
+
+msgid "【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾。"
+msgstr "[Reap] When an enemy unit dies, the nearest Shield carrier gains a shield equal to {C:ShieldSynergySystem.REAP_PCT%}% of that unit's max health."
+
+msgid "【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值，圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%。"
+msgstr "[Holy Light Empowered] When Shield items grant shields or healing, they also grant {C:ShieldSynergySystem.T3_CONVERT%}% of it as Holy Shield. Holy Light Shield items generate {C:ShieldSynergySystem.T3_SHIELD_BONUS%}% more Holy Shield."
+
+msgid "每件 +{STAT:def} 护甲，冲击波造成自身 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 最大生命值的真实伤害，获得 1 件圣光护盾"
+msgstr "Each +{STAT:def} armor, shockwave deals {C:ShieldSynergySystem.WAVE_PCT[0]%}% of own max health as true damage, gain 1 Holy Light Shield"
+
+msgid "每件 +{STAT:def} 护甲，冲击波造成自身 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 最大生命值的真实伤害，获得 2 件圣光护盾，收殓"
+msgstr "Each +{STAT:def} armor, shockwave deals {C:ShieldSynergySystem.WAVE_PCT[1]%}% of own max health as true damage, gain 2 Holy Light Shields, Reap"
+
+msgid "每件 +{STAT:def} 护甲，冲击波造成自身 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 最大生命值的真实伤害，获得 2 件圣光护盾，收殓，圣光·强化"
+msgstr "Each +{STAT:def} armor, shockwave deals {C:ShieldSynergySystem.WAVE_PCT[2]%}% of own max health as true damage, gain 2 Holy Light Shields, Reap, Holy Light Empowered"
+
+msgid "每件药水为携带者提供治疗强度、护盾强度与最大龟能。"
+msgstr "Each Potion grants its carrier Heal Power, Shield Power and max Energy."
+
+msgid "【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高。"
+msgstr "[Prey] The highest-health enemy is marked as Prey (eggs excluded). A new Prey is marked within {C:PotionSynergySystem.PERIOD} seconds after it dies. Your team deals more damage to Prey."
+
+msgid "【战利品】每击杀 1 名猎物，全队永久获得攻击力，持续到本局结束。"
+msgstr "[Spoils] Each Prey killed permanently grants your team attack damage until the match ends."
+
+msgid "每件 +{STAT:healAmp}% 治疗强度、+{STAT:shieldAmp}% 护盾强度、+{STAT:_maxEnergy} 最大龟能，对猎物的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%"
+msgstr "Each +{STAT:healAmp}% Heal Power, +{STAT:shieldAmp}% Shield Power, +{STAT:_maxEnergy} max Energy, {C:PotionSynergySystem.PREY_AMP[0]%}% more damage to Prey"
+
+msgid "每件 +{STAT:healAmp}% 治疗强度、+{STAT:shieldAmp}% 护盾强度、+{STAT:_maxEnergy} 最大龟能，对猎物的伤害提高 {C:PotionSynergySystem.PREY_AMP[1]%}%，每击杀 1 名猎物全队 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力"
+msgstr "Each +{STAT:healAmp}% Heal Power, +{STAT:shieldAmp}% Shield Power, +{STAT:_maxEnergy} max Energy, {C:PotionSynergySystem.PREY_AMP[1]%}% more damage to Prey, team +{C:PotionSynergySystem.HARVEST_ATK[1]} attack damage per Prey killed"
+
+msgid "每件 +{STAT:healAmp}% 治疗强度、+{STAT:shieldAmp}% 护盾强度、+{STAT:_maxEnergy} 最大龟能，对猎物的伤害提高 {C:PotionSynergySystem.PREY_AMP[2]%}%，每击杀 1 名猎物全队 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力"
+msgstr "Each +{STAT:healAmp}% Heal Power, +{STAT:shieldAmp}% Shield Power, +{STAT:_maxEnergy} max Energy, {C:PotionSynergySystem.PREY_AMP[2]%}% more damage to Prey, team +{C:PotionSynergySystem.HARVEST_ATK[2]} attack damage per Prey killed"
+
+msgid "每件枪为携带者提供攻击速度。"
+msgstr "Each Gun grants its carrier attack speed."
+
+msgid "【金弹】每把枪定期额外射出 1 发金弹，金弹继承该枪子弹的全部效果，并额外造成真实伤害。"
+msgstr "[Golden Bullet] Each gun periodically fires 1 extra Golden Bullet. It carries all of that gun's bullet effects and deals bonus true damage."
+
+msgid "【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值。"
+msgstr "[Turret I] A turret appears at your front. Every {C:GunSynergySystem.TICK} seconds, it deals {C:GunSynergySystem.T1_DMG} physical damage to all enemies on the line to the nearest enemy, ignoring armor, and heals your lowest-health ally for {C:GunSynergySystem.T1_HEAL_SHARE%}% of the damage dealt."
+
+msgid "【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害。"
+msgstr "[Turret II] A second turret appears at your center. Every {C:GunSynergySystem.T2_PERIOD} seconds, it produces {C:GunSynergySystem.T2_BASE_ENERGY} energy, plus {C:GunSynergySystem.T2_PER_GUN} per Gun on your team. The energy alternates between shields split across your team and true damage split across all enemies."
+
+msgid "【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%。"
+msgstr "[Turret III: Fire Control] A third turret appears at your rear, making Gun carriers deal {C:GunSynergySystem.T3_BASE%}% bonus true damage, plus {C:GunSynergySystem.T3_PER_GUN%}% per Gun carried."
+
+msgid "每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[0]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 真实伤害，炮台一"
+msgstr "Each +{STAT:_aspdPct}% attack speed, 1 Golden Bullet every {C:GunSynergySystem.GOLD_EVERY[0]} shots, Golden Bullets deal {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% bonus true damage, Turret I"
+
+msgid "每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[1]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% 真实伤害，炮台一、炮台二"
+msgstr "Each +{STAT:_aspdPct}% attack speed, 1 Golden Bullet every {C:GunSynergySystem.GOLD_EVERY[1]} shots, Golden Bullets deal {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% bonus true damage, Turrets I and II"
+
+msgid "每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害，炮台一、炮台二、炮台三"
+msgstr "Each +{STAT:_aspdPct}% attack speed, 1 Golden Bullet every {C:GunSynergySystem.GOLD_EVERY[2]} shots, Golden Bullets deal {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% bonus true damage, Turrets I, II and III"
+
+msgid "每件弓箭为携带者提供暴击率。"
+msgstr "Each Bow grants its carrier crit chance."
+
+msgid "【处决】全队攻击生命值低于处决线的敌人时直接处决，攻击者的部分暴击率计入处决线。"
+msgstr "[Execute] Your team's attacks execute enemies below the execute threshold. Part of the attacker's crit chance is added to the threshold."
+
+msgid "【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高，满层时受到的部分伤害转化为真实伤害。"
+msgstr "[Corrosion] Every {C:BowSynergySystem.CORRODE_PERIOD} seconds, all enemies gain 1 Corrosion stack, up to {C:BowSynergySystem.CORRODE_MAX}. Each stack increases damage taken. At max stacks, part of the damage taken becomes true damage."
+
+msgid "每件 +{STATpct:crit}% 暴击率，处决线 {C:BowSynergySystem.EXEC_BASE[0]%}%，暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入处决线，每层腐蚀使受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害"
+msgstr "Each +{STATpct:crit}% crit chance, {C:BowSynergySystem.EXEC_BASE[0]%}% execute threshold, {C:BowSynergySystem.CRIT_TO_LINE[0]%}% of crit chance added to it, each Corrosion stack +{C:BowSynergySystem.CORRODE_PER_STACK[0]%}% damage taken, {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% becomes true damage at max stacks"
+
+msgid "每件 +{STATpct:crit}% 暴击率，处决线 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% 计入处决线，每层腐蚀使受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}% 转化为真实伤害"
+msgstr "Each +{STATpct:crit}% crit chance, {C:BowSynergySystem.EXEC_BASE[1]%}% execute threshold, {C:BowSynergySystem.CRIT_TO_LINE[1]%}% of crit chance added to it, each Corrosion stack +{C:BowSynergySystem.CORRODE_PER_STACK[1]%}% damage taken, {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}% becomes true damage at max stacks"
+
+msgid "每件 +{STATpct:crit}% 暴击率，处决线 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% 计入处决线，每层腐蚀使受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}% 转化为真实伤害"
+msgstr "Each +{STATpct:crit}% crit chance, {C:BowSynergySystem.EXEC_BASE[2]%}% execute threshold, {C:BowSynergySystem.CRIT_TO_LINE[2]%}% of crit chance added to it, each Corrosion stack +{C:BowSynergySystem.CORRODE_PER_STACK[2]%}% damage taken, {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}% becomes true damage at max stacks"
+
+msgid "每件法器为携带者提供魔法穿透与最大龟能。"
+msgstr "Each Artifact grants its carrier Magic Pen and max Energy."
+
+msgid "【法力】每件法器有独立的法力，充满时释放该法器的主动效果。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒回复 {C:StaffSynergySystem.MANA_PER_TICK} 点，携带者造成或受到伤害时也会回复。"
+msgstr "[Mana] Each Artifact has its own mana and casts its active effect when full. It restores {C:StaffSynergySystem.MANA_PER_TICK} mana every {C:RealtimeBattle3DScene.EQ_TICK} seconds, and also when the carrier deals or takes damage."
+
+msgid "【余韵】友军受到治疗时，额外获得护盾。"
+msgstr "[Echo] Allies gain a shield when healed."
+
+msgid "【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并依次净化眩晕、减速、灼烧、中毒、诅咒。"
+msgstr "[Resonance] Every {C:StaffSynergySystem.RESONANCE_PERIOD} seconds, your team restores {C:StaffSynergySystem.RESONANCE_HEAL%}% max health and cleanses Stun, Slow, Burn, Poison and Curse in that order."
+
+msgid "每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点充满"
+msgstr "Each +{STAT:magicPen} Magic Pen, +{STAT:_maxEnergy} max Energy, mana full at {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]}"
+
+msgid "每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]} 点充满"
+msgstr "Each +{STAT:magicPen} Magic Pen, +{STAT:_maxEnergy} max Energy, mana full at {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]}"
+
+msgid "每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点充满，余韵护盾为治疗量的 {C:StaffSynergySystem.ECHO_PCT[2]%}%"
+msgstr "Each +{STAT:magicPen} Magic Pen, +{STAT:_maxEnergy} max Energy, mana full at {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]}, Echo shield equals {C:StaffSynergySystem.ECHO_PCT[2]%}% of the healing"
+
+msgid "每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点充满，余韵护盾为治疗量的 {C:StaffSynergySystem.ECHO_PCT[3]%}%，共鸣净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益"
+msgstr "Each +{STAT:magicPen} Magic Pen, +{STAT:_maxEnergy} max Energy, mana full at {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]}, Echo shield equals {C:StaffSynergySystem.ECHO_PCT[3]%}% of the healing, Resonance cleanses {C:StaffSynergySystem.RESONANCE_DISPEL[3]} debuffs"
+
+msgid "未激活羁绊时，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} 点充满。"
+msgstr "Without the synergy active, mana is full at {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]}."
+
+msgid "每件灵物为携带者提供闪避。"
+msgstr "Each Spirit grants its carrier dodge."
+
+msgid "【触手】召唤无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害。"
+msgstr "[Tentacles] Summon unkillable tentacles. Each tentacle gains 1 Slam stack every {C:SpiritSynergySystem.SLAP_PERIOD} seconds, with no cap. When an enemy is in range, it spends 1 stack to slam toward the nearest enemy, dealing {C:SpiritSynergySystem.HIT_FLAT} + {C:SpiritSynergySystem.HIT_HP_PCT%}% of the target's max health as physical damage to enemies in the path."
+
+msgid "【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击。"
+msgstr "[Dodge Charge] Whenever a unit on your team dodges, each tentacle gains 1 Slam stack."
+
+msgid "【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其部分攻击力与生命值，自动攻击最近的敌人。亡魂阵亡后可再次召唤，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%。"
+msgstr "[Undead] When an allied unit dies, a Wraith rises in its place, inheriting part of its attack damage and health and attacking the nearest enemy. When a Wraith dies it can rise again, inheriting {C:SpiritSynergySystem.WRAITH_DECAY%}% of the previous stats each time."
+
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[0]} 根触手，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}%"
+msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[0]} tentacle(s), Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}%"
+
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[1]} 根触手，闪避蓄能，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次"
+msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[1]} tentacles, Dodge Charge, Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}% and can rise {C:SpiritSynergySystem.WRAITH_LOOPS[1]} more time(s)"
+
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[2]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}%，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[2]} 次"
+msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[2]} tentacles, slams deal {C:SpiritSynergySystem.HIT_MULT[2]%}% of the original damage, Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}% and can rise {C:SpiritSynergySystem.WRAITH_LOOPS[2]} more time(s)"
+
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[3]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}%，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次"
+msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[3]} tentacles, slams deal {C:SpiritSynergySystem.HIT_MULT[3]%}% of the original damage, Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}% and can rise {C:SpiritSynergySystem.WRAITH_LOOPS[3]} more time(s)"
+
+msgid "每件炸弹为携带者提供护甲穿透。"
+msgstr "Each Bomb grants its carrier Armor Pen."
+
+msgid "【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成物理伤害并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外。"
+msgstr "[Missile Strike] {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, dealing physical damage to every enemy unit and knocking them up for {C:BombSynergySystem.AIR_SEC} second (eggs excluded)."
+
+msgid "每件 +{STAT:armorPen} 护甲穿透，导弹造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害"
+msgstr "Each +{STAT:armorPen} Armor Pen, the missile deals {C:BombSynergySystem.DMG_FLAT[0]} + {C:BombSynergySystem.DMG_MAXHP[0]%}% of the target's max health as physical damage"
+
+msgid "每件 +{STAT:armorPen} 护甲穿透，导弹造成 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}% 的物理伤害"
+msgstr "Each +{STAT:armorPen} Armor Pen, the missile deals {C:BombSynergySystem.DMG_FLAT[1]} + {C:BombSynergySystem.DMG_MAXHP[1]%}% of the target's max health as physical damage"
+
+msgid "每件 +{STAT:armorPen} 护甲穿透，导弹造成 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}% 的物理伤害"
+msgstr "Each +{STAT:armorPen} Armor Pen, the missile deals {C:BombSynergySystem.DMG_FLAT[2]} + {C:BombSynergySystem.DMG_MAXHP[2]%}% of the target's max health as physical damage"
+
+msgid "每件匕首为携带者提供暴击伤害。"
+msgstr "Each Dagger grants its carrier Crit Damage."
+
+msgid "【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取。"
+msgstr "[Assassinate] When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and {C:DaggerSynergySystem.LIFESTEAL%}% Lifesteal."
+
+msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%"
+msgstr "Each +{STATpct:critDmg}% Crit Damage, Assassinate bonus Crit Damage {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%"
+
+msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次"
+msgstr "Each +{STATpct:critDmg}% Crit Damage, Assassinate bonus Crit Damage {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%, triggers again {C:DaggerSynergySystem.TRIGGER_GAP} seconds into combat"
+
+msgid "每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次"
+msgstr "Each +{STATpct:critDmg}% Crit Damage, Assassinate bonus Crit Damage {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%, triggers again {C:DaggerSynergySystem.TRIGGER_GAP} and 20 seconds into combat"
+
+msgid "每件魔法书为携带者提供增伤。"
+msgstr "Each Magic Book grants its carrier Damage Amp."
+
+msgid "【飞弹】我方单位（包括召唤物）每释放一次技能，按这次消耗的龟能召唤魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成魔法伤害。"
+msgstr "[Missiles] Whenever an allied unit (including summons) casts a skill, it summons Magic Missiles based on the Energy spent, at least 1. Each flies at a random enemy and deals magic damage."
+
+msgid "每件 +{STATpct:dmgAmp}% 增伤，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚飞弹，每枚造成 {C:MagicbookSynergySystem.DMG_FLAT[0]} + 目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值的魔法伤害"
+msgstr "Each +{STATpct:dmgAmp}% Damage Amp, 1 missile per {C:MagicbookSynergySystem.PER_ENERGY[0]} Energy spent, each dealing {C:MagicbookSynergySystem.DMG_FLAT[0]} + {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% of the target's max health as magic damage"
+
+msgid "每件 +{STATpct:dmgAmp}% 增伤，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚飞弹，每枚造成 {C:MagicbookSynergySystem.DMG_FLAT[1]} + 目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值的魔法伤害"
+msgstr "Each +{STATpct:dmgAmp}% Damage Amp, 1 missile per {C:MagicbookSynergySystem.PER_ENERGY[1]} Energy spent, each dealing {C:MagicbookSynergySystem.DMG_FLAT[1]} + {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% of the target's max health as magic damage"
+
+msgid "每件 +{STATpct:dmgAmp}% 增伤，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚飞弹，每枚造成 {C:MagicbookSynergySystem.DMG_FLAT[2]} + 目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值的魔法伤害"
+msgstr "Each +{STATpct:dmgAmp}% Damage Amp, 1 missile per {C:MagicbookSynergySystem.PER_ENERGY[2]} Energy spent, each dealing {C:MagicbookSynergySystem.DMG_FLAT[2]} + {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% of the target's max health as magic damage"
+
+msgid "每件长矛为携带者提供龟能回复速率。"
+msgstr "Each Spear grants its carrier Energy Regen."
+
+msgid "【百夫长】开打第 {C:SpearSynergySystem.SUMMON_AT} 秒或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。"
+msgstr "[Centurion] {C:SpearSynergySystem.SUMMON_AT} seconds into combat, or when your team drops below {C:SpearSynergySystem.TEAM_HP_LINE%}% health, the Centurion is summoned. On landing it knocks up every enemy for {C:SpearSynergySystem.KNOCK_SEC} seconds and deals {C:SpearSynergySystem.ENTRY_COEF%}% attack damage as magic damage. For each different Spear on your team, each of its stars gives the Centurion {C:SpearSynergySystem.STAR_PCT%}% more health and attack damage."
+
+msgid "【龟甲阵】百夫长龟能满时举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%。"
+msgstr "[Shell Formation] When the Centurion's Energy is full, it raises its shield for {C:SpearSynergySystem.SHIELD_SEC} seconds, taking {C:SpearSynergySystem.SHIELD_DR%}% less damage."
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗"
+msgstr "Each +{STAT:_echargePct}% Energy Regen, Centurion has {C:SpearSynergySystem.HP[0]} health, {C:SpearSynergySystem.ATK[0]} attack damage, {C:SpearSynergySystem.RES[0]} armor and magic resist"
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。放下盾时横扫周围敌人，造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害"
+msgstr "Each +{STAT:_echargePct}% Energy Regen, Centurion has {C:SpearSynergySystem.HP[1]} health, {C:SpearSynergySystem.ATK[1]} attack damage, {C:SpearSynergySystem.RES[1]} armor and magic resist. Attacks pierce in a line, dealing {C:SpearSynergySystem.PIERCE_BEHIND%}% damage to enemies behind. Lowering the shield sweeps nearby enemies for {C:SpearSynergySystem.SWEEP_COEF%}% attack damage as magic damage"
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，至多 {C:SpearSynergySystem.SHRED_CAP} 点。举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害"
+msgstr "Each +{STAT:_echargePct}% Energy Regen, Centurion has {C:SpearSynergySystem.HP[2]} health, {C:SpearSynergySystem.ATK[2]} attack damage, {C:SpearSynergySystem.RES[2]} armor and magic resist. Each attack removes 1 armor and magic resist from each enemy in the line, up to {C:SpearSynergySystem.SHRED_CAP}. While the shield is raised, deals {C:SpearSynergySystem.POKE_COEF%}% attack damage as magic damage to nearby enemies every {C:SpearSynergySystem.POKE_IV} seconds"
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。横扫后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并击飞"
+msgstr "Each +{STAT:_echargePct}% Energy Regen, Centurion has {C:SpearSynergySystem.HP[3]} health, {C:SpearSynergySystem.ATK[3]} attack damage, {C:SpearSynergySystem.RES[3]} armor and magic resist. Every {C:SpearSynergySystem.THROW_EVERY}th attack throws the spear, piercing enemies in the path for {C:SpearSynergySystem.THROW_COEF%}% attack damage as physical damage. After the sweep, {C:SpearSynergySystem.CAV_N} spear cavalry charge out, dealing {C:SpearSynergySystem.CAV_COEF%}% of the Centurion's attack damage as physical damage and knocking enemies up"
+
+msgid "每件面具为携带者提供减伤。"
+msgstr "Each Mask grants its carrier Damage Reduction."
+
+msgid "【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选几只，在我方阵地召唤它们的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一。"
+msgstr "[Face Steal] When each battlefield begins, a few random living enemy turtles on this battlefield are chosen, and copies of them are summoned on your side: max health and attack damage are {C:MaskSynergySystem.COPY_HP%}% of the original, other stats match, they cast the original's skills, and carry its items with each item 1 star lower."
+
+msgid "复制体阵亡时，把自身部分最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军。"
+msgstr "When a copy dies, it permanently gives part of its max health, attack damage, armor and magic resist to the nearest ally."
+
+msgid "每件 +{STATpct:dmgRed}% 减伤，偷脸 {C:MaskSynergySystem.STEAL_N[0]} 只，复制体阵亡时给予 {C:MaskSynergySystem.GIVE_PCT[0]%}% 属性"
+msgstr "Each +{STATpct:dmgRed}% Damage Reduction, steal {C:MaskSynergySystem.STEAL_N[0]} face(s), copies give {C:MaskSynergySystem.GIVE_PCT[0]%}% of their stats on death"
+
+msgid "每件 +{STATpct:dmgRed}% 减伤，偷脸 {C:MaskSynergySystem.STEAL_N[1]} 只，复制体阵亡时给予 {C:MaskSynergySystem.GIVE_PCT[1]%}% 属性"
+msgstr "Each +{STATpct:dmgRed}% Damage Reduction, steal {C:MaskSynergySystem.STEAL_N[1]} faces, copies give {C:MaskSynergySystem.GIVE_PCT[1]%}% of their stats on death"
+
+msgid "每件 +{STATpct:dmgRed}% 减伤，偷脸 {C:MaskSynergySystem.STEAL_N[2]} 只，复制体阵亡时给予 {C:MaskSynergySystem.GIVE_PCT[2]%}% 属性"
+msgstr "Each +{STATpct:dmgRed}% Damage Reduction, steal {C:MaskSynergySystem.STEAL_N[2]} faces, copies give {C:MaskSynergySystem.GIVE_PCT[2]%}% of their stats on death"
+
+msgid "复制体不带原版的一星装备，带的装备不计入羁绊件数。"
+msgstr "Copies don't carry the original's 1-star items, and their items don't count toward synergies."
+
+msgid "每件遗物为携带者提供生命偷取。"
+msgstr "Each Relic grants its carrier Lifesteal."
+
+msgid "【生死界】我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。"
+msgstr "[Life and Death] Your units gain attack damage above {C:RelicSynergySystem.HP_GATE%}% health and Lifesteal below it."
+
+msgid "【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久获得增伤，持续到本局结束。"
+msgstr "[Ancient Power] Every {C:RelicSynergySystem.PERIOD} seconds, your team permanently gains Damage Amp until the match ends."
+
+msgid "【龟蛋加固】我方龟蛋获得最大生命值，并还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人。"
+msgstr "[Fortified Egg] Your Turtle Egg gains max health and strikes back at enemies within {C:RelicSynergySystem.EGG_RANGE} range."
+
+msgid "【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%。"
+msgstr "[Awakening] {C:RelicSynergySystem.AWAKEN_SEC} seconds after each battlefield begins, accumulated Ancient Power increases by {C:RelicSynergySystem.AWAKEN_BOOST%}%."
+
+msgid "每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[0]%}%"
+msgstr "Each +{STAT:_lifestealPct}% Lifesteal, Life and Death grants {C:RelicSynergySystem.ATK_BONUS[0]%}% attack damage and {C:RelicSynergySystem.LOW_HP_LS[0]%}% Lifesteal"
+
+msgid "每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[1]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[1]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[1]}"
+msgstr "Each +{STAT:_lifestealPct}% Lifesteal, Life and Death grants {C:RelicSynergySystem.ATK_BONUS[1]%}% attack damage and {C:RelicSynergySystem.LOW_HP_LS[1]%}% Lifesteal, Ancient Power +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% each time up to {C:RelicSynergySystem.ANCIENT_CAP[1]%}%, egg +{C:RelicSynergySystem.EGG_HP[1]} max health with {C:RelicSynergySystem.EGG_ATK[1]} strike-back damage"
+
+msgid "每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[2]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[2]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[2]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}"
+msgstr "Each +{STAT:_lifestealPct}% Lifesteal, Life and Death grants {C:RelicSynergySystem.ATK_BONUS[2]%}% attack damage and {C:RelicSynergySystem.LOW_HP_LS[2]%}% Lifesteal, Ancient Power +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}% each time up to {C:RelicSynergySystem.ANCIENT_CAP[2]%}%, egg +{C:RelicSynergySystem.EGG_HP[2]} max health with {C:RelicSynergySystem.EGG_ATK[2]} strike-back damage"
+
+msgid "每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[3]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[3]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[3]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]}，觉醒"
+msgstr "Each +{STAT:_lifestealPct}% Lifesteal, Life and Death grants {C:RelicSynergySystem.ATK_BONUS[3]%}% attack damage and {C:RelicSynergySystem.LOW_HP_LS[3]%}% Lifesteal, Ancient Power +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}% each time up to {C:RelicSynergySystem.ANCIENT_CAP[3]%}%, egg +{C:RelicSynergySystem.EGG_HP[3]} max health with {C:RelicSynergySystem.EGG_ATK[3]} strike-back damage, Awakening"
+
+msgid "【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契。"
+msgstr "[Blood Pact] Each enemy the carrier kills carves 1 Blood Pact, up to {C:EqDaggerBatch.RITUAL_CAP}. Pacts accumulate over the whole Season and reset with it. Multiple Ritual Daggers share the same Pacts."
+
+msgid "每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%"
+msgstr "Each Blood Pact increases your team's attack damage by {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%"
+
+msgid "【刻痕】携带者每造成 {C:IncenseStoneSystem.PER_MARK} 点伤害，刻下 1 道刻痕，至多 {C:IncenseStoneSystem.MARK_CAP} 道，跨对局保留，赛季重置。多件香火石共用同一份刻痕。"
+msgstr "[Carving] Every {C:IncenseStoneSystem.PER_MARK} damage the carrier deals carves 1 mark, up to {C:IncenseStoneSystem.MARK_CAP}. Marks carry across matches and reset each Season. Multiple Incense Stones share the same marks."
+
+msgid "每道刻痕使携带者获得 {C:IncenseStoneSystem.ITEM_AMP%}% 增伤与 {C:IncenseStoneSystem.ITEM_DR%}% 减伤，全队获得 {C:IncenseStoneSystem.TEAM_AMP%}% 增伤与 {C:IncenseStoneSystem.TEAM_DR%}% 减伤"
+msgstr "Each mark gives the carrier {C:IncenseStoneSystem.ITEM_AMP%}% Damage Amp and {C:IncenseStoneSystem.ITEM_DR%}% Damage Reduction, and your team {C:IncenseStoneSystem.TEAM_AMP%}% Damage Amp and {C:IncenseStoneSystem.TEAM_DR%}% Damage Reduction"
+
+msgid "装备小木斧即激活。重复买到的小木斧转化为砍伐经验。"
+msgstr "Equipping a Little Wooden Axe activates it. Duplicate Little Wooden Axes become chopping experience."
+
+msgid "商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}%"
+msgstr "Each shop refresh has a {C:AxeEvolution.SHELF_P_BASE%}% chance to include at least one Little Wooden Axe, +{C:AxeEvolution.SHELF_P_PER_MATCH%}% per match played this Season, up to {C:AxeEvolution.SHELF_P_CAP%}%"

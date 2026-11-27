@@ -563,8 +563,45 @@ scripts/gamedata/phase2_minion.gd|lit|挥砍
 scripts/gamedata/phase2_minion.gd|lit|整排挥砍
 scripts/gamedata/phase2_minion.gd|lit|深海小将
 scripts/gamedata/phase2_minion.gd|lit|深海小将精英
+scripts/gamedata/phase2_types.gd|lit|【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其部分攻击力与生命值，自动攻击最近的敌人。亡魂阵亡后可再次召唤，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%。
+scripts/gamedata/phase2_types.gd|lit|【余韵】友军受到治疗时，额外获得护盾。
+scripts/gamedata/phase2_types.gd|lit|【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选几只，在我方阵地召唤它们的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一。
+scripts/gamedata/phase2_types.gd|lit|【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并依次净化眩晕、减速、灼烧、中毒、诅咒。
+scripts/gamedata/phase2_types.gd|lit|【冰封】全队攻击有概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。
+scripts/gamedata/phase2_types.gd|lit|【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取。
 scripts/gamedata/phase2_types.gd|lit|【刻痕】携带者每造成 {C:IncenseStoneSystem.PER_MARK} 点伤害，刻下 1 道刻痕，至多 {C:IncenseStoneSystem.MARK_CAP} 道，跨对局保留，赛季重置。多件香火石共用同一份刻痕 · 每道刻痕使携带者获得 {C:IncenseStoneSystem.ITEM_AMP%}% 增伤与 {C:IncenseStoneSystem.ITEM_DR%}% 减伤，全队获得 {C:IncenseStoneSystem.TEAM_AMP%}% 增伤与 {C:IncenseStoneSystem.TEAM_DR%}% 减伤
+scripts/gamedata/phase2_types.gd|lit|【刻痕】携带者每造成 {C:IncenseStoneSystem.PER_MARK} 点伤害，刻下 1 道刻痕，至多 {C:IncenseStoneSystem.MARK_CAP} 道，跨对局保留，赛季重置。多件香火石共用同一份刻痕。
+scripts/gamedata/phase2_types.gd|lit|【剑士】携带者每次攻击后追打目标，追打伤害按身上剑的件数计算。
+scripts/gamedata/phase2_types.gd|lit|【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值，圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%。
+scripts/gamedata/phase2_types.gd|lit|【圣光护盾】获得圣光护盾装备，不占装备位，羁绊失效时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【处决】全队攻击生命值低于处决线的敌人时直接处决，攻击者的部分暴击率计入处决线。
+scripts/gamedata/phase2_types.gd|lit|【学院】全队获得最大生命值。
+scripts/gamedata/phase2_types.gd|lit|【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成物理伤害并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外。
+scripts/gamedata/phase2_types.gd|lit|【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成按自身最大生命值计算的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾。
+scripts/gamedata/phase2_types.gd|lit|【成长】每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久获得最大生命值，持续到本局结束。
+scripts/gamedata/phase2_types.gd|lit|【战利品】每击杀 1 名猎物，全队永久获得攻击力，持续到本局结束。
+scripts/gamedata/phase2_types.gd|lit|【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾。
+scripts/gamedata/phase2_types.gd|lit|【法力】每件法器有独立的法力，充满时释放该法器的主动效果。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒回复 {C:StaffSynergySystem.MANA_PER_TICK} 点，携带者造成或受到伤害时也会回复。
+scripts/gamedata/phase2_types.gd|lit|【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值。
+scripts/gamedata/phase2_types.gd|lit|【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%。
+scripts/gamedata/phase2_types.gd|lit|【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高。
+scripts/gamedata/phase2_types.gd|lit|【生死界】我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。
+scripts/gamedata/phase2_types.gd|lit|【百夫长】开打第 {C:SpearSynergySystem.SUMMON_AT} 秒或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。
+scripts/gamedata/phase2_types.gd|lit|【盛宴】每 {C:SynergySystem.PULSE} 秒，全队回复已损失生命值。
+scripts/gamedata/phase2_types.gd|lit|【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高，满层时受到的部分伤害转化为真实伤害。
 scripts/gamedata/phase2_types.gd|lit|【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%
+scripts/gamedata/phase2_types.gd|lit|【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契。
+scripts/gamedata/phase2_types.gd|lit|【血祭】全队单位损失生命值时，攻击力提高。
+scripts/gamedata/phase2_types.gd|lit|【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%。
+scripts/gamedata/phase2_types.gd|lit|【触手】召唤无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害。
+scripts/gamedata/phase2_types.gd|lit|【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久获得增伤，持续到本局结束。
+scripts/gamedata/phase2_types.gd|lit|【金弹】每把枪定期额外射出 1 发金弹，金弹继承该枪子弹的全部效果，并额外造成真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【铸币】每 {C:GadgetSynergySystem.PERIOD} 秒铸造深海币，本局结束时获得。
+scripts/gamedata/phase2_types.gd|lit|【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击。
+scripts/gamedata/phase2_types.gd|lit|【飞弹】我方单位（包括召唤物）每释放一次技能，按这次消耗的龟能召唤魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成魔法伤害。
+scripts/gamedata/phase2_types.gd|lit|【龟甲阵】百夫长龟能满时举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%。
+scripts/gamedata/phase2_types.gd|lit|【龟蛋加固】我方龟蛋获得最大生命值，并还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人。
 scripts/gamedata/phase2_types.gd|lit|仪式
 scripts/gamedata/phase2_types.gd|lit|仪式·血契
 scripts/gamedata/phase2_types.gd|lit|仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。
@@ -574,7 +611,11 @@ scripts/gamedata/phase2_types.gd|lit|剑系
 scripts/gamedata/phase2_types.gd|lit|匕首
 scripts/gamedata/phase2_types.gd|lit|匕首·刺杀
 scripts/gamedata/phase2_types.gd|lit|匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。
+scripts/gamedata/phase2_types.gd|lit|同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封。
+scripts/gamedata/phase2_types.gd|lit|商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}%
 scripts/gamedata/phase2_types.gd|lit|商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}% · 重复买到的小木斧转化为砍伐经验
+scripts/gamedata/phase2_types.gd|lit|复制体不带原版的一星装备，带的装备不计入羁绊件数。
+scripts/gamedata/phase2_types.gd|lit|复制体阵亡时，把自身部分最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军。
 scripts/gamedata/phase2_types.gd|lit|奇械
 scripts/gamedata/phase2_types.gd|lit|奇械·魔抗
 scripts/gamedata/phase2_types.gd|lit|奇械提高携带者的魔抗，并为全队铸造深海币。
@@ -583,56 +624,121 @@ scripts/gamedata/phase2_types.gd|lit|弓箭·神射手
 scripts/gamedata/phase2_types.gd|lit|弓箭提高携带者的暴击率。全队攻击可处决低生命值的敌人，并持续腐蚀敌方全体。
 scripts/gamedata/phase2_types.gd|lit|斧头
 scripts/gamedata/phase2_types.gd|lit|斧头·砍伐
+scripts/gamedata/phase2_types.gd|lit|未激活羁绊时，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} 点充满。
 scripts/gamedata/phase2_types.gd|lit|枪
 scripts/gamedata/phase2_types.gd|lit|枪·神枪手
 scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把枪定期额外射出金弹，我方生成炮台助战。
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[0]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 真实伤害，炮台一
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[1]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% 真实伤害，炮台一、炮台二
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害，炮台一、炮台二、炮台三
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。放下盾时横扫周围敌人，造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，至多 {C:SpearSynergySystem.SHRED_CAP} 点。举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。横扫后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并击飞
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[0]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[1]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[1]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[1]}
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[2]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[2]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[2]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[3]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[3]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[3]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]}，觉醒
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:armorPen} 护甲穿透，导弹造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:armorPen} 护甲穿透，导弹造成 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}% 的物理伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:armorPen} 护甲穿透，导弹造成 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}% 的物理伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:atk} 攻击力，追打 {C:SwordsmanSystem.HITS[k]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[k]%}% 攻击伤害，全队每损失 1% 生命值攻击力提高 {C:SynergySystem.BLOOD_RITE[k]}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:def} 护甲，冲击波造成自身 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 最大生命值的真实伤害，获得 1 件圣光护盾
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:def} 护甲，冲击波造成自身 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 最大生命值的真实伤害，获得 2 件圣光护盾，收殓
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:def} 护甲，冲击波造成自身 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 最大生命值的真实伤害，获得 2 件圣光护盾，收殓，圣光·强化
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[0]} 根触手，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[1]} 根触手，闪避蓄能，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[2]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}%，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[2]} 次
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[3]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}%，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:healAmp}% 治疗强度、+{STAT:shieldAmp}% 护盾强度、+{STAT:_maxEnergy} 最大龟能，对猎物的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:healAmp}% 治疗强度、+{STAT:shieldAmp}% 护盾强度、+{STAT:_maxEnergy} 最大龟能，对猎物的伤害提高 {C:PotionSynergySystem.PREY_AMP[1]%}%，每击杀 1 名猎物全队 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:healAmp}% 治疗强度、+{STAT:shieldAmp}% 护盾强度、+{STAT:_maxEnergy} 最大龟能，对猎物的伤害提高 {C:PotionSynergySystem.PREY_AMP[2]%}%，每击杀 1 名猎物全队 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点充满
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]} 点充满
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点充满，余韵护盾为治疗量的 {C:StaffSynergySystem.ECHO_PCT[2]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:magicPen} 魔法穿透、+{STAT:_maxEnergy} 最大龟能，法力 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点充满，余韵护盾为治疗量的 {C:StaffSynergySystem.ECHO_PCT[3]%}%，共鸣净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[0]} 枚
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚，冰封概率 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚，冰封概率 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:mr} 魔抗，每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[3]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚，冰封概率 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:crit}% 暴击率，处决线 {C:BowSynergySystem.EXEC_BASE[0]%}%，暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入处决线，每层腐蚀使受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:crit}% 暴击率，处决线 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% 计入处决线，每层腐蚀使受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}% 转化为真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:crit}% 暴击率，处决线 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% 计入处决线，每层腐蚀使受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}% 转化为真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:dmgAmp}% 增伤，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚飞弹，每枚造成 {C:MagicbookSynergySystem.DMG_FLAT[0]} + 目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值的魔法伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:dmgAmp}% 增伤，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚飞弹，每枚造成 {C:MagicbookSynergySystem.DMG_FLAT[1]} + 目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值的魔法伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:dmgAmp}% 增伤，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚飞弹，每枚造成 {C:MagicbookSynergySystem.DMG_FLAT[2]} + 目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值的魔法伤害
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:dmgRed}% 减伤，偷脸 {C:MaskSynergySystem.STEAL_N[0]} 只，复制体阵亡时给予 {C:MaskSynergySystem.GIVE_PCT[0]%}% 属性
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:dmgRed}% 减伤，偷脸 {C:MaskSynergySystem.STEAL_N[1]} 只，复制体阵亡时给予 {C:MaskSynergySystem.GIVE_PCT[1]%}% 属性
+scripts/gamedata/phase2_types.gd|lit|每件 +{STATpct:dmgRed}% 减伤，偷脸 {C:MaskSynergySystem.STEAL_N[2]} 只，复制体阵亡时给予 {C:MaskSynergySystem.GIVE_PCT[2]%}% 属性
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%
+scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供攻击力。
 scripts/gamedata/phase2_types.gd|lit|每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒再触发一次
 scripts/gamedata/phase2_types.gd|lit|每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，开打第 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与第 20 秒各再触发一次
 scripts/gamedata/phase2_types.gd|lit|每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开打时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取
+scripts/gamedata/phase2_types.gd|lit|每件匕首为携带者提供暴击伤害。
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +10 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚 · 【冰封】全队攻击有 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% 概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +16 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}%
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +23 魔抗 · 【铸币】每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}%
 scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +4 魔抗 · 【铸币】每 {C:GadgetSynergySystem.PERIOD} 秒铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[0]} 枚，本局结束时获得
+scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供魔抗。
 scripts/gamedata/phase2_types.gd|lit|每件弓箭为携带者提供 +16% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}%
 scripts/gamedata/phase2_types.gd|lit|每件弓箭为携带者提供 +22% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}%
 scripts/gamedata/phase2_types.gd|lit|每件弓箭为携带者提供 +9% 暴击率 · 【处决】全队攻击生命值低于 {C:BowSynergySystem.EXEC_BASE[0]%}% 的敌人时直接处决。攻击者暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入这条处决线 · 【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层时受到的伤害有 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件弓箭为携带者提供暴击率。
 scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值
 scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +40% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[1]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% 真实伤害 · 【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害
 scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%
+scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供攻击速度。
 scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供 +11 魔法穿透、+8 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点 · 【余韵】友军受到治疗时，额外获得相当于治疗量 {C:StaffSynergySystem.ECHO_PCT[2]%}% 的护盾
 scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供 +14 魔法穿透、+10 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点 · 【余韵】提高至 {C:StaffSynergySystem.ECHO_PCT[3]%}% · 【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益，依次为眩晕、减速、灼烧、中毒、诅咒
 scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供 +4 魔法穿透、+4 最大龟能 · 【法力】每件法器有独立的法力，充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点时释放该法器的主动效果。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒回复 {C:StaffSynergySystem.MANA_PER_TICK} 点，携带者造成或受到伤害时也会回复。未激活羁绊时需要 {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} 点
 scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供 +7 魔法穿透、+6 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]} 点
+scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供魔法穿透与最大龟能。
 scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +13% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[2]} 次
 scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +18% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次
 scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +5% 闪避 · 【触手】召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% 攻击力与生命值，自动攻击最近的敌人
 scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供 +9% 闪避 · 【触手】增加至 {C:SpiritSynergySystem.TENTACLES[1]} 根 · 【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击 · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%。亡魂阵亡后可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%
+scripts/gamedata/phase2_types.gd|lit|每件灵物为携带者提供闪避。
 scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +12 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[2]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[2]%}%
 scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +4 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外
 scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供 +8 护甲穿透 · 【导弹轰炸】伤害提高至 {C:BombSynergySystem.DMG_FLAT[1]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[1]%}%
+scripts/gamedata/phase2_types.gd|lit|每件炸弹为携带者提供护甲穿透。
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +13 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 自身最大生命值 · 【圣光护盾】再获得 1 件，共 2 件 · 【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +22 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 自身最大生命值 · 【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值。圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%
 scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，羁绊失效时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供护甲。
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[1]%}% · 【战利品】每击杀 1 名猎物，全队永久 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力，持续到本局结束
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%
+scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供治疗强度、护盾强度与最大龟能。
+scripts/gamedata/phase2_types.gd|lit|每件装备 +{STAT:_foodPerEquip}、每件食物 +{STATx2:_foodPerEquip} 最大生命值，每件食物每次成长 +{C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值
+scripts/gamedata/phase2_types.gd|lit|每件装备 +{STAT:_foodPerEquip}、每件食物 +{STATx2:_foodPerEquip} 最大生命值，每件食物每次成长 +{C:FoodSynergySystem.GROW_PER_FOOD[1]} 最大生命值，全队 +{C:FoodSynergySystem.ACADEMY[1]} 最大生命值
+scripts/gamedata/phase2_types.gd|lit|每件装备 +{STAT:_foodPerEquip}、每件食物 +{STATx2:_foodPerEquip} 最大生命值，每件食物每次成长 +{C:FoodSynergySystem.GROW_PER_FOOD[2]} 最大生命值，全队 +{C:FoodSynergySystem.ACADEMY[2]} 最大生命值，盛宴回复 {C:SynergySystem.FEAST_PCT[2]%}% 已损失生命值
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +3% 生命偷取 · 【生死界】我方全体单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}%，生命偷取提高至 {C:RelicSynergySystem.LOW_HP_LS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}
+scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供生命偷取。
 scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +10% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。【龟甲阵】放下盾时横扫，对周围每个敌人造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害
 scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +16% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，每个敌人至多失去 {C:SpearSynergySystem.SHRED_CAP} 点。【龟甲阵】举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害
 scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击转而把长矛掷向最远的敌人，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。【龟甲阵】横扫后，我方身后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，各自冲向一名随机敌人，对途经的敌人造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并将其击飞
 scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供 +5% 龟能回复速率 · 【百夫长】开打第 {C:SpearSynergySystem.SUMMON_AT} 秒或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时，召唤百夫长：{C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗，我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。龟能满时释放【龟甲阵】：举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%
+scripts/gamedata/phase2_types.gd|lit|每件长矛为携带者提供龟能回复速率。
 scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +3% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[0]} 只，在我方阵地召唤它的复制体：最大生命值与攻击力为原版的 {C:MaskSynergySystem.COPY_HP%}%，其余属性与原版相同，照原版释放技能，带原版的装备且每件星级降一（一星的不带，不计入羁绊件数） · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[0]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
 scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +5% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[1]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[1]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
 scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供 +8% 减伤 · 【偷脸】每个战场开打时，从这个战场存活的敌方龟中随机挑选 {C:MaskSynergySystem.STEAL_N[2]} 只，在我方阵地召唤它的复制体 · 复制体阵亡时，把自身 {C:MaskSynergySystem.GIVE_PCT[2]%}% 最大生命值、攻击力、护甲和魔抗永久给予最近的一名友军
+scripts/gamedata/phase2_types.gd|lit|每件面具为携带者提供减伤。
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）
+scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供增伤。
+scripts/gamedata/phase2_types.gd|lit|每道刻痕使携带者获得 {C:IncenseStoneSystem.ITEM_AMP%}% 增伤与 {C:IncenseStoneSystem.ITEM_DR%}% 减伤，全队获得 {C:IncenseStoneSystem.TEAM_AMP%}% 增伤与 {C:IncenseStoneSystem.TEAM_DR%}% 减伤
+scripts/gamedata/phase2_types.gd|lit|每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%
 scripts/gamedata/phase2_types.gd|lit|法器
 scripts/gamedata/phase2_types.gd|lit|法器·法师
 scripts/gamedata/phase2_types.gd|lit|法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果。
@@ -653,6 +759,8 @@ scripts/gamedata/phase2_types.gd|lit|药水
 scripts/gamedata/phase2_types.gd|lit|药水·龟能
 scripts/gamedata/phase2_types.gd|lit|药水提高携带者的治疗与护盾强度。全队集火被标记的猎物，击杀猎物后攻击力提高。
 scripts/gamedata/phase2_types.gd|lit|装备小木斧即激活。激活后商店更容易刷出小木斧。
+scripts/gamedata/phase2_types.gd|lit|装备小木斧即激活。重复买到的小木斧转化为砍伐经验。
+scripts/gamedata/phase2_types.gd|lit|追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果。
 scripts/gamedata/phase2_types.gd|lit|遗物
 scripts/gamedata/phase2_types.gd|lit|遗物·古物
 scripts/gamedata/phase2_types.gd|lit|遗物提供生命偷取。我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。
@@ -662,6 +770,7 @@ scripts/gamedata/phase2_types.gd|lit|长矛提高携带者的龟能回复速率�
 scripts/gamedata/phase2_types.gd|lit|队伍每件装备为携带者提供 +130 最大生命值，每件食物 +260 · 【成长】每次 +{C:FoodSynergySystem.GROW_PER_FOOD[2]} 最大生命值 · 【学院】全队 +{C:FoodSynergySystem.ACADEMY[2]} 最大生命值 · 【盛宴】每 {C:SynergySystem.PULSE} 秒，全队回复 {C:SynergySystem.FEAST_PCT[2]%}% 已损失生命值
 scripts/gamedata/phase2_types.gd|lit|队伍每件装备为携带者提供 +30 最大生命值，每件食物 +60 · 【成长】每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久 +{C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值，无上限，持续到本局结束
 scripts/gamedata/phase2_types.gd|lit|队伍每件装备为携带者提供 +70 最大生命值，每件食物 +140 · 【成长】每次 +{C:FoodSynergySystem.GROW_PER_FOOD[1]} 最大生命值 · 【学院】全队 +{C:FoodSynergySystem.ACADEMY[1]} 最大生命值
+scripts/gamedata/phase2_types.gd|lit|队伍里每件装备为携带者提供最大生命值，食物提供双倍。
 scripts/gamedata/phase2_types.gd|lit|队伍里每件装备为携带者提供最大生命值，食物提供双倍。食物还让最大生命值在战斗中持续成长。
 scripts/gamedata/phase2_types.gd|lit|面具
 scripts/gamedata/phase2_types.gd|lit|面具·偷脸

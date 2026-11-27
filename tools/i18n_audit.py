@@ -109,6 +109,17 @@ def coverage(translated):
 
     for f in COV_FILES:
         walk(json.load(io.open(os.path.join(ROOT, f), encoding="utf-8")), f)
+    ## 图鉴羁绊页的机制句 / 逐档句 / 灰字(Phase2Types.TIER_TABLE, 2026-11-27 起)也算
+    src = io.open(os.path.join(ROOT, "scripts/gamedata/phase2_types.gd"), encoding="utf-8").read()
+    if "const TIER_TABLE := {" in src:
+        blk = src[src.index("const TIER_TABLE := {"):]
+        blk = blk[:blk.index("\n}") + 2]
+        for m in re.finditer(r'"((?:[^"\\]|\\.)*)"', blk):
+            s = m.group(1)
+            if HAN.search(s) and len(s) > 3:
+                n[0] += 1
+                if s not in translated:
+                    miss.append("phase2_types.gd TIER_TABLE | %s" % s[:30])
     return n[0], miss
 
 

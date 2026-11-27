@@ -135,6 +135,12 @@ func _wording_1020() -> void:
 	for t in Phase2Types.TYPE_INTRO:
 		for d in Phase2Types.TYPE_INTRO[t]:
 			all_txt.append(str(d))
+	## 11-27 图鉴羁绊页改版: 机制句 / 逐档句 / 灰字(TIER_TABLE)同样不许「越」「不久」「档」
+	for t in Phase2Types.TIER_TABLE:
+		var tb: Dictionary = Phase2Types.TIER_TABLE[t]
+		for d in tb.get("lines", []) + tb.get("rows", []) + [tb.get("note", "")]:
+			if str(d) != "":
+				all_txt.append(str(d))
 	_ok("⑤⑥ ★分母: 扫了 %d 段羁绊文案" % all_txt.size(), all_txt.size() >= 30)
 	var bad_word: Array = []
 	for s in all_txt:
@@ -147,7 +153,7 @@ func _wording_1020() -> void:
 ##   11-27 用户「云顶根本不会说档这种东西」: 也不许写「档 / 档位」—— 件数变化的效果只放在「3 件 / 6 件」那几行(云顶「(3) … (5) …」)
 	var vague: Array = []
 	for s in all_txt:
-		var r: String = SkillText.render_consts(str(s))
+		var r: String = SkillText.render_consts(str(s).replace("[k]", "[0]"))   # TIER_TABLE 逐档句里 [k] = 档位下标
 		if str(s).contains("越") or str(s).contains("不久") or str(s).contains("档") or r.contains("{C:"):
 			vague.append(str(s).substr(0, 30))
 	_ok("⑤⑥ 羁绊文案没有「越…越…」「不久」「档」、常量全部展开(分母 %d)" % all_txt.size(), vague.is_empty(), str(vague))

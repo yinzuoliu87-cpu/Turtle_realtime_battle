@@ -5,9 +5,10 @@ extends Node
 ## 原来每一页是一堵字墙(每档 5~6 条【子机制】用「 · 」串成一行、半角标点、「同上」),
 ##   头顶一行与大标题重复的「装备羁绊」, 成员装备只是一列名字。判据(每个羁绊逐页走真入口):
 ##   ① 没有「装备羁绊」副标
-##   ② 每一档自己一行(左列「N 件」), 该档的子机制按「 · 」拆成一条一行、按档自上而下不交叠
-##   ③ 拆出来的行里不剩「 · 」「→」「同上」与半角「, ( ) ;」; 【专名】走高亮色
-##   ④ 成员装备 = 图标格(数 == 该类型成员数), 点一下跳到那件装备的图鉴页(走真 gui_input)
+##   ② (11-27 改版, 用户认了剑的「(3) 一句」版式后铺到全部羁绊; 事实源 Phase2Types.TIER_TABLE)
+##      机制句逐条出现(条数 == TIER_TABLE.lines) → 每档一行「(N) 一句」(行数 == 档数, 自上而下不交叠)
+##   ③ 每档那一句: 占位符全部展开(不剩 {C: / {STAT / [k]), 不写「档」「越」; 【专名】走高亮色
+##   ④ 成员装备 = 图标格(数 == 该类型成员数), 排在标题下、机制句上面(不用滚), 点一下跳到那件装备的图鉴页(走真 gui_input)
 ## ★每条断言配分母。
 
 const CODEX_SCN := preload("res://scenes/Codex.tscn")
@@ -74,13 +75,11 @@ func _ready() -> void:
 
 	var bad_sub: Array = []
 	var bad_tier: Array = []
-	var bad_split: Array = []
 	var bad_order: Array = []
 	var bad_punct: Array = []
 	var bad_key: Array = []
 	var bad_member: Array = []
 	var n_lines := 0
-	var n_multi := 0
 	var n_key := 0
 	var n_tiles := 0
 	for si in range(names.size()):
@@ -100,47 +99,50 @@ func _ready() -> void:
 		for ch in _live():
 			if ch is Label and (ch as Label).text == "装备羁绊":
 				bad_sub.append(tname)
-		# ② 一档一行
+		# ② 机制句 + 每档一行「(N) 一句」
 		var tiers: Array = (Phase2Types.TYPES[tname] as Dictionary).get("tiers", [])
+		var tb: Dictionary = Phase2Types.TIER_TABLE.get(tname, {})
+		if tb.is_empty():
+			bad_tier.append("%s:TIER_TABLE 没有它" % tname)
+			continue
+		var intros: Array = _with_meta("codex_syn_intro")
+		if intros.size() != (tb.get("lines", []) as Array).size():
+			bad_tier.append("%s:机制句 %d 条画了 %d 条" % [tname, (tb.get("lines", []) as Array).size(), intros.size()])
 		var badges: Array = _with_meta("codex_syn_tier")
-		if badges.size() != tiers.size():
-			bad_tier.append("%s:%d档画了%d行" % [tname, tiers.size(), badges.size()])
-		var descs: Array = Phase2Types.TIER_DESCS.get(tname, [])
 		var lines: Array = _with_meta("codex_syn_line")
+		if badges.size() != tiers.size() or lines.size() != tiers.size():
+			bad_tier.append("%s:%d档 画了 %d 个(N) / %d 句" % [tname, tiers.size(), badges.size(), lines.size()])
 		var prev_bottom := -1.0
+		for it in intros:
+			var ip: String = _plain((it as RichTextLabel).text)
+			if ip.begins_with("【"):
+				n_key += 1
+				if (it as RichTextLabel).text.find("[color=") != 0:
+					bad_key.append("%s:%s" % [tname, ip.substr(0, 8)])
+			prev_bottom = maxf(prev_bottom, (it as Control).position.y + (it as Control).get_combined_minimum_size().y)
 		for ti in range(tiers.size()):
 			var th: int = int(tiers[ti])
-			var parts: int = SkillText.render_consts(str(descs[ti])).split(" · ", false).size()
-			var mine: Array = []
-			for ln in lines:
-				if int(ln.get_meta("codex_syn_line")) == th:
-					mine.append(ln)
-			if parts >= 2:
-				n_multi += 1
-			if mine.size() != parts:
-				bad_split.append("%s %d件:%d条拆出%d行" % [tname, th, parts, mine.size()])
 			var badge: Control = null
-			for b in badges:
-				if int(b.get_meta("codex_syn_tier")) == th:
-					badge = b
-			if badge == null or (badge as Label).text != "%d 件" % th:
-				bad_tier.append("%s:%d件 左列缺" % [tname, th])
+			for bg in badges:
+				if int(bg.get_meta("codex_syn_tier")) == th:
+					badge = bg
+			var ln: RichTextLabel = null
+			for l2 in lines:
+				if int(l2.get_meta("codex_syn_line")) == th:
+					ln = l2
+			if badge == null or (badge as Label).text != "(%d)" % th or ln == null:
+				bad_tier.append("%s:(%d) 缺" % [tname, th])
 				continue
-			for ln in mine:
-				var rt := ln as RichTextLabel
-				n_lines += 1
-				if rt.position.y + 2.0 < prev_bottom or rt.position.y + 4.0 < badge.position.y:
-					bad_order.append("%s %d件" % [tname, th])
-				var p: String = _plain(rt.text)
-				for junk in [" · ", "→", "同上", ", ", "(", ")", "; "]:
-					if p.find(junk) >= 0:
-						bad_punct.append("%s %d件「%s」含「%s」" % [tname, th, p.substr(0, 12), junk])
-				if p.begins_with("【"):
-					n_key += 1
-					if rt.text.find("[color=") != 0:
-						bad_key.append("%s:%s" % [tname, p.substr(0, 8)])
-			for ln2 in mine:
-				prev_bottom = maxf(prev_bottom, (ln2 as Control).position.y + (ln2 as Control).get_combined_minimum_size().y)
+			n_lines += 1
+			if ln.position.y + 2.0 < prev_bottom:
+				bad_order.append("%s (%d)" % [tname, th])
+			prev_bottom = ln.position.y + ln.get_combined_minimum_size().y
+			var p: String = _plain(ln.text)
+			for junk in ["{C:", "{STAT", "[k]", "档", "越", " · "]:
+				if p.find(junk) >= 0:
+					bad_punct.append("%s (%d)「%s」含「%s」" % [tname, th, p.substr(0, 12), junk])
+			if not RegEx.create_from_string("[0-9]").search(p):
+				bad_punct.append("%s (%d) 一个数字都没有「%s」" % [tname, th, p.substr(0, 12)])
 		# ④ 成员格
 		var want: Array = _c._codex_detail._type_members(tname)
 		var tiles: Array = _with_meta("codex_syn_member")
@@ -148,6 +150,13 @@ func _ready() -> void:
 		if tiles.size() != want.size() or want.is_empty():
 			bad_member.append("%s:成员%d格%d" % [tname, want.size(), tiles.size()])
 			continue
+		var first_intro: float = 99999.0
+		for it2 in _with_meta("codex_syn_intro"):
+			first_intro = minf(first_intro, (it2 as Control).position.y)
+		for tl in tiles:
+			if (tl as Control).position.y > first_intro:
+				bad_member.append("%s:成员格排在机制句下面" % tname)
+				break
 		var eid: String = str(tiles[tiles.size() - 1].get_meta("codex_syn_member"))
 		_click(tiles[tiles.size() - 1])
 		await _settle(2)
@@ -155,16 +164,14 @@ func _ready() -> void:
 		if _c.current_tab != "equips" or not (sel is Dictionary) or str(sel.get("id", "")) != eid:
 			bad_member.append("%s:点 %s 没跳到装备页(tab=%s)" % [tname, eid, _c.current_tab])
 	_ok("★★★① 没有「装备羁绊」副标", bad_sub.is_empty(), str(bad_sub))
-	_ok("★分母: 量到的子机制行 ≥ 60 / 含 ≥2 条子机制的档 ≥ 25", n_lines >= 60 and n_multi >= 25,
-		"%d 行 / %d 档" % [n_lines, n_multi])
-	_ok("★★★② 每一档自己一行(左列「N 件」)", bad_tier.is_empty(), str(bad_tier.slice(0, 6)))
-	_ok("★★★② 每档的子机制拆成一条一行(行数 == 「 · 」段数)", bad_split.is_empty(), str(bad_split.slice(0, 6)))
-	_ok("★★② 各档自上而下排, 不交叠", bad_order.is_empty(), str(bad_order.slice(0, 6)))
-	_ok("★★③ 拆出的行里不剩「 · → 同上」与半角标点", bad_punct.is_empty(), str(bad_punct.slice(0, 6)))
-	_ok("★分母: 以【专名】开头的行 ≥ 40", n_key >= 40, "%d 行" % n_key)
+	_ok("★分母: 量到的逐档句 ≥ 50", n_lines >= 50, "%d 句" % n_lines)
+	_ok("★★★② 机制句逐条出现 + 每档一行「(N) 一句」", bad_tier.is_empty(), str(bad_tier.slice(0, 6)))
+	_ok("★★② 机制句在前, 各档自上而下排, 不交叠", bad_order.is_empty(), str(bad_order.slice(0, 6)))
+	_ok("★★③ 每档那一句占位符全展开、带数字、不写「档」「越」「 · 」", bad_punct.is_empty(), str(bad_punct.slice(0, 6)))
+	_ok("★分母: 以【专名】开头的机制句 ≥ 25", n_key >= 25, "%d 条" % n_key)
 	_ok("★★③ 【专名】走高亮色", bad_key.is_empty(), str(bad_key.slice(0, 6)))
 	_ok("★分母: 成员格 ≥ 90", n_tiles >= 90, "%d 格" % n_tiles)
-	_ok("★★★④ 成员是图标格且点了跳到那件装备的图鉴页", bad_member.is_empty(), str(bad_member.slice(0, 6)))
+	_ok("★★★④ 成员是图标格、排在标题下, 点了跳到那件装备的图鉴页", bad_member.is_empty(), str(bad_member.slice(0, 6)))
 
 	## ③ 「同上」展开成上一档同名那一条(纯函数, 不走场景)
 	var view = _c._codex_detail._syn_view
