@@ -123,10 +123,19 @@ func _fit_to_viewport() -> void:
 	##   商业手游的标题栏一律贴顶, 只有下面的内容居中。16:9 / 更宽的屏上框的竖直偏移是 0 ⇒ 逐字节不变。
 	if p is UIFrame:
 		bar.position.y = -(p as Control).global_position.y
+	## ★11-27 横幅样式: 返回键竖直方向钉在横幅里居中。匹配屏 `_center()` 会把它挪到 y=18 去对设计框(横向那份对位保留) ——
+	##   光秃箭头时看不出, 换成带底板的按钮就压到横幅底沿金边上。匹配屏的代码属积分赛路径(verify_gauntlet_online_queue 钉着), 不在那边改。
+	if _banner and back_btn != null and is_instance_valid(back_btn) and back_btn.get_parent() == bar:
+		back_btn.position.y = (BAR_H - TOUCH_MIN) / 2.0
 	for i in range(mini(action_btns.size(), _right_off.size())):
 		if float(_right_off[i]) <= 0.0 or not is_instance_valid(action_btns[i]):
 			continue
 		(action_btns[i] as Control).position.x = w - float(_right_off[i])
+
+
+func _pin_back_y() -> void:
+	if _banner and back_btn != null and is_instance_valid(back_btn) and absf(back_btn.position.y - (BAR_H - TOUCH_MIN) / 2.0) > 0.5:
+		back_btn.set_deferred("position", Vector2(back_btn.position.x, (BAR_H - TOUCH_MIN) / 2.0))
 
 
 func _fit_later() -> void:
@@ -162,7 +171,8 @@ func _init(host: Node, opts: Dictionary) -> void:
 	psb.border_width_bottom = 2
 	psb.border_color = Color(_pal["edge"].r, _pal["edge"].g, _pal["edge"].b, 0.35)
 	plate.add_theme_stylebox_override("panel", psb)
-	_banner = str(opts.get("style", "")) == "banner" and ResourceLoader.exists(BANNER_TEX)
+	## 11-27 用户「可以铺到其他页面」: 默认就是横幅(全项目一套); 传 style = "flat" 才回旧扁平样式
+	_banner = str(opts.get("style", "banner")) == "banner" and ResourceLoader.exists(BANNER_TEX)
 	if _banner:
 		var bsb := StyleBoxTexture.new()
 		bsb.texture = load(BANNER_TEX)
@@ -186,6 +196,8 @@ func _init(host: Node, opts: Dictionary) -> void:
 	BackKey.tag(back_btn)
 	back_btn.position = Vector2(sl, (BAR_H - TOUCH_MIN) / 2.0)
 	bar.add_child(back_btn)
+	if _banner:
+		back_btn.item_rect_changed.connect(_pin_back_y)   # 页面事后挪它(匹配屏 _center)也拉回横幅里居中, 见 _fit_to_viewport
 
 	## ── 紧跟当前页名 ★参考里六款全是这个顺序（返回→页名），不是页名居中 ──
 	var title := str(opts.get("title", ""))
@@ -198,7 +210,7 @@ func _init(host: Node, opts: Dictionary) -> void:
 		title_label.position = Vector2(sl + back_btn.size.x + GAP, 0.0)
 		title_label.size = Vector2(520.0, BAR_H)
 		title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		if str(opts.get("style", "")) == "banner":
+		if _banner:
 			title_label.size.y = BAR_H - 8.0   # 横幅底沿金边占 8 像素, 页名在上面那截里居中
 		title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bar.add_child(title_label)

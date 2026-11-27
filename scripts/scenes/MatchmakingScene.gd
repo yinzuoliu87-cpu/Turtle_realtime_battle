@@ -560,7 +560,6 @@ func _build_cancel_btn() -> void:
 	##   146 款触屏游戏里返回一律是**扁平薄片**, 没有一款用厚装饰框。
 	##   ★匹配屏没有页名 —— 它不是枢纽页而是一个过场, 只留返回。
 	_top_bar = TopBar.new(self, {
-		"style": "banner",   # 11-27 横幅顶栏(用户「可以铺到其他页面」)
 		"palette": TopBar.DEEP,
 		"width": W,
 		"back_text": "←",   # ★取消 = 回上一层, 不是关面板 ⇒ 箭头不是 ✕

@@ -90,10 +90,10 @@ const RANKED_BASE := "84d2d853"
 	##   sim_driver.gd / backend.gd / TeamSelectScene.gd 三个文件基线 ⇒ 0130a607, 摘要按本表口径现算(同口径复算旧基线与原表一致);
 	##   变的只有上面这几处, 没有挪走函数 ⇒「周六专用只从闯关日可达」查的集合不变。
 const RANKED := {
-	## ★11-27 横幅顶栏铺开(用户「可以铺到其他页面」): 只换返回键的皮(TopBar style = banner / apply_back_skin), 选人 / 匹配 / 出战一步没变;
-	##   没有新加 / 挪走函数 ⇒ 判据不变松, 摘要按本表口径现算(匹配屏 `_build_cancel_btn`、选龟页 `_build_ui` 两个单元变了)。
+	## ★11-27 横幅顶栏铺开(用户「可以铺到其他页面」): 匹配屏一行没改(顶栏默认就是横幅, 改在 top_bar.gd), 摘要不动;
+	##   选龟页 `_build_ui` 换返回键皮(TopBar.apply_back_skin), 选人 / 存档 / 出战一步没变, 没有新加 / 挪走函数 ⇒ 基线钉到 4fb28908 不让判据变松。
 	"scripts/scenes/MatchmakingScene.gd": {
-		"digest": "2f2b248b0a50346c37962e910b872de2df4737daba38a3e8941b213a11e2a10b",
+		"digest": "87e6a75f0bcfdf2bd4df8159d93a4e8e6421856b2a10e3712d8d68974ffc41d2",
 		"views": {"_ready": "cf345541b161449917dd4a5cf352693982b741e5ea56cb337a4968bb14b603b7"},
 		"sat_only": ["_server_pick", "_on_referee_changed", "_leave_later"],
 		"units": [
@@ -201,7 +201,7 @@ const RANKED := {
 	## ★11-24: 英文版(文字包 Lang.t / 英文缩字号)+ 去绿底(_ensure_menu_bg 不铺平铺)只动显示, 选人 / 存档 / 出战一步没变;
 	##   8c8f7a3a → b80769fb 没有新加 / 挪走函数(units 仍 70 个)⇒ 挪基线判据不变松, 摘要按本表口径现算。
 	"scripts/scenes/TeamSelectScene.gd": {
-		"base": "b80769fb",
+		"base": "4fb28908",   # 11-27 横幅顶栏那次提交(只换返回键皮; 原 b80769fb)
 		"digest": "9a83ae60f875a30f687d182ec6d4c89172d4384968ae674f33f84d72f75c0390",   # 11-27 返回键换木牌皮(见 MatchmakingScene 那条)
 		"views": {},
 		"sat_only": [],
