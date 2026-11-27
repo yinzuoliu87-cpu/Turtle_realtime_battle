@@ -141,7 +141,7 @@ func _ready() -> void:
 	for d in range(EQ.LASER_DIRS):
 		var dir0: Vector2 = _s._equip_sys._laser_dir_of(d)
 		var before: int = fx._live.size()
-		fx.sweep(org0, dir0, rng0, arc0, [])
+		fx.sweep(org0, dir0, rng0, arc0, EQ.LASER_SWEEP_SEC)
 		var lf: Dictionary = _new_live(fx, before, "fan")
 		var ls: Dictionary = _new_live(fx, before, "scorch_fan")
 		if lf.is_empty() or ls.is_empty():
@@ -188,22 +188,21 @@ func _ready() -> void:
 	_ok("②b 地面熔痕 = 同半径同朝向的贴地扇形(16 档都对)", measured > 0 and scorch_same)
 
 	# ══════════════════════════════════════════════════════════════
-	#  ④⑤⑥ 节拍: 刃扫完 120° 在结算等待的 0.25 秒以内; 命中特效按刃扫到那人的时刻出
+	#  ④⑤⑥ 节拍: 画面刀刃 = 结算刀刃(同一个时长、匀速); 挥刀不许快到 0.1 秒(用户 11-27「零点一秒太快了」)
 	# ══════════════════════════════════════════════════════════════
 	print("-- 4/5/6 节拍 --")
-	var wait_sec: float = EQ.LASER_SLASH_FRAMES * EQ.LASER_SLASH_STEP
-	var sweep_sec: float = fx._t_of_prog(1.0)
-	_ok("④ 刃扫完全角用 %.3f 秒(须 0.05~%.2f = 结算那边扇形斩之后等的时长)" % [sweep_sec, wait_sec],
-		sweep_sec >= 0.05 and sweep_sec <= wait_sec, "太快看不出扫 / 太慢则追斩起手时扇形还没扫完")
-	_ok("⑤ 扇形画面寿命 FAN_LIFE %.3f == 结算等待 %.3f" % [fx.FAN_LIFE, wait_sec], absf(fx.FAN_LIFE - wait_sec) < 0.001)
-	var mono := true
-	var prev_t := -1.0
+	var ss: float = EQ.LASER_SWEEP_SEC
+	var lin_err := 0.0
 	for k in range(11):
-		var tk: float = fx._t_of_prog(float(k) / 10.0)
-		if tk < prev_t - 1e-6:
-			mono = false
-		prev_t = tk
-	_ok("⑥ 刃的推进单调(扫到 -60° 的人先亮, +60° 的人后亮)", mono and fx._t_of_prog(0.0) <= 0.001)
+		var tk: float = ss * float(k) / 10.0
+		lin_err = maxf(lin_err, absf(fx.fan_prog(tk, ss) - float(k) / 10.0))
+	_ok("④ 画面领先刃匀速: 扫的那 %.2f 秒里位置与时间成正比(最大偏差 %.4f, 须 ≤ 0.001) —— 与结算同一个角速度" % [ss, lin_err],
+		lin_err <= 0.001, "画面先快后慢而结算匀速 ⇒ 刀刃画到了人还没掉血 / 掉了血刀还没到")
+	_ok("⑤ 挥刀时长 LASER_SWEEP_SEC %.2f 秒(须 0.2~0.6: 用户 11-27「零点一秒太快了」)" % ss, ss >= 0.2 and ss <= 0.6)
+	_ok("⑥ 落刃画面 举刃 %.2f + 劈下 %.2f == 结算等的 LASER_SWING_SEC %.2f" % [fx.SWING_RAISE, fx.SWING_SEC, EQ.LASER_SWING_SEC],
+		absf(fx.SWING_RAISE + fx.SWING_SEC - EQ.LASER_SWING_SEC) < 0.0005)
+	var q_sw: float = EQ.LASER_SWING_SEC / _s.SIM_DT
+	_ok("⑥ LASER_SWING_SEC 是 SIM_DT 的整数倍(%.3f 步)" % q_sw, absf(q_sw - round(q_sw)) < 0.01)
 
 	# ══════════════════════════════════════════════════════════════
 	#  ⑧ 直线追斩光带: 画多宽就打多宽, 画多远至少推多远, 朝向 == 打的方向
@@ -234,20 +233,17 @@ func _ready() -> void:
 
 	# ══════════════════════════════════════════════════════════════
 	#  ⑧b 落刃: 波是被劈出来的(用户 11-27「竖劈的时候没有东西劈下来…是有东西劈出这波来的」)
-	#      只命中 1 人 ⇒ 扇形斩那边就举刃; 刃尖落地那一刻 == 推波那一刻; 刃尖贴地不钻地; 劈的竖面 == 结算方向; 从上往下劈
+	#      结算扫完只命中 1 人 ⇒ 调 swing 举刃; 刃尖落地那一刻 == 推波那一刻; 刃尖贴地不钻地; 劈的竖面 == 结算方向; 从上往下劈
 	# ══════════════════════════════════════════════════════════════
 	print("-- 8b 落刃 --")
 	var t_sw: float = _s._t
 	var before_s: int = fx._live.size()
-	fx.sweep(org0, Vector2.RIGHT, rng0, arc0, [{"pos": org0 + Vector2(200.0, 30.0), "height": 0.0}])
+	fx.swing(org0, Vector2.RIGHT)
 	var lsw: Dictionary = _new_live(fx, before_s, "swing")
-	_ok("★分母: 只命中 1 人 ⇒ 扇形斩时就举起了落刃", not lsw.is_empty())
-	var before_n: int = fx._live.size()
-	fx.sweep(org0, Vector2.RIGHT, rng0, arc0, [{"pos": org0 + Vector2(200.0, 30.0)}, {"pos": org0 + Vector2(200.0, -30.0)}])
-	_ok("⑧b 命中 2 人(不追加直线斩) ⇒ 不举刃", _new_live(fx, before_n, "swing").is_empty())
+	_ok("★分母: swing 挂上了落刃", not lsw.is_empty())
 	if not lsw.is_empty():
-		_ok("⑧b 举刃时刻 = 扇形斩后 %.3f 秒(须 = FAN_LIFE - SWING_SEC = %.3f)" % [float(lsw["t0"]) - t_sw, fx.FAN_LIFE - fx.SWING_SEC],
-			absf(float(lsw["t0"]) - t_sw - (fx.FAN_LIFE - fx.SWING_SEC)) < 0.001)
+		_ok("⑧b 开劈时刻 = 举刃后 %.3f 秒(须 = SWING_RAISE %.3f)" % [float(lsw["t0"]) - t_sw, fx.SWING_RAISE],
+			absf(float(lsw["t0"]) - t_sw - fx.SWING_RAISE) < 0.001)
 		var cdir: Vector2 = _s._equip_sys._laser_dir_of(1)   # 与举刃时的预瞄方向(朝靶子)不同 ⇒ 量的是摆正之后
 		var bh2: Dictionary = fx.chop_begin(org0, cdir, 300.0, EQ.LASER_CHOP_SPEED, EQ.LASER_CHOP_HALF_W)
 		_ok("⑧b 推波时用上了这把刃", bool(lsw["used"]))
@@ -406,15 +402,22 @@ func _ready() -> void:
 	print("     [探针] 触发 t=%.3f  首刀落地 t=%.3f  延迟 %.3f 游戏秒  首刀伤害 %d" % [t_fire, t_hit, lag, d1])
 	_ok("⑩ 真入口打出 %d 点伤害(须 ≥ 150 = 只有 010 的量级)" % d1, d1 >= 150,
 		"0 = 接线断了(_tick_laser 没到 _eq_laser_sweep, 或 _eq_laser_sweep 没调 laser_fan_strike)")
-	_ok("⑩b 触发→掉血 %.3f 游戏秒(须 ≤ 0.05 —— 文案里 010 **没有预警**, 触发就斩)" % lag,
-		lag >= 0.0 and lag <= 0.05,
-		"加了预警/蓄力当场红。上一版我按 009 的套路给它加了 0.30 秒预警扇形, 被用户否掉")
+	## ⑩b 触发→掉血 == 刀刃从 -半角 匀速扫到这个敌人所在角度的时间(用户 11-27「刀要扫到谁谁才掉血」):
+	##     一次性整扇结算(旧版) ⇒ 0.000, 当场红; 加预警 / 蓄力 ⇒ 比这个时间长, 也红(文案里 010 没有预警, 用户 09-10)。
+	var raw_f: Vector2 = ((foe["pos"] as Vector2) - (carrier["pos"] as Vector2)).normalized()
+	var dir_f: Vector2 = _s._equip_sys._laser_dir_of(_s._equip_sys._ground_dir_frame(raw_f, EQ.LASER_DIRS))
+	var a_f: float = dir_f.angle_to((foe["pos"] as Vector2) - (carrier["pos"] as Vector2))
+	var half_r: float = deg_to_rad(EQ.LASER_HALF_DEG)
+	var want_lag: float = (a_f + half_r) / (2.0 * half_r) * EQ.LASER_SWEEP_SEC
+	_ok("⑩b 触发→掉血 %.3f 游戏秒 == 刀刃扫到它(%.1f°)的 %.3f 秒(容差: 晚不过一个结算步 %.3f)" % [lag, rad_to_deg(a_f), want_lag, EQ.LASER_CHOP_STEP],
+		lag >= want_lag - 0.002 and lag <= want_lag + EQ.LASER_CHOP_STEP + _s.SIM_DT + 0.002,
+		"0.000 = 又成了出手同帧整扇结算; 长出一截 = 加了预警 / 蓄力")
 	## ⑩c 追加竖劈也必须走真入口: 场上只有 1 个敌人 ⇒ 文案说「若仅命中 1 名敌人则追加一道竖劈冲击波」,
 	##    而竖劈「各造成一次全额伤害」⇒ 同一个敌人总共该吃到 **两次全额**。
 	##    ★这一段**不再手喂 `_tick_laser`**: atk_interval=3.0 ⇒ 3 游戏秒内没有第二刀, 窗口是干净的。
 	var t_2nd := -1.0
 	var t2_end: int = Time.get_ticks_msec() + 15000
-	while Time.get_ticks_msec() < t2_end and float(_s._t) - t_hit < 1.0:
+	while Time.get_ticks_msec() < t2_end and float(_s._t) - t_hit < 1.5:
 		await get_tree().process_frame
 		if int(foe.get("_st_taken", 0)) - before >= d1 * 2 - 2:   # 暴击已关 ⇒ 第二刀必然与首刀等额
 			t_2nd = float(_s._t)
@@ -425,10 +428,73 @@ func _ready() -> void:
 	_ok("⑩c 只命中 1 人 ⇒ 追加竖劈: 总承伤 %d == 首刀 %d 的**正好两份**(「各造成一次全额伤害」)"
 		% [tot, d1], absf(float(tot) - float(d1) * 2.0) <= 2.0,
 		"竖劈没接上真入口(=1 份), 或者它打的不是全额(比值 %.3f)" % (float(tot) / maxf(1.0, float(d1))))
-	_ok("⑩c 竖劈落在首刀之后 %.3f 游戏秒(须在 0.20~0.80 —— 斩击 5 帧 %.2f 秒演完才追)"
-		% [t_2nd - t_hit, EQ.LASER_SLASH_FRAMES * EQ.LASER_SLASH_STEP],
-		t_2nd >= 0.0 and (t_2nd - t_hit) >= 0.20 and (t_2nd - t_hit) <= 0.80,
+	_ok("⑩c 竖劈落在首刀之后 %.3f 游戏秒(须在 0.30~1.00 —— 扇形扫完 %.2f 秒 + 举刃劈下 %.2f 秒之后才推波)"
+		% [t_2nd - t_hit, EQ.LASER_SWEEP_SEC, EQ.LASER_SWING_SEC],
+		t_2nd >= 0.0 and (t_2nd - t_hit) >= 0.30 and (t_2nd - t_hit) <= 1.00,
 		"与斩击同帧就没有『追加』这回事; 太晚 = 波飞了半天才到")
+
+	# ══════════════════════════════════════════════════════════════
+	#  ⑩d 扇形斩: 刀刃扫到谁谁才掉血 —— 三个敌人站 -45° / 0° / +45°, 按刀刃扫过的先后掉血, 首尾差 == 90° / 角速度
+	# ══════════════════════════════════════════════════════════════
+	print("-- 10d 扇形斩按刀刃扫过的先后掉血 --")
+	## ★先等 ⑩c 那一刀的竖劈波推完(450 码 / 550 码每秒 ≈ 0.82 秒): 它的协程不看 _units 清没清,
+	##   照样往前推、碰到新摆的敌人就扣血(初版 0° 那个敌人在 0.100 秒掉血 = 被上一段的波打的, 不是这一刀)。
+	var t_q: float = float(_s._t)
+	var q_end: int = Time.get_ticks_msec() + 10000
+	while Time.get_ticks_msec() < q_end and float(_s._t) - t_q < 1.2:
+		await get_tree().process_frame
+	_s._units.clear()
+	var cr3: Dictionary = _s._spawn._make_unit("basic", "left", c2 + Vector2(-200.0, 0.0))
+	cr3["no_basic"] = true
+	cr3["no_move"] = true
+	cr3["move_spd"] = 0.0
+	cr3["active_skills"] = []
+	cr3["equips"] = []
+	cr3["crit"] = 0.0
+	cr3["maxHp"] = 1.0e8
+	cr3["hp"] = 1.0e8
+	_s._units.append(cr3)
+	var angs: Array = [-45.0, 0.0, 45.0]
+	var foes3: Array = []
+	for ad in angs:
+		var ar: float = deg_to_rad(float(ad))
+		var f3: Dictionary = _s._spawn._make_unit("basic", "right", (cr3["pos"] as Vector2) + Vector2(cos(ar), sin(ar)) * 200.0)
+		f3["maxHp"] = 1.0e8
+		f3["hp"] = 1.0e8
+		f3["_st_taken"] = 0
+		f3["no_move"] = true
+		f3["move_spd"] = 0.0
+		f3["no_basic"] = true
+		f3["active_skills"] = []
+		_s._units.append(f3)
+		foes3.append(f3)
+	var t3: Array = [-1.0, -1.0, -1.0]
+	var t_go: float = float(_s._t)
+	_s._equip_sys._eq_laser_sweep(cr3, foes3[1], 2)
+	var t4_end: int = Time.get_ticks_msec() + 15000
+	while Time.get_ticks_msec() < t4_end:
+		var done3 := 0
+		for i in range(foes3.size()):
+			if t3[i] < 0.0 and int((foes3[i] as Dictionary).get("_st_taken", 0)) > 0:
+				t3[i] = float(_s._t) - t_go
+			if t3[i] >= 0.0:
+				done3 += 1
+		if done3 == foes3.size() or float(_s._t) - t_go > EQ.LASER_SWEEP_SEC + 0.3:
+			break
+		await get_tree().process_frame
+	for f3p in foes3:
+		print("     [探针] 敌人 pos %s 相对携带者角 %.2f°" % [str(f3p["pos"]), rad_to_deg(Vector2.RIGHT.angle_to((f3p["pos"] as Vector2) - (cr3["pos"] as Vector2)))])
+	print("     [探针] -45° / 0° / +45° 掉血时刻(出刀后): %.3f / %.3f / %.3f 秒" % [t3[0], t3[1], t3[2]])
+	var all3: bool = t3[0] >= 0.0 and t3[1] >= 0.0 and t3[2] >= 0.0
+	_ok("⑩d 三个敌人都被扫到", all3, str(t3))
+	if all3:
+		_ok("⑩d 按刀刃扫过的先后掉血(%.3f < %.3f < %.3f)" % [t3[0], t3[1], t3[2]],
+			float(t3[0]) < float(t3[1]) and float(t3[1]) < float(t3[2]), "同时掉血 = 又成了出手同帧整扇结算")
+		var want3: float = 90.0 / EQ.LASER_ARC_DEG * EQ.LASER_SWEEP_SEC
+		var got3: float = float(t3[2]) - float(t3[0])
+		_ok("⑩d 首尾差 %.3f 秒 vs 90° / (%.0f° / %.2f 秒) = %.3f 秒(误差须 ≤ 一个结算步 %.3f)"
+			% [got3, EQ.LASER_ARC_DEG, EQ.LASER_SWEEP_SEC, want3, EQ.LASER_CHOP_STEP],
+			absf(got3 - want3) <= EQ.LASER_CHOP_STEP + 0.002)
 
 	# ══════════════════════════════════════════════════════════════
 	#  ⑪ 竖劈冲击波：**沿直线推进**, 沿途敌人按距离先后掉血

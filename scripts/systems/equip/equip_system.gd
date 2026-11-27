@@ -1754,14 +1754,19 @@ const LASER_MELEE_BONUS := 250.0   # 激光长刃 010: 近战携带者额外 +25
 ##   扇形网格半径 = 判定半径、张角 = LASER_ARC_DEG、光带宽 = 2 × LASER_CHOP_HALF_W —— 全读这里的常量, 画到哪就打到哪。
 ## 方向仍吸附到 16 档(结算用吸附后的轴, 画面也用同一根轴)。
 const LASER_DIRS := 16
-## 扇形斩之后等多久再起直线追斩(5 × 0.05 = 0.25 游戏秒; 画面里扇形斩也正好演 0.25 秒)
-const LASER_SLASH_FRAMES := 5
+## ★2026-11-27 扇形斩改成**刀刃真的扫过去、扫到谁谁才掉血**(用户 11-27「那肯定是刀要扫到谁谁才掉血，然后这个刀挥的…零点一秒太快了」):
+##   原来出手同帧整扇结算、画面 0.1 秒扫完。现在刀刃从 -60° 匀速扫到 +60° 用 LASER_SWEEP_SEC,
+##   每 LASER_CHOP_STEP 结算一次「这一步刀刃扫过的那一片」(与竖劈波前每步结算同一个做法)。
+const LASER_SWEEP_SEC := 0.30
+## 每步那一片往回多罩一点(度): 迎着刀刃走的敌人一步之内挪不过这么多, 不会从两步之间穿过去; 每人只挨一次
+const LASER_SWEEP_BACK_DEG := 3.0
+## 扇形扫完、只命中 1 人 ⇒ 携带者举刃(0.07 秒)从头顶劈下(0.13 秒), 刃尖落地那一刻起推竖劈波(画面 laser_blade_vfx 同这两个数)
+const LASER_SWING_SEC := 0.20
 ## ★★竖劈判定半宽(码) —— **同一个常量**同时喂 `laser_chop_slab` 与贴图缩放。
 ##   旧版这里是写死的 `80.0` 传给 `_on_line`(判定 160 码宽), 而贴图 3.0 米 = 125 码,
 ##   画 125 打 160、差 22%: 通病「画出来的和打到的不是一回事」。
 const LASER_CHOP_HALF_W := 80.0
 const LASER_CHOP_SPEED := 550.0    # 波前推进速度(码/秒) —— 与旧版同(用户认可那个手感)
-const LASER_SLASH_STEP := 0.05     # 斩击 5 帧 × 0.05 = 0.25 游戏秒
 ## 波前每步的游戏时长。★★**必须是 SIM_DT(1/60) 的整数倍**: `_wait_sim` 只能停在 sim 步边界上,
 ##   写 0.035 会被向上取到 3 个 sim 步 = 0.05 秒 ⇒ 波前实际只跑 19.25/0.05 = 385 码/秒,
 ##   而常量写着 550 —— 又一次「画的推进和打的推进不是一回事」。取 2 个 sim 步 ⇒ 实测速度就是 550。
@@ -1808,17 +1813,37 @@ func laser_hit_dmg(u: Dictionary, si: int, o: Dictionary) -> int:
 	return battle._resolve_dmg(u, u["atk"] * [0.55, 1.0, 3.0][si] + [15.0, 32.0, 100.0][si], o, false)
 
 
-## 扇形斩的**同步结算**: 判定 → 伤害 → 按总伤回血。返回被打到的敌人。
-## ★门禁直接调它验数值; 演出在斩击第 0 帧调它 ⇒ 两边永远是同一份账。
-func laser_fan_strike(u: Dictionary, si: int, org: Vector2, dir: Vector2, rng: float) -> Array:
-	var hits: Array = laser_fan_hits(org, dir, rng, laser_alive_enemies(u))
-	var tot: int = 0
-	for o in hits:
+## 刀刃这一步扫过的那一片: 半径内、相对 dir 的角落在 [a0, a1](弧度, 负 = 刀刃先扫到的那一侧)的敌人。
+func laser_sweep_band(org: Vector2, dir: Vector2, rng: float, a0: float, a1: float, enemies: Array) -> Array:
+	var out: Array = []
+	for o in enemies:
+		var rel: Vector2 = o["pos"] - org
+		var d: float = DetMath.vlen(rel)
+		if d > rng: continue
+		var a: float = DetMath.angle_to(dir, rel) if d > 0.01 else 0.0
+		if a < a0 or a > a1: continue
+		out.append(o)
+	return out
+
+
+## 扇形斩一步的**同步结算**: [a0, a1] 这一片里还没挨过的 → 伤害 + 按这一下的伤害回血。返回这一步新打到的(已追加进 hit)。
+## ★演出每步调它; 门禁也直接调它(laser_fan_strike = 整扇一步扫完) ⇒ 两边永远是同一份账。
+func laser_sweep_step(u: Dictionary, si: int, org: Vector2, dir: Vector2, rng: float, a0: float, a1: float, hit: Array) -> Array:
+	var fresh: Array = []
+	for o in laser_sweep_band(org, dir, rng, a0, a1, laser_alive_enemies(u)):
+		if battle._arr_has_unit(hit, o): continue
+		hit.append(o)
+		fresh.append(o)
 		var dd: int = laser_hit_dmg(u, si, o)
 		battle._damage._apply_damage_from(u, o, dd, Color("#9bf0ff"), 0.0, false, true)
-		tot += dd
-	if tot > 0: battle._damage._heal(u, tot * [0.25, 0.4, 0.6][si])   # 3 星回复 100% → 60%(10-19); 1/2 星 35/80% → 25/40%(用户 10-22)
-	return hits
+		battle._damage._heal(u, dd * [0.25, 0.4, 0.6][si])   # 按总伤回血(逐下累加): 3 星 60%(10-19); 1/2 星 25/40%(用户 10-22)
+	return fresh
+
+
+## 整扇一步扫完(门禁量数值用: 同一个 laser_sweep_step, 角度区间一次给满)。
+func laser_fan_strike(u: Dictionary, si: int, org: Vector2, dir: Vector2, rng: float) -> Array:
+	var half: float = deg_to_rad(LASER_HALF_DEG)
+	return laser_sweep_step(u, si, org, dir, rng, -half, half, [])
 
 
 ## 竖劈走廊里, 沿推进方向落在 [d0, d1) 这一格的敌人 —— 即**波前这一步扫过的那一片**。
@@ -1890,19 +1915,33 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:
 	var rng: float = laser_fan_range(u, si)
 	battle._anticipate(u)   # 预备姿势(不是预警 —— 只是携带者自己的出手动作)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	## ① 伤害与斩击**同一帧**落地。
-	var hits: Array = laser_fan_strike(u, si, org, dir, rng)
-	## ② 画面(laser_blade_vfx): 领先刃约 0.1 秒扫完 120° + 余光 + 速度纹 + 熔痕; 命中特效按刃扫到那人的时刻出。
-	laser_fx().sweep(org, dir, rng, deg_to_rad(LASER_ARC_DEG), hits)
-	for fi in range(LASER_SLASH_FRAMES):
-		await battle._wait_sim(LASER_SLASH_STEP, u)
+	## ① 刀刃触发当帧就起扫(不是预警: 画面刀刃与下面的结算同一个起点、同一个角速度)
+	laser_fx().sweep(org, dir, rng, deg_to_rad(LASER_ARC_DEG), LASER_SWEEP_SEC)
+	## ② 刀刃从 -半角 匀速扫到 +半角; 每步结算这一步扫过的那一片, 扫到谁谁这一刻掉血(爆点也在这一刻出)
+	var half: float = deg_to_rad(LASER_HALF_DEG)
+	var back: float = deg_to_rad(LASER_SWEEP_BACK_DEG)
+	var hits: Array = []
+	var el := 0.0
+	var a_prev: float = -half
+	while el < LASER_SWEEP_SEC:
+		await battle._wait_sim(LASER_CHOP_STEP, u)
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
-	## ③ 只命中 1 人 ⇒ 追加竖劈冲击波(文案原话)。
+		if not u.get("alive", false): return       # 携带者倒了, 刀就断了
+		el = minf(LASER_SWEEP_SEC, el + LASER_CHOP_STEP)
+		var a_now: float = -half + 2.0 * half * el / LASER_SWEEP_SEC
+		for o in laser_sweep_step(u, si, org, dir, rng, maxf(-half, a_prev - back), a_now, hits):
+			laser_fx().hit(o, dir, battle._t)
+		a_prev = a_now
+	## ③ 只命中 1 人 ⇒ 追加竖劈冲击波(文案原话): 先举刃从头顶劈下, 刃尖落地那一刻起推波
 	if hits.size() == 1 and u.get("alive", false):
 		var cd: Vector2 = DetMath.norm((hits[0]["pos"] - u["pos"]))
 		if DetMath.vlen(cd) < 0.1: cd = dir
-		var cdf: int = _ground_dir_frame(cd, LASER_DIRS)
-		await _eq_laser_chop(u, si, u["pos"], _laser_dir_of(cdf), laser_chop_reach(u, si))
+		var cdir: Vector2 = _laser_dir_of(_ground_dir_frame(cd, LASER_DIRS))
+		laser_fx().swing(u["pos"], cdir)
+		await battle._wait_sim(LASER_SWING_SEC, u)
+		if not is_instance_valid(battle): return
+		if not u.get("alive", false): return
+		await _eq_laser_chop(u, si, u["pos"], cdir, laser_chop_reach(u, si))
 
 
 func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, reach: float) -> void:
@@ -1919,7 +1958,7 @@ func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, reach: f
 	## ★推进与结算在**同一个 `_wait_sim` 循环**里, 同一条时钟 ⇒ 画面碰到人的那一帧就是掉血那一帧
 	##   (memory `fb-second-clock-drops-events`)。
 	battle._shake(battle.JUICE_SHAKE_BIG)
-	## 画面(laser_blade_vfx): 携带者竖剑光 + 光带波前按 LASER_CHOP_SPEED 推进(着色器按游戏钟算, 与下面每步结算同一个速度)
+	## 画面(laser_blade_vfx): 落刃砸地 + 光带波前按 LASER_CHOP_SPEED 推进(着色器按游戏钟算, 与下面每步结算同一个速度)
 	var fx_h: Dictionary = laser_fx().chop_begin(org, dir, reach, LASER_CHOP_SPEED, LASER_CHOP_HALF_W)
 	var hit: Array = []
 	var travelled := 0.0

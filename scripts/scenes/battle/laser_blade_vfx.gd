@@ -9,12 +9,14 @@ extends "res://scripts/scenes/battle/candy_vfx.gd"
 ##
 ## 分段(方案见 docs/plans/20261127c-激光长刃重做.md):
 ##   ① 出手      携带者脚下红光一闪 + 刃高度一颗白星
-##   ② 扇形斩    laser_fan.gdshader: 领先刃约 0.1 秒扫完 120°, 后面拖月牙余光 + 三道同心速度纹 + 外缘亮线; 扫过之处沿弧迸火花
-##   ③ 命中      刃扫到哪个敌人哪个敌人亮(伤害仍在出手同帧结算, 画面按刃扫到它的时刻出):
+##   ② 扇形斩    laser_fan.gdshader: 领先刃按结算的时长(EquipSystem.LASER_SWEEP_SEC = 0.3 秒)匀速扫完 120°,
+##               后面拖月牙余光 + 三道同心速度纹 + 外缘亮线; 扫过之处沿弧迸火花
+##   ③ 命中      结算那一步刀刃扫到谁, 结算就在那一刻调 hit(用户 11-27「刀要扫到谁谁才掉血」):
 ##               爆点 = 白热核心一闪 + 星芒爆开(白 / 红两层) + 红色光晕炸开 + 四角星 + 冲击环 + 地面光 + 火花往四周崩
 ##   ④ 地面熔痕  laser_scorch.gdshader: 刃扫过的地面留扇形焦痕, 熔裂纹 0.5 秒内由红热冷下去, 焦痕 1.2 秒淡出
-##   ⑤ 落刃      (只命中 1 人 ⇒ 结算会追加直线斩)扇形斩快扫完时, 携带者头顶亮出一把 3.8 米光刃(0.05 秒, 刃尖一闪),
-##               在朝向那一竖面里从上往下劈, 先慢后快 0.13 秒; 刃尖砸到地上那一刻 = 结算开始推波那一刻(同一个游戏时刻)
+##   ⑤ 落刃      (扇形扫完只命中 1 人 ⇒ 结算调 swing)携带者头顶亮出一把 3.8 米光刃(0.07 秒, 刃尖一闪),
+##               在朝向那一竖面里从上往下劈, 先慢后快 0.13 秒(合计 = EquipSystem.LASER_SWING_SEC);
+##               刃尖砸到地上那一刻 = 结算开始推波那一刻(同一个游戏时刻)
 ##               落地: 刃落下那条线贴地一道白热斩光 + 落点地面闪光 + 冲击环 + 两侧崩火花 + 落点一根短光柱
 ##   ⑥ 直线追斩  laser_beam.gdshader 光带的波前从落刃处按 LASER_CHOP_SPEED 推进(= 结算那一份速度),
 ##               身后拖光束余光、地上留一道熔痕; 波碰到谁谁出 ③; 到头后光束从尾巴往前散掉
@@ -31,13 +33,12 @@ const SCORCH_SP := ["prog", "age"]
 const BEAM_SP := ["head", "tail"]
 
 const SLASH_H := 0.30          # 刃离地高度(米): 刃扫过敌人腰部
-const FAN_LIFE := 0.25         # = EquipSystem.LASER_SLASH_FRAMES × LASER_SLASH_STEP(结算那边等的就是这么久)
+const FAN_AFTER := 0.2         # 领先刃扫完之后余光再拖多久
 const PROG_MAX := 1.9          # 领先刃走到 1 = 扫完; 继续走到 1.9 = 余光按落后距离自然衰减掉
-const PROG_POW := 0.72         # 先快后慢: 约 0.10 秒扫完 120°
 const SCORCH_LIFE := 0.9
 const BEAM_TAIL_SEC := 0.25    # 波到头后光束从尾巴往前散掉的时长
 ## ⑤ 落刃: 刃绕携带者身上一点(离地 SWING_PIVOT_H)在竖面里转, 从头顶偏后 SWING_TOP_DEG 劈到刃尖刚好贴地
-const SWING_RAISE := 0.05      # 刃在头顶亮出来(不动)
+const SWING_RAISE := 0.07      # 刃在头顶亮出来(不动)
 const SWING_SEC := 0.13        # 从头顶劈到刃尖落地(先慢后快)
 const SWING_HOLD_PROG := 0.045 # 亮出来那一下刃停在起刃边上一点点(laser_fan 的领先刃得有一点「扫过」才画得出来)
 const SWING_POW := 1.8
@@ -77,13 +78,18 @@ static func gen_strip(len_m: float, w_m: float, y0: float, nu: int) -> ArrayMesh
 	return VfxTex.tag(st.commit(), "gen_strip", [len_m, w_m, y0, nu], SRC)
 
 
-func _prog_at(el: float) -> float:
-	return PROG_MAX * pow(clampf(el / FAN_LIFE, 0.0, 1.0), PROG_POW)
+## 扇形斩出手后 el 秒领先刃的位置: 扫的那 ss 秒里匀速 0 → 1(与结算同一个角速度), 之后 FAN_AFTER 秒走到 PROG_MAX(余光衰减)
+static func fan_prog(el: float, ss: float) -> float:
+	if el <= ss:
+		return maxf(el, 0.0) / ss
+	return 1.0 + (PROG_MAX - 1.0) * minf((el - ss) / FAN_AFTER, 1.0)
 
 
-## 领先刃走到 p(0..1)的那一刻(出手后多少秒)
-func _t_of_prog(p: float) -> float:
-	return FAN_LIFE * pow(clampf(p, 0.0, 1.0) / PROG_MAX, 1.0 / PROG_POW)
+## 结算这边扇形斩扫完以后调: 举刃 → 劈下, 刃尖在 SWING_RAISE + SWING_SEC 之后落地(= EquipSystem.LASER_SWING_SEC)
+func swing(org: Vector2, dir: Vector2) -> void:
+	if battle._world == null:
+		return
+	_swing(org, dir, battle._t + SWING_RAISE)
 
 
 ## 落刃竖面的角度(弧度, 0 = 水平朝前, 正 = 往上): [举起, 落地, 中线, 全角]
@@ -137,7 +143,7 @@ static func _rot(dir: Vector2, a: float) -> Vector2:
 # ════════════════════════════════════════════════════════════════════════════
 #  ①②③④ 扇形斩。org / dir = 结算用的那一份(dir 已吸附到 16 档), rng = 判定半径(码), arc = 全角(弧度), hits = 结算打到的人
 # ════════════════════════════════════════════════════════════════════════════
-func sweep(org: Vector2, dir: Vector2, rng_c: float, arc: float, hits: Array) -> void:
+func sweep(org: Vector2, dir: Vector2, rng_c: float, arc: float, ss: float) -> void:
 	if battle._world == null:
 		return
 	var t0: float = battle._t
@@ -147,13 +153,13 @@ func sweep(org: Vector2, dir: Vector2, rng_c: float, arc: float, hits: Array) ->
 	var fan := Cent3dVfx.node(battle._world, Cent3dVfx.gen_fan(0.0, r_m, arc, 0.0, 56, 12), FAN_SHADER, FAN_SP, {"prog": 0.0, "fade": 1.0}, 9)
 	fan.position = battle._world_pos(org, SLASH_H)
 	fan.rotation.y = yaw
-	_live.append({"k": "fan", "node": fan, "t0": t0})
+	_live.append({"k": "fan", "node": fan, "t0": t0, "ss": ss})
 	## ④ 地面熔痕(贴地, 开深度, 压在龟脚下)
 	var sc := Cent3dVfx.node(battle._world, Cent3dVfx.gen_fan(0.0, r_m, arc, 0.0, 56, 12), SCORCH_SHADER, SCORCH_SP,
-		{"prog": 0.0, "age": 0.0, "life": SCORCH_LIFE, "strip": 0.0, "seed": float(rng.randi_range(0, 999)), "sweep_sec": _t_of_prog(1.0)}, -2)
+		{"prog": 0.0, "age": 0.0, "life": SCORCH_LIFE, "strip": 0.0, "seed": float(rng.randi_range(0, 999)), "sweep_sec": ss}, -2)
 	sc.position = battle._world_pos(org, 0.02)
 	sc.rotation.y = yaw
-	_live.append({"k": "scorch_fan", "node": sc, "t0": t0})
+	_live.append({"k": "scorch_fan", "node": sc, "t0": t0, "ss": ss})
 	## ① 出手: 脚下红光一闪 + 刃根白星
 	var glow: Texture2D = tex(GLOW_TEX)
 	var flare: Texture2D = tex(T + "flare.png")
@@ -172,16 +178,7 @@ func sweep(org: Vector2, dir: Vector2, rng_c: float, arc: float, hits: Array) ->
 			var v2: Vector2 = (out * rng.randf_range(0.9, 1.6) + tang * rng.randf_range(0.6, 1.2))
 			_p(flare, battle._world_pos(org + out * rr, SLASH_H), {"texel": rng.randf_range(0.35, 0.55), "life": rng.randf_range(0.22, 0.34),
 				"vel": Vector3(v2.x, rng.randf_range(0.8, 1.6), v2.y), "grav": 7.0, "s0": 1.0, "s1": 0.4, "a0": 1.0, "a1": 0.0,
-				"tint": L_PINK if i % 3 else L_HOT, "add": true, "prio": 11, "t0": t0 + _t_of_prog(f)})
-	## ③ 命中: 刃扫到哪个敌人哪个敌人亮
-	for o in hits:
-		var rel: Vector2 = o["pos"] - org
-		var a2: float = atan2(dir.x * rel.y - dir.y * rel.x, dir.x * rel.x + dir.y * rel.y)
-		hit(o, dir, t0 + _t_of_prog((a2 + arc * 0.5) / arc))
-	## ⑤ 只命中 1 人 ⇒ 结算会在 FAN_LIFE 之后追加直线斩: 刃在那之前 SWING_SEC 举起来往下劈, 正好在推波那一刻落地
-	if hits.size() == 1:
-		var d1: Vector2 = (hits[0]["pos"] - org)
-		_swing(org, d1.normalized() if d1.length() > 0.1 else dir, t0 + FAN_LIFE - SWING_SEC)
+				"tint": L_PINK if i % 3 else L_HOT, "add": true, "prio": 11, "t0": t0 + f * ss})
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -315,9 +312,10 @@ func tick() -> void:
 		var m := (n as MeshInstance3D).material_override as ShaderMaterial
 		match str(l["k"]):
 			"fan":
-				m.set_shader_parameter("prog", _prog_at(el))
-				m.set_shader_parameter("fade", 1.0 - smoothstep(FAN_LIFE * 0.75, FAN_LIFE, el))
-				if el >= FAN_LIFE + 0.02:
+				var ss: float = float(l["ss"])
+				m.set_shader_parameter("prog", fan_prog(el, ss))
+				m.set_shader_parameter("fade", 1.0 - smoothstep(ss + FAN_AFTER * 0.75, ss + FAN_AFTER, el))
+				if el >= ss + FAN_AFTER + 0.02:
 					_free_node(n)
 					continue
 			"swing":
@@ -339,9 +337,9 @@ func tick() -> void:
 					_free_node(n)
 					continue
 			"scorch_fan":
-				m.set_shader_parameter("prog", minf(1.0, _prog_at(el)))
+				m.set_shader_parameter("prog", minf(1.0, fan_prog(el, float(l["ss"]))))
 				m.set_shader_parameter("age", el)
-				if el >= SCORCH_LIFE + _t_of_prog(1.0):
+				if el >= SCORCH_LIFE + float(l["ss"]):
 					_free_node(n)
 					continue
 			"beam":

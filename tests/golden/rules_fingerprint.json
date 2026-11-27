@@ -1,11 +1,11 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "37c77ec4ca1ee5caa7cf9405743a7b629ece2df0ed272c810694c320f3978329",
+ "fingerprint": "d78505503c296836b29dd259d00b4368f1c9db7d7f9a26739e1ae8933c60c7a3",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
-   "hash": "49661df2bd3c75d9c593b6ab2ff06cee524792b371bcd90b4d5c329810be80dd",
+   "hash": "5ab964e3b07ab6903d089476331c76b89bfb3efd41eb232f4a22e59de60f5ba2",
    "tag": "① 双方顶档盾(冲击波互打) · 剑 / 食物"
   },
   {
@@ -25,27 +25,27 @@
   },
   {
    "def": "99521fedd8b3b2c9",
-   "hash": "f1199a5ead2f439fe98e8d0e408133e0fc05cd74418d22138cda3836f1772cdd",
+   "hash": "71d98addfc15449467c50efe0d1cf52bbc5cc797cb7d6a1a523e8bdf728299e1",
    "tag": "⑤ 双方灵物触手 · 弓箭 vs 剑 · 复制/命运之轮/雷暴"
   },
   {
    "def": "28d5c2b94dc9943c",
-   "hash": "ee37843a3267d6b1208bbbeb5d746758ce0f3a7485155b403cc5d90d8afb3167",
+   "hash": "a645712412281634bbe7101869f5fa2f44ad55d0a5f1e1a8232d4c72e2284d90",
    "tag": "⑥ 炸弹顶档(导弹) + 武士刀小将 vs 盾/剑"
   },
   {
    "def": "1edc1a4ca1200c12",
-   "hash": "0e8f33626aa307b565931cdf635c93a788d940604d508b72dbb9bcea399b380d",
+   "hash": "855a55b776d1d9c8f043481aba140ef3170df652b709d1e1f7aee10a5cc7f979",
    "tag": "⑦ 匕首顶档(刺杀) + 暗影忍者 + 血契 vs 剑顶档/枪"
   },
   {
    "def": "85302955d91ce28e",
-   "hash": "97e0e6257ab6afb45a040920c36c16f96d1c7e86fb32ecc2a257afb92b8a6ded",
+   "hash": "ddc77fa26c35ea841044bd195e5871087dc2165170a20dc267d766efc94c340c",
    "tag": "⑧ 魔法书顶档(飞弹) + 骷髅 + 镜像再放 + 书页两套 vs 匕首/剑"
   },
   {
    "def": "c74f3eed261e1b5e",
-   "hash": "4bc41649aef03f208d1d9b07ce0fd662e7d6385ca3360b21b690371da7d14cb9",
+   "hash": "def1f1f4fe9e29a5e6d027c33040c0f3179298734420e790d381a700e3711fff",
    "tag": "⑨ 面具顶档(偷脸 / 里世界) + 筹码 vs 长矛顶档(百夫长) + 筹码"
   },
   {
