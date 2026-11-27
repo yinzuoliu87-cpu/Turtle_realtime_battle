@@ -71,8 +71,8 @@ static func _crystalball() -> Dictionary:
 	var C := CrystalSystem
 	return _base("水晶球", ["crystalball"], "crystalball", {"img": "pets/crystal-ball.png", "_box": 130.0, "_cy": 100.0}, _pet_src("crystal"), ["远程法师"],
 		SC.stats(U, U, 0, 0, C.ORB_MOVE, 1.0 / C.ORB_RAY_IV, C.ORB_RANGE),
-		{"name": "水晶射线", "icon": "skills/summon-crystal-ray.png",
-			"desc": "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟施加的水晶层数相加。"}, {},
+		{"name": "水晶光线", "icon": "skills/summon-crystal-ray.png",
+			"desc": "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿光线，分两段对直线上的所有敌人共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。"}, {},
 		[])
 
 

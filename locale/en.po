@@ -9474,8 +9474,8 @@ msgstr "Candy Making"
 msgid "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复相当于糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"
 msgstr "When the Candy Turtle casts its ability and the Candy Bomb is still around, the bomb gains max health equal to {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% of the Candy Turtle's max health and heals for {C:CandySystem.BOMB_FEED_HEAL_PCT%}% of the Candy Turtle's max health. If the bomb is gone, a new Candy Bomb is summoned with {C:CandySystem.BOMB_REVIVE_HP_PCT%}% of the Candy Turtle's max health."
 
-msgid "水晶射线"
-msgstr "Crystal Ray"
+msgid "水晶光线"
+msgstr "Crystal Beam"
 
 msgid "%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
 msgstr "The %s's attacks deal ({C:BasicConsts.DEFAULT_BASIC_COEF%%}%% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage."
@@ -9573,8 +9573,8 @@ msgstr "Sweet Fuse"
 msgid "糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值，阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，由所有敌人平摊。"
 msgstr "The Candy Bomb loses {C:CandySystem.BOMB_DECAY_PCT%}% of its max health per second. When it dies it explodes, dealing magic damage equal to {C:CandySystem.BOMB_DEATH_AOE%}% of its max health, split evenly among all enemies."
 
-msgid "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟施加的水晶层数相加。"
-msgstr "Every {C:CrystalSystem.ORB_RAY_IV} seconds, the Crystal Ball fires a piercing ray at the nearest enemy, dealing a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack (Unknown) = Unknown) magic damage and adding {C:CrystalSystem.ORB_RAY_STACKS} Crystal stacks to enemies hit, which add up with the Crystal Turtle's stacks."
+msgid "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿光线，分两段对直线上的所有敌人共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。"
+msgstr "Every {C:CrystalSystem.ORB_RAY_IV} seconds, the Crystal Ball fires a piercing beam at the nearest enemy that hits every enemy in the line in two parts for a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack (Unknown) = Unknown) magic damage, and applies {C:CrystalSystem.ORB_RAY_STACKS} Crystal Mark stacks."
 
 msgid "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"
 msgstr "Every {C:PirateSystem.SHIP_SHOT_CD} seconds, the Pirate Ship fires at the nearest enemy, dealing ({C:PirateSystem.SHIP_SHOT_COEF%}% × Attack (Unknown) = Unknown) physical damage."

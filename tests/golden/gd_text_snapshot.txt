@@ -938,9 +938,9 @@ scripts/gamedata/summon_codex_misc.gd|lit|机甲
 scripts/gamedata/summon_codex_misc.gd|lit|机甲重拳
 scripts/gamedata/summon_codex_misc.gd|lit|歼灭炮
 scripts/gamedata/summon_codex_misc.gd|lit|每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。
-scripts/gamedata/summon_codex_misc.gd|lit|水晶射线
+scripts/gamedata/summon_codex_misc.gd|lit|水晶光线
 scripts/gamedata/summon_codex_misc.gd|lit|水晶球
-scripts/gamedata/summon_codex_misc.gd|lit|水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟施加的水晶层数相加。
+scripts/gamedata/summon_codex_misc.gd|lit|水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿光线，分两段对直线上的所有敌人共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层结晶印记。
 scripts/gamedata/summon_codex_misc.gd|lit|海盗船
 scripts/gamedata/summon_codex_misc.gd|lit|海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。
 scripts/gamedata/summon_codex_misc.gd|lit|海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。
