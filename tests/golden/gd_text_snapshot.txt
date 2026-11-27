@@ -931,7 +931,6 @@ scripts/gamedata/summon_codex_misc.gd|lit|我方单位阵亡时化为亡魂，�
 scripts/gamedata/summon_codex_misc.gd|lit|战斗开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。
 scripts/gamedata/summon_codex_misc.gd|lit|投喂
 scripts/gamedata/summon_codex_misc.gd|lit|投石
-scripts/gamedata/summon_codex_misc.gd|lit|携带技能
 scripts/gamedata/summon_codex_misc.gd|lit|旁观者
 scripts/gamedata/summon_codex_misc.gd|lit|未知
 scripts/gamedata/summon_codex_misc.gd|lit|机甲
@@ -953,10 +952,9 @@ scripts/gamedata/summon_codex_misc.gd|lit|糖果炸弹
 scripts/gamedata/summon_codex_misc.gd|lit|糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值，阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，由所有敌人平摊。
 scripts/gamedata/summon_codex_misc.gd|lit|糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复相当于糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。
 scripts/gamedata/summon_codex_misc.gd|lit|舷炮
-scripts/gamedata/summon_codex_misc.gd|lit|被动
 scripts/gamedata/summon_codex_misc.gd|lit|训龟大师
-scripts/gamedata/summon_codex_misc.gd|lit|训龟大师朝最近的敌人扔石头，每块石头造成 1 点伤害。
-scripts/gamedata/summon_codex_misc.gd|lit|训龟大师站在场边，不可被选取，免疫一切伤害与效果。
+scripts/gamedata/summon_codex_misc.gd|lit|训龟大师朝最近的敌人投掷石头，每块石头造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
+scripts/gamedata/summon_codex_misc.gd|lit|训龟大师站在场边，不可被选取，免疫一切伤害与效果。训龟大师可以携带一个独特的技能。
 scripts/gamedata/summon_codex_misc.gd|lit|轮回
 scripts/gamedata/summon_codex_misc.gd|lit|近战坦克
 scripts/gamedata/summon_codex_misc.gd|lit|近战斗士

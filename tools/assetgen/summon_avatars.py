@@ -18,7 +18,7 @@ S = "assets/sprites/"
 SRC = {
 	"centurion": (S + "vfx/eq-centurion-idle.png", 192, (74, 64, 126, 116)),   # 头盔红缨 + 面甲 + 盾牌上沿, 52×52
 	"egg": (S + "pets/egg.png", 79, "full"),
-	"trainer": (S + "trainer/trainer-villager.png", None, "upper"),
+	## 训龟大师头像 = 像素问号, 由 tools/assetgen/trainer_unknown.py 出(用户 11-27「用个像素风的问号」)
 	"candybomb": (S + "pets/candy-bomb.png", None, "full"),
 	"crystalball": (S + "pets/crystal-ball.png", None, "full"),
 	"ship": (S + "skills/pirate-ship.png", None, "full"),

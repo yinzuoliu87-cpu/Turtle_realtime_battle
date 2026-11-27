@@ -9459,8 +9459,6 @@ msgstr "Decider"
 msgid "旁观者"
 msgstr "Onlooker"
 
-msgid "训龟大师站在场边，不可被选取，免疫一切伤害与效果。"
-msgstr "The Turtle Trainer stands at the edge of the field, can't be targeted, and is immune to all damage and effects."
 
 msgid "装饰"
 msgstr "Decoration"
@@ -9468,11 +9466,7 @@ msgstr "Decoration"
 msgid "投石"
 msgstr "Stone Toss"
 
-msgid "训龟大师朝最近的敌人扔石头，每块石头造成 1 点伤害。"
-msgstr "The Turtle Trainer throws stones at the nearest enemy, each dealing 1 damage."
 
-msgid "携带技能"
-msgstr "Skill"
 
 msgid "糖果造物"
 msgstr "Candy Making"
@@ -9608,3 +9602,10 @@ msgstr "In the Final Battle, or in the Bottom Lane when one side has already won
 
 msgid "全场"
 msgstr "Global"
+
+msgid "训龟大师朝最近的敌人投掷石头，每块石头造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+msgstr "The Turtle Trainer throws stones at the nearest enemy, each dealing ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage."
+
+msgid "训龟大师站在场边，不可被选取，免疫一切伤害与效果。训龟大师可以携带一个独特的技能。"
+msgstr "The Turtle Trainer stands at the edge of the field, can't be targeted, and is immune to all damage and effects. The Turtle Trainer can carry one unique skill."
+

@@ -5,7 +5,6 @@ extends RefCounted
 ##   召唤物多少血 / 攻击写在主人自己的技能文案里, 角色页不再重复(用户 11-27「那么这里就不需要再写糖果造物了吧」)。
 
 const SC := preload("res://scripts/gamedata/summon_codex.gd")
-const _TRAINER_CFG := preload("res://scripts/scenes/TrainerConfigScene.gd")
 
 static func cols(id: String) -> Array:
 	match id:
@@ -14,11 +13,6 @@ static func cols(id: String) -> Array:
 			for t in (SC._P2T.TYPES.get("灵物", {}) as Dictionary).get("tiers", []):
 				o2.append("(%d)" % int(t))
 			return o2
-		"trainer":
-			var o3: Array = []
-			for sk in _TRAINER_CFG.SKILLS:
-				o3.append(str(sk["name"]))
-			return o3
 	return []
 
 
@@ -30,7 +24,7 @@ static func info(id: String, ci: int) -> Dictionary:
 		"mech": return _mech()
 		"wraith": return _wraith(ci)
 		"egg": return _egg()
-		"trainer": return _trainer(ci)
+		"trainer": return _trainer()
 	return {}
 
 
@@ -144,25 +138,15 @@ static func _egg() -> Dictionary:
 			"desc": "在终极战场，或一方已赢下上路战场时的下路战场，围栏消失后龟蛋受到 {C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} 倍伤害，并每秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"}])
 
 
-# ─── 战场单位 · 训龟大师(列 = 携带的技能, N 选 1) ───
-## 用户 10-31「不应该受到任何影响，就是个装饰的地位，丢点技能」; 11-27「训龟大师收」。技能文案 / 图标与训龟大师配置页同一份(TrainerConfigScene.SKILLS)。
-static func _trainer(ci: int) -> Dictionary:
-	var sks: Array = _TRAINER_CFG.SKILLS
-	var sk: Dictionary = sks[clampi(ci, 0, sks.size() - 1)]
-	var icon: String = str(sk.get("icon", "")).trim_prefix("res://assets/sprites/")
-	var ps: Array = [{"name": "旁观者", "icon": "passive/summon-trainer-aloof-icon.png",
-		"desc": "训龟大师站在场边，不可被选取，免疫一切伤害与效果。"}]
-	var skill: Dictionary = {}
-	if str(sk.get("kind", "")) == "被动":
-		ps.append({"name": str(sk["name"]), "icon": icon, "desc": str(sk["desc"])})
-	else:
-		var cd: float = float((RealtimeBattle3DScene.TRAINER_SKILLS.get(str(sk["id"]), {}) as Dictionary).get("cd", 0.0))
-		skill = {"name": str(sk["name"]), "icon": icon, "desc": str(sk["desc"]), "energy": 0, "cd": cd}
-	var d := _base("训龟大师", [], "trainer", {"img": "trainer/trainer-villager.png", "_box": 150.0, "_cy": 100.0},
+# ─── 战场单位 · 训龟大师 ───
+## 用户 11-27: 形象用像素风问号(训龟大师的形象玩家自己选, tools/assetgen/trainer_unknown.py); 不要「携带技能」选择牌和各技能
+##   (训龟大师有专门的配置页展示全部技能); 只写【旁观者】(末尾一句可以携带一个独特的技能) + 【投石】。
+static func _trainer() -> Dictionary:
+	return _base("训龟大师", [], "trainer", {"img": "trainer/trainer-unknown.png", "_box": 150.0, "_cy": 100.0},
 		{}, [],
 		SC.stats("—", RealtimeBattle3DScene.TRAINER_ATK, "—", "—", 0, 1.0 / RealtimeBattle3DScene.TRAINER_ATK_INTERVAL, RealtimeBattle3DScene.TRAINER_RANGE),
-		{"name": "投石", "icon": "skills/summon-trainer-stone.png", "desc": "训龟大师朝最近的敌人扔石头，每块石头造成 1 点伤害。"},
-		skill, ps)
-	d["col_title"] = Lang.t("携带技能")
-	d["cols"] = cols("trainer")
-	return d
+		{"name": "投石", "icon": "skills/summon-trainer-stone.png",
+			"desc": "训龟大师朝最近的敌人投掷石头，每块石头造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"},
+		{},
+		[{"name": "旁观者", "icon": "passive/summon-trainer-aloof-icon.png",
+			"desc": "训龟大师站在场边，不可被选取，免疫一切伤害与效果。训龟大师可以携带一个独特的技能。"}])
