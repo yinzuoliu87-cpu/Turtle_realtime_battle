@@ -3,13 +3,15 @@ extends "res://scripts/scenes/battle/candy_vfx.gd"
 ## 010 激光长刃 —— 专属特效(2026-11-27 重做; 只管画面, 不读写对局状态, 不动 RULES_VER)。
 ## 用户 11-27「装备激光长刃的图标和技能特效都全部再重新做一遍…你是以特效师的身份去做，所以要尽量完美一点」。
 ## 参考研究 docs/studies/20261127-参考-永恩斩击特效配方.md(永恩 W 扇形斩 / Q 直线斩的发射器配方, 36 个发射器逐个记):
-##   最亮的刃只亮 0.1 秒 → 拖尾 / 余光 0.2~0.4 秒 → 地上的痕迹 1.2 秒; 命中 = 三道不同宽度的横斩光 + 四角星 + 冲击环 + 火花;
+##   最亮的刃只亮 0.1 秒 → 拖尾 / 余光 0.2~0.4 秒 → 地上的痕迹 1.2 秒;
+##   命中 = 爆点(用户 11-27「不用这个横着线…做个爆点就可以了」: 原来照永恩 W 的三道横斩光换掉);
 ##   贴图全是灰度形状(tools/assetgen/eq010_laser_tex.py), 颜色在这里 / 着色器里上(白热芯 → 粉 → 红 → 深红)。
 ##
 ## 分段(方案见 docs/plans/20261127c-激光长刃重做.md):
 ##   ① 出手      携带者脚下红光一闪 + 刃高度一颗白星
 ##   ② 扇形斩    laser_fan.gdshader: 领先刃约 0.1 秒扫完 120°, 后面拖月牙余光 + 三道同心速度纹 + 外缘亮线; 扫过之处沿弧迸火花
-##   ③ 命中      刃扫到哪个敌人哪个敌人亮(伤害仍在出手同帧结算, 画面按刃扫到它的时刻出): 三道横斩光 + 四角星 + 冲击环 + 地面光 + 火花
+##   ③ 命中      刃扫到哪个敌人哪个敌人亮(伤害仍在出手同帧结算, 画面按刃扫到它的时刻出):
+##               爆点 = 白热核心一闪 + 星芒爆开(白 / 红两层) + 红色光晕炸开 + 四角星 + 冲击环 + 地面光 + 火花往四周崩
 ##   ④ 地面熔痕  laser_scorch.gdshader: 刃扫过的地面留扇形焦痕, 熔裂纹 0.5 秒内由红热冷下去, 焦痕 1.2 秒淡出
 ##   ⑤ 落刃      (只命中 1 人 ⇒ 结算会追加直线斩)扇形斩快扫完时, 携带者头顶亮出一把 3.8 米光刃(0.05 秒, 刃尖一闪),
 ##               在朝向那一竖面里从上往下劈, 先慢后快 0.13 秒; 刃尖砸到地上那一刻 = 结算开始推波那一刻(同一个游戏时刻)
@@ -185,29 +187,30 @@ func sweep(org: Vector2, dir: Vector2, rng_c: float, arc: float, hits: Array) ->
 # ════════════════════════════════════════════════════════════════════════════
 #  ③ 命中(扇形斩 / 直线追斩共用)
 # ════════════════════════════════════════════════════════════════════════════
-func hit(o: Dictionary, dir: Vector2, t_at: float) -> void:
+func hit(o: Dictionary, _dir: Vector2, t_at: float) -> void:
 	if battle._world == null:
 		return
-	var sp: Texture2D = tex(T + "spindle.png")
+	var burst: Texture2D = tex(T + "burst.png")
 	var flare: Texture2D = tex(T + "flare.png")
 	var ring: Texture2D = tex(T + "ring.png")
 	var glow: Texture2D = tex(GLOW_TEX)
-	if sp == null or flare == null or ring == null or glow == null:
+	if burst == null or flare == null or ring == null or glow == null:
 		return                       # 缺图就不画, 不拿别的图顶替
 	var hh: float = float(o.get("height", 0.0))
 	var c: Vector3 = battle._world_pos(o["pos"], 0.45 + hh)
-	## 三道横斩光: 同形不同大小(永恩 W 命中 225×40 / 175×20 / 140×6), 一道比一道细、一道比一道短命
-	_p(sp, c + Vector3(0.0, 0.06, 0.0), {"texel": 1.6, "life": 0.16, "s0": 0.8, "s1": 1.25, "a0": 1.0, "a1": 0.0, "tint": L_RED, "add": true, "prio": 11, "t0": t_at})
-	_p(sp, c + Vector3(0.0, -0.04, 0.0), {"texel": 1.25, "life": 0.14, "s0": 0.85, "s1": 1.3, "a0": 1.0, "a1": 0.0, "tint": L_PINK, "add": true, "prio": 12, "t0": t_at})
-	_p(sp, c, {"texel": 0.8, "life": 0.1, "s0": 0.9, "s1": 1.3, "a0": 0.8, "a1": 0.0, "tint": L_HOT, "add": true, "prio": 13, "t0": t_at})
+	## 爆点(由内到外、由快到慢): 白热核心一闪 0.07 秒 → 白色星芒 0.09 秒 → 红色星芒 0.16 秒 → 红色光晕炸开 0.2 秒
+	_p(glow, c, {"texel": 0.75, "life": 0.07, "s0": 1.2, "s1": 0.6, "a0": 0.9, "a1": 0.0, "tint": L_HOT, "add": true, "prio": 14, "t0": t_at})
+	_p(burst, c, {"texel": 0.7, "life": 0.1, "s0": 0.6, "s1": 1.2, "a0": 1.0, "a1": 0.0, "tint": L_HOT, "add": true, "prio": 13, "t0": t_at})
+	_p(burst, c, {"texel": 1.0, "life": 0.17, "s0": 0.5, "s1": 1.35, "a0": 0.95, "a1": 0.0, "tint": L_RED, "add": true, "prio": 12, "t0": t_at})
+	_p(glow, c, {"texel": 1.9, "life": 0.2, "s0": 0.5, "s1": 1.35, "a0": 0.8, "a1": 0.0, "tint": L_RED, "add": true, "prio": 11, "t0": t_at})
 	## 四角星 0.1 秒 + 冲击环 0.18 秒 + 地面光
-	_p(flare, c, {"texel": 1.4, "life": 0.1, "s0": 1.3, "s1": 0.6, "a0": 0.9, "a1": 0.0, "tint": L_HOT, "add": true, "prio": 13, "t0": t_at})
-	_p(ring, c, {"texel": 0.9, "life": 0.18, "s0": 0.45, "s1": 1.3, "a0": 0.9, "a1": 0.0, "tint": L_RED, "add": true, "prio": 12, "t0": t_at})
+	_p(flare, c, {"texel": 1.2, "life": 0.1, "s0": 1.3, "s1": 0.6, "a0": 0.85, "a1": 0.0, "tint": L_PINK, "add": true, "prio": 13, "t0": t_at})
+	_p(ring, c, {"texel": 0.75, "life": 0.18, "s0": 0.4, "s1": 1.2, "a0": 0.8, "a1": 0.0, "tint": L_RED, "add": true, "prio": 12, "t0": t_at})
 	_p(glow, battle._world_pos(o["pos"], 0.03), {"texel": 1.8, "life": 0.16, "s0": 0.6, "s1": 1.2, "a0": 0.8, "a1": 0.0, "tint": L_RED, "add": true, "flat": true, "prio": -1, "t0": t_at})
-	## 火花: 顺着刃的方向崩出去
-	for i in range(6):
-		var a: float = rng.randf_range(-1.1, 1.1)
-		var v2: Vector2 = _rot(dir, a) * rng.randf_range(1.2, 2.4)
+	## 火花: 从爆点往四周崩(一圈均匀错开, 往上蹦再落)
+	for i in range(10):
+		var a: float = TAU * (float(i) + rng.randf_range(0.0, 0.6)) / 10.0
+		var v2: Vector2 = Vector2(cos(a), sin(a)) * rng.randf_range(1.2, 2.4)
 		_p(flare, c, {"texel": rng.randf_range(0.3, 0.5), "life": rng.randf_range(0.2, 0.3), "vel": Vector3(v2.x, rng.randf_range(0.6, 1.8), v2.y),
 			"grav": 8.0, "s0": 1.0, "s1": 0.4, "a0": 1.0, "a1": 0.0, "tint": L_PINK if i % 2 else L_HOT, "add": true, "prio": 12, "t0": t_at})
 

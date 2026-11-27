@@ -2,8 +2,9 @@
 """eq010_laser_tex.py —— 010 激光长刃特效的灰度形状贴图(颜色在引擎里上, 照永恩 Q / W 的做法: 贴图几乎全是灰度)。
 
 参考研究 docs/studies/20261127-参考-永恩斩击特效配方.md。做法(如实): 按公式算出来的灰度形状, 不用随机数, 重跑逐字节相同。
-  spindle.png    128×32  纺锤光条(中间亮两头尖, 中线一道更亮的芯) —— 命中横斩光 / 波前刃 / 火花拉丝
-  spindle_v.png  32×128  同上竖放 —— 直线追斩出手那一下的竖剑光
+  spindle.png    128×32  纺锤光条(中间亮两头尖, 中线一道更亮的芯) —— 落刃贴地斩光
+  spindle_v.png  32×128  同上竖放 —— 举刃时刃尖一闪 / 落点短光柱
+  burst.png      128×128 爆点星芒(中心光球 + 12 道长短不一的放射尖刺 + 一圈淡晕) —— 命中爆点
   flare.png      64×64   四角星(十字两道细长光 + 斜向两道短光 + 中心光球) —— 命中星光 / 刃尖闪光
   ring.png       128×128 细冲击环(带四个亮点) —— 命中冲击环
 用法: python tools/assetgen/eq010_laser_tex.py   (输出到 assets/sprites/vfx/eq010/; 仓库根目录按往上三层算)
@@ -71,6 +72,30 @@ def main():
 		inner = math.exp(-((r - 0.62) / 0.12) ** 2) * 0.18
 		return band * 0.85 + spark * 0.7 + inner
 	save(gray(128, 128, ring), "ring.png")
+
+	## 爆点: 12 道尖刺, 角度按 30° 一道再各错开一点、长短交替(固定表, 不用随机数) ⇒ 看着不规则又能重跑逐字节相同
+	OFF = [0, 7, -5, 3, -8, 4, -3, 6, -6, 2, -4, 5]
+	LEN = [1.0, 0.55, 0.82, 0.5, 0.95, 0.6, 0.86, 0.46, 0.9, 0.58, 0.76, 0.52]
+
+	def burst(x, y):
+		dx, dy = (x - 64.0) / 64.0, (y - 64.0) / 64.0
+		r = math.hypot(dx, dy)
+		a = math.atan2(dy, dx)
+		ball = math.exp(-(r / 0.17) ** 2)
+		halo = math.exp(-(r / 0.42) ** 2) * 0.28
+		sp = 0.0
+		for k in range(12):
+			ak = math.radians(k * 30 + OFF[k])
+			da = math.atan2(math.sin(a - ak), math.cos(a - ak))
+			if abs(da) > 0.5:
+				continue
+			ln = LEN[k] * 0.96
+			if r >= ln:
+				continue
+			w = 0.10 * (1.0 - r / ln) + 0.012          # 根部宽、尖端细
+			sp = max(sp, math.exp(-(da * max(r, 0.05) / (w * 0.5)) ** 2) * (1.0 - r / ln) ** 0.7)
+		return ball + halo + sp * 0.9
+	save(gray(128, 128, burst), "burst.png")
 	print("ok", OUT)
 
 

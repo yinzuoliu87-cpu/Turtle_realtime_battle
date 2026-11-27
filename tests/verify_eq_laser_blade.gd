@@ -95,7 +95,7 @@ func _ready() -> void:
 		icon.get_width() == 64 and icon.get_height() == 64 and icon_px > 500 and icon_cols.size() >= 8 and icon_cols.size() <= 32,
 		"不是 64 像素 / 几乎是空的 / 色数像渲染图")
 	var grey_ok := 0
-	var tex_names := ["spindle", "spindle_v", "flare", "ring"]
+	var tex_names := ["spindle", "spindle_v", "flare", "ring", "burst"]
 	for tn in tex_names:
 		var tp: String = "res://assets/sprites/vfx/eq010/%s.png" % tn
 		if not ResourceLoader.exists(tp):
