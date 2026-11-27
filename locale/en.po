@@ -9155,14 +9155,14 @@ msgstr "At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, the next attack instead s
 msgid "炮击"
 msgstr "Shell Shot"
 
-msgid "每次攻击使炮台永久获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。"
-msgstr "Each attack permanently gives the Turret {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% Crit Chance until the end of this battle."
+msgid "每次攻击使炮台获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。"
+msgstr "Each attack gives the Turret {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% Crit Chance until the end of this battle."
 
 msgid "火力同调"
 msgstr "Linked Firepower"
 
-msgid "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及相当于携带者攻击力的攻击力。"
-msgstr "On spawn, the Turret gains bonus health equal to {C:EquipSystem.TURRET_HP_PER_ATK} times the holder's Attack, and bonus Attack equal to the holder's Attack."
+msgid "炮台登场时额外获得（{C:EquipSystem.TURRET_HP_PER_ATK}×携带者攻击力）生命值和（100%×携带者攻击力）攻击力。"
+msgstr "On spawn, the Turret gains ({C:EquipSystem.TURRET_HP_PER_ATK} × holder's Attack) bonus health and (100% × holder's Attack) bonus Attack."
 
 msgid "护卫"
 msgstr "Guarded"
@@ -9200,8 +9200,8 @@ msgstr "Split Box"
 msgid "连射"
 msgstr "Rapid Fire"
 
-msgid "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。"
-msgstr "The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack ({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}) physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance. Each attack permanently gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen until the end of this battle. Its attack speed ignores bonuses."
+msgid "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。"
+msgstr "The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack ({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}) physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance. Each attack gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen until the end of this battle. Its attack speed ignores bonuses."
 
 msgid "小不点"
 msgstr "Tiny Target"
@@ -9221,8 +9221,8 @@ msgstr "The Aid Tower attacks as fast as the holder, and keeps the holder's last
 msgid "急救金弹"
 msgstr "Aid Golden Bullet"
 
-msgid "急救塔拥有独立的金弹计数，随枪羁绊件数每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹附加本段伤害 {C:EqGunBatch.TOWER_GOLD_PCT%}% 的真实伤害，治疗量翻倍。"
-msgstr "The Aid Tower has its own Golden Bullet counter: every {C:EqGunBatch.TOWER_GOLD_EVERY} attacks (scales with Gun count) it fires a Golden Bullet that adds true damage equal to {C:EqGunBatch.TOWER_GOLD_PCT%}% of the hit and heals double."
+msgid "急救塔单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。"
+msgstr "The Aid Tower counts its Golden Bullets separately. With your Gun synergy at %s, every {C:EqGunBatch.TOWER_GOLD_EVERY} attacks it fires a Golden Bullet that adds true damage equal to {C:EqGunBatch.TOWER_GOLD_PCT%%}%% of that hit and heals double."
 
 msgid "每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。"
 msgstr "Each attack steals {C:AxeEvolution.SHIELD_STEAL_PCT%}% of the target's shield as its own."
@@ -9245,8 +9245,8 @@ msgstr "Then ignites [Ember Light]: for {C:AxeFinalStats.EMBER_LIGHT_TIME} secon
 msgid "砍伐成长"
 msgstr "Chopping Growth"
 
-msgid "斧头的生命值为 {C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × 砍伐经验，攻击力为 {C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × 砍伐经验。小木斧每次进化，斧头额外获得 {C:AxeEvolution.PASSIVE_HP} 生命值、{C:AxeEvolution.PASSIVE_ATK} 攻击力、{C:AxeEvolution.PASSIVE_DEF} 护甲和 {C:AxeEvolution.PASSIVE_MR} 魔抗。左侧属性为刚进化到此形态时的数值。"
-msgstr "The Axe has {C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × Chopping XP health and {C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × Chopping XP Attack. Each time the Little Wooden Axe evolves, the Axe gains {C:AxeEvolution.PASSIVE_HP} health, {C:AxeEvolution.PASSIVE_ATK} Attack, {C:AxeEvolution.PASSIVE_DEF} Armor and {C:AxeEvolution.PASSIVE_MR} Magic Resist. The stats on the left are its values right after reaching this form."
+msgid "斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。"
+msgstr "The Axe gains ({C:AxeEvolution.MINION_HP_PER_EXP} × Chopping XP) bonus health and ({C:AxeEvolution.MINION_ATK_PER_EXP} × Chopping XP) bonus Attack."
 
 msgid "石斧 · 重击"
 msgstr "Stone Axe · Smash"
@@ -9296,8 +9296,8 @@ msgstr "The Cannon fires at the nearest enemy in range. The shell explodes on la
 msgid "重炮"
 msgstr "Heavy Shot"
 
-msgid "遥控炸弹追着一个敌人移动，不攻击。"
-msgstr "The Remote Bomb chases an enemy and doesn't attack."
+msgid "遥控炸弹会持续追踪一名敌人，不会攻击。"
+msgstr "The Remote Bomb keeps chasing one enemy and never attacks."
 
 msgid "锁定追踪"
 msgstr "Lock-On"
@@ -9398,8 +9398,8 @@ msgstr "Conch's Gift"
 msgid "分裂"
 msgstr "Split"
 
-msgid "每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，生命值与攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"
-msgstr "Every {C:EquipSystem.WORM_SPLIT_IV} seconds, splits off a new Conch Bug in an empty spot with the same health and Attack but no items, up to {C:EquipSystem.WORM_CAP}."
+msgid "每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"
+msgstr "Every {C:EquipSystem.WORM_SPLIT_IV} seconds, splits off a new Conch Bug in an empty spot with the same health and Attack as itself but no items, up to {C:EquipSystem.WORM_CAP}."
 
 msgid "啃咬"
 msgstr "Gnaw"
@@ -9459,7 +9459,7 @@ msgstr "Decider"
 msgid "旁观者"
 msgstr "Onlooker"
 
-msgid "训龟大师站在场边，不会被选为目标，免疫一切伤害与效果。"
+msgid "训龟大师站在场边，不可被选取，免疫一切伤害与效果。"
 msgstr "The Turtle Trainer stands at the edge of the field, can't be targeted, and is immune to all damage and effects."
 
 msgid "装饰"
@@ -9477,8 +9477,8 @@ msgstr "Skill"
 msgid "糖果造物"
 msgstr "Candy Making"
 
-msgid "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"
-msgstr "When the Candy Turtle casts its ability and the Candy Bomb is still around, the bomb gains max health equal to {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% of the Candy Turtle's max health and heals {C:CandySystem.BOMB_FEED_HEAL_PCT%}% of the Candy Turtle's max health. If the bomb is gone, a new Candy Bomb is summoned with {C:CandySystem.BOMB_REVIVE_HP_PCT%}% of the Candy Turtle's max health."
+msgid "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复相当于糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"
+msgstr "When the Candy Turtle casts its ability and the Candy Bomb is still around, the bomb gains max health equal to {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% of the Candy Turtle's max health and heals for {C:CandySystem.BOMB_FEED_HEAL_PCT%}% of the Candy Turtle's max health. If the bomb is gone, a new Candy Bomb is summoned with {C:CandySystem.BOMB_REVIVE_HP_PCT%}% of the Candy Turtle's max health."
 
 msgid "水晶射线"
 msgstr "Crystal Ray"
@@ -9534,8 +9534,8 @@ msgstr "The Cannon enters Heavy Shot mode: each shot costs {C:EqBombBatch.CANNON
 msgid "每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。"
 msgstr "It loses {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% of its max health per second."
 
-msgid "生命值耗尽时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。"
-msgstr "When its health runs out it explodes, dealing {C:EqBombBatch.REMOTE_FLAT[%d]} physical damage plus true damage equal to {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% of the holder's max health to enemies in a large area, and applying {C:EqBombBatch.REMOTE_BLEED[%d]} Bleed."
+msgid "阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。"
+msgstr "When it dies it explodes, dealing {C:EqBombBatch.REMOTE_FLAT[%d]} physical damage plus true damage equal to {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% of the holder's max health to enemies in a large area, and applying {C:EqBombBatch.REMOTE_BLEED[%d]} Bleed."
 
 msgid "暗影忍者拥有 {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% 暴击率。"
 msgstr "The Shadow Ninja has {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% Crit Chance."
@@ -9549,7 +9549,7 @@ msgstr "Pushes out a slow undead wave. Enemies it passes take {C:EqMagicBatch.WA
 msgid "舞狮朝前方冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。"
 msgstr "The Lion Dancer charges forward, dealing ({C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%% × Attack ({ATK}) = {N:%s*ATK}) physical damage to enemies in its path, knocking them back and stunning them for {C:EqMaskBatch.LION_STUN[%d]} seconds."
 
-msgid "亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于其最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。"
+msgid "亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于目标最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。"
 msgstr "The Undead Skeleton explodes when it dies or after {C:EqSummons.SKEL_LIFE[%d]} seconds, dealing true damage equal to {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% of each nearby enemy's max health."
 
 msgid "海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。"
@@ -9579,11 +9579,11 @@ msgstr "Sweet Fuse"
 msgid "糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值，阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，由所有敌人平摊。"
 msgstr "The Candy Bomb loses {C:CandySystem.BOMB_DECAY_PCT%}% of its max health per second. When it dies it explodes, dealing magic damage equal to {C:CandySystem.BOMB_DEATH_AOE%}% of its max health, split evenly among all enemies."
 
-msgid "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。"
-msgstr "Every {C:CrystalSystem.ORB_RAY_IV} seconds, the Crystal Ball fires a piercing ray at the nearest enemy, dealing a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack (Unknown) = Unknown) magic damage and adding {C:CrystalSystem.ORB_RAY_STACKS} Crystal stacks to enemies hit, shared with the Crystal Turtle's stacks."
+msgid "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟施加的水晶层数相加。"
+msgstr "Every {C:CrystalSystem.ORB_RAY_IV} seconds, the Crystal Ball fires a piercing ray at the nearest enemy, dealing a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack (Unknown) = Unknown) magic damage and adding {C:CrystalSystem.ORB_RAY_STACKS} Crystal stacks to enemies hit, which add up with the Crystal Turtle's stacks."
 
-msgid "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"
-msgstr "Every {C:PirateSystem.SHIP_SHOT_CD} seconds, the Pirate Ship fires at the nearest enemy at any distance, dealing ({C:PirateSystem.SHIP_SHOT_COEF%}% × Attack (Unknown) = Unknown) physical damage."
+msgid "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"
+msgstr "Every {C:PirateSystem.SHIP_SHOT_CD} seconds, the Pirate Ship fires at the nearest enemy, dealing ({C:PirateSystem.SHIP_SHOT_COEF%}% × Attack (Unknown) = Unknown) physical damage."
 
 msgid "海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"
 msgstr "On spawn, the Pirate Ship crashes into the battlefield, dealing ({C:PirateSystem.SHIP_CHARGE_COEF%}% × Pirate Turtle's Attack (Unknown) = Unknown) magic damage to enemies near the landing spot, knocking them back and stunning them for {C:PirateSystem.SHIP_CHARGE_STUN} seconds."
@@ -9594,8 +9594,8 @@ msgstr "Every {C:CyberSystem.MECH_BLAST_CD} seconds, fires two shots at the enem
 msgid "战斗开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。"
 msgstr "When combat starts, the Turtle Egg is protected by a fence: it can't be targeted, takes no area damage, and gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. Once all of its side's units have died, the fence disappears."
 
-msgid "龟蛋免疫控制与斩杀。龟蛋的生命值在上路战场、下路战场和终极战场之间延续，不会回满。"
-msgstr "The Turtle Egg is immune to crowd control and executes. Its health carries over between the Top Lane, Bottom Lane and Final Battle, and never refills."
+msgid "龟蛋免疫控制与斩杀，生命值在上路战场、下路战场和终极战场之间延续，不会回满。"
+msgstr "The Turtle Egg is immune to crowd control and executes, and its health carries over between the Top Lane, Bottom Lane and Final Battle, and never refills."
 
 msgid "龟蛋额外获得（{C:DualLaneFlow.EGG_HP_PER_LV}×等级）最大生命值、（{C:BattleSpawn.EGG_RES_PER_LV}×等级）护甲和（{C:BattleSpawn.EGG_RES_PER_LV}×等级）魔抗。"
 msgstr "The Turtle Egg gains ({C:DualLaneFlow.EGG_HP_PER_LV} × level) bonus max health, ({C:BattleSpawn.EGG_RES_PER_LV} × level) Armor and ({C:BattleSpawn.EGG_RES_PER_LV} × level) Magic Resist."
@@ -9603,5 +9603,8 @@ msgstr "The Turtle Egg gains ({C:DualLaneFlow.EGG_HP_PER_LV} × level) bonus max
 msgid "决战"
 msgstr "Showdown"
 
-msgid "在终极战场，以及同一方已赢下上路战场后的下路战场，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"
-msgstr "In the Final Battle, and in the Bottom Lane after one side has already won the Top Lane, once its fence falls the Turtle Egg takes ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} damage and loses {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% of its max health every {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} seconds."
+msgid "在终极战场，或一方已赢下上路战场时的下路战场，围栏消失后龟蛋受到 {C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} 倍伤害，并每秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"
+msgstr "In the Final Battle, or in the Bottom Lane when one side has already won the Top Lane, once its fence is gone the Turtle Egg takes {C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} times damage and loses {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% of its max health every second."
+
+msgid "全场"
+msgstr "Global"

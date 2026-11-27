@@ -165,6 +165,19 @@ func _t_undead() -> void:
 	fin.apply_stats(probe, "undead")
 	_ok("★登场折进 +%.0f 最大生命(%.0f → %.0f)" % [AF.stat("undead", "hp"), 10000.0, probe["maxHp"]],
 		is_equal_approx(float(probe["maxHp"]), 10000.0 + AF.stat("undead", "hp")))
+	## ★攻击力加成要扛过 _recalc_stats(2026-11-27 修: 原来只加在 atk 上, 召唤后紧接着的重算按 base_atk 算 atk ⇒ 造物攻击力加成从来没生效)。
+	##   对照组 = 同一只没套造物的斧头重算后的 atk; 套了余烬的应当多出 +EMBER 攻击力(重算若有百分比加成, 多出来的只会更多)。
+	var ctl: Dictionary = _mk_axe("")
+	ctl["base_atk"] = 100.0
+	ctl["atk"] = 100.0
+	_s._recalc_stats(ctl)
+	var em: Dictionary = _mk_axe("")
+	em["base_atk"] = 100.0
+	em["atk"] = 100.0
+	fin.apply_stats(em, "ember")
+	_s._recalc_stats(em)
+	_ok("★★造物攻击力加成扛过重算(余烬 +%.0f: 对照 %.0f → %.0f)" % [AF.stat("ember", "atk"), float(ctl["atk"]), float(em["atk"])],
+		float(em["atk"]) - float(ctl["atk"]) >= AF.stat("ember", "atk") - 0.01)
 
 	## 环内/环外
 	var inside: Dictionary = _mk_foe(Vector2(100, 0), 200000.0)

@@ -55,6 +55,9 @@ func apply_stats(ax: Dictionary, final_key: String) -> void:
 		return
 	ax["_axe_final"] = final_key
 	ax["maxHp"] = float(ax.get("maxHp", 0.0)) + AF.stat(final_key, "hp")
+	## ★2026-11-27 修: 原来只加在 atk 上, 紧接着的 _recalc_stats 按 base_atk 重算 atk ⇒ 造物的攻击力加成一点都没生效
+	##   (图鉴斧头页对代码时发现)。加到 base_atk, 与 def / mr 同一种做法; atk 同步加, 重算前读 atk 的地方也拿到。
+	ax["base_atk"] = float(ax.get("base_atk", ax.get("atk", 0.0))) + AF.stat(final_key, "atk")
 	ax["atk"] = float(ax.get("atk", 0.0)) + AF.stat(final_key, "atk")
 	ax["base_def"] = float(ax.get("base_def", 0.0)) + AF.stat(final_key, "def")
 	ax["base_mr"] = float(ax.get("base_mr", 0.0)) + AF.stat(final_key, "mr")

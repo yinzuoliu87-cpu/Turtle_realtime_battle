@@ -265,6 +265,8 @@ func _seg4_copy() -> void:
 	var syn_bb: String = SummonCodex.linkify(CodexSynergyView.line_bb(SkillText.render_consts(str((Phase2Types.TIER_TABLE["长矛"]["lines"] as Array)[1]))))
 	_ok("长矛羁绊里【百夫长】是链接", syn_bb.contains("[url=summon:centurion]"))
 	_ok("文案分母", texts >= 16, "%d 段" % texts)
+	_ok("龟蛋【决战】写「每秒」⇒ EGG_SELFLOSS_IV 仍是 1", is_equal_approx(RealtimeBattle3DScene.EGG_SELFLOSS_IV, 1.0),
+		"改了间隔就去改 summon_codex_misc.gd 龟蛋【决战】的文案")
 	## 链接点下去真能找到条目(商店小卡 spec 非空)
 	for sid in ["centurion", "turret", "skel_mage"]:
 		_ok("商店小卡 %s 能开" % sid, not SummonCodex.card_spec(sid).is_empty())

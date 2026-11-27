@@ -141,10 +141,8 @@ static func _as_pet(id: String, si: Dictionary) -> Dictionary:
 	if not sk.is_empty():
 		var e := {"name": str(sk["name"]), "brief": str(sk["desc"]), "detail": str(sk["desc"]), "desc": str(sk["desc"]),
 			"_role": "active", "_energy": int(sk.get("energy", 0)), "icon": str(sk.get("icon", ""))}
-		## 训龟大师的技能按冷却放(驯服冷却 999 = 每场一次, 不写秒数)
-		if sk.has("cd") and float(sk["cd"]) < 900.0:
-			e["_cd"] = float(sk["cd"])
-		elif sk.has("cd"):
+		## 训龟大师的技能按冷却放、不吃龟能: 签牌只写「主动」(冷却秒数技能说明里已经写了, 签牌再写一遍就重复了)
+		if sk.has("cd"):
 			e["_cd"] = 0.0
 		pool.append(e)
 	var plist: Array = []

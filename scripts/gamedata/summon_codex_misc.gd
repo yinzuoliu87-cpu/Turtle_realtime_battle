@@ -69,7 +69,7 @@ static func _candybomb() -> Dictionary:
 		[{"name": "甜蜜引信", "icon": "passive/summon-candy-boom-icon.png",
 			"desc": "糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值，阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，由所有敌人平摊。"},
 		 {"name": "投喂", "icon": "passive/summon-candy-feed-icon.png",
-			"desc": "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"}])
+			"desc": "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复相当于糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"}])
 
 
 # ─── 水晶龟 · 水晶球 ───
@@ -78,17 +78,17 @@ static func _crystalball() -> Dictionary:
 	return _base("水晶球", ["crystalball"], "crystalball", {"img": "pets/crystal-ball.png", "_box": 130.0, "_cy": 100.0}, _pet_src("crystal"), ["远程法师"],
 		SC.stats(U, U, 0, 0, C.ORB_MOVE, 1.0 / C.ORB_RAY_IV, C.ORB_RANGE),
 		{"name": "水晶射线", "icon": "skills/summon-crystal-ray.png",
-			"desc": "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。"}, {},
+			"desc": "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟施加的水晶层数相加。"}, {},
 		[])
 
 
 # ─── 海盗龟 · 海盗船 ───
 static func _ship() -> Dictionary:
 	var P := PirateSystem
-	return _base("海盗船", ["ship"], "ship", {"img": "skills/pirate-ship.png", "_box": 200.0, "_cy": 96.0}, _pet_src("pirate"), ["近战坦克"],
-		SC.stats(U, U, 0, 0, P.SHIP_MOVE, P.SHIP_ASPD, P.SHIP_RANGE),
+	return _base("海盗船", ["ship"], "ship", {"img": "skills/pirate-ship.png", "_box": 200.0, "_cy": 96.0}, _pet_src("pirate"), ["远程坦克"],
+		SC.stats(U, U, 0, 0, P.SHIP_MOVE, P.SHIP_ASPD, "全场"),
 		{"name": "舷炮", "icon": "skills/summon-ship-broadside.png",
-			"desc": "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"}, {},
+			"desc": "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"}, {},
 		[{"name": "破浪登场", "icon": "passive/summon-ship-ram-icon.png",
 			"desc": "海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"}])
 
@@ -137,11 +137,11 @@ static func _egg() -> Dictionary:
 		[{"name": "围栏", "icon": "passive/summon-egg-fence-icon.png",
 			"desc": "战斗开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。"},
 		 {"name": "坚壳", "icon": "passive/summon-egg-shell-icon.png",
-			"desc": "龟蛋免疫控制与斩杀。龟蛋的生命值在上路战场、下路战场和终极战场之间延续，不会回满。"},
+			"desc": "龟蛋免疫控制与斩杀，生命值在上路战场、下路战场和终极战场之间延续，不会回满。"},
 		 {"name": "成长", "icon": "passive/summon-egg-grow-icon.png",
 			"desc": "龟蛋额外获得（{C:DualLaneFlow.EGG_HP_PER_LV}×等级）最大生命值、（{C:BattleSpawn.EGG_RES_PER_LV}×等级）护甲和（{C:BattleSpawn.EGG_RES_PER_LV}×等级）魔抗。"},
 		 {"name": "决战", "icon": "passive/summon-egg-final-icon.png",
-			"desc": "在终极战场，以及同一方已赢下上路战场后的下路战场，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"}])
+			"desc": "在终极战场，或一方已赢下上路战场时的下路战场，围栏消失后龟蛋受到 {C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} 倍伤害，并每秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"}])
 
 
 # ─── 战场单位 · 训龟大师(列 = 携带的技能, N 选 1) ───
@@ -151,7 +151,7 @@ static func _trainer(ci: int) -> Dictionary:
 	var sk: Dictionary = sks[clampi(ci, 0, sks.size() - 1)]
 	var icon: String = str(sk.get("icon", "")).trim_prefix("res://assets/sprites/")
 	var ps: Array = [{"name": "旁观者", "icon": "passive/summon-trainer-aloof-icon.png",
-		"desc": "训龟大师站在场边，不会被选为目标，免疫一切伤害与效果。"}]
+		"desc": "训龟大师站在场边，不可被选取，免疫一切伤害与效果。"}]
 	var skill: Dictionary = {}
 	if str(sk.get("kind", "")) == "被动":
 		ps.append({"name": str(sk["name"]), "icon": icon, "desc": str(sk["desc"])})

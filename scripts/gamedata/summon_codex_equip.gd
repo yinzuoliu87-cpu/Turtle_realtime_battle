@@ -76,7 +76,7 @@ static func _skeleton(si: int) -> Dictionary:
 		[{"name": "不朽之骨", "icon": "passive/summon-skel-bone-icon.png",
 			"desc": "亡灵骷髅每次受到的伤害都只有 {C:EqSummons.SKEL_DMG_CAP} 点，真实伤害也一样。"},
 		 {"name": "尸爆", "icon": "passive/summon-skel-boom-icon.png",
-			"desc": Lang.t("亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于其最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。") % [si, si]}])
+			"desc": Lang.t("亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于目标最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。") % [si, si]}])
 
 
 # ─── 033 魔法海螺 · 海螺虫 ───
@@ -86,7 +86,7 @@ static func _worm(si: int) -> Dictionary:
 		"desc": Lang.t("海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。") % (si + 1)}]
 	if si >= 2:
 		ps.append({"name": "分裂", "icon": "passive/summon-worm-split-icon.png",
-			"desc": "每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，生命值与攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"})
+			"desc": "每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"})
 	return _page("海螺虫", ["worm"], "worm", {"img": "pets/conch-worm.png"}, "p2eq_033", ["近战斗士"],
 		SC.stats(E.WORM_HP[si], E.WORM_ATK[si], 0, 0, BattleSpawn.SUMMON_DEFAULT_SPD, E.WORM_ASPD, BattleSpawn.SUMMON_DEFAULT_RANGE),
 		{"name": "啃咬", "icon": "skills/summon-worm-bite.png", "desc": SC.basic_line("海螺虫")}, {}, ps)
@@ -109,9 +109,9 @@ static func _turret(si: int) -> Dictionary:
 	var d := _page("炮台", ["turret"], "turret", {"img": "pets/turret.png"}, "p2eq_058", ["远程射手"],
 		SC.stats(E.TURRET_HP[si], E.TURRET_ATK[si], E.TURRET_RES[si], E.TURRET_RES[si], 0, E.TURRET_ASPD, E.TURRET_RANGE),
 		{"name": "炮击", "icon": "skills/summon-turret-shell.png",
-			"desc": SC.basic_line("炮台") + Lang.t("每次攻击使炮台永久获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。")}, {},
+			"desc": SC.basic_line("炮台") + Lang.t("每次攻击使炮台获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。")}, {},
 		[{"name": "火力同调", "icon": "passive/summon-turret-link-icon.png",
-			"desc": "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及相当于携带者攻击力的攻击力。"},
+			"desc": "炮台登场时额外获得（{C:EquipSystem.TURRET_HP_PER_ATK}×携带者攻击力）生命值和（100%×携带者攻击力）攻击力。"},
 		 {"name": "护卫", "icon": "passive/summon-turret-ward-icon.png",
 			"desc": Lang.t("携带者存活时，炮台获得 {C:EquipSystem.TURRET_RES[%d]} 护甲与魔抗，携带者阵亡后降为 0。") % si}])
 	d["avatar"] = "res://assets/sprites/pets/turret.png"
@@ -141,7 +141,7 @@ static func _pistol(si: int) -> Dictionary:
 	return _page("小手枪", ["pistol"], "pistol", _sheet("vfx/eq-pistol-idle.png", 40, 16, 120.0, 100.0), "p2eq_077", ["远程射手"],
 		SC.stats(G.PISTOL_HP[si], G.PISTOL_ATK[si], 0, 0, BattleSpawn.SUMMON_DEFAULT_SPD, 1.0 / G.PISTOL_IV, G.PISTOL_RANGE),
 		{"name": "连射", "icon": "skills/summon-pistol-shot.png",
-			"desc": "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。"}, {},
+			"desc": "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。"}, {},
 		[{"name": "小不点", "icon": "passive/summon-pistol-tiny-icon.png",
 			"desc": "小手枪没有护盾时，受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"}])
 
@@ -156,29 +156,28 @@ static func _medtower(si: int) -> Dictionary:
 		[{"name": "同步射速", "icon": "passive/summon-tower-sync-icon.png",
 			"desc": "急救塔的攻击速度与携带者相同，携带者阵亡后保持阵亡时的攻击速度。"},
 		 {"name": "急救金弹", "icon": "passive/summon-tower-gold-icon.png",
-			"desc": "急救塔拥有独立的金弹计数，随枪羁绊件数每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹附加本段伤害 {C:EqGunBatch.TOWER_GOLD_PCT%}% 的真实伤害，治疗量翻倍。"}])
+			"desc": Lang.t("急救塔单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。") % _gun_tiers()}])
+
+
+## 枪羁绊各档件数「(3)/(6)/(9)」(急救塔金弹跟着它分档)
+static func _gun_tiers() -> String:
+	var out: PackedStringArray = []
+	for t in (SC._P2T.TYPES.get("枪", {}) as Dictionary).get("tiers", []):
+		out.append("(%d)" % int(t))
+	return "/".join(out)
 
 
 # ─── 096 小木斧 · 斧头(列 = 进化形态) ───
-## 左栏 = 刚进化到这一形态时的属性(砍伐经验取进化门槛的累计值, 最终造物另加 AxeFinalStats 的那一份)。
-static func _axe_exp_at(k: int) -> int:
-	var e := 0
-	for i in range(mini(k, AxeEvolution.STAGE_NEEDS.size())):
-		e += int(AxeEvolution.STAGE_NEEDS[i])
-	if k >= AxeEvolution.STAGES.size():
-		e += int(AxeEvolution.FINAL_NEED)
-	return e
-
-
+## 左栏 = 这一形态的基础值(底子 + 每次进化的那份 + 最终造物那份); 随砍伐经验长的那份写进被动【砍伐成长】「额外获得」
+##   (同龟蛋: 用户 11-27「这里已经有三千的基础生命值了，所以你这里可以说龟蛋额外获得」)。原来按进化门槛估砍伐经验填数, 是估出来的数。
 static func _axe(ci: int) -> Dictionary:
 	var A := AxeEvolution
 	var F := AxeFinalStats
 	var n_st: int = A.STAGES.size()
 	var stage: int = mini(ci, n_st - 1)
 	var fin: String = str(A.FINALS[ci - n_st]["key"]) if ci >= n_st else ""
-	var ex: int = _axe_exp_at(ci)
-	var hp: float = A.minion_hp(ex, A.passives_at(stage))
-	var atk: float = A.minion_atk(ex, A.passives_at(stage))
+	var hp: float = A.minion_hp(0, A.passives_at(stage))
+	var atk: float = A.minion_atk(0, A.passives_at(stage))
 	var df: float = A.MINION_DEF + A.PASSIVE_DEF * float(A.passives_at(stage))
 	var mr: float = A.MINION_MR + A.PASSIVE_MR * float(A.passives_at(stage))
 	var aspd: float = A.MINION_ASPD
@@ -199,7 +198,7 @@ static func _axe(ci: int) -> Dictionary:
 		"ember": skill += Lang.t("随后点燃【余烬之光】：{C:AxeFinalStats.EMBER_LIGHT_TIME} 秒内获得 {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤和 {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，并免疫控制效果。期间仍会积累龟能，再次施放时效果独立叠加。")
 		"undead": skill += Lang.t("随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。")
 	var ps: Array = [{"name": "砍伐成长", "icon": "passive/summon-axe-grow-icon.png",
-		"desc": "斧头的生命值为 {C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × 砍伐经验，攻击力为 {C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × 砍伐经验。小木斧每次进化，斧头额外获得 {C:AxeEvolution.PASSIVE_HP} 生命值、{C:AxeEvolution.PASSIVE_ATK} 攻击力、{C:AxeEvolution.PASSIVE_DEF} 护甲和 {C:AxeEvolution.PASSIVE_MR} 魔抗。左侧属性为刚进化到此形态时的数值。"}]
+		"desc": "斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。"}]
 	if stage >= 1:
 		ps.append({"name": "石斧 · 重击", "icon": "passive/summon-axe-smash-icon.png",
 			"desc": "每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。"})
@@ -241,7 +240,7 @@ static func _cannon(si: int) -> Dictionary:
 # ─── 106 遥控炸弹 ───
 static func _remote(si: int) -> Dictionary:
 	var B := EqBombBatch
-	var chase: String = Lang.t("遥控炸弹追着一个敌人移动，不攻击。")
+	var chase: String = Lang.t("遥控炸弹会持续追踪一名敌人，不会攻击。")
 	if float(B.REMOTE_DECAY[si]) > 0.0:
 		chase += Lang.t("每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。") % si
 	return _page("遥控炸弹", ["remote_bomb"], "remote_bomb", _sheet("vfx/eq-remote-bomb-idle.png", 64, 7, 150.0, 100.0), "p2eq_106", ["近战坦克"],
@@ -249,7 +248,7 @@ static func _remote(si: int) -> Dictionary:
 		{}, {},
 		[{"name": "锁定追踪", "icon": "passive/summon-remote-chase-icon.png", "desc": chase},
 		 {"name": "引爆", "icon": "passive/summon-remote-boom-icon.png",
-			"desc": Lang.t("生命值耗尽时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。") % [si, si, si]}])
+			"desc": Lang.t("阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。") % [si, si, si]}])
 
 
 # ─── 107 武士刀 · 武士刀小将 ───
