@@ -767,6 +767,7 @@ scripts/gamedata/summon_codex.gd|lit|技能
 scripts/gamedata/summon_codex.gd|lit|护甲
 scripts/gamedata/summon_codex.gd|lit|攻击
 scripts/gamedata/summon_codex.gd|lit|放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。
+scripts/gamedata/summon_codex.gd|lit|斧头
 scripts/gamedata/summon_codex.gd|lit|横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。
 scripts/gamedata/summon_codex.gd|lit|每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。
 scripts/gamedata/summon_codex.gd|lit|每秒攻击
@@ -793,6 +794,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|亡灵骷髅每次受到的伤害都�
 scripts/gamedata/summon_codex_equip.gd|lit|亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于目标最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|亡者之书召唤的骷髅存在时间等于携带者这次施放技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，到时化为尘土。
 scripts/gamedata/summon_codex_equip.gd|lit|亡者契约
+scripts/gamedata/summon_codex_equip.gd|lit|伤害先由小手枪的护盾吸收，每次落到生命值上的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
 scripts/gamedata/summon_codex_equip.gd|lit|余烬
 scripts/gamedata/summon_codex_equip.gd|lit|全息斧
 scripts/gamedata/summon_codex_equip.gd|lit|冲撞
@@ -805,7 +807,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|回复自身 {C:AxeEvolution.ACTIVE_H
 scripts/gamedata/summon_codex_equip.gd|lit|大熊
 scripts/gamedata/summon_codex_equip.gd|lit|小不点
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪
-scripts/gamedata/summon_codex_equip.gd|lit|小手枪没有护盾时，每次受到的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。小手枪的攻击会触发枪羁绊的金弹，并单独计算金弹。
 scripts/gamedata/summon_codex_equip.gd|lit|尸爆
 scripts/gamedata/summon_codex_equip.gd|lit|居合
@@ -824,13 +825,14 @@ scripts/gamedata/summon_codex_equip.gd|lit|手里剑
 scripts/gamedata/summon_codex_equip.gd|lit|护卫
 scripts/gamedata/summon_codex_equip.gd|lit|推出一道缓慢前进的亡灵浪潮，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。
 scripts/gamedata/summon_codex_equip.gd|lit|携带者阵亡后，炮台的护甲与魔抗降为 0。
+scripts/gamedata/summon_codex_equip.gd|lit|攻击在横扫和竖劈之间交替。横扫对前方 {C:AxeEvolution.SWEEP_ARC_DEG}° 内的所有敌人造成伤害，竖劈额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。
+scripts/gamedata/summon_codex_equip.gd|lit|攻击还会施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。
+scripts/gamedata/summon_codex_equip.gd|lit|效率
 scripts/gamedata/summon_codex_equip.gd|lit|斧之守护
 scripts/gamedata/summon_codex_equip.gd|lit|斧击
 scripts/gamedata/summon_codex_equip.gd|lit|斧头
-scripts/gamedata/summon_codex_equip.gd|lit|斧头每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。
+scripts/gamedata/summon_codex_equip.gd|lit|斧头每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。
 scripts/gamedata/summon_codex_equip.gd|lit|斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。
-scripts/gamedata/summon_codex_equip.gd|lit|斧头的攻击在 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫和竖劈之间交替，横扫命中前方所有敌人。每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。
-scripts/gamedata/summon_codex_equip.gd|lit|斧头的攻击施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。
 scripts/gamedata/summon_codex_equip.gd|lit|斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。
 scripts/gamedata/summon_codex_equip.gd|lit|斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。
 scripts/gamedata/summon_codex_equip.gd|lit|斩击
@@ -848,6 +850,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|每次攻击使炮台获得 {C:EquipS
 scripts/gamedata/summon_codex_equip.gd|lit|每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。
 scripts/gamedata/summon_codex_equip.gd|lit|每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。
 scripts/gamedata/summon_codex_equip.gd|lit|每第 %d 次攻击转而向前方打出一道射程 {C:EquipTickSystem.BEAR_WAVE_RANGE} 的冲击波，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%%}%%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前。
+scripts/gamedata/summon_codex_equip.gd|lit|每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺馈赠
@@ -858,13 +861,11 @@ scripts/gamedata/summon_codex_equip.gd|lit|炮台登场时额外获得（{C:Equi
 scripts/gamedata/summon_codex_equip.gd|lit|炮筒
 scripts/gamedata/summon_codex_equip.gd|lit|炮筒朝射程内最近的敌人开炮，炮弹落地爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|炮筒进入重炮状态：每发消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能，炮弹沿直线飞过整个战场，击退直线上的敌人，造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害并施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血。龟能耗尽时回到普通炮击。
-scripts/gamedata/summon_codex_equip.gd|lit|炽天使
 scripts/gamedata/summon_codex_equip.gd|lit|熊掌
 scripts/gamedata/summon_codex_equip.gd|lit|狮咬
 scripts/gamedata/summon_codex_equip.gd|lit|甜蜜诱惑
 scripts/gamedata/summon_codex_equip.gd|lit|登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后在身边展开蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒展开一次。法阵跟随蛋糕礼盒，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中的友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值和 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。
 scripts/gamedata/summon_codex_equip.gd|lit|目标及其周围的敌人受到（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。
-scripts/gamedata/summon_codex_equip.gd|lit|石斧 · 重击
 scripts/gamedata/summon_codex_equip.gd|lit|砍伐成长
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒分身
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒撞击
@@ -878,7 +879,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|装备星级
 scripts/gamedata/summon_codex_equip.gd|lit|近战刺客
 scripts/gamedata/summon_codex_equip.gd|lit|近战坦克
 scripts/gamedata/summon_codex_equip.gd|lit|近战斗士
-scripts/gamedata/summon_codex_equip.gd|lit|进化形态
 scripts/gamedata/summon_codex_equip.gd|lit|远程射手
 scripts/gamedata/summon_codex_equip.gd|lit|远程斗士
 scripts/gamedata/summon_codex_equip.gd|lit|远程法师
@@ -887,8 +887,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|连射
 scripts/gamedata/summon_codex_equip.gd|lit|遥控炸弹
 scripts/gamedata/summon_codex_equip.gd|lit|遥控炸弹会持续追踪一名敌人，不会攻击。
 scripts/gamedata/summon_codex_equip.gd|lit|重炮
-scripts/gamedata/summon_codex_equip.gd|lit|金斧 · 效率
-scripts/gamedata/summon_codex_equip.gd|lit|铁斧 · 竖劈
 scripts/gamedata/summon_codex_equip.gd|lit|锁定追踪
 scripts/gamedata/summon_codex_equip.gd|lit|阵亡时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。
 scripts/gamedata/summon_codex_equip.gd|lit|附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，斧头每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。斧头阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。

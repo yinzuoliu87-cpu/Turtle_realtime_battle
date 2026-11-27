@@ -32,7 +32,8 @@ const _P2T := preload("res://scripts/gamedata/phase2_types.gd")
 const GROUPS := [
 	["战场单位", ["egg", "trainer"]],
 	["召唤物 · 龟技能", ["candybomb", "crystalball", "ship", "mech"]],
-	["召唤物 · 装备", ["skeleton", "worm", "bear", "turret", "cakebox", "pistol", "medtower", "axe",
+	["召唤物 · 装备", ["skeleton", "worm", "bear", "turret", "cakebox", "pistol", "medtower",
+		"axe", "axe_stone", "axe_iron", "axe_gold", "axe_diamond", "axe_undead", "axe_seraph", "axe_holo", "axe_ember",
 		"cannon", "remote_bomb", "katana", "shadow_ninja", "skel_warrior", "skel_mage", "skel_priest", "mask_lion"]],
 	["召唤物 · 羁绊", ["centurion", "wraith"]],
 ]
@@ -43,6 +44,9 @@ const KIND_ALIASES := {"shadow_clone": "shadow_ninja"}
 
 ## 有意不单列、也不归到别的页的种类: 随从就是一只真龟(用户 11-27「随从不需要在这个图鉴里面去专门列一个随从」), 看原龟的页。
 const UNLISTED_KINDS := ["minion"]
+
+## 文案里写的名字 ≠ 页名时的别名: 装备 096 文案写【斧头】(战斗里的单位名), 九种形态各自一页, 【斧头】跳第一形态小木斧。
+const NAME_ALIASES := {"斧头": "axe"}
 
 
 static func all_ids() -> Array:
@@ -83,6 +87,8 @@ static func id_of_kind(kind: String) -> String:
 
 ## 名字 → 条目 id(羁绊 / 装备文案里的【名字】点了跳到这一页)。
 static func id_of_name(nm: String) -> String:
+	if NAME_ALIASES.has(nm):
+		return str(NAME_ALIASES[nm])
 	for id in all_ids():
 		if str(info(id, 0).get("name", "")) == nm:
 			return id
@@ -187,8 +193,14 @@ static func linkify(bb: String) -> String:
 	if not (bb.contains("【") or bb.contains("[lb]")):
 		return bb
 	var names: Array = []
+	var pairs: Array = []
 	for id in all_ids():
-		var cn: String = str(info(id, 0).get("name", ""))
+		pairs.append([str(info(id, 0).get("name", "")), str(id)])
+	for al in NAME_ALIASES:
+		pairs.append([str(al), str(NAME_ALIASES[al])])
+	for pr in pairs:
+		var cn: String = str(pr[0])
+		var id: String = str(pr[1])
 		names.append(["【%s】" % cn, str(id)])
 		## 英文版写成 [Axe], 渲染成 BBCode 时左括号转义成 [lb](SkillText.html_to_bbcode)
 		var en: String = Lang.t(cn)

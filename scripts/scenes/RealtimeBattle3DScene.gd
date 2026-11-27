@@ -4349,6 +4349,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	var _capv: float = float(u.get("_dmg_cap_val", 0.0))
 	## ★★有护盾就不封顶(用户 2026-08-12 削弱): 小手枪被 079 炮台/枪羁绊冲击波/盾羁绊套上盾后,
 	##   "护盾先吸 + 溢出还封到 2 点" = 实质无敌。护盾期间照吃伤害, 盾破了封顶才重新生效。
+	##   ★11-27 起: 护盾吸完之后落到生命值上的部分另在 battle_damage._hp_cap 封顶(用户「把盾打没之后再扣两点血」)。
 	if _capv > 0.0 and float(u.get("shield", 0.0)) <= 0.0:
 		return minf(d, _capv)
 	return d

@@ -296,7 +296,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		_cor_true_dot = float(dmg) * _cor
 	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A): 减伤之后、扣血之前判。
 	# ⚠ 两条伤害路径【都要挂】(CLAUDE.md §3.3) —— 只挂一条 = "只有被普攻打死才救得回来"。
-	d = _lethal_hooks(u, d)   # 受到致命伤害时: 063 墨囊 / 134 威尼斯面具 / 154 棕色筹码(§3.3 两路共用一个函数)
+	d = _lethal_hooks(u, _hp_cap(u, d))   # 先封顶落到生命值上的部分(077), 再判受到致命伤害: 063 墨囊 / 134 威尼斯面具 / 154 棕色筹码(§3.3 两路共用)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_nonlethal_hit", false):   # 调用方临时置位的「这一下不致死」(甜蜜掠夺·10-16: 增伤乘区原来能把「留 1 点」打穿)
 		u["hp"] = maxf(1.0, u["hp"])
@@ -559,7 +559,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
 		_cor_true = float(dmg) * _cor
 	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A) —— 与 _apply_damage 同一位置的另一半(§3.3)
-	d = _lethal_hooks(u, d)   # 受到致命伤害时: 063 墨囊 / 134 威尼斯面具 / 154 棕色筹码(§3.3 两路共用一个函数)
+	d = _lethal_hooks(u, _hp_cap(u, d))   # 先封顶落到生命值上的部分(077), 再判受到致命伤害: 063 墨囊 / 134 威尼斯面具 / 154 棕色筹码(§3.3 两路共用)
 	u["hp"] = maxf(0.0, u["hp"] - d)
 	if u.get("_nonlethal_hit", false):   # 同上一处(两条伤害路径都要有·§3.3)
 		u["hp"] = maxf(1.0, u["hp"])
@@ -1285,6 +1285,16 @@ func _fx_of(who) -> float:
 func _typed_shields(u: Dictionary, d: float, is_mag: bool, is_phy: bool) -> float:
 	d = MagicShield.absorb(u, d, is_mag)
 	return EqMaskBatch.phys_absorb(u, d, is_phy)
+
+
+## 077 小手枪的带值封顶: 护盾先全额吸收, 落到生命值上的部分至多 `_dmg_cap_val`(用户 11-27「把盾打没之后再扣两点血」)。
+## ★放在一切护盾与护盾之后才加的真伤(金弹 / 火控 / 腐蚀)之后: 原来只在 _mitigate_incoming 里封、有盾就跳过,
+##   30 血 30 盾吃 100 点 ⇒ 盾吸 30、剩 70 全扣血直接死; 金弹那段真伤也绕过了封顶。两条伤害路径共用(§4.3)。
+func _hp_cap(u: Dictionary, d: float) -> float:
+	if u.get("_dmg_cap_one", false):   # 032 亡灵骷髅「任何一击恒为 1」: 同一个漏洞(金弹 / 腐蚀真伤在减伤之后才加), 同一处堵
+		return minf(d, 1.0)
+	var capv: float = float(u.get("_dmg_cap_val", 0.0))
+	return minf(d, capv) if capv > 0.0 else d
 
 
 ## 受到致命伤害时的钩子(这一下会把血打空才进): 063 幽影墨囊(U6-A) / 134 威尼斯面具与 154 棕色筹码倒地复活。两条伤害路径共用(§4.3)。

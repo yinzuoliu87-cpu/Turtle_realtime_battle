@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "48530377c6519d71a9ab15a72358718d8fb2cd15342654758ac7f66a64eb750a",
+ "fingerprint": "87fb13d16710b743763cf4788dda9ce8d406cab528566343bc32526a5a573ce6",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -10,17 +10,17 @@
   },
   {
    "def": "302cbfd03fa4ff31",
-   "hash": "a8ee8a5fb88437fca027164019f7e94b58a907ba0efa9672ce45d4625e1edb13",
+   "hash": "382e62de421ee01f8c797de1bc0caea2e08fe7131853238387d36b40224e4753",
    "tag": "② 药水/枪 vs 弓箭/剑 · 3 统领同路 + 精英小将"
   },
   {
    "def": "4cbcdb79e333b6da",
-   "hash": "22bea91050c82e885e4b4b321538598b6a78c111182d483a9743a16d33e98b44",
+   "hash": "0a4d5827f1f1f654b3f1a57ccbb97937a29065e930954e90faa041dbdb37a769",
    "tag": "③ 灵物触手 + 小木斧 vs 法器/食物"
   },
   {
    "def": "d934661682f7db9a",
-   "hash": "8e197e95e1d863bcb6117f42f7756af25a63d08bb1fbcad07423f659a9af1fac",
+   "hash": "3b6a29cf283709a52c8ff34183257e871d6f639183a803f8713653c7e6dd2a49",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
@@ -35,7 +35,7 @@
   },
   {
    "def": "1edc1a4ca1200c12",
-   "hash": "855a55b776d1d9c8f043481aba140ef3170df652b709d1e1f7aee10a5cc7f979",
+   "hash": "0fbc79fe88a4e0d45e619bf5de7e22da06c1d41002b8b3c56badad9494ae191c",
    "tag": "⑦ 匕首顶档(刺杀) + 暗影忍者 + 血契 vs 剑顶档/枪"
   },
   {
@@ -45,7 +45,7 @@
   },
   {
    "def": "c74f3eed261e1b5e",
-   "hash": "def1f1f4fe9e29a5e6d027c33040c0f3179298734420e790d381a700e3711fff",
+   "hash": "61e17ffac93850605535854dd5000d1fb1724de153e340b44c2f6fb13487677d",
    "tag": "⑨ 面具顶档(偷脸 / 里世界) + 筹码 vs 长矛顶档(百夫长) + 筹码"
   },
   {

@@ -61,6 +61,42 @@ func _ready() -> void:
 	_ok("① 携带者死后的 5 点档也一样(同一个字段, 别只堵一半)",
 		s._mitigate_incoming(p, 100.0, true) > 90.0)
 
+	# ══ ①c 小手枪: 护盾先全额吸收, 打穿护盾之后落到生命值上的部分仍封顶(用户 11-27) ══════════
+	#   「三十点血剩下三十盾, 突然收到一百点…应该是把盾打没之后再扣两点血」。两条伤害路径各验一次(§4.3)。
+	var foe: Dictionary = s._spawn._make_unit("basic", "right", c + Vector2(200, 0))
+	for path in ["from", "dot"]:
+		var q: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(0, 60))
+		q["maxHp"] = 30.0
+		q["hp"] = 30.0
+		q["shield"] = 30.0
+		q["_dmg_cap_val"] = 2.0
+		if path == "from":
+			s._damage._apply_damage_from(foe, q, 100, Color.WHITE, 0.0, true)
+		else:
+			s._damage._apply_damage(q, 100, Color.WHITE, foe, "tru")
+		_ok("①c ★[%s] 30 血 30 盾吃 100 点: 盾打空、生命值只扣 2" % path,
+			float(q["shield"]) <= 0.01 and absf(float(q["hp"]) - 28.0) < 0.01 and q.get("alive", false),
+			"盾 %.1f 血 %.1f alive=%s" % [float(q["shield"]), float(q["hp"]), str(q.get("alive", false))])
+	# 金弹那段额外真伤是在减伤之后才加的, 原来绕过了封顶
+	var g: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(0, -60))
+	g["maxHp"] = 30.0
+	g["hp"] = 30.0
+	g["shield"] = 0.0
+	g["_dmg_cap_val"] = 2.0
+	var sk: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(60, -60))
+	sk["maxHp"] = 30.0
+	sk["hp"] = 30.0
+	sk["shield"] = 0.0
+	sk["_dmg_cap_one"] = true                    # 032 亡灵骷髅: 任何一击恒为 1
+	foe["_golden_pct"] = 1.0
+	s._damage._apply_damage_from(foe, g, 100, Color.WHITE)
+	s._damage._apply_damage_from(foe, sk, 100, Color.WHITE)
+	foe["_golden_pct"] = 0.0
+	_ok("①c ★没护盾时吃一发金弹: 连同金弹真伤一共只扣 2",
+		absf(float(g["hp"]) - 28.0) < 0.01, "血 %.1f" % float(g["hp"]))
+	_ok("①c ★亡灵骷髅吃一发金弹: 连同金弹真伤一共只扣 1(同一个漏洞)",
+		absf(float(sk["hp"]) - 29.0) < 0.01, "血 %.1f" % float(sk["hp"]))
+
 	# ══ ①b 小手枪: 受到的所有治疗封顶 1 点(用户 2026-08-12 第 3 条) ══════════
 	#   ★放在 `battle_damage._heal()` 最前面 = **所有治疗源的共用收口**:
 	#     079 医疗炮台 / 法器灵泉 / 食物盛宴 / 090 的治疗浪潮 各有各的入口, 在别处拦只拦得住一条。
@@ -82,7 +118,7 @@ func _ready() -> void:
 		absf(got3 - 200.0) < 0.01, "实得 %.2f" % got3)
 	var src_gun: String = FileAccess.get_file_as_string("res://scripts/systems/equip/eq_gun_batch.gd")
 	_ok("①b 小手枪生成时真的写了这个字段(光有闸没人写=没做)",
-		src_gun.find('p["_heal_cap_val"] = 1.0') >= 0)
+		src_gun.find('p["_heal_cap_val"] = PISTOL_HEAL_CAP') >= 0 and is_equal_approx(EqGunBatch.PISTOL_HEAL_CAP, 1.0))
 
 	# ══ ② 不沉之锚: 每 0.25 秒回 0.1/0.2/3% 最大生命 ═══════════════════════
 	#   ★同时验【充能攒速】: 这条回血兼着沉锚充能的来源(累积满 250 → +1 充能),

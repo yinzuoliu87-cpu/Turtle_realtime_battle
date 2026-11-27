@@ -1,21 +1,14 @@
 extends RefCounted
 ## 图鉴「角色」栏 · 装备召唤的单位(2026-11-27 · 方案书 20261127d)。登记表 / 公用函数 / 写法规矩见 summon_codex.gd 文件头。
-## 列 = 装备星级 ★1 / ★2 / ★3(小木斧 = 进化形态)。数字全读各装备系统的常量(召唤行里的字面量 11-27 已提成常量, 值不变)。
+## 列 = 装备星级 ★1 / ★2 / ★3; 小木斧的九种形态各一页、没有列。数字全读各装备系统的常量(召唤行里的字面量 11-27 已提成常量, 值不变)。
 
 const SC := preload("res://scripts/gamedata/summon_codex.gd")
 
-const _IDS := ["skeleton", "worm", "bear", "turret", "cakebox", "pistol", "medtower", "axe",
+const _IDS := ["skeleton", "worm", "bear", "turret", "cakebox", "pistol", "medtower",
 	"cannon", "remote_bomb", "katana", "shadow_ninja", "skel_warrior", "skel_mage", "skel_priest", "mask_lion"]
 
 
 static func cols(id: String) -> Array:
-	if id == "axe":
-		var out: Array = []
-		for s in AxeEvolution.STAGES:
-			out.append(str(s["name"]))
-		for f in AxeEvolution.FINALS:
-			out.append(str(f["name"]))
-		return out
 	return SC.star_cols() if _IDS.has(id) else []
 
 
@@ -28,7 +21,8 @@ static func info(id: String, ci: int) -> Dictionary:
 		"cakebox": return _cakebox(ci)
 		"pistol": return _pistol(ci)
 		"medtower": return _medtower(ci)
-		"axe": return _axe(ci)
+		"axe", "axe_stone", "axe_iron", "axe_gold", "axe_diamond", "axe_undead", "axe_seraph", "axe_holo", "axe_ember":
+			return _axe(AXE_IDS.find(id))
 		"cannon": return _cannon(ci)
 		"remote_bomb": return _remote(ci)
 		"katana": return _katana(ci)
@@ -140,7 +134,7 @@ static func _pistol(si: int) -> Dictionary:
 		{"name": "连射", "icon": "skills/summon-pistol-shot.png",
 			"desc": "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。小手枪的攻击会触发枪羁绊的金弹，并单独计算金弹。"}, {},
 		[{"name": "小不点", "icon": "passive/summon-pistol-tiny-icon.png",
-			"desc": "小手枪没有护盾时，每次受到的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"}])
+			"desc": "伤害先由小手枪的护盾吸收，每次落到生命值上的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"}])
 
 
 # ─── 079 医疗塔 · 急救塔 ───
@@ -167,12 +161,20 @@ static func _gun_tiers() -> String:
 # ─── 096 小木斧 · 斧头(列 = 进化形态) ───
 ## 左栏 = 这一形态的基础值(底子 + 每次进化的那份 + 最终造物那份); 随砍伐经验长的那份写进被动【砍伐成长】「额外获得」
 ##   (同龟蛋: 用户 11-27「这里已经有三千的基础生命值了，所以你这里可以说龟蛋额外获得」)。原来按进化门槛估砍伐经验填数, 是估出来的数。
+## 九种形态各一页(用户 11-27「每一把分别建立一个这个档案…不要给它放在一个里面」): 进化五档 + 终形四种, 页内没有形态选择栏。
+## 序号 0..4 = STAGES(小木斧 → 钻石斧), 5..8 = FINALS(终形都在钻石斧之上, 解锁的被动档数按钻石斧算)。
+## 石斧 / 铁斧 / 金斧解锁的都是攻击本身的变化 ⇒ 写进斧击, 不另列被动(用户 11-27「攻击的被动…就没必要分两个的呗」)。
+const AXE_IDS := ["axe", "axe_stone", "axe_iron", "axe_gold", "axe_diamond", "axe_undead", "axe_seraph", "axe_holo", "axe_ember"]
+
+
 static func _axe(ci: int) -> Dictionary:
 	var A := AxeEvolution
 	var F := AxeFinalStats
 	var n_st: int = A.STAGES.size()
+	ci = clampi(ci, 0, AXE_IDS.size() - 1)
 	var stage: int = mini(ci, n_st - 1)
 	var fin: String = str(A.FINALS[ci - n_st]["key"]) if ci >= n_st else ""
+	var form_name: String = str(A.FINALS[ci - n_st]["name"]) if ci >= n_st else str(A.STAGES[stage]["name"])
 	var hp: float = A.minion_hp(0, A.passives_at(stage))
 	var atk: float = A.minion_atk(0, A.passives_at(stage))
 	var df: float = A.MINION_DEF + A.PASSIVE_DEF * float(A.passives_at(stage))
@@ -186,6 +188,14 @@ static func _axe(ci: int) -> Dictionary:
 		"holo": hp += F.HOLO_HP; atk += F.HOLO_ATK; df += F.HOLO_DEF; mr += F.HOLO_DEF
 		"ember": hp += F.EMBER_HP; atk += F.EMBER_ATK; aspd *= 1.0 + F.EMBER_ASPD; move *= 1.0 + F.EMBER_MOVE
 	var basic: String = SC.basic_line("斧头") + Lang.t("每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。")
+	if stage >= 1:
+		basic += Lang.t("每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。")
+	if stage == 2:
+		basic += Lang.t("每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。")
+	elif stage >= 3:
+		basic += Lang.t("攻击在横扫和竖劈之间交替。横扫对前方 {C:AxeEvolution.SWEEP_ARC_DEG}° 内的所有敌人造成伤害，竖劈额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。")
+	if fin == "seraph":
+		basic += Lang.t("攻击还会施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。")
 	var skill: String = Lang.t("回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。")
 	if stage >= 4 and fin == "":
 		skill += Lang.t("随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。")
@@ -196,30 +206,26 @@ static func _axe(ci: int) -> Dictionary:
 		"undead": skill += Lang.t("随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。")
 	var ps: Array = [{"name": "砍伐成长", "icon": "passive/summon-axe-grow-icon.png",
 		"desc": "斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。"}]
-	if stage >= 1:
-		ps.append({"name": "石斧 · 重击", "icon": "passive/summon-axe-smash-icon.png",
-			"desc": "每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。"})
-	if stage >= 2:
-		ps.append({"name": "铁斧 · 竖劈", "icon": "passive/summon-axe-cleave-icon.png",
-			"desc": "斧头每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。"})
 	if stage >= 3:
-		ps.append({"name": "金斧 · 效率", "icon": "passive/summon-axe-sweep-icon.png",
-			"desc": "斧头的攻击在 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫和竖劈之间交替，横扫命中前方所有敌人。每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。"})
+		ps.append({"name": "效率", "icon": "passive/summon-axe-sweep-icon.png",
+			"desc": "斧头每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。"})
 	match fin:
 		"undead": ps.append({"name": "亡灵之斧", "icon": "passive/summon-axe-undead-icon.png",
 			"desc": "附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，斧头每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。斧头阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。"})
-		"seraph": ps.append({"name": "炽天使", "icon": "passive/summon-axe-seraph-icon.png",
-			"desc": "斧头的攻击施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。"})
 		"holo": ps.append({"name": "全息斧", "icon": "passive/summon-axe-holo-icon.png",
 			"desc": "斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。"})
 		"ember": ps.append({"name": "余烬", "icon": "passive/summon-axe-ember-icon.png",
 			"desc": "斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。"})
 	var key: String = (fin if fin != "" else ["wood", "stone", "iron", "gold", "diamond"][stage])
-	return _page("斧头", ["axe"], "axe", _sheet("vfx/eq096-axe-%s-idle.png" % key, 112, 8, 300.0, 88.0), "p2eq_096", ["远程斗士" if fin == "seraph" else "近战斗士"],
+	## 战斗里的种类名只有一个 "axe" ⇒ 只挂在小木斧这一页(门禁按种类找页); 其余八页 kinds 为空
+	var d: Dictionary = _page(form_name, ["axe"] if ci == 0 else [], AXE_IDS[ci], _sheet("vfx/eq096-axe-%s-idle.png" % key, 112, 8, 300.0, 88.0), "p2eq_096", ["远程斗士" if fin == "seraph" else "近战斗士"],
 		SC.stats(hp, atk, df, mr, move, aspd, rng),
 		{"name": "斧击", "icon": "skills/summon-axe-chop.png", "desc": basic},
 		{"name": "斧之守护", "icon": "skills/summon-axe-guard.png", "desc": skill, "energy": int(A.ACTIVE_ENERGY)},
-		ps, "进化形态", cols("axe"))
+		ps)
+	d["cols"] = []
+	d["col_title"] = ""
+	return d
 
 
 # ─── 105 炮筒 ───

@@ -9188,8 +9188,8 @@ msgstr "The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack
 msgid "小不点"
 msgstr "Tiny Target"
 
-msgid "小手枪没有护盾时，每次受到的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"
-msgstr "Without a shield, the Little Pistol takes at most {C:EqGunBatch.PISTOL_DMG_CAP} damage per hit, true damage included. After the holder dies, the cap becomes {C:EqGunBatch.PISTOL_DMG_CAP_DEAD}. Each heal restores at most {C:EqGunBatch.PISTOL_HEAL_CAP} health."
+msgid "伤害先由小手枪的护盾吸收，每次落到生命值上的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"
+msgstr "Damage hits the Little Pistol's shields first, and each hit takes at most {C:EqGunBatch.PISTOL_DMG_CAP} of its health, true damage included. After the holder dies, the cap becomes {C:EqGunBatch.PISTOL_DMG_CAP_DEAD}. Each heal restores at most {C:EqGunBatch.PISTOL_HEAL_CAP} health."
 
 msgid "急救弹"
 msgstr "Aid Shot"
@@ -9230,29 +9230,17 @@ msgstr "Chopping Growth"
 msgid "斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。"
 msgstr "The Axe gains ({C:AxeEvolution.MINION_HP_PER_EXP} × Chopping XP) bonus health and ({C:AxeEvolution.MINION_ATK_PER_EXP} × Chopping XP) bonus Attack."
 
-msgid "石斧 · 重击"
-msgstr "Stone Axe · Smash"
 
 msgid "每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。"
 msgstr "Every {C:AxeEvolution.SMASH_IV} seconds, the Axe's next attack deals ({C:AxeEvolution.SMASH_ATK%}% × Attack ({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}) bonus physical damage and knocks the target up and briefly back."
 
-msgid "铁斧 · 竖劈"
-msgstr "Iron Axe · Cleave"
 
-msgid "斧头每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。"
-msgstr "Every 2nd attack from the Axe becomes a downward cleave that deals bonus true damage equal to {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% of the target's max health and applies {C:AxeEvolution.CLEAVE_BLEED} Bleed."
 
-msgid "金斧 · 效率"
-msgstr "Gold Axe · Efficiency"
 
-msgid "斧头的攻击在 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫和竖劈之间交替，横扫命中前方所有敌人。每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。"
-msgstr "The Axe's attacks alternate between a {C:AxeEvolution.SWEEP_ARC_DEG}° sweep, which hits all enemies in front, and a downward cleave. Each attack hit grants 1 [Efficiency] stack for {C:AxeEvolution.EFF_DUR} seconds, stacking infinitely and refreshing on each stack. Each [Efficiency] stack grants {C:AxeEvolution.EFF_ASPD%}% attack speed and {C:AxeEvolution.EFF_MOVE%}% move speed."
 
 msgid "附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，斧头每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。斧头阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。"
 msgstr "Nearby enemies take magic damage equal to {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% of their max health each second. For each nearby enemy, the Axe heals {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% of its max health per second. {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} seconds after the Axe dies, it revives with {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% of its max health, once per battle."
 
-msgid "斧头的攻击施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。"
-msgstr "The Axe's attacks apply {C:AxeFinalStats.SERAPH_BURN_ON_HIT} Burn."
 
 msgid "斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。"
 msgstr "The Axe gains {C:AxeFinalStats.HOLO_ENERGY_RATE%}% Energy Charge. Its attacks give the ally with the lowest health percentage a {C:AxeFinalStats.HOLO_ONHIT_SHIELD} shield and {C:AxeFinalStats.HOLO_ONHIT_ENERGY} Energy."
@@ -9266,8 +9254,6 @@ msgstr "Axe Chop"
 msgid "斧之守护"
 msgstr "Axe Guard"
 
-msgid "进化形态"
-msgstr "Form"
 
 msgid "开炮"
 msgstr "Fire"
@@ -9593,3 +9579,15 @@ msgstr "Every %dth attack instead sends forward a shockwave with {C:EquipTickSys
 
 msgid "携带者阵亡后，炮台的护甲与魔抗降为 0。"
 msgstr "After the holder dies, the Turret's Armor and Magic Resist drop to 0."
+
+msgid "每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。"
+msgstr "Every 2nd attack becomes a downward cleave that deals bonus true damage equal to {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% of the target's max health and applies {C:AxeEvolution.CLEAVE_BLEED} Bleed."
+
+msgid "攻击在横扫和竖劈之间交替。横扫对前方 {C:AxeEvolution.SWEEP_ARC_DEG}° 内的所有敌人造成伤害，竖劈额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。"
+msgstr "Attacks alternate between a sweep and a downward cleave. The sweep hits all enemies within {C:AxeEvolution.SWEEP_ARC_DEG}° in front, and the cleave deals bonus true damage equal to {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% of the target's max health and applies {C:AxeEvolution.CLEAVE_BLEED} Bleed."
+
+msgid "攻击还会施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。"
+msgstr "Attacks also apply {C:AxeFinalStats.SERAPH_BURN_ON_HIT} Burn."
+
+msgid "斧头每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。"
+msgstr "Each attack hit grants the Axe 1 [Efficiency] stack for {C:AxeEvolution.EFF_DUR} seconds, stacking infinitely and refreshing on each stack. Each [Efficiency] stack grants {C:AxeEvolution.EFF_ASPD%}% attack speed and {C:AxeEvolution.EFF_MOVE%}% move speed."
