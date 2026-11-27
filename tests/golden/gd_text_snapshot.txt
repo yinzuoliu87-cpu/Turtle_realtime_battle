@@ -806,7 +806,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|回复自身 {C:AxeEvolution.ACTIVE_H
 scripts/gamedata/summon_codex_equip.gd|lit|大熊
 scripts/gamedata/summon_codex_equip.gd|lit|小不点
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪
-scripts/gamedata/summon_codex_equip.gd|lit|小手枪没有护盾时，受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
+scripts/gamedata/summon_codex_equip.gd|lit|小手枪没有护盾时，每次受到的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。
 scripts/gamedata/summon_codex_equip.gd|lit|尸爆
 scripts/gamedata/summon_codex_equip.gd|lit|居合

@@ -9190,8 +9190,8 @@ msgstr "The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack
 msgid "小不点"
 msgstr "Tiny Target"
 
-msgid "小手枪没有护盾时，受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"
-msgstr "Without a shield, all damage the Little Pistol takes is reduced to {C:EqGunBatch.PISTOL_DMG_CAP}, true damage included, or {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} after the holder dies. Healing on it is capped at {C:EqGunBatch.PISTOL_HEAL_CAP}."
+msgid "小手枪没有护盾时，每次受到的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"
+msgstr "Without a shield, the Little Pistol takes at most {C:EqGunBatch.PISTOL_DMG_CAP} damage per hit, true damage included. After the holder dies, the cap becomes {C:EqGunBatch.PISTOL_DMG_CAP_DEAD}. Each heal restores at most {C:EqGunBatch.PISTOL_HEAL_CAP} health."
 
 msgid "急救弹"
 msgstr "Aid Shot"
