@@ -1,5 +1,5 @@
 # 龟蛋页 11-27 用户意见后的新文案(左栏基础值 / 战斗开始 / 路名全称 / 成长写额外获得)。中文<TAB>English。
-战斗开始时龟蛋被围栏护着，不能被选为目标，范围伤害也打不到，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部倒下后围栏才会倒下。	When combat starts the Turtle Egg is behind a fence: it can't be targeted, area damage can't reach it, and it gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. The fence only falls once all of its side's units are down.
+战斗开始时，龟蛋处于围栏保护中：不可被选取，不受范围伤害，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部阵亡后，围栏消失。	When combat starts, the Turtle Egg is protected by a fence: it can't be targeted, takes no area damage, and gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. Once all of its side's units have died, the fence disappears.
 龟蛋免疫控制与斩杀。龟蛋的生命值在上路战场、下路战场和终极战场之间延续，不会回满。	The Turtle Egg is immune to crowd control and executes. Its health carries over between the Top Lane, Bottom Lane and Final Battle, and never refills.
 龟蛋额外获得（{C:DualLaneFlow.EGG_HP_PER_LV}×等级）最大生命值、（{C:BattleSpawn.EGG_RES_PER_LV}×等级）护甲和（{C:BattleSpawn.EGG_RES_PER_LV}×等级）魔抗。	The Turtle Egg gains ({C:DualLaneFlow.EGG_HP_PER_LV} × level) bonus max health, ({C:BattleSpawn.EGG_RES_PER_LV} × level) Armor and ({C:BattleSpawn.EGG_RES_PER_LV} × level) Magic Resist.
 决战	Showdown
