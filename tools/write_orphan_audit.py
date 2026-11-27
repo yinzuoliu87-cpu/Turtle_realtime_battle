@@ -108,6 +108,8 @@ SKIP_TYPE = re.compile(r":\s*(Vector[234]i?|Color|Rect2i?|Transform[23]D|Quatern
 ## 【测试缝】: 产品**只读**、**只有 tests/ 写** —— 那是设计如此(产品不该写它, 门禁要注入它)。
 ## 逐条都去看过声明处的头注, 不是按名字猜的。
 WHY = {
+    "force_in_tests": "测试缝(2026-11-27): 本周羁绊揭晓在 GameState.test_mode 下默认不弹(否则进主菜单的测试全被它盖住, 且周一不弹周二起弹 ⇒ 门禁随日期变); "
+                      "只有揭晓自己的门禁 verify_week_reveal 与录像台 _rec_week_reveal 写 true。产品侧不写是设计如此: 玩家进程 test_mode 恒为 false。",
     "assume_default_for_test": "测试缝(2026-11-13 存档隔离闸, scripts/util/save_iso.gd): 产品侧只读 —— 恒 false 时按 APPDATA / XDG_DATA_HOME 判是不是玩家默认目录; "
                                "verify_save_iso ③④ 拨上它来模拟「默认目录」, 用完拨回。★不能改环境变量来模拟: Windows 上 Godot 按当时的 APPDATA 实时解析 user://, "
                                "第一版这么做真写进了用户存档(已从卷影副本救回)",
