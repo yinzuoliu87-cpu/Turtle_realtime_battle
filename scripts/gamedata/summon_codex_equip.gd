@@ -327,5 +327,5 @@ static func _lion(si: int) -> Dictionary:
 		SC.stats(K.LION_HP[si], K.LION_ATK[si], K.LION_RES[si], K.LION_RES[si], BattleSpawn.SUMMON_DEFAULT_SPD, K.LION_ASPD, K.LION_RANGE),
 		{"name": "狮咬", "icon": "skills/summon-lion-bite.png", "desc": SC.basic_line("舞狮")},
 		{"name": "冲撞", "icon": "skills/summon-lion-charge.png", "energy": int(K.LION_EN_MAX),
-			"desc": Lang.t("舞狮朝前方冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。") % [si, SC._n(coef), si]},
+			"desc": Lang.t("舞狮朝目标冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。") % [si, SC._n(coef), si]},
 		[])

@@ -868,7 +868,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|砍伐成长
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒分身
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒撞击
 scripts/gamedata/summon_codex_equip.gd|lit|舞狮
-scripts/gamedata/summon_codex_equip.gd|lit|舞狮朝前方冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。
+scripts/gamedata/summon_codex_equip.gd|lit|舞狮朝目标冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。
 scripts/gamedata/summon_codex_equip.gd|lit|蛋糕法阵
 scripts/gamedata/summon_codex_equip.gd|lit|蛋糕礼盒
 scripts/gamedata/summon_codex_equip.gd|lit|蛋糕礼盒的攻击造成（{C:EqFoodBatch.BOX_HIT_COEF%}%×攻击力(未知) = 未知）物理伤害。
