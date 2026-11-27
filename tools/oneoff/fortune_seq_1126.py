@@ -7,7 +7,8 @@
   攻击: 原样 9 帧 = 后拧举剑 → 劈下(命中第 4 帧) → 顺势旋身一圈(5~6 朝右、7 正面)→ 回站姿; 剑弧原样保留
         (用户 11-26 深夜「恢复，不用擦掉」—— 之前我按自己编的「不转身」删了 5~7 帧、擦了剑弧, 没有出处, 撤回)
   招财进宝: 只留跟身体连在一起的像素(AI 画的撒出去的金币是演示特效; pet_seq/README「裸帧」)
-  骰子: 抛在空中的骰子是动作本身, 保留
+  骰子: 抛在空中的骰子是动作本身, 保留; 释放帧 = 第 8 帧(接住)—— 11-27 演示台录像: 释放帧放第 4 帧时游戏原有的骰子金光正好在抛的那一刻炸开、把整只龟盖住,
+        抛骰子看不见 ⇒ 先播完「抛 → 看 → 接」再出金光(释放帧只决定动作播放速度, 不碰结算: AttackRhythm.cast_begin)
   11-26 深夜自查(拼图逐帧看):
   · 招财进宝原第 2~4 帧有 AI 画的大白星 / 小闪光(第 2 帧整张脸被星盖住, 第 4 帧闪光压在壳边上, 擦了会在壳上开洞)⇒ 删掉, 第 5 帧(同一举剑姿势、干净)停三拍
 一次性; 输出逐字节确定。
@@ -83,7 +84,7 @@ def main() -> None:
     seg = lambda rel, fps=15: {"cancel": -1, "fps": fps, "ground": GROUND, "ox": 0, "rel": rel}
     meta = {
         "idle": seg(-1, 8), "run": seg(-1, 12), "attack": seg(4), "death": seg(-1),
-        "cast_fortuneDice": seg(4), "cast_fortuneAllIn": seg(5), "cast_fortuneBuyEquip": seg(3),
+        "cast_fortuneDice": seg(8), "cast_fortuneAllIn": seg(5), "cast_fortuneBuyEquip": seg(3),
     }
     json.dump(meta, open(os.path.join(DST, "seq.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
     ## 头像框(avatar_heads.json 里 fortune 那一项手改: src = pet_seq/fortune/avatar.png, k 1, box [14, 6, 38] = 88×88 源图里头部含墨镜)

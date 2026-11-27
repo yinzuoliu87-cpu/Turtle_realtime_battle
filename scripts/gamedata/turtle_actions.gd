@@ -199,7 +199,7 @@ const CAST := {
 	"fortune": {
 		"fortuneAllIn": ["pets/animations/fortune/cast_fortuneAllIn.png", 15.0, 5],   # 8 帧 · seq
 		"fortuneBuyEquip": ["pets/animations/fortune/cast_fortuneBuyEquip.png", 15.0, 3],   # 8 帧 · seq
-		"fortuneDice": ["pets/animations/fortune/cast_fortuneDice.png", 15.0, 4],   # 9 帧 · seq
+		"fortuneDice": ["pets/animations/fortune/cast_fortuneDice.png", 15.0, 8],   # 9 帧 · seq
 	},
 	"gambler": {
 		"gamblerBet": ["pets/animations/gambler/cast_gamblerBet.png", 15.0, 3],   # 10 帧 · seq
