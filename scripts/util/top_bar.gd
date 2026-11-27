@@ -52,6 +52,15 @@ const ACT_GAP := 12.0        # 右侧动作之间
 ## 页名字号: 像素标题字(UISkin.title_label), 只用 12 的倍数 —— 页名一级 = 36(docs/plans/20261027-UI美术规矩.md §4.1)。
 const TITLE_FS := 36
 
+## ★★2026-11-27「横幅」样式(opts.style = "banner"; 先只有图鉴, 用户看过再铺开):
+##   用户「顶上图鉴这个箭头…商业游戏不会像我们这个顶部这样子去做的吧」→ 方向认可「你做一个看看」。
+##   参考 docs/studies/20261127-参考-装备稀有度框与二级页顶栏.md: 返回键要有底板(不是光秃秃一个字符), 顶栏是带主题的横幅。
+##   素材 tools/assetgen/ase/header_bar.lua(Aseprite 后台逐层画, 2 倍像素)。结构不变(返回 → 页名 → 右侧动作), 换的是做工。
+const BANNER_TEX := "res://assets/sprites/ui/hdr-banner.png"
+const BTN_TEX := {"←": "res://assets/sprites/ui/hdr-back.png", "⌂": "res://assets/sprites/ui/hdr-home.png"}
+const BTN_SIZE := Vector2(80.0, 68.0)   # 原图 40×34 的 2 倍
+var _banner := false
+
 ## 两套配色。★只是【取值不同】，结构完全一样 —— 这就是"统一规则不统一长相"。
 ##   bg/边/字 三个色 + 一个按下态。
 const WOOD := {                                    # 木桌世界（阵容/主菜单系）
@@ -151,6 +160,13 @@ func _init(host: Node, opts: Dictionary) -> void:
 	psb.border_width_bottom = 2
 	psb.border_color = Color(_pal["edge"].r, _pal["edge"].g, _pal["edge"].b, 0.35)
 	plate.add_theme_stylebox_override("panel", psb)
+	_banner = str(opts.get("style", "")) == "banner" and ResourceLoader.exists(BANNER_TEX)
+	if _banner:
+		var bsb := StyleBoxTexture.new()
+		bsb.texture = load(BANNER_TEX)
+		bsb.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE   # 16 像素一节平铺, 不拉伸
+		plate.add_theme_stylebox_override("panel", bsb)
+		plate.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	plate.set_anchors_preset(Control.PRESET_FULL_RECT)
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(plate)
@@ -180,8 +196,23 @@ func _init(host: Node, opts: Dictionary) -> void:
 		title_label.position = Vector2(sl + back_btn.size.x + GAP, 0.0)
 		title_label.size = Vector2(520.0, BAR_H)
 		title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		if str(opts.get("style", "")) == "banner":
+			title_label.size.y = BAR_H - 8.0   # 横幅底沿金边占 8 像素, 页名在上面那截里居中
 		title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bar.add_child(title_label)
+		## 横幅样式: 页名前挂本页图标(48 = 64 像素图标的 3/4, 与 36 号页名同高)
+		var ti_path: String = str(opts.get("title_icon", ""))
+		if _banner and ti_path != "" and ResourceLoader.exists(ti_path):
+			var ti := TextureRect.new()
+			ti.texture = load(ti_path)
+			ti.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ti.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ti.size = Vector2(52.0, 52.0)
+			ti.position = Vector2(title_label.position.x, (BAR_H - 6.0 - 52.0) / 2.0)
+			ti.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ti.name = "TitleIcon"
+			bar.add_child(ti)
+			title_label.position.x += 52.0 + 8.0
 
 	## ── 左侧横向导航（跟在页名后面）──
 	##   ★参考里【去另一个枢纽页】的入口都紧跟在标题后（Botworld 的
@@ -203,7 +234,7 @@ func _init(host: Node, opts: Dictionary) -> void:
 		## ★页名框收到字宽(2026-10-21): 原来固定 520 宽, 框盖住了右边紧跟着的「商店」签
 		##   (verify_shop_inv_phone ⑤ 量的是控件矩形; 字本身没压, 但框压着别人的靶子就是隐患)。
 		title_label.size = Vector2(tw + GAP, BAR_H)
-		lx += tw + GAP * 2.0
+		lx = title_label.position.x + tw + GAP * 2.0
 	for a2 in opts.get("left_actions", []):
 		var lb := _chip(str((a2 as Array)[0]), (a2 as Array)[1] as Callable)
 		if (a2 as Array).size() > 2 and (a2 as Array)[2] is Dictionary:
@@ -383,6 +414,30 @@ func _chip(txt: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = txt
 	b.focus_mode = Control.FOCUS_NONE
+	if _banner and BTN_TEX.has(txt) and ResourceLoader.exists(str(BTN_TEX[txt])):
+		b.set_meta("glyph", txt)   # 字留着(返回键靠它认: 安卓返回键 / 测试), 颜色透明, 图标由贴图画
+		for ck in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+			b.add_theme_color_override(ck, Color(0, 0, 0, 0))
+		var tex: Texture2D = load(str(BTN_TEX[txt]))
+		for st in [["normal", 1.0], ["hover", 1.18], ["pressed", 0.78], ["focus", 1.0], ["disabled", 1.0]]:
+			var tb := StyleBoxTexture.new()
+			tb.texture = tex
+			tb.modulate_color = Color(float(st[1]), float(st[1]), float(st[1]), 1.0)
+			b.add_theme_stylebox_override(str(st[0]), tb)
+		b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		## 画出来 80×68, 热区仍 ≥ 81(触控下限): 按钮本体 81 高, 贴图上下各收 6.5
+		b.size = Vector2(maxf(BTN_SIZE.x, TOUCH_MIN), TOUCH_MIN)
+		b.custom_minimum_size = b.size
+		for st2 in ["normal", "hover", "pressed", "focus", "disabled"]:
+			var s2 := b.get_theme_stylebox(st2) as StyleBoxTexture
+			s2.expand_margin_top = -(TOUCH_MIN - BTN_SIZE.y) / 2.0
+			s2.expand_margin_bottom = -(TOUCH_MIN - BTN_SIZE.y) / 2.0
+			s2.expand_margin_left = -(b.size.x - BTN_SIZE.x) / 2.0
+			s2.expand_margin_right = -(b.size.x - BTN_SIZE.x) / 2.0
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		if cb.is_valid():
+			b.pressed.connect(cb)
+		return b
 	## 宽：纯图标(← ? ⌂ ✕ 这类符号)取正方且不低于触控线；带字按内容算再夹一次下限。
 	var icon_only: bool = is_icon_text(txt)
 	var w: float = CHIP_MIN_W

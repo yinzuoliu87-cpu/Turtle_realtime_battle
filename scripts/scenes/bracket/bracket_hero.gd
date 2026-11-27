@@ -688,6 +688,7 @@ func _ribbon(parent: Control, r: Rect2, text: String, fs: int, gold: bool) -> vo
 	var band_mid: float = (1.0 + band_bot) * 0.5 - 1.0          # -1: 这套字体中文笔画比行框中线低约 1 像素(量过)
 	lb.size = Vector2(r.size.x - 80.0, r.size.y)
 	lb.position = Vector2(r.position.x + 40.0, r.position.y + band_mid - lb.size.y * 0.5)
+	lb.set_meta("ribbon_face_text", true)   # 字按缎面中线摆(下半截是飘带尾巴); verify_ui_consistency 只在压边带那项按这个跳过, 居中由 _probe_label_vcenter 量
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	parent.add_child(lb)

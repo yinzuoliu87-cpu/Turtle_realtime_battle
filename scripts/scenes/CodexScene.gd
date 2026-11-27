@@ -182,6 +182,8 @@ func _add_back_button() -> void:
 		##   而 📖 来自 NotoEmoji, 与这一屏的像素笔触是两套画法。⇒ 按参考走: 只留字。
 		##   四个枢纽页(图鉴/背包/设置/战绩)**一起**改, 不留"两个有图标两个没有"的半拉子。
 		"title": "图鉴",
+		"style": "banner",   # 11-27 横幅顶栏(用户认可方向「你做一个看看」; 先只有图鉴)
+		"title_icon": "res://assets/sprites/menu/ic-codex.png",
 		"palette": TopBar.DEEP,
 		"width": 1280.0,
 		"safe_left": _m.x,
@@ -308,6 +310,9 @@ func _fill_bg_and_center() -> void:
 		for n in [list_bg, list_scroll, detail_bg, detail_frame]:
 			if n != null:
 				n.position += Vector2(dx, dy)
+		## 11-27 文件夹签要贴着内容框上沿: 4:3(iPad)上内容框整体下移 dy, 页签跟着下移(横向本来就按视口居中)
+		if tab_bar != null and dy > 0.5:
+			tab_bar.position.y += dy
 
 
 # ── 列表/详情滑入 (1:1 PoC CodexScene.ts:127-138; PoC 每次切 tab scene.restart 重播) ──
@@ -340,7 +345,7 @@ func _build_tab_bar() -> void:
 	for c in tab_bar.get_children():
 		c.queue_free()
 	var tab_w := 170.0
-	var tab_gap := 8.0
+	var tab_gap := 0.0   # 11-27 文件夹签: 一排紧挨着, 底下金线连成一条
 	# ★手机板触控热区: 页签高 36 视口像素 = 手机上 20pt, 远低于 iOS HIG 44pt。
 	#   页签是主导航, 点不中的代价最大 → 加到 56(30pt)。宽 170 本来就够。
 	## ★2026-08-19 加到 81(44pt) 了。之前记的"加高会压住详情面板"是真的, 但那是把页签当成
@@ -380,9 +385,45 @@ func _build_tab_bar() -> void:
 		var tid: String = t[0]
 		b.pressed.connect(func(): _switch_tab(tid))
 		tab_bar.add_child(b)
+	## 11-27 文件夹签底下那道金线往两边接到内容区(左列表左沿 → 右详情右沿), 页签像插在内容上沿, 不悬空
+	##   ★用设计位置算(Codex.tscn: ListBg 左沿 40, DetailBg 右沿 1240, 宽屏整体居中偏移 dx): 建页签时两块面板还在滑入动画里, 量实时位置是错的
+	if ResourceLoader.exists(TAB_OFF_TEX):
+		var dx0: float = maxf(0.0, (float(get_viewport().get_visible_rect().size.x) - 1280.0) / 2.0)
+		var x0: float = dx0 + 40.0
+		var x1: float = dx0 + 1240.0
+		for seg in [[x0, start_x], [start_x + total_w, x1]]:
+			if float(seg[1]) - float(seg[0]) < 2.0:
+				continue
+			for ln in [[tab_h - 4.0, Color("#9d892e")], [tab_h - 2.0, Color("#050a10")]]:   # 与页签贴图底两行(2 倍 = 各 2 像素)对齐
+				var r := ColorRect.new()
+				r.color = ln[1]
+				r.position = Vector2(float(seg[0]), float(ln[0]))
+				r.size = Vector2(float(seg[1]) - float(seg[0]), 2.0)
+				r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				tab_bar.add_child(r)
 
+
+## 11-27 横幅顶栏配套: 页签换成文件夹签(tools/assetgen/ase/header_bar.lua 的 hdr-tab-on / off, 2 倍像素九宫格)。
+##   没选中 = 压暗 + 底下一道金线(内容区上沿); 选中 = 亮底亮金边、底边敞开, 和下面连成一块。
+const TAB_ON_TEX := "res://assets/sprites/ui/hdr-tab-on.png"
+const TAB_OFF_TEX := "res://assets/sprites/ui/hdr-tab-off.png"
 
 func _style_tab(b: Button, active: bool) -> void:
+	var tp: String = TAB_ON_TEX if active else TAB_OFF_TEX
+	if ResourceLoader.exists(tp):
+		var st := StyleBoxTexture.new()
+		st.texture = load(tp)
+		st.set_texture_margin_all(12.0)
+		b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var hv := st.duplicate() as StyleBoxTexture
+		hv.modulate_color = Color(1.25, 1.25, 1.25, 1.0) if not active else Color(1, 1, 1, 1)
+		for s2 in [["normal", st], ["hover", hv], ["pressed", st], ["focus", st], ["disabled", st]]:
+			b.add_theme_stylebox_override(str(s2[0]), s2[1])
+		var fgc := Color("#ffd93d") if active else Color("#a8975a")
+		for ck in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(ck, fgc)
+		b.modulate = Color(1, 1, 1, 1)
+		return
 	# active 底 0xffd93d 字深 #1a1a2e; inactive 底 0x1a2740 字 #ffd93d. 金边 2px.
 	var fill := Color("#ffd93d") if active else Color("#1a2740")
 	fill.a = 0.9

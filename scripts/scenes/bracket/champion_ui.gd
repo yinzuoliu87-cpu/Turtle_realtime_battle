@@ -220,6 +220,7 @@ static func ribbon(parent: Control, c: Vector2, w: float, t: String, fs: int, ki
 	##   中线 ≈ 高度的 29%(下半截是飘带尾巴 / 银的吊牌); 原来框中线在 38%(0.02 + 0.72/2), 字低 9% 高度。框高不变, 只挪中线。
 	lb.size = Vector2(w * 0.76, h * 0.72)
 	lb.position = Vector2(w * 0.12, h * 0.29 - lb.size.y * 0.5)
+	lb.set_meta("ribbon_face_text", true)   # 字按缎面中线摆(下半截是飘带尾巴); verify_ui_consistency 只在压边带那项按这个跳过, 居中由 _probe_label_vcenter 量
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	holder.add_child(lb)

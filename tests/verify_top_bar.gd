@@ -108,7 +108,9 @@ func _ready() -> void:
 			if is_back:
 				back_total += 1
 			var sb: StyleBox = back_btn.get_theme_stylebox("normal")
-			var thick: bool = sb is StyleBoxTexture
+			## ★2026-11-27 用户看图鉴「顶上这个箭头…商业游戏不会这样子去做的吧」→ 认可「返回键要有底板 + 横幅顶栏」的方向(取代 09-19「返回一律扁平薄片」):
+			##   横幅样式(TopBar style = banner, 贴图底板, 按钮带 glyph 标记)不算「厚装饰框」。其余屏仍按旧规矩, 等用户看过图鉴再铺开。
+			var thick: bool = sb is StyleBoxTexture and not back_btn.has_meta("glyph")
 			if thick:
 				thick_total += 1
 			_ok("① %s 返回键不是厚装饰框" % scn, not thick, "stylebox=%s" % sb.get_class())

@@ -896,7 +896,11 @@ func _audit(root: Node) -> Dictionary:
 				var _par := lb.get_parent() as Control
 				var _badge: bool = _par != null and (_par is PanelContainer or _par is Panel) \
 						and _par.size.x < 40.0 and _par.size.y < 40.0
-				labels.append([_ink_rect(lb), str(lb.text), _is_toast(lb) or _badge, n])
+				## ★2026-11-27 缎带字(对阵图顶上「小组赛 X 组」/ 组冠军缎带 / 冠军墙缎带)只豁免压边带: 缎带贴图下半截是飘带尾巴,
+				##   `_band_of` 从整张图正中往外扫, 扫到的是缎面里的条纹不是边 ⇒ 字摆到缎面正中(用户 11-27「文字高度偏了」后修的)反被报 +11~13。
+				##   这批字的位置另由 tests/probes/_probe_label_vcenter.gd 逐像素量(偏差 0 / 0.5 像素), 实拍字在红色缎面正中。重叠那项照查。
+				var _ribbon: bool = lb.has_meta("ribbon_face_text")
+				labels.append([_ink_rect(lb), str(lb.text), _is_toast(lb) or _badge, n, _ribbon])
 				var fs2: int = lb.get_theme_font_size("font_size")
 				# ⚠ 判据太宽第 8 次: 报选龟稀有度栏杆的「A」「B」「C」被挤没 —— 实拍那几个
 				#   字母**显示得好好的**。原因是这些 Label 是手工定位的, `size` 就是 (0,0),
@@ -1000,6 +1004,8 @@ func _audit(root: Node) -> Dictionary:
 			continue
 		if boxed[k].size() > 2 and bool(boxed[k][2]):
 			continue          # 角标/toast: 压在边上是设计如此
+		if boxed[k].size() > 4 and bool(boxed[k][4]):
+			continue          # 缎带字: 只跳过压边带这一项, 见收集处注释
 		var fr2: Rect2 = framed[best][0]
 		var inter2: Rect2 = fr2.intersection(lr)
 		var la: float = lr.size.x * lr.size.y
