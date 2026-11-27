@@ -407,7 +407,12 @@ static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array
 ##   ⚠ `is_bot` / `ghost_id` **留着**(门禁与匹配记账要分得清), 它们只在本机:
 ##     出站的两条路(录像 / right_snapshot)都过 `ReplayUploader.GHOST_STRIP` 摘掉。
 ## ★`gw / gl` = 周六战绩标签(-1 = 积分赛)。周六的真人快照带 gl_w/gl_l/gl_ts, 机器人也得带。
-static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl: int = -1) -> Dictionary:
+## ★`week`(2026-11-27): 周锚点 > 0 ⇒ 统领 / 小将 / 援军小将的装备只从**这一周的羁绊池**里抽(WeeklySynergy.pool_ok, 同商店);
+##   0 = 不过滤(老行为)。原来全商店抽 ⇒ 上线轮换后机器人身上会出现本周商店买不到的装备, 一眼认得出是机器人
+##   (用户 2026-10-04「不能让玩家知道是机器人」; 11-27 用户问「商店都会出现正确的本周羁绊了吗」时自查出来)。
+##   服务端的机器人池由 bot_pool.gd 按「生成那一刻所在的周」生成, 每周一换周后重生成(server/referee/turtle-bot-pool-weekly.timer)。
+##   随机数消耗个数不变(只是从更短的表里挑), 不带 week 的调用逐字节同原来。
+static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl: int = -1, week: int = 0) -> Dictionary:
 	var bot_lv := _P2.bot_level_for_battles(battles)
 	# ★装备容量统一规则(2026-07-27): 与玩家同一套 —— 全队合计 team_equip_cap(等级), 单只 ≤ UNIT_EQUIP_CAP。
 	#   原来这里走 equip_slots_for_battles(每只固定N件) = 敌我两把尺子, 已废。
@@ -439,7 +444,9 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 	var shop_ids: Array = []
 	for e in DataRegistry.phase2_equipment:
 		if int((e as Dictionary).get("shopAvailable", 0)) == 1:
-			shop_ids.append(str((e as Dictionary)["id"]))
+			var eid := str((e as Dictionary)["id"])
+			if week <= 0 or WeeklySynergy.pool_ok(eid, week, WeeklySynergy.BATTLE_PV):
+				shop_ids.append(eid)
 	var equipped := {}
 	var levels := {}
 	# 先给统领分, 每只最多 UNIT_EQUIP_CAP; 分完剩下的留给小将(下面)。总数受 budget 硬约束。
@@ -503,7 +510,7 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		"equipped": equipped,
 		## 援军小将可抽的装备(2026-11-11): 真人快照带这一键, 机器人也带(不带 = 一眼认得出)。
 		##   按 ghost_id 派生(`derived_reserve_pool`, 不消耗 rng ⇒ 已有机器人的其余内容逐位不变), 费用按 bot 等级掷(同商店)。
-		"reserve_pool": derived_reserve_pool(ghost_id, bot_lv),
+		"reserve_pool": derived_reserve_pool(ghost_id, bot_lv, week),
 		"pet_levels": levels,
 		## 按龟等级(R1, 2026-11-09): 限免龟一律 1 级(同没绑主站的真人; 服务器裁判开算时也会按 1 级盖章)
 		"lv": levels.duplicate(),
@@ -1161,13 +1168,14 @@ static func _seed_season_id() -> int:
 ##   等级 = `level`(≥ 1 时; seed_as_human 转换前的种子文件没有 season_level, 由它把算好的传进来), 否则快照自己的 season_level。
 ##   战斗侧(右方 dual_ghost)、裁判(左方 A 快照)、陪练转换(seed_as_human)都走这一个函数 ⇒ 同一份快照到哪都抽同一件,
 ##   陪练「原样 vs 转换后」强度逐字相同(verify_bot_snapshot_shape)。
-static func reserve_pool_of(snap, level: int = 0) -> Array:
+## `week` > 0 ⇒ 派生的那 1~2 件也只从这一周的羁绊池里挑(只在离线生成对手池时传; 战斗侧缺键回落仍传 0, 不跟着周变 ⇒ 录像 / 裁判逐字相同)。
+static func reserve_pool_of(snap, level: int = 0, week: int = 0) -> Array:
 	if not (snap is Dictionary):
 		return []
 	if (snap as Dictionary).get("reserve_pool") is Array:
 		return ReserveConsts.clean_pool((snap as Dictionary)["reserve_pool"])
 	var lv := level if level >= 1 else maxi(1, int((snap as Dictionary).get("season_level", 1)))
-	return derived_reserve_pool(str((snap as Dictionary).get("ghost_id", "")), lv)
+	return derived_reserve_pool(str((snap as Dictionary).get("ghost_id", "")), lv, week)
 
 
 ## 按 ghost_id 派生 1~2 件 1 星商店装备(机器人 / 陪练「背包里没穿的」)。独立 PCG(种子 = ghost_id 的哈希)⇒ 不碰任何别的随机数;
@@ -1175,13 +1183,15 @@ static func reserve_pool_of(snap, level: int = 0) -> Array:
 ## ★每件先按 `level` 的商店费用概率(phase2_config.SHOP_COST_ODDS, 与真人开店同一张表)掷费用, 再在那个费用里挑一件
 ##   (2026-11-24 用户「三级四级买到五费装备？不可能啊！」: 原来在全部商店装备里平均抽 ⇒ 5 级陪练号援军小将带 5 费旋翼机,
 ##   而 5 级开店 5 费概率是 0)。那个费用没有可刷的 ⇒ 往低一档找。
-static func derived_reserve_pool(ghost_id: String, level: int) -> Array:
+static func derived_reserve_pool(ghost_id: String, level: int, week: int = 0) -> Array:
 	var out: Array = []
 	if ghost_id == "":
 		return out
 	var by_cost := {}
 	for e in DataRegistry.phase2_equipment:
 		if int((e as Dictionary).get("shopAvailable", 0)) == 1:
+			if week > 0 and not WeeklySynergy.pool_ok(str((e as Dictionary)["id"]), week, WeeklySynergy.BATTLE_PV):
+				continue
 			var c := int((e as Dictionary).get("cost", 1))
 			if not by_cost.has(c):
 				by_cost[c] = []
@@ -1201,7 +1211,8 @@ static func derived_reserve_pool(ghost_id: String, level: int) -> Array:
 	return out
 
 
-static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
+## `week` > 0 ⇒ 种子缺 reserve_pool 时派生的援军装备只从这一周的羁绊池里挑(离线生成积分赛池时传; 见 reserve_pool_of)。
+static func seed_as_human(g: Dictionary, season_id: int, week: int = 0) -> Dictionary:
 	var gid := str(g.get("ghost_id", ""))
 	var battles := maxi(0, int(g.get("season_total_battles", 0)))
 	var leaders: Array = []
@@ -1258,7 +1269,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"leader_off": (g.get("leader_off", {}) as Dictionary).duplicate(true) if g.get("leader_off") is Dictionary else {},
 		"loadouts": (g.get("loadouts", {}) as Dictionary).duplicate(true) if g.get("loadouts") is Dictionary else {},
 		"equipped": equipped,
-		"reserve_pool": reserve_pool_of(g, _seed_level(g, battles)),   # 援军小将可抽的装备(2026-11-11): 有就照抄; 种子文件没有 ⇒ 按 ghost_id 派生(与战斗侧缺键回落同一个函数 ⇒ 原样 vs 转换后强度相同)
+		"reserve_pool": reserve_pool_of(g, _seed_level(g, battles), week),   # 援军小将可抽的装备(2026-11-11): 有就照抄; 种子文件没有 ⇒ 按 ghost_id 派生(与战斗侧缺键回落同一个函数 ⇒ 原样 vs 转换后强度相同)
 		"pet_levels": levels,
 		"lv": levels.duplicate(),      # 按龟等级(R1, 2026-11-09): 与真人同形(没绑主站的真人 = 全 1 级)
 		"trainer_skill": str(g.get("trainer_skill", "")),
@@ -1434,7 +1445,7 @@ static func find_opponent(battles: int, exclude_ids: Array, rng: RandomNumberGen
 		return ge
 	## ② 机器人(永久安全网)
 	_tally("bot")
-	return make_bot(maxi(0, battles), rng)
+	return make_bot(maxi(0, battles), rng, -1, -1, int(GameState.week_anchor_ts) if GameState != null else 0)
 
 
 ## ★★E-A4(2026-09-22) 周六闯关赛的匹配 —— 与上面那条**是两套**, 不是加个参数。
@@ -1473,7 +1484,8 @@ static func find_gauntlet_opponent(gw: int, gl: int, exclude_ids: Array,
 	##    「周六有多少场是打机器人的」是 R2 那条风险唯一能回答的数字。
 	_tally("gauntlet_bot")
 	return make_bot(gauntlet_bot_battles(
-		int(GameState.season_total_battles) if GameState != null else 0, gw, gl), rng, gw, gl)
+		int(GameState.season_total_battles) if GameState != null else 0, gw, gl), rng, gw, gl,
+		int(GameState.week_anchor_ts) if GameState != null else 0)
 
 
 ## 周六机器人按几场的强度造。

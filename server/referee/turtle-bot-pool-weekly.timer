@@ -1,0 +1,9 @@
+[Unit]
+Description=Regenerate turtle PROD bot pools every Monday 00:10 UTC (after the week rolls over)
+
+[Timer]
+OnCalendar=Mon *-*-* 00:10:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -58,6 +58,10 @@
                                     docs/plans/20261101c-积分赛服务器裁判.md）：内置陪练（客户端池子里那 396 份）+ 兜底机器人
                                     （scripts/referee/bot_pool.gd generate_ranked，Godot 参数 --ranked-pool=）→ rpc/referee_ranked_pool_load
                                     （按种类分批，每种第一批清旧）。工程里没有 generate_ranked（0.22.7 之前的版本）⇒ 跳过这一半。
+  referee_poller.py --bot-pool --weekly
+                                    只重生成「机器人按本周羁绊池抽装备」的版本（bot_pool.gd 里有 pool_week = 0.23.6 起）：
+                                    这些版本的机器人池按生成那一刻所在的周生成，换周后要重生成 ⇒ turtle-bot-pool-weekly.timer 每周一 00:10 UTC 跑。
+                                    老版本（商店不轮换）池子不跟周变，跳过。2026-11-27 · 方案书 20261124d「所有随机产出装备的地方一律过本周池」。
 """
 import argparse
 import json
@@ -977,8 +981,21 @@ def upload_bot_pool(pool: dict) -> dict:
     return last
 
 
-def bot_pool_cmd(versions: dict, only: str, out_dir: str) -> int:
-    targets = {v: p for v, p in versions.items() if not only or v == only}
+def week_pool_supported(proj: str) -> bool:
+    """这一版工程的机器人池是不是按周生成（bot_pool.gd 里有 pool_week = 0.23.6 起）。"""
+    try:
+        with open(os.path.join(proj, "scripts", "referee", "bot_pool.gd"), encoding="utf-8") as f:
+            return "static func pool_week" in f.read()
+    except OSError:
+        return False
+
+
+def bot_pool_cmd(versions: dict, only: str, out_dir: str, weekly: bool = False) -> int:
+    targets = {v: p for v, p in versions.items() if (not only or v == only) and (not weekly or week_pool_supported(p))}
+    if weekly:
+        log("bot-pool --weekly: 按周生成的版本 %s（其余 %d 个不跟周变，跳过）" % (sorted(targets), len(versions) - len(targets)))
+        if not targets:
+            return 0
     if not targets:
         print("没有要生成的版本（VERSIONS_DIR=%s, --version=%s）" % (env("VERSIONS_DIR", "/opt/turtle"), only))
         return 2
@@ -1046,6 +1063,7 @@ def main() -> int:
     ap.add_argument("--health", action="store_true")
     ap.add_argument("--versions", action="store_true")
     ap.add_argument("--bot-pool", action="store_true")
+    ap.add_argument("--weekly", action="store_true", help="配 --bot-pool: 只重生成按周生成机器人池的版本(换周后跑)")
     ap.add_argument("--version", default="")
     ap.add_argument("--outbox-once", action="store_true", help="龟投发件箱只发一批就退（手测；不看 MAINSITE_OUTBOX 开关）")
     a = ap.parse_args()
@@ -1069,12 +1087,12 @@ def main() -> int:
         print(json.dumps({"rc": rc, **brief}, ensure_ascii=False))
         return 0 if rc == 0 else 1
     if a.bot_pool and a.out:
-        return bot_pool_cmd(versions, a.version, a.out)      # 只写文件: 不需要钥匙
+        return bot_pool_cmd(versions, a.version, a.out, a.weekly)      # 只写文件: 不需要钥匙
     if not env("SUPABASE_URL") or not env("SUPABASE_SERVICE_KEY"):
         print("缺 SUPABASE_URL / SUPABASE_SERVICE_KEY")
         return 2
     if a.bot_pool:
-        return bot_pool_cmd(versions, a.version, "")
+        return bot_pool_cmd(versions, a.version, "", a.weekly)
     if a.health:
         b = rpc("referee_backlog", {})
         print(json.dumps(b, ensure_ascii=False))

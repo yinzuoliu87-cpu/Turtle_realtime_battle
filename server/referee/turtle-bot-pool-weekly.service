@@ -1,0 +1,22 @@
+# 正式服机器人对手池每周重生成(2026-11-27): 0.23.6 起机器人装备只从「本周羁绊池」里抽(scripts/referee/bot_pool.gd pool_week),
+#   池子按生成那一刻所在的周生成 ⇒ 每周一换周后重生成一遍, 只跑按周生成的版本(referee_poller.py --bot-pool --weekly)。
+#   上传走 rpc/referee_bot_pool_load / referee_ranked_pool_load(与发版时 deploy_version.sh 的 pools 步同一条命令)。
+[Unit]
+Description=Regenerate turtle PROD bot pools for the new week (weekly synergy pool)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env
+ExecStart=/usr/bin/nice -n 10 /usr/bin/python3 /opt/turtle/referee/referee_poller.py --bot-pool --weekly
+TimeoutStartSec=3600
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/turtle-referee /opt/turtle
+StandardOutput=journal
+StandardError=journal

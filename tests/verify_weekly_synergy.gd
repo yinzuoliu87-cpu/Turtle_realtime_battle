@@ -150,6 +150,58 @@ func _ready() -> void:
 	var ci := eqsrc.find("func _conch_grant_equips")
 	var cj := eqsrc.find("\nfunc ", ci + 10)
 	_ok("H 魔法海螺小虫的随机装备也只出本周池(源码里挂了 WeeklySynergy.battle_ok)", ci > 0 and eqsrc.substr(ci, cj - ci).contains("WeeklySynergy.battle_ok("))
+	## J 香火石(遗物 + 香火)每周都能出, 小木斧同(方案书 R4); 仪式匕首(匕首 + 仪式)跟着匕首轮换(11-27 探针: 初版香火石跟着遗物轮换)
+	var n_wk := 0
+	var no_relic := 0
+	var bad_j: Array = []
+	for k in range(8):
+		var wj: int = WS.LAUNCH_WEEK + k * 7 * 86400
+		n_wk += 1
+		var syn_j: Array = WS.of_week(wj)
+		if not syn_j.has("遗物"):
+			no_relic += 1
+		if not WS.pool_ok("p2eq_093", wj, 2) or not WS.pool_ok("p2eq_096", wj, 2):
+			bad_j.append("%d 香火石/小木斧不出" % wj)
+		if WS.pool_ok("p2eq_114", wj, 2) != syn_j.has("匕首"):
+			bad_j.append("%d 仪式匕首与匕首不同步" % wj)
+	_ok("J 上线起 %d 周(其中 %d 周没抽到遗物): 香火石 / 小木斧每周都能出, 仪式匕首跟着匕首" % [n_wk, no_relic],
+		bad_j.is_empty() and no_relic > 0, str(bad_j))
+	## K 机器人(积分赛兜底 / 周六闯关 / 客户端安全网)身上的装备也只从本周池里抽(11-27 自查: 原来全商店抽 ⇒ 带着本周买不到的装备, 一眼认得出)
+	##   统领 + 小将 + 援军小将(reserve_pool)逐件查; 对照组不带周(0)必须抽出池外的件 ⇒ 证明这条判据抓得到
+	var BE = load("res://scripts/net/backend.gd")
+	var wk_k: int = WS.LAUNCH_WEEK + 7 * 86400
+	var n_k := 0
+	var bad_k: Array = []
+	var ctrl_out := 0
+	for i in range(40):
+		for wsel in [wk_k, 0]:
+			var rk := RandomNumberGenerator.new()
+			rk.seed = 9100 + i
+			var bot: Dictionary = BE.make_bot(20, rk, -1, -1, wsel)
+			var ids: Array = []
+			for pid in (bot.get("equipped", {}) as Dictionary):
+				for it in bot["equipped"][pid]:
+					ids.append(str(it["id"]))
+			for lk in ["top", "bottom"]:
+				for m in (bot.get("minions", {}).get(lk, []) as Array):
+					for it in (m as Dictionary).get("equips", []):
+						ids.append(str(it["id"]))
+			for it in (bot.get("reserve_pool", []) as Array):
+				ids.append(str(it["id"]))
+			for eid_k in ids:
+				var ok_k: bool = WS.pool_ok(eid_k, wk_k, 2)
+				if wsel > 0:
+					n_k += 1
+					if not ok_k:
+						bad_k.append(eid_k)
+				elif not ok_k:
+					ctrl_out += 1
+	_ok("K 机器人 40 个(%s 那周)身上 %d 件装备全在本周池(池外 %d 件) · 对照组不带周抽出池外 %d 件(须 > 0)"
+		% [Time.get_date_string_from_unix_time(wk_k), n_k, bad_k.size(), ctrl_out],
+		n_k > 200 and bad_k.is_empty() and ctrl_out > 0, str(bad_k.slice(0, 8)))
+	var BP = load("res://scripts/referee/bot_pool.gd")
+	_ok("K 机器人池按生成那一刻所在的周生成: pool_week() = %d = GameState 同一个 week_anchor_utc" % BP.pool_week(),
+		BP.pool_week() == int(load("res://scripts/gamedata/phase2_config.gd").week_anchor_utc(int(load("res://scripts/gamedata/phase2_config.gd").now_utc()))) and BP.pool_week() > 0)
 	## I 图鉴「本周不出」压暗(11-27): 判据与掷货同一个 pool_ok · 羁绊赠送(费用 0)不标 · 羁绊页只标 16 个轮换的
 	var i_bad: Array = []
 	var i_off := 0

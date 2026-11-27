@@ -7,6 +7,10 @@ extends RefCounted
 ## ★纯函数(照 WeeklyFree): 不读钟、不读档、不用引擎随机。排序键 = FNV-1a 32 位("周锚点|羁绊名"), 全服同一份;
 ##   同键再按羁绊名逐码点比。门禁 verify_weekly_synergy 拿独立 Python 实现(tools/weekly_synergy_gold.py)算的金标比。
 ## ★小木斧(斧头)、香火石(香火)、仪式匕首里的「仪式」不算大羁绊 —— 只属于非大羁绊类型的件永远可以出。
+## ★★带「斧头 / 香火」的件(小木斧 / 香火石)**永远可以出**, 哪怕它同时属于某个大羁绊(香火石 = 遗物 + 香火):
+##   方案书 R4「小木斧、香火石不算大羁绊，不参与轮换」(用户 11-24)。初版只看「有没有大羁绊类型」, 香火石跟着遗物轮换,
+##   没抽到遗物的周商店里就没有它(11-27 探针: 12-07 / 12-14 两周)。仪式匕首不在此列 —— 它是匕首那 9 件之一, 跟着匕首轮换。
+const ALWAYS_TYPES: Array[String] = ["斧头", "香火"]
 ## ★商店池版本(EconLedger.POOL_VER): 经济流水里每条记当时客户端的池版本。版本 1(0.23.5 及以前, 流水里没有 pv)= 老池:
 ##   只有 001~096、不轮换 —— 换版当天(周一 00:00 换周 ~ 21:00 换版)老客户端掷的货, 服务器用新代码重放也对得上
 ##   (经济方案书 20261106 R10「经济规则改动不在周中上」, 这一版不得不在周中上, 靠版本号兜住)。
@@ -56,6 +60,8 @@ static func pool_ok(eid: String, week_anchor: int, pv: int) -> bool:
 	var types: Array = _P2T.types_of(eid)
 	var big: Array = []
 	for t in types:
+		if ALWAYS_TYPES.has(str(t)):
+			return true      # 小木斧 / 香火石: 不参与轮换(R4)
 		if ALL.has(str(t)):
 			big.append(str(t))
 	if big.is_empty():

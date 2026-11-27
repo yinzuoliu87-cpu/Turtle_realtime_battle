@@ -45,17 +45,25 @@ static func seed_for(battles: int, gw: int, gl: int, variant: int) -> int:
 	return absi(("botpool|%d|%d|%d|%d|%d" % [int(P2.RULES_VER), battles, gw, gl, variant]).hash())
 
 
-## 一份: 与客户端周六回落机器人同一个函数(`make_bot(场次, rng, gw, gl)`), 再摘 STRIP。
-static func one(battles: int, gw: int, gl: int, variant: int) -> Dictionary:
+## 这一池按哪一周生成(2026-11-27): 生成那一刻所在的周(UTC 周一 00:00 换周, 与 GameState 同一个 week_anchor_utc)。
+##   机器人装备只从这一周的羁绊池里抽(make_bot 头注); 每周一换周后由 turtle-bot-pool-weekly.timer 重生成一遍。
+##   同一版本、同一周内重跑仍逐字节相同(门禁 verify_gauntlet_server_pick 比两遍)。
+static func pool_week() -> int:
+	return int(P2.week_anchor_utc(int(P2.now_utc())))
+
+
+## 一份: 与客户端周六回落机器人同一个函数(`make_bot(场次, rng, gw, gl, 周)`), 再摘 STRIP。
+static func one(battles: int, gw: int, gl: int, variant: int, week: int = 0) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_for(battles, gw, gl, variant)
-	var snap: Dictionary = BE.make_bot(battles, rng, gw, gl)
+	var snap: Dictionary = BE.make_bot(battles, rng, gw, gl, week)
 	for k in STRIP:
 		snap.erase(k)
 	return snap
 
 
 static func generate() -> Dictionary:
+	var wk: int = pool_week()
 	var rows: Array = []
 	for b in range(MAX_BATTLES + 1):
 		for lb in labels():
@@ -64,9 +72,9 @@ static func generate() -> Dictionary:
 			if gw + gl > b:
 				continue
 			for v in range(VARIANTS):
-				rows.append({"battles": b, "gw": gw, "gl": gl, "variant": v, "snapshot": one(b, gw, gl, v)})
+				rows.append({"battles": b, "gw": gw, "gl": gl, "variant": v, "snapshot": one(b, gw, gl, v, wk)})
 	return {"v": FORMAT, "client_version": ReplayRecorder.client_version(), "rules_ver": int(P2.RULES_VER),
-		"max_battles": MAX_BATTLES, "variants": VARIANTS, "rows": rows}
+		"max_battles": MAX_BATTLES, "variants": VARIANTS, "week": wk, "rows": rows}
 
 
 # ─────────────────────────────── 积分赛池(2026-11-01) ───────────────────────────────
@@ -85,15 +93,16 @@ static func ranked_seed_for(battles: int, variant: int) -> int:
 	return absi(("rankbot|%d|%d|%d" % [int(P2.RULES_VER), battles, variant]).hash())
 
 
-static func ranked_bot(battles: int, variant: int) -> Dictionary:
+static func ranked_bot(battles: int, variant: int, week: int = 0) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = ranked_seed_for(battles, variant)
-	var snap: Dictionary = BE.make_bot(battles, rng)
+	var snap: Dictionary = BE.make_bot(battles, rng, -1, -1, week)
 	snap.erase(BE.ORIGIN_KEY)
 	return snap
 
 
 static func generate_ranked() -> Dictionary:
+	var wk: int = pool_week()
 	var seed_rows: Array = []
 	var nth := {}
 	var src: Dictionary = BE._load_seed()
@@ -104,7 +113,7 @@ static func generate_ranked() -> Dictionary:
 		for g in (buckets[k] as Array):
 			if not (g is Dictionary):
 				continue
-			var s: Dictionary = BE.seed_as_human(g as Dictionary, RANKED_SEED_SID)
+			var s: Dictionary = BE.seed_as_human(g as Dictionary, RANKED_SEED_SID, wk)
 			s.erase(BE.ORIGIN_KEY)
 			var b := maxi(0, int(s.get("season_total_battles", 0)))
 			var v := int(nth.get(b, 0))
@@ -113,6 +122,6 @@ static func generate_ranked() -> Dictionary:
 	var bot_rows: Array = []
 	for b in range(MAX_BATTLES + 1):
 		for v in range(VARIANTS):
-			bot_rows.append({"battles": b, "variant": v, "snapshot": ranked_bot(b, v)})
+			bot_rows.append({"battles": b, "variant": v, "snapshot": ranked_bot(b, v, wk)})
 	return {"v": FORMAT, "client_version": ReplayRecorder.client_version(), "rules_ver": int(P2.RULES_VER),
-		"seed_rows": seed_rows, "bot_rows": bot_rows}
+		"week": wk, "seed_rows": seed_rows, "bot_rows": bot_rows}

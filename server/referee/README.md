@@ -35,6 +35,7 @@
 | `referee_poller.py` | `/opt/turtle/referee/referee_poller.py`（只用标准库） |
 | `turtle-referee.service` | `/etc/systemd/system/` |
 | `turtle-referee-health.service` + `.timer` | `/etc/systemd/system/`（每分钟查一次积压 / 心跳，失败进 journald） |
+| `turtle-bot-pool-weekly.service` + `.timer` | `/etc/systemd/system/`（每周一 00:10 UTC 跑 `referee_poller.py --bot-pool --weekly`：0.23.6 起机器人装备只从本周羁绊池里抽，换周后重生成两个对手池；只跑 bot_pool.gd 里有 `pool_week` 的版本。装：`cp` 两个文件 → `systemctl daemon-reload` → `systemctl enable --now turtle-bot-pool-weekly.timer`；2026-11-27） |
 | （逐帧直播）`STREAM_ROOT` 环境变量 | 设了就边算边把状态流块发布到该目录，由 Caddy 分发；默认不设 = 不录。见 [server/stream/README.md](../stream/README.md) |
 | 每个版本的游戏工程 | `/opt/turtle/v<版本>/`（整个仓库那一版的 checkout；**必须含 `scenes/Referee.tscn`**，即本功能合入之后的版本 —— 现在机器上的 v571 没有，轮询器会跳过它） |
 
