@@ -821,7 +821,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|急救塔的攻击造成（{C:EqGunBa
 scripts/gamedata/summon_codex_equip.gd|lit|急救弹
 scripts/gamedata/summon_codex_equip.gd|lit|急救金弹
 scripts/gamedata/summon_codex_equip.gd|lit|护卫
-scripts/gamedata/summon_codex_equip.gd|lit|推出一道缓慢前进的亡灵浪潮，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。
 scripts/gamedata/summon_codex_equip.gd|lit|携带者阵亡后，炮台的护甲与魔抗降为 0。
 scripts/gamedata/summon_codex_equip.gd|lit|攻击在横扫和竖劈之间交替。横扫对前方 {C:AxeEvolution.SWEEP_ARC_DEG}° 内的所有敌人造成伤害，竖劈额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。
 scripts/gamedata/summon_codex_equip.gd|lit|攻击还会为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。
@@ -905,6 +904,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师在目标处引爆骨火，对目标及其周围的敌人造成（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师的攻击造成（{C:EqMagicBatch.SKM_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅祭司
+scripts/gamedata/summon_codex_equip.gd|lit|骷髅祭司朝目标推出一道缓慢前进的亡灵浪潮。浪潮对途经的敌人造成 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害，将其击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒，并使其魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，持续 {C:EqMagicBatch.WAVE_MR_SEC} 秒。途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅祭司的攻击造成（{C:EqMagicBatch.SKP_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKP_BASIC*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|骸骨狂怒
 scripts/gamedata/summon_codex_equip.gd|lit|魂火

@@ -315,7 +315,7 @@ static func _skel123(id: String, si: int) -> Dictionary:
 		{"name": "魂火", "icon": "skills/summon-skelp-soul.png",
 			"desc": "骷髅祭司的攻击造成（{C:EqMagicBatch.SKP_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKP_BASIC*ATK}）魔法伤害。"},
 		{"name": "亡灵浪潮", "icon": "skills/summon-skelp-wave.png", "energy": int(M.SKEL_EN_MAX),
-			"desc": Lang.t("推出一道缓慢前进的亡灵浪潮，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。") % [si, si]},
+			"desc": Lang.t("骷髅祭司朝目标推出一道缓慢前进的亡灵浪潮。浪潮对途经的敌人造成 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害，将其击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒，并使其魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，持续 {C:EqMagicBatch.WAVE_MR_SEC} 秒。途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。") % [si, si]},
 		[life])
 
 
