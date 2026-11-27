@@ -18,29 +18,12 @@ func _ready() -> void:
 	_warm_cache()
 
 
-## 缩放好的 512² menu-bg-tile 纹理 — resize 只做一次并缓存.
-##   病根: 10 个场景每次进入都 load(1946²).resize(512²,LANCZOS) 在主线程, 几十ms → 切场景卡顿(用户报"进图鉴/其它页卡一下").
-##   解法: 全局缓存一次缩放结果, 各场景复用 PreloadCache.menu_bg_tile_tex() 不再重缩.
-var _menu_bg_tex: ImageTexture = null
-func menu_bg_tile_tex() -> ImageTexture:
-	if _menu_bg_tex == null:
-		if not ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-			return null
-		var ti: Image = load("res://assets/sprites/menu/menu-bg-tile.png").get_image()
-		## 取不到像素: 无头陪练号的大贴图是不含像素的同尺寸占位(scripts/systems/sim/lite_tex_loader.gd) ⇒ 不铺花砖(无头本来就不画)。
-		if ti == null:
-			return null
-		ti.resize(512, 512, Image.INTERPOLATE_LANCZOS)
-		_menu_bg_tex = ImageTexture.create_from_image(ti)
-	return _menu_bg_tex
-
-
 func _warm_cache() -> void:
 	## 文案里 {C:类.常量} 引用的脚本交给后台线程先加载(商店 / 背包 / 图鉴第一次点开说明不卡 1 秒, 见 SkillText.prewarm_consts)
 	SkillText.prewarm_consts()
 	if not is_instance_valid(DataRegistry) or DataRegistry.all_pets.is_empty():
 		return
-	## (2026-11-24 起不再预缩 menu-bg-tile: 绿色平铺底全仓不用了; 函数留着给 verify_bot_lite_textures)
+	## (2026-11-27 绿色平铺底 menu-bg-tile 素材与 menu_bg_tile_tex 一并删掉: 11-24 起全仓不用, 用户「整个项目都不会再用到了吧」)
 	var seen: Dictionary = {}   # 当 set 用, 去重
 	for pet in DataRegistry.all_pets:
 		var id: String = str(pet.get("id", ""))

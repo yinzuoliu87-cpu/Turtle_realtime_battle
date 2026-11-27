@@ -1513,6 +1513,8 @@ func _t_open_path() -> void:
 	# ── ⑧a 老玩家: 主菜单留住 + 那句提示不挡路 + 真点「开始战斗」──
 	OS.set_environment("ONBOARD", "0")      ## 关掉首启教学, 这一支要看「主菜单留不留得住」
 	GameState.onboarded = true
+	## 本周羁绊开周揭晓(11-27 新增, week_reveal.gd)这一周已看过: 它是每周一次的整屏动画, 点一下就收; 这一支测的是登录墙那句提示挡不挡「开始战斗」, 不是揭晓
+	FirstTips.mark_seen(WeekReveal.SEEN_PREFIX + str(int(GameState.week_anchor_ts)))
 	_ok("⑧a ★★分母: 这一刻确实**该请他绑** —— 正是拆墙之前会被送走的那个状态",
 		P2C.bind_needed(SB.enabled(), str(GameState.account_email)))
 	_ok("⑧a ★★分母: 而**拦**那一档是关的(`WALL_BLOCKS=false`)",

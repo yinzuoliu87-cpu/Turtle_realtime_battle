@@ -9,7 +9,7 @@ extends Node
 ##   ② 测试缝模拟「无头 + SIM_DRIVER=1」(调的是 persistent_bg._init 调的同一个函数): 同一张大贴图 ⇒ 同尺寸占位、
 ##      没有像素; 小贴图(< 256KB)仍是真贴图; 开关只认「无头 且 恰好 "1"」; 阈值边界两侧各一张;
 ##      注册前后各打一行 [LiteTex]
-##   ③ 从载入的贴图读像素的 10 处(get_image; 视口截图那几处读的是画面不是载入的贴图, 不在此列),
+##   ③ 从载入的贴图读像素的 9 处(get_image; 视口截图那几处读的是画面不是载入的贴图, 不在此列),
 ##      在占位下不报错、不崩 —— 报错条数由挂在引擎上的 Logger 数(脚本报错不经过 GDScript, 只有它数得到)
 ##   ④ 尺子自检: 阈值改成 0 ⇒ 小贴图也变占位(证明 ②「小贴图是真贴图」那条量得出差别)
 ##   ⑤ 拆掉加载器后一切复原; 两处补了空值判断的函数在真贴图下照旧出图(补丁没伤到真人客户端那条路)
@@ -21,15 +21,14 @@ const BIG2 := "res://assets/sprites/pets/headless.png"          # 另一张全�
 const SMALL := "res://assets/sprites/ui/coin.png"               # 24×24(解码 2.3KB)
 const EDGE_AT := "res://assets/sprites/skills/basic-attack.png" # 256×256×4 = 262144 恰好等于阈值 ⇒ 算大
 const EDGE_BELOW := "res://assets/sprites/vfx/bear-walk.png"    # 672×96×4 = 258048 刚低于阈值 ⇒ 算小
-const MENU_TILE := "res://assets/sprites/menu/menu-bg-tile.png" # 1946×1984: PreloadCache / PersistentBg 读它的像素
 const FG_BAND := "res://assets/sprites/map/themes/fg_sea_band.png"   # 800×224: 前景剪影带分层增益读它的像素
 const SKILL_RING := "res://assets/sprites/vfx/skill-ring.png"
 const SHELL_GUARD := "res://assets/sprites/vfx/shell-guard.png"
 const THEME_TEX := "res://assets/sprites/map/themes/%s.png"
 ## 源码里 `func _ready` 那一行(拆成两截拼: 整串字面量会被 coroutine_await_audit 当成对本文件协程 _ready 的裸调用)。
 const READY_SIG := "func _ready" + "() -> void:"
-const SITES_TOTAL := 10
-const MIN_ASSERTS := 56   # 2026-11-11 57 → 56: 主菜单货币条去掉龟币那一段(用户「只显示深海币」), S6 逐个图标的断言少一条
+const SITES_TOTAL := 9
+const MIN_ASSERTS := 52   # 2026-11-27 56 → 52: 绿色平铺底素材删掉, S1 三条 + ⑤ 平铺图一条随之去掉; 2026-11-11 57 → 56: 主菜单货币条去掉龟币那一段(用户「只显示深海币」), S6 逐个图标的断言少一条
 
 var _n := 0
 var _fail := 0
@@ -231,17 +230,7 @@ func _part3(ld: ResourceFormatLoader) -> void:
 	var ph_big: Texture2D = load(BIG)
 	_ok("③ 前提: 喂给各处的龟全身表是占位", _is_ph(ph_big), str(ph_big))
 
-	## S1 autoload/preload_cache.gd menu_bg_tile_tex: 读 menu-bg-tile(1946×1984, 大) 的像素再缩 512
-	_ok("③ S1 前提: menu-bg-tile 没进缓存、PreloadCache 还没缩过(无头 _ready 直接返回)",
-		not ResourceLoader.has_cached(MENU_TILE) and PreloadCache.get("_menu_bg_tex") == null)
-	var ph0 := int(ld.get("n_ph"))
-	var m1 := _measure(func(): return PreloadCache.menu_bg_tile_tex())
-	var got_ph := int(ld.get("n_ph")) - ph0
-	_ok("③ S1 PreloadCache.menu_bg_tile_tex: 真吃到占位(加载器这次换了 ≥1 张)", got_ph >= 1, "换了 %d 张" % got_ph)
-	_ok("③ S1 PreloadCache.menu_bg_tile_tex: 0 报错, 返回 null(不铺花砖)", m1[1] == 0 and m1[0] == null,
-		"errors=%d last=%s" % [m1[1], m1[3]])
-	_site(m1[1] == 0 and got_ph >= 1)
-
+	## (S1 preload_cache.menu_bg_tile_tex 11-27 随绿色平铺底素材一并删掉 ⇒ 读像素的地方少一处)
 	## S2 autoload/persistent_bg.gd _ready: 同一张 menu-bg-tile —— 但无头时在读像素之前就返回了, 而加载器只在无头装
 	var src := FileAccess.get_file_as_string("res://autoload/persistent_bg.gd")
 	var i_ready := src.find(READY_SIG)
@@ -370,10 +359,6 @@ func _part5() -> void:
 	var t := _fresh(BIG)
 	_ok("⑤ 拆掉后同一张大贴图又是真贴图、有像素", _has_px(t))
 	t = null
-	var m1 := _measure(func(): return PreloadCache.menu_bg_tile_tex())
-	var tile: Texture2D = m1[0] as Texture2D
-	_ok("⑤ PreloadCache.menu_bg_tile_tex(真贴图): 0 报错、出 512×512 平铺图",
-		m1[1] == 0 and tile != null and tile.get_size() == Vector2(512, 512), "errors=%d %s" % [m1[1], str(tile)])
 	var real: Texture2D = _fresh(EDGE_BELOW)
 	var m8 := _measure(func(): return PotionEqVfx._white_silhouette(real))
 	var sil: Texture2D = m8[0] as Texture2D
