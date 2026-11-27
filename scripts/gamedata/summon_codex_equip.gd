@@ -269,7 +269,7 @@ static func _katana(si: int) -> Dictionary:
 		SC.stats(B.KATANA_HP[si], B.KATANA_ATK[si], 0, 0, BattleSpawn.SUMMON_DEFAULT_SPD, B.KATANA_ASPD, B.KATANA_RANGE),
 		{"name": "斩击", "icon": "skills/summon-katana-slash.png", "desc": SC.basic_line("武士刀小将")},
 		{"name": "居合", "icon": "skills/summon-katana-iai.png", "energy": int(B.KATANA_EN_MAX),
-			"desc": "四次一循环。前三次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。"},
+			"desc": "居合每施放 4 次为一轮。前 3 次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第 4 次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。"},
 		[])
 
 

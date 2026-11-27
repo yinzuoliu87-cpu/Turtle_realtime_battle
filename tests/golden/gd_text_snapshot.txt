@@ -802,7 +802,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|化为黑烟，闪到生命值比例�
 scripts/gamedata/summon_codex_equip.gd|lit|同步射速
 scripts/gamedata/summon_codex_equip.gd|lit|啃咬
 scripts/gamedata/summon_codex_equip.gd|lit|嘲讽附近所有敌人。每有一个敌人以蛋糕礼盒为目标，蛋糕礼盒获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} 护甲和魔抗。
-scripts/gamedata/summon_codex_equip.gd|lit|四次一循环。前三次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。
 scripts/gamedata/summon_codex_equip.gd|lit|回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。
 scripts/gamedata/summon_codex_equip.gd|lit|大熊
 scripts/gamedata/summon_codex_equip.gd|lit|小不点
@@ -810,6 +809,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|小手枪
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。小手枪的攻击会触发枪羁绊的金弹，并单独计算金弹。
 scripts/gamedata/summon_codex_equip.gd|lit|尸爆
 scripts/gamedata/summon_codex_equip.gd|lit|居合
+scripts/gamedata/summon_codex_equip.gd|lit|居合每施放 4 次为一轮。前 3 次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第 4 次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。
 scripts/gamedata/summon_codex_equip.gd|lit|开炮
 scripts/gamedata/summon_codex_equip.gd|lit|引爆
 scripts/gamedata/summon_codex_equip.gd|lit|影分身
