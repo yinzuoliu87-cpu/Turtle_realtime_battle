@@ -31,7 +31,7 @@ const _P2T := preload("res://scripts/gamedata/phase2_types.gd")
 ## 列表分组(图鉴「角色」栏, 排在 28 只龟之后): [组名, [条目 id…]]。「战场单位」组排在深海小将四种后面(同一组)。
 const GROUPS := [
 	["战场单位", ["egg", "trainer"]],
-	["召唤物 · 龟技能", ["candybomb", "crystalball", "ship", "mech", "minion"]],
+	["召唤物 · 龟技能", ["candybomb", "crystalball", "ship", "mech"]],
 	["召唤物 · 装备", ["skeleton", "worm", "bear", "turret", "cakebox", "pistol", "medtower", "axe",
 		"cannon", "remote_bomb", "katana", "shadow_ninja", "skel_warrior", "skel_mage", "skel_priest", "mask_lion"]],
 	["召唤物 · 羁绊", ["centurion", "wraith"]],
@@ -40,6 +40,9 @@ const GROUPS := [
 ## 战斗里有、图鉴里有意不单列的种类(门禁 verify_codex_summon 认这张白名单):
 ##   shadow_clone = 暗影忍者的影分身(写在暗影忍者的被动里); 面具复制体不走 _spawn_summon(用户 11-27「面具复制体不算吧」)。
 const KIND_ALIASES := {"shadow_clone": "shadow_ninja"}
+
+## 有意不单列、也不归到别的页的种类: 随从就是一只真龟(用户 11-27「随从不需要在这个图鉴里面去专门列一个随从」), 看原龟的页。
+const UNLISTED_KINDS := ["minion"]
 
 
 static func all_ids() -> Array:
@@ -102,7 +105,7 @@ static func stats(hp, atk, def, mr, move, aspd, rng, labels: Dictionary = {}) ->
 	for row in [["hp", "生命", hp], ["atk", "攻击", atk], ["def", "护甲", def], ["mr", "魔抗", mr],
 			["move", "移速", move], ["aspd", "每秒攻击", aspd], ["range", "射程", rng]]:
 		var v = row[2]
-		var disp: String = (_n(float(v)) if (v is float or v is int) else str(v))
+		var disp: String = (_n(float(v)) if (v is float or v is int) else Lang.t(str(v)))   # 「未知」「同携带者」这类说明要翻
 		if row[0] == "aspd" and (v is float or v is int):
 			disp = "%.2f" % float(v)
 		## 生命 / 攻击 / 双抗按主人比例算出来会带小数(海盗船 989 × 1.5 = 1483.5): 取整显示(战斗里血条 / 面板也是取整)
@@ -116,6 +119,11 @@ static func stats(hp, atk, def, mr, move, aspd, rng, labels: Dictionary = {}) ->
 ## ★先翻译句式再填名字(英文版: 渲染时 Lang.t 认的是整句, 拼好的句子在 en.po 里找不到)。
 static func basic_line(who: String) -> String:
 	return Lang.t("%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。") % Lang.t(who)
+
+
+## 攻击力取决于主人(未知)的单位用这一句: 算式写「= 未知」(用户 11-27「你这都填未知，我觉得也可以」)。
+static func basic_line_unknown(who: String) -> String:
+	return Lang.t("%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力(未知) = 未知）物理伤害。") % Lang.t(who)
 
 
 static func star_cols() -> Array:

@@ -146,6 +146,9 @@ func _seg1_coverage() -> void:
 	for k in EqMagicBatch.SKEL_KINDS:
 		kinds[str(k)] = "eq_magic_batch.gd(SKEL_KINDS)"
 	for k in kinds.keys():
+		if SummonCodex.UNLISTED_KINDS.has(str(k)):
+			_ok("种类 %s 有意不单列(UNLISTED_KINDS)" % k, SummonCodex.id_of_kind(str(k)) == "", str(kinds[k]))
+			continue
 		var id: String = SummonCodex.id_of_kind(str(k))
 		_ok("种类 %s 有图鉴页" % k, id != "", "→ %s(%s)" % [id, kinds[k]])
 
@@ -154,7 +157,7 @@ func _seg1_coverage() -> void:
 func _seg2_pages() -> void:
 	print("— ② 每页每列: 名字 / 头像 / 立绘 / 7 行属性 / 图标在盘上 / 文案占位全展开")
 	var ids: Array = SummonCodex.all_ids()
-	_ok("条目分母", ids.size() >= 25, "%d 条" % ids.size())
+	_ok("条目分母", ids.size() >= 24, "%d 条" % ids.size())
 	var pages := 0
 	var icons := 0
 	for id in ids:

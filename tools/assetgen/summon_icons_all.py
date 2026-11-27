@@ -869,30 +869,6 @@ def _candybomb(ic, cx, cy, r):
 	thick_line(ic, "body", (cx + r * 0.2, cy - r * 0.95), (cx + r * 0.55, cy - r * 1.45), 1.2, [WOOD[0], WOOD[1], WOOD[2]])   # 引信
 
 
-@icon("candy-make", P("candy-make"))
-def _():
-	ic = Icon()
-	burst(ic, 32, 34, 12, 31, 10, [PINK[1], PINK[2]], width=0.24)
-	_candybomb(ic, 32, 36, 15)
-	ic.rim()
-	ic.halo([PINK[3]])
-	sparkle(ic, 42, 12, 6, (WHITE, FIRE[1], FIRE[2]))
-	return ic
-
-
-@icon("candy-melt", P("candy-melt"))
-def _():
-	ic = Icon()
-	_candybomb(ic, 32, 28, 14)
-	for (x, y, r) in ((24, 46, 3), (33, 52, 3.6), (42, 46, 2.6), (30, 60, 2.2)):
-		ellipse(ic, "body", x, y, r, r * 1.35, CANDY)                                    # 化掉的糖滴
-	chevrons(ic, "fx", (54, 26), (54, 50), 2, 6, PINK[0])
-	ic.rim()
-	ic.halo([PINK[3]])
-	sparkle(ic, 42, 6, 5, (WHITE, FIRE[1], FIRE[2]))
-	return ic
-
-
 @icon("candy-feed", P("candy-feed"))
 def _():
 	ic = Icon()
@@ -942,17 +918,6 @@ def _():
 	return ic
 
 
-@icon("crystal-make", P("crystal-make"))
-def _():
-	ic = Icon()
-	burst(ic, 32, 30, 14, 31, 10, [VIOLET[1], VIOLET[2]], width=0.24)
-	_orb(ic, 32, 28, 17)
-	ic.rim()
-	ic.halo([VIOLET[3]])
-	sparkle(ic, 24, 20, 5, (WHITE, VIOLET[0], VIOLET[1]))
-	return ic
-
-
 # ════════════ 海盗龟 · 海盗船 ════════════
 def _hull(ic, cx, cy, s):
 	K.poly(ic, "body", [(cx - s, cy - s * 0.25), (cx + s * 1.05, cy - s * 0.35), (cx + s * 0.75, cy + s * 0.45), (cx - s * 0.75, cy + s * 0.45)],
@@ -992,27 +957,6 @@ def _():
 	return ic
 
 
-@icon("ship-make", P("ship-make"))
-def _():
-	ic = Icon()
-	burst(ic, 32, 32, 12, 31, 10, [SEA[1], SEA[2]], width=0.22)
-	thick_line(ic, "body", (12, 4), (12, 60), 1.8, [WOOD[0], WOOD[1], WOOD[2]])            # 旗杆
-	def flag(x, y, px, py):                                                                # 飘动的黑旗
-		if 14 <= px <= 60:
-			t = (px - 14) / 46.0
-			top = 8 + math.sin(t * 6.0) * 3
-			if top <= py <= top + 34 - t * 4:
-				ic.put("body", x, y, INK[1] if math.sin(t * 6.0) < 0 else INK[2])
-	each(flag)
-	skull(ic, "body", 36, 22, 8, BONE)
-	bone(ic, "body", (26, 38), (46, 30), 1.4, BONE)
-	bone(ic, "body", (26, 30), (46, 38), 1.4, BONE)
-	ic.rim()
-	ic.halo([SEA[3]])
-	sparkle(ic, 12, 4, 5)
-	return ic
-
-
 # ════════════ 赛博龟 · 机甲 ════════════
 @icon("mech-punch", A("mech-punch"))
 def _():
@@ -1031,22 +975,6 @@ def _():
 	return ic
 
 
-@icon("mech-merge", P("mech-merge"))
-def _():
-	ic = Icon()
-	gear(ic, "body", 32, 32, 14, 9, SEA, hole=0.32)
-	ellipse(ic, "body", 32, 32, 4.5, 4.5, HOLO)
-	for k in range(6):
-		a = k * math.pi / 3 + 0.25
-		x, y = 32 + math.cos(a) * 25, 32 + math.sin(a) * 25
-		ellipse(ic, "body", x, y, 4.5, 4.5, STEEL)                                        # 浮游炮
-		bline(ic, "fx", (x - math.cos(a) * 6, y - math.sin(a) * 6), (32 + math.cos(a) * 17, 32 + math.sin(a) * 17), HOLO[1], 1)
-	ic.rim()
-	ic.halo([HOLO[3]])
-	sparkle(ic, 32, 32, 4, (WHITE, HOLO[0], HOLO[1]))
-	return ic
-
-
 @icon("mech-blast", P("mech-blast"))
 def _():
 	ic = Icon()
@@ -1060,50 +988,6 @@ def _():
 	ic.rim()
 	ic.halo([HOLO[3]])
 	sparkle(ic, 46, 18, 5, (WHITE, HOLO[0], HOLO[1]))
-	return ic
-
-
-# ════════════ 缩头乌龟 · 随从 ════════════
-def _shell(ic, cx, cy, s, pal=LEAF):
-	ellipse(ic, "body", cx, cy, s, s * 0.78, pal)
-	for (ox, oy) in ((0, 0), (-0.5, -0.1), (0.5, -0.1), (-0.25, -0.45), (0.25, -0.45)):
-		ellipse(ic, "body", cx + ox * s, cy + oy * s, s * 0.22, s * 0.18, [pal[2], pal[2], pal[3], pal[3]], hollow=0.6)
-
-
-@icon("minion-basic", A("minion-basic"))
-def _():
-	ic = Icon()
-	crescent(ic, "back", 50, 56, 44, 9, -3.0, -1.7, [WHITE, LEAF[0], LEAF[1], LEAF[2]])
-	_shell(ic, 26, 40, 17)
-	thick_line(ic, "body", (34, 30), (56, 8), 2.2, [STEEL[0], STEEL[2], STEEL[3]])
-	thick_line(ic, "body", (30, 26), (38, 34), 1.4, [GOLD[1], GOLD[2], GOLD[3]])
-	ic.rim()
-	ic.halo([LEAF[3]])
-	sparkle(ic, 56, 8, 5)
-	return ic
-
-
-@icon("minion-call", P("minion-call"))
-def _():
-	ic = Icon()
-	for r in (12, 19, 26):
-		crescent(ic, "back", 40, 22, r, 3, -1.2, 0.6, [WHITE, GOLD[1], GOLD[2]])          # 喊声
-	def horn(x, y, px, py):                                                               # 弯号角: 沿一段圆弧由细到粗
-		dx, dy = px - 40, py - 46
-		d = math.hypot(dx, dy)
-		a = math.atan2(dy, dx)
-		if not (-3.1 <= a <= -1.0):
-			return
-		t = (a + 3.1) / 2.1                                                               # 0 = 吹口, 1 = 喇叭口
-		w = 1.6 + t ** 2.2 * 9.0
-		if abs(d - 26) <= w:
-			ic.put("body", x, y, [GOLD[0], GOLD[1], GOLD[2], GOLD[3]][lit_idx(0, d - 26, w + 1, 4, 0.2)])
-	each(horn)
-	ellipse(ic, "body", 40 + math.cos(-1.0) * 26, 46 + math.sin(-1.0) * 26, 4, 10, [GOLD[1], GOLD[2], GOLD[3], GOLD[4]], rot=-1.0 + 1.57)
-	_shell(ic, 46, 52, 9)
-	ic.rim()
-	ic.halo([GOLD[3]])
-	sparkle(ic, 56, 8, 5)
 	return ic
 
 

@@ -749,6 +749,7 @@ scripts/gamedata/skill_forms.gd|lit|铁锤·跃击
 scripts/gamedata/skill_forms.gd|lit|霰弹
 scripts/gamedata/skill_forms.gd|lit|高高跃起、空中蓄力后下锤, 覆盖更大范围并造成更高魔法伤害
 scripts/gamedata/summon_codex.gd|lit|%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。
+scripts/gamedata/summon_codex.gd|lit|%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力(未知) = 未知）物理伤害。
 scripts/gamedata/summon_codex.gd|lit|不可编入
 scripts/gamedata/summon_codex.gd|lit|举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。
 scripts/gamedata/summon_codex.gd|lit|众矛之力
@@ -918,13 +919,6 @@ scripts/gamedata/summon_codex_misc.gd|lit|亡灵
 scripts/gamedata/summon_codex_misc.gd|lit|亡魂
 scripts/gamedata/summon_codex_misc.gd|lit|亡魂的攻击造成 {C:BasicConsts.DEFAULT_BASIC_COEF%}% 攻击力的物理伤害。
 scripts/gamedata/summon_codex_misc.gd|lit|亡魂阵亡后会再次化为亡魂，至多 {C:SpiritSynergySystem.WRAITH_LOOPS[%d]} 次，每次继承的比例变为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%%}%%。
-scripts/gamedata/summon_codex_misc.gd|lit|原龟护甲
-scripts/gamedata/summon_codex_misc.gd|lit|原龟攻击
-scripts/gamedata/summon_codex_misc.gd|lit|原龟普攻
-scripts/gamedata/summon_codex_misc.gd|lit|原龟生命
-scripts/gamedata/summon_codex_misc.gd|lit|原龟魔抗
-scripts/gamedata/summon_codex_misc.gd|lit|同原龟
-scripts/gamedata/summon_codex_misc.gd|lit|喊龟
 scripts/gamedata/summon_codex_misc.gd|lit|围栏
 scripts/gamedata/summon_codex_misc.gd|lit|坚壳
 scripts/gamedata/summon_codex_misc.gd|lit|定局
@@ -938,52 +932,38 @@ scripts/gamedata/summon_codex_misc.gd|lit|投喂
 scripts/gamedata/summon_codex_misc.gd|lit|投石
 scripts/gamedata/summon_codex_misc.gd|lit|携带技能
 scripts/gamedata/summon_codex_misc.gd|lit|旁观者
+scripts/gamedata/summon_codex_misc.gd|lit|未知
 scripts/gamedata/summon_codex_misc.gd|lit|机甲
 scripts/gamedata/summon_codex_misc.gd|lit|机甲重拳
 scripts/gamedata/summon_codex_misc.gd|lit|歼灭炮
-scripts/gamedata/summon_codex_misc.gd|lit|每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力({ATK}) = {N:CyberSystem.MECH_BLAST_COEF*ATK}）物理伤害。
+scripts/gamedata/summon_codex_misc.gd|lit|每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。
 scripts/gamedata/summon_codex_misc.gd|lit|每路一颗
 scripts/gamedata/summon_codex_misc.gd|lit|水晶射线
 scripts/gamedata/summon_codex_misc.gd|lit|水晶球
-scripts/gamedata/summon_codex_misc.gd|lit|水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力({ATK}) = {M:CrystalSystem.ORB_RAY_COEF*ATK}）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。
-scripts/gamedata/summon_codex_misc.gd|lit|水晶球的生命值为水晶龟最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力与水晶龟相同，没有护甲与魔抗。水晶龟阵亡后水晶球继续战斗。左侧按 1 级水晶龟计算。
-scripts/gamedata/summon_codex_misc.gd|lit|水晶造物
-scripts/gamedata/summon_codex_misc.gd|lit|浮游炮合体
-scripts/gamedata/summon_codex_misc.gd|lit|浮游炮数
+scripts/gamedata/summon_codex_misc.gd|lit|水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。
 scripts/gamedata/summon_codex_misc.gd|lit|海盗船
-scripts/gamedata/summon_codex_misc.gd|lit|海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力({ATK}) = {N:PirateSystem.SHIP_SHOT_COEF*ATK}）物理伤害。
-scripts/gamedata/summon_codex_misc.gd|lit|海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力({ATK}) = {M:PirateSystem.SHIP_CHARGE_COEF*ATK}）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。
-scripts/gamedata/summon_codex_misc.gd|lit|海盗船的生命值为海盗龟最大生命值的 {C:PirateSystem.SHIP_HP_SCALE%}%，攻击力为海盗龟攻击力的 {C:PirateSystem.SHIP_ATK_SCALE%}%，没有护甲与魔抗。海盗船沉没后不会再召唤。左侧按 1 级海盗龟计算。
-scripts/gamedata/summon_codex_misc.gd|lit|海盗造物
+scripts/gamedata/summon_codex_misc.gd|lit|海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。
+scripts/gamedata/summon_codex_misc.gd|lit|海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。
 scripts/gamedata/summon_codex_misc.gd|lit|灵物
 scripts/gamedata/summon_codex_misc.gd|lit|灵物件数
 scripts/gamedata/summon_codex_misc.gd|lit|灵物羁绊
-scripts/gamedata/summon_codex_misc.gd|lit|甜蜜爆炸
+scripts/gamedata/summon_codex_misc.gd|lit|甜蜜引信
 scripts/gamedata/summon_codex_misc.gd|lit|破浪登场
 scripts/gamedata/summon_codex_misc.gd|lit|糖果炸弹
-scripts/gamedata/summon_codex_misc.gd|lit|糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值。
-scripts/gamedata/summon_codex_misc.gd|lit|糖果炸弹登场时的生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_HP_PCT%}%，不移动、不攻击，攻击力、护甲与魔抗均为 0。左侧按 1 级糖果龟计算。
-scripts/gamedata/summon_codex_misc.gd|lit|糖果炸弹阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，平均分给所有敌人。
-scripts/gamedata/summon_codex_misc.gd|lit|糖果造物
+scripts/gamedata/summon_codex_misc.gd|lit|糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值，阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，由所有敌人平摊。
 scripts/gamedata/summon_codex_misc.gd|lit|糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。
-scripts/gamedata/summon_codex_misc.gd|lit|糖衣融化
-scripts/gamedata/summon_codex_misc.gd|lit|缩头乌龟登场时随机喊来一只 A、B、C 级龟作随从，生命值为原龟的 {C:HidingSystem.MINION_HP_SCALE%}%，攻击力为原龟的 {C:HidingSystem.MINION_ATK_SCALE%}%，护甲、魔抗与暴击率与原龟相同，随缩头乌龟的等级成长。随从带着原龟的被动与一个技能，缩头乌龟阵亡时随从一同离场。
 scripts/gamedata/summon_codex_misc.gd|lit|舷炮
 scripts/gamedata/summon_codex_misc.gd|lit|被动
 scripts/gamedata/summon_codex_misc.gd|lit|装饰
 scripts/gamedata/summon_codex_misc.gd|lit|训龟大师
 scripts/gamedata/summon_codex_misc.gd|lit|训龟大师朝最近的敌人扔石头，每块石头造成 1 点伤害。
 scripts/gamedata/summon_codex_misc.gd|lit|训龟大师站在场边，不会被选为目标，免疫一切伤害与效果。
-scripts/gamedata/summon_codex_misc.gd|lit|赛博龟阵亡时，浮游炮汇聚组装成机甲，组装 {C:CyberSystem.MECH_ASSEMBLE_SEC} 秒，期间无敌且不能被选为目标。生命值 =（{C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV} × 等级）× 浮游炮数，攻击力 =（{C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV} × 等级）× 浮游炮数，护甲和魔抗 = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV} × 等级。左侧按 1 级赛博龟计算。
 scripts/gamedata/summon_codex_misc.gd|lit|轮回
 scripts/gamedata/summon_codex_misc.gd|lit|近战坦克
 scripts/gamedata/summon_codex_misc.gd|lit|近战斗士
 scripts/gamedata/summon_codex_misc.gd|lit|远程法师
 scripts/gamedata/summon_codex_misc.gd|lit|阵亡者攻击
 scripts/gamedata/summon_codex_misc.gd|lit|阵亡者生命
-scripts/gamedata/summon_codex_misc.gd|lit|随从
-scripts/gamedata/summon_codex_misc.gd|lit|随从使用原龟的普通攻击。
-scripts/gamedata/summon_codex_misc.gd|lit|随机龟种
 scripts/gamedata/summon_codex_misc.gd|lit|龟蛋
 scripts/gamedata/summon_codex_misc.gd|lit|龟蛋免疫控制、斩杀与嘲讽。龟蛋的生命值在上路、下路和决胜场之间延续，不会回满。
 scripts/gamedata/summon_codex_misc.gd|lit|龟蛋的最大生命值为 {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × 等级，护甲和魔抗为 {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × 等级。左侧按 1 级计算。

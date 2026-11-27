@@ -23,7 +23,6 @@ SRC = {
 	"crystalball": (S + "pets/crystal-ball.png", None, "full"),
 	"ship": (S + "skills/pirate-ship.png", None, "full"),
 	"mech": (S + "pets/mech.png", None, "upper"),
-	"minion": (S + "avatars/hiding.png", None, "full"),
 	"skeleton": (S + "pets/skeleton.png", None, "upper"),
 	"worm": (S + "pets/conch-worm.png", None, "full"),
 	"bear": (S + "vfx/bear-walk.png", 96, "upper"),

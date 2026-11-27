@@ -1,22 +1,14 @@
 extends RefCounted
 ## 图鉴「角色」栏 · 龟技能召唤的单位 / 羁绊召唤的亡魂 / 战场单位(龟蛋、训龟大师)(2026-11-27 · 方案书 20261127d)。
 ## 登记表 / 公用函数 / 写法规矩见 summon_codex.gd 文件头。数字全读各系统常量。
-## 按主人比例的(糖果炸弹 / 水晶球 / 海盗船 / 机甲)左栏按 1 级主人算(同龟页 / 小将页按 1 级显示), 被动里写比例。
+## 属性取决于主人的(糖果炸弹 / 水晶球 / 海盗船 / 机甲)左栏写「未知」、伤害算式写「= 未知」(用户 11-27「总比填个假数字要好吧」);
+##   召唤物多少血 / 攻击写在主人自己的技能文案里, 角色页不再重复(用户 11-27「那么这里就不需要再写糖果造物了吧」)。
 
 const SC := preload("res://scripts/gamedata/summon_codex.gd")
 const _TRAINER_CFG := preload("res://scripts/scenes/TrainerConfigScene.gd")
 
-## 机甲的列: 赛博龟阵亡时的浮游炮数(上限 CyberSystem.DRONE_CAP)
-const MECH_DRONES := [5, 10, 15, 20]
-
-
 static func cols(id: String) -> Array:
 	match id:
-		"mech":
-			var out: Array = []
-			for n in MECH_DRONES:
-				out.append("%d" % int(n))
-			return out
 		"wraith":
 			var o2: Array = []
 			for t in (SC._P2T.TYPES.get("灵物", {}) as Dictionary).get("tiers", []):
@@ -35,8 +27,7 @@ static func info(id: String, ci: int) -> Dictionary:
 		"candybomb": return _candybomb()
 		"crystalball": return _crystalball()
 		"ship": return _ship()
-		"mech": return _mech(ci)
-		"minion": return _minion()
+		"mech": return _mech()
 		"wraith": return _wraith(ci)
 		"egg": return _egg()
 		"trainer": return _trainer(ci)
@@ -65,78 +56,50 @@ static func _base(name: String, kinds: Array, avatar_id: String, portrait: Dicti
 
 
 # ─── 糖果龟 · 糖果炸弹 ───
+const U := "未知"
+
+
 static func _candybomb() -> Dictionary:
-	var C := CandySystem
-	var o: Dictionary = SC.owner_base("candy")
 	return _base("糖果炸弹", ["candybomb"], "candybomb", {"img": "pets/candy-bomb.png", "_box": 150.0, "_cy": 104.0}, _pet_src("candy"), ["近战坦克"],
-		SC.stats(float(o.get("hp", 0)) * C.BOMB_HP_PCT, 0, 0, 0, 0, 0, 0),
+		SC.stats(U, 0, 0, 0, 0, 0, 0),
 		{}, {},
-		[{"name": "糖果造物", "icon": "passive/summon-candy-make-icon.png",
-			"desc": "糖果炸弹登场时的生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_HP_PCT%}%，不移动、不攻击，攻击力、护甲与魔抗均为 0。左侧按 1 级糖果龟计算。"},
-		 {"name": "糖衣融化", "icon": "passive/summon-candy-melt-icon.png",
-			"desc": "糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值。"},
+		[{"name": "甜蜜引信", "icon": "passive/summon-candy-boom-icon.png",
+			"desc": "糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值，阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，由所有敌人平摊。"},
 		 {"name": "投喂", "icon": "passive/summon-candy-feed-icon.png",
-			"desc": "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"},
-		 {"name": "甜蜜爆炸", "icon": "passive/summon-candy-boom-icon.png",
-			"desc": "糖果炸弹阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，平均分给所有敌人。"}])
+			"desc": "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"}])
 
 
 # ─── 水晶龟 · 水晶球 ───
 static func _crystalball() -> Dictionary:
 	var C := CrystalSystem
-	var o: Dictionary = SC.owner_base("crystal")
 	return _base("水晶球", ["crystalball"], "crystalball", {"img": "pets/crystal-ball.png", "_box": 130.0, "_cy": 100.0}, _pet_src("crystal"), ["远程法师"],
-		SC.stats(float(o.get("hp", 0)) * C.ORB_HP_PCT, float(o.get("atk", 0)), 0, 0, C.ORB_MOVE, 1.0 / C.ORB_RAY_IV, C.ORB_RANGE),
+		SC.stats(U, U, 0, 0, C.ORB_MOVE, 1.0 / C.ORB_RAY_IV, C.ORB_RANGE),
 		{"name": "水晶射线", "icon": "skills/summon-crystal-ray.png",
-			"desc": "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力({ATK}) = {M:CrystalSystem.ORB_RAY_COEF*ATK}）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。"}, {},
-		[{"name": "水晶造物", "icon": "passive/summon-crystal-make-icon.png",
-			"desc": "水晶球的生命值为水晶龟最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力与水晶龟相同，没有护甲与魔抗。水晶龟阵亡后水晶球继续战斗。左侧按 1 级水晶龟计算。"}])
+			"desc": "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力(未知) = 未知）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。"}, {},
+		[])
 
 
 # ─── 海盗龟 · 海盗船 ───
 static func _ship() -> Dictionary:
 	var P := PirateSystem
-	var o: Dictionary = SC.owner_base("pirate")
 	return _base("海盗船", ["ship"], "ship", {"img": "skills/pirate-ship.png", "_box": 200.0, "_cy": 96.0}, _pet_src("pirate"), ["近战坦克"],
-		SC.stats(float(o.get("hp", 0)) * P.SHIP_HP_SCALE, float(o.get("atk", 0)) * P.SHIP_ATK_SCALE, 0, 0, P.SHIP_MOVE, P.SHIP_ASPD, P.SHIP_RANGE),
+		SC.stats(U, U, 0, 0, P.SHIP_MOVE, P.SHIP_ASPD, P.SHIP_RANGE),
 		{"name": "舷炮", "icon": "skills/summon-ship-broadside.png",
-			"desc": "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力({ATK}) = {N:PirateSystem.SHIP_SHOT_COEF*ATK}）物理伤害。"}, {},
+			"desc": "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"}, {},
 		[{"name": "破浪登场", "icon": "passive/summon-ship-ram-icon.png",
-			"desc": "海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力({ATK}) = {M:PirateSystem.SHIP_CHARGE_COEF*ATK}）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"},
-		 {"name": "海盗造物", "icon": "passive/summon-ship-make-icon.png",
-			"desc": "海盗船的生命值为海盗龟最大生命值的 {C:PirateSystem.SHIP_HP_SCALE%}%，攻击力为海盗龟攻击力的 {C:PirateSystem.SHIP_ATK_SCALE%}%，没有护甲与魔抗。海盗船沉没后不会再召唤。左侧按 1 级海盗龟计算。"}])
+			"desc": "海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"}])
 
 
-# ─── 赛博龟 · 机甲(列 = 赛博龟阵亡时的浮游炮数) ───
-static func _mech(ci: int) -> Dictionary:
+# ─── 赛博龟 · 机甲 ───
+## 属性跟着赛博龟的等级与阵亡时的浮游炮数走(公式在赛博龟被动里) ⇒ 生命 / 攻击 / 双抗都写「未知」, 不设选择牌
+##   (第一版拿浮游炮数当列, 用户 11-27「机甲肯定不能用浮游炮数，这肯定是不对的」)。
+static func _mech() -> Dictionary:
 	var Y := CyberSystem
-	var n: float = float(MECH_DRONES[clampi(ci, 0, MECH_DRONES.size() - 1)])
-	var lv := 1.0
-	var d := _base("机甲", ["mech"], "mech", {"img": "pets/mech.png", "_box": 180.0, "_cy": 96.0}, _pet_src("cyber"), ["近战坦克"],
-		SC.stats((Y.MECH_HP_BASE + Y.MECH_HP_PER_LV * lv) * n, (Y.MECH_ATK_BASE + Y.MECH_ATK_PER_LV * lv) * n,
-			Y.MECH_DEF_BASE + Y.MECH_DEF_PER_LV * lv, Y.MECH_DEF_BASE + Y.MECH_DEF_PER_LV * lv, Y.MECH_MOVE, Y.MECH_ASPD, Y.MECH_RANGE),
-		{"name": "机甲重拳", "icon": "skills/summon-mech-punch.png", "desc": SC.basic_line("机甲")}, {},
-		[{"name": "浮游炮合体", "icon": "passive/summon-mech-merge-icon.png",
-			"desc": "赛博龟阵亡时，浮游炮汇聚组装成机甲，组装 {C:CyberSystem.MECH_ASSEMBLE_SEC} 秒，期间无敌且不能被选为目标。生命值 =（{C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV} × 等级）× 浮游炮数，攻击力 =（{C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV} × 等级）× 浮游炮数，护甲和魔抗 = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV} × 等级。左侧按 1 级赛博龟计算。"},
-		 {"name": "歼灭炮", "icon": "passive/summon-mech-blast-icon.png",
-			"desc": "每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力({ATK}) = {N:CyberSystem.MECH_BLAST_COEF*ATK}）物理伤害。"}])
-	d["col_title"] = Lang.t("浮游炮数")
-	d["cols"] = cols("mech")
-	return d
-
-
-# ─── 缩头乌龟 · 随从(随机一只 A / B / C 级龟) ───
-## 龟种随机 ⇒ 左栏写比例(同蛋糕礼盒); 立绘放小龟当示意(随从就是一只真龟)。
-static func _minion() -> Dictionary:
-	var H := HidingSystem
-	var basic: Dictionary = SC.owner_base("basic")
-	var por: Dictionary = {"img": str(basic.get("img", "")), "sprite": basic.get("sprite", {}), "id": "basic"}
-	return _base("随从", ["minion"], "minion", por, _pet_src("hiding"), ["随机龟种"],
-		SC.stats(SC._pct(H.MINION_HP_SCALE) + "%", SC._pct(H.MINION_ATK_SCALE) + "%", "100%", "100%", "同原龟", "同原龟", "同原龟",
-			{"hp": "原龟生命", "atk": "原龟攻击", "def": "原龟护甲", "mr": "原龟魔抗"}),
-		{"name": "原龟普攻", "icon": "skills/summon-minion-basic.png", "desc": "随从使用原龟的普通攻击。"}, {},
-		[{"name": "喊龟", "icon": "passive/summon-minion-call-icon.png",
-			"desc": "缩头乌龟登场时随机喊来一只 A、B、C 级龟作随从，生命值为原龟的 {C:HidingSystem.MINION_HP_SCALE%}%，攻击力为原龟的 {C:HidingSystem.MINION_ATK_SCALE%}%，护甲、魔抗与暴击率与原龟相同，随缩头乌龟的等级成长。随从带着原龟的被动与一个技能，缩头乌龟阵亡时随从一同离场。"}])
+	return _base("机甲", ["mech"], "mech", {"img": "pets/mech.png", "_box": 180.0, "_cy": 96.0}, _pet_src("cyber"), ["近战坦克"],
+		SC.stats(U, U, U, U, Y.MECH_MOVE, Y.MECH_ASPD, Y.MECH_RANGE),
+		{"name": "机甲重拳", "icon": "skills/summon-mech-punch.png", "desc": SC.basic_line_unknown("机甲")}, {},
+		[{"name": "歼灭炮", "icon": "passive/summon-mech-blast-icon.png",
+			"desc": "每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力(未知) = 未知）物理伤害。"}])
 
 
 # ─── 灵物羁绊 · 亡魂(列 = 灵物件数) ───
