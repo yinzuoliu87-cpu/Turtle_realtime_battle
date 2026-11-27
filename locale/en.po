@@ -1712,11 +1712,11 @@ msgstr "Incense · Engraving"
 msgid "斧头·砍伐"
 msgstr "Axe · Chopping"
 
-msgid "剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位生命值越低，攻击力越高。"
-msgstr "Swords grant attack damage and make the holder follow up after attacking. The lower your team's health, the higher its attack damage."
+msgid "剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位按已损失的生命值提高攻击力。"
+msgstr "Swords grant attack damage and make the holder follow up after attacking. Your units gain attack damage based on their missing health."
 
-msgid "奇械提高携带者的魔抗，并为全队铸造深海币。档位越高，全队攻击越能冰封敌人。"
-msgstr "Gadgets grant magic resist and mint Abyss Coins for the team. Higher tiers let your team's attacks freeze enemies."
+msgid "奇械提高携带者的魔抗，并为全队铸造深海币。第二档起，全队攻击有概率冰封敌人。"
+msgstr "Gadgets grant magic resist and mint Abyss Coins for the team. From the second tier, your team's attacks have a chance to freeze enemies."
 
 msgid "队伍里每件装备为携带者提供最大生命值，食物提供双倍。食物还让最大生命值在战斗中持续成长。"
 msgstr "Every item on your team gives the holder max health; Food gives double. Food also keeps growing max health during battle."
@@ -1727,14 +1727,14 @@ msgstr "Shields grant armor. As your team takes damage, it releases shockwaves a
 msgid "药水提高携带者的治疗与护盾强度。全队集火被标记的猎物，击杀猎物后攻击力提高。"
 msgstr "Potions grant Heal Power and Shield Power. Your team focuses the marked Prey and gains attack damage after killing it."
 
-msgid "枪提高携带者的攻击速度。每把枪定期射出金弹，档位越高，我方生成的炮台越多。"
-msgstr "Guns grant attack speed. Each gun periodically fires a Golden Bullet. Higher tiers build more turrets for your side."
+msgid "枪提高携带者的攻击速度。每把枪定期额外射出金弹，每激活一档，我方生成一座炮台。"
+msgstr "Guns grant attack speed. Each gun periodically fires an extra Golden Bullet, and each active tier builds a turret for your side."
 
 msgid "弓箭提高携带者的暴击率。全队攻击可处决低生命值的敌人，并持续腐蚀敌方全体。"
 msgstr "Bows grant Crit Chance. Your team's attacks execute low-health enemies and steadily corrode the whole enemy team."
 
-msgid "法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位越高充满越快。"
-msgstr "Artifacts grant Magic Pen and max Energy. Each Artifact casts its own active effect when its mana is full; higher tiers fill faster."
+msgid "法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位提高后充满所需的法力减少。"
+msgstr "Artifacts grant Magic Pen and max Energy. Each Artifact casts its own active effect when its mana is full; higher tiers reduce the mana required."
 
 msgid "灵物提高携带者的闪避。无法被击杀的触手为我方作战，阵亡的友军化为亡魂继续战斗。"
 msgstr "Spirits grant Dodge. Unkillable tentacles fight for your side, and fallen allies rise as wraiths to keep fighting."
@@ -1745,8 +1745,8 @@ msgstr "The Incense Stone's holder carves Engravings by dealing damage. Engravin
 msgid "装备小木斧即激活。激活后商店更容易刷出小木斧。"
 msgstr "Activates when a Little Wooden Axe is equipped. Once active, the shop offers Little Wooden Axes more often."
 
-msgid "遗物提供生命偷取。我方全体单位按生命值高低切换攻击与续航，全队增伤随战斗时间累积，龟蛋也加入战斗。"
-msgstr "Relics grant Lifesteal. Your units switch between offense and sustain based on their health, your team's Damage Amp builds over time, and your Turtle Egg joins the fight."
+msgid "遗物提供生命偷取。我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。第二档起，全队增伤随战斗时间累积，龟蛋也加入战斗。"
+msgstr "Relics grant Lifesteal. Your units gain attack damage above {C:RelicSynergySystem.HP_GATE%}% health and Lifesteal below it. From the second tier, your team's Damage Amp builds over time and your Turtle Egg joins the fight."
 
 msgid "每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%"
 msgstr "Each Sword gives its holder +8 Attack · [Swordsman] After each attack, the holder strikes the target {C:SwordsmanSystem.HITS[0]} more times; each Sword on it makes follow-ups deal {C:SwordsmanSystem.PCT[0]%}% attack damage. Follow-ups happen at {C:SwordsmanSystem.ASPD_MULT%}% of attack speed and count as attacks, triggering on-attack and on-hit item effects · [Blood Rite] For every 1% health your units have lost, they gain {C:SynergySystem.BLOOD_RITE[0]}% attack damage"
@@ -8027,8 +8027,8 @@ msgstr "vs %s"
 msgid "炸弹·爆破"
 msgstr "Bombs · Demolition"
 
-msgid "炸弹提高携带者的护甲穿透。每个战场开打后不久，一发导弹落到战场中心，轰炸并击飞所有敌方单位。"
-msgstr "Bombs grant their carriers Armor Pen. Shortly after each battlefield begins, a missile strikes the center of the field, blasting and knocking up every enemy unit."
+msgid "炸弹提高携带者的护甲穿透。每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，一发导弹落到战场中心，轰炸并击飞所有敌方单位。"
+msgstr "Bombs grant their carriers Armor Pen. {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, blasting and knocking up every enemy unit."
 
 msgid "每件炸弹为携带者提供 +4 护甲穿透 · 【导弹轰炸】每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹落到战场中心，对所有敌方单位造成 {C:BombSynergySystem.DMG_FLAT[0]} + 目标最大生命值 {C:BombSynergySystem.DMG_MAXHP[0]%}% 的物理伤害，并击飞 {C:BombSynergySystem.AIR_SEC} 秒，龟蛋除外"
 msgstr "Each Bomb item grants its carrier +4 Armor Pen · [Missile Strike] {C:BombSynergySystem.FIRE_AT} seconds into each battlefield, a missile strikes the center of the field, dealing {C:BombSynergySystem.DMG_FLAT[0]} + {C:BombSynergySystem.DMG_MAXHP[0]%}% of the target's max health as physical damage to every enemy unit and knocking them up for {C:BombSynergySystem.AIR_SEC} second (eggs excluded)"
@@ -8159,8 +8159,8 @@ msgstr "Daggers · Assassinate"
 msgid "仪式·血契"
 msgstr "Ritual · Blood Pact"
 
-msgid "匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。档位越高，战斗中再触发的次数越多。"
-msgstr "Daggers grant their carriers Crit Damage. When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and Life Steal. Higher tiers trigger it again later in the fight."
+msgid "匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。第二档起，战斗中再次触发。"
+msgstr "Daggers grant their carriers Crit Damage. When each battlefield begins, the next attack of every allied unit is a guaranteed critical strike with bonus Crit Damage and Life Steal. From the second tier, it triggers again during the fight."
 
 msgid "仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。"
 msgstr "Each kill by a Ritual Dagger carrier carves a Blood Pact. Blood Pacts accumulate across the whole round, and each one permanently increases the Attack of the carrier and the whole team."

@@ -142,6 +142,14 @@ func _wording_1020() -> void:
 			if str(s).contains(w):
 				bad_word.append(w)
 	_ok("⑤⑥ 羁绊文案里没有「每场/本场/腐蚀·穿透/腐蚀叠层」", bad_word.is_empty(), str(bad_word))
+	## 11-27 用户「这些描述…规矩规定的不会有这么 AI 味吧？」「图鉴总述也有吗？那就改」: 不写「越…越…」这种不给数的比较句,
+	##   写具体机制(「按已损失的生命值」「第二档起」「开打第 N 秒」); 常量占位符必须展开得出来
+	var vague: Array = []
+	for s in all_txt:
+		var r: String = SkillText.render_consts(str(s))
+		if str(s).contains("越") or str(s).contains("不久") or r.contains("{C:"):
+			vague.append(str(s).substr(0, 30))
+	_ok("⑤⑥ 羁绊文案没有「越…越…」「不久」、常量全部展开(分母 %d)" % all_txt.size(), vague.is_empty(), str(vague))
 
 	var re := RegEx.create_from_string("\\{C:([A-Za-z0-9_]+\\.[A-Z0-9_]+)\\[(\\d+)\\](%?)\\}")
 	var compared := 0

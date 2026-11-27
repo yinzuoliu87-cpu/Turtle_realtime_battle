@@ -569,15 +569,15 @@ scripts/gamedata/phase2_types.gd|lit|仪式
 scripts/gamedata/phase2_types.gd|lit|仪式·血契
 scripts/gamedata/phase2_types.gd|lit|仪式匕首的携带者每击杀一名敌人刻下一道血契。血契整个大轮累计，每道血契永久提高携带者与全队的攻击力。
 scripts/gamedata/phase2_types.gd|lit|剑
-scripts/gamedata/phase2_types.gd|lit|剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位生命值越低，攻击力越高。
+scripts/gamedata/phase2_types.gd|lit|剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位按已损失的生命值提高攻击力。
 scripts/gamedata/phase2_types.gd|lit|剑系
 scripts/gamedata/phase2_types.gd|lit|匕首
 scripts/gamedata/phase2_types.gd|lit|匕首·刺杀
-scripts/gamedata/phase2_types.gd|lit|匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。档位越高，战斗中再触发的次数越多。
+scripts/gamedata/phase2_types.gd|lit|匕首提高携带者的暴击伤害。每个战场开打时，我方所有单位的下一次攻击必定暴击，并附带额外暴击伤害与生命偷取。第二档起，战斗中再次触发。
 scripts/gamedata/phase2_types.gd|lit|商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}% · 重复买到的小木斧转化为砍伐经验
 scripts/gamedata/phase2_types.gd|lit|奇械
 scripts/gamedata/phase2_types.gd|lit|奇械·魔抗
-scripts/gamedata/phase2_types.gd|lit|奇械提高携带者的魔抗，并为全队铸造深海币。档位越高，全队攻击越能冰封敌人。
+scripts/gamedata/phase2_types.gd|lit|奇械提高携带者的魔抗，并为全队铸造深海币。第二档起，全队攻击有概率冰封敌人。
 scripts/gamedata/phase2_types.gd|lit|弓箭
 scripts/gamedata/phase2_types.gd|lit|弓箭·神射手
 scripts/gamedata/phase2_types.gd|lit|弓箭提高携带者的暴击率。全队攻击可处决低生命值的敌人，并持续腐蚀敌方全体。
@@ -585,7 +585,7 @@ scripts/gamedata/phase2_types.gd|lit|斧头
 scripts/gamedata/phase2_types.gd|lit|斧头·砍伐
 scripts/gamedata/phase2_types.gd|lit|枪
 scripts/gamedata/phase2_types.gd|lit|枪·神枪手
-scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把枪定期射出金弹，档位越高，我方生成的炮台越多。
+scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把枪定期额外射出金弹，每激活一档，我方生成一座炮台。
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%
 scripts/gamedata/phase2_types.gd|lit|每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，每次追打都视为一次攻击，触发攻击时与命中时的装备效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%
@@ -635,13 +635,13 @@ scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +3% 增�
 scripts/gamedata/phase2_types.gd|lit|每件魔法书为携带者提供 +6% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[1]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[1]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[1]%}% 最大生命值）
 scripts/gamedata/phase2_types.gd|lit|法器
 scripts/gamedata/phase2_types.gd|lit|法器·法师
-scripts/gamedata/phase2_types.gd|lit|法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位越高充满越快。
+scripts/gamedata/phase2_types.gd|lit|法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位提高后充满所需的法力减少。
 scripts/gamedata/phase2_types.gd|lit|灵物
 scripts/gamedata/phase2_types.gd|lit|灵物·召唤
 scripts/gamedata/phase2_types.gd|lit|灵物提高携带者的闪避。无法被击杀的触手为我方作战，阵亡的友军化为亡魂继续战斗。
 scripts/gamedata/phase2_types.gd|lit|炸弹
 scripts/gamedata/phase2_types.gd|lit|炸弹·爆破
-scripts/gamedata/phase2_types.gd|lit|炸弹提高携带者的护甲穿透。每个战场开打后不久，一发导弹落到战场中心，轰炸并击飞所有敌方单位。
+scripts/gamedata/phase2_types.gd|lit|炸弹提高携带者的护甲穿透。每个战场开打第 {C:BombSynergySystem.FIRE_AT} 秒，一发导弹落到战场中心，轰炸并击飞所有敌方单位。
 scripts/gamedata/phase2_types.gd|lit|盾
 scripts/gamedata/phase2_types.gd|lit|盾·守护
 scripts/gamedata/phase2_types.gd|lit|盾提高携带者的护甲。全队承受伤害后对敌人释放冲击波，并获得圣光护盾装备。
@@ -655,7 +655,7 @@ scripts/gamedata/phase2_types.gd|lit|药水提高携带者的治疗与护盾强�
 scripts/gamedata/phase2_types.gd|lit|装备小木斧即激活。激活后商店更容易刷出小木斧。
 scripts/gamedata/phase2_types.gd|lit|遗物
 scripts/gamedata/phase2_types.gd|lit|遗物·古物
-scripts/gamedata/phase2_types.gd|lit|遗物提供生命偷取。我方全体单位按生命值高低切换攻击与续航，全队增伤随战斗时间累积，龟蛋也加入战斗。
+scripts/gamedata/phase2_types.gd|lit|遗物提供生命偷取。我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。第二档起，全队增伤随战斗时间累积，龟蛋也加入战斗。
 scripts/gamedata/phase2_types.gd|lit|长矛
 scripts/gamedata/phase2_types.gd|lit|长矛·百夫长
 scripts/gamedata/phase2_types.gd|lit|长矛提高携带者的龟能回复速率。每个战场开打第 8 秒或我方生命值低于 60% 时，百夫长从天而降，击飞全场敌人。我方每有一件不同的长矛，百夫长按它的星级获得更多生命值与攻击力。
@@ -2634,6 +2634,44 @@ scripts/scenes/week_close_card.gd|lit|闯关赛战绩
 scripts/scenes/week_close_card.gd|lit|闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。
 scripts/scenes/week_close_card.gd|lit|领取
 scripts/scenes/week_close_card.gd|text|[font_size=48][color=#ffd93d]%d[/color][/font_size][font_size=26][color=#f2ead8] 胜 [/color][/font_size][font_size=48][color=#dfe6ee]%d[/color][/font_size][font_size=26][color=#f2ead8] 负[/color][/font_size]
+scripts/scenes/week_reveal.gd|lit|%d 月 %d 日
+scripts/scenes/week_reveal.gd|lit|全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波
+scripts/scenes/week_reveal.gd|lit|剑
+scripts/scenes/week_reveal.gd|lit|匕首
+scripts/scenes/week_reveal.gd|lit|召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手，拍击沿途敌人
+scripts/scenes/week_reveal.gd|lit|商店
+scripts/scenes/week_reveal.gd|lit|奇械
+scripts/scenes/week_reveal.gd|lit|开打时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体
+scripts/scenes/week_reveal.gd|lit|开打时，我方所有单位的下一次攻击必定暴击
+scripts/scenes/week_reveal.gd|lit|开打第 {C:BombSynergySystem.FIRE_AT} 秒，导弹轰炸并击飞所有敌方单位
+scripts/scenes/week_reveal.gd|lit|开打第 {C:SpearSynergySystem.SUMMON_AT} 秒，百夫长从天而降，击飞全场敌人
+scripts/scenes/week_reveal.gd|lit|弓箭
+scripts/scenes/week_reveal.gd|lit|我方单位释放技能时，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹
+scripts/scenes/week_reveal.gd|lit|携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次
+scripts/scenes/week_reveal.gd|lit|新
+scripts/scenes/week_reveal.gd|lit|本周羁绊
+scripts/scenes/week_reveal.gd|lit|枪
+scripts/scenes/week_reveal.gd|lit|每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%
+scripts/scenes/week_reveal.gd|lit|每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久获得 {C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值
+scripts/scenes/week_reveal.gd|lit|每 {C:GadgetSynergySystem.PERIOD} 秒铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，本局结束时获得
+scripts/scenes/week_reveal.gd|lit|每件法器充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点法力时，释放该法器的主动效果
+scripts/scenes/week_reveal.gd|lit|每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹
+scripts/scenes/week_reveal.gd|lit|法器
+scripts/scenes/week_reveal.gd|lit|消耗品，无法升星，不计入其他羁绊的件数
+scripts/scenes/week_reveal.gd|lit|灵物
+scripts/scenes/week_reveal.gd|lit|炸弹
+scripts/scenes/week_reveal.gd|lit|点击继续
+scripts/scenes/week_reveal.gd|lit|特殊羁绊
+scripts/scenes/week_reveal.gd|lit|生命值最高的敌人成为猎物，全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%
+scripts/scenes/week_reveal.gd|lit|生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取
+scripts/scenes/week_reveal.gd|lit|盾
+scripts/scenes/week_reveal.gd|lit|筹码
+scripts/scenes/week_reveal.gd|lit|药水
+scripts/scenes/week_reveal.gd|lit|遗物
+scripts/scenes/week_reveal.gd|lit|长矛
+scripts/scenes/week_reveal.gd|lit|面具
+scripts/scenes/week_reveal.gd|lit|食物
+scripts/scenes/week_reveal.gd|lit|魔法书
 scripts/systems/equip/bomb_synergy_system.gd|lit|炸弹
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
 scripts/systems/equip/dagger_synergy_system.gd|lit|匕首
