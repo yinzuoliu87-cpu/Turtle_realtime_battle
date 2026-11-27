@@ -837,7 +837,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|斧头获得 {C:AxeFinalStats.HOLO_EN
 scripts/gamedata/summon_codex_equip.gd|lit|斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。
 scripts/gamedata/summon_codex_equip.gd|lit|斩击
 scripts/gamedata/summon_codex_equip.gd|lit|暗影忍者
-scripts/gamedata/summon_codex_equip.gd|lit|暗影忍者化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。
+scripts/gamedata/summon_codex_equip.gd|lit|暗影忍者化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击。
 scripts/gamedata/summon_codex_equip.gd|lit|暗影忍者拥有 {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% 暴击率。
 scripts/gamedata/summon_codex_equip.gd|lit|暗影忍者登场时隐身，攻击时现形。
 scripts/gamedata/summon_codex_equip.gd|lit|暗影忍者的生命值首次低于 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力，同样会施放影袭。
@@ -869,7 +869,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|目标及其周围的敌人受到（{
 scripts/gamedata/summon_codex_equip.gd|lit|砍伐成长
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒分身
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒撞击
-scripts/gamedata/summon_codex_equip.gd|lit|背刺后朝该目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|舞狮
 scripts/gamedata/summon_codex_equip.gd|lit|舞狮朝前方冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。
 scripts/gamedata/summon_codex_equip.gd|lit|蛋糕法阵
@@ -895,6 +894,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|附近的敌人每秒受到其 {C:Axe
 scripts/gamedata/summon_codex_equip.gd|lit|随后在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投出 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，回旋镖飞出后返回，命中时造成（{C:AxeFinalStats.SERAPH_BOOM_ATK%}%×攻击力({ATK}) = {M:AxeFinalStats.SERAPH_BOOM_ATK*ATK}）魔法伤害，并施加 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。
 scripts/gamedata/summon_codex_equip.gd|lit|随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。
 scripts/gamedata/summon_codex_equip.gd|lit|随后插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒，期间获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，附近的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值和 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 {C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。
+scripts/gamedata/summon_codex_equip.gd|lit|随后朝该目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害，掷出后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。
 scripts/gamedata/summon_codex_equip.gd|lit|随后点燃【余烬之光】：{C:AxeFinalStats.EMBER_LIGHT_TIME} 秒内获得 {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤和 {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，并免疫控制效果。期间仍会积累龟能，再次施放时效果独立叠加。
 scripts/gamedata/summon_codex_equip.gd|lit|骨击
 scripts/gamedata/summon_codex_equip.gd|lit|骨斧

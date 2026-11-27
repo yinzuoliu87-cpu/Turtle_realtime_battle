@@ -230,6 +230,11 @@ func _ready() -> void:
 	## 11-25 用户「手里剑改为每次释放影袭都会…放」: 没有影子时, 暗影忍者自己也掷一枚
 	_adv(D.SHURIKEN_WINDUP + 0.05)
 	_ok("115 没有影子时影袭 ⇒ 暗影忍者自己掷一枚手里剑", int(_ds.stat["shuriken"]) == 1, str(_ds.stat["shuriken"]))
+	## 11-27 用户选「改游戏」: 掷完手里剑再隐身 NINJA_RESTEALTH 秒(原来掷镖现形把背刺给的隐身当场取消, 从不隐身)
+	var veil_left: float = float(nin.get("untargetable_until", 0.0)) - float(_s._t)
+	_ok("115 掷完手里剑隐身 %.1f 秒(剩 %.2f 秒、不可选取)" % [D.NINJA_RESTEALTH, veil_left],
+		bool(nin.get("_ninja_veil", false)) and veil_left > D.NINJA_RESTEALTH - 0.2 and veil_left <= D.NINJA_RESTEALTH + 0.01,
+		"veil=%s 剩 %.2f" % [str(nin.get("_ninja_veil")), veil_left])
 	nin["hp"] = float(nin["maxHp"]) * 0.45
 	_adv(0.05)
 	var cs: Dictionary = _ds.ninja_state(1)

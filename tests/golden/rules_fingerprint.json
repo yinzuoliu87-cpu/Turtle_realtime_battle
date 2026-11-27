@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "87fb13d16710b743763cf4788dda9ce8d406cab528566343bc32526a5a573ce6",
+ "fingerprint": "0155cc6b91eb9cc296a799451616574b35b2ae5eb8e440b27fb7d98e0a41aca9",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -40,7 +40,7 @@
   },
   {
    "def": "85302955d91ce28e",
-   "hash": "ddc77fa26c35ea841044bd195e5871087dc2165170a20dc267d766efc94c340c",
+   "hash": "31c2ba460dabebf8119fd86f194ac0e2679dd59f355299f09c8eb0b99f22d22c",
    "tag": "⑧ 魔法书顶档(飞弹) + 骷髅 + 镜像再放 + 书页两套 vs 匕首/剑"
   },
   {

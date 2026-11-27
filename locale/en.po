@@ -9285,8 +9285,8 @@ msgstr "Ninja Blade"
 msgid "影袭"
 msgstr "Shadow Strike"
 
-msgid "暗影忍者化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。"
-msgstr "The Shadow Ninja vanishes into black smoke and reappears behind the enemy with the lowest health ratio, backstabbing for ({C:EqDaggerBatch.NINJA_STRIKE_MULT%}% × Attack ({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}) physical damage that always crits, then stealths for {C:EqDaggerBatch.NINJA_RESTEALTH} seconds."
+msgid "暗影忍者化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击。"
+msgstr "The Shadow Ninja vanishes into black smoke and reappears behind the enemy with the lowest health ratio, backstabbing for ({C:EqDaggerBatch.NINJA_STRIKE_MULT%}% × Attack ({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}) physical damage that always crits."
 
 msgid "暗影潜行"
 msgstr "Shadow Prowl"
@@ -9496,8 +9496,8 @@ msgstr "When the Remote Bomb dies it explodes, dealing {C:EqBombBatch.REMOTE_FLA
 msgid "暗影忍者拥有 {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% 暴击率。"
 msgstr "The Shadow Ninja has {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% Crit Chance."
 
-msgid "背刺后朝该目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。"
-msgstr " After the backstab it throws a shuriken at that target (both ninjas throw one while the shadow is out), dealing ({C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%% × Attack ({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}) magic damage to enemies in its path."
+msgid "随后朝该目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害，掷出后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。"
+msgstr " It then throws a shuriken at that target (both ninjas throw one while the shadow is out), dealing ({C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%% × Attack ({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}) magic damage to enemies in its path, then stealths for {C:EqDaggerBatch.NINJA_RESTEALTH} seconds."
 
 msgid "推出一道缓慢前进的亡灵浪潮，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。"
 msgstr "Pushes out a slow undead wave. Enemies it passes take {C:EqMagicBatch.WAVE_DMG[%d]} physical damage, are knocked up and stunned for {C:EqMagicBatch.WAVE_STUN} seconds, and lose {C:EqMagicBatch.WAVE_MR_SHRED%%}%% Magic Resist for {C:EqMagicBatch.WAVE_MR_SEC} seconds. Allies it passes heal {C:EqMagicBatch.WAVE_HEAL[%d]}."

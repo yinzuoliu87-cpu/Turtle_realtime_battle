@@ -696,6 +696,12 @@ func _ninja_throw(m: Dictionary) -> void:
 	var d: Vector2 = Vector2(tgt["pos"]) - Vector2(q["pos"])
 	stat["shuriken"] += 1
 	_launch(q, Vector2(q["pos"]), d, SHURIKEN_SPD, SHURIKEN_RANGE, SHURIKEN_W, "shuriken", int(m["si"]))
+	## ★掷完再隐身 NINJA_RESTEALTH 秒(用户 11-27「1」= 改游戏让文案「随后隐身」成真):
+	##   背刺那一刻给的隐身会被同一帧的掷镖现形(上面 _ninja_stab 里 11-25 加的)立刻取消 ⇒ 原来实际从不隐身。
+	##   隐身期间不普攻(否则下一拍普攻就现形), 同背刺那条。
+	q["untargetable_until"] = maxf(float(q.get("untargetable_until", 0.0)), float(battle._t) + NINJA_RESTEALTH)
+	q["_ninja_veil"] = true
+	q["atk_cd"] = maxf(float(q.get("atk_cd", 0.0)), NINJA_RESTEALTH)
 
 
 # ════════════════════════════════════════ 116 黑曜石匕首 ════════════════════════════════════════
