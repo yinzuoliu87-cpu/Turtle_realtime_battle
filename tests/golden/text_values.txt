@@ -72,7 +72,7 @@ eq|氧气瓶|effectBrief	12.0
 eq|氧气瓶|effectDesc1	3.0 5.0 8.0 12.0 12.0
 eq|水母伞|effectBrief	2.5 7.0
 eq|水母伞|effectDesc1	2.5 7.0 7.0 15.0
-eq|永恒之枪|effectDesc1	1.5 8.0
+eq|永恒之枪|effectDesc1	1.0 3.0 4.0 6.0 6.0 100.0
 eq|沙漏|effectBrief	10.0
 eq|沙漏|effectDesc1	1.0 10.0
 eq|治愈圣典|effectDesc1	0.1

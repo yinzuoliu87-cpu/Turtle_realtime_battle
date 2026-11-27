@@ -1,7 +1,7 @@
 {
  "_note": "verify_rules_fingerprint 的金标；只用 python tools/rules_fingerprint.py --update 写（它核对 RULES_VER）",
  "cases": 10,
- "fingerprint": "e61d39e5a0f6da72e5be66940a9a1637d82f157f2d9022d7507543e989db6685",
+ "fingerprint": "37c77ec4ca1ee5caa7cf9405743a7b629ece2df0ed272c810694c320f3978329",
  "per_case": [
   {
    "def": "31683cf9fcd99331",
@@ -20,7 +20,7 @@
   },
   {
    "def": "d934661682f7db9a",
-   "hash": "fbe4c1aec304330cc58eec8c7f808f5c9ac2d71c7381ebfc21d1517a3fcc30c4",
+   "hash": "8e197e95e1d863bcb6117f42f7756af25a63d08bb1fbcad07423f659a9af1fac",
    "tag": "④ 奇械/药水 vs 遗物(香火石)/枪 · 宝箱"
   },
   {
@@ -45,7 +45,7 @@
   },
   {
    "def": "c74f3eed261e1b5e",
-   "hash": "df2419de070a7d63aabdaff9783e038b1ac38fb06e3859333fc2e99ef341bb26",
+   "hash": "4bc41649aef03f208d1d9b07ce0fd662e7d6385ca3360b21b690371da7d14cb9",
    "tag": "⑨ 面具顶档(偷脸 / 里世界) + 筹码 vs 长矛顶档(百夫长) + 筹码"
   },
   {

@@ -103,6 +103,7 @@ scripts/gamedata/equip_stats.gd|lit|魔法穿透
 scripts/gamedata/equip_stats.gd|lit|龟能充能速率
 scripts/gamedata/equip_tier_labels.gd|lit|中毒层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|中毒层数 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|临时生命值 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|临时等级上限 # 级
 scripts/gamedata/equip_tier_labels.gd|lit|举盾时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|举盾阈值 #% 最大生命值
@@ -123,6 +124,8 @@ scripts/gamedata/equip_tier_labels.gd|lit|充能条 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|充能比例 #% 受到伤害
 scripts/gamedata/equip_tier_labels.gd|lit|光束伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|光束数 # 道
+scripts/gamedata/equip_tier_labels.gd|lit|免控追加 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|免控追加 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|冰寒时长 # 秒 / 每点龟能
 scripts/gamedata/equip_tier_labels.gd|lit|冰封时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|冰道伤害 #
@@ -142,6 +145,8 @@ scripts/gamedata/equip_tier_labels.gd|lit|双穿 +#
 scripts/gamedata/equip_tier_labels.gd|lit|反伤阈值 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|反击伤害 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|召唤所需层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|命中伤害 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|命中伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|命中次数 #
 scripts/gamedata/equip_tier_labels.gd|lit|回复 #
 scripts/gamedata/equip_tier_labels.gd|lit|回复 # 生命值
@@ -284,11 +289,14 @@ scripts/gamedata/equip_tier_labels.gd|lit|浪潮治疗 #
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮物理伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|浮游炮伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|溅射比例 #%
+scripts/gamedata/equip_tier_labels.gd|lit|滑行伤害 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|滑行伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|潜行 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|潜行一击基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|火球伤害 #% 目标最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|火球目标 # 名
 scripts/gamedata/equip_tier_labels.gd|lit|灰血比例 #%
+scripts/gamedata/equip_tier_labels.gd|lit|灼烧 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|灼烧加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|灼烧层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|灼烧层数 #% 消耗龟能
@@ -349,6 +357,8 @@ scripts/gamedata/equip_tier_labels.gd|lit|落雷数 # 道
 scripts/gamedata/equip_tier_labels.gd|lit|血护盾上限 #
 scripts/gamedata/equip_tier_labels.gd|lit|装备星级 # 星
 scripts/gamedata/equip_tier_labels.gd|lit|触发几率 #%
+scripts/gamedata/equip_tier_labels.gd|lit|路径伤害 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|路径伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|转化比例 #%
 scripts/gamedata/equip_tier_labels.gd|lit|近战书页 # 张
 scripts/gamedata/equip_tier_labels.gd|lit|近战增伤 #%
@@ -1482,7 +1492,7 @@ scripts/scenes/TrainerConfigScene.gd|lit|训龟大师吹响口哨，随机召唤
 scripts/scenes/TrainerConfigScene.gd|lit|训龟大师在敌人最密集的地方生成一条冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害提高 20%。冷却 17 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝友军最密集的地方投掷药水。落点附近的友军获得 5 秒狂热：攻击速度提高 30%，移动速度提高 25%，龟能充能速度提高 25%。冷却 16 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝随机一个敌人射出钩索，命中第一个敌人时将其眩晕 2.5 秒并拉向训龟大师。冷却 30 秒，未命中时冷却 15 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 5% 最大生命值，持续作战至终极战场。冷却 999 秒，未命中时冷却 30 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒最大生命值降低复活时的 5%，20 秒后降至 1 点，持续作战至终极战场。冷却 999 秒，未命中时冷却 30 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|训龟大师的攻击额外造成 2% 目标最大生命值的魔法伤害。每次攻击获得 3% 攻击速度，可无限叠加。层数达到 10、25、50 时亮起共鸣光效。
 scripts/scenes/TrainerConfigScene.gd|lit|钩锁
 scripts/scenes/TrainerConfigScene.gd|lit|驯服
@@ -1973,6 +1983,7 @@ scripts/scenes/battle/settle_screen.gd|lit|造成魔法伤害
 scripts/scenes/battle/settle_screen.gd|lit|阵亡
 scripts/scenes/battle/settle_screen.gd|lit|龟经验
 scripts/scenes/battle/spar_exit.gd|lit|退出切磋？
+scripts/scenes/battle/spear_eq_vfx.gd|lit|+%d 临时生命值
 scripts/scenes/battle/spear_eq_vfx.gd|lit|+%d 圣枪护盾
 scripts/scenes/battle/spear_eq_vfx.gd|lit|护甲和魔抗 +%d
 scripts/scenes/battle/spear_eq_vfx.gd|lit|等级 +1
@@ -2876,6 +2887,7 @@ scripts/systems/stream/stream_player.gd|lit|画面无法播放
 scripts/systems/stream/stream_source.gd|lit|404 %.0f 秒
 scripts/systems/stream/stream_source.gd|lit|end.json 没有块数
 scripts/systems/trainer/trainer_system.gd|lit|归顺
+scripts/systems/trainer/trainer_system.gd|lit|生命上限 -%d
 scripts/systems/trainer/trainer_system.gd|lit|魔法石·共鸣 %s
 scripts/ui/finals_copy.gd|lit|%d 分 %02d 秒
 scripts/ui/finals_copy.gd|lit|%d 天 %d 小时
