@@ -587,7 +587,7 @@ scripts/gamedata/phase2_types.gd|lit|【炮台三·火控】我方后方生成�
 scripts/gamedata/phase2_types.gd|lit|【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害。
 scripts/gamedata/phase2_types.gd|lit|【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高。
 scripts/gamedata/phase2_types.gd|lit|【生死界】我方单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高，低于时获得生命偷取。
-scripts/gamedata/phase2_types.gd|lit|【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。
+scripts/gamedata/phase2_types.gd|lit|【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，每个战场一次。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。
 scripts/gamedata/phase2_types.gd|lit|【盛宴】每 {C:SynergySystem.PULSE} 秒，全队回复已损失生命值。
 scripts/gamedata/phase2_types.gd|lit|【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高，满层时受到的部分伤害转化为真实伤害。
 scripts/gamedata/phase2_types.gd|lit|【血契】携带者每击杀一名敌人，刻下 1 道血契，至多 {C:EqDaggerBatch.RITUAL_CAP} 道，整个大轮累计，大轮重置。多件仪式匕首共用同一份血契 · 每道血契使全队攻击力提高 {C:EqDaggerBatch.RITUAL_TEAM_ATK%}%
@@ -600,7 +600,6 @@ scripts/gamedata/phase2_types.gd|lit|【金弹】每把枪定期额外射出 1 �
 scripts/gamedata/phase2_types.gd|lit|【铸币】每 {C:GadgetSynergySystem.PERIOD} 秒铸造深海币，本局结束时获得。
 scripts/gamedata/phase2_types.gd|lit|【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击。
 scripts/gamedata/phase2_types.gd|lit|【飞弹】我方单位（包括召唤物）每释放一次技能，按这次消耗的龟能召唤魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成魔法伤害。
-scripts/gamedata/phase2_types.gd|lit|【龟甲阵】百夫长龟能满时举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%。
 scripts/gamedata/phase2_types.gd|lit|【龟蛋加固】我方龟蛋获得最大生命值，并还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人。
 scripts/gamedata/phase2_types.gd|lit|仪式
 scripts/gamedata/phase2_types.gd|lit|仪式·血契
@@ -631,10 +630,10 @@ scripts/gamedata/phase2_types.gd|lit|枪提高携带者的攻击速度。每把�
 scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[0]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 真实伤害，炮台一
 scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[1]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% 真实伤害，炮台一、炮台二
 scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_aspdPct}% 攻击速度，每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发金弹，金弹额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害，炮台一、炮台二、炮台三
-scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗
-scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。放下盾时横扫周围敌人，造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害
-scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，至多 {C:SpearSynergySystem.SHRED_CAP} 点。举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害
-scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。横扫后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并击飞
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，召唤百夫长
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长每次刺中削弱敌人的护甲和魔抗，举盾时持续刺击周围敌人
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，横扫后召来持矛骑兵冲锋
+scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_echargePct}% 龟能回复速率，百夫长的突刺贯穿直线，放下盾时横扫周围敌人
 scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[0]%}%
 scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[1]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[1]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[1]}
 scripts/gamedata/phase2_types.gd|lit|每件 +{STAT:_lifestealPct}% 生命偷取，生死界攻击力提高 {C:RelicSynergySystem.ATK_BONUS[2]%}%、生命偷取 {C:RelicSynergySystem.LOW_HP_LS[2]%}%，远古之力每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%、至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}%，龟蛋 +{C:RelicSynergySystem.EGG_HP[2]} 最大生命值、还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}
@@ -795,6 +794,43 @@ scripts/gamedata/skill_forms.gd|lit|铁锤
 scripts/gamedata/skill_forms.gd|lit|铁锤·跃击
 scripts/gamedata/skill_forms.gd|lit|霰弹
 scripts/gamedata/skill_forms.gd|lit|高高跃起、空中蓄力后下锤, 覆盖更大范围并造成更高魔法伤害
+scripts/gamedata/summon_codex.gd|lit|不可移动
+scripts/gamedata/summon_codex.gd|lit|举盾 %s 秒，受到的伤害降低 %s%%。
+scripts/gamedata/summon_codex.gd|lit|举盾期间每 %s 秒刺击周围敌人，造成 %s%% 攻击力的魔法伤害。
+scripts/gamedata/summon_codex.gd|lit|从天而降
+scripts/gamedata/summon_codex.gd|lit|刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成 %s%% 伤害。
+scripts/gamedata/summon_codex.gd|lit|刺击目标，造成 %s%% 攻击力的物理伤害。
+scripts/gamedata/summon_codex.gd|lit|射程
+scripts/gamedata/summon_codex.gd|lit|我方每有一件不同的长矛，按其星级，每星使百夫长生命值与攻击力提高 %s%%。存在到被击败为止。
+scripts/gamedata/summon_codex.gd|lit|护卫
+scripts/gamedata/summon_codex.gd|lit|护甲
+scripts/gamedata/summon_codex.gd|lit|携带者存活时，炮台获得 %s 护甲与魔抗；携带者阵亡后归零。
+scripts/gamedata/summon_codex.gd|lit|攻击
+scripts/gamedata/summon_codex.gd|lit|攻击 +携带者攻击力
+scripts/gamedata/summon_codex.gd|lit|放下盾时横扫周围敌人，造成 %s%% 攻击力的魔法伤害。
+scripts/gamedata/summon_codex.gd|lit|横扫后，我方身后冲出 %d 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到百夫长 %s%% 攻击力的物理伤害并被击飞。
+scripts/gamedata/summon_codex.gd|lit|每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 %s 点。
+scripts/gamedata/summon_codex.gd|lit|每秒攻击
+scripts/gamedata/summon_codex.gd|lit|每第 %d 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成 %s%% 攻击力的物理伤害。
+scripts/gamedata/summon_codex.gd|lit|炮击
+scripts/gamedata/summon_codex.gd|lit|炮击射程内的敌人，造成 %s%% 攻击力的物理伤害，并永久获得 %s%% 暴击率，持续到本战场结束。
+scripts/gamedata/summon_codex.gd|lit|炮台
+scripts/gamedata/summon_codex.gd|lit|生命
+scripts/gamedata/summon_codex.gd|lit|生命 +%s×携带者攻击力
+scripts/gamedata/summon_codex.gd|lit|登场时从高空落下，落地时击飞全场敌人 %s 秒，造成 %s%% 攻击力的魔法伤害。
+scripts/gamedata/summon_codex.gd|lit|登场时按携带者当时的攻击力定下生命值与攻击力，之后不再变化。每件远古炮塔各召唤一座，存在到被击败为止。
+scripts/gamedata/summon_codex.gd|lit|百夫长
+scripts/gamedata/summon_codex.gd|lit|移速
+scripts/gamedata/summon_codex.gd|lit|突刺
+scripts/gamedata/summon_codex.gd|lit|装备星级
+scripts/gamedata/summon_codex.gd|lit|近战
+scripts/gamedata/summon_codex.gd|lit|远古炮塔
+scripts/gamedata/summon_codex.gd|lit|远程
+scripts/gamedata/summon_codex.gd|lit|长矛
+scripts/gamedata/summon_codex.gd|lit|长矛件数
+scripts/gamedata/summon_codex.gd|lit|长矛羁绊
+scripts/gamedata/summon_codex.gd|lit|魔抗
+scripts/gamedata/summon_codex.gd|lit|龟甲阵
 scripts/gamedata/turtle_stats.gd|lit|近战刺客
 scripts/gamedata/turtle_stats.gd|lit|近战坦克
 scripts/gamedata/turtle_stats.gd|lit|近战斗士
@@ -1130,6 +1166,7 @@ scripts/scenes/BracketMapScene.gd|tooltip_text|观看回放
 scripts/scenes/CodexScene.gd|lit|仪式
 scripts/scenes/CodexScene.gd|lit|剑
 scripts/scenes/CodexScene.gd|lit|匕首
+scripts/scenes/CodexScene.gd|lit|召唤物
 scripts/scenes/CodexScene.gd|lit|图鉴
 scripts/scenes/CodexScene.gd|lit|奇械
 scripts/scenes/CodexScene.gd|lit|弓箭
@@ -1145,13 +1182,13 @@ scripts/scenes/CodexScene.gd|lit|筹码
 scripts/scenes/CodexScene.gd|lit|羁绊
 scripts/scenes/CodexScene.gd|lit|药水
 scripts/scenes/CodexScene.gd|lit|装备
+scripts/scenes/CodexScene.gd|lit|角色
 scripts/scenes/CodexScene.gd|lit|遗物
 scripts/scenes/CodexScene.gd|lit|长矛
 scripts/scenes/CodexScene.gd|lit|面具
 scripts/scenes/CodexScene.gd|lit|食物
 scripts/scenes/CodexScene.gd|lit|香火
 scripts/scenes/CodexScene.gd|lit|魔法书
-scripts/scenes/CodexScene.gd|lit|龟
 scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
 scripts/scenes/FirstLaunchScene.gd|lit|在这里，你将组建一支由 3 只龟组成的队伍，为它们搭配装备、安排站位，与其他玩家的队伍自动对战。

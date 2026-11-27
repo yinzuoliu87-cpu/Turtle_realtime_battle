@@ -14,6 +14,7 @@ var _top_bar = null
 const TapSlop = preload("res://scripts/util/tap_slop.gd")
 var _row_tap := TapSlop.new()   # 列表行「点 vs 滑」(同一时刻只有一根手指, 全列表共用一个)
 var _codex_list := CodexList.new(self)   # 图鉴·左栏列表行构建(龟/装备/状态/分组头/简单行·back_button和共享_add_text/image/portrait/rect留主场景)(2026-07-25 抽出)
+var _codex_summon := CodexSummonPage.new(self)   # 图鉴「角色」栏 · 召唤物详情页(2026-11-27, 方案书 20261127d)
 var _codex_detail := CodexDetail.new(self)   # 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/小将)(2026-07-25 抽出)
 @onready var detail_bg: ColorRect = $UI/DetailBg
 # ★2026-08-03 详情改可滚动。这里【故意】做了一次换名:
@@ -49,7 +50,8 @@ const COST_COLOR := {
 ## ★图标一律 **32×32 源图按 1x 画**(`icon_max_width = ICON_PX`) —— 不缩放, 不插值。
 const ICON_PX := 32
 const TABS := [
-	["pets", "龟", "res://assets/sprites/ui/icon-turtle.png"],
+	## 2026-11-27「龟」→「角色」(用户「图鉴里最好龟换成角色，及游戏里的可能出现的单位」; 方案书 20261127d): 28 龟 + 深海小将 + 召唤物
+	["pets", "角色", "res://assets/sprites/ui/icon-turtle.png"],
 	["equips", "装备", "res://assets/sprites/ui/icon-equip.png"],
 	["synergies", "羁绊", "res://assets/sprites/ui/icon-synergy.png"],
 	["status", "状态", "res://assets/sprites/ui/icon-status.png"],
@@ -359,7 +361,7 @@ func _build_tab_bar() -> void:
 	# PoC makeTab label 带数量计数: 🐢 龟 (N) / ⚔ 装备 (N) / 🔗 羁绊 (N) / 💫 状态 (N) / 📜 规则 (N)
 	# 装备 Tab 计数 = 59 件 p2eq + 消耗品件数 (上线野生=duallane 实际装备池, 非旧 e_ 装备)
 	var tab_counts := {
-		"pets": DataRegistry.launch_pets.size(), "equips": _equip_tab_count(),
+		"pets": DataRegistry.launch_pets.size() + MINION_KINDS.size() + SummonCodex.IDS.size(), "equips": _equip_tab_count(),
 		"synergies": (Phase2Types.TYPES.size() + Phase2Types.TAG_ONLY.size()), "status": DataRegistry.status_defs.size(),
 	}
 	for i in TABS.size():
@@ -478,6 +480,12 @@ func _switch_tab(tab: String) -> void:
 				## 行图标 = 头像(与龟行的 avatars/<id> 同一种东西; 2026-11-04 用户「头像不等于全身画啊」), 不是全身立绘。
 				_codex_list._add_simple_row(str(mk["name"]), "#cdd9c2", Color("#7a8a96"),
 					MinionCodex.avatar_path(str(mk["kind"])), _items.size() - 1)
+			## 召唤物(2026-11-27 方案书 20261127d): 百夫长 / 炮台先做样子, 其余逐个补进 SummonCodex.IDS
+			_codex_list._add_group_header("召唤物")
+			for sid in SummonCodex.IDS:
+				_items.append({"_summon": sid})
+				_codex_list._add_simple_row(str(SummonCodex.info(sid, 0)["name"]), "#e8d9b8", Color("#8a7a5a"),
+					str(SummonCodex.info(sid, 0)["avatar"]), _items.size() - 1)
 		"equips":
 			_codex_list._add_equip_rows()
 		"synergies":
@@ -611,6 +619,7 @@ func _select(idx: int) -> void:
 	match current_tab:
 		"pets":
 			if item.has("_minion"): _codex_detail._show_minion(str(item["_minion"]))
+			elif item.has("_summon"): _codex_summon.show(str(item["_summon"]))
 			else: _codex_detail._show_pet(item)
 		"equips": _codex_detail._show_equip(item)
 		"synergies": _codex_detail._show_type(item)

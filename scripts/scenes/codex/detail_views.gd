@@ -428,14 +428,15 @@ func _show_pet(pet: Dictionary) -> void:
 
 
 ## 右栏: 被动条 → 普通攻击条 → 技能卡。龟页与小将页(_show_minion 合成的 pet)共用 —— 两边长得一样就是因为走的同一段。
-func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
+## top: 右栏从多高开始(召唤物页顶上先放一排档位选择牌, 2026-11-27); 龟 / 小将页照旧 16。
+func _render_right(pet: Dictionary, ctx: Dictionary, top: float = 16.0) -> void:
 	# 9) 被动条(右栏顶) 高 PASSIVE_BAR_H · 两行: 标题行 + 简述一行
 	## ★2026-11-05 被动可以有多条(精英小将 3 条: 用户「他的被动应该是有三个啊」): 每条一根与龟同样的被动条, 往下排;
 	##   点哪条就在下方展开哪条的全文(host._codex_passive_idx)。龟只有一条 ⇒ 长相不变。
 	var plist: Array = pet.get("passives", [])
 	if plist.is_empty() and not (pet.get("passive", {}) as Dictionary).is_empty():
 		plist = [pet["passive"]]
-	var cards_y := 16.0   # 无被动的龟(目前 0 只)从右栏顶起
+	var cards_y := top   # 无被动的龟(目前 0 只)从右栏顶起
 	for k in range(plist.size()):
 		cards_y = _passive_bar(plist[k], k, cards_y, ctx)
 	if host._codex_passive_view and plist.size() > 1:
@@ -650,6 +651,9 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 	var head_h: float = FORM_ROW_H if has_form else 26.0
 	## ★2026-10-08 「开局三选一」→「技能」。用户:「开局三选一是啥呢」「我问你哪个参考游戏会这么说？」—— 没有哪个游戏这么说,
 	##   是我 08-18 自己加的, 讲的是我们的选择机制(同 10-01 被否的「3选1候选」)。对齐战斗信息面板「被动 / 普通攻击 / 技能」(10-06 用户拍板)。
+	## 没有任何技能卡(召唤物炮台只有普攻)就不画「技能」这一节的抬头(2026-11-27 截图自查: 空抬头悬在那里)
+	if skill_pool.is_empty() and not has_form:
+		return
 	host._add_text(start_x + 2.0, start_y + head_h / 2.0, "技能", SECTION_PX, "#06d6a0", 0.0, 0.5, true)
 	if has_form:
 		form_btn_y = start_y + head_h / 2.0

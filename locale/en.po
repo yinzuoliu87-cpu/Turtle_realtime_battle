@@ -4526,7 +4526,7 @@ msgstr "Every {C:EquipTickSystem.RUST_IV} seconds, flings a sword wave that deal
 msgid "【法力】充满时连斩随机敌人 5/6/8 次。溢出的治疗转化为血护盾。"
 msgstr "[Mana] When full, slashes random enemies 5/6/8 times. Overflow healing becomes a Blood Shield."
 
-msgid "登场时获得自身最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾。每 {C:EquipTickSystem.JELLY_IV} 秒获得 {C:EquipTickSystem.JELLY_SHIELD}+自身最大生命值 {C:EquipTickSystem.JELLY_MAXHP_PCT%}% 的护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
+msgid "登场时获得携带者最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾。每 {C:EquipTickSystem.JELLY_IV} 秒获得 {C:EquipTickSystem.JELLY_SHIELD}+携带者最大生命值 {C:EquipTickSystem.JELLY_MAXHP_PCT%}% 的护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
 msgstr "On spawn, gains a Magic Shield equal to {C:MagicShield.SEAWEED_MAXHP_PCT%}% of max health. Every {C:EquipTickSystem.JELLY_IV} seconds, gains a {C:EquipTickSystem.JELLY_SHIELD} + {C:EquipTickSystem.JELLY_MAXHP_PCT%}% max health shield for {C:BattleDamage.COMMON_SHIELD_SEC} seconds."
 
 msgid "每次被攻击或技能命中时叠加 1 层硬化，每层提供 1/1.5/2 护甲和魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层），层数达到上限时获得护盾。"
@@ -4544,10 +4544,10 @@ msgstr "Reduces each instance of non-true damage taken by 3/6/10. Every {C:Equip
 msgid "免疫击飞与斩杀。治疗友军积累充能，攻击消耗充能，击飞并眩晕最近的敌人。"
 msgstr "Immune to knock-ups and executes. Healing allies builds charge; attacks spend it to knock up and stun the nearest enemy."
 
-msgid "每 {C:EquipTickSystem.SHELL_IV} 秒回复 30/45/60+自身最大生命值 5/9/15% 的生命值。"
+msgid "每 {C:EquipTickSystem.SHELL_IV} 秒回复 30/45/60+携带者最大生命值 5/9/15% 的生命值。"
 msgstr "Every {C:EquipTickSystem.SHELL_IV} seconds, heals 30/45/60 + 5/9/15% of max health."
 
-msgid "每 {C:EquipTickSystem.ANEMONE_IV} 秒治疗自身与生命百分比最低的友军。每累计提供 200/180/150 点治疗获得 1 层海葵。"
+msgid "每 {C:EquipTickSystem.ANEMONE_IV} 秒治疗携带者与生命百分比最低的友军。每累计提供 200/180/150 点治疗获得 1 层海葵。"
 msgstr "Every {C:EquipTickSystem.ANEMONE_IV} seconds, heals itself and the ally with the lowest health percentage. Gains 1 Anemone stack for every 200/180/150 healing provided."
 
 msgid "每 {C:EquipTickSystem.DUMBBELL_IV} 秒获得 1 层锻炼，使最大生命值+40/75/110，并投掷哑铃击飞最近的敌人。"
@@ -4565,7 +4565,7 @@ msgstr "Every {C:EquipSystem.EMBER_IV} seconds, throws a fire flask that deals 4
 msgid "攻击额外施加灼烧。【法力】充满时挥出火焰波，施加灼烧。"
 msgstr "Attacks also apply Burn. [Mana] When full, sweeps out a fire wave that applies Burn."
 
-msgid "每 {C:RealtimeBattle3DScene.EQ_TICK} 秒积累 1 层吐息，达到 3 层时召唤喷火龙贯穿全场，对沿途敌人造成（45/80/120+100% 攻击力）魔法伤害并施加灼烧，为沿途友军与自身回复（45/80/120+100% 攻击力）生命值。"
+msgid "每 {C:RealtimeBattle3DScene.EQ_TICK} 秒积累 1 层吐息，达到 3 层时召唤喷火龙贯穿全场，对沿途敌人造成（45/80/120+100% 攻击力）魔法伤害并施加灼烧，为沿途友军与携带者回复（45/80/120+100% 攻击力）生命值。"
 msgstr "Gains 1 Breath stack every {C:RealtimeBattle3DScene.EQ_TICK} seconds. At 3 stacks, summons a fire dragon that sweeps across the field, dealing (45/80/120 + 100% Attack) magic damage and applying Burn to enemies in its path, and healing allies in its path and itself for (45/80/120 + 100% Attack)."
 
 msgid "每 {C:EquipTickSystem.THUNDER_IV} 秒降下 1/2/3 道雷，每道造成 100% 攻击力真实伤害。"
@@ -4601,7 +4601,7 @@ msgstr "When it dies for good, becomes a bug in place that keeps fighting, carry
 msgid "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人。达到 5/3/1 层后召唤一只大熊。"
 msgstr "Every {C:EquipTickSystem.DOLL_IV} seconds, sends a little bear to ram the nearest enemy. At 5/3/1 stacks, summons a big bear."
 
-msgid "每秒回复 2/5/10+自身最大生命值 0.3/0.8/1.2% 的生命值。孵化进度满 {C:EquipTickSystem.EGG_FULL} 时获得 1 点临时等级，上限 3/4/5 级。"
+msgid "每秒回复 2/5/10+携带者最大生命值 0.3/0.8/1.2% 的生命值。孵化进度满 {C:EquipTickSystem.EGG_FULL} 时获得 1 点临时等级，上限 3/4/5 级。"
 msgstr "Heals 2/5/10 + 0.3/0.8/1.2% of max health per second. Gains 1 temporary level each time hatching reaches {C:EquipTickSystem.EGG_FULL}, up to 3/4/5 levels."
 
 msgid "蜡烛每 {C:EquipSystem.CANDLE_IV} 秒切换阶段：微弱阶段持续治疗，燃烧阶段爆燃并施加灼烧。"
@@ -4628,7 +4628,7 @@ msgstr "Every {C:EquipSystem.RIPPLE_IV} seconds, heals each ally for 3/6/10% of 
 msgid "【法力】充满时掀起横贯全场的浪墙：友军获得护盾与双抗，敌人被击飞并失去双抗。"
 msgstr "[Mana] When full, raises a wave wall across the whole field: allies gain a shield, Armor and Magic Resist; enemies are knocked up and lose Armor and Magic Resist."
 
-msgid "生命值首次低于 {C:EquipSystem.LOWHP_GATE%}% 时，{C:EquipSystem.NECKLACE_HOT_SEC} 秒内回复自身最大生命值 40/85/130%。"
+msgid "生命值首次低于 {C:EquipSystem.LOWHP_GATE%}% 时，{C:EquipSystem.NECKLACE_HOT_SEC} 秒内回复携带者最大生命值 40/85/130%。"
 msgstr "The first time health drops below {C:EquipSystem.LOWHP_GATE%}%, heals 40/85/130% of max health over {C:EquipSystem.NECKLACE_HOT_SEC} seconds."
 
 msgid "生命值首次低于 {C:EquipSystem.LOWHP_GATE%}% 时回复 30/60/100% 最大生命值，并发射火球点燃敌人。"
@@ -4673,7 +4673,7 @@ msgstr "On spawn, summons an immobile turret whose attacks permanently build Cri
 msgid "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 4/7/20 秒，每个战场各一次。"
 msgstr "At {C:TimestopSystem.TS_START_T} seconds after spawning, casts Time Stop, freezing the whole field for 4/7/20 seconds. Once per battle."
 
-msgid "伞收起 {C:EqSpiritBatch.PARASOL_IDLE} 秒后撑开 {C:EqSpiritBatch.PARASOL_OPEN} 秒，期间自身与附近的队友获得 11/22/35% 减伤。"
+msgid "伞收起 {C:EqSpiritBatch.PARASOL_IDLE} 秒后撑开 {C:EqSpiritBatch.PARASOL_OPEN} 秒，期间携带者与附近的队友获得 11/22/35% 减伤。"
 msgstr "The umbrella opens for {C:EqSpiritBatch.PARASOL_OPEN} seconds after being closed for {C:EqSpiritBatch.PARASOL_IDLE} seconds. While open, it and nearby allies gain 11/22/35% Damage Reduction."
 
 msgid "每 {C:EquipTickSystem.SWORD_STORM_IV} 秒召出一排剑穿过全体敌人，各造成（70/100/400+80/130/400% 攻击力）物理伤害。"
@@ -4706,7 +4706,7 @@ msgstr "Stores damage taken as charge. Every {C:EqPotionBatch.CAN_PERIOD} second
 msgid "生命值首次低于 {C:EqFoodBatch.CAKE_LINE_1%}%、{C:EqFoodBatch.CAKE_LINE_2%}%、{C:EqFoodBatch.CAKE_LINE_3%}% 时各吃下一块蛋糕，依次获得最大生命值、攻击力与护盾。"
 msgstr "Eats a slice of cake the first time health drops below {C:EqFoodBatch.CAKE_LINE_1%}%, {C:EqFoodBatch.CAKE_LINE_2%}% and {C:EqFoodBatch.CAKE_LINE_3%}%, gaining max health, attack damage and a shield in turn."
 
-msgid "攻击附带自身 3/4.5/7% 最大生命值的伤害并溅射。受到的伤害存入灰色血条并转化为生命回复。"
+msgid "攻击附带携带者 3/4.5/7% 最大生命值的伤害并溅射。受到的伤害存入灰色血条并转化为生命回复。"
 msgstr "Attacks deal bonus damage equal to 3/4.5/7% of own max health and splash. Damage taken is stored in a gray health bar and turned into healing."
 
 msgid "每 {C:EquipTickSystem.BROADSWORD_IV} 秒挥出一道贯穿直线的剑气墙，并获得总伤害 50/75/100% 的护盾。"
@@ -4715,7 +4715,7 @@ msgstr "Every {C:EquipTickSystem.BROADSWORD_IV} seconds, swings out a piercing w
 msgid "每个战场开始时为全队提供各自最大生命值 10/18/25% 的奶油护盾，护盾破碎时对周围敌人造成伤害。"
 msgstr "At the start of each battle, gives each ally a Cream Shield equal to 10/18/25% of its max health. When broken, it damages nearby enemies."
 
-msgid "获得自身最大生命值 50/80/120% 的终极护盾，护盾存在期间化身蛋糕礼盒并嘲讽敌人。"
+msgid "获得携带者最大生命值 50/80/120% 的终极护盾，护盾存在期间化身蛋糕礼盒并嘲讽敌人。"
 msgstr "Gains an Ultimate Shield equal to 50/80/120% of max health. While it holds, becomes a Cake Box and taunts enemies."
 
 msgid "每次攻击时，藤蔓小球射出一支藤蔓箭。藤蔓箭暴击时转为真实伤害并提升攻击速度。"
@@ -4745,7 +4745,7 @@ msgstr "On spawn, summons a gyrocopter that strafes enemies. At full Energy, it 
 msgid "每 {C:EquipTickSystem.CORAL_IV} 秒向最远的敌人射出珊瑚刺，造成 100/120/150% 攻击力物理伤害，外加 8/12/18% 目标最大生命值的魔法伤害。"
 msgstr "Every {C:EquipTickSystem.CORAL_IV} seconds, fires a coral spike at the farthest enemy, dealing 100/120/150% Attack as physical damage plus 8/12/18% of the target's max health as magic damage."
 
-msgid "每受到自身最大生命值 40/35/30% 的伤害，举盾 2.5/3/3.5 秒，期间获得护盾与双抗。"
+msgid "每受到携带者最大生命值 40/35/30% 的伤害，举盾 2.5/3/3.5 秒，期间获得护盾与双抗。"
 msgstr "For every 40/35/30% of max health taken as damage, raises its shield for 2.5/3/3.5 seconds, gaining a shield, Armor and Magic Resist."
 
 msgid "每受到一段攻击反伤 3/5/8 点。每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能，攻击消耗充能并回复生命值。"
@@ -4778,7 +4778,7 @@ msgstr "[Mana] When full, leaps up and slams the ground, dealing damage and stun
 msgid "攻击和技能命中时积累充能，达到 {C:EquipSystem.BLADE_FULL} 点时朝敌群斩出一道弧形刀光。只命中 1 名敌人时伤害提高 100/150/200%。"
 msgstr "Attack and ability hits build charge. At {C:EquipSystem.BLADE_FULL}, slashes an arc of light at the enemy group. Deals 100/150/200% more damage if it hits only 1 enemy."
 
-msgid "每 {C:EqRelicBatch.SCUTE_IV} 秒回复 1/2/3 点+自身最大生命值 0.1/0.15/0.2% 的生命值，生命值低于 {C:EqRelicBatch.SCUTE_LOW_GATE%}% 时回复效果提升至 {C:EqRelicBatch.SCUTE_LOW_MULT} 倍。"
+msgid "每 {C:EqRelicBatch.SCUTE_IV} 秒回复 1/2/3 点+携带者最大生命值 0.1/0.15/0.2% 的生命值，生命值低于 {C:EqRelicBatch.SCUTE_LOW_GATE%}% 时回复效果提升至 {C:EqRelicBatch.SCUTE_LOW_MULT} 倍。"
 msgstr "Every {C:EqRelicBatch.SCUTE_IV} seconds, heals 1/2/3 + 0.1/0.15/0.2% of max health. Below {C:EqRelicBatch.SCUTE_LOW_GATE%}% health, healing is multiplied by {C:EqRelicBatch.SCUTE_LOW_MULT}."
 
 msgid "召唤一只剧毒飞行物，沿途留下毒雾，对敌人叠加中毒与缓速。"
@@ -5120,7 +5120,7 @@ msgstr "Cyber Turtle hacks a random enemy, making it fight for Cyber Turtle's si
 msgid "每 {C:EquipTickSystem.GEAR_IV} 秒获得 1 枚深海币，每局至多 {C:EquipTickSystem.GEAR_CAP} 枚。"
 msgstr "Gains 1 Abyss Coin every {C:EquipTickSystem.GEAR_IV} seconds, up to {C:EquipTickSystem.GEAR_CAP} per match."
 
-msgid "获得（1/2/3% 自身最大生命值）额外攻击力。"
+msgid "获得（1/2/3% 携带者最大生命值）额外攻击力。"
 msgstr "Gains (1/2/3% of own max health) bonus attack damage."
 
 msgid "造成的伤害无视闪避。"
@@ -5132,37 +5132,37 @@ msgstr "Every {C:EquipTickSystem.RUST_IV} seconds, flings a flying sword wave at
 msgid "【法力】充满时，连斩随机敌人 5/6/8 次，每次造成（40/50/70 + 50/70/100% 攻击力）物理伤害，并附带 {C:EqBloodCombo.BLOOD_LIFESTEAL%}% 生命偷取。每刀伤害衰减为上一刀的 {C:EqBloodCombo.BLOOD_DECAY%}%。\n被动：溢出的治疗转化为血护盾，至多 200/350/500。"
 msgstr "[Mana] When full, slashes random enemies 5/6/8 times, each dealing (40/50/70 + 50/70/100% Attack) physical damage with {C:EqBloodCombo.BLOOD_LIFESTEAL%}% Lifesteal. Each slash deals {C:EqBloodCombo.BLOOD_DECAY%}% of the previous one.\nPassive: overflow healing becomes a Blood Shield, up to 200/350/500."
 
-msgid "登场时获得自身最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾，该护盾只吸收魔法伤害。\n每 {C:EquipTickSystem.JELLY_IV} 秒获得护盾，护盾值为 {C:EquipTickSystem.JELLY_SHIELD}+自身最大生命值的 {C:EquipTickSystem.JELLY_MAXHP_PCT%}%，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
+msgid "登场时获得携带者最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾，该护盾只吸收魔法伤害。\n每 {C:EquipTickSystem.JELLY_IV} 秒获得护盾，护盾值为 {C:EquipTickSystem.JELLY_SHIELD}+携带者最大生命值的 {C:EquipTickSystem.JELLY_MAXHP_PCT%}%，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
 msgstr "On spawn, gains a Magic Shield equal to {C:MagicShield.SEAWEED_MAXHP_PCT%}% of max health that absorbs only magic damage.\nEvery {C:EquipTickSystem.JELLY_IV} seconds, gains a shield of {C:EquipTickSystem.JELLY_SHIELD} + {C:EquipTickSystem.JELLY_MAXHP_PCT%}% of max health for {C:BattleDamage.COMMON_SHIELD_SEC} seconds."
 
-msgid "每次被攻击或技能命中时获得 1 层硬化，每层提供 1/1.5/2 护甲和魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）。\n层数达到上限时获得【海胆护盾】，护盾值为 100/170/250+自身最大生命值的 5/12/20%，该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。"
+msgid "每次被攻击或技能命中时获得 1 层硬化，每层提供 1/1.5/2 护甲和魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）。\n层数达到上限时获得【海胆护盾】，护盾值为 100/170/250+携带者最大生命值的 5/12/20%，该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。"
 msgstr "Gains 1 Harden stack whenever hit by an attack or ability. Each stack grants 1/1.5/2 Armor and Magic Resist (max {C:EquipSystem.URCHIN_CAP} stacks).\nAt max stacks, gains an [Urchin Shield] of 100/170/250 + 5/12/20% of max health that decays over {C:EquipSystem.URCHIN_DECAY} seconds."
 
-msgid "每次被攻击或技能命中时获得 1 层硬化，每层提供 {C:EquipTickSystem.FORTRESS_HARDEN_INC} 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层）。\n硬化层数达到上限时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到相当于 80/100/250% 护甲与魔抗之和的魔法伤害。每汲取 1 名敌人，回复 50/100/250 点生命值，外加相当于自身已损失生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}% 的生命值。\n汲取对训龟大师与屏障中的龟蛋无效。"
+msgid "每次被攻击或技能命中时获得 1 层硬化，每层提供 {C:EquipTickSystem.FORTRESS_HARDEN_INC} 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层）。\n硬化层数达到上限时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到相当于 80/100/250% 护甲与魔抗之和的魔法伤害。每汲取 1 名敌人，回复 50/100/250 点生命值，外加相当于携带者已损失生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}% 的生命值。\n汲取对训龟大师与屏障中的龟蛋无效。"
 msgstr "Gains 1 Harden stack whenever hit by an attack or ability, each granting {C:EquipTickSystem.FORTRESS_HARDEN_INC} Armor and Magic Resist (max {C:EquipTickSystem.FORTRESS_CAP} stacks).\nAt max stacks, drains immediately, then drains health from all enemies every {C:EquipTickSystem.FORTRESS_IV} seconds. Each enemy takes magic damage equal to 80/100/250% of the holder's combined Armor and Magic Resist. For each enemy drained, heals 50/100/250 plus {C:EquipTickSystem.FORTRESS_HEAL_LOST%}% of own missing health.\nThe drain doesn't affect the Turtle Trainer or shielded Turtle Eggs."
 
 msgid "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，并使下次攻击命中时对目标施加 30/50/90 层流血。\n反伤命中时，对目标施加 {C:ThornCut.AMP_CUT%}% 治疗削减和护盾削减，持续 {C:ThornCut.CUT_SEC} 秒。"
 msgstr "For every 300/270/230 damage reflected, gains a 50/70/200 shield for {C:BattleDamage.COMMON_SHIELD_SEC} seconds, and the next attack hit applies 30/50/90 Bleed.\nReflected hits apply {C:ThornCut.AMP_CUT%}% Grievous Wounds and shield reduction for {C:ThornCut.CUT_SEC} seconds."
 
-msgid "每段受到的非真实伤害减少 3/6/10 点。\n每 {C:EquipTickSystem.IRONWALL_IV} 秒生成总量为 100/250/400+自身最大生命值 {C:EquipTickSystem.IRONWALL_MAXHP_PCT%}% 的护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，由包括自身在内的全队平均分摊，龟蛋与训龟大师除外。"
+msgid "每段受到的非真实伤害减少 3/6/10 点。\n每 {C:EquipTickSystem.IRONWALL_IV} 秒生成总量为 100/250/400+携带者最大生命值 {C:EquipTickSystem.IRONWALL_MAXHP_PCT%}% 的护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，由包括携带者在内的全队平均分摊，龟蛋与训龟大师除外。"
 msgstr "Reduces each instance of non-true damage taken by 3/6/10.\nEvery {C:EquipTickSystem.IRONWALL_IV} seconds, creates a shield totaling 100/250/400 + {C:EquipTickSystem.IRONWALL_MAXHP_PCT%}% of max health for {C:BattleDamage.COMMON_SHIELD_SEC} seconds, split evenly across the whole team including the holder (Turtle Eggs and the Turtle Trainer excluded)."
 
-msgid "免疫击飞与斩杀。\n每 {C:EquipTickSystem.ANCHOR_IV} 秒为生命百分比最低的友军回复相当于自身最大生命值 0.1/0.2/3% 的生命值，累计治疗达到 {C:EquipTickSystem.ANCHOR_ACC_PER_CHARGE} 点时获得 1 点沉锚充能。\n持有沉锚充能时，攻击速度提升 {C:EquipTickSystem.ANCHOR_ASPD%}%。\n攻击时消耗 1 点充能，击飞最近的敌人，造成（40/60/300% 护甲与魔抗之和 + 6/15/70% 目标最大生命值）物理伤害，并使其眩晕 {C:RealtimeBattle3DScene.CTRL_SEC} 秒。"
+msgid "免疫击飞与斩杀。\n每 {C:EquipTickSystem.ANCHOR_IV} 秒为生命百分比最低的友军回复相当于携带者最大生命值 0.1/0.2/3% 的生命值，累计治疗达到 {C:EquipTickSystem.ANCHOR_ACC_PER_CHARGE} 点时获得 1 点沉锚充能。\n持有沉锚充能时，攻击速度提升 {C:EquipTickSystem.ANCHOR_ASPD%}%。\n攻击时消耗 1 点充能，击飞最近的敌人，造成（40/60/300% 护甲与魔抗之和 + 6/15/70% 目标最大生命值）物理伤害，并使其眩晕 {C:RealtimeBattle3DScene.CTRL_SEC} 秒。"
 msgstr "Immune to knock-ups and executes.\nEvery {C:EquipTickSystem.ANCHOR_IV} seconds, heals the lowest-health ally for 0.1/0.2/3% of the holder's max health. Gains 1 Anchor charge for every {C:EquipTickSystem.ANCHOR_ACC_PER_CHARGE} healing done.\nWhile holding Anchor charges, gains {C:EquipTickSystem.ANCHOR_ASPD%}% attack speed.\nAttacks spend 1 charge to knock up the nearest enemy, dealing (40/60/300% of combined Armor and Magic Resist + 6/15/70% of the target's max health) physical damage and stunning it for {C:RealtimeBattle3DScene.CTRL_SEC} seconds."
 
-msgid "每 {C:EquipTickSystem.SHELL_IV} 秒回复 30/45/60+自身最大生命值 5/9/15% 的生命值，受治疗增幅影响。"
+msgid "每 {C:EquipTickSystem.SHELL_IV} 秒回复 30/45/60+携带者最大生命值 5/9/15% 的生命值，受治疗增幅影响。"
 msgstr "Every {C:EquipTickSystem.SHELL_IV} seconds, heals 30/45/60 + 5/9/15% of max health. Affected by healing amplification."
 
-msgid "每 {C:EquipTickSystem.ANEMONE_IV} 秒为自身和生命百分比最低的友军回复 30/45/60+目标已损失生命值 12/14/18% 的生命值。\n每累计提供 200/180/150 点实际治疗获得 1 层海葵，每层使治疗与护盾强度+8/9/10%。"
+msgid "每 {C:EquipTickSystem.ANEMONE_IV} 秒为携带者和生命百分比最低的友军回复 30/45/60+目标已损失生命值 12/14/18% 的生命值。\n每累计提供 200/180/150 点实际治疗获得 1 层海葵，每层使治疗与护盾强度+8/9/10%。"
 msgstr "Every {C:EquipTickSystem.ANEMONE_IV} seconds, heals itself and the ally with the lowest health percentage for 30/45/60 + 12/14/18% of the target's missing health.\nGains 1 Anemone stack for every 200/180/150 actual healing provided; each stack grants +8/9/10% Heal Power and Shield Power."
 
-msgid "每 {C:EquipTickSystem.DUMBBELL_IV} 秒获得 1 层锻炼，每层使最大生命值与当前生命值+40/75/110。锻炼层数在本局对局中保留到下路与终极战场，开始新对局时重置。获得锻炼时立即投掷哑铃砸向最近的敌人，造成相当于自身最大生命值 5/7/10% 的物理伤害，并将其击飞。"
+msgid "每 {C:EquipTickSystem.DUMBBELL_IV} 秒获得 1 层锻炼，每层使最大生命值与当前生命值+40/75/110。锻炼层数在本局对局中保留到下路与终极战场，开始新对局时重置。获得锻炼时立即投掷哑铃砸向最近的敌人，造成相当于携带者最大生命值 5/7/10% 的物理伤害，并将其击飞。"
 msgstr "Every {C:EquipTickSystem.DUMBBELL_IV} seconds, gains 1 Workout stack for +40/75/110 max and current health. Workout stacks carry into the Bottom Lane and Final Battle of the same match and reset in a new match. Each time it gains a stack, it throws a dumbbell at the nearest enemy, dealing physical damage equal to 5/7/10% of own max health and knocking it up."
 
 msgid "攻击命中后，对目标施加相当于 7.5/10/15% 攻击力的流血层数。"
 msgstr "On hit, applies Bleed stacks equal to 7.5/10/15% of Attack to the target."
 
-msgid "每 {C:EquipTickSystem.BARNACLE_IV} 秒连接全队攻击力最高的友军，为该友军提供 60/110/180 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。该友军受到攻击或技能伤害时，实际伤害的 25/40/60% 转由自身承受，不受自身护甲与魔抗影响，可被自身护盾吸收。\n同时为自身和该友军提供 {C:EquipTickSystem.BARNACLE_ENERGY} 龟能与 {C:EquipTickSystem.BARNACLE_ASPD%}% 攻击速度，此效果可叠加，持续到本战场结束。"
+msgid "每 {C:EquipTickSystem.BARNACLE_IV} 秒连接全队攻击力最高的友军，为该友军提供 60/110/180 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。该友军受到攻击或技能伤害时，实际伤害的 25/40/60% 转由携带者承受，不受其护甲与魔抗影响，可被其护盾吸收。\n同时为携带者和该友军提供 {C:EquipTickSystem.BARNACLE_ENERGY} 龟能与 {C:EquipTickSystem.BARNACLE_ASPD%}% 攻击速度，此效果可叠加，持续到本战场结束。"
 msgstr "Every {C:EquipTickSystem.BARNACLE_IV} seconds, tethers to the ally with the highest Attack and gives it a 60/110/180 shield for {C:BattleDamage.COMMON_SHIELD_SEC} seconds. When that ally takes attack or ability damage, the holder takes 25/40/60% of the actual damage instead, unaffected by the holder's Armor and Magic Resist but absorbable by its shields.\nAlso gives itself and that ally {C:EquipTickSystem.BARNACLE_ENERGY} Energy and {C:EquipTickSystem.BARNACLE_ASPD%}% attack speed, stacking until the battle ends."
 
 msgid "每 {C:EquipSystem.EMBER_IV} 秒向最近的敌人抛出一个火瓶，命中时造成 40/60/100 真实伤害，施加（20/35/60 + 10/15/20% 攻击力）层灼烧，并施加【真火】，持续 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒。【真火】使目标受到的灼烧伤害转为真实伤害，对龟蛋的灼烧伤害降低 {C:EquipSystem.EMBER_TRUEFIRE_EGG_REDUCE}%。"
@@ -5171,7 +5171,7 @@ msgstr "Every {C:EquipSystem.EMBER_IV} seconds, throws a fire flask at the neare
 msgid "被动：攻击命中时额外施加（2/5/8 + 7/11/15% 攻击力）层灼烧。\n【法力】充满时，蓄力后朝敌方挥出一道火焰波，在 {C:EquipSystem.CORAL_ARC_DEG} 度扇形内推进，对扫过的敌人施加 40/60/90 层灼烧。\n<span style=\"color:#8a93a0\">攻击命中时回复 {C:EquipSystem.CORAL_MANA_PER_HIT} 点法力，火焰波施加的灼烧不回复法力。</span>"
 msgstr "Passive: attack hits apply (2/5/8 + 7/11/15% Attack) bonus Burn.\n[Mana] When full, charges up and sweeps a fire wave toward the enemy across a {C:EquipSystem.CORAL_ARC_DEG}° cone, applying 40/60/90 Burn to enemies it passes.\n<span style=\"color:#8a93a0\">Attack hits restore {C:EquipSystem.CORAL_MANA_PER_HIT} mana; Burn from the fire wave doesn't restore mana.</span>"
 
-msgid "装备时即拥有 3 层吐息，之后每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 1 层。\n达到 3 层时重置层数，召唤喷火龙从自身位置飞向最靠近敌群中心的敌人，直至飞过最远的敌人。龙经过的直线上，敌人受到（45/80/120+100% 攻击力）魔法伤害并被施加 20/35/50 层灼烧，友军与自身回复（45/80/120+100% 攻击力）生命值。"
+msgid "装备时即拥有 3 层吐息，之后每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 1 层。\n达到 3 层时重置层数，召唤喷火龙从携带者位置飞向最靠近敌群中心的敌人，直至飞过最远的敌人。龙经过的直线上，敌人受到（45/80/120+100% 攻击力）魔法伤害并被施加 20/35/50 层灼烧，友军与携带者回复（45/80/120+100% 攻击力）生命值。"
 msgstr "Starts with 3 Breath stacks when equipped, then gains 1 every {C:RealtimeBattle3DScene.EQ_TICK} seconds.\nAt 3 stacks, resets and summons a fire dragon that flies from the holder toward the enemy nearest the center of the enemy group, until it passes the farthest enemy. Enemies along its line take (45/80/120 + 100% Attack) magic damage and 20/35/50 Burn; allies and the holder heal for (45/80/120 + 100% Attack)."
 
 msgid "每 {C:EquipTickSystem.THUNDER_IV} 秒降下 1/2/3 道雷，每道雷电击 1 名随机敌人，造成 100% 攻击力的真实伤害。"
@@ -5195,7 +5195,7 @@ msgstr "[Mana] When full, fires 2/2/3 piercing beams at the nearest enemy. Each 
 msgid "攻击和技能每段命中后，向目标周围的敌人各溅射 15/28/50% 本段伤害的物理伤害。"
 msgstr "Each attack and ability hit splashes physical damage equal to 15/28/50% of that hit to each enemy around the target."
 
-msgid "【法力】充满时，以自身为中心进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射，对扫中的敌人造成 60/130/250 魔法伤害，施加 1 层【迷你水晶】，并偷取其 {C:CrystalSystem.MINI_MR_STEAL%}% 魔抗，持续到本战场结束。\n【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆，造成 14/17/20% 目标最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">扫射持续 {C:CrystalSystem.SWEEP_SEC} 秒，跟随自身移动。</span>"
+msgid "【法力】充满时，以携带者为中心进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射，对扫中的敌人造成 60/130/250 魔法伤害，施加 1 层【迷你水晶】，并偷取其 {C:CrystalSystem.MINI_MR_STEAL%}% 魔抗，持续到本战场结束。\n【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆，造成 14/17/20% 目标最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">扫射持续 {C:CrystalSystem.SWEEP_SEC} 秒，跟随携带者移动。</span>"
 msgstr "[Mana] When full, sweeps a crystal ray across {C:CrystalSystem.SWEEP_ARC_DEG}° around itself, dealing 60/130/250 magic damage to enemies hit, applying 1 [Mini Crystal] stack, and stealing {C:CrystalSystem.MINI_MR_STEAL%}% of their Magic Resist until the battle ends.\n[Mini Crystal] detonates at {C:CrystalSystem.MINI_STACK_MAX} stacks, dealing magic damage equal to 14/17/20% of the target's max health.\n<span style=\"color:#8a93a0\">The sweep lasts {C:CrystalSystem.SWEEP_SEC} seconds and follows the holder.</span>"
 
 msgid "登场时召唤一只亡灵骷髅，最大生命值 16/31/55，攻击力 3/5/8，护甲与魔抗为 0。骷髅受到的任何攻击均只造成 1 点伤害，真实伤害同样如此。骷髅死亡或存活 13/17/23 秒后爆炸，对周围的敌人造成相当于目标最大生命值 8/13/20% 的真实伤害。"
@@ -5204,22 +5204,22 @@ msgstr "On spawn, summons an undead skeleton with 16/31/55 max health, 3/5/8 Att
 msgid "所有复活机会用尽、彻底阵亡时，在原位变形为一只小虫。小虫拥有 {C:EquipSystem.WORM_HP} 生命值与 50/80/200 攻击力，无护甲与魔抗，只有星级而无等级，会自动攻击最近的敌人，攻击速度为 {C:EquipSystem.WORM_ASPD}/秒，造成 100% 攻击力的物理伤害。\n小虫诞生时随机携带 3 件 1/2/3 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。"
 msgstr "When all revives are used up and the holder dies for good, it turns into a bug in place. The bug has {C:EquipSystem.WORM_HP} health and 50/80/200 Attack, no Armor or Magic Resist, and a star level but no level. It automatically attacks the nearest enemy at {C:EquipSystem.WORM_ASPD} attacks per second, dealing 100% Attack as physical damage.\nThe bug spawns carrying 3 random 1/2/3-star items costing {C:EquipSystem.CONCH_COST_MIN} or {C:EquipSystem.CONCH_COST_MAX}."
 
-msgid "每 {C:EquipTickSystem.DOLL_IV} 秒向最近敌人派出小熊，造成（100/200/500% 攻击力+100/210/1000）物理伤害并将其击飞，自身获得 1 层大熊层数。达到 5/3/1 层时装备销毁，自身蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤近战大熊，拥有 1600/3000/15000 生命值、70/120/2000 攻击力、{C:EquipTickSystem.BEAR_RESIST} 双抗、{C:EquipTickSystem.BEAR_ASPD}/秒攻击速度。若无空位，继续派出小熊直至有空位。\n大熊攻击（熊掌）造成 100% 攻击力物理伤害并累积 1 层。{C:EquipTickSystem.BEAR_PAW_STACKS} 层时，下次攻击转而释放冲击波，射程临时增至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码，造成 {C:EquipTickSystem.BEAR_WAVE_COEF%}% 攻击力物理伤害，将命中敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉至身前，并重置层数。"
+msgid "每 {C:EquipTickSystem.DOLL_IV} 秒向最近敌人派出小熊，造成（100/200/500% 攻击力+100/210/1000）物理伤害并将其击飞，携带者获得 1 层大熊层数。达到 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤近战大熊，拥有 1600/3000/15000 生命值、70/120/2000 攻击力、{C:EquipTickSystem.BEAR_RESIST} 双抗、{C:EquipTickSystem.BEAR_ASPD}/秒攻击速度。若无空位，继续派出小熊直至有空位。\n大熊攻击（熊掌）造成 100% 攻击力物理伤害并累积 1 层。{C:EquipTickSystem.BEAR_PAW_STACKS} 层时，下次攻击转而释放冲击波，射程临时增至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码，造成 {C:EquipTickSystem.BEAR_WAVE_COEF%}% 攻击力物理伤害，将命中敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉至身前，并重置层数。"
 msgstr "Every {C:EquipTickSystem.DOLL_IV} seconds, sends a little bear at the nearest enemy, dealing (100/200/500% Attack + 100/210/1000) physical damage and knocking it up, and the holder gains 1 Big Bear stack. At 5/3/1 stacks, the item is destroyed and the holder charges for {C:EquipTickSystem.DOLL_CHARGE_SEC} seconds, then summons a melee Big Bear in an open slot with 1600/3000/15000 health, 70/120/2000 Attack, {C:EquipTickSystem.BEAR_RESIST} Armor and Magic Resist, and {C:EquipTickSystem.BEAR_ASPD} attacks per second. With no open slot, it keeps sending little bears until one opens.\nThe Big Bear's attacks (Bear Paw) deal 100% Attack as physical damage and build 1 stack. At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, its next attack instead releases a shockwave with range temporarily increased to {C:EquipTickSystem.BEAR_WAVE_RANGE}, dealing {C:EquipTickSystem.BEAR_WAVE_COEF%}% Attack as physical damage, knocking enemies hit up for {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} seconds, pulling them in front of it, and resetting the stacks."
 
-msgid "每秒回复 2/5/10+自身最大生命值 0.3/0.8/1.2% 的生命值。\n持续获得孵化进度：每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 {C:EquipTickSystem.EGG_PER_CYCLE}，敌方单位阵亡时获得 {C:EquipTickSystem.EGG_ON_FOE_DEATH}，己方单位阵亡时获得 {C:EquipTickSystem.EGG_ON_ALLY_DEATH}，造成的伤害×{C:EquipTickSystem.EGG_DMG_RATIO} 与承受的伤害×{C:EquipTickSystem.EGG_DMG_RATIO} 计入进度。进度满 {C:EquipTickSystem.EGG_FULL} 时获得 1 点临时等级，每级提升 {C:EquipTickSystem.EGG_LV_GROWTH%}% 基础属性（上限 3/4/5 级）。临时等级在本局对局中保留到下路与终极战场，开始新对局时重置。\n孵满后为全队均摊 300/400/600 点护盾，直到被打破，仅触发一次，龟蛋与训龟大师不参与分摊。"
+msgid "每秒回复 2/5/10+携带者最大生命值 0.3/0.8/1.2% 的生命值。\n持续获得孵化进度：每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 {C:EquipTickSystem.EGG_PER_CYCLE}，敌方单位阵亡时获得 {C:EquipTickSystem.EGG_ON_FOE_DEATH}，己方单位阵亡时获得 {C:EquipTickSystem.EGG_ON_ALLY_DEATH}，造成的伤害×{C:EquipTickSystem.EGG_DMG_RATIO} 与承受的伤害×{C:EquipTickSystem.EGG_DMG_RATIO} 计入进度。进度满 {C:EquipTickSystem.EGG_FULL} 时获得 1 点临时等级，每级提升 {C:EquipTickSystem.EGG_LV_GROWTH%}% 基础属性（上限 3/4/5 级）。临时等级在本局对局中保留到下路与终极战场，开始新对局时重置。\n孵满后为全队均摊 300/400/600 点护盾，直到被打破，仅触发一次，龟蛋与训龟大师不参与分摊。"
 msgstr "Heals 2/5/10 + 0.3/0.8/1.2% of max health per second.\nBuilds hatching progress: {C:EquipTickSystem.EGG_PER_CYCLE} every {C:RealtimeBattle3DScene.EQ_TICK} seconds, {C:EquipTickSystem.EGG_ON_FOE_DEATH} when an enemy unit dies, {C:EquipTickSystem.EGG_ON_ALLY_DEATH} when an allied unit dies, plus damage dealt × {C:EquipTickSystem.EGG_DMG_RATIO} and damage taken × {C:EquipTickSystem.EGG_DMG_RATIO}. Each time progress reaches {C:EquipTickSystem.EGG_FULL}, gains 1 temporary level, each raising base stats by {C:EquipTickSystem.EGG_LV_GROWTH%}% (up to 3/4/5 levels). Temporary levels carry into the Bottom Lane and Final Battle of the same match and reset in a new match.\nWhen fully hatched, splits a 300/400/600 shield across the team until broken. Triggers once; Turtle Eggs and the Turtle Trainer don't share it."
 
-msgid "蜡烛在 {C:EquipSystem.CANDLE_PHASES} 个阶段间循环，每 {C:EquipSystem.CANDLE_IV} 秒切换并触发对应效果。熄灭阶段无效果。\n微弱阶段：自身在 {C:EquipSystem.CANDLE_IV} 秒内持续回复共（20/30/44+50/70/100% 攻击力）生命值，附近的友军各持续回复其一半。\n燃烧阶段：蜡烛爆燃，对自身附近的所有敌人造成（20/30/44+50/70/100% 攻击力）魔法伤害并施加 20/30/40 层灼烧。"
+msgid "蜡烛在 {C:EquipSystem.CANDLE_PHASES} 个阶段间循环，每 {C:EquipSystem.CANDLE_IV} 秒切换并触发对应效果。熄灭阶段无效果。\n微弱阶段：携带者在 {C:EquipSystem.CANDLE_IV} 秒内持续回复共（20/30/44+50/70/100% 攻击力）生命值，附近的友军各持续回复其一半。\n燃烧阶段：蜡烛爆燃，对携带者附近的所有敌人造成（20/30/44+50/70/100% 攻击力）魔法伤害并施加 20/30/40 层灼烧。"
 msgstr "The candle cycles through {C:EquipSystem.CANDLE_PHASES} phases, switching every {C:EquipSystem.CANDLE_IV} seconds and triggering that phase's effect. The Out phase has no effect.\nFlicker phase: heals the holder for a total of (20/30/44 + 50/70/100% Attack) over {C:EquipSystem.CANDLE_IV} seconds; nearby allies each heal half that.\nBlaze phase: the candle flares, dealing (20/30/44 + 50/70/100% Attack) magic damage and applying 20/30/40 Burn to all enemies near the holder."
 
-msgid "提供 {C:SignalWaveSystem.ASPD_FLAT%}% 攻击速度。\n每次攻击获得 1 层放大，每层使自身获得 1/2/5% 增伤和 {C:SignalWaveSystem.ASPD_PER_STACK%}% 攻击速度，最多叠加 {C:SignalWaveSystem.MAX_STACKS} 层。\n每获得 {C:SignalWaveSystem.EVERY} 层，由自身中心朝目标爆发一道张角 {C:SignalWaveSystem.ARC_STEP_DEG} 度、缓慢移动的弧形电磁波，对命中的敌人造成 125/250/500 魔法伤害并眩晕 {C:SignalWaveSystem.WAVE_STUN} 秒。\n每释放一次，电磁波张角增加 {C:SignalWaveSystem.ARC_STEP_DEG} 度（最多 {C:SignalWaveSystem.ARC_MAX_DEG} 度），并使自身永久获得 5/7/10 点魔法穿透。"
+msgid "提供 {C:SignalWaveSystem.ASPD_FLAT%}% 攻击速度。\n每次攻击获得 1 层放大，每层使携带者获得 1/2/5% 增伤和 {C:SignalWaveSystem.ASPD_PER_STACK%}% 攻击速度，最多叠加 {C:SignalWaveSystem.MAX_STACKS} 层。\n每获得 {C:SignalWaveSystem.EVERY} 层，由携带者中心朝目标爆发一道张角 {C:SignalWaveSystem.ARC_STEP_DEG} 度、缓慢移动的弧形电磁波，对命中的敌人造成 125/250/500 魔法伤害并眩晕 {C:SignalWaveSystem.WAVE_STUN} 秒。\n每释放一次，电磁波张角增加 {C:SignalWaveSystem.ARC_STEP_DEG} 度（最多 {C:SignalWaveSystem.ARC_MAX_DEG} 度），并使携带者永久获得 5/7/10 点魔法穿透。"
 msgstr "Grants {C:SignalWaveSystem.ASPD_FLAT%}% attack speed.\nEach attack grants 1 Amplify stack, each giving 1/2/5% Damage Amp and {C:SignalWaveSystem.ASPD_PER_STACK%}% attack speed, up to {C:SignalWaveSystem.MAX_STACKS} stacks.\nEvery {C:SignalWaveSystem.EVERY} stacks, releases a slow-moving electromagnetic arc of {C:SignalWaveSystem.ARC_STEP_DEG}° from itself toward the target, dealing 125/250/500 magic damage to enemies hit and stunning them for {C:SignalWaveSystem.WAVE_STUN} seconds.\nEach release widens the arc by {C:SignalWaveSystem.ARC_STEP_DEG}° (up to {C:SignalWaveSystem.ARC_MAX_DEG}°) and permanently grants 5/7/10 Magic Pen."
 
-msgid "获得 6/10/15 次生长充能，在本局对局中保留到下路与终极战场，开始新对局时重置。\n每 3 次攻击消耗 1 次充能，向最近的敌人射出一支强化竹箭，造成 25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 自身最大生命值的魔法伤害。命中后回复自身 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 最大生命值，并使自身最大生命值永久提升 50/70/90，此效果持续到本局对局结束。"
+msgid "获得 6/10/15 次生长充能，在本局对局中保留到下路与终极战场，开始新对局时重置。\n每 3 次攻击消耗 1 次充能，向最近的敌人射出一支强化竹箭，造成 25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 携带者最大生命值的魔法伤害。命中后回复携带者 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 最大生命值，并使其最大生命值永久提升 50/70/90，此效果持续到本局对局结束。"
 msgstr "Gains 6/10/15 Growth charges, which carry into the Bottom Lane and Final Battle of the same match and reset in a new match.\nEvery 3 attacks, spends 1 charge to fire an empowered bamboo arrow at the nearest enemy, dealing 25/30/35 + {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% of own max health as magic damage. On hit, heals {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% of max health and permanently gains 50/70/90 Max Health until the match ends."
 
-msgid "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个可重复的 2-bit 状态：00=回复自身最大生命值 {C:EquipSystem.FPGA_00_HEAL_PCT%}%，累计提升 {C:EquipSystem.FPGA_00_RESIST} 双抗。\n01=累计提升 {C:EquipSystem.FPGA_01_ATK} 攻击力与 {C:EquipSystem.FPGA_01_LIFESTEAL%}% 生命偷取。\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤 {C:EquipSystem.FPGA_10_AMP%}%。11={C:EquipSystem.FPGA_BUFF_SEC} 秒内减伤 {C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n00、01 的加成持续到本战场结束。\n登场时给随机 1/2/3 名敌人各一把【古灵精怪枪】：持枪者获得 {C:GremlinGun.ATK_PER_GUN} 攻击力、{C:GremlinGun.HP_PER_GUN} 最大生命值和 {C:GremlinGun.ASPD_PCT_PER_GUN%}% 攻击速度，但每次攻击对自身造成最大生命值 {C:GremlinGun.SELF_TRUE_PCT%}% 的真实伤害，可致死。"
+msgid "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个可重复的 2-bit 状态：00=回复携带者最大生命值 {C:EquipSystem.FPGA_00_HEAL_PCT%}%，累计提升 {C:EquipSystem.FPGA_00_RESIST} 双抗。\n01=累计提升 {C:EquipSystem.FPGA_01_ATK} 攻击力与 {C:EquipSystem.FPGA_01_LIFESTEAL%}% 生命偷取。\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤 {C:EquipSystem.FPGA_10_AMP%}%。11={C:EquipSystem.FPGA_BUFF_SEC} 秒内减伤 {C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n00、01 的加成持续到本战场结束。\n登场时给随机 1/2/3 名敌人各一把【古灵精怪枪】：持枪者获得 {C:GremlinGun.ATK_PER_GUN} 攻击力、{C:GremlinGun.HP_PER_GUN} 最大生命值和 {C:GremlinGun.ASPD_PCT_PER_GUN%}% 攻击速度，但每次攻击对自身造成最大生命值 {C:GremlinGun.SELF_TRUE_PCT%}% 的真实伤害，可致死。"
 msgstr "Every {C:EquipSystem.FPGA_IV} seconds, draws {C:EquipSystem.FPGA_PICKS} random 2-bit states (repeats allowed): 00 = heal {C:EquipSystem.FPGA_00_HEAL_PCT%}% of max health and gain {C:EquipSystem.FPGA_00_RESIST} Armor and Magic Resist (cumulative).\n01 = gain {C:EquipSystem.FPGA_01_ATK} Attack and {C:EquipSystem.FPGA_01_LIFESTEAL%}% Lifesteal (cumulative).\n10 = {C:EquipSystem.FPGA_10_AMP%}% Damage Amp for {C:EquipSystem.FPGA_BUFF_SEC} seconds. 11 = {C:EquipSystem.FPGA_11_DR%}% Damage Reduction for {C:EquipSystem.FPGA_BUFF_SEC} seconds (except true damage).\nBonuses from 00 and 01 last until the battle ends.\nOn spawn, gives 1/2/3 random enemies a [Trickster Gun] each: the holder gains {C:GremlinGun.ATK_PER_GUN} Attack, {C:GremlinGun.HP_PER_GUN} Max Health and {C:GremlinGun.ASPD_PCT_PER_GUN%}% attack speed, but every attack deals true damage to itself equal to {C:GremlinGun.SELF_TRUE_PCT%}% of its max health, which can kill."
 
 msgid "攻击和技能可处决生命值低于斩杀线的敌人，斩杀线为目标最大生命值的 4/6/12%×（1+暴击率）。击杀敌人后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能，无龟能的单位转而回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命值。\n此外，每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 100/180/400% 攻击力的魔法伤害，并回复相当于该伤害 {C:EquipSystem.FANG_LIFESTEAL%}% 的生命值。"
@@ -5228,16 +5228,16 @@ msgstr "Attacks and abilities execute enemies below the execute threshold: 4/6/1
 msgid "登场 {C:EquipSystem.TIDE_DELAY} 秒后进入【涨潮】：获得 500/1100/2000 最大生命值与 16/31/60 攻击力，体积增大 {C:EquipSystem.TIDE_SIZE_UP%}%，攻击射程提升 {C:EquipSystem.TIDE_RANGE_UP} 码，持续 12/16/22 秒。\n持续时间结束后进入【退潮】，上述加成全部还原。【退潮】不会致死，仅将生命值降至新的上限。"
 msgstr "{C:EquipSystem.TIDE_DELAY} seconds after spawning, enters [High Tide] for 12/16/22 seconds: gains 500/1100/2000 Max Health and 16/31/60 Attack, grows {C:EquipSystem.TIDE_SIZE_UP%}% larger, and gains {C:EquipSystem.TIDE_RANGE_UP} attack range.\nWhen it ends, enters [Low Tide] and all bonuses are removed. [Low Tide] can't kill; health just drops to the new maximum."
 
-msgid "每 {C:EquipSystem.RIPPLE_IV} 秒为包括自身在内的全队各回复其已损失生命值的 3/6/10%。3 星时，生命值百分比最低的友军获得双倍回复。"
+msgid "每 {C:EquipSystem.RIPPLE_IV} 秒为包括携带者在内的全队各回复其已损失生命值的 3/6/10%。3 星时，生命值百分比最低的友军获得双倍回复。"
 msgstr "Every {C:EquipSystem.RIPPLE_IV} seconds, heals each member of the team, including the holder, for 3/6/10% of its missing health. At 3 stars, the ally with the lowest health percentage heals double."
 
 msgid "【法力】充满时，掀起一道横贯战场的浪墙。友军获得 65/150/400 护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，并获得 2/3/5 护甲与魔抗。敌人受到 190/350/800 魔法伤害并被击飞，且失去 2/3/5 护甲与魔抗。护甲与魔抗的增减在本局对局中保留到下路与终极战场，开始新对局时重置。\n负面被动：充满所需的法力提高 50/25/0%。"
 msgstr "[Mana] When full, raises a wave wall across the battlefield. Allies gain a 65/150/400 shield for {C:BattleDamage.COMMON_SHIELD_SEC} seconds and 2/3/5 Armor and Magic Resist. Enemies take 190/350/800 magic damage, are knocked up, and lose 2/3/5 Armor and Magic Resist. Armor and Magic Resist changes carry into the Bottom Lane and Final Battle of the same match and reset in a new match.\nDrawback: needs 50/25/0% more mana to fill."
 
-msgid "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}% 以下时，在 {C:EquipSystem.NECKLACE_HOT_SEC} 秒内逐渐回复自身最大生命值 40/85/130%，每个战场一次。"
+msgid "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}% 以下时，在 {C:EquipSystem.NECKLACE_HOT_SEC} 秒内逐渐回复携带者最大生命值 40/85/130%，每个战场一次。"
 msgstr "The first time health drops below {C:EquipSystem.LOWHP_GATE%}%, heals 40/85/130% of max health over {C:EquipSystem.NECKLACE_HOT_SEC} seconds. Once per battle."
 
-msgid "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}% 以下时，在 {C:EquipSystem.EARRING_HOT_SEC} 秒内逐渐回复自身最大生命值 30/60/100%，并向 1/1/2 名随机敌人发射火球，造成 8/17/30% 目标最大生命值的魔法伤害并施加 30/70/100 层灼烧，每个战场一次。"
+msgid "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}% 以下时，在 {C:EquipSystem.EARRING_HOT_SEC} 秒内逐渐回复携带者最大生命值 30/60/100%，并向 1/1/2 名随机敌人发射火球，造成 8/17/30% 目标最大生命值的魔法伤害并施加 30/70/100 层灼烧，每个战场一次。"
 msgstr "The first time health drops below {C:EquipSystem.LOWHP_GATE%}%, heals 30/60/100% of max health over {C:EquipSystem.EARRING_HOT_SEC} seconds and launches fireballs at 1/1/2 random enemies, dealing magic damage equal to 8/17/30% of the target's max health and applying 30/70/100 Burn. Once per battle."
 
 msgid "每成功闪避一次攻击，立即获得 30/50/120 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
@@ -5267,7 +5267,7 @@ msgstr "Every {C:EquipSystem.SHOTGUN_IV} seconds, fires 12/14/18 pellets at the 
 msgid "本战场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附着在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成其最大生命值 3/6/6% 的物理伤害，直到该敌人死亡。\n若携带炸弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向该敌人倒下处，聚拢后产生一次爆炸，造成 120/250/400+{C:HookBombSystem.BLAST_MAXHP_PCT%}% 目标最大生命值的物理伤害。训龟大师、龟蛋与免控单位不受钩索影响。"
 msgstr "After dealing {C:HookBombSystem.TRIGGER_DMG} total damage this battle, fires hook bombs at the 1/1/2 nearest enemies. A bomb sticks to the enemy and deals physical damage equal to 3/6/6% of its max health every {C:HookBombSystem.BOMB_TICK} seconds until it dies.\nWhen an enemy carrying a bomb dies, hooks fly at every enemy unit, stunning them for {C:HookBombSystem.PULL_STUN} seconds and pulling them to where it fell, then an explosion deals 120/250/400 + {C:HookBombSystem.BLAST_MAXHP_PCT%}% of the target's max health as physical damage. The Turtle Trainer, Turtle Eggs and units immune to crowd control aren't hooked."
 
-msgid "任何敌人被己方击飞时，为其施加【靶子】标记，该标记不会自行消失。\n自身每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带有靶子的敌人各射出 1 枚飞镖，造成（130/190/600+150/300/900% 攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}% 攻击力的流血层数，命中后移除该敌人的靶子。\n此外提供 40/80/150% 攻击速度，且自身每第 {C:EquipSystem.DART_EVERY} 次攻击命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。"
+msgid "任何敌人被己方击飞时，为其施加【靶子】标记，该标记不会自行消失。\n携带者每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带有靶子的敌人各射出 1 枚飞镖，造成（130/190/600+150/300/900% 攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}% 攻击力的流血层数，命中后移除该敌人的靶子。\n此外提供 40/80/150% 攻击速度，且携带者每第 {C:EquipSystem.DART_EVERY} 次攻击命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。"
 msgstr "Whenever your team knocks up an enemy, it gets a [Target] mark that doesn't expire on its own.\nEvery {C:RealtimeBattle3DScene.EQ_TICK} seconds, throws 1 dart at each marked enemy, dealing (130/190/600 + 150/300/900% Attack) physical damage and Bleed stacks equal to {C:EquipSystem.DART_BLEED_COEF%}% of Attack. A hit removes the mark.\nAlso grants 40/80/150% attack speed, and every {C:EquipSystem.DART_EVERY}th attack hit knocks the target up for {C:EquipSystem.DART_KNOCKUP_SEC} seconds."
 
 msgid "每 {C:EquipSystem.SNIPER_IV} 秒锁定生命值百分比最低的敌人并蓄力 {C:EquipSystem.SNIPER_WINDUP} 秒，随后开枪，对这条直线上的敌人各造成 200/300/700% 攻击力的物理伤害。\n若这一枪造成击杀，则重新选择生命值最低的目标再开一枪，每一枪均需重新蓄力 {C:EquipSystem.SNIPER_WINDUP} 秒（最多连续 {C:EquipSystem.SNIPER_MAX_CHAIN} 次）。"
@@ -5279,7 +5279,7 @@ msgstr "On spawn, summons an immobile turret with 650/1400/2500 + {C:EquipSystem
 msgid "登场第 {C:TimestopSystem.TS_START_T} 秒开始蓄力，{C:TimestopSystem.TS_CHARGE} 秒后释放【时间停止】：全场其他单位、弹道与特效全部定格，持续 4/7/20 秒。\n此期间只有携带全场最高星级沙漏的龟可以自由攻击、施法与移动，敌我均适用，同星级的沙漏可并存，伤害立即生效，龟能充能速度变为 1.5/2/3 倍，且在时间停止开始时立即获得 40/150/300 点龟能。\n若场上存在更高星级的沙漏，低星级的沙漏在本战场不会生效。\n上路战场、下路战场与终极战场各可触发一次。"
 msgstr "At {C:TimestopSystem.TS_START_T} seconds after spawning, starts charging, and after {C:TimestopSystem.TS_CHARGE} seconds casts [Time Stop]: every other unit, projectile and effect on the field freezes for 4/7/20 seconds.\nMeanwhile, only turtles holding the highest-star Hourglass on the field can attack, cast and move freely (either side; Hourglasses of the same star level can coexist). Their damage applies instantly, their Energy charges 1.5/2/3× faster, and they gain 40/150/300 Energy when Time Stop begins.\nIf a higher-star Hourglass is on the field, lower-star ones don't activate this battle.\nTriggers once each in the Top Lane, Bottom Lane and Final Battle."
 
-msgid "伞收起 {C:EqSpiritBatch.PARASOL_IDLE} 秒后撑开：自身与附近的队友获得 11/22/35% 减伤与 {C:EqSpiritBatch.PARASOL_DODGE%}% 闪避，持续 {C:EqSpiritBatch.PARASOL_OPEN} 秒。\n效果结束时自身回复 50/80/130 生命值，{C:EqSpiritBatch.PARASOL_IDLE} 秒后再次撑开。"
+msgid "伞收起 {C:EqSpiritBatch.PARASOL_IDLE} 秒后撑开：携带者与附近的队友获得 11/22/35% 减伤与 {C:EqSpiritBatch.PARASOL_DODGE%}% 闪避，持续 {C:EqSpiritBatch.PARASOL_OPEN} 秒。\n效果结束时携带者回复 50/80/130 生命值，{C:EqSpiritBatch.PARASOL_IDLE} 秒后再次撑开。"
 msgstr "The umbrella opens after being closed for {C:EqSpiritBatch.PARASOL_IDLE} seconds: the holder and nearby allies gain 11/22/35% Damage Reduction and {C:EqSpiritBatch.PARASOL_DODGE%}% Dodge for {C:EqSpiritBatch.PARASOL_OPEN} seconds.\nWhen it ends, the holder heals 50/80/130, and it opens again after {C:EqSpiritBatch.PARASOL_IDLE} seconds."
 
 msgid "每 {C:EquipTickSystem.SWORD_STORM_IV} 秒召出一排剑穿过全体敌人，对每名敌人造成（70/100/400+80/130/400% 攻击力）物理伤害。"
@@ -5291,10 +5291,10 @@ msgstr "Each attack hit deals bonus magic damage equal to 2/2.5/3% of the target
 msgid "释放技能后，下次攻击额外造成 60/90/140% 攻击力 + 3/5/9% 目标最大生命值的物理伤害，并回复此伤害 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。\n本次技能每消耗 1 点龟能，此伤害提高 {C:EqSpiritBatch.MANTIS_PER_ENERGY%}%。"
 msgstr "After casting an ability, the next attack deals 60/90/140% Attack + 3/5/9% of the target's max health as bonus physical damage and heals for {C:EqSpiritBatch.MANTIS_LEECH%}% of it.\nThis damage increases by {C:EqSpiritBatch.MANTIS_PER_ENERGY%}% for each Energy that ability cost."
 
-msgid "释放技能后获得 30/60/100% 攻击速度，持续时间为本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY} 秒。\n自身的攻击会对敌人施加一层【灵火】，在 3 层时引爆，对该敌人造成（15/30/50+{C:EqSpiritBatch.RING_ATK_COEF%}% 攻击力+2.5/4/6% 该敌人最大生命值）真实伤害。"
+msgid "释放技能后获得 30/60/100% 攻击速度，持续时间为本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY} 秒。\n携带者的攻击会对敌人施加一层【灵火】，在 3 层时引爆，对该敌人造成（15/30/50+{C:EqSpiritBatch.RING_ATK_COEF%}% 攻击力+2.5/4/6% 该敌人最大生命值）真实伤害。"
 msgstr "After casting an ability, gains 30/60/100% attack speed for (Energy that ability cost × {C:EqSpiritBatch.RING_SEC_PER_ENERGY}) seconds.\nAttacks apply a [Spirit Flame] stack to enemies. At 3 stacks it detonates, dealing (15/30/50 + {C:EqSpiritBatch.RING_ATK_COEF%}% Attack + 2.5/4/6% of that enemy's max health) true damage."
 
-msgid "生命值首次降至 {C:EqSpiritBatch.GHOST_HP_LINE%}% 以下时，获得自身最大生命值 50/80/160% 的【幽灵护盾】，此护盾会在 {C:EqSpiritBatch.GHOST_DECAY} 秒内线性衰减。\n持有该护盾期间获得 {C:EqSpiritBatch.GHOST_DODGE%}% 闪避与 30/60/120 点双抗。\n该护盾被击破或自然衰减耗尽时会爆炸，使附近的敌人陷入 {C:EqSpiritBatch.GHOST_CURSE_SEC} 秒【诅咒】。\n每个战场一次。"
+msgid "生命值首次降至 {C:EqSpiritBatch.GHOST_HP_LINE%}% 以下时，获得携带者最大生命值 50/80/160% 的【幽灵护盾】，此护盾会在 {C:EqSpiritBatch.GHOST_DECAY} 秒内线性衰减。\n持有该护盾期间获得 {C:EqSpiritBatch.GHOST_DODGE%}% 闪避与 30/60/120 点双抗。\n该护盾被击破或自然衰减耗尽时会爆炸，使附近的敌人陷入 {C:EqSpiritBatch.GHOST_CURSE_SEC} 秒【诅咒】。\n每个战场一次。"
 msgstr "The first time health drops below {C:EqSpiritBatch.GHOST_HP_LINE%}%, gains a [Ghost Shield] equal to 50/80/160% of max health that decays steadily over {C:EqSpiritBatch.GHOST_DECAY} seconds.\nWhile it holds, gains {C:EqSpiritBatch.GHOST_DODGE%}% Dodge and 30/60/120 Armor and Magic Resist.\nWhen the shield breaks or fully decays, it explodes, applying [Curse] to nearby enemies for {C:EqSpiritBatch.GHOST_CURSE_SEC} seconds.\nOnce per battle."
 
 msgid "每次攻击后获得 {C:EqPotionBatch.LIVER_ENERGY} 点龟能与 3/5/7% 攻击速度。攻击速度加成可无限叠加，换路时重置。"
@@ -5303,73 +5303,73 @@ msgstr "After each attack, gains {C:EqPotionBatch.LIVER_ENERGY} Energy and 3/5/7
 msgid "登场第 {C:EqPotionBatch.BREW_AT} 秒饮用药水：免疫控制效果直到本战场结束，并获得生命偷取 8/13/20%、最大生命值 100/200/400、护甲与魔抗 12/17/25、攻击速度 10/17/25%、暴击率 10/17/25%、暴击伤害 7/13/18%、龟能充能 5/7/10%、攻击力 13/18/25、护甲穿透与魔法穿透 4/7/10，体型额外+{C:EqPotionBatch.BREW_SIZE_UP%}%。\n每个战场仅生效一次。"
 msgstr "At {C:EqPotionBatch.BREW_AT} seconds after spawning, drinks the potion: immune to crowd control until the battle ends, and gains 8/13/20% Lifesteal, 100/200/400 Max Health, 12/17/25 Armor and Magic Resist, 10/17/25% attack speed, 10/17/25% Crit Chance, 7/13/18% Crit Damage, 5/7/10% Energy Charge, 13/18/25 Attack, 4/7/10 Armor Pen and Magic Pen, and +{C:EqPotionBatch.BREW_SIZE_UP%}% size.\nOnce per battle."
 
-msgid "每 {C:EquipSystem.VIAL_IV} 秒向敌人最密集处投掷一个药瓶，对落点附近的敌人施加 40/70/110 层中毒。攻击额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n自身存活时，对中毒的敌人施加 {C:EqPotionBatch.VIAL_CUT%}% 治疗削减和护盾削减。"
+msgid "每 {C:EquipSystem.VIAL_IV} 秒向敌人最密集处投掷一个药瓶，对落点附近的敌人施加 40/70/110 层中毒。攻击额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n携带者存活时，对中毒的敌人施加 {C:EqPotionBatch.VIAL_CUT%}% 治疗削减和护盾削减。"
 msgstr "Every {C:EquipSystem.VIAL_IV} seconds, throws a vial at the densest group of enemies, applying 40/70/110 Poison to enemies near where it lands. Attacks also apply {C:VenomDroneSystem.POISON_STACKS} Poison.\nWhile the holder is alive, poisoned enemies have {C:EqPotionBatch.VIAL_CUT%}% Grievous Wounds and shield reduction."
 
 msgid "受到伤害的 60/100/200% 存入专属充能条，充能条上限为最大生命值的 30/50/100%。\n登场第 {C:EqPotionBatch.CAN_PERIOD} 秒起，每 {C:EqPotionBatch.CAN_PERIOD} 秒消耗全部充能：获得充能值 100/120/300% 的法力护盾，该护盾在 {C:EqPotionBatch.CAN_SHIELD_DECAY} 秒内衰减完毕，并朝最远的敌人发射一道法力激光，持续 {C:PotionEqVfx.BEAM_SEC} 秒。激光会转向追踪该敌人，目标死亡后转向当前最远的敌人，共造成充能值 100/120/600% 的魔法伤害，由被扫到的敌人按照射时长分摊。\n法力护盾存在期间，充能条锁定。\n攻击额外获得 {C:EqPotionBatch.CAN_HIT_ENERGY} 龟能并回复 20/35/50 生命值。"
 msgstr "Stores 60/100/200% of damage taken in a dedicated charge bar, capped at 30/50/100% of max health.\nFrom {C:EqPotionBatch.CAN_PERIOD} seconds after spawning, every {C:EqPotionBatch.CAN_PERIOD} seconds it spends all charge: gains a mana shield equal to 100/120/300% of the charge that fully decays over {C:EqPotionBatch.CAN_SHIELD_DECAY} seconds, and fires a mana laser at the farthest enemy for {C:PotionEqVfx.BEAM_SEC} seconds. The laser turns to track that enemy, switching to the current farthest enemy if it dies, and deals magic damage totaling 100/120/600% of the charge, split among enemies swept by time in the beam.\nThe charge bar is locked while the mana shield holds.\nAttacks also grant {C:EqPotionBatch.CAN_HIT_ENERGY} Energy and heal 20/35/50."
 
-msgid "携带 {C:EqFoodBatch.CAKE_COUNT} 块蛋糕，生命值首次低于 {C:EqFoodBatch.CAKE_LINE_1%}%、{C:EqFoodBatch.CAKE_LINE_2%}%、{C:EqFoodBatch.CAKE_LINE_3%}% 时各吃下一块。\n第一块：获得 200/400/600 最大生命值，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复自身 0.6/0.8/1% 最大生命值。\n第二块：获得 {C:EqFoodBatch.CAKE_LIFESTEAL%}% 生命偷取与 10/21/40 攻击力。\n第三块：获得 150/250/400 护盾与 {C:EqFoodBatch.CAKE_ENERGY} 龟能，攻击速度提高 40/60/80%，持续 {C:EqFoodBatch.CAKE_ASPD_SEC} 秒，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复自身 1.3/1.6/2% 最大生命值。\n一次掉血跌过多条线时连续吃下多块。护盾直到被打破，其余加成持续到本战场结束。"
+msgid "携带 {C:EqFoodBatch.CAKE_COUNT} 块蛋糕，生命值首次低于 {C:EqFoodBatch.CAKE_LINE_1%}%、{C:EqFoodBatch.CAKE_LINE_2%}%、{C:EqFoodBatch.CAKE_LINE_3%}% 时各吃下一块。\n第一块：获得 200/400/600 最大生命值，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复携带者 0.6/0.8/1% 最大生命值。\n第二块：获得 {C:EqFoodBatch.CAKE_LIFESTEAL%}% 生命偷取与 10/21/40 攻击力。\n第三块：获得 150/250/400 护盾与 {C:EqFoodBatch.CAKE_ENERGY} 龟能，攻击速度提高 40/60/80%，持续 {C:EqFoodBatch.CAKE_ASPD_SEC} 秒，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复携带者 1.3/1.6/2% 最大生命值。\n一次掉血跌过多条线时连续吃下多块。护盾直到被打破，其余加成持续到本战场结束。"
 msgstr "Carries {C:EqFoodBatch.CAKE_COUNT} slices of cake, eating one the first time health drops below {C:EqFoodBatch.CAKE_LINE_1%}%, {C:EqFoodBatch.CAKE_LINE_2%}% and {C:EqFoodBatch.CAKE_LINE_3%}%.\nFirst slice: gains 200/400/600 Max Health and heals 0.6/0.8/1% of max health per second for {C:EqFoodBatch.CAKE_HOT1_SEC} seconds.\nSecond slice: gains {C:EqFoodBatch.CAKE_LIFESTEAL%}% Lifesteal and 10/21/40 Attack.\nThird slice: gains a 150/250/400 shield and {C:EqFoodBatch.CAKE_ENERGY} Energy, +40/60/80% attack speed for {C:EqFoodBatch.CAKE_ASPD_SEC} seconds, and heals 1.3/1.6/2% of max health per second for {C:EqFoodBatch.CAKE_HOT3_SEC} seconds.\nIf one hit crosses several lines, it eats several slices in a row. The shield lasts until broken; other bonuses last until the battle ends."
 
-msgid "每次攻击附带自身 3/4.5/7% 最大生命值的物理伤害，并对目标周围的敌人造成自身 1/1.5/2% 最大生命值的物理伤害。\n被动：受到伤害的 30/40/50% 存入灰色血条，每秒将灰色血条的 {C:EqFoodBatch.GREY_CONVERT%}% 转化为生命回复。自身每有 100 最大生命值，获得 1% 攻击速度。"
+msgid "每次攻击附带携带者 3/4.5/7% 最大生命值的物理伤害，并对目标周围的敌人造成携带者 1/1.5/2% 最大生命值的物理伤害。\n被动：受到伤害的 30/40/50% 存入灰色血条，每秒将灰色血条的 {C:EqFoodBatch.GREY_CONVERT%}% 转化为生命回复。携带者每有 100 最大生命值，获得 1% 攻击速度。"
 msgstr "Each attack deals bonus physical damage equal to 3/4.5/7% of own max health, and physical damage equal to 1/1.5/2% of own max health to enemies around the target.\nPassive: 30/40/50% of damage taken is stored in a gray health bar, and {C:EqFoodBatch.GREY_CONVERT%}% of the gray bar turns into healing each second. Gains 1% attack speed per 100 max health."
 
-msgid "每 {C:EquipTickSystem.BROADSWORD_IV} 秒朝最近的敌人方向挥出一道剑气墙，贯穿直线上的所有敌人，对每名敌人造成（20/35/60+50/80/110% 攻击力）物理伤害。\n自身获得相当于本次总伤害 50/75/100% 的护盾，直到被打破。"
+msgid "每 {C:EquipTickSystem.BROADSWORD_IV} 秒朝最近的敌人方向挥出一道剑气墙，贯穿直线上的所有敌人，对每名敌人造成（20/35/60+50/80/110% 攻击力）物理伤害。\n携带者获得相当于本次总伤害 50/75/100% 的护盾，直到被打破。"
 msgstr "Every {C:EquipTickSystem.BROADSWORD_IV} seconds, swings a wall of sword energy toward the nearest enemy that pierces every enemy on the line, dealing (20/35/60 + 50/80/110% Attack) physical damage to each.\nGains a shield equal to 50/75/100% of the total damage until broken."
 
-msgid "每个战场开始时，为包括自身在内的所有友军提供其最大生命值 10/18/25% 的【奶油护盾】，该护盾持续到被打破为止。\n奶油护盾被打破时，对附近的敌人造成 70/100/150 点魔法伤害，随后该友军获得 {C:EqFoodBatch.CREAM_RESIST} 双抗、20/30/40% 攻击速度和 {C:EqFoodBatch.CREAM_RANGE} 射程，持续到本战场结束。\n自身每累计受到相当于自身最大生命值 {C:EqFoodBatch.CREAM_LOSS_STEP%}% 的伤害，再次为全队提供一次奶油护盾，每个战场共 {C:EqFoodBatch.CREAM_TIMES} 次。"
+msgid "每个战场开始时，为包括携带者在内的所有友军提供其最大生命值 10/18/25% 的【奶油护盾】，该护盾持续到被打破为止。\n奶油护盾被打破时，对附近的敌人造成 70/100/150 点魔法伤害，随后该友军获得 {C:EqFoodBatch.CREAM_RESIST} 双抗、20/30/40% 攻击速度和 {C:EqFoodBatch.CREAM_RANGE} 射程，持续到本战场结束。\n携带者每累计受到相当于其最大生命值 {C:EqFoodBatch.CREAM_LOSS_STEP%}% 的伤害，再次为全队提供一次奶油护盾，每个战场共 {C:EqFoodBatch.CREAM_TIMES} 次。"
 msgstr "At the start of each battle, gives every ally, including the holder, a [Cream Shield] equal to 10/18/25% of its max health that lasts until broken.\nWhen a Cream Shield breaks, it deals 70/100/150 magic damage to nearby enemies, and that ally gains {C:EqFoodBatch.CREAM_RESIST} Armor and Magic Resist, 20/30/40% attack speed and {C:EqFoodBatch.CREAM_RANGE} range until the battle ends.\nEach time the holder has taken damage equal to {C:EqFoodBatch.CREAM_LOSS_STEP%}% of its max health, it gives the team Cream Shields again, {C:EqFoodBatch.CREAM_TIMES} times per battle."
 
-msgid "获得最大生命值 50/80/120% 的永久【终极护盾】。\n护盾存在时，自身化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽附近所有敌人，每有一个敌人以自身为目标，获得 20/30/60 双抗。攻击造成 100% 攻击力物理伤害。技能召唤蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命值与 2/4/6 龟能。\n终极护盾破碎时，自身脱离礼盒。\n自身阵亡时分裂出两个蛋糕礼盒，拥有自身 20/40/100% 最大生命值及相同攻击力与双抗，其余属性为 0 或默认值，同样嘲讽并施放礼盒技能。"
+msgid "获得最大生命值 50/80/120% 的永久【终极护盾】。\n护盾存在时，携带者化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽附近所有敌人，每有一个敌人以携带者为目标，获得 20/30/60 双抗。攻击造成 100% 攻击力物理伤害。技能召唤蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命值与 2/4/6 龟能。\n终极护盾破碎时，携带者脱离礼盒。\n携带者阵亡时分裂出两个蛋糕礼盒，拥有其 20/40/100% 最大生命值及相同攻击力与双抗，其余属性为 0 或默认值，同样嘲讽并施放礼盒技能。"
 msgstr "Gains a permanent [Ultimate Shield] equal to 50/80/120% of max health.\nWhile it holds, the holder becomes a Cake Box: stats unchanged, range becomes melee, and attacks and abilities are replaced by Cake Box effects.\nThe Cake Box taunts all nearby enemies and gains 20/30/60 Armor and Magic Resist for each enemy targeting it. Attacks deal 100% Attack as physical damage. Its ability summons a cake circle for {C:EqFoodBatch.BOX_FIELD_SEC} seconds that heals allies inside for 50/70/120 and gives 2/4/6 Energy per second.\nWhen the Ultimate Shield breaks, the holder leaves the Cake Box.\nWhen the holder dies, it splits into two Cake Boxes with 20/40/100% of its max health and the same Attack, Armor and Magic Resist (other stats 0 or default), which also taunt and cast the Cake Box ability."
 
-msgid "身上悬浮一颗藤蔓小球。\n每次攻击时，小球向随机敌人射出一支藤蔓箭，造成（15/23/30 + 30/40/60% 攻击力）物理伤害。\n藤蔓箭独立判定暴击，暴击率与自身相同。暴击时藤蔓箭转为真实伤害，并使自身获得 35/45/60% 攻击速度，持续 {C:EqBowBatch.VINE_ASPD_SEC} 秒。再次暴击仅刷新持续时间，不可叠加。"
+msgid "身上悬浮一颗藤蔓小球。\n每次攻击时，小球向随机敌人射出一支藤蔓箭，造成（15/23/30 + 30/40/60% 攻击力）物理伤害。\n藤蔓箭独立判定暴击，暴击率与携带者相同。暴击时藤蔓箭转为真实伤害，并使携带者获得 35/45/60% 攻击速度，持续 {C:EqBowBatch.VINE_ASPD_SEC} 秒。再次暴击仅刷新持续时间，不可叠加。"
 msgstr "A vine orb floats beside the holder.\nEach attack, the orb fires a vine arrow at a random enemy, dealing (15/23/30 + 30/40/60% Attack) physical damage.\nVine arrows roll crits separately, using the holder's Crit Chance. A critical vine arrow deals true damage and grants the holder 35/45/60% attack speed for {C:EqBowBatch.VINE_ASPD_SEC} seconds. Further crits only refresh the duration; it doesn't stack."
 
-msgid "每次攻击使自身获得 9/16/25 外加 2.5/3.5/4.5% 自身最大生命值的护盾，可无限叠加。每次攻击还附带 15/30/50 魔法伤害。"
+msgid "每次攻击使携带者获得 9/16/25 外加 2.5/3.5/4.5% 携带者最大生命值的护盾，可无限叠加。每次攻击还附带 15/30/50 魔法伤害。"
 msgstr "Each attack grants a shield of 9/16/25 + 2.5/3.5/4.5% of own max health, stacking infinitely. Each attack also deals 15/30/50 bonus magic damage."
 
-msgid "每 {C:EqBowBatch.RAIN_IV} 秒在敌人最密集处降下一轮箭雨，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 25/35/50% 攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标与自身的距离每有 {C:EqBowBatch.AMP_PER_PX} 码，攻击和技能对其造成的伤害提升 3/4/5%，无上限。此效果同样作用于箭雨。"
+msgid "每 {C:EqBowBatch.RAIN_IV} 秒在敌人最密集处降下一轮箭雨，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 25/35/50% 攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标与携带者的距离每有 {C:EqBowBatch.AMP_PER_PX} 码，攻击和技能对其造成的伤害提升 3/4/5%，无上限。此效果同样作用于箭雨。"
 msgstr "Every {C:EqBowBatch.RAIN_IV} seconds, rains arrows on the densest group of enemies for {C:EqBowBatch.RAIN_SEC} seconds, dealing 25/35/50% Attack as physical damage and applying 3/4/5 Bleed every {C:EqBowBatch.RAIN_HOP_IV} seconds.\nPassive: for every {C:EqBowBatch.AMP_PER_PX} units between the holder and the target, attacks and abilities deal 3/4/5% more damage to it, with no cap. This also applies to the arrow rain."
 
-msgid "被动：仅在弓箭羁绊激活时生效，每 {C:EqBowBatch.CORRODE_EVERY} 次攻击对目标施加 1 层【腐蚀】，与弓箭羁绊共用层数。\n主动：释放技能后，每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，箭数=本次技能消耗的龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}。\n箭沿直线飞行，贯穿沿途敌人，每支造成 5/6/8% 攻击力的物理伤害加 9/13/16 点真实伤害。每穿过一个敌人，伤害降低 {C:BowEqVfx.PIERCE_DECAY_DOWN%}%（最低 {C:BowEqVfx.PIERCE_FLOOR%}%），并从该敌人身上为自身偷取 0.5/0.5/1 点龟能。"
+msgid "被动：仅在弓箭羁绊激活时生效，每 {C:EqBowBatch.CORRODE_EVERY} 次攻击对目标施加 1 层【腐蚀】，与弓箭羁绊共用层数。\n主动：释放技能后，每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，箭数=本次技能消耗的龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}。\n箭沿直线飞行，贯穿沿途敌人，每支造成 5/6/8% 攻击力的物理伤害加 9/13/16 点真实伤害。每穿过一个敌人，伤害降低 {C:BowEqVfx.PIERCE_DECAY_DOWN%}%（最低 {C:BowEqVfx.PIERCE_FLOOR%}%），并从该敌人身上为携带者偷取 0.5/0.5/1 点龟能。"
 msgstr "Passive: only while the Bow synergy is active, every {C:EqBowBatch.CORRODE_EVERY} attacks apply 1 [Corrosion] stack to the target, shared with the Bow synergy.\nActive: after casting an ability, fires an arrow every {C:EqBowBatch.VOLLEY_IV} seconds; arrows = Energy that ability cost ÷ {C:EqBowBatch.ENERGY_PER_SHOT}.\nArrows fly straight and pierce enemies, each dealing 5/6/8% Attack as physical damage plus 9/13/16 true damage. Each enemy pierced reduces damage by {C:BowEqVfx.PIERCE_DECAY_DOWN%}% (minimum {C:BowEqVfx.PIERCE_FLOOR%}%) and steals 0.5/0.5/1 Energy from that enemy for the holder."
 
-msgid "生成一把迷你小手枪：30/60/100 生命值、15/25/40 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程，每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，攻击造成 100% 攻击力的物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，该效果每个战场重置。\n小手枪没有护盾时，受到的所有伤害降为 2 点，真实伤害同样如此，自身阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。小手枪受到的治疗效果上限为 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。"
+msgid "生成一把迷你小手枪：30/60/100 生命值、15/25/40 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程，每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，攻击造成 100% 攻击力的物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，该效果每个战场重置。\n小手枪没有护盾时，受到的所有伤害降为 2 点，真实伤害同样如此，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。小手枪受到的治疗效果上限为 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。"
 msgstr "Creates a mini pistol with 30/60/100 health, 15/25/40 Attack and {C:EqGunBatch.PISTOL_RANGE} range. It attacks every {C:EqGunBatch.PISTOL_IV} seconds for 100% Attack as physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance.\nEach attack permanently gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen, reset each battle.\nWithout a shield, all damage the pistol takes is reduced to 2, true damage included, or {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} after the holder dies. Healing on the pistol is capped at 1.\nThe pistol's attacks trigger the Gun synergy's [Golden Bullet]."
 
 msgid "两管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替射击，仅在附近有敌人时开火。\n左管发射锥形霰弹，造成 15/25/40 + 30/60/100% 攻击力的物理伤害。\n右管发射电击弹，对首个目标造成 {C:EqGunBatch.EEL_BOLT_ATK%}% 攻击力的物理伤害+50/100/180 魔法伤害。魔法伤害依次连锁至所有未被击中的敌人，每次跳跃降低 20/15/10%。\n金弹从轮到的那管射出并继承其效果，额外造成本段伤害 60/80/100% 的真实伤害（随枪羁绊件数），对电击弹首个目标与每次跳跃均生效。"
 msgstr "The two barrels share a counter and fire in turn every {C:EqGunBatch.EEL_IV} seconds, only when enemies are nearby.\nThe left barrel fires a cone of buckshot dealing 15/25/40 + 30/60/100% Attack as physical damage.\nThe right barrel fires a shock round dealing {C:EqGunBatch.EEL_BOLT_ATK%}% Attack as physical damage + 50/100/180 magic damage to the first target. The magic damage chains to every enemy not yet hit, dropping 20/15/10% per bounce.\nGolden Bullets come from whichever barrel is up and keep its effects, dealing bonus true damage equal to 60/80/100% of the hit (scales with Gun count), applied to the shock round's first target and every bounce."
 
-msgid "在自身后方生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与自身相同。\n炮台攻击造成 100% 攻击力的物理伤害+目标最大生命值 1/1.5/2% 的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，随枪羁绊件数每攻击 4/3/2 次射出一发金弹，金弹继承全部效果并附加本段伤害 60/80/100% 的真实伤害，且金弹的治疗量翻倍。"
+msgid "在携带者后方生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与携带者相同。\n炮台攻击造成 100% 攻击力的物理伤害+目标最大生命值 1/1.5/2% 的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，随枪羁绊件数每攻击 4/3/2 次射出一发金弹，金弹继承全部效果并附加本段伤害 60/80/100% 的真实伤害，且金弹的治疗量翻倍。"
 msgstr "Creates a medic turret behind the holder with 700/1200/2500 health, 15/20/30 Attack, 50/70/100 Armor and Magic Resist, and the holder's attack speed.\nTurret attacks deal 100% Attack as physical damage + 1/1.5/2% of the target's max health as magic damage, and heal the ally with the lowest health percentage for 10/15/20.\nThe turret has its own Golden Bullet counter: every 4/3/2 attacks (scales with Gun count) it fires a Golden Bullet that keeps all effects, adds true damage equal to 60/80/100% of the hit, and heals double."
 
-msgid "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF%}% 攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的航线飞过，投下 8/10/14 枚炸弹，每枚对落点附近敌人造成 40/70/150% 攻击力的物理伤害+50/100/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n自身阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对附近敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。"
+msgid "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF%}% 攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的航线飞过，投下 8/10/14 枚炸弹，每枚对落点附近敌人造成 40/70/150% 攻击力的物理伤害+50/100/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n携带者阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对附近敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。"
 msgstr "On spawn, summons an untargetable, fully immune gyrocopter that circles over the battlefield with its own Energy bar.\nEvery {C:EqGunBatch.HELI_FIRE_IV} seconds, it strafes the nearest enemy below with 3/4/10 cannon rounds, each dealing {C:EqGunBatch.HELI_SHOT_COEF%}% Attack as physical damage and granting {C:EqGunBatch.HELI_EN_PER_HIT} Energy on hit (max {C:EqGunBatch.HELI_EN_MAX}).\nAt full Energy, it launches [Carpet Bombing]: flies the route covering the most enemies and drops 8/10/14 bombs, each dealing 40/70/150% Attack as physical damage + 50/100/120 magic damage to enemies near where it lands.\nCannon rounds and bombs both count toward the Gun synergy's [Golden Bullet].\nAfter the holder dies, the gyrocopter keeps flying for {C:EqGunBatch.DOOM_SEC} seconds, then crashes into a random enemy and explodes, dealing 200/300/500 physical damage and applying {C:EqGunBatch.CRASH_BURN} Burn to nearby enemies."
 
-msgid "每 {C:EquipTickSystem.CORAL_IV} 秒向距离自身最远的敌人发射一根珊瑚尖刺，命中时造成（100/120/150% 攻击力）物理伤害，外加相当于目标最大生命值 8/12/18% 的魔法伤害。"
+msgid "每 {C:EquipTickSystem.CORAL_IV} 秒向距离携带者最远的敌人发射一根珊瑚尖刺，命中时造成（100/120/150% 攻击力）物理伤害，外加相当于目标最大生命值 8/12/18% 的魔法伤害。"
 msgstr "Every {C:EquipTickSystem.CORAL_IV} seconds, fires a coral spike at the farthest enemy. On hit, deals (100/120/150% Attack) physical damage plus magic damage equal to 8/12/18% of the target's max health."
 
-msgid "充能条：每累计受到自身 40/35/30% 最大生命值的伤害后举盾 2.5/3/3.5 秒，期间获得 60/100/160 护盾值与 50/80/140 双抗，举盾期间受到的伤害不计入充能条。\n举盾结束后重新开始计数。"
+msgid "充能条：每累计受到携带者 40/35/30% 最大生命值的伤害后举盾 2.5/3/3.5 秒，期间获得 60/100/160 护盾值与 50/80/140 双抗，举盾期间受到的伤害不计入充能条。\n举盾结束后重新开始计数。"
 msgstr "Charge bar: after taking damage equal to 40/35/30% of max health, raises the shield for 2.5/3/3.5 seconds, gaining a 60/100/160 shield and 50/80/140 Armor and Magic Resist. Damage taken while the shield is raised doesn't fill the bar.\nThe count restarts when the shield lowers."
 
-msgid "【护心反伤】自身每受到一段攻击，对攻击者造成 3/5/8 点魔法伤害。持续伤害不触发此效果，多段攻击每段独立计数，此反伤不会触发攻击者的反伤效果。\n每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能。自身的攻击消耗一层充能，回复自身最大生命值的 5/7/10%，并附带自身 100% 魔抗的魔法伤害。"
+msgid "【护心反伤】携带者每受到一段攻击，对攻击者造成 3/5/8 点魔法伤害。持续伤害不触发此效果，多段攻击每段独立计数，此反伤不会触发攻击者的反伤效果。\n每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能。携带者的攻击消耗一层充能，回复其最大生命值的 5/7/10%，并附带其 100% 魔抗的魔法伤害。"
 msgstr "[Heartguard Thorns] Each attack hit taken deals 3/5/8 magic damage to the attacker. Damage over time doesn't trigger it; each hit of a multi-hit attack counts separately; this doesn't trigger the attacker's Thorns.\nEvery {C:EqBladeBatch.CLAM_PER_CHARGE} reflects grants a charge. The holder's attacks spend a charge to heal 5/7/10% of max health and deal bonus magic damage equal to 100% of the holder's Magic Resist."
 
 msgid "每损失 1% 生命值，获得 0.2/0.3/0.4% 攻击速度。\n连续命中同一目标时，每次叠加一层（最多 {C:EqBladeBatch.RAPIER_CAP} 层），每层提供 1/1.5/2% 增伤与 {C:EqBladeBatch.RAPIER_LS_PER%}% 生命偷取。切换目标或目标死亡时重置层数。\n剑羁绊【剑士】的追击计入连续命中。"
 msgstr "Gains 0.2/0.3/0.4% attack speed for every 1% health lost.\nEach consecutive hit on the same target adds a stack (max {C:EqBladeBatch.RAPIER_CAP}), each granting 1/1.5/2% Damage Amp and {C:EqBladeBatch.RAPIER_LS_PER%}% Lifesteal. Stacks reset when switching targets or when the target dies.\nSword synergy [Swordsman] follow-ups count as consecutive hits."
 
-msgid "效果随自身为近战或远程而改变。\n近战携带：射程变为 {C:EqBladeBatch.HH_MELEE_RANGE} 码，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩扫过，造成 40/70/130+60/90/140% 攻击力的物理伤害，横波再造成 25/45/85+40/60/90% 攻击力的物理伤害。随后竖斩造成 50/85/160+70/110/170% 攻击力的物理伤害，竖波再造成 30/55/100+50/70/110% 攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤。另获得 {C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20% 作为额外攻击力与 10/12.5/15% 生命偷取，每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这三项属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%。主动技能不替换。"
+msgid "效果随携带者为近战或远程而改变。\n近战携带：射程变为 {C:EqBladeBatch.HH_MELEE_RANGE} 码，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩扫过，造成 40/70/130+60/90/140% 攻击力的物理伤害，横波再造成 25/45/85+40/60/90% 攻击力的物理伤害。随后竖斩造成 50/85/160+70/110/170% 攻击力的物理伤害，竖波再造成 30/55/100+50/70/110% 攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤。另获得 {C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20% 作为额外攻击力与 10/12.5/15% 生命偷取，每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这三项属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%。主动技能不替换。"
 msgstr "The effect depends on whether the holder is melee or ranged.\nMelee holder: range becomes {C:EqBladeBatch.HH_MELEE_RANGE} and gains {C:EqBladeBatch.HH_MELEE_AMP%}% Damage Amp. Its ability becomes [Cross Slash] costing {C:EqBladeBatch.HH_ENERGY} Energy: a horizontal slash deals 40/70/130 + 60/90/140% Attack as physical damage, and its horizontal wave deals another 25/45/85 + 40/60/90% Attack. Then a vertical slash deals 50/85/160 + 70/110/170% Attack, and its vertical wave deals another 30/55/100 + 50/70/110% Attack, all as physical damage.\nRanged holder: range is fixed at {C:EqBladeBatch.HH_RANGED_RANGE} and gains {C:EqBladeBatch.HH_RANGED_DR%}% Damage Reduction. Also gains {C:EqBladeBatch.HH_RANGED_HP} Max Health, bonus Attack equal to 10/15/20% of its Attack on spawn, and 10/12.5/15% Lifesteal; these three increase by {C:EqBladeBatch.HH_CONV_BONUS%}% for every {C:EqBladeBatch.HH_CONV_PER} range converted. The ability isn't replaced."
 
 msgid "将受到伤害的 5/9/15% 转化为龟能，每秒最多转化 20/40/60 龟能。被护盾抵挡的伤害与持续伤害同样计入。"
 msgstr "Converts 5/9/15% of damage taken into Energy, up to 20/40/60 per second. Damage blocked by shields and damage over time also count."
 
-msgid "登场后每 {C:EqGadgetBatch.SEXT_GEN_IV} 秒生成一个环绕自身的浮游炮，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 {C:EqGadgetBatch.SEXT_FIRE_IV} 秒攻击一次随机敌人，造成自身 30/40/50% 攻击力的物理伤害。\n每个浮游炮为自身提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部散开至战场随机位置，并向随机目标齐射贯穿的终极射线，每条对直线上的敌人各造成（130/260/500 + {C:EqGadgetBatch.SEXT_RAY_ATK_COEF%}% 攻击力）魔法伤害。"
+msgid "登场后每 {C:EqGadgetBatch.SEXT_GEN_IV} 秒生成一个环绕携带者的浮游炮，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 {C:EqGadgetBatch.SEXT_FIRE_IV} 秒攻击一次随机敌人，造成携带者 30/40/50% 攻击力的物理伤害。\n每个浮游炮为携带者提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部散开至战场随机位置，并向随机目标齐射贯穿的终极射线，每条对直线上的敌人各造成（130/260/500 + {C:EqGadgetBatch.SEXT_RAY_ATK_COEF%}% 攻击力）魔法伤害。"
 msgstr "After spawning, creates a drone cannon orbiting the holder every {C:EqGadgetBatch.SEXT_GEN_IV} seconds, up to {C:EqGadgetBatch.SEXT_CAP}.\nEach drone attacks a random enemy every {C:EqGadgetBatch.SEXT_FIRE_IV} seconds for 30/40/50% of the holder's Attack as physical damage.\nEach drone grants the holder 10/15/20 Magic Resist.\nAfter the drones have fired 40/30/20 attacks in total, they all scatter to random spots on the field and fire piercing ultimate rays at random targets together, each dealing (130/260/500 + {C:EqGadgetBatch.SEXT_RAY_ATK_COEF%}% Attack) magic damage to every enemy on its line."
 
-msgid "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个并释放。每个战场内不会偷取重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为自身最大生命值的 60/90/150%，受到的伤害先存入压载舱，压载舱满后才扣除生命值。\n每 {C:EqGadgetBatch.DIVE_PUMP_IV} 秒将舱内 {C:EqGadgetBatch.DIVE_PUMP_FRAC%}% 的储量抽出并转化为生命值，同时向最远的敌人喷出水柱，造成抽出量的魔法伤害。\n舱内每储存自身最大生命值的 {C:EqGadgetBatch.DIVE_STACK_FRAC%}%，自身获得 {C:EqGadgetBatch.DIVE_MOVE_PER%}% 移动速度与 {C:EqGadgetBatch.DIVE_DEF_PER} 点护甲（最多 {C:EqGadgetBatch.DIVE_STACK_CAP} 层）。"
+msgid "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个并释放。每个战场内不会偷取重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为携带者最大生命值的 60/90/150%，受到的伤害先存入压载舱，压载舱满后才扣除生命值。\n每 {C:EqGadgetBatch.DIVE_PUMP_IV} 秒将舱内 {C:EqGadgetBatch.DIVE_PUMP_FRAC%}% 的储量抽出并转化为生命值，同时向最远的敌人喷出水柱，造成抽出量的魔法伤害。\n舱内每储存携带者最大生命值的 {C:EqGadgetBatch.DIVE_STACK_FRAC%}%，携带者获得 {C:EqGadgetBatch.DIVE_MOVE_PER%}% 移动速度与 {C:EqGadgetBatch.DIVE_DEF_PER} 点护甲（最多 {C:EqGadgetBatch.DIVE_STACK_CAP} 层）。"
 msgstr "Effect 1: every 15/10/4 seconds, steals a random active ability from the Turtle Trainer and casts it. It won't steal the same ability twice in a battle, and stops once it has stolen and cast them all.\nEffect 2: has a ballast tank holding 60/90/150% of max health. Damage taken fills the tank first; health is only lost once the tank is full.\nEvery {C:EqGadgetBatch.DIVE_PUMP_IV} seconds, pumps out {C:EqGadgetBatch.DIVE_PUMP_FRAC%}% of the tank's contents as healing and sprays a water jet at the farthest enemy for that much magic damage.\nFor every {C:EqGadgetBatch.DIVE_STACK_FRAC%}% of max health stored in the tank, gains {C:EqGadgetBatch.DIVE_MOVE_PER%}% move speed and {C:EqGadgetBatch.DIVE_DEF_PER} Armor (max {C:EqGadgetBatch.DIVE_STACK_CAP} stacks)."
 
 msgid "【法力】充满时，在脚下立起一块潮汐碑，持续 {C:EqArcaneBatch.STELE_SEC} 秒。碑内敌人每秒受到 15/25/40 魔法伤害，碑内友军每秒获得 20/35/55 护盾，并获得 10/15/25% 攻击速度。\n<span style=\"color:#8a93a0\">护盾可叠加，攻击速度在离开范围后失效。潮汐碑存在期间不回复法力。</span>"
@@ -5384,10 +5384,10 @@ msgstr "[Mana] When full, leaps into the air and slams the ground, dealing (150/
 msgid "攻击和技能每段命中积累 20/20/25 点充能，同一时刻命中多名敌人时，第二名起只积累一半。\n充能达到 {C:EquipSystem.BLADE_FULL} 点时，朝敌群斩出一道 {C:EquipSystem.BLADE_ARC_DEG}° 的弧形刀光，对范围内的每名敌人造成 30/45/60 真实伤害与（50/70/90% 攻击力）物理伤害。\n只命中 1 名敌人时，伤害提高 100/150/200%。"
 msgstr "Each attack and ability hit builds 20/20/25 charge; when hitting several enemies at once, the second onward build half.\nAt {C:EquipSystem.BLADE_FULL} charge, slashes a {C:EquipSystem.BLADE_ARC_DEG}° arc of light at the enemy group, dealing 30/45/60 true damage and (50/70/90% Attack) physical damage to each enemy in range.\nIf it hits only 1 enemy, damage is increased by 100/150/200%."
 
-msgid "每 {C:EqRelicBatch.SCUTE_IV} 秒回复 1/2/3 点+自身最大生命值 0.1/0.15/0.2% 的生命值。生命值低于 {C:EqRelicBatch.SCUTE_LOW_GATE%}% 时，该回复效果提升至 {C:EqRelicBatch.SCUTE_LOW_MULT} 倍。"
+msgid "每 {C:EqRelicBatch.SCUTE_IV} 秒回复 1/2/3 点+携带者最大生命值 0.1/0.15/0.2% 的生命值。生命值低于 {C:EqRelicBatch.SCUTE_LOW_GATE%}% 时，该回复效果提升至 {C:EqRelicBatch.SCUTE_LOW_MULT} 倍。"
 msgstr "Every {C:EqRelicBatch.SCUTE_IV} seconds, heals 1/2/3 + 0.1/0.15/0.2% of max health. Below {C:EqRelicBatch.SCUTE_LOW_GATE%}% health, this healing is multiplied by {C:EqRelicBatch.SCUTE_LOW_MULT}."
 
-msgid "召唤一只无法被选中的剧毒飞行物，自身阵亡后飞行物随之阵亡。\n飞行物缓慢飞向随机目标，穿过目标并落至其另一侧后，再飞向下一个目标，如此往复。\n飞行物每 {C:VenomDroneSystem.BEAT} 秒在路径上留下一团持续 {C:VenomDroneSystem.FOG_LIFE} 秒的毒雾。毒雾每 {C:VenomDroneSystem.BEAT} 秒对接触的敌方单位施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒与一层剧毒缓速。\n每个单位最多叠加 {C:VenomDroneSystem.VSLOW_CAP} 层剧毒缓速，每层降低目标 {C:VenomDroneSystem.VSLOW_MOVE_PER%}% 移动速度与 {C:VenomDroneSystem.VSLOW_MR_PER%}% 魔抗。若目标 {C:VenomDroneSystem.VSLOW_GRACE} 秒内未被施加剧毒缓速，则每 {C:VenomDroneSystem.BEAT} 秒失去一层。"
+msgid "召唤一只无法被选中的剧毒飞行物，携带者阵亡后飞行物随之阵亡。\n飞行物缓慢飞向随机目标，穿过目标并落至其另一侧后，再飞向下一个目标，如此往复。\n飞行物每 {C:VenomDroneSystem.BEAT} 秒在路径上留下一团持续 {C:VenomDroneSystem.FOG_LIFE} 秒的毒雾。毒雾每 {C:VenomDroneSystem.BEAT} 秒对接触的敌方单位施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒与一层剧毒缓速。\n每个单位最多叠加 {C:VenomDroneSystem.VSLOW_CAP} 层剧毒缓速，每层降低目标 {C:VenomDroneSystem.VSLOW_MOVE_PER%}% 移动速度与 {C:VenomDroneSystem.VSLOW_MR_PER%}% 魔抗。若目标 {C:VenomDroneSystem.VSLOW_GRACE} 秒内未被施加剧毒缓速，则每 {C:VenomDroneSystem.BEAT} 秒失去一层。"
 msgstr "Summons an untargetable venomous flyer that dies when the holder dies.\nThe flyer slowly flies at a random target, passes through it to land on the far side, then flies to the next target, over and over.\nEvery {C:VenomDroneSystem.BEAT} seconds, it leaves a poison fog on its path that lasts {C:VenomDroneSystem.FOG_LIFE} seconds. Every {C:VenomDroneSystem.BEAT} seconds, the fog applies {C:VenomDroneSystem.POISON_STACKS} Poison and 1 Venom Slow stack to enemy units touching it.\nEach unit can have up to {C:VenomDroneSystem.VSLOW_CAP} Venom Slow stacks, each reducing move speed by {C:VenomDroneSystem.VSLOW_MOVE_PER%}% and Magic Resist by {C:VenomDroneSystem.VSLOW_MR_PER%}%. If a target isn't hit by Venom Slow for {C:VenomDroneSystem.VSLOW_GRACE} seconds, it loses a stack every {C:VenomDroneSystem.BEAT} seconds."
 
 msgid "主动：每 {C:IncenseStoneSystem.EMP_IV} 秒强化接下来的 {C:IncenseStoneSystem.EMP_SHOTS} 次攻击，这 {C:IncenseStoneSystem.EMP_SHOTS} 次攻击获得 {C:IncenseStoneSystem.EMP_ASPD%}% 攻击速度，并附带 30/50/80+目标最大生命值 1/1.5/2% 的物理伤害，回复相当于该附带伤害 {C:IncenseStoneSystem.EMP_LS%}% 的生命值。"
@@ -5396,10 +5396,10 @@ msgstr "Active: every {C:IncenseStoneSystem.EMP_IV} seconds, empowers the next {
 msgid "阵亡时在原地立起一座不可选中的墓碑，持续到本战场结束。\n墓碑为全体友军提供 12/22/35% 增伤与 18/32/50 双抗，并每 {C:EqRelicBatch.STELE_BOLT_IV} 秒向最近的敌人砸下一道石雷，造成 130/260/500 魔法伤害。"
 msgstr "On death, raises an untargetable Tombstone in place that lasts until the battle ends.\nThe stele gives all allies 12/22/35% Damage Amp and 18/32/50 Armor and Magic Resist, and drops a stone bolt on the nearest enemy every {C:EqRelicBatch.STELE_BOLT_IV} seconds for 130/260/500 magic damage."
 
-msgid "每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒为自身提供 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。圣光护盾存在时，自身每次被攻击或技能命中，对攻击者反击造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害。"
+msgid "每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒为携带者提供 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。圣光护盾存在时，携带者每次被攻击或技能命中，对攻击者反击造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害。"
 msgstr "Every {C:ShieldSynergySystem.HOLY_PERIOD} seconds, gains {C:ShieldSynergySystem.HOLY_AMOUNT} Holy Shield. While the Holy Shield holds, each attack or ability hit taken strikes back at the attacker for {C:ShieldSynergySystem.RIPOSTE_FLAT} true damage."
 
-msgid "每隔一个攻击间隔朝最近的敌人斩出一道 {C:EquipSystem.LASER_ARC_DEG}° 扇形激光，半径等于自身攻击射程，3 星时翻倍。若自身为近战单位，半径额外+{C:EquipSystem.LASER_MELEE_BONUS} 码。\n对扇形内每名敌人造成（15/32/100+55/100/300% 攻击力）物理伤害。\n若仅命中 1 名敌人，则朝该敌人追加一道直线斩击，对沿途每名敌人各造成一次全额伤害。\n自身回复相当于本次总伤害 25/40/60% 的生命值。"
+msgid "每隔一个攻击间隔朝最近的敌人斩出一道 {C:EquipSystem.LASER_ARC_DEG}° 扇形激光，半径等于携带者攻击射程，3 星时翻倍。若携带者为近战单位，半径额外+{C:EquipSystem.LASER_MELEE_BONUS} 码。\n对扇形内每名敌人造成（15/32/100+55/100/300% 攻击力）物理伤害。\n若仅命中 1 名敌人，则朝该敌人追加一道直线斩击，对沿途每名敌人各造成一次全额伤害。\n携带者回复相当于本次总伤害 25/40/60% 的生命值。"
 msgstr "Every attack interval, slashes a {C:EquipSystem.LASER_ARC_DEG}° fan of laser at the nearest enemy, with a radius equal to the holder's attack range (doubled at 3 stars). Melee holders get +{C:EquipSystem.LASER_MELEE_BONUS} radius.\nDeals (15/32/100 + 55/100/300% Attack) physical damage to each enemy in the fan.\nIf it hits only 1 enemy, adds a straight slash toward it that deals full damage once to each enemy in its path.\nThe holder heals for 25/40/60% of the total damage."
 
 msgid "小龟对敌人造成的所有伤害按目标的稀有度提升：\n<span style=\"color:#06d6a0\">C</span> +{C:BasicConsts.RARITY_AMP_C%}%　<span style=\"color:#4cc9f0\">B</span> +{C:BasicConsts.RARITY_AMP_B%}%　<span style=\"color:#3a9abf\">A</span> +{C:BasicConsts.RARITY_AMP_A%}%　<span style=\"color:#c77dff\">S</span> +{C:BasicConsts.RARITY_AMP_S%}%　<span style=\"color:#ffd93d\">SS</span> +{C:BasicConsts.RARITY_AMP_SS%}%　<span style=\"color:#ff6b6b\">SSS</span> +{C:BasicConsts.RARITY_AMP_SSS%}%。\n每 {C:BasicConsts.SHIELD_CD} 秒，小龟的下一次攻击额外造成（{C:BasicConsts.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.SHIELD_ATK_COEF*ATK}）外加 {C:BasicConsts.SHIELD_LOST_PCT%}% 目标已损失生命值的物理伤害，将目标击飞 {C:BasicConsts.SHIELD_KNOCK_SEC} 秒，并获得相当于该伤害 {C:BasicConsts.SHIELD_GAIN_PCT%}% 的护盾。"
@@ -8057,7 +8057,7 @@ msgstr "Firework Tube"
 msgid "定时在自己周围炸一圈，击退身边的敌人并获得护盾。"
 msgstr "Periodically bursts around itself, knocking back nearby enemies and gaining a shield."
 
-msgid "每 {C:EqBombBatch.TUBE_IV} 秒在自身周围引爆一圈爆竹：击退附近的敌人，造成（{C:EqBombBatch.TUBE_FLAT}+{C:EqBombBatch.TUBE_ATK%}% 攻击力）物理伤害，并获得 {C:EqBombBatch.TUBE_SHIELD} 点护盾，持续 {C:EqBombBatch.TUBE_SHIELD_SEC} 秒。"
+msgid "每 {C:EqBombBatch.TUBE_IV} 秒在携带者周围引爆一圈爆竹：击退附近的敌人，造成（{C:EqBombBatch.TUBE_FLAT}+{C:EqBombBatch.TUBE_ATK%}% 攻击力）物理伤害，并获得 {C:EqBombBatch.TUBE_SHIELD} 点护盾，持续 {C:EqBombBatch.TUBE_SHIELD_SEC} 秒。"
 msgstr "Every {C:EqBombBatch.TUBE_IV} seconds, bursts around itself: knocks back nearby enemies, dealing ({C:EqBombBatch.TUBE_FLAT} + {C:EqBombBatch.TUBE_ATK%}% Attack) physical damage, and gains a {C:EqBombBatch.TUBE_SHIELD} shield for {C:EqBombBatch.TUBE_SHIELD_SEC} seconds."
 
 msgid "手雷"
@@ -8099,10 +8099,10 @@ msgstr "Place {C:EqBombBatch.MINE_COUNT} landmines on the formation map (if not 
 msgid "炸药桶"
 msgstr "Powder Keg"
 
-msgid "阵亡时原地大爆炸，按自身最大生命值造成范围物理伤害。"
+msgid "阵亡时原地大爆炸，按携带者最大生命值造成范围物理伤害。"
 msgstr "Explodes on death, dealing area physical damage based on its own max health."
 
-msgid "阵亡时原地大爆炸，对附近的敌人造成自身 {C:EqBombBatch.BARREL_PCT%}% 最大生命值的物理伤害。"
+msgid "阵亡时原地大爆炸，对附近的敌人造成携带者 {C:EqBombBatch.BARREL_PCT%}% 最大生命值的物理伤害。"
 msgstr "On death, explodes where it stands, dealing physical damage equal to {C:EqBombBatch.BARREL_PCT%}% of its own max health to nearby enemies."
 
 msgid "定时炸弹"
@@ -8129,7 +8129,7 @@ msgstr "Remote Bomb"
 msgid "召唤一枚追着敌人跑的遥控炸弹，生命耗尽时大范围爆炸。"
 msgstr "Summons a remote bomb that chases enemies and explodes over a wide area when its health runs out."
 
-msgid "登场时在己方前排召唤一枚遥控炸弹：{C:EqBombBatch.REMOTE_HP} 生命值、{C:EqBombBatch.REMOTE_RES} 护甲和魔抗。遥控炸弹追着一个敌人移动，不攻击，每秒损失其 {C:EqBombBatch.REMOTE_DECAY%}% 最大生命值。生命值耗尽时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT} 物理伤害和相当于自身 {C:EqBombBatch.REMOTE_TRUE_PCT%}% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED} 层流血。"
+msgid "登场时在己方前排召唤一枚遥控炸弹：{C:EqBombBatch.REMOTE_HP} 生命值、{C:EqBombBatch.REMOTE_RES} 护甲和魔抗。遥控炸弹追着一个敌人移动，不攻击，每秒损失其 {C:EqBombBatch.REMOTE_DECAY%}% 最大生命值。生命值耗尽时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT%}% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED} 层流血。"
 msgstr "On spawn, summons a remote bomb at your front line: {C:EqBombBatch.REMOTE_HP} health, {C:EqBombBatch.REMOTE_RES} Armor and Magic Resist. It chases an enemy without attacking and loses {C:EqBombBatch.REMOTE_DECAY%}% of its max health per second. When its health runs out, it explodes, dealing {C:EqBombBatch.REMOTE_FLAT} physical damage plus true damage equal to {C:EqBombBatch.REMOTE_TRUE_PCT%}% of your max health to enemies over a wide area, and applying {C:EqBombBatch.REMOTE_BLEED} Bleed stacks."
 
 msgid "武士刀"
@@ -8138,7 +8138,7 @@ msgstr "Katana"
 msgid "召唤一名武士刀小将，前三次技能挥剑气波，第四次蓄力回血后吹出龙卷风。"
 msgstr "Summons a Katana Minion. Its first three abilities fire sword waves; the fourth charges up, heals, then unleashes tornadoes."
 
-msgid "登场时召唤一名武士刀小将：{C:EqBombBatch.KATANA_HP} 生命值、{C:EqBombBatch.KATANA_ATK} 攻击力，龟能上限 {C:EqBombBatch.KATANA_EN_MAX}，攻击造成 100% 攻击力的物理伤害。龟能满时释放技能，四次一循环：前三次向前方挥出一道剑气波，造成 {C:EqBombBatch.KATANA_WAVE_MULT%}% 攻击力的物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒并回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成 {C:EqBombBatch.KATANA_TORNADO_MULT%}% 攻击力的物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒。"
+msgid "登场时召唤一名武士刀小将：{C:EqBombBatch.KATANA_HP} 生命值、{C:EqBombBatch.KATANA_ATK} 攻击力，龟能上限 {C:EqBombBatch.KATANA_EN_MAX}，攻击造成 100% 攻击力的物理伤害。龟能满时释放技能，四次一循环：前三次向前方挥出一道剑气波，造成 {C:EqBombBatch.KATANA_WAVE_MULT%}% 攻击力的物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒并回复携带者 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成 {C:EqBombBatch.KATANA_TORNADO_MULT%}% 攻击力的物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒。"
 msgstr "On spawn, summons a Katana Minion: {C:EqBombBatch.KATANA_HP} health, {C:EqBombBatch.KATANA_ATK} Attack, {C:EqBombBatch.KATANA_EN_MAX} max Energy; its attacks deal 100% Attack as physical damage. At full Energy it casts an ability in a cycle of four: the first three fire a sword wave forward, dealing {C:EqBombBatch.KATANA_WAVE_MULT%}% Attack as physical damage; the fourth charges for {C:EqBombBatch.KATANA_CHARGE} seconds, restoring {C:EqBombBatch.KATANA_HEAL_TOTAL%}% max health, then sends {C:EqBombBatch.KATANA_TORNADOES} tornadoes forward, dealing {C:EqBombBatch.KATANA_TORNADO_MULT%}% Attack as physical damage and knocking up for {C:EqBombBatch.KATANA_AIR} second."
 
 msgid "护甲 -%d"
@@ -8207,19 +8207,19 @@ msgstr "Every {C:EqDaggerBatch.KNIFE_IV} seconds, throws a willow-leaf knife tow
 msgid "苦无"
 msgstr "Kunai"
 
-msgid "定时朝随机敌人掷出苦无，每命中一枚为自身回复生命值。"
+msgid "定时朝随机敌人掷出苦无，每命中一枚为携带者回复生命值。"
 msgstr "Periodically throws kunai at random enemies, restoring health for each one that hits."
 
-msgid "每 {C:EqDaggerBatch.KUNAI_IV} 秒朝随机敌人掷出 {C:EqDaggerBatch.KUNAI_N} 枚苦无，每枚造成（{C:EqDaggerBatch.KUNAI_FLAT}+{C:EqDaggerBatch.KUNAI_ATK%}% 攻击力）魔法伤害，并为自身回复 {C:EqDaggerBatch.KUNAI_HEAL} 点生命值。"
+msgid "每 {C:EqDaggerBatch.KUNAI_IV} 秒朝随机敌人掷出 {C:EqDaggerBatch.KUNAI_N} 枚苦无，每枚造成（{C:EqDaggerBatch.KUNAI_FLAT}+{C:EqDaggerBatch.KUNAI_ATK%}% 攻击力）魔法伤害，并为携带者回复 {C:EqDaggerBatch.KUNAI_HEAL} 点生命值。"
 msgstr "Every {C:EqDaggerBatch.KUNAI_IV} seconds, throws {C:EqDaggerBatch.KUNAI_N} kunai at random enemies. Each deals ({C:EqDaggerBatch.KUNAI_FLAT} + {C:EqDaggerBatch.KUNAI_ATK%}% Attack) magic damage and restores {C:EqDaggerBatch.KUNAI_HEAL} health to the carrier."
 
 msgid "毒牙匕首"
 msgstr "Venom Fang"
 
-msgid "暴击时按自身攻击力施加中毒。"
+msgid "暴击时按携带者攻击力施加中毒。"
 msgstr "Critical strikes apply Poison based on Attack."
 
-msgid "造成暴击时，使目标叠加相当于自身 {C:EqDaggerBatch.FANG_POISON_ATK%}% 攻击力的中毒层数。"
+msgid "造成暴击时，使目标叠加相当于携带者 {C:EqDaggerBatch.FANG_POISON_ATK%}% 攻击力的中毒层数。"
 msgstr "Critical strikes apply Poison stacks equal to {C:EqDaggerBatch.FANG_POISON_ATK%}% of the carrier's Attack."
 
 msgid "三棱刺"
@@ -8246,7 +8246,7 @@ msgstr "Ritual Dagger"
 msgid "斩杀低血量的敌人，每次击杀刻下血契，整个大轮持续变强。"
 msgstr "Executes low-health enemies. Every kill carves a Blood Pact that keeps growing across the whole round."
 
-msgid "攻击和技能直接击杀生命值低于其 {C:EqDaggerBatch.RITUAL_EXEC%}% 最大生命值的敌人。每击杀一名敌人刻下 1 道【血契】，整个大轮累计，至多 {C:EqDaggerBatch.RITUAL_CAP} 道。每道血契使自身攻击力提高 {C:EqDaggerBatch.RITUAL_ATK}、护甲穿透提高 {C:EqDaggerBatch.RITUAL_PEN}。"
+msgid "攻击和技能直接击杀生命值低于其 {C:EqDaggerBatch.RITUAL_EXEC%}% 最大生命值的敌人。每击杀一名敌人刻下 1 道【血契】，整个大轮累计，至多 {C:EqDaggerBatch.RITUAL_CAP} 道。每道血契使携带者攻击力提高 {C:EqDaggerBatch.RITUAL_ATK}、护甲穿透提高 {C:EqDaggerBatch.RITUAL_PEN}。"
 msgstr "Attacks and abilities execute enemies below {C:EqDaggerBatch.RITUAL_EXEC%}% of their max health. Each kill carves 1 [Blood Pact], accumulating across the whole round, up to {C:EqDaggerBatch.RITUAL_CAP}. Each Blood Pact grants the carrier {C:EqDaggerBatch.RITUAL_ATK} Attack and {C:EqDaggerBatch.RITUAL_PEN} Armor Pen."
 
 msgid "暗影匕首"
@@ -8264,7 +8264,7 @@ msgstr "Obsidian Dagger"
 msgid "暴击时把黑曜石匕首插进敌人身上，足以致命时一起拔出并回复生命值。"
 msgstr "Critical strikes lodge obsidian daggers in the enemy. Once they can kill, they are ripped out together and restore health."
 
-msgid "造成暴击时，在目标身上插入一把黑曜石匕首，匕首不会自行拔出。目标身上全部匕首一起拔出的伤害足以击杀目标时，立即全部拔出：每把造成（{C:EqDaggerBatch.OBS_FLAT}+{C:EqDaggerBatch.OBS_ATK%}% 攻击力+目标 {C:EqDaggerBatch.OBS_MAXHP%}% 最大生命值）物理伤害，并为自身回复 {C:EqDaggerBatch.OBS_HEAL} 点生命值。"
+msgid "造成暴击时，在目标身上插入一把黑曜石匕首，匕首不会自行拔出。目标身上全部匕首一起拔出的伤害足以击杀目标时，立即全部拔出：每把造成（{C:EqDaggerBatch.OBS_FLAT}+{C:EqDaggerBatch.OBS_ATK%}% 攻击力+目标 {C:EqDaggerBatch.OBS_MAXHP%}% 最大生命值）物理伤害，并为携带者回复 {C:EqDaggerBatch.OBS_HEAL} 点生命值。"
 msgstr "Critical strikes lodge an obsidian dagger in the target; daggers never come out on their own. As soon as ripping out all daggers in the target would kill it, they are all ripped out at once: each deals ({C:EqDaggerBatch.OBS_FLAT} + {C:EqDaggerBatch.OBS_ATK%}% Attack + {C:EqDaggerBatch.OBS_MAXHP%}% of the target's max health) physical damage and restores {C:EqDaggerBatch.OBS_HEAL} health to the carrier."
 
 msgid "血契 %d / %d"
@@ -8348,10 +8348,10 @@ msgstr "Forbidden Codex"
 msgid "浮空魔典"
 msgstr "Floating Tome"
 
-msgid "释放技能后获得 {C:EqMagicBatch.TOME_HP} 点最大生命值并回复等量生命值，持续时间等于这次技能消耗的龟能 × {C:EqMagicBatch.TOME_SEC_PER_EN} 秒。近战单位携带时，{C:EqMagicBatch.PAGE_N} 张书页环绕自身，每张书页碰到敌人时对其造成（{C:EqMagicBatch.PAGE_FLAT}+{C:EqMagicBatch.PAGE_ATK%}% 攻击力）魔法伤害，每次碰到获得 {C:EqMagicBatch.PAGE_SHIELD} 点护盾，持续 {C:EqMagicBatch.PAGE_SHIELD_SEC} 秒，至多 {C:EqMagicBatch.PAGE_SHIELD_CAP} 点。远程单位携带时，身后悬浮至多 {C:EqMagicBatch.PAGE_N} 张书页，每 {C:EqMagicBatch.PAGE_REGEN} 秒补充一张。受到不低于自身 {C:EqMagicBatch.PAGE_BLOCK_PCT%}% 最大生命值的单次攻击或技能伤害时，消耗一张书页抵挡至多 {C:EqMagicBatch.PAGE_BLOCK_MAX} 点伤害，持续伤害不会触发。"
+msgid "释放技能后获得 {C:EqMagicBatch.TOME_HP} 点最大生命值并回复等量生命值，持续时间等于这次技能消耗的龟能 × {C:EqMagicBatch.TOME_SEC_PER_EN} 秒。近战单位携带时，{C:EqMagicBatch.PAGE_N} 张书页环绕携带者，每张书页碰到敌人时对其造成（{C:EqMagicBatch.PAGE_FLAT}+{C:EqMagicBatch.PAGE_ATK%}% 攻击力）魔法伤害，每次碰到获得 {C:EqMagicBatch.PAGE_SHIELD} 点护盾，持续 {C:EqMagicBatch.PAGE_SHIELD_SEC} 秒，至多 {C:EqMagicBatch.PAGE_SHIELD_CAP} 点。远程单位携带时，身后悬浮至多 {C:EqMagicBatch.PAGE_N} 张书页，每 {C:EqMagicBatch.PAGE_REGEN} 秒补充一张。受到不低于携带者 {C:EqMagicBatch.PAGE_BLOCK_PCT%}% 最大生命值的单次攻击或技能伤害时，消耗一张书页抵挡至多 {C:EqMagicBatch.PAGE_BLOCK_MAX} 点伤害，持续伤害不会触发。"
 msgstr "Casting an ability grants {C:EqMagicBatch.TOME_HP} maximum Health and restores the same amount of Health for (energy spent on that ability × {C:EqMagicBatch.TOME_SEC_PER_EN}) seconds. On a melee carrier, {C:EqMagicBatch.PAGE_N} pages orbit you, each page dealing ({C:EqMagicBatch.PAGE_FLAT} + {C:EqMagicBatch.PAGE_ATK%}% Attack) magic damage to an enemy it touches and granting a {C:EqMagicBatch.PAGE_SHIELD} Shield for {C:EqMagicBatch.PAGE_SHIELD_SEC} seconds per touch, up to {C:EqMagicBatch.PAGE_SHIELD_CAP}. On a ranged carrier, up to {C:EqMagicBatch.PAGE_N} pages float behind you, regrowing one every {C:EqMagicBatch.PAGE_REGEN} seconds. When a single attack or ability deals damage of at least {C:EqMagicBatch.PAGE_BLOCK_PCT%}% of your maximum Health, a page blocks up to {C:EqMagicBatch.PAGE_BLOCK_MAX} of it. Damage over time does not trigger it."
 
-msgid "释放技能后提高最大生命值。近战时书页环绕伤敌并给护盾，远程时书页替自身挡下大额伤害。"
+msgid "释放技能后提高最大生命值。近战时书页环绕伤敌并给护盾，远程时书页替携带者挡下大额伤害。"
 msgstr "Casting an ability raises maximum Health. Melee: orbiting pages cut enemies and grant Shields. Ranged: pages block big hits."
 
 msgid "魔法书"
@@ -8480,7 +8480,7 @@ msgstr "Paper Mask"
 msgid "登场获得物理护盾，受到伤害时按护甲朝攻击者掷出纸刃。"
 msgstr "Gains a physical shield on deployment. Taking damage throws a paper blade at the attacker based on Armor."
 
-msgid "登场时获得自身 {C:EqMaskBatch.PAPER_SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害。每受到一段攻击或技能伤害，朝攻击者掷出一片纸刃，造成自身 {C:EqMaskBatch.PAPER_COUNTER%}% 护甲的物理伤害。持续伤害不会触发此效果。"
+msgid "登场时获得携带者 {C:EqMaskBatch.PAPER_SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害。每受到一段攻击或技能伤害，朝攻击者掷出一片纸刃，造成携带者 {C:EqMaskBatch.PAPER_COUNTER%}% 护甲的物理伤害。持续伤害不会触发此效果。"
 msgstr "On deployment, gains a physical shield equal to {C:EqMaskBatch.PAPER_SHIELD_PCT%}% of max health that only absorbs physical damage. Each instance of attack or skill damage taken throws a paper blade at the attacker, dealing physical damage equal to {C:EqMaskBatch.PAPER_COUNTER%}% of Armor. Damage over time does not trigger this effect."
 
 msgid "狐狸面具"
@@ -8489,7 +8489,7 @@ msgstr "Fox Mask"
 msgid "对最大生命值比自己高的敌人造成的伤害提高，至多提高 {C:EqMaskBatch.FOX_MAX%}%。"
 msgstr "Deals more damage to enemies with higher max health than the holder, up to {C:EqMaskBatch.FOX_MAX%}% more."
 
-msgid "对最大生命值高于自身的敌人伤害提高，提高量随两者最大生命值的差值增加，差值达到 {C:EqMaskBatch.FOX_FULL_DIFF} 时提高 {C:EqMaskBatch.FOX_MAX%}%。"
+msgid "对最大生命值高于携带者的敌人伤害提高，提高量随两者最大生命值的差值增加，差值达到 {C:EqMaskBatch.FOX_FULL_DIFF} 时提高 {C:EqMaskBatch.FOX_MAX%}%。"
 msgstr "Deals more damage to enemies with higher max health than the holder. The bonus grows with the max health difference, reaching {C:EqMaskBatch.FOX_MAX%}% at a difference of {C:EqMaskBatch.FOX_FULL_DIFF}."
 
 msgid "京剧脸谱"
@@ -8516,7 +8516,7 @@ msgstr "Clown Mask"
 msgid "释放技能后嘲讽附近的敌人并获得护盾，嘲讽时间基于消耗的龟能。"
 msgstr "After casting a skill, taunts nearby enemies and gains a shield. Taunt duration is based on the Energy spent."
 
-msgid "释放技能后嘲讽附近的敌人，每消耗 100 点龟能嘲讽 {C:EqMaskBatch.CLOWN_SEC_PER_100} 秒，并获得自身 {C:EqMaskBatch.CLOWN_SHIELD_PCT%}% 最大生命值的护盾，持续 {C:EqMaskBatch.CLOWN_SHIELD_SEC} 秒。"
+msgid "释放技能后嘲讽附近的敌人，每消耗 100 点龟能嘲讽 {C:EqMaskBatch.CLOWN_SEC_PER_100} 秒，并获得携带者 {C:EqMaskBatch.CLOWN_SHIELD_PCT%}% 最大生命值的护盾，持续 {C:EqMaskBatch.CLOWN_SHIELD_SEC} 秒。"
 msgstr "After casting a skill, taunts nearby enemies for {C:EqMaskBatch.CLOWN_SEC_PER_100} seconds per 100 Energy spent, and gains a shield equal to {C:EqMaskBatch.CLOWN_SHIELD_PCT%}% of max health for {C:EqMaskBatch.CLOWN_SHIELD_SEC} seconds."
 
 msgid "鬼面"
@@ -8525,7 +8525,7 @@ msgstr "Ghost Mask"
 msgid "生命值首次降到一半时潜行并回复生命值。"
 msgstr "The first time health drops to half, enters stealth and restores health."
 
-msgid "生命值首次降到 {C:EqMaskBatch.GHOST_LINE%}% 时进入潜行，持续 {C:EqMaskBatch.GHOST_SEC} 秒：无法被选中，攻击时现形，{C:EqMaskBatch.GHOST_REHIDE} 秒后重新潜行。这段时间内每秒回复自身 {C:EqMaskBatch.GHOST_REGEN%}% 最大生命值。每个战场一次。"
+msgid "生命值首次降到 {C:EqMaskBatch.GHOST_LINE%}% 时进入潜行，持续 {C:EqMaskBatch.GHOST_SEC} 秒：无法被选中，攻击时现形，{C:EqMaskBatch.GHOST_REHIDE} 秒后重新潜行。这段时间内每秒回复携带者 {C:EqMaskBatch.GHOST_REGEN%}% 最大生命值。每个战场一次。"
 msgstr "The first time health drops to {C:EqMaskBatch.GHOST_LINE%}%, enters stealth for {C:EqMaskBatch.GHOST_SEC} seconds: cannot be targeted, is revealed when attacking, and re-enters stealth after {C:EqMaskBatch.GHOST_REHIDE} seconds. During this time, restores {C:EqMaskBatch.GHOST_REGEN%}% of max health per second. Once per battle."
 
 msgid "防毒面具"
@@ -8543,7 +8543,7 @@ msgstr "Venetian Mask"
 msgid "首次受到致命伤害时倒地复活，继续战斗。"
 msgstr "The first time it takes lethal damage, falls down instead of dying, then rises to keep fighting."
 
-msgid "首次受到致命伤害时倒地不死，{C:EqMaskBatch.VEN_SEC} 秒内生命值逐渐回复至自身 {C:EqMaskBatch.VEN_HEAL%}% 最大生命值后继续战斗，倒地期间无法被选中。每个战场一次。"
+msgid "首次受到致命伤害时倒地不死，{C:EqMaskBatch.VEN_SEC} 秒内生命值逐渐回复至携带者 {C:EqMaskBatch.VEN_HEAL%}% 最大生命值后继续战斗，倒地期间无法被选中。每个战场一次。"
 msgstr "The first time it takes lethal damage, falls down instead of dying, gradually restores health to {C:EqMaskBatch.VEN_HEAL%}% of max health over {C:EqMaskBatch.VEN_SEC} seconds, then keeps fighting. Cannot be targeted while down. Once per battle."
 
 msgid "黄金面具"
@@ -8606,7 +8606,7 @@ msgstr "Halberd"
 msgid "按攻击节奏横扫前方一片。"
 msgstr "Sweeps the area in front in rhythm with attacks."
 
-msgid "每隔一次攻击间隔朝最近的敌人横扫前方扇形，半径等于自身攻击射程，近战时半径额外增加。对扇形内每名敌人造成 {C:EqSpearBatch.HALB_PCT%}% 攻击力的物理伤害。"
+msgid "每隔一次攻击间隔朝最近的敌人横扫前方扇形，半径等于携带者攻击射程，近战时半径额外增加。对扇形内每名敌人造成 {C:EqSpearBatch.HALB_PCT%}% 攻击力的物理伤害。"
 msgstr "Once per attack interval, sweeps a cone in front toward the nearest enemy. The radius equals Attack Range, with extra radius in melee. Deals {C:EqSpearBatch.HALB_PCT%}% Attack as physical damage to each enemy in the cone."
 
 msgid "盾矛"
@@ -8639,10 +8639,10 @@ msgstr "Every {C:EqSpearBatch.ATL_IV} seconds, hurls {C:EqSpearBatch.ATL_N} spea
 msgid "永恒之枪"
 msgstr "Eternal Spear"
 
-msgid "积攒进度满后，永恒之枪从场外飞向生命值最高的敌人，将其击倒拖行，并获得临时生命值、点燃自身周围的灼烧圈。"
+msgid "积攒进度满后，永恒之枪从场外飞向生命值最高的敌人，将其击倒拖行，并获得临时生命值、点燃携带者周围的灼烧圈。"
 msgstr "When its charge is full, the Eternal Spear flies in from off the field at the highest-health enemy, knocking it down and dragging it, while the holder gains temporary health and ignites a Burn ring around itself."
 
-msgid "积攒进度：每秒 {C:EqSpearBatch.ETERNAL_PS} 点，每造成或受到 100 点伤害 {C:EqSpearBatch.ETERNAL_PER_DMG} 点，永恒之枪自身的伤害不计入。进度满 {C:EqSpearBatch.ETERNAL_NEED} 时，永恒之枪从场外飞向生命值最高的敌人，造成 {C:EqSpearBatch.ETERNAL_HIT_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_HIT_HP%}% 最大生命值的物理伤害，将其击倒滑行并眩晕 {C:EqSpearBatch.ETERNAL_STUN} 秒，滑行共造成 {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% 最大生命值的物理伤害。滑行路径上的其他敌人受到 {C:EqSpearBatch.ETERNAL_PASS_ATK%}% 攻击力 + 其 {C:EqSpearBatch.ETERNAL_PASS_HP%}% 最大生命值的物理伤害。目标免疫控制时转而额外受到 {C:EqSpearBatch.ETERNAL_IMM_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_IMM_HP%}% 最大生命值的物理伤害。\n命中时自身获得 {C:EqSpearBatch.ETERNAL_TEMP%}% 最大生命值的临时生命值，持续 {C:EqSpearBatch.ETERNAL_TEMP_SEC} 秒，周围燃起灼烧圈 {C:EqSpearBatch.ETERNAL_BURN_SEC} 秒，每秒对圈内敌人造成其 {C:EqSpearBatch.ETERNAL_BURN_PCT%}% 最大生命值的魔法伤害。临时生命值与灼烧圈均可叠加。"
+msgid "积攒进度：每秒 {C:EqSpearBatch.ETERNAL_PS} 点，每造成或受到 100 点伤害 {C:EqSpearBatch.ETERNAL_PER_DMG} 点，永恒之枪自身的伤害不计入。进度满 {C:EqSpearBatch.ETERNAL_NEED} 时，永恒之枪从场外飞向生命值最高的敌人，造成 {C:EqSpearBatch.ETERNAL_HIT_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_HIT_HP%}% 最大生命值的物理伤害，将其击倒滑行并眩晕 {C:EqSpearBatch.ETERNAL_STUN} 秒，滑行共造成 {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% 最大生命值的物理伤害。滑行路径上的其他敌人受到 {C:EqSpearBatch.ETERNAL_PASS_ATK%}% 攻击力 + 其 {C:EqSpearBatch.ETERNAL_PASS_HP%}% 最大生命值的物理伤害。目标免疫控制时转而额外受到 {C:EqSpearBatch.ETERNAL_IMM_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_IMM_HP%}% 最大生命值的物理伤害。\n命中时携带者获得 {C:EqSpearBatch.ETERNAL_TEMP%}% 最大生命值的临时生命值，持续 {C:EqSpearBatch.ETERNAL_TEMP_SEC} 秒，周围燃起灼烧圈 {C:EqSpearBatch.ETERNAL_BURN_SEC} 秒，每秒对圈内敌人造成其 {C:EqSpearBatch.ETERNAL_BURN_PCT%}% 最大生命值的魔法伤害。临时生命值与灼烧圈均可叠加。"
 msgstr "Builds charge during combat: {C:EqSpearBatch.ETERNAL_PS} per second and {C:EqSpearBatch.ETERNAL_PER_DMG} per 100 damage dealt or taken. Damage from the Eternal Spear itself does not count. At {C:EqSpearBatch.ETERNAL_NEED} charge, an Eternal Spear flies in from off the field at the highest-health enemy, dealing {C:EqSpearBatch.ETERNAL_HIT_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_HIT_HP%}% of the target's max health as physical damage, knocking it down and sliding it backward. The slide deals a total of {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% of the target's max health as physical damage and stuns for {C:EqSpearBatch.ETERNAL_STUN} seconds. Other enemies in the slide path take {C:EqSpearBatch.ETERNAL_PASS_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_PASS_HP%}% of their max health as physical damage. If the target is immune to crowd control, it instead takes an extra {C:EqSpearBatch.ETERNAL_IMM_ATK%}% Attack + {C:EqSpearBatch.ETERNAL_IMM_HP%}% of its max health as physical damage.\nOn hit, the holder gains temporary health equal to {C:EqSpearBatch.ETERNAL_TEMP%}% of max health for {C:EqSpearBatch.ETERNAL_TEMP_SEC} seconds, and a Burn ring ignites around the holder for {C:EqSpearBatch.ETERNAL_BURN_SEC} seconds, dealing magic damage equal to {C:EqSpearBatch.ETERNAL_BURN_PCT%}% of each enemy's max health per second to enemies inside. Temporary health and Burn rings both stack."
 
 msgid "圣枪"
@@ -8651,7 +8651,7 @@ msgstr "Holy Spear"
 msgid "首次半血时获得圣枪护盾与双抗。护盾存入储能，定期引导光球：强化友军或攻击敌人。"
 msgstr "The first time it drops to half health, gains a Holy Spear shield, Armor and Magic Resist. Shields fill Stored Energy, which periodically channels light orbs that empower allies or strike enemies."
 
-msgid "每个战场中生命值首次低于 {C:EqSpearBatch.HOLY_GUARD_AT%}% 时，在 {C:EqSpearBatch.HOLY_GUARD_SEC} 秒内每秒获得一层圣枪护盾，共计自身 {C:EqSpearBatch.HOLY_GUARD_PCT%}% 最大生命值，圣枪护盾不会衰减。同时获得 {C:EqSpearBatch.HOLY_RESIST} 护甲和魔抗，持续到这个战场结束。\n获得任何护盾时，将护盾值存入储能，储能上限为自身最大生命值。每 {C:EqSpearBatch.HOLY_IV} 秒开始引导：每 {C:EqSpearBatch.HOLY_ORB_IV} 秒消耗 {C:EqSpearBatch.HOLY_ORB_COST} 点储能，向场上随机一个单位射出光球，储能不足时引导结束。光球命中友方统领或小将时，使其获得 1 点临时等级（持续到这个战场结束）并回复 {C:EqSpearBatch.HOLY_ORB_HEAL} 生命值。命中敌方单位时，造成 {C:EqSpearBatch.HOLY_ORB_DMG} 魔法伤害，并为自身提供 {C:EqSpearBatch.HOLY_ORB_SHIELD} 护盾。"
+msgid "每个战场中生命值首次低于 {C:EqSpearBatch.HOLY_GUARD_AT%}% 时，在 {C:EqSpearBatch.HOLY_GUARD_SEC} 秒内每秒获得一层圣枪护盾，共计携带者 {C:EqSpearBatch.HOLY_GUARD_PCT%}% 最大生命值，圣枪护盾不会衰减。同时获得 {C:EqSpearBatch.HOLY_RESIST} 护甲和魔抗，持续到这个战场结束。\n获得任何护盾时，将护盾值存入储能，储能上限为携带者最大生命值。每 {C:EqSpearBatch.HOLY_IV} 秒开始引导：每 {C:EqSpearBatch.HOLY_ORB_IV} 秒消耗 {C:EqSpearBatch.HOLY_ORB_COST} 点储能，向场上随机一个单位射出光球，储能不足时引导结束。光球命中友方统领或小将时，使其获得 1 点临时等级（持续到这个战场结束）并回复 {C:EqSpearBatch.HOLY_ORB_HEAL} 生命值。命中敌方单位时，造成 {C:EqSpearBatch.HOLY_ORB_DMG} 魔法伤害，并为携带者提供 {C:EqSpearBatch.HOLY_ORB_SHIELD} 护盾。"
 msgstr "In each battlefield, the first time health drops below {C:EqSpearBatch.HOLY_GUARD_AT%}%, gains a layer of Holy Spear shield every second for {C:EqSpearBatch.HOLY_GUARD_SEC} seconds, totaling {C:EqSpearBatch.HOLY_GUARD_PCT%}% of max health. Holy Spear shields do not decay. Also gains {C:EqSpearBatch.HOLY_RESIST} Armor and Magic Resist until this battlefield ends.\nWhenever it gains any shield, the shield amount is added to Stored Energy, up to max health. Every {C:EqSpearBatch.HOLY_IV} seconds, starts channeling: every {C:EqSpearBatch.HOLY_ORB_IV} seconds, spends {C:EqSpearBatch.HOLY_ORB_COST} Stored Energy to fire a light orb at a random unit on the field. Channeling ends when Stored Energy runs out. An orb that hits an allied Leader or Minion grants it 1 temporary level (until this battlefield ends) and restores {C:EqSpearBatch.HOLY_ORB_HEAL} health. An orb that hits an enemy unit deals {C:EqSpearBatch.HOLY_ORB_DMG} magic damage and grants the holder {C:EqSpearBatch.HOLY_ORB_SHIELD} shield."
 
 msgid "白色筹码"
@@ -8681,7 +8681,7 @@ msgstr "Green Chip"
 msgid "提供生命值与魔抗，并持续回复生命值。"
 msgstr "Grants health and Magic Resist, and continuously restores health."
 
-msgid "每秒回复自身 {C:EqChipBatch.GREEN_REGEN%}% 最大生命值。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgid "每秒回复携带者 {C:EqChipBatch.GREEN_REGEN%}% 最大生命值。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
 msgstr "Restores {C:EqChipBatch.GREEN_REGEN%}% of max health per second. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
 
 msgid "黑色筹码"
@@ -8690,7 +8690,7 @@ msgstr "Black Chip"
 msgid "登场时为全队提供物理护盾。"
 msgstr "On deployment, grants the whole team a physical shield."
 
-msgid "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgid "登场时为所有友军提供相当于携带者 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的物理护盾，该护盾只吸收物理伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
 msgstr "On deployment, grants all allies a physical shield equal to {C:EqChipBatch.SHIELD_PCT%}% of the holder's max health. It only absorbs physical damage and does not decay. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
 
 msgid "紫色筹码"
@@ -8699,7 +8699,7 @@ msgstr "Purple Chip"
 msgid "登场时为全队提供魔法护盾。"
 msgstr "On deployment, grants the whole team a magic shield."
 
-msgid "登场时为所有友军提供相当于自身 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的魔法护盾，该护盾只吸收魔法伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgid "登场时为所有友军提供相当于携带者 {C:EqChipBatch.SHIELD_PCT%}% 最大生命值的魔法护盾，该护盾只吸收魔法伤害，不会消散。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
 msgstr "On deployment, grants all allies a magic shield equal to {C:EqChipBatch.SHIELD_PCT%}% of the holder's max health. It only absorbs magic damage and does not decay. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
 
 msgid "黄色筹码"
@@ -8717,7 +8717,7 @@ msgstr "Brown Chip"
 msgid "提供护甲与魔抗，首次受到致命伤害时倒地不死。"
 msgstr "Grants Armor and Magic Resist. The first time it takes lethal damage, falls down instead of dying."
 
-msgid "首次受到致命伤害时倒地不死，{C:EqChipBatch.BROWN_SEC} 秒内回复至自身 {C:EqChipBatch.BROWN_HEAL%}% 最大生命值后继续战斗。每个战场一次。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
+msgid "首次受到致命伤害时倒地不死，{C:EqChipBatch.BROWN_SEC} 秒内回复至携带者 {C:EqChipBatch.BROWN_HEAL%}% 最大生命值后继续战斗。每个战场一次。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。"
 msgstr "The first time it takes lethal damage, falls down instead of dying, restores to {C:EqChipBatch.BROWN_HEAL%}% of max health over {C:EqChipBatch.BROWN_SEC} seconds, then keeps fighting. Once per battle. Consumable: cannot be upgraded. Disappears after one Ranked, Gauntlet or Finals Day match."
 
 msgid "金色筹码"
@@ -9067,3 +9067,24 @@ msgstr "Equipping a Little Wooden Axe activates it. Duplicate Little Wooden Axes
 
 msgid "商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}%"
 msgstr "Each shop refresh has a {C:AxeEvolution.SHELF_P_BASE%}% chance to include at least one Little Wooden Axe, +{C:AxeEvolution.SHELF_P_PER_MATCH%}% per match played this Season, up to {C:AxeEvolution.SHELF_P_CAP%}%"
+
+msgid "登场时召唤一座不可移动的炮台。\n携带者位于炮台附近时，获得 {C:EquipSystem.TURRET_BUFF_ASPD%}% 攻击速度。"
+msgstr "On spawn, summons an immobile Turret.\nWhile the wearer is near the Turret, the wearer gains {C:EquipSystem.TURRET_BUFF_ASPD%}% attack speed."
+
+msgid "登场时召唤一座不可移动的炮台，携带者在炮台附近时获得攻击速度。"
+msgstr "On spawn, summons an immobile Turret. The wearer gains attack speed while near it."
+
+msgid "【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，每个战场一次。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。"
+msgstr "[Centurion] {C:SpearSynergySystem.SUMMON_AT} seconds into each battlefield, or when your team drops below {C:SpearSynergySystem.TEAM_HP_LINE%}% health, summons the Centurion, once per battlefield. For each different Spear on your team, each of its stars gives the Centurion {C:SpearSynergySystem.STAR_PCT%}% more health and attack damage."
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，召唤百夫长"
+msgstr "Each +{STAT:_echargePct}% Energy regen, summon the Centurion"
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长的突刺贯穿直线，放下盾时横扫周围敌人"
+msgstr "Each +{STAT:_echargePct}% Energy regen, the Centurion's thrust pierces in a line and it sweeps nearby enemies when lowering its shield"
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长每次刺中削弱敌人的护甲和魔抗，举盾时持续刺击周围敌人"
+msgstr "Each +{STAT:_echargePct}% Energy regen, the Centurion's hits shred armor and magic resist, and it keeps stabbing nearby enemies while shielded"
+
+msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，横扫后召来持矛骑兵冲锋"
+msgstr "Each +{STAT:_echargePct}% Energy regen, every {C:SpearSynergySystem.THROW_EVERY}th Centurion attack throws a spear, and its sweep calls in charging lancers"

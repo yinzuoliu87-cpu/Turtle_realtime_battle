@@ -377,17 +377,18 @@ const TIER_TABLE := {
 		],
 		"note": "",
 	},
+	## 2026-11-27 按方案书 20261127d 改写(用户「对于矛这个羁绊，核心是召唤物…羁绊里的召唤去描述可以换种方式」):
+	##   百夫长的属性 / 突刺 / 龟甲阵 / 登场击飞(它的被动)都在图鉴「角色」里的百夫长页(SummonCodex), 这里只写召唤时机 + 每档多了什么本事。
 	"长矛": {
 		"lines": [
 			"每件长矛为携带者提供龟能回复速率。",
-			"【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。",
-			"【龟甲阵】百夫长龟能满时举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%。",
+			"【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，每个战场一次。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。",
 		],
 		"rows": [
-			"每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗",
-			"每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。放下盾时横扫周围敌人，造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害",
-			"每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，至多 {C:SpearSynergySystem.SHRED_CAP} 点。举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害",
-			"每件 +{STAT:_echargePct}% 龟能回复速率，百夫长 {C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。横扫后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并击飞",
+			"每件 +{STAT:_echargePct}% 龟能回复速率，召唤百夫长",
+			"每件 +{STAT:_echargePct}% 龟能回复速率，百夫长的突刺贯穿直线，放下盾时横扫周围敌人",
+			"每件 +{STAT:_echargePct}% 龟能回复速率，百夫长每次刺中削弱敌人的护甲和魔抗，举盾时持续刺击周围敌人",
+			"每件 +{STAT:_echargePct}% 龟能回复速率，百夫长每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，横扫后召来持矛骑兵冲锋",
 		],
 		"note": "",
 	},
