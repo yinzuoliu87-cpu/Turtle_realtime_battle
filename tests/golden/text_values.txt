@@ -1,7 +1,7 @@
 eq|FPGA板|effectBrief	6.0
 eq|FPGA板|effectDesc1	1.0 1.0 1.0 1.0 3.5 3.5 5.0 6.0 7.0 12.0 15.0 15.0 25.0
 eq|不沉之锚|effectDesc1	0.25 1.5 100.0 250.0
-eq|亡者之书|effectDesc1	0.15 1.5 4.0 4.0 25.0 25.0 25.0 50.0 60.0 80.0 100.0 200.0
+eq|亡者之书|effectDesc1	0.15
 eq|京剧脸谱|effectDesc1	8.0
 eq|仪式匕首|effectDesc1	10.0 150.0
 eq|信号放大器|effectBrief	5.0
@@ -35,8 +35,9 @@ eq|守护贝壳|effectDesc1	8.0
 eq|定时炸弹|effectDesc1	4.0 8.0 10.0 100.0
 eq|寒冰法杖|effectDesc1	0.6
 eq|小丑面具|effectDesc1	4.0
-eq|小手枪|effectDesc1	0.5 1.0 5.0 50.0 700.0
-eq|小木斧|effectDesc1	0.2 3.0 4.0 5.0 5.0 8.0 10.0 12.0 12.0 14.0 24.0 24.0 30.0 140.0 400.0 500.0
+eq|小手枪|effectBrief	2.0
+eq|小手枪|effectDesc1	2.0
+eq|小木斧|effectDesc1	3.0 5.0 5.0 8.0 10.0 14.0 24.0 24.0 140.0 400.0
 eq|小木斧|effectDesc2	2.0 2.5 3.0 3.0 4.0 4.0 5.0 5.0 5.0 9.0 10.0 50.0 50.0 70.0 140.0 180.0 250.0
 eq|小木斧|effectDesc3	0.3 0.5 0.5 1.0 1.0 2.5 3.0 3.0 3.0 4.0 4.0 4.0 5.0 5.0 5.0 5.0 8.0 10.0 13.0 13.0 20.0 20.0 25.0 25.0 25.0 25.0 25.0 30.0 30.0 30.0 40.0 50.0 50.0 60.0 80.0 80.0 100.0 150.0 150.0 300.0 400.0 1200.0
 eq|左轮手枪|effectBrief	4.0
@@ -54,7 +55,6 @@ eq|护心甲|effectBrief	15.0
 eq|护心甲|effectDesc1	15.0
 eq|方天画戟|effectDesc1	4.0
 eq|旋翼机|effectDesc1	1.2 4.0 10.0 30.0 40.0 100.0
-eq|暗影匕首|effectDesc1	1.5 20.0 50.0 50.0 100.0 250.0
 eq|暴君之牙|effectBrief	6.0
 eq|暴君之牙|effectDesc1	6.0 20.0 40.0 100.0
 eq|月之刃|effectBrief	100.0
@@ -64,7 +64,6 @@ eq|木制长剑|effectDesc1	3.0
 eq|柳叶飞刀|effectDesc1	6.0 60.0
 eq|标枪|effectDesc1	6.0
 eq|棕色筹码|effectDesc1	2.5 60.0
-eq|武士刀|effectDesc1	1.0 1.5 3.0 15.0 60.0 150.0 300.0
 eq|毒药瓶|effectBrief	6.0
 eq|毒药瓶|effectDesc1	6.0 50.0
 eq|毒蛾|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
@@ -99,7 +98,6 @@ eq|激光长刃|effectDesc1	120.0 250.0
 eq|火珊瑚|effectDesc1	10.0 60.0
 eq|灰色筹码|effectDesc1	2.0 2.0 10.0 10.0 20.0 40.0
 eq|灵火|effectDesc1	0.03 80.0
-eq|炮筒|effectDesc1	0.7 100.0 200.0
 eq|炼乳罐|effectDesc1	3.0 10.0 50.0 50.0
 eq|烈焰法典|effectDesc1	60.0
 eq|烟雾弹|effectDesc1	1.0 3.0 8.0 50.0
@@ -116,7 +114,7 @@ eq|狐狸面具|effectDesc1	2000.0
 eq|狙击枪|effectBrief	8.0
 eq|狙击枪|effectDesc1	1.0 1.0 8.0 12.0
 eq|玩偶小熊|effectBrief	4.0
-eq|玩偶小熊|effectDesc1	0.7 0.8 1.2 2.0 4.0 70.0 150.0 600.0
+eq|玩偶小熊|effectDesc1	1.2 4.0
 eq|珊瑚刺|effectBrief	9.0
 eq|珊瑚刺|effectDesc1	9.0
 eq|珍珠项链|effectBrief	16.0 50.0
@@ -150,7 +148,7 @@ eq|蓝色迷你水晶|effectDesc1	1.5 3.0 10.0
 eq|藤弓|effectDesc1	3.0
 eq|蚌壳|effectBrief	5.0
 eq|蚌壳|effectDesc1	4.0 5.0 10.0 10.0
-eq|蛋糕盒|effectDesc1	5.0
+eq|蛋糕盒|effectDesc1	5.0 100.0
 eq|蜡烛|effectBrief	5.0
 eq|蜡烛|effectDesc1	3.0 5.0 5.0
 eq|螳螂虾钳|effectBrief	40.0
@@ -181,8 +179,7 @@ eq|飞镖|effectDesc1	1.0 2.5 5.0 10.0
 eq|香火石|effectBrief	4.0 10.0 12.0 100.0
 eq|香火石|effectDesc1	4.0 4.0 10.0 12.0 100.0
 eq|鬼面|effectDesc1	1.0 50.0
-eq|魔法海螺|effectDesc1	0.65 4.0 5.0
-eq|魔法海螺|effectDesc3	2.5 4.0
+eq|魔法海螺|effectDesc1	4.0 5.0
 eq|鱼叉|effectDesc1	0.5 1.5
 eq|黄金面具|effectDesc1	1.0 2.0 8.0 20.0
 eq|黑曜石匕首|effectDesc1	50.0

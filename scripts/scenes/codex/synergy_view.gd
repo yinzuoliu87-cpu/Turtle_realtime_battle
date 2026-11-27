@@ -125,7 +125,8 @@ func show(item: Dictionary) -> void:
 		it.add_theme_font_size_override("normal_font_size", BODY_PX)
 		it.add_theme_color_override("default_color", Color("#e8f2ff"))
 		it.add_theme_constant_override("line_separation", 4)
-		it.text = line_bb(_normalize(SkillText.render_consts(str(il))))
+		it.text = SummonCodex.linkify(line_bb(_normalize(SkillText.render_consts(str(il)))))
+		SummonCodex.attach_links(it, func(sid: String) -> void: host._codex_detail.open_entry({"k": "summon", "id": sid}))
 		it.set_meta("codex_syn_intro", tname)
 		host.detail.add_child(it)
 		y += maxf(22.0, it.get_combined_minimum_size().y) + LINE_GAP + 2.0
@@ -237,7 +238,8 @@ func _show_table(tname: String, tiers: Array, color: String, members: Array) -> 
 		it.custom_minimum_size = Vector2(W - 40.0, 0)
 		it.add_theme_font_size_override("normal_font_size", BODY_PX)
 		it.add_theme_color_override("default_color", Color("#e8f2ff"))
-		it.text = line_bb(SkillText.render_consts(str(ln)))
+		it.text = SummonCodex.linkify(line_bb(SkillText.render_consts(str(ln))))   # 【百夫长】【亡魂】点了跳角色页(11-27)
+		SummonCodex.attach_links(it, func(sid: String) -> void: host._codex_detail.open_entry({"k": "summon", "id": sid}))
 		it.set_meta("codex_syn_intro", tname)
 		host.detail.add_child(it)
 		y += maxf(22.0, it.get_combined_minimum_size().y) + LINE_GAP + 2.0

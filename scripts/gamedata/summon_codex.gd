@@ -113,8 +113,9 @@ static func stats(hp, atk, def, mr, move, aspd, rng, labels: Dictionary = {}) ->
 
 
 ## 普攻一句(默认普攻 = BasicConsts.DEFAULT_BASIC_COEF × 攻击力 物理, 所有没登记专属普攻的召唤物都走它)。
+## ★先翻译句式再填名字(英文版: 渲染时 Lang.t 认的是整句, 拼好的句子在 en.po 里找不到)。
 static func basic_line(who: String) -> String:
-	return who + "的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+	return Lang.t("%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。") % Lang.t(who)
 
 
 static func star_cols() -> Array:
@@ -137,18 +138,18 @@ static func _centurion(ci: int) -> Dictionary:
 	var tier: int = ci + 1   # 第几档(1~4), 攻击 / 技能逐档叠加
 	var basic: String = basic_line("百夫长")
 	if tier >= 2:
-		basic += "刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成（{C:%s.PIERCE_BEHIND%%}%%×攻击力({ATK}) = {N:%s.PIERCE_BEHIND*ATK}）物理伤害。" % [_SP, _SP]
+		basic += Lang.t("刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成（{C:%s.PIERCE_BEHIND%%}%%×攻击力({ATK}) = {N:%s.PIERCE_BEHIND*ATK}）物理伤害。") % [_SP, _SP]
 	if tier >= 3:
-		basic += "每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。" % _SP
+		basic += Lang.t("每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。") % _SP
 	if tier >= 4:
-		basic += "每第 {C:%s.THROW_EVERY} 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。" % [_SP, _SP, _SP]
-	var skill: String = "百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。" % [_SP, _SP]
+		basic += Lang.t("每第 {C:%s.THROW_EVERY} 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。") % [_SP, _SP, _SP]
+	var skill: String = Lang.t("百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。") % [_SP, _SP]
 	if tier >= 3:
-		skill += "举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。" % [_SP, _SP, _SP]
+		skill += Lang.t("举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。") % [_SP, _SP, _SP]
 	if tier >= 2:
-		skill += "放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。" % [_SP, _SP]
+		skill += Lang.t("放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。") % [_SP, _SP]
 	if tier >= 4:
-		skill += "横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。" % [_SP, _SP, _SP]
+		skill += Lang.t("横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。") % [_SP, _SP, _SP]
 	return {
 		"name": "百夫长", "kinds": ["centurion"],
 		"avatar": "res://assets/sprites/avatars/summon-centurion.png",
@@ -164,8 +165,79 @@ static func _centurion(ci: int) -> Dictionary:
 		"skill": {"name": "龟甲阵", "icon": "skills/summon-cent-guard.png", "desc": skill, "energy": int(S.EN_MAX)},
 		"passives": [
 			{"name": "军团天降", "icon": "passive/summon-cent-land-icon.png",
-				"desc": "百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。" % [_SP, _SP, _SP]},
+				"desc": Lang.t("百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。") % [_SP, _SP, _SP]},
 			{"name": "众矛之力", "icon": "passive/summon-cent-spears-icon.png",
-				"desc": "我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。" % _SP},
+				"desc": Lang.t("我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。") % _SP},
 		],
 	}
+
+
+# ─── 文案里的召唤物名字链接(2026-11-27 方案书 20261127d U4: 图鉴、商店说明卡里能点, 战斗中只显示不跳转) ───
+## 羁绊 / 装备文案里写成「【百夫长】」的名字 → [url=summon:<id>]…[/url]。只认登记表里的名字, 其它【关键词】不动。
+## 名字长的先换(「骷髅战士」不会被「骷髅…」误伤; 现在没有互为前缀的名字, 留着防以后)。
+static func linkify(bb: String) -> String:
+	if not (bb.contains("【") or bb.contains("[lb]")):
+		return bb
+	var names: Array = []
+	for id in all_ids():
+		var cn: String = str(info(id, 0).get("name", ""))
+		names.append(["【%s】" % cn, str(id)])
+		## 英文版写成 [Axe], 渲染成 BBCode 时左括号转义成 [lb](SkillText.html_to_bbcode)
+		var en: String = Lang.t(cn)
+		if en != cn:
+			names.append(["[lb]%s]" % en, str(id)])
+	names.sort_custom(func(a, b): return str(a[0]).length() > str(b[0]).length())
+	for nm in names:
+		var key: String = str(nm[0])
+		if bb.contains(key) and not bb.contains("[url=summon:%s]" % str(nm[1])):
+			bb = bb.replace(key, "[url=summon:%s]%s[/url]" % [str(nm[1]), key])
+	return bb
+
+
+## 给一个 RichTextLabel 接上名字链接: 点了调 on_open(条目 id)。标签原来不收鼠标的改成 PASS(点链接之外照旧往下传)。
+static func attach_links(rtl: RichTextLabel, on_open: Callable) -> void:
+	if rtl == null or not rtl.text.contains("[url=summon:"):
+		return
+	rtl.mouse_filter = Control.MOUSE_FILTER_PASS
+	rtl.meta_underlined = true
+	rtl.meta_clicked.connect(func(meta) -> void:
+		var m := str(meta)
+		if m.begins_with("summon:"):
+			on_open.call(m.substr(7)))
+
+
+## 商店说明卡里点名字 → 一张召唤物小卡(InspectCard 的 spec): 头像 + 名字 + 签牌 + 属性一行 + 攻击 / 技能 / 被动逐条。
+## 列取第 0 列(★1 / 第一档), 卡底一行灰字说明「完整数据见图鉴」。
+static func card_spec(id: String) -> Dictionary:
+	var si: Dictionary = info(id, 0)
+	if si.is_empty():
+		return {}
+	var parts: PackedStringArray = []
+	for st in si.get("stats", []):
+		parts.append("%s %s" % [str(st["label"]), str(st["disp"])])
+	var body: PackedStringArray = []
+	var ctx := {"atk": float(_disp_of(si, "atk")), "maxHp": float(_disp_of(si, "hp")), "lv": 1}
+	var rows: Array = []
+	for pv in si.get("passives", []):
+		rows.append([Lang.t("被动"), pv])
+	if not (si.get("basic", {}) as Dictionary).is_empty():
+		rows.append([Lang.t("攻击"), si["basic"]])
+	if not (si.get("skill", {}) as Dictionary).is_empty():
+		rows.append([Lang.t("技能"), si["skill"]])
+	for r in rows:
+		var d: Dictionary = r[1]
+		body.append("[color=#ffd93d]%s · %s[/color]\n%s" % [str(r[0]), Lang.t(str(d["name"])),
+			SkillText.render_bbcode(Lang.t(str(d["desc"])), ctx, {}, 20)])
+	var cols: Array = si.get("cols", [])
+	var head: String = ("%s %s · " % [str(si.get("col_title", "")), str(cols[0])]) if not cols.is_empty() else ""
+	return {"icon": str(si.get("avatar", "")), "title": Lang.t(str(si["name"])), "title_col": Color("#ffd93d"),
+		"tag_bb": "[color=#58d3ff]%s[/color]" % "  ·  ".join(PackedStringArray(si.get("tags", []))),
+		"body": "[color=#aab8c6]%s%s[/color]\n\n%s" % [head, "  ".join(parts), "\n\n".join(body)],
+		"foot": Lang.t("完整数据见图鉴「角色」")}
+
+
+static func _disp_of(si: Dictionary, key: String) -> String:
+	for st in si.get("stats", []):
+		if str(st["key"]) == key:
+			return str(st["disp"])
+	return "0"

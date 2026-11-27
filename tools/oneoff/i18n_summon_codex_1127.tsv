@@ -1,0 +1,184 @@
+# 图鉴「角色」栏召唤物页英文(2026-11-27, tools/i18n_add.py 批次)。中文<TAB>English。
+百夫长	Centurion
+长矛羁绊	Spear Synergy
+长矛件数	Spear Count
+突刺	Thrust
+龟甲阵	Shell Formation
+军团天降	Legion from the Sky
+众矛之力	Strength of Spears
+完整数据见图鉴「角色」	Full details in the Codex under "Roles"
+战场单位	Battlefield Units
+召唤物 · 龟技能	Summons · Turtle Abilities
+召唤物 · 装备	Summons · Items
+召唤物 · 羁绊	Summons · Synergies
+角色	Roles
+熊掌	Bear Paw
+每次攻击积攒 1 层。	Each attack builds 1 stack.
+震地波	Quake Wave
+积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击改为向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后清空层数。	At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, the next attack instead sends a shockwave forward, with range temporarily raised to {C:EquipTickSystem.BEAR_WAVE_RANGE}, dealing ({C:EquipTickSystem.BEAR_WAVE_COEF%}% × Attack ({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}) physical damage to enemies in its path, knocking them up and pulling them in front of the Big Bear, then clears its stacks.
+炮击	Shell Shot
+每次攻击使炮台永久获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。	Each attack permanently gives the Turret {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% Crit Chance until the end of this battle.
+火力同调	Linked Firepower
+炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及等同于携带者攻击力的攻击力。	On spawn, the Turret gains bonus health equal to {C:EquipSystem.TURRET_HP_PER_ATK} times the holder's Attack, and bonus Attack equal to the holder's Attack.
+护卫	Guarded
+同携带者	As holder
+携带者生命	holder's health
+携带者攻击	holder's Attack
+携带者护甲	holder's Armor
+携带者魔抗	holder's MR
+礼盒撞击	Box Bump
+蛋糕礼盒的攻击造成 {C:EqFoodBatch.BOX_HIT_COEF%}% 攻击力的物理伤害。	The Cake Box's attacks deal {C:EqFoodBatch.BOX_HIT_COEF%}% Attack as physical damage.
+甜蜜诱惑	Sweet Lure
+蛋糕法阵	Cake Circle
+礼盒分身	Split Box
+连射	Rapid Fire
+小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。	The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack ({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}) physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance. Each attack permanently gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen until the end of this battle. Its attack speed ignores bonuses.
+小不点	Tiny Target
+小手枪没有护盾时，受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。	Without a shield, all damage the Little Pistol takes is reduced to {C:EqGunBatch.PISTOL_DMG_CAP}, true damage included, or {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} after the holder dies. Healing on it is capped at {C:EqGunBatch.PISTOL_HEAL_CAP}.
+急救弹	Aid Shot
+同步射速	Synced Fire Rate
+急救塔的攻击速度与携带者相同，携带者阵亡后保持阵亡时的攻击速度。	The Aid Tower attacks as fast as the holder, and keeps the holder's last attack speed after the holder dies.
+急救金弹	Aid Golden Bullet
+急救塔拥有独立的金弹计数，随枪羁绊件数每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹附加本段伤害 {C:EqGunBatch.TOWER_GOLD_PCT%}% 的真实伤害，治疗量翻倍。	The Aid Tower has its own Golden Bullet counter: every {C:EqGunBatch.TOWER_GOLD_EVERY} attacks (scales with Gun count) it fires a Golden Bullet that adds true damage equal to {C:EqGunBatch.TOWER_GOLD_PCT%}% of the hit and heals double.
+每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。	Each attack steals {C:AxeEvolution.SHIELD_STEAL_PCT%}% of the target's shield as its own.
+回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。	Heals {C:AxeEvolution.ACTIVE_HEAL_PCT%}% of its max health and gains a shield equal to {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% of its max health.
+随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。	Then starts a [Charged Slam], charging for {C:AxeEvolution.CHARGE_TIME} seconds with {C:AxeEvolution.CHARGE_DR%}% Damage Reduction. When the charge ends it slams down, dealing ({C:AxeEvolution.SLAM_ATK%}% × Attack ({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}) physical damage to every enemy in the area in front, knocking them up and stunning them for {C:AxeEvolution.SLAM_STUN} seconds.
+随后在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投出 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，回旋镖飞出后返回，命中时造成（{C:AxeFinalStats.SERAPH_BOOM_ATK%}%×攻击力({ATK}) = {M:AxeFinalStats.SERAPH_BOOM_ATK*ATK}）魔法伤害，并施加 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。	Then throws {C:AxeFinalStats.SERAPH_BOOMERANGS} boomerangs over {C:AxeFinalStats.SERAPH_CAST_TIME} seconds. They fly out and return, dealing ({C:AxeFinalStats.SERAPH_BOOM_ATK%}% × Attack ({ATK}) = {M:AxeFinalStats.SERAPH_BOOM_ATK*ATK}) magic damage on hit and applying {C:AxeFinalStats.SERAPH_BOOM_BURN} Burn.
+随后插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒，期间获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，附近的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值和 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 {C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。	Then plants itself in the ground for {C:AxeFinalStats.HOLO_PLANT_TIME} seconds with {C:AxeFinalStats.HOLO_PLANT_DR%}% Damage Reduction. Every {C:AxeFinalStats.HOLO_AURA_TICK} seconds, nearby allies heal {C:AxeFinalStats.HOLO_AURA_HEAL}, gain {C:AxeFinalStats.HOLO_AURA_ENERGY} Energy and gain {C:AxeFinalStats.HOLO_AURA_ASPD%}% attack speed.
+随后点燃【余烬之光】：{C:AxeFinalStats.EMBER_LIGHT_TIME} 秒内获得 {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤和 {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，并免疫控制效果。期间仍会积累龟能，再次施放时效果独立叠加。	Then ignites [Ember Light]: for {C:AxeFinalStats.EMBER_LIGHT_TIME} seconds it gains {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% Lifesteal, {C:AxeFinalStats.EMBER_LIGHT_DR%}% Damage Reduction and {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% attack speed, and is immune to crowd control. It still builds Energy meanwhile, and recasts stack independently.
+砍伐成长	Chopping Growth
+斧头的生命值为 {C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × 砍伐经验，攻击力为 {C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × 砍伐经验。小木斧每次进化，斧头额外获得 {C:AxeEvolution.PASSIVE_HP} 生命值、{C:AxeEvolution.PASSIVE_ATK} 攻击力、{C:AxeEvolution.PASSIVE_DEF} 护甲和 {C:AxeEvolution.PASSIVE_MR} 魔抗。左侧属性为刚进化到此形态时的数值。	The Axe has {C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × Chopping XP health and {C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × Chopping XP Attack. Each time the Little Wooden Axe evolves, the Axe gains {C:AxeEvolution.PASSIVE_HP} health, {C:AxeEvolution.PASSIVE_ATK} Attack, {C:AxeEvolution.PASSIVE_DEF} Armor and {C:AxeEvolution.PASSIVE_MR} Magic Resist. The stats on the left are its values right after reaching this form.
+石斧 · 重击	Stone Axe · Smash
+每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。	Every {C:AxeEvolution.SMASH_IV} seconds, the Axe's next attack deals ({C:AxeEvolution.SMASH_ATK%}% × Attack ({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}) bonus physical damage and knocks the target up and briefly back.
+铁斧 · 竖劈	Iron Axe · Cleave
+斧头每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。	Every 2nd attack from the Axe becomes a downward cleave that deals bonus true damage equal to {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% of the target's max health and applies {C:AxeEvolution.CLEAVE_BLEED} Bleed.
+金斧 · 效率	Gold Axe · Efficiency
+斧头的攻击在 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫和竖劈之间交替，横扫命中前方所有敌人。每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。	The Axe's attacks alternate between a {C:AxeEvolution.SWEEP_ARC_DEG}° sweep, which hits all enemies in front, and a downward cleave. Each attack hit grants 1 [Efficiency] stack for {C:AxeEvolution.EFF_DUR} seconds, stacking infinitely and refreshing on each stack. Each [Efficiency] stack grants {C:AxeEvolution.EFF_ASPD%}% attack speed and {C:AxeEvolution.EFF_MOVE%}% move speed.
+附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，斧头每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。斧头阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。	Nearby enemies take magic damage equal to {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% of their max health each second. For each nearby enemy, the Axe heals {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% of its max health per second. {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} seconds after the Axe dies, it revives with {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% of its max health, once per battle.
+斧头的攻击施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。	The Axe's attacks apply {C:AxeFinalStats.SERAPH_BURN_ON_HIT} Burn.
+斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。	The Axe gains {C:AxeFinalStats.HOLO_ENERGY_RATE%}% Energy Charge. Its attacks give the ally with the lowest health percentage a {C:AxeFinalStats.HOLO_ONHIT_SHIELD} shield and {C:AxeFinalStats.HOLO_ONHIT_ENERGY} Energy.
+斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。	The Axe's attack hits apply {C:AxeFinalStats.EMBER_SEED_PER_HIT} [Ember Seed] stacks and execute targets below the execute threshold. Each [Ember Seed] stack raises that target's execute threshold by {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% of its max health, with no cap. Each execution grants {C:AxeFinalStats.EMBER_EXEC_ENERGY} Energy.
+斧击	Axe Chop
+斧之守护	Axe Guard
+进化形态	Form
+开炮	Fire
+炮筒朝射程内最近的敌人开炮，炮弹落地爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。	The Cannon fires at the nearest enemy in range. The shell explodes on landing, dealing ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage to nearby enemies.
+重炮	Heavy Shot
+遥控炸弹追着一个敌人移动，不攻击。	The Remote Bomb chases an enemy and doesn't attack.
+锁定追踪	Lock-On
+引爆	Detonate
+居合	Iai
+四次一循环。前三次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。	A 4-cast cycle. The first three casts send a sword wave forward that pierces enemies in its path, dealing ({C:EqBombBatch.KATANA_WAVE_MULT%}% × Attack ({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}) physical damage. The fourth charges for {C:EqBombBatch.KATANA_CHARGE} seconds, healing {C:EqBombBatch.KATANA_HEAL_TOTAL%}% of its own max health, then blows {C:EqBombBatch.KATANA_TORNADOES} tornadoes forward that deal ({C:EqBombBatch.KATANA_TORNADO_MULT%}% × Attack ({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}) physical damage and knock up for {C:EqBombBatch.KATANA_AIR} seconds. Each enemy is hit by the tornadoes at most once.
+忍刃	Ninja Blade
+影袭	Shadow Strike
+化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。	Vanishes into black smoke and reappears behind the enemy with the lowest health ratio, backstabbing for ({C:EqDaggerBatch.NINJA_STRIKE_MULT%}% × Attack ({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}) physical damage that always crits, then stealths for {C:EqDaggerBatch.NINJA_RESTEALTH} seconds.
+暗影潜行	Shadow Prowl
+暗影忍者登场时隐身，攻击时现形。	The Shadow Ninja enters stealthed and is revealed when it attacks.
+影分身	Shadow Clone
+暗影忍者的生命值首次低于 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力，同样会施放影袭。	The first time the Shadow Ninja drops below {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% health, it splits off a shadow clone for {C:EqDaggerBatch.NINJA_CLONE_SEC} seconds with {C:EqDaggerBatch.NINJA_CLONE_STAT%}% of its max health and Attack, which also casts Shadow Strike.
+亡者契约	Pact of the Dead
+亡者之书召唤的骷髅存在时间等于携带者这次施放技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，到时化为尘土。	Skeletons summoned by the Book of the Dead last for the Energy the holder spent on that cast × {C:EqMagicBatch.SKEL_SEC_PER_EN} seconds, then crumble to dust.
+骨斧	Bone Axe
+骸骨狂怒	Bone Rage
+骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒：受到的伤害降低 {C:EqMagicBatch.SKW_DR%}%，获得 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积攒龟能。	The Skeleton Warrior rages for {C:EqMagicBatch.SKW_RAGE_SEC} seconds: it takes {C:EqMagicBatch.SKW_DR%}% less damage, gains {C:EqMagicBatch.SKW_LS%}% Lifesteal, and each attack deals ({C:EqMagicBatch.SKW_EXTRA%}% × Attack ({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}) bonus physical damage. It builds no Energy while raging.
+骨火弹	Bonefire Bolt
+骷髅法师的攻击造成（{C:EqMagicBatch.SKM_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}）魔法伤害。	The Skeleton Mage's attacks deal ({C:EqMagicBatch.SKM_BASIC%}% × Attack ({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}) magic damage.
+骨火爆裂	Bonefire Burst
+目标及其周围的敌人受到（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。	The target and enemies around it take ({C:EqMagicBatch.SKM_BLAST_ATK%}% × Attack ({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}) magic damage.
+魂火	Soulfire
+骷髅祭司的攻击造成（{C:EqMagicBatch.SKP_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKP_BASIC*ATK}）魔法伤害。	The Skeleton Priest's attacks deal ({C:EqMagicBatch.SKP_BASIC%}% × Attack ({ATK}) = {M:EqMagicBatch.SKP_BASIC*ATK}) magic damage.
+亡灵浪潮	Undead Wave
+舞狮	Lion Dancer
+狮咬	Lion Bite
+冲撞	Charge
+装备星级	Item Star
+骨击	Bone Strike
+不朽之骨	Undying Bones
+亡灵骷髅每次受到的伤害都只有 {C:EqSummons.SKEL_DMG_CAP} 点，真实伤害也一样。	The Undead Skeleton takes only {C:EqSummons.SKEL_DMG_CAP} damage from each hit, true damage included.
+尸爆	Corpse Blast
+海螺馈赠	Conch's Gift
+分裂	Split
+每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，生命值与攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。	Every {C:EquipSystem.WORM_SPLIT_IV} seconds, splits off a new Conch Bug in an empty spot with the same health and Attack but no items, up to {C:EquipSystem.WORM_CAP}.
+啃咬	Gnaw
+舷炮	Broadside
+海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力({ATK}) = {N:PirateSystem.SHIP_SHOT_COEF*ATK}）物理伤害。	Every {C:PirateSystem.SHIP_SHOT_CD} seconds, the Pirate Ship fires at the nearest enemy at any distance, dealing ({C:PirateSystem.SHIP_SHOT_COEF%}% × Attack ({ATK}) = {N:PirateSystem.SHIP_SHOT_COEF*ATK}) physical damage.
+破浪登场	Wave-Breaking Entry
+海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力({ATK}) = {M:PirateSystem.SHIP_CHARGE_COEF*ATK}）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。	On spawn, the Pirate Ship crashes into the battlefield, dealing ({C:PirateSystem.SHIP_CHARGE_COEF%}% × Pirate Turtle's Attack ({ATK}) = {M:PirateSystem.SHIP_CHARGE_COEF*ATK}) magic damage to enemies near the landing spot, knocking them back and stunning them for {C:PirateSystem.SHIP_CHARGE_STUN} seconds.
+海盗造物	Pirate's Making
+海盗船的生命值为海盗龟最大生命值的 {C:PirateSystem.SHIP_HP_SCALE%}%，攻击力为海盗龟攻击力的 {C:PirateSystem.SHIP_ATK_SCALE%}%，没有护甲与魔抗。海盗船沉没后不会再召唤。左侧按 1 级海盗龟计算。	The Pirate Ship has {C:PirateSystem.SHIP_HP_SCALE%}% of the Pirate Turtle's max health and {C:PirateSystem.SHIP_ATK_SCALE%}% of its Attack, with no Armor or Magic Resist. Once sunk, it isn't summoned again. The stats on the left are for a level 1 Pirate Turtle.
+机甲重拳	Mech Punch
+浮游炮合体	Drone Assembly
+赛博龟阵亡时，浮游炮汇聚组装成机甲，组装 {C:CyberSystem.MECH_ASSEMBLE_SEC} 秒，期间无敌且不能被选为目标。生命值 =（{C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV} × 等级）× 浮游炮数，攻击力 =（{C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV} × 等级）× 浮游炮数，护甲和魔抗 = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV} × 等级。左侧按 1 级赛博龟计算。	When the Cyber Turtle dies, its drones gather and assemble into a Mech over {C:CyberSystem.MECH_ASSEMBLE_SEC} seconds, invulnerable and untargetable meanwhile. Health = ({C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV} × level) × drones, Attack = ({C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV} × level) × drones, Armor and Magic Resist = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV} × level. The stats on the left are for a level 1 Cyber Turtle.
+歼灭炮	Annihilator
+每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力({ATK}) = {N:CyberSystem.MECH_BLAST_COEF*ATK}）物理伤害。	Every {C:CyberSystem.MECH_BLAST_CD} seconds, fires two shots at the enemy with the lowest current health, dealing a total of ({C:CyberSystem.MECH_BLAST_COEF%}% × Attack ({ATK}) = {N:CyberSystem.MECH_BLAST_COEF*ATK}) physical damage.
+浮游炮数	Drones
+随机龟种	Random Turtle
+同原龟	As original
+原龟生命	original's health
+原龟攻击	original's Attack
+原龟护甲	original's Armor
+原龟魔抗	original's MR
+原龟普攻	Original Attack
+随从使用原龟的普通攻击。	The Follower uses the original turtle's basic attack.
+缩头乌龟登场时随机喊来一只 A、B、C 级龟作随从，生命值为原龟的 {C:HidingSystem.MINION_HP_SCALE%}%，攻击力为原龟的 {C:HidingSystem.MINION_ATK_SCALE%}%，护甲、魔抗与暴击率与原龟相同，随缩头乌龟的等级成长。随从带着原龟的被动与一个技能，缩头乌龟阵亡时随从一同离场。	On spawn, the Hiding Turtle calls a random A, B or C rank turtle as its Follower, with {C:HidingSystem.MINION_HP_SCALE%}% of the original's health and {C:HidingSystem.MINION_ATK_SCALE%}% of its Attack, the same Armor, Magic Resist and Crit Chance, growing with the Hiding Turtle's level. The Follower keeps the original's passive and one ability, and leaves when the Hiding Turtle dies.
+轮回	Rebirth
+灵物羁绊	Spirit Synergy
+阵亡者生命	fallen unit's health
+阵亡者攻击	fallen unit's Attack
+幽魂爪	Wraith Claw
+亡魂的攻击造成 {C:BasicConsts.DEFAULT_BASIC_COEF%}% 攻击力的物理伤害。	The Wraith's attacks deal {C:BasicConsts.DEFAULT_BASIC_COEF%}% Attack as physical damage.
+灵物件数	Spirit Count
+每路一颗	One per lane
+围栏	Fence
+开打时龟蛋被围栏护着，不能被选为目标，范围伤害也打不到，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部倒下后围栏才会倒下。	When the fight starts the Turtle Egg is behind a fence: it can't be targeted, area damage can't reach it, and it gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. The fence only falls once all of its side's units are down.
+坚壳	Hard Shell
+龟蛋免疫控制、斩杀与嘲讽。龟蛋的生命值在上路、下路和决胜场之间延续，不会回满。	The Turtle Egg is immune to crowd control, executes and taunts. Its health carries over between the top lane, bottom lane and deciding battle, and never refills.
+成长	Growth
+龟蛋的最大生命值为 {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × 等级，护甲和魔抗为 {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × 等级。左侧按 1 级计算。	The Turtle Egg has {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × level max health and {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × level Armor and Magic Resist. The stats on the left are for level 1.
+定局	Decider
+定局的那一路上，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。	In the deciding lane, once its fence falls the Turtle Egg takes ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} damage and loses {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% of its max health every {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} seconds.
+旁观者	Onlooker
+训龟大师站在场边，不会被选为目标，免疫一切伤害与效果。	The Turtle Trainer stands at the edge of the field, can't be targeted, and is immune to all damage and effects.
+装饰	Decoration
+投石	Stone Toss
+训龟大师朝最近的敌人扔石头，每块石头造成 1 点伤害。	The Turtle Trainer throws stones at the nearest enemy, each dealing 1 damage.
+携带技能	Skill
+糖果造物	Candy Making
+糖果炸弹登场时的生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_HP_PCT%}%，不移动、不攻击，攻击力、护甲与魔抗均为 0。左侧按 1 级糖果龟计算。	The Candy Bomb spawns with {C:CandySystem.BOMB_HP_PCT%}% of the Candy Turtle's max health. It doesn't move or attack, and has 0 Attack, Armor and Magic Resist. The stats on the left are for a level 1 Candy Turtle.
+糖衣融化	Melting Coat
+糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值。	The Candy Bomb loses {C:CandySystem.BOMB_DECAY_PCT%}% of its max health per second.
+糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。	When the Candy Turtle casts its ability and the Candy Bomb is still around, the bomb gains max health equal to {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% of the Candy Turtle's max health and heals {C:CandySystem.BOMB_FEED_HEAL_PCT%}% of the Candy Turtle's max health. If the bomb is gone, a new Candy Bomb is summoned with {C:CandySystem.BOMB_REVIVE_HP_PCT%}% of the Candy Turtle's max health.
+甜蜜爆炸	Sweet Blast
+糖果炸弹阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，平均分给所有敌人。	When the Candy Bomb dies it explodes, dealing magic damage equal to {C:CandySystem.BOMB_DEATH_AOE%}% of its max health, split evenly among all enemies.
+水晶射线	Crystal Ray
+水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力({ATK}) = {M:CrystalSystem.ORB_RAY_COEF*ATK}）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。	Every {C:CrystalSystem.ORB_RAY_IV} seconds, the Crystal Ball fires a piercing ray at the nearest enemy, dealing a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack ({ATK}) = {M:CrystalSystem.ORB_RAY_COEF*ATK}) magic damage and adding {C:CrystalSystem.ORB_RAY_STACKS} Crystal stacks to enemies hit, shared with the Crystal Turtle's stacks.
+水晶造物	Crystal Making
+水晶球的生命值为水晶龟最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力与水晶龟相同，没有护甲与魔抗。水晶龟阵亡后水晶球继续战斗。左侧按 1 级水晶龟计算。	The Crystal Ball has {C:CrystalSystem.ORB_HP_PCT%}% of the Crystal Turtle's max health and the same Attack, with no Armor or Magic Resist. It keeps fighting after the Crystal Turtle dies. The stats on the left are for a level 1 Crystal Turtle.
+%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。	The %s's attacks deal ({C:BasicConsts.DEFAULT_BASIC_COEF%%}%% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage.
+刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成（{C:%s.PIERCE_BEHIND%%}%%×攻击力({ATK}) = {N:%s.PIERCE_BEHIND*ATK}）物理伤害。	Each thrust pushes a shockwave along its direction that pierces enemies behind the target, dealing ({C:%s.PIERCE_BEHIND%%}%% × Attack ({ATK}) = {N:%s.PIERCE_BEHIND*ATK}) physical damage.
+每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。	Each hit removes 1 Armor and Magic Resist from the enemy, up to {C:%s.SHRED_CAP} per enemy.
+每第 {C:%s.THROW_EVERY} 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。	Every {C:%s.THROW_EVERY}th attack instead throws its spear at the farthest enemy, piercing enemies along the way and dealing ({C:%s.THROW_COEF%%}%% × Attack ({ATK}) = {N:%s.THROW_COEF*ATK}) physical damage.
+百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。	The Centurion raises its shield for {C:%s.SHIELD_SEC} seconds, taking {C:%s.SHIELD_DR%%}%% less damage.
+举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。	While the shield is up, every {C:%s.POKE_IV} seconds it stabs nearby enemies, dealing ({C:%s.POKE_COEF%%}%% × Attack ({ATK}) = {M:%s.POKE_COEF*ATK}) magic damage.
+放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。	When it lowers the shield, it sweeps nearby enemies, dealing ({C:%s.SWEEP_COEF%%}%% × Attack ({ATK}) = {M:%s.SWEEP_COEF*ATK}) magic damage.
+横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。	After the sweep, {C:%s.CAV_N} spear cavalry charge out from behind your side, each toward a random enemy. Every enemy they hit takes ({C:%s.CAV_COEF%%}%% × Attack ({ATK}) = {N:%s.CAV_COEF*ATK}) physical damage and is knocked up.
+百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。	The Centurion drops from the sky on spawn. On landing it knocks up all enemies for {C:%s.KNOCK_SEC} seconds, dealing ({C:%s.ENTRY_COEF%%}%% × Attack ({ATK}) = {M:%s.ENTRY_COEF*ATK}) magic damage.
+我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。	For each different Spear on your side, the Centurion gains {C:%s.STAR_PCT%%}%% health and Attack per star of that Spear.
+携带者存活时，炮台获得 {C:EquipSystem.TURRET_RES[%d]} 护甲与魔抗，携带者阵亡后降为 0。	While the holder is alive, the Turret has {C:EquipSystem.TURRET_RES[%d]} Armor and Magic Resist, dropping to 0 after the holder dies.
+嘲讽附近所有敌人。每有一个敌人以蛋糕礼盒为目标，蛋糕礼盒获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} 护甲和魔抗。	Taunts all nearby enemies. For each enemy targeting it, the Cake Box gains {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} Armor and Magic Resist.
+登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后召唤蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒一次，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值与 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。	{C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} seconds after spawning, and every {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} seconds after that, it summons a cake circle for {C:EqFoodBatch.BOX_FIELD_SEC} seconds that heals allies inside for {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} and gives them {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} Energy per second.
+蛋糕礼盒拥有携带者 {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% 的最大生命值，攻击力、护甲、魔抗与攻击速度与携带者相同，不能移动。	The Cake Box has {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% of the holder's max health and the same Attack, Armor, Magic Resist and attack speed as the holder, and can't move.
+急救塔的攻击造成（{C:EqGunBatch.TOWER_COEF%%}%%×攻击力({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}）物理伤害，另加目标最大生命值 {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% 的魔法伤害，并为生命值百分比最低的友军回复 {C:EqGunBatch.TOWER_HEAL[%d]} 生命值。	The Aid Tower's attacks deal ({C:EqGunBatch.TOWER_COEF%%}%% × Attack ({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}) physical damage plus magic damage equal to {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% of the target's max health, and heal the ally with the lowest health percentage for {C:EqGunBatch.TOWER_HEAL[%d]}.
+炮筒进入重炮状态：每发消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能，炮弹沿直线飞过整个战场，击退直线上的敌人，造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害并施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血。龟能耗尽时回到普通炮击。	The Cannon enters Heavy Shot mode: each shot costs {C:EqBombBatch.CANNON_HEAVY_COST[%d]} Energy and flies in a straight line across the whole battlefield, knocking back enemies in the line, dealing ({C:EqBombBatch.CANNON_HEAVY_MULT%%}%% × Attack ({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}) physical damage and applying {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} Bleed. When its Energy runs out it goes back to normal shots.
+每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。	It loses {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% of its max health per second.
+生命值耗尽时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。	When its health runs out it explodes, dealing {C:EqBombBatch.REMOTE_FLAT[%d]} physical damage plus true damage equal to {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% of the holder's max health to enemies in a large area, and applying {C:EqBombBatch.REMOTE_BLEED[%d]} Bleed.
+暗影忍者拥有 {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% 暴击率。	The Shadow Ninja has {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% Crit Chance.
+每次影袭，暗影忍者朝目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。	On each Shadow Strike, the Shadow Ninja throws a shuriken at the target (both ninjas throw one while the shadow is out), dealing ({C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%% × Attack ({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}) magic damage to enemies in its path.
+推出一道缓慢前进的亡灵浪潮，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。	Pushes out a slow undead wave. Enemies it passes take {C:EqMagicBatch.WAVE_DMG[%d]} physical damage, are knocked up and stunned for {C:EqMagicBatch.WAVE_STUN} seconds, and lose {C:EqMagicBatch.WAVE_MR_SHRED%%}%% Magic Resist for {C:EqMagicBatch.WAVE_MR_SEC} seconds. Allies it passes heal {C:EqMagicBatch.WAVE_HEAL[%d]}.
+舞狮朝前方冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。	The Lion Dancer charges forward, dealing ({C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%% × Attack ({ATK}) = {N:%s*ATK}) physical damage to enemies in its path, knocking them back and stunning them for {C:EqMaskBatch.LION_STUN[%d]} seconds.
+亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于其最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。	The Undead Skeleton explodes when it dies or after {C:EqSummons.SKEL_LIFE[%d]} seconds, dealing true damage equal to {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% of each nearby enemy's max health.
+海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。	The Conch Bug is born carrying 3 random %d-star {C:EquipSystem.CONCH_COST_MIN}- or {C:EquipSystem.CONCH_COST_MAX}-cost items.
+我方单位阵亡时化为亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[%d]%%}%% 的最大生命值与攻击力，没有护甲与魔抗。召唤物阵亡不会化为亡魂。	When one of your units dies it rises as a Wraith with {C:SpiritSynergySystem.WRAITH_INHERIT[%d]%%}%% of its max health and Attack, and no Armor or Magic Resist. Summons don't rise as Wraiths.
+亡魂阵亡后会再次化为亡魂，至多 {C:SpiritSynergySystem.WRAITH_LOOPS[%d]} 次，每次继承的比例变为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%%}%%。	After dying, a Wraith rises again, up to {C:SpiritSynergySystem.WRAITH_LOOPS[%d]} times, each time inheriting {C:SpiritSynergySystem.WRAITH_DECAY%%}%% of the previous ratio.
+　[color=#06d6a0][font_size=20]冷却 %d 秒[/font_size][/color]	　[color=#06d6a0][font_size=20]Cooldown %d s[/font_size][/color]
+主动 · 冷却 %d 秒	Active · Cooldown %d s

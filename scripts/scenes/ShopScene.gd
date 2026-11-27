@@ -1032,6 +1032,9 @@ func _open_detail_card() -> void:
 		if buy != null:
 			buy.queue_free()          # 卡没开出来(再点一次 = 收起): 这颗没挂上树, 别漏掉
 		return
+	## 说明里的【召唤物名】能点: 换成那个召唤物的小卡(2026-11-27 方案书 20261127d U4「图鉴、商店说明卡里能点」)
+	if lv.get("body", null) is RichTextLabel:
+		SummonCodex.attach_links(lv["body"], func(sid: String) -> void: _open_summon_card(sid))
 	## 小木斧: 砍伐进度条 + (攒够时)最终造物四选一, 接在说明下面
 	if AxePanel.should_show(GameState) and (eid == AxePanel.EID or AxeEvo.final_ready(
 			int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))):
@@ -1206,6 +1209,17 @@ func _axe_card_wanted() -> bool:
 
 
 
+## 召唤物小卡(商店说明里点名字打开; 数据同图鉴角色页 SummonCodex)。
+func _open_summon_card(sid: String) -> void:
+	var spec: Dictionary = SummonCodex.card_spec(sid)
+	if spec.is_empty():
+		return
+	spec["width"] = CARD_W
+	spec["min_px"] = MIN_FONT_PX
+	spec["body_px"] = MIN_FONT_PX
+	_insp.open("summon:" + sid, null, spec)
+
+
 ## 完整描述。★实测: 95 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
 ## (龟技能才有 <span class="val-atk"> 那套)。所以不需要 html_to_bbcode(空转), 也不怕 BBCode 吃掉 [xxx]。
 ## 保留 bbcode_enabled 只为将来装备文案要上色时不用改结构。
@@ -1226,7 +1240,8 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	#   装备描述里的 `1/1.2/1.5` 是【一/二/三星三档值】。商店卖 ★1, 原来三档同色平铺,
 	#   玩家看不出哪个数才是自己买到的。highlight_star 把当前星那档高亮、另两档压暗。
 	#   ★背包页(InventoryScene)一直在用这个函数, 商店漏了 —— 同一份文案两套渲染。
-	return SkillText.highlight_star(raw, star)
+	## 说明里的【召唤物名】做成链接(点了换成召唤物小卡, 见 _open_summon_card)
+	return SummonCodex.linkify(SkillText.highlight_star(raw, star))
 
 
 ## 游戏必须联网(2026-11-01): 正式包里花深海币的三件事(买装备 / 买经验 / 换一批)先过 `OnlineGate` ——

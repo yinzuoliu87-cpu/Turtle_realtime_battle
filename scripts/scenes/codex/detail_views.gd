@@ -1242,7 +1242,8 @@ func _show_p2eq(eq: Dictionary) -> void:
 	rt.add_theme_font_size_override("normal_font_size", 19)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
 	rt.add_theme_constant_override("line_separation", 6)
-	rt.text = bb
+	rt.text = SummonCodex.linkify(bb)   # 文案里的【召唤物名】点了跳到它的角色页(2026-11-27 方案书 20261127d U4)
+	SummonCodex.attach_links(rt, func(sid: String) -> void: open_entry({"k": "summon", "id": sid}))
 	rt.set_meta("codex_eq_effect", true)
 	host.detail.add_child(rt)
 	y += maxf(24.0, rt.get_combined_minimum_size().y) + BLOCK_GAP

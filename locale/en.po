@@ -1826,17 +1826,17 @@ msgstr "Each Artifact gives its holder +11 Magic Pen and +8 Max Energy · [Mana]
 msgid "每件法器为携带者提供 +14 魔法穿透、+10 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点 · 【余韵】提高至 {C:StaffSynergySystem.ECHO_PCT[3]%}% · 【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益，依次为眩晕、减速、灼烧、中毒、诅咒"
 msgstr "Each Artifact gives its holder +14 Magic Pen and +10 Max Energy · [Mana] Mana needed reduced to {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} · [Echo] Increased to {C:StaffSynergySystem.ECHO_PCT[3]%}% · [Resonance] Every {C:StaffSynergySystem.RESONANCE_PERIOD} seconds, your team heals {C:StaffSynergySystem.RESONANCE_HEAL%}% max health and cleanses {C:StaffSynergySystem.RESONANCE_DISPEL[3]} debuffs, in order: Stun, Slow, Burn, Poison, Curse"
 
-msgid "每件灵物为携带者提供 +5% 闪避 · 【触手】召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% 攻击力与生命值，自动攻击最近的敌人"
-msgstr "Each Spirit gives its holder +5% Dodge · [Tentacles] Summons {C:SpiritSynergySystem.TENTACLES[0]} unkillable tentacles. Each gains 1 Slap stack every {C:SpiritSynergySystem.SLAP_PERIOD} seconds, with no cap. With an enemy in range, it spends 1 stack to slam toward the nearest enemy, dealing {C:SpiritSynergySystem.HIT_FLAT} + {C:SpiritSynergySystem.HIT_HP_PCT%}% of the target's max health as physical damage to enemies in the path · [Undead] When an allied unit dies, a wraith rises in its place with {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% of its attack damage and health, and attacks the nearest enemy"
+msgid "每件灵物为携带者提供 +5% 闪避 · 【触手】召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只【亡魂】，自动攻击最近的敌人"
+msgstr "Each Spirit gives its holder +5% Dodge · [Tentacles] Summons {C:SpiritSynergySystem.TENTACLES[0]} unkillable tentacles. Each gains 1 Slap stack every {C:SpiritSynergySystem.SLAP_PERIOD} seconds, with no cap. With an enemy in range, it spends 1 stack to slam toward the nearest enemy, dealing {C:SpiritSynergySystem.HIT_FLAT} + {C:SpiritSynergySystem.HIT_HP_PCT%}% of the target's max health as physical damage to enemies in the path · [Undeath] when an allied unit dies, 1 [Wraith] rises in its place and attacks the nearest enemy"
 
-msgid "每件灵物为携带者提供 +9% 闪避 · 【触手】增加至 {C:SpiritSynergySystem.TENTACLES[1]} 根 · 【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击 · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%。亡魂阵亡后可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%"
-msgstr "Each Spirit gives its holder +9% Dodge · [Tentacles] Increased to {C:SpiritSynergySystem.TENTACLES[1]} · [Dodge Charge] Whenever any of your units dodges, each tentacle gains 1 Slap stack · [Undead] Inheritance increased to {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%. A dead wraith can rise {C:SpiritSynergySystem.WRAITH_LOOPS[1]} more times, each time with {C:SpiritSynergySystem.WRAITH_DECAY%}% of the previous stats"
+msgid "每件灵物为携带者提供 +9% 闪避 · 【触手】增加至 {C:SpiritSynergySystem.TENTACLES[1]} 根 · 【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击 · 【亡灵】亡魂继承更多属性，阵亡后可再化为亡魂"
+msgstr "Each Spirit gives its holder +9% Dodge · [Tentacles] Increased to {C:SpiritSynergySystem.TENTACLES[1]} · [Dodge Charge] Whenever any of your units dodges, each tentacle gains 1 Slap stack · [Undeath] Wraiths inherit more and can rise again after dying"
 
-msgid "每件灵物为携带者提供 +13% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[2]} 次"
-msgstr "Each Spirit gives its holder +13% Dodge · [Tentacles] Slap damage becomes {C:SpiritSynergySystem.HIT_MULT[2]%}% · [Undead] Inheritance increased to {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%, can rise {C:SpiritSynergySystem.WRAITH_LOOPS[2]} more times"
+msgid "每件灵物为携带者提供 +13% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}% · 【亡灵】亡魂继承更多属性，可多次再化为亡魂"
+msgstr "Each Spirit gives its holder +13% Dodge · [Tentacles] Slap damage becomes {C:SpiritSynergySystem.HIT_MULT[2]%}% · [Undeath] Wraiths inherit more and can rise again several times"
 
-msgid "每件灵物为携带者提供 +18% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次"
-msgstr "Each Spirit gives its holder +18% Dodge · [Tentacles] Slap damage becomes {C:SpiritSynergySystem.HIT_MULT[3]%}% · [Undead] Inheritance increased to {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%, can rise {C:SpiritSynergySystem.WRAITH_LOOPS[3]} more times"
+msgid "每件灵物为携带者提供 +18% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}% · 【亡灵】亡魂继承阵亡单位全部的生命值与攻击力"
+msgstr "Each Spirit gives its holder +18% Dodge · [Tentacles] Slap damage becomes {C:SpiritSynergySystem.HIT_MULT[3]%}% · [Undeath] Wraiths inherit all of the fallen unit's health and Attack"
 
 msgid "【刻痕】携带者每造成 {C:IncenseStoneSystem.PER_MARK} 点伤害，刻下 1 道刻痕，至多 {C:IncenseStoneSystem.MARK_CAP} 道，跨对局保留，赛季重置。多件香火石共用同一份刻痕 · 每道刻痕使携带者获得 {C:IncenseStoneSystem.ITEM_AMP%}% 增伤与 {C:IncenseStoneSystem.ITEM_DR%}% 减伤，全队获得 {C:IncenseStoneSystem.TEAM_AMP%}% 增伤与 {C:IncenseStoneSystem.TEAM_DR%}% 减伤"
 msgstr "[Engraving] For every {C:IncenseStoneSystem.PER_MARK} damage the holder deals, it carves 1 Engraving, up to {C:IncenseStoneSystem.MARK_CAP}. Engravings carry over between matches and reset each Season. Multiple Incense Stones share the same Engravings · Each Engraving gives the holder {C:IncenseStoneSystem.ITEM_AMP%}% Damage Amp and {C:IncenseStoneSystem.ITEM_DR%}% Damage Reduction, and the whole team {C:IncenseStoneSystem.TEAM_AMP%}% Damage Amp and {C:IncenseStoneSystem.TEAM_DR%}% Damage Reduction"
@@ -4592,14 +4592,14 @@ msgstr "Each attack and ability hit splashes 15/28/50% of its damage around the 
 msgid "【法力】充满时进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射并偷取魔抗。【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆。"
 msgstr "[Mana] When full, sweeps a crystal ray across {C:CrystalSystem.SWEEP_ARC_DEG}° and steals Magic Resist. [Mini Crystal] Detonates at {C:CrystalSystem.MINI_STACK_MAX} stacks."
 
-msgid "登场时召唤一只亡灵骷髅，其受到的任何攻击均只造成 1 点伤害。"
-msgstr "On spawn, summons an undead skeleton that takes only 1 damage from any attack."
+msgid "登场时召唤一只【亡灵骷髅】，其受到的任何攻击均只造成 1 点伤害。"
+msgstr "On spawn, summons an [Undead Skeleton] that takes only 1 damage from any attack."
 
-msgid "彻底阵亡时在原位变为一只小虫继续战斗，并随机携带 3 件装备。"
-msgstr "When it dies for good, becomes a bug in place that keeps fighting, carrying 3 random items."
+msgid "彻底阵亡时在原位变为一只【海螺虫】继续战斗，并随机携带 3 件装备。"
+msgstr "When the holder dies for good, it turns into a [Conch Bug] that fights on, carrying 3 random items."
 
-msgid "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人。达到 5/3/1 层后召唤一只大熊。"
-msgstr "Every {C:EquipTickSystem.DOLL_IV} seconds, sends a little bear to ram the nearest enemy. At 5/3/1 stacks, summons a big bear."
+msgid "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人。达到 5/3/1 层后召唤一只【大熊】。"
+msgstr "Every {C:EquipTickSystem.DOLL_IV} seconds, sends a little bear to ram the nearest enemy. At 5/3/1 stacks, summons a [Big Bear]."
 
 msgid "每秒回复 2/5/10+携带者最大生命值 0.3/0.8/1.2% 的生命值。孵化进度满 {C:EquipTickSystem.EGG_FULL} 时获得 1 点临时等级，上限 3/4/5 级。"
 msgstr "Heals 2/5/10 + 0.3/0.8/1.2% of max health per second. Gains 1 temporary level each time hatching reaches {C:EquipTickSystem.EGG_FULL}, up to 3/4/5 levels."
@@ -4730,14 +4730,14 @@ msgstr "Every {C:EqBowBatch.RAIN_IV} seconds, rains arrows on the densest group 
 msgid "释放技能后连续射出竹箭贯穿敌人，每穿过一个敌人偷取 0.5/0.5/1 点龟能。"
 msgstr "After casting an ability, fires a burst of bamboo arrows that pierce enemies, stealing 0.5/0.5/1 Energy per enemy pierced."
 
-msgid "生成一把迷你手枪协同攻击，其受到的所有伤害降为 2 点。"
-msgstr "Creates a mini pistol that attacks alongside. All damage it takes is reduced to 2."
+msgid "生成一把【小手枪】协同攻击，其受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点。"
+msgstr "Creates a [Little Pistol] that attacks alongside. All damage it takes is reduced to {C:EqGunBatch.PISTOL_DMG_CAP}."
 
 msgid "附近有敌人时，每 {C:EqGunBatch.EEL_IV} 秒左右两管交替开火：左管发射锥形霰弹，右管发射可连锁全场的电击弹。"
 msgstr "With enemies nearby, the two barrels fire in turn every {C:EqGunBatch.EEL_IV} seconds: the left fires a cone of buckshot, the right fires a shock round that can chain across the field."
 
-msgid "在身后生成一座医疗炮台，攻击对敌人造成伤害，并为生命百分比最低的友军回复生命值。"
-msgstr "Creates a medic turret behind it. Its attacks damage enemies and heal the ally with the lowest health percentage."
+msgid "在身后生成一座【急救塔】，攻击对敌人造成伤害，并为生命百分比最低的友军回复生命值。"
+msgstr "Creates an [Aid Tower] behind it. Its attacks damage enemies and heal the ally with the lowest health percentage."
 
 msgid "登场时召唤一架直升机进行扫射。直升机龟能满时沿航线发动地毯轰炸。"
 msgstr "On spawn, summons a gyrocopter that strafes enemies. At full Energy, it carpet-bombs along its route."
@@ -5198,14 +5198,14 @@ msgstr "Each attack and ability hit splashes physical damage equal to 15/28/50% 
 msgid "【法力】充满时，以携带者为中心进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射，对扫中的敌人造成 60/130/250 魔法伤害，施加 1 层【迷你水晶】，并偷取其 {C:CrystalSystem.MINI_MR_STEAL%}% 魔抗，持续到本战场结束。\n【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆，造成 14/17/20% 目标最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">扫射持续 {C:CrystalSystem.SWEEP_SEC} 秒，跟随携带者移动。</span>"
 msgstr "[Mana] When full, sweeps a crystal ray across {C:CrystalSystem.SWEEP_ARC_DEG}° around itself, dealing 60/130/250 magic damage to enemies hit, applying 1 [Mini Crystal] stack, and stealing {C:CrystalSystem.MINI_MR_STEAL%}% of their Magic Resist until the battle ends.\n[Mini Crystal] detonates at {C:CrystalSystem.MINI_STACK_MAX} stacks, dealing magic damage equal to 14/17/20% of the target's max health.\n<span style=\"color:#8a93a0\">The sweep lasts {C:CrystalSystem.SWEEP_SEC} seconds and follows the holder.</span>"
 
-msgid "登场时召唤一只亡灵骷髅，最大生命值 16/31/55，攻击力 3/5/8，护甲与魔抗为 0。骷髅受到的任何攻击均只造成 1 点伤害，真实伤害同样如此。骷髅死亡或存活 13/17/23 秒后爆炸，对周围的敌人造成相当于目标最大生命值 8/13/20% 的真实伤害。"
-msgstr "On spawn, summons an undead skeleton with 16/31/55 max health, 3/5/8 Attack and 0 Armor and Magic Resist. Any attack deals only 1 damage to it, true damage included. When the skeleton dies or after 13/17/23 seconds, it explodes, dealing true damage equal to 8/13/20% of each nearby enemy's max health."
+msgid "登场时召唤一只【亡灵骷髅】。亡灵骷髅受到的任何伤害都只有 1 点，真实伤害也一样，阵亡或存在一段时间后爆炸，对周围的敌人造成真实伤害。"
+msgstr "On spawn, summons an [Undead Skeleton]. It takes only 1 damage from anything, true damage included, and explodes when it dies or after a while, dealing true damage to nearby enemies."
 
-msgid "所有复活机会用尽、彻底阵亡时，在原位变形为一只小虫。小虫拥有 {C:EquipSystem.WORM_HP} 生命值与 50/80/200 攻击力，无护甲与魔抗，只有星级而无等级，会自动攻击最近的敌人，攻击速度为 {C:EquipSystem.WORM_ASPD}/秒，造成 100% 攻击力的物理伤害。\n小虫诞生时随机携带 3 件 1/2/3 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。"
-msgstr "When all revives are used up and the holder dies for good, it turns into a bug in place. The bug has {C:EquipSystem.WORM_HP} health and 50/80/200 Attack, no Armor or Magic Resist, and a star level but no level. It automatically attacks the nearest enemy at {C:EquipSystem.WORM_ASPD} attacks per second, dealing 100% Attack as physical damage.\nThe bug spawns carrying 3 random 1/2/3-star items costing {C:EquipSystem.CONCH_COST_MIN} or {C:EquipSystem.CONCH_COST_MAX}."
+msgid "所有复活机会用尽、彻底阵亡时，在原位变形为一只【海螺虫】。海螺虫诞生时随机携带 3 件 1/2/3 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。"
+msgstr "When all revives are used up and the holder dies for good, it turns into a [Conch Bug] in place. The bug is born carrying 3 random 1/2/3-star {C:EquipSystem.CONCH_COST_MIN}- or {C:EquipSystem.CONCH_COST_MAX}-cost items."
 
-msgid "每 {C:EquipTickSystem.DOLL_IV} 秒向最近敌人派出小熊，造成（100/200/500% 攻击力+100/210/1000）物理伤害并将其击飞，携带者获得 1 层大熊层数。达到 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤近战大熊，拥有 1600/3000/15000 生命值、70/120/2000 攻击力、{C:EquipTickSystem.BEAR_RESIST} 双抗、{C:EquipTickSystem.BEAR_ASPD}/秒攻击速度。若无空位，继续派出小熊直至有空位。\n大熊攻击（熊掌）造成 100% 攻击力物理伤害并累积 1 层。{C:EquipTickSystem.BEAR_PAW_STACKS} 层时，下次攻击转而释放冲击波，射程临时增至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码，造成 {C:EquipTickSystem.BEAR_WAVE_COEF%}% 攻击力物理伤害，将命中敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉至身前，并重置层数。"
-msgstr "Every {C:EquipTickSystem.DOLL_IV} seconds, sends a little bear at the nearest enemy, dealing (100/200/500% Attack + 100/210/1000) physical damage and knocking it up, and the holder gains 1 Big Bear stack. At 5/3/1 stacks, the item is destroyed and the holder charges for {C:EquipTickSystem.DOLL_CHARGE_SEC} seconds, then summons a melee Big Bear in an open slot with 1600/3000/15000 health, 70/120/2000 Attack, {C:EquipTickSystem.BEAR_RESIST} Armor and Magic Resist, and {C:EquipTickSystem.BEAR_ASPD} attacks per second. With no open slot, it keeps sending little bears until one opens.\nThe Big Bear's attacks (Bear Paw) deal 100% Attack as physical damage and build 1 stack. At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, its next attack instead releases a shockwave with range temporarily increased to {C:EquipTickSystem.BEAR_WAVE_RANGE}, dealing {C:EquipTickSystem.BEAR_WAVE_COEF%}% Attack as physical damage, knocking enemies hit up for {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} seconds, pulling them in front of it, and resetting the stacks."
+msgid "每 {C:EquipTickSystem.DOLL_IV} 秒向最近敌人派出小熊，造成（100/200/500% 攻击力+100/210/1000）物理伤害并将其击飞，携带者获得 1 层大熊层数。达到 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只【大熊】。若无空位，继续派出小熊直至有空位。"
+msgstr "Every {C:EquipTickSystem.DOLL_IV} seconds, sends a little bear at the nearest enemy, dealing (100/200/500% Attack + 100/210/1000) physical damage and knocking it up; the holder gains 1 Bear stack. At 5/3/1 stacks the item is destroyed, and after channeling for {C:EquipTickSystem.DOLL_CHARGE_SEC} seconds the holder summons a [Big Bear] in an empty spot. If there's no empty spot, it keeps sending little bears until there is."
 
 msgid "每秒回复 2/5/10+携带者最大生命值 0.3/0.8/1.2% 的生命值。\n持续获得孵化进度：每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 {C:EquipTickSystem.EGG_PER_CYCLE}，敌方单位阵亡时获得 {C:EquipTickSystem.EGG_ON_FOE_DEATH}，己方单位阵亡时获得 {C:EquipTickSystem.EGG_ON_ALLY_DEATH}，造成的伤害×{C:EquipTickSystem.EGG_DMG_RATIO} 与承受的伤害×{C:EquipTickSystem.EGG_DMG_RATIO} 计入进度。进度满 {C:EquipTickSystem.EGG_FULL} 时获得 1 点临时等级，每级提升 {C:EquipTickSystem.EGG_LV_GROWTH%}% 基础属性（上限 3/4/5 级）。临时等级在本局对局中保留到下路与终极战场，开始新对局时重置。\n孵满后为全队均摊 300/400/600 点护盾，直到被打破，仅触发一次，龟蛋与训龟大师不参与分摊。"
 msgstr "Heals 2/5/10 + 0.3/0.8/1.2% of max health per second.\nBuilds hatching progress: {C:EquipTickSystem.EGG_PER_CYCLE} every {C:RealtimeBattle3DScene.EQ_TICK} seconds, {C:EquipTickSystem.EGG_ON_FOE_DEATH} when an enemy unit dies, {C:EquipTickSystem.EGG_ON_ALLY_DEATH} when an allied unit dies, plus damage dealt × {C:EquipTickSystem.EGG_DMG_RATIO} and damage taken × {C:EquipTickSystem.EGG_DMG_RATIO}. Each time progress reaches {C:EquipTickSystem.EGG_FULL}, gains 1 temporary level, each raising base stats by {C:EquipTickSystem.EGG_LV_GROWTH%}% (up to 3/4/5 levels). Temporary levels carry into the Bottom Lane and Final Battle of the same match and reset in a new match.\nWhen fully hatched, splits a 300/400/600 shield across the team until broken. Triggers once; Turtle Eggs and the Turtle Trainer don't share it."
@@ -5321,8 +5321,8 @@ msgstr "Every {C:EquipTickSystem.BROADSWORD_IV} seconds, swings a wall of sword 
 msgid "每个战场开始时，为包括携带者在内的所有友军提供其最大生命值 10/18/25% 的【奶油护盾】，该护盾持续到被打破为止。\n奶油护盾被打破时，对附近的敌人造成 70/100/150 点魔法伤害，随后该友军获得 {C:EqFoodBatch.CREAM_RESIST} 双抗、20/30/40% 攻击速度和 {C:EqFoodBatch.CREAM_RANGE} 射程，持续到本战场结束。\n携带者每累计受到相当于其最大生命值 {C:EqFoodBatch.CREAM_LOSS_STEP%}% 的伤害，再次为全队提供一次奶油护盾，每个战场共 {C:EqFoodBatch.CREAM_TIMES} 次。"
 msgstr "At the start of each battle, gives every ally, including the holder, a [Cream Shield] equal to 10/18/25% of its max health that lasts until broken.\nWhen a Cream Shield breaks, it deals 70/100/150 magic damage to nearby enemies, and that ally gains {C:EqFoodBatch.CREAM_RESIST} Armor and Magic Resist, 20/30/40% attack speed and {C:EqFoodBatch.CREAM_RANGE} range until the battle ends.\nEach time the holder has taken damage equal to {C:EqFoodBatch.CREAM_LOSS_STEP%}% of its max health, it gives the team Cream Shields again, {C:EqFoodBatch.CREAM_TIMES} times per battle."
 
-msgid "获得最大生命值 50/80/120% 的永久【终极护盾】。\n护盾存在时，携带者化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽附近所有敌人，每有一个敌人以携带者为目标，获得 20/30/60 双抗。攻击造成 100% 攻击力物理伤害。技能召唤蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命值与 2/4/6 龟能。\n终极护盾破碎时，携带者脱离礼盒。\n携带者阵亡时分裂出两个蛋糕礼盒，拥有其 20/40/100% 最大生命值及相同攻击力与双抗，其余属性为 0 或默认值，同样嘲讽并施放礼盒技能。"
-msgstr "Gains a permanent [Ultimate Shield] equal to 50/80/120% of max health.\nWhile it holds, the holder becomes a Cake Box: stats unchanged, range becomes melee, and attacks and abilities are replaced by Cake Box effects.\nThe Cake Box taunts all nearby enemies and gains 20/30/60 Armor and Magic Resist for each enemy targeting it. Attacks deal 100% Attack as physical damage. Its ability summons a cake circle for {C:EqFoodBatch.BOX_FIELD_SEC} seconds that heals allies inside for 50/70/120 and gives 2/4/6 Energy per second.\nWhen the Ultimate Shield breaks, the holder leaves the Cake Box.\nWhen the holder dies, it splits into two Cake Boxes with 20/40/100% of its max health and the same Attack, Armor and Magic Resist (other stats 0 or default), which also taunt and cast the Cake Box ability."
+msgid "获得最大生命值 50/80/120% 的永久【终极护盾】。\n护盾存在时，携带者化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽附近所有敌人，每有一个敌人以携带者为目标，获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER} 双抗。攻击造成 {C:EqFoodBatch.BOX_HIT_COEF%}% 攻击力物理伤害。技能召唤蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL} 生命值与 {C:EqFoodBatch.BOX_FIELD_ENERGY} 龟能。\n终极护盾破碎时，携带者脱离礼盒。\n携带者阵亡时分裂出两个【蛋糕礼盒】。"
+msgstr "Gains a permanent [Ultimate Shield] equal to 50/80/120% of max health.\nWhile it holds, the holder becomes a Cake Box: stats unchanged, range becomes melee, and attacks and abilities are replaced by Cake Box effects.\nThe Cake Box taunts all nearby enemies and gains {C:EqFoodBatch.BOX_RES_PER_LOCKER} Armor and Magic Resist for each enemy targeting it. Attacks deal {C:EqFoodBatch.BOX_HIT_COEF%}% Attack as physical damage. Its ability summons a cake circle for {C:EqFoodBatch.BOX_FIELD_SEC} seconds that heals allies inside for {C:EqFoodBatch.BOX_FIELD_HEAL} and gives {C:EqFoodBatch.BOX_FIELD_ENERGY} Energy per second.\nWhen the Ultimate Shield breaks, the holder leaves the Cake Box.\nWhen the holder dies, it splits into two [Cake Box] summons."
 
 msgid "身上悬浮一颗藤蔓小球。\n每次攻击时，小球向随机敌人射出一支藤蔓箭，造成（15/23/30 + 30/40/60% 攻击力）物理伤害。\n藤蔓箭独立判定暴击，暴击率与携带者相同。暴击时藤蔓箭转为真实伤害，并使携带者获得 35/45/60% 攻击速度，持续 {C:EqBowBatch.VINE_ASPD_SEC} 秒。再次暴击仅刷新持续时间，不可叠加。"
 msgstr "A vine orb floats beside the holder.\nEach attack, the orb fires a vine arrow at a random enemy, dealing (15/23/30 + 30/40/60% Attack) physical damage.\nVine arrows roll crits separately, using the holder's Crit Chance. A critical vine arrow deals true damage and grants the holder 35/45/60% attack speed for {C:EqBowBatch.VINE_ASPD_SEC} seconds. Further crits only refresh the duration; it doesn't stack."
@@ -5336,14 +5336,14 @@ msgstr "Every {C:EqBowBatch.RAIN_IV} seconds, rains arrows on the densest group 
 msgid "被动：仅在弓箭羁绊激活时生效，每 {C:EqBowBatch.CORRODE_EVERY} 次攻击对目标施加 1 层【腐蚀】，与弓箭羁绊共用层数。\n主动：释放技能后，每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，箭数=本次技能消耗的龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}。\n箭沿直线飞行，贯穿沿途敌人，每支造成 5/6/8% 攻击力的物理伤害加 9/13/16 点真实伤害。每穿过一个敌人，伤害降低 {C:BowEqVfx.PIERCE_DECAY_DOWN%}%（最低 {C:BowEqVfx.PIERCE_FLOOR%}%），并从该敌人身上为携带者偷取 0.5/0.5/1 点龟能。"
 msgstr "Passive: only while the Bow synergy is active, every {C:EqBowBatch.CORRODE_EVERY} attacks apply 1 [Corrosion] stack to the target, shared with the Bow synergy.\nActive: after casting an ability, fires an arrow every {C:EqBowBatch.VOLLEY_IV} seconds; arrows = Energy that ability cost ÷ {C:EqBowBatch.ENERGY_PER_SHOT}.\nArrows fly straight and pierce enemies, each dealing 5/6/8% Attack as physical damage plus 9/13/16 true damage. Each enemy pierced reduces damage by {C:BowEqVfx.PIERCE_DECAY_DOWN%}% (minimum {C:BowEqVfx.PIERCE_FLOOR%}%) and steals 0.5/0.5/1 Energy from that enemy for the holder."
 
-msgid "生成一把迷你小手枪：30/60/100 生命值、15/25/40 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程，每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，攻击造成 100% 攻击力的物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，该效果每个战场重置。\n小手枪没有护盾时，受到的所有伤害降为 2 点，真实伤害同样如此，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。小手枪受到的治疗效果上限为 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。"
-msgstr "Creates a mini pistol with 30/60/100 health, 15/25/40 Attack and {C:EqGunBatch.PISTOL_RANGE} range. It attacks every {C:EqGunBatch.PISTOL_IV} seconds for 100% Attack as physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance.\nEach attack permanently gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen, reset each battle.\nWithout a shield, all damage the pistol takes is reduced to 2, true damage included, or {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} after the holder dies. Healing on the pistol is capped at 1.\nThe pistol's attacks trigger the Gun synergy's [Golden Bullet]."
+msgid "生成一把【小手枪】协同攻击，其受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点。\n小手枪的攻击会触发枪羁绊【金弹】。"
+msgstr "Creates a [Little Pistol] that attacks alongside. All damage it takes is reduced to {C:EqGunBatch.PISTOL_DMG_CAP}.\nThe pistol's attacks trigger the Gun synergy's [Golden Bullet]."
 
 msgid "两管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替射击，仅在附近有敌人时开火。\n左管发射锥形霰弹，造成 15/25/40 + 30/60/100% 攻击力的物理伤害。\n右管发射电击弹，对首个目标造成 {C:EqGunBatch.EEL_BOLT_ATK%}% 攻击力的物理伤害+50/100/180 魔法伤害。魔法伤害依次连锁至所有未被击中的敌人，每次跳跃降低 20/15/10%。\n金弹从轮到的那管射出并继承其效果，额外造成本段伤害 60/80/100% 的真实伤害（随枪羁绊件数），对电击弹首个目标与每次跳跃均生效。"
 msgstr "The two barrels share a counter and fire in turn every {C:EqGunBatch.EEL_IV} seconds, only when enemies are nearby.\nThe left barrel fires a cone of buckshot dealing 15/25/40 + 30/60/100% Attack as physical damage.\nThe right barrel fires a shock round dealing {C:EqGunBatch.EEL_BOLT_ATK%}% Attack as physical damage + 50/100/180 magic damage to the first target. The magic damage chains to every enemy not yet hit, dropping 20/15/10% per bounce.\nGolden Bullets come from whichever barrel is up and keep its effects, dealing bonus true damage equal to 60/80/100% of the hit (scales with Gun count), applied to the shock round's first target and every bounce."
 
-msgid "在携带者后方生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与携带者相同。\n炮台攻击造成 100% 攻击力的物理伤害+目标最大生命值 1/1.5/2% 的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，随枪羁绊件数每攻击 4/3/2 次射出一发金弹，金弹继承全部效果并附加本段伤害 60/80/100% 的真实伤害，且金弹的治疗量翻倍。"
-msgstr "Creates a medic turret behind the holder with 700/1200/2500 health, 15/20/30 Attack, 50/70/100 Armor and Magic Resist, and the holder's attack speed.\nTurret attacks deal 100% Attack as physical damage + 1/1.5/2% of the target's max health as magic damage, and heal the ally with the lowest health percentage for 10/15/20.\nThe turret has its own Golden Bullet counter: every 4/3/2 attacks (scales with Gun count) it fires a Golden Bullet that keeps all effects, adds true damage equal to 60/80/100% of the hit, and heals double."
+msgid "在携带者后方生成一座【急救塔】，攻击敌人，并为生命百分比最低的友军回复生命值。\n急救塔拥有独立的金弹计数，随枪羁绊件数射出金弹。"
+msgstr "Creates an [Aid Tower] behind the holder that attacks enemies and heals the ally with the lowest health percentage.\nThe tower has its own Golden Bullet counter, which scales with Gun count."
 
 msgid "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF%}% 攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的航线飞过，投下 8/10/14 枚炸弹，每枚对落点附近敌人造成 40/70/150% 攻击力的物理伤害+50/100/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n携带者阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对附近敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。"
 msgstr "On spawn, summons an untargetable, fully immune gyrocopter that circles over the battlefield with its own Energy bar.\nEvery {C:EqGunBatch.HELI_FIRE_IV} seconds, it strafes the nearest enemy below with 3/4/10 cannon rounds, each dealing {C:EqGunBatch.HELI_SHOT_COEF%}% Attack as physical damage and granting {C:EqGunBatch.HELI_EN_PER_HIT} Energy on hit (max {C:EqGunBatch.HELI_EN_MAX}).\nAt full Energy, it launches [Carpet Bombing]: flies the route covering the most enemies and drops 8/10/14 bombs, each dealing 40/70/150% Attack as physical damage + 50/100/120 magic damage to enemies near where it lands.\nCannon rounds and bombs both count toward the Gun synergy's [Golden Bullet].\nAfter the holder dies, the gyrocopter keeps flying for {C:EqGunBatch.DOOM_SEC} seconds, then crashes into a random enemy and explodes, dealing 200/300/500 physical damage and applying {C:EqGunBatch.CRASH_BURN} Burn to nearby enemies."
@@ -6143,8 +6143,8 @@ msgstr "Hunt Mark"
 msgid "击飞"
 msgstr "Knock-up"
 
-msgid "3 星：变虫后每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新小虫（上限 {C:EquipSystem.WORM_CAP} 只）。"
-msgstr "3 stars: after becoming a bug, it splits off a new bug into an open slot every {C:EquipSystem.WORM_SPLIT_IV} seconds (up to {C:EquipSystem.WORM_CAP})."
+msgid "3 星：【海螺虫】会不断分裂出新的海螺虫。"
+msgstr "3-star: the [Conch Bug] keeps splitting off new bugs."
 
 msgid "拖到友方单位上使用，立即回复 (50 + 10% 目标最大生命值) 生命值。"
 msgstr "Drag onto an ally to use: instantly heals (50 + 10% of the target's max health)."
@@ -6170,8 +6170,8 @@ msgstr "Drag onto an ally to use: instantly removes all debuffs.\n※ Debuffs in
 msgid "拖到敌方单位上使用，标记 2 回合，期间受到的所有伤害 +20% (任何来源)。"
 msgstr "Drag onto an enemy to use: marks it for 2 turns, during which it takes 20% more damage from all sources."
 
-msgid "登场时召唤【斧头】。\n主动：【斧头】会持续积累龟能，龟能达到 {C:AxeEvolution.ACTIVE_ENERGY} 时，回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。\n被动：【斧头】的攻击会窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。\n【砍伐经验】：每次购买小木斧获得 {C:AxeEvolution.EXP_ON_BUY} 点，持有小木斧时每场对局结束后获得 {C:AxeEvolution.EXP_ON_MATCH} 点，【斧头】每次参与击杀获得 {C:AxeEvolution.EXP_ON_KILL} 点。\n小木斧获得 {C:AxeEvolution.STAGE_NEEDS[0]} 点【砍伐经验】后进化为【石斧】，之后再获得 {C:AxeEvolution.STAGE_NEEDS[1]}、{C:AxeEvolution.STAGE_NEEDS[2]}、{C:AxeEvolution.STAGE_NEEDS[3]} 点，依次进化为【铁斧】、【金斧】、【钻石斧】。每次进化，小木斧的售价提高 1 费。成为【钻石斧】后再获得 {C:AxeEvolution.FINAL_NEED} 点【砍伐经验】，可以在商店中选择一个最终造物。\n<span style=\"color:#8a93a0\">参与击杀：【斧头】击杀目标，或在目标阵亡前 {C:AxeEvolution.ASSIST_WINDOW} 秒内命中过该目标。\n只能持有 1 把小木斧，再次购买时转而获得 {C:AxeEvolution.EXP_ON_BUY} 点砍伐经验。无法升星。\n每次进化时，超出的砍伐经验不计入下一次进化。\n选定最终造物后本大轮内不可更改，并且不再获得砍伐经验。每个大轮开始时，砍伐经验与进化全部重置。\n【斧头】拥有：</span>\n（{C:AxeEvolution.MINION_HP_BASE}＋{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值\n（{C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力\n{C:AxeEvolution.MINION_DEF} 护甲\n{C:AxeEvolution.MINION_MR} 魔抗"
-msgstr "On spawn, summons [Axe].\nActive: [Axe] keeps building Energy. At {C:AxeEvolution.ACTIVE_ENERGY} Energy, it heals {C:AxeEvolution.ACTIVE_HEAL_PCT%}% of its max health and gains a shield equal to {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% of its max health.\nPassive: [Axe]'s attacks steal {C:AxeEvolution.SHIELD_STEAL_PCT%}% of the target's shield as its own.\n[Chopping XP]: {C:AxeEvolution.EXP_ON_BUY} for each Little Wooden Axe bought, {C:AxeEvolution.EXP_ON_MATCH} after each match while holding one, and {C:AxeEvolution.EXP_ON_KILL} each time [Axe] takes part in a kill.\nAt {C:AxeEvolution.STAGE_NEEDS[0]} [Chopping XP], the Little Wooden Axe evolves into [Stone Axe]; then at another {C:AxeEvolution.STAGE_NEEDS[1]}, {C:AxeEvolution.STAGE_NEEDS[2]} and {C:AxeEvolution.STAGE_NEEDS[3]}, into [Iron Axe], [Gold Axe] and [Diamond Axe]. Each evolution raises its sell price by 1. Once it's a [Diamond Axe], another {C:AxeEvolution.FINAL_NEED} [Chopping XP] lets you choose a Final Creation in the shop.\n<span style=\"color:#8a93a0\">Taking part in a kill: [Axe] kills the target, or hit it within {C:AxeEvolution.ASSIST_WINDOW} seconds before it died.\nYou can hold only 1 Little Wooden Axe; buying another gives {C:AxeEvolution.EXP_ON_BUY} Chopping XP instead. It can't be starred up.\nExcess Chopping XP doesn't carry over to the next evolution.\nOnce chosen, the Final Creation can't be changed this Season and no more Chopping XP is earned. Chopping XP and evolutions reset at the start of each Season.\n[Axe] has:</span>\n({C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × Chopping XP) Health\n({C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × Chopping XP) Attack\n{C:AxeEvolution.MINION_DEF} Armor\n{C:AxeEvolution.MINION_MR} Magic Resist"
+msgid "登场时召唤【斧头】。\n主动：【斧头】会持续积累龟能，龟能达到 {C:AxeEvolution.ACTIVE_ENERGY} 时，回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。\n被动：【斧头】的攻击会窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。\n【砍伐经验】：每次购买小木斧获得 {C:AxeEvolution.EXP_ON_BUY} 点，持有小木斧时每场对局结束后获得 {C:AxeEvolution.EXP_ON_MATCH} 点，【斧头】每次参与击杀获得 {C:AxeEvolution.EXP_ON_KILL} 点。\n小木斧获得 {C:AxeEvolution.STAGE_NEEDS[0]} 点【砍伐经验】后进化为【石斧】，之后再获得 {C:AxeEvolution.STAGE_NEEDS[1]}、{C:AxeEvolution.STAGE_NEEDS[2]}、{C:AxeEvolution.STAGE_NEEDS[3]} 点，依次进化为【铁斧】、【金斧】、【钻石斧】。每次进化，小木斧的售价提高 1 费。成为【钻石斧】后再获得 {C:AxeEvolution.FINAL_NEED} 点【砍伐经验】，可以在商店中选择一个最终造物。\n<span style=\"color:#8a93a0\">参与击杀：【斧头】击杀目标，或在目标阵亡前 {C:AxeEvolution.ASSIST_WINDOW} 秒内命中过该目标。\n只能持有 1 把小木斧，再次购买时转而获得 {C:AxeEvolution.EXP_ON_BUY} 点砍伐经验。无法升星。\n每次进化时，超出的砍伐经验不计入下一次进化。\n选定最终造物后本大轮内不可更改，并且不再获得砍伐经验。每个大轮开始时，砍伐经验与进化全部重置。</span>"
+msgstr "On spawn, summons [Axe].\nActive: [Axe] keeps building Energy. At {C:AxeEvolution.ACTIVE_ENERGY} Energy, it heals {C:AxeEvolution.ACTIVE_HEAL_PCT%}% of its max health and gains a shield equal to {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% of its max health.\nPassive: [Axe]'s attacks steal {C:AxeEvolution.SHIELD_STEAL_PCT%}% of the target's shield as its own.\n[Chopping XP]: {C:AxeEvolution.EXP_ON_BUY} for each Little Wooden Axe bought, {C:AxeEvolution.EXP_ON_MATCH} after each match while holding one, and {C:AxeEvolution.EXP_ON_KILL} each time [Axe] takes part in a kill.\nAt {C:AxeEvolution.STAGE_NEEDS[0]} [Chopping XP], the Little Wooden Axe evolves into [Stone Axe]; then at another {C:AxeEvolution.STAGE_NEEDS[1]}, {C:AxeEvolution.STAGE_NEEDS[2]} and {C:AxeEvolution.STAGE_NEEDS[3]}, into [Iron Axe], [Gold Axe] and [Diamond Axe]. Each evolution raises its sell price by 1. Once it's a [Diamond Axe], another {C:AxeEvolution.FINAL_NEED} [Chopping XP] lets you choose a Final Creation in the shop.\n<span style=\"color:#8a93a0\">Taking part in a kill: [Axe] kills the target, or hit it within {C:AxeEvolution.ASSIST_WINDOW} seconds before it died.\nYou can hold only 1 Little Wooden Axe; buying another gives {C:AxeEvolution.EXP_ON_BUY} Chopping XP instead. It can't be starred up.\nExcess Chopping XP doesn't carry over to the next evolution.\nOnce chosen, the Final Creation can't be changed this Season and no more Chopping XP is earned. Chopping XP and evolutions reset at the start of each Season.</span>"
 
 msgid "小木斧每次进化，【斧头】额外获得 {C:AxeEvolution.PASSIVE_HP} 生命值、{C:AxeEvolution.PASSIVE_ATK} 攻击力、{C:AxeEvolution.PASSIVE_DEF} 护甲和 {C:AxeEvolution.PASSIVE_MR} 魔抗，并获得以下效果：\n【石斧】：每 {C:AxeEvolution.SMASH_IV} 秒，【斧头】的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}% 攻击力）物理伤害，并将目标击飞和短暂击退。\n【铁斧】：【斧头】每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。\n【金斧】：【斧头】的攻击在 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫和竖劈之间交替，横扫命中前方所有敌人。每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。\n【钻石斧】：龟能达到 {C:AxeEvolution.ACTIVE_ENERGY} 时，【斧头】还会开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}% 攻击力）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。"
 msgstr "Each time the Little Wooden Axe evolves, [Axe] gains {C:AxeEvolution.PASSIVE_HP} Health, {C:AxeEvolution.PASSIVE_ATK} Attack, {C:AxeEvolution.PASSIVE_DEF} Armor and {C:AxeEvolution.PASSIVE_MR} Magic Resist, plus these effects:\n[Stone Axe]: every {C:AxeEvolution.SMASH_IV} seconds, [Axe]'s next attack deals ({C:AxeEvolution.SMASH_ATK%}% Attack) bonus physical damage and knocks the target up and briefly back.\n[Iron Axe]: every 2nd attack from [Axe] becomes a downward cleave that deals bonus true damage equal to {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% of the target's max health and applies {C:AxeEvolution.CLEAVE_BLEED} Bleed.\n[Gold Axe]: [Axe]'s attacks alternate between a {C:AxeEvolution.SWEEP_ARC_DEG}° sweep, which hits all enemies in front, and a downward cleave. Each attack hit grants 1 [Efficiency] stack for {C:AxeEvolution.EFF_DUR} seconds, stacking infinitely and refreshing on each stack. Each [Efficiency] stack grants {C:AxeEvolution.EFF_ASPD%}% attack speed and {C:AxeEvolution.EFF_MOVE%}% move speed.\n[Diamond Axe]: at {C:AxeEvolution.ACTIVE_ENERGY} Energy, [Axe] also starts a [Charged Slam], charging for {C:AxeEvolution.CHARGE_TIME} seconds with {C:AxeEvolution.CHARGE_DR%}% Damage Reduction. When the charge ends, it slams down, dealing ({C:AxeEvolution.SLAM_ATK%}% Attack) physical damage to every enemy in the area in front, knocking them up and stunning them for {C:AxeEvolution.SLAM_STUN} seconds."
@@ -8117,29 +8117,29 @@ msgstr "Every {C:EqBombBatch.TIMER_IV} seconds, straps a time bomb to the neares
 msgid "炮筒"
 msgstr "Cannon"
 
-msgid "召唤一门高血量炮筒，龟能满时进入重炮状态，直线击退并流血。"
-msgstr "Summons a sturdy cannon. At full Energy it switches to heavy shells that fly in a line, knocking back and applying Bleed."
+msgid "召唤一门高血量【炮筒】，龟能满时进入重炮状态，直线击退并流血。"
+msgstr "Summons a high-health [Cannon]. When its Energy is full it enters Heavy Shot mode, knocking back and bleeding enemies in a line."
 
-msgid "登场时在己方后方召唤一门炮筒：{C:EqBombBatch.CANNON_HP} 生命值、{C:EqBombBatch.CANNON_ATK} 攻击力，龟能上限 {C:EqBombBatch.CANNON_EN_MAX}。炮筒攻击速度 {C:EqBombBatch.CANNON_ASPD}，每次攻击朝敌人开一炮，造成 100% 攻击力的物理伤害。龟能满时进入重炮状态：每发消耗 {C:EqBombBatch.CANNON_HEAVY_COST} 龟能，炮弹沿直线飞过整个战场，击退直线上的敌人，造成 {C:EqBombBatch.CANNON_HEAVY_MULT%}% 攻击力的物理伤害并施加 {C:EqBombBatch.CANNON_HEAVY_BLEED} 层流血。龟能耗尽时回到普通炮击。"
-msgstr "On spawn, summons a cannon behind your line: {C:EqBombBatch.CANNON_HP} health, {C:EqBombBatch.CANNON_ATK} Attack, {C:EqBombBatch.CANNON_EN_MAX} max Energy. The cannon has {C:EqBombBatch.CANNON_ASPD} attack speed; each attack fires at an enemy, dealing 100% Attack as physical damage. At full Energy it switches to heavy shells: each costs {C:EqBombBatch.CANNON_HEAVY_COST} Energy and flies across the battlefield in a straight line, knocking back enemies in its path, dealing {C:EqBombBatch.CANNON_HEAVY_MULT%}% Attack as physical damage and applying {C:EqBombBatch.CANNON_HEAVY_BLEED} Bleed stacks. When Energy runs out, it returns to normal shots."
+msgid "登场时在己方后方召唤一门【炮筒】。炮筒龟能满时进入重炮状态，炮弹沿直线飞过整个战场，击退直线上的敌人并施加流血。"
+msgstr "On spawn, summons a [Cannon] behind your side. When its Energy is full it enters Heavy Shot mode: shells fly in a straight line across the whole battlefield, knocking back enemies in the line and applying Bleed."
 
 msgid "遥控炸弹"
 msgstr "Remote Bomb"
 
-msgid "召唤一枚追着敌人跑的遥控炸弹，生命耗尽时大范围爆炸。"
-msgstr "Summons a remote bomb that chases enemies and explodes over a wide area when its health runs out."
+msgid "召唤一枚追着敌人跑的【遥控炸弹】，生命耗尽时大范围爆炸。"
+msgstr "Summons a [Remote Bomb] that chases enemies and explodes over a large area when its health runs out."
 
-msgid "登场时在己方前排召唤一枚遥控炸弹：{C:EqBombBatch.REMOTE_HP} 生命值、{C:EqBombBatch.REMOTE_RES} 护甲和魔抗。遥控炸弹追着一个敌人移动，不攻击，每秒损失其 {C:EqBombBatch.REMOTE_DECAY%}% 最大生命值。生命值耗尽时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT%}% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED} 层流血。"
-msgstr "On spawn, summons a remote bomb at your front line: {C:EqBombBatch.REMOTE_HP} health, {C:EqBombBatch.REMOTE_RES} Armor and Magic Resist. It chases an enemy without attacking and loses {C:EqBombBatch.REMOTE_DECAY%}% of its max health per second. When its health runs out, it explodes, dealing {C:EqBombBatch.REMOTE_FLAT} physical damage plus true damage equal to {C:EqBombBatch.REMOTE_TRUE_PCT%}% of your max health to enemies over a wide area, and applying {C:EqBombBatch.REMOTE_BLEED} Bleed stacks."
+msgid "登场时在己方前排召唤一枚【遥控炸弹】。遥控炸弹追着一个敌人移动，不攻击，生命值耗尽时大范围爆炸，造成物理伤害和基于携带者最大生命值的真实伤害，并施加流血。"
+msgstr "On spawn, summons a [Remote Bomb] in your front line. It chases an enemy without attacking and, when its health runs out, explodes over a large area, dealing physical damage plus true damage based on the holder's max health, and applying Bleed."
 
 msgid "武士刀"
 msgstr "Katana"
 
-msgid "召唤一名武士刀小将，前三次技能挥剑气波，第四次蓄力回血后吹出龙卷风。"
-msgstr "Summons a Katana Minion. Its first three abilities fire sword waves; the fourth charges up, heals, then unleashes tornadoes."
+msgid "召唤一名【武士刀小将】，前三次技能挥剑气波，第四次蓄力回血后吹出龙卷风。"
+msgstr "Summons a [Katana Minion]. Its first three casts swing sword waves, and the fourth charges up to heal, then blows tornadoes."
 
-msgid "登场时召唤一名武士刀小将：{C:EqBombBatch.KATANA_HP} 生命值、{C:EqBombBatch.KATANA_ATK} 攻击力，龟能上限 {C:EqBombBatch.KATANA_EN_MAX}，攻击造成 100% 攻击力的物理伤害。龟能满时释放技能，四次一循环：前三次向前方挥出一道剑气波，造成 {C:EqBombBatch.KATANA_WAVE_MULT%}% 攻击力的物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒并回复携带者 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成 {C:EqBombBatch.KATANA_TORNADO_MULT%}% 攻击力的物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒。"
-msgstr "On spawn, summons a Katana Minion: {C:EqBombBatch.KATANA_HP} health, {C:EqBombBatch.KATANA_ATK} Attack, {C:EqBombBatch.KATANA_EN_MAX} max Energy; its attacks deal 100% Attack as physical damage. At full Energy it casts an ability in a cycle of four: the first three fire a sword wave forward, dealing {C:EqBombBatch.KATANA_WAVE_MULT%}% Attack as physical damage; the fourth charges for {C:EqBombBatch.KATANA_CHARGE} seconds, restoring {C:EqBombBatch.KATANA_HEAL_TOTAL%}% max health, then sends {C:EqBombBatch.KATANA_TORNADOES} tornadoes forward, dealing {C:EqBombBatch.KATANA_TORNADO_MULT%}% Attack as physical damage and knocking up for {C:EqBombBatch.KATANA_AIR} second."
+msgid "登场时召唤一名【武士刀小将】。武士刀小将龟能满时释放技能，四次一循环：前三次向前方挥出一道剑气波，第四次蓄力并回复自身生命值，随后向前方吹出龙卷风，击飞敌人。"
+msgstr "On spawn, summons a [Katana Minion]. When its Energy is full it casts its ability in a 4-cast cycle: the first three send a sword wave forward, and the fourth charges up while healing itself, then blows tornadoes forward that knock enemies up."
 
 msgid "护甲 -%d"
 msgstr "Armor -%d"
@@ -8252,11 +8252,11 @@ msgstr "Attacks and abilities execute enemies below {C:EqDaggerBatch.RITUAL_EXEC
 msgid "暗影匕首"
 msgstr "Shadow Dagger"
 
-msgid "召唤暗影忍者，影袭背刺生命值最低的敌人，半血时分出影子一起掷出手里剑。"
-msgstr "Summons a Shadow Ninja that backstabs the weakest enemy. At half health it splits off a clone, and both throw shuriken together."
+msgid "召唤【暗影忍者】，影袭背刺生命值最低的敌人，半血时分出影子一起掷出手里剑。"
+msgstr "Summons a [Shadow Ninja] that backstabs the lowest-health enemy. At half health it splits off a shadow, and both throw shurikens."
 
-msgid "登场时召唤一名暗影忍者：{C:EqDaggerBatch.NINJA_HP} 生命值、{C:EqDaggerBatch.NINJA_ATK} 攻击力、{C:EqDaggerBatch.NINJA_RES} 护甲和魔抗、{C:EqDaggerBatch.NINJA_CRIT%}% 暴击率，登场时隐身，攻击时现形。龟能满时释放【影袭】：化为黑烟，闪到生命值比例最低的敌人身后背刺，造成 {C:EqDaggerBatch.NINJA_STRIKE_MULT%}% 攻击力的物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。暗影忍者的生命值首次低于其 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 最大生命值时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力。每次【影袭】，暗影忍者朝目标掷出一枚手里剑（影子在场时两名忍者各掷一枚），对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT}+{C:EqDaggerBatch.SHURIKEN_ATK%}% 攻击力）魔法伤害。"
-msgstr "On entry, summons a Shadow Ninja with {C:EqDaggerBatch.NINJA_HP} health, {C:EqDaggerBatch.NINJA_ATK} Attack, {C:EqDaggerBatch.NINJA_RES} Armor and Magic Resist, and {C:EqDaggerBatch.NINJA_CRIT%}% Crit Chance. It enters stealthed and is revealed when it attacks. When its turtle energy is full it casts [Shadow Strike]: it turns into black smoke, blinks behind the enemy with the lowest health ratio and backstabs it for {C:EqDaggerBatch.NINJA_STRIKE_MULT%}% Attack as physical damage. This is always a critical strike. It then stays stealthed for {C:EqDaggerBatch.NINJA_RESTEALTH} seconds. The first time the Shadow Ninja drops below {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% of its max health, it splits off a Shadow Clone for {C:EqDaggerBatch.NINJA_CLONE_SEC} seconds with {C:EqDaggerBatch.NINJA_CLONE_STAT%}% of its max health and Attack. Each [Shadow Strike] makes the Shadow Ninja throw a shuriken at the target (both ninjas throw one while the clone is present), dealing ({C:EqDaggerBatch.SHURIKEN_FLAT} + {C:EqDaggerBatch.SHURIKEN_ATK%}% Attack) magic damage to every enemy in its path."
+msgid "登场时召唤一名【暗影忍者】。暗影忍者登场时隐身，龟能满时化为黑烟，背刺生命值比例最低的敌人并掷出手里剑。暗影忍者的生命值首次低于一半时，分出一名影子忍者。"
+msgstr "On spawn, summons a [Shadow Ninja]. It enters stealthed, and when its Energy is full it vanishes into black smoke, backstabs the enemy with the lowest health ratio and throws a shuriken. The first time it drops below half health, it splits off a shadow clone."
 
 msgid "黑曜石匕首"
 msgstr "Obsidian Dagger"
@@ -8330,11 +8330,11 @@ msgstr "Casting an ability heals the ally with the lowest Health percentage over
 msgid "亡者之书"
 msgstr "Book of the Dead"
 
-msgid "释放技能后随机召唤一具骷髅，持续时间等于这次消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，骷髅龟能满 {C:EqMagicBatch.SKEL_EN_MAX} 点时释放技能。骷髅战士：生命值 {C:EqMagicBatch.SKW_HP}、攻击力 {C:EqMagicBatch.SKW_ATK}、双抗 {C:EqMagicBatch.SKW_RES}，近战。【骸骨狂怒】：{C:EqMagicBatch.SKW_RAGE_SEC} 秒内减伤 {C:EqMagicBatch.SKW_DR%}%，攻击额外造成 {C:EqMagicBatch.SKW_EXTRA%}% 攻击力物理伤害，生命偷取 {C:EqMagicBatch.SKW_LS%}%。骷髅法师：生命值 {C:EqMagicBatch.SKM_HP}、攻击力 {C:EqMagicBatch.SKM_ATK}、双抗 {C:EqMagicBatch.SKM_RES}，攻击造成 {C:EqMagicBatch.SKM_BASIC%}% 攻击力魔法伤害。【骨火爆裂】：目标周围的敌人受到 {C:EqMagicBatch.SKM_BLAST_ATK%}% 攻击力魔法伤害。骷髅祭司：生命值 {C:EqMagicBatch.SKP_HP}、攻击力 {C:EqMagicBatch.SKP_ATK}、双抗 {C:EqMagicBatch.SKP_RES}，攻击造成 {C:EqMagicBatch.SKP_BASIC%}% 攻击力魔法伤害。【亡灵浪潮】：浪潮缓慢前进，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%}%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL} 生命值。"
-msgstr "Casting an ability summons a random skeleton for (energy spent × {C:EqMagicBatch.SKEL_SEC_PER_EN}) seconds. Skeletons cast their ability at {C:EqMagicBatch.SKEL_EN_MAX} energy. Skeleton Warrior: {C:EqMagicBatch.SKW_HP} Health, {C:EqMagicBatch.SKW_ATK} Attack, {C:EqMagicBatch.SKW_RES} Armor and Magic Resist, melee. [Bone Fury]: for {C:EqMagicBatch.SKW_RAGE_SEC} seconds, takes {C:EqMagicBatch.SKW_DR%}% less damage, attacks deal an extra {C:EqMagicBatch.SKW_EXTRA%}% Attack physical damage, {C:EqMagicBatch.SKW_LS%}% Life Steal. Skeleton Mage: {C:EqMagicBatch.SKM_HP} Health, {C:EqMagicBatch.SKM_ATK} Attack, {C:EqMagicBatch.SKM_RES} Armor and Magic Resist, attacks deal {C:EqMagicBatch.SKM_BASIC%}% Attack magic damage. [Bonefire Burst]: enemies around its target take {C:EqMagicBatch.SKM_BLAST_ATK%}% Attack magic damage. Skeleton Priest: {C:EqMagicBatch.SKP_HP} Health, {C:EqMagicBatch.SKP_ATK} Attack, {C:EqMagicBatch.SKP_RES} Armor and Magic Resist, attacks deal {C:EqMagicBatch.SKP_BASIC%}% Attack magic damage. [Wave of the Dead]: a slow wave deals {C:EqMagicBatch.WAVE_DMG} physical damage to enemies it passes, knocks them up and stuns them for {C:EqMagicBatch.WAVE_STUN} seconds, reduces their Magic Resist by {C:EqMagicBatch.WAVE_MR_SHRED%}% for {C:EqMagicBatch.WAVE_MR_SEC} seconds, and restores {C:EqMagicBatch.WAVE_HEAL} Health to allies it passes."
+msgid "释放技能后随机召唤一具【骷髅战士】、【骷髅法师】或【骷髅祭司】，存在时间等于这次消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒。"
+msgstr "After casting an ability, summons a random [Skeleton Warrior], [Skeleton Mage] or [Skeleton Priest] that lasts for the Energy spent × {C:EqMagicBatch.SKEL_SEC_PER_EN} seconds."
 
-msgid "释放技能后召唤一具随机的骷髅战士、法师或祭司。"
-msgstr "Casting an ability summons a random skeleton warrior, mage or priest."
+msgid "释放技能后召唤一具随机的【骷髅战士】、【骷髅法师】或【骷髅祭司】。"
+msgstr "After casting an ability, summons a random [Skeleton Warrior], [Skeleton Mage] or [Skeleton Priest]."
 
 msgid "镜像魔典"
 msgstr "Mirror Grimoire"
@@ -8504,11 +8504,11 @@ msgstr "Every {C:EqMaskBatch.FACE_IV} seconds, switches face in the order Red, B
 msgid "舞狮头"
 msgstr "Lion Dance Head"
 
-msgid "召唤一头舞狮，龟能满时冲撞途经的敌人，撞退并眩晕。"
-msgstr "Summons a dancing lion that charges through enemies when its Energy is full, knocking them back and stunning them."
+msgid "召唤一头【舞狮】，龟能满时冲撞途经的敌人，撞退并眩晕。"
+msgstr "Summons a [Lion Dancer] that charges through enemies when its Energy is full, knocking them back and stunning them."
 
-msgid "登场时召唤一头舞狮：{C:EqMaskBatch.LION_HP} 生命值、{C:EqMaskBatch.LION_ATK} 攻击力、{C:EqMaskBatch.LION_RES} 护甲和魔抗，近战攻击。舞狮龟能满时朝前方冲撞，对途经的敌人造成 {C:EqMaskBatch.LION_CHARGE_ATK%}% 舞狮攻击力的物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN} 秒。"
-msgstr "On deployment, summons a dancing lion: {C:EqMaskBatch.LION_HP} health, {C:EqMaskBatch.LION_ATK} Attack, {C:EqMaskBatch.LION_RES} Armor and Magic Resist, melee attacks. When its Energy is full, the lion charges forward, dealing physical damage equal to {C:EqMaskBatch.LION_CHARGE_ATK%}% of its Attack to enemies in its path, knocking them back and stunning them for {C:EqMaskBatch.LION_STUN} seconds."
+msgid "登场时召唤一头【舞狮】。舞狮龟能满时朝前方冲撞，撞退并眩晕途经的敌人。"
+msgstr "On spawn, summons a [Lion Dancer]. When its Energy is full it charges forward, knocking back and stunning enemies in its path."
 
 msgid "小丑面具"
 msgstr "Clown Mask"
@@ -8921,20 +8921,20 @@ msgstr "[Tentacles] Summon unkillable tentacles. Each tentacle gains 1 Slam stac
 msgid "【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击。"
 msgstr "[Dodge Charge] Whenever a unit on your team dodges, each tentacle gains 1 Slam stack."
 
-msgid "【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其部分攻击力与生命值，自动攻击最近的敌人。亡魂阵亡后可再次召唤，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%。"
-msgstr "[Undead] When an allied unit dies, a Wraith rises in its place, inheriting part of its attack damage and health and attacking the nearest enemy. When a Wraith dies it can rise again, inheriting {C:SpiritSynergySystem.WRAITH_DECAY%}% of the previous stats each time."
+msgid "【亡灵】友方单位阵亡时原地召唤 1 只【亡魂】，继承其部分攻击力与生命值，自动攻击最近的敌人。"
+msgstr "[Undeath] When an allied unit dies, 1 [Wraith] rises in its place, inheriting part of its Attack and health, and attacks the nearest enemy."
 
-msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[0]} 根触手，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}%"
-msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[0]} tentacle(s), Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}%"
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[0]} 根触手，召唤亡魂"
+msgstr "+{STAT:dodgePct}% Dodge each, {C:SpiritSynergySystem.TENTACLES[0]} tentacle(s), summons Wraiths"
 
-msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[1]} 根触手，闪避蓄能，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次"
-msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[1]} tentacles, Dodge Charge, Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}% and can rise {C:SpiritSynergySystem.WRAITH_LOOPS[1]} more time(s)"
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[1]} 根触手，闪避蓄能，亡魂继承更多属性，阵亡后可再化为亡魂"
+msgstr "+{STAT:dodgePct}% Dodge each, {C:SpiritSynergySystem.TENTACLES[1]} tentacles, Dodge Charge, Wraiths inherit more and can rise again after dying"
 
-msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[2]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}%，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[2]} 次"
-msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[2]} tentacles, slams deal {C:SpiritSynergySystem.HIT_MULT[2]%}% of the original damage, Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}% and can rise {C:SpiritSynergySystem.WRAITH_LOOPS[2]} more time(s)"
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[2]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}%，亡魂继承更多属性，可多次再化为亡魂"
+msgstr "+{STAT:dodgePct}% Dodge each, {C:SpiritSynergySystem.TENTACLES[2]} tentacles, slam damage becomes {C:SpiritSynergySystem.HIT_MULT[2]%}%, Wraiths inherit more and can rise again several times"
 
-msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[3]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}%，亡魂继承 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次"
-msgstr "Each +{STAT:dodgePct}% dodge, {C:SpiritSynergySystem.TENTACLES[3]} tentacles, slams deal {C:SpiritSynergySystem.HIT_MULT[3]%}% of the original damage, Wraiths inherit {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}% and can rise {C:SpiritSynergySystem.WRAITH_LOOPS[3]} more time(s)"
+msgid "每件 +{STAT:dodgePct}% 闪避，{C:SpiritSynergySystem.TENTACLES[3]} 根触手，拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}%，亡魂继承阵亡单位全部的生命值与攻击力"
+msgstr "+{STAT:dodgePct}% Dodge each, {C:SpiritSynergySystem.TENTACLES[3]} tentacles, slam damage becomes {C:SpiritSynergySystem.HIT_MULT[3]%}%, Wraiths inherit all of the fallen unit's health and Attack"
 
 msgid "每件炸弹为携带者提供护甲穿透。"
 msgstr "Each Bomb grants its carrier Armor Pen."
@@ -9068,11 +9068,11 @@ msgstr "Equipping a Little Wooden Axe activates it. Duplicate Little Wooden Axes
 msgid "商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}%"
 msgstr "Each shop refresh has a {C:AxeEvolution.SHELF_P_BASE%}% chance to include at least one Little Wooden Axe, +{C:AxeEvolution.SHELF_P_PER_MATCH%}% per match played this Season, up to {C:AxeEvolution.SHELF_P_CAP%}%"
 
-msgid "登场时召唤一座不可移动的炮台。\n携带者位于炮台附近时，获得 {C:EquipSystem.TURRET_BUFF_ASPD%}% 攻击速度。"
-msgstr "On spawn, summons an immobile Turret.\nWhile the wearer is near the Turret, the wearer gains {C:EquipSystem.TURRET_BUFF_ASPD%}% attack speed."
+msgid "登场时召唤一座不可移动的【炮台】。\n携带者位于炮台附近时，获得 {C:EquipSystem.TURRET_BUFF_ASPD%}% 攻击速度。"
+msgstr "On spawn, summons an immobile [Turret].\nWhile the wearer is near the Turret, the wearer gains {C:EquipSystem.TURRET_BUFF_ASPD%}% attack speed."
 
-msgid "登场时召唤一座不可移动的炮台，携带者在炮台附近时获得攻击速度。"
-msgstr "On spawn, summons an immobile Turret. The wearer gains attack speed while near it."
+msgid "登场时召唤一座不可移动的【炮台】，携带者在炮台附近时获得攻击速度。"
+msgstr "On spawn, summons an immobile [Turret]. The wearer gains attack speed while near it."
 
 msgid "【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，每个战场一次。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。"
 msgstr "[Centurion] {C:SpearSynergySystem.SUMMON_AT} seconds into each battlefield, or when your team drops below {C:SpearSynergySystem.TEAM_HP_LINE%}% health, summons the Centurion, once per battlefield. For each different Spear on your team, each of its stars gives the Centurion {C:SpearSynergySystem.STAR_PCT%}% more health and attack damage."
@@ -9088,3 +9088,564 @@ msgstr "Each +{STAT:_echargePct}% Energy regen, the Centurion's hits shred armor
 
 msgid "每件 +{STAT:_echargePct}% 龟能回复速率，百夫长每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，横扫后召来持矛骑兵冲锋"
 msgstr "Each +{STAT:_echargePct}% Energy regen, every {C:SpearSynergySystem.THROW_EVERY}th Centurion attack throws a spear, and its sweep calls in charging lancers"
+
+msgid "每件长矛为携带者提供 +5% 龟能回复速率 · 【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，每个战场一次。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%"
+msgstr "Each Spear gives its holder +5% Energy Regen · [Centurion] summoned {C:SpearSynergySystem.SUMMON_AT} seconds into each battle or when your team drops below {C:SpearSynergySystem.TEAM_HP_LINE%}% health, once per battle. For each different Spear you have, the Centurion gains {C:SpearSynergySystem.STAR_PCT%}% health and Attack per star"
+
+msgid "每件长矛为携带者提供 +10% 龟能回复速率 · 百夫长的突刺贯穿直线，放下盾时横扫周围敌人"
+msgstr "Each Spear gives its holder +10% Energy Regen · the Centurion's thrust pierces in a line and it sweeps nearby enemies when lowering its shield"
+
+msgid "每件长矛为携带者提供 +16% 龟能回复速率 · 百夫长每次刺中削弱敌人的护甲和魔抗，举盾时持续刺击周围敌人"
+msgstr "Each Spear gives its holder +16% Energy Regen · each Centurion hit shreds enemy Armor and Magic Resist, and it keeps stabbing nearby enemies while its shield is up"
+
+msgid "每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击掷出长矛，横扫后召来持矛骑兵冲锋"
+msgstr "Each Spear gives its holder +24% Energy Regen · every {C:SpearSynergySystem.THROW_EVERY}th Centurion attack throws its spear, and its sweep calls in charging spear cavalry"
+
+msgid "百夫长"
+msgstr "Centurion"
+
+msgid "长矛羁绊"
+msgstr "Spear Synergy"
+
+msgid "长矛件数"
+msgstr "Spear Count"
+
+msgid "突刺"
+msgstr "Thrust"
+
+msgid "龟甲阵"
+msgstr "Shell Formation"
+
+msgid "军团天降"
+msgstr "Legion from the Sky"
+
+msgid "众矛之力"
+msgstr "Strength of Spears"
+
+msgid "完整数据见图鉴「角色」"
+msgstr "Full details in the Codex under \"Roles\""
+
+msgid "战场单位"
+msgstr "Battlefield Units"
+
+msgid "召唤物 · 龟技能"
+msgstr "Summons · Turtle Abilities"
+
+msgid "召唤物 · 装备"
+msgstr "Summons · Items"
+
+msgid "召唤物 · 羁绊"
+msgstr "Summons · Synergies"
+
+msgid "角色"
+msgstr "Roles"
+
+msgid "熊掌"
+msgstr "Bear Paw"
+
+msgid "每次攻击积攒 1 层。"
+msgstr "Each attack builds 1 stack."
+
+msgid "震地波"
+msgstr "Quake Wave"
+
+msgid "积攒 {C:EquipTickSystem.BEAR_PAW_STACKS} 层后，下一次攻击改为向前方打出冲击波，射程临时提高到 {C:EquipTickSystem.BEAR_WAVE_RANGE}，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%}%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前，然后清空层数。"
+msgstr "At {C:EquipTickSystem.BEAR_PAW_STACKS} stacks, the next attack instead sends a shockwave forward, with range temporarily raised to {C:EquipTickSystem.BEAR_WAVE_RANGE}, dealing ({C:EquipTickSystem.BEAR_WAVE_COEF%}% × Attack ({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}) physical damage to enemies in its path, knocking them up and pulling them in front of the Big Bear, then clears its stacks."
+
+msgid "炮击"
+msgstr "Shell Shot"
+
+msgid "每次攻击使炮台永久获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。"
+msgstr "Each attack permanently gives the Turret {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% Crit Chance until the end of this battle."
+
+msgid "火力同调"
+msgstr "Linked Firepower"
+
+msgid "炮台登场时，额外获得相当于携带者攻击力 {C:EquipSystem.TURRET_HP_PER_ATK} 倍的生命值，以及等同于携带者攻击力的攻击力。"
+msgstr "On spawn, the Turret gains bonus health equal to {C:EquipSystem.TURRET_HP_PER_ATK} times the holder's Attack, and bonus Attack equal to the holder's Attack."
+
+msgid "护卫"
+msgstr "Guarded"
+
+msgid "同携带者"
+msgstr "As holder"
+
+msgid "携带者生命"
+msgstr "holder's health"
+
+msgid "携带者攻击"
+msgstr "holder's Attack"
+
+msgid "携带者护甲"
+msgstr "holder's Armor"
+
+msgid "携带者魔抗"
+msgstr "holder's MR"
+
+msgid "礼盒撞击"
+msgstr "Box Bump"
+
+msgid "蛋糕礼盒的攻击造成 {C:EqFoodBatch.BOX_HIT_COEF%}% 攻击力的物理伤害。"
+msgstr "The Cake Box's attacks deal {C:EqFoodBatch.BOX_HIT_COEF%}% Attack as physical damage."
+
+msgid "甜蜜诱惑"
+msgstr "Sweet Lure"
+
+msgid "蛋糕法阵"
+msgstr "Cake Circle"
+
+msgid "礼盒分身"
+msgstr "Split Box"
+
+msgid "连射"
+msgstr "Rapid Fire"
+
+msgid "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。"
+msgstr "The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack ({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}) physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance. Each attack permanently gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen until the end of this battle. Its attack speed ignores bonuses."
+
+msgid "小不点"
+msgstr "Tiny Target"
+
+msgid "小手枪没有护盾时，受到的所有伤害降为 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"
+msgstr "Without a shield, all damage the Little Pistol takes is reduced to {C:EqGunBatch.PISTOL_DMG_CAP}, true damage included, or {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} after the holder dies. Healing on it is capped at {C:EqGunBatch.PISTOL_HEAL_CAP}."
+
+msgid "急救弹"
+msgstr "Aid Shot"
+
+msgid "同步射速"
+msgstr "Synced Fire Rate"
+
+msgid "急救塔的攻击速度与携带者相同，携带者阵亡后保持阵亡时的攻击速度。"
+msgstr "The Aid Tower attacks as fast as the holder, and keeps the holder's last attack speed after the holder dies."
+
+msgid "急救金弹"
+msgstr "Aid Golden Bullet"
+
+msgid "急救塔拥有独立的金弹计数，随枪羁绊件数每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹附加本段伤害 {C:EqGunBatch.TOWER_GOLD_PCT%}% 的真实伤害，治疗量翻倍。"
+msgstr "The Aid Tower has its own Golden Bullet counter: every {C:EqGunBatch.TOWER_GOLD_EVERY} attacks (scales with Gun count) it fires a Golden Bullet that adds true damage equal to {C:EqGunBatch.TOWER_GOLD_PCT%}% of the hit and heals double."
+
+msgid "每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。"
+msgstr "Each attack steals {C:AxeEvolution.SHIELD_STEAL_PCT%}% of the target's shield as its own."
+
+msgid "回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。"
+msgstr "Heals {C:AxeEvolution.ACTIVE_HEAL_PCT%}% of its max health and gains a shield equal to {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% of its max health."
+
+msgid "随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。"
+msgstr "Then starts a [Charged Slam], charging for {C:AxeEvolution.CHARGE_TIME} seconds with {C:AxeEvolution.CHARGE_DR%}% Damage Reduction. When the charge ends it slams down, dealing ({C:AxeEvolution.SLAM_ATK%}% × Attack ({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}) physical damage to every enemy in the area in front, knocking them up and stunning them for {C:AxeEvolution.SLAM_STUN} seconds."
+
+msgid "随后在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投出 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，回旋镖飞出后返回，命中时造成（{C:AxeFinalStats.SERAPH_BOOM_ATK%}%×攻击力({ATK}) = {M:AxeFinalStats.SERAPH_BOOM_ATK*ATK}）魔法伤害，并施加 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。"
+msgstr "Then throws {C:AxeFinalStats.SERAPH_BOOMERANGS} boomerangs over {C:AxeFinalStats.SERAPH_CAST_TIME} seconds. They fly out and return, dealing ({C:AxeFinalStats.SERAPH_BOOM_ATK%}% × Attack ({ATK}) = {M:AxeFinalStats.SERAPH_BOOM_ATK*ATK}) magic damage on hit and applying {C:AxeFinalStats.SERAPH_BOOM_BURN} Burn."
+
+msgid "随后插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒，期间获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，附近的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值和 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 {C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。"
+msgstr "Then plants itself in the ground for {C:AxeFinalStats.HOLO_PLANT_TIME} seconds with {C:AxeFinalStats.HOLO_PLANT_DR%}% Damage Reduction. Every {C:AxeFinalStats.HOLO_AURA_TICK} seconds, nearby allies heal {C:AxeFinalStats.HOLO_AURA_HEAL}, gain {C:AxeFinalStats.HOLO_AURA_ENERGY} Energy and gain {C:AxeFinalStats.HOLO_AURA_ASPD%}% attack speed."
+
+msgid "随后点燃【余烬之光】：{C:AxeFinalStats.EMBER_LIGHT_TIME} 秒内获得 {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤和 {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，并免疫控制效果。期间仍会积累龟能，再次施放时效果独立叠加。"
+msgstr "Then ignites [Ember Light]: for {C:AxeFinalStats.EMBER_LIGHT_TIME} seconds it gains {C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% Lifesteal, {C:AxeFinalStats.EMBER_LIGHT_DR%}% Damage Reduction and {C:AxeFinalStats.EMBER_LIGHT_ASPD%}% attack speed, and is immune to crowd control. It still builds Energy meanwhile, and recasts stack independently."
+
+msgid "砍伐成长"
+msgstr "Chopping Growth"
+
+msgid "斧头的生命值为 {C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × 砍伐经验，攻击力为 {C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × 砍伐经验。小木斧每次进化，斧头额外获得 {C:AxeEvolution.PASSIVE_HP} 生命值、{C:AxeEvolution.PASSIVE_ATK} 攻击力、{C:AxeEvolution.PASSIVE_DEF} 护甲和 {C:AxeEvolution.PASSIVE_MR} 魔抗。左侧属性为刚进化到此形态时的数值。"
+msgstr "The Axe has {C:AxeEvolution.MINION_HP_BASE} + {C:AxeEvolution.MINION_HP_PER_EXP} × Chopping XP health and {C:AxeEvolution.MINION_ATK_BASE} + {C:AxeEvolution.MINION_ATK_PER_EXP} × Chopping XP Attack. Each time the Little Wooden Axe evolves, the Axe gains {C:AxeEvolution.PASSIVE_HP} health, {C:AxeEvolution.PASSIVE_ATK} Attack, {C:AxeEvolution.PASSIVE_DEF} Armor and {C:AxeEvolution.PASSIVE_MR} Magic Resist. The stats on the left are its values right after reaching this form."
+
+msgid "石斧 · 重击"
+msgstr "Stone Axe · Smash"
+
+msgid "每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。"
+msgstr "Every {C:AxeEvolution.SMASH_IV} seconds, the Axe's next attack deals ({C:AxeEvolution.SMASH_ATK%}% × Attack ({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}) bonus physical damage and knocks the target up and briefly back."
+
+msgid "铁斧 · 竖劈"
+msgstr "Iron Axe · Cleave"
+
+msgid "斧头每第 2 次攻击变为竖劈，额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。"
+msgstr "Every 2nd attack from the Axe becomes a downward cleave that deals bonus true damage equal to {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% of the target's max health and applies {C:AxeEvolution.CLEAVE_BLEED} Bleed."
+
+msgid "金斧 · 效率"
+msgstr "Gold Axe · Efficiency"
+
+msgid "斧头的攻击在 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫和竖劈之间交替，横扫命中前方所有敌人。每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。"
+msgstr "The Axe's attacks alternate between a {C:AxeEvolution.SWEEP_ARC_DEG}° sweep, which hits all enemies in front, and a downward cleave. Each attack hit grants 1 [Efficiency] stack for {C:AxeEvolution.EFF_DUR} seconds, stacking infinitely and refreshing on each stack. Each [Efficiency] stack grants {C:AxeEvolution.EFF_ASPD%}% attack speed and {C:AxeEvolution.EFF_MOVE%}% move speed."
+
+msgid "附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，斧头每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。斧头阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。"
+msgstr "Nearby enemies take magic damage equal to {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% of their max health each second. For each nearby enemy, the Axe heals {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% of its max health per second. {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} seconds after the Axe dies, it revives with {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% of its max health, once per battle."
+
+msgid "斧头的攻击施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。"
+msgstr "The Axe's attacks apply {C:AxeFinalStats.SERAPH_BURN_ON_HIT} Burn."
+
+msgid "斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。"
+msgstr "The Axe gains {C:AxeFinalStats.HOLO_ENERGY_RATE%}% Energy Charge. Its attacks give the ally with the lowest health percentage a {C:AxeFinalStats.HOLO_ONHIT_SHIELD} shield and {C:AxeFinalStats.HOLO_ONHIT_ENERGY} Energy."
+
+msgid "斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。"
+msgstr "The Axe's attack hits apply {C:AxeFinalStats.EMBER_SEED_PER_HIT} [Ember Seed] stacks and execute targets below the execute threshold. Each [Ember Seed] stack raises that target's execute threshold by {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% of its max health, with no cap. Each execution grants {C:AxeFinalStats.EMBER_EXEC_ENERGY} Energy."
+
+msgid "斧击"
+msgstr "Axe Chop"
+
+msgid "斧之守护"
+msgstr "Axe Guard"
+
+msgid "进化形态"
+msgstr "Form"
+
+msgid "开炮"
+msgstr "Fire"
+
+msgid "炮筒朝射程内最近的敌人开炮，炮弹落地爆炸，对周围的敌人造成（{C:BasicConsts.DEFAULT_BASIC_COEF%}%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+msgstr "The Cannon fires at the nearest enemy in range. The shell explodes on landing, dealing ({C:BasicConsts.DEFAULT_BASIC_COEF%}% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage to nearby enemies."
+
+msgid "重炮"
+msgstr "Heavy Shot"
+
+msgid "遥控炸弹追着一个敌人移动，不攻击。"
+msgstr "The Remote Bomb chases an enemy and doesn't attack."
+
+msgid "锁定追踪"
+msgstr "Lock-On"
+
+msgid "引爆"
+msgstr "Detonate"
+
+msgid "居合"
+msgstr "Iai"
+
+msgid "四次一循环。前三次向前方挥出一道剑气，贯穿路径上的敌人，造成（{C:EqBombBatch.KATANA_WAVE_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}）物理伤害。第四次蓄力 {C:EqBombBatch.KATANA_CHARGE} 秒，期间回复自身 {C:EqBombBatch.KATANA_HEAL_TOTAL%}% 最大生命值，随后向前方吹出 {C:EqBombBatch.KATANA_TORNADOES} 道龙卷风，造成（{C:EqBombBatch.KATANA_TORNADO_MULT%}%×攻击力({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}）物理伤害并击飞 {C:EqBombBatch.KATANA_AIR} 秒，每个敌人至多被龙卷风击中一次。"
+msgstr "A 4-cast cycle. The first three casts send a sword wave forward that pierces enemies in its path, dealing ({C:EqBombBatch.KATANA_WAVE_MULT%}% × Attack ({ATK}) = {N:EqBombBatch.KATANA_WAVE_MULT*ATK}) physical damage. The fourth charges for {C:EqBombBatch.KATANA_CHARGE} seconds, healing {C:EqBombBatch.KATANA_HEAL_TOTAL%}% of its own max health, then blows {C:EqBombBatch.KATANA_TORNADOES} tornadoes forward that deal ({C:EqBombBatch.KATANA_TORNADO_MULT%}% × Attack ({ATK}) = {N:EqBombBatch.KATANA_TORNADO_MULT*ATK}) physical damage and knock up for {C:EqBombBatch.KATANA_AIR} seconds. Each enemy is hit by the tornadoes at most once."
+
+msgid "忍刃"
+msgstr "Ninja Blade"
+
+msgid "影袭"
+msgstr "Shadow Strike"
+
+msgid "化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。"
+msgstr "Vanishes into black smoke and reappears behind the enemy with the lowest health ratio, backstabbing for ({C:EqDaggerBatch.NINJA_STRIKE_MULT%}% × Attack ({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}) physical damage that always crits, then stealths for {C:EqDaggerBatch.NINJA_RESTEALTH} seconds."
+
+msgid "暗影潜行"
+msgstr "Shadow Prowl"
+
+msgid "暗影忍者登场时隐身，攻击时现形。"
+msgstr "The Shadow Ninja enters stealthed and is revealed when it attacks."
+
+msgid "影分身"
+msgstr "Shadow Clone"
+
+msgid "暗影忍者的生命值首次低于 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力，同样会施放影袭。"
+msgstr "The first time the Shadow Ninja drops below {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% health, it splits off a shadow clone for {C:EqDaggerBatch.NINJA_CLONE_SEC} seconds with {C:EqDaggerBatch.NINJA_CLONE_STAT%}% of its max health and Attack, which also casts Shadow Strike."
+
+msgid "亡者契约"
+msgstr "Pact of the Dead"
+
+msgid "亡者之书召唤的骷髅存在时间等于携带者这次施放技能消耗的龟能 × {C:EqMagicBatch.SKEL_SEC_PER_EN} 秒，到时化为尘土。"
+msgstr "Skeletons summoned by the Book of the Dead last for the Energy the holder spent on that cast × {C:EqMagicBatch.SKEL_SEC_PER_EN} seconds, then crumble to dust."
+
+msgid "骨斧"
+msgstr "Bone Axe"
+
+msgid "骸骨狂怒"
+msgstr "Bone Rage"
+
+msgid "骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒：受到的伤害降低 {C:EqMagicBatch.SKW_DR%}%，获得 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积攒龟能。"
+msgstr "The Skeleton Warrior rages for {C:EqMagicBatch.SKW_RAGE_SEC} seconds: it takes {C:EqMagicBatch.SKW_DR%}% less damage, gains {C:EqMagicBatch.SKW_LS%}% Lifesteal, and each attack deals ({C:EqMagicBatch.SKW_EXTRA%}% × Attack ({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}) bonus physical damage. It builds no Energy while raging."
+
+msgid "骨火弹"
+msgstr "Bonefire Bolt"
+
+msgid "骷髅法师的攻击造成（{C:EqMagicBatch.SKM_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}）魔法伤害。"
+msgstr "The Skeleton Mage's attacks deal ({C:EqMagicBatch.SKM_BASIC%}% × Attack ({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}) magic damage."
+
+msgid "骨火爆裂"
+msgstr "Bonefire Burst"
+
+msgid "目标及其周围的敌人受到（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。"
+msgstr "The target and enemies around it take ({C:EqMagicBatch.SKM_BLAST_ATK%}% × Attack ({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}) magic damage."
+
+msgid "魂火"
+msgstr "Soulfire"
+
+msgid "骷髅祭司的攻击造成（{C:EqMagicBatch.SKP_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKP_BASIC*ATK}）魔法伤害。"
+msgstr "The Skeleton Priest's attacks deal ({C:EqMagicBatch.SKP_BASIC%}% × Attack ({ATK}) = {M:EqMagicBatch.SKP_BASIC*ATK}) magic damage."
+
+msgid "亡灵浪潮"
+msgstr "Undead Wave"
+
+msgid "舞狮"
+msgstr "Lion Dancer"
+
+msgid "狮咬"
+msgstr "Lion Bite"
+
+msgid "冲撞"
+msgstr "Charge"
+
+msgid "装备星级"
+msgstr "Item Star"
+
+msgid "骨击"
+msgstr "Bone Strike"
+
+msgid "不朽之骨"
+msgstr "Undying Bones"
+
+msgid "亡灵骷髅每次受到的伤害都只有 {C:EqSummons.SKEL_DMG_CAP} 点，真实伤害也一样。"
+msgstr "The Undead Skeleton takes only {C:EqSummons.SKEL_DMG_CAP} damage from each hit, true damage included."
+
+msgid "尸爆"
+msgstr "Corpse Blast"
+
+msgid "海螺馈赠"
+msgstr "Conch's Gift"
+
+msgid "分裂"
+msgstr "Split"
+
+msgid "每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，生命值与攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"
+msgstr "Every {C:EquipSystem.WORM_SPLIT_IV} seconds, splits off a new Conch Bug in an empty spot with the same health and Attack but no items, up to {C:EquipSystem.WORM_CAP}."
+
+msgid "啃咬"
+msgstr "Gnaw"
+
+msgid "舷炮"
+msgstr "Broadside"
+
+msgid "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，不论远近，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力({ATK}) = {N:PirateSystem.SHIP_SHOT_COEF*ATK}）物理伤害。"
+msgstr "Every {C:PirateSystem.SHIP_SHOT_CD} seconds, the Pirate Ship fires at the nearest enemy at any distance, dealing ({C:PirateSystem.SHIP_SHOT_COEF%}% × Attack ({ATK}) = {N:PirateSystem.SHIP_SHOT_COEF*ATK}) physical damage."
+
+msgid "破浪登场"
+msgstr "Wave-Breaking Entry"
+
+msgid "海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力({ATK}) = {M:PirateSystem.SHIP_CHARGE_COEF*ATK}）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"
+msgstr "On spawn, the Pirate Ship crashes into the battlefield, dealing ({C:PirateSystem.SHIP_CHARGE_COEF%}% × Pirate Turtle's Attack ({ATK}) = {M:PirateSystem.SHIP_CHARGE_COEF*ATK}) magic damage to enemies near the landing spot, knocking them back and stunning them for {C:PirateSystem.SHIP_CHARGE_STUN} seconds."
+
+msgid "海盗造物"
+msgstr "Pirate's Making"
+
+msgid "海盗船的生命值为海盗龟最大生命值的 {C:PirateSystem.SHIP_HP_SCALE%}%，攻击力为海盗龟攻击力的 {C:PirateSystem.SHIP_ATK_SCALE%}%，没有护甲与魔抗。海盗船沉没后不会再召唤。左侧按 1 级海盗龟计算。"
+msgstr "The Pirate Ship has {C:PirateSystem.SHIP_HP_SCALE%}% of the Pirate Turtle's max health and {C:PirateSystem.SHIP_ATK_SCALE%}% of its Attack, with no Armor or Magic Resist. Once sunk, it isn't summoned again. The stats on the left are for a level 1 Pirate Turtle."
+
+msgid "机甲重拳"
+msgstr "Mech Punch"
+
+msgid "浮游炮合体"
+msgstr "Drone Assembly"
+
+msgid "赛博龟阵亡时，浮游炮汇聚组装成机甲，组装 {C:CyberSystem.MECH_ASSEMBLE_SEC} 秒，期间无敌且不能被选为目标。生命值 =（{C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV} × 等级）× 浮游炮数，攻击力 =（{C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV} × 等级）× 浮游炮数，护甲和魔抗 = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV} × 等级。左侧按 1 级赛博龟计算。"
+msgstr "When the Cyber Turtle dies, its drones gather and assemble into a Mech over {C:CyberSystem.MECH_ASSEMBLE_SEC} seconds, invulnerable and untargetable meanwhile. Health = ({C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV} × level) × drones, Attack = ({C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV} × level) × drones, Armor and Magic Resist = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV} × level. The stats on the left are for a level 1 Cyber Turtle."
+
+msgid "歼灭炮"
+msgstr "Annihilator"
+
+msgid "每 {C:CyberSystem.MECH_BLAST_CD} 秒朝当前生命值最低的敌人连开两炮，共造成（{C:CyberSystem.MECH_BLAST_COEF%}%×攻击力({ATK}) = {N:CyberSystem.MECH_BLAST_COEF*ATK}）物理伤害。"
+msgstr "Every {C:CyberSystem.MECH_BLAST_CD} seconds, fires two shots at the enemy with the lowest current health, dealing a total of ({C:CyberSystem.MECH_BLAST_COEF%}% × Attack ({ATK}) = {N:CyberSystem.MECH_BLAST_COEF*ATK}) physical damage."
+
+msgid "浮游炮数"
+msgstr "Drones"
+
+msgid "随机龟种"
+msgstr "Random Turtle"
+
+msgid "同原龟"
+msgstr "As original"
+
+msgid "原龟生命"
+msgstr "original's health"
+
+msgid "原龟攻击"
+msgstr "original's Attack"
+
+msgid "原龟护甲"
+msgstr "original's Armor"
+
+msgid "原龟魔抗"
+msgstr "original's MR"
+
+msgid "原龟普攻"
+msgstr "Original Attack"
+
+msgid "随从使用原龟的普通攻击。"
+msgstr "The Follower uses the original turtle's basic attack."
+
+msgid "缩头乌龟登场时随机喊来一只 A、B、C 级龟作随从，生命值为原龟的 {C:HidingSystem.MINION_HP_SCALE%}%，攻击力为原龟的 {C:HidingSystem.MINION_ATK_SCALE%}%，护甲、魔抗与暴击率与原龟相同，随缩头乌龟的等级成长。随从带着原龟的被动与一个技能，缩头乌龟阵亡时随从一同离场。"
+msgstr "On spawn, the Hiding Turtle calls a random A, B or C rank turtle as its Follower, with {C:HidingSystem.MINION_HP_SCALE%}% of the original's health and {C:HidingSystem.MINION_ATK_SCALE%}% of its Attack, the same Armor, Magic Resist and Crit Chance, growing with the Hiding Turtle's level. The Follower keeps the original's passive and one ability, and leaves when the Hiding Turtle dies."
+
+msgid "轮回"
+msgstr "Rebirth"
+
+msgid "灵物羁绊"
+msgstr "Spirit Synergy"
+
+msgid "阵亡者生命"
+msgstr "fallen unit's health"
+
+msgid "阵亡者攻击"
+msgstr "fallen unit's Attack"
+
+msgid "幽魂爪"
+msgstr "Wraith Claw"
+
+msgid "亡魂的攻击造成 {C:BasicConsts.DEFAULT_BASIC_COEF%}% 攻击力的物理伤害。"
+msgstr "The Wraith's attacks deal {C:BasicConsts.DEFAULT_BASIC_COEF%}% Attack as physical damage."
+
+msgid "灵物件数"
+msgstr "Spirit Count"
+
+msgid "每路一颗"
+msgstr "One per lane"
+
+msgid "围栏"
+msgstr "Fence"
+
+msgid "开打时龟蛋被围栏护着，不能被选为目标，范围伤害也打不到，并额外获得 {C:RealtimeBattle3DScene.EGG_FENCE_RES} 护甲和魔抗。己方单位全部倒下后围栏才会倒下。"
+msgstr "When the fight starts the Turtle Egg is behind a fence: it can't be targeted, area damage can't reach it, and it gains {C:RealtimeBattle3DScene.EGG_FENCE_RES} Armor and Magic Resist. The fence only falls once all of its side's units are down."
+
+msgid "坚壳"
+msgstr "Hard Shell"
+
+msgid "龟蛋免疫控制、斩杀与嘲讽。龟蛋的生命值在上路、下路和决胜场之间延续，不会回满。"
+msgstr "The Turtle Egg is immune to crowd control, executes and taunts. Its health carries over between the top lane, bottom lane and deciding battle, and never refills."
+
+msgid "成长"
+msgstr "Growth"
+
+msgid "龟蛋的最大生命值为 {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × 等级，护甲和魔抗为 {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × 等级。左侧按 1 级计算。"
+msgstr "The Turtle Egg has {C:DualLaneFlow.EGG_HP_BASE} + {C:DualLaneFlow.EGG_HP_PER_LV} × level max health and {C:BattleSpawn.EGG_RES_BASE} + {C:BattleSpawn.EGG_RES_PER_LV} × level Armor and Magic Resist. The stats on the left are for level 1."
+
+msgid "定局"
+msgstr "Decider"
+
+msgid "定局的那一路上，围栏倒下后龟蛋受到的伤害 ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT}，并每 {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} 秒损失 {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% 最大生命值。"
+msgstr "In the deciding lane, once its fence falls the Turtle Egg takes ×{C:RealtimeBattle3DScene.EGG_FINAL_DMG_MULT} damage and loses {C:RealtimeBattle3DScene.EGG_SELFLOSS_PCT%}% of its max health every {C:RealtimeBattle3DScene.EGG_SELFLOSS_IV} seconds."
+
+msgid "旁观者"
+msgstr "Onlooker"
+
+msgid "训龟大师站在场边，不会被选为目标，免疫一切伤害与效果。"
+msgstr "The Turtle Trainer stands at the edge of the field, can't be targeted, and is immune to all damage and effects."
+
+msgid "装饰"
+msgstr "Decoration"
+
+msgid "投石"
+msgstr "Stone Toss"
+
+msgid "训龟大师朝最近的敌人扔石头，每块石头造成 1 点伤害。"
+msgstr "The Turtle Trainer throws stones at the nearest enemy, each dealing 1 damage."
+
+msgid "携带技能"
+msgstr "Skill"
+
+msgid "糖果造物"
+msgstr "Candy Making"
+
+msgid "糖果炸弹登场时的生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_HP_PCT%}%，不移动、不攻击，攻击力、护甲与魔抗均为 0。左侧按 1 级糖果龟计算。"
+msgstr "The Candy Bomb spawns with {C:CandySystem.BOMB_HP_PCT%}% of the Candy Turtle's max health. It doesn't move or attack, and has 0 Attack, Armor and Magic Resist. The stats on the left are for a level 1 Candy Turtle."
+
+msgid "糖衣融化"
+msgstr "Melting Coat"
+
+msgid "糖果炸弹每秒损失 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值。"
+msgstr "The Candy Bomb loses {C:CandySystem.BOMB_DECAY_PCT%}% of its max health per second."
+
+msgid "糖果龟施放技能时，若糖果炸弹还在，炸弹最大生命值增加糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。若炸弹已不在，召唤一枚新的糖果炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。"
+msgstr "When the Candy Turtle casts its ability and the Candy Bomb is still around, the bomb gains max health equal to {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% of the Candy Turtle's max health and heals {C:CandySystem.BOMB_FEED_HEAL_PCT%}% of the Candy Turtle's max health. If the bomb is gone, a new Candy Bomb is summoned with {C:CandySystem.BOMB_REVIVE_HP_PCT%}% of the Candy Turtle's max health."
+
+msgid "甜蜜爆炸"
+msgstr "Sweet Blast"
+
+msgid "糖果炸弹阵亡时爆炸，造成相当于其最大生命值 {C:CandySystem.BOMB_DEATH_AOE%}% 的魔法伤害，平均分给所有敌人。"
+msgstr "When the Candy Bomb dies it explodes, dealing magic damage equal to {C:CandySystem.BOMB_DEATH_AOE%}% of its max health, split evenly among all enemies."
+
+msgid "水晶射线"
+msgstr "Crystal Ray"
+
+msgid "水晶球每 {C:CrystalSystem.ORB_RAY_IV} 秒朝最近的敌人射出一道贯穿射线，共造成（{C:CrystalSystem.ORB_RAY_COEF%}%×攻击力({ATK}) = {M:CrystalSystem.ORB_RAY_COEF*ATK}）魔法伤害，并给命中的敌人叠加 {C:CrystalSystem.ORB_RAY_STACKS} 层水晶，与水晶龟叠的水晶共用。"
+msgstr "Every {C:CrystalSystem.ORB_RAY_IV} seconds, the Crystal Ball fires a piercing ray at the nearest enemy, dealing a total of ({C:CrystalSystem.ORB_RAY_COEF%}% × Attack ({ATK}) = {M:CrystalSystem.ORB_RAY_COEF*ATK}) magic damage and adding {C:CrystalSystem.ORB_RAY_STACKS} Crystal stacks to enemies hit, shared with the Crystal Turtle's stacks."
+
+msgid "水晶造物"
+msgstr "Crystal Making"
+
+msgid "水晶球的生命值为水晶龟最大生命值的 {C:CrystalSystem.ORB_HP_PCT%}%，攻击力与水晶龟相同，没有护甲与魔抗。水晶龟阵亡后水晶球继续战斗。左侧按 1 级水晶龟计算。"
+msgstr "The Crystal Ball has {C:CrystalSystem.ORB_HP_PCT%}% of the Crystal Turtle's max health and the same Attack, with no Armor or Magic Resist. It keeps fighting after the Crystal Turtle dies. The stats on the left are for a level 1 Crystal Turtle."
+
+msgid "%s的攻击造成（{C:BasicConsts.DEFAULT_BASIC_COEF%%}%%×攻击力({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}）物理伤害。"
+msgstr "The %s's attacks deal ({C:BasicConsts.DEFAULT_BASIC_COEF%%}%% × Attack ({ATK}) = {N:BasicConsts.DEFAULT_BASIC_COEF*ATK}) physical damage."
+
+msgid "刺击时沿刺击方向推出一道冲击波，贯穿目标身后的敌人，造成（{C:%s.PIERCE_BEHIND%%}%%×攻击力({ATK}) = {N:%s.PIERCE_BEHIND*ATK}）物理伤害。"
+msgstr "Each thrust pushes a shockwave along its direction that pierces enemies behind the target, dealing ({C:%s.PIERCE_BEHIND%%}%% × Attack ({ATK}) = {N:%s.PIERCE_BEHIND*ATK}) physical damage."
+
+msgid "每次刺中使敌人失去 1 点护甲和魔抗，每个敌人至多 {C:%s.SHRED_CAP} 点。"
+msgstr "Each hit removes 1 Armor and Magic Resist from the enemy, up to {C:%s.SHRED_CAP} per enemy."
+
+msgid "每第 {C:%s.THROW_EVERY} 次攻击改为掷出长矛，飞向最远的敌人，贯穿沿途敌人，造成（{C:%s.THROW_COEF%%}%%×攻击力({ATK}) = {N:%s.THROW_COEF*ATK}）物理伤害。"
+msgstr "Every {C:%s.THROW_EVERY}th attack instead throws its spear at the farthest enemy, piercing enemies along the way and dealing ({C:%s.THROW_COEF%%}%% × Attack ({ATK}) = {N:%s.THROW_COEF*ATK}) physical damage."
+
+msgid "百夫长举盾 {C:%s.SHIELD_SEC} 秒，受到的伤害降低 {C:%s.SHIELD_DR%%}%%。"
+msgstr "The Centurion raises its shield for {C:%s.SHIELD_SEC} seconds, taking {C:%s.SHIELD_DR%%}%% less damage."
+
+msgid "举盾期间每 {C:%s.POKE_IV} 秒刺击周围敌人，造成（{C:%s.POKE_COEF%%}%%×攻击力({ATK}) = {M:%s.POKE_COEF*ATK}）魔法伤害。"
+msgstr "While the shield is up, every {C:%s.POKE_IV} seconds it stabs nearby enemies, dealing ({C:%s.POKE_COEF%%}%% × Attack ({ATK}) = {M:%s.POKE_COEF*ATK}) magic damage."
+
+msgid "放下盾时横扫周围敌人，造成（{C:%s.SWEEP_COEF%%}%%×攻击力({ATK}) = {M:%s.SWEEP_COEF*ATK}）魔法伤害。"
+msgstr "When it lowers the shield, it sweeps nearby enemies, dealing ({C:%s.SWEEP_COEF%%}%% × Attack ({ATK}) = {M:%s.SWEEP_COEF*ATK}) magic damage."
+
+msgid "横扫后，我方身后冲出 {C:%s.CAV_N} 名持矛骑兵，各冲向一名随机敌人，撞到的每个敌人受到（{C:%s.CAV_COEF%%}%%×攻击力({ATK}) = {N:%s.CAV_COEF*ATK}）物理伤害并被击飞。"
+msgstr "After the sweep, {C:%s.CAV_N} spear cavalry charge out from behind your side, each toward a random enemy. Every enemy they hit takes ({C:%s.CAV_COEF%%}%% × Attack ({ATK}) = {N:%s.CAV_COEF*ATK}) physical damage and is knocked up."
+
+msgid "百夫长登场时从高空落下，落地时击飞全场敌人 {C:%s.KNOCK_SEC} 秒，造成（{C:%s.ENTRY_COEF%%}%%×攻击力({ATK}) = {M:%s.ENTRY_COEF*ATK}）魔法伤害。"
+msgstr "The Centurion drops from the sky on spawn. On landing it knocks up all enemies for {C:%s.KNOCK_SEC} seconds, dealing ({C:%s.ENTRY_COEF%%}%% × Attack ({ATK}) = {M:%s.ENTRY_COEF*ATK}) magic damage."
+
+msgid "我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:%s.STAR_PCT%%}%%。"
+msgstr "For each different Spear on your side, the Centurion gains {C:%s.STAR_PCT%%}%% health and Attack per star of that Spear."
+
+msgid "携带者存活时，炮台获得 {C:EquipSystem.TURRET_RES[%d]} 护甲与魔抗，携带者阵亡后降为 0。"
+msgstr "While the holder is alive, the Turret has {C:EquipSystem.TURRET_RES[%d]} Armor and Magic Resist, dropping to 0 after the holder dies."
+
+msgid "嘲讽附近所有敌人。每有一个敌人以蛋糕礼盒为目标，蛋糕礼盒获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} 护甲和魔抗。"
+msgstr "Taunts all nearby enemies. For each enemy targeting it, the Cake Box gains {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} Armor and Magic Resist."
+
+msgid "登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后召唤蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒一次，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值与 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。"
+msgstr "{C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} seconds after spawning, and every {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} seconds after that, it summons a cake circle for {C:EqFoodBatch.BOX_FIELD_SEC} seconds that heals allies inside for {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} and gives them {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} Energy per second."
+
+msgid "蛋糕礼盒拥有携带者 {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% 的最大生命值，攻击力、护甲、魔抗与攻击速度与携带者相同，不能移动。"
+msgstr "The Cake Box has {C:EqFoodBatch.BOX_SPLIT_HP_PCT[%d]%%}%% of the holder's max health and the same Attack, Armor, Magic Resist and attack speed as the holder, and can't move."
+
+msgid "急救塔的攻击造成（{C:EqGunBatch.TOWER_COEF%%}%%×攻击力({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}）物理伤害，另加目标最大生命值 {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% 的魔法伤害，并为生命值百分比最低的友军回复 {C:EqGunBatch.TOWER_HEAL[%d]} 生命值。"
+msgstr "The Aid Tower's attacks deal ({C:EqGunBatch.TOWER_COEF%%}%% × Attack ({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}) physical damage plus magic damage equal to {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% of the target's max health, and heal the ally with the lowest health percentage for {C:EqGunBatch.TOWER_HEAL[%d]}."
+
+msgid "炮筒进入重炮状态：每发消耗 {C:EqBombBatch.CANNON_HEAVY_COST[%d]} 龟能，炮弹沿直线飞过整个战场，击退直线上的敌人，造成（{C:EqBombBatch.CANNON_HEAVY_MULT%%}%%×攻击力({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}）物理伤害并施加 {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} 层流血。龟能耗尽时回到普通炮击。"
+msgstr "The Cannon enters Heavy Shot mode: each shot costs {C:EqBombBatch.CANNON_HEAVY_COST[%d]} Energy and flies in a straight line across the whole battlefield, knocking back enemies in the line, dealing ({C:EqBombBatch.CANNON_HEAVY_MULT%%}%% × Attack ({ATK}) = {N:EqBombBatch.CANNON_HEAVY_MULT*ATK}) physical damage and applying {C:EqBombBatch.CANNON_HEAVY_BLEED[%d]} Bleed. When its Energy runs out it goes back to normal shots."
+
+msgid "每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。"
+msgstr "It loses {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% of its max health per second."
+
+msgid "生命值耗尽时爆炸，对大范围内的敌人造成 {C:EqBombBatch.REMOTE_FLAT[%d]} 物理伤害和相当于携带者 {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% 最大生命值的真实伤害，并施加 {C:EqBombBatch.REMOTE_BLEED[%d]} 层流血。"
+msgstr "When its health runs out it explodes, dealing {C:EqBombBatch.REMOTE_FLAT[%d]} physical damage plus true damage equal to {C:EqBombBatch.REMOTE_TRUE_PCT[%d]%%}%% of the holder's max health to enemies in a large area, and applying {C:EqBombBatch.REMOTE_BLEED[%d]} Bleed."
+
+msgid "暗影忍者拥有 {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% 暴击率。"
+msgstr "The Shadow Ninja has {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% Crit Chance."
+
+msgid "每次影袭，暗影忍者朝目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。"
+msgstr "On each Shadow Strike, the Shadow Ninja throws a shuriken at the target (both ninjas throw one while the shadow is out), dealing ({C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%% × Attack ({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}) magic damage to enemies in its path."
+
+msgid "推出一道缓慢前进的亡灵浪潮，途经的敌人受到 {C:EqMagicBatch.WAVE_DMG[%d]} 物理伤害、被击飞并眩晕 {C:EqMagicBatch.WAVE_STUN} 秒、{C:EqMagicBatch.WAVE_MR_SEC} 秒内魔抗降低 {C:EqMagicBatch.WAVE_MR_SHRED%%}%%，途经的友军回复 {C:EqMagicBatch.WAVE_HEAL[%d]} 生命值。"
+msgstr "Pushes out a slow undead wave. Enemies it passes take {C:EqMagicBatch.WAVE_DMG[%d]} physical damage, are knocked up and stunned for {C:EqMagicBatch.WAVE_STUN} seconds, and lose {C:EqMagicBatch.WAVE_MR_SHRED%%}%% Magic Resist for {C:EqMagicBatch.WAVE_MR_SEC} seconds. Allies it passes heal {C:EqMagicBatch.WAVE_HEAL[%d]}."
+
+msgid "舞狮朝前方冲撞，对途经的敌人造成（{C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%%×攻击力({ATK}) = {N:%s*ATK}）物理伤害，将其撞退并眩晕 {C:EqMaskBatch.LION_STUN[%d]} 秒。"
+msgstr "The Lion Dancer charges forward, dealing ({C:EqMaskBatch.LION_CHARGE_ATK[%d]%%}%% × Attack ({ATK}) = {N:%s*ATK}) physical damage to enemies in its path, knocking them back and stunning them for {C:EqMaskBatch.LION_STUN[%d]} seconds."
+
+msgid "亡灵骷髅阵亡或存活 {C:EqSummons.SKEL_LIFE[%d]} 秒后爆炸，对附近的敌人造成相当于其最大生命值 {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% 的真实伤害。"
+msgstr "The Undead Skeleton explodes when it dies or after {C:EqSummons.SKEL_LIFE[%d]} seconds, dealing true damage equal to {C:EqSummons.SKEL_BOOM_PCT[%d]%%}%% of each nearby enemy's max health."
+
+msgid "海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。"
+msgstr "The Conch Bug is born carrying 3 random %d-star {C:EquipSystem.CONCH_COST_MIN}- or {C:EquipSystem.CONCH_COST_MAX}-cost items."
+
+msgid "我方单位阵亡时化为亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[%d]%%}%% 的最大生命值与攻击力，没有护甲与魔抗。召唤物阵亡不会化为亡魂。"
+msgstr "When one of your units dies it rises as a Wraith with {C:SpiritSynergySystem.WRAITH_INHERIT[%d]%%}%% of its max health and Attack, and no Armor or Magic Resist. Summons don't rise as Wraiths."
+
+msgid "亡魂阵亡后会再次化为亡魂，至多 {C:SpiritSynergySystem.WRAITH_LOOPS[%d]} 次，每次继承的比例变为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%%}%%。"
+msgstr "After dying, a Wraith rises again, up to {C:SpiritSynergySystem.WRAITH_LOOPS[%d]} times, each time inheriting {C:SpiritSynergySystem.WRAITH_DECAY%%}%% of the previous ratio."
+
+msgid "　[color=#06d6a0][font_size=20]冷却 %d 秒[/font_size][/color]"
+msgstr "　[color=#06d6a0][font_size=20]Cooldown %d s[/font_size][/color]"
+
+msgid "主动 · 冷却 %d 秒"
+msgstr "Active · Cooldown %d s"

@@ -145,10 +145,10 @@ static func _wraith(ci: int) -> Dictionary:
 	var W := SpiritSynergySystem
 	var k: int = clampi(ci, 0, W.WRAITH_INHERIT.size() - 1)
 	var ps: Array = [{"name": "亡灵", "icon": "passive/summon-wraith-rise-icon.png",
-		"desc": "我方单位阵亡时化为亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[%d]%%}%% 的最大生命值与攻击力，没有护甲与魔抗。召唤物阵亡不会化为亡魂。" % k}]
+		"desc": Lang.t("我方单位阵亡时化为亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[%d]%%}%% 的最大生命值与攻击力，没有护甲与魔抗。召唤物阵亡不会化为亡魂。") % k}]
 	if int(W.WRAITH_LOOPS[k]) > 0:
 		ps.append({"name": "轮回", "icon": "passive/summon-wraith-loop-icon.png",
-			"desc": "亡魂阵亡后会再次化为亡魂，至多 {C:SpiritSynergySystem.WRAITH_LOOPS[%d]} 次，每次继承的比例变为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%%}%%。" % k})
+			"desc": Lang.t("亡魂阵亡后会再次化为亡魂，至多 {C:SpiritSynergySystem.WRAITH_LOOPS[%d]} 次，每次继承的比例变为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%%}%%。") % k})
 	var d := _base("亡魂", ["wraith"], "wraith", {"img": "pets/wraith.png", "_box": 150.0, "_cy": 100.0},
 		{"text": Lang.t("灵物羁绊"), "tab": "synergies", "key": "灵物"}, ["近战斗士"],
 		SC.stats(SC._pct(W.WRAITH_INHERIT[k]) + "%", SC._pct(W.WRAITH_INHERIT[k]) + "%", 0, 0, BattleSpawn.SUMMON_DEFAULT_SPD,
