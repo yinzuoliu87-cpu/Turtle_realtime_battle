@@ -30,7 +30,12 @@ func _init(b) -> void:
 ## 但**15 个创建点里只有 3 个真的写了 dtype**, 其余全部落空 ⇒ 那行等于没有。
 ## ⇒ 不去补 15 处(手抄的副本必然漏一个), 改成【唯一入口】在这里兜底。
 ## 哨兵 `DMGSENTINEL=1` 量的就是这条路: 修前一场对局 30 发捡类型, 全部出自弹道。
+const SPIN_FPS := 20.0   # 翻转帧轮播速度(8 帧 = 0.4 秒转半圈)
+
+
 func _push_proj(d: Dictionary) -> void:
+	if d.has("spin_frames") and d.get("node") is Sprite3D:   # 横排翻转帧(梭哈金币 11-27): 飞行中按时间轮播, 见下方 SPIN_FPS
+		(d["node"] as Sprite3D).hframes = int(d["spin_frames"])
 	if not d.has("dtype"):
 		d["dtype"] = battle._last_dmg_type
 	## ★与 dtype 同一个道理: 弹道的伤害是【发射时】算好的, 命中时才落地。
@@ -394,6 +399,8 @@ func _step_projectiles(delta: float) -> void:
 		var to = battle._world_pos(tgt["pos"], 1.0)
 		var frac: float = proj_seek(pr, tgt, delta) if pr.has("spd") else clampf(pr["t"] / pr["dur"], 0.0, 1.0)
 		node.position = pr["from"].lerp(to, frac)
+		if pr.has("spin_frames") and node is Sprite3D:
+			(node as Sprite3D).frame = int(float(pr["t"]) * SPIN_FPS) % int(pr["spin_frames"])
 
 		## ══════════════════════════════════════════════════════════════
 		##  ★★★像素风弹体的两件事(2026-09-06, 001 飞斩剑气重做时加的通用件)

@@ -3773,20 +3773,20 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 func _gold_fly_to(from2d: Vector2, tgt: Dictionary) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
-	var path := "res://assets/sprites/ui/coin.png"
+	var path := "res://assets/sprites/vfx/fortune-coin-spin.png"   # 11-27: 原 ui/coin.png 全黑, 换翻转金币(8 帧)
 	if not ResourceLoader.exists(path):
 		return
 	var p := Sprite3D.new()
 	p.texture = load(path)
-	p.pixel_size = 0.045
+	p.pixel_size = 0.028
 	p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	p.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	p.shaded = false; p.transparent = true
+	p.shaded = false; p.transparent = true; p.hframes = 8
 	p.position = _world_pos(from2d, 1.0)
 	_world.add_child(p)
 	var to_pos: Vector3 = _world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + 0.6)
 	var tw := _reg_tween()
-	tw.set_parallel(true)
+	tw.set_parallel(true); tw.tween_property(p, "frame", 7, 0.5)
 	tw.tween_property(p, "position", to_pos, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_property(p, "scale", Vector3(0.4, 0.4, 0.4), 0.5).set_delay(0.28)
 	tw.tween_property(p, "modulate:a", 0.0, 0.18).set_delay(0.34)
@@ -6179,10 +6179,10 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	var start2d: Vector2 = src["pos"]
 	var p := Sprite3D.new()
-	var tex := "res://assets/sprites/ui/coin.png"
+	var tex := "res://assets/sprites/vfx/fortune-coin-spin.png"   # 11-27: 原 ui/coin.png 是全黑界面图标(飞出去一串黑圈); 换 Aseprite 画的翻转金币 8 帧
 	if ResourceLoader.exists(tex):
 		p.texture = load(tex)
-		p.pixel_size = 0.05
+		p.pixel_size = 0.028
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	else:
 		p.texture = VfxTex._make_bolt_texture(Color(1.0, 0.84, 0.2))
@@ -6195,7 +6195,7 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	_world.add_child(p)
 	_ballistics._push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.30, tgt, false),
-		"col": Color("#ff4444"), "src": src, "t": 0.0, "spd": 650.0, "basic_onhit": false,
+		"col": Color("#ff4444"), "src": src, "t": 0.0, "spd": 650.0, "basic_onhit": false, "spin_frames": 8,
 		"coin_true": int(src["atk"] * FortuneSystem.ALLIN_COIN_COEF),   # 梭哈每枚 0.18+0.18 → 0.3+0.3(用户2026-07-29 第五轮)
 		# ★这一改顺带修掉一个隐藏缺陷: 财神普攻 = 1.0A + 2%×ATK×金币数, 而梭哈【清空金币】。
 		#   每枚金币"留着"值 0.66 伤害/秒(持续到死); 旧值 17.1 点一次性 → 打平需剩余 25.7 秒,
