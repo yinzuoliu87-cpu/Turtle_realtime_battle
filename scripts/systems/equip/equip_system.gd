@@ -1784,20 +1784,6 @@ func laser_alive_enemies(src: Dictionary) -> Array:
 	return out
 
 
-## 谁被【顶点 org / 朝向 dir / 半径 rng / 全角 LASER_ARC_DEG】的扇形罩住。
-## 判定与演出共用同一个 org/dir/rng ⇒ 画到哪就打到哪。
-func laser_fan_hits(org: Vector2, dir: Vector2, rng: float, enemies: Array) -> Array:
-	var cos_half: float = DetMath.dcos(deg_to_rad(LASER_HALF_DEG))
-	var out: Array = []
-	for o in enemies:
-		var rel: Vector2 = o["pos"] - org
-		var d: float = DetMath.vlen(rel)
-		if d > rng: continue
-		if DetMath.dot(dir, rel / maxf(1.0, d)) < cos_half: continue
-		out.append(o)
-	return out
-
-
 ## 3★ 半径: 射程 ×2, 近战再 +250(文案原话)。
 ## ★加在 ×2 **之后** = 对最终半径的加法, 不被 3★ 倍率放大(否则近战 3★ 会变成 +500)。
 func laser_fan_range(u: Dictionary, si: int) -> float:

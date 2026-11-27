@@ -2,7 +2,8 @@
 """eq010_icon.py —— 010 激光长刃图标 64×64(用户 11-27「图标和技能特效都全部再重新做一遍」; 方案书 docs/plans/20261127c-激光长刃重做.md)。
 
 做法(如实): 逐像素按几何判层上色 —— 握柄(枪灰 + 防滑纹 + 红色导能灯) / 金色十字护手(两端翘鳍、中间红宝石) /
-激光刃(白热芯 → 粉 → 红 → 深红, 刃根白芯更宽) / 外圈半透光晕 / 刃尖十字闪光与火花 / 描边(刃边暗红、其余深色; 发光层不描边)。
+激光刃(白热芯 → 粉 → 红 → 深红, 刃根白芯更宽) / 刃尖十字闪光与火花 / 描边(刃边暗红、其余深色; 发光层不描边)。
+★装备图标一律硬边零半透(tools/pixel_art_audit.py): 初版刃外一圈半透光晕(136 像素)被它拦下, 已去掉; 发光感靠刃身分阶色 + 暗红描边。
 不用随机数, 重跑逐字节相同。分层 PNG 由 tools/assetgen/ase/png_layers_to_ase.lua 在 Aseprite 里按层拼成 .aseprite。
 用法: python tools/assetgen/eq010_icon.py [输出目录]   (默认 .out/eq010/icon/; 成品拷到 assets/sprites/equip/eq010-icon.png)
 """
@@ -61,9 +62,6 @@ for y in range(N):
 			elif d < w * 0.55: put(1, x, y, C["pink"])
 			elif d < w * 0.85: put(1, x, y, C["red"] if side > 0 else C["deep"])
 			else: put(1, x, y, C["deep"])
-		elif d <= w + 3.6 and t > 0.02:
-			a = int(150 * (1.0 - (d - w - 0.6) / 3.0) ** 1.6)
-			if a > 18: put(0, x, y, C["halo"] + (a,))
 		# ── 握柄: 柄头 → 护手, 半宽 2.6, 防滑纹每 3 像素一道
 		d2, t2 = seg_dist(p, A, G)
 		if d2 <= 2.7:
@@ -120,12 +118,13 @@ for (x, y, c) in ring:      # 先算完再画: 边画边算会让描边自己也
 	layers[5].putpixel((x, y), c)
 comp = Image.new("RGBA", (N, N), (0, 0, 0, 0))
 names = ["glow", "blade", "hilt", "guard", "spark", "outline"]
-order = [0, 1, 2, 3, 5, 4]
+order = [1, 2, 3, 5, 4]          # 第 0 层(原半透光晕)不再画, 也不进 .aseprite
 for k, li in enumerate(order):
 	comp.alpha_composite(layers[li])
 	comp.save(os.path.join(OUT, "step%d-%s.png" % (k + 1, names[li])))
 for li, nm in enumerate(names):
-	layers[li].save(os.path.join(OUT, "layer-%s.png" % nm))
+	if li in order:
+		layers[li].save(os.path.join(OUT, "layer-%s.png" % nm))
 comp.save(os.path.join(OUT, "eq010-icon.png"))
 # 预览: 8 倍 + 实际尺寸(深底 / 浅底)
 pv = Image.new("RGBA", (N * 8 + 64 * 3 + 60, N * 8 + 20), (22, 28, 40, 255))
