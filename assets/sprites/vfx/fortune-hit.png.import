@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b26a87c4r3l5g"
-path="res://.godot/imported/fortune-strike-slash.png-2f8d9c8a9a27ac77a60eb45d634447c9.ctex"
+uid="uid://uv4wt6kbl8cv"
+path="res://.godot/imported/fortune-hit.png-e8f89fe5cb5418d60e55d71a5320068c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/fortune-strike-slash.png"
-dest_files=["res://.godot/imported/fortune-strike-slash.png-2f8d9c8a9a27ac77a60eb45d634447c9.ctex"]
+source_file="res://assets/sprites/vfx/fortune-hit.png"
+dest_files=["res://.godot/imported/fortune-hit.png-e8f89fe5cb5418d60e55d71a5320068c.ctex"]
 
 [params]
 

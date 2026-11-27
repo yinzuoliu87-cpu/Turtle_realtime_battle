@@ -4,10 +4,10 @@ extends "res://scripts/scenes/battle/candy_vfx.gd"
 ## 只管画面: 不读写对局状态(唯一例外: 普攻命中时把目标的 `_spark_t` 往后推一点, 挡掉通用星芒火花 —— battle_vfx._hit_spark 读它, 纯演出)。
 ## 继承糖果龟演出层拿粒子工具(_p / _mat / tex / rng): 粒子运动全是游戏钟的函数(battle_render._tick_anim_fx), 直播录得到。
 ## 素材(全部 Aseprite 后台脚本逐像素画, CLAUDE.md §10 第 7 条②; 源脚本与 .aseprite 在 tools/assetgen/ase/):
-##   fortune-strike-slash 金色新月剑光 6×64 · fortune-strike-star 命中金星 4×24 · fortune-coin-spin 翻转铜钱 8×16 ·
+##   fortune-hit 普攻命中爆点 6×48 · fortune-strike-star 金星 4×24(招财进宝升星用) · fortune-coin-spin 翻转铜钱 8×16 ·
 ##   fortune-dice-roll 翻滚骰子 6×24 · fortune-beam 剑尖光柱 8×(16×128); 金盾罩 = 网格 + assets/shaders/fortune_shield.gdshader;
 ##   光晕 candy-glow(白色圆斑, 底层小元素共用, §10 第 5 条)。
-const F_SLASH := "res://assets/sprites/vfx/fortune-strike-slash.png"
+const F_HIT := "res://assets/sprites/vfx/fortune-hit.png"
 const F_STAR := "res://assets/sprites/vfx/fortune-strike-star.png"
 const F_COIN := "res://assets/sprites/vfx/fortune-coin-spin.png"
 const F_DICE := "res://assets/sprites/vfx/fortune-dice-roll.png"
@@ -38,22 +38,16 @@ func _glow(p0: Vector3, size_m: float, life: float, t0: float, s1: float = 1.4, 
 		"add": true, "prio": 7, "vel": vel, "t0": t0})
 
 
-# ════════════════ ① 普攻·金剑命中: 金色新月剑光 + 命中金星 + 迸出 3 枚铜钱 ════════════════
-func strike(u: Dictionary, tgt: Dictionary) -> void:
+# ════════════════ ① 普攻·金剑命中: 命中点一个金色爆点 ════════════════
+## 11-27 用户「这个普攻明明是一个偏横扫的…攻击, 为什么你要做竖着的这个命中特效呢？…做一个爆点的命中特效就好了呀」
+##   ⇒ 第一版的竖劈新月剑光 + 迸铜钱去掉, 只留爆点(Aseprite 6 帧: 白金闪光 → 八道金芒 → 芒断开外飞 + 细环 → 碎点)。
+func strike(_u: Dictionary, tgt: Dictionary) -> void:
 	if battle._world == null:
 		return
-	var dir: float = 1.0 if float(tgt["pos"].x) >= float(u["pos"].x) else -1.0
 	var hh: float = float(tgt.get("height", 0.0))
-	var at: Vector2 = tgt["pos"]
-	var t0: float = battle._t
 	tgt["_spark_t"] = battle._t + 0.08   # 有专属命中特效: 挡掉通用星芒(纯演出键)
-	_p(tex(F_SLASH), battle._world_pos(at - Vector2(dir * 12.0, 0.0), 0.75 + hh), {"hf": 6, "n": 6, "fps": 20.0, "life": 0.3,
-		"px_m": 2.0 / 64.0, "flip": dir < 0.0, "near": true, "prio": 9, "a0": 1.0, "a1": 0.7, "t0": t0})
-	_p(tex(F_STAR), battle._world_pos(at, 0.6 + hh), {"hf": 4, "n": 4, "fps": 16.0, "life": 0.25, "px_m": 0.8 / 24.0,
-		"near": true, "prio": 11, "a0": 1.0, "a1": 1.0, "t0": t0 + 0.03})
-	for i in range(3):
-		_coin(battle._world_pos(at, 0.6 + hh), Vector3(dir * (0.7 + 0.45 * float(i)), 2.3 + 0.35 * float(i % 2), (float(i) - 1.0) * 0.5),
-			0.5, t0 + 0.04 + 0.02 * float(i))
+	_p(tex(F_HIT), battle._world_pos(tgt["pos"], 0.6 + hh), {"hf": 6, "n": 6, "fps": 20.0, "life": 0.3,
+		"px_m": 1.4 / 48.0, "near": true, "prio": 11, "a0": 1.0, "a1": 1.0, "t0": battle._t})
 
 
 # ════════════════ ② 骰子: 头顶骰子翻滚落定 → N 枚铜钱喷泉撒下 → 身后暖金光点往上飘(回血) ════════════════
