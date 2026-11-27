@@ -610,7 +610,7 @@ func allow_input(kind: String) -> bool:
 		return false
 	_ev_i += 1
 	if kind == "fight" and not _apply_positions(e2.get("p", [])):
-		_diverge(int(battle._sim_step_n), "战斗开始时场上单位与录制时不同")
+		_diverge(int(battle._sim_step_n), "战场开始时场上单位与录制时不同")
 		return false
 	return true
 
@@ -641,7 +641,7 @@ func _resume_allow(kind: String) -> bool:
 			return false
 		_ev_i += 1
 		if kind == "fight" and not _apply_positions(e2.get("p", [])):
-			_diverge(int(battle._sim_step_n), "战斗开始时场上单位与录制时不同")
+			_diverge(int(battle._sim_step_n), "战场开始时场上单位与录制时不同")
 			return false
 		_record_event(kind)
 		return true

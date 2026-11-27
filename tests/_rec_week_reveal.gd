@@ -14,6 +14,7 @@ var _menu: Node = null
 
 
 func _ready() -> void:
+	WeekReveal.force_in_tests = true   # 测试进程默认 test_mode 开着, 揭晓默认不弹(week_reveal.gd due); 这里就是要看它
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
 	_P2C.now_override_ts = TUE

@@ -791,17 +791,21 @@ func _s_codex() -> void:
 		##   找不到就退回第 4 条(状态页的详情本来就不滚)。
 		var items: Array = r.get("_items")
 		var pick := mini(3, items.size() - 1)
+		var found := false
 		for i in range(mini(items.size(), 40)):
 			r.call("_select", i)
 			await _frames(3)
 			var ds: ScrollContainer = rr._detail_scroll
 			if ds != null and _range(ds) >= float(MIN_SCROLL) + 40.0:
 				pick = i
+				found = true
 				break
 		if not items.is_empty():
 			r.call("_select", pick)
 		await _frames(4)
-		var want := 2 if (tab == "equips" or tab == "synergies") else 1
+		## 11-27 图鉴羁绊页改版(机制一次 + 逐档一句 + 同类装备上移)后每个羁绊一屏放得下 ⇒ 详情可能一条都不用滚;
+		##   羁绊页只在真找到要滚的那条时才要求两个滚动框(装备页照旧必须有)。
+		var want := 2 if (tab == "equips" or (tab == "synergies" and found)) else 1
 		await _audit("图鉴·%s" % tab, r, want, func() -> String: return "%s#%d|%s|%s" % [str(r.get("current_tab")), int(r.get("_sel_idx")),
 			str(not (rr._codex_skill_detail as Dictionary).is_empty()), str(rr._codex_passive_view)])
 		if tab == "pets":

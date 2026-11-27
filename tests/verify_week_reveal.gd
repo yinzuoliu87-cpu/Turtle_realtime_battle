@@ -20,6 +20,7 @@ func _ok(n: String, c: bool, d: String = "") -> void:
 
 
 func _ready() -> void:
+	WeekReveal.force_in_tests = true   # 测试进程默认 test_mode 开着, 揭晓默认不弹(week_reveal.gd due); 这里就是要看它
 	await get_tree().process_frame
 	var gs = get_node("/root/GameState")
 	gs.tutorial_active = false

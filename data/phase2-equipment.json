@@ -1627,7 +1627,7 @@
     "baseStats1": "+生命300/700/2000·攻30/70/300",
     "shopAvailable": 1,
     "emoji": "🎭",
-    "effectDesc1": "战斗开始 {C:OtherworldSystem.OW_AT} 秒后，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。",
+    "effectDesc1": "每个战场开始 {C:OtherworldSystem.OW_AT} 秒后，把一名随机敌人拽进里世界决斗，至多 {C:OtherworldSystem.OW_SEC} 秒。在里世界中每秒偷取敌方 {C:OtherworldSystem.OW_STEAL%}% 攻击力、护甲和魔抗，偷到的属性持续到战场结束。里世界中一方全部阵亡时决斗提前结束。",
     "effectDesc3": "",
     "img": "equip/p2eq_136.png",
     "effectBrief": "把一名敌人拽进里世界决斗，期间持续偷取它的属性。"
@@ -1735,7 +1735,7 @@
     "baseStats1": "+攻40/90/400·护甲穿透8/12/20",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "战斗中积攒进度：每秒获得 {C:EqSpearBatch.ETERNAL_PS} 点，每造成或受到 100 点伤害获得 {C:EqSpearBatch.ETERNAL_PER_DMG} 点，永恒之枪自身造成的伤害不计入。进度达到 {C:EqSpearBatch.ETERNAL_NEED} 时，一支永恒之枪从场外飞向生命值最高的敌人，造成 {C:EqSpearBatch.ETERNAL_HIT_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_HIT_HP%}% 最大生命值的物理伤害，将其击倒并向后滑行，滑行期间共造成 {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% 最大生命值的物理伤害，眩晕 {C:EqSpearBatch.ETERNAL_STUN} 秒。滑行路径上的其他敌人受到 {C:EqSpearBatch.ETERNAL_PASS_ATK%}% 攻击力 + 其 {C:EqSpearBatch.ETERNAL_PASS_HP%}% 最大生命值的物理伤害。目标免疫控制时，转而额外受到 {C:EqSpearBatch.ETERNAL_IMM_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_IMM_HP%}% 最大生命值的物理伤害。\n命中时，自身获得 {C:EqSpearBatch.ETERNAL_TEMP%}% 最大生命值的临时生命值，持续 {C:EqSpearBatch.ETERNAL_TEMP_SEC} 秒。同时自身周围燃起灼烧圈，持续 {C:EqSpearBatch.ETERNAL_BURN_SEC} 秒，每秒对圈内敌人造成其 {C:EqSpearBatch.ETERNAL_BURN_PCT%}% 最大生命值的魔法伤害。临时生命值与灼烧圈均可叠加。",
+    "effectDesc1": "积攒进度：每秒 {C:EqSpearBatch.ETERNAL_PS} 点，每造成或受到 100 点伤害 {C:EqSpearBatch.ETERNAL_PER_DMG} 点，永恒之枪自身的伤害不计入。进度满 {C:EqSpearBatch.ETERNAL_NEED} 时，永恒之枪从场外飞向生命值最高的敌人，造成 {C:EqSpearBatch.ETERNAL_HIT_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_HIT_HP%}% 最大生命值的物理伤害，将其击倒滑行并眩晕 {C:EqSpearBatch.ETERNAL_STUN} 秒，滑行共造成 {C:EqSpearBatch.ETERNAL_SLIDE_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_SLIDE_HP%}% 最大生命值的物理伤害。滑行路径上的其他敌人受到 {C:EqSpearBatch.ETERNAL_PASS_ATK%}% 攻击力 + 其 {C:EqSpearBatch.ETERNAL_PASS_HP%}% 最大生命值的物理伤害。目标免疫控制时转而额外受到 {C:EqSpearBatch.ETERNAL_IMM_ATK%}% 攻击力 + 目标 {C:EqSpearBatch.ETERNAL_IMM_HP%}% 最大生命值的物理伤害。\n命中时自身获得 {C:EqSpearBatch.ETERNAL_TEMP%}% 最大生命值的临时生命值，持续 {C:EqSpearBatch.ETERNAL_TEMP_SEC} 秒，周围燃起灼烧圈 {C:EqSpearBatch.ETERNAL_BURN_SEC} 秒，每秒对圈内敌人造成其 {C:EqSpearBatch.ETERNAL_BURN_PCT%}% 最大生命值的魔法伤害。临时生命值与灼烧圈均可叠加。",
     "effectDesc3": "",
     "img": "equip/p2eq_145.png",
     "effectBrief": "积攒进度满后，永恒之枪从场外飞向生命值最高的敌人，将其击倒拖行，并获得临时生命值、点燃自身周围的灼烧圈。"
@@ -1855,10 +1855,10 @@
     "baseStats1": "+生命1000",
     "shopAvailable": 1,
     "emoji": "🪙",
-    "effectDesc1": "战斗开始 {C:EqChipBatch.GOLD_AT} 秒后，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
+    "effectDesc1": "每个战场开始 {C:EqChipBatch.GOLD_AT} 秒后，为所有友军套上金色护罩，持续 {C:EqChipBatch.GOLD_SEC} 秒，期间免疫伤害与负面效果，并使所有友军在这个战场获得 {C:EqChipBatch.GOLD_TEAM_ATK} 攻击力、{C:EqChipBatch.GOLD_TEAM_RES} 护甲和魔抗。消耗品：无法升星，一场积分赛、闯关赛或决赛日对局结束后消失。",
     "effectDesc3": "",
     "img": "equip/p2eq_155.png",
-    "effectBrief": "战斗开始 {C:EqChipBatch.GOLD_AT} 秒后为全队套上金色护罩并提升全队属性。"
+    "effectBrief": "每个战场开始 {C:EqChipBatch.GOLD_AT} 秒后为全队套上金色护罩并提升全队属性。"
   },
   {
     "id": "p2eq_156",

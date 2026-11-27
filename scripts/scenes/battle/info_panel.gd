@@ -1142,7 +1142,7 @@ static func eq_live_lines(u: Dictionary, ck: String) -> Array:
 			out.append(Lang.t("储能 %d / %d") % [int(st.get("store", 0)), int(st.get("cap", 0))])
 			out.append(Lang.t("引导中") if bool(st.get("channel", false)) else Lang.t("%d 秒后引导") % maxi(0, int(st.get("next", 0))))
 		"chip_gold":
-			out.append(Lang.t("金色护罩：已触发") if bool(st.get("done", false)) else Lang.t("金色护罩：战斗开始 %d 秒后触发") % int(EqChipBatch.GOLD_AT))
+			out.append(Lang.t("金色护罩：已触发") if bool(st.get("done", false)) else Lang.t("金色护罩：每个战场开始 %d 秒后触发") % int(EqChipBatch.GOLD_AT))
 		"chip_cci":
 			if bool(st.get("cci", false)):
 				out.append(Lang.t("本战场免疫控制"))

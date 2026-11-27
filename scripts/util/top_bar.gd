@@ -57,10 +57,11 @@ const TITLE_FS := 36
 ##   参考 docs/studies/20261127-参考-装备稀有度框与二级页顶栏.md: 返回键要有底板(不是光秃秃一个字符), 顶栏是带主题的横幅。
 ##   素材 tools/assetgen/ase/header_bar.lua(Aseprite 后台逐层画, 2 倍像素)。结构不变(返回 → 页名 → 右侧动作), 换的是做工。
 const BANNER_TEX := "res://assets/sprites/ui/hdr-banner.png"
-const BTN_TEX := {"←": "res://assets/sprites/ui/hdr-back.png", "⌂": "res://assets/sprites/ui/hdr-home.png"}
+const BTN_TEX := {"←": "res://assets/sprites/ui/hdr-back.png"}
 const BTN_SIZE := Vector2(80.0, 68.0)   # 原图 40×34 的 2 倍
+## (回主页的贴图 hdr-home / hdr-house 画好了备用; 现在没有页面用回主页键, 字体也没那个字形, 不进表)
 ## 木头场景(配色带 chip_tex: 商店 / 背包 / 选龟)的返回键: 底板就是同屏「商店 / 背包」那块木牌, 上面放单独的像素图标
-const BTN_ICON := {"←": "res://assets/sprites/ui/hdr-arrow.png", "⌂": "res://assets/sprites/ui/hdr-house.png"}
+const BTN_ICON := {"←": "res://assets/sprites/ui/hdr-arrow.png"}
 var _banner := false
 
 ## 两套配色。★只是【取值不同】，结构完全一样 —— 这就是"统一规则不统一长相"。

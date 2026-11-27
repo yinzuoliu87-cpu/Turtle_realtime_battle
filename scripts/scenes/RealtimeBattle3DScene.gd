@@ -3786,8 +3786,8 @@ func _gold_fly_to(from2d: Vector2, tgt: Dictionary) -> void:
 	_world.add_child(p)
 	var to_pos: Vector3 = _world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + 0.6)
 	var tw := _reg_tween()
-	tw.set_parallel(true); tw.tween_property(p, "frame", 7, 0.5)
-	tw.tween_property(p, "position", to_pos, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var fly_sec := 0.5; tw.set_parallel(true); tw.tween_property(p, "frame", 7, fly_sec)   # 转满一圈 8 帧 = 飞行全程
+	tw.tween_property(p, "position", to_pos, fly_sec).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_property(p, "scale", Vector3(0.4, 0.4, 0.4), 0.5).set_delay(0.28)
 	tw.tween_property(p, "modulate:a", 0.0, 0.18).set_delay(0.34)
 	tw.chain().tween_callback(p.queue_free)

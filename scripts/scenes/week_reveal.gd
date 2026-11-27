@@ -45,8 +45,15 @@ var fresh: Array = []
 
 
 ## 这一周该不该放(纯判断, 不改状态)。now = 主菜单画面时刻(UTC 秒)。
+## 测试模式(GameState.test_mode)下默认不弹: 进主菜单的测试会被它整屏盖住, 而且周一不弹、周二起弹 ⇒ 门禁结果跟着跑的日子变。
+##   揭晓自己的测试 / 录像台不开 test_mode, 不受影响; 需要在 test_mode 里看它的把这个开关打开。
+static var force_in_tests := false
+
+
 static func due(gs, now: int) -> bool:
 	if gs == null or bool(gs.get("tutorial_active")):
+		return false
+	if bool(gs.get("test_mode")) and not force_in_tests:
 		return false
 	var anchor: int = int(gs.get("week_anchor_ts"))
 	if anchor <= 0 or WeeklySynergy.of_week(anchor).size() >= WeeklySynergy.ALL.size():
@@ -84,11 +91,11 @@ const CARD_LINE := {
 	"食物": "每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久获得 {C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值",
 	"遗物": "生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于时获得 {C:RelicSynergySystem.LOW_HP_LS[0]%}% 生命偷取",
 	"药水": "生命值最高的敌人成为猎物，全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%",
-	"炸弹": "战斗开始 {C:BombSynergySystem.FIRE_AT} 秒后，导弹轰炸并击飞所有敌方单位",
-	"匕首": "战斗开始时，我方所有单位的下一次攻击必定暴击",
+	"炸弹": "每个战场开始 {C:BombSynergySystem.FIRE_AT} 秒后，导弹轰炸并击飞所有敌方单位",
+	"匕首": "每个战场开始时，我方所有单位的下一次攻击必定暴击",
 	"魔法书": "我方单位释放技能时，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹",
-	"长矛": "战斗开始 {C:SpearSynergySystem.SUMMON_AT} 秒后，百夫长从天而降，击飞全场敌人",
-	"面具": "战斗开始时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体",
+	"长矛": "每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后，百夫长从天而降，击飞全场敌人",
+	"面具": "每个战场开始时，在我方阵地召唤 {C:MaskSynergySystem.STEAL_N[0]} 只敌方龟的复制体",
 	"筹码": "消耗品，无法升星，不计入其他羁绊的件数",
 }
 
@@ -169,14 +176,14 @@ func _build(anchor: int) -> void:
 	stage = 1
 	master = ov.create_tween()
 	master.set_parallel(true)
-	master.tween_property(ov, "color:a", 0.86, 0.3)
-	master.tween_property(title, "position:y", 30.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	master.tween_property(sub, "modulate:a", 1.0, 0.3).set_delay(0.3)
+	master.tween_property(ov, "color:a", 0.86, UIPalette.T_TRANS)
+	master.tween_property(title, "position:y", 30.0, UIPalette.T_TRANS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	master.tween_property(sub, "modulate:a", 1.0, UIPalette.T_TRANS).set_delay(0.3)
 	for i in range(cards.size()):
 		var c: Dictionary = cards[i]
 		var root: Control = c["root"]
-		master.tween_property(root, "position", c["pos"], 0.32).set_delay(0.35 + DEAL_EVERY * float(i)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		master.tween_property(root, "modulate:a", 1.0, 0.15).set_delay(0.35 + DEAL_EVERY * float(i))
+		master.tween_property(root, "position", c["pos"], UIPalette.T_TRANS).set_delay(0.35 + DEAL_EVERY * float(i)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		master.tween_property(root, "modulate:a", 1.0, UIPalette.T_TAP).set_delay(0.35 + DEAL_EVERY * float(i))
 		master.tween_callback(_flip.bind(i)).set_delay(0.35 + DEAL_EVERY * float(cards.size()) + 0.3 + FLIP_EVERY * float(i))
 	master.tween_callback(_to_hold).set_delay(0.35 + DEAL_EVERY * float(cards.size()) + 0.3 + FLIP_EVERY * float(cards.size()) + 0.3)
 
@@ -310,12 +317,12 @@ func _flip(i: int) -> void:
 	c["open"] = true
 	var root: Control = c["root"]
 	var tw := ov.create_tween()
-	tw.tween_property(root, "scale:x", 0.0, 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(root, "scale:x", 0.0, UIPalette.T_TAP).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
 		(c["back"] as Control).visible = false
 		(c["front"] as Control).visible = true
 		_flash(c))
-	tw.tween_property(root, "scale:x", 1.0, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(root, "scale:x", 1.0, UIPalette.T_TAP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _flash(c: Dictionary) -> void:
@@ -350,8 +357,8 @@ func _to_hold() -> void:
 	(box.get_node("Dates") as Control).modulate.a = 1.0
 	ov.color.a = 0.86
 	var tw := ov.create_tween().set_loops()
-	tw.tween_property(hint, "modulate:a", 1.0, 0.6)
-	tw.tween_property(hint, "modulate:a", 0.35, 0.6)
+	tw.tween_property(hint, "modulate:a", 1.0, UIPalette.T_SLOW)
+	tw.tween_property(hint, "modulate:a", 0.35, UIPalette.T_SLOW)
 
 
 func _on_input(ev: InputEvent) -> void:
@@ -378,15 +385,15 @@ func _close() -> void:
 	for i in range(cards.size()):
 		var root: Control = cards[i]["root"]
 		var dl: float = 0.025 * float(i)
-		tw.tween_property(root, "modulate", Color(2.2, 2.0, 1.5, 1.0), 0.14).set_delay(dl)
-		tw.tween_property(root, "scale", Vector2(0.2, 0.2), 0.22).set_delay(dl + 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-		tw.tween_property(root, "modulate:a", 0.0, 0.12).set_delay(dl + 0.24)
+		tw.tween_property(root, "modulate", Color(2.2, 2.0, 1.5, 1.0), UIPalette.T_TAP).set_delay(dl)
+		tw.tween_property(root, "scale", Vector2(0.2, 0.2), UIPalette.T_BASE).set_delay(dl + 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_property(root, "modulate:a", 0.0, UIPalette.T_TAP).set_delay(dl + 0.24)
 		tw.tween_callback(_shards.bind(root, target)).set_delay(dl + 0.16)
-	tw.tween_property(box.get_node("Title"), "modulate:a", 0.0, 0.25)
-	tw.tween_property(box.get_node("Dates"), "modulate:a", 0.0, 0.25)
-	tw.tween_property(ov, "color:a", 0.0, 0.4).set_delay(0.3)
+	tw.tween_property(box.get_node("Title"), "modulate:a", 0.0, UIPalette.T_BASE)
+	tw.tween_property(box.get_node("Dates"), "modulate:a", 0.0, UIPalette.T_BASE)
+	tw.tween_property(ov, "color:a", 0.0, UIPalette.T_TRANS).set_delay(0.3)
 	tw.tween_callback(_arrive_glow.bind(target)).set_delay(0.62)
-	tw.chain().tween_interval(0.5)
+	tw.chain().tween_interval(UIPalette.T_SLOW)
 	tw.chain().tween_callback(_finish)
 
 
@@ -411,8 +418,8 @@ func _shards(root: Control, target: Vector2) -> void:
 		var p1: Vector2 = target - ov.global_position - s.size * 0.5
 		s.position = p0
 		var tw := ov.create_tween()
-		tw.tween_property(s, "position", mid, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(s, "position", p1, 0.3 + 0.015 * float(k)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(s, "position", mid, UIPalette.T_TAP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(s, "position", p1, UIPalette.T_TRANS + UIPalette.T_TAP * 0.125 * float(k)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		tw.parallel().tween_method(func(q: float) -> void:
 			at.region = Rect2(8.0 * float(mini(3, int(q))), 0.0, 8.0, 8.0), 0.0, 4.0, 0.4)
 		tw.tween_callback(s.queue_free)
@@ -437,9 +444,9 @@ func _arrive_glow(target: Vector2) -> void:
 	ov.add_child(g)
 	g.scale = Vector2(0.4, 0.4)
 	var tw := ov.create_tween().set_parallel(true)
-	tw.tween_property(g, "modulate:a", 1.0, 0.08)
-	tw.tween_property(g, "scale", Vector2(1.3, 1.3), 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(g, "modulate:a", 0.0, 0.3).set_delay(0.12)
+	tw.tween_property(g, "modulate:a", 1.0, UIPalette.T_TAP)
+	tw.tween_property(g, "scale", Vector2(1.3, 1.3), UIPalette.T_TRANS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(g, "modulate:a", 0.0, UIPalette.T_TRANS).set_delay(0.12)
 
 
 ## 主菜单「商店」按钮的中心(画布坐标); 找不到 ⇒ 右上角。

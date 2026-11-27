@@ -360,8 +360,8 @@ const TIER_TABLE := {
 		],
 		"rows": [
 			"每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%",
-			"每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒后再触发一次",
-			"每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与 20 秒后各再触发一次",
+			"每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，每个战场开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒后再触发一次",
+			"每件 +{STATpct:critDmg}% 暴击伤害，刺杀额外暴击伤害 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，每个战场开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与 20 秒后各再触发一次",
 		],
 		"note": "",
 	},
@@ -380,7 +380,7 @@ const TIER_TABLE := {
 	"长矛": {
 		"lines": [
 			"每件长矛为携带者提供龟能回复速率。",
-			"【百夫长】战斗开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。",
+			"【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时召唤百夫长，登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。",
 			"【龟甲阵】百夫长龟能满时举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%。",
 		],
 		"rows": [
@@ -479,8 +479,8 @@ const TIER_DESCS := {
 	],
 	"匕首": [
 		"每件匕首为携带者提供 +6% 暴击伤害 · 【刺杀】每个战场开始时，我方所有单位的下一次攻击必定暴击，暴击伤害额外提高 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[0]%}%，并获得 {C:DaggerSynergySystem.LIFESTEAL%}% 生命偷取",
-		"每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒后再触发一次",
-		"每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，战斗开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与 20 秒后各再触发一次",
+		"每件匕首为携带者提供 +12% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[1]%}%，每个战场开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒后再触发一次",
+		"每件匕首为携带者提供 +20% 暴击伤害 · 【刺杀】额外暴击伤害提高至 {C:DaggerSynergySystem.EXTRA_CRIT_DMG[2]%}%，每个战场开始 {C:DaggerSynergySystem.TRIGGER_GAP} 秒与 20 秒后各再触发一次",
 	],
 	"魔法书": [
 		"每件魔法书为携带者提供 +3% 增伤 · 【飞弹】我方单位每释放一次技能，每消耗 {C:MagicbookSynergySystem.PER_ENERGY[0]} 点龟能召唤 1 枚魔法飞弹，至少 1 枚。每枚飞向一名随机敌人，造成（{C:MagicbookSynergySystem.DMG_FLAT[0]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[0]%}% 最大生命值）魔法伤害",
@@ -488,7 +488,7 @@ const TIER_DESCS := {
 		"每件魔法书为携带者提供 +10% 增伤 · 【飞弹】每 {C:MagicbookSynergySystem.PER_ENERGY[2]} 点龟能召唤 1 枚，伤害提高至（{C:MagicbookSynergySystem.DMG_FLAT[2]}+目标 {C:MagicbookSynergySystem.DMG_MAXHP[2]%}% 最大生命值）",
 	],
 	"长矛": [
-		"每件长矛为携带者提供 +5% 龟能回复速率 · 【百夫长】战斗开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时，召唤百夫长：{C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗，我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。龟能满时释放【龟甲阵】：举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%",
+		"每件长矛为携带者提供 +5% 龟能回复速率 · 【百夫长】每个战场开始 {C:SpearSynergySystem.SUMMON_AT} 秒后或我方生命值低于 {C:SpearSynergySystem.TEAM_HP_LINE%}% 时，召唤百夫长：{C:SpearSynergySystem.HP[0]} 生命值、{C:SpearSynergySystem.ATK[0]} 攻击力、{C:SpearSynergySystem.RES[0]} 护甲和魔抗，我方每有一件不同的长矛，按其星级每星使百夫长生命值与攻击力提高 {C:SpearSynergySystem.STAR_PCT%}%。登场时击飞全场敌人 {C:SpearSynergySystem.KNOCK_SEC} 秒，造成 {C:SpearSynergySystem.ENTRY_COEF%}% 攻击力的魔法伤害。龟能满时释放【龟甲阵】：举盾 {C:SpearSynergySystem.SHIELD_SEC} 秒，受到的伤害降低 {C:SpearSynergySystem.SHIELD_DR%}%",
 		"每件长矛为携带者提供 +10% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[1]} 生命值、{C:SpearSynergySystem.ATK[1]} 攻击力、{C:SpearSynergySystem.RES[1]} 护甲和魔抗。攻击贯穿直线，身后的敌人受到 {C:SpearSynergySystem.PIERCE_BEHIND%}% 伤害。【龟甲阵】放下盾时横扫，对周围每个敌人造成 {C:SpearSynergySystem.SWEEP_COEF%}% 攻击力的魔法伤害",
 		"每件长矛为携带者提供 +16% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[2]} 生命值、{C:SpearSynergySystem.ATK[2]} 攻击力、{C:SpearSynergySystem.RES[2]} 护甲和魔抗。每次攻击使直线上每个敌人失去 1 点护甲和魔抗，每个敌人至多失去 {C:SpearSynergySystem.SHRED_CAP} 点。【龟甲阵】举盾期间每 {C:SpearSynergySystem.POKE_IV} 秒对周围敌人造成 {C:SpearSynergySystem.POKE_COEF%}% 攻击力的魔法伤害",
 		"每件长矛为携带者提供 +24% 龟能回复速率 · 百夫长：{C:SpearSynergySystem.HP[3]} 生命值、{C:SpearSynergySystem.ATK[3]} 攻击力、{C:SpearSynergySystem.RES[3]} 护甲和魔抗。每第 {C:SpearSynergySystem.THROW_EVERY} 次攻击转而把长矛掷向最远的敌人，贯穿沿途敌人，造成 {C:SpearSynergySystem.THROW_COEF%}% 攻击力的物理伤害。【龟甲阵】横扫后，我方身后冲出 {C:SpearSynergySystem.CAV_N} 名持矛骑兵，各自冲向一名随机敌人，对途经的敌人造成百夫长 {C:SpearSynergySystem.CAV_COEF%}% 攻击力的物理伤害并将其击飞",
