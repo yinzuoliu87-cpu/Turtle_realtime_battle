@@ -203,7 +203,9 @@ func _card(i: int, t: String) -> Dictionary:
 	ic.position = Vector2(32.0, 16.0) * PX
 	front.add_child(ic)
 	var nm := _label(Lang.t(t), 22, Color("#fff2c8"), Color("#2a0a06"), 6)
-	nm.position = Vector2(8.0, 56.0) * PX; nm.size = Vector2(80.0, 14.0) * PX   # 红条 55..70 内(去掉上下金线)
+	## ★框必须装得下一行字(22 号一行约 33 像素)再按红条中线居中 —— 11-27 原来框只有 28 高, 比一行矮, 引擎没法居中、字从框顶往下画, 整体低 4 像素(用户「炸弹两个字…很明显低了吧」)
+	var bar_mid: float = (55.0 + 70.0 + 1.0) * 0.5 * PX
+	nm.position = Vector2(8.0 * PX, bar_mid - 25.0); nm.size = Vector2(80.0 * PX, 48.0)   # -25: 这套字体中文笔画本身比行框中线低约 1 像素(量过)
 	front.add_child(nm)
 	var ds := Label.new()
 	ds.text = blurb(t)

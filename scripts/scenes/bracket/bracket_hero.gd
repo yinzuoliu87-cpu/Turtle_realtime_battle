@@ -682,8 +682,12 @@ func _ribbon(parent: Control, r: Rect2, text: String, fs: int, gold: bool) -> vo
 		parent.add_child(np)
 	var lb := _label(text, fs, GOLD if gold else TXT, true)
 	lb.name = "RibbonText"
-	lb.position = r.position + Vector2(40.0, -2.0)
-	lb.size = r.size - Vector2(80.0, 4.0)
+	## ★字按【红色缎面】的中线摆, 不是整张图的中线(11-27 用户「周日的那个显示界面…文字高度偏了」: 量出「冠军杯赛」低 13 像素、「冠军」低 10.5 像素)。
+	##   贴图 160×40: 缎面只占第 1~18 行, 下半截是垂下来的飘带尾巴; 九宫上下各 8 不拉伸, 中间 24 行拉到 h-16 ⇒ 缎面下沿 = 8 + 10 × (h-16)/24。
+	var band_bot: float = 8.0 + 10.0 * (r.size.y - 16.0) / 24.0
+	var band_mid: float = (1.0 + band_bot) * 0.5 - 1.0          # -1: 这套字体中文笔画比行框中线低约 1 像素(量过)
+	lb.size = Vector2(r.size.x - 80.0, r.size.y)
+	lb.position = Vector2(r.position.x + 40.0, r.position.y + band_mid - lb.size.y * 0.5)
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	parent.add_child(lb)

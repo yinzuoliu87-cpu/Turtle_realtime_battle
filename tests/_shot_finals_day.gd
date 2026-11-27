@@ -73,6 +73,19 @@ func _ready() -> void:
 	var shot: Image = get_viewport().get_texture().get_image()
 	var out := OS.get_environment("SHOT_OUT")
 	shot.save_png(out)
+	## VC_SCAN=1: 文字框比一行字矮的(引擎没法居中, 字整体偏下; 判据同 tests/probes/_probe_label_vcenter.gd, 11-27)
+	if OS.has_environment("VC_SCAN"):
+		for n in get_tree().root.find_children("*", "Label", true, false):
+			var l := n as Label
+			if not l.is_visible_in_tree() or l.text.strip_edges() == "" or (l.vertical_alignment != VERTICAL_ALIGNMENT_CENTER and l.vertical_alignment != VERTICAL_ALIGNMENT_BOTTOM):
+				continue
+			var f: Font = l.get_theme_font("font")
+			var fs: int = l.get_theme_font_size("font_size")
+			var nl: int = maxi(1, l.get_line_count())
+			var lh: float = f.get_height(fs) * float(nl) + float(l.get_theme_constant("line_spacing")) * float(nl - 1)
+			if l.size.y + 1.0 < lh:
+				print("[VC] %s 「%s」 框高 %.0f < 行高 %.0f (%d 号)" % [str(l.get_path()).right(70), l.text.replace("
+", "⏎").left(20), l.size.y, lh, fs])
 	## SHOT_TEXT=<txt>: 顺手把此刻屏上看得见的每一句字写下来(走查逐句判用; 采集器与门禁 verify_finals_copy 同一份)
 	if OS.has_environment("SHOT_TEXT"):
 		var TP = load("res://tests/_finals_text_probe.gd")

@@ -216,8 +216,10 @@ static func ribbon(parent: Control, c: Vector2, w: float, t: String, fs: int, ki
 	lb.add_theme_color_override("font_shadow_color", Color(edge, 0.85))
 	lb.add_theme_constant_override("shadow_offset_x", 0)
 	lb.add_theme_constant_override("shadow_offset_y", px / TITLE_STEP)      # 往下一个源像素
-	lb.position = Vector2(w * 0.12, h * 0.02)
+	## ★字框中线对准缎面中线(11-27 用户「周日的那个显示界面…文字高度偏了」): 金 / 银 / 红三张缎带图(160×40)缎面都在第 0~22 行,
+	##   中线 ≈ 高度的 29%(下半截是飘带尾巴 / 银的吊牌); 原来框中线在 38%(0.02 + 0.72/2), 字低 9% 高度。框高不变, 只挪中线。
 	lb.size = Vector2(w * 0.76, h * 0.72)
+	lb.position = Vector2(w * 0.12, h * 0.29 - lb.size.y * 0.5)
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	holder.add_child(lb)
