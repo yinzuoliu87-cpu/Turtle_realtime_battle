@@ -9,8 +9,8 @@ extends Node
 ##   携带者蓄力 `DOLL_CHARGE_SEC`(1.2) 秒后在空位召唤一只大熊
 ##   (生命 **1600/3000/15000** · 攻击力 **70/120/2000** · 护甲与魔抗各 `BEAR_RESIST`(70)
 ##    · 攻击速度 `BEAR_ASPD`(0.7)/秒 · 近战)。
-##   大熊普攻为熊掌(**1×攻击力物理**)并每次累积 1 层, 满 `BEAR_PAW_STACKS`(2) 层时
-##   下一击改为冲击波(射程临时扩至 `BEAR_WAVE_RANGE`(600) 码): 造成
+##   大熊每第 `BEAR_WAVE_EVERY`(3) 次攻击是冲击波, 其余是熊掌(**1×攻击力物理**); 冲击波那一下
+##   (射程临时扩至 `BEAR_WAVE_RANGE`(600) 码): 造成
 ##   `BEAR_WAVE_COEF`(1.5)×攻击力物理伤害, 将命中的敌人击飞并拉回身前
 ##   `BEAR_WAVE_PULL`(70) 码, 随后层数清零。」
 ##
@@ -82,10 +82,10 @@ func _ready() -> void:
 	var ets = _s._equip_tick_sys
 
 	# ── ① ★分母: 文案里那一串常量在代码里是这些 ────────────────────
-	_ok("① ★分母: 派熊周期 %.0f 秒 / 蓄力 %.1f 秒 / 熊掌 %d 层出波 / 波射程 %.0f 码 / 波系数 %.1f×ATK / 拉回 %.0f 码"
-		% [ET.DOLL_IV, ET.DOLL_CHARGE_SEC, ET.BEAR_PAW_STACKS, ET.BEAR_WAVE_RANGE,
+	_ok("① ★分母: 派熊周期 %.0f 秒 / 蓄力 %.1f 秒 / 每第 %d 次攻击出波 / 波射程 %.0f 码 / 波系数 %.1f×ATK / 拉回 %.0f 码"
+		% [ET.DOLL_IV, ET.DOLL_CHARGE_SEC, ET.BEAR_WAVE_EVERY, ET.BEAR_WAVE_RANGE,
 		   ET.BEAR_WAVE_COEF, ET.BEAR_WAVE_PULL],
-		absf(ET.DOLL_IV - 4.0) < 0.01 and ET.BEAR_PAW_STACKS == 2
+		absf(ET.DOLL_IV - 4.0) < 0.01 and ET.BEAR_WAVE_EVERY == 3
 			and absf(ET.BEAR_WAVE_RANGE - 600.0) < 0.01 and absf(ET.BEAR_WAVE_COEF - 1.5) < 0.01
 			and absf(ET.BEAR_RESIST - 70.0) < 0.01 and absf(ET.BEAR_ASPD - 0.7) < 0.01)
 
@@ -168,7 +168,7 @@ func _ready() -> void:
 	_ok("④ ★分母: 大熊建出来了", bear != null)
 	if bear != null:
 		bear["is_big_bear"] = true
-		bear["bear_stacks"] = 0
+		bear["bear_atk_n"] = 0
 		bear["bear_star"] = 2
 		bear["eq_state"] = {}
 		bear["equips"] = []
@@ -199,19 +199,19 @@ func _ready() -> void:
 			"剩 %d 项" % ets._bolt_q.size())
 
 		# ── ⑤ ★★熊掌每次 +1 层, 满 2 层把射程临时扩到 600 ──────────────
-		_ok("⑤ ★★一击之后 %d 层(应 1)" % int(bear.get("bear_stacks", -1)),
-			int(bear.get("bear_stacks", -1)) == 1)
+		_ok("⑤ ★★一击之后计数 %d(应 1)" % int(bear.get("bear_atk_n", -1)),
+			int(bear.get("bear_atk_n", -1)) == 1)
 		_ok("⑤ 此时射程还是近战 %.0f 码" % float(bear.get("atk_range", -1.0)),
 			float(bear.get("atk_range", 0.0)) < ET.BEAR_WAVE_RANGE)
 		_s._big_bear_attack(bear, foe4)
-		_ok("⑤ ★★★满 %d 层 ⇒ 射程临时扩到 %.0f 码(实测 %.0f)"
-			% [ET.BEAR_PAW_STACKS, ET.BEAR_WAVE_RANGE, float(bear.get("atk_range", -1.0))],
+		_ok("⑤ ★★★下一下是第 %d 次攻击 ⇒ 射程临时扩到 %.0f 码(实测 %.0f)"
+			% [ET.BEAR_WAVE_EVERY, ET.BEAR_WAVE_RANGE, float(bear.get("atk_range", -1.0))],
 			absf(float(bear.get("atk_range", 0.0)) - ET.BEAR_WAVE_RANGE) < 0.01,
 			"文案: 满 2 层时下一击改为冲击波(射程临时扩至 600 码)")
 		for _k in range(int(ET.BEAR_PAW_HIT_AT * 60.0) + 20):
 			_s._sim_step(_s.SIM_DT, false, false)
-		_ok("⑤ ★★两击之后 %d 层(应 %d)" % [int(bear.get("bear_stacks", -1)), ET.BEAR_PAW_STACKS],
-			int(bear.get("bear_stacks", -1)) == ET.BEAR_PAW_STACKS)
+		_ok("⑤ ★★两击之后计数 %d(应 %d)" % [int(bear.get("bear_atk_n", -1)), ET.BEAR_WAVE_EVERY - 1],
+			int(bear.get("bear_atk_n", -1)) == ET.BEAR_WAVE_EVERY - 1)
 
 		# ── ⑥ ★★★冲击波本身(2026-09-13 重做后补的一整节) ─────────────────
 		## 重做之前**这一节根本不存在**: 波的推进与命中结算整个挂在
@@ -221,7 +221,7 @@ func _ready() -> void:
 		_s._units.append(c4)
 		_s._units.append(bear)
 		bear["pos"] = Vector2(400.0, 400.0)
-		bear["bear_stacks"] = ET.BEAR_PAW_STACKS      # 下一击 = 冲击波
+		bear["bear_atk_n"] = ET.BEAR_WAVE_EVERY - 1      # 下一击 = 冲击波
 		bear["atk_range"] = ET.BEAR_WAVE_RANGE
 		## 三个靶: ①线上近处 ②线上远处(仍在射程内) ③**偏出半宽**的旁观者(不该挨打)
 		var on1: Dictionary = _mk(700.0, 400.0, "right")       # 正前方 300 码

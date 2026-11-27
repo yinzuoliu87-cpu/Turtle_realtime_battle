@@ -2943,7 +2943,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 		bear["eq_state"] = {}; bear["equips"] = []
 		bear["base_def"] = EquipTickSystem.BEAR_RESIST; bear["def"] = EquipTickSystem.BEAR_RESIST
 		bear["base_mr"] = EquipTickSystem.BEAR_RESIST; bear["mr"] = EquipTickSystem.BEAR_RESIST        # 双抗 20 → 70(用户2026-07-30)
-		bear["is_big_bear"] = true; bear["bear_stacks"] = 0; bear["bear_star"] = si
+		bear["is_big_bear"] = true; bear["bear_atk_n"] = 0; bear["bear_star"] = si
 		if OS.has_environment("EQDEMO_FAST"): bear["atk_interval"] = 0.6   # FAST=快速攒层看波
 	_skill_ring(u["pos"], Color(1.0, 0.82, 0.4, 0.6), 90.0); _shake(JUICE_SHAKE_BIG)
 
@@ -2975,22 +2975,23 @@ func _set_bear_sheet(spr: Sprite3D, kind: String) -> void:   # 换大熊动画�
 	spr.hframes = maxi(1, int(round(float(tex.get_width()) / 96.0)))
 	spr.frame = 0
 
-func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层→熊掌(前摇抬爪→挥击命中跳数字→后摇收手); 满2层→放冲击波
+func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: 每第 BEAR_WAVE_EVERY 次攻击放冲击波, 其余是熊掌(前摇抬爪→挥击命中跳数字→后摇收手)
 	var si: int = int(u.get("bear_star", 0))
 	var d2: Vector2 = DetMath.norm((tgt["pos"] - u["pos"]))
 	u["_bear_ldir"] = (_world_pos(u["pos"] + d2 * 10.0, 0.0) - _world_pos(u["pos"], 0.0)).normalized()   # 扑击/砸地世界朝向
-	if int(u.get("bear_stacks", 0)) >= EquipTickSystem.BEAR_PAW_STACKS:
+	## bear_atk_n = 上一次冲击波之后已经打了几下熊掌; 这一下是第 BEAR_WAVE_EVERY 次 ⇒ 冲击波
+	if int(u.get("bear_atk_n", 0)) + 1 >= EquipTickSystem.BEAR_WAVE_EVERY:
 		_bear_shockwave(u, tgt, si)
-		u["bear_stacks"] = 0
-		u["atk_range"] = 70.0                       # 冲击波后回近战射程
+		u["bear_atk_n"] = 0
+		u["atk_range"] = EquipTickSystem.BEAR_RANGE   # 冲击波后回近战射程
 	else:
 		u["bear_anim"] = "attack"; u["bear_anim_t"] = 0.0   # 前摇抬爪→挥击→后摇收手(voff驱动)
 		## ★2026-09-13 从 tween 挪到游戏钟(§3.5): 原来大熊的普攻一下都不结算。结算体搬进 EquipTickSystem。
 		_equip_tick_sys.schedule(EquipTickSystem.BEAR_PAW_HIT_AT,
 			_equip_tick_sys._tick_bear_paw_hit.bind(u, tgt))
-		u["bear_stacks"] = int(u.get("bear_stacks", 0)) + 1
-		if int(u["bear_stacks"]) >= 2:
-			u["atk_range"] = EquipTickSystem.BEAR_WAVE_RANGE                   # 下次冲击波: 射程600码(进程即放,不贴脸)
+		u["bear_atk_n"] = int(u.get("bear_atk_n", 0)) + 1
+		if int(u["bear_atk_n"]) + 1 >= EquipTickSystem.BEAR_WAVE_EVERY:
+			u["atk_range"] = EquipTickSystem.BEAR_WAVE_RANGE                   # 下一下是冲击波: 射程 600(进程即放, 不贴脸)
 
 func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")

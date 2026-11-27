@@ -94,9 +94,9 @@ static func _bear(si: int) -> Dictionary:
 	var T := EquipTickSystem
 	return _page("大熊", ["bear"], "bear", _sheet("vfx/bear-walk.png", 96, 1, 190.0, 90.0), "p2eq_034", ["近战斗士"],
 		SC.stats(T.BEAR_HP[si], T.BEAR_ATK[si], T.BEAR_RESIST, T.BEAR_RESIST, BattleSpawn.SUMMON_DEFAULT_SPD, T.BEAR_ASPD, T.BEAR_RANGE),
-		## 冲击波就是普攻的一部分 ⇒ 一条写完(用户 11-27「就没必要分两个的呗」)。每攒 BEAR_PAW_STACKS 层, 下一次攻击变冲击波并清层 ⇒ 每第 (层数 + 1) 次。
+		## 冲击波就是普攻的一部分 ⇒ 一条写完(用户 11-27「就没必要分两个的呗」); 不说「层」, 说每第 BEAR_WAVE_EVERY 次攻击。
 		{"name": "熊掌", "icon": "skills/summon-bear-paw.png",
-			"desc": SC.basic_line("大熊") + Lang.t("每第 %d 次攻击转而向前方打出一道射程 {C:EquipTickSystem.BEAR_WAVE_RANGE} 的冲击波，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%%}%%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前。") % (int(T.BEAR_PAW_STACKS) + 1)},
+			"desc": SC.basic_line("大熊") + Lang.t("每第 %d 次攻击转而向前方打出一道射程 {C:EquipTickSystem.BEAR_WAVE_RANGE} 的冲击波，对路径上的敌人造成（{C:EquipTickSystem.BEAR_WAVE_COEF%%}%%×攻击力({ATK}) = {N:EquipTickSystem.BEAR_WAVE_COEF*ATK}）物理伤害，将其击飞并拉到大熊身前。") % int(T.BEAR_WAVE_EVERY)},
 		{}, [])
 
 
