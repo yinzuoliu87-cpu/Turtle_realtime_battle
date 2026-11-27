@@ -827,13 +827,14 @@ scripts/gamedata/summon_codex_equip.gd|lit|推出一道缓慢前进的亡灵浪�
 scripts/gamedata/summon_codex_equip.gd|lit|携带者阵亡后，炮台的护甲与魔抗降为 0。
 scripts/gamedata/summon_codex_equip.gd|lit|攻击在横扫和竖劈之间交替。横扫对前方 {C:AxeEvolution.SWEEP_ARC_DEG}° 内的所有敌人造成伤害，竖劈额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。
 scripts/gamedata/summon_codex_equip.gd|lit|攻击还会为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。
+scripts/gamedata/summon_codex_equip.gd|lit|攻击还会对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】。目标的生命值低于其最大生命值的（{C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%×余烬种子层数）时，这次攻击直接将其处决。
 scripts/gamedata/summon_codex_equip.gd|lit|攻击还会施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。
 scripts/gamedata/summon_codex_equip.gd|lit|效率
 scripts/gamedata/summon_codex_equip.gd|lit|斧之守护
 scripts/gamedata/summon_codex_equip.gd|lit|斧击
 scripts/gamedata/summon_codex_equip.gd|lit|斧头
+scripts/gamedata/summon_codex_equip.gd|lit|斧头每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。
 scripts/gamedata/summon_codex_equip.gd|lit|斧头每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。
-scripts/gamedata/summon_codex_equip.gd|lit|斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。
 scripts/gamedata/summon_codex_equip.gd|lit|斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。
 scripts/gamedata/summon_codex_equip.gd|lit|斧头额外获得（{C:AxeEvolution.MINION_HP_PER_EXP}×砍伐经验）生命值和（{C:AxeEvolution.MINION_ATK_PER_EXP}×砍伐经验）攻击力。
 scripts/gamedata/summon_codex_equip.gd|lit|斩击
