@@ -102,7 +102,8 @@ func next_card() -> void:
 	if not menu.is_inside_tree():
 		return
 	if queue.is_empty():
-		menu._first_tip(menu._strip_now())
+		if not reveal(menu._strip_now()):
+			menu._first_tip(menu._strip_now())
 		return
 	var kind: String = str(queue.pop_front())
 	var now: int = menu._strip_now()
@@ -133,6 +134,25 @@ func _open_card(d: Dictionary) -> void:
 			if cf != null and not queue.is_empty():
 				await cf.finished
 		next_card())
+
+
+## 本周羁绊开周揭晓(week_reveal.gd; 方案书 20261127b): 收盘卡 / 入账都完了才放(一次一件事); 放完再出「第一次遇到」提示。
+## 返回 true = 这次由揭晓接管(正在放 / 等收盘卡放完再放), 调用方别再出首次提示。
+var _revealing := false
+func reveal(now: int) -> bool:
+	if _revealing:
+		return true
+	if not cards_enabled() or not WeekReveal.due(GameState, now):
+		return false
+	if fly_settle > 0 or not queue.is_empty():
+		return true          # 先飞币 / 弹收盘卡, 队列空了 next_card 会再来一次
+	_revealing = true
+	WeekReveal.play(menu, int(GameState.week_anchor_ts), func() -> void:
+		_revealing = false
+		if menu.is_inside_tree():
+			menu._first_tip(menu._strip_now()))
+	GameState.save()
+	return true
 
 
 ## 按去处换场景; 返回 true = 换走了。

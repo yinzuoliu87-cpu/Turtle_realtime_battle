@@ -320,7 +320,7 @@ func _ready() -> void:
 	## 入账动画 + 周末收盘卡(2026-10-26)。有卡时「第一次遇到」那条提示等卡关完再出(一次一件事)。
 	_wk().run()
 	_wk().fd.start(paint_ts)   # 周日: 上周冠军挂门面 + 收盘后没守到最后的人补看(menu_finals_day.gd)
-	if _wk().queue.is_empty() and not _first_week():
+	if _wk().queue.is_empty() and not _first_week() and not _wk().reveal(paint_ts):   # reveal: 周二起第一次进主菜单揭晓本周羁绊(week_reveal.gd), 完了再出首次提示
 		_first_tip(paint_ts)
 
 

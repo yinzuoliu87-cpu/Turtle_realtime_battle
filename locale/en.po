@@ -8410,3 +8410,15 @@ msgstr "This week"
 
 msgid "生命上限 -%d"
 msgstr "Max Health -%d"
+
+msgid "新"
+msgstr "NEW"
+
+msgid "面具"
+msgstr "Mask"
+
+msgid "筹码"
+msgstr "Chip"
+
+msgid "长矛"
+msgstr "Spear"
