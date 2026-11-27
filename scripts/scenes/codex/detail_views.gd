@@ -1267,7 +1267,9 @@ func _show_p2eq(eq: Dictionary) -> void:
 			y = _synergy_block(tname, tiers, y) + 12.0
 
 
-## 羁绊一块: 「[图标] 名字」一行 + 逐档「N 件  效果」。返回块底 y。
+## 羁绊一块: 「[图标] 名字」一行 + 机制一条一行 + 逐档「(N) 一句」。返回块底 y。
+## ★2026-11-27 统一成图鉴羁绊页的写法(同一张 TIER_TABLE, 句子调 CodexSynergyView.table_cell; 用户 11-27「统一成图鉴的新写法」):
+##   原来读 TIER_DESCS 写「N 件  旧文案」, 与羁绊页说法不一样。规则细节留在羁绊页, 这里不放。
 func _synergy_block(tname: String, tiers: Array, y: float) -> float:
 	var tcol: String = host._type_color(tname)
 	var tic: String = host._type_icon(tname)
@@ -1283,14 +1285,13 @@ func _synergy_block(tname: String, tiers: Array, y: float) -> float:
 	head.set_meta("codex_eq_synergy", tname)
 	host.detail.add_child(head)
 	y += maxf(24.0, head.get_combined_minimum_size().y) + 4.0
-	var descs: Array = host.Phase2Types.TIER_DESCS.get(tname, [])
+	var tb: Dictionary = host.Phase2Types.TIER_TABLE.get(tname, {"lines": host.Phase2Types.intro_lines(tname)})
 	var parts: PackedStringArray = []
-	## ★2026-10-13 机制只写一次(云顶羁绊小卡): TYPE_INTRO 在前, 逐档只列变化的数字。
-	for il in host.Phase2Types.intro_lines(tname):
-		parts.append(SkillText.render_consts(str(il)))
+	for il in tb.get("lines", []):
+		parts.append(CodexSynergyView.line_bb(SkillText.render_consts(str(il))))
 	for i in range(tiers.size()):
-		var txt: String = SkillText.render_consts(str(descs[i])) if i < descs.size() else ""
-		parts.append(Lang.t("[color=%s][b]%d 件[/b][/color]  %s") % [tcol, int(tiers[i]), txt])
+		var txt: String = CodexSynergyView.table_cell(tname, CodexSynergyView.row_tpl(tb, i), i).replace("[", "[lb]")
+		parts.append("[color=%s][b](%d)[/b][/color]  %s" % [tcol, int(tiers[i]), txt])
 	var body := RichTextLabel.new()
 	body.bbcode_enabled = true; body.fit_content = true; body.scroll_active = false
 	body.position = Vector2(20, y)

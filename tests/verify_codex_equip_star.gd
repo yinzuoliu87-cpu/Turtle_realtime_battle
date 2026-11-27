@@ -8,7 +8,7 @@ extends Node
 ##   ② 三档挤在一串里(「150/310/1200+3/5/9×攻击力」)靠三色 + 页底图例读
 ##      ⇒ 右上 ★1/★2/★3 选档, 正文只写选中那一档的数; 底下分档表一行一个量、三档并排。
 ##   ③ 羁绊只写「装满 3/6/9 件同类型装备」, 不说是哪个羁绊、每档给什么
-##      ⇒ 写出羁绊名(图标 + 名字) + 逐档效果(Phase2Types.TIER_DESCS)。
+##      ⇒ 写出羁绊名(图标 + 名字) + 逐档效果(2026-11-27 起与图鉴羁绊页同一张 TIER_TABLE, 每档「(N) 一句」)。
 ##
 ## ★全部量【活场景里真画出来的字】(走真入口 _switch_tab → _select → 点签牌), 不 grep 源码。
 ## ★每条断言配分母: 选不到那件装备 / 一行文字都没抓到 = 空检查, 先红分母。
@@ -182,12 +182,14 @@ func _ready() -> void:
 	var tiers: Array = (Phase2Types.TYPES.get(tp, {}) as Dictionary).get("tiers", [])
 	var page := _all_text()
 	var miss: Array = []
+	var tb3: Dictionary = Phase2Types.TIER_TABLE.get(tp, {})
 	for i in range(tiers.size()):
-		var first: String = SkillText.render_consts(Phase2Types.tier_desc(tp, i + 1)).substr(0, 10)
-		if page.find("%d 件" % int(tiers[i])) < 0 or page.find(first) < 0:
+		var whole: String = "(%d)  %s" % [int(tiers[i]), CodexSynergyView.table_cell(tp, CodexSynergyView.row_tpl(tb3, i), i)]
+		if page.find(whole) < 0:
 			miss.append(int(tiers[i]))
 	_ok("★★③ 每一档(%s 件)都写了给什么" % str(tiers), tiers.size() >= 2 and miss.is_empty(), "缺 %s" % str(miss))
 	_ok("★③ 旧的笼统句「依次激活各档位效果」不在了", page.find("依次激活各档位效果") < 0)
+	_ok("★③ 不再用旧写法「N 件」小标题(与图鉴羁绊页、背包弹框同一种写法)", page.find("%d 件  " % int(tiers[0])) < 0)
 	_finish()
 
 
