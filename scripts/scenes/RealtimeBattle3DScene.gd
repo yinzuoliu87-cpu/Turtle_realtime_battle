@@ -6678,10 +6678,9 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "fortune":
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
 		if u["_goldtimer"] >= FortuneSystem.COIN_IV:
-			u["_goldtimer"] = 0.0; u["gold"] += _battle_rng.randi_range(FortuneSystem.COIN_MIN, FortuneSystem.COIN_MAX)   # B 阶段: 出多少金币是对局结果
+			var _gg: int = _battle_rng.randi_range(FortuneSystem.COIN_MIN, FortuneSystem.COIN_MAX); u["_goldtimer"] = 0.0; u["gold"] += _gg   # B 阶段: 出多少金币是对局结果(同一次取随机, 顺序不变)
 			_audio_sys.sfx_passive(u, "fortune")   # 被动音效(11-05; 只管声音)
-			for _gk in range(2):   # 聚宝盆冒金币: 脚下叮当迸2金块(设计"每隔几秒叮当冒金币")
-				_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-24.0, 24.0), randf_range(6.0, 18.0)))
+			_fortune_sys.fx.pouch(u, _gg)   # 聚宝盆: 脚边蹦出 _gg 枚铜钱弹进钱袋(11-27 重做; 原来每 3 秒脚下冒两根金柱)
 	# --- 线条墨迹(用户2026-07-28): 自身实时获得 =(0.5×攻击力)% 攻速 ---
 	if u["id"] == "line":
 		_line_sys._line_aspd_convert(u)

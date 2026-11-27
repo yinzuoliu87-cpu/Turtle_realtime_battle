@@ -326,6 +326,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool, anim_sub: int = 1) -> vo
 	_tick_heal_hot()               # 持续回复期: 逐件扫 eq_hots, 每件各演各的
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_tick_anim_fx()                # 位置固定的帧动画(技能环)按游戏时钟切帧·放完自销
+	battle._fortune_sys.fx.tick()  # 财神龟金盾罩: 跟人 / 撑开 / 挨打亮 / 盾没了碎成铜钱(fortune_vfx.gd, 11-27)
 	_tick_coin_fx()                # 035 深海币: 头顶旋转金币(跟人 + 边转边上飘)
 	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
 	_tick_ink_links()              # 线条·连笔连接线跟随双方脚底(到期/死亡断链)
