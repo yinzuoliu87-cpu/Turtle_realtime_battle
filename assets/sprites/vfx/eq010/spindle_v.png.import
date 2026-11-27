@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dqo50jt2srjie"
-path="res://.godot/imported/eq010-chop.png-900227a2de92e5760e82f92125bd165f.ctex"
+uid="uid://cl0horjuphso"
+path="res://.godot/imported/spindle_v.png-8f2ba6d5277def74a642d15b62e4114b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/eq010-chop.png"
-dest_files=["res://.godot/imported/eq010-chop.png-900227a2de92e5760e82f92125bd165f.ctex"]
+source_file="res://assets/sprites/vfx/eq010/spindle_v.png"
+dest_files=["res://.godot/imported/spindle_v.png-8f2ba6d5277def74a642d15b62e4114b.ctex"]
 
 [params]
 

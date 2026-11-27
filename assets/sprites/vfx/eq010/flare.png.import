@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://7kjlyn2nm162"
-path="res://.godot/imported/eq010-slash.png-66e7de5dacf4ee25e140cf6eda9e6e6e.ctex"
+uid="uid://dxsm4syb60xei"
+path="res://.godot/imported/flare.png-6af2fe654859d27ccae33f3c17edb32f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/eq010-slash.png"
-dest_files=["res://.godot/imported/eq010-slash.png-66e7de5dacf4ee25e140cf6eda9e6e6e.ctex"]
+source_file="res://assets/sprites/vfx/eq010/flare.png"
+dest_files=["res://.godot/imported/flare.png-6af2fe654859d27ccae33f3c17edb32f.ctex"]
 
 [params]
 

@@ -1731,7 +1731,7 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 ##       0.30 秒预警扇形 —— 那是把 009 评审得出的规矩(预警范围 == 伤害范围)当成通用设计法则,
 ##       去套一件**文案里根本没有预警**的装备。010 是每隔一次攻击间隔就斩一次的节奏技,
 ##       加预警 = 每 1.25 秒闪一片红网点还把出手推迟 0.30 秒。门禁 ⑩b 把这条钉死。
-##    ② 素材不是像素画(595/2623/2762/21296 色) ⇒ 四张全部重做(tools/assetgen/gen_laserfan.py)。
+##    ② 素材不是像素画(595/2623/2762/21296 色) ⇒ 四张全部重做(当时的 gen_laserfan.py; 2026-11-27 画面整体换成 laser_blade_vfx.gd, 该脚本已删)。
 ##    ③ 像素密度随射程漂到 0.408 米/像素 ⇒ R_TEX 53 → 108, 一律细一倍。
 ##    ④ 后两帧平均 alpha 只有 56/255, 黑地上读成暗棕爪痕 ⇒ 消散靠碎开, 颜色全程满亮。
 ##    ⑤ `rotation = Vector3(0, -base_ang, 0)` 自由角旋转 ⇒ 16 向烤进素材, 运行时 rotation 恒 0。
@@ -1749,18 +1749,13 @@ const CHAIN_DMG := [25, 40, 70]          # 每跳基础魔法伤害(1/2/3 星)
 const CHAIN_ATK_COEF := 0.1              # 每跳另加 10% 攻击力
 const LASER_MELEE_BONUS := 250.0   # 激光长刃 010: 近战携带者额外 +250 码半径(用户 2026-08-01)
 
-const LASER_SLASH_TEX := "res://assets/sprites/vfx/eq010-slash.png"  # 扇形斩: 16 向 × 5 帧
-const LASER_WAVE_TEX := "res://assets/sprites/vfx/eq010-wave.png"    # 竖劈冲击波: 16 向 × 4 帧
-const LASER_CHOP_TEX := "res://assets/sprites/vfx/eq010-chop.png"    # 竖劈落刃: 1 向 × 5 帧
+## ★2026-11-27 画面整体重做(用户「图标和技能特效都全部再重新做一遍…以特效师的身份去做」): 旧的 16 向序列帧贴图删掉,
+##   画面全部在 scripts/scenes/battle/laser_blade_vfx.gd(着色器网格 + 灰度贴图粒子, 参考永恩 W / Q 配方)。
+##   扇形网格半径 = 判定半径、张角 = LASER_ARC_DEG、光带宽 = 2 × LASER_CHOP_HALF_W —— 全读这里的常量, 画到哪就打到哪。
+## 方向仍吸附到 16 档(结算用吸附后的轴, 画面也用同一根轴)。
 const LASER_DIRS := 16
+## 扇形斩之后等多久再起直线追斩(5 × 0.05 = 0.25 游戏秒; 画面里扇形斩也正好演 0.25 秒)
 const LASER_SLASH_FRAMES := 5
-const LASER_WAVE_FRAMES := 4
-const LASER_CHOP_FRAMES := 5
-## 扇形半径在纹理里占多少像素(必须与 tools/assetgen/gen_laserfan.py 的 R_TEX 一致)。
-## `pixel_size = rng × WS / LASER_R_TEX` ⇒ 半径画多远就打多远。
-const LASER_R_TEX := 108.0
-## 波前半宽在纹理里占多少像素(必须与 tools/assetgen/gen_laserfan.py 的 BAR_HW_TEX 一致)。
-const LASER_WAVE_HW_TEX := 19.0
 ## ★★竖劈判定半宽(码) —— **同一个常量**同时喂 `laser_chop_slab` 与贴图缩放。
 ##   旧版这里是写死的 `80.0` 传给 `_on_line`(判定 160 码宽), 而贴图 3.0 米 = 125 码,
 ##   画 125 打 160、差 22%: 通病「画出来的和打到的不是一回事」。
@@ -1856,22 +1851,19 @@ func _laser_dir_of(k: int) -> Vector2:
 	return Vector2(DetMath.dcos(a), DetMath.dsin(a))
 
 
-## 扇形斩的贴地精灵。★顶点就在格心 ⇒ `position` 直接是释放点, **没有任何锚点偏移**。
-## ★`rotation` 恒 0: 方向是烤进素材的第 dirf 格, 不是转贴图 —— 贴地精灵被任意角旋转会重采样,
-##   像素网格当场碎(旧版 `rotation = Vector3(0, -base_ang, 0)` 就是这个毛病)。
-func _laser_sprite(tex_path: String, vframes: int, dirf: int, f: int, org: Vector2, rng: float, h: float) -> Sprite3D:
-	## 出厂口在 `battle_vfx.ground_sprite`(NEAREST / AXIS_Y / 不转贴图 三条硬约束都在那儿)。
-	## 这里只决定本装备自己的两件事: pixel_size = 半径画多远就打多远、frame = 第几帧的第几向。
-	return battle._vfx.ground_sprite(tex_path, LASER_DIRS, vframes, f * LASER_DIRS + dirf,
-			rng * battle.WS / LASER_R_TEX, org, h)
+## 画面层(懒加载; 每帧推进在 battle_render 调 laser_fx_tick)。
+var _laser_fx = null
 
 
-## 竖劈冲击波的波前: **世界尺寸固定**(与射程无关) ⇒ 像素密度恒定, 宽度就是判定宽度。
-## 这是**一个会动的精灵**, 每一步把它挪到当前推进距离上 —— 文案原话「沿直线推进」。
-func _laser_wave_sprite(dirf: int, at: Vector2, h: float) -> Sprite3D:
-	## 宽度取**判定半宽** `LASER_CHOP_HALF_W`(不是射程) ⇒ 画多宽就打多宽, 与推进距离无关。
-	return battle._vfx.ground_sprite(LASER_WAVE_TEX, LASER_DIRS, LASER_WAVE_FRAMES, dirf,
-			LASER_CHOP_HALF_W * battle.WS / LASER_WAVE_HW_TEX, at, h)
+func laser_fx():
+	if _laser_fx == null:
+		_laser_fx = load("res://scripts/scenes/battle/laser_blade_vfx.gd").new(battle)
+	return _laser_fx
+
+
+func laser_fx_tick() -> void:
+	if _laser_fx != null:
+		_laser_fx.tick()
 
 
 ## ═══ 演出编排(有 await, 走游戏时钟) ═══
@@ -1898,26 +1890,22 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:
 	var rng: float = laser_fan_range(u, si)
 	battle._anticipate(u)   # 预备姿势(不是预警 —— 只是携带者自己的出手动作)
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
-	var slash := _laser_sprite(LASER_SLASH_TEX, LASER_SLASH_FRAMES, dirf, 0, org, rng, 0.12)
-	battle._world.add_child(slash)
 	## ① 伤害与斩击**同一帧**落地。
 	var hits: Array = laser_fan_strike(u, si, org, dir, rng)
-	## ② 斩击逐帧: 领先边从 -60° 扫到 +60°, 扫过之处径向盖满; 尾段靠碎开消散(不靠变暗)。
+	## ② 画面(laser_blade_vfx): 领先刃约 0.1 秒扫完 120° + 余光 + 速度纹 + 熔痕; 命中特效按刃扫到那人的时刻出。
+	laser_fx().sweep(org, dir, rng, deg_to_rad(LASER_ARC_DEG), hits)
 	for fi in range(LASER_SLASH_FRAMES):
-		if is_instance_valid(slash):
-			slash.frame = fi * LASER_DIRS + dirf
 		await battle._wait_sim(LASER_SLASH_STEP, u)
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
-	if is_instance_valid(slash): slash.queue_free()
 	## ③ 只命中 1 人 ⇒ 追加竖劈冲击波(文案原话)。
 	if hits.size() == 1 and u.get("alive", false):
 		var cd: Vector2 = DetMath.norm((hits[0]["pos"] - u["pos"]))
 		if DetMath.vlen(cd) < 0.1: cd = dir
 		var cdf: int = _ground_dir_frame(cd, LASER_DIRS)
-		await _eq_laser_chop(u, si, u["pos"], _laser_dir_of(cdf), cdf, laser_chop_reach(u, si))
+		await _eq_laser_chop(u, si, u["pos"], _laser_dir_of(cdf), laser_chop_reach(u, si))
 
 
-func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, dirf: int, reach: float) -> void:
+func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, reach: float) -> void:
 	## 文案原话:「追加一道竖劈冲击波, **沿直线推进**对沿途每名敌人各造成一次全额伤害」。
 	##
 	## ★★所以画面上必须是**一道波真的在往前走**, 碰到谁谁就在那一刻掉血。
@@ -1931,36 +1919,13 @@ func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, dirf: in
 	## ★推进与结算在**同一个 `_wait_sim` 循环**里, 同一条时钟 ⇒ 画面碰到人的那一帧就是掉血那一帧
 	##   (memory `fb-second-clock-drops-events`)。
 	battle._shake(battle.JUICE_SHAKE_BIG)
-	## 落刃: 公告板, 5 帧, 与波同时起手
-	var blade := Sprite3D.new()
-	blade.texture = load(LASER_CHOP_TEX)
-	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	blade.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	blade.shaded = false
-	blade.transparent = true
-	blade.hframes = 1
-	blade.vframes = LASER_CHOP_FRAMES
-	blade.frame = 0
-	blade.pixel_size = (150.0 * battle.WS) / 48.0
-	blade.position = battle._world_pos(org, 1.0)
-	battle._world.add_child(blade)
-	## 波前: 一个精灵, 每步往前挪
-	var wave := _laser_wave_sprite(dirf, org, 0.10)
-	battle._world.add_child(wave)
+	## 画面(laser_blade_vfx): 携带者竖剑光 + 光带波前按 LASER_CHOP_SPEED 推进(着色器按游戏钟算, 与下面每步结算同一个速度)
+	var fx_h: Dictionary = laser_fx().chop_begin(org, dir, reach, LASER_CHOP_SPEED, LASER_CHOP_HALF_W)
 	var hit: Array = []
 	var travelled := 0.0
-	var step_i := 0
 	while travelled < reach:
 		var prev: float = travelled
 		travelled = minf(reach, travelled + LASER_CHOP_SPEED * LASER_CHOP_STEP)
-		if is_instance_valid(wave):
-			wave.position = battle._world_pos(org + dir * travelled, 0.10)
-			## 0 = 刚出的细亮线; 1/2 = 满波前(两帧交替读作能量在抖); 3 = 到头碎开
-			var wf: int = 0 if step_i == 0 else (1 + (step_i % 2))
-			if travelled >= reach: wf = 3
-			wave.frame = wf * LASER_DIRS + dirf
-		if is_instance_valid(blade):
-			blade.frame = mini(LASER_CHOP_FRAMES - 1, step_i)
 		## ★这一步波前扫过的那一片 [prev, travelled) —— 碰到谁, 谁这一帧掉血
 		for o in laser_chop_slab(org, dir, prev, travelled, laser_alive_enemies(u)):
 			if battle._arr_has_unit(hit, o): continue
@@ -1968,11 +1933,10 @@ func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, dirf: in
 			battle._damage._apply_damage_from(u, o, laser_hit_dmg(u, si, o),
 				Color("#9bf0ff"), 0.0, false, true)
 			battle._damage._knockback(u, o, 0.0, 0.2, 0.0)
-		step_i += 1
+			laser_fx().hit(o, dir, battle._t)
 		await battle._wait_sim(LASER_CHOP_STEP, u)
 		if not is_instance_valid(battle): return
-	if is_instance_valid(blade): blade.queue_free()
-	if is_instance_valid(wave): wave.queue_free()   # 有开就有合: 一个都不许留在场上
+	laser_fx().chop_end(fx_h)   # 有开就有合: 光带从尾巴往前散掉, 熔痕按寿命走完
 
 
 ## ★以下两个函数是 009 的【可量部分】, 从演出里抽出来 —— 演出调它们, 门禁也直接调它们。

@@ -20,6 +20,8 @@ extends Node
 ##         ⇒ ⑪「走廊上三个敌人必须按距离**先后**掉血, 且时间差 == 距离差 / 推进速度」
 ##           —— 一次性结算 / 一排板子同时亮 当场红
 ##
+## ★2026-11-27 画面整体重做(旧 16 向序列帧删掉, 改着色器网格 + 灰度贴图粒子, scripts/scenes/battle/laser_blade_vfx.gd):
+##   ①~⑧ 从「量序列帧像素」换成「量真画出来的网格」—— 扇形网格半径 / 张角 / 16 档朝向 == 判定, 光带宽 == 判定宽。
 ## ★判据都落在**产品自己的账**上(素材字节 / 常量 / 真入口的承伤与承伤时刻), 不数我插的标记
 ##   (memory `fb-gate-must-measure-requirement-not-my-hook`)。
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -28,12 +30,6 @@ const EQ := preload("res://scripts/systems/equip/equip_system.gd")
 var _s = null
 var _n := 0
 var _fail := 0
-
-## ★★整图**缓存**: 斩击表是 3584×1120 = 4.0 M 像素, 而 ②③④⑤⑥⑦ 一共要取 30+ 格 ——
-##   每次都 `get_image()` 就是 30 次显存→内存整表拷贝, 实测会把这条门禁变成整轮里最慢的一个。
-##   一张表只拷一次, 之后只 `get_region`。
-var _img_cache := {}
-
 
 func _ok(msg: String, cond: bool, extra: String = "") -> void:
 	_n += 1
@@ -44,31 +40,21 @@ func _ok(msg: String, cond: bool, extra: String = "") -> void:
 		print("  [FAIL] %s  %s" % [msg, extra])
 
 
-## 一张贴图的规格: (色数, 半透像素数)
-func _spec(path: String) -> Array:
-	var tex: Texture2D = load(path)
-	if tex == null:
-		return [-1, -1]
-	var img: Image = tex.get_image()
-	var cols := {}
-	var semi := 0
-	for y in range(img.get_height()):
-		for x in range(img.get_width()):
-			var c: Color = img.get_pixel(x, y)
-			var a: int = int(round(c.a * 255.0))
-			if a <= 0:
-				continue
-			if a < 255:
-				semi += 1
-			cols["%d_%d_%d" % [int(round(c.r * 255.0)), int(round(c.g * 255.0)), int(round(c.b * 255.0))]] = true
-	return [cols.size(), semi]
+## 节点上网格的全部顶点, 按节点自己的 transform 摆到世界里(位置 + 朝向)
+func _verts_world(n: MeshInstance3D) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var arr: Array = n.mesh.surface_get_arrays(0)
+	for v in arr[Mesh.ARRAY_VERTEX]:
+		out.append(n.transform * v)
+	return out
 
 
-## 取一格(方向 dirf, 帧 f)。表的排布是 (cell×dirs, cell×frames): **方向在 X, 帧在 Y**。
-func _cell(path: String, dirf: int, f: int, cell: int) -> Image:
-	if not _img_cache.has(path):
-		_img_cache[path] = (load(path) as Texture2D).get_image()
-	return (_img_cache[path] as Image).get_region(Rect2i(dirf * cell, f * cell, cell, cell))
+## 这次调用新挂上的那一条画面记录(k = fan / scorch_fan / beam)
+func _new_live(fx, before: int, k: String) -> Dictionary:
+	for i in range(before, fx._live.size()):
+		if String(fx._live[i].get("k", "")) == k:
+			return fx._live[i]
+	return {}
 
 
 func _ready() -> void:
@@ -92,237 +78,159 @@ func _ready() -> void:
 	print("═══ 010 激光长刃 · 素材/演出/接线 ═══")
 
 	# ══════════════════════════════════════════════════════════════
-	#  ① 素材规格: 三张特效 + 图标, 都必须是**锁定调色板的像素画**
+	#  ① 素材: 图标 64×64; 特效贴图都是**灰度形状图**(颜色由引擎上色), 旧序列帧删干净
 	# ══════════════════════════════════════════════════════════════
-	print("-- 1 素材规格(色数 / 半透像素) --")
-	var files := {
-		"扇形斩": EQ.LASER_SLASH_TEX,
-		"竖劈波前": EQ.LASER_WAVE_TEX,
-		"竖劈落刃": EQ.LASER_CHOP_TEX,
-		"图标": "res://assets/sprites/equip/eq010-icon.png",
-	}
-	var checked := 0
-	for name in files.keys():
-		var sp: Array = _spec(String(files[name]))
-		checked += 1
-		_ok("① %s 是像素画: %d 色(须 1~8) / %d 半透(须 0)" % [name, sp[0], sp[1]],
-			sp[0] >= 1 and sp[0] <= 8 and sp[1] == 0,
-			"旧素材是 595/2623/2762/21296 色 —— 色数超标或有半透 = 又贴了张渲染图")
-	_ok("★分母: 查了 %d 张素材(应 4)" % checked, checked == 4)
+	print("-- 1 素材 --")
+	var icon: Image = (load("res://assets/sprites/equip/eq010-icon.png") as Texture2D).get_image()
+	var icon_cols := {}
+	var icon_px := 0
+	for y in range(icon.get_height()):
+		for x in range(icon.get_width()):
+			var ic: Color = icon.get_pixel(x, y)
+			if ic.a <= 0.0:
+				continue
+			icon_px += 1
+			icon_cols[ic.to_html(false)] = true
+	_ok("① 图标 %dx%d(须 64x64) / %d 个不透明像素(须 > 500) / %d 色(须 8~32)" % [icon.get_width(), icon.get_height(), icon_px, icon_cols.size()],
+		icon.get_width() == 64 and icon.get_height() == 64 and icon_px > 500 and icon_cols.size() >= 8 and icon_cols.size() <= 32,
+		"不是 64 像素 / 几乎是空的 / 色数像渲染图")
+	var grey_ok := 0
+	var tex_names := ["spindle", "spindle_v", "flare", "ring"]
+	for tn in tex_names:
+		var tp: String = "res://assets/sprites/vfx/eq010/%s.png" % tn
+		if not ResourceLoader.exists(tp):
+			_ok("① 特效贴图 %s 存在" % tp, false)
+			continue
+		var ti: Image = (load(tp) as Texture2D).get_image()
+		var colored := 0
+		var lit := 0
+		for y in range(ti.get_height()):
+			for x in range(ti.get_width()):
+				var tc: Color = ti.get_pixel(x, y)
+				if tc.a <= 0.01:
+					continue
+				lit += 1
+				if absf(tc.r - tc.g) > 0.02 or absf(tc.g - tc.b) > 0.02:
+					colored += 1
+		_ok("① %s: %d 个有色像素(须 0 = 灰度, 引擎上色) / %d 个亮像素(须 > 100)" % [tn, colored, lit], colored == 0 and lit > 100)
+		if colored == 0 and lit > 100:
+			grey_ok += 1
+	_ok("★分母: 灰度贴图过了 %d 张(应 %d)" % [grey_ok, tex_names.size()], grey_ok == tex_names.size())
+	var left: Array = []
+	for lp in ["eq010-slash", "eq010-wave", "eq010-chop", "eq010-tel", "eq010-bar"]:
+		if ResourceLoader.exists("res://assets/sprites/vfx/%s.png" % lp):
+			left.append(lp)
+	_ok("①b 旧序列帧 / 预警素材已删干净(残留 %d 张)" % left.size(), left.is_empty(),
+		"残留: %s —— 010 没有预警(用户 2026-09-10), 旧序列帧不许再被谁拿去贴" % str(left))
 
 	# ══════════════════════════════════════════════════════════════
-	#  ①b 预警素材必须**不存在**(用户 2026-09-10:「不应该有预警啊」)
+	#  ②③ 画的范围 == 打的范围: 扇形网格半径 / 张角 ↔ 判定常量
+	#  ⑦ 画的方向 == 打的方向: 16 档逐档量网格重心角
 	# ══════════════════════════════════════════════════════════════
-	var tel_left: Array = []
-	for p in ["res://assets/sprites/vfx/eq010-tel.png", "res://assets/sprites/vfx/eq010-bar.png"]:
-		if ResourceLoader.exists(p):
-			tel_left.append(p)
-	_ok("①b 预警/静态条素材已删干净(残留 %d 张)" % tel_left.size(), tel_left.is_empty(),
-		"残留: %s —— 010 没有预警, 竖劈也不是一排静态条" % str(tel_left))
-
-	# ══════════════════════════════════════════════════════════════
-	#  ②③ 画的范围 == 打的范围: 斩击素材的半径 / 全角 ↔ 判定常量
-	# ══════════════════════════════════════════════════════════════
-	print("-- 2/3 斩击画多远打多远、画多大角打多大角 --")
-	var cell: int = int(round(EQ.LASER_R_TEX * 2.0)) + 8   # 224
-	var cx: float = float(cell) * 0.5
-	var half: float = deg_to_rad(EQ.LASER_HALF_DEG)
-	## 单帧是**故意不对称**的(刀刃在领先边、拖痕往回拖), 所以量**五帧并集**
-	## —— 009 那一轮的教训: 拿单帧量方向会自证出 +10.4° 的假偏差。
-	var un: Array = []
-	for i in range(48):
-		un.append(0)
-	var rmax := 0.0
-	var amin := 999.0
-	var amax := -999.0
-	var un_px := 0
-	var out_of_range := 0
-	var over_max := 0.0
-	for f in range(EQ.LASER_SLASH_FRAMES):
-		var im: Image = _cell(EQ.LASER_SLASH_TEX, 0, f, cell)
-		for y in range(cell):
-			for x in range(cell):
-				if im.get_pixel(x, y).a <= 0.03:
-					continue
-				var fx: float = float(x) + 0.5 - cx
-				var fy: float = float(y) + 0.5 - cx
-				var rp: float = sqrt(fx * fx + fy * fy)
-				var a2: float = atan2(fy, fx)
-				## ★★判据量的是【越出扇形边界多少**像素**】, 不是【超了多少度】。
-				##   第一版写的是 `absf(a2) > half + 0.03`(超 1.7° 就算越界), 它在**扇顶**是错的形状:
-				##   离顶点 1.6 px 的那颗像素角度差 11.6°, 但垂直越界只有 0.32 px —— 顶点附近
-				##   两条扇边本来就挤在一起, 拿角度当尺子会把"贴着携带者脚下那一格"判成缺陷
-				##   (memory `fb-judge-must-fit-the-shape`)。换成垂直距离后:
-				##   现役素材最大越界 0.40 px; 而"画 130° 打 120°"这类真缺陷在 r=100 处是 8.7 px, 照红。
-				##   容差 1.5 px = 缩图(BOX 面积平均)在边界外的渗出量。
-				var over: float = rp - EQ.LASER_R_TEX
-				if absf(a2) > half:
-					over = maxf(over, rp * sin(absf(a2) - half))
-				over_max = maxf(over_max, over)
-				if over > 1.5:
-					out_of_range += 1
-					continue
-				if rp > EQ.LASER_R_TEX or absf(a2) > half:
-					continue   # 在容差内但确实在扇外: 不算缺陷, 也不拿它去量半径/全角
-				un_px += 1
-				rmax = maxf(rmax, rp)
-				if rp > EQ.LASER_R_TEX * 0.30:
-					amin = minf(amin, rad_to_deg(a2))
-					amax = maxf(amax, rad_to_deg(a2))
-				var ir: int = clampi(int(rp / EQ.LASER_R_TEX * 6.0), 0, 5)
-				var ia: int = clampi(int((a2 + half) / (2.0 * half) * 8.0), 0, 7)
-				un[ir * 8 + ia] = 1
-	var un_empty := 0
-	for v in un:
-		if int(v) == 0:
-			un_empty += 1
-	_ok("★分母: 五帧并集 %d 个不透明像素(须 > 15000)" % un_px, un_px > 15000)
-	_ok("② 斩击越出扇形边界 %d 像素(最大越界 %.2f px; 须 0 —— 画得比打得大 = 站在外面的敌人白挨一刀)"
-		% [out_of_range, over_max], out_of_range == 0)
-	_ok("③ 素材里扇形半径 %.1f px(须 = LASER_R_TEX %.0f ± 2)" % [rmax, EQ.LASER_R_TEX],
-		absf(rmax - EQ.LASER_R_TEX) <= 2.0, "素材与常量对不上 = 画出来的半径不是判定半径")
-	_ok("③ 素材里扇形全角 %.1f°(须 = LASER_ARC_DEG %.0f ± 3)" % [amax - amin, EQ.LASER_ARC_DEG],
-		absf((amax - amin) - EQ.LASER_ARC_DEG) <= 3.0,
-		"改了 LASER_ARC_DEG 没重烤素材 ⇒ 画一个角度、打另一个角度")
-	_ok("③ 五帧并集 6×8=48 子格空 %d 个(须 0 —— 扫完整片都被切过)" % un_empty, un_empty == 0)
-
-	# ══════════════════════════════════════════════════════════════
-	#  ④⑤ 斩击: 领先边单调推进 + 每帧径向盖满
-	# ══════════════════════════════════════════════════════════════
-	print("-- 4/5 斩击「从一边扫到另一边」且盖满(用户 2026-09-09 三句话) --")
-	var leads: Array = []
-	var thin := 0
-	var minmax_r: Array = []
-	for f in range(EQ.LASER_SLASH_FRAMES):
-		var im2: Image = _cell(EQ.LASER_SLASH_TEX, 0, f, cell)
-		var lead := -999.0
-		var rlo := 9.0
-		var rhi := -9.0
-		var got := 0
-		for y in range(cell):
-			for x in range(cell):
-				if im2.get_pixel(x, y).a <= 0.03:
-					continue
-				var fx: float = (float(x) + 0.5 - cx) / EQ.LASER_R_TEX
-				var fy: float = (float(y) + 0.5 - cx) / EQ.LASER_R_TEX
-				var rr: float = sqrt(fx * fx + fy * fy)
-				var aa: float = atan2(fy, fx)
-				if rr > 1.02 or absf(aa) > half:
-					continue
-				got += 1
-				lead = maxf(lead, rad_to_deg(aa))
-				rlo = minf(rlo, rr)
-				rhi = maxf(rhi, rr)
-		leads.append(lead)
-		minmax_r.append([rlo, rhi])
-		if got > 0 and (rlo > 0.14 or rhi < 0.94):
-			thin += 1
-	var mono := true
-	for i in range(1, leads.size()):
-		if float(leads[i]) < float(leads[i - 1]) - 0.5:
-			mono = false
-	var span: float = float(leads[leads.size() - 1]) - float(leads[0])
-	_ok("④ 领先边逐帧单调推进(%.1f → %.1f → %.1f → %.1f → %.1f)"
-		% [leads[0], leads[1], leads[2], leads[3], leads[4]], mono,
-		"每帧都跨满全角 = 原地张开不是扫; 用户原话「没有从一边到另一边的感觉」")
-	_ok("④ 领先边总共推了 %.1f°(须 ≥ 全角 %.0f° 的一半)" % [span, EQ.LASER_ARC_DEG],
-		span >= EQ.LASER_ARC_DEG * 0.5, "扫的幅度太小 = 看不出是一刀扫过去")
-	_ok("⑤ 每帧都径向盖满 0..R, 偏窄的帧 %d 个(须 0)" % thin, thin == 0,
-		"斩痕比伤害区窄 = 玩家看见细细一道却整片掉血。逐帧 r 范围 %s" % str(minmax_r))
-
-	# ══════════════════════════════════════════════════════════════
-	#  ⑥ 消散靠碎不靠淡: 量【平均亮度 / 最满帧】, 不量最亮像素
-	# ══════════════════════════════════════════════════════════════
-	print("-- 6 消散靠碎开不靠变暗(旧素材第 4 帧平均亮度只有 14/255) --")
-	## ★★这条判据改过一版。第一版写的是「每帧**最亮像素** ≥ 200/255」——
-	##   反向验证当场证明它是**放过真 bug 的那一格**: 我把除刀刃以外的所有像素压成最暗档
-	##   重烤了斩击表(md5 真的变了), 门禁**照样全绿** —— 因为领先边那条刀刃仍是 P[0](247),
-	##   「最亮像素」这个量**一条线就能满足**(memory `fb-judge-must-fit-the-shape`)。
-	## ⇒ 改成量**不透明像素的平均亮度**, 基准取【像素最多的那一帧】而不是第 0 帧
-	##   (扫过式的第 0 帧只是一小片刀刃, 平均亮度天然最高, 拿它当基线会把正常的扫判成变暗)。
-	var lum: Array = []
-	var npx: Array = []
-	for f in range(EQ.LASER_SLASH_FRAMES):
-		var im3: Image = _cell(EQ.LASER_SLASH_TEX, 0, f, cell)
-		var sum := 0.0
-		var cnt := 0
-		for y in range(cell):
-			for x in range(cell):
-				var c: Color = im3.get_pixel(x, y)
-				if c.a <= 0.03:
-					continue
-				sum += (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) * c.a * 255.0
-				cnt += 1
-		lum.append(sum / maxf(1.0, float(cnt)))
-		npx.append(cnt)
-	var fullest := 0
-	for f in range(npx.size()):
-		if int(npx[f]) > int(npx[fullest]):
-			fullest = f
-	var base: float = float(lum[fullest])
-	var lo := 9999.0
-	for v in lum:
-		lo = minf(lo, float(v))
-	var ratio: float = lo / maxf(1.0, base)
-	_ok("★分母: 最满的是第 %d 帧(%d 像素), 平均亮度 %.1f" % [fullest, int(npx[fullest]), base],
-		int(npx[fullest]) > 3000 and base > 80.0)
-	_ok("⑥ 逐帧平均亮度最低 / 最满帧 = %.0f%%(须 ≥ 70%%)" % (ratio * 100.0), ratio >= 0.70,
-		"靠把颜色压暗来消散 = 黑地上读成几块暗棕爪痕(fb-vfx-defect-families 的「淡出病」)")
-
-	# ══════════════════════════════════════════════════════════════
-	#  ⑦ 画的方向 == 打的方向: 16 档逐档量五帧并集的重心角
-	# ══════════════════════════════════════════════════════════════
-	print("-- 7 16 档方向: 素材第 k 格的朝向 == _laser_dir_of(k) --")
+	print("-- 2/3/7 扇形网格 == 判定(半径 / 张角 / 16 档朝向) --")
+	var fx = _s._equip_sys.laser_fx()
+	var org0: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var rng0: float = 450.0
+	var arc0: float = deg_to_rad(EQ.LASER_ARC_DEG)
 	var worst := 0.0
 	var worst_k := -1
 	var measured := 0
+	var r_err := 0.0
+	var arc_err := 0.0
+	var scorch_same := true
 	for d in range(EQ.LASER_DIRS):
-		var sx := 0.0
-		var sy := 0.0
-		var cnt2 := 0
-		for f in range(EQ.LASER_SLASH_FRAMES):
-			var im4: Image = _cell(EQ.LASER_SLASH_TEX, d, f, cell)
-			for y in range(cell):
-				for x in range(cell):
-					if im4.get_pixel(x, y).a <= 0.03:
-						continue
-					sx += float(x) + 0.5 - cx
-					sy += float(y) + 0.5 - cx
-					cnt2 += 1
-		if cnt2 < 3000:
+		var dir0: Vector2 = _s._equip_sys._laser_dir_of(d)
+		var before: int = fx._live.size()
+		fx.sweep(org0, dir0, rng0, arc0, [])
+		var lf: Dictionary = _new_live(fx, before, "fan")
+		var ls: Dictionary = _new_live(fx, before, "scorch_fan")
+		if lf.is_empty() or ls.is_empty():
 			continue
 		measured += 1
-		var want: Vector2 = _s._equip_sys._laser_dir_of(d)
-		var dd: float = absf(rad_to_deg(wrapf(atan2(sy, sx) - atan2(want.y, want.x), -PI, PI)))
-		if dd > worst:
-			worst = dd
+		var fan_n: MeshInstance3D = lf["node"]
+		var c0: Vector3 = fan_n.position
+		var vs: PackedVector3Array = _verts_world(fan_n)
+		var rmax := 0.0
+		var amin := 999.0
+		var amax := -999.0
+		var cen := Vector2.ZERO
+		var dang: float = atan2(dir0.y, dir0.x)
+		for v in vs:
+			var rel := Vector2(v.x - c0.x, v.z - c0.z)
+			var rr: float = rel.length()
+			rmax = maxf(rmax, rr)
+			cen += rel
+			if rr > 0.01:
+				var av: float = rad_to_deg(wrapf(atan2(rel.y, rel.x) - dang, -PI, PI))
+				amin = minf(amin, av)
+				amax = maxf(amax, av)
+		var dev: float = absf(rad_to_deg(wrapf(atan2(cen.y, cen.x) - dang, -PI, PI)))
+		if dev > worst:
+			worst = dev
 			worst_k = d
+		r_err = maxf(r_err, absf(rmax - rng0 * _s.WS))
+		arc_err = maxf(arc_err, absf((amax - amin) - EQ.LASER_ARC_DEG))
+		## 地面熔痕与刃是同一块扇形(同半径 / 同朝向), 只是贴地
+		var sc_n: MeshInstance3D = ls["node"]
+		var sv: PackedVector3Array = _verts_world(sc_n)
+		var srmax := 0.0
+		for v in sv:
+			srmax = maxf(srmax, Vector2(v.x - sc_n.position.x, v.z - sc_n.position.z).length())
+		if absf(srmax - rmax) > 0.01 or absf(sc_n.rotation.y - fan_n.rotation.y) > 0.001 or sc_n.position.y > fan_n.position.y:
+			scorch_same = false
 	_ok("★分母: 量到 %d 档方向(应 %d)" % [measured, EQ.LASER_DIRS], measured == EQ.LASER_DIRS)
-	_ok("⑦ 素材朝向与 _laser_dir_of 最大偏差 %.2f°(第 %d 档; 须 ≤ 2.5°)" % [worst, worst_k],
-		worst <= 2.5, "画的方向 ≠ 打的方向 ⇒ 敌人明明画在扇里却不掉血")
+	_ok("③ 扇形网格半径与判定半径 %.0f 码 × WS 最大差 %.3f 米(须 ≤ 0.02)" % [rng0, r_err], measured > 0 and r_err <= 0.02,
+		"画出来的半径不是判定半径")
+	_ok("③ 扇形网格全角与 LASER_ARC_DEG %.0f° 最大差 %.2f°(须 ≤ 0.5)" % [EQ.LASER_ARC_DEG, arc_err], measured > 0 and arc_err <= 0.5,
+		"改了 LASER_ARC_DEG 画面没跟 ⇒ 画一个角度、打另一个角度")
+	_ok("⑦ 扇形网格朝向与 _laser_dir_of 最大偏差 %.2f°(第 %d 档; 须 ≤ 0.5°)" % [worst, worst_k], measured > 0 and worst <= 0.5,
+		"画的方向 ≠ 打的方向 ⇒ 敌人明明画在扇里却不掉血")
+	_ok("②b 地面熔痕 = 同半径同朝向的贴地扇形(16 档都对)", measured > 0 and scorch_same)
 
 	# ══════════════════════════════════════════════════════════════
-	#  ⑧ 竖劈波前: 画多宽就打多宽(同一个常量)
+	#  ④⑤⑥ 节拍: 刃扫完 120° 在结算等待的 0.25 秒以内; 命中特效按刃扫到那人的时刻出
 	# ══════════════════════════════════════════════════════════════
-	print("-- 8 波前宽度 == 判定宽度(旧版画 125 码 / 打 160 码) --")
-	var wc: int = 48
-	var wcx: float = float(wc) * 0.5
-	var wim: Image = _cell(EQ.LASER_WAVE_TEX, 0, 1, wc)   # 第 0 档朝 +x ⇒ 波宽落在 y 上; 第 1 帧 = 满波前
-	var hw_px := 0.0
-	var wpx := 0
-	for y in range(wc):
-		for x in range(wc):
-			if wim.get_pixel(x, y).a <= 0.03:
-				continue
-			wpx += 1
-			hw_px = maxf(hw_px, absf(float(y) + 0.5 - wcx))
-	## 素材半宽 (px) × 运行时 pixel_size = 画出来的半宽(米)
-	var drawn_m: float = hw_px * (EQ.LASER_CHOP_HALF_W * _s.WS / EQ.LASER_WAVE_HW_TEX)
-	var hit_m: float = EQ.LASER_CHOP_HALF_W * _s.WS
-	_ok("★分母: 波前第 1 帧 %d 个不透明像素(须 > 150)" % wpx, wpx > 150)
-	_ok("⑧ 波前画出来半宽 %.2f 米 vs 判定半宽 %.2f 米(误差须 ≤ 6%%)" % [drawn_m, hit_m],
-		absf(drawn_m - hit_m) <= hit_m * 0.06,
-		"素材里半宽 %.1f px 与 LASER_WAVE_HW_TEX %.0f 对不上" % [hw_px, EQ.LASER_WAVE_HW_TEX])
+	print("-- 4/5/6 节拍 --")
+	var wait_sec: float = EQ.LASER_SLASH_FRAMES * EQ.LASER_SLASH_STEP
+	var sweep_sec: float = fx._t_of_prog(1.0)
+	_ok("④ 刃扫完全角用 %.3f 秒(须 0.05~%.2f = 结算那边扇形斩之后等的时长)" % [sweep_sec, wait_sec],
+		sweep_sec >= 0.05 and sweep_sec <= wait_sec, "太快看不出扫 / 太慢则追斩起手时扇形还没扫完")
+	_ok("⑤ 扇形画面寿命 FAN_LIFE %.3f == 结算等待 %.3f" % [fx.FAN_LIFE, wait_sec], absf(fx.FAN_LIFE - wait_sec) < 0.001)
+	var mono := true
+	var prev_t := -1.0
+	for k in range(11):
+		var tk: float = fx._t_of_prog(float(k) / 10.0)
+		if tk < prev_t - 1e-6:
+			mono = false
+		prev_t = tk
+	_ok("⑥ 刃的推进单调(扫到 -60° 的人先亮, +60° 的人后亮)", mono and fx._t_of_prog(0.0) <= 0.001)
+
+	# ══════════════════════════════════════════════════════════════
+	#  ⑧ 直线追斩光带: 画多宽就打多宽, 画多远至少推多远, 朝向 == 打的方向
+	# ══════════════════════════════════════════════════════════════
+	print("-- 8 光带 == 判定 --")
+	var bdir: Vector2 = _s._equip_sys._laser_dir_of(3)
+	var before_b: int = fx._live.size()
+	var bh: Dictionary = fx.chop_begin(org0, bdir, 300.0, EQ.LASER_CHOP_SPEED, EQ.LASER_CHOP_HALF_W)
+	var lb: Dictionary = _new_live(fx, before_b, "beam")
+	_ok("★分母: 光带挂上了", not lb.is_empty())
+	if not lb.is_empty():
+		var bn: MeshInstance3D = lb["node"]
+		var bc: Vector3 = bn.position
+		var bang: float = atan2(bdir.y, bdir.x)
+		var along_max := 0.0
+		var side_max := 0.0
+		for v in _verts_world(bn):
+			var rel := Vector2(v.x - bc.x, v.z - bc.z)
+			along_max = maxf(along_max, rel.dot(bdir))
+			side_max = maxf(side_max, absf(rel.dot(Vector2(-bdir.y, bdir.x))))
+		var hit_hw: float = EQ.LASER_CHOP_HALF_W * _s.WS
+		_ok("⑧ 光带半宽 %.3f 米 vs 判定半宽 %.3f 米(差须 ≤ 0.02)" % [side_max, hit_hw], absf(side_max - hit_hw) <= 0.02,
+			"画多宽 ≠ 打多宽(旧版画 125 码 / 打 160 码)")
+		_ok("⑧ 光带长 %.2f 米 ≥ 推进距离 %.2f 米" % [along_max, 300.0 * _s.WS], along_max >= 300.0 * _s.WS - 0.01)
+		_ok("⑧ 光带波前速度 %.0f == LASER_CHOP_SPEED %.0f(画面和结算同一个速度)" % [float(lb["speed"]), EQ.LASER_CHOP_SPEED],
+			absf(float(lb["speed"]) - EQ.LASER_CHOP_SPEED) < 0.01)
+	fx.chop_end(bh)
 
 	# ══════════════════════════════════════════════════════════════
 	#  ⑨ 竖劈判定: 纯几何逐格量落点(不依赖任何 tween)
@@ -516,7 +424,7 @@ func _ready() -> void:
 	_ok("★分母: 走廊上摆了 %d 个敌人 %s 码(reach = %.0f, 都在走廊内)"
 		% [foes.size(), str(dists), reach2], foes.size() == 3 and float(dists[2]) < reach2)
 	var t_at: Array = [-1.0, -1.0, -1.0]
-	_s._equip_sys._eq_laser_chop(cr2, 2, cr2["pos"], Vector2.RIGHT, 0, reach2)
+	_s._equip_sys._eq_laser_chop(cr2, 2, cr2["pos"], Vector2.RIGHT, reach2)
 	var t3_end: int = Time.get_ticks_msec() + 15000
 	while Time.get_ticks_msec() < t3_end:
 		await get_tree().process_frame

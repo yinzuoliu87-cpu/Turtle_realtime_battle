@@ -56,6 +56,10 @@ static func cases() -> Dictionary:
 		## 羁绊: 持有人不动不打(只为凑 3 件炸弹 = 1 档), 只看导弹本身
 		"missile": [[_me(Vector2(-300, 0), _eq([102, 103, 97]), {"idle": true})] + _dummies(60, 3) + [_u("__minion__", "right", Vector2(280, 0), {"minion": true, "plain": true, "hp": 20000.0, "killable": false})], 15.0],
 		"cracker": [[_me(Vector2(-10, 0), _eq([97]))] + _dummies(60, 3), 12.0],
+		## 010 激光长刃(11-27 重做): 携带者站住(2 星, 近战扇形半径 = 射程 + 250 码); 三个靶子都在扇形里 ⇒ 一刀扫过三个人, 不追加直线斩
+		"laser_multi": [[_me(Vector2(-160, 0), _eq([10], 2), {"hold": true})] + _ring_dummies(Vector2(-160, 0), [Vector2(170, -110), Vector2(220, 0), Vector2(170, 110)]), 6.0],
+		## 只放一个靶子 ⇒ 扇形斩只中一人 ⇒ 追加直线斩(光带波前推过去)
+		"laser_single": [[_me(Vector2(-160, 0), _eq([10], 2), {"hold": true})] + _ring_dummies(Vector2(-160, 0), [Vector2(200, 30)]), 6.0],
 		## 146 圣枪(11-26 晚重做): 紫色筹码 + 纸面具给开场魔法 / 物理护盾(只给一次, 不像海藻每几秒刷一次通用得盾罩挡画面) ⇒ 储能有一笔; 两个友方小将给光球砸; 三个会打的靶子把携带者打到半血 ⇒ 圣枪护盾; 第 12 / 24 秒两次引导
 		"holy": [[_me(Vector2(-60, 0), _eq([146, 152, 127]), {"hp": 4500.0}),
 			_u("__minion__", "left", Vector2(-150, -90), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 8000.0, "killable": false, "idle": true}),

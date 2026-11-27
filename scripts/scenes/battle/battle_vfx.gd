@@ -808,7 +808,7 @@ func _vfx_preview_loop() -> void:
 		var fu: Dictionary = {"pos": origin, "alive": true, "id": "basic", "side": "left", "atk_range": 350.0, "equips": [], "def": 30.0, "mr": 30.0, "atk": 100.0, "crit": 0.25, "crit_dmg": 1.5, "lifesteal": 0.0, "armor_pen": 0.0, "energy_cost": {}}
 		match eff:
 			"laser_sweep": battle._equip_sys._eq_laser_sweep(fu, {"pos": origin + dir * 350.0, "alive": true}, si)
-			"laser_chop": battle._equip_sys._eq_laser_chop(fu, si, origin, dir, battle._equip_sys._ground_dir_frame(dir, 16), 360.0)
+			"laser_chop": battle._equip_sys._eq_laser_chop(fu, si, origin, dir, 360.0)
 			"moon": battle._equip_sys._eq_wide_blade(fu, {"pos": origin + dir * 650.0, "alive": true}, si)
 			"slash": battle._equip_sys._blood_sys._blood_slash_play(0, battle._equip_sys._blood_sys.blood_slash_at(origin - dir * 60.0, origin), EqBloodCombo.BLOOD_SLASH_W)
 			"smolder": _vfx_smolder(origin, dir, si)
