@@ -8,6 +8,9 @@ extends "res://scripts/scenes/battle/candy_vfx.gd"
 ##   fortune-dice-roll 翻滚骰子 6×24 · fortune-beam 剑尖光柱 8×(16×128); 金盾罩 = 网格 + assets/shaders/fortune_shield.gdshader;
 ##   光晕 candy-glow(白色圆斑, 底层小元素共用, §10 第 5 条)。
 const F_HIT := "res://assets/sprites/vfx/fortune-hit.png"
+const F_STREAK := "res://assets/sprites/vfx/fortune-hit-streak.png"
+const F_SPARK := "res://assets/sprites/vfx/fortune-hit-spark.png"
+const F_RING := "res://assets/sprites/vfx/fortune-hit-ring.png"
 const F_STAR := "res://assets/sprites/vfx/fortune-strike-star.png"
 const F_COIN := "res://assets/sprites/vfx/fortune-coin-spin.png"
 const F_DICE := "res://assets/sprites/vfx/fortune-dice-roll.png"
@@ -38,16 +41,36 @@ func _glow(p0: Vector3, size_m: float, life: float, t0: float, s1: float = 1.4, 
 		"add": true, "prio": 7, "vel": vel, "t0": t0})
 
 
-# ════════════════ ① 普攻·金剑命中: 命中点一个金色爆点 ════════════════
-## 11-27 用户「这个普攻明明是一个偏横扫的…攻击, 为什么你要做竖着的这个命中特效呢？…做一个爆点的命中特效就好了呀」
-##   ⇒ 第一版的竖劈新月剑光 + 迸铜钱去掉, 只留爆点(Aseprite 6 帧: 白金闪光 → 八道金芒 → 芒断开外飞 + 细环 → 碎点)。
-func strike(_u: Dictionary, tgt: Dictionary) -> void:
+# ════════════════ ① 普攻·金剑命中: 六层叠出来的金色爆点 ════════════════
+## 11-27 用户: 先否竖劈新月剑光(「普攻明明是偏横扫…做一个爆点的命中特效就好」), 再否单层爆点(「做这种命中特效, 难道也是一层的事情吗？」)。
+## 分层(方案书 20261126d「特效重做」第 1 行):
+##   ⑥ 受击闪白  被打的人身上闪金白 0.08 秒(游戏现成受击闪)
+##   ① 闪光      命中点一团白金光晕叠加发光, 由小撑大 0.12 秒(光晕底层元素)
+##   ② 爆点主体  金芒爆点 6 帧 0.3 秒(fortune-hit)
+##   ③ 横扫拖痕  顺挥剑方向从命中点往外拉出 4 道横向速度线 5 帧 0.2 秒(fortune-hit-streak; 交代这是横扫)
+##   ④ 火花      8 颗金色小方火花顺挥剑方向飞出、带重力往下落 0.35 秒(fortune-hit-spark, 代码抛物线)
+##   ⑤ 冲击环    目标脚下一圈金色细环贴地扩散 5 帧 0.25 秒(fortune-hit-ring)
+func strike(u: Dictionary, tgt: Dictionary) -> void:
 	if battle._world == null:
 		return
+	var dir: float = 1.0 if float(tgt["pos"].x) >= float(u["pos"].x) else -1.0
 	var hh: float = float(tgt.get("height", 0.0))
+	var at: Vector2 = tgt["pos"]
+	var t0: float = battle._t
+	var p: Vector3 = battle._world_pos(at, 0.6 + hh)
 	tgt["_spark_t"] = battle._t + 0.08   # 有专属命中特效: 挡掉通用星芒(纯演出键)
-	_p(tex(F_HIT), battle._world_pos(tgt["pos"], 0.6 + hh), {"hf": 6, "n": 6, "fps": 20.0, "life": 0.3,
-		"px_m": 1.4 / 48.0, "near": true, "prio": 11, "a0": 1.0, "a1": 1.0, "t0": battle._t})
+	battle._vfx._flash(tgt, Color(1.6, 1.45, 0.9))
+	_glow(p, 1.3, 0.12, t0, 1.7, 1.0)
+	_p(tex(F_HIT), p, {"hf": 6, "n": 6, "fps": 20.0, "life": 0.3, "px_m": 1.4 / 48.0, "near": true, "prio": 11, "a0": 1.0, "a1": 1.0, "t0": t0})
+	_p(tex(F_STREAK), battle._world_pos(at + Vector2(dir * 26.0, 0.0), 0.6 + hh), {"hf": 5, "n": 5, "fps": 24.0, "life": 0.21,
+		"px_m": 1.6 / 64.0, "flip": dir < 0.0, "near": true, "prio": 10, "a0": 1.0, "a1": 1.0, "t0": t0})
+	for i in range(8):
+		var k: float = float(i) / 7.0
+		_p(tex(F_SPARK), p, {"hf": 4, "n": 4, "fps": 11.0, "life": 0.35, "px_m": 0.16 / 8.0, "near": true, "prio": 12,
+			"vel": Vector3(dir * (1.4 + 2.0 * k), 2.6 - 2.4 * k + 0.4 * float(i % 2), (k - 0.5) * 1.2), "grav": 9.0,
+			"a0": 1.0, "a1": 0.4, "t0": t0 + 0.01 * float(i % 3)})
+	_p(tex(F_RING), battle._world_pos(at, 0.03), {"hf": 5, "n": 5, "fps": 20.0, "life": 0.25, "px_m": 1.7 / 64.0,
+		"flat": true, "yaw": 0.0, "prio": -1, "near": true, "a0": 1.0, "a1": 1.0, "t0": t0})
 
 
 # ════════════════ ② 骰子: 头顶骰子翻滚落定 → N 枚铜钱喷泉撒下 → 身后暖金光点往上飘(回血) ════════════════
