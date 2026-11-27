@@ -314,8 +314,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int, ck: String = "")
 			battle._pending_shots.append({"delay": EquipSystem.TIDE_DELAY, "fn": func(): battle._equip_sys._eq_ebb_surge(u, hp41, atk41, dur41, ck), "src": u})   # ck: 每件各涨各的(11-13)
 		"p2eq_035":   # 黄铜齿轮: 本局累计产币数(显示用)
 			stt["coins_made"] = 0
-		"p2eq_034":   # 玩偶小熊: 大熊层 + 已销毁标记 + 每4s派小熊计时 + 蓄力标记
-			stt["bear_layers"] = 0
+		"p2eq_034":   # 玩偶小熊: 已派小熊只数 + 已销毁标记 + 每4s派小熊计时 + 蓄力标记
+			stt["bears_sent"] = 0
 			stt["bear_done"] = false
 			stt["doll_si"] = si
 			stt["doll_t"] = 0.0

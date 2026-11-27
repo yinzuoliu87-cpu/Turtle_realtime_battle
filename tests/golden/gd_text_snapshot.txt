@@ -141,7 +141,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|双穿 +#
 scripts/gamedata/equip_tier_labels.gd|lit|反伤阈值 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|反击伤害 # 点
-scripts/gamedata/equip_tier_labels.gd|lit|召唤所需层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|召唤所需小熊 # 只
 scripts/gamedata/equip_tier_labels.gd|lit|命中伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|命中伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|命中次数 #

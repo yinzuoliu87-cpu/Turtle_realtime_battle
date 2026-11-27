@@ -33,7 +33,7 @@ const COUNT := {   # 头像下装备格右下角层数徽章: id → eq_state层
 	##   —— 扔过去一把枪、闪一下、然后什么都没留下: 看不出给了几把,
 	##   更看不出那是个坑(持枪者每次普攻自伤 1% 最大生命真实伤害)。
 	"gremlin_gun": "n",            # 持枪数(镜像在 eq_state.gremlin_gun.n)
-	"p2eq_034": "bear_layers",      # 大熊层
+	"p2eq_034": "bears_sent",       # 已派出的小熊只数
 	"p2eq_013": "harden_stacks", "p2eq_014": "harden_stacks",   # 硬化层(0-20)
 	"p2eq_024": "dragon_stacks",   # 吐息层(0-3)
 	"p2eq_035": "coins_made",      # 本局累计产币数(原"齿轮层"已随2026-07-18改版作废·恒为0)

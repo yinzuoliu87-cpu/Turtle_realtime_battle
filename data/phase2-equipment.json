@@ -401,10 +401,10 @@
     "baseStats1": "+攻20/50/300·生命120/250/1000",
     "shopAvailable": 1,
     "emoji": "🧸",
-    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒向最近敌人派出小熊，造成（100/200/500% 攻击力+100/210/1000）物理伤害并将其击飞，携带者获得 1 层大熊层数。达到 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只【大熊】。若无空位，继续派出小熊直至有空位。",
+    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒向最近敌人派出小熊，造成（100/200/500% 攻击力+100/210/1000）物理伤害并将其击飞。派出 {C:EquipTickSystem.DOLL_BEARS_TO_SUMMON} 只小熊后装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只【大熊】。若无空位，继续派出小熊直至有空位。",
     "effectDesc3": "",
     "img": "equip/p2eq_034.png",
-    "effectBrief": "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人。达到 5/3/1 层后召唤一只【大熊】。"
+    "effectBrief": "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人。派出 {C:EquipTickSystem.DOLL_BEARS_TO_SUMMON} 只小熊后召唤一只【大熊】。"
   },
   {
     "id": "p2eq_035",

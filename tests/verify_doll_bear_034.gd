@@ -5,7 +5,7 @@ extends Node
 ##  ★文案就是规格
 ## ════════════════════════════════════════════════════════════════════════
 ## 「每 `DOLL_IV`(4) 秒派出一只小熊走向最近的敌人, 造成(**1/2/5×攻击力 + 100/210/1000**)
-##   物理伤害并将其击飞, 同时携带者 +1 大熊层; 大熊层满 **5/3/1** 层时**装备销毁**,
+##   物理伤害并将其击飞, 派出 **5/3/1** 只小熊后**装备销毁**,
 ##   携带者蓄力 `DOLL_CHARGE_SEC`(1.2) 秒后在空位召唤一只大熊
 ##   (生命 **1600/3000/15000** · 攻击力 **70/120/2000** · 护甲与魔抗各 `BEAR_RESIST`(70)
 ##    · 攻击速度 `BEAR_ASPD`(0.7)/秒 · 近战)。
@@ -25,7 +25,7 @@ const ET := preload("res://scripts/systems/equip/equip_tick_system.gd")
 
 const BEAR_HP := [1600.0, 3000.0, 15000.0]
 const BEAR_ATK := [70.0, 120.0, 2000.0]
-const LAYER_CAP := [5, 3, 1]
+const LAYER_CAP := [5, 3, 1]   # 派出几只小熊后召大熊(期望写字面量, 不读被测常量)
 const DOLL_FLAT := [100.0, 210.0, 1000.0]
 const DOLL_COEF := [1.0, 2.0, 5.0]
 
@@ -97,16 +97,16 @@ func _ready() -> void:
 	_s._units.append(c2)
 	_s._units.append(_mk(700.0, 400.0, "right"))
 	ets._tick_doll(c2, ET.DOLL_IV - 0.2)
-	_ok("② ★分母: 差 0.2 秒时还没派熊(%d 层)"
-		% int(c2["eq_state"]["p2eq_034"].get("bear_layers", 0)),
-		int(c2["eq_state"]["p2eq_034"].get("bear_layers", 0)) == 0,
+	_ok("② ★分母: 差 0.2 秒时还没派熊(已派 %d 只)"
+		% int(c2["eq_state"]["p2eq_034"].get("bears_sent", 0)),
+		int(c2["eq_state"]["p2eq_034"].get("bears_sent", 0)) == 0,
 		"卡住「每 %.0f 秒」那个数" % ET.DOLL_IV)
 	ets._tick_doll(c2, 0.3)
-	_ok("② ★★满 %.0f 秒派出一只小熊并 +1 层(实测 %d 层)"
-		% [ET.DOLL_IV, int(c2["eq_state"]["p2eq_034"].get("bear_layers", 0))],
-		int(c2["eq_state"]["p2eq_034"].get("bear_layers", 0)) == 1)
+	_ok("② ★★满 %.0f 秒派出一只小熊(已派 %d 只)"
+		% [ET.DOLL_IV, int(c2["eq_state"]["p2eq_034"].get("bears_sent", 0))],
+		int(c2["eq_state"]["p2eq_034"].get("bears_sent", 0)) == 1)
 
-	# ── ③ ★★★层满 5/3/1 → 装备销毁 + 召出大熊, 属性吃星级 ───────────
+	# ── ③ ★★★派出 5/3/1 只 → 装备销毁 + 召出大熊, 属性吃星级 ───────────
 	for si in [0, 1, 2]:
 		_s._units.clear()
 		var c3: Dictionary = _mk(500.0, 400.0, "left")
@@ -117,10 +117,10 @@ func _ready() -> void:
 		## 喂满 cap 个周期
 		for _k in range(LAYER_CAP[si]):
 			ets._tick_doll(c3, ET.DOLL_IV + 0.01)
-		_ok("③ ★★%d 星: 攒到 %d 层就进入蓄力(cap = %d)"
-			% [si + 1, int(c3["eq_state"]["p2eq_034"].get("bear_layers", 0)), LAYER_CAP[si]],
+		_ok("③ ★★%d 星: 派出 %d 只就进入蓄力(应 %d 只)"
+			% [si + 1, int(c3["eq_state"]["p2eq_034"].get("bears_sent", 0)), LAYER_CAP[si]],
 			bool(c3["eq_state"]["p2eq_034"].get("bear_charging", false)),
-			"文案: 大熊层满 5/3/1 层时装备销毁")
+			"文案: 派出 5/3/1 只小熊后装备销毁")
 		## 蓄力是 `await _wait_sim(DOLL_CHARGE_SEC)` —— 走**游戏钟**, 推 sim 就能到点。
 		## ★★但**必须 await 帧**: `_wait_sim` 内部是 `while _t < t_end: await process_frame`,
 		##   只在 for 里连推 `_sim_step` 而不让出帧, 那个协程**永远没机会醒**

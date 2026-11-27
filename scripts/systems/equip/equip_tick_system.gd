@@ -9,7 +9,8 @@ extends RefCounted
 ## ★抽成常量不是为了文案, 是**门禁要拿它推 sim** —— 推少了量到 0 会被误判成「伤害没落」。
 const BEAR_PAW_HIT_AT := 0.07 * 7.0 * 0.45
 const DOLL_IV := 4.0            # 每几秒派一只小熊
-const DOLL_CHARGE_SEC := 1.2    # 大熊层满后, 携带者蓄力几秒才召大熊
+const DOLL_CHARGE_SEC := 1.2    # 派够小熊后, 携带者蓄力几秒才召大熊
+const DOLL_BEARS_TO_SUMMON := [5, 3, 1]   # 派出几只小熊后召大熊(★1/★2/★3; 2026-11-27 起不叫「层」)
 const BEAR_ASPD := 0.7          # 大熊攻速(次/秒) ⇒ atk_interval = 1/它
 const BEAR_RANGE := 70.0        # 大熊射程(码·近战)
 ## 大熊立绘的世界高度 = TARGET_BODY_H(2.0m) × BEAR_COL_SIZE / 56。
@@ -87,10 +88,10 @@ func _eq_pick_distinct(u: Dictionary, n: int) -> Array:
 	return out
 
 # 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
-func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派小熊+攒层; 满层→蓄力→召大熊(不与末只小熊同帧)
+func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派一只小熊; 派够 5/3/1 只→蓄力→召大熊(不与末只小熊同帧)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if not (u.get("eq_state", {}) as Dictionary).has("p2eq_034"): return
-	## ★每一件各派各的小熊、各攒各的层、各召一只大熊(11-13 用户「两件肯定召唤两个…各自生效」)
+	## ★每一件各派各的小熊、各数各的只数、各召一只大熊(11-13 用户「两件肯定召唤两个…各自生效」)
 	battle._equip_sys.each_copy(u, "p2eq_034", func(_si: int) -> void: _tick_doll_copy(u, delta))
 
 
@@ -109,16 +110,16 @@ func _tick_doll_copy(u: Dictionary, delta: float) -> void:
 		stt["doll_t"] = _iv
 		return
 	var mt = battle._targeting._nearest_enemy(u)
-	## ★2026-10-16: 没有目标时保持就绪, 不清计时 —— 原来先清零再判空, 这一只熊连同它的层数白白丢掉。
+	## ★2026-10-16: 没有目标时保持就绪, 不清计时 —— 原来先清零再判空, 这一只熊连同它的计数白白丢掉。
 	if mt == null:
 		stt["doll_t"] = _iv
 		return
 	stt["doll_t"] = 0.0
 	var bdm: int = battle._resolve_dmg(u, u["atk"] * [1.0, 2.0, 5.0][si] + [100.0, 210.0, 1000.0][si], mt, false)
 	battle._summon_walking_bear(u, mt, bdm)
-	stt["bear_layers"] = int(stt.get("bear_layers", 0)) + 1
-	var _cap: int = 1 if OS.has_environment("EQDEMO_FAST") else [5, 3, 1][si]
-	if int(stt["bear_layers"]) >= _cap:
+	stt["bears_sent"] = int(stt.get("bears_sent", 0)) + 1
+	var _cap: int = 1 if OS.has_environment("EQDEMO_FAST") else int(DOLL_BEARS_TO_SUMMON[si])
+	if int(stt["bears_sent"]) >= _cap:
 		stt["bear_charging"] = true
 		battle._big_bear_charge_and_spawn(u, si)
 
