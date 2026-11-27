@@ -281,13 +281,11 @@ static func _ninja(si: int) -> Dictionary:
 		{"name": "忍刃", "icon": "skills/summon-ninja-blade.png",
 			"desc": SC.basic_line("暗影忍者") + Lang.t("暗影忍者拥有 {C:EqDaggerBatch.NINJA_CRIT[%d]%%}%% 暴击率。") % si},
 		{"name": "影袭", "icon": "skills/summon-ninja-strike.png", "energy": int(D.NINJA_EN_MAX),
-			"desc": "化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。"},
+			"desc": Lang.t("暗影忍者化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。") + Lang.t("背刺后朝该目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。") % [si, SC._n(D.SHURIKEN_FLAT[si])]},
 		[{"name": "暗影潜行", "icon": "passive/summon-ninja-stealth-icon.png",
 			"desc": "暗影忍者登场时隐身，攻击时现形。"},
 		 {"name": "影分身", "icon": "passive/summon-ninja-clone-icon.png",
-			"desc": "暗影忍者的生命值首次低于 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力，同样会施放影袭。"},
-		 {"name": "手里剑", "icon": "passive/summon-ninja-shuriken-icon.png",
-			"desc": Lang.t("每次影袭，暗影忍者朝目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。") % [si, SC._n(D.SHURIKEN_FLAT[si])]}])
+			"desc": "暗影忍者的生命值首次低于 {C:EqDaggerBatch.NINJA_CLONE_HP_PCT%}% 时，分出一名影子忍者，持续 {C:EqDaggerBatch.NINJA_CLONE_SEC} 秒，拥有其 {C:EqDaggerBatch.NINJA_CLONE_STAT%}% 最大生命值与攻击力，同样会施放影袭。"}])
 
 
 # ─── 123 亡者之书 · 骷髅战士 / 骷髅法师 / 骷髅祭司 ───
