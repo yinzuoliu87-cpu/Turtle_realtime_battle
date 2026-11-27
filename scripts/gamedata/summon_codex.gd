@@ -220,9 +220,11 @@ static func card_spec(id: String) -> Dictionary:
 	var si: Dictionary = info(id, 0)
 	if si.is_empty():
 		return {}
-	var parts: PackedStringArray = []
+	## 属性行 = 图标 + 数值(与商店装备卡同一种写法, InspectCard._stat_row 自己换行)
+	var stat_row: Array = []
 	for st in si.get("stats", []):
-		parts.append("%s %s" % [str(st["label"]), str(st["disp"])])
+		var ip := "res://assets/sprites/stats/%s-icon.png" % str(st["key"])
+		stat_row.append([ip, str(st["disp"]), Color("#f4ead8")])
 	var body: PackedStringArray = []
 	var ctx := {"atk": float(_disp_of(si, "atk")), "maxHp": float(_disp_of(si, "hp")), "lv": 1}
 	var rows: Array = []
@@ -237,10 +239,11 @@ static func card_spec(id: String) -> Dictionary:
 		body.append("[color=#ffd93d]%s · %s[/color]\n%s" % [str(r[0]), Lang.t(str(d["name"])),
 			SkillText.render_bbcode(Lang.t(str(d["desc"])), ctx, {}, 20)])
 	var cols: Array = si.get("cols", [])
-	var head: String = ("%s %s · " % [str(si.get("col_title", "")), str(cols[0])]) if not cols.is_empty() else ""
+	var head: String = ("[color=#aab8c6]%s %s[/color]\n\n" % [str(si.get("col_title", "")), str(cols[0])]) if not cols.is_empty() else ""
 	return {"icon": str(si.get("avatar", "")), "title": Lang.t(str(si["name"])), "title_col": Color("#ffd93d"),
 		"tag_bb": "[color=#58d3ff]%s[/color]" % "  ·  ".join(PackedStringArray(si.get("tags", []))),
-		"body": "[color=#aab8c6]%s%s[/color]\n\n%s" % [head, "  ".join(parts), "\n\n".join(body)],
+		"stats": stat_row,
+		"body": head + "\n\n".join(body),
 		"foot": Lang.t("完整数据见图鉴「角色」")}
 
 

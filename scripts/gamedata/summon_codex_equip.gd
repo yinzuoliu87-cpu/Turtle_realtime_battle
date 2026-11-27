@@ -218,7 +218,7 @@ static func _axe(ci: int) -> Dictionary:
 		"ember": ps.append({"name": "余烬", "icon": "passive/summon-axe-ember-icon.png",
 			"desc": "斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。"})
 	var key: String = (fin if fin != "" else ["wood", "stone", "iron", "gold", "diamond"][stage])
-	return _page("斧头", ["axe"], "axe", _sheet("vfx/eq096-axe-%s-idle.png" % key, 112, 8, 200.0, 92.0), "p2eq_096", ["远程斗士" if fin == "seraph" else "近战斗士"],
+	return _page("斧头", ["axe"], "axe", _sheet("vfx/eq096-axe-%s-idle.png" % key, 112, 8, 300.0, 88.0), "p2eq_096", ["远程斗士" if fin == "seraph" else "近战斗士"],
 		SC.stats(hp, atk, df, mr, move, aspd, rng),
 		{"name": "斧击", "icon": "skills/summon-axe-chop.png", "desc": basic},
 		{"name": "斧之守护", "icon": "skills/summon-axe-guard.png", "desc": skill, "energy": int(A.ACTIVE_ENERGY)},

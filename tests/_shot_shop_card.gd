@@ -1,5 +1,6 @@
 extends Node
 ## DEV 工具(不是门禁): 商店说明卡实拍 —— 把指定装备摆上货架第 0 格、点开, 存图。
+## SHOT_CLICK_SUMMON=1 再点说明里第一个召唤物名字, 拍换出来的召唤物小卡(11-27)。
 ## 跑法(窗口只开右屏):
 ##   SHOT_DIR=<目录> SHOT_IDS=p2eq_096,p2eq_084,p2eq_004 TURTLE_SUPABASE=" " TURTLE_BACKEND=" " APPDATA=<单独目录> \
 ##   WINDOW=1 bash godot-quiet.sh --position 1960,60 --resolution 1560x720 res://tests/_shot_shop_card.tscn
@@ -47,6 +48,18 @@ func _ready() -> void:
 			var path := "%s/shop_%s.png" % [dir, eid]
 			get_viewport().get_texture().get_image().save_png(path)
 			print("[SHOT] ", path, "  滚动框=", scroll != null)
+			## SHOT_CLICK_SUMMON=1: 再点说明里第一个召唤物名字(图鉴角色栏 11-27 名字链接), 拍换出来的召唤物小卡
+			if OS.get_environment("SHOT_CLICK_SUMMON") == "1":
+				var body = (sc._insp.live as Dictionary).get("body", null)
+				var m := RegEx.create_from_string("\\[url=summon:([a-z_]+)\\]").search(str(body.text) if body is RichTextLabel else "")
+				print("[LINK] ", eid, " → ", m.get_string(1) if m != null else "(无链接)")
+				if m != null:
+					(body as RichTextLabel).meta_clicked.emit("summon:" + m.get_string(1))
+					await _frames(20)
+					await RenderingServer.frame_post_draw
+					var p2 := "%s/shop_%s_summon.png" % [dir, eid]
+					get_viewport().get_texture().get_image().save_png(p2)
+					print("[SHOT] ", p2)
 		sc.queue_free()
 		await _frames(3)
 	if count_only:

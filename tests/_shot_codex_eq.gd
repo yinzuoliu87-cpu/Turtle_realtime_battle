@@ -33,5 +33,21 @@ func _ready() -> void:
 		var path := "%s/eq_%d.png" % [OS.get_environment("SHOT_DIR"), k]
 		get_viewport().get_texture().get_image().save_png(path)
 		print("[SHOT] ", path)
+		## SHOT_CLICK_SUMMON=1: 点效果文案里第一个召唤物名字(11-27 名字链接), 拍跳过去的角色页
+		if OS.get_environment("SHOT_CLICK_SUMMON") == "1":
+			var re := RegEx.create_from_string("\\[url=summon:([a-z_]+)\\]")
+			for rt in c.find_children("*", "RichTextLabel", true, false):
+				if (rt as Node).has_meta("codex_eq_effect"):
+					var m := re.search((rt as RichTextLabel).text)
+					print("[LINK] ", eid, " → ", m.get_string(1) if m != null else "(无链接)")
+					if m != null:
+						(rt as RichTextLabel).meta_clicked.emit("summon:" + m.get_string(1))
+						await get_tree().create_timer(1.5).timeout
+						print("[JUMP] 当前页签=", c.current_tab, " 选中=", str(c._items[c._sel_idx]) if "_sel_idx" in c else "?")
+						await RenderingServer.frame_post_draw
+						var p2 := "%s/eq_%d_jump.png" % [OS.get_environment("SHOT_DIR"), k]
+						get_viewport().get_texture().get_image().save_png(p2)
+						print("[SHOT] ", p2)
+					break
 		k += 1
 	get_tree().quit()
