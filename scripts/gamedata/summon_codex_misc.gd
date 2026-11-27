@@ -84,7 +84,7 @@ static func _ship() -> Dictionary:
 		{"name": "舷炮", "icon": "skills/summon-ship-broadside.png",
 			"desc": "海盗船每 {C:PirateSystem.SHIP_SHOT_CD} 秒朝最近的敌人开一炮，造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力(未知) = 未知）物理伤害。"}, {},
 		[{"name": "破浪登场", "icon": "passive/summon-ship-ram-icon.png",
-			"desc": "海盗船登场时冲进战场，对落点附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害，将其击退并眩晕 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"}])
+			"desc": "海盗船登场时冲锋撞击目标，对其附近的敌人造成（{C:PirateSystem.SHIP_CHARGE_COEF%}%×海盗龟攻击力(未知) = 未知）魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒。"}])
 
 
 # ─── 赛博龟 · 机甲 ───
