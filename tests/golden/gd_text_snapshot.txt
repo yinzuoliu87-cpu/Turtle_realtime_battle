@@ -848,13 +848,13 @@ scripts/gamedata/summon_codex_equip.gd|lit|暗影潜行
 scripts/gamedata/summon_codex_equip.gd|lit|枪
 scripts/gamedata/summon_codex_equip.gd|lit|武士刀小将
 scripts/gamedata/summon_codex_equip.gd|lit|每 {C:AxeEvolution.SMASH_IV} 秒，斧头的下一次攻击额外造成（{C:AxeEvolution.SMASH_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SMASH_ATK*ATK}）物理伤害，并将目标击飞和短暂击退。
-scripts/gamedata/summon_codex_equip.gd|lit|每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。
 scripts/gamedata/summon_codex_equip.gd|lit|每次影袭，暗影忍者朝目标掷出一枚手里剑，影子在场时两名忍者各掷一枚，对路径上的敌人造成（{C:EqDaggerBatch.SHURIKEN_FLAT[%d]} + {C:EqDaggerBatch.SHURIKEN_ATK%%}%%×攻击力({ATK}) = {M:%s+EqDaggerBatch.SHURIKEN_ATK*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|每次攻击使炮台获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本战场结束。
 scripts/gamedata/summon_codex_equip.gd|lit|每次攻击积攒 1 层。
 scripts/gamedata/summon_codex_equip.gd|lit|每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。
 scripts/gamedata/summon_codex_equip.gd|lit|每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫
+scripts/gamedata/summon_codex_equip.gd|lit|海螺虫每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺馈赠
 scripts/gamedata/summon_codex_equip.gd|lit|火力同调

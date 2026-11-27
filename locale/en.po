@@ -9398,8 +9398,8 @@ msgstr "Conch's Gift"
 msgid "分裂"
 msgstr "Split"
 
-msgid "每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"
-msgstr "Every {C:EquipSystem.WORM_SPLIT_IV} seconds, splits off a new Conch Bug in an empty spot with the same health and Attack as itself but no items, up to {C:EquipSystem.WORM_CAP}."
+msgid "海螺虫每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"
+msgstr "Every {C:EquipSystem.WORM_SPLIT_IV} seconds, the Conch Bug splits off a new Conch Bug in an empty spot with the same health and Attack as itself but no items, up to {C:EquipSystem.WORM_CAP}."
 
 msgid "啃咬"
 msgstr "Gnaw"
