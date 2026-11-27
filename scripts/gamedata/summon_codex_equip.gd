@@ -194,6 +194,8 @@ static func _axe(ci: int) -> Dictionary:
 		basic += Lang.t("攻击在横扫和竖劈之间交替。横扫对前方 {C:AxeEvolution.SWEEP_ARC_DEG}° 内的所有敌人造成伤害，竖劈额外造成目标 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 最大生命值的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。")
 	if fin == "seraph":
 		basic += Lang.t("攻击还会施加 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。")
+	elif fin == "holo":
+		basic += Lang.t("攻击还会为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。")
 	var skill: String = Lang.t("回复自身 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 最大生命值，并获得自身 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 最大生命值的护盾。")
 	if stage >= 4 and fin == "":
 		skill += Lang.t("随后开始【蓄力猛砸】，蓄力 {C:AxeEvolution.CHARGE_TIME} 秒，期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤。蓄力结束时砸下，对前方区域内的每个敌人造成（{C:AxeEvolution.SLAM_ATK%}%×攻击力({ATK}) = {N:AxeEvolution.SLAM_ATK*ATK}）物理伤害，将其击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。")
@@ -215,7 +217,7 @@ static func _axe(ci: int) -> Dictionary:
 		"undead": ps.append({"name": "亡灵之斧", "icon": "passive/summon-axe-undead-icon.png",
 			"desc": "附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。附近每有一个敌人，斧头每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。斧头阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后以自身 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 最大生命值复活，每个战场一次。"})
 		"holo": ps.append({"name": "全息斧", "icon": "passive/summon-axe-holo-icon.png",
-			"desc": "斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。"})
+			"desc": "斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。"})
 		"ember": ps.append({"name": "余烬", "icon": "passive/summon-axe-ember-icon.png",
 			"desc": "斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。"})
 	var key: String = (fin if fin != "" else ["wood", "stone", "iron", "gold", "diamond"][stage])

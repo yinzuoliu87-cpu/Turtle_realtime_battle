@@ -9242,8 +9242,8 @@ msgid "附近的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 
 msgstr "Nearby enemies take magic damage equal to {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% of their max health each second. For each nearby enemy, the Axe heals {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% of its max health per second. {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} seconds after the Axe dies, it revives with {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% of its max health, once per battle."
 
 
-msgid "斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。攻击为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。"
-msgstr "The Axe gains {C:AxeFinalStats.HOLO_ENERGY_RATE%}% Energy Charge. Its attacks give the ally with the lowest health percentage a {C:AxeFinalStats.HOLO_ONHIT_SHIELD} shield and {C:AxeFinalStats.HOLO_ONHIT_ENERGY} Energy."
+msgid "斧头获得 {C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能。"
+msgstr "The Axe gains {C:AxeFinalStats.HOLO_ENERGY_RATE%}% Energy Charge."
 
 msgid "斧头的攻击命中时，对目标施加 {C:AxeFinalStats.EMBER_SEED_PER_HIT} 层【余烬种子】，并处决生命值低于斩杀线的目标。每层【余烬种子】使该目标的斩杀线提高其最大生命值的 {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}%，无上限。每处决一个单位获得 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。"
 msgstr "The Axe's attack hits apply {C:AxeFinalStats.EMBER_SEED_PER_HIT} [Ember Seed] stacks and execute targets below the execute threshold. Each [Ember Seed] stack raises that target's execute threshold by {C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% of its max health, with no cap. Each execution grants {C:AxeFinalStats.EMBER_EXEC_ENERGY} Energy."
@@ -9591,3 +9591,6 @@ msgstr "Attacks also apply {C:AxeFinalStats.SERAPH_BURN_ON_HIT} Burn."
 
 msgid "斧头每次攻击命中获得 1 层【效率】，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层【效率】提供 {C:AxeEvolution.EFF_ASPD%}% 攻击速度和 {C:AxeEvolution.EFF_MOVE%}% 移动速度。"
 msgstr "Each attack hit grants the Axe 1 [Efficiency] stack for {C:AxeEvolution.EFF_DUR} seconds, stacking infinitely and refreshing on each stack. Each [Efficiency] stack grants {C:AxeEvolution.EFF_ASPD%}% attack speed and {C:AxeEvolution.EFF_MOVE%}% move speed."
+
+msgid "攻击还会为生命值百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾和 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。"
+msgstr "Attacks also give the ally with the lowest health percentage a {C:AxeFinalStats.HOLO_ONHIT_SHIELD} shield and {C:AxeFinalStats.HOLO_ONHIT_ENERGY} Energy."
