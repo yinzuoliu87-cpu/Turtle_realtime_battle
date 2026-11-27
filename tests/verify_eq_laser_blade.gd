@@ -233,6 +233,59 @@ func _ready() -> void:
 	fx.chop_end(bh)
 
 	# ══════════════════════════════════════════════════════════════
+	#  ⑧b 落刃: 波是被劈出来的(用户 11-27「竖劈的时候没有东西劈下来…是有东西劈出这波来的」)
+	#      只命中 1 人 ⇒ 扇形斩那边就举刃; 刃尖落地那一刻 == 推波那一刻; 刃尖贴地不钻地; 劈的竖面 == 结算方向; 从上往下劈
+	# ══════════════════════════════════════════════════════════════
+	print("-- 8b 落刃 --")
+	var t_sw: float = _s._t
+	var before_s: int = fx._live.size()
+	fx.sweep(org0, Vector2.RIGHT, rng0, arc0, [{"pos": org0 + Vector2(200.0, 30.0), "height": 0.0}])
+	var lsw: Dictionary = _new_live(fx, before_s, "swing")
+	_ok("★分母: 只命中 1 人 ⇒ 扇形斩时就举起了落刃", not lsw.is_empty())
+	var before_n: int = fx._live.size()
+	fx.sweep(org0, Vector2.RIGHT, rng0, arc0, [{"pos": org0 + Vector2(200.0, 30.0)}, {"pos": org0 + Vector2(200.0, -30.0)}])
+	_ok("⑧b 命中 2 人(不追加直线斩) ⇒ 不举刃", _new_live(fx, before_n, "swing").is_empty())
+	if not lsw.is_empty():
+		_ok("⑧b 举刃时刻 = 扇形斩后 %.3f 秒(须 = FAN_LIFE - SWING_SEC = %.3f)" % [float(lsw["t0"]) - t_sw, fx.FAN_LIFE - fx.SWING_SEC],
+			absf(float(lsw["t0"]) - t_sw - (fx.FAN_LIFE - fx.SWING_SEC)) < 0.001)
+		var cdir: Vector2 = _s._equip_sys._laser_dir_of(1)   # 与举刃时的预瞄方向(朝靶子)不同 ⇒ 量的是摆正之后
+		var bh2: Dictionary = fx.chop_begin(org0, cdir, 300.0, EQ.LASER_CHOP_SPEED, EQ.LASER_CHOP_HALF_W)
+		_ok("⑧b 推波时用上了这把刃", bool(lsw["used"]))
+		_ok("⑧b 刃尖落地时刻 %.4f == 推波时刻 %.4f" % [float(lsw["t0"]) + fx.SWING_SEC, _s._t],
+			absf(float(lsw["t0"]) + fx.SWING_SEC - _s._t) < 0.0005, "落地和推波对不上 = 波不是被劈出来的")
+		var sn: MeshInstance3D = lsw["node"]
+		var arr: Array = sn.mesh.surface_get_arrays(0)
+		var uvs: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
+		var vw: PackedVector3Array = _verts_world(sn)
+		var miny := 999.0
+		var maxy := -999.0
+		var low := Vector3.ZERO
+		var y_start := 0.0
+		var y_end := 0.0
+		var n_s := 0
+		var n_e := 0
+		for i in range(vw.size()):
+			var v: Vector3 = vw[i]
+			if v.y < miny:
+				miny = v.y
+				low = v
+			maxy = maxf(maxy, v.y)
+			if uvs[i].x < 0.001:
+				y_start += v.y
+				n_s += 1
+			elif uvs[i].x > 0.999:
+				y_end += v.y
+				n_e += 1
+		var lrel := Vector2(low.x - sn.position.x, low.z - sn.position.z)
+		var ldev: float = absf(rad_to_deg(wrapf(atan2(lrel.y, lrel.x) - atan2(cdir.y, cdir.x), -PI, PI)))
+		_ok("⑧b 刃尖最低点离地 %.3f 米(须 -0.01~0.05: 砸到地面, 不钻地)" % miny, miny >= -0.01 and miny <= 0.05)
+		_ok("⑧b 刃举起最高 %.2f 米(须 ≥ 1.5 = 从头顶劈下来)" % maxy, maxy >= 1.5)
+		_ok("⑧b 落刃竖面朝向与结算方向偏差 %.2f°(须 ≤ 0.5)" % ldev, ldev <= 0.5)
+		_ok("⑧b 从上往下劈: 起刃那边平均高 %.2f 米 > 落地那边 %.2f 米" % [y_start / maxf(1.0, n_s), y_end / maxf(1.0, n_e)],
+			n_s > 0 and n_e > 0 and y_start / n_s > y_end / n_e + 1.0)
+		fx.chop_end(bh2)
+
+	# ══════════════════════════════════════════════════════════════
 	#  ⑨ 竖劈判定: 纯几何逐格量落点(不依赖任何 tween)
 	# ══════════════════════════════════════════════════════════════
 	print("-- 9 竖劈判定: 逐格量落点(CLAUDE.md §3.5 不许依赖 tween) --")

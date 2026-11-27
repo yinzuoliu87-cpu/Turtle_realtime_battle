@@ -11,6 +11,8 @@ render_mode unshaded, blend_add, cull_disabled, depth_draw_never, depth_test_dis
 
 uniform float prog = 0.0;
 uniform float fade = 1.0;
+uniform float blade_k = 60.0;        // 领先刃的锐度(越小越宽): 扇形斩 60; 落刃 28(刃要看得见是一把刀)
+uniform float blade_gain = 2.4;
 uniform vec3 c_deep = vec3(0.50, 0.02, 0.07);
 uniform vec3 c_red = vec3(1.0, 0.14, 0.20);
 uniform vec3 c_pink = vec3(1.0, 0.58, 0.62);
@@ -23,7 +25,7 @@ void fragment() {
 	float swept = step(0.0, behind);
 	float b = max(behind, 0.0);
 	float tip = 1.0 - smoothstep(0.975, 1.0, k);
-	float blade = exp(-b * 60.0) * swept * (0.25 + 0.75 * smoothstep(0.05, 0.85, k)) * tip;
+	float blade = exp(-b * blade_k) * swept * (0.25 + 0.75 * smoothstep(0.05, 0.85, k)) * tip;
 	float cres = smoothstep(0.40, 0.95, k) * tip;
 	float trail = exp(-b * 6.0) * swept * cres;
 	float streak = exp(-pow((k - 0.60) * 75.0, 2.0)) * 0.5
@@ -32,7 +34,7 @@ void fragment() {
 	streak *= exp(-b * 2.6) * swept;
 	float rim = exp(-pow((k - 0.975) * 130.0, 2.0)) * exp(-b * 2.0) * swept;
 	float side = smoothstep(0.0, 0.03, u);          // 起刃那条直边别是一道硬线
-	float I = (blade * 2.4 + trail * 0.85 + streak * 0.85 + rim * 1.3) * side;
+	float I = (blade * blade_gain + trail * 0.85 + streak * 0.85 + rim * 1.3) * side;
 	vec3 col = mix(c_deep, c_red, clamp(I * 1.5, 0.0, 1.0));
 	col = mix(col, c_pink, clamp((I - 0.7) * 1.6, 0.0, 1.0));
 	col = mix(col, c_hot, clamp((I - 1.35) * 1.3, 0.0, 1.0));
