@@ -1,0 +1,38 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 25 status
+[Audio] QUIET=1 ⇒ 主总线已静音(mute=true, -80 dB)
+=== 斧头四条动作: 真的播出来了没有 ===
+[CP] 我方: 小龟 技能=["basicBarrage"] 龟能=0.0/0 cost={ "physical": 0.0, "basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0 }
+[CP] 我方: 石头龟 技能=["stoneRockShield"] 龟能=0.0/0 cost={ "physical": 0.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0 }
+[CP] 我方: 闪电龟 技能=["lightningSurgeBuff"] 龟能=0.0/0 cost={ "lightningStrike": 0.0, "lightningSurgeBuff": 110.0, "lightningBarrage": 110.0, "lightningShield": 90.0 }
+  [PASS] ★分母: 真召唤出了斧头(走 AxeSystem.summon)  
+  [PASS] ★分母: 它有立绘节点(没有的话下面全是空检查)  
+  [PASS] ① 待机: 引擎正拿 eq096-axe-wood-idle.png 画它  实测 eq096-axe-wood-idle.png (已钉住 no_move 并等了 0.00 游戏秒 / 0 帧)
+  [PASS] ★★② 走路: 真的跑起来之后, 引擎换成了 eq096-axe-wood-walk.png  实测 eq096-axe-wood-walk.png（推了 0.12 游戏秒 / 2 帧）
+  [FAIL] ★② 停下来换回 eq096-axe-wood-idle.png(只验切走路会漏掉「再也回不去」)  实测 eq096-axe-wood-attack.png（等了 4.02 游戏秒 / 106 帧）
+  [PASS] ★分母: 主动真的放出去了(cast_heal 返回 true)  
+  [PASS] ★★③ 技能释放: 引擎换成了 eq096-axe-wood-cast.png 且动作名是 axe_cast  实测 贴图=eq096-axe-wood-cast.png 动作=axe_cast
+  [PASS] ★★③ 施法播到一半, 普攻打断不了它(仍是 eq096-axe-wood-cast.png)  实测 eq096-axe-wood-cast.png
+  [PASS] ★分母: 量它的时候斧头还活着(死了 `_advance_anim` 就不推它的帧, 贴图会永久冻住)  hp=100000000.0/100000000.0
+  [PASS] ★分母: 这条钟真的走了(游戏钟冻住=根本没等, 不是「等过了」)  走了 0.50 游戏秒 / 20 帧
+  [PASS] ★分母: 施法播完自己回了 eq096-axe-wood-idle.png(回不去的话下一条量不到攻击)  实测 eq096-axe-wood-idle.png（等了 0.50 游戏秒 / 20 帧）
+  [PASS] ★★④ 攻击: 引擎换成了 eq096-axe-wood-attack.png  实测 eq096-axe-wood-attack.png
+  [PASS] ★★⑤ 调 _play_action(hurt) 什么都不该发生(贴图仍是 eq096-axe-wood-attack.png)  实测 eq096-axe-wood-attack.png
+  [PASS] ★★⑤ 调 _play_action(death) 什么都不该发生(贴图仍是 eq096-axe-wood-attack.png)  实测 eq096-axe-wood-attack.png
+  [PASS] ★分母: 拿到 GameState(换形态要靠它)  
+  [PASS] ★★⑥ 铁斧档召唤出来画的是铁斧待机表  实测 eq096-axe-iron-idle.png
+  [PASS] ★★⑥ 铁斧的竖劈招式帧也是铁斧那张(实测 eq096-axe-iron-cleave.png)  
+  [PASS] ★★⑥ 招式帧与待机同一个像素尺寸(按帧高归一的话招式一播斧头就缩)  待机 0.03111 / 招式 0.03111
+  [PASS] ★★⑥ 选了炽天使造物, 画的是炽天使那把(不是档位那把)  实测 eq096-axe-seraph-idle.png
+  [PASS] ★★⑥ 炽天使普攻走的是它自己的普攻表(单位自带 _act_rows, 不是全局兜底的木斧)  实测 eq096-axe-seraph-attack.png
+  [PASS] ★★⑥ 普攻帧与待机同一个像素尺寸(battle_vfx 的统一尺寸口)  待机 0.03111 / 普攻 0.03111
+FAIL x1
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2663)
+ERROR: 78 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)
+ERROR: 22 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 14 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 1 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.

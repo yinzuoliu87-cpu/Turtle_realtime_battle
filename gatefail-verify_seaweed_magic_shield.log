@@ -1,0 +1,72 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 25 status
+[Audio] QUIET=1 ⇒ 主总线已静音(mute=true, -80 dB)
+=== 012 海藻: 魔抗 / 登场魔法护盾 / 周期护盾 ===
+-- ① 属性 --
+  [PASS] ★分母: STATS 里 012 有三档  3
+  [PASS] 1★ hp=90 mr=7 且没有护甲  { "hp": 90, "mr": 7 }
+  [PASS] 2★ hp=180 mr=16 且没有护甲  { "hp": 180, "mr": 16 }
+  [PASS] 3★ hp=300 mr=23 且没有护甲  { "hp": 300, "mr": 23 }
+  [PASS] 展示镜像 baseStats1  +生命90/180/300·魔抗7/16/23
+  [PASS] ★3★ 施加后 base_mr +23  13.0 → 36.0
+  [PASS] ★3★ 施加后护甲不变  14.0 → 14.0
+-- ② 登场魔法护盾 --
+  [PASS] ★分母: 1★ 登场前没有魔法护盾
+  [PASS] ★★1★ 登场魔法护盾 = 2500  2500.0
+  [PASS] 1★ 魔法护盾不进普通护盾  0.0
+  [PASS] ★分母: 2★ 登场前没有魔法护盾
+  [PASS] ★★2★ 登场魔法护盾 = 4000  4000.0
+  [PASS] 2★ 魔法护盾不进普通护盾  0.0
+  [PASS] ★分母: 3★ 登场前没有魔法护盾
+  [PASS] ★★3★ 登场魔法护盾 = 6000  6000.0
+  [PASS] 3★ 魔法护盾不进普通护盾  0.0
+  [PASS] ★★同一路只给一次(后续 tick 不补)  100.0
+  [PASS] ★新一路(新单位字典)再给一次  2500.0
+  [PASS] ★★护盾强度 +20%: 40% × 1.2 = 4800  4800.0
+  [PASS] ★护盾强度被削到 50%% ⇒ 40%% × 0.5  2000.0
+  [PASS] 两件海藻各给一份  5000.0
+-- ③ 吸收 --
+  [PASS] ★★物理伤害不碰魔法护盾  500.0
+  [PASS] ★分母: 物理伤害由普通护盾扛了 200  100.0
+  [PASS] ★★真实伤害不碰魔法护盾  500.0
+  [PASS] ★分母: 真实伤害打到了生命  9800
+  [PASS] ★★魔法伤害(技能路)先扣魔法护盾 500→300  300.0
+  [PASS] ★★魔法伤害被魔法护盾挡住时普通护盾不动  300.0
+  [PASS] 魔法伤害被挡住时生命不掉  10000
+  [PASS] ★★溢出: 魔法护盾打空  0.0
+  [PASS] ★★溢出: 余下 150 由普通护盾接  150.0
+  [PASS] ★★魔法 DoT(另一条伤害路)也扣魔法护盾 500→380  380.0
+  [PASS] 魔法 DoT 被挡住时生命不掉  10000
+  [PASS] ★★物理 DoT 不碰魔法护盾  380.0
+-- ④ 周期护盾 --
+  [PASS] ★分母: 1★ 未到 4 秒不给  0.0
+  [PASS] ★★1★ 每 4 秒护盾 = 340  340.0
+  [PASS] ★分母: 2★ 未到 4 秒不给  0.0
+  [PASS] ★★2★ 每 4 秒护盾 = 460  460.0
+  [PASS] ★分母: 3★ 未到 4 秒不给  0.0
+  [PASS] ★★3★ 每 4 秒护盾 = 640  640.0
+-- ⑤ 显示 / 文案 --
+  [PASS] ★★血条读到魔法护盾量  6000.0 vs 6000.0
+  [PASS] ★血条分母含魔法护盾(半血 + 60%% 魔法护盾 = 110%%)  11000 (满血时 10000)
+  [PASS] ★魔法护盾段颜色与普通护盾段不同
+  [PASS] ★★面板状态签「魔法护盾 N」  魔法护盾 6000
+  [PASS] ★面板签名随魔法护盾数值变化
+  [PASS] 魔法护盾打空后不显示签
+  [PASS] ★★新图标存在且能加载
+  [PASS] ★状态表(图鉴状态页)有「魔法护盾」增益
+  [FAIL] ★文案详细: 登场 25/40/60% 魔法护盾  登场时获得携带者最大生命值 25/40/60% 的魔法护盾，该护盾只吸收魔法伤害。
+每 4 秒获得护盾，护盾值为 40/60/90+携带者最大生命值的 3/4/5.5%，持续 4 秒。
+  [FAIL] ★文案详细: 每 4 秒 40/60/90+3/4/5.5%  登场时获得携带者最大生命值 25/40/60% 的魔法护盾，该护盾只吸收魔法伤害。
+每 4 秒获得护盾，护盾值为 40/60/90+携带者最大生命值的 3/4/5.5%，持续 4 秒。
+  [FAIL] ★文案简述含百分比部分  登场时获得携带者最大生命值 25/40/60% 的魔法护盾。每 4 秒获得 40/60/90+携带者最大生命值 3/4/5.5% 的护盾，持续 4 秒。
+  [PASS] ★文案没有残留占位符
+--- 51 条, 失败 3 ---
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2663)
+ERROR: 57 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)
+ERROR: 2 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 1 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 1 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
