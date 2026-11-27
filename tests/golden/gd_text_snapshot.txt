@@ -796,7 +796,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|亡者契约
 scripts/gamedata/summon_codex_equip.gd|lit|余烬
 scripts/gamedata/summon_codex_equip.gd|lit|全息斧
 scripts/gamedata/summon_codex_equip.gd|lit|冲撞
-scripts/gamedata/summon_codex_equip.gd|lit|分裂
 scripts/gamedata/summon_codex_equip.gd|lit|化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。
 scripts/gamedata/summon_codex_equip.gd|lit|同携带者
 scripts/gamedata/summon_codex_equip.gd|lit|同步射速
@@ -854,7 +853,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|每次攻击积攒 1 层。
 scripts/gamedata/summon_codex_equip.gd|lit|每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。
 scripts/gamedata/summon_codex_equip.gd|lit|每秒损失 {C:EqBombBatch.REMOTE_DECAY[%d]%%}%% 最大生命值。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫
-scripts/gamedata/summon_codex_equip.gd|lit|海螺虫每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。
 scripts/gamedata/summon_codex_equip.gd|lit|海螺馈赠
 scripts/gamedata/summon_codex_equip.gd|lit|火力同调
@@ -996,7 +994,7 @@ scripts/gamedata/vfxlab_cases.gd|lit|★60 发每发间隔 0.03 秒 ⇒ 整轮 1
 scripts/gamedata/vfxlab_cases.gd|lit|★ANCHOR_IV=0.25 很密, 看的是攒满之后那一次击飞普攻; 要有残血友军当回血目标。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
 scripts/gamedata/vfxlab_cases.gd|lit|★FORTRESS_CAP=25 层, 三个假人才叠得够快; carrier_hp 拉满防死在满层之前。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
 scripts/gamedata/vfxlab_cases.gd|lit|★`carrier_hp` 压到 35%: 「每秒回血」这件事只有血不满才看得出来。 ★enemy_attacks + attacker 都开: 孵化进度靠【造成伤害×0.1 + 承受伤害×0.1 + 每周期 +5】喂, 不打架就攒得极慢(★3 要 500 点)。 ★allies 2: 孵满那一下是**全队均摊**护盾, 没有队友就看不出「均摊」。 ★★ 2026-09-13 重配: 原来 34 秒窗口 + 自然速率 ⇒ ★３ 要 500 点进度, **一次升级都没拍到**, 而我上一轮把这个写成了「台子窗口不够长」—— 真相是那段演出根本没人看过(里面藏着 3 样禁区与一次借素材)。 ★新开关 `egg_kick`: 每 3 秒走**真实入口** `_egg_add_progress` 灌 100 点 ⇒ t≈3 / 6 / 9 各升一级, 拍点就压在这三处。 ★配 `bars` 不是 `ui`: 「LV UP LvＮ」是飘字, `ui: true` 会把飘字连同整层 UI 关掉。
-scripts/gamedata/vfxlab_cases.gd|lit|★`mortal: true` + carrier_hp 压到 2% 且 enemy_attacks 开着: **携带者必须真的死掉**, 否则这一件一个字都不会触发(它是 on-death)。 ★拍点每 1 秒一张覆盖【被打死 → 原位变虫 → 小虫开打 → ★3 每 WORM_SPLIT_IV=2.5 秒分裂一只(上限 WORM_CAP=4)】整条。 ★小虫 ★3 有 1 万血, 不会被秒。
+scripts/gamedata/vfxlab_cases.gd|lit|★`mortal: true` + carrier_hp 压到 2% 且 enemy_attacks 开着: **携带者必须真的死掉**, 否则这一件一个字都不会触发(它是 on-death)。 ★拍点每 1 秒一张覆盖【被打死 → 原位变虫 → 小虫开打 → (★3 分裂 2026-11-27 已删, 原来)每 2.5 秒分裂一只(上限 WORM_CAP=4)】整条。 ★小虫 ★3 有 1 万血, 不会被秒。
 scripts/gamedata/vfxlab_cases.gd|lit|★attacker 关掉: 这一件靠**周期**触发, 不靠命中 —— 开着普攻只会把瓶子的抛物线盖住。 ★假人 5 万血且不还手: 要看清冰瓶砸中之后的击退与冰寒, 打死了就没得看。 ★拍点 5.60~7.80: 覆盖【蓄力前 → 抛出 → 空中抛物线 → 砸中 → 击退落地】整条。首发在 t≈6.0(VIAL_IV), 落点 t≈6.92。
 scripts/gamedata/vfxlab_cases.gd|lit|★attacker 必开: 层数靠**普攻**攒, 不开就永远放不出波。 ★三个敌人散开: 弧形波是**张角**的(第一次 90°, 每放一次 +90° 到 360°), 一个敌人看不出张角在变宽。 ★假人 20 万血: ★3 每道波 500 魔法伤, 打死了就看不到后面几次张角变化。 ★拍点前密(3.2~4.5 覆盖第一次放波)后疏(看张角逐次变宽)。
 scripts/gamedata/vfxlab_cases.gd|lit|★carrier_hp 压到 0.45: 满血看不出回血。ANEMONE_IV=7 ⇒ 拍点压在 7/14/21 秒。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
@@ -1586,7 +1584,6 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|怒火药水
 scripts/scenes/RealtimeBattle3DScene.gd|lit|未知龟
 scripts/scenes/RealtimeBattle3DScene.gd|lit|枪
 scripts/scenes/RealtimeBattle3DScene.gd|lit|海胆盾
-scripts/scenes/RealtimeBattle3DScene.gd|lit|海螺虫
 scripts/scenes/RealtimeBattle3DScene.gd|lit|猎龟令
 scripts/scenes/RealtimeBattle3DScene.gd|lit|终极战场
 scripts/scenes/RealtimeBattle3DScene.gd|lit|观测:stun_chain

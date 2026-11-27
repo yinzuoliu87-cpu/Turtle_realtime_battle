@@ -1420,9 +1420,7 @@ const TURRET_BUFF_ASPD := 1.00    # 在范围内时携带者自身攻速加成(�
 const TURRET_HP := [650.0, 1400.0, 2500.0]    # 炮台基础生命(★1/★2/★3; 另加 TURRET_HP_PER_ATK × 携带者攻击力)
 const TURRET_ATK := [70.0, 120.0, 180.0]      # 炮台基础攻击(另加携带者攻击力)
 const TURRET_RES := [70.0, 85.0, 100.0]       # 携带者存活时炮台的护甲与魔抗(阵亡后归零)
-## 【033 魔法海螺】3★ 变虫之后的自我分裂(小虫自己的周期, 不走携带者的 eq_tick)。
-const WORM_SPLIT_IV := 2.5        # 每几秒在空位分裂一只
-const WORM_CAP := 4               # 每件海螺的小虫上限(11-13 起按件算: 两件 3★ 共 8 只, 见 EqSummons.worm_count)
+## 【033 魔法海螺】海螺虫(3★ 分裂 2026-11-27 删, 用户「我们三星不再分裂」)。
 const WORM_ASPD := 0.65           # 小虫攻速(次/秒) ⇒ atk_interval = 1 / 它
 ## 小虫生命值 1/2/3 星(★用户 2026-11-05「五费的魔法海螺，其中的这个小虫的生命值…需要调整为一千五三千一万」: 100/1500/10000 → 1500/3000/10000)。
 ##   文案用 {C:EquipSystem.WORM_HP} 引用, 数只存这一份。
@@ -2535,8 +2533,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 						wtw.tween_property(worm["sprite"], "scale", wsc, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 					worm["eq_state"] = {}; worm["equips"] = []
 					_conch_grant_equips(worm, si)   # ★用户 2026-07-30: 小虫诞生时带 3 件随机装备
-					if si == 2:   # 3★: 标记每周期分裂
-						worm["worm_split"] = true
+					## 3★ 分裂 2026-11-27 删(用户「我们三星不再分裂，把这个给删了」; 之后会给海螺虫加主动技能, 见路线图待办)
 			"p2eq_035":   # 黄铜齿轮: 死亡不销毁不结算(产币走 _tick_gear 每6秒实时到账, 与死亡无关)
 				pass
 			# 067 毒药瓶: 携带者阵亡 → 立刻撤掉它挂在中毒者身上的【护盾强度减半】。

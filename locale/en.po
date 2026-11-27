@@ -6143,8 +6143,6 @@ msgstr "Hunt Mark"
 msgid "击飞"
 msgstr "Knock-up"
 
-msgid "3 星：【海螺虫】会不断分裂出新的海螺虫。"
-msgstr "3-star: the [Conch Bug] keeps splitting off new bugs."
 
 msgid "拖到友方单位上使用，立即回复 (50 + 10% 目标最大生命值) 生命值。"
 msgstr "Drag onto an ally to use: instantly heals (50 + 10% of the target's max health)."
@@ -9395,11 +9393,7 @@ msgstr "Corpse Blast"
 msgid "海螺馈赠"
 msgstr "Conch's Gift"
 
-msgid "分裂"
-msgstr "Split"
 
-msgid "海螺虫每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"
-msgstr "Every {C:EquipSystem.WORM_SPLIT_IV} seconds, the Conch Bug splits off a new Conch Bug in an empty spot with the same health and Attack as itself but no items, up to {C:EquipSystem.WORM_CAP}."
 
 msgid "啃咬"
 msgstr "Gnaw"

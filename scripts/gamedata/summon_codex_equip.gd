@@ -84,9 +84,6 @@ static func _worm(si: int) -> Dictionary:
 	var E := EquipSystem
 	var ps: Array = [{"name": "海螺馈赠", "icon": "passive/summon-worm-gift-icon.png",
 		"desc": Lang.t("海螺虫诞生时随机携带 3 件 %d 星的 {C:EquipSystem.CONCH_COST_MIN} 费或 {C:EquipSystem.CONCH_COST_MAX} 费装备。") % (si + 1)}]
-	if si >= 2:
-		ps.append({"name": "分裂", "icon": "passive/summon-worm-split-icon.png",
-			"desc": "海螺虫每 {C:EquipSystem.WORM_SPLIT_IV} 秒在空位分裂出一只新的海螺虫，新海螺虫的生命值和攻击力与自身相同，但不携带装备，最多 {C:EquipSystem.WORM_CAP} 只。"})
 	return _page("海螺虫", ["worm"], "worm", {"img": "pets/conch-worm.png"}, "p2eq_033", ["近战斗士"],
 		SC.stats(E.WORM_HP[si], E.WORM_ATK[si], 0, 0, BattleSpawn.SUMMON_DEFAULT_SPD, E.WORM_ASPD, BattleSpawn.SUMMON_DEFAULT_RANGE),
 		{"name": "啃咬", "icon": "skills/summon-worm-bite.png", "desc": SC.basic_line("海螺虫")}, {}, ps)

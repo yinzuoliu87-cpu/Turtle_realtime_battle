@@ -160,11 +160,11 @@ func _worms_of(owner: Dictionary, ck: String) -> int:
 	return n
 
 
-## ⑤ 033: 用户 11-13「不应该出两个吗？」—— 3★ 分裂上限 WORM_CAP 按【件】算。
-##   一只龟两件 3★ ⇒ 两条分裂链各到 4 只(共 8); 两只龟各带一件同理。原来按「我方场上全部海螺虫」算, 两件合计也只到 4。
+## ⑤ 033: 用户 11-13「不应该出两个吗？」—— 每件各变一只虫(一只龟两件 3★ ⇒ 两只; 两只龟各带一件同理)。
+##   原来还核「3★ 分裂上限按件算」; 3★ 分裂 2026-11-27 删(用户「我们三星不再分裂」)⇒ 每件恰好一只、整段不涨。
 func _t_conch() -> void:
-	print("── ⑤ 033 魔法海螺: 分裂上限按件 ──")
-	var cap: int = EquipSystem.WORM_CAP
+	print("── ⑤ 033 魔法海螺: 每件各一只虫 ──")
+	var cap: int = 1
 	for mode in ["一只龟两件", "两只龟各一件"]:
 		await _new_scene()
 		var u: Dictionary = _arena("p2eq_033", [3, 3] if mode == "一只龟两件" else [3])
@@ -190,7 +190,7 @@ func _t_conch() -> void:
 			s._kill(al, null)
 		var mx: Array = [0, 0]
 		var mx_all := 0
-		for k in range(int(EquipSystem.WORM_SPLIT_IV * 60.0 * 5.0)):
+		for k in range(int(2.5 * 60.0 * 5.0)):   # 原分裂周期 2.5 秒 × 5: 推够久, 看它不再涨
 			s._sim_step(DT, false, false)
 			for i in range(2):
 				mx[i] = maxi(int(mx[i]), _worms_of(owners[i][0], str(owners[i][1])))
@@ -198,9 +198,9 @@ func _t_conch() -> void:
 			if k % 30 == 0:
 				await get_tree().process_frame
 		_ok("⑤ %s: 分母 —— 对局没提前判完(%s)" % [mode, str(s._over)], not s._over)
-		_ok("⑤ %s: 两条分裂链各到上限 %d 只(实测 %s)" % [mode, cap, str(mx)], int(mx[0]) == cap and int(mx[1]) == cap)
+		_ok("⑤ %s: 每件各 %d 只(实测 %s)" % [mode, cap, str(mx)], int(mx[0]) == cap and int(mx[1]) == cap)
 		_ok("⑤ %s: 合计 %d 只(实测最多同时 %d 只)" % [mode, 2 * cap, mx_all], mx_all == 2 * cap,
-			"原来按我方场上全部海螺虫算上限 ⇒ 合计只有 %d" % cap)
+			"两件各一只, 不分裂")
 
 
 func _eq_total(u: Dictionary, ck: String) -> float:

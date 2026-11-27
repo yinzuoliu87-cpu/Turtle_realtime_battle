@@ -6917,17 +6917,6 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			u["summon_life"] = 0.0
 			_kill(u, null)
 			return
-	if u.get("worm_split", false):                        # 033魔法海螺3★: 小虫每2.5s在空位分裂一只(自身周期, 非携带者eq_tick)
-		u["worm_split_t"] = float(u.get("worm_split_t", 0.0)) + delta
-		if u["worm_split_t"] >= EquipSystem.WORM_SPLIT_IV:
-			if _equip_sys._summons.worm_count(u) < EquipSystem.WORM_CAP:   # 上限按件算(同一携带者同一份号, 11-13)
-				u["worm_split_t"] = 0.0
-				var nw = _spawn._spawn_summon(u, "worm", u["maxHp"], u["atk"], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})
-				if nw != null:
-					nw["eq_state"] = {}; nw["equips"] = []; nw["worm_split"] = true; nw["atk_interval"] = 1.0 / EquipSystem.WORM_ASPD; nw["_eq_src"] = u.get("_eq_src", ""); nw["_eq_owner"] = u.get("_eq_owner", null)   # 后两项: 分裂虫的伤害也记到放海螺的那一件(只动统计 · 11-13)
-					_conch_transform(nw["pos"])
-			else:
-				u["worm_split_t"] = EquipSystem.WORM_SPLIT_IV   # 满员: 等空位再分裂
 	var special: String = u.get("summon_special", "")
 	if special == "" or u.get("special_cd", 0.0) <= 0.0:
 		return

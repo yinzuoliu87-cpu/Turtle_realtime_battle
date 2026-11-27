@@ -131,25 +131,6 @@ def _():
 	return ic
 
 
-@icon("worm-split", P("worm-split"))
-def _():
-	ic = Icon()
-	burst(ic, 32, 46, 6, 30, 7, [LEAF[1], LEAF[2]], phase=-1.57, width=0.2)
-	for sgn in (-1, 1):
-		for k, r in enumerate((9.5, 8, 6.5, 5)):
-			cx = 32 + sgn * (6 + k * 6.5)
-			cy = 40 - k * 9
-			ellipse(ic, "body", cx, cy, r, r * 0.9, LEAF)
-		hx_, hy_ = 32 + sgn * 6, 40
-		ellipse(ic, "body", hx_ - 2 * sgn, hy_ - 2, 2.6, 2.6, [WHITE] * 3 + [BONE[2]])
-		ellipse(ic, "body", hx_ - 2 * sgn, hy_ - 2, 1.2, 1.2, [OUTLINE] * 4)
-	ic.rim()
-	ic.halo([LEAF[3]])
-	bline(ic, "fx", (32, 58), (32, 30), WHITE, 2)
-	sparkle(ic, 32, 30, 6, (WHITE, LEAF[0], LEAF[1]))
-	return ic
-
-
 # ════════════ 034 大熊 ════════════
 @icon("bear-paw", A("bear-paw"))
 def _():

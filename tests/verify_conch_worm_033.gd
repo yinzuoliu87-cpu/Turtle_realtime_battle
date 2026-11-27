@@ -8,11 +8,11 @@ extends Node
 ##   (**1500/3000/10000** 生命(11-05 改, 原 100/1500/10000) · **50/80/200** 攻击力, **无护甲魔抗**, 只有星级无等级),
 ##   自动攻击最近的敌人, 攻击速度 `EquipSystem.WORM_ASPD` /秒, 造成 **1×攻击力的物理伤害**;
 ##   小虫诞生时随机携带 **3 件** 1/2/3 星的 `CONCH_COST_MIN` 费或 `CONCH_COST_MAX` 费装备。」
-## 「★3: 变虫后每 `WORM_SPLIT_IV` 秒在空位分裂出一只新小虫(上限 `WORM_CAP` 只)。」
+## (原「★3: 变虫后每 2.5 秒分裂一只新小虫(上限 4 只)」2026-11-27 删, ⑤ 改成核它不再分裂)
 ##
 ## ★这一件**原来没有台子**(`verify_wormhole_escape` 是星际龟的技能, 无关)。
 ## ★结算层查下来是健康的: 变形是同步的(`_spawn_summon`), 分裂走 `_tick_unit` 的
-##   `worm_split_t` 每帧累加 —— 都在 sim 时钟上。tween 只用在小虫立绘的出场缩放(纯观感)。
+##   (原分裂计时 2026-11-27 随分裂一起删) —— 都在 sim 时钟上。tween 只用在小虫立绘的出场缩放(纯观感)。
 ## ★本轮顺手修了一处**同一个数存两份**: 变形那一行写死 `1.0 / 0.65`,
 ##   而常量 `WORM_ASPD` 就在旁边、文案用的也是 `{C:EquipSystem.WORM_ASPD}` 这个占位符 ——
 ##   分裂那条路读的是常量, 变形这条路读的是字面量, 改常量就会漂。
@@ -214,60 +214,25 @@ func _ready() -> void:
 			absf(ds - dm) < 1.0,
 			"伤害类型是接线不是颜色: 物理必吃护甲、必不吃魔抗")
 
-	# ── ⑤ ★★★3 星分裂: 每 WORM_SPLIT_IV 秒一只, 上限 WORM_CAP ─────────
-	_s._units.clear()
-	var d5: Dictionary = _mk(640.0, 380.0, "left")
-	d5["equips"] = [{"id": "p2eq_033", "star": 3}]
-	d5["eq_state"] = {}
-	_s._units.append(d5)
-	_s._units.append(_mk(1100.0, 380.0, "right"))
-	_s._equip_sys._eq_on_death(d5, null)
-	_ok("⑤ ★分母: 刚变虫时场上 %d 只(应 1 只)" % _worms("left").size(), _worms("left").size() == 1)
-	_ok("⑤ ★★3 星的小虫带着分裂标记", not _worms("left").is_empty()
-		and bool(_worms("left")[0].get("worm_split", false)))
-	## 推到「差一点点还没到 WORM_SPLIT_IV」: 这时**不该**分裂(卡住「每 N 秒」那个 N)
-	var almost: int = int((ES.WORM_SPLIT_IV - 0.15) * 60.0)
-	for _k in range(almost):
-		_s._sim_step(_s.SIM_DT, false, false)
-	_ok("⑤ ★★差 0.15 秒时还没分裂(%d 只)" % _worms("left").size(), _worms("left").size() == 1,
-		"卡住「每 %.1f 秒」那个数 —— 不卡的话周期改成 0.1 秒也照样绿" % ES.WORM_SPLIT_IV)
-	for _k in range(20):
-		_s._sim_step(_s.SIM_DT, false, false)
-	_ok("⑤ ★★★满 %.1f 秒分裂出第二只(%d 只)" % [ES.WORM_SPLIT_IV, _worms("left").size()],
-		_worms("left").size() == 2)
-	## 一路推到封顶, 再多推一大截看它**不再涨**
-	for _k in range(int(ES.WORM_SPLIT_IV * 60.0 * 6.0)):
-		_s._sim_step(_s.SIM_DT, false, false)
-	_ok("⑤ ★★★分裂封顶在 %d 只(实测 %d 只) —— 再推六个周期也不涨"
-		% [ES.WORM_CAP, _worms("left").size()],
-		_worms("left").size() == ES.WORM_CAP,
-		"文案明写「上限 %d 只」" % ES.WORM_CAP)
-	## ★1 星不该分裂
-	_s._units.clear()
-	var d6: Dictionary = _mk(640.0, 380.0, "left")
-	d6["equips"] = [{"id": "p2eq_033", "star": 1}]
-	d6["eq_state"] = {}
-	_s._units.append(d6)
-	_s._units.append(_mk(1100.0, 380.0, "right"))
-	_s._equip_sys._eq_on_death(d6, null)
-	var w6: Array = _worms("left")
-	_ok("⑤ ★分母: 1 星也变出了小虫(%d 只)" % w6.size(), w6.size() == 1)
-	_ok("⑤ ★★1 星的小虫**没有**分裂标记",
-		not w6.is_empty() and not bool(w6[0].get("worm_split", false)),
-		"文案里分裂是写在【3 星】那一条上的")
-	## ★★判据量的是【整段里出现过的最大只数】而不是【推完之后还剩几只】——
-	##   后者对随机不敏感这一条不成立: ★1 小虫底子只有 100 血, 而产品会随机塞给它
-	##   3 件 4/5 费装备, 有些组合会让它在这 7.5 秒里死掉 ⇒ 同一份代码三次跑出
-	##   「1 只 / 0 只 / 1 只」两种结果。那是**测试不稳**不是回归
-	##   (memory [[fb-make-assertions-rng-insensitive]])。
-	##   而「有没有分裂过」用最大值量, 死不死都不影响结论, 也照样卡得住变异。
-	var max_seen: int = w6.size()
-	for _k in range(int(ES.WORM_SPLIT_IV * 60.0 * 3.0)):
-		_s._sim_step(_s.SIM_DT, false, false)
-		max_seen = maxi(max_seen, _worms("left").size())
-	_ok("⑤ ★★1 星**从头到尾没分裂过**(整段最多同时 %d 只, 应 ≤ 1)" % max_seen,
-		max_seen <= 1,
-		"推了三个 %.1f 秒周期; 量最大值而不是末值 —— 小虫可能中途被自己带的装备拖死" % ES.WORM_SPLIT_IV)
+	# ── ⑤ ★★★3 星也不再分裂(2026-11-27 用户「取消它的那个三星分裂，我们三星不再分裂，把这个给删了」) ──
+	##   1 星 / 3 星各变一只虫, 推 7.5 秒(原分裂周期 2.5 秒的三倍)看整段里同时最多几只 —— 量最大值, 不量末值:
+	##   小虫可能中途被自己随机带的装备拖死, 末值对随机敏感(memory fb-make-assertions-rng-insensitive)。
+	for star in [1, 3]:
+		_s._units.clear()
+		var d5: Dictionary = _mk(640.0, 380.0, "left")
+		d5["equips"] = [{"id": "p2eq_033", "star": star}]
+		d5["eq_state"] = {}
+		_s._units.append(d5)
+		_s._units.append(_mk(1100.0, 380.0, "right"))
+		_s._equip_sys._eq_on_death(d5, null)
+		var w5: Array = _worms("left")
+		_ok("⑤ ★分母: %d 星变出了小虫(%d 只)" % [star, w5.size()], w5.size() == 1)
+		var max_seen: int = w5.size()
+		for _k in range(int(7.5 * 60.0)):
+			_s._sim_step(_s.SIM_DT, false, false)
+			max_seen = maxi(max_seen, _worms("left").size())
+		_ok("⑤ ★★%d 星**从头到尾没分裂过**(整段最多同时 %d 只, 应 ≤ 1)" % [star, max_seen], max_seen <= 1,
+			"3★ 分裂 11-27 删; 推了 7.5 秒")
 
 	_done()
 
@@ -278,8 +243,8 @@ func _done() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  分母: 共 %d 条断言" % _n)
-	if _n < 22:
-		print("  [FAIL] ★断言只有 %d 条(<22) —— 有用例中途中止了" % _n)
+	if _n < 19:   # 2026-11-27 ⑤ 从「3★ 分裂 9 条」改成「1★/3★ 不分裂 4 条」后共 19 条
+		print("  [FAIL] ★断言只有 %d 条(<19) —— 有用例中途中止了" % _n)
 		_fail += 1
 	print("ALL PASS — 033 魔法海螺" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
