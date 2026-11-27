@@ -865,7 +865,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|熊掌
 scripts/gamedata/summon_codex_equip.gd|lit|狮咬
 scripts/gamedata/summon_codex_equip.gd|lit|甜蜜诱惑
 scripts/gamedata/summon_codex_equip.gd|lit|登场 {C:EqFoodBatch.BOX_SPLIT_FIELD_FIRST} 秒后在身边展开蛋糕法阵，之后每 {C:EqFoodBatch.BOX_SPLIT_FIELD_IV} 秒展开一次。法阵跟随蛋糕礼盒，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中的友军回复 {C:EqFoodBatch.BOX_FIELD_HEAL[%d]} 生命值和 {C:EqFoodBatch.BOX_FIELD_ENERGY[%d]} 龟能。
-scripts/gamedata/summon_codex_equip.gd|lit|目标及其周围的敌人受到（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|砍伐成长
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒分身
 scripts/gamedata/summon_codex_equip.gd|lit|礼盒撞击
@@ -903,6 +902,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|骨火爆裂
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅战士
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅战士狂怒 {C:EqMagicBatch.SKW_RAGE_SEC} 秒，期间获得 {C:EqMagicBatch.SKW_DR%}% 减伤和 {C:EqMagicBatch.SKW_LS%}% 生命偷取，每次攻击额外造成（{C:EqMagicBatch.SKW_EXTRA%}%×攻击力({ATK}) = {N:EqMagicBatch.SKW_EXTRA*ATK}）物理伤害。狂怒期间不积累龟能。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师
+scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师在目标处引爆骨火，对目标及其周围的敌人造成（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅法师的攻击造成（{C:EqMagicBatch.SKM_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}）魔法伤害。
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅祭司
 scripts/gamedata/summon_codex_equip.gd|lit|骷髅祭司的攻击造成（{C:EqMagicBatch.SKP_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKP_BASIC*ATK}）魔法伤害。

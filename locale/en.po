@@ -9324,8 +9324,8 @@ msgstr "The Skeleton Mage's attacks deal ({C:EqMagicBatch.SKM_BASIC%}% × Attack
 msgid "骨火爆裂"
 msgstr "Bonefire Burst"
 
-msgid "目标及其周围的敌人受到（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。"
-msgstr "The target and enemies around it take ({C:EqMagicBatch.SKM_BLAST_ATK%}% × Attack ({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}) magic damage."
+msgid "骷髅法师在目标处引爆骨火，对目标及其周围的敌人造成（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。"
+msgstr "The Skeleton Mage detonates bone fire at its target, dealing ({C:EqMagicBatch.SKM_BLAST_ATK%}% × Attack ({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}) magic damage to it and enemies around it."
 
 msgid "魂火"
 msgstr "Soulfire"

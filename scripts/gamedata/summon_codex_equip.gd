@@ -308,7 +308,7 @@ static func _skel123(id: String, si: int) -> Dictionary:
 				{"name": "骨火弹", "icon": "skills/summon-skelm-bolt.png",
 					"desc": "骷髅法师的攻击造成（{C:EqMagicBatch.SKM_BASIC%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BASIC*ATK}）魔法伤害。"},
 				{"name": "骨火爆裂", "icon": "skills/summon-skelm-blast.png", "energy": int(M.SKEL_EN_MAX),
-					"desc": "目标及其周围的敌人受到（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。"},
+					"desc": "骷髅法师在目标处引爆骨火，对目标及其周围的敌人造成（{C:EqMagicBatch.SKM_BLAST_ATK%}%×攻击力({ATK}) = {M:EqMagicBatch.SKM_BLAST_ATK*ATK}）魔法伤害。"},
 				[life])
 	return _page("骷髅祭司", ["skel_priest"], "skel_priest", _sheet("vfx/eq-skelp-idle.png", 112, 6, 200.0, 92.0), "p2eq_123", ["远程辅助"],
 		SC.stats(M.SKP_HP[si], M.SKP_ATK[si], M.SKP_RES[si], M.SKP_RES[si], BattleSpawn.SUMMON_DEFAULT_SPD, 1.0 / M.SKP_IV, M.SKP_RANGE),
