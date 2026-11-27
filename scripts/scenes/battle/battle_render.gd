@@ -634,6 +634,13 @@ const KD_DEG := 70.0
 const KD_FALL := 0.08
 const KD_HOLD := 0.85   # 滑行 0.833 秒(先快后慢)滑完再起
 const KD_RISE := 0.15
+## 单位立绘材质换表: 贴图 + 帧网格一起给着色器(unit_ground_fade 按屏幕像素覆盖范围采样, 要知道帧格子才不串邻帧; 11-27 横纹)
+static func set_unit_sheet(mat: Material, tex: Texture2D, hf: int, vf: int) -> void:
+	if mat is ShaderMaterial:
+		(mat as ShaderMaterial).set_shader_parameter("tex", tex)
+		(mat as ShaderMaterial).set_shader_parameter("grid", Vector2(float(maxi(1, hf)), float(maxi(1, vf))))
+
+
 static func knockdown_tilt(u: Dictionary, t: float) -> float:
 	var t0: float = float(u.get("_kd_t0", -1.0))
 	if t0 < 0.0:

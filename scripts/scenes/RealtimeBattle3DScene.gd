@@ -1865,8 +1865,8 @@ func _set_anim_sheet(u: Dictionary, sd: Dictionary, action: String, is_idle: boo
 	spr.hframes = int(sd.get("hframes", 1))
 	spr.vframes = int(sd.get("vframes", 1))
 	spr.frame = 0
-	if mat != null and mat is ShaderMaterial:
-		(mat as ShaderMaterial).set_shader_parameter("tex", tex)
+	BattleRender.set_unit_sheet(mat, tex, spr.hframes, spr.vframes)   # 贴图 + 帧网格(11-27 横纹: 着色器按帧格子夹采样)
+
 	var frame_h: int = int(sd.get("frame_h", 64))
 	if is_idle:
 		spr.pixel_size = float(u.get("idle_px", PIXEL_SIZE))
@@ -1976,7 +1976,7 @@ func _get_ground_fade_shader() -> Shader:   # 立绘材质(朝镜头 + 接地渐
 func _make_grounded_material(tex: Texture2D, _sd: Dictionary = {}) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _get_ground_fade_shader()
-	mat.set_shader_parameter("tex", tex)
+	BattleRender.set_unit_sheet(mat, tex, int(_sd.get("hframes", 1)), int(_sd.get("vframes", 1)))
 	mat.set_shader_parameter("fade_frac", GROUND_FADE_FRAC)
 	mat.set_shader_parameter("fade_floor", GROUND_FADE_FLOOR)
 	mat.set_shader_parameter("vframes", float(maxi(1, int(_sd.get("vframes", 1)))))   # ★网格图必须传行数

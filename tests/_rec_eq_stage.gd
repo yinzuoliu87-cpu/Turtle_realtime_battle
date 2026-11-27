@@ -211,6 +211,14 @@ static func cases() -> Dictionary:
 				_u("__minion__", "right", Vector2(150, 60), {"minion": true, "role": "front", "level": 1, "plain": true, "hp": 30000.0, "killable": false, "ai": true, "atk": 60.0, "equips": _eq([139], 1)})], 14.0],
 		## 棕色筹码(11-27 自查: 复活后又被打死 ⇒ 后半段全是「失败」结算页 ⇒ 远处垫一只不动不打的友军, 靶子攻击 400 → 300(筹码自带 1500 生命 + 60 双抗), 看得清倒下 → 复活 → 继续打)
 		## 复活(11-27 用户「在两点五秒内血量是逐渐涨的…头上要有数字在跑」): 凤凰涅槃 / 天使首死复活, 都是 2.5 秒分 5 段回血
+		## 财神龟新形象(方案书 20261126d)逐段录: 一条一段动作(用户 11-26「演出台呢」—— 龟的动作片也在演示台录, 不整局录)
+		"ft_idle": [[_u("fortune", "left", Vector2(-60, 0), {"idle": true, "killable": false}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(160, 1), 5.0],
+		"ft_walk": [[_u("fortune", "left", Vector2(-520, 0), {"plain": true, "killable": false})] + _dummies(260, 1), 6.0],
+		"ft_atk": [[_u("fortune", "left", Vector2(-60, 0), {"plain": true, "killable": false})] + _dummies(40, 1), 6.0],
+		"ft_dice": [[_u("fortune", "left", Vector2(-60, 0), {"fe": true, "killable": false})] + _dummies(40, 1), 6.0],
+		"ft_allin": [[_u("fortune", "left", Vector2(-60, 0), {"fe": true, "killable": false})] + _dummies(120, 1), 8.0],
+		"ft_buy": [[_u("fortune", "left", Vector2(-60, 0), {"fe": true, "killable": false})] + _dummies(40, 1), 6.0],
+		"ft_death": [[_u("fortune", "left", Vector2(-60, 0), {"plain": true, "hp": 900.0, "killable": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(40, 1, true, 30000.0, 300.0), 8.0],
 		"rv_phoenix": [[_u("phoenix", "left", Vector2(-60, 0), {"hp": 1500.0, "killable": true, "plain": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 150.0), 12.0],
 		"rv_angel": [[_u("angel", "left", Vector2(-60, 0), {"hp": 1500.0, "killable": true, "plain": true, "revive": true}), _me(Vector2(-460, 180), [], {"idle": true})] + _dummies(60, 3, true, 30000.0, 150.0), 12.0],
 		## 133 防毒面具移速(11-27 补录): 两个小将都剩 30% 血、并排站, 上面那个带防毒面具(+70% 移速), 一起朝远处的靶子走 ⇒ 带面具的明显先到
@@ -266,6 +274,18 @@ func _process(d: float) -> void:
 	_el += d
 	if _b == null or not is_instance_valid(_b):
 		return
+	## REC_SCALE_PROBE(11-27 用户「身体处见几条横线分开」): 量单位贴图一行像素在屏幕上占几个像素 —— 不是整数倍就会整行跳过 / 画两遍
+	if OS.has_environment("REC_SCALE_PROBE") and _started and int(_el * 2.0) != int((_el - d) * 2.0):
+		for uu in _b._units:
+			if uu is Dictionary and is_instance_valid(uu.get("sprite", null)) and str(uu.get("side", "")) == "left":
+				var sp: Sprite3D = uu["sprite"]
+				var fh: int = int((uu.get("anim_sd", {}) as Dictionary).get("frame_h", 0))
+				if fh <= 0 and sp.texture != null:
+					fh = int(sp.texture.get_height() / maxi(1, sp.vframes))
+				var g := sp.global_transform
+				var top: Vector2 = _b._cam.unproject_position(g * Vector3(0, float(fh) * sp.pixel_size, 0))
+				var bot: Vector2 = _b._cam.unproject_position(g * Vector3(0, 0, 0))
+				print("[SCALE] %.1f %s win=%s fh=%d px=%.5f 屏幕高=%.1f 每行贴图=%.3f 屏幕像素 y底=%.2f" % [_el, str(uu.get("id", "")), str(get_viewport().get_visible_rect().size), fh, sp.pixel_size, absf(bot.y - top.y), absf(bot.y - top.y) / float(fh), bot.y])
 	## 演示倒下动作: sp_cent_die 第 11 秒给百夫长一下致命真伤(靶子打不动举盾的百夫长; 只为看阵亡帧条, 录像说明里写明)
 	if OS.get_environment("REC_CASE") == "sp_cent_die" and _el > 11.0 and not _seen.has("cent_kill"):
 		for uu in _b._units:
@@ -426,6 +446,15 @@ func _process(d: float) -> void:
 		for uu in _b._units:
 			if uu is Dictionary and float(uu.get("_edit_hp_pct", 1.0)) < 1.0:
 				uu["hp"] = float(uu["maxHp"]) * float(uu["_edit_hp_pct"])
+		## 财神龟技能段: 只留这一个主动技能(看清是哪一段动作); 梭哈要有金币才投, 开打给 12 枚
+		var ft_only := {"ft_dice": "fortuneDice", "ft_allin": "fortuneAllIn", "ft_buy": "fortuneBuyEquip"}
+		var rc := OS.get_environment("REC_CASE")
+		if ft_only.has(rc):
+			for uu in _b._units:
+				if uu is Dictionary and str(uu.get("id", "")) == "fortune":
+					uu["active_skills"] = [ft_only[rc]]
+					if rc == "ft_allin":
+						uu["gold"] = 12.0
 		## REC_ZOOM=2 ⇒ 镜头拉近(11-25 武士刀小将动作录像: 默认镜头下小将只有二十来像素, 动作看不清)
 		if OS.has_environment("REC_ZOOM"):
 			_b._cam_zoom = float(OS.get_environment("REC_ZOOM"))
