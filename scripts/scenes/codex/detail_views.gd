@@ -1605,7 +1605,7 @@ func _type_members(tname: String) -> Array:
 		##   而 p2eq_093 香火石登记的是两个(遗物 + 香火, 用户 2026-08-13 拍板)
 		##   ⇒ 香火那一页实拍是「该类型装备 (0)」, 一件都列不出来, 看着像功能没做完。
 		if host.Phase2Types.types_of(eid).has(tname):
-			out.append({"id": eid, "name": str(eq.get("name", eid)), "img": str(eq.get("img", ""))})
+			out.append({"id": eid, "name": str(eq.get("name", eid)), "img": str(eq.get("img", "")), "cost": int(eq.get("cost", 1))})   # cost: 同类装备格按费用换框(11-27)
 	return out
 
 

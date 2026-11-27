@@ -150,6 +150,11 @@ func _ready() -> void:
 		if tiles.size() != want.size() or want.is_empty():
 			bad_member.append("%s:成员%d格%d" % [tname, want.size(), tiles.size()])
 			continue
+		## 11-27 稀有度框: 每格的框 == 那件装备的费用
+		for ti2 in range(mini(tiles.size(), want.size())):
+			if int(tiles[ti2].get_meta("codex_syn_cost", -1)) != int((want[ti2] as Dictionary).get("cost", -2)):
+				bad_member.append("%s:%s 框费用 %s ≠ %s" % [tname, str((want[ti2] as Dictionary).get("id", "")), str(tiles[ti2].get_meta("codex_syn_cost", -1)), str((want[ti2] as Dictionary).get("cost", -2))])
+				break
 		var first_intro: float = 99999.0
 		for it2 in _with_meta("codex_syn_intro"):
 			first_intro = minf(first_intro, (it2 as Control).position.y)
@@ -206,8 +211,8 @@ func _t_special_syn() -> void:
 			elif ch is RichTextLabel:
 				texts.append(str((ch as RichTextLabel).get_parsed_text()))
 		var joined: String = " | ".join(texts)
-		_ok("⑤ %s 详情写「无羁绊加成」「说明」、没有「激活」「羁绊效果」" % tname,
-			joined.find("无羁绊加成") >= 0 and joined.find("说明") >= 0 and joined.find("激活") < 0 and joined.find("羁绊效果") < 0, joined.substr(0, 160))
+		_ok("⑤ %s 详情写「无羁绊加成」、没有「激活」「羁绊效果」小标题(11-27 起机制句上面不放小标题)" % tname,
+			joined.find("无羁绊加成") >= 0 and joined.find("激活") < 0 and joined.find("羁绊效果") < 0, joined.substr(0, 160))
 		_ok("⑤ %s 没有逐档行" % tname, _with_meta("codex_syn_tier").is_empty() and _with_meta("codex_syn_line").is_empty())
 		var intro: Array = Phase2Types.intro_lines(str(tname))
 		_ok("⑤ %s 说明逐条出现(%d 条)" % [tname, intro.size()], intro.size() >= 1 and _with_meta("codex_syn_intro").size() == intro.size(),

@@ -227,9 +227,8 @@ func _show_table(tname: String, tiers: Array, color: String, members: Array) -> 
 		_member_tile(members[i], cx, y + CELL_H * float(int(i / per_row)), 13)   # 格宽 86: 6 个字 × 13 = 78, 两个长名字之间留得出空
 	y += CELL_H * float(int(ceil(float(members.size()) / float(per_row)))) + 4.0
 	host._add_rect(W / 2.0, y, W - 40.0, 1, color, 0.25)
-	y += 14.0
-	host._add_text(20, y, "羁绊效果" if not tiers.is_empty() else "说明", 17, "#58d3ff", 0.0, 0.0, true)
-	y += 32.0
+	y += 16.0
+	## 11-27 用户「可以不需要羁绊效果这四个字」: 不放小标题, 分隔线下面直接是机制句(省一行, 同类装备排两行时也放得下)
 	## 机制: 一条一行, 不带随件数变化的数
 	for ln in tb.get("lines", []):
 		var it := RichTextLabel.new()
@@ -285,11 +284,22 @@ func _member_tile(m: Dictionary, cx: float, top: float, name_px: int = NAME_PX) 
 	fb.border_color = Color("#5a6b80")
 	fb.set_border_width_all(2)
 	var tile := Panel.new()
+	## 11-27 用户「体现不出它的那个稀有度…这个框得想办法做呀…原本这个框太丑了」: 按费用换框(1 灰 / 2 绿 / 3 蓝 / 4 紫 / 5 金,
+	##   右下角费用数字, 4、5 费底光, 5 费金角钉 + 宝石; tools/assetgen/ase/equip_cost_frame.lua), 32 像素原图 2 倍显示
+	var cost: int = clampi(int(m.get("cost", 1)), 1, 5)
+	var frame_path: String = "res://assets/sprites/ui/equip-frame-c%d.png" % cost
+	var frame_sb: StyleBox = null
+	if ResourceLoader.exists(frame_path):
+		var st := StyleBoxTexture.new()
+		st.texture = load(frame_path)
+		frame_sb = st
+		tile.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tile.set_meta("codex_syn_cost", cost)
 	tile.position = Vector2(cx - TILE / 2.0, top)
 	tile.custom_minimum_size = Vector2(TILE, TILE)
 	tile.size = Vector2(TILE, TILE)
-	var tint := Color(0.80, 0.86, 0.95)
-	tile.add_theme_stylebox_override("panel", UISkin.slot(fb, tint))
+	var tint := Color(1, 1, 1) if frame_sb != null else Color(0.80, 0.86, 0.95)
+	tile.add_theme_stylebox_override("panel", frame_sb if frame_sb != null else UISkin.slot(fb, tint))
 	tile.mouse_filter = Control.MOUSE_FILTER_PASS   # 拖动透传给详情 ScrollContainer(手机能滑)
 	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	tile.set_meta("codex_syn_member", eid)
@@ -312,7 +322,7 @@ func _member_tile(m: Dictionary, cx: float, top: float, name_px: int = NAME_PX) 
 	tile.mouse_entered.connect(func() -> void:
 		var sb = tile.get_theme_stylebox("panel")
 		if sb is StyleBoxTexture:
-			(sb as StyleBoxTexture).modulate_color = Color(1.45, 1.38, 1.18, 1.0))
+			(sb as StyleBoxTexture).modulate_color = Color(1.3, 1.3, 1.3, 1.0))
 	tile.mouse_exited.connect(func() -> void:
 		var sb2 = tile.get_theme_stylebox("panel")
 		if sb2 is StyleBoxTexture:
