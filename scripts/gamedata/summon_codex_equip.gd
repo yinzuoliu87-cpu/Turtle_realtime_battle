@@ -138,7 +138,7 @@ static func _pistol(si: int) -> Dictionary:
 	return _page("小手枪", ["pistol"], "pistol", _sheet("vfx/eq-pistol-idle.png", 40, 16, 120.0, 100.0), "p2eq_077", ["远程射手"],
 		SC.stats(G.PISTOL_HP[si], G.PISTOL_ATK[si], 0, 0, BattleSpawn.SUMMON_DEFAULT_SPD, 1.0 / G.PISTOL_IV, G.PISTOL_RANGE),
 		{"name": "连射", "icon": "skills/summon-pistol-shot.png",
-			"desc": "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。"}, {},
+			"desc": "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。小手枪的攻击会触发枪羁绊的金弹，并单独计算金弹。"}, {},
 		[{"name": "小不点", "icon": "passive/summon-pistol-tiny-icon.png",
 			"desc": "小手枪没有护盾时，每次受到的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。"}])
 
@@ -147,13 +147,13 @@ static func _pistol(si: int) -> Dictionary:
 static func _medtower(si: int) -> Dictionary:
 	var G := EqGunBatch
 	return _page("急救塔", ["medtower"], "medtower", _sheet("vfx/eq-coraltower-idle.png", 64, 16, 170.0, 96.0), "p2eq_079", ["远程辅助"],
-		SC.stats(G.TOWER_HP[si], G.TOWER_ATK[si], G.TOWER_RES[si], G.TOWER_RES[si], 0, "同携带者", G.TOWER_RANGE),
+		SC.stats(G.TOWER_HP[si], G.TOWER_ATK[si], G.TOWER_RES[si], G.TOWER_RES[si], 0, "未知", G.TOWER_RANGE),
 		{"name": "急救弹", "icon": "skills/summon-tower-shot.png",
 			"desc": Lang.t("急救塔的攻击造成（{C:EqGunBatch.TOWER_COEF%%}%%×攻击力({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}）物理伤害，另加目标最大生命值 {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% 的魔法伤害，并为生命值百分比最低的友军回复 {C:EqGunBatch.TOWER_HEAL[%d]} 生命值。") % [si, si]}, {},
 		[{"name": "同步射速", "icon": "passive/summon-tower-sync-icon.png",
 			"desc": "急救塔的攻击速度与携带者相同，携带者阵亡后保持阵亡时的攻击速度。"},
 		 {"name": "急救金弹", "icon": "passive/summon-tower-gold-icon.png",
-			"desc": Lang.t("急救塔单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。") % _gun_tiers()}])
+			"desc": Lang.t("急救塔的攻击会触发枪羁绊的金弹，并单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。") % _gun_tiers()}])
 
 
 ## 枪羁绊各档件数「(3)/(6)/(9)」(急救塔金弹跟着它分档)

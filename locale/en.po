@@ -9159,8 +9159,6 @@ msgstr "On spawn, the Turret gains ({C:EquipSystem.TURRET_HP_PER_ATK} × holder'
 msgid "护卫"
 msgstr "Guarded"
 
-msgid "同携带者"
-msgstr "As holder"
 
 
 
@@ -9184,8 +9182,8 @@ msgstr "Split Box"
 msgid "连射"
 msgstr "Rapid Fire"
 
-msgid "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。"
-msgstr "The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack ({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}) physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance. Each attack gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen until the end of this battle. Its attack speed ignores bonuses."
+msgid "小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。小手枪的攻击会触发枪羁绊的金弹，并单独计算金弹。"
+msgstr "The Little Pistol's attacks deal ({C:EqGunBatch.PISTOL_COEF%}% × Attack ({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}) physical damage, with {C:EqGunBatch.PISTOL_CRIT%}% Crit Chance. Each attack gives the pistol {C:EqGunBatch.PISTOL_PEN_PER_SHOT} Armor Pen until the end of this battle. Its attack speed ignores bonuses. Its attacks trigger the Gun synergy's Golden Bullets, counted separately."
 
 msgid "小不点"
 msgstr "Tiny Target"
@@ -9205,8 +9203,8 @@ msgstr "The Aid Tower attacks as fast as the holder, and keeps the holder's last
 msgid "急救金弹"
 msgstr "Aid Golden Bullet"
 
-msgid "急救塔单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。"
-msgstr "The Aid Tower counts its Golden Bullets separately. With your Gun synergy at %s, every {C:EqGunBatch.TOWER_GOLD_EVERY} attacks it fires a Golden Bullet that adds true damage equal to {C:EqGunBatch.TOWER_GOLD_PCT%%}%% of that hit and heals double."
+msgid "急救塔的攻击会触发枪羁绊的金弹，并单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。"
+msgstr "The Aid Tower's attacks trigger the Gun synergy's Golden Bullets, counted separately. With your Gun synergy at %s, every {C:EqGunBatch.TOWER_GOLD_EVERY} attacks it fires a Golden Bullet that adds true damage equal to {C:EqGunBatch.TOWER_GOLD_PCT%%}%% of that hit and heals double."
 
 msgid "每次攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾，转为自身的护盾。"
 msgstr "Each attack steals {C:AxeEvolution.SHIELD_STEAL_PCT%}% of the target's shield as its own."

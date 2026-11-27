@@ -797,7 +797,6 @@ scripts/gamedata/summon_codex_equip.gd|lit|余烬
 scripts/gamedata/summon_codex_equip.gd|lit|全息斧
 scripts/gamedata/summon_codex_equip.gd|lit|冲撞
 scripts/gamedata/summon_codex_equip.gd|lit|化为黑烟，闪到生命值比例最低的敌人身后背刺，造成（{C:EqDaggerBatch.NINJA_STRIKE_MULT%}%×攻击力({ATK}) = {N:EqDaggerBatch.NINJA_STRIKE_MULT*ATK}）物理伤害，必定暴击，随后隐身 {C:EqDaggerBatch.NINJA_RESTEALTH} 秒。
-scripts/gamedata/summon_codex_equip.gd|lit|同携带者
 scripts/gamedata/summon_codex_equip.gd|lit|同步射速
 scripts/gamedata/summon_codex_equip.gd|lit|啃咬
 scripts/gamedata/summon_codex_equip.gd|lit|嘲讽附近所有敌人。每有一个敌人以蛋糕礼盒为目标，蛋糕礼盒获得 {C:EqFoodBatch.BOX_RES_PER_LOCKER[%d]} 护甲和魔抗。
@@ -807,7 +806,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|大熊
 scripts/gamedata/summon_codex_equip.gd|lit|小不点
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪
 scripts/gamedata/summon_codex_equip.gd|lit|小手枪没有护盾时，每次受到的伤害至多 {C:EqGunBatch.PISTOL_DMG_CAP} 点，真实伤害也一样。携带者阵亡后，这个上限提高到 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。每次受到的治疗至多 {C:EqGunBatch.PISTOL_HEAL_CAP} 点。
-scripts/gamedata/summon_codex_equip.gd|lit|小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。
+scripts/gamedata/summon_codex_equip.gd|lit|小手枪的攻击造成（{C:EqGunBatch.PISTOL_COEF%}%×攻击力({ATK}) = {N:EqGunBatch.PISTOL_COEF*ATK}）物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}% 暴击率。每次攻击使小手枪获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，持续到本战场结束。攻击速度不受加成影响。小手枪的攻击会触发枪羁绊的金弹，并单独计算金弹。
 scripts/gamedata/summon_codex_equip.gd|lit|尸爆
 scripts/gamedata/summon_codex_equip.gd|lit|居合
 scripts/gamedata/summon_codex_equip.gd|lit|开炮
@@ -816,7 +815,7 @@ scripts/gamedata/summon_codex_equip.gd|lit|影分身
 scripts/gamedata/summon_codex_equip.gd|lit|影袭
 scripts/gamedata/summon_codex_equip.gd|lit|忍刃
 scripts/gamedata/summon_codex_equip.gd|lit|急救塔
-scripts/gamedata/summon_codex_equip.gd|lit|急救塔单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。
+scripts/gamedata/summon_codex_equip.gd|lit|急救塔的攻击会触发枪羁绊的金弹，并单独计算金弹。我方枪羁绊达到 %s 时，每攻击 {C:EqGunBatch.TOWER_GOLD_EVERY} 次射出一发金弹，金弹额外造成这一击 {C:EqGunBatch.TOWER_GOLD_PCT%%}%% 的真实伤害，治疗量翻倍。
 scripts/gamedata/summon_codex_equip.gd|lit|急救塔的攻击速度与携带者相同，携带者阵亡后保持阵亡时的攻击速度。
 scripts/gamedata/summon_codex_equip.gd|lit|急救塔的攻击造成（{C:EqGunBatch.TOWER_COEF%%}%%×攻击力({ATK}) = {N:EqGunBatch.TOWER_COEF*ATK}）物理伤害，另加目标最大生命值 {C:EqGunBatch.TOWER_MAXHP_PCT[%d]%%}%% 的魔法伤害，并为生命值百分比最低的友军回复 {C:EqGunBatch.TOWER_HEAL[%d]} 生命值。
 scripts/gamedata/summon_codex_equip.gd|lit|急救弹
